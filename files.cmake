@@ -725,13 +725,9 @@ list(APPEND MP_GAME_SOURCES
     src/Kyoto/Graphics/CModelPortStub.cpp
     src/Kyoto/Graphics/CTexturePortStub.cpp
     src/Kyoto/PortCMemoryCardSys.cpp
-    src/MetroidPrime/PortAudio.cpp
-    src/MetroidPrime/PortCGuiAccessors.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
-    src/MetroidPrime/PortCTweakBall.cpp
     src/MetroidPrime/PortFrameTimeHistory.c
-    src/MetroidPrime/PortIOWins.cpp
     src/MetroidPrime/PortMakeMsg.cpp
     src/MetroidPrime/PortPoolStandIns.cpp
     src/MetroidPrime/PortTweakGlobals.cpp
