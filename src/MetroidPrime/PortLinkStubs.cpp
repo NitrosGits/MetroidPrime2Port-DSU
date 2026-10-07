@@ -594,117 +594,9 @@ extern "C" void reachstub_147() { mpReachStub("_ZN23CCollisionCacheIteratorC1ER1
 extern "C" void reachstub_148() asm("_ZN23CCollisionCacheIteratorC1Ev");
 extern "C" void reachstub_148() { mpReachStub("_ZN23CCollisionCacheIteratorC1Ev", "CCollisionCacheIterator::CCollisionCacheIterator()"); }
 
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::internal_allocate(int)
-extern "C" void reachstub_149() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE17internal_allocateEi");
-extern "C" void reachstub_149() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE17internal_allocateEi", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::internal_allocate(int)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::internal_dereference()
-extern "C" void reachstub_150() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE20internal_dereferenceEv");
-extern "C" void reachstub_150() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE20internal_dereferenceEv", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::internal_dereference()"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::internal_prepare_to_write(int, bool)
-extern "C" void reachstub_151() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE25internal_prepare_to_writeEib");
-extern "C" void reachstub_151() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE25internal_prepare_to_writeEib", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::internal_prepare_to_write(int, bool)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::mNull
-extern "C" __attribute__((aligned(32))) char reachdata_152[0x400] asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE5mNullE");
-__attribute__((aligned(32))) char reachdata_152[0x400] = {};
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::append(char const*, int)
-extern "C" void reachstub_153() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6appendEPKci");
-extern "C" void reachstub_153() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6appendEPKci", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::append(char const*, int)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::append(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_154() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6appendERKS4_");
-extern "C" void reachstub_154() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6appendERKS4_", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::append(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::append(int, char)
-extern "C" void reachstub_155() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6appendEic");
-extern "C" void reachstub_155() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6appendEic", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::append(int, char)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::assign(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_156() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6assignERKS4_");
-extern "C" void reachstub_156() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE6assignERKS4_", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::assign(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::basic_string(char const*, int, rstl::rmemory_allocator const&)
-extern "C" void reachstub_157() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEC1EPKciRKS3_");
-extern "C" void reachstub_157() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEC1EPKciRKS3_", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::basic_string(char const*, int, rstl::rmemory_allocator const&)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::basic_string(CInputStream&, rstl::rmemory_allocator const&)
-extern "C" void reachstub_158() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEC1ER12CInputStreamRKS3_");
-extern "C" void reachstub_158() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEC1ER12CInputStreamRKS3_", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::basic_string(CInputStream&, rstl::rmemory_allocator const&)"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::basic_string(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_159() asm("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEC1ERKS4_");
-extern "C" void reachstub_159() { mpReachStub("_ZN4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEC1ERKS4_", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::basic_string(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)"); }
-
-// rstl::basic_string<char, rstl::case_insensitive_char_traits<char>, rstl::rmemory_allocator>::internal_dereference()
-extern "C" void reachstub_160() asm("_ZN4rstl12basic_stringIcNS_28case_insensitive_char_traitsIcEENS_17rmemory_allocatorEE20internal_dereferenceEv");
-extern "C" void reachstub_160() { mpReachStub("_ZN4rstl12basic_stringIcNS_28case_insensitive_char_traitsIcEENS_17rmemory_allocatorEE20internal_dereferenceEv", "rstl::basic_string<char, rstl::case_insensitive_char_traits<char>, rstl::rmemory_allocator>::internal_dereference()"); }
-
-// rstl::basic_string<char, rstl::case_insensitive_char_traits<char>, rstl::rmemory_allocator>::basic_string(char const*, int, rstl::rmemory_allocator const&)
-extern "C" void reachstub_161() asm("_ZN4rstl12basic_stringIcNS_28case_insensitive_char_traitsIcEENS_17rmemory_allocatorEEC1EPKciRKS3_");
-extern "C" void reachstub_161() { mpReachStub("_ZN4rstl12basic_stringIcNS_28case_insensitive_char_traitsIcEENS_17rmemory_allocatorEEC1EPKciRKS3_", "rstl::basic_string<char, rstl::case_insensitive_char_traits<char>, rstl::rmemory_allocator>::basic_string(char const*, int, rstl::rmemory_allocator const&)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::internal_allocate(int)
-extern "C" void reachstub_162() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE17internal_allocateEi");
-extern "C" void reachstub_162() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE17internal_allocateEi", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::internal_allocate(int)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::internal_dereference()
-extern "C" void reachstub_163() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE20internal_dereferenceEv");
-extern "C" void reachstub_163() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE20internal_dereferenceEv", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::internal_dereference()"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::internal_prepare_to_write(int, bool)
-extern "C" void reachstub_164() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE25internal_prepare_to_writeEib");
-extern "C" void reachstub_164() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE25internal_prepare_to_writeEib", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::internal_prepare_to_write(int, bool)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::mNull
-extern "C" __attribute__((aligned(32))) char reachdata_165[0x400] asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE5mNullE");
-__attribute__((aligned(32))) char reachdata_165[0x400] = {};
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::append(wchar_t const*, int)
-extern "C" void reachstub_166() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6appendEPKwi");
-extern "C" void reachstub_166() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6appendEPKwi", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::append(wchar_t const*, int)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::append(rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_167() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6appendERKS4_");
-extern "C" void reachstub_167() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6appendERKS4_", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::append(rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator> const&)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::append(int, wchar_t)
-extern "C" void reachstub_168() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6appendEiw");
-extern "C" void reachstub_168() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6appendEiw", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::append(int, wchar_t)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::assign(wchar_t const*, int)
-extern "C" void reachstub_169() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6assignEPKwi");
-extern "C" void reachstub_169() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6assignEPKwi", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::assign(wchar_t const*, int)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::assign(rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_170() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6assignERKS4_");
-extern "C" void reachstub_170() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE6assignERKS4_", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::assign(rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator> const&)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::basic_string(wchar_t const*, int, rstl::rmemory_allocator const&)
-extern "C" void reachstub_171() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEEC1EPKwiRKS3_");
-extern "C" void reachstub_171() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEEC1EPKwiRKS3_", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::basic_string(wchar_t const*, int, rstl::rmemory_allocator const&)"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::basic_string(rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_172() asm("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEEC1ERKS4_");
-extern "C" void reachstub_172() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEEC1ERKS4_", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::basic_string(rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator> const&)"); }
-
 // rstl::locked_cache_allocator::Allocate(void*&, int)
 extern "C" void reachstub_173() asm("_ZN4rstl22locked_cache_allocator8AllocateERPvi");
 extern "C" void reachstub_173() { mpReachStub("_ZN4rstl22locked_cache_allocator8AllocateERPvi", "rstl::locked_cache_allocator::Allocate(void*&, int)"); }
-
-// rstl::string_l(char const*)
-extern "C" void reachstub_175() asm("_ZN4rstl8string_lEPKc");
-extern "C" void reachstub_175() { mpReachStub("_ZN4rstl8string_lEPKc", "rstl::string_l(char const*)"); }
-
-// rstl::istring_l(char const*)
-extern "C" void reachstub_176() asm("_ZN4rstl9istring_lEPKc");
-extern "C" void reachstub_176() { mpReachStub("_ZN4rstl9istring_lEPKc", "rstl::istring_l(char const*)"); }
-
-// rstl::wstring_l(wchar_t const*)
-extern "C" void reachstub_177() asm("_ZN4rstl9wstring_lEPKw");
-extern "C" void reachstub_177() { mpReachStub("_ZN4rstl9wstring_lEPKw", "rstl::wstring_l(wchar_t const*)"); }
 
 // rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)
 extern "C" void reachstub_178() asm("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc");
@@ -1285,18 +1177,6 @@ extern "C" void reachstub_338() { mpReachStub("_ZNK23CCollisionCacheIterator15Ma
 // CScriptFrontEndDataNetwork::TypesMatch(int) const
 extern "C" void reachstub_339() asm("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi");
 extern "C" void reachstub_339() { mpReachStub("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi", "CScriptFrontEndDataNetwork::TypesMatch(int) const"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::range_iterator(int, int) const
-extern "C" void reachstub_340() asm("_ZNK4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE14range_iteratorEii");
-extern "C" void reachstub_340() { mpReachStub("_ZNK4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE14range_iteratorEii", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::range_iterator(int, int) const"); }
-
-// rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::PutTo(COutputStream&) const
-extern "C" void reachstub_341() asm("_ZNK4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE5PutToER13COutputStream");
-extern "C" void reachstub_341() { mpReachStub("_ZNK4rstl12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEE5PutToER13COutputStream", "rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::PutTo(COutputStream&) const"); }
-
-// rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::range_iterator(int, int) const
-extern "C" void reachstub_342() asm("_ZNK4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE14range_iteratorEii");
-extern "C" void reachstub_342() { mpReachStub("_ZNK4rstl12basic_stringIwNS_11char_traitsIwEENS_17rmemory_allocatorEE14range_iteratorEii", "rstl::basic_string<wchar_t, rstl::char_traits<wchar_t>, rstl::rmemory_allocator>::range_iterator(int, int) const"); }
 
 // CAABox::ClampToBox(CVector3f const&) const
 extern "C" void reachstub_343() asm("_ZNK6CAABox10ClampToBoxERK9CVector3f");

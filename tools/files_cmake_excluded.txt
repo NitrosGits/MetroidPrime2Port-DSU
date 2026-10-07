@@ -36,5 +36,4 @@ src/Runtime/global_destructor_chain.c | MWCC runtime unit (PPC asm/static-ctor c
 src/WorldFormat/CAreaOctTree_Tests.cpp | MWCC/PPC intrinsic or OSContext field unavailable on host (needs TARGET_PC handling)
 src/WorldFormat/CCollisionCache.cpp | upstream source/header does not build on host: expected ‘)’ before ‘&’ token
 src/WorldFormat/COBBTree.cpp | upstream source/header does not build on host: no matching function for call to ‘COBBTree::CNode::operator new(sizetype)’
-src/rstl/rstl_strings.cpp | upstream source/header does not build on host: specialization of ‘rstl::basic_string<_CharTp, Traits, Alloc>::basic_string(const _CharTp*, int, const Alloc&)
 src/REL/REL_Setup.cpp | per-module console glue (_prolog/_epilog/_ctors); platform/compiled_modules.cpp stands in on the host

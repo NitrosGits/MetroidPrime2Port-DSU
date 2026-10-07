@@ -226,6 +226,9 @@ template <> void basic_string< char >::internal_prepare_to_write(int len, bool p
 
 template <> basic_string< wchar_t >::basic_string(const basic_string< wchar_t >& other);
 template <>
+basic_string< wchar_t >::basic_string(const wchar_t* data, int count,
+                                      const rmemory_allocator& alloc);
+template <>
 basic_string< wchar_t >& basic_string< wchar_t >::append(const basic_string< wchar_t >& other);
 template <> basic_string< wchar_t >& basic_string< wchar_t >::append(const wchar_t* data, int count);
 template <> basic_string< wchar_t >& basic_string< wchar_t >::append(int count, wchar_t value);
@@ -234,6 +237,9 @@ template <> basic_string< wchar_t >& basic_string< wchar_t >::assign(const wchar
 template <> void basic_string< wchar_t >::internal_allocate(int size);
 template <> void basic_string< wchar_t >::internal_dereference();
 template <> void basic_string< wchar_t >::internal_prepare_to_write(int len, bool preserve);
+
+template <>
+void basic_string< char, case_insensitive_char_traits< char > >::internal_allocate(int size);
 #endif
 
 template < typename _CharTp, typename Traits, typename Alloc >

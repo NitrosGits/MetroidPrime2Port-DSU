@@ -746,6 +746,7 @@ set(MP_GAME_SOURCES
     src/rstl/RstlExtras.cpp
     src/rstl/rstl_map.cpp
     src/rstl/rstl_misc.cpp
+    src/rstl/rstl_strings.cpp
 )
 # REL modules, each its own symbol namespace
 set(MP_MODULE_ChozoGhost_SOURCES
