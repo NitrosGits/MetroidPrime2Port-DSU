@@ -18,14 +18,24 @@ public:
   public:
     SGameMemInfo(SGameMemInfo* prev, SGameMemInfo* next, SGameMemInfo* nextFree, size_t len,
                  const char* fileAndLine, const char* type)
+#ifdef TARGET_PC
+    // The EXPAND_PATTERN'd constants: on a 64-bit host the 32-bit literals zero-extend and
+    // Is*GuardIntact() fails for every block.
+    : mPriorGuard(kAllocatorPriorGuard)
+#else
     : mPriorGuard(0xefefefef)
+#endif
     , mLen(len)
     , mFileAndLine(fileAndLine)
     , mType(type)
     , mPrev(prev)
     , mNext(next)
     , mNextFree(nextFree)
+#ifdef TARGET_PC
+    , mPostGuard(kAllocatorPostGuard) {}
+#else
     , mPostGuard(0xeaeaeaea) {}
+#endif
 
     SGameMemInfo* GetPrev() const {
       return reinterpret_cast< SGameMemInfo* >(reinterpret_cast< uintptr_t >(mPrev) &

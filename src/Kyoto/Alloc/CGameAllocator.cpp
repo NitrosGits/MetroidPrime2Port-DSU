@@ -119,12 +119,22 @@ bool CGameAllocator::Initialize(COsContext& ctx) {
   mSmallAllocBookKeeping = Alloc(0x16000, kHI_None, kSC_Unk1, kTP_Heap,
                                     CCallStack(0xffffffff, "SmallAllocBookKeeping", " - Ignore"));
 
+#ifdef TARGET_PC
+  // The host objects outgrow retail's 0x20/0x1c cells; constructing them there overwrote the
+  // next block's header.
+  mSmallAllocPool = new (Alloc(sizeof(CSmallAllocPool), kHI_None, kSC_Unk1, kTP_Heap,
+#else
   mSmallAllocPool = new (Alloc(0x20, kHI_None, kSC_Unk1, kTP_Heap,
+#endif
                                   CCallStack(0xffffffff, "SmallAllocClass      ", " - Ignore")))
       CSmallAllocPool(0x2c000, mSmallAllocMainData, mSmallAllocBookKeeping);
 
   mMediumPool =
+#ifdef TARGET_PC
+      new (Alloc(sizeof(CMediumAllocPool), kHI_None, kSC_Unk1, kTP_Heap,
+#else
       new (Alloc(0x1c, kHI_None, kSC_Unk1, kTP_Heap,
+#endif
                  CCallStack(0xffffffff, "MediumAllocClass      ", " - Ignore"))) CMediumAllocPool();
 
   uint mediumSize = CMediumAllocPool::GetAllocMemoryRequired(0x1000);
