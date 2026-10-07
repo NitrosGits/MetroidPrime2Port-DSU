@@ -198,26 +198,6 @@ __attribute__((aligned(32))) char reachdata_41[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_42[0x400] asm("_ZN11CSaveRegion23mNonVolatileSettingsBufE");
 __attribute__((aligned(32))) char reachdata_42[0x400] = {};
 
-// CARAMManager::Initialize(unsigned int, unsigned int, unsigned int)
-extern "C" void reachstub_43() asm("_ZN12CARAMManager10InitializeEjjj");
-extern "C" void reachstub_43() { mpReachStub("_ZN12CARAMManager10InitializeEjjj", "CARAMManager::Initialize(unsigned int, unsigned int, unsigned int)"); }
-
-// CARAMManager::IsAllocValid(void const*)
-extern "C" void reachstub_44() asm("_ZN12CARAMManager12IsAllocValidEPKv");
-extern "C" void reachstub_44() { mpReachStub("_ZN12CARAMManager12IsAllocValidEPKv", "CARAMManager::IsAllocValid(void const*)"); }
-
-// CARAMManager::CollectGarbage()
-extern "C" void reachstub_45() asm("_ZN12CARAMManager14CollectGarbageEv");
-extern "C" void reachstub_45() { mpReachStub("_ZN12CARAMManager14CollectGarbageEv", "CARAMManager::CollectGarbage()"); }
-
-// CARAMManager::GetInvalidAlloc()
-extern "C" void reachstub_47() asm("_ZN12CARAMManager15GetInvalidAllocEv");
-extern "C" void reachstub_47() { mpReachStub("_ZN12CARAMManager15GetInvalidAllocEv", "CARAMManager::GetInvalidAlloc()"); }
-
-// CARAMManager::Shutdown()
-extern "C" void reachstub_49() asm("_ZN12CARAMManager8ShutdownEv");
-extern "C" void reachstub_49() { mpReachStub("_ZN12CARAMManager8ShutdownEv", "CARAMManager::Shutdown()"); }
-
 // CEulerAngles::FromTransform(CTransform4f const&)
 extern "C" void reachstub_50() asm("_ZN12CEulerAngles13FromTransformERK12CTransform4f");
 extern "C" void reachstub_50() { mpReachStub("_ZN12CEulerAngles13FromTransformERK12CTransform4f", "CEulerAngles::FromTransform(CTransform4f const&)"); }

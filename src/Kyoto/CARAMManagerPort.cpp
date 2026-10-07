@@ -1,18 +1,18 @@
 /**
  * The port's `CARAMManager`: `Alloc`, `Free`, the two DMA directions, the three DMA queries, the
- * wait-for-all, and retail's initialiser `fn_80301CC4`. **This file is port-only**: `configure.py`
+ * wait-for-all, and retail's initialiser `CARAMManager::Initialize`. **This file is port-only**: `configure.py`
  * does not declare it, so mwcceppc never sees it and it is not a decompilation unit - the same
  * arrangement as `src/Kyoto/CSimplePoolPort.cpp`.
  *
- * **Echoes' ARAM manager is not Prime 1's**, and `src/Kyoto/CARAMManager.cpp` is Prime 1's (one
- * pool, `Alloc(uint)`), which is why that file is still excluded in `files.cmake`. Retail Echoes,
+ * Upstream's `src/Kyoto/CARAMManager.cpp` is the matching Echoes unit, but it casts pointers to
+ * `uint` for ARAM addresses, so it is excluded from `files.cmake` and this host version stands in. Retail Echoes,
  * measured from `build/G2ME01/asm/auto_03_8030188C_text.s`:
  *
- *  * `fn_80301CC4(chunk1, size1, chunk0)` - called from `CMain::InitializeSubsystems` at
+ *  * `CARAMManager::Initialize(chunk1, size1, chunk0)` - called from `CMain::InitializeSubsystems` at
  *    0x800087B0 as `(0x800, 0x600000, 0x1000)` - builds **two** chunk allocators of 0x18 bytes,
  *    `{ aramStart, chunkSize, numChunks, chunksAllocated, peakChunks, bookkeeping* }`, and stores
  *    them in the two words at `lbl_80419B08`: `[1]` is `size1 / chunk1` chunks of `chunk1` (6 MB of
- *    2 KB chunks) and `[0]` is the rest of ARAM, `(ARGetSize() - lbl_80418BA8 - size1) / chunk0`
+ *    2 KB chunks) and `[0]` is the rest of ARAM, `(ARGetSize() - mPreInitializeAlloc - size1) / chunk0`
  *    chunks of `chunk0`. Each allocator's ARAM comes from `ARAlloc`, its bookkeeping from
  *    `CMemory::Alloc`, zero-filled from `lbl_8041E938` (.sdata2, `00000000`). It then zeroes the
  *    DMA id counter `lbl_80419B04` and sets `lbl_80419B00` (initialised).
@@ -50,11 +50,9 @@
 
 #include <stdio.h>
 
-// .sdata 0x80418BA8, `00004000`. Retail's `CMain::InitializeSubsystems` adds `ARAlloc`'s answer to
-// it and `fn_80301CC4` subtracts it from `ARGetSize()`: the ARAM below it is not the manager's.
-// Nothing else in the host build defines it - the only other mention is the retail body in
-// `mainTail.cpp`, which the host does not compile.
-extern "C" uint lbl_80418BA8 = 0x4000;
+// `mPreInitializeAlloc` is .sdata 0x80418BA8, `00004000`, defined in
+// `src/MetroidPrime/PortDataGlobals.cpp`. `CMain::InitializeSubsystems` adds `ARAlloc`'s answer to
+// it and `Initialize` subtracts it from `ARGetSize()`: the ARAM below it is not the manager's.
 
 namespace {
 
@@ -194,8 +192,8 @@ SRequestList::iterator FindDMA(uint handle) {
 
 } // namespace
 
-extern "C" void fn_80301CC4(uint chunkSize1, uint size1, uint chunkSize0) {
-  const uint available = ARGetSize() - lbl_80418BA8;
+bool CARAMManager::Initialize(uint chunkSize1, uint size1, uint chunkSize0) {
+  const uint available = ARGetSize() - mPreInitializeAlloc;
   sAllocators[1] = rs_new SARAMChunkAllocator(chunkSize1, size1 / chunkSize1);
   sAllocators[0] = rs_new SARAMChunkAllocator(chunkSize0, (available - size1) / chunkSize0);
   if (sActiveDMAs == nullptr) {
@@ -203,13 +201,26 @@ extern "C" void fn_80301CC4(uint chunkSize1, uint size1, uint chunkSize0) {
   }
   sNextDMAId = 0;
   sInitialized = true;
+  return true;
 }
+
+void CARAMManager::Shutdown() {
+  WaitForAllDMAsToComplete();
+  delete sAllocators[0];
+  delete sAllocators[1];
+  sAllocators[0] = sAllocators[1] = nullptr;
+  sInitialized = false;
+}
+
+bool CARAMManager::IsAllocValid(const void* ptr) { return ptr != GetInvalidAlloc(); }
+
+const void* CARAMManager::GetInvalidAlloc() { return reinterpret_cast< const void* >(-1); }
 
 void* CARAMManager::Alloc(uint len, int pool) {
   if (!sInitialized) {
     // Retail would dereference a null allocator here. On the host a boot that reaches a pak
     // before `PortInitializeSubsystems` is a sequencing bug, and this says which one.
-    printf("CARAMManager::Alloc(%u) before fn_80301CC4 initialised the ARAM pools\n", len);
+    printf("CARAMManager::Alloc(%u) before CARAMManager::Initialize initialised the ARAM pools\n", len);
     return const_cast< void* >(GetInvalidAlloc());
   }
   return Allocator(pool)->Alloc(len);
@@ -263,7 +274,7 @@ bool CARAMManager::CancelDMA(uint handle) {
 }
 
 // ---------------------------------------------------------------------------
-// `fn_8030174C` (retail 0x8030174C, 0x74) and `fn_8030172C` (0x8030172C, 0x20): the per-frame
+// `RefreshActiveDMAList` (retail 0x8030174C, 0x74) and `CollectGarbage` (0x8030172C, 0x20): the per-frame
 // DMA cleanup the frame loop pumps at retail 0x800060A8.
 // ---------------------------------------------------------------------------
 //
@@ -295,13 +306,13 @@ bool CARAMManager::CancelDMA(uint handle) {
 // help; on the host Aurora performs the transfer at post time and *defers* that callback to
 // `ARQPoll` (file header), so a pass that did not poll would walk a list whose completion bytes
 // are never written and could never free anything. `ARQInit` has run by the time this can be
-// called: `fn_80301CC4` - which `rs_new`s the list this starts by testing - is called after it
+// called: `CARAMManager::Initialize` - which `rs_new`s the list this starts by testing - is called after it
 // in `PortInitializeSubsystems` (boot step 11), and `ARQPoll` runs an already-deferred callback
 // rather than waiting for anything, so the pass cannot block.
-extern "C" void fn_8030174C() {
+void CARAMManager::RefreshActiveDMAList() {
   if (sActiveDMAs == nullptr) {
     // Retail's list is the .bss object at `lbl_804175B8` and needs no such test; this one is
-    // `rs_new`d by `fn_80301CC4`. The guard is the one `WaitForAllDMAsToComplete` below has
+    // `rs_new`d by `CARAMManager::Initialize`. The guard is the one `WaitForAllDMAsToComplete` below has
     // always had, and it cannot fire on the path that reaches retail's call site.
     return;
   }
@@ -317,13 +328,13 @@ extern "C" void fn_8030174C() {
 }
 
 // Retail's 0x20-byte wrapper: the frame loop calls this, and retail's own body is one `bl` to
-// `fn_8030174C` above. Written because `CMain::RsMain`'s frame loop called it through
-// `PORT_FRAME_STOP` until 2026-09-28; see the measurement at `fn_8030174C`.
-extern "C" void fn_8030172C() { fn_8030174C(); }
+// `RefreshActiveDMAList` above. Written because `CMain::RsMain`'s frame loop called it through
+// `PORT_FRAME_STOP` until 2026-09-28; see the measurement at `RefreshActiveDMAList`.
+void CARAMManager::CollectGarbage() { RefreshActiveDMAList(); }
 
 // `CARAMManager::WaitForAllDMAsToComplete` is retail's `fn_8030184C` (0x8030184C, 0x40, the
 // unit src/Kyoto/CARAMManagerWait.cpp claims): `while (*(int*)(lbl_804175B8 + 0x14) > 0)
-// fn_8030174C();` - the same pass, looped until the list is empty. That is what this was
+// RefreshActiveDMAList();` - the same pass, looped until the list is empty. That is what this was
 // already described as doing here, and since 2026-09-28 it does it by calling the pass instead
 // of carrying a second copy of the walk: one poll and one sweep per iteration, exactly as
 // before, with the loop and its body in the same relation retail has them.
@@ -332,6 +343,6 @@ void CARAMManager::WaitForAllDMAsToComplete() {
     return;
   }
   while (!sActiveDMAs->empty()) {
-    fn_8030174C();
+    RefreshActiveDMAList();
   }
 }
