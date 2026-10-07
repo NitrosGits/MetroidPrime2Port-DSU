@@ -198,6 +198,8 @@ void CMain::InitializeSubsystems() {
   CARAMManager::PreInitializeAlloc(gARAMAllocationSize);
   ARQInit();
 
+#ifndef TARGET_PC
+  // The host thread's stack is not a guest range to protect and paint.
   OSThread* thread = OSGetCurrentThread();
   printf("Protecting stack...  ");
   uchar* stackEnd =
@@ -209,6 +211,7 @@ void CMain::InitializeSubsystems() {
   }
   DCFlushRange(stackEnd + 0x400, stackBase - 0x2000 - (stackEnd + 0x400));
   printf("Stack: 0x%8.8x down to 0x%8.8x\n", thread->stackBase, thread->stackEnd);
+#endif
 
   CElementGen::Initialize();
   CAnimData::InitializeCache();
@@ -218,6 +221,10 @@ void CMain::InitializeSubsystems() {
   CFrameDelayedKiller::Initialize();
 }
 
+#ifdef TARGET_PC
+void PortShutdownSubsystems();
+void CMain::ShutdownSubsystems() { PortShutdownSubsystems(); }
+#else
 void CMain::ShutdownSubsystems() {
   CFrameDelayedKiller::ShutDown();
   CDecalManager::ShutDown();
@@ -248,6 +255,7 @@ void CMain::ShutdownSubsystems() {
   const int used = static_cast< int >((stackBase - 0x2000) - ptr) + 0x2000;
   OSReport("Stack usage: %d bytes (%dk)\n", used, static_cast< uint >(used) / 1024);
 }
+#endif // TARGET_PC
 
 CGameGlobalObjects::CGameGlobalObjects(COsContext& context, CMemorySys& memorySys)
 : mSimplePool(mResFactory)

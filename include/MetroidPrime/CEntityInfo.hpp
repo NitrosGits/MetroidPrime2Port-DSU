@@ -316,6 +316,10 @@ namespace rstl {
 RSTL_DECLARE_TRIVIALLY_DESTRUCTIBLE(SConnection)
 } // namespace rstl
 
+#ifdef TARGET_PC
+struct SLdrEditorProperties;
+#endif
+
 class CEntityInfo {
   TAreaId mAreaId;
   rstl::vector< SConnection > mConnections;
@@ -324,6 +328,12 @@ class CEntityInfo {
   // Guessed names, based on the runtime update dispatch.
   bool mUpdateWhileOccluded : 1;
   bool mUpdateDuringCinematicSkip : 1;
+
+#ifdef TARGET_PC
+  // The port's `LdrToEntityInfo` writes the three flag bits above directly (see
+  // src/MetroidPrime/LdrToEntityInfo.cpp). Declared as a friend so nothing is made public.
+  friend CEntityInfo& LdrToEntityInfo(CEntityInfo&, const SLdrEditorProperties&);
+#endif
 
 public:
   CEntityInfo(TAreaId aid, const rstl::vector< SConnection >& connections, bool active,

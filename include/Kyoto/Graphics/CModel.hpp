@@ -51,6 +51,11 @@ public:
   };
 
   CModel(const rstl::auto_ptr< uchar >& data, int length, IObjectStore& store);
+#ifdef TARGET_PC
+  // Port: an empty model for `port::pool::CreateStandInObject` (src/MetroidPrime/PortPoolStandIns.cpp).
+  CModel()
+  : mDataLen(0), mLastFrame(0), mCurrentMatxIdx(0), mInitialTextureLocksReleased(0), mHasSkinMatrices(0) {}
+#endif
   ~CModel();
   void Touch(int) const;
   void Draw(const CModelFlags&) const;
@@ -80,6 +85,13 @@ public:
   static void AddToTotal(uint amt) { sTotalMemory += amt; }
   static void RemoveFromTotal(uint amt) { sTotalMemory -= amt; }
   static uint GetTotalMemory() { return sTotalMemory; }
+
+#ifdef TARGET_PC
+  // The number of material sets, i.e. the number of `Touch` steps retail's touch-everything loops
+  // walk. The port's touch loops (src/MetroidPrime/CModelTouchParts.cpp,
+  // src/MetroidPrime/Player/CGunEffectTouchAll.cpp) use this name for it.
+  int GetMatSetCount() const { return mMatSets.size(); }
+#endif
 
 private:
   void* SetupSkinMatrices() const;

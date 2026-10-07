@@ -405,6 +405,13 @@ void CEnvFxManager::AsyncLoadResources(CStateManager& mgr) {
   }
 }
 
+#ifdef TARGET_PC
+void CEnvFxManager::Initialize() {
+  // TODO: Read the 256 pairs of floats from DUMB_SnowForces. The host's stand-in stream for that
+  // resource has no snow-force bytes, so running the real body below would read garbage; see the
+  // "DUMB_SnowForces" section of src/MetroidPrime/PortPoolStandIns.cpp.
+}
+#else
 void CEnvFxManager::Initialize() {
   const SObjectTag* tag = gpResourceFactory->GetResourceIdByName("DUMB_SnowForces");
   rstl::auto_ptr< CInputStream > stream(
@@ -415,6 +422,7 @@ void CEnvFxManager::Initialize() {
     }
   }
 }
+#endif // TARGET_PC
 
 void CEnvFxManager::Cleanup() {
   mEnvRainSplashIds.clear();

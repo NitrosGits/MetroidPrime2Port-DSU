@@ -14,7 +14,13 @@ void CRelFileDebugInfo::Register(const char* name, const void* start, uint size)
     return;
   }
   mName = name;
+#ifdef TARGET_PC
+  // A host pointer is 64 bits and `mStart` is retail's 32-bit field. Only the exception handler's
+  // address-to-module report reads it, which the port does not run, so the low word is kept.
+  mStart = static_cast< uint >(reinterpret_cast< uintptr_t >(start));
+#else
   mStart = reinterpret_cast< uint >(start);
+#endif
   mSize = size;
   mNext = mspHead;
   if (mNext != nullptr) {

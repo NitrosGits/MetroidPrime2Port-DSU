@@ -361,6 +361,19 @@ private:
   int mCurrentMaterialMode;
   int mRequestedMaterialMode;
 
+#ifdef TARGET_PC
+public:
+  // `offsetof` may not reach a private member from outside the class; a member function can,
+  // because access checking is lexical, and `static constexpr` keeps it a constant expression.
+  // Used by the offset-measurement words in `src/MetaRender/Carve80271238.cpp`. `constexpr` is not
+  // available to the matching build's mwcceppc 2.7, hence the `#ifdef`.
+  static constexpr int MeasuredOffsetOfBigRing() { return (int)offsetof(CCubeRenderer, mBigRing); }
+  static constexpr int MeasuredOffsetOfDarkLightWorldPalette() {
+    return (int)offsetof(CCubeRenderer, mDarkLightWorldPalette);
+  }
+
+private:
+#endif
   static CCubeRenderer* sRenderer;
 };
 

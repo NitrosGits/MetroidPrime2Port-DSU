@@ -32,8 +32,15 @@ public:
   T* get() const { return mPtr; }
   // const T* get() const { return mPtr; }
   T* operator->() const { return mPtr; }
+#ifdef TARGET_PC
+  // single_ptr<void> (CPlayer::mScanTargetIdTextureData) is legal for MWCC; host compilers reject
+  // the `void&` declaration at class instantiation, so deduce the reference type lazily.
+  decltype(auto) operator*() { return *mPtr; }
+  decltype(auto) operator*() const { return *mPtr; }
+#else
   T& operator*() { return *mPtr; }
   const T& operator*() const { return *mPtr; }
+#endif
 
   bool null() const { return mPtr == nullptr; }
   T* release() {

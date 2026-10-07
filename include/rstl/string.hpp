@@ -211,6 +211,31 @@ public:
   const _CharTp at(int idx) const { return data()[idx]; }
 };
 
+#ifdef TARGET_PC
+// Port: declare explicit member specializations before use; clang otherwise
+// instantiates them before their definitions in rstl_strings.cpp.
+template <> basic_string< char >::basic_string(const basic_string< char >& other);
+template <> basic_string< char >::basic_string(const char* data, int count, const rmemory_allocator& alloc);
+template <> basic_string< char >& basic_string< char >::append(const basic_string< char >& other);
+template <> basic_string< char >& basic_string< char >::append(const char* data, int count);
+template <> basic_string< char >& basic_string< char >::append(int count, char value);
+template <> basic_string< char >& basic_string< char >::assign(const basic_string< char >& other);
+template <> void basic_string< char >::internal_allocate(int size);
+template <> void basic_string< char >::internal_dereference();
+template <> void basic_string< char >::internal_prepare_to_write(int len, bool preserve);
+
+template <> basic_string< wchar_t >::basic_string(const basic_string< wchar_t >& other);
+template <>
+basic_string< wchar_t >& basic_string< wchar_t >::append(const basic_string< wchar_t >& other);
+template <> basic_string< wchar_t >& basic_string< wchar_t >::append(const wchar_t* data, int count);
+template <> basic_string< wchar_t >& basic_string< wchar_t >::append(int count, wchar_t value);
+template <> basic_string< wchar_t >& basic_string< wchar_t >::assign(const basic_string< wchar_t >& other);
+template <> basic_string< wchar_t >& basic_string< wchar_t >::assign(const wchar_t* data, int count);
+template <> void basic_string< wchar_t >::internal_allocate(int size);
+template <> void basic_string< wchar_t >::internal_dereference();
+template <> void basic_string< wchar_t >::internal_prepare_to_write(int len, bool preserve);
+#endif
+
 template < typename _CharTp, typename Traits, typename Alloc >
 template < typename It, typename OtherIt >
 inline int basic_string< _CharTp, Traits, Alloc >::internal_search_of(It first, It last,

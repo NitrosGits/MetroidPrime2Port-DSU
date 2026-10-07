@@ -278,6 +278,15 @@ public:
 
   void SetTransformDirty();
 
+#ifdef TARGET_PC
+  // The same four-bit setter, under the name the pre-upstream tree gave it. Upstream calls retail's
+  // `SetDirtyFlags__6CActorFv` `SetTransformDirty__6CActorFv`, which is the declaration above;
+  // this declaration exists only so the port's split unit
+  // `src/MetroidPrime/CActorSetDirtyFlags.cpp` still has a declaration to define. It is a plain
+  // non-virtual member, so it adds no vtable entry and moves no member.
+  void SetDirtyFlags();
+#endif
+
 private:
   // Guessed names.
   void RemoveLoopedSoundAt(int index);

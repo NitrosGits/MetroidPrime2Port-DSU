@@ -8,6 +8,11 @@ namespace rstl {
 class CRefData {
 public:
   CRefData() : mRefCount(0) {}
+#ifdef TARGET_PC
+  // Port: lets `CRefData::sNull` be constant-initialised with retail's count (0x00FFFFFF at
+  // .sdata 0x80418B98) before any static `rc_ptr` constructor runs. See PortGlobals.cpp.
+  explicit constexpr CRefData(int count) : mRefCount(count) {}
+#endif
   int AddRef() { return ++mRefCount; }
   int DelRef() { return --mRefCount; }
 

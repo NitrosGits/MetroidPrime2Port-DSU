@@ -134,6 +134,23 @@ public:
   CVector3f GetScale() const { return mScale; }
   void SetScale(const CVector3f& scale);
 
+#ifdef TARGET_PC
+  // Raw member access for `src/MetroidPrime/CModelDataDefaultCtor.cpp`, which reproduces retail's
+  // `0x800E6AD0` as a flat body - one `lfs`/`stb`/`stw` per member, in store order. A flat body is
+  // not a member function and so reaches nothing private. `SetScale` null-tests the anim data and
+  // would call `CAnimData::SetModelScale` on it, hence the raw accessors. One setter per flag bit,
+  // since a bit-field cannot bind to a `bool&`.
+  CVector3f& Scale() { return mScale; }
+  rstl::auto_ptr< CAnimData >& AnimData() { return mAnimData; }
+  void SetRenderSorted(bool v) { mRenderSorted = v; }
+  void SetTexturesLocked(bool v) { mTexturesLocked = v; }
+  // (`SetRenderUnsortedParts` already exists upstream.)
+  // The three model slots, for `optional_object::Invalidate` (`clear()` would unlock a token).
+  rstl::optional_object< TLockedToken< CModel > >& NormalModel() { return mNormalModel; }
+  rstl::optional_object< TLockedToken< CModel > >& EchoModel() { return mEchoModel; }
+  rstl::optional_object< TLockedToken< CModel > >& DarkModel() { return mDarkModel; }
+#endif
+
   bool GetIsLoop() const;
   bool IsAnimating() const;
   float GetAnimationDuration(int anim) const;
