@@ -398,33 +398,18 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Enemies/CAi.cpp
     src/MetroidPrime/Enemies/CAiKnockBackMgr.cpp
     src/MetroidPrime/Enemies/CAmbientAI.cpp
-    src/MetroidPrime/Enemies/CAtomicAlpha.cpp
-    src/MetroidPrime/Enemies/CBabyMetroid.cpp
     src/MetroidPrime/Enemies/CBouncyGrenade.cpp
     src/MetroidPrime/Enemies/CBurstFire.cpp
-    src/MetroidPrime/Enemies/CChozoGhost.cpp
     src/MetroidPrime/Enemies/CElitePirateGrenadeLauncher.cpp
-    src/MetroidPrime/Enemies/CEyeBall.cpp
-    src/MetroidPrime/Enemies/CFlyingPirate.cpp
     src/MetroidPrime/Enemies/CGenericFSM2.cpp
-    src/MetroidPrime/Enemies/CGunTurretBase.cpp
-    src/MetroidPrime/Enemies/CGunTurretTop.cpp
     src/MetroidPrime/Enemies/CIngSpotData.cpp
     src/MetroidPrime/Enemies/CIngSpotPathFindNavigation.cpp
     src/MetroidPrime/Enemies/CKnockBackMgr.cpp
-    src/MetroidPrime/Enemies/CMetaree.cpp
-    src/MetroidPrime/Enemies/CMetroid.cpp
-    src/MetroidPrime/Enemies/CParasite.cpp
     src/MetroidPrime/Enemies/CPathFindNavigation.cpp
     src/MetroidPrime/Enemies/CPatterned.cpp
     src/MetroidPrime/Enemies/CPatternedAiFunctions.cpp
     src/MetroidPrime/Enemies/CPatternedInfo.cpp
-    src/MetroidPrime/Enemies/CPuffer.cpp
-    src/MetroidPrime/Enemies/CRipper.cpp
     src/MetroidPrime/Enemies/CStateMachine.cpp
-    src/MetroidPrime/Enemies/CSwarmBasics.cpp
-    src/MetroidPrime/Enemies/CTryclops.cpp
-    src/MetroidPrime/Enemies/CWallWalker.cpp
     src/MetroidPrime/Enemies/CWaypointNavigation.cpp
     src/MetroidPrime/Enemies/SAIMannedTurret_FuncPtrs.cpp
     src/MetroidPrime/Enemies/SAtomicBeta_FuncPtrs.cpp
@@ -556,7 +541,6 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/ScriptLoader/Structs/SLdrSequenceConnections.cpp
     src/MetroidPrime/ScriptLoaderRel.cpp
     src/MetroidPrime/ScriptObjects/CDamageEffect.cpp
-    src/MetroidPrime/ScriptObjects/CFishCloud.cpp
     src/MetroidPrime/ScriptObjects/CHUDBillboardEffect.cpp
     src/MetroidPrime/ScriptObjects/CPlatformWaypointTracker.cpp
     src/MetroidPrime/ScriptObjects/CScriptAIHint.cpp
@@ -576,7 +560,6 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/ScriptObjects/CScriptCameraPitch.cpp
     src/MetroidPrime/ScriptObjects/CScriptCameraShaker.cpp
     src/MetroidPrime/ScriptObjects/CScriptCameraWaypoint.cpp
-    src/MetroidPrime/ScriptObjects/CScriptCannonBall.cpp
     src/MetroidPrime/ScriptObjects/CScriptColorModulate.cpp
     src/MetroidPrime/ScriptObjects/CScriptConditionalRelay.cpp
     src/MetroidPrime/ScriptObjects/CScriptControlHint.cpp
@@ -592,15 +575,8 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/ScriptObjects/CScriptDynamicLight.cpp
     src/MetroidPrime/ScriptObjects/CScriptEMPulse.cpp
     src/MetroidPrime/ScriptObjects/CScriptEffect.cpp
-    src/MetroidPrime/ScriptObjects/CScriptForgottenObject.cpp
-    src/MetroidPrime/ScriptObjects/CScriptFrontEndDataNetwork.cpp
     src/MetroidPrime/ScriptObjects/CScriptGenerator.cpp
     src/MetroidPrime/ScriptObjects/CScriptGrapplePoint.cpp
-    src/MetroidPrime/ScriptObjects/CScriptGuiMenu.cpp
-    src/MetroidPrime/ScriptObjects/CScriptGuiPlayerJoinManager.cpp
-    src/MetroidPrime/ScriptObjects/CScriptGuiScreen.cpp
-    src/MetroidPrime/ScriptObjects/CScriptGuiSlider.cpp
-    src/MetroidPrime/ScriptObjects/CScriptGuiWidget.cpp
     src/MetroidPrime/ScriptObjects/CScriptHUDHint.cpp
     src/MetroidPrime/ScriptObjects/CScriptHUDMemo.cpp
     src/MetroidPrime/ScriptObjects/CScriptLayerController.cpp
@@ -621,8 +597,6 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/ScriptObjects/CScriptRepulsor.cpp
     src/MetroidPrime/ScriptObjects/CScriptRipple.cpp
     src/MetroidPrime/ScriptObjects/CScriptRoomAcoustics.cpp
-    src/MetroidPrime/ScriptObjects/CScriptSafeZone.cpp
-    src/MetroidPrime/ScriptObjects/CScriptSafeZoneCrystal.cpp
     src/MetroidPrime/ScriptObjects/CScriptSequenceTimer.cpp
     src/MetroidPrime/ScriptObjects/CScriptSound.cpp
     src/MetroidPrime/ScriptObjects/CScriptSoundModifier.cpp
@@ -649,7 +623,6 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/ScriptObjects/CScriptWater.cpp
     src/MetroidPrime/ScriptObjects/CScriptWaypoint.cpp
     src/MetroidPrime/ScriptObjects/CScriptWorldTeleporter.cpp
-    src/MetroidPrime/ScriptObjects/ScriptGuiRel.cpp
     src/MetroidPrime/SwarmRenderHelpers.cpp
     src/MetroidPrime/TGameTypes.cpp
     src/MetroidPrime/TStateMachineState.cpp
@@ -664,7 +637,6 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Tweaks/CTweakTargeting.cpp
     src/MetroidPrime/Tweaks/STweaks_FuncPtrs.cpp
     src/MetroidPrime/Tweaks/TweakGlobals.cpp
-    src/MetroidPrime/Tweaks/Tweaks.cpp
     src/MetroidPrime/TypesMatch.cpp
     src/MetroidPrime/Weapons/CAnnihilatorBeam.cpp
     src/MetroidPrime/Weapons/CAnnihilatorProjectile.cpp
@@ -698,7 +670,6 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Weapons/GunController/CGunMotion.cpp
     src/MetroidPrime/Weapons/WeaponTypes.cpp
     src/MetroidPrime/main.cpp
-    src/REL/REL_Setup.cpp
     src/Weapons/CCollisionResponseData.cpp
     src/Weapons/CDecal.cpp
     src/Weapons/CDecalDataFactory.cpp
@@ -718,6 +689,77 @@ set(MP_GAME_SOURCES
     src/rstl/RstlExtras.cpp
     src/rstl/rstl_misc.cpp
 )
+# REL modules, each its own symbol namespace
+set(MP_MODULE_ChozoGhost_SOURCES
+    src/MetroidPrime/Enemies/CChozoGhost.cpp
+)
+set(MP_MODULE_AtomicAlpha_SOURCES
+    src/MetroidPrime/Enemies/CAtomicAlpha.cpp
+)
+set(MP_MODULE_EyeBall_SOURCES
+    src/MetroidPrime/Enemies/CEyeBall.cpp
+)
+set(MP_MODULE_FishCloud_SOURCES
+    src/MetroidPrime/ScriptObjects/CFishCloud.cpp
+)
+set(MP_MODULE_FlyingPirate_SOURCES
+    src/MetroidPrime/Enemies/CFlyingPirate.cpp
+)
+set(MP_MODULE_Metaree_SOURCES
+    src/MetroidPrime/Enemies/CMetaree.cpp
+)
+set(MP_MODULE_Parasite_SOURCES
+    src/MetroidPrime/Enemies/CParasite.cpp
+)
+set(MP_MODULE_ScriptGui_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptGuiMenu.cpp
+    src/MetroidPrime/ScriptObjects/CScriptGuiPlayerJoinManager.cpp
+    src/MetroidPrime/ScriptObjects/CScriptGuiScreen.cpp
+    src/MetroidPrime/ScriptObjects/CScriptGuiSlider.cpp
+    src/MetroidPrime/ScriptObjects/CScriptGuiWidget.cpp
+    src/MetroidPrime/ScriptObjects/ScriptGuiRel.cpp
+)
+set(MP_MODULE_ScriptSafeZone_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptSafeZone.cpp
+    src/MetroidPrime/ScriptObjects/CScriptSafeZoneCrystal.cpp
+)
+set(MP_MODULE_ScriptFrontEndDataNetwork_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptFrontEndDataNetwork.cpp
+)
+set(MP_MODULE_SwarmBasics_SOURCES
+    src/MetroidPrime/Enemies/CSwarmBasics.cpp
+)
+set(MP_MODULE_GunTurret_SOURCES
+    src/MetroidPrime/Enemies/CGunTurretBase.cpp
+    src/MetroidPrime/Enemies/CGunTurretTop.cpp
+)
+set(MP_MODULE_Metroid_SOURCES
+    src/MetroidPrime/Enemies/CBabyMetroid.cpp
+    src/MetroidPrime/Enemies/CMetroid.cpp
+)
+set(MP_MODULE_Puffer_SOURCES
+    src/MetroidPrime/Enemies/CPuffer.cpp
+)
+set(MP_MODULE_Tryclops_SOURCES
+    src/MetroidPrime/Enemies/CTryclops.cpp
+)
+set(MP_MODULE_WallWalker_SOURCES
+    src/MetroidPrime/Enemies/CWallWalker.cpp
+)
+set(MP_MODULE_ForgottenObject_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptForgottenObject.cpp
+)
+set(MP_MODULE_Ripper_SOURCES
+    src/MetroidPrime/Enemies/CRipper.cpp
+)
+set(MP_MODULE_ScriptCannonBall_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptCannonBall.cpp
+)
+set(MP_MODULE_Tweaks_SOURCES
+    src/MetroidPrime/Tweaks/Tweaks.cpp
+)
+set(MP_MODULES ChozoGhost AtomicAlpha EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks)
+
 # Port-only sources
 list(APPEND MP_GAME_SOURCES
     src/Kyoto/Alloc/PortMwccNew.cpp

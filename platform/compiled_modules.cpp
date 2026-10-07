@@ -7,61 +7,19 @@
 // and those are compiled straight into mp_game. That is why they need this file.
 //
 // On the cube each of them is a separate module with its own RELMain and
-// RELExit, which mwldeppc's linker script turns into the module's prolog and
-// epilog. Two things follow, and both are handled here rather than papered over:
-//
-//   1. Three translation units defining one symbol cannot coexist in a flat
-//      link. Each module therefore gives its entry points a distinct name on the
-//      host only (`#ifdef __MWERKS__` still compiles the retail RELMain and
-//      RELExit, so those Matching units are untouched).
-//   2. Renaming them would otherwise leave them never called, because nothing on
-//      the host knows they exist. This table is that knowledge: it names each
-//      compiled module and holds its init and shutdown, and the port entry runs
-//      the inits before handing control to the game.
-//
-// Order matters and is the retail module order, because a module's init
-// publishes its function-pointer table and a consumer may be initialised first.
+// RELExit. On the host, CMake builds each module as its own symbol namespace
+// (tools/scope_module.py): RELMain/RELExit become mp_rel_<Module>_prolog/_epilog and the
+// rest of the module's symbols are local. This table, generated from those names, is how
+// the port entry finds and runs them, before handing control to the game.
 
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
-// One per compiled-in module, matching kCompiledModules below. Regenerate with
-// tools/rename_module_entries.py rather than by hand.
-// CSwarmBasicsREL.cpp is not in files.cmake yet, so its two names are still the
-// ones the boot-probe stubs define.
-void mp_cswarmbasics();
-void mp_cswarmbasics_exit();
-void mp_relexit_cannonball();
-void mp_relexit_coin();
-void mp_relexit_metaree();
-void mp_relexit_playerproxy();
-void mp_relexit_puffer();
-void mp_relexit_riftportal();
-void mp_relexit_rsfaudio();
-void mp_relexit_safezone();
-void mp_relexit_scriptguisetup();
-void mp_relexit_skyripple();
-void mp_relexit_swarm();
-void mp_relexit_tweaks();
-void mp_relexit_wallcrawler();
-void mp_relmain_cannonball();
-void mp_relmain_coin();
-void mp_relmain_metaree();
-void mp_relmain_playeractormain();
-void mp_relmain_playerproxy();
-void mp_relmain_puffer();
-void mp_relmain_riftportal();
-void mp_relmain_rsfaudio();
-void mp_relmain_safezone();
-void mp_relmain_scriptguisetup();
-void mp_relmain_skyripple();
-void mp_relmain_swarm();
-void mp_relmain_tweaks();
-void mp_relmain_wallcrawler();
-}
+#define MP_MODULE_DECLS
+#include "compiled_modules.inc"
+#undef MP_MODULE_DECLS
 
 namespace port::modules {
 
@@ -77,41 +35,12 @@ struct CompiledModule {
   void (*shutdown)();
 };
 
-// The names here are the `mp_*` the host build emits, collected from the sources by
-// the naming rule in tools/rename_module_entries.py, so the registry cannot drift
-// from what the modules actually define. Order is retail module order where known
-// and alphabetical otherwise: a module's init publishes its function-pointer table,
-// and a consumer initialised first would read a null one.
-// Collected from the sources themselves, so the registry cannot drift from what the
-// modules actually emit: every entry's `mp_*` names are the ones
-// tools/rename_module_entries.py wrote (or, for the three renamed by hand before
-// that tool existed, the ones in those files). Order is retail module order where
-// known and alphabetical otherwise - a module's init publishes its
-// function-pointer table, so a consumer initialised first reads a null one.
-// Collected from the sources themselves, so the registry cannot drift from what the
-// modules emit. Every `mp_*` here is defined by exactly one module and declared
-// above; a name defined but not registered is a module that never initialises, and
-// that is worse than a link error because nothing reports it. Order is retail
-// module order where known and alphabetical otherwise: a module's init publishes
-// its function-pointer table, so a consumer initialised first reads a null one.
-constexpr CompiledModule kCompiledModules[] = {
-    {"CSwarmBasicsREL", "SwarmBasics", &mp_cswarmbasics, &mp_cswarmbasics_exit},
-    {"CFlyerSwarmRel", "FlyerSwarm", &mp_relmain_swarm, &mp_relexit_swarm},
-    {"CScriptCannonBall", "ScriptCannonBall", &mp_relmain_cannonball, &mp_relexit_cannonball},
-    {"CScriptCoinRel", "ScriptCoin", &mp_relmain_coin, &mp_relexit_coin},
-    {"CScriptMetaree", "Metaree", &mp_relmain_metaree, &mp_relexit_metaree},
-    // Retail's module has a prolog and no epilog, so there is no exit point.
-    {"CScriptPlayerActorMain", "ScriptPlayerActor", &mp_relmain_playeractormain, nullptr},
-    {"CScriptPlayerProxy", "ScriptPlayerProxy", &mp_relmain_playerproxy, &mp_relexit_playerproxy},
-    {"CScriptPufferRel", "Puffer", &mp_relmain_puffer, &mp_relexit_puffer},
-    {"CScriptRiftPortal", "ScriptRiftPortal", &mp_relmain_riftportal, &mp_relexit_riftportal},
-    {"CScriptRsfAudio", "ScriptRsfAudio", &mp_relmain_rsfaudio, &mp_relexit_rsfaudio},
-    {"CScriptSafeZone", "ScriptSafeZone", &mp_relmain_safezone, &mp_relexit_safezone},
-    {"CScriptSkyRipple", "SkyRipple", &mp_relmain_skyripple, &mp_relexit_skyripple},
-    {"CScriptWallCrawler", "WallCrawler", &mp_relmain_wallcrawler, &mp_relexit_wallcrawler},
-    {"ScriptGuiSetup", "ScriptGui", &mp_relmain_scriptguisetup, &mp_relexit_scriptguisetup},
-    {"Tweaks", "Tweaks", &mp_relmain_tweaks, &mp_relexit_tweaks},
-};
+// Generated at build time (tools/scope_module.py registry): one row per compiled module that
+// defines RELMain, in configure.py's module order, with its RELExit if it has one. The names are
+// the mp_rel_<Module>_prolog/_epilog that the same tool gives the module's entry points when it
+// scopes the module's symbols, so the registry cannot drift from what the modules define.
+// `name` is also the module's file on the disc (configure.py's Rel("<Module>") name).
+#include "compiled_modules.inc"
 
 // Whether each module's init has run and its shutdown has not, indexed like
 // kCompiledModules. InitAll runs every init at port entry, and retail's module

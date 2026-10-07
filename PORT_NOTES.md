@@ -699,18 +699,22 @@ a blocker. All 118 game units compile. The link then fails on **525 undefined
 symbols and no duplicate definitions**, which is the first real measurement of
 what is left.
 
-**The modules we compile in.** 14 translation units in `src/` define a `RELMain`
-- one per REL module we have reimplemented - and on the cube each is a separate
-module whose prolog and epilog mwldeppc builds from `RELMain`/`RELExit`, so the
-duplication is the module system working. A flat host link cannot hold fourteen
-symbols with one name, so each module's entry points take a distinct name **on
-the host only**; `#ifdef __MWERKS__` still compiles the retail names, which is
-what keeps those units `Matching`. The registry that owns them is
-`platform/compiled_modules.cpp`, and `platform/main.cpp` runs it either side of
-`InvokeCMain` so the modules come up before the game's entry and go down after.
-`-Wl,--allow-multiple-definition` was the alternative and is worse: it would
-green the link while running one module's entry point and silently skipping
-thirteen.
+**The modules we compile in.** *(Superseded 2026-10-08: the earlier text renamed each
+module's `RELMain`/`RELExit` in the sources and kept a hand-written registry.)* On the cube every
+REL is its own symbol namespace, so modules define the same `RELMain`/`RELExit`, module-local
+`Load*` functions that also exist as DOL trampolines, and weak template copies. The host build
+keeps that: `tools/gen_files_cmake.py` emits one `MP_MODULE_<Name>_SOURCES` list per
+`Rel("<Name>", ...)` block in `configure.py` (plus `MP_MODULES`) into `files.cmake`; CMake compiles
+each as an OBJECT library `mp_mod_<Name>` with the game's flags, and `tools/scope_module.py scope`
+(target `mp_modules`) runs `ld.bfd -r` per module into `build-port/modules/<Name>.o`, renames
+`RELMain`/`RELExit` to `mp_rel_<Name>_prolog`/`_epilog`, and `objcopy --localize-symbols` every other
+defined symbol except those an object outside the module references that nothing outside defines.
+The scoped objects, not the raw ones, link into the executable. `scope_module.py registry`
+writes `build-port/generated/compiled_modules.inc` (name, prolog, epilog per module, configure.py
+order), which `platform/compiled_modules.cpp` includes; `platform/main.cpp` runs it either side of
+`InvokeCMain`. `src/REL/REL_Setup.cpp` (console `_prolog`/`_epilog` glue) is excluded from the
+host build. `-Wl,--allow-multiple-definition` was the alternative and is worse: it would green
+the link while one module's entry point ran and the rest were silently skipped.
 
 The same sweep is available without a configure:
 
