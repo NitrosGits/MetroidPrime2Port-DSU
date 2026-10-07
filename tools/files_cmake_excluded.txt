@@ -29,7 +29,6 @@ src/MetroidPrime/PortCHintManager.cpp | port stub written against the old decomp
 src/MetroidPrime/PortCPersistentOptionsMap.cpp | port stub written against the old decomp; upstream header/layout differs (MetroidPrime/Player/SPersistentOptionsValue.hpp: No such file or directory)
 src/MetroidPrime/PortCTweakPlayerControls.cpp | port stub written against the old decomp; upstream header/layout differs (‘const class CTweakPlayerControls’ has no member named ‘GetData’; did you mean ‘const SLdrTweakPlayerControls*)
 src/MetroidPrime/PortGlobals.cpp | port stub written against the old decomp; upstream header/layout differs (MetroidPrime/ScriptObjects/CUnknown90.hpp: No such file or directory)
-src/MetroidPrime/PortLinkStubs.cpp | port stub written against the old decomp; upstream header/layout differs (‘ScriptLoader’ has not been declared; did you mean ‘FScriptLoader’?)
 src/MetroidPrime/PortStreamNewGameState.cpp | port stub written against the old decomp; upstream header/layout differs (‘rstl::reserved_vector<rstl::vector<unsigned char>, 3> CGameState::mCompressedGameStates’ is private within th)
 src/MetroidPrime/PortTenthSyncStubs.cpp | port stubs for old-decomp gaps; upstream now defines CParticleGen::{SetGeneratorRate,SetDrawFlags,GetGeneratorRate,...} and TUniqueId has no default ctor
 src/MetroidPrime/ScriptObjects/CScriptDestructibleBarrier.cpp | upstream source/header does not build on host: no matching function for call to ‘COBBTree::CNode::operator new(sizetype)’

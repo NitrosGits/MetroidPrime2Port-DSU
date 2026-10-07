@@ -7,6 +7,8 @@ set(MP_GAME_SOURCES
     src/Collision/CCollisionInfo.cpp
     src/Collision/CCollisionPrimitive.cpp
     src/Collision/CMRay.cpp
+    src/Collision/CMaterialFilter.cpp
+    src/Collision/CMaterialList.cpp
     src/Collision/COBBox.cpp
     src/Collision/CSpatialPrimitive.cpp
     src/Collision/CollisionUtil.cpp
@@ -17,6 +19,7 @@ set(MP_GAME_SOURCES
     src/GuiSys/CAuiMeter.cpp
     src/GuiSys/CGuiCamera.cpp
     src/GuiSys/CGuiCompoundWidget.cpp
+    src/GuiSys/CGuiFactories.cpp
     src/GuiSys/CGuiFrame.cpp
     src/GuiSys/CGuiFrameFactory.cpp
     src/GuiSys/CGuiFrameModelDatabase.cpp
@@ -33,9 +36,11 @@ set(MP_GAME_SOURCES
     src/GuiSys/CGuiWidgetIdDB.cpp
     src/GuiSys/CRepeatState.cpp
     src/Kyoto/Alloc/CCallStackDolphin.cpp
+    src/Kyoto/Alloc/CCircularBuffer.cpp
     src/Kyoto/Alloc/CGameAllocator.cpp
     src/Kyoto/Alloc/CMediumAllocPool.cpp
     src/Kyoto/Alloc/CMemory.cpp
+    src/Kyoto/Alloc/CSmallAllocPool.cpp
     src/Kyoto/Alloc/IAllocator.cpp
     src/Kyoto/Alloc/LockedCache.cpp
     src/Kyoto/Animation/CAdditiveAnimPlayback.cpp
@@ -57,8 +62,10 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/CAnimTreeTimeScale.cpp
     src/Kyoto/Animation/CAnimTreeTransition.cpp
     src/Kyoto/Animation/CAnimTreeTweenBase.cpp
+    src/Kyoto/Animation/CAnimation.cpp
     src/Kyoto/Animation/CAnimationManager.cpp
     src/Kyoto/Animation/CAnimationSet.cpp
+    src/Kyoto/Animation/CBoolPOINode.cpp
     src/Kyoto/Animation/CCharAnimMemoryMetrics.cpp
     src/Kyoto/Animation/CCharAnimTime.cpp
     src/Kyoto/Animation/CCharLayoutInfo.cpp
@@ -66,6 +73,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/CCharacterSet.cpp
     src/Kyoto/Animation/CFBStreamedAnimReader.cpp
     src/Kyoto/Animation/CFBStreamedCompression.cpp
+    src/Kyoto/Animation/CHalfTransition.cpp
     src/Kyoto/Animation/CHierarchyPoseBuilder.cpp
     src/Kyoto/Animation/CInt32POINode.cpp
     src/Kyoto/Animation/CJointData_LinearStorage.cpp
@@ -80,11 +88,15 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/CMetaTransPhaseTrans.cpp
     src/Kyoto/Animation/CMetaTransSnap.cpp
     src/Kyoto/Animation/CMetaTransTrans.cpp
+    src/Kyoto/Animation/CPASAnimInfo.cpp
+    src/Kyoto/Animation/CPASAnimParm.cpp
     src/Kyoto/Animation/CPASAnimState.cpp
     src/Kyoto/Animation/CPASDatabase.cpp
     src/Kyoto/Animation/CPASParmInfo.cpp
     src/Kyoto/Animation/CPOINode.cpp
+    src/Kyoto/Animation/CParticlePOINode.cpp
     src/Kyoto/Animation/CPoseAsTransforms_Linear.cpp
+    src/Kyoto/Animation/CPrimitive.cpp
     src/Kyoto/Animation/CSegId.cpp
     src/Kyoto/Animation/CSegIdList.cpp
     src/Kyoto/Animation/CSegStatementSet.cpp
@@ -92,6 +104,8 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/CSoundPOINode.cpp
     src/Kyoto/Animation/CTimeRemainderAndFraction.cpp
     src/Kyoto/Animation/CTimeScaleFunctions.cpp
+    src/Kyoto/Animation/CTransition.cpp
+    src/Kyoto/Animation/CTransitionManager.cpp
     src/Kyoto/Animation/CTreeUtils.cpp
     src/Kyoto/Animation/DolphinCSkinnedModel.cpp
     src/Kyoto/Animation/DolphinCVirtualBone.cpp
@@ -99,6 +113,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/IMetaAnim.cpp
     src/Kyoto/Audio/AudioEffect.cpp
     src/Kyoto/Audio/AudioEffectX.cpp
+    src/Kyoto/Audio/CAudioSys.cpp
     src/Kyoto/Audio/CAuxEffect.cpp
     src/Kyoto/Audio/CAuxEffectManager.cpp
     src/Kyoto/Audio/CBitcrusher.cpp
@@ -115,16 +130,19 @@ set(MP_GAME_SOURCES
     src/Kyoto/Audio/DolphinCAudioSys.cpp
     src/Kyoto/Audio/g721.cpp
     src/Kyoto/Basics/CBasics.cpp
+    src/Kyoto/Basics/COsContextDolphin.cpp
     src/Kyoto/Basics/CSWDataDolphin.cpp
     src/Kyoto/Basics/CStopwatch.cpp
     src/Kyoto/Basics/RAssertDolphin.cpp
     src/Kyoto/CARAMToken.cpp
+    src/Kyoto/CCrc32.cpp
     src/Kyoto/CDependencyGroup.cpp
     src/Kyoto/CDvdRequest.cpp
     src/Kyoto/CDvdRequestManager.cpp
     src/Kyoto/CFactoryMgr.cpp
     src/Kyoto/CFactoryStore.cpp
     src/Kyoto/CFrameDelayedKiller.cpp
+    src/Kyoto/CObjectReference.cpp
     src/Kyoto/CPakFile.cpp
     src/Kyoto/CRandom16.cpp
     src/Kyoto/CRelFileDebugInfo.cpp
@@ -136,6 +154,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/DolphinCDvdFile.cpp
     src/Kyoto/Graphics/CColor.cpp
     src/Kyoto/Graphics/CCubeMoviePlayer.cpp
+    src/Kyoto/Graphics/CCubeSurface.cpp
     src/Kyoto/Graphics/CDisplayListReader.cpp
     src/Kyoto/Graphics/CGX.cpp
     src/Kyoto/Graphics/CGXTransientBuffer.cpp
@@ -149,16 +168,23 @@ set(MP_GAME_SOURCES
     src/Kyoto/Input/CRumbleGenerator.cpp
     src/Kyoto/Input/CRumbleVoice.cpp
     src/Kyoto/Input/DolphinIController.cpp
+    src/Kyoto/Input/RumbleAdsr.cpp
+    src/Kyoto/Math/CCylinder.cpp
     src/Kyoto/Math/CFrustumPlanes.cpp
     src/Kyoto/Math/CGameCameraSpline.cpp
     src/Kyoto/Math/CGameSpline.cpp
+    src/Kyoto/Math/CLine.cpp
     src/Kyoto/Math/CMatrix3f.cpp
+    src/Kyoto/Math/CMatrix4f.cpp
     src/Kyoto/Math/CMayaSpline.cpp
     src/Kyoto/Math/CMotionSpline.cpp
     src/Kyoto/Math/CNUQuaternion.cpp
     src/Kyoto/Math/CPlane.cpp
+    src/Kyoto/Math/CQuad.cpp
     src/Kyoto/Math/CQuaternion.cpp
+    src/Kyoto/Math/CSphere.cpp
     src/Kyoto/Math/CTransform4f.cpp
+    src/Kyoto/Math/CTri.cpp
     src/Kyoto/Math/CUnitVector3f.cpp
     src/Kyoto/Math/CVector2f.cpp
     src/Kyoto/Math/CVector2i.cpp
@@ -168,13 +194,17 @@ set(MP_GAME_SOURCES
     src/Kyoto/Math/CloseEnough.cpp
     src/Kyoto/Math/RMathUtils.cpp
     src/Kyoto/PVS/CPVSVisOctree.cpp
+    src/Kyoto/PVS/CPVSVisSet.cpp
     src/Kyoto/Particles/CColorElement.cpp
     src/Kyoto/Particles/CDeferredParticleEffect.cpp
     src/Kyoto/Particles/CEffectComponent.cpp
+    src/Kyoto/Particles/CElectricDescription.cpp
     src/Kyoto/Particles/CElementGen.cpp
     src/Kyoto/Particles/CEmitterElement.cpp
+    src/Kyoto/Particles/CGenDescription.cpp
     src/Kyoto/Particles/CIntElement.cpp
     src/Kyoto/Particles/CModVectorElement.cpp
+    src/Kyoto/Particles/CParticleData.cpp
     src/Kyoto/Particles/CParticleDataFactory.cpp
     src/Kyoto/Particles/CParticleElectric.cpp
     src/Kyoto/Particles/CParticleElectricDataFactory.cpp
@@ -188,12 +218,17 @@ set(MP_GAME_SOURCES
     src/Kyoto/Particles/CSortedParticleSystem.cpp
     src/Kyoto/Particles/CSortedParticleSystemDataFactory.cpp
     src/Kyoto/Particles/CSortedParticleSystemDescription.cpp
+    src/Kyoto/Particles/CSpawnSystemDescription.cpp
     src/Kyoto/Particles/CSpawnSystemKeyframeData.cpp
+    src/Kyoto/Particles/CSwooshDescription.cpp
     src/Kyoto/Particles/CUVElement.cpp
     src/Kyoto/Particles/CVectorElement.cpp
+    src/Kyoto/Streams/CBitStreamReader.cpp
+    src/Kyoto/Streams/CBitStreamWriter.cpp
     src/Kyoto/Streams/CBufferedDvdRequest.cpp
     src/Kyoto/Streams/CFilePreload.cpp
     src/Kyoto/Streams/CInputStream.cpp
+    src/Kyoto/Streams/CLZOSupport.cpp
     src/Kyoto/Streams/CMemoryInStream.cpp
     src/Kyoto/Streams/CMemoryStreamOut.cpp
     src/Kyoto/Streams/COutputStream.cpp
@@ -203,6 +238,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Text/CColorInstruction.cpp
     src/Kyoto/Text/CColorOverrideInstruction.cpp
     src/Kyoto/Text/CDrawStringOptions.cpp
+    src/Kyoto/Text/CFont.cpp
     src/Kyoto/Text/CFontImageDef.cpp
     src/Kyoto/Text/CFontInstruction.cpp
     src/Kyoto/Text/CFontRenderState.cpp
@@ -222,7 +258,9 @@ set(MP_GAME_SOURCES
     src/Kyoto/Text/CTextRenderBuffer.cpp
     src/Kyoto/Text/CWordBreakTables.cpp
     src/Kyoto/Text/CWordInstruction.cpp
+    src/LZO/lzo1x_d1.c
     src/LZO/lzo_init.c
+    src/LZO/lzo_ptr.c
     src/MetaRender/AmbientLightScale.cpp
     src/MetroidPrime/BodyState/CABSAim.cpp
     src/MetroidPrime/BodyState/CABSFlinch.cpp
@@ -269,6 +307,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CArchMsgParmUserInput.cpp
     src/MetroidPrime/CAudioStateWin.cpp
     src/MetroidPrime/CAutoMapper.cpp
+    src/MetroidPrime/CAxisAngle.cpp
     src/MetroidPrime/CBallFilter.cpp
     src/MetroidPrime/CBasicSwarmData.cpp
     src/MetroidPrime/CBoneTracking.cpp
@@ -322,6 +361,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CMapWorld.cpp
     src/MetroidPrime/CMapWorldInfo.cpp
     src/MetroidPrime/CMappableObject.cpp
+    src/MetroidPrime/CMatrix3f_Ext.cpp
     src/MetroidPrime/CMemoryCard.cpp
     src/MetroidPrime/CMemoryCardDriver.cpp
     src/MetroidPrime/CMemoryDrawEnum.cpp
@@ -336,6 +376,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CPauseScreen.cpp
     src/MetroidPrime/CPauseScreenBlur.cpp
     src/MetroidPrime/CPhysicsActor.cpp
+    src/MetroidPrime/CPhysicsState.cpp
     src/MetroidPrime/CPirateEchoEmitter.cpp
     src/MetroidPrime/CPlayerHintManager.cpp
     src/MetroidPrime/CPortalArea.cpp
@@ -350,6 +391,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CRelFile.cpp
     src/MetroidPrime/CRezbitEffect.cpp
     src/MetroidPrime/CRuleSet.cpp
+    src/MetroidPrime/CRuleSetEvaluator.cpp
     src/MetroidPrime/CRumbleManager.cpp
     src/MetroidPrime/CSafeZoneManager.cpp
     src/MetroidPrime/CSaveGameScreen.cpp
@@ -398,6 +440,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Enemies/CAi.cpp
     src/MetroidPrime/Enemies/CAiKnockBackMgr.cpp
     src/MetroidPrime/Enemies/CAmbientAI.cpp
+    src/MetroidPrime/Enemies/CAnimationState.cpp
     src/MetroidPrime/Enemies/CBouncyGrenade.cpp
     src/MetroidPrime/Enemies/CBurstFire.cpp
     src/MetroidPrime/Enemies/CElitePirateGrenadeLauncher.cpp
@@ -455,6 +498,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Enemies/SPillBug_FuncPtrs.cpp
     src/MetroidPrime/Enemies/SPirateRagDoll_FuncPtrs.cpp
     src/MetroidPrime/Enemies/SPlantScarabSwarm_FuncPtrs.cpp
+    src/MetroidPrime/Enemies/SPositionHistory.cpp
     src/MetroidPrime/Enemies/SPuddleSpore_FuncPtrs.cpp
     src/MetroidPrime/Enemies/SRezbit_FuncPtrs.cpp
     src/MetroidPrime/Enemies/SSandBoss_FuncPtrs.cpp
@@ -495,6 +539,8 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/PathFinding/CPathFindPointSearch.cpp
     src/MetroidPrime/PathFinding/CPathFindRegion.cpp
     src/MetroidPrime/PathFinding/CPathFindSearch.cpp
+    src/MetroidPrime/PathFinding/CPathFindSpline.cpp
+    src/MetroidPrime/Player/CFaceplateDecoration.cpp
     src/MetroidPrime/Player/CFidget.cpp
     src/MetroidPrime/Player/CFrontEndGameMode.cpp
     src/MetroidPrime/Player/CGMCoin.cpp
@@ -504,6 +550,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Player/CGameOptions.cpp
     src/MetroidPrime/Player/CGameState.cpp
     src/MetroidPrime/Player/CGrappleArm.cpp
+    src/MetroidPrime/Player/CGunDrawBlockSet.cpp
     src/MetroidPrime/Player/CMorphBall.cpp
     src/MetroidPrime/Player/CMorphBallShadow.cpp
     src/MetroidPrime/Player/CPlayer.cpp
@@ -514,9 +561,11 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Player/CPlayerBodyDash.cpp
     src/MetroidPrime/Player/CPlayerBodyGrapple.cpp
     src/MetroidPrime/Player/CPlayerBodyJump.cpp
+    src/MetroidPrime/Player/CPlayerBodyKnockBack.cpp
     src/MetroidPrime/Player/CPlayerBodyLocomotion.cpp
     src/MetroidPrime/Player/CPlayerBodyStateCmdMgr.cpp
     src/MetroidPrime/Player/CPlayerCameraBob.cpp
+    src/MetroidPrime/Player/CPlayerCameraBobTweaks.cpp
     src/MetroidPrime/Player/CPlayerDynamics.cpp
     src/MetroidPrime/Player/CPlayerEnergyDrain.cpp
     src/MetroidPrime/Player/CPlayerGun.cpp
@@ -524,6 +573,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Player/CPlayerHints.cpp
     src/MetroidPrime/Player/CPlayerKnockBackMgr.cpp
     src/MetroidPrime/Player/CPlayerListener.cpp
+    src/MetroidPrime/Player/CPlayerOptions.cpp
     src/MetroidPrime/Player/CPlayerOrbit.cpp
     src/MetroidPrime/Player/CPlayerRagDoll.cpp
     src/MetroidPrime/Player/CPlayerState.cpp
@@ -628,7 +678,9 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/TStateMachineState.cpp
     src/MetroidPrime/Tweaks/CTweakAutoMapper.cpp
     src/MetroidPrime/Tweaks/CTweakBall.cpp
+    src/MetroidPrime/Tweaks/CTweakGame.cpp
     src/MetroidPrime/Tweaks/CTweakGui.cpp
+    src/MetroidPrime/Tweaks/CTweakGuiColors.cpp
     src/MetroidPrime/Tweaks/CTweakPlayer.cpp
     src/MetroidPrime/Tweaks/CTweakPlayerControls.cpp
     src/MetroidPrime/Tweaks/CTweakPlayerGun.cpp
@@ -676,17 +728,22 @@ set(MP_GAME_SOURCES
     src/Weapons/CDecalDescription.cpp
     src/Weapons/CProjectileWeapon.cpp
     src/Weapons/CProjectileWeaponDataFactory.cpp
+    src/Weapons/CWeaponDescription.cpp
     src/Weapons/IWeaponRenderer.cpp
+    src/WorldFormat/CAreaBspTree.cpp
     src/WorldFormat/CAreaOctTree.cpp
     src/WorldFormat/CAreaRenderOctTree.cpp
     src/WorldFormat/CCollidableOBBTree.cpp
     src/WorldFormat/CCollidableOBBTreeGroup.cpp
+    src/WorldFormat/CCollisionEdge.cpp
     src/WorldFormat/CCollisionPrimitiveData.cpp
     src/WorldFormat/CCollisionSurface.cpp
     src/WorldFormat/CMetroidAreaCollider.cpp
     src/WorldFormat/CMetroidModelInstance.cpp
     src/WorldFormat/CPVSAreaSet.cpp
+    src/WorldFormat/CWorldLight.cpp
     src/rstl/RstlExtras.cpp
+    src/rstl/rstl_map.cpp
     src/rstl/rstl_misc.cpp
 )
 # REL modules, each its own symbol namespace
@@ -770,6 +827,7 @@ list(APPEND MP_GAME_SOURCES
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
     src/MetroidPrime/PortFrameTimeHistory.c
+    src/MetroidPrime/PortLinkStubs.cpp
     src/MetroidPrime/PortMakeMsg.cpp
     src/MetroidPrime/PortPoolStandIns.cpp
     src/MetroidPrime/PortTweakGlobals.cpp

@@ -92,7 +92,12 @@ def scope(args):
     partials = {}
     for name, objs in mods:
         partials[name] = os.path.join(args.outdir, f"{name}.raw.o")
-        subprocess.run([args.ld, "-r", "-o", partials[name], *objs], check=True)
+        # --force-group-allocation dissolves COMDAT groups: their signature symbols are localized
+        # below, but ld still folds groups by signature name, so a module's inline functions
+        # (and DW.ref.__gxx_personality_v0) were discarded in favour of another object's group
+        # while the module's own references stayed bound to the localized, now-empty copy.
+        subprocess.run([args.ld, "-r", "--force-group-allocation", "-o", partials[name], *objs],
+                       check=True)
     undef_of = {name: {s for s, t in nm(args.nm, [partials[name]], "-u") if t == "U"}
                 for name, _ in mods}
 

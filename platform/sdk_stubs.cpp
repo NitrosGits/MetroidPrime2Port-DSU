@@ -125,6 +125,13 @@ extern "C" u32 OSGetSoundMode(void) {
 // port::modules::Epilog. It does not use platform/rel.cpp's port::rel::LinkModule,
 // because the image's code is PowerPC and relocating it gives the host nothing it
 // can run. So a call to any of the three is still a link error.
+// Port: Aurora has no console language/PAD recalibration state. English, and "recalibration was
+// not enabled" respectively.
+extern "C" u8 OSGetLanguage() { return 0; }
+extern "C" BOOL __PADDisableRecalibration(BOOL enable) {
+    (void)enable;
+    return FALSE;
+}
 extern "C" void OSProtectRange(u32 chan, void* addr, u32 nBytes, u32 control) {
     (void)chan;
     (void)addr;
