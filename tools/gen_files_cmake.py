@@ -39,6 +39,7 @@ PORT_ONLY = [
     "src/MetroidPrime/PortCPersistentOptionsMap.cpp",
     "src/MetroidPrime/PortCPlayerDynamicsVtables.cpp",
     "src/MetroidPrime/PortCTweakPlayerControls.cpp",
+    "src/MetroidPrime/PortDataGlobals.cpp",
     "src/MetroidPrime/PortFrameTimeHistory.c",
     "src/MetroidPrime/PortGlobals.cpp",
     "src/MetroidPrime/PortLinkStubs.cpp",

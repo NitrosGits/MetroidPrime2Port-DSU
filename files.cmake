@@ -130,6 +130,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Audio/DolphinCAudioSys.cpp
     src/Kyoto/Audio/g721.cpp
     src/Kyoto/Basics/CBasics.cpp
+    src/Kyoto/Basics/CBasicsDolphin.cpp
     src/Kyoto/Basics/COsContextDolphin.cpp
     src/Kyoto/Basics/CSWDataDolphin.cpp
     src/Kyoto/Basics/CStopwatch.cpp
@@ -826,6 +827,7 @@ list(APPEND MP_GAME_SOURCES
     src/Kyoto/PortCMemoryCardSys.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
+    src/MetroidPrime/PortDataGlobals.cpp
     src/MetroidPrime/PortFrameTimeHistory.c
     src/MetroidPrime/PortLinkStubs.cpp
     src/MetroidPrime/PortMakeMsg.cpp

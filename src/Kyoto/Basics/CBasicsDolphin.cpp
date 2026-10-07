@@ -20,6 +20,10 @@ bool CBasics::Init() {
 }
 
 void CBasics::CopyMemory(void* dst, const void* src, uint size) {
+#ifdef TARGET_PC
+  // The dcbz block copy depends on 32-bit pointers and the PowerPC cache; the host just copies.
+  memcpy(dst, src, size);
+#else
   uchar* out = static_cast< uchar* >(dst);
   const uchar* in = static_cast< const uchar* >(src);
   if ((reinterpret_cast< uint >(out) & 31) != (reinterpret_cast< uint >(in) & 31) || size < 32) {
@@ -74,9 +78,13 @@ void CBasics::CopyMemory(void* dst, const void* src, uint size) {
       memcpy(alignedDst, alignedSrc, tail);
     }
   }
+#endif
 }
 
 void CBasics::ZeroMemory(void* dst, uint size) {
+#ifdef TARGET_PC
+  memset(dst, 0, size);
+#else
   uchar* out = static_cast< uchar* >(dst);
   if (size < 32) {
     memset(out, 0, size);
@@ -108,4 +116,5 @@ void CBasics::ZeroMemory(void* dst, uint size) {
       memset(aligned, 0, tail);
     }
   }
+#endif
 }

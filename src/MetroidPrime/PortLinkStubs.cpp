@@ -38,10 +38,6 @@ extern "C" __attribute__((weak)) void mpReachStub(const char* mangled, const cha
 
 // --- appended by tools/restub_reach.py on 2026-10-08T00:23:15 ---
 // Unresolved symbols one boot-probe link asked for. Diagnostic only; see the file header.
-// BuildTime
-extern "C" __attribute__((aligned(32))) char reachdata_1[0x400] asm("BuildTime");
-__attribute__((aligned(32))) char reachdata_1[0x400] = {};
-
 // CFishCloud* TCastToPtr<CFishCloud>(CEntity*)
 extern "C" void reachstub_3() asm("_Z10TCastToPtrI10CFishCloudEPT_P7CEntity");
 extern "C" void reachstub_3() { mpReachStub("_Z10TCastToPtrI10CFishCloudEPT_P7CEntity", "CFishCloud* TCastToPtr<CFishCloud>(CEntity*)"); }
@@ -214,17 +210,9 @@ extern "C" void reachstub_44() { mpReachStub("_ZN12CARAMManager12IsAllocValidEPK
 extern "C" void reachstub_45() asm("_ZN12CARAMManager14CollectGarbageEv");
 extern "C" void reachstub_45() { mpReachStub("_ZN12CARAMManager14CollectGarbageEv", "CARAMManager::CollectGarbage()"); }
 
-// CARAMManager::kInvalidHandle
-extern "C" __attribute__((aligned(32))) char reachdata_46[0x400] asm("_ZN12CARAMManager14kInvalidHandleE");
-__attribute__((aligned(32))) char reachdata_46[0x400] = {};
-
 // CARAMManager::GetInvalidAlloc()
 extern "C" void reachstub_47() asm("_ZN12CARAMManager15GetInvalidAllocEv");
 extern "C" void reachstub_47() { mpReachStub("_ZN12CARAMManager15GetInvalidAllocEv", "CARAMManager::GetInvalidAlloc()"); }
-
-// CARAMManager::mPreInitializeAlloc
-extern "C" __attribute__((aligned(32))) char reachdata_48[0x400] asm("_ZN12CARAMManager19mPreInitializeAllocE");
-__attribute__((aligned(32))) char reachdata_48[0x400] = {};
 
 // CARAMManager::Shutdown()
 extern "C" void reachstub_49() asm("_ZN12CARAMManager8ShutdownEv");
@@ -237,22 +225,6 @@ extern "C" void reachstub_50() { mpReachStub("_ZN12CEulerAngles13FromTransformER
 // CEulerAngles::FromQuaternion(CQuaternion const&)
 extern "C" void reachstub_51() asm("_ZN12CEulerAngles14FromQuaternionERK11CQuaternion");
 extern "C" void reachstub_51() { mpReachStub("_ZN12CEulerAngles14FromQuaternionERK11CQuaternion", "CEulerAngles::FromQuaternion(CQuaternion const&)"); }
-
-// CGameOptions::kDefaultHUDLag
-extern "C" __attribute__((aligned(32))) char reachdata_52[0x400] asm("_ZN12CGameOptions14kDefaultHUDLagE");
-__attribute__((aligned(32))) char reachdata_52[0x400] = {};
-
-// CGameOptions::kDefaultRumble
-extern "C" __attribute__((aligned(32))) char reachdata_53[0x400] asm("_ZN12CGameOptions14kDefaultRumbleE");
-__attribute__((aligned(32))) char reachdata_53[0x400] = {};
-
-// CGameOptions::kDefaultHintSystem
-extern "C" __attribute__((aligned(32))) char reachdata_54[0x400] asm("_ZN12CGameOptions18kDefaultHintSystemE");
-__attribute__((aligned(32))) char reachdata_54[0x400] = {};
-
-// CGameOptions::kDefaultInvertYAxis
-extern "C" __attribute__((aligned(32))) char reachdata_55[0x400] asm("_ZN12CGameOptions19kDefaultInvertYAxisE");
-__attribute__((aligned(32))) char reachdata_55[0x400] = {};
 
 // CGraphicsSys::CGraphicsSys(COsContext const&, CMemorySys const&, bool)
 extern "C" void reachstub_56() asm("_ZN12CGraphicsSysC1ERK10COsContextRK10CMemorySysb");
@@ -353,10 +325,6 @@ extern "C" void reachstub_79() { mpReachStub("_ZN13CCubeRenderer32DrawOverlappin
 // CCubeRenderer::sRenderer
 extern "C" __attribute__((aligned(32))) char reachdata_80[0x400] asm("_ZN13CCubeRenderer9sRendererE");
 __attribute__((aligned(32))) char reachdata_80[0x400] = {};
-
-// CSoundPOINode::skExtendedVersion
-extern "C" __attribute__((aligned(32))) char reachdata_81[0x400] asm("_ZN13CSoundPOINode17skExtendedVersionE");
-__attribute__((aligned(32))) char reachdata_81[0x400] = {};
 
 // CStateManager::DoCollisionResponse(CCollisionResponseData const&, CRayCastResult const&, TUniqueId, CDamageInfo const&, bool)
 extern "C" void reachstub_82() asm("_ZN13CStateManager19DoCollisionResponseERK22CCollisionResponseDataRK14CRayCastResult9TUniqueIdRK11CDamageInfob");
@@ -726,10 +694,6 @@ extern "C" void reachstub_172() { mpReachStub("_ZN4rstl12basic_stringIwNS_11char
 extern "C" void reachstub_173() asm("_ZN4rstl22locked_cache_allocator8AllocateERPvi");
 extern "C" void reachstub_173() { mpReachStub("_ZN4rstl22locked_cache_allocator8AllocateERPvi", "rstl::locked_cache_allocator::Allocate(void*&, int)"); }
 
-// rstl::CRefData::sNull
-extern "C" __attribute__((aligned(32))) char reachdata_174[0x400] asm("_ZN4rstl8CRefData5sNullE");
-__attribute__((aligned(32))) char reachdata_174[0x400] = {};
-
 // rstl::string_l(char const*)
 extern "C" void reachstub_175() asm("_ZN4rstl8string_lEPKc");
 extern "C" void reachstub_175() { mpReachStub("_ZN4rstl8string_lEPKc", "rstl::string_l(char const*)"); }
@@ -765,14 +729,6 @@ extern "C" void reachstub_182() { mpReachStub("_ZN5CMath6FloorFEf", "CMath::Floo
 // CMath::SlowSineR(float)
 extern "C" void reachstub_183() asm("_ZN5CMath9SlowSineREf");
 extern "C" void reachstub_183() { mpReachStub("_ZN5CMath9SlowSineREf", "CMath::SlowSineR(float)"); }
-
-// CAABox::mskNullBox
-extern "C" __attribute__((aligned(32))) char reachdata_184[0x400] asm("_ZN6CAABox10mskNullBoxE");
-__attribute__((aligned(32))) char reachdata_184[0x400] = {};
-
-// CAABox::mskInvertedBox
-extern "C" __attribute__((aligned(32))) char reachdata_185[0x400] asm("_ZN6CAABox14mskInvertedBoxE");
-__attribute__((aligned(32))) char reachdata_185[0x400] = {};
 
 // CAABox::DistanceBetween(CAABox const&, CAABox const&)
 extern "C" void reachstub_186() asm("_ZN6CAABox15DistanceBetweenERKS_S1_");
@@ -821,42 +777,6 @@ extern "C" void reachstub_196() { mpReachStub("_ZN6CModel7SShaderD1Ev", "CModel:
 // CModel::RemapData(unsigned char*)
 extern "C" void reachstub_197() asm("_ZN6CModel9RemapDataEPh");
 extern "C" void reachstub_197() { mpReachStub("_ZN6CModel9RemapDataEPh", "CModel::RemapData(unsigned char*)"); }
-
-// CBasics::CopyMemory(void*, void const*, unsigned int)
-extern "C" void reachstub_198() asm("_ZN7CBasics10CopyMemoryEPvPKvj");
-extern "C" void reachstub_198() { mpReachStub("_ZN7CBasics10CopyMemoryEPvPKvj", "CBasics::CopyMemory(void*, void const*, unsigned int)"); }
-
-// CBasics::ZeroMemory(void*, unsigned int)
-extern "C" void reachstub_199() asm("_ZN7CBasics10ZeroMemoryEPvj");
-extern "C" void reachstub_199() { mpReachStub("_ZN7CBasics10ZeroMemoryEPvj", "CBasics::ZeroMemory(void*, unsigned int)"); }
-
-// CBasics::Init()
-extern "C" void reachstub_200() asm("_ZN7CBasics4InitEv");
-extern "C" void reachstub_200() { mpReachStub("_ZN7CBasics4InitEv", "CBasics::Init()"); }
-
-// CPlayer::skTransitionFilterEndTime
-extern "C" __attribute__((aligned(32))) char reachdata_201[0x400] asm("_ZN7CPlayer25skTransitionFilterEndTimeE");
-__attribute__((aligned(32))) char reachdata_201[0x400] = {};
-
-// CPlayer::skTransitionFilterHoldTime
-extern "C" __attribute__((aligned(32))) char reachdata_202[0x400] asm("_ZN7CPlayer26skTransitionFilterHoldTimeE");
-__attribute__((aligned(32))) char reachdata_202[0x400] = {};
-
-// CPlayer::skTransitionFilterMaxAlpha
-extern "C" __attribute__((aligned(32))) char reachdata_203[0x400] asm("_ZN7CPlayer26skTransitionFilterMaxAlphaE");
-__attribute__((aligned(32))) char reachdata_203[0x400] = {};
-
-// CPlayer::skTransitionFilterStartTime
-extern "C" __attribute__((aligned(32))) char reachdata_204[0x400] asm("_ZN7CPlayer27skTransitionFilterStartTimeE");
-__attribute__((aligned(32))) char reachdata_204[0x400] = {};
-
-// CPlayer::skTransitionFilterFadeInTime
-extern "C" __attribute__((aligned(32))) char reachdata_205[0x400] asm("_ZN7CPlayer28skTransitionFilterFadeInTimeE");
-__attribute__((aligned(32))) char reachdata_205[0x400] = {};
-
-// CPlayer::skTransitionFilterFadeOutTime
-extern "C" __attribute__((aligned(32))) char reachdata_206[0x400] asm("_ZN7CPlayer29skTransitionFilterFadeOutTimeE");
-__attribute__((aligned(32))) char reachdata_206[0x400] = {};
 
 // CMapArea::SetupLighting(CTransform4f const&)
 extern "C" void reachstub_207() asm("_ZN8CMapArea13SetupLightingERK12CTransform4f");
@@ -965,10 +885,6 @@ extern "C" void reachstub_232() { mpReachStub("_ZN9CGraphics11StreamColorEffff",
 // CGraphics::StreamColor(unsigned int)
 extern "C" void reachstub_233() asm("_ZN9CGraphics11StreamColorEj");
 extern "C" void reachstub_233() { mpReachStub("_ZN9CGraphics11StreamColorEj", "CGraphics::StreamColor(unsigned int)"); }
-
-// CGraphics::mBrightness
-extern "C" __attribute__((aligned(32))) char reachdata_234[0x400] asm("_ZN9CGraphics11mBrightnessE");
-__attribute__((aligned(32))) char reachdata_234[0x400] = {};
 
 // CGraphics::mViewMatrix
 extern "C" __attribute__((aligned(32))) char reachdata_235[0x400] asm("_ZN9CGraphics11mViewMatrixE");
@@ -1110,10 +1026,6 @@ __attribute__((aligned(32))) char reachdata_268[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_269[0x400] asm("_ZN9CGraphics17kEnvModulateColorE");
 __attribute__((aligned(32))) char reachdata_269[0x400] = {};
 
-// CGraphics::mPixelAspectRatio
-extern "C" __attribute__((aligned(32))) char reachdata_270[0x400] asm("_ZN9CGraphics17mPixelAspectRatioE");
-__attribute__((aligned(32))) char reachdata_270[0x400] = {};
-
 // CGraphics::GetProgressiveMode()
 extern "C" void reachstub_271() asm("_ZN9CGraphics18GetProgressiveModeEv");
 extern "C" void reachstub_271() { mpReachStub("_ZN9CGraphics18GetProgressiveModeEv", "CGraphics::GetProgressiveMode()"); }
@@ -1149,14 +1061,6 @@ __attribute__((aligned(32))) char reachdata_278[0x400] = {};
 // CGraphics::ClipScreenQuadFromMS(CVector3f const&, CVector3f const&, CVector3f const&, CVector3f const&, ETexelFormat)
 extern "C" void reachstub_279() asm("_ZN9CGraphics20ClipScreenQuadFromMSERK9CVector3fS2_S2_S2_12ETexelFormat");
 extern "C" void reachstub_279() { mpReachStub("_ZN9CGraphics20ClipScreenQuadFromMSERK9CVector3fS2_S2_S2_12ETexelFormat", "CGraphics::ClipScreenQuadFromMS(CVector3f const&, CVector3f const&, CVector3f const&, CVector3f const&, ETexelFormat)"); }
-
-// CGraphics::kSpareBufferTexMapID
-extern "C" __attribute__((aligned(32))) char reachdata_280[0x400] asm("_ZN9CGraphics20kSpareBufferTexMapIDE");
-__attribute__((aligned(32))) char reachdata_280[0x400] = {};
-
-// CGraphics::mIsBeginSceneClearFb
-extern "C" __attribute__((aligned(32))) char reachdata_281[0x400] asm("_ZN9CGraphics20mIsBeginSceneClearFbE");
-__attribute__((aligned(32))) char reachdata_281[0x400] = {};
 
 // CGraphics::CanSetProgressiveMode()
 extern "C" void reachstub_282() asm("_ZN9CGraphics21CanSetProgressiveModeEv");
@@ -1221,14 +1125,6 @@ extern "C" void reachstub_296() { mpReachStub("_ZN9CGraphics9LoadLightE9ERglLigh
 // CGraphics::StreamEnd()
 extern "C" void reachstub_297() asm("_ZN9CGraphics9StreamEndEv");
 extern "C" void reachstub_297() { mpReachStub("_ZN9CGraphics9StreamEndEv", "CGraphics::StreamEnd()"); }
-
-// CGraphics::mDepthFar
-extern "C" __attribute__((aligned(32))) char reachdata_298[0x400] asm("_ZN9CGraphics9mDepthFarE");
-__attribute__((aligned(32))) char reachdata_298[0x400] = {};
-
-// CGraphics::mViewport
-extern "C" __attribute__((aligned(32))) char reachdata_299[0x400] asm("_ZN9CGraphics9mViewportE");
-__attribute__((aligned(32))) char reachdata_299[0x400] = {};
 
 // CMatrix4f::CMatrix4f(CMatrix4f const&)
 extern "C" void reachstub_300() asm("_ZN9CMatrix4fC1ERKS_");
@@ -1670,26 +1566,6 @@ __attribute__((aligned(32))) char reachdata_409[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_410[0x400] asm("gpTweakPlayerGun");
 __attribute__((aligned(32))) char reachdata_410[0x400] = {};
 
-// kBoostBallBreaksOrbit
-extern "C" __attribute__((aligned(32))) char reachdata_411[0x400] asm("kBoostBallBreaksOrbit");
-__attribute__((aligned(32))) char reachdata_411[0x400] = {};
-
-// kDefaultGravityAccel
-extern "C" __attribute__((aligned(32))) char reachdata_412[0x400] asm("kDefaultGravityAccel");
-__attribute__((aligned(32))) char reachdata_412[0x400] = {};
-
-// kGrappleLocator
-extern "C" __attribute__((aligned(32))) char reachdata_413[0x400] asm("kGrappleLocator");
-__attribute__((aligned(32))) char reachdata_413[0x400] = {};
-
-// kGunLocator
-extern "C" __attribute__((aligned(32))) char reachdata_414[0x400] asm("kGunLocator");
-__attribute__((aligned(32))) char reachdata_414[0x400] = {};
-
-// kInvalidPlayerIndex
-extern "C" __attribute__((aligned(32))) char reachdata_415[0x400] asm("kInvalidPlayerIndex");
-__attribute__((aligned(32))) char reachdata_415[0x400] = {};
-
 // lbl_804191E0
 extern "C" __attribute__((aligned(32))) char reachdata_416[0x400] asm("lbl_804191E0");
 __attribute__((aligned(32))) char reachdata_416[0x400] = {};
@@ -1697,14 +1573,6 @@ __attribute__((aligned(32))) char reachdata_416[0x400] = {};
 // lbl_804199CC
 extern "C" __attribute__((aligned(32))) char reachdata_417[0x400] asm("lbl_804199CC");
 __attribute__((aligned(32))) char reachdata_417[0x400] = {};
-
-// sProgressiveModePrompt
-extern "C" __attribute__((aligned(32))) char reachdata_418[0x400] asm("sProgressiveModePrompt");
-__attribute__((aligned(32))) char reachdata_418[0x400] = {};
-
-// skNoisePermutation
-extern "C" __attribute__((aligned(32))) char reachdata_419[0x400] asm("skNoisePermutation");
-__attribute__((aligned(32))) char reachdata_419[0x400] = {};
 
 // sndFXSetFilter
 extern "C" void reachstub_420() asm("sndFXSetFilter");
