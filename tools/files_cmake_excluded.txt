@@ -3,8 +3,6 @@
 
 src/Kyoto/CARAMManager.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
 src/Kyoto/CFactoryFunctionsPort.cpp | port stub written against the old decomp; upstream header/layout differs (Kyoto/CFactoryFunctions.hpp: No such file or directory)
-src/Kyoto/DolphinCMemoryCardSys.cpp | upstream-incomplete: includes Kyoto/CCRC32.hpp, which upstream does not have
-src/MetroidPrime/CWorldSaveGameInfo.cpp | upstream-incomplete: includes Kyoto/CCRC32.hpp, which upstream does not have
 src/MetroidPrime/Player/PortSPersistentOptionsValue.cpp | port stub written against the old decomp; upstream header/layout differs (MetroidPrime/Player/SPersistentOptionsValue.hpp: No such file or directory)
 src/MetroidPrime/PortBoot.cpp | port stub written against the old decomp; upstream header/layout differs (‘GetMaxSpeed’ was not declared in this scope; did you mean ‘SetMaxSpeed’?)
 src/MetroidPrime/PortCGMSinglePlayer.cpp | port stub written against the old decomp; upstream header/layout differs (class ‘CGMSinglePlayer’ does not have any field named ‘x4_’)

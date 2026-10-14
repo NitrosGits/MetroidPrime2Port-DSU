@@ -372,7 +372,13 @@ CMemoryCardSys::CMemoryCardSys() {
 
 void CMemoryCardSys::Initialize() {
   if (!mIsInitialized) {
+#ifdef TARGET_PC
+    // Aurora's CARDInit takes the game id and maker code; the card lives under
+    // Aurora's user path (MP2_USER_PATH).
+    CARDInit("G2ME", "01");
+#else
     CARDInit();
+#endif
     mIsInitialized = true;
   }
 }

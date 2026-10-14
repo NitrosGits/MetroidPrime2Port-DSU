@@ -156,6 +156,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/CTimeProvider.cpp
     src/Kyoto/CToken.cpp
     src/Kyoto/DolphinCDvdFile.cpp
+    src/Kyoto/DolphinCMemoryCardSys.cpp
     src/Kyoto/Graphics/CColor.cpp
     src/Kyoto/Graphics/CCubeMaterial.cpp
     src/Kyoto/Graphics/CCubeModel.cpp
@@ -429,6 +430,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CWeaponMgr.cpp
     src/MetroidPrime/CWorld.cpp
     src/MetroidPrime/CWorldLayerState.cpp
+    src/MetroidPrime/CWorldSaveGameInfo.cpp
     src/MetroidPrime/CWorldShadow.cpp
     src/MetroidPrime/CWorldTransManager.cpp
     src/MetroidPrime/Cameras/CBallCamera.cpp
@@ -844,7 +846,6 @@ set(MP_MODULES ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud Flyi
 list(APPEND MP_GAME_SOURCES
     src/Kyoto/Alloc/PortMwccNew.cpp
     src/Kyoto/CARAMManagerPort.cpp
-    src/Kyoto/PortCMemoryCardSys.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
     src/MetroidPrime/PortDataGlobals.cpp

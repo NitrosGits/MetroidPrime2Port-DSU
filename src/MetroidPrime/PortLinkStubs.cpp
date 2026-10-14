@@ -102,10 +102,6 @@ extern "C" void reachstub_18() { mpReachStub("_Z14DebugDrawAABoxRK6CAABoxffff", 
 extern "C" void reachstub_19() asm("_Z14LoadWallWalkerR13CStateManagerR12CInputStreamR11CEntityInfo");
 extern "C" void reachstub_19() { mpReachStub("_Z14LoadWallWalkerR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadWallWalker(CStateManager&, CInputStream&, CEntityInfo&)"); }
 
-// FSaveWorldFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)
-extern "C" void reachstub_23() asm("_Z17FSaveWorldFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer");
-extern "C" void reachstub_23() { mpReachStub("_Z17FSaveWorldFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer", "FSaveWorldFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)"); }
-
 // LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)
 extern "C" void reachstub_25() asm("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo");
 extern "C" void reachstub_25() { mpReachStub("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)"); }
@@ -177,106 +173,6 @@ extern "C" void reachstub_83() { mpReachStub("_ZN13CStateManager24GetObjectByIdF
 // CCameraManager::CastGameCameratoFirstPersonCamera(CGameCamera const*)
 extern "C" void reachstub_88() asm("_ZN14CCameraManager33CastGameCameratoFirstPersonCameraEPK11CGameCamera");
 extern "C" void reachstub_88() { mpReachStub("_ZN14CCameraManager33CastGameCameratoFirstPersonCameraEPK11CGameCamera", "CCameraManager::CastGameCameratoFirstPersonCamera(CGameCamera const*)"); }
-
-// CMemoryCardSys::FormatCard(CMemoryCardSys::EMemoryCardPort)
-extern "C" void reachstub_89() asm("_ZN14CMemoryCardSys10FormatCardENS_15EMemoryCardPortE");
-extern "C" void reachstub_89() { mpReachStub("_ZN14CMemoryCardSys10FormatCardENS_15EMemoryCardPortE", "CMemoryCardSys::FormatCard(CMemoryCardSys::EMemoryCardPort)"); }
-
-// CMemoryCardSys::GetSerialNo(CMemoryCardSys::EMemoryCardPort, long long&)
-extern "C" void reachstub_90() asm("_ZN14CMemoryCardSys11GetSerialNoENS_15EMemoryCardPortERx");
-extern "C" void reachstub_90() { mpReachStub("_ZN14CMemoryCardSys11GetSerialNoENS_15EMemoryCardPortERx", "CMemoryCardSys::GetSerialNo(CMemoryCardSys::EMemoryCardPort, long long&)"); }
-
-// CMemoryCardSys::UnmountCard(CMemoryCardSys::EMemoryCardPort)
-extern "C" void reachstub_91() asm("_ZN14CMemoryCardSys11UnmountCardENS_15EMemoryCardPortE");
-extern "C" void reachstub_91() { mpReachStub("_ZN14CMemoryCardSys11UnmountCardENS_15EMemoryCardPortE", "CMemoryCardSys::UnmountCard(CMemoryCardSys::EMemoryCardPort)"); }
-
-// CMemoryCardSys::mIsCardBusy
-extern "C" __attribute__((aligned(32))) char reachdata_92[0x400] asm("_ZN14CMemoryCardSys11mIsCardBusyE");
-__attribute__((aligned(32))) char reachdata_92[0x400] = {};
-
-// CMemoryCardSys::CCardFileInfo::CreateFile()
-extern "C" void reachstub_93() asm("_ZN14CMemoryCardSys13CCardFileInfo10CreateFileEv");
-extern "C" void reachstub_93() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo10CreateFileEv", "CMemoryCardSys::CCardFileInfo::CreateFile()"); }
-
-// CMemoryCardSys::CCardFileInfo::SetComment(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_94() asm("_ZN14CMemoryCardSys13CCardFileInfo10SetCommentERKN4rstl12basic_stringIcNS1_11char_traitsIcEENS1_17rmemory_allocatorEEE");
-extern "C" void reachstub_94() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo10SetCommentERKN4rstl12basic_stringIcNS1_11char_traitsIcEENS1_17rmemory_allocatorEEE", "CMemoryCardSys::CCardFileInfo::SetComment(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)"); }
-
-// CMemoryCardSys::CCardFileInfo::PumpCardRead()
-extern "C" void reachstub_95() asm("_ZN14CMemoryCardSys13CCardFileInfo12PumpCardReadEv");
-extern "C" void reachstub_95() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo12PumpCardReadEv", "CMemoryCardSys::CCardFileInfo::PumpCardRead()"); }
-
-// CMemoryCardSys::CCardFileInfo::LockIconToken(unsigned int, int, CSimplePool&)
-extern "C" void reachstub_96() asm("_ZN14CMemoryCardSys13CCardFileInfo13LockIconTokenEjiR11CSimplePool");
-extern "C" void reachstub_96() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo13LockIconTokenEjiR11CSimplePool", "CMemoryCardSys::CCardFileInfo::LockIconToken(unsigned int, int, CSimplePool&)"); }
-
-// CMemoryCardSys::CCardFileInfo::LockBannerToken(unsigned int, CSimplePool&)
-extern "C" void reachstub_97() asm("_ZN14CMemoryCardSys13CCardFileInfo15LockBannerTokenEjR11CSimplePool");
-extern "C" void reachstub_97() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo15LockBannerTokenEjR11CSimplePool", "CMemoryCardSys::CCardFileInfo::LockBannerToken(unsigned int, CSimplePool&)"); }
-
-// CMemoryCardSys::CCardFileInfo::ResetHeaderInfo()
-extern "C" void reachstub_98() asm("_ZN14CMemoryCardSys13CCardFileInfo15ResetHeaderInfoEv");
-extern "C" void reachstub_98() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo15ResetHeaderInfoEv", "CMemoryCardSys::CCardFileInfo::ResetHeaderInfo()"); }
-
-// CMemoryCardSys::CCardFileInfo::PumpCardTransfer()
-extern "C" void reachstub_99() asm("_ZN14CMemoryCardSys13CCardFileInfo16PumpCardTransferEv");
-extern "C" void reachstub_99() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo16PumpCardTransferEv", "CMemoryCardSys::CCardFileInfo::PumpCardTransfer()"); }
-
-// CMemoryCardSys::CCardFileInfo::BuildHeaderBuffer()
-extern "C" void reachstub_100() asm("_ZN14CMemoryCardSys13CCardFileInfo17BuildHeaderBufferEv");
-extern "C" void reachstub_100() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo17BuildHeaderBufferEv", "CMemoryCardSys::CCardFileInfo::BuildHeaderBuffer()"); }
-
-// CMemoryCardSys::CCardFileInfo::Open()
-extern "C" void reachstub_101() asm("_ZN14CMemoryCardSys13CCardFileInfo4OpenEv");
-extern "C" void reachstub_101() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo4OpenEv", "CMemoryCardSys::CCardFileInfo::Open()"); }
-
-// CMemoryCardSys::CCardFileInfo::GetFileNo()
-extern "C" void reachstub_102() asm("_ZN14CMemoryCardSys13CCardFileInfo9GetFileNoEv");
-extern "C" void reachstub_102() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo9GetFileNoEv", "CMemoryCardSys::CCardFileInfo::GetFileNo()"); }
-
-// CMemoryCardSys::CCardFileInfo::StartRead()
-extern "C" void reachstub_103() asm("_ZN14CMemoryCardSys13CCardFileInfo9StartReadEv");
-extern "C" void reachstub_103() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo9StartReadEv", "CMemoryCardSys::CCardFileInfo::StartRead()"); }
-
-// CMemoryCardSys::CCardFileInfo::WriteFile()
-extern "C" void reachstub_104() asm("_ZN14CMemoryCardSys13CCardFileInfo9WriteFileEv");
-extern "C" void reachstub_104() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfo9WriteFileEv", "CMemoryCardSys::CCardFileInfo::WriteFile()"); }
-
-// CMemoryCardSys::CCardFileInfo::CCardFileInfo(CMemoryCardSys::EMemoryCardPort, rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)
-extern "C" void reachstub_105() asm("_ZN14CMemoryCardSys13CCardFileInfoC1ENS_15EMemoryCardPortERKN4rstl12basic_stringIcNS2_11char_traitsIcEENS2_17rmemory_allocatorEEE");
-extern "C" void reachstub_105() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfoC1ENS_15EMemoryCardPortERKN4rstl12basic_stringIcNS2_11char_traitsIcEENS2_17rmemory_allocatorEEE", "CMemoryCardSys::CCardFileInfo::CCardFileInfo(CMemoryCardSys::EMemoryCardPort, rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&)"); }
-
-// CMemoryCardSys::CCardFileInfo::~CCardFileInfo()
-extern "C" void reachstub_106() asm("_ZN14CMemoryCardSys13CCardFileInfoD1Ev");
-extern "C" void reachstub_106() { mpReachStub("_ZN14CMemoryCardSys13CCardFileInfoD1Ev", "CMemoryCardSys::CCardFileInfo::~CCardFileInfo()"); }
-
-// CMemoryCardSys::GetResultCode(int)
-extern "C" void reachstub_107() asm("_ZN14CMemoryCardSys13GetResultCodeEi");
-extern "C" void reachstub_107() { mpReachStub("_ZN14CMemoryCardSys13GetResultCodeEi", "CMemoryCardSys::GetResultCode(int)"); }
-
-// CMemoryCardSys::FastDeleteFile(CMemoryCardSys::EMemoryCardPort, int)
-extern "C" void reachstub_108() asm("_ZN14CMemoryCardSys14FastDeleteFileENS_15EMemoryCardPortEi");
-extern "C" void reachstub_108() { mpReachStub("_ZN14CMemoryCardSys14FastDeleteFileENS_15EMemoryCardPortEi", "CMemoryCardSys::FastDeleteFile(CMemoryCardSys::EMemoryCardPort, int)"); }
-
-// CMemoryCardSys::GetNumFreeBytes(CMemoryCardSys::EMemoryCardPort, unsigned int&, unsigned int&)
-extern "C" void reachstub_109() asm("_ZN14CMemoryCardSys15GetNumFreeBytesENS_15EMemoryCardPortERjS1_");
-extern "C" void reachstub_109() { mpReachStub("_ZN14CMemoryCardSys15GetNumFreeBytesENS_15EMemoryCardPortERjS1_", "CMemoryCardSys::GetNumFreeBytes(CMemoryCardSys::EMemoryCardPort, unsigned int&, unsigned int&)"); }
-
-// CMemoryCardSys::IsMemoryCardInserted(CMemoryCardSys::EMemoryCardPort)
-extern "C" void reachstub_110() asm("_ZN14CMemoryCardSys20IsMemoryCardInsertedENS_15EMemoryCardPortE");
-extern "C" void reachstub_110() { mpReachStub("_ZN14CMemoryCardSys20IsMemoryCardInsertedENS_15EMemoryCardPortE", "CMemoryCardSys::IsMemoryCardInserted(CMemoryCardSys::EMemoryCardPort)"); }
-
-// CMemoryCardSys::CheckCard(CMemoryCardSys::EMemoryCardPort)
-extern "C" void reachstub_111() asm("_ZN14CMemoryCardSys9CheckCardENS_15EMemoryCardPortE");
-extern "C" void reachstub_111() { mpReachStub("_ZN14CMemoryCardSys9CheckCardENS_15EMemoryCardPortE", "CMemoryCardSys::CheckCard(CMemoryCardSys::EMemoryCardPort)"); }
-
-// CMemoryCardSys::GetStatus(CMemoryCardSys::EMemoryCardPort, int, CardStat&)
-extern "C" void reachstub_112() asm("_ZN14CMemoryCardSys9GetStatusENS_15EMemoryCardPortEiR8CardStat");
-extern "C" void reachstub_112() { mpReachStub("_ZN14CMemoryCardSys9GetStatusENS_15EMemoryCardPortEiR8CardStat", "CMemoryCardSys::GetStatus(CMemoryCardSys::EMemoryCardPort, int, CardStat&)"); }
-
-// CMemoryCardSys::MountCard(CMemoryCardSys::EMemoryCardPort)
-extern "C" void reachstub_113() asm("_ZN14CMemoryCardSys9MountCardENS_15EMemoryCardPortE");
-extern "C" void reachstub_113() { mpReachStub("_ZN14CMemoryCardSys9MountCardENS_15EMemoryCardPortE", "CMemoryCardSys::MountCard(CMemoryCardSys::EMemoryCardPort)"); }
 
 // CScopedProfiler::BeginFrame()
 extern "C" void reachstub_122() asm("_ZN15CScopedProfiler10BeginFrameEv");
@@ -454,14 +350,6 @@ extern "C" void reachstub_334() { mpReachStub("_ZNK16CScriptGuiSlider10TypesMatc
 extern "C" void reachstub_335() asm("_ZNK16CScriptGuiWidget10TypesMatchEi");
 extern "C" void reachstub_335() { mpReachStub("_ZNK16CScriptGuiWidget10TypesMatchEi", "CScriptGuiWidget::TypesMatch(int) const"); }
 
-// CWorldSaveGameInfo::CalculateHash() const
-extern "C" void reachstub_336() asm("_ZNK18CWorldSaveGameInfo13CalculateHashEv");
-extern "C" void reachstub_336() { mpReachStub("_ZNK18CWorldSaveGameInfo13CalculateHashEv", "CWorldSaveGameInfo::CalculateHash() const"); }
-
-// CWorldSaveGameInfo::GetRelayIndex(TEditorId const&) const
-extern "C" void reachstub_337() asm("_ZNK18CWorldSaveGameInfo13GetRelayIndexERK9TEditorId");
-extern "C" void reachstub_337() { mpReachStub("_ZNK18CWorldSaveGameInfo13GetRelayIndexERK9TEditorId", "CWorldSaveGameInfo::GetRelayIndex(TEditorId const&) const"); }
-
 // CScriptFrontEndDataNetwork::TypesMatch(int) const
 extern "C" void reachstub_339() asm("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi");
 extern "C" void reachstub_339() { mpReachStub("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi", "CScriptFrontEndDataNetwork::TypesMatch(int) const"); }
@@ -481,14 +369,6 @@ extern "C" void reachstub_376() { mpReachStub("_ZNK8CMetaree10TypesMatchEi", "CM
 // CMetroid::TypesMatch(int) const
 extern "C" void reachstub_377() asm("_ZNK8CMetroid10TypesMatchEi");
 extern "C" void reachstub_377() { mpReachStub("_ZNK8CMetroid10TypesMatchEi", "CMetroid::TypesMatch(int) const"); }
-
-// CardStat::GetCommentAddr() const
-extern "C" void reachstub_389() asm("_ZNK8CardStat14GetCommentAddrEv");
-extern "C" void reachstub_389() { mpReachStub("_ZNK8CardStat14GetCommentAddrEv", "CardStat::GetCommentAddr() const"); }
-
-// CardStat::GetTime() const
-extern "C" void reachstub_390() asm("_ZNK8CardStat7GetTimeEv");
-extern "C" void reachstub_390() { mpReachStub("_ZNK8CardStat7GetTimeEv", "CardStat::GetTime() const"); }
 
 // CParasite::TypesMatch(int) const
 extern "C" void reachstub_391() asm("_ZNK9CParasite10TypesMatchEi");
