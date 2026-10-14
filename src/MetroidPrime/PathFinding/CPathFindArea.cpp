@@ -10,6 +10,13 @@
 #include <dolphin/os.h>
 #include <float.h>
 
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+
+#include <new>
+#include <string.h>
+#endif
+
 class CVParamTransfer;
 
 class CPFMemoryStream {
@@ -83,6 +90,9 @@ CPFArea::CPFArea(const rstl::auto_ptr< uchar >& data, int size)
 , mVersion(-1)
 , mData(data.release())
 , mTransform(CTransform4f::Identity()) {
+#ifdef TARGET_PC
+  LoadHost();
+#else
   int maxRegionNodes;
   CPFMemoryStream stream(mData.get(), size);
   int version;
@@ -152,7 +162,177 @@ CPFArea::CPFArea(const rstl::auto_ptr< uchar >& data, int size)
     }
     mPointSearchState = rs_new CPFPointSearchState(numPoints);
   }
+#endif
 }
+
+#ifdef TARGET_PC
+static uint BigU32(const uchar* p) {
+  return (uint(p[0]) << 24) | (uint(p[1]) << 16) | (uint(p[2]) << 8) | uint(p[3]);
+}
+
+static int BigS32(const uchar* p) { return static_cast< int >(BigU32(p)); }
+
+static float BigF32(const uchar* p) {
+  const uint bits = BigU32(p);
+  float value;
+  memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+static CVector3f BigVec(const uchar* p) {
+  return CVector3f(BigF32(p), BigF32(p + 4), BigF32(p + 8));
+}
+
+static void SwapWords(uchar* p, int count) {
+  uint* words = reinterpret_cast< uint* >(p);
+  for (int i = 0; i < count; ++i) {
+    words[i] = CBasics::SwapBytes(words[i]);
+  }
+}
+
+template < typename T >
+static T* IndexAsPointer(int index) {
+  return reinterpret_cast< T* >(static_cast< intptr_t >(index));
+}
+
+// The disc PATH is laid out for in-place use on a 32-bit big-endian target: plain-data blocks
+// are swapped in place in mData, and records holding pointers (regions, octree nodes, points,
+// octree region lists) are rebuilt in host buffers. Pointer fields first receive their disc
+// indices, which the regular Fixup calls then resolve.
+void CPFArea::LoadHost() {
+  uchar* cur = mData.get();
+  mVersion = BigS32(cur);
+  cur += 4;
+
+  const int numNodes = BigS32(cur);
+  cur += 4;
+  SwapWords(cur, numNodes * 6);
+  mNodes.set_size(numNodes);
+  mNodes.set_data(reinterpret_cast< CPFNode* >(cur));
+  cur += numNodes * 0x18;
+
+  const int numLinks = BigS32(cur);
+  cur += 4;
+  SwapWords(cur, numLinks * 4);
+  mLinks.set_size(numLinks);
+  mLinks.set_data(reinterpret_cast< CPFLink* >(cur));
+  cur += numLinks * 0x10;
+
+  const int numRegions = BigS32(cur);
+  cur += 4;
+  mHostRegions = rs_new uchar[numRegions * sizeof(CPFRegion)];
+  CPFRegion* regions = reinterpret_cast< CPFRegion* >(mHostRegions.get());
+  for (int i = 0; i < numRegions; ++i, cur += 0x5c) {
+    CPFRegion& region = *new (&regions[i]) CPFRegion();
+    region.mNumNodes = BigS32(cur);
+    region.mStartNode = IndexAsPointer< const CPFNode >(BigS32(cur + 4));
+    region.mNumLinks = BigS32(cur + 8);
+    region.mStartLink = IndexAsPointer< CPFLink >(BigS32(cur + 12));
+    region.mFlags = BigU32(cur + 16);
+    region.mHeight = BigF32(cur + 20);
+    region.mNormal = BigVec(cur + 24);
+    region.mRegionIdx = BigS32(cur + 36);
+    region.mCentroid = BigVec(cur + 40);
+    region.mBounds = CAABox(BigVec(cur + 52), BigVec(cur + 64));
+    for (int k = 0; k < 3; ++k) {
+      region.mObstructionCounts[k] = BigS32(cur + 76 + k * 4);
+    }
+  }
+  mRegions.set_size(numRegions);
+  mRegions.set_data(regions);
+  mRegionData.reserve(numRegions);
+  CPFRegionData dataValue = CPFRegionData();
+  mRegionData.resize(numRegions, dataValue);
+  int maxRegionNodes = 0;
+  for (int i = 0; i < numRegions; ++i) {
+    mRegions[i].Fixup(*this, maxRegionNodes);
+  }
+  maxRegionNodes = maxRegionNodes > 4 ? maxRegionNodes : 4;
+  mPolyPoints.reserve(maxRegionNodes);
+
+  const uint numWords = (numRegions * (numRegions - 1) / 2 + 31) / 32;
+  SwapWords(cur, numWords * 2);
+  mConnectionsGround.set_size(numWords);
+  mConnectionsGround.set_data(reinterpret_cast< uint* >(cur));
+  cur += numWords * 4;
+  mConnectionsFlyers.set_size(numWords);
+  mConnectionsFlyers.set_data(reinterpret_cast< uint* >(cur));
+  cur += numWords * 4;
+  cur += ((numRegions * numRegions + 31) / 32 - numWords) * 2 * 4;
+
+  const int numRegionPtrs = BigS32(cur);
+  cur += 4;
+  mHostOctreeRegions = rs_new uchar[numRegionPtrs * sizeof(CPFRegion*)];
+  CPFRegion** regionPtrs = reinterpret_cast< CPFRegion** >(mHostOctreeRegions.get());
+  for (int i = 0; i < numRegionPtrs; ++i, cur += 4) {
+    regionPtrs[i] = &mRegions[BigS32(cur)];
+  }
+  mOctreeRegions.set_size(numRegionPtrs);
+  mOctreeRegions.set_data(regionPtrs);
+
+  const int numOctreeNodes = BigS32(cur);
+  cur += 4;
+  mHostOctree = rs_new uchar[numOctreeNodes * sizeof(CPFAreaOctree)];
+  memset(mHostOctree.get(), 0, numOctreeNodes * sizeof(CPFAreaOctree));
+  CPFAreaOctree* octree = reinterpret_cast< CPFAreaOctree* >(mHostOctree.get());
+  for (int i = 0; i < numOctreeNodes; ++i, cur += 0x50) {
+    CPFAreaOctree& node = octree[i];
+    node.mIsLeaf = BigU32(cur) != 0;
+    node.mBounds = CAABox(BigVec(cur + 4), BigVec(cur + 16));
+    node.mCenter = BigVec(cur + 28);
+    for (int c = 0; c < 8; ++c) {
+      node.mChildren[c] = IndexAsPointer< CPFAreaOctree >(BigS32(cur + 40 + c * 4));
+    }
+    node.mRegions.set_size(BigS32(cur + 72));
+    node.mRegions.set_data(IndexAsPointer< CPFRegion* >(BigS32(cur + 76)));
+  }
+  mOctree.set_size(numOctreeNodes);
+  mOctree.set_data(octree);
+  for (int i = 0; i < numOctreeNodes; ++i) {
+    mOctree[i].Fixup(*this);
+  }
+
+  if (mVersion > 4) {
+    const int numPoints = BigS32(cur);
+    cur += 4;
+    if (numPoints > 0) {
+      mHostPoints = rs_new uchar[numPoints * sizeof(CPFPoint)];
+      CPFPoint* points = reinterpret_cast< CPFPoint* >(mHostPoints.get());
+      for (int i = 0; i < numPoints; ++i, cur += 0x1c) {
+        CPFPoint& point = points[i];
+        point.mPosition = BigVec(cur);
+        point.mFlags = BigU32(cur + 12);
+        point.mNumLinks = BigU32(cur + 16);
+        point.mLinks = IndexAsPointer< int >(BigS32(cur + 20));
+        point.mLinkCosts = IndexAsPointer< float >(BigS32(cur + 24));
+      }
+      mPoints.set_size(numPoints);
+      mPoints.set_data(points);
+
+      const int numPointLinks = BigS32(cur);
+      cur += 4;
+      SwapWords(cur, numPointLinks);
+      mPointLinks.set_size(numPointLinks);
+      mPointLinks.set_data(reinterpret_cast< int* >(cur));
+      cur += numPointLinks * 4;
+      const int numLinkData = BigS32(cur);
+      cur += 4;
+      SwapWords(cur, numLinkData);
+      mPointLinkCosts.set_size(numLinkData);
+      mPointLinkCosts.set_data(reinterpret_cast< float* >(cur));
+      cur += numLinkData * 4;
+      const int numPointWords = (numPoints * (numPoints - 1) / 2 + 31) / 32;
+      SwapWords(cur, numPointWords);
+      mPointConnections.set_size(numPointWords);
+      mPointConnections.set_data(reinterpret_cast< uint* >(cur));
+      for (int j = 0; j < numPoints; ++j) {
+        mPoints[j].Fixup(*this);
+      }
+    }
+    mPointSearchState = rs_new CPFPointSearchState(numPoints);
+  }
+}
+#endif
 
 rstl::prereserved_vector< CPFRegion* >* CPFArea::GetOctreeRegionList(const CVector3f& point) {
   if (mHasCachedRegionList && close_enough(point, mCachedRegionListPoint)) {

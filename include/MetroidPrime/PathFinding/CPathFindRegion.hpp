@@ -25,6 +25,9 @@ public:
   float GetLinkCost(int index) const { return mLinkCosts[index]; }
 
 private:
+#ifdef TARGET_PC
+  friend class CPFArea; // CPFArea::LoadHost builds these from disc records.
+#endif
   CVector3f mPosition;
   uint mFlags;
   uint mNumLinks;
@@ -165,6 +168,9 @@ public:
                              ERootPosition rootPosition) const;
 
 private:
+#ifdef TARGET_PC
+  friend class CPFArea; // CPFArea::LoadHost builds these from disc records.
+#endif
   int mNumNodes;
   const CPFNode* mStartNode;
   int mNumLinks;

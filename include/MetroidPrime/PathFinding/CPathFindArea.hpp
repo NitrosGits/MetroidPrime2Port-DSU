@@ -73,6 +73,9 @@ public:
   }
 
 private:
+#ifdef TARGET_PC
+  friend class CPFArea;
+#endif
   bool mIsLeaf;
   CAABox mBounds;
   CVector3f mCenter;
@@ -142,11 +145,21 @@ private:
   rstl::prereserved_vector< float > mPointLinkCosts;
   rstl::vector< CPFRegionData > mRegionData;
   CTransform4f mTransform;
+#ifdef TARGET_PC
+  // Host copies of the disc records that hold pointers (see LoadHost).
+  void LoadHost();
+  rstl::single_ptr< uchar > mHostRegions;
+  rstl::single_ptr< uchar > mHostOctreeRegions;
+  rstl::single_ptr< uchar > mHostOctree;
+  rstl::single_ptr< uchar > mHostPoints;
+#endif
 };
 CHECK_SIZEOF(CPFArea, 0x1ec)
 
 inline void CPFAreaOctree::Fixup(CPFArea& area) {
+#ifndef TARGET_PC // CPFArea::LoadHost sets mIsLeaf from the disc record.
   mIsLeaf = *reinterpret_cast< const int* >(this) != 0;
+#endif
   if (mIsLeaf) {
     if (mRegions.size() != 0) {
       mRegions.set_data(&area.GetOctreeRegionPtrs(reinterpret_cast< intptr_t >(&mRegions[0])));
