@@ -154,10 +154,6 @@ extern "C" void reachstub_145() { mpReachStub("_ZN22TStateMachineStateBaseI11CGr
 extern "C" void reachstub_146() asm("_ZN22TStateMachineStateBaseI21CPlayerBodyControllerED2Ev");
 extern "C" void reachstub_146() { mpReachStub("_ZN22TStateMachineStateBaseI21CPlayerBodyControllerED2Ev", "TStateMachineStateBase<CPlayerBodyController>::~TStateMachineStateBase()"); }
 
-// rstl::locked_cache_allocator::Allocate(void*&, int)
-extern "C" void reachstub_173() asm("_ZN4rstl22locked_cache_allocator8AllocateERPvi");
-extern "C" void reachstub_173() { mpReachStub("_ZN4rstl22locked_cache_allocator8AllocateERPvi", "rstl::locked_cache_allocator::Allocate(void*&, int)"); }
-
 // rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)
 extern "C" void reachstub_178() asm("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc");
 extern "C" void reachstub_178() { mpReachStub("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc", "rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)"); }

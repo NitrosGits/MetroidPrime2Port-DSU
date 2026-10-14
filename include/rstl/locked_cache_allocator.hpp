@@ -24,7 +24,15 @@ public:
   template < typename T >
   void deallocate(T* ptr) {
     if (ptr != 0) {
+#ifdef TARGET_PC
+      // Allocate falls back to the heap per block, and a reallocating vector frees its old
+      // block after allocating the new one, so the shared flag can name the wrong pool.
+      const uchar* base = static_cast< const uchar* >(GetLockedCacheAllocationBase());
+      const uchar* p = reinterpret_cast< const uchar* >(ptr);
+      if (p < base || p >= base + 0x4000) {
+#else
       if (mHeapAllocation) {
+#endif
         CMemory::Free(ptr);
       } else {
         FreeLockedCache(ptr);
