@@ -138,10 +138,6 @@ extern "C" void reachstub_136() { mpReachStub("_ZN20CDamageVulnerabilityC1ERK23S
 extern "C" void reachstub_137() asm("_ZN20CSamusFaceReflectionD1Ev");
 extern "C" void reachstub_137() { mpReachStub("_ZN20CSamusFaceReflectionD1Ev", "CSamusFaceReflection::~CSamusFaceReflection()"); }
 
-// CCompoundTargetReticle::~CCompoundTargetReticle()
-extern "C" void reachstub_142() asm("_ZN22CCompoundTargetReticleD1Ev");
-extern "C" void reachstub_142() { mpReachStub("_ZN22CCompoundTargetReticleD1Ev", "CCompoundTargetReticle::~CCompoundTargetReticle()"); }
-
 // TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()
 extern "C" void reachstub_143() asm("_ZN22TStateMachineStateBaseI10CPatternedED2Ev");
 extern "C" void reachstub_143() { mpReachStub("_ZN22TStateMachineStateBaseI10CPatternedED2Ev", "TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()"); }
@@ -233,18 +229,6 @@ extern "C" void reachstub_328() { mpReachStub("_ZNK13CStateManager11fn_800366e4E
 // typeinfo for CWallCrawler
 extern "C" __attribute__((aligned(32))) char reachdata_392[0x400] asm("_ZTI12CWallCrawler");
 __attribute__((aligned(32))) char reachdata_392[0x400] = {};
-
-// typeinfo for CScriptGuiScreen
-extern "C" __attribute__((aligned(32))) char reachdata_393[0x400] asm("_ZTI16CScriptGuiScreen");
-__attribute__((aligned(32))) char reachdata_393[0x400] = {};
-
-// vtable for CCollisionActor
-extern "C" __attribute__((aligned(32))) char reachdata_394[0x400] asm("_ZTV15CCollisionActor");
-__attribute__((aligned(32))) char reachdata_394[0x400] = {};
-
-// vtable for CScriptGuiScreen
-extern "C" __attribute__((aligned(32))) char reachdata_395[0x400] asm("_ZTV16CScriptGuiScreen");
-__attribute__((aligned(32))) char reachdata_395[0x400] = {};
 
 // fn_80037944
 extern "C" void reachstub_397() asm("fn_80037944");
