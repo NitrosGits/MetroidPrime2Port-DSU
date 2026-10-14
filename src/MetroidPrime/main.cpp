@@ -47,6 +47,11 @@
 #include "stdlib.h"
 #include "string.h"
 
+#ifdef TARGET_PC
+#include <aurora/aurora.h>
+#include <aurora/event.h>
+#endif
+
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetaRender/IRenderer.hpp"
 
@@ -222,6 +227,18 @@ void CMain::InitializeSubsystems() {
 }
 
 #ifdef TARGET_PC
+// Port: pump Aurora once per loop iteration. `aurora_update` runs Aurora's per-frame GX update
+// and delivers window events; nothing else in the game calls it. Returns true on a quit request.
+static bool PortPumpEvents() {
+  for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
+       ++event) {
+    if (event->type == AURORA_EXIT) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void PortShutdownSubsystems();
 void CMain::ShutdownSubsystems() { PortShutdownSubsystems(); }
 #else
@@ -427,6 +444,11 @@ void CGameGlobalObjects::AddPaksAndFactories(COsContext& context) {
   gpController = controller.get();
   while (!factory.GetResLoader().AreAllPaksLoaded() || !request->IsComplete() ||
          !tweaks.IsLoaded()) {
+#ifdef TARGET_PC
+    if (PortPumpEvents()) {
+      exit(0);
+    }
+#endif
     gpResourceFactory->GetResLoader().AsyncIdlePakLoading();
     gpRelFileManager->Update();
     errors.Update();
@@ -659,6 +681,12 @@ int CMain::RsMain(int argc, const char* const* argv) {
     CDvdFile::FileExists("Strings.pak");
 
     while (!mFinished) {
+#ifdef TARGET_PC
+      if (PortPumpEvents()) {
+        mFinished = true;
+        break;
+      }
+#endif
       architecture->GetStopwatch2().Reset();
       gpResourceFactory->GetResLoader().AsyncIdlePakLoading();
       gpRelFileManager->Update();
