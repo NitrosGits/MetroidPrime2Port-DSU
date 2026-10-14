@@ -37,7 +37,13 @@ void CFrameDelayedKiller::ScheduleDeletion(const EWhichFrame whichFrame, void* v
   }
   if (!sInitialized) {
     GXDrawDone();
+#ifdef TARGET_PC
+    // On the host `rs_new` is malloc, so a victim may be outside the game heap;
+    // `operator delete` (PortMwccNew.cpp) routes by address.
+    ::operator delete(victim);
+#else
     CMemory::Free(victim);
+#endif
     return;
   }
 
@@ -50,7 +56,13 @@ void CFrameDelayedKiller::FlushAllocationsForFrame() {
   sCurList ^= 1;
   rstl::list< void* >& list = sFrameDelayedList[sCurList];
   for (rstl::list< void* >::iterator t = list.begin(); t != list.end(); ++t) {
+#ifdef TARGET_PC
+    // On the host `rs_new` is malloc, so a victim may be outside the game heap;
+    // `operator delete` (PortMwccNew.cpp) routes by address.
+    ::operator delete(*t);
+#else
     CMemory::Free(*t);
+#endif
   }
 
   list.clear();
