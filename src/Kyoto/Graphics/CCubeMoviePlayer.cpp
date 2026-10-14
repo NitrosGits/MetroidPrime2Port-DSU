@@ -24,6 +24,55 @@
 #include "dolphin/gx/GXTev.h"
 #include "dolphin/gx/GXTexture.h"
 
+#ifdef TARGET_PC
+#include <mutex>
+
+// Port: Aurora keeps a file's open handle in `cb.userData`, so the player that owns a pending
+// frame read is tracked here instead of being stored there.
+namespace {
+struct SPendingMovieRead {
+  DVDFileInfo* mInfo;
+  CMoviePlayer* mPlayer;
+};
+std::mutex sPendingMovieReadsLock;
+SPendingMovieRead sPendingMovieReads[16];
+
+void SetMovieReadOwner(DVDFileInfo* info, CMoviePlayer* player) {
+  std::lock_guard< std::mutex > lock(sPendingMovieReadsLock);
+  for (SPendingMovieRead& read : sPendingMovieReads) {
+    if (read.mInfo == nullptr || read.mInfo == info) {
+      read.mInfo = info;
+      read.mPlayer = player;
+      return;
+    }
+  }
+}
+
+CMoviePlayer* TakeMovieReadOwner(DVDFileInfo* info) {
+  std::lock_guard< std::mutex > lock(sPendingMovieReadsLock);
+  for (SPendingMovieRead& read : sPendingMovieReads) {
+    if (read.mInfo == info) {
+      CMoviePlayer* player = read.mPlayer;
+      read.mInfo = nullptr;
+      read.mPlayer = nullptr;
+      return player;
+    }
+  }
+  return nullptr;
+}
+
+void DropMovieReadOwner(CMoviePlayer* player) {
+  std::lock_guard< std::mutex > lock(sPendingMovieReadsLock);
+  for (SPendingMovieRead& read : sPendingMovieReads) {
+    if (read.mPlayer == player) {
+      read.mInfo = nullptr;
+      read.mPlayer = nullptr;
+    }
+  }
+}
+} // namespace
+#endif
+
 static rstl::string SelectMoviePath(const char* path) {
   rstl::string name(path);
   if (CGraphics::Is50Hz()) {
@@ -336,6 +385,9 @@ bool CMoviePlayer::ContinueLoading() {
 
 CMoviePlayer::~CMoviePlayer() {
   CancelReadRequests();
+#ifdef TARGET_PC
+  DropMovieReadOwner(this);
+#endif
   --sNumReferences;
   VerifyCallbackStatus();
   if (sNumReferences == 0 && ShouldEnableLockedCache()) {
@@ -392,7 +444,11 @@ void CMoviePlayer::PostDVDReadRequestIfNeeded() {
           static_cast< uchar* >(CMemory::Alloc(mNextReadSize, IAllocator::kHI_RoundUpLen)));
       rstl::single_ptr< CRealDvdRequest > request(rs_new CRealDvdRequest);
       DVDOpen(const_cast< char* >(mDvdFile.GetFilename().data()), &request->FileInfo());
+#ifdef TARGET_PC
+      SetMovieReadOwner(&request->FileInfo(), this);
+#else
       request->FileInfo().cb.userData = this;
+#endif
       DVDReadAsyncPrio(&request->FileInfo(), mRequestBuffer.get(), mNextReadSize, mNextReadOff,
                        DVDCallback, 2);
       mRequest = request;
@@ -401,12 +457,21 @@ void CMoviePlayer::PostDVDReadRequestIfNeeded() {
 }
 
 void CMoviePlayer::DVDCallback(s32 result, DVDFileInfo* info) {
+#ifdef TARGET_PC
+  CMoviePlayer* player = TakeMovieReadOwner(info);
+  if (result == 10 || player == nullptr) {
+    return;
+  }
+  gDvdActivity = true;
+  player->HandleDVDInterrupt(info);
+#else
   if (result == 10) {
     return;
   }
   DCInvalidateRange(info->cb.addr, info->cb.length);
   gDvdActivity = true;
   static_cast< CMoviePlayer* >(info->cb.userData)->HandleDVDInterrupt(info);
+#endif
 }
 
 void CMoviePlayer::HandleDVDInterrupt(DVDFileInfo* info) {
@@ -419,13 +484,22 @@ void CMoviePlayer::HandleDVDInterrupt(DVDFileInfo* info) {
 void CMoviePlayer::PrefetchNextFrame() {
   mPrefetchFrame = mCurLoadFrame + 1;
   if (mPrefetchFrame != mHeader.mNumFrames) {
+#ifdef TARGET_PC
+    mPrefetchSize =
+        CBasics::SwapBytes(*reinterpret_cast< const uint* >(mRequestBuffer.get()));
+#else
     mPrefetchSize = *reinterpret_cast< const uint* >(mRequestBuffer.get());
+#endif
     mPrefetchOff = mNextReadOff + mNextReadSize;
     mPrefetchBuffer =
         static_cast< uchar* >(CMemory::Alloc(mPrefetchSize, IAllocator::kHI_RoundUpLen));
     rstl::single_ptr< CRealDvdRequest > request(rs_new CRealDvdRequest);
     DVDOpen(const_cast< char* >(mDvdFile.GetFilename().data()), &request->FileInfo());
+#ifdef TARGET_PC
+    SetMovieReadOwner(&request->FileInfo(), this);
+#else
     request->FileInfo().cb.userData = this;
+#endif
     DVDReadAsyncPrio(&request->FileInfo(), mPrefetchBuffer.get(), mPrefetchSize, mPrefetchOff,
                      DVDCallback, 2);
     mPrefetchRequest = request;
