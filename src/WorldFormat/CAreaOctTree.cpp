@@ -1,6 +1,11 @@
 #include "WorldFormat/CAreaOctTree.hpp"
 #include "Kyoto/Streams/CMemoryInStream.hpp"
 
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+#include <string.h>
+#endif
+
 static CAABox BoxFromIndex(int index, const CVector3f& min, const CVector3f& center,
                            const CVector3f& max) {
   switch (index) {
@@ -67,6 +72,80 @@ CAreaOctTree::CAreaOctTree(const CAABox& bounds, Node::ETreeType treeType, const
 , mBuf(buffer)
 , mTreeBuf(treeBuffer) {}
 
+#ifdef TARGET_PC
+// Port: the collision resource is big-endian and read in place. Convert it to host order once,
+// before the tree and arrays are used. Arrays after the byte-sized material lists may be
+// unaligned, hence the memcpy-based helpers.
+static uint SwapU32At(uchar* p) {
+  uint v;
+  memcpy(&v, p, sizeof(v));
+  v = CBasics::SwapBytes(v);
+  memcpy(p, &v, sizeof(v));
+  return v;
+}
+
+static void SwapU16Array(uchar* p, uint count) {
+  for (uint i = 0; i < count; ++i, p += sizeof(ushort)) {
+    ushort v;
+    memcpy(&v, p, sizeof(v));
+    v = CBasics::SwapBytes(v);
+    memcpy(p, &v, sizeof(v));
+  }
+}
+
+static void SwapTreeToHost(uchar* node, CAreaOctTree::Node::ETreeType type) {
+  if (type == CAreaOctTree::Node::kTT_Leaf) {
+    for (int i = 0; i < 6; ++i) {
+      SwapU32At(node + i * sizeof(float));
+    }
+    SwapU16Array(node + sizeof(CAABox), 1);
+    ushort count;
+    memcpy(&count, node + sizeof(CAABox), sizeof(count));
+    SwapU16Array(node + sizeof(CAABox) + sizeof(ushort), count);
+  } else if (type == CAreaOctTree::Node::kTT_Branch) {
+    SwapU16Array(node, 1);
+    ushort flags;
+    memcpy(&flags, node, sizeof(flags));
+    for (int i = 0; i < 8; ++i) {
+      const uint offset = SwapU32At(node + sizeof(uint) * (i + 1));
+      SwapTreeToHost(node + 9 * sizeof(uint) + offset,
+                     static_cast< CAreaOctTree::Node::ETreeType >((flags >> (2 * i)) & 3));
+    }
+  }
+}
+
+static void SwapCollisionArraysToHost(uchar* p) {
+  const uint materialCount = SwapU32At(p);
+  p += sizeof(uint);
+  for (uint i = 0; i < materialCount; ++i, p += sizeof(u64)) {
+    u64 v;
+    memcpy(&v, p, sizeof(v));
+    v = __builtin_bswap64(v);
+    memcpy(p, &v, sizeof(v));
+  }
+  for (int i = 0; i < 3; ++i) {
+    p += sizeof(uint) + SwapU32At(p);
+  }
+  const uint edgeCount = SwapU32At(p);
+  p += sizeof(uint);
+  SwapU16Array(p, edgeCount * 2);
+  p += edgeCount * sizeof(CCollisionEdge);
+  const uint indexCount = SwapU32At(p) / 3 * 3;
+  p += sizeof(uint);
+  SwapU16Array(p, indexCount);
+  p += indexCount * sizeof(ushort);
+  SwapU32At(p);
+  p += sizeof(uint);
+  SwapU16Array(p, indexCount);
+  p += indexCount * sizeof(ushort);
+  const uint vertexCount = SwapU32At(p);
+  p += sizeof(uint);
+  for (uint i = 0; i < vertexCount * 3; ++i, p += sizeof(float)) {
+    SwapU32At(p);
+  }
+}
+#endif
+
 void CAreaOctTree::MakeFromMemory(void* buffer, uint bufferLength, CAreaOctTree** treeOut,
                                   bool* valid) {
   CMemoryInStream in(buffer, bufferLength, CMemoryInStream::kOS_NotOwned);
@@ -76,6 +155,10 @@ void CAreaOctTree::MakeFromMemory(void* buffer, uint bufferLength, CAreaOctTree*
   Node::ETreeType treeType = static_cast< Node::ETreeType >(in.ReadInt32());
   uint treeSize = in.ReadInt32();
   uchar* treeBuffer = static_cast< uchar* >(buffer) + in.GetReadPosition();
+#ifdef TARGET_PC
+  SwapTreeToHost(treeBuffer, treeType);
+  SwapCollisionArraysToHost(treeBuffer + treeSize);
+#endif
 
   uint* materialHeader = reinterpret_cast< uint* >(treeBuffer + treeSize);
   uint materialCount = *materialHeader;
