@@ -42,6 +42,35 @@ CGuiFrameModelDatabase::CGuiFrameModelDatabase(CInputStream& in, CSimplePool* po
     CCubeModel::MakeTexturesFromMats(materialData, mTextures, *pool, true);
 
     for (int i = 0; i < modelCount; ++i) {
+#ifdef TARGET_PC
+      // Port: like CModel, pass section sizes (the instance converts the vertex data to host
+      // order) and convert each disc surface header to the native layout.
+      const uint positionsSize = *sectionSizeCur;
+      const void* positions = MemoryFromPartData(dataCur, sectionSizeCur);
+      const uint normalsSize = *sectionSizeCur;
+      const void* normals = MemoryFromPartData(dataCur, sectionSizeCur);
+      const uint colorsSize = *sectionSizeCur;
+      const void* colors = MemoryFromPartData(dataCur, sectionSizeCur);
+      const uint uvsSize = *sectionSizeCur;
+      const void* uvs = MemoryFromPartData(dataCur, sectionSizeCur);
+      const uint packedUvsSize = *sectionSizeCur;
+      const void* packedUvs = MemoryFromPartData(dataCur, sectionSizeCur);
+      const uint surfaceCount = CBasics::SwapBytes(
+          *reinterpret_cast< const uint* >(MemoryFromPartData(dataCur, sectionSizeCur)));
+      rstl::vector< void* >& surfaces = mSurfaces[i];
+      surfaces.reserve(surfaceCount);
+      for (uint j = 0; j < surfaceCount; ++j) {
+        uchar* surface = MemoryFromPartData(dataCur, sectionSizeCur);
+        CCubeSurface::ConvertSurfaceHeader(surface);
+        surfaces.push_back_unsafe(surface);
+      }
+
+      const rstl::auto_ptr< CCubeModel > model(rs_new CCubeModel(
+          &surfaces, &mTextures, materialData, positions, normals, colors, uvs, packedUvs,
+          CAABox::Identity(), 0, true, i, positionsSize, normalsSize, colorsSize, uvsSize,
+          packedUvsSize));
+      mModels[i] = model;
+#else
       const void* positions = MemoryFromPartData(dataCur, sectionSizeCur);
       const void* normals = MemoryFromPartData(dataCur, sectionSizeCur);
       const void* colors = MemoryFromPartData(dataCur, sectionSizeCur);
@@ -59,6 +88,7 @@ CGuiFrameModelDatabase::CGuiFrameModelDatabase(CInputStream& in, CSimplePool* po
           &surfaces, &mTextures, materialData, positions, normals, colors, uvs, packedUvs,
           CAABox::Identity(), 0, true, i));
       mModels[i] = model;
+#endif
     }
   }
 
