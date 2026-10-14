@@ -367,6 +367,9 @@ void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
       mgr.DeleteSaveGameScreen();
       mGameStarted = true;
       SendScriptMsgs(kSS_Arrived, mgr);
+#ifdef TARGET_PC
+      return; // saveScreen was just freed; the busy check below would read it
+#endif
     } else if (ret == CIOWin::kMR_RemoveIOWin || ret == CIOWin::kMR_RemoveIOWinAndExit) {
       mSaveScreenFailed = true;
       SendScriptMsgs(kSS_DeGenerate, mgr);
