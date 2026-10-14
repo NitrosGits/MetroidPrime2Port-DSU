@@ -113,7 +113,12 @@ void CRasterFont::GetSize(const CDrawStringOptions& options, int& width, int& he
   height = 0;
   int curWidth = 0;
   const CGlyph* prevGlyph = nullptr;
+#ifdef TARGET_PC
+  // Test the length first: callers pass unterminated one-char strings.
+  for (const wchar_t* ptr = str; (length == -1 || ptr - str < length) && *ptr != 0; ++ptr) {
+#else
   for (const wchar_t* ptr = str; *ptr != 0 && (length == -1 || ptr - str < length); ++ptr) {
+#endif
     const CGlyph* glyph = GetGlyph(*ptr);
     if (glyph != nullptr) {
       int kerning =
@@ -182,7 +187,11 @@ void CRasterFont::SinglePassDrawString(const CDrawStringOptions& options, const 
   if (mInitialized) {
     int curX = x;
     const CGlyph* prevGlyph = nullptr;
+#ifdef TARGET_PC
+    for (const wchar_t* ptr = str; (length == -1 || (ptr - str) < length) && *ptr != 0; ++ptr) {
+#else
     for (const wchar_t* ptr = str; *ptr != 0 && (length == -1 || (ptr - str) < length); ++ptr) {
+#endif
       const CGlyph* curGlyph = GetGlyph(*ptr);
       if (curGlyph != nullptr) {
         int xOffset = 0;
