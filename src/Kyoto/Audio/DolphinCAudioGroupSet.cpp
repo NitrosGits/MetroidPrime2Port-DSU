@@ -24,7 +24,13 @@ static uchar* sUploadBuffer;
 bool CAudioGrpSetLoc::sInSinglePlayer;
 
 static void* UploadCallback(u32 offset, u32 bytes) {
-  memcpy(sUploadBuffer, reinterpret_cast< void* >(offset), bytes);
+  memcpy(sUploadBuffer, reinterpret_cast< void* >(
+#ifdef TARGET_PC
+      uintptr_t
+#else
+      u32
+#endif
+      (offset)), bytes);
   DCFlushRange(sUploadBuffer, bytes);
   return sUploadBuffer;
 }
@@ -69,7 +75,13 @@ CAudioGrpSetLoc::CAudioGrpSetLoc(const rstl::auto_ptr< uchar >& data, int length
     }
 
     uchar uploadBuffer[0x1000 + 31];
-    sUploadBuffer = reinterpret_cast< uchar* >(reinterpret_cast< uint >(uploadBuffer + 31) & ~31);
+    sUploadBuffer = reinterpret_cast< uchar* >(
+#ifdef TARGET_PC
+        (reinterpret_cast< uintptr_t >(uploadBuffer + 31) & ~uintptr_t(31))
+#else
+        (reinterpret_cast< uint >(uploadBuffer + 31) & ~31)
+#endif
+    );
     sndSetSampleDataUploadCallback(UploadCallback, 0x1000);
     if (!sndStackSetCurrent(mStackId)) {
       CARAMManager::Free(mAramAlloc, 1);

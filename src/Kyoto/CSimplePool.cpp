@@ -36,12 +36,8 @@ bool CSimplePool::HasObject(const SObjectTag& tag) const {
 }
 
 CToken CSimplePool::GetObj(const char* name, const CVParamTransfer& xfer) {
-#ifdef TARGET_PC
-  // Port: names the stand-in registry answers never reach the factory.
-  if (const SObjectTag* standIn = port::pool::FindStandInTag(name)) {
-    return CSimplePool::GetObj(*standIn, xfer);
-  }
-#endif
+  // Port: no stand-in pre-check here. CResFactory::GetResourceIdByName tries the paks first and
+  // falls back to the stand-in registry, so real resources load through their factories.
   const SObjectTag* tag = CSimplePool::GetFactory().GetResourceIdByName(name);
   return CSimplePool::GetObj(*tag, xfer);
 }

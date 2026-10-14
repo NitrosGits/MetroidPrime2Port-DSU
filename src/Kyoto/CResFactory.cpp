@@ -15,6 +15,7 @@ CResFactory::CResFactory() {}
 CResFactory::~CResFactory() {}
 
 #ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
 #include "Kyoto/CSimplePool.hpp"
 
 const SObjectTag* CResFactory::GetResourceIdByName(const char* name) const {
@@ -172,7 +173,12 @@ CResFactory::SLoadingData::~SLoadingData() {}
 bool CResFactory::SLoadingData::PumpDecompression(uint time) {
   CStopwatch timer;
   uint* buffer = reinterpret_cast< uint* >(mBuffer.get());
+#ifdef TARGET_PC
+  // Port: the decompressed length and chunk sizes are big-endian on disc.
+  const uint length = CBasics::SwapBytes(*buffer);
+#else
   const uint length = *buffer;
+#endif
   if (mDecompBuffer.null()) {
     mDecompBuffer = rstl::auto_ptr< uchar >(
         static_cast< uchar* >(CMemory::Alloc(length, IAllocator::kHI_RoundUpLen)));
@@ -180,7 +186,12 @@ bool CResFactory::SLoadingData::PumpDecompression(uint time) {
 
   uchar* compressed = reinterpret_cast< uchar* >(buffer + 1);
   while ((time == 0 || timer.GetElapsedMicros() < time) && length != mDecompressedPos) {
+#ifdef TARGET_PC
+    const uint chunkSize =
+        CBasics::SwapBytes(*reinterpret_cast< ushort* >(compressed + mCompressedPos));
+#else
     const uint chunkSize = *reinterpret_cast< ushort* >(compressed + mCompressedPos);
+#endif
     mCompressedPos += 2;
     uint outSize = length - mDecompressedPos;
     CLZOSupport::Inflate(compressed + mCompressedPos, chunkSize,

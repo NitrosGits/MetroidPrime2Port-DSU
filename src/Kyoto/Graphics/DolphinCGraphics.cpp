@@ -1,6 +1,29 @@
 // G2ME01 scaffold remaining identity and code-generation questions are recorded in research.
 #include "Kyoto/Graphics/CGraphics.hpp"
 
+#ifdef TARGET_PC
+// Port: Aurora brackets a presented frame around the game's scene.
+#include <aurora/aurora.h>
+
+namespace {
+// GXInit (CGraphics::Startup) submits register writes the Aurora worker processes, so a frame
+// must be open before it runs; the first EndScene closes it.
+bool s_auroraFrameOpen = false;
+bool AuroraFrameBegin() {
+  if (!s_auroraFrameOpen && aurora_begin_frame()) {
+    s_auroraFrameOpen = true;
+  }
+  return s_auroraFrameOpen;
+}
+void AuroraFrameEnd() {
+  if (s_auroraFrameOpen) {
+    aurora_end_frame();
+    s_auroraFrameOpen = false;
+  }
+}
+} // namespace
+#endif
+
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/Alloc/LockedCache.hpp"
 #include "Kyoto/Basics/COsContext.hpp"
@@ -304,6 +327,9 @@ static void* AllocateGraphicsArena(int size) {
 static void ResetGraphicsArena() { sGraphicsArenaOffset = 0; }
 
 bool CGraphics::Startup(const COsContext& osContext, bool progressive) {
+#ifdef TARGET_PC
+  AuroraFrameBegin();
+#endif
   InitializeGraphicsArena(osContext.GetArenaBlock(), osContext.GetArenaBlockSize());
   VIInit();
   VISetBlack(TRUE);
@@ -404,7 +430,12 @@ void CGraphics::ConfigureVideo(bool initial, uchar progressive) {
 GXTexRegion* CGraphics::TexRegionCallback(const GXTexObj* obj, GXTexMapID id) {
   static signed char nextTexRgn = 0;
   static signed char nextTexRgnCI = 0;
+#ifdef TARGET_PC
+  // Port: Aurora's GXGetTexObjFmt takes a non-const pointer.
+  const GXTexFmt fmt = GXGetTexObjFmt(const_cast< GXTexObj* >(obj));
+#else
   const GXTexFmt fmt = GXGetTexObjFmt(obj);
+#endif
   if (id == GX_TEXMAP7) {
     if (fmt != GX_TF_C4 && fmt != GX_TF_C8 && fmt != GX_TF_C14X2) {
       return &mTexRegions[0];
@@ -784,7 +815,17 @@ static const GXVtxDescList skPosColorTexDirect[] = {
     {GX_VA_NULL, GX_NONE},
 };
 
+#ifdef TARGET_PC
+void CGraphics::BeginScene() {
+  // Port: a scene maps to one Aurora frame (covers init-time draws too).
+  if (!AuroraFrameBegin()) {
+    return;
+  }
+  ClearBackAndDepthBuffers();
+}
+#else
 void CGraphics::BeginScene() { ClearBackAndDepthBuffers(); }
+#endif
 
 void CGraphics::SwapBuffers() {
   GXDisableBreakPt();
@@ -803,6 +844,8 @@ void CGraphics::VideoPreCallback(u32 retraceCount) {
     mFlippingState = 2;
   }
 
+#ifndef TARGET_PC
+  // Port: no GP FIFO to stall on; Aurora consumes commands itself.
   static int stalledRetraces = 0;
   static u32 lastOverflowCount = 0;
   GXBool overHighWaterMark;
@@ -826,6 +869,7 @@ void CGraphics::VideoPreCallback(u32 retraceCount) {
     stalledRetraces = 0;
     lastOverflowCount = overflowCount;
   }
+#endif
 }
 
 void CGraphics::VideoPostCallback(u32 retraceCount) {
@@ -844,10 +888,24 @@ void CGraphics::VideoPostCallback(u32 retraceCount) {
 }
 
 void CGraphics::EndScene() {
+#ifdef TARGET_PC
+  if (!s_auroraFrameOpen) {
+    return;
+  }
+#endif
   volatile int& numBreakPt = const_cast< volatile int& >(mNumBreakpointsWaiting);
   volatile bool& aborted = const_cast< volatile bool& >(sGXAborted);
   const OSTime start = OSGetTime();
+#ifdef TARGET_PC
+  // Port: there is no GP breakpoint/retrace handshake; the frame is presented below.
+  (void)start;
+  mNumBreakpointsWaiting = 0;
+  sGXAborted = false;
+  aborted = false;
+  if (false) {
+#else
   if (sGXAborted) {
+#endif
     GXAbortFrame();
   } else {
     CStopwatch waitTimer;
@@ -915,10 +973,17 @@ void CGraphics::EndScene() {
   VISetPreRetraceCallback(VideoPreCallback);
   VISetPostRetraceCallback(VideoPostCallback);
   GXFlush();
+#ifdef TARGET_PC
+  // Port: present this Aurora frame instead of waiting on the GP breakpoint.
+  AuroraFrameEnd();
+  mNumBreakpointsWaiting = 0;
+  mFlippingState = 0;
+#else
   void* readPtr;
   void* writePtr;
   GXGetFifoPtrs(GXGetGPFifo(), &readPtr, &writePtr);
   GXEnableBreakPt(writePtr);
+#endif
   mLastFrameUsedAbove = mInterruptLastFrameUsedAbove;
   ++mFrameCounter;
   CFrameDelayedKiller::FlushAllocationsForFrame();
@@ -1038,12 +1103,27 @@ static const uchar kHasColor = 2;
 static const uchar kHasTexture = 4;
 
 void CGraphics::StreamBegin(ERglPrimitive primitive) {
+#ifdef TARGET_PC
+  // Port: there is no locked cache on a host (its base is null), so each stream gets its own
+  // full-size array; one extra slot covers ResetVertexDataStream's fan/strip carry-over.
+  static Vec sVtx[STREAM_PRIM_BUFFER_SIZE + 2];
+  static Vec sNrm[STREAM_PRIM_BUFFER_SIZE + 2];
+  static Vec2 sTxt0[STREAM_PRIM_BUFFER_SIZE + 2];
+  static Vec2 sTxt1[STREAM_PRIM_BUFFER_SIZE + 2];
+  static uint sClr[STREAM_PRIM_BUFFER_SIZE + 2];
+  mVertexBuffer = sVtx;
+  mNormalBuffer = sNrm;
+  mTexCoordBuffer0 = sTxt0;
+  mTexCoordBuffer1 = sTxt1;
+  mColorBuffer = sClr;
+#else
   uchar* base = static_cast< uchar* >(GetLockedCacheAllocationBase());
   mVertexBuffer = reinterpret_cast< VecPtr >(base);
   mNormalBuffer = reinterpret_cast< VecPtr >(NRM_BUFFER_ADDR(base));
   mTexCoordBuffer0 = reinterpret_cast< Vec2Ptr >(TXT0_BUFFER_ADDR(base));
   mTexCoordBuffer1 = reinterpret_cast< Vec2Ptr >(TXT1_BUFFER_ADDR(base));
   mColorBuffer = reinterpret_cast< uint* >(CLR_BUFFER_ADDR(base));
+#endif
   ResetVertexDataStream(true);
   mCurrentPrimitive = primitive;
   vtxDescr.mStreamFlags = kHasColor;
@@ -1284,6 +1364,9 @@ void CGraphics::SetTevStates(uchar flags) {
 
 // Guessed name. The alternate path deliberately delays every vertex by eight instructions.
 static inline void DelayStreamVertex() {
+#ifdef TARGET_PC
+  // Port: a delay has no meaning against Aurora.
+#else
   asm {
     nop
     nop
@@ -1294,6 +1377,7 @@ static inline void DelayStreamVertex() {
     nop
     nop
   }
+#endif
 }
 
 void CGraphics::FullRenderWithVertexDelay() {

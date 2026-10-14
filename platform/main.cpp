@@ -42,6 +42,11 @@ extern void* gPortGameHeapHi;
 #include "port_tweaks.h"
 
 // The decompilation's exported entry point; see src/MetroidPrime/main.cpp.
+namespace port {
+void* LoadDefaultFont();
+void FreeDefaultFont(void* token);
+} // namespace port
+
 extern "C" void InvokeCMain(int argc, char** argv, COsContext* context, void* unk1,
                             CMemorySys* memorySys, void* unk2);
 
@@ -212,8 +217,14 @@ int main(int argc, char** argv) {
     // src/MetroidPrime/PortTweakGlobals.cpp and docs/research/tweak_globals.md.
     port::tweaks::CreateStandInTweakPlayers();
 
+    // Retail `main` loads the embedded default font right after `CGraphicsSys` and points
+    // `gpDefaultFont` at it; `CSplashScreen::Draw` dereferences it with no null test.
+    // src/MetroidPrime/PortDefaultFont.cpp.
+    void* defaultFont = port::LoadDefaultFont();
+
     InvokeCMain(argc, argv, &osContext, nullptr, &memorySys, nullptr);
 
+    port::FreeDefaultFont(defaultFont);
     port::modules::ShutdownAll();
   }
 

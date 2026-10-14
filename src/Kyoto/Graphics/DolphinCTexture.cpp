@@ -25,8 +25,14 @@ bool CTexture::sMangleMips = false;
 
 #define ROUND_UP_4(v) (((v) + 3) & ~3)
 
-static uint sLoadedTextureStorage[GX_MAX_TEXMAP];
-static uint* sLoadedTextures = sLoadedTextureStorage;
+#ifdef TARGET_PC
+// Port: holds a pointer plus clamp mode, so it must be pointer-wide.
+typedef uintptr_t LoadedTexKey;
+#else
+typedef uint LoadedTexKey;
+#endif
+static LoadedTexKey sLoadedTextureStorage[GX_MAX_TEXMAP];
+static LoadedTexKey* sLoadedTextures = sLoadedTextureStorage;
 static uint sTextureLoadCount;
 
 CTexture::CTexture(ETexelFormat fmt, const short w, const short h, int mips)
@@ -134,7 +140,7 @@ void CTexture::InitTextureObjects() {
 
 void CTexture::Load(GXTexMapID tex, EClampMode clamp) const {
   // The low address bits distinguish the three clamp modes in the cache.
-  if (reinterpret_cast< uint >(this) + clamp != sLoadedTextures[tex]) {
+  if (reinterpret_cast< LoadedTexKey >(this) + clamp != sLoadedTextures[tex]) {
     if (mCanLoadObj) {
       void* ptr = mARAMToken.GetMRAMSafe();
       CountMemory();
@@ -152,7 +158,7 @@ void CTexture::Load(GXTexMapID tex, EClampMode clamp) const {
     }
 
     GXLoadTexObj(&mTexObj, tex);
-    sLoadedTextures[tex] = reinterpret_cast< uint >(this) + clamp;
+    sLoadedTextures[tex] = reinterpret_cast< LoadedTexKey >(this) + clamp;
     mFrameAllocated = sCurrentFrameCount;
     ++sTextureLoadCount;
   }
@@ -554,7 +560,7 @@ void CTexture::ScheduleDeletion() {
 
 void CTexture::InvalidateTexmaps() const {
   for (int i = 0; i < GX_MAX_TEXMAP; ++i) {
-    if (sLoadedTextures[i] == reinterpret_cast< uint >(this) + mClampMode) {
+    if (sLoadedTextures[i] == reinterpret_cast< LoadedTexKey >(this) + mClampMode) {
       sLoadedTextures[i] = 0;
     }
   }

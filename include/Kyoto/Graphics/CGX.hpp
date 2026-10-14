@@ -46,6 +46,11 @@ public:
 
   struct SGXState {
     const void* mArrayPtrs[12];
+#ifdef TARGET_PC
+    uint mArraySizes[12];
+    const void* mNrmMtxArray;
+    uint mNrmMtxStride;
+#endif
     ushort mPrevChanCtrls[2];
     ushort mChanCtrls[2];
     GXColor mChanAmbColors[2];
@@ -133,6 +138,17 @@ public:
                              GXBool normalize, GXPTTexMtx postMtx);
   static void SetTexCoordGen_Compressed(GXTexCoordID dstCoord, uint flags);
   static void SetArray(GXAttr attr, const void* data, uchar stride);
+#ifdef TARGET_PC
+  // Aurora uploads exactly `size` bytes of the array; game data is big-endian.
+  static void SetArray(GXAttr attr, const void* data, uint size, uchar stride);
+  // Host-native array data (runtime-generated vertices, not big-endian disc data).
+  static void SetArrayNative(GXAttr attr, const void* data, uint size, uchar stride);
+  // Forces the backend to drop its cached copy so the next SetArray re-uploads.
+  static void ClearArray(GXAttr attr);
+  // Replaces GXLoadNrmMtxIndx3x3, which Aurora lacks: loads the 3x3 at `index` of the array last
+  // set for GX_NRM_MTX_ARRAY (host-native floats) directly into normal matrix slot `id`.
+  static void PortLoadNrmMtxIndx3x3(uint index, uint id);
+#endif
   static void SetFog(GXFogType type, float startZ, float endZ, float nearZ, float farZ,
                      const GXColor& color);
   static void SetLineWidth(uchar width, GXTexOffset offset);

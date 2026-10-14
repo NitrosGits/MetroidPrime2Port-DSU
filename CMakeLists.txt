@@ -107,7 +107,9 @@ target_include_directories(mp_game PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/aurora/include
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/musyx-port/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/LZO)
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/LZO
+    # config.yml `extract:` output (DefaultFontData.inc etc.), written by the upstream build.
+    ${CMAKE_CURRENT_SOURCE_DIR}/build/G2ME01/include)
 # compat.h restores the SDK macros Aurora omits; it is force-included ahead of
 # every C++ game translation unit. It is C++-only (it pulls in the game's
 # CMemory/IAllocator headers), so it must not reach the few C translation units

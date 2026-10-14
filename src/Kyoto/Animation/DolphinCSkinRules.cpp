@@ -6,6 +6,9 @@
 #include "Kyoto/Graphics/CModel.hpp"
 
 #include "dolphin/gx.h"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CGX.hpp"
+#endif
 
 CSkinRules::CSkinRules(CInputStream& in)
 : mVirtualBones(in), mMatrixIndices(in), mVertexCount(in.ReadInt32()), mVertexToBone(nullptr) {
@@ -51,7 +54,11 @@ void CSkinRules::LoadMatrixBank(int bank) const {
     if (index != -1) {
       const int slot = (i - start) * 3;
       GXLoadPosMtxIndx(index, slot);
+#ifdef TARGET_PC
+      CGX::PortLoadNrmMtxIndx3x3(index, slot);
+#else
       GXLoadNrmMtxIndx3x3(index, slot);
+#endif
     }
   }
 }

@@ -29,14 +29,27 @@ public:
   class ModelInstance {
   public:
     ModelInstance(rstl::vector< void* >& surfaces, const void* materialData, const void* positions,
-                  const void* normals, const void* colors, const void* uvs, const void* packedTexCoords)
+                  const void* normals, const void* colors, const void* uvs, const void* packedTexCoords
+#ifdef TARGET_PC
+                  , uint positionsSize = 0, uint normalsSize = 0, uint colorsSize = 0,
+                  uint texCoordsSize = 0, uint packedTexCoordsSize = 0
+#endif
+                  )
     : mSurfacePtrs(surfaces)
     , mMaterialData(materialData)
     , mPositions(positions)
     , mNormals(normals)
     , mColors(colors)
     , mTexCoords(uvs)
-    , mPackedTexCoords(packedTexCoords) {}
+    , mPackedTexCoords(packedTexCoords)
+#ifdef TARGET_PC
+    , mPositionsSize(positionsSize)
+    , mNormalsSize(normalsSize)
+    , mColorsSize(colorsSize)
+    , mTexCoordsSize(texCoordsSize)
+    , mPackedTexCoordsSize(packedTexCoordsSize)
+#endif
+    {}
 
     rstl::vector< void* >& Surfaces() { return mSurfacePtrs; }
     const rstl::vector< void* >& Surfaces() const { return mSurfacePtrs; }
@@ -47,6 +60,13 @@ public:
     const void* GetColorPointer() const { return mColors; }
     const void* GetTCPointer() const { return mTexCoords; }
     const void* GetPackedTCPointer() const { return mPackedTexCoords; }
+#ifdef TARGET_PC
+    uint GetVertexSize() const { return mPositionsSize; }
+    uint GetNormalSize() const { return mNormalsSize; }
+    uint GetColorSize() const { return mColorsSize; }
+    uint GetTCSize() const { return mTexCoordsSize; }
+    uint GetPackedTCSize() const { return mPackedTexCoordsSize; }
+#endif
 
   private:
     rstl::vector< void* >& mSurfacePtrs;
@@ -56,13 +76,25 @@ public:
     const void* mColors;
     const void* mTexCoords;
     const void* mPackedTexCoords;
+#ifdef TARGET_PC
+    uint mPositionsSize;
+    uint mNormalsSize;
+    uint mColorsSize;
+    uint mTexCoordsSize;
+    uint mPackedTexCoordsSize;
+#endif
   };
 
   // Echoes method names below are inferred from Prime and call sites.
   CCubeModel(rstl::vector< void* >* surfaces, rstl::vector< TCachedToken< CTexture > >* textures,
              const void* materialData, const void* positions, const void* normals,
              const void* colors, const void* uvs, const void* compressedUvs, const CAABox& bounds,
-             uchar visorFlags, bool texturesLoaded, uint idx);
+             uchar visorFlags, bool texturesLoaded, uint idx
+#ifdef TARGET_PC
+             , uint positionsSize = 0, uint normalsSize = 0, uint colorsSize = 0,
+             uint texCoordsSize = 0, uint packedTexCoordsSize = 0
+#endif
+             );
 
   static void SetRenderModelBlack(bool v);
   static void SetModelWireframe(bool v);

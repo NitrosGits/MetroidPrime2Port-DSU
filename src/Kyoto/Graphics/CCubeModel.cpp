@@ -20,8 +20,16 @@ CCubeModel::CCubeModel(rstl::vector< void* >* surfaces,
                        rstl::vector< TCachedToken< CTexture > >* textures, const void* materialData,
                        const void* positions, const void* normals, const void* colors,
                        const void* uvs, const void* compressedUvs, const CAABox& bounds,
+#ifdef TARGET_PC
+                       const uchar visorFlags, const bool texturesLoaded, const uint idx,
+                       const uint positionsSize, const uint normalsSize, const uint colorsSize,
+                       const uint texCoordsSize, const uint packedTexCoordsSize)
+: mInstance(*surfaces, materialData, positions, normals, colors, uvs, compressedUvs, positionsSize,
+            normalsSize, colorsSize, texCoordsSize, packedTexCoordsSize)
+#else
                        const uchar visorFlags, const bool texturesLoaded, const uint idx)
 : mInstance(*surfaces, materialData, positions, normals, colors, uvs, compressedUvs)
+#endif
 , mTextures(textures)
 , mBounds(bounds)
 , mFirstUnsorted(nullptr)
@@ -70,7 +78,11 @@ void CCubeModel::MakeTexturesFromMats(const void* data,
 }
 
 void CCubeModel::SetStaticArraysCurrent() const {
+#ifdef TARGET_PC
+  CGX::SetArray(GX_VA_CLR0, mInstance.GetColorPointer(), mInstance.GetColorSize(), sizeof(CColor));
+#else
   CGX::SetArray(GX_VA_CLR0, mInstance.GetColorPointer(), sizeof(CColor));
+#endif
   const void* packed = mInstance.GetPackedTCPointer();
   const void* unpacked = mInstance.GetTCPointer();
   if (!packed) {
@@ -78,14 +90,27 @@ void CCubeModel::SetStaticArraysCurrent() const {
   }
 
   if (sUsingPackedLightmaps) {
+#ifdef TARGET_PC
+    CGX::SetArray(GX_VA_TEX0, packed, mInstance.GetPackedTCSize(), sizeof(ushort) * 2);
+#else
     CGX::SetArray(GX_VA_TEX0, packed, sizeof(ushort) * 2);
+#endif
   } else {
+#ifdef TARGET_PC
+    CGX::SetArray(GX_VA_TEX0, unpacked, mInstance.GetTCSize(), sizeof(CVector2f));
+#else
     CGX::SetArray(GX_VA_TEX0, unpacked, sizeof(CVector2f));
+#endif
   }
 
   if (unpacked) {
     for (int i = 1; i <= GX_VA_TEX7 - GX_VA_TEX0; ++i) {
+#ifdef TARGET_PC
+      CGX::SetArray(static_cast< GXAttr >(i + GX_VA_TEX0), unpacked, mInstance.GetTCSize(),
+                    sizeof(CVector2f));
+#else
       CGX::SetArray(static_cast< GXAttr >(i + GX_VA_TEX0), unpacked, sizeof(CVector2f));
+#endif
     }
   }
 
@@ -93,19 +118,34 @@ void CCubeModel::SetStaticArraysCurrent() const {
 }
 
 void CCubeModel::SetArraysCurrent() const {
+#ifdef TARGET_PC
+  const int stride = (mVisorFlags & 1) ? sizeof(short) * 3 : sizeof(CVector3f);
+  CGX::SetArray(GX_VA_POS, mInstance.GetVertexPointer(), mInstance.GetVertexSize(),
+                sizeof(CVector3f));
+  CGX::SetArray(GX_VA_NRM, mInstance.GetNormalPointer(), mInstance.GetNormalSize(), stride);
+#else
   CGX::SetArray(GX_VA_POS, mInstance.GetVertexPointer(), sizeof(CVector3f));
   const int stride = (mVisorFlags & 1) ? sizeof(short) * 3 : sizeof(CVector3f);
   CGX::SetArray(GX_VA_NRM, mInstance.GetNormalPointer(), stride);
+#endif
   SetStaticArraysCurrent();
 }
 
 void CCubeModel::SetUsingPackedLightmaps(const bool use) const {
   sUsingPackedLightmaps = use;
   if (sUsingPackedLightmaps) {
+#ifdef TARGET_PC
+    CGX::SetArray(GX_VA_TEX0, mInstance.GetPackedTCPointer(), mInstance.GetPackedTCSize(),
+                  sizeof(ushort) * 2);
+  } else {
+    CGX::SetArray(GX_VA_TEX0, mInstance.GetTCPointer(), mInstance.GetTCSize(), sizeof(CVector2f));
+  }
+#else
     CGX::SetArray(GX_VA_TEX0, mInstance.GetPackedTCPointer(), sizeof(ushort) * 2);
   } else {
     CGX::SetArray(GX_VA_TEX0, mInstance.GetTCPointer(), sizeof(CVector2f));
   }
+#endif
 }
 
 void CCubeModel::DrawSurface(const CCubeSurface& surface, const CModelFlags& modelFlags) const {

@@ -121,7 +121,12 @@ int CDSPStreamManager::AllocateVoice(int volume, uchar pan, SND_ADPCMSTREAM_INFO
     it->mStreamId = sndStreamAllocEx(0xFF, it->mBuffer.get(), it->mNumSamples, mHeader.mSampleRate,
                                      volume, it->mPan, 0, 0, 0, 0, 0x30001,
                                      primary ? UpdateStream : UpdateSecondaryStream,
-                                     reinterpret_cast< u32 >(this), nullptr);
+#ifdef TARGET_PC
+                                     reinterpret_cast< uintptr_t >(this),
+#else
+                                     reinterpret_cast< u32 >(this),
+#endif
+                                     nullptr);
     sndStreamADPCMParameter(it->mStreamId, info);
     return idx;
   }
@@ -348,7 +353,13 @@ void CDSPStreamManager::BufferStream() {
 }
 
 u32 CDSPStreamManager::UpdateStream(void* buf1, u32 len1, void* buf2, u32 len2, u32 user) {
-  CDSPStreamManager* stream = reinterpret_cast< CDSPStreamManager* >(user);
+  CDSPStreamManager* stream = reinterpret_cast< CDSPStreamManager* >(
+#ifdef TARGET_PC
+      uintptr_t
+#else
+      u32
+#endif
+      (user));
   len1 += len2;
   u32 half = sVoices[stream->mVoices[0]].mNumSamples / 2;
   if (len1 < half) {

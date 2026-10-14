@@ -8,6 +8,7 @@
 #include "rstl/vector.hpp"
 
 class CTransform4f;
+class CCollisionCache;
 class CCollisionPrimitiveData;
 class CCollisionCacheIterator;
 class CCachedCollisionSurface;

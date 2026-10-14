@@ -1,23 +1,9 @@
 # Units that cannot build on the host. Format: path | reason. Read by tools/gen_files_cmake.py.
 # Drop the 'PENDING' ones once the TARGET_PC lane lands its edits, then rerun the generator.
 
-src/Kyoto/Animation/DolphinCSkinRules.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
-src/Kyoto/Audio/CDSPStreamManager.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
-src/Kyoto/Audio/DolphinCAudioGroupSet.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
 src/Kyoto/CARAMManager.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
 src/Kyoto/CFactoryFunctionsPort.cpp | port stub written against the old decomp; upstream header/layout differs (Kyoto/CFactoryFunctions.hpp: No such file or directory)
 src/Kyoto/DolphinCMemoryCardSys.cpp | upstream-incomplete: includes Kyoto/CCRC32.hpp, which upstream does not have
-src/Kyoto/Graphics/CCubeMaterial.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
-src/Kyoto/Graphics/CCubeModel.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
-src/Kyoto/Graphics/CTevCombiners.cpp | upstream source/header does not build on host: redefinition of ‘CTevCombiners::ColorVar kCS_Zero’
-src/Kyoto/Graphics/DolphinCGraphics.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
-src/Kyoto/Graphics/DolphinCModel.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
-src/Kyoto/Graphics/DolphinCTexture.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
-src/Kyoto/Text/CStringTable.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
-src/MetaRender/CCubeRenderer.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
-src/MetaRender/PortCCubeRenderer.cpp | port stub written against the old decomp; upstream header/layout differs (no declaration matches ‘void CCubeRenderer::DrawUnsortedGeometry(int, int, int)’)
-src/MetroidPrime/CMapArea.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
-src/MetroidPrime/CSurfaceAlignmentHelper.cpp | upstream source/header does not build on host: expected ‘)’ before ‘&’ token
 src/MetroidPrime/CWorldSaveGameInfo.cpp | upstream-incomplete: includes Kyoto/CCRC32.hpp, which upstream does not have
 src/MetroidPrime/Player/PortSPersistentOptionsValue.cpp | port stub written against the old decomp; upstream header/layout differs (MetroidPrime/Player/SPersistentOptionsValue.hpp: No such file or directory)
 src/MetroidPrime/PortBoot.cpp | port stub written against the old decomp; upstream header/layout differs (‘GetMaxSpeed’ was not declared in this scope; did you mean ‘SetMaxSpeed’?)
@@ -28,9 +14,6 @@ src/MetroidPrime/PortCTweakPlayerControls.cpp | port stub written against the ol
 src/MetroidPrime/PortGlobals.cpp | port stub written against the old decomp; upstream header/layout differs (MetroidPrime/ScriptObjects/CUnknown90.hpp: No such file or directory)
 src/MetroidPrime/PortStreamNewGameState.cpp | port stub written against the old decomp; upstream header/layout differs (‘rstl::reserved_vector<rstl::vector<unsigned char>, 3> CGameState::mCompressedGameStates’ is private within th)
 src/MetroidPrime/PortTenthSyncStubs.cpp | port stubs for old-decomp gaps; upstream now defines CParticleGen::{SetGeneratorRate,SetDrawFlags,GetGeneratorRate,...} and TUniqueId has no default ctor
-src/MetroidPrime/ScriptObjects/CScriptDestructibleBarrier.cpp | upstream source/header does not build on host: no matching function for call to ‘COBBTree::CNode::operator new(sizetype)’
 src/MetroidPrime/Startup.cpp | upstream-incomplete: DefaultFontData.inc not in upstream
 src/Runtime/global_destructor_chain.c | MWCC runtime unit (PPC asm/static-ctor chain); not host-buildable
-src/WorldFormat/CCollisionCache.cpp | upstream source/header does not build on host: expected ‘)’ before ‘&’ token
-src/WorldFormat/COBBTree.cpp | upstream source/header does not build on host: no matching function for call to ‘COBBTree::CNode::operator new(sizetype)’
 src/REL/REL_Setup.cpp | per-module console glue (_prolog/_epilog/_ctors); platform/compiled_modules.cpp stands in on the host

@@ -45,12 +45,25 @@ private:
 };
 } // namespace
 
+#ifdef TARGET_PC
+static uchar* MemoryFromPartData(uchar*& dataCur, int*& secSizeCur, uint* outSize = nullptr) {
+  const uint size = CBasics::SwapBytes(*secSizeCur);
+  if (outSize != nullptr) {
+    *outSize = size;
+  }
+  uchar* ret = size != 0 ? dataCur : nullptr;
+  dataCur += size;
+  secSizeCur++;
+  return ret;
+}
+#else
 static uchar* MemoryFromPartData(uchar*& dataCur, int*& secSizeCur) {
   uchar* ret = *secSizeCur != 0 ? dataCur : nullptr;
   dataCur += *secSizeCur;
   secSizeCur++;
   return ret;
 }
+#endif
 
 CModel::SShader::SShader(uchar* data, CModel* owner)
 : mData(data), mOwner(owner), mPrev(nullptr), mNext(nullptr) {}
@@ -115,12 +128,21 @@ CModel::CModel(const rstl::auto_ptr< uchar >& data, int length, IObjectStore& st
 , mInitialTextureLocksReleased(false)
 , mHasSkinMatrices(false) {
   uchar* dataPtr = data.get();
+#ifdef TARGET_PC
+  mHasSkinMatrices = CBasics::SwapBytes(*reinterpret_cast< const uint* >(dataPtr + 8)) & 1;
+  const int sectionCount = CBasics::SwapBytes(*reinterpret_cast< const int* >(dataPtr + 0x24));
+  const uint flags = CBasics::SwapBytes(*reinterpret_cast< const uint* >(dataPtr + 8));
+  const uint visorFlags = (flags >> 1) & 1;
+  const uint hasShortUvs = (flags >> 2) & 1;
+  const int numMatSets = CBasics::SwapBytes(*reinterpret_cast< const int* >(dataPtr + 0x28));
+#else
   mHasSkinMatrices = *reinterpret_cast< const uint* >(dataPtr + 8) & 1;
   const int sectionCount = *reinterpret_cast< const int* >(dataPtr + 0x24);
   const uint flags = *reinterpret_cast< const uint* >(dataPtr + 8);
   const uint visorFlags = (flags >> 1) & 1;
   const uint hasShortUvs = (flags >> 2) & 1;
   const int numMatSets = *reinterpret_cast< const int* >(dataPtr + 0x28);
+#endif
 
   uchar* dataCur = dataPtr + ((0x2c + sectionCount * 4 + 31) & ~31);
   int* secSizeCur = reinterpret_cast< int* >(dataPtr + 0x2c);
@@ -135,6 +157,40 @@ CModel::CModel(const rstl::auto_ptr< uchar >& data, int length, IObjectStore& st
     mDataLen += shader.mTextures.size() * 12;
   }
 
+#ifdef TARGET_PC
+  uint positionsSize = 0;
+  uint normalsSize = 0;
+  uint colorsSize = 0;
+  uint floatUvsSize = 0;
+  uint shortUvsSize = 0;
+  const void* positions = MemoryFromPartData(dataCur, secSizeCur, &positionsSize);
+  const void* normals = MemoryFromPartData(dataCur, secSizeCur, &normalsSize);
+  const void* vtxColors = MemoryFromPartData(dataCur, secSizeCur, &colorsSize);
+  const void* floatUvs = MemoryFromPartData(dataCur, secSizeCur, &floatUvsSize);
+  const void* shortUvs = nullptr;
+  if (hasShortUvs) {
+    shortUvs = MemoryFromPartData(dataCur, secSizeCur, &shortUvsSize);
+  }
+
+  const uint surfaceCount =
+      CBasics::SwapBytes(*reinterpret_cast< uint* >(MemoryFromPartData(dataCur, secSizeCur)));
+  mSurfaces.reserve(surfaceCount);
+  for (uint i = 0; i < surfaceCount; ++i) {
+    uchar* surface = MemoryFromPartData(dataCur, secSizeCur);
+    CCubeSurface::ConvertSurfaceHeader(surface);
+    mSurfaces.push_back_unsafe(surface);
+  }
+
+  const float* boundsData = reinterpret_cast< const float* >(dataPtr + 0xc);
+  const CAABox aabb(CBasics::SwapBytes(boundsData[0]), CBasics::SwapBytes(boundsData[1]),
+                    CBasics::SwapBytes(boundsData[2]), CBasics::SwapBytes(boundsData[3]),
+                    CBasics::SwapBytes(boundsData[4]), CBasics::SwapBytes(boundsData[5]));
+  mModelInstance = rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures,
+                                     mMatSets.front().mData, positions, normals, vtxColors,
+                                     floatUvs, shortUvs, aabb, visorFlags ? 1 : 0, true, -1,
+                                     positionsSize, normalsSize, colorsSize, floatUvsSize,
+                                     shortUvsSize);
+#else
   const void* positions = MemoryFromPartData(dataCur, secSizeCur);
   const void* normals = MemoryFromPartData(dataCur, secSizeCur);
   const void* vtxColors = MemoryFromPartData(dataCur, secSizeCur);
@@ -154,6 +210,7 @@ CModel::CModel(const rstl::auto_ptr< uchar >& data, int length, IObjectStore& st
       &mSurfaces, &mMatSets.front().mTextures, mMatSets.front().mData, positions, normals,
       vtxColors, floatUvs, shortUvs, *reinterpret_cast< const CAABox* >(dataPtr + 0xc),
       visorFlags ? 1 : 0, true, -1);
+#endif
   mDataLen += mSurfaces.size() * 4;
   AddToTotal(mDataLen);
   DCFlushRange(mData.get(), length);
@@ -197,7 +254,11 @@ void* CModel::SetupSkinMatrices() const {
   CGX::SetArray(GX_NRM_MTX_ARRAY, normal, sizeof(SSkinMatrices));
   for (int i = 1; i < 10; ++i) {
     GXLoadPosMtxIndx(0, i * 3);
+#ifdef TARGET_PC
+    CGX::PortLoadNrmMtxIndx3x3(0, i * 3);
+#else
     GXLoadNrmMtxIndx3x3(0, i * 3);
+#endif
   }
   return matrices;
 }
@@ -327,6 +388,14 @@ uint CModel::GetDataSize() const { return mDataLen; }
 rstl::auto_ptr< uchar > CModel::GetData() { return rstl::auto_ptr< uchar >(mData.get()); }
 
 namespace {
+#ifdef TARGET_PC
+template < typename T >
+inline void RemapPointer(T*& pointer, uintptr_t offset) {
+  if (pointer != nullptr) {
+    pointer = reinterpret_cast< T* >(reinterpret_cast< uintptr_t >(pointer) + offset);
+  }
+}
+#else
 inline void RemapPointer(const void*& pointer, uintptr_t offset) {
   if (pointer != nullptr) {
     pointer = reinterpret_cast< void* >(reinterpret_cast< uintptr_t >(pointer) + offset);
@@ -337,6 +406,7 @@ template < typename T >
 inline void RemapPointer(T*& pointer, uintptr_t offset) {
   RemapPointer(reinterpret_cast< const void*& >(pointer), offset);
 }
+#endif
 } // namespace
 
 void CModel::RemapData(uchar* data) {
@@ -366,9 +436,18 @@ void CModel::RemapData(uchar* data) {
     RemapPointer(mSurfaces[i], offset);
   }
 
+#ifdef TARGET_PC
+  mModelInstance = rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures,
+                                     mMatSets.front().mData, positions, normals, colors, uvs,
+                                     packedUvs, bounds, flags, texturesLoaded, index,
+                                     instance.GetVertexSize(), instance.GetNormalSize(),
+                                     instance.GetColorSize(), instance.GetTCSize(),
+                                     instance.GetPackedTCSize());
+#else
   mModelInstance = rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures,
                                      mMatSets.front().mData, positions, normals, colors, uvs,
                                      packedUvs, bounds, flags, texturesLoaded, index);
+#endif
   UpdateLastFrame();
 }
 

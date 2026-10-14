@@ -210,9 +210,19 @@ CVector3f CMapArea::GetAreaCenterPoint() const { return mBox.GetCenterPoint(); }
 
 void CMapArea::CMapAreaSurface::PostConstruct(const void* buf) {
   mSurfOffset = reinterpret_cast< const int* >(static_cast< const uchar* >(buf) +
-                                               reinterpret_cast< uint >(mSurfOffset));
+#ifdef TARGET_PC
+                                               reinterpret_cast< uintptr_t >(mSurfOffset)
+#else
+                                               reinterpret_cast< uint >(mSurfOffset)
+#endif
+  );
   mOutlineOffset = reinterpret_cast< const int* >(static_cast< const uchar* >(buf) +
-                                                  reinterpret_cast< uint >(mOutlineOffset));
+#ifdef TARGET_PC
+                                                  reinterpret_cast< uintptr_t >(mOutlineOffset)
+#else
+                                                  reinterpret_cast< uint >(mOutlineOffset)
+#endif
+  );
 
   int numSurfaces = CBasics::SwapBytes(*mSurfOffset);
   const int* surfOffset = mSurfOffset + 1;

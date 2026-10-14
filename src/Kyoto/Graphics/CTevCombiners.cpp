@@ -12,11 +12,18 @@ const int kMaxPasses = 2;
 int CTevCombiners::sNextUniquePass = 0;
 const CTevCombiners::AlphaVar CTevCombiners::skAlphaOne(kAS_Konst);
 const CTevCombiners::ColorVar CTevCombiners::skColorOne(kCS_One);
+#ifdef TARGET_PC
+// Port: GCC parses the functional-cast form below as function declarations.
+const CTevCombiners::CTevPass CTevCombiners::kEnvPassthru(
+    ColorPass(ColorVar{kCS_Zero}, ColorVar{kCS_Zero}, ColorVar{kCS_Zero}, ColorVar{kCS_RasterColor}),
+    AlphaPass(AlphaVar{kAS_Zero}, AlphaVar{kAS_Zero}, AlphaVar{kAS_Zero}, AlphaVar{kAS_RasterAlpha}));
+#else
 const CTevCombiners::CTevPass
     CTevCombiners::kEnvPassthru(ColorPass(ColorVar(kCS_Zero), ColorVar(kCS_Zero),
                                           ColorVar(kCS_Zero), ColorVar(kCS_RasterColor)),
                                 AlphaPass(AlphaVar(kAS_Zero), AlphaVar(kAS_Zero),
                                           AlphaVar(kAS_Zero), AlphaVar(kAS_RasterAlpha)));
+#endif
 
 bool CTevCombiners::sValidPasses[kMaxPasses] = {false, false};
 uint CTevCombiners::sNumEnabledPasses = -1;

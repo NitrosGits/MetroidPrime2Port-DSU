@@ -57,6 +57,10 @@ public:
     uint GetMemoryUsage() const;
 
     static void SetAllocator(CSimpleAllocator* allocator);
+#ifdef TARGET_PC
+    // Port: rs_new is plain new on a host.
+    void* operator new(size_t size);
+#endif
     void* operator new(size_t size, const char* file, int line);
     void operator delete(void* ptr, size_t size);
 

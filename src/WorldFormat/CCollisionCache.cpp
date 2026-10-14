@@ -67,19 +67,19 @@ void CCollisionCacheWriter::BeginLeaf(const CAABox& bounds) {
 void CCollisionCacheWriter::ReserveWords(int count) {
   count += mCache.mData.size();
   if (mCache.mData.capacity() < count) {
-    uint oldAddress = reinterpret_cast< uint >(mCache.mData.data());
+    uintptr_t oldAddress = reinterpret_cast< uintptr_t >(mCache.mData.data());
     int capacity = mCache.mData.capacity() * 2;
     mCache.mData.reserve(capacity > count ? capacity : count * 2);
     // Translate packed cursors as addresses, including the initial null cursors.
     // Integer subtraction avoids subtracting pointers to different allocations.
     int delta =
-        int(reinterpret_cast< uint >(mCache.mData.data()) - oldAddress) / int(sizeof(ushort));
+        int(reinterpret_cast< uintptr_t >(mCache.mData.data()) - oldAddress) / int(sizeof(ushort));
     mLeafCount =
-        reinterpret_cast< ushort* >(reinterpret_cast< uint >(mLeafCount) + delta * sizeof(ushort));
-    mTriangleCount = reinterpret_cast< ushort* >(reinterpret_cast< uint >(mTriangleCount) +
+        reinterpret_cast< ushort* >(reinterpret_cast< uintptr_t >(mLeafCount) + delta * sizeof(ushort));
+    mTriangleCount = reinterpret_cast< ushort* >(reinterpret_cast< uintptr_t >(mTriangleCount) +
                                                  delta * sizeof(ushort));
     mLeafBounds =
-        reinterpret_cast< CAABox* >(reinterpret_cast< uint >(mLeafBounds) + delta * sizeof(ushort));
+        reinterpret_cast< CAABox* >(reinterpret_cast< uintptr_t >(mLeafBounds) + delta * sizeof(ushort));
   }
 }
 

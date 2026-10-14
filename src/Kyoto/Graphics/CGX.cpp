@@ -275,6 +275,77 @@ void CGX::SetNumIndStages(uchar num) {
   }
 }
 
+#ifdef TARGET_PC
+void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
+  if (attr == GX_POS_MTX_ARRAY || attr == GX_NRM_MTX_ARRAY) {
+    // Skinning matrix pools are built at runtime (host-native floats) and callers do not
+    // pass their size; Aurora only bounds-checks indexed loads against it.
+    if (data == nullptr) {
+      return;
+    }
+    if (attr == GX_NRM_MTX_ARRAY) {
+      gpGXState->mNrmMtxArray = data;
+      gpGXState->mNrmMtxStride = stride;
+    }
+    GXSetArray(attr, data, 0x7fffffff, stride, true);
+    return;
+  }
+  SetArray(attr, data, 0, stride);
+}
+
+void CGX::PortLoadNrmMtxIndx3x3(uint index, uint id) {
+  const float* src = reinterpret_cast< const float* >(
+      static_cast< const uchar* >(gpGXState->mNrmMtxArray) + index * gpGXState->mNrmMtxStride);
+  float mtx[3][4];
+  for (int r = 0; r < 3; ++r) {
+    mtx[r][0] = src[r * 3 + 0];
+    mtx[r][1] = src[r * 3 + 1];
+    mtx[r][2] = src[r * 3 + 2];
+    mtx[r][3] = 0.f;
+  }
+  GXLoadNrmMtxImm(mtx, id);
+}
+
+void CGX::SetArray(GXAttr attr, const void* data, uint size, uchar stride) {
+  if (data == nullptr) {
+    return;
+  }
+  if (attr >= GX_VA_POS && attr < GX_POS_MTX_ARRAY) {
+    uint idx = attr - GX_VA_POS;
+    if (gpGXState->mArrayPtrs[idx] == data && gpGXState->mArraySizes[idx] == size) {
+      return;
+    }
+    gpGXState->mArrayPtrs[idx] = data;
+    gpGXState->mArraySizes[idx] = size;
+  }
+  // Aurora uploads exactly `size` bytes; guest vertex data is big-endian.
+  GXSetArray(attr, data, size, stride, false);
+}
+
+void CGX::SetArrayNative(GXAttr attr, const void* data, uint size, uchar stride) {
+  if (data == nullptr) {
+    return;
+  }
+  if (attr >= GX_VA_POS && attr < GX_POS_MTX_ARRAY) {
+    uint idx = attr - GX_VA_POS;
+    if (gpGXState->mArrayPtrs[idx] == data && gpGXState->mArraySizes[idx] == size) {
+      return;
+    }
+    gpGXState->mArrayPtrs[idx] = data;
+    gpGXState->mArraySizes[idx] = size;
+  }
+  GXSetArray(attr, data, size, stride, true);
+}
+
+void CGX::ClearArray(GXAttr attr) {
+  if (attr >= GX_VA_POS && attr < GX_POS_MTX_ARRAY) {
+    uint idx = attr - GX_VA_POS;
+    gpGXState->mArrayPtrs[idx] = nullptr;
+    gpGXState->mArraySizes[idx] = 0;
+  }
+  GXSetArray(attr, nullptr, 0, 0, true);
+}
+#else
 void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
   if (data == nullptr) {
     return;
@@ -286,19 +357,10 @@ void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
     }
     gpGXState->mArrayPtrs[idx] = data;
   }
-#ifdef TARGET_PC
-  // Port: Aurora's PC API needs the array's byte size and endianness, which the
-  // console signature does not carry. Echoes' vertex code has not been
-  // decompiled yet, so no caller can supply a real size here: this forwarder
-  // mirrors Metroid Prime's `CGX::SetArray(attr, data, stride)`, which passes 0.
-  // When the model code lands it must grow the size-taking overload
-  // (MetroidPrimePort `include/Kyoto/Graphics/CGX_Impl.hpp`), because Aurora
-  // uploads exactly `size` bytes and renders nothing for an array of size 0.
-  GXSetArray(attr, data, 0, stride, false);
-#else
   GXSetArray(attr, data, stride);
-#endif
 }
+
+#endif
 
 void CGX::CallDisplayList(const void* ptr, size_t size) {
   if (gpGXState->mChanFlags != 0) {
@@ -622,3 +684,53 @@ void CGX::update_fog(uint flags) {
 #endif
   }
 }
+
+#ifdef TARGET_PC
+// Port: retail inlines these into CCubeMaterial; the host build needs out-of-line bodies.
+// Bodies follow Prime 1's CGX_Impl.hpp (same packed-flag layouts as the setters above).
+void CGX::SetChanCtrl_Compressed(EChannelId channel, GXLightID lights, uint ctrl) {
+  ushort& state = gpGXState->mChanCtrls[channel];
+  ushort prevFlags = gpGXState->mPrevChanCtrls[channel];
+  uint flags = ctrl & ~1;
+  if (lights != 0) {
+    flags = ctrl | MaskAndShiftLeft(lights, 0xFF, 3);
+  }
+  state = flags;
+  gpGXState->mChanFlags =
+      ((flags != prevFlags) << (channel + 1)) | (gpGXState->mChanFlags & ~(1 << (channel + 1)));
+}
+
+void CGX::SetTevColorIn_Compressed(GXTevStageID stageId, uint flags) {
+  STevState& state = gpGXState->mTevStates[stageId];
+  if (flags != state.mColorInArgs) {
+    state.mColorInArgs = flags;
+    GXSetTevColorIn(stageId, static_cast< GXTevColorArg >(ShiftRightAndMask(flags, 0x1F, 0)),
+                    static_cast< GXTevColorArg >(ShiftRightAndMask(flags, 0x1F, 5)),
+                    static_cast< GXTevColorArg >(ShiftRightAndMask(flags, 0x1F, 10)),
+                    static_cast< GXTevColorArg >(ShiftRightAndMask(flags, 0x1F, 15)));
+  }
+}
+
+void CGX::SetTevAlphaIn_Compressed(GXTevStageID stageId, uint flags) {
+  STevState& state = gpGXState->mTevStates[stageId];
+  if (flags != state.mAlphaInArgs) {
+    state.mAlphaInArgs = flags;
+    GXSetTevAlphaIn(stageId, static_cast< GXTevAlphaArg >(ShiftRightAndMask(flags, 0x1F, 0)),
+                    static_cast< GXTevAlphaArg >(ShiftRightAndMask(flags, 0x1F, 5)),
+                    static_cast< GXTevAlphaArg >(ShiftRightAndMask(flags, 0x1F, 10)),
+                    static_cast< GXTevAlphaArg >(ShiftRightAndMask(flags, 0x1F, 15)));
+  }
+}
+
+void CGX::SetTexCoordGen_Compressed(GXTexCoordID dstCoord, uint flags) {
+  STexState& state = gpGXState->mTexStates[dstCoord];
+  if (state.mCoordGen != flags) {
+    GXTexMtx vm = static_cast< GXTexMtx >((flags >> 9 & 0x1F) + GX_TEXMTX0);
+    GXPTTexMtx vp = static_cast< GXPTTexMtx >((flags >> 15 & 0x3F) + GX_PTTEXMTX0);
+    state.mCoordGen = flags;
+    GXSetTexCoordGen2(dstCoord, static_cast< GXTexGenType >(flags & 0xF),
+                      static_cast< GXTexGenSrc >(flags >> 4 & 0x1F), vm,
+                      static_cast< GXBool >(flags >> 14 & 1), vp);
+  }
+}
+#endif

@@ -107,6 +107,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/CTransition.cpp
     src/Kyoto/Animation/CTransitionManager.cpp
     src/Kyoto/Animation/CTreeUtils.cpp
+    src/Kyoto/Animation/DolphinCSkinRules.cpp
     src/Kyoto/Animation/DolphinCSkinnedModel.cpp
     src/Kyoto/Animation/DolphinCVirtualBone.cpp
     src/Kyoto/Animation/IAnimReader.cpp
@@ -118,6 +119,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Audio/CAuxEffectManager.cpp
     src/Kyoto/Audio/CBitcrusher.cpp
     src/Kyoto/Audio/CCustomAudioAux.cpp
+    src/Kyoto/Audio/CDSPStreamManager.cpp
     src/Kyoto/Audio/CFilteredDelayAux.cpp
     src/Kyoto/Audio/CFlanger.cpp
     src/Kyoto/Audio/CMidiManager.cpp
@@ -127,6 +129,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Audio/CSfxPitchBend.cpp
     src/Kyoto/Audio/CStaticAudioPlayer.cpp
     src/Kyoto/Audio/CStreamAudioManager.cpp
+    src/Kyoto/Audio/DolphinCAudioGroupSet.cpp
     src/Kyoto/Audio/DolphinCAudioSys.cpp
     src/Kyoto/Audio/g721.cpp
     src/Kyoto/Basics/CBasics.cpp
@@ -154,15 +157,21 @@ set(MP_GAME_SOURCES
     src/Kyoto/CToken.cpp
     src/Kyoto/DolphinCDvdFile.cpp
     src/Kyoto/Graphics/CColor.cpp
+    src/Kyoto/Graphics/CCubeMaterial.cpp
+    src/Kyoto/Graphics/CCubeModel.cpp
     src/Kyoto/Graphics/CCubeMoviePlayer.cpp
     src/Kyoto/Graphics/CCubeSurface.cpp
     src/Kyoto/Graphics/CDisplayListReader.cpp
     src/Kyoto/Graphics/CGX.cpp
     src/Kyoto/Graphics/CGXTransientBuffer.cpp
     src/Kyoto/Graphics/CLight.cpp
+    src/Kyoto/Graphics/CTevCombiners.cpp
     src/Kyoto/Graphics/CThreeSegmentModel.cpp
     src/Kyoto/Graphics/DolphinCColor.cpp
+    src/Kyoto/Graphics/DolphinCGraphics.cpp
+    src/Kyoto/Graphics/DolphinCModel.cpp
     src/Kyoto/Graphics/DolphinCPalette.cpp
+    src/Kyoto/Graphics/DolphinCTexture.cpp
     src/Kyoto/Graphics/PortalPlane.cpp
     src/Kyoto/Input/CDolphinController.cpp
     src/Kyoto/Input/CFinalInput.cpp
@@ -254,6 +263,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Text/CRasterFont.cpp
     src/Kyoto/Text/CRemoveColorOverrideInstruction.cpp
     src/Kyoto/Text/CSaveableState.cpp
+    src/Kyoto/Text/CStringTable.cpp
     src/Kyoto/Text/CTextExecuteBuffer.cpp
     src/Kyoto/Text/CTextInstruction.cpp
     src/Kyoto/Text/CTextParser.cpp
@@ -264,6 +274,7 @@ set(MP_GAME_SOURCES
     src/LZO/lzo_init.c
     src/LZO/lzo_ptr.c
     src/MetaRender/AmbientLightScale.cpp
+    src/MetaRender/CCubeRenderer.cpp
     src/MetroidPrime/BodyState/CABSAim.cpp
     src/MetroidPrime/BodyState/CABSFlinch.cpp
     src/MetroidPrime/BodyState/CABSIdle.cpp
@@ -360,6 +371,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CMFGame.cpp
     src/MetroidPrime/CMFGameLoader.cpp
     src/MetroidPrime/CMainFlow.cpp
+    src/MetroidPrime/CMapArea.cpp
     src/MetroidPrime/CMapUniverse.cpp
     src/MetroidPrime/CMapWorld.cpp
     src/MetroidPrime/CMapWorldInfo.cpp
@@ -409,6 +421,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CStateManagerScriptMsgArray.cpp
     src/MetroidPrime/CStaticGeometryMap.cpp
     src/MetroidPrime/CSteeringBehaviors.cpp
+    src/MetroidPrime/CSurfaceAlignmentHelper.cpp
     src/MetroidPrime/CTargetReticles.cpp
     src/MetroidPrime/CTransitionDatabaseGame.cpp
     src/MetroidPrime/CTurretHud.cpp
@@ -739,11 +752,13 @@ set(MP_GAME_SOURCES
     src/WorldFormat/CAreaRenderOctTree.cpp
     src/WorldFormat/CCollidableOBBTree.cpp
     src/WorldFormat/CCollidableOBBTreeGroup.cpp
+    src/WorldFormat/CCollisionCache.cpp
     src/WorldFormat/CCollisionEdge.cpp
     src/WorldFormat/CCollisionPrimitiveData.cpp
     src/WorldFormat/CCollisionSurface.cpp
     src/WorldFormat/CMetroidAreaCollider.cpp
     src/WorldFormat/CMetroidModelInstance.cpp
+    src/WorldFormat/COBBTree.cpp
     src/WorldFormat/CPVSAreaSet.cpp
     src/WorldFormat/CWorldLight.cpp
     src/rstl/RstlExtras.cpp
@@ -757,6 +772,9 @@ set(MP_MODULE_ChozoGhost_SOURCES
 )
 set(MP_MODULE_AtomicAlpha_SOURCES
     src/MetroidPrime/Enemies/CAtomicAlpha.cpp
+)
+set(MP_MODULE_DestructibleBarrier_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptDestructibleBarrier.cpp
 )
 set(MP_MODULE_EyeBall_SOURCES
     src/MetroidPrime/Enemies/CEyeBall.cpp
@@ -820,18 +838,17 @@ set(MP_MODULE_ScriptCannonBall_SOURCES
 set(MP_MODULE_Tweaks_SOURCES
     src/MetroidPrime/Tweaks/Tweaks.cpp
 )
-set(MP_MODULES ChozoGhost AtomicAlpha EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks)
+set(MP_MODULES ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks)
 
 # Port-only sources
 list(APPEND MP_GAME_SOURCES
     src/Kyoto/Alloc/PortMwccNew.cpp
     src/Kyoto/CARAMManagerPort.cpp
-    src/Kyoto/Graphics/CModelPortStub.cpp
-    src/Kyoto/Graphics/CTexturePortStub.cpp
     src/Kyoto/PortCMemoryCardSys.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
     src/MetroidPrime/PortDataGlobals.cpp
+    src/MetroidPrime/PortDefaultFont.cpp
     src/MetroidPrime/PortFrameTimeHistory.c
     src/MetroidPrime/PortLinkStubs.cpp
     src/MetroidPrime/PortMakeMsg.cpp

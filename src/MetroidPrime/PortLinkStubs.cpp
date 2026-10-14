@@ -94,10 +94,6 @@ extern "C" void reachstub_15() { mpReachStub("_Z10TCastToPtrI9CParasiteEPT_P7CEn
 extern "C" void reachstub_16() asm("_Z10TCastToPtrI9CSandwormEPT_P7CEntity");
 extern "C" void reachstub_16() { mpReachStub("_Z10TCastToPtrI9CSandwormEPT_P7CEntity", "CSandworm* TCastToPtr<CSandworm>(CEntity*)"); }
 
-// FModelFactory(SObjectTag const&, rstl::auto_ptr<unsigned char> const&, int, CVParamTransfer const&)
-extern "C" void reachstub_17() asm("_Z13FModelFactoryRK10SObjectTagRKN4rstl8auto_ptrIhEEiRK15CVParamTransfer");
-extern "C" void reachstub_17() { mpReachStub("_Z13FModelFactoryRK10SObjectTagRKN4rstl8auto_ptrIhEEiRK15CVParamTransfer", "FModelFactory(SObjectTag const&, rstl::auto_ptr<unsigned char> const&, int, CVParamTransfer const&)"); }
-
 // DebugDrawAABox(CAABox const&, float, float, float, float)
 extern "C" void reachstub_18() asm("_Z14DebugDrawAABoxRK6CAABoxffff");
 extern "C" void reachstub_18() { mpReachStub("_Z14DebugDrawAABoxRK6CAABoxffff", "DebugDrawAABox(CAABox const&, float, float, float, float)"); }
@@ -106,81 +102,21 @@ extern "C" void reachstub_18() { mpReachStub("_Z14DebugDrawAABoxRK6CAABoxffff", 
 extern "C" void reachstub_19() asm("_Z14LoadWallWalkerR13CStateManagerR12CInputStreamR11CEntityInfo");
 extern "C" void reachstub_19() { mpReachStub("_Z14LoadWallWalkerR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadWallWalker(CStateManager&, CInputStream&, CEntityInfo&)"); }
 
-// FMapAreaFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)
-extern "C" void reachstub_20() asm("_Z15FMapAreaFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer");
-extern "C" void reachstub_20() { mpReachStub("_Z15FMapAreaFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer", "FMapAreaFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)"); }
-
-// FTextureFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)
-extern "C" void reachstub_21() asm("_Z15FTextureFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer");
-extern "C" void reachstub_21() { mpReachStub("_Z15FTextureFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer", "FTextureFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)"); }
-
-// AllocateRenderer(IObjectStore&, COsContext&, CMemorySys&, IFactory&)
-extern "C" void reachstub_22() asm("_Z16AllocateRendererR12IObjectStoreR10COsContextR10CMemorySysR8IFactory");
-extern "C" void reachstub_22() { mpReachStub("_Z16AllocateRendererR12IObjectStoreR10COsContextR10CMemorySysR8IFactory", "AllocateRenderer(IObjectStore&, COsContext&, CMemorySys&, IFactory&)"); }
-
 // FSaveWorldFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)
 extern "C" void reachstub_23() asm("_Z17FSaveWorldFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer");
 extern "C" void reachstub_23() { mpReachStub("_Z17FSaveWorldFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer", "FSaveWorldFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)"); }
-
-// FSkinRulesFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)
-extern "C" void reachstub_24() asm("_Z17FSkinRulesFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer");
-extern "C" void reachstub_24() { mpReachStub("_Z17FSkinRulesFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer", "FSkinRulesFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)"); }
 
 // LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)
 extern "C" void reachstub_25() asm("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo");
 extern "C" void reachstub_25() { mpReachStub("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)"); }
 
-// FStringTableFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)
-extern "C" void reachstub_26() asm("_Z19FStringTableFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer");
-extern "C" void reachstub_26() { mpReachStub("_Z19FStringTableFactoryRK10SObjectTagR12CInputStreamRK15CVParamTransfer", "FStringTableFactory(SObjectTag const&, CInputStream&, CVParamTransfer const&)"); }
-
-// SetRendererWorkspace(void*)
-extern "C" void reachstub_27() asm("_Z20SetRendererWorkspacePv");
-extern "C" void reachstub_27() { mpReachStub("_Z20SetRendererWorkspacePv", "SetRendererWorkspace(void*)"); }
-
 // PortShutdownSubsystems()
 extern "C" void reachstub_28() asm("_Z22PortShutdownSubsystemsv");
 extern "C" void reachstub_28() { mpReachStub("_Z22PortShutdownSubsystemsv", "PortShutdownSubsystems()"); }
 
-// GetRendererWorkspaceSize()
-extern "C" void reachstub_29() asm("_Z24GetRendererWorkspaceSizev");
-extern "C" void reachstub_29() { mpReachStub("_Z24GetRendererWorkspaceSizev", "GetRendererWorkspaceSize()"); }
-
-// ReleaseRendererWorkspace()
-extern "C" void reachstub_30() asm("_Z24ReleaseRendererWorkspacev");
-extern "C" void reachstub_30() { mpReachStub("_Z24ReleaseRendererWorkspacev", "ReleaseRendererWorkspace()"); }
-
-// FAudioGroupSetLocDataFactory(SObjectTag const&, rstl::auto_ptr<unsigned char> const&, int, CVParamTransfer const&)
-extern "C" void reachstub_31() asm("_Z28FAudioGroupSetLocDataFactoryRK10SObjectTagRKN4rstl8auto_ptrIhEEiRK15CVParamTransfer");
-extern "C" void reachstub_31() { mpReachStub("_Z28FAudioGroupSetLocDataFactoryRK10SObjectTagRKN4rstl8auto_ptrIhEEiRK15CVParamTransfer", "FAudioGroupSetLocDataFactory(SObjectTag const&, rstl::auto_ptr<unsigned char> const&, int, CVParamTransfer const&)"); }
-
 // IsUser(int)
 extern "C" void reachstub_32() asm("_Z6IsUseri");
 extern "C" void reachstub_32() { mpReachStub("_Z6IsUseri", "IsUser(int)"); }
-
-// CCubeModel::EnableShadowMaps(CTexture const*, CTransform4f const&, unsigned char, unsigned char)
-extern "C" void reachstub_33() asm("_ZN10CCubeModel16EnableShadowMapsEPK8CTextureRK12CTransform4fhh");
-extern "C" void reachstub_33() { mpReachStub("_ZN10CCubeModel16EnableShadowMapsEPK8CTextureRK12CTransform4fhh", "CCubeModel::EnableShadowMaps(CTexture const*, CTransform4f const&, unsigned char, unsigned char)"); }
-
-// CCubeModel::DisableShadowMaps()
-extern "C" void reachstub_34() asm("_ZN10CCubeModel17DisableShadowMapsEv");
-extern "C" void reachstub_34() { mpReachStub("_ZN10CCubeModel17DisableShadowMapsEv", "CCubeModel::DisableShadowMaps()"); }
-
-// CCubeModel::SetDrawingOccluders(bool)
-extern "C" void reachstub_35() asm("_ZN10CCubeModel19SetDrawingOccludersEb");
-extern "C" void reachstub_35() { mpReachStub("_ZN10CCubeModel19SetDrawingOccludersEb", "CCubeModel::SetDrawingOccluders(bool)"); }
-
-// CCubeModel::SetRenderModelBlack(bool)
-extern "C" void reachstub_36() asm("_ZN10CCubeModel19SetRenderModelBlackEb");
-extern "C" void reachstub_36() { mpReachStub("_ZN10CCubeModel19SetRenderModelBlackEb", "CCubeModel::SetRenderModelBlack(bool)"); }
-
-// CCubeModel::MakeTexturesFromMats(void const*, rstl::vector<TCachedToken<CTexture>, rstl::rmemory_allocator>&, IObjectStore&, bool)
-extern "C" void reachstub_37() asm("_ZN10CCubeModel20MakeTexturesFromMatsEPKvRN4rstl6vectorI12TCachedTokenI8CTextureENS2_17rmemory_allocatorEEER12IObjectStoreb");
-extern "C" void reachstub_37() { mpReachStub("_ZN10CCubeModel20MakeTexturesFromMatsEPKvRN4rstl6vectorI12TCachedTokenI8CTextureENS2_17rmemory_allocatorEEER12IObjectStoreb", "CCubeModel::MakeTexturesFromMats(void const*, rstl::vector<TCachedToken<CTexture>, rstl::rmemory_allocator>&, IObjectStore&, bool)"); }
-
-// CCubeModel::SetNewPlayerPositionAndTime(CVector3f const&, CStopwatch const&)
-extern "C" void reachstub_38() asm("_ZN10CCubeModel27SetNewPlayerPositionAndTimeERK9CVector3fRK10CStopwatch");
-extern "C" void reachstub_38() { mpReachStub("_ZN10CCubeModel27SetNewPlayerPositionAndTimeERK9CVector3fRK10CStopwatch", "CCubeModel::SetNewPlayerPositionAndTime(CVector3f const&, CStopwatch const&)"); }
 
 // CCubeModel::CCubeModel(rstl::vector<void*, rstl::rmemory_allocator>*, rstl::vector<TCachedToken<CTexture>, rstl::rmemory_allocator>*, void const*, void const*, void const*, void const*, void const*, void const*, CAABox const&, unsigned char, bool, unsigned int)
 extern "C" void reachstub_39() asm("_ZN10CCubeModelC1EPN4rstl6vectorIPvNS0_17rmemory_allocatorEEEPNS1_I12TCachedTokenI8CTextureES3_EEPKvSC_SC_SC_SC_SC_RK6CAABoxhbj");
@@ -197,22 +133,6 @@ __attribute__((aligned(32))) char reachdata_41[0x400] = {};
 // CSaveRegion::mNonVolatileSettingsBuf
 extern "C" __attribute__((aligned(32))) char reachdata_42[0x400] asm("_ZN11CSaveRegion23mNonVolatileSettingsBufE");
 __attribute__((aligned(32))) char reachdata_42[0x400] = {};
-
-// CGraphicsSys::CGraphicsSys(COsContext const&, CMemorySys const&, bool)
-extern "C" void reachstub_56() asm("_ZN12CGraphicsSysC1ERK10COsContextRK10CMemorySysb");
-extern "C" void reachstub_56() { mpReachStub("_ZN12CGraphicsSysC1ERK10COsContextRK10CMemorySysb", "CGraphicsSys::CGraphicsSys(COsContext const&, CMemorySys const&, bool)"); }
-
-// CGraphicsSys::~CGraphicsSys()
-extern "C" void reachstub_57() asm("_ZN12CGraphicsSysD1Ev");
-extern "C" void reachstub_57() { mpReachStub("_ZN12CGraphicsSysD1Ev", "CGraphicsSys::~CGraphicsSys()"); }
-
-// CStringTable::SetLanguage(int)
-extern "C" void reachstub_58() asm("_ZN12CStringTable11SetLanguageEi");
-extern "C" void reachstub_58() { mpReachStub("_ZN12CStringTable11SetLanguageEi", "CStringTable::SetLanguage(int)"); }
-
-// CStringTable::~CStringTable()
-extern "C" void reachstub_59() asm("_ZN12CStringTableD1Ev");
-extern "C" void reachstub_59() { mpReachStub("_ZN12CStringTableD1Ev", "CStringTable::~CStringTable()"); }
 
 // CWallCrawler::AlignToFloor(CStateManager&, float, CVector3f const&, float)
 extern "C" void reachstub_60() asm("_ZN12CWallCrawler12AlignToFloorER13CStateManagerfRK9CVector3ff");
@@ -246,58 +166,6 @@ extern "C" void reachstub_66() { mpReachStub("_ZN12CWallCrawlerC2E12EPatternedAI
 extern "C" void reachstub_67() asm("_ZN12CWallCrawlerD2Ev");
 extern "C" void reachstub_67() { mpReachStub("_ZN12CWallCrawlerD2Ev", "CWallCrawler::~CWallCrawler()"); }
 
-// CCubeMaterial::GetExtraTexCoord()
-extern "C" void reachstub_68() asm("_ZN13CCubeMaterial16GetExtraTexCoordEv");
-extern "C" void reachstub_68() { mpReachStub("_ZN13CCubeMaterial16GetExtraTexCoordEv", "CCubeMaterial::GetExtraTexCoord()"); }
-
-// CCubeMaterial::GetExtraPostTexMtx()
-extern "C" void reachstub_69() asm("_ZN13CCubeMaterial18GetExtraPostTexMtxEv");
-extern "C" void reachstub_69() { mpReachStub("_ZN13CCubeMaterial18GetExtraPostTexMtxEv", "CCubeMaterial::GetExtraPostTexMtx()"); }
-
-// CCubeMaterial::ResetExtraTexCoord()
-extern "C" void reachstub_70() asm("_ZN13CCubeMaterial18ResetExtraTexCoordEv");
-extern "C" void reachstub_70() { mpReachStub("_ZN13CCubeMaterial18ResetExtraTexCoordEv", "CCubeMaterial::ResetExtraTexCoord()"); }
-
-// CCubeMaterial::ResetCachedMaterials()
-extern "C" void reachstub_71() asm("_ZN13CCubeMaterial20ResetCachedMaterialsEv");
-extern "C" void reachstub_71() { mpReachStub("_ZN13CCubeMaterial20ResetCachedMaterialsEv", "CCubeMaterial::ResetCachedMaterials()"); }
-
-// CCubeMaterial::GetTransparencyKColor()
-extern "C" void reachstub_72() asm("_ZN13CCubeMaterial21GetTransparencyKColorEv");
-extern "C" void reachstub_72() { mpReachStub("_ZN13CCubeMaterial21GetTransparencyKColorEv", "CCubeMaterial::GetTransparencyKColor()"); }
-
-// CCubeMaterial::ResetTransparencyKColor()
-extern "C" void reachstub_73() asm("_ZN13CCubeMaterial23ResetTransparencyKColorEv");
-extern "C" void reachstub_73() { mpReachStub("_ZN13CCubeMaterial23ResetTransparencyKColorEv", "CCubeMaterial::ResetTransparencyKColor()"); }
-
-// CCubeRenderer::RenderSilhouette(float, CColor const&, rstl::optional_object<TCachedToken<CTexture> > const&, float, float, float, CColor const&)
-extern "C" void reachstub_74() asm("_ZN13CCubeRenderer16RenderSilhouetteEfRK6CColorRKN4rstl15optional_objectI12TCachedTokenI8CTextureEEEfffS2_");
-extern "C" void reachstub_74() { mpReachStub("_ZN13CCubeRenderer16RenderSilhouetteEfRK6CColorRKN4rstl15optional_objectI12TCachedTokenI8CTextureEEEfffS2_", "CCubeRenderer::RenderSilhouette(float, CColor const&, rstl::optional_object<TCachedToken<CTexture> > const&, float, float, float, CColor const&)"); }
-
-// CCubeRenderer::DrawWorldModelShadow(CAABox const&)
-extern "C" void reachstub_75() asm("_ZN13CCubeRenderer20DrawWorldModelShadowERK6CAABox");
-extern "C" void reachstub_75() { mpReachStub("_ZN13CCubeRenderer20DrawWorldModelShadowERK6CAABox", "CCubeRenderer::DrawWorldModelShadow(CAABox const&)"); }
-
-// CCubeRenderer::FindOverlappingWorldModels(rstl::vector<unsigned int, rstl::rmemory_allocator>&, CAABox const&)
-extern "C" void reachstub_76() asm("_ZN13CCubeRenderer26FindOverlappingWorldModelsERN4rstl6vectorIjNS0_17rmemory_allocatorEEERK6CAABox");
-extern "C" void reachstub_76() { mpReachStub("_ZN13CCubeRenderer26FindOverlappingWorldModelsERN4rstl6vectorIjNS0_17rmemory_allocatorEEERK6CAABox", "CCubeRenderer::FindOverlappingWorldModels(rstl::vector<unsigned int, rstl::rmemory_allocator>&, CAABox const&)"); }
-
-// CCubeRenderer::DrawOverlappingWorldModelIDs(int, rstl::vector<unsigned int, rstl::rmemory_allocator>&, CAABox const&)
-extern "C" void reachstub_77() asm("_ZN13CCubeRenderer28DrawOverlappingWorldModelIDsEiRN4rstl6vectorIjNS0_17rmemory_allocatorEEERK6CAABox");
-extern "C" void reachstub_77() { mpReachStub("_ZN13CCubeRenderer28DrawOverlappingWorldModelIDsEiRN4rstl6vectorIjNS0_17rmemory_allocatorEEERK6CAABox", "CCubeRenderer::DrawOverlappingWorldModelIDs(int, rstl::vector<unsigned int, rstl::rmemory_allocator>&, CAABox const&)"); }
-
-// CCubeRenderer::AllocatePhazonSuitMaskTexture()
-extern "C" void reachstub_78() asm("_ZN13CCubeRenderer29AllocatePhazonSuitMaskTextureEv");
-extern "C" void reachstub_78() { mpReachStub("_ZN13CCubeRenderer29AllocatePhazonSuitMaskTextureEv", "CCubeRenderer::AllocatePhazonSuitMaskTexture()"); }
-
-// CCubeRenderer::DrawOverlappingWorldModelShadows(int, rstl::vector<unsigned int, rstl::rmemory_allocator>&, CAABox const&)
-extern "C" void reachstub_79() asm("_ZN13CCubeRenderer32DrawOverlappingWorldModelShadowsEiRN4rstl6vectorIjNS0_17rmemory_allocatorEEERK6CAABox");
-extern "C" void reachstub_79() { mpReachStub("_ZN13CCubeRenderer32DrawOverlappingWorldModelShadowsEiRN4rstl6vectorIjNS0_17rmemory_allocatorEEERK6CAABox", "CCubeRenderer::DrawOverlappingWorldModelShadows(int, rstl::vector<unsigned int, rstl::rmemory_allocator>&, CAABox const&)"); }
-
-// CCubeRenderer::sRenderer
-extern "C" __attribute__((aligned(32))) char reachdata_80[0x400] asm("_ZN13CCubeRenderer9sRendererE");
-__attribute__((aligned(32))) char reachdata_80[0x400] = {};
-
 // CStateManager::DoCollisionResponse(CCollisionResponseData const&, CRayCastResult const&, TUniqueId, CDamageInfo const&, bool)
 extern "C" void reachstub_82() asm("_ZN13CStateManager19DoCollisionResponseERK22CCollisionResponseDataRK14CRayCastResult9TUniqueIdRK11CDamageInfob");
 extern "C" void reachstub_82() { mpReachStub("_ZN13CStateManager19DoCollisionResponseERK22CCollisionResponseDataRK14CRayCastResult9TUniqueIdRK11CDamageInfob", "CStateManager::DoCollisionResponse(CCollisionResponseData const&, CRayCastResult const&, TUniqueId, CDamageInfo const&, bool)"); }
@@ -305,22 +173,6 @@ extern "C" void reachstub_82() { mpReachStub("_ZN13CStateManager19DoCollisionRes
 // CStateManager::GetObjectByIdFromListAll(TUniqueId)
 extern "C" void reachstub_83() asm("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId");
 extern "C" void reachstub_83() { mpReachStub("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId", "CStateManager::GetObjectByIdFromListAll(TUniqueId)"); }
-
-// CTevCombiners::ResetStates()
-extern "C" void reachstub_84() asm("_ZN13CTevCombiners11ResetStatesEv");
-extern "C" void reachstub_84() { mpReachStub("_ZN13CTevCombiners11ResetStatesEv", "CTevCombiners::ResetStates()"); }
-
-// CTevCombiners::sNextUniquePass
-extern "C" __attribute__((aligned(32))) char reachdata_85[0x400] asm("_ZN13CTevCombiners15sNextUniquePassE");
-__attribute__((aligned(32))) char reachdata_85[0x400] = {};
-
-// CTevCombiners::AlphaVar::AlphaVar(CTevCombiners::EAlphaSrc)
-extern "C" void reachstub_86() asm("_ZN13CTevCombiners8AlphaVarC1ENS_9EAlphaSrcE");
-extern "C" void reachstub_86() { mpReachStub("_ZN13CTevCombiners8AlphaVarC1ENS_9EAlphaSrcE", "CTevCombiners::AlphaVar::AlphaVar(CTevCombiners::EAlphaSrc)"); }
-
-// CTevCombiners::ColorVar::ColorVar(CTevCombiners::EColorSrc)
-extern "C" void reachstub_87() asm("_ZN13CTevCombiners8ColorVarC1ENS_9EColorSrcE");
-extern "C" void reachstub_87() { mpReachStub("_ZN13CTevCombiners8ColorVarC1ENS_9EColorSrcE", "CTevCombiners::ColorVar::ColorVar(CTevCombiners::EColorSrc)"); }
 
 // CCameraManager::CastGameCameratoFirstPersonCamera(CGameCamera const*)
 extern "C" void reachstub_88() asm("_ZN14CCameraManager33CastGameCameratoFirstPersonCameraEPK11CGameCamera");
@@ -426,38 +278,6 @@ extern "C" void reachstub_112() { mpReachStub("_ZN14CMemoryCardSys9GetStatusENS_
 extern "C" void reachstub_113() asm("_ZN14CMemoryCardSys9MountCardENS_15EMemoryCardPortE");
 extern "C" void reachstub_113() { mpReachStub("_ZN14CMemoryCardSys9MountCardENS_15EMemoryCardPortE", "CMemoryCardSys::MountCard(CMemoryCardSys::EMemoryCardPort)"); }
 
-// CAudioGrpSetLoc::sInSinglePlayer
-extern "C" __attribute__((aligned(32))) char reachdata_114[0x400] asm("_ZN15CAudioGrpSetLoc15sInSinglePlayerE");
-__attribute__((aligned(32))) char reachdata_114[0x400] = {};
-
-// CCollisionCache::ReadGeometry(CCollisionCacheIterator&)
-extern "C" void reachstub_115() asm("_ZN15CCollisionCache12ReadGeometryER23CCollisionCacheIterator");
-extern "C" void reachstub_115() { mpReachStub("_ZN15CCollisionCache12ReadGeometryER23CCollisionCacheIterator", "CCollisionCache::ReadGeometry(CCollisionCacheIterator&)"); }
-
-// CCollisionCache::SkipGeometry(CCollisionCacheIterator&)
-extern "C" void reachstub_116() asm("_ZN15CCollisionCache12SkipGeometryER23CCollisionCacheIterator");
-extern "C" void reachstub_116() { mpReachStub("_ZN15CCollisionCache12SkipGeometryER23CCollisionCacheIterator", "CCollisionCache::SkipGeometry(CCollisionCacheIterator&)"); }
-
-// CCollisionCache::RemoveGeometry(CCollisionCacheIterator&)
-extern "C" void reachstub_117() asm("_ZN15CCollisionCache14RemoveGeometryER23CCollisionCacheIterator");
-extern "C" void reachstub_117() { mpReachStub("_ZN15CCollisionCache14RemoveGeometryER23CCollisionCacheIterator", "CCollisionCache::RemoveGeometry(CCollisionCacheIterator&)"); }
-
-// CCollisionCache::Reset()
-extern "C" void reachstub_118() asm("_ZN15CCollisionCache5ResetEv");
-extern "C" void reachstub_118() { mpReachStub("_ZN15CCollisionCache5ResetEv", "CCollisionCache::Reset()"); }
-
-// CCollisionCache::ReadLeaf(CCollisionCacheIterator&)
-extern "C" void reachstub_119() asm("_ZN15CCollisionCache8ReadLeafER23CCollisionCacheIterator");
-extern "C" void reachstub_119() { mpReachStub("_ZN15CCollisionCache8ReadLeafER23CCollisionCacheIterator", "CCollisionCache::ReadLeaf(CCollisionCacheIterator&)"); }
-
-// CCollisionCache::SetBounds(CAABox const&)
-extern "C" void reachstub_120() asm("_ZN15CCollisionCache9SetBoundsERK6CAABox");
-extern "C" void reachstub_120() { mpReachStub("_ZN15CCollisionCache9SetBoundsERK6CAABox", "CCollisionCache::SetBounds(CAABox const&)"); }
-
-// CCollisionCache::CCollisionCache(CAABox const&, int, int, unsigned short)
-extern "C" void reachstub_121() asm("_ZN15CCollisionCacheC1ERK6CAABoxiit");
-extern "C" void reachstub_121() { mpReachStub("_ZN15CCollisionCacheC1ERK6CAABoxiit", "CCollisionCache::CCollisionCache(CAABox const&, int, int, unsigned short)"); }
-
 // CScopedProfiler::BeginFrame()
 extern "C" void reachstub_122() asm("_ZN15CScopedProfiler10BeginFrameEv");
 extern "C" void reachstub_122() { mpReachStub("_ZN15CScopedProfiler10BeginFrameEv", "CScopedProfiler::BeginFrame()"); }
@@ -465,38 +285,6 @@ extern "C" void reachstub_122() { mpReachStub("_ZN15CScopedProfiler10BeginFrameE
 // CAnimationManager::~CAnimationManager()
 extern "C" void reachstub_123() asm("_ZN17CAnimationManagerD1Ev");
 extern "C" void reachstub_123() { mpReachStub("_ZN17CAnimationManagerD1Ev", "CAnimationManager::~CAnimationManager()"); }
-
-// CDSPStreamManager::Initialize()
-extern "C" void reachstub_124() asm("_ZN17CDSPStreamManager10InitializeEv");
-extern "C" void reachstub_124() { mpReachStub("_ZN17CDSPStreamManager10InitializeEv", "CDSPStreamManager::Initialize()"); }
-
-// CDSPStreamManager::UpdateVolume(int, int)
-extern "C" void reachstub_125() asm("_ZN17CDSPStreamManager12UpdateVolumeEii");
-extern "C" void reachstub_125() { mpReachStub("_ZN17CDSPStreamManager12UpdateVolumeEii", "CDSPStreamManager::UpdateVolume(int, int)"); }
-
-// CDSPStreamManager::StopStreaming(int)
-extern "C" void reachstub_126() asm("_ZN17CDSPStreamManager13StopStreamingEi");
-extern "C" void reachstub_126() { mpReachStub("_ZN17CDSPStreamManager13StopStreamingEi", "CDSPStreamManager::StopStreaming(int)"); }
-
-// CDSPStreamManager::GetStreamState(int)
-extern "C" void reachstub_127() asm("_ZN17CDSPStreamManager14GetStreamStateEi");
-extern "C" void reachstub_127() { mpReachStub("_ZN17CDSPStreamManager14GetStreamStateEi", "CDSPStreamManager::GetStreamState(int)"); }
-
-// CDSPStreamManager::StartStreaming(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, int, int)
-extern "C" void reachstub_128() asm("_ZN17CDSPStreamManager14StartStreamingERKN4rstl12basic_stringIcNS0_11char_traitsIcEENS0_17rmemory_allocatorEEEii");
-extern "C" void reachstub_128() { mpReachStub("_ZN17CDSPStreamManager14StartStreamingERKN4rstl12basic_stringIcNS0_11char_traitsIcEENS0_17rmemory_allocatorEEEii", "CDSPStreamManager::StartStreaming(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, int, int)"); }
-
-// CDSPStreamManager::IsStreamAvailable(int)
-extern "C" void reachstub_129() asm("_ZN17CDSPStreamManager17IsStreamAvailableEi");
-extern "C" void reachstub_129() { mpReachStub("_ZN17CDSPStreamManager17IsStreamAvailableEi", "CDSPStreamManager::IsStreamAvailable(int)"); }
-
-// CDSPStreamManager::CanStop(int)
-extern "C" void reachstub_130() asm("_ZN17CDSPStreamManager7CanStopEi");
-extern "C" void reachstub_130() { mpReachStub("_ZN17CDSPStreamManager7CanStopEi", "CDSPStreamManager::CanStop(int)"); }
-
-// CDSPStreamManager::Shutdown()
-extern "C" void reachstub_131() asm("_ZN17CDSPStreamManager8ShutdownEv");
-extern "C" void reachstub_131() { mpReachStub("_ZN17CDSPStreamManager8ShutdownEv", "CDSPStreamManager::Shutdown()"); }
 
 // CInGameQuitScreen::~CInGameQuitScreen()
 extern "C" void reachstub_132() asm("_ZN17CInGameQuitScreenD1Ev");
@@ -522,22 +310,6 @@ extern "C" void reachstub_136() { mpReachStub("_ZN20CDamageVulnerabilityC1ERK23S
 extern "C" void reachstub_137() asm("_ZN20CSamusFaceReflectionD1Ev");
 extern "C" void reachstub_137() { mpReachStub("_ZN20CSamusFaceReflectionD1Ev", "CSamusFaceReflection::~CSamusFaceReflection()"); }
 
-// CCollisionCacheWriter::BeginGeometry(CCollisionPrimitiveData const&, CTransform4f const*, unsigned short, unsigned long)
-extern "C" void reachstub_138() asm("_ZN21CCollisionCacheWriter13BeginGeometryERK23CCollisionPrimitiveDataPK12CTransform4ftm");
-extern "C" void reachstub_138() { mpReachStub("_ZN21CCollisionCacheWriter13BeginGeometryERK23CCollisionPrimitiveDataPK12CTransform4ftm", "CCollisionCacheWriter::BeginGeometry(CCollisionPrimitiveData const&, CTransform4f const*, unsigned short, unsigned long)"); }
-
-// CCollisionCacheWriter::BeginLeaf(CAABox const&)
-extern "C" void reachstub_139() asm("_ZN21CCollisionCacheWriter9BeginLeafERK6CAABox");
-extern "C" void reachstub_139() { mpReachStub("_ZN21CCollisionCacheWriter9BeginLeafERK6CAABox", "CCollisionCacheWriter::BeginLeaf(CAABox const&)"); }
-
-// CCollisionCacheWriter::CCollisionCacheWriter(CCollisionCache&)
-extern "C" void reachstub_140() asm("_ZN21CCollisionCacheWriterC1ER15CCollisionCache");
-extern "C" void reachstub_140() { mpReachStub("_ZN21CCollisionCacheWriterC1ER15CCollisionCache", "CCollisionCacheWriter::CCollisionCacheWriter(CCollisionCache&)"); }
-
-// CCollisionCacheWriter::~CCollisionCacheWriter()
-extern "C" void reachstub_141() asm("_ZN21CCollisionCacheWriterD1Ev");
-extern "C" void reachstub_141() { mpReachStub("_ZN21CCollisionCacheWriterD1Ev", "CCollisionCacheWriter::~CCollisionCacheWriter()"); }
-
 // CCompoundTargetReticle::~CCompoundTargetReticle()
 extern "C" void reachstub_142() asm("_ZN22CCompoundTargetReticleD1Ev");
 extern "C" void reachstub_142() { mpReachStub("_ZN22CCompoundTargetReticleD1Ev", "CCompoundTargetReticle::~CCompoundTargetReticle()"); }
@@ -557,14 +329,6 @@ extern "C" void reachstub_145() { mpReachStub("_ZN22TStateMachineStateBaseI11CGr
 // TStateMachineStateBase<CPlayerBodyController>::~TStateMachineStateBase()
 extern "C" void reachstub_146() asm("_ZN22TStateMachineStateBaseI21CPlayerBodyControllerED2Ev");
 extern "C" void reachstub_146() { mpReachStub("_ZN22TStateMachineStateBaseI21CPlayerBodyControllerED2Ev", "TStateMachineStateBase<CPlayerBodyController>::~TStateMachineStateBase()"); }
-
-// CCollisionCacheIterator::CCollisionCacheIterator(CCollisionCache&)
-extern "C" void reachstub_147() asm("_ZN23CCollisionCacheIteratorC1ER15CCollisionCache");
-extern "C" void reachstub_147() { mpReachStub("_ZN23CCollisionCacheIteratorC1ER15CCollisionCache", "CCollisionCacheIterator::CCollisionCacheIterator(CCollisionCache&)"); }
-
-// CCollisionCacheIterator::CCollisionCacheIterator()
-extern "C" void reachstub_148() asm("_ZN23CCollisionCacheIteratorC1Ev");
-extern "C" void reachstub_148() { mpReachStub("_ZN23CCollisionCacheIteratorC1Ev", "CCollisionCacheIterator::CCollisionCacheIterator()"); }
 
 // rstl::locked_cache_allocator::Allocate(void*&, int)
 extern "C" void reachstub_173() asm("_ZN4rstl22locked_cache_allocator8AllocateERPvi");
@@ -594,50 +358,6 @@ extern "C" void reachstub_182() { mpReachStub("_ZN5CMath6FloorFEf", "CMath::Floo
 extern "C" void reachstub_183() asm("_ZN5CMath9SlowSineREf");
 extern "C" void reachstub_183() { mpReachStub("_ZN5CMath9SlowSineREf", "CMath::SlowSineR(float)"); }
 
-// CModel::sTotalMemory
-extern "C" __attribute__((aligned(32))) char reachdata_191[0x400] asm("_ZN6CModel12sTotalMemoryE");
-__attribute__((aligned(32))) char reachdata_191[0x400] = {};
-
-// CModel::UnlockTextures()
-extern "C" void reachstub_192() asm("_ZN6CModel14UnlockTexturesEv");
-extern "C" void reachstub_192() { mpReachStub("_ZN6CModel14UnlockTexturesEv", "CModel::UnlockTextures()"); }
-
-// CModel::EnableTextureTimeout()
-extern "C" void reachstub_193() asm("_ZN6CModel20EnableTextureTimeoutEv");
-extern "C" void reachstub_193() { mpReachStub("_ZN6CModel20EnableTextureTimeoutEv", "CModel::EnableTextureTimeout()"); }
-
-// CModel::DisableTextureTimeout()
-extern "C" void reachstub_194() asm("_ZN6CModel21DisableTextureTimeoutEv");
-extern "C" void reachstub_194() { mpReachStub("_ZN6CModel21DisableTextureTimeoutEv", "CModel::DisableTextureTimeout()"); }
-
-// CModel::GetData()
-extern "C" void reachstub_195() asm("_ZN6CModel7GetDataEv");
-extern "C" void reachstub_195() { mpReachStub("_ZN6CModel7GetDataEv", "CModel::GetData()"); }
-
-// CModel::SShader::~SShader()
-extern "C" void reachstub_196() asm("_ZN6CModel7SShaderD1Ev");
-extern "C" void reachstub_196() { mpReachStub("_ZN6CModel7SShaderD1Ev", "CModel::SShader::~SShader()"); }
-
-// CModel::RemapData(unsigned char*)
-extern "C" void reachstub_197() asm("_ZN6CModel9RemapDataEPh");
-extern "C" void reachstub_197() { mpReachStub("_ZN6CModel9RemapDataEPh", "CModel::RemapData(unsigned char*)"); }
-
-// CMapArea::SetupLighting(CTransform4f const&)
-extern "C" void reachstub_207() asm("_ZN8CMapArea13SetupLightingERK12CTransform4f");
-extern "C" void reachstub_207() { mpReachStub("_ZN8CMapArea13SetupLightingERK12CTransform4f", "CMapArea::SetupLighting(CTransform4f const&)"); }
-
-// CMapArea::CMapAreaSurface::SetupGXMaterial()
-extern "C" void reachstub_208() asm("_ZN8CMapArea15CMapAreaSurface15SetupGXMaterialEv");
-extern "C" void reachstub_208() { mpReachStub("_ZN8CMapArea15CMapAreaSurface15SetupGXMaterialEv", "CMapArea::CMapAreaSurface::SetupGXMaterial()"); }
-
-// CMapArea::GetAreaPostTransform(IWorld const&, int)
-extern "C" void reachstub_209() asm("_ZN8CMapArea20GetAreaPostTransformERK6IWorldi");
-extern "C" void reachstub_209() { mpReachStub("_ZN8CMapArea20GetAreaPostTransformERK6IWorldi", "CMapArea::GetAreaPostTransform(IWorld const&, int)"); }
-
-// CMapArea::GetAreaPostTranslate(IWorld const&)
-extern "C" void reachstub_210() asm("_ZN8CMapArea20GetAreaPostTranslateERK6IWorld");
-extern "C" void reachstub_210() { mpReachStub("_ZN8CMapArea20GetAreaPostTranslateERK6IWorld", "CMapArea::GetAreaPostTranslate(IWorld const&)"); }
-
 // CMetroid::ApplyDamageGrowth(CStateManager&, TUniqueId)
 extern "C" void reachstub_211() asm("_ZN8CMetroid17ApplyDamageGrowthER13CStateManager9TUniqueId");
 extern "C" void reachstub_211() { mpReachStub("_ZN8CMetroid17ApplyDamageGrowthER13CStateManager9TUniqueId", "CMetroid::ApplyDamageGrowth(CStateManager&, TUniqueId)"); }
@@ -645,330 +365,6 @@ extern "C" void reachstub_211() { mpReachStub("_ZN8CMetroid17ApplyDamageGrowthER
 // CMetroid::PreDamageSpacePirate(CStateManager&)
 extern "C" void reachstub_212() asm("_ZN8CMetroid20PreDamageSpacePirateER13CStateManager");
 extern "C" void reachstub_212() { mpReachStub("_ZN8CMetroid20PreDamageSpacePirateER13CStateManager", "CMetroid::PreDamageSpacePirate(CStateManager&)"); }
-
-// COBBTree::GetPrebuiltTree(COBBTree::EPreBuiltTrees)
-extern "C" void reachstub_213() asm("_ZN8COBBTree15GetPrebuiltTreeENS_14EPreBuiltTreesE");
-extern "C" void reachstub_213() { mpReachStub("_ZN8COBBTree15GetPrebuiltTreeENS_14EPreBuiltTreesE", "COBBTree::GetPrebuiltTree(COBBTree::EPreBuiltTrees)"); }
-
-// COBBTree::SetPrebuiltTree(COBBTree*, COBBTree::EPreBuiltTrees)
-extern "C" void reachstub_214() asm("_ZN8COBBTree15SetPrebuiltTreeEPS_NS_14EPreBuiltTreesE");
-extern "C" void reachstub_214() { mpReachStub("_ZN8COBBTree15SetPrebuiltTreeEPS_NS_14EPreBuiltTreesE", "COBBTree::SetPrebuiltTree(COBBTree*, COBBTree::EPreBuiltTrees)"); }
-
-// COBBTree::BuildOrientedBoundingBoxTree(CVector3f const&, CVector3f const&)
-extern "C" void reachstub_215() asm("_ZN8COBBTree28BuildOrientedBoundingBoxTreeERK9CVector3fS2_");
-extern "C" void reachstub_215() { mpReachStub("_ZN8COBBTree28BuildOrientedBoundingBoxTreeERK9CVector3fS2_", "COBBTree::BuildOrientedBoundingBoxTree(CVector3f const&, CVector3f const&)"); }
-
-// COBBTree::COBBTree(CInputStream&)
-extern "C" void reachstub_216() asm("_ZN8COBBTreeC1ER12CInputStream");
-extern "C" void reachstub_216() { mpReachStub("_ZN8COBBTreeC1ER12CInputStream", "COBBTree::COBBTree(CInputStream&)"); }
-
-// COBBTree::~COBBTree()
-extern "C" void reachstub_217() asm("_ZN8COBBTreeD1Ev");
-extern "C" void reachstub_217() { mpReachStub("_ZN8COBBTreeD1Ev", "COBBTree::~COBBTree()"); }
-
-// CTexture::GetBitMapData(int)
-extern "C" void reachstub_218() asm("_ZN8CTexture13GetBitMapDataEi");
-extern "C" void reachstub_218() { mpReachStub("_ZN8CTexture13GetBitMapDataEi", "CTexture::GetBitMapData(int)"); }
-
-// CTexture::InvalidateTexmap(GXTexMapID)
-extern "C" void reachstub_219() asm("_ZN8CTexture16InvalidateTexmapE10GXTexMapID");
-extern "C" void reachstub_219() { mpReachStub("_ZN8CTexture16InvalidateTexmapE10GXTexMapID", "CTexture::InvalidateTexmap(GXTexMapID)"); }
-
-// CTexture::ScheduleDeletion()
-extern "C" void reachstub_220() asm("_ZN8CTexture16ScheduleDeletionEv");
-extern "C" void reachstub_220() { mpReachStub("_ZN8CTexture16ScheduleDeletionEv", "CTexture::ScheduleDeletion()"); }
-
-// CTexture::sCurrentFrameCount
-extern "C" __attribute__((aligned(32))) char reachdata_221[0x400] asm("_ZN8CTexture18sCurrentFrameCountE");
-__attribute__((aligned(32))) char reachdata_221[0x400] = {};
-
-// CTexture::UnLock()
-extern "C" void reachstub_222() asm("_ZN8CTexture6UnLockEv");
-extern "C" void reachstub_222() { mpReachStub("_ZN8CTexture6UnLockEv", "CTexture::UnLock()"); }
-
-// CGraphics::BeginScene()
-extern "C" void reachstub_223() asm("_ZN9CGraphics10BeginSceneEv");
-extern "C" void reachstub_223() { mpReachStub("_ZN9CGraphics10BeginSceneEv", "CGraphics::BeginScene()"); }
-
-// CGraphics::SetScissor(int, int, int, int)
-extern "C" void reachstub_224() asm("_ZN9CGraphics10SetScissorEiiii");
-extern "C" void reachstub_224() { mpReachStub("_ZN9CGraphics10SetScissorEiiii", "CGraphics::SetScissor(int, int, int, int)"); }
-
-// CGraphics::mCameraMtx
-extern "C" __attribute__((aligned(32))) char reachdata_225[0x400] asm("_ZN9CGraphics10mCameraMtxE");
-__attribute__((aligned(32))) char reachdata_225[0x400] = {};
-
-// CGraphics::mDepthNear
-extern "C" __attribute__((aligned(32))) char reachdata_226[0x400] asm("_ZN9CGraphics10mDepthNearE");
-__attribute__((aligned(32))) char reachdata_226[0x400] = {};
-
-// CGraphics::EnableLight(ERglLight)
-extern "C" void reachstub_227() asm("_ZN9CGraphics11EnableLightE9ERglLight");
-extern "C" void reachstub_227() { mpReachStub("_ZN9CGraphics11EnableLightE9ERglLight", "CGraphics::EnableLight(ERglLight)"); }
-
-// CGraphics::SetCullMode(ERglCullMode)
-extern "C" void reachstub_228() asm("_ZN9CGraphics11SetCullModeE12ERglCullMode");
-extern "C" void reachstub_228() { mpReachStub("_ZN9CGraphics11SetCullModeE12ERglCullMode", "CGraphics::SetCullMode(ERglCullMode)"); }
-
-// CGraphics::SetViewport(int, int, int, int)
-extern "C" void reachstub_229() asm("_ZN9CGraphics11SetViewportEiiii");
-extern "C" void reachstub_229() { mpReachStub("_ZN9CGraphics11SetViewportEiiii", "CGraphics::SetViewport(int, int, int, int)"); }
-
-// CGraphics::StreamBegin(ERglPrimitive)
-extern "C" void reachstub_230() asm("_ZN9CGraphics11StreamBeginE13ERglPrimitive");
-extern "C" void reachstub_230() { mpReachStub("_ZN9CGraphics11StreamBeginE13ERglPrimitive", "CGraphics::StreamBegin(ERglPrimitive)"); }
-
-// CGraphics::StreamColor(CColor const&)
-extern "C" void reachstub_231() asm("_ZN9CGraphics11StreamColorERK6CColor");
-extern "C" void reachstub_231() { mpReachStub("_ZN9CGraphics11StreamColorERK6CColor", "CGraphics::StreamColor(CColor const&)"); }
-
-// CGraphics::StreamColor(float, float, float, float)
-extern "C" void reachstub_232() asm("_ZN9CGraphics11StreamColorEffff");
-extern "C" void reachstub_232() { mpReachStub("_ZN9CGraphics11StreamColorEffff", "CGraphics::StreamColor(float, float, float, float)"); }
-
-// CGraphics::StreamColor(unsigned int)
-extern "C" void reachstub_233() asm("_ZN9CGraphics11StreamColorEj");
-extern "C" void reachstub_233() { mpReachStub("_ZN9CGraphics11StreamColorEj", "CGraphics::StreamColor(unsigned int)"); }
-
-// CGraphics::mViewMatrix
-extern "C" __attribute__((aligned(32))) char reachdata_235[0x400] asm("_ZN9CGraphics11mViewMatrixE");
-__attribute__((aligned(32))) char reachdata_235[0x400] = {};
-
-// CGraphics::SetBlendMode(ERglBlendMode, ERglBlendFactor, ERglBlendFactor, ERglLogicOp)
-extern "C" void reachstub_236() asm("_ZN9CGraphics12SetBlendModeE13ERglBlendMode15ERglBlendFactorS1_11ERglLogicOp");
-extern "C" void reachstub_236() { mpReachStub("_ZN9CGraphics12SetBlendModeE13ERglBlendMode15ERglBlendFactorS1_11ERglLogicOp", "CGraphics::SetBlendMode(ERglBlendMode, ERglBlendFactor, ERglBlendFactor, ERglLogicOp)"); }
-
-// CGraphics::SetLineWidth(float, ERglTexOffset)
-extern "C" void reachstub_237() asm("_ZN9CGraphics12SetLineWidthEf13ERglTexOffset");
-extern "C" void reachstub_237() { mpReachStub("_ZN9CGraphics12SetLineWidthEf13ERglTexOffset", "CGraphics::SetLineWidth(float, ERglTexOffset)"); }
-
-// CGraphics::StreamVertex(CVector3f const&)
-extern "C" void reachstub_238() asm("_ZN9CGraphics12StreamVertexERK9CVector3f");
-extern "C" void reachstub_238() { mpReachStub("_ZN9CGraphics12StreamVertexERK9CVector3f", "CGraphics::StreamVertex(CVector3f const&)"); }
-
-// CGraphics::StreamVertex(float, float, float)
-extern "C" void reachstub_239() asm("_ZN9CGraphics12StreamVertexEfff");
-extern "C" void reachstub_239() { mpReachStub("_ZN9CGraphics12StreamVertexEfff", "CGraphics::StreamVertex(float, float, float)"); }
-
-// CGraphics::kEnvModulate
-extern "C" __attribute__((aligned(32))) char reachdata_240[0x400] asm("_ZN9CGraphics12kEnvModulateE");
-__attribute__((aligned(32))) char reachdata_240[0x400] = {};
-
-// CGraphics::kEnvPassthru
-extern "C" __attribute__((aligned(32))) char reachdata_241[0x400] asm("_ZN9CGraphics12kEnvPassthruE");
-__attribute__((aligned(32))) char reachdata_241[0x400] = {};
-
-// CGraphics::mGxModelView
-extern "C" __attribute__((aligned(32))) char reachdata_242[0x400] asm("_ZN9CGraphics12mGxModelViewE");
-__attribute__((aligned(32))) char reachdata_242[0x400] = {};
-
-// CGraphics::mLightActive
-extern "C" __attribute__((aligned(32))) char reachdata_243[0x400] asm("_ZN9CGraphics12mLightActiveE");
-__attribute__((aligned(32))) char reachdata_243[0x400] = {};
-
-// CGraphics::mModelMatrix
-extern "C" __attribute__((aligned(32))) char reachdata_244[0x400] asm("_ZN9CGraphics12mModelMatrixE");
-__attribute__((aligned(32))) char reachdata_244[0x400] = {};
-
-// CGraphics::DrawPrimitive(ERglPrimitive, float const*, CVector3f const&, CColor const&, int)
-extern "C" void reachstub_245() asm("_ZN9CGraphics13DrawPrimitiveE13ERglPrimitivePKfRK9CVector3fRK6CColori");
-extern "C" void reachstub_245() { mpReachStub("_ZN9CGraphics13DrawPrimitiveE13ERglPrimitivePKfRK9CVector3fRK6CColori", "CGraphics::DrawPrimitive(ERglPrimitive, float const*, CVector3f const&, CColor const&, int)"); }
-
-// CGraphics::SetClearColor(CColor const&)
-extern "C" void reachstub_246() asm("_ZN9CGraphics13SetClearColorERK6CColor");
-extern "C" void reachstub_246() { mpReachStub("_ZN9CGraphics13SetClearColorERK6CColor", "CGraphics::SetClearColor(CColor const&)"); }
-
-// CGraphics::SetDepthRange(float, float)
-extern "C" void reachstub_247() asm("_ZN9CGraphics13SetDepthRangeEff");
-extern "C" void reachstub_247() { mpReachStub("_ZN9CGraphics13SetDepthRangeEff", "CGraphics::SetDepthRange(float, float)"); }
-
-// CGraphics::SetLightState(unsigned char)
-extern "C" void reachstub_248() asm("_ZN9CGraphics13SetLightStateEh");
-extern "C" void reachstub_248() { mpReachStub("_ZN9CGraphics13SetLightStateEh", "CGraphics::SetLightState(unsigned char)"); }
-
-// CGraphics::mpSpareBuffer
-extern "C" __attribute__((aligned(32))) char reachdata_249[0x400] asm("_ZN9CGraphics13mpSpareBufferE");
-__attribute__((aligned(32))) char reachdata_249[0x400] = {};
-
-// CGraphics::GetViewportTop(int)
-extern "C" void reachstub_250() asm("_ZN9CGraphics14GetViewportTopEi");
-extern "C" void reachstub_250() { mpReachStub("_ZN9CGraphics14GetViewportTopEi", "CGraphics::GetViewportTop(int)"); }
-
-// CGraphics::ResetGfxStates()
-extern "C" void reachstub_251() asm("_ZN9CGraphics14ResetGfxStatesEv");
-extern "C" void reachstub_251() { mpReachStub("_ZN9CGraphics14ResetGfxStatesEv", "CGraphics::ResetGfxStates()"); }
-
-// CGraphics::SetModelMatrix(CTransform4f const&)
-extern "C" void reachstub_252() asm("_ZN9CGraphics14SetModelMatrixERK12CTransform4f");
-extern "C" void reachstub_252() { mpReachStub("_ZN9CGraphics14SetModelMatrixERK12CTransform4f", "CGraphics::SetModelMatrix(CTransform4f const&)"); }
-
-// CGraphics::SetPerspective(float, float, float, float)
-extern "C" void reachstub_253() asm("_ZN9CGraphics14SetPerspectiveEffff");
-extern "C" void reachstub_253() { mpReachStub("_ZN9CGraphics14SetPerspectiveEffff", "CGraphics::SetPerspective(float, float, float, float)"); }
-
-// CGraphics::StreamTexcoord(CVector2f const&)
-extern "C" void reachstub_254() asm("_ZN9CGraphics14StreamTexcoordERK9CVector2f");
-extern "C" void reachstub_254() { mpReachStub("_ZN9CGraphics14StreamTexcoordERK9CVector2f", "CGraphics::StreamTexcoord(CVector2f const&)"); }
-
-// CGraphics::StreamTexcoord(float, float)
-extern "C" void reachstub_255() asm("_ZN9CGraphics14StreamTexcoordEff");
-extern "C" void reachstub_255() { mpReachStub("_ZN9CGraphics14StreamTexcoordEff", "CGraphics::StreamTexcoord(float, float)"); }
-
-// CGraphics::kEnvConstColor
-extern "C" __attribute__((aligned(32))) char reachdata_256[0x400] asm("_ZN9CGraphics14kEnvConstColorE");
-__attribute__((aligned(32))) char reachdata_256[0x400] = {};
-
-// CGraphics::mRenderModeObj
-extern "C" __attribute__((aligned(32))) char reachdata_257[0x400] asm("_ZN9CGraphics14mRenderModeObjE");
-__attribute__((aligned(32))) char reachdata_257[0x400] = {};
-
-// CGraphics::SetAlphaCompare(ERglAlphaFunc, unsigned char, ERglAlphaOp, ERglAlphaFunc, unsigned char)
-extern "C" void reachstub_258() asm("_ZN9CGraphics15SetAlphaCompareE13ERglAlphaFunch11ERglAlphaOpS0_h");
-extern "C" void reachstub_258() { mpReachStub("_ZN9CGraphics15SetAlphaCompareE13ERglAlphaFunch11ERglAlphaOpS0_h", "CGraphics::SetAlphaCompare(ERglAlphaFunc, unsigned char, ERglAlphaOp, ERglAlphaFunc, unsigned char)"); }
-
-// CGraphics::SetAmbientColor(CColor const&)
-extern "C" void reachstub_259() asm("_ZN9CGraphics15SetAmbientColorERK6CColor");
-extern "C" void reachstub_259() { mpReachStub("_ZN9CGraphics15SetAmbientColorERK6CColor", "CGraphics::SetAmbientColor(CColor const&)"); }
-
-// CGraphics::DisableAllLights()
-extern "C" void reachstub_260() asm("_ZN9CGraphics16DisableAllLightsEv");
-extern "C" void reachstub_260() { mpReachStub("_ZN9CGraphics16DisableAllLightsEv", "CGraphics::DisableAllLights()"); }
-
-// CGraphics::GetSecondsMod900()
-extern "C" void reachstub_261() asm("_ZN9CGraphics16GetSecondsMod900Ev");
-extern "C" void reachstub_261() { mpReachStub("_ZN9CGraphics16GetSecondsMod900Ev", "CGraphics::GetSecondsMod900()"); }
-
-// CGraphics::mSpareBufferSize
-extern "C" __attribute__((aligned(32))) char reachdata_262[0x400] asm("_ZN9CGraphics16mSpareBufferSizeE");
-__attribute__((aligned(32))) char reachdata_262[0x400] = {};
-
-// CGraphics::GetScreenPosition(int*, int*, int*)
-extern "C" void reachstub_263() asm("_ZN9CGraphics17GetScreenPositionEPiS0_S0_");
-extern "C" void reachstub_263() { mpReachStub("_ZN9CGraphics17GetScreenPositionEPiS0_S0_", "CGraphics::GetScreenPosition(int*, int*, int*)"); }
-
-// CGraphics::GetUseVideoFilter()
-extern "C" void reachstub_264() asm("_ZN9CGraphics17GetUseVideoFilterEv");
-extern "C" void reachstub_264() { mpReachStub("_ZN9CGraphics17GetUseVideoFilterEv", "CGraphics::GetUseVideoFilter()"); }
-
-// CGraphics::SetDepthWriteMode(bool, ERglEnum, bool)
-extern "C" void reachstub_265() asm("_ZN9CGraphics17SetDepthWriteModeEb8ERglEnumb");
-extern "C" void reachstub_265() { mpReachStub("_ZN9CGraphics17SetDepthWriteModeEb8ERglEnumb", "CGraphics::SetDepthWriteMode(bool, ERglEnum, bool)"); }
-
-// CGraphics::SetScreenPosition(int, int, int)
-extern "C" void reachstub_266() asm("_ZN9CGraphics17SetScreenPositionEiii");
-extern "C" void reachstub_266() { mpReachStub("_ZN9CGraphics17SetScreenPositionEiii", "CGraphics::SetScreenPosition(int, int, int)"); }
-
-// CGraphics::SetUseVideoFilter(bool)
-extern "C" void reachstub_267() asm("_ZN9CGraphics17SetUseVideoFilterEb");
-extern "C" void reachstub_267() { mpReachStub("_ZN9CGraphics17SetUseVideoFilterEb", "CGraphics::SetUseVideoFilter(bool)"); }
-
-// CGraphics::kEnvModulateAlpha
-extern "C" __attribute__((aligned(32))) char reachdata_268[0x400] asm("_ZN9CGraphics17kEnvModulateAlphaE");
-__attribute__((aligned(32))) char reachdata_268[0x400] = {};
-
-// CGraphics::kEnvModulateColor
-extern "C" __attribute__((aligned(32))) char reachdata_269[0x400] asm("_ZN9CGraphics17kEnvModulateColorE");
-__attribute__((aligned(32))) char reachdata_269[0x400] = {};
-
-// CGraphics::GetProgressiveMode()
-extern "C" void reachstub_271() asm("_ZN9CGraphics18GetProgressiveModeEv");
-extern "C" void reachstub_271() { mpReachStub("_ZN9CGraphics18GetProgressiveModeEv", "CGraphics::GetProgressiveMode()"); }
-
-// CGraphics::GetProjectionState()
-extern "C" void reachstub_272() asm("_ZN9CGraphics18GetProjectionStateEv");
-extern "C" void reachstub_272() { mpReachStub("_ZN9CGraphics18GetProjectionStateEv", "CGraphics::GetProjectionState()"); }
-
-// CGraphics::SetProgressiveMode(bool)
-extern "C" void reachstub_273() asm("_ZN9CGraphics18SetProgressiveModeEb");
-extern "C" void reachstub_273() { mpReachStub("_ZN9CGraphics18SetProgressiveModeEb", "CGraphics::SetProgressiveMode(bool)"); }
-
-// CGraphics::SetProjectionState(CGraphics::CProjectionState const&)
-extern "C" void reachstub_274() asm("_ZN9CGraphics18SetProjectionStateERKNS_16CProjectionStateE");
-extern "C" void reachstub_274() { mpReachStub("_ZN9CGraphics18SetProjectionStateERKNS_16CProjectionStateE", "CGraphics::SetProjectionState(CGraphics::CProjectionState const&)"); }
-
-// CGraphics::SetUseNormalMatrix(bool)
-extern "C" void reachstub_275() asm("_ZN9CGraphics18SetUseNormalMatrixEb");
-extern "C" void reachstub_275() { mpReachStub("_ZN9CGraphics18SetUseNormalMatrixEb", "CGraphics::SetUseNormalMatrix(bool)"); }
-
-// CGraphics::SetViewPointMatrix(CTransform4f const&)
-extern "C" void reachstub_276() asm("_ZN9CGraphics18SetViewPointMatrixERK12CTransform4f");
-extern "C" void reachstub_276() { mpReachStub("_ZN9CGraphics18SetViewPointMatrixERK12CTransform4f", "CGraphics::SetViewPointMatrix(CTransform4f const&)"); }
-
-// CGraphics::SetTevRegisterColor(int, CColor const&)
-extern "C" void reachstub_277() asm("_ZN9CGraphics19SetTevRegisterColorEiRK6CColor");
-extern "C" void reachstub_277() { mpReachStub("_ZN9CGraphics19SetTevRegisterColorEiRK6CColor", "CGraphics::SetTevRegisterColor(int, CColor const&)"); }
-
-// CGraphics::mLastFrameUsedAbove
-extern "C" __attribute__((aligned(32))) char reachdata_278[0x400] asm("_ZN9CGraphics19mLastFrameUsedAboveE");
-__attribute__((aligned(32))) char reachdata_278[0x400] = {};
-
-// CGraphics::ClipScreenQuadFromMS(CVector3f const&, CVector3f const&, CVector3f const&, CVector3f const&, ETexelFormat)
-extern "C" void reachstub_279() asm("_ZN9CGraphics20ClipScreenQuadFromMSERK9CVector3fS2_S2_S2_12ETexelFormat");
-extern "C" void reachstub_279() { mpReachStub("_ZN9CGraphics20ClipScreenQuadFromMSERK9CVector3fS2_S2_S2_12ETexelFormat", "CGraphics::ClipScreenQuadFromMS(CVector3f const&, CVector3f const&, CVector3f const&, CVector3f const&, ETexelFormat)"); }
-
-// CGraphics::CanSetProgressiveMode()
-extern "C" void reachstub_282() asm("_ZN9CGraphics21CanSetProgressiveModeEv");
-extern "C" void reachstub_282() { mpReachStub("_ZN9CGraphics21CanSetProgressiveModeEv", "CGraphics::CanSetProgressiveMode()"); }
-
-// CGraphics::GetProgressiveDefault()
-extern "C" void reachstub_283() asm("_ZN9CGraphics21GetProgressiveDefaultEv");
-extern "C" void reachstub_283() { mpReachStub("_ZN9CGraphics21GetProgressiveDefaultEv", "CGraphics::GetProgressiveDefault()"); }
-
-// CGraphics::SetIsBeginSceneClearFb(bool)
-extern "C" void reachstub_284() asm("_ZN9CGraphics22SetIsBeginSceneClearFbEb");
-extern "C" void reachstub_284() { mpReachStub("_ZN9CGraphics22SetIsBeginSceneClearFbEb", "CGraphics::SetIsBeginSceneClearFb(bool)"); }
-
-// CGraphics::LoadDolphinSpareTexture(int, int, GXTexFmt, void*, GXTexMapID)
-extern "C" void reachstub_285() asm("_ZN9CGraphics23LoadDolphinSpareTextureEii8GXTexFmtPv10GXTexMapID");
-extern "C" void reachstub_285() { mpReachStub("_ZN9CGraphics23LoadDolphinSpareTextureEii8GXTexFmtPv10GXTexMapID", "CGraphics::LoadDolphinSpareTexture(int, int, GXTexFmt, void*, GXTexMapID)"); }
-
-// CGraphics::SetExternalTimeProvider(CTimeProvider*)
-extern "C" void reachstub_286() asm("_ZN9CGraphics23SetExternalTimeProviderEP13CTimeProvider");
-extern "C" void reachstub_286() { mpReachStub("_ZN9CGraphics23SetExternalTimeProviderEP13CTimeProvider", "CGraphics::SetExternalTimeProvider(CTimeProvider*)"); }
-
-// CGraphics::SetUseStreamVertexDelay(bool)
-extern "C" void reachstub_287() asm("_ZN9CGraphics23SetUseStreamVertexDelayEb");
-extern "C" void reachstub_287() { mpReachStub("_ZN9CGraphics23SetUseStreamVertexDelayEb", "CGraphics::SetUseStreamVertexDelay(bool)"); }
-
-// CGraphics::CalculatePerspectiveMatrix(float, float, float, float)
-extern "C" void reachstub_288() asm("_ZN9CGraphics26CalculatePerspectiveMatrixEffff");
-extern "C" void reachstub_288() { mpReachStub("_ZN9CGraphics26CalculatePerspectiveMatrixEffff", "CGraphics::CalculatePerspectiveMatrix(float, float, float, float)"); }
-
-// CGraphics::GetPerspectiveProjectionMatrix()
-extern "C" void reachstub_289() asm("_ZN9CGraphics30GetPerspectiveProjectionMatrixEv");
-extern "C" void reachstub_289() { mpReachStub("_ZN9CGraphics30GetPerspectiveProjectionMatrixEv", "CGraphics::GetPerspectiveProjectionMatrix()"); }
-
-// CGraphics::SetFog(ERglFogMode, float, float, CColor const&)
-extern "C" void reachstub_290() asm("_ZN9CGraphics6SetFogE11ERglFogModeffRK6CColor");
-extern "C" void reachstub_290() { mpReachStub("_ZN9CGraphics6SetFogE11ERglFogModeffRK6CColor", "CGraphics::SetFog(ERglFogMode, float, float, CColor const&)"); }
-
-// CGraphics::sIs50Hz
-extern "C" __attribute__((aligned(32))) char reachdata_291[0x400] asm("_ZN9CGraphics7sIs50HzE");
-__attribute__((aligned(32))) char reachdata_291[0x400] = {};
-
-// CGraphics::EndScene()
-extern "C" void reachstub_292() asm("_ZN9CGraphics8EndSceneEv");
-extern "C" void reachstub_292() { mpReachStub("_ZN9CGraphics8EndSceneEv", "CGraphics::EndScene()"); }
-
-// CGraphics::Render2D(CTexture const&, int, int, int, int, CColor const&)
-extern "C" void reachstub_293() asm("_ZN9CGraphics8Render2DERK8CTextureiiiiRK6CColor");
-extern "C" void reachstub_293() { mpReachStub("_ZN9CGraphics8Render2DERK8CTextureiiiiRK6CColor", "CGraphics::Render2D(CTexture const&, int, int, int, int, CColor const&)"); }
-
-// CGraphics::SetOrtho(float, float, float, float, float, float)
-extern "C" void reachstub_294() asm("_ZN9CGraphics8SetOrthoEffffff");
-extern "C" void reachstub_294() { mpReachStub("_ZN9CGraphics8SetOrthoEffffff", "CGraphics::SetOrtho(float, float, float, float, float, float)"); }
-
-// CGraphics::SetTevOp(ERglTevStage, CTevCombiners::CTevPass const&)
-extern "C" void reachstub_295() asm("_ZN9CGraphics8SetTevOpE12ERglTevStageRKN13CTevCombiners8CTevPassE");
-extern "C" void reachstub_295() { mpReachStub("_ZN9CGraphics8SetTevOpE12ERglTevStageRKN13CTevCombiners8CTevPassE", "CGraphics::SetTevOp(ERglTevStage, CTevCombiners::CTevPass const&)"); }
-
-// CGraphics::LoadLight(ERglLight, CLight const&)
-extern "C" void reachstub_296() asm("_ZN9CGraphics9LoadLightE9ERglLightRK6CLight");
-extern "C" void reachstub_296() { mpReachStub("_ZN9CGraphics9LoadLightE9ERglLightRK6CLight", "CGraphics::LoadLight(ERglLight, CLight const&)"); }
-
-// CGraphics::StreamEnd()
-extern "C" void reachstub_297() asm("_ZN9CGraphics9StreamEndEv");
-extern "C" void reachstub_297() { mpReachStub("_ZN9CGraphics9StreamEndEv", "CGraphics::StreamEnd()"); }
 
 // CMatrix4f::CMatrix4f(CMatrix4f const&)
 extern "C" void reachstub_300() asm("_ZN9CMatrix4fC1ERKS_");
@@ -978,26 +374,6 @@ extern "C" void reachstub_300() { mpReachStub("_ZN9CMatrix4fC1ERKS_", "CMatrix4f
 extern "C" void reachstub_301() asm("_ZN9CParasite20ProjectVectorToPlaneERK9CVector3fS2_");
 extern "C" void reachstub_301() { mpReachStub("_ZN9CParasite20ProjectVectorToPlaneERK9CVector3fS2_", "CParasite::ProjectVectorToPlane(CVector3f const&, CVector3f const&)"); }
 
-// CCubeModel::DrawSurface(CCubeSurface const&, CModelFlags const&) const
-extern "C" void reachstub_302() asm("_ZNK10CCubeModel11DrawSurfaceERK12CCubeSurfaceRK11CModelFlags");
-extern "C" void reachstub_302() { mpReachStub("_ZNK10CCubeModel11DrawSurfaceERK12CCubeSurfaceRK11CModelFlags", "CCubeModel::DrawSurface(CCubeSurface const&, CModelFlags const&) const"); }
-
-// CCubeModel::TryLockTextures() const
-extern "C" void reachstub_303() asm("_ZNK10CCubeModel15TryLockTexturesEv");
-extern "C" void reachstub_303() { mpReachStub("_ZNK10CCubeModel15TryLockTexturesEv", "CCubeModel::TryLockTextures() const"); }
-
-// CCubeModel::SetArraysCurrent() const
-extern "C" void reachstub_304() asm("_ZNK10CCubeModel16SetArraysCurrentEv");
-extern "C" void reachstub_304() { mpReachStub("_ZNK10CCubeModel16SetArraysCurrentEv", "CCubeModel::SetArraysCurrent() const"); }
-
-// CCubeModel::Draw(CModelFlags const&) const
-extern "C" void reachstub_305() asm("_ZNK10CCubeModel4DrawERK11CModelFlags");
-extern "C" void reachstub_305() { mpReachStub("_ZNK10CCubeModel4DrawERK11CModelFlags", "CCubeModel::Draw(CModelFlags const&) const"); }
-
-// CCubeModel::DrawFlat(int) const
-extern "C" void reachstub_306() asm("_ZNK10CCubeModel8DrawFlatEi");
-extern "C" void reachstub_306() { mpReachStub("_ZNK10CCubeModel8DrawFlatEi", "CCubeModel::DrawFlat(int) const"); }
-
 // CFishCloud::TypesMatch(int) const
 extern "C" void reachstub_307() asm("_ZNK10CFishCloud10TypesMatchEi");
 extern "C" void reachstub_307() { mpReachStub("_ZNK10CFishCloud10TypesMatchEi", "CFishCloud::TypesMatch(int) const"); }
@@ -1005,14 +381,6 @@ extern "C" void reachstub_307() { mpReachStub("_ZNK10CFishCloud10TypesMatchEi", 
 // COsContext::GetOsKeyState(int) const
 extern "C" void reachstub_308() asm("_ZNK10COsContext13GetOsKeyStateEi");
 extern "C" void reachstub_308() { mpReachStub("_ZNK10COsContext13GetOsKeyStateEi", "COsContext::GetOsKeyState(int) const"); }
-
-// CSkinRules::LoadMatrixBank(int) const
-extern "C" void reachstub_309() asm("_ZNK10CSkinRules14LoadMatrixBankEi");
-extern "C" void reachstub_309() { mpReachStub("_ZNK10CSkinRules14LoadMatrixBankEi", "CSkinRules::LoadMatrixBank(int) const"); }
-
-// CSkinRules::BuildAccumulatedTransforms(CPoseAsTransforms_Linear const&, CCharLayoutInfo const&, CTransform4f*) const
-extern "C" void reachstub_310() asm("_ZNK10CSkinRules26BuildAccumulatedTransformsERK24CPoseAsTransforms_LinearRK15CCharLayoutInfoP12CTransform4f");
-extern "C" void reachstub_310() { mpReachStub("_ZNK10CSkinRules26BuildAccumulatedTransformsERK24CPoseAsTransforms_LinearRK15CCharLayoutInfoP12CTransform4f", "CSkinRules::BuildAccumulatedTransforms(CPoseAsTransforms_Linear const&, CCharLayoutInfo const&, CTransform4f*) const"); }
 
 // CDamageInfo::WithNoImmunity() const
 extern "C" void reachstub_311() asm("_ZNK11CDamageInfo14WithNoImmunityEv");
@@ -1029,18 +397,6 @@ extern "C" void reachstub_313() { mpReachStub("_ZNK11CWallWalker10TypesMatchEi",
 // CBabyMetroid::TypesMatch(int) const
 extern "C" void reachstub_316() asm("_ZNK12CBabyMetroid10TypesMatchEi");
 extern "C" void reachstub_316() { mpReachStub("_ZNK12CBabyMetroid10TypesMatchEi", "CBabyMetroid::TypesMatch(int) const"); }
-
-// CStringTable::GetStringIndex(char const*) const
-extern "C" void reachstub_317() asm("_ZNK12CStringTable14GetStringIndexEPKc");
-extern "C" void reachstub_317() { mpReachStub("_ZNK12CStringTable14GetStringIndexEPKc", "CStringTable::GetStringIndex(char const*) const"); }
-
-// CStringTable::GetString(char const*) const
-extern "C" void reachstub_318() asm("_ZNK12CStringTable9GetStringEPKc");
-extern "C" void reachstub_318() { mpReachStub("_ZNK12CStringTable9GetStringEPKc", "CStringTable::GetString(char const*) const"); }
-
-// CStringTable::GetString(int) const
-extern "C" void reachstub_319() asm("_ZNK12CStringTable9GetStringEi");
-extern "C" void reachstub_319() { mpReachStub("_ZNK12CStringTable9GetStringEi", "CStringTable::GetString(int) const"); }
 
 // CSwarmBasics::TypesMatch(int) const
 extern "C" void reachstub_320() asm("_ZNK12CSwarmBasics10TypesMatchEi");
@@ -1061,14 +417,6 @@ extern "C" void reachstub_323() { mpReachStub("_ZNK12CWallCrawler21GetCollisionP
 // CWallCrawler::Render(CStateManager const&) const
 extern "C" void reachstub_324() asm("_ZNK12CWallCrawler6RenderERK13CStateManager");
 extern "C" void reachstub_324() { mpReachStub("_ZNK12CWallCrawler6RenderERK13CStateManager", "CWallCrawler::Render(CStateManager const&) const"); }
-
-// CCubeMaterial::SetCurrent(CModelFlags const&, CCubeSurface const&, CCubeModel const&) const
-extern "C" void reachstub_325() asm("_ZNK13CCubeMaterial10SetCurrentERK11CModelFlagsRK12CCubeSurfaceRK10CCubeModel");
-extern "C" void reachstub_325() { mpReachStub("_ZNK13CCubeMaterial10SetCurrentERK11CModelFlagsRK12CCubeSurfaceRK10CCubeModel", "CCubeMaterial::SetCurrent(CModelFlags const&, CCubeSurface const&, CCubeModel const&) const"); }
-
-// CCubeRenderer::CopyScreenTex(unsigned int, bool, void*, GXTexFmt, bool) const
-extern "C" void reachstub_326() asm("_ZNK13CCubeRenderer13CopyScreenTexEjbPv8GXTexFmtb");
-extern "C" void reachstub_326() { mpReachStub("_ZNK13CCubeRenderer13CopyScreenTexEjbPv8GXTexFmtb", "CCubeRenderer::CopyScreenTex(unsigned int, bool, void*, GXTexFmt, bool) const"); }
 
 // CGunTurretTop::TypesMatch(int) const
 extern "C" void reachstub_327() asm("_ZNK13CGunTurretTop10TypesMatchEi");
@@ -1114,57 +462,9 @@ extern "C" void reachstub_336() { mpReachStub("_ZNK18CWorldSaveGameInfo13Calcula
 extern "C" void reachstub_337() asm("_ZNK18CWorldSaveGameInfo13GetRelayIndexERK9TEditorId");
 extern "C" void reachstub_337() { mpReachStub("_ZNK18CWorldSaveGameInfo13GetRelayIndexERK9TEditorId", "CWorldSaveGameInfo::GetRelayIndex(TEditorId const&) const"); }
 
-// CCollisionCacheIterator::MatchesGeometry(short, CCollisionPrimitiveData const*, CTransform4f const&, unsigned long) const
-extern "C" void reachstub_338() asm("_ZNK23CCollisionCacheIterator15MatchesGeometryEsPK23CCollisionPrimitiveDataRK12CTransform4fm");
-extern "C" void reachstub_338() { mpReachStub("_ZNK23CCollisionCacheIterator15MatchesGeometryEsPK23CCollisionPrimitiveDataRK12CTransform4fm", "CCollisionCacheIterator::MatchesGeometry(short, CCollisionPrimitiveData const*, CTransform4f const&, unsigned long) const"); }
-
 // CScriptFrontEndDataNetwork::TypesMatch(int) const
 extern "C" void reachstub_339() asm("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi");
 extern "C" void reachstub_339() { mpReachStub("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi", "CScriptFrontEndDataNetwork::TypesMatch(int) const"); }
-
-// CModel::GetNormals() const
-extern "C" void reachstub_358() asm("_ZNK6CModel10GetNormalsEv");
-extern "C" void reachstub_358() { mpReachStub("_ZNK6CModel10GetNormalsEv", "CModel::GetNormals() const"); }
-
-// CModel::GetDataSize() const
-extern "C" void reachstub_359() asm("_ZNK6CModel11GetDataSizeEv");
-extern "C" void reachstub_359() { mpReachStub("_ZNK6CModel11GetDataSizeEv", "CModel::GetDataSize() const"); }
-
-// CModel::GetPositions() const
-extern "C" void reachstub_360() asm("_ZNK6CModel12GetPositionsEv");
-extern "C" void reachstub_360() { mpReachStub("_ZNK6CModel12GetPositionsEv", "CModel::GetPositions() const"); }
-
-// CModel::PreDrawModel(CModelFlags const&) const
-extern "C" void reachstub_361() asm("_ZNK6CModel12PreDrawModelERK11CModelFlags");
-extern "C" void reachstub_361() { mpReachStub("_ZNK6CModel12PreDrawModelERK11CModelFlags", "CModel::PreDrawModel(CModelFlags const&) const"); }
-
-// CModel::DolphinDrawFlat(CModel::EDrawFlatFlags) const
-extern "C" void reachstub_362() asm("_ZNK6CModel15DolphinDrawFlatENS_14EDrawFlatFlagsE");
-extern "C" void reachstub_362() { mpReachStub("_ZNK6CModel15DolphinDrawFlatENS_14EDrawFlatFlagsE", "CModel::DolphinDrawFlat(CModel::EDrawFlatFlags) const"); }
-
-// CModel::UpdateLastFrame() const
-extern "C" void reachstub_363() asm("_ZNK6CModel15UpdateLastFrameEv");
-extern "C" void reachstub_363() { mpReachStub("_ZNK6CModel15UpdateLastFrameEv", "CModel::UpdateLastFrame() const"); }
-
-// CModel::IsDefinitelyOpaque() const
-extern "C" void reachstub_364() asm("_ZNK6CModel18IsDefinitelyOpaqueEv");
-extern "C" void reachstub_364() { mpReachStub("_ZNK6CModel18IsDefinitelyOpaqueEv", "CModel::IsDefinitelyOpaque() const"); }
-
-// CModel::Draw(unsigned long, CModelFlags const&) const
-extern "C" void reachstub_365() asm("_ZNK6CModel4DrawEmRK11CModelFlags");
-extern "C" void reachstub_365() { mpReachStub("_ZNK6CModel4DrawEmRK11CModelFlags", "CModel::Draw(unsigned long, CModelFlags const&) const"); }
-
-// CModel::Touch(int) const
-extern "C" void reachstub_366() asm("_ZNK6CModel5TouchEi");
-extern "C" void reachstub_366() { mpReachStub("_ZNK6CModel5TouchEi", "CModel::Touch(int) const"); }
-
-// CModel::GetAABB() const
-extern "C" void reachstub_367() asm("_ZNK6CModel7GetAABBEv");
-extern "C" void reachstub_367() { mpReachStub("_ZNK6CModel7GetAABBEv", "CModel::GetAABB() const"); }
-
-// CModel::IsLoaded(int) const
-extern "C" void reachstub_368() asm("_ZNK6CModel8IsLoadedEi");
-extern "C" void reachstub_368() { mpReachStub("_ZNK6CModel8IsLoadedEi", "CModel::IsLoaded(int) const"); }
 
 // CPuffer::TypesMatch(int) const
 extern "C" void reachstub_369() asm("_ZNK7CPuffer10TypesMatchEi");
@@ -1174,26 +474,6 @@ extern "C" void reachstub_369() { mpReachStub("_ZNK7CPuffer10TypesMatchEi", "CPu
 extern "C" void reachstub_370() asm("_ZNK7CRipper10TypesMatchEi");
 extern "C" void reachstub_370() { mpReachStub("_ZNK7CRipper10TypesMatchEi", "CRipper::TypesMatch(int) const"); }
 
-// CMapArea::IsInDarkWorld() const
-extern "C" void reachstub_371() asm("_ZNK8CMapArea13IsInDarkWorldEv");
-extern "C" void reachstub_371() { mpReachStub("_ZNK8CMapArea13IsInDarkWorldEv", "CMapArea::IsInDarkWorld() const"); }
-
-// CMapArea::CMapAreaSurface::Draw(CVector3f const*, CColor const&, CColor const&, float) const
-extern "C" void reachstub_372() asm("_ZNK8CMapArea15CMapAreaSurface4DrawEPK9CVector3fRK6CColorS6_f");
-extern "C" void reachstub_372() { mpReachStub("_ZNK8CMapArea15CMapAreaSurface4DrawEPK9CVector3fRK6CColorS6_f", "CMapArea::CMapAreaSurface::Draw(CVector3f const*, CColor const&, CColor const&, float) const"); }
-
-// CMapArea::GetAreaCenterPoint() const
-extern "C" void reachstub_373() asm("_ZNK8CMapArea18GetAreaCenterPointEv");
-extern "C" void reachstub_373() { mpReachStub("_ZNK8CMapArea18GetAreaCenterPointEv", "CMapArea::GetAreaCenterPoint() const"); }
-
-// CMapArea::GetIsVisibleToAutoMapper(bool, bool) const
-extern "C" void reachstub_374() asm("_ZNK8CMapArea24GetIsVisibleToAutoMapperEbb");
-extern "C" void reachstub_374() { mpReachStub("_ZNK8CMapArea24GetIsVisibleToAutoMapperEbb", "CMapArea::GetIsVisibleToAutoMapper(bool, bool) const"); }
-
-// CMapArea::Draw(CColor const&, CColor const&, CTransform4f const&, CTransform4f const&, int, CMapWorldInfo const&, float) const
-extern "C" void reachstub_375() asm("_ZNK8CMapArea4DrawERK6CColorS2_RK12CTransform4fS5_iRK13CMapWorldInfof");
-extern "C" void reachstub_375() { mpReachStub("_ZNK8CMapArea4DrawERK6CColorS2_RK12CTransform4fS5_iRK13CMapWorldInfof", "CMapArea::Draw(CColor const&, CColor const&, CTransform4f const&, CTransform4f const&, int, CMapWorldInfo const&, float) const"); }
-
 // CMetaree::TypesMatch(int) const
 extern "C" void reachstub_376() asm("_ZNK8CMetaree10TypesMatchEi");
 extern "C" void reachstub_376() { mpReachStub("_ZNK8CMetaree10TypesMatchEi", "CMetaree::TypesMatch(int) const"); }
@@ -1201,50 +481,6 @@ extern "C" void reachstub_376() { mpReachStub("_ZNK8CMetaree10TypesMatchEi", "CM
 // CMetroid::TypesMatch(int) const
 extern "C" void reachstub_377() asm("_ZNK8CMetroid10TypesMatchEi");
 extern "C" void reachstub_377() { mpReachStub("_ZNK8CMetroid10TypesMatchEi", "CMetroid::TypesMatch(int) const"); }
-
-// COBBTree::CalculateLocalAABox() const
-extern "C" void reachstub_378() asm("_ZNK8COBBTree19CalculateLocalAABoxEv");
-extern "C" void reachstub_378() { mpReachStub("_ZNK8COBBTree19CalculateLocalAABoxEv", "COBBTree::CalculateLocalAABox() const"); }
-
-// CTexture::LoadToARAM() const
-extern "C" void reachstub_379() asm("_ZNK8CTexture10LoadToARAMEv");
-extern "C" void reachstub_379() { mpReachStub("_ZNK8CTexture10LoadToARAMEv", "CTexture::LoadToARAM() const"); }
-
-// CTexture::LoadToMRAM() const
-extern "C" void reachstub_380() asm("_ZNK8CTexture10LoadToMRAMEv");
-extern "C" void reachstub_380() { mpReachStub("_ZNK8CTexture10LoadToMRAMEv", "CTexture::LoadToMRAM() const"); }
-
-// CTexture::LoadMipLevel(int, GXTexMapID, CTexture::EClampMode) const
-extern "C" void reachstub_381() asm("_ZNK8CTexture12LoadMipLevelEi10GXTexMapIDNS_10EClampModeE");
-extern "C" void reachstub_381() { mpReachStub("_ZNK8CTexture12LoadMipLevelEi10GXTexMapIDNS_10EClampModeE", "CTexture::LoadMipLevel(int, GXTexMapID, CTexture::EClampMode) const"); }
-
-// CTexture::MakeSwappable() const
-extern "C" void reachstub_382() asm("_ZNK8CTexture13MakeSwappableEv");
-extern "C" void reachstub_382() { mpReachStub("_ZNK8CTexture13MakeSwappableEv", "CTexture::MakeSwappable() const"); }
-
-// CTexture::UnloadBitmapData(unsigned int) const
-extern "C" void reachstub_383() asm("_ZNK8CTexture16UnloadBitmapDataEj");
-extern "C" void reachstub_383() { mpReachStub("_ZNK8CTexture16UnloadBitmapDataEj", "CTexture::UnloadBitmapData(unsigned int) const"); }
-
-// CTexture::GetConstBitMapData(int) const
-extern "C" void reachstub_384() asm("_ZNK8CTexture18GetConstBitMapDataEi");
-extern "C" void reachstub_384() { mpReachStub("_ZNK8CTexture18GetConstBitMapDataEi", "CTexture::GetConstBitMapData(int) const"); }
-
-// CTexture::GetBitmapDataStatus() const
-extern "C" void reachstub_385() asm("_ZNK8CTexture19GetBitmapDataStatusEv");
-extern "C" void reachstub_385() { mpReachStub("_ZNK8CTexture19GetBitmapDataStatusEv", "CTexture::GetBitmapDataStatus() const"); }
-
-// CTexture::TryReloadBitmapData(CResFactory&) const
-extern "C" void reachstub_386() asm("_ZNK8CTexture19TryReloadBitmapDataER11CResFactory");
-extern "C" void reachstub_386() { mpReachStub("_ZNK8CTexture19TryReloadBitmapDataER11CResFactory", "CTexture::TryReloadBitmapData(CResFactory&) const"); }
-
-// CTexture::IsARAMTransferInProgress() const
-extern "C" void reachstub_387() asm("_ZNK8CTexture24IsARAMTransferInProgressEv");
-extern "C" void reachstub_387() { mpReachStub("_ZNK8CTexture24IsARAMTransferInProgressEv", "CTexture::IsARAMTransferInProgress() const"); }
-
-// CTexture::Load(GXTexMapID, CTexture::EClampMode) const
-extern "C" void reachstub_388() asm("_ZNK8CTexture4LoadE10GXTexMapIDNS_10EClampModeE");
-extern "C" void reachstub_388() { mpReachStub("_ZNK8CTexture4LoadE10GXTexMapIDNS_10EClampModeE", "CTexture::Load(GXTexMapID, CTexture::EClampMode) const"); }
 
 // CardStat::GetCommentAddr() const
 extern "C" void reachstub_389() asm("_ZNK8CardStat14GetCommentAddrEv");
@@ -1314,10 +550,6 @@ extern "C" void reachstub_405() { mpReachStub("fn_802CC120", "fn_802CC120"); }
 extern "C" __attribute__((aligned(32))) char reachdata_406[0x400] asm("gpController");
 __attribute__((aligned(32))) char reachdata_406[0x400] = {};
 
-// gpDefaultFont
-extern "C" __attribute__((aligned(32))) char reachdata_407[0x400] asm("gpDefaultFont");
-__attribute__((aligned(32))) char reachdata_407[0x400] = {};
-
 // gpRender
 extern "C" __attribute__((aligned(32))) char reachdata_408[0x400] asm("gpRender");
 __attribute__((aligned(32))) char reachdata_408[0x400] = {};
@@ -1341,3 +573,25 @@ __attribute__((aligned(32))) char reachdata_417[0x400] = {};
 // sndFXSetFilter
 extern "C" void reachstub_420() asm("sndFXSetFilter");
 extern "C" void reachstub_420() { mpReachStub("sndFXSetFilter", "sndFXSetFilter"); }
+
+// Re-added 2026-10-14: still referenced (Echoes MusyX stack API absent from musyx-port).
+// CScriptDestructibleBarrier::TypesMatch(int) const
+extern "C" void reachstub_r0() asm("_ZNK26CScriptDestructibleBarrier10TypesMatchEi");
+extern "C" void reachstub_r0() { mpReachStub("_ZNK26CScriptDestructibleBarrier10TypesMatchEi", "CScriptDestructibleBarrier::TypesMatch(int) const"); }
+
+// sndStackAdd
+extern "C" void reachstub_r1() asm("sndStackAdd");
+extern "C" void reachstub_r1() { mpReachStub("sndStackAdd", "sndStackAdd"); }
+
+// sndStackGetSize
+extern "C" void reachstub_r2() asm("sndStackGetSize");
+extern "C" void reachstub_r2() { mpReachStub("sndStackGetSize", "sndStackGetSize"); }
+
+// sndStackRemove
+extern "C" void reachstub_r3() asm("sndStackRemove");
+extern "C" void reachstub_r3() { mpReachStub("sndStackRemove", "sndStackRemove"); }
+
+// sndStackSetCurrent
+extern "C" void reachstub_r4() asm("sndStackSetCurrent");
+extern "C" void reachstub_r4() { mpReachStub("sndStackSetCurrent", "sndStackSetCurrent"); }
+

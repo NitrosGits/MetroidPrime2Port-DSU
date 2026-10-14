@@ -51,16 +51,6 @@ const float CPlayer::skTransitionFilterHoldTime = 0.15f;    // 0x8041A46C
 const float CPlayer::skTransitionFilterEndTime = 1.25f;     // 0x8041A470
 const float CPlayer::skTransitionFilterMaxAlpha = 0.3f;     // 0x8041A474
 
-// CGraphics statics with non-zero retail values (dol): mIsBeginSceneClearFb .sdata 0x80418AE4 = 1,
-// mDepthFar 0x80418AF0 = 1.0f, mPixelAspectRatio 0x80418AF8 = 1.0f, mBrightness 0x80418B00 = 1.0f,
-// kSpareBufferTexMapID .sdata2 0x8041E4B0 = 7, mViewport .data 0x803B9FE8 = {0,0,640,480,320.f,240.f}.
-bool CGraphics::mIsBeginSceneClearFb = true;
-float CGraphics::mDepthFar = 1.f;
-float CGraphics::mPixelAspectRatio = 1.f;
-float CGraphics::mBrightness = 1.f;
-const GXTexMapID CGraphics::kSpareBufferTexMapID = static_cast< GXTexMapID >(7);
-CViewport CGraphics::mViewport = {0, 0, 640, 480, 320.f, 240.f};
-
 // TGameTypes.hpp: kDefaultGravityAccel .sdata2 0x8041B758 = 0x41C43334 (24.525f = 9.81 * 2.5);
 // kInvalidPlayerIndex 0x8041B750 = 0xFFFFFFFF (dol).
 const float kDefaultGravityAccel = 24.525f;
@@ -114,3 +104,10 @@ uchar skNoisePermutation[512] = {
     0xb8, 0x54, 0xcc, 0xb0, 0x73, 0x79, 0x32, 0x2d, 0x7f, 0x04, 0x96, 0xfe, 0x8a, 0xec, 0xcd, 0x5d,
     0xde, 0x72, 0x43, 0x1d, 0x18, 0x48, 0xf3, 0x8d, 0x80, 0xc3, 0x4e, 0x42, 0xd7, 0x3d, 0x9c, 0xb4,
 };
+
+// Dolphin SDK GXFrameBuf.c render mode Aurora does not provide; CGraphics::ConfigureVideo
+// takes it for progressive NTSC. Values from src/Dolphin/gx/GXFrameBuf.c.
+extern "C" GXRenderModeObj GXNtsc480Prog = {
+    VI_TVMODE_NTSC_PROG, 640, 480, 480, 40, 0, 640, 480, VI_XFBMODE_SF, GX_FALSE, GX_FALSE,
+    {{6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}},
+    {0, 0, 21, 22, 21, 0, 0}};

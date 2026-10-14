@@ -10,6 +10,14 @@
 
 #include <string.h>
 
+#ifdef TARGET_PC
+#include <vector>
+
+static uint ReadBE32(const uchar* p) {
+  return uint(p[0]) << 24 | uint(p[1]) << 16 | uint(p[2]) << 8 | uint(p[3]);
+}
+#endif
+
 static const wchar_t skInvalidString[] = L"Invalid";
 static const FourCC skLanguages[] = {'ENGL', 'GERM', 'FREN', 'SPAN', 'ITAL', 'DUTC', 'JAPN'};
 static FourCC mCurrentLanguage = skLanguages[0];
@@ -66,6 +74,71 @@ void CStringTable::Load(CInputStream& in) {
     }
   }
 
+#ifdef TARGET_PC
+  // Port: the disc holds 32-bit big-endian offsets and UTF-16BE text; a host has 64-bit pointers
+  // and a 4-byte wchar_t. Read the raw names and language section, then lay mData out as host
+  // structures: [SStringName x names][raw names blob][const wchar_t* x strings][wchar_t text].
+  std::vector< uchar > rawNames;
+  if (version != 0) {
+    mNameCount = in.Get(TType< int >());
+    uint namesSize = in.Get(TType< uint >());
+    rawNames.resize(namesSize);
+    in.ReadBytes(rawNames.data(), namesSize);
+  }
+  for (uint i = 0; i < offset; ++i) {
+    in.ReadInt8();
+  }
+  if (version == 0) {
+    size = in.Get(TType< uint >());
+  }
+  std::vector< uchar > section(size);
+  in.ReadBytes(section.data(), size);
+
+  if (mNameCount < 0 || size_t(mNameCount) * 8 > rawNames.size()) {
+    mNameCount = 0;
+  }
+  if (mStringCount < 0 || size_t(mStringCount) * 4 > section.size()) {
+    mStringCount = 0;
+  }
+  size_t textUnits = 0;
+  for (int i = 0; i < mStringCount; ++i) {
+    for (size_t p = ReadBE32(&section[i * 4]); p + 1 < section.size(); p += 2, ++textUnits) {
+      if (section[p] == 0 && section[p + 1] == 0) {
+        break;
+      }
+    }
+    ++textUnits;
+  }
+
+  const size_t namesBytes = size_t(mNameCount) * sizeof(SStringName);
+  const size_t ptrsAt = (namesBytes + rawNames.size() + 7) & ~size_t(7);
+  const size_t textAt = ptrsAt + size_t(mStringCount) * sizeof(const wchar_t*);
+  mData = rs_new uchar[textAt + textUnits * sizeof(wchar_t)];
+  uchar* base = mData.get();
+
+  mNames = reinterpret_cast< SStringName* >(base);
+  char* blob = reinterpret_cast< char* >(base + namesBytes);
+  memcpy(blob, rawNames.data(), rawNames.size());
+  for (int i = 0; i < mNameCount; ++i) {
+    const uint nameAt = ReadBE32(&rawNames[i * 8]);
+    mNames[i].mName = nameAt < rawNames.size() ? blob + nameAt : "";
+    mNames[i].mIndex = int(ReadBE32(&rawNames[i * 8 + 4]));
+  }
+
+  mStrings = reinterpret_cast< const wchar_t** >(base + ptrsAt);
+  wchar_t* text = reinterpret_cast< wchar_t* >(base + textAt);
+  for (int i = 0; i < mStringCount; ++i) {
+    mStrings[i] = text;
+    for (size_t p = ReadBE32(&section[i * 4]); p + 1 < section.size(); p += 2) {
+      const wchar_t unit = wchar_t(section[p] << 8 | section[p + 1]);
+      if (unit == 0) {
+        break;
+      }
+      *text++ = unit;
+    }
+    *text++ = 0;
+  }
+#else
   if (version != 0) {
     mNameCount = in.Get(TType< int >());
     uint namesSize = in.Get(TType< uint >());
@@ -97,6 +170,7 @@ void CStringTable::Load(CInputStream& in) {
   for (int i = 0; i < mStringCount; ++i, ++entry) {
     *entry += reinterpret_cast< uint >(mStrings);
   }
+#endif
 }
 
 const wchar_t* CStringTable::GetString(int idx) const {

@@ -114,6 +114,51 @@ CGX_INLINE void CGX::SetNumIndStages(uchar num) {
   }
 }
 
+#ifdef TARGET_PC
+CGX_INLINE void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
+  SetArray(attr, data, 0, stride);
+}
+
+CGX_INLINE void CGX::SetArray(GXAttr attr, const void* data, uint size, uchar stride) {
+  if (data == nullptr) {
+    return;
+  }
+  if (attr >= GX_VA_POS && attr < GX_POS_MTX_ARRAY) {
+    uint idx = attr - GX_VA_POS;
+    if (gpGXState->mArrayPtrs[idx] == data && gpGXState->mArraySizes[idx] == size) {
+      return;
+    }
+    gpGXState->mArrayPtrs[idx] = data;
+    gpGXState->mArraySizes[idx] = size;
+  }
+  // Guest vertex data is big-endian, hence le=false.
+  GXSetArray(attr, data, size, stride, false);
+}
+
+CGX_INLINE void CGX::SetArrayNative(GXAttr attr, const void* data, uint size, uchar stride) {
+  if (data == nullptr) {
+    return;
+  }
+  if (attr >= GX_VA_POS && attr < GX_POS_MTX_ARRAY) {
+    uint idx = attr - GX_VA_POS;
+    if (gpGXState->mArrayPtrs[idx] == data && gpGXState->mArraySizes[idx] == size) {
+      return;
+    }
+    gpGXState->mArrayPtrs[idx] = data;
+    gpGXState->mArraySizes[idx] = size;
+  }
+  GXSetArray(attr, data, size, stride, true);
+}
+
+CGX_INLINE void CGX::ClearArray(GXAttr attr) {
+  if (attr >= GX_VA_POS && attr < GX_POS_MTX_ARRAY) {
+    uint idx = attr - GX_VA_POS;
+    gpGXState->mArrayPtrs[idx] = nullptr;
+    gpGXState->mArraySizes[idx] = 0;
+  }
+  GXSetArray(attr, nullptr, 0, 0, true);
+}
+#else
 CGX_INLINE void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
   if (data == nullptr) {
     return;
@@ -127,6 +172,7 @@ CGX_INLINE void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
   }
   GXSetArray(attr, data, stride);
 }
+#endif
 
 CGX_INLINE void CGX::Begin(GXPrimitive prim, GXVtxFmt fmt, ushort numVtx) {
   if (gpGXState->mChanFlags != 0) {

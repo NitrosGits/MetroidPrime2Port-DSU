@@ -29,9 +29,40 @@
 #include "dolphin/os/OSCache.h"
 #include <string.h>
 
+#ifdef TARGET_PC
+#include <stdint.h>
+#include <vector>
+
+namespace {
+// GameCube samples noise from arbitrary main-memory addresses (0x8000 + random).
+// The host renderer dereferences the texture source, so hand it a real buffer.
+// Only a few fixed frames: fresh noise every frame means a fresh texture every frame.
+void* NoiseTextureData(uint seed, size_t bytes) {
+  const int kFrames = 8;
+  static std::vector< uchar > sNoise[kFrames];
+  if (sNoise[0].size() < bytes) {
+    for (int f = 0; f < kFrames; ++f) {
+      sNoise[f].resize(bytes);
+      uint state = static_cast< uint >(f) * 0x9E3779B9u + 1u;
+      for (size_t i = 0; i < bytes; ++i) {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        sNoise[f][i] = static_cast< uchar >(state);
+      }
+    }
+  }
+  return sNoise[seed % kFrames].data();
+}
+} // namespace
+#endif
+
 // Reconstructed against the G2ME01 renderer; remaining compiler differences keep this NonMatching.
 CCubeRenderer* CCubeRenderer::sRenderer = nullptr;
+// Port: src/Weapons/IWeaponRenderer.cpp defines it (with its default renderer) in the host link.
+#ifndef TARGET_PC
 IWeaponRenderer* IWeaponRenderer::sWeaponRenderer = nullptr;
+#endif
 
 static CModelFlags skNormalFlag = CModelFlags::Normal();
 static CModelFlags skNormalFlagNoUpdate = CModelFlags::Normal().DepthCompareUpdate(true, false);
@@ -136,12 +167,22 @@ void CCubeRenderer::DrawGeometry(int areaId, const char* name, const SGeometryTa
 }
 
 uint Buckets::GetWorkspaceSize() {
+#ifdef TARGET_PC
+  // Host structs are larger; Init() aligns to 16 and each placement needs slack.
+  return sizeof(DrawableList) + sizeof(BucketList) + sizeof(PlaneList) + sizeof(PlaneBucketList) +
+         16 + 4 * 16;
+#else
   return sizeof(DrawableList) + sizeof(BucketList) + sizeof(PlaneList) + sizeof(PlaneBucketList) +
          4;
+#endif
 }
 
 void Buckets::Init(void* workspace) {
+#ifdef TARGET_PC
+  uchar* data = reinterpret_cast< uchar* >((reinterpret_cast< uintptr_t >(workspace) + 15) & ~uintptr_t(15));
+#else
   uchar* data = reinterpret_cast< uchar* >((reinterpret_cast< uint >(workspace) + 3) & ~3);
+#endif
   sData = new (data) DrawableList;
   data += sizeof(DrawableList);
   sBuckets = new (data) BucketList;
@@ -171,7 +212,9 @@ void Buckets::Insert(const CVector3f& pos, const CAABox& bounds, EDrawableType t
   list.push_back(CDrawable(type, extraSort, distance, bounds, data, alpha));
   sMinMaxDistance.first = rstl::min_val(distance, sMinMaxDistance.first);
   sMinMaxDistance.second = rstl::max_val(distance, sMinMaxDistance.second);
+#ifndef TARGET_PC
   __dcbt(&list.back() + 1, 0);
+#endif
 }
 
 void Buckets::InsertPlaneObject(float closeDistance, float farDistance, const CAABox& bounds,
@@ -758,7 +801,11 @@ void CCubeRenderer::RenderBucketItems(const CAreaListItem* area, bool alpha) {
           SetMaterialMode(mRequestedMaterialMode);
           lastLightSet = 255;
         }
+#ifdef TARGET_PC
+        const uint packed = static_cast< uint >(reinterpret_cast< uintptr_t >(drawable->GetData()));
+#else
         const uint packed = reinterpret_cast< uint >(drawable->GetData());
+#endif
         const short modelIndex = packed >> 16;
         const ushort surfaceIndex = packed;
         const CMetroidModelInstance& instance = (*area->mGeometry)[modelIndex];
@@ -2847,7 +2894,11 @@ void CCubeRenderer::DrawSilhouetteNoise(const SSilhouetteNoise& noise) {
   mRenderingSilhouette = false;
   CGX::SetDstAlpha(true, 0);
   void* const spare = CGraphics::GetDolphinSpareBuffer();
+#ifdef TARGET_PC
+  void* noiseData = NoiseTextureData(mRandom.Next(), 96 * 96);
+#else
   void* noiseData = reinterpret_cast< void* >(((mRandom.Next() + 31) & ~31) + 0x8000);
+#endif
   CGX::SetZMode(false, GX_ALWAYS, false);
   const int width = CGraphics::GetViewport().mWidth;
   const int height = CGraphics::GetViewport().mHeight;
@@ -3505,7 +3556,11 @@ void CCubeRenderer::DrawDarkWorldTransition(const CColor& color0, const CColor& 
   CGraphics::SetViewPointMatrix(CTransform4f::Identity());
   CGraphics::SetModelMatrix(CTransform4f::Identity());
   const GXTexMapID spareTexMap = CGraphics::kSpareBufferTexMapID;
+#ifdef TARGET_PC
+  void* noise = NoiseTextureData(mRandom.Next(), static_cast< size_t >((width / 2 + 3) & ~3) * ((height + 3) & ~3) * 2);
+#else
   void* noise = reinterpret_cast< void* >(((mRandom.Next() + 31) & ~31) + 0x8000);
+#endif
   CGraphics::LoadDolphinSpareTexture(width / 2, height, GX_TF_IA8, noise, GX_TEXMAP0);
   GXSetTexCopySrc(left, top, width, height);
   GXSetTexCopyDst(width, height, GX_CTF_R8, false);
@@ -3664,7 +3719,11 @@ void CCubeRenderer::DrawDarkWorldFilter(float amount) {
   };
   mRequestRGBA6 = true;
   CRandom16 random(99);
+#ifdef TARGET_PC
+  void* noise = NoiseTextureData(random.Next(), 64 * 64);
+#else
   void* noise = reinterpret_cast< void* >(((random.Next() + 31) & ~31) + 0x8000);
+#endif
   const CViewport& viewport = CGraphics::GetViewport();
   const int left = viewport.mLeft;
   const int top = viewport.mTop;
@@ -4218,7 +4277,11 @@ void CCubeRenderer::DrawDarkWorldCloud(float time, const CVector3f& scale, const
 
 void CCubeRenderer::DrawModelNoise(const SModelRenderData& model, const CColor& color,
                                    bool additive) {
+#ifdef TARGET_PC
+  void* noise = NoiseTextureData(mRandom.Next(), 96 * 96);
+#else
   void* noise = reinterpret_cast< void* >(((mRandom.Next() + 31) & ~31) + 0x8000);
+#endif
   CGraphics::LoadDolphinSpareTexture(96, 96, GX_TF_IA4, noise, CGraphics::kSpareBufferTexMapID);
   if (additive) {
     CGX::SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_CLEAR);

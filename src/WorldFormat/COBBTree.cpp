@@ -127,6 +127,15 @@ uint COBBTree::CNode::GetMemoryUsage() const {
 
 void COBBTree::CNode::SetAllocator(CSimpleAllocator* allocator) { spAllocator = allocator; }
 
+#ifdef TARGET_PC
+void* COBBTree::CNode::operator new(size_t size) {
+  if (spAllocator) {
+    return spAllocator->Alloc(size);
+  }
+  return rs_new char[size];
+}
+#endif
+
 void* COBBTree::CNode::operator new(size_t size, const char* file, int line) {
   if (spAllocator) {
     return spAllocator->Alloc(size);
