@@ -113,7 +113,13 @@ bool CGameAllocator::Initialize(COsContext& ctx) {
   xac_ = 0;
   x4_ = 1;
 
+#ifdef TARGET_PC
+  // The pool's 0x2c000 blocks are kAllocatorPointerSize bytes each: 8 on the host, so the main
+  // data is twice retail's 0xb0000 or the pool's upper half overlaps other heap blocks.
+  mSmallAllocMainData = Alloc(0x2c000 * kAllocatorPointerSize, kHI_None, kSC_Unk1, kTP_Heap,
+#else
   mSmallAllocMainData = Alloc(0xb0000, kHI_None, kSC_Unk1, kTP_Heap,
+#endif
                                  CCallStack(0xffffffff, "SmallAllocMainData   ", " - Ignore"));
 
   mSmallAllocBookKeeping = Alloc(0x16000, kHI_None, kSC_Unk1, kTP_Heap,
