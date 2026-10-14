@@ -314,8 +314,14 @@ void CShrieker::AddToRenderer(const CStateManager& mgr) const {
 }
 
 void CShrieker::Render(const CStateManager& mgr) const {
+#ifdef TARGET_PC
+  // Retail reads player 0's state (0x150c).
+  if (mColor.GetAlpha() != 0.f ||
+      mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Echo) {
+#else
   if (mColor.GetAlpha() != 0.f ||
       mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Echo) {
+#endif
     CPatterned::Render(mgr);
   }
   if (mDeflectedIds.size() != 0) {
@@ -756,7 +762,12 @@ void CShrieker::UpdateValidTarget(CStateManager& mgr) {
   if (valid) {
     valid = mColor.GetAlpha() > 0.5f;
     if (!valid) {
+#ifdef TARGET_PC
+      // Retail reads player 0's state (0x150c); GetPlayerState() is null outside rendering.
+      valid = mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Echo;
+#else
       valid = mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Echo;
+#endif
     }
   }
   if (static_cast< uint >(valid) != (GetValidTargetPlayers() & 1)) {
