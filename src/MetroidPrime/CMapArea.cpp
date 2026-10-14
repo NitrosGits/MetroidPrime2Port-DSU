@@ -220,7 +220,13 @@ void CMapArea::BuildDisplayLists() {
 
       out.WriteUint8(0);
       out.WriteUint8(primitive);
+#ifdef TARGET_PC
+      // The display list is consumed by the GX FIFO, which reads the count big-endian.
+      out.WriteUint8(numVertices >> 8);
+      out.WriteUint8(numVertices & 0xff);
+#else
       out.WriteShort(numVertices);
+#endif
       for (int v = 0; v < numVertices; ++v) {
         out.WriteUint8(data[v]);
         out.WriteUint8(normalIdx);
@@ -242,7 +248,13 @@ void CMapArea::BuildDisplayLists() {
 
       out.WriteUint8(0);
       out.WriteUint8(GX_LINESTRIP | GX_VTXFMT0);
+#ifdef TARGET_PC
+      // The display list is consumed by the GX FIFO, which reads the count big-endian.
+      out.WriteUint8(numVertices >> 8);
+      out.WriteUint8(numVertices & 0xff);
+#else
       out.WriteShort(numVertices);
+#endif
       out.Put(data, numVertices);
     }
   }
