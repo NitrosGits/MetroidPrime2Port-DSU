@@ -148,13 +148,22 @@ GXRenderModeObj GXMpal480IntDf = {
 };
 
 void GXAdjustForOverscan(GXRenderModeObj* rmin, GXRenderModeObj* rmout, u16 hor, u16 ver) {
-  // Overscan only insets the visible VI area; the EFB and XFB keep the game's
-  // logical size, because they drive GXSetViewport and GXSetScissor. The GX
-  // scissor is an 11-bit field biased by 342, so copying the OS window's pixel
-  // size into fbWidth (2351, or 1878 once the port widens it to 16:9) wraps the
-  // scissor to zero width and clips every draw away. Aurora scales the logical
-  // framebuffer up to the window when it presents instead.
+  // The SDK's arithmetic: overscan shrinks the logical EFB/XFB as well as the VI area.
+  // Games size their viewports from the shrunk EFB (Echoes passes ver=16 and draws a
+  // 640x448 view); a 640x480 logical framebuffer left that view unscaled and inset.
+  // The sizes stay logical: never copy the OS window's pixel size into fbWidth (the GX
+  // scissor is an 11-bit field biased by 342, so 2351 wraps it to zero width and clips
+  // every draw away). Aurora scales the logical framebuffer up to the window instead.
+  const u16 hor2 = static_cast< u16 >(hor * 2);
+  const u16 ver2 = static_cast< u16 >(ver * 2);
   *rmout = *rmin;
+  rmout->fbWidth = static_cast< u16 >(rmin->fbWidth - hor2);
+  rmout->efbHeight = static_cast< u16 >(rmin->efbHeight - (ver2 * rmin->efbHeight) / rmin->xfbHeight);
+  if (rmin->xFBmode == VI_XFBMODE_SF && (rmin->viTVmode & 3) == 0) {
+    rmout->xfbHeight = static_cast< u16 >(rmin->xfbHeight - ver);
+  } else {
+    rmout->xfbHeight = static_cast< u16 >(rmin->xfbHeight - ver2);
+  }
   rmout->viXOrigin = static_cast< u16 >(rmin->viXOrigin + hor);
   rmout->viYOrigin = static_cast< u16 >(rmin->viYOrigin + ver);
   rmout->viWidth = static_cast< u16 >(rmin->viWidth - 2 * hor);
