@@ -15,7 +15,14 @@ uint CBitStreamWriter::GetWrittenBits() const {
 
 void CBitStreamWriter::Flush() {
   if (mShiftRegisterOffset < 32) {
+#ifdef TARGET_PC
+    // Emit the register big-endian (top bits first), as the guest does.
+    const uchar bytes[4] = {uchar(mShiftRegister >> 24), uchar(mShiftRegister >> 16),
+                            uchar(mShiftRegister >> 8), uchar(mShiftRegister)};
+    mStream.Put(bytes, min_containing_bytes(32 - mShiftRegisterOffset));
+#else
     mStream.Put(&mShiftRegister, min_containing_bytes(32 - mShiftRegisterOffset));
+#endif
     mShiftRegister = 0;
     mShiftRegisterOffset = 32;
   }

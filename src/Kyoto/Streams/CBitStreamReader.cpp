@@ -37,7 +37,14 @@ uint CBitStreamReader::ReadBits(uint bitCount) {
 
   uint len = min_containing_bytes(shiftAmt);
   mBitOffset = 0;
+#ifdef TARGET_PC
+  // The word is big-endian on the stream (first byte = top bits); the host register is not.
+  uchar bytes[4] = {0, 0, 0, 0};
+  mStream.Get(bytes, len);
+  mBitWord = (uint(bytes[0]) << 24) | (uint(bytes[1]) << 16) | (uint(bytes[2]) << 8) | bytes[3];
+#else
   mStream.Get(&mBitWord, len);
+#endif
 
   {
     uint mask = 0xffffffff;
