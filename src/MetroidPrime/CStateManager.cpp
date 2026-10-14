@@ -1774,7 +1774,12 @@ void CStateManager::DeleteSaveGameScreen() {
 }
 
 void CStateManager::CreateSaveGameScreen() {
+#ifdef TARGET_PC
+  // Only the FrontEnd screen calls this; kSC_InGame made A on a slot rebuild it from the FrontEnd game state
+  mSaveGameScreen = rs_new CSaveGameScreen(kSC_FrontEnd, gpGameState->GetCardSerial());
+#else
   mSaveGameScreen = rs_new CSaveGameScreen(kSC_InGame, gpGameState->GetCardSerial());
+#endif
 }
 
 void CStateManager::SetGameState(EGameState state) {
