@@ -41,6 +41,13 @@ void ARQPoll(void);
 #ifdef TARGET_PC
 #define triggerL triggerLeft
 #define triggerR triggerRight
+
+// MWCC/MSL intrinsics and globals upstream units name directly.
+// MSL's FLT_MAX bit pattern; units that `#define FLT_MAX (*(float*)__float_max)` read it.
+static const int __float_max[] = {0x7F7FFFFF};
+static inline double __frsqrte(double x) { return 1.0 / sqrt(x); }
+#define __dcbt(ptr, off) ((void)(ptr), (void)(off))
+#define __alloca(size) __builtin_alloca(size)
 #endif
 
 

@@ -198,14 +198,6 @@ __attribute__((aligned(32))) char reachdata_41[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_42[0x400] asm("_ZN11CSaveRegion23mNonVolatileSettingsBufE");
 __attribute__((aligned(32))) char reachdata_42[0x400] = {};
 
-// CEulerAngles::FromTransform(CTransform4f const&)
-extern "C" void reachstub_50() asm("_ZN12CEulerAngles13FromTransformERK12CTransform4f");
-extern "C" void reachstub_50() { mpReachStub("_ZN12CEulerAngles13FromTransformERK12CTransform4f", "CEulerAngles::FromTransform(CTransform4f const&)"); }
-
-// CEulerAngles::FromQuaternion(CQuaternion const&)
-extern "C" void reachstub_51() asm("_ZN12CEulerAngles14FromQuaternionERK11CQuaternion");
-extern "C" void reachstub_51() { mpReachStub("_ZN12CEulerAngles14FromQuaternionERK11CQuaternion", "CEulerAngles::FromQuaternion(CQuaternion const&)"); }
-
 // CGraphicsSys::CGraphicsSys(COsContext const&, CMemorySys const&, bool)
 extern "C" void reachstub_56() asm("_ZN12CGraphicsSysC1ERK10COsContextRK10CMemorySysb");
 extern "C" void reachstub_56() { mpReachStub("_ZN12CGraphicsSysC1ERK10COsContextRK10CMemorySysb", "CGraphicsSys::CGraphicsSys(COsContext const&, CMemorySys const&, bool)"); }
@@ -601,26 +593,6 @@ extern "C" void reachstub_182() { mpReachStub("_ZN5CMath6FloorFEf", "CMath::Floo
 // CMath::SlowSineR(float)
 extern "C" void reachstub_183() asm("_ZN5CMath9SlowSineREf");
 extern "C" void reachstub_183() { mpReachStub("_ZN5CMath9SlowSineREf", "CMath::SlowSineR(float)"); }
-
-// CAABox::DistanceBetween(CAABox const&, CAABox const&)
-extern "C" void reachstub_186() asm("_ZN6CAABox15DistanceBetweenERKS_S1_");
-extern "C" void reachstub_186() { mpReachStub("_ZN6CAABox15DistanceBetweenERKS_S1_", "CAABox::DistanceBetween(CAABox const&, CAABox const&)"); }
-
-// CAABox::AccumulateBounds(CVector3f const&)
-extern "C" void reachstub_187() asm("_ZN6CAABox16AccumulateBoundsERK9CVector3f");
-extern "C" void reachstub_187() { mpReachStub("_ZN6CAABox16AccumulateBoundsERK9CVector3f", "CAABox::AccumulateBounds(CVector3f const&)"); }
-
-// CAABox::GetEdge(CAABox::EBoxEdgeId)
-extern "C" void reachstub_188() asm("_ZN6CAABox7GetEdgeENS_10EBoxEdgeIdE");
-extern "C" void reachstub_188() { mpReachStub("_ZN6CAABox7GetEdgeENS_10EBoxEdgeIdE", "CAABox::GetEdge(CAABox::EBoxEdgeId)"); }
-
-// CAABox::CAABox(CInputStream&)
-extern "C" void reachstub_189() asm("_ZN6CAABoxC1ER12CInputStream");
-extern "C" void reachstub_189() { mpReachStub("_ZN6CAABoxC1ER12CInputStream", "CAABox::CAABox(CInputStream&)"); }
-
-// CAABox::CAABox(CVector3f const&, CVector3f const&)
-extern "C" void reachstub_190() asm("_ZN6CAABoxC1ERK9CVector3fS2_");
-extern "C" void reachstub_190() { mpReachStub("_ZN6CAABoxC1ERK9CVector3fS2_", "CAABox::CAABox(CVector3f const&, CVector3f const&)"); }
 
 // CModel::sTotalMemory
 extern "C" __attribute__((aligned(32))) char reachdata_191[0x400] asm("_ZN6CModel12sTotalMemoryE");
@@ -1054,14 +1026,6 @@ extern "C" void reachstub_312() { mpReachStub("_ZNK11CQuaternion13BuildInvertedE
 extern "C" void reachstub_313() asm("_ZNK11CWallWalker10TypesMatchEi");
 extern "C" void reachstub_313() { mpReachStub("_ZNK11CWallWalker10TypesMatchEi", "CWallWalker::TypesMatch(int) const"); }
 
-// CAreaOctTree::Node::LineTestEx(CLine const&, CMaterialFilter const&, CAreaOctTree::SRayResult&, float) const
-extern "C" void reachstub_314() asm("_ZNK12CAreaOctTree4Node10LineTestExERK5CLineRK15CMaterialFilterRNS_10SRayResultEf");
-extern "C" void reachstub_314() { mpReachStub("_ZNK12CAreaOctTree4Node10LineTestExERK5CLineRK15CMaterialFilterRNS_10SRayResultEf", "CAreaOctTree::Node::LineTestEx(CLine const&, CMaterialFilter const&, CAreaOctTree::SRayResult&, float) const"); }
-
-// CAreaOctTree::Node::LineTest(CLine const&, CMaterialFilter const&, float) const
-extern "C" void reachstub_315() asm("_ZNK12CAreaOctTree4Node8LineTestERK5CLineRK15CMaterialFilterf");
-extern "C" void reachstub_315() { mpReachStub("_ZNK12CAreaOctTree4Node8LineTestERK5CLineRK15CMaterialFilterf", "CAreaOctTree::Node::LineTest(CLine const&, CMaterialFilter const&, float) const"); }
-
 // CBabyMetroid::TypesMatch(int) const
 extern "C" void reachstub_316() asm("_ZNK12CBabyMetroid10TypesMatchEi");
 extern "C" void reachstub_316() { mpReachStub("_ZNK12CBabyMetroid10TypesMatchEi", "CBabyMetroid::TypesMatch(int) const"); }
@@ -1157,66 +1121,6 @@ extern "C" void reachstub_338() { mpReachStub("_ZNK23CCollisionCacheIterator15Ma
 // CScriptFrontEndDataNetwork::TypesMatch(int) const
 extern "C" void reachstub_339() asm("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi");
 extern "C" void reachstub_339() { mpReachStub("_ZNK26CScriptFrontEndDataNetwork10TypesMatchEi", "CScriptFrontEndDataNetwork::TypesMatch(int) const"); }
-
-// CAABox::ClampToBox(CVector3f const&) const
-extern "C" void reachstub_343() asm("_ZNK6CAABox10ClampToBoxERK9CVector3f");
-extern "C" void reachstub_343() { mpReachStub("_ZNK6CAABox10ClampToBoxERK9CVector3f", "CAABox::ClampToBox(CVector3f const&) const"); }
-
-// CAABox::InsidePlane(CPlane const&) const
-extern "C" void reachstub_344() asm("_ZNK6CAABox11InsidePlaneERK6CPlane");
-extern "C" void reachstub_344() { mpReachStub("_ZNK6CAABox11InsidePlaneERK6CPlane", "CAABox::InsidePlane(CPlane const&) const"); }
-
-// CAABox::PointInside(CVector3f const&) const
-extern "C" void reachstub_345() asm("_ZNK6CAABox11PointInsideERK9CVector3f");
-extern "C" void reachstub_345() { mpReachStub("_ZNK6CAABox11PointInsideERK9CVector3f", "CAABox::PointInside(CVector3f const&) const"); }
-
-// CAABox::GetCenterPoint() const
-extern "C" void reachstub_346() asm("_ZNK6CAABox14GetCenterPointEv");
-extern "C" void reachstub_346() { mpReachStub("_ZNK6CAABox14GetCenterPointEv", "CAABox::GetCenterPoint() const"); }
-
-// CAABox::DoBoundsOverlap(CAABox const&) const
-extern "C" void reachstub_347() asm("_ZNK6CAABox15DoBoundsOverlapERKS_");
-extern "C" void reachstub_347() { mpReachStub("_ZNK6CAABox15DoBoundsOverlapERKS_", "CAABox::DoBoundsOverlap(CAABox const&) const"); }
-
-// CAABox::GetTransformedAABox(CTransform4f const&) const
-extern "C" void reachstub_348() asm("_ZNK6CAABox19GetTransformedAABoxERK12CTransform4f");
-extern "C" void reachstub_348() { mpReachStub("_ZNK6CAABox19GetTransformedAABoxERK12CTransform4f", "CAABox::GetTransformedAABox(CTransform4f const&) const"); }
-
-// CAABox::GetBooleanIntersection(CAABox const&) const
-extern "C" void reachstub_349() asm("_ZNK6CAABox22GetBooleanIntersectionERKS_");
-extern "C" void reachstub_349() { mpReachStub("_ZNK6CAABox22GetBooleanIntersectionERKS_", "CAABox::GetBooleanIntersection(CAABox const&) const"); }
-
-// CAABox::ClosestPointAlongVector(CVector3f const&) const
-extern "C" void reachstub_350() asm("_ZNK6CAABox23ClosestPointAlongVectorERK9CVector3f");
-extern "C" void reachstub_350() { mpReachStub("_ZNK6CAABox23ClosestPointAlongVectorERK9CVector3f", "CAABox::ClosestPointAlongVector(CVector3f const&) const"); }
-
-// CAABox::FurthestPointAlongVector(CVector3f const&) const
-extern "C" void reachstub_351() asm("_ZNK6CAABox24FurthestPointAlongVectorERK9CVector3f");
-extern "C" void reachstub_351() { mpReachStub("_ZNK6CAABox24FurthestPointAlongVectorERK9CVector3f", "CAABox::FurthestPointAlongVector(CVector3f const&) const"); }
-
-// CAABox::GetTri(CAABox::EBoxFaceId, int) const
-extern "C" void reachstub_352() asm("_ZNK6CAABox6GetTriENS_10EBoxFaceIdEi");
-extern "C" void reachstub_352() { mpReachStub("_ZNK6CAABox6GetTriENS_10EBoxFaceIdEi", "CAABox::GetTri(CAABox::EBoxFaceId, int) const"); }
-
-// CAABox::Inside(CAABox const&) const
-extern "C" void reachstub_353() asm("_ZNK6CAABox6InsideERKS_");
-extern "C" void reachstub_353() { mpReachStub("_ZNK6CAABox6InsideERKS_", "CAABox::Inside(CAABox const&) const"); }
-
-// CAABox::GetQuad(CAABox::EBoxFaceId) const
-extern "C" void reachstub_354() asm("_ZNK6CAABox7GetQuadENS_10EBoxFaceIdE");
-extern "C" void reachstub_354() { mpReachStub("_ZNK6CAABox7GetQuadENS_10EBoxFaceIdE", "CAABox::GetQuad(CAABox::EBoxFaceId) const"); }
-
-// CAABox::Invalid() const
-extern "C" void reachstub_355() asm("_ZNK6CAABox7InvalidEv");
-extern "C" void reachstub_355() { mpReachStub("_ZNK6CAABox7InvalidEv", "CAABox::Invalid() const"); }
-
-// CAABox::GetPoint(int) const
-extern "C" void reachstub_356() asm("_ZNK6CAABox8GetPointEi");
-extern "C" void reachstub_356() { mpReachStub("_ZNK6CAABox8GetPointEi", "CAABox::GetPoint(int) const"); }
-
-// CAABox::GetVolume() const
-extern "C" void reachstub_357() asm("_ZNK6CAABox9GetVolumeEv");
-extern "C" void reachstub_357() { mpReachStub("_ZNK6CAABox9GetVolumeEv", "CAABox::GetVolume() const"); }
 
 // CModel::GetNormals() const
 extern "C" void reachstub_358() asm("_ZNK6CModel10GetNormalsEv");

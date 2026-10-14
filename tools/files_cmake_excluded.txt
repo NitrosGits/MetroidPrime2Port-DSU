@@ -13,11 +13,9 @@ src/Kyoto/Graphics/CTevCombiners.cpp | upstream source/header does not build on 
 src/Kyoto/Graphics/DolphinCGraphics.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
 src/Kyoto/Graphics/DolphinCModel.cpp | GX API mismatch with Aurora headers (needs TARGET_PC handling)
 src/Kyoto/Graphics/DolphinCTexture.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
-src/Kyoto/Math/CAABox.cpp | MWCC/PPC intrinsic or OSContext field unavailable on host (needs TARGET_PC handling)
 src/Kyoto/Text/CStringTable.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
 src/MetaRender/CCubeRenderer.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
 src/MetaRender/PortCCubeRenderer.cpp | port stub written against the old decomp; upstream header/layout differs (no declaration matches ‘void CCubeRenderer::DrawUnsortedGeometry(int, int, int)’)
-src/MetroidPrime/CEulerAngles.cpp | MWCC/PPC intrinsic or OSContext field unavailable on host (needs TARGET_PC handling)
 src/MetroidPrime/CMapArea.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
 src/MetroidPrime/CSurfaceAlignmentHelper.cpp | upstream source/header does not build on host: expected ‘)’ before ‘&’ token
 src/MetroidPrime/CWorldSaveGameInfo.cpp | upstream-incomplete: includes Kyoto/CCRC32.hpp, which upstream does not have
@@ -33,7 +31,6 @@ src/MetroidPrime/PortTenthSyncStubs.cpp | port stubs for old-decomp gaps; upstre
 src/MetroidPrime/ScriptObjects/CScriptDestructibleBarrier.cpp | upstream source/header does not build on host: no matching function for call to ‘COBBTree::CNode::operator new(sizetype)’
 src/MetroidPrime/Startup.cpp | upstream-incomplete: DefaultFontData.inc not in upstream
 src/Runtime/global_destructor_chain.c | MWCC runtime unit (PPC asm/static-ctor chain); not host-buildable
-src/WorldFormat/CAreaOctTree_Tests.cpp | MWCC/PPC intrinsic or OSContext field unavailable on host (needs TARGET_PC handling)
 src/WorldFormat/CCollisionCache.cpp | upstream source/header does not build on host: expected ‘)’ before ‘&’ token
 src/WorldFormat/COBBTree.cpp | upstream source/header does not build on host: no matching function for call to ‘COBBTree::CNode::operator new(sizetype)’
 src/REL/REL_Setup.cpp | per-module console glue (_prolog/_epilog/_ctors); platform/compiled_modules.cpp stands in on the host

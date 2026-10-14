@@ -71,7 +71,10 @@ float msl_sqrtf(float x) {
   return x;
 }
 
+// The host's <cmath> already declares sqrt(float).
+#ifndef TARGET_PC
 float sqrt(float x) { return msl_sqrtf(x); }
+#endif
 
 CEulerAngles CEulerAngles::FromTransform(const CTransform4f& xf) {
   return FromMatrix(CMatrix3f::FromTransform(xf));

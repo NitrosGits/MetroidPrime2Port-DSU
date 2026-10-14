@@ -9,7 +9,7 @@
  * the retail function loads (r2 = 0x804223C0). Symbols whose retail value is zero (runtime-assigned
  * pointers/state, .bss/.sbss) stay stubs in PortLinkStubs.cpp.
  *
- * If upstream (or an un-excluded unit such as Kyoto/Math/CAABox.cpp) later defines one of these,
+ * If upstream later defines one of these,
  * delete it here: a duplicate fails the link.
  */
 
@@ -17,7 +17,6 @@
 #include "Kyoto/CARAMManager.hpp"
 #include "Kyoto/Animation/CSoundPOINode.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
-#include "Kyoto/Math/CAABox.hpp"
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TGameTypes.hpp"
@@ -28,11 +27,6 @@ const char* BuildTime = BUILD_TIME_DUMMY;
 
 // rstl::CRefData::sNull: .sdata 0x80418B98 = {0x00FFFFFF, 0} (dol).
 rstl::CRefData rstl::CRefData::sNull(0x00FFFFFF);
-
-// CAABox null/inverted boxes: retail builds them in a static ctor (.bss 0x804175A0 / 0x80417588);
-// values from src/Kyoto/Math/CAABox.cpp (excluded from the port).
-CAABox CAABox::mskInvertedBox(FLT_MAX, FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX);
-CAABox CAABox::mskNullBox(0.f, 0.f, 0.f, 0.f, 0.f, 0.f);
 
 // CARAMManager: kInvalidHandle .sdata2 0x8041E93C = 0xFFFFFFFF; mPreInitializeAlloc .sdata
 // 0x80418BA8 = 0x00004000 (dol).

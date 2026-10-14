@@ -170,6 +170,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Input/CRumbleVoice.cpp
     src/Kyoto/Input/DolphinIController.cpp
     src/Kyoto/Input/RumbleAdsr.cpp
+    src/Kyoto/Math/CAABox.cpp
     src/Kyoto/Math/CCylinder.cpp
     src/Kyoto/Math/CFrustumPlanes.cpp
     src/Kyoto/Math/CGameCameraSpline.cpp
@@ -329,6 +330,7 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/CEntity.cpp
     src/MetroidPrime/CEnvFxManager.cpp
     src/MetroidPrime/CErrorOutputWindow.cpp
+    src/MetroidPrime/CEulerAngles.cpp
     src/MetroidPrime/CExplosion.cpp
     src/MetroidPrime/CFilteredObjectList.cpp
     src/MetroidPrime/CFluidPlane.cpp
@@ -733,6 +735,7 @@ set(MP_GAME_SOURCES
     src/Weapons/IWeaponRenderer.cpp
     src/WorldFormat/CAreaBspTree.cpp
     src/WorldFormat/CAreaOctTree.cpp
+    src/WorldFormat/CAreaOctTree_Tests.cpp
     src/WorldFormat/CAreaRenderOctTree.cpp
     src/WorldFormat/CCollidableOBBTree.cpp
     src/WorldFormat/CCollidableOBBTreeGroup.cpp
