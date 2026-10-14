@@ -571,6 +571,18 @@ void CGX::SetVtxDescv_Compressed(uint flags) {
     list->type = static_cast< GXAttrType >(flags >> shift & 3);
     ++list;
   }
+#ifdef TARGET_PC
+  // Matrix-index flags (bits 24..31) change the vertex layout, so Aurora must see them too.
+  for (uint idx = 0; idx < 8; ++idx) {
+    const uint bit = 1u << (24 + idx);
+    if ((flags & bit) == (gpGXState->mDescList & bit)) {
+      continue;
+    }
+    list->attr = static_cast< GXAttr >(GX_VA_PNMTXIDX + idx);
+    list->type = (flags & bit) != 0 ? GX_DIRECT : GX_NONE;
+    ++list;
+  }
+#endif
   list->attr = GX_VA_NULL;
   list->type = GX_NONE;
   GXSetVtxDescv(sVtxDescList);
