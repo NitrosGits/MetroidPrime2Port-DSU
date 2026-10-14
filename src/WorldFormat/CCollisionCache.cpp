@@ -87,6 +87,19 @@ void CCollisionCacheWriter::BeginGeometry(const CCollisionPrimitiveData& geometr
                                           const CTransform4f* transform, ushort id, u64 flags) {
   FinishLeaf();
   mGeometryStart = mCache.mData.size();
+#ifdef TARGET_PC
+  // Port: the geometry pointer is 64-bit, so it takes four words instead of two.
+  ReserveWords(42);
+  mCache.mData.push_back_unsafe(kCC_Geometry);
+  for (int i = 0; i < 4; ++i) {
+    mCache.mData.push_back_unsafe(0);
+  }
+  const CCollisionPrimitiveData* geometryPtr = &geometry;
+  memcpy(mCache.mData.data() + mCache.mData.size() - 4, &geometryPtr, sizeof(geometryPtr));
+  mCache.mData.push_back_unsafe(geometry.GetCacheId());
+  mCache.mData.push_back_unsafe(CollisionPrimitiveDataCache::GetGeneration(geometry.GetCacheId()));
+  mCache.mMetadataWords += 7;
+#else
   ReserveWords(40);
   mCache.mData.push_back_unsafe(kCC_Geometry);
   mCache.mData.push_back_unsafe(0);
@@ -96,6 +109,7 @@ void CCollisionCacheWriter::BeginGeometry(const CCollisionPrimitiveData& geometr
   mCache.mData.push_back_unsafe(geometry.GetCacheId());
   mCache.mData.push_back_unsafe(CollisionPrimitiveDataCache::GetGeneration(geometry.GetCacheId()));
   mCache.mMetadataWords += 5;
+#endif
   if (transform != 0) {
     if ((mCache.mData.size() & 1) == 0) {
       mCache.mData.push_back_unsafe(kCC_Padding);
@@ -221,11 +235,19 @@ uint CCollisionCache::ReadGeometry(CCollisionCacheIterator& iterator) {
       iterator.mOffset += 24;
       break;
     case kCC_Geometry:
+#ifdef TARGET_PC
+      memcpy(&iterator.mGeometry, words, sizeof(iterator.mGeometry));
+      id = words[4];
+      generation = words[5];
+      words += 6;
+      iterator.mOffset += 6;
+#else
       iterator.mGeometry = *reinterpret_cast< const CCollisionPrimitiveData** >(words);
       id = words[2];
       generation = words[3];
       words += 4;
       iterator.mOffset += 4;
+#endif
       break;
     case kCC_Material:
       iterator.mMaterialFlags = *reinterpret_cast< u64* >(words);
