@@ -11,6 +11,10 @@ const int kCacheSlotCount = 3;
 int sFreeSegments = (1 << kCacheSlotCount) - 1;
 
 inline void* AllocateSegment() {
+#ifdef TARGET_PC
+  // No locked cache on the host: always use the heap.
+  return CMemory::Alloc(kSegmentSetSize);
+#endif
   LCQueueWait(0);
   if (sFreeSegments) {
     for (uint i = 0; i < kCacheSlotCount; ++i) {
@@ -27,6 +31,10 @@ inline void* AllocateSegment() {
 }
 
 inline void FreeSegment(CSegStatement* seg) {
+#ifdef TARGET_PC
+  CMemory::Free(seg);
+  return;
+#endif
   char* base = static_cast< char* >(LCGetBase());
   char* ptr = reinterpret_cast< char* >(seg);
   if (ptr >= base && ptr < base + kCacheSlotCount * kSegmentSetSize) {

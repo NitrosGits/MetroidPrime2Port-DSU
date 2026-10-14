@@ -1,7 +1,13 @@
 #include "Kyoto/Alloc/LockedCache.hpp"
 
 // Guessed descriptive names for the target's temporary locked-cache allocator state.
+#ifdef TARGET_PC
+// The GC locked cache (0xe0000000) does not exist on the host; back it with a plain buffer.
+alignas(32) static uchar sHostLockedCache[0x4000];
+static uchar* sAllocationBase = sHostLockedCache;
+#else
 static uchar* sAllocationBase = reinterpret_cast< uchar* >(0xe0000000);
+#endif
 static void* sAllocations[16];
 static uint sAllocatedBytes;
 static uint sAllocationCount;
