@@ -39,7 +39,12 @@ public:
   void WriteInt32(const int t) { Put(t); }
 
   void WriteShort(const short t) {
+#ifdef TARGET_PC
+    // Streams are big-endian, as WriteLong already ensures.
+    const short value = CBasics::SwapBytes(t);
+#else
     const short value = t;
+#endif
     Put(&value, sizeof(value));
   }
   void WriteLong(const uint t) {
