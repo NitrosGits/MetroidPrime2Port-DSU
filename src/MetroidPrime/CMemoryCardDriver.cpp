@@ -13,6 +13,10 @@
 #include <dolphin/os.h>
 #include <stdio.h>
 
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+#endif
+
 static const char* const skSaveFileName = "MetroidPrime2";
 
 // Diagnostic strings retained in the retail pool; table structure is inferred from Prime.
@@ -79,7 +83,12 @@ static bool sDriverExists; // Guessed name
 
 // Guessed name
 static bool IsSaveSignatureInvalid(const void* data) {
+#ifdef TARGET_PC
+  // SSaveHeader::PutTo wrote the signature through COutputStream, big-endian.
+  return CBasics::SwapBytes(*static_cast< const uint* >(data)) != GetSaveSignature();
+#else
   return *static_cast< const uint* >(data) != GetSaveSignature();
+#endif
 }
 
 bool CMemoryCardDriver::IsCardBusy(EState state) {
