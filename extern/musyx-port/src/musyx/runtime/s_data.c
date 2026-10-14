@@ -359,7 +359,7 @@ bool sndPopGroup() {
 */
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-u32 sndStackGetSize() { return 0x618; }
+u32 sndStackGetSize() { return sizeof(GSTACK_INST); /* host pointers: larger than retail 0x618 */ }
 
 u32 sndStackAdd(void* stackWorkMem, u32 aramBase, u32 aramSize) {
   GSTACK_INST* gs; // r31
