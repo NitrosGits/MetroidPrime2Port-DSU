@@ -5,6 +5,9 @@
 // Port: Aurora brackets a presented frame around the game's scene.
 #include <aurora/aurora.h>
 
+#include <chrono>
+#include <thread>
+
 namespace {
 // GXInit (CGraphics::Startup) submits register writes the Aurora worker processes, so a frame
 // must be open before it runs; the first EndScene closes it.
@@ -19,6 +22,23 @@ void AuroraFrameEnd() {
   if (s_auroraFrameOpen) {
     aurora_end_frame();
     s_auroraFrameOpen = false;
+  }
+}
+
+// Retail's EndScene waits for the GP breakpoint and the next retrace, which holds the game to
+// the video rate: each loop iteration ticks a fixed 1/60 s. Without that wait the loop ran ~8x
+// real time (the 61 s health warning passed in 7 s), so sleep to a 60/50 Hz deadline instead.
+void PaceFrame(bool is50Hz) {
+  using clock = std::chrono::steady_clock;
+  static clock::time_point sDeadline = clock::now();
+  const clock::duration period = std::chrono::microseconds(is50Hz ? 20000 : 16667);
+  const clock::time_point now = clock::now();
+  sDeadline += period;
+  if (sDeadline > now) {
+    std::this_thread::sleep_until(sDeadline);
+  } else if (now - sDeadline > period) {
+    // Too far behind (a load stall): resync rather than run fast to catch up.
+    sDeadline = now;
   }
 }
 } // namespace
@@ -976,6 +996,7 @@ void CGraphics::EndScene() {
 #ifdef TARGET_PC
   // Port: present this Aurora frame instead of waiting on the GP breakpoint.
   AuroraFrameEnd();
+  PaceFrame(sIs50Hz);
   mNumBreakpointsWaiting = 0;
   mFlippingState = 0;
 #else
