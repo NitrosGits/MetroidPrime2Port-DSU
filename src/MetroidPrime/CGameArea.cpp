@@ -2,6 +2,9 @@
 
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/CARAMManager.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CCubeSurface.hpp"
+#endif
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
 #include "Kyoto/Math/CMath.hpp"
@@ -437,26 +440,49 @@ void CGameArea::FillInStaticGeometry() {
   rstl::vector< void* > surfaces;
   for (int model = 0; model < modelCount; ++model) {
     const void* header = section->first.get();
+#ifdef TARGET_PC
+    const void* positions = (++section)->first.get();
+    const uint positionsSize = section->second;
+    const void* normals = (++section)->first.get();
+    const uint normalsSize = section->second;
+    const void* colors = (++section)->first.get();
+    const uint colorsSize = section->second;
+    const void* texCoords = (++section)->first.get();
+    const uint texCoordsSize = section->second;
+    const void* packedTexCoords = (++section)->first.get();
+    const uint packedTexCoordsSize = section->second;
+#else
     const void* positions = (++section)->first.get();
     const void* normals = (++section)->first.get();
     const void* colors = (++section)->first.get();
     const void* texCoords = (++section)->first.get();
     const void* packedTexCoords = (++section)->first.get();
+#endif
     const uint surfaceCount =
         CBasics::SwapBytes(*reinterpret_cast< const uint* >((++section)->first.get()));
     ++section;
     if (surfaceCount != 0) {
       surfaces.reserve(surfaceCount);
       for (uint surface = 0; surface < surfaceCount; ++surface) {
+#ifdef TARGET_PC
+        CCubeSurface::ConvertSurfaceHeader(section->first.get());
+#endif
         surfaces.push_back_unsafe(section->first.get());
         ++section;
       }
       const void* section1 = section->first.get();
       const void* section2 = (++section)->first.get();
       ++section;
+#ifdef TARGET_PC
+      mPostConst->mModelInstances.push_back_unsafe(CMetroidModelInstance(
+          header, mPostConst->mFirstMaterial, positions, normals, colors, texCoords,
+          packedTexCoords, surfaces, section1, section2, positionsSize, normalsSize, colorsSize,
+          texCoordsSize, packedTexCoordsSize));
+#else
       mPostConst->mModelInstances.push_back_unsafe(
           CMetroidModelInstance(header, mPostConst->mFirstMaterial, positions, normals,
                                 colors, texCoords, packedTexCoords, surfaces, section1, section2));
+#endif
       surfaces.clear();
     }
   }

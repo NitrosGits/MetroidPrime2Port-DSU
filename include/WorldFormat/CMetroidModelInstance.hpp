@@ -22,7 +22,12 @@ public:
   CMetroidModelInstance(const void* header, const void* materials, const void* positions,
                         const void* normals, const void* colors, const void* texCoords,
                         const void* packedTexCoords, const rstl::vector< void* >& surfaces,
-                        const void* const& section1, const void* const& section2);
+                        const void* const& section1, const void* const& section2
+#ifdef TARGET_PC
+                        , uint positionsSize = 0, uint normalsSize = 0, uint colorsSize = 0,
+                        uint texCoordsSize = 0, uint packedTexCoordsSize = 0
+#endif
+                        );
 
   const rstl::vector< void* >& GetSurfaces() const { return mSurfaces; }
   const void* GetVertexPointer() const { return mPositions; }
@@ -33,6 +38,13 @@ public:
   const void* GetPackedTCPointer() const { return mPackedTexCoords; }
   const CAABox& GetBoundingBox() const { return mWorldBounds; }
   int GetFlags() const { return mVisorFlags; }
+#ifdef TARGET_PC
+  uint GetVertexSize() const { return mPositionsSize; }
+  uint GetNormalSize() const { return mNormalsSize; }
+  uint GetColorSize() const { return mColorsSize; }
+  uint GetTCSize() const { return mTexCoordsSize; }
+  uint GetPackedTCSize() const { return mPackedTexCoordsSize; }
+#endif
   CSurfaceGroups GetSurfaceGroups() const { return CSurfaceGroups(mSurfaceGroups); }
 
   // Guessed name. Each serialized surface record is two halfwords after the header.
@@ -75,6 +87,13 @@ private:
   const void* mPackedTexCoords;
   const void* x74_;
   const void* mSurfaceGroups; // Guessed name.
+#ifdef TARGET_PC
+  uint mPositionsSize;
+  uint mNormalsSize;
+  uint mColorsSize;
+  uint mTexCoordsSize;
+  uint mPackedTexCoordsSize;
+#endif
 };
 CHECK_SIZEOF(CMetroidModelInstance, 0x7c)
 NESTED_CHECK_SIZEOF(CMetroidModelInstance, CSurfaceGroups, 4)

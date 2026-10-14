@@ -587,11 +587,21 @@ void CCubeRenderer::AddStaticGeometry(const rstl::vector< CMetroidModelInstance 
       models->reserve(geometry->size());
       for (int i = 0; i < geometry->size(); ++i) {
         const CMetroidModelInstance& instance = (*geometry)[i];
+#ifdef TARGET_PC
+        models->push_back(rs_new CCubeModel(
+            const_cast< rstl::vector< void* >* >(&instance.GetSurfaces()), textures.get(),
+            instance.GetMaterialPointer(), instance.GetVertexPointer(), instance.GetNormalPointer(),
+            instance.GetColorPointer(), instance.GetTCPointer(), instance.GetPackedTCPointer(),
+            instance.GetBoundingBox(), instance.GetFlags(), false, i, instance.GetVertexSize(),
+            instance.GetNormalSize(), instance.GetColorSize(), instance.GetTCSize(),
+            instance.GetPackedTCSize()));
+#else
         models->push_back(rs_new CCubeModel(
             const_cast< rstl::vector< void* >* >(&instance.GetSurfaces()), textures.get(),
             instance.GetMaterialPointer(), instance.GetVertexPointer(), instance.GetNormalPointer(),
             instance.GetColorPointer(), instance.GetTCPointer(), instance.GetPackedTCPointer(),
             instance.GetBoundingBox(), instance.GetFlags(), false, i));
+#endif
       }
     }
     mAreaListItems.push_back(CAreaListItem(geometry, octTree, surfaces, ambientLightIds,
