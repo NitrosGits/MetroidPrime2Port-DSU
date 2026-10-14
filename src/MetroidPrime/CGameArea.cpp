@@ -58,6 +58,15 @@ rstl::string CGameArea::IGetInternalAreaName() const { return mInternalAreaName;
 
 IGameArea::~IGameArea() {}
 
+#ifdef TARGET_PC
+static void SwapAreaWords(void* data, int count) {
+  uint* words = static_cast< uint* >(data);
+  for (int i = 0; i < count; ++i) {
+    words[i] = CBasics::SwapBytes(words[i]);
+  }
+}
+#endif
+
 int CGameArea::VerifyHeader() const {
   if (!mPostConst->GetSectionBuffers().empty()) {
     const int* header =
@@ -477,6 +486,10 @@ struct SMreaHeader {
 };
 
 static inline CVector3f SwapVectorBytes(CVector3f vector) {
+#ifdef TARGET_PC
+  // Port: the header was converted to host order when it loaded.
+  return vector;
+#endif
   return CVector3f(CBasics::SwapBytes(vector.GetX()), CBasics::SwapBytes(vector.GetY()),
                    CBasics::SwapBytes(vector.GetZ()));
 }
@@ -493,7 +506,11 @@ void CGameArea::PostConstructArea() {
   CVector3f translation = SwapVectorBytes(header->transform.GetTranslation());
   close_enough(mTransform.GetTranslation(), translation, 0.001f);
 
+#ifdef TARGET_PC
+  const int modelCount = header->modelCount;
+#else
   const int modelCount = CBasics::SwapBytes(header->modelCount);
+#endif
   section += 2;
   if (header->version >= 24) {
     ++section;
@@ -504,6 +521,9 @@ void CGameArea::PostConstructArea() {
   mPostConst->mModelInstances.reserve(modelCount);
   for (int i = 0; i < modelCount; ++i) {
     int surfaces = *reinterpret_cast< const int* >((section + 6)->first.get());
+#ifdef TARGET_PC
+    surfaces = CBasics::SwapBytes(surfaces);
+#endif
     section += 7;
     section += surfaces;
     section += 2;
@@ -540,6 +560,9 @@ void CGameArea::PostConstructArea() {
     ++collisionData;
   }
   uint collisionSize = *reinterpret_cast< const uint* >(collisionData);
+#ifdef TARGET_PC
+  collisionSize = CBasics::SwapBytes(collisionSize);
+#endif
   collisionData += 4;
   CAreaOctTree* collision = nullptr;
   bool collisionOwned = false;
@@ -551,7 +574,11 @@ void CGameArea::PostConstructArea() {
   mPostConst->mCollisionSize = collisionSize;
   collisionData += collisionSize;
   if (mPostConst->mMreaVersion < 25) {
+#ifdef TARGET_PC
+    const uint count = CBasics::SwapBytes(*reinterpret_cast< const uint* >(collisionData));
+#else
     const uint count = *reinterpret_cast< const uint* >(collisionData);
+#endif
     CMemoryInStream stream(collisionData + 4, count * sizeof(CAABox) + 8);
     stream.ReadFloat();
     stream.ReadFloat();
@@ -1053,6 +1080,11 @@ bool CGameArea::StartStreamingMainArea(CStateManager& mgr) {
     if (!mPostConst->mLoadTransactions.empty()) {
       break;
     }
+#ifdef TARGET_PC
+    // Port: the MREA header is all 32-bit words; convert it to host order once, here.
+    SwapAreaWords(mPostConst->GetSectionBuffers()[0].first.get(),
+                  mPostConst->GetSectionBuffers()[0].second / 4);
+#endif
     mPostConst->mMreaVersion = VerifyHeader();
     const int sectionBytes = ALIGN_UP(GetNumPartSizes() * 4, 32);
     const int headerBytes = mPostConst->GetSectionBuffers()[0].second;
@@ -1069,6 +1101,14 @@ bool CGameArea::StartStreamingMainArea(CStateManager& mgr) {
       break;
     }
     const int partCount = GetNumPartSizes();
+#ifdef TARGET_PC
+    // Port: section sizes and compressed-block records are 32-bit words.
+    SwapAreaWords(mPostConst->GetSectionBuffers()[1].first.get(), partCount);
+    if (mPostConst->mMreaVersion >= 24) {
+      SwapAreaWords(mPostConst->GetSectionBuffers()[2].first.get(),
+                    GetNumCompressedBlocks() * 4);
+    }
+#endif
     mPostConst->GetSectionBuffers().reserve(partCount + 3);
     int offset = mPostConst->GetSectionBuffers()[0].second;
     offset += mPostConst->GetSectionBuffers()[1].second;
@@ -1276,7 +1316,11 @@ void CGameArea::DecompressAreaData() {
       break;
     }
 
+#ifdef TARGET_PC
+    const short chunkSize = CBasics::SwapBytes(*reinterpret_cast< const short* >(request.mInput));
+#else
     const short chunkSize = *reinterpret_cast< const short* >(request.mInput);
+#endif
     uint outputSize = request.mRemainingSize;
     if (chunkSize < 0) {
       const int uncompressedSize = -chunkSize;
