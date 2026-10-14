@@ -24,6 +24,52 @@
 
 static Mtx sViewMtx;
 
+#ifdef TARGET_PC
+#include <string.h>
+
+static const int kDiscSurfaceSize = 0x20;
+
+static uint ReadBigU32(const uchar* p) {
+  return (uint(p[0]) << 24) | (uint(p[1]) << 16) | (uint(p[2]) << 8) | uint(p[3]);
+}
+
+static float ReadBigFloat(const uchar* p) {
+  const uint bits = ReadBigU32(p);
+  float value;
+  memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+static int SwapWordInPlace(int* word) {
+  *word = CBasics::SwapBytes(*word);
+  return *word;
+}
+
+// Builds a host surface from its disc record (normal, centroid, two offsets into buf) and
+// converts the primitive/count words it points at to host order; vertex index bytes stay as is.
+void CMapArea::BuildHostSurface(CMapAreaSurface& surf, const uchar* rec, uchar* buf) {
+  surf.mNormal = CVector3f(ReadBigFloat(rec), ReadBigFloat(rec + 4), ReadBigFloat(rec + 8));
+  surf.mCentroid =
+      CVector3f(ReadBigFloat(rec + 12), ReadBigFloat(rec + 16), ReadBigFloat(rec + 20));
+  int* surface = reinterpret_cast< int* >(buf + ReadBigU32(rec + 24));
+  int* outline = reinterpret_cast< int* >(buf + ReadBigU32(rec + 28));
+  surf.mSurfOffset = surface;
+  surf.mOutlineOffset = outline;
+
+  const int numSurfaces = SwapWordInPlace(surface++);
+  for (int i = 0; i < numSurfaces; ++i) {
+    SwapWordInPlace(surface++);
+    const int numVertices = SwapWordInPlace(surface++);
+    surface += ((numVertices + 3) & ~3) / 4;
+  }
+  const int numOutlines = SwapWordInPlace(outline++);
+  for (int i = 0; i < numOutlines; ++i) {
+    const int numVertices = SwapWordInPlace(outline++);
+    outline += ((numVertices + 3) & ~3) / 4;
+  }
+}
+#endif
+
 CMapArea::CMapArea(CInputStream& in, uint size)
 : mMagic(in.ReadInt32())
 , mVersion(in.ReadInt32())
@@ -52,6 +98,10 @@ CMapArea::~CMapArea() {
   CFrameDelayedKiller::ScheduleDeletion(CFrameDelayedKiller::kWhichFrame_NextFrame, mBuf.release());
   CFrameDelayedKiller::ScheduleDeletion(CFrameDelayedKiller::kWhichFrame_NextFrame,
                                         mRenderBuf.release());
+#ifdef TARGET_PC
+  CFrameDelayedKiller::ScheduleDeletion(CFrameDelayedKiller::kWhichFrame_NextFrame,
+                                        mHostSurfaces.release());
+#endif
 }
 
 void CMapArea::PostConstruct() {
@@ -60,7 +110,13 @@ void CMapArea::PostConstruct() {
   moStart += mMappableObjCount * sizeof(CMappableObject);
   mVertexStart = reinterpret_cast< CVector3f* >(moStart);
   moStart += mVertexCount * sizeof(CVector3f);
+#ifdef TARGET_PC
+  const uchar* discSurfaces = moStart;
+  mHostSurfaces = rs_new uchar[mSurfaceCount * sizeof(CMapAreaSurface)];
+  mSurfaceStart = reinterpret_cast< CMapAreaSurface* >(mHostSurfaces.get());
+#else
   mSurfaceStart = reinterpret_cast< CMapAreaSurface* >(moStart);
+#endif
 
   for (int i = 0; i < mMappableObjCount; ++i) {
     mMoStart[i].PostConstruct(mBuf.get());
@@ -69,9 +125,15 @@ void CMapArea::PostConstruct() {
   for (int i = 0; i < mVertexCount * 3; ++i) {
     floatStart[i] = CBasics::SwapBytes(floatStart[i]);
   }
+#ifdef TARGET_PC
+  for (int i = 0; i < mSurfaceCount; ++i) {
+    BuildHostSurface(mSurfaceStart[i], discSurfaces + i * kDiscSurfaceSize, mBuf.get());
+  }
+#else
   for (int i = 0; i < mSurfaceCount; ++i) {
     mSurfaceStart[i].PostConstruct(mBuf.get());
   }
+#endif
 }
 
 void CMapArea::BuildDisplayLists() {

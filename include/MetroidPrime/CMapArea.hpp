@@ -41,6 +41,9 @@ public:
 
   void PostConstruct();
   void BuildDisplayLists(); // Guessed name
+#ifdef TARGET_PC
+  static void BuildHostSurface(CMapAreaSurface& surf, const uchar* rec, uchar* buf);
+#endif
   bool GetIsVisibleToAutoMapper(bool worldVis, bool areaVis) const;
   bool IsInDarkWorld() const; // Guessed name
   CVector3f GetAreaCenterPoint() const;
@@ -73,6 +76,11 @@ private:
   CVector3f* mVertexStart;
   CMapAreaSurface* mSurfaceStart;
   rstl::single_ptr< uchar > mBuf;
+#ifdef TARGET_PC
+  // Host CMapAreaSurface holds pointers and outgrows the 0x20-byte disc records, so the
+  // surfaces live in their own buffer instead of in place in mBuf.
+  rstl::single_ptr< uchar > mHostSurfaces;
+#endif
 
   // Guessed names: prepared rendering storage and its non-owning sections.
   rstl::single_ptr< uchar > mRenderBuf;
