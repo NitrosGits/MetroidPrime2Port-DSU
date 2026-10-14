@@ -471,7 +471,22 @@ void CGameArea::FillInStaticGeometry() {
         ++section;
       }
       const void* section1 = section->first.get();
+#ifdef TARGET_PC
+      const uint section1Size = section->second;
+#endif
       const void* section2 = (++section)->first.get();
+#ifdef TARGET_PC
+      const uint section2Size = section->second;
+      // Surface records and surface groups are big-endian halfwords; swap once in place.
+      for (int part = 0; part < 2; ++part) {
+        ushort* words = const_cast< ushort* >(
+            static_cast< const ushort* >(part == 0 ? section1 : section2));
+        const uint wordCount = (part == 0 ? section1Size : section2Size) / sizeof(ushort);
+        for (uint i = 0; i < wordCount; ++i) {
+          words[i] = CBasics::SwapBytes(words[i]);
+        }
+      }
+#endif
       ++section;
 #ifdef TARGET_PC
       mPostConst->mModelInstances.push_back_unsafe(CMetroidModelInstance(
