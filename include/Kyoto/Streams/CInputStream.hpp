@@ -160,11 +160,16 @@ inline uint CInputStream::Get< uint >(const TType< uint >& type) {
 
 template <>
 inline unsigned long CInputStream::Get< unsigned long >(const TType< unsigned long >& type) {
+#if defined(TARGET_PC) && __SIZEOF_LONG__ == 8
+  // Port: on an LP64 host `u64` is `unsigned long`, so this is the `u64` read (e.g. the
+  // COBBTree material array). No game data is read through a 32-bit `unsigned long`.
+  return ReadInt64();
+#else
   return ReadInt32();
+#endif
 }
 
-// Port: on an LP64 host `u64` is `unsigned long`, which already has its (retail, 32-bit)
-// specialization above; `ReadInt64` covers the 64-bit read there.
+// Port: on an LP64 host this would redefine the `unsigned long` specialization above.
 #if !(defined(TARGET_PC) && __SIZEOF_LONG__ == 8)
 template <>
 inline u64 CInputStream::Get< u64 >(const TType< u64 >& type) {
