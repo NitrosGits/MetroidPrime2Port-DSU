@@ -329,7 +329,12 @@ void CLumite::UpdateSunlight(CStateManager& mgr, float dt) {
     }
   }
 
+#ifdef TARGET_PC
+  // Retail reads player 0's state (0x150c); GetPlayerState() is null outside rendering.
+  if (mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
+#else
   if (mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
+#endif
     AddMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
     mColor.SetAlpha(1.f);
     Shadow()->SetUserAlpha(0.f);
