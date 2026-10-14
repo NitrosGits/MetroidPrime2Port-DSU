@@ -85,6 +85,12 @@ class CDamageVulnerability;
 
 typedef rstl::bit_vector<> MapWorldInfoAreas;
 
+// The dynamic actor light records are copied bitwise (bitwise_copy<10> + trailing word).
+typedef rstl::pair< TUniqueId, CLight > TDynamicActorLight; // Guessed name
+namespace rstl {
+RSTL_DECLARE_BITWISE_CONSTRUCTION(TDynamicActorLight)
+}
+
 enum EStateManagerTransition {
   kSMT_InGame,
   kSMT_MapScreen,
@@ -114,7 +120,8 @@ class CStateManager : public TOneStatic< CStateManager > {
     bool empty() const { return mWriteIndex == mReadIndex; }
   };
 
-  // Guessed name; reset together during area transitions. The transform has no identified consumer.
+public:
+  // Guessed name; reset together during area transitions. The transform is the camera transform that CScriptFogOverlay last stored.
   struct SDarkWorldCloud {
     CTransform4f mTransform;
     CVector3f mScale;
@@ -209,11 +216,11 @@ public:
 
   void AddObject(CEntity*);
   void AddObject(CEntity&);
-  bool RenderLast(TUniqueId uid);                          // Guessed name.
-  bool RenderLastOverlay(const TUniqueId& uid);            // Guessed name.
-  bool RenderLastHUD(const TUniqueId& uid);                // Guessed name.
-  bool RenderFirstSorted(const TUniqueId& uid);            // Guessed name.
-  bool RenderLastAfterCameraFilters(const TUniqueId& uid); // Guessed name.
+  bool RenderLast(TUniqueId uid); // Corruption prototype: "RenderLast failed, likely overflow".
+  bool RenderLastOverlay(const TUniqueId& uid);     // Guessed name.
+  bool RenderLastHUD(const TUniqueId& uid);         // Guessed name.
+  bool RenderFirstSorted(const TUniqueId& uid);     // Guessed name.
+  bool RenderLastAfterCameraFilters(TUniqueId uid); // Guessed name.
   void DeleteObjectRequest(TUniqueId);
   void UpdateObjectInLists(CEntity&);
   void AddWeaponId(TUniqueId owner, EWeaponType type);
@@ -298,13 +305,14 @@ public:
   void DoCollisionResponse(const CCollisionResponseData& responseData,
                            const CRayCastResult& rayCast, const TUniqueId& uid,
                            const CWeaponMode& weaponMode, bool flag);
-  // Guessed name; forwards to the renderer unless the echo visor or light world applies.
-  void DrawDarkWorldVolume(const CVector3f& pos, const CVector3f& scale, uchar mix, uchar alpha,
-                           bool inside, float lod, const CVector2f& scroll1,
-                           const CVector2f& scroll2, const CVector2f& texScale1,
-                           const CVector2f& texScale2, const CTexture& environment,
-                           const CTexture& cloud1, const CTexture& cloud2, CColor color,
-                           CColor additiveColor, bool cylinder) const;
+  // Name from the Wii MP2 SEL export; forwards to the renderer unless the echo visor or light
+  // world applies.
+  void AddDarkWorldSphereToRenderer(const CVector3f& pos, const CVector3f& scale, uchar mix,
+                                    uchar alpha, bool inside, float lod, const CVector2f& scroll1,
+                                    const CVector2f& scroll2, const CVector2f& texScale1,
+                                    const CVector2f& texScale2, const CTexture& environment,
+                                    const CTexture& cloud1, const CTexture& cloud2, CColor color,
+                                    CColor additiveColor, bool cylinder) const;
   void GetCharacterRenderMaskAndTarget(uint& mask, uint& target) const;
   void BuildDynamicLightListForWorld(); // Guessed name, correlated with Prime.
   const CActorModelParticles* GetActorModelParticles() const { return mActorModelParticles; }
@@ -313,7 +321,6 @@ public:
 
   CEntity* ObjectById(TUniqueId uid);
   const CEntity* GetObjectById(TUniqueId uid) const;
-  CEntity* GetObjectByIdFromListAll(TUniqueId uid);
   bool RayCollideWorld(const CVector3f& start, const CVector3f& end, const CMaterialFilter& filter,
                        const CActor* damagee);
   bool RayCollideWorld(const CVector3f& start, const CVector3f& end,
@@ -360,7 +367,7 @@ public:
   const CEnvFxManager* GetEnvFxManager() const { return mEnvFxManager; }
   const CSafeZoneManager* GetSafeZoneManager() const { return mSafeZoneManager; }
   CRandom16* Random() { return &mRandom; }
-  int GetUpdateFrameIdx() const { return mUpdateFrameIdx; }
+  uint GetUpdateFrameIdx() const { return mUpdateFrameIdx; }
   int GetRenderFrameIndex() const { return mRenderFrameIndex; } // Guessed name
 
   TAreaId GetNextAreaId() const { return mNextAreaId; }
@@ -499,6 +506,8 @@ public:
   }
   CCameraManager* CameraManager(int playerIndex) { return mCameraManagers[playerIndex]; }
   const CPlayerState* GetPlayerState() const { return mPlayerState; }
+  TUniqueId GetPlayerActorHead() const { return mPlayerActorHead; } // Prime-correlated name
+  void SetPlayerActorHead(TUniqueId id) { mPlayerActorHead = id; } // Prime-correlated name
   const CPlayer* GetCurrentRenderPlayer() const { return mCurrentRenderPlayer; } // Guessed name
   int GetCurrentRenderPlayerIndex() const { return mCurrentRenderPlayerIndex; }  // Guessed name
   const CCameraManager* GetCurrentRenderCameraManager() const {
@@ -513,16 +522,6 @@ public:
   void SetUnkFlagA3(bool value) { mUnkFlagA3 = value; }
   bool GetInSaveUI() const { return mInSaveUI; }
   void SetIsFullThreat(bool value) { mIsFullThreat = value; }
-
-  bool fn_800366e4(const CActor*) const;
-  // Name and signature from the Wii MP2 SEL export.
-  void AddDarkWorldSphereToRenderer(const CVector3f& pos, const CVector3f& scale, uchar alpha,
-                                    uchar insideAlpha, bool inside, float spotSize,
-                                    const CVector2f& scroll1, const CVector2f& scroll2,
-                                    const CVector2f& texScale1, const CVector2f& texScale2,
-                                    const CTexture& environment, const CTexture& cloud1,
-                                    const CTexture& cloud2, CColor color, CColor additiveColor,
-                                    bool cylinder) const;
 
 public:
   ushort mNextFreeIndex;

@@ -45,7 +45,7 @@ struct SSphereJointInfo {
 };
 static const SSphereJointInfo skIceJoints[] = {{"Skeleton_Root", 0.f}};
 
-static EMaterialTypes skContactMaterial = kMT_Unknown59;
+static EMaterialTypes skContactMaterial = kMT_Solid;
 
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AnimOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CParasite::AnimOver)},
@@ -95,10 +95,10 @@ CParasite::CParasite(TUniqueId uid, const rstl::string& name, EFlavorType flavor
                      const CDamageInfo& dInfo, ushort haltSfx, ushort getUpSfx, ushort crouchSfx,
                      CAssetId modelRes, CAssetId skinRes, float iceZoomerJointHP,
                      float wallWalkerF6, const CDamageInfo& dInfo2, const CActorParameters& aParams)
-: CWallCrawler(static_cast< EPatternedAI >(39), uid, name, flavor, info, xf, mData, pInfo,
-               kMT_Flyer, kCT_Zero, bodyType, aParams, pInfo.GetHalfExtent(), collisionCloseMargin,
-               alignAngVel, advanceWpRadius, playerObstructionMinDist, static_cast< EType >(type),
-               disableMove, wallWalkerF6, 0.167f, 0.6f, 1.5f, 0.6f, 1.5f)
+: CWallCrawler(kPAI_Parasite, uid, name, flavor, info, xf, mData, pInfo, kMT_Flyer, kCT_Zero,
+               bodyType, aParams, pInfo.GetHalfExtent(), collisionCloseMargin, alignAngVel,
+               advanceWpRadius, playerObstructionMinDist, static_cast< EType >(type), disableMove,
+               wallWalkerF6, 0.167f, 0.6f, 1.5f, 0.6f, 1.5f)
 , mStateProgress(-1)
 , x87c_(CVector3f::Zero())
 , mTargetPos(CVector3f::Zero())
@@ -286,7 +286,7 @@ void CParasite::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       break;
     }
     }
-  case kSM_XXDG:
+  case kSM_ReflectedDamage:
     if (mType == kPT_IceZoomer) {
       mBodyController->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
     }
@@ -525,7 +525,7 @@ bool CParasite::PatrolPathOver(CStateManager&, const CTriggerData&) const {
   return mDestObj == kInvalidUniqueId;
 }
 
-static EMaterialTypes skWallMaterial = kMT_Unknown59;
+static EMaterialTypes skWallMaterial = kMT_Solid;
 
 bool CParasite::CloseToWall(CStateManager& mgr) const {
   static const CMaterialFilter kSolidFilter =
@@ -642,7 +642,7 @@ void CParasite::Deactivate(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
     mStateProgress = 0;
-    SendScriptMsgs(kSS_DGNR, mgr, kInvalidUniqueId, kSM_None);
+    SendScriptMsgs(kSS_DeGenerate, mgr, kInvalidUniqueId, kSM_None);
     mgr.DeleteObjectRequest(GetUniqueId());
     break;
   case kStateMsg_Update:
@@ -1130,8 +1130,8 @@ void CParasite::SetupIceZoomerCollision(CStateManager& mgr) {
         0.01f + mColSphere.GetSphere().GetRadius(), rstl::string_l(joint.name), 0.001f);
     descs.push_back_unsafe(desc);
   }
-  RemoveMaterial(kMT_Unknown59, mgr);
-  AddMaterial(kMT_NoPlatformCollision, mgr);
+  RemoveMaterial(kMT_Solid, mgr);
+  AddMaterial(kMT_ProjectilePassthrough, mgr);
   mCollisionActorManager =
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), descs, GetActive());
 }
@@ -1164,8 +1164,8 @@ void CParasite::UpdateCollisionActors(float dt, CStateManager& mgr) {
     }
     if (totalHP <= 0.f) {
       mVulnerable = true;
-      AddMaterial(kMT_Unknown59, mgr);
-      RemoveMaterial(kMT_NoPlatformCollision, mgr);
+      AddMaterial(kMT_Solid, mgr);
+      RemoveMaterial(kMT_ProjectilePassthrough, mgr);
       DestroyActorManager(mgr);
       ModelData()->AnimationData()->SetSkinnedModel(*mExtraModel);
       if (mType == kPT_IceZoomer) {
@@ -1173,7 +1173,7 @@ void CParasite::UpdateCollisionActors(float dt, CStateManager& mgr) {
                                 false);
         mBodyController->SetLocomotionType(pas::kLT_Internal8);
         mBodyController->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_Zero));
-        SendScriptMsgs(kSS_AboutToMassivelyDie, mgr, kInvalidUniqueId, kSM_None);
+        SendScriptMsgs(kSS_SpawnResidue, mgr, kInvalidUniqueId, kSM_None);
       }
     }
   }
@@ -1229,7 +1229,7 @@ CEntity* LoadParasite(CStateManager& mgr, CInputStream& input, CEntityInfo& info
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
       static_cast< CPatterned::EFlavorType >(sldrThis.flavor),
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
-      *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr), static_cast< EBodyType >(6),
+      *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr), kBT_WallWalker,
       sldrThis.telegraphDistance, sldrThis.waypointApproachDistance, sldrThis.wallTurnSpeed,
       sldrThis.floorTurnSpeed, sldrThis.downTurnSpeed, sldrThis.stuckTime, sldrThis.stickyReach,
       sldrThis.behaviorInfluenceRadius, sldrThis.separationDistance, sldrThis.separationPriority,
@@ -1257,7 +1257,7 @@ CEntity* LoadBrizgee(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
   return rs_new CParasite(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name, CPatterned::kFT_Zero, info,
       LdrToTransform4f(sldrThis.editorProperties), *modelData,
-      LdrToPatternedInfo(sldrThis.patterned, nullptr), static_cast< EBodyType >(6), 10.f,
+      LdrToPatternedInfo(sldrThis.patterned, nullptr), kBT_WallWalker, 10.f,
       sldrThis.waypointApproachDistance, sldrThis.wallTurnSpeed, sldrThis.floorTurnSpeed,
       sldrThis.downTurnSpeed, 0.2f, 0.4f, 6.f, 2.6f, 1.f, 0.8f, 0.7f, 0.9f,
       sldrThis.forwardMovingPriority, 1.3f, 0.2f, sldrThis.visibleDistance,
@@ -1288,8 +1288,8 @@ CEntity* LoadCrystallite(CStateManager& mgr, CInputStream& input, CEntityInfo& i
   return rs_new CParasite(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name, CPatterned::kFT_Zero,
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
-      *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr), static_cast< EBodyType >(6),
-      10.f, sldrThis.waypointApproachDistance, sldrThis.wallTurnSpeed, sldrThis.floorTurnSpeed,
+      *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr), kBT_WallWalker, 10.f,
+      sldrThis.waypointApproachDistance, sldrThis.wallTurnSpeed, sldrThis.floorTurnSpeed,
       sldrThis.downTurnSpeed, 0.2f, 0.4f, 6.f, 2.6f, 1.f, 0.8f, 0.7f, 0.9f,
       sldrThis.forwardMovingPriority, 1.3f, 0.2f, sldrThis.visibleDistance, sldrThis.stunTime,
       false, CParasite::kPT_Crystallite, vulnerability, contactDamage,
@@ -1298,6 +1298,7 @@ CEntity* LoadCrystallite(CStateManager& mgr, CInputStream& input, CEntityInfo& i
       LdrToActorParameters(sldrThis.actorInformation));
 }
 
+#ifndef MONOLITHIC
 static void SetFuncPtrs() {
   static SParasite_FuncPtrs funcPtrs;
   funcPtrs.mLoadParasite = &LoadParasite;
@@ -1309,3 +1310,4 @@ static void SetFuncPtrs() {
 void RELMain() { SetFuncPtrs(); }
 
 void RELExit() { SetSParasite_FuncPtrs(nullptr); }
+#endif

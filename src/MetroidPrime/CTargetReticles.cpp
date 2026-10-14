@@ -20,10 +20,13 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
+#include "MetroidPrime/Enemies/CSandworm.hpp"
 #include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerTargeting.hpp"
+#include "MetroidPrime/SFX/UI.h"
+#include "MetroidPrime/SFX/UI_MP.h"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptHUDHint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -33,9 +36,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-// Native reference cast for entity type 131; the concrete class remains unidentified.
-extern "C" CEntity* fn_80097FA8(const CEntity& entity);
 
 // Guessed name, corroborated by Prime.
 static CTargetReticleRenderState skZeroRenderState(kInvalidUniqueId, 1.f, CVector3f::Zero(), 0.f,
@@ -349,7 +349,7 @@ void CCompoundTargetReticle::Update(float dt, const CStateManager& mgr) {
   // Missile shot / missile bracket scale
   if (gun->GetFiring() & 0x2) {
     if (!mMissileShot) {
-      mMissileBracketScaleTimer = gpTweakTargeting->GetMissileBracketScaleDuration();
+      mMissileBracketScaleTimer = gpTweakTargeting->GetMissileBracketMissileFireAnimTime();
     }
     mMissileShot = true;
   } else {
@@ -409,10 +409,12 @@ void CCompoundTargetReticle::UpdateCurrLockOnGroup(float dt, const CStateManager
   if (targetId != mTargetId) {
     if (mTargetId != targetId && targetId != kInvalidUniqueId) {
       if (TCastToConstPtr< CScriptGrapplePoint >(mgr.GetObjectById(targetId))) {
-        CSfxManager::SfxStart(0x1db, 127, player->GetSoundPan(CPlayer::kMSP_4));
-      } else {
-        CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(0x79, 0x2654), 127,
+        CSfxManager::SfxStart(SFXui_x_graplock_00_oneshot, 127,
                               player->GetSoundPan(CPlayer::kMSP_4));
+      } else {
+        CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(SFXui_x_lockon_00_oneshot,
+                                                                SFXui2_x_lockon_00_oneshot),
+                              127, player->GetSoundPan(CPlayer::kMSP_4));
       }
     }
 
@@ -502,12 +504,12 @@ void CCompoundTargetReticle::UpdateCurrLockOnGroup(float dt, const CStateManager
   }
 
   if (mMissileBracketTimer != 0.f &&
-      mMissileBracketTimer < gpTweakTargeting->GetMissileBracketDuration()) {
+      mMissileBracketTimer < gpTweakTargeting->GetMissileBracketOpenHolsterTime()) {
     if (mMissileBracketTimer < 0.f) {
       mMissileBracketTimer = rstl::min_val(mMissileBracketTimer + dt, 0.f);
     } else {
-      mMissileBracketTimer =
-          rstl::min_val(mMissileBracketTimer + dt, gpTweakTargeting->GetMissileBracketDuration());
+      mMissileBracketTimer = rstl::min_val(mMissileBracketTimer + dt,
+                                           gpTweakTargeting->GetMissileBracketOpenHolsterTime());
     }
   }
 
@@ -863,12 +865,12 @@ void CCompoundTargetReticle::DrawCurrLockOnGroup(const CMatrix3f& rotation,
             minVpClampScale * gpTweakTargeting->GetMissileBracketMinRadiusViewport(),
             gpTweakTargeting->GetMissileBracketMaxRadiusViewport(), mgr, mPlayerIndex);
         CTweakTargeting* tweak = gpTweakTargeting.get();
-        float halfDur = 0.5f * tweak->GetMissileBracketScaleDuration();
+        float halfDur = 0.5f * tweak->GetMissileBracketMissileFireAnimTime();
         float t = CMath::AbsF((mMissileBracketScaleTimer - halfDur) / halfDur);
         float tscale = (1.f - t) * tweak->GetMissileBracketScaleEnd() +
                        t * tweak->GetMissileBracketScaleStart();
         float bracketFactor =
-            CMath::AbsF(mMissileBracketTimer) / tweak->GetMissileBracketDuration();
+            CMath::AbsF(mMissileBracketTimer) / tweak->GetMissileBracketOpenHolsterTime();
         float s = bracketFactor * bracketScale * tscale / factor;
 
         CMatrix3f scaleMtx = CMatrix3f::Scale(s);
@@ -1492,7 +1494,7 @@ float CCompoundTargetReticle::CalculateRadiusWorld(const CActor& actor,
   }
   }
 
-  if (fn_80097FA8(actor)) {
+  if (TCastToConstPtr< CSandwormEye >(actor)) {
     radius = 0.f;
   }
   return radius > 0.f ? radius : 1.f;

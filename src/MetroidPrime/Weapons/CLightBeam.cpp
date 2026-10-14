@@ -13,6 +13,8 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
+#include "MetroidPrime/SFX/Weapons3.h"
+#include "MetroidPrime/SFX/Weapons3_MP.h"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 
@@ -22,8 +24,8 @@ static const uint skSuppressRecoilAttribute = 1 << 23;
 static const uint skSuppressShootAnimAttribute = 1 << 24;
 
 static const ushort kChargeSoundIds[2][2] = {
-    {0x1fca, 0x1fe1},
-    {0x25c9, 0x25c4},
+    {SFXsam_a_litfire_00_oneshot, SFXsam_a_litchfire_00_oneshot},
+    {SFXsa2_a_litfire_00_oneshot, SFXsa2_a_litchfire_00_oneshot},
 };
 
 CLightBeam::CLightBeam(TUniqueId playerId, const CVector3f& scale, int flags)
@@ -84,15 +86,15 @@ void CLightBeam::Fire(const TCachedToken< CWeaponDescription >& projectile, bool
                                 ->GetTransform();
 
     const CMaterialFilter rayFilter = CMaterialFilter::MakeIncludeExclude(
-        CMaterialList(kMT_Unknown59), CMaterialList(kMT_NoPlatformCollision));
+        CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));
     rstl::reserved_vector< TUniqueId, 1024 > nearList;
     if (aimTarget == kInvalidUniqueId) {
       CAABox box(CVector3f(-51.3f, 0.f, -27.f), CVector3f(51.3f, 246.f, 27.f));
       box = box.GetTransformedAABox(cameraXf);
       mgr.BuildNearList(
           nearList, box,
-          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59, kMT_Target),
-                                              CMaterialList(kMT_NoPlatformCollision)),
+          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid, kMT_Target),
+                                              CMaterialList(kMT_ProjectilePassthrough)),
           player);
     }
 

@@ -2,8 +2,9 @@
 #define _CSPACEPIRATE
 
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "REL/REL_Setup.h"
 
-class CSpacePirate : public CPatterned {
+class REL_EXPORT CSpacePirate : public CPatterned {
 public:
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
@@ -14,6 +15,7 @@ public:
 
   bool GetEnableAim() const { return mEnableAim; } // Guessed Prime name.
   bool AllEnergyDrained() const { return mAllEnergyDrained; }
+  void SetPortalPlane(const CPlane& plane) { mPortalPlane = plane; } // Guessed name.
 
 private:
   uchar x7c0_[0x137];
@@ -37,7 +39,9 @@ private:
   TUniqueId mAttachedActor; // Guessed member name.
   uchar xa86_[0xaa];
   void* xb30_;
-  uchar xb34_[0x13c];
+  uchar xb34_[0x128];
+  CPlane mPortalPlane; // Guessed name; written by the WispTentacle while it drags the pirate.
+  uchar xc6c_[4];
 };
 CHECK_SIZEOF(CSpacePirate, 0xc70)
 

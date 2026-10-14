@@ -401,7 +401,7 @@ CScriptDestructibleBarrier::CScriptDestructibleBarrier(
     int sfxChunkGenerated, int sfxChunkDestroyed, int sfxMoveDown, int sfxMoveUp, int sfxStop,
     bool startLowered, float lowerPercent, float lowerDelay, float moveSpeed)
 : CPhysicsActor(uid, name, info, 0, xf, leftModel,
-                CMaterialList(kMT_Unknown59, kMT_Immovable, kMT_Occluder), CAABox::MakeNullBox(),
+                CMaterialList(kMT_Solid, kMT_Immovable, kMT_Occluder), CAABox::MakeNullBox(),
                 SMoverData(1.f), actParms, CPhysicsActor::skDefaultStepData)
 , mHealthInfo(CHealthInfo(100000.f, healthInfo.GetKnockBackResistance()))
 , mChunkHealthInfo(healthInfo)
@@ -912,10 +912,11 @@ CEntity* LoadDestructibleBarrier(CStateManager& mgr, CInputStream& input, CEntit
       sldrThis.unknown_0x409d1b7c, sldrThis.unknown_0x4e749cb5, sldrThis.unknown_0x92485dfa,
       sldrThis.soundEffectOnChunkGenerated, sldrThis.soundEffectOnChunkDestroyed,
       sldrThis.soundEffectOnMoveDown, sldrThis.soundEffectOnMoveUp, sldrThis.soundEffectOnStop,
-      sldrThis.unknown_0x4d3109e3, sldrThis.unknown_0x605847b9, sldrThis.unknown_0xcd9c67fe,
+      sldrThis.barrierStartsDown, sldrThis.unknown_0x605847b9, sldrThis.unknown_0xcd9c67fe,
       sldrThis.unknown_0x0af428b4);
 }
 
+#ifndef MONOLITHIC
 static void SetFuncPtrs() {
   static SDestructibleBarrier_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadDestructibleBarrier;
@@ -925,3 +926,4 @@ static void SetFuncPtrs() {
 void RELMain() { SetFuncPtrs(); }
 
 void RELExit() { SetSDestructibleBarrier_FuncPtrs(nullptr); }
+#endif

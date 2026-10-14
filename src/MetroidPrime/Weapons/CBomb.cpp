@@ -13,12 +13,15 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/SFX/SamusPowerups_MP.h"
+#include "MetroidPrime/SFX/Weapons.h"
+#include "MetroidPrime/SFX/Weapons_MP.h"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/WeaponSound.hpp"
 #include "rstl/math.hpp"
 
-static const ushort skPlacementSfx[] = {0xb8, 0x2599};
-static const ushort skExplosionSfx[] = {0x1b50, 0x2598};
+static const ushort skPlacementSfx[] = {SFXsam_a_bombset_00_oneshot, SFXsa2_a_bombset_00_oneshot};
+static const ushort skExplosionSfx[] = {SFXsam_a_bombexp_00_oneshot, SFXsa2_a_bombexp_00_oneshot};
 
 CBomb::CBomb(TToken< CGenDescription > particle1, TToken< CGenDescription > particle2,
              TUniqueId uid, TAreaId areaId, TUniqueId ownerId,
@@ -26,7 +29,7 @@ CBomb::CBomb(TToken< CGenDescription > particle1, TToken< CGenDescription > part
              float triggerRadius, const CTransform4f& xf, const CDamageInfo& damageInfo)
 : CWeapon(uid, areaId, true, ownerId, type, rstl::string_l("Bomb"), xf,
           CMaterialFilter::MakeIncludeExclude(
-              CMaterialList(kMT_Unknown59, kMT_Trigger, kMT_NonSolidDamageable),
+              CMaterialList(kMT_Solid, kMT_Trigger, kMT_NonSolidDamageable),
               CMaterialList(kMT_Projectile, kMT_Bomb)),
           CMaterialList(kMT_Projectile, kMT_Bomb), damageInfo, attribs | kPA_Bombs,
           CModelData::CModelDataNull())
@@ -65,7 +68,7 @@ void CBomb::Explode(CStateManager& mgr, const rstl::optional_object< CVector3f >
 
   if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(GetOwnerId()))) {
     if (player->GetPlayerState()->GetItemAmount(CPlayerState::kIT_DoubleDamage, true)) {
-      PlaySfxForPlayer(nullptr, 0x2612, player->GetSoundPan(CPlayer::kMSP_4),
+      PlaySfxForPlayer(nullptr, SFXsa2_a_massdam_00_oneshot, player->GetSoundPan(CPlayer::kMSP_4),
                        mgr.GetNextAreaId().Value(), GetFluidCount() != 0, false);
     }
   }
@@ -151,8 +154,8 @@ void CBomb::Think(float dt, CStateManager& mgr) {
         Explode(mgr, rstl::optional_object_null());
       } else {
         static const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-            CMaterialList(kMT_Unknown59, kMT_NonSolidDamageable),
-            CMaterialList(kMT_Character, kMT_Player, kMT_NoPlatformCollision));
+            CMaterialList(kMT_Solid, kMT_NonSolidDamageable),
+            CMaterialList(kMT_Character, kMT_Player, kMT_ProjectilePassthrough));
         const CRayCastResult result =
             mgr.RayStaticIntersection(mPrevLocation, (1.f / distance) * delta, distance, filter);
         if (result.IsValid()) {

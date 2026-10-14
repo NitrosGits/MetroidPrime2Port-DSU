@@ -11,6 +11,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorldShadow.hpp"
 #include "MetroidPrime/Cameras/CBallCamera.hpp"
+#include "MetroidPrime/Cameras/CFirstPersonCamera.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayerControls.hpp"
@@ -59,7 +60,7 @@ void CPlayerGunBase::Reset(CStateManager& mgr) {
 }
 
 void CPlayerGunBase::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
-  CPlayer* player = GetPlayer(mgr);
+  const CPlayer* player = GetPlayer(mgr);
   const bool morphed = player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
   const bool bigStrike = mInBigStrike && !morphed;
   const bool frozen = player->GetFrozenState() && !morphed;
@@ -73,18 +74,32 @@ void CPlayerGunBase::ProcessInput(const CFinalInput& input, CStateManager& mgr) 
     return;
   }
   mInputFlags = player->FireBeamHeld(input) ? 1 : 0;
-  mInputFlags |= player->ChargeBeamHeld(input) ? 4 : 0;
-  mInputFlags |=
-      player->GetControlMapper().GetDigitalInput(CControlMapper::kC_MissileOrPowerBomb, input) ? 2
-                                                                                               : 0;
-  mInputFlags |= player->AutoFireHeld(input) ? 8 : 0;
+  const bool charge = player->ChargeBeamHeld(input);
+  int chargeFlag = 0;
+  if (charge) {
+    chargeFlag = 4;
+  }
+  mInputFlags |= chargeFlag;
+  const bool missile =
+      player->GetControlMapper().GetDigitalInput(CControlMapper::kC_MissileOrPowerBomb, input);
+  int missileFlag = 0;
+  if (missile) {
+    missileFlag = 2;
+  }
+  mInputFlags |= missileFlag;
+  const bool autoFire = player->AutoFireHeld(input);
+  int autoFireFlag = 0;
+  if (autoFire) {
+    autoFireFlag = 8;
+  }
+  mInputFlags |= autoFireFlag;
   mReleasedInputFlags = ReleasedFlags(mLastInputFlags, mInputFlags);
   mPressedInputFlags = PressedFlags(mLastInputFlags, mInputFlags);
   mLastInputFlags = mInputFlags;
 }
 
 void CPlayerGunBase::Update(float dt, CStateManager& mgr) {
-  mUnderwater = GetPlayer(mgr)->GetCameraManager()->GetBallCamera()->GetFluidCount() != 0;
+  mUnderwater = GetPlayer(mgr)->GetCameraManager()->GetFirstPersonCamera()->GetFluidCount() != 0;
   mFiredWeaponFlags = 0;
   if (mCooldown > 0.f) {
     mCooldown -= dt;
@@ -108,16 +123,16 @@ void CPlayerGunBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
   case kSM_Delete:
     DeleteGunLight(mgr);
     break;
-  case kSM_XEPZ:
-  case kSM_XIPZ:
+  case kSM_EnteredPhazonPool:
+  case kSM_InsidePhazonPool:
     mInPhazonPool = true;
     break;
-  case kSM_XXPZ:
+  case kSM_ExitedPhazonPool:
     mInPhazonPool = false;
     break;
-  case kSM_XENF:
-  case kSM_XINF:
-  case kSM_XEXF:
+  case kSM_EnteredFluid:
+  case kSM_InsideFluid:
+  case kSM_ExitedFluid:
     break;
   default:
     break;
@@ -162,7 +177,7 @@ void CPlayerGunBase::HolsterGun(CStateManager& mgr) {
   }
   CPlayer* player = GetPlayerFromAll(mgr);
   float holsterTime = gpTweakPlayerGun->GetGunHolsterTime();
-  if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+  if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphing) {
     holsterTime = 0.1f;
   }
   if (mGunHolsterState == kGHS_Drawing) {
@@ -315,7 +330,7 @@ CPlayer* CPlayerGunBase::GetPlayer(CStateManager& mgr) const {
 }
 
 CPlayer* CPlayerGunBase::GetPlayerFromAll(CStateManager& mgr) const {
-  return TCastToPtr< CPlayer >(mgr.GetObjectByIdFromListAll(mPlayerUniqueId));
+  return TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerUniqueId));
 }
 
 void CPlayerGunBase::AddGunDrawBlock() { ++mGunDrawBlockCount; }

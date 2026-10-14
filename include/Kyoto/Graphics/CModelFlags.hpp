@@ -42,7 +42,8 @@ public:
   : mBlendMode(blendMode), mMatSetIdx(shadIdx), mFlags(flags), mColor(col) {}
 
   CModelFlags(const CModelFlags& flags, uint otherFlags)
-  : mBlendMode(flags.mBlendMode)
+  : x0_(flags.x0_)
+  , mBlendMode(flags.mBlendMode)
   , mMatSetIdx(flags.mMatSetIdx)
   , mFlags(otherFlags)
   , mColor(flags.mColor) {}
@@ -80,6 +81,12 @@ public:
   }
   CModelFlags DepthBackwards() const {
     return CModelFlags(*this, (GetOtherFlags() & ~kF_Unknown100) | kF_DepthGreater | kF_Unknown200);
+  }
+
+  // Guessed name; the counterpart of DepthBackwards used when drawing the sky ripple.
+  CModelFlags DepthForwards() const {
+    return CModelFlags(*this, (GetOtherFlags() & ~(kF_DepthGreater | kF_DepthNonInclusive)) |
+                                  kF_Unknown100 | kF_Unknown200);
   }
 
   ETrans GetTrans() const { return static_cast< ETrans >(mBlendMode); }

@@ -76,7 +76,7 @@ const CDamageVulnerability* CScriptActor::GetDamageVulnerability() const {
 void CScriptActor::Touch(CActor&, CStateManager&) {}
 
 rstl::optional_object< CAABox > CScriptActor::GetTouchBounds() const {
-  if (GetActive() && GetMaterialList().HasMaterial(kMT_Unknown59)) {
+  if (GetActive() && GetMaterialList().HasMaterial(kMT_Solid)) {
     CAABox bounds = GetBoundingBox();
     if (!mCollisionPrimitive.null()) {
       bounds.Include(mCollisionPrimitive->CalculateAABox(GetTransform()));
@@ -164,7 +164,7 @@ void CScriptActor::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       SendScriptMsgs(kSS_Dead, mgr, GetUniqueId(), kSM_None);
     }
     break;
-  case kSM_InternalMessage00:
+  case kSM_InternalMessage0:
     if (EchoEmitter() != nullptr) {
       EchoEmitter()->TriggerDamageEcho();
     }
@@ -221,13 +221,19 @@ CAABox CScriptActor::GetSortingBounds(const CStateManager& mgr) const {
 
 void CScriptActor::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                    EUserEventType type, float dt) {
+  unsigned char skipAnimEvent = 0;
+
   if (type == kUE_Projectile) {
     if (mProjectileInfo.valid()) {
       FireProjectile(mgr, node.GetLocatorName());
     }
-    return;
+
+    skipAnimEvent = 1;
   }
-  CActor::DoUserAnimEvent(mgr, node, type, dt);
+
+  if (skipAnimEvent == 0) {
+    CActor::DoUserAnimEvent(mgr, node, type, dt);
+  }
 }
 
 void CScriptActor::FireProjectile(CStateManager& mgr, const rstl::string& locator) {
@@ -243,7 +249,7 @@ void CScriptActor::FireProjectile(CStateManager& mgr, const rstl::string& locato
   CEnergyProjectile* projectile = rs_new CEnergyProjectile(
       true, mProjectileInfo->Token(), kWT_AI, xf, kMT_Character, mProjectileInfo->GetDamage(),
       mgr.AllocateUniqueId(), GetCurrentAreaId(), GetUniqueId(), kInvalidUniqueId, kPA_None, false,
-      CVector3f(1.f, 1.f, 1.f), CImpactVisorEffect(), false, true, false, 1.f, 4.f, 4.f);
+      CVector3f(1.f, 1.f, 1.f), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
   if (projectile != nullptr) {
     mgr.AddObject(projectile);
   }
@@ -301,7 +307,7 @@ CEntity* LoadActor(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
     materials.Add(kMT_Immovable);
   }
   if (sldrThis.isSolid) {
-    materials.Add(kMT_Unknown59);
+    materials.Add(kMT_Solid);
   }
   if (sldrThis.isCameraThrough) {
     materials.Add(kMT_CameraPassthrough);
@@ -337,9 +343,9 @@ CEntity* LoadActor(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
 }
 
 bool CScriptActor::CheckActorRenderOnly() const {
-  const bool unknown59 = GetMaterialList().HasMaterial(kMT_Unknown59);
+  const bool solid = GetMaterialList().HasMaterial(kMT_Solid);
   const bool passthrough = GetMaterialList().HasMaterial(kMT_CameraPassthrough);
-  if (!GetMaterialList().HasMaterial(kMT_Immovable) || !passthrough || unknown59) {
+  if (!GetMaterialList().HasMaterial(kMT_Immovable) || !passthrough || solid) {
     return false;
   }
   return true;

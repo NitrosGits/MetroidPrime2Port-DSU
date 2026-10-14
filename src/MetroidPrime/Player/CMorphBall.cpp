@@ -13,8 +13,8 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
-#include "Kyoto/Particles/CDeferredParticleEffect.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Particles/CManagedParticleGen.hpp"
 #include "Kyoto/Particles/CParticleElectric.hpp"
 #include "Kyoto/Particles/CParticleSwoosh.hpp"
 #include "MetroidPrime/CActorLights.hpp"
@@ -34,6 +34,16 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerBodyController.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/SFX/CliffsideRoll.h"
+#include "MetroidPrime/SFX/MothTempleRoll.h"
+#include "MetroidPrime/SFX/SamusFootsteps.h"
+#include "MetroidPrime/SFX/SamusFootsteps_MP.h"
+#include "MetroidPrime/SFX/SamusImpact_MP.h"
+#include "MetroidPrime/SFX/SamusMorphball.h"
+#include "MetroidPrime/SFX/SamusMorphball_MP.h"
+#include "MetroidPrime/SFX/SamusPowerups_MP.h"
+#include "MetroidPrime/SFX/Weapons3.h"
+#include "MetroidPrime/SFX/Weapons_MP.h"
 #include "MetroidPrime/ScriptObjects/CScriptAreaProperties.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDamageableTrigger.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
@@ -113,28 +123,120 @@ const CMorphBall::SColorRgb CMorphBall::skBallHullGlowColors[3] = {
 // Roll sounds by material; the second set is used in multiplayer.
 static const ushort skBallRollSfx[2][26] = {
     {
-        0xffff, 0x1c10, 0xa5,   0x741,  0x1d48, 0xffff, 0xa4,   0x1c18, 0x4cd,
-        0x1d8f, 0x1d90, 0x1d49, 0x1c6c, 0xffff, 0x1c6d, 0x1c6e, 0xffff, 0x1ad0,
-        0x1d91, 0x1d92, 0xffff, 0xffff, 0x4cb,  0x621,  0xffff, 0x1d5e,
+        0xffff,
+        SFXsam_b_rollston_lp_00_looped,
+        SFXsam_b_rollmetl_lp_00_looped,
+        SFXsam_b_rollgras_lp_00_looped,
+        SFXsam_b_rollice_lp_00_looped,
+        0xffff,
+        SFXsam_b_rollgrat_lp_00_looped,
+        SFXsam_b_rollphaz_lp_00_looped,
+        SFXsam_b_rolldirt_lp_00_looped,
+        SFXsam_b_rolldgras_lp_00_looped,
+        SFXsam_b_rolldwal_lp_00_looped,
+        SFXsam_b_rollsnow_lp_00_looped,
+        SFXsam_b_rollfabr_lp_00_looped,
+        0xffff,
+        SFXsam_b_rollplas_lp_00_looped,
+        SFXsam_b_rollwire_lp_00_looped,
+        0xffff,
+        SFXsam_b_rollsand_lp_00_looped,
+        SFXsam_b_rollmoth_lp_00_looped,
+        SFXsam_b_rollweb_lp_00_looped,
+        0xffff,
+        0xffff,
+        SFXsam_b_rollwood_lp_00_looped,
+        SFXsam_b_rollorg_lp_00_looped,
+        0xffff,
+        SFXsam_b_rollrubb_lp_00_looped,
     },
     {
-        0xffff, 0x263b, 0x2633, 0x262f, 0x2631, 0xffff, 0x2630, 0x2636, 0x262c,
-        0x262b, 0x262d, 0x263a, 0x262e, 0xffff, 0x2637, 0x263e, 0xffff, 0x2639,
-        0x2634, 0x263d, 0xffff, 0xffff, 0x263f, 0x2635, 0xffff, 0x2638,
+        0xffff,
+        SFXsa2_b_rollston_lp_00_looped,
+        SFXsa2_b_rollmetl_lp_00_looped,
+        SFXsa2_b_rollgras_lp_00_looped,
+        SFXsa2_b_rollice_lp_00_looped,
+        0xffff,
+        SFXsa2_b_rollgrat_lp_00_looped,
+        SFXsa2_b_rollphaz_lp_00_looped,
+        SFXsa2_b_rolldirt_lp_00_looped,
+        SFXsa2_b_rolldgras_lp_00_looped,
+        SFXsa2_b_rolldwal_lp_00_looped,
+        SFXsa2_b_rollsnow_lp_00_looped,
+        SFXsa2_b_rollfabr_lp_00_looped,
+        0xffff,
+        SFXsa2_b_rollplas_lp_00_looped,
+        SFXsa2_b_rollwire_lp_00_looped,
+        0xffff,
+        SFXsa2_b_rollsand_lp_00_looped,
+        SFXsa2_b_rollmoth_lp_00_looped,
+        SFXsa2_b_rollweb_lp_00_looped,
+        0xffff,
+        0xffff,
+        SFXsa2_b_rollwood_lp_00_looped,
+        SFXsa2_b_rollorg_lp_00_looped,
+        0xffff,
+        SFXsa2_b_rollrubb_lp_00_looped,
     },
 };
 
 // Landing sounds by material; the second set is used in multiplayer.
 static const ushort skBallLandSfx[2][26] = {
     {
-        0xffff, 0x8e,   0xa9,   0x73f,  0x1d42, 0xffff, 0xa7,   0x1c17, 0x4d0,
-        0x1c5b, 0x1c5c, 0x1d43, 0x1c69, 0xffff, 0x1c6a, 0x1c6b, 0xffff, 0x4df,
-        0x1d36, 0x1d37, 0xffff, 0xffff, 0x4ca,  0x620,  0xffff, 0x1d5b,
+        0xffff,
+        SFXsam_b_mlandstn_00_oneshot,
+        SFXsam_b_mlandmtl_00_oneshot,
+        SFXsam_b_mlandgrs_00_oneshot,
+        SFXsam_b_mlandice_00_oneshot,
+        0xffff,
+        SFXsam_b_mlandgrt_00_oneshot,
+        SFXsam_b_mlandphz_00_oneshot,
+        SFXsam_b_mlanddrt_00_oneshot,
+        SFXsam_b_mlanddgrs_00_oneshot,
+        SFXsam_b_mlanddwal_00_oneshot,
+        SFXsam_b_mlandsnw_00_oneshot,
+        SFXsam_b_mlandfabr_00_oneshot,
+        0xffff,
+        SFXsam_b_mlandplas_00_oneshot,
+        SFXsam_b_mlandwire_00_oneshot,
+        0xffff,
+        SFXsam_b_mlandsnd_00_oneshot,
+        SFXsam_b_mlandmoth_00_oneshot,
+        SFXsam_b_mlandweb_00_oneshot,
+        0xffff,
+        0xffff,
+        SFXsam_b_mlandwoo_00_oneshot,
+        SFXsam_b_mlandorg_00_oneshot,
+        0xffff,
+        SFXsam_b_mlandrubb_00_oneshot,
     },
     {
-        0xffff, 0x26e4, 0x26e1, 0x26df, 0x2721, 0xffff, 0x26e0, 0x2701, 0x26de,
-        0x270e, 0x270f, 0x2722, 0x2710, 0xffff, 0x2711, 0x2712, 0xffff, 0x26e3,
-        0x1d36, 0x1d37, 0xffff, 0xffff, 0x26e5, 0x26e2, 0xffff, 0x2729,
+        0xffff,
+        SFXsa2_b_mlandstn_00_oneshot,
+        SFXsa2_b_mlandmtl_00_oneshot,
+        SFXsa2_b_mlandgrs_00_oneshot,
+        SFXsa2_b_mlandice_00_oneshot,
+        0xffff,
+        SFXsa2_b_mlandgrt_00_oneshot,
+        SFXsa2_b_mlandphz_00_oneshot,
+        SFXsa2_b_mlanddrt_00_oneshot,
+        SFXsa2_b_mlanddgrs_00_oneshot,
+        SFXsa2_b_mlanddwal_00_oneshot,
+        SFXsa2_b_mlandsnw_00_oneshot,
+        SFXsa2_b_mlandfabr_00_oneshot,
+        0xffff,
+        SFXsa2_b_mlandplas_00_oneshot,
+        SFXsa2_b_mlandwire_00_oneshot,
+        0xffff,
+        SFXsa2_b_mlandsnd_00_oneshot,
+        SFXsam_b_mlandmoth_00_oneshot,
+        SFXsam_b_mlandweb_00_oneshot,
+        0xffff,
+        0xffff,
+        SFXsa2_b_mlandwoo_00_oneshot,
+        SFXsa2_b_mlandorg_00_oneshot,
+        0xffff,
+        SFXsa2_b_mlandrubb_00_oneshot,
     },
 };
 
@@ -162,7 +264,6 @@ static rstl::reserved_vector< int, 64 > sWakeEffectForMaterial;
 // Ownership cleanup is supplied by the members' destructors.
 CMorphBall::~CMorphBall() {}
 
-// Material 59 has no established semantic name in this checkout.
 CMorphBall::CMorphBall(CPlayer& player, float radius, bool multiplayer)
 : mPlayer(player)
 , mLoadedModelId(-1)
@@ -173,9 +274,8 @@ CMorphBall::CMorphBall(CPlayer& player, float radius, bool multiplayer)
 , mTireMode(false)
 , mTireLeanAngle(0.f)
 , mBallTiltAngle(0.f)
-, mCollisionSphere(
-      CSphere(CVector3f(0.f, 0.f, radius), radius),
-      CMaterialList(kMT_Player, kMT_Unknown59, kMT_GroundCollider, kMT_NoPlayerCollision))
+, mCollisionSphere(CSphere(CVector3f(0.f, 0.f, radius), radius),
+                   CMaterialList(kMT_Player, kMT_Solid, kMT_GroundCollider, kMT_NoPlayerCollision))
 , mBallModel(GetMorphBallModel(
       rstl::string_l(multiplayer ? skMultiplayerBallModel : skDefaultBallModel), mRadius))
 , mBallModelShader(0)
@@ -405,8 +505,8 @@ void CMorphBall::InitializeWakeEffects() {
                           "OrganicWake_DGRP", "SandWake_DGRP",         "RainWake_DGRP"};
   for (int i = 0; i < 6; ++i) {
     const CDependencyGroupToken group(gpSimplePool->GetObj(groups[i]), *gpSimplePool);
-    mWakeEffects.push_back(rstl::auto_ptr< CDeferredParticleEffect >(
-        rs_new CDeferredParticleEffect(gpSimplePool->GetObj(effects[i]), group)));
+    mWakeEffects.push_back(rstl::auto_ptr< CManagedParticleGen >(
+        rs_new CManagedParticleGen(gpSimplePool->GetObj(effects[i]), group)));
   }
 }
 
@@ -473,9 +573,9 @@ void CMorphBall::StartScrewAttackSfx() {
   if (mScrewAttackSfx) {
     CSfxManager::SfxStop(mScrewAttackSfx);
   }
-  mScrewAttackSfx =
-      CSfxManager::AddEmitter(mMultiplayer ? 0x25e2 : 0x2203, mPlayer.GetTranslation(),
-                              mPlayer.GetCurrentAreaId().Value(), true, true);
+  mScrewAttackSfx = CSfxManager::AddEmitter(
+      mMultiplayer ? SFXsa2_a_screw_lp_00_looped : SFXsam_a_screw_lp_00_looped,
+      mPlayer.GetTranslation(), mPlayer.GetCurrentAreaId().Value(), true, true);
 }
 
 void CMorphBall::UpdateMorphBallSound(float dt, CStateManager& mgr) {
@@ -536,8 +636,10 @@ void CMorphBall::UpdateMorphBallSound(float dt, CStateManager& mgr) {
 
   if (mBallState == kBS_Spider) {
     if (!mSpiderSfx) {
-      mSpiderSfx = AddEmitter(mPlayer, mgr.ReturnFirstIfSingleElseSecond(0x159, 0x2641), true, true,
-                              0xc8, 0x7f, 0x14, 150.f, 1.f);
+      mSpiderSfx = AddEmitter(mPlayer,
+                              mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_spidlach_lp_00_looped,
+                                                                SFXsa2_b_spidlach_lp_00_looped),
+                              true, true, 0xc8, 0x7f, 0x14, 150.f, 1.f);
       mPlayer.ApplySubmergedPitchBend(mSpiderSfx);
     }
     CSfxManager::UpdateEmitter(mSpiderSfx, mPlayer.GetTranslation(), CVector3f::Zero(), 0x7f);
@@ -548,8 +650,9 @@ void CMorphBall::UpdateMorphBallSound(float dt, CStateManager& mgr) {
 
   if (mPlayer.GetPlayerState()->GetItemAmount(CPlayerState::kIT_DeathBall, true) != 0) {
     if (!mDeathBallSfx) {
-      mDeathBallSfx = CSfxManager::AddEmitter(0x2611, mPlayer.GetTranslation(),
-                                              mPlayer.GetCurrentAreaId().Value(), true, true, 0xc8);
+      mDeathBallSfx =
+          CSfxManager::AddEmitter(SFXsa2_a_deathball_lp_00_looped, mPlayer.GetTranslation(),
+                                  mPlayer.GetCurrentAreaId().Value(), true, true, 0xc8);
       mPlayer.ApplySubmergedPitchBend(mDeathBallSfx);
     }
     CSfxManager::UpdateEmitter(mDeathBallSfx, mPlayer.GetTranslation(), CVector3f::Zero(), 0x7f);
@@ -565,15 +668,15 @@ void CMorphBall::SelectMorphBallSounds(const CMaterialList& material) {
   if (!InScrewAttackMode()) {
     if (mPlayer.GetSelectFluidBallSound()) {
       if (mMultiplayer) {
-        rollSfx = 0x263c;
+        rollSfx = SFXsa2_b_rollwatr_lp_00_looped;
       } else {
-        rollSfx = 0x94;
+        rollSfx = SFXsam_b_rollwatr_lp_00_looped;
       }
     } else {
       rollSfx = CPlayer::SfxIdFromMaterial(material, skBallRollSfx[sfxSet], 26, 0xffff);
     }
   } else {
-    rollSfx = 0x25a;
+    rollSfx = SFXsam_b_slide_lp_00_looped;
   }
   mPlayer.SetSelectFluidBallSound(false);
 
@@ -779,8 +882,8 @@ float CMorphBall::CalculateSurfaceFriction() const {
   return friction;
 }
 
-static EMaterialTypes LiftBoundsMaterial = kMT_Unknown59; // Guessed name
-static EMaterialTypes LiftRayMaterial = kMT_Unknown59;    // Guessed name
+static EMaterialTypes LiftBoundsMaterial = kMT_Solid; // Guessed name
+static EMaterialTypes LiftRayMaterial = kMT_Solid;    // Guessed name
 
 void CMorphBall::ComputeLiftForces(const CVector3f& controlForce, const CVector3f& velocity,
                                    const CStateManager& mgr) {
@@ -918,8 +1021,10 @@ void CMorphBall::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
     }
 
     if (hitWall && !CSfxManager::IsPlaying(mWallHitSfx)) {
-      mWallHitSfx = AddEmitter(mPlayer, mgr.ReturnFirstIfSingleElseSecond(0x130, 0x26fc), true,
-                               false, CSfxManager::kMedPriority, 0x7f, 0x14, 150.f, 1.f);
+      mWallHitSfx = AddEmitter(mPlayer,
+                               mgr.ReturnFirstIfSingleElseSecond(SFXsam_r_mhitwall_00_oneshot,
+                                                                 SFXsa2_r_mhitwall_00_oneshot),
+                               true, false, CSfxManager::kMedPriority, 0x7f, 0x14, 150.f, 1.f);
       mPlayer.ApplySubmergedPitchBend(mWallHitSfx);
     }
   }
@@ -1039,9 +1144,10 @@ void CMorphBall::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
       mTouchingWall = false;
       if (!CGameCollision::IsFloor(CMaterialList(ScrewAttackWallFloorMaterial), normal)) {
         if (!mPendingRecoil) {
-          CSfxManager::AddEmitter(mMultiplayer ? 0x32e : 0x32d, mPlayer.GetTranslation(),
-                                  mPlayer.GetCurrentAreaId().Value(), true, false,
-                                  CSfxManager::kMedPriority);
+          CSfxManager::AddEmitter(mMultiplayer ? SFXsa2_a_screwhit_01_oneshot
+                                               : SFXsam_a_screwhit_01_oneshot,
+                                  mPlayer.GetTranslation(), mPlayer.GetCurrentAreaId().Value(),
+                                  true, false, CSfxManager::kMedPriority);
         }
         mPendingRecoil = true;
         CPlayerBodyStateCmdMgr& cmdMgr = mPlayer.BodyController()->CommandMgr();
@@ -1065,9 +1171,10 @@ void CMorphBall::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
         mTouchingWall = true;
         mWallContactTime = 0.f;
         mWallNormal = normal;
-        CSfxManager::AddEmitter(mMultiplayer ? 0x25e3 : 0x2204, mPlayer.GetTranslation(),
-                                mPlayer.GetCurrentAreaId().Value(), true, false,
-                                CSfxManager::kMedPriority);
+        CSfxManager::AddEmitter(mMultiplayer ? SFXsa2_a_screwhit_00_oneshot
+                                             : SFXsam_a_screwhit_00_oneshot,
+                                mPlayer.GetTranslation(), mPlayer.GetCurrentAreaId().Value(), true,
+                                false, CSfxManager::kMedPriority);
         if (mScrewAttackSfx) {
           CSfxManager::SfxStop(mScrewAttackSfx);
           mScrewAttackSfx = CSfxHandle();
@@ -1096,8 +1203,8 @@ void CMorphBall::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
   }
 }
 
-static EMaterialTypes CloseToCollisionMaterial1 = kMT_Player;    // Guessed name
-static EMaterialTypes CloseToCollisionMaterial2 = kMT_Unknown59; // Guessed name
+static EMaterialTypes CloseToCollisionMaterial1 = kMT_Player; // Guessed name
+static EMaterialTypes CloseToCollisionMaterial2 = kMT_Solid;  // Guessed name
 
 bool CMorphBall::BallCloseToCollision(const CStateManager& mgr, float distance,
                                       const CMaterialFilter& filter) const {
@@ -1459,7 +1566,7 @@ bool CMorphBall::UpdateMarbleDynamics(CStateManager& mgr, float dt, const CVecto
   return aligned;
 }
 
-static EMaterialTypes BoostDamageMaterial = kMT_Unknown59; // Guessed name
+static EMaterialTypes BoostDamageMaterial = kMT_Solid; // Guessed name
 
 void CMorphBall::ApplyBoostBallDamage(CStateManager& mgr, TUniqueId id, const CDamageInfo& damage,
                                       float dt) {
@@ -1517,7 +1624,8 @@ void CMorphBall::ApplyBoostBallDamage(CStateManager& mgr, TUniqueId id, const CD
           if (otherMorphed && !hasCannonBall && playerSpeed > 10.f) {
             const float volumeFactor = CMath::Limit((playerSpeed - 10.f) / 30.f, 1.f);
             const int volume = static_cast< int >(volumeFactor * 107.f + 20.f);
-            CSfxManager::SfxStart(0x468, volume, mPlayer.GetSoundPan(CPlayer::kMSP_4));
+            CSfxManager::SfxStart(SFXsa2_r_mrphhit_00_oneshot, volume,
+                                  mPlayer.GetSoundPan(CPlayer::kMSP_4));
           }
 
           if (boosting) {
@@ -1660,9 +1768,8 @@ void CMorphBall::EnterBoosting(CStateManager& mgr, bool skipImpulse) {
   mBoostEffectGen = rs_new CElementGen(mBoostEffect);
 }
 
-extern const bool kBoostBallBreaksOrbit;                               // Guessed name
-static EMaterialTypes BoostSphereMaterial = kMT_Unknown59;             // Guessed name
-static EMaterialTypes BoostNearListMaterial1 = kMT_Unknown59;          // Guessed name
+static EMaterialTypes BoostSphereMaterial = kMT_Solid;                 // Guessed name
+static EMaterialTypes BoostNearListMaterial1 = kMT_Solid;              // Guessed name
 static EMaterialTypes BoostNearListMaterial2 = kMT_NonSolidDamageable; // Guessed name
 
 void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManager& mgr, float dt) {
@@ -1700,8 +1807,11 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
       if (canCharge) {
         if (mBallAnimationIndex == 0) {
           mBallAnimationIndex = 1;
-          mBoostChargeSfx = AddEmitter(mPlayer, mgr.ReturnFirstIfSingleElseSecond(0x90, 0x2628),
-                                       true, true, 0xb4, 0x7f, 0x14, 150.f, 1.f);
+          mBoostChargeSfx =
+              AddEmitter(mPlayer,
+                         mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_morphchg_lp_00_looped,
+                                                           SFXsa2_b_morphchg_lp_00_looped),
+                         true, true, 0xb4, 0x7f, 0x14, 150.f, 1.f);
         }
 
         mBoostChargeTime += dt;
@@ -1719,8 +1829,10 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
 
         if (mBoostChargeTime >= gpTweakBall->GetBoostBallMinChargeTime()) {
           mBoostReleaseSfx =
-              AddEmitter(mPlayer, mgr.ReturnFirstIfSingleElseSecond(0x8f, 0x2627), true, false,
-                         CSfxManager::kMedPriority, 0x7f, 0x14, 150.f, 1.f);
+              AddEmitter(mPlayer,
+                         mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_morphboo_00_oneshot,
+                                                           SFXsa2_b_morphboo_00_oneshot),
+                         true, false, CSfxManager::kMedPriority, 0x7f, 0x14, 150.f, 1.f);
         }
       }
 
@@ -1837,17 +1949,12 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
 
 void CMorphBall::SetScrewAttackActive(bool active) { mForcedScrewJumpInput = active; }
 
-static EMaterialTypes ScrewAttackIncludeMaterial1 =
-    static_cast< EMaterialTypes >(34); // Guessed name
-static EMaterialTypes ScrewAttackIncludeMaterial2 =
-    static_cast< EMaterialTypes >(43);                             // Guessed name
-static EMaterialTypes ScrewAttackIncludeMaterial3 = kMT_Unknown59; // Guessed name
-static EMaterialTypes ScrewAttackIncludeMaterial4 =
-    static_cast< EMaterialTypes >(50); // Guessed name
-static EMaterialTypes ScrewAttackExcludeMaterial1 =
-    static_cast< EMaterialTypes >(35); // Guessed name
-static EMaterialTypes ScrewAttackExcludeMaterial2 =
-    static_cast< EMaterialTypes >(45); // Guessed name
+static EMaterialTypes ScrewAttackIncludeMaterial1 = kMT_Trigger;            // Guessed name
+static EMaterialTypes ScrewAttackIncludeMaterial2 = kMT_Immovable;          // Guessed name
+static EMaterialTypes ScrewAttackIncludeMaterial3 = kMT_Solid;              // Guessed name
+static EMaterialTypes ScrewAttackIncludeMaterial4 = kMT_NonSolidDamageable; // Guessed name
+static EMaterialTypes ScrewAttackExcludeMaterial1 = kMT_Projectile;         // Guessed name
+static EMaterialTypes ScrewAttackExcludeMaterial2 = kMT_PowerBomb;          // Guessed name
 
 void CMorphBall::ApplyScrewAttackDamage(float dt, CStateManager& mgr) {
   CDamageInfo damage = gpTweakBall->GetScrewAttackDamage();
@@ -2106,12 +2213,12 @@ struct SDeathBallCooldownFinder {
   TUniqueId mId;
 };
 
-static EMaterialTypes DeathBallIncludeMaterial1 = static_cast< EMaterialTypes >(34); // Guessed name
-static EMaterialTypes DeathBallIncludeMaterial2 = static_cast< EMaterialTypes >(43); // Guessed name
-static EMaterialTypes DeathBallIncludeMaterial3 = kMT_Unknown59;                     // Guessed name
-static EMaterialTypes DeathBallIncludeMaterial4 = static_cast< EMaterialTypes >(50); // Guessed name
-static EMaterialTypes DeathBallExcludeMaterial1 = static_cast< EMaterialTypes >(35); // Guessed name
-static EMaterialTypes DeathBallExcludeMaterial2 = static_cast< EMaterialTypes >(45); // Guessed name
+static EMaterialTypes DeathBallIncludeMaterial1 = kMT_Trigger;            // Guessed name
+static EMaterialTypes DeathBallIncludeMaterial2 = kMT_Immovable;          // Guessed name
+static EMaterialTypes DeathBallIncludeMaterial3 = kMT_Solid;              // Guessed name
+static EMaterialTypes DeathBallIncludeMaterial4 = kMT_NonSolidDamageable; // Guessed name
+static EMaterialTypes DeathBallExcludeMaterial1 = kMT_Projectile;         // Guessed name
+static EMaterialTypes DeathBallExcludeMaterial2 = kMT_PowerBomb;          // Guessed name
 
 void CMorphBall::UpdateDeathBall(float dt, CStateManager& mgr) {
   rstl::vector< rstl::pair< TUniqueId, float > >::iterator it = mDeathBallDamageCooldowns.begin();
@@ -2500,7 +2607,7 @@ void CMorphBall::EnterMorphBallState(CStateManager& mgr, EBallState state) {
   mTireMode = false;
   mPlayer.GetPlayerState()->SetItemAmount(CPlayerState::kIT_ActivateMorphballBoost, 0);
   if (mBallState == kBS_ScrewAttack) {
-    mScrewAttackSfx = CSfxManager::AddEmitter(0x4a1, mPlayer.GetTranslation(),
+    mScrewAttackSfx = CSfxManager::AddEmitter(SFXsam_a_screw_lp_01_looped, mPlayer.GetTranslation(),
                                               mPlayer.GetCurrentAreaId().Value(), true, true);
   }
 }
@@ -2590,7 +2697,7 @@ void CMorphBall::SwitchToMarble() {
   mTireInterpolationSpeed = -1.f;
 }
 
-static EMaterialTypes BallCloseToCollisionMaterial = kMT_Unknown59; // Guessed name
+static EMaterialTypes BallCloseToCollisionMaterial = kMT_Solid; // Guessed name
 
 void CMorphBall::UpdateBallDynamics(CStateManager& mgr, float dt) {
   CVector3f ballContactNormal(0.f, 0.f, 0.f);
@@ -3033,12 +3140,11 @@ void CMorphBall::SetSpiderBallSwingingState(bool swinging) {
   mSpiderBallSwinging = swinging;
 }
 
-static EMaterialTypes SpiderNearListExcludeMaterial1 = kMT_Character;           // Guessed name
-static EMaterialTypes SpiderNearListExcludeMaterial2 = kMT_Player;              // Guessed name
-static EMaterialTypes SpiderNearListExcludeMaterial3 = kMT_Projectile;          // Guessed name
-static EMaterialTypes SpiderNearListExcludeMaterial4 = kMT_NoPlatformCollision; // Guessed name
-static EMaterialTypes SpiderCollisionSurfaceMaterial =
-    static_cast< EMaterialTypes >(61); // Guessed name
+static EMaterialTypes SpiderNearListExcludeMaterial1 = kMT_Character;             // Guessed name
+static EMaterialTypes SpiderNearListExcludeMaterial2 = kMT_Player;                // Guessed name
+static EMaterialTypes SpiderNearListExcludeMaterial3 = kMT_Projectile;            // Guessed name
+static EMaterialTypes SpiderNearListExcludeMaterial4 = kMT_ProjectilePassthrough; // Guessed name
+static EMaterialTypes SpiderCollisionSurfaceMaterial = kMT_Unknown61;             // Guessed name
 
 bool CMorphBall::FindClosestSpiderBallWaypoint(CStateManager& mgr, const CVector3f& ballCenter,
                                                CVector3f& closestPoint,

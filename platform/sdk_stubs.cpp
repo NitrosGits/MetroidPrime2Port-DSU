@@ -12,6 +12,7 @@
 #include <dolphin/ar.h>
 #include <dolphin/dtk.h>
 #include <dolphin/gx.h>
+#include <dolphin/mtx.h>
 #include <dolphin/os.h>
 #include <dolphin/vi.h>
 
@@ -19,6 +20,34 @@
 extern "C" float frsqrte(float x);
 
 // AI (audio DMA) is implemented in platform/ai_dma.cpp.
+
+// --- MTX44 (paired-single 4x4 helpers Aurora's mtx library lacks) -----------
+extern "C" void PSMTX44Identity(Mtx44 m) {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            m[i][j] = i == j ? 1.f : 0.f;
+        }
+    }
+}
+extern "C" void PSMTX44Concat(const Mtx44 a, const Mtx44 b, Mtx44 ab) {
+    Mtx44 tmp;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            tmp[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
+        }
+    }
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            ab[i][j] = tmp[i][j];
+        }
+    }
+}
+extern "C" void PSMTX44Trans(Mtx44 m, f32 xT, f32 yT, f32 zT) {
+    PSMTX44Identity(m);
+    m[0][3] = xT;
+    m[1][3] = yT;
+    m[2][3] = zT;
+}
 
 // --- AR (ARAM) --------------------------------------------------------------
 extern "C" u32 ARGetDMAStatus(void) {

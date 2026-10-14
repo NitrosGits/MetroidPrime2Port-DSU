@@ -25,7 +25,10 @@
 #include "MetroidPrime/Factories/CCharacterFactory.hpp"
 #include "MetroidPrime/Factories/CCharacterFactoryBuilder.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/SFX/Elevators.h"
+#include "MetroidPrime/SFX/UI3.h"
 #include "MetroidPrime/Tweaks/CTweakGame.hpp"
 #include "MetroidPrime/Tweaks/CTweakGui.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayerRes.hpp"
@@ -39,9 +42,6 @@
 static CColor sDarkPointLightColor(uchar(80), uchar(49), uchar(130), uchar(255));
 static CColor sDarkMovingLightColor(uchar(156), uchar(123), uchar(200), uchar(255));
 static const char* const kIntroAudio = "/Audio/swanp-mae32.dsp";
-// Shared locator names; defined with the player code.
-extern const char* const kGunLocator;
-extern const char* const kGrappleLocator;
 
 // Guessed name; returns the current viewport dimensions.
 static CVector2i GetViewportSize() {
@@ -81,7 +81,7 @@ NESTED_CHECK_SIZEOF(CWorldTransManager, SModelDatas, 0x2b0)
 CWorldTransManager::CWorldTransManager()
 : mCurTime(0.f)
 , mRandom(99)
-, mSfx(0x258b)
+, mSfx(SFXele_x_elevator_lp_00_looped)
 , mVolume(127)
 , mPanning(64)
 , mTransType(kTT_Disabled)
@@ -217,7 +217,7 @@ void CWorldTransManager::EnableTransition(const CAnimRes& samusRes, bool renderG
   }
   mCharacterFactory =
       TLockedToken< CCharacterFactory >(gpCharacterFactoryBuilder->GetFactory(samusRes));
-  const CCharacterInfo& character =
+  const CCECharacterInfo& character =
       (*mCharacterFactory)->GetCharInfo(mModelData->mSamusRes.GetCharacterNodeId());
   mModelData->mSuitModel = gpSimplePool->GetObj(SObjectTag('CMDL', character.GetModelId()));
   mModelData->mSuitModel->Lock();
@@ -720,7 +720,7 @@ void CWorldTransManager::UpdateText(float dt) {
     const float charsPerSfx = gpTweakGui->GetWorldTransManagerCharsPerSfx();
     if (printed >= mSfxInterval + charsPerSfx) {
       mSfxInterval += charsPerSfx;
-      CSfxManager::SfxStart(0x618, 127, 64);
+      CSfxManager::SfxStart(SFXui_x_type_01_oneshot, 127, 64);
     }
   }
 

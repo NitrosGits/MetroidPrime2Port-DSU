@@ -7,9 +7,9 @@
 #include "MetroidPrime/TCastTo.hpp"
 
 const CMaterialFilter CAnnihilatorProjectile::kTargetFilter = CMaterialFilter::MakeIncludeExclude(
-    CMaterialList(kMT_SeekerTarget), CMaterialList(kMT_NoPlatformCollision, kMT_Trigger));
+    CMaterialList(kMT_SeekerTarget), CMaterialList(kMT_ProjectilePassthrough, kMT_Trigger));
 const CMaterialFilter CAnnihilatorProjectile::kRayFilter = CMaterialFilter::MakeIncludeExclude(
-    CMaterialList(kMT_Unknown59), CMaterialList(kMT_NoPlatformCollision));
+    CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));
 float CAnnihilatorProjectile::sNextTargetSeekOffset = 0.f;
 
 CAnnihilatorProjectile::CAnnihilatorProjectile(
@@ -18,8 +18,8 @@ CAnnihilatorProjectile::CAnnihilatorProjectile(
     TUniqueId owner, TUniqueId homingTarget, uint attributes, bool underwater,
     const CVector3f& scale, float projectileSpeed, float projectileTurnRate)
 : CEnergyProjectile(true, description, type, xf, excludeMaterial, damage, uid, areaId, owner,
-                    homingTarget, attributes, underwater, scale, CImpactVisorEffect(), false, true,
-                    false, 1.f, 4.f, 4.f)
+                    homingTarget, attributes, underwater, scale, CImpactVisorEffect::None(), false,
+                    true, false, 1.f, 4.f, 4.f)
 , mTargetSeekTimer(sNextTargetSeekOffset)
 , mProjectileSpeed(projectileSpeed)
 , mProjectileTurnRate(projectileTurnRate) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = ["clang-format"]
 # ///
 """Generate Echoes SLdr headers and readers from XML templates.
 
@@ -31,6 +31,8 @@ import io
 import json
 import math
 import re
+import shutil
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -228,6 +230,11 @@ NATIVE_INSTANCE_DEFAULTS: dict[str, tuple[tuple[int, ...], ...]] = {
         (0x7E397FED, 0xB028DB0E, 0xA33E5B0E),
         (0x7E397FED, 0x05AD250E, 0xCA19E8C6),
     ),
+    # SLdrPlayerController, G2ME01 ScriptPlayerProxy 0x62_C74: same two actor re-stores.
+    "SLdrPlayerController": (
+        (0x7E397FED, 0xB028DB0E, 0xA33E5B0E),
+        (0x7E397FED, 0x05AD250E, 0xCA19E8C6),
+    ),
     "SLdrWorldTeleporter": ((0x255A4580, 0x5D298A43),),
     "SLdrControllerAction": ((0x4C6EEFAE, 0x94BA5737),),
     "SLdrTriggerEllipsoid": ((0x255A4580, 0x5D298A43),),
@@ -243,6 +250,18 @@ NATIVE_INSTANCE_DEFAULTS: dict[str, tuple[tuple[int, ...], ...]] = {
     ),
     "SLdrPickup": (
         (0x255A4580, 0x5D298A43),
+        (0x7E397FED, 0xB028DB0E, 0xA33E5B0E),
+        (0x7E397FED, 0x05AD250E, 0xCA19E8C6),
+    ),
+    # LoadEmperorIngStage2Tentacle, EmperorIngStage2Tentacle.rel .text 0x13C: knockback
+    # resistance, ambient color and visor.
+    "SLdrEmperorIngStage2Tentacle": (
+        (0xB3774750, 0xCF90D15E, 0x3A2D17E4),
+        (0x7E397FED, 0xB028DB0E, 0xA33E5B0E),
+        (0x7E397FED, 0x05AD250E, 0xCA19E8C6),
+    ),
+    # LoadAtomicBeta, AtomicBeta.rel .text 0x13C: ambient color and visor.
+    "SLdrAtomicBeta": (
         (0x7E397FED, 0xB028DB0E, 0xA33E5B0E),
         (0x7E397FED, 0x05AD250E, 0xCA19E8C6),
     ),
@@ -581,10 +600,16 @@ class Generator:
                 matching_type_name = pwe_type_lookup[matching_type_name]
             elif archetype:
                 matching_type_name = archetype
+            candidates = [matching_type_name]
+            # An enumeration property is hashed with its archetype as the type name,
+            # e.g. PlayerItemPlayerItem (0xD3AF8D72), whichever kind the templates give it.
+            if archetype and archetype not in candidates:
+                candidates.append(archetype)
 
-            if matching_type_name is not None:
-                hashable_name = f"{raw_name}{matching_type_name}"
-                matching_name = is_matching(hashable_name, property_id(node))
+            matching_name = any(
+                is_matching(f"{raw_name}{candidate}", property_id(node))
+                for candidate in candidates
+            )
         else:
             matching_name = None
 
@@ -1441,6 +1466,34 @@ def profile_files(
     return selected
 
 
+def format_files(files: dict[str, str], output: Path) -> dict[str, str]:
+    """Run clang-format so output is compared and written in the repository style.
+
+    The style file is found from where each file will be written; a .inc fragment
+    holds statements and is formatted as C++ source.
+    """
+    executable = shutil.which("clang-format")
+    if executable is None:
+        raise TemplateError("clang-format not found on PATH")
+    result: dict[str, str] = {}
+    for name, content in files.items():
+        target = (output / name).resolve()
+        if target.suffix == ".inc":
+            target = target.with_suffix(".cpp")
+        completed = subprocess.run(
+            [executable, "--assume-filename=" + str(target)],
+            input=content.encode("utf-8"),
+            capture_output=True,
+        )
+        if completed.returncode != 0:
+            raise TemplateError(
+                f"clang-format failed on {name}: "
+                + completed.stderr.decode("utf-8", "replace").strip()
+            )
+        result[name] = completed.stdout.decode("utf-8").replace("\r\n", "\n")
+    return result
+
+
 def output_differences(files: dict[str, str], output: Path) -> list[str]:
     """List missing or stale generated files without modifying the destination."""
     return [
@@ -1564,6 +1617,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     {n: c for n, c in files.items() if n.endswith(".cpp")},
                 )
             )
+        outputs = [(path, format_files(output, path)) for path, output in outputs]
         if args.check:
             stale = [
                 str(path / name)

@@ -80,7 +80,7 @@ CScriptSafeZoneCrystal::CScriptSafeZoneCrystal(
     const CMayaSpline& fadeSpline)
 : CActor(uid, name, info, 0, xf, normalModel,
          CMaterialList(kMT_Immovable, kMT_ExcludeFromLineOfSightTest,
-                       isLight ? kMT_NonSolidDamageable : kMT_Unknown59),
+                       isLight ? kMT_NonSolidDamageable : kMT_Solid),
          actorParms, kInvalidUniqueId)
 , mScanCollapsed(LoadScannableInfo(scanCollapsed).release())
 , mScanEntangled(LoadScannableInfo(scanEntangled).release())
@@ -137,14 +137,14 @@ void CScriptSafeZoneCrystal::Touch(CActor& actor, CStateManager& mgr) {
       int msg = -1;
       switch (proj->GetType()) {
       case kWT_Light:
-        msg = kSM_InternalMessage02;
+        msg = kSM_InternalMessage2;
         break;
       case kWT_Annihilator:
-        msg = kSM_InternalMessage03;
+        msg = kSM_InternalMessage3;
         break;
       case kWT_Power:
         if (mState != kS_Entangled) {
-          msg = kSM_InternalMessage00;
+          msg = kSM_InternalMessage0;
         }
         if (mState == kS_Expanded) {
           SpawnRefreshEffect();
@@ -210,7 +210,7 @@ void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
         return;
       }
       break;
-    case kSM_InternalMessage02:
+    case kSM_InternalMessage2:
       if (!mDisabled) {
         ResetHealth();
         SetState(mgr, kS_Hurtful);
@@ -218,7 +218,7 @@ void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
         return;
       }
       break;
-    case kSM_InternalMessage01:
+    case kSM_InternalMessage1:
       if (!mDisabled) {
         ResetHealth();
         SetState(mgr, kS_Entangled);
@@ -226,7 +226,7 @@ void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
         return;
       }
       break;
-    case kSM_InternalMessage03:
+    case kSM_InternalMessage3:
       if (!mDisabled) {
         ResetHealth();
         SetState(mgr, kS_Echo);
@@ -234,12 +234,12 @@ void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
         return;
       }
       break;
-    case kSM_InternalMessage04:
+    case kSM_InternalMessage4:
       ResetHealth();
       SetState(mgr, kS_Expanded);
       mStateTimer = mMaxTimeExpanded;
       return;
-    case kSM_InternalMessage00:
+    case kSM_InternalMessage0:
       if (!mDisabled) {
         mDamaged = false;
         if (mState != kS_Entangled) {
@@ -262,10 +262,10 @@ void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
         }
       }
       break;
-    case kSM_InternalMessage05:
+    case kSM_InternalMessage5:
       mDisabled = true;
       return;
-    case kSM_InternalMessage06:
+    case kSM_InternalMessage6:
       mDisabled = false;
       break;
     }
@@ -280,24 +280,24 @@ void CScriptSafeZoneCrystal::SetState(CStateManager& mgr, EState state) {
   switch (state) {
   case kS_Entangled:
     mStateTimer = mMaxTimeEntangled;
-    SendScriptMsgs(kSS_InternalState00, mgr);
+    SendScriptMsgs(kSS_InternalState0, mgr);
     break;
   case kS_Collapsed:
-    SendScriptMsgs(kSS_InternalState00, mgr);
+    SendScriptMsgs(kSS_InternalState0, mgr);
     if (mIsLight) {
-      SendScriptMsgs(kSS_InternalState05, mgr);
+      SendScriptMsgs(kSS_InternalState5, mgr);
     }
     break;
   case kS_Expanded:
-    SendScriptMsgs(kSS_InternalState01, mgr);
+    SendScriptMsgs(kSS_InternalState1, mgr);
     mStateTimer = mMaxTimeExpanded;
     break;
   case kS_Hurtful:
-    SendScriptMsgs(kSS_InternalState02, mgr);
+    SendScriptMsgs(kSS_InternalState2, mgr);
     mStateTimer = mMaxTimeHurtful;
     break;
   case kS_Echo:
-    SendScriptMsgs(kSS_InternalState03, mgr);
+    SendScriptMsgs(kSS_InternalState3, mgr);
     mStateTimer = mMaxTimeEcho;
     break;
   }
@@ -409,7 +409,7 @@ void CScriptSafeZoneCrystal::UpdateStateTimer(float dt, CStateManager& mgr) {
 void CScriptSafeZoneCrystal::UpdateRegeneration(float dt, CStateManager& mgr) {
   if (mIsLight && mState != kS_Entangled && mState != kS_Collapsed && mStateTimer <= mRefreshTime) {
     if (mRefreshTimer <= 0.f) {
-      SendScriptMsgs(kSS_InternalState04, mgr);
+      SendScriptMsgs(kSS_InternalState4, mgr);
       mRefreshTimer = mRefreshDelay;
     } else {
       mRefreshTimer -= dt;
@@ -521,7 +521,7 @@ SSafeZoneCrystalModels::SSafeZoneCrystalModels(const CModelData& normal,
                                                const CModelData& hurtful, const CModelData& echo)
 : mNormal(normal), mEntangled(entangled), mHurtful(hurtful), mEcho(echo) {}
 
-CEntity* REL_LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+CEntity* LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSafeZoneCrystal sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSafeZoneCrystal.inc"
 
@@ -546,8 +546,8 @@ CEntity* REL_LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntit
       sldrThis.scannableInfoAnnihilator, normalModel, entangledModel, hurtfulModel, echoModel,
       sldrThis.collapsedEffect, sldrThis.expandedEffect, sldrThis.entangledEffect,
       sldrThis.hurtfulEffect, sldrThis.echoEffect, sldrThis.powerBeamRefreshEffect,
-      sldrThis.maxTimeExpanded, sldrThis.maxTimeEntangled, sldrThis.unknown_0xf0a45c32,
-      sldrThis.unknown_0xd8116003, sldrThis.powerBeamHP, sldrThis.unknown_0x415046ed,
+      sldrThis.maxTimeExpanded, sldrThis.maxTimeEntangled, sldrThis.maxTimeAsHurtful,
+      sldrThis.maxTimeAsEcho, sldrThis.powerBeamHP, sldrThis.unknown_0x415046ed,
       sldrThis.unknown_0xec9c01b2, sldrThis.safezoneType == 1, sldrThis.initiallyEntangled,
       sldrThis.hitRadius, sldrThis.hitOffset, sldrThis.effectOffset, sldrThis.unknown_0xbbbee60b);
 }

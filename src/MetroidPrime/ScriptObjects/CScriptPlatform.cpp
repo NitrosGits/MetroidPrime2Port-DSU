@@ -24,9 +24,9 @@
 
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/CSimplePool.hpp"
-#include "Kyoto/Math/CGameSpline.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/Math/CSpline.hpp"
 #include "Kyoto/Math/CUnitVector3f.hpp"
 #include "WorldFormat/CCollidableOBBTreeGroup.hpp"
 #include "rstl/algorithm.hpp"
@@ -85,8 +85,8 @@ CScriptPlatform::CScriptPlatform(
 , x48d_25_(false)
 , mMotionTransformed(false) {
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Unknown59),
-      CMaterialList(kMT_NoStaticCollision, kMT_Unknown60, kMT_Platform)));
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_NoStaticCollision, kMT_NoPlatformCollision, kMT_Platform)));
   SetMovable(false);
   if (HasAnimation()) {
     AnimationData()->EnableLooping(true);
@@ -130,35 +130,45 @@ void CScriptPlatform::StopMotion() {
 void CScriptPlatform::fn_800a3d18() { StopMotion(); }
 
 void CScriptPlatform::AdvanceMotionTime(float dt) {
+  float motionTime;
+  float delta = dt;
   mPreviousMotionForward = mMotionForward;
   mPassedMotionEnd = false;
   mPassedMotionStart = false;
   if (!mMotionForward) {
-    dt = -dt;
+    delta = -dt;
   }
-  float duration = mMotionSpline.get() ? mMotionSpline->GetDuration() : 0.f;
+  float duration = 0.f;
+  if (mMotionSpline.get()) {
+    duration = mMotionSpline->GetDuration();
+  }
   if (mSplineController.get()) {
     duration = mSplineController->GetPositionSpline().GetDuration();
   }
-  const bool fixedDuration = (mMotionFlags & 0x200) != 0;
+  const uint fixedDuration = mMotionFlags & 0x200;
   if (fixedDuration) {
     duration = mMotionDuration;
   }
-  if ((mMotionActive || fixedDuration) && duration > 0.f) {
+  if (!mMotionActive && !fixedDuration) {
+    return;
+  }
+  if (duration > 0.f) {
+    mMotionTime += delta;
     const float invDuration = 1.f / duration;
-    mMotionTime += dt;
-    if (mMotionTime >= duration) {
+    motionTime = mMotionTime;
+    if (motionTime >= duration) {
       if ((mMotionFlags & 4) != 0) {
-        mMotionTime -= int(mMotionTime * invDuration) * duration;
+        const float loops = motionTime * invDuration;
+        mMotionTime = motionTime - int(loops) * duration;
         mPassedMotionEnd = true;
       } else {
         mMotionTime = duration;
         fn_800a3d18();
       }
       mMotionForward = true;
-    } else if (mMotionTime < 0.f) {
+    } else if (motionTime < 0.f) {
       if ((mMotionFlags & 4) != 0) {
-        mMotionTime = -mMotionTime;
+        mMotionTime = -motionTime;
         mPassedMotionStart = true;
       } else {
         mMotionTime = 0.f;
@@ -574,7 +584,7 @@ void CScriptPlatform::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     }
     const TUniqueId waypoint = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
     if (TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(waypoint))) {
-      mSplineController = rs_new CGameSpline(
+      mSplineController = rs_new CSpline(
           mMotionSpline->GetDuration(), mMotionSpline->IsClosedLoop(), mMotionSpline->GetSpline(),
           CMayaSpline(), mMotionSpline->GetType(), mMotionSpline->GetType());
       ScriptCameraSpline::Initialise(*this, kSS_Connect, kSM_Attach, kSS_CameraTarget, kSM_Follow,
@@ -589,11 +599,11 @@ void CScriptPlatform::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     mInitialTransform = GetTransform();
     fn_800a1df8();
     if ((mMotionFlags & 0x100) != 0) {
-      AddMaterial(kMT_Unknown59, mgr);
-      RemoveMaterial(kMT_NoPlatformCollision, mgr);
+      AddMaterial(kMT_Solid, mgr);
+      RemoveMaterial(kMT_ProjectilePassthrough, mgr);
     } else {
-      RemoveMaterial(kMT_Unknown59, mgr);
-      AddMaterial(kMT_NoPlatformCollision, mgr);
+      RemoveMaterial(kMT_Solid, mgr);
+      AddMaterial(kMT_ProjectilePassthrough, mgr);
     }
     for (int i = 0; i < GetConnectionList().size(); ++i) {
       const SConnection& connection = GetConnectionList()[i];
@@ -602,7 +612,7 @@ void CScriptPlatform::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
         break;
       }
     }
-    mLookAtTarget = FindConnectedObject(mgr, kSS_Connect, kSM_InternalMessage00);
+    mLookAtTarget = FindConnectedObject(mgr, kSS_Connect, kSM_InternalMessage0);
     break;
   }
   case EScriptObjectMessage('XONP'):
@@ -934,8 +944,8 @@ CEntity* LoadPlatform(CStateManager& mgr, CInputStream& input, CEntityInfo& info
       motion.motionControlSpline,
       static_cast< CMotionSpline::ESplineType >(motion.motionSplineType.type), duration,
       (motion.motionFlagsPlatformMotion & 1) != 0);
-  CMaterialList materials(kMT_Unknown59, kMT_Immovable, kMT_Platform, kMT_Occluder);
-  if (sldrThis.unknown_0xf203bc81) {
+  CMaterialList materials(kMT_Solid, kMT_Immovable, kMT_Platform, kMT_Occluder);
+  if (sldrThis.excludeFromLineOfSightTest) {
     materials.Add(kMT_ExcludeFromLineOfSightTest);
   }
 

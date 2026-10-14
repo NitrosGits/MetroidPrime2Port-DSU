@@ -43,13 +43,13 @@ enum EOrbitValidationResult {
   kOVR_TargetingThroughDoor = 7,
 };
 
-const CMaterialList kLineOfSightIncludeList = CMaterialList(kMT_Unknown59);
+const CMaterialList kLineOfSightIncludeList = CMaterialList(kMT_Solid);
 const CMaterialList kLineOfSightExcludeList =
-    CMaterialList(kMT_NoPlatformCollision, kMT_ScanPassthrough, kMT_Character);
+    CMaterialList(kMT_ProjectilePassthrough, kMT_ScanPassthrough, kMT_Character);
 const CMaterialFilter kLineOfSightFilter =
     CMaterialFilter::MakeIncludeExclude(kLineOfSightIncludeList, kLineOfSightExcludeList);
 const CMaterialList kPlayerLineOfSightExcludeList =
-    CMaterialList(kMT_NoPlatformCollision, kMT_ScanPassthrough, kMT_Character, kMT_Player);
+    CMaterialList(kMT_ProjectilePassthrough, kMT_ScanPassthrough, kMT_Character, kMT_Player);
 const CMaterialFilter kPlayerLineOfSightFilter =
     CMaterialFilter::MakeIncludeExclude(kLineOfSightIncludeList, kPlayerLineOfSightExcludeList);
 CAABox staticBox(CVector3f(0.f, 0.f, 0.f), CVector3f(1.f, 1.f, 1.f));
@@ -256,7 +256,7 @@ void CPlayer::UpdateOrbitTarget(CStateManager& mgr) {
     break;
   }
   case kOS_OrbitPoint: {
-    if (GetTweakPlayerControls()->GetOrbitFixedOffset() &&
+    if (GetTweakPlayerControls()->GetOrbitPointFixedOffset() &&
         CMath::AbsF(mOrbitVector.GetZ()) > GetTweakPlayer()->GetOrbitFixedOffsetZDiff()) {
       UpdateOrbitFixedPosition();
       return;
@@ -1595,7 +1595,7 @@ void CPlayer::UpdateGrappleState(const CFinalInput& input, CStateManager& mgr) {
 
 bool CPlayer::ValidateFPPosition(CVector3f position, CStateManager& mgr) {
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
-  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59));
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
   const CVector3f margin(1.f, 1.f, 1.f);
   mgr.BuildColliderList(nearList, *this,
                         CAABox(mFpBounds.GetMinPoint() - margin + position,
@@ -1886,23 +1886,23 @@ void* CPlayer::GetDepthHighTextureData() const { return mDepthHighTextureData.ge
 void* CPlayer::GetDepthLowTextureData() const { return mDepthLowTextureData.get(); }
 
 TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
-  uint width = 64;
-  uint height = 32;
+  uint height = kScanTargetTextureHeight;
+  uint width = kScanTargetTextureWidth;
   TUniqueId selectedId = kInvalidUniqueId;
   uint selectedPalette = 0;
 
   if (mScanTargetIdTextureData.get() && mTargeting.get()) {
     if (mgr.IsMultiplayer()) {
-      width >>= 1;
+      height >>= 1;
     }
     if (mgr.GetNumPlayers() >= 3u) {
-      height >>= 1;
+      width >>= 1;
     }
 
     rstl::reserved_vector< uint, 62 > histogram;
     histogram.resize(62, 0u);
     const uchar* paletteData = static_cast< const uchar* >(mScanTargetIdTextureData.get());
-    for (uint i = 0; i < width * height; ++i) {
+    for (uint i = 0; i < height * width; ++i) {
       const uint palette = paletteData[i] >> 2;
       if (palette < 62) {
         ++histogram[palette];
@@ -1929,7 +1929,7 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
   const uchar* lowDepthData = static_cast< const uchar* >(mDepthLowTextureData.get());
   double totalDepth = 0.;
   uint sampleCount = 0;
-  for (uint i = 0; i < width * height; ++i) {
+  for (uint i = 0; i < height * width; ++i) {
     if (paletteData[i] >> 2 == selectedPalette) {
       const ushort depth = ushort((depthData[i] << 8) | (depthData[i] >> 8));
       totalDepth += 256. * depth + lowDepthData[i];
@@ -1954,8 +1954,8 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
     }
   }
 
-  DCInvalidateRange(mScanTargetIdTextureData.get(), 2048);
-  DCInvalidateRange(mDepthHighTextureData.get(), 4096);
-  DCInvalidateRange(mDepthLowTextureData.get(), 2048);
+  DCInvalidateRange(mScanTargetIdTextureData.get(), kScanTargetTextureSize);
+  DCInvalidateRange(mDepthHighTextureData.get(), kScanTargetTextureSize * 2);
+  DCInvalidateRange(mDepthLowTextureData.get(), kScanTargetTextureSize);
   return selectedId;
 }

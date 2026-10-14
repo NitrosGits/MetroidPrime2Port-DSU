@@ -3,7 +3,7 @@
 #include "Kyoto/CFactoryMgr.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
-#include "MetroidPrime/CGenericFSM2State.hpp"
+#include "MetroidPrime/CGenericFSM2StateImpl.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 
 template class CGenericFSM2State< CPatterned >;
@@ -81,10 +81,10 @@ CGenericFSM2::~CGenericFSM2() {}
 const CState2* CGenericFSM2::ResolveNode(uint target) const {
   const uint index = target & 0xffffff;
   switch (target >> 24) {
-  case 0:
-    return &mTriggers[index];
   case 1:
     return &mStates[index];
+  case 0:
+    return &mTriggers[index];
   case 2:
     return &mCodes[index];
   case 3:

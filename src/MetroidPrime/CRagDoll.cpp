@@ -16,9 +16,6 @@
 #include "WorldFormat/CMetroidAreaCollider.hpp"
 #include "rstl/math.hpp"
 
-// Integer floor-log2 helper; its original owner/name is unresolved.
-extern "C" int fn_802CC120(uint value);
-
 namespace {
 // Guessed names for the material response settings.
 struct SMaterialResponse {
@@ -34,23 +31,17 @@ float sRestitution[32];
 float sDamping[32];
 CMaterialList sResponseMaterials;
 SMaterialResponse sMaterialResponses[] = {
-    SMaterialResponse(kMT_Stone, 0.9f, 0.8f),
-    SMaterialResponse(kMT_Metal, 1.f, 0.7f),
-    SMaterialResponse(kMT_Grass, 0.2f, 0.3f),
-    SMaterialResponse(kMT_Phazon, 0.1f, 0.2f),
-    SMaterialResponse(kMT_Dirt, 0.3f, 0.3f),
-    SMaterialResponse(kMT_MudSlow, 0.2f, 0.6f),
-    SMaterialResponse(kMT_Sand, 0.1f, 0.2f),
-    SMaterialResponse(kMT_ProjectilePassthrough, 0.1f, 0.1f),
-    SMaterialResponse(kMT_Solid, 0.1f, 0.1f),
-    SMaterialResponse(kMT_Wood, 0.8f, 0.8f),
-    SMaterialResponse(kMT_Organic, 0.3f, 0.8f),
-    SMaterialResponse(kMT_RedundantEdgeOrFlippedTri, 5.f, 0.2f),
+    SMaterialResponse(kMT_Stone, 0.9f, 0.8f),     SMaterialResponse(kMT_Metal, 1.f, 0.7f),
+    SMaterialResponse(kMT_Grass, 0.2f, 0.3f),     SMaterialResponse(kMT_Phazon, 0.1f, 0.2f),
+    SMaterialResponse(kMT_Dirt, 0.3f, 0.3f),      SMaterialResponse(kMT_MudSlow, 0.2f, 0.6f),
+    SMaterialResponse(kMT_Sand, 0.1f, 0.2f),      SMaterialResponse(kMT_Unknown18, 0.1f, 0.1f),
+    SMaterialResponse(kMT_Unknown19, 0.1f, 0.1f), SMaterialResponse(kMT_Wood, 0.8f, 0.8f),
+    SMaterialResponse(kMT_Organic, 0.3f, 0.8f),   SMaterialResponse(kMT_Unknown25, 5.f, 0.2f),
 };
 bool sMaterialsInitialized;
 
 int GetMaterialIndex(const CMaterialList& material) {
-  return fn_802CC120(static_cast< uint >(material.GetValue() & sResponseMaterials.GetValue()));
+  return CMath::FloorLog2(static_cast< uint >(material.GetValue() & sResponseMaterials.GetValue()));
 }
 
 void InitializeMaterialResponses() {
@@ -214,7 +205,7 @@ bool CRagDoll::SatisfyWorldConstraints(CStateManager& mgr, int pass) {
   bool needsSecondPass = false;
   TUniqueId bestId = kInvalidUniqueId;
   CMaterialList include =
-      mNoAiCollision ? CMaterialList(kMT_Unknown59) : CMaterialList(kMT_Unknown59, kMT_AIBlock);
+      mNoAiCollision ? CMaterialList(kMT_Solid) : CMaterialList(kMT_Solid, kMT_AIBlock);
   CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       include, mNoAiCollision ? CMaterialList(kMT_Character, kMT_Player, kMT_AIBlock, kMT_Occluder)
                               : CMaterialList(kMT_Character, kMT_Player));
@@ -506,7 +497,7 @@ CProjectileTouchResult CRagDoll::ProjectileCollision(const CGameProjectile& proj
       return CProjectileTouchResult(actorId,
                                     CRayCastResult(static_cast< float >(distance), hitPoint,
                                                    CPlane(hitPoint, normal.AsNormalized()),
-                                                   CMaterialList(kMT_Unknown59)));
+                                                   CMaterialList(kMT_Solid)));
     }
   }
   return CProjectileTouchResult(kInvalidUniqueId, rstl::optional_object_null());

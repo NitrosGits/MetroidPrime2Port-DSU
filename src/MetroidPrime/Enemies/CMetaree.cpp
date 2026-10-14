@@ -15,7 +15,7 @@
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 #include "REL/REL_Setup.h"
 
-static EMaterialTypes SolidMaterial = kMT_Unknown59;
+static EMaterialTypes SolidMaterial = kMT_Solid;
 
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"InRange", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMetaree::InRange)},
@@ -42,8 +42,8 @@ CMetaree::CMetaree(TUniqueId uid, const rstl::string& name, const CEntityInfo& i
                    const CDamageInfo& damageInfo, float dropHeight, const CVector3f& offset,
                    float attackSpeed, float delay, float haltDelay, float launchSpeed,
                    const SLdrAudioPlaybackParms& attackSound)
-: CPatterned(static_cast< EPatternedAI >(0x20), uid, name, kFT_Zero, info, xf, modelData,
-             patternedInfo, kMT_Flyer, kCT_Zero, kBT_Flyer, actorParams)
+: CPatterned(kPAI_Metaree, uid, name, kFT_Zero, info, xf, modelData, patternedInfo, kMT_Flyer,
+             kCT_Zero, kBT_Flyer, actorParams)
 , mDelay(delay)
 , mHaltDelay(haltDelay)
 , mDropHeight(dropHeight)
@@ -293,6 +293,7 @@ CEntity* LoadMetaree(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
       sldrThis.dropDelay, sldrThis.launchSpeed, sldrThis.turnSound);
 }
 
+#ifndef MONOLITHIC
 static void SetFuncPtrs() {
   static SMetaree_FuncPtrs funcPtrs;
   funcPtrs.mLoadMetaree = &LoadMetaree;
@@ -302,3 +303,4 @@ static void SetFuncPtrs() {
 void RELMain() { SetFuncPtrs(); }
 
 void RELExit() { SetSMetaree_FuncPtrs(nullptr); }
+#endif

@@ -99,7 +99,7 @@ void CWallWalker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Delete:
     DestroyCollisionManager(mgr);
     break;
-  case kSM_XXDG:
+  case kSM_ReflectedDamage:
   case kSM_ResistedDamage:
     if (!TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(msg.GetSenderId()))) {
       BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
@@ -429,7 +429,7 @@ void CWallWalker::LaunchProjectiles(const CTransform4f& xf, CStateManager& mgr) 
   mNumShots = 0;
 }
 
-CEntity* REL_LoadWallWalker(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+CEntity* LoadWallWalker(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrWallWalker sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrWallWalker.inc"
 
@@ -443,10 +443,10 @@ CEntity* REL_LoadWallWalker(CStateManager& mgr, CInputStream& input, CEntityInfo
   TLockedToken< CWeaponDescription > projectile =
       gpSimplePool->GetObj(SObjectTag('WPSC', sldrThis.projectile));
   TLockedToken< CGenDescription > projectileVisorParticle =
-      gpSimplePool->GetObj(SObjectTag('PART', sldrThis.pART));
+      gpSimplePool->GetObj(SObjectTag('PART', sldrThis.projectileExplosionSpash));
   const CBouncyGrenadeData grenadeData(
       sldrThis.grenadeMass, sldrThis.unknown_0xed086ce0, LdrToDamageInfo(sldrThis.explodeDamage),
-      sldrThis.unknown_0x454f16b1, sldrThis.grenadeExplosion, sldrThis.grenadeExplosion,
+      sldrThis.grenadeNumBounces, sldrThis.grenadeExplosion, sldrThis.grenadeExplosion,
       sldrThis.grenadeTrail, sldrThis.grenadeEffect, sldrThis.grenadeSoundBounce,
       sldrThis.grenadeSoundExplode, 0.1f, 150.f, 0.1f, 150.f, true);
   const CWallWalkerData data(
@@ -463,13 +463,15 @@ CEntity* REL_LoadWallWalker(CStateManager& mgr, CInputStream& input, CEntityInfo
                             LdrToPatternedInfo(sldrThis.patterned, nullptr), data);
 }
 
+#ifndef MONOLITHIC
 SWallWalker_FuncPtrs REL_loader_WallWalker;
 
 void SetRelLoaderFunctionToLoader() {
-  REL_loader_WallWalker.mLoadWallWalker = REL_LoadWallWalker;
+  REL_loader_WallWalker.mLoadWallWalker = LoadWallWalker;
   SetSWallWalker_FuncPtrs(&REL_loader_WallWalker);
 }
 
 extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
 extern "C" void RELExit() { SetSWallWalker_FuncPtrs(nullptr); }
+#endif

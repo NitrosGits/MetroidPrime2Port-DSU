@@ -37,6 +37,7 @@
 #include "MetroidPrime/CRumbleManager.hpp"
 #include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/CSaveGameScreen.hpp"
+#include "MetroidPrime/CScopedProfiler.hpp"
 #include "MetroidPrime/CScriptMailbox.hpp"
 #include "MetroidPrime/CSortedLists.hpp"
 #include "MetroidPrime/CStateManagerContainer.hpp"
@@ -47,6 +48,7 @@
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 #include "MetroidPrime/Enemies/CMetroid.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/Enemies/CSnakeWeedSwarm.hpp"
 #include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/GameObjectLists.hpp"
 #include "MetroidPrime/HUD/CHUDMemoParms.hpp"
@@ -122,16 +124,6 @@
 
 const int gkPVSEnabled = 1;
 
-// Prime-correlated role; the selected original stores false.
-extern const bool gkWorldOnlyReflection;
-
-// Guessed class/name. Native callers construct stack scopes around named profiling
-// regions; the release initializer has no observable state or cleanup.
-class CScopedProfiler {
-public:
-  CScopedProfiler(const rstl::string& name, bool enabled);
-};
-
 static s64 sPreRenderStepTime;
 
 // Prime-correlated lazy initialization; Echoes schedules rumble rather than camera shakes.
@@ -148,13 +140,10 @@ static const char* const skSinglePlayerAnimController = "SinglePlayerAnimCtrl";
 static const char* const skMultiplayerAnimController = "PlayerAnimCtrl";
 static const char* const skUnusedViewportTexture = "TXTR_Metroid2LogoSm";
 
-// Guessed name. The original immutable flag is false; its defining TU is unresolved.
-static const bool skDisablePlayerTargeting = false;
-
 // Both retained release hooks contain only a return instruction. Their sole known
 // callers pass this manager; no exported name or body establishes a semantic name.
-extern "C" void fn_8003FF1C(CStateManager*);
-extern "C" void fn_8003FF20(CStateManager*);
+extern "C" void fn_8003FF1C(CStateManager*) {}
+extern "C" void fn_8003FF20(CStateManager*) {}
 
 bool CStateManager::CanCreateProjectile(TUniqueId owner, EWeaponType type, int maxAllowed) {
   return mWeaponMgr->GetNumActive(owner, type) < maxAllowed;
@@ -278,13 +267,11 @@ bool CStateManager::IsActorVisible(const CActor& actor) const {
   return mPlanes.BoxInFrustumPlanes(actor.GetOtherBounds());
 }
 
-void CStateManager::DrawDarkWorldVolume(const CVector3f& pos, const CVector3f& scale, uchar mix,
-                                        uchar alpha, bool inside, float lod,
-                                        const CVector2f& scroll1, const CVector2f& scroll2,
-                                        const CVector2f& texScale1, const CVector2f& texScale2,
-                                        const CTexture& environment, const CTexture& cloud1,
-                                        const CTexture& cloud2, CColor color, CColor additiveColor,
-                                        bool cylinder) const {
+void CStateManager::AddDarkWorldSphereToRenderer(
+    const CVector3f& pos, const CVector3f& scale, uchar mix, uchar alpha, bool inside, float lod,
+    const CVector2f& scroll1, const CVector2f& scroll2, const CVector2f& texScale1,
+    const CVector2f& texScale2, const CTexture& environment, const CTexture& cloud1,
+    const CTexture& cloud2, CColor color, CColor additiveColor, bool cylinder) const {
   const CPlayerState::EPlayerVisor visor = mPlayerState->GetActiveVisor(*this);
   if (mIsDarkWorld && visor != CPlayerState::kPV_Echo) {
     gpRender->DrawDarkWorldVolume(pos, scale, mix, alpha, inside, lod, scroll1, scroll2, texScale1,
@@ -1179,6 +1166,8 @@ void CStateManager::SetupViewForDraw(const CViewport& viewport) {
   gpRender->SetDebugOption(IRenderer::kDO_PVSState, 1);
 }
 
+void CStateManager::DrawDebugStuff() const {}
+
 void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
   CScopedProfiler profile(rstl::string_l("*TotalDrawWorld"), true);
   SetRendererWorkspace(alloca(GetRendererWorkspaceSize()));
@@ -1404,9 +1393,9 @@ void CStateManager::TouchPlayerActor() {
 }
 
 // Guessed local names. The target excludes these materials when testing dock visibility.
-static EMaterialTypes VisAreaExcludeMaterial1 = kMT_NoPlatformCollision;
+static EMaterialTypes VisAreaExcludeMaterial1 = kMT_ProjectilePassthrough;
 static EMaterialTypes VisAreaExcludeMaterial2 = kMT_CameraPassthrough;
-static EMaterialTypes VisAreaIncludeMaterial = kMT_Unknown59;
+static EMaterialTypes VisAreaIncludeMaterial = kMT_Solid;
 
 TAreaId CStateManager::GetVisAreaId() const {
   const TAreaId currentArea = GetWorld()->GetCurrentAreaId();
@@ -1605,7 +1594,7 @@ bool CStateManager::RenderLastHUD(const TUniqueId& uid) {
   return true;
 }
 
-bool CStateManager::RenderLastAfterCameraFilters(const TUniqueId& uid) {
+bool CStateManager::RenderLastAfterCameraFilters(TUniqueId uid) {
   CStateManagerContainer* container = mStateManagerContainer.get();
   if (container->mRenderLastAfterCameraFilters.size() ==
       container->mRenderLastAfterCameraFilters.capacity()) {
@@ -1753,7 +1742,7 @@ void CStateManager::UpdatePlayerLineOfSight(float dt) {
     const float length = direction.Magnitude();
     direction *= 1.f / length;
     const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-        CMaterialList(kMT_Unknown59), CMaterialList(kMT_SeeThrough));
+        CMaterialList(kMT_Solid), CMaterialList(kMT_SeeThrough));
     if (CGameCollision::RayStaticLineOfSightTest(*this, start, direction, length, filter)) {
       visible = true;
     }
@@ -1896,8 +1885,8 @@ void CStateManager::SetupParticleDrawMask() {
 }
 
 void CStateManager::CapturePlayerTextures() {
-  uint textureWidth = 32;
-  uint textureHeight = 64;
+  uint textureWidth = kScanTargetTextureWidth;
+  uint textureHeight = kScanTargetTextureHeight;
   if (IsMultiplayer()) {
     textureHeight /= 2;
   }
@@ -1983,9 +1972,7 @@ const CScriptObjectLoaderHelper& CStateManager::GetScriptObjectLoaderHelper() co
   return mStateManagerContainer->mScriptObjectLoader;
 }
 
-CScopedProfiler::CScopedProfiler(const rstl::string& name, bool enabled) {}
-
-const bool gkWorldOnlyReflection = false;
+CScopedProfiler::CScopedProfiler(const rstl::string&, bool) {}
 
 CStateManager::CStateManager(
     const rstl::ncrc_ptr< CScriptMailbox >& mailbox,
@@ -2302,18 +2289,17 @@ void CStateManager::CreateStandardGameObjects() {
     if (IsMultiplayer()) {
       characterIndex = 0;
     }
-    mPlayers[i] =
-        rs_new CPlayer(uid, transform, bounds, gpTweakPlayerRes->GetBallTransitionANCSId(),
-                       stateMachine, 200.f, stepUp, stepDown, ballRadius,
-                       CMaterialList(kMT_Player, kMT_Unknown59, kMT_GroundCollider, kMT_Target,
-                                     kMT_NoPlayerCollision),
-                       mPlayerStates[i], mCameraManagers[i], mNumPlayers > 1u, i,
-                       mPlayerStateOwners[i]->GetControlScheme(), characterIndex);
+    mPlayers[i] = rs_new CPlayer(
+        uid, transform, bounds, gpTweakPlayerRes->GetBallTransitionANCSId(), stateMachine, 200.f,
+        stepUp, stepDown, ballRadius,
+        CMaterialList(kMT_Player, kMT_Solid, kMT_GroundCollider, kMT_Target, kMT_NoPlayerCollision),
+        mPlayerStates[i], mCameraManagers[i], mNumPlayers > 1u, i,
+        mPlayerStateOwners[i]->GetControlScheme(), characterIndex);
   }
 
   for (uint i = 0; i < mNumPlayers; ++i) {
     AddObject(*mPlayers[i]);
-    if (!skDisablePlayerTargeting) {
+    if (!gkDisablePlayerTargeting) {
       mPlayers[i]->AddMaterial(kMT_Orbit, kMT_Scannable, *this);
     }
   }
@@ -3118,11 +3104,9 @@ CStateManager::TestRayDamage(const CVector3f& position, const CActor& damagee,
     return false;
   }
 
-  // Material 59's semantic name remains unresolved; the native filter uses it,
-  // rather than Prime's Solid material, and excludes NoPlatformCollision.
-  static const CMaterialList include = CMaterialList(kMT_Unknown59);
+  static const CMaterialList include = CMaterialList(kMT_Solid);
   static const CMaterialList exclude =
-      CMaterialList(kMT_NoPlatformCollision, kMT_Player, kMT_Occluder, kMT_Character);
+      CMaterialList(kMT_ProjectilePassthrough, kMT_Player, kMT_Occluder, kMT_Character);
   static const CMaterialFilter filter =
       CMaterialFilter(include, exclude, CMaterialFilter::kFT_IncludeExclude);
 
@@ -3254,7 +3238,7 @@ void CStateManager::ApplyDamageToWorld(TUniqueId owner, CActor& projectile,
        it != nearList.end(); ++it) {
     CActor* const actor = static_cast< CActor* >(ObjectById(*it));
     CPlayer* const player = TCastToPtr< CPlayer >(actor);
-    CEntity* const snakeWeed = CastToSnakeWeedSwarm(actor);
+    CSnakeWeedSwarm* const snakeWeed = TCastToPtr< CSnakeWeedSwarm >(actor);
     CSwarmBasics* const swarm = TCastToPtr< CSwarmBasics >(actor);
 
     if (bomb && player != nullptr && actor->GetUniqueId() == weapon->GetOwnerId()) {
@@ -3316,9 +3300,8 @@ void CStateManager::ApplyKnockBack(CActor& actor, TUniqueId source, TUniqueId ow
     if (power > resistance) {
       if (CPhysicsActor* const physics = TCastToPtr< CPhysicsActor >(actor)) {
         const CVector3f impulse = direction * (1.5f * ((power - resistance) * physics->GetMass()));
-        // The native impulse gate uses material 59; its semantic name is unresolved.
         if (!physics->GetMaterialList().HasMaterial(kMT_Immovable) &&
-            physics->GetMaterialList().HasMaterial(kMT_Unknown59)) {
+            physics->GetMaterialList().HasMaterial(kMT_Solid)) {
           physics->ApplyImpulseWR(impulse, CAxisAngle::Identity());
         }
       }
@@ -3885,3 +3868,5 @@ void CStateManager::DisplayAlertAboutOutOfAmmo(const CPlayer& player,
     break;
   }
 }
+
+void CScopedProfiler::BeginFrame() {}

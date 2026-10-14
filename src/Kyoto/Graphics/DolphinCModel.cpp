@@ -7,9 +7,9 @@
 #include "Kyoto/Graphics/CCubeMaterial.hpp"
 #include "Kyoto/Graphics/CCubeModel.hpp"
 #include "Kyoto/Graphics/CGX.hpp"
-#include "Kyoto/Graphics/CGXTransientBuffer.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Graphics/DolphinGPUMemory.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CTransform4f.hpp"
 
@@ -35,7 +35,7 @@ public:
   CSkinMatricesGuard(void* matrices) : mActive(matrices != nullptr) {}
   ~CSkinMatricesGuard() {
     if (mActive) {
-      CGXTransientBuffer::ReleaseAllocation();
+      GPUMemory::ReleaseAllocation();
       GXSetCurrentMtx(GX_PNMTX0);
     }
   }
@@ -240,7 +240,7 @@ void* CModel::SetupSkinMatrices() const {
   }
 
   SSkinMatrices* matrices =
-      static_cast< SSkinMatrices* >(CGXTransientBuffer::EnsureAllocation(sizeof(SSkinMatrices)));
+      static_cast< SSkinMatrices* >(GPUMemory::EnsureAllocation(sizeof(SSkinMatrices)));
   matrices->mModelView = CGraphics::GetGXModelView();
   float (*normal)[3] = matrices->mNormal;
   const Mtx& invXpose = CGraphics::GetGXModelViewInvXpose();
@@ -320,8 +320,8 @@ void CModel::VerifyCurrentShader(int shader) const {
   }
 }
 
-CFactoryFnReturn FModelFactory(const SObjectTag& tag, const rstl::auto_ptr< uchar >& ptr,
-                                     int len, const CVParamTransfer& xfer) {
+CFactoryFnReturn FModelFactory(const SObjectTag& tag, const rstl::auto_ptr< uchar >& ptr, int len,
+                               const CVParamTransfer& xfer) {
   rstl::rc_ptr< IVParamObj > obj = xfer.GetObj();
   CSimplePool* pool = static_cast< TObjOwnerParam< CSimplePool* >* >(obj.GetPtr())->GetData();
   GXInvalidateVtxCache();
@@ -444,9 +444,9 @@ void CModel::RemapData(uchar* data) {
                                      instance.GetColorSize(), instance.GetTCSize(),
                                      instance.GetPackedTCSize());
 #else
-  mModelInstance = rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures,
-                                     mMatSets.front().mData, positions, normals, colors, uvs,
-                                     packedUvs, bounds, flags, texturesLoaded, index);
+  mModelInstance =
+      rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures, mMatSets.front().mData, positions,
+                        normals, colors, uvs, packedUvs, bounds, flags, texturesLoaded, index);
 #endif
   UpdateLastFrame();
 }

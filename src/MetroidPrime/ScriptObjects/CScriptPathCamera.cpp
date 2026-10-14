@@ -27,13 +27,15 @@ CScriptCameraSpline::~CScriptCameraSpline() {}
 
 CVector3f CScriptCameraSpline::GetPositionByTime(float time, const CTransform4f& xf,
                                                  const CStateManager& mgr) {
+  CVector3f position;
   if (GetPositionKnotCount() != 0) {
-    return CGameSpline::GetPositionByTime(time);
+    position = CSpline::GetPositionByTime(time);
+  } else if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mPositionId))) {
+    position = actor->GetTranslation();
+  } else {
+    position = xf.GetTranslation();
   }
-  if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mPositionId))) {
-    return actor->GetTranslation();
-  }
-  return xf.GetTranslation();
+  return position;
 }
 
 CQuaternion CScriptCameraSpline::GetOrientationByTime(float time, const CTransform4f& xf,
@@ -51,10 +53,10 @@ CQuaternion CScriptCameraSpline::GetOrientationByTime(float time, const CTransfo
       orientation =
           CQuaternion::FromMatrix(CTransform4f::LookAt(position, target->GetTranslation()));
     } else if (GetPositionKnotCount() != 0) {
-      orientation = CGameSpline::GetOrientationByTime(time);
+      orientation = CSpline::GetOrientationByTime(time);
     }
   } else {
-    const CVector3f target = CGameSpline::GetLookAtByTime(time);
+    const CVector3f target = CSpline::GetLookAtByTime(time);
     if ((target - position).IsMagnitudeSafe()) {
       orientation = CQuaternion::FromMatrix(CTransform4f::LookAt(position, target));
     } else {
@@ -66,13 +68,15 @@ CQuaternion CScriptCameraSpline::GetOrientationByTime(float time, const CTransfo
 
 CVector3f CScriptCameraSpline::GetPositionByLength(float distance, const CTransform4f& xf,
                                                    const CStateManager& mgr) {
+  CVector3f position;
   if (GetPositionKnotCount() != 0) {
-    return CGameSpline::GetPositionByLength(distance);
+    position = CSpline::GetPositionByLength(distance);
+  } else if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mPositionId))) {
+    position = actor->GetTranslation();
+  } else {
+    position = xf.GetTranslation();
   }
-  if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mPositionId))) {
-    return actor->GetTranslation();
-  }
-  return xf.GetTranslation();
+  return position;
 }
 
 CQuaternion CScriptCameraSpline::GetOrientationByLength(float positionDistance,
@@ -92,10 +96,10 @@ CQuaternion CScriptCameraSpline::GetOrientationByLength(float positionDistance,
       orientation =
           CQuaternion::FromMatrix(CTransform4f::LookAt(position, target->GetTranslation()));
     } else if (GetPositionKnotCount() != 0) {
-      orientation = CGameSpline::GetOrientationByLength(positionDistance);
+      orientation = CSpline::GetOrientationByLength(positionDistance);
     }
   } else {
-    const CVector3f target = CGameSpline::GetLookAtByLength(targetDistance);
+    const CVector3f target = CSpline::GetLookAtByLength(targetDistance);
     if ((target - position).IsMagnitudeSafe()) {
       orientation = CQuaternion::FromMatrix(CTransform4f::LookAt(position, target));
     } else {
@@ -115,7 +119,7 @@ CScriptPathCamera::CScriptPathCamera(
     const CMayaSpline& perpendicularDistanceSpline, const CMayaSpline& perpendicularInterpSpline)
 : CEntity(uid, info, name, 0)
 , mSpline(1.f, splineFlags, positionTimeSpline, lookAtTimeSpline, fovSpline,
-          CMayaSpline(SLdrSpline::CreateFor(0.f, 0.f, 1.f, 1.f)), positionType, lookAtType)
+          SLdrSpline::CreateFor(0.f, 0.f, 1.f, 1.f), positionType, lookAtType)
 , mPlayerSpline(playerLoops, 1.f, playerType)
 , mSpeedControlSpline(speedControlSpline)
 , mDistance(distance)
@@ -178,7 +182,7 @@ CEntity* LoadPathCamera(CStateManager& mgr, CInputStream& input, CEntityInfo& in
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
       LdrToEntityInfo(info, sldrThis.editorProperties), sldrThis.distance, sldrThis.speed,
       sldrThis.angularSpeed * (M_PIF / 180.f), sldrThis.dampenDistance, sldrThis.flagsPathCamera,
-      sldrThis.unknown_0xd4b29446, sldrThis.initialPosition,
+      sldrThis.splineFlagsCameraSpline, sldrThis.initialPosition,
       static_cast< CMotionSpline::ESplineType >(sldrThis.motionSplineType.type),
       static_cast< CMotionSpline::ESplineType >(sldrThis.targetSplineType.type),
       sldrThis.motionControlSpline, sldrThis.targetControlSpline, sldrThis.fOVSpline,

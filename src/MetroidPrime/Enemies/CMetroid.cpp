@@ -32,7 +32,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "REL/REL_Setup.h"
 
-static EMaterialTypes skSolidMaterial = kMT_Unknown59;
+static EMaterialTypes skSolidMaterial = kMT_Solid;
 
 static const char* skJointNameList[] = {
     "Head_1",        "L_ankle",    "L_elbow",       "L_hip",   "L_knee",  "L_shoulder",
@@ -191,7 +191,7 @@ void CMetroid::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EU
   bool handled = false;
   switch (type) {
   case kUE_GenerateEnd:
-    AddMaterial(kMT_Unknown59, mgr);
+    AddMaterial(kMT_Solid, mgr);
     handled = true;
     break;
   }
@@ -515,7 +515,7 @@ void CMetroid::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   case kStateMsg_Activate:
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
     mState = kAiState_Zero;
-    RemoveMaterial(kMT_Unknown59, mgr);
+    RemoveMaterial(kMT_Solid, mgr);
     mRestoreSolidCollision = false;
     break;
   case kStateMsg_Update:
@@ -891,7 +891,7 @@ void CMetroid::PreventWorldCollisions(float dt, CStateManager& mgr) {
     if (x9c4_ > 6.f) {
       MassiveDeath(mgr);
     } else if (mRestoreSolidCollision && x9c4_ > 0.25f) {
-      RemoveMaterial(kMT_Unknown59, mgr);
+      RemoveMaterial(kMT_Solid, mgr);
     }
     CGameCollision::PushActorAwayFromWalls(mgr, *this, dt, 0.25f, size, 15000.f, 8, 0.5f);
   } else {
@@ -901,7 +901,7 @@ void CMetroid::PreventWorldCollisions(float dt, CStateManager& mgr) {
 
 void CMetroid::RestoreSolidCollision(CStateManager& mgr) {
   const CMaterialFilter filter =
-      CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59, kMT_AIBlock));
+      CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock));
   if (mRestoreSolidCollision && !CGameCollision::DetectStaticCollisionBoolean(
                                     mgr, mCollisionPrimitive, GetTransform(), filter)) {
     bool add = true;
@@ -914,14 +914,14 @@ void CMetroid::RestoreSolidCollision(CStateManager& mgr) {
       }
     }
     if (add) {
-      AddMaterial(kMT_Unknown59, mgr);
+      AddMaterial(kMT_Solid, mgr);
       mRestoreSolidCollision = false;
     }
   }
   if (mRestoreCharacterCollision) {
     rstl::reserved_vector< TUniqueId, 1024 > nearList;
     const CMaterialFilter nearFilter =
-        CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59, kMT_Player, kMT_Character));
+        CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));
     const float radius = mLoopAttackDistance * GetModelData()->GetScale().GetY();
     const CVector3f extent(radius, radius, radius);
     const CAABox box(GetTranslation() - extent, GetTranslation() + extent);
@@ -970,7 +970,7 @@ bool CMetroid::InAttackPosition(CStateManager& mgr, const CTriggerData&) const {
             const CVector3f attackDelta = GetAttackTargetPos(mgr) - start;
             if (attackDelta.CanBeNormalized()) {
               const CMaterialFilter filter =
-                  CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59, kMT_AIBlock));
+                  CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock));
               const float length = attackDelta.Magnitude();
               inPosition = CGameCollision::RayStaticLineOfSightTest(
                   mgr, start, (1.f / length) * attackDelta, length, filter);
@@ -1055,7 +1055,7 @@ void CMetroid::SetTargetDest(CStateManager& mgr, float) {
   const CVector3f dir = x7c0_ - targetPos;
   if (dir.CanBeNormalized()) {
     const CMaterialFilter filter =
-        CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59, kMT_AIBlock));
+        CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock));
     const float mag = dir.Magnitude();
     const CVector3f normDir = (1.f / mag) * dir;
     const CRayCastResult result = mgr.RayStaticIntersection(targetPos, normDir, mag, filter);
@@ -1297,7 +1297,7 @@ void CMetroid::SetupExitFaceHugDirection(CActor* actor, CStateManager& mgr,
     return;
   }
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Unknown59, kMT_AIBlock), CMaterialList(kMT_Character, kMT_Player));
+      CMaterialList(kMT_Solid, kMT_AIBlock), CMaterialList(kMT_Character, kMT_Player));
   const float length = mLoopAttackDistance * GetModelData()->GetScale().GetY();
   CVector3f bestDirection = -GetTransform().GetForward();
   float bestDistance = 0.f;
@@ -1550,7 +1550,7 @@ void CMetroid::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
-CEntity* REL_LoadMetroid(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+CEntity* LoadMetroidAlpha(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMetroidAlpha sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMetroidAlpha.inc"
 
@@ -1564,12 +1564,12 @@ CEntity* REL_LoadMetroid(CStateManager& mgr, CInputStream& input, CEntityInfo& i
   const CMetroidData metroidData(
       LdrToDamageVulnerability(sldrThis.frozenVulnerability),
       LdrToDamageVulnerability(sldrThis.energyDrainVulnerability),
-      LdrToDamageVulnerability(sldrThis.babyMetroidGrowthVulnerability),
-      sldrThis.unknown_0x72439b39, sldrThis.unknown_0x3af75fcc, sldrThis.telegraphAttackTime,
-      sldrThis.babyMetroidScale, sldrThis.unknown_0x03362858, sldrThis.unknown_0x1c783744,
-      sldrThis.unknown_0x852d3bb0, sldrThis.babyMetroidTransformationParticleEffect,
-      sldrThis.stage2GrowthScale, sldrThis.stage2GrowthEnergy, sldrThis.unknown_0x5f3f294c,
-      sldrThis.dodgeCheckTimeInterval, sldrThis.chanceToDodge, sldrThis.metroidFlagsMetroid);
+      LdrToDamageVulnerability(sldrThis.babyMetroidGrowthVulnerability), sldrThis.energyDrainPerSec,
+      sldrThis.maxEnergyDrainAllowed, sldrThis.telegraphAttackTime, sldrThis.babyMetroidScale,
+      sldrThis.unknown_0x03362858, sldrThis.unknown_0x1c783744, sldrThis.unknown_0x852d3bb0,
+      sldrThis.babyMetroidTransformationParticleEffect, sldrThis.stage2GrowthScale,
+      sldrThis.stage2GrowthEnergy, sldrThis.explosionGrowthEnergy, sldrThis.dodgeCheckTimeInterval,
+      sldrThis.chanceToDodge, sldrThis.metroidFlagsMetroid);
 
   if (metroidData.xc4_24_) {
     return rs_new CBabyMetroid(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
@@ -1585,10 +1585,11 @@ CEntity* REL_LoadMetroid(CStateManager& mgr, CInputStream& input, CEntityInfo& i
                          LdrToActorParameters(sldrThis.actorInformation), metroidData);
 }
 
+#ifndef MONOLITHIC
 SMetroid_FuncPtrs REL_loader_Metroid;
 
 void SetRelLoaderFunctionToLoader() {
-  REL_loader_Metroid.mLoadMetroid = REL_LoadMetroid;
+  REL_loader_Metroid.mLoadMetroid = LoadMetroidAlpha;
   REL_loader_Metroid.mOnDockTouch = &CMetroid::OnDockTouch;
   SetSMetroid_FuncPtrs(&REL_loader_Metroid);
 }
@@ -1596,3 +1597,4 @@ void SetRelLoaderFunctionToLoader() {
 extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
 extern "C" void RELExit() { SetSMetroid_FuncPtrs(nullptr); }
+#endif

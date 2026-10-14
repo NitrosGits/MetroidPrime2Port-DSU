@@ -3,16 +3,16 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
-#include "MetaRender/IRenderer.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CGameLight.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/SFX/Weapons2.h"
+#include "MetroidPrime/SFX/Weapons2_MP.h"
 #include "MetroidPrime/TCastTo.hpp"
 #include "rstl/math.hpp"
 
 #include <float.h>
-
-extern IRenderer* gpRender;
 
 CBlackHole::CBlackHole(const rstl::optional_object< TToken< CGenDescription > >& particle,
                        TUniqueId uid, TAreaId areaId, TUniqueId owner, const CTransform4f& xf,
@@ -20,7 +20,7 @@ CBlackHole::CBlackHole(const rstl::optional_object< TToken< CGenDescription > >&
                        float duration, uint flags)
 : CWeapon(uid, areaId, true, owner, kWT_Dark, name, xf,
           CMaterialFilter::MakeIncludeExclude(
-              CMaterialList(kMT_Trigger, kMT_Immovable, kMT_Unknown59, kMT_NonSolidDamageable),
+              CMaterialList(kMT_Trigger, kMT_Immovable, kMT_Solid, kMT_NonSolidDamageable),
               CMaterialList(kMT_Projectile, kMT_PowerBomb)),
           CMaterialList(kMT_Projectile, kMT_PowerBomb), damage, kPA_Light,
           CModelData::CModelDataNull())
@@ -136,7 +136,8 @@ void CBlackHole::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     mOrigDamageInfo.SetRadius(mRadius);
 
     if (mFlags & kF_CreationSound) {
-      static const ushort skCreationSfx[2] = {0x1fda, 0x25aa};
+      static const ushort skCreationSfx[2] = {SFXsam_a_drkcohit_00_oneshot,
+                                              SFXsa2_a_drkcohit_00_oneshot};
       CSfxManager::AddEmitter(mgr.ReturnFirstIfSingleElseSecond(skCreationSfx[0], skCreationSfx[1]),
                               GetTranslation(), GetCurrentAreaId().Value(), true, false,
                               CSfxManager::kMedPriority);

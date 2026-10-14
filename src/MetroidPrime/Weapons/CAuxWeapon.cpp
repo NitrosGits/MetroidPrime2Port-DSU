@@ -9,6 +9,14 @@
 #include "MetroidPrime/Cameras/CCameraShakerManager.hpp"
 #include "MetroidPrime/Cameras/CFirstPersonCamera.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/SFX/Weapons.h"
+#include "MetroidPrime/SFX/Weapons2.h"
+#include "MetroidPrime/SFX/Weapons2_MP.h"
+#include "MetroidPrime/SFX/Weapons3.h"
+#include "MetroidPrime/SFX/Weapons3_MP.h"
+#include "MetroidPrime/SFX/Weapons4_MP.h"
+#include "MetroidPrime/SFX/Weapons5.h"
+#include "MetroidPrime/SFX/Weapons_MP.h"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayerGun.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
@@ -21,8 +29,13 @@
 #include "Kyoto/Particles/CVectorElement.hpp"
 #include "Weapons/CWeaponDescription.hpp"
 
-static const ushort skComboSoundIds[2][4] = {{238, 8163, 8162, 65535}, {9630, 9641, 9672, 9661}};
-static const ushort skMissileSoundIds[2] = {196, 9650};
+static const ushort skComboSoundIds[2][4] = {
+    {SFXsam_a_co1fire_00_oneshot, SFXsam_a_drkcofire_00_oneshot, SFXsam_a_litcofire_00_oneshot,
+     65535},
+    {SFXsa2_a_co1fire_00_oneshot, SFXsa2_a_drkcofire_00_oneshot, SFXsa2_a_litcofire_00_oneshot,
+     SFXsa2_a_nilcofire_00_oneshot}};
+static const ushort skMissileSoundIds[2] = {SFXsam_a_mislfire_00_oneshot,
+                                            SFXsa2_a_mislfire_00_oneshot};
 static const float skAnnihilatorDamageBases[3] = {150.f, 200.f, 300.f};
 static const float skAnnihilatorDamageWeights[3] = {60.f, 30.f, 10.f};
 static float skAnnihilatorDamageRanges[3][2] = {{0.f, 10.f}, {-10.f, 10.f}, {-10.f, 0.f}};
@@ -130,7 +143,7 @@ void CAuxWeapon::FireProjectile(float dt, EWeaponType type, bool underwater, boo
     const CVector3f direction = spawnTransform.GetForward();
     TUniqueId hitId = kInvalidUniqueId;
     const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-        CMaterialList(kMT_Unknown59), CMaterialList(kMT_NoPlatformCollision));
+        CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));
     rstl::reserved_vector< TUniqueId, 1024 > nearList;
     mgr.BuildNearList(nearList, position, direction, 100.f, filter,
                       TCastToPtr< CActor >(mgr.ObjectById(mPlayerId)));
@@ -161,11 +174,12 @@ void CAuxWeapon::FireProjectile(float dt, EWeaponType type, bool underwater, boo
   }
 
   CEnergyProjectile* projectile = rs_new CEnergyProjectile(
-      true, description, isCombo ? type : kWT_Missile, spawnTransform, kMT_NoPlatformCollision,
+      true, description, isCombo ? type : kWT_Missile, spawnTransform, kMT_ProjectilePassthrough,
       damage.ApplyDoubleDamage(*FindPlayer(mgr)->GetPlayerState()), mgr.AllocateUniqueId(),
       kInvalidAreaId, mPlayerId, description->mHOMG ? homingId : kInvalidUniqueId, attributes,
-      underwater, CVector3f::One(), CImpactVisorEffect(), false, true, type == kWT_Annihilator, 1.f,
-      type == kWT_Annihilator ? 20.f : 4.f, type == kWT_Annihilator ? 20.f : 4.f);
+      underwater, CVector3f::One(), CImpactVisorEffect::None(), false, true,
+      type == kWT_Annihilator, 1.f, type == kWT_Annihilator ? 20.f : 4.f,
+      type == kWT_Annihilator ? 20.f : 4.f);
   if (projectile) {
     mgr.AddObject(projectile);
     projectile->InitializeMuzzleOffset(0.5f, mgr);
@@ -194,7 +208,7 @@ void CAuxWeapon::FireLightCombo(float dt, bool underwater, int comboId, uint att
   const ushort sfx = skComboSoundIds[mgr.IsMultiplayer() ? 1 : 0][comboId];
   CPlayer* player = GetPlayerFromAll(mgr);
   CLightComboProjectile* projectile = rs_new CLightComboProjectile(
-      description, kWT_Light, xf, kMT_NoPlatformCollision,
+      description, kWT_Light, xf, kMT_ProjectilePassthrough,
       damage.ApplyDoubleDamage(*FindPlayer(mgr)->GetPlayerState()), mgr.AllocateUniqueId(),
       kInvalidAreaId, mPlayerId, description.GetObject()->mHOMG ? homingId : kInvalidUniqueId,
       underwater, attributes, 10.f);

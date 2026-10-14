@@ -6,7 +6,7 @@
 #include <Kyoto/Graphics/CMoviePlayer.hpp>
 
 #include "Kyoto/Audio/CAudioSys.hpp"
-#include "Kyoto/Audio/CStaticAudioPlayer.hpp"
+#include "Kyoto/Audio/DolphinCRSFAudio.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "dolphin/PPCArch.h"
@@ -24,12 +24,9 @@
 #include "dolphin/gx/GXTev.h"
 #include "dolphin/gx/GXTexture.h"
 
-extern bool lbl_804199CC;
-extern bool lbl_80419B9D;
-
 static rstl::string SelectMoviePath(const char* path) {
   rstl::string name(path);
-  if (lbl_804199CC) {
+  if (CGraphics::Is50Hz()) {
     rstl::string palName = name + "_pal";
     if (CDvdFile::FileExists(palName.data())) {
       return palName;
@@ -408,7 +405,7 @@ void CMoviePlayer::DVDCallback(s32 result, DVDFileInfo* info) {
     return;
   }
   DCInvalidateRange(info->cb.addr, info->cb.length);
-  lbl_80419B9D = true;
+  gDvdActivity = true;
   static_cast< CMoviePlayer* >(info->cb.userData)->HandleDVDInterrupt(info);
 }
 
@@ -716,9 +713,9 @@ void CMoviePlayer::MixAudio(short* out, const short* in, unsigned long samples) 
 
 void CMoviePlayer::VerifyCallbackStatus() {
   if (sNumReferences > 0) {
-    CStaticAudioPlayer::RunDMACallback(StaticMyAudioCallback);
+    CRSFAudio::RunDMACallback(StaticMyAudioCallback);
   } else {
-    CStaticAudioPlayer::CancelDMACallback(StaticMyAudioCallback);
+    CRSFAudio::CancelDMACallback(StaticMyAudioCallback);
   }
 }
 

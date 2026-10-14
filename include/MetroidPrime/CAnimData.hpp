@@ -7,7 +7,7 @@
 
 #include "Kyoto/Animation/CAdditiveAnimPlayback.hpp"
 #include "Kyoto/Animation/CBoolPOINode.hpp"
-#include "Kyoto/Animation/CCharacterInfo.hpp"
+#include "Kyoto/Animation/CCECharacterInfo.hpp"
 #include "Kyoto/Animation/CHierarchyPoseBuilder.hpp"
 #include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Animation/CParticlePOINode.hpp"
@@ -53,7 +53,7 @@ public:
     kAD_Backward,
   };
 
-  CAnimData(CAssetId selfId, const CCharacterInfo& charInfo, int defaultAnim, int charIdx,
+  CAnimData(CAssetId selfId, const CCECharacterInfo& charInfo, int defaultAnim, int charIdx,
             bool loop, const TLockedToken< CCharLayoutInfo >& layoutData,
             const TToken< CSkinnedModel >& modelData,
             const rstl::optional_object< TLockedToken< CSkinnedModel > >& iceModelData,
@@ -93,6 +93,10 @@ public:
                               rstl::set< CPrimitive >& primsOut) const;
 
   const CCharLayoutInfo* GetCharLayoutInfo() const { return *mLayoutData; }
+  // Guessed name; the optional CSPP collision primitive of the character.
+  const rstl::optional_object< TLockedToken< CSpatialPrimitive > >& GetSpatialPrimitive() const {
+    return mSpatialPrimitive;
+  }
   CPoseAsTransforms_Linear& Pose() { return mPose; }             // Guessed name.
   const CPoseAsTransforms_Linear& Pose() const { return mPose; } // Guessed name.
   void SetPoseBuilt(bool built) { mPoseBuilt = built; }          // Guessed name.
@@ -173,7 +177,7 @@ public:
   int GetCharacterIndex() const { return mCharIdx; }
   short GetCurrentAnimation() const { return mCurrentAnim; }
   float GetPlaybackRate() const { return mSpeedScale; }
-  const CCharacterInfo& GetCharacterInfo() const { return mCharInfo; }
+  const CCECharacterInfo& GetCharacterInfo() const { return mCharInfo; }
   const CPASDatabase& GetPASDatabase() const { return mCharInfo.GetPASDatabase(); }
   CParticleDatabase& GetParticleDB() { return mParticleDB; }
   // Guessed names; gun turrets drive a joint rotation directly and rebuild the pose.
@@ -210,7 +214,7 @@ private:
   rstl::ncrc_ptr< CAnimTreeNode > BuildAnimationTree(const CAnimPlaybackParms& parms) const;
 
   TLockedToken< CCharacterFactory > mCharFactory;
-  CCharacterInfo mCharInfo;
+  CCECharacterInfo mCharInfo;
   TLockedToken< CCharLayoutInfo > mLayoutData;
   TLockedToken< CSkinnedModel > mModelData;
   rstl::optional_object< TLockedToken< CSkinnedModel > > mIceModelData;

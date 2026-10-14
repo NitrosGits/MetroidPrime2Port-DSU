@@ -25,7 +25,7 @@ CParticleDatabase::CParticleDatabase() : mUpdatesEnabled(true), mAnySystemsDrawn
 CParticleDatabase::~CParticleDatabase() {}
 
 template < class T, FourCC Type >
-static void CacheParticleId(const CAssetId& id,
+static void CacheParticleId(CAssetId id,
                             rstl::map< CAssetId, rstl::rc_ptr< TLockedToken< T > > >& cache) {
   if (cache.find(id) == cache.end()) {
     rstl::rc_ptr< TLockedToken< T > > desc(
@@ -47,7 +47,7 @@ static void CacheParticleList(const rstl::vector< CAssetId >& ids,
   }
 }
 
-void CParticleDatabase::CacheParticleDesc(const CCharacterInfo::CParticleResData& data) {
+void CParticleDatabase::CacheParticleDesc(const CCECharacterInfo::CParticleResData& data) {
   CacheParticleList< CGenDescription, 'PART' >(data.GetParts(), mParticleDescs);
   CacheParticleList< CSwooshDescription, 'SWHC' >(data.GetSwooshes(), mSwooshDescs);
   CacheParticleList< CElectricDescription, 'ELSC' >(data.GetElectrics(), mElectricDescs);

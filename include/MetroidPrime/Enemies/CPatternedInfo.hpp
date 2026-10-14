@@ -23,10 +23,16 @@ public:
   const CAnimationParameters& GetAnimationParameters() const { return mAnimationParameters; }
   const CHealthInfo& GetHealthInfo() const { return mHealthInfo; }
   const CDamageVulnerability& GetDamageVulnerability() const { return mDamageVulnerability; }
+  const CDamageInfo& GetContactDamage() const { return mContactDamageInfo; }
   const float& GetHalfExtent() const { return mHalfExtent; }
+  const CVector3f& GetBodyOrigin() const { return mBodyOrigin; }
   uint GetPathfindingIndex() const { return mPathfindingIndex; }
+  bool IsAnEncounter() const { return mIngPossessionData.isAnEncounter; } // Guessed name
+  const SLdrIngPossessionData& GetIngPossessionData() const { return mIngPossessionData; }
   float GetHeight() const { return mHeight; }
   float GetDetectionRange() const { return mDetectionRange; }
+  float GetDetectionHeightRange() const { return mDetectionHeightRange; }
+  float GetSpeed() const { return mSpeed; }
   float GetMinAttackRange() const { return mMinAttackRange; }
   float GetMaxAttackRange() const { return mMaxAttackRange; }
 

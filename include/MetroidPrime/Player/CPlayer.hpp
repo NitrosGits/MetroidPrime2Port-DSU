@@ -17,6 +17,8 @@
 #include "MetroidPrime/Player/CPlayerEnergyDrain.hpp"
 #include "MetroidPrime/Player/CPlayerKnockBackMgr.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/SFX/Weapons2.h"
+#include "MetroidPrime/SFX/Weapons2_MP.h"
 #include "MetroidPrime/TGameTypes.hpp"
 
 class CMorphBall;
@@ -155,8 +157,8 @@ public:
     SFrozenResources()
     : mSteamTexture(0x6fc03d46)
     , mIceTexture(0x2b757945)
-    , mSinglePlayerFreezeSfx(0x1aeb)
-    , mMultiplayerFreezeSfx(0x281b) {}
+    , mSinglePlayerFreezeSfx(SFXsam_r_frozen_00_oneshot)
+    , mMultiplayerFreezeSfx(SFXsa2_r_frozen_00_oneshot) {}
 
     CAssetId mSteamTexture;
     CAssetId mIceTexture;
@@ -261,6 +263,7 @@ public:
   rstl::single_ptr< CPlayerRagDoll >& PlayerRagDoll() { return mRagDoll; }
 
   EPlayerMorphBallState GetMorphballTransitionState() const { return mMorphBallState; }
+  float GetBackwardInput() const { return mBackwardInput; } // Guessed name.
   EPlayerMorphBallState GetSpawnedMorphballState() const { return mSpawnedMorphBallState; }
   int Get_x12f8() const { return mTurretState; }
 
@@ -285,6 +288,7 @@ public:
   uint GetEchoPulseCounter() const { return mEchoPulseCounter; } // Guessed name
   EPlayerCameraState GetCameraState() const { return mCameraState; }
   bool GetDoneSidewaysDashing() const { return mDoneSidewaysDashing; }
+  bool GetSidewaysDashing() const { return mSidewaysDashing; } // Guessed name
 
   void Update(float dt, CStateManager& mgr);
   void PostUpdate(float dt, CStateManager& mgr);
@@ -393,6 +397,7 @@ public:
   CControlMapper& GetControlMapper() { return mControlMapper; }
   const CControlMapper& GetControlMapper() const { return mControlMapper; }
   CPlayerGun* GetPlayerGun();
+  CModelData* BallTransitionBeamModel() { return mBallTransitionBeamModel.get(); } // Guessed name
   const CPlayerGun* GetPlayerGun() const;
   // Guessed name: inline gun access used by REL code (the out-of-line accessors above are
   // DOL-only).
@@ -933,11 +938,24 @@ private:
 CHECK_SIZEOF(CPlayer, 0x14c8)
 NESTED_CHECK_SIZEOF(CPlayer, CVisorSteam, 0x28)
 
-extern const bool kDoubleJumpBreaksOrbit;
-extern const bool kDashDoubleJumpBreaksOrbit;
-extern const bool gkFreeLookPreventsOrbitMovement;
 extern const bool gkAutoAim;
 extern const bool gkAutoAimAtOrbitedObject;
+extern const bool gkFreeLookPreventsOrbitMovement;
+extern const bool gkWorldOnlyReflection;
+extern const bool gkDisablePlayerTargeting; // Guessed name
+extern const bool kBoostBallBreaksOrbit;    // Guessed name
+extern const bool kDoubleJumpBreaksOrbit;
+extern const bool kDashDoubleJumpBreaksOrbit;
 extern const int gkMorphBallOrbitMode;
+
+// Guessed names; Samus model locators shared by the player and its transition copies.
+extern const char* const kGunLocator;
+extern const char* const kGrappleLocator;
+
+// Guessed names; size of the per-player scan target ID capture (8-bit IDs, 16-bit high depth,
+// 8-bit low depth) copied from the viewport centre each frame.
+extern const uint kScanTargetTextureWidth;
+extern const uint kScanTargetTextureHeight;
+extern const uint kScanTargetTextureSize;
 
 #endif // _CPLAYER

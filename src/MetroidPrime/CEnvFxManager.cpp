@@ -20,6 +20,7 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/SFX/Rain.h"
 #include "MetroidPrime/ScriptObjects/CHUDBillboardEffect.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTrigger.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
@@ -725,8 +726,8 @@ void CEnvFxManager::UpdateBlockedGrids(CStateManager& mgr, EEnvFxType type,
         grid.SetVisibility(rstl::pair< bool, float >(true, -skMaximumBlockingHeight));
       } else {
         const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-            CMaterialList(kMT_Unknown59, kMT_Trigger),
-            CMaterialList(kMT_NoPlatformCollision, kMT_SeeThrough));
+            CMaterialList(kMT_Solid, kMT_Trigger),
+            CMaterialList(kMT_ProjectilePassthrough, kMT_SeeThrough));
         const CVector2i& gridPos = CVector2i(grid.GetStart() + grid.GetSize() * 0);
         const CVector3f localGrid(fixed8_8_to_real(gridPos.GetX()),
                                   fixed8_8_to_real(gridPos.GetY()), 0.f);
@@ -972,7 +973,7 @@ void CEnvFxManager::UpdateVisorSplash(CStateManager& mgr, float dt, const CTrans
       continue;
     }
     CHUDBillboardEffect* effect =
-        TCastToPtr< CHUDBillboardEffect >(mgr.GetObjectByIdFromListAll(mEnvRainSplashIds[i]));
+        TCastToPtr< CHUDBillboardEffect >(mgr.ObjectById(mEnvRainSplashIds[i]));
     if (effect != nullptr) {
       mgr.SetActorAreaId(*effect, mgr.GetNextAreaId());
     }
@@ -999,7 +1000,7 @@ void CEnvFxManager::UpdateVisorSplash(CStateManager& mgr, float dt, const CTrans
 void CEnvFxManager::SetSplashEffectRate(float rate, CStateManager& mgr) {
   for (int i = 0; i < mEnvRainSplashIds.size(); ++i) {
     CHUDBillboardEffect* effect =
-        TCastToPtr< CHUDBillboardEffect >(mgr.GetObjectByIdFromListAll(mEnvRainSplashIds[i]));
+        TCastToPtr< CHUDBillboardEffect >(mgr.ObjectById(mEnvRainSplashIds[i]));
     if (effect != nullptr && effect->IsElementGen()) {
       effect->GetParticleGen()->SetGeneratorRate(rate);
     }
@@ -1318,10 +1319,12 @@ void CEnvFxManager::UpdateRainSounds(float dt, CStateManager& mgr) {
     const CTransform4f camXf = mgr.GetCameraManager(0)->GetCurrentCameraTransform(mgr, true);
     const uchar volume = static_cast< uchar >(mRainSoundFade * CalcRainVolume(mFxDensity));
     if (!mRainSoundActive) {
-      mLeftRainSound = CSfxManager::AddEmitter(0x2841, CVector3f::Zero(), CSfxManager::kAllAreas,
-                                               true, true, CSfxManager::kMaxPriority);
-      mRightRainSound = CSfxManager::AddEmitter(0x2842, CVector3f::Zero(), CSfxManager::kAllAreas,
-                                                true, true, CSfxManager::kMaxPriority);
+      mLeftRainSound =
+          CSfxManager::AddEmitter(SFXswp_x_rain_lp_00l_looped, CVector3f::Zero(),
+                                  CSfxManager::kAllAreas, true, true, CSfxManager::kMaxPriority);
+      mRightRainSound =
+          CSfxManager::AddEmitter(SFXswp_x_rain_lp_00r_looped, CVector3f::Zero(),
+                                  CSfxManager::kAllAreas, true, true, CSfxManager::kMaxPriority);
       mRainSoundActive = true;
     }
     CSfxManager::UpdateEmitter(mLeftRainSound, camXf.GetTranslation() - camXf.GetRight(),

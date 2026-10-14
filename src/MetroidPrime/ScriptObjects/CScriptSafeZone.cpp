@@ -33,8 +33,8 @@
 #include "rstl/algorithm.hpp"
 #include "rstl/math.hpp"
 
-CEntity* REL_LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
-CEntity* REL_LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
+CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
+CEntity* LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
 
 CScriptSafeZone::CScriptSafeZone(
     TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CVector3f& scale,
@@ -363,7 +363,7 @@ void CScriptSafeZone::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
       SetLowPassFilter(false);
     }
     break;
-  case kSM_InternalMessage03:
+  case kSM_InternalMessage3:
     if (!GetActive()) {
       mActivation = 1.f;
       UpdateObstruction(mgr, true);
@@ -373,7 +373,7 @@ void CScriptSafeZone::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     CScriptTrigger::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), msg.GetId(), kSM_Activate,
                                                     msg.GetOriginator(), msg.GetState()));
     return;
-  case kSM_InternalMessage02:
+  case kSM_InternalMessage2:
     if (GetActive()) {
       mActivation = 0.f;
       UpdateObstruction(mgr, false);
@@ -402,7 +402,7 @@ void CScriptSafeZone::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
       }
     }
     break;
-  case kSM_InternalMessage00:
+  case kSM_InternalMessage0:
     if (mZoneType != kZT_Echo) {
       SetZoneType(kZT_Echo);
       mShellPulse = 2.f;
@@ -426,7 +426,7 @@ void CScriptSafeZone::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
       }
     }
     break;
-  case kSM_InternalMessage01:
+  case kSM_InternalMessage1:
     if (GetActive()) {
       PlaySound(mgr, mFlashSound, 0);
       mFlashTimer = 1.f;
@@ -631,7 +631,7 @@ void CScriptSafeZone::InhabitantExited(CActor& actor, CStateManager& mgr) {
 
 void CScriptSafeZone::UpdatePlayerInside(CActor& actor, bool inside, CStateManager& mgr) {
   if (TCastToPtr< CGameCamera >(actor) &&
-      TCastToPtr< CGameCamera >(actor)->CameraManager(mgr).GetCurrentCameraId(true) ==
+      TCastToPtr< CGameCamera >(actor)->GetCameraManager(mgr).GetCurrentCameraId(true) ==
           actor.GetUniqueId()) {
     mCameraInside = inside;
     if (!mIgnoreCinematicCamera || !TCastToPtr< CCinematicCamera >(actor)) {
@@ -758,10 +758,9 @@ static inline CDamageInfo ScaleDamage(const CDamageInfo& info, float dt) {
 void CScriptSafeZone::DamageActor(CStateManager& mgr, TUniqueId id, float dt) {
   CDamageInfo damage =
       mZoneType == kZT_Normal ? ScaleDamage(mNormalDamage, dt) : ScaleDamage(mHurtfulDamage, dt);
-  mgr.ApplyDamage(
-      GetUniqueId(), id, GetUniqueId(), damage,
-      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), CMaterialList()),
-      CVector3f::Zero());
+  mgr.ApplyDamage(GetUniqueId(), id, GetUniqueId(), damage,
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                  CVector3f::Zero());
 }
 
 void CScriptSafeZone::UpdateObstruction(CStateManager& mgr, bool enable) {
@@ -811,13 +810,13 @@ bool CScriptSafeZone::IsHurtful() const {
 }
 
 // Guessed name.
-CSafeZoneFog LdrToSafeZoneFog(const SLdrSafeZoneStructA& data) {
+CSafeZoneFog LdrToSafeZoneFog(const SLdrSafeZoneFog& data) {
   return CSafeZoneFog(data.enabled, FogSelectionToFogMode(data.mode), data.color,
                       LdrToVector2f(data.nearFarPlane), data.colorRate,
                       LdrToVector2f(data.distanceRate));
 }
 
-CEntity* REL_LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSafeZone sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSafeZone.inc"
 
@@ -856,19 +855,19 @@ CEntity* REL_LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& 
       sldrThis.flashTime, sldrThis.trigger.flagsTrigger, sldrThis.deactivateOnEnter,
       sldrThis.deactivateOnExit, sldrThis.impactEffect, infos[0], infos[1], infos[2],
       LdrToDamageInfo(sldrThis.normalDamage), LdrToDamageInfo(sldrThis.hurtfulDamage),
-      sldrThis.filterSoundEffects, sldrThis.unknown_0x414379ea, sldrThis.ignoreCinematicCamera,
+      sldrThis.filterSoundEffects, sldrThis.filterCutoffFrequency, sldrThis.ignoreCinematicCamera,
       sldrThis.mobile, sldrThis.generateMobileLight, sldrThis.mobileLightOffset, shape,
-      LdrToSafeZoneFog(sldrThis.safeZoneStructA),
-      LdrToSafeZoneFog(sldrThis.safeZoneStructA_0xafb855b8),
+      LdrToSafeZoneFog(sldrThis.fogEntering), LdrToSafeZoneFog(sldrThis.fogLeaving),
       LdrToEchoParameters(sldrThis.echoParameters), sldrThis.flashBrightness, sldrThis.flashSound,
       sldrThis.unknown_0xe71b43e1, sldrThis.unknown_0x9f638987);
 }
 
+#ifndef MONOLITHIC
 SSafeZone_FuncPtrs REL_loader_SafeZone;
 
 void SetRelLoaderFunctionToLoader() {
-  REL_loader_SafeZone.mLoadSafeZone = REL_LoadSafeZone;
-  REL_loader_SafeZone.mLoadSafeZoneCrystal = REL_LoadSafeZoneCrystal;
+  REL_loader_SafeZone.mLoadSafeZone = LoadSafeZone;
+  REL_loader_SafeZone.mLoadSafeZoneCrystal = LoadSafeZoneCrystal;
   REL_loader_SafeZone.mApplyRenderEffect =
       static_cast< void (CEntity::*)(CStateManager&) >(&CScriptSafeZone::ApplyRenderEffect);
   SetSSafeZone_FuncPtrs(&REL_loader_SafeZone);
@@ -877,3 +876,4 @@ void SetRelLoaderFunctionToLoader() {
 extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
 extern "C" void RELExit() { SetSSafeZone_FuncPtrs(nullptr); }
+#endif

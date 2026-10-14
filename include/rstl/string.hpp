@@ -344,12 +344,12 @@ int basic_string< _CharTp, Traits, Alloc >::find(_CharTp ch, int pos) const {
 template < typename _CharTp, typename Traits, typename Alloc >
 int basic_string< _CharTp, Traits, Alloc >::compare(const _CharTp* rhs, int count) const {
   int rhsCharCount = 0;
-  const _CharTp* rhsStart = rhs;
-  while ((count == -1 || rhsCharCount < count) && *rhs != '\0') {
-    ++rhs;
+  const _CharTp* rhsEnd = rhs;
+  while ((count == -1 || rhsCharCount < count) && *rhsEnd != '\0') {
+    ++rhsEnd;
     ++rhsCharCount;
   }
-  return internal_compare(begin(), end(), rhsStart, rhs);
+  return internal_compare(begin(), end(), rhs, rhsEnd);
 }
 
 template < typename _CharTp, typename Traits, typename Alloc >
@@ -397,7 +397,7 @@ typedef basic_string< char, case_insensitive_char_traits< char > > istring;
 
 inline bool operator<(const string& lhs, const string& rhs) { return lhs.compare(rhs) < 0; }
 
-bool operator==(const string& lhs, const char* rhs);
+inline bool operator==(const string& lhs, const char* rhs) { return lhs.compare(rhs) == 0; }
 
 bool operator==(const char* lhs, const string& rhs);
 bool operator!=(const string& lhs, const char* rhs);

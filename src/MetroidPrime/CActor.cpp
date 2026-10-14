@@ -106,6 +106,9 @@ CActor::CActor(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
 , mNotInSortedLists(true)
 , mTransformDirty(true)
 , mActorLightsDirty(true)
+#if VERSION == VERSION_G2MP01
+, mPreRenderLightsDirty(true)
+#endif
 , mRenderBoundsDirty(true)
 , mOutOfFrustum(false)
 , mCalculateLighting(true)
@@ -292,12 +295,29 @@ void CActor::PreRender(CStateManager& mgr) {
   mOutOfFrustum = !mgr.IsActorVisible(*this);
 
   if (HasModelData()) {
+#if VERSION == VERSION_G2MP01
+    if (GetPreRenderHasMoved()) {
+      SetPreRenderHasMoved(false);
+      SetShadowDirty(true);
+    }
+#else
     const bool moved = GetPreRenderHasMoved();
     if (moved) {
       SetPreRenderHasMoved(false);
     }
+#endif
     if (!GetPreRenderClipped()) {
       bool lightsDirty = false;
+#if VERSION == VERSION_G2MP01
+      if (GetPreRenderLightsDirty()) {
+        SetPreRenderLightsDirty(false);
+        lightsDirty = true;
+      } else if (mWorldLightingDirty) {
+        lightsDirty = true;
+      } else if (HasActorLights() && GetActorLights()->GetNeedsRelight() == true) {
+        lightsDirty = true;
+      }
+#else
       if (moved) {
         SetShadowDirty(true);
         lightsDirty = true;
@@ -306,6 +326,7 @@ void CActor::PreRender(CStateManager& mgr) {
       } else if (HasActorLights() && GetActorLights()->GetNeedsRelight() == true) {
         lightsDirty = true;
       }
+#endif
 
       if (GetCalculateLighting()) {
         CAABox bounds = GetModelData()->GetBounds(GetTransform());
@@ -326,9 +347,12 @@ void CActor::PreRender(CStateManager& mgr) {
       if (GetModelData()->HasAnimation()) {
         AnimationData()->PreRender();
       }
-    } else if (moved) {
+    }
+#if VERSION != VERSION_G2MP01
+    else if (moved) {
       SetShadowDirty(true);
     }
+#endif
 
     if (GetShadowDirty() && ShouldDrawShadow(mgr)) {
       if (mgr.GetFrustumPlanes().BoxInFrustumPlanes(
@@ -703,10 +727,10 @@ void CActor::FluidFXThink(EFluidState, CScriptWater&, CStateManager&) {}
 void CActor::OnScanStateChange(EScanState state, CStateManager& mgr) {
   switch (state) {
   case kSS_Start:
-    SendScriptMsgs(kSS_ScanProcessing, mgr);
+    SendScriptMsgs(kSS_BeginScan, mgr);
     break;
   case kSS_Processing:
-    SendScriptMsgs(kSS_ScanStart, mgr);
+    SendScriptMsgs(kSS_EndScan, mgr);
     break;
   case kSS_Done:
     SendScriptMsgs(kSS_ScanDone, mgr);
@@ -1134,6 +1158,9 @@ void CActor::SetTransformDirty() {
   mNotInSortedLists = true;
   mTransformDirty = true;
   mActorLightsDirty = true;
+#if VERSION == VERSION_G2MP01
+  mPreRenderLightsDirty = true;
+#endif
   mRenderBoundsDirty = true;
 }
 
@@ -1167,5 +1194,5 @@ float CActor::GetDistanceToCamera(CStateManager& mgr) const {
   return distanceSquared;
 }
 
-CActor::SSound::SSound(const CSfxHandle& handle, const CSegId& locator, bool useEchoVolume)
+CActor::SSound::SSound(const CSfxHandle& handle, const CSegId& locator, const bool useEchoVolume)
 : mHandle(handle), mLocator(locator), mUseEchoVolume(useEchoVolume) {}

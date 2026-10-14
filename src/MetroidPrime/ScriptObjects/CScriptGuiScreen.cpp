@@ -19,7 +19,9 @@
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CWorldState.hpp"
+#include "MetroidPrime/Player/CWorldTransManager.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrGuiScreen.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptFrontEndDataNetwork.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGuiMenu.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGuiSlider.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptRelay.hpp"
@@ -38,9 +40,6 @@
 // Guessed names; IOWin priorities passed by reference to the slide show message.
 static int sSlideShowMsgPriority = 16;
 static int sSlideShowDrawPriority = 1001;
-
-// Unresolved native cast for entity type 155.
-extern "C" CEntity* fn_800977A4(CEntity* entity);
 
 static inline float RoundToNearest(float value) {
   const float lower = floor(value);
@@ -103,10 +102,10 @@ CScriptGuiFrontEndScreen::CScriptGuiFrontEndScreen(TUniqueId uid, const rstl::st
 , mGameStarted(false)
 , mOptionsDirty(false)
 , mMultipleControllers(false) {
-  CGameOptions::fn_80161C7C(true);
+  CGameOptions::SetFrontEndActive(true);
 }
 
-CScriptGuiFrontEndScreen::~CScriptGuiFrontEndScreen() { CGameOptions::fn_80161C7C(false); }
+CScriptGuiFrontEndScreen::~CScriptGuiFrontEndScreen() { CGameOptions::SetFrontEndActive(false); }
 
 void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   TUniqueId defaultId = FindConnectedObject(mgr, kSS_XDamage, kSM_None);
@@ -121,21 +120,21 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   }
 
   {
-    rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_AIS1, kSM_None);
+    rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_AILogicState1, kSM_None);
     mDeathMatchSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(ids[0]));
-    mDeathMatchEntity = fn_800977A4(mgr.ObjectById(ids[1]));
+    mDeathMatchEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(ids[1]));
   }
 
   {
-    rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_AIS2, kSM_None);
+    rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_AILogicState2, kSM_None);
     mCoinSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(ids[0]));
-    mCoinEntity = fn_800977A4(mgr.ObjectById(ids[1]));
+    mCoinEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(ids[1]));
   }
 
   {
     rstl::vector< TUniqueId > joinIds = FindConnectedObjects(mgr, kSS_Play, kSM_None);
     rstl::vector< TUniqueId > rumbleIds = FindConnectedObjects(mgr, kSS_DeathRattle, kSM_None);
-    rstl::vector< TUniqueId > invertIds = FindConnectedObjects(mgr, kSS_Opened, kSM_None);
+    rstl::vector< TUniqueId > invertIds = FindConnectedObjects(mgr, kSS_Open, kSM_None);
     for (int i = 0; i < 4; ++i) {
       SPlayerSetup setup;
       setup.mJoinedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(joinIds[i * 2]));
@@ -157,7 +156,7 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
       slot.mTitle = TCastToPtr< CScriptTextPane >(mgr.ObjectById(textIds[i * 3]));
       slot.mWorldName = TCastToPtr< CScriptTextPane >(mgr.ObjectById(textIds[i * 3 + 1]));
       slot.mPlayTime = TCastToPtr< CScriptTextPane >(mgr.ObjectById(textIds[i * 3 + 2]));
-      slot.mSlotEntity = fn_800977A4(mgr.ObjectById(slotIds[i]));
+      slot.mSlotEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(slotIds[i]));
       slot.mUsedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(usedIds[i]));
       slot.mNewGameSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(newIds[i]));
       slot.mDifficultyMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(difficultyIds[i]));
@@ -165,25 +164,25 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
     }
   }
 
-  TUniqueId id = FindConnectedObject(mgr, kSS_InternalState00, kSM_None);
+  TUniqueId id = FindConnectedObject(mgr, kSS_InternalState0, kSM_None);
   mBrightnessSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState01, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState1, kSM_None);
   mStretchSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState02, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState2, kSM_None);
   mPositionXSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState03, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState3, kSM_None);
   mPositionYSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState04, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState4, kSM_None);
   mHudAlphaSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState05, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState5, kSM_None);
   mHelmetAlphaSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState06, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState6, kSM_None);
   mHintSystemMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState07, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState7, kSM_None);
   mHudLagMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState08, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState8, kSM_None);
   mInvertYMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_InternalState09, kSM_None);
+  id = FindConnectedObject(mgr, kSS_InternalState9, kSM_None);
   mRumbleMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(id));
   id = FindConnectedObject(mgr, kSS_InternalState10, kSM_None);
   mSfxVolumeSlider = TCastToPtr< CScriptGuiSlider >(mgr.ObjectById(id));
@@ -247,7 +246,7 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
 
   id = FindConnectedObject(mgr, kSS_InternalState19, kSM_None);
   mDeathMatchMusicMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(id));
-  id = FindConnectedObject(mgr, kSS_AIS3, kSM_None);
+  id = FindConnectedObject(mgr, kSS_AILogicState3, kSM_None);
   mCoinMusicMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(id));
 
   {
@@ -272,14 +271,14 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   {
     rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_PowerDamage, kSM_None);
     for (int i = 0; i < ids.size(); ++i) {
-      mOptionsPages.push_back(fn_800977A4(mgr.ObjectById(ids[i])));
+      mOptionsPages.push_back(TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(ids[i])));
     }
   }
 
   {
     rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_DarkDamage, kSM_None);
     for (int i = 0; i < ids.size(); ++i) {
-      mResetPages.push_back(fn_800977A4(mgr.ObjectById(ids[i])));
+      mResetPages.push_back(TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(ids[i])));
     }
   }
 
@@ -320,7 +319,7 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   UpdateSoundVolumes();
 
   id = FindConnectedObject(mgr, kSS_BoostBallDamage, kSM_None);
-  mGalleryEntity = fn_800977A4(mgr.ObjectById(id));
+  mGalleryEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(id));
 
   CGameState* gameState = gpGameState;
   const uint gameMode = gameState->PreviousGameResults().mGameMode;
@@ -347,7 +346,7 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
       mgr.SendScriptMsg(setup.mJoinedSwitch, GetUniqueId(), kSM_Open, GetUniqueId());
       mgr.SendScriptMsg(setup.mReadySwitch, GetUniqueId(), kSM_Open, GetUniqueId());
       if (gameState->PreviousGameResults().mGameMode == CFrontEndGameMode::kSGM_Coin) {
-        mgr.SendScriptMsg(mCoinEntity, GetUniqueId(), kSM_InternalMessage02, GetUniqueId());
+        mgr.SendScriptMsg(mCoinEntity, GetUniqueId(), kSM_InternalMessage2, GetUniqueId());
       }
     }
   }
@@ -370,7 +369,7 @@ void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
       SendScriptMsgs(kSS_Arrived, mgr);
     } else if (ret == CIOWin::kMR_RemoveIOWin || ret == CIOWin::kMR_RemoveIOWinAndExit) {
       mSaveScreenFailed = true;
-      SendScriptMsgs(kSS_DGNR, mgr);
+      SendScriptMsgs(kSS_DeGenerate, mgr);
       CloseSaveGameScreen(mgr);
     }
 
@@ -379,9 +378,9 @@ void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
       if (busy != mSaveScreenBusy) {
         mSaveScreenBusy = busy;
         if (busy) {
-          SendScriptMsgs(kSS_Frozen, mgr);
+          SendScriptMsgs(kSS_Freeze, mgr);
         } else {
-          SendScriptMsgs(kSS_UnFrozen, mgr);
+          SendScriptMsgs(kSS_UnFreeze, mgr);
           RefreshSaveSlots(mgr);
         }
       }
@@ -401,7 +400,7 @@ void CScriptGuiFrontEndScreen::AcceptScriptMsg(CStateManager& mgr, const CScript
     CollectWidgets(mgr);
     UpdateUnlocks(mgr);
     break;
-  case kSM_InternalMessage05:
+  case kSM_InternalMessage5:
     SelectSaveSlot(mgr, msg.GetSenderId());
     break;
   case kSM_Action:
@@ -417,31 +416,31 @@ void CScriptGuiFrontEndScreen::AcceptScriptMsg(CStateManager& mgr, const CScript
   case kSM_Lock:
     CloseSaveGameScreen(mgr);
     break;
-  case kSM_InternalMessage00:
+  case kSM_InternalMessage0:
     StoreOptionWidget(mgr, sender);
     break;
-  case kSM_InternalMessage01:
+  case kSM_InternalMessage1:
     CompareOptionWidget(mgr, sender);
     break;
-  case kSM_InternalMessage02:
+  case kSM_InternalMessage2:
     RestoreOptionWidget(mgr, sender);
     break;
-  case kSM_InternalMessage03:
+  case kSM_InternalMessage3:
     ResetOptionWidget(mgr, sender);
     break;
-  case kSM_InternalMessage04:
+  case kSM_InternalMessage4:
     ApplyOptionWidget(mgr, sender);
     break;
-  case kSM_InternalMessage06:
+  case kSM_InternalMessage6:
     CopySelectedGame(mgr);
     break;
-  case kSM_InternalMessage07:
+  case kSM_InternalMessage7:
     EraseSelectedGame(mgr);
     break;
-  case kSM_InternalMessage08:
+  case kSM_InternalMessage8:
     LoadOptions(mgr, sender);
     break;
-  case kSM_InternalMessage09:
+  case kSM_InternalMessage9:
     RecordOptions(mgr);
     break;
   case kSM_InternalMessage10:
@@ -945,7 +944,7 @@ void CScriptGuiFrontEndScreen::ApplyOptionWidget(CStateManager& mgr, CEntity* wi
 }
 
 void CScriptGuiFrontEndScreen::ResetOptionPage(CStateManager& mgr, CEntity* widget) {
-  if (CEntity* page = fn_800977A4(widget)) {
+  if (CEntity* page = TCastToPtr< CScriptFrontEndDataNetwork >(widget)) {
     for (int i = 0; i < mResetPages.size(); ++i) {
       if (page == mResetPages[i]) {
         mOptionsPage = i;
@@ -1060,7 +1059,7 @@ void CScriptGuiFrontEndScreen::SaveOptions(CStateManager& mgr) {
 void CScriptGuiFrontEndScreen::HighlightSelectedSlot(CStateManager& mgr) {
   if (CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get()) {
     CEntity* slotEntity = mSaveSlots[saveScreen->GetSaveIdx()].mSlotEntity;
-    mgr.SendScriptMsg(slotEntity, GetUniqueId(), kSM_InternalMessage02);
+    mgr.SendScriptMsg(slotEntity, GetUniqueId(), kSM_InternalMessage2);
   }
 }
 

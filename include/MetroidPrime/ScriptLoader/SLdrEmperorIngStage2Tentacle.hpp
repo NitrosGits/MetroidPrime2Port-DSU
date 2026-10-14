@@ -12,7 +12,7 @@ struct SLdrEmperorIngStage2TentacleData {
   ~SLdrEmperorIngStage2TentacleData();
 
   float detectionTime; // 0xbaa9254a
-  float forgetTime; // 0x1fe28a36
+  float forgetTime;    // 0x1fe28a36
 };
 
 inline SLdrEmperorIngStage2TentacleData::SLdrEmperorIngStage2TentacleData() {
@@ -22,7 +22,8 @@ inline SLdrEmperorIngStage2TentacleData::SLdrEmperorIngStage2TentacleData() {
 
 inline SLdrEmperorIngStage2TentacleData::~SLdrEmperorIngStage2TentacleData() {}
 
-inline void LoadTypedefEmperorIngStage2TentacleData(SLdrEmperorIngStage2TentacleData& sldrThis, CInputStream& input) {
+inline void LoadTypedefEmperorIngStage2TentacleData(SLdrEmperorIngStage2TentacleData& sldrThis,
+                                                    CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
     const uint propertyId = input.Get< uint >();
@@ -48,13 +49,17 @@ struct SLdrEmperorIngStage2Tentacle {
   ~SLdrEmperorIngStage2Tentacle();
 
   SLdrEditorProperties editorProperties; // 0x255a4580
-  SLdrPatternedAITypedef patterned; // 0xb3774750
-  SLdrActorParameters actorInformation; // 0x7e397fed
+  SLdrPatternedAITypedef patterned;      // 0xb3774750
+  SLdrActorParameters actorInformation;  // 0x7e397fed
   SLdrEmperorIngStage2TentacleData data; // 0x5105fa2d
 };
 
-inline SLdrEmperorIngStage2Tentacle::SLdrEmperorIngStage2Tentacle() : editorProperties(), patterned(), actorInformation(), data() {
+inline SLdrEmperorIngStage2Tentacle::SLdrEmperorIngStage2Tentacle()
+: editorProperties(), patterned(), actorInformation(), data() {
+  patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 2;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
 }
 
 inline SLdrEmperorIngStage2Tentacle::~SLdrEmperorIngStage2Tentacle() {}

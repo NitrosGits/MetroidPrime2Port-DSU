@@ -195,6 +195,9 @@ public:
   bool GetTransformDirty() const { return mNotInSortedLists; }
   bool GetTransformDirtySpare() const { return mTransformDirty; }
   bool GetPreRenderHasMoved() const { return mActorLightsDirty; }
+#if VERSION == VERSION_G2MP01
+  bool GetPreRenderLightsDirty() const { return mPreRenderLightsDirty; } // Guessed name
+#endif
   bool GetRenderBoundsDirty() const { return mRenderBoundsDirty; }
   bool GetPreRenderClipped() const { return mOutOfFrustum; }
   bool GetCalculateLighting() const { return mCalculateLighting && HasActorLights(); }
@@ -207,6 +210,9 @@ public:
   void SetTransformDirty(bool b) { mNotInSortedLists = b; }
   void SetTransformDirtySpare(bool b) { mTransformDirty = b; }
   void SetPreRenderHasMoved(bool b) { mActorLightsDirty = b; }
+#if VERSION == VERSION_G2MP01
+  void SetPreRenderLightsDirty(bool b) { mPreRenderLightsDirty = b; } // Guessed name
+#endif
   void SetRenderBoundsDirty(bool dirty) { mRenderBoundsDirty = dirty; }
   void SetPreRenderClipped(bool b) { mOutOfFrustum = b; }
   void SetCalculateLighting(bool b);
@@ -214,6 +220,7 @@ public:
   void SetShadowDirty(bool b) { mShadowDirty = b; }
   void SetMuted(bool b);
   void SetRenderParticleDatabaseInside(bool b) { mRenderParticleDBInside = b; }
+  void SetEnableRender(bool b) { mEnableRender = b; } // Guessed name
   void SetDrawEnabled(bool enabled) { mDrawEnabled = enabled; }
 
   void SetDamageHighlight(bool enabled) { mDamageHighlight = enabled; } // Guessed accessor name.
@@ -329,6 +336,9 @@ private:
   uint mNotInSortedLists : 1;
   uint mTransformDirty : 1;
   uint mActorLightsDirty : 1;
+#if VERSION == VERSION_G2MP01
+  uint mPreRenderLightsDirty : 1; // Guessed name
+#endif
   uint mRenderBoundsDirty : 1;
   uint mOutOfFrustum : 1;
   uint mCalculateLighting : 1; // x151

@@ -76,7 +76,7 @@ static const SBurst skBurstsLandedOutOfView[] = {
 const float CFlyingPirate::skGravityConstant = 50.f;
 const float CFlyingPirate::skAquaGravityConstant = 5.f;
 
-static EMaterialTypes skSolidMaterial = kMT_Unknown59;
+static EMaterialTypes skSolidMaterial = kMT_Solid;
 
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"HearShot", static_cast< CPatterned::StateMachine::TriggerFunc >(&CFlyingPirate::HearShot)},
@@ -207,8 +207,8 @@ CFlyingPirate::CFlyingPirate(TUniqueId uid, const rstl::string& name, const CEnt
                              const CTransform4f& xf, const CModelData& modelData,
                              const CActorParameters& actParms, const CPatternedInfo& pInfo,
                              const CFlyingPirateData& data)
-: CPatterned(static_cast< EPatternedAI >(21), uid, name, kFT_Zero, info, xf, modelData, pInfo,
-             kMT_Flyer, kCT_One, kBT_AiMovedFlyer, actParms)
+: CPatterned(kPAI_FlyingPirate, uid, name, kFT_Zero, info, xf, modelData, pInfo, kMT_Flyer, kCT_One,
+             kBT_AiMovedFlyer, actParms)
 , mData(data)
 , mGunProjectileInfo(data.mProjectile, data.mProjectileDamage)
 , mAltProjectileInfo1(data.mMissile, data.mMissileDamage)
@@ -295,8 +295,8 @@ CFlyingPirate::CFlyingPirate(TUniqueId uid, const rstl::string& name, const CEnt
   mOnGround = !mIsFlyingPirate;
   mLineOfSightTracker.SetSegment(mHeadSegId);
   mLineOfSightTracker.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Unknown59, kMT_Character),
-      CMaterialList(kMT_Player, kMT_CollisionActor, kMT_NoPlatformCollision,
+      CMaterialList(kMT_Solid, kMT_Character),
+      CMaterialList(kMT_Player, kMT_CollisionActor, kMT_ProjectilePassthrough,
                     kMT_ExcludeFromLineOfSightTest)));
 }
 
@@ -348,7 +348,7 @@ void CFlyingPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     mMissileTimer = range * mgr.Random()->Float() + delay;
     break;
   }
-  case kSM_Falling:
+  case kSM_OffGround:
     if (GetBodyController()->GetPercentageFrozen() == 0.f && !mFadeToDeath && !mSpinToDeath) {
       SetMomentumWR(CVector3f(0.f, 0.f, -GetGravityConstant() * GetMass()));
     }
@@ -461,7 +461,7 @@ void CFlyingPirate::UpdateLandingSmoke(CStateManager& mgr, bool active) {
       }
       const CRayCastResult result = mgr.RayStaticIntersection(
           GetTranslation(), CVector3f::Down(), GetTranslation().GetZ() - particleLevel,
-          CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59)));
+          CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid)));
       int index = 1;
       if (result.IsValid()) {
         const CMaterialList& material = result.GetMaterial();
@@ -551,7 +551,7 @@ void CFlyingPirate::CheckForProjectiles(CStateManager& mgr) {
 bool CFlyingPirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
                                     const CVector3f& end, const CMaterialList& exclude) {
   const CMaterialFilter filter =
-      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), exclude);
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), exclude);
   return mgr.RayCollideWorld(start, end, filter, this);
 }
 
@@ -681,12 +681,12 @@ void CFlyingPirate::CheckFireMissiles(CStateManager& mgr) {
       const CVector3f end = xf.GetTranslation() + 3.f * xf.GetForward();
       switch (step) {
       case 0:
-        mMissilePathBlocked = !LineOfSightTest(mgr, end, GetTargetPos(mgr),
-                                               CMaterialList(kMT_Player, kMT_NoPlatformCollision));
+        mMissilePathBlocked = !LineOfSightTest(
+            mgr, end, GetTargetPos(mgr), CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
         break;
       case 1:
-        mMissilePathBlocked = !LineOfSightTest(mgr, xf.GetTranslation(), end,
-                                               CMaterialList(kMT_Player, kMT_NoPlatformCollision));
+        mMissilePathBlocked = !LineOfSightTest(
+            mgr, xf.GetTranslation(), end, CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
         break;
       }
     }
@@ -760,7 +760,7 @@ void CFlyingPirate::MassiveDeath(CStateManager& mgr) {
     mgr.AddObject(*explosion);
     mgr.ApplyDamageToWorld(
         GetUniqueId(), *this, GetTranslation(), mData.mDInfo,
-        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), CMaterialList()));
+        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()));
     for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
     }
   }
@@ -1610,7 +1610,7 @@ bool CFlyingPirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const
 void CFlyingPirate::Explode(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    RemoveMaterial(kMT_Target, kMT_Orbit, kMT_GroundCollider, kMT_Unknown59, mgr);
+    RemoveMaterial(kMT_Target, kMT_Orbit, kMT_GroundCollider, kMT_Solid, mgr);
     SetMomentumWR(CVector3f::Zero());
     if (!mFadeToDeath) {
       MassiveDeath(mgr);
@@ -1668,7 +1668,7 @@ bool CFlyingPirate::FireProjectile(CStateManager& mgr, float dt) {
   bool fired = false;
   const CTransform4f xf = GetLctrTransform(mGunSegId);
   if (!mAlive) {
-    LaunchProjectile(xf, mgr, 8, CWeapon::kPA_None, false, CImpactVisorEffect(),
+    LaunchProjectile(xf, mgr, 8, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
                      CVector3f(1.f, 1.f, 1.f));
     fired = true;
   } else {
@@ -1685,11 +1685,11 @@ bool CFlyingPirate::FireProjectile(CStateManager& mgr, float dt) {
       float dot = CVector3f::Dot(xf.GetForward(), delta);
       if (dot > 0.707f || (distance < 6.f && dot > 0.5f)) {
         if (LineOfSightTest(mgr, xf.GetTranslation(), origin,
-                            CMaterialList(kMT_Player, kMT_NoPlatformCollision))) {
+                            CMaterialList(kMT_Player, kMT_ProjectilePassthrough))) {
           origin += GetTransform().Rotate(mBurstFire.GetDistanceCompensatedError(distance, 6.f));
           const CTransform4f aimXf =
               CTransform4f::LookAt(xf.GetTranslation(), origin, CVector3f::Up());
-          LaunchProjectile(aimXf, mgr, 8, CWeapon::kPA_None, false, CImpactVisorEffect(),
+          LaunchProjectile(aimXf, mgr, 8, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
                            CVector3f(1.f, 1.f, 1.f));
           fired = true;
         }
@@ -1722,8 +1722,8 @@ void CFlyingPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& nod
           true, info.Token(), kWT_AI, xf, kMT_Character, info.GetDamage(), mgr.AllocateUniqueId(),
           GetCurrentAreaId(), GetUniqueId(),
           mIsAttackingObject ? TUniqueId(mAttackObjectId) : mgr.GetPlayer(0)->GetUniqueId(),
-          CWeapon::kPA_None, false, CVector3f::One(), CImpactVisorEffect(), false, true, false, 1.f,
-          4.f, 4.f);
+          CWeapon::kPA_None, false, CVector3f::One(), CImpactVisorEffect::None(), false, true,
+          false, 1.f, 4.f, 4.f);
       if (projectile != nullptr) {
         mgr.AddObject(projectile);
         if (!mIsAttackingObject && mIsAquaPirate) {
@@ -1771,7 +1771,7 @@ void CFlyingPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& 
   CPatterned::CollidedWith(id, list, mgr);
   if (!mAlive) {
     if (id == kInvalidUniqueId) {
-      static const CMaterialList skWorldMaterials(kMT_Unknown59, kMT_Wall, kMT_Floor);
+      static const CMaterialList skWorldMaterials(kMT_Solid, kMT_Wall, kMT_Floor);
       for (int i = 0; i < list.GetCount(); ++i) {
         if (list[i].GetMaterialLeft().SharesMaterials(skWorldMaterials)) {
           mDeathSpinFinished = true;
@@ -1958,7 +1958,7 @@ void CFlyingPirate::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
-CEntity* REL_LoadFlyingPirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+CEntity* LoadFlyingPirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrFlyingPirate sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrFlyingPirate.inc"
 
@@ -1990,13 +1990,15 @@ CEntity* REL_LoadFlyingPirate(CStateManager& mgr, CInputStream& input, CEntityIn
                               LdrToPatternedInfo(sldrThis.patterned, nullptr), data);
 }
 
+#ifndef MONOLITHIC
 static SFlyingPirate_FuncPtrs REL_loader_FlyingPirate;
 
 void SetRelLoaderFunctionToLoader() {
-  REL_loader_FlyingPirate.mLoader = REL_LoadFlyingPirate;
+  REL_loader_FlyingPirate.mLoader = LoadFlyingPirate;
   SetSFlyingPirate_FuncPtrs(&REL_loader_FlyingPirate);
 }
 
 extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
 extern "C" void RELExit() { SetSFlyingPirate_FuncPtrs(nullptr); }
+#endif

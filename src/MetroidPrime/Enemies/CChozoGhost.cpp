@@ -26,7 +26,7 @@
 const float CChozoGhost::skGravityConstant = 60.f;
 const rstl::string CChozoGhost::skSpeedSwooshName = rstl::string_l("SpeedSwoosh");
 
-static EMaterialTypes SolidMaterial = kMT_Unknown59;
+static EMaterialTypes SolidMaterial = kMT_Solid;
 
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldAttack",
@@ -134,8 +134,8 @@ CChozoGhost::CChozoGhost(
     const ushort sfxFadeOut, const uint w1, const float f2, const uint w2,
     const float hurlRecoverTime, const CAssetId projectileVisor, const ushort soundProjectileVisor,
     const float f3, const float f4, const uint nearChance, const uint midChance)
-: CPatterned(static_cast< EPatternedAI >(4), uid, name, kFT_Zero, info, xf, mData, pInfo, kMT_Flyer,
-             kCT_Zero, kBT_BiPedal, actParms)
+: CPatterned(kPAI_ChozoGhost, uid, name, kFT_Zero, info, xf, mData, pInfo, kMT_Flyer, kCT_Zero,
+             kBT_BiPedal, actParms)
 , mHearingRadius(hearingRadius)
 , mFadeOutDelay(fadeOutDelay)
 , mAttackDelay(attackDelay)
@@ -235,7 +235,7 @@ void CChozoGhost::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Delete:
     RemoveFromTeam(mgr);
     break;
-  case kSM_Falling:
+  case kSM_OffGround:
   case kSM_Launching:
     if (!mVerticalMovement) {
       SetMomentumWR(CVector3f(0.f, 0.f, -GetGravityConstant() * GetMass()));
@@ -474,7 +474,7 @@ const CChozoGhost::CBehaveChance& CChozoGhost::ChooseBehaveChanceRange(CStateMan
   return mBehaveChance3;
 }
 
-static EMaterialTypes WarpSolidMaterial = kMT_Unknown59;
+static EMaterialTypes WarpSolidMaterial = kMT_Solid;
 
 void CChozoGhost::SetWarpPosition(CStateManager& mgr, const CVector3f& dir) {
   const CVector3f center = GetBoundingBox().GetCenterPoint();
@@ -503,7 +503,7 @@ void CChozoGhost::InActive(CStateManager& mgr, EStateMsg msg, float arg) {
       mBodyController->SetLocomotionType(pas::kLT_Relaxed);
       mColor.SetAlpha(0.f);
     }
-    RemoveMaterial(kMT_Unknown59, mgr);
+    RemoveMaterial(kMT_Solid, mgr);
     SetMomentumWR(CVector3f::Zero());
     x665_24_ = true;
   } break;
@@ -693,7 +693,7 @@ bool CChozoGhost::ShouldAttack(CStateManager& mgr, const CTriggerData& data) con
   return mBehaveType == kBT_Attack;
 }
 
-static EMaterialTypes AttackSolidMaterial = kMT_Unknown59;
+static EMaterialTypes AttackSolidMaterial = kMT_Solid;
 
 void CChozoGhost::Attack(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
@@ -1064,11 +1064,12 @@ CEntity* LoadChozoGhost(CStateManager& mgr, CInputStream& input, CEntityInfo& in
       LdrToDamageInfo(sldrThis.damageInfo_0x1ff047a9), nearChance, midChance, farChance,
       sldrThis.sound_Impact, sldrThis.disablePlayerGunTime, sldrThis.sound_PhazeIn,
       sldrThis.sound_PhazeOut, sldrThis.unknown_0xec76940c, sldrThis.projectileStopHomingRange,
-      sldrThis.unknown_0xfe9eac26, sldrThis.hurlRecoverTime, sldrThis.projectileVisorEffect,
+      sldrThis.startStyle, sldrThis.hurlRecoverTime, sldrThis.projectileVisorEffect,
       sldrThis.sound_ProjectileVisor, sldrThis.nearToMidDistance, sldrThis.midToFarDistance,
       sldrThis.nearChance, sldrThis.midChance);
 }
 
+#ifndef MONOLITHIC
 static void SetFuncPtrs() {
   static SChozoGhost_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadChozoGhost;
@@ -1078,3 +1079,4 @@ static void SetFuncPtrs() {
 void RELMain() { SetFuncPtrs(); }
 
 void RELExit() { SetSChozoGhost_FuncPtrs(nullptr); }
+#endif

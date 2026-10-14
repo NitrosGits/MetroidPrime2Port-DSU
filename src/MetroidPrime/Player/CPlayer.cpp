@@ -55,12 +55,32 @@
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerStuckTracker.hpp"
 #include "MetroidPrime/Player/CPlayerTargeting.hpp"
+#include "MetroidPrime/SFX/CreatureIceFX.h"
+#include "MetroidPrime/SFX/SamusAcidHit.h"
+#include "MetroidPrime/SFX/SamusAcidHit_MP.h"
+#include "MetroidPrime/SFX/SamusDarkHit.h"
+#include "MetroidPrime/SFX/SamusDarkHit_MP.h"
+#include "MetroidPrime/SFX/SamusDeath.h"
+#include "MetroidPrime/SFX/SamusDeath_MP.h"
+#include "MetroidPrime/SFX/SamusFireHit_MP.h"
+#include "MetroidPrime/SFX/SamusFootsteps.h"
+#include "MetroidPrime/SFX/SamusFootsteps_MP.h"
+#include "MetroidPrime/SFX/SamusImpact.h"
+#include "MetroidPrime/SFX/SamusImpact_MP.h"
+#include "MetroidPrime/SFX/SamusPhazonHit.h"
+#include "MetroidPrime/SFX/SamusPhazonHit_MP.h"
+#include "MetroidPrime/SFX/UI.h"
+#include "MetroidPrime/SFX/UI2.h"
+#include "MetroidPrime/SFX/Weapons2.h"
+#include "MetroidPrime/SFX/Weapons2_MP.h"
+#include "MetroidPrime/SFX/Weapons5.h"
+#include "MetroidPrime/SFX/Weapons_MP.h"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/ScriptObjects/CHUDBillboardEffect.hpp"
-#include "MetroidPrime/ScriptObjects/CPlayerTurret.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlayerHint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPlayerTurret.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Tweaks/CTweakBall.hpp"
@@ -83,12 +103,18 @@
 // NonMatching structure pass; incomplete behavior is explicit below.
 // Definitions follow reverse target order for the TU's deferred-inlining emission.
 
+const bool gkAutoAim = false;
+const bool gkAutoAimAtOrbitedObject = false;
+const bool gkFreeLookPreventsOrbitMovement = true;
+const bool gkWorldOnlyReflection = false;
+const bool gkDisablePlayerTargeting = false;
+const bool kBoostBallBreaksOrbit = true;
 const bool kDoubleJumpBreaksOrbit = false;
 const bool kDashDoubleJumpBreaksOrbit = false;
-const bool gkFreeLookPreventsOrbitMovement = true;
-const bool gkAutoAim = false;
-const bool gkAutoAimAtOrbitedObject = true;
 const int gkMorphBallOrbitMode = 1;
+const uint kScanTargetTextureWidth = 32;
+const uint kScanTargetTextureHeight = 64;
+const uint kScanTargetTextureSize = kScanTargetTextureWidth * kScanTargetTextureHeight;
 
 bool gUseSurfaceHack = false;
 CPlayer::ESurfaceRestraints gSR_Hack = CPlayer::kSR_Normal;
@@ -103,7 +129,8 @@ static CRayCastResult skInvalidRayCastResult(CRayCastResult::kI_Invalid);
 static CCollisionInfo skInvalidCollisionInfo(CCollisionInfo::kI_Invalid);
 static CAABox skNullBox(CAABox::MakeNullBox());
 
-static const char* const kGunLocator = "GUN_LCTR";
+const char* const kGunLocator = "GUN_LCTR";
+const char* const kGrappleLocator = "GRAPPLE_LCTR";
 static const char* const kBeamThirdPersonFxGroup = "BeamThirdPersonFx_DGRP";
 
 static const char* const skThirdPersonChargeNames[4] = {
@@ -126,6 +153,12 @@ static TSuitTransitionModelNames skSuitTransitionModelNames[6] = {
 
 const float CPlayer::skDefaultHudFadeOutSpeed = 0.5f;
 const float CPlayer::skDefaultHudFadeInSpeed = 2.5f;
+const float CPlayer::skTransitionFilterStartTime = 0.95f;
+const float CPlayer::skTransitionFilterFadeInTime = 0.1f;
+const float CPlayer::skTransitionFilterFadeOutTime = 0.15f;
+const float CPlayer::skTransitionFilterHoldTime = 0.15f;
+const float CPlayer::skTransitionFilterEndTime = 1.25f;
+const float CPlayer::skTransitionFilterMaxAlpha = 0.3f;
 
 typedef rstl::pair< CPlayerState::EItemType, CControlMapper::ECommands > TVisorToItemMapping;
 static TVisorToItemMapping skVisorToItemMapping[4] = {
@@ -143,37 +176,217 @@ static CDamageVulnerability::TWeaponVulnerability skLightSuitVulnerabilities[2] 
     CDamageVulnerability::TWeaponVulnerability(kWT_PoisonWater2,
                                                CWeaponTypeVulnerability::Immune())};
 
-static const ushort skLeftStepSounds[2][26] = {
-    {0xffff, 0x0084, 0x00a0, 0x05d8, 0x1d44, 0xffff, 0x009e, 0x1c19, 0x00a2,
-     0x1c5f, 0x1c61, 0x1d46, 0x1c6f, 0xffff, 0x1c72, 0x1c74, 0xffff, 0x1ad1,
-     0x1d3a, 0x1d3c, 0xffff, 0xffff, 0x04c6, 0x0622, 0xffff, 0x1d5c},
-    {0xffff, 0x26f6, 0x26f0, 0x26ec, 0x2723, 0xffff, 0x26ee, 0x2702, 0x26ea,
-     0x2713, 0x2715, 0x2725, 0x2717, 0xffff, 0x2719, 0x271b, 0xffff, 0x26f4,
-     0x2732, 0x2734, 0xffff, 0xffff, 0x26fa, 0x26f2, 0xffff, 0x272a}};
+static const ushort skLeftStepSounds[2][26] = {{0xffff,
+                                                SFXsam_b_wlkstone_00_oneshot,
+                                                SFXsam_b_wlkmetal_00_oneshot,
+                                                SFXsam_b_wlkgrass_00_oneshot,
+                                                SFXsam_b_wlkice_00_oneshot,
+                                                0xffff,
+                                                SFXsam_b_wlkgrate_00_oneshot,
+                                                SFXsam_b_wlkphaz_00_oneshot,
+                                                SFXsam_b_wlkdirt_00_oneshot,
+                                                SFXsam_b_wlkdgrass_00_oneshot,
+                                                SFXsam_b_wlkdwal_00_oneshot,
+                                                SFXsam_b_wlksnow_00_oneshot,
+                                                SFXsam_b_wlkfabr_00_oneshot,
+                                                0xffff,
+                                                SFXsam_b_wlkplas_00_oneshot,
+                                                SFXsam_b_wlkwire_00_oneshot,
+                                                0xffff,
+                                                SFXsam_b_wlksand_00_oneshot,
+                                                SFXsam_b_wlkmoth_00_oneshot,
+                                                SFXsam_b_wlkweb_00_oneshot,
+                                                0xffff,
+                                                0xffff,
+                                                SFXsam_b_wlkwood_00_oneshot,
+                                                SFXsam_b_wlkorg_00_oneshot,
+                                                0xffff,
+                                                SFXsam_b_wlkrubb_00_oneshot},
+                                               {0xffff,
+                                                SFXsa2_b_wlkstone_00_oneshot,
+                                                SFXsa2_b_wlkmetal_00_oneshot,
+                                                SFXsa2_b_wlkgrass_00_oneshot,
+                                                SFXsa2_b_wlkice_00_oneshot,
+                                                0xffff,
+                                                SFXsa2_b_wlkgrate_00_oneshot,
+                                                SFXsa2_b_wlkphaz_00_oneshot,
+                                                SFXsa2_b_wlkdirt_00_oneshot,
+                                                SFXsa2_b_wlkdgrass_00_oneshot,
+                                                SFXsa2_b_wlkdwal_00_oneshot,
+                                                SFXsa2_b_wlksnow_00_oneshot,
+                                                SFXsa2_b_wlkfabr_00_oneshot,
+                                                0xffff,
+                                                SFXsa2_b_wlkplas_00_oneshot,
+                                                SFXsa2_b_wlkwire_00_oneshot,
+                                                0xffff,
+                                                SFXsa2_b_wlksand_00_oneshot,
+                                                SFXsa2_b_wlkmoth_00_oneshot,
+                                                SFXsa2_b_wlkweb_00_oneshot,
+                                                0xffff,
+                                                0xffff,
+                                                SFXsa2_b_wlkwood_00_oneshot,
+                                                SFXsa2_b_wlkorg_00_oneshot,
+                                                0xffff,
+                                                SFXsa2_b_wlkrubb_00_oneshot}};
 
-static const ushort skRightStepSounds[2][26] = {
-    {0xffff, 0x0085, 0x00a1, 0x05d9, 0x1d45, 0xffff, 0x009f, 0x1c1a, 0x0183,
-     0x1c60, 0x1c62, 0x1d47, 0x1c70, 0xffff, 0x1c73, 0x1c75, 0xffff, 0x1ad2,
-     0x1d3b, 0x1d3d, 0xffff, 0xffff, 0x04c7, 0x0623, 0xffff, 0x1d5d},
-    {0xffff, 0x26f7, 0x26f1, 0x26ed, 0x2724, 0xffff, 0x26ef, 0x2703, 0x26eb,
-     0x2714, 0x2716, 0x2726, 0x2718, 0xffff, 0x271a, 0x271c, 0xffff, 0x26f5,
-     0x2733, 0x2735, 0xffff, 0xffff, 0x26fb, 0x26f3, 0xffff, 0x272b}};
+static const ushort skRightStepSounds[2][26] = {{0xffff,
+                                                 SFXsam_b_wlkstone_01_oneshot,
+                                                 SFXsam_b_wlkmetal_01_oneshot,
+                                                 SFXsam_b_wlkgrass_01_oneshot,
+                                                 SFXsam_b_wlkice_01_oneshot,
+                                                 0xffff,
+                                                 SFXsam_b_wlkgrate_01_oneshot,
+                                                 SFXsam_b_wlkphaz_01_oneshot,
+                                                 SFXsam_b_wlkdirt_01_oneshot,
+                                                 SFXsam_b_wlkdgrass_01_oneshot,
+                                                 SFXsam_b_wlkdwal_01_oneshot,
+                                                 SFXsam_b_wlksnow_01_oneshot,
+                                                 SFXsam_b_wlkfabr_01_oneshot,
+                                                 0xffff,
+                                                 SFXsam_b_wlkplas_01_oneshot,
+                                                 SFXsam_b_wlkwire_01_oneshot,
+                                                 0xffff,
+                                                 SFXsam_b_wlksand_01_oneshot,
+                                                 SFXsam_b_wlkmoth_01_oneshot,
+                                                 SFXsam_b_wlkweb_01_oneshot,
+                                                 0xffff,
+                                                 0xffff,
+                                                 SFXsam_b_wlkwood_01_oneshot,
+                                                 SFXsam_b_wlkorg_01_oneshot,
+                                                 0xffff,
+                                                 SFXsam_b_wlkrubb_01_oneshot},
+                                                {0xffff,
+                                                 SFXsa2_b_wlkstone_01_oneshot,
+                                                 SFXsa2_b_wlkmetal_01_oneshot,
+                                                 SFXsa2_b_wlkgrass_01_oneshot,
+                                                 SFXsa2_b_wlkice_01_oneshot,
+                                                 0xffff,
+                                                 SFXsa2_b_wlkgrate_01_oneshot,
+                                                 SFXsa2_b_wlkphaz_01_oneshot,
+                                                 SFXsa2_b_wlkdirt_01_oneshot,
+                                                 SFXsa2_b_wlkdgrass_01_oneshot,
+                                                 SFXsa2_b_wlkdwal_01_oneshot,
+                                                 SFXsa2_b_wlksnow_01_oneshot,
+                                                 SFXsa2_b_wlkfabr_01_oneshot,
+                                                 0xffff,
+                                                 SFXsa2_b_wlkplas_01_oneshot,
+                                                 SFXsa2_b_wlkwire_01_oneshot,
+                                                 0xffff,
+                                                 SFXsa2_b_wlksand_01_oneshot,
+                                                 SFXsa2_b_wlkmoth_01_oneshot,
+                                                 SFXsa2_b_wlkweb_01_oneshot,
+                                                 0xffff,
+                                                 0xffff,
+                                                 SFXsa2_b_wlkwood_01_oneshot,
+                                                 SFXsa2_b_wlkorg_01_oneshot,
+                                                 0xffff,
+                                                 SFXsa2_b_wlkrubb_01_oneshot}};
 
-static const ushort skPlayerLandSfxSoft[2][26] = {
-    {0xffff, 0x00ae, 0x00ac, 0x05da, 0x1d3e, 0xffff, 0x00ad, 0x1c15, 0x04ce,
-     0x1c57, 0x1c59, 0x1d40, 0x1c63, 0xffff, 0x1c65, 0x1c67, 0xffff, 0x008b,
-     0x1d32, 0x1d34, 0xffff, 0xffff, 0x04c8, 0x061e, 0xffff, 0x1d59},
-    {0xffff, 0x26da, 0x26d4, 0x26d0, 0x271d, 0xffff, 0x26d2, 0x26ff, 0x26ce,
-     0x2704, 0x2706, 0x271f, 0x2709, 0xffff, 0x270a, 0x270c, 0xffff, 0x26d8,
-     0x272c, 0x272e, 0xffff, 0xffff, 0x26dc, 0x26d6, 0xffff, 0x2727}};
+static const ushort skPlayerLandSfxSoft[2][26] = {{0xffff,
+                                                   SFXsam_b_landston_00_oneshot,
+                                                   SFXsam_b_landmetl_00_oneshot,
+                                                   SFXsam_b_landgras_00_oneshot,
+                                                   SFXsam_b_landice_00_oneshot,
+                                                   0xffff,
+                                                   SFXsam_b_landgrat_00_oneshot,
+                                                   SFXsam_b_landphaz_00_oneshot,
+                                                   SFXsam_b_landdirt_00_oneshot,
+                                                   SFXsam_b_landdgras_00_oneshot,
+                                                   SFXsam_b_landdwal_00_oneshot,
+                                                   SFXsam_b_landsnow_00_oneshot,
+                                                   SFXsam_b_landfabr_00_oneshot,
+                                                   0xffff,
+                                                   SFXsam_b_landplas_00_oneshot,
+                                                   SFXsam_b_landwire_00_oneshot,
+                                                   0xffff,
+                                                   SFXsam_b_landsand_00_oneshot,
+                                                   SFXsam_b_landmoth_00_oneshot,
+                                                   SFXsam_b_landweb_00_oneshot,
+                                                   0xffff,
+                                                   0xffff,
+                                                   SFXsam_b_landwood_00_oneshot,
+                                                   SFXsam_b_landorg_00_oneshot,
+                                                   0xffff,
+                                                   SFXsam_b_landrubb_00_oneshot},
+                                                  {0xffff,
+                                                   SFXsa2_b_landston_00_oneshot,
+                                                   SFXsa2_b_landmetl_00_oneshot,
+                                                   SFXsa2_b_landgras_00_oneshot,
+                                                   SFXsa2_b_landice_00_oneshot,
+                                                   0xffff,
+                                                   SFXsa2_b_landgrat_00_oneshot,
+                                                   SFXsa2_b_landphaz_00_oneshot,
+                                                   SFXsa2_b_landdirt_00_oneshot,
+                                                   SFXsa2_b_landdgras_00_oneshot,
+                                                   SFXsa2_b_landdwal_00_oneshot,
+                                                   SFXsa2_b_landsnow_00_oneshot,
+                                                   SFXsa2_b_landfabr_00_oneshot,
+                                                   0xffff,
+                                                   SFXsa2_b_landplas_00_oneshot,
+                                                   SFXsa2_b_landwire_00_oneshot,
+                                                   0xffff,
+                                                   SFXsa2_b_landsand_00_oneshot,
+                                                   SFXsa2_b_landmoth_00_oneshot,
+                                                   SFXsa2_b_landweb_00_oneshot,
+                                                   0xffff,
+                                                   0xffff,
+                                                   SFXsa2_b_landwood_00_oneshot,
+                                                   SFXsa2_b_landorg_00_oneshot,
+                                                   0xffff,
+                                                   SFXsa2_b_landrubb_00_oneshot}};
 
-const ushort CPlayer::skPlayerLandSfxHard[2][26] = {
-    {0xffff, 0x0bc7, 0x0bc1, 0x0bbd, 0x1d3f, 0xffff, 0x0bbe, 0x1c16, 0x0bbb,
-     0x1c58, 0x1c5a, 0x1d41, 0x1c64, 0xffff, 0x1c66, 0x1c68, 0xffff, 0x0bc5,
-     0x1d33, 0x1d35, 0xffff, 0xffff, 0x0bc8, 0x0bc3, 0xffff, 0x1d5a},
-    {0xffff, 0x26db, 0x26d5, 0x26d1, 0x271e, 0xffff, 0x26d3, 0x2700, 0x26cf,
-     0x2705, 0x2707, 0x2720, 0x2708, 0xffff, 0x270b, 0x270d, 0xffff, 0x26d9,
-     0x272d, 0x272f, 0xffff, 0xffff, 0x26dd, 0x26d7, 0xffff, 0x2728}};
+const ushort CPlayer::skPlayerLandSfxHard[2][26] = {{0xffff,
+                                                     SFXsam_b_landston_02_oneshot,
+                                                     SFXsam_b_landmetl_02_oneshot,
+                                                     SFXsam_b_landgras_02_oneshot,
+                                                     SFXsam_b_landice_02_oneshot,
+                                                     0xffff,
+                                                     SFXsam_b_landgrat_02_oneshot,
+                                                     SFXsam_b_landphaz_02_oneshot,
+                                                     SFXsam_b_landdirt_02_oneshot,
+                                                     SFXsam_b_landdgras_02_oneshot,
+                                                     SFXsam_b_landdwal_02_oneshot,
+                                                     SFXsam_b_landsnow_02_oneshot,
+                                                     SFXsam_b_landfabr_02_oneshot,
+                                                     0xffff,
+                                                     SFXsam_b_landplas_02_oneshot,
+                                                     SFXsam_b_landwire_02_oneshot,
+                                                     0xffff,
+                                                     SFXsam_b_landsand_02_oneshot,
+                                                     SFXsam_b_landmoth_02_oneshot,
+                                                     SFXsam_b_landweb_02_oneshot,
+                                                     0xffff,
+                                                     0xffff,
+                                                     SFXsam_b_landwood_02_oneshot,
+                                                     SFXsam_b_landorg_02_oneshot,
+                                                     0xffff,
+                                                     SFXsam_b_landrubb_02_oneshot},
+                                                    {0xffff,
+                                                     SFXsa2_b_landston_02_oneshot,
+                                                     SFXsa2_b_landmetl_02_oneshot,
+                                                     SFXsa2_b_landgras_02_oneshot,
+                                                     SFXsa2_b_landice_02_oneshot,
+                                                     0xffff,
+                                                     SFXsa2_b_landgrat_02_oneshot,
+                                                     SFXsa2_b_landphaz_02_oneshot,
+                                                     SFXsa2_b_landdirt_02_oneshot,
+                                                     SFXsa2_b_landdgras_02_oneshot,
+                                                     SFXsa2_b_landdwal_02_oneshot,
+                                                     SFXsa2_b_landsnow_02_oneshot,
+                                                     SFXsa2_b_landfabr_02_oneshot,
+                                                     0xffff,
+                                                     SFXsa2_b_landplas_02_oneshot,
+                                                     SFXsa2_b_landwire_02_oneshot,
+                                                     0xffff,
+                                                     SFXsa2_b_landsand_02_oneshot,
+                                                     SFXsa2_b_landmoth_02_oneshot,
+                                                     SFXsa2_b_landweb_02_oneshot,
+                                                     0xffff,
+                                                     0xffff,
+                                                     SFXsa2_b_landwood_02_oneshot,
+                                                     SFXsa2_b_landorg_02_oneshot,
+                                                     0xffff,
+                                                     SFXsa2_b_landrubb_02_oneshot}};
 
 static const short skPlayerSoundPanStereo[10] = {29, 35, 22, 42, 32, 91, 101, 86, 106, 96};
 
@@ -485,9 +698,9 @@ CPlayer::CPlayer(TUniqueId uid, const CTransform4f& xf, const CAABox& aabb, CAss
 , mParticleBeam(static_cast< CPlayerState::EBeamId >(-1))
 , mBeamAuxParticles(nullptr)
 , mPlayerIndex(playerIndex)
-, mScanTargetIdTextureData(CMemory::Alloc(0x800, IAllocator::kHI_RoundUpLen))
-, mDepthHighTextureData(CMemory::Alloc(0x1000, IAllocator::kHI_RoundUpLen))
-, mDepthLowTextureData(CMemory::Alloc(0x800, IAllocator::kHI_RoundUpLen))
+, mScanTargetIdTextureData(CMemory::Alloc(kScanTargetTextureSize, IAllocator::kHI_RoundUpLen))
+, mDepthHighTextureData(CMemory::Alloc(kScanTargetTextureSize * 2, IAllocator::kHI_RoundUpLen))
+, mDepthLowTextureData(CMemory::Alloc(kScanTargetTextureSize, IAllocator::kHI_RoundUpLen))
 , mRezbitRecoveryDirection(0)
 , mRezbitRecoveryInputCount(0)
 , mControlMapper(0)
@@ -500,12 +713,12 @@ CPlayer::CPlayer(TUniqueId uid, const CTransform4f& xf, const CAABox& aabb, CAss
   SetRenderParticleDatabaseInside(false);
   SetUpdateDuringCinematicSkip(false);
 
-  memset(mScanTargetIdTextureData.get(), 0, 0x800);
-  memset(mDepthHighTextureData.get(), 0, 0x1000);
-  memset(mDepthLowTextureData.get(), 0, 0x800);
-  DCFlushRange(mScanTargetIdTextureData.get(), 0x800);
-  DCFlushRange(mDepthHighTextureData.get(), 0x1000);
-  DCFlushRange(mDepthLowTextureData.get(), 0x800);
+  memset(mScanTargetIdTextureData.get(), 0, kScanTargetTextureSize);
+  memset(mDepthHighTextureData.get(), 0, kScanTargetTextureSize * 2);
+  memset(mDepthLowTextureData.get(), 0, kScanTargetTextureSize);
+  DCFlushRange(mScanTargetIdTextureData.get(), kScanTargetTextureSize);
+  DCFlushRange(mDepthHighTextureData.get(), kScanTargetTextureSize * 2);
+  DCFlushRange(mDepthLowTextureData.get(), kScanTargetTextureSize);
 
   CAssetId beam = gpTweakPlayerRes->GetBallTransitionBeamResId(mTransitionBeam);
   if (multiplayer) {
@@ -582,10 +795,10 @@ void CPlayer::ResetPlayerState(CStateManager& mgr, int state) {
     CSamusHud::RefreshBeamMenu(mgr, GetPlayerIndex());
   }
   mKnockBackManager.ResetEffects(mgr, *this);
-  AddMaterial(kMT_Orbit, kMT_Target, kMT_Unknown59, mgr);
+  AddMaterial(kMT_Orbit, kMT_Target, kMT_Solid, mgr);
   RemoveMaterial(kMT_Unknown54, mgr);
   if (mgr.IsMultiplayer()) {
-    RemoveMaterial(kMT_NoPlatformCollision, mgr);
+    RemoveMaterial(kMT_ProjectilePassthrough, mgr);
   }
   CSamusHud::DisplayHudMemo(rstl::wstring_l(L""),
                             CHUDMemoParms(FLT_EPSILON, true, false, false, 1 << playerIndex, true));
@@ -833,15 +1046,16 @@ void CPlayer::Update(float dt, CStateManager& mgr) {
       mDamageWeaponType = kWT_None;
       AddMaterial(kMT_Unknown54, mgr);
       if (mgr.IsMultiplayer()) {
-        AddMaterial(kMT_NoPlatformCollision, mgr);
+        AddMaterial(kMT_ProjectilePassthrough, mgr);
       }
       ApplySubmergedPitchBend(CSfxManager::SfxStart(
-          mgr.ReturnFirstIfSingleElseSecond(0xb7, 0x2579), 127, GetSoundPan(kMSP_Player),
-          CSfxManager::kAllAreas, false, false, CSfxManager::kMedPriority));
+          mgr.ReturnFirstIfSingleElseSecond(SFXsam_r_die_00_oneshot, SFXsa2_r_die_00_oneshot), 127,
+          GetSoundPan(kMSP_Player), CSfxManager::kAllAreas, false, false,
+          CSfxManager::kMedPriority));
       if (mMorphBallState != kMS_Unmorphed && !mgr.IsMultiplayer()) {
-        ApplySubmergedPitchBend(CSfxManager::SfxStart(0x245c, 127, GetSoundPan(kMSP_Player),
-                                                      CSfxManager::kAllAreas, true, false,
-                                                      CSfxManager::kMedPriority));
+        ApplySubmergedPitchBend(
+            CSfxManager::SfxStart(SFXsam_r_diemorph_00_oneshot, 127, GetSoundPan(kMSP_Player),
+                                  CSfxManager::kAllAreas, true, false, CSfxManager::kMedPriority));
       }
       BreakFrozenState(mgr, kBFS_Break, false);
     }
@@ -903,7 +1117,7 @@ void CPlayer::Update(float dt, CStateManager& mgr) {
   if (!mgr.IsMultiplayer()) {
     mSamusExhaustedVoiceTimer = IsEnergyLow() ? mSamusExhaustedVoiceTimer - dt : 4.f;
     if (!mCameraManager->IsInCinematicCamera() && mSamusExhaustedVoiceTimer <= 0.f) {
-      StartSamusVoiceSfx(0x10a1, 127, 7);
+      StartSamusVoiceSfx(SFXsam_r_neardeth_00_oneshot, 127, 7);
       mSamusExhaustedVoiceTimer = 4.f;
     }
 
@@ -916,7 +1130,7 @@ void CPlayer::Update(float dt, CStateManager& mgr) {
       CAssetId modelId;
       CAssetId skinRulesId;
       if (strlen(skSuitTransitionModelNames[mTransitionSuit].first) == 0) {
-        const CCharacterInfo& character = GetModelData()->GetAnimationData()->GetCharacterInfo();
+        const CCECharacterInfo& character = GetModelData()->GetAnimationData()->GetCharacterInfo();
         modelId = character.GetModelId();
         skinRulesId = character.GetSkinRulesId();
       } else {
@@ -1100,8 +1314,8 @@ void CPlayer::UpdateVisorState(const CFinalInput& input, float dt, CStateManager
       }
       if (mControlMapper.GetPressInput(CControlMapper::kC_DarkVisorToggle, input)) {
         if (mgr.IsMultiplayer()) {
-          CSfxManager::SfxStart(0x25a4, 127, GetSoundPan(kMSP_4), CSfxManager::kAllAreas, true,
-                                false, CSfxManager::kMedPriority);
+          CSfxManager::SfxStart(SFXsa2_b_malfxn_00_oneshot, 127, GetSoundPan(kMSP_4),
+                                CSfxManager::kAllAreas, true, false, CSfxManager::kMedPriority);
         } else if (currentVisor == CPlayerState::kPV_Dark) {
           selectedVisor = CPlayerState::kPV_Combat;
         } else {
@@ -1206,8 +1420,10 @@ void CPlayer::UpdateFootstepSounds(float dt, const CFinalInput& input, CStateMan
           GetSoundPan(static_cast< EMultiPlayerSoundPan >(mFootstepSfxSel == kFS_Left ? 0 : 1));
       if (GetFluidCount() != 0 && mDistanceUnderWater > 0.f && mDistanceUnderWater < earHeight) {
         const ushort sfx = mFootstepSfxSel == kFS_Left
-                               ? mgr.ReturnFirstIfSingleElseSecond(0x97, 0x26f8)
-                               : mgr.ReturnFirstIfSingleElseSecond(0x98, 0x26f9);
+                               ? mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_wlkwatr_00_oneshot,
+                                                                   SFXsa2_b_wlkwatr_00_oneshot)
+                               : mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_wlkwatr_01_oneshot,
+                                                                   SFXsa2_b_wlkwatr_01_oneshot);
         const CSfxHandle sound = CSfxManager::SfxStart(sfx, sfxVol, pan, GetCurrentAreaId().Value(),
                                                        true, false, CSfxManager::kMedPriority);
         CSfxManager::SetIgnoreAreaLowPass(sound, true);
@@ -1350,8 +1566,14 @@ void CPlayer::SetMorphBallState(EPlayerMorphBallState state, EPlayerMorphBallSta
   mMorphBallState = state;
   mSpawnedMorphBallState = spawnedState;
   SetStandardCollider(state == kMS_Morphed);
-  if (state == kMS_Morphed || state == kMS_Morphing) {
+  switch (state) {
+  case kMS_Morphed:
+  case kMS_Morphing:
     mMorphBall->LoadMorphBallModel();
+    break;
+  case kMS_Unmorphed:
+  case kMS_Unmorphing:
+    break;
   }
 }
 
@@ -1656,7 +1878,9 @@ void CPlayer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         } else {
           landSfx = GetMaterialSoundUnderPlayer(mgr, skPlayerLandSfxHard[mgr.IsMultiplayer()], 26,
                                                 0xffff);
-          StartSamusVoiceSfx(mgr.ReturnFirstIfSingleElseSecond(0x4f5, 0x26e9), 127, 5);
+          StartSamusVoiceSfx(mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_voxhighland_00_oneshot,
+                                                               SFXsa2_b_voxhighland_00_oneshot),
+                             127, 5);
           mDamageAmount = 0.f;
           mPrevDamageAmount = 10.f;
           mDamageLocation = GetTranslation();
@@ -1705,7 +1929,7 @@ void CPlayer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     mFallingTime = 0.f;
     SetMoveState(NPlayer::kMS_OnGround, mgr);
     break;
-  case kSM_Falling:
+  case kSM_OffGround:
     if (morphState != kMS_Morphed || mMorphBall->GetBallState() != CMorphBall::kBS_Spider) {
       if (morphState == kMS_Morphed) {
         if (mMovementState == NPlayer::kMS_OnGround) {
@@ -1716,33 +1940,33 @@ void CPlayer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       }
     }
     break;
-  case kSM_LandOnNotFloor:
+  case kSM_Falling:
     if (morphState == kMS_Morphed && mMorphBall->GetBallState() == CMorphBall::kBS_Spider &&
         mMovementState != NPlayer::kMS_ApplyJump) {
       SetMoveState(NPlayer::kMS_ApplyJump, mgr);
     }
     break;
-  case kSM_OnIceSurface:
+  case kSM_OnIce:
     if (updateSurface) {
       SetSurfaceRestraint(kSR_Ice);
     }
     break;
-  case kSM_OnMudSlowSurface:
+  case kSM_OnOrganic:
     if (updateSurface) {
       SetSurfaceRestraint(kSR_Organic);
     }
     break;
-  case kSM_OnNormalSurface:
+  case kSM_OnDirt:
     if (updateSurface) {
       SetSurfaceRestraint(kSR_Normal);
     }
     break;
-  case kSM_XINS:
+  case kSM_InShrubbery:
     if (updateSurface) {
       SetSurfaceRestraint(kSR_Shrubbery);
     }
     break;
-  case kSM_XENF: {
+  case kSM_EnteredFluid: {
     UpdateSubmerged(mgr);
     const float length = 0.5f * GetEyeHeight();
     const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
@@ -1754,7 +1978,7 @@ void CPlayer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     break;
   }
-  case kSM_XINF:
+  case kSM_InsideFluid:
     UpdateSubmerged(mgr);
     if (const CScriptWater* water =
             TCastToConstPtr< CScriptWater >(mgr.GetObjectById(InFluidId()))) {
@@ -1779,15 +2003,15 @@ void CPlayer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       }
     }
     break;
-  case kSM_XEXF:
+  case kSM_ExitedFluid:
     UpdateSubmerged(mgr);
     SetSurfaceRestraint(IsOnGround() ? kSR_Normal : kSR_Air);
     break;
-  case kSM_XAOV:
+  case kSM_AcidOnVisor:
     mOrbitPreventionTimer = GetTweakPlayer()->GetOrbitPreventionTime();
     SetOrbitRequest(kOR_ProjectileCollide, mgr);
     break;
-  case kSM_AddPlatformRider:
+  case kSM_OnPlatform:
     if (mRidingPlatform != kInvalidUniqueId && mRidingPlatform != sender) {
       if (CScriptPlatform* platform =
               TCastToPtr< CScriptPlatform >(mgr.ObjectById(mRidingPlatform))) {
@@ -2066,9 +2290,11 @@ void CPlayer::BreakFrozenState(CStateManager& mgr, EBreakFrozenState state, bool
         CHUDBillboardEffect::GetNearClipDistance(mgr, playerIndex),
         CHUDBillboardEffect::GetScaleForPOV(mgr), playerIndex, CColor(1.f, 1.f, 1.f, 1.f),
         CVector3f(1.f, 1.f, 1.f), CVector3f(0.f, 0.f, 0.f), false));
-    ApplySubmergedPitchBend(CSfxManager::SfxStart(
-        mgr.ReturnFirstIfSingleElseSecond(0x1aef, 0x281e), 127, GetSoundPan(kMSP_Player),
-        CSfxManager::kAllAreas, false, false, CSfxManager::kMedPriority));
+    ApplySubmergedPitchBend(
+        CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(SFXsam_r_icecrack_02_oneshot,
+                                                                SFXsa2_r_icecrack_02_oneshot),
+                              127, GetSoundPan(kMSP_Player), CSfxManager::kAllAreas, false, false,
+                              CSfxManager::kMedPriority));
   }
 
   mMorphBall->ResetMorphBallIceBreak();
@@ -2112,13 +2338,17 @@ void CPlayer::UpdateFrozenState(const CFinalInput& input, CStateManager& mgr) {
   case kMS_Unmorphing:
     if (JumpPressed(input)) {
       if (mIceBreakJumps != 0) {
-        ApplySubmergedPitchBend(CSfxManager::SfxStart(
-            mgr.ReturnFirstIfSingleElseSecond(0x1aed, 0x281c), 127, GetSoundPan(kMSP_Player),
-            CSfxManager::kAllAreas, false, false, CSfxManager::kMedPriority));
+        ApplySubmergedPitchBend(
+            CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(SFXsam_r_icecrack_00_oneshot,
+                                                                    SFXsa2_r_icecrack_00_oneshot),
+                                  127, GetSoundPan(kMSP_Player), CSfxManager::kAllAreas, false,
+                                  false, CSfxManager::kMedPriority));
       } else {
-        ApplySubmergedPitchBend(CSfxManager::SfxStart(
-            mgr.ReturnFirstIfSingleElseSecond(0x1aee, 0x281d), 127, GetSoundPan(kMSP_Player),
-            CSfxManager::kAllAreas, false, false, CSfxManager::kMedPriority));
+        ApplySubmergedPitchBend(
+            CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(SFXsam_r_icecrack_01_oneshot,
+                                                                    SFXsa2_r_icecrack_01_oneshot),
+                                  127, GetSoundPan(kMSP_Player), CSfxManager::kAllAreas, false,
+                                  false, CSfxManager::kMedPriority));
       }
       if (++mIceBreakJumps > GetTweakPlayer()->GetIceBreakJumpCount()) {
         BreakFrozenState(mgr, kBFS_BreakWithEffects, true);
@@ -2341,9 +2571,11 @@ void CPlayer::UpdateMorphBallState(const CFinalInput& input, float dt, CStateMan
         }
         BeginMorphTransition(dt, mgr, state);
       } else {
-        ApplySubmergedPitchBend(CSfxManager::SfxStart(
-            mgr.ReturnFirstIfSingleElseSecond(0x524, 0x25a4), 127, GetSoundPan(kMSP_Player),
-            CSfxManager::kAllAreas, true, false, CSfxManager::kMedPriority));
+        ApplySubmergedPitchBend(
+            CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_malfxn_00_oneshot,
+                                                                    SFXsa2_b_malfxn_00_oneshot),
+                                  127, GetSoundPan(kMSP_Player), CSfxManager::kAllAreas, true,
+                                  false, CSfxManager::kMedPriority));
       }
       break;
     case kMS_Morphed: {
@@ -2371,9 +2603,11 @@ void CPlayer::UpdateMorphBallState(const CFinalInput& input, float dt, CStateMan
         }
       }
       if (failed) {
-        ApplySubmergedPitchBend(CSfxManager::SfxStart(
-            mgr.ReturnFirstIfSingleElseSecond(0x524, 0x25a4), 127, GetSoundPan(kMSP_Player),
-            CSfxManager::kAllAreas, true, false, CSfxManager::kMedPriority));
+        ApplySubmergedPitchBend(
+            CSfxManager::SfxStart(mgr.ReturnFirstIfSingleElseSecond(SFXsam_b_malfxn_00_oneshot,
+                                                                    SFXsa2_b_malfxn_00_oneshot),
+                                  127, GetSoundPan(kMSP_Player), CSfxManager::kAllAreas, true,
+                                  false, CSfxManager::kMedPriority));
       }
       break;
     }
@@ -2397,9 +2631,10 @@ void CPlayer::ResolveUnmorphCollision(CStateManager& mgr) {
 }
 
 float CPlayer::GetMaximumPlayerPositiveVerticalVelocity(const CStateManager& mgr) const {
-  const bool spaceJump = mPlayerState->GetItemAmount(CPlayerState::kIT_SpaceJumpBoots, true) != 0;
+  const CPlayerState* playerState = mPlayerState;
+  const bool spaceJump = playerState->GetItemAmount(CPlayerState::kIT_SpaceJumpBoots, true) != 0;
   if (GetSurfaceRestraint() == kSR_Phazon &&
-      mPlayerState->GetItemAmount(CPlayerState::kIT_GravityBoost, true) == 0) {
+      playerState->GetItemAmount(CPlayerState::kIT_GravityBoost, true) == 0) {
     return spaceJump ? 5.25f : 4.75f;
   }
   return spaceJump ? 14.f : 11.66666f;
@@ -2504,7 +2739,7 @@ void CPlayer::ComputeFreeLook(const CFinalInput& input, CStateManager& mgr) {
     lookDown = mControlMapper.GetAnalogInput(CControlMapper::kC_LookUp, input);
   }
 
-  if (!GetTweakPlayerControls()->GetStayInFreeLookWhileFiring() &&
+  if (!GetTweakPlayerControls()->GetAimDuringFreeLook() &&
       (FireBeamHeld(input) || mOrbitState != kOS_NoOrbit)) {
     mHorizFreeLookAngleVel = 0.f;
     mVertFreeLookAngleVel = 0.f;
@@ -3149,8 +3384,10 @@ bool CPlayer::ValidateScanning(const CFinalInput& input, CStateManager& mgr) con
         actor->GetMaterialList().HasMaterial(kMT_Scannable) && actor->GetScannableObjectInfo() &&
         actor->GetCurrentAreaId() == GetCurrentAreaId()) {
       if (CPlayer* player = TCastToPtr< CPlayer >(actor)) {
-        if (mPlayerState->GetItemAmount(CPlayerState::kIT_ScanVirus, true) == 0 ||
-            player->GetTurretState() == kTS_Active) {
+        if (mPlayerState->GetItemAmount(CPlayerState::kIT_ScanVirus, true) == 0) {
+          return false;
+        }
+        if (player->GetTurretState() == kTS_Active) {
           return false;
         }
         if (player->GetPlayerState()->GetItemAmount(CPlayerState::kIT_HackedEffect, true) &
@@ -3576,13 +3813,17 @@ const CDamageVulnerability* CPlayer::GetDamageVulnerability() const {
 const CDamageVulnerability* CPlayer::GetDamageVulnerability(const CVector3f& position,
                                                             const CVector3f& direction,
                                                             const CDamageInfo& damage) const {
-  if (mInvulnerabilityTimer > 0.f ||
-      mPlayerState->GetItemAmount(CPlayerState::kIT_Invincibility, true) != 0) {
+  if (mInvulnerabilityTimer > 0.f) {
+    return &mImmuneVulnerability;
+  }
+  if (mPlayerState->GetItemAmount(CPlayerState::kIT_Invincibility, true) != 0) {
     return &mImmuneVulnerability;
   }
   if (mMorphBall->InScrewAttackMode()) {
-    return mPlayerState->HasPowerUp(CPlayerState::kIT_LightSuit) ? &mImmuneVulnerability
-                                                                 : &mScrewAttackVulnerability;
+    if (mPlayerState->HasPowerUp(CPlayerState::kIT_LightSuit)) {
+      return &mImmuneVulnerability;
+    }
+    return &mScrewAttackVulnerability;
   }
   if (mMorphBallState == kMS_Morphed) {
     if (mImmuneTimer > 0.f && !damage.NoImmunity()) {
@@ -3595,8 +3836,10 @@ const CDamageVulnerability* CPlayer::GetDamageVulnerability(const CVector3f& pos
   if (mPlayerState->HasPowerUp(CPlayerState::kIT_LightSuit)) {
     return &mLightSuitVulnerability;
   }
-  return mPlayerState->HasPowerUp(CPlayerState::kIT_DarkSuit) ? &mDarkSuitVulnerability
-                                                              : &mVariaSuitVulnerability;
+  if (mPlayerState->HasPowerUp(CPlayerState::kIT_DarkSuit)) {
+    return &mDarkSuitVulnerability;
+  }
+  return &mVariaSuitVulnerability;
 }
 
 bool CPlayer::CanRenderUnsorted(const CStateManager& mgr) const { return false; }
@@ -3759,42 +4002,42 @@ void CPlayer::GetDamageSfx(float damage, TUniqueId source, TUniqueId owner, EWea
   if (mgr.IsMultiplayer()) {
     switch (weaponType) {
     case kWT_Phazon:
-      loopSfx = 0x2864;
+      loopSfx = SFXsa2_r_phazhit_lp_00_looped;
       break;
     case kWT_PoisonWater1:
-      loopSfx = 0x27f7;
+      loopSfx = SFXsa2_r_acidhit_lp_00_looped;
       break;
     case kWT_AreaDark:
-      loopSfx = 0x2621;
+      loopSfx = SFXsa2_r_darkhit_lp_00_looped;
       break;
     case kWT_PoisonWater2:
-      loopSfx = 0x27f7;
+      loopSfx = SFXsa2_r_acidhit_lp_00_looped;
       break;
     case kWT_Lava:
     case kWT_Heat:
       break;
     default:
       if (mKnockBackManager.GetBurnRemainingTime() > 0.f) {
-        loopSfx = 0x2688;
+        loopSfx = SFXsa2_r_firehit_lp_00_looped;
       }
       if (source == GetUniqueId()) {
         break;
       }
       if (mMorphBallState == kMS_Unmorphed) {
         if (damage > 20.f) {
-          impactSfx = 0x2812;
+          impactSfx = SFXsa2_r_hitheavy_00_oneshot;
         } else if (damage > 10.f) {
-          impactSfx = 0x2811;
+          impactSfx = SFXsa2_r_hitmed_00_oneshot;
         } else {
-          impactSfx = 0x2810;
+          impactSfx = SFXsa2_r_hitlight_00_oneshot;
         }
       } else {
         if (damage > 20.f) {
-          impactSfx = 0x280d;
+          impactSfx = SFXsa2_r_mhitheavy_00_oneshot;
         } else if (damage > 10.f) {
-          impactSfx = 0x280f;
+          impactSfx = SFXsa2_r_mhitmed_00_oneshot;
         } else {
-          impactSfx = 0x280e;
+          impactSfx = SFXsa2_r_mhitlight_00_oneshot;
         }
       }
       break;
@@ -3802,15 +4045,15 @@ void CPlayer::GetDamageSfx(float damage, TUniqueId source, TUniqueId owner, EWea
   } else {
     switch (weaponType) {
     case kWT_Phazon:
-      loopSfx = 0x2862;
-      voiceSfx = 0x10c2;
+      loopSfx = SFXsam_r_phazhit_lp_00_looped;
+      voiceSfx = SFXsam_r_hitphaz_00_oneshot;
       break;
     case kWT_PoisonWater1:
-      loopSfx = 0x99;
-      voiceSfx = 0x10be;
+      loopSfx = SFXsam_r_acidhit_lp_00_looped;
+      voiceSfx = SFXsam_r_hitacid_00_oneshot;
       break;
     case kWT_PoisonWater2:
-      loopSfx = 0x5c8;
+      loopSfx = SFXsam_r_darkmisthit_lp_00_looped;
       break;
     case kWT_Lava:
     case kWT_Heat:
@@ -3819,20 +4062,20 @@ void CPlayer::GetDamageSfx(float damage, TUniqueId source, TUniqueId owner, EWea
     default:
       if (mMorphBallState == kMS_Unmorphed) {
         if (damage > 30.f) {
-          voiceSfx = 0xb2;
+          voiceSfx = SFXsam_r_hitheavy_00_oneshot;
         } else if (damage > 15.f) {
-          voiceSfx = 0xb1;
+          voiceSfx = SFXsam_r_hitmed_00_oneshot;
         } else {
-          voiceSfx = 0x9c;
+          voiceSfx = SFXsam_r_hitlight_00_oneshot;
         }
-        impactSfx = 0x9b1;
+        impactSfx = SFXsam_r_hitbase_00_oneshot;
       } else {
         if (damage > 30.f) {
-          impactSfx = 0x1d31;
+          impactSfx = SFXsam_r_mhitheavy_00_oneshot;
         } else if (damage > 15.f) {
-          impactSfx = 0x1d30;
+          impactSfx = SFXsam_r_mhitmed_00_oneshot;
         } else {
-          impactSfx = 0x1d2f;
+          impactSfx = SFXsam_r_mhitlight_00_oneshot;
         }
       }
       break;
@@ -3843,30 +4086,22 @@ void CPlayer::GetDamageSfx(float damage, TUniqueId source, TUniqueId owner, EWea
 float CPlayer::GetAttachedActorStruggle() const { return mAttachedActorStruggle; }
 
 void CPlayer::FinishNewScan(CStateManager& mgr) {
-  if (mgr.IsMultiplayer()) {
-    return;
-  }
-
-  const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(GetOrbitTargetId()));
-  if (!actor || !actor->GetMaterialList().HasMaterial(kMT_Scannable)) {
-    return;
-  }
-
-  const CScannableObjectInfo* scanInfo = actor->GetScannableObjectInfo();
-  if (!scanInfo) {
-    return;
-  }
-
-  if (mPlayerState->GetScanTime(scanInfo->GetScannableObjectId()) >= 1.f &&
-      IsDataLoreResearchScan(scanInfo->GetScannableObjectId())) {
-    rstl::pair< int, int > scanCompletion = mgr.CalculateScanCompletionRate();
-    CAssetId message = UpdatePersistentScanPercent(mPlayerState->GetLogScans(),
-                                                   scanCompletion.first, scanCompletion.second);
-    if (message != kInvalidAssetId) {
-      mgr.ShowPausedHUDMemo(message, 0.f);
+  if (!mgr.IsMultiplayer()) {
+    const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(GetOrbitTargetId()));
+    if (actor && actor->GetMaterialList().HasMaterial(kMT_Scannable)) {
+      const CScannableObjectInfo* scanInfo = actor->GetScannableObjectInfo();
+      if (scanInfo && mPlayerState->GetScanTime(scanInfo->GetScannableObjectId()) >= 1.f &&
+          IsDataLoreResearchScan(scanInfo->GetScannableObjectId())) {
+        rstl::pair< int, int > scanCompletion = mgr.CalculateScanCompletionRate();
+        CAssetId message = UpdatePersistentScanPercent(mPlayerState->GetLogScans(),
+                                                       scanCompletion.first, scanCompletion.second);
+        if (message != kInvalidAssetId) {
+          mgr.ShowPausedHUDMemo(message, 0.f);
+        }
+        mPlayerState->SetScanCompletionRateFirst(scanCompletion.first);
+        mPlayerState->SetScanCompletionRateSecond(scanCompletion.second);
+      }
     }
-    mPlayerState->SetScanCompletionRateFirst(scanCompletion.first);
-    mPlayerState->SetScanCompletionRateSecond(scanCompletion.second);
   }
 }
 
@@ -3891,13 +4126,14 @@ CVector3f CPlayer::GetOrbitPosition(const CStateManager& mgr) const {
 void CPlayer::SetTurretState(ETurretState state, CStateManager& mgr) {
   switch (state) {
   case kTS_Entering: {
-    CEntity* turret = CastToPlayerTurret(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
+    CEntity* turret =
+        TCastToPtr< CScriptPlayerTurret >(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
     if (turret != nullptr) {
       mTurretTimer = 0.f;
       Stop();
       SetVelocityWR(CVector3f::Zero());
       mGun->Holster(mgr);
-      RemoveMaterial(kMT_Unknown59, mgr);
+      RemoveMaterial(kMT_Solid, mgr);
       SetTransform(PlayerTurret_GetCameraTransform(*turret, mgr));
       mBodyController->CommandMgr().DeliverCmd(CPBCMorphToBallCmd(0, 2));
     } else {
@@ -3915,7 +4151,7 @@ void CPlayer::SetTurretState(ETurretState state, CStateManager& mgr) {
           displacement.SetZ(0.f);
           if (displacement.Magnitude() < 4.f && CMath::AbsF(verticalOffset) < 5.f) {
             mgr.ApplyDamage(GetUniqueId(), mgr.GetPlayer(i)->GetUniqueId(), GetUniqueId(),
-                            crushDamage, CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59)),
+                            crushDamage, CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid)),
                             CVector3f::Zero());
           }
         }
@@ -3948,14 +4184,15 @@ void CPlayer::SetTurretState(ETurretState state, CStateManager& mgr) {
     break;
   }
   case kTS_Active: {
-    CEntity* turret = CastToPlayerTurret(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
+    CEntity* turret =
+        TCastToPtr< CScriptPlayerTurret >(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
     if (turret != nullptr) {
       SetTransform(PlayerTurret_GetCameraTransform(*turret, mgr));
     }
     break;
   }
   case kTS_Exiting: {
-    CEntity* turret = CastToPlayerTurret(mgr.ObjectById(mTurretId));
+    CEntity* turret = TCastToPtr< CScriptPlayerTurret >(mgr.ObjectById(mTurretId));
     if (turret != nullptr) {
       PlayerTurret_ExitTurret(*turret, mgr);
       CVector3f position = GetTurretTransform(mgr).GetTranslation();
@@ -3965,7 +4202,7 @@ void CPlayer::SetTurretState(ETurretState state, CStateManager& mgr) {
     CVector3f velocity = 30.f * -PlayerTurret_GetCameraTransform(*turret, mgr).GetForward();
     velocity.SetZ(30.f);
     SetVelocityWR(velocity);
-    AddMaterial(kMT_Unknown59, mgr);
+    AddMaterial(kMT_Solid, mgr);
     mBodyController->CommandMgr().DeliverCmd(CPBCMorphToPlayerCmd(1, 0));
     mTurretGunDrawBlocks.RemovePlayer(mgr, mPlayerIndex);
     break;
@@ -4012,7 +4249,7 @@ void CPlayer::EjectFromTurret(TUniqueId turret, CStateManager& mgr) {
 }
 
 void CPlayer::ProcessTurretInput(const CFinalInput& input, CStateManager& mgr) {
-  if (CEntity* turret = CastToPlayerTurret(mgr.ObjectById(mTurretId))) {
+  if (CEntity* turret = TCastToPtr< CScriptPlayerTurret >(mgr.ObjectById(mTurretId))) {
     switch (mTurretState) {
     case kTS_Entering:
       SetTransform(PlayerTurret_GetCameraTransform(*turret, mgr));
@@ -4026,14 +4263,14 @@ void CPlayer::ProcessTurretInput(const CFinalInput& input, CStateManager& mgr) {
     case kTS_Ejected:
       SetTurretState(kTS_Four, mgr);
       break;
-    default:
+    case kTS_None:
       break;
     }
   }
 }
 
 void CPlayer::ProcessTurretActions(const CFinalInput& input, CStateManager& mgr) {
-  if (CEntity* turret = CastToPlayerTurret(mgr.ObjectById(mTurretId))) {
+  if (CEntity* turret = TCastToPtr< CScriptPlayerTurret >(mgr.ObjectById(mTurretId))) {
     if (JumpPressed(input)) {
       ExitTurret(mgr);
     } else {
@@ -4043,8 +4280,8 @@ void CPlayer::ProcessTurretActions(const CFinalInput& input, CStateManager& mgr)
 }
 
 bool CPlayer::fn_8000d40c(const CVector3f& direction, CStateManager& mgr) {
-  CPlayerTurret* turret = static_cast< CPlayerTurret* >(
-      CastToPlayerTurret(const_cast< CEntity* >(mgr.GetObjectById(mTurretId))));
+  CScriptPlayerTurret* turret =
+      TCastToPtr< CScriptPlayerTurret >(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
   if (turret != nullptr) {
     CVector3f flatDirection(direction.ToVec2f(), 0.f);
     if (!flatDirection.CanBeNormalized()) {
@@ -4059,15 +4296,15 @@ bool CPlayer::fn_8000d40c(const CVector3f& direction, CStateManager& mgr) {
 }
 
 void CPlayer::fn_8000d3ac(const CVector3f& direction, CStateManager& mgr) {
-  CPlayerTurret* turret =
-      static_cast< CPlayerTurret* >(CastToPlayerTurret(mgr.ObjectById(mTurretId)));
+  CScriptPlayerTurret* turret = TCastToPtr< CScriptPlayerTurret >(mgr.ObjectById(mTurretId));
   if (turret != nullptr) {
     turret->SetTargetPosition(direction);
   }
 }
 
 CTransform4f CPlayer::GetTurretTransform(CStateManager& mgr) const {
-  CEntity* turret = CastToPlayerTurret(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
+  CEntity* turret =
+      TCastToPtr< CScriptPlayerTurret >(const_cast< CEntity* >(mgr.GetObjectById(mTurretId)));
   if (turret) {
     CTransform4f transform = PlayerTurret_GetTurretTransform(*turret, mgr);
     if (mTurretState == kTS_Entering) {
@@ -4121,10 +4358,12 @@ void CPlayer::UpdateEchoVisorEffects(float dt, CStateManager& mgr) {
     mEchoPulsePhase -= 1.f;
     ++mEchoPulseCounter;
     if (echoVisor) {
-      mEchoPulseLeftSfx = CSfxManager::SfxStart(0x14, 127, 0, CSfxManager::kAllAreas, false, false,
-                                                CSfxManager::kMedPriority);
-      mEchoPulseRightSfx = CSfxManager::SfxStart(0x15, 127, 127, CSfxManager::kAllAreas, false,
-                                                 false, CSfxManager::kMedPriority);
+      mEchoPulseLeftSfx =
+          CSfxManager::SfxStart(SFXvis_x_echo_03L_oneshot, 127, 0, CSfxManager::kAllAreas, false,
+                                false, CSfxManager::kMedPriority);
+      mEchoPulseRightSfx =
+          CSfxManager::SfxStart(SFXvis_x_echo_03R_oneshot, 127, 127, CSfxManager::kAllAreas, false,
+                                false, CSfxManager::kMedPriority);
     }
   }
 
@@ -4147,8 +4386,8 @@ void CPlayer::UpdateEchoVisorEffects(float dt, CStateManager& mgr) {
     params.mOutputPercent[0] = 70;
     params.mOutputPercent[1] = 70;
     params.mOutputPercent[2] = 0;
-    params.mLowPassFrequency = 6000;
     params.mHighPassFrequency = 3000;
+    params.mLowPassFrequency = 6000;
     mEchoVisorAuxEffectId = CSfxManager::AddAuxEffect(CSfxManager::kAllAreas, params, 127, 5);
   } else if (mEchoVisorAuxEffectId != 0 && !echoVisor) {
     CSfxManager::RemoveAuxEffect(mEchoVisorAuxEffectId);
@@ -4176,8 +4415,9 @@ void CPlayer::UpdateDarkAetherDamage(float dt, CStateManager& mgr) {
           if (!mCameraManager->IsInCinematicCamera()) {
             const float currentHealth = health->GetHP();
             if (int(previousHealth) < int(currentHealth) && currentHealth < maxHealth) {
-              CSfxManager::SfxStart(0x246f, 50, GetSoundPan(kMSP_4), CSfxManager::kAllAreas, false,
-                                    false, CSfxManager::kMedPriority);
+              CSfxManager::SfxStart(SFXui_x_healthup_00_oneshot, 50, GetSoundPan(kMSP_4),
+                                    CSfxManager::kAllAreas, false, false,
+                                    CSfxManager::kMedPriority);
             }
           }
         }
@@ -4203,7 +4443,7 @@ void CPlayer::UpdateDarkAetherDamage(float dt, CStateManager& mgr) {
           mgr.ApplyDamage(
               kInvalidUniqueId, GetUniqueId(), kInvalidUniqueId,
               CDamageInfo(GetTweakPlayer()->GetDarkWorldDamageInfo(), dt),
-              CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), CMaterialList()),
+              CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
               CVector3f::Zero());
         }
         mDarkWorldDamageExposureTime = gracePeriod;
@@ -4278,9 +4518,9 @@ void CPlayer::UpdateDarkAetherDamage(float dt, CStateManager& mgr) {
     if (!mCameraManager->IsInCinematicCamera()) {
       const bool playSound = mDarkAetherDamage > 0.1f && mDarkAetherThirdPersonParticles.get();
       if (playSound && !mNoDamageLoopSfx && mFramesSinceDamageSfx > 1) {
-        ushort sound = 0x2193;
+        ushort sound = SFXsam_r_darkhit_lp_00_looped;
         if (mPlayerState->HasPowerUp(CPlayerState::kIT_DarkSuit)) {
-          sound = 0x0437;
+          sound = SFXsam_r_darkhit_lp_01_looped;
         }
         if (mDarkAetherDamageLoopSfxId != sound || !mDarkAetherDamageLoopSfx) {
           if (mDarkAetherDamageLoopSfx) {

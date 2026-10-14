@@ -1,5 +1,6 @@
 #include "MetroidPrime/CMain.hpp"
 
+#include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/Alloc/LockedCache.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CSaveRegion.hpp"
@@ -20,8 +21,8 @@
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Particles/CParticleSortedSystemDataFactory.hpp"
 #include "Kyoto/Particles/CParticleSpawnSystemDataFactory.hpp"
-#include "Kyoto/Particles/CSortedParticleSystemDataFactory.hpp"
 #include "Kyoto/Streams/CBitStreamReader.hpp"
 #include "Kyoto/Streams/CBitStreamWriter.hpp"
 #include "Kyoto/Streams/CMemoryInStream.hpp"
@@ -47,10 +48,6 @@
 #include "stdlib.h"
 #include "string.h"
 
-#ifdef TARGET_PC
-#include <aurora/aurora.h>
-#include <aurora/event.h>
-#endif
 
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetaRender/IRenderer.hpp"
@@ -141,7 +138,7 @@ float sInfiniteLoopTime;
 uint gARAMAllocationSize = (0x8f00 * 28 / 8) * 4;
 CIOWinManager* gpIOWinManager;
 CRELFileManager* gpRelFileManager;
-extern bool sProgressiveModePrompt; // Prime-correlated name; shared with CSplashScreen.
+bool sProgressiveModePrompt = true;
 
 #define UNUSED_STACK_VAL 0x7337D00D
 
@@ -149,6 +146,8 @@ static uchar sMainSpace[sizeof(CMain)];
 static u32 sARAMMemArray[3];
 
 bool CMain::IsMaxSpeed() { return mIsMaxSpeed; }
+
+extern "C" void __sys_free(const void* ptr) { CMemory::Free(ptr); }
 
 void CMain::SetMaxSpeed(const bool enabled) {
   if (enabled && !mIsMaxSpeed) {
@@ -229,15 +228,8 @@ void CMain::InitializeSubsystems() {
 #ifdef TARGET_PC
 // Port: pump Aurora once per loop iteration. `aurora_update` runs Aurora's per-frame GX update
 // and delivers window events; nothing else in the game calls it. Returns true on a quit request.
-static bool PortPumpEvents() {
-  for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
-       ++event) {
-    if (event->type == AURORA_EXIT) {
-      return true;
-    }
-  }
-  return false;
-}
+// Defined in platform/port_events.cpp (aurora/event.h needs SDL3, which only the full build has).
+bool PortPumpEvents();
 
 void PortShutdownSubsystems();
 void CMain::ShutdownSubsystems() { PortShutdownSubsystems(); }
@@ -253,7 +245,7 @@ void CMain::ShutdownSubsystems() {
     while (!tweaks.IsLoaded()) {
       gpRelFileManager->Update();
     }
-    FreeTweaks();
+    REL_ENTRY(FreeTweaks)();
     tweaks.Unload();
   }
   gpRelFileManager->WaitForAllFiles();
@@ -463,8 +455,8 @@ void CGameGlobalObjects::AddPaksAndFactories(COsContext& context) {
   gpController = nullptr;
   {
     CMemoryInStream stream(tweakData.get(), tweakFile.Length(), CMemoryInStream::kOS_NotOwned);
-    LoadTweaks(stream);
-    CreateTweakGlobals();
+    REL_ENTRY(LoadTweaks)(stream);
+    REL_ENTRY(CreateTweakGlobals)();
     tweaks.Unload();
   }
 

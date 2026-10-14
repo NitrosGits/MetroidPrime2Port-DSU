@@ -425,7 +425,7 @@ void SelectInitialWorld() {
     gpGameState->SetCurrentWorldId(gpResourceFactory->GetResourceIdByName("FrontEnd")->id);
     gpGameState->SetGameMode(rs_new CFrontEndGameMode());
     rstl::rc_ptr< CWorldLayerState > layers = gpGameState->CurrentWorldState().GetLayerState();
-    layers->GetAreaLayerCount(TAreaId(0));
+    layers->GetLayerCount(TAreaId(0));
     const CGameState::SPreviousGameResults& results = gpGameState->PreviousGameResults();
     const uint mode = results.mGameMode;
     const int playerCount = results.mPlayerCount;
@@ -449,7 +449,7 @@ void ConfigureGameModeLayers() {
        ++area) {
     rstl::rc_ptr< CWorldLayerState > layers = gpGameState->CurrentWorldState().GetLayerState();
     CWorldLayerState& state = *layers;
-    int layerCount = state.GetAreaLayerCount(TAreaId(area));
+    int layerCount = state.GetLayerCount(TAreaId(area));
     for (int layer = 0; layer < layerCount; ++layer) {
       for (int i = 0; i < 3; ++i) {
         bool active = sGameModeLayers[i].second - gpGameState->GetGameMode().GetGameModeType() == 0;
@@ -755,13 +755,15 @@ void CGameState::SetDesiredWorldId(CAssetId worldId) { mDesiredWorldId = worldId
 
 rstl::rc_ptr< CPlayerState > CGameState::GetPlayerState() const { return mPlayerStates[0]; }
 
-rstl::rc_ptr< CPlayerState >& CGameState::PlayerState(int player) { return mPlayerStates[player]; }
+rstl::ncrc_ptr< CPlayerState >& CGameState::PlayerState(int player) {
+  return mPlayerStates[player];
+}
 
 rstl::rc_ptr< CPlayerState > CGameState::GetPlayerState(int player) const {
   return mPlayerStates[player];
 }
 
-rstl::rc_ptr< CWorldTransManager >& CGameState::WorldTransitionManager() { return mTransManager; }
+rstl::ncrc_ptr< CWorldTransManager >& CGameState::WorldTransitionManager() { return mTransManager; }
 
 void CGameState::SetTotalPlayTime(double time) {
   mTotalPlayTime = CMath::Clamp(0.0, time, 359999.0);

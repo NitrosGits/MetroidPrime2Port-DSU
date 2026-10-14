@@ -137,9 +137,9 @@ CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 , mFreezeTimer(0.f)
 , mTimeToExplode(0.f)
 , mSurface(CVector3f(1.f, 0.f, 0.f), CVector3f(0.f, 1.f, 0.f), CVector3f(0.f, 0.f, 1.f), ~0)
-, x9c_(-1)
+, mAttackSlot(-1)
 , mDistanceSquaredToSoundListener(0.f)
-, xa4_(1.f)
+, mSpeedScale(1.f)
 , xa8_(kInvalidUniqueId)
 , xaa_(kInvalidUniqueId)
 , mFramesNotOnSurface(0)
@@ -149,8 +149,8 @@ CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 , mActive(false)
 , mInFrustum(false)
 , mLaunched(false)
-, xb2_3(false)
-, xb2_4(false)
+, mExplodeTimerEnabled(false)
+, mAttacking(false)
 , mHasLoopedSound(false) {}
 
 static CModelData GetModelDataForAnimRes(const CAnimRes& animRes) {
@@ -176,7 +176,7 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
 , mMoveToWaypointWeight(data.mPathFollowingPriority)
 , mAttractionMagnitude(data.mPlayerAttractPriority)
 , mAttractionRadius(data.mPlayerAttractDistance)
-, x1c8_(0.f)
+, mTimeSinceLastAttack(0.f)
 , mAnimPlaybackSpeed(data.mSpeed)
 , mWaypointGoalRadius(3.f)
 , mPartitionedBoidLists(125, nullptr)
@@ -199,17 +199,17 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
 , mNumBoids(data.mCount)
 , mMaxCreatedBoids(data.mMaxCount)
 , mCreatedBoids(0)
-, x4f0_24_(true)
-, x4f0_25_(true)
+, mEnableLighting(true)
+, mUseSoftwareLight(true)
 , x4f0_26_(true)
-, x4f0_27_(animated)
-, x4f0_28_(data.mIsVulnerableToSafeZone)
+, mAnimated(animated)
+, mVulnerableToSafeZone(data.mIsVulnerableToSafeZone)
 , x4f0_29_(data.xdc_1)
 , x4f0_30_(true)
-, x4f0_31_(false)
+, mBoidUpdatedThisFrame(false)
 , x4f1_24_(false)
 , x4f1_25_(data.mIsOrbitable)
-, x4f4_(1.5f)
+, mSurfaceProbeScale(1.5f)
 , mLocomotionLoopedSound(data.mLocomotionLoopedSound)
 , mAttackLoopedSound(data.mAttackLoopedSound)
 , mSoundFallOff(data.mSoundFallOff)
@@ -230,7 +230,7 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
 , x55c_(0.f)
 , x560_(15)
 , mSeekerBoidIndices(5, -1) {
-  if (x4f0_27_) {
+  if (mAnimated) {
     mModelDatas.reserve(4);
     mAdvancementDeltas.reserve(4);
     if (animRes.GetId() != kInvalidAssetId) {
@@ -317,7 +317,7 @@ void CSwarmBasics::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
           CAABox(-mBoidRadius, -mBoidRadius, -mBoidRadius, mBoidRadius, mBoidRadius, mBoidRadius),
           SMoverData(1.f), CActorParameters::None(), CPhysicsActor::skDefaultStepData);
       act->AddMaterial(kMT_SeekerTarget, mgr);
-      act->RemoveMaterial(kMT_Unknown59, mgr);
+      act->RemoveMaterial(kMT_Solid, mgr);
       if (act) {
         mgr.AddObject(*act);
         mSeekerTargets.push_back_unsafe(uid);
@@ -339,7 +339,7 @@ void CSwarmBasics::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Increment:
     x4f0_30_ = true;
     break;
-  case kSM_InternalMessage00:
+  case kSM_InternalMessage0:
     ++x52c_;
     break;
   }
@@ -359,7 +359,7 @@ void CSwarmBasics::StopLocomotionSounds() {
 
 void CSwarmBasics::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichModel which) {
   mSkinnedModelStates.clear();
-  if (x4f0_27_) {
+  if (mAnimated) {
     uint count = mModelDatas.size();
     mSkinnedModelStates.reserve(count);
     for (uint i = 0; i < count; ++i) {
@@ -412,7 +412,7 @@ void CSwarmBasics::CreateBoid(CStateManager& mgr, int index) {
           CUnitVector3f((next->GetTranslation() - waypoint->GetTranslation()).AsNormalized()));
       mBoids[index].mFramesNotOnSurface = 0;
       mBoids[index].mFreezeTimer = 0.f;
-      mBoids[index].xb2_3 = false;
+      mBoids[index].mExplodeTimerEnabled = false;
       mBoids[index].mHealth = mHealthInfo.GetHP();
       mBoids[index].mIndex = index;
       mBoids[index].mHasLoopedSound = false;
@@ -539,8 +539,8 @@ void CSwarmBasics::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, fl
       return;
     }
   }
-  x4f0_31_ = true;
-  if (x4f0_28_) {
+  mBoidUpdatedThisFrame = true;
+  if (mVulnerableToSafeZone) {
     if (mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, boid.GetTranslation())) {
       KillBoid(boid, mgr, CWeaponMode());
       return;
@@ -558,7 +558,7 @@ void CSwarmBasics::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, fl
     while (distance >= 0.f && !found) {
       CCollisionSurface surface(CVector3f(1.f, 0.f, 0.f), CVector3f(0.f, 1.f, 0.f),
                                 CVector3f(0.f, 0.f, 1.f), ~0);
-      const CVector3f predicted = pos + x4f4_ * (dt * boid.mVelocity);
+      const CVector3f predicted = pos + mSurfaceProbeScale * (dt * boid.mVelocity);
       if (FindBestSurface(cache, predicted, radius, surface) &&
           boid.mRemainingLaunchNotOnSurfaceFrames == 0) {
         boid.mTransform =
@@ -594,12 +594,12 @@ void CSwarmBasics::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, fl
     bool found = false;
     CCollisionSurface surface(CVector3f(1.f, 0.f, 0.f), CVector3f(0.f, 1.f, 0.f),
                               CVector3f(0.f, 0.f, 1.f), ~0);
-    const CVector3f predicted = pos + x4f4_ * (dt * boid.mVelocity);
+    const CVector3f predicted = pos + mSurfaceProbeScale * (dt * boid.mVelocity);
     if (FindBestSurface(cache, predicted, radius, surface)) {
       boid.mSurface = surface;
       const CPlane plane = surface.GetPlane();
       const float distance = plane.GetHeight(boid.GetTranslation());
-      if (distance <= mBoidRadius * x4f4_) {
+      if (distance <= mBoidRadius * mSurfaceProbeScale) {
         boid.mTransform =
             ShortestRotationArcWrapped(boid.GetTransform().GetUp(), surface.GetNormal(),
                                        CRelAngle::FromDegrees(180.f * dt))
@@ -698,7 +698,7 @@ void CSwarmBasics::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
-  x4f0_31_ = false;
+  mBoidUpdatedThisFrame = false;
   if (!GetActive()) {
     return;
   }
@@ -814,7 +814,7 @@ void CSwarmBasics::Think(float dt, CStateManager& mgr) {
                                      kLST_Locomotion);
   FlushDeathMessages(mgr);
   if (x4f1_24_) {
-    SendScriptMsgs(kSS_InternalState00, mgr);
+    SendScriptMsgs(kSS_InternalState0, mgr);
     x4f1_24_ = false;
   }
   UpdateSeekerTargets(mgr);
@@ -822,7 +822,7 @@ void CSwarmBasics::Think(float dt, CStateManager& mgr) {
 
 void CSwarmBasics::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   uint count = mBoids.size();
-  if (x4f0_27_) {
+  if (mAnimated) {
     uint mask = mModelDatas.size() - 1;
     for (uint i = 0; i < count; ++i) {
       MoveBoid(mgr, mBoids[i], mAdvancementDeltas[i & mask].GetOffsetDelta(), dt);
@@ -831,7 +831,7 @@ void CSwarmBasics::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
 }
 
 void CSwarmBasics::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
-  if (x4f0_27_ && x4f0_31_) {
+  if (mAnimated && mBoidUpdatedThisFrame) {
     uint count = mModelDatas.size();
     for (uint i = 0; i < count; ++i) {
       mModelDatas[i].AnimationData()->SetPlaybackRate(mAnimPlaybackSpeed);
@@ -850,7 +850,7 @@ void CSwarmBasics::MoveBoid(CStateManager& mgr, CBoid& boid, const CVector3f& of
         KillBoid(boid, mgr, CWeaponMode(kWT_Dark));
       }
     } else {
-      float speed = boid.xa4_ / dt;
+      float speed = boid.mSpeedScale / dt;
       boid.mVelocity = speed * boid.GetTransform().Rotate(offsetDelta);
       boid.mTransform.AddTranslation(dt * boid.mVelocity);
     }
@@ -947,7 +947,7 @@ CColor CSwarmBasics::SoftwareLight(const CStateManager& mgr, const CAABox& bound
 
 void CSwarmBasics::PreRender(CStateManager& mgr) {
   bool active = false;
-  if (x4f0_27_) {
+  if (mAnimated) {
     uint count = mModelDatas.size();
     for (uint i = 0; i < count; ++i) {
       mModelDatas[i].AnimationData()->PreRender();
@@ -990,7 +990,7 @@ void CSwarmBasics::PreRenderBoid(CBoid* boid, uint* drawMask) {
 }
 
 void CSwarmBasics::RenderBoid(CBoid* boid) const {
-  if (x4f0_27_) {
+  if (mAnimated) {
     if (boid->mFreezeTimer > 0.f) {
       DrawBoidSkinnedModel(boid, *mSkinnedModelState);
     } else {
@@ -1006,7 +1006,7 @@ void CSwarmBasics::DrawBoidSkinnedModel(
     color = CColor::Lerp(color, CPatterned::skFrozenColor,
                          rstl::min_val(1.f, rstl::max_val(boid->mFreezeTimer, 0.f)));
   }
-  if (x4f0_24_) {
+  if (mEnableLighting) {
     CGX::SetChanMatColor(CGX::Channel0, color.GetGXColor());
   }
   gpRender->SetModelMatrix(boid->GetTransform());
@@ -1031,8 +1031,8 @@ void CSwarmBasics::Render(const CStateManager& mgr) const {
   if (alpha != -1) {
     gpRender->SetDestinationAlpha(alpha);
   }
-  const bool enableLighting = x4f0_24_;
-  const bool useSoftwareLight = x4f0_25_;
+  const bool enableLighting = mEnableLighting;
+  const bool useSoftwareLight = mUseSoftwareLight;
   CGraphics::DisableAllLights();
   if (!enableLighting) {
     gpRender->SetAmbientColor(CColor(0.5f, 0.5f, 0.5f, 1.f));
@@ -1348,8 +1348,8 @@ void CSwarmBasics::Touch(CActor& actor, CStateManager& mgr) {
                   if (!energy->Explode(pos, -1.f * energy->GetTransform().GetForward(),
                                        kWCR_EnemyNormal, mgr, mDamageVulnerability,
                                        GetUniqueId())) {
-                    mgr.SendScriptMsg(this, energy->GetUniqueId(), kSM_XHIT);
-                    mgr.SendScriptMsg(this, energy->GetUniqueId(), kSM_XXDG);
+                    mgr.SendScriptMsg(this, energy->GetUniqueId(), kSM_HitObject);
+                    mgr.SendScriptMsg(this, energy->GetUniqueId(), kSM_ReflectedDamage);
                     SendScriptMsgs(kSS_ReflectedDamage, mgr);
                   } else {
                     mgr.ApplyDamageToWorld(energy->GetOwnerId(), *energy, pos,
@@ -1395,7 +1395,7 @@ void CSwarmBasics::Touch(CActor& actor, CStateManager& mgr) {
           if (!ballDamage) {
             mgr.ApplyDamage(
                 GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mDamage,
-                CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), CMaterialList()),
+                CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
                 CVector3f::Zero());
             mDamageCooldownTimer = mDamageCooldown;
           }
@@ -1437,7 +1437,7 @@ bool CSwarmBasics::IsBoidVisibleForLockOn(const CStateManager& mgr, const CBoid&
   const float inv = 1.f / distance;
   const CVector3f dir = inv * delta;
   if (CVector3f::Dot(cameraForward, dir) > 0.9238795f) {
-    const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Unknown59));
+    const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
     const CRayCastResult result = mgr.RayStaticIntersection(cameraPos, dir, distance, filter);
     if (!result.IsValid()) {
       return true;
@@ -1584,7 +1584,7 @@ void CSwarmBasics::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& 
   mLastKilledOffset = boid.GetTranslation();
   AddParticle(boid.GetTransform());
   boid.mActive = false;
-  if (boid.mHasLoopedSound && boid.xb2_4) {
+  if (boid.mHasLoopedSound && boid.mAttacking) {
     StopLoopedSound(boid, mAttackSounds);
   } else if (boid.mHasLoopedSound) {
     StopLoopedSound(boid, mLocomotionSounds);
@@ -1803,9 +1803,9 @@ void CSwarmBasics::UpdateLoopedSoundPositions(const rstl::vector< TLoopedSound >
 bool CSwarmBasics::CanStartLoopedSound(const CBoid& boid, ELoopedSoundType type) const {
   switch (type) {
   case kLST_Locomotion:
-    return !boid.mHasLoopedSound && !boid.xb2_4 && boid.mActive;
+    return !boid.mHasLoopedSound && !boid.mAttacking && boid.mActive;
   case kLST_Attack:
-    return !boid.mHasLoopedSound && boid.xb2_4 && boid.mActive;
+    return !boid.mHasLoopedSound && boid.mAttacking && boid.mActive;
   default:
     return false;
   }
@@ -1987,6 +1987,7 @@ void CSwarmBasics::FinishConstruction() {}
 
 static void* NullSwarmBasicsFactory() { return nullptr; }
 
+#ifndef MONOLITHIC
 static void SetFuncPtrs() {
   static SSwarmBasics_FuncPtrs funcPtrs;
   funcPtrs.mFactory = &NullSwarmBasicsFactory;
@@ -1996,11 +1997,4 @@ static void SetFuncPtrs() {
 void RELMain() { SetFuncPtrs(); }
 
 void RELExit() { SetSSwarmBasics_FuncPtrs(nullptr); }
-
-CVector3f CSwarmBasics::GetLockOnLocation(int index) const {
-  return mBoids[index].GetTranslation();
-}
-
-bool CSwarmBasics::GetLockOnLocationValid(int index) const {
-  return index > -1 && index < mBoids.size() && mBoids[index].mActive;
-}
+#endif

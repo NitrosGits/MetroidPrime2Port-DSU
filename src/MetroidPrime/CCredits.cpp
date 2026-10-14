@@ -13,6 +13,8 @@
 #include "MetroidPrime/Decode.hpp"
 #include "MetroidPrime/Player/CEnvironmentVariable.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/SFX/UI.h"
+#include "MetroidPrime/SFX/UI3.h"
 #include "MetroidPrime/Tweaks/CTweakGui.hpp"
 
 #include "Kyoto/Audio/CAudioGroupSet.hpp"
@@ -22,7 +24,7 @@
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Graphics/CMoviePlayer.hpp"
-#include "Kyoto/Streams/CFilePreload.hpp"
+#include "Kyoto/Streams/CStreamPreloadedToken.hpp"
 #include "Kyoto/Text/CGuiTextSupport.hpp"
 #include "Kyoto/Text/CRasterFont.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
@@ -281,7 +283,7 @@ CIOWin::EMessageReturn CPlayMovie::OnMessage(const CArchitectureMessage& msg,
     case kS_LoadAudio:
       if (mWhich == kWM_Results) {
         if (mAudioPreload.null()) {
-          mAudioPreload = rs_new CFilePreload(rstl::string_l(skCompletionAudio));
+          mAudioPreload = rs_new CStreamPreloadedToken(rstl::string_l(skCompletionAudio));
         }
         if (!mAudioPreload->IsReady()) {
           return kMR_Exit;
@@ -461,7 +463,7 @@ void CPlayMovie::UpdateText(float dt) {
       mResultsText->Update(dt);
       if (mResultsText->GetNumCharactersPrinted() >= mPrintedCharacters + 0.3f) {
         mPrintedCharacters += 0.3f;
-        CSfxManager::SfxStart(0x618, 127, 64);
+        CSfxManager::SfxStart(SFXui_x_type_01_oneshot, 127, 64);
       }
     }
     if (!mUnlockText.null()) {
@@ -501,7 +503,7 @@ void CPlayMovie::UpdateText(float dt) {
 CIOWin::EMessageReturn CPlayMovie::ProcessUserInput(const CFinalInput& input) {
   if (mMovieIndex == 1 && input.PA() && !mContinuePressed) {
     mMoviePlayer->DisableLoop();
-    CSfxManager::SfxStart(0x522, 127, 64);
+    CSfxManager::SfxStart(SFXui_x_override_02_oneshot, 127, 64);
     mContinuePressed = true;
   }
   return kMR_Exit;
@@ -606,7 +608,7 @@ CIOWin::EMessageReturn CCredits::Update(float dt, CArchitectureQueue& queue) {
   }
   case kS_LoadAudio: {
     if (mAudioPreload.null()) {
-      mAudioPreload = rs_new CFilePreload(rstl::string_l(skCreditsAudio));
+      mAudioPreload = rs_new CStreamPreloadedToken(rstl::string_l(skCreditsAudio));
     }
     if (!mAudioPreload->IsReady()) {
       return kMR_Exit;

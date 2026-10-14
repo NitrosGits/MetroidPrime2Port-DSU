@@ -11,7 +11,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrCamera.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
-class CScriptTimeKeyframe; // Guessed name; shared with the path-camera connection code.
+class CScriptTimeKeyframe; // Shared with the path-camera connection code.
 
 CScriptCamera::CScriptCamera(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, float duration, uint flags, uint splineFlags,
@@ -135,7 +135,7 @@ CEntity* LoadCamera(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
   return rs_new CScriptCamera(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
-      sldrThis.animationTime, sldrThis.flagsCinematicCamera, sldrThis.unknown_0xd4b29446,
+      sldrThis.animationTime, sldrThis.flagsCinematicCamera, sldrThis.splineFlagsCameraSpline,
       sldrThis.motionControlSpline, sldrThis.targetControlSpline, sldrThis.fOVSpline,
       sldrThis.rollSpline,
       static_cast< CMotionSpline::ESplineType >(sldrThis.motionSplineType.type),

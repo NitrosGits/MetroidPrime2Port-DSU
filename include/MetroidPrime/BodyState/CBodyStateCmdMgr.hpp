@@ -83,6 +83,18 @@ public:
   , mSeverity(severity)
   , mAnimId(-1)
   , mForceRestart(false) {}
+  CBCKnockBackCmd(const CVector3f& dir, pas::ESeverity severity, int animId)
+  : CBodyStateCmd(kBSC_KnockBack)
+  , mDir(dir)
+  , mSeverity(severity)
+  , mAnimId(animId)
+  , mForceRestart(false) {}
+  CBCKnockBackCmd(const CVector3f& dir, pas::ESeverity severity, int animId, bool forceRestart)
+  : CBodyStateCmd(kBSC_KnockBack)
+  , mDir(dir)
+  , mSeverity(severity)
+  , mAnimId(animId)
+  , mForceRestart(forceRestart) {}
 
   const CVector3f& GetHitDirection() const { return mDir; }
   pas::ESeverity GetHitSeverity() const { return mSeverity; }
@@ -189,6 +201,7 @@ public:
   , mOverrideAnim(animId != -1)
   , mInterruptKnockBack(false) {}
 
+
   CBCGenerateCmd(pas::EGenerateType type, const CVector3f& targetPos, bool targetTransform = false,
                  bool overrideAnim = false)
   : CBodyStateCmd(kBSC_Generate)
@@ -205,6 +218,7 @@ public:
   bool HasExitTargetPos() const { return mTargetTransform; }
   const CVector3f& GetExitTargetPos() const { return mTargetPos; }
   bool CanInterruptKnockBack() const { return mInterruptKnockBack; }
+  void SetInterruptKnockBack(bool interrupt) { mInterruptKnockBack = interrupt; } // Guessed name
 
 private:
   pas::EGenerateType mType;
@@ -294,6 +308,8 @@ CHECK_SIZEOF(CBCJumpCmd, 0x34)
 class CBCUnknown18Cmd : public CBodyStateCmd {
 public:
   CBCUnknown18Cmd() : CBodyStateCmd(kBSC_Unknown18), mAnimationVariant(0) {}
+  explicit CBCUnknown18Cmd(int animationVariant)
+  : CBodyStateCmd(kBSC_Unknown18), mAnimationVariant(animationVariant) {}
 
   int GetAnimationVariant() const { return mAnimationVariant; } // Guessed name
 
@@ -556,6 +572,10 @@ public:
     DeliverCmd(cmd.GetCommandId());
     mJump = cmd;
   }
+  void DeliverCmd(const CBCUnknown18Cmd& cmd) {
+    DeliverCmd(cmd.GetCommandId());
+    x280_ = cmd;
+  }
 
   void DeliverCmd(const CBCAdditiveFlinchCmd& cmd) {
     DeliverCmd(cmd.GetCommandId());
@@ -570,6 +590,11 @@ public:
   void DeliverCmd(const CBCAdditiveAimCmd& cmd) {
     DeliverCmd(cmd.GetCommandId());
     mAdditiveAim = cmd;
+  }
+
+  void DeliverCmd(const CBCAdditiveLoopReactionCmd& cmd) {
+    DeliverCmd(cmd.GetCommandId());
+    mAdditiveLoopReaction = cmd;
   }
 
   void DeliverCmd(const CBCScriptedCmd& cmd) {

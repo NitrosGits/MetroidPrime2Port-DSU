@@ -19,7 +19,7 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CExplosion.hpp"
-#include "MetroidPrime/CGenericFSM2State.hpp"
+#include "MetroidPrime/CGenericFSM2StateImpl.hpp"
 #include "MetroidPrime/CPositionalParticleData.hpp"
 #include "MetroidPrime/CSimpleShadow.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -47,8 +47,8 @@ const CColor CPatterned::skDisintegrateColor(0xFFFFC0FF);
 const CColor CPatterned::skBlackDeathColor(0xAA54FF00);
 const CColor CPatterned::skDisintegrationColor(0xFFFFFF00);
 
-static CMaterialList gkPatternedFlyerMaterialList(kMT_Character, kMT_Unknown59, kMT_Orbit,
-                                                  kMT_Target, kMT_SeekerTarget);
+static CMaterialList gkPatternedFlyerMaterialList(kMT_Character, kMT_Solid, kMT_Orbit, kMT_Target,
+                                                  kMT_SeekerTarget);
 static CMaterialList gkPatternedGroundMaterialList =
     CMaterialList(kMT_GroundCollider).Union(gkPatternedFlyerMaterialList);
 
@@ -90,7 +90,7 @@ CPatterned::CPatterned(EPatternedAI character, TUniqueId uid, const rstl::string
 , mIngPossessionTarget(0.f)
 , mIngPossessionDelay(0.f)
 , mIngPossessionDuration(0.5f)
-, mIngVulnerability(pinfo.mIngPossessionData.ingVulnerability)
+, mIngVulnerability(LdrToDamageVulnerability(pinfo.mIngPossessionData.ingVulnerability))
 , mMoveVec(CVector3f::Zero())
 , mFaceVec(CVector3f::Zero())
 , mInitialAnimation(pinfo.mAnimationParameters.GetInitialAnimation())
@@ -283,7 +283,7 @@ void CPatterned::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     mOnGround = true;
     break;
-  case kSM_Falling:
+  case kSM_OffGround:
     if (!mVerticalMovement && mBodyController->GetPercentageFrozen() == 0.f) {
       SetMomentumWR(CVector3f(0.f, 0.f, -GetWeight()));
       RemoveMaterial(kMT_GroundCollider, mgr);
@@ -553,7 +553,7 @@ void CPatterned::MassiveFrozenDeath(CStateManager& mgr) {
   SendScriptMsgs(kSS_IceXDamage, mgr, kInvalidUniqueId, kSM_None);
   GenerateIceDeathExplosion(mgr);
 
-  for (uint player = 0; player < mgr.GetNumPlayers(); ++player) {
+  for (int player = 0; player < mgr.GetNumPlayers(); ++player) {
     const CVector3f playerDelta = mgr.GetPlayer(player)->GetTranslation() - GetTranslation();
     const float toPlayerDist = playerDelta.Magnitude();
   }
@@ -564,9 +564,10 @@ void CPatterned::MassiveFrozenDeath(CStateManager& mgr) {
 
 void CPatterned::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   const CHealthInfo* health = GetHealthInfo();
-  if (!mBurning && health != nullptr && !mSuppressKnockBack) {
-    mKnockBackController.KnockBack(mgr, *this, info);
+  if (mBurning || health == nullptr || mSuppressKnockBack) {
+    return;
   }
+  mKnockBackController.KnockBack(mgr, *this, info);
 }
 
 void CPatterned::ApplyKnockBackFollowUp(CStateManager& mgr, const CVector3f& direction,
@@ -764,10 +765,10 @@ void CPatterned::Think(float dt, CStateManager& mgr) {
   if (!mAlive) {
     if ((mPendingMassiveDeath || mPendingMassiveFrozenDeath) && mXDamageDelay <= 0.f) {
       if (mPendingMassiveFrozenDeath) {
-        SendScriptMsgs(kSS_AboutToMassivelyDie, mgr, kInvalidUniqueId, kSM_None);
+        SendScriptMsgs(kSS_SpawnResidue, mgr, kInvalidUniqueId, kSM_None);
         MassiveFrozenDeath(mgr);
       } else {
-        SendScriptMsgs(kSS_AboutToMassivelyDie, mgr, kInvalidUniqueId, kSM_None);
+        SendScriptMsgs(kSS_SpawnResidue, mgr, kInvalidUniqueId, kSM_None);
         MassiveDeath(mgr);
       }
       return;
@@ -968,7 +969,7 @@ void CPatterned::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
     }
   }
 
-  static CMaterialList skSolidTypes(kMT_Unknown59, kMT_Ceiling, kMT_Wall, kMT_Floor, kMT_Character);
+  static CMaterialList skSolidTypes(kMT_Solid, kMT_Ceiling, kMT_Wall, kMT_Floor, kMT_Character);
 
   mSolidCollision = true;
   for (int i = 0; i < list.GetCount(); ++i) {
@@ -1020,10 +1021,10 @@ void CPatterned::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
 
     if (CVector3f::Dot(forward, (aimPos - lctrXf.GetTranslation()).AsNormalized()) > 0.f) {
       const CTransform4f lookAtXf = CTransform4f::LookAt(lctrXf.GetTranslation(), aimPos);
-      LaunchProjectile(lookAtXf, mgr, 1, CWeapon::kPA_None, false, CImpactVisorEffect(),
+      LaunchProjectile(lookAtXf, mgr, 1, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
                        CVector3f(1.f, 1.f, 1.f));
     } else {
-      LaunchProjectile(lctrXf, mgr, 1, CWeapon::kPA_None, false, CImpactVisorEffect(),
+      LaunchProjectile(lctrXf, mgr, 1, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
                        CVector3f(1.f, 1.f, 1.f));
     }
     break;
@@ -1036,7 +1037,7 @@ void CPatterned::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     const CVector3f margin = CVector3f::ByElementMultiply(scale, CVector3f(1.f, 1.f, 0.5f));
     const CAABox touchBounds(xfOrigin - margin, xfOrigin + margin);
 
-    for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
+    for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
       CPlayer* player = mgr.GetPlayer(i);
       if (touchBounds.DoBoundsOverlap(player->GetBoundingBox())) {
         mgr.ApplyDamage(
@@ -1053,8 +1054,8 @@ void CPatterned::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
         mAlphaDelta = -1.f / GetFadeOnDeathTime();
         mFadeToDeath = true;
       }
-      RemoveMaterial(kMT_Character, kMT_Unknown59, kMT_Target, kMT_Orbit, mgr);
-      AddMaterial(kMT_NoPlatformCollision, mgr);
+      RemoveMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+      AddMaterial(kMT_ProjectilePassthrough, mgr);
     } else {
       DeathDelete(mgr);
     }
@@ -1063,10 +1064,10 @@ void CPatterned::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
     break;
   case kUE_BecomeShootThrough:
-    AddMaterial(kMT_NoPlatformCollision, mgr);
+    AddMaterial(kMT_ProjectilePassthrough, mgr);
     break;
   case kUE_RemoveCollision:
-    RemoveMaterial(kMT_Unknown59, mgr);
+    RemoveMaterial(kMT_Solid, mgr);
     break;
   default:
     break;
@@ -1144,7 +1145,8 @@ CTransform4f CPatterned::GetLctrTransform(const rstl::string& name) const {
 }
 
 CTransform4f CPatterned::GetLctrTransform(const CSegId& id) const {
-  CTransform4f locator = GetAnimationData()->GetLocatorTransform(id, nullptr);
+  const CAnimData* animData = GetAnimationData();
+  CTransform4f locator = animData->GetLocatorTransform(id, nullptr);
   CVector3f scaled =
       CVector3f::ByElementMultiply(GetModelData()->GetScale(), locator.GetTranslation());
   return GetTransform() * CTransform4f(locator.BuildMatrix3f(), scaled);
@@ -1383,7 +1385,7 @@ void CPatterned::SetIngPossessed(bool possessed, CStateManager&) {
     mIngPossessionDelay = 0.f;
     mIngPossessionDuration = 1.f;
 
-    const int animation = mIngPossessionData.unknown_0x2befc1bf;
+    int animation = mIngPossessionData.unknown_0x2befc1bf;
     if (animation != -1) {
       const CCharAnimTime start =
           GetAnimationData()->GetTimeOfUserEventForAnimation(animation, kUE_EventStart);

@@ -43,6 +43,7 @@
 #include "rstl/math.hpp"
 
 #include <limits.h>
+#include "MetroidPrime/SFX/UI.h"
 
 static const char* const skInGameGuiDGRPs[] = {
     "InGameGui_DGRP", "grappleArm_DGRP", "Bomb_DGRP", "Common_DGRP", "Ice_DGRP", "Phazon_DGRP",
@@ -386,15 +387,15 @@ void CInGameGuiManager::Update(const CStateManager& mgr, float dt, CRandom16& ra
   if (cameraActive) {
     const float visorStaticAlpha = mgr.GetPlayer(mPlayerIndex)->GetVisorStaticAlpha();
     if (visorStaticAlpha != mVisorStaticAlpha) {
-      if (TCastToConstPtr< CFirstPersonCamera >(
-              *mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true))) {
+      if (CCameraManager::CastGameCameratoFirstPersonCamera(
+              mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true))) {
         if (CMath::AbsF(visorStaticAlpha - mVisorStaticAlpha) < 0.5f) {
           if (mVisorStaticAlpha == 0.f) {
-            CSfxManager::SfxStart(0x274, 127, 64, CSfxManager::kAllAreas, false, false,
-                                  CSfxManager::kMedPriority);
+            CSfxManager::SfxStart(SFXui_x_hudon_00_oneshot, 127, 64, CSfxManager::kAllAreas, false,
+                                  false, CSfxManager::kMedPriority);
           } else if (mVisorStaticAlpha == 1.f) {
-            CSfxManager::SfxStart(0x273, 127, 64, CSfxManager::kAllAreas, false, false,
-                                  CSfxManager::kMedPriority);
+            CSfxManager::SfxStart(SFXui_x_hudoff_00_oneshot, 127, 64, CSfxManager::kAllAreas, false,
+                                  false, CSfxManager::kMedPriority);
           }
         }
       }
@@ -417,8 +418,8 @@ void CInGameGuiManager::Update(const CStateManager& mgr, float dt, CRandom16& ra
   }
 
   if (mIsSinglePlayer) {
-    if (!TCastToConstPtr< CFirstPersonCamera >(
-            *mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true))) {
+    if (!CCameraManager::CastGameCameratoFirstPersonCamera(
+            mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true))) {
       mSamusReflection = nullptr;
     } else if (mSamusReflection.null()) {
       mSamusReflection = rs_new CSamusFaceReflection(mgr, mPlayerIndex);
@@ -582,8 +583,8 @@ bool CInGameGuiManager::IsTransitionReady() const {
   if (!mPauseScreenBlur->IsNotTransitioning()) {
     return false;
   }
-  if (!mAutoMapper.null()) {
-    return mAutoMapper->GetCurrentState() == mAutoMapper->GetNextState();
+  if (const CAutoMapper* autoMapper = mAutoMapper.get()) {
+    return autoMapper->GetCurrentState() == autoMapper->GetNextState();
   }
   return true;
 }

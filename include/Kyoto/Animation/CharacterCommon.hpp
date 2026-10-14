@@ -94,7 +94,7 @@ enum EAdditiveReactionType {
   kART_Seven
 };
 
-enum EJumpType { kJT_Invalid = -1, kJT_Normal, kJT_One, kJT_Ambush };
+enum EJumpType { kJT_Invalid = -1, kJT_Normal, kJT_One, kJT_Ambush, kJT_Three };
 
 enum EJumpState {
   kJS_Invalid = -1,
@@ -129,14 +129,17 @@ enum ESeverity {
   kS_Five = 5,
   kS_Six = 6,
   kS_Seven = 7,
-  kS_Eight = 8
+  kS_Eight = 8,
+  kS_Nine = 9,
+  kS_Ten = 10,
+  kS_Eleven = 11
 };
 
 enum EGetupType { kGetup_Invalid = -1, kGetup_Zero = 0, kGetup_One = 1, kGetup_Two = 2 };
 
 enum ELoopState { kLS_Invalid = -1, kLS_Begin, kLS_Loop, kLS_End };
 
-enum ELoopAttackType { kLAT_Invalid = -1, kLAT_Zero, kLAT_One, kLAT_Two, kLAT_Three };
+enum ELoopAttackType { kLAT_Invalid = -1, kLAT_Zero, kLAT_One, kLAT_Two, kLAT_Three, kLAT_Four };
 
 enum EGenerateType {
   kGType_Invalid = -1,
@@ -153,7 +156,17 @@ enum EGenerateType {
 
 enum ESlideType { kSlide_Invalid = -1, kSlide_Zero = 0 };
 
-enum ETauntType { kTT_Invalid = -1, kTT_Zero, kTT_One, kTT_Two };
+enum ETauntType {
+  kTT_Invalid = -1,
+  kTT_Zero,
+  kTT_One,
+  kTT_Two,
+  kTT_Three, // Guessed name
+  kTT_Four,  // Guessed name; Rezbit alert taunt.
+  kTT_Five,  // Guessed name
+  kTT_Six = 6, // Guessed name
+  kTT_Nine = 9 // Guessed name
+};
 
 enum ECoverState { kCS_Invalid = -1, kCS_IntoCover, kCS_Cover, kCS_Lean, kCS_OutOfCover };
 
@@ -182,10 +195,10 @@ enum EBodyType {
   kBT_Restricted,
   kBT_Flyer,
   kBT_PitchableFlyer, // Cross-game name (DKCR HD); Echoes factory corroborated.
-  kBT_Floater, // Cross-game name (DKCR HD); Echoes factory corroborated.
+  kBT_Floater,        // Cross-game name (DKCR HD); Echoes factory corroborated.
   kBT_WallWalker,
   kBT_AiMovedFlyer, // Cross-game name (DKCR HD); Echoes factory corroborated.
-  kBT_4WayBlended // Guessed name from DKCR HD; Echoes blends four movement directions.
+  kBT_4WayBlended   // Guessed name from DKCR HD; Echoes blends four movement directions.
 };
 
 enum EBodyStateCmd {
@@ -221,7 +234,7 @@ enum EBodyStateCmd {
   kBSC_AdditiveReaction,
   kBSC_StopReaction,
   kBSC_AdditiveLoopReaction, // Guessed name
-  kBSC_AdditiveWeight, // Guessed name
+  kBSC_AdditiveWeight,       // Guessed name
   kBSC_Unknown33
 };
 

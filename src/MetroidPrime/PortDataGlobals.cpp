@@ -1,7 +1,7 @@
 /**
  * Port-only definitions of data symbols that upstream declares but never defines, whose retail
  * initial value is NON-ZERO. They used to be zeroed `reachdata_NNN` stubs in PortLinkStubs.cpp,
- * which is wrong for any of these (e.g. `rstl::CRefData::sNull` must start at count 0x00FFFFFF or a
+ * which is wrong for any of these (e.g. `rstl::rc_ptr_private::sNull` must start at count 0x00FFFFFF or a
  * null rc_ptr's refcount reaches 0 and `delete`s static storage).
  *
  * Value sources: "dol" = orig/G2ME01/sys/main.dol read at the address symbols.txt gives (big-endian);
@@ -17,56 +17,22 @@
 #include "Kyoto/CARAMManager.hpp"
 #include "Kyoto/Animation/CSoundPOINode.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
+#include "MetroidPrime/CAnimRes.hpp"
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TGameTypes.hpp"
 #include "rstl/rc_ptr.hpp"
 
-// BuildTime: .sdata2 0x8041D550 holds a pointer into the build-info string (PortGlobals).
-const char* BuildTime = BUILD_TIME_DUMMY;
+// BuildTime: defined in Startup.cpp, which the host build excludes (see files_cmake_excluded.txt).
+const char* const BuildTime = BUILD_TIME_DUMMY;
 
-// rstl::CRefData::sNull: .sdata 0x80418B98 = {0x00FFFFFF, 0} (dol).
-rstl::CRefData rstl::CRefData::sNull(0x00FFFFFF);
+// CAnimRes::kInvalidCharIdx .sdata2 0x8041A7BC = 0xFFFFFFFF (dol).
+const int CAnimRes::kInvalidCharIdx = -1;
 
 // CARAMManager: kInvalidHandle .sdata2 0x8041E93C = 0xFFFFFFFF; mPreInitializeAlloc .sdata
 // 0x80418BA8 = 0x00004000 (dol).
 const int CARAMManager::kInvalidHandle = -1;
 uint CARAMManager::mPreInitializeAlloc = 0x4000;
-
-// CGameOptions defaults: .sdata2 0x8041C4F0..F3 = 01 00 01 01 (dol).
-const bool CGameOptions::kDefaultHUDLag = true;
-const bool CGameOptions::kDefaultInvertYAxis = false;
-const bool CGameOptions::kDefaultRumble = true;
-const bool CGameOptions::kDefaultHintSystem = true;
-
-// CSoundPOINode::skExtendedVersion: .sdata2 0x8041E410 = 0x0001 (dol; PortGlobals).
-const ushort CSoundPOINode::skExtendedVersion = 1;
-
-// CPlayer::skTransitionFilter*: no symbols; the floats UpdateTransitionFilter (0x80183D90) loads
-// from .sdata2 0x8041A460..0x8041A474 (asm), assigned in header declaration order.
-const float CPlayer::skTransitionFilterStartTime = 0.95f;   // 0x8041A460
-const float CPlayer::skTransitionFilterFadeInTime = 0.1f;   // 0x8041A464
-const float CPlayer::skTransitionFilterFadeOutTime = 0.15f; // 0x8041A468
-const float CPlayer::skTransitionFilterHoldTime = 0.15f;    // 0x8041A46C
-const float CPlayer::skTransitionFilterEndTime = 1.25f;     // 0x8041A470
-const float CPlayer::skTransitionFilterMaxAlpha = 0.3f;     // 0x8041A474
-
-// TGameTypes.hpp: kDefaultGravityAccel .sdata2 0x8041B758 = 0x41C43334 (24.525f = 9.81 * 2.5);
-// kInvalidPlayerIndex 0x8041B750 = 0xFFFFFFFF (dol).
-const float kDefaultGravityAccel = 24.525f;
-const uint kInvalidPlayerIndex = 0xFFFFFFFF;
-
-// Declared only by the .cpp files that use them (no header). dol: kGunLocator .sdata2 0x8041A450
-// and kGrappleLocator 0x8041A454 hold pointers to "GUN_LCTR" / "GRAPPLE_LCTR";
-// kBoostBallBreaksOrbit 0x8041A43D = 1; sProgressiveModePrompt .sdata 0x80417D80 = 1.
-extern const char* const kGunLocator;
-extern const char* const kGrappleLocator;
-extern const bool kBoostBallBreaksOrbit;
-extern bool sProgressiveModePrompt;
-const char* const kGunLocator = "GUN_LCTR";
-const char* const kGrappleLocator = "GRAPPLE_LCTR";
-const bool kBoostBallBreaksOrbit = true;
-bool sProgressiveModePrompt = true;
 
 // Perlin noise permutation table: .data 0x803BA0B8, 0x200 bytes (dol).
 extern uchar skNoisePermutation[512];

@@ -20,6 +20,7 @@
 #include "WorldFormat/CCollisionCache.hpp"
 #include "WorldFormat/CMetroidAreaCollider.hpp"
 #include "rstl/math.hpp"
+#include "rstl/optional_storage.hpp"
 
 #include <float.h>
 #include <math.h>
@@ -35,7 +36,7 @@ void CGroundMovement::CheckFalling(CPhysicsActor& actor, CStateManager& mgr, flo
     }
   }
   if (!outOfBounds) {
-    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_Falling));
+    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_OffGround));
   } else {
     mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_Landed));
     actor.SetAngularVelocityWR(actor.GetAngularVelocityWR() * 0.98f);
@@ -118,13 +119,13 @@ void CGroundMovement::MoveGroundCollider(
           CEntity* entity = mgr.ObjectById(stepZId);
           if (TCastToPtr< CScriptPlatform >(entity)) {
             mgr.DeliverScriptMsg(
-                CScriptMsg(actor.GetUniqueId(), entity->GetUniqueId(), kSM_AddPlatformRider));
+                CScriptMsg(actor.GetUniqueId(), entity->GetUniqueId(), kSM_OnPlatform));
           }
           CGameCollision::SendMaterialMessage(mgr, info.GetMaterialLeft(), actor);
           mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_Landed));
           if (!TCastToPtr< CScriptPlatform >(entity)) {
-            mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(),
-                                            static_cast< EScriptObjectMessage >('XLSG')));
+            mgr.DeliverScriptMsg(
+                CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_LandedOnStaticGround));
           }
         } else {
           CheckFalling(actor, mgr, dt);
@@ -147,58 +148,57 @@ bool CGroundMovement::ResolveUpDown(CAreaCollisionCache& cache, CStateManager& m
                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
                                     float stepUp, float stepDown, float& resolved,
                                     CCollisionInfoList& list) {
-  if (list.GetCount() == 0) {
-    return true;
-  }
-
-  CAABox bounds = CAABox::MakeMaxInvertedBox();
-  CVector3f normal = CVector3f::Zero();
-  for (int i = 0; i < list.GetCount(); ++i) {
-    const CCollisionInfo& info = list[i];
-    if (CGameCollision::IsFloor(info.GetMaterialLeft(), info.GetNormalLeft())) {
-      bounds.AccumulateBounds(info.GetPoint());
-      bounds.AccumulateBounds(info.GetExtreme());
-      normal += info.GetNormalLeft();
-    }
-  }
-  if (!normal.CanBeNormalized()) {
-    return true;
-  }
-  normal = normal.AsNormalized();
-
-  const CAABox actorBounds = actor.GetBoundingBox();
-  float zExtent;
-  if (normal.GetZ() >= 0.f) {
-    zExtent = bounds.GetMaxPoint().GetZ() - actorBounds.GetMinPoint().GetZ() + 0.02f;
-    if (zExtent > stepUp) {
-      return true;
-    }
-  } else {
-    zExtent = bounds.GetMinPoint().GetZ() - actorBounds.GetMaxPoint().GetZ() - 0.02f;
-    if (zExtent < -stepDown) {
-      return true;
-    }
-  }
-
-  actor.MoveCollisionPrimitive(CVector3f(0.f, 0.f, zExtent));
-  if (!CGameCollision::DetectCollisionBoolean_Cached(mgr, cache, *actor.GetCollisionPrimitive(),
-                                                     actor.GetPrimitiveTransform(), filter,
-                                                     nearList)) {
-    resolved = zExtent;
-    actor.SetTranslation(actor.GetTranslation() + CVector3f(0.f, 0.f, zExtent));
-    actor.MoveCollisionPrimitive(CVector3f::Zero());
-
-    bool floor = false;
+  float zExtent = stepDown;
+  if (list.GetCount() > 0) {
+    CAABox bounds = CAABox::MakeMaxInvertedBox();
+    CVector3f normal(0.f, 0.f, 0.f);
     for (int i = 0; i < list.GetCount(); ++i) {
-      if (CGameCollision::IsFloor(list[i].GetMaterialLeft(), list[i].GetNormalLeft())) {
-        floor = true;
-        break;
+      const CCollisionInfo& info = list[i];
+      if (CGameCollision::IsFloor(info.GetMaterialLeft(), info.GetNormalLeft())) {
+        bounds.AccumulateBounds(info.GetPoint());
+        bounds.AccumulateBounds(info.GetExtreme());
+        normal += info.GetNormalLeft();
       }
     }
-    if (!floor) {
-      mgr.SendScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_LandOnNotFloor));
+    if (normal.CanBeNormalized()) {
+      normal = normal.AsNormalized();
+    } else {
+      return true;
     }
-    return false;
+
+    const CAABox& actorBounds = actor.GetBoundingBox();
+    if (normal.GetZ() >= 0.f) {
+      zExtent = bounds.GetMaxPoint().GetZ() - actorBounds.GetMinPoint().GetZ() + 0.02f;
+      if (zExtent > stepUp) {
+        return true;
+      }
+    } else {
+      zExtent = bounds.GetMinPoint().GetZ() - actorBounds.GetMaxPoint().GetZ() - 0.02f;
+      if (zExtent < -stepDown) {
+        return true;
+      }
+    }
+
+    actor.MoveCollisionPrimitive(CVector3f(0.f, 0.f, zExtent));
+    if (!CGameCollision::DetectCollisionBoolean_Cached(mgr, cache, *actor.GetCollisionPrimitive(),
+                                                       actor.GetPrimitiveTransform(), filter,
+                                                       nearList)) {
+      resolved = zExtent;
+      actor.SetTranslation(actor.GetTranslation() + CVector3f(0.f, 0.f, zExtent));
+      actor.MoveCollisionPrimitive(CVector3f::Zero());
+
+      bool floor = false;
+      for (int i = 0; i < list.GetCount(); ++i) {
+        if (CGameCollision::IsFloor(list[i].GetMaterialLeft(), list[i].GetNormalLeft())) {
+          floor = true;
+          break;
+        }
+      }
+      if (!floor) {
+        mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_Falling));
+      }
+      return false;
+    }
   }
   return true;
 }
@@ -211,47 +211,50 @@ bool CGroundMovement::MoveGroundColliderZ(CAreaCollisionCache& cache, CStateMana
   actor.MoveCollisionPrimitive(CVector3f(0.f, 0.f, amount));
   idOut = kInvalidUniqueId;
   CAABox bounds = CAABox::MakeMaxInvertedBox();
-  const bool collided = CGameCollision::DetectCollision_Cached(
-      mgr, cache, *actor.GetCollisionPrimitive(), actor.GetPrimitiveTransform(), filter, nearList,
-      idOut, list);
-  if (!collided) {
-    return false;
-  }
-
-  for (int i = 0; i < list.GetCount(); ++i) {
-    bounds.AccumulateBounds(list[i].GetPoint());
-    bounds.AccumulateBounds(list[i].GetExtreme());
-  }
-  const CAABox actorBounds = actor.GetBoundingBox();
-  const float zExtent =
-      amount > 0.f
-          ? bounds.GetMinPoint().GetZ() - actorBounds.GetMaxPoint().GetZ() - 0.02f + amount
-          : bounds.GetMaxPoint().GetZ() - actorBounds.GetMinPoint().GetZ() + 0.02f + amount;
-  actor.MoveCollisionPrimitive(CVector3f(0.f, 0.f, zExtent));
-  if (!CGameCollision::DetectCollisionBoolean_Cached(mgr, cache, *actor.GetCollisionPrimitive(),
-                                                     actor.GetPrimitiveTransform(), filter,
-                                                     nearList)) {
-    resolved = zExtent;
-    actor.SetTranslation(actor.GetTranslation() + CVector3f(0.f, 0.f, zExtent));
-    actor.MoveCollisionPrimitive(CVector3f::Zero());
-  }
-
-  bool floor = false;
-  for (int i = 0; i < list.GetCount(); ++i) {
-    if (CGameCollision::IsFloor(list[i].GetMaterialLeft(), list[i].GetNormalLeft())) {
-      floor = true;
-      break;
+  bool collided = CGameCollision::DetectCollision_Cached(mgr, cache, *actor.GetCollisionPrimitive(),
+                                                         actor.GetPrimitiveTransform(), filter,
+                                                         nearList, idOut, list);
+  if (collided) {
+    for (int i = 0; i < list.GetCount(); ++i) {
+      bounds.AccumulateBounds(list[i].GetPoint());
+      bounds.AccumulateBounds(list[i].GetExtreme());
     }
-  }
-  if (!floor) {
-    mgr.SendScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_LandOnNotFloor));
-  }
+    const CAABox& actorBounds = actor.GetBoundingBox();
+    float zExtent = 0.f;
+    if (amount > 0.f) {
+      zExtent = bounds.GetMinPoint().GetZ() - actorBounds.GetMaxPoint().GetZ() - 0.02f + amount;
+    } else {
+      zExtent = bounds.GetMaxPoint().GetZ() - actorBounds.GetMinPoint().GetZ() + 0.02f + amount;
+    }
+    actor.MoveCollisionPrimitive(CVector3f(0.f, 0.f, zExtent));
+    if (!CGameCollision::DetectCollisionBoolean_Cached(mgr, cache, *actor.GetCollisionPrimitive(),
+                                                       actor.GetPrimitiveTransform(), filter,
+                                                       nearList)) {
+      resolved = zExtent;
+      actor.SetTranslation(actor.GetTranslation() + CVector3f(0.f, 0.f, zExtent));
+      actor.MoveCollisionPrimitive(CVector3f::Zero());
+    }
 
-  CCollisionInfoList filteredList;
-  CollisionUtil::FilterByClosestNormal(CVector3f(0.f, 0.f, amount > 0.f ? -1.f : 1.f), list,
-                                       filteredList);
-  if (filteredList.GetCount() > 0) {
-    CGameCollision::MakeCollisionCallbacks(mgr, actor, idOut, filteredList);
+    bool floor = false;
+    for (int i = 0; i < list.GetCount(); ++i) {
+      if (CGameCollision::IsFloor(list[i].GetMaterialLeft(), list[i].GetNormalLeft())) {
+        floor = true;
+        break;
+      }
+    }
+    if (!floor) {
+      mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_Falling));
+    }
+
+    CCollisionInfoList filteredList;
+    if (amount > 0.0) {
+      CollisionUtil::FilterByClosestNormal(CVector3f(0.f, 0.f, -1.f), list, filteredList);
+    } else {
+      CollisionUtil::FilterByClosestNormal(CVector3f(0.f, 0.f, 1.f), list, filteredList);
+    }
+    if (filteredList.GetCount() > 0) {
+      CGameCollision::MakeCollisionCallbacks(mgr, actor, idOut, filteredList);
+    }
   }
   return collided;
 }
@@ -358,7 +361,7 @@ bool CGroundMovement::MoveGroundColliderXY(CAreaCollisionCache& cache, CStateMan
     loopContinue = remainingDt > 0.f;
   }
   if (!didCollide && !actor.GetMaterialList().HasMaterial(kMT_GroundCollider)) {
-    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_Falling));
+    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_OffGround));
   }
   actor.MoveCollisionPrimitive(CVector3f::Zero());
   if (IsUser(0)) {
@@ -432,7 +435,7 @@ void CGroundMovement::MoveGroundCollider_New(
     mgr.BuildColliderList(nearList, actor, motionVolume);
   }
   CCollisionCache* cachePtr = actor.GetCollisionCache();
-  rstl::optional_object< CCollisionCache > localCache;
+  rstl::optional_storage< CCollisionCache > localCache;
   if (cachePtr == nullptr || !motionVolume.Inside(cachePtr->GetBounds())) {
     const float padding = cachePtr != nullptr ? 0.5f : 0.f;
     const CVector3f paddingVector(padding, padding, padding);
@@ -587,7 +590,7 @@ void CGroundMovement::MoveGroundCollider_New(
           result.mCollision = collisions[maxIndex];
           if (TCastToPtr< CScriptPlatform >(entity)) {
             mgr.DeliverScriptMsg(
-                CScriptMsg(actor.GetUniqueId(), entity->GetUniqueId(), kSM_AddPlatformRider));
+                CScriptMsg(actor.GetUniqueId(), entity->GetUniqueId(), kSM_OnPlatform));
           }
         }
         CCollisionInfo& info = collisions[maxIndex];
@@ -681,10 +684,10 @@ void CGroundMovement::MoveGroundCollider_New(
       CEntity* entity = mgr.ObjectById(id);
       if (TCastToPtr< CScriptPlatform >(entity)) {
         mgr.DeliverScriptMsg(
-            CScriptMsg(actor.GetUniqueId(), entity->GetUniqueId(), kSM_AddPlatformRider));
+            CScriptMsg(actor.GetUniqueId(), entity->GetUniqueId(), kSM_OnPlatform));
       } else {
-        mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(),
-                                        static_cast< EScriptObjectMessage >('XLSG')));
+        mgr.DeliverScriptMsg(
+            CScriptMsg(kInvalidUniqueId, actor.GetUniqueId(), kSM_LandedOnStaticGround));
       }
       CGameCollision::SendMaterialMessage(mgr, info.GetMaterialLeft(), actor);
       actor.SetLastFloorPlaneNormal(info.GetNormalLeft());
@@ -723,7 +726,7 @@ void CGroundMovement::MoveGroundCollider_New(
   CGameCollision::CollisionFailsafe(mgr, cache, actor, *usePrimitive, nearList, 0.f, 1, 0.f);
   if (CCollisionCache* currentCache = actor.GetCollisionCache()) {
     if (localCache) {
-      *currentCache = *localCache;
+      *currentCache = cache;
     }
   }
 }
@@ -813,11 +816,9 @@ CGroundMovement::MoveObjectAnalytical(CStateManager& mgr, CPhysicsActor& actor, 
       if (clipCollision && floorCollision && !RemoveNormalComponent(floorNormal, velocity)) {
         velocity.SetZ(0.f);
       }
-      if (velocity.GetZ() > options.mMaxPositiveVerticalVelocity) {
-        float scale = options.mMaxPositiveVerticalVelocity / velocity.GetZ();
-        velocity.SetX(velocity.GetX() * scale);
-        velocity.SetY(velocity.GetY() * scale);
-        velocity.SetZ(velocity.GetZ() * scale);
+      if (velocity[kDZ] > options.mMaxPositiveVerticalVelocity) {
+        float scale = options.mMaxPositiveVerticalVelocity / velocity[kDZ];
+        velocity *= scale;
       }
 
       if (options.mDampForceAndMomentum) {

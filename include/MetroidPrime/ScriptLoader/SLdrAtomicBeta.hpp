@@ -14,27 +14,38 @@ struct SLdrAtomicBeta {
   SLdrAtomicBeta();
   ~SLdrAtomicBeta();
 
-  SLdrEditorProperties editorProperties; // 0x255a4580
-  SLdrPatternedAITypedef patterned; // 0xb3774750
-  SLdrActorParameters actorInformation; // 0x7e397fed
-  CAssetId beamEffect; // 0x05439a08
-  CAssetId beam; // 0x2cbf989b
-  SLdrDamageInfo beamDamage; // 0x13e30e4d
-  CAssetId contactFx; // 0xc271eaf5
-  float beamFadeTime; // 0x18093fa8
-  float beamRadius; // 0xcb0af075
-  float hoverSpeed; // 0x845ef489
+  SLdrEditorProperties editorProperties;       // 0x255a4580
+  SLdrPatternedAITypedef patterned;            // 0xb3774750
+  SLdrActorParameters actorInformation;        // 0x7e397fed
+  CAssetId beamEffect;                         // 0x05439a08
+  CAssetId beam;                               // 0x2cbf989b
+  SLdrDamageInfo beamDamage;                   // 0x13e30e4d
+  CAssetId contactFx;                          // 0xc271eaf5
+  float beamFadeTime;                          // 0x18093fa8
+  float beamRadius;                            // 0xcb0af075
+  float hoverSpeed;                            // 0x845ef489
   SLdrDamageVulnerability frozenVulnerability; // 0x411938aa
-  float normalRotateSpeed; // 0xce1893cc
-  float chargingRotateSpeed; // 0x6a453d89
-  float speedChangeRate; // 0xac202a5d
-  int sound_FlyLoop; // 0x14038b71
-  int sound_FlyLoopActivated; // 0x16a435cb
-  int sound_ElectricityLoop; // 0x67edefc2
-  float damageDelay; // 0x8f4fb79d
+  float normalRotateSpeed;                     // 0xce1893cc
+  float chargingRotateSpeed;                   // 0x6a453d89
+  float speedChangeRate;                       // 0xac202a5d
+  int sound_FlyLoop;                           // 0x14038b71
+  int sound_FlyLoopActivated;                  // 0x16a435cb
+  int sound_ElectricityLoop;                   // 0x67edefc2
+  float damageDelay;                           // 0x8f4fb79d
 };
 
-inline SLdrAtomicBeta::SLdrAtomicBeta() : editorProperties(), patterned(), actorInformation(), beamEffect(kInvalidAssetId), beam(kInvalidAssetId), beamDamage(), contactFx(kInvalidAssetId), frozenVulnerability() {
+inline SLdrAtomicBeta::SLdrAtomicBeta()
+: editorProperties()
+, patterned()
+, actorInformation()
+, beamEffect(kInvalidAssetId)
+, beam(kInvalidAssetId)
+, beamDamage()
+, contactFx(kInvalidAssetId)
+, frozenVulnerability()
+, sound_FlyLoop(-1)
+, sound_FlyLoopActivated(-1)
+, sound_ElectricityLoop(-1) {
   patterned.mass = 25.0f;
   patterned.turnSpeed = 720.0f;
   patterned.detectionRange = 5.0f;
@@ -49,15 +60,15 @@ inline SLdrAtomicBeta::SLdrAtomicBeta() : editorProperties(), patterned(), actor
   patterned.collisionRadius = 0.5f;
   patterned.collisionHeight = 1.5f;
   patterned.unknown_0xe287d8dd = 0.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
   beamFadeTime = 1.0f;
   beamRadius = 0.1f;
   hoverSpeed = 3.0f;
   normalRotateSpeed = 1.5f;
   chargingRotateSpeed = 5.0f;
   speedChangeRate = 1.0f;
-  sound_FlyLoop = 0;
-  sound_FlyLoopActivated = 0;
-  sound_ElectricityLoop = 0;
   damageDelay = 1.0f;
 }
 

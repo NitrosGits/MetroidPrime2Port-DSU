@@ -64,12 +64,12 @@ set(MP_GAME_SOURCES
     src/Kyoto/Animation/CAnimTreeTweenBase.cpp
     src/Kyoto/Animation/CAnimation.cpp
     src/Kyoto/Animation/CAnimationManager.cpp
-    src/Kyoto/Animation/CAnimationSet.cpp
     src/Kyoto/Animation/CBoolPOINode.cpp
+    src/Kyoto/Animation/CCEAnimationSet.cpp
+    src/Kyoto/Animation/CCECharacterInfo.cpp
     src/Kyoto/Animation/CCharAnimMemoryMetrics.cpp
     src/Kyoto/Animation/CCharAnimTime.cpp
     src/Kyoto/Animation/CCharLayoutInfo.cpp
-    src/Kyoto/Animation/CCharacterInfo.cpp
     src/Kyoto/Animation/CCharacterSet.cpp
     src/Kyoto/Animation/CFBStreamedAnimReader.cpp
     src/Kyoto/Animation/CFBStreamedCompression.cpp
@@ -127,10 +127,10 @@ set(MP_GAME_SOURCES
     src/Kyoto/Audio/CSfxHandle.cpp
     src/Kyoto/Audio/CSfxManager.cpp
     src/Kyoto/Audio/CSfxPitchBend.cpp
-    src/Kyoto/Audio/CStaticAudioPlayer.cpp
     src/Kyoto/Audio/CStreamAudioManager.cpp
     src/Kyoto/Audio/DolphinCAudioGroupSet.cpp
     src/Kyoto/Audio/DolphinCAudioSys.cpp
+    src/Kyoto/Audio/DolphinCRSFAudio.cpp
     src/Kyoto/Audio/g721.cpp
     src/Kyoto/Basics/CBasics.cpp
     src/Kyoto/Basics/CBasicsDolphin.cpp
@@ -163,16 +163,16 @@ set(MP_GAME_SOURCES
     src/Kyoto/Graphics/CCubeMoviePlayer.cpp
     src/Kyoto/Graphics/CCubeSurface.cpp
     src/Kyoto/Graphics/CDisplayListReader.cpp
+    src/Kyoto/Graphics/CFoldySurface.cpp
     src/Kyoto/Graphics/CGX.cpp
-    src/Kyoto/Graphics/CGXTransientBuffer.cpp
     src/Kyoto/Graphics/CLight.cpp
     src/Kyoto/Graphics/CTevCombiners.cpp
-    src/Kyoto/Graphics/CThreeSegmentModel.cpp
     src/Kyoto/Graphics/DolphinCColor.cpp
     src/Kyoto/Graphics/DolphinCGraphics.cpp
     src/Kyoto/Graphics/DolphinCModel.cpp
     src/Kyoto/Graphics/DolphinCPalette.cpp
     src/Kyoto/Graphics/DolphinCTexture.cpp
+    src/Kyoto/Graphics/DolphinGPUMemory.cpp
     src/Kyoto/Graphics/PortalPlane.cpp
     src/Kyoto/Input/CDolphinController.cpp
     src/Kyoto/Input/CFinalInput.cpp
@@ -184,7 +184,6 @@ set(MP_GAME_SOURCES
     src/Kyoto/Math/CCylinder.cpp
     src/Kyoto/Math/CFrustumPlanes.cpp
     src/Kyoto/Math/CGameCameraSpline.cpp
-    src/Kyoto/Math/CGameSpline.cpp
     src/Kyoto/Math/CLine.cpp
     src/Kyoto/Math/CMatrix3f.cpp
     src/Kyoto/Math/CMatrix4f.cpp
@@ -195,6 +194,7 @@ set(MP_GAME_SOURCES
     src/Kyoto/Math/CQuad.cpp
     src/Kyoto/Math/CQuaternion.cpp
     src/Kyoto/Math/CSphere.cpp
+    src/Kyoto/Math/CSpline.cpp
     src/Kyoto/Math/CTransform4f.cpp
     src/Kyoto/Math/CTri.cpp
     src/Kyoto/Math/CUnitVector3f.cpp
@@ -208,13 +208,13 @@ set(MP_GAME_SOURCES
     src/Kyoto/PVS/CPVSVisOctree.cpp
     src/Kyoto/PVS/CPVSVisSet.cpp
     src/Kyoto/Particles/CColorElement.cpp
-    src/Kyoto/Particles/CDeferredParticleEffect.cpp
     src/Kyoto/Particles/CEffectComponent.cpp
     src/Kyoto/Particles/CElectricDescription.cpp
     src/Kyoto/Particles/CElementGen.cpp
     src/Kyoto/Particles/CEmitterElement.cpp
     src/Kyoto/Particles/CGenDescription.cpp
     src/Kyoto/Particles/CIntElement.cpp
+    src/Kyoto/Particles/CManagedParticleGen.cpp
     src/Kyoto/Particles/CModVectorElement.cpp
     src/Kyoto/Particles/CParticleData.cpp
     src/Kyoto/Particles/CParticleDataFactory.cpp
@@ -222,13 +222,13 @@ set(MP_GAME_SOURCES
     src/Kyoto/Particles/CParticleElectricDataFactory.cpp
     src/Kyoto/Particles/CParticleGen.cpp
     src/Kyoto/Particles/CParticleGlobals.cpp
+    src/Kyoto/Particles/CParticleSortedSystemDataFactory.cpp
     src/Kyoto/Particles/CParticleSpawnSystem.cpp
     src/Kyoto/Particles/CParticleSpawnSystemDataFactory.cpp
     src/Kyoto/Particles/CParticleSwoosh.cpp
     src/Kyoto/Particles/CParticleSwooshDataFactory.cpp
     src/Kyoto/Particles/CRealElement.cpp
     src/Kyoto/Particles/CSortedParticleSystem.cpp
-    src/Kyoto/Particles/CSortedParticleSystemDataFactory.cpp
     src/Kyoto/Particles/CSortedParticleSystemDescription.cpp
     src/Kyoto/Particles/CSpawnSystemDescription.cpp
     src/Kyoto/Particles/CSpawnSystemKeyframeData.cpp
@@ -237,13 +237,13 @@ set(MP_GAME_SOURCES
     src/Kyoto/Particles/CVectorElement.cpp
     src/Kyoto/Streams/CBitStreamReader.cpp
     src/Kyoto/Streams/CBitStreamWriter.cpp
-    src/Kyoto/Streams/CBufferedDvdRequest.cpp
-    src/Kyoto/Streams/CFilePreload.cpp
-    src/Kyoto/Streams/CInputStream.cpp
     src/Kyoto/Streams/CLZOSupport.cpp
+    src/Kyoto/Streams/CLookaheadRes.cpp
     src/Kyoto/Streams/CMemoryInStream.cpp
     src/Kyoto/Streams/CMemoryStreamOut.cpp
     src/Kyoto/Streams/COutputStream.cpp
+    src/Kyoto/Streams/CStreamPreloadedToken.cpp
+    src/Kyoto/Streams/DolphinCInputStream.cpp
     src/Kyoto/Streams/DolphinCLZOInputStream.cpp
     src/Kyoto/Text/CBlockInstruction.cpp
     src/Kyoto/Text/CCharacterExtraSpaceInstruction.cpp
@@ -449,6 +449,8 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Cameras/CGameCamera.cpp
     src/MetroidPrime/Cameras/CInterpolationCamera.cpp
     src/MetroidPrime/Cameras/CPathCamera.cpp
+    src/MetroidPrime/Cameras/CPlaneCameraSurface.cpp
+    src/MetroidPrime/Cameras/CSphereCameraSurface.cpp
     src/MetroidPrime/Cameras/CSpindleCamera.cpp
     src/MetroidPrime/Cameras/CSplineCylinderCameraSurface.cpp
     src/MetroidPrime/Cameras/CSplinePlaneCameraSurface.cpp
@@ -706,8 +708,10 @@ set(MP_GAME_SOURCES
     src/MetroidPrime/Tweaks/CTweakSlideShow.cpp
     src/MetroidPrime/Tweaks/CTweakTargeting.cpp
     src/MetroidPrime/Tweaks/STweaks_FuncPtrs.cpp
+    src/MetroidPrime/Tweaks/TweakContents.cpp
     src/MetroidPrime/Tweaks/TweakGlobals.cpp
     src/MetroidPrime/TypesMatch.cpp
+    src/MetroidPrime/UserNames.cpp
     src/MetroidPrime/Weapons/CAnnihilatorBeam.cpp
     src/MetroidPrime/Weapons/CAnnihilatorProjectile.cpp
     src/MetroidPrime/Weapons/CAuxWeapon.cpp
@@ -805,6 +809,9 @@ set(MP_MODULE_ScriptSafeZone_SOURCES
     src/MetroidPrime/ScriptObjects/CScriptSafeZone.cpp
     src/MetroidPrime/ScriptObjects/CScriptSafeZoneCrystal.cpp
 )
+set(MP_MODULE_SkyRipple_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptSkyRipple.cpp
+)
 set(MP_MODULE_ScriptFrontEndDataNetwork_SOURCES
     src/MetroidPrime/ScriptObjects/CScriptFrontEndDataNetwork.cpp
 )
@@ -840,7 +847,144 @@ set(MP_MODULE_ScriptCannonBall_SOURCES
 set(MP_MODULE_Tweaks_SOURCES
     src/MetroidPrime/Tweaks/Tweaks.cpp
 )
-set(MP_MODULES ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks)
+set(MP_MODULE_ScriptRsfAudio_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptRsfAudio.cpp
+)
+set(MP_MODULE_DarkSamusBattleStage_SOURCES
+    src/MetroidPrime/Enemies/CDarkSamusBattleStage.cpp
+)
+set(MP_MODULE_FogOverlay_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptFogOverlay.cpp
+)
+set(MP_MODULE_ScriptStreamedMovie_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptStreamedMovie.cpp
+)
+set(MP_MODULE_FlyerSwarm_SOURCES
+    src/MetroidPrime/Enemies/CFlyerSwarm.cpp
+)
+set(MP_MODULE_EmperorIngStage2Tentacle_SOURCES
+    src/MetroidPrime/Enemies/CEmperorIngStage2Tentacle.cpp
+)
+set(MP_MODULE_Krocuss_SOURCES
+    src/MetroidPrime/Enemies/CKrocuss.cpp
+)
+set(MP_MODULE_AtomicBeta_SOURCES
+    src/MetroidPrime/Enemies/CAtomicBeta.cpp
+)
+set(MP_MODULE_RubiksPuzzle_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptRubiksPuzzle.cpp
+)
+set(MP_MODULE_MetareeSwarm_SOURCES
+    src/MetroidPrime/Enemies/CMetareeSwarm.cpp
+)
+set(MP_MODULE_Shredder_SOURCES
+    src/MetroidPrime/Enemies/CShredder.cpp
+)
+set(MP_MODULE_ScriptRiftPortal_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptRiftPortal.cpp
+)
+set(MP_MODULE_BacteriaSwarm_SOURCES
+    src/MetroidPrime/Enemies/CBacteriaSwarm.cpp
+)
+set(MP_MODULE_IngBlobSwarm_SOURCES
+    src/MetroidPrime/Enemies/CIngBlobSwarm.cpp
+)
+set(MP_MODULE_Glowbug_SOURCES
+    src/MetroidPrime/Enemies/CGlowbug.cpp
+)
+set(MP_MODULE_DarkCommando_SOURCES
+    src/MetroidPrime/Enemies/CDarkCommando.cpp
+)
+set(MP_MODULE_DarkTrooper_SOURCES
+    src/MetroidPrime/Enemies/CDarkTrooper.cpp
+)
+set(MP_MODULE_IngSnatchingSwarm_SOURCES
+    src/MetroidPrime/Enemies/CIngSnatchingSwarm.cpp
+)
+set(MP_MODULE_GeomBlobV2_SOURCES
+    src/MetroidPrime/Enemies/CCollisionTracker.cpp
+    src/MetroidPrime/Enemies/CSurfaceParticleEffect.cpp
+)
+set(MP_MODULE_Blogg_SOURCES
+    src/MetroidPrime/Enemies/CBlogg.cpp
+)
+set(MP_MODULE_Grenchler_SOURCES
+    src/MetroidPrime/Enemies/CGrenchler.cpp
+    src/MetroidPrime/Enemies/CGrenchlerTail.cpp
+)
+set(MP_MODULE_Kralee_SOURCES
+    src/MetroidPrime/Enemies/CKralee.cpp
+)
+set(MP_MODULE_OctapedeSegment_SOURCES
+    src/MetroidPrime/Enemies/COctapedeSegment.cpp
+)
+set(MP_MODULE_Lumite_SOURCES
+    src/MetroidPrime/Enemies/CLumite.cpp
+)
+set(MP_MODULE_MediumIng_SOURCES
+    src/MetroidPrime/Enemies/CMediumIng.cpp
+)
+set(MP_MODULE_MysteryFlyer_SOURCES
+    src/MetroidPrime/Enemies/CMysteryFlyer.cpp
+)
+set(MP_MODULE_Rezbit_SOURCES
+    src/MetroidPrime/Enemies/CRezbit.cpp
+)
+set(MP_MODULE_Sporb_SOURCES
+    src/MetroidPrime/Enemies/CSporbBase.cpp
+    src/MetroidPrime/Enemies/CSporbNeedle.cpp
+    src/MetroidPrime/Enemies/CSporbProjectile.cpp
+    src/MetroidPrime/Enemies/CSporbTop.cpp
+)
+set(MP_MODULE_PlantScarabSwarm_SOURCES
+    src/MetroidPrime/Enemies/CPlantScarabSwarm.cpp
+)
+set(MP_MODULE_ScriptCoin_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptCoin.cpp
+)
+set(MP_MODULE_PirateRagDoll_SOURCES
+    src/MetroidPrime/Enemies/CPirateRagDoll.cpp
+)
+set(MP_MODULE_ScriptPlayerProxy_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptPlayerProxy.cpp
+)
+set(MP_MODULE_StoneToad_SOURCES
+    src/MetroidPrime/Enemies/CStoneToad.cpp
+)
+set(MP_MODULE_PuddleSpore_SOURCES
+    src/MetroidPrime/Enemies/CPuddleSpore.cpp
+)
+set(MP_MODULE_ScriptPlayerActor_SOURCES
+    src/MetroidPrime/ScriptObjects/CScriptPlayerActor.cpp
+)
+set(MP_MODULE_IngPuddle_SOURCES
+    src/MetroidPrime/Enemies/CIngPuddle.cpp
+)
+set(MP_MODULE_PillBug_SOURCES
+    src/MetroidPrime/Enemies/CPillBug.cpp
+)
+set(MP_MODULE_SpankWeed_SOURCES
+    src/MetroidPrime/Enemies/CSpankWeed.cpp
+)
+set(MP_MODULE_WispTentacle_SOURCES
+    src/MetroidPrime/Enemies/CWispTentacle.cpp
+)
+set(MP_MODULE_IngSpiderballGuardian_SOURCES
+    src/MetroidPrime/Enemies/CIngSpiderballGuardian.cpp
+)
+set(MP_MODULE_IngSpaceJumpGuardian_SOURCES
+    src/MetroidPrime/Enemies/CIngSpaceJumpGuardian.cpp
+)
+set(MP_MODULE_AIMannedTurret_SOURCES
+    src/MetroidPrime/Enemies/CAIMannedTurret.cpp
+)
+set(MP_MODULE_Shrieker_SOURCES
+    src/MetroidPrime/Enemies/CShrieker.cpp
+)
+set(MP_MODULE_Splinter_SOURCES
+    src/MetroidPrime/Enemies/CSplinter.cpp
+)
+set(MP_MODULES ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone SkyRipple ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks ScriptRsfAudio DarkSamusBattleStage FogOverlay ScriptStreamedMovie FlyerSwarm EmperorIngStage2Tentacle Krocuss AtomicBeta RubiksPuzzle MetareeSwarm Shredder ScriptRiftPortal BacteriaSwarm IngBlobSwarm Glowbug DarkCommando DarkTrooper IngSnatchingSwarm GeomBlobV2 Blogg Grenchler Kralee OctapedeSegment Lumite MediumIng MysteryFlyer Rezbit Sporb PlantScarabSwarm ScriptCoin PirateRagDoll ScriptPlayerProxy StoneToad PuddleSpore ScriptPlayerActor IngPuddle PillBug SpankWeed WispTentacle IngSpiderballGuardian IngSpaceJumpGuardian AIMannedTurret Shrieker Splinter)
 
 # Port-only sources
 list(APPEND MP_GAME_SOURCES

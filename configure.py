@@ -137,6 +137,11 @@ parser.add_argument(
     action="store_false",
     help="disable progress calculation",
 )
+parser.add_argument(
+    "--monolithic",
+    action="store_true",
+    help="link REL objects into the DOL instead of building RELs (implies --non-matching)",
+)
 args = parser.parse_args()
 
 config = ProjectConfig()
@@ -150,7 +155,7 @@ config.objdiff_path = args.objdiff
 config.binutils_path = args.binutils
 config.compilers_path = args.compilers
 config.generate_map = args.map
-config.non_matching = args.non_matching
+config.non_matching = args.non_matching or args.monolithic
 config.sjiswrap_path = args.sjiswrap
 config.ninja_path = args.ninja
 config.progress = args.progress
@@ -279,8 +284,9 @@ cflags_retro = [
     "-DMUSY_VERSION_PATCH=3",
 ]
 
-if config.version == "G2ME01":
+if config.version in ("G2ME01", "G2MP01"):
     cflags_retro.append('-pragma "inline_max_size(125)"')
+    cflags_retro.append('-pragma "inline_max_total_size(10000)"')
 
 # Relocatable code cannot use the DOL's small-data bases.
 cflags_rel = [
@@ -300,6 +306,14 @@ if version_num > 0:
     # RELs not yet set up for non-USA versions
     config.build_rels = False
 
+# Monolithic builds link REL objects into the DOL, the way Corruption links every
+# script loader: no RELs are built and nothing registers at runtime.
+if args.monolithic:
+    config.build_rels = False
+
+# Units of the RELs linked into a monolithic DOL.
+monolithic_units: List[str] = []
+
 # Helper function for Dolphin libraries
 def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
     return {
@@ -316,6 +330,8 @@ def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
 def Rel(
     lib_name: str, objects: List[Object], extra_cflags: Optional[List[str]] = None
 ) -> Dict[str, Any]:
+    if args.monolithic:
+        monolithic_units.extend(obj.name for obj in objects)
     return {
         "lib": lib_name,
         "mw_version": retro_mw_version,
@@ -438,6 +454,7 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/TypesMatch.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptSound.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptPlatform.cpp"),
+            Object(NonMatching, "MetroidPrime/UserNames.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptGenerator.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptCameraWaypoint.cpp"),
             Object(NonMatching, "MetroidPrime/CGameLight.cpp"),
@@ -473,7 +490,7 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/CDamageVulnerability.cpp"),
             Object(NonMatching, "MetroidPrime/CActorLights.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptLoader/Structs/SLdrIngPossessionData.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/CPatternedInfo.cpp"),
+            Object(Matching, "MetroidPrime/Enemies/CPatternedInfo.cpp"),
             Object(NonMatching, "MetroidPrime/CSimpleShadow.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/CActorParameters.cpp"),
             Object(NonMatching, "MetroidPrime/CInGameGuiManagerSet.cpp"),
@@ -605,7 +622,7 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/CSaveGameScreen.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Weapons/CElectricBeamProjectile.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CDamageEffect.cpp"),
-            Object(MatchingFor("G2ME01"), "MetroidPrime/CPauseScreenBlur.cpp"),
+            Object(Matching, "MetroidPrime/CPauseScreenBlur.cpp"),
             Object(NonMatching, "MetroidPrime/CGameHintInfo.cpp"),
             Object(NonMatching, "MetroidPrime/CErrorOutputWindow.cpp"),
             Object(NonMatching, "MetroidPrime/CRainSplashGenerator.cpp"),
@@ -639,14 +656,14 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/CStateManagerScriptMsgArray.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CBallCamera.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CBallCameraTransitions.cpp"),
-            Object(NonMatching, "MetroidPrime/Cameras/CCameraManager.cpp"),
-            Object(NonMatching, "MetroidPrime/Cameras/CCinematicCamera.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CCameraManager.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CCinematicCamera.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CFirstPersonCamera.cpp"),
-            Object(NonMatching, "MetroidPrime/Cameras/CGameCamera.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CGameCamera.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CInterpolationCamera.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CPathCamera.cpp"),
-            Object(NonMatching, "MetroidPrime/Cameras/CSpindleCamera.cpp"),
-            Object(MatchingFor("G2ME01"), "MetroidPrime/Cameras/CBallCameraTransitionState.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CSpindleCamera.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CBallCameraTransitionState.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "MetroidPrime/Enemies/CAnimationState.cpp"),
             Object(NonMatching, "MetroidPrime/Enemies/CWaypointNavigation.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptTriggerOrientated.cpp"),
@@ -708,7 +725,7 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "MetroidPrime/CRELFileManager.cpp"),
             Object(NonMatching, "MetroidPrime/Weapons/CLightComboProjectile.cpp"),
             Object(NonMatching, "MetroidPrime/Weapons/CBlackHole.cpp"),
-            Object(NonMatching, "MetroidPrime/CMFGameLoader.cpp"),
+            Object(Matching, "MetroidPrime/CMFGameLoader.cpp"),
             Object(NonMatching, "MetroidPrime/Weapons/CAnnihilatorProjectile.cpp"),
             Object(NonMatching, "MetroidPrime/CLineOfSightTracker.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "MetroidPrime/CRuleSetEvaluator.cpp"),
@@ -722,7 +739,7 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptCameraPitch.cpp"),
             Object(NonMatching, "MetroidPrime/Enemies/CGenericFSM2.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptTextPane.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SSpacePirate_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSpacePirate_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SKralee_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SParasite_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SPillBug_FuncPtrs.cpp"),
@@ -746,12 +763,13 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/Tweaks/CTweakAutoMapper.cpp"),
             Object(NonMatching, "MetroidPrime/Tweaks/CTweakPlayer.cpp"),
             Object(NonMatching, "MetroidPrime/CDamageInfoScriptLoader.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Tweaks/TweakContents.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Tweaks/STweaks_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSandworm_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SCommandoPirate_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SCommandoPirate_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SDarkSamus_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SIng_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/CIngSpotData.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/CIngSpotData.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSandBoss_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SFlyingPirate_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SGrenchler_FuncPtrs.cpp"),
@@ -759,12 +777,12 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SMinorIng_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SElitePirate_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SBlogg_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SMetroid_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SMetroid_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SGunTurretBase_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SLumite_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SShrieker_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSplinter_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SSplitterMainChassis_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSplitterMainChassis_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SChozoGhost_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/STryclops_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SWispTentacle_FuncPtrs.cpp"),
@@ -789,9 +807,9 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "MetroidPrime/Player/CFrontEndGameMode.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptDamageableTriggerOrientated.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SKrocuss_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SSurfaceParticleEffect_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSurfaceParticleEffect_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SAIMannedTurret_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SPirateRagDoll_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SPirateRagDoll_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SEmperorIngStage1_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SOctapedeSegment_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "MetroidPrime/Player/CPlayerOptions.cpp"),
@@ -801,7 +819,7 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/BodyState/CABSLoopReaction.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CFixedCamera.cpp"),
             Object(NonMatching, "MetroidPrime/CFilteredObjectList.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SGeomBlobV2_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SGeomBlobV2_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SIngPuddle_FuncPtrs.cpp"),
             Object(NonMatching, "MetroidPrime/CBasicSwarmData.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SFlyerSwarm_FuncPtrs.cpp"),
@@ -810,7 +828,7 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SPuddleSpore_FuncPtrs.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptAIHint.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SEmperorIngStage2Tentacle_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SSwarmBasics_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SSwarmBasics_FuncPtrs.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SBacteriaSwarm_FuncPtrs.cpp"),
             Object(NonMatching, "MetroidPrime/CControlHintManager.cpp"),
             Object(NonMatching, "MetroidPrime/Player/CPlayerHints.cpp"),
@@ -843,7 +861,7 @@ config.libs = [
             Object(NonMatching, "MetroidPrime/SwarmRenderHelpers.cpp"),
             Object(NonMatching, "MetroidPrime/CMissileRepeller.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SScriptDarkSamusBattleStage_FuncPtrs.cpp"),
-            Object(NonMatching, "MetroidPrime/Enemies/SDarkCommando_FuncPtrs.cpp"),
+            Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SDarkCommando_FuncPtrs.cpp"),
             Object(NonMatching, "MetroidPrime/CGameResultsScreen.cpp"),
             Object(MatchingFor("G2ME01"), "MetroidPrime/Enemies/SScriptRubiksPuzzle_FuncPtrs.cpp"),
             Object(NonMatching, "MetroidPrime/ScriptLoader.cpp"),
@@ -888,12 +906,12 @@ config.libs = [
             Object(NonMatching, "GuiSys/CGuiObject.cpp", extra_cflags=['-pragma "inline_max_size(500)"']),
             Object(NonMatching, "GuiSys/CGuiPane.cpp"),
             Object(MatchingFor("G2ME01"), "GuiSys/CGuiSliderGroup.cpp"),
-            Object(NonMatching, "GuiSys/CGuiTableGroup.cpp"),
+            Object(MatchingFor("G2ME01"), "GuiSys/CGuiTableGroup.cpp"),
             Object(NonMatching, "GuiSys/CGuiTextPane.cpp"),
             Object(NonMatching, "GuiSys/CGuiWidget.cpp"),
             Object(NonMatching, "GuiSys/CGuiWidgetIdDB.cpp"),
             Object(NonMatching, "GuiSys/CGuiWidgetDrawParms.cpp"),
-            Object(NonMatching, "GuiSys/CAuiEnergyBarT01.cpp"),
+            Object(MatchingFor("G2ME01"), "GuiSys/CAuiEnergyBarT01.cpp"),
             Object(NonMatching, "GuiSys/CAuiImagePane.cpp"),
             Object(MatchingFor("G2ME01"), "GuiSys/CRepeatState.cpp"),
             Object(NonMatching, "GuiSys/CAuiBitmapMeter.cpp"),
@@ -910,10 +928,12 @@ config.libs = [
             Object(NonMatching, "Collision/COBBox.cpp"),
             Object(MatchingFor("G2ME01"), "Collision/CMRay.cpp"),
             Object(NonMatching, "Collision/CSpatialPrimitive.cpp"),
-            Object(NonMatching, "MetroidPrime/Cameras/CCameraSurface.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CCameraSurface.cpp"),
+            Object(NonMatching, "MetroidPrime/Cameras/CSphereCameraSurface.cpp"),
+            Object(NonMatching, "MetroidPrime/Cameras/CPlaneCameraSurface.cpp"),
             Object(NonMatching, "MetroidPrime/Cameras/CCylinderCameraSurface.cpp"),
-            Object(NonMatching, "MetroidPrime/Cameras/CSplineCylinderCameraSurface.cpp"),
-            Object(MatchingFor("G2ME01"), "MetroidPrime/Cameras/CSplinePlaneCameraSurface.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CSplineCylinderCameraSurface.cpp"),
+            Object(Matching, "MetroidPrime/Cameras/CSplinePlaneCameraSurface.cpp"),
         ],
     },
     {
@@ -923,7 +943,7 @@ config.libs = [
         "progress_category": "game",  # str | List[str]
         "host": True,
         "objects": [
-            Object(NonMatching, "Kyoto/Graphics/CThreeSegmentModel.cpp"),
+            Object(NonMatching, "Kyoto/Graphics/CFoldySurface.cpp"),
             Object(NonMatching, "Kyoto/Text/CGuiTextSupport.cpp"),
             Object(NonMatching, "Kyoto/Basics/CBasics.cpp"),
             Object(Matching, "Kyoto/Basics/CStopwatch.cpp"),
@@ -934,11 +954,11 @@ config.libs = [
             Object(Matching, "Kyoto/Basics/RAssertDolphin.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Animation/CAnimation.cpp"),
             Object(NonMatching, "Kyoto/Animation/CAnimationManager.cpp"),
-            Object(NonMatching, "Kyoto/Animation/CAnimationSet.cpp"),
+            Object(NonMatching, "Kyoto/Animation/CCEAnimationSet.cpp"),
             Object(NonMatching, "Kyoto/Animation/CAnimCharacterSet.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Animation/CAnimTreeLoopIn.cpp"),
             Object(NonMatching, "Kyoto/Animation/CAnimTreeSequence.cpp"),
-            Object(NonMatching, "Kyoto/Animation/CCharacterInfo.cpp"),
+            Object(NonMatching, "Kyoto/Animation/CCECharacterInfo.cpp"),
             Object(NonMatching, "Kyoto/Animation/CCharacterSet.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Animation/CMetaAnimBlend.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Animation/CMetaAnimFactory.cpp"),
@@ -1132,7 +1152,7 @@ config.libs = [
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Input/RumbleAdsr.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Input/CRumbleGenerator.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Audio/g721.cpp"),
-            Object(NonMatching, "Kyoto/Audio/CStaticAudioPlayer.cpp"),
+            Object(NonMatching, "Kyoto/Audio/DolphinCRSFAudio.cpp"),
             Object(NonMatching, "Kyoto/CFrameDelayedKiller.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Animation/CTimeRemainderAndFraction.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Text/CCharacterExtraSpaceInstruction.cpp"),
@@ -1142,11 +1162,11 @@ config.libs = [
             Object(NonMatching, "Kyoto/Particles/CParticleSpawnSystem.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Particles/CSpawnSystemDescription.cpp"),
             Object(NonMatching, "Kyoto/Particles/CSortedParticleSystem.cpp"),
-            Object(NonMatching, "Kyoto/Particles/CSortedParticleSystemDataFactory.cpp"),
+            Object(NonMatching, "Kyoto/Particles/CParticleSortedSystemDataFactory.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Particles/CSortedParticleSystemDescription.cpp"),
-            Object(MatchingFor("G2ME01"), "Kyoto/Graphics/CGXTransientBuffer.cpp"),
+            Object(MatchingFor("G2ME01"), "Kyoto/Graphics/DolphinGPUMemory.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Math/CGameCameraSpline.cpp"),
-            Object(NonMatching, "Kyoto/Math/CGameSpline.cpp"),
+            Object(NonMatching, "Kyoto/Math/CSpline.cpp"),
             Object(NonMatching, "Kyoto/Math/CMotionSpline.cpp"),
             Object(NonMatching, "Kyoto/Audio/CAuxEffect.cpp"),
             Object(NonMatching, "Kyoto/Audio/CFlanger.cpp"),
@@ -1159,7 +1179,7 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "Kyoto/Alloc/LockedCache.cpp"),
             Object(NonMatching, "Kyoto/Animation/CSoundPOINode.cpp"),
             Object(NonMatching, "Kyoto/Animation/CPoseAsTransforms_Linear.cpp"),
-            Object(NonMatching, "Kyoto/Particles/CDeferredParticleEffect.cpp"),
+            Object(NonMatching, "Kyoto/Particles/CManagedParticleGen.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/CRelFileDebugInfo.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Audio/CAudioSys.cpp"),
             Object(NonMatching, "Kyoto/Audio/CBitcrusher.cpp"),
@@ -1168,11 +1188,11 @@ config.libs = [
             Object(NonMatching, "Kyoto/Audio/CFilteredDelayAux.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Streams/CBitStreamWriter.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Streams/CBitStreamReader.cpp"),
-            Object(MatchingFor("G2ME01"), "Kyoto/Streams/CInputStream.cpp"),
-            Object(Matching, "Kyoto/Streams/CBufferedDvdRequest.cpp"),
+            Object(MatchingFor("G2ME01"), "Kyoto/Streams/DolphinCInputStream.cpp"),
+            Object(Matching, "Kyoto/Streams/CLookaheadRes.cpp"),
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Streams/CLZOSupport.cpp", extra_cflags=["-i include/LZO"]),
             Object(NonMatching, "Kyoto/Streams/DolphinCLZOInputStream.cpp"),
-            Object(NonMatching, "Kyoto/Streams/CFilePreload.cpp"),
+            Object(NonMatching, "Kyoto/Streams/CStreamPreloadedToken.cpp"),
         ],
     },
     {
@@ -1448,7 +1468,17 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "musyx/runtime/synth.c"),
             Object(MatchingFor("G2ME01", "G2MP01"), "musyx/runtime/seq_api.c"),
             Object(MatchingFor("G2ME01"), "musyx/runtime/snd_synthapi.c"),
+        ],
+    ),
+    # The original stream and DSP control code predate MusyX 2.0.3.
+    MusyX(
+        [
             Object(NonMatching, "musyx/runtime/stream.c"),
+        ],
+        patch=2,
+    ),
+    MusyX(
+        [
             Object(MatchingFor("G2ME01"), "musyx/runtime/synthdata.c"),
             Object(MatchingFor("G2ME01"), "musyx/runtime/synthmacros.c"),
             Object(MatchingFor("G2ME01"), "musyx/runtime/synthvoice.c"),
@@ -1457,7 +1487,16 @@ config.libs = [
             Object(MatchingFor("G2ME01"), "musyx/runtime/synth_adsr.c"),
             Object(MatchingFor("G2ME01"), "musyx/runtime/synth_vsamples.c"),
             Object(MatchingFor("G2ME01"), "musyx/runtime/s_data.c"),
+        ],
+    ),
+    MusyX(
+        [
             Object(NonMatching, "musyx/runtime/hw_dspctrl.c"),
+        ],
+        patch=2,
+    ),
+    MusyX(
+        [
             Object(MatchingFor("G2ME01"), "musyx/runtime/hw_volconv.c"),
             Object(NonMatching, "musyx/runtime/snd3d.c"),
             Object(MatchingFor("G2ME01", "G2MP01"), "musyx/runtime/snd_init.c"),
@@ -1573,6 +1612,13 @@ config.libs = [
         extra_cflags=["-pool off"],
     ),
     Rel(
+        "SkyRipple",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptSkyRipple.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
         "ScriptFrontEndDataNetwork",
         [
             Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptFrontEndDataNetwork.cpp"),
@@ -1652,25 +1698,331 @@ config.libs = [
         # Native generated constructors address each float constant separately.
         extra_cflags=["-pool off"],
     ),
+    Rel(
+        "ScriptRsfAudio",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptRsfAudio.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "DarkSamusBattleStage",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CDarkSamusBattleStage.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "FogOverlay",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptFogOverlay.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "ScriptStreamedMovie",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptStreamedMovie.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "FlyerSwarm",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CFlyerSwarm.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "EmperorIngStage2Tentacle",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CEmperorIngStage2Tentacle.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Krocuss",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CKrocuss.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "AtomicBeta",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CAtomicBeta.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "RubiksPuzzle",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptRubiksPuzzle.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "MetareeSwarm",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CMetareeSwarm.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Shredder",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CShredder.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "ScriptRiftPortal",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptRiftPortal.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "BacteriaSwarm",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CBacteriaSwarm.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "IngBlobSwarm",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CIngBlobSwarm.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Glowbug",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CGlowbug.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "DarkCommando",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CDarkCommando.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "DarkTrooper",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CDarkTrooper.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "IngSnatchingSwarm",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CIngSnatchingSwarm.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "GeomBlobV2",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CCollisionTracker.cpp"),
+            Object(NonMatching, "MetroidPrime/Enemies/CSurfaceParticleEffect.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Blogg",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CBlogg.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Grenchler",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CGrenchler.cpp"),
+            Object(NonMatching, "MetroidPrime/Enemies/CGrenchlerTail.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Kralee",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CKralee.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "OctapedeSegment",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/COctapedeSegment.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Lumite",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CLumite.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "MediumIng",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CMediumIng.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "MysteryFlyer",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CMysteryFlyer.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Rezbit",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CRezbit.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Sporb",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CSporbTop.cpp"),
+            Object(NonMatching, "MetroidPrime/Enemies/CSporbBase.cpp"),
+            Object(NonMatching, "MetroidPrime/Enemies/CSporbProjectile.cpp"),
+            Object(NonMatching, "MetroidPrime/Enemies/CSporbNeedle.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "PlantScarabSwarm",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CPlantScarabSwarm.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "ScriptCoin",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptCoin.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "PirateRagDoll",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CPirateRagDoll.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "ScriptPlayerProxy",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptPlayerProxy.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "StoneToad",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CStoneToad.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "PuddleSpore",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CPuddleSpore.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "ScriptPlayerActor",
+        [
+            Object(NonMatching, "MetroidPrime/ScriptObjects/CScriptPlayerActor.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "IngPuddle",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CIngPuddle.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "PillBug",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CPillBug.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "SpankWeed",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CSpankWeed.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "WispTentacle",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CWispTentacle.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "IngSpiderballGuardian",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CIngSpiderballGuardian.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "IngSpaceJumpGuardian",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CIngSpaceJumpGuardian.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "AIMannedTurret",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CAIMannedTurret.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Shrieker",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CShrieker.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
+    Rel(
+        "Splinter",
+        [
+            Object(NonMatching, "MetroidPrime/Enemies/CSplinter.cpp"),
+        ],
+        extra_cflags=["-pool off"],
+    ),
 ]
 
+if args.monolithic:
+    for lib in config.libs:
+        lib["cflags"] = lib["cflags"] + ["-DMONOLITHIC"]
 
-# Optional callback to adjust link order. This can be used to add, remove, or reorder objects.
-# This is called once per module, with the module ID and the current link order.
-#
-# For example, this adds "dummy.c" to the end of the DOL link order if configured with --non-matching.
-# "dummy.c" *must* be configured as a Matching (or Equivalent) object in order to be linked.
-def link_order_callback(module_id: int, objects: List[str]) -> List[str]:
-    # Don't modify the link order for matching builds
-    if not config.non_matching:
+    def link_order_callback(module_id: int, objects: List[str]) -> List[str]:
+        if module_id == 0:  # DOL
+            return objects + monolithic_units
         return objects
-    if module_id == 0:  # DOL
-        return objects + ["dummy.c"]
-    return objects
 
-
-# Uncomment to enable the link order callback.
-# config.link_order_callback = link_order_callback
+    config.link_order_callback = link_order_callback
 
 
 # Optional extra categories for progress tracking

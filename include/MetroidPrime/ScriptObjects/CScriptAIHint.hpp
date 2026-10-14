@@ -8,7 +8,17 @@ public:
   // Guessed domain names; other serialized values remain unidentified.
   enum EHintType {
     kHT_Unknown0 = 0,
+    kHT_Hop = 1,         // Guessed name
+    kHT_SunlightHop = 2, // Guessed name
+    kHT_Unknown12 = 12,
+    kHT_Unknown13 = 13,
+    kHT_BloggHint = 16,   // Guessed name
+    kHT_SplinterPad = 18, // Guessed name
+    kHT_ShadowDashPoint = 19, // Guessed name; DarkCommando shadow dash destinations.
+    kHT_Maneuver = 20, // Guessed name
     kHT_GrenadeLauncherRaisedAim = 23,
+    kHT_SplinterAttackBlock = 24, // Guessed name
+    kHT_SplinterHide = 25,        // Guessed name
   };
 
   CScriptAIHint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
@@ -31,6 +41,7 @@ public:
   float GetValueParm() const;
   float GetValueParm2() const;
   void SetInUse(bool inUse);
+  void SetTimeRemaining(float time) { mTimeRemaining = time; } // Guessed name
   bool GetInUse(TUniqueId uid) const;
   bool GetInUseIgnoreLock(TUniqueId uid) const;
 

@@ -10,7 +10,7 @@
 #include "WorldFormat/CCollidableOBBTreeGroup.hpp"
 #include "WorldFormat/COBBTreeGroup.hpp"
 
-static const CMaterialList kCollisionActorMaterials(kMT_Unknown59, kMT_CollisionActor,
+static const CMaterialList kCollisionActorMaterials(kMT_Solid, kMT_CollisionActor,
                                                     kMT_ScanPassthrough, kMT_CameraPassthrough);
 static const EScriptObjectMessage kSM_XDMG = static_cast< EScriptObjectMessage >(0x58444d47);
 static const EScriptObjectMessage kSM_XRDG = static_cast< EScriptObjectMessage >(0x58524447);
@@ -39,7 +39,7 @@ CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
   SetCoefficientOfRestitutionModifier(0.5f);
   SetCallTouch(false);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Unknown59), CMaterialList(kMT_CollisionActor, kMT_NoStaticCollision)));
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_NoStaticCollision)));
 }
 
 CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
@@ -55,7 +55,7 @@ CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
 , mObbContainer(nullptr)
 , mObbTreeGroupPrimitive(nullptr)
 , mAaboxPrimitive(rs_new CCollidableAABox(CAABox(-0.5f * mBoxSize, 0.5f * mBoxSize),
-                                          CMaterialList(kMT_Unknown59, kMT_NoStaticCollision)))
+                                          CMaterialList(kMT_Solid, kMT_NoStaticCollision)))
 , mSpherePrimitive(nullptr)
 , mSphereRadius(0.f)
 , mHealthInfo(0.f, 0.f)
@@ -66,7 +66,7 @@ CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
   SetCoefficientOfRestitutionModifier(0.5f);
   SetCallTouch(false);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Unknown59), CMaterialList(kMT_CollisionActor, kMT_NoStaticCollision)));
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_NoStaticCollision)));
 }
 
 CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner, bool active,
@@ -83,7 +83,7 @@ CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
 , mObbTreeGroupPrimitive(nullptr)
 , mAaboxPrimitive(nullptr)
 , mSpherePrimitive(rs_new CCollidableSphere(CSphere(CVector3f::Zero(), radius),
-                                            CMaterialList(kMT_Unknown59, kMT_NoStaticCollision)))
+                                            CMaterialList(kMT_Solid, kMT_NoStaticCollision)))
 , mSphereRadius(radius)
 , mHealthInfo(0.f, 0.f)
 , mDamageVulnerability(CDamageVulnerability::NormalVulnerabilty())
@@ -93,7 +93,7 @@ CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
   SetCoefficientOfRestitutionModifier(0.5f);
   SetCallTouch(false);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Unknown59), CMaterialList(kMT_CollisionActor, kMT_NoStaticCollision)));
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_NoStaticCollision)));
 }
 
 rstl::optional_object< CAABox > CCollisionActor::GetTouchBounds() const {
@@ -117,7 +117,7 @@ CVector3f CCollisionActor::GetOrbitPosition(const CStateManager&) const {
 
 void CCollisionActor::Touch(CActor& actor, CStateManager& mgr) {
   mLastTouched = actor.GetUniqueId();
-  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), mOwner, kSM_XHIT, actor.GetUniqueId()));
+  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), mOwner, kSM_HitObject, actor.GetUniqueId()));
 }
 
 const CCollisionPrimitive* CCollisionActor::GetCollisionPrimitive() const {
@@ -142,8 +142,8 @@ void CCollisionActor::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     if (mNonUniformVulnerability)
       mNonUniformVulnerability.reset();
     break;
-  case kSM_XHIT:
-  case kSM_XXDG:
+  case kSM_HitObject:
+  case kSM_ReflectedDamage:
   case kSM_XDMG:
   case kSM_XRDG:
     if (CEntity* owner = mgr.ObjectById(mOwner)) {

@@ -212,7 +212,7 @@ public:
                                bool useAcoustics = false, bool looped = false,
                                const short priority = kMedPriority);
   static CSfxHandle AddEmitter(ushort id, const CVector3f& position, uchar volume, int area,
-                               bool useAcoustics, bool looped, short priority);
+                               bool useAcoustics, bool looped, const short priority);
   static CSfxHandle AddEmitter(CAudioSys::C3DEmitterParmData& params, int area = kAllAreas,
                                bool useAcoustics = false, bool looped = false,
                                const short priority = kMedPriority);
@@ -239,7 +239,7 @@ public:
   static void AddListener(ESfxChannels channel, const CVector3f& position,
                           const CVector3f& direction, const CVector3f& heading, const CVector3f& up,
                           float frontSur, float backSur, float soundSpeed, uint flags,
-                          uchar maxVolume, int listener);
+                          const uchar maxVolume, int listener);
   static void UpdateListener(const CVector3f& position, const CVector3f& direction,
                              const CVector3f& heading, const CVector3f& up, uchar maxVolume,
                              int listener);

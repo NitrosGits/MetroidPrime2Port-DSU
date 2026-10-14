@@ -52,8 +52,8 @@ CGunTurretBase::CGunTurretBase(
     ushort gunLowerLoopedSfx, ushort gunLowerOffSfx, ushort gunRaiseLoopedSfx,
     ushort gunRaiseOffSfx, ushort pirateGunDeathLowerLoopedSfx, ushort gfGunDeathLowerLoopedSfx,
     ushort poleSparksSfx, float unknown80ce, float sfxFallOff, float sfxMaxDistance)
-: CPatterned(static_cast< EPatternedAI >(0x43), uid, name, kFT_Zero, info, xf, modelData,
-             patternedInfo, kMT_Flyer, kCT_One, static_cast< EBodyType >(5), actorParameters)
+: CPatterned(kPAI_GunTurretBase, uid, name, kFT_Zero, info, xf, modelData, patternedInfo, kMT_Flyer,
+             kCT_One, kBT_Floater, actorParameters)
 , mDetectionRange(patternedInfo.GetDetectionRange())
 , mMaxAttackRange(patternedInfo.GetMaxAttackRange())
 , mMinAttackRange(patternedInfo.GetMinAttackRange())
@@ -185,7 +185,7 @@ CGunTurretBase::CGunTurretBase(
 void CGunTurretBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Delete:
-  case kSM_XHIT:
+  case kSM_HitObject:
   case kSM_AIUpdateDisabled:
   case kSM_Decrement:
   case kSM_Activate:
@@ -356,7 +356,7 @@ bool CGunTurretBase::PlayerInRange(CStateManager& mgr, float range) const {
     if (x8bf_) {
       rstl::reserved_vector< TUniqueId, 1024 > nearList;
       static CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-          CMaterialList(kMT_Character), CMaterialList(kMT_NoPlatformCollision, kMT_Player));
+          CMaterialList(kMT_Character), CMaterialList(kMT_ProjectilePassthrough, kMT_Player));
       const float r = mDetectionRange;
       const CAABox bounds(pos + CVector3f(-r, -r, -r), pos + CVector3f(r, r, r));
       mgr.BuildNearList(nearList, bounds, filter, this);
@@ -520,7 +520,7 @@ void CGunTurretBase::Withdraw(CStateManager& mgr, EStateMsg msg, float dt) {
     if (CGunTurretTop* top = TCastToPtr< CGunTurretTop >(mgr.ObjectById(mTopId))) {
       mGunVulnerability = *top->GetDamageVulnerability();
       *top->DamageVulnerability() = CDamageVulnerability::ImmuneVulnerabilty();
-      top->RemoveMaterial(kMT_Unknown59, mgr);
+      top->RemoveMaterial(kMT_Solid, mgr);
     }
     StopLoopedSounds();
     if (!mGunDestroyed) {
@@ -541,7 +541,7 @@ void CGunTurretBase::Spawn(CStateManager& mgr, EStateMsg msg, float dt) {
     mState = kS_Spawn;
     if (CGunTurretTop* top = TCastToPtr< CGunTurretTop >(mgr.ObjectById(mTopId))) {
       *top->DamageVulnerability() = mGunVulnerability;
-      top->AddMaterial(kMT_Unknown59, mgr);
+      top->AddMaterial(kMT_Solid, mgr);
       top->AddMaterial(kMT_RadarObject, mgr);
     }
     PlayLoopedSfx(mGunRaiseLoopedSfx, mgr);
@@ -689,10 +689,9 @@ void CGunTurretBase::Think(float dt, CStateManager& mgr) {
   }
 
   if (mHitTargetValid) {
-    mgr.ApplyDamage(
-        GetUniqueId(), mLastHitTarget, GetUniqueId(), mAttackDamage,
-        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), CMaterialList()),
-        CVector3f::Zero());
+    mgr.ApplyDamage(GetUniqueId(), mLastHitTarget, GetUniqueId(), mAttackDamage,
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                    CVector3f::Zero());
     const CPatterned* patterned = TCastToConstPtr< CPatterned >(mgr.GetObjectById(mHitTarget));
     if (patterned && !patterned->GetAlive()) {
       mHitTarget = kInvalidUniqueId;
@@ -880,7 +879,7 @@ CActor* CGunTurretBase::FindTarget(CStateManager& mgr) {
       if (x8be_ && !mGunHit) {
         rstl::reserved_vector< TUniqueId, 1024 > nearList;
         static CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-            CMaterialList(kMT_Character), CMaterialList(kMT_NoPlatformCollision, kMT_Player));
+            CMaterialList(kMT_Character), CMaterialList(kMT_ProjectilePassthrough, kMT_Player));
         const float r = mMaxAttackRange;
         const CVector3f pos = GetTranslation();
         const CAABox bounds(pos + CVector3f(-r, -r, -r), pos + CVector3f(r, r, r));
@@ -950,7 +949,7 @@ void CGunTurretBase::UpdateAttack(CStateManager& mgr, float dt) {
           rstl::reserved_vector< TUniqueId, 1024 > nearList;
           TUniqueId hitId = kInvalidUniqueId;
           static CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-              CMaterialList(kMT_Unknown59), CMaterialList(kMT_NoPlatformCollision));
+              CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));
           mgr.BuildNearList(nearList, firePos, topXf.GetColumn(kDY), 100.f, filter, this);
           const int signX = (mgr.Random()->Next() % 2) == 0 ? 1 : -1;
           const int signZ = (mgr.Random()->Next() % 2) == 0 ? 1 : -1;
@@ -1038,7 +1037,7 @@ void CGunTurretBase::LaunchProjectile(CStateManager& mgr) {
                      CTransform4f::RotateZ(CRelAngle::FromDegrees(angleZ)));
   CEnergyProjectile* projectile = rs_new CEnergyProjectile(
       true, mProjectileInfo.Token(), static_cast< EWeaponType >(mAttackDamage.GetWeaponMode1()), xf,
-      kMT_NoPlatformCollision, mProjectileInfo.GetDamage(), mgr.AllocateUniqueId(),
+      kMT_ProjectilePassthrough, mProjectileInfo.GetDamage(), mgr.AllocateUniqueId(),
       GetCurrentAreaId(), GetUniqueId(), kInvalidUniqueId, 0, false, CVector3f(1.f, 1.f, 1.f),
       CImpactVisorEffect::ParticleEffect(mPirateProjectileEffect,
                                          CSfxManager::kInternalInvalidSfxId, false),
@@ -1173,18 +1172,22 @@ CEntity* LoadGunTurretBase(CStateManager& mgr, CInputStream& input, CEntityInfo&
       sldrThis.minTimeBetweenShots, sldrThis.maxTimeBetweenShots, sldrThis.maxPitchAngleUp,
       LdrToActorParameters(sldrThis.actorInformation), sldrThis.gunRespawns,
       sldrThis.minShotsInABurst, sldrThis.maxShotsInABurst, sldrThis.isPirateTurret, sldrThis.cRSC,
-      sldrThis.pirateProjectileEffect, sldrThis.alwaysFF, sldrThis.unknown_0x5cf12e9a,
-      sldrThis.unknown_0x479d8dc4, sldrThis.maxPitchAngleDown, sldrThis.unknown_0xfc036e93,
-      sldrThis.unknown_0x8a35b1ea, sldrThis.unknown_0xd49bec5a, sldrThis.attackDelay,
-      sldrThis.patrolDelay, sldrThis.withdrawDelay, sldrThis.detectionHeightUp,
-      sldrThis.detectionHeightDown, sldrThis.shotAngleVariance, sldrThis.attackLeashTime,
-      sldrThis.gFFireShotSound, sldrThis.pirateFireShotSound, sldrThis.lockOnSound,
-      sldrThis.gunPanSound, sldrThis.gFGunChargeSound, sldrThis.pirateGunChargeSound,
-      sldrThis.gunLowerLoopedSound, sldrThis.gunLowerOffSound, sldrThis.gunRaiseLoopedSound,
-      sldrThis.gunRaiseOffSound, sldrThis.pirateGunDeathLowerLoopedSound,
-      sldrThis.gFGunDeathLowerLoopedSound, sldrThis.poleSparksSound, sldrThis.unknown_0x80ce481a,
-      sldrThis.soundFallOff, sldrThis.maxAudibleDistance);
+      sldrThis.pirateProjectileEffect, sldrThis.pirateProjectileVisorEffect,
+      sldrThis.unknown_0x5cf12e9a, sldrThis.unknown_0x479d8dc4, sldrThis.maxPitchAngleDown,
+      sldrThis.unknown_0xfc036e93, sldrThis.unknown_0x8a35b1ea, sldrThis.unknown_0xd49bec5a,
+      sldrThis.attackDelay, sldrThis.patrolDelay, sldrThis.withdrawDelay,
+      sldrThis.detectionHeightUp, sldrThis.detectionHeightDown, sldrThis.shotAngleVariance,
+      sldrThis.attackLeashTime, sldrThis.gFFireShotSound, sldrThis.pirateFireShotSound,
+      sldrThis.lockOnSound, sldrThis.gunPanSound, sldrThis.gFGunChargeSound,
+      sldrThis.pirateGunChargeSound, sldrThis.gunLowerLoopedSound, sldrThis.gunLowerOffSound,
+      sldrThis.gunRaiseLoopedSound, sldrThis.gunRaiseOffSound,
+      sldrThis.pirateGunDeathLowerLoopedSound, sldrThis.gFGunDeathLowerLoopedSound,
+      sldrThis.poleSparksSound, sldrThis.maxPoleExtensionLength, sldrThis.soundFallOff,
+      sldrThis.maxAudibleDistance);
 }
+
+#ifndef MONOLITHIC
+CEntity* LoadGunTurretTop(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
 
 SGunTurretBase_FuncPtrs REL_loader_GunTurret;
 
@@ -1197,5 +1200,6 @@ void SetRelLoaderFunctionToLoader() {
 void RELMain() { SetRelLoaderFunctionToLoader(); }
 
 void RELExit() { SetSGunTurretBase_FuncPtrs(nullptr); }
+#endif
 
 CGunTurretBase::~CGunTurretBase() {}

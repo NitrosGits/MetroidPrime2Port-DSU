@@ -30,6 +30,11 @@ template < class T >
 struct is_trivially_destructible< bool (T::*)(CStateManager&, const float&) > {
   enum { value = true };
 };
+
+template < class T >
+struct is_trivially_destructible< void (T::*)(CStateManager&, float) > {
+  enum { value = true };
+};
 } // namespace rstl
 
 // Guessed name. AFSM and FSM2 dispatchers share this virtual interface.
@@ -90,7 +95,7 @@ public:
   virtual void Update(CStateManager& mgr, T& owner, float dt);
   virtual bool HasState() const;
   virtual const char* GetName() const;
-  virtual float GetTime() const;
+  virtual float GetTime() const { return mTime; }
   virtual float GetDelay() const;
   virtual void SetDelay(float delay);
 
@@ -231,11 +236,6 @@ bool TStateMachineState< T >::HasState() const {
 }
 
 template < class T >
-float TStateMachineState< T >::GetTime() const {
-  return mTime;
-}
-
-template < class T >
 float TStateMachineState< T >::GetDelay() const {
   return mDelay;
 }
@@ -331,5 +331,8 @@ void TStateMachineState< T >::CallState(const CState& state, CStateManager& mgr,
     }
   }
 }
+
+template < class T >
+TStateMachineStateBase< T >::~TStateMachineStateBase() {}
 
 #endif // _TSTATEMACHINESTATE

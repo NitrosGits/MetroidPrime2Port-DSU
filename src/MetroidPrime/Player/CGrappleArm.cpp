@@ -18,6 +18,8 @@
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/GunResNames.hpp"
+#include "MetroidPrime/SFX/SamusGrapple.h"
+#include "MetroidPrime/SFX/SamusGrapple_MP.h"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayer.hpp"
 #include "MetroidPrime/Weapons/GunController/CGunController.hpp"
@@ -42,7 +44,7 @@ static const TStateMachineState< CGrappleArm >::SStateFunction kStateFunctions[]
     {"Fidget", &CGrappleArm::Fidget},
     {"Grappling", &CGrappleArm::Grappling}};
 
-static const char* const kGrappleLocator = "grapLocator_SDK";
+static const char* const skGrappleLocator = "grapLocator_SDK";
 static const char* const kBeamLocators[] = {"LGBeam", "LGBeam", "LGBeamLight"};
 static const rstl::pair< const char*, const char* > kSuitModels[] = {
     rstl::pair< const char*, const char* >("", ""),
@@ -50,9 +52,9 @@ static const rstl::pair< const char*, const char* > kSuitModels[] = {
     rstl::pair< const char*, const char* >("LeftArm_Light_CMDL", "LeftArm_Light_CSKR")};
 // Guessed names. Gun PAS states reuse numeric IDs from the actor PAS domain.
 enum EArmPASState { kAPS_Fidget = 10, kAPS_Grapple = 11 };
-static const ushort kFireSfx[] = {0x1d9, 0x258a};
-static const ushort kLoopSfx[] = {0x1da, 0x2589};
-static const ushort kSwooshSfx[] = {0x1df, 0x1df};
+static const ushort kFireSfx[] = {SFXsam_b_grapfire_00_oneshot, SFXsa2_b_grapfire_00_oneshot};
+static const ushort kLoopSfx[] = {SFXsam_b_grap_lp_00_looped, SFXsa2_b_grap_lp_00_looped};
+static const ushort kSwooshSfx[] = {SFXsam_b_swing_00_oneshot, SFXsam_b_swing_00_oneshot};
 
 CGrappleArm::CGrappleArm(const CVector3f& scale, TUniqueId playerId, bool multiplayer)
 : CEntity(kInvalidUniqueId, CEntity::NullEntityInfo, rstl::string_l("SamusArm"), 0)
@@ -125,7 +127,7 @@ CGrappleArm::CGrappleArm(const CVector3f& scale, TUniqueId playerId, bool multip
   CAnimData& animData = *mArmModel->AnimationData();
   animData.SetPoseBuilt(false);
   animData.BuildPose();
-  mGrappleLocator = animData.GetLocatorSegId(rstl::string_l(kGrappleLocator));
+  mGrappleLocator = animData.GetLocatorSegId(rstl::string_l(skGrappleLocator));
   for (int i = 0; i < 3; ++i) {
     mBeamLocators.push_back(animData.GetLocatorSegId(rstl::string_l(kBeamLocators[i])));
   }
@@ -286,7 +288,7 @@ void CGrappleArm::Update(float dt, CStateManager& mgr) {
       CAssetId modelId;
       CAssetId skinId;
       if (mCurrentSuit == CPlayerState::kPS_Varia) {
-        const CCharacterInfo& info = mArmModel->AnimationData()->GetCharacterInfo();
+        const CCECharacterInfo& info = mArmModel->AnimationData()->GetCharacterInfo();
         modelId = info.GetModelId();
         skinId = info.GetSkinRulesId();
       } else {

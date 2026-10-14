@@ -10,6 +10,7 @@
 #include "MetroidPrime/Factories/CCharacterFactory.hpp"
 #include "MetroidPrime/Factories/CCharacterFactoryBuilder.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrPortalTransition.hpp"
@@ -44,15 +45,15 @@ CToken CScriptEffect::GetDescription() const { return *mDescription; }
 rstl::single_ptr< CPortalTransition >
 CScriptPortalTransition::CreateTransition(CStateManager& mgr) const {
   const CActor* actor = TCastToConstPtr< CActor >(
-      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState00, kSM_None)));
+      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState0, kSM_None)));
   const CScriptEffect* firstEffect = TCastToConstPtr< CScriptEffect >(
-      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState03, kSM_None)));
+      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState3, kSM_None)));
   const CScriptEffect* secondEffect = TCastToConstPtr< CScriptEffect >(
-      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState04, kSM_None)));
+      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState4, kSM_None)));
   const CScriptCamera* firstCamera = TCastToConstPtr< CScriptCamera >(
-      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState05, kSM_None)));
+      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState5, kSM_None)));
   const CScriptCamera* secondCamera = TCastToConstPtr< CScriptCamera >(
-      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState06, kSM_None)));
+      mgr.GetObjectById(FindConnectedObject(mgr, kSS_InternalState6, kSM_None)));
 
   rstl::optional_object< CToken > firstDescription;
   if (firstEffect != nullptr) {
@@ -161,7 +162,7 @@ CPortalTransition::CPortalTransition(
   }
   mCharacterFactory =
       TLockedToken< CCharacterFactory >(gpCharacterFactoryBuilder->GetFactory(mSamusRes));
-  const CCharacterInfo& character = (*mCharacterFactory)->GetCharInfo(mSuitCharIdx);
+  const CCECharacterInfo& character = (*mCharacterFactory)->GetCharInfo(mSuitCharIdx);
   mSuitModel = gpSimplePool->GetObj(SObjectTag('CMDL', character.GetModelId()));
   mSuitModel->Lock();
   mSuitSkin = gpSimplePool->GetObj(SObjectTag('CSKR', character.GetSkinRulesId()));
@@ -270,10 +271,6 @@ void CPortalTransition::UpdateLights() {
   mLights.push_back_unsafe(backLight);
 }
 
-// Guessed names
-static const char* const skGunLocator = "GUN_LCTR";
-static const char* const skGrappleLocator = "GRAPPLE_LCTR";
-
 void CPortalTransition::Update(float dt) {
   TouchModels();
   if (mDirection == 2 && !IsReady()) {
@@ -295,8 +292,8 @@ void CPortalTransition::Update(float dt) {
   }
   mCurTime += dt;
   mSamusModelData.AdvanceAnimationIgnoreParticles(dt, mRandom, true);
-  mGunTransform = mSamusModelData.GetScaledLocatorTransform(rstl::string_l(skGunLocator));
-  mGrappleTransform = mSamusModelData.GetScaledLocatorTransform(rstl::string_l(skGrappleLocator));
+  mGunTransform = mSamusModelData.GetScaledLocatorTransform(rstl::string_l(kGunLocator));
+  mGrappleTransform = mSamusModelData.GetScaledLocatorTransform(rstl::string_l(kGrappleLocator));
   if (!mFirstEffect.null() && (mDirection != 1 || mCurTime >= 3.5f)) {
     mFirstEffect->Update(dt);
   }

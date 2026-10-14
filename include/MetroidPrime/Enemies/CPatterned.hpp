@@ -35,11 +35,44 @@ class CCharAnimTime;
 
 enum EPatternedAI {
   kPAI_AtomicAlpha = 0, // Guessed name; AtomicAlpha REL constructor.
+  kPAI_AtomicBeta = 1,  // Guessed name; AtomicBeta REL constructor.
+  kPAI_ChozoGhost = 4,  // Guessed name; ChozoGhost REL constructor.
+  kPAI_DarkCommando = 6, // Guessed name; DarkCommando REL constructor.
   kPAI_DarkSamus = 7,
-  kPAI_EyeBall = 0x10,    // Guessed name; EyeBall REL constructor.
-  kPAI_Metroid = 0x21,    // Guessed name; Metroid REL constructor.
-  kPAI_Ripper = 0x30,     // Guessed name; Ripper REL constructor.
-  kPAI_WallWalker = 0x4d, // Guessed name; WallWalker REL constructor.
+  kPAI_DarkTrooper = 8, // Guessed name; DarkTrooper REL constructor.
+  kPAI_EmperorIngStage2Tentacle = 0xe, // Guessed name; EmperorIngStage2Tentacle REL constructor.
+  kPAI_EyeBall = 0x10,                 // Guessed name; EyeBall REL constructor.
+  kPAI_FlyingPirate = 0x15,            // Guessed name; FlyingPirate REL constructor.
+  kPAI_Grenchler = 0x16,               // Guessed name; Grenchler REL constructor.
+  kPAI_IngSpaceJumpGuardian = 0x1a,    // Guessed name; IngSpaceJumpGuardian REL constructor.
+  kPAI_IngSpiderballGuardian = 0x1b,   // Guessed name; IngSpiderballGuardian REL constructor.
+  kPAI_Lumite = 0x1d, // Guessed name; Lumite REL constructor.
+  kPAI_MediumIng = 0x1f, // Guessed name; MediumIng REL constructor.
+  kPAI_Metaree = 0x20,                 // Guessed name; Metaree REL constructor.
+  kPAI_Metroid = 0x21,                 // Guessed name; Metroid REL constructor.
+  kPAI_MysteryFlyer = 0x25,            // Guessed name; MysteryFlyer REL constructor.
+  kPAI_Parasite = 0x27,                // Guessed name; Parasite REL constructor.
+  kPAI_PillBug = 0x27,                 // Guessed name; PillBug REL constructor, same value.
+  kPAI_PuddleSpore = 0x2b,             // Guessed name; PuddleSpore REL constructor.
+  kPAI_Puffer = 0x2d,                  // Guessed name; Puffer REL constructor.
+  kPAI_Rezbit = 0x2e,                  // Guessed name; Rezbit REL constructor.
+  kPAI_Ripper = 0x30,                  // Guessed name; Ripper REL constructor.
+  kPAI_SpankWeed = 0x36,               // Guessed name; SpankWeed REL constructor.
+  kPAI_Splinter = 0x37,                // Guessed name; Splinter REL constructor.
+  kPAI_StoneToad = 0x3a,               // Guessed name; StoneToad REL constructor.
+  kPAI_Tryclops = 0x3f,                // Guessed name; Tryclops REL constructor.
+  kPAI_WispTentacle = 0x42,            // Guessed name; WispTentacle REL constructor.
+  kPAI_GunTurretBase = 0x43,           // Guessed name; GunTurretBase REL constructor.
+  kPAI_GunTurretTop = 0x44,            // Guessed name; GunTurretTop REL constructor.
+  kPAI_SporbBase = 0x47,               // Guessed name; SporbBase REL constructor.
+  kPAI_SporbTop = 0x48,                // Guessed name; SporbTop REL constructor.
+  kPAI_SporbProjectile = 0x49,         // Guessed name; SporbProjectile REL constructor.
+  kPAI_Shrieker = 0x4a,                // Guessed name; Shrieker REL constructor.
+  kPAI_WallWalker = 0x4d,              // Guessed name; WallWalker REL constructor.
+  kPAI_Shredder = 0x4e,                // Guessed name; Shredder REL constructor.
+  kPAI_Blogg = 0x4c,                   // Guessed name; Blogg REL constructor.
+  kPAI_Krocuss = 0x4f,                 // Guessed name; Krocuss REL constructor.
+  kPAI_OctapedeSegment = 0x50, // Guessed name; OctapedeSegment REL constructor.
 };
 
 template <>
@@ -185,6 +218,8 @@ public:
   bool IsBeingSnatched() const;
   bool IsIngPossessed() const;
 
+  int GetIngPossessionAnimation() const { return mIngPossessionData.unknown_0x2befc1bf; }
+
   float GetIngPossessedDamageMultiplier() const {
     return mIngPossessionData.ingPossessedDamageMultiplier;
   }
@@ -247,6 +282,8 @@ public:
   void fn_801524fc(CStateManager& mgr);
 
   bool GetAlive() const { return mAlive; }
+  bool GetHitByPlayerProjectile() const { return mHitByPlayerProjectile; }
+  void SetHitByPlayerProjectile(bool hit) { mHitByPlayerProjectile = hit; }
   void SetPendingDeath(bool pending) { mPendingDeath = pending; }
   TUniqueId GetDestObj() const { return mDestObj; }
   EFlavorType GetFlavorType() const { return mFlavor; }

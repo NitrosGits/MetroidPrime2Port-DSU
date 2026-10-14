@@ -305,7 +305,7 @@ endif()
 # mp_port_entry, which compile against Aurora's headers alone, and this file is
 # syntax-checked by the full build instead.
 if(AURORA_SDL3_TARGET)
-    add_library(mp_port_audio OBJECT platform/ai_dma.cpp)
+    add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_events.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include
         extern/aurora/include

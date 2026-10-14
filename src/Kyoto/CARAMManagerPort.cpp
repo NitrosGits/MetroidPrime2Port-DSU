@@ -128,7 +128,7 @@ struct SARAMChunkAllocator {
 
   // `fn_80301E7C`.
   bool Free(const void* ptr) {
-    if (!CARAMManager::IsAllocValid(ptr)) {
+    if (!CARAMManager::IsValidAlloc(ptr)) {
       return false;
     }
     const uint offset = static_cast< uint >(reinterpret_cast< uintptr_t >(ptr));
@@ -212,7 +212,7 @@ void CARAMManager::Shutdown() {
   sInitialized = false;
 }
 
-bool CARAMManager::IsAllocValid(const void* ptr) { return ptr != GetInvalidAlloc(); }
+bool CARAMManager::IsValidAlloc(const void* ptr) { return ptr != GetInvalidAlloc(); }
 
 const void* CARAMManager::GetInvalidAlloc() { return reinterpret_cast< const void* >(-1); }
 

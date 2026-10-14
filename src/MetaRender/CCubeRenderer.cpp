@@ -59,10 +59,6 @@ void* NoiseTextureData(uint seed, size_t bytes) {
 
 // Reconstructed against the G2ME01 renderer; remaining compiler differences keep this NonMatching.
 CCubeRenderer* CCubeRenderer::sRenderer = nullptr;
-// Port: src/Weapons/IWeaponRenderer.cpp defines it (with its default renderer) in the host link.
-#ifndef TARGET_PC
-IWeaponRenderer* IWeaponRenderer::sWeaponRenderer = nullptr;
-#endif
 
 static CModelFlags skNormalFlag = CModelFlags::Normal();
 static CModelFlags skNormalFlagNoUpdate = CModelFlags::Normal().DepthCompareUpdate(true, false);
@@ -181,7 +177,7 @@ void Buckets::Init(void* workspace) {
 #ifdef TARGET_PC
   uchar* data = reinterpret_cast< uchar* >((reinterpret_cast< uintptr_t >(workspace) + 15) & ~uintptr_t(15));
 #else
-  uchar* data = reinterpret_cast< uchar* >((reinterpret_cast< uint >(workspace) + 3) & ~3);
+  uchar* data = reinterpret_cast< uchar* >((reinterpret_cast< size_t >(workspace) + 3) & ~3);
 #endif
   sData = new (data) DrawableList;
   data += sizeof(DrawableList);
@@ -2140,7 +2136,7 @@ void CCubeRenderer::SetGXRegister1Color(const CColor& color) {
 }
 
 void CCubeRenderer::SetWorldLightFadeLevel(float level) {
-  const uchar value = static_cast< uchar >(level * 255.f);
+  const uchar value = CCast::ToUint8(level * 255.f);
   mWorldLightColor = CColor(value, value, value, static_cast< uchar >(255));
 }
 

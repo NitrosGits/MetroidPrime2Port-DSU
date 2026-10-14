@@ -29,6 +29,7 @@ public:
   void EnableAnimation(bool enable);
   void SetCurrentAnimation(const CAnimPlaybackParms& parms, bool loop, bool noTrans);
   float GetAnimTimeRemaining() const;
+  float GetTurnSpeed() const { return mTurnSpeed; } // Guessed name
   void SetPlaybackRate(float rate);
   void MultiplyPlaybackRate(float scale);
   void SetDeltaRotation(const CQuaternion& rotation);
@@ -89,6 +90,7 @@ public:
   bool HasBeenFrozen() const { return mHasBeenFrozen; }
 
   bool ShouldPlayDeathAnims() const { return mPlayDeathAnims; }
+  void SetPlayDeathAnims(bool play) { mPlayDeathAnims = play; } // Guessed name
 
   bool IsOnFire() const { return mFireDur > 0.f; }
 

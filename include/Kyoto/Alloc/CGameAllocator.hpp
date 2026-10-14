@@ -25,16 +25,16 @@ public:
 #else
     : mPriorGuard(0xefefefef)
 #endif
-    , mLen(len)
+    , mSize(len)
     , mFileAndLine(fileAndLine)
     , mType(type)
     , mPrev(prev)
     , mNext(next)
     , mNextFree(nextFree)
 #ifdef TARGET_PC
-    , mPostGuard(kAllocatorPostGuard) {}
+    , mGuardBlockStart(kAllocatorPostGuard) {}
 #else
-    , mPostGuard(0xeaeaeaea) {}
+    , mGuardBlockStart(0xeaeaeaea) {}
 #endif
 
     SGameMemInfo* GetPrev() const {
@@ -82,10 +82,10 @@ public:
         topFlag = 2;
       }
       mPrev = reinterpret_cast< SGameMemInfo* >(reinterpret_cast< uintptr_t >(prev) |
-                                                   (topFlag | (flags & ~2)));
+                                                (topFlag | (flags & ~2)));
     }
-    size_t GetLength() const { return mLen; }
-    void SetLength(const size_t len) { mLen = len; }
+    size_t GetLength() const { return mSize; }
+    void SetLength(const size_t len) { mSize = len; }
     SGameMemInfo* GetNextFree() const {
       return reinterpret_cast< SGameMemInfo* >(reinterpret_cast< uintptr_t >(mNextFree) &
                                                ~(kAllocatorPointerBits - 1));
@@ -104,18 +104,18 @@ public:
       mPrev = reinterpret_cast< SGameMemInfo* >(reinterpret_cast< uintptr_t >(ptr) & ~1);
     }
 
-    bool IsPostGuardIntact() const { return mPostGuard == kAllocatorPostGuard; }
-    bool IsPriorGuardIntact() const { return mPriorGuard == kAllocatorPriorGuard; }
+    bool IsPostGuardBlockIntact() const { return mGuardBlockStart == kAllocatorPostGuard; }
+    bool IsPriorGuardBlockIntact() const { return mPriorGuard == kAllocatorPriorGuard; }
 
   private:
     size_t mPriorGuard;
-    size_t mLen;
+    size_t mSize;
     const char* mFileAndLine;
     const char* mType;
     SGameMemInfo* mPrev;
     SGameMemInfo* mNext;
     SGameMemInfo* mNextFree;
-    size_t mPostGuard;
+    size_t mGuardBlockStart;
   };
 
   SGameMemInfo* GetMemInfoFromBlockPtr(const void* ptr) const;

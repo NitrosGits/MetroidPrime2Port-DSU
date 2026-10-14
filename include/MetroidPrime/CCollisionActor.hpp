@@ -14,12 +14,14 @@ class CCollidableSphere;
 // Name exported by the Echoes Wii build; the virtual method names are inferred from G2ME01 calls.
 class CNonUniformVulnerability {
 public:
-  virtual ~CNonUniformVulnerability();
+  virtual ~CNonUniformVulnerability() {}
   virtual const CDamageVulnerability*
   GetDamageVulnerability(const CDamageVulnerability*, const CVector3f&, const CVector3f&,
-                         const CDamageInfo&) const = 0; // Guessed name
+                         const CDamageInfo&) = 0; // Guessed name
   virtual bool GetCollisionResponseType(const CVector3f&, const CVector3f&, const CWeaponMode&, int,
-                                        EWeaponCollisionResponseTypes&) const = 0; // Guessed name
+                                        EWeaponCollisionResponseTypes&) {
+    return false;
+  } // Guessed name
 };
 
 class CCollisionActor : public CPhysicsActor {
@@ -58,6 +60,7 @@ public:
   void SetNonUniformVulnerability(rstl::ncrc_ptr< CNonUniformVulnerability >& vulnerability);
   void ResetNonUniformVulnerability();
   TUniqueId GetLastTouchedObject() const;
+  void SetResponseType(EWeaponCollisionResponseTypes type) { mResponseType = type; } // Guessed name
   TUniqueId GetOwnerId() const { return mOwner; }
   float GetSphereRadius() const;
   void SetSphereRadius(float radius);

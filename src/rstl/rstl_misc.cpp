@@ -1,8 +1,11 @@
+#include "rstl/rc_ptr.hpp"
 #include "rstl/rmemory_allocator.hpp"
 
 #ifdef TARGET_PC
 #include "Kyoto/Alloc/CMemory.hpp"
 #endif
+
+int rstl::rc_ptr_private::sNull = 0x00FFFFFF;
 
 void* rstl::rmemory_allocator::allocate(int size) {
 #ifdef TARGET_PC

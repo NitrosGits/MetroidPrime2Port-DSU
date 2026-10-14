@@ -37,7 +37,7 @@ CHomingBlob::CHomingBlob(const TToken< CGenDescription >& particle, TUniqueId ui
                          float collisionRadius, float nearTargetDistance, float escapeDistance,
                          float targetSearchRadius, float homingAcceleration)
 : CWeapon(uid, areaId, active, owner, kWT_Dark, name, xf,
-          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59),
+          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
                                               CMaterialList(kMT_Character, kMT_Player)),
           CMaterialList(kMT_Projectile), damage, kPA_None, CModelData())
 , mCollisionBounds(bounds)
@@ -84,7 +84,7 @@ void CHomingBlob::PreRenderAllViewports(CStateManager& mgr) {
 }
 
 void CHomingBlob::PreRender(CStateManager& mgr) {
-  SetPreRenderClipped(!mHasRenderBounds || !mgr.fn_800366e4(this));
+  SetPreRenderClipped(!mHasRenderBounds || !mgr.IsActorVisible(*this));
   if (!GetPreRenderClipped() && mPlayerIndex == mgr.GetCurrentRenderPlayerIndex()) {
     SetPreRenderClipped(true);
   }
@@ -304,10 +304,9 @@ void CHomingBlob::UpdateParticles(CStateManager& mgr) {
     const CDamageInfo damage(
         CWeaponMode(blobDamage.GetWeaponMode().GetType(), !mgr.IsMultiplayer()), amount, 0.f, 0.f,
         blobDamage.NoImmunity(), false);
-    mgr.ApplyDamage(
-        GetUniqueId(), mTargetIds[i], GetOwnerId(), damage,
-        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Unknown59), CMaterialList()),
-        CVector3f::Zero());
+    mgr.ApplyDamage(GetUniqueId(), mTargetIds[i], GetOwnerId(), damage,
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                    CVector3f::Zero());
   }
 }
 
