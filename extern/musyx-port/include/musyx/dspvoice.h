@@ -121,5 +121,9 @@ typedef struct DSPstudioinfo {
 
 extern DSPstudioinfo dspStudio[8];
 extern DSPvoice* dspVoice;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+extern u32 dspCompressorOn;
+#else
 extern bool dspCompressorOn;
+#endif
 #endif

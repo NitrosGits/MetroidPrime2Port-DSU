@@ -25,6 +25,11 @@ private:
   rstl::single_ptr< uchar > mPool;
   rstl::single_ptr< uchar > mProject;
   rstl::single_ptr< uchar > mSampleDir;
+#ifdef TARGET_PC
+  // Host MusyX never uploads samples to ARAM; it plays them from the pushed buffer, which
+  // must outlive the group (the resource data is freed after construction).
+  rstl::single_ptr< uchar > mSamples;
+#endif
 };
 CHECK_SIZEOF(CAudioGrpSetLoc, 0x18)
 

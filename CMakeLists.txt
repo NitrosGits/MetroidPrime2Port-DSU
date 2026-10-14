@@ -233,7 +233,8 @@ target_include_directories(mp_platform PRIVATE
     extern/aurora/include
     extern/musyx-port/include
     include)
-target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC)
+target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
+    MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
 
 # The process entry point. It is compiled but not linked: it builds the OS
 # context and memory system the game's entry takes, and those constructors
@@ -244,7 +245,8 @@ target_include_directories(mp_port_entry PRIVATE
     extern/aurora/include
     extern/musyx-port/include
     include)
-target_compile_definitions(mp_port_entry PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC)
+target_compile_definitions(mp_port_entry PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
+    MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
 
 if(MP_SDK_HEADERS_ONLY)
     # Aurora sets these on its own targets; the header-only build has to state them.
@@ -252,8 +254,10 @@ if(MP_SDK_HEADERS_ONLY)
     foreach(t ${MP_MODULE_OBJECT_TARGETS})
         target_compile_definitions(${t} PUBLIC TARGET_PC AURORA)
     endforeach()
-    target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC)
-    target_compile_definitions(mp_port_entry PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC)
+    target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
+    MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
+    target_compile_definitions(mp_port_entry PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
+    MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
 
     mp_scope_modules(mp_game mp_platform mp_port_entry)
 
@@ -322,7 +326,9 @@ else()
         "from it, so without SDL the port cannot link.")
 endif()
 
-# MusyX is the game's audio engine; the vendored fork is portable.
+# MusyX is the game's audio engine; the vendored fork is portable. Echoes uses 2.0.3 (as in
+# configure.py): its group-stack API (sndStack*) and per-stack ARAM only exist from 2.0.2.
+set(MUSYX_VERSION_PATCH 3 CACHE STRING "" FORCE)
 add_subdirectory(extern/musyx-port EXCLUDE_FROM_ALL)
 mp_signed_char(musyx)
 

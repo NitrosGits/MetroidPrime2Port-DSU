@@ -46,8 +46,11 @@ target_compile_options(musyx PRIVATE -Wno-stringop-overflow -Wno-pointer-to-int-
 else ()
 target_compile_options(musyx PRIVATE)
 endif ()
+# MusyX 2.0.x revision the game was built against (Prime 1: 2.0.0, Echoes: 2.0.3).
+set(MUSYX_VERSION_PATCH 0 CACHE STRING "MusyX 2.0.x patch version to build")
 target_compile_definitions(musyx PUBLIC
         -DMUSY_TARGET=${MUSY_TARGET}
+        -DMUSY_VERSION_MAJOR=2 -DMUSY_VERSION_MINOR=0 -DMUSY_VERSION_PATCH=${MUSYX_VERSION_PATCH}
         $<$<CONFIG:Release>:NDEBUG>
         $<$<CONFIG:MinSizeRel>:NDEBUG>)
 set_target_properties(musyx PROPERTIES DEBUG_POSTFIX D)

@@ -457,16 +457,40 @@ void aramSetUploadCallback(ARAMUploadCallback callback, unsigned long chunckSize
   (void)chunckSize;
 }
 
-void* aramStoreData(void* src, unsigned long len) {
+// Samples are played from host memory, so nothing is stored and every ARAM area looks unlimited.
+void* aramStoreData(void* src, unsigned long len
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                    ,
+                    ARAMInfo* ai
+#endif
+) {
   (void)src;
   (void)len;
   return NULL;
 }
 
-void aramRemoveData(void* aram, unsigned long len) {
+void aramRemoveData(void* aram, unsigned long len
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                    ,
+                    ARAMInfo* ai
+#endif
+) {
   (void)aram;
   (void)len;
 }
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+unsigned long aramGetFirstUserAddress() { return 0; }
+
+unsigned long aramGetUserBytes(unsigned long totalBytes) { return totalBytes; }
+#endif
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
+u32 aramGetAvailableBytes(ARAMInfo* ai) {
+  (void)ai;
+  return 0x7FFFFFFF;
+}
+#endif
 
 void aramSyncTransferQueue() {}
 

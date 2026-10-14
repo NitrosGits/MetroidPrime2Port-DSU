@@ -557,7 +557,7 @@ void* hwGetStreamPlayBuffer(u8 hwStreamHandle) {
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
 u32 hwGetStreamARAMAddr(u8 hwStreamHandle) {
-  u32 len; // r1+0xC
+  size_t len; // r1+0xC
   return aramGetStreamBufferAddress(hwStreamHandle, &len);
 }
 #endif

@@ -565,9 +565,8 @@ static const u16 dspMixerCyclesAux[32] = {
 #endif
 #endif
 
-#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 2) // dropped in the SMS 2.0.3 fork (unused; kept for upstream <= 2.0.2)
+// Echoes' MusyX 2.0.3 keeps this (the SMS 2.0.3 fork dropped it).
 void salDeactivateStudio(u8 studio) { dspStudio[studio].state = 0; }
-#endif
 
 static u32 salCheckVolErrorAndResetDelta(u16* dsp_vol, u16* dsp_delta, u16* last_vol, u16 targetVol,
                                          u16* resetFlags, u16 resetMask) {
@@ -2068,7 +2067,7 @@ void salDeactivateVoice(DSPvoice* dsp_vptr) {
   dsp_vptr->state = 0;
 }
 
-#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 2) // dropped in the SMS 2.0.3 fork (unused; kept for upstream <= 2.0.2)
+// Echoes' MusyX 2.0.3 keeps this (the SMS 2.0.3 fork dropped it).
 void salReconnectVoice(DSPvoice* dsp_vptr, u8 studio) {
   if (dsp_vptr->state != 0) {
     if (dsp_vptr->prev != NULL) {
@@ -2125,7 +2124,6 @@ bool salRemoveStudioInput(DSPstudioinfo* stp, SND_STUDIO_INPUT* desc) {
 
   return 0;
 }
-#endif
 
 void salHandleAuxProcessing() {
   DSPstudioinfo* r28;

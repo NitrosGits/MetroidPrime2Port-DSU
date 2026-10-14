@@ -183,6 +183,10 @@ void aramSyncTransferQueue();
   );
   u8 aramAllocateStreamBuffer(u32 len);
   uintptr_t aramGetZeroBuffer();
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  unsigned long aramGetFirstUserAddress();
+  unsigned long aramGetUserBytes(unsigned long totalBytes);
+#endif
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
   u32 aramGetAvailableBytes(ARAMInfo* ai);
 #endif

@@ -274,27 +274,6 @@ __attribute__((aligned(32))) char reachdata_416[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_417[0x400] asm("lbl_804199CC");
 __attribute__((aligned(32))) char reachdata_417[0x400] = {};
 
-// sndFXSetFilter
-extern "C" void reachstub_420() asm("sndFXSetFilter");
-extern "C" void reachstub_420() { mpReachStub("sndFXSetFilter", "sndFXSetFilter"); }
-
-// Re-added 2026-10-14: still referenced (Echoes MusyX stack API absent from musyx-port).
-// sndStackAdd
-extern "C" void reachstub_r1() asm("sndStackAdd");
-extern "C" void reachstub_r1() { mpReachStub("sndStackAdd", "sndStackAdd"); }
-
-// sndStackGetSize
-extern "C" void reachstub_r2() asm("sndStackGetSize");
-extern "C" void reachstub_r2() { mpReachStub("sndStackGetSize", "sndStackGetSize"); }
-
-// sndStackRemove
-extern "C" void reachstub_r3() asm("sndStackRemove");
-extern "C" void reachstub_r3() { mpReachStub("sndStackRemove", "sndStackRemove"); }
-
-// sndStackSetCurrent
-extern "C" void reachstub_r4() asm("sndStackSetCurrent");
-extern "C" void reachstub_r4() { mpReachStub("sndStackSetCurrent", "sndStackSetCurrent"); }
-
 
 // Added 2026-10-14 after the upstream merge: declared and called upstream, never defined.
 // DebugDrawOBB(COBBox const&, float, float, float, float)
