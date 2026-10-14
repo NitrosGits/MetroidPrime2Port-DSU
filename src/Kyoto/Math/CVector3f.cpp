@@ -21,7 +21,16 @@ CUnitVector3f CVector3f::sForwardVector(0.f, 1.f, 0.f);
 CUnitVector3f CVector3f::sBackVector(0.f, -1.f, 0.f);
 CVector3f CVector3f::sOneVector(1.f, 1.f, 1.f);
 
+#ifdef TARGET_PC
+// Port: disc data is big-endian; retail's raw 12-byte copy is already host order on the PPC.
+CVector3f::CVector3f(CInputStream& in) {
+  mX = in.ReadFloat();
+  mY = in.ReadFloat();
+  mZ = in.ReadFloat();
+}
+#else
 CVector3f::CVector3f(CInputStream& in) { in.Get(this, sizeof(CVector3f)); }
+#endif
 
 void CVector3f::PutTo(COutputStream& out) const {
   out.WriteReal32(mX);
