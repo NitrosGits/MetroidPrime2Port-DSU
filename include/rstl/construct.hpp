@@ -72,6 +72,19 @@ void bitwise_copy(void* dest, const void* src) {
   }
 }
 
+#ifdef TARGET_PC
+// Host compilers apply strict aliasing: copying through double/uint lvalues lets GCC drop or
+// reorder the source object's member stores (SBoxEdge::mDominantAxis read back garbage).
+#define RSTL_DECLARE_BITWISE_CONSTRUCTION(T)                                                       \
+  template <>                                                                                      \
+  struct use_assignment_for_construction< T > {                                                    \
+    enum { value = true };                                                                         \
+  };                                                                                               \
+  template <>                                                                                      \
+  struct construction_policy< T, true > {                                                          \
+    static void construct(void* dest, const T& src) { __builtin_memcpy(dest, &src, sizeof(T)); }   \
+  };
+#else
 // A trailing 4-byte remainder is copied inline after the double-word block.
 #define RSTL_DECLARE_BITWISE_CONSTRUCTION(T)                                                       \
   template <>                                                                                      \
@@ -88,6 +101,7 @@ void bitwise_copy(void* dest, const void* src) {
       }                                                                                            \
     }                                                                                              \
   };
+#endif
 
 RSTL_DECLARE_TRIVIALLY_CONSTRUCTIBLE(char)
 RSTL_DECLARE_TRIVIALLY_CONSTRUCTIBLE(signed char)
