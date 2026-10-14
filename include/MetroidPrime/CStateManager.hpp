@@ -505,7 +505,15 @@ public:
     return mCameraManagers[playerIndex];
   }
   CCameraManager* CameraManager(int playerIndex) { return mCameraManagers[playerIndex]; }
+#ifdef TARGET_PC
+  // mPlayerState is only set while a player viewport is being rendered; retail's Think-time
+  // callers pass a null this and read low memory (player index 0). Fall back to player 0.
+  const CPlayerState* GetPlayerState() const {
+    return mPlayerState != nullptr ? mPlayerState : mPlayerStates[0];
+  }
+#else
   const CPlayerState* GetPlayerState() const { return mPlayerState; }
+#endif
   TUniqueId GetPlayerActorHead() const { return mPlayerActorHead; } // Prime-correlated name
   void SetPlayerActorHead(TUniqueId id) { mPlayerActorHead = id; } // Prime-correlated name
   const CPlayer* GetCurrentRenderPlayer() const { return mCurrentRenderPlayer; } // Guessed name
