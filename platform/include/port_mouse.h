@@ -99,4 +99,27 @@ public:
 private:
   bool mReady = false;
 };
+
+// Mouse look. The platform owns the aim angles and SDL's relative-mouse capture; the game
+// reads them from CPlayer (which turns the body to Yaw()) and CFirstPersonCamera (which uses
+// the angles for the view). Off unless MP2_MOUSE_AIM=1, so a pad or the keyboard alone stays
+// the default. MP2_MOUSE_SENS sets radians per pixel and MP2_MOUSE_INVERT_X/_Y flip an axis.
+bool Enabled();
+void SetEnabled(bool enabled);
+// Relative motion as it arrives from SDL's event queue, and the once-per-loop latch that
+// turns the pending deltas into this tick's deltas.
+void AddMotion(float dx, float dy);
+void BeginFrame();
+// Called every tick, from CPlayer::UpdateMouseAim. `active` means the mouse owns the aim
+// right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps
+// the aim glued to the camera direction (x, y, z) instead of turning the player under it.
+// Returns true when the caller should rotate the player to Yaw().
+bool UpdateAim(bool active, bool locked, float x, float y, float z);
+void Synchronize(float x, float y, float z);
+void Reset();
+bool Aiming();
+bool Initialized();
+float Yaw();
+float Pitch();
+float Sensitivity();
 } // namespace PortMouse

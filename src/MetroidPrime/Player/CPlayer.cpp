@@ -100,6 +100,10 @@
 #include <math.h>
 #include <string.h>
 
+#ifdef TARGET_PC
+#include "port_mouse.h"
+#endif
+
 // NonMatching structure pass; incomplete behavior is explicit below.
 // Definitions follow reverse target order for the TU's deferred-inlining emission.
 
@@ -2133,6 +2137,12 @@ void CPlayer::Think(float dt, CStateManager& mgr) {
     mInvulnerabilityTimer -= dt;
   }
 
+#ifdef TARGET_PC
+  // The mouse owns the body yaw while it is aiming. After ProcessInput, whose stick turn would
+  // otherwise win the frame (see MouseAimAllowed).
+  UpdateMouseAim(mgr);
+#endif
+
   UpdateEchoVisorEffects(dt, mgr);
   UpdateDarkAetherDamage(dt, mgr);
   UpdateUnderwaterParticles(dt, mgr);
@@ -2730,6 +2740,50 @@ void CPlayer::UpdateFreeLook(float dt) {
     mFreeLookYawAngle = 0.f;
   }
 }
+
+#ifdef TARGET_PC
+// Mouse look, the way the Prime port does it: the platform owns the aim angles, the game owns
+// what they mean. The body turns to the mouse yaw, so movement stays body-relative and the gun
+// (whose transform comes from the camera) follows; the pitch is left to CFirstPersonCamera,
+// which uses the aim angles for the view. Nothing here sets mInFreeLook: that flag stops
+// movement (CPlayerDynamics) and changes gun animations, and the mouse should not pretend that
+// R is held.
+bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
+  if (!PortMouse::Enabled()) {
+    return false;
+  }
+  const CCameraManager* cameras = mCameraManager;
+  if (cameras == nullptr || !cameras->IsInFPCamera() || cameras->IsInCinematicCamera()) {
+    return false;
+  }
+  if (mMorphBallState != kMS_Unmorphed || IsMorphBallTransitioning() || GetFrozenState()) {
+    return false;
+  }
+  // A target lock keeps the native camera; the mouse aims again once it is released.
+  return mOrbitState == kOS_NoOrbit || mOrbitState == kOS_Grapple;
+}
+
+void CPlayer::UpdateMouseAim(CStateManager& mgr) {
+  if (!PortMouse::Enabled()) {
+    return;
+  }
+  const bool allowed = MouseAimAllowed(mgr);
+  // While something else owns the view - a lock-on, the morph ball, a cinematic - track the
+  // camera direction instead, so engaging the mouse again does not snap the aim.
+  const CFirstPersonCamera* fpCamera =
+      mCameraManager != nullptr ? mCameraManager->GetFirstPersonCamera() : nullptr;
+  const CVector3f forward = fpCamera != nullptr && mCameraManager->IsInFPCamera()
+                                ? fpCamera->GetTransform().GetForward()
+                                : GetTransform().GetForward();
+  if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ())) {
+    return;
+  }
+
+  CTransform4f xf = CTransform4f::RotateZ(CRelAngle::FromRadians(PortMouse::Yaw()));
+  xf.SetTranslation(GetTransform().GetTranslation());
+  SetTransform(xf);
+}
+#endif
 
 void CPlayer::ComputeFreeLook(const CFinalInput& input, CStateManager& mgr) {
   float lookLeft = mControlMapper.GetAnalogInput(CControlMapper::kC_LookLeft, input);

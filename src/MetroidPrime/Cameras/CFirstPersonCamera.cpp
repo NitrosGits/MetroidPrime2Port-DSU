@@ -21,6 +21,10 @@
 #include "MetroidPrime/Tweaks/CTweakPlayer.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayerControls.hpp"
 
+#ifdef TARGET_PC
+#include "port_mouse.h"
+#endif
+
 CFirstPersonCamera::CFirstPersonCamera(const TUniqueId& uid, const CTransform4f& xf,
                                        TUniqueId watchedId, float orbitCameraSpeed, float fov,
                                        float nearZ, float farZ, float aspect, int index,
@@ -106,6 +110,23 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
     lookDir = playerXf.Rotate(freeLookDir);
   }
 
+#ifdef TARGET_PC
+  // Mouse aim replaces the view direction outright, and does not go through the free-look
+  // clamps above (the mouse is not a stick, and the retail limits on the C-stick's travel
+  // would cap it). The body has already been turned to the same yaw by CPlayer::UpdateMouseAim,
+  // so the two agree; while something else owns the view, track that direction instead.
+  if (PortMouse::Enabled()) {
+    if (PortMouse::Aiming() && PortMouse::Initialized()) {
+      const float aimYaw = PortMouse::Yaw();
+      const float aimPitch = PortMouse::Pitch();
+      lookDir = CVector3f(sinf(-aimYaw) * cosf(aimPitch), cosf(-aimYaw) * cosf(aimPitch),
+                          sinf(aimPitch));
+    } else {
+      PortMouse::Synchronize(lookDir.GetX(), lookDir.GetY(), lookDir.GetZ());
+    }
+  }
+#endif
+
   CVector3f eyePos = player->GetEyePosition();
   if (mCloseInTimer > 0.f) {
     eyePos += CMath::Clamp(0.f, mCloseInTimer / 2.f, 1.f) * mCloseInVec;
@@ -137,7 +158,12 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
     break;
   case CPlayer::kOS_NoOrbit:
     if (player->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed &&
-        !player->IsInFreeLook() && mPitchId == kInvalidUniqueId) {
+        !player->IsInFreeLook() && mPitchId == kInvalidUniqueId
+#ifdef TARGET_PC
+        // The mouse is not a stick: do not drag the view down for a jump or a fall.
+        && !(PortMouse::Aiming() && PortMouse::Initialized())
+#endif
+    ) {
       if (player->GetJumpCameraTimer() > 0.f) {
         float t = (player->GetJumpCameraTimer() - tweak->GetJumpCameraPitchDownStart()) /
                   tweak->GetJumpCameraPitchDownFull();
@@ -166,6 +192,13 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
   }
   CQuaternion gunRotation = CQuaternion::NoRotation();
   CTransform4f gunXf = mGunFollowXf;
+#ifdef TARGET_PC
+  if (PortMouse::Aiming() && PortMouse::Initialized()) {
+    // Pixel deltas get no controller-style easing, and the gun-follow basis lands in the same
+    // tick as the camera, so the view is immediate and the shot goes where the crosshair is.
+    gunXf = CTransform4f::LookAt(CVector3f::Zero(), lookDir);
+  } else
+#endif
   if (!player->IsInFreeLook()) {
     switch (player->GetOrbitState()) {
     default: {

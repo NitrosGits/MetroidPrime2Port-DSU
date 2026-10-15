@@ -6,6 +6,8 @@
 #include <aurora/event.h>
 #include <dolphin/pad.h>
 
+#include "port_mouse.h"
+
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -148,11 +150,17 @@ void RunInputScript(unsigned frame) {
 bool PortPumpEvents() {
   static unsigned frame = 0;
   InstallDefaultKeyBindings();
+  PortMouse::BeginFrame();
   RunInputScript(frame++);
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
        ++event) {
     if (event->type == AURORA_EXIT) {
       return true;
+    }
+    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_MOUSE_MOTION) {
+      // Relative motion only, which is what SDL reports while the port holds capture; the
+      // game consumes the resulting aim in CPlayer/CFirstPersonCamera.
+      PortMouse::AddMotion(event->sdl.motion.xrel, event->sdl.motion.yrel);
     }
   }
   return false;

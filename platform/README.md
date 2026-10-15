@@ -43,9 +43,34 @@ in `port_events.cpp` installs the Prime port's layout once at startup:
 
 Keyboard state merges with a connected controller's and with `MP2_INPUT`'s virtual
 pad, so neither replaces the other. There is no remap UI yet (see `debug_ui.cpp`
-under "Waiting"), and mouse look is not wired to the game: `include/port_mouse.h`
-and the aim code in `debug_ui.cpp` are the Prime port's, which drives them from
-its own `CPlayer`/`CFirstPersonCamera` hooks.
+under "Waiting").
+
+## Mouse look
+
+`MP2_MOUSE_AIM=1` hands the aim to the mouse; `MP2_MOUSE_SENS` sets radians per
+pixel (default 0.0035, as in the Prime port) and `MP2_MOUSE_INVERT_X`/`_Y` flip an
+axis. The platform side is `port_mouse.cpp` (built by `mp_port_audio`, because it
+needs SDL): it owns SDL's relative capture and the aim angles in
+`include/port_mouse.h`. The game side is a `#ifdef TARGET_PC` hook in two files,
+the same shape as the Prime port's:
+
+- `CPlayer::UpdateMouseAim` turns the player body to the mouse yaw, so movement
+  stays body-relative and the gun (which follows the camera) points where the
+  crosshair is. It runs in `Think`, after `ProcessInput`, whose stick turn would
+  otherwise win the frame. Nothing there sets `mInFreeLook`: that flag stops
+  movement and changes gun animations, and the mouse should not pretend that R is
+  held. `MouseAimAllowed` gates it - first person, playing, unmorphed, unfrozen,
+  no lock-on, no cinematic - and while something else owns the view the aim
+  tracks the camera direction instead, so re-engaging does not snap.
+- `CFirstPersonCamera::UpdateTransform` uses the aim for the view direction,
+  bypassing the free-look clamps (retail limits how far the C-stick travel may
+  go), skips the jump/fall pitch-down, and rebuilds the gun-follow basis directly
+  from `lookDir` so pixel deltas get no controller-style easing.
+
+Verified on Xvfb by injecting relative X pointer motion (`/tmp/xkey mouse 400 0`):
+the view turned, pitch followed the mouse down, and walking afterwards went in the
+new facing. It is opt-in until it has had more play time; a pad or the keyboard map
+stays the default.
 
 ## Reworked for Echoes
 

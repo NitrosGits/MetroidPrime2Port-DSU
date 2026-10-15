@@ -446,6 +446,14 @@ public:
   void SetLandingStrikePending(bool pending) { mLandingStrikePending = pending; }
   float GetFreeLookAngleX() const { return mFreeLookPitchAngle; }
   float GetFreeLookAngleZ() const { return mFreeLookYawAngle; }
+#ifdef TARGET_PC
+  // Port: the mouse owns the aim while MP2_MOUSE_AIM is on - MouseAimAllowed says whether it
+  // may right now (first person, playing, not morphed, not locked on, not in a cinematic), and
+  // UpdateMouseAim turns the body to the mouse yaw. CFirstPersonCamera reads the same angles
+  // for the view; see platform/include/port_mouse.h.
+  bool MouseAimAllowed(const CStateManager& mgr) const;
+  void UpdateMouseAim(CStateManager& mgr);
+#endif
   float GetJumpCameraTimer() const { return mJumpCameraTimer; }
   float GetTimeSinceJump() const {
     return mTimeSinceJump;
