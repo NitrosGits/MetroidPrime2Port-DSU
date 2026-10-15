@@ -6,6 +6,7 @@
 #include <aurora/event.h>
 #include <dolphin/pad.h>
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -29,6 +30,12 @@ constexpr StickName kSticks[] = {
     {"CLEFT", 0, 0, -127, 0}, {"CRIGHT", 0, 0, 127, 0},
 };
 
+// Seconds since the first input-script poll, so screenshots can be matched to inputs.
+double Seconds() {
+  static const auto start = std::chrono::steady_clock::now();
+  return std::chrono::duration< double >(std::chrono::steady_clock::now() - start).count();
+}
+
 bool NameIs(const char* name, const char* p, const char* at) {
   return std::strlen(name) == static_cast< size_t >(at - p) && std::strncmp(name, p, at - p) == 0;
 }
@@ -49,6 +56,7 @@ void RunInputScript(unsigned frame) {
   if (script == nullptr) {
     return;
   }
+  Seconds();
   PADStatus status{};
   u16 held = 0;
   bool active = false;
@@ -70,7 +78,7 @@ void RunInputScript(unsigned frame) {
           held |= button.mask;
         }
         if (frame == start) {
-          std::fprintf(stderr, "[input] %s at frame %u\n", button.name, frame);
+          std::fprintf(stderr, "[input] %s at frame %u (%.1f s)\n", button.name, frame, Seconds());
         }
       }
     }
@@ -83,7 +91,7 @@ void RunInputScript(unsigned frame) {
           status.substickY += stick.substickY;
         }
         if (frame == start) {
-          std::fprintf(stderr, "[input] %s at frame %u\n", stick.name, frame);
+          std::fprintf(stderr, "[input] %s at frame %u (%.1f s)\n", stick.name, frame, Seconds());
         }
       }
     }
