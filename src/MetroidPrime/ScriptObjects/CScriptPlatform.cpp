@@ -93,7 +93,14 @@ CScriptPlatform::CScriptPlatform(
     AnimationData()->SetIsAnimating(true);
   }
   if (mTreeGroupContainer) {
+#ifdef TARGET_PC
+    // Port: the container belongs to the cached resource; the non-const pointer picked the
+    // owning constructor, so every platform freed the shared tree group (double free on unload).
+    mTreeGroup = rs_new CCollidableOBBTreeGroup(
+        static_cast< const COBBTreeGroup* >(**mTreeGroupContainer), GetMaterialList());
+#else
     mTreeGroup = rs_new CCollidableOBBTreeGroup(**mTreeGroupContainer, GetMaterialList());
+#endif
   }
   if (rollSpline.GetKnotCount()) {
     mRollSpline = rs_new CMayaSpline(rollSpline);
