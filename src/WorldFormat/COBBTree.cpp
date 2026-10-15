@@ -162,7 +162,13 @@ uint COBBTree::CLeafData::GetMemoryUsage() const {
 }
 
 COBBTree::CSimpleAllocator::CSimpleAllocator(uint size)
+#ifdef TARGET_PC
+// Port: the disc size counts retail-sized nodes (32-bit pointers); host nodes are larger and
+// overran the pool into neighbouring heap blocks.
+: mBuffer(size != 0 ? rs_new char[size * 2 + 64] : nullptr), mSize(size), mOffset(0) {}
+#else
 : mBuffer(rs_new char[size]), mSize(size), mOffset(0) {}
+#endif
 
 COBBTree::CSimpleAllocator::~CSimpleAllocator() {
   if (mBuffer) {
