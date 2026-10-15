@@ -11,13 +11,25 @@ inline const CAreaRenderOctTree::Node* CAreaRenderOctTree::GetNode(int index) co
   return reinterpret_cast< const Node* >(mEntries + CBasics::SwapBytes(mIndirectionTable[index]));
 }
 
+#ifdef TARGET_PC
+// The AROT bounds are big-endian floats on disc.
+static CAABox BoundsFromDisc(const float* f) {
+  return CAABox(CBasics::SwapBytes(f[0]), CBasics::SwapBytes(f[1]), CBasics::SwapBytes(f[2]),
+                CBasics::SwapBytes(f[3]), CBasics::SwapBytes(f[4]), CBasics::SwapBytes(f[5]));
+}
+#endif
+
 CAreaRenderOctTree::CAreaRenderOctTree(const rstl::auto_ptr< const uchar >& buffer)
 : mBuffer(buffer)
 , mBitmapCount(CBasics::SwapBytes(*reinterpret_cast< const uint* >(buffer.get() + 8)))
 , mMeshCount(CBasics::SwapBytes(*reinterpret_cast< const uint* >(buffer.get() + 12)))
 , mNodeCount(CBasics::SwapBytes(*reinterpret_cast< const uint* >(buffer.get() + 16)))
 , mBitmapWordCount((mMeshCount + 31) / 32)
+#ifdef TARGET_PC
+, mBounds(BoundsFromDisc(reinterpret_cast< const float* >(buffer.get() + 20)))
+#else
 , mBounds(*reinterpret_cast< const CAABox* >(buffer.get() + 20))
+#endif
 , mBitmaps(reinterpret_cast< const uint* >(buffer.get() + 64))
 , mIndirectionTable(mBitmaps + mBitmapCount * mBitmapWordCount)
 , mEntries(reinterpret_cast< const uchar* >(mIndirectionTable + mNodeCount)) {}
@@ -125,7 +137,11 @@ void CAreaRenderOctTree::Node::RecursiveBuildOverlaps(uint* bitmap, const CAreaR
     } else {
       const int childCount = GetChildCount();
       for (int i = 0; i < childCount; ++i) {
+#ifdef TARGET_PC
+        const Node* child = tree.GetNode(CBasics::SwapBytes(mChildren[i]));
+#else
         const Node* child = tree.GetNode(mChildren[i]);
+#endif
         child->RecursiveBuildOverlaps(bitmap, tree, GetNodeBounds(bounds, i), testBounds);
       }
     }
