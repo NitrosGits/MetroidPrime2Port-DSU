@@ -428,6 +428,19 @@ bool CGameAllocator::Free(const void* ptr) {
     return true;
   }
 
+#ifdef TARGET_PC
+  // `CMemory::Shutdown` calls `Shutdown` below, so the heap is released - `mFirst` is null and
+  // every block is back in the free list - before the process exits. On the console that is
+  // the end of the story, but the host runs the game's own global destructors afterwards, from
+  // `__run_exit_handlers` in `exit`: `CMain::RsMain` nulls `globalObjects`, whose `CMemorySys`
+  // destroys the heap, and *then* `~single_ptr<CTweakPlayerRes>` frees the `CMayaSpline`
+  // vectors it owns. With `mFirst` null that walks a null `SGameMemInfo` and dies. The freed
+  // memory is the platform's to reclaim at that point, so drop the free.
+  if (mFirst == nullptr) {
+    return true;
+  }
+#endif
+
   if (mSmallAllocPool && mSmallAllocPool->PtrWithinPool(ptr)) {
     return mSmallAllocPool->Free(ptr);
   }

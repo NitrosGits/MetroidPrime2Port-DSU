@@ -55,8 +55,8 @@ extern "C" void reachstub_25() asm("_Z18LoadAreaAttributesR13CStateManagerR12CIn
 extern "C" void reachstub_25() { mpReachStub("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)"); }
 
 // PortShutdownSubsystems()
-extern "C" void reachstub_28() asm("_Z22PortShutdownSubsystemsv");
-extern "C" void reachstub_28() { mpReachStub("_Z22PortShutdownSubsystemsv", "PortShutdownSubsystems()"); }
+// (removed: `CMain::ShutdownSubsystems` calls `CFrameDelayedKiller::ShutDown` itself now, under
+// TARGET_PC in src/MetroidPrime/main.cpp, so nothing asked the linker for this symbol.)
 
 // CCubeModel::CCubeModel(rstl::vector<void*, rstl::rmemory_allocator>*, rstl::vector<TCachedToken<CTexture>, rstl::rmemory_allocator>*, void const*, void const*, void const*, void const*, void const*, void const*, CAABox const&, unsigned char, bool, unsigned int)
 extern "C" void reachstub_39() asm("_ZN10CCubeModelC1EPN4rstl6vectorIPvNS0_17rmemory_allocatorEEEPNS1_I12TCachedTokenI8CTextureES3_EEPKvSC_SC_SC_SC_SC_RK6CAABoxhbj");
