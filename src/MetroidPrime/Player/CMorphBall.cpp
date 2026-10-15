@@ -1382,10 +1382,65 @@ void CMorphBall::ResetMorphBallTransitionFlash() {
   mMorphBallTransitionFlashGen = nullptr;
 }
 
+#ifdef TARGET_PC
+// Port: behaviour from retail Render__10CMorphBallCFRC13CStateManagerPC12CActorLights
+// (800C406C). Skipped: Screw Attack / boost / spider magnet / death-ball particle effects,
+// disintegrate/ashy death draw, rain splash, dark aether damage tint, tire-mode tilt.
+void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) const {
+  const CTransform4f ballXf = GetBallToWorld();
+
+  // Retail copies the player's actor draw flags (0xfc..0x108) and swaps the shader set.
+  const CModelFlags baseFlags = mPlayer.GetModelFlags();
+  const CModelFlags ballFlags(baseFlags, true, static_cast< int >(mBallModelShader));
+
+  const rstl::pair< bool, CColor > hacked = mPlayer.GetHackedEffectColor();
+
+  const bool shadow = lights != nullptr && lights->HasShadowLight() && mWorldShadow.get() != nullptr;
+  if (shadow) {
+    mWorldShadow->EnableModelProjectedShadow(ballXf, lights->GetShadowLightIndex(), 1.f);
+  }
+  if (mPlayer.GetDeathAlpha() > 0.f && mBallModel.get() != nullptr) {
+    if (hacked.first) {
+      mBallModel->RenderNoise(mgr, ballXf, hacked.second, true);
+    } else {
+      mBallModel->Render(mgr, ballXf, lights, ballFlags);
+    }
+  }
+  if (shadow) {
+    mWorldShadow->DisableModelProjectedShadow();
+  }
+
+  if (mPlayer.GetDeathAlpha() > 0.f && !hacked.first &&
+      mPlayer.GetPlayerState()->HasPowerUp(CPlayerState::kIT_SpiderBall) &&
+      mSpiderBallGlassModel.get() != nullptr) {
+    const CModelFlags glassFlags(baseFlags, true, static_cast< int >(mSpiderBallGlassModelShader));
+    mSpiderBallGlassModel->Render(mgr, ballXf, mActorLights.get(), glassFlags);
+  }
+
+  for (int i = 0; i < 6; ++i) {
+    if (mWakeEffects[i].get() != nullptr) {
+      mWakeEffects[i]->Render();
+    }
+  }
+
+  if (mDamageEffect > 0.f && !hacked.first) {
+    RenderDamageEffects(mgr, ballXf);
+  }
+
+  RenderMorphBallTransitionFlash(mgr);
+
+  if (mPlayer.GetFrozenState() && mFrozenBallModel.get() != nullptr) {
+    mFrozenBallModel->Render(mgr, CTransform4f(CMatrix3f::Identity(), ballXf.GetTranslation()),
+                             lights, CModelFlags(CModelFlags::kT_Opaque, 1.f));
+  }
+  RenderIceBreakEffect(mgr);
+}
+#else
 // Scaffold, not a reconstructed implementation.
 void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) const {
   // TODO: Render the ball, glass, trails and Echoes Screw Attack/death-ball effects.
 }
+#endif
 
 void CMorphBall::PreRender(CStateManager& mgr) {
   if (1.f == mBoostLightFactor) {
