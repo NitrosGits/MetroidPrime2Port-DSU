@@ -4173,11 +4173,20 @@ void CStateManager::PortWarpToDoor() {
     std::fprintf(stderr, "[warp] no door in area %d\n", area.Value());
     return;
   }
-  const CVector3f forward = nearest->GetTransform().GetForward();
-  const CVector3f stand = nearest->GetTranslation() - forward * 6.f;
-  std::fprintf(stderr, "[warp] door %04x in area %d (%d m away)\n", nearest->GetUniqueId().Value(),
-               area.Value(), static_cast< int >(best));
-  player->Teleport(CTransform4f::LookAt(stand, stand + forward, CVector3f::Up()), *this, true);
+  // Stand on the side the player is already on and look straight at the door: the door's own
+  // forward is not a reliable "outward" (it depends on how the level author rotated it).
+  const CVector3f toDoor = (nearest->GetTranslation() - from);
+  CVector3f dir = toDoor;
+  if (!dir.CanBeNormalized()) {
+    dir = CVector3f(0.f, 1.f, 0.f);
+  } else {
+    dir.Normalize();
+  }
+  const CVector3f stand = nearest->GetTranslation() - dir * 6.f;
+  std::fprintf(stderr, "[warp] door %04x in area %d (%d m away), standing 6 m out\n",
+               nearest->GetUniqueId().Value(), area.Value(), static_cast< int >(best));
+  player->Teleport(CTransform4f::LookAt(stand, nearest->GetTranslation(), CVector3f::Up()), *this,
+                   true);
 }
 
 void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
