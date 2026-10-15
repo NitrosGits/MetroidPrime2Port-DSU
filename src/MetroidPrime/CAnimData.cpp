@@ -17,6 +17,10 @@
 #include "Kyoto/CRandom16.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CModel.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CGX.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
+#endif
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CModelData.hpp"
@@ -269,7 +273,16 @@ void CAnimData::AdvanceParticles(const CTransform4f& xf, float dt, const CVector
 }
 
 void CAnimData::DrawSkinnedModel(const CSkinnedModel& model, const CModelFlags& flags) const {
+#ifdef TARGET_PC
+  // From retail asm; its debug skeleton/bounds draws are off in release and omitted here.
+  const uchar lights = CGraphics::GetLightMask();
+  CGX::SetChanCtrl(CGX::Channel0, lights != 0 ? GX_TRUE : GX_FALSE, GX_SRC_REG, GX_SRC_REG,
+                   static_cast< GXLightID >(lights), lights != 0 ? GX_DF_CLAMP : GX_DF_NONE,
+                   lights != 0 ? GX_AF_SPOT : GX_AF_NONE);
+  model.Draw(&mPose, flags);
+#else
   // TODO: Set lighting/debug render state and draw with the linear pose.
+#endif
 }
 
 void CAnimData::InitializeCache() {
