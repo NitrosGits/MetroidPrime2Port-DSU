@@ -182,19 +182,35 @@ void CDecal::RenderQuad(CQuadDecal& decal, const CDecalDescription::SQuadDescr& 
     if (decal.mRotation == 0.f) {
       // Vertex 0
       GXPosition3f32(-halfSize, 0.001f, halfSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMin, uvSet.yMax);
       // Vertex 1
       GXPosition3f32(halfSize, 0.001f, halfSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMax, uvSet.yMax);
       // Vertex 2
       GXPosition3f32(-halfSize, 0.001f, -halfSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMin, uvSet.yMin);
       // Vertex 3
       GXPosition3f32(halfSize, 0.001f, -halfSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMax, uvSet.yMin);
     } else {
       const CRelAngle ang = CRelAngle::FromDegrees(decal.mRotation);
@@ -202,19 +218,35 @@ void CDecal::RenderQuad(CQuadDecal& decal, const CDecalDescription::SQuadDescr& 
       const float cosSize = cosine(ang) * halfSize;
       // Vertex 0
       GXPosition3f32(sinSize - cosSize, 0.001f, cosSize + sinSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMin, uvSet.yMax);
       // Vertex 1
       GXPosition3f32(sinSize + cosSize, 0.001f, cosSize - sinSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMax, uvSet.yMax);
       // Vertex 2
       GXPosition3f32(-(sinSize + cosSize), 0.001f, -(cosSize - sinSize));
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMin, uvSet.yMin);
       // Vertex 3
       GXPosition3f32(-sinSize + cosSize, 0.001f, -cosSize - sinSize);
+#ifdef TARGET_PC
+      GXColor1u32(color.GetColor_GX());
+#else
       GXColor1u32(color.GetColor_u32());
+#endif
       GXTexCoord2f32(uvSet.xMax, uvSet.yMin);
     }
 
@@ -355,7 +387,11 @@ void CDecal::CDecalPolygon::Render(const CColor& color, const CVector2f& uvOffse
     const float y = mVertices[i].mPosition.GetY();
     const float z = mVertices[i].mPosition.GetZ();
     GXPosition3f32(mVertices[i].mPosition.GetX(), y, z);
+#ifdef TARGET_PC
+    GXColor1u32(color.GetColor_GX());
+#else
     GXColor1u32(color.GetColor_u32());
+#endif
     GXTexCoord2f32(mVertices[i].mUV.GetX() + uvOffset.GetX(),
                    mVertices[i].mUV.GetY() + uvOffset.GetY());
   }

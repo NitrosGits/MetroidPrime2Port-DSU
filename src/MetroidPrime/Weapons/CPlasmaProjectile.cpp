@@ -421,7 +421,11 @@ void CPlasmaProjectile::RenderBeam(int subdivisions, float width, const CColor& 
     CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvPassthru);
   }
   CGraphics::SetTevOp(kTS_Stage1, CGraphics::kEnvPassthru);
+#ifdef TARGET_PC
+  const uint rgba = color.GetColor_GX();
+#else
   const uint rgba = color.GetColor_u32();
+#endif
   CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, count * 2);
   for (int i = 0; i < count; ++i) {
     const float x = CMath::FastCosR(angle);
@@ -474,7 +478,11 @@ void CPlasmaProjectile::RenderMotionBlur() const {
   const CVector3f origin = GetBeamTransform().GetTranslation();
   CColor blurColor = mOuterColor;
   blurColor.SetAlpha(mExpansion);
+#ifdef TARGET_PC
+  const uint outerColor = blurColor.GetColor_GX();
+#else
   const uint outerColor = blurColor.GetColor_u32();
+#endif
   const uint color0 = (outerColor & 0xffffff00) | 0x3f;
   const uint color1 = outerColor & 0xffffff00;
   static const GXVtxDescList vtxDesc[] = {

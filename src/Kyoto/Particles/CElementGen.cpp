@@ -1089,7 +1089,11 @@ void CElementGen::RenderBasicParticlesNoRotTS(const CTransform4f& xf) const {
     float x = viewPos.GetX() + halfSize;
     const float y = viewPos.GetY();
     float z = viewPos.GetZ() + halfSize;
+#ifdef TARGET_PC
+    const uint color = particle.mColor.GetColor_GX();
+#else
     const uint color = particle.mColor.GetColor_u32();
+#endif
 
     GXPosition3f32(x, y, z);
     GXColor1u32(color);
@@ -1119,7 +1123,11 @@ void CElementGen::RenderBasicParticlesRotTS(const CTransform4f& xf) const {
     const float x = viewPos.GetX();
     const float y = viewPos.GetY();
     const float z = viewPos.GetZ();
+#ifdef TARGET_PC
+    const uint color = particle.mColor.GetColor_GX();
+#else
     const uint color = particle.mColor.GetColor_u32();
+#endif
     const float halfSize = 0.5f * particle.mLineLengthOrSize;
     const float theta = particle.mLineWidthOrRota * (M_PIF / 180.f);
     const float sinT = CMath::FastSinR(theta) * halfSize;
@@ -1154,7 +1162,11 @@ void CElementGen::RenderBasicParticlesNoRotNoTS(const CTransform4f& xf) const {
     float x = viewPos.GetX() + halfSize;
     const float y = viewPos.GetY();
     float z = viewPos.GetZ() + halfSize;
+#ifdef TARGET_PC
+    const uint color = particle.mColor.GetColor_GX();
+#else
     const uint color = particle.mColor.GetColor_u32();
+#endif
 
     GXPosition3f32(x, y, z);
     GXColor1u32(color);
@@ -1185,7 +1197,11 @@ void CElementGen::RenderBasicParticlesRotNoTS(const CTransform4f& xf) const {
     const float x = viewPos.GetX();
     const float y = viewPos.GetY();
     const float z = viewPos.GetZ();
+#ifdef TARGET_PC
+    const uint color = particle.mColor.GetColor_GX();
+#else
     const uint color = particle.mColor.GetColor_u32();
+#endif
     const float halfSize = particle.mLineLengthOrSize * 0.5f;
     const float theta = particle.mLineWidthOrRota * (M_PIF / 180.f);
     const float sinT = CMath::FastSinR(theta) * halfSize;
@@ -1215,7 +1231,11 @@ void CElementGen::RenderBasicParticlesNoRotTSModulated(const CTransform4f& xf) c
   for (int i = 0; i < mParticles.size(); ++i) {
     const CParticle& particle = mParticles[i];
     const CVector3f viewPos = xf * particle.mPos;
+#ifdef TARGET_PC
+    const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_GX();
+#else
     const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_u32();
+#endif
     const float halfSize = 0.5f * particle.mLineLengthOrSize;
     float x = viewPos.GetX() + halfSize;
     const float y = viewPos.GetY();
@@ -1246,7 +1266,11 @@ void CElementGen::RenderBasicParticlesRotTSModulated(const CTransform4f& xf) con
   for (int i = 0; i < mParticles.size(); ++i) {
     const CParticle& particle = mParticles[i];
     const CVector3f viewPos = xf * particle.mPos;
+#ifdef TARGET_PC
+    const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_GX();
+#else
     const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_u32();
+#endif
     const float halfSize = 0.5f * particle.mLineLengthOrSize;
     const float theta = particle.mLineWidthOrRota * (M_PIF / 180.f);
     const float sinT = CMath::FastSinR(theta) * halfSize;
@@ -1280,7 +1304,11 @@ void CElementGen::RenderBasicParticlesNoRotNoTSModulated(const CTransform4f& xf)
     const CParticle& particle = mParticles[i];
     const CVector3f viewPos =
         xf * ((particle.mPos - particle.mPrevPos) * mTimeDeltaScale + particle.mPrevPos);
+#ifdef TARGET_PC
+    const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_GX();
+#else
     const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_u32();
+#endif
     const float halfSize = 0.5f * particle.mLineLengthOrSize;
     float x = viewPos.GetX() + halfSize;
     const float y = viewPos.GetY();
@@ -1312,7 +1340,11 @@ void CElementGen::RenderBasicParticlesRotNoTSModulated(const CTransform4f& xf) c
     const CParticle& particle = mParticles[i];
     const CVector3f viewPos =
         xf * ((particle.mPos - particle.mPrevPos) * mTimeDeltaScale + particle.mPrevPos);
+#ifdef TARGET_PC
+    const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_GX();
+#else
     const uint color = CColor::Modulate(mModuColor, particle.mColor).GetColor_u32();
+#endif
     const float halfSize = 0.5f * particle.mLineLengthOrSize;
     const float theta = particle.mLineWidthOrRota * (M_PIF / 180.f);
     const float sinT = CMath::FastSinR(theta) * halfSize;
@@ -1553,7 +1585,11 @@ void CElementGen::RenderParticles() {
             systemCameraCopy *
             ((particle.mPos - particle.mPrevPos) * mTimeDeltaScale + particle.mPrevPos);
 
+#ifdef TARGET_PC
+        uint color = CColor::Modulate(particle.mColor, mModuColor).GetColor_GX();
+#else
         uint color = CColor::Modulate(particle.mColor, mModuColor).GetColor_u32();
+#endif
 
         if (!constUVs) {
           int partFrame = mCurFrame - particle.mStartFrame - 1;
@@ -1680,7 +1716,11 @@ void CElementGen::RenderParticles() {
         CVector3f delta = particle->mPos - particle->mPrevPos;
         const CVector3f pos = delta * mTimeDeltaScale + particle->mPrevPos;
 
+#ifdef TARGET_PC
+        uint color = CColor::Modulate(particle->mColor, mModuColor).GetColor_GX();
+#else
         uint color = CColor::Modulate(particle->mColor, mModuColor).GetColor_u32();
+#endif
         float rota = mLoadedGenDesc->mROTA == nullptr ? 1.f : particle->mLineWidthOrRota;
         float velMagSq = particle->mVel.MagSquared();
 
@@ -1781,7 +1821,11 @@ void CElementGen::RenderParticles() {
 
       CColor col = CColor::Modulate(particle->mColor, mModuColor);
       col.SetAlpha(col.GetAlpha() * mbspFac);
+#ifdef TARGET_PC
+      uint color = col.GetColor_GX();
+#else
       uint color = col.GetColor_u32();
+#endif
 
       if (!constUVs) {
         int partFrame = mCurFrame - particle->mStartFrame - 1;
@@ -2089,7 +2133,11 @@ void CElementGen::RenderParticlesFlameThrower(CElementGen* const* gens, int coun
         GXSetVtxAttrFmt(GX_VTXFMT6, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
       }
       genDesc->mTEXR->GetValueUV(elapsed, uvs);
+#ifdef TARGET_PC
+      const uint color = CColor::Modulate(particle.mColor, modulationColor).GetColor_GX();
+#else
       const uint color = CColor::Modulate(particle.mColor, modulationColor).GetColor_u32();
+#endif
       CGX::Begin(GX_QUADS, GX_VTXFMT6, 4);
       const float halfSize = 0.5f * particle.mLineLengthOrSize;
       const float theta = CRelAngle::FromDegrees(particle.mLineWidthOrRota).AsRadians();
@@ -2115,7 +2163,11 @@ void CElementGen::RenderParticlesFlameThrower(CElementGen* const* gens, int coun
       GXTexCoord2f32(uvs.xMax, uvs.yMin);
       CGX::End();
     } else {
+#ifdef TARGET_PC
+      const uint color = CColor::Modulate(particle.mColor, modulationColor).GetColor_GX();
+#else
       const uint color = CColor::Modulate(particle.mColor, modulationColor).GetColor_u32();
+#endif
       const bool constantUV = genDesc->mTEXR && genDesc->mTEXR->HasConstantUV();
       if (constantUV && !packedUV) {
         packedUV = true;
@@ -2400,7 +2452,11 @@ void CElementGen::RenderParticlesIndirectTexture() {
                                        clipRect.GetHeight() >> indScale, GX_TF_RGB565, NULL,
                                        CGraphics::kSpareBufferTexMapID);
 
+#ifdef TARGET_PC
+    uint color = particle->mColor.GetColor_GX();
+#else
     uint color = particle->mColor.GetColor_u32();
+#endif
     CGX::Begin(GX_QUADS, GX_VTXFMT0, 4);
 
     GXPosition3f32(sinPlusCos + vpX, vpY, (cosT - sinT) + vpZ);
@@ -2542,7 +2598,11 @@ void CElementGen::RenderLines() {
         systemCameraMatrix * (particle.mPos + particle.mLineLengthOrSize * direction);
 
     if (widtConst) {
+#ifdef TARGET_PC
+      const uint color = particle.mColor.GetColor_GX();
+#else
       const uint color = particle.mColor.GetColor_u32();
+#endif
       GXPosition3f32(p1[0], p1[1], p1[2]);
       GXColor1u32(color);
       GXTexCoord2f32(uvs.xMin, uvs.yMin);
@@ -2558,7 +2618,11 @@ void CElementGen::RenderLines() {
       }
       CGX::SetLineWidth(CCast::ToUint8(6.f * lineWidth), GX_TO_ZERO);
       CGX::Begin(GX_LINES, GX_VTXFMT0, 2);
+#ifdef TARGET_PC
+      const uint color = particle.mColor.GetColor_GX();
+#else
       const uint color = particle.mColor.GetColor_u32();
+#endif
       GXPosition3f32(p1[0], p1[1], p1[2]);
       GXColor1u32(color);
       GXTexCoord2f32(uvs.xMin, uvs.yMin);
@@ -2714,7 +2778,11 @@ void CElementGen::RenderModelParticle(SModelRenderState& state, const CColor& co
     if (state.mModulateAlpha) {
       CGX::Begin(GX_QUADS, GX_VTXFMT0, 4);
       GXPosition3f32(0.5f, 0.f, 0.5f);
+#ifdef TARGET_PC
+      const uint packedColor = color.GetColor_GX();
+#else
       const uint packedColor = color.GetColor_u32();
+#endif
       GXColor1u32(packedColor);
       GXTexCoord2f32(uvs.xMax, uvs.yMax);
       GXPosition3f32(-0.5f, 0.f, 0.5f);
@@ -2729,7 +2797,11 @@ void CElementGen::RenderModelParticle(SModelRenderState& state, const CColor& co
       CGX::End();
     } else {
       CGraphics::StreamBegin(kP_Quads);
+#ifdef TARGET_PC
+      CGraphics::StreamColor(color.GetColor_GX());
+#else
       CGraphics::StreamColor(color.GetColor_u32());
+#endif
       CGraphics::StreamTexcoord(uvs.xMax, uvs.yMax);
       CGraphics::StreamVertex(0.5f, 0.f, 0.5f);
       CGraphics::StreamTexcoord(uvs.xMin, uvs.yMax);
@@ -2795,7 +2867,11 @@ void CElementGen::RenderIndirectModelParticle(SModelRenderState& state, const CC
   CGraphics::LoadDolphinSpareTexture(clip.GetTexWidth() >> halfSize, clip.GetHeight() >> halfSize,
                                      GX_TF_RGB565, nullptr, CGraphics::kSpareBufferTexMapID);
 
+#ifdef TARGET_PC
+  const uint packedColor = color.GetColor_GX();
+#else
   const uint packedColor = color.GetColor_u32();
+#endif
   CGX::Begin(GX_QUADS, GX_VTXFMT0, 4);
   GXPosition3f32(0.5f, 0.f, 0.5f);
   GXColor1u32(packedColor);

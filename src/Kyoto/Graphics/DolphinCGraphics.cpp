@@ -1046,7 +1046,11 @@ void CGraphics::Render2D(const CTexture* tex, int x, int y, int w, int h, const 
   MTXOrtho(proj, mViewport.mHeight / 2, -mViewport.mHeight / 2, -mViewport.mWidth / 2,
            mViewport.mWidth / 2, -1.f, -10.f);
   GXSetProjection(proj, GX_ORTHOGRAPHIC);
+#ifdef TARGET_PC
+  uint c = col.GetColor_GX();
+#else
   uint c = col.GetColor_u32();
+#endif
 
   Mtx mtx;
   MTXIdentity(mtx);

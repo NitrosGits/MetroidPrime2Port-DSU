@@ -475,7 +475,11 @@ void CParticleSwoosh::Render2SidedNoSplineNoGaps() {
                   (swoosh.mTranslation + swoosh.mUseOffset) + swoosh.mLeftRad * dotVec;
               const CVector3f v1 =
                   (swoosh.mTranslation + swoosh.mUseOffset) + -1.f * (swoosh.mRightRad * dotVec);
+#ifdef TARGET_PC
+              const uint color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_GX();
+#else
               const uint color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_u32();
+#endif
               CGraphics::StreamColor(color);
               CGraphics::StreamTexcoord(uvOffset, mVMin);
               CGraphics::StreamVertex(v0);
@@ -526,7 +530,11 @@ void CParticleSwoosh::Render2SidedNoSplineNoGaps() {
           const CVector3f v1 =
               swoosh.mOrientation * CVector3f(rightRadius * -cosine, 0.f, rightSin) +
               swoosh.mTranslation + swoosh.mUseOffset;
+#ifdef TARGET_PC
+          const uint color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_GX();
+#else
           const uint color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_u32();
+#endif
           CGraphics::StreamColor(color);
           CGraphics::StreamTexcoord(uvOffset, mVMin);
           CGraphics::StreamVertex(v0);
@@ -582,7 +590,11 @@ void CParticleSwoosh::Render2SidedNoSplineNoGaps() {
                              swoosh.mTranslation + swoosh.mUseOffset;
         const CVector3f v1 = swoosh.mOrientation * CVector3f(rightRadius * -cosine, 0.f, rightSin) +
                              swoosh.mTranslation + swoosh.mUseOffset;
+#ifdef TARGET_PC
+        CGraphics::StreamColor(CColor::Modulate(swoosh.mColor, mModuColor).GetColor_GX());
+#else
         CGraphics::StreamColor(CColor::Modulate(swoosh.mColor, mModuColor).GetColor_u32());
+#endif
         CGraphics::StreamVertex(v0);
         CGraphics::StreamVertex(v1);
       }
@@ -640,7 +652,11 @@ void CParticleSwoosh::Render2SidedNoSplineGaps() {
                          swoosh.mTranslation + swoosh.mUseOffset;
     const CVector3f v1 = swoosh.mOrientation * CVector3f(rightRadius * -cosine, 0.f, rightSin) +
                          swoosh.mTranslation + swoosh.mUseOffset;
+#ifdef TARGET_PC
+    CGraphics::StreamColor(CColor::Modulate(swoosh.mColor, mModuColor).GetColor_GX());
+#else
     CGraphics::StreamColor(CColor::Modulate(swoosh.mColor, mModuColor).GetColor_u32());
+#endif
     CGraphics::StreamTexcoord(1.f, mVMin);
     CGraphics::StreamVertex(v0);
     CGraphics::StreamTexcoord(1.f, mVMax);
@@ -726,7 +742,11 @@ void CParticleSwoosh::Render3SidedSolidNoSplineNoGaps() {
       lastActive = true;
     } else {
       lastActive = true;
+#ifdef TARGET_PC
+      color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_GX();
+#else
       color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_u32();
+#endif
       const float prevUv = uv;
       uv += mUvSpan;
       CGX::Begin(GX_QUADS, GX_VTXFMT0, 12);
@@ -844,7 +864,11 @@ void CParticleSwoosh::Render3SidedSolidSpline() {
     prevColor = color;
     if (swoosh.mActive) {
       const float prevUvSpan = curUvSpan;
+#ifdef TARGET_PC
+      color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_GX();
+#else
       color = CColor::Modulate(swoosh.mColor, mModuColor).GetColor_u32();
+#endif
       curUvSpan += mUvSpan;
       if (i > 1) {
         float uv1 = 0.f;
@@ -1030,7 +1054,11 @@ void CParticleSwoosh::RenderNSidedSpline() {
         if (other >= mSIDE) {
           other = 0;
         }
+#ifdef TARGET_PC
+        const uint color = CColor::Modulate(refSwoosh.mColor, mModuColor).GetColor_GX();
+#else
         const uint color = CColor::Modulate(refSwoosh.mColor, mModuColor).GetColor_u32();
+#endif
         if (cros) {
           other = k + mSIDE / 2;
           const CVector3f& p00 = mP0[k];

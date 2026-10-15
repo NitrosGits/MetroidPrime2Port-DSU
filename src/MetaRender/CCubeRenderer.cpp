@@ -990,7 +990,11 @@ void CCubeRenderer::PrimVertex(const CVector3f& vertex) {
   --mPrimVertCount;
   GXPosition3f32(vertex.GetX(), vertex.GetY(), vertex.GetZ());
   GXNormal3f32(mPrimNormal.GetX(), mPrimNormal.GetY(), mPrimNormal.GetZ());
+#ifdef TARGET_PC
+  GXColor1u32(mPrimColor.GetColor_GX());
+#else
   GXColor1u32(mPrimColor.GetColor_u32());
+#endif
 }
 
 void CCubeRenderer::PrimNormal(const CVector3f& normal) { mPrimNormal = normal; }
@@ -2471,7 +2475,11 @@ void CCubeRenderer::DoPhazonSuitIndirectAlphaBlur(float scale, float amount) {
   CGX::SetChanMatColor(CGX::Channel0, CColor::White().GetGXColor());
   CGX::SetChanAmbColor(CGX::Channel0, CColor::Black().GetGXColor());
 
+#ifdef TARGET_PC
+  const uint white = CColor::White().GetColor_GX();
+#else
   const uint white = CColor::White().GetColor_u32();
+#endif
 
   CGX::SetDstAlpha(false, 0);
   CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
@@ -2506,7 +2514,11 @@ void CCubeRenderer::DoPhazonSuitIndirectAlphaBlur(float scale, float amount) {
   };
 
   const float blurScale = scale * (2.f / static_cast< float >(width));
+#ifdef TARGET_PC
+  const uint blurColorA = CColor(1.f, 1.f, 1.f, 0.3f).GetColor_GX();
+#else
   const uint blurColorA = CColor(1.f, 1.f, 1.f, 0.3f).GetColor_u32();
+#endif
 
   for (uint i = 0; i < 8; ++i) {
     CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
@@ -2537,7 +2549,11 @@ void CCubeRenderer::DoPhazonSuitIndirectAlphaBlur(float scale, float amount) {
   CGX::SetBlendMode(GX_BM_SUBTRACT, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
   CGX::SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_ALWAYS, 0);
 
+#ifdef TARGET_PC
+  const uint whiteColor = CColor(1.f, 1.f, 1.f, 1.f).GetColor_GX();
+#else
   const uint whiteColor = CColor(1.f, 1.f, 1.f, 1.f).GetColor_u32();
+#endif
 
   CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
 
@@ -2571,7 +2587,11 @@ void CCubeRenderer::DoPhazonSuitIndirectAlphaBlur(float scale, float amount) {
                                      CGraphics::kSpareBufferTexMapID);
 
   const float blurScaleB = amount * (1.5f / static_cast< float >(width));
+#ifdef TARGET_PC
+  const uint blurColorB = CColor(1.f, 1.f, 1.f, 0.35f).GetColor_GX();
+#else
   const uint blurColorB = CColor(1.f, 1.f, 1.f, 0.35f).GetColor_u32();
+#endif
 
   for (uint i = 0; i < 8; ++i) {
     CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
@@ -2625,7 +2645,11 @@ void CCubeRenderer::ReallyDrawPhazonSuitEffect(const CColor& color, const CTextu
   CGX::SetChanAmbColor(CGX::Channel0, CColor::Black().GetGXColor());
   CGX::SetDstAlpha(true, 0);
   GXSetColorUpdate(GX_TRUE);
+#ifdef TARGET_PC
+  const uint packedColor = color.GetColor_GX();
+#else
   const uint packedColor = color.GetColor_u32();
+#endif
   CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
   GXPosition3f32(0.f, 0.f, 0.f);
   GXColor1u32(packedColor);
@@ -2742,7 +2766,11 @@ void CCubeRenderer::ReallyDrawPhazonSuitIndirectEffect(const CColor& color, cons
   GXSetCullMode(GX_CULL_NONE);
   CGX::SetDstAlpha(true, 0);
 
+#ifdef TARGET_PC
+  const uint colorU32 = color.GetColor_GX();
+#else
   const uint colorU32 = color.GetColor_u32();
+#endif
   CVector2f uv1Min(0.f, 0.f);
   float& uv1MinX = uv1Min[0];
   CVector2f uv1Max(1.f, 1.f);
@@ -3442,6 +3470,11 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
           {screen.second[0] - 1.f, windowTop}},
          {{0.f, 1.f}, {1.f, 1.f}, {0.f, uvBottom}, {1.f, uvBottom}}},
     };
+#ifdef TARGET_PC
+    for (uint i = 0; i < 5; ++i) {
+      rectangles[i].color = (i == 2 ? scanColor : maskColor).GetColor_GX();
+    }
+#endif
     for (uint i = 0; i < sizeof(rectangles) / sizeof(rectangles[0]); ++i) {
       const SScanRect& rectangle = rectangles[i];
       const uint inverseColor = ~rectangle.color;
@@ -3495,19 +3528,35 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
     const float bottomV = (screen.second[1] - sweepMax[1]) / (screen.second[1] - screen.first[1]);
     CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
     GXPosition3f32(sweepMin[0], 0.f, sweepMin[1]);
+#ifdef TARGET_PC
+    GXColor1u32(color.GetColor_GX());
+#else
     GXColor1u32(color.GetColor_u32());
+#endif
     GXTexCoord2f32(0.f, topV);
     GXTexCoord2f32(0.f, 0.f);
     GXPosition3f32(sweepMin[0], 0.f, sweepMax[1]);
+#ifdef TARGET_PC
+    GXColor1u32(color.GetColor_GX());
+#else
     GXColor1u32(color.GetColor_u32());
+#endif
     GXTexCoord2f32(0.f, bottomV);
     GXTexCoord2f32(0.f, 1.f);
     GXPosition3f32(sweepMax[0], 0.f, sweepMin[1]);
+#ifdef TARGET_PC
+    GXColor1u32(color.GetColor_GX());
+#else
     GXColor1u32(color.GetColor_u32());
+#endif
     GXTexCoord2f32(1.f, topV);
     GXTexCoord2f32(1.f, 0.f);
     GXPosition3f32(sweepMax[0], 0.f, sweepMax[1]);
+#ifdef TARGET_PC
+    GXColor1u32(color.GetColor_GX());
+#else
     GXColor1u32(color.GetColor_u32());
+#endif
     GXTexCoord2f32(1.f, bottomV);
     GXTexCoord2f32(1.f, 1.f);
     CGX::End();

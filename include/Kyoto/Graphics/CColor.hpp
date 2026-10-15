@@ -76,6 +76,9 @@ public:
   const GXColor& GetGXColor() const { return *reinterpret_cast< const GXColor* >(this); }
 
 #ifdef TARGET_PC
+  // GX's 0xRRGGBBAA word (GXColor1u32, CGraphics::StreamColor(uint)). GetColor_u32 is the
+  // in-memory word, byte-reversed on a little-endian host.
+  uint GetColor_GX() const { return (mR << 24) | (mG << 16) | (mB << 8) | mA; }
   CColor WithAlphaOf(float a) const { return CColor(mR, mG, mB, CCast::ToUint8(a * 255.f)); }
   CColor WithAlphaModulatedBy(float a) const {
     return CColor(mR, mG, mB, CCast::ToUint8(a * static_cast< float >(mA)));
