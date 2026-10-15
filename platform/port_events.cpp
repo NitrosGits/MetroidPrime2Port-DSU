@@ -17,6 +17,22 @@ struct ButtonName {
   u16 mask;
 };
 
+// Full stick deflections: S* is the main stick, C* the C-stick.
+struct StickName {
+  const char* name;
+  s8 stickX, stickY, substickX, substickY;
+};
+
+constexpr StickName kSticks[] = {
+    {"SUP", 0, 127, 0, 0},   {"SDOWN", 0, -127, 0, 0}, {"SLEFT", -127, 0, 0, 0},
+    {"SRIGHT", 127, 0, 0, 0}, {"CUP", 0, 0, 0, 127},   {"CDOWN", 0, 0, 0, -127},
+    {"CLEFT", 0, 0, -127, 0}, {"CRIGHT", 0, 0, 127, 0},
+};
+
+bool NameIs(const char* name, const char* p, const char* at) {
+  return std::strlen(name) == static_cast< size_t >(at - p) && std::strncmp(name, p, at - p) == 0;
+}
+
 constexpr ButtonName kButtons[] = {
     {"START", PAD_BUTTON_START}, {"A", PAD_BUTTON_A},         {"B", PAD_BUTTON_B},
     {"X", PAD_BUTTON_X},         {"Y", PAD_BUTTON_Y},         {"Z", PAD_TRIGGER_Z},
@@ -27,11 +43,13 @@ constexpr ButtonName kButtons[] = {
 // MP2_INPUT="BUTTON@frame[+frames],...": hold BUTTON on pad 0 from that loop
 // iteration for the given number of iterations (default 8), so boots can be
 // driven past menus without a player. Iterations count PortPumpEvents calls.
+// Stick names (kSticks) deflect fully while held; overlapping entries add up.
 void RunInputScript(unsigned frame) {
   static const char* script = std::getenv("MP2_INPUT");
   if (script == nullptr) {
     return;
   }
+  PADStatus status{};
   u16 held = 0;
   bool active = false;
   for (const char* p = script; *p != '\0';) {
@@ -45,14 +63,27 @@ void RunInputScript(unsigned frame) {
     if (*end == '+') {
       length = static_cast< unsigned >(std::strtoul(end + 1, &end, 10));
     }
+    const bool down = frame >= start && frame < start + length;
     for (const ButtonName& button : kButtons) {
-      if (std::strlen(button.name) == static_cast< size_t >(at - p) &&
-          std::strncmp(button.name, p, at - p) == 0) {
-        if (frame >= start && frame < start + length) {
+      if (NameIs(button.name, p, at)) {
+        if (down) {
           held |= button.mask;
         }
         if (frame == start) {
           std::fprintf(stderr, "[input] %s at frame %u\n", button.name, frame);
+        }
+      }
+    }
+    for (const StickName& stick : kSticks) {
+      if (NameIs(stick.name, p, at)) {
+        if (down) {
+          status.stickX += stick.stickX;
+          status.stickY += stick.stickY;
+          status.substickX += stick.substickX;
+          status.substickY += stick.substickY;
+        }
+        if (frame == start) {
+          std::fprintf(stderr, "[input] %s at frame %u\n", stick.name, frame);
         }
       }
     }
@@ -67,7 +98,6 @@ void RunInputScript(unsigned frame) {
     }
     return;
   }
-  PADStatus status{};
   status.err = PAD_ERR_NONE;
   status.button = held;
   PADSetVirtualStatus(0, &status);
