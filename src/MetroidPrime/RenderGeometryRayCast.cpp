@@ -2,6 +2,7 @@
 
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CollisionUtil.hpp"
+#include "Kyoto/Basics/CBasics.hpp"
 #include "Kyoto/Graphics/CCubeMaterial.hpp"
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "Kyoto/Math/CLine.hpp"
@@ -19,12 +20,25 @@ inline ushort ReadShort(const uchar* data) {
   uchar bytes[2];
   bytes[0] = data[0];
   bytes[1] = data[1];
+#ifdef TARGET_PC
+  return CBasics::SwapBytes(*reinterpret_cast< const ushort* >(bytes));
+#else
   return *reinterpret_cast< const ushort* >(bytes);
+#endif
 }
 
+#ifdef TARGET_PC
+// Port: the vertex position buffer stays big-endian on host.
+inline CVector3f GetPosition(const CVector3f* positions, const uchar* vertex) {
+  const float* raw = reinterpret_cast< const float* >(positions + static_cast< short >(ReadShort(vertex)));
+  return CVector3f(CBasics::SwapBytes(raw[0]), CBasics::SwapBytes(raw[1]),
+                   CBasics::SwapBytes(raw[2]));
+}
+#else
 inline const CVector3f& GetPosition(const CVector3f* positions, const uchar* vertex) {
   return positions[static_cast< short >(ReadShort(vertex))];
 }
+#endif
 
 inline bool RayTriangleIntersection(const CLine& line, const CVector3f& a, const CVector3f& b,
                                     const CVector3f& c, float& nearest) {

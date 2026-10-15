@@ -1,6 +1,7 @@
 #ifndef _CMETROIDMODELINSTANCE
 #define _CMETROIDMODELINSTANCE
 
+#include "Kyoto/Basics/CBasics.hpp"
 #include "Kyoto/Graphics/CCubeMaterial.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CTransform4f.hpp"
@@ -68,10 +69,19 @@ public:
 
   CCubeMaterial GetMaterialByIndex(int index) const {
     const uint* data = static_cast< const uint* >(mMaterialData);
+#ifdef TARGET_PC
+    // Port: the material set is left big-endian on host (CCubeMaterial reads it with SwapBytes).
+    const uint* offsets = data + CBasics::SwapBytes(data[0]) + 1;
+    const uint offset = index == 0 ? 0 : CBasics::SwapBytes(offsets[index]);
+    const uchar* materials =
+        reinterpret_cast< const uchar* >(offsets + CBasics::SwapBytes(offsets[0]) + 1);
+    return CCubeMaterial(materials + offset);
+#else
     const uint* offsets = data + data[0] + 1;
     const uint offset = index == 0 ? 0 : offsets[index];
     const uchar* materials = reinterpret_cast< const uchar* >(offsets + offsets[0] + 1);
     return CCubeMaterial(materials + offset);
+#endif
   }
 
 private:

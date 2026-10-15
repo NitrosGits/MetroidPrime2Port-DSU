@@ -30,6 +30,14 @@ CAssetId CDecalManager::mLastDecalCreatedAssetId;
 namespace {
 const CMaterialList skImplicitWorldMaterials(kMT_Solid, kMT_NoPlatformCollision);
 
+#ifdef TARGET_PC
+CVector3f ReadPosition(const CVector3f* positions, uint index) {
+  const float* raw = reinterpret_cast< const float* >(positions + index);
+  return CVector3f(CBasics::SwapBytes(raw[0]), CBasics::SwapBytes(raw[1]),
+                   CBasics::SwapBytes(raw[2]));
+}
+#endif
+
 // Guessed name for the world-triangle collection callback.
 class CDecalTriangleCollector : public IDisplayListTriangleCallback {
 public:
@@ -54,9 +62,16 @@ bool CDecalTriangleCollector::OnTriangle(const CDisplayListReader& reader, const
   const uint indexB = reader.GetVertexIndex(b, GX_VA_POS);
   const uint indexC = reader.GetVertexIndex(c, GX_VA_POS);
 
+#ifdef TARGET_PC
+  // Port: the vertex position buffer stays big-endian on host.
+  const CVector3f vertA = ReadPosition(mPositions, indexA);
+  const CVector3f vertB = ReadPosition(mPositions, indexB);
+  const CVector3f vertC = ReadPosition(mPositions, indexC);
+#else
   const CVector3f vertA = mPositions[indexA];
   const CVector3f vertB = mPositions[indexB];
   const CVector3f vertC = mPositions[indexC];
+#endif
 
   if (CollisionUtil::TriBoxOverlap(mCenter, mHalfExtent, vertA, vertB, vertC)) {
     if (mSurfaces.size() == mSurfaces.capacity()) {
