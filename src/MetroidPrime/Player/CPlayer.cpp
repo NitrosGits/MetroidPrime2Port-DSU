@@ -960,7 +960,13 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
     gunPosition =
         GetEyePosition() + cameraTransform.Rotate(position - CVector3f(0.f, 0.f, eyeHeight));
   }
+#ifdef TARGET_PC
+  // Retail sets the gun position on the result copy; with the camera's translation left in it,
+  // a drawn gun (UpdateTransform keeps the result) sat at the eye.
+  gunTransform.SetTranslation(gunPosition);
+#else
   cameraTransform.SetTranslation(gunPosition);
+#endif
   mGun->UpdateTransform(mgr, gunPosition, cameraTransform, gunTransform);
   CTransform4f aimTransform = gunTransform;
   UpdateAimPrediction(aimTransform, mgr);
