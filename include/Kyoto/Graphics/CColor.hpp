@@ -47,7 +47,11 @@ public:
   void SetGreen(float g) { mG = CCast::ToUint8(g * 255.f); }
   void SetBlue(float b) { mB = CCast::ToUint8(b * 255.f); }
   void SetAlpha(float a) { mA = CCast::ToUint8(a * 255.f); }
+#ifdef TARGET_PC
+  void SetAlpha(uchar a) { mA = a; }
+#else
   void SetAlpha(uchar a) { mRgba = (mRgba & ~0xff) | a; }
+#endif
   void SetRed(uchar r) { mR = r; }
   void SetGreen(uchar g) { mG = g; }
   void SetBlue(uchar b) { mB = b; }
@@ -71,15 +75,29 @@ public:
   uint GetColor_u32() const { return mRgba; }
   const GXColor& GetGXColor() const { return *reinterpret_cast< const GXColor* >(this); }
 
+#ifdef TARGET_PC
+  CColor WithAlphaOf(float a) const { return CColor(mR, mG, mB, CCast::ToUint8(a * 255.f)); }
+  CColor WithAlphaModulatedBy(float a) const {
+    return CColor(mR, mG, mB, CCast::ToUint8(a * static_cast< float >(mA)));
+  }
+#else
   CColor WithAlphaOf(float a) const { return CColor((mRgba & ~0xff) | CCast::ToUint8(a * 255.f)); }
   CColor WithAlphaModulatedBy(float a) const {
     return CColor((mRgba & ~0xff) | CCast::ToUint8(a * static_cast< float >(mA)));
   }
+#endif
 
   bool operator==(const CColor& other) const { return mRgba == other.mRgba; }
 
   // TODO check
+#ifdef TARGET_PC
+  static GXColor ToGX(uint c) {
+    GXColor g = {uchar(c >> 24), uchar(c >> 16), uchar(c >> 8), uchar(c)};
+    return g;
+  }
+#else
   static GXColor ToGX(uint c) { return *reinterpret_cast< const GXColor* >(&c); }
+#endif
 
   static const CColor& Black();
   static const CColor& White();
