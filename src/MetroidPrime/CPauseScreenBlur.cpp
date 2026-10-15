@@ -87,7 +87,13 @@ void CPauseScreenBlur::Draw(const CStateManager& mgr) {
         *mMapLightQuarter, ease);
     CCameraFilterPass::DrawFilter(
         CCameraFilterPass::kFT_Multiply, CCameraFilterPass::kFS_ScanLinesEven,
-        CColor::Lerp(CColor::White(), CColor(0xc0c0c0ff), ease), nullptr, ease);
+#ifdef TARGET_PC
+        CColor::Lerp(CColor::White(), CColor(uchar(0xc0), uchar(0xc0), uchar(0xc0), uchar(0xff)),
+                     ease),
+#else
+        CColor::Lerp(CColor::White(), CColor(0xc0c0c0ff), ease),
+#endif
+        nullptr, ease);
   }
 
   if (mBlurring && mCamBlur.GetNoPersistentCopy()) {

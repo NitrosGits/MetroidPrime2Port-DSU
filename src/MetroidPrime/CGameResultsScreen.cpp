@@ -500,7 +500,12 @@ void CGameResultsScreen::Update(float dt) {
   }
   mPromptText->SetFontColor(skPromptColor);
   mPromptText->SetOutlineColor(skPromptOutlineColor);
+#ifdef TARGET_PC
+  mPromptText->SetGeometryColor(CColor::Lerp(CColor(uchar(0xff), uchar(0xff), uchar(0xff), uchar(0)),
+                                             CColor::White(), mPromptPulse));
+#else
   mPromptText->SetGeometryColor(CColor::Lerp(CColor(0xffffff00u), CColor::White(), mPromptPulse));
+#endif
   mResultsText->SetFontColor(CColor::Lerp(skTitleColor, skTitlePulseColor, mTitlePulse));
   mResultsText->SetOutlineColor(
       CColor::Lerp(skTitleOutlineColor, skTitlePulseOutlineColor, mTitlePulse));

@@ -1186,7 +1186,13 @@ void CGraphics::StreamColor(uint color) {
 }
 
 void CGraphics::StreamColor(const CColor& color) {
+#ifdef TARGET_PC
+  // mColor is 0xRRGGBBAA (GXColor1u32); GetColor_u32 is the host-order memory word.
+  vtxDescr.mColor = (color.GetRedu8() << 24) | (color.GetGreenu8() << 16) |
+                    (color.GetBlueu8() << 8) | color.GetAlphau8();
+#else
   vtxDescr.mColor = color.GetColor_u32();
+#endif
   vtxDescr.mStreamFlags |= kHasColor;
 }
 
