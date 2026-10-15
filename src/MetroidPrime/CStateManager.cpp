@@ -1697,6 +1697,18 @@ void CStateManager::DoCollisionResponse(const CCollisionResponseData& responseDa
   }
 }
 
+#ifdef TARGET_PC
+// Port: retail's CStateManager only has the CWeaponMode form above (DOL 0x800372C0). The Wii SEL
+// build takes the damage info instead, and upstream declares that overload (CStateManager.hpp) when
+// it decompiles the caller, so gun turrets call one nobody defines. Forward: the collision response
+// only depends on the weapon mode; dealing the damage stays the caller's job (ApplyDamage).
+void CStateManager::DoCollisionResponse(const CCollisionResponseData& data,
+                                        const CRayCastResult& result, TUniqueId id,
+                                        const CDamageInfo& damage, bool unknown) {
+  DoCollisionResponse(data, result, id, damage.GetWeaponMode(), unknown);
+}
+#endif
+
 void CStateManager::GetCharacterRenderMaskAndTarget(uint& mask, uint& target) const {
   const CPlayerState::EPlayerVisor visor = mPlayerState->GetActiveVisor(*this);
   uint renderMask = 0;

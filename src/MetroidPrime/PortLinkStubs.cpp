@@ -102,10 +102,6 @@ extern "C" void reachstub_66() { mpReachStub("_ZN12CWallCrawlerC2E12EPatternedAI
 extern "C" void reachstub_67() asm("_ZN12CWallCrawlerD2Ev");
 extern "C" void reachstub_67() { mpReachStub("_ZN12CWallCrawlerD2Ev", "CWallCrawler::~CWallCrawler()"); }
 
-// CStateManager::DoCollisionResponse(CCollisionResponseData const&, CRayCastResult const&, TUniqueId, CDamageInfo const&, bool)
-extern "C" void reachstub_82() asm("_ZN13CStateManager19DoCollisionResponseERK22CCollisionResponseDataRK14CRayCastResult9TUniqueIdRK11CDamageInfob");
-extern "C" void reachstub_82() { mpReachStub("_ZN13CStateManager19DoCollisionResponseERK22CCollisionResponseDataRK14CRayCastResult9TUniqueIdRK11CDamageInfob", "CStateManager::DoCollisionResponse(CCollisionResponseData const&, CRayCastResult const&, TUniqueId, CDamageInfo const&, bool)"); }
-
 // CStateManager::GetObjectByIdFromListAll(TUniqueId)
 extern "C" void reachstub_83() asm("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId");
 extern "C" void reachstub_83() { mpReachStub("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId", "CStateManager::GetObjectByIdFromListAll(TUniqueId)"); }
