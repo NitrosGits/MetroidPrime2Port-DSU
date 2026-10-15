@@ -119,6 +119,11 @@
 #include "rstl/math.hpp"
 #include "rstl/vector.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#include "port_warp.h"
+#endif
+
 #include <alloca.h>
 #include <float.h>
 
@@ -2787,6 +2792,13 @@ void CStateManager::SendDamageScriptMsgs(CActor& damagee, TUniqueId source,
 void CStateManager::ApplyDamage(TUniqueId damagerId, TUniqueId damageeId, TUniqueId owner,
                                 const CDamageInfo& damage, const CMaterialFilter& filter,
                                 const CVector3f& knockbackDirection) {
+#ifdef TARGET_PC
+  // Doors open by taking damage, so a shot that never reaches one is worth seeing in the log.
+  if (TCastToConstPtr< CScriptDoor >(GetObjectById(damageeId)) != nullptr) {
+    std::fprintf(stderr, "[door] %04x took a hit (damage %.1f)\n", damageeId.Value(),
+                 static_cast< double >(damage.GetDamage()));
+  }
+#endif
   // The native comparison uses the raw unsigned halfword, not the signed enum getter.
   if (damage.GetWeaponMode().GetRawType() == kWT_None) {
     return;
@@ -3692,6 +3704,24 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   CSortedParticleSystem::SetGlobalSeed(mUpdateFrameIdx);
   CDecal::SetGlobalSeed(mUpdateFrameIdx);
   CProjectileWeapon::SetGlobalSeed(mUpdateFrameIdx);
+#ifdef TARGET_PC
+  // A warp request from the platform (env, hotkey or MP2_INPUT token) is served here, once
+  // the world exists; a world reload ends the update early through QuitGame.
+  PortWarpTick();
+  PortWarpSettle();
+  // The debug overlay's readout (world, area), cheap enough for every update. The log line on
+  // each change is what makes a transition test readable: it says whether a door or a dock
+  // actually moved the player to another area.
+  if (CWorld* w = World(); w != nullptr) {
+    const int areaNow = w->GetCurrentAreaId().Value();
+    static int sLastArea = -2;
+    if (areaNow != sLastArea) {
+      sLastArea = areaNow;
+      std::fprintf(stderr, "[area] %d\n", areaNow);
+    }
+    PortOverlay::SetGameState(gpGameState->CurrentWorldAssetId(), areaNow);
+  }
+#endif
   mCurTimeMod900 += dt;
   if (mCurTimeMod900 > 900.f) {
     mCurTimeMod900 -= 900.f;
@@ -3887,3 +3917,290 @@ void CStateManager::DisplayAlertAboutOutOfAmmo(const CPlayer& player,
 }
 
 void CScopedProfiler::BeginFrame() {}
+
+#ifdef TARGET_PC
+namespace {
+
+// A warp names an asset ("FrontEnd", "TempleGrounds", ...) or gives a hex asset id, so the
+// request text needs no table on the platform side; the names live in the resource table.
+CAssetId ResolveWarpAsset(const char* text) {
+  if (text == nullptr || *text == '\0') {
+    return kInvalidAssetId;
+  }
+  char* end = nullptr;
+  const unsigned long value = std::strtoul(text, &end, 0);
+  if (end != nullptr && end != text && *end == '\0') {
+    return static_cast< CAssetId >(value);
+  }
+  const SObjectTag* tag =
+      gpResourceFactory != nullptr ? gpResourceFactory->GetResourceIdByName(text) : nullptr;
+  if (tag == nullptr) {
+    std::fprintf(stderr, "[warp] no asset named '%s'\n", text);
+    return kInvalidAssetId;
+  }
+  return tag->id;
+}
+
+} // namespace
+
+void CStateManager::PortWarpTick() {
+  PortWarp::SRequest request;
+  if (!PortWarp::Consume(request)) {
+    return;
+  }
+  CWorld* world = World();
+  if (world == nullptr) {
+    // No world yet (front end): drop it rather than teleporting into nothing.
+    std::fprintf(stderr, "[warp] no world loaded; request dropped\n");
+    return;
+  }
+
+  // One line per world, so a sweep can see which area slots are real: a slot with an invalid
+  // MREA is not an area the game can travel to, and the map world does not cover it either.
+  static CAssetId sLoggedWorld = kInvalidAssetId;
+  if (sLoggedWorld != gpGameState->CurrentWorldAssetId()) {
+    sLoggedWorld = gpGameState->CurrentWorldAssetId();
+    std::fprintf(stderr, "[warp] world %08x areas:", sLoggedWorld);
+    for (int i = 0; i < world->IGetAreaCount(); ++i) {
+      const CGameArea* a = world->Area(TAreaId(i));
+      std::fprintf(stderr, " %d=%08x", i, a != nullptr ? a->GetAreaAssetId() : 0);
+    }
+    std::fprintf(stderr, "\n");
+  }
+
+  switch (request.kind) {
+  case PortWarp::EKind::kArea: {
+    PortWarpToArea(world->IGetAreaId(ResolveWarpAsset(request.area)));
+    break;
+  }
+  case PortWarp::EKind::kCycleArea: {
+    const int count = world->IGetAreaCount();
+    int area = world->GetCurrentAreaId().Value();
+    for (int step = 0; step < count && count > 0; ++step) {
+      area = (area + request.delta + count) % count;
+      const TAreaId candidate(area);
+      const CGameArea* candidateArea = world->Area(candidate);
+      if (candidateArea != nullptr && candidateArea->GetAreaAssetId() != kInvalidAssetId) {
+        PortWarpToArea(candidate);
+        break;
+      }
+    }
+    break;
+  }
+  case PortWarp::EKind::kDock: {
+    PortWarpToDock();
+    break;
+  }
+  case PortWarp::EKind::kDoor: {
+    PortWarpToDoor();
+    break;
+  }
+  case PortWarp::EKind::kWorld: {
+    PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
+    break;
+  }
+  case PortWarp::EKind::kCycleWorld: {
+    const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
+    const CAssetId current = gpGameState->CurrentWorldAssetId();
+    if (worlds.empty()) {
+      break;
+    }
+    int index = 0;
+    for (int i = 0; i < static_cast< int >(worlds.size()); ++i) {
+      if (worlds[i].first == current) {
+        index = i;
+        break;
+      }
+    }
+    const int count = static_cast< int >(worlds.size());
+    index = (index + request.delta + count) % count;
+    PortWarpToWorld(worlds[index].first, kInvalidAssetId);
+    break;
+  }
+  case PortWarp::EKind::kNone:
+  default:
+    break;
+  }
+}
+
+void CStateManager::PortWarpToArea(TAreaId aid) {
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(aid)) {
+    std::fprintf(stderr, "[warp] area %d does not exist in this world\n", aid.Value());
+    return;
+  }
+  if (aid == world->GetCurrentAreaId()) {
+    return;
+  }
+  CGameArea* area = world->Area(aid);
+  if (area == nullptr || area->GetAreaAssetId() == kInvalidAssetId) {
+    std::fprintf(stderr, "[warp] area %d is empty in this world\n", aid.Value());
+    return;
+  }
+
+  // The current area id must not point at an area that is not loaded: the update calls
+  // Area(GetNextAreaId())->UpdateDocks every frame, which segfaults on an area whose stream is
+  // still coming up. A dock transition has the same rule - it starts the destination loading
+  // when the player touches the dock, and only moves the id once the area says it is loaded -
+  // so the warp loads first and settles the move in PortWarpSettle.
+  if (!area->IsLoaded()) {
+    if (mPortPendingWarpArea != aid) {
+      std::fprintf(stderr, "[warp] area %d: loading\n", aid.Value());
+      mPortPendingWarpArea = aid;
+    }
+    // PortWarpSettle keeps the load moving from here (see its comment).
+    return;
+  }
+  mPortPendingWarpArea = aid;
+}
+
+// Places the player in the area a warp asked for, once that area has finished loading.
+void CStateManager::PortWarpSettle() {
+  if (mPortPendingWarpArea == kInvalidAreaId) {
+    return;
+  }
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(mPortPendingWarpArea)) {
+    mPortPendingWarpArea = kInvalidAreaId;
+    return;
+  }
+  CGameArea* area = world->Area(mPortPendingWarpArea);
+  if (area == nullptr) {
+    mPortPendingWarpArea = kInvalidAreaId;
+    return;
+  }
+  if (!area->IsLoaded()) {
+    // The initial world load drives an area in by calling both of these every frame until
+    // ScheduleAreaToLoad reports it is done, so do the same: it only sets up the chain, and
+    // StartStreamIn is what advances the stream.
+    if (world->ScheduleAreaToLoad(area, *this)) {
+      area->StartStreamIn(*this);
+    }
+    return;
+  }
+  const TAreaId target = mPortPendingWarpArea;
+  mPortPendingWarpArea = kInvalidAreaId;
+
+  // Loaded now, so the move is safe. This is also what makes the world update travel here
+  // instead of back to the old area.
+  if (world->GetCurrentAreaId() != target) {
+    SetCurrentAreaId(target);
+    gpGameState->CurrentWorldState().SetAreaId(target);
+    if (mCameraManagers[0]->IsInCinematicCamera()) {
+      mCameraManagers[0]->StopCinematics(*this);
+    }
+    std::fprintf(stderr, "[warp] moved to area %d\n", target.Value());
+  }
+
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >((*objects)[i])) {
+      if (spawn->GetActive() && spawn->IsFirstSpawn()) {
+        SpawnPlayer(*spawn, 0);
+        std::fprintf(stderr, "[warp] spawned at the area's first spawn point\n");
+        break;
+      }
+    }
+  }
+  for (uint i = 0; i < mNumPlayers; ++i) {
+    mCameraManagers[i]->ResetCameras(*this);
+  }
+}
+
+// Stand the player in the nearest doorway of this area, facing through it, so a scripted walk
+// exercises the real transition path (door damage, the dock's touch/crossing state machine,
+// the next area's load) instead of the warp's direct travel.
+void CStateManager::PortWarpToDock() {
+  CWorld* world = World();
+  CPlayer* player = GetPlayer(0);
+  if (world == nullptr || player == nullptr) {
+    return;
+  }
+  const TAreaId area = world->GetCurrentAreaId();
+  const CVector3f from = player->GetTranslation();
+  CScriptDock* nearest = nullptr;
+  float best = 1e30f;
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    CScriptDock* dock = TCastToPtr< CScriptDock >((*objects)[i]);
+    if (dock == nullptr || dock->IsVirtual() || dock->GetCurrentAreaId() != area) {
+      continue;
+    }
+    const float distance = (dock->GetTranslation() - from).Magnitude();
+    if (distance < best) {
+      best = distance;
+      nearest = dock;
+    }
+  }
+  if (nearest == nullptr) {
+    std::fprintf(stderr, "[warp] no dock in area %d\n", area.Value());
+    return;
+  }
+  // A dock's own area id is the area it connects to, so its forward is the way through.
+  const CTransform4f dockXf = nearest->GetTransform();
+  const CVector3f forward = dockXf.GetForward();
+  const CVector3f stand = nearest->GetTranslation() - forward * 5.f;
+  std::fprintf(stderr, "[warp] dock in area %d -> area %d (%d m away)\n", area.Value(),
+               nearest->GetAreaId().Value(), static_cast< int >(best));
+  player->Teleport(CTransform4f::LookAt(stand, stand + forward, CVector3f::Up()), *this, true);
+}
+
+// Stand in front of the nearest door of this area, facing it: a scripted shot then tests the
+// door's damage path, which is what opens doors in this game.
+void CStateManager::PortWarpToDoor() {
+  CWorld* world = World();
+  CPlayer* player = GetPlayer(0);
+  if (world == nullptr || player == nullptr) {
+    return;
+  }
+  const TAreaId area = world->GetCurrentAreaId();
+  const CVector3f from = player->GetTranslation();
+  CScriptDoor* nearest = nullptr;
+  float best = 1e30f;
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    CScriptDoor* door = TCastToPtr< CScriptDoor >((*objects)[i]);
+    if (door == nullptr || door->GetCurrentAreaId() != area) {
+      continue;
+    }
+    const float distance = (door->GetTranslation() - from).Magnitude();
+    if (distance < best) {
+      best = distance;
+      nearest = door;
+    }
+  }
+  if (nearest == nullptr) {
+    std::fprintf(stderr, "[warp] no door in area %d\n", area.Value());
+    return;
+  }
+  const CVector3f forward = nearest->GetTransform().GetForward();
+  const CVector3f stand = nearest->GetTranslation() - forward * 6.f;
+  std::fprintf(stderr, "[warp] door %04x in area %d (%d m away)\n", nearest->GetUniqueId().Value(),
+               area.Value(), static_cast< int >(best));
+  player->Teleport(CTransform4f::LookAt(stand, stand + forward, CVector3f::Up()), *this, true);
+}
+
+void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
+  if (worldId == kInvalidAssetId) {
+    return;
+  }
+  if (gpResourceFactory != nullptr && gpResourceFactory->GetResourceTypeById(worldId) != 'MLVL') {
+    std::fprintf(stderr, "[warp] %08x is not a world\n", worldId);
+    return;
+  }
+  std::fprintf(stderr, "[warp] world %08x area %08x\n", worldId, areaId);
+
+  // The same restart CScriptWorldTeleporter performs: the world is unloaded and CMainFlow
+  // loads the new one from the game state, so nothing here touches the outgoing world's
+  // scripts or keeps its old area id.
+  if (CWorld* world = World(); world != nullptr) {
+    world->SetLoadPauseState(true);
+  }
+  gpGameState->SetCurrentWorldId(worldId);
+  CWorldState& worldState = gpGameState->CurrentWorldState();
+  worldState.SetAreaId(TAreaId(0));
+  worldState.SetDesiredAreaAssetId(areaId);
+  gpMain->SetRestartMode(CMain::kRM_None);
+  QuitGame();
+}
+#endif

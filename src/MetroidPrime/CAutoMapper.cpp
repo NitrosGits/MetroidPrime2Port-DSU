@@ -1,5 +1,9 @@
 #include "MetroidPrime/CAutoMapper.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#endif
+
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiTextPane.hpp"
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
@@ -1132,6 +1136,9 @@ void CAutoMapper::ProcessMapPanInput(const CFinalInput& input, const CStateManag
       const CMapWorld* mapWorld = mWorld->IGetMapWorld();
       const CMapArea* area = mapWorld->GetMapArea(mCurAreaId.value);
       CMapArea* transformArea = mapWorld->GetMapArea(mCurAreaId.value);
+      if (area == nullptr || transformArea == nullptr) {
+        return; // the map data for this area is not resident yet (see the mini-map guard)
+      }
       CVector3f worldPoint = transformArea->GetAreaPostTransform(*mWorld, mCurAreaId.value) *
                              area->GetAreaCenterPoint();
       CVector3f viewPoint = worldPoint - mRenderState0.mAreaPoint;
@@ -1276,12 +1283,14 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
                    mRenderState0.mDrawDepth2, mDarkWorldBlend, false);
   }
 
-  if (universeInterp > 0.f) {
+  CMapArea* const nextMapArea =
+      universeInterp > 0.f ? mgr.GetWorld()->GetMapWorld()->GetMapArea(mgr.GetNextAreaId().value)
+                           : nullptr;
+  if (universeInterp > 0.f && nextMapArea != nullptr) {
     const CWorld* world = mgr.GetWorld();
     const int areaId = mgr.GetNextAreaId().value;
     CMapUniverse* mapu = mMapu.GetObject();
-    const CTransform4f areaXf =
-        world->GetMapWorld()->GetMapArea(areaId)->GetAreaPostTransform(*world, areaId);
+    const CTransform4f areaXf = nextMapArea->GetAreaPostTransform(*world, areaId);
     const CMapUniverse::CMapWorldData& worldData =
         mapu->GetMapWorldDataByWorldId(gpGameState->CurrentWorldAssetId());
     const CTransform4f universeAreaXf = worldData.GetWorldTransform() * areaXf;
@@ -1313,8 +1322,12 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
       const CEulerAngles eulers = CEulerAngles::FromTransform(
           mgr.GetCameraManager(mPlayerIndex)->GetCurrentCameraTransform(mgr, 1));
       const float angle = CMath::ClampRadians(eulers.GetYaw());
+      CMapArea* const nextArea = GetMapArea(*mWorld, mgr.GetNextAreaId().value);
+      if (nextArea == nullptr) {
+        return; // the destination's map data is not resident yet
+      }
       const CVector3f playerPos =
-          GetMapArea(*mWorld, mgr.GetNextAreaId().value)->GetAreaPostTranslate(*mWorld) +
+          nextArea->GetAreaPostTranslate(*mWorld) +
           mgr.GetPlayer(mPlayerIndex)->GetTranslation();
       gpRender->SetModelMatrix(
           mapXf * CTransform4f(CMatrix3f::RotateZ(CRelAngle::FromRadians(angle)), playerPos) *
@@ -2199,6 +2212,14 @@ CQuaternion CAutoMapper::GetMiniMapCameraOrientation(const CStateManager& mgr) c
 CVector3f CAutoMapper::GetAreaPointOfInterest(const CStateManager& mgr, int areaId) const {
   const IWorld& world = *mWorld;
   CMapArea* area = world.IGetMapWorld()->GetMapArea(areaId);
+#ifdef TARGET_PC
+  // An area's map data is only resident once its MAPA part has streamed in; a transition (or a
+  // warp) can ask for a point before that. Retail dereferences the result, which crashes, so the
+  // port returns the origin for that frame instead and picks up the real point once it lands.
+  if (area == nullptr) {
+    return CVector3f::Zero();
+  }
+#endif
   return area->GetAreaPostTransform(world, areaId) * area->GetAreaCenterPoint();
 }
 
@@ -2353,11 +2374,30 @@ float CAutoMapper::GetDesiredMiniMapCameraDistance(const CStateManager& mgr) con
   CAABox bounds = CAABox::MakeMaxInvertedBox();
   const IGameArea* area = mWorld->IGetAreaAlways(mCurAreaId);
   CMapArea* mapArea = mapWorld->GetMapArea(mCurAreaId.Value());
+#ifdef TARGET_PC
+  // A map area only becomes resident once its area has streamed in. Retail dereferences the
+  // result, which is a crash rather than a skip when a warp (or a fast transition) arrives
+  // before the map data is cached, so the port skips the fit and keeps the current distance.
+  if (mapArea == nullptr) {
+    static int sLogged = -1;
+    if (sLogged != mCurAreaId.Value()) {
+      sLogged = mCurAreaId.Value();
+      std::fprintf(stderr, "[map] no map area for %d yet; mini-map fit skipped\n",
+                   mCurAreaId.Value());
+    }
+    return mRenderState0.mCamDist;
+  }
+#endif
   const bool oneMiniMapArea = gpTweakAutoMapper->GetShowOneMiniMapArea();
   for (int i = -1; i < (oneMiniMapArea ? 0 : static_cast< int >(area->IGetNumAttachedAreas()));
        ++i) {
     const int areaId = i == -1 ? mCurAreaId.Value() : area->IGetAttachedAreaId(i).Value();
-    CMapArea* attachedArea = mapWorld->GetMapArea(areaId);
+    CMapArea* attachedArea = areaId < 0 || areaId >= static_cast< int >(mapWorld->GetNumAreas())
+                                 ? nullptr
+                                 : mapWorld->GetMapArea(areaId);
+    if (attachedArea == nullptr) {
+      continue;
+    }
     if (attachedArea->GetIsVisibleToAutoMapper(
             info->IsWorldVisible(TAreaId(areaId), attachedArea->IsInDarkWorld()),
             info->IsAreaVisible(TAreaId(areaId)))) {

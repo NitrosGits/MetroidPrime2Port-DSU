@@ -310,7 +310,7 @@ endif()
 # syntax-checked by the full build instead.
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_events.cpp
-        platform/port_mouse.cpp)
+        platform/port_mouse.cpp platform/port_warp.cpp platform/port_overlay.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include
         extern/aurora/include
@@ -319,7 +319,8 @@ if(AURORA_SDL3_TARGET)
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
     target_compile_definitions(mp_port_audio PRIVATE TARGET_PC AURORA)
     mp_signed_char(mp_port_audio)
-    target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET})
+    # aurora::core carries ImGui's include directory, which the F1 overlay builds against.
+    target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET} aurora::core)
 else()
     message(FATAL_ERROR
         "platform/ai_dma.cpp needs SDL3, but Aurora provided no AURORA_SDL3_TARGET. "

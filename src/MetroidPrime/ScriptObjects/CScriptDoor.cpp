@@ -1,5 +1,9 @@
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#endif
+
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CModel.hpp"
@@ -203,6 +207,9 @@ void CScriptDoor::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     break;
   case kSM_Open:
+#ifdef TARGET_PC
+    std::fprintf(stderr, "[door] %04x got kSM_Open\n", GetUniqueId().Value());
+#endif
     if (!mIsOpen) {
       const CScriptDoor* door = TCastToConstPtr< CScriptDoor >(mgr.GetObjectById(sender));
       mOpeningSenderDoorId = door ? door->GetUniqueId() : kInvalidUniqueId;
@@ -487,6 +494,10 @@ void CScriptDoor::Think(float dt, CStateManager& mgr) {
   switch (mDoorState) {
   case kDS_Closed:
     if (mCurrentHealth.GetHP() <= 0.f && mgr.GetNextAreaId() == GetCurrentAreaId()) {
+#ifdef TARGET_PC
+      std::fprintf(stderr, "[door] %04x broken, waiting for the next area\n",
+                   GetUniqueId().Value());
+#endif
       SetDoorState(mgr, kDS_WaitingForArea);
       SendScriptMsgs(kSS_Dead, mgr);
     }

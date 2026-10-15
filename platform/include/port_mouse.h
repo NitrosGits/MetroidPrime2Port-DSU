@@ -106,6 +106,17 @@ private:
 // the default. MP2_MOUSE_SENS sets radians per pixel and MP2_MOUSE_INVERT_X/_Y flip an axis.
 bool Enabled();
 void SetEnabled(bool enabled);
+// Twin-stick: the game feeds the right stick here through AddStickAim, so the stick aims
+// through the same state as the mouse. Works with or without mouse aim.
+bool StickEnabled();
+void SetStickEnabled(bool enabled);
+float StickAimRate();
+void SetStickAimRate(float pixelsPerSecond);
+// Feeds a normalised right-stick vector (-1..1, x right, y up) for one tick.
+void AddStickAim(float x, float y, float dt);
+// The debug overlay owns the cursor while it is open: no capture, no aim applied.
+void SetUiActive(bool active);
+bool UiActive();
 // Relative motion as it arrives from SDL's event queue, and the once-per-loop latch that
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);
@@ -122,4 +133,9 @@ bool Initialized();
 float Yaw();
 float Pitch();
 float Sensitivity();
+void SetSensitivity(float radiansPerPixel);
+bool InvertX();
+bool InvertY();
+void SetInvertX(bool invert);
+void SetInvertY(bool invert);
 } // namespace PortMouse

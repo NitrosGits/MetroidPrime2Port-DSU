@@ -7,6 +7,8 @@
 #include <dolphin/pad.h>
 
 #include "port_mouse.h"
+#include "port_overlay.h"
+#include "port_warp.h"
 
 #include <chrono>
 #include <cstdio>
@@ -92,6 +94,8 @@ void InstallDefaultKeyBindings() {
 // iteration for the given number of iterations (default 8), so boots can be
 // driven past menus without a player. Iterations count PortPumpEvents calls.
 // Stick names (kSticks) deflect fully while held; overlapping entries add up.
+// Warp tokens (NEXTAREA, PREVAREA, NEXTWORLD, PREVWORLD) queue a PortWarp request
+// at their frame instead, which is how a run sweeps every area on its own.
 void RunInputScript(unsigned frame) {
   static const char* script = std::getenv("MP2_INPUT");
   if (script == nullptr) {
@@ -112,6 +116,21 @@ void RunInputScript(unsigned frame) {
       length = static_cast< unsigned >(std::strtoul(end + 1, &end, 10));
     }
     const bool down = frame >= start && frame < start + length;
+    if (frame == start) {
+      if (NameIs("NEXTAREA", p, at)) {
+        PortWarp::CycleArea(1);
+      } else if (NameIs("PREVAREA", p, at)) {
+        PortWarp::CycleArea(-1);
+      } else if (NameIs("ATDOOR", p, at)) {
+        PortWarp::Dock();
+      } else if (NameIs("DOOR", p, at)) {
+        PortWarp::Door();
+      } else if (NameIs("NEXTWORLD", p, at)) {
+        PortWarp::CycleWorld(1);
+      } else if (NameIs("PREVWORLD", p, at)) {
+        PortWarp::CycleWorld(-1);
+      }
+    }
     for (const ButtonName& button : kButtons) {
       if (NameIs(button.name, p, at)) {
         if (down) {
@@ -150,6 +169,7 @@ void RunInputScript(unsigned frame) {
 bool PortPumpEvents() {
   static unsigned frame = 0;
   InstallDefaultKeyBindings();
+  PortWarp::ApplyEnvOnce();
   PortMouse::BeginFrame();
   RunInputScript(frame++);
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
@@ -161,6 +181,34 @@ bool PortPumpEvents() {
       // Relative motion only, which is what SDL reports while the port holds capture; the
       // game consumes the resulting aim in CPlayer/CFirstPersonCamera.
       PortMouse::AddMotion(event->sdl.motion.xrel, event->sdl.motion.yrel);
+    }
+    // Warp hotkeys, for testing the rest of the game by hand: F5/F6 step through the areas of
+    // the current world, F7/F8 through the game's worlds. They are always live, and the game
+    // ignores a request it cannot serve (no world loaded yet, bad area).
+    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
+        !event->sdl.key.repeat) {
+      switch (event->sdl.key.scancode) {
+      case SDL_SCANCODE_F1:
+        PortOverlay::Toggle();
+        break;
+      case SDL_SCANCODE_F5:
+        PortWarp::CycleArea(1);
+        break;
+      case SDL_SCANCODE_F6:
+        PortWarp::CycleArea(-1);
+        break;
+      case SDL_SCANCODE_F9:
+        PortWarp::Dock();
+        break;
+      case SDL_SCANCODE_F7:
+        PortWarp::CycleWorld(1);
+        break;
+      case SDL_SCANCODE_F8:
+        PortWarp::CycleWorld(-1);
+        break;
+      default:
+        break;
+      }
     }
   }
   return false;

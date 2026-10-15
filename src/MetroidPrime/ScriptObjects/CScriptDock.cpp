@@ -1,5 +1,9 @@
 #include "MetroidPrime/ScriptObjects/CScriptDock.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#endif
+
 #include "Kyoto/Math/CPlane.hpp"
 #include "MetroidPrime/CPortalTransition.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -53,6 +57,10 @@ void CScriptDock::Touch(CActor& actor, CStateManager& mgr) {
 
   if (TCastToPtr< CPlayer >(actor)) {
     mDockState = kDS_PlayerTouched;
+#ifdef TARGET_PC
+    std::fprintf(stderr, "[dock] player touched dock %d (area %d -> %d)\n", mDock,
+                 GetCurrentAreaId().Value(), mArea.Value());
+#endif
   }
   if (CMetroid* metroid = TCastToPtr< CMetroid >(actor)) {
     metroid->OnDockTouch(mgr);
@@ -251,7 +259,16 @@ void CScriptDock::Think(float dt, CStateManager& mgr) {
       const IGameArea::Dock& dock =
           mgr.GetWorld()->GetAreaAlways(mgr.GetNextAreaId()).GetDock(mDock);
       const TAreaId nextArea = dock.GetConnectedAreaId(dock.GetReferenceCount());
+      if (nextArea != kInvalidAreaId && !mgr.GetWorld()->GetAreaAlways(nextArea).IsLoaded()) {
+#ifdef TARGET_PC
+        std::fprintf(stderr, "[dock] crossed dock %d but area %d is not loaded\n", mDock,
+                     nextArea.Value());
+#endif
+      }
       if (nextArea != kInvalidAreaId && mgr.GetWorld()->GetAreaAlways(nextArea).IsLoaded()) {
+#ifdef TARGET_PC
+        std::fprintf(stderr, "[dock] crossed dock %d -> area %d\n", mDock, nextArea.Value());
+#endif
         mgr.SetCurrentAreaId(nextArea);
         if (CScriptDock* nextDock =
                 TCastToPtr< CScriptDock >(mgr.ObjectById(GetConnectedScriptDockId(mgr)))) {

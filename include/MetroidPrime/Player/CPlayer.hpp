@@ -452,7 +452,10 @@ public:
   // UpdateMouseAim turns the body to the mouse yaw. CFirstPersonCamera reads the same angles
   // for the view; see platform/include/port_mouse.h.
   bool MouseAimAllowed(const CStateManager& mgr) const;
-  void UpdateMouseAim(CStateManager& mgr);
+  void UpdateMouseAim(CStateManager& mgr, float dt);
+  // The right stick, cached from ProcessInput for UpdateMouseAim (twin-stick aim).
+  float mPortLookX = 0.f;
+  float mPortLookY = 0.f;
 #endif
   float GetJumpCameraTimer() const { return mJumpCameraTimer; }
   float GetTimeSinceJump() const {

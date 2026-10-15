@@ -20,10 +20,13 @@ namespace {
 
 PortMouse::AimState sAim;
 bool sEnabled = false;
+bool sStickEnabled = false;
 bool sReadEnv = false;
 bool sCaptured = false;
 bool sAiming = false;
+bool sUiActive = false;
 float sSensitivity = 0.0035f; // radians per pixel, the Prime port's default
+float sStickAimRate = 900.f;  // aim pixels per second at full stick deflection
 bool sInvertX = false;
 bool sInvertY = false;
 float sPendingX = 0.f;
@@ -42,6 +45,7 @@ void ReadEnv() {
   }
   sReadEnv = true;
   sEnabled = EnvFlag("MP2_MOUSE_AIM");
+  sStickEnabled = EnvFlag("MP2_TWIN_STICK");
   sInvertX = EnvFlag("MP2_MOUSE_INVERT_X");
   sInvertY = EnvFlag("MP2_MOUSE_INVERT_Y");
   if (const char* sens = std::getenv("MP2_MOUSE_SENS")) {
@@ -105,10 +109,57 @@ bool Enabled() {
 void SetEnabled(bool enabled) {
   ReadEnv();
   sEnabled = enabled;
-  if (!enabled) {
+  if (!enabled && !sStickEnabled) {
     Reset();
   }
 }
+
+bool StickEnabled() {
+  ReadEnv();
+  return sStickEnabled;
+}
+
+void SetStickEnabled(bool enabled) {
+  ReadEnv();
+  sStickEnabled = enabled;
+  if (!enabled && !sEnabled) {
+    Reset();
+  }
+}
+
+float StickAimRate() {
+  ReadEnv();
+  return sStickAimRate;
+}
+
+void SetStickAimRate(float pixelsPerSecond) {
+  ReadEnv();
+  if (std::isfinite(pixelsPerSecond) && pixelsPerSecond > 0.f) {
+    sStickAimRate = pixelsPerSecond;
+  }
+}
+
+void AddStickAim(float x, float y, float dt) {
+  if (!sStickEnabled || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
+    return;
+  }
+  if (x * x + y * y < 0.04f) {
+    return; // inside the dead zone; a resting stick must not creep the view
+  }
+  sPendingX += x * sStickAimRate * dt;
+  // The aim's dy is screen-down positive, the stick's y is up positive.
+  sPendingY -= y * sStickAimRate * dt;
+}
+
+void SetUiActive(bool active) {
+  sUiActive = active;
+  if (active) {
+    sAiming = false;
+    SetCapture(false);
+  }
+}
+
+bool UiActive() { return sUiActive; }
 
 void AddMotion(float dx, float dy) {
   if (!sCaptured || !std::isfinite(dx) || !std::isfinite(dy)) {
@@ -126,15 +177,18 @@ void BeginFrame() {
 }
 
 bool UpdateAim(bool active, bool locked, float x, float y, float z) {
-  if (!Enabled()) {
+  ReadEnv();
+  if ((!sEnabled && !sStickEnabled) || sUiActive) {
     sAiming = false;
+    SetCapture(false);
     return false;
   }
   // `locked` means something else owns the view (a lock-on, the morph ball, a cinematic): the
   // aim tracks that direction and the caller must not turn the player.
   const bool owns = active && !locked;
   sAiming = owns;
-  SetCapture(owns);
+  // Only mouse aim needs the pointer grabbed; twin-stick leaves the cursor alone.
+  SetCapture(owns && sEnabled);
   const bool applied = sAim.Update(active, locked, x, y, z, sFrameX, sFrameY, sSensitivity,
                                    sInvertX, sInvertY);
   if (applied) {
@@ -163,6 +217,33 @@ float Pitch() { return sAim.pitch; }
 float Sensitivity() {
   ReadEnv();
   return sSensitivity;
+}
+
+void SetSensitivity(float radiansPerPixel) {
+  ReadEnv();
+  if (std::isfinite(radiansPerPixel) && radiansPerPixel > 0.f) {
+    sSensitivity = radiansPerPixel;
+  }
+}
+
+bool InvertX() {
+  ReadEnv();
+  return sInvertX;
+}
+
+bool InvertY() {
+  ReadEnv();
+  return sInvertY;
+}
+
+void SetInvertX(bool invert) {
+  ReadEnv();
+  sInvertX = invert;
+}
+
+void SetInvertY(bool invert) {
+  ReadEnv();
+  sInvertY = invert;
 }
 
 } // namespace PortMouse

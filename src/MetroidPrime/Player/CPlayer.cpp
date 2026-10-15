@@ -2138,9 +2138,9 @@ void CPlayer::Think(float dt, CStateManager& mgr) {
   }
 
 #ifdef TARGET_PC
-  // The mouse owns the body yaw while it is aiming. After ProcessInput, whose stick turn would
-  // otherwise win the frame (see MouseAimAllowed).
-  UpdateMouseAim(mgr);
+  // The mouse, or the twin stick, owns the body yaw while it is aiming. After ProcessInput,
+  // whose stick turn would otherwise win the frame (see MouseAimAllowed).
+  UpdateMouseAim(mgr, dt);
 #endif
 
   UpdateEchoVisorEffects(dt, mgr);
@@ -2386,6 +2386,11 @@ void CPlayer::UpdateFrozenState(const CFinalInput& input, CStateManager& mgr) {
 }
 
 void CPlayer::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
+#ifdef TARGET_PC
+  // Twin-stick aim reads the C-stick here and applies it in Think (see UpdateMouseAim).
+  mPortLookX = input.GetAnalogRightX();
+  mPortLookY = input.GetAnalogRightY();
+#endif
   static_cast< CControlHintManager* >(mControlHintManager.get())
       ->ProcessInput(input, mControlMapper, mgr);
   mBackwardInput = mControlMapper.GetAnalogInput(CControlMapper::kC_Backward, input,
@@ -2749,7 +2754,7 @@ void CPlayer::UpdateFreeLook(float dt) {
 // movement (CPlayerDynamics) and changes gun animations, and the mouse should not pretend that
 // R is held.
 bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
-  if (!PortMouse::Enabled()) {
+  if (!PortMouse::Enabled() && !PortMouse::StickEnabled()) {
     return false;
   }
   const CCameraManager* cameras = mCameraManager;
@@ -2763,11 +2768,14 @@ bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
   return mOrbitState == kOS_NoOrbit || mOrbitState == kOS_Grapple;
 }
 
-void CPlayer::UpdateMouseAim(CStateManager& mgr) {
-  if (!PortMouse::Enabled()) {
+void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
+  if (!PortMouse::Enabled() && !PortMouse::StickEnabled()) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);
+  if (PortMouse::StickEnabled()) {
+    PortMouse::AddStickAim(mPortLookX, mPortLookY, dt);
+  }
   // While something else owns the view - a lock-on, the morph ball, a cinematic - track the
   // camera direction instead, so engaging the mouse again does not snap the aim.
   const CFirstPersonCamera* fpCamera =
@@ -2790,6 +2798,13 @@ void CPlayer::ComputeFreeLook(const CFinalInput& input, CStateManager& mgr) {
   float lookRight = mControlMapper.GetAnalogInput(CControlMapper::kC_LookRight, input);
   float lookUp = mControlMapper.GetAnalogInput(CControlMapper::kC_LookUp, input);
   float lookDown = mControlMapper.GetAnalogInput(CControlMapper::kC_LookDown, input);
+#ifdef TARGET_PC
+  // Twin-stick consumes the C-stick: it aims through PortMouse, so letting the game's free
+  // look read it too would turn the view twice.
+  if (PortMouse::StickEnabled()) {
+    lookLeft = lookRight = lookUp = lookDown = 0.f;
+  }
+#endif
   CGameOptions& options = gpGameState->GameOptions();
   CPlayerOptions& playerOptions = options.PlayerOptions(mPlayerIndex);
   const bool invertY =

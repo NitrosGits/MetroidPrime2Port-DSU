@@ -178,6 +178,19 @@ public:
   void InitializeState(CAssetId world, TAreaId area, CAssetId mreaId);
   // Guessed name; teleports a player, applies spawn inventory and notifies the game mode.
   void SpawnPlayer(CScriptSpawnPoint& spawnPoint, uint playerIndex);
+#ifdef TARGET_PC
+  // Port: warps for testing, filled in by the platform (see platform/include/port_warp.h).
+  // Consumed once per update, so a request waits until a world is there to take it.
+  void PortWarpTick();
+  void PortWarpToArea(TAreaId aid);
+  void PortWarpToWorld(CAssetId worldId, CAssetId areaId);
+  void PortWarpToDock();
+  void PortWarpToDoor();
+  void PortWarpSettle();
+  // A warp sets the area and lets the game's own per-frame travel load it; this remembers which
+  // area to place the player in once it is loaded.
+  TAreaId mPortPendingWarpArea = kInvalidAreaId;
+#endif
   void CreateStandardGameObjects(); // Prime-correlated name; per-player construction in Echoes.
   void DeleteSaveGameScreen();
   void CreateSaveGameScreen(); // Guessed name.

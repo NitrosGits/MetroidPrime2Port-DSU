@@ -5,6 +5,8 @@
 // Port: Aurora brackets a presented frame around the game's scene.
 #include <aurora/aurora.h>
 
+#include "port_overlay.h"
+
 #include <chrono>
 #include <thread>
 
@@ -996,6 +998,10 @@ void CGraphics::EndScene() {
   VISetPostRetraceCallback(VideoPostCallback);
   GXFlush();
 #ifdef TARGET_PC
+  // Port: the debug overlay draws into this frame before it is presented.
+  if (s_auroraFrameOpen) {
+    PortOverlay::Draw();
+  }
   // Port: present this Aurora frame instead of waiting on the GP breakpoint.
   AuroraFrameEnd();
   PaceFrame(sIs50Hz);
