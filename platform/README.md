@@ -23,6 +23,29 @@ waits for. See `../PORT_NOTES.md` for the measured SDK link gap.
   until upstream writes `COsContext` and `CMemorySys` (see `../PORT_NOTES.md`).
 - `rel.cpp`, `include/port_rel.h` — the REL module runtime (arena, loader, linker,
   registry), tested against a module extracted from an owned disc.
+- `port_events.cpp` — the game loop's per-iteration Aurora poll (built by
+  `mp_port_audio`, since it needs SDL). It installs the port's keyboard map and
+  drives pad 0 from `MP2_INPUT` scripts.
+
+## Input
+
+Aurora reads a real controller by itself, but its keyboard map is empty
+(`g_defaultKeys` is all `PAD_KEY_INVALID`), so a machine with no pad reported
+`PAD_ERR_NO_CONTROLLER` and the game got no input at all. `InstallDefaultKeyBindings`
+in `port_events.cpp` installs the Prime port's layout once at startup:
+
+| Key | Pad | Key | Pad |
+| --- | --- | --- | --- |
+| WASD | main stick | X / Z | A / B |
+| IJKL | C-stick | C / V | X / Y |
+| Q / E | L / R (also the analog triggers) | F | Z |
+| arrows | D-pad | Enter | Start |
+
+Keyboard state merges with a connected controller's and with `MP2_INPUT`'s virtual
+pad, so neither replaces the other. There is no remap UI yet (see `debug_ui.cpp`
+under "Waiting"), and mouse look is not wired to the game: `include/port_mouse.h`
+and the aim code in `debug_ui.cpp` are the Prime port's, which drives them from
+its own `CPlayer`/`CFirstPersonCamera` hooks.
 
 ## Reworked for Echoes
 
