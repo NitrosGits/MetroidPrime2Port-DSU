@@ -59,7 +59,6 @@ void RunInputScript(unsigned frame) {
   Seconds();
   PADStatus status{};
   u16 held = 0;
-  bool active = false;
   for (const char* p = script; *p != '\0';) {
     const char* at = std::strchr(p, '@');
     if (at == nullptr) {
@@ -95,17 +94,10 @@ void RunInputScript(unsigned frame) {
         }
       }
     }
-    active |= frame < start + length + 1;
     p = *end == ',' ? end + 1 : end;
   }
-  if (!active) {
-    static bool cleared = false;
-    if (!cleared) {
-      PADClearVirtualStatus(0);
-      cleared = true;
-    }
-    return;
-  }
+  // Once the script ends, pad 0 stays connected and idle: clearing it would leave no controller,
+  // and the game then gets no input messages at all (player dt stays 0, the gun never draws).
   status.err = PAD_ERR_NONE;
   status.button = held;
   PADSetVirtualStatus(0, &status);
