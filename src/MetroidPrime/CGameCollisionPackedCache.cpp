@@ -115,7 +115,13 @@ void CGameCollision::UpdateCollisionCache(const CStateManager& mgr, CCollisionCa
   CCollisionCacheIterator iterator;
 
   while (cache.SkipGeometry(iterator) != uint(-1)) {
+#ifdef TARGET_PC
+    // Retail compares zero-extended ids; a sign-extended short never equals 0xffff, so area
+    // geometry (no object) was dropped from the cache and the morph ball fell through floors.
+    const ushort objectId = iterator.GetObjectId();
+#else
     const short objectId = iterator.GetObjectId();
+#endif
     if (objectId == kInvalidUniqueId.value) {
       continue;
     }
