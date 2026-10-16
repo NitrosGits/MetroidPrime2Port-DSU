@@ -4036,8 +4036,12 @@ void CStateManager::PortWarpTick() {
     }
     const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
     const CAssetId current = gpGameState->CurrentWorldAssetId();
-    std::fprintf(stderr, "[warp] world table: %d worlds, current %08x\n",
+    std::fprintf(stderr, "[warp] world table: %d worlds, current %08x:",
                  static_cast< int >(worlds.size()), current);
+    for (size_t i = 0; i < worlds.size(); ++i) {
+      std::fprintf(stderr, " %zu=%08x", i, worlds[i].first);
+    }
+    std::fprintf(stderr, "\n");
     if (worlds.empty()) {
       break;
     }
