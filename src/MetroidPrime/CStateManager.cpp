@@ -1,6 +1,8 @@
 #include "MetroidPrime/CStateManager.hpp"
 
-#include <cstring>
+#ifdef TARGET_PC
+#include <string.h>
+#endif
 #include "Collision/CMRay.hpp"
 #include "Collision/CRayCastResult.hpp"
 #include "Collision/CollisionUtil.hpp"
@@ -3937,7 +3939,7 @@ CAssetId ResolveWarpAsset(const char* text) {
   // An asset id is written as eight hex digits in the logs and symbol maps, and `strtoul` reads
   // that as decimal only up to the first letter ("863fcd72" stops at the 'f'), so read the whole
   // text as hex when it is all hex digits. `MP2_WORLD=<id>` is how a test boots into a world.
-  if (std::strlen(text) == 8 && std::strspn(text, "0123456789abcdefABCDEF") == 8) {
+  if (strlen(text) == 8 && strspn(text, "0123456789abcdefABCDEF") == 8) {
     return static_cast< CAssetId >(std::strtoul(text, nullptr, 16));
   }
   const SObjectTag* tag =
@@ -4319,9 +4321,37 @@ void CStateManager::PortWarpToWorldPortal() {
   std::fprintf(stderr, "[warp] no elevator in area %d\n", area.Value());
 }
 
+// A world change has to name a *real* destination area. The game's own world change (an elevator)
+// always has one from its script; a request that names only a world does not, and the loader then
+// hands a null area to `CWorld::ScheduleAreaToLoad` (or asks the resource loader for a world whose
+// pak was never mounted) and segfaults. The save knows which areas it has seen in each world, so
+// take the first of those.
+CAssetId CStateManager::PortFirstAreaOfWorld(CAssetId worldId) const {
+  if (gpMemoryCard == nullptr || worldId == kInvalidAssetId) {
+    return kInvalidAssetId;
+  }
+  const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
+  for (rstl::vector< CMemoryCard::MemoryWorld >::const_iterator it = worlds.begin();
+       it != worlds.end(); ++it) {
+    if (it->first == worldId && !it->second.GetAreaIds().empty()) {
+      return CAssetId(it->second.GetAreaIds().front());
+    }
+  }
+  return kInvalidAssetId;
+}
+
 void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
   if (worldId == kInvalidAssetId) {
     return;
+  }
+  if (areaId == kInvalidAssetId) {
+    areaId = PortFirstAreaOfWorld(worldId);
+    if (areaId == kInvalidAssetId) {
+      std::fprintf(stderr,
+                   "[warp] %08x: the save knows no area of that world, so there is nowhere to land\n",
+                   worldId);
+      return;
+    }
   }
   if (gpResourceFactory != nullptr && gpResourceFactory->GetResourceTypeById(worldId) != 'MLVL') {
     // The resource factory only knows resources whose paks are loaded, so a world the game is not
@@ -4337,10 +4367,18 @@ void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
   if (CWorld* world = World(); world != nullptr) {
     world->SetLoadPauseState(true);
   }
+  // The destination world's pak must be mounted before the restart asks the resource loader for it:
+  // the elevator gets that for free (the game streams the pak during its fade), an immediate request
+  // does not, and the loader dereferences the pak it could not find.
+  if (gpMain != nullptr) {
+    gpMain->EnsureWorldPakReady(worldId);
+  }
   gpGameState->SetCurrentWorldId(worldId);
-  CWorldState& worldState = gpGameState->CurrentWorldState();
-  worldState.SetAreaId(TAreaId(0));
-  worldState.SetDesiredAreaAssetId(areaId);
+  // Mirror CScriptWorldTeleporter::AcceptScriptMsg's kSM_SetToZero case, which is the world change
+  // that is known to work: it sets the *desired area* and leaves the area id alone. Clearing the
+  // area id here instead restarted the game as if it were new (the intro movie played, and the
+  // resource loader was asked for a world it had not mounted).
+  gpGameState->CurrentWorldState().SetDesiredAreaAssetId(areaId);
   gpMain->SetRestartMode(CMain::kRM_None);
   QuitGame();
 }

@@ -1,6 +1,8 @@
 #include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 
-#include <cstdio>
+#ifdef TARGET_PC
+#include <stdio.h>
+#endif
 #include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"

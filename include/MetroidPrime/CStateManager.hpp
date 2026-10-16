@@ -184,6 +184,7 @@ public:
   void PortWarpTick();
   void PortWarpToArea(TAreaId aid);
   void PortWarpToWorld(CAssetId worldId, CAssetId areaId);
+  CAssetId PortFirstAreaOfWorld(CAssetId worldId) const;
   void PortWarpToDock();
   void PortWarpToDoor();
   void PortWarpToStation();

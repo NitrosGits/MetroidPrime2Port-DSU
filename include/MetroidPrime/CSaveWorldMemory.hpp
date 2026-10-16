@@ -23,6 +23,12 @@ public:
   , mAreaCount(0) {}
 
   int GetAreaCount() const { return mAreaCount; }
+#ifdef TARGET_PC
+  // Port: the world's area asset ids in the save. A request that changes world by id alone needs one
+  // real area to land in (CMainFlow hands the world state's area to CWorld::ScheduleAreaToLoad, and a
+  // null area segfaults), and this is the list the save keeps for every world it has seen.
+  const rstl::vector< uint >& GetAreaIds() const { return mAreaIds; }
+#endif
   CAssetId GetWorldNameId() const { return mWorldNameId; }
   CAssetId GetDarkWorldNameId() const { return mDarkWorldNameId; }
   CAssetId GetSaveWorldAssetId() const { return mSaveWorldId; }

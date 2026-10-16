@@ -1,5 +1,10 @@
 #include "Kyoto/CResLoader.hpp"
 
+#ifdef TARGET_PC
+#include <stdio.h>
+#include <string.h>
+#endif
+
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/CPakFile.hpp"
 #include "Kyoto/Streams/CLZOInputStream.hpp"
@@ -7,6 +12,44 @@
 #include "rstl/StringExtras.hpp"
 
 static inline int align_size(const int size) { return (size + 31) & ~31; }
+
+#ifdef TARGET_PC
+namespace {
+// A resource that no loaded pak has: retail's code takes the pak it looked up and dereferences it,
+// so a missing resource is a segfault (the port reached this when a world change asked for a
+// resource before the destination world's pak was mounted). Nothing can invent the resource, but
+// handing back a request that is already complete, over a zeroed buffer, keeps the game alive and
+// says which resource was missing.
+class CPortMissingDvdRequest : public CDvdRequest {
+public:
+  ~CPortMissingDvdRequest() override {}
+  void WaitUntilComplete() override {}
+  bool IsComplete() override { return true; }
+  void PostCancelRequest() override {}
+  int GetMediaType() const override { return 1; }
+};
+
+// 32 KiB: far more than the zero-length or short read a caller can make of a resource whose size it
+// could not look up, and small enough to be free.
+constexpr uint kPortMissingResourceBufferSize = 0x8000;
+
+uchar* PortMissingResourceBuffer() {
+  uchar* buffer = static_cast< uchar* >(
+      CMemory::Alloc(kPortMissingResourceBufferSize, IAllocator::kHI_RoundUpLen));
+  memset(buffer, 0, kPortMissingResourceBufferSize);
+  return buffer;
+}
+
+void WarnMissingResource(CAssetId id, const char* where) {
+  static CAssetId sReported = kInvalidAssetId;
+  if (sReported != id) {
+    sReported = id;
+    std::fprintf(stderr, "[res] %s: %08x is in no loaded pak; serving an empty resource\n", where,
+                 id);
+  }
+}
+} // namespace
+#endif
 
 CResLoader::CResLoader()
 : mCurPak(mPakLoadedList.end())
@@ -187,6 +230,12 @@ CResLoader::ECompressionType CResLoader::GetResourceCompression(const SObjectTag
 CDvdRequest* CResLoader::LoadResourceAsync(const SObjectTag& tag, char* extBuf) {
   CPakFile* curPak = FindResourceForLoad(tag);
   const CPakFile::CResInfo* info = mCachedResInfo;
+#ifdef TARGET_PC
+  if (curPak == nullptr || info == nullptr) {
+    WarnMissingResource(tag.GetId(), "LoadResourceAsync(extBuf)");
+    return rs_new CPortMissingDvdRequest();
+  }
+#endif
   return curPak->DvdFile().AsyncSeekRead(extBuf, align_size(info->GetSize()), kSO_Set,
                                          info->GetOffset());
 }
@@ -194,6 +243,13 @@ CDvdRequest* CResLoader::LoadResourceAsync(const SObjectTag& tag, char* extBuf) 
 CBufferedDvdRequest* CResLoader::LoadResourceAsync(const SObjectTag& tag) {
   CPakFile* curPak = FindResourceForLoad(tag);
   const CPakFile::CResInfo* info = mCachedResInfo;
+#ifdef TARGET_PC
+  if (curPak == nullptr || info == nullptr) {
+    WarnMissingResource(tag.GetId(), "LoadResourceAsync");
+    return rs_new CBufferedDvdRequest(nullptr, rs_new CPortMissingDvdRequest(),
+                                      PortMissingResourceBuffer());
+  }
+#endif
   GroupCacheList::iterator it =
       FindGroupCache(&curPak->DvdFile(), info->GetOffset(), info->GetSize());
   if (it == mGroupCaches.end()) {
@@ -215,12 +271,32 @@ CDvdRequest* CResLoader::LoadResourcePartAsync(const SObjectTag& tag, const int 
                                                const int length, char* extBuf) {
   CPakFile* curPak = FindResourceForLoad(tag);
   const CPakFile::CResInfo* info = mCachedResInfo;
+#ifdef TARGET_PC
+  if (curPak == nullptr || info == nullptr) {
+    WarnMissingResource(tag.GetId(), "LoadResourcePartAsync");
+    if (extBuf != nullptr) {
+      memset(extBuf, 0, length);
+    }
+    return rs_new CPortMissingDvdRequest();
+  }
+#endif
   return curPak->DvdFile().AsyncSeekRead(extBuf, length, kSO_Set, info->GetOffset() + offset);
 }
 
 CInputStream* CResLoader::LoadNewResourceSync(const SObjectTag& tag, char* extBuf) {
   CPakFile* curPak = FindResourceForLoad(tag);
   const CPakFile::CResInfo* info = mCachedResInfo;
+#ifdef TARGET_PC
+  if (curPak == nullptr || info == nullptr) {
+    WarnMissingResource(tag.GetId(), "LoadNewResourceSync");
+    if (extBuf != nullptr) {
+      memset(extBuf, 0, kPortMissingResourceBufferSize);
+    }
+    // A stream over zeros rather than null: the callers read the resource through it.
+    uchar* zeros = PortMissingResourceBuffer();
+    return rs_new CMemoryInStream(zeros, kPortMissingResourceBufferSize);
+  }
+#endif
   uint len = align_size(info->GetSize());
   void* dest = extBuf ? extBuf : CMemory::Alloc(len, IAllocator::kHI_RoundUpLen);
 
