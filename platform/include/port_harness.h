@@ -24,6 +24,14 @@ bool GameUpdate();
 // True once a run has reached its limit and asked to end; the platform polls this.
 bool ExitRequested();
 
+// Called every loop iteration by the platform's event poll. Prints one line, once, when the game
+// has stopped updating for a while after having updated at least once - a paused game (START
+// opens the pause menu, and a paused game calls no CStateManager::Update) or a wedged load look
+// exactly like a hang otherwise: the frame limit is a count of game updates, so it is never
+// reached and only the script's `timeout` ends the run. Re-arms after the game updates again, so
+// a second stall is reported too.
+void IdleCheck();
+
 // Wall seconds since the first call into this file (the game loop's start). A log that says how long
 // a phase took is worth more than one that says how many frames it used, because the loop's rate is
 // not constant: pak loading runs at tens of iterations a second and a rendered game area at a

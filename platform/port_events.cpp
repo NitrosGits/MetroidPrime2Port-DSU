@@ -190,6 +190,9 @@ bool PortPumpEvents() {
     std::fprintf(stderr, "[harness] the run is over (MP2_FRAMES); shutting down\n");
     return true;
   }
+  // A run that has stopped updating is reported here, every iteration, because this poll is the one
+  // thing a paused or wedged game still runs.
+  PortHarness::IdleCheck();
   PortMouse::BeginFrame();
   RunInputScript(frame++);
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;

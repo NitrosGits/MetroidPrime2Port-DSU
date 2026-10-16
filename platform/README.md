@@ -175,6 +175,11 @@ and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
   process exits 0, so a log's last line is the run's verdict instead of the script's
   `timeout` (which stays in place as the backstop for a run that never gets there).
   `[harness]` lines report the limit and the world/area the run ended in.
+- **A script must not press `START` while in game.** It opens the pause menu, and a
+  paused game calls no `CStateManager::Update`, so the frame limit is never reached
+  and only the script's `timeout` ends the run. The harness reports that case as
+  `[harness] no game update for <n> s (... updates so far, limit ...)`, once per
+  stall.
 
 A load test is the two together, e.g.
 
