@@ -2269,6 +2269,11 @@ TUniqueId CStateManager::AllocateUniqueId() {
         sReportedFull = true;
         rs_debugger_printf("Object list full!");
       }
+      // Nothing here can find a free index, so the do/while would spin forever. Say what happened
+      // and stop: a run that dies naming the cause is worth more than one that hangs.
+      std::fprintf(stderr, "[ids] the object id pool is exhausted (1024 live objects)\n");
+      std::fflush(stderr);
+      std::abort();
 #else
       rs_debugger_printf("Object list full!");
 #endif
@@ -4147,7 +4152,7 @@ namespace {
 // pool is 1024 (kMaxObjects) and a busy area's script objects run to several hundred, so a warp
 // started against a nearly-full pool is what exhausted it (a save load comes up at ~1008 and
 // settles near ~350 a few hundred frames later).
-constexpr int kPortWarpMinFreeIds = 512;
+constexpr int kPortWarpMinFreeIds = 256;
 } // namespace
 
 int CStateManager::PortFreeObjectIds() {
