@@ -128,6 +128,14 @@ static void MyTHPGXYuv2RgbSetup(bool field, bool deinterlace) {
       {GX_VA_TEX0, GX_DIRECT},
       {GX_VA_NULL, GX_NONE},
   };
+#ifdef TARGET_PC
+  // Port: this function builds the descriptor and never applies it, so the movie's four vertices
+  // arrive as a position plus a texture coordinate while the decoder's descriptor still says
+  // position only. It then consumes 12 of the 16 bytes per vertex, reads the leftovers as GX
+  // commands and Aurora aborts with "unsupported primitive type" - asynchronously, on its FIFO
+  // thread, with nothing pointing at the movie player. Apply the list this function made.
+  CGX::SetVtxDescv(attr);
+#endif
   CGX::SetZMode(TRUE, GX_ALWAYS, FALSE);
   CGX::SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
   CGX::SetNumChans(0);

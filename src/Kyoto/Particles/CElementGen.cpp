@@ -22,6 +22,33 @@
 
 #include "dolphin/gx.h"
 
+#ifdef TARGET_PC
+namespace {
+
+// Port: with GX_DIRECT attributes the FIFO decoder reads each attribute with the *named format's*
+// component type, and VTXFMT0/VTXFMT6's types are global state. CEnvFxManager declares VTXFMT6 as
+// S16 positions and S8 texcoords for its weather effects, while the particle draws here write
+// float positions and S16 texcoords: a run that drew effects first then left the decoder reading
+// 6-byte positions, which desynced the FIFO (Aurora reported "unsupported primitive type" with
+// nothing to point at). Declare what these draws actually write, at every descriptor site.
+void PortDeclareParticleFormats() {
+  // The quad path draws with VTXFMT6 and writes S16 one-component texture coordinates; the line
+  // path draws with VTXFMT0 and writes float two-component ones. Both formats' attribute types are
+  // global state that CEnvFxManager (VTXFMT6 = S16 positions / S8 texcoords) and CFluidPlaneCPU
+  // (VTXFMT0 = U8 positions) reconfigure for their own drawing, so declare what this file's two
+  // paths actually write, each at its own descriptor site.
+  GXSetVtxAttrFmt(GX_VTXFMT6, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GXSetVtxAttrFmt(GX_VTXFMT6, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+  GXSetVtxAttrFmt(GX_VTXFMT6, GX_VA_TEX0, GX_TEX_S, GX_S16, 0);
+
+  GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+  GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+}
+
+} // namespace
+#endif
+
 // Guessed names for the TU-local scale default and initialization guard.
 static const CVector3f skOneVector(1.f, 1.f, 1.f);
 static const double skTickTime = 1.0 / 60.0;
@@ -1460,6 +1487,10 @@ void CElementGen::RenderParticles() {
       {GX_VA_NULL, GX_NONE},
   };
   CGX::SetVtxDescv(skVtxDescList);
+#ifdef TARGET_PC
+  PortDeclareParticleFormats();
+#endif
+
 
   GXTevStageID nextStage = GX_TEVSTAGE1;
   const bool modulateAlpha = sEnableAlphaModulation;
@@ -2010,6 +2041,10 @@ void CElementGen::RenderParticlesFlameThrower(CElementGen* const* gens, int coun
       {GX_VA_NULL, GX_NONE},
   };
   CGX::SetVtxDescv(skVtxDescList);
+#ifdef TARGET_PC
+  PortDeclareParticleFormats();
+#endif
+
   CGX::SetNumChans(1);
   GXTevStageID stage = GX_TEVSTAGE0;
   int stages = 1;
@@ -2379,6 +2414,10 @@ void CElementGen::RenderParticlesIndirectTexture() {
       {GX_VA_TEX1, GX_DIRECT}, {GX_VA_TEX2, GX_DIRECT}, {GX_VA_NULL, GX_NONE},
   };
   CGX::SetVtxDescv(skIndVtxDescList);
+#ifdef TARGET_PC
+  PortDeclareParticleFormats();
+#endif
+
 
   for (int i = 0; i < particleCount; ++i) {
     CParticle* particle = SORT ? &mParticles[sortItems[i].mPartIdx] : &mParticles[i];
@@ -2552,6 +2591,10 @@ void CElementGen::RenderLines() {
       {GX_VA_NULL, GX_NONE},
   };
   CGX::SetVtxDescv(skDescList);
+#ifdef TARGET_PC
+  PortDeclareParticleFormats();
+#endif
+
 
   if (hasModuColor) {
     CGX::SetNumChans(2);
@@ -2688,6 +2731,10 @@ void CElementGen::BeginModelRender(SModelRenderState& state) {
           {GX_VA_NULL, GX_NONE},
       };
       CGX::SetVtxDescv(skDescList);
+#ifdef TARGET_PC
+  PortDeclareParticleFormats();
+#endif
+
       CGX::SetChanCtrl(CGX::Channel0, false, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE,
                        GX_AF_NONE);
       CGX::SetNumChans(1);
@@ -2766,6 +2813,10 @@ void CElementGen::BeginIndirectModelRender(SModelRenderState& state) {
       {GX_VA_TEX1, GX_DIRECT}, {GX_VA_TEX2, GX_DIRECT}, {GX_VA_NULL, GX_NONE},
   };
   CGX::SetVtxDescv(skDescList);
+#ifdef TARGET_PC
+  PortDeclareParticleFormats();
+#endif
+
 }
 
 void CElementGen::RenderModelParticle(SModelRenderState& state, const CColor& color,

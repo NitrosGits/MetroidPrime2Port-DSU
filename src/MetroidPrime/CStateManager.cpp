@@ -3944,14 +3944,24 @@ CAssetId ResolveWarpAsset(const char* text) {
 } // namespace
 
 void CStateManager::PortWarpTick() {
-  PortWarp::SRequest request;
-  if (!PortWarp::Consume(request)) {
+  if (!PortWarp::Pending()) {
     return;
   }
   CWorld* world = World();
   if (world == nullptr) {
-    // No world yet (front end): drop it rather than teleporting into nothing.
-    std::fprintf(stderr, "[warp] no world loaded; request dropped\n");
+    // No world yet: leave the request alone; it is served as soon as one is there.
+    return;
+  }
+  // The front end has its own world (and its own player preview), whose area ids have nothing to
+  // do with the save's: a boot request served there lands nowhere. Hold every request until the
+  // game mode has left the front end, so `MP2_TELEPORT=<area>` means "in my save's world, as soon
+  // as it loads" - which is what lets a test boot straight into the area it is about.
+  if (gpGameState != nullptr && gpGameState->GetGameMode().GetGameModeType() == 'FRND') {
+    return;
+  }
+
+  PortWarp::SRequest request;
+  if (!PortWarp::Consume(request)) {
     return;
   }
 
@@ -3970,7 +3980,16 @@ void CStateManager::PortWarpTick() {
 
   switch (request.kind) {
   case PortWarp::EKind::kArea: {
-    PortWarpToArea(world->IGetAreaId(ResolveWarpAsset(request.area)));
+    // A plain number is an area *index* (that is what `[warp] area N` prints and what the sweeps
+    // use), anything else - a name or a hex asset id - is resolved through the resource table.
+    const int index = std::atoi(request.area);
+    const CGameArea* byIndex =
+        index >= 0 && index < world->IGetAreaCount() ? world->Area(TAreaId(index)) : nullptr;
+    if (byIndex != nullptr && byIndex->GetAreaAssetId() != kInvalidAssetId) {
+      PortWarpToArea(TAreaId(index));
+    } else {
+      PortWarpToArea(world->IGetAreaId(ResolveWarpAsset(request.area)));
+    }
     break;
   }
   case PortWarp::EKind::kCycleArea: {

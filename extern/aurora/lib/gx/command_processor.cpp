@@ -23,6 +23,14 @@ namespace aurora::gx::fifo {
 namespace {
 constexpr Module Log{"aurora::gx::fifo"};
 
+// Port diagnostic: when a draw's vertex stream does not match its declared format, too few bytes
+// are consumed and the leftovers are read as commands ("unsupported primitive type"). Keep the
+// last draw's numbers so the fatal can say which format/attribute was misdeclared.
+static GXVtxFmt sLastDrawFmt = GX_VTXFMT0;
+static u32 sLastDrawVtxSize = 0;
+static u16 sLastDrawVtxCount = 0;
+static GXPrimitive sLastDrawPrim = GX_QUADS;
+
 u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxCount) noexcept {
   u16 numIndices = 0;
   if (prim == GX_QUADS) {
@@ -88,8 +96,19 @@ u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxC
     buf.append<u16>(2);
     buf.append<u16>(0);
     numIndices = 6;
-  } else
+  } else {
+    const auto& fmt = g_gxState.vtxFmts[sLastDrawFmt];
+    Log.error("  last draw: prim={} fmt={} vtxCount={} vtxSize={} (= count*size bytes consumed)",
+              static_cast<u32>(sLastDrawPrim), static_cast<u32>(sLastDrawFmt), sLastDrawVtxCount,
+              sLastDrawVtxSize);
+    for (int i = GX_VA_POS; i <= GX_VA_TEX7; ++i) {
+      const auto& attr = fmt.attrs[i];
+      Log.error("  fmt{} attr {}: desc={} cnt={} type={} frac={}", static_cast<u32>(sLastDrawFmt), i,
+                static_cast<u32>(g_gxState.vtxDesc[i]), static_cast<u32>(attr.cnt),
+                static_cast<u32>(attr.type), static_cast<u32>(attr.frac));
+    }
     UNLIKELY FATAL("unsupported primitive type {}", static_cast<u32>(prim));
+  }
   return numIndices;
 }
 
@@ -492,6 +511,10 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
     LIKELY { vtxSize = g_gxState.lastVtxSize; }
   else
     UNLIKELY { vtxSize = calc_vtx_size(fmt); }
+  sLastDrawFmt = fmt;
+  sLastDrawVtxSize = vtxSize;
+  sLastDrawVtxCount = vtxCount;
+  sLastDrawPrim = prim;
 
   u32 totalVtxBytes = vtxCount * vtxSize;
   if (totalVtxBytes > reader.remaining())

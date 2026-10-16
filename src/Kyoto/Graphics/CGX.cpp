@@ -1,4 +1,8 @@
 #include "Kyoto/Graphics/CGX.hpp"
+
+#ifdef TARGET_PC
+#include <dolphin/gx/GXGet.h>
+#endif
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
 
@@ -7,6 +11,7 @@
 #ifdef TARGET_PC
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 
 namespace {
 
@@ -35,6 +40,11 @@ void PortCheckPrimitive(GXPrimitive prim, const void* ptr, size_t size) {
                static_cast< int >(prim), ptr, size);
   std::fflush(stderr);
   std::raise(SIGSEGV);
+}
+
+bool PortSkipDisplayLists() {
+  static const bool skip = std::getenv("MP2_NO_DLIST") != nullptr;
+  return skip;
 }
 
 } // namespace
@@ -446,6 +456,14 @@ void CGX::SetArray(GXAttr attr, const void* data, uchar stride) {
 #endif
 
 void CGX::CallDisplayList(const void* ptr, size_t size) {
+#ifdef TARGET_PC
+  // MP2_NO_DLIST=1: a bisection switch for "the FIFO desyncs somewhere in area N" - it halves the
+  // search space in one run (display lists vs the immediate-mode stream), and nothing else in the
+  // draw path depends on the call.
+  if (PortSkipDisplayLists()) {
+    return;
+  }
+#endif
   if (gpGXState->mChanFlags != 0) {
     FlushState();
   }
@@ -455,21 +473,6 @@ void CGX::CallDisplayList(const void* ptr, size_t size) {
 void CGX::Begin(GXPrimitive prim, GXVtxFmt fmt, ushort numVtx) {
 #ifdef TARGET_PC
   PortCheckPrimitive(prim, nullptr, 0);
-  // Port: with GX_DIRECT attributes the FIFO decoder reads each one with the *format's* type, and
-  // VTXFMT0's types are global state that every immediate-mode caller would have to keep in step.
-  // Retail keeps VTXFMT0 as the immediate format by convention (its display-list paths use other
-  // formats), but here a display-list path that reconfigures VTXFMT0 - CFluidPlaneCPU sets its
-  // dense list's positions to U8/XY - leaves the next immediate draw's float vertices to be read
-  // as bytes, which desyncs the FIFO and surfaced as "unsupported primitive type" in Aurora's
-  // thread. Pin the immediate format at every Begin.
-  if (fmt == GX_VTXFMT0) {
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
-    for (int tex = GX_VA_TEX0; tex <= GX_VA_TEX7; ++tex) {
-      GXSetVtxAttrFmt(GX_VTXFMT0, static_cast< GXAttr >(tex), GX_TEX_ST, GX_F32, 0);
-    }
-  }
 #endif
   if (gpGXState->mChanFlags != 0) {
     FlushState();

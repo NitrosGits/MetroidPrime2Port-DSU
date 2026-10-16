@@ -38,6 +38,9 @@ void Door();
 void Station();
 // Reads MP2_WORLD / MP2_TELEPORT once; called from the platform event loop.
 void ApplyEnvOnce();
+// Whether a request is waiting. The game checks this before it is ready to act (no world yet, or
+// the front end), so that `Consume` does not take a request it would then have to drop.
+bool Pending();
 // Takes the pending request, if any. One at a time on purpose: a warp reloads the world, which
 // invalidates anything resolved against the old one.
 bool Consume(SRequest& out);
