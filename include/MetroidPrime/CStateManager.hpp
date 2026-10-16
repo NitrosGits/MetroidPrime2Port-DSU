@@ -203,6 +203,8 @@ public:
   // make room - the drop is worth doing once per warp, not every frame.
   bool mPortWarpWaitingForIds = false;
   bool mPortWarpDroppedAreas = false;
+  // Frame at which to drop the areas the last warp left behind (0 = nothing scheduled).
+  uint mPortDropAreasAtFrame = 0;
 #endif
   void CreateStandardGameObjects(); // Prime-correlated name; per-player construction in Echoes.
   void DeleteSaveGameScreen();

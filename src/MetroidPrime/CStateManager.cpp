@@ -3733,6 +3733,16 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   // the world exists; a world reload ends the update early through QuitGame.
   PortWarpTick();
   PortWarpSettle();
+  if (mPortDropAreasAtFrame != 0 && mUpdateFrameIdx >= mPortDropAreasAtFrame) {
+    mPortDropAreasAtFrame = 0;
+    if (CWorld* dropWorld = World(); dropWorld != nullptr) {
+      TAreaId keep = dropWorld->GetCurrentAreaId();
+      if (dropWorld->UnloadAllAreasExcept(*this, keep)) {
+        std::fprintf(stderr, "[warp] dropped the areas around %d (%d object ids free)\n",
+                     keep.Value(), PortFreeObjectIds());
+      }
+    }
+  }
   // Live object and unique-id counts, opt-in with MP2_DEBUG_IDS=1. The id pool holds 1024 and
   // AllocateUniqueId reports "Object list full!" once it is exhausted, so a run that walks many
   // areas needs to show whether objects are freed as areas unload.
@@ -4156,6 +4166,10 @@ namespace {
 // started against a nearly-full pool is what exhausted it (a save load comes up at ~1008 and
 // settles near ~350 a few hundred frames later).
 constexpr int kPortWarpMinFreeIds = 256;
+// Frames between a warp settling and dropping the areas it left behind: enough for the HUD and the
+// camera to have rebuilt themselves against the new area (dropping immediately segfaulted the HUD's
+// dynamic lights), and short enough that a sweep's next hop still starts with a free pool.
+constexpr uint kPortDropAreasDelay = 30;
 } // namespace
 
 int CStateManager::PortFreeObjectIds() {
@@ -4253,11 +4267,14 @@ void CStateManager::PortWarpSettle() {
     mCameraManagers[i]->ResetCameras(*this);
   }
 
-  // Do NOT drop the areas around the new one here: other subsystems still hold the area the player
-  // came from for a frame or more (the HUD builds its dynamic lights against it - dropping all but
-  // the destination at this point segfaulted in CActorLights::BuildAreaLightList 200 log lines
-  // later), so the drop happens only while a warp is waiting for object ids, by which time the game
-  // has let go. See the wait in PortWarpSettle below.
+  // Dropping the areas around the new one *here* crashes: other subsystems still hold the area the
+  // player came from for a frame or more (the HUD builds its dynamic lights against it, and the run
+  // segfaulted in CActorLights::BuildAreaLightList 200 log lines later). So the drop is scheduled a
+  // short while after arrival, once the game has rebuilt its view of the new area - the areas a
+  // sweep has left behind otherwise stay loaded and hold their objects, and two areas' worth plus a
+  // third area's stream is what exhausts the 1024-id pool (a walk of world 1baa96c2 died there with
+  // 558 ids live).
+  mPortDropAreasAtFrame = mUpdateFrameIdx + kPortDropAreasDelay;
 }
 
 // Stand the player in the nearest doorway of this area, facing through it, so a scripted walk
