@@ -16,6 +16,16 @@
 #ifdef TARGET_PC
 #include <new>
 #include <stdio.h>
+#include <stdlib.h>
+
+// Per-read tracing of every resource the game streams. It is worth having when a load goes wrong,
+// and pure cost when it does not: hundreds of formatted lines with an fflush per read, measured at
+// 119881 of the 125035 lines in one run's log (13 MB of 13.2 MB), which is both CPU on a loaded
+// machine and enough noise to bury the lines a test greps for. Opt in with MP2_DEBUG_DVD=1.
+static bool PortDvdTraceEnabled() {
+  static const bool sEnabled = getenv("MP2_DEBUG_DVD") != nullptr;
+  return sEnabled;
+}
 #endif
 
 static CDvdFile* sFirstARAM = nullptr;
@@ -410,9 +420,11 @@ CDvdRequest* CDvdFile::AsyncSeekRead(void* dest, uint len, ESeekOrigin origin, i
     request = rs_new CARAMDvdRequest(CARAMManager::DMAToMRAM(
         mARAMBuffer + mOffset, dest, roundedLen, CARAMManager::kDMAPrio_One));
 #ifdef TARGET_PC
-    printf("[dvd] AsyncSeekRead(%s): ARAM path, len=%u off=%d -> CARAMDvdRequest %p\n",
-           mFilename.data(), len, mOffset, static_cast< void* >(request));
-    fflush(nullptr);
+    if (PortDvdTraceEnabled()) {
+      printf("[dvd] AsyncSeekRead(%s): ARAM path, len=%u off=%d -> CARAMDvdRequest %p\n",
+             mFilename.data(), len, mOffset, static_cast< void* >(request));
+      fflush(nullptr);
+    }
 #endif
   } else {
     CRealDvdRequest* req = rs_new CRealDvdRequest();
@@ -424,12 +436,14 @@ CDvdRequest* CDvdFile::AsyncSeekRead(void* dest, uint len, ESeekOrigin origin, i
     // 32-byte alignment is printed alongside it because Aurora asserts it in
     // `DVDReadAbsAsyncPrioInternal` (dvd.cpp:743).
     const BOOL fastOpen = DVDFastOpen(mFileEntry, info);
-    printf("[dvd] AsyncSeekRead(%s): DVD path, entry=%d len=%u off=%d roundLen=%u "
-           "fastOpen=%d buf=%p align32=%d\n",
-           mFilename.data(), mFileEntry, len, mOffset, (len + 31) & ~31,
-           static_cast< int >(fastOpen), dest,
-           (reinterpret_cast< uintptr_t >(dest) & 31) == 0);
-    fflush(nullptr);
+    if (PortDvdTraceEnabled()) {
+      printf("[dvd] AsyncSeekRead(%s): DVD path, entry=%d len=%u off=%d roundLen=%u "
+             "fastOpen=%d buf=%p align32=%d\n",
+             mFilename.data(), mFileEntry, len, mOffset, (len + 31) & ~31,
+             static_cast< int >(fastOpen), dest,
+             (reinterpret_cast< uintptr_t >(dest) & 31) == 0);
+      fflush(nullptr);
+    }
 #else
     DVDFastOpen(mFileEntry, info);
 #endif
@@ -437,9 +451,11 @@ CDvdRequest* CDvdFile::AsyncSeekRead(void* dest, uint len, ESeekOrigin origin, i
     gDvdActivity = true;
     request = req;
 #ifdef TARGET_PC
-    printf("[dvd] AsyncSeekRead(%s): issued; cb.state=%d userData=%p\n", mFilename.data(),
-           static_cast< int >(info->cb.state), info->cb.userData);
-    fflush(nullptr);
+    if (PortDvdTraceEnabled()) {
+      printf("[dvd] AsyncSeekRead(%s): issued; cb.state=%d userData=%p\n", mFilename.data(),
+             static_cast< int >(info->cb.state), info->cb.userData);
+      fflush(nullptr);
+    }
 #endif
   }
 
@@ -476,13 +492,17 @@ bool CDvdFile::FileExists(const char* filename) {
     }
   }
   if (exists) {
-    printf("[dvd] FileExists(\"%s\") -> true, %u bytes (entry %d)\n", filename, length, entry);
-    if (length == 0) {
-      printf("[dvd]   ^ non-zero entry but zero length: the FST entry resolved to nothing "
-             "readable, which is a disc problem, not a lookup problem.\n");
+    if (PortDvdTraceEnabled()) {
+      printf("[dvd] FileExists(\"%s\") -> true, %u bytes (entry %d)\n", filename, length, entry);
+      if (length == 0) {
+        printf("[dvd]   ^ non-zero entry but zero length: the FST entry resolved to nothing "
+               "readable, which is a disc problem, not a lookup problem.\n");
+      }
     }
   } else {
-    printf("[dvd] FileExists(\"%s\") -> false\n", filename);
+    if (PortDvdTraceEnabled()) {
+      printf("[dvd] FileExists(\"%s\") -> false\n", filename);
+    }
   }
   return exists;
 }
