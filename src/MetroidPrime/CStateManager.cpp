@@ -1,5 +1,6 @@
 #include "MetroidPrime/CStateManager.hpp"
 
+#include <cstring>
 #include "Collision/CMRay.hpp"
 #include "Collision/CRayCastResult.hpp"
 #include "Collision/CollisionUtil.hpp"
@@ -3933,6 +3934,12 @@ CAssetId ResolveWarpAsset(const char* text) {
   if (end != nullptr && end != text && *end == '\0') {
     return static_cast< CAssetId >(value);
   }
+  // An asset id is written as eight hex digits in the logs and symbol maps, and `strtoul` reads
+  // that as decimal only up to the first letter ("863fcd72" stops at the 'f'), so read the whole
+  // text as hex when it is all hex digits. `MP2_WORLD=<id>` is how a test boots into a world.
+  if (std::strlen(text) == 8 && std::strspn(text, "0123456789abcdefABCDEF") == 8) {
+    return static_cast< CAssetId >(std::strtoul(text, nullptr, 16));
+  }
   const SObjectTag* tag =
       gpResourceFactory != nullptr ? gpResourceFactory->GetResourceIdByName(text) : nullptr;
   if (tag == nullptr) {
@@ -4266,19 +4273,24 @@ void CStateManager::PortWarpToStation() {
                nearest->GetUniqueId().Value(), area.Value(), static_cast< int >(best));
   player->Teleport(CTransform4f::LookAt(at, at + CVector3f(0.f, 1.f, 0.f), CVector3f::Up()), *this,
                    true);
+  // The station's own trigger volume sends this when the player steps onto the pad; teleporting
+  // onto it does not necessarily land inside that volume, so send it the same message.
+  DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, nearest->GetUniqueId(), kSM_Action));
 }
 
-// Hurt the player with an unresistable amount of damage, which is the only way to reach the death
-// and respawn path without an enemy or a hazard (the port has neither in a test).
+// Kill the player, which is the only way to reach the death and respawn path without an enemy or a
+// hazard to walk into. `CPlayer::TakeDamage` only accumulates damage for the frame's own damage
+// step (its PreThink clears the accumulator), so a request that lands outside that window is
+// dropped - go through the state manager's kill, which is what a fatal hit uses and which also
+// tells the game mode, so the death sequence and respawn run.
 void CStateManager::PortWarpToDeath() {
   CPlayer* player = GetPlayer(0);
   if (player == nullptr) {
     return;
   }
-  std::fprintf(stderr, "[warp] killing the player\n");
-  const CDamageInfo damage(CWeaponMode(kWT_UnknownSource), 100000.f, 0.f, 0.f, true);
-  player->TakeDamage(true, player->GetTranslation(), 100000.f, kInvalidUniqueId, kInvalidUniqueId,
-                     damage, *this);
+  const float health = PlayerState(0)->GetHealthInfo().GetHP();
+  std::fprintf(stderr, "[warp] killing the player (health %f)\n", health);
+  KillPlayer(health, player->GetUniqueId(), kInvalidUniqueId);
 }
 
 // Stand on the nearest elevator of this area and tell it to go, which is the game's own world
@@ -4312,8 +4324,10 @@ void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
     return;
   }
   if (gpResourceFactory != nullptr && gpResourceFactory->GetResourceTypeById(worldId) != 'MLVL') {
-    std::fprintf(stderr, "[warp] %08x is not a world\n", worldId);
-    return;
+    // The resource factory only knows resources whose paks are loaded, so a world the game is not
+    // in looks unknown here (the save's own table is the authority, and its ids come from the
+    // MLVL-filtered resource list). Warn and go, exactly as the elevator does.
+    std::fprintf(stderr, "[warp] %08x does not look like a loaded world; going anyway\n", worldId);
   }
   std::fprintf(stderr, "[warp] world %08x area %08x\n", worldId, areaId);
 
