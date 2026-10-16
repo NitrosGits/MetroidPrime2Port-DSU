@@ -27,7 +27,22 @@ CCollisionActor::CCollisionActor(TUniqueId uid, TAreaId areaId, TUniqueId owner,
 , mBoxSize(extent)
 , mCenter(center)
 , mObbContainer(rs_new COBBTreeGroup(extent, center))
+#ifdef TARGET_PC
+    // Port: the same trap as `CScriptPlatform.cpp` - the non-const pointer picked the *owning*
+    // constructor, so the group was owned twice (by `mObbContainer` and by the primitive's
+    // `mOwnedContainer`) and `~CCollisionActor`, which destroys the primitive first, destroyed the
+    // group and its `COBBTree` twice. The second destruction freed a `COBBTree` leaf's surface
+    // vector again and killed the run in `CGameAllocator::FreeNormalAllocation` when the area
+    // unloaded (`CScriptObjectLoaderHelper::FreeScriptObjects` -> `ClearGraveyard`). Retail's
+    // `__ct__15CCollisionActor...RC9CVector3fRC9CVector3fbf` (0x8013858C,
+    // `build/G2ME01/asm/MetroidPrime/CCollisionActor.s:1246`) calls the const overload
+    // `__ct__23CCollidableOBBTreeGroupFPC13COBBTreeGroupRC13CMaterialList`, which only references
+    // the group; the actor stays its one owner.
+, mObbTreeGroupPrimitive(rs_new CCollidableOBBTreeGroup(
+      static_cast< const COBBTreeGroup* >(mObbContainer.get()), GetMaterialList()))
+#else
 , mObbTreeGroupPrimitive(rs_new CCollidableOBBTreeGroup(mObbContainer.get(), GetMaterialList()))
+#endif
 , mAaboxPrimitive(nullptr)
 , mSpherePrimitive(nullptr)
 , mSphereRadius(0.f)
