@@ -2,8 +2,8 @@
 # Area regression sweep: boots the save's own world (no `MP2_WORLD`), teleports each shard to its
 # first area with `MP2_TELEPORT`, then walks the rest of its slice with `NEXTAREA` tokens and ends
 # every run with `MP2_FRAMES`. Built on `tools/run_gameplay.sh` (see its header for the traps it
-# checks: a user dir without the memory card, and an input script that presses `START` - neither can
-# happen here, the generated script has no button tokens that open a menu).
+# checks: a user dir without the memory card, and an input script that presses `START` - the generated
+# script never presses `START`, but it does press `A`, see `write_input` below for why that matters).
 #
 #   USERDIR=<dir holding the card> [SHARD=<n>|all] [SHARDS=4] [COUNT=63] [DWELL=1400]
 #   [TAIL=1000] [HEAL=400] [TAG=sweep] [DISPLAY_BASE=86] [ASAN=1] tools/sweep_areas.sh
@@ -53,17 +53,41 @@ print(first, max(0, min(per, count - first)))
 PY
 }
 
-# The generated script for one shard: no button tokens at all, only warp tokens and heals.
+# The generated script for one shard. It presses no menu button - a `START` in game opens the pause
+# menu and a paused game performs no `CStateManager::Update`, which is what `MP2_FRAMES` counts - and
+# it dismisses whatever screen an area throws at it with `B`, twice per area. That is load-bearing and
+# the button choice matters:
+#
+#   * an area whose script runs a `CScriptHUDMemo` (or a suit message) calls
+#     `CStateManager::ShowPausedHUDMemo` -> `kSMT_MessageScreen` -> `CMFGame::EnterMessageScreen` ->
+#     `SetFlowState(kFS_Paused)`, and a paused game updates nothing until the player dismisses the
+#     screen. The token counter in `MP2_INPUT` keeps running while paused, so a periodic press gets
+#     the run moving again (measured: the first Temple Grounds sweep, with no button tokens at all,
+#     stopped dead in areas 21 and 35 and `tools/sweep_report.py` read both as STALL);
+#   * `B` is the press, not `A`: `A` is the action button, and an arrival lands the player at the
+#     area's first spawn point, which is often inside a save station's trigger volume -
+#     `CScriptSpecialFunction::AcceptSaveStation` takes `kSM_Action` from `A`, calls
+#     `CStateManager::EnterSaveGameScreen` and then the sweep's own next `A` walks the save screen into
+#     a quit, which the port's front-end skip turns into a *reload of the save*. Measured 2026-10-17:
+#     with `A` twice per area, three of the four shards quit to the front end mid-sweep, reloaded slot
+#     0 (id count back to 352, update counter back to 0) and then walked `NEXTAREA` from area 0 again -
+#     the logs looked like stalls in areas 14/21/35 and were nothing of the kind. `B` leaves a screen
+#     without activating anything. It does **not** cure the real stall those areas still show (see the
+#     Status note in AGENTS.md): with `B`, the sweep still stops updating in 14, 21 and 35, with no
+#     reload and the log's last line the post-arrival `dropped the areas around N`.
 write_input() { # <first> <n> <path>
   python3 - "$1" "$2" "$DWELL" "$HEAL" "$3" <<'PY'
 import sys
 first, n, dwell, heal = (int(v) for v in sys.argv[1:5])
 path = sys.argv[5]
 tokens = []
-for k in range(1, n):
+for k in range(n):
     t = k * dwell
-    tokens.append("NEXTAREA@%d" % t)
+    if k > 0:
+        tokens.append("NEXTAREA@%d" % t)
     tokens.append("HEAL@%d" % (t + heal))
+    tokens.append("B@%d+4" % (t + heal + 120))
+    tokens.append("B@%d+4" % (t + dwell // 2))
 open(path, "w").write(",".join(tokens) + "\n")
 print(len(tokens))
 PY

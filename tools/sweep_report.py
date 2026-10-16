@@ -24,6 +24,11 @@ Verdicts, worst first:
              signal (134 abort, 139 segfault).
     ABORT    an id-pool exhaustion or an assert stopped the run in this phase.
     STALL    no game update for the harness's 30 s window: the game stopped updating here.
+    RELOAD   the update counter went backwards - the run quit to the front end and the port's
+             front-end skip re-booted slot 0, so the sweep's `NEXTAREA` tokens then walked from the
+             save's own area again. A sweep that presses `A` does this (the action button activates
+             the save stations the arrival spawn points sit in); the reload is the finding, and the
+             stall report next to it is only a symptom.
     POOL     the id pool came within 64 ids of full in this phase - legal in itself, but it is the
              headroom the next hop needs, which is what the port's pre-stream drop exists to keep.
     OK       the area loaded, played, and nothing above happened.
@@ -70,6 +75,8 @@ class Phase:
     shard: int
     first_frame: int | None = None
     last_frame: int | None = None
+    min_frame: int | None = None
+    max_frame: int | None = None
     max_ids: int = 0
     pool_size: int = 0
     misses: list[str] = field(default_factory=list)
@@ -80,6 +87,7 @@ class Phase:
     stalling_index: int = -1
     fatal_index: int = -1
     stubs: int = 0
+    jumped_back: bool = False
     notable: list[str] = field(default_factory=list)
 
     @property
@@ -87,6 +95,17 @@ class Phase:
         if self.first_frame is None or self.last_frame is None:
             return 0
         return self.last_frame - self.first_frame
+
+    @property
+    def reloaded(self) -> bool:
+        """`CStateManager`'s update counter going backwards inside one phase means a world/save
+        reload: a run that quit to the front end and was re-booted by `MP2_SKIP_FRONTEND` comes up
+        again at the save's own area with the counter back near 0, and the sweep's `NEXTAREA` tokens
+        then walk from there - which reads as a mysterious stall plus a wrong area list unless the
+        report says so."""
+        if self.min_frame is None or self.max_frame is None or self.first_frame is None:
+            return self.jumped_back
+        return self.jumped_back or self.min_frame < self.first_frame
 
     @property
     def sampled(self) -> bool:
@@ -97,12 +116,18 @@ class Phase:
 
     @property
     def verdict(self) -> str:
+        # A reload comes first: it is what a stall report in the same phase usually means (the run
+        # was sitting on a quit/loading screen), and it explains an update counter that went backwards.
+        if self.reloaded:
+            return "RELOAD"
         if self.stall:
             return "STALL"
         if self.fatal:
             return "CRASH"
         if self.abort:
             return "ABORT"
+        if self.reloaded:
+            return "RELOAD"
         if self.pool_size and self.max_ids >= self.pool_size - 64:
             return "POOL"
         return "OK"
@@ -182,6 +207,8 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
                 if current.first_frame is None:
                     current.first_frame = frame
                 current.last_frame = frame
+                current.min_frame = frame if current.min_frame is None else min(current.min_frame, frame)
+                current.max_frame = frame if current.max_frame is None else max(current.max_frame, frame)
                 current.max_ids = max(current.max_ids, live)
                 current.pool_size = size
             elif (m := HOP_RE.match(line)) and current is not None:
@@ -242,6 +269,16 @@ def main() -> int:
         shards.append(shard)
         phases.extend(shard_phases)
 
+    # The counter jumping *between* phases is a reload too (the phase before it was the last one the
+    # old world state ran), which is how a quit-to-front-end and a skip re-boot show up.
+    last_frame: dict[int, int] = {}
+    for phase in phases:
+        previous = last_frame.get(phase.shard)
+        if previous is not None and phase.first_frame is not None and phase.first_frame < previous:
+            phase.jumped_back = True
+        if phase.last_frame is not None:
+            last_frame[phase.shard] = phase.last_frame
+
     print("== shards")
     slices = read_manifest(paths)
     for shard in sorted(shards, key=lambda s: s.index):
@@ -266,7 +303,11 @@ def main() -> int:
     print("\n== areas: slot shard verdict updates id-high-water res route stubs")
     for phase in sorted(phases, key=lambda p: (p.area, p.shard)):
         pool = f"{phase.max_ids}/{phase.pool_size}" if phase.pool_size else "?"
-        note = " (fault sampled after the stall)" if phase.sampled else ""
+        note = ""
+        if phase.reloaded:
+            note = " (reloaded: the update counter went backwards in this phase)"
+        elif phase.sampled:
+            note = " (fault sampled after the stall)"
         print(f"  {phase.area:>3}  shard{phase.shard}  {phase.verdict:<6} {phase.updates:>5}  "
               f"{pool:>9}  {len(phase.misses):>2}  {phase.route or '-':<6}  {phase.stubs}{note}")
 
