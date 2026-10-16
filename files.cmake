@@ -816,7 +816,7 @@ set(MP_MODULE_ScriptPlayerTurret_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_SnakeWeedSwarm_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp
 )
 set(MP_MODULE_SpacePirate_SOURCES
     src/MetroidPrime/Enemies/PortCSpacePirate.cpp

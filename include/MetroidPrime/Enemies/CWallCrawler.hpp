@@ -84,6 +84,11 @@ protected:
   bool x860_29_ : 1;
   bool x860_30_ : 1;
   bool x861_24_ : 1;
+#ifdef TARGET_PC
+  // CCollisionSurface::GetPlane returns by value, so GetConstraintPlane's reference needs storage
+  // that outlives the call (returning the temporary compiled to a null reference).
+  mutable CPlane mConstraintPlane;
+#endif
 };
 CHECK_SIZEOF(CWallCrawler, 0x868)
 

@@ -114,7 +114,8 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
 , x860_28_(false)
 , x860_29_(false)
 , x860_30_(false)
-, x861_24_(false) {}
+, x861_24_(false)
+, mConstraintPlane(mAlignSurface.GetPlane()) {}
 
 CWallCrawler::~CWallCrawler() {}
 
@@ -253,7 +254,12 @@ void CWallCrawler::AlignToPlane(const CUnitVector3f& normal, float dt) {
   OrientToSurfaceNormal(*this, CVector3f(normal), mAlignAngVel * dt);
 }
 
-const CPlane& CWallCrawler::GetConstraintPlane() const { return mAlignSurface.GetPlane(); }
+// GetPlane() builds the plane by value; returning it directly bound the reference to a temporary,
+// which GCC compiles to a null reference (PillBug's patrol then faulted in CPlane::GetClosestPoint).
+const CPlane& CWallCrawler::GetConstraintPlane() const {
+  mConstraintPlane = mAlignSurface.GetPlane();
+  return mConstraintPlane;
+}
 
 CVector3f CWallCrawler::ProjectVectorToPlane(const CVector3f& vec, const CVector3f& planeDir) {
   return vec - CVector3f::Dot(vec, planeDir) * planeDir;
