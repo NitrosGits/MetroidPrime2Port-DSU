@@ -18,7 +18,7 @@ SandBoss;src/MetroidPrime/PortModuleStubs.cpp
 Sandworm;src/MetroidPrime/PortModuleStubs.cpp
 ScriptPlayerTurret;src/MetroidPrime/PortModuleStubs.cpp
 SnakeWeedSwarm;src/MetroidPrime/PortModuleStubs.cpp
-SpacePirate;src/MetroidPrime/PortModuleStubs.cpp
+SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirate.cpp
 Splitter;src/MetroidPrime/PortModuleStubs.cpp
 SwampBossStage1;src/MetroidPrime/PortModuleStubs.cpp
 SwampBossStage2;src/MetroidPrime/PortModuleStubs.cpp

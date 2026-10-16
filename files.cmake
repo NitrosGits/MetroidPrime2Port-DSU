@@ -819,7 +819,7 @@ set(MP_MODULE_SnakeWeedSwarm_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_SpacePirate_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSpacePirate.cpp
 )
 set(MP_MODULE_Splitter_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
