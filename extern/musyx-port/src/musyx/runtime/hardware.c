@@ -383,11 +383,29 @@ void hwSetITDMode(u32 v, u8 mode) {
 #define hwGetITDMode(dsp_vptr) (dsp_vptr->flags & 0x80000000)
 
 void hwSetVolume(u32 v, u8 table, float vol, u32 pan, u32 span, float auxa, float auxb) {
-  SAL_VOLINFO vi;                    // r1+0x24
-  u16 il;                            // r30
-  u16 ir;                            // r29
-  u16 is;                            // r28
-  DSPvoice* dsp_vptr = &dspVoice[v]; // r31
+  SAL_VOLINFO vi;     // r1+0x24
+  u16 il;             // r30
+  u16 ir;             // r29
+  u16 is;             // r28
+  u32 studio;         // r27
+  DSPvoice* dsp_vptr; // r31
+  /* The synth's zero-offset pass updates the volume of a voice that has a macro program
+   * even when the voice does not sound, so this runs for a voice that has never been
+   * started, and `studio` is only written by salActivateVoice.  On the console that
+   * field reads as 0 (its audio heap is zeroed, and the hardware has no MMU anyway);
+   * on the host it is uninitialised heap memory, and a value past the 8 studios sends
+   * the dspStudio[] lookup below off the end of the executable's .bss - which is
+   * where the audio thread's SIGSEGV in this function came from. */
+  if (dspVoice == NULL || v >= salNumVoices) {
+    return;
+  }
+
+  dsp_vptr = &dspVoice[v];
+  studio = dsp_vptr->studio;
+  if (studio >= SAL_MAX_STUDIONUM) {
+    /* Never a real studio: keep the lookup inside dspStudio instead of reading past it. */
+    studio = 0;
+  }
   if (vol >= 1.f) {
     vol = 1.f;
   }
@@ -401,7 +419,7 @@ void hwSetVolume(u32 v, u8 table, float vol, u32 pan, u32 span, float auxa, floa
   }
 
   salCalcVolume(table, &vi, vol, pan, span, auxa, auxb, hwGetITDMode(dsp_vptr) != 0,
-                dspStudio[dsp_vptr->studio].type == SND_STUDIO_TYPE_DPL2);
+                dspStudio[studio].type == SND_STUDIO_TYPE_DPL2);
 
   il = 32767.f * vi.volL;
   ir = 32767.f * vi.volR;

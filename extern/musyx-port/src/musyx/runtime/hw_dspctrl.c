@@ -394,6 +394,12 @@ bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
 #endif
       if ((dspVoice = salMalloc(salNumVoices * sizeof(DSPvoice)))) {
         MUSY_DEBUG("Allocated HW voice array.\n\n");
+        /* The console's audio heap hands back zeroed memory, so a field this setup does
+         * not write (`studio`, `flags`, the voice links) reads as 0 there.  The host's
+         * heap does not, and an uninitialised `studio` is read by the audio thread for a
+         * voice the synth updates before it ever sounds - hwSetVolume then indexes
+         * dspStudio past its 8 entries (the port's audio-thread SIGSEGV). */
+        memset(dspVoice, 0, salNumVoices * sizeof(DSPvoice));
         if ((dspITDBuffer = SAL_MALLOC(salNumVoices * 64))) {
           MUSY_DEBUG("Allocated ITD buffers for voice array.\n\n");
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
