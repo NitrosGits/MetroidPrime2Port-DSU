@@ -127,6 +127,8 @@ void RunInputScript(unsigned frame) {
         PortWarp::Door();
       } else if (NameIs("STATION", p, at)) {
         PortWarp::Station();
+      } else if (NameIs("WORLDPORTAL", p, at)) {
+        PortWarp::WorldPortal();
       } else if (NameIs("NEXTWORLD", p, at)) {
         PortWarp::CycleWorld(1);
       } else if (NameIs("PREVWORLD", p, at)) {

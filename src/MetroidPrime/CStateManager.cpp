@@ -71,6 +71,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptForgottenObject.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSpawnPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWorldTeleporter.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -4020,6 +4021,10 @@ void CStateManager::PortWarpTick() {
     PortWarpToStation();
     break;
   }
+  case PortWarp::EKind::kWorldPortal: {
+    PortWarpToWorldPortal();
+    break;
+  }
   case PortWarp::EKind::kWorld: {
     PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
     break;
@@ -4253,6 +4258,32 @@ void CStateManager::PortWarpToStation() {
                nearest->GetUniqueId().Value(), area.Value(), static_cast< int >(best));
   player->Teleport(CTransform4f::LookAt(at, at + CVector3f(0.f, 1.f, 0.f), CVector3f::Up()), *this,
                    true);
+}
+
+// Stand on the nearest elevator of this area and tell it to go, which is the game's own world
+// transition (CScriptWorldTeleporter: set the world, desired area, restart through CMainFlow).
+void CStateManager::PortWarpToWorldPortal() {
+  CWorld* world = World();
+  if (world == nullptr) {
+    return;
+  }
+  // A world teleporter is a logical entity with no transform of its own (its elevator is a
+  // separate actor), so there is nothing to stand on: take the area's first one and tell it to go.
+  // That is the game's own world transition (CScriptWorldTeleporter::AcceptScriptMsg sets the
+  // world and the desired area, then restarts through CMainFlow).
+  const TAreaId area = world->GetCurrentAreaId();
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    CScriptWorldTeleporter* portal = TCastToPtr< CScriptWorldTeleporter >((*objects)[i]);
+    if (portal == nullptr || portal->GetCurrentAreaId() != area || !portal->GetActive()) {
+      continue;
+    }
+    std::fprintf(stderr, "[warp] elevator %04x in area %d: going through it\n",
+                 portal->GetUniqueId().Value(), area.Value());
+    DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, portal->GetUniqueId(), kSM_SetToZero));
+    return;
+  }
+  std::fprintf(stderr, "[warp] no elevator in area %d\n", area.Value());
 }
 
 void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {

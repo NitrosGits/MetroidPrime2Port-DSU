@@ -89,6 +89,11 @@ void Station() {
   sRequest.kind = EKind::kStation;
 }
 
+void WorldPortal() {
+  sRequest = SRequest();
+  sRequest.kind = EKind::kWorldPortal;
+}
+
 void ApplyEnvOnce() {
   if (sReadEnv) {
     return;
