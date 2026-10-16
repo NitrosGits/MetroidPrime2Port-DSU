@@ -16,6 +16,14 @@
 static uint ReadBE32(const uchar* p) {
   return uint(p[0]) << 24 | uint(p[1]) << 16 | uint(p[2]) << 8 | uint(p[3]);
 }
+
+// How much stream is left. The reader has no bounds checks, so every length this file takes out of
+// the data itself has to be held against this before it is used.
+static long StreamRemaining(const CInputStream& in) {
+  const long size = static_cast< long >(in.GetBufferSize());
+  const long pos = static_cast< long >(in.GetReadPosition());
+  return size > pos ? size - pos : 0;
+}
 #endif
 
 static const wchar_t skInvalidString[] = L"Invalid";
@@ -55,6 +63,21 @@ void CStringTable::Load(CInputStream& in) {
   int langCount = in.Get(TType< int >());
   mStringCount = in.Get(TType< int >());
 
+#ifdef TARGET_PC
+  // Port: a resource that is in no loaded pak is served as a buffer of zeros
+  // (`CResLoader::WarnMissingResource`), and an empty string table is a harmless absence - every
+  // string is "Invalid" and nothing dereferences it. A zero *language count* is what is not
+  // harmless: `languages[0]` below then reads an uninitialised slot of the `reserved_vector`
+  // (retail's slot, inlined on the stack), `offset` becomes garbage, and the skip before the size
+  // read lands outside the buffer. That is the SIGSEGV in `CStringTable::Load+0x12c` a by-id world
+  // change produced. A table the stream cannot even describe is taken as empty here.
+  if (langCount <= 0 || langCount > 7 ||
+      uint(langCount) * (version != 0 ? 12u : 8u) > uint(StreamRemaining(in))) {
+    mStringCount = 0;
+    return;
+  }
+#endif
+
   rstl::reserved_vector< SLanguageInfo, 7 > languages;
   for (int i = 0; i < langCount; ++i) {
     FourCC language = in.Get(TType< FourCC >());
@@ -78,10 +101,18 @@ void CStringTable::Load(CInputStream& in) {
   // Port: the disc holds 32-bit big-endian offsets and UTF-16BE text; a host has 64-bit pointers
   // and a 4-byte wchar_t. Read the raw names and language section, then lay mData out as host
   // structures: [SStringName x names][raw names blob][const wchar_t* x strings][wchar_t text].
+  // Every size below is bounded by the stream: a damaged (or absent) table must come out empty
+  // rather than walk off the buffer, which is what `offset` and `size` are for.
+  if (offset > uint(StreamRemaining(in))) {
+    offset = uint(StreamRemaining(in));
+  }
   std::vector< uchar > rawNames;
   if (version != 0) {
     mNameCount = in.Get(TType< int >());
     uint namesSize = in.Get(TType< uint >());
+    if (namesSize > uint(StreamRemaining(in))) {
+      namesSize = uint(StreamRemaining(in));
+    }
     rawNames.resize(namesSize);
     in.ReadBytes(rawNames.data(), namesSize);
   }
@@ -90,6 +121,9 @@ void CStringTable::Load(CInputStream& in) {
   }
   if (version == 0) {
     size = in.Get(TType< uint >());
+  }
+  if (size > uint(StreamRemaining(in))) {
+    size = uint(StreamRemaining(in));
   }
   std::vector< uchar > section(size);
   in.ReadBytes(section.data(), size);

@@ -4563,6 +4563,53 @@ CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
                worldId, areaCount);
   return kInvalidAssetId;
 }
+
+// The world pak that owns `worldId`, made readable again if it is stashed.
+//
+// `CGameState::SetCurrentWorldId` (`CGameState.cpp:748`) calls `CMain::EnsureWorldPakReady`, which
+// stashes every world pak that does not own the new world - so from the moment a world change is
+// applied the *outgoing* world's pak is unreadable, while the outgoing world is still the live one
+// (the state manager's own update finishes this frame, and the in-game GUI updates after it) and
+// still asks the loader for its own resources. In /tmp/elite5.log the request that came after the
+// stash was the auto-mapper's area-name STRG (`CAutoMapper.cpp:1901` -> `GetObj('STRG', n)`, the
+// only by-id STRG request a live area makes); the loader answered "in no loaded pak" with empty
+// bytes and `CStringTable::Load` faulted on them.
+//
+// An elevator never shows that window: it applies the world change seconds into its ride, by which
+// time the area it is leaving has asked for and cached its own resources, and it refuses the change
+// outright unless the destination's MLVL is already readable (`CScriptWorldTeleporter.cpp:103`). A
+// by-id change happens in the same frame the world it is leaving became live, so it has to keep the
+// outgoing pak readable itself. Nothing re-stashes it: the restart keeps the game state
+// (`CMainFlow::SetGameState`, `kRM_None`), so the cost is one world pak's resource table in memory.
+void PortKeepWorldPakReadable(CAssetId worldId) {
+  if (worldId == kInvalidAssetId || gpResourceFactory == nullptr) {
+    return;
+  }
+  CResLoader& loader = gpResourceFactory->GetResLoader();
+  for (int i = 0; i < loader.GetPakCount(); ++i) {
+    CPakFile* pak = loader.GetPakFile(i);
+    if (pak == nullptr || !pak->IsWorldPak() || !pak->IsCompletelyLoaded()) {
+      continue;
+    }
+    const rstl::vector< rstl::pair< rstl::string, SObjectTag > >& names =
+        pak->GetStringToObjectList();
+    for (rstl::vector< rstl::pair< rstl::string, SObjectTag > >::const_iterator it = names.begin();
+         it != names.end(); ++it) {
+      if (it->second.GetId() != worldId) {
+        continue;
+      }
+      // A pak that is not stashed needs nothing (and `EnsureWorldPakReady` does nothing then).
+      pak->EnsureWorldPakReady();
+      std::fprintf(stderr,
+                   "[warp] %08x: the outgoing world's pak stays readable until the restart "
+                   "replaces the world\n",
+                   worldId);
+      return;
+    }
+  }
+  std::fprintf(stderr, "[warp] %08x: no loaded world pak owns it, so nothing to keep readable\n",
+               worldId);
+}
 } // namespace
 
 CAssetId CStateManager::PortFirstAreaOfWorld(CAssetId worldId) const {
@@ -4633,7 +4680,12 @@ void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
   if (gpMain != nullptr) {
     gpMain->EnsureWorldPakReady(worldId);
   }
+  const CAssetId outgoingWorld = gpGameState->CurrentWorldAssetId();
   gpGameState->SetCurrentWorldId(worldId);
+  // `SetCurrentWorldId` stashes the outgoing world's pak (see PortKeepWorldPakReadable): put it
+  // back, because the outgoing world is still live for the rest of this frame and until CMainFlow
+  // has restarted. This is the by-id path's half of what an elevator gets from the ride's fade.
+  PortKeepWorldPakReadable(outgoingWorld);
   // Mirror CScriptWorldTeleporter::AcceptScriptMsg's kSM_SetToZero case, which is the world change
   // that is known to work: it sets the *desired area* and leaves the area id alone. Clearing the
   // area id here instead restarted the game as if it were new (the intro movie played, and the

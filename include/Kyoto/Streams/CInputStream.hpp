@@ -113,6 +113,14 @@ public:
   char ReadInt8() { return static_cast< char >(ReadUint8()); }
   bool ReadBool() { return ReadUint8() != 0; }
   uint GetReadPosition() const { return mPtr - mBuffer; }
+#ifdef TARGET_PC
+  // Port: the readers above read straight out of the buffer with no bounds checks (retail read
+  // from a memory card buffer that was always large enough), so a caller that takes a length out of
+  // the data itself - `CStringTable::Load` does - has to know how much stream is actually left
+  // before it trusts it. Non-virtual inline, so the object's layout and the matching build are
+  // untouched.
+  unsigned long GetBufferSize() const { return mBufferSize; }
+#endif
 
 private:
   uchar* mBuffer;
