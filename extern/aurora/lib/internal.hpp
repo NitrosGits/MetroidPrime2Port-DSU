@@ -7,6 +7,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <cstdio>  // port: name the aborted resize
 #include <cstring>
 #include <limits>
 #include <span>
@@ -334,6 +335,13 @@ private:
       m_owned = true;
     } else if (size > m_capacity) {
       if (!m_owned) {
+        // A non-owned buffer is a fixed window into a mapped staging buffer (see gfx/frame.cpp),
+        // so this is a frame that needs more room than its window has. Name it: the abort otherwise
+        // says nothing about which buffer ran out or by how much.
+        fprintf(stderr,
+                "[aurora] ByteBuffer::resize: %zu bytes requested but the window is %zu bytes - a "
+                "frame needs more than its staging window (see StorageBufferSize in gfx/resources.hpp)\n",
+                size, m_capacity);
         abort();
       }
       if (size < m_capacity * 2) {

@@ -26,6 +26,8 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <cstdio>  // port diagnostic: MP2_GX_STORAGE_LOG
+#include <cstdlib>
 #include <vector>
 
 #include <absl/container/flat_hash_map.h>
@@ -1131,7 +1133,17 @@ Range push_storage(const uint8_t* data, size_t length) {
   if (!check_recording("push_storage")) {
     return {};
   }
-  return push(current_frame_packet().storage, data, length, resources().limits.minStorageBufferOffsetAlignment);
+  // Port diagnostic. A frame's storage is a fixed window into the staging buffer (8 MiB, see
+  // frame.cpp), so a frame that uploads more than that dies inside ByteBuffer::resize with
+  // nothing naming the producer. MP2_GX_STORAGE_LOG=1 prints each sizeable upload and the frame's
+  // running total, which is what points at the draw or the vertex array responsible.
+  static const bool sLog = std::getenv("MP2_GX_STORAGE_LOG") != nullptr;
+  auto& storage = current_frame_packet().storage;
+  if (sLog && length >= 4096) {
+    std::fprintf(stderr, "[gx-storage] upload %zu bytes (frame total %zu -> %zu, window 8 MiB)\n",
+                 length, storage.size(), storage.size() + length);
+  }
+  return push(storage, data, length, resources().limits.minStorageBufferOffsetAlignment);
 }
 
 Range push_texture_data(const uint8_t* data, u32 bytesPerRow, u32 rowsPerImage) {

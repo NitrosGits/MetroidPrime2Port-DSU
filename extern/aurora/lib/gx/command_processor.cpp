@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>  // port diagnostic: MP2_GX_STORAGE_LOG
+#include <cstdlib>
 #include <span>
 #include <vector>
 
@@ -457,6 +459,13 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
     }
     auto& array = state.arrays[i];
     if (array.cachedRange.size == 0) {
+      // Port diagnostic (see gfx/recording.cpp's push_storage): the frame's storage is bounded, and
+      // this is the upload that usually fills it.
+      static const bool sLog = std::getenv("MP2_GX_STORAGE_LOG") != nullptr;
+      if (sLog) {
+        std::fprintf(stderr, "[gx-storage] vertex array %d: %zu bytes at %p\n", i, array.size,
+                     array.data);
+      }
       array.cachedRange = gfx::push_storage(static_cast<const uint8_t*>(array.data), array.size);
     }
     immediates.arrayStart[i - GX_VA_POS] = array.cachedRange.offset;
