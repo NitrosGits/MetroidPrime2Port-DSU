@@ -93,6 +93,19 @@ def render() -> str:
     ex = excluded()
     mods = {}
     flat = set()
+    # Port-only modules: the host body for a REL module upstream has not decompiled (see
+    # tools/modules_port.txt). Merged here so the module list, and the CMake loop over it, treat
+    # them like any other module.
+    extra = ROOT / "tools" / "modules_port.txt"
+    if extra.exists():
+        for line in extra.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            name, _, src = line.partition(";")
+            src = src.strip()
+            if name.strip() and src and (ROOT / src).exists():
+                mods.setdefault(name.strip(), set()).add(src)
     for p, mod in units(True):
         if p in ex:
             continue

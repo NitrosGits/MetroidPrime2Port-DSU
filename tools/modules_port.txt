@@ -1,0 +1,4 @@
+# Port-only REL modules: the host body for a module upstream has not decompiled yet, so that
+# areas whose module list needs it load instead of stopping the game. One file per line,
+# "ModuleName;source path". See src/MetroidPrime/Enemies/PortCWallCrawler.cpp.
+WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp

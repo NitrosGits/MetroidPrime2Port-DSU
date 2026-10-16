@@ -46,10 +46,6 @@ extern "C" void reachstub_10() { mpReachStub("_Z10TCastToPtrI18CFirstPersonCamer
 extern "C" void reachstub_18() asm("_Z14DebugDrawAABoxRK6CAABoxffff");
 extern "C" void reachstub_18() { mpReachStub("_Z14DebugDrawAABoxRK6CAABoxffff", "DebugDrawAABox(CAABox const&, float, float, float, float)"); }
 
-// LoadWallWalker(CStateManager&, CInputStream&, CEntityInfo&)
-extern "C" void reachstub_19() asm("_Z14LoadWallWalkerR13CStateManagerR12CInputStreamR11CEntityInfo");
-extern "C" void reachstub_19() { mpReachStub("_Z14LoadWallWalkerR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadWallWalker(CStateManager&, CInputStream&, CEntityInfo&)"); }
-
 // LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)
 extern "C" void reachstub_25() asm("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo");
 extern "C" void reachstub_25() { mpReachStub("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo", "LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)"); }
@@ -69,38 +65,6 @@ __attribute__((aligned(32))) char reachdata_41[0x400] = {};
 // CSaveRegion::mNonVolatileSettingsBuf
 extern "C" __attribute__((aligned(32))) char reachdata_42[0x400] asm("_ZN11CSaveRegion23mNonVolatileSettingsBufE");
 __attribute__((aligned(32))) char reachdata_42[0x400] = {};
-
-// CWallCrawler::AlignToFloor(CStateManager&, float, CVector3f const&, float)
-extern "C" void reachstub_60() asm("_ZN12CWallCrawler12AlignToFloorER13CStateManagerfRK9CVector3ff");
-extern "C" void reachstub_60() { mpReachStub("_ZN12CWallCrawler12AlignToFloorER13CStateManagerfRK9CVector3ff", "CWallCrawler::AlignToFloor(CStateManager&, float, CVector3f const&, float)"); }
-
-// CWallCrawler::AlignToPlane(CUnitVector3f const&, float)
-extern "C" void reachstub_61() asm("_ZN12CWallCrawler12AlignToPlaneERK13CUnitVector3ff");
-extern "C" void reachstub_61() { mpReachStub("_ZN12CWallCrawler12AlignToPlaneERK13CUnitVector3ff", "CWallCrawler::AlignToPlane(CUnitVector3f const&, float)"); }
-
-// CWallCrawler::AcceptScriptMsg(CStateManager&, CScriptMsg const&)
-extern "C" void reachstub_62() asm("_ZN12CWallCrawler15AcceptScriptMsgER13CStateManagerRK10CScriptMsg");
-extern "C" void reachstub_62() { mpReachStub("_ZN12CWallCrawler15AcceptScriptMsgER13CStateManagerRK10CScriptMsg", "CWallCrawler::AcceptScriptMsg(CStateManager&, CScriptMsg const&)"); }
-
-// CWallCrawler::UpdateWPDestination(CStateManager&)
-extern "C" void reachstub_63() asm("_ZN12CWallCrawler19UpdateWPDestinationER13CStateManager");
-extern "C" void reachstub_63() { mpReachStub("_ZN12CWallCrawler19UpdateWPDestinationER13CStateManager", "CWallCrawler::UpdateWPDestination(CStateManager&)"); }
-
-// CWallCrawler::Think(float, CStateManager&)
-extern "C" void reachstub_64() asm("_ZN12CWallCrawler5ThinkEfR13CStateManager");
-extern "C" void reachstub_64() { mpReachStub("_ZN12CWallCrawler5ThinkEfR13CStateManager", "CWallCrawler::Think(float, CStateManager&)"); }
-
-// CWallCrawler::PreThink(float, CStateManager&)
-extern "C" void reachstub_65() asm("_ZN12CWallCrawler8PreThinkEfR13CStateManager");
-extern "C" void reachstub_65() { mpReachStub("_ZN12CWallCrawler8PreThinkEfR13CStateManager", "CWallCrawler::PreThink(float, CStateManager&)"); }
-
-// CWallCrawler::CWallCrawler(EPatternedAI, TUniqueId, rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, CPatterned::EFlavorType, CEntityInfo&, CTransform4f const&, CModelData const&, CPatternedInfo const&, CPatterned::EMovementType, CPatterned::EColliderType, EBodyType, CActorParameters const&, float, float, float, float, float, CWallCrawler::EType, bool, float, float, float, float, float, float)
-extern "C" void reachstub_66() asm("_ZN12CWallCrawlerC2E12EPatternedAI9TUniqueIdRKN4rstl12basic_stringIcNS2_11char_traitsIcEENS2_17rmemory_allocatorEEEN10CPatterned11EFlavorTypeER11CEntityInfoRK12CTransform4fRK10CModelDataRK14CPatternedInfoNSA_13EMovementTypeENSA_13EColliderTypeE9EBodyTypeRK16CActorParametersfffffNS_5ETypeEbffffff");
-extern "C" void reachstub_66() { mpReachStub("_ZN12CWallCrawlerC2E12EPatternedAI9TUniqueIdRKN4rstl12basic_stringIcNS2_11char_traitsIcEENS2_17rmemory_allocatorEEEN10CPatterned11EFlavorTypeER11CEntityInfoRK12CTransform4fRK10CModelDataRK14CPatternedInfoNSA_13EMovementTypeENSA_13EColliderTypeE9EBodyTypeRK16CActorParametersfffffNS_5ETypeEbffffff", "CWallCrawler::CWallCrawler(EPatternedAI, TUniqueId, rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, CPatterned::EFlavorType, CEntityInfo&, CTransform4f const&, CModelData const&, CPatternedInfo const&, CPatterned::EMovementType, CPatterned::EColliderType, EBodyType, CActorParameters const&, float, float, float, float, float, CWallCrawler::EType, bool, float, float, float, float, float, float)"); }
-
-// CWallCrawler::~CWallCrawler()
-extern "C" void reachstub_67() asm("_ZN12CWallCrawlerD2Ev");
-extern "C" void reachstub_67() { mpReachStub("_ZN12CWallCrawlerD2Ev", "CWallCrawler::~CWallCrawler()"); }
 
 // CStateManager::GetObjectByIdFromListAll(TUniqueId)
 extern "C" void reachstub_83() asm("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId");
@@ -198,22 +162,6 @@ extern "C" void reachstub_308() { mpReachStub("_ZNK10COsContext13GetOsKeyStateEi
 extern "C" void reachstub_311() asm("_ZNK11CDamageInfo14WithNoImmunityEv");
 extern "C" void reachstub_311() { mpReachStub("_ZNK11CDamageInfo14WithNoImmunityEv", "CDamageInfo::WithNoImmunity() const"); }
 
-// CWallCrawler::GetTouchBounds() const
-extern "C" void reachstub_321() asm("_ZNK12CWallCrawler14GetTouchBoundsEv");
-extern "C" void reachstub_321() { mpReachStub("_ZNK12CWallCrawler14GetTouchBoundsEv", "CWallCrawler::GetTouchBounds() const"); }
-
-// CWallCrawler::GetConstraintVector(CStateManager&, CActor const&) const
-extern "C" void reachstub_322() asm("_ZNK12CWallCrawler19GetConstraintVectorER13CStateManagerRK6CActor");
-extern "C" void reachstub_322() { mpReachStub("_ZNK12CWallCrawler19GetConstraintVectorER13CStateManagerRK6CActor", "CWallCrawler::GetConstraintVector(CStateManager&, CActor const&) const"); }
-
-// CWallCrawler::GetCollisionPrimitive() const
-extern "C" void reachstub_323() asm("_ZNK12CWallCrawler21GetCollisionPrimitiveEv");
-extern "C" void reachstub_323() { mpReachStub("_ZNK12CWallCrawler21GetCollisionPrimitiveEv", "CWallCrawler::GetCollisionPrimitive() const"); }
-
-// CWallCrawler::Render(CStateManager const&) const
-extern "C" void reachstub_324() asm("_ZNK12CWallCrawler6RenderERK13CStateManager");
-extern "C" void reachstub_324() { mpReachStub("_ZNK12CWallCrawler6RenderERK13CStateManager", "CWallCrawler::Render(CStateManager const&) const"); }
-
 // CStateManager::fn_800366e4(CActor const*) const
 extern "C" void reachstub_328() asm("_ZNK13CStateManager11fn_800366e4EPK6CActor");
 extern "C" void reachstub_328() { mpReachStub("_ZNK13CStateManager11fn_800366e4EPK6CActor", "CStateManager::fn_800366e4(CActor const*) const"); }
@@ -271,30 +219,6 @@ __attribute__((aligned(32))) char reachdata_417[0x400] = {};
 // DebugDrawOBB(COBBox const&, float, float, float, float)
 extern "C" void reachstub_r5() asm("_Z12DebugDrawOBBRK6COBBoxffff");
 extern "C" void reachstub_r5() {}
-
-// CWallCrawler::GetClosestPointOnPlane(CVector3f const&, CPlane const&)
-extern "C" void reachstub_r6() asm("_ZN12CWallCrawler22GetClosestPointOnPlaneERK9CVector3fRK6CPlane");
-extern "C" void reachstub_r6() { mpReachStub("_ZN12CWallCrawler22GetClosestPointOnPlaneERK9CVector3fRK6CPlane", "CWallCrawler::GetClosestPointOnPlane(CVector3f const&, CPlane const&)"); }
-
-// CWallCrawler::GetConstraintPlane() const
-extern "C" void reachstub_r7() asm("_ZNK12CWallCrawler18GetConstraintPlaneEv");
-extern "C" void reachstub_r7() { mpReachStub("_ZNK12CWallCrawler18GetConstraintPlaneEv", "CWallCrawler::GetConstraintPlane() const"); }
-
-// CWallCrawler::GetNextWaypoint(CStateManager&, CScriptWaypoint const*, bool)
-extern "C" void reachstub_r8() asm("_ZN12CWallCrawler15GetNextWaypointER13CStateManagerPK15CScriptWaypointb");
-extern "C" void reachstub_r8() { mpReachStub("_ZN12CWallCrawler15GetNextWaypointER13CStateManagerPK15CScriptWaypointb", "CWallCrawler::GetNextWaypoint(CStateManager&, CScriptWaypoint const*, bool)"); }
-
-// CWallCrawler::ProjectVectorToPlane(CVector3f const&, CVector3f const&)
-extern "C" void reachstub_r9() asm("_ZN12CWallCrawler20ProjectVectorToPlaneERK9CVector3fS2_");
-extern "C" void reachstub_r9() { mpReachStub("_ZN12CWallCrawler20ProjectVectorToPlaneERK9CVector3fS2_", "CWallCrawler::ProjectVectorToPlane(CVector3f const&, CVector3f const&)"); }
-
-// CWallCrawler::SetConstraint(CStateManager&, int)
-extern "C" void reachstub_r10() asm("_ZN12CWallCrawler13SetConstraintER13CStateManageri");
-extern "C" void reachstub_r10() { mpReachStub("_ZN12CWallCrawler13SetConstraintER13CStateManageri", "CWallCrawler::SetConstraint(CStateManager&, int)"); }
-
-// CWallCrawler::UpdateConstraintPlane(CStateManager&)
-extern "C" void reachstub_r11() asm("_ZN12CWallCrawler21UpdateConstraintPlaneER13CStateManager");
-extern "C" void reachstub_r11() { mpReachStub("_ZN12CWallCrawler21UpdateConstraintPlaneER13CStateManager", "CWallCrawler::UpdateConstraintPlane(CStateManager&)"); }
 
 // CIngMiniPortalAttack::CIngMiniPortalAttack(TUniqueId, rstl::string const&, CEntityInfo const&, CTransform4f const&, TUniqueId, CVector3f const&, CIngMiniPortalInfo const&)
 extern "C" void reachstub_r12() asm("_ZN20CIngMiniPortalAttackC1E9TUniqueIdRKN4rstl12basic_stringIcNS1_11char_traitsIcEENS1_17rmemory_allocatorEEERK11CEntityInfoRK12CTransform4fS0_RK9CVector3fRK18CIngMiniPortalInfo");

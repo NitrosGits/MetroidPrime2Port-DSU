@@ -773,6 +773,9 @@ set(MP_GAME_SOURCES
     src/rstl/rstl_strings.cpp
 )
 # REL modules, each its own symbol namespace
+set(MP_MODULE_WallCrawler_SOURCES
+    src/MetroidPrime/Enemies/PortCWallCrawler.cpp
+)
 set(MP_MODULE_ChozoGhost_SOURCES
     src/MetroidPrime/Enemies/CChozoGhost.cpp
 )
@@ -984,7 +987,7 @@ set(MP_MODULE_Shrieker_SOURCES
 set(MP_MODULE_Splinter_SOURCES
     src/MetroidPrime/Enemies/CSplinter.cpp
 )
-set(MP_MODULES ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone SkyRipple ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks ScriptRsfAudio DarkSamusBattleStage FogOverlay ScriptStreamedMovie FlyerSwarm EmperorIngStage2Tentacle Krocuss AtomicBeta RubiksPuzzle MetareeSwarm Shredder ScriptRiftPortal BacteriaSwarm IngBlobSwarm Glowbug DarkCommando DarkTrooper IngSnatchingSwarm GeomBlobV2 Blogg Grenchler Kralee OctapedeSegment Lumite MediumIng MysteryFlyer Rezbit Sporb PlantScarabSwarm ScriptCoin PirateRagDoll ScriptPlayerProxy StoneToad PuddleSpore ScriptPlayerActor IngPuddle PillBug SpankWeed WispTentacle IngSpiderballGuardian IngSpaceJumpGuardian AIMannedTurret Shrieker Splinter)
+set(MP_MODULES WallCrawler ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone SkyRipple ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks ScriptRsfAudio DarkSamusBattleStage FogOverlay ScriptStreamedMovie FlyerSwarm EmperorIngStage2Tentacle Krocuss AtomicBeta RubiksPuzzle MetareeSwarm Shredder ScriptRiftPortal BacteriaSwarm IngBlobSwarm Glowbug DarkCommando DarkTrooper IngSnatchingSwarm GeomBlobV2 Blogg Grenchler Kralee OctapedeSegment Lumite MediumIng MysteryFlyer Rezbit Sporb PlantScarabSwarm ScriptCoin PirateRagDoll ScriptPlayerProxy StoneToad PuddleSpore ScriptPlayerActor IngPuddle PillBug SpankWeed WispTentacle IngSpiderballGuardian IngSpaceJumpGuardian AIMannedTurret Shrieker Splinter)
 
 # Port-only sources
 list(APPEND MP_GAME_SOURCES
