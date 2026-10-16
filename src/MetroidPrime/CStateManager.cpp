@@ -4060,6 +4060,7 @@ void CStateManager::PortWarpTick() {
   if (!PortWarp::Pending()) {
     return;
   }
+
   // The front end has its own world (and its own player preview), whose area ids have nothing to
   // do with the save's: a boot request served there lands nowhere. Hold every request until the
   // game mode has left the front end, so `MP2_TELEPORT=<area>` means "in my save's world, as soon
