@@ -804,7 +804,7 @@ set(MP_MODULE_IngSwarm_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_MinorIng_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCMinorIng.cpp
 )
 set(MP_MODULE_SandBoss_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
