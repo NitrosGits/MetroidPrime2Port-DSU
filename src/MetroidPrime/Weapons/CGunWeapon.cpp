@@ -222,7 +222,25 @@ void CGunWeapon::Update(float dt, CStateManager& mgr) {
     if ((mLoadFlags & 0x1f) == 0x1f) {
       CSkinnedModel& model = mSolidModelData->PickAnimatedModel(CModelData::kWM_Normal);
       const bool modelLoaded = model.GetModel()->IsLoaded(mShaderIdx);
+#ifdef TARGET_PC
+      // Port: `AsyncLoadSuitArm` (every `Load`/spawn) clears `mSuitArmModelData` - destroying the
+      // `CModelData` and with it the locked reference to the arm model - and leaves it empty until
+      // `LoadSuitArm` can refill it, which needs `mArmModel` loaded first. The five bits this test
+      // waits on are not reset by that, so right after such a load this test runs against an empty
+      // `optional_object` whose storage holds the destroyed `CModelData`'s stale token: retail reads
+      // it and gets away with it because the console keeps the arm's block mapped, but on the host
+      // that block is freed, and measured with ASan the read is a use-after-free that ends in
+      // `CModel::VerifyCurrentShader` touching a freed `CModel` (and, in a plain build, in
+      // `CModel::FrameDone` walking a shader whose owner is one of those freed models).
+      //
+      // An empty member must not hold the load up: `mSuitArmLocked` is set with it by
+      // `AsyncLoadSuitArm`, and the branch below (`if (mSuitArmLocked) LoadSuitArm();`) is what
+      // refills it - which is also what the stale read effectively said. Every other use of the
+      // member in this file is already guarded by `if (mSuitArmModelData)`.
+      const bool armLoaded = !mSuitArmModelData || mSuitArmModelData->IsLoaded(mCurrentPlayerSuit);
+#else
       const bool armLoaded = mSuitArmModelData->IsLoaded(mCurrentPlayerSuit);
+#endif
       if (modelLoaded && armLoaded) {
         mLoaded = true;
       }
