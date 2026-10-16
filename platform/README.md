@@ -89,7 +89,9 @@ card's world table:
 Requests come from `MP2_WORLD="<world>[,<area>]"` and `MP2_TELEPORT="<area>"` at
 start-up, the F5/F6 (area) and F7/F8 (world) hotkeys, the `MP2_INPUT` tokens
 `NEXTAREA`/`PREVAREA`/`NEXTWORLD`/`PREVWORLD`, and the F1 overlay's buttons. World
-and area text is an asset name or a hex asset id.
+and area text is an asset name or a hex asset id. The same slot also carries the gameplay-test
+tokens `KILL` (the state manager's own kill, so a run reaches death and respawn) and `HEAL`
+(refill the player's energy, so a sweep survives a damaging atmosphere).
 
 ### What a transition has to get right
 

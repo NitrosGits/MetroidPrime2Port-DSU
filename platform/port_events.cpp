@@ -94,7 +94,7 @@ void InstallDefaultKeyBindings() {
 // iteration for the given number of iterations (default 8), so boots can be
 // driven past menus without a player. Iterations count PortPumpEvents calls.
 // Stick names (kSticks) deflect fully while held; overlapping entries add up.
-// Warp tokens (NEXTAREA, PREVAREA, NEXTWORLD, PREVWORLD) queue a PortWarp request
+// Warp tokens (NEXTAREA, PREVAREA, NEXTWORLD, PREVWORLD, KILL, HEAL) queue a PortWarp request
 // at their frame instead, which is how a run sweeps every area on its own.
 void RunInputScript(unsigned frame) {
   static const char* script = std::getenv("MP2_INPUT");
@@ -131,6 +131,8 @@ void RunInputScript(unsigned frame) {
         PortWarp::WorldPortal();
       } else if (NameIs("KILL", p, at)) {
         PortWarp::Kill();
+      } else if (NameIs("HEAL", p, at)) {
+        PortWarp::Heal();
       } else if (NameIs("NEXTWORLD", p, at)) {
         PortWarp::CycleWorld(1);
       } else if (NameIs("PREVWORLD", p, at)) {

@@ -21,7 +21,8 @@ enum class EKind {
   kDoor,      // stand in front of the nearest door, facing it, to test opening it
   kStation,   // stand on the nearest save station, to test saving in game
   kWorldPortal, // activate the nearest elevator (world teleporter), to test a world change
-  kKill        // kill the player, to test dying and respawning
+  kKill,       // kill the player, to test dying and respawning
+  kHeal        // refill the player's energy, so a sweep survives a damaging environment
 };
 
 struct SRequest {
@@ -40,6 +41,7 @@ void Door();
 void Station();
 void WorldPortal();
 void Kill();
+void Heal();
 // Reads MP2_WORLD / MP2_TELEPORT once; called from the platform event loop.
 void ApplyEnvOnce();
 // Whether a request is waiting. The game checks this before it is ready to act (no world yet, or

@@ -99,6 +99,11 @@ void Kill() {
   sRequest.kind = EKind::kKill;
 }
 
+void Heal() {
+  sRequest = SRequest();
+  sRequest.kind = EKind::kHeal;
+}
+
 void ApplyEnvOnce() {
   if (sReadEnv) {
     return;

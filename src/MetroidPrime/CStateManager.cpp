@@ -4038,6 +4038,10 @@ void CStateManager::PortWarpTick() {
     PortWarpToDeath();
     break;
   }
+  case PortWarp::EKind::kHeal: {
+    PortWarpToHeal();
+    break;
+  }
   case PortWarp::EKind::kWorld: {
     PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
     break;
@@ -4293,6 +4297,23 @@ void CStateManager::PortWarpToDeath() {
   const float health = PlayerState(0)->GetHealthInfo().GetHP();
   std::fprintf(stderr, "[warp] killing the player (health %f)\n", health);
   KillPlayer(health, player->GetUniqueId(), kInvalidUniqueId);
+}
+
+// Refill the player's energy, so a sweep can survive an atmosphere that damages the player every
+// frame (the dark worlds') instead of dying in it. The game's own refill is a health pickup: it
+// runs `CPlayerState::IncrPickUp(kIT_HealthRefill, n)`, which adds through `IncrementHealth` and
+// clamps to `CalculateHealth()` (base health plus 100 per energy tank) - the same call an energy
+// tank pickup makes. Asking for the maximum therefore fills the meter exactly.
+void CStateManager::PortWarpToHeal() {
+  CPlayerState* state = PlayerState(0);
+  if (state == nullptr) {
+    return;
+  }
+  const float before = state->GetHealthInfo().GetHP();
+  const float maximum = state->CalculateHealth();
+  state->IncrPickUp(CPlayerState::kIT_HealthRefill, static_cast< int >(maximum));
+  std::fprintf(stderr, "[warp] healed to %f energy (was %f, max %f)\n",
+               state->GetHealthInfo().GetHP(), before, maximum);
 }
 
 // Stand on the nearest elevator of this area and tell it to go, which is the game's own world
