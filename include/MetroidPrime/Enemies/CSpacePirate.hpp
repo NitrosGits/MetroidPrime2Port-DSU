@@ -84,6 +84,7 @@ public:
 
 private:
 #ifdef TARGET_PC
+  void EnsureBodyActive(CStateManager& mgr);
   // Host layout (retail's is 0xc70 bytes, CHECK_SIZEOF below). Guest offsets kept as comments.
   CSpacePirateData mData;       // 0x7c0 (0x134)
   CSegId mHeadSegId;            // 0xa20 "Head_1"

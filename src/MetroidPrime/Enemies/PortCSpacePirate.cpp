@@ -5,6 +5,7 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "Kyoto/Math/CMath.hpp"
+#include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -56,6 +57,17 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
 
 CSpacePirate::~CSpacePirate() {}
 
+// A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
+// ThinkAboutMove / Death / KnockBack all dereference the current state. Retail activates it from
+// its own AcceptScriptMsg or Think (fn_72_E498 / fn_72_1980; the analysis does not say which), so
+// the port activates on kSM_Create and, as the FlyingPirate does, again on demand in every entry
+// point that can run first.
+void CSpacePirate::EnsureBodyActive(CStateManager& mgr) {
+  if (BodyController() != nullptr && !BodyController()->GetIsActive()) {
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
+  }
+}
+
 bool CSpacePirate::PortAttachActor(TUniqueId id) {
   // Retail fn_72_E0D8; the wisp tentacle attaches the actor it is dragging.
   StandIn("CSpacePirate::AttachActorToPirate (fn_72_E0D8)");
@@ -70,17 +82,25 @@ void CSpacePirate::PortDetachActor() {
 
 void CSpacePirate::PreThink(float dt, CStateManager& mgr) {
   StandIn("CSpacePirate::PreThink (fn_72_24C4)");
+  EnsureBodyActive(mgr);
   CPatterned::PreThink(dt, mgr);
 }
 
 void CSpacePirate::Think(float dt, CStateManager& mgr) {
   StandIn("CSpacePirate::Think (fn_72_1980)");
+  if (!GetActive()) {
+    return;
+  }
+  EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
 }
 
 void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CSpacePirate::AcceptScriptMsg (fn_72_E498)");
   CPatterned::AcceptScriptMsg(mgr, msg);
+  if (msg.GetMessage() == kSM_Create) {
+    EnsureBodyActive(mgr);
+  }
 }
 
 void CSpacePirate::PreRender(CStateManager& mgr) {
@@ -95,17 +115,20 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
 
 void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   StandIn("CSpacePirate::Touch (fn_72_E3D8)");
+  EnsureBodyActive(mgr);
   CPatterned::Touch(actor, mgr);
 }
 
 void CSpacePirate::Death(CStateManager& mgr, const CVector3f& direction,
                          EScriptObjectState state) {
   StandIn("CSpacePirate::Death (fn_72_C538)");
+  EnsureBodyActive(mgr);
   CPatterned::Death(mgr, direction, state);
 }
 
 void CSpacePirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   StandIn("CSpacePirate::KnockBack (fn_72_C684)");
+  EnsureBodyActive(mgr);
   CPatterned::KnockBack(mgr, info);
 }
 
