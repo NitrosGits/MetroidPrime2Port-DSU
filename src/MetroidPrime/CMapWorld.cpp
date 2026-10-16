@@ -312,9 +312,26 @@ void CMapWorld::DoBFS(
 }
 
 bool CMapWorld::IsMapAreaValid(const IWorld& wld, const int areaIdx, bool checkLoad) const {
+#ifdef TARGET_PC
+  // An area slot the disc has no MREA for is a null entry in the world's area list, and an
+  // attached-area id can name an area of another (or a previously loaded) world, i.e. one past the
+  // end of that list: `IGetAreaAlways` dereferences the slot and does not bounds-check, so a world
+  // change crashed here (CWorld::CheckWorldComplete -> SetWhichMapAreasLoaded -> DoBFS ->
+  // IsMapAreaValid) in the first world reached by elevator. The map simply skips such an area, and
+  // skipping it also keeps `mTraversed[areaIdx]`, which every DoBFS caller indexes with the id,
+  // inside its bounds - DoBFS short-circuits on this check.
+  if (areaIdx < 0 || areaIdx >= wld.IGetAreaCount()) {
+    return false;
+  }
+  const IGameArea* gameArea = wld.IGetAreaAlways(areaIdx);
+  if (gameArea == nullptr || !gameArea->IIsActive()) {
+    return false;
+  }
+#else
   if (!wld.IGetAreaAlways(areaIdx)->IIsActive()) {
     return false;
   }
+#endif
   const CMapArea* area = GetMapArea(areaIdx);
   if (checkLoad && area == nullptr) {
     return false;
