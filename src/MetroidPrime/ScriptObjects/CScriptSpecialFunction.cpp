@@ -1,5 +1,6 @@
 #include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 
+#include <cstdio>
 #include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -404,6 +405,13 @@ void CScriptSpecialFunction::AcceptPowerBombStation(CStateManager& mgr, const CS
 }
 
 void CScriptSpecialFunction::AcceptSaveStation(CStateManager& mgr, const CScriptMsg& msg) {
+#ifdef TARGET_PC
+  // The save flow is data-driven (the station's trigger volume sends kSM_Action), so a test that
+  // never reaches the save screen needs to know whether the message arrived and how the card looks.
+  std::fprintf(stderr, "[save] station %04x got message %d (card serial %08x%08x)\n",
+               GetUniqueId().Value(), int(msg.GetMessage()),
+               u32(gpGameState->GetCardSerial() >> 32), u32(gpGameState->GetCardSerial()));
+#endif
   if (msg.GetMessage() == kSM_Action) {
     if (!mgr.IsMultiplayer()) {
       const bool noCard = gpGameState->GetCardSerial() == 0;
