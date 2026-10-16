@@ -82,11 +82,14 @@ void ReadEnvOnce() {
     return;
   }
   if (const char* slot = std::getenv("MP2_SLOT")) {
-    sSlot = std::atoi(slot);
-    if (sSlot < 0 || sSlot > 2) {
-      fprintf(stderr, "[skip] MP2_SLOT=%s is not a save slot; using 0\n", slot);
-      sSlot = 0;
+    // `atoi` would read "" and "abc" as 0, which is a *slot* and would silently override the
+    // card's own choice below; parse it properly and treat anything that is not 0..2 as "not given".
+    char* end = nullptr;
+    const long value = std::strtol(slot, &end, 10);
+    if (end == slot || *end != '\0' || value < 0 || value > 2) {
+      fprintf(stderr, "[skip] MP2_SLOT='%s' is not a save slot; using the card's own\n", slot);
     } else {
+      sSlot = static_cast< int >(value);
       sSlotGiven = true;
     }
   }
@@ -108,10 +111,10 @@ void DismissSplashWindows() {
   if (!sArmed || sDismissedSplash) {
     return;
   }
-  sDismissedSplash = true;
   if (gpIOWinManager == nullptr) {
-    return;
+    return; // not up yet: try again on the next iteration rather than giving up on the chain
   }
+  sDismissedSplash = true;
   int removed = 0;
   for (; removed < 8; ++removed) {
     rstl::ncrc_ptr< CIOWin > splash = gpIOWinManager->FindIOWin(rstl::string_l("SplashScreen"));

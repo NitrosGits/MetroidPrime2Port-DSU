@@ -30,8 +30,8 @@ void ReadEnvOnce() {
   if (sLimit > 0) {
     std::fprintf(stderr, "[harness] MP2_FRAMES=%d: the run ends itself after %d game updates\n",
                  sLimit, sLimit);
-  } else {    std::fprintf(stderr, "[harness] MP2_FRAMES=%s is not a frame count; the run has no limit\n",
-                 value);
+  } else {
+    std::fprintf(stderr, "[harness] MP2_FRAMES=%s is not a positive frame count; no limit\n", value);
   }
 }
 
@@ -46,7 +46,7 @@ bool GameUpdate() {
     // has been loaded), which is the number most test timings are compared against.
     std::fprintf(stderr, "[harness] the first game update is at %.1f s\n", Seconds());
   }
-  if (sLimit == 0) {
+  if (sLimit == 0 || sExitRequested) {
     return false;
   }
   if (sUpdates < sLimit) {
