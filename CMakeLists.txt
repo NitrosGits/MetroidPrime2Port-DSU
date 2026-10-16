@@ -310,7 +310,8 @@ endif()
 # syntax-checked by the full build instead.
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_events.cpp
-        platform/port_mouse.cpp platform/port_warp.cpp platform/port_overlay.cpp)
+        platform/port_harness.cpp platform/port_mouse.cpp platform/port_warp.cpp
+        platform/port_overlay.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include
         extern/aurora/include

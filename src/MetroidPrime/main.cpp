@@ -231,6 +231,8 @@ void CMain::InitializeSubsystems() {
 // Defined in platform/port_events.cpp (aurora/event.h needs SDL3, which only the full build has).
 bool PortPumpEvents();
 
+#include "MetroidPrime/PortSkipFrontEnd.hpp"
+
 void CMain::ShutdownSubsystems() {
   // Retail then shuts the decal manager, the element (particle) caches and the anim data cache
   // down, frees Tweaks.rel (-TARGET_PC- only because the REL loader is in the game library
@@ -687,6 +689,9 @@ int CMain::RsMain(int argc, const char* const* argv) {
         mFinished = true;
         break;
       }
+      // MP2_SKIP_FRONTEND=1: the boot's splash chain blocks the flow this loop is about to pump,
+      // so it is dismissed here rather than from the skip's own hook (see PortSkipFrontEnd.cpp).
+      PortSkipFrontEnd::DismissSplash();
 #endif
       architecture->GetStopwatch2().Reset();
       gpResourceFactory->GetResLoader().AsyncIdlePakLoading();

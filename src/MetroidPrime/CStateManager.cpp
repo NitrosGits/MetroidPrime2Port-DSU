@@ -129,6 +129,7 @@
 #include "rstl/vector.hpp"
 
 #ifdef TARGET_PC
+#include "port_harness.h"
 #include "port_overlay.h"
 #include "port_warp.h"
 #endif
@@ -3767,6 +3768,17 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   PortWarpTick();
   PortWarpSettle();
   PortLayerTick();
+  // MP2_FRAMES: a test run ends itself after so many game updates, so a load test costs seconds
+  // instead of a timeout (see platform/include/port_harness.h). The report names where the run got
+  // to, which is what a log's last line should say.
+  if (PortHarness::GameUpdate()) {
+    const CWorld* harnessWorld = World();
+    fprintf(stderr, "[harness] the frame limit is up at %.1f s: world %08x, area %d of %d\n",
+            PortHarness::Seconds(),
+            gpGameState != nullptr ? gpGameState->CurrentWorldAssetId() : 0,
+            harnessWorld != nullptr ? harnessWorld->GetCurrentAreaId().Value() : -1,
+            harnessWorld != nullptr ? harnessWorld->IGetAreaCount() : 0);
+  }
   if (mPortDropAreasAtFrame != 0 && mUpdateFrameIdx >= mPortDropAreasAtFrame) {
     mPortDropAreasAtFrame = 0;
     if (CWorld* dropWorld = World(); dropWorld != nullptr) {

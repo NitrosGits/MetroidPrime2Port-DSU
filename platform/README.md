@@ -26,6 +26,10 @@ waits for. See `../PORT_NOTES.md` for the measured SDK link gap.
 - `port_events.cpp` — the game loop's per-iteration Aurora poll (built by
   `mp_port_audio`, since it needs SDL). It installs the port's keyboard map and
   drives pad 0 from `MP2_INPUT` scripts.
+- `port_warp.cpp`, `port_harness.cpp` — the warp request slot and the test harness's
+  run length (`MP2_FRAMES`), both built by `mp_port_audio` and served by the game in
+  `CStateManager`; see "Warps and the debug overlay" and "Test runs: skipping the
+  front end" below.
 
 ## Input
 
@@ -145,6 +149,41 @@ links `aurora::core` for its headers). It draws inside the open Aurora frame fro
 the warp buttons, mouse aim with inversion and sensitivity, the keyboard map, and
 the current world/area, which `CStateManager::Update` publishes every update. While
 it is open the cursor belongs to the window (`PortMouse::SetUiActive`).
+
+## Test runs: skipping the front end
+
+`port_harness.cpp` (with `include/port_harness.h`) is the test harness's run length,
+and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
+
+- **`MP2_SKIP_FRONTEND=1`** boots straight into the memory card's save instead of
+  playing the front end's menu. It reads the save itself through
+  `CMemoryCardDriver` (the same read the file select panel performs through
+  `CSaveGameScreen::StartGame`) and leaves it where `CMain::StreamNewGameState`
+  expects it, then starts the game the way retail's single-player start does.
+  `MP2_SLOT=<0|1|2>` picks the slot; without it the slot the card's own header
+  points at is used, falling back to the first slot that has a save. The log's
+  `[skip]` lines name every slot and say where the run is. Any failure - no card, no
+  file, an empty slot, a read that never settles - falls back to the front end with
+  a line saying so, so a skipped run is never a stuck one.
+  It also dismisses the boot's splash chain, which otherwise blocks the flow until a
+  button is pressed or the health-warning screen times out: measured, the flow
+  reached `CPreFrontEnd` at 56.6 s without a button press and at 1.1 s with the
+  splash dismissed, and the save's first area was loaded and reached at ~15-20 s
+  where the menu path needs ~65 s.
+- **`MP2_FRAMES=<n>`** ends a run cleanly once n *game* updates (`CStateManager::Update`)
+  have happened: the game loop takes its own quit path, Aurora shuts down and the
+  process exits 0, so a log's last line is the run's verdict instead of the script's
+  `timeout` (which stays in place as the backstop for a run that never gets there).
+  `[harness]` lines report the limit and the world/area the run ended in.
+
+A load test is the two together, e.g.
+
+    MP2_SKIP_FRONTEND=1 MP2_WORLD=1baa96c2,b666b655 MP2_FRAMES=800
+    MP2_INPUT="LAYER3@4200+4" ./metroid_prime2_port
+
+which now costs tens of seconds rather than a menu's worth of scripted button
+presses. `[harness]`/`[skip]` lines carry the wall seconds since the loop's first
+iteration, so a log says how long each phase took.
 
 ## Reworked for Echoes
 

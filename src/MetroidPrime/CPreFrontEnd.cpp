@@ -7,6 +7,10 @@
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 
+#ifdef TARGET_PC
+#include "MetroidPrime/PortSkipFrontEnd.hpp"
+#endif
+
 CPreFrontEnd::CPreFrontEnd() : CIOWin(rstl::string_l("Pre front-end window")) {}
 
 CIOWin::EMessageReturn CPreFrontEnd::OnMessage(const CArchitectureMessage& msg,
@@ -22,6 +26,16 @@ CIOWin::EMessageReturn CPreFrontEnd::OnMessage(const CArchitectureMessage& msg,
     if (!gpMemoryCard) {
       return kMR_Exit;
     }
+
+#ifdef TARGET_PC
+    // MP2_SKIP_FRONTEND=1: the requested save has to be on the card and in the game state *before*
+    // the flow leaves this window, because the next state (kCFS_FrontEnd) is what starts the game
+    // from it. This holds the flow here while the card read is still coming in, and returns true
+    // (nothing to wait for) when the flag is unset or the skip gave up. See PortSkipFrontEnd.cpp.
+    if (!PortSkipFrontEnd::Pump()) {
+      return kMR_Exit;
+    }
+#endif
 
     return kMR_RemoveIOWinAndExit;
   } else {

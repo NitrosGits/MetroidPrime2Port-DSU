@@ -17,6 +17,10 @@
 
 #include "Kyoto/Alloc/CMemory.hpp"
 
+#ifdef TARGET_PC
+#include "MetroidPrime/PortSkipFrontEnd.hpp"
+#endif
+
 CMainFlow::CMainFlow() : CIOWin(rstl::string_l("MainFlow")), mGameState(kCFS_Unspecified) {}
 
 CIOWin::EMessageReturn CMainFlow::OnMessage(const CArchitectureMessage& msg,
@@ -110,6 +114,15 @@ void CMainFlow::SetGameState(EClientFlowStates state, CArchitectureQueue& queue)
     break;
   }
   case kCFS_FrontEnd: {
+#ifdef TARGET_PC
+    // MP2_SKIP_FRONTEND=1 (see PortSkipFrontEnd.cpp): the state the card was read into starts the
+    // game here, in place of the front end's own menu, so nothing below runs on that boot - no
+    // FRND front-end world, no StartGameFromFrontEnd. False on every other pass, including the one
+    // a death or a quit comes back from.
+    if (PortSkipFrontEnd::StartGame()) {
+      break;
+    }
+#endif
     const CMain::ERestartMode mode = gpMain->GetRestartMode();
     if (gpGameState->GetGameMode().GetGameModeType() == 'FRND') {
       StartGameFromFrontEnd();

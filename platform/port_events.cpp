@@ -6,6 +6,7 @@
 #include <aurora/event.h>
 #include <dolphin/pad.h>
 
+#include "port_harness.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_warp.h"
@@ -182,6 +183,13 @@ bool PortPumpEvents() {
   static unsigned frame = 0;
   InstallDefaultKeyBindings();
   PortWarp::ApplyEnvOnce();
+  // A run that has reached its MP2_FRAMES limit leaves through the same door the window's close
+  // button opens: the game loop ends, Aurora shuts down and the process exits 0. The check is here
+  // rather than in the game because the loop asks this every iteration, whatever the game is doing.
+  if (PortHarness::ExitRequested()) {
+    std::fprintf(stderr, "[harness] the run is over (MP2_FRAMES); shutting down\n");
+    return true;
+  }
   PortMouse::BeginFrame();
   RunInputScript(frame++);
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
