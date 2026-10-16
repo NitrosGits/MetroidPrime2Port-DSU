@@ -90,8 +90,12 @@ Requests come from `MP2_WORLD="<world>[,<area>]"` and `MP2_TELEPORT="<area>"` at
 start-up, the F5/F6 (area) and F7/F8 (world) hotkeys, the `MP2_INPUT` tokens
 `NEXTAREA`/`PREVAREA`/`NEXTWORLD`/`PREVWORLD`, and the F1 overlay's buttons. World
 and area text is an asset name or a hex asset id. The same slot also carries the gameplay-test
-tokens `KILL` (the state manager's own kill, so a run reaches death and respawn) and `HEAL`
-(refill the player's energy, so a sweep survives a damaging atmosphere).
+tokens `KILL` (the state manager's own kill, so a run reaches death and respawn), `HEAL`
+(refill the player's energy, so a sweep survives a damaging atmosphere) and `LAYER<layer>`
+(activate that layer of the current area, which is how a module whose actors live in a layer
+other than 0 - every one of ElitePirate's five areas, for instance - becomes visible at all:
+`ActivateLayerDynamic` runs the layer's script objects, and the layer's data has to stream in
+first, so the request is finished over the following frames).
 
 ### What a transition has to get right
 
@@ -113,6 +117,14 @@ while the warp drags it forward, which makes the loop crawl. So `PortWarpToArea`
 starts the load (`ScheduleAreaToLoad` + `StartStreamIn` every frame until
 `ScheduleAreaToLoad` reports done, exactly like `CStateManager::InitializeState`)
 and `PortWarpSettle` moves the player only once `IsLoaded()`.
+
+The area's script objects allocate their object ids *as* the stream runs, so the free-id
+floor `PortWarpSettle` applies only guards **starting** a stream: a warp that withholds
+`StartStreamIn` from a stream already under way stalls the load forever and keeps the ids
+the area has already taken (a walk of world `1baa96c2` stopped there with 600 of the 1024
+ids held by a half-loaded area). Once a stream has started, the only thing that gives it
+room is dropping the areas the warp left behind, so `PortWarpSettle` does that while the
+stream runs rather than only before it starts.
 
 Two more things the warp exposed, both fixed in the game files:
 

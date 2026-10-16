@@ -200,3 +200,30 @@ What is **not** established:
 5. The enemies' own combat behaviour: melee, the dark/light shields, the two shock waves, the
    rocket/rocket-launcher, energy absorption and the Ing-possession properties. MP1's
    `CElitePirate.cpp` is the reference for the shared half (shields, shock waves, taunt, melee).
+
+## 6. Verified in game, and how its actors are reached (2026-10-16, later session)
+
+The module is now verified running, and the reason it was invisible before is established:
+
+- **Its actors live in a non-zero world layer.** Area 4 of world `1baa96c2` (asset `b666b655`) has
+  five layers, and the log's own names and states are `0='Default' active 1='!No Load'
+  2='1st Pass' active 3='2nd Pass' 4='3rd Pass'` - i.e. layers 1, 3 and 4 start **inactive**, and
+  layer 2 is active. Walking the area with only the layers the save has active produces no actor,
+  which is what the earlier run saw.
+- **Activating layer 3 (`2nd Pass`) loads the module and creates its actors.** With
+  `MP2_INPUT`'s new `LAYER3` token (`platform/README.md`), `CGameArea::LoadLayerDynamic` ->
+  `UpdateDynamicLayers` reaches `kLP_Ready`, `ActivateLayerDynamic` runs the layer's script
+  objects, and the log shows `RELProd/ElitePirate.rel` (70856 bytes) being read immediately before
+  `[layer] area 4 layer 3 activated (755 object ids free)`. `LAYER1` (`!No Load`), `LAYER2`
+  (already active) and `LAYER4` (`3rd Pass`) also work, and `LAYER5` is correctly refused ("layer 5
+  is not one of them", the area has 0-4).
+- **In game the actors exist and run**: `[elitepirate]` lines for `AcceptScriptMsg` during the
+  layer's load, then `Think`, `PreRender`, `Render` and `DoUserAnimEvent` while the player stood in
+  the area (`/tmp/layer1.log`, a run booted straight into the area with
+  `MP2_WORLD="1baa96c2,b666b655"`). Everything else in them is still the once-per-method stand-in
+  of section 5, so their AI is absent: the same standard as the other families' milestone 1.
+- Not yet exercised for this module: being shot, the shields, and the Ing form changes.
+
+The layer lesson generalises: **a module's actors are not reachable by walking its areas alone**,
+and every remaining family has to be checked the same way - warp into one of its areas, read the
+layer list the token prints, and ask for the layer the module's REL is loaded by.

@@ -133,6 +133,10 @@ void RunInputScript(unsigned frame) {
         PortWarp::Kill();
       } else if (NameIs("HEAL", p, at)) {
         PortWarp::Heal();
+      } else if (at - p > 5 && std::strncmp(p, "LAYER", 5) == 0) {
+        // LAYER<layer>: the number is part of the token, so a sweep can ask for a different layer in
+        // each area it visits.
+        PortWarp::Layer(std::atoi(p + 5));
       } else if (NameIs("NEXTWORLD", p, at)) {
         PortWarp::CycleWorld(1);
       } else if (NameIs("PREVWORLD", p, at)) {

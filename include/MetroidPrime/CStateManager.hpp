@@ -191,10 +191,21 @@ public:
   void PortWarpToWorldPortal();
   void PortWarpToDeath();
   void PortWarpToHeal();
+  // Port: activate a layer of an area (the `LAYER<layer>` input token). A module whose actors live
+  // in a non-zero layer - ElitePirate is in all five of its areas - is invisible until its layer
+  // runs, so this is what makes such a module verifiable at all.
+  void PortWarpToLayer(TAreaId aid, int layer);
+  // Drives a layer request to completion: ActivateLayerDynamic can only run once the layer's data
+  // has streamed in (GetLayerPhase reports kLP_Ready), which takes frames.
+  void PortLayerTick();
   void PortWarpSettle();
   // Object ids a warp may leave unallocated before it is allowed to start loading an area: a warp
   // adds a whole area's script objects on top of what is already live.
   int PortFreeObjectIds();
+  // One line naming who holds the ids when the pool runs out: the current area, the areas still on
+  // the alive chain and how many live objects each of them owns. The exhaustion itself only says
+  // "1024 live objects", which does not say whether the load was too big or an area was not dropped.
+  void PortLogIdPressure();
   // A warp sets the area and lets the game's own per-frame travel load it; this remembers which
   // area to place the player in once it is loaded.
   TAreaId mPortPendingWarpArea = kInvalidAreaId;
@@ -203,6 +214,24 @@ public:
   // make room - the drop is worth doing once per warp, not every frame.
   bool mPortWarpWaitingForIds = false;
   bool mPortWarpDroppedAreas = false;
+  // True once this warp has handed the pending area to the stream. The free-id gate below only
+  // guards *starting* a stream: an area's script objects allocate as the stream runs, so holding a
+  // running stream back would stall the load forever and keep the ids it had already taken (a walk
+  // of world 1baa96c2 stopped there with 600 ids held by the half-loaded area).
+  bool mPortWarpStreamStarted = false;
+  // An area asked for while another one was still streaming. Nothing else advances a stream that has
+  // started, so the request is held here and taken when that stream settles (see PortWarpSettle).
+  TAreaId mPortWarpQueuedArea = kInvalidAreaId;
+  // True while a warp has the world's own area loading paused (CWorld::SetLoadPauseState), so that
+  // the neighbour preload does not re-load an area behind the warp's back and eat the ids its stream
+  // needs. Cleared when the warp arrives.
+  bool mPortWarpLoadPaused = false;
+  // A layer activation asked for by a test token (`MP2_INPUT`'s `LAYER<layer>`): the layer has to
+  // stream in before its script objects can be created, so the request is remembered here and
+  // finished by PortLayerTick once the layer reports itself ready.
+  TAreaId mPortLayerArea = kInvalidAreaId;
+  TLayerId mPortLayer = TLayerId(0);
+  int mPortLayerRetries = 0;
   // Frame at which to drop the areas the last warp left behind (0 = nothing scheduled).
   uint mPortDropAreasAtFrame = 0;
 #endif

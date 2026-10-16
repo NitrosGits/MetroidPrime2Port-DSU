@@ -103,6 +103,11 @@ void Heal() {
   sRequest = SRequest();
   sRequest.kind = EKind::kHeal;
 }
+void Layer(int layer) {
+  sRequest = SRequest();
+  sRequest.kind = EKind::kLayer;
+  sRequest.delta = layer;
+}
 
 void ApplyEnvOnce() {
   if (sReadEnv) {

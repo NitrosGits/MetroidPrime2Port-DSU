@@ -22,7 +22,8 @@ enum class EKind {
   kStation,   // stand on the nearest save station, to test saving in game
   kWorldPortal, // activate the nearest elevator (world teleporter), to test a world change
   kKill,       // kill the player, to test dying and respawning
-  kHeal        // refill the player's energy, so a sweep survives a damaging environment
+  kHeal,       // refill the player's energy, so a sweep survives a damaging environment
+  kLayer       // activate a layer of the current area (its `delta` is the layer number)
 };
 
 struct SRequest {
@@ -42,6 +43,10 @@ void Station();
 void WorldPortal();
 void Kill();
 void Heal();
+// Activate a layer of the current area. A module whose actors live in a layer other than 0 - every
+// one of ElitePirate's five areas, for instance - only appears once that layer runs, so this is what
+// makes such a module verifiable from the `MP2_INPUT` token `LAYER<layer>`.
+void Layer(int layer);
 // Reads MP2_WORLD / MP2_TELEPORT once; called from the platform event loop.
 void ApplyEnvOnce();
 // Whether a request is waiting. The game checks this before it is ready to act (no world yet, or

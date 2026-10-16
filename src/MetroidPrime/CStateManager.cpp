@@ -4,6 +4,7 @@
 #include <stdlib.h>  // getenv: the port's opt-in diagnostics
 #include <string.h>
 #include "Kyoto/CPakFile.hpp"
+#include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
 #include "MetroidPrime/CDummyWorld.hpp"
 #endif
@@ -2273,8 +2274,10 @@ TUniqueId CStateManager::AllocateUniqueId() {
         rs_debugger_printf("Object list full!");
       }
       // Nothing here can find a free index, so the do/while would spin forever. Say what happened
-      // and stop: a run that dies naming the cause is worth more than one that hangs.
+      // - including who holds the pool - and stop: a run that dies naming the cause is worth more
+      // than one that hangs.
       std::fprintf(stderr, "[ids] the object id pool is exhausted (1024 live objects)\n");
+      PortLogIdPressure();
       std::fflush(stderr);
       std::abort();
 #else
@@ -3707,6 +3710,36 @@ void CStateManager::ProcessInput(const CFinalInput& input) {
   }
 }
 
+namespace {
+// Unload every area except the two a warp has to spare: the one the player is in and the one being
+// streamed. `CWorld::UnloadAllAreasExcept` spares a single area, and using it with the current area
+// alone would invalidate the *destination* mid-stream - which is not merely wasteful, it is the
+// opposite of what the call is for: `CGameArea::Invalidate` finishes a load that has reached its
+// script objects and then throws the objects away, so the warp would cancel and restart its own
+// stream. Retries the areas that cannot be invalidated yet (`Invalidate` returns false while their
+// transactions or dependencies are still in flight).
+bool PortUnloadAreasExcept(CStateManager& mgr, CWorld& world, TAreaId keepA, TAreaId keepB) {
+  CFrameDelayedKiller::StallAndFlushAllAllocations();
+  bool failed = false;
+  for (int i = 0; i < world.IGetAreaCount(); ++i) {
+    const TAreaId id(i);
+    CGameArea* area = world.Area(id);
+    if (area == nullptr || area->GetId() == keepA || area->GetId() == keepB) {
+      continue;
+    }
+    if (area->GetCurChain() == CWorld::kC_Deallocated) {
+      continue;
+    }
+    if (area->Invalidate(&mgr)) {
+      world.MoveToChain(area, CWorld::kC_Deallocated);
+    } else {
+      failed = true;
+    }
+  }
+  return !failed;
+}
+} // namespace
+
 void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   mArchQueue = &queue;
   float dt = inputDt;
@@ -3733,11 +3766,14 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   // the world exists; a world reload ends the update early through QuitGame.
   PortWarpTick();
   PortWarpSettle();
+  PortLayerTick();
   if (mPortDropAreasAtFrame != 0 && mUpdateFrameIdx >= mPortDropAreasAtFrame) {
     mPortDropAreasAtFrame = 0;
     if (CWorld* dropWorld = World(); dropWorld != nullptr) {
-      TAreaId keep = dropWorld->GetCurrentAreaId();
-      if (dropWorld->UnloadAllAreasExcept(*this, keep)) {
+      const TAreaId keep = dropWorld->GetCurrentAreaId();
+      // Spare the pending area too: a request the player made while this drop was waiting may have
+      // started streaming it, and dropping it would cancel that stream (see PortUnloadAreasExcept).
+      if (PortUnloadAreasExcept(*this, *dropWorld, keep, mPortPendingWarpArea)) {
         std::fprintf(stderr, "[warp] dropped the areas around %d (%d object ids free)\n",
                      keep.Value(), PortFreeObjectIds());
       }
@@ -4089,6 +4125,10 @@ void CStateManager::PortWarpTick() {
     PortWarpToHeal();
     break;
   }
+  case PortWarp::EKind::kLayer: {
+    PortWarpToLayer(world->GetCurrentAreaId(), request.delta);
+    break;
+  }
   case PortWarp::EKind::kWorld: {
     PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
     break;
@@ -4149,15 +4189,39 @@ void CStateManager::PortWarpToArea(TAreaId aid) {
   // so the warp loads first and settles the move in PortWarpSettle.
   if (!area->IsLoaded()) {
     if (mPortPendingWarpArea != aid) {
+      // A request that lands while another area is still streaming must not displace it: nothing
+      // else pumps a stream that has started, so the abandoned area would hold the ids it has
+      // already taken while the new one waits for room that can never come - the same deadlock this
+      // warp was just fixed for. Hold the new area and take it when the running one settles.
+      if (mPortWarpStreamStarted && mPortPendingWarpArea != kInvalidAreaId) {
+        mPortWarpQueuedArea = aid;
+        std::fprintf(stderr, "[warp] area %d queued behind area %d (it is still streaming)\n",
+                     aid.Value(), mPortPendingWarpArea.Value());
+        return;
+      }
       std::fprintf(stderr, "[warp] area %d: loading\n", aid.Value());
       mPortPendingWarpArea = aid;
       mPortWarpWaitingForIds = false;
       mPortWarpDroppedAreas = false;
+      mPortWarpStreamStarted = false;
+    }
+    // Hold the world's own area loading off until this warp has arrived. The per-frame travel
+    // preloads the current area's dock neighbours (CWorld::TravelToArea with kATT_LoadAdjacent), and
+    // a whole preloaded neighbour - measured 368 objects in world 1baa96c2 - is what pushed a warp's
+    // stream over the 1024-id pool together with the destination's own script objects. Paused here,
+    // before the destination is scheduled, so the destination itself is not on the loading chain and
+    // is therefore not paused: this warp still calls its StartStreamIn directly.
+    if (!mPortWarpLoadPaused) {
+      mPortWarpLoadPaused = true;
+      world->SetLoadPauseState(true);
+      std::fprintf(stderr, "[warp] area %d: holding the world's own area loading until it arrives\n",
+                   aid.Value());
     }
     // PortWarpSettle keeps the load moving from here (see its comment).
     return;
   }
   mPortPendingWarpArea = aid;
+  mPortWarpStreamStarted = false;
 }
 
 namespace {
@@ -4182,6 +4246,35 @@ int CStateManager::PortFreeObjectIds() {
   return free;
 }
 
+// Who is holding the pool when it runs out. "1024 live objects" on its own cannot say whether the
+// area being streamed is simply too big or an area that should have been dropped is still there, and
+// those two need different fixes - so name the areas on the alive chain and what each one owns.
+void CStateManager::PortLogIdPressure() {
+  CWorld* world = World();
+  if (world == nullptr) {
+    std::fprintf(stderr, "[ids] no world\n");
+    return;
+  }
+  int aliveCount = 0;
+  for (CGameArea::CConstChainIterator it = world->GetChainHead(CWorld::kC_Alive);
+       it != CWorld::GetAliveAreasEnd(); ++it) {
+    ++aliveCount;
+  }
+  std::fprintf(stderr, "[ids] current area %d, pending warp %d, %d areas alive:\n",
+               world->GetCurrentAreaId().Value(), mPortPendingWarpArea.Value(), aliveCount);
+  for (CGameArea::CConstChainIterator area = world->GetChainHead(CWorld::kC_Alive);
+       area != CWorld::GetAliveAreasEnd(); ++area) {
+    int owned = 0;
+    CObjectList* objects = mObjectLists[kOL_All].get();
+    for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+      if ((*objects)[i]->GetCurrentAreaId() == area->GetId()) {
+        ++owned;
+      }
+    }
+    std::fprintf(stderr, "[ids]   area %d: %d objects\n", area->GetId().Value(), owned);
+  }
+}
+
 // Places the player in the area a warp asked for, once that area has finished loading.
 void CStateManager::PortWarpSettle() {
   if (mPortPendingWarpArea == kInvalidAreaId) {
@@ -4190,11 +4283,19 @@ void CStateManager::PortWarpSettle() {
   CWorld* world = World();
   if (world == nullptr || !world->DoesAreaExist(mPortPendingWarpArea)) {
     mPortPendingWarpArea = kInvalidAreaId;
+    if (world != nullptr && mPortWarpLoadPaused) {
+      mPortWarpLoadPaused = false;
+      world->SetLoadPauseState(false);
+    }
     return;
   }
   CGameArea* area = world->Area(mPortPendingWarpArea);
   if (area == nullptr) {
     mPortPendingWarpArea = kInvalidAreaId;
+    if (mPortWarpLoadPaused) {
+      mPortWarpLoadPaused = false;
+      world->SetLoadPauseState(false);
+    }
     return;
   }
   if (!area->IsLoaded()) {
@@ -4205,39 +4306,69 @@ void CStateManager::PortWarpSettle() {
     // ~1008 and settles near ~350 a few hundred frames later), so a warp landing in that window
     // would need more ids than are left and the area's script objects would exhaust the pool.
     // Wait for room instead of starting the load: the area is not in anyone's way while loading.
-    if (PortFreeObjectIds() < kPortWarpMinFreeIds) {
-      if (!mPortWarpWaitingForIds) {
-        mPortWarpWaitingForIds = true;
-        std::fprintf(stderr, "[warp] area %d: waiting, only %d of %d object ids free\n",
-                     mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
-      }
-      // Areas other than the one the player is in are leftovers from an earlier transition (a world
-      // change keeps the world it came from alive until the game's own travel drops it) and they
-      // hold the ids this warp is waiting for, so drop them once per warp: this is the same call the
-      // game's own area transition makes, and it frees a whole area's objects at once (measured:
-      // 435 free before, 628 after).
-      if (!mPortWarpDroppedAreas && (mUpdateFrameIdx % 60) == 0) {
-        TAreaId keep = world->GetCurrentAreaId();
-        if (world->UnloadAllAreasExcept(*this, keep)) {
+    // The wait only guards the *start*: an area's script objects allocate as its stream runs, so
+    // once it has begun the warp has to keep pumping it. Refusing to advance a running stream
+    // stalls the load forever and keeps the ids it has already taken - a walk of world 1baa96c2
+    // died there, with the half-loaded area holding 600 of the 1024 ids and free stuck at 173
+    // against a 256 floor.
+    if (!mPortWarpStreamStarted) {
+      // Drop the areas this warp has left behind *before* it starts streaming, whether or not the
+      // pool looks tight. Only they can give the destination's script objects room (the player's own
+      // area and the destination are the two that must stay), and waiting until the count is already
+      // low is too late: the stream is what fills the pool, so by then the leftover area is part of
+      // the peak. Measured in world 1baa96c2, a warp from area 9 to area 10 died with area 9 (183
+      // objects) and a *preloaded neighbour* - the per-frame travel keeps one loaded, area 5 with 368
+      // - alive while area 10's stream asked for ~470 more; the same numbers ended a sweep run in
+      // Temple Grounds (184 + a 545-object neighbour). This is the call the game's own area
+      // transition makes, and it frees a whole area's objects at once.
+      if (!mPortWarpDroppedAreas) {
+        const TAreaId keep = world->GetCurrentAreaId();
+        if (PortUnloadAreasExcept(*this, *world, keep, mPortPendingWarpArea)) {
           mPortWarpDroppedAreas = true;
-          std::fprintf(stderr, "[warp] dropped the areas around %d to free object ids (%d free)\n",
-                       keep.Value(), PortFreeObjectIds());
-          if (PortFreeObjectIds() >= kPortWarpMinFreeIds) {
-            mPortWarpWaitingForIds = false;
-          }
+          std::fprintf(stderr,
+                       "[warp] area %d: dropped the areas around %d before streaming (%d free)\n",
+                       mPortPendingWarpArea.Value(), keep.Value(), PortFreeObjectIds());
+        } else {
+          // An area could not be invalidated yet (its transactions or dependencies are still in
+          // flight), so the room this stream needs is not there yet either. Try again next frame.
+          return;
         }
-        // A false return means an area could not be invalidated yet (it is still streaming), so
-        // leave the flag clear and try again a few frames later.
       }
-      return;
+      if (PortFreeObjectIds() < kPortWarpMinFreeIds) {
+        if (!mPortWarpWaitingForIds) {
+          mPortWarpWaitingForIds = true;
+          std::fprintf(stderr, "[warp] area %d: waiting, only %d of %d object ids free\n",
+                       mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
+        }
+        return;
+      }
+      mPortWarpWaitingForIds = false;
+      mPortWarpStreamStarted = true;
+      std::fprintf(stderr, "[warp] area %d: streaming (%d of %d object ids free)\n",
+                   mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
     }
-    mPortWarpWaitingForIds = false;
     if (world->ScheduleAreaToLoad(area, *this)) {
       area->StartStreamIn(*this);
+    }
+    // A stream that is running allocates its script objects as it goes, so the parts it has not
+    // reached yet still need room. Failing areas can come back while the stream runs (the world's
+    // own travel is paused, but an area that was already mid-load when the warp arrived can finish),
+    // so try the same drop once more while the free count is at the floor.
+    if (PortFreeObjectIds() < kPortWarpMinFreeIds && (mUpdateFrameIdx % 60) == 0) {
+      const TAreaId keep = world->GetCurrentAreaId();
+      if (PortUnloadAreasExcept(*this, *world, keep, mPortPendingWarpArea)) {
+        std::fprintf(stderr, "[warp] dropped the areas around %d while area %d streams (%d free)\n",
+                     keep.Value(), mPortPendingWarpArea.Value(), PortFreeObjectIds());
+      }
     }
     return;
   }
   mPortWarpWaitingForIds = false;
+  mPortWarpStreamStarted = false;
+  if (mPortWarpLoadPaused) {
+    mPortWarpLoadPaused = false;
+    world->SetLoadPauseState(false);
+  }
   const TAreaId target = mPortPendingWarpArea;
   mPortPendingWarpArea = kInvalidAreaId;
   mPortWarpDroppedAreas = false;
@@ -4274,6 +4405,15 @@ void CStateManager::PortWarpSettle() {
   // sweep has left behind otherwise stay loaded and hold their objects, and two areas' worth plus a
   // third area's stream is what exhausts the 1024-id pool (a walk of world 1baa96c2 died there with
   // 558 ids live).
+  // A request that arrived while this one was streaming is taken now, so a sweep's next hop is not
+  // lost. It sets mPortPendingWarpArea again, and that is also what keeps the scheduled drop below
+  // from throwing away the area this warp is about to stream.
+  if (mPortWarpQueuedArea != kInvalidAreaId) {
+    const TAreaId queued = mPortWarpQueuedArea;
+    mPortWarpQueuedArea = kInvalidAreaId;
+    std::fprintf(stderr, "[warp] taking the queued area %d\n", queued.Value());
+    PortWarpToArea(queued);
+  }
   mPortDropAreasAtFrame = mUpdateFrameIdx + kPortDropAreasDelay;
 }
 
@@ -4427,6 +4567,112 @@ void CStateManager::PortWarpToHeal() {
   state->IncrPickUp(CPlayerState::kIT_HealthRefill, static_cast< int >(maximum));
   std::fprintf(stderr, "[warp] healed to %f energy (was %f, max %f)\n",
                state->GetHealthInfo().GetHP(), before, maximum);
+}
+
+// Activate a layer of an area. This is the script's own path (CScriptLayerController's kSM_Load and
+// then, once the layer reports ready, its kSM_Play), because a layer's script objects - and with
+// them the actors of any module that lives in that layer - only exist after ActivateLayerDynamic.
+// The layer's *data* streams in first (GetLayerPhase kLP_Inactive -> kLP_Loading -> kLP_Ready), so
+// the request is finished over frames by PortLayerTick.
+void CStateManager::PortWarpToLayer(TAreaId aid, int layer) {
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(aid)) {
+    std::fprintf(stderr, "[layer] area %d does not exist in this world\n", aid.Value());
+    return;
+  }
+  CGameArea* area = world->Area(aid);
+  if (area == nullptr) {
+    std::fprintf(stderr, "[layer] area %d has no area object\n", aid.Value());
+    return;
+  }
+  if (mCurrentWorldLayerState.IsNull()) {
+    std::fprintf(stderr, "[layer] no world layer state yet\n");
+    return;
+  }
+  CWorldLayerState& layers = *mCurrentWorldLayerState;
+  // GetLayerCount/IsLayerActive index mAreaLayers without a range check (only GetLayerName checks),
+  // so an area id the layer state does not have must not reach them.
+  if (aid.Value() < 0 || aid.Value() >= static_cast< int >(layers.GetAreaLayers().size())) {
+    std::fprintf(stderr, "[layer] area %d is not in the world layer state\n", aid.Value());
+    return;
+  }
+  const TLayerId id(layer);
+  // Name every layer of the area (and say which are active), so a run can pick the one a module's
+  // actors live in instead of guessing: ElitePirate, for instance, appears in no area's layer 0.
+  const int count = layers.GetLayerCount(aid);
+  std::fprintf(stderr, "[layer] area %d has %d layers:", aid.Value(), count);
+  for (int i = 0; i < count; ++i) {
+    std::fprintf(stderr, " %d='%s'%s", i, layers.GetLayerName(aid, TLayerId(i)).c_str(),
+                 layers.IsLayerActive(aid, TLayerId(i)) ? " active" : "");
+  }
+  std::fprintf(stderr, "\n");
+  if (!area->IsValidLayerNumber(*this, id)) {
+    std::fprintf(stderr, "[layer] layer %d is not one of them\n", layer);
+    return;
+  }
+  if (layers.IsLayerActive(aid, id) && area->GetLayerPhase(id) == CGameArea::kLP_Active) {
+    std::fprintf(stderr, "[layer] layer %d of area %d is already active\n", layer, aid.Value());
+    return;
+  }
+  layers.SetLayerActive(aid, id, true);
+  area->LoadLayerDynamic(*this, id);
+  mPortLayerArea = aid;
+  mPortLayer = id;
+  mPortLayerRetries = 0;
+  std::fprintf(stderr, "[layer] area %d layer %d: phase %d after the load request\n", aid.Value(),
+               layer, static_cast< int >(area->GetLayerPhase(id)));
+}
+
+void CStateManager::PortLayerTick() {
+  if (mPortLayerArea == kInvalidAreaId) {
+    return;
+  }
+  CWorld* world = World();
+  CGameArea* area =
+      world != nullptr && world->DoesAreaExist(mPortLayerArea) ? world->Area(mPortLayerArea) : nullptr;
+  if (area == nullptr || !area->IsLoaded()) {
+    // The area was unloaded (the player moved on, or a world change replaced it). Its layer phases
+    // survive that but its post-construction data does not, and ActivateLayerDynamic dereferences
+    // that - so a request whose area is gone is dropped rather than acted on.
+    if (area != nullptr) {
+      std::fprintf(stderr, "[layer] area %d is no longer loaded; dropping the layer request\n",
+                   mPortLayerArea.Value());
+    }
+    mPortLayerArea = kInvalidAreaId;
+    return;
+  }
+  switch (area->GetLayerPhase(mPortLayer)) {
+  case CGameArea::kLP_Ready:
+    area->ActivateLayerDynamic(*this, mPortLayer);
+    std::fprintf(stderr, "[layer] area %d layer %d activated (%d object ids free)\n",
+                 mPortLayerArea.Value(), mPortLayer.Value(), PortFreeObjectIds());
+    mPortLayerArea = kInvalidAreaId;
+    break;
+  case CGameArea::kLP_Active:
+    std::fprintf(stderr, "[layer] area %d layer %d was already active\n", mPortLayerArea.Value(),
+                 mPortLayer.Value());
+    mPortLayerArea = kInvalidAreaId;
+    break;
+  case CGameArea::kLP_Inactive:
+    // Nothing is loading it: ask again a few times, then give up with one line. A layer the disc
+    // does not carry never leaves this phase, and a run should not be left guessing whether the
+    // request was even seen.
+    if ((mUpdateFrameIdx % 120) == 0) {
+      ++mPortLayerRetries;
+      if (mPortLayerRetries > 5) {
+        std::fprintf(stderr, "[layer] area %d layer %d never started loading; giving up\n",
+                     mPortLayerArea.Value(), mPortLayer.Value());
+        mPortLayerArea = kInvalidAreaId;
+        break;
+      }
+      area->LoadLayerDynamic(*this, mPortLayer);
+      std::fprintf(stderr, "[layer] area %d layer %d: still inactive, asked again (%d)\n",
+                   mPortLayerArea.Value(), mPortLayer.Value(), mPortLayerRetries);
+    }
+    break;
+  default:
+    break;
+  }
 }
 
 // Stand on the nearest elevator of this area and tell it to go, which is the game's own world
