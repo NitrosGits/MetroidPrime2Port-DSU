@@ -1,0 +1,124 @@
+# Android APK for the MP2 port: plan
+
+Plan written 2026-10-17 (orchestrator session, after the Temple Grounds sweep). Nothing here is
+built yet: this tree has **no** Android integration. The document exists so a fresh session can
+start the APK without re-doing the reconnaissance.
+
+## 1. What the user asked for
+
+An installable APK to play on their phone. Decisions taken:
+
+- **arm64-v8a, Android 13+** (minSdk can stay 28 to match MP1's app if that is simpler).
+- **On-screen touch controls** (not just a Bluetooth pad).
+- **In-app file picker (SAF)** for the ISO.
+- **First deliverable is a boot-and-play tech demo**, not MP1-app parity: it boots the save/disc on
+  the phone and plays the areas that work today. The game is not finished (see `AGENTS.md` Status:
+  actor families are still stand-ins, and the Temple Grounds sweep found walls), so "playable
+  end to end" is not on the table yet.
+
+## 2. What already exists (measured, in `../MetroidPrimePort`)
+
+MP1's port ships this pipeline; it is the template.
+
+- **Driver**: `tools/android_apk.sh` resolves SDK/NDK/Gradle, writes `android/local.properties`,
+  then `gradle --project-dir android :app:assembleRelease`.
+  NDK pinned **29.0.14206865** (r29 is a hard floor); installed at
+  `~/android-ndk-cache/android-ndk-r29` and `~/android/sdk/ndk/29.0.14206865`. Gradle 8.7 at
+  `~/.gradle/wrapper/dists/gradle-8.7-bin/*/gradle-8.7/bin/gradle`; AGP 8.5.2.
+  Keystore: `tools/make_android_keystore.sh`, `android/keystore.properties` +
+  `android/metroid-prime-port-release.jks`; `-PmpDebugSigning=true` sideloads with a debug key.
+  Warm APK build: `BUILD SUCCESSFUL in 1m 15s` (51 tasks, ccache and `.cxx` caches warm).
+- **App shell**: single `:app` module, native build through AGP `externalNativeBuild` (CMake),
+  `applicationId org.metroidprime.port`, `arm64-v8a` only, `jniLibs.useLegacyPackaging` (so the
+  224 MB unstripped `.so` gets stripped), assets for textures and a pipeline-cache seed.
+- **CMake side** (`MetroidPrimePort/CMakeLists.txt`): ANDROID blocks at ~40, 47-49, 54, 87-92
+  (nod stub), 270-272, 287-303 (SHARED lib + `mediandk` + `-Wl,-u,SDL_main` + adrenotools hooks),
+  307-333 (dev tools out), 361-364 (OpenSSL), 386-392. Aurora defines `TARGET_PC` itself.
+  Aurora's Android support is already vendored here: `extern/aurora/cmake/AuroraSDL3Provider.cmake`
+  (:164-176, needs `AURORA_SDL3_PROVIDER=vendor`), `AuroraDawnProvider.cmake` (:83-90 prebuilt
+  `android-aarch64` Dawn, `AURORA_DAWN_PROVIDER=auto`).
+- **Touch controls** (all Java + JNI, no assets): `TouchControlsView.java` (3148 lines, drawn in
+  code) over the SDL surface; JNI glue `platform/debug_ui/android_jni.inc` -> a real SDL virtual
+  gamepad (`platform/touch_pad.cpp`) plus the port's own input layer; layouts persisted as
+  `touch_layout`; a physical pad hides the overlay.
+- **Device paths**: user dir via `MP_USER_PATH` -> `data_folder.txt` marker ->
+  `SDL_GetPrefPath(nullptr, "Metroid Prime")` (`port_paths.h:244-262`); data folder move with
+  `MANAGE_EXTERNAL_STORAGE`; cache defaults to the private folder.
+- **Disc**: SAF picker via `SDL_ShowFileDialogWithProperties` -> the `content://` result is copied
+  to `<user>/disc.iso` (`.part` + rename) so no grant is needed later; precedence argv > `MP_DISC`
+  > remembered. This is the mechanism to copy for MP2 (`aurora_dvd_open()` in this tree only takes
+  a plain path - `extern/aurora/lib/dolphin/dvd/dvd.cpp:658` -> `SDL_IOFromFile` - so *copying* the
+  pick to local storage is the cheap route, not reading the URI in place).
+
+## 3. What this tree lacks for Android
+
+1. **No `android/` gradle project, no Java, no JNI, no CMake ANDROID blocks.** `platform/android_probe/`
+   holds only a `nod` stub (`nod_stub.c`, `include/nod.h`) - the probe's other files are gone.
+2. **Desktop-only host code** (from an inventory of this tree):
+   - `platform/main.cpp:26,88-108`: `execinfo.h` backtrace + SIGSEGV/BUS/ILL/FPE handlers. bionic has
+     no `execinfo.h`; needs a `__ANDROID__` path (logcat-only, or a tombstone).
+   - `platform/glibc_compat.c`: glibc-only, self-excludes on bionic.
+   - Env-var config everywhere (`MP2_DISC`/`MP2_USER_PATH`/`MP2_CACHE_PATH`/`MP2_SKIP_FRONTEND`/
+     `MP2_INPUT`/`MP2_WORLD`/`MP2_FRAMES`/`MP2_DEBUG_IDS`): a JNI launcher can set env before
+     `main`, or a config file + intent extras; MP1 solved this with `port_paths.h` + a marker file.
+   - Keyboard/mouse bindings, F1-F12 overlay hotkeys: meaningless with touch; the touch overlay has
+     to feed the port's virtual pad instead.
+   - Dev/harness only: `tools/*.sh` (Xvfb, gdb, x11grab), `-rdynamic`, CTest targets, host binutils
+     (`ld.bfd`/`objcopy`/`nm` in `CMakeLists.txt:162-164`) and the `link_check`/REL-stub ladder.
+3. **Architecture-sensitive spots** (little-endian LP64, so most LP64 notes carry over unchanged):
+   - `platform/rel.cpp:322-366` `GuestArena`: the 32-bit guest address requirement. On arm64 there
+     is no `MAP_32BIT`, and the `#elif defined(MAP_FIXED_NOREPLACE)` branch *uses* `MAP_32BIT`
+     unconditionally, which bionic does not define - a compile error to fix. The fallback (hint
+     `0x10000000`, verify `< 4 GiB`) is likely to work in an app process, but reserving the arena
+     early (before other mappings scatter) may be needed.
+   - No x86 intrinsics or asm anywhere in the port's own code (LZO is plain C), so NEON is not a
+     gate.
+   - Signed `char` is already forced (`CMakeLists.txt:48-52`, `platform/compat.h:60`).
+4. **`MP_SDK_HEADERS_ONLY=ON` is the only *verified* configure** in this tree; `build-port-link` is
+   the full build. Whichever Android uses, the CMake dev-tool steps have to be excluded.
+
+## 4. Milestones (each one verifiable without assuming a working device)
+
+**M0 - arm64 cross-build links.** Add a toolchain/ANDROID path to `CMakeLists.txt` (exclude the dev
+tools, host-binutils steps, tests; pick the Aurora Android providers; keep the SDK stubs the way
+`MP_SDK_HEADERS_ONLY` does or build the real SDK), fix the bionic blockers (`execinfo`, `MAP_32BIT`,
+any glibc shim), and produce `libmetroid_prime2_port.so` for arm64.
+*Verified when*: `$NDK/.../llvm-readelf -h libmetroid_prime2_port.so` says `AArch64` and the link
+has no undefined symbols (`llvm-nm -u`), i.e. the same acceptance the desktop `link_check.sh` gives.
+No device needed. This is the gate: if the REL arena cannot be placed, stop and report.
+
+**M1 - minimal app that boots.** New `android/` gradle project modelled on MP1's (app module,
+manifest, `MetroidPrimeActivity` + Aurora surface, `jniLibs`, debug signing), with paths for the
+disc/user/cache dirs (fixed app-internal paths + a `data_folder.txt`-style marker) and logcat
+mirroring of the port's `[warp]`/`[ids]`/`[harness]` lines.
+*Verified when*: `adb install` + launch reaches the game's first update on the phone with a
+Bluetooth pad, and `adb logcat` shows the same boot lines the desktop log shows.
+
+**M2 - SAF picker.** Port MP1's picker + copy-to-`<user>/disc.iso` (`main.cpp:513-560` there), with
+MP2's game-id check (this port expects `G2ME01`).
+*Verified when*: picking an ISO once makes later launches boot with no picker.
+
+**M3 - touch controls.** Port `TouchControlsView.java` + `touch_pad.cpp` + the JNI bridge, and map
+them into this port's input layer (`platform/port_events.cpp`'s virtual pad, `platform/port_mouse.cpp`
+for the look-stick).
+*Verified when*: a run on the phone moves the player and fires with only touch.
+MP2-specific work: MP2 has no `port_input_settings.cpp`/`debug_ui` module split yet, so the layout
+settings have somewhere to live only after a small refactor - see MP1's `platform/debug_ui/controls.inc`
+if the module split is copied.
+
+**M4 - tech-demo polish.** Stripped release APK with a debug-ish signing story, versionName, an
+in-app line with the build's git hash, and a short `docs/ANDROID.md` "how to install" section.
+
+## 5. Risks, worst first
+
+- **REL arena placement** (M0): the only thing that can make the whole plan collapse. Check first.
+- **Tombstones instead of backtraces**: without `execinfo`, a crash on device is only a tombstone;
+  `adb logcat` + `ndk-stack` is the workflow to write down before debugging on the phone.
+- **Touch mapping into MP2's input layer** (M3): MP2's platform layer is smaller than MP1's (no
+  input-settings module, no touch pad), so expect a small refactor, and expect the look-stick to be
+  the fiddly part.
+- **Performance unknown**: MP2 on a phone GPU is untested; the port's software-Vulkan present path
+  is a desktop workaround and must not be copied - Android needs the real SDL/Aurora surface.
+- **The game itself is incomplete** (see `AGENTS.md` Status): the APK will hit stubs, missing
+  modules and the sweep's walls. That is expected for a tech demo, and the phone is actually a
+  useful second front for that work - *if* the crash reporting is in place first (logcat + tombstone).
