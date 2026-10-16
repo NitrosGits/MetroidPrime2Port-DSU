@@ -57,6 +57,11 @@
 #include "MetroidPrime/Enemies/CShredder.hpp"
 #include "MetroidPrime/Enemies/CSnakeWeedSwarm.hpp"
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
+#ifdef TARGET_PC
+// Guarded (unlike the Ing/MinorIng includes above) so the non-PC path of this upstream file is
+// byte-identical: the class is only used by the guarded TYPES_MATCH_IMPL below.
+#include "MetroidPrime/Enemies/CElitePirate.hpp" // REL module 15's host body (PortCElitePirate.cpp)
+#endif
 #include "MetroidPrime/Enemies/CSpankWeed.hpp"
 #include "MetroidPrime/Enemies/CSporbBase.hpp"
 #include "MetroidPrime/Enemies/CSporbNeedle.hpp"
@@ -323,7 +328,9 @@ TYPES_MATCH_IMPL(CPlasmaProjectile, CBeamProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL); parent CPatterned
 // 112: class not declared yet (DigitalGuardian REL); parent CPatterned
 // 113: class not declared yet (DigitalGuardian REL); parent CPatterned
-// 114: class not declared yet (ElitePirate REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CElitePirate, CPatterned, kET_ElitePirate) // REL module 15's host body
+#endif
 TYPES_MATCH_IMPL(CGrenchler, CPatterned, kET_Grenchler)
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CIng, CPatterned, kET_Ing) // REL module 29's host body (PortCIng.cpp)
@@ -592,7 +599,10 @@ CAST_TO_PTR_IMPL(CPlasmaProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL)
 // 112: class not declared yet (DigitalGuardian REL)
 // 113: class not declared yet (DigitalGuardian REL)
-// 114: class not declared yet (ElitePirate REL)
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CElitePirate, kET_ElitePirate)
+CAST_TO_PTR_IMPL(CElitePirate, kET_ElitePirate)
+#endif
 // 115: class not declared yet (Grenchler REL)
 #ifdef TARGET_PC
 CAST_TO_REF_IMPL(CIng, kET_Ing)

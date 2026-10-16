@@ -1,0 +1,202 @@
+# ElitePirate REL (module 15): analysis for a host body
+
+Analysis + host body, milestone 1 (2026-10-16). Sources: `config/G2ME01/rels/ElitePirate/symbols.txt`
+(sizes), the archive build's disassembly `../MetroidPrime2Port/build/G2ME01/ElitePirate/asm/`
+(`auto_*_text.s`, `auto_03_*_rodata.s`, `auto_04_*_data.s`, `auto_05_*_bss.s`, and the DOL's own
+`../MetroidPrime2Port/build/G2ME01/asm/auto_11_*_sdata2.s` for the constants the REL loads), the
+generated `include/MetroidPrime/ScriptLoader/SLdrElitePirate.{hpp,inc}`, and MP1's
+`../MetroidPrimePort/src/MetroidPrime/Enemies/CElitePirate.cpp` for what the class *does*.
+Confidence tags as in `SpacePirate.md`: **[proven]** = read from an instruction/table entry;
+**[probable]** = strong evidence but not proven; **[?]** = guess. All `fn_15_X` are REL `.text`
+offsets. The implementation is `src/MetroidPrime/Enemies/PortCElitePirate.cpp`,
+`include/MetroidPrime/Enemies/CElitePirate.hpp`.
+
+## 1. Function map
+
+| fn | size | role | evidence |
+|---|---|---|---|
+| `RELMain` | 0x20 | calls `fn_15_148` | [proven] |
+| `fn_15_148` | 0x30 | stores loader `fn_15_178` into `lbl_15_bss_0` (= the module's `SElitePirate_FuncPtrs`, one loader slot), then calls the DOL's `fn_80218AD4` = `SetSElitePirate_FuncPtrs` | [proven] |
+| `RELExit` | 0x24 | `fn_80218AD4(nullptr)` | [proven] |
+| `fn_15_178` | 0xACC | **loader** `LoadElitePirate` (section 3) | [proven] |
+| `fn_15_C44` | 0x64 | destructor helper for a stack object holding two `SLdrShockWaveInfo` (at +0xe4/+0x114); `fn_15_B57C` (0x64) is its sibling and `fn_15_B82C` calls that one twice | [proven] body shape; caller [?] |
+| `fn_15_10C0` | 0x268 | `SLdrElitePirate` ctor (the loader's stack object at r1+0x694) | [proven]: first call of the loader |
+| `fn_15_B82C` | 0x2CC | **`CElitePirateData` builder** (the loader's stack object at r1+0x250) | [proven]: loader argument list |
+| `fn_15_B360` | 0x21C | `CElitePirateData` copy into the object (`fn_15_A190` @0x0000A290) | [proven] |
+| `fn_15_A190` | 0x848 | **CElitePirate ctor** (section 2) | [proven]: called after `rs_new 0xd30` |
+| `fn_15_9C70` | 0x1A4 | **destructor** (vtable slot 2; tokens, `fn_15_9E...` members, base) | [proven] vtable |
+| `fn_15_A9D8` | 0xC8 | copy constructor (compares this != src, copies the flag byte) | [proven] body shape |
+| `fn_15_9598` | 0x2A8 | **`Think`** (slot 5; returns early unless active - a bit in this+0x20 - then runs the state machine) | [proven] vtable + body |
+| `fn_15_8580` | 0x804 | **`AcceptScriptMsg`** (slot 6; switches on the message's 4CC: `XDEL`, `DCTV`, ...) | [proven] vtable + body |
+| `fn_15_83C0` | 0x12C | **`PreRender`** (slot 9): `CPatterned::PreRender`, then an LCTR transform lookup by name for the shield / visor-electric effect | [proven] |
+| `fn_15_84EC` | 0x20 | **`AddToRenderer`** (slot 10): only `CPatterned::AddToRenderer` | [proven] |
+| `fn_15_8294` | 0x12C | **`Render`** (slot 11): the shield/electric flavour (reads the timers at 0xc64 / 0xa3c, uses `CColor::Black`) | [proven] |
+| `fn_15_7BFC` | 0x2F0 | **`DoUserAnimEvent`** (slot 28): dispatches through `jumptable_15_data_864` (26 entries), falls back to the base | [proven] |
+| `fn_15_C0D0` | 0x808 | **FSM setup**: references the trigger/state triples `lbl_15_data_4`..`lbl_15_data_16C` and the 31-name table `lbl_15_data_178`. The vtable keeps `CPatterned::SetupStateMachine` (slot 60), so its call site is not established | [proven] table refs; [?] caller |
+| `fn_15_800C` | 0x74 | slot 81 = `RenderIngSnatchingTransition` override | [proven] vtable slot |
+
+### Vtable `lbl_15_data_634` (140 words, 2 leading zeros)
+
+The first **82** slots are the `CEntity`..`CPatterned` table, in the same order as
+`lbl_72_data_8D8` in the SpacePirate REL (82 words, ending at
+`RenderIngSnatchingTransition`) [proven by entry-by-entry comparison]. Overridden slots (all
+[proven] by slot index; everything else keeps the base-class symbol, which is how the table says
+what is *not* overridden):
+
+- CEntity: dtor `9C70` (slot 2), `TypesMatch` (slot 3 - the **DOL** owns this one:
+  `TypesMatch__12CElitePirateCFi`), **Think `9598`** (5), **AcceptScriptMsg `8580`** (6).
+- CActor: **PreRender `83C0`** (9), **AddToRenderer `84EC`** (10), **Render `8294`** (11),
+  GetHealthInfo `D8` (15, calls the base's `HealthInfo` through slot 0x38), GetTouchBounds `10`
+  (18, `GetBoundingBox` then `C094`), GetAimPosition `7EEC` (21), **DoUserAnimEvent `7BFC`** (28).
+- CAi: **TakeDamage `4C`** (41, a 0x10-byte body: stores `lbl_8041AAB8` into 0x448 = the damage
+  cooldown timer), CanBeShot `A4` (42, true), IsListening `AC` (43, **false**), Listen `B4` (44,
+  false), `BC` (45, copies 3 floats out of r4+0x54).
+- CPatterned: `5C` (50, returns the byte at 0x44f), **ProjectileInfo `52C8`** (55, returns
+  `this+0xcd0`), **GetSearchPath `0`** (56, returns `this+0xa50`), **GetPointSearchPath `64`**
+  (57, null), **GetRagDoll `6C`** (61, null), **GetAttackTarget `74`** (67, writes
+  `kInvalidUniqueId` through the return-value pointer), IsOnGround `84` (68, the base's own bit at
+  0x34c), GetGravityConstant `90` (69, `lbl_8041B758` = **24.525f**), GetDeathExplosionParticle
+  `9C` (73, the base member at 0x754), `800C` (81).
+
+Slots **82..139** are not vtable entries: 58 further function pointers (`fn_15_9840` 0x8C,
+`fn_15_60C8` 0xC, `fn_15_18CC` 0xC, `fn_15_6F28` 0x1C, ... `fn_15_59BC`, `fn_15_578C` 0x230,
+`fn_15_27FC` 0x30C, `fn_15_24F0`, `fn_15_1A48`) sit inside the same label, and the module's own
+counts (`lbl_15_data_0` and `5EC`/`604`/`60C`/`614` are all 0x3B = 59) suggest the FSM's 59 code
+functions were merged into the vtable's label [probable: the 82-entry prefix matches SpacePirate;
+the count-to-table correspondence is [?]].
+
+### FSM tables (not needed by this milestone)
+
+`lbl_15_data_4`..`lbl_15_data_16C`: 31 × 12-byte `{0, fn_15_x, 0}` triples (triggers and
+states), `lbl_15_data_178`: 31 × 16-byte `{name, 0, 0, 0}` entries whose strings are
+`lbl_15_rodata_198`..`344` (`"Alerted"` first), `lbl_15_data_368`..`lbl_15_data_458`: 20 more
+triples, `lbl_15_data_5CC`: 2 triples naming the strings `"SelectTarget"` (`rodata_422`) and
+`"PickAttackType"` (`rodata_42F`), `lbl_15_data_5EC`..`lbl_15_data_630`: 18 ints (state ids: 0x3B,
+0x30, 0x1F, 0x20, 0x1C, 0x2F, 0x21, 0x14, 0x31, 0x35, 0x15), `lbl_15_data_8D0`/`8F0`/`8FC`/`908`/
+`914`/`924`..`954`: 12-byte `{0, 0, fn}` triples naming `fn_15_B318`, `fn_15_AC74`, `fn_15_5450`,
+`fn_15_526C`, `fn_15_4CBC`, `fn_15_4A3C`, `fn_15_4A98`. Which function is which trigger/state is
+not decoded: that is milestone 2+.
+
+## 2. CElitePirate members (`CHECK_SIZEOF 0xd30`)
+
+Size [proven]: the loader's `rs_new` is `__nw__FUlPCcPCc(0xd30, ...)`, and the ctor's highest
+member is at 0xd2c. Base: `CPatterned` (0x7c0) built with `EPatternedAI` **0xc**, flavor 0,
+movement 0 (ground), collider 1, body 1 [proven: `fn_15_A190`'s register/stack arguments to
+`__ct__10CPatternedF12EPatternedAI...`]. All offsets below are [proven] by a store in `fn_15_A190`
+unless tagged.
+
+| off | member | proof / note |
+|---|---|---|
+| 0x7c0 | int = −1 | `stw r0(-1), 0x7c0` |
+| 0x7c4 | 0x64-byte sub-object copied from **pInfo+0x74** | `fn_15_2B08(this+0x7c4, pInfo+0x74)`; identity [?] |
+| 0x7f4 | int 0 | |
+| 0x7f8 / 0x804 / 0x810 / 0x81c | four zeroed `CVector3f` | |
+| 0x828 | **`CElitePirateData`, 0x198** | `fn_15_B360(this+0x828, data)`; size = 0x9c0 − 0x828 [probable] |
+| 0x9c0 | `CCollidableAABox` (0x28) | `__ct__19CCollisionPrimitiveFRC13CMaterialList` + `__vt__16CCollidableAABox`, six floats from `GetBoundingBox` |
+| 0x9e8 | `CToken` for **data+0x34**, valid byte at 0x9f4 | `gpSimplePool->GetObj(SObjectTag('PART', data+0x34))` + `Lock` |
+| 0x9f8 / 0x9fa | `TUniqueId` ×2 = `kInvalidUniqueId` | |
+| 0x9fc / 0xa10 | int 0 ×2 | |
+| 0xa24 / 0xa26 | `TUniqueId` ×2 = `kInvalidUniqueId` | |
+| 0xa28 | float = the base's 0x3c8 (eye/bbox height?) | |
+| 0xa2c / 0xa30..0xa40 / 0xa48 | floats: 1.0 `rodata_DC`, 0.0 `rodata_114` ×5, 0.0 | |
+| 0xa4c | int 0 | |
+| 0xa50 | **`CPathFindSearch` (0xec)** | `__ct__15CPathFindSearchFP7CPFAreaUiiffUi...`; `fn_15_0` returns this+0xa50 |
+| 0xb3c | `CVector3f` zeroed | (0xa50 + 0xec = 0xb3c, so the path search is 0xec as in CIng) |
+| 0xb48 | 0x18-byte object, DOL `fn_801931E0` with 5.0f (`rodata_100`) | identity [?] |
+| 0xc10 | 7 flag bits cleared | rlwimi chain |
+| 0xc14 | int 0 | |
+| 0xc28 / 0xc2c | int −1 ×2 (uids?) | |
+| 0xc30 | object built by `fn_15_B748(this+0xc30, data+0x00)`: a **'FSM2'** token | [proven] tag + asset |
+| 0xc3c | int 6 | |
+| 0xc40 | initial body state: 6, then 0xa / 0xb / 0xc by `fn_15_9988(this, id)` (a `CPASAnimParmData`-based test) | |
+| 0xc44 / 0xc48 / 0xc4c / 0xc50 / 0xc54 | flag bit; int 1, int 1; float `rodata_194` = −1000; 2 flag bits | |
+| 0xc58 | 0x58-byte object built by `fn_15_B080` (floats incl. −1000, several flags) | [proven] call; identity [?] |
+| 0xcb0 / 0xcb4 | int 1 / int 7 | |
+| 0xcb8 / 0xcc4 | two zeroed `CVector3f` | the dtor checks 0xcc4 |
+| 0xcd0 | **`CProjectileInfo` (0x28)** | `__ct__15CProjectileInfoFUiRC11CDamageInfo(data+0x168, data+0x16c)`; `fn_15_52C8` returns this+0xcd0 |
+| 0xcf8 / 0xcfc / 0xd00 / 0xd04 / 0xd08 | int 0 ×3, int 1, bool | |
+| 0xd0c..0xd2c | float 0.0, zeroed `CVector3f`, int 0 ×2, 4 flag bits, float 0.0, bool | |
+| 0x620 | `CAiKnockBackMgr` (base): `EnableAllAnimReactions(false)` then `EnableAnimReaction(1 = kAR_Flinch, true)` | [proven] |
+| 0x681 | five bits of a base flag byte cleared | [proven] |
+
+### CElitePirateData (0x198 at 0x828)
+
+Built on the loader's stack by `fn_15_B82C` and copied in by `fn_15_B360`. Its parameter list is
+long and mixed (8 float registers, then 7 integer/pointer registers, then 24 stack slots), so only
+the fields its *reader* (`fn_15_A190`) touches are proven:
+
+- **+0x00** = the builder's first integer argument, which the loader computes as
+  `patterned+0x1e4` = `SLdrPatternedAITypedef.stateMachine2`; the ctor loads it as the **'FSM2'**
+  token [proven].
+- **+0x08** = a `CDamageInfo` copied field-by-field out of the builder's damage argument
+  (`mWeaponMode`, four floats, two u16 sfx ids) = `SLdrElitePirate.meleeDamage` [proven].
+- **+0x34** = an integer the ctor tests against −1 and, when set, loads as a **'PART'** asset
+  [proven offset and use; which property reaches it is [?] - the builder's frame offsets could not
+  be mapped back to its parameter list].
+- **+0x168 / +0x16c** = the **rocket** projectile asset and its `CDamageInfo` (the
+  `CProjectileInfo` at 0xcd0) [proven].
+- 0x144..0x164 = nine floats (shock-wave/taunt range block), 0x188/0x18c = two ints
+  (`unknown_0x624222f8` / `unknown_0x31e43a1c`-ish) [proven offsets, [?] identities].
+
+The host `CElitePirateData` in `CElitePirate.hpp` therefore names its fields after the SLdr
+properties (assigned by the loader, host layout) rather than claiming retail offsets.
+
+## 3. Loader `fn_15_178`
+
+Format [proven]: u16 property count, then per property u32 id + u16 size; unknown ids are skipped
+with `ReadBytes(nullptr, size)`. **43 top-level properties**, the same id set as
+`include/MetroidPrime/ScriptLoader/SLdrElitePirate.inc` (checked id by id against the loader's
+dispatch tree; there are no sub-property readers - `SLdrShockWaveInfo` is read by its own
+`LoadTypedefShockWaveInfo`). The `SLdrElitePirate` members sit at r1+0x694 (editorProperties), 0x6d0
+(patterned), 0x914 (actorInformation), 0x98c (meleeDamage), 0x99c..0x9dc (the nine range/taunt
+floats), 0x9e0/0xa10 (the two shock waves), 0xa40..0xa4c, 0xa50 (rocket), 0xa54 (rocketDamage),
+0xa64/0xa68, 0xa6c..0xa78, 0xa7c/0xa80, 0xa84 (rocketLauncherActorInfo), 0xafc/0xb08 (the two
+animation sets), 0xb14/0xb18, 0xb1c (ingPossessionData) - which confirms the `.inc`'s field order
+and is also how `SLdrElitePirate.hpp`'s own member order was verified.
+
+Construction order [proven]: `LdrToModelData(editorProperties.transform.scale, kInvalidAssetId,
+patterned.animationInformation, true)` (`fn_8023A0B8`; the optional's valid byte is r1+0x1fc, and
+the loader returns null when it is clear) · `LdrToDamageInfo` ×2 · `LdrToAnimationParameters` ×2 ·
+`LdrToActorParameters` · the data builder `fn_15_B82C` · `rs_new(0xd30)` ·
+`LdrToPatternedInfo(patterned, &ingPossessionData)` · `AllocateUniqueId` ·
+`LdrToActorParameters` · `LdrToTransform4f` · `LdrToEntityInfo` ·
+`fn_15_A190(uid, name, entityInfo, transform, modelData, patternedInfo, actorParameters, data)`
+**in that argument order** - note `patternedInfo` before `actorParameters`, which is the reverse of
+`CSpacePirate`'s ctor.
+
+## 4. What the module registration needed (milestone 1)
+
+- `include/MetroidPrime/CEntityInfo.hpp`: `kET_ElitePirate = 114` (the type index
+  `TypesMatch__12CElitePirateCFi` answers to; the placeholder comment in `TypesMatch.cpp` names it).
+- `src/MetroidPrime/TypesMatch.cpp`: `TYPES_MATCH_IMPL(CElitePirate, CPatterned, kET_ElitePirate)`
+  and the two `CAST_TO_*` entries under `#ifdef TARGET_PC`.
+- `src/MetroidPrime/Enemies/SElitePirate_FuncPtrs.cpp`: the port's null guard on
+  `RelProxy_LoadElitePirate` was dropped, as for Ing / MinorIng / SpacePirate.
+- `tools/modules_port.txt`: `ElitePirate` now points at
+  `src/MetroidPrime/Enemies/PortCElitePirate.cpp` (was `PortModuleStubs.cpp`);
+  `tools/gen_files_cmake.py --check` passes (883 sources).
+
+## 5. Status and open questions
+
+**Milestone 1 is implemented**: the loader, the constructor (base arguments, the path search, the
+projectile info, the knock-back reaction setup), the vtable overrides that matter (Think,
+AcceptScriptMsg, PreRender, AddToRenderer, Render, DoUserAnimEvent, TakeDamage, the three CAi
+accessors, ProjectileInfo / GetSearchPath / GetPointSearchPath / GetRagDoll / GetAttackTarget) and
+the port-only module registration. Everything else is a once-per-method `[elitepirate]` `StandIn`
+log, and the body controller is activated on `kSM_Create` and in `Think` (retail overrides neither
+`PreThink`, `Touch`, `Death` nor `KnockBack`, so those cannot be the activation point).
+
+What is **not** established:
+
+1. Where `fn_15_C0D0` (the FSM setup, 0x808) is called from - the vtable keeps
+   `CPatterned::SetupStateMachine`, so the FSM must be installed from `AcceptScriptMsg`'s
+   `kSM_Create` arm or from `Think`; mp2's `CPatterned::Start` is an empty stub, which is the third
+   candidate.
+2. Which property reaches `CElitePirateData+0x34` (the 'PART' asset) and the rest of the builder's
+   parameter list: `fn_15_B82C`'s frame offsets could not be mapped back to its parameters.
+3. The identities of `0x7c4` (pInfo+0x74 copied), `0xb48` (DOL `fn_801931E0`), `0xc58`
+   (`fn_15_B080`), `0xc30` (the FSM2 token object) and the `fn_15_BC` (slot 45) accessor.
+4. The FSM's triggers/states/code functions and their names (section 1, last part).
+5. The enemies' own combat behaviour: melee, the dark/light shields, the two shock waves, the
+   rocket/rocket-launcher, energy absorption and the Ing-possession properties. MP1's
+   `CElitePirate.cpp` is the reference for the shared half (shields, shock waves, taunt, melee).

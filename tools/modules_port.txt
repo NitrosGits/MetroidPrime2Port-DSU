@@ -7,7 +7,7 @@ WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 CommandoPirate;src/MetroidPrime/PortModuleStubs.cpp
 DarkSamus;src/MetroidPrime/PortModuleStubs.cpp
 DigitalGuardian;src/MetroidPrime/PortModuleStubs.cpp
-ElitePirate;src/MetroidPrime/PortModuleStubs.cpp
+ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
 EmperorIngStage1;src/MetroidPrime/PortModuleStubs.cpp
 EmperorIngStage3;src/MetroidPrime/PortModuleStubs.cpp
 Ing;src/MetroidPrime/Enemies/PortCIng.cpp

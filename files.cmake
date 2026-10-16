@@ -786,7 +786,7 @@ set(MP_MODULE_DigitalGuardian_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_ElitePirate_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCElitePirate.cpp
 )
 set(MP_MODULE_EmperorIngStage1_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
