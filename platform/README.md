@@ -181,6 +181,14 @@ and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
   `[harness] no game update for <n> s (... updates so far, limit ...)`, once per
   stall.
 
+`tools/run_gameplay.sh` is the wrapper the port's tests use for all of the above: it passes
+`MP2_SKIP_FRONTEND`, an optional `MP2_WORLD` restart, an `MP2_INPUT` script read from a file, the
+frame limit and the user/cache paths, and it warns about the two mistakes that quietly waste a run -
+a user dir without the memory card (the run then plays the front end) and a script that presses
+`START` (the pause menu stops the game updating, so the frame limit is never reached). Its log's last
+line is the run's `exit=`. `tools/shot.sh <display> <out.png> [secs]` captures a frame of the run's
+display, which is how the log's phase times turn into a picture of what the game was doing.
+
 A load test is the two together, e.g.
 
     MP2_SKIP_FRONTEND=1 MP2_WORLD=1baa96c2,b666b655 MP2_FRAMES=800
