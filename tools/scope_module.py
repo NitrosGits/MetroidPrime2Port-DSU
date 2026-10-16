@@ -69,7 +69,12 @@ def registry(args):
         if "epilog" in eps:
             decls.append(f"void mp_rel_{name}_epilog();")
             epilog = f"&mp_rel_{name}_epilog"
-        rows.append(f'    {{"{name}", "{name}", &mp_rel_{name}_prolog, {epilog}}},')
+        # A module whose only source is the shared entry-point stub has no host body: its
+        # actors never appear, and the registry is the one place that knows its name, so the
+        # prolog can say which module an area asked for and found empty.
+        stub = any("PortModuleStubs.cpp" in o for o in objs)
+        rows.append(f'    {{"{name}", "{name}", &mp_rel_{name}_prolog, {epilog}, '
+                    f'{"true" if stub else "false"}}},')
     lines.append('#ifdef MP_MODULE_DECLS\nextern "C" {\n' + "\n".join(decls) + "\n}\n#else")
     lines.append("constexpr CompiledModule kCompiledModules[] = {\n" + "\n".join(rows) + "\n};\n#endif\n")
     new = "\n".join(lines)

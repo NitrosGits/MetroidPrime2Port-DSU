@@ -33,6 +33,9 @@ struct CompiledModule {
   const char* file;
   void (*init)();
   void (*shutdown)();
+  // True when the module is only the shared entry-point stub (tools/modules_port.txt): it loads,
+  // so the area works, but it has no host body and none of its actors will appear.
+  bool stub;
 };
 
 // Generated at build time (tools/scope_module.py registry): one row per compiled module that
