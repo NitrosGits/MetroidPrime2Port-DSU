@@ -29,6 +29,21 @@ linking Aurora. This is the only configuration that works while the Echoes \
 decompilation is incomplete, and it is what the shim queue is tracked against."
     ON)
 
+# Android only (see docs/ANDROID.md). Aurora reads the disc through nod, which is a
+# Rust crate built by Corrosion - unreachable in the offline cross-build. This option
+# substitutes platform/android_probe/nod_stub.c, which implements the stream API
+# Aurora's dvd.cpp needs and fails every call. Aurora skips its own nod provider when a
+# `nod::nod` target already exists, so the alias below is the whole mechanism.
+option(MP_ANDROID_NOD_STUB "Use a non-functional nod stub for Android build probes" OFF)
+if(MP_ANDROID_NOD_STUB)
+    if(NOT ANDROID)
+        message(FATAL_ERROR "MP_ANDROID_NOD_STUB is only valid for Android builds")
+    endif()
+    add_library(mp_android_nod_stub STATIC platform/android_probe/nod_stub.c)
+    target_include_directories(mp_android_nod_stub PUBLIC platform/android_probe/include)
+    add_library(nod::nod ALIAS mp_android_nod_stub)
+endif()
+
 # The REL module tests need modules extracted from a disc the user owns (see
 # tools/extract_disc_file.py) plus the symbol list of the executable they were
 # linked against. Both are optional: without them the tests report themselves
@@ -159,9 +174,32 @@ endforeach()
 # header-only build too.
 add_dependencies(mp_game ${MP_MODULE_OBJECT_TARGETS})
 
-find_program(MP_LD_BFD NAMES ld.bfd ld REQUIRED)
-find_program(MP_OBJCOPY NAMES ${CMAKE_OBJCOPY} objcopy REQUIRED)
-find_program(MP_NM NAMES ${CMAKE_NM} nm REQUIRED)
+if(ANDROID)
+    # The module-scoping step partially links every REL module (`ld -r`) and localizes
+    # symbols with objcopy/nm, on objects the NDK's clang produced - the host's
+    # ld.bfd/objcopy/nm cannot even read an AArch64 object ("file format not
+    # recognized"). Use the LLVM tools that ship next to the clang the NDK toolchain
+    # selected: `ld.lld -r --force-group-allocation` and `llvm-nm -P --no-demangle` both
+    # behave as tools/scope_module.py expects, and llvm-objcopy takes the same
+    # --redefine-sym/--localize-symbols arguments.
+    get_filename_component(MP_ANDROID_LLVM_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    if(NOT EXISTS "${MP_ANDROID_LLVM_BIN}/ld.lld")
+        message(FATAL_ERROR
+            "No NDK LLVM toolchain bin directory at ${MP_ANDROID_LLVM_BIN} (from "
+            "CMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}); the module-scoping tools come "
+            "from there.")
+    endif()
+    find_program(MP_LD_BFD NAMES ld.lld
+        HINTS "${MP_ANDROID_LLVM_BIN}" NO_DEFAULT_PATH REQUIRED)
+    find_program(MP_OBJCOPY NAMES llvm-objcopy
+        HINTS "${MP_ANDROID_LLVM_BIN}" NO_DEFAULT_PATH REQUIRED)
+    find_program(MP_NM NAMES llvm-nm
+        HINTS "${MP_ANDROID_LLVM_BIN}" NO_DEFAULT_PATH REQUIRED)
+else()
+    find_program(MP_LD_BFD NAMES ld.bfd ld REQUIRED)
+    find_program(MP_OBJCOPY NAMES ${CMAKE_OBJCOPY} objcopy REQUIRED)
+    find_program(MP_NM NAMES ${CMAKE_NM} nm REQUIRED)
+endif()
 set(MP_MODULE_DIR "${CMAKE_BINARY_DIR}/modules")
 set(MP_MODULE_REGISTRY "${CMAKE_BINARY_DIR}/generated/compiled_modules.inc")
 
@@ -282,6 +320,18 @@ if(MP_SDK_HEADERS_ONLY)
     set_tests_properties(port_rel_real_tests PROPERTIES
         TIMEOUT 30 LABELS port SKIP_RETURN_CODE 77)
 
+    # Where the REL arena lands on the path Android takes. bionic defines
+    # MAP_FIXED_NOREPLACE but not MAP_32BIT, so the fallback is the /proc/self/maps gap
+    # scan; MP_ARENA_FORCE_PORTABLE selects that same fallback on a host that does have
+    # MAP_32BIT (see the comment on the hook in platform/rel.cpp), which is the only way
+    # to run Android's placement logic without a phone. The other test targets must not
+    # carry the define: they cover the MAP_32BIT path.
+    add_executable(port_arena_placement_tests tests/port_arena_placement.cpp platform/rel.cpp)
+    target_include_directories(port_arena_placement_tests PRIVATE platform/include)
+    target_compile_definitions(port_arena_placement_tests PRIVATE MP_ARENA_FORCE_PORTABLE)
+    add_test(NAME port_arena_placement_tests COMMAND port_arena_placement_tests)
+    set_tests_properties(port_arena_placement_tests PROPERTIES TIMEOUT 30 LABELS port)
+
     add_executable(port_entry_tests tests/port_entry_tests.cpp platform/entry.cpp)
     target_include_directories(port_entry_tests PRIVATE platform/include extern/aurora/include)
     target_compile_definitions(port_entry_tests PRIVATE TARGET_PC)
@@ -346,13 +396,21 @@ foreach(t ${MP_MODULE_OBJECT_TARGETS})
 endforeach()
 
 # ---------------------------------------------------------------------------
-# The executable. `mp_port_entry` is platform/main.cpp, which is the process entry:
+# The binary. `mp_port_entry` is platform/main.cpp, which is the process entry:
 # it brings Aurora up (which is what creates the window), mounts the disc, and calls
 # InvokeCMain - see PORT_NOTES.md. So the Echoes binary is those three object
 # libraries and Aurora, in the same shape ../MetroidPrimePort uses.
+#
+# On Android it is a *shared library*, not an executable: SDL's Java activity loads
+# `libmetroid_prime2_port.so` and calls `SDL_main` in it. `-Wl,-u,SDL_main` keeps the
+# entry point, which nothing in the library references, from being dropped.
 # ---------------------------------------------------------------------------
 mp_scope_modules(mp_game mp_platform mp_port_entry mp_port_audio)
-add_executable(metroid_prime2_port)
+if(ANDROID)
+    add_library(metroid_prime2_port SHARED)
+else()
+    add_executable(metroid_prime2_port)
+endif()
 set_source_files_properties(${MP_SCOPED_MODULE_OBJECTS} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 target_sources(metroid_prime2_port PRIVATE
     ${MP_SCOPED_MODULE_OBJECTS}
@@ -375,13 +433,24 @@ elseif(CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_CXX_LINK_GROUP_USING_RES
         mp_game
         aurora::main
         "$<LINK_GROUP:RESCAN,aurora::core,aurora::gx>")
-    # `platform/main.cpp` installs a SIGSEGV/SIGBUS/SIGILL/SIGFPE handler that calls
-    # `backtrace_symbols_fd`, and **without -rdynamic the frames come back as bare
-    # addresses** - which is the one form of this output that is not worth having, because
-    # the whole point is naming the function that faulted. This is the only place it is
-    # needed: the decomp build links no platform code and the gate's port build inherits
-    # it from here.
-    target_link_options(metroid_prime2_port PRIVATE -rdynamic)
+    if(ANDROID)
+        # `log`: platform code logs through __android_log_print under __ANDROID__.
+        # `android`: SDL's own Java-side glue and the native activity's JNI calls.
+        # `z`: the vendored zlib-ng/zlib Aurora links is built by Aurora itself, but the
+        # port's own disc/font inflation resolves zlib symbols against the platform one.
+        target_link_libraries(metroid_prime2_port PRIVATE log android z)
+        # SDL's Java activity looks the entry point up by name (dlsym "SDL_main"), which
+        # the linker cannot see from inside the library, so keep it against -O2's GC.
+        target_link_options(metroid_prime2_port PRIVATE "-Wl,-u,SDL_main")
+    else()
+        # `platform/main.cpp` installs a SIGSEGV/SIGBUS/SIGILL/SIGFPE handler that calls
+        # `backtrace_symbols_fd`, and **without -rdynamic the frames come back as bare
+        # addresses** - which is the one form of this output that is not worth having, because
+        # the whole point is naming the function that faulted. This is the only place it is
+        # needed: the decomp build links no platform code and the gate's port build inherits
+        # it from here. Android has no `execinfo`/`backtrace`, so it is desktop-only.
+        target_link_options(metroid_prime2_port PRIVATE -rdynamic)
+    endif()
 else()
     message(FATAL_ERROR
         "This port needs an ELF linker with RESCAN support or an MSVC-compatible COFF linker")

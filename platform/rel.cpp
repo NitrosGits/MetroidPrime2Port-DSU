@@ -1,5 +1,6 @@
 #include "port_rel.h"
 
+#include <cstdio>
 #include <cstring>
 #include <vector>
 
@@ -315,10 +316,78 @@ bool ConvertMetadata(void* image, size_t imageSize, const ImageInfo& info) {
 
 } // namespace
 
+// Whether the arena's fallback is the portable one: bionic defines
+// MAP_FIXED_NOREPLACE but not MAP_32BIT, so on Android the 32-bit-addressable
+// placement has to be found rather than asked for by flag. The same path is
+// selected on a host that does have MAP_32BIT when MP_ARENA_FORCE_PORTABLE is
+// defined, **which is the whole point of the macro: it lets the Android code path
+// be compiled and run on Linux** (tests/port_arena_placement.cpp does exactly
+// that, since Android placement cannot be exercised on a phone from a test
+// binary). With the macro undefined - as in every real build - x86-64 desktop
+// placement is the MAP_32BIT one it has always been, unchanged.
+#if !defined(_WIN32) && defined(MAP_FIXED_NOREPLACE) && \
+    (!defined(MAP_32BIT) || defined(MP_ARENA_FORCE_PORTABLE))
+#define MP_ARENA_PORTABLE_FALLBACK 1
+#else
+#define MP_ARENA_PORTABLE_FALLBACK 0
+#endif
+
+#if MP_ARENA_PORTABLE_FALLBACK
+// The lowest free 1 MiB-aligned gap of at least `size` bytes that lies entirely
+// below 4 GiB, or 0 when there is none or /proc/self/maps cannot be read. Read
+// rather than probed: a hinted mmap is free to land above 4 GiB, where the REL
+// runtime's 32-bit guest addresses cannot name it. /proc/self/maps is
+// address-ordered, so the first gap that fits is the lowest one.
+static uintptr_t FindArenaGapBelow4GiB(size_t size) {
+  constexpr unsigned long long kFourGiB = 0x100000000ull;
+  constexpr size_t kAlign = 1u << 20;
+  if (size == 0 || size > kFourGiB - kAlign) {
+    return 0;
+  }
+  const unsigned long long want =
+      (static_cast<unsigned long long>(size) + kAlign - 1) & ~(kAlign - 1);
+  std::FILE* maps = std::fopen("/proc/self/maps", "r");
+  if (maps == nullptr) {
+    return 0;
+  }
+  unsigned long long cursor = kAlign; // never hand out the first megabyte
+  unsigned long long found = 0;
+  char line[256];
+  while (std::fgets(line, sizeof(line), maps) != nullptr) {
+    unsigned long long start = 0;
+    unsigned long long end = 0;
+    if (std::sscanf(line, "%llx-%llx", &start, &end) != 2 || end <= cursor) {
+      continue;
+    }
+    // A region that reaches or passes 4 GiB closes the last gap that matters, and
+    // the file is address-ordered, so that region ends the search - but the gap
+    // before it still has to be considered, or an empty low address space (which
+    // is what a small process has) would report "no gap" and fall through to the
+    // hint.
+    const unsigned long long limit = start < kFourGiB ? start : kFourGiB;
+    const unsigned long long candidate = (cursor + kAlign - 1) & ~(kAlign - 1);
+    if (candidate + want <= limit) {
+      found = candidate;
+      break;
+    }
+    if (start >= kFourGiB) {
+      break;
+    }
+    cursor = end;
+  }
+  std::fclose(maps);
+  return static_cast<uintptr_t>(found);
+}
+#endif
+
 GuestArena::GuestArena(size_t size, uint32_t preferredBase) {
   if (size == 0) {
     return;
   }
+
+  // Set only by the portable fallback, so that the shared failure path below can
+  // say why it failed without changing what any other path prints.
+  bool portableFallback = false;
 
 #if defined(_WIN32)
   void* base = preferredBase != 0
@@ -334,10 +403,34 @@ GuestArena::GuestArena(size_t size, uint32_t preferredBase) {
     base = placed == MAP_FAILED ? nullptr : placed;
   }
   if (base == nullptr) {
+#if MP_ARENA_PORTABLE_FALLBACK
+    portableFallback = true;
+    // (a) Reserve the lowest free low gap; MAP_FIXED_NOREPLACE so a racing thread
+    // cannot take it between the scan and the mapping.
+    const uintptr_t gap = FindArenaGapBelow4GiB(size);
+    if (gap != 0) {
+      void* placed = mmap(reinterpret_cast<void*>(gap), size, PROT_READ | PROT_WRITE,
+                          MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+      if (placed != MAP_FAILED) {
+        base = placed;
+      }
+    }
+    // (b) Otherwise a plain hint below 4 GiB, with no MAP_FIXED*: it is a hint
+    // only, so it is the single < 4 GiB check after the chain that accepts the
+    // result, and a kernel that satisfies the hint too high is rejected there.
+    if (base == nullptr) {
+      void* hinted = mmap(reinterpret_cast<void*>(static_cast<uintptr_t>(0x10000000)), size,
+                          PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+      if (hinted != MAP_FAILED) {
+        base = hinted;
+      }
+    }
+#else
     base = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT, -1, 0);
     if (base == MAP_FAILED) {
       base = nullptr;
     }
+#endif
   }
 #elif defined(MAP_32BIT)
   // Linux x86-64: ask for an address below 2 GiB, which satisfies the 32-bit
@@ -358,6 +451,11 @@ GuestArena::GuestArena(size_t size, uint32_t preferredBase) {
 #endif
 
   if (base == nullptr || reinterpret_cast<uintptr_t>(base) + size > 0x100000000ull) {
+    if (portableFallback) {
+      std::fprintf(stderr,
+                   "metroid_prime2_port: no REL arena: could not map %zu bytes below 4 GiB (%s)\n",
+                   size, base == nullptr ? "no addressable low mapping" : "the mapping landed too high");
+    }
 #if defined(_WIN32)
     if (base != nullptr) {
       VirtualFree(base, 0, MEM_RELEASE);

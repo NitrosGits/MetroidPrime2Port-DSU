@@ -16,6 +16,12 @@
 // `RsMain` now happens here, where retail does it. Everything else here (Aurora
 // setup, disc mounting and checking, teardown) is settled. See PORT_NOTES.md.
 
+// Aurora owns the real process entry: this header's `#define main aurora_main` is
+// what turns the `main` below into the function Aurora's own `main` (and SDL's
+// Android activity, by that name) calls. Android needs it for its shared library
+// to have the entry point at all; ../MetroidPrimePort includes it the same way.
+#include <aurora/main.h>
+
 #include <aurora/aurora.h>
 #include <aurora/dvd.h>
 #include <dolphin/dvd.h>
@@ -23,7 +29,12 @@
 
 #include <cstdio>
 #include <csignal>
+#if defined(__ANDROID__)
+#include <signal.h>
+#include <android/log.h>
+#else
 #include <execinfo.h>
+#endif
 #include <unistd.h>
 #include <cstdlib>
 #include <filesystem>
@@ -85,6 +96,29 @@ void ReportNoDisc(const char* argv0) {
 // `boot_probe.sh` builds, with the reach stubs linked and no debugger attached, because that
 // is the configuration that reproduces the fault. `-rdynamic` is already in the link line, so
 // `backtrace_symbols` can name our own functions rather than only addresses.
+//
+// bionic has no `execinfo.h`, so Android has no backtrace to print, and it discards stderr:
+// there the logcat line below is what says the port caught anything at all, and the fault
+// address is the one piece of information a tombstone alone makes awkward to pin down. The
+// re-raise is unchanged, so bionic still writes its own tombstone.
+#if defined(__ANDROID__)
+static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
+  const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
+  const void* faultAddress = info != nullptr ? info->si_addr : nullptr;
+  // Not "backtrace follows" as the desktop path says: bionic prints none, and the
+  // tombstone the re-raise produces is the stack this platform gets.
+  std::fprintf(stderr, "\n[port] caught %s (%d) - tombstone follows\n", name, sig);
+  std::fflush(stderr);
+  __android_log_print(ANDROID_LOG_FATAL, "mp2port", "[port] caught %s (%d) at %p", name, sig,
+                      faultAddress);
+  // Re-raise with the default handler so the exit status still says "died on signal 11",
+  // which is what boot_probe.sh greps for. A handler that swallows it would make the probe
+  // report a clean exit, and a clean exit from a segfaulting boot is the one lie worth
+  // being unable to tell.
+  std::signal(sig, SIG_DFL);
+  std::raise(sig);
+}
+#else
 static void PortFaultHandler(int sig) {
   const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
   std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
@@ -100,12 +134,26 @@ static void PortFaultHandler(int sig) {
   std::signal(sig, SIG_DFL);
   std::raise(sig);
 }
+#endif
 
 int main(int argc, char** argv) {
+#if defined(__ANDROID__)
+  // `signal(2)` never hands the handler the fault address, so Android installs the
+  // handler that can take one. Nothing else about the registration differs.
+  struct sigaction faultAction = {};
+  faultAction.sa_sigaction = PortFaultHandler;
+  faultAction.sa_flags = SA_SIGINFO;
+  sigemptyset(&faultAction.sa_mask);
+  sigaction(SIGSEGV, &faultAction, nullptr);
+  sigaction(SIGBUS, &faultAction, nullptr);
+  sigaction(SIGILL, &faultAction, nullptr);
+  sigaction(SIGFPE, &faultAction, nullptr);
+#else
   std::signal(SIGSEGV, PortFaultHandler);
   std::signal(SIGBUS, PortFaultHandler);
   std::signal(SIGILL, PortFaultHandler);
   std::signal(SIGFPE, PortFaultHandler);
+#endif
 
   // 16:9 at the game's logical height. The render mode is widened to match when
   // the widescreen work lands; Aurora upscales to the window either way.

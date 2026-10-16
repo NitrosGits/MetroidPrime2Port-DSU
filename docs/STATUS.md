@@ -50,10 +50,18 @@ and never `A` - the gotcha above says what each does to a run.
 lock-on handoff, morph ball and gyro input; and the empty-`optional_object` read audit
 (`CGunWeapon::IsChargeAnimOver` first).
 
-**Android APK** (asked for this session, being built in its own session): plan in `docs/ANDROID.md` -
-arm64/Android 13+, on-screen touch controls, SAF disc picker, tech-demo scope. Nothing Android exists
-in this tree yet; the gate is M0, an arm64 cross-build that links, and the one risk that can sink it is
-the REL guest arena's sub-4 GiB requirement without `MAP_32BIT`.
+**Android APK** (asked for 2026-10-17, same session). **M0 done**; detail, evidence and the phone
+measurement in `docs/ANDROID.md` (its section 4, "M0 detail"). In short: `tools/android_probe.sh`
+cross-builds arm64 into `build/android-aarch64/libmetroid_prime2_port.so` (`AArch64`, `DYN`,
+exporting `SDL_main`/`aurora_main`; 465 undefined symbols, all platform ones), the bionic fixes are
+`platform/main.cpp` (no `execinfo`; logcat + tombstones; explicit `<aurora/main.h>`) and
+`platform/rel.cpp` (arena fallback via a `/proc/self/maps` gap scan below 4 GiB), and the one gate
+- the REL arena - was measured **on the phone**: 32 MiB at `0x12000000`, `0x81000000` honoured
+exactly, no `MAP_32BIT`. New: `tests/port_arena_placement.cpp` + its ctest target
+(`-DMP_ARENA_FORCE_PORTABLE` exercises the Android path on Linux), `MP_ANDROID_NOD_STUB` (the M0
+library links the nod stub, so it cannot read a disc). Next: M1 - a Gradle/Java app that boots on
+the device, and the real nod cross-build (Rust target already installed in
+`../MetroidPrimePort/build/android-rust`).
 
 **Next steps, in order**: (1) the update stall, with the repro above and the two candidates named;
 (2) the 53 -> 56 freeze if it survives (1); (3) the hazards and the layer areas of `1baa96c2` area 11

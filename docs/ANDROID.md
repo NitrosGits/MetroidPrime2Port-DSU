@@ -68,9 +68,11 @@ MP1's port ships this pipeline; it is the template.
 3. **Architecture-sensitive spots** (little-endian LP64, so most LP64 notes carry over unchanged):
    - `platform/rel.cpp:322-366` `GuestArena`: the 32-bit guest address requirement. On arm64 there
      is no `MAP_32BIT`, and the `#elif defined(MAP_FIXED_NOREPLACE)` branch *uses* `MAP_32BIT`
-     unconditionally, which bionic does not define - a compile error to fix. The fallback (hint
-     `0x10000000`, verify `< 4 GiB`) is likely to work in an app process, but reserving the arena
-     early (before other mappings scatter) may be needed.
+     unconditionally, which bionic does not define - a compile error to fix. **Fixed at M0** (a
+     `/proc/self/maps` gap scan below 4 GiB, `MAP_FIXED_NOREPLACE`, then a hint at `0x10000000`,
+     then a refusal that names the size) and **measured on the phone**, where a 32 MiB arena lands
+     at `0x12000000` and the console's `0x81000000` module region is free and honoured exactly:
+     see section 4a.
    - No x86 intrinsics or asm anywhere in the port's own code (LZO is plain C), so NEON is not a
      gate.
    - Signed `char` is already forced (`CMakeLists.txt:48-52`, `platform/compat.h:60`).
@@ -82,10 +84,78 @@ MP1's port ships this pipeline; it is the template.
 **M0 - arm64 cross-build links.** Add a toolchain/ANDROID path to `CMakeLists.txt` (exclude the dev
 tools, host-binutils steps, tests; pick the Aurora Android providers; keep the SDK stubs the way
 `MP_SDK_HEADERS_ONLY` does or build the real SDK), fix the bionic blockers (`execinfo`, `MAP_32BIT`,
-any glibc shim), and produce `libmetroid_prime2_port.so` for arm64.
+any glibc shim), and produce `libmetroid_prime2_port.so` for arm64. **Done - see the M0 detail
+below.**
 *Verified when*: `$NDK/.../llvm-readelf -h libmetroid_prime2_port.so` says `AArch64` and the link
 has no undefined symbols (`llvm-nm -u`), i.e. the same acceptance the desktop `link_check.sh` gives.
 No device needed. This is the gate: if the REL arena cannot be placed, stop and report.
+
+### M0 detail: what landed (2026-10-17)
+
+`tools/android_probe.sh` cross-builds this tree for `arm64-v8a` into
+`build/android-aarch64/libmetroid_prime2_port.so` (134 MB); `llvm-readelf -h` says `ELF64`, `DYN`,
+`AArch64`, and it exports `SDL_main` (the entry SDL's Java activity looks up) and `aurora_main`.
+`llvm-nm -u` lists 465 symbols and **every one of them is a platform symbol** - libc, libm, liblog,
+libandroid, zlib, GLES, OpenSLES - resolved by the 9 `NEEDED` libraries (`liblog libandroid libz
+libm libOpenSLES libdl libGLESv1_CM libGLESv2 libc`), with no game or port symbol among them; the
+NDK links with `--no-undefined`, so a green link *is* resolution. No network: Dawn comes from the
+prebuilt `android-aarch64` package and SDL from the 3.4.10 sources, both copied into
+`build/android-deps/` from `../MetroidPrimePort` (`build/` is git-ignored; the script says where to
+get them when the copy is missing).
+
+The four things section 3 predicted, as they actually landed:
+
+- **`CMakeLists.txt`**: the module-scoping step uses the NDK's `ld.lld -r --force-group-allocation`
+  / `llvm-objcopy` / `llvm-nm`, because the host binutils cannot read an AArch64 object at all;
+  `metroid_prime2_port` becomes a `SHARED` library with `-Wl,-u,SDL_main`, links `log android z`,
+  and drops `-rdynamic`; `MP_ANDROID_NOD_STUB` substitutes `platform/android_probe/nod_stub.c` for
+  nod (Aurora skips its own nod provider when a `nod::nod` target already exists). The desktop
+  build, the `-rdynamic` link and the matching build are untouched.
+- **`platform/main.cpp`**: bionic has no `execinfo.h`, so the crash handler logs the signal and the
+  fault address to logcat and re-raises - the tombstone is the stack Android gets. The file also
+  now includes `<aurora/main.h>` explicitly: that header's `main` -> `aurora_main` rename is what
+  gives the shared library its entry point (the desktop links the same way `../MetroidPrimePort`
+  does, and still boots).
+- **`platform/rel.cpp`**: the arena's 32-bit-address fallback, see below.
+- **`platform/glibc_compat.c`** needed nothing: it self-excludes on bionic, as predicted.
+
+No GRADLE, Java, JNI, SAF picker or touch controls at M0, and **nod is the stub**: this library
+links, it cannot read a disc yet. Real nod is a Rust cross-build (Corrosion,
+`Rust_CARGO_TARGET=aarch64-linux-android`, the vendored rustup under
+`../MetroidPrimePort/build/android-rust` has that target installed) and is M1 work.
+
+### The REL arena gate: passed, on the phone
+
+bionic defines `MAP_FIXED_NOREPLACE` but not `MAP_32BIT`, so `GuestArena`'s fallback now scans
+`/proc/self/maps` for the lowest free 1 MiB-aligned gap that fits below 4 GiB and maps it with
+`MAP_FIXED_NOREPLACE`; failing that it asks for a plain hint at `0x10000000` and takes it only if
+the result is below 4 GiB; failing that it stays invalid and prints one line naming the size and
+the reason. The existing `< 4 GiB` check is the single accept/reject gate.
+`-DMP_ARENA_FORCE_PORTABLE` selects this same path on a host that *does* have `MAP_32BIT`, so
+`port_arena_placement_tests` covers it on Linux without a phone.
+
+The phone measurement: a throwaway debug APK (`org.metroidprime2.arenaprobe`, built in `/tmp` with
+its own CMakeLists, whose only native source is this tree's `platform/rel.cpp` compiled for arm64
+with **no arena macro at all**), installed on the user's Xiaomi 25102PCBEG, Android 16, arm64-v8a.
+6 of 6 runs identical:
+
+    maps: below4g_mappings=26 mapped_bytes=780750848 free_bytes=3514216448 (of 4294967296)
+    maps: gap[0] 0x0-0x2000000 (32768 KiB) ... gap[4] 0x759d8000-0xebad6000 (1934328 KiB)
+    arena_a: valid=1 base=0x12000000 size=33554432 below4g=1     # no preferred base
+    arena_b: valid=1 base=0x81000000 preferred_hit=1             # the console module region
+    arena_c: valid=1 base=0x100000 size=1048576 below4g=1
+    alloc:   ptr=0x12000000 aligned=1 inside=1 below4g=1
+    RESULT: PASS
+
+So: a 32 MiB arena is placed below 4 GiB without `MAP_32BIT`, and `0x81000000` - the base the REL
+tests use because a real module's `REL24` branches need the console's module region - is free and
+honoured exactly in a real Android 16 app process. Caveat worth keeping: that process was fresh, so
+SDL/Vulkan/Dawn were not mapped yet; a later run inside the real app would be the confirmation, and
+the port does not construct a `GuestArena` at boot today (only the REL tests do).
+
+The probe project is not kept in the tree (the durable part is
+`tests/port_arena_placement.cpp`); remove the package with
+`adb uninstall org.metroidprime2.arenaprobe`.
 
 **M1 - minimal app that boots.** New `android/` gradle project modelled on MP1's (app module,
 manifest, `MetroidPrimeActivity` + Aurora surface, `jniLibs`, debug signing), with paths for the
@@ -111,7 +181,11 @@ in-app line with the build's git hash, and a short `docs/ANDROID.md` "how to ins
 
 ## 5. Risks, worst first
 
-- **REL arena placement** (M0): the only thing that can make the whole plan collapse. Check first.
+- **REL arena placement** (M0): the thing that could have made the whole plan collapse. **Resolved**
+  - see the M0 detail: it was a compile error (`MAP_32BIT`) plus a placement strategy, and the
+  phone measurement says a 32 MiB arena lands below 4 GiB with the console's `0x81000000` region
+  free. What remains unmeasured is placement in the *real* app's process, which has SDL, Vulkan and
+  Dawn mapped by then (see the caveat there).
 - **Tombstones instead of backtraces**: without `execinfo`, a crash on device is only a tombstone;
   `adb logcat` + `ndk-stack` is the workflow to write down before debugging on the phone.
 - **Touch mapping into MP2's input layer** (M3): MP2's platform layer is smaller than MP1's (no
