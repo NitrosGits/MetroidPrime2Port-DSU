@@ -40,12 +40,19 @@ uchar* PortMissingResourceBuffer() {
   return buffer;
 }
 
-void WarnMissingResource(CAssetId id, const char* where) {
+void WarnMissingResource(const SObjectTag& tag, const char* where) {
+  const CAssetId id = tag.GetId();
   static CAssetId sReported = kInvalidAssetId;
   if (sReported != id) {
     sReported = id;
-    std::fprintf(stderr, "[res] %s: %08x is in no loaded pak; serving an empty resource\n", where,
-                 id);
+    // The type matters as much as the id: it says which family of pak the resource should have come
+    // from (a world pak, a shared pak, or one the port never mounts).
+    const uint type = tag.GetType();
+    std::fprintf(stderr,
+                 "[res] %s: %08x is in no loaded pak (type '%c%c%c%c'); serving an empty resource\n",
+                 where, id, static_cast< char >((type >> 24) & 0xff),
+                 static_cast< char >((type >> 16) & 0xff), static_cast< char >((type >> 8) & 0xff),
+                 static_cast< char >(type & 0xff));
   }
 }
 } // namespace
@@ -232,7 +239,7 @@ CDvdRequest* CResLoader::LoadResourceAsync(const SObjectTag& tag, char* extBuf) 
   const CPakFile::CResInfo* info = mCachedResInfo;
 #ifdef TARGET_PC
   if (curPak == nullptr || info == nullptr) {
-    WarnMissingResource(tag.GetId(), "LoadResourceAsync(extBuf)");
+    WarnMissingResource(tag, "LoadResourceAsync(extBuf)");
     return rs_new CPortMissingDvdRequest();
   }
 #endif
@@ -245,7 +252,7 @@ CBufferedDvdRequest* CResLoader::LoadResourceAsync(const SObjectTag& tag) {
   const CPakFile::CResInfo* info = mCachedResInfo;
 #ifdef TARGET_PC
   if (curPak == nullptr || info == nullptr) {
-    WarnMissingResource(tag.GetId(), "LoadResourceAsync");
+    WarnMissingResource(tag, "LoadResourceAsync");
     return rs_new CBufferedDvdRequest(nullptr, rs_new CPortMissingDvdRequest(),
                                       PortMissingResourceBuffer());
   }
@@ -273,7 +280,7 @@ CDvdRequest* CResLoader::LoadResourcePartAsync(const SObjectTag& tag, const int 
   const CPakFile::CResInfo* info = mCachedResInfo;
 #ifdef TARGET_PC
   if (curPak == nullptr || info == nullptr) {
-    WarnMissingResource(tag.GetId(), "LoadResourcePartAsync");
+    WarnMissingResource(tag, "LoadResourcePartAsync");
     if (extBuf != nullptr) {
       memset(extBuf, 0, length);
     }
@@ -288,7 +295,7 @@ CInputStream* CResLoader::LoadNewResourceSync(const SObjectTag& tag, char* extBu
   const CPakFile::CResInfo* info = mCachedResInfo;
 #ifdef TARGET_PC
   if (curPak == nullptr || info == nullptr) {
-    WarnMissingResource(tag.GetId(), "LoadNewResourceSync");
+    WarnMissingResource(tag, "LoadNewResourceSync");
     if (extBuf != nullptr) {
       memset(extBuf, 0, kPortMissingResourceBufferSize);
     }

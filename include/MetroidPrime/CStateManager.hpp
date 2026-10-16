@@ -199,8 +199,10 @@ public:
   // area to place the player in once it is loaded.
   TAreaId mPortPendingWarpArea = kInvalidAreaId;
   // True while a pending warp is held back because the id pool has no room yet (one log line per
-  // wait, not one per frame).
+  // wait, not one per frame), and true once this warp has dropped the areas around the player to
+  // make room - the drop is worth doing once per warp, not every frame.
   bool mPortWarpWaitingForIds = false;
+  bool mPortWarpDroppedAreas = false;
 #endif
   void CreateStandardGameObjects(); // Prime-correlated name; per-player construction in Echoes.
   void DeleteSaveGameScreen();

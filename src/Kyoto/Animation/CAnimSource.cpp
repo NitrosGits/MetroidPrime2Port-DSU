@@ -101,7 +101,15 @@ CAnimSource::CAnimSource(CInputStream& in)
 , mOffsetChannels(in)
 , mScaleChannels(in)
 , mScales(in)
+#ifdef TARGET_PC
+// A resource the port cannot find in any loaded pak is served as empty bytes (see
+// CResLoader::WarnMissingResource), so the frame count parsed out of one is zero; retail never sees
+// that, and an integer divide by zero took a whole sweep run down. Zero per-frame scales is what an
+// empty resource has.
+, mScalesPerFrame(mFrameCount != 0 ? mScales.size() / mFrameCount : 0)
+#else
 , mScalesPerFrame(mScales.size() / mFrameCount)
+#endif
 , mStorage(RotationAndOffsetStorage::CRotationAndOffsetVectors(in), mFrameCount)
 , mAverageVelocity(0.f) {
   CalcAverageVelocity();

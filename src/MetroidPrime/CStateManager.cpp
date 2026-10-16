@@ -4133,6 +4133,8 @@ void CStateManager::PortWarpToArea(TAreaId aid) {
     if (mPortPendingWarpArea != aid) {
       std::fprintf(stderr, "[warp] area %d: loading\n", aid.Value());
       mPortPendingWarpArea = aid;
+      mPortWarpWaitingForIds = false;
+      mPortWarpDroppedAreas = false;
     }
     // PortWarpSettle keeps the load moving from here (see its comment).
     return;
@@ -4187,6 +4189,24 @@ void CStateManager::PortWarpSettle() {
         std::fprintf(stderr, "[warp] area %d: waiting, only %d of %d object ids free\n",
                      mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
       }
+      // Areas other than the one the player is in are leftovers from an earlier transition (a world
+      // change keeps the world it came from alive until the game's own travel drops it) and they
+      // hold the ids this warp is waiting for, so drop them once per warp: this is the same call the
+      // game's own area transition makes, and it frees a whole area's objects at once (measured:
+      // 435 free before, 628 after).
+      if (!mPortWarpDroppedAreas && (mUpdateFrameIdx % 60) == 0) {
+        TAreaId keep = world->GetCurrentAreaId();
+        if (world->UnloadAllAreasExcept(*this, keep)) {
+          mPortWarpDroppedAreas = true;
+          std::fprintf(stderr, "[warp] dropped the areas around %d to free object ids (%d free)\n",
+                       keep.Value(), PortFreeObjectIds());
+          if (PortFreeObjectIds() >= kPortWarpMinFreeIds) {
+            mPortWarpWaitingForIds = false;
+          }
+        }
+        // A false return means an area could not be invalidated yet (it is still streaming), so
+        // leave the flag clear and try again a few frames later.
+      }
       return;
     }
     mPortWarpWaitingForIds = false;
@@ -4198,6 +4218,7 @@ void CStateManager::PortWarpSettle() {
   mPortWarpWaitingForIds = false;
   const TAreaId target = mPortPendingWarpArea;
   mPortPendingWarpArea = kInvalidAreaId;
+  mPortWarpDroppedAreas = false;
 
   // Loaded now, so the move is safe. This is also what makes the world update travel here
   // instead of back to the old area.
