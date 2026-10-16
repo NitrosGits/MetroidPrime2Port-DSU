@@ -3,6 +3,9 @@
 #ifdef TARGET_PC
 #include <stdlib.h>  // getenv: the port's opt-in diagnostics
 #include <string.h>
+#include "Kyoto/CPakFile.hpp"
+#include "Kyoto/CResLoader.hpp"
+#include "MetroidPrime/CDummyWorld.hpp"
 #endif
 #include "Collision/CMRay.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -4440,18 +4443,160 @@ void CStateManager::PortWarpToWorldPortal() {
 // hands a null area to `CWorld::ScheduleAreaToLoad` (or asks the resource loader for a world whose
 // pak was never mounted) and segfaults. The save knows which areas it has seen in each world, so
 // take the first of those.
-CAssetId CStateManager::PortFirstAreaOfWorld(CAssetId worldId) const {
-  if (gpMemoryCard == nullptr || worldId == kInvalidAssetId) {
+//
+// The save's table only lists worlds the player has *visited*, so it cannot answer for a world the
+// save has never walked to (only an elevator reaches one today) - which is what keeps every area of
+// such a world out of reach of a direct boot. When the save has no area of the world, the disc
+// does: fall back to the world's own MLVL.
+namespace {
+// Reads the world's MLVL (`worldId`, which its pak must own) and returns the first of its areas
+// that names an MREA. The MLVL is parsed by `CDummyWorld`, the same reader `CWorld` and the data
+// network use, so the format is not parsed twice.
+//
+// A world pak is normally stashed in ARAM while the game is in another world, and a stashed pak's
+// resource table cannot be read (an MLVL in a stashed pak has size 0), so the pak that owns the id
+// is unstashed first - and only that one: `CMain::EnsureWorldPakReady` stashes every pak that does
+// not own the id, which must not happen before the id is known to name a world (a mistyped
+// `MP2_WORLD` would leave every world pak stashed).
+CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
+  if (gpResourceFactory == nullptr || gpGameState == nullptr) {
     return kInvalidAssetId;
   }
-  const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
-  for (rstl::vector< CMemoryCard::MemoryWorld >::const_iterator it = worlds.begin();
-       it != worlds.end(); ++it) {
-    if (it->first == worldId && !it->second.GetAreaIds().empty()) {
-      return CAssetId(it->second.GetAreaIds().front());
+  CResLoader& loader = gpResourceFactory->GetResLoader();
+  CPakFile* owner = nullptr;
+  const int pakCount = loader.GetPakCount();
+  for (int i = 0; i < pakCount; ++i) {
+    CPakFile* pak = loader.GetPakFile(i);
+    if (pak == nullptr) {
+      continue;
+    }
+    // Every pak's list is searched, not only the world paks': the loader only lists paks that are
+    // loaded, and a non-world pak is never stashed, so this cannot pick an unreadable one.
+    const rstl::vector< rstl::pair< rstl::string, SObjectTag > >& names =
+        pak->GetStringToObjectList();
+    for (rstl::vector< rstl::pair< rstl::string, SObjectTag > >::const_iterator it = names.begin();
+         it != names.end(); ++it) {
+      if (it->second.GetId() == worldId) {
+        owner = pak;
+        break;
+      }
+    }
+    if (owner != nullptr) {
+      break;
     }
   }
+  if (owner == nullptr) {
+    // The name list survives stashing, so a pak that is still loading is the only reason a real
+    // world is missing from the list here (the loader lists a pak once it has loaded) - say which,
+    // because that one resolves on a later request.
+    std::fprintf(stderr,
+                 "[warp] %08x: none of the %d loaded paks owns it (all paks loaded: %d), so the "
+                 "disc cannot name an area of it either\n",
+                 worldId, pakCount, loader.AreAllPaksLoaded() ? 1 : 0);
+    return kInvalidAssetId;
+  }
+  if (!owner->IsCompletelyLoaded()) {
+    std::fprintf(stderr, "[warp] %08x: the pak that owns it is still loading, so its areas are "
+                         "not readable yet\n",
+                 worldId);
+    return kInvalidAssetId;
+  }
+  if (owner->IsWorldPak()) {
+    // A world pak is stashed in ARAM while the game is in another world, and a stashed pak has no
+    // readable resource table; a non-world pak is never stashed and needs nothing.
+    owner->EnsureWorldPakReady();
+  }
+  if (loader.ResourceSize(SObjectTag('MLVL', worldId)) == 0) {
+    std::fprintf(stderr, "[warp] %08x: the pak that owns it has no MLVL for it\n", worldId);
+    return kInvalidAssetId;
+  }
+
+  CDummyWorld world(worldId, false);
+  // The read is asynchronous, so wait for it here: the parse is of a few hundred KB and the DVD
+  // thread is doing the work. The cap is a hang guard, not a timeout.
+  for (int spin = 0; !world.ICheckWorldComplete(); ++spin) {
+    if (spin == 2000000) {
+      std::fprintf(stderr, "[warp] %08x: its MLVL never finished loading\n", worldId);
+      return kInvalidAssetId;
+    }
+  }
+
+  const int areaCount = world.IGetAreaCount();
+  CAssetId firstUnbackedArea = kInvalidAssetId;
+  int firstUnbackedIndex = -1;
+  for (int i = 0; i < areaCount; ++i) {
+    const IGameArea* area = world.IGetAreaAlways(TAreaId(i));
+    if (area == nullptr) {
+      continue;
+    }
+    const CAssetId areaId = area->IGetAreaAssetId();
+    if (areaId == kInvalidAssetId) {
+      // An area slot with no MREA at all: the game cannot travel to it (the map skips it for the
+      // same reason).
+      continue;
+    }
+    if (loader.ResourceExists(SObjectTag('MREA', areaId))) {
+      std::fprintf(stderr,
+                   "[warp] %08x: the save knows no area of it; the disc's MLVL has %d areas, taking "
+                   "area %d (%08x)\n",
+                   worldId, areaCount, i, areaId);
+      return areaId;
+    }
+    // An MREA the loader cannot see is served as *empty bytes*, so landing in such an area would
+    // only move the failure: remember the first one for the report and keep looking.
+    if (firstUnbackedArea == kInvalidAssetId) {
+      firstUnbackedArea = areaId;
+      firstUnbackedIndex = i;
+    }
+  }
+
+  if (firstUnbackedArea != kInvalidAssetId) {
+    std::fprintf(stderr,
+                 "[warp] %08x: the save knows no area of it; the disc's MLVL has %d areas but no "
+                 "MREA of it is in a loaded pak (first is area %d, %08x; all paks loaded: %d)\n",
+                 worldId, areaCount, firstUnbackedIndex, firstUnbackedArea,
+                 loader.AreAllPaksLoaded() ? 1 : 0);
+    return kInvalidAssetId;
+  }
+
+  std::fprintf(stderr, "[warp] %08x: the disc's MLVL has %d areas and none of them names an MREA\n",
+               worldId, areaCount);
   return kInvalidAssetId;
+}
+} // namespace
+
+CAssetId CStateManager::PortFirstAreaOfWorld(CAssetId worldId) const {
+  if (worldId == kInvalidAssetId) {
+    return kInvalidAssetId;
+  }
+  if (gpMemoryCard != nullptr) {
+    const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
+    for (rstl::vector< CMemoryCard::MemoryWorld >::const_iterator it = worlds.begin();
+         it != worlds.end(); ++it) {
+      if (it->first != worldId) {
+        continue;
+      }
+      // `CSaveWorldIntermediate` fills this list from the world's MLVL with each area's *save* id
+      // (`IGetAreaSaveId`), and an area the game keeps no save data for is listed as invalid - an
+      // invalid entry would hand the restart an invalid desired-area id (the old logs' "area
+      // ffffffff"), so skip them. These ids are not MREA asset ids, and the restart matches the
+      // desired id against each area's *asset* id (`CWorld::CheckWorldComplete`), so a world change
+      // through this list lands in area 0 of the destination rather than in the area it names.
+      const rstl::vector< uint >& savedAreas = it->second.GetAreaIds();
+      for (rstl::vector< uint >::const_iterator area = savedAreas.begin(); area != savedAreas.end();
+           ++area) {
+        if (*area == static_cast< uint >(kInvalidAssetId)) {
+          continue;
+        }
+        const CAssetId areaId = CAssetId(*area);
+        std::fprintf(stderr, "[warp] %08x: the save knows %d areas of it, taking area %08x\n",
+                     worldId, static_cast< int >(savedAreas.size()), areaId);
+        return areaId;
+      }
+      break;
+    }
+  }
+  return PortFirstAreaFromMlvl(worldId);
 }
 
 void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
@@ -4462,7 +4607,8 @@ void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
     areaId = PortFirstAreaOfWorld(worldId);
     if (areaId == kInvalidAssetId) {
       std::fprintf(stderr,
-                   "[warp] %08x: the save knows no area of that world, so there is nowhere to land\n",
+                   "[warp] %08x: neither the save nor the disc's MLVL names an area of that world, "
+                   "so there is nowhere to land\n",
                    worldId);
       return;
     }
