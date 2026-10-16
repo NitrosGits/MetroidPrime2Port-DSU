@@ -125,6 +125,8 @@ void RunInputScript(unsigned frame) {
         PortWarp::Dock();
       } else if (NameIs("DOOR", p, at)) {
         PortWarp::Door();
+      } else if (NameIs("STATION", p, at)) {
+        PortWarp::Station();
       } else if (NameIs("NEXTWORLD", p, at)) {
         PortWarp::CycleWorld(1);
       } else if (NameIs("PREVWORLD", p, at)) {
@@ -199,6 +201,9 @@ bool PortPumpEvents() {
         break;
       case SDL_SCANCODE_F9:
         PortWarp::Dock();
+        break;
+      case SDL_SCANCODE_F10:
+        PortWarp::Station();
         break;
       case SDL_SCANCODE_F7:
         PortWarp::CycleWorld(1);

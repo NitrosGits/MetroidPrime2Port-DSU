@@ -84,6 +84,11 @@ void Door() {
   sRequest.kind = EKind::kDoor;
 }
 
+void Station() {
+  sRequest = SRequest();
+  sRequest.kind = EKind::kStation;
+}
+
 void ApplyEnvOnce() {
   if (sReadEnv) {
     return;

@@ -15,6 +15,11 @@ namespace PortOverlay {
 void SetGameState(uint32_t worldId, int areaId);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
+// Debug setting (`MP2_SKIP_CINEMATICS=1`): cinematics end as soon as they start, including ones
+// the player has never seen, which the game otherwise refuses to skip. Testing only - it skips
+// story beats along with the intro.
+bool SkipCinematics();
+void SetSkipCinematics(bool skip);
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

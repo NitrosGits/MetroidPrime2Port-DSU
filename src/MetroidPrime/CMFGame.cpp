@@ -1,5 +1,9 @@
 #include "MetroidPrime/CMFGame.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 #include "Kyoto/Audio/CMidiManager.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Audio/CStreamAudioManager.hpp"
@@ -200,9 +204,22 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         finished = false;
         const bool canSkip = (cineCam->GetFlags() & 0x800) ||
                              ((cineCam->GetFlags() & 8) && cineCam->CanSkip(*mStateManager));
+#ifdef TARGET_PC
+        // Port: the debug setting skips cinematics the player has not seen as well, which is
+        // what makes a test run reach gameplay in seconds instead of minutes. Stopping the
+        // cinematics is what SpecialSkipCinematic does on its way out, and the flow state has
+        // to see the camera manager leave the cinematic camera or it comes back next frame.
+        if (PortOverlay::SkipCinematics()) {
+          mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+          finished = true;
+        } else if (canSkip && mFlowTime >= 1.f && mStateManager->SpecialSkipCinematic() == 1) {
+          finished = true;
+        }
+#else
         if (canSkip && mFlowTime >= 1.f && mStateManager->SpecialSkipCinematic() == 1) {
           finished = true;
         }
+#endif
         if ((cineCam->GetFlags() & 0x10) && mSkippedCineCam != cineCam->GetScriptCameraId()) {
           finished = true;
         }

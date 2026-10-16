@@ -3995,13 +3995,23 @@ void CStateManager::PortWarpTick() {
     PortWarpToDoor();
     break;
   }
+  case PortWarp::EKind::kStation: {
+    PortWarpToStation();
+    break;
+  }
   case PortWarp::EKind::kWorld: {
     PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
     break;
   }
   case PortWarp::EKind::kCycleWorld: {
+    if (gpMemoryCard == nullptr) {
+      std::fprintf(stderr, "[warp] no memory card yet; no world table\n");
+      break;
+    }
     const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
     const CAssetId current = gpGameState->CurrentWorldAssetId();
+    std::fprintf(stderr, "[warp] world table: %d worlds, current %08x\n",
+                 static_cast< int >(worlds.size()), current);
     if (worlds.empty()) {
       break;
     }
@@ -4186,6 +4196,41 @@ void CStateManager::PortWarpToDoor() {
   std::fprintf(stderr, "[warp] door %04x in area %d (%d m away), standing 6 m out\n",
                nearest->GetUniqueId().Value(), area.Value(), static_cast< int >(best));
   player->Teleport(CTransform4f::LookAt(stand, nearest->GetTranslation(), CVector3f::Up()), *this,
+                   true);
+}
+
+// Stand on the nearest save station of this area, so a scripted A press exercises saving.
+void CStateManager::PortWarpToStation() {
+  CWorld* world = World();
+  CPlayer* player = GetPlayer(0);
+  if (world == nullptr || player == nullptr) {
+    return;
+  }
+  const TAreaId area = world->GetCurrentAreaId();
+  const CVector3f from = player->GetTranslation();
+  CScriptSpecialFunction* nearest = nullptr;
+  float best = 1e30f;
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    CScriptSpecialFunction* special = TCastToPtr< CScriptSpecialFunction >((*objects)[i]);
+    if (special == nullptr || special->GetCurrentAreaId() != area ||
+        special->GetFunction() != CScriptSpecialFunction::kSF_SaveStation) {
+      continue;
+    }
+    const float distance = (special->GetTranslation() - from).Magnitude();
+    if (distance < best) {
+      best = distance;
+      nearest = special;
+    }
+  }
+  if (nearest == nullptr) {
+    std::fprintf(stderr, "[warp] no save station in area %d\n", area.Value());
+    return;
+  }
+  const CVector3f at = nearest->GetTranslation();
+  std::fprintf(stderr, "[warp] save station %04x in area %d (%d m away)\n",
+               nearest->GetUniqueId().Value(), area.Value(), static_cast< int >(best));
+  player->Teleport(CTransform4f::LookAt(at, at + CVector3f(0.f, 1.f, 0.f), CVector3f::Up()), *this,
                    true);
 }
 

@@ -18,7 +18,8 @@ enum class EKind {
   kCycleArea, // the next/previous existing area of the current world
   kCycleWorld, // the next/previous world of the game's world table
   kDock,      // stand in the nearest doorway of this area, facing through it
-  kDoor       // stand in front of the nearest door, facing it, to test opening it
+  kDoor,      // stand in front of the nearest door, facing it, to test opening it
+  kStation    // stand on the nearest save station, to test saving in game
 };
 
 struct SRequest {
@@ -34,6 +35,7 @@ void CycleArea(int delta);
 void CycleWorld(int delta);
 void Dock();
 void Door();
+void Station();
 // Reads MP2_WORLD / MP2_TELEPORT once; called from the platform event loop.
 void ApplyEnvOnce();
 // Takes the pending request, if any. One at a time on purpose: a warp reloads the world, which

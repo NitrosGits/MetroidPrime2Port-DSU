@@ -1,5 +1,9 @@
 #include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#endif
+
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
@@ -971,6 +975,24 @@ bool CSwarmBasics::CanRenderUnsorted(const CStateManager& mgr) const { return tr
 
 void CSwarmBasics::CachePose(CModelData& modelData,
                              SwarmRenderHelpers::CSwarmSkinnedModelState& state) const {
+#ifdef TARGET_PC
+  // The swarm's skinned model comes from an async load, and the draw path runs before the token
+  // is resident: `**` on a token with no item is a null dereference in PreRender, which crashes
+  // a whole area. Skip this boid's pose until the model is there.
+  if (mModelData.null() || mModelData->GetAnimationData() == nullptr) {
+    return;
+  }
+  const TLockedToken< CSkinnedModel >& skinnedToken =
+      mModelData->GetAnimationData()->GetModelData();
+  if (*skinnedToken == nullptr) {
+    static bool sLogged = false;
+    if (!sLogged) {
+      sLogged = true;
+      std::fprintf(stderr, "[swarm] skinned model not loaded yet; skipping swarm poses\n");
+    }
+    return;
+  }
+#endif
   const CSkinnedModel& model = **mModelData->GetAnimationData()->GetModelData();
   const CAnimData* animData = modelData.GetAnimationData();
   animData->BuildPose();

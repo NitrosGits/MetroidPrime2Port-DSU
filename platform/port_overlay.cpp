@@ -13,10 +13,15 @@
 #include <SDL3/SDL.h>
 #include <imgui.h>
 
+#include <cstdlib>
+#include <cstring>
+
 
 namespace {
 
 bool sVisible = false;
+bool sSkipCinematics = false;
+bool sReadEnv = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
 
@@ -24,6 +29,19 @@ int sAreaId = -1;
 float sFps = 0.f;
 uint64_t sFpsWindowStart = 0;
 int sFpsFrames = 0;
+
+bool EnvFlag(const char* name) {
+  const char* value = std::getenv(name);
+  return value != nullptr && *value != '\0' && std::strcmp(value, "0") != 0;
+}
+
+void ReadEnv() {
+  if (sReadEnv) {
+    return;
+  }
+  sReadEnv = true;
+  sSkipCinematics = EnvFlag("MP2_SKIP_CINEMATICS");
+}
 
 void TickFps() {
   const uint64_t now = SDL_GetTicksNS();
@@ -98,6 +116,16 @@ void DrawAimSection() {
   ImGui::TextDisabled("the right stick aims through the same path as the mouse");
 }
 
+void DrawTestingSection() {
+  ImGui::SeparatorText("Testing");
+  if (ImGui::Checkbox("Skip cinematics", &sSkipCinematics)) {
+    // The game reads this every frame in its cinematic flow state.
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_SKIP_CINEMATICS=1)");
+  ImGui::TextDisabled("ends every cinematic at once, seen or not; makes tests 3-5x faster");
+}
+
 void DrawKeyboardSection() {
   ImGui::SeparatorText("Keyboard map");
   ImGui::TextDisabled("WASD move, IJKL C-stick, X/Z/C/V = A/B/X/Y,");
@@ -115,7 +143,20 @@ void SetGameState(uint32_t worldId, int areaId) {
 
 void Toggle() { sVisible = !sVisible; }
 
-bool Visible() { return sVisible; }
+bool Visible() {
+  ReadEnv();
+  return sVisible;
+}
+
+bool SkipCinematics() {
+  ReadEnv();
+  return sSkipCinematics;
+}
+
+void SetSkipCinematics(bool skip) {
+  ReadEnv();
+  sSkipCinematics = skip;
+}
 
 void Draw() {
   TickFps();
@@ -129,6 +170,7 @@ void Draw() {
     ImGui::Text("%.1f fps", static_cast< double >(sFps));
     DrawGameSection();
     DrawAimSection();
+    DrawTestingSection();
     DrawKeyboardSection();
     ImGui::SeparatorText("Hotkeys");
     ImGui::TextDisabled("F1 overlay, F5/F6 area, F7/F8 world");
