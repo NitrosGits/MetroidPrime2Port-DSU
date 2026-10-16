@@ -188,6 +188,7 @@ public:
   void PortWarpToDoor();
   void PortWarpToStation();
   void PortWarpToWorldPortal();
+  void PortWarpToDeath();
   void PortWarpSettle();
   // A warp sets the area and lets the game's own per-frame travel load it; this remembers which
   // area to place the player in once it is loaded.

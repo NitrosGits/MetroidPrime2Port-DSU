@@ -94,6 +94,11 @@ void WorldPortal() {
   sRequest.kind = EKind::kWorldPortal;
 }
 
+void Kill() {
+  sRequest = SRequest();
+  sRequest.kind = EKind::kKill;
+}
+
 void ApplyEnvOnce() {
   if (sReadEnv) {
     return;

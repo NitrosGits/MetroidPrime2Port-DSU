@@ -4025,6 +4025,10 @@ void CStateManager::PortWarpTick() {
     PortWarpToWorldPortal();
     break;
   }
+  case PortWarp::EKind::kKill: {
+    PortWarpToDeath();
+    break;
+  }
   case PortWarp::EKind::kWorld: {
     PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
     break;
@@ -4262,6 +4266,19 @@ void CStateManager::PortWarpToStation() {
                nearest->GetUniqueId().Value(), area.Value(), static_cast< int >(best));
   player->Teleport(CTransform4f::LookAt(at, at + CVector3f(0.f, 1.f, 0.f), CVector3f::Up()), *this,
                    true);
+}
+
+// Hurt the player with an unresistable amount of damage, which is the only way to reach the death
+// and respawn path without an enemy or a hazard (the port has neither in a test).
+void CStateManager::PortWarpToDeath() {
+  CPlayer* player = GetPlayer(0);
+  if (player == nullptr) {
+    return;
+  }
+  std::fprintf(stderr, "[warp] killing the player\n");
+  const CDamageInfo damage(CWeaponMode(kWT_UnknownSource), 100000.f, 0.f, 0.f, true);
+  player->TakeDamage(true, player->GetTranslation(), 100000.f, kInvalidUniqueId, kInvalidUniqueId,
+                     damage, *this);
 }
 
 // Stand on the nearest elevator of this area and tell it to go, which is the game's own world
