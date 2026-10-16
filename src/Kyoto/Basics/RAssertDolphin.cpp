@@ -185,6 +185,17 @@ void SetErrorHandlers() {
 void rs_debugger_printf(const char* format, ...) {
   va_list arg;
 
+#ifdef TARGET_PC
+  // Port: retail ends this by calling ErrorHandler, which is the Dolphin's exception handler - it
+  // writes to fixed console addresses and hands off to the debugger. On the host that is a
+  // segfault, so a diagnostic message would kill the run it is trying to explain (the id pool's
+  // "Object list full!" did exactly that). Print it and return; nothing here restores the game.
+  va_start(arg, format);
+  vfprintf(stderr, format, arg);
+  va_end(arg);
+  fputc('\n', stderr);
+  return;
+#else
   OSProtectRange(3, 0, 0, 3);
   rs_debugger_size = 0;
   if (strncmp(format, "SKIP", 4) == 0) {
@@ -203,4 +214,5 @@ void rs_debugger_printf(const char* format, ...) {
   OSContext context;
   OSSaveContext(&context);
   ErrorHandler(0xff, &context, 0, 0xd1dd0d1e);
+#endif
 }

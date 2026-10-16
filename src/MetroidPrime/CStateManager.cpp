@@ -1,6 +1,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 
 #ifdef TARGET_PC
+#include <stdlib.h>  // getenv: the port's opt-in diagnostics
 #include <string.h>
 #endif
 #include "Collision/CMRay.hpp"
@@ -2259,7 +2260,18 @@ TUniqueId CStateManager::AllocateUniqueId() {
     ourIndex = mNextFreeIndex;
     mNextFreeIndex = (ourIndex + 1) % 1024;
     if (mNextFreeIndex == lastIndex) {
+#ifdef TARGET_PC
+      // Port: report it once. The do/while below cannot find a free index and would spin here
+      // printing this every wrap, so a run would flood its log instead of showing the one fact
+      // that matters (see PortWarpSettle, which keeps a warp from exhausting the pool).
+      static bool sReportedFull = false;
+      if (!sReportedFull) {
+        sReportedFull = true;
+        rs_debugger_printf("Object list full!");
+      }
+#else
       rs_debugger_printf("Object list full!");
+#endif
     }
   } while (mAllocatedObjectIndices[ourIndex]);
 
@@ -3713,6 +3725,23 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   // the world exists; a world reload ends the update early through QuitGame.
   PortWarpTick();
   PortWarpSettle();
+  // Live object and unique-id counts, opt-in with MP2_DEBUG_IDS=1. The id pool holds 1024 and
+  // AllocateUniqueId reports "Object list full!" once it is exhausted, so a run that walks many
+  // areas needs to show whether objects are freed as areas unload.
+  {
+    static const bool sLogIds = std::getenv("MP2_DEBUG_IDS") != nullptr;
+    if (sLogIds && (mUpdateFrameIdx % 300) == 0) {
+      int liveIds = 0;
+      for (int i = 0; i < mAllocatedObjectIndices.size(); ++i) {
+        if (mAllocatedObjectIndices[i]) {
+          ++liveIds;
+        }
+      }
+      std::fprintf(stderr, "[ids] frame %u: %d/%d ids allocated, %d objects\n", mUpdateFrameIdx,
+                   liveIds, static_cast< int >(mAllocatedObjectIndices.size()),
+                   mObjectLists[kOL_All]->size());
+    }
+  }
   // The debug overlay's readout (world, area), cheap enough for every update. The log line on
   // each change is what makes a transition test readable: it says whether a door or a dock
   // actually moved the player to another area.
@@ -4111,6 +4140,24 @@ void CStateManager::PortWarpToArea(TAreaId aid) {
   mPortPendingWarpArea = aid;
 }
 
+namespace {
+// A warp holds off starting an area's stream while fewer than this many object ids are free. The
+// pool is 1024 (kMaxObjects) and a busy area's script objects run to several hundred, so a warp
+// started against a nearly-full pool is what exhausted it (a save load comes up at ~1008 and
+// settles near ~350 a few hundred frames later).
+constexpr int kPortWarpMinFreeIds = 512;
+} // namespace
+
+int CStateManager::PortFreeObjectIds() {
+  int free = 0;
+  for (int i = 0; i < static_cast< int >(mAllocatedObjectIndices.size()); ++i) {
+    if (!mAllocatedObjectIndices[i]) {
+      ++free;
+    }
+  }
+  return free;
+}
+
 // Places the player in the area a warp asked for, once that area has finished loading.
 void CStateManager::PortWarpSettle() {
   if (mPortPendingWarpArea == kInvalidAreaId) {
@@ -4130,11 +4177,25 @@ void CStateManager::PortWarpSettle() {
     // The initial world load drives an area in by calling both of these every frame until
     // ScheduleAreaToLoad reports it is done, so do the same: it only sets up the chain, and
     // StartStreamIn is what advances the stream.
+    // A save load allocates nearly the whole 1024-entry id pool before it purges (it comes up at
+    // ~1008 and settles near ~350 a few hundred frames later), so a warp landing in that window
+    // would need more ids than are left and the area's script objects would exhaust the pool.
+    // Wait for room instead of starting the load: the area is not in anyone's way while loading.
+    if (PortFreeObjectIds() < kPortWarpMinFreeIds) {
+      if (!mPortWarpWaitingForIds) {
+        mPortWarpWaitingForIds = true;
+        std::fprintf(stderr, "[warp] area %d: waiting, only %d of %d object ids free\n",
+                     mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
+      }
+      return;
+    }
+    mPortWarpWaitingForIds = false;
     if (world->ScheduleAreaToLoad(area, *this)) {
       area->StartStreamIn(*this);
     }
     return;
   }
+  mPortWarpWaitingForIds = false;
   const TAreaId target = mPortPendingWarpArea;
   mPortPendingWarpArea = kInvalidAreaId;
 

@@ -192,9 +192,15 @@ public:
   void PortWarpToDeath();
   void PortWarpToHeal();
   void PortWarpSettle();
+  // Object ids a warp may leave unallocated before it is allowed to start loading an area: a warp
+  // adds a whole area's script objects on top of what is already live.
+  int PortFreeObjectIds();
   // A warp sets the area and lets the game's own per-frame travel load it; this remembers which
   // area to place the player in once it is loaded.
   TAreaId mPortPendingWarpArea = kInvalidAreaId;
+  // True while a pending warp is held back because the id pool has no room yet (one log line per
+  // wait, not one per frame).
+  bool mPortWarpWaitingForIds = false;
 #endif
   void CreateStandardGameObjects(); // Prime-correlated name; per-player construction in Echoes.
   void DeleteSaveGameScreen();
