@@ -18,6 +18,9 @@ aurora::Module Log("aurora::card");
 
 namespace aurora::card {
 
+// Stable identity for a folder-backed card; see getSerial.
+static constexpr uint64_t kGciFolderSerial = 0x47434946'00000001ull; // "GCIF" + 1
+
 CardGciFolder::GciFile* CardGciFolder::get_file(uint32_t idx) {
   if (m_error == ECardResult::READY && m_files.size() > idx && !m_files[idx].deleted) {
     return &m_files[idx];
@@ -395,8 +398,14 @@ const uint8_t* CardGciFolder::getCurrentMaker() const {
   return nullptr;
 }
 
+// A GCI folder has no card image, so there is no manufactured serial to read out of it. The serial
+// is only an identity - the game records it with its saves and compares it with the card in the
+// slot - but zero is meaningful to the game: `CScriptSpecialFunction::AcceptSaveStation` reads
+// `gpGameState->GetCardSerial() == 0` as "no card in the slot" and refuses to save (and the save
+// screen's own card check skips a zero serial). A folder is a card that never leaves the slot, so
+// report a stable non-zero one rather than a zero the game cannot use.
 void CardGciFolder::getSerial(uint64_t& serial) {
-  serial = 0; // TODO
+  serial = kGciFolderSerial;
 }
 
 void CardGciFolder::getChecksum(uint16_t& checksum, uint16_t& inverse) const {
