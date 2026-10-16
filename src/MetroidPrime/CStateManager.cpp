@@ -3954,7 +3954,7 @@ void CStateManager::PortWarpTick() {
   // is not an area the game can travel to) and so a test can wait for the game world without
   // needing a pending request: "the front end's world, then mine".
   static CAssetId sLoggedWorld = kInvalidAssetId;
-  if (sLoggedWorld != gpGameState->CurrentWorldAssetId()) {
+  if (gpGameState != nullptr && sLoggedWorld != gpGameState->CurrentWorldAssetId()) {
     sLoggedWorld = gpGameState->CurrentWorldAssetId();
     std::fprintf(stderr, "[warp] world %08x areas:", sLoggedWorld);
     for (int i = 0; i < world->IGetAreaCount(); ++i) {

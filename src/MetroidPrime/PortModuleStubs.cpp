@@ -19,8 +19,6 @@
 
 #include "types.h"
 
-#include <cstdio>
-
 // The registry names the module when it loads (platform/compiled_modules.cpp), so this stays
 // empty: the entry points only have to exist for the module to register.
 void RELMain() {}
