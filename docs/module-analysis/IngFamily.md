@@ -1,0 +1,286 @@
+# Ing REL (module 29) and MinorIng REL (module 44): analysis for host bodies
+
+Analysis only (2026-10-16). Sources: `config/G2ME01/rels/{Ing,MinorIng}/symbols.txt` (sizes),
+the archive build's disassembly `../MetroidPrime2Port/build/G2ME01/{Ing,MinorIng}/asm/`
+(Ing: `auto_00_00000000_text.s` 0x0-0xF2C8, `auto_fn_29_F2C8_text.s`, `auto_00_0000FF88_text.s`;
+MinorIng: `auto_00_00000110_text.s`, `auto_00_00009D58_text.s`, `auto_fn_44_ABCC_text.s`; plus
+each module's data/rodata `.s`), the DOL symbol names they call, and the Wii build's RSO exports
+(`../MetroidPrime3Port/orig/R3ME01/files/MP2/RSO/Production/selfile.sel`, `RSO_Ing.rso`,
+`RSO_MinorIng.rso`, read with `strings`).
+Confidence tags: **[proven]** = read from an instruction, a table entry or an exported name;
+**[probable]** = strong evidence but not proven; **[?]** = guess, verify before relying on it.
+`fn_29_X` / `fn_44_X` are REL `.text` offsets.
+
+Areas needing **Ing** (16): 1baa96c2 15/31/39/57; 3bfa3eff 34/35/61; 3dfd2249 28;
+42b935e4 7/25/28/36/38/50/56; 863fcd72 11.
+Areas needing **MinorIng** (14): 1baa96c2 18/31; 3bfa3eff 13; 3dfd2249 28/60;
+42b935e4 12/13/20/25/30/31/53/56; 863fcd72 11.
+
+---
+
+## A. Ing.rel (module 29)
+
+### A.1 Classes
+
+| class | GC size | vtable | ctor / dtor | evidence |
+|---|---|---|---|---|
+| `CIng : CPatterned` | 0xe60 | `lbl_29_data_A24` (82 words) | `fn_29_D540` (0x1110) / `fn_29_CF64` | **[proven]** name: Wii export `TypesMatch__4CIngCFi`; size: loader `rs_new(0xe60)`; vtable stored by the ctor |
+| `CIngData` (plain struct) | 0x214 | - | `fn_29_EE68` (0x158) / `fn_29_10F8`; copy `fn_29_E7C8` | **[proven]** ctor body + loader stack layout. Name **[?]** (by analogy with `CMediumIngData`) |
+| `CIngMiniPortalAttack : CActor` | 0x238 | `lbl_29_data_CE4` | `fn_29_11E8C` (0x190, named in symbols.txt) / `fn_29_114B0` | **[proven]** symbol name; size from `rs_new(0x238)` in `fn_29_C228` |
+| `CIngMiniPortalInfo` | ? | - | `fn_29_12100` (named) | **[proven]** symbol name and Wii ctor signature `(TUniqueId, f, f, TLockedToken<CGenDescription>, us, f, f, CDamageInfo, SLdrPlasmaBeamInfo)` |
+| `CIngExitHostEffect : CActor` | 0x5e8 | `lbl_29_data_C60` | `fn_29_1105C` (0x3DC) / `fn_29_FF88` | class at `data_C60` holds a `CPathFindSearch` + 2 tokens and is `rs_new(0x5e8)`'d in the ExitHost state `9D68` **[proven]**; that it *is* `CIngExitHostEffect` (Wii export ctor `(TUniqueId, CEntityInfo, CTransform4f, CVector3f, CVector3f, uint, uint, f, f, TUniqueId, f, f, us)`) is **[probable]** |
+| sub-structs of CIngData (body projectile 0x40, ing spot = `CIngSpotData` 0x60, grapple, mini-portal, swarm 0x2A) | see A.3 | - | builders `fn_29_F12C`, DOL `CIngSpotData` ctor 0x80218920, `fn_29_F090`, `fn_29_F000`, `fn_29_EFC0` | **[proven]** layouts; names **[?]** |
+
+`lbl_29_data_A20` (= 0x20) and `lbl_29_data_CE0` (= 0x23): meaning unknown **[?]**.
+
+### A.2 Function map (functions >= 0x100, plus the module head)
+
+**Module head [proven]**: `RELMain` (0xE0) calls `fn_29_100`, which stores loader `fn_29_130`
+into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (DOL 0x80218918);
+`RELExit` (0xBC) calls the setter with null. Static init `fn_29_F2C8` (0xCC0) fills the FSM tables.
+
+| fn | size | role | tag |
+|---|---|---|---|
+| `130` | 0xFC8 | loader (`LoadIng`), see A.4 | proven |
+| `1294` | - | optional<CModelData> move used by the loader | proven |
+| `10F8` | - | CIngData dtor | proven |
+| `D540` | 0x1110 | CIng ctor | proven |
+| `CF64` | 0x1C4 | CIng dtor (vtable slot) | proven |
+| `C228` | 0x3B8 | `DoUserAnimEvent`: jump table `data_B6C`, spawns `CIngMiniPortalAttack` | proven |
+| `C654` / `C814` / `C9A4` | 0x1C0 / 0x190 / 0x514 | CIng vtable overrides; `C814` looks like Think, `C9A4` (largest) like AcceptScriptMsg or Think | **[?]** - slots not mapped to CPatterned's vtable yet |
+| `B208` | - | SetupStateMachine (registers the tables below) | proven |
+| `E7C8` | 0x110 | CIngData copy ctor | proven |
+| `E8D8`/`E944`/`E9E8`/`EA7C`/`EB38`/`EBEC`/`EC88` | <0x100 | copy ctors of swarm / mini-portal / beam info / grapple / ing-spot / body-proj / vulnerability | proven |
+| `ED38` | 0x130 | **[?]** CIngData helper (sits between copies and ctor) | ? |
+| `EE68` | 0x158 | CIngData ctor | proven |
+| `EFC0`/`F000`/`F090`/`F12C` | <0x100 | swarm / mini-portal / grapple / body-proj builders | proven |
+| `F2C8` | 0xCC0 | static init of the FSM tables | proven |
+| `1F1C`, `2414`, `2B70`, `4F14`, `5CB0`, `11A7C` | 0x17C..0x358 | each allocates a 0x180 `CExplosion` (DOL `fn_800532D4`) | proven |
+| `3190` | 0x23C | builds the 0x18 `CCollisionActorManager` | proven |
+| `4830` | 0x130 | builds a 0x1e0 `CCollisionTracker` via GeomBlobV2's `fn_25_4290` | proven |
+| `4B4C` | 0x13C | builds a 0x1b8 `CGameLight` | proven |
+| `76B8` | 0x658 | state SuckEnergy; also allocates a 0x180 `CHUDBillboardEffect` | proven |
+| `FF88` | - | CIngExitHostEffect? dtor | proven (class identity probable) |
+| `1105C` | 0x3DC | CIngExitHostEffect? ctor | as above |
+| `10154`, `1046C`, `1065C`, `1077C`, `10944`, `10F58` | 0x104..0x40C | CIngExitHostEffect? methods (lie between its dtor and ctor) | **[probable]** |
+| `114B0` | - | CIngMiniPortalAttack dtor | proven |
+| `11570`, `11CA4` | 0x2D0, 0x1E8 | CIngMiniPortalAttack methods | **[probable]** |
+| `11840` | 0x1A8 | CIngMiniPortalAttack fire: `rs_new(0x6a8)` `CPlasmaProjectile`, uses `TLdrToBeamInfo` | proven |
+| `11E8C` | 0x190 | CIngMiniPortalAttack ctor | proven |
+| `12100` | - | CIngMiniPortalInfo ctor | proven |
+| `131C`..`3E1C`, `432C`, `4604`, `4960`, `B294`..`C0B4`, `D128` | 0x108..0x45C | CIng private helpers (unassigned) | **[?]** |
+
+**State machine [proven by simulating `fn_29_F2C8`; 16-byte entries]**
+
+- 49 triggers (`data_250`): StateOver B1F4, IsAlert B1E8, IsControllingHost B1C8, IsFacingTarget
+  B0E0, HasTarget B0A4, HasNewTarget B04C, HasLineOfSight B01C, UnderFire B000, HeardShot AFE4,
+  AreaClear AE68, CoverLeash ADE8, HasCoverPoint ADBC, HasWallCoverPoint AD7C, HasMiniPortals AD68,
+  IsCorporeal AD54, IsIngSpot AD40, IsBodyProjectile AD2C, IsFrustrated AD14, IsAggressive ACEC,
+  IsLuredBySafeZone AC98, StillLuredBySafeZone AC78, UseProjectileFSMEntry ACE0, TargetInSafeZone
+  AC20, TargetInLightSafeZone ABC8, EmergePtInSafeZone AB7C, CanChangeForm AAF8, ShouldEvaporate
+  AAA8, ShouldFleeSafeZone AA94, ShouldBecomeCorporeal AA4C, ShouldBecomeIngSpot AA04,
+  ShouldArmSwipe A8CC, ShouldTaunt A8C0, ShouldBodyProjectile A780, ShouldOpenMiniPortal A664,
+  ProjectileSplat A658, ProjectileHitTarget A4EC, FoundMovementPos A4E0, PathShagged A498,
+  PathOver A450, PointPathOver A428, FoundPointPath A400, IsOffPath A3C8, HasAttackPattern A370,
+  AttackPatternOver A340, TargetIsBall A2D8, InBallPursuitRange A224, HasPathToTarget A1C0,
+  InGrappleRange A100, CanGrappleTarget A098.
+- 29 states (`data_6BC`): Start A094, WaitForFSMTransition A090, ExitHost 9D68, BecomeCorporeal
+  9A74, BecomeIngSpot 9750, BecomeBodyProjectile 94E8, BecomeWallProjectile 8FE8, Alert 8EF0,
+  SafeZoneReaction 8CF4, Taunt 8BAC, Lurk 8A2C, PathFind 8808, IngSpotPathFind 8684,
+  IngSpotPointPathFind 8570, Patrol 84A4, FollowAttackPattern 82D4, BodyProjectileFlight 7E30,
+  SuckEnergy 76B8, SeekWallPoint 75C0, SelectTarget 7518, FaceTarget 7244, FindCoverPoint 6DA0,
+  ArmSwipe 6A88, FailSafeMode 69A0, GrappleBall 6578, FindMiniPortals 61B4, MiniPortalAttack
+  6008, Dead 5CB0, Evaporate 5C28.
+- 12 code functions (`data_91C`, same `SCodeFunction` idiom as CMediumIng's `skCodeFuncs`):
+  SetTargetDest 5B60, SetCoverDest 5AC4, SetRecoverDest 59D0, SetPointCoverDest 5820,
+  SetWallPointCoverDest 5714, SetExitHostDest 54E8, SetLuredDest 53E0, SetLuredPointDest 51D0,
+  StartRangedAttack 5190, EndRangedAttack 514C, SplatOntoMesh 4F14, ExpelGrappledBall 4D18.
+
+### A.3 Member maps
+
+**CIng (0xe60) [proven from ctor `D540` unless tagged]**
+
+| off | member | init |
+|---|---|---|
+| 0x000 | CPatterned base | `EPatternedAI 0x18`, flavor 0, movement 0, collider 1, body 1 |
+| 0x620 | (CPatterned's CAiKnockBackMgr) | `EnableKnockBackPhysics(false)` (DOL 0x801BD560) |
+| 0x7c0 | CIngData (0x214) | copy of the loader's data |
+| 0x9d4 / 0x9d8 | int / int | 2 / -1 |
+| 0x9dc | CPathFindSearch | `(null, 0x301, pInfo+0xec, 1.0, 1.0)`; its +0xd0/+0xd4 (0xaac/0xab0) = model scale x rodata_98 / rodata_D0 (radius / height) |
+| 0xac8 | CPathFindPointSearch | `(null)` |
+| 0xc50 | float | 0 |
+| 0xc58 | CSurfaceAlignmentHelper | default |
+| 0xcb0 | CIngSpotPathFindNavigation (0x10) | default |
+| 0xcc0 | CAABox | `mskNullBox`; 0xcd8 = 1 |
+| 0xcdc / 0xcde | TUniqueId x2 | invalid |
+| 0xce0, 0xcf0 | optional<TLockedToken<CGenDescription>> (0x10 each) | from data+0x1e4, +0x1f4 (swarm effects) |
+| 0xd00 / 0xd04 | 0 / 0 | |
+| 0xd08, 0xd18, 0xd28 | optional PART tokens | data+0xb0, +0xb4, +0xb8 (ing-spot hit/heavy/death effects) |
+| 0xd38 | optional PART token | data+0x178 (mini-portal effect) |
+| 0xd48 | optional PART token | data+0x8c (body-proj splat effect) |
+| 0xd58 / 0xd5c / 0xd60 / 0xd64 | 0 / invalid uid / 0 / 0 | |
+| 0xd68..0xd78 | TUniqueId x9 | invalid |
+| 0xd7a..0xd83 | CSegId x10 | `GetLocatorSegId(name)`; names at `lbl_29_rodata_120`+{0x52e "head" [proven], 0x554 "L_elbow" [proven], 0x55c "R_elbow", 0x627/0x632/0x63d/0x647/0x653/0x65e/0x668 = "...collar_SDK", shoulder/forearm/wrist_end per side} **[probable]** (raw-byte decode; the L_/R_ prefixes of the arm strings were not separated cleanly) |
+| 0xd88 | CLineOfSightTracker (DOL 0x801F5888) | |
+| 0xd8a | CSegId | copy of 0xd7b |
+| 0xdc8..0xde8 | CVector3f x3 | zero |
+| 0xdec | int | -1 |
+| 0xdf0 | CVector3f | normalised vector |
+| 0xdfc | float | dot product with the transform |
+| 0xe00 | | 0 |
+| 0xe04..0xe24 | ? | not initialised in the ctor body **[?]** |
+| 0xe28 / 0xe2c | -1 / 0 | |
+| 0xe30..0xe58 | floats | rodata constants |
+| 0xe5c..0xe5e | bitfields | one bit from CIngData+0x210 |
+
+Also in the ctor: `SetDrawShadow(false)`.
+
+**CIngData (0x214) [proven from `fn_29_EE68`]**
+
+| off | field |
+|---|---|
+| 0x00..0x14 | floats: hearingRadius, prop 0x5d0d.., prop 0xc620.., frustration, taunt, aggressiveness (arg order) |
+| 0x18 / 0x1c | lightColor / lightAttenuation |
+| 0x20 | armSwipe CDamageInfo (inline, to 0x3b) |
+| 0x3c | triggerVuln CDamageVulnerability |
+| 0x6c | body-projectile data (0x40): +0 CDamageInfo, +0x1c f, +0x20 splat asset, +0x24/+0x26 sounds (u16), +0x28..0x3c floats |
+| 0xac | CIngSpotData (0x60) |
+| 0x10c | grapple data: +0 f, +4 CDamageInfo, +0x20 f, +0x24/+0x26 sounds, +0x28..0x30 floats, +0x34 vuln |
+| 0x170 | mini-portal data: +0 min, +4 max, +8 effect, +0xc sound, +0x10 CDamageInfo, +0x2c SLdrPlasmaBeamInfo |
+| 0x1e4 | swarm / exit-host data: +0/+4/+8 assets, +0xc f, +0x10 asset, +0x14..0x1c floats, +0x20..0x28 five u16 sounds |
+| 0x210 | 8 flag bits from `ingFlags` |
+
+CIngMiniPortalAttack / CIngExitHostEffect members: not mapped (out of scope for a first slice).
+
+### A.4 Loader `fn_29_130` (0xFC8) [proven by simulation; `/tmp/ingan/ldr.py`]
+
+- Reads **all 69** property ids of `include/MetroidPrime/ScriptLoader/SLdrIng.hpp`; stack layout
+  follows the header field order (SLdrIng at sp+0x8c0: patterned 0x8fc, actor 0xb40, ingFlags
+  0xbb8, facePlate 0xbbc, ..., lightColor 0xd20, lightAttenuation 0xd24, vulnerabilities
+  0xd28/0xe84/0xfe0). Unknown ids are skipped with `ReadBytes(nullptr, size)`.
+- `facePlateModel` (sp+0xbbc) is parsed but **never read afterwards** [proven for the loader; the
+  ctor gets no copy].
+
+Construction order:
+1. `LdrToModelData(scale, kInvalidAssetId, patterned.animationInformation, true)` -> `fn_29_1294`
+   into optional<CModelData> (sp+0x3a8); **returns null if empty** (valid byte +0x4c).
+2. `LdrToDamageInfo(bodyProjectileContactDamage)` -> `fn_29_F12C` body-proj data (dmg, 0xa0d6,
+   suckTime, splatEffect, speed, dropTime, min/max distance, sound_BodyProjectile,
+   sound_SplatWall, odds).
+3. `LdrToDamageVulnerability(ingSpotVuln)` -> `CIngSpotData` ctor (blobEffect, hitNormal,
+   hitHeavy, death, maxSpeed, maxWallSpeed, ballPursuit, 0x5039, turnSpeed, vuln, 5 sounds).
+4. `LdrToDamageVulnerability(grappleBallVuln)` + `LdrToDamageInfo(exitGrappleDamage)` ->
+   `fn_29_F090` (0x67f6, spitForce, sound_ExitGrapple, sound_Grapple, maxHold, postWait,
+   pursuitRange, vuln).
+5. `LdrToDamageInfo(miniPortalProjectileDamage)` -> `fn_29_F000` (effect, min/max distance,
+   sound, dmg, SLdrPlasmaBeamInfo).
+6. `fn_29_EFC0` swarm data (pART, sRSC, pART_3da2, 0x2327, pART_081e, 0xcb39, 0x587c, 0x0bd7,
+   sounds swarmMove, exitHost, exitHostSafeZone, insideHost, 0x148b).
+7. `LdrToDamageVulnerability(triggerVuln)` + `LdrToDamageInfo(armSwipe)` -> `fn_29_EE68` CIngData
+   (ingFlags, hearing, armSwipe, triggerVuln, lightColor, bodyProj, ingSpot, grapple, miniPortal,
+   swarm, 0x5d0d, 0xc620, frustration, taunt, aggressiveness, lightAttenuation).
+8. `rs_new(0xe60)`; `LdrToPatternedInfo(patterned, nullptr)`.
+9. `CIng(uid, name=&editorProperties, LdrToEntityInfo, LoadEditorTransform, modelData,
+   LoadActorParameters, patternedInfo, data)` = `fn_29_D540`.
+10. `fn_29_10F8` destroys the CIngData temp.
+
+---
+
+## B. MinorIng.rel (module 44)
+
+- **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
+  `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).
+- **Class**: `CMinorIng : CPatterned`, **not** derived from CIng [proven: its ctor `fn_44_9D58`
+  (0x878) calls the `CPatterned` ctor directly with `EPatternedAI 0x4b`, flavor 0, movement 0,
+  collider 1, body 1, then stores vtable `lbl_44_data_620` (0x148 = 82 words); name from Wii export
+  `TypesMatch__9CMinorIngCFi`]. **GC size 0xd40** [proven: loader `rs_new(0xd40)`].
+- Ctor members (headline only) [proven]: 0x7c0 CMinorIngData (0x158, copy `fn_44_A9DC`), 0x918
+  `CProjectileInfo(data.projectile, data.projectileDamage)`, 0x960 `CPathFindSearch(null, 0x301,
+  ...)`, 0xa4c `CPathFindPointSearch`, 0xbd8 `CSurfaceAlignmentHelper`, 0xc30
+  `CIngSpotPathFindNavigation`, 0xc88 `CVisualKnowledge`, two `GetLocatorSegId` lookups, PAS
+  anim-parm queries, `EnableKnockBackPhysics` + `SetAnimReactionRange(2,2)`, 0xce0 a 2-entry
+  container (`fn_44_A5D0`) **[?]**, 0xd30 a pointer from `fn_44_AB78`.
+- Other classes: none found; module has 217 functions, one vtable [probable: only `data_620` is
+  vtable-sized].
+- **Loader `fn_44_110` (0x844) [proven]**: reads the 20 top-level ids of `SLdrMinorIng.hpp`
+  (editorProperties, patterned, actorInformation, projectileDamage, projectile, 0xa03e450c,
+  attackAngleLimit, lineOfSightHeightOffset, 0xd6c8eac2, 0x2a5449ba, hearingRadius, 7 bools incl.
+  0x09207f51 (via r22) and allowPuddleLockOn, ingSpot via `fn_44_194C`, unknown_0x3da35851 via
+  `fn_44_1CE0`; the sub-structs' ids are parsed in those helpers). Order: `LdrToModelData(scale,
+  kInvalidAssetId, anim, true)` -> optional, **null if empty**; `CIngSpotData` ctor from ingSpot;
+  `fn_44_FE8` builds the bouncing-projectile struct (SLdrUnknownStruct34) at sp+0x1f8;
+  `LdrToHealthInfo`/`LdrToDamageInfo` x2; `fn_44_9B4` (0x290) = CMinorIngData ctor at sp+0x2f8;
+  `rs_new(0xd40)`; `LdrToPatternedInfo(patterned, nullptr)`; ctor `fn_44_9D58(uid, name, info, xf,
+  modelData, patternedInfo, actorParams, data)`.
+- **FSM [proven names/functions by simulating `fn_44_ABCC`]**: 34 triggers (`data_1A8`), e.g.
+  PathShagged 6184, ShouldFire 5F60, PuddleHitByWeapon 5D64, StunOver 3E00, IsInCorporealForm
+  5D08, StateOver 2038; 20 more entries in `data_47C` (15) + `data_5A8` (5): PathFind 8128,
+  PointPathFind 7F98, Stunned 85DC, ProjectileAttack 777C, Patrol 7740, Dead 6EB8,
+  SetWallPointCoverDest 5264, SetCoverDest 4C9C, IntoPuddleForm 8460, IntoCorporealForm 82A0, Idle
+  7960, FollowAttackPattern 6A40, MoveAwayFromSafeZone 6BD4, AlwaysPointPathFind 7D20,
+  WaitForFSMTransition 6A3C, SelectTarget 8C1C, FindCoverPoint 4E84, SetPointCoverDest 4AC4,
+  SetLuredDest 21A8, and one entry `22B0` whose name pointer is the non-string `rodata_450` **[?]**.
+  Which entries are states vs code functions is **[?]** (the 15/5 split mixes Set*Dest names into
+  the first table).
+
+---
+
+## C. Reuse of in-tree code, and gaps
+
+**Reusable now**
+- `CIngSpotData` (`include/MetroidPrime/Enemies/CIngSpotData.hpp`, 0x60, DOL ctor) and
+  `CIngSpotPathFindNavigation` (0x10): both modules embed them [proven].
+- `CMediumIng` (`src/MetroidPrime/Enemies/CMediumIng.cpp:18-60,275-326`): template for the loader
+  shape, the `skTriggers`/`skStates`/`skCodeFuncs` tables and `RELMain` [proven same idiom].
+- `CIngSpaceJumpGuardian` (`CHECK_SIZEOF 0xa38`) and `CIngSpiderballGuardian` (0x998) are
+  separate CPatterned classes, **not** CIng bases or subclasses [proven by their headers]; useful
+  only as references for mini-portal / jump code. CIngSpaceJumpGuardian *calls* Ing.rel's
+  `CIngMiniPortalAttack`/`CIngMiniPortalInfo` ctors (currently reach stubs).
+- `CCollisionTracker` (`include/MetroidPrime/Enemies/CCollisionTracker.hpp`, 0x1e0, GeomBlobV2
+  host body): Ing's `fn_29_4830` constructs one through GeomBlobV2 [proven]; the host CIng can
+  call its ctor (`tools/scope_module.py` keeps symbols referenced outside a module global
+  [probable, by its docstring]).
+- `SLdrIng.hpp/.inc`, `SLdrMinorIng.hpp/.inc`; loader proxies `RelProxy_LoadIngs`
+  (`src/MetroidPrime/Enemies/SIng_FuncPtrs.cpp`, 'INGS') and `RelProxy_LoadMinorIng`
+  (`SMinorIng_FuncPtrs.cpp`, 'MNNG'), both null-guarded under TARGET_PC; `SIng_FuncPtrs` /
+  `SMinorIng_FuncPtrs` in `include/MetroidPrime/ScriptLoaderRel.hpp:315,625`.
+
+**Gaps (file : symbol)**
+- `tools/modules_port.txt:13,16` - Ing / MinorIng map to `src/MetroidPrime/PortModuleStubs.cpp`.
+- `include/MetroidPrime/CEntityInfo.hpp` - no `kET_Ing` (116) / `kET_MinorIng` (147).
+- `src/MetroidPrime/TypesMatch.cpp:324,355,589,642` - placeholder comments for both.
+- No `include/MetroidPrime/Enemies/CIng.hpp` / `CMinorIng.hpp`; no CIngData / CMinorIngData.
+- `include/MetroidPrime/Enemies/CIngMiniPortalAttack.hpp` - layout is a `mUnported` byte array;
+  `CIngMiniPortalInfo` fields guessed.
+- `src/MetroidPrime/PortLinkStubs.cpp:223-229` - reach stubs `reachstub_r12`/`r13` for the
+  CIngMiniPortalAttack / CIngMiniPortalInfo ctors: delete when Ing's real ones land.
+- No `CIngExitHostEffect` declaration anywhere.
+
+---
+
+## D. Implementation order
+
+1. **MinorIng first, as a passive actor** (smallest milestone, 14 areas): `CMinorIng.hpp`
+   (0xd40 GC, `sizeof` on host), `CMinorIngData`, loader `fn_44_110`, ctor members of B, empty FSM
+   (Idle only), `kET_MinorIng` + `TypesMatch`, a `PortCMinorIng.cpp` line in
+   `tools/modules_port.txt`. Done when an area such as 3bfa3eff 13 loads with the actor present
+   and no fault.
+2. **MinorIng FSM**: the 34 triggers + 20 states/code functions, starting with Idle / Patrol /
+   PathFind / ProjectileAttack / Dead.
+3. **CIng passive**: `CIngData` + sub-structs, loader `fn_29_130`, ctor `fn_29_D540`, Start +
+   WaitForFSMTransition + Dead only; `kET_Ing`; registration. Done when 3bfa3eff 34 loads.
+4. **CIngMiniPortalInfo / CIngMiniPortalAttack** real bodies (`11E8C`, `12100`, `11840`), then
+   delete the reach stubs - also unblocks the Space Jump Guardian's mini portals.
+5. **CIng FSM** in groups: movement (PathFind, Patrol, IngSpotPathFind...), form changes
+   (BecomeCorporeal / IngSpot / BodyProjectile, `CCollisionTracker`), attacks (ArmSwipe,
+   GrappleBall, MiniPortalAttack, SuckEnergy), then ExitHost with `CIngExitHostEffect`.
+
+## Open questions (verify first)
+
+1. `data_C60` (0x5e8, ctor `1105C`) is `CIngExitHostEffect` - compare its ctor's parameter use
+   with the Wii export signature.
+2. `facePlateModel` is unused by Ing's loader and ctor - confirm no later read via `SLdrIng`.
+3. Ing's dependency on GeomBlobV2's `CCollisionTracker` (`fn_29_4830` -> `fn_25_4290`) and that
+   the host module link keeps that symbol global.
+4. CIng vtable slot roles (`C654`, `C814`, `C9A4`) and the arm segment-name strings.
+5. MinorIng's state / code-function split and the `22B0` entry.
