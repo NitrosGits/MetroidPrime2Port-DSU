@@ -39,6 +39,18 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#if defined(__ANDROID__)
+// SDL owns the app's private directories on Android, and the port's own three are resolved
+// beneath them here, so the entry needs SDL's headers on Android. The include directory is
+// attached to this target in CMakeLists.txt, in the AURORA_SDL3_TARGET block, and nothing
+// outside this `#if` includes SDL.
+#include <SDL3/SDL.h>
+#include <atomic>
+#include <cerrno>
+#include <fstream>
+#include <thread>
+#include <sys/ioctl.h>
+#endif
 
 #include "Kyoto/Alloc/CMemorySys.hpp"
 
@@ -84,6 +96,204 @@ void ReportNoDisc(const char* argv0) {
                "  or set MP2_DISC, or place the image next to the executable.\n",
                argv0 != nullptr ? argv0 : "metroid_prime2_port");
 }
+
+// The three directories the port needs: where the game's user data goes, where its cache
+// goes, and which disc image to mount. On the desktop all three come from the environment
+// (MP2_USER_PATH / MP2_CACHE_PATH / MP2_DISC, or an image beside the executable); an
+// installed app has no environment to set, so `ResolveAndroidPaths` fills them in instead
+// and the environment only wins over that when it is actually set.
+struct PortPaths {
+  std::string user;
+  std::string cache;
+  std::string disc;
+};
+
+// An environment variable if it is set and non-empty, otherwise the value resolved for this
+// platform (empty on the desktop, where there is nothing to resolve).
+const char* EnvOrFallback(const char* name, const std::string& fallback) {
+  const char* value = std::getenv(name);
+  if (value != nullptr && value[0] != '\0') {
+    return value;
+  }
+  return fallback.empty() ? nullptr : fallback.c_str();
+}
+
+#if defined(__ANDROID__)
+
+// ---------------------------------------------------------------------------
+// Android: fd 1/2 to logcat, and the port's directories from SDL.
+// ---------------------------------------------------------------------------
+// Android gives an app no console: fd 1 and fd 2 go nowhere, so every std::fprintf the
+// port makes - and the "no disc" message that says where a run stopped - is discarded, and
+// a boot that stops at the disc check reads exactly like one that never started. Both
+// descriptors are pointed at a pipe here and a thread turns the bytes back into logcat
+// lines. This is the small version of ../MetroidPrimePort's PortLog: lines, one tag,
+// nothing else (no file, no buffering, no per-frame state). It runs before anything else in
+// the entry, so Aurora's own lines arrive too.
+constexpr size_t kMaxPendingLine = 8192;
+
+int gLogPipeRead = -1;
+std::atomic<bool> gLogPumpIdle{true};
+
+void PortLogLine(const std::string& line) {
+  // A whole line at a time, `%.*s` rather than a format string the writer chose.
+  __android_log_print(ANDROID_LOG_INFO, "mp2port", "%.*s", static_cast<int>(line.size()),
+                      line.c_str());
+}
+
+void PortLogPump() {
+  std::string pending;
+  char buffer[4096];
+  for (;;) {
+    const ssize_t count = ::read(gLogPipeRead, buffer, sizeof(buffer));
+    if (count == 0) {
+      break; // the write end is gone: the process is going down
+    }
+    if (count < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    gLogPumpIdle.store(false);
+    pending.append(buffer, static_cast<size_t>(count));
+    size_t start = 0;
+    for (;;) {
+      const size_t newline = pending.find('\n', start);
+      if (newline == std::string::npos) {
+        break;
+      }
+      PortLogLine(pending.substr(start, newline - start));
+      start = newline + 1;
+    }
+    pending.erase(0, start);
+    // One line is logged as it arrives: a writer that never sends a newline must not make
+    // this grow without bound.
+    if (pending.size() > kMaxPendingLine) {
+      PortLogLine(pending);
+      pending.clear();
+    }
+    gLogPumpIdle.store(true);
+  }
+  // The pipe is closed and this thread is going away with it: a last line without its
+  // newline is still worth logging.
+  if (!pending.empty()) {
+    PortLogLine(pending);
+  }
+}
+
+void PortLogBegin() {
+  int descriptors[2];
+  if (::pipe(descriptors) != 0) {
+    return; // no log; a crash still leaves a tombstone
+  }
+  gLogPipeRead = descriptors[0];
+  // What the C library has already buffered belongs in the log rather than in the pipe's
+  // future, so both streams are flushed before the descriptors move.
+  std::fflush(stdout);
+  std::fflush(stderr);
+  if (::dup2(descriptors[1], STDOUT_FILENO) < 0 || ::dup2(descriptors[1], STDERR_FILENO) < 0) {
+    ::close(descriptors[0]);
+    ::close(descriptors[1]);
+    gLogPipeRead = -1;
+    return;
+  }
+  ::close(descriptors[1]); // file descriptors 1 and 2 are the writers now
+  // stderr unbuffered and stdout line-buffered even when neither is a terminal: a partial
+  // line on an abort()ing run is the line worth having.
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  std::setvbuf(stderr, nullptr, _IONBF, 0);
+  std::thread(PortLogPump).detach();
+}
+
+// Called on every way out of the entry. A pipe cannot be asked how much is still in it, so
+// the queue is polled until it is empty and the pump is between reads; bounded, because a
+// log line is not worth a hang.
+void PortLogDrain() {
+  if (gLogPipeRead < 0) {
+    return;
+  }
+  for (int attempt = 0; attempt < 100; ++attempt) {
+    int queued = 0;
+    if (::ioctl(gLogPipeRead, FIONREAD, &queued) == 0 && queued == 0 && gLogPumpIdle.load()) {
+      return;
+    }
+    ::usleep(2000);
+  }
+}
+
+// The app's own directories, all three beneath SDL's preference directory - which on Android
+// *is* the app's private files directory - as user/, cache/ and disc.iso. That is the shape
+// ../MetroidPrimePort settled on (port_paths.h); the difference here is that nothing has
+// been migrated yet, so there is only one layout. A `port_paths.txt` beside them overrides
+// the three (`user=`, `cache=`, `disc=`), which a debugging push can use to move them, or to
+// point at a disc copied into app storage; the Java side writes that file, and the file
+// picker that will fill it in is the next milestone. SDL is already up when this runs: the
+// activity's context is what SDL_GetPrefPath reads, and Aurora itself falls back to the same
+// call for its user and cache directories.
+PortPaths ResolveAndroidPaths() {
+  PortPaths paths;
+  char* preference = SDL_GetPrefPath(nullptr, kAppName);
+  if (preference == nullptr) {
+    std::fprintf(stderr,
+                 "metroid_prime2_port: no SDL preference directory; set MP2_USER_PATH, "
+                 "MP2_CACHE_PATH and MP2_DISC\n");
+    return paths;
+  }
+  const std::string base = preference;
+  SDL_free(preference);
+
+  paths.user = base + "user";
+  paths.cache = base + "cache";
+  paths.disc = base + "disc.iso";
+
+  std::ifstream overrides(base + "port_paths.txt");
+  std::string line;
+  while (std::getline(overrides, line)) {
+    const size_t first = line.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos || line[first] == '#') {
+      continue;
+    }
+    const size_t last = line.find_last_not_of(" \t\r\n");
+    const std::string entry = line.substr(first, last - first + 1);
+    const size_t equals = entry.find('=');
+    if (equals == std::string::npos) {
+      continue;
+    }
+    const std::string value = entry.substr(equals + 1);
+    if (value.empty()) {
+      continue;
+    }
+    const std::string key = entry.substr(0, equals);
+    if (key == "user") {
+      paths.user = value;
+    } else if (key == "cache") {
+      paths.cache = value;
+    } else if (key == "disc") {
+      paths.disc = value;
+    }
+  }
+
+  // Created before the game can ask for them, so a first run has somewhere to write.
+  std::error_code error;
+  std::filesystem::create_directories(paths.user, error);
+  error.clear();
+  std::filesystem::create_directories(paths.cache, error);
+
+  std::printf("metroid_prime2_port: paths chosen: user=%s cache=%s disc=%s\n", paths.user.c_str(),
+              paths.cache.c_str(), paths.disc.c_str());
+  return paths;
+}
+
+#else
+
+// The desktop keeps its console and its environment: fd 1 and fd 2 already arrive where the
+// harness reads them, and MP2_USER_PATH / MP2_CACHE_PATH / MP2_DISC are set by the caller,
+// so neither of these has anything to do.
+void PortLogBegin() {}
+void PortLogDrain() {}
+
+#endif
 
 } // namespace
 
@@ -137,6 +347,10 @@ static void PortFaultHandler(int sig) {
 #endif
 
 int main(int argc, char** argv) {
+  // Android first, before anything can print: from here on fd 1 and fd 2 reach logcat, which
+  // is the only place a device run leaves a record. A no-op on the desktop.
+  PortLogBegin();
+
 #if defined(__ANDROID__)
   // `signal(2)` never hands the handler the fault address, so Android installs the
   // handler that can take one. Nothing else about the registration differs.
@@ -155,12 +369,20 @@ int main(int argc, char** argv) {
   std::signal(SIGFPE, PortFaultHandler);
 #endif
 
+  // Android has no environment to set, so the app's own directories stand in where the
+  // variables are unset (and print which they are); on the desktop this stays empty and
+  // everything below resolves exactly as it did before.
+  PortPaths appPaths;
+#if defined(__ANDROID__)
+  appPaths = ResolveAndroidPaths();
+#endif
+
   // 16:9 at the game's logical height. The render mode is widened to match when
   // the widescreen work lands; Aurora upscales to the window either way.
   const AuroraConfig config = {
       .appName = kAppName,
-      .userPath = std::getenv("MP2_USER_PATH"),
-      .cachePath = std::getenv("MP2_CACHE_PATH"),
+      .userPath = EnvOrFallback("MP2_USER_PATH", appPaths.user),
+      .cachePath = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache),
       .resourcesPath = nullptr,
       .desiredBackend = BACKEND_AUTO,
       .vsync = false,
@@ -176,17 +398,20 @@ int main(int argc, char** argv) {
   // so a mismatched window shape letterboxes instead of stretching.
   AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);
 
-  const std::string discImage = port::entry::ResolveDiscPath(
-      argc, argv, std::getenv("MP2_DISC"), ExecutableDir(argc > 0 ? argv[0] : nullptr));
+  const std::string discImage =
+      port::entry::ResolveDiscPath(argc, argv, EnvOrFallback("MP2_DISC", appPaths.disc),
+                                   ExecutableDir(argc > 0 ? argv[0] : nullptr));
   if (discImage.empty()) {
     ReportNoDisc(argc > 0 ? argv[0] : nullptr);
     aurora_shutdown();
+    PortLogDrain();
     return 1;
   }
 
   if (!aurora_dvd_open(discImage.c_str())) {
     std::fprintf(stderr, "metroid_prime2_port: failed to open disc image: %s\n", discImage.c_str());
     aurora_shutdown();
+    PortLogDrain();
     return 1;
   }
 
@@ -197,6 +422,7 @@ int main(int argc, char** argv) {
                  "(USA) (v1.00), G2ME01 revision 0.\n");
     aurora_dvd_close();
     aurora_shutdown();
+    PortLogDrain();
     return 1;
   }
   std::printf("metroid_prime2_port: disc mounted: %s\n", discImage.c_str());
@@ -278,5 +504,8 @@ int main(int argc, char** argv) {
 
   aurora_dvd_close();
   aurora_shutdown();
+  // The game has returned; nothing else will write to fd 1 or 2, so the last lines are
+  // handed to logcat before this thread ends.
+  PortLogDrain();
   return 0;
 }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Milestone M1 of docs/ANDROID.md: the smallest app that launches this port on a phone.
+     No storage permissions, no file picker, no icon: the disc, the user data and the cache
+     all live in the app's private files directory for now, which needs no permission, and
+     the picker that fills in port_paths.txt is M2. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- SDL's Android haptics call Vibrator.cancel() unconditionally, which throws without
+         this and poisons the next JNI call. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <application
+        android:allowBackup="false"
+        android:appCategory="game"
+        android:isGame="true"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+        <activity
+            android:name="org.metroidprime2.port.MetroidPrime2Activity"
+            android:alwaysRetainTaskState="true"
+            android:configChanges="density|fontScale|fontWeightAdjustment|grammaticalGender|keyboard|keyboardHidden|layoutDirection|locale|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+            android:exported="true"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="sensorLandscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

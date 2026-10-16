@@ -160,9 +160,74 @@ The probe project is not kept in the tree (the durable part is
 **M1 - minimal app that boots.** New `android/` gradle project modelled on MP1's (app module,
 manifest, `MetroidPrimeActivity` + Aurora surface, `jniLibs`, debug signing), with paths for the
 disc/user/cache dirs (fixed app-internal paths + a `data_folder.txt`-style marker) and logcat
-mirroring of the port's `[warp]`/`[ids]`/`[harness]` lines.
+mirroring of the port's `[warp]`/`[ids]`/`[harness]` lines. **Done - see the M1 detail below.**
 *Verified when*: `adb install` + launch reaches the game's first update on the phone with a
 Bluetooth pad, and `adb logcat` shows the same boot lines the desktop log shows.
+
+### M1 detail: what landed (2026-10-17)
+
+`android/` holds the Gradle project (AGP 8.5.2, `org.metroidprime2.port`,
+`org.metroidprime2.port/.MetroidPrime2Activity`, arm64-v8a, `minSdk 28`/`targetSdk 34`, no
+permissions, debug signing), driven by `tools/android_apk.sh` (SDK/NDK/Gradle resolution like
+MP1's, `-PmpDebugSigning` for a sideload). Java is SDL's own `org/libsdl/app/**` (copied from the
+version-matched SDL 3.4.10 source, which is why they are tracked) plus `AuroraSurface` and a
+75-line activity: it names `metroid_prime2_port` in `getLibraries()`, and writes
+`files/port_paths.txt` (`user=`, `cache=`, `disc=`) *before* `super.onCreate` loads the library, so
+a pushed copy wins and the picker has somewhere to write.
+
+Native side, both in `platform/main.cpp` and both `#if defined(__ANDROID__)`:
+
+- **The log.** Android discards fd 1 and 2, so the entry repoints them at a pipe and a detached
+  thread turns the bytes back into `mp2port` logcat lines (unbuffered stderr, line-buffered
+  stdout, drained on all four exits). Without it a run that stops at the disc is indistinguishable
+  from one that never started - which is what the first stub-APK run looked like.
+- **The directories.** `MP2_USER_PATH`/`MP2_CACHE_PATH`/`MP2_DISC` still win when set, and the
+  env-less app falls back to `SDL_GetPrefPath(nullptr, "Metroid Prime 2: Echoes")` - on Android
+  the app's own files directory - with `user/`, `cache/` and `disc.iso` beneath it, overridden by
+  `port_paths.txt`. It prints the three it chose, the way MP1 prints its memory-card path.
+
+**nod is now the real one.** `tools/android_apk.sh :app:assembleDebug -PandroidNodStub=false`
+builds it (Corrosion + the vendored Rust toolchain: this tree's `build/android-rust`, falling back
+to `../MetroidPrimePort/build/android-rust`, `CARGO_NET_OFFLINE=true`, the offline
+`aurora_nod`/`corrosion` FetchContent caches). Verified on the packaged, stripped library:
+19 `T nod_*` symbols including `nod_disc_open_stream`, 522 undefined (all platform), zero
+`nod_stub.c` strings; the stub build has 9 and 3.
+
+**On the phone** (Xiaomi 25102PCBEG, Android 16/arm64, the user's own disc pushed to
+`files/disc.iso` after `run-as`; 1.46 GB in ~25 s at 55 MB/s): the run reaches
+
+    mp2port : metroid_prime2_port: disc mounted: /data/user/0/org.metroidprime2.port/files/disc.iso
+    mp2port : metroid_prime2_port: init compiled module WallCrawler … (86 modules)
+    mp2port : [info] [aurora::card] Loaded GC Card Image: …/files/user/USA/Card A
+    mp2port : Initializing renderer...   then   Low latency audio enabled
+    (AAudio 44100/2ch fed for the whole 35 s; the process is alive at the end, no ANR)
+
+So the app installs, loads the library, mounts the user's disc, accepts `G2ME01`, brings Aurora and
+the renderer up and runs the game loop. Not proven: the front end *visually* - the phone was
+locked, so `screencap` returned the lock screen - and "reaches the game's first update" in the
+strict sense, because the port's harness counters are driven by environment variables an installed
+app cannot set; the env bridge (below) is what will put `[ids] frame …` in a device log.
+
+Known issues, in order of how likely they are to be hit:
+
+- **One SIGABRT at startup with the screen locked**: `FORTIFY: pthread_mutex_lock called on a
+  destroyed mutex`, signal 6, `SI_QUEUE`, through `android::Surface::hook_perform` →
+  `libvulkan CreateAndroidSurfaceKHR` → Dawn `CreateVulkanSurface` → `SwapChain::Initialize` →
+  `aurora::webgpu::initialize` → `aurora_main` ← `SDLActivity.nativeRunMain`. That is Dawn
+  configuring a surface from an `ANativeWindow` SDL has already destroyed, i.e. an activity
+  lifecycle race, not a game bug; three relaunches with the same locked screen did not reproduce
+  it. Reported here so the next device session does not re-discover it.
+- **The debug variant cannot be built at `-O0`**: musyx's C99 `inline u_seqPlaySong`
+  (`extern/musyx-port/src/musyx/runtime/s_data.c:524`, called at :597) has no out-of-line copy
+  there, so the link fails. `android/app/build.gradle` builds the debug variant's native code as
+  RelWithDebInfo instead of touching vendored musyx; `static inline` there is the real fix, for
+  whoever owns that snapshot.
+- **A locked phone is an awkward test target**: `adb exec-out screencap` returns the lock screen,
+  so a device session needs the phone unlocked to prove anything visually.
+
+Next: **M2** - the SAF picker, plus an environment bridge so a device run can set the harness
+variables (`MP2_DEBUG_IDS`, `MP2_FRAMES`, `MP2_INPUT`) from `port_paths.txt`; that is what makes
+"the game reached its first update" provable on the phone instead of inferred from audio.
 
 **M2 - SAF picker.** Port MP1's picker + copy-to-`<user>/disc.iso` (`main.cpp:513-560` there), with
 MP2's game-id check (this port expects `G2ME01`).

@@ -50,18 +50,23 @@ and never `A` - the gotcha above says what each does to a run.
 lock-on handoff, morph ball and gyro input; and the empty-`optional_object` read audit
 (`CGunWeapon::IsChargeAnimOver` first).
 
-**Android APK** (asked for 2026-10-17, same session). **M0 done**; detail, evidence and the phone
-measurement in `docs/ANDROID.md` (its section 4, "M0 detail"). In short: `tools/android_probe.sh`
-cross-builds arm64 into `build/android-aarch64/libmetroid_prime2_port.so` (`AArch64`, `DYN`,
-exporting `SDL_main`/`aurora_main`; 465 undefined symbols, all platform ones), the bionic fixes are
+**Android APK** (asked for 2026-10-17, same session). **M0 and M1 done**; detail and evidence in
+`docs/ANDROID.md` (section 4, the "M0 detail" and "M1 detail" subsections). In short: M0 is
+`tools/android_probe.sh`, which cross-builds arm64 into
+`build/android-aarch64/libmetroid_prime2_port.so` (`AArch64`/`DYN`, exporting
+`SDL_main`/`aurora_main`, every undefined symbol a platform one) with the bionic fixes in
 `platform/main.cpp` (no `execinfo`; logcat + tombstones; explicit `<aurora/main.h>`) and
-`platform/rel.cpp` (arena fallback via a `/proc/self/maps` gap scan below 4 GiB), and the one gate
-- the REL arena - was measured **on the phone**: 32 MiB at `0x12000000`, `0x81000000` honoured
-exactly, no `MAP_32BIT`. New: `tests/port_arena_placement.cpp` + its ctest target
-(`-DMP_ARENA_FORCE_PORTABLE` exercises the Android path on Linux), `MP_ANDROID_NOD_STUB` (the M0
-library links the nod stub, so it cannot read a disc). Next: M1 - a Gradle/Java app that boots on
-the device, and the real nod cross-build (Rust target already installed in
-`../MetroidPrimePort/build/android-rust`).
+`platform/rel.cpp` (arena fallback = a `/proc/self/maps` gap scan below 4 GiB), and the arena gate
+measured **on the phone** (32 MiB at `0x12000000`, `0x81000000` honoured exactly, no `MAP_32BIT`).
+M1 is `android/` + `tools/android_apk.sh`: `org.metroidprime2.port` installs, loads that library
+with the **real Rust nod**, mounts the user's own disc on the phone, initialises all 86 modules,
+loads the card, brings the renderer up and runs the loop; fd 1/2 are mirrored to logcat and the
+directories come from `files/port_paths.txt`. New tests: `port_arena_placement_tests`
+(`-DMP_ARENA_FORCE_PORTABLE` runs the Android arena path on Linux). Known Android issues, both in
+the doc: a one-off Dawn Vulkan-surface SIGABRT when launched with the screen locked, and the debug
+variant's `-O0` musyx inline link error (worked around in `android/app/build.gradle`). Unproven on
+device: the front end visually (the phone was locked) and the strict "first update", which needs
+the harness env bridge (planned with M2). Next: **M2**, the SAF disc picker.
 
 **Next steps, in order**: (1) the update stall, with the repro above and the two candidates named;
 (2) the 53 -> 56 freeze if it survives (1); (3) the hazards and the layer areas of `1baa96c2` area 11

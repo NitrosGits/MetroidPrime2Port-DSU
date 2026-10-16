@@ -372,6 +372,13 @@ if(AURORA_SDL3_TARGET)
     mp_signed_char(mp_port_audio)
     # aurora::core carries ImGui's include directory, which the F1 overlay builds against.
     target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET} aurora::core)
+    # platform/main.cpp turns fd 1 and fd 2 into logcat lines and resolves its directories
+    # through SDL_GetPrefPath on Android, so the entry object needs SDL3's headers there.
+    # AURORA_SDL3_TARGET only exists once Aurora has been added, which is why this is here
+    # rather than with the target itself; the desktop path includes no SDL header and is
+    # unaffected by the extra include directory.
+    target_include_directories(mp_port_entry PRIVATE
+        $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
 else()
     message(FATAL_ERROR
         "platform/ai_dma.cpp needs SDL3, but Aurora provided no AURORA_SDL3_TARGET. "
