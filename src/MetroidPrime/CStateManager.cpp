@@ -3944,12 +3944,27 @@ CAssetId ResolveWarpAsset(const char* text) {
 } // namespace
 
 void CStateManager::PortWarpTick() {
-  if (!PortWarp::Pending()) {
-    return;
-  }
   CWorld* world = World();
   if (world == nullptr) {
-    // No world yet: leave the request alone; it is served as soon as one is there.
+    // No world yet: leave any request alone; it is served as soon as one is there.
+    return;
+  }
+
+  // One line per world, so a sweep can see which area slots are real (a slot with an invalid MREA
+  // is not an area the game can travel to) and so a test can wait for the game world without
+  // needing a pending request: "the front end's world, then mine".
+  static CAssetId sLoggedWorld = kInvalidAssetId;
+  if (sLoggedWorld != gpGameState->CurrentWorldAssetId()) {
+    sLoggedWorld = gpGameState->CurrentWorldAssetId();
+    std::fprintf(stderr, "[warp] world %08x areas:", sLoggedWorld);
+    for (int i = 0; i < world->IGetAreaCount(); ++i) {
+      const CGameArea* a = world->Area(TAreaId(i));
+      std::fprintf(stderr, " %d=%08x", i, a != nullptr ? a->GetAreaAssetId() : 0);
+    }
+    std::fprintf(stderr, "\n");
+  }
+
+  if (!PortWarp::Pending()) {
     return;
   }
   // The front end has its own world (and its own player preview), whose area ids have nothing to
@@ -3963,19 +3978,6 @@ void CStateManager::PortWarpTick() {
   PortWarp::SRequest request;
   if (!PortWarp::Consume(request)) {
     return;
-  }
-
-  // One line per world, so a sweep can see which area slots are real: a slot with an invalid
-  // MREA is not an area the game can travel to, and the map world does not cover it either.
-  static CAssetId sLoggedWorld = kInvalidAssetId;
-  if (sLoggedWorld != gpGameState->CurrentWorldAssetId()) {
-    sLoggedWorld = gpGameState->CurrentWorldAssetId();
-    std::fprintf(stderr, "[warp] world %08x areas:", sLoggedWorld);
-    for (int i = 0; i < world->IGetAreaCount(); ++i) {
-      const CGameArea* a = world->Area(TAreaId(i));
-      std::fprintf(stderr, " %d=%08x", i, a != nullptr ? a->GetAreaAssetId() : 0);
-    }
-    std::fprintf(stderr, "\n");
   }
 
   switch (request.kind) {
