@@ -5,6 +5,10 @@
 #include "WorldFormat/CCollisionPrimitiveData.hpp"
 #include <string.h>
 
+#ifdef TARGET_PC
+#include <cstdio>
+#endif
+
 namespace {
 // Reconstructed command names for the native halfword stream.
 enum ECacheCommand {
@@ -20,6 +24,21 @@ enum ECacheCommand {
 } // namespace
 
 void CCollisionCacheWriter::FinishLeaf() {
+#ifdef TARGET_PC
+  // The writer's cursors are raw pointers into the cache's vector: if any growth path ever moves
+  // that buffer without re-basing them, FinishLeaf dereferences freed memory (it killed the
+  // destructor while building a big area's cache). Say so instead of crashing blind.
+  if (mTriangleCount != 0) {
+    const ushort* begin = mCache.mData.data();
+    const ushort* end = begin + mCache.mData.capacity();
+    if (mTriangleCount < begin || mTriangleCount >= end) {
+      std::fprintf(stderr, "[cache] stale cursor: triangle=%p data=[%p,%p) size=%d capacity=%d\n",
+                   static_cast< const void* >(mTriangleCount), static_cast< const void* >(begin),
+                   static_cast< const void* >(end), mCache.mData.size(),
+                   mCache.mData.capacity());
+    }
+  }
+#endif
   if (mTriangleCount != 0 && *mTriangleCount == 0) {
     mTriangleCount = 0;
     mLeafBounds = 0;
@@ -283,7 +302,14 @@ void CCollisionCache::Reset() {
   mData = rstl::vector< ushort, rstl::locked_cache_allocator >(
       rstl::locked_cache_allocator(x30_unknown == 2 ? 2 : 0));
   mMetadataWords = 0;
+#ifdef TARGET_PC
+  // Port: a build reserves a fresh block whenever it needs more room, and the writer keeps raw
+  // cursors into it, so give the cache far more than any area's packed stream needs and let the
+  // retail code's assumption (a buffer that does not move) hold.
+  mData.reserve(x30_unknown == 2 ? 0x400 : 0x40000);
+#else
   mData.reserve(x30_unknown == 2 ? 0x400 : x30_unknown == 0 ? 0x1000 : 0x800);
+#endif
   mGeometryRevision = CollisionPrimitiveDataCache::gGeometryRevision;
 }
 
@@ -298,7 +324,14 @@ CCollisionCache::CCollisionCache(const CAABox& bounds, int x2c, int x30, ushort 
 , x30_unknown(x30)
 , mOwnerId(x34)
 , mGeometryRevision(CollisionPrimitiveDataCache::gGeometryRevision) {
+#ifdef TARGET_PC
+  // Port: a build reserves a fresh block whenever it needs more room, and the writer keeps raw
+  // cursors into it, so give the cache far more than any area's packed stream needs and let the
+  // retail code's assumption (a buffer that does not move) hold.
+  mData.reserve(x30_unknown == 2 ? 0x400 : 0x40000);
+#else
   mData.reserve(x30_unknown == 2 ? 0x400 : x30_unknown == 0 ? 0x1000 : 0x800);
+#endif
 }
 
 CCollisionCacheIterator::CCollisionCacheIterator() {

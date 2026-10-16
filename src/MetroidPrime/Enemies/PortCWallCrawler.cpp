@@ -1,47 +1,27 @@
-// Port: CWallCrawler, the base class of the wall-crawling enemies (Parasite, PillBug, Kralee,
-// OctapedeSegment, WallWalker). Upstream has the header but no implementation, and the class's
-// code lives in the WallCrawler REL module, which is PowerPC only, so this file is the port's
-// host body for that module.
-//
-// Everything here is written for *behaviour*: the class's real shape is only known from the
-// header (the members the derived classes' constructors need) and from the REL's disassembly,
-// which has no names for anything but nine tiny accessors. So the file is split in two:
-//
-//   * what the header and the disassembly pin down - the constructor's member mapping, the
-//     plane helpers (plain vector maths), the module's entry points - is implemented properly;
-//   * the AI (Think, the aligning and waypoint machinery, the constraint state machine) is a
-//     stand-in that forwards to CPatterned where that is meaningful and otherwise does nothing,
-//     and says so once per method through `StandIn()`.
-//
-// The stand-ins keep the game running in areas whose module list needs WallCrawler.rel - which
-// used to stop the port outright (`module prolog: RELProd/WallCrawler.rel is not compiled into
-// the port`) - with those enemies inert instead of absent. Replacing a stand-in with the real
-// body is a matter of reading its disassembly in
-// ../MetroidPrime2Port/build/G2ME01/WallCrawler/asm and the function sizes in
-// ../MetroidPrime2Port/config/G2ME01/rels/WallCrawler/symbols.txt:
-//
-//   fn_83_2374  the constructor (0x310)      - from the 22-argument call in the derived ctors
-//   fn_83_208C  the destructor (0x70)
-//   fn_83_1098  PreThink (0x204)             - vtable slot 4
-//   fn_83_580   Think (0x828)                - vtable slot 5
-//   fn_83_1FD0  AcceptScriptMsg (0xBC)       - vtable slot 6
-//   fn_83_EE4   Render (0x20)                - vtable slot 11
-//   fn_83_1310  (0x6B8) and fn_83_1B50 (0x164) - called from the derived classes' AI
-//   fn_83_1EB8  (0x4C, called 13 times by CPillBug) - a small hot helper
-
 #include "MetroidPrime/Enemies/CWallCrawler.hpp"
 
 #include "Collision/CCollidableSphere.hpp"
+#include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CPlane.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Math/CSphere.hpp"
+#include "Kyoto/Math/CloseEnough.hpp"
+#include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
+#include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TGameTypes.hpp"
+#include "MetroidPrime/TCastTo.hpp"
+#include "WorldFormat/CAreaOctTree.hpp"
+#include "WorldFormat/CMetroidAreaCollider.hpp"
 
 #include <cstdio>
 
 namespace {
 
-// One line per stand-in, so a run's log lists exactly which parts of the class are still a
-// shell rather than pretending the enemy is complete.
+// Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
   static const char* sSeen[32] = {};
   static int sCount = 0;
@@ -58,6 +38,44 @@ void StandIn(const char* what) {
 
 } // namespace
 
+// The behaviour below is adapted from the Prime port's `CWallWalker` (MetroidPrimePort,
+// src/MetroidPrime/Enemies/CWallWalker.cpp), which is the same class one game earlier: same
+// members, same body-controller calls, same waypoint loop. Echoes' REL function sizes line up
+// with it (Render 0x20 = a bare CPatterned::Render, AlignToFloor 0x6B8, Think 0x828), so this is
+// the port's behaviour for those functions rather than a fresh reading of the disassembly.
+
+namespace {
+
+// Shared by the floor search below.
+bool PointOnSurface(const CCollisionSurface& surface, const CVector3f& point) {
+  const CVector3f normal = surface.GetNormal();
+  const CVector3f projected = point - CVector3f::Dot(point - surface.GetVert(0), normal) * normal;
+  for (int i = 0; i < 3; ++i) {
+    const CVector3f edge = surface.GetVert((i + 2) % 3) - surface.GetVert(i);
+    const CVector3f delta = projected - surface.GetVert(i);
+    if (CVector3f::Dot(normal, CVector3f::Cross(delta, edge)) < 0.f) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Turns an actor's up vector towards a surface normal, clamped to an angular rate.
+void OrientToSurfaceNormal(CWallCrawler& actor, const CVector3f& normal, float clampAngle) {
+  const CVector3f& up = actor.GetTransform().GetUp();
+  const float dot = CVector3f::Dot(up, normal);
+  if (close_enough(dot, 1.f) || dot < -0.999f) {
+    return;
+  }
+  const CQuaternion rotation = CQuaternion::ShortestRotationArcClamped(
+      actor.GetTransform().GetUp(), normal, CRelAngle::FromRadians(clampAngle));
+  const CQuaternion local(rotation.GetScalar(),
+                          actor.GetTransform().TransposeRotate(rotation.GetVector()));
+  actor.SetRotation((CQuaternion::FromMatrix(actor.GetTransform()) * local).BuildNormalized());
+}
+
+} // namespace
+
 CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::string& name,
                            EFlavorType flavor, CEntityInfo& info, const CTransform4f& xf,
                            const CModelData& mData, const CPatternedInfo& pInfo,
@@ -68,24 +86,25 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
                            float f2, float f3, float f4, float f5, float f6)
 : CPatterned(character, uid, name, flavor, info, xf, mData, pInfo, moveType, colType, bodyType,
              actParms)
-, mColSphere(CSphere(xf.GetTranslation(), sphereRadius), CMaterialList(kMT_Character))
+, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff)
+, mColSphere(CSphere(CVector3f::Zero(), sphereRadius), GetMaterialList())
 , mCollisionCloseMargin(collisionCloseMargin)
 , mAlignAngVel(alignAngVel)
-, mTumbleAngle(f1)
+, mTumbleAngle(0.f)
 , mPatrolPauseRemTime(0.f)
 , mAdvanceWpRadius(advanceWpRadius)
 , mPlayerObstructionMinDist(playerObstructionMinDist)
-, mBendingHackWeight(f2)
+, mBendingHackWeight(0.f)
 , mType(type)
 , mThinkCounter(0)
 , x834_(0)
 , x838_(CVector3f::Zero())
-, x844_(f3)
-, x848_(f4)
-, x84c_(f5)
-, x850_(f6)
-, x854_(0.f)
-, x858_(0.f)
+, x844_(f1)
+, x848_(f2)
+, x84c_(f3)
+, x850_(f4)
+, x854_(f5)
+, x858_(f6)
 , x85c_(0.f)
 , mAlignToFloor(false)
 , mHasAlignSurface(false)
@@ -95,34 +114,48 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
 , x860_28_(false)
 , x860_29_(false)
 , x860_30_(false)
-, x861_24_(false) {
-  StandIn("CWallCrawler::CWallCrawler");
-}
+, x861_24_(false) {}
 
 CWallCrawler::~CWallCrawler() {}
 
-// Everything below is the stand-in half: the enemies exist, keep their collision and draw
-// through CPatterned, and do not crawl.
-
 void CWallCrawler::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CWallCrawler::PreThink");
   CPatterned::PreThink(dt, mgr);
+  ++mThinkCounter;
+  if (GetActive() && !mPlayerObstructed && mPatrolPauseRemTime <= 0.f && !mDisableMove &&
+      BodyController() != nullptr && close_enough(BodyController()->GetPercentageFrozen(), 0.f) &&
+      mAlignToFloor) {
+    AddMotionState(PredictMotion(dt));
+    ClearForcesAndTorques();
+    if (mHasAlignSurface) {
+      // Hold the enemy at one collision radius above the surface it is stuck to.
+      const CPlane plane = mAlignSurface.GetPlane();
+      const CVector3f position = GetTranslation();
+      const float height = plane.GetHeight(position) - mColSphere.GetSphere().GetRadius() - 0.01f;
+      SetTranslation(CVector3f::Lerp(position, position - height * plane.GetNormal(), 10.f * dt));
+    }
+    MoveCollisionPrimitive(CVector3f::Zero());
+  }
 }
 
 void CWallCrawler::Think(float dt, CStateManager& mgr) {
-  StandIn("CWallCrawler::Think");
   CPatterned::Think(dt, mgr);
+  // The bending hack eases a weight towards 1 while the enemy is tumbling and back to 0 once it
+  // is not; the additive animation it drives is not hooked up (its animation index lives in a
+  // member the header does not name yet).
+  const float speed = GetVelocityWR().Magnitude();
+  if (mTumbleAngle > 0.f) {
+    StandIn("CWallCrawler::Think bending animation");
+    mBendingHackWeight = CMath::Clamp(0.f, mBendingHackWeight + dt * speed / 0.6f, 1.f);
+  } else if (mBendingHackWeight > 0.f) {
+    mBendingHackWeight = CMath::Clamp(0.f, mBendingHackWeight - dt * speed / 1.5f, 1.f);
+  }
 }
 
 void CWallCrawler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CWallCrawler::AcceptScriptMsg");
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
-void CWallCrawler::Render(const CStateManager& mgr) const {
-  StandIn("CWallCrawler::Render");
-  CPatterned::Render(mgr);
-}
+void CWallCrawler::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 rstl::optional_object< CAABox > CWallCrawler::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
@@ -132,35 +165,95 @@ const CCollisionPrimitive* CWallCrawler::GetCollisionPrimitive() const { return 
 
 TUniqueId CWallCrawler::GetNextWaypoint(CStateManager& mgr, const CScriptWaypoint* waypoint,
                                         bool reverse) {
-  StandIn("CWallCrawler::GetNextWaypoint");
-  return kInvalidUniqueId;
+  // `reverse` only matters for the patrol order, which the waypoint itself owns; ask it either
+  // way, as Prime's wall walker does.
+  return waypoint != nullptr ? waypoint->NextWaypoint(mgr) : kInvalidUniqueId;
 }
 
 void CWallCrawler::SetConstraint(CStateManager& mgr, int constraint) {
-  StandIn("CWallCrawler::SetConstraint");
+  x834_ = constraint;
+  if (constraint != 0) {
+    UpdateConstraintPlane(mgr);
+  }
 }
 
 void CWallCrawler::UpdateConstraintPlane(CStateManager& mgr) {
+  // Echoes-only (no Prime counterpart): re-establish the surface the enemy is crawling on by
+  // looking for one under it, which is what the constraint plane is built from. The retail body
+  // (fn_83_148, 0x344) also folds in the patrol/wall logic; this is the align-surface half.
   StandIn("CWallCrawler::UpdateConstraintPlane");
+  AlignToFloor(mgr, mColSphere.GetSphere().GetRadius(), GetTranslation(), 0.f);
 }
 
 bool CWallCrawler::UpdateWPDestination(CStateManager& mgr) {
-  StandIn("CWallCrawler::UpdateWPDestination");
+  CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(GetDestObj()));
+  if (waypoint == nullptr) {
+    return false;
+  }
+  const CVector3f position = waypoint->GetTranslation();
+  const CVector3f delta = position - GetTranslation();
+  if (delta.MagSquared() < mAdvanceWpRadius * mAdvanceWpRadius) {
+    mDestObj = GetNextWaypoint(mgr, waypoint, false);
+    // Echoes' CScriptWaypoint has no pause accessor (its fieldless base is what upstream has);
+    // Prime's wall walker also rests at a waypoint that asks for it, so that is missing here.
+    mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), waypoint->GetUniqueId(), kSM_Arrived));
+    SetDestPos(position);
+    return true;
+  }
+  SetDestPos(position);
   return false;
 }
 
 void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3f& newPos, float dt) {
-  StandIn("CWallCrawler::AlignToFloor");
+  const float margin = radius + mCollisionCloseMargin;
+  const CVector3f extent(margin, margin, margin);
+  CAreaCollisionCache cache(CAABox(newPos - extent, newPos + extent));
+  CGameCollision::BuildAreaCollisionCache(mgr, cache);
+
+  if (mHasAlignSurface) {
+    mHasAlignSurface = PointOnSurface(mAlignSurface, newPos);
+  }
+  if (!mHasAlignSurface || (mThinkCounter & 3) == 0) {
+    float best = margin;
+    bool found = false;
+    for (int i = 0; i < static_cast< int >(cache.GetNumCaches()); ++i) {
+      const CMetroidAreaCollider::COctreeLeafCache& leaf = cache.GetOctreeLeafCache(i);
+      for (int j = 0; j < leaf.GetNumLeaves(); ++j) {
+        const CAreaOctTree::Node& node = leaf.GetLeaf(j);
+        const CAreaOctTree::TriListReference triangles = node.GetTriangleArray();
+        const CAreaOctTree& tree = node.GetOwner();
+        for (int k = 0; k < triangles.GetSize(); ++k) {
+          const CCollisionSurface surface = tree.GetTriangle(triangles.GetAt(k));
+          const float dist =
+              CMath::AbsF(CVector3f::Dot(surface.GetNormal(), newPos) - surface.GetPlane().GetConstant());
+          if (dist < best && PointOnSurface(surface, newPos)) {
+            best = dist;
+            mAlignSurface = surface;
+            found = true;
+          }
+        }
+      }
+    }
+    mHasAlignSurface = found;
+  }
+
+  if (mHasAlignSurface) {
+    OrientToSurfaceNormal(*this, CVector3f(mAlignSurface.GetNormal()), mAlignAngVel * dt);
+    mTumbleAngle = 0.f;
+  } else {
+    const float angularVelocity =
+        GetVelocityWR().Magnitude() / mColSphere.GetSphere().GetRadius();
+    const float angle = angularVelocity * dt;
+    OrientToSurfaceNormal(*this, GetTransform().GetForward(), angle);
+    mTumbleAngle += angle;
+  }
 }
 
 void CWallCrawler::AlignToPlane(const CUnitVector3f& normal, float dt) {
-  StandIn("CWallCrawler::AlignToPlane");
+  OrientToSurfaceNormal(*this, CVector3f(normal), mAlignAngVel * dt);
 }
 
-const CPlane& CWallCrawler::GetConstraintPlane() const {
-  StandIn("CWallCrawler::GetConstraintPlane");
-  return mAlignSurface.GetPlane();
-}
+const CPlane& CWallCrawler::GetConstraintPlane() const { return mAlignSurface.GetPlane(); }
 
 CVector3f CWallCrawler::ProjectVectorToPlane(const CVector3f& vec, const CVector3f& planeDir) {
   return vec - CVector3f::Dot(vec, planeDir) * planeDir;

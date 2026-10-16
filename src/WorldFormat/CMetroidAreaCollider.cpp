@@ -1239,14 +1239,28 @@ CCachedCollisionSurface::CCachedCollisionSurface(const CCollisionSurface& surfac
 
 void CCollisionCacheWriter::AddTriangle(const CCollisionSurface& surface, ushort triangleIndex) {
   ++*mTriangleCount;
+  const int words = sizeof(SCachedCollisionSlot) / sizeof(ushort);
+#ifdef TARGET_PC
+  // Port: make room *before* constructing the payload. Retail could get away with building it
+  // past the end and reserving afterwards, because its reserve never moved the buffer; the host
+  // vector does move it, which both dropped the surface's data and left the writer's cursors
+  // (mLeafCount/mTriangleCount/mLeafBounds) pointing into freed memory - FinishLeaf then crashed
+  // in the destructor while building a big area's collision cache. ReserveWords re-bases them.
+  ReserveWords(words);
+  const int size = mCache.mData.size();
+  new (mCache.mData.data() + size) CCachedCollisionSurface(surface, triangleIndex);
+  // The payload is already constructed; resize would overwrite it with zeros.
+  mCache.mData.mCount = size + words;
+#else
   int size = mCache.mData.size();
   new (mCache.mData.data() + size) CCachedCollisionSurface(surface, triangleIndex);
-  size += sizeof(SCachedCollisionSlot) / sizeof(ushort);
+  size += words;
   if (size > mCache.mData.size()) {
     mCache.mData.reserve(size);
   }
   // The payload is already constructed; resize would overwrite it with zeros.
   mCache.mData.mCount = size;
+#endif
   mLeafBounds->AccumulateBounds(surface.GetVert(0));
   mLeafBounds->AccumulateBounds(surface.GetVert(1));
   mLeafBounds->AccumulateBounds(surface.GetVert(2));
