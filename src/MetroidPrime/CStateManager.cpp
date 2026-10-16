@@ -3768,6 +3768,7 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   PortWarpTick();
   PortWarpSettle();
   PortLayerTick();
+  PortPlaceArrivalTick();
   // MP2_FRAMES: a test run ends itself after so many game updates, so a load test costs seconds
   // instead of a timeout (see platform/include/port_harness.h). The report names where the run got
   // to, which is what a log's last line should say.
@@ -4186,6 +4187,14 @@ void CStateManager::PortWarpToArea(TAreaId aid) {
     std::fprintf(stderr, "[warp] area %d does not exist in this world\n", aid.Value());
     return;
   }
+  if (mPortSpawnAtArea != kInvalidAreaId) {
+    // The game's own transition is still carrying out an earlier hop, and it owns the world until it
+    // is done. Hold the request and take it when that arrival is placed (PortPlaceArrivalTick).
+    mPortWarpQueuedArea = aid;
+    std::fprintf(stderr, "[warp] area %d queued behind the game's own transition to area %d\n",
+                 aid.Value(), mPortSpawnAtArea.Value());
+    return;
+  }
   if (aid == world->GetCurrentAreaId()) {
     return;
   }
@@ -4243,6 +4252,13 @@ namespace {
 // started against a nearly-full pool is what exhausted it (a save load comes up at ~1008 and
 // settles near ~350 a few hundred frames later).
 constexpr int kPortWarpMinFreeIds = 256;
+// Fewer free ids than this after the pre-stream drop means the direct route may not fit: the
+// destination needs about as many ids as it owns objects, and the area the player is in holds its
+// own until it is unloaded. Measured in world 1baa96c2: area 10 alone is 602 objects, area 11's
+// stream needs ~590, and 1190 > 1024. So a hop this tight is handed to the game's own transition,
+// which unloads the source first (see PortWarpSettle). Temple Grounds' areas are ~390 objects and
+// keep ~900 ids free after the drop, so ordinary sweeps keep using the direct route.
+constexpr int kPortWarpComfortIds = 700;
 // Frames between a warp settling and dropping the areas it left behind: enough for the HUD and the
 // camera to have rebuilt themselves against the new area (dropping immediately segfaulted the HUD's
 // dynamic lights), and short enough that a sweep's next hop still starts with a free pool.
@@ -4285,6 +4301,63 @@ void CStateManager::PortLogIdPressure() {
       }
     }
     std::fprintf(stderr, "[ids]   area %d: %d objects\n", area->GetId().Value(), owned);
+  }
+}
+
+// The game's own transition carries a hop the direct route was too tight for. This places the player
+// once it is done: CMFGame clears mPendingDockArea when its transition finishes, and it never spawns
+// the player itself (a dock crossing keeps the player where they were standing), so a warp has to do
+// it - the area the player came from is unloaded, so their position means nothing here.
+void CStateManager::PortPlaceArrivalTick() {
+  if (mPortSpawnAtArea == kInvalidAreaId) {
+    return;
+  }
+  if (mPendingDockArea != kInvalidAreaId || !IsFullyInitialized()) {
+    // The flow is still fading, unloading or loading. Say so once if it takes suspiciously long, so
+    // a hang in the game's own transition is visible instead of silent.
+    if (mUpdateFrameIdx > mPortSpawnAtFrame + 600 && !mPortSpawnWarned) {
+      mPortSpawnWarned = true;
+      std::fprintf(stderr, "[warp] the game's transition to area %d has not finished after 600 "
+                           "frames (pending dock area %d)\n",
+                   mPortSpawnAtArea.Value(), mPendingDockArea.Value());
+    }
+    return;
+  }
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(mPortSpawnAtArea)) {
+    mPortSpawnAtArea = kInvalidAreaId;
+    return;
+  }
+  const TAreaId area = mPortSpawnAtArea;
+  mPortSpawnAtArea = kInvalidAreaId;
+  mPortSpawnWarned = false;
+  std::fprintf(stderr, "[warp] the game's own transition arrived in area %d\n", area.Value());
+  if (mIsDarkWorld != mPortIsDarkWorld) {
+    // Put back the flag the transition flipped (see the hand-over): the log says what it was, so a
+    // run in the dark worlds can tell whether the flag needs to follow the destination instead.
+    std::fprintf(stderr, "[warp] the transition had set the dark-world flag to %d; restoring %d\n",
+                 mIsDarkWorld ? 1 : 0, mPortIsDarkWorld ? 1 : 0);
+    SetIsDarkWorld(mPortIsDarkWorld);
+  }
+
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >((*objects)[i])) {
+      if (spawn->GetActive() && spawn->IsFirstSpawn()) {
+        SpawnPlayer(*spawn, 0);
+        std::fprintf(stderr, "[warp] spawned at the area's first spawn point\n");
+        break;
+      }
+    }
+  }
+  for (uint i = 0; i < mNumPlayers; ++i) {
+    mCameraManagers[i]->ResetCameras(*this);
+  }
+  if (mPortWarpQueuedArea != kInvalidAreaId) {
+    const TAreaId queued = mPortWarpQueuedArea;
+    mPortWarpQueuedArea = kInvalidAreaId;
+    std::fprintf(stderr, "[warp] taking the queued area %d\n", queued.Value());
+    PortWarpToArea(queued);
   }
 }
 
@@ -4352,6 +4425,36 @@ void CStateManager::PortWarpSettle() {
           mPortWarpWaitingForIds = true;
           std::fprintf(stderr, "[warp] area %d: waiting, only %d of %d object ids free\n",
                        mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
+        }
+        return;
+      }
+      if (PortFreeObjectIds() < kPortWarpComfortIds) {
+        // Too tight for the direct route, but the game has a route that fits: fading out and calling
+        // PrepareAreaTransition unloads the area the player is in *before* the destination's script
+        // objects are created, which is exactly the peak that does not fit here. CMFGame's
+        // kFS_InGame branch picks mPendingDockArea up, fades, calls PrepareAreaTransition (unload all
+        // but the destination, mInitPhase = kIP_LoadFirstArea) and then kFS_PortalTransition drives
+        // InitializeState until the area is there - and, crucially, that flow does not call
+        // CStateManager::Update while the current area is gone, which is why the port cannot simply
+        // unload it here.
+        std::fprintf(stderr,
+                     "[warp] area %d: %d ids free is too tight for the direct route, handing the hop "
+                     "to the game's own transition\n",
+                     mPortPendingWarpArea.Value(), PortFreeObjectIds());
+        mPendingDockArea = mPortPendingWarpArea;
+        mPortSpawnAtArea = mPortPendingWarpArea;
+        mPortSpawnAtFrame = mUpdateFrameIdx;
+        // PrepareAreaTransition ends with SetIsDarkWorld(!mIsDarkWorld), which is what a light<->dark
+        // portal crossing does. This hop is not a portal crossing, so the flag is put back once the
+        // flow is done - a warp must not decide the area is the other world's half.
+        mPortIsDarkWorld = mIsDarkWorld;
+        mPortPendingWarpArea = kInvalidAreaId;
+        mPortWarpStreamStarted = false;
+        mPortWarpWaitingForIds = false;
+        mPortWarpDroppedAreas = false;
+        if (mPortWarpLoadPaused) {
+          mPortWarpLoadPaused = false;
+          world->SetLoadPauseState(false);
         }
         return;
       }

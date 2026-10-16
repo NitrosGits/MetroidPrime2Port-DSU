@@ -198,6 +198,9 @@ public:
   // Drives a layer request to completion: ActivateLayerDynamic can only run once the layer's data
   // has streamed in (GetLayerPhase reports kLP_Ready), which takes frames.
   void PortLayerTick();
+  // Places the player once a hop handed to the game's own transition has arrived (see
+  // PortWarpSettle).
+  void PortPlaceArrivalTick();
   void PortWarpSettle();
   // Object ids a warp may leave unallocated before it is allowed to start loading an area: a warp
   // adds a whole area's script objects on top of what is already live.
@@ -226,6 +229,15 @@ public:
   // the neighbour preload does not re-load an area behind the warp's back and eat the ids its stream
   // needs. Cleared when the warp arrives.
   bool mPortWarpLoadPaused = false;
+  // A hop the direct route was too tight for, handed to the game's own transition (fade ->
+  // PrepareAreaTransition -> kFS_PortalTransition): the area to place the player in once that flow is
+  // done, the frame it was handed over and whether the slow-transition warning has been printed.
+  TAreaId mPortSpawnAtArea = kInvalidAreaId;
+  uint mPortSpawnAtFrame = 0;
+  bool mPortSpawnWarned = false;
+  // The dark-world flag as it was before a hop was handed to the game's transition, so the flip
+  // PrepareAreaTransition performs can be undone (a warp is not a light<->dark portal crossing).
+  bool mPortIsDarkWorld = false;
   // A layer activation asked for by a test token (`MP2_INPUT`'s `LAYER<layer>`): the layer has to
   // stream in before its script objects can be created, so the request is remembered here and
   // finished by PortLayerTick once the layer reports itself ready.
