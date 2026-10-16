@@ -4,6 +4,42 @@
 
 #include <limits.h>
 
+#ifdef TARGET_PC
+#include <csignal>
+#include <cstdio>
+
+namespace {
+
+// Port diagnostic. Aurora decodes the FIFO on its own thread, so a draw call whose primitive GX
+// does not have aborts there with "unsupported primitive type" and no indication of what produced
+// it. The two places the game hands GX a primitive - a display list's first draw command and
+// CGX::Begin - are checked here instead, and the port's fault handler prints the producing stack
+// while the game frames are still live.
+void PortCheckPrimitive(GXPrimitive prim, const void* ptr, size_t size) {
+  // GX's primitives are the seven values from GX_QUADS (0x80) to GX_POINTS (0xB8); anything else
+  // is what Aurora aborts on. A range test would be wrong here - GX_LINES (0xA8) is above
+  // GX_TRIANGLEFAN (0xA0) and is perfectly valid.
+  switch (static_cast< int >(prim)) {
+  case GX_QUADS:
+  case GX_TRIANGLES:
+  case GX_TRIANGLESTRIP:
+  case GX_TRIANGLEFAN:
+  case GX_LINES:
+  case GX_LINESTRIP:
+  case GX_POINTS:
+    return;
+  default:
+    break;
+  }
+  std::fprintf(stderr, "[gx] bad primitive %d (display list %p, %zu bytes)\n",
+               static_cast< int >(prim), ptr, size);
+  std::fflush(stderr);
+  std::raise(SIGSEGV);
+}
+
+} // namespace
+#endif
+
 CGX::SGXState CGX::sGXState;
 CGX::SGXState* CGX::gpGXState = &CGX::sGXState;
 static const uint sAlwaysAlphaCompare = CGX::MaskAndShiftLeft(GX_ALWAYS, 7, 0) |
@@ -417,6 +453,24 @@ void CGX::CallDisplayList(const void* ptr, size_t size) {
 }
 
 void CGX::Begin(GXPrimitive prim, GXVtxFmt fmt, ushort numVtx) {
+#ifdef TARGET_PC
+  PortCheckPrimitive(prim, nullptr, 0);
+  // Port: with GX_DIRECT attributes the FIFO decoder reads each one with the *format's* type, and
+  // VTXFMT0's types are global state that every immediate-mode caller would have to keep in step.
+  // Retail keeps VTXFMT0 as the immediate format by convention (its display-list paths use other
+  // formats), but here a display-list path that reconfigures VTXFMT0 - CFluidPlaneCPU sets its
+  // dense list's positions to U8/XY - leaves the next immediate draw's float vertices to be read
+  // as bytes, which desyncs the FIFO and surfaced as "unsupported primitive type" in Aurora's
+  // thread. Pin the immediate format at every Begin.
+  if (fmt == GX_VTXFMT0) {
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+    for (int tex = GX_VA_TEX0; tex <= GX_VA_TEX7; ++tex) {
+      GXSetVtxAttrFmt(GX_VTXFMT0, static_cast< GXAttr >(tex), GX_TEX_ST, GX_F32, 0);
+    }
+  }
+#endif
   if (gpGXState->mChanFlags != 0) {
     FlushState();
   }

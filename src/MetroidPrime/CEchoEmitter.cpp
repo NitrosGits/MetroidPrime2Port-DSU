@@ -1,5 +1,7 @@
 #include "MetroidPrime/CEchoEmitter.hpp"
 
+#include "Kyoto/Basics/CBasics.hpp"
+
 #include "Kyoto/Graphics/CGX.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Graphics/DolphinGPUMemory.hpp"
@@ -219,7 +221,15 @@ void CEchoEmitter::DrawWaves(const CVector3f* points, int count, int subdivision
       static_cast< SLineStripHeader* >(GPUMemory::EnsureAllocation(allocationSize));
   header->mNop = GX_NOP;
   header->mCommand = GX_LINESTRIP;
+#ifdef TARGET_PC
+  // Port: a GX display list stores its vertex count as a big-endian halfword, which on the
+  // console is what a plain store writes. The host is little-endian, so the FIFO decoder read a
+  // wildly wrong vertex count here and ran off the end of the list - the wave then fed it vertex
+  // bytes as commands ("unsupported primitive type 200" from Aurora's FIFO thread).
+  header->mVertexCount = CBasics::SwapBytes(static_cast< ushort >(vertexCount));
+#else
   header->mVertexCount = vertexCount;
+#endif
   CVector3f* vertices = reinterpret_cast< CVector3f* >(header + 1);
   int vertex = 0;
   const float step = 1.f / float(subdivisions);

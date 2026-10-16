@@ -8,6 +8,8 @@
 #include "port_overlay.h"
 
 #include <chrono>
+#include <csignal>
+#include <cstdio>
 #include <thread>
 
 namespace {
@@ -1330,6 +1332,28 @@ void CGraphics::ResetVertexDataStream(bool initial) {
 }
 
 void CGraphics::FlushStream() {
+#ifdef TARGET_PC
+  // Port diagnostic: the stream's primitive is a static, so a bad value means something wrote
+  // over it (or a caller forgot StreamBegin). Aurora then aborts on the FIFO thread with no clue
+  // about who produced it; report the stream state here, while the game frames are live.
+  switch (static_cast< int >(mCurrentPrimitive)) {
+  case GX_QUADS:
+  case GX_TRIANGLES:
+  case GX_TRIANGLESTRIP:
+  case GX_TRIANGLEFAN:
+  case GX_LINES:
+  case GX_LINESTRIP:
+  case GX_POINTS:
+    break;
+  default:
+    std::fprintf(stderr,
+                 "[gx] FlushStream with primitive %d, %d primitives queued, stream flags %02x\n",
+                 static_cast< int >(mCurrentPrimitive), mNumPrimitives, vtxDescr.mStreamFlags);
+    std::fflush(stderr);
+    std::raise(SIGSEGV);
+    break;
+  }
+#endif
   GXVtxDescList descriptors[10];
   GXVtxDescList* next = descriptors;
   const GXVtxDescList position = {GX_VA_POS, GX_DIRECT};
@@ -1349,6 +1373,24 @@ void CGraphics::FlushStream() {
   const GXVtxDescList end = {GX_VA_NULL, GX_NONE};
   *next = end;
   CGX::SetVtxDescv(descriptors);
+#ifdef TARGET_PC
+  // Port: with GX_DIRECT attributes the FIFO decoder reads each attribute with the *format's*
+  // type, and VTXFMT0's types are global state that other code reconfigures - the fluid path
+  // sets VTXFMT0 positions to U8 for its own drawing and does not put them back, so the stream's
+  // float vertices were then read as bytes and the decoder lost sync (which surfaced as
+  // "unsupported primitive type" in Aurora's FIFO thread, and only in areas that had drawn
+  // fluid first). Declare what this stream actually writes, every flush.
+  GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  if ((vtxDescr.mStreamFlags & kHasNormals) != 0) {
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+  }
+  if ((vtxDescr.mStreamFlags & kHasColor) != 0) {
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+  }
+  if ((vtxDescr.mStreamFlags & kHasTexture) != 0) {
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+  }
+#endif
   SetTevStates(vtxDescr.mStreamFlags);
   if (sUseStreamVertexDelay) {
     FullRenderWithVertexDelay();
