@@ -568,6 +568,13 @@ std::string vtx_attr(const ShaderConfig& config, GXAttr attr) {
     if (attr == GX_VA_CLR0 || attr == GX_VA_CLR1) {
       return "vec4f(0.0, 0.0, 0.0, 0.0)"s;
     }
+    // Port: a draw can bind a texture (so the shader needs a texcoord) while its vertex
+    // descriptor has no such attribute - the water plane's grid strips do exactly that, using
+    // texgen from the position, and retail's GX simply reads whatever the vertex format leaves
+    // there. Aurora made that a fatal, which turns a visible-but-odd draw into a dead port.
+    if (attr >= GX_VA_TEX0 && attr <= GX_VA_TEX7) {
+      return config.attrs[attr].cnt == GX_TEX_S ? "float(0.0)"s : "vec2f(0.0, 0.0)"s;
+    }
     UNLIKELY FATAL("unmapped vtx attr {}", underlying(attr));
   }
   if (attr == GX_VA_POS) {

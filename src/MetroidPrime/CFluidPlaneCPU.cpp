@@ -1,5 +1,7 @@
 #include "MetroidPrime/CFluidPlaneCPU.hpp"
 
+#include "Kyoto/Basics/CBasics.hpp"
+
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResFactory.hpp"
@@ -627,7 +629,16 @@ void CFluidPlaneCPU::UpdateGridDisplayList(const CVector2f& extent) {
   for (uchar y = 0; y < dimensions.GetY(); ++y) {
     const uchar nextY = y + 1;
     *out++ = GX_TRIANGLESTRIP;
+#ifdef TARGET_PC
+    // Port: a GX display list stores its vertex count as a big-endian halfword, which is what a
+    // plain store gives on the console. Written little-endian here, the FIFO decoder read a count
+    // of e.g. 5120 instead of 20, ran off the end of the list and decoded vertex bytes as
+    // commands - Aurora then aborted on "unsupported primitive type" or a vertex-data overrun,
+    // on its FIFO thread, with nothing pointing at the water plane.
+    *reinterpret_cast< ushort* >(out) = CBasics::SwapBytes(static_cast< ushort >(width * 2));
+#else
     *reinterpret_cast< ushort* >(out) = width * 2;
+#endif
     out += 2;
     for (uchar x = 0; x < width; ++x) {
       out[0] = x;

@@ -31,6 +31,61 @@ static u32 sLastDrawVtxSize = 0;
 static u16 sLastDrawVtxCount = 0;
 static GXPrimitive sLastDrawPrim = GX_QUADS;
 
+// A ring of the last draws, because the failing draw is the one *after* the misdeclared one: it is
+// the previous vertex stream that was under-consumed, and its leftovers that decode as commands.
+struct DrawRecord {
+  u32 prim;
+  u32 fmt;
+  u32 vtxCount;
+  u32 vtxSize;
+  u32 posDesc, posCnt, posType;
+  u32 texDesc, texCnt, texType;
+};
+static DrawRecord sDrawRing[8];
+static u32 sDrawRingHead = 0;
+
+// Port diagnostic: print what the last draw declared, so a FIFO decode failure names the caller
+// that misdeclared its vertex format.
+static void record_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, u32 vtxSize) noexcept {
+  const auto& f = g_gxState.vtxFmts[fmt];
+  DrawRecord& r = sDrawRing[sDrawRingHead++ & 7];
+  r.prim = static_cast<u32>(prim);
+  r.fmt = static_cast<u32>(fmt);
+  r.vtxCount = vtxCount;
+  r.vtxSize = vtxSize;
+  r.posDesc = static_cast<u32>(g_gxState.vtxDesc[GX_VA_POS]);
+  r.posCnt = static_cast<u32>(f.attrs[GX_VA_POS].cnt);
+  r.posType = static_cast<u32>(f.attrs[GX_VA_POS].type);
+  r.texDesc = static_cast<u32>(g_gxState.vtxDesc[GX_VA_TEX0]);
+  r.texCnt = static_cast<u32>(f.attrs[GX_VA_TEX0].cnt);
+  r.texType = static_cast<u32>(f.attrs[GX_VA_TEX0].type);
+}
+
+static void dump_draw_ring() noexcept {
+  Log.error("  last {} draws (oldest first): prim fmt count size posDesc/Cnt/Type texDesc/Cnt/Type",
+            sDrawRingHead < 8 ? sDrawRingHead : 8);
+  const u32 first = sDrawRingHead < 8 ? 0 : sDrawRingHead;
+  for (u32 i = first; i < sDrawRingHead; ++i) {
+    const DrawRecord& r = sDrawRing[i & 7];
+    Log.error("   {} {} {} {} {}/{}/{} {}/{}/{}", r.prim, r.fmt, r.vtxCount, r.vtxSize, r.posDesc,
+              r.posCnt, r.posType, r.texDesc, r.texCnt, r.texType);
+  }
+}
+
+static void dump_last_draw_state() noexcept {
+  const auto& fmt = g_gxState.vtxFmts[sLastDrawFmt];
+  Log.error("  last draw: prim={} fmt={} vtxCount={} vtxSize={} (= count*size bytes consumed)",
+            static_cast<u32>(sLastDrawPrim), static_cast<u32>(sLastDrawFmt), sLastDrawVtxCount,
+            sLastDrawVtxSize);
+  for (int i = GX_VA_POS; i <= GX_VA_TEX7; ++i) {
+    const auto& attr = fmt.attrs[i];
+    Log.error("  fmt{} attr {}: desc={} cnt={} type={} frac={}", static_cast<u32>(sLastDrawFmt), i,
+              static_cast<u32>(g_gxState.vtxDesc[i]), static_cast<u32>(attr.cnt),
+              static_cast<u32>(attr.type), static_cast<u32>(attr.frac));
+  }
+}
+
+
 u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxCount) noexcept {
   u16 numIndices = 0;
   if (prim == GX_QUADS) {
@@ -97,16 +152,7 @@ u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxC
     buf.append<u16>(0);
     numIndices = 6;
   } else {
-    const auto& fmt = g_gxState.vtxFmts[sLastDrawFmt];
-    Log.error("  last draw: prim={} fmt={} vtxCount={} vtxSize={} (= count*size bytes consumed)",
-              static_cast<u32>(sLastDrawPrim), static_cast<u32>(sLastDrawFmt), sLastDrawVtxCount,
-              sLastDrawVtxSize);
-    for (int i = GX_VA_POS; i <= GX_VA_TEX7; ++i) {
-      const auto& attr = fmt.attrs[i];
-      Log.error("  fmt{} attr {}: desc={} cnt={} type={} frac={}", static_cast<u32>(sLastDrawFmt), i,
-                static_cast<u32>(g_gxState.vtxDesc[i]), static_cast<u32>(attr.cnt),
-                static_cast<u32>(attr.type), static_cast<u32>(attr.frac));
-    }
+    dump_last_draw_state();
     UNLIKELY FATAL("unsupported primitive type {}", static_cast<u32>(prim));
   }
   return numIndices;
@@ -368,6 +414,8 @@ ProcessResult process(const u8* data, u32 size) noexcept {
       hex += fmt::format(" {:02x}", data[i]);
   }
   Log.error("  hex dump around draw cmd (pos {}-{}):{}", dumpStart, dumpEnd - 1, hex);
+  dump_last_draw_state();
+  dump_draw_ring();
   FATAL("draw vertex data overrun: need {} bytes at pos {}, have {}", totalVtxBytes, pos, reader.remaining());
 }
 
@@ -515,6 +563,7 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
   sLastDrawVtxSize = vtxSize;
   sLastDrawVtxCount = vtxCount;
   sLastDrawPrim = prim;
+  record_draw(prim, fmt, vtxCount, vtxSize);
 
   u32 totalVtxBytes = vtxCount * vtxSize;
   if (totalVtxBytes > reader.remaining())
