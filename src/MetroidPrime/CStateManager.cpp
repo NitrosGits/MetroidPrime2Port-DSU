@@ -4245,15 +4245,11 @@ void CStateManager::PortWarpSettle() {
     mCameraManagers[i]->ResetCameras(*this);
   }
 
-  // Drop the areas around the one the player just arrived in. The game's own transition does this
-  // (PrepareAreaTransition), and without it the areas a sweep has left behind stay loaded and hold
-  // their objects: the pool then sits near 590 of 1024 allocated, so every later warp has to wait
-  // for ids before it can even start loading. Doing it here keeps the pool where a warp can use it.
-  TAreaId keep = target;
-  if (world->UnloadAllAreasExcept(*this, keep)) {
-    std::fprintf(stderr, "[warp] dropped the areas around %d (%d object ids free)\n",
-                 target.Value(), PortFreeObjectIds());
-  }
+  // Do NOT drop the areas around the new one here: other subsystems still hold the area the player
+  // came from for a frame or more (the HUD builds its dynamic lights against it - dropping all but
+  // the destination at this point segfaulted in CActorLights::BuildAreaLightList 200 log lines
+  // later), so the drop happens only while a warp is waiting for object ids, by which time the game
+  // has let go. See the wait in PortWarpSettle below.
 }
 
 // Stand the player in the nearest doorway of this area, facing through it, so a scripted walk
