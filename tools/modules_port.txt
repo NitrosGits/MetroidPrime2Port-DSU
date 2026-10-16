@@ -1,4 +1,25 @@
-# Port-only REL modules: the host body for a module upstream has not decompiled yet, so that
-# areas whose module list needs it load instead of stopping the game. One file per line,
-# "ModuleName;source path". See src/MetroidPrime/Enemies/PortCWallCrawler.cpp.
+# Port-only REL modules: the host body for a module upstream has not decompiled yet, so
+# that areas whose module list needs it load instead of stopping the game. One file per
+# line, "ModuleName;source path". See src/MetroidPrime/PortModuleStubs.cpp for the
+# shared entry-point stub and src/MetroidPrime/Enemies/PortCWallCrawler.cpp for a module
+# that has been given a real body.
 WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
+CommandoPirate;src/MetroidPrime/PortModuleStubs.cpp
+DarkSamus;src/MetroidPrime/PortModuleStubs.cpp
+DigitalGuardian;src/MetroidPrime/PortModuleStubs.cpp
+ElitePirate;src/MetroidPrime/PortModuleStubs.cpp
+EmperorIngStage1;src/MetroidPrime/PortModuleStubs.cpp
+EmperorIngStage3;src/MetroidPrime/PortModuleStubs.cpp
+Ing;src/MetroidPrime/PortModuleStubs.cpp
+IngBoostBallGuardian;src/MetroidPrime/PortModuleStubs.cpp
+IngSwarm;src/MetroidPrime/PortModuleStubs.cpp
+MinorIng;src/MetroidPrime/PortModuleStubs.cpp
+SandBoss;src/MetroidPrime/PortModuleStubs.cpp
+Sandworm;src/MetroidPrime/PortModuleStubs.cpp
+ScriptPlayerTurret;src/MetroidPrime/PortModuleStubs.cpp
+SnakeWeedSwarm;src/MetroidPrime/PortModuleStubs.cpp
+SpacePirate;src/MetroidPrime/PortModuleStubs.cpp
+Splitter;src/MetroidPrime/PortModuleStubs.cpp
+SwampBossStage1;src/MetroidPrime/PortModuleStubs.cpp
+SwampBossStage2;src/MetroidPrime/PortModuleStubs.cpp
+WallCrawlerSwarm;src/MetroidPrime/PortModuleStubs.cpp

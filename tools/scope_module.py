@@ -125,7 +125,13 @@ def scope(args):
 
         stage = os.path.join(args.outdir, f"{name}.renamed.o")
         subprocess.run([args.objcopy, *redefine, partial, stage], check=True)
-        subprocess.run([args.objcopy, f"--localize-symbols={symfile}", stage, final], check=True)
+        if local:
+            subprocess.run([args.objcopy, f"--localize-symbols={symfile}", stage, final], check=True)
+        else:
+            # A module whose only globals are its own entry points (the shared entry-point stub
+            # in tools/modules_port.txt, for instance) has nothing to localize, and objcopy
+            # rejects an empty symbol list.
+            subprocess.run([args.objcopy, stage, final], check=True)
         os.remove(stage)
 
 

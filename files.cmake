@@ -776,6 +776,63 @@ set(MP_GAME_SOURCES
 set(MP_MODULE_WallCrawler_SOURCES
     src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 )
+set(MP_MODULE_CommandoPirate_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_DarkSamus_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_DigitalGuardian_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_ElitePirate_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_EmperorIngStage1_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_EmperorIngStage3_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_Ing_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_IngBoostBallGuardian_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_IngSwarm_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_MinorIng_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_SandBoss_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_Sandworm_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_ScriptPlayerTurret_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_SnakeWeedSwarm_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_SpacePirate_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_Splitter_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_SwampBossStage1_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_SwampBossStage2_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
+set(MP_MODULE_WallCrawlerSwarm_SOURCES
+    src/MetroidPrime/PortModuleStubs.cpp
+)
 set(MP_MODULE_ChozoGhost_SOURCES
     src/MetroidPrime/Enemies/CChozoGhost.cpp
 )
@@ -987,7 +1044,7 @@ set(MP_MODULE_Shrieker_SOURCES
 set(MP_MODULE_Splinter_SOURCES
     src/MetroidPrime/Enemies/CSplinter.cpp
 )
-set(MP_MODULES WallCrawler ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone SkyRipple ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks ScriptRsfAudio DarkSamusBattleStage FogOverlay ScriptStreamedMovie FlyerSwarm EmperorIngStage2Tentacle Krocuss AtomicBeta RubiksPuzzle MetareeSwarm Shredder ScriptRiftPortal BacteriaSwarm IngBlobSwarm Glowbug DarkCommando DarkTrooper IngSnatchingSwarm GeomBlobV2 Blogg Grenchler Kralee OctapedeSegment Lumite MediumIng MysteryFlyer Rezbit Sporb PlantScarabSwarm ScriptCoin PirateRagDoll ScriptPlayerProxy StoneToad PuddleSpore ScriptPlayerActor IngPuddle PillBug SpankWeed WispTentacle IngSpiderballGuardian IngSpaceJumpGuardian AIMannedTurret Shrieker Splinter)
+set(MP_MODULES WallCrawler CommandoPirate DarkSamus DigitalGuardian ElitePirate EmperorIngStage1 EmperorIngStage3 Ing IngBoostBallGuardian IngSwarm MinorIng SandBoss Sandworm ScriptPlayerTurret SnakeWeedSwarm SpacePirate Splitter SwampBossStage1 SwampBossStage2 WallCrawlerSwarm ChozoGhost AtomicAlpha DestructibleBarrier EyeBall FishCloud FlyingPirate Metaree Parasite ScriptGui ScriptSafeZone SkyRipple ScriptFrontEndDataNetwork SwarmBasics GunTurret Metroid Puffer Tryclops WallWalker ForgottenObject Ripper ScriptCannonBall Tweaks ScriptRsfAudio DarkSamusBattleStage FogOverlay ScriptStreamedMovie FlyerSwarm EmperorIngStage2Tentacle Krocuss AtomicBeta RubiksPuzzle MetareeSwarm Shredder ScriptRiftPortal BacteriaSwarm IngBlobSwarm Glowbug DarkCommando DarkTrooper IngSnatchingSwarm GeomBlobV2 Blogg Grenchler Kralee OctapedeSegment Lumite MediumIng MysteryFlyer Rezbit Sporb PlantScarabSwarm ScriptCoin PirateRagDoll ScriptPlayerProxy StoneToad PuddleSpore ScriptPlayerActor IngPuddle PillBug SpankWeed WispTentacle IngSpiderballGuardian IngSpaceJumpGuardian AIMannedTurret Shrieker Splinter)
 
 # Port-only sources
 list(APPEND MP_GAME_SOURCES
