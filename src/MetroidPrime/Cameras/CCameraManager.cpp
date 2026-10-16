@@ -681,11 +681,30 @@ rstl::optional_object< CTransform4f > CCameraManager::SCameraHistory::Last() con
 }
 
 const CTransform4f& CCameraManager::GetLastCameraTransform() const {
+#ifdef TARGET_PC
   // The original returns a reference into a destroyed temporary optional.
+  //
+  // Port: *this one still does*, and GCC is entitled to fold it away: `SCameraHistory::Last()`
+  // returns the optional **by value**, so `.data()` is a reference into a temporary that dies at the
+  // end of the return statement. GCC turned that dangling reference into a null pointer, and the
+  // caller read the transform through it - `movss 0x1c(%rax)` with rax = 0, measured 2026-10-17 in
+  // CBallCamera::FindDesiredPosition, on a warp handed to the game's own area transition (world
+  // 3bfa3eff, area 10 -> 11). Copy the value out first, so the reference points at storage that
+  // outlives the statement. The signature stays as it is: the one caller only reads it.
+  static CTransform4f sLast = CTransform4f::Identity();
+  const rstl::optional_object< CTransform4f > last = mCameraHistory.Last();
+  if (mCameraHistory.Size() != 0 && last.valid()) {
+    sLast = last.data();
+  } else {
+    sLast = CTransform4f::Identity();
+  }
+  return sLast;
+#else
   if (mCameraHistory.Size() != 0 && mCameraHistory.Last().valid()) {
     return mCameraHistory.Last().data();
   }
   return CTransform4f::Identity();
+#endif
 }
 
 void CCameraManager::TransferCameraState(CGameCamera& from, CGameCamera& to, CStateManager& mgr) {

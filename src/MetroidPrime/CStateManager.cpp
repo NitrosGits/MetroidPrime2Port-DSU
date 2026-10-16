@@ -4263,6 +4263,16 @@ constexpr int kPortWarpComfortIds = 700;
 // camera to have rebuilt themselves against the new area (dropping immediately segfaulted the HUD's
 // dynamic lights), and short enough that a sweep's next hop still starts with a free pool.
 constexpr uint kPortDropAreasDelay = 30;
+
+// MP2_WARP_HANDED=1 forces every hop down the game's own transition, the route a tight pool takes
+// (see below). A test that has to exercise that route - it is the one that runs
+// CStateManager::InitializeState, and where CBallCamera::FindDesiredPosition crashed on the null
+// reference GetLastCameraTransform used to return - otherwise needs ten hops of accumulated core to
+// make the pool tight enough, which is minutes of run per reproduction. This makes it one hop.
+bool PortForceHandedWarp() {
+  static const bool sForce = std::getenv("MP2_WARP_HANDED") != nullptr;
+  return sForce;
+}
 } // namespace
 
 int CStateManager::PortFreeObjectIds() {
@@ -4428,7 +4438,7 @@ void CStateManager::PortWarpSettle() {
         }
         return;
       }
-      if (PortFreeObjectIds() < kPortWarpComfortIds) {
+      if (PortFreeObjectIds() < kPortWarpComfortIds || PortForceHandedWarp()) {
         // Too tight for the direct route, but the game has a route that fits: fading out and calling
         // PrepareAreaTransition unloads the area the player is in *before* the destination's script
         // objects are created, which is exactly the peak that does not fit here. CMFGame's
@@ -4439,8 +4449,9 @@ void CStateManager::PortWarpSettle() {
         // unload it here.
         std::fprintf(stderr,
                      "[warp] area %d: %d ids free is too tight for the direct route, handing the hop "
-                     "to the game's own transition\n",
-                     mPortPendingWarpArea.Value(), PortFreeObjectIds());
+                     "to the game's own transition%s\n",
+                     mPortPendingWarpArea.Value(), PortFreeObjectIds(),
+                     PortForceHandedWarp() ? " (forced by MP2_WARP_HANDED)" : "");
         mPendingDockArea = mPortPendingWarpArea;
         mPortSpawnAtArea = mPortPendingWarpArea;
         mPortSpawnAtFrame = mUpdateFrameIdx;
