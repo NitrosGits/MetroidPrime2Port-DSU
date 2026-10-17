@@ -67,11 +67,19 @@ save; the instrument is `MP2_DEBUG_AREA=1` (`CGameArea::AddStaticGeometry`/`Fill
 `CCubeRenderer::AddStaticGeometry` log the area, the ARAM transfer result, whether the models were
 constructed, and the section/surface pointers, naming an out-of-buffer one), plus `MP2_DEBUG_DOORS=1`
 and `MP2_WARP_DOOR=<id>` for `DOOR@frame` (commit `41a55178d`). The crash log names the failing fill:
-the *original* area's second `FillInStaticGeometry` (`aram=1 constructed=0 instances=1`). Lead: that
-path re-converts the surface sections in place on every fill (`CCubeSurface::ConvertSurfaceHeader`
-and the surface-group halfword swap), while a re-shown area's buffers may already hold the previous
-conversion or - if the ARAM transfer re-read them - a fresh big-endian copy; which one a fill sees is
-the next thing to settle, and the instrument prints both.
+the *original* area's second `FillInStaticGeometry` (`aram=1 constructed=0 instances=1`).
+- **Ruled out: the in-place re-conversion.** That path converts the surface sections in place on every
+  fill (`CCubeSurface::ConvertSurfaceHeader` and the surface-group halfword swap), so a second fill of
+  already-converted buffers would double-swap them - but the second fill read the *same* surface count
+  as the first (1858), so the buffers had been re-read from ARAM and were fresh. No double conversion.
+- **The lead now:** every section pointer the fill captured sat in the area's own mapping
+  (`0xb4...`), and the `CCubeModel` constructor is reached only after the whole fill returned and
+  `CCubeRenderer::AddStaticGeometry` had run `CCubeModel::MakeTexturesFromMats` over the area's
+  material section. So the bad entry (a pointer whose high half is not the area's) appeared
+  *between* capture and use, inside that window - heap corruption from the material/texture step, or
+  a write past the end of the surfaces vector. Next: log the instance's entries *inside*
+  `AddStaticGeometry` (index and value of the first out-of-mapping entry, before the constructor runs)
+  to tell "captured bad" from "corrupted afterwards".
 
 **The phone, with both fixes (`tools/android_apk.sh :app:assembleRelease -PandroidNodStub=false`).**
 `the first game update is at 2.7 s`, `gameplay reached at 7.0 s` (was 34.0 s / 36.0 s), and the run
