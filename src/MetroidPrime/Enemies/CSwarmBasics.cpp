@@ -131,6 +131,26 @@ static int CompareBoidRefsByListenerDistance(const void* a, const void* b) {
   return 0;
 }
 
+namespace {
+
+// The swarm's skinned model is an async load: the token behind
+// `CModelData::GetAnimationData()->GetModelData()` holds no item until that load settles, and `**`
+// on such a token is a null dereference. `CachePose` already waits for it (see its comment); this
+// test is the same condition for everything else that needs the model - the boid display list in
+// particular, which `CSwarmBasics`'s constructor used to build unconditionally. The actor is
+// constructed straight from the area's script here, so on a fast host the first frames ran before
+// the model arrived, and a display list built from an unresolved model is a FIFO of state Aurora
+// cannot resolve: it crashed in `aurora::gx::texture::resolve_static_texture` and in
+// `aurora::gx::populate_pipeline_config` on the user's phone (2026-10-17).
+bool SwarmModelReady(const CModelData* modelData) {
+  if (modelData == nullptr || modelData->GetAnimationData() == nullptr) {
+    return false;
+  }
+  return *modelData->GetAnimationData()->GetModelData() != nullptr;
+}
+
+} // namespace
+
 CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 : mTransform(xf)
 , mVelocity(0.f, 0.f, 0.f)
@@ -244,8 +264,12 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
             CAdvancementDeltas(CVector3f::Zero(), CQuaternion::NoRotation()));
       }
       mModelData = rs_new CModelData(animRes);
-      mDisplayList = rs_new SwarmRenderHelpers::CSwarmDisplayList(
-          **mModelData->GetAnimationData()->GetModelData());
+      // Built only once the model is resident; PreRender() does it later otherwise. See
+      // SwarmModelReady: a display list from an unresolved model crashes Aurora's GX thread.
+      if (SwarmModelReady(mModelData.get())) {
+        mDisplayList = rs_new SwarmRenderHelpers::CSwarmDisplayList(
+            **mModelData->GetAnimationData()->GetModelData());
+      }
     }
   }
   if (data.mDeathParticleEffect != kInvalidAssetId) {
@@ -951,6 +975,14 @@ CColor CSwarmBasics::SoftwareLight(const CStateManager& mgr, const CAABox& bound
 
 void CSwarmBasics::PreRender(CStateManager& mgr) {
   bool active = false;
+#ifdef TARGET_PC
+  // The model may have finished loading since construction; the boid display list is built from it
+  // and waits for the same condition CachePose does.
+  if (mAnimated && mDisplayList.null() && SwarmModelReady(mModelData.get())) {
+    mDisplayList = rs_new SwarmRenderHelpers::CSwarmDisplayList(
+        **mModelData->GetAnimationData()->GetModelData());
+  }
+#endif
   if (mAnimated) {
     uint count = mModelDatas.size();
     for (uint i = 0; i < count; ++i) {
@@ -979,12 +1011,7 @@ void CSwarmBasics::CachePose(CModelData& modelData,
   // The swarm's skinned model comes from an async load, and the draw path runs before the token
   // is resident: `**` on a token with no item is a null dereference in PreRender, which crashes
   // a whole area. Skip this boid's pose until the model is there.
-  if (mModelData.null() || mModelData->GetAnimationData() == nullptr) {
-    return;
-  }
-  const TLockedToken< CSkinnedModel >& skinnedToken =
-      mModelData->GetAnimationData()->GetModelData();
-  if (*skinnedToken == nullptr) {
+  if (!SwarmModelReady(mModelData.get())) {
     static bool sLogged = false;
     if (!sLogged) {
       sLogged = true;
@@ -1012,6 +1039,13 @@ void CSwarmBasics::PreRenderBoid(CBoid* boid, uint* drawMask) {
 }
 
 void CSwarmBasics::RenderBoid(CBoid* boid) const {
+#ifdef TARGET_PC
+  // No display list means the skinned model has not arrived: drawing anyway put an unresolved
+  // model's state in front of Aurora, which is what crashed its GX thread on the phone.
+  if (mDisplayList.null()) {
+    return;
+  }
+#endif
   if (mAnimated) {
     if (boid->mFreezeTimer > 0.f) {
       DrawBoidSkinnedModel(boid, *mSkinnedModelState);
