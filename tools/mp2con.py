@@ -13,19 +13,29 @@ import socket
 import sys
 
 
+def replies(data: bytes) -> int:
+    """How many replies have arrived: each one ends in a line `=> ok` or `=> err: ...`."""
+    return sum(1 for line in data.split(b"\n") if line.startswith((b"=> ok", b"=> err:")))
+
+
 def run(port: int, commands: list[str], quiet: bool) -> int:
     with socket.create_connection(("127.0.0.1", port), timeout=10) as sock:
         payload = "".join(command.rstrip("\r\n") + "\n" for command in commands)
         sock.sendall(payload.encode())
         data = b""
-        while True:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-            data += chunk
-            if data.rstrip().endswith(b"=> ok") or b"=> err:" in data.split(b"\n")[-2:]:
-                if quiet:
+        # Read until every command has answered, not until the connection closes: the port keeps it
+        # open until the client hangs up (its listener serves one client at a time), so waiting for
+        # EOF would always end in a timeout.
+        try:
+            while replies(data) < len(commands):
+                chunk = sock.recv(4096)
+                if not chunk:
                     break
+                data += chunk
+        except TimeoutError:
+            print(f"no reply from 127.0.0.1:{port} (is the port running with MP2_CONSOLE={port}?)",
+                  file=sys.stderr)
+            return 1
     text = data.decode(errors="replace")
     if not quiet:
         sys.stdout.write(text)

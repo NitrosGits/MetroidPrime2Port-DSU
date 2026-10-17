@@ -3,6 +3,63 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (seventh session): the console's second wave, and a client that had never worked
+
+**Seven commands, and the names they print come from the enums.** `platform/port_console.cpp` gains
+`objs [filter]`, `obj <id>`, `send <id> <msg>`, `visor [name|0-3]`, `beam [name|0-3]`,
+`tp <x y z>` and `items` (the list is in `kCommands`, the help block and `platform/include/
+port_console.h`). Three details carried the work:
+
+- **Class names are RTTI**, demangled with `abi::__cxa_demangle` (`typeid(ent).name()`), the same
+  shape MetroidPrimePort's console uses - this tree has no per-class name table and does not need
+  one. The scan prints `CScriptDoor`, `CPlayer`, `CScriptRelay`, ...
+- **Message, state and item names are generated**, not typed: `tools/gen_console_names.py` writes
+  `platform/console_names.inc` from `EScriptObjectMessage`/`EScriptObjectState` (CEntityInfo.hpp) and
+  `EItemType` (CPlayerState.hpp), keeping only explicit initialisers, first name wins on a duplicate
+  value (`kSS_APRC`/`kSS_Approach`), values at or above `0x80000000` are the negative ones and are
+  skipped. `--check` is a gate like `gen_files_cmake.py --check`'s, so an upstream sync that adds a
+  message shows up as a stale file rather than as a mislabelled connection.
+- **Ids are hex, and both of the ids a session reads resolve.** `objs` prints `TUniqueId::value`
+  (`u046e`) because `Value()` masks to 10 bits and two objects can share it; the argument is parsed
+  as hex (with or without `u`/`0x`), and `obj`/`send` fall back to the *unique* object whose
+  `Value()` matches, so the id in a port log line (`[door] 006e got kSM_Open`) can be typed straight
+  in. Ambiguous matches are refused by name.
+
+**Visor and beam switching go through the game's own paths.** `visor` calls `StartTransitionToVisor`
+and then the holster/draw the game does after a switch (`CPlayer::UpdateVisorState`,
+`CPlayer.cpp:1330`); `beam` calls `CPlayerState::SetCurrentBeam`, which `CPlayerGun::HandleWeaponChange`
+reads on the next update (`CPlayerGun.cpp:2555`) - the same path the `kIT_SwitchWeapon*` items take.
+Neither forces a visor or beam the save does not own: it answers `=> err: ... not owned`, because a
+switched-to beam the gun will not draw is a confusing state, not a useful one.
+
+**`tools/mp2con.py` hung on every command in its default mode, before this session.** It read until
+the terminator *and* kept reading because the `break` sat inside `if quiet:`; the port keeps the
+connection open until the client hangs up (one client at a time), so a non-quiet run always ended in
+`TimeoutError`. It now counts replies (`=> ok`/`=> err:` lines) and stops when the last command has
+answered, and reports a bare timeout as "no reply from 127.0.0.1:<port>" instead of a traceback. The
+console's own commit (`0e267e186`) was verified with `nc`, which has the same "wait for EOF" shape
+and hid this.
+
+**Verified on the desktop**, `MP2_CONSOLE=4780`, `MP2_TELEPORT=0` (area 0), `MP2_GODMODE=1`:
+`objs door` (7 doors, class names demangled), `objs player`, `obj u046e` / `obj 046e` / `obj 0x46e`
+(one door, three spellings) and `obj 400` -> `u0400 CPlayer hp 99/99`, `send u046e open` ->
+`[door] 006e got kSM_Open` (and its partner door `01b5`), `visor scan` -> screenshot with the scan
+tint, the scan window and the gun holstered, `visor combat` -> screenshot with the gun back, `tp`
+8 m with the facing kept (screenshot plus `status`), `items` (11 lines), and the refusals:
+`beam light`/`visor echo` not owned, `send ... NosuchMessage`, `obj 9999`.
+
+**One thing found on the way, not caused by the console:** a `MP2_TELEPORT=5` boot lands the player
+in area 5 at the area's first spawn point and renders *nothing* - white screen, the HUD's map markers
+only, no energy bar and no gun - while `[ids]` counts and `status` are normal (`235 objects`, health
+99). `MP2_TELEPORT=0` in area 0 renders correctly from the same card, and a fresh area-5 boot that
+never touched the console shows the same white frame, so the console is not involved. Next session's
+first look: whether the area's geometry paks are loaded after that warp at all (`MP2_DEBUG_AREA=1`,
+and the `[resloader]` warnings).
+
+**Gates:** `tools/gen_console_names.py --check` rc=0, `tools/gen_files_cmake.py --check` rc=0, and the
+upstream matching build still `Game Code: 94.14% fuzzy, 63.29% matched` - no `src/` or `include/`
+file was touched this session, so the non-PC text is untouched by construction.
+
 ## 2026-10-17 (sixth session): the scan visor's desktop crash placed and fixed; the intro text skipped
 
 **The scan visor's device loss was a Z8L depth copy resolved through the colour blit.** Entering the

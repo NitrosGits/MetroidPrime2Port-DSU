@@ -20,13 +20,14 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | Touch overlay (Android) with a layout editor | `platform/port_touch.cpp`, `touch_pad.cpp` |
 | HD texture set hook (`PortTextures::DeviceName`) | `platform/port_textures.cpp` |
 | **Debug command console over TCP** (`MP2_CONSOLE=<port>`, `tools/mp2con.py`) | `platform/port_console.cpp` - new here |
+| Console: `objs` / `obj` / `send` (object inspection and script messages), `visor` / `beam` switching, `tp`, `items` | `platform/port_console.cpp`, names from `tools/gen_console_names.py` |
 
 ## Next, cheapest and most useful first
 
-1. **Console, second wave** (`platform/port_console.cpp`): the commands MP1's console has that this
-   tree can serve today - `objs [filter]`, `obj <id>`, `send <id> <msg>`, `vis` / `beam` switching,
-   `items`, `tp <x y z>`, `face <yaw>`, `strg <id>`, `press <button>`, `stick`, `wait`,
-   `screenshot`. Each is a row in `kCommands`; `status`/`areas`/`warp`/`door`/`layer`/`god` are in.
+1. **Console, third wave** (MP1's console has more than this tree can serve yet): `face <yaw>`,
+   `strg <id>`, `press <button>` / `stick`, `wait`, `screenshot`, `give`/`take` (needs the item
+   tables the console already reads), and `warp <world> [area]` (MP1-style world warp; this tree's
+   `warp` is area-only). Each is a row in `kCommands`.
 2. **Graphics toggles**: FOV slider (MP1: `PortDebug::FirstPersonFov`, hooked at
    `CCameraManager::GetDefaultFirstPersonVerticalFOV` - here the FPS camera takes its FOV from
    `CCameraManager::mFirstPersonFov`, so a live change needs the FP camera refreshed), hide helmet

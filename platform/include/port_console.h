@@ -5,7 +5,8 @@ class CStateManager;
 // The debug command console: with `MP2_CONSOLE=<port>` (1 = 4780) the port listens on
 // 127.0.0.1 and runs one command per line, e.g. `status`, `warp 7`, `door`. Every reply ends with a
 // line `=> ok` or `=> err: <why>`. tools/mp2con.py is the client, and
-// `printf 'status\n' | nc 127.0.0.1 4780` is the shortest way in.
+// `printf 'status\n' | nc 127.0.0.1 4780` is the shortest way in. Objects and players:
+// `objs [filter]`, `obj <id>`, `send <id> <msg>`, `visor`, `beam`, `tp <x> <y> <z>`, `items`.
 //
 // Commands that read the world run inside the state manager's update, where every object pointer is
 // live (`Tick`); nothing here touches the game from the network thread. It is modelled on

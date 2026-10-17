@@ -15,8 +15,14 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CEntity.hpp"
+#include "MetroidPrime/CEntityInfo.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
+#include "MetroidPrime/CObjectList.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -28,7 +34,12 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <typeinfo>
 #include <vector>
+
+#if defined(__GNUC__)
+#include <cxxabi.h>
+#endif
 
 #ifndef _WIN32
 #include <cerrno>
@@ -253,6 +264,174 @@ const char* VisorName(CPlayerState::EPlayerVisor visor) {
   return "?";
 }
 
+std::string Lower(std::string_view text) {
+  std::string out(text);
+  for (char& c : out) {
+    if (c >= 'A' && c <= 'Z') {
+      c = static_cast< char >(c - 'A' + 'a');
+    }
+  }
+  return out;
+}
+
+// A handler that cannot do its job calls Fail(why): Execute then answers `=> err: <why>` in place of
+// `=> ok`. Handlers run one at a time on the game thread, so one slot is enough.
+std::string sFailure;
+
+void Fail(const std::string& why) { sFailure = why; }
+
+// The name tables are generated from the upstream enums by tools/gen_console_names.py.
+struct SEnumName {
+  uint value;
+  const char* name;
+};
+#include "console_names.inc"
+
+constexpr int kMessageCount = static_cast< int >(sizeof(kMessageNames) / sizeof(SEnumName));
+constexpr int kStateCount = static_cast< int >(sizeof(kStateNames) / sizeof(SEnumName));
+constexpr int kItemCount = static_cast< int >(sizeof(kItemNames) / sizeof(SEnumName));
+
+const char* EnumName(const SEnumName* table, int count, uint value) {
+  for (int i = 0; i < count; ++i) {
+    if (table[i].value == value) {
+      return table[i].name;
+    }
+  }
+  return nullptr;
+}
+
+// The table's name for `value`, or its hex code when the table has no entry for it.
+std::string NameOrHex(const SEnumName* table, int count, uint value) {
+  const char* name = EnumName(table, count, value);
+  if (name != nullptr) {
+    return name;
+  }
+  char hex[16];
+  std::snprintf(hex, sizeof(hex), "%08x", value);
+  return hex;
+}
+
+// The value an argument names: an entry of `table` (case-insensitive), else a number (base 0), else
+// -1.
+int EnumValue(const SEnumName* table, int count, std::string_view name) {
+  const std::string wanted = Lower(name);
+  for (int i = 0; i < count; ++i) {
+    if (Lower(table[i].name) == wanted) {
+      return static_cast< int >(table[i].value);
+    }
+  }
+  const std::string copy(name);
+  char* end = nullptr;
+  const long value = std::strtol(copy.c_str(), &end, 0);
+  return (!copy.empty() && end != nullptr && *end == '\0') ? static_cast< int >(value) : -1;
+}
+
+bool ParseFloat(std::string_view text, float& out) {
+  const std::string copy(text);
+  char* end = nullptr;
+  const double value = std::strtod(copy.c_str(), &end);
+  if (copy.empty() || end == nullptr || *end != '\0') {
+    return false;
+  }
+  out = static_cast< float >(value);
+  return true;
+}
+
+// The id as the game packs it (TUniqueId::value); Value() would drop the version bits. Read as hex,
+// which is how every reply prints an id (`u046e`, and 0x046e/u046e are accepted too): `obj 400` is
+// u0400, not decimal 400, so an id can always be typed back exactly as it was printed.
+bool ParseUid(std::string_view text, TUniqueId& out) {
+  std::string copy(text);
+  if (!copy.empty() && (copy[0] == 'u' || copy[0] == 'U')) {
+    copy.erase(0, 1);
+  }
+  if (copy.size() > 2 && copy[0] == '0' && (copy[1] == 'x' || copy[1] == 'X')) {
+    copy.erase(0, 2);
+  }
+  char* end = nullptr;
+  const unsigned long value = std::strtoul(copy.c_str(), &end, 16);
+  if (copy.empty() || end == nullptr || *end != '\0' || value > 0xffff) {
+    return false;
+  }
+  out = TUniqueId(static_cast< ushort >(value));
+  return true;
+}
+
+// The class of an entity, demangled where the compiler can do it.
+std::string ClassName(const CEntity& ent) {
+  const char* mangled = typeid(ent).name();
+#if defined(__GNUC__)
+  int status = 0;
+  char* demangled = abi::__cxa_demangle(mangled, nullptr, nullptr, &status);
+  const std::string name = status == 0 && demangled != nullptr ? demangled : mangled;
+  std::free(demangled);
+  return name;
+#else
+  return mangled;
+#endif
+}
+
+// `visor` and `beam` take a name or an index in these orders, which are CPlayerState's enum orders
+// and not the item order.
+constexpr CPlayerState::EPlayerVisor kVisorOrder[] = {
+    CPlayerState::kPV_Combat,
+    CPlayerState::kPV_Echo,
+    CPlayerState::kPV_Scan,
+    CPlayerState::kPV_Dark,
+};
+
+struct SBeamChoice {
+  const char* name;
+  CPlayerState::EBeamId beam;
+  CPlayerState::EItemType item; // The power-up that owns the beam.
+};
+
+constexpr SBeamChoice kBeamOrder[] = {
+    {"power", CPlayerState::kBI_Power, CPlayerState::kIT_PowerBeam},
+    {"dark", CPlayerState::kBI_Dark, CPlayerState::kIT_DarkBeam},
+    {"light", CPlayerState::kBI_Light, CPlayerState::kIT_LightBeam},
+    {"annihilator", CPlayerState::kBI_Annihilator, CPlayerState::kIT_AnnihilatorBeam},
+};
+
+constexpr int kVisorCount = static_cast< int >(sizeof(kVisorOrder) / sizeof(kVisorOrder[0]));
+constexpr int kBeamCount = static_cast< int >(sizeof(kBeamOrder) / sizeof(kBeamOrder[0]));
+
+const SBeamChoice* BeamChoice(CPlayerState::EBeamId beam) {
+  for (const SBeamChoice& choice : kBeamOrder) {
+    if (choice.beam == beam) {
+      return &choice;
+    }
+  }
+  return nullptr;
+}
+
+bool ParseVisor(std::string_view text, CPlayerState::EPlayerVisor& out) {
+  const std::string wanted = Lower(text);
+  for (const CPlayerState::EPlayerVisor visor : kVisorOrder) {
+    if (wanted == VisorName(visor)) {
+      out = visor;
+      return true;
+    }
+  }
+  const int index = ArgToInt(text, -1);
+  if (index < 0 || index >= kVisorCount) {
+    return false;
+  }
+  out = kVisorOrder[index];
+  return true;
+}
+
+const SBeamChoice* ParseBeam(std::string_view text) {
+  const std::string wanted = Lower(text);
+  for (const SBeamChoice& choice : kBeamOrder) {
+    if (wanted == choice.name) {
+      return &choice;
+    }
+  }
+  const int index = ArgToInt(text, -1);
+  return (index >= 0 && index < kBeamCount) ? &kBeamOrder[index] : nullptr;
+}
+
 void CmdHelp(CStateManager&, const Args&, std::string& out) {
   out +=
       "status                      world, area, player position, health, visor, beam, morph state\n"
@@ -264,6 +443,13 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
+      "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
+      "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
+      "send <id> <msg>             deliver a script message to an object (name or number)\n"
+      "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
+      "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
+      "tp <x> <y> <z>              teleport the player, keeping its facing\n"
+      "items                       power-up amounts and capacities\n"
       "help                        this list\n";
 }
 
@@ -318,7 +504,7 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
 
 void CmdWarp(CStateManager&, const Args& args, std::string& out) {
   if (args.size() < 2) {
-    out += "usage: warp <slot|id|name>\n";
+    Fail("usage: warp <slot|id|name>");
     return;
   }
   const std::string area = Str(args[1]);
@@ -334,9 +520,9 @@ void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station()
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
 void CmdKill(CStateManager&, const Args&, std::string&) { PortWarp::Kill(); }
 
-void CmdLayer(CStateManager&, const Args& args, std::string& out) {
+void CmdLayer(CStateManager&, const Args& args, std::string&) {
   if (args.size() < 2) {
-    out += "usage: layer <n>\n";
+    Fail("usage: layer <n>");
     return;
   }
   PortWarp::Layer(ArgToInt(args[1], 0));
@@ -352,6 +538,267 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::SkipCinematics() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetSkipCinematics(enabled);
   out += enabled ? "skip cutscenes on\n" : "skip cutscenes off\n";
+}
+
+// One object as `objs` and `obj` show it: uid, editor id, class, area; an actor's position too when
+// `withPosition`. `inactive` when it is not active.
+void DescribeObject(const CEntity& ent, bool withPosition, std::string& out) {
+  char line[320];
+  std::snprintf(line, sizeof(line), "u%04x %08x  %-26s a%02d", ent.GetUniqueId().value,
+                ent.GetEditorId().Value(), ClassName(ent).c_str(), ent.GetCurrentAreaId().Value());
+  out += line;
+  const CActor* actor = withPosition ? TCastToConstPtr< CActor >(&ent) : nullptr;
+  if (actor != nullptr) {
+    const CVector3f p = actor->GetTranslation();
+    std::snprintf(line, sizeof(line), " (%.1f, %.1f, %.1f)", p.GetX(), p.GetY(), p.GetZ());
+    out += line;
+  }
+  if (!ent.GetActive()) {
+    out += "  inactive";
+  }
+  out += '\n';
+}
+
+// The object an id names: the raw TUniqueId first, then - because the port's own log lines print
+// TUniqueId::Value(), which drops the version bits ("[door] 006e got kSM_Open") - the one object
+// whose Value() matches, when exactly one does. `obj` and `send` both take their target from here.
+const CEntity* ResolveObject(CStateManager& mgr, std::string_view text) {
+  TUniqueId uid = kInvalidUniqueId;
+  if (!ParseUid(text, uid)) {
+    Fail("not an object id '" + Str(text) + "'");
+    return nullptr;
+  }
+  if (const CEntity* exact = mgr.GetObjectById(uid)) {
+    return exact;
+  }
+  const CObjectList& list = mgr.GetObjectListById(kOL_All);
+  const CEntity* found = nullptr;
+  int matches = 0;
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CEntity* ent = list[i];
+    if (ent != nullptr && ent->GetUniqueId().Value() == uid.Value()) {
+      found = ent;
+      ++matches;
+    }
+  }
+  if (matches == 1) {
+    return found;
+  }
+  char why[48];
+  std::snprintf(why, sizeof(why), matches == 0 ? "no object u%04x" : "ambiguous id u%04x",
+                uid.value);
+  Fail(why);
+  return nullptr;
+}
+
+void CmdObjs(CStateManager& mgr, const Args& args, std::string& out) {
+  const std::string filter = args.size() < 2 ? std::string() : Lower(args[1]);
+  const CObjectList& list = mgr.GetObjectListById(kOL_All);
+  int count = 0;
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CEntity* ent = list[i];
+    if (ent == nullptr) {
+      continue;
+    }
+    if (!filter.empty() && Lower(ClassName(*ent)).find(filter) == std::string::npos) {
+      continue;
+    }
+    DescribeObject(*ent, true, out);
+    ++count;
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "%d objects\n", count);
+  out += line;
+}
+
+void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 2) {
+    Fail("usage: obj <id>");
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  if (ent == nullptr) {
+    return;
+  }
+  DescribeObject(*ent, false, out);
+  const CActor* actor = TCastToConstPtr< CActor >(ent);
+  const CHealthInfo* health = actor != nullptr ? actor->GetHealthInfo() : nullptr;
+  if (health != nullptr) {
+    char line[64];
+    std::snprintf(line, sizeof(line), "  hp %.0f/%.0f\n", health->GetHP(),
+                  health->GetInitialHP());
+    out += line;
+  }
+  for (const SConnection& conn : ent->GetConnectionList()) {
+    const CEntity* target = mgr.GetObjectById(mgr.GetIdForScript(conn.objId));
+    char line[256];
+    std::snprintf(line, sizeof(line), "  on %s send %s -> %08x %s\n",
+                  NameOrHex(kStateNames, kStateCount, static_cast< uint >(conn.state)).c_str(),
+                  NameOrHex(kMessageNames, kMessageCount, static_cast< uint >(conn.msg)).c_str(),
+                  conn.objId.Value(),
+                  target != nullptr ? ClassName(*target).c_str() : "(not loaded)");
+    out += line;
+  }
+}
+
+void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 3) {
+    Fail("usage: send <id> <msg>");
+    return;
+  }
+  const CEntity* target = ResolveObject(mgr, args[1]);
+  if (target == nullptr) {
+    return;
+  }
+  const int msg = EnumValue(kMessageNames, kMessageCount, args[2]);
+  if (msg < 0) {
+    Fail("unknown message '" + Str(args[2]) + "'");
+    return;
+  }
+  const uint editorId = target->GetEditorId().Value();
+  const TUniqueId uid = target->GetUniqueId();
+  mgr.DeliverScriptMsg(
+      CScriptMsg(kInvalidUniqueId, uid, static_cast< EScriptObjectMessage >(msg)));
+  char line[160];
+  std::snprintf(line, sizeof(line), "sent %s to u%04x %08x\n",
+                NameOrHex(kMessageNames, kMessageCount, static_cast< uint >(msg)).c_str(),
+                uid.value, editorId);
+  out += line;
+}
+
+void CmdVisor(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayerState* state = mgr.PlayerState(0);
+  if (state == nullptr) {
+    Fail("no player state");
+    return;
+  }
+  if (args.size() < 2) {
+    const CPlayerState::EPlayerVisor current = state->GetCurrentVisor();
+    char line[160];
+    std::snprintf(line, sizeof(line), "visor %s (%d)  owned:", VisorName(current),
+                  static_cast< int >(current));
+    out += line;
+    for (const CPlayerState::EPlayerVisor visor : kVisorOrder) {
+      if (state->HasVisor(visor)) {
+        out += ' ';
+        out += VisorName(visor);
+      }
+    }
+    out += '\n';
+    return;
+  }
+  CPlayerState::EPlayerVisor visor = CPlayerState::kPV_Invalid;
+  if (!ParseVisor(args[1], visor)) {
+    Fail("unknown visor '" + Str(args[1]) + "'");
+    return;
+  }
+  if (!state->HasVisor(visor)) {
+    Fail("visor '" + Str(args[1]) + "' not owned");
+    return;
+  }
+  state->StartTransitionToVisor(visor);
+  // What CPlayer::UpdateVisorState does after a switch: the scan visor holsters the gun.
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerGun* gun = player != nullptr ? player->GetPlayerGun() : nullptr;
+  if (gun != nullptr) {
+    if (visor == CPlayerState::kPV_Scan) {
+      gun->HolsterGun(mgr);
+    } else {
+      gun->DrawGun(mgr);
+    }
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "visor -> %s\n", VisorName(visor));
+  out += line;
+}
+
+void CmdBeam(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayerState* state = mgr.PlayerState(0);
+  if (state == nullptr) {
+    Fail("no player state");
+    return;
+  }
+  if (args.size() < 2) {
+    const CPlayerState::EBeamId current = state->GetCurrentBeam();
+    const SBeamChoice* now = BeamChoice(current);
+    char line[160];
+    std::snprintf(line, sizeof(line), "beam %s (%d)  owned:", now != nullptr ? now->name : "?",
+                  static_cast< int >(current));
+    out += line;
+    for (const SBeamChoice& choice : kBeamOrder) {
+      if (state->HasPowerUp(choice.item)) {
+        out += ' ';
+        out += choice.name;
+      }
+    }
+    out += '\n';
+    return;
+  }
+  const SBeamChoice* choice = ParseBeam(args[1]);
+  if (choice == nullptr) {
+    Fail("unknown beam '" + Str(args[1]) + "'");
+    return;
+  }
+  if (!state->HasPowerUp(choice->item)) {
+    Fail("beam '" + Str(args[1]) + "' not owned");
+    return;
+  }
+  // The game's own path: CPlayerGun::HandleWeaponChange reads the beam from the state.
+  state->SetCurrentBeam(choice->beam);
+  char line[64];
+  std::snprintf(line, sizeof(line), "beam -> %s\n", choice->name);
+  out += line;
+}
+
+void CmdTp(CStateManager& mgr, const Args& args, std::string& out) {
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  if (args.size() < 4 || !ParseFloat(args[1], x) || !ParseFloat(args[2], y) ||
+      !ParseFloat(args[3], z)) {
+    Fail("usage: tp <x> <y> <z>");
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    Fail("no player");
+    return;
+  }
+  // Keep the facing, flattened onto the floor; a player looking straight up or down has no flat
+  // heading, so it faces +y.
+  const CVector3f pos(x, y, z);
+  CVector3f dir = player->GetTransform().GetForward();
+  dir.SetZ(0.f);
+  if (dir.CanBeNormalized()) {
+    dir.Normalize();
+  } else {
+    dir = CVector3f(0.f, 1.f, 0.f);
+  }
+  player->Teleport(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()), mgr, true);
+  char line[64];
+  std::snprintf(line, sizeof(line), "position %.2f %.2f %.2f\n", x, y, z);
+  out += line;
+}
+
+void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
+  const CPlayerState* state = mgr.GetPlayerState(0);
+  if (state == nullptr) {
+    Fail("no player state");
+    return;
+  }
+  char line[96];
+  for (int i = 0; i < CPlayerState::kIT_Max; ++i) {
+    const CPlayerState::EItemType type = static_cast< CPlayerState::EItemType >(i);
+    const int capacity = state->GetItemCapacity(type);
+    if (capacity <= 0) {
+      continue;
+    }
+    const char* name = EnumName(kItemNames, kItemCount, static_cast< uint >(i));
+    const std::string label = name != nullptr ? name : std::to_string(i);
+    std::snprintf(line, sizeof(line), "%3d %-26s %d/%d\n", i, label.c_str(),
+                  state->GetItemAmount(type), capacity);
+    out += line;
+  }
 }
 
 struct SCommand {
@@ -375,6 +822,13 @@ constexpr SCommand kCommands[] = {
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
     {"skipcine", CmdSkipCine, true},
+    {"objs", CmdObjs, true},
+    {"obj", CmdObj, true},
+    {"send", CmdSend, true},
+    {"visor", CmdVisor, true},
+    {"beam", CmdBeam, true},
+    {"tp", CmdTp, true},
+    {"items", CmdItems, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
@@ -389,9 +843,14 @@ void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
       continue;
     }
     std::string body;
+    sFailure.clear();
     command.run(mgr, args, body);
     out += body;
-    out += "=> ok\n";
+    if (sFailure.empty()) {
+      out += "=> ok\n";
+    } else {
+      out += "=> err: " + sFailure + "\n";
+    }
     return;
   }
   out += "=> err: unknown command '" + Str(args[0]) + "' (try `help`)\n";
