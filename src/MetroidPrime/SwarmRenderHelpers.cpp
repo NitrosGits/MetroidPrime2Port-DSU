@@ -76,8 +76,25 @@ void CSwarmDisplayList::SetMaterialCurrent(const CModelFlags& flags) const {
 }
 
 void CSwarmDisplayList::Draw(const CVector3f* positions, const CVector3f* normals) const {
+#ifdef TARGET_PC
+  // The swarm skins on the host: `CSwarmSkinnedModelState::StateToArrays` writes these two arrays
+  // itself, as host-native floats, into the same allocation every frame. The three-argument
+  // CGX::SetArray is the *guest* path - it passes a size of 0 and marks the data big-endian
+  // (CGX.cpp:372) - so the backend uploaded nothing (or byte-swapped floats) and every boid in a
+  // swarm drew as exploded geometry: the long stretched triangles and slabs seen in the Temple
+  // Grounds crater. Bind them as native with their real size instead, and drop the backend's
+  // cached copy first, because the pointer never changes and its pointer-and-size cache would
+  // otherwise skip the re-upload (CGX.cpp:402).
+  const CSkinRules& skinRules = **mSkinnedModel.GetSkinRules();
+  const uint size = static_cast< uint >(skinRules.GetNumPoints()) * sizeof(CVector3f);
+  CGX::ClearArray(GX_VA_POS);
+  CGX::SetArrayNative(GX_VA_POS, positions, size, sizeof(CVector3f));
+  CGX::ClearArray(GX_VA_NRM);
+  CGX::SetArrayNative(GX_VA_NRM, normals, size, sizeof(CVector3f));
+#else
   CGX::SetArray(GX_VA_POS, positions, sizeof(CVector3f));
   CGX::SetArray(GX_VA_NRM, normals, sizeof(CVector3f));
+#endif
   CGX::CallDisplayList(mDisplayList.get(), mDisplayListSize);
 }
 
