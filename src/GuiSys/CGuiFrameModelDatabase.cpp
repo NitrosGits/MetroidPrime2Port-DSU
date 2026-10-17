@@ -48,6 +48,10 @@ CGuiFrameModelDatabase::CGuiFrameModelDatabase(CInputStream& in, CSimplePool* po
 #ifdef TARGET_PC
       // Port: like CModel, pass section sizes (the instance converts the vertex data to host
       // order) and convert each disc surface header to the native layout.
+      // Port: the FRME display lists run in vertex format 1 (S16 x3 normals, GXSetVtxAttrFmt in
+      // CGraphics), i.e. 6-byte packed normals; the visor flag is what makes SetArraysCurrent use that
+      // stride and normal count (the host indexes by the real byte size, retail never checked).
+      const uchar kPackedNormals = 1;
       const uint positionsSize = *sectionSizeCur;
       const void* positions = MemoryFromPartData(dataCur, sectionSizeCur);
       const uint normalsSize = *sectionSizeCur;
@@ -70,8 +74,8 @@ CGuiFrameModelDatabase::CGuiFrameModelDatabase(CInputStream& in, CSimplePool* po
 
       const rstl::auto_ptr< CCubeModel > model(rs_new CCubeModel(
           &surfaces, &mTextures, materialData, positions, normals, colors, uvs, packedUvs,
-          CAABox::Identity(), 0, true, i, positionsSize, normalsSize, colorsSize, uvsSize,
-          packedUvsSize));
+          CAABox::Identity(), kPackedNormals, true, i, positionsSize, normalsSize, colorsSize,
+          uvsSize, packedUvsSize));
       PortDrawDebug::LabelGuiFrame(model.get(), i);
       mModels[i] = model;
 #else
