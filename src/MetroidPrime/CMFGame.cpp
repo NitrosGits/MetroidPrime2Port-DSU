@@ -43,6 +43,15 @@ bool CMFGame::mMultiplayerGuiActive;
 
 static const char* const skMultiplayerEndAudio = "/Audio/multi-defbgm-speed-doon32.dsp";
 
+#ifdef TARGET_PC
+namespace {
+// MP2_SKIP_INTRO asked for the current cinematic's skip (see the timer tick below): the run wants
+// the intro over with, so the kFS_CinematicSkip case treats it like the debug setting - the scene's
+// own skip first, and never "stop the camera and leave the sequence playing".
+bool sHarnessCinematicSkip = false;
+} // namespace
+#endif
+
 CMFGame::CMFGame(rstl::ncrc_ptr< CStateManager > stateManager,
                  const rstl::ncrc_ptr< CInGameGuiManagerSet >& guiManager,
                  CArchitectureQueue& architectureQueue)
@@ -173,6 +182,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       if (introCam && PortHarness::IntroSkipCinematic(introCam->GetScriptCameraId().Value())) {
         CMidiManager::StopAll();
         mSkippedCineCam = introCam->GetScriptCameraId();
+        sHarnessCinematicSkip = true;
         SetFlowState(kFS_CinematicSkip);
         mFlowTime = 0.f;
       }
@@ -231,7 +241,9 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // what makes a test run reach gameplay in seconds instead of minutes. Stopping the
         // cinematics is what SpecialSkipCinematic does on its way out, and the flow state has
         // to see the camera manager leave the cinematic camera or it comes back next frame.
-        if (PortOverlay::SkipCinematics()) {
+        // MP2_SKIP_INTRO's request takes the same path (sHarnessCinematicSkip): a test run wants the
+        // intro over with, and "over with" means the scene ended, not only the camera.
+        if (PortOverlay::SkipCinematics() || sHarnessCinematicSkip) {
           // The retail skip first: SpecialSkipCinematic also fires the scene's skip connections
           // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end, and it is
           // what the `canSkip` branch below counts as the skip having happened (result 1). Result 0
@@ -257,12 +269,18 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           static unsigned sSkipCamera = ~0u;
           static unsigned sSkipAttempts = 0;
           static bool sSkipAnswered = false;
+          static bool sSkipReported = false;
           const unsigned kMaxSkipAttempts = 8;
+          // How long the flow stays here waiting for a sequence with no skip function to play itself
+          // out at max speed (see below). Generous: nothing is drawn while it runs, and the cap only
+          // exists so that a scene which never ends cannot hold a run.
+          const float kFastForwardCap = 30.f;
           const unsigned portCamId = cineCam->GetScriptCameraId().Value();
           if (sSkipCamera != portCamId) {
             sSkipCamera = portCamId;
             sSkipAttempts = 0;
             sSkipAnswered = false;
+            sSkipReported = false;
           }
           const int portResult = mStateManager->SpecialSkipCinematic();
           ++sSkipAttempts;
@@ -291,15 +309,25 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           } else if (sSkipAnswered) {
             mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
             finished = true;
-          } else if (sSkipAttempts < kMaxSkipAttempts) {
-            // No skip function registered yet: stay in this flow state and ask again next frame, so
-            // the scripts that may register one get to run.
+          } else if (mFlowTime < kFastForwardCap) {
+            // No skip function registered (yet): stay in this flow state. Past a second of flow time
+            // the draw case above runs the game at max speed without drawing anything, so the
+            // sequence plays itself out in a fraction of its wall time and the camera leaves the
+            // cinematic on its own - the only ending that leaves no scene running behind the
+            // player's control. (Stopping the camera instead hands over control mid-sequence, which
+            // is what drew cutscene geometry over the first-person view.)
+            if (sSkipAttempts == kMaxSkipAttempts && !sSkipReported) {
+              sSkipReported = true;
+              std::fprintf(stderr,
+                           "[skip] cinematic %04x: no skip function; fast-forwarding the sequence\n",
+                           portCamId & 0xffffu);
+            }
           } else {
             mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
             std::fprintf(stderr,
-                         "[skip] cinematic %04x: camera stopped only (no skip function in %u "
-                         "attempts)\n",
-                         portCamId & 0xffffu, sSkipAttempts);
+                         "[skip] cinematic %04x: camera stopped only (the sequence never ended in "
+                         "%.0f s)\n",
+                         portCamId & 0xffffu, kFastForwardCap);
             sSkipAnswered = true;
             finished = true;
           }
