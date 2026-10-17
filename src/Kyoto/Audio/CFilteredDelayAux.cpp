@@ -48,9 +48,20 @@ void PrepareFilteredDelayAux(SFilteredDelayAuxParameters* parameters) {
 }
 
 void ShutdownFilteredDelayAux(SFilteredDelayAuxParameters* parameters) {
+#ifdef TARGET_PC
+  // The buffers come from `rs_new`, which is the host's `new[]` on the port (Kyoto/Alloc/CMemory.hpp)
+  // - malloc memory, not the game heap. `CMemory::Free` walked back from a malloc block into
+  // CGameAllocator's metadata and ended the run the first time the echo visor was left, which is when
+  // CPlayer::UpdateEchoVisorEffects removes its filtered delay. `operator delete[]` is the host's own
+  // and routes by address (PortMwccNew.cpp's PortDelete), the same way CFrameDelayedKiller does it.
+  ::operator delete[](parameters->mDelayBuffers[0]);
+  ::operator delete[](parameters->mDelayBuffers[1]);
+  ::operator delete[](parameters->mDelayBuffers[2]);
+#else
   CMemory::Free(parameters->mDelayBuffers[0]);
   CMemory::Free(parameters->mDelayBuffers[1]);
   CMemory::Free(parameters->mDelayBuffers[2]);
+#endif
 }
 
 void ProcessFilteredDelayAux(uchar reason, SND_AUX_INFO* info,

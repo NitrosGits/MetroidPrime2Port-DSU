@@ -56,6 +56,28 @@ never touched the console shows the same white frame, so the console is not invo
 first look: whether the area's geometry paks are loaded after that warp at all (`MP2_DEBUG_AREA=1`,
 and the `[resloader]` warnings).
 
+**The console's third wave: the pad, the inventory, and a bow towards the camera.** `press <a+b+...>
+[updates]` and `stick <x> <y> [updates]` hold buttons and the main stick on the same virtual pad
+`MP2_INPUT` writes (`platform/port_events.cpp` grew `PortInput::Hold`, in `port_input.h`; the hold
+merges into the script's state, so the two can be held at once, and a run with neither leaves pad 0
+to the real controller exactly as before). `give <item> [n]` / `take <item> [n]` take `items`' own
+names and go through CScriptPickup's path (`AddPowerUp` + `IncrPickUp`, so an energy tank heals and a
+suit upgrade drops), `face <yaw deg>` turns the player through `CPlayer::Teleport` (0 = +y, 90 = +x),
+and `screenshot` asks Aurora for the F12 capture and says where the log names it.
+
+**`give` + `visor` found a real crash on the first try: leaving the echo visor ended the run.**
+`CPlayer::UpdateEchoVisorEffects` (`CPlayer.cpp:4459`) adds a filtered-delay aux effect while the
+visor is up and removes it when it goes down; the removal reached
+`ShutdownFilteredDelayAux` -> `CMemory::Free` on buffers that `rs_new` allocated, and on the host
+`rs_new` is *the host's* `new[]` (`CMemory.hpp`'s TARGET_PC `#define rs_new new`), i.e. malloc
+memory - so the game allocator walked back from a malloc block into its own metadata. ASan named it
+in one run: "heap-buffer-overflow, READ of size 8, 56 bytes before 19840-byte region", allocated by
+`PrepareFilteredDelayAux` and freed by `CMemory::Free`. Fixed in `CFilteredDelayAux.cpp` with the
+port's own idiom for this (`#ifdef TARGET_PC` -> `::operator delete[]`, whose `PortDelete`
+(``PortMwccNew.cpp`) routes by address - the shape `CFrameDelayedKiller` and `CDvdFile` already use).
+Verified: echo -> combat -> echo -> combat with no fault in the normal build, and the ASan build
+reports nothing at all in that sequence.
+
 **Gates:** `tools/gen_console_names.py --check` rc=0, `tools/gen_files_cmake.py --check` rc=0, and the
 upstream matching build still `Game Code: 94.14% fuzzy, 63.29% matched` - no `src/` or `include/`
 file was touched this session, so the non-PC text is untouched by construction.
