@@ -100,7 +100,16 @@ BindGroupRef bind_group_ref(const WGPUBindGroupDescriptor& descriptor) {
 wgpu::BindGroup find_bind_group(BindGroupRef id) {
   std::lock_guard lock{g_bindGroupCacheMutex};
   const auto it = g_cachedBindGroups.find(id);
-  CHECK(it != g_cachedBindGroups.end(), "get_bind_group: failed to locate {:x}", id);
+  if (it == g_cachedBindGroups.end()) {
+    // CHECK compiles to nothing in release, and a miss used to return `end()->second` - a garbage
+    // bind group, which the GPU reads as an uninitialised descriptor (a GPUVM fault on the phones
+    // and radv alike). A miss means a command outlived its entry in the cache, which the sweep
+    // below can do when a draw reuses its bind group without calling bind_group_ref again.
+    Log.error("find_bind_group: {:x} is not in the cache (expired?)", id);
+    return {};
+  }
+  // A lookup is a use: keep the entry alive for as long as a command keeps asking for it.
+  it->second.lastUsedFrame = current_frame();
   return it->second.bindGroup;
 }
 

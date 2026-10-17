@@ -1952,10 +1952,16 @@ void CStateManager::CapturePlayerTextures() {
 #endif
       gpRender->CopyTextureRegion(mPlayers[i]->GetScanTargetIdTextureData(), 0, textureLeft,
                                   textureTop, textureWidth, textureHeight);
+#ifndef TARGET_PC
+      // The two depth copies only ever wrote the player's depth buffers. On the port those come from
+      // PortScanTarget::FillBuffers (the same read-back that fills the id buffer), so the console
+      // copies resolve into textures nothing samples - and a scaled depth copy is not something
+      // Aurora can resolve (see gfx/encoding.cpp), so they are not issued at all.
       gpRender->CopyTextureRegion(mPlayers[i]->GetDepthHighTextureData(), 1, textureLeft,
                                   textureTop, textureWidth, textureHeight);
       gpRender->CopyTextureRegion(mPlayers[i]->GetDepthLowTextureData(), 2, textureLeft, textureTop,
                                   textureWidth, textureHeight);
+#endif
 #ifdef TARGET_PC
       PortScanTarget::FillBuffers(mPlayers[i]->GetScanTargetIdTextureData(),
                                   mPlayers[i]->GetDepthHighTextureData(),

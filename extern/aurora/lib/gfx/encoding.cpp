@@ -299,7 +299,21 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
     } else if (needsConversion) {
       tex_copy_conv::run(cmd, convReq);
     } else if (needsScaling) {
-      tex_copy_conv::blit(cmd, convReq);
+      if (isDepth) {
+        // The passthrough blit samples a colour view, so binding a depth view to it is an invalid
+        // descriptor - the draw then fetches through a garbage texture descriptor and the GPU faults
+        // (VK_ERROR_DEVICE_LOST, GPUVM, `SQC (data)`; the scan visor's Z8L copy did exactly this).
+        // No scaled depth copy has a conversion pipeline here, so leave the target unresolved rather
+        // than hand the GPU a bad binding.
+        static bool sWarnedDepthScale = false;
+        if (!sWarnedDepthScale) {
+          sWarnedDepthScale = true;
+          Log.warn("EFB copy skipped: a scaled depth copy (fmt={}) has no conversion pipeline",
+                   static_cast<int>(passInfo.resolveFormat));
+        }
+      } else {
+        tex_copy_conv::blit(cmd, convReq);
+      }
     } else {
       const webgpu::gpu_prof::Zone zone{cmd, "EFB copy"};
       const wgpu::TexelCopyTextureInfo src{
