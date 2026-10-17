@@ -1040,6 +1040,10 @@ void CCubeModel::SetRenderModelBlack(bool v) {
   sbRenderModelBlack = v;
   sbRenderModelBlackKonst = false;
 }
+#ifdef TARGET_PC
+
+bool CCubeModel::IsRenderingModelBlack() { return sbRenderModelBlack; }
+#endif
 
 void CCubeModel::EnableShadowMaps(const CTexture* shadowTex, const CTransform4f& textureProjXf,
                                   unsigned char chan0DisableMask,

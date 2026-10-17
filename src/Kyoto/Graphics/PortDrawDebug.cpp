@@ -16,8 +16,12 @@
 // Verdict words: MTX (model matrix non-finite), VIEW (view matrix non-finite), SCALE (a model
 // matrix axis outside 0.001..1000), FAR (translation beyond 1e5), POSE (a bone transform
 // non-finite or out of the scale band), DL (the load-time scan of this model flagged something),
-// UV(xN) (N surface draws whose TEX0 indices only fit the packed lightmap UVs ran with packed
-// lightmaps off, i.e. read past the float UV array).
+// UV(xN) (N textured surface draws whose TEX0 array - packed lightmap UVs or float UVs - is not the
+// one the surface's material selects with kStateFlag_LightmapUvArray, or is packed on a model that
+// has none). The scan checks each surface's TEX0 indices against the array its material selects
+// (`t0` float, `t0p` packed). Black draws (CCubeModel::SetRenderModelBlack: world and morph ball
+// shadows) are not counted: CCubeMaterial::SetCurrentBlack returns before the array is chosen and
+// its texgen reads POS, so the TEX0 attribute is fetched but never used.
 
 #include "Kyoto/Graphics/PortDrawDebug.hpp"
 
@@ -62,11 +66,7 @@ struct SInfo {
   bool mBoundsPrinted = false;
   bool mScanned = false;
   bool mScanBad = false;
-  bool mT0NeedsPacked = false; // TEX0 indices only fit the packed (lightmap) UV array
-  // Surfaces whose TEX0 indices only fit the packed array; a draw of one with packed lightmaps
-  // off reads past the float UV array (counted in mUvBad until the next print).
-  std::unordered_map< const void*, uint > mPackedOnlySurfaces;
-  int mUvBad = 0;
+  int mUvBad = 0; // draws with the wrong TEX0 array bound, until the next print
   std::string mScanLine; // the `[model]` body, without the label
   double mLastPrint = -1.0e9;
   int mDraws = 0;
@@ -190,13 +190,14 @@ void Scan(const CCubeModel* model, SInfo& info) {
   counts[3] = 0; // CCubeModel never sets a CLR1 array
   const uint floatUvs = inst.GetTCSize() / 8;
   const uint packedUvs = inst.GetPackedTCPointer() != nullptr ? inst.GetPackedTCSize() / 4 : 0;
-  counts[4] = floatUvs > packedUvs ? floatUvs : packedUvs;
-  for (int i = 5; i < kNumAttrs; ++i) {
+  for (int i = 4; i < kNumAttrs; ++i) {
     counts[i] = floatUvs;
   }
+  // TEX0 of a surface whose material sets kStateFlag_LightmapUvArray indexes the packed array.
+  uint maxPacked = 0;
+  uint oobPacked = 0;
 
   uint maxIdx[kNumAttrs] = {};
-  bool used[kNumAttrs] = {};
   uint oob[kNumAttrs] = {};
   uint verts = 0;
   uint prims = 0;
@@ -212,7 +213,9 @@ void Scan(const CCubeModel* model, SInfo& info) {
   const rstl::vector< void* >& surfaces = inst.Surfaces();
   for (int s = 0; s < surfaces.size(); ++s) {
     const CCubeSurface surface(surfaces[s]);
-    const uint desc = model->GetMaterial(surface).GetVertexDesc();
+    const CCubeMaterial material = model->GetMaterial(surface);
+    const uint desc = material.GetVertexDesc();
+    const bool packedT0 = material.IsFlagSet(kStateFlag_LightmapUvArray);
     uint sizes[kNumAttrs];
     uint vsize = 0;
     uint mtxBytes = 0;
@@ -226,7 +229,6 @@ void Scan(const CCubeModel* model, SInfo& info) {
       sizes[a] = type == 2 ? 1 : (type == 3 ? 2 : 0);
       direct |= type == 1;
       vsize += sizes[a];
-      used[a] |= sizes[a] != 0;
     }
     if (direct || vsize == 0) {
       if (err[0] == '\0') {
@@ -238,8 +240,6 @@ void Scan(const CCubeModel* model, SInfo& info) {
 
     const uchar* dl = static_cast< const uchar* >(surface.GetDisplayList());
     const uint size = surface.GetDisplayListSize();
-    const uint t0Before = maxIdx[4];
-    maxIdx[4] = 0;
     uint p = 0;
     while (p < size) {
       const uchar cmd = dl[p];
@@ -289,6 +289,11 @@ void Scan(const CCubeModel* model, SInfo& info) {
           }
           const uint idx = sizes[a] == 1 ? vp[off] : (static_cast< uint >(vp[off]) << 8) | vp[off + 1];
           off += sizes[a];
+          if (a == 4 && packedT0) {
+            maxPacked = idx > maxPacked ? idx : maxPacked;
+            oobPacked += idx >= packedUvs ? 1 : 0;
+            continue;
+          }
           maxIdx[a] = idx > maxIdx[a] ? idx : maxIdx[a];
           if (idx >= counts[a]) {
             ++oob[a];
@@ -310,10 +315,6 @@ void Scan(const CCubeModel* model, SInfo& info) {
         ++verts;
       }
     }
-    if (packedUvs != 0 && sizes[4] != 0 && maxIdx[4] >= floatUvs) {
-      info.mPackedOnlySurfaces[surfaces[s]] = maxIdx[4];
-    }
-    maxIdx[4] = maxIdx[4] > t0Before ? maxIdx[4] : t0Before;
   }
 
   const CAABox& box = model->GetBoundingBox();
@@ -352,11 +353,11 @@ void Scan(const CCubeModel* model, SInfo& info) {
                     kAttrNames[a], maxIdx[a], counts[a], oob[a]);
     }
   }
-  info.mT0NeedsPacked = packedUvs != 0 && used[4] && maxIdx[4] >= floatUvs;
-  if (info.mT0NeedsPacked) {
+  if (oobPacked != 0) {
+    oobTotal += oobPacked;
     const size_t len = std::strlen(oobText);
-    std::snprintf(oobText + len, sizeof(oobText) - len, "%st0 packed-only:%u>=%u", len ? "," : "",
-                  maxIdx[4], floatUvs);
+    std::snprintf(oobText + len, sizeof(oobText) - len, "%st0p:%u>=%u(x%u)", len ? "," : "",
+                  maxPacked, packedUvs, oobPacked);
   }
 
   info.mScanBad = mismatch || headerBad || nonFinite != 0 || oobTotal != 0 || pnBad != 0 ||
@@ -371,18 +372,18 @@ void Scan(const CCubeModel* model, SInfo& info) {
   if (haveComputed) {
     std::snprintf(line, sizeof(line),
                   "header=(%.4g,%.4g,%.4g)-(%.4g,%.4g,%.4g) computed=(%.4g,%.4g,%.4g)-(%.4g,%.4g,%.4g)"
-                  " out=%.1f%% surf=%d prims=%u verts=%u arrays=%u/%u/%u/%u pnmtx=%s fmt=0x%02x"
+                  " out=%.1f%% surf=%d prims=%u verts=%u arrays=%u/%u/%u/%u/p%u pnmtx=%s fmt=0x%02x"
                   " nonfinite=%u oob=%s dl=%s => %s",
                   hlo[0], hlo[1], hlo[2], hhi[0], hhi[1], hhi[2], lo[0], lo[1], lo[2], hi[0], hi[1],
                   hi[2], outsideRatio * 100.f, surfaces.size(), prims, verts, counts[0], counts[1],
-                  counts[2], floatUvs, pnText, fmts, nonFinite, oobText[0] ? oobText : "none",
+                  counts[2], floatUvs, packedUvs, pnText, fmts, nonFinite, oobText[0] ? oobText : "none",
                   err[0] ? err : "ok", info.mScanBad ? (mismatch ? "MISMATCH" : "BAD") : "OK");
   } else {
     std::snprintf(line, sizeof(line),
                   "header=(%.4g,%.4g,%.4g)-(%.4g,%.4g,%.4g) computed=none surf=%d prims=%u"
-                  " verts=%u arrays=%u/%u/%u/%u nonfinite=%u oob=%s dl=%s => %s",
+                  " verts=%u arrays=%u/%u/%u/%u/p%u nonfinite=%u oob=%s dl=%s => %s",
                   hlo[0], hlo[1], hlo[2], hhi[0], hhi[1], hhi[2], surfaces.size(), prims, verts,
-                  counts[0], counts[1], counts[2], floatUvs, nonFinite, oobText[0] ? oobText : "none",
+                  counts[0], counts[1], counts[2], floatUvs, packedUvs, nonFinite, oobText[0] ? oobText : "none",
                   err[0] ? err : "ok", info.mScanBad ? "BAD" : "OK");
   }
   info.mScanLine = line;
@@ -517,9 +518,13 @@ void OnDraw(const CCubeModel* model, const CModelFlags* flags, const void* surfa
   }
   SInfo& info = it->second;
   ++info.mDraws;
-  if (surface != nullptr && info.mT0NeedsPacked && !CCubeModel::IsUsingPackedLightmaps() &&
-      info.mPackedOnlySurfaces.find(surface) != info.mPackedOnlySurfaces.end()) {
-    ++info.mUvBad;
+  if (surface != nullptr && !CCubeModel::IsRenderingModelBlack()) {
+    const bool wantPacked = model->GetMaterial(CCubeSurface(surface))
+                                .IsFlagSet(kStateFlag_LightmapUvArray);
+    if (wantPacked != CCubeModel::IsUsingPackedLightmaps() ||
+        (wantPacked && model->GetModelInstance().GetPackedTCPointer() == nullptr)) {
+      ++info.mUvBad;
+    }
   }
   const double now = Now();
   if (now - info.mLastPrint < sEvery) {

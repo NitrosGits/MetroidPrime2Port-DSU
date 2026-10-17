@@ -101,6 +101,10 @@ public:
 #endif
 
   static void SetRenderModelBlack(bool v);
+#ifdef TARGET_PC
+  // Port: read by PortDrawDebug (a black draw sets no texture coordinates up).
+  static bool IsRenderingModelBlack();
+#endif
   static void SetModelWireframe(bool v);
   static void DisableShadowMaps();
   static void EnableShadowMaps(const CTexture*, const CTransform4f&, unsigned char, unsigned char);
