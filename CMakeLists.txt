@@ -372,14 +372,16 @@ endif()
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_events.cpp
         platform/port_harness.cpp platform/port_mouse.cpp platform/port_warp.cpp
-        platform/port_overlay.cpp platform/port_touch.cpp platform/touch_pad.cpp)
+        platform/port_console.cpp platform/port_overlay.cpp platform/port_touch.cpp
+        platform/touch_pad.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include
         extern/aurora/include
         extern/musyx-port/include
         include
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
-    target_compile_definitions(mp_port_audio PRIVATE TARGET_PC AURORA)
+    target_compile_definitions(mp_port_audio PRIVATE TARGET_PC AURORA
+        MUSY_TARGET=MUSY_TARGET_PC)
     mp_signed_char(mp_port_audio)
     # aurora::core carries ImGui's include directory, which the F1 overlay builds against.
     target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET} aurora::core)

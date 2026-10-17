@@ -133,6 +133,9 @@
 #include "port_overlay.h"
 #include "port_warp.h"
 #include "MetroidPrime/PortScanTarget.hpp"
+#ifdef TARGET_PC
+#include "port_console.h"
+#endif
 #endif
 
 #include <alloca.h>
@@ -4097,6 +4100,11 @@ CAssetId ResolveWarpAsset(const char* text) {
 } // namespace
 
 void CStateManager::PortWarpTick() {
+#ifdef TARGET_PC
+  // The debug console (MP2_CONSOLE=<port>, platform/port_console.cpp) runs its commands here: this
+  // is the game thread, with the world and every object pointer live.
+  PortConsole::Tick(*this);
+#endif
   CWorld* world = World();
   if (world == nullptr) {
     // No world yet: leave any request alone; it is served as soon as one is there.

@@ -62,6 +62,7 @@ extern void* gPortGameHeapHi;
 #include "Kyoto/Graphics/CGraphicsSys.hpp"
 #include "compiled_modules.h"
 #include "port_build_info.h"
+#include "port_console.h"
 #include "port_entry.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
@@ -665,6 +666,11 @@ int main(int argc, char** argv) {
   // layout as soon as the surface exists.
   const char* touchUser = EnvOrFallback("MP2_USER_PATH", appPaths.user);
   PortTouch::Initialize(touchUser != nullptr ? touchUser : std::string());
+
+  // The debug command console (platform/port_console.cpp): with MP2_CONSOLE=<port> it listens on
+  // 127.0.0.1 before the game starts, so a test can drive it from the first update. Commands are
+  // queued here and run inside the state manager's update, where the world is live.
+  PortConsole::Start();
 
   // 16:9 at the game's logical height. The render mode is widened to match when
   // the widescreen work lands; Aurora upscales to the window either way.
