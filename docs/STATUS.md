@@ -116,8 +116,10 @@ and never `A` - the gotcha above says what each does to a run.
      `[area] 56`, ids down to 60, then no updates, with "METROID PRIME 2 ECHOES STAFF CREDITS" on
      screen (`CCredits`, reached through `CScriptSpecialFunction::AcceptCredits`,
      `CScriptSpecialFunction.cpp:1066`). Nothing is wrong; a sweep walking into 53 is watching the
-     credits. **Still to do**: `sweep_report.py` should say `CREDITS` rather than `STALL` for that
-     window, and the sweep should not treat it as an unfinished area.
+     credits. **Named now**: the port prints `[end] the credits are rolling` as `CCredits` goes on the
+     window stack, `tools/sweep_report.py` has a `CREDITS` verdict for that phase (it ranks below
+     `DIED`, above `RELOAD`/`STALL`, and its coverage line says the slice ends at the ending), and
+     `tools/sweep_areas.sh` documents the slot list including the ending.
 3. ~~**An `MP2_INPUT` token that fires before the game's first update is deferred and never served.**~~
    **Resolved: a token's frame is a game update now.** The script counted `PortPumpEvents` iterations,
    so every token under the boot's ~2040 iterations landed in the boot: a warp token went to

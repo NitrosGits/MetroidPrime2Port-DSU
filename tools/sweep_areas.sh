@@ -14,6 +14,15 @@
 # several short runs on several displays instead of one long one; `SHARD=all` (the default) launches
 # all of them in parallel and waits.
 #
+# **The slot list includes the ending, and walking into it ends the shard.** Slot 53 is the ending:
+# `CScriptSpecialFunction::AcceptCredits` puts `CCredits` up, the game stops updating and the port
+# prints `[end] the credits are rolling`. `tools/sweep_report.py` calls that phase `CREDITS` rather
+# than `STALL` (it is not a wall), and its coverage block says the slice ends there. So a shard whose
+# slice runs past 52 - shard 3 of 4, with the defaults - stops in the credits and walks none of the
+# slots after 53, which is expected rather than a batch of missed areas. `COUNT` stays 63 because a
+# full sweep is what proves the ending path works; pass `COUNT=53` (slots 0..52) for a sweep of the
+# areas before it.
+#
 # Every area gets `DWELL` game updates: the `NEXTAREA` that asks for it plus, `HEAL` updates later, a
 # heal (a spawn in a hazard should not end the sweep) and then the rest of the dwell in the area,
 # which is the gameplay the sweep is for. Tokens are counted in game updates, the same counter

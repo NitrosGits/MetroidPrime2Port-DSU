@@ -1070,6 +1070,12 @@ void CScriptSpecialFunction::AcceptCredits(CStateManager& mgr, const CScriptMsg&
     CArchitectureQueue& queue = mgr.ArchQueue();
     queue.Push(MakeMsg::CreateCreateIOWin(kAMT_IOWinManager, kCreditsMsgPriority,
                                           kCreditsDrawPriority, credits));
+#ifdef TARGET_PC
+    // The credits are the end of the game, not a wall: once `CCredits` is up no `CStateManager::Update`
+    // runs, so a log that ends here reads as the game having stopped. Name the window as it goes on
+    // the stack - `tools/sweep_report.py`'s `CREDITS` verdict and `tools/sweep_areas.sh` key on it.
+    std::fprintf(stderr, "[end] the credits are rolling\n");
+#endif
   }
 }
 

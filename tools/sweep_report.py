@@ -28,6 +28,12 @@ Verdicts, worst first:
              "continue" screen, which takes no `B`, so the harness's stall report that follows is
              only a symptom. A dark-world area (Dark Aether's atmosphere, weapon type 17) kills a
              suitless player that the sweep's `HEAL` cannot keep up with.
+    CREDITS  the ending: `[end] the credits are rolling` is printed by the port when
+             `CScriptSpecialFunction::AcceptCredits` puts `CCredits` on the window stack, and a
+             played area walks into it (Temple Grounds slot 53 is the ending). The credits scroll with
+             no `CStateManager::Update`, so the harness's stall report that follows is the ending, not
+             a wall. It ranks below DIED (a death is a real failure) and above RELOAD/STALL, which it
+             is the explanation for; a real crash still wins over it (see `verdict`).
     STALL    no game update for the harness's 30 s window: the game stopped updating here.
     RELOAD   the update counter went backwards - the run quit to the front end and the port's
              front-end skip re-booted slot 0, so the sweep's `NEXTAREA` tokens then walked from the
@@ -58,6 +64,7 @@ EXIT_RE = re.compile(r"^exit=(\d+) at ")
 HOP_RE = re.compile(r"^\[warp\] area (\d+): (.*)$")
 MOVED_RE = re.compile(r"^\[warp\] (?:moved to|the game's own transition arrived in) area (\d+)")
 RES_RE = re.compile(r"^\[res\] (.*)$")
+CREDITS_RE = re.compile(r"^\[end\] the credits are rolling$")
 FATAL = ("[port] caught",)
 ABORT = ("Object list full", "assert", "Assert", "ASSERT")
 # Lines that are ordinary in every area and say nothing about the area being tested.
@@ -91,6 +98,7 @@ class Phase:
     stall: bool = False
     stalling_index: int = -1
     died: list[str] = field(default_factory=list)
+    credits: list[str] = field(default_factory=list)
     fatal_index: int = -1
     stubs: int = 0
     jumped_back: bool = False
@@ -126,6 +134,12 @@ class Phase:
         # reload, if something then picked "continue") in the same phase is made of.
         if self.died:
             return "DIED"
+        # The ending comes next: it is a known, intended phase whose only symptom is a stall report,
+        # so it outranks RELOAD/STALL there. A fault the handler caught *before* any stall report is a
+        # real crash, though, and outranks the credits (`sampled` is the tester's own backtrace
+        # signal, which is not a crash).
+        if self.credits and not (self.fatal and not self.sampled):
+            return "CREDITS"
         # A reload comes next: it is what a stall report in the same phase usually means (the run
         # was sitting on a quit/loading screen), and it explains an update counter that went backwards.
         if self.reloaded:
@@ -144,7 +158,7 @@ class Phase:
 
     @property
     def evidence(self) -> list[str]:
-        return self.fatal + self.abort + self.died + self.misses + self.notable
+        return self.fatal + self.abort + self.died + self.credits + self.misses + self.notable
 
 
 @dataclass
@@ -241,6 +255,8 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
                 current.misses.append(line.strip())
             elif line.startswith("[player] killed"):
                 current.died.append(line.strip())
+            elif CREDITS_RE.match(line):
+                current.credits.append(line.strip())
             elif "no game update for" in line:
                 current.stall = True
                 current.stalling_index = index
@@ -340,7 +356,10 @@ def main() -> int:
             end = "unknown" if shard is None or shard.exit_code is None else str(shard.exit_code)
             wall = [p for p in phases if p.shard == index and p.verdict != "OK"]
             inside = [a for a in missing if a in requested]
-            if wall:
+            if wall and wall[-1].verdict == "CREDITS":
+                reason = (f"the run reached the ending in area {wall[-1].area} (CREDITS), "
+                          f"so its slice ends there")
+            elif wall:
                 reason = f"the run stopped in area {wall[-1].area} ({wall[-1].verdict})"
             elif inside:
                 reason = "the run played to its frame limit, so a hop's stream never completed"
