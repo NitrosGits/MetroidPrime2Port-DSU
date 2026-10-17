@@ -9,6 +9,7 @@
 
 #include "port_console.h"
 
+#include "port_input.h"
 #include "port_overlay.h"
 #include "port_warp.h"
 
@@ -26,6 +27,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -40,6 +42,10 @@
 #if defined(__GNUC__)
 #include <cxxabi.h>
 #endif
+
+namespace aurora {
+void request_screenshot() noexcept;
+}
 
 #ifndef _WIN32
 #include <cerrno>
@@ -449,7 +455,12 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
+      "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
       "items                       power-up amounts and capacities\n"
+      "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
+      "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
+      "stick <x> <y> [updates]     hold the main stick, -127..127\n"
+      "screenshot                  the F12 capture; the log names the file it wrote\n"
       "help                        this list\n";
 }
 
@@ -780,6 +791,143 @@ void CmdTp(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// face <yaw deg>: turn the player where it stands, through the same Teleport the game uses for a
+// respawn (which sets the player's look/move/control directions from the transform).
+void CmdFace(CStateManager& mgr, const Args& args, std::string& out) {
+  float yaw = 0.f;
+  if (args.size() < 2 || !ParseFloat(args[1], yaw)) {
+    Fail("usage: face <yaw deg>");
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    Fail("no player");
+    return;
+  }
+  const float radians = yaw * 3.14159265358979f / 180.f;
+  // 0 = +y, 90 = +x (z is up), which is the order of the world's own axes.
+  const CVector3f dir(std::sin(radians), std::cos(radians), 0.f);
+  const CVector3f pos = player->GetTranslation();
+  player->Teleport(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()), mgr, true);
+  char line[64];
+  std::snprintf(line, sizeof(line), "facing %.0f deg (%.2f, %.2f)\n", yaw, dir.GetX(), dir.GetY());
+  out += line;
+}
+
+// give adds capacity and fills it; take removes capacity, and the amount with it (which is how a
+// suit upgrade is lost). This is CScriptPickup's own path (CScriptPickup.cpp:342-349).
+void CmdGive(CStateManager& mgr, const Args& args, bool take, std::string& out) {
+  if (args.size() < 2) {
+    Fail(take ? "usage: take <item> [n]" : "usage: give <item> [n]");
+    return;
+  }
+  CPlayerState* state = mgr.PlayerState(0);
+  if (state == nullptr) {
+    Fail("no player state");
+    return;
+  }
+  const int item = EnumValue(kItemNames, kItemCount, args[1]);
+  if (item < 0 || item >= CPlayerState::kIT_Max) {
+    Fail("unknown item '" + Str(args[1]) + "'");
+    return;
+  }
+  int amount = 1;
+  if (args.size() > 2) {
+    amount = ArgToInt(args[2], -1);
+    if (amount < 1) {
+      Fail("the amount is a positive number");
+      return;
+    }
+  }
+  const CPlayerState::EItemType type = static_cast< CPlayerState::EItemType >(item);
+  if (take) {
+    state->AddPowerUp(type, -amount);
+  } else {
+    state->AddPowerUp(type, amount);
+    state->IncrPickUp(type, amount);
+  }
+  const char* name = EnumName(kItemNames, kItemCount, static_cast< uint >(item));
+  char line[128];
+  std::snprintf(line, sizeof(line), "%s %s: %d/%d\n", take ? "took" : "gave",
+                name != nullptr ? name : args[1].data(), state->GetItemAmount(type),
+                state->GetItemCapacity(type));
+  out += line;
+}
+
+void CmdGiveAdd(CStateManager& mgr, const Args& args, std::string& out) {
+  CmdGive(mgr, args, false, out);
+}
+
+void CmdGiveTake(CStateManager& mgr, const Args& args, std::string& out) {
+  CmdGive(mgr, args, true, out);
+}
+
+// press <a+b+...> [updates]: hold pad buttons on the virtual pad (the one MP2_INPUT writes), for
+// `updates` game updates (default 8); 0 holds them until the next press or stick.
+void CmdPress(CStateManager& mgr, const Args& args, std::string& out) {
+  (void)mgr;
+  if (args.size() < 2) {
+    Fail("usage: press <a+b+...> [updates]   (0 holds until the next press/stick)");
+    return;
+  }
+  u16 mask = 0;
+  const std::string wanted = Str(args[1]);
+  size_t begin = 0;
+  while (begin <= wanted.size()) {
+    const size_t plus = wanted.find('+', begin);
+    const std::string name = Lower(wanted.substr(begin, plus == std::string::npos ? std::string::npos
+                                                                                 : plus - begin));
+    const PortInput::SButtonName* button = nullptr;
+    for (const PortInput::SButtonName& candidate : PortInput::kButtonNames) {
+      if (name == Lower(candidate.name)) {
+        button = &candidate;
+      }
+    }
+    if (button == nullptr) {
+      Fail("unknown button '" + name + "'");
+      return;
+    }
+    mask |= button->mask;
+    if (plus == std::string::npos) {
+      break;
+    }
+    begin = plus + 1;
+  }
+  const unsigned updates = args.size() > 2 ? static_cast< unsigned >(ArgToInt(args[2], 8)) : 8u;
+  PortInput::Hold(mask, 0, 0, updates);
+  char line[128];
+  std::snprintf(line, sizeof(line), "holding %s for %u updates\n", wanted.c_str(), updates);
+  out += line;
+}
+
+// stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
+void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
+  (void)mgr;
+  if (args.size() < 3) {
+    Fail("usage: stick <x> <y> [updates]   (-127..127; 0 updates holds until the next press/stick)");
+    return;
+  }
+  const int x = ArgToInt(args[1], 1000);
+  const int y = ArgToInt(args[2], 1000);
+  if (x < -127 || x > 127 || y < -127 || y > 127) {
+    Fail("the stick is -127..127 on each axis");
+    return;
+  }
+  const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 8)) : 8u;
+  PortInput::Hold(0, static_cast< s8 >(x), static_cast< s8 >(y), updates);
+  char line[96];
+  std::snprintf(line, sizeof(line), "holding stick %d,%d for %u updates\n", x, y, updates);
+  out += line;
+}
+
+// screenshot: the F12 capture. Aurora writes it under the working directory and logs the exact path.
+void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
+  aurora::request_screenshot();
+  out +=
+      "screenshot requested: the log's `Screenshot saved to screenshots/metroid-prime-<stamp>.bmp`\n"
+      "names the file (relative to the run's working directory)\n";
+}
+
 void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
   const CPlayerState* state = mgr.GetPlayerState(0);
   if (state == nullptr) {
@@ -829,6 +977,12 @@ constexpr SCommand kCommands[] = {
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},
     {"items", CmdItems, true},
+    {"face", CmdFace, true},
+    {"give", CmdGiveAdd, true},
+    {"take", CmdGiveTake, true},
+    {"press", CmdPress, true},
+    {"stick", CmdStick, true},
+    {"screenshot", CmdScreenshot, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {

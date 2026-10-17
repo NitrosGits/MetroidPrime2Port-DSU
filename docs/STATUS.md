@@ -63,7 +63,11 @@ merges into the script's state, so the two can be held at once, and a run with n
 to the real controller exactly as before). `give <item> [n]` / `take <item> [n]` take `items`' own
 names and go through CScriptPickup's path (`AddPowerUp` + `IncrPickUp`, so an energy tank heals and a
 suit upgrade drops), `face <yaw deg>` turns the player through `CPlayer::Teleport` (0 = +y, 90 = +x),
-and `screenshot` asks Aurora for the F12 capture and says where the log names it.
+and `screenshot` asks Aurora for the F12 capture and says where the log names it. Verified:
+`stick 0 127 120` walked the player 5.6 m (position before and after), `press x 30` entered the morph
+ball and the next one left it, `press a 40` fired, and — the regression that matters — an
+`MP2_INPUT=DOOR@900+1` script still fired its token while console holds were in use, so the two
+share the virtual pad without disturbing the sweep's driver.
 
 **`give` + `visor` found a real crash on the first try: leaving the echo visor ended the run.**
 `CPlayer::UpdateEchoVisorEffects` (`CPlayer.cpp:4459`) adds a filtered-delay aux effect while the

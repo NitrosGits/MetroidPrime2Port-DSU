@@ -21,13 +21,17 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | HD texture set hook (`PortTextures::DeviceName`) | `platform/port_textures.cpp` |
 | **Debug command console over TCP** (`MP2_CONSOLE=<port>`, `tools/mp2con.py`) | `platform/port_console.cpp` - new here |
 | Console: `objs` / `obj` / `send` (object inspection and script messages), `visor` / `beam` switching, `tp`, `items` | `platform/port_console.cpp`, names from `tools/gen_console_names.py` |
+| Console: `face`, `give`/`take`, `press`/`stick` (pad buttons and the main stick held on the virtual pad), `screenshot` | `platform/port_console.cpp`, `platform/port_events.cpp` (`port_input.h`) |
 
 ## Next, cheapest and most useful first
 
-1. **Console, third wave** (MP1's console has more than this tree can serve yet): `face <yaw>`,
-   `strg <id>`, `press <button>` / `stick`, `wait`, `screenshot`, `give`/`take` (needs the item
-   tables the console already reads), and `warp <world> [area]` (MP1-style world warp; this tree's
-   `warp` is area-only). Each is a row in `kCommands`.
+1. **Console, fourth wave** - what is left of MP1's console, and why each waits:
+   `warp <world> [area]` (a world warp; `PortWarp::World` exists, the console's `warp` is area-only),
+   `strg <id>` (a STRG table by asset id; needs the string-table loader, `gpStringTable` only serves
+   the game's own tables), `memo <text>` (`ShowPausedHUDMemo` takes a `CAssetId`, so a free-text
+   message needs a table entry or a port-side one), `wait <n>` (the console answers one command per
+   game update, so a blocking wait buys nothing) and `cstick`/`gyro` (the sweep's `MP2_INPUT` tokens
+   already cover both).
 2. **Graphics toggles**: FOV slider (MP1: `PortDebug::FirstPersonFov`, hooked at
    `CCameraManager::GetDefaultFirstPersonVerticalFOV` - here the FPS camera takes its FOV from
    `CCameraManager::mFirstPersonFov`, so a live change needs the FP camera refreshed), hide helmet

@@ -7,6 +7,7 @@
 #include <dolphin/pad.h>
 
 #include "port_harness.h"
+#include "port_input.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_touch.h"
@@ -18,11 +19,6 @@
 #include <cstring>
 
 namespace {
-
-struct ButtonName {
-  const char* name;
-  u16 mask;
-};
 
 // Full stick deflections: S* is the main stick, C* the C-stick.
 struct StickName {
@@ -46,12 +42,8 @@ bool NameIs(const char* name, const char* p, const char* at) {
   return std::strlen(name) == static_cast< size_t >(at - p) && std::strncmp(name, p, at - p) == 0;
 }
 
-constexpr ButtonName kButtons[] = {
-    {"START", PAD_BUTTON_START}, {"A", PAD_BUTTON_A},         {"B", PAD_BUTTON_B},
-    {"X", PAD_BUTTON_X},         {"Y", PAD_BUTTON_Y},         {"Z", PAD_TRIGGER_Z},
-    {"L", PAD_TRIGGER_L},        {"R", PAD_TRIGGER_R},        {"UP", PAD_BUTTON_UP},
-    {"DOWN", PAD_BUTTON_DOWN},   {"LEFT", PAD_BUTTON_LEFT},   {"RIGHT", PAD_BUTTON_RIGHT},
-};
+// The button names are shared with the console's `press` (port_input.h).
+using PortInput::kButtonNames;
 
 // Keyboard bindings, so the port is playable without a gamepad. Aurora's own
 // defaults are empty (`g_defaultKeys` is all PAD_KEY_INVALID) and nothing else in
@@ -210,6 +202,24 @@ void FireWarpToken(const InputToken& token, unsigned frame) {
                static_cast< int >(token.at - token.name), token.name, frame, Seconds());
 }
 
+// Pad 0 as the debug console drives it (`press`/`stick`, see port_input.h): a hold that merges into
+// the same virtual pad the MP2_INPUT script writes. The game thread is the only writer - console
+// commands run inside `CStateManager::PortWarpTick` - so no locking is needed.
+struct SHoldPad {
+  u16 buttons = 0;
+  s8 stickX = 0;
+  s8 stickY = 0;
+  unsigned endUpdate = 0; // PortHarness::GameUpdates() at which the hold ends; ignored when forever
+  bool forever = false;
+  bool used = false;      // a hold was set at some point, so pad 0 must stay connected afterwards
+};
+
+SHoldPad sHold;
+
+bool HoldActive() {
+  return sHold.used && (sHold.forever || PortHarness::GameUpdates() < sHold.endUpdate);
+}
+
 // MP2_INPUT="BUTTON@frame[+frames],...": hold BUTTON on pad 0 from that game update for the given
 // number of game updates (default 8), so runs can be driven past menus without a player. See
 // ScriptFrame for what a frame is, and platform/README.md's "Input" for the table. Stick names
@@ -219,12 +229,18 @@ void FireWarpToken(const InputToken& token, unsigned frame) {
 void RunInputScript(unsigned frame) {
   size_t count = 0;
   InputToken* tokens = InputScript(count);
-  if (count == 0) {
+  // No script and no console hold: pad 0 is left to the real controller, as it always was.
+  if (count == 0 && !sHold.used) {
     return;
   }
   Seconds();
   PADStatus status{};
-  u16 held = 0;
+  u16 held = HoldActive() ? sHold.buttons : 0;
+  if (HoldActive()) {
+    status.stickX += sHold.stickX;
+    status.stickY += sHold.stickY;
+  }
+
   for (size_t i = 0; i < count; ++i) {
     InputToken& token = tokens[i];
     // Frame 1 is the first game update and 0 means "the state the game starts with", so a token at
@@ -236,7 +252,7 @@ void RunInputScript(unsigned frame) {
     if (fire) {
       FireWarpToken(token, frame);
     }
-    for (const ButtonName& button : kButtons) {
+    for (const PortInput::SButtonName& button : kButtonNames) {
       if (NameIs(button.name, token.name, token.at)) {
         if (down) {
           held |= button.mask;
@@ -268,6 +284,31 @@ void RunInputScript(unsigned frame) {
 }
 
 } // namespace
+
+namespace PortInput {
+
+void Hold(u16 buttons, s8 stickX, s8 stickY, unsigned updates) {
+  sHold.buttons = buttons;
+  sHold.stickX = stickX;
+  sHold.stickY = stickY;
+  sHold.forever = updates == 0;
+  // The next update reads the pad state this iteration sets, so `updates` counts from the update
+  // after this one.
+  sHold.endUpdate = PortHarness::GameUpdates() + updates + 1;
+  sHold.used = true;
+  std::fprintf(stderr, "[input] console holds 0x%x stick %d,%d for %u updates\n", buttons, stickX,
+               stickY, updates);
+}
+
+void Clear() {
+  sHold.buttons = 0;
+  sHold.stickX = 0;
+  sHold.stickY = 0;
+  sHold.forever = false;
+  sHold.endUpdate = 0;
+}
+
+} // namespace PortInput
 
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
 bool PortPumpEvents() {
