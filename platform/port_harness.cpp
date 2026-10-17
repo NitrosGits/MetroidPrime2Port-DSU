@@ -47,8 +47,8 @@ void ReadIntroEnvOnce() {
       sIntroBudget = budget;
     }
   }
-  std::fprintf(stderr, "[harness] MP2_SKIP_INTRO=%s: HUD memos are dismissed until gameplay "
-                       "(budget %d game updates)\n",
+  std::fprintf(stderr, "[harness] MP2_SKIP_INTRO=%s: HUD memos are dismissed and the level-load "
+                       "text is not played until gameplay (budget %d game updates)\n",
                value, sIntroBudget);
 }
 
@@ -153,6 +153,11 @@ bool IntroSkipCinematic(unsigned camera) {
                  camera & 0xffff, Seconds());
   }
   return true;
+}
+
+bool IntroSkipLevelText() {
+  ReadIntroEnvOnce();
+  return sIntroArmed;
 }
 
 void NotePlaying(bool playing) {

@@ -53,6 +53,8 @@ double Seconds();
 // says yes, takes the game's own dismissal path (`UnpauseGame` + the HUD-message frame counter)
 // instead of pausing. A real pause menu never goes through it. A cinematic camera before gameplay
 // gets the skip request START makes (IntroSkipCinematic); MP2_SKIP_CINEMATICS=1 makes unseen ones skippable.
+// The level-load text the loader plays over the load (STRG_IntroLevelLoad: "Data Confirmation",
+// "Mission File ...") and the world-name card are not played at all (IntroSkipLevelText).
 // "Playing" is a game update with the state manager running, no warp pending, streaming or handed
 // to a transition, no cinematic camera and the flow in kFS_InGame; kSettleUpdates of those in a row
 // log `[harness] gameplay reached at <s> (frame <game update>)` once, and the dismissal ends.
@@ -68,6 +70,12 @@ bool IntroDismissMemo(unsigned message);
 // CMFGame's timer tick asks this while a cinematic camera is current in kFS_InGame (camera is its
 // script id). True: request the skip START would (logged once per camera).
 bool IntroSkipCinematic(unsigned camera);
+
+// CMFGameLoader asks this while it decides whether to play the level-load text - the
+// "Data Confirmation" / "Mission File ..." cards of STRG_IntroLevelLoad, or the world-name card on
+// any area load. True: play neither, so a run that asked for no intro lands in gameplay without
+// them. The load transition itself still runs; with nothing enabled it finishes in two seconds.
+bool IntroSkipLevelText();
 
 // CStateManager::Update, once per game update: whether this update counts as playing (see above).
 void NotePlaying(bool playing);

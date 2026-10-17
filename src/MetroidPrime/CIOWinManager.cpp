@@ -1,5 +1,10 @@
 #include "MetroidPrime/CIOWinManager.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+#endif
+
 #include "MetroidPrime/CIOWin.hpp"
 #include "MetroidPrime/Decode.hpp"
 
@@ -192,6 +197,25 @@ bool CIOWinManager::DistributeOneMessage(const CArchitectureMessage& msg,
 }
 
 void CIOWinManager::Draw() const {
+#ifdef TARGET_PC
+  {
+    // Port diagnostic: MP2_DEBUG_IOWIN=1 names the windows on the draw stack once per second, which
+    // is how the level-load text was traced to CMFGameLoader -> CWorldTransManager (docs/STATUS.md).
+    static const bool sLog = std::getenv("MP2_DEBUG_IOWIN") != nullptr;
+    static int sFrame = 0;
+    if (sLog && sFrame++ % 60 == 0) {
+      std::fprintf(stderr, "[iowin] draw stack:");
+      for (IOWinPQNode* node = mDrawRoot; node; node = node->GetNext()) {
+        std::fprintf(stderr, " '%s'%s", node->GetIOWin()->GetName().data(),
+                     node->GetIOWin()->GetIsContinueDraw() ? "" : "(top)");
+        if (!node->GetIOWin()->GetIsContinueDraw()) {
+          break;
+        }
+      }
+      std::fprintf(stderr, "\n");
+    }
+  }
+#endif
   for (IOWinPQNode* node = mDrawRoot; node; node = node->GetNext()) {
     node->GetIOWin()->PreDraw();
     if (!node->GetIOWin()->GetIsContinueDraw())

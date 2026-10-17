@@ -19,6 +19,10 @@
 #include "rstl/vector.hpp"
 #include "string.h"
 
+#ifdef TARGET_PC
+#include "port_harness.h"
+#endif
+
 extern int gResFactoryUnknown;
 
 static const SObjectTag skDefaultWorld('MLVL', 0x3bfa3eff);
@@ -41,6 +45,14 @@ CMFGameLoader::CMFGameLoader()
        gpGameState->GetGameModeType() == 'FRND');
   const bool introText = showWorldName && gpGameState->GetInitPowerupsAtFirstSpawn() &&
                          gpGameState->CurrentWorldAssetId() == skDefaultWorld.GetId();
+#ifdef TARGET_PC
+  // MP2_SKIP_INTRO: the level-load text and the world-name card are part of the load, not of
+  // gameplay, so a run that asked for no intro plays neither (see platform/include/port_harness.h).
+  // The transition itself still runs; with nothing enabled UpdateDisabled finishes it in two
+  // seconds, which is what lets the game start.
+  if (PortHarness::IntroSkipLevelText()) {
+  } else
+#endif
   if (introText) {
     const SObjectTag* tag = gpResourceFactory->GetResourceIdByName("STRG_IntroLevelLoad");
     if (tag != nullptr) {
