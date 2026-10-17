@@ -56,8 +56,9 @@ struct Settings {
 std::mutex sMutex;
 Settings sSettings;
 std::string sConfigPath;
-bool sLoaded = false;
+bool sLoaded = false; // guarded by sMutex
 bool sDirty = false;
+bool sPadAttachFailed = false; // guarded by sPadMutex: the failure is logged once, not per event
 
 // The aim's own speed: MP1 keeps it beside the other touch settings and reads it from the F1
 // window; MP2 has no such window, so the environment is where it is set for now.
@@ -109,15 +110,18 @@ void ReadEnvironment() {
 // The settings file lives in the user directory next to the memory card, because that is the
 // one directory this app owns on every platform. Lines are `key=value`, one per line; the
 // layout string is the only value that may contain anything but letters and digits.
+//
+// `sLoaded` latches only once a real path has been read. The Java view polls the layout from
+// its first draw, which can run before `main` calls `Initialize`; latching on that first call
+// made the later `Initialize` skip the file, so the saved layout and the classic/twin choice
+// were silently ignored (and the next edit overwrote the file with defaults) on any launch
+// where the overlay drew first.
 void LoadConfig() {
-  if (sLoaded) {
+  std::lock_guard< std::mutex > lock(sMutex);
+  if (sLoaded || sConfigPath.empty()) {
     return;
   }
   sLoaded = true;
-  std::lock_guard< std::mutex > lock(sMutex);
-  if (sConfigPath.empty()) {
-    return;
-  }
   std::ifstream file(sConfigPath);
   std::string line;
   while (std::getline(file, line)) {
@@ -154,33 +158,58 @@ void LoadConfig() {
                sSettings.twin ? 1 : 0);
 }
 
+// Callers hold sMutex. Writes `<path>.tmp` and renames it over the real file: a write that is
+// killed part way must not leave a truncated touch.cfg that a later launch loads (a cut-off
+// `layout=` line would read as wrong offsets). The rename is atomic on the same directory.
 void SaveConfigLocked() {
   if (sConfigPath.empty()) {
     return;
   }
-  std::ofstream file(sConfigPath, std::ios::trunc);
-  if (!file) {
-    std::fprintf(stderr, "[touch] cannot write %s\n", sConfigPath.c_str());
-    return;
+  const std::string temporary = sConfigPath + ".tmp";
+  {
+    std::ofstream file(temporary, std::ios::trunc);
+    if (!file) {
+      std::fprintf(stderr, "[touch] cannot write %s\n", temporary.c_str());
+      return;
+    }
+    file << "classic=" << (sSettings.classic ? 1 : 0) << '\n';
+    file << "twin=" << (sSettings.twin ? 1 : 0) << '\n';
+    file << "layout=" << sSettings.layout << '\n';
+    file.flush();
+    if (!file) {
+      std::fprintf(stderr, "[touch] cannot write %s\n", temporary.c_str());
+      std::remove(temporary.c_str());
+      return;
+    }
   }
-  file << "classic=" << (sSettings.classic ? 1 : 0) << '\n';
-  file << "twin=" << (sSettings.twin ? 1 : 0) << '\n';
-  file << "layout=" << sSettings.layout << '\n';
+  if (std::rename(temporary.c_str(), sConfigPath.c_str()) != 0) {
+    std::fprintf(stderr, "[touch] cannot replace %s\n", sConfigPath.c_str());
+    std::remove(temporary.c_str());
+  }
+  sDirty = false;
 }
 
 PortTouchPad::Pad& Pad() {
   std::lock_guard< std::mutex > lock(sPadMutex);
   if (!sPad.ok()) {
     sPad = PortTouchPad::Attach();
-    // One line per attach so a device log says whether the virtual pad ever existed; without
+    if (!sPad.ok() && sPadAttachFailed) {
+      // Failed before and was logged: this runs once per touch event while SDL's joystick
+      // subsystem is not up, and a line per event would flood logcat.
+      return sPad;
+    }
+    // One line per attach (success, or the first failure) so a device log says whether the virtual pad ever existed; without
     // it a broken overlay and a broken mapping look the same from outside. stderr is the
     // right sink rather than a direct logcat call: on Android the entry repoints fd 2 at
     // logcat (platform/main.cpp), so this reaches the same place and still compiles for the
     // host, which has no android/log.h.
-    std::fprintf(stderr, "[touch] pad attached id=%d open=%d gamepad=%d\n",
-                 static_cast< int >(sPad.id), sPad.ok() ? 1 : 0, SDL_IsGamepad(sPad.id) ? 1 : 0);
-    if (!sPad.ok()) {
-      std::fprintf(stderr, "[touch] pad attach failed: %s\n", SDL_GetError());
+    if (sPad.ok()) {
+      std::fprintf(stderr, "[touch] pad attached id=%d gamepad=%d\n", static_cast< int >(sPad.id),
+                   SDL_IsGamepad(sPad.id) ? 1 : 0);
+    } else {
+      sPadAttachFailed = true;
+      std::fprintf(stderr, "[touch] pad attach failed: %s (retried every frame)\n",
+                   SDL_GetError());
     }
   }
   return sPad;
@@ -193,6 +222,8 @@ namespace PortTouch {
 void Initialize(const std::string& userDirectory) {
   ReadEnvironment();
   if (!userDirectory.empty()) {
+    // The Java view's first draw can call Layout() on the UI thread at any moment.
+    std::lock_guard< std::mutex > lock(sMutex);
     sConfigPath = userDirectory + "/touch.cfg";
   }
   LoadConfig();
@@ -200,6 +231,21 @@ void Initialize(const std::string& userDirectory) {
 
 void BeginFrame() {
   LoadConfig();
+
+  // Retry an attach that failed because SDL's joystick subsystem was not up yet (the disc
+  // picker, early boot), so the pad appears without needing a touch. Deliberately here on
+  // the game thread: the UI thread would otherwise retry per touch event, and the pad is
+  // then created on the thread that owns SDL's event loop.
+  {
+    bool missing;
+    {
+      std::lock_guard< std::mutex > lock(sPadMutex);
+      missing = !sPad.ok();
+    }
+    if (missing) {
+      Pad();
+    }
+  }
 
   // A pad that is not this overlay's own is a real one; while one is connected the overlay
   // steps aside (MP1 does the same), which is what `TakePhysicalInput` reports.
@@ -229,14 +275,10 @@ void BeginFrame() {
   }
   PortMouse::SetTouchAimSpeed(sAimSpeed);
 
-  bool dirty = false;
-  {
-    std::lock_guard< std::mutex > lock(sMutex);
-    dirty = sDirty;
-    sDirty = false;
-  }
-  if (dirty) {
-    std::lock_guard< std::mutex > lock(sMutex);
+  // SetLayout and CycleLayout save for themselves under the lock; this flush covers a failed
+  // write (sDirty stays set), so the next frame tries again.
+  std::lock_guard< std::mutex > lock(sMutex);
+  if (sDirty) {
     SaveConfigLocked();
   }
 }
@@ -325,8 +367,10 @@ void SetLayout(const std::string& layout) {
     }
     sSettings.layout = layout;
     sDirty = true;
+    // Under the same lock the mutation took: the game thread's flush and the UI thread's
+    // readers must never see a half-updated Settings or write the file at the same time.
+    SaveConfigLocked();
   }
-  SaveConfigLocked();
 }
 
 void RequestEdit() { sEditRequested.store(true, std::memory_order_release); }
@@ -343,8 +387,8 @@ void CycleLayout() {
     // were made in; carrying them into the other one puts buttons under the wrong fingers.
     sSettings.layout.clear();
     sDirty = true;
+    SaveConfigLocked();
   }
-  SaveConfigLocked();
 }
 
 bool OverlayVisible() { return PortOverlay::Visible(); }
@@ -374,12 +418,9 @@ bool TakePhysicalInput() {
 // The JNI entry points the Java view calls. Package org.metroidprime2.port, class
 // TouchControlsView; every one of them is a static method there, hence the unused `jclass`.
 //
-// The last group is the honest "MP1 has this, MP2 does not" set. MP1's view drives
-// hold-and-slide beam/visor wheels, a minimap tap, map pan/zoom, pointer menus, a Turbo
-// button, Remastered beam shift, the F1 overlay button and a texture-update toast, and asks
-// the native side about each of them; MP2 has no counterpart for any of those subsystems
-// yet, so each answer here is the one that keeps the feature off and out of the way instead
-// of a stub that pretends. When one of them is ported, the Java side needs no change.
+// Only what the Java view declares is here. MP1's wheels, map, pointer menus, Turbo and beam
+// shift are not ported, so no native exists for them: porting one adds its Java declaration
+// and its native together.
 extern "C" {
 
 JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeVirtualButton(
@@ -504,97 +545,5 @@ JNIEXPORT jboolean JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeTakePhysicalInput(JNIEnv*, jclass) {
   return PortTouch::TakePhysicalInput() ? JNI_TRUE : JNI_FALSE;
 }
-
-// The "MP2 has no wheels / map / pointer menu / Turbo / beam shift / overlay button" group.
-// See the comment above it.
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchWheelsEnabled(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchVisorTapScan(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchMapTapEnabled(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeMinimapRect(JNIEnv*, jclass, jfloatArray) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapTap(JNIEnv*, jclass) {
-}
-
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapPan(
-    JNIEnv*, jclass, jfloat, jfloat, jfloat) {}
-
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapZoom(JNIEnv*, jclass,
-                                                                                 jfloat) {}
-
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapRotate(JNIEnv*,
-                                                                                   jclass, jfloat) {}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeMapScreenOpen(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativePauseScreenOpen(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeMessageBoxOpen(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativePointerMenuActive(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jint JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeWheelOwned(JNIEnv*, jclass) {
-  return 0;
-}
-
-JNIEXPORT jintArray JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeWheelIcon(
-    JNIEnv*, jclass, jint, jint) {
-  return nullptr;
-}
-
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeRequestVisor(JNIEnv*,
-                                                                                       jclass,
-                                                                                       jint) {}
-
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeRequestBeam(JNIEnv*,
-                                                                                      jclass,
-                                                                                      jint) {}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTapUpdateToast(JNIEnv*, jclass, jfloat, jfloat) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchTurbo(JNIEnv*, jclass) {
-  return JNI_FALSE;
-}
-
-JNIEXPORT void JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchBeamShift(JNIEnv*, jclass, jboolean) {}
-
-JNIEXPORT void JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchTurboFire(JNIEnv*, jclass, jboolean) {}
-
-JNIEXPORT void JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeToggleDebugOverlay(JNIEnv*, jclass) {}
 } // extern "C"
 #endif

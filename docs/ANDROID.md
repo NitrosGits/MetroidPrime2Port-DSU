@@ -327,10 +327,10 @@ Four new files and four small edits, and no MP1-specific subsystem ported that M
   are the only way to switch; MP2 switches beams and visors *with the C-stick* and has no wheel
   control, so leaving it out would strand them.
 - **MP1's wheels, minimap tap, map pan/zoom, pointer menus, Turbo, beam shift and update toast are
-  not ported.** Their natives exist and answer "off"/"nothing", so MP1's view keeps compiling and
-  never draws a dead control, and the day one of those subsystems lands the Java side needs no
-  change. `nativeToggleDebugOverlay` is one of them: MP2's F1 window takes no touch yet, so a pill
-  that opened it would open a window the phone could not close.
+  not ported.** The Java view has none of that code and no native exists
+  for them; the day one of those subsystems lands, its Java declaration and its native are added
+  together. That includes the F1 overlay pill: MP2's F1 window takes no touch yet, so a pill that
+  opened it would open a window the phone could not close.
 - **`PortPrompts::NoteTouchInput` is declared but not built** in this tree
   (`platform/port_prompts.cpp` is not in `CMakeLists.txt`), so `PortTouch::NoteDevice` records the
   layout instead of calling it; the JNI entry point stays for when that module is wired in.

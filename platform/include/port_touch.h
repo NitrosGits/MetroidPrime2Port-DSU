@@ -25,11 +25,9 @@
 //
 // WHAT THIS MODULE DOES NOT DO. MP1's overlay drives a lot more than a pad: hold-and-slide
 // beam/visor wheels, a minimap tap, map pan/zoom, pointer menus, a Turbo button, Remastered
-// beam shift, the port's F1 overlay and an update toast. None of that has a counterpart in
-// MP2 yet, so the Java view keeps MP1's code for it and this module answers each of those
-// questions with the value that keeps the feature *off* and out of the way. The natives that
-// exist for that reason are marked below; they are the honest "not ported" answer rather than
-// a stub that pretends.
+// beam shift, the port's F1 overlay button and an update toast. None of that is ported, in
+// the Java view or here, and no native exists for any of it: a future port of one subsystem
+// adds its Java declaration and its native together.
 
 #pragma once
 
@@ -51,8 +49,9 @@ void BeginFrame();
 // --- the virtual gamepad (the Java view's `nativeVirtualButton` / `nativeVirtualAxis`) ---
 
 // SDL_GamepadButton index and a normalised -1..1 axis value, exactly as the overlay sends
-// them. The pad attaches on first use: SDL is up by the time Java can call this, and the
-// attach has to be lazy so that a build without the overlay never attaches a device.
+// them. The pad attaches on first use: the attach is lazy so that a build without the
+// overlay never attaches a device, and `BeginFrame` retries a failed one (SDL's joystick
+// subsystem may not be up yet) on the game thread.
 void SetButton(int button, bool down);
 void SetAxis(int axis, float value);
 
@@ -126,9 +125,11 @@ void NoteDevice(bool xboxLayout);
 bool DeviceIsXbox();
 
 // Whether a real pad, keyboard or mouse has been used since the last call - the overlay
-// hides itself once a physical pad takes over, as it does in MP1. Polls the pad list on the
-// game thread (SDL's joystick API is not documented as callable from another thread) and
-// remembers what the event loop saw.
+// hides itself once a physical pad takes over, as it does in MP1. The scan of SDL's device
+// list (`SDL_GetJoysticks`/`SDL_IsJoystickVirtual`) stays on the game thread, in `BeginFrame`;
+// the only SDL calls the UI thread makes are `SDL_SetJoystickVirtualButton`/`Axis` (and the
+// first attach), which SDL protects with its own joystick lock. This also remembers what the
+// event loop saw.
 void NotePhysicalInput();
 bool TakePhysicalInput();
 

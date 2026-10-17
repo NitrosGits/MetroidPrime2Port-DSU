@@ -26,21 +26,17 @@ import java.util.Set;
  * game's own controller mapping, prompts and rebinding treat it as a real pad,
  * and its sticks are sticks rather than four keys pretending to be one.
  *
- * Three layouts (the F1 "Layout" setting). Default: the GameCube pad's, with no
- * C-stick; a drag on the free screen area aims like a mouse. Classic GameCube
- * brings back the C-stick and the D-pad. Twin stick (Remastered) has a right
- * stick that aims directly and Remastered's Dual Sticks button labels. The game
- * assigns the actions.
+ * Two layouts, switched from the layout editor. Default: the classic GameCube pad with the
+ * C-stick and the D-pad, because MP2 switches beams and visors with the C-stick. Twin stick
+ * is a placement variant (Remastered's Dual Sticks labels and positions): its right stick is
+ * still the C-stick, and no PortMouse stick source is behind it. Drag-to-aim on the free
+ * screen area is opt-in on the native side (`MP2_TOUCH_AIM=1` via the app's port_paths.txt).
+ * The game assigns the actions.
  *
- * This MP2 port keeps MP1's three layouts and its layout editor. The beam and
- * visor wheels, the map (minimap tap, pan and pinch), the pointer menus, Turbo,
- * beam shift, the Remastered update toast and the F1 overlay button were removed:
- * MP2 has none of those subsystems yet. MP1 opens the layout editor from its F1
- * window; MP2's F1 window takes no touch, so the editor opens from the Edit
- * button beside the eye. Drag-to-aim is opt-in on the native side
- * on MP2 (`MP2_TOUCH_AIM=1` via the app's port_paths.txt), because MP2 switches
- * beams and visors with the C-stick; without it the default layout shows the
- * C-stick too.
+ * This MP2 port keeps MP1's layout editor and removed the beam and visor wheels, the map
+ * (minimap tap, pan and pinch), the pointer menus, Turbo, beam shift, the Remastered update
+ * toast and the F1 overlay button: MP2 has none of those subsystems yet. MP2's F1 window takes
+ * no touch, so the editor opens from the Edit button beside the eye.
  */
 final class TouchControlsView extends View {
     // Touch target types.
@@ -185,8 +181,8 @@ final class TouchControlsView extends View {
     private static final float BOTTOM_BUTTON_BOTTOM_DP = 12f;
     private static final float BOTTOM_BUTTON_GAP_DP = 8f;
 
-    // A swipe up that springs the morph ball: at least this far, in dp, within
-    // this many ms of the stroke's start (about 270 dp/s or faster).
+    // A flick up that counts as a swipe (native SpringSwipe holds the aim): at least this far,
+    // in dp, within this many ms of the stroke's start (about 270 dp/s or faster).
     private static final float SWIPE_UP_DP = 40f;
     private static final long SWIPE_UP_MS = 150;
 
@@ -235,18 +231,20 @@ final class TouchControlsView extends View {
     // MP1's Turbo button, once for the default/classic layouts and once for twin.
     private static final int C_TURBO = 27;
     private static final int C_TTURBO = 28;
-    private static final int CONTROLS = 29;
+    // The Edit pill beside the eye; appended so no saved id shifts.
+    private static final int C_EDIT = 29;
+    private static final int CONTROLS = 30;
     // The ids the saved layout uses; never rename one.
     private static final String[] CONTROL_IDS = {
         "lstick", "cstick", "dpad", "a", "b", "x", "y", "l", "r", "z", "visor", "beam", "start",
         "menu", "map", "eye", "rstick", "jump", "fire", "morph", "missile", "lt", "lb", "rt", "rb",
-        "tz", "tr", "turbo", "tturbo",
+        "tz", "tr", "turbo", "tturbo", "edit",
     };
     private static final String[] CONTROL_NAMES = {
         "Left stick", "C-stick", "D-pad", "A", "B", "X", "Y", "L", "R", "Z", "Visor", "Beam",
         "Start", "Menu", "Map", "Hide", "Right stick", "Jump", "Fire", "Morph", "Missile",
         "LT Lock", "LB Jump", "RT Fire", "RB Missile", "Map (Z)", "R",
-        "Turbo", "Turbo",
+        "Turbo", "Turbo", "Edit",
     };
     private static final float MIN_SCALE = 0.5f;
     private static final float MAX_SCALE = 2.5f;
@@ -526,7 +524,9 @@ final class TouchControlsView extends View {
         final float left = right ? width - fromSide - d : fromSide;
         final float bottom = height - dp(BOTTOM_BUTTON_BOTTOM_DP);
         out.set(left, bottom - d, left + d, bottom);
-        applyOverride(right ? C_EYE : C_START, out, height);
+        // The Edit pill (right, slot 1) has its own override so it can be moved and scaled
+        // without dragging the eye along.
+        applyOverride(!right ? C_START : slot == 0 ? C_EYE : C_EDIT, out, height);
     }
 
     // Moves and scales a control's default rect by its override, round its centre.
@@ -982,10 +982,11 @@ final class TouchControlsView extends View {
         target.y = lastY;
     }
 
-    // A quick swipe up while aiming springs the morph ball (F1 "Spring Ball on
-    // swipe up"; the game ignores it out of the ball). A stroke starts where the
-    // finger last moved down or stalled; it springs once it has gone SWIPE_UP_DP
-    // up, more up than sideways, within SWIPE_UP_MS. Positions are in dp.
+    // A quick swipe up while aiming tells the native side to keep the aim live for a moment
+    // (PortMouse::SpringSwipe), so a flick turns the view by its whole travel. On MP2 it does
+    // not spring the morph ball. A stroke starts where the finger last moved down or stalled;
+    // it counts once it has gone SWIPE_UP_DP up, more up than sideways, within SWIPE_UP_MS.
+    // Positions are in dp.
     private void trackSwipe(TouchTarget target, float x, float y, long timeMs) {
         if (target.swipeMs < 0 || y >= target.swipeY || timeMs - target.swipeMs > SWIPE_UP_MS) {
             target.swipeX = x;
@@ -1800,6 +1801,9 @@ final class TouchControlsView extends View {
             case C_TTURBO:
                 out.setEmpty();
                 return;
+            case C_EDIT:
+                bottomButtonRect(1, true, width, height, out);
+                return;
             default:
                 bottomButtonRect(0, true, width, height, out);
         }
@@ -2173,7 +2177,7 @@ final class TouchControlsView extends View {
         // from two controls, so the highlight follows the control, not `held`.
         Object control;
         // The aiming finger's current upward stroke (see trackSwipe): where and
-        // when it began (swipeMs -1: none yet), and whether it already sprang.
+        // when it began (swipeMs -1: none yet), and whether it already counted as a swipe.
         float swipeX;
         float swipeY;
         long swipeMs = -1;
