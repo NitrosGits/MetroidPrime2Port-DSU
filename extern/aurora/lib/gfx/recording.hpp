@@ -1,5 +1,6 @@
 #pragma once
 
+#include "efb_copy.hpp"
 #include "scan_peek.hpp"
 #include "types.hpp"
 
@@ -69,6 +70,9 @@ void queue_palette_conv(tex_palette_conv::ConvRequest req);
 // Attaches a CPU read-back of the current pass's color and depth to that pass, so it runs when
 // the pass is encoded (GXRequestScanPeek is the FIFO side of this).
 void queue_scan_peek(scan_peek::Request req);
+// Attaches a CPU read-back of the current pass's resolve target (GXRequestEfbCpuCopy is the
+// FIFO side of this).
+void queue_efb_cpu_copy(efb_copy::Request req);
 
 Range push_verts(const uint8_t* data, size_t length, size_t alignment);
 template <typename T>

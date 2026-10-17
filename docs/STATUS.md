@@ -3,6 +3,78 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-17 (fifth session): the EFB-into-CPU copy - the scan visor's spare buffer
+
+**What it is.** The console's `GXCopyTex(dest, clear)` copies a region of the framebuffer into main
+memory at `dest`, in the format the preceding `GXSetTexCopyDst` chose. Aurora resolves the same copy
+into a *texture*, which serves every consumer that samples it as a texture, but the game also treats
+some of those destinations as bytes: the scan visor uploads the spare buffer as a C8 texture whose
+texels are palette indices, the camera filters upload it as a half-size RGB565 backdrop, and the scan
+window's pane does the same at its own size. The port now mirrors those copies for the CPU:
+- `PortEfbCopy::Request` (new, `src/MetroidPrime/PortEfbCopy.cpp`) is called immediately before the
+  `GXCopyTex` it mirrors. It issues `GXRequestEfbCpuCopy`, a FIFO command that takes the copy's
+  geometry, destination size and texel format from the `GXSetTexCopySrc/Dst` state that is current at
+  that point, so a call site cannot disagree with the copy.
+- `aurora::gfx::efb_copy` (`extern/aurora/lib/gfx/efb_copy.cpp`) is the read-back, in the shape of
+  `scan_peek`: the request rides on the pass the copy closes, the pass's *resolve target* (the same
+  pixels and format the texture path produced) is copied to a mappable buffer at encode time, mapped
+  in `after_submit`, and converted on the CPU to the copy's texel format - A8/R8/G8/B8/I8 as one
+  byte, RGB565 big-endian, which is what the game's upload of console data expects. One to three
+  frames of latency; a seqlock hands the bytes to the game thread.
+- `PortEfbCopy::Fill` is called from both `CGraphics::LoadDolphinSpareTexture` overloads, just before
+  the upload, and copies the latest completed read-back for that buffer and size into it. Nothing is
+  written from the render thread, so an upload never sees half a copy.
+- Three call sites, one mechanism: `CCubeRenderer::DrawScanVisor` (A8, viewport - the visor's palette
+  indices), `CCameraBlurPass::GetFbCopy` (RGB565 half, or I8 full - the camera filters) and
+  `CPlayerVisor::DrawScanEffect` (RGB565 - the scan window). The results screen reads the same buffer
+  and is covered by the same fill once a matching copy has been requested at its size.
+- Knobs: `MP2_EFB_COPY=0` turns the whole thing off (the A/B), `MP2_DEBUG_EFB_COPY=1` logs the fill
+  rate, and `MP2_NO_COPY_TEX=1` keeps a copy out of Aurora's copy-texture map so the game's own
+  upload of the CPU bytes is what the GPU samples - which is how the desktop verification isolates
+  the new path.
+
+**Verified.** Desktop, camera filter, end to end: with `MP2_NO_COPY_TEX=1` the pause screen's
+backdrop is a blurred frame with the copy on (`[efb-copy] first spare-buffer copy landed (320x224,
+143360 bytes, sequence 2)`) and **black** with `MP2_EFB_COPY=0` - `q1_2.png` against `q2_2.png` in
+`/tmp/opencode`. Gameplay and the same pause screen with the copy-texture path left on are unchanged
+(`r1_a.png`, `r2_a.png`). Phone (release build installed, `MP2_INPUT=LEFT@600+2`): the visor opens,
+`[efb-copy] 120 fills from 357 requests (640x448 into ...)` shows the A8 viewport copy landing every
+frame, the frame rate is 60 fps in the visor (300 game frames per 5.00 s, the same as before the
+visor), and the A/B with `MP2_EFB_COPY=0` shows the broken overlay - a large flat olive wedge over the
+scene (`phone_off.png`) where the copy on gives a coherent tinted view (`phone_v3.png`).
+**Not verified:** scanning an actual scannable and reading its highlight colour on the phone - the
+save's view here has nothing scannable in the scan window (`[scan] no target: every one of the 2048
+id pixels is zero`), and the desktop cannot show the visor at all (below). That check is the person's.
+
+**Correcting the record on the visor's desktop device loss.** It is **not** fixed by `5e3e122ee`
+(zeroing the spare buffer). Reproduced today, three times, with `LEFT@200+2`/`LEFT@600+2` in areas 0
+and 2: `VK_ERROR_DEVICE_LOST`, GPUVM fault at the same address `0x80011ca000`, `SQC (data)`, every
+time - and it still happens with the visor's overlay draw skipped, `MP2_SCAN_PEEK=0`,
+`MP2_NO_COPY_TEX=1` and `MP2_EFB_COPY=0` all at once, so it is in the visor's own rendering and not
+in any EFB-copy path. `RADV_DEBUG=hang` puts the fault in a plain one-sample fragment shader (a blit),
+i.e. a bind group whose texture or view is already gone; the address is stable across runs and is not
+in the driver's address-binding report. The earlier "it plays to its frame limit" reading came from
+runs with `input=0 bytes` - they never pressed LEFT, so they never entered the visor. The same goes
+for the "flat white viewport" screenshot (`visor4_a.png`): that run had no input either, so the white
+is the save-load fade, not the visor. The real desktop symptom is the crash; the real phone symptom
+(the wrong highlight colours) is what this session's copy fixed.
+
+**Gates.** `tools/gen_files_cmake.py --check` clean (the new port source is in `PORT_ONLY`, so
+`files.cmake` gained one line); the upstream matching build is green after this session's four port
+edits in upstream files - `Game Code: 94.14% fuzzy, 63.29% matched`, `rc=0` - and every one of them is
+inside `#ifdef TARGET_PC` with the `#else` text byte-identical to the revision before the session
+(`DolphinCGraphics.cpp` keeps its non-PC `GXInitTexObj`/`GXInitTexObjCI` calls verbatim in an `#else`
+branch for exactly that reason).
+
+**Next.**
+- The visor's desktop device loss (above) - the one thing standing between the desktop and a
+  screenshot of the scan visor.
+- The phone check the person can do in a minute: scan a scannable and see whether its highlight is a
+  single colour from the palette rather than garbage.
+- The other CPU-bytes consumers the same mechanism can now serve cheaply: `CFluidPlaneCPU` (reads the
+  half-size RGB565 copy as data), `CCubeRenderer::GetRenderToTexBuffer`'s reflections, and the
+  mip-chain path in `GenerateScreenMipmaps`, which are still on the texture path.
+
 ## Current state as of 2026-10-17 (moved out of `AGENTS.md`, verbatim)
 
 ## Status (2026-10-17, fourth session: M2/M3 verified, three crashes/bugs fixed, PC-first loop)
@@ -133,15 +205,16 @@ reproduce there, so they are not worth driving through the phone):
   **Still unproven end to end**: the `[scan] palette N selected object X` line has not been seen,
   because on the desktop the visor could not be entered at all (below) and on the phone the build with
   the fix has not been tried yet.
-- **The visor's desktop crash is fixed** (`5e3e122ee`): entering it lost the device (GPUVM,
-  `SQC (data)`) because the visor binds `CGraphics::GetDolphinSpareBuffer()` as a C8 texture, that
-  buffer is never initialised on the host, and its uninitialised bytes were sampled as palette indices
-  through a 248-entry TLUT. Zeroed at allocation, as the console's heap was. The visor now plays; its
-  overlay is flat white because the EFB copy that should fill that buffer is still unimplemented.
-- **Next feature, and it is shared**: an EFB-into-CPU read-back at *viewport* size to fill the spare
-  buffer - the scan visor's overlay (`CCubeRenderer::DrawScanVisor`), the camera filters
-  (`CCameraFilter.cpp:569-676`) and the results screen all read it. Bigger than the 32x64 peek; same
-  encoder-task shape, with a frame of latency.
+- **The spare buffer is zeroed at allocation** (`5e3e122ee`): entering the visor lost the device
+  (GPUVM, `SQC (data)`), and the uninitialised spare buffer was the suspect, since the visor binds it
+  as a C8 texture and samples its bytes as palette indices through a 248-entry TLUT; zeroing is what
+  the console's heap had and keeps the worst case inside the palette. **The crash is not fixed,
+  though** - see the fifth-session section at the top: it reproduces with every EFB-copy path off,
+  and the verification runs behind that commit never entered the visor.
+- **The shared feature - an EFB-into-CPU read-back at viewport size to fill the spare buffer - is
+  in** (fifth session, top of this file): the scan visor's overlay (`CCubeRenderer::DrawScanVisor`),
+  the camera filters (`CCameraFilter.cpp:569-676`) and the scan window all read it through
+  `PortEfbCopy`, with the same encoder-task shape and a frame of latency.
 - **Confirmed on the phone (the person's report)**: scanning works - objects now lock on and scan -
   but **the highlight colours are wrong**. That is this same missing spare-buffer copy: the visor
   colourises by sampling it, and on the phone it holds uninitialised host memory, so the palette
@@ -160,7 +233,9 @@ read-back lane hit it while trying to prove a scan target gets selected, and rep
 0/1/2/3 - so it is in the scan visor's own rendering and predates that work. On the phone the visor
 renders, which is why the person could see the visor at all. Worth fixing first, because it is the
 reason desktop verification of anything scan-related was impossible: the swapchain/device loss also
-means a scan-visor run cannot be screenshotted.
+means a scan-visor run cannot be screenshotted. **Still open as of the fifth session** (top of this
+file), which ruled out every EFB-copy path as the cause and left a blit sampling a destroyed bind
+group.
 
 **This session (2026-10-17, fourth).** Verified on the user's phone rather than reasoned about:
 - **M2's two open checks pass.** The SAF picker copies a picked ISO to `files/disc.iso` (`disc image

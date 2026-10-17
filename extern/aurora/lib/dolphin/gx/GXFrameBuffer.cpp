@@ -11,6 +11,7 @@
 #include "../vi/vi_internal.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cmath>
 
 namespace {
@@ -80,7 +81,14 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
   gfx::resolve_pass_into(handle.handle, rect, clearColor, clearAlpha, clearDepth, g_gxState.clearColor,
                          clear_depth_value(), texCopyFmt);
   ++handle.revision;
-  g_gxState.copyTextures[dest] = handle;
+  {
+    // Port diagnostic (temporary): keep the copy out of the CPU-destination map, so the game's own
+    // upload of that pointer (the CPU bytes) is what gets bound.
+    static const bool sNoCopyTex = std::getenv("MP2_NO_COPY_TEX") != nullptr;
+    if (!sNoCopyTex) {
+      g_gxState.copyTextures[dest] = handle;
+    }
+  }
   texture::invalidate_bindings();
 }
 } // namespace aurora::gx

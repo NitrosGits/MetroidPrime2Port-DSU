@@ -234,7 +234,9 @@ TextureHandle new_conv_texture(uint32_t width, uint32_t height, u32 gxFormat, co
   };
   const wgpu::TextureDescriptor textureDescriptor{
       .label = label,
-      .usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::RenderAttachment,
+      // CopySrc is what the CPU read-back of an EFB copy needs (see gfx/efb_copy.cpp).
+      .usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::RenderAttachment |
+               wgpu::TextureUsage::CopySrc,
       .dimension = wgpu::TextureDimension::e2D,
       .size = size,
       .format = wgpuFormat,

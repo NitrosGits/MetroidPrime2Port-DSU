@@ -99,6 +99,17 @@ extern "C" {
 #define GX_AURORA_REQUEST_SCAN_PEEK 0x003B
 
 /**
+ * Asks Aurora to write the bytes a `GXCopyTex` with a main-memory destination would have written
+ * into that destination, once the frame carrying this command has been submitted (Aurora resolves
+ * a copy into a texture, so a CPU pointer never is written). Must be issued while the copy's
+ * GXSetTexCopySrc/Dst state is current, i.e. immediately before the GXCopyTex it mirrors, and must
+ * be followed by: three 64-bit addresses - the caller's staging buffer, its u32 sequence number,
+ * and the staging capacity as a u32 (followed by four bytes of padding to keep the stream on
+ * 64-bit boundaries). See aurora::gfx::efb_copy.
+ */
+#define GX_AURORA_REQUEST_EFB_COPY 0x003C
+
+/**
  * Draw primitives with the vertex count derived from a byte length, as written by
  * GXBegin(prim, fmt, GX_AUTO). Must be followed by a u8 draw opcode (vtxfmt|prim),
  * a u32 vertex data byte length, then that many bytes of vertex data. The byte length

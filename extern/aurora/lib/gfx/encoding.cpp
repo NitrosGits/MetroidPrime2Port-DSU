@@ -4,6 +4,7 @@
 
 #include "clear.hpp"
 #include "depth_peek.hpp"
+#include "efb_copy.hpp"
 #include "pipeline_cache.hpp"
 #include "scan_peek.hpp"
 #include "tex_copy_conv.hpp"
@@ -318,6 +319,18 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
           .depthOrArrayLayers = 1,
       };
       cmd.CopyTextureToTexture(&src, &dst, &size);
+    }
+  }
+
+  if (passInfo.efbCpuCopy.has_value()) {
+    if (passInfo.resolveTarget) {
+      efb_copy::encode(cmd, passInfo.resolveTarget, *passInfo.efbCpuCopy);
+    } else {
+      static bool sWarned = false;
+      if (!sWarned) {
+        sWarned = true;
+        Log.warn("EFB copy read-back dropped: the pass it was requested in has no EFB copy");
+      }
     }
   }
 

@@ -888,6 +888,19 @@ void queue_scan_peek(scan_peek::Request req) {
   renderPass.scanPeek = std::move(req);
 }
 
+void queue_efb_cpu_copy(efb_copy::Request req) {
+  auto& renderPass = current_render_passes()[g_recorder.currentRenderPass];
+  AURORA_ASSERT(!renderPass.sealed, "Attempted to append an EFB copy read-back to sealed render pass {}",
+                g_recorder.currentRenderPass);
+  if (renderPass.efbCpuCopy.has_value()) {
+    // One read-back per pass: the game makes at most one spare-buffer copy per pass, and a second
+    // request would have to share the same slot.
+    Log.warn("EFB copy read-back dropped: pass {} already has one", g_recorder.currentRenderPass);
+    return;
+  }
+  renderPass.efbCpuCopy = std::move(req);
+}
+
 bool is_offscreen() noexcept { return g_recorder.inOffscreen; }
 
 uint32_t get_sample_count() noexcept {

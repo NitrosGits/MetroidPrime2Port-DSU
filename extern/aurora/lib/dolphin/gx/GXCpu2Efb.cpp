@@ -31,3 +31,11 @@ void GXRequestScanPeek(s32 left, s32 top, u32 width, u32 height, void* idOut, vo
   GX_WRITE_U64(reinterpret_cast<u64>(depthLowOut));
   GX_WRITE_U64(reinterpret_cast<u64>(sequence));
 }
+
+void GXRequestEfbCpuCopy(void* staging, u32* sequence, u32 capacity) {
+  GX_WRITE_AURORA(GX_AURORA_REQUEST_EFB_COPY);
+  GX_WRITE_U64(reinterpret_cast<u64>(staging));
+  GX_WRITE_U64(reinterpret_cast<u64>(sequence));
+  GX_WRITE_U32(capacity);
+  GX_WRITE_U32(0); // padding: keep the command stream 64-bit aligned
+}

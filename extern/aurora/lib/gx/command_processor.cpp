@@ -795,6 +795,23 @@ void handle_aurora(ByteReader& reader) noexcept {
         .width = width,
         .height = height,
     });
+  } else if (subCmd == GX_AURORA_REQUEST_EFB_COPY) {
+    const auto staging = reinterpret_cast<void*>(reader.read<u64>());
+    auto* sequence = reinterpret_cast<u32*>(reader.read<u64>());
+    const u32 capacity = reader.read<u32>();
+    reader.skip(4); // padding
+    // The geometry and format are the copy's own, exactly as the console's copy would use them;
+    // the destination size is the game's logical one, which is the size it uploads the bytes at.
+    if (gfx::efb_copy::has_cpu_format(g_gxState.texCopyFmt)) {
+      gfx::queue_efb_cpu_copy(gfx::efb_copy::Request{
+          .out = staging,
+          .sequenceOut = sequence,
+          .capacity = capacity,
+          .width = g_gxState.texCopyDstWidth,
+          .height = g_gxState.texCopyDstHeight,
+          .format = g_gxState.texCopyFmt,
+      });
+    }
   } else if (subCmd == GX_AURORA_BEGIN_OFFSCREEN) {
     const u32 width = reader.read<u32>();
     const u32 height = reader.read<u32>();

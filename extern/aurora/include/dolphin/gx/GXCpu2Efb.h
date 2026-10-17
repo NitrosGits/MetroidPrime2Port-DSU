@@ -20,6 +20,12 @@ void GXPokeZ(u16 x, u16 y, u32 z);
 // `sequence` changes from even to its next even value. See lib/gfx/scan_peek.cpp.
 void GXRequestScanPeek(s32 left, s32 top, u32 width, u32 height, void* idOut, void* depthHighOut,
                        void* depthLowOut, u32* sequence);
+// Aurora-only: writes the bytes the next `GXCopyTex` would have copied to its main-memory
+// destination into `staging`, converting them to the copy's texel format, a frame or two later.
+// `sequence` is the seqlock (odd while the bytes are being written). Use the current copy state
+// (GXSetTexCopySrc/GXSetTexCopyDst) for the geometry, as the copy itself does. See
+// lib/gfx/efb_copy.cpp.
+void GXRequestEfbCpuCopy(void* staging, u32* sequence, u32 capacity);
 u32 GXCompressZ16(u32 z24, GXZFmt16 zfmt);
 u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt);
 

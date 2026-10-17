@@ -9,6 +9,7 @@
 #include "Kyoto/Graphics/CCubeModel.hpp"
 #ifdef TARGET_PC
 #include "Kyoto/Graphics/PortDrawDebug.hpp"
+#include "MetroidPrime/PortEfbCopy.hpp"
 #endif
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "Kyoto/Graphics/CDrawablePlaneObject.hpp"
@@ -3332,6 +3333,11 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   const int vpHeight = viewport.mHeight;
   GXSetTexCopySrc(viewport.mLeft, viewport.mTop, vpWidth, vpHeight);
   GXSetTexCopyDst(vpWidth, vpHeight, GX_CTF_A8, false);
+#ifdef TARGET_PC
+  // The overlay samples these bytes as palette indices: the console's copy filled the spare buffer,
+  // and Aurora only resolves the copy into a texture, so ask for the CPU half as well.
+  PortEfbCopy::Request(spare, vpWidth, vpHeight, 1);
+#endif
   GXCopyTex(spare, false);
   CGraphicsPalette scanPalette(kPF_RGB565, paletteSize * 4);
   scanPalette.Lock();

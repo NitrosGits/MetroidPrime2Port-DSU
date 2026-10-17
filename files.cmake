@@ -1055,6 +1055,7 @@ list(APPEND MP_GAME_SOURCES
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
     src/MetroidPrime/PortDataGlobals.cpp
     src/MetroidPrime/PortDefaultFont.cpp
+    src/MetroidPrime/PortEfbCopy.cpp
     src/MetroidPrime/PortFrameTimeHistory.c
     src/MetroidPrime/PortLinkStubs.cpp
     src/MetroidPrime/PortMakeMsg.cpp

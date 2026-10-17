@@ -2,6 +2,9 @@
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/PortEfbCopy.hpp"
+#endif
 #include "MetroidPrime/SFX/SamusPowerups_MP.h"
 #include "MetroidPrime/SFX/UI.h"
 #include "MetroidPrime/SFX/UI2.h"
@@ -346,6 +349,11 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
   GXSetTexCopySrc(vpLeft + (vpWidth - width) / 2, vpTop + (vpHeight - height) / 2, width, height);
   void* const buffer = CGraphics::GetDolphinSpareBuffer();
   GXSetTexCopyDst(width, height, GX_TF_RGB565, GX_FALSE);
+#ifdef TARGET_PC
+  // The scan window's pane samples these bytes as a texture, so the console's copy wrote them to
+  // main memory too. Ask for the CPU half, exactly as the visor overlay's viewport copy does.
+  PortEfbCopy::Request(buffer, width, height, 2);
+#endif
   GXCopyTex(buffer, GX_FALSE);
   GXPixModeSync();
   mScanDim.Draw();

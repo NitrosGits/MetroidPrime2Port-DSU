@@ -39,6 +39,7 @@ PORT_ONLY = [
     "src/MetroidPrime/PortCTweakPlayerControls.cpp",
     "src/MetroidPrime/PortDataGlobals.cpp",
     "src/MetroidPrime/PortDefaultFont.cpp",
+    "src/MetroidPrime/PortEfbCopy.cpp",
     "src/MetroidPrime/PortFrameTimeHistory.c",
     "src/MetroidPrime/PortGlobals.cpp",
     "src/MetroidPrime/PortLinkStubs.cpp",

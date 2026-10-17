@@ -1,6 +1,7 @@
 #include "frame.hpp"
 
 #include "depth_peek.hpp"
+#include "efb_copy.hpp"
 #include "scan_peek.hpp"
 #include "pipeline_cache.hpp"
 #include "recording.hpp"
@@ -534,6 +535,7 @@ void shutdown() {
   shutdown_pipeline_cache();
   depth_peek::shutdown();
   scan_peek::shutdown();
+  efb_copy::shutdown();
   tex_copy_conv::shutdown();
   tex_palette_conv::shutdown();
   texture_replacement::shutdown();
@@ -703,6 +705,7 @@ uint32_t current_frame() noexcept { return g_frameIndex; }
 void after_submit() noexcept {
   depth_peek::after_submit();
   scan_peek::after_submit();
+  efb_copy::after_submit();
 }
 
 void gpu_synchronize() { render_worker::synchronize(); }

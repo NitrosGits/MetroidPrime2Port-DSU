@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pipeline_cache.hpp"
+#include "efb_copy.hpp"
 #include "scan_peek.hpp"
 #include "types.hpp"
 #include "tex_palette_conv.hpp"
@@ -93,6 +94,9 @@ struct RenderPass {
   // A CPU read-back of this pass's color and depth, requested from the FIFO by GXRequestScanPeek
   // and consumed once the pass has been encoded (see scan_peek.hpp).
   std::optional<scan_peek::Request> scanPeek;
+  // A CPU read-back of this pass's EFB copy, requested from the FIFO by GXRequestEfbCpuCopy
+  // and consumed once the pass has been resolved (see efb_copy.hpp).
+  std::optional<efb_copy::Request> efbCpuCopy;
   wgpu::Texture snapshotColorDst;
   wgpu::TextureView snapshotDepthDst;
   float clearDepthValue = 1.f;

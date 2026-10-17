@@ -6,6 +6,7 @@
 #include <aurora/aurora.h>
 
 #include "port_overlay.h"
+#include "MetroidPrime/PortEfbCopy.hpp"
 
 #include <chrono>
 #include <csignal>
@@ -1664,8 +1665,16 @@ void CGraphics::SetDefaultVtxAttrFmt() {
 void CGraphics::LoadDolphinSpareTexture(int width, int height, GXTexFmt fmt, void* data,
                                         GXTexMapID texId) {
   GXTexObj texObj;
+#ifdef TARGET_PC
+  // Aurora resolves a GXCopyTex into a texture, so the game's main-memory copy destination is only
+  // filled by the port's read-back (PortEfbCopy); land the latest one before it is uploaded.
+  void* texData = data != nullptr ? data : mpSpareBuffer;
+  PortEfbCopy::Fill(texData, width, height);
+  GXInitTexObj(&texObj, texData, width, height, fmt, GX_CLAMP, GX_CLAMP, GX_DISABLE);
+#else
   GXInitTexObj(&texObj, data != nullptr ? data : mpSpareBuffer, width, height, fmt, GX_CLAMP,
                GX_CLAMP, GX_DISABLE);
+#endif
   GXInitTexObjLOD(&texObj, GX_NEAR, GX_NEAR, 0.f, 0.f, 0.f, GX_DISABLE, GX_DISABLE, GX_ANISO_1);
   GXLoadTexObj(&texObj, texId);
   CTexture::InvalidateTexmap(texId);
@@ -1677,8 +1686,16 @@ void CGraphics::LoadDolphinSpareTexture(int width, int height, GXTexFmt fmt, voi
 void CGraphics::LoadDolphinSpareTexture(int width, int height, GXCITexFmt fmt, GXTlut tlut,
                                         void* data, GXTexMapID texId) {
   GXTexObj texObj;
+#ifdef TARGET_PC
+  // The scan visor samples these bytes as palette indices, and this is where they are consumed:
+  // land the latest completed EFB copy before the texture is uploaded.
+  void* texData = data != nullptr ? data : mpSpareBuffer;
+  PortEfbCopy::Fill(texData, width, height);
+  GXInitTexObjCI(&texObj, texData, width, height, fmt, GX_CLAMP, GX_CLAMP, GX_DISABLE, tlut);
+#else
   GXInitTexObjCI(&texObj, data != nullptr ? data : mpSpareBuffer, width, height, fmt, GX_CLAMP,
                  GX_CLAMP, GX_DISABLE, tlut);
+#endif
   GXInitTexObjLOD(&texObj, GX_NEAR, GX_NEAR, 0.f, 0.f, 0.f, GX_DISABLE, GX_DISABLE, GX_ANISO_1);
   GXLoadTexObj(&texObj, texId);
   CTexture::InvalidateTexmap(texId);

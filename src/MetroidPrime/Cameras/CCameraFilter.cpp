@@ -1,5 +1,8 @@
 #include "MetroidPrime/CGameGlobalObjects.hpp"
 #include "MetroidPrime/Cameras/CCameraBlurPass.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/PortEfbCopy.hpp"
+#endif
 #include "MetroidPrime/Cameras/CCameraFilterPass.hpp"
 
 #include "Kyoto/Graphics/CGX.hpp"
@@ -673,6 +676,15 @@ void CCameraBlurPass::GetFbCopy(GXTexFmt format) {
   } else {
     GXSetTexCopyDst(width, height, format, GX_FALSE);
   }
+#ifdef TARGET_PC
+  // The blur samples the spare buffer as a texture; the console's copy also wrote the bytes there,
+  // so ask for the CPU half as well (the same one-copy mechanism the scan visor uses).
+  if (format == GX_TF_RGB565) {
+    PortEfbCopy::Request(CGraphics::GetDolphinSpareBuffer(), width / 2, height / 2, 2);
+  } else {
+    PortEfbCopy::Request(CGraphics::GetDolphinSpareBuffer(), width, height, 1);
+  }
+#endif
   GXCopyTex(CGraphics::GetDolphinSpareBuffer(), GX_FALSE);
   GXPixModeSync();
 }
