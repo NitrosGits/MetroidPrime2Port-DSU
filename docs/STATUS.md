@@ -3,6 +3,67 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-17 (sixth session): the scan visor's desktop crash placed and fixed; the intro text skipped
+
+**The scan visor's device loss was a Z8L depth copy resolved through the colour blit.** Entering the
+visor lost the GPU two frames in (`VK_ERROR_DEVICE_LOST`, GPUVM at `0x80011ca000`, `SQC (data)`), and
+every earlier attempt to place it failed because it is not in the visor's own drawing:
+`CStateManager::CapturePlayerTextures` copies the 32x64 scan-target region three times - the id
+buffer as `GX_CTF_A8`, then the same region as `GX_TF_Z16` and `GX_CTF_Z8L` for the depth buffers.
+Aurora has depth conversion pipelines for Z8/Z16 but none for **Z8L**, so with a scaled destination
+("the port scales copy destinations to the render target") that copy fell into
+`tex_copy_conv::blit` - a *colour* passthrough pipeline - with the **depth** view bound to it. An
+invalid descriptor, a garbage texture fetch, a GPUVM fault. `RADV_DEBUG=hang` agreed: the failing
+draw is a one-sample passthrough fragment shader, and `MP2_NO_BLIT=1` (a knob since removed) made the
+run play to its frame limit, which placed it. It is visor-specific only because those copies exist
+only there.
+- **Fixed on both sides.** The port no longer issues the two depth copies (their only product was the
+  player's CPU depth buffers, and `PortScanTarget::FillBuffers` already fills those from the same
+  read-back as the id buffer; the textures they resolved into were never sampled), and Aurora refuses
+  to route a depth source through the colour blit - it warns once and leaves the target unresolved.
+- **Also fixed in passing:** `gfx::find_bind_group` checked its lookup with `CHECK`, which compiles to
+  nothing under NDEBUG, so a cache miss returned `end()->second` - a garbage bind group handed to the
+  GPU. A lookup now refreshes the entry's frame and a miss logs and returns an empty bind group.
+- **Verified:** `MP2_INPUT=LEFT@200+2` enters the visor, the run plays to its frame limit and exits 0,
+  and the visor draws correctly - tinted world, scan window with its reticle, HUD
+  (`/tmp/opencode/visor_desktop3.png`, the first desktop capture of the scan visor, matching the
+  phone). Commit `875a1fa82`.
+
+**MP2_SKIP_INTRO now skips the level-load text too.** A skip-intro run still showed the opening text
+cards - "--- Data Confirmation ---", "Last transmission received from a rogue planet ... Aether",
+"Mission File 02546" - typed over black, and *that* was what the run waited for: the first game update
+at 33.9 s, gameplay at 36.0 s. A new `MP2_DEBUG_IOWIN=1` names the windows on `CIOWinManager`'s draw
+stack once a second, which placed the cards in `CMFGameLoader::Draw` -> `CWorldTransManager`: the
+*level-load text* `CMFGameLoader` enables (`STRG_IntroLevelLoad`) when the save has no powerups and
+the world is the default one - a `kTT_Text` transition, so the loader blocks until it ends.
+`PortHarness::IntroSkipLevelText` (true while `MP2_SKIP_INTRO` is armed) stops the loader enabling
+either that text or the world-name card an area load shows; the transition still runs and
+`UpdateDisabled` finishes it in two seconds, which is what lets the game start.
+- **Verified on the desktop, same save:** with `MP2_SKIP_INTRO=1` there are no cards at all, `the
+  first game update is at 2.7 s`, `gameplay reached at 4.7 s (frame 121)` (was 33.9 / 36.0 s) and the
+  area plays (`/tmp/opencode/u_10.png`); with `SKIP_INTRO=0` the cards are back unchanged
+  (`/tmp/opencode/v_10.png`). Commit `876f43f40`. With the cinematic skip and the memo dismissal that
+  were already there, a skip-intro run now lands in gameplay with nothing of the intro left.
+
+**Gates this session:** `tools/gen_files_cmake.py --check` clean, and the upstream matching build green
+after each of this session's port edits in upstream files (`Game Code: 94.14% fuzzy, 63.29% matched`,
+`rc=0`), all of them inside `#ifdef TARGET_PC` with the non-PC text byte-identical.
+
+**The phone, with both fixes (`tools/android_apk.sh :app:assembleRelease -PandroidNodStub=false`).**
+`the first game update is at 2.7 s`, `gameplay reached at 7.0 s` (was 34.0 s / 36.0 s), and the run
+plays (`/tmp/opencode/phone_skipint.png`, `ph_2.png`). Also on that build: the **flickering
+camera-attached triangle** the person described is still there - one screenshot (22:23) shows a flat
+grey wedge over the left half of the viewport with a hard diagonal edge, two seconds later it is gone.
+So it is neither the cutscene geometry (`457c86fe2`) nor anything this session touched; it remains the
+one unexplained rendering artifact in ordinary phone gameplay.
+
+**Next.**
+- The person's scannable-highlight check on the new APK.
+- The other CPU-bytes consumers the EFB copy can now serve cheaply: `CFluidPlaneCPU` (reads the
+  half-size RGB565 copy as data), `CCubeRenderer::GetRenderToTexBuffer`'s reflections, and the
+  mip-chain path in `GenerateScreenMipmaps`.
+- M4, the release APK polish.
+
 ## 2026-10-17 (fifth session): the EFB-into-CPU copy - the scan visor's spare buffer
 
 **What it is.** The console's `GXCopyTex(dest, clear)` copies a region of the framebuffer into main
@@ -47,7 +108,8 @@ save's view here has nothing scannable in the scan window (`[scan] no target: ev
 id pixels is zero`), and the desktop cannot show the visor at all (below). That check is the person's.
 
 **Correcting the record on the visor's desktop device loss.** It is **not** fixed by `5e3e122ee`
-(zeroing the spare buffer). Reproduced today, three times, with `LEFT@200+2`/`LEFT@600+2` in areas 0
+(zeroing the spare buffer) - it was fixed in the sixth session, at the top of this file: a Z8L depth
+copy resolved through the colour blit. Reproduced today, three times, with `LEFT@200+2`/`LEFT@600+2` in areas 0
 and 2: `VK_ERROR_DEVICE_LOST`, GPUVM fault at the same address `0x80011ca000`, `SQC (data)`, every
 time - and it still happens with the visor's overlay draw skipped, `MP2_SCAN_PEEK=0`,
 `MP2_NO_COPY_TEX=1` and `MP2_EFB_COPY=0` all at once, so it is in the visor's own rendering and not
