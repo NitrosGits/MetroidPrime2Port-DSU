@@ -104,10 +104,20 @@ and never `A` - the gotcha above says what each does to a run.
    OK. **Open sub-question**: does `A` pick "continue" on that screen? If it does, the `AGENTS.md`
    Gotcha's "`A` walks into a save station" explanation for the RELOAD verdict is wrong rather than
    incomplete. Also unverified: area 35 with the second heal.
-2. **Area 53's hop never lands** in a long run (Temple Grounds 53 = `531079ba`): the direct stream
-   starts (`711 of 1024 free`) and never completes while the game plays on in 52 to the frame limit. In
-   isolation the hop arrives, but the game then moves *itself* to area 56 (a dock) and freezes with the
-   same no-tick signature as (1), so this is probably (1) behind another door - fix (1) first.
+2. ~~**Area 53's hop never lands**~~ **Resolved, and it was two separate things (`a5b08f7ae`).**
+   - **The hop**: not a stall and not a death. A per-300-frame trace put the destination in `phase 9`,
+     `kP_WaitForValidation` (`CGameArea.cpp:1312`), which only advances when `mValidationPaused` clears.
+     A script in area 52 sends `kSM_Load` to the dock towards 53 (`CScriptDock.cpp:177`), loading it
+     ahead of time and holding its validation until the door opens - and a warp never opens the door.
+     The isolated hop arrived only because it left 52 before that script ran. `PortWarpSettle` now
+     clears the hold while it streams (`[warp] area N: its validation was held by a dock; releasing
+     it`), and the same run logs the release, `moved to area 53`, its spawn and `[area] 53`.
+   - **The "moves itself to 56 and freezes" is the end credits**: `TELEPORT=53` reaches the ending -
+     `[area] 56`, ids down to 60, then no updates, with "METROID PRIME 2 ECHOES STAFF CREDITS" on
+     screen (`CCredits`, reached through `CScriptSpecialFunction::AcceptCredits`,
+     `CScriptSpecialFunction.cpp:1066`). Nothing is wrong; a sweep walking into 53 is watching the
+     credits. **Still to do**: `sweep_report.py` should say `CREDITS` rather than `STALL` for that
+     window, and the sweep should not treat it as an unfinished area.
 3. ~~**An `MP2_INPUT` token that fires before the game's first update is deferred and never served.**~~
    **Resolved: a token's frame is a game update now.** The script counted `PortPumpEvents` iterations,
    so every token under the boot's ~2040 iterations landed in the boot: a warp token went to
