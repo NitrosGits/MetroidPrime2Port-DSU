@@ -131,6 +131,7 @@ static int CompareBoidRefsByListenerDistance(const void* a, const void* b) {
   return 0;
 }
 
+#ifdef TARGET_PC
 namespace {
 
 // The swarm's skinned model is an async load: the token behind
@@ -150,6 +151,7 @@ bool SwarmModelReady(const CModelData* modelData) {
 }
 
 } // namespace
+#endif
 
 CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 : mTransform(xf)
@@ -264,12 +266,17 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
             CAdvancementDeltas(CVector3f::Zero(), CQuaternion::NoRotation()));
       }
       mModelData = rs_new CModelData(animRes);
+#ifdef TARGET_PC
       // Built only once the model is resident; PreRender() does it later otherwise. See
       // SwarmModelReady: a display list from an unresolved model crashes Aurora's GX thread.
       if (SwarmModelReady(mModelData.get())) {
         mDisplayList = rs_new SwarmRenderHelpers::CSwarmDisplayList(
             **mModelData->GetAnimationData()->GetModelData());
       }
+#else
+      mDisplayList = rs_new SwarmRenderHelpers::CSwarmDisplayList(
+          **mModelData->GetAnimationData()->GetModelData());
+#endif
     }
   }
   if (data.mDeathParticleEffect != kInvalidAssetId) {
