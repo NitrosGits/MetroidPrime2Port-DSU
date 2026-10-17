@@ -368,11 +368,31 @@ Four new files and four small edits, and no MP1-specific subsystem ported that M
 ### M4 detail: the tech-demo release (2026-10-17)
 
 `versionName "0.4.0"`, `versionCode 4` (MP1 is 0.28.1 / 32; here one step per milestone). Build:
-`tools/android_apk.sh :app:assembleRelease -PmpDebugSigning=true -PandroidNodStub=false` ->
+`tools/android_apk.sh :app:assembleRelease -PandroidNodStub=false` ->
 `android/app/build/outputs/apk/release/app-release.apk` (12.7 MB; debug is 13.8 MB). Both carry the
 same 32 MB `arm64-v8a` `.so` (the native build is RelWithDebInfo in both, see `build.gradle`) with
 no `.debug_*` sections; the release is non-debuggable, the debug variant is `debuggable=true`.
-Signed with the shared debug key until `tools/make_android_keystore.sh` makes a real one.
+
+**Signing.** `tools/make_android_keystore.sh` writes `android/keystore.jks` and the
+`android/keystore.properties` that `build.gradle` reads (both git-ignored; a CI can pass the same four
+values as `MP_APK_KEYSTORE`, `MP_APK_KEYSTORE_PASSWORD`, `MP_APK_KEY_ALIAS`, `MP_APK_KEY_PASSWORD`
+instead). With no key configured, `android_apk.sh` falls back to the shared debug key only when asked
+(`-PmpDebugSigning=true`) and otherwise refuses, and `build.gradle` refuses a half-configured key
+rather than signing with the wrong one. Verified: a release built after the script reports
+`Signer #1 certificate DN: CN=Metroid Prime 2 Port, O=local, C=US` (`apksigner verify --print-certs`).
+**Switching keys is a one-time uninstall on any phone that already has the port**: Android will not
+replace a package signed with a different certificate, and `adb uninstall org.metroidprime2.port`
+deletes the app's data - `files/disc.iso` (the picked ISO), `files/user/USA` (the memory card),
+`files/touch.cfg` and `files/port_paths.txt` - so re-pick the ISO and copy the save back afterwards.
+Keep the key: losing it loses in-place updates of an installed copy.
+
+**Reading a crash on the phone.** The port installs a fault handler that prints `[port] caught
+SIGSEGV (11)` and a backtrace to logcat (tag `mp2port`) before it re-raises, so `adb logcat -d |
+grep -A30 'port\] caught'` is the first thing to read; the backtrace names the port's own frames.
+When the process dies without one (an abort, or a JNI/Java crash), `libsigchain` dumps the frames
+instead and `adb logcat` has them under `E libsigchain:`; `ndk-stack -sym <dir with
+libmetroid_prime2_port.so> -dump crash.txt` turns a full tombstone into the same symbolised frames
+(the unstripped `.so` is `android/app/build/intermediates/cxx/RelWithDebInfo/*/obj/arm64-v8a/`).
 
 **Build line.** `platform/main.cpp` prints `metroid_prime2_port: build <git hash>[-dirty]` at startup
 (logcat tag `mp2port`; `adb logcat -s mp2port | grep build`), from `generated/port_build_info.h`
@@ -390,7 +410,8 @@ files dir (`/sdcard/Android/data/org.metroidprime2.port/files/`): `user/` (card,
     env.MP2_SKIP_INTRO=1
     env.MP2_TELEPORT=5
 
-(needs a save in `user/USA/Card A`; about 36 s to a controllable player).
+(needs a save in `user/USA/Card A`; 2.7 s to the first game update and 7 s to a controllable player
+since `MP2_SKIP_INTRO` also skips the level-load text).
 
 ## 5. Risks, worst first
 
