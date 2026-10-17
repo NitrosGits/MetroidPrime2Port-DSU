@@ -24,6 +24,10 @@ void SetSkipCinematics(bool skip);
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();
 void SetGodMode(bool enabled);
+// First-person field of view in degrees (`MP_FOV=<deg>`, F1 > Render), or 0 for the game's own 55.
+// Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
+// built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.
+float FirstPersonFov();
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

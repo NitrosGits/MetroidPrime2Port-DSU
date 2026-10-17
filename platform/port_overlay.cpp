@@ -22,6 +22,8 @@ namespace {
 bool sVisible = false;
 bool sSkipCinematics = false;
 bool sGodMode = false; // never saved: there is no settings file, and a cheat must not persist
+// First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
+float sFirstPersonFov = 0.f;
 bool sReadEnv = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
@@ -43,6 +45,12 @@ void ReadEnv() {
   sReadEnv = true;
   sSkipCinematics = EnvFlag("MP2_SKIP_CINEMATICS");
   sGodMode = EnvFlag("MP2_GODMODE");
+  if (const char* fov = std::getenv("MP2_FOV")) {
+    const float value = static_cast< float >(std::atof(fov));
+    if (value == 0.f || (value >= 30.f && value <= 120.f)) {
+      sFirstPersonFov = value;
+    }
+  }
 }
 
 void TickFps() {
@@ -118,6 +126,16 @@ void DrawAimSection() {
   ImGui::TextDisabled("the right stick aims through the same path as the mouse");
 }
 
+void DrawRenderSection() {
+  ImGui::SeparatorText("Render");
+  if (ImGui::SliderFloat("Field of view (1st person)", &sFirstPersonFov, 0.f, 120.f,
+                         sFirstPersonFov <= 0.f ? "game (%.0f)" : "%.0f deg")) {
+    // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
+    // built, so the live change goes through CCameraManager::mFirstPersonFov.
+  }
+  ImGui::TextDisabled("(MP2_FOV=<deg>; 0 keeps the game's 55)");
+}
+
 void DrawTestingSection() {
   ImGui::SeparatorText("Testing");
   if (ImGui::Checkbox("Skip cinematics", &sSkipCinematics)) {
@@ -168,6 +186,11 @@ void SetSkipCinematics(bool skip) {
   sSkipCinematics = skip;
 }
 
+float FirstPersonFov() {
+  ReadEnv();
+  return sFirstPersonFov;
+}
+
 bool GodMode() {
   ReadEnv();
   return sGodMode;
@@ -190,6 +213,7 @@ void Draw() {
     ImGui::Text("%.1f fps", static_cast< double >(sFps));
     DrawGameSection();
     DrawAimSection();
+    DrawRenderSection();
     DrawTestingSection();
     DrawCheatsSection();
     DrawKeyboardSection();

@@ -10,7 +10,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 
 | Feature | Where |
 | --- | --- |
-| F1 debug overlay with settings, saved to `port_settings.ini` + `MP_*` env overrides | `platform/debug_ui.cpp` |
+| F1 debug overlay: skip cinematics, god mode, mouse/twin-stick aim, teleports, first-person FOV | `platform/port_overlay.cpp` (env only: `MP2_*`; there is no settings file) |
 | Aspect ratio (4:3 / 16:9 / follow window), widescreen HUD, render scale, vsync, 60 fps cap, sim-rate (fixed/adaptive) | `platform/debug_ui.cpp`, `platform/port_*.cpp` |
 | Skip / fast-forward cutscenes, cutscene speed, `MP2_SKIP_CINEMATICS`, `MP2_SKIP_INTRO` (level-load text + cinematic scene) | `platform/port_harness.cpp`, `CMFGame`, `CMFGameLoader` |
 | Mouse aim, twin-stick aim, gyro aim, full keyboard bindings | `platform/port_mouse.cpp`, `port_events.cpp`, `debug_ui.cpp` |
@@ -32,9 +32,9 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    console answers one command per game update, so a blocking wait buys nothing) and `cstick`/`gyro`
    (the sweep's `MP2_INPUT` tokens already cover both). `warp <world>` is `world <id> [area]` here,
    with `worlds` to name the ids.
-2. **Graphics toggles**: FOV slider (MP1: `PortDebug::FirstPersonFov`, hooked at
-   `CCameraManager::GetDefaultFirstPersonVerticalFOV` - here the FPS camera takes its FOV from
-   `CCameraManager::mFirstPersonFov`, so a live change needs the FP camera refreshed), hide helmet
+2. **Graphics toggles**: done - the first-person FOV (`MP2_FOV=<deg>`, F1 > Render), applied in
+   `CCameraManager::UpdateCameras` through `mFirstPersonFov` + `CGameCamera::SetFovAndTarget`. The
+   rest are open: hide helmet
    (`CInGameGuiManager::Draw`'s `mHelmetVisMode` gate), hide visor effects
    (`CPlayerVisor::Draw`), arm-cannon offset, MSAA, anisotropic filtering, HUD scale.
 3. **Input settings**: rebinding UI and presets (MP1's `port_input_settings.cpp`), plus the settings

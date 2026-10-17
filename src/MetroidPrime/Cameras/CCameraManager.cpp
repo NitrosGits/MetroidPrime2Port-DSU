@@ -37,6 +37,9 @@
 #include "MetroidPrime/Tweaks/CTweakPlayer.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "rstl/algorithm.hpp"
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 float CCameraManager::sFirstPersonFOV = 55.f;
 float CCameraManager::sThirdPersonFOV = 60.f;
@@ -160,6 +163,19 @@ void CCameraManager::CreateCameras(CStateManager& mgr) {
 }
 
 void CCameraManager::UpdateCameras(float dt, CStateManager& mgr) {
+#ifdef TARGET_PC
+  // Port: the F1 overlay's first-person field of view (`MP_FOV=<deg>`, `fov=` in port_settings.ini).
+  // The first-person camera takes its FOV once, when it is built (CCameraManager.cpp:108), so a live
+  // change is applied here: mFirstPersonFov is what a rebuilt camera reads, and SetFovAndTarget moves
+  // the one in use. A cinematic camera animates its own FOV from its spline, so it is left alone.
+  const float portFov = PortOverlay::FirstPersonFov();
+  if (portFov > 0.f && mFirstPersonFov != portFov) {
+    mFirstPersonFov = portFov;
+    if (mFpCamera != nullptr && !IsInCinematicCamera()) {
+      mFpCamera->SetFovAndTarget(portFov);
+    }
+  }
+#endif
   for (int i = 0; i < mCameras.size(); ++i) {
     if (CGameCamera* camera = static_cast< CGameCamera* >(mgr.ObjectById(mCameras[i]))) {
       camera->Think(dt, mgr);

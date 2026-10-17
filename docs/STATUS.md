@@ -3,6 +3,24 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (seventh session, continued again): the first-person FOV setting
+
+The first of `docs/QOL.md`'s graphics toggles: `MP2_FOV=<deg>` (F1 > Render > "Field of view (1st
+person)", 0 keeps the game's 55). The first-person camera takes its FOV once, when it is built
+(`CCameraManager.cpp:108` reads `mFirstPersonFov`), so a live change is applied in
+`CCameraManager::UpdateCameras` (`#ifdef TARGET_PC`): set `mFirstPersonFov` (what a rebuilt camera
+reads) and `CGameCamera::SetFovAndTarget` on the camera in use, skipping a cinematic camera, which
+animates its own FOV from its spline. Verified on the desktop with `MP2_FOV=90`: `status` reports
+`camera first-person fov 90.0` and the frame is visibly wider
+(`/tmp/opencode/fov_55.png` against `/tmp/opencode/fov_90b.png`).
+
+**A documentation error fixed on the way:** `docs/QOL.md` said the F1 overlay's settings live in
+`platform/debug_ui.cpp` and are saved to `port_settings.ini`. They do not: `debug_ui.cpp` is in no
+CMake target at all (it is Metroid-Prime-shaped, like `PortBoot.cpp`), so a setting added there
+compiles nowhere and fails to link (which is exactly how this was found). The live overlay is
+`platform/port_overlay.cpp`, and it keeps no settings file - every knob is an `MP2_*` env var.
+Both files' docs are corrected.
+
 ## 2026-10-18 (seventh session, continued): `MP2_TELEPORT` at boot rendered nothing
 
 **The white screen was a scripted camera filter left applying its flash.** A boot-time
