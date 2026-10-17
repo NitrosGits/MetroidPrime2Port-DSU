@@ -61,6 +61,7 @@ extern void* gPortGameHeapHi;
 #include "Kyoto/Basics/COsContext.hpp"
 #include "Kyoto/Graphics/CGraphicsSys.hpp"
 #include "compiled_modules.h"
+#include "port_build_info.h"
 #include "port_entry.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
@@ -300,6 +301,7 @@ PortPaths ResolveAndroidPaths() {
   error.clear();
   std::filesystem::create_directories(paths.cache, error);
 
+  std::printf("metroid_prime2_port: build %s\n", MP_BUILD_REVISION);
   std::printf("metroid_prime2_port: paths chosen: user=%s cache=%s disc=%s\n", paths.user.c_str(),
               paths.cache.c_str(), paths.disc.c_str());
   return paths;

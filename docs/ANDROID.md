@@ -365,8 +365,32 @@ Four new files and four small edits, and no MP1-specific subsystem ported that M
   the C-stick is the look stick), a physical pad taking the overlay over (the pad scan), and
   moving a control in the editor and re-launching to see the saved `layout=` restored.
 
-**M4 - tech-demo polish.** Stripped release APK with a debug-ish signing story, versionName, an
-in-app line with the build's git hash, and a short `docs/ANDROID.md` "how to install" section.
+### M4 detail: the tech-demo release (2026-10-17)
+
+`versionName "0.4.0"`, `versionCode 4` (MP1 is 0.28.1 / 32; here one step per milestone). Build:
+`tools/android_apk.sh :app:assembleRelease -PmpDebugSigning=true -PandroidNodStub=false` ->
+`android/app/build/outputs/apk/release/app-release.apk` (12.7 MB; debug is 13.8 MB). Both carry the
+same 32 MB `arm64-v8a` `.so` (the native build is RelWithDebInfo in both, see `build.gradle`) with
+no `.debug_*` sections; the release is non-debuggable, the debug variant is `debuggable=true`.
+Signed with the shared debug key until `tools/make_android_keystore.sh` makes a real one.
+
+**Build line.** `platform/main.cpp` prints `metroid_prime2_port: build <git hash>[-dirty]` at startup
+(logcat tag `mp2port`; `adb logcat -s mp2port | grep build`), from `generated/port_build_info.h`
+(`cmake/BuildRevision.cmake`, target `port_build_info`). The F1 overlay that shows it in MP1 is not
+built in this tree.
+
+**Install and run.** `adb install -r app-release.apk` (or copy it to the phone and open it; allow
+unknown sources). First launch opens the system file picker: choose a raw `G2ME01` ISO; it is
+checked and copied to `files/disc.iso`, and later launches skip the picker. Data lives in the app's
+files dir (`/sdcard/Android/data/org.metroidprime2.port/files/`): `user/` (card, `touch.cfg`),
+`cache/`, `disc.iso`, `port_paths.txt`. For a no-input run, add to `port_paths.txt`:
+
+    env.MP2_SKIP_FRONTEND=1
+    env.MP2_SKIP_CINEMATICS=1
+    env.MP2_SKIP_INTRO=1
+    env.MP2_TELEPORT=5
+
+(needs a save in `user/USA/Card A`; about 36 s to a controllable player).
 
 ## 5. Risks, worst first
 

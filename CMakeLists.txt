@@ -278,7 +278,18 @@ target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY
 # context and memory system the game's entry takes, and those constructors
 # are still upstream work (see PORT_NOTES.md).
 add_library(mp_port_entry OBJECT platform/main.cpp)
+# generated/port_build_info.h: MP_BUILD_REVISION (short git hash, "-dirty" if modified), which
+# main.cpp prints at startup. The script rewrites the header only when the text changes.
+add_custom_target(port_build_info
+    COMMAND ${CMAKE_COMMAND}
+        "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+        "-DOUTPUT_HEADER=${CMAKE_BINARY_DIR}/generated/port_build_info.h"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BuildRevision.cmake"
+    BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/port_build_info.h"
+    VERBATIM)
+add_dependencies(mp_port_entry port_build_info)
 target_include_directories(mp_port_entry PRIVATE
+    "${CMAKE_BINARY_DIR}/generated"
     platform/include
     extern/aurora/include
     extern/musyx-port/include
