@@ -1,6 +1,8 @@
 #include "MetroidPrime/CMFGame.hpp"
 
 #ifdef TARGET_PC
+#include <stdio.h>
+
 #include "port_harness.h"
 #include "port_overlay.h"
 #endif
@@ -231,13 +233,76 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // to see the camera manager leave the cinematic camera or it comes back next frame.
         if (PortOverlay::SkipCinematics()) {
           // The retail skip first: SpecialSkipCinematic also fires the scene's skip connections
-          // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end. Stopping
-          // only the camera leaves the sequence playing under the first-person camera, HUD and
-          // visor drawn over it; that is the fallback for a scene with no skip function.
-          if (mStateManager->SpecialSkipCinematic() != 1) {
-            mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+          // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end, and it is
+          // what the `canSkip` branch below counts as the skip having happened (result 1). Result 0
+          // means the scene has no skip function *yet*, which is not the same as having none, so it
+          // is asked again for a few frames before giving up.
+          //
+          // The fallback - stopping the camera alone - is not the same end state, and that is what it
+          // costs: the sequence keeps running underneath, seen through the first-person camera with
+          // the HUD and visor drawn over it, and the geometry it brings with it (the wedge beside the
+          // intro's camera) is drawn until the player walks into the next room. Reach for it only for
+          // a scene whose skip function never appears.
+          //
+          // Which skip is in flight: the camera it belongs to, how many frames the scene's own skip
+          // has been asked for, and whether that ask has been answered for that camera. A skip's
+          // callers reset mFlowTime when one starts, but the camera id is what identifies the
+          // sequence, and a scene that has already been skipped leaves its cinematic camera current
+          // for a frame or two: that re-entry is the camera the skip left behind, not a new sequence,
+          // so it is not retried and reported again (and asking is pointless anyway - the one id
+          // SpecialSkipCinematic asks is cleared when the scene's skip fires). The budget is a handful
+          // of frames, because the skip function is registered by a script
+          // (CScriptSpecialFunction::AcceptCinematicSkip, on kSM_Increment) that may not have run on
+          // the frame the skip is decided.
+          static unsigned sSkipCamera = ~0u;
+          static unsigned sSkipAttempts = 0;
+          static bool sSkipAnswered = false;
+          const unsigned kMaxSkipAttempts = 8;
+          const unsigned portCamId = cineCam->GetScriptCameraId().Value();
+          if (sSkipCamera != portCamId) {
+            sSkipCamera = portCamId;
+            sSkipAttempts = 0;
+            sSkipAnswered = false;
           }
-          finished = true;
+          const int portResult = mStateManager->SpecialSkipCinematic();
+          ++sSkipAttempts;
+          if (portResult == 1 || portResult == 2) {
+            // The scene skipped itself. Result 1 stopped the camera too; result 2 is a skip function
+            // of another type (kSF_CinematicSkipSignal), which only sends the scene's skip messages,
+            // and retail's canSkip branch only counts result 1 as done, so the port stops the camera.
+            if (portResult != 1) {
+              mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+            }
+            if (!sSkipAnswered) {
+              if (portResult == 2) {
+                std::fprintf(stderr,
+                             "[skip] cinematic %04x: the scene's skip signal, camera stopped\n",
+                             portCamId & 0xffffu);
+              } else if (sSkipAttempts > 1) {
+                std::fprintf(stderr, "[skip] cinematic %04x: the scene's own skip (attempt %u)\n",
+                             portCamId & 0xffffu, sSkipAttempts);
+              } else {
+                std::fprintf(stderr, "[skip] cinematic %04x: the scene's own skip\n",
+                             portCamId & 0xffffu);
+              }
+              sSkipAnswered = true;
+            }
+            finished = true;
+          } else if (sSkipAnswered) {
+            mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+            finished = true;
+          } else if (sSkipAttempts < kMaxSkipAttempts) {
+            // No skip function registered yet: stay in this flow state and ask again next frame, so
+            // the scripts that may register one get to run.
+          } else {
+            mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+            std::fprintf(stderr,
+                         "[skip] cinematic %04x: camera stopped only (no skip function in %u "
+                         "attempts)\n",
+                         portCamId & 0xffffu, sSkipAttempts);
+            sSkipAnswered = true;
+            finished = true;
+          }
         } else if (canSkip && mFlowTime >= 1.f && mStateManager->SpecialSkipCinematic() == 1) {
           finished = true;
         }
