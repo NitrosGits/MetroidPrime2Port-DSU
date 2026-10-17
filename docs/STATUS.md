@@ -77,17 +77,19 @@ and never `A` - the gotcha above says what each does to a run.
   drop leaves 600-900 ids free, the id count stays flat, no missing resources, no crash.
 
 **Walls the sweep found, worst first**
-1. **Areas 14, 21 and 35 stop updating.** The last line is always the post-arrival
-   `[warp] dropped the areas around N`; the loop keeps rendering (`CGraphics::EndScene`/`PaceFrame`)
-   and `[harness] no game update for 30.0 s` is the only report. With `B` it is a pure stall; with `A`
-   the run instead quits to the front end and reloads slot 0. Measured under gdb: **`CMFGame::OnMessage`
-   is never called again** (a breakpoint set after the stall sat four minutes), so the tick does not
-   reach the game object and `CMFGame`'s flow state machine - the first hypothesis - is not the
-   suspect. Cheap repro (2.5 min): `MP2_TELEPORT=21 MP2_FRAMES=6000 MP2_INPUT="HEAL@2500,B@3000+4"`.
-   At the stall, dump `CIOWinManager`'s win list and break in `CGameArchitectureSupport::UpdateTicks`:
-   the candidates are that `CMFGame` leaves the IO win stack (a quit to the front end the skip does not
-   re-boot - which would also explain what `A` does there) and that `CMain::CheckReset`'s button chord
-   fires from the virtual pad's state.
+1. ~~**Areas 14, 21 and 35 stop updating.**~~ **Resolved (`05efe2ecc`): the player was dying.**
+   A dead single player takes retail's game-over path - `CMFGame::EndGame` sets `kRM_EndMovie2`,
+   `CMFGame` leaves the `CIOWinManager` stack, and `CMainFlow` puts `CPlayMovie(kWM_LoseGame)` on it,
+   a "continue from last save" screen that takes no `B` - so the run sat there and the harness's
+   "no game update for 30 s" was a symptom, not a hang. Measured under gdb with a backtrace per
+   `AddIOWin`/`RemoveIOWin` and the two window lists side by side: in area 21,
+   `[player] killed in area 21 at update 1194 by weapon type 17 - the dark-world atmosphere ...`.
+   Areas 21 and 35 carry the dark flag (as do 13 and 28), and one `HEAL` per area left ~23 s between
+   heals against a death ~19 s after one. The sweep now heals twice per area, the report has a `DIED`
+   verdict that outranks `STALL` and `RELOAD`, and a shard over areas 12..23 exits 0 with every area
+   OK. **Open sub-question**: does `A` pick "continue" on that screen? If it does, the `AGENTS.md`
+   Gotcha's "`A` walks into a save station" explanation for the RELOAD verdict is wrong rather than
+   incomplete. Also unverified: area 35 with the second heal.
 2. **Area 53's hop never lands** in a long run (Temple Grounds 53 = `531079ba`): the direct stream
    starts (`711 of 1024 free`) and never completes while the game plays on in 52 to the frame limit. In
    isolation the hop arrives, but the game then moves *itself* to area 56 (a dock) and freezes with the
