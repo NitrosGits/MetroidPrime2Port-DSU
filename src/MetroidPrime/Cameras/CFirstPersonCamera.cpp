@@ -114,8 +114,10 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
   // Mouse aim replaces the view direction outright, and does not go through the free-look
   // clamps above (the mouse is not a stick, and the retail limits on the C-stick's travel
   // would cap it). The body has already been turned to the same yaw by CPlayer::UpdateMouseAim,
-  // so the two agree; while something else owns the view, track that direction instead.
-  if (PortMouse::Enabled()) {
+  // so the two agree; while something else owns the view, track that direction instead. The
+  // touch overlay's drag-to-aim is the same source through the same state, so it asks the
+  // same question here - without this the body would turn and the view would not follow.
+  if (PortMouse::Enabled() || PortMouse::TouchEnabled()) {
     if (PortMouse::Aiming() && PortMouse::Initialized()) {
       const float aimYaw = PortMouse::Yaw();
       const float aimPitch = PortMouse::Pitch();

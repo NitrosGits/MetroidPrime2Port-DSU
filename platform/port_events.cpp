@@ -9,6 +9,7 @@
 #include "port_harness.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_touch.h"
 #include "port_warp.h"
 
 #include <chrono>
@@ -193,6 +194,7 @@ bool PortPumpEvents() {
   // A run that has stopped updating is reported here, every iteration, because this poll is the one
   // thing a paused or wedged game still runs.
   PortHarness::IdleCheck();
+  PortTouch::BeginFrame();
   PortMouse::BeginFrame();
   RunInputScript(frame++);
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
@@ -204,6 +206,16 @@ bool PortPumpEvents() {
       // Relative motion only, which is what SDL reports while the port holds capture; the
       // game consumes the resulting aim in CPlayer/CFirstPersonCamera.
       PortMouse::AddMotion(event->sdl.motion.xrel, event->sdl.motion.yrel);
+    }
+    // Anything physical - a key or a mouse button - means the on-screen controls should step
+    // aside, which is what the overlay's own poll acts on. A *gamepad* is deliberately not
+    // listed here: the overlay's own pad arrives as an added device too, and treating that as
+    // physical hid the controls the moment they attached. Physical pads are found instead by
+    // the scan in `PortTouch::BeginFrame`, which can tell a virtual device from a real one.
+    if (event->type == AURORA_SDL_EVENT &&
+        (event->sdl.type == SDL_EVENT_KEY_DOWN ||
+         event->sdl.type == SDL_EVENT_MOUSE_BUTTON_DOWN)) {
+      PortTouch::NotePhysicalInput();
     }
     // Warp hotkeys, for testing the rest of the game by hand: F5/F6 step through the areas of
     // the current world, F7/F8 through the game's worlds. They are always live, and the game

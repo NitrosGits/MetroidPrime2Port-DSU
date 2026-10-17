@@ -114,6 +114,30 @@ float StickAimRate();
 void SetStickAimRate(float pixelsPerSecond);
 // Feeds a normalised right-stick vector (-1..1, x right, y up) for one tick.
 void AddStickAim(float x, float y, float dt);
+// Touch aim: the Android overlay's drag-to-aim, a third source alongside the mouse and the
+// stick. `PortTouch` decides when it is on (its own MP2_TOUCH_AIM switch, or the active
+// layout) and calls SetTouchEnabled; like twin-stick it works with or without mouse aim. The
+// Java UI thread calls AddTouchAim/SetTouchAimDown/SpringSwipe, so those are safe from either
+// thread and the game thread only ever sees a whole tick's travel.
+bool TouchEnabled();
+void SetTouchEnabled(bool enabled);
+// Finger travel in density-independent pixels (right/down positive), scaled here by
+// TouchAimSpeed() because the UI thread has no view of the aim's units.
+void AddTouchAim(float dxDp, float dyDp);
+// A finger is down on the aim area: this is what makes the touch aim own the view at all
+// (see TouchAimActive). Lifting without SpringSwipe stops the aim where the finger left.
+void SetTouchAimDown(bool down);
+// A quick flick that lifted: keep the aim "down" for a short hold afterwards, so a flick
+// turns the view by its whole travel instead of only the part seen while the finger was down.
+void SpringSwipe();
+// A finger is down, or a spring hold is live, and the source is on: the per-frame answer to
+// "does the touch own the view right now". False while the overlay sits idle, which is most
+// of a run.
+bool TouchAimActive();
+// Aim pixels per dp, the Prime port's `touch_aim_speed` (2.25 by default). Clamped to
+// 0.25..10; MP2_TOUCH_AIM_SPEED overrides it the lazy way MP2_MOUSE_SENS does.
+float TouchAimSpeed();
+void SetTouchAimSpeed(float pixelsPerDp);
 // The debug overlay owns the cursor while it is open: no capture, no aim applied.
 void SetUiActive(bool active);
 bool UiActive();
@@ -121,9 +145,11 @@ bool UiActive();
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);
 void BeginFrame();
-// Called every tick, from CPlayer::UpdateMouseAim. `active` means the mouse owns the aim
-// right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps
+// Called every tick, from CPlayer::UpdateMouseAim. `active` means a pointer source may own the
+// aim right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps
 // the aim glued to the camera direction (x, y, z) instead of turning the player under it.
+// An enabled touch source with no finger down counts as locked until TouchAimActive(), so the
+// aim tracks the camera the rest of the time without turning the player.
 // Returns true when the caller should rotate the player to Yaw().
 bool UpdateAim(bool active, bool locked, float x, float y, float z);
 void Synchronize(float x, float y, float z);

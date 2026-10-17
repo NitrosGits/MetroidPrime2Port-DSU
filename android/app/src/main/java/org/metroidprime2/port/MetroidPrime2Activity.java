@@ -15,15 +15,19 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * The whole app at milestone M1: SDL's activity with this port's library, Aurora's surface, and
- * the port's directories written down before the native entry runs.
+ * The app: SDL's activity with this port's library, Aurora's surface, the port's directories
+ * written down before the native entry runs, and - from milestone M3 - the on-screen
+ * controller drawn over the game.
  *
- * <p>What is deliberately absent: touch controls (M3), the file picker (M2) and the debug
- * overlay's settings. ../MetroidPrimePort's MetroidPrimeActivity is the reference for all of
- * them when they land.
+ * <p>What is deliberately absent: the port's F1 settings window has no touch affordance, so
+ * the layout editor is reached from the overlay's own edit pill (see TouchControlsView).
  */
 public final class MetroidPrime2Activity extends SDLActivity {
     private static final String TAG = "MetroidPrime2Port";
+
+    // The overlay, added to SDL's own layout so it sits over the surface. Null if SDL did not
+    // build a layout, which only happens if library loading failed.
+    private TouchControlsView touchControls;
 
     // The library the native build produces: CMakeLists.txt's `metroid_prime2_port`, which on
     // Android is libmetroid_prime2_port.so and exports SDL_main.
@@ -46,7 +50,26 @@ public final class MetroidPrime2Activity extends SDLActivity {
         // ResolveAndroidPaths).
         writePortPaths();
         super.onCreate(savedInstanceState);
+        addTouchControls();
         Log.i(TAG, "activity created; files dir " + getFilesDir());
+    }
+
+    /**
+     * SDL keeps its surface in {@code mLayout}; adding the overlay to the same layout is what
+     * MP1's activity does, and it is the only way to draw over the game without touching SDL.
+     * The view covers the whole layout and consumes the touches it does not pass on, so SDL
+     * never sees them - which is why the native side feeds the game a virtual pad from the JNI
+     * callbacks instead of trying to synthesise input events.
+     */
+    private void addTouchControls() {
+        if (mLayout == null) {
+            Log.w(TAG, "SDL has no layout; no touch controls");
+            return;
+        }
+        touchControls = new TouchControlsView(this);
+        mLayout.addView(touchControls, new android.widget.RelativeLayout.LayoutParams(
+            android.widget.RelativeLayout.LayoutParams.MATCH_PARENT,
+            android.widget.RelativeLayout.LayoutParams.MATCH_PARENT));
     }
 
     /**

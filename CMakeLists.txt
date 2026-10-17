@@ -361,7 +361,7 @@ endif()
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_events.cpp
         platform/port_harness.cpp platform/port_mouse.cpp platform/port_warp.cpp
-        platform/port_overlay.cpp)
+        platform/port_overlay.cpp platform/port_touch.cpp platform/touch_pad.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include
         extern/aurora/include
@@ -401,6 +401,24 @@ foreach(t ${MP_MODULE_OBJECT_TARGETS})
         aurora::core aurora::gx aurora::gd aurora::si aurora::vi aurora::pad
         aurora::mtx aurora::os aurora::dvd aurora::thp aurora::card musyx)
 endforeach()
+
+# The touch overlay's virtual gamepad, on the host. `platform/touch_pad.cpp` is platform
+# independent by construction (that is the whole point of the file), so its axis conversion
+# and button mapping can be checked without a phone - and a wrong mapping is otherwise only
+# visible on one, which is where nobody runs tests. MP1 has the same target, and like MP1's
+# it is not behind BUILD_TESTING: some dependency of Aurora forces that variable to OFF
+# internally (build-port-link/CMakeCache.txt), so a condition on it would silently drop the
+# test.
+if(AURORA_SDL3_TARGET)
+    enable_testing()
+    add_executable(port_touch_pad_tests tests/touch_pad.cpp platform/touch_pad.cpp)
+    target_include_directories(port_touch_pad_tests PRIVATE platform/include extern/aurora/include
+        $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
+    target_compile_definitions(port_touch_pad_tests PRIVATE TARGET_PC)
+    target_link_libraries(port_touch_pad_tests PRIVATE ${AURORA_SDL3_TARGET})
+    add_test(NAME port_touch_pad_tests COMMAND port_touch_pad_tests)
+    set_tests_properties(port_touch_pad_tests PROPERTIES TIMEOUT 30 LABELS port)
+endif()
 
 # ---------------------------------------------------------------------------
 # The binary. `mp_port_entry` is platform/main.cpp, which is the process entry:

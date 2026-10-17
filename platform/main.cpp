@@ -62,6 +62,7 @@ extern void* gPortGameHeapHi;
 #include "Kyoto/Graphics/CGraphicsSys.hpp"
 #include "compiled_modules.h"
 #include "port_entry.h"
+#include "port_touch.h"
 #include "port_tweaks.h"
 
 // The decompilation's exported entry point; see src/MetroidPrime/main.cpp.
@@ -654,6 +655,14 @@ int main(int argc, char** argv) {
     return 1;
   }
 #endif
+
+  // The touch overlay's own settings live in the user directory, next to the memory card:
+  // the layout the player moved, and which of the two layouts is active. On the desktop this
+  // is MP2_USER_PATH or nothing at all - there is no overlay there, and an empty directory
+  // just leaves the defaults in place. Called before Aurora because the Java view polls the
+  // layout as soon as the surface exists.
+  const char* touchUser = EnvOrFallback("MP2_USER_PATH", appPaths.user);
+  PortTouch::Initialize(touchUser != nullptr ? touchUser : std::string());
 
   // 16:9 at the game's logical height. The render mode is widened to match when
   // the widescreen work lands; Aurora upscales to the window either way.

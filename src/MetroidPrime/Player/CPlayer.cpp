@@ -2752,9 +2752,10 @@ void CPlayer::UpdateFreeLook(float dt) {
 // (whose transform comes from the camera) follows; the pitch is left to CFirstPersonCamera,
 // which uses the aim angles for the view. Nothing here sets mInFreeLook: that flag stops
 // movement (CPlayerDynamics) and changes gun animations, and the mouse should not pretend that
-// R is held.
+// R is held. The Android overlay's touch aim and the twin-stick both arrive through the same
+// state, so the gates below ask about all three sources.
 bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled()) {
+  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
     return false;
   }
   const CCameraManager* cameras = mCameraManager;
@@ -2769,7 +2770,7 @@ bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
 }
 
 void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled()) {
+  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);

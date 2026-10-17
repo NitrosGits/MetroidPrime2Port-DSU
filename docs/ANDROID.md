@@ -268,13 +268,15 @@ its surface, and MP1 only survives that by dropping its swapchain by hand
 exists there is no swapchain to lose, and the copy of a 1.4 GB image - minutes on a phone - happens
 before the renderer is up instead of during a frame.
 
-**Not verified on the device**: the picker itself. The env bridge was proven above, and a run with
-the disc in place boots to `disc mounted` and on to the game's own audio loading; but the strict
-"first update" proof (`[ids] frame …` / `[harness]` lines) and the picker both need the phone
-**foregrounded, awake and untouched** for a couple of minutes, and that phone was in use during
-this session (another app held the foreground and one launch even had its log buffer rotate out
-from under it). Both are one short session away: open the app with `<files>/disc.iso` moved aside,
-tap the ISO in the system picker, then relaunch and watch it boot with no picker.
+**Verified on the device (2026-10-17, second session)** - both checks M2 left open, with the
+disc image the user keeps at `/sdcard/MetroidPrime/disc.iso` on the phone: the app's copy was
+moved aside, the run printed `disc.iso ... is not a Metroid Prime 2: Echoes disc image; asking
+for one` / `asking for a disc image`, the system picker was driven by hand (drawer, search,
+`mp2-echoes.iso`) and the log then shows `copying the disc image, 100%` and
+`disc image picked: content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fmp2-echoes.iso,
+copied to /data/user/0/org.metroidprime2.port/files/disc.iso`, followed by `disc mounted`; a
+relaunch after that boots with **no picker** (`disc mounted` and no "asking for a disc image"),
+which is this milestone's acceptance. The strict first-update proof is in the M3 detail below.
 
 **M3 - touch controls.** Port `TouchControlsView.java` + `touch_pad.cpp` + the JNI bridge, and map
 them into this port's input layer (`platform/port_events.cpp`'s virtual pad, `platform/port_mouse.cpp`
@@ -282,7 +284,86 @@ for the look-stick).
 *Verified when*: a run on the phone moves the player and fires with only touch.
 MP2-specific work: MP2 has no `port_input_settings.cpp`/`debug_ui` module split yet, so the layout
 settings have somewhere to live only after a small refactor - see MP1's `platform/debug_ui/controls.inc`
-if the module split is copied.
+if the module split is copied. **Implemented, device-verified - see the M3 detail below.**
+
+### M3 detail: what landed (2026-10-17)
+
+Four new files and four small edits, and no MP1-specific subsystem ported that MP2 cannot back:
+
+- **`platform/include/port_touch.h` + `platform/port_touch.cpp`** are the native side: the pad,
+  the aim, the overlay's settings and the JNI entry points (MP2 has no input-settings module and
+  no JNI bridge, so MP1's `debug_ui/*.inc` + `android_jni.inc` split collapses into one module).
+  It feeds the game exactly three ways - an SDL *virtual gamepad* (the overlay is a real pad, so
+  the game's own control mapper, prompts and C-stick/beam/visor handling apply to touch with no
+  game-side change), the touch aim through `PortMouse` (a third aim source beside the mouse and
+  the twin stick), and its own settings. The settings live in `<user>/touch.cfg`
+  (`classic=`/`twin=`/`layout=`), beside the memory card, because MP2 has no settings file of its
+  own yet.
+- **`platform/touch_pad.{h,cpp}`** are MP1's virtual-gamepad module, ported unchanged (it was
+  already platform independent on purpose), and **`tests/touch_pad.cpp`** with them. A
+  `port_touch_pad_tests` target in the full build runs it on the host: `touch pad: mapping,
+  conversion and cleanup all behave`.
+- **`android/.../TouchControlsView.java`** is MP1's view (2167 lines against MP1's 3148) over the
+  SDL surface, added by `MetroidPrime2Activity.addTouchControls()` to SDL's own `mLayout`, exactly
+  as MP1 adds its own. It keeps MP1's three layouts, its layout editor, its hide pill, its
+  floating stick and its per-control layout string, and it gains one thing MP1 does not need: a
+  small **Edit** button beside the eye in the bottom row. MP1 opens the editor from its F1 window's
+  "Edit layout", and MP2's F1 window takes no touch, so without that button the editor the port
+  went to the trouble of keeping would be unreachable on the only device this overlay exists for.
+  It calls the new `nativeRequestTouchEdit` JNI entry point, which raises the same
+  `PortTouch::RequestEdit` flag the F1 button will use.
+- **`platform/port_events.cpp`** calls `PortTouch::BeginFrame()` each iteration and reports a
+  physical key or mouse button; **`platform/main.cpp`** calls `PortTouch::Initialize(<user dir>)`
+  before Aurora; **`platform/port_mouse.{h,cpp}`** gained the touch aim source (`TouchEnabled`,
+  `AddTouchAim`, `SetTouchAimDown`, `SpringSwipe`, `TouchAimSpeed`, mutex-guarded pending pixels)
+  and **`src/MetroidPrime/Player/CPlayer.cpp`** plus
+  **`src/MetroidPrime/Cameras/CFirstPersonCamera.cpp`** ask it alongside the mouse, inside their
+  existing `#ifdef TARGET_PC` blocks, so the non-PC path is unchanged.
+
+**MP2-specific decisions**, all of them because Echoes differs from Prime:
+
+- **The default layout is the classic GameCube one, with the C-stick**, and drag-to-aim is off
+  (`MP2_TOUCH_AIM=1` turns it on). MP1's default has no C-stick because its beam and visor wheels
+  are the only way to switch; MP2 switches beams and visors *with the C-stick* and has no wheel
+  control, so leaving it out would strand them.
+- **MP1's wheels, minimap tap, map pan/zoom, pointer menus, Turbo, beam shift and update toast are
+  not ported.** Their natives exist and answer "off"/"nothing", so MP1's view keeps compiling and
+  never draws a dead control, and the day one of those subsystems lands the Java side needs no
+  change. `nativeToggleDebugOverlay` is one of them: MP2's F1 window takes no touch yet, so a pill
+  that opened it would open a window the phone could not close.
+- **`PortPrompts::NoteTouchInput` is declared but not built** in this tree
+  (`platform/port_prompts.cpp` is not in `CMakeLists.txt`), so `PortTouch::NoteDevice` records the
+  layout instead of calling it; the JNI entry point stays for when that module is wired in.
+
+**On the phone** (Xiaomi 25102PCBEG, Android 16/arm64, the M3 debug APK):
+
+- the strict "the game reached its first update" check that M2 left open, verbatim:
+  `[harness] MP2_FRAMES=1800: the run ends itself after 1800 game updates`,
+  `[harness] the first game update is at 33.9 s`, `[ids] frame 0: 352/1024 ids allocated`.
+- the pad attaches and Aurora takes it as a controller:
+  `[touch] pad attached id=97 open=1 gamepad=1` then
+  `[info] [aurora::input] Added controller 'Metroid Prime touch gamepad' (instance 97, vid 045e,
+  pid 02ea, type 3)`.
+- touch reaches the game: a held press on the drawn A pill logs `[touch] button 0 down`/`up` and
+  the game advances its own boot screen ("WARNING-HEALTH AND SAFETY ... Press any button to
+  continue" to the Nintendo logo), i.e. the whole path Java view to JNI to virtual pad to Aurora's
+  pad to the game works with nothing but touch. In gameplay, holding the floating left stick up
+  (`adb shell input swipe 500 900 500 470 4500`) logs `[touch] axis 1 -1.00` and moves the player -
+  the screenshot shows the stick deflected and the corridor closed up around the camera - and a
+  400 ms press on A fires the beam, which is M3's acceptance ("moves the player and fires with
+  only touch"). The Edit pill opens the editor (every control gets its dashed grab box, the tool
+  row reads `- + Reset Reset all Layout Done`), the `Layout` tool switches to the twin-stick
+  layout live and writes `classic=0 / twin=1` to `touch.cfg`, and `Done` closes it.
+- **two bugs came out of the device runs**, both fixed and rebuilt: `SDL_EVENT_GAMEPAD_ADDED` was
+  read as "physical input", which hid the overlay the moment its own pad attached (a physical pad
+  is now found by scanning SDL's device list and skipping virtual ones), and a `tap` shorter than
+  a frame is invisible to the game - MP1 documents that limitation in `touch_pad.h`, and a device
+  test has to hold a button (`adb shell input swipe x y x y 600`) to see it.
+- `MP2_DEBUG_PAD=1` (a line per button and stick change) is what made the touch readable in a
+  device log; without it a working overlay and a dead one look identical from outside.
+- What is still untested on the phone: drag-to-aim (`MP2_TOUCH_AIM=1`; it is off by default and
+  the C-stick is the look stick), a physical pad taking the overlay over (the pad scan), and
+  moving a control in the editor and re-launching to see the saved `layout=` restored.
 
 **M4 - tech-demo polish.** Stripped release APK with a debug-ish signing story, versionName, an
 in-app line with the build's git hash, and a short `docs/ANDROID.md` "how to install" section.
