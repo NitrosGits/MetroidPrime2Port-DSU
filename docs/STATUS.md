@@ -123,6 +123,30 @@ reproduce there, so they are not worth driving through the phone):
   stripping `TARGET_PC` blocks from all 18 files this session touched and diffing against the
   pre-session revision: identical everywhere.
 
+**The scan visor** (the person's report: "you can't lock onto things to scan"):
+- **The lock-on's missing piece is fixed** (`e8de72e7b`): MP2 picks its scan target from a 32x64 region
+  whose ids live in the framebuffer's destination alpha, copied into CPU buffers and histogrammed.
+  The copy went through the console `GXCopyTex` path while Aurora resolves that into a *texture*, so
+  the buffers were never written. Measured first: the ids *do* reach the EFB alpha (`31/2048 pixels
+  non-zero, palette 4` in area 2), only the copy-out was missing. `scan_peek` mirrors Aurora's
+  `depth_peek`; one to three frames of latency, which the consumer does not mind.
+  **Still unproven end to end**: the `[scan] palette N selected object X` line has not been seen,
+  because on the desktop the visor could not be entered at all (below) and on the phone the build with
+  the fix has not been tried yet.
+- **The visor's desktop crash is fixed** (`5e3e122ee`): entering it lost the device (GPUVM,
+  `SQC (data)`) because the visor binds `CGraphics::GetDolphinSpareBuffer()` as a C8 texture, that
+  buffer is never initialised on the host, and its uninitialised bytes were sampled as palette indices
+  through a 248-entry TLUT. Zeroed at allocation, as the console's heap was. The visor now plays; its
+  overlay is flat white because the EFB copy that should fill that buffer is still unimplemented.
+- **Next feature, and it is shared**: an EFB-into-CPU read-back at *viewport* size to fill the spare
+  buffer - the scan visor's overlay (`CCubeRenderer::DrawScanVisor`), the camera filters
+  (`CCameraFilter.cpp:569-676`) and the results screen all read it. Bigger than the 32x64 peek; same
+  encoder-task shape, with a frame of latency.
+- **A blocker for testing it on the desktop**: `MP2_INPUT` D-pad tokens (`LEFT@200+20`,
+  `RIGHT@400+20`) do **not** switch the visor, while the person switches it with the on-screen D-pad
+  on the phone. `MP2_DEBUG_SCAN=1` prints nothing, so the selection never changes. Until that is
+  understood, "enter the scan visor" is a phone-only test.
+
 **Open, and it explains why the scan visor's bug survived so long: entering the scan visor kills the**
 **desktop build about two frames in** with a GPUVM fault (`VK_ERROR_DEVICE_LOST`, `SQC (data)`). The
 read-back lane hit it while trying to prove a scan target gets selected, and reproduced it with the
