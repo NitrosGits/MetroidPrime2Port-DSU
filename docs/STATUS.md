@@ -59,7 +59,26 @@ resort after 30 s of flow time. Phone: one skip request, `[skip] cinematic 0123:
 skip`, gameplay at 4.8 s, no second cinematic camera (the previous build re-requested camera 00f4 -
 it had handed over control mid-sequence). Desktop unchanged (`the scene's own skip`, 4.8 s).
 
-**Open: shooting a door into another room crashes the phone build.** `CCubeModel::CCubeModel` reads a
+**Fixed: shooting a door into another room crashed the phone build** (`71f296b71`). The cause was an
+**in-place `memcpy` in `CGameArea::DecompressAreaData`**: an uncompressed MREA chunk is expanded where
+its source already sits, with the two ranges overlapping by a few hundred bytes (source ahead of
+destination). That is undefined for `memcpy`, and which direction a libc copies in decides whether the
+area's section data survives - glibc's x86-64 copy goes the safe way, which is why the desktop only
+ever showed the *symptom*, a surface pointer in `CCubeModel`'s constructor that is not in the area's
+buffers, while the phone (bionic) died. AddressSanitizer on the desktop replay named it: 11
+`memcpy-param-overlap` reports, every one in that function, e.g. destination `[0x…5280,0x…9280)`
+against source `[0x…5434,0x…9434)`; `memmove` for the port, `memcpy` unchanged for the console (`#else`).
+After it: the ASAN build reports nothing on the whole journey, and the phone ran the full route three
+times with no crash.
+- **The replay recipe, on the desktop** (`USERDIR=/tmp/opencode/mp2card/user`, the same card the phone
+  has - the two are byte-identical): `MP2_INPUT=DOOR@300+1,A@320+150,SUP@500+300,DOOR@1000+1,A@1020+400`
+  - break the door in front of you, walk through into the neighbouring area, warp to *its* door and
+  break that, which is what rebuilds the original area's geometry.
+- **If it ever bites again:** `MP2_GUARD_GEOMETRY=1` swaps a surface pointer that is not in the area's
+  mapping for the model's first surface (a wrong-looking model instead of a dead process), and
+  `MP2_DEBUG_AREA=1` prints what it found.
+
+**Previously (instrument, now explained): shooting a door into another room crashes the phone build.** `CCubeModel::CCubeModel` reads a
 surface pointer that is not in the area's buffers while `CWorld::PropogateAreaChain` adds the newly
 visible area's static geometry (fault `0x72c1753804`, surface `0x72c17537f8`, every section the fill
 logged at `0xb4...`). Reproduced on the phone in ~35 s with `MP2_INPUT=DOOR@300+1,A@320+400` from the
