@@ -187,6 +187,11 @@ it is open the cursor belongs to the window (`PortMouse::SetUiActive`).
 `port_harness.cpp` (with `include/port_harness.h`) is the test harness's run length,
 and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
 
+- **`MP2_GODMODE=1`** (also F1 > Cheats) makes the player take no damage:
+  `CStateManager::ApplyLocalDamage` returns early for a `CPlayer` and nothing else, so
+  enemies still die. A death stops game updates (the lose-game screen), so sweeps set it
+  (`tools/sweep_areas.sh`, off with `GODMODE=0`; `tools/run_gameplay.sh` takes `GODMODE=1`).
+  With it off, `[player] killed ...` names the death. Never saved.
 - **`MP2_SKIP_FRONTEND=1`** boots straight into the memory card's save instead of
   playing the front end's menu. It reads the save itself through
   `CMemoryCardDriver` (the same read the file select panel performs through

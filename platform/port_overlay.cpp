@@ -21,6 +21,7 @@ namespace {
 
 bool sVisible = false;
 bool sSkipCinematics = false;
+bool sGodMode = false; // never saved: there is no settings file, and a cheat must not persist
 bool sReadEnv = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
@@ -41,6 +42,7 @@ void ReadEnv() {
   }
   sReadEnv = true;
   sSkipCinematics = EnvFlag("MP2_SKIP_CINEMATICS");
+  sGodMode = EnvFlag("MP2_GODMODE");
 }
 
 void TickFps() {
@@ -126,6 +128,14 @@ void DrawTestingSection() {
   ImGui::TextDisabled("ends every cinematic at once, seen or not; makes tests 3-5x faster");
 }
 
+void DrawCheatsSection() {
+  ImGui::SeparatorText("Cheats");
+  ImGui::Checkbox("God mode", &sGodMode);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_GODMODE=1)");
+  ImGui::TextDisabled("the player takes no damage; other actors still do. Not saved");
+}
+
 void DrawKeyboardSection() {
   ImGui::SeparatorText("Keyboard map");
   ImGui::TextDisabled("WASD move, IJKL C-stick, X/Z/C/V = A/B/X/Y,");
@@ -158,6 +168,16 @@ void SetSkipCinematics(bool skip) {
   sSkipCinematics = skip;
 }
 
+bool GodMode() {
+  ReadEnv();
+  return sGodMode;
+}
+
+void SetGodMode(bool enabled) {
+  ReadEnv();
+  sGodMode = enabled;
+}
+
 void Draw() {
   TickFps();
   // While the window is open the cursor belongs to it, not to the game's aim.
@@ -171,6 +191,7 @@ void Draw() {
     DrawGameSection();
     DrawAimSection();
     DrawTestingSection();
+    DrawCheatsSection();
     DrawKeyboardSection();
     ImGui::SeparatorText("Hotkeys");
     ImGui::TextDisabled("F1 overlay, F5/F6 area, F7/F8 world");

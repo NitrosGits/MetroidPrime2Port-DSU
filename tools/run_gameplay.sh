@@ -6,6 +6,7 @@
 #   USERDIR=<dir holding the card> [WORLD=<world>[,<area>]] [INPUT_FILE=<script>] [FRAMES=<n>]
 #   [SKIP_INTRO=0|1] (default 1: MP2_SKIP_INTRO, the port gets to a controllable player on its own)
 #   [SECS=<timeout>] [DISPLAY_NUM=:<n>] [CACHEDIR=<dir>] [TELEPORT=<area>] [RUNTAG=<tag>]
+#   [GODMODE=1] (MP2_GODMODE: the player takes no damage; default off, an ordinary run takes damage)
 #   [LOG=<file>] [ASAN=1] [BUILD=<build dir>] tools/run_gameplay.sh
 #
 # `WORLD`/`TELEPORT`/the `MP2_INPUT` tokens are hex asset ids or names; the player's own run length is
@@ -68,6 +69,7 @@ envs=(
   "MP2_INPUT=$IN" "MP2_USER_PATH=$USERDIR" "MP2_CACHE_PATH=$CACHEDIR"
   "MP2_FRAMES=${FRAMES:-16000}"
 )
+[ -n "${GODMODE:-}" ] && envs+=("MP2_GODMODE=$GODMODE")
 [ -n "${WORLD:-}" ] && envs+=("MP2_WORLD=$WORLD")
 [ -n "${TELEPORT:-}" ] && envs+=("MP2_TELEPORT=$TELEPORT")
 

@@ -3019,6 +3019,13 @@ bool CStateManager::ApplyLocalDamage(const CVector3f& pos, const CVector3f& dir,
       return false;
     }
 
+#ifdef TARGET_PC
+    // Port: the MP2_GODMODE cheat (F1 > Cheats). Only a player is spared; every other actor
+    // still takes its damage. Without it the "[player] killed" line below names the death.
+    if (PortOverlay::GodMode()) {
+      return false;
+    }
+#endif
     if (gpGameState->GetHardModeEnabled()) {
       switch (damageInfo.GetWeaponMode().GetRawType()) {
       case kWT_Phazon:

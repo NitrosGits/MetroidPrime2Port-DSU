@@ -20,6 +20,10 @@ void Toggle();
 // story beats along with the intro.
 bool SkipCinematics();
 void SetSkipCinematics(bool skip);
+// Cheat (`MP2_GODMODE=1`, F1 > Cheats): the player takes no damage, so a hazard cannot end a
+// test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
+bool GodMode();
+void SetGodMode(bool enabled);
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

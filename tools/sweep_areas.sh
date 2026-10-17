@@ -32,6 +32,11 @@ DWELL=${DWELL:-1400}
 # dark-world area turns on.
 TAIL=${TAIL:-1400}
 HEAL=${HEAL:-400}
+# God mode by default: a hazard death (the dark-world atmosphere kills a suitless player in ~19 s)
+# ends a run in the lose-game screen, where no game update runs, and it reads as a stall. A
+# deliberate hazard-death run turns it off with GODMODE=0. The HEALs below stay: they cost nothing
+# and still matter when the cheat is off.
+GODMODE=${GODMODE:-1}
 TAG=${TAG:-sweep}
 DISPLAY_BASE=${DISPLAY_BASE:-86}
 LOGDIR=${LOGDIR:-/tmp/opencode}
@@ -132,7 +137,7 @@ run_shard() { # <index>
        "$tokens tokens, log $LOGDIR/log_${TAG}_$i.log"
   RUNTAG="${TAG}_$i" DISPLAY_NUM=":$display" USERDIR="$user" INPUT_FILE="$input" \
     TELEPORT="$first" FRAMES="$frames" SECS="$secs" LOG="$LOGDIR/log_${TAG}_$i.log" \
-    ASAN="${ASAN:-}" "$ROOT/tools/run_gameplay.sh"
+    GODMODE="$GODMODE" ASAN="${ASAN:-}" "$ROOT/tools/run_gameplay.sh"
   local rc=$?
   echo "[sweep] shard $i: exit=$rc (0 clean, 124 timeout, 134 abort, 139 crash)"
   return $rc
