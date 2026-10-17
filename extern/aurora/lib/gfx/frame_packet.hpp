@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pipeline_cache.hpp"
+#include "scan_peek.hpp"
 #include "types.hpp"
 #include "tex_palette_conv.hpp"
 #include "texture.hpp"
@@ -80,6 +81,7 @@ struct RenderPass {
   wgpu::TextureView depthStencilView;
   wgpu::TextureFormat depthStencilFormat = wgpu::TextureFormat::Undefined;
   wgpu::Texture copySourceTexture;
+  wgpu::Texture copySourceDepthTexture;
   wgpu::TextureView copySourceView;
   wgpu::TextureView copySourceDepthView;
   uint32_t msaaSamples = 1;
@@ -88,6 +90,9 @@ struct RenderPass {
   GXTexFmt resolveFormat = GX_TF_RGBA8;
   ClipRect resolveRect;
   Range resolveUniformRange;
+  // A CPU read-back of this pass's color and depth, requested from the FIFO by GXRequestScanPeek
+  // and consumed once the pass has been encoded (see scan_peek.hpp).
+  std::optional<scan_peek::Request> scanPeek;
   wgpu::Texture snapshotColorDst;
   wgpu::TextureView snapshotDepthDst;
   float clearDepthValue = 1.f;
@@ -107,7 +112,9 @@ struct RenderPass {
   std::vector<tex_palette_conv::ConvRequest> paletteConvs;
 
   RenderTargetLayout target_layout() const noexcept;
-  bool has_consumer() const { return resolveTarget || snapshotColorDst || snapshotDepthDst; }
+  bool has_consumer() const {
+    return resolveTarget || snapshotColorDst || snapshotDepthDst || scanPeek.has_value();
+  }
   bool has_content() const {
     if (hasDraws || clearDepth) {
       return true;

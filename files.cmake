@@ -1059,6 +1059,7 @@ list(APPEND MP_GAME_SOURCES
     src/MetroidPrime/PortLinkStubs.cpp
     src/MetroidPrime/PortMakeMsg.cpp
     src/MetroidPrime/PortPoolStandIns.cpp
+    src/MetroidPrime/PortScanTarget.cpp
     src/MetroidPrime/PortSkipFrontEnd.cpp
     src/MetroidPrime/PortTweakGlobals.cpp
 )

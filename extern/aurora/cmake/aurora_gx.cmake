@@ -6,6 +6,7 @@ add_library(aurora_gx STATIC
         lib/gfx/pipeline_cache.cpp
         lib/gfx/recording.cpp
         lib/gfx/render_worker.cpp
+        lib/gfx/scan_peek.cpp
         lib/gfx/resource_cache.cpp
         lib/gfx/dds_io.cpp
         lib/gfx/tex_copy_conv.cpp

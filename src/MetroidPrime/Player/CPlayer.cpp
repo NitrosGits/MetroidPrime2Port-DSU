@@ -102,6 +102,7 @@
 
 #ifdef TARGET_PC
 #include "port_mouse.h"
+#include "MetroidPrime/PortScanTarget.hpp"
 #endif
 
 // NonMatching structure pass; incomplete behavior is explicit below.
@@ -1334,6 +1335,9 @@ void CPlayer::UpdateVisorState(const CFinalInput& input, float dt, CStateManager
       }
     }
 
+#ifdef TARGET_PC
+    PortScanTarget::NoteVisorSelection(currentVisor, selectedVisor, mVisorChangeRequested);
+#endif
     if (selectedVisor != currentVisor &&
         playerState->HasPowerUp(skVisorToItemMapping[selectedVisor].first)) {
       const CPlayerState::EPlayerVisor visor =

@@ -1,4 +1,7 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
+#ifdef TARGET_PC
+#include <stdio.h>  // fprintf: the port's scan-target diagnostics
+#endif
 
 #include "Collision/CCollidableAABox.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -1902,11 +1905,22 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
     rstl::reserved_vector< uint, 62 > histogram;
     histogram.resize(62, 0u);
     const uchar* paletteData = static_cast< const uchar* >(mScanTargetIdTextureData.get());
+#ifdef TARGET_PC
+    // Port diagnostic: an all-zero buffer is what a missing read-back looks like, and it is what
+    // this used to see on every frame. Count the non-zero entries so the line below can tell that
+    // apart from a frame with nothing scannable in view (PortScanTarget fills the buffer).
+    uint portNonZeroIds = 0;
+#endif
     for (uint i = 0; i < height * width; ++i) {
       const uint palette = paletteData[i] >> 2;
       if (palette < 62) {
         ++histogram[palette];
       }
+#ifdef TARGET_PC
+      if (paletteData[i] != 0) {
+        ++portNonZeroIds;
+      }
+#endif
     }
 
     uint bestCount = 0;
@@ -1922,6 +1936,27 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
         }
       }
     }
+#ifdef TARGET_PC
+    {
+      // The acceptance line: a selected object means the id read-back works end to end. Both
+      // branches log on change (or, for the empty case, once every 120 frames), so a scan visor
+      // session does not flood the log.
+      static uint sPortLoggedId = 0;
+      static uint sPortEmptyFrames = 0;
+      if (selectedId != kInvalidUniqueId) {
+        sPortEmptyFrames = 0;
+        if (sPortLoggedId != selectedId.Value()) {
+          sPortLoggedId = selectedId.Value();
+          std::fprintf(stderr, "[scan] palette %u selected object %08x (%u id pixels, %u non-zero)\n",
+                       selectedPalette, selectedId.Value(), bestCount, portNonZeroIds);
+        }
+      } else if (portNonZeroIds == 0 && ++sPortEmptyFrames % 120 == 1) {
+        std::fprintf(stderr, "[scan] no target: every one of the %u id pixels is zero\n", height * width);
+      } else if (portNonZeroIds != 0) {
+        sPortEmptyFrames = 0;
+      }
+    }
+#endif
   }
 
   const uchar* paletteData = static_cast< const uchar* >(mScanTargetIdTextureData.get());

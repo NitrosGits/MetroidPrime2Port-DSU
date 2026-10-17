@@ -771,6 +771,30 @@ void handle_aurora(ByteReader& reader) noexcept {
     g_gxState.texCopyDest = reinterpret_cast<const void*>(reader.read<u64>());
   } else if (subCmd == GX_AURORA_REQUEST_DEPTH_SNAPSHOT) {
     gfx::depth_peek::request_snapshot();
+  } else if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK) {
+    const s32 left = static_cast<s32>(reader.read<u32>());
+    const s32 top = static_cast<s32>(reader.read<u32>());
+    const u32 width = reader.read<u32>();
+    const u32 height = reader.read<u32>();
+    auto* idOut = reinterpret_cast<void*>(reader.read<u64>());
+    auto* depthHighOut = reinterpret_cast<void*>(reader.read<u64>());
+    auto* depthLowOut = reinterpret_cast<void*>(reader.read<u64>());
+    auto* sequence = reinterpret_cast<u32*>(reader.read<u64>());
+    // The game's coordinates are logical, as GXSetTexCopySrc's are: map them the same way the
+    // copy path does, so the peek reads the texels the copy would have written.
+    const auto rect = map_logical_scissor({left, top, static_cast<int32_t>(width), static_cast<int32_t>(height)});
+    gfx::queue_scan_peek(gfx::scan_peek::Request{
+        .idOut = idOut,
+        .depthHighOut = depthHighOut,
+        .depthLowOut = depthLowOut,
+        .sequenceOut = sequence,
+        .srcX = rect.x,
+        .srcY = rect.y,
+        .srcWidth = rect.width,
+        .srcHeight = rect.height,
+        .width = width,
+        .height = height,
+    });
   } else if (subCmd == GX_AURORA_BEGIN_OFFSCREEN) {
     const u32 width = reader.read<u32>();
     const u32 height = reader.read<u32>();

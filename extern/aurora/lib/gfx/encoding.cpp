@@ -5,6 +5,7 @@
 #include "clear.hpp"
 #include "depth_peek.hpp"
 #include "pipeline_cache.hpp"
+#include "scan_peek.hpp"
 #include "tex_copy_conv.hpp"
 #include "tex_palette_conv.hpp"
 #include "../gx/gx.hpp"
@@ -294,6 +295,11 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
       };
       cmd.CopyTextureToTexture(&src, &dst, &size);
     }
+  }
+
+  if (passInfo.scanPeek.has_value()) {
+    scan_peek::encode(cmd, passInfo.copySourceTexture, passInfo.copySourceDepthTexture, passInfo.msaaSamples,
+                      *passInfo.scanPeek);
   }
 
   if (passInfo.snapshotColorDst) {

@@ -88,6 +88,17 @@ extern "C" {
 #define GX_AURORA_END_OFFSCREEN 0x003A
 
 /**
+ * Asks Aurora to copy a region of the current EFB's color and depth to CPU memory once the frame
+ * carrying this command has been submitted, the way a GXCopyTex with a main-memory destination
+ * works on hardware (Aurora resolves a copy into a texture, so a CPU pointer never is written).
+ * Must be followed by: s32 left, s32 top, u32 width, u32 height (the region and the size the
+ * caller wants out, in the game's logical framebuffer coordinates), then four 64-bit addresses:
+ * an 8-bit-per-pixel id output (the EFB's alpha), a 16-bit-per-pixel Z16 output, an
+ * 8-bit-per-pixel Z8L output and a u32 sequence number. See aurora::gfx::scan_peek.
+ */
+#define GX_AURORA_REQUEST_SCAN_PEEK 0x003B
+
+/**
  * Draw primitives with the vertex count derived from a byte length, as written by
  * GXBegin(prim, fmt, GX_AUTO). Must be followed by a u8 draw opcode (vtxfmt|prim),
  * a u32 vertex data byte length, then that many bytes of vertex data. The byte length

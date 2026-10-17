@@ -99,6 +99,7 @@ void set_efb_targets(RenderPass& pass) {
   pass.depthStencilFormat = layout.depthStencilFormat;
   pass.copySourceTexture =
       webgpu::g_graphicsConfig.msaaSamples > 1 ? webgpu::g_frameBufferResolved.texture : webgpu::g_frameBuffer.texture;
+  pass.copySourceDepthTexture = webgpu::g_depthBuffer.texture;
   pass.copySourceView =
       webgpu::g_graphicsConfig.msaaSamples > 1 ? webgpu::g_frameBufferResolved.view : webgpu::g_frameBuffer.view;
   pass.copySourceDepthView = webgpu::g_depthBuffer.view;
@@ -369,7 +370,8 @@ OffscreenCacheEntry get_offscreen_textures(uint32_t width, uint32_t height) {
   const auto depthFormat = webgpu::g_graphicsConfig.depthFormat;
   const wgpu::TextureDescriptor depthDesc{
       .label = "Offscreen Depth",
-      .usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding,
+      .usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding |
+               wgpu::TextureUsage::CopySrc,
       .dimension = wgpu::TextureDimension::e2D,
       .size = size,
       .format = depthFormat,
@@ -402,6 +404,7 @@ void resume_efb_pass_loading(const RenderPass& prevPass) {
       .depthStencilView = prevPass.depthStencilView,
       .depthStencilFormat = prevPass.depthStencilFormat,
       .copySourceTexture = prevPass.copySourceTexture,
+      .copySourceDepthTexture = prevPass.copySourceDepthTexture,
       .copySourceView = prevPass.copySourceView,
       .copySourceDepthView = prevPass.copySourceDepthView,
       .msaaSamples = prevPass.msaaSamples,
@@ -463,6 +466,7 @@ void start_offscreen(uint32_t width, uint32_t height) {
       .depthStencilView = g_recorder.offscreenDepth.view,
       .depthStencilFormat = g_recorder.offscreenDepth.format,
       .copySourceTexture = g_recorder.offscreenColor.texture,
+      .copySourceDepthTexture = g_recorder.offscreenDepth.texture,
       .copySourceView = g_recorder.offscreenColor.view,
       .copySourceDepthView = g_recorder.offscreenDepth.view,
       .msaaSamples = 1,
@@ -822,6 +826,7 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
       .depthStencilView = prevPass.depthStencilView,
       .depthStencilFormat = prevPass.depthStencilFormat,
       .copySourceTexture = prevPass.copySourceTexture,
+      .copySourceDepthTexture = prevPass.copySourceDepthTexture,
       .copySourceView = prevPass.copySourceView,
       .copySourceDepthView = prevPass.copySourceDepthView,
       .msaaSamples = msaaSamples,
@@ -868,6 +873,19 @@ void queue_palette_conv(tex_palette_conv::ConvRequest req) {
   AURORA_ASSERT(!renderPass.sealed, "Attempted to append palette conversion to sealed render pass {}",
                 g_recorder.currentRenderPass);
   renderPass.paletteConvs.push_back(std::move(req));
+}
+
+void queue_scan_peek(scan_peek::Request req) {
+  auto& renderPass = current_render_passes()[g_recorder.currentRenderPass];
+  AURORA_ASSERT(!renderPass.sealed, "Attempted to append a scan peek to sealed render pass {}",
+                g_recorder.currentRenderPass);
+  if (renderPass.scanPeek.has_value()) {
+    // One peek per pass: a second request would have to share the same read-back slot, and the
+    // port only asks for one region per frame.
+    Log.warn("Scan peek request dropped: pass {} already has one", g_recorder.currentRenderPass);
+    return;
+  }
+  renderPass.scanPeek = std::move(req);
 }
 
 bool is_offscreen() noexcept { return g_recorder.inOffscreen; }

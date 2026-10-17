@@ -374,7 +374,9 @@ static TextureWithSampler create_depth_texture(uint32_t width, uint32_t height) 
   const auto format = g_graphicsConfig.depthFormat;
   const wgpu::TextureDescriptor textureDescriptor{
       .label = "Depth texture",
-      .usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding,
+      // CopySrc is what the CPU read-back of a depth region needs (see gfx/scan_peek.cpp).
+      .usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding |
+               wgpu::TextureUsage::CopySrc,
       .dimension = wgpu::TextureDimension::e2D,
       .size = size,
       .format = format,

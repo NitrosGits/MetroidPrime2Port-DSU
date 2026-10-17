@@ -15,6 +15,11 @@ void GXPeekARGB(u16 x, u16 y, u32* color);
 void GXPokeARGB(u16 x, u16 y, u32 color);
 void GXPeekZ(u16 x, u16 y, u32* z);
 void GXPokeZ(u16 x, u16 y, u32 z);
+// Aurora-only: fills the id and depth buffers of a `width` x `height` region of the framebuffer
+// as the (left, top, width, height) EFB copy would have, `height` frames after the atomic pointer
+// `sequence` changes from even to its next even value. See lib/gfx/scan_peek.cpp.
+void GXRequestScanPeek(s32 left, s32 top, u32 width, u32 height, void* idOut, void* depthHighOut,
+                       void* depthLowOut, u32* sequence);
 u32 GXCompressZ16(u32 z24, GXZFmt16 zfmt);
 u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt);
 

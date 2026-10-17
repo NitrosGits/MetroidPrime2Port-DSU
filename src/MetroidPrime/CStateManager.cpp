@@ -132,6 +132,7 @@
 #include "port_harness.h"
 #include "port_overlay.h"
 #include "port_warp.h"
+#include "MetroidPrime/PortScanTarget.hpp"
 #endif
 
 #include <alloca.h>
@@ -1942,12 +1943,24 @@ void CStateManager::CapturePlayerTextures() {
                               &bottom, &width, &height);
       const int textureLeft = left + width / 2 - textureWidth / 2;
       const int textureTop = CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2;
+#ifdef TARGET_PC
+      // Aurora's GXCopyTex resolves into a texture, so the main-memory destination below never
+      // gets written; ask for a CPU read-back of the same region first (it has to be issued
+      // before the copies, which seal the pass holding the frame's scene draws) and then fill
+      // the player's buffers from the previous frame's read-back. See PortScanTarget.
+      PortScanTarget::Request(textureLeft, textureTop, textureWidth, textureHeight);
+#endif
       gpRender->CopyTextureRegion(mPlayers[i]->GetScanTargetIdTextureData(), 0, textureLeft,
                                   textureTop, textureWidth, textureHeight);
       gpRender->CopyTextureRegion(mPlayers[i]->GetDepthHighTextureData(), 1, textureLeft,
                                   textureTop, textureWidth, textureHeight);
       gpRender->CopyTextureRegion(mPlayers[i]->GetDepthLowTextureData(), 2, textureLeft, textureTop,
                                   textureWidth, textureHeight);
+#ifdef TARGET_PC
+      PortScanTarget::FillBuffers(mPlayers[i]->GetScanTargetIdTextureData(),
+                                  mPlayers[i]->GetDepthHighTextureData(),
+                                  mPlayers[i]->GetDepthLowTextureData(), textureWidth, textureHeight);
+#endif
     }
   }
 }
