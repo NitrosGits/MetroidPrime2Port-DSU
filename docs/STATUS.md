@@ -43,6 +43,17 @@ Gates: `tools/gen_files_cmake.py --check` rc=0 and the upstream matching build s
 (`CStateManager.cpp`, `CMFGame.cpp`, `CCameraFilter.cpp`, and the earlier `CFilteredDelayAux.cpp`)
 strip to their pre-change non-PC text exactly.
 
+**The console's fourth wave** (`platform/port_console.cpp` only, no upstream file): `world <id>
+[area]` is MP1's `warp <world>` under its own verb (this tree's `warp` is the area warp the sweeps
+use, and renaming it would break them), `worlds` lists the memory card's world table - id, area
+count, and the STRG asset holding the name - and `strg <id|name> [index|name]` reads a string table
+by asset id or resource name. Two things `strg` needed: the token has to outlive the command (the
+load is asynchronous, so a token that dies with it cancels it, and every call answers "still
+loading"), and the wide strings are narrowed to ASCII for the socket. Verified on the desktop:
+`worlds` (12 worlds, Temple Grounds current), `strg 0x7f47f635` -> "Sanctuary Fortress",
+`strg STRG_AllPickupsFound_2` -> "100% of all pickups acquired!", and `world 1baa96c2` switching
+Temple Grounds -> Sanctuary Fortress (67 areas, area 0 renders).
+
 ## 2026-10-18 (seventh session): the console's second wave, and a client that had never worked
 
 **Seven commands, and the names they print come from the enums.** `platform/port_console.cpp` gains

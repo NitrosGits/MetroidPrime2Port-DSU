@@ -22,16 +22,16 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | **Debug command console over TCP** (`MP2_CONSOLE=<port>`, `tools/mp2con.py`) | `platform/port_console.cpp` - new here |
 | Console: `objs` / `obj` / `send` (object inspection and script messages), `visor` / `beam` switching, `tp`, `items` | `platform/port_console.cpp`, names from `tools/gen_console_names.py` |
 | Console: `face`, `give`/`take`, `press`/`stick` (pad buttons and the main stick held on the virtual pad), `screenshot` | `platform/port_console.cpp`, `platform/port_events.cpp` (`port_input.h`) |
+| Console: `world <id> [area]` (a world warp), `worlds` (the memory card's world ids and name tables), `strg <id|name> [index]` (a string table) | `platform/port_console.cpp` |
 
 ## Next, cheapest and most useful first
 
-1. **Console, fourth wave** - what is left of MP1's console, and why each waits:
-   `warp <world> [area]` (a world warp; `PortWarp::World` exists, the console's `warp` is area-only),
-   `strg <id>` (a STRG table by asset id; needs the string-table loader, `gpStringTable` only serves
-   the game's own tables), `memo <text>` (`ShowPausedHUDMemo` takes a `CAssetId`, so a free-text
-   message needs a table entry or a port-side one), `wait <n>` (the console answers one command per
-   game update, so a blocking wait buys nothing) and `cstick`/`gyro` (the sweep's `MP2_INPUT` tokens
-   already cover both).
+1. **Console, what is left of MP1's** - each with the reason it waits: `memo <text>`
+   (`ShowPausedHUDMemo` takes a `CAssetId`, so a free-text message needs a port-side string table;
+   the one-off text a debugging session wants is usually a `strg` read anyway), `wait <n>` (the
+   console answers one command per game update, so a blocking wait buys nothing) and `cstick`/`gyro`
+   (the sweep's `MP2_INPUT` tokens already cover both). `warp <world>` is `world <id> [area]` here,
+   with `worlds` to name the ids.
 2. **Graphics toggles**: FOV slider (MP1: `PortDebug::FirstPersonFov`, hooked at
    `CCameraManager::GetDefaultFirstPersonVerticalFOV` - here the FPS camera takes its FOV from
    `CCameraManager::mFirstPersonFov`, so a live change needs the FP camera refreshed), hide helmet

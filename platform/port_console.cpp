@@ -14,8 +14,13 @@
 #include "port_warp.h"
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CMemoryCard.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "Kyoto/CResFactory.hpp"
+#include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/SObjectTag.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
@@ -463,6 +468,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
       "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
       "items                       power-up amounts and capacities\n"
+      "world <world> [area]        load another world (the MP1 console's `warp <world>`)\n"
+      "worlds                      the memory card's world ids, areas and name tables\n"
+      "strg <id|name> [index]      a string table as the game loads it\n"
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
@@ -619,6 +627,122 @@ void CmdLayer(CStateManager&, const Args& args, std::string&) {
     return;
   }
   PortWarp::Layer(ArgToInt(args[1], 0));
+}
+
+// world <world> [area]: the MP1 console's `warp <world>`, under its own verb because this tree's
+// `warp` is the area warp the sweeps and the docs use. Both texts are a name or a hex asset id and
+// are resolved where the resource names live (PortWarpToWorld), so nothing here needs a table.
+void CmdWorld(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2) {
+    Fail("usage: world <world name or hex> [area name or hex]");
+    return;
+  }
+  const std::string world = Str(args[1]);
+  const std::string area = args.size() > 2 ? Str(args[2]) : std::string();
+  PortWarp::World(world.c_str(), area.c_str());
+  out += "world warp queued for '" + world + "'" + (area.empty() ? "" : " area '" + area + "'") +
+         "\n";
+}
+
+// worlds: the memory card's world table, which is what `world <id>` takes. The names are STRG assets
+// (the card keeps the id, not the text), so `strg <that id>` prints one.
+void CmdWorlds(CStateManager& mgr, const Args&, std::string& out) {
+  if (gpMemoryCard == nullptr) {
+    Fail("no memory card yet");
+    return;
+  }
+  const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
+  const CWorld* world = mgr.World();
+  const CAssetId current = world != nullptr ? world->IGetWorldAssetId() : kInvalidAssetId;
+  char line[160];
+  for (int i = 0; i < worlds.size(); ++i) {
+    const CAssetId id = worlds[i].first;
+    const CSaveWorldMemory& memory = worlds[i].second;
+    std::snprintf(line, sizeof(line), "%08x  %2d areas  name STRG %08x%s\n", id,
+                  memory.GetAreaCount(), memory.GetWorldNameId(),
+                  id == current ? "  <- current" : "");
+    out += line;
+  }
+}
+
+// One wchar_t string as a console line. The tables are English ASCII; anything above that is a '?'
+// rather than a byte soup, because the reply goes out as UTF-8 over the socket.
+std::string Narrow(const wchar_t* text) {
+  std::string out;
+  if (text == nullptr) {
+    return out;
+  }
+  for (const wchar_t* it = text; *it != 0; ++it) {
+    out += *it < 0x80 ? static_cast< char >(*it) : '?';
+  }
+  return out;
+}
+
+// The string table `strg` is reading (see there).
+TToken< CStringTable >* sTable = nullptr;
+CAssetId sTableId = kInvalidAssetId;
+
+// strg <id|name> [index|name]: a string table as the game loads it, for reading a message a level
+// script refers to. The asset is a number or a resource name ("STRG_AllPickupsFound_2"), and the
+// load is asynchronous, so a second call is what reads it when the first only locked it.
+void CmdStrg(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2) {
+    Fail("usage: strg <asset id or STRG_... name> [index|name]");
+    return;
+  }
+  CAssetId id = kInvalidAssetId;
+  const int numeric = ArgToInt(args[1], -1);
+  if (numeric >= 0) {
+    id = static_cast< CAssetId >(numeric);
+  } else if (gpResourceFactory != nullptr) {
+    const SObjectTag* tag = gpResourceFactory->GetResourceIdByName(Str(args[1]).c_str());
+    if (tag != nullptr) {
+      id = tag->id;
+    }
+  }
+  if (id == kInvalidAssetId) {
+    Fail("no such resource '" + Str(args[1]) + "'");
+    return;
+  }
+  // The table is kept alive between calls: the load is asynchronous, and a token that dies with the
+  // command cancels it, so every call would answer "still loading".
+  if (sTable == nullptr || sTableId != id) {
+    delete sTable;
+    sTable = rs_new TToken< CStringTable >(gpSimplePool->GetObj(SObjectTag('STRG', id)));
+    sTableId = id;
+    sTable->Lock();
+  }
+  if (!sTable->IsLoaded()) {
+    out += "STRG " + std::to_string(id) + " is still loading; ask again\n";
+    return;
+  }
+  TToken< CStringTable >& table = *sTable;
+  const int count = table->GetStringCount();
+  char line[320];
+  if (args.size() > 2) {
+    int index = ArgToInt(args[2], -1);
+    if (index < 0) {
+      index = table->GetStringIndex(Str(args[2]).c_str());
+    }
+    if (index < 0 || index >= count) {
+      Fail("no string '" + Str(args[2]) + "' in STRG " + std::to_string(id));
+      return;
+    }
+    std::snprintf(line, sizeof(line), "STRG %u [%d]: %s\n", id, index,
+                  Narrow(table->GetString(index)).c_str());
+    out += line;
+    return;
+  }
+  std::snprintf(line, sizeof(line), "STRG %u: %d strings\n", id, count);
+  out += line;
+  // Enough to see what a table is without flooding the socket.
+  for (int i = 0; i < count && i < 40; ++i) {
+    std::snprintf(line, sizeof(line), "  [%2d] %s\n", i, Narrow(table->GetString(i)).c_str());
+    out += line;
+  }
+  if (count > 40) {
+    out += "  ...\n";
+  }
 }
 
 void CmdGod(CStateManager&, const Args& args, std::string& out) {
@@ -1059,6 +1183,9 @@ constexpr SCommand kCommands[] = {
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},
     {"items", CmdItems, true},
+    {"world", CmdWorld, true},
+    {"worlds", CmdWorlds, true},
+    {"strg", CmdStrg, true},
     {"face", CmdFace, true},
     {"give", CmdGiveAdd, true},
     {"take", CmdGiveTake, true},
