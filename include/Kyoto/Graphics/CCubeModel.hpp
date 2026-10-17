@@ -95,6 +95,10 @@ public:
              uint texCoordsSize = 0, uint packedTexCoordsSize = 0
 #endif
              );
+#ifdef TARGET_PC
+  // Port: unregisters the model from PortDrawDebug (whose labels are keyed by address).
+  ~CCubeModel();
+#endif
 
   static void SetRenderModelBlack(bool v);
   static void SetModelWireframe(bool v);

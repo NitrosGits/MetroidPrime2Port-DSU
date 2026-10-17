@@ -1050,6 +1050,7 @@ set(MP_MODULES WallCrawler CommandoPirate DarkSamus DigitalGuardian ElitePirate 
 list(APPEND MP_GAME_SOURCES
     src/Kyoto/Alloc/PortMwccNew.cpp
     src/Kyoto/CARAMManagerPort.cpp
+    src/Kyoto/Graphics/PortDrawDebug.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
     src/MetroidPrime/PortDataGlobals.cpp

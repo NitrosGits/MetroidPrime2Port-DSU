@@ -8,6 +8,9 @@
 #include "Kyoto/Graphics/CTexture.hpp"
 #include "Kyoto/Math/CVector2f.hpp"
 #include "dolphin/gx/GXVert.h"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/PortDrawDebug.hpp"
+#endif
 
 #include <string.h>
 
@@ -58,7 +61,14 @@ CCubeModel::CCubeModel(rstl::vector< void* >* surfaces,
       mFirstUnsorted.mData = static_cast< CCubeSurface::SSurfaceData* >(data);
     }
   }
+#ifdef TARGET_PC
+  PortDrawDebug::OnModelCreated(this);
+#endif
 }
+
+#ifdef TARGET_PC
+CCubeModel::~CCubeModel() { PortDrawDebug::OnModelDestroyed(this); }
+#endif
 
 void CCubeModel::MakeTexturesFromMats(const void* data,
                                       rstl::vector< TCachedToken< CTexture > >& textures,
@@ -155,6 +165,11 @@ void CCubeModel::DrawSurface(const CCubeSurface& surface, const CModelFlags& mod
   }
 
   material.SetCurrent(modelFlags, surface, *this);
+#ifdef TARGET_PC
+  if (PortDrawDebug::DrawMaybeOn()) {
+    PortDrawDebug::OnDraw(this, &modelFlags, surface.mData);
+  }
+#endif
   CGX::CallDisplayList(surface.GetDisplayList(), surface.GetDisplayListSize());
 }
 
@@ -163,6 +178,11 @@ void CCubeModel::DrawSurfaceFlat(const CCubeSurface& surface) const {
   if (material.GetFlags() & sSkippedMaterialFlags) {
     return;
   }
+#ifdef TARGET_PC
+  if (PortDrawDebug::DrawMaybeOn()) {
+    PortDrawDebug::OnDraw(this, nullptr);
+  }
+#endif
   CGX::SetVtxDescv_Compressed(material.GetVertexDesc());
   CGX::CallDisplayList(surface.GetDisplayList(), surface.GetDisplayListSize());
 }
@@ -377,6 +397,11 @@ void CCubeModel::DrawAlphaSurfaces(const CModelFlags& flags) const {
 
 void CCubeModel::DrawFlat(int which) const {
   SetArraysCurrent();
+#ifdef TARGET_PC
+  if (PortDrawDebug::DrawMaybeOn()) {
+    PortDrawDebug::OnDraw(this, nullptr);
+  }
+#endif
 
   if (which != kSS_Sorted) {
     for (CCubeSurface surface = mFirstUnsorted; surface.IsValid();

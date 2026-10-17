@@ -15,6 +15,9 @@
 
 #include "dolphin/gx.h"
 #include "dolphin/os.h"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/PortDrawDebug.hpp"
+#endif
 
 CSkinnedModel::TPointGenFunc CSkinnedModel::sPointGen;
 void* CSkinnedModel::sPointGenData;
@@ -90,6 +93,11 @@ void CSkinnedModel::DolphinDrawInternal(const SSkinningWorkspace& workspace, uin
         GPUMemory::EnsureAllocation(mSkinRules->GetNumVirtualBones() * sizeof(SSkinningMatrices)));
     BuildSkinningMatrices(workspace.mTransforms, matrices, workspace.mUniformScale);
   }
+#ifdef TARGET_PC
+  if (PortDrawDebug::DrawMaybeOn()) {
+    PortDrawDebug::NotePose(model, workspace.mTransforms, mSkinRules->GetNumVirtualBones());
+  }
+#endif
   CGX::SetArray(GX_POS_MTX_ARRAY, matrices, sizeof(SSkinningMatrices));
   CGX::SetArray(GX_NRM_MTX_ARRAY, matrices->mNormal, sizeof(SSkinningMatrices));
 

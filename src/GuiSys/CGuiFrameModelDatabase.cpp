@@ -9,6 +9,9 @@
 #include "Kyoto/Streams/CInputStream.hpp"
 
 #include <dolphin/os.h>
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/PortDrawDebug.hpp"
+#endif
 
 // Guessed local helper name; serialized lengths determine the section boundaries.
 static uchar* MemoryFromPartData(uchar*& dataCur, int*& sectionSizeCur) {
@@ -69,6 +72,7 @@ CGuiFrameModelDatabase::CGuiFrameModelDatabase(CInputStream& in, CSimplePool* po
           &surfaces, &mTextures, materialData, positions, normals, colors, uvs, packedUvs,
           CAABox::Identity(), 0, true, i, positionsSize, normalsSize, colorsSize, uvsSize,
           packedUvsSize));
+      PortDrawDebug::LabelGuiFrame(model.get(), i);
       mModels[i] = model;
 #else
       const void* positions = MemoryFromPartData(dataCur, sectionSizeCur);

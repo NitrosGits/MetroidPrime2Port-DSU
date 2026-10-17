@@ -5,6 +5,9 @@
 #include "Kyoto/CVParamTransfer.hpp"
 #include "Kyoto/IObjectStore.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/PortDrawDebug.hpp"
+#endif
 
 CAnimFormatUnion::CAnimFormatUnion(CInputStream& in, IObjectStore& store) {
   mFormatType = in.Get< uint >();
@@ -46,7 +49,14 @@ CFactoryFnReturn AnimSourceFactory(const SObjectTag& tag, CInputStream& in,
                                          const CVParamTransfer& param) {
   const rstl::rc_ptr< IVParamObj > obj = param.GetObj();
   IObjectStore* pool = static_cast< TObjOwnerParam< IObjectStore* >* >(obj.GetPtr())->GetData();
+#ifdef TARGET_PC
+  CAllFormatsAnimSource* source = rs_new CAllFormatsAnimSource(in, *pool, tag);
+  PortDrawDebug::OnAnimLoaded(tag.id, source->GetType(),
+                              source->GetAnimationDuration().GetSeconds());
+  return source;
+#else
   return rs_new CAllFormatsAnimSource(in, *pool, tag);
+#endif
 }
 
 rstl::ownership_transfer< IAnimReader >

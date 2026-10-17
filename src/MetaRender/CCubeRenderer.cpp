@@ -7,6 +7,9 @@
 #include "Kyoto/Basics/CCast.hpp"
 #include "Kyoto/Graphics/CCubeMaterial.hpp"
 #include "Kyoto/Graphics/CCubeModel.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/PortDrawDebug.hpp"
+#endif
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "Kyoto/Graphics/CDrawablePlaneObject.hpp"
 #include "Kyoto/Graphics/CGX.hpp"
@@ -595,6 +598,7 @@ void CCubeRenderer::AddStaticGeometry(const rstl::vector< CMetroidModelInstance 
             instance.GetBoundingBox(), instance.GetFlags(), false, i, instance.GetVertexSize(),
             instance.GetNormalSize(), instance.GetColorSize(), instance.GetTCSize(),
             instance.GetPackedTCSize()));
+        PortDrawDebug::LabelWorld(models->back().get(), areaId, i);
 #else
         models->push_back(rs_new CCubeModel(
             const_cast< rstl::vector< void* >* >(&instance.GetSurfaces()), textures.get(),

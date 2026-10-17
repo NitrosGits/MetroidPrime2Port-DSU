@@ -27,6 +27,7 @@ PORT_ONLY = [
     "src/Kyoto/Alloc/PortMwccNew.cpp",
     "src/Kyoto/CARAMManagerPort.cpp",
     "src/Kyoto/CFactoryFunctionsPort.cpp",
+    "src/Kyoto/Graphics/PortDrawDebug.cpp",
     "src/Kyoto/PortCMemoryCardSys.cpp",
     "src/MetroidPrime/Player/PortSPersistentOptionsValue.cpp",
     "src/MetroidPrime/PortBoot.cpp",

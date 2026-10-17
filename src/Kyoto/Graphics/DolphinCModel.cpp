@@ -15,6 +15,9 @@
 
 #include <dolphin/gx.h>
 #include <dolphin/os.h>
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/PortDrawDebug.hpp"
+#endif
 
 static bool sIsTextureTimeoutEnabled = true;
 uint CModel::sTotalMemory = 0;
@@ -325,7 +328,13 @@ CFactoryFnReturn FModelFactory(const SObjectTag& tag, const rstl::auto_ptr< ucha
   rstl::rc_ptr< IVParamObj > obj = xfer.GetObj();
   CSimplePool* pool = static_cast< TObjOwnerParam< CSimplePool* >* >(obj.GetPtr())->GetData();
   GXInvalidateVtxCache();
+#ifdef TARGET_PC
+  CModel* model = rs_new CModel(ptr, len, *pool);
+  PortDrawDebug::LabelAsset(model->GetModelInstance(), tag.id);
+  return model;
+#else
   return rs_new CModel(ptr, len, *pool);
+#endif
 }
 
 const float* CModel::GetPositions() const {
@@ -437,12 +446,14 @@ void CModel::RemapData(uchar* data) {
   }
 
 #ifdef TARGET_PC
-  mModelInstance = rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures,
-                                     mMatSets.front().mData, positions, normals, colors, uvs,
-                                     packedUvs, bounds, flags, texturesLoaded, index,
-                                     instance.GetVertexSize(), instance.GetNormalSize(),
-                                     instance.GetColorSize(), instance.GetTCSize(),
-                                     instance.GetPackedTCSize());
+  CCubeModel* remapped = rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures,
+                                           mMatSets.front().mData, positions, normals, colors, uvs,
+                                           packedUvs, bounds, flags, texturesLoaded, index,
+                                           instance.GetVertexSize(), instance.GetNormalSize(),
+                                           instance.GetColorSize(), instance.GetTCSize(),
+                                           instance.GetPackedTCSize());
+  PortDrawDebug::CopyLabel(mModelInstance.get(), remapped);
+  mModelInstance = remapped;
 #else
   mModelInstance =
       rs_new CCubeModel(&mSurfaces, &mMatSets.front().mTextures, mMatSets.front().mData, positions,
