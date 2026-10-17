@@ -230,7 +230,13 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // cinematics is what SpecialSkipCinematic does on its way out, and the flow state has
         // to see the camera manager leave the cinematic camera or it comes back next frame.
         if (PortOverlay::SkipCinematics()) {
-          mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+          // The retail skip first: SpecialSkipCinematic also fires the scene's skip connections
+          // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end. Stopping
+          // only the camera leaves the sequence playing under the first-person camera, HUD and
+          // visor drawn over it; that is the fallback for a scene with no skip function.
+          if (mStateManager->SpecialSkipCinematic() != 1) {
+            mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+          }
           finished = true;
         } else if (canSkip && mFlowTime >= 1.f && mStateManager->SpecialSkipCinematic() == 1) {
           finished = true;
