@@ -37,6 +37,5 @@ compile_commands.json
 *.exe
 
 # Native port build dirs
-build-port*/
+build-*/
 build-boot-probe/
-build-drawl/
