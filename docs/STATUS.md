@@ -49,13 +49,38 @@ either that text or the world-name card an area load shows; the transition still
 after each of this session's port edits in upstream files (`Game Code: 94.14% fuzzy, 63.29% matched`,
 `rc=0`), all of them inside `#ifdef TARGET_PC` with the non-PC text byte-identical.
 
+**A skipped intro cinematic now ends its scene** (`0201ba38e`). Stopping the cinematic camera and
+handing over control is not the same end state as the scene playing out: whatever the sequence drives
+keeps going under the first-person view. An `MP2_SKIP_INTRO` request now takes the debug setting's
+strong path (`sHarnessCinematicSkip`): the scene's own skip first, and when a sequence has no skip
+function, the flow *stays* in `kFS_CinematicSkip` - where it already runs at max speed without
+drawing - so the sequence finishes by itself instead of being cut off. Camera-only is now the last
+resort after 30 s of flow time. Phone: one skip request, `[skip] cinematic 0123: the scene's own
+skip`, gameplay at 4.8 s, no second cinematic camera (the previous build re-requested camera 00f4 -
+it had handed over control mid-sequence). Desktop unchanged (`the scene's own skip`, 4.8 s).
+
+**Open: shooting a door into another room crashes the phone build.** `CCubeModel::CCubeModel` reads a
+surface pointer that is not in the area's buffers while `CWorld::PropogateAreaChain` adds the newly
+visible area's static geometry (fault `0x72c1753804`, surface `0x72c17537f8`, every section the fill
+logged at `0xb4...`). Reproduced on the phone in ~35 s with `MP2_INPUT=DOOR@300+1,A@320+400` from the
+save; the instrument is `MP2_DEBUG_AREA=1` (`CGameArea::AddStaticGeometry`/`FillInStaticGeometry` and
+`CCubeRenderer::AddStaticGeometry` log the area, the ARAM transfer result, whether the models were
+constructed, and the section/surface pointers, naming an out-of-buffer one), plus `MP2_DEBUG_DOORS=1`
+and `MP2_WARP_DOOR=<id>` for `DOOR@frame` (commit `41a55178d`). The crash log names the failing fill:
+the *original* area's second `FillInStaticGeometry` (`aram=1 constructed=0 instances=1`). Lead: that
+path re-converts the surface sections in place on every fill (`CCubeSurface::ConvertSurfaceHeader`
+and the surface-group halfword swap), while a re-shown area's buffers may already hold the previous
+conversion or - if the ARAM transfer re-read them - a fresh big-endian copy; which one a fill sees is
+the next thing to settle, and the instrument prints both.
+
 **The phone, with both fixes (`tools/android_apk.sh :app:assembleRelease -PandroidNodStub=false`).**
 `the first game update is at 2.7 s`, `gameplay reached at 7.0 s` (was 34.0 s / 36.0 s), and the run
 plays (`/tmp/opencode/phone_skipint.png`, `ph_2.png`). Also on that build: the **flickering
 camera-attached triangle** the person described is still there - one screenshot (22:23) shows a flat
 grey wedge over the left half of the viewport with a hard diagonal edge, two seconds later it is gone.
-So it is neither the cutscene geometry (`457c86fe2`) nor anything this session touched; it remains the
-one unexplained rendering artifact in ordinary phone gameplay.
+It is neither the cutscene geometry (`457c86fe2`) nor anything this session touched, and the person's
+own later read is that it may not be the cutscene at all; it stays the one unexplained rendering
+artifact in ordinary phone gameplay.
 
 **Next.**
 - The person's scannable-highlight check on the new APK.
