@@ -4,6 +4,7 @@
 # updates. See platform/README.md, "Test runs: skipping the front end".
 #
 #   USERDIR=<dir holding the card> [WORLD=<world>[,<area>]] [INPUT_FILE=<script>] [FRAMES=<n>]
+#   [SKIP_INTRO=0|1] (default 1: MP2_SKIP_INTRO, the port gets to a controllable player on its own)
 #   [SECS=<timeout>] [DISPLAY_NUM=:<n>] [CACHEDIR=<dir>] [TELEPORT=<area>] [RUNTAG=<tag>]
 #   [LOG=<file>] [ASAN=1] tools/run_gameplay.sh
 #
@@ -63,7 +64,7 @@ WORLD_DESC=${WORLD:-the-save-world}
 echo "run: tag=${RUNTAG:-run} log=$LOG build=$BUILD secs=${SECS:-460} display=$DISPLAY_NUM world=$WORLD_DESC frames=${FRAMES:-16000} input=$(printf '%s' "$IN" | wc -c) bytes user=$USERDIR at $(date +%T)" > "$LOG.info"
 
 envs=(
-  "MP2_DEBUG_IDS=1" "MP2_SKIP_CINEMATICS=1" "MP2_SKIP_FRONTEND=1" "MP2_DISC=$DISC"
+  "MP2_DEBUG_IDS=1" "MP2_SKIP_CINEMATICS=1" "MP2_SKIP_FRONTEND=1" "MP2_SKIP_INTRO=${SKIP_INTRO:-1}" "MP2_DISC=$DISC"
   "MP2_INPUT=$IN" "MP2_USER_PATH=$USERDIR" "MP2_CACHE_PATH=$CACHEDIR"
   "MP2_FRAMES=${FRAMES:-16000}"
 )
