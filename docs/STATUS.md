@@ -3,6 +3,88 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## Current state as of 2026-10-17 (moved out of `AGENTS.md`, verbatim)
+
+## Status (2026-10-17, fourth session: M2/M3 verified, three crashes/bugs fixed, PC-first loop)
+
+Detail, including the repro commands for every open wall, is in `docs/STATUS.md`.
+
+- Gates green: `tools/gen_files_cmake.py --check`, and the upstream matching build after this session's
+  one port edit in an upstream file (`Game Code: 94.14% fuzzy, 63.29% matched`, `rc=0`). Commits:
+  `befa10ead` (sweep tools), `c600728c6` (ball camera fix), `6f7d192ea` (`B` presses, RELOAD verdict).
+- `tools/sweep_areas.sh` + `tools/sweep_report.py` walk all 63 Temple Grounds areas in 4 shards in ~10
+  minutes and print a per-area verdict table. Press `B`, never `START`, never `A` (see Gotchas).
+- Fixed and verified twice: the handed-hop crash in `CBallCamera::FindDesiredPosition` (a dangling
+  reference in `CCameraManager::GetLastCameraTransform()` that GCC folded to null). `MP2_WARP_HANDED=1`
+  now forces the handed route, which makes that path a 90-second reproduction.
+- Open, worst first: (1) ~~areas 14, 21 and 35 stop updating~~ - **resolved `05efe2ecc`: the player was
+  dying** in the dark-world areas and the run then sat on the lose-game movie's "continue" screen
+  (`docs/STATUS.md` wall 1 has the backtraces); the sweep heals twice per area now, has a `DIED`
+  verdict, and a shard over areas 12..23 is clean; the sub-question is whether `A` picks "continue"
+  there, which would make the RELOAD verdict's "walks into a save station" story wrong; (2) area 53's
+  hop never lands in a long run - **resolved `a5b08f7ae`**: the destination was stuck in
+  `kP_WaitForValidation` because a dock in area 52 preloads 53 and holds its validation until a door
+  the warp never opens, and `PortWarpSettle` now releases that hold. Reaching area 53 also turns out
+  to *be the ending* (the credits; `TELEPORT=53` is that, not a stall), so the report still owes a
+  `CREDITS` verdict; (3) ~~an `MP2_INPUT` token before the game's
+  first update is deferred and never served~~ - **resolved `4401a70e2`**: a token's frame is a game
+  update now (`platform/README.md`, "Input"), so frame 0/1 is the state the game's first update reads
+  and a token whose frame has gone by fires at the first frame the script sees; the counter still
+  advances through a pause, so a script can press `B` to dismiss one.
+- Unverified as before: hazards as gameplay, the logbook, escape/endgame, lock-on handoff, morph ball
+  and gyro input, the empty-`optional_object` audit.
+- **The swarm vertex explosion is fixed** (`23c928626`): the flying bugs of the Temple Grounds crater (and every other swarm and the fish cloud) drew through the guest array path with host-skinned arrays. The user's clue - "caused by the tiny flying bugs" - is what pointed at `CFlyerSwarm` and `CSwarmBasics`; the nest's web beside them is a real object.
+- This session, on the phone: **M2 and M3 verified** (the SAF picker copies a picked ISO to `files/disc.iso`
+  and the next launch boots with no picker; the strict first-update proof passes; touch alone walks and
+  fires). **A crash fixed**: morphing then unmorphing SIGSEGV'd because `CSamusFaceReflection`'s
+  destructor is `inline` in another TU and the port filled the missing symbol with a logging link stub,
+  which left the face model's resources locked; defined in the class's own TU now (`bc4c733c3`), and the
+  same sequence leaves the process running. **`MP2_SKIP_INTRO=1`** (`75874aff5`): with
+  `MP2_SKIP_FRONTEND=1 MP2_SKIP_CINEMATICS=1 MP2_TELEPORT=<area>` a run reaches a controllable player
+  with no input - 36.0 s on the phone, 39.1 s on the desktop, against ~3 minutes of hand-pressed `A`
+  before. `MP2_SKIP_FRONTEND` still gives up on an empty card, and the 34 s before the first update is
+  loop-bound ARAM staging, not phone I/O (both in `docs/STATUS.md`).
+- **The HUD-over-cutscene and the wedge beside it are fixed** (`457c86fe2`): the port's cinematic skip
+  stopped the camera but not the scene, so the intro played on under the first-person camera with the
+  HUD and visor over it - the wedge was cutscene geometry, not a broken model. **The swarm boids no
+  longer explode** either (`23c928626` + `651988088` + `95d6dc3ca`), and a `TARGET_PC` guard that had
+  leaked out of its block (matching build 63.29% -> 63.25%) is back. Iterate on the desktop build;
+  the phone is for the final APK check (`docs/STATUS.md` has the run and shot commands).
+- Open, and the reason the `MP2_DEBUG_DRAW`/bounds instrumentation exists: first-person world geometry
+  that renders as a vertex explosion (dark maroon slabs and white
+  strands; `/tmp/opencode/ve_fp3.png` and `m2.png` are phone frames of it). Not a reach stub (`0 of 45`
+  are referenced), not a missing resource, and the face reflection only draws on a visor transition. The
+  phone reproduces it on every run in that area.
+- The Android APK the user asked for: plan and the M0-M3 detail in `docs/ANDROID.md` (section 4).
+  **M0 done**: `tools/android_probe.sh` cross-builds this tree for arm64-v8a into
+  `build/android-aarch64/libmetroid_prime2_port.so` - `AArch64`, exports `SDL_main`/`aurora_main`,
+  `llvm-nm -u` all platform symbols, offline (Dawn/SDL/Rust caches in `build/android-deps`). The
+  REL arena gate passed **on the user's phone** (32 MiB arena at `0x12000000`, the console's
+  `0x81000000` base honoured exactly, no `MAP_32BIT`; fallback is a `/proc/self/maps` gap scan,
+  covered on Linux by `port_arena_placement_tests`). **M1 done**: `android/` + `tools/android_apk.sh`
+  build and install `org.metroidprime2.port`, which mounts the user's own disc through the real
+  Rust nod on the phone (86 modules initialised, card loaded, renderer up, game loop running); fd
+  1/2 are mirrored to logcat and the dirs resolve from `files/port_paths.txt`. Two known Android
+  issues are recorded in `docs/ANDROID.md`: a one-off Dawn Vulkan-surface SIGABRT when launched
+  with the screen locked, and the debug variant's `-O0` musyx inline link error.
+  **M2 verified on the phone**: the `env.NAME=value` bridge in `files/port_paths.txt` (the `set`
+  lines, `paths chosen` and `disc mounted` are in `docs/ANDROID.md`), the SAF picker with its
+  G2ME01-header check and `.part`-then-rename copy (picked from `/sdcard`, `copying the disc
+  image, 100%`, `disc image picked: content://…, copied to …/files/disc.iso`), and a relaunch
+  after that boots with **no picker**. The strict `[harness]`/`[ids]` "first update" proof passed
+  too: `the first game update is at 33.9 s`, `[ids] frame 0: 352/1024 ids allocated`.
+  **M3 done and device-verified** (this session): `platform/port_touch.{cpp,h}` + MP1's
+  `platform/touch_pad.{h,cpp}` + `tests/touch_pad.cpp` + `android/.../TouchControlsView.java`
+  (the SDL virtual pad, a third aim source in `PortMouse`, the settings in `<user>/touch.cfg`, the
+  JNI bridge, and a phone-only "Edit" pill for the layout editor). On the phone a run with
+  nothing but touch walks the player (`[touch] axis 1 -1.00`) and fires (`[touch] button 0
+  down/up`), the pad attaches as `Metroid Prime touch gamepad`, and the editor opens, switches
+  GameCube/twin layout and saves it. `port_touch_pad_tests` covers the pad on the host;
+  `MP2_DEBUG_PAD=1` prints one line per touch event for a device log. Next: **M4**, the release
+  APK polish.
+
+---
+
 Gates: `tools/gen_files_cmake.py --check` clean, and the upstream matching build green after this
 session's port edit in an upstream file (`Game Code: 94.14% fuzzy, 63.29% matched`, `rc=0`). Commits:
 `befa10ead` (the sweep tools), `c600728c6` (the ball camera fix), `6f7d192ea` (`B` presses, the
@@ -40,6 +122,15 @@ reproduce there, so they are not worth driving through the phone):
   worth reading after every upstream edit rather than glancing at "files OK". Guarded, and checked by
   stripping `TARGET_PC` blocks from all 18 files this session touched and diffing against the
   pre-session revision: identical everywhere.
+
+**Open, and it explains why the scan visor's bug survived so long: entering the scan visor kills the**
+**desktop build about two frames in** with a GPUVM fault (`VK_ERROR_DEVICE_LOST`, `SQC (data)`). The
+read-back lane hit it while trying to prove a scan target gets selected, and reproduced it with the
+**pre-change** binary, with its own peek disabled, with the scan-window copy disabled, and in areas
+0/1/2/3 - so it is in the scan visor's own rendering and predates that work. On the phone the visor
+renders, which is why the person could see the visor at all. Worth fixing first, because it is the
+reason desktop verification of anything scan-related was impossible: the swapchain/device loss also
+means a scan-visor run cannot be screenshotted.
 
 **This session (2026-10-17, fourth).** Verified on the user's phone rather than reasoned about:
 - **M2's two open checks pass.** The SAF picker copies a picked ISO to `files/disc.iso` (`disc image
@@ -194,3 +285,4 @@ verification is the one still-open item. Next: **M3**, the touch controls.
 **Next steps, in order**: (1) the update stall, with the repro above and the two candidates named;
 (2) the 53 -> 56 freeze if it survives (1); (3) the hazards and the layer areas of `1baa96c2` area 11
 as gameplay; (4) the family bodies in the priority order; (5) a no-present option.
+
