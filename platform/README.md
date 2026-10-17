@@ -49,6 +49,38 @@ Keyboard state merges with a connected controller's and with `MP2_INPUT`'s virtu
 pad, so neither replaces the other. There is no remap UI yet (see `debug_ui.cpp`
 under "Waiting").
 
+### `MP2_INPUT` frames
+
+`MP2_INPUT="BUTTON@frame[+frames],..."` holds a button (or a stick: `SUP`, `SLEFT`, `CRIGHT`, ...)
+on pad 0 from that frame, and a warp token (`NEXTAREA`, `PREVAREA`, `NEXTWORLD`, `PREVWORLD`,
+`KILL`, `HEAL`, `LAYER<layer>`, `ATDOOR`, `DOOR`, `STATION`, `WORLDPORTAL`) queues a `PortWarp`
+request at its frame instead. **A frame is a game update** (`CStateManager::Update`, the counter
+`MP2_FRAMES` uses), not a loop iteration:
+
+| Frame | What it means |
+| --- | --- |
+| `0`, `1` | the game's first update: the pad state is set before it and the game starts with it |
+| `N` | game update `N`; `[input] <TOKEN> at frame N (S s)` prints as the pump feeding update N |
+| `N+4` | a hold lasts that many game updates, so `B@3000+4` is down for updates 3000..3003 |
+
+The `MP2_FRAMES` limit counts the same thing, so a script's frames and its run length are one axis.
+Counting loop iterations instead (what the port did before) put every early token in the boot - the
+game's first update is ~2000 iterations and ~34 s in (`[harness] the first game update is at ...`) -
+so a token framed against the game's updates landed in the wrong place and one aimed at the start was
+lost entirely (`docs/STATUS.md` wall 3). A token whose frame has already gone by fires at the first
+frame the script sees, so nothing is dropped. Before the first update the frame stays at 1, which
+means a screen that precedes every game update - the front end - cannot be driven by frame:
+`MP2_SKIP_FRONTEND` is what gets a run past it. Once the game has updated, an iteration it spends
+*not* updating still advances the frame by one (a HUD memo pauses the game, and a paused game
+performs no `CStateManager::Update`), so a later token can still press the button that dismisses the
+screen - `tools/sweep_areas.sh`'s periodic `B` depends on that.
+
+A button token presses once, where its frame is: `START@300+200` is down from update 300 and the
+game's edge detector sees the press there (measured: it opens the pause menu and the run stalls,
+`[harness] no game update for 30.0 s`). A token at frame 0 or 1 is down from the game's *first*
+update, which the boot flow has no use for - the press happens where nothing is listening - so a
+screen later in the run wants a token at its own update.
+
 ## Mouse look
 
 `MP2_MOUSE_AIM=1` hands the aim to the mouse; `MP2_MOUSE_SENS` sets radians per
@@ -175,6 +207,9 @@ and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
   process exits 0, so a log's last line is the run's verdict instead of the script's
   `timeout` (which stays in place as the backstop for a run that never gets there).
   `[harness]` lines report the limit and the world/area the run ended in.
+- **A script's frames are game updates too** (see "Input" above): frame `N` is the pad state game
+  update `N` runs on, so a token at frame 0 or 1 is the state the game starts with, and a script's
+  tokens and its `MP2_FRAMES` limit are one axis.
 - **A script must not press `START` while in game.** It opens the pause menu, and a
   paused game calls no `CStateManager::Update`, so the frame limit is never reached
   and only the script's `timeout` ends the run. The harness reports that case as

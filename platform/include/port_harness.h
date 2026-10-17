@@ -24,6 +24,12 @@ bool GameUpdate();
 // True once a run has reached its limit and asked to end; the platform polls this.
 bool ExitRequested();
 
+// How many game updates have happened, 0 until the game's first one. The `MP2_INPUT` script's frames
+// are counted in these (platform/port_events.cpp, "Input" in platform/README.md): the boot between
+// the loop's first iteration and the game's first update is thousands of iterations long, so a
+// script that counted iterations put its early tokens somewhere the game never reached.
+unsigned GameUpdates();
+
 // Called every loop iteration by the platform's event poll. Prints one line, once, when the game
 // has stopped updating for a while after having updated at least once - a paused game (START
 // opens the pause menu, and a paused game calls no CStateManager::Update) or a wedged load look

@@ -100,6 +100,8 @@ bool GameUpdate() {
 
 bool ExitRequested() { return sExitRequested; }
 
+unsigned GameUpdates() { return static_cast< unsigned >(sUpdates); }
+
 void IdleCheck() {
   if (sUpdates == 0) {
     // Nothing to compare against until the game has updated once: the boot's own loading is long

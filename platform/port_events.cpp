@@ -92,83 +92,173 @@ void InstallDefaultKeyBindings() {
   }
 }
 
-// MP2_INPUT="BUTTON@frame[+frames],...": hold BUTTON on pad 0 from that loop
-// iteration for the given number of iterations (default 8), so boots can be
-// driven past menus without a player. Iterations count PortPumpEvents calls.
-// Stick names (kSticks) deflect fully while held; overlapping entries add up.
-// Warp tokens (NEXTAREA, PREVAREA, NEXTWORLD, PREVWORLD, KILL, HEAL) queue a PortWarp request
-// at their frame instead, which is how a run sweeps every area on its own.
+// One token of the MP2_INPUT script, "NAME@frame[+frames]". Parsed once, because a token fires once:
+// `fired` is what makes a token whose frame has already gone by fire at the first frame the script
+// sees instead of being lost, and what keeps a frame the counter skips from dropping a token.
+struct InputToken {
+  const char* name; // the token's text, e.g. "NEXTAREA"
+  const char* at;   // the '@' that ends it
+  unsigned start;   // the game update it fires on
+  unsigned length;  // how many game updates a button or stick stays down
+  bool fired;
+};
+
+// Far more than a sweep's own script (63 areas x 5 tokens); the rest of a longer one is ignored
+// loudly rather than silently.
+constexpr size_t kMaxTokens = 512;
+
+InputToken* InputScript(size_t& count) {
+  static InputToken tokens[kMaxTokens];
+  static size_t sCount = 0;
+  static bool sParsed = false;
+  if (!sParsed) {
+    sParsed = true;
+    for (const char* p = std::getenv("MP2_INPUT"); p != nullptr && *p != '\0';) {
+      const char* at = std::strchr(p, '@');
+      if (at == nullptr) {
+        break;
+      }
+      char* end = nullptr;
+      const unsigned start = static_cast< unsigned >(std::strtoul(at + 1, &end, 10));
+      unsigned length = 8;
+      if (*end == '+') {
+        length = static_cast< unsigned >(std::strtoul(end + 1, &end, 10));
+      }
+      if (sCount == kMaxTokens) {
+        std::fprintf(stderr, "[input] MP2_INPUT holds more than %zu tokens; the rest are ignored\n",
+                     kMaxTokens);
+        break;
+      }
+      InputToken& token = tokens[sCount++];
+      token.name = p;
+      token.at = at;
+      token.start = start;
+      token.length = length;
+      token.fired = false;
+      p = *end == ',' ? end + 1 : end;
+    }
+  }
+  count = sCount;
+  return tokens;
+}
+
+// The frame the script is on, 1-based and counted in *game updates* (CStateManager::Update, the
+// counter MP2_FRAMES uses): frame 1 is the game's first update, so a token at frame 0 or 1 is the
+// pad state the game starts with - the state a token sets before the game has updated at all is the
+// state its first update reads. Counting loop iterations instead put every early token in the boot,
+// which is thousands of iterations long before the game's first update (~34 s): a token framed
+// against the game's updates landed in the wrong place and one aimed at the start was lost
+// (docs/STATUS.md wall 3, `NEXTAREA@1400` never hopping where `NEXTAREA@3500` did).
+//
+// The counter also never stands still once the game has started: an iteration the game spends *not*
+// updating gains one frame of its own, because a screen that pauses the game performs no game update
+// at all and a script that could not advance through that pause could never press the button that
+// dismisses it (tools/sweep_areas.sh's periodic `B` depends on it). Before the first update the
+// frame stays at 1 - the boot consumes none of the script's timeline, which is also why a screen
+// that precedes every game update (the front end) cannot be driven by frame: MP2_SKIP_FRONTEND is
+// what gets a run past it.
+unsigned ScriptFrame() {
+  static unsigned sFrame = 1;
+  static unsigned sSeen = 0;
+  const unsigned updates = PortHarness::GameUpdates();
+  if (updates == 0) {
+    return sFrame;
+  }
+  if (updates != sSeen) {
+    sSeen = updates;
+    // Back in step with the game: the pad state this call sets is what update `updates + 1` runs on.
+    sFrame = updates + 1;
+  } else {
+    ++sFrame;
+  }
+  return sFrame;
+}
+
+// Queues the PortWarp request a warp token names, and logs it where it fired: a warp token shows up
+// in the log as the game serves it (`[warp] moved to area 3`), so without this line a log cannot tell
+// a token the game ignored from one that never fired - which is the difference wall 3 turned on.
+// Text that names no warp token (a button, a stick, a typo) falls through the chain and is ignored.
+void FireWarpToken(const InputToken& token, unsigned frame) {
+  if (NameIs("NEXTAREA", token.name, token.at)) {
+    PortWarp::CycleArea(1);
+  } else if (NameIs("PREVAREA", token.name, token.at)) {
+    PortWarp::CycleArea(-1);
+  } else if (NameIs("ATDOOR", token.name, token.at)) {
+    PortWarp::Dock();
+  } else if (NameIs("DOOR", token.name, token.at)) {
+    PortWarp::Door();
+  } else if (NameIs("STATION", token.name, token.at)) {
+    PortWarp::Station();
+  } else if (NameIs("WORLDPORTAL", token.name, token.at)) {
+    PortWarp::WorldPortal();
+  } else if (NameIs("KILL", token.name, token.at)) {
+    PortWarp::Kill();
+  } else if (NameIs("HEAL", token.name, token.at)) {
+    PortWarp::Heal();
+  } else if (token.at - token.name > 5 && std::strncmp(token.name, "LAYER", 5) == 0) {
+    // LAYER<layer>: the number is part of the token, so a sweep can ask for a different layer in
+    // each area it visits.
+    PortWarp::Layer(std::atoi(token.name + 5));
+  } else if (NameIs("NEXTWORLD", token.name, token.at)) {
+    PortWarp::CycleWorld(1);
+  } else if (NameIs("PREVWORLD", token.name, token.at)) {
+    PortWarp::CycleWorld(-1);
+  } else {
+    return;
+  }
+  std::fprintf(stderr, "[input] %.*s at frame %u (%.1f s)\n",
+               static_cast< int >(token.at - token.name), token.name, frame, Seconds());
+}
+
+// MP2_INPUT="BUTTON@frame[+frames],...": hold BUTTON on pad 0 from that game update for the given
+// number of game updates (default 8), so runs can be driven past menus without a player. See
+// ScriptFrame for what a frame is, and platform/README.md's "Input" for the table. Stick names
+// (kSticks) deflect fully while held; overlapping entries add up. Warp tokens (NEXTAREA, PREVAREA,
+// NEXTWORLD, PREVWORLD, KILL, HEAL) queue a PortWarp request at their frame instead, which is how a
+// run sweeps every area on its own.
 void RunInputScript(unsigned frame) {
-  static const char* script = std::getenv("MP2_INPUT");
-  if (script == nullptr) {
+  size_t count = 0;
+  InputToken* tokens = InputScript(count);
+  if (count == 0) {
     return;
   }
   Seconds();
   PADStatus status{};
   u16 held = 0;
-  for (const char* p = script; *p != '\0';) {
-    const char* at = std::strchr(p, '@');
-    if (at == nullptr) {
-      break;
-    }
-    char* end = nullptr;
-    const unsigned start = static_cast< unsigned >(std::strtoul(at + 1, &end, 10));
-    unsigned length = 8;
-    if (*end == '+') {
-      length = static_cast< unsigned >(std::strtoul(end + 1, &end, 10));
-    }
-    const bool down = frame >= start && frame < start + length;
-    if (frame == start) {
-      if (NameIs("NEXTAREA", p, at)) {
-        PortWarp::CycleArea(1);
-      } else if (NameIs("PREVAREA", p, at)) {
-        PortWarp::CycleArea(-1);
-      } else if (NameIs("ATDOOR", p, at)) {
-        PortWarp::Dock();
-      } else if (NameIs("DOOR", p, at)) {
-        PortWarp::Door();
-      } else if (NameIs("STATION", p, at)) {
-        PortWarp::Station();
-      } else if (NameIs("WORLDPORTAL", p, at)) {
-        PortWarp::WorldPortal();
-      } else if (NameIs("KILL", p, at)) {
-        PortWarp::Kill();
-      } else if (NameIs("HEAL", p, at)) {
-        PortWarp::Heal();
-      } else if (at - p > 5 && std::strncmp(p, "LAYER", 5) == 0) {
-        // LAYER<layer>: the number is part of the token, so a sweep can ask for a different layer in
-        // each area it visits.
-        PortWarp::Layer(std::atoi(p + 5));
-      } else if (NameIs("NEXTWORLD", p, at)) {
-        PortWarp::CycleWorld(1);
-      } else if (NameIs("PREVWORLD", p, at)) {
-        PortWarp::CycleWorld(-1);
-      }
+  for (size_t i = 0; i < count; ++i) {
+    InputToken& token = tokens[i];
+    // Frame 1 is the first game update and 0 means "the state the game starts with", so a token at
+    // 0 is served with the first update too rather than never being reached.
+    const unsigned start = token.start == 0 ? 1 : token.start;
+    const bool down = frame >= start && frame < start + token.length;
+    const bool fire = !token.fired && frame >= start;
+    token.fired = token.fired || fire;
+    if (fire) {
+      FireWarpToken(token, frame);
     }
     for (const ButtonName& button : kButtons) {
-      if (NameIs(button.name, p, at)) {
+      if (NameIs(button.name, token.name, token.at)) {
         if (down) {
           held |= button.mask;
         }
-        if (frame == start) {
+        if (fire) {
           std::fprintf(stderr, "[input] %s at frame %u (%.1f s)\n", button.name, frame, Seconds());
         }
       }
     }
     for (const StickName& stick : kSticks) {
-      if (NameIs(stick.name, p, at)) {
+      if (NameIs(stick.name, token.name, token.at)) {
         if (down) {
           status.stickX += stick.stickX;
           status.stickY += stick.stickY;
           status.substickX += stick.substickX;
           status.substickY += stick.substickY;
         }
-        if (frame == start) {
+        if (fire) {
           std::fprintf(stderr, "[input] %s at frame %u (%.1f s)\n", stick.name, frame, Seconds());
         }
       }
     }
-    p = *end == ',' ? end + 1 : end;
   }
   // Once the script ends, pad 0 stays connected and idle: clearing it would leave no controller,
   // and the game then gets no input messages at all (player dt stays 0, the gun never draws).
@@ -181,7 +271,6 @@ void RunInputScript(unsigned frame) {
 
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
 bool PortPumpEvents() {
-  static unsigned frame = 0;
   InstallDefaultKeyBindings();
   PortWarp::ApplyEnvOnce();
   // A run that has reached its MP2_FRAMES limit leaves through the same door the window's close
@@ -196,7 +285,7 @@ bool PortPumpEvents() {
   PortHarness::IdleCheck();
   PortTouch::BeginFrame();
   PortMouse::BeginFrame();
-  RunInputScript(frame++);
+  RunInputScript(ScriptFrame());
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
        ++event) {
     if (event->type == AURORA_EXIT) {

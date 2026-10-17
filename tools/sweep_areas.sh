@@ -6,7 +6,7 @@
 # script never presses `START`, but it does press `A`, see `write_input` below for why that matters).
 #
 #   USERDIR=<dir holding the card> [SHARD=<n>|all] [SHARDS=4] [COUNT=63] [DWELL=1400]
-#   [TAIL=1000] [HEAL=400] [TAG=sweep] [DISPLAY_BASE=86] [ASAN=1] tools/sweep_areas.sh
+#   [TAIL=1400] [HEAL=400] [TAG=sweep] [DISPLAY_BASE=86] [ASAN=1] tools/sweep_areas.sh
 #
 # `COUNT` is the number of area *slots* in the world (Temple Grounds has 63, slots 0..62); the sweep
 # asks for them by index, which is what `[warp] world <id> areas:` prints and what the warp's `kArea`
@@ -14,10 +14,11 @@
 # several short runs on several displays instead of one long one; `SHARD=all` (the default) launches
 # all of them in parallel and waits.
 #
-# Every area gets `DWELL` loop iterations: the `NEXTAREA` that asks for it plus, `HEAL` iterations
-# later, a heal (a spawn in a hazard should not end the sweep) and then the rest of the dwell in the
-# area, which is the gameplay the sweep is for. Tokens are counted in `PortPumpEvents` iterations,
-# the same counter `MP2_INPUT` always uses (~60/s against ~54 game updates/s measured).
+# Every area gets `DWELL` game updates: the `NEXTAREA` that asks for it plus, `HEAL` updates later, a
+# heal (a spawn in a hazard should not end the sweep) and then the rest of the dwell in the area,
+# which is the gameplay the sweep is for. Tokens are counted in game updates, the same counter
+# `MP2_FRAMES` uses (`platform/README.md`, "Input"), so the dwell and the frame budget below are one
+# axis and a shard's own arithmetic says exactly where each area starts.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -25,7 +26,11 @@ USERDIR=${USERDIR:-}
 COUNT=${COUNT:-63}
 SHARDS=${SHARDS:-4}
 DWELL=${DWELL:-1400}
-TAIL=${TAIL:-1000}
+# The tail has to cover the last area's own tokens too, not just leave it some gameplay: its second
+# heal sits at `HEAL + DWELL/2` (1100 by default), and a tail shorter than that meant the last area of
+# every shard went without the heal the others get - which is exactly the difference a death in a
+# dark-world area turns on.
+TAIL=${TAIL:-1400}
 HEAL=${HEAL:-400}
 TAG=${TAG:-sweep}
 DISPLAY_BASE=${DISPLAY_BASE:-86}

@@ -108,10 +108,26 @@ and never `A` - the gotcha above says what each does to a run.
    starts (`711 of 1024 free`) and never completes while the game plays on in 52 to the frame limit. In
    isolation the hop arrives, but the game then moves *itself* to area 56 (a dock) and freezes with the
    same no-tick signature as (1), so this is probably (1) behind another door - fix (1) first.
-3. An `MP2_INPUT` token that fires **before the game's first update** (~34 s, iteration ~2040) is
-   deferred ("a token arrived while the boot request was pending; serving it after") and then never
-   served: `/tmp/opencode/handfix.log` shows `NEXTAREA@1400` never hopping while the same token at 3500
-   did. Either serve it or log that it was dropped.
+3. ~~**An `MP2_INPUT` token that fires before the game's first update is deferred and never served.**~~
+   **Resolved: a token's frame is a game update now.** The script counted `PortPumpEvents` iterations,
+   so every token under the boot's ~2040 iterations landed in the boot: a warp token went to
+   `PortWarp`'s deferred slot while the boot request was pending and the *next* token overwrote it
+   (which is why `NEXTAREA@1400` never hopped where `NEXTAREA@3500` did), and a button's hold was over
+   before the game had read a pad. Frame `N` is now game update `N` - `PortHarness::GameUpdates`, the
+   same axis as `MP2_FRAMES` - frame 0/1 is the pad state the game's first update reads, and a token
+   whose frame has gone by fires at the first frame the script sees instead of being dropped
+   (`platform/README.md`, "Input", has the table). Verified: `MP2_INPUT="HEAL@1"` and `"HEAL@0"` both
+   log `[input] HEAL at frame 1 (0.0 s)` and the game serves them *in* its first update (`[warp]
+   healed` prints before `[harness] the first game update is at 34.0 s`, which the same update emits
+   after the warp tick); `HEAL@2500,B@3000+4` fires on updates 2500 and 3000, which the `[ids] frame
+   N` lines interleave exactly; and a 3-area sweep (`tools/sweep_areas.sh`, `DWELL=400`, build-token)
+   hops 0 -> 1 -> 2 at `NEXTAREA@400`/`@800` with every token served, exit 0, `sweep_report.py` all
+   areas OK. Two properties worth keeping in mind: the counter still ticks while the game is *not*
+   updating (a HUD memo pauses it, and the sweep's periodic `B` is what dismisses that), and it stays
+   at 1 before the first update, so a screen that precedes every game update - the front end - cannot
+   be driven by frame at all: `MP2_SKIP_FRONTEND` is the way past it. Warp tokens also log where they
+   fired now (`[input] NEXTAREA at frame 400`), so a log can tell a token the game ignored from one
+   that never fired.
 
 **`MP2_SKIP_INTRO=1`** drives a run into gameplay from the port side, with MP1's `MP_SMOKE_WORLD`
 semantics: boot the save, serve the boot warp (`MP2_TELEPORT`/`MP2_WORLD`), wait for it to land, report.
