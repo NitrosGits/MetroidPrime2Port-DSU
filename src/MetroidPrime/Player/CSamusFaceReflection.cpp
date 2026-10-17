@@ -52,6 +52,23 @@ static inline float FaceLookBlend(float dt, float lookDot, float freeLookSpeed) 
   return CMath::Clamp(0.f, dt * 18.f * f, 1.f);
 }
 
+#ifdef TARGET_PC
+// The decomp declares this destructor in the header and defines it `inline` in
+// src/MetroidPrime/CInGameGuiManagerSet.cpp, where the compiler emits no out-of-line symbol - so
+// the port reached it through a generated link stub (src/MetroidPrime/PortLinkStubs.cpp,
+// `_ZN20CSamusFaceReflectionD1Ev`) that only logged and returned. That stub is not a destructor:
+// the object's `mDependencies` token never runs its own destructor, so the face model's
+// dependency group stays *locked* for the rest of the process. The game builds a second
+// reflection every time the camera returns to first person (`CInGameGuiManager::Update` sets
+// `mSamusReflection` to null when the ball camera takes over and constructs a new one after),
+// and that second `CDependencyGroupToken(...)->Lock()` on resources the first reflection never
+// released is what killed the app: measured on the phone 2026-10-17, morphing and then
+// unmorphing SIGSEGV'd 7 s after `[reach-stub 0001] _ZN20CSamusFaceReflectionD1Ev`. Defining it
+// here emits the symbol the linker was missing, so the stub goes away with it (the generator
+// only fills symbols the link reports undefined).
+CSamusFaceReflection::~CSamusFaceReflection() {}
+#endif
+
 void CSamusFaceReflection::Update(float dt, const CStateManager& mgr, CRandom16& rand) {
   if (mDependencies.get() != nullptr) {
     if (mDependencies->IsLoaded()) {

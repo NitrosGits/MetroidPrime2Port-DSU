@@ -94,10 +94,6 @@ extern "C" void reachstub_135() { mpReachStub("_ZN18CTransitionManagerD1Ev", "CT
 extern "C" void reachstub_136() asm("_ZN20CDamageVulnerabilityC1ERK23SLdrDamageVulnerability");
 extern "C" void reachstub_136() { mpReachStub("_ZN20CDamageVulnerabilityC1ERK23SLdrDamageVulnerability", "CDamageVulnerability::CDamageVulnerability(SLdrDamageVulnerability const&)"); }
 
-// CSamusFaceReflection::~CSamusFaceReflection()
-extern "C" void reachstub_137() asm("_ZN20CSamusFaceReflectionD1Ev");
-extern "C" void reachstub_137() { mpReachStub("_ZN20CSamusFaceReflectionD1Ev", "CSamusFaceReflection::~CSamusFaceReflection()"); }
-
 // TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()
 extern "C" void reachstub_143() asm("_ZN22TStateMachineStateBaseI10CPatternedED2Ev");
 extern "C" void reachstub_143() { mpReachStub("_ZN22TStateMachineStateBaseI10CPatternedED2Ev", "TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()"); }
