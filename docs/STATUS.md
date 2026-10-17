@@ -8,6 +8,24 @@ session's port edit in an upstream file (`Game Code: 94.14% fuzzy, 63.29% matche
 `befa10ead` (the sweep tools), `c600728c6` (the ball camera fix), `6f7d192ea` (`B` presses, the
 RELOAD verdict).
 
+**This session (2026-10-17, fourth).** Verified on the user's phone rather than reasoned about:
+- **M2's two open checks pass.** The SAF picker copies a picked ISO to `files/disc.iso` (`disc image
+  picked: content://... , copied to .../files/disc.iso`), the next launch boots with **no picker**, and
+  the strict first-update proof prints `[harness] the first game update is at 33.9 s` / `[ids] frame 0`.
+- **M3's touch controls work with nothing but touch**: a held press on the drawn A pill advances the
+  game's own boot screen, the floating stick walks the player (`[touch] axis 1 -1.00`), A fires, and the
+  Edit pill opens the layout editor, switches GameCube/twin stick and saves it.
+- **Morphing and unmorphing no longer crash** (`bc4c733c3`). The face reflection's destructor is
+  `inline` in another TU, so no symbol was emitted and the port filled it with a logging link stub; the
+  stub left the face model's resources locked and the second reflection (built on unmorph) died with
+  SIGSEGV. Measured before: `[reach-stub 0001] _ZN20CSamusFaceReflectionD1Ev` then signal 11.
+- **The swarm boids no longer render as exploded geometry** (`23c928626`) - the maroon curtains and
+  pale slabs that covered the Temple Grounds crater's view. Cause: `CSwarmDisplayList::Draw` bound the
+  swarm's host-skinned position/normal arrays through the *guest* array path (size 0, big-endian), so
+  Aurora uploaded nothing or byte-swapped floats. One fix covers `CSwarmBasics`, `CMetareeSwarm`,
+  `CPlantScarabSwarm`, `CIngBlobSwarm` and `CFishCloud`, which all draw through that class. The white
+  radial structure left on the wall is the bugs' nest, not a bug - the user confirmed it.
+
 **The sweep exists and walks the whole world cheaply.** `tools/sweep_areas.sh` boots the save's own
 world, teleports each shard to its first area and walks its slice with `NEXTAREA` tokens, all through
 `tools/run_gameplay.sh`; `tools/sweep_report.py` turns the shard logs into a per-area table (verdict,
