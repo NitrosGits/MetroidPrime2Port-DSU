@@ -20,6 +20,38 @@ double sLastUpdateSeconds = 0.0;
 bool sWarned = false;
 constexpr double kIdleWarnSeconds = 30.0;
 
+// MP2_SKIP_INTRO (see the header).
+bool sIntroReadEnv = false;
+bool sIntroArmed = false;
+bool sIntroDone = false;
+int sIntroBudget = 3600;  // game updates
+int sIntroUpdates = 0;    // game updates seen while armed
+bool sFlowInGame = false;
+int sPlayingUpdates = 0;  // consecutive game updates that were "playing"
+int sDismissed = 0;
+constexpr int kSettleUpdates = 120;
+
+void ReadIntroEnvOnce() {
+  if (sIntroReadEnv) {
+    return;
+  }
+  sIntroReadEnv = true;
+  const char* value = std::getenv("MP2_SKIP_INTRO");
+  sIntroArmed = value != nullptr && value[0] != '\0' && value[0] != '0';
+  if (!sIntroArmed) {
+    return;
+  }
+  if (const char* frames = std::getenv("MP2_SKIP_INTRO_FRAMES")) {
+    const int budget = std::atoi(frames);
+    if (budget > 0) {
+      sIntroBudget = budget;
+    }
+  }
+  std::fprintf(stderr, "[harness] MP2_SKIP_INTRO=%s: HUD memos are dismissed until gameplay "
+                       "(budget %d game updates)\n",
+               value, sIntroBudget);
+}
+
 void ReadEnvOnce() {
   if (sReadEnv) {
     return;
@@ -85,6 +117,61 @@ void IdleCheck() {
                          "may be paused - a paused game performs no game update, so MP2_FRAMES is "
                          "never reached and only the script's timeout ends the run\n",
                idle, sUpdates, sLimit);
+}
+
+void GameFlowState(int state, bool inGame) {
+  (void)state;
+  sFlowInGame = inGame;
+  if (!inGame) {
+    sPlayingUpdates = 0;
+  }
+}
+
+bool IntroDismissMemo(unsigned message) {
+  ReadIntroEnvOnce();
+  if (!sIntroArmed || sIntroDone) {
+    return false;
+  }
+  ++sDismissed;
+  std::fprintf(stderr, "[harness] MP2_SKIP_INTRO dismissed HUD memo %08x at %.1f s\n", message,
+               Seconds());
+  return true;
+}
+
+bool IntroSkipCinematic(unsigned camera) {
+  ReadIntroEnvOnce();
+  if (!sIntroArmed || sIntroDone) {
+    return false;
+  }
+  // One line per camera, not per request: a cinematic that may not be skipped is asked every frame.
+  static unsigned sLastCamera = ~0u;
+  if (camera != sLastCamera) {
+    sLastCamera = camera;
+    std::fprintf(stderr, "[harness] MP2_SKIP_INTRO skips cinematic camera %04x at %.1f s\n",
+                 camera & 0xffff, Seconds());
+  }
+  return true;
+}
+
+void NotePlaying(bool playing) {
+  ReadIntroEnvOnce();
+  if (!sIntroArmed || sIntroDone) {
+    return;
+  }
+  ++sIntroUpdates;
+  sPlayingUpdates = playing && sFlowInGame ? sPlayingUpdates + 1 : 0;
+  if (sPlayingUpdates >= kSettleUpdates) {
+    sIntroDone = true;
+    std::fprintf(stderr, "[harness] gameplay reached at %.1f s (frame %u)\n", Seconds(),
+                 static_cast< unsigned >(sUpdates));
+    return;
+  }
+  if (sIntroUpdates >= sIntroBudget) {
+    sIntroDone = true;
+    std::fprintf(stderr, "[harness] MP2_SKIP_INTRO gave up after %d game updates at %.1f s (%d memo(s) "
+                         "dismissed); no longer dismissing\n",
+                 sIntroBudget, Seconds(), sDismissed);
+  }
 }
 
 double Seconds() {

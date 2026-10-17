@@ -59,7 +59,15 @@ enum EPhase {
 bool sReadEnv = false;
 bool sArmed = false;
 bool sSlotGiven = false;
-bool sDismissedSplash = false;
+// The splash dismissal: every window it has removed, and how many calls since the last one found
+// any. The chain is done once it has been quiet for kSplashQuietCalls calls after a removal.
+int sSplashRemoved = 0;
+int sSplashQuietCalls = 0;
+int sSplashCalls = 0;
+bool sSplashDone = false;
+const int kSplashQuietCalls = 30;
+// A chain that never shows up (a boot with the splash disabled) stops being looked for after this.
+const int kSplashCallBudget = 6000;
 int sSlot = 0;
 EPhase sPhase = kIdle;
 CMemoryCardDriver* sDriver = nullptr;
@@ -102,19 +110,26 @@ void ReadEnvOnce() {
 // and the health warning's timeout is 61 seconds. A test run that presses nothing, which is the
 // point of the skip, would pay that on every run (measured: the front end's flow only reached
 // `CPreFrontEnd` at 56.6 s without a button press and at 11.6 s with one). So while the skip is
-// armed, dismiss the chain: removing a screen means its timeout never fires, so no successor is
-// created. The progressive-mode prompt is not answered, so `sProgressiveModePrompt` stays as it was
-// and the prompt would come back on a later boot - with the port's progressive mode off either way
-// (`platform/main.cpp` passes `false` to `CGraphicsSys`).
+// armed, dismiss the chain. One pass is not enough: a screen's successor is queued by its own
+// `CSplashScreen::OnMessage`, so it appears after the pass that removed its predecessor. Every call
+// therefore removes whatever "SplashScreen" windows are up, and the dismissal ends once the chain
+// has been quiet for kSplashQuietCalls calls. The progressive-mode prompt is not answered, so
+// `sProgressiveModePrompt` stays as it was and the prompt would come back on a later boot - with the
+// port's progressive mode off either way (`platform/main.cpp` passes `false` to `CGraphicsSys`).
 void DismissSplashWindows() {
   ReadEnvOnce();
-  if (!sArmed || sDismissedSplash) {
+  if (!sArmed || sSplashDone) {
     return;
   }
   if (gpIOWinManager == nullptr) {
     return; // not up yet: try again on the next iteration rather than giving up on the chain
   }
-  sDismissedSplash = true;
+  if (++sSplashCalls > kSplashCallBudget) {
+    sSplashDone = true;
+    fprintf(stderr, "[skip] no boot splash window after %d iterations; no longer looking (%.1f s)\n",
+            kSplashCallBudget, PortHarness::Seconds());
+    return;
+  }
   int removed = 0;
   for (; removed < 8; ++removed) {
     rstl::ncrc_ptr< CIOWin > splash = gpIOWinManager->FindIOWin(rstl::string_l("SplashScreen"));
@@ -124,8 +139,14 @@ void DismissSplashWindows() {
     gpIOWinManager->RemoveIOWin(splash);
   }
   if (removed > 0) {
-    fprintf(stderr, "[skip] dismissed %d boot splash window(s) at %.1f s\n", removed,
-            PortHarness::Seconds());
+    sSplashRemoved += removed;
+    sSplashQuietCalls = 0;
+    return;
+  }
+  if (sSplashRemoved > 0 && ++sSplashQuietCalls >= kSplashQuietCalls) {
+    sSplashDone = true;
+    fprintf(stderr, "[skip] dismissed %d boot splash window(s); the chain is gone at %.1f s\n",
+            sSplashRemoved, PortHarness::Seconds());
   }
 }
 

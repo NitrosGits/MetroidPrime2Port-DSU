@@ -46,6 +46,28 @@ and never `A` - the gotcha above says what each does to a run.
    served: `/tmp/opencode/handfix.log` shows `NEXTAREA@1400` never hopping while the same token at 3500
    did. Either serve it or log that it was dropped.
 
+**`MP2_SKIP_INTRO=1`** drives a run into gameplay from the port side, with MP1's `MP_SMOKE_WORLD`
+semantics: boot the save, serve the boot warp (`MP2_TELEPORT`/`MP2_WORLD`), wait for it to land, report.
+No input is synthesised. Before gameplay it (a) answers `CMFGame::EnterMessageScreen` (the HUD-memo
+pause) with the game's own dismissal, `UnpauseGame` + the HUD-message frame counter, never pausing - a
+real pause menu does not go through it; (b) gives a current cinematic camera the skip request START
+makes (`MP2_SKIP_CINEMATICS=1` makes unseen ones skippable; without it the save's area-0 opening stays
+in a cinematic camera for 900+ updates). "Gameplay reached" = 120 consecutive updates running, in
+`kFS_InGame`, no warp pending/streaming/handed over, no cinematic camera; logged once as `[harness]
+gameplay reached at <s> (frame <update>)`. Budget `MP2_SKIP_INTRO_FRAMES` (default 3600 game updates),
+then `gave up`. `MP2_SKIP_FRONTEND` now keeps removing "SplashScreen" windows until the chain has been
+quiet for 30 iterations. Desktop, `u_a10`'s card: area 5 reached at 39.1 s, area 0 at 36.0 s; the card
+shows no memo, so (a) was only exercised with an injected memo (dismissed, game kept updating).
+Area 0's opening visor boot-up ("SCANNING") is still on screen at 53 s, but stick input turns the
+player then (the minimap rotates).
+**Gap:** an empty card still plays the front end's file select (`MP2_SKIP_FRONTEND` gives up on an
+empty slot instead of starting a new game).
+
+**The ~34 s before the first game update is now the largest delay in every run**, and it is the same on
+the desktop (33.8-34.0 s, five runs) and the phone (33.9 s), so it is not phone disc I/O: it is
+loop-bound - the loop runs at ~60 Hz and ARAM staging moves 64 KiB per iteration (the `[aram] ...
+fileSize2=` lines step by 65536).
+
 **Still unverified**: hazards as gameplay, the scan logbook's persistence, escape/endgame paths,
 lock-on handoff, morph ball and gyro input; and the empty-`optional_object` read audit
 (`CGunWeapon::IsChargeAnimOver` first).

@@ -1,6 +1,7 @@
 #include "MetroidPrime/CMFGame.hpp"
 
 #ifdef TARGET_PC
+#include "port_harness.h"
 #include "port_overlay.h"
 #endif
 
@@ -84,6 +85,10 @@ void CMFGame::SetFlowState(EFlowState state) {
   }
 
   mFlowState = state;
+#ifdef TARGET_PC
+  // MP2_SKIP_INTRO counts gameplay only in kFS_InGame (see platform/include/port_harness.h).
+  PortHarness::GameFlowState(int(state), state == kFS_InGame);
+#endif
   switch (state) {
   case kFS_CinematicSkip:
     CSfxManager::SetMuted(true);
@@ -156,6 +161,21 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
     if (mFlowState == kFS_Zero) {
       SetFlowState(kFS_InGame);
     }
+#ifdef TARGET_PC
+    // MP2_SKIP_INTRO: a cinematic before gameplay is skipped the way START skips it in kAM_UserInput
+    // (MP2_SKIP_CINEMATICS still decides whether one the player has not seen may be skipped).
+    if (mFlowState == kFS_InGame && !mStateManager->IsMultiplayer() &&
+        gpGameState->GetGameMode().GetGameModeType() != 'FRND') {
+      const CCinematicCamera* const introCam = TCastToConstPtr< CCinematicCamera >(
+          *mStateManager->GetCameraManager(0)->GetCurrentCamera(*mStateManager, true));
+      if (introCam && PortHarness::IntroSkipCinematic(introCam->GetScriptCameraId().Value())) {
+        CMidiManager::StopAll();
+        mSkippedCineCam = introCam->GetScriptCameraId();
+        SetFlowState(kFS_CinematicSkip);
+        mFlowTime = 0.f;
+      }
+    }
+#endif
 
     switch (mFlowState) {
     case kFS_PortalTransition:
@@ -604,6 +624,17 @@ void CMFGame::EnterPauseScreenState5() {
 }
 
 void CMFGame::EnterMessageScreen(float time) {
+#ifdef TARGET_PC
+  // MP2_SKIP_INTRO: a HUD memo before gameplay is dismissed the way the kFS_Paused case of OnMessage
+  // dismisses it once the GUI leaves its paused state, without ever pausing.
+  if (PortHarness::IntroDismissMemo(static_cast< unsigned >(mStateManager->GetPauseHUDMessage()))) {
+    UnpauseGame();
+    if (mStateManager->GetPauseHUDMessage() != kInvalidAssetId) {
+      mStateManager->IncrementHUDMessageFrameCounter();
+    }
+    return;
+  }
+#endif
   SetFlowState(kFS_Paused);
   mGuiManager->GetPlayerGuiManager(0).ShowPauseGameHudMessage(
       *mStateManager, mStateManager->GetPauseHUDMessage(), time);

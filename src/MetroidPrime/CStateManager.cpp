@@ -3780,6 +3780,12 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
             harnessWorld != nullptr ? harnessWorld->GetCurrentAreaId().Value() : -1,
             harnessWorld != nullptr ? harnessWorld->IGetAreaCount() : 0);
   }
+  // MP2_SKIP_INTRO: playing = running, the boot warp served and landed, no cinematic.
+  PortHarness::NotePlaying(mGameState == kGS_Running && !PortWarp::Pending() &&
+                           mPortPendingWarpArea == kInvalidAreaId &&
+                           mPortSpawnAtArea == kInvalidAreaId &&
+                           mPortWarpQueuedArea == kInvalidAreaId &&
+                           !mCameraManagers[0]->IsInCinematicCamera());
   if (mPortDropAreasAtFrame != 0 && mUpdateFrameIdx >= mPortDropAreasAtFrame) {
     mPortDropAreasAtFrame = 0;
     if (CWorld* dropWorld = World(); dropWorld != nullptr) {

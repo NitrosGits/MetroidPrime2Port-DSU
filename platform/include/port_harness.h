@@ -38,6 +38,34 @@ void IdleCheck();
 // handful.
 double Seconds();
 
+// MP2_SKIP_INTRO=1: drive a run into gameplay from the port side, with no input - the semantics of
+// MP1's MP_SMOKE_WORLD (MetroidPrimePort/platform/smoke.cpp): wait until the game is running, serve
+// the boot warp (MP2_WORLD / MP2_TELEPORT, platform/port_warp.cpp), wait until it has landed, then
+// report. MP2_SKIP_FRONTEND removes the boot splash chain; this removes the other blocker, the HUD
+// memo an area can show (`CStateManager::ShowPausedHUDMemo` -> `CMFGame::EnterMessageScreen`, which
+// pauses the game and waits for a button): `EnterMessageScreen` asks IntroDismissMemo and, while it
+// says yes, takes the game's own dismissal path (`UnpauseGame` + the HUD-message frame counter)
+// instead of pausing. A real pause menu never goes through it. A cinematic camera before gameplay
+// gets the skip request START makes (IntroSkipCinematic); MP2_SKIP_CINEMATICS=1 makes unseen ones skippable.
+// "Playing" is a game update with the state manager running, no warp pending, streaming or handed
+// to a transition, no cinematic camera and the flow in kFS_InGame; kSettleUpdates of those in a row
+// log `[harness] gameplay reached at <s> (frame <game update>)` once, and the dismissal ends.
+// MP2_SKIP_INTRO_FRAMES (default 3600 game updates) bounds it: past that it logs that it gave up.
+
+// CMFGame::SetFlowState publishes every flow state here (state is CMFGame::EFlowState).
+void GameFlowState(int state, bool inGame);
+
+// CMFGame::EnterMessageScreen asks this before pausing for a HUD memo (message is its STRG id).
+// True: dismiss it (logged).
+bool IntroDismissMemo(unsigned message);
+
+// CMFGame's timer tick asks this while a cinematic camera is current in kFS_InGame (camera is its
+// script id). True: request the skip START would (logged once per camera).
+bool IntroSkipCinematic(unsigned camera);
+
+// CStateManager::Update, once per game update: whether this update counts as playing (see above).
+void NotePlaying(bool playing);
+
 } // namespace PortHarness
 
 #endif
