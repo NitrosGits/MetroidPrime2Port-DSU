@@ -429,6 +429,16 @@ void CGraphics::ConfigureVideo(bool initial, uchar progressive) {
   mFifoSize = 0x60000;
   mpFifo = AllocateGraphicsArena(mFifoSize);
   sSpareAllocation = AllocateGraphicsArena(sSpareAllocationSize);
+#ifdef TARGET_PC
+  // The console's heap was zeroed and the host's is not. The spare buffer is where EFB copies land
+  // (the scan visor's C8 overlay, the camera filters) and nothing else writes it; those copies are
+  // not implemented in the port yet, so on the host it held whatever the allocator left there. The
+  // visor binds it as a C8 texture and samples those bytes as palette indices through a 248-entry
+  // TLUT, and an index past the end of the palette is a GPUVM fault - the device loss that killed
+  // every scan-visor run (VK_ERROR_DEVICE_LOST, SQC (data)). Zeros are both what the console had
+  // and a valid palette index.
+  memset(sSpareAllocation, 0, sSpareAllocationSize);
+#endif
   GPUMemory::SetBuffer(AllocateGraphicsArena(0x40000), 0x40000);
   mSpareBufferSize = sSpareAllocationSize;
   mpSpareBuffer = sSpareAllocation;

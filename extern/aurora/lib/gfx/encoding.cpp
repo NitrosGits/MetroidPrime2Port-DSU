@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -271,7 +272,30 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
         .dst = passInfo.resolveTarget,
         .sampleFilter = needsScaling ? tex_copy_conv::SampleFilter::Linear : tex_copy_conv::SampleFilter::Nearest,
     };
-    if (needsConversion) {
+    {
+      // Port diagnostic (temporary): what each EFB copy resolve actually copies.
+      static const bool sLog = std::getenv("MP2_DEBUG_EFB_COPY") != nullptr;
+      if (sLog) {
+        const auto& srcSize = passInfo.colorAttachments[SceneColorAttachmentIndex].size;
+        Log.info("efb copy pass {} '{}': fmt={} rect=({},{},{},{}) src={}x{} dst={}x{} conv={} scale={} uniform={}+{} depth={} msaa={}",
+                 passIndex, label, static_cast<int>(passInfo.resolveFormat), passInfo.resolveRect.x,
+                 passInfo.resolveRect.y, passInfo.resolveRect.width, passInfo.resolveRect.height, srcSize.width,
+                 srcSize.height, dstSize.width, dstSize.height, needsConversion, needsScaling,
+                 passInfo.resolveUniformRange.offset, passInfo.resolveUniformRange.size, isDepth,
+                 passInfo.msaaSamples);
+      }
+    }
+    bool skipResolve = false;
+    {
+      // Port diagnostic (temporary): drop one resolve by index, to place a fault.
+      const char* skip = std::getenv("MP2_SKIP_CONV_PASS");
+      if (skip != nullptr && passIndex == static_cast<uint32_t>(std::atoi(skip))) {
+        skipResolve = true;
+      }
+    }
+    if (skipResolve) {
+      // Intentionally leave the target unresolved.
+    } else if (needsConversion) {
       tex_copy_conv::run(cmd, convReq);
     } else if (needsScaling) {
       tex_copy_conv::blit(cmd, convReq);
