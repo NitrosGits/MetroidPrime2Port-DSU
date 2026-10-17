@@ -142,10 +142,16 @@ reproduce there, so they are not worth driving through the phone):
   buffer - the scan visor's overlay (`CCubeRenderer::DrawScanVisor`), the camera filters
   (`CCameraFilter.cpp:569-676`) and the results screen all read it. Bigger than the 32x64 peek; same
   encoder-task shape, with a frame of latency.
-- **A blocker for testing it on the desktop**: `MP2_INPUT` D-pad tokens (`LEFT@200+20`,
-  `RIGHT@400+20`) do **not** switch the visor, while the person switches it with the on-screen D-pad
-  on the phone. `MP2_DEBUG_SCAN=1` prints nothing, so the selection never changes. Until that is
-  understood, "enter the scan visor" is a phone-only test.
+- **Confirmed on the phone (the person's report)**: scanning works - objects now lock on and scan -
+  but **the highlight colours are wrong**. That is this same missing spare-buffer copy: the visor
+  colourises by sampling it, and on the phone it holds uninitialised host memory, so the palette
+  lookup gives random colours. `e8de72e7b` fixed the *targeting* (which reads the separate 32x64
+  region), and `5e3e122ee` stopped the desktop dying on the same buffer; neither fills it.
+- **Correcting an earlier note**: `MP2_INPUT` D-pad tokens *do* switch the visor (`LEFT@200+20`
+  works). What looked like the press failing was the visor opening onto its broken overlay - a white
+  viewport with the HUD intact, which is index 0 of the palette after the zeroing above. The
+  `MP2_DEBUG_SCAN` selection line staying silent is a separate question about that diagnostic's call
+  site, not evidence the visor never opened.
 
 **Open, and it explains why the scan visor's bug survived so long: entering the scan visor kills the**
 **desktop build about two frames in** with a GPUVM fault (`VK_ERROR_DEVICE_LOST`, `SQC (data)`). The
