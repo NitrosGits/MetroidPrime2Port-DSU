@@ -4495,6 +4495,15 @@ void CStateManager::PortWarpSettle() {
       std::fprintf(stderr, "[warp] area %d: streaming (%d of %d object ids free)\n",
                    mPortPendingWarpArea.Value(), PortFreeObjectIds(), kMaxObjects);
     }
+    // A dock's kSM_Load (CScriptDock::AcceptScriptMsg) preloads the area behind a door but pauses
+    // its validation until the door opens, so the area stops at kP_WaitForValidation. A warp never
+    // opens that door: Temple Grounds 52 sends it for 53, and a hop from 52 after that script had
+    // run streamed 53 to that phase and then waited for the rest of the run. The warp is the opening.
+    if (area->GetPhase() == CGameArea::kP_WaitForValidation) {
+      std::fprintf(stderr, "[warp] area %d: its validation was held by a dock; releasing it\n",
+                   mPortPendingWarpArea.Value());
+    }
+    area->SetValidationPaused(false);
     if (world->ScheduleAreaToLoad(area, *this)) {
       area->StartStreamIn(*this);
     }
