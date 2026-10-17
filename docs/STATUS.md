@@ -3,6 +3,46 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (seventh session, continued): `MP2_TELEPORT` at boot rendered nothing
+
+**The white screen was a scripted camera filter left applying its flash.** A boot-time
+`MP2_TELEPORT=<area>` landed the player correctly and the game ran (60 fps, 210 draw calls, 192k
+vertices a frame) but the screen was a flat white or black - the HUD drawn over it, no world, no
+gun. It was not area 5: the same hold appeared after warping back to area 0, and the same area 5
+*reached from gameplay* rendered perfectly. The finding that named it: an `MP2_DEBUG_FILTERS=1`
+instrument in `CCameraFilterPass::DrawFilter` printed an opaque white `kFT_Add` full-screen filter
+every frame, and a gdb breakpoint on it led to
+`CStateManager::DrawAdditionalFilters` -> `mCameraFilterPasses[player][0].Draw()`: one of the 11
+per-player camera-filter passes, which only a level script drives (`CScriptCameraFilterKeyframe`,
+`kSM_Increment` sets the filter over `mTimeIn`, `kSM_Decrement` takes it away over `mTimeOut`).
+`send <keyframe> Decrement` to the area's white keyframe made the world appear instantly.
+
+**Fix: the boot request waits for gameplay, which is the state a console `warp` runs in.** Served at
+frame 0 - `mGameState` is already `kGS_Running` and `IsFullyInitialized()` already true during the
+save's own load, so state alone cannot tell the two apart - the warp's hand-over to the game's own
+transition left the destination's scripted flash applied. It is now held until
+`PortHarness::GameUpdates() >= 120` (the point the harness itself calls "gameplay reached"), and
+`[warp] serving a request at frame 120` says where it went. `PortWarp::PendingIsBoot()`
+(`platform/include/port_warp.h`) is what the game asks; `MP2_INPUT` tokens and console warps are not
+boot requests and keep their exact timing. Also on the arrival path, a warp now ends a
+`kTT_Portal` transition the hand-over may have left running (it never fired in these runs; a warp is
+a teleport, so no portal wipe has anything left to do).
+
+**Verified:** `MP2_TELEPORT=5` at boot now renders the area (screenshot, `/tmp/opencode/dfr2.png`);
+`MP2_TELEPORT=5` plus `MP2_INPUT=NEXTAREA@900+1` still hops to area 6 at frame 899 and area 6 renders
+(`/tmp/opencode/sm1.png`); `MP2_TELEPORT=0` is unchanged. Instruments added while hunting, all
+`#ifdef TARGET_PC` and off unless set: `MP2_DEBUG_VIS=1` (what `CStateManager::GetVisSetForArea`
+decided, per area), `MP2_DEBUG_TRANS=1` (`CMFGame`'s flow state, transition phase and fade),
+`MP2_DEBUG_FILTERS=1` (every full-screen camera filter with its colour). `status` grew the camera
+(kind, FOV, position), the area's fog, the alive/visible area list with the current area's occlusion
+state, the escape timer, the world transition type, the viewport, and the frame's draw calls and
+vertices - each of those was a question this hunt had to answer.
+
+Gates: `tools/gen_files_cmake.py --check` rc=0 and the upstream matching build still
+`Game Code: 94.14% fuzzy, 63.29% matched`; the four upstream files touched
+(`CStateManager.cpp`, `CMFGame.cpp`, `CCameraFilter.cpp`, and the earlier `CFilteredDelayAux.cpp`)
+strip to their pre-change non-PC text exactly.
+
 ## 2026-10-18 (seventh session): the console's second wave, and a client that had never worked
 
 **Seven commands, and the names they print come from the enums.** `platform/port_console.cpp` gains

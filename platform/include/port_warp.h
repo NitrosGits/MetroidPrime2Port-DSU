@@ -52,6 +52,11 @@ void ApplyEnvOnce();
 // Whether a request is waiting. The game checks this before it is ready to act (no world yet, or
 // the front end), so that `Consume` does not take a request it would then have to drop.
 bool Pending();
+// Whether the waiting request is the one `MP2_WORLD`/`MP2_TELEPORT` queued at start-up. The game
+// holds that one until gameplay, because a warp served while the save's world is still loading
+// leaves the destination's scripted camera filters applying their flash for the rest of the run;
+// a warp issued once the game is running - a console `warp`, an `MP2_INPUT` token - is clean.
+bool PendingIsBoot();
 // Takes the pending request, if any. One at a time on purpose: a warp reloads the world, which
 // invalidates anything resolved against the old one.
 bool Consume(SRequest& out);

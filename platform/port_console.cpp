@@ -15,6 +15,10 @@
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Player/CWorldTransManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
@@ -24,6 +28,8 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+
+#include <aurora/gfx.h>
 
 #include <atomic>
 #include <chrono>
@@ -492,6 +498,82 @@ void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
     std::snprintf(line, sizeof(line), "health %.0f/%.0f  visor %s  beam %d\n",
                   state->GetHealthInfo().GetHP(), state->GetHealthInfo().GetInitialHP(),
                   VisorName(state->GetActiveVisor(mgr)), static_cast< int >(state->GetCurrentBeam()));
+    out += line;
+  }
+  // Where the camera the frame is drawn from actually is: the player's position says nothing about
+  // a detached camera, which is what a "nothing renders" report usually turns out to be.
+  if (const CCameraManager* cameras = mgr.GetCameraManager(0)) {
+    const CGameCamera* camera = cameras->GetCurrentCamera(mgr, false);
+    const CTransform4f cameraXf = cameras->GetCurrentCameraTransform(mgr, false);
+    const CVector3f at = cameraXf.GetTranslation();
+    const char* kind = cameras->IsInCinematicCamera() ? "cinematic"
+                       : cameras->IsInFPCamera()      ? "first-person"
+                       : cameras->IsInBallCamera()    ? "ball"
+                                                      : "other";
+    std::snprintf(line, sizeof(line), "camera %s fov %.1f at (%.2f, %.2f, %.2f)\n", kind,
+                  camera != nullptr ? camera->GetFov() : 0.f, at.GetX(), at.GetY(), at.GetZ());
+    out += line;
+    // The area's fog, because a white screen with the HUD drawn on it is what a fog range of
+    // "everything" looks like from inside.
+    const CGameArea::CAreaFog& fog = cameras->GetFog();
+    const CColor fogColor = fog.GetColor();
+    const CVector2f fogRange = fog.GetRange();
+    std::snprintf(line, sizeof(line), "fog mode %d colour (%.2f, %.2f, %.2f) range %.1f..%.1f%s\n",
+                  static_cast< int >(fog.GetFogMode()), fogColor.GetRed(), fogColor.GetGreen(),
+                  fogColor.GetBlue(), fogRange.GetX(), fogRange.GetY(),
+                  fog.IsFogDisabled() ? " disabled" : "");
+    out += line;
+  }
+  // What the renderer will walk: CStateManager::GatherVisibleAreas only takes areas whose occlusion
+  // state is kOS_Visible, so a current area that is not visible is a blank world with a normal HUD.
+  if (CWorld* world = mgr.World()) {
+    int alive = 0;
+    std::string visibleList;
+    for (CGameArea::CConstChainIterator it = world->GetChainHead(CWorld::kC_Alive);
+         it != CWorld::GetAliveAreasEnd(); ++it) {
+      ++alive;
+      if (it->GetOcclusionState() == CGameArea::kOS_Visible) {
+        visibleList += ' ';
+        visibleList += std::to_string(it->GetId().Value());
+      }
+    }
+    const CGameArea* current = world->Area(world->GetCurrentAreaId());
+    std::snprintf(line, sizeof(line), "areas alive %d, visible:%s; current occlusion %s\n", alive,
+                  visibleList.c_str(),
+                  current == nullptr   ? "(not loaded)"
+                  : current->GetOcclusionState() == CGameArea::kOS_Visible ? "visible"
+                                                                           : "occluded");
+    out += line;
+    // How much the last frame asked the GPU to do. A world that is not drawn at all shows up here
+    // as a handful of draw calls (the HUD) instead of hundreds.
+    // The escape sequence's timer: while it is in (0, 1) CStateManager::DrawAdditionalFilters adds a
+    // full-screen white filter whose alpha is 1 - timer, and the timer's own update clamps it to
+    // FLT_EPSILON rather than 0 - so a timer left running is a permanently white screen under the
+    // HUD. One line here saves the whole hunt.
+    std::snprintf(line, sizeof(line), "escape timer %.6f%s\n",
+                  gpGameState != nullptr ? gpGameState->GetEscapeTime() : 0.f,
+                  gpGameState != nullptr && gpGameState->GetEscapeTime() > 0.f
+                      ? "  <- the screen goes white"
+                      : "");
+    out += line;
+    // The world transition manager's own state: kTT_Portal left running draws an additive white
+    // full-screen quad (CWorldTransManager::DrawPortalTransition) that hides the world.
+    if (!gpGameState->WorldTransitionManager().IsNull()) {
+      const CWorldTransManager* trans = gpGameState->WorldTransitionManager().GetPtr();
+      std::snprintf(line, sizeof(line), "transition type %d finished %d\n",
+                    static_cast< int >(trans->GetTransType()),
+                    trans->IsTransitionFinished() ? 1 : 0);
+      out += line;
+    }
+    const CViewport& vp = CGraphics::GetViewport();
+    std::snprintf(line, sizeof(line), "viewport %d,%d %dx%d\n", vp.mLeft, vp.mTop, vp.mWidth,
+                  vp.mHeight);
+    out += line;
+    const AuroraStats* stats = aurora_get_stats();
+    std::snprintf(line, sizeof(line), "frame %.1f fps, %u draw calls, %u verts%s\n",
+                  aurora_get_fps(), stats != nullptr ? stats->drawCallCount : 0u,
+                  stats != nullptr ? stats->lastVertSize : 0u,
+                  stats != nullptr && stats->drawCallCount < 40 ? "  <- almost nothing drawn" : "");
     out += line;
   }
 }

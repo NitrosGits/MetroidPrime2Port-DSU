@@ -172,6 +172,8 @@ void ApplyEnvOnce() {
 
 bool Pending() { return sRequest.kind != EKind::kNone; }
 
+bool PendingIsBoot() { return sBootPending && sRequest.kind != EKind::kNone; }
+
 bool Consume(SRequest& out) {
   if (sRequest.kind == EKind::kNone) {
     return false;

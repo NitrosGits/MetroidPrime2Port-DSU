@@ -688,6 +688,23 @@ bool CStateManager::GetVisSetForArea(const TAreaId area, const TAreaId visibleAr
     }
   }
 
+#ifdef TARGET_PC
+  {
+    // Port diagnostic (MP2_DEBUG_VIS=1): a vis set the octree could not fill leaves the area's
+    // geometry culled, which looks like a blank screen with the HUD drawn on it - the state that
+    // made a boot-time `MP2_TELEPORT` render nothing (docs/STATUS.md). 0/1/2 mean no vis set at all
+    // (no dock found, or the area has no PVS), 3 is a real node.
+    static const bool sLogVis = std::getenv("MP2_DEBUG_VIS") != nullptr;
+    static int sLastArea = -1;
+    static int sLastState = -1;
+    if (sLogVis && (sLastArea != area.Value() || sLastState != setState)) {
+      sLastArea = area.Value();
+      sLastState = setState;
+      std::fprintf(stderr, "[vis] area %d from visible area %d: setState %d\n", area.Value(),
+                   visibleArea.Value(), setState);
+    }
+  }
+#endif
   return setState == 3;
 }
 
@@ -4141,9 +4158,23 @@ void CStateManager::PortWarpTick() {
     return;
   }
 
+  // A boot request waits for gameplay, not just for the world: served while the save's area is
+  // still coming up, the destination's scripted camera-filter keyframe could be left applying its
+  // flash - an additive white full-screen quad for the rest of the run, with the HUD drawn over it
+  // (docs/STATUS.md). The same warp issued once the game is running is clean, which is the state a
+  // console `warp` or an `MP2_INPUT` token runs in, so the two agree now.
+  if (PortWarp::PendingIsBoot() && PortHarness::GameUpdates() < 120u) {
+    return;
+  }
+
   PortWarp::SRequest request;
   if (!PortWarp::Consume(request)) {
     return;
+  }
+  if (mUpdateFrameIdx > 0) {
+    // A boot request is served late by design (see above): say when, so a sweep's timeline is
+    // readable - later tokens are counted in game updates from the same clock.
+    std::fprintf(stderr, "[warp] serving a request at frame %u\n", mUpdateFrameIdx);
   }
 
   switch (request.kind) {
@@ -4401,6 +4432,18 @@ void CStateManager::PortPlaceArrivalTick() {
   mPortSpawnAtArea = kInvalidAreaId;
   mPortSpawnWarned = false;
   std::fprintf(stderr, "[warp] the game's own transition arrived in area %d\n", area.Value());
+  // A warp is a teleport, not a portal crossing. The hand-over above starts the game's own portal
+  // transition, and CWorldTransManager draws that as an additive full-screen quad that begins white
+  // (mPortalFade 0) and only advances once CPortalTransition is ready. At boot it never becomes
+  // ready - the destination's portal model is not loading while the port still holds the world's
+  // own area loading - so the quad stayed up for the rest of the run: the world was drawn (normal
+  // draw-call counts) with the HUD over a white screen (docs/STATUS.md). The hop has arrived, so the
+  // transition has nothing left to do.
+  if (!gpGameState->WorldTransitionManager().IsNull() &&
+      gpGameState->WorldTransitionManager()->GetTransType() == CWorldTransManager::kTT_Portal) {
+    std::fprintf(stderr, "[warp] ending the portal transition the hand-over left running\n");
+    gpGameState->WorldTransitionManager()->DisableTransition();
+  }
   if (mIsDarkWorld != mPortIsDarkWorld) {
     // Put back the flag the transition flipped (see the hand-over): the log says what it was, so a
     // run in the dark worlds can tell whether the flag needs to follow the destination instead.

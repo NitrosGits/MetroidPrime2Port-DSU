@@ -410,6 +410,21 @@ void CCameraFilterPass::DrawFilter(EFilterType type, EFilterShape shape, const C
   if (type == kFT_Passthru) {
     return;
   }
+#ifdef TARGET_PC
+  {
+    // Port diagnostic (MP2_DEBUG_FILTERS=1): every full-screen camera filter, with its colour. A
+    // filter left on is what a "nothing renders" screen looks like, because the HUD draws over it
+    // (docs/STATUS.md). Throttled: one line per 60 calls.
+    static const bool sLogFilters = std::getenv("MP2_DEBUG_FILTERS") != nullptr;
+    static unsigned sCalls = 0;
+    if (sLogFilters && (++sCalls % 60u) == 1u) {
+      std::fprintf(stderr, "[filter] type %d shape %d colour (%.2f, %.2f, %.2f, %.2f) tex %s\n",
+                   static_cast< int >(type), static_cast< int >(shape), color.GetRed(),
+                   color.GetGreen(), color.GetBlue(), color.GetAlpha(),
+                   tex != nullptr ? "set" : "none");
+    }
+  }
+#endif
   switch (type) {
   case kFT_Passthru:
   default:

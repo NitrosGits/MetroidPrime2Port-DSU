@@ -610,6 +610,26 @@ void CMFGame::DrawTransitionFilter() const {
 }
 
 void CMFGame::Draw() const {
+#ifdef TARGET_PC
+  {
+    // Port diagnostic (MP2_DEBUG_TRANS=1): a flow or transition state that stops the world from
+    // being drawn leaves the HUD on a blank frame - what a boot-time `MP2_TELEPORT` looked like
+    // (docs/STATUS.md). Print the state every 240 draws and on any change.
+    static const bool sLogTrans = std::getenv("MP2_DEBUG_TRANS") != nullptr;
+    static int sLast = -1;
+    static unsigned sCalls = 0;
+    const int key = static_cast< int >(mFlowState) * 16 + static_cast< int >(mTransitionPhase);
+    if (sLogTrans && ((++sCalls % 240u) == 0u || sLast != key)) {
+      sLast = key;
+      std::fprintf(stderr,
+                   "[trans] flow %d phase %d fade %.2f soft %d dock %d time %.2f portal %s\n",
+                   static_cast< int >(mFlowState), static_cast< int >(mTransitionPhase),
+                   mTransitionFadeTime, mStateManager->GetShowSoftTransition() ? 1 : 0,
+                   mStateManager->mPendingDockArea.Value(), mFlowTime,
+                   mPortalTransition.null() ? "none" : "set");
+    }
+  }
+#endif
   if (!mStateManager.IsNull()) {
     mStateManager->Touch();
   }
