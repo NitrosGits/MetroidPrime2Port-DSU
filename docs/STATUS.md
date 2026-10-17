@@ -8,6 +8,24 @@ session's port edit in an upstream file (`Game Code: 94.14% fuzzy, 63.29% matche
 `befa10ead` (the sweep tools), `c600728c6` (the ball camera fix), `6f7d192ea` (`B` presses, the
 RELOAD verdict).
 
+**Fixed this session, all verified on the desktop build** (rendering, cinematics and HUD questions
+reproduce there, so they are not worth driving through the phone):
+- **The HUD drawn over the landing cutscene, and the large translucent wedge beside it, are one bug**
+  (`457c86fe2`). The port's cinematic skip stopped the cinematic *camera* (`StopCinematics`) and left
+  the *scene* playing, so the intro ran on under the first-person camera with the HUD, the visor and
+  the faceplate over it - the wedge is cutscene geometry seen from the wrong camera, not a broken
+  model. Retail's skip (`CStateManager::SpecialSkipCinematic`) also fires the scene's skip
+  connections, so it jumps to its end; that is what the port calls now, with `StopCinematics` as the
+  fallback for a scene with no skip function. Controlled A/B: with `SKIP_INTRO=0` the cinematic has
+  no HUD at all, with `SKIP_INTRO=1` it had the whole HUD over it, and with the fix `SKIP_INTRO=1`
+  skips the intro outright and reaches the crater at the same time (33.9 s / 35.9 s).
+- **A port edit that leaked out of its `TARGET_PC` guard** (`95d6dc3ca`). The swarm residency guard
+  added a helper and an `if` in `CSwarmBasics.cpp` without the guard, and the upstream matching build
+  dropped from `63.29%` to `63.25%` matched - less than one file, which is exactly why the number is
+  worth reading after every upstream edit rather than glancing at "files OK". Guarded, and checked by
+  stripping `TARGET_PC` blocks from all 18 files this session touched and diffing against the
+  pre-session revision: identical everywhere.
+
 **This session (2026-10-17, fourth).** Verified on the user's phone rather than reasoned about:
 - **M2's two open checks pass.** The SAF picker copies a picked ISO to `files/disc.iso` (`disc image
   picked: content://... , copied to .../files/disc.iso`), the next launch boots with **no picker**, and
