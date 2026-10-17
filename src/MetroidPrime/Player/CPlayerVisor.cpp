@@ -22,6 +22,9 @@
 #include <dolphin/gx/GXFrameBuffer.h>
 #include <dolphin/gx/GXManage.h>
 #include <dolphin/gx/GXTexture.h>
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 static const int skPixelsPerTileDimension16Bit = 4;
 
@@ -294,6 +297,13 @@ void CPlayerVisor::Update(float dt, const CStateManager& mgr) {
 void CPlayerVisor::Draw(const CStateManager& mgr, const CTargetingManager* tgtMgr) const {
   CGraphics::SetAmbientColor(CColor::White());
   CGraphics::DisableAllLights();
+#ifdef TARGET_PC
+  // Port: `MP2_NO_VISOR_FX=1` / F1 > HUD draws the world without the visor's own overlay. The light
+  // setup above stays, because the draws after this one share it.
+  if (PortOverlay::HideVisorEffects()) {
+    return;
+  }
+#endif
   switch (mgr.GetPlayerState(mPlayerIndex)->GetActiveVisor(mgr)) {
   case CPlayerState::kPV_Combat:
     break;

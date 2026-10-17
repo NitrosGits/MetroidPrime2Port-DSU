@@ -24,6 +24,10 @@ bool sSkipCinematics = false;
 bool sGodMode = false; // never saved: there is no settings file, and a cheat must not persist
 // First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
 float sFirstPersonFov = 0.f;
+// Draw the world without the HUD's view overlays (`MP2_NO_HELMET`, `MP2_NO_VISOR_FX`): for
+// screenshots of an area, and for looking at what a visor effect covers.
+bool sHideHelmet = false;
+bool sHideVisorEffects = false;
 bool sReadEnv = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
@@ -45,6 +49,8 @@ void ReadEnv() {
   sReadEnv = true;
   sSkipCinematics = EnvFlag("MP2_SKIP_CINEMATICS");
   sGodMode = EnvFlag("MP2_GODMODE");
+  sHideHelmet = EnvFlag("MP2_NO_HELMET");
+  sHideVisorEffects = EnvFlag("MP2_NO_VISOR_FX");
   if (const char* fov = std::getenv("MP2_FOV")) {
     const float value = static_cast< float >(std::atof(fov));
     if (value == 0.f || (value >= 30.f && value <= 120.f)) {
@@ -136,6 +142,17 @@ void DrawRenderSection() {
   ImGui::TextDisabled("(MP2_FOV=<deg>; 0 keeps the game's 55)");
 }
 
+void DrawHudSection() {
+  ImGui::SeparatorText("HUD");
+  ImGui::Checkbox("Hide helmet", &sHideHelmet);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_NO_HELMET=1)");
+  ImGui::Checkbox("Hide visor effects", &sHideVisorEffects);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_NO_VISOR_FX=1)");
+  ImGui::TextDisabled("the scan visor's window and edges are what a visor effect draws here");
+}
+
 void DrawTestingSection() {
   ImGui::SeparatorText("Testing");
   if (ImGui::Checkbox("Skip cinematics", &sSkipCinematics)) {
@@ -186,6 +203,16 @@ void SetSkipCinematics(bool skip) {
   sSkipCinematics = skip;
 }
 
+bool HideHelmet() {
+  ReadEnv();
+  return sHideHelmet;
+}
+
+bool HideVisorEffects() {
+  ReadEnv();
+  return sHideVisorEffects;
+}
+
 float FirstPersonFov() {
   ReadEnv();
   return sFirstPersonFov;
@@ -214,6 +241,7 @@ void Draw() {
     DrawGameSection();
     DrawAimSection();
     DrawRenderSection();
+    DrawHudSection();
     DrawTestingSection();
     DrawCheatsSection();
     DrawKeyboardSection();

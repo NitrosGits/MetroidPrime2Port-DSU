@@ -3,6 +3,24 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (seventh session, continued once more): hide helmet, hide visor effects
+
+Two more graphics toggles, both env-only plus a checkbox in the overlay's HUD section:
+`MP2_NO_HELMET=1` (the world drawn without the helmet frame) and `MP2_NO_VISOR_FX=1` (without what
+`CPlayerVisor::Draw` paints for the active visor). The helmet is gated where the game already gates it,
+`CInGameGuiManager::Draw`'s `mHelmetVisMode != 0 && notInCine` branch; its non-PC body is repeated
+under `#else` rather than wrapped, because an added `&&` would change the matching build's bytes for
+it. The visor hook is an early return after the light setup in `CPlayerVisor::Draw`, so the draws
+after it keep the state they expect. Echo and dark visor effects are empty stubs in this tree, so the
+second flag currently suppresses the scan visor's own frame and edges - the scan *window* is the
+HUD's scan interface and stays, which is what a screenshot with both flags shows.
+
+Verified on the desktop, each against the default frame: helmet gone with everything else intact
+(`/tmp/opencode/hud_nohlm.png` against `fov_55.png`), and the scan visor with `MP2_NO_VISOR_FX`
+(`/tmp/opencode/hud_nofx_scan.png`) keeps the scan window and the tint while the visor's own framing
+is not drawn. Gates: `gen_files_cmake.py --check` rc=0, matching build still 94.14% / 63.29%, and
+both upstream files strip to their pre-change non-PC text exactly.
+
 ## 2026-10-18 (seventh session, continued again): the first-person FOV setting
 
 The first of `docs/QOL.md`'s graphics toggles: `MP2_FOV=<deg>` (F1 > Render > "Field of view (1st

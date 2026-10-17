@@ -28,6 +28,11 @@ void SetGodMode(bool enabled);
 // Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
 // built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.
 float FirstPersonFov();
+// Draw without the HUD's view overlays (`MP2_NO_HELMET=1`, `MP2_NO_VISOR_FX=1`, F1 > HUD). Read by
+// CInGameGuiManager::Draw (the helmet, through its own mHelmetVisMode gate) and CPlayerVisor::Draw
+// (the per-visor effect: on this port that is the scan visor's window and edges).
+bool HideHelmet();
+bool HideVisorEffects();
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

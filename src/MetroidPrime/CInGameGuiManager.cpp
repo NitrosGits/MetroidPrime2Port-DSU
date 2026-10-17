@@ -43,6 +43,9 @@
 #include "rstl/math.hpp"
 
 #include <limits.h>
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 #include "MetroidPrime/SFX/UI.h"
 
 static const char* const skInGameGuiDGRPs[] = {
@@ -223,8 +226,17 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
   const bool inTurret = player.IsInTurret();
   if (mPauseScreenBlur->IsGameDraw()) {
     if (mHelmetVisMode != 0 && notInCine) {
+#ifdef TARGET_PC
+      // Port: MP2_NO_HELMET=1 / F1 > HUD draws the world without the helmet frame. The non-PC body is
+      // repeated rather than wrapped, so the matching build's bytes for it do not change.
+      if (!PortOverlay::HideHelmet()) {
+        CGraphics::SetDepthRange(1.f / 512.f, 1.f / 256.f);
+        mSamusHud->DrawHelmet(mgr, 0.f);
+      }
+#else
       CGraphics::SetDepthRange(1.f / 512.f, 1.f / 256.f);
       mSamusHud->DrawHelmet(mgr, 0.f);
+#endif
     }
     if (mgr.GetPlayer(mPlayerIndex)->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed) {
       mSamusHud->GetTargetingManager().Draw(mgr, true);

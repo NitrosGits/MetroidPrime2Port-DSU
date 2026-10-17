@@ -10,7 +10,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 
 | Feature | Where |
 | --- | --- |
-| F1 debug overlay: skip cinematics, god mode, mouse/twin-stick aim, teleports, first-person FOV | `platform/port_overlay.cpp` (env only: `MP2_*`; there is no settings file) |
+| F1 debug overlay: skip cinematics, god mode, mouse/twin-stick aim, teleports, first-person FOV, hide helmet / hide visor effects | `platform/port_overlay.cpp` (env only: `MP2_*`; there is no settings file) |
 | Aspect ratio (4:3 / 16:9 / follow window), widescreen HUD, render scale, vsync, 60 fps cap, sim-rate (fixed/adaptive) | `platform/debug_ui.cpp`, `platform/port_*.cpp` |
 | Skip / fast-forward cutscenes, cutscene speed, `MP2_SKIP_CINEMATICS`, `MP2_SKIP_INTRO` (level-load text + cinematic scene) | `platform/port_harness.cpp`, `CMFGame`, `CMFGameLoader` |
 | Mouse aim, twin-stick aim, gyro aim, full keyboard bindings | `platform/port_mouse.cpp`, `port_events.cpp`, `debug_ui.cpp` |
@@ -32,11 +32,11 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    console answers one command per game update, so a blocking wait buys nothing) and `cstick`/`gyro`
    (the sweep's `MP2_INPUT` tokens already cover both). `warp <world>` is `world <id> [area]` here,
    with `worlds` to name the ids.
-2. **Graphics toggles**: done - the first-person FOV (`MP2_FOV=<deg>`, F1 > Render), applied in
-   `CCameraManager::UpdateCameras` through `mFirstPersonFov` + `CGameCamera::SetFovAndTarget`. The
-   rest are open: hide helmet
-   (`CInGameGuiManager::Draw`'s `mHelmetVisMode` gate), hide visor effects
-   (`CPlayerVisor::Draw`), arm-cannon offset, MSAA, anisotropic filtering, HUD scale.
+2. **Graphics toggles**: the first-person FOV (`MP2_FOV=<deg>`, F1 > Render) and hide helmet /
+   hide visor effects (`MP2_NO_HELMET`, `MP2_NO_VISOR_FX`, F1 > HUD) are in. Still open: arm-cannon
+   offset, MSAA, anisotropic filtering, HUD scale - and note that `CPlayerVisor`'s echo and dark
+   effects are empty stubs here, so `MP2_NO_VISOR_FX` currently only suppresses what the scan visor
+   draws (its frame/edges; the scan window itself is the HUD's own scan interface and stays).
 3. **Input settings**: rebinding UI and presets (MP1's `port_input_settings.cpp`), plus the settings
    file export/import. The bindings themselves already exist; the editor does not.
 4. **Gameplay tweaks** (MP1 names): fast morph, spring ball, toggle lock-on, sticky charge. Each is a
