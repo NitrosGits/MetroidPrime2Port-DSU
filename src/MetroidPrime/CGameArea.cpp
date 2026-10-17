@@ -1513,8 +1513,8 @@ void CGameArea::AddStaticGeometry() {
   if (mPostConst->mOcclusionState != kOS_Visible) {
     mPostConst->mOcclusionFrameCount = 0;
     mPostConst->mOcclusionState = kOS_Visible;
-    const bool aramFinished = TransferARAMTokensOver(kAT_Blocking);
 #ifdef TARGET_PC
+    const bool aramFinished = TransferARAMTokensOver(kAT_Blocking);
     {
       static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
       if (sLogArea) {
@@ -1525,6 +1525,8 @@ void CGameArea::AddStaticGeometry() {
                      static_cast< int >(mPostConst->mOcclusionState));
       }
     }
+#else
+    TransferARAMTokensOver(kAT_Blocking);
 #endif
     if (!mPostConst->mModelsConstructed) {
       FillInStaticGeometry();
