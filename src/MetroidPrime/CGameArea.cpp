@@ -607,6 +607,18 @@ void CGameArea::PostConstructArea() {
   int firstGeometry = section - mPostConst->GetSectionBuffers().begin();
   mPostConst->mFirstMaterialSection = firstGeometry;
   ++section;
+#ifdef TARGET_PC
+  {
+    // Port diagnostic (MP2_DEBUG_AREA=1): the instance vector's capacity is this count for the rest
+    // of the area's life, and FillInStaticGeometry builds exactly capacity() models - so a wrong
+    // count here is a wrongly built area (docs/STATUS.md).
+    static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
+    if (sLogArea) {
+      std::fprintf(stderr, "[area] %d PostConstruct: version %u, modelCount %d\n", mSelfIdx.Value(),
+                   header->version, modelCount);
+    }
+  }
+#endif
   mPostConst->mModelInstances.reserve(modelCount);
   for (int i = 0; i < modelCount; ++i) {
     int surfaces = *reinterpret_cast< const int* >((section + 6)->first.get());

@@ -593,14 +593,39 @@ void CCubeRenderer::AddStaticGeometry(const rstl::vector< CMetroidModelInstance 
         const CMetroidModelInstance& instance = (*geometry)[i];
 #ifdef TARGET_PC
         {
-          // Port diagnostic: MP2_DEBUG_AREA=1 (see CGameArea::FillInStaticGeometry).
+          // Port diagnostic: MP2_DEBUG_AREA=1 (see CGameArea::FillInStaticGeometry). This is where
+          // the CCubeModel constructor reads those surface pointers, so an entry that is not in the
+          // area's mapping any more is named here, with its index, before the crash.
           static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
+          // MP2_GUARD_GEOMETRY=1: replace such an entry with the model's first surface instead of
+          // letting the constructor read through it (a corrupt model draws wrong, it does not kill
+          // the run - a mitigation for a crash whose cause is not found yet).
+          static const bool sGuard = std::getenv("MP2_GUARD_GEOMETRY") != nullptr;
+          rstl::vector< void* >& s = const_cast< rstl::vector< void* >& >(instance.GetSurfaces());
+          const uintptr_t reference =
+              reinterpret_cast< uintptr_t >(instance.GetVertexPointer()) & ~static_cast< uintptr_t >(0xffffffffu);
+          int bad = 0;
+          for (size_t k = 0; k < s.size(); ++k) {
+            const uintptr_t raw = reinterpret_cast< uintptr_t >(s[k]);
+            if ((raw & ~static_cast< uintptr_t >(0xffffffffu)) == reference && raw != 0) {
+              continue;
+            }
+            ++bad;
+            if (sLogArea && bad <= 4) {
+              std::fprintf(stderr,
+                           "[area] AddStaticGeometry area %d model %d: surface %zu is %p, outside the "
+                           "area's mapping (%p)\n",
+                           areaId, i, k, s[k], instance.GetVertexPointer());
+            }
+            if (sGuard && !s.empty()) {
+              s[k] = s.front();
+            }
+          }
           if (sLogArea) {
-            const rstl::vector< void* >& s = instance.GetSurfaces();
             std::fprintf(stderr,
-                         "[area] AddStaticGeometry area %d model %d: %zu surfaces, first %p, "
+                         "[area] AddStaticGeometry area %d model %d: %zu surfaces, %d bad, first %p, "
                          "vertex %p material %p\n",
-                         areaId, i, s.size(), s.empty() ? nullptr : s.front(),
+                         areaId, i, s.size(), bad, s.empty() ? nullptr : s.front(),
                          instance.GetVertexPointer(), instance.GetMaterialPointer());
           }
         }

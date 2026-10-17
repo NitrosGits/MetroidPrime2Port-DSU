@@ -4111,8 +4111,12 @@ void CStateManager::PortWarpTick() {
     sLoggedWorld = gpGameState->CurrentWorldAssetId();
     std::fprintf(stderr, "[warp] world %08x areas:", sLoggedWorld);
     for (int i = 0; i < world->IGetAreaCount(); ++i) {
-      const CGameArea* a = world->Area(TAreaId(i));
-      std::fprintf(stderr, " %d=%08x", i, a != nullptr ? a->GetAreaAssetId() : 0);
+      // The MLVL carries every area's internal name, loaded or not (an unloaded area's slot is a
+      // CDummyGameArea), which is what makes `MP2_TELEPORT=<slot>` usable from a room name
+      // ("the Hive Access Tunnel is area 7").
+      const IGameArea* a = world->IGetAreaAlways(TAreaId(i));
+      std::fprintf(stderr, " %d=%08x:%s", i, a != nullptr ? a->IGetAreaAssetId() : 0,
+                   a != nullptr ? a->IGetInternalAreaName().data() : "");
     }
     std::fprintf(stderr, "\n");
   }
