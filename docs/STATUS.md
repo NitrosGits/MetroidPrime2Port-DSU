@@ -8,6 +8,21 @@ session's port edit in an upstream file (`Game Code: 94.14% fuzzy, 63.29% matche
 `befa10ead` (the sweep tools), `c600728c6` (the ball camera fix), `6f7d192ea` (`B` presses, the
 RELOAD verdict).
 
+**Still open, and how to settle each**
+- **A flickering triangle from the viewport's lower-left, camera-attached** (the person's words), seen
+  before the cinematic fix. That fix explains one wedge - cutscene geometry under the first-person
+  camera - so this may be the same thing. It is **unconfirmed**: the person has not yet played the
+  build with `457c86fe2` on the phone. If it persists in ordinary gameplay it is a second bug; the
+  cheapest reproduction is the desktop crater run (`USERDIR=/tmp/opencode/mp2card/user TELEPORT=0
+  tools/run_gameplay.sh`), not the phone.
+- **The packed-UV lead is closed, as an instrument bug rather than a game bug** (`6b33c3336`): the
+  materials whose TEX0 indices only fit the packed array are the ones flagged for it, and the draws
+  that looked wrong are the world-shadow pass's black material, which returns before any array is
+  chosen and whose texgen reads positions only. The scan now checks each surface against the array its
+  own material selects.
+- **The areas 14/21/35 update stall** (below) is being worked with `CIOWinManager`'s win list as the
+  instrument, which is the thing to read at the stall rather than the functions that stop being called.
+
 **Fixed this session, all verified on the desktop build** (rendering, cinematics and HUD questions
 reproduce there, so they are not worth driving through the phone):
 - **The HUD drawn over the landing cutscene, and the large translucent wedge beside it, are one bug**
