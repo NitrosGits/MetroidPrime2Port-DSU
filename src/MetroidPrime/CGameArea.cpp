@@ -431,6 +431,16 @@ void CGameArea::SortRelTokens(const CWorldLayerState& layers) {
 }
 
 void CGameArea::FillInStaticGeometry() {
+#ifdef TARGET_PC
+  // Port diagnostic: the static-geometry build reads raw pointers into the area's section buffers,
+  // and a stale one is a crash inside CCubeModel's constructor (docs/STATUS.md). MP2_DEBUG_AREA=1
+  // prints what was captured, per model.
+  static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
+  if (sLogArea) {
+    std::fprintf(stderr, "[area] %d FillInStaticGeometry (%zu sections)\n", mSelfIdx.Value(),
+                 mPostConst->GetSectionBuffers().size());
+  }
+#endif
   rstl::vector< rstl::pair< rstl::auto_ptr< char >, int > >::const_iterator section =
       mPostConst->GetSectionBuffers().begin() + mPostConst->mFirstMaterialSection;
   mPostConst->mFirstMaterial = reinterpret_cast< const uchar* >(section->first.get());
@@ -462,10 +472,48 @@ void CGameArea::FillInStaticGeometry() {
         CBasics::SwapBytes(*reinterpret_cast< const uint* >((++section)->first.get()));
     ++section;
     if (surfaceCount != 0) {
+#ifdef TARGET_PC
+      if (sLogArea) {
+        std::fprintf(stderr,
+                     "[area] %d model %d: %u surfaces, sections at %p %p %p %p %p\n",
+                     mSelfIdx.Value(), model, surfaceCount, header, positions, normals, colors,
+                     texCoords, packedTexCoords);
+      }
+#endif
       surfaces.reserve(surfaceCount);
       for (uint surface = 0; surface < surfaceCount; ++surface) {
 #ifdef TARGET_PC
+        // Port diagnostic (MP2_DEBUG_AREA=1): the section pointer here becomes a surface pointer the
+        // CCubeModel constructor later reads through, so an outlier names the culprit directly.
+        if (sLogArea) {
+          static const uintptr_t kHigh = ~static_cast< uintptr_t >(0xffffffffu);
+          const uintptr_t raw = reinterpret_cast< uintptr_t >(section->first.get());
+          const uintptr_t headerHigh = reinterpret_cast< uintptr_t >(header) & kHigh;
+          static int sOutliers = 0;
+          if (sOutliers < 8 && ((raw & kHigh) != headerHigh || raw == 0)) {
+            ++sOutliers;
+            std::fprintf(stderr,
+                         "[area] %d model %d surface %u: section pointer %p is outside the area's "
+                         "buffers (%p)\n",
+                         mSelfIdx.Value(), model, surface, section->first.get(), header);
+          }
+        }
         CCubeSurface::ConvertSurfaceHeader(section->first.get());
+        if (sLogArea) {
+          const bool alreadyNative =
+              *reinterpret_cast< const uint* >(
+                  reinterpret_cast< const uchar* >(section->first.get()) + 0xc) > 0x1000u;
+          static int sBadMex = 0;
+          if (alreadyNative && sBadMex < 8) {
+            ++sBadMex;
+            std::fprintf(stderr,
+                         "[area] %d model %d surface %u: material index %u after conversion (already "
+                         "converted once?)\n",
+                         mSelfIdx.Value(), model, surface,
+                         *reinterpret_cast< const uint* >(
+                             reinterpret_cast< const uchar* >(section->first.get()) + 0xc));
+          }
+        }
 #endif
         surfaces.push_back_unsafe(section->first.get());
         ++section;
@@ -1465,7 +1513,19 @@ void CGameArea::AddStaticGeometry() {
   if (mPostConst->mOcclusionState != kOS_Visible) {
     mPostConst->mOcclusionFrameCount = 0;
     mPostConst->mOcclusionState = kOS_Visible;
-    TransferARAMTokensOver(kAT_Blocking);
+    const bool aramFinished = TransferARAMTokensOver(kAT_Blocking);
+#ifdef TARGET_PC
+    {
+      static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
+      if (sLogArea) {
+        std::fprintf(stderr,
+                     "[area] %d AddStaticGeometry: aram=%d constructed=%d instances=%zu occl=%d\n",
+                     mSelfIdx.Value(), aramFinished ? 1 : 0, mPostConst->mModelsConstructed ? 1 : 0,
+                     mPostConst->mModelInstances.size(),
+                     static_cast< int >(mPostConst->mOcclusionState));
+      }
+    }
+#endif
     if (!mPostConst->mModelsConstructed) {
       FillInStaticGeometry();
     }

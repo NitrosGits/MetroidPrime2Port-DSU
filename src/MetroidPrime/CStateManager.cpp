@@ -4650,6 +4650,14 @@ void CStateManager::PortWarpToDoor() {
   const CVector3f from = player->GetTranslation();
   CScriptDoor* nearest = nullptr;
   float best = 1e30f;
+#ifdef TARGET_PC
+  // Port diagnostic (temporary): MP2_DEBUG_DOORS=1 lists the area's doors, MP2_WARP_DOOR=<id>
+  // picks one by its script id instead of the nearest - a crash report names the door, not where
+  // the player stood.
+  static const bool sLogDoors = std::getenv("MP2_DEBUG_DOORS") != nullptr;
+  static const char* sDoorId = std::getenv("MP2_WARP_DOOR");
+  const unsigned wanted = sDoorId != nullptr ? std::strtoul(sDoorId, nullptr, 16) : ~0u;
+#endif
   CObjectList* objects = mObjectLists[kOL_All].get();
   for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
     CScriptDoor* door = TCastToPtr< CScriptDoor >((*objects)[i]);
@@ -4657,6 +4665,17 @@ void CStateManager::PortWarpToDoor() {
       continue;
     }
     const float distance = (door->GetTranslation() - from).Magnitude();
+#ifdef TARGET_PC
+    if (sLogDoors) {
+      std::fprintf(stderr, "[warp] door %04x in area %d: %d m away\n", door->GetUniqueId().Value(),
+                   area.Value(), static_cast< int >(distance));
+    }
+    if (wanted != ~0u && door->GetUniqueId().Value() == wanted) {
+      nearest = door;
+      best = distance;
+      continue;
+    }
+#endif
     if (distance < best) {
       best = distance;
       nearest = door;

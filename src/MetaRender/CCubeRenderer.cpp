@@ -592,6 +592,18 @@ void CCubeRenderer::AddStaticGeometry(const rstl::vector< CMetroidModelInstance 
       for (int i = 0; i < geometry->size(); ++i) {
         const CMetroidModelInstance& instance = (*geometry)[i];
 #ifdef TARGET_PC
+        {
+          // Port diagnostic: MP2_DEBUG_AREA=1 (see CGameArea::FillInStaticGeometry).
+          static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
+          if (sLogArea) {
+            const rstl::vector< void* >& s = instance.GetSurfaces();
+            std::fprintf(stderr,
+                         "[area] AddStaticGeometry area %d model %d: %zu surfaces, first %p, "
+                         "vertex %p material %p\n",
+                         areaId, i, s.size(), s.empty() ? nullptr : s.front(),
+                         instance.GetVertexPointer(), instance.GetMaterialPointer());
+          }
+        }
         models->push_back(rs_new CCubeModel(
             const_cast< rstl::vector< void* >* >(&instance.GetSurfaces()), textures.get(),
             instance.GetMaterialPointer(), instance.GetVertexPointer(), instance.GetNormalPointer(),
