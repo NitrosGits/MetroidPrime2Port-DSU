@@ -1425,7 +1425,16 @@ void CGameArea::DecompressAreaData() {
     uint outputSize = request.mRemainingSize;
     if (chunkSize < 0) {
       const int uncompressedSize = -chunkSize;
+#ifdef TARGET_PC
+      // An uncompressed chunk is expanded *in place*: the destination and its source are both in the
+      // emulated main memory and they overlap (by a few hundred bytes, with the source ahead of the
+      // destination). memcpy is undefined for that, and which way a given libc copies decides
+      // whether the area's section data survives it - which is exactly the sort of thing a phone's
+      // memcpy and a desktop's disagree about. memmove copies in whichever direction is safe.
+      memmove(request.mOutput, request.mInput + 2, uncompressedSize);
+#else
       memcpy(request.mOutput, request.mInput + 2, uncompressedSize);
+#endif
       outputSize = uncompressedSize;
     } else {
       CLZOSupport::Inflate(request.mInput + 2, chunkSize, request.mOutput, outputSize);
