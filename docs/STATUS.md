@@ -59,6 +59,20 @@ reproduce there, so they are not worth driving through the phone):
   `CPlantScarabSwarm`, `CIngBlobSwarm` and `CFishCloud`, which all draw through that class. The white
   radial structure left on the wall is the bugs' nest, not a bug - the user confirmed it.
 
+**Regression sweep after this session's fixes (63 areas, 4 shards, `TAG=postfix`).** 48 of the 53
+areas the shards reached are `OK`, **including 14, 21 and 35** - the old "stop updating" wall, which was
+the player dying, now plays 3000/1200/900 updates and reports `OK`, so the death diagnosis and the
+second `HEAL` fixed it and area 35 (unverified when that fix landed) is confirmed. **No crash and no
+reach stub in any area**, so the nine fixes this session changed nothing for the worse. Two things the
+table leaves open:
+- **Area 46 ends in `STALL`**, and the log's last line before the harness report is
+  `[warning] [aurora::gpu] Device lost: Device was destroyed` - four shards were running software
+  Vulkan in parallel, so this reads as the renderer losing its device under that load rather than a
+  game stall. Worth one confirmation run on its own (single shard, `AREA=46`) before it is called
+  either way.
+- **Area 53 is still the hop that never lands** (`asked for but never arrived: [53]`), the same gap as
+  before; shard 3 played to its frame limit, so this is the long-standing wall and not a new one.
+
 **The sweep exists and walks the whole world cheaply.** `tools/sweep_areas.sh` boots the save's own
 world, teleports each shard to its first area and walks its slice with `NEXTAREA` tokens, all through
 `tools/run_gameplay.sh`; `tools/sweep_report.py` turns the shard logs into a per-area table (verdict,
