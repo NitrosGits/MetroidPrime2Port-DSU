@@ -65,8 +65,14 @@ directories come from `files/port_paths.txt`. New tests: `port_arena_placement_t
 (`-DMP_ARENA_FORCE_PORTABLE` runs the Android arena path on Linux). Known Android issues, both in
 the doc: a one-off Dawn Vulkan-surface SIGABRT when launched with the screen locked, and the debug
 variant's `-O0` musyx inline link error (worked around in `android/app/build.gradle`). Unproven on
-device: the front end visually (the phone was locked) and the strict "first update", which needs
-the harness env bridge (planned with M2). Next: **M2**, the SAF disc picker.
+device: the front end visually (the phone was locked) and the strict "first update" - the harness
+env bridge is now in place for it (`env.NAME=value` in `port_paths.txt`), and it is proven working
+on the phone, but the run itself needs the phone foregrounded, awake and untouched for a couple of
+minutes. **M2 implemented**: the SAF disc picker (`EnsureDiscImage` in `platform/main.cpp`) - a
+`G2ME01` header check, `SDL_ShowFileDialogWithProperties`, then a `.part`-and-rename copy into
+`<files>/disc.iso`; it runs before `aurora_initialize` because the system picker would otherwise
+destroy the swapchain (this Aurora snapshot has no `aurora_release_lost_surface`). Its device
+verification is the one still-open item. Next: **M3**, the touch controls.
 
 **Next steps, in order**: (1) the update stall, with the repro above and the two candidates named;
 (2) the 53 -> 56 freeze if it survives (1); (3) the hazards and the layer areas of `1baa96c2` area 11

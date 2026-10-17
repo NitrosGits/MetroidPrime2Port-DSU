@@ -230,8 +230,51 @@ variables (`MP2_DEBUG_IDS`, `MP2_FRAMES`, `MP2_INPUT`) from `port_paths.txt`; th
 "the game reached its first update" provable on the phone instead of inferred from audio.
 
 **M2 - SAF picker.** Port MP1's picker + copy-to-`<user>/disc.iso` (`main.cpp:513-560` there), with
-MP2's game-id check (this port expects `G2ME01`).
-*Verified when*: picking an ISO once makes later launches boot with no picker.
+MP2's game-id check (this port expects `G2ME01`). **Implemented, device verification partial - see
+the M2 detail below.** *Verified when*: picking an ISO once makes later launches boot with no
+picker.
+
+### M2 detail: what landed (2026-10-17)
+
+Two things, both in `platform/main.cpp`, both `#if defined(__ANDROID__)`:
+
+- **The environment bridge.** `port_paths.txt` gained `env.NAME=value`: the reader calls `setenv`
+  while it reads, which is the top of the entry - before Aurora starts and before the game or the
+  harness looks at anything. That is the device's only equivalent of the desktop's
+  `MP2_FRAMES=1800 MP2_SKIP_FRONTEND=1 ./metroid_prime2_port` prefix, and it is what makes a
+  device run drivable at all. Verified on the phone, verbatim:
+
+      mp2port : metroid_prime2_port: port_paths.txt set MP2_DEBUG_IDS=1
+      mp2port : metroid_prime2_port: port_paths.txt set MP2_FRAMES=1800
+      mp2port : metroid_prime2_port: port_paths.txt set MP2_SKIP_FRONTEND=1
+      mp2port : metroid_prime2_port: paths chosen: user=…/files/user cache=…/files/cache disc=…/files/disc.iso
+      mp2port : metroid_prime2_port: disc mounted: /data/user/0/org.metroidprime2.port/files/disc.iso
+
+- **The picker.** The trigger is the resolved image not being usable - `ResolveDiscPath` hands back
+  `<files>/disc.iso` whether or not it exists, so a first launch would otherwise reach
+  `aurora_dvd_open` and die with nothing on screen saying what to do. `EnsureDiscImage` reads the
+  first eight bytes and wants `G2ME01`, revision 0, disc 0 (a raw `iso`/`gcm` starts with its boot
+  header, which is why those are the offered filters), asks through
+  `SDL_ShowFileDialogWithProperties` with a five-minute deadline, then copies the pick to the
+  resolved path through `<name>.part` and a rename: the header is checked before a byte is written,
+  a short copy is rejected on the size that actually landed, and a multi-minute copy that is killed
+  cannot leave a truncated image that the next launch would prefer over asking again. It re-asks
+  after a bad pick, and a cancel or a failed copy exits before Aurora comes up rather than starting
+  the renderer only to close it.
+
+It runs **before `aurora_initialize`**, deliberately: the system picker covers the app and destroys
+its surface, and MP1 only survives that by dropping its swapchain by hand
+(`aurora_release_lost_surface`, which this snapshot of Aurora does not export). Before the window
+exists there is no swapchain to lose, and the copy of a 1.4 GB image - minutes on a phone - happens
+before the renderer is up instead of during a frame.
+
+**Not verified on the device**: the picker itself. The env bridge was proven above, and a run with
+the disc in place boots to `disc mounted` and on to the game's own audio loading; but the strict
+"first update" proof (`[ids] frame …` / `[harness]` lines) and the picker both need the phone
+**foregrounded, awake and untouched** for a couple of minutes, and that phone was in use during
+this session (another app held the foreground and one launch even had its log buffer rotate out
+from under it). Both are one short session away: open the app with `<files>/disc.iso` moved aside,
+tap the ISO in the system picker, then relaunch and watch it boot with no picker.
 
 **M3 - touch controls.** Port `TouchControlsView.java` + `touch_pad.cpp` + the JNI bridge, and map
 them into this port's input layer (`platform/port_events.cpp`'s virtual pad, `platform/port_mouse.cpp`

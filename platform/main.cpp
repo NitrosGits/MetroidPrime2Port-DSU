@@ -228,9 +228,16 @@ void PortLogDrain() {
 // been migrated yet, so there is only one layout. A `port_paths.txt` beside them overrides
 // the three (`user=`, `cache=`, `disc=`), which a debugging push can use to move them, or to
 // point at a disc copied into app storage; the Java side writes that file, and the file
-// picker that will fill it in is the next milestone. SDL is already up when this runs: the
-// activity's context is what SDL_GetPrefPath reads, and Aurora itself falls back to the same
-// call for its user and cache directories.
+// picker that fills in the disc is `EnsureDiscImage` below. A fourth line, `env.NAME=value`,
+// sets an environment variable, which is the device equivalent of the desktop harness's
+// `MP2_FRAMES=1800 MP2_SKIP_FRONTEND=1 ./metroid_prime2_port` prefix (tools/run_gameplay.sh
+// exports MP2_DEBUG_IDS / MP2_SKIP_CINEMATICS / MP2_SKIP_FRONTEND / MP2_DISC; the harness and
+// the port read those plus MP2_WORLD and MP2_INPUT from the environment) - an installed app
+// has no shell to set them in, so the file is where a device run says them. The assignments
+// are made while this function reads the file, which is the top of the entry: before Aurora
+// starts and before the game or the harness looks at any of them. SDL is already up when this
+// runs: the activity's context is what SDL_GetPrefPath reads, and Aurora itself falls back to
+// the same call for its user and cache directories.
 PortPaths ResolveAndroidPaths() {
   PortPaths paths;
   char* preference = SDL_GetPrefPath(nullptr, kAppName);
@@ -271,6 +278,18 @@ PortPaths ResolveAndroidPaths() {
       paths.cache = value;
     } else if (key == "disc") {
       paths.disc = value;
+    } else if (key.starts_with("env.")) {
+      // The variables the desktop harness is given on its command line (see the comment
+      // above). `NAME` is whatever follows `env.`, and this file is the app's only way to
+      // name one, so it overwrites: a value here is meant. An invalid name is left to
+      // setenv to reject, and is reported rather than dropped.
+      const std::string name = key.substr(4);
+      if (::setenv(name.c_str(), value.c_str(), 1) == 0) {
+        std::fprintf(stderr, "metroid_prime2_port: port_paths.txt set %s=%s\n", name.c_str(),
+                     value.c_str());
+      } else {
+        std::fprintf(stderr, "metroid_prime2_port: port_paths.txt cannot set %s\n", name.c_str());
+      }
     }
   }
 
@@ -283,6 +302,249 @@ PortPaths ResolveAndroidPaths() {
   std::printf("metroid_prime2_port: paths chosen: user=%s cache=%s disc=%s\n", paths.user.c_str(),
               paths.cache.c_str(), paths.disc.c_str());
   return paths;
+}
+
+// ---------------------------------------------------------------------------
+// Android: the disc image, asked for once and copied into the app's own storage.
+// ---------------------------------------------------------------------------
+// An Android app has no command line and no image beside the executable, so the only disc it
+// can ever have is a file in its own files directory - and a first launch has none. This is
+// ../MetroidPrimePort's picker (its `AskForDiscImage` and `CopyDiscFromContentUri`), reduced
+// to what this port needs.
+//
+// The trigger is the disc image the resolution named not being a Metroid Prime 2 image, which
+// is where a missing file lands: `ResolveDiscPath` hands back the default `<files>/disc.iso`
+// whether or not it exists, so the launch would otherwise reach `aurora_dvd_open` and die
+// there with nothing on screen saying what to do about it.
+//
+// It runs *before* `aurora_initialize`, and that is deliberate: the system picker covers the
+// app and destroys its surface, which is why MP1 drops its swapchain by hand while a dialog is
+// up (`aurora_release_lost_surface`, which this snapshot of Aurora does not export). Before the
+// window exists there is no swapchain to lose, and the copy of a 1.4 GB image - minutes on a
+// phone - runs before the renderer is up rather than during a frame.
+//
+// The pick comes back as a `content://` URI, a permission grant the system can revoke, so the
+// image is copied into app storage once and later launches read a plain file with no grant at
+// all. The copy goes through a `.part` file and a rename: a copy that is killed part way (the
+// app can be killed during a multi-minute copy) must not leave a truncated disc.iso, which the
+// next launch would then prefer over asking again.
+
+// The three fields `port::entry::IsSupportedDisc` checks after mounting, read from the head of
+// the image instead: "G2ME", "01", version 0, disc 0. Only a plain image (iso, gcm) carries
+// them - a container hides them, which is why the picker offers those two and "All files"
+// rather than the container formats MP1's loader also reads.
+bool SupportedHeader(const char* header, size_t size) {
+  return size >= 8 && std::string(header, 6) == "G2ME01" && header[6] == 0 && header[7] == 0;
+}
+
+bool DiscImageIsUsable(const std::string& path) {
+  if (path.empty()) {
+    return false;
+  }
+  std::ifstream image(path, std::ios::binary);
+  if (!image) {
+    return false;
+  }
+  char header[8] = {};
+  image.read(header, sizeof(header));
+  return SupportedHeader(header, static_cast<size_t>(image.gcount()));
+}
+
+// SDL delivers the answer on the activity's thread through JNI, not through the event queue,
+// so it is handed back through atomics and this waits for it; nothing pumps events, because
+// there is no window yet to deliver a quit. A picker left unanswered ends at the deadline
+// rather than hanging a launch with nothing in logcat saying why.
+std::string AskForDiscImage() {
+  static std::atomic<bool> answered{false};
+  static std::atomic<bool> dismissed{false};
+  static std::string chosen;
+  answered.store(false);
+  dismissed.store(false);
+  chosen.clear();
+  // Static: SDL reads the filters until the dialog closes, which can outlive this call.
+  static const SDL_DialogFileFilter filters[] = {
+      {"Metroid Prime 2: Echoes disc image (iso, gcm)", "iso;gcm"},
+      {"All files", "*"},
+  };
+  std::fprintf(stderr, "metroid_prime2_port: asking for a disc image\n");
+  const SDL_PropertiesID props = SDL_CreateProperties();
+  SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_FILTERS_POINTER,
+                         const_cast<SDL_DialogFileFilter*>(filters));
+  SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, 2);
+  SDL_ShowFileDialogWithProperties(
+      SDL_FILEDIALOG_OPENFILE,
+      [](void*, const char* const* files, int) {
+        if (files != nullptr && files[0] != nullptr) {
+          chosen = files[0];
+        }
+        // An empty list is a cancel (Back on Android); a null one is SDL reporting an error.
+        dismissed.store(files != nullptr && files[0] == nullptr);
+        answered.store(true);
+      },
+      nullptr, props);
+  SDL_DestroyProperties(props);
+  const Uint64 deadline = SDL_GetTicks() + 5 * 60 * 1000;
+  while (!answered.load()) {
+    if (SDL_GetTicks() > deadline) {
+      std::fprintf(stderr, "metroid_prime2_port: disc selection timed out\n");
+      return {};
+    }
+    SDL_Delay(10);
+  }
+  if (chosen.empty()) {
+    if (dismissed.load()) {
+      std::fprintf(stderr, "metroid_prime2_port: no disc image picked\n");
+    } else {
+      std::fprintf(stderr, "metroid_prime2_port: the file picker failed: %s\n", SDL_GetError());
+    }
+  }
+  return chosen;
+}
+
+// Copies the picked image to `target` through `target.part` and a rename, and returns `target`
+// on success, an empty string after a line saying which step failed. The header is checked
+// before anything is written, so a wrong pick costs a read rather than a 1.4 GB copy.
+std::string CopyDiscImage(const std::string& uri, const std::string& target) {
+  if (target.empty()) {
+    std::fprintf(stderr, "metroid_prime2_port: nowhere to copy the picked disc image\n");
+    return {};
+  }
+  const std::filesystem::path partial = target + ".part";
+  std::error_code error;
+  std::filesystem::create_directories(std::filesystem::path(target).parent_path(), error);
+
+  SDL_IOStream* in = SDL_IOFromFile(uri.c_str(), "rb");
+  if (in == nullptr) {
+    std::fprintf(stderr, "metroid_prime2_port: could not read the picked image: %s: %s\n", uri.c_str(),
+                 SDL_GetError());
+    return {};
+  }
+  char header[8] = {};
+  const bool headerRead = SDL_ReadIO(in, header, sizeof(header)) == sizeof(header);
+  if (headerRead && !SupportedHeader(header, sizeof(header))) {
+    std::fprintf(stderr, "metroid_prime2_port: not copying the picked image: it is not a "
+                         "Metroid Prime 2: Echoes disc (expected G2ME01 revision 0)\n");
+    SDL_CloseIO(in);
+    return {};
+  }
+  // Some providers hand out a pipe, which cannot be rewound: start over rather than copy the
+  // bytes the header check consumed.
+  if (SDL_SeekIO(in, 0, SDL_IO_SEEK_SET) != 0) {
+    SDL_CloseIO(in);
+    in = SDL_IOFromFile(uri.c_str(), "rb");
+    if (in == nullptr) {
+      std::fprintf(stderr, "metroid_prime2_port: could not reopen the picked image: %s\n",
+                   SDL_GetError());
+      return {};
+    }
+  }
+  const Sint64 total = SDL_GetIOSize(in);
+  SDL_IOStream* out = SDL_IOFromFile(partial.string().c_str(), "wb");
+  if (out == nullptr) {
+    std::fprintf(stderr, "metroid_prime2_port: could not create %s: %s\n", partial.string().c_str(),
+                 SDL_GetError());
+    SDL_CloseIO(in);
+    return {};
+  }
+
+  char buffer[1 << 16];
+  Sint64 copied = 0;
+  int lastPercent = -1;
+  bool ok = true;
+  for (;;) {
+    const size_t got = SDL_ReadIO(in, buffer, sizeof(buffer));
+    if (got == 0) {
+      // Zero is also what a failed read returns; only the stream status tells end of file from
+      // an error that would leave a truncated copy.
+      if (SDL_GetIOStatus(in) != SDL_IO_STATUS_EOF) {
+        std::fprintf(stderr, "metroid_prime2_port: reading the picked image failed: %s\n",
+                     SDL_GetError());
+        ok = false;
+      }
+      break;
+    }
+    if (SDL_WriteIO(out, buffer, got) != got) {
+      std::fprintf(stderr, "metroid_prime2_port: writing %s failed: %s\n", partial.string().c_str(),
+                   SDL_GetError());
+      ok = false;
+      break;
+    }
+    copied += static_cast<Sint64>(got);
+    if (total > 0) {
+      const int percent = static_cast<int>(copied * 100 / total);
+      // Every 5%: a 1.4 GB image would otherwise put thousands of lines in logcat.
+      if (percent / 5 != lastPercent / 5) {
+        lastPercent = percent;
+        std::fprintf(stderr, "metroid_prime2_port: copying the disc image, %d%%\n", percent);
+      }
+    }
+  }
+  if (!SDL_FlushIO(out)) {
+    std::fprintf(stderr, "metroid_prime2_port: flushing %s failed: %s\n", partial.string().c_str(),
+                 SDL_GetError());
+    ok = false;
+  }
+  if (!SDL_CloseIO(out)) {
+    std::fprintf(stderr, "metroid_prime2_port: closing %s failed: %s\n", partial.string().c_str(),
+                 SDL_GetError());
+    ok = false;
+  }
+  if (!SDL_CloseIO(in)) {
+    std::fprintf(stderr, "metroid_prime2_port: closing the picked image failed: %s\n", SDL_GetError());
+  }
+  if (!ok) {
+    std::filesystem::remove(partial, error);
+    return {};
+  }
+  // What landed on disk, not what was handed to the writer: a short write that only fails at
+  // close looks identical to a good copy otherwise, and a truncated image fails to mount with
+  // no further clue.
+  const auto written = std::filesystem::file_size(partial, error);
+  if (error || static_cast<Sint64>(written) != copied || (total > 0 && copied != total)) {
+    std::fprintf(stderr, "metroid_prime2_port: %s holds %lld bytes, copied %lld of %lld\n",
+                 partial.string().c_str(), static_cast<long long>(written),
+                 static_cast<long long>(copied), static_cast<long long>(total));
+    std::filesystem::remove(partial, error);
+    return {};
+  }
+  std::filesystem::rename(partial, target, error);
+  if (error) {
+    std::fprintf(stderr, "metroid_prime2_port: could not rename %s to %s: %s\n", partial.string().c_str(),
+                 target.c_str(), error.message().c_str());
+    std::filesystem::remove(partial, error);
+    return {};
+  }
+  return target;
+}
+
+// The disc this launch will use. The path the resolution chose is used when it is a usable
+// image - an image pushed into app storage, or MP2_DISC - and otherwise the user is asked for
+// one, which is copied over that same path (the app's own port_paths.txt makes it
+// `<files>/disc.iso`, and naming the path the resolution gave keeps a pushed `disc=` override
+// meaningful instead of silently writing somewhere else). An empty return is a user who
+// cancelled, a picker that failed or a pick that could not be copied, each of which is logged.
+std::string EnsureDiscImage(const std::string& resolved, const std::string& defaultDisc) {
+  std::string disc = resolved.empty() ? defaultDisc : resolved;
+  for (;;) {
+    if (DiscImageIsUsable(disc)) {
+      return disc;
+    }
+    std::fprintf(stderr,
+                 "metroid_prime2_port: %s is not a Metroid Prime 2: Echoes disc image; "
+                 "asking for one\n",
+                 disc.c_str());
+    const std::string picked = AskForDiscImage();
+    if (picked.empty()) {
+      return {};
+    }
+    const std::string copied = CopyDiscImage(picked, disc);
+    if (copied.empty()) {
+      continue; // the failure is logged; ask again rather than give up on one bad pick
+    }
+    std::printf("metroid_prime2_port: disc image picked: %s, copied to %s\n", picked.c_str(),
+                copied.c_str());
+    disc = copied; // re-checked on the way round, so a bad copy is asked for again
+  }
 }
 
 #else
@@ -375,6 +637,22 @@ int main(int argc, char** argv) {
   PortPaths appPaths;
 #if defined(__ANDROID__)
   appPaths = ResolveAndroidPaths();
+
+  // The disc, resolved and - if the image is missing or is not this game - picked from the
+  // user's storage, all before Aurora comes up: `EnsureDiscImage` says why the trigger is the
+  // image not being usable rather than the disc check after the renderer starts. The desktop
+  // keeps the resolution it always had, below.
+  const std::string androidDiscImage =
+      EnsureDiscImage(port::entry::ResolveDiscPath(argc, argv, EnvOrFallback("MP2_DISC", appPaths.disc),
+                                                   ExecutableDir(argc > 0 ? argv[0] : nullptr)),
+                      appPaths.disc);
+  if (androidDiscImage.empty()) {
+    // Nothing was picked, so there is nothing to boot: exiting here, before Aurora is up,
+    // rather than at the disc check below, which would bring the renderer up only to close it.
+    std::fprintf(stderr, "metroid_prime2_port: no disc image to boot\n");
+    PortLogDrain();
+    return 1;
+  }
 #endif
 
   // 16:9 at the game's logical height. The render mode is widened to match when
@@ -399,8 +677,13 @@ int main(int argc, char** argv) {
   AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);
 
   const std::string discImage =
+#if defined(__ANDROID__)
+      // Resolved and, if need be, picked from the user's storage before Aurora started.
+      androidDiscImage;
+#else
       port::entry::ResolveDiscPath(argc, argv, EnvOrFallback("MP2_DISC", appPaths.disc),
                                    ExecutableDir(argc > 0 ? argv[0] : nullptr));
+#endif
   if (discImage.empty()) {
     ReportNoDisc(argc > 0 ? argv[0] : nullptr);
     aurora_shutdown();
