@@ -72,9 +72,10 @@ PY
 #     with `A` twice per area, three of the four shards quit to the front end mid-sweep, reloaded slot
 #     0 (id count back to 352, update counter back to 0) and then walked `NEXTAREA` from area 0 again -
 #     the logs looked like stalls in areas 14/21/35 and were nothing of the kind. `B` leaves a screen
-#     without activating anything. It does **not** cure the real stall those areas still show (see the
-#     Status note in AGENTS.md): with `B`, the sweep still stops updating in 14, 21 and 35, with no
-#     reload and the log's last line the post-arrival `dropped the areas around N`.
+#     without activating anything. What 14, 21 and 35 showed with `B` - no game update, no reload -
+#     was the *player dying* there (the dark-world atmosphere, see the second `HEAL` below): a death
+#     removes CMFGame for the game-over screen, `B` does not answer it, and that screen's "continue
+#     from last save" is very likely what `A` answered there too (unverified for `A`).
 write_input() { # <first> <n> <path>
   python3 - "$1" "$2" "$DWELL" "$HEAL" "$3" <<'PY'
 import sys
@@ -86,6 +87,10 @@ for k in range(n):
     if k > 0:
         tokens.append("NEXTAREA@%d" % t)
     tokens.append("HEAL@%d" % (t + heal))
+    # A second heal half a dwell later: a suitless player in a dark-flagged area (the flag carries
+    # into the next area until that area's own attributes reset it) dies ~19 s after a full heal, and
+    # one heal per dwell left a ~23 s gap - that killed the player in 13->14, 21 and 35.
+    tokens.append("HEAL@%d" % (t + heal + dwell // 2))
     tokens.append("B@%d+4" % (t + heal + 120))
     tokens.append("B@%d+4" % (t + dwell // 2))
 open(path, "w").write(",".join(tokens) + "\n")

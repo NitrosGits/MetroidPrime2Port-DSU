@@ -6,7 +6,7 @@
 #   USERDIR=<dir holding the card> [WORLD=<world>[,<area>]] [INPUT_FILE=<script>] [FRAMES=<n>]
 #   [SKIP_INTRO=0|1] (default 1: MP2_SKIP_INTRO, the port gets to a controllable player on its own)
 #   [SECS=<timeout>] [DISPLAY_NUM=:<n>] [CACHEDIR=<dir>] [TELEPORT=<area>] [RUNTAG=<tag>]
-#   [LOG=<file>] [ASAN=1] tools/run_gameplay.sh
+#   [LOG=<file>] [ASAN=1] [BUILD=<build dir>] tools/run_gameplay.sh
 #
 # `WORLD`/`TELEPORT`/the `MP2_INPUT` tokens are hex asset ids or names; the player's own run length is
 # `FRAMES` (game updates, not loop iterations). `SECS` is the backstop that ends a run which never
@@ -55,7 +55,7 @@ if [ "${ASAN:-}" = "1" ]; then
   export ASAN_OPTIONS="detect_leaks=0:alloc_dealloc_mismatch=0:abort_on_error=0:halt_on_error=0:log_path=/tmp/opencode/asan_${RUNTAG:-run}:print_stacktrace=0:malloc_context_size=24"
   export GLIBC_TUNABLES=
 else
-  BUILD=$ROOT/build-port-link
+  BUILD=${BUILD:-$ROOT/build-port-link}
 fi
 cd "$BUILD" || exit 1
 

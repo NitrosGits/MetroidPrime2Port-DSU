@@ -3087,6 +3087,21 @@ bool CStateManager::ApplyLocalDamage(const CVector3f& pos, const CVector3f& dir,
     const CGameState& gameState = *gpGameState;
     gameState.GetGameMode().OnPlayerDamaged(*this, playerId, owner, useDamage);
     if (hp <= 0.f) {
+#ifdef TARGET_PC
+      // Port: name the death. A dead single player takes CMFGame's own game-over path (PlayerDied
+      // -> EndGame -> kRM_EndMovie2 -> CMainFlow's CPlayMovie(kWM_LoseGame) and its "continue from
+      // last save" screen), which removes CMFGame from the IO win stack: from here on no game
+      // update runs, and without this line a test run reads that as an unexplained stall.
+      std::fprintf(stderr,
+                   "[player] killed in area %d at update %d by weapon type %d%s (%g energy before)\n",
+                   player->GetCurrentAreaId().Value(), mUpdateFrameIdx,
+                   int(damageInfo.GetWeaponMode().GetRawType()),
+                   damageInfo.GetWeaponMode().GetRawType() == kWT_AreaDark
+                       ? " - the dark-world atmosphere: the area is flagged dark and the player is "
+                         "in no safe zone"
+                       : "",
+                   oldHp);
+#endif
       KillPlayer(oldHp, playerId, owner);
     }
   } else if (patterned != nullptr) {

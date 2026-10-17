@@ -23,6 +23,11 @@ Verdicts, worst first:
     CRASH    the fault handler (`[port] caught`) fired in this phase, or the run's exit code is a
              signal (134 abort, 139 segfault).
     ABORT    an id-pool exhaustion or an assert stopped the run in this phase.
+    DIED     the player was killed in this phase (`[player] killed ...`, printed by
+             `CStateManager::ApplyLocalDamage`). The game then ends to the lose-game movie and its
+             "continue" screen, which takes no `B`, so the harness's stall report that follows is
+             only a symptom. A dark-world area (Dark Aether's atmosphere, weapon type 17) kills a
+             suitless player that the sweep's `HEAL` cannot keep up with.
     STALL    no game update for the harness's 30 s window: the game stopped updating here.
     RELOAD   the update counter went backwards - the run quit to the front end and the port's
              front-end skip re-booted slot 0, so the sweep's `NEXTAREA` tokens then walked from the
@@ -85,6 +90,7 @@ class Phase:
     abort: list[str] = field(default_factory=list)
     stall: bool = False
     stalling_index: int = -1
+    died: list[str] = field(default_factory=list)
     fatal_index: int = -1
     stubs: int = 0
     jumped_back: bool = False
@@ -116,7 +122,11 @@ class Phase:
 
     @property
     def verdict(self) -> str:
-        # A reload comes first: it is what a stall report in the same phase usually means (the run
+        # A death comes before everything: the game-over screen it ends on is what the stall (and a
+        # reload, if something then picked "continue") in the same phase is made of.
+        if self.died:
+            return "DIED"
+        # A reload comes next: it is what a stall report in the same phase usually means (the run
         # was sitting on a quit/loading screen), and it explains an update counter that went backwards.
         if self.reloaded:
             return "RELOAD"
@@ -134,7 +144,7 @@ class Phase:
 
     @property
     def evidence(self) -> list[str]:
-        return self.fatal + self.abort + self.misses + self.notable
+        return self.fatal + self.abort + self.died + self.misses + self.notable
 
 
 @dataclass
@@ -229,6 +239,8 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
                 continue
             elif (m := RES_RE.match(line)):
                 current.misses.append(line.strip())
+            elif line.startswith("[player] killed"):
+                current.died.append(line.strip())
             elif "no game update for" in line:
                 current.stall = True
                 current.stalling_index = index
