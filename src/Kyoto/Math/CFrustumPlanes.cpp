@@ -17,11 +17,18 @@ CFrustumPlanes::CFrustumPlanes(const CTransform4f& xf, float fov, float aspect, 
   const float sinV = static_cast< float >(sin(halfFov));
   const float verticalLength = nearZ / cosV;
   const float height = verticalLength * sinV;
+#ifdef TARGET_PC
+  // SetPerspective makes the near half-width nearZ * tan(fovy / 2) * aspect. Scaling the angle
+  // instead flips the side planes once fovy / 2 * aspect passes 90 degrees (about 83 degrees on
+  // a 2.16:1 phone), which culls most of the view.
+  const float width = nearZ * static_cast< float >(tan(halfFov)) * aspect;
+#else
   halfFov *= aspect;
   const float cosH = static_cast< float >(cos(halfFov));
   const float sinH = static_cast< float >(sin(halfFov));
   float width = nearZ / cosH;
   width *= sinH;
+#endif
 
   CVector3f corners[4] = {CVector3f(width, nearZ, height), CVector3f(width, nearZ, -height),
                           CVector3f(-width, nearZ, -height), CVector3f(-width, nearZ, height)};
