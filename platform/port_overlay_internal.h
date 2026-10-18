@@ -60,3 +60,36 @@ std::string EnvName(const std::string& key);
 int SettingsSelfTest(std::string& report);
 
 } // namespace PortOverlaySettings
+
+// The F1 window's pages and the settings search, the Prime 1 port's debug_ui/search.cpp ported
+// (port_overlay_search.cpp). The pages are port_overlay.cpp's.
+namespace PortOverlaySearch {
+
+struct Page {
+  const char* name;
+  void (*draw)();
+};
+extern const Page kPages[];
+extern const int kPageCount;
+
+// One row of port_settings_index.inc.
+struct SettingsIndexRow {
+  const char* page;
+  const char* sub;
+  const char* section;
+  const char* label;
+  const char* keywords;
+};
+extern char sSearch[128];
+// The page a search result asked for, once (-1 when none).
+int TakeJumpPage();
+// Draws a page's rows, where a jump looks for its widget.
+void DrawPageBody(const Page& page);
+// Around the window: install and remove the item hooks a jump finds its widget with, and flash it.
+void BeginSearchJump();
+void EndSearchJump();
+void DrawSearchField();
+bool Searching();
+void DrawSearchResults();
+
+} // namespace PortOverlaySearch

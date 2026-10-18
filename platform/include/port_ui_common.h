@@ -8,29 +8,23 @@
 #pragma once
 
 struct ImGuiStyle;
+struct SDL_Window;
 
 namespace PortUi {
 
-// Scales the window by `scale` (clamped to 1..4). Idempotent: call it every frame and it restyles
-// only when the scale changed. On Android it also applies the Prime 1 port's touch paddings and
-// Prime colours; on the desktop it only scales ImGui's own style and font, so the look is the same.
-void ApplyTheme(float displayScale);
+// The window that ImGui draws into (the first SDL window), or null before it exists.
+SDL_Window* MainWindow();
 
-// The settings filter (F1's "Filter settings" box, console `filter`). Empty shows every row.
-void SetFilter(const char* text);
-const char* Filter();
-// True when the filter is empty or `label` contains it, ignoring case. Every row's visible label
-// goes through it; if a section is open and its header has not been drawn yet, the first match
-// draws it.
-bool Matches(const char* label);
-// A titled group of rows. BeginSection draws nothing when a filter is set: the header appears
-// with the first row that matches, so a filtered window has no empty headers. It returns true when
-// the header was drawn at once (no filter).
-bool BeginSection(const char* name);
-void EndSection();
-// How many distinct row labels the window has offered so far, and how many of them match the
-// current filter (the console's `filter` reports it).
-int VisibleRows(int* total);
+// The Prime 1 port's UpdateUiScale: the window's scale is the display's own (capped at 2 on the
+// phone) times `userScale` (the `ui_scale` setting, 1 = 100%), clamped to 1..4. Call it every
+// frame, since the display scale may not be known on the first one; it restyles only when the
+// scale changed, and rebuilds the style and io.FontGlobalScale from their unscaled values, so a
+// change never compounds.
+void UpdateUiScale(float userScale);
+// The Prime 1 port's ApplyThemeIfChanged, called every frame after UpdateUiScale: on Android it
+// applies the Prime colours, borders and rounding for the current scale when the scale changed. The
+// desktop keeps ImGui's own colours, so there it does nothing.
+void ApplyThemeIfChanged();
 
 // Dimmed, wrapped text under a control (ItemHelp on Android).
 void Help(const char* text);

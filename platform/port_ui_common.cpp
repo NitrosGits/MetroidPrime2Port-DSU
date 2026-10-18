@@ -2,15 +2,12 @@
 // (MetroidPrimePort/platform/debug_ui/ui_common.cpp), reduced to the Prime theme.
 #include "port_ui_common.h"
 
+#include <SDL3/SDL.h>
 #include <imgui.h>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstdio>
-#include <cstring>
-#include <set>
-#include <string>
 
 namespace PortUi {
 namespace {
@@ -116,8 +113,13 @@ void ApplyTouchStyle(ImGuiStyle& style) {
 }
 
 // Retail pause / scan visor: near-black blue, teal frames, amber accent. Borders and rounding in
-// unscaled units times `scale` (ScaleAllSizes has already run for the paddings).
-void ApplyPrimeTheme(ImGuiStyle& style, float scale) {
+// unscaled units times the applied UI scale (ScaleAllSizes has already run for the paddings).
+// sUiAppliedScale is the scale UpdateUiScale has applied to the style so far, sThemeAppliedScale
+// the one the theme's borders and rounding were last set for.
+float sUiAppliedScale = 1.f;
+float sThemeAppliedScale = 0.f;
+void ApplyPrimeTheme(ImGuiStyle& style) {
+  const float scale = sUiAppliedScale;
   Palette p;
   p.bg = {0.020f, 0.063f, 0.102f};  // #05101A
   p.bgAlpha = 0.92f;
@@ -166,103 +168,79 @@ void Lines(const char* env, const char* description, bool sameLine) {
 
 } // namespace
 
-void ApplyTheme(float displayScale) {
+SDL_Window* MainWindow() {
+  static SDL_Window* sWindow = nullptr;
+  if (sWindow == nullptr) {
+    int windowCount = 0;
+    if (SDL_Window** windows = SDL_GetWindows(&windowCount)) {
+      if (windowCount > 0) {
+        sWindow = windows[0];
+      }
+      SDL_free(windows);
+    }
+  }
+  return sWindow;
+}
+
+// Phones report a density of roughly 3, which leaves ImGui's default 13px font
+// unreadably small, so scale the overlay to match the display. The scale is not
+// known on the first frame, so keep watching for it instead of latching once.
+void UpdateUiScale(float userScale) {
   if (ImGui::GetCurrentContext() == nullptr) {
     return;
   }
-  static float sApplied = 0.f;
-  static ImGuiStyle sBase; // the desktop's untouched style, captured before the first scaling
-  const float scale = std::clamp(displayScale, 1.f, 4.f);
-  if (sApplied == scale) {
+  static bool sInitialized = false;
+  static ImGuiStyle sBase;     // the style before any scaling
+  static float sBaseFont = 1.f; // io.FontGlobalScale before any scaling
+  if (!sInitialized) {
+    sInitialized = true;
+    // The overlay has to size itself to the scaled font, so do not restore a
+    // window size remembered from a previous, smaller run.
+    ImGui::GetIO().IniFilename = nullptr;
+    // Before any scaling, so the scaling applies to these sizes too. The desktop keeps ImGui's
+    // own paddings (its look is the window's original one).
+    if (kThemed) {
+      ApplyTouchStyle(ImGui::GetStyle());
+    }
+    sBase = ImGui::GetStyle();
+    sBaseFont = ImGui::GetIO().FontGlobalScale;
+  }
+  SDL_Window* window = MainWindow();
+  if (window == nullptr) {
     return;
   }
-  ImGuiStyle& style = ImGui::GetStyle();
-  ImGuiIO& io = ImGui::GetIO();
-  if (sApplied != 0.f) {
-    io.FontGlobalScale /= sApplied;
-  } else if (!kThemed) {
-    sBase = style;
+  float displayScale = SDL_GetWindowDisplayScale(window);
+  if (!(displayScale > 0.f)) {
+    displayScale = 1.f;
   }
+#if defined(__ANDROID__)
+  // 3 made the nine page rows taller than the list and Bindings sat below the fold; 2 keeps the
+  // page list on screen and still thumb-sized.
+  displayScale = std::min(displayScale, 2.f);
+#endif
+  const float uiScale = std::clamp(displayScale * userScale, 1.f, 4.f);
+  if (uiScale == sUiAppliedScale) {
+    return;
+  }
+  sUiAppliedScale = uiScale;
   // Rebuilt from the unscaled values, so a changed scale never compounds.
-  if (kThemed) {
-    ApplyTouchStyle(style);
-  } else {
-    style = sBase;
-  }
-  style.ScaleAllSizes(scale);
-  io.FontGlobalScale *= scale;
-  if (kThemed) {
-    ApplyPrimeTheme(style, scale);
-  }
-  sApplied = scale;
+  ImGuiStyle& style = ImGui::GetStyle();
+  style = sBase;
+  style.ScaleAllSizes(uiScale);
+  ImGui::GetIO().FontGlobalScale = sBaseFont * uiScale;
+  sThemeAppliedScale = 0.f; // the rebuilt style holds the base colours again
 }
 
-namespace {
-char sFilter[128] = "";
-std::set<std::string> sSeenRows;
-const char* sSectionName = nullptr;
-bool sSectionDrawn = false;
-
-bool Contains(const char* text, const char* needle) {
-  const size_t n = std::strlen(needle);
-  for (const char* p = text; *p != '\0'; ++p) {
-    size_t i = 0;
-    while (i < n && p[i] != '\0' &&
-           std::tolower(static_cast< unsigned char >(p[i])) ==
-               std::tolower(static_cast< unsigned char >(needle[i]))) {
-      ++i;
-    }
-    if (i == n) {
-      return true;
-    }
+// Called every frame: restyles only when the UI scale changed.
+void ApplyThemeIfChanged() {
+  if (!kThemed || ImGui::GetCurrentContext() == nullptr) {
+    return;
   }
-  return n == 0;
-}
-} // namespace
-
-void SetFilter(const char* text) {
-  std::snprintf(sFilter, sizeof(sFilter), "%s", text != nullptr ? text : "");
-}
-
-const char* Filter() { return sFilter; }
-
-bool Matches(const char* label) {
-  sSeenRows.insert(label);
-  if (sFilter[0] != '\0' && !Contains(label, sFilter)) {
-    return false;
+  if (sUiAppliedScale == sThemeAppliedScale) {
+    return;
   }
-  if (sSectionName != nullptr && !sSectionDrawn) {
-    sSectionDrawn = true;
-    ImGui::SeparatorText(sSectionName);
-  }
-  return true;
-}
-
-bool BeginSection(const char* name) {
-  sSectionName = name;
-  sSectionDrawn = false;
-  if (sFilter[0] == '\0') {
-    sSectionDrawn = true;
-    ImGui::SeparatorText(name);
-    return true;
-  }
-  return false;
-}
-
-void EndSection() {
-  sSectionName = nullptr;
-  sSectionDrawn = false;
-}
-
-int VisibleRows(int* total) {
-  int visible = 0;
-  for (const std::string& row : sSeenRows) {
-    visible += (sFilter[0] == '\0' || Contains(row.c_str(), sFilter)) ? 1 : 0;
-  }
-  if (total != nullptr) {
-    *total = static_cast< int >(sSeenRows.size());
-  }
-  return visible;
+  sThemeAppliedScale = sUiAppliedScale;
+  ApplyPrimeTheme(ImGui::GetStyle());
 }
 
 void Help(const char* text) {

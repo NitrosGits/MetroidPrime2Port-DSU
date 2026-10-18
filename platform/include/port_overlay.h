@@ -129,7 +129,7 @@ bool CrosshairColor(float rgb[3]);
 void SetCrosshairColor(float r, float g, float b);
 void ClearCrosshairColor();
 // The F1 window's size in percent of the display's own scale (`MP2_UI_SCALE=50..200`, F1 > Render,
-// console `uiscale`); the product is clamped to 1..4 by PortUi::ApplyTheme.
+// console `uiscale`); the product is clamped to 1..4 by PortUi::UpdateUiScale.
 const int kUiScaleMin = 50;
 const int kUiScaleMax = 200;
 int UiScale();
