@@ -177,13 +177,15 @@ void FireWarpToken(const InputToken& token, unsigned frame) {
                static_cast< int >(token.at - token.name), token.name, frame, Seconds());
 }
 
-// Pad 0 as the debug console drives it (`press`/`stick`, see port_input.h): a hold that merges into
-// the same virtual pad the MP2_INPUT script writes. The game thread is the only writer - console
-// commands run inside `CStateManager::PortWarpTick` - so no locking is needed.
+// Pad 0 as the debug console drives it (`press`/`stick`/`cstick`, see port_input.h): a hold that
+// merges into the same virtual pad the MP2_INPUT script writes. The game thread is the only writer -
+// console commands run inside `CStateManager::PortWarpTick` - so no locking is needed.
 struct SHoldPad {
   u16 buttons = 0;
   s8 stickX = 0;
   s8 stickY = 0;
+  s8 substickX = 0;
+  s8 substickY = 0;
   unsigned endUpdate = 0; // PortHarness::GameUpdates() at which the hold ends; ignored when forever
   bool forever = false;
   bool used = false;      // a hold was set at some point, so pad 0 must stay connected afterwards
@@ -214,6 +216,8 @@ void RunInputScript(unsigned frame) {
   if (HoldActive()) {
     status.stickX += sHold.stickX;
     status.stickY += sHold.stickY;
+    status.substickX += sHold.substickX;
+    status.substickY += sHold.substickY;
   }
 
   for (size_t i = 0; i < count; ++i) {
@@ -262,23 +266,27 @@ void RunInputScript(unsigned frame) {
 
 namespace PortInput {
 
-void Hold(u16 buttons, s8 stickX, s8 stickY, unsigned updates) {
+void Hold(u16 buttons, s8 stickX, s8 stickY, s8 substickX, s8 substickY, unsigned updates) {
   sHold.buttons = buttons;
   sHold.stickX = stickX;
   sHold.stickY = stickY;
+  sHold.substickX = substickX;
+  sHold.substickY = substickY;
   sHold.forever = updates == 0;
   // The next update reads the pad state this iteration sets, so `updates` counts from the update
   // after this one.
   sHold.endUpdate = PortHarness::GameUpdates() + updates + 1;
   sHold.used = true;
-  std::fprintf(stderr, "[input] console holds 0x%x stick %d,%d for %u updates\n", buttons, stickX,
-               stickY, updates);
+  std::fprintf(stderr, "[input] console holds 0x%x stick %d,%d c-stick %d,%d for %u updates\n",
+               buttons, stickX, stickY, substickX, substickY, updates);
 }
 
 void Clear() {
   sHold.buttons = 0;
   sHold.stickX = 0;
   sHold.stickY = 0;
+  sHold.substickX = 0;
+  sHold.substickY = 0;
   sHold.forever = false;
   sHold.endUpdate = 0;
 }

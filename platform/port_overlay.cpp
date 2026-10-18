@@ -27,6 +27,13 @@ namespace {
 bool sVisible = false;
 bool sSkipCinematics = false;
 bool sGodMode = false; // never saved: there is no settings file, and a cheat must not persist
+// The gameplay tweaks (`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`,
+// `MP2_STICKY_CHARGE`), never saved: there is no settings file, and they are preference rather
+// than state, so a restart goes back to the untouched game.
+bool sFastMorph = false;
+bool sSpringBall = false;
+bool sLockOnToggle = false;
+bool sStickyCharge = false;
 // First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
 float sFirstPersonFov = 0.f;
 // Draw the world without the HUD's view overlays (`MP2_NO_HELMET`, `MP2_NO_VISOR_FX`): for
@@ -67,6 +74,10 @@ void ReadEnv() {
   sReadEnv = true;
   sSkipCinematics = EnvFlag("MP2_SKIP_CINEMATICS");
   sGodMode = EnvFlag("MP2_GODMODE");
+  sFastMorph = EnvFlag("MP2_FAST_MORPH");
+  sSpringBall = EnvFlag("MP2_SPRING_BALL");
+  sLockOnToggle = EnvFlag("MP2_LOCK_ON_TOGGLE");
+  sStickyCharge = EnvFlag("MP2_STICKY_CHARGE");
   sHideHelmet = EnvFlag("MP2_NO_HELMET");
   sHideVisorEffects = EnvFlag("MP2_NO_VISOR_FX");
   if (const char* fov = std::getenv("MP2_FOV")) {
@@ -271,6 +282,26 @@ void DrawTestingSection() {
   ImGui::TextDisabled("ends every cinematic at once, seen or not; makes tests 3-5x faster");
 }
 
+void DrawGameplaySection() {
+  ImGui::SeparatorText("Gameplay");
+  ImGui::Checkbox("Fast morph", &sFastMorph);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_FAST_MORPH=1)");
+  ImGui::TextDisabled("the morph and unmorph transitions take 0.2 s instead of the game's second");
+  ImGui::Checkbox("Spring Ball", &sSpringBall);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_SPRING_BALL=1)");
+  ImGui::TextDisabled("C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)");
+  ImGui::Checkbox("Toggle lock-on", &sLockOnToggle);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_LOCK_ON_TOGGLE=1)");
+  ImGui::TextDisabled("an L press latches the lock until the next; one that ends lets go");
+  ImGui::Checkbox("Sticky charge", &sStickyCharge);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_STICKY_CHARGE=1)");
+  ImGui::TextDisabled("letting go of a long A hold keeps charging until the next press fires it");
+}
+
 void DrawCheatsSection() {
   ImGui::SeparatorText("Cheats");
   ImGui::Checkbox("God mode", &sGodMode);
@@ -445,6 +476,46 @@ void SetGodMode(bool enabled) {
   sGodMode = enabled;
 }
 
+bool FastMorph() {
+  ReadEnv();
+  return sFastMorph;
+}
+
+void SetFastMorph(bool enabled) {
+  ReadEnv();
+  sFastMorph = enabled;
+}
+
+bool SpringBall() {
+  ReadEnv();
+  return sSpringBall;
+}
+
+void SetSpringBall(bool enabled) {
+  ReadEnv();
+  sSpringBall = enabled;
+}
+
+bool LockOnToggle() {
+  ReadEnv();
+  return sLockOnToggle;
+}
+
+void SetLockOnToggle(bool enabled) {
+  ReadEnv();
+  sLockOnToggle = enabled;
+}
+
+bool StickyCharge() {
+  ReadEnv();
+  return sStickyCharge;
+}
+
+void SetStickyCharge(bool enabled) {
+  ReadEnv();
+  sStickyCharge = enabled;
+}
+
 void Draw() {
   TickFps();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
@@ -465,6 +536,7 @@ void Draw() {
     DrawRenderSection();
     DrawHudSection();
     DrawTestingSection();
+    DrawGameplaySection();
     DrawCheatsSection();
     DrawBindingsSection();
     ImGui::SeparatorText("Hotkeys");

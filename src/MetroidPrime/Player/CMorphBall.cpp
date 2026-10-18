@@ -61,6 +61,9 @@
 
 #include "rstl//algorithm.hpp"
 #include "rstl/math.hpp"
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 // Structure-first reconstruction. TODO bodies below are scaffolds, not equivalent implementations.
 
@@ -3686,8 +3689,44 @@ bool CMorphBall::IsMovementAllowed() const {
 
   return !(mDisableControlCooldown > 0.f);
 }
+#ifdef TARGET_PC
+namespace {
+// Time left before the next Spring Ball: randomprime's 40 frames, in seconds because the port's
+// tick rate varies. There is one morph ball, so a static will do.
+const float kSpringBallCooldown = 40.f / 60.f;
+float sSpringBallCooldown = 0.f;
+
+bool SpringBallUnlocked(const CPlayer& player) {
+  return PortOverlay::SpringBall() && player.GetPlayerState() != nullptr &&
+         player.GetPlayerState()->GetItemAmount(CPlayerState::kIT_MorphBallBombs, true) != 0;
+}
+} // namespace
+#endif
 
 void CMorphBall::ComputeBallMovement(const CFinalInput& input, CStateManager& mgr, float dt) {
+#ifdef TARGET_PC
+  // Spring Ball, as Metroid Prime Trilogy's nunchuk flick: C-stick up on the ground is a bomb jump
+  // from the ball's own position, so the ball can leave the ground without a bomb to spend. The
+  // ball camera does not use the C-stick, so nothing else consumes it here. The input has been
+  // scaled by the ball's own divisor, so a full deflection can read 1.0/divisor; 0.25 is MP1's
+  // threshold, and it still passes a deflection of half the stick at a divisor of 2.
+  if (sSpringBallCooldown > 0.f) {
+    sSpringBallCooldown -= dt;
+  } else if (input.ARAUp() > 0.25f && mBallState == kBS_Normal &&
+             mPlayer.GetPlayerMovementState() == NPlayer::kMS_OnGround &&
+             !mPlayer.IsMorphBallTransitioning() && IsMovementAllowed() &&
+             mPlayer.GetAttachedActorId() == kInvalidUniqueId && SpringBallUnlocked(mPlayer)) {
+    const CVector3f before = mPlayer.GetVelocityWR();
+    mPlayer.BombJump(mPlayer.GetTranslation(), mgr);
+    // BombJump is written for a bomb going off under the ball and stops the ball dead; a Spring
+    // Ball should keep the roll it took off with. The movement state is what tells the physics the
+    // ball has left the ground - it was on it this tick.
+    mPlayer.SetVelocityWR(CVector3f(before.GetX(), before.GetY(),
+                                    mPlayer.GetVelocityWR().GetZ()));
+    mPlayer.SetMoveState(NPlayer::kMS_FallingMorphed, mgr);
+    sSpringBallCooldown = kSpringBallCooldown;
+  }
+#endif
   switch (mBallState) {
   case kBS_Normal:
   case kBS_Boost:

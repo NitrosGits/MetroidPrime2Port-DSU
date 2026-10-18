@@ -431,6 +431,11 @@ if(AURORA_SDL3_TARGET)
     target_link_libraries(port_touch_pad_tests PRIVATE ${AURORA_SDL3_TARGET})
     add_test(NAME port_touch_pad_tests COMMAND port_touch_pad_tests)
     set_tests_properties(port_touch_pad_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # Header-only (port_hold_toggle.h): no Aurora link, no TARGET_PC.
+    add_executable(port_hold_toggle_tests tests/port_hold_toggle.cpp)
+    target_include_directories(port_hold_toggle_tests PRIVATE platform/include)
+    add_test(NAME port_hold_toggle_tests COMMAND port_hold_toggle_tests)
+    set_tests_properties(port_hold_toggle_tests PROPERTIES TIMEOUT 30 LABELS port)
 endif()
 
 # ---------------------------------------------------------------------------

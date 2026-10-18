@@ -2563,6 +2563,14 @@ void CPlayer::UpdateMorphBallState(const CFinalInput& input, float dt, CStateMan
     morphDuration = 0.6f;
     unmorphDuration = 0.5f;
   }
+#ifdef TARGET_PC
+  // Fast Morph: shorten the plain morph and unmorph transitions. The two screw-attack durations
+  // below belong to the screw attack's own transition and keep their tweak times.
+  if (PortOverlay::FastMorph()) {
+    morphDuration = PortOverlay::kFastMorphDuration;
+    unmorphDuration = PortOverlay::kFastMorphDuration;
+  }
+#endif
   const float screwAttackIntoBallDuration = gpTweakBall->GetScrewAttackIntoBallTransitionTime();
   const float screwAttackOutOfBallDuration = gpTweakBall->GetScrewAttackOutOfBallTransitionTime();
   bool morphPressed;

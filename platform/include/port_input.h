@@ -3,7 +3,8 @@
 #include <dolphin/pad.h>
 
 // Pad 0 as something other than a person driving it: the virtual pad `MP2_INPUT` holds buttons on,
-// reachable at run time so the debug console can press what a script token would (`press`, `stick`).
+// reachable at run time so the debug console can press what a script token would (`press`, `stick`,
+// `cstick`).
 // The port has no player-side input scripting beyond `MP2_INPUT`'s tokens, which are fixed at
 // startup; a session that wants to dismiss a menu, walk into a room or hold a button down for a
 // moment gets it from here instead.
@@ -27,11 +28,12 @@ constexpr SButtonName kButtonNames[] = {
     {"DOWN", PAD_BUTTON_DOWN},   {"LEFT", PAD_BUTTON_LEFT},   {"RIGHT", PAD_BUTTON_RIGHT},
 };
 
-// Holds `buttons` (a PAD_BUTTON_*/PAD_TRIGGER_* mask) and the main-stick deflection for `updates`
-// game updates, counting the next one - the pad state set between two updates is what the next
-// update reads. `updates` 0 holds them until the next Hold() or Clear(), which is the shape a console
-// user needs to walk with a stick held.
-void Hold(u16 buttons, s8 stickX, s8 stickY, unsigned updates);
+// Holds `buttons` (a PAD_BUTTON_*/PAD_TRIGGER_* mask), the main-stick deflection and the C-stick
+// deflection for `updates` game updates, counting the next one - the pad state set between two
+// updates is what the next update reads. The C-stick is the second axis pair, because Spring Ball's
+// trigger is C-stick up and nothing headless could press it. `updates` 0 holds them until the next
+// Hold() or Clear(), which is the shape a console user needs to walk with a stick held.
+void Hold(u16 buttons, s8 stickX, s8 stickY, s8 substickX, s8 substickY, unsigned updates);
 
 // Releases whatever Hold() set on its next game update.
 void Clear();

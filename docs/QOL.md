@@ -26,6 +26,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | Console: `gunoffset`, `msaa`, `aniso`, `hudscale` (the graphics settings, drivable from a headless run) | `platform/port_console.cpp` |
 | Keyboard rebinding: a 22-row keyboard table, the F1 Bindings section, `bind`/`binds`/`bind reset`, `keybinds.cfg` under the user dir | `platform/port_binds.cpp`, `platform/port_overlay.cpp`, `platform/port_console.cpp` |
 | Graphics: first-person FOV, hide helmet, hide visor effects, arm-cannon offset, MSAA, anisotropic filtering, HUD scale | `port_overlay.cpp` + hooks in `CCameraManager`, `CInGameGuiManager`, `CPlayerVisor`, `CPlayer`, `CSamusHud`/`CGuiCamera`, and `aurora_set_graphics_quality` (vendored Aurora) |
+| Gameplay tweaks: fast morph, spring ball, toggle lock-on, sticky charge (F1 > Gameplay, `MP2_FAST_MORPH`/`MP2_SPRING_BALL`/`MP2_LOCK_ON_TOGGLE`/`MP2_STICKY_CHARGE`, console `fastmorph`/`springball`/`lockon`/`sticky`) | `platform/port_overlay.cpp`, `platform/include/port_hold_toggle.h` (+ its unit test), hooks in `CPlayer::UpdateMorphBallState`, `CMorphBall::ComputeBallMovement`, `CStateManager::ProcessInput` and `CFinalInput`'s `PortSetL`/`PortSetA` |
 
 ## Next, cheapest and most useful first
 
@@ -47,8 +48,10 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    is left is key/button presets (MP1's classic / mouse-and-keyboard layouts, `port_controls.cpp`'s
    `ApplyKeyPreset`), a controller (native pad) remap UI (MP1's `platform/input/` profile/toml
    system), and export/import of the settings file.
-4. **Gameplay tweaks** (MP1 names): fast morph, spring ball, toggle lock-on, sticky charge. Each is a
-   small game-side change behind a setting; MP2's equivalents live in `CPlayer`/`CPlayerGun`.
+4. **Gameplay tweaks**: done - fast morph, spring ball, toggle lock-on and sticky charge, verified on
+   the desktop (see `docs/STATUS.md`). What MP1 has beside them and this tree does not: rapid charge,
+   damage/ammo readouts on the HUD, and the morph-ball "hold to charge" variants; each needs a hook in
+   `CPlayerGun` that MP2 does not expose as a getter today.
 5. **Save tools**: quick resume after quitting, save import/export (MP1's `port_gci.cpp`), save
    states (`port_savestate.cpp`, the largest of these).
 6. **Photo mode / free camera** (MP1's `port_photo.cpp`, `port_freecam.cpp`): needs a free camera and

@@ -464,6 +464,10 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
       "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"
+      "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
+      "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
+      "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
+      "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
@@ -478,6 +482,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
+      "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "bind <action> <key>         rebind a pad input (a key name, MOUSE_LEFT..., or none);\n"
       "                            `bind reset` restores the port's layout\n"
       "binds                       every pad input's key, and the keybinds.cfg it is saved in\n"
@@ -507,6 +512,14 @@ void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
     out += line;
     std::snprintf(line, sizeof(line), "  morph %d  in-turret %d\n", static_cast< int >(player->GetMorphballTransitionState()),
                   player->IsInTurret() ? 1 : 0);
+    out += line;
+    // The input the game is acting on, which is not the pad's own: Toggle Lock-On and Sticky
+    // Charge rewrite L and A after the pad has been read, so a latched button shows here and not
+    // in `press`.
+    const CFinalInput& in = mgr.mFinalInputs[0];
+    std::snprintf(line, sizeof(line), "  orbit %d  game input L=%d A=%d\n",
+                  static_cast< int >(player->GetOrbitState()), in.DL() || in.DLTrigger() ? 1 : 0,
+                  in.DA() ? 1 : 0);
     out += line;
   }
   if (state != nullptr) {
@@ -762,6 +775,32 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::SkipCinematics() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetSkipCinematics(enabled);
   out += enabled ? "skip cutscenes on\n" : "skip cutscenes off\n";
+}
+
+// The gameplay tweaks: the same shape as `god` and `skipcine`, an optional 0/1 and a print of the
+// state it ends in, because the F1 row and the env var set the same thing.
+void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::FastMorph() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetFastMorph(enabled);
+  out += enabled ? "fast morph on\n" : "fast morph off\n";
+}
+
+void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::SpringBall() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetSpringBall(enabled);
+  out += enabled ? "spring ball on\n" : "spring ball off\n";
+}
+
+void CmdLockOn(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::LockOnToggle() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetLockOnToggle(enabled);
+  out += enabled ? "toggle lock-on on\n" : "toggle lock-on off\n";
+}
+
+void CmdSticky(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::StickyCharge() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetStickyCharge(enabled);
+  out += enabled ? "sticky charge on\n" : "sticky charge off\n";
 }
 
 void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {
@@ -1189,7 +1228,7 @@ void CmdPress(CStateManager& mgr, const Args& args, std::string& out) {
     begin = plus + 1;
   }
   const unsigned updates = args.size() > 2 ? static_cast< unsigned >(ArgToInt(args[2], 8)) : 8u;
-  PortInput::Hold(mask, 0, 0, updates);
+  PortInput::Hold(mask, 0, 0, 0, 0, updates);
   char line[128];
   std::snprintf(line, sizeof(line), "holding %s for %u updates\n", wanted.c_str(), updates);
   out += line;
@@ -1209,9 +1248,30 @@ void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 8)) : 8u;
-  PortInput::Hold(0, static_cast< s8 >(x), static_cast< s8 >(y), updates);
+  PortInput::Hold(0, static_cast< s8 >(x), static_cast< s8 >(y), 0, 0, updates);
   char line[96];
   std::snprintf(line, sizeof(line), "holding stick %d,%d for %u updates\n", x, y, updates);
+  out += line;
+}
+
+// cstick <x> <y> [updates]: hold the C-stick, -127..127 (0 holds until the next press/stick).
+// Spring Ball reads C-stick up, so this is the one way to trigger it without a pad.
+void CmdCstick(CStateManager& mgr, const Args& args, std::string& out) {
+  (void)mgr;
+  if (args.size() < 3) {
+    Fail("usage: cstick <x> <y> [updates]   (-127..127; 0 updates holds until the next press/stick)");
+    return;
+  }
+  const int x = ArgToInt(args[1], 1000);
+  const int y = ArgToInt(args[2], 1000);
+  if (x < -127 || x > 127 || y < -127 || y > 127) {
+    Fail("the C-stick is -127..127 on each axis");
+    return;
+  }
+  const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 8)) : 8u;
+  PortInput::Hold(0, 0, 0, static_cast< s8 >(x), static_cast< s8 >(y), updates);
+  char line[96];
+  std::snprintf(line, sizeof(line), "holding C-stick %d,%d for %u updates\n", x, y, updates);
   out += line;
 }
 
@@ -1329,6 +1389,10 @@ constexpr SCommand kCommands[] = {
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
     {"skipcine", CmdSkipCine, true},
+    {"fastmorph", CmdFastMorph, true},
+    {"springball", CmdSpringBall, true},
+    {"lockon", CmdLockOn, true},
+    {"sticky", CmdSticky, true},
     {"gunoffset", CmdGunOffset, true},
     {"msaa", CmdMsaaAniso, true},
     {"aniso", CmdMsaaAniso, true},
@@ -1348,6 +1412,7 @@ constexpr SCommand kCommands[] = {
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
     {"stick", CmdStick, true},
+    {"cstick", CmdCstick, true},
     {"bind", CmdBind, true},
     {"binds", CmdBinds, true},
     {"screenshot", CmdScreenshot, true},

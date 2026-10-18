@@ -130,6 +130,7 @@
 
 #ifdef TARGET_PC
 #include "port_harness.h"
+#include "port_hold_toggle.h"
 #include "port_overlay.h"
 #include "port_warp.h"
 #include "MetroidPrime/PortScanTarget.hpp"
@@ -3737,6 +3738,61 @@ void CStateManager::ProcessPlayerInput() {
     }
   }
 }
+#ifdef TARGET_PC
+// Toggle lock-on and sticky charge (F1 > Gameplay). Edges come from the combined digital/analog
+// state, since a GameCube L passes the analog threshold and clicks on different ticks and would
+// toggle twice. There is one local player's pad, so the state machines are file statics; a second
+// controller that owns no player is ignored rather than allowed to reset them.
+static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint controller, bool enabled) {
+  static PortHoldToggle::Toggle sLockOn;
+  static PortHoldToggle::Sticky sCharge;
+  static bool sPrevL = false;
+
+  // A controller index is not a player slot: ProcessPlayerInput maps a slot's selection the other
+  // way round, so it is the selection that finds the player this pad belongs to.
+  const CPlayer* player = nullptr;
+  for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
+    if (mgr.GetPlayerState(i)->GetPlayerSelection() == controller) {
+      player = mgr.GetPlayer(i);
+      break;
+    }
+  }
+  if (player == nullptr) {
+    return;
+  }
+
+  // Only while gameplay is running: the scan display's soft pause (CPlayer sets kGS_SoftPaused)
+  // still reaches ProcessInput, and a beam that kept charging into it would be held by a button
+  // nobody is holding when play resumes. The pause and map screens stop game updates altogether,
+  // so nothing runs there and a latch resumes with the game - the next press lets go.
+  const bool unmorphed = enabled && mgr.GetGameState() == CStateManager::kGS_Running &&
+                         player->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed;
+
+  const bool heldL = input.DL() || input.DLTrigger();
+  const bool pressL = heldL && !sPrevL;
+  sPrevL = heldL;
+  // Only a lock on an object counts: a killed target leaves the player orbiting its carcass, and
+  // a lost look angle a fixed point, both of which hold the aim in place while L is held.
+  const CPlayer::EPlayerOrbitState orbit = player->GetOrbitState();
+  const bool locked = orbit == CPlayer::kOS_OrbitObject ||
+                      orbit == CPlayer::kOS_ForcedOrbitObject || orbit == CPlayer::kOS_Grapple;
+  const PortHoldToggle::Output outL = sLockOn.Update(
+      unmorphed && PortOverlay::LockOnToggle(), heldL, pressL, locked, input.DeltaTime());
+  if (sLockOn.Latched() || outL.held != heldL) {
+    input.PortSetL(outL.held, outL.pressed);
+  }
+
+  const bool heldA = input.DA();
+  const bool pressA = input.PA();
+  const CPlayerState* const state = player->GetPlayerState();
+  const bool charge = unmorphed && PortOverlay::StickyCharge() && state != nullptr &&
+                      state->GetItemAmount(CPlayerState::kIT_ChargeBeam, true) != 0;
+  const PortHoldToggle::Output outA = sCharge.Update(charge, heldA, pressA, input.DeltaTime());
+  if (outA.held != heldA || outA.pressed != pressA) {
+    input.PortSetA(outA.held, outA.pressed);
+  }
+}
+#endif
 
 void CStateManager::ProcessInput(const CFinalInput& input) {
   uint player = input.ControllerNumber();
@@ -3755,6 +3811,9 @@ void CStateManager::ProcessInput(const CFinalInput& input) {
     } else {
       mFinalInputs[player] = input;
     }
+#ifdef TARGET_PC
+    ApplyHoldToggle(mFinalInputs[player], *this, player, !disableInput);
+#endif
 
     if (mNumPlayers == 1) {
       player = 0;

@@ -185,6 +185,20 @@ public:
   bool PR() const { return mB30_PR; }
 
   bool PStart() const { return mB27_PStart; }
+#ifdef TARGET_PC
+  // Hold/toggle options (port_hold_toggle.h) override a button after the fact. L covers both the
+  // digital click and the analog trigger, since the game's lock-on and scan commands read either.
+  void PortSetL(bool held, bool pressed) {
+    mB25_L = held;
+    mB29_PL = pressed;
+    mAnaLeftTrigger = held ? 1.f : 0.f;
+    mAnaLeftTriggerP = pressed ? 1.f : 0.f;
+  }
+  void PortSetA(bool held, bool pressed) {
+    mB28_A = held;
+    mB24_PA = pressed;
+  }
+#endif
 
 private:
   float mDt;

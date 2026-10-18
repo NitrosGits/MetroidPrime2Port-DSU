@@ -24,6 +24,31 @@ void SetSkipCinematics(bool skip);
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();
 void SetGodMode(bool enabled);
+// Gameplay tweaks (F1 > Gameplay, the pause menu's Options > Controller, and one console command
+// each), off by default. Never saved - there is no settings file, and these are preference rather
+// than state, so a restart goes back to the untouched game.
+//
+// Fast Morph (`MP2_FAST_MORPH=1`): the morph and unmorph transitions take kFastMorphDuration
+// seconds instead of the game's one, so rolling is not a second of animation each way
+// (CPlayer::UpdateMorphBallState).
+const float kFastMorphDuration = 0.2f;
+bool FastMorph();
+void SetFastMorph(bool enabled);
+// Spring Ball (`MP2_SPRING_BALL=1`): C-stick up on the ground in Morph Ball is a bomb jump from the
+// ball's own position, as Trilogy's nunchuk flick is, so the ball can leave the ground without a
+// bomb to spend (needs Morph Ball Bombs; CMorphBall::ComputeBallMovement).
+bool SpringBall();
+void SetSpringBall(bool enabled);
+// Toggle Lock-On (`MP2_LOCK_ON_TOGGLE=1`): an L press that locks on latches L until the next press,
+// and a lock that ends (target killed, out of range) lets go by itself. Sticky Charge
+// (`MP2_STICKY_CHARGE=1`): letting go of an A hold of kStickyChargeAfter or more keeps the beam
+// charging until the next press fires it; taps shoot as usual. Both are the state machines in
+// port_hold_toggle.h, applied to the player's own CFinalInput in CStateManager::ProcessInput.
+const float kStickyChargeAfter = 0.35f;
+bool LockOnToggle();
+void SetLockOnToggle(bool enabled);
+bool StickyCharge();
+void SetStickyCharge(bool enabled);
 // First-person field of view in degrees (`MP_FOV=<deg>`, F1 > Render), or 0 for the game's own 55.
 // Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
 // built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.

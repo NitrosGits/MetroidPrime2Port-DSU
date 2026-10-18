@@ -3,6 +3,96 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (tenth session): gameplay tweaks
+
+The fourth slice `docs/QOL.md` listed, and the first one with game-side hooks in *four* upstream
+files: fast morph, spring ball, toggle lock-on and sticky charge. MP1 has all four, but its shape did
+not transfer - MP1's morph transition is one duration scalar and its ball jump is a C-stick path in
+`CMorphBall`; MP2's morph is `mMorphTime`/`mMorphDuration` set from four places in
+`CPlayer::UpdateMorphBallState`, and its C-stick is read by the ball camera's aim code, not the ball.
+
+**The settings.** Four statics in `platform/port_overlay.cpp` with `EnvFlag` reads for
+`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`, `MP2_STICKY_CHARGE`, getters/setters in
+`platform/include/port_overlay.h` (plus `kFastMorphDuration` 0.2 s and `kStickyChargeAfter` 0.35 s),
+one F1 > Gameplay row each with its env var and a one-line reason, and four console commands in
+`CmdGod`'s shape - no argument toggles, an argument sets, so a headless run drives them one update
+later. Nothing is saved; there is still no settings file.
+
+**Fast morph** - `CPlayer::UpdateMorphBallState` computes `morphDuration`/`unmorphDuration` (1 s, or
+0.6/0.5 s in multiplayer) and two screw-attack durations from `gpTweakBall`; the hook shortens the
+first two when the option is on and leaves the screw attack's own transition alone, because those
+are a different move with their own authored times. `mMorphTime` is also the morph factor the body
+and camera interpolate on (`CPlayer.cpp`, lines ~3225 and ~3356), so the shorter duration shortens
+the whole transition rather than cutting it off. Measured on the desktop by polling `status` in real
+time around an `X` key press (a batch of console commands is *not* one command per update - the
+console drains the queue within one update, which is what made the first attempts read nonsense):
+morph 0.80 s off, under 0.1 s on, unmorph 0.80 s off and instantaneous on.
+
+**Spring Ball** - `CMorphBall::ComputeBallMovement`, which the C-stick had no claim on: the ball
+camera interpolates its own look-at and never reads `ARAUp`, and `PortMouse`'s twin-stick path is off
+while morphed (`CPlayer::MouseAimAllowed`). The gate is `mBallState == kBS_Normal`, on the ground, not
+morph-transitioning, movement allowed, not attached to an actor, Morph Ball Bombs owned, and 40
+frames of cooldown (randomprime's number, in seconds). It calls the game's own
+`CPlayer::BombJump(GetTranslation(), mgr)` and then does the two things MP1's version does around it:
+it puts back the horizontal velocity `BombJump` zeroes (it is written for a bomb going off *under*
+the ball, and a spring jump that stops the roll feels broken) and sets `kMS_FallingMorphed`, which is
+what tells the physics the ball has left the ground on the tick it was still standing on it. Verified
+by reading `status`'s z every 40 ms around `cstick 0 127 20`: -48.44 -> -45.04 and back with the
+option on; not a millimetre with it off.
+
+**Toggle lock-on and sticky charge** - MP1's two state machines, taken verbatim into
+`platform/include/port_hold_toggle.h` (`Toggle` with its debounce and its "a latch that loses its
+lock lets go", `Sticky` with its 0.35 s threshold and its swallowed release), with
+`tests/port_hold_toggle.cpp` ported too and registered as `port_hold_toggle_tests` beside
+`port_touch_pad_tests`. They are applied in `CStateManager::ProcessInput` to
+`mFinalInputs[controller]` right after the pad has been read: the helper finds the player whose
+`GetPlayerSelection()` is that controller (a controller index is not a player slot - `ProcessPlayerInput`
+maps it the other way), and does nothing when input is disabled so a cutscene or menu resets both.
+Two `PortSetL`/`PortSetA` setters in `CFinalInput` write the bits back; L sets the digital click *and*
+the analog trigger, because MP2's orbit command can be bound to either and both are L on the pad.
+Verified in area 11 (warped there with the console: area 0's Temple Grounds room has no `CPatterned`)
+with two Dark Troopers in view. With the toggle on: holding L for 0.6 s gives `orbit 1` during the
+hold and **both stay** after the key is up for as long as it was sampled (2.6 s); a tap then reads
+`orbit 0, L=0` and does not re-lock; the next tap reads `orbit 1, L=1` again. With it off, L is a
+plain hold (orbit 1 only while held). Sticky: a 0.6 s A hold then release leaves `A=1`; a tap
+releases it (that is the charged shot) and the bit drops; with the option off the bit drops at
+release.
+
+**Review pass.** A fresh-context read of the commit found no functional bug and two soft spots,
+both fixed: the state machines are shared, so a second controller that owns no player would have
+reset pad 0's latch every tick (the helper now ignores a controller with no player), and the
+latches were live through the scan display's soft pause (they now need `kGS_Running`). The second
+one is deliberately narrow: the pause and map screens stop game updates altogether, so nothing can
+run there and a latched L resumes with the game - the next press lets go. Spring Ball's side
+effects (the velocity restore, `kMS_FallingMorphed`, the cooldown) would also apply on a `BombJump`
+that returned early, but `mBombJumpState` is never set to `kBJS_BombJumpDisabled` in this tree, so
+that branch is unreachable today.
+
+**Instruments this slice needed.** `status` now prints `orbit N  game input L=x A=y` - the game's L/A,
+not the pad's, which is the only way to see a latch from outside. The console's virtual pad could
+only hold the main stick, so Spring Ball had no headless trigger: `PortInput::Hold` now takes both
+axis pairs and `port_console.cpp` grew `cstick <x> <y> [updates]` beside `stick`. `tools/keytap.py`
+did the rest - the morph button, which the console names `Y`/`X` for enter and exit, and the L/A
+presses.
+
+**Gates.** `gen_files_cmake.py --check` rc=0, `gen_console_names.py --check` rc=0, upstream matching
+build `Game Code: 94.14% fuzzy, 63.29% matched` rc=0 (twice: after the lane's edits and after the
+line-length pass). Each of the four upstream files was stripped of its `#ifdef TARGET_PC` blocks and
+diffed against `git show HEAD:<path>` - all four identical, including the blank lines, which is why
+the guarded blocks sit tight against the preceding brace rather than after a blank line.
+
+**Not done / left open.** MP1's spring ball also fires on a gyro flick and a bound "spring ball"
+action, and halves the jump inside a half pipe; none of that is here. The lock-on latch's
+"target dies -> let go" branch is unit-tested only: it needs a kill, which the console cannot do
+without a message id, and `kill` kills the player. Sticky charge is gated on owning Charge Beam
+(`kIT_ChargeBeam`), which the test save has. The half-pipe interaction above is likewise unverified:
+`kBS_Normal` and `OnGround` together looked unreachable there, but nobody drove a half pipe.
+
+Re-verified after the review fixes on the same desktop run (area 11, a Dark Trooper in view): a
+0.6 s L hold reads `orbit 1, L=1` and keeps both for the rest of a 2.4 s sample, a tap releases it,
+and sticky A stays latched through 1.6 s of sampling with the beam visibly charging in a screenshot
+(`/tmp/opencode/aim2.png`).
+
 ## 2026-10-18 (ninth session): keyboard bindings
 
 The input slice `docs/QOL.md` listed third: rebinding over Aurora's pad key tables, with the F1
