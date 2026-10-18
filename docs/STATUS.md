@@ -3,6 +3,28 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (twentieth session): frame interpolation phases 0-2
+
+- Ported MP1's smooth-frames system (`../MetroidPrimePort/docs/FRAME_INTERPOLATION.md`), in commits
+  `c2e49cf25` (phase 0), `1932fa3dc` (phase 1, actor transforms), `0a4a58698` (phase 2, skinned poses).
+- Phase 0: fixed 60 Hz clock (`x7c_tickClock`, `GetTickInterpolation()`, `PortTiming::FixedStepClock`),
+  camera before/after snapshot blend (`CCameraManager::SetPresentationInterpolation`), `smooth_frames`
+  (default on, env `MP2_SMOOTH_FRAMES`, F1 Video > Frame rate, console `interp`). Blend runs only with
+  the 60 fps cap off. Tick generation is `PortTiming::BeginTick()`/`TickGeneration()`.
+- Phase 1: `CActor` previous transform and `CPortActorRenderScope` (view shift at draw), setting
+  `actor_interpolation` (off by default). Tests: `port_presentation_rules_tests` (copied from MP1).
+- Phase 2: `CAnimData` keeps last tick's pose per bone and `PortPresentedPose()` blends it while
+  drawing; setting `pose_interpolation` (env `MP2_POSE_INTERPOLATION`, F1 "Smooth animation", off by
+  default). Four skinned draw sites in `CModelData.cpp` use it under TARGET_PC.
+- Verified (phase 2): `gen_files_cmake.py --check` rc 0; `metroid_prime2_port` builds with 0 FAILED;
+  host tests rc 0; matching build 94.14% fuzzy / 63.29% matched; strip-diff CLEAN for the four
+  upstream files; desktop boot with `MP2_POSE_INTERPOLATION=1` exit 124, no crash lines.
+- Not verified on screen: no save file exists (`/tmp/opencode/u_a10`, `mp2card/user` absent), so
+  gameplay cannot be reached. Front-end boot only.
+- Next: phase 3 (particles/projectiles, `particle_interpolation`), then look input, HUD/2D resets, sweep.
+- Gotcha: `/tmp/strip.py` (crude) dropped everything after `#else`; use a stripper that keeps the
+  `#else` branch, or its CLEAN results mean nothing.
+
 ## 2026-10-18 (nineteenth session, later): frame cap and render scale
 
 - MP1's 60 fps cap (`frame_limit`, default on, env `MP2_FRAME_LIMIT=0|1`, F10 toggle, F1 Video >
