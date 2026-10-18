@@ -1291,6 +1291,13 @@ bool CActor::PortPresentedView(const CTransform4f& view, CTransform4f& out) cons
   return true;
 }
 
+CVector3f CActor::PortPresentedPoint(const CVector3f& world) const {
+  CTransform4f toCur = CTransform4f::Identity();
+  if (!PortPresentedView(CTransform4f::Identity(), toCur))
+    return world;
+  return toCur.GetQuickInverse() * world;
+}
+
 bool CActor::PortBlendRigid(const CTransform4f& from, const CTransform4f& to, float t,
                             CTransform4f& blend, CTransform4f& cur, const CVector3f& pivot,
                             float lastStep2) {

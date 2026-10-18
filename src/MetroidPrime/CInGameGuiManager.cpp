@@ -225,6 +225,26 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
     staticAlpha = CMath::Clamp(0.f, deathTime / 0.75f, 1.f);
   }
   const bool inTurret = player.IsInTurret();
+#ifdef TARGET_PC
+  // MP1's frame interpolation (HUD and 2D): draw the HUD lag/bob blended to the presented time;
+  // the tick state is restored when the draw ends.
+  struct HudLagScope {
+    const CSamusHud* hud;
+    ~HudLagScope() {
+      if (hud != nullptr) {
+        hud->PortPresentHudLag(false);
+      }
+    }
+  } hudLagScope = {mSamusHud.get()};
+  if (hudLagScope.hud != nullptr) {
+    // The Echo and Dark visors' reticles follow the world camera, which keeps this tick's
+    // rotation while mouse look is free.
+    const CPlayerState::EPlayerVisor visor = mgr.GetPlayerState(mPlayerIndex)->GetActiveVisor(mgr);
+    const bool reticleVisor = visor == CPlayerState::kPV_Echo || visor == CPlayerState::kPV_Dark;
+    hudLagScope.hud->PortPresentHudLag(
+        true, reticleVisor && CCameraManager::PortLookIsFree(mgr, mPlayerIndex));
+  }
+#endif
   if (mPauseScreenBlur->IsGameDraw()) {
     if (mHelmetVisMode != 0 && notInCine) {
 #ifdef TARGET_PC

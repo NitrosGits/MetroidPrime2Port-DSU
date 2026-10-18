@@ -647,6 +647,21 @@ void CCompoundTargetReticle::Draw(const CStateManager& mgr, bool hideLockOn) con
     CMatrix3f rotation = cameraXf.BuildMatrix3f();
     CGraphics::SetCullMode(kCM_None);
 
+#ifdef TARGET_PC
+    // MP1's frame interpolation (HUD and 2D): the groups were placed at the tick's poses. While
+    // smooth frames draw actors and the camera between ticks, carry a lock-on with its target to
+    // where it is drawn and an idle (camera-placed) group with the camera, else they shake
+    // against what they mark. Restored below.
+    CTargetReticleRenderState& portCurr =
+        const_cast< CTargetReticleRenderState& >(mCurrentGroupInterpolated);
+    CTargetReticleRenderState& portNext =
+        const_cast< CTargetReticleRenderState& >(mNextGroupInterpolated);
+    const CVector3f portSavedCurr = portCurr.GetTargetPositionWorld();
+    const CVector3f portSavedNext = portNext.GetTargetPositionWorld();
+    PortPresentGroup(portCurr, mgr);
+    PortPresentGroup(portNext, mgr);
+
+#endif
     if (!hideLockOn) {
       DrawCurrLockOnGroup(rotation, mgr);
       DrawSeeker(rotation, mgr);
@@ -655,6 +670,10 @@ void CCompoundTargetReticle::Draw(const CStateManager& mgr, bool hideLockOn) con
       DrawNextLockOnGroup(rotation, mgr);
       DrawOrbitZoneGroup(rotation, mgr);
     }
+#ifdef TARGET_PC
+    portCurr.SetTargetPositionWorld(portSavedCurr);
+    portNext.SetTargetPositionWorld(portSavedNext);
+#endif
     DrawGrappleGroup(rotation, mgr, hideLockOn);
     CGraphics::SetCullMode(kCM_Front);
   }
@@ -1761,6 +1780,26 @@ CVector3f CCompoundTargetReticle::CalculateOrbitZoneReticlePosition(const CState
   return cameraXf.GetTranslation() + distance * forward;
 }
 
+#ifdef TARGET_PC
+void CCompoundTargetReticle::PortPresentGroup(CTargetReticleRenderState& state,
+                                              const CStateManager& mgr) const {
+  if (CCameraManager::GetPresentationInterpolation() < 0.f) {
+    return;
+  }
+  // Same sources as UpdateTargetParameters: an actor's point moves with the actor's drawn pose,
+  // the idle point with the drawn camera.
+  if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(state.GetTargetId()))) {
+    state.SetTargetPositionWorld(actor->PortPresentedPoint(state.GetTargetPositionWorld()));
+  } else if (state.GetIsOrbitZoneIdlePosition()) {
+    const CCameraManager* cameraManager = mgr.GetCameraManager(mPlayerIndex);
+    state.SetTargetPositionWorld(
+        cameraManager->GetCurrentCameraTransform(mgr, true) *
+        (cameraManager->GetSimulationCameraTransform(mgr, true).GetInverse() *
+         state.GetTargetPositionWorld()));
+  }
+}
+
+#endif
 bool CCompoundTargetReticle::IsGrappleTarget(TUniqueId id, const CStateManager& mgr) {
   return TCastToConstPtr< CScriptGrapplePoint >(mgr.GetObjectById(id)) != nullptr;
 }
@@ -1775,6 +1814,13 @@ float CCompoundTargetReticle::CalculateClampedScale(CVector3f position, float sc
   const CGameCamera& camera = *cameraManager->GetCurrentCamera(mgr, true);
   CTransform4f cameraXf = cameraManager->GetCurrentCameraTransform(mgr, true);
   const CTransform4f& camXf = camera.GetTransform();
+#ifdef TARGET_PC
+  // MP1's frame interpolation: draws pass points placed for the presented camera
+  // (PortPresentGroup), but the scale is measured against the tick's camera, so between ticks the
+  // clamped size pulsed at every step. Measure the point where it sits relative to the drawn one.
+  position = cameraManager->GetSimulationCameraTransform(mgr, true) * cameraXf.GetInverse() *
+             position;
+#endif
   CVector3f viewSpace = camXf.TransposeRotate(position - camXf.GetTranslation());
   float projectedX = camera.GetPerspectiveMatrix().MultiplyOneOverW(viewSpace).GetX();
   float pixelScale = camera.GetPerspectiveMatrix()

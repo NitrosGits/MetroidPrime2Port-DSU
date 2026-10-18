@@ -301,6 +301,10 @@ GXFifoObj* CGraphics::mpFifoObj;
 uint CGraphics::mFifoSize = 0;
 uint CGraphics::mRenderTimings;
 float CGraphics::mSecondsMod900;
+#ifdef TARGET_PC
+static double sRenderTimePresentLag = 0.0;
+static bool sRenderTimingsByTick = false;
+#endif
 CTimeProvider* CGraphics::mpExternalTimeProvider;
 int CGraphics::mScreenStretch;
 int CGraphics::mScreenPositionX;
@@ -1723,10 +1727,35 @@ void CGraphics::TickRenderTimings() {
   mSecondsMod900 = static_cast< float >(mRenderTimings) / 60.f;
 }
 
+#ifdef TARGET_PC
+void CGraphics::PortAdvanceRenderTimings(uint ticks) {
+  mRenderTimings = (mRenderTimings + ticks) % (900 * 60);
+  mSecondsMod900 = static_cast< float >(mRenderTimings) / 60.f;
+  sRenderTimingsByTick = true;
+}
+
+bool CGraphics::PortTakeRenderTimingsByTick() {
+  const bool byTick = sRenderTimingsByTick;
+  sRenderTimingsByTick = false;
+  return byTick;
+}
+
+void CGraphics::SetRenderTimePresentLag(float seconds) { sRenderTimePresentLag = seconds; }
+
+#endif
 float CGraphics::GetSecondsMod900() {
   if (mpExternalTimeProvider != nullptr) {
     return mpExternalTimeProvider->GetSecondsMod900();
   }
+#ifdef TARGET_PC
+  if (sRenderTimePresentLag > 0.0) {
+    double s = static_cast< double >(mSecondsMod900) - sRenderTimePresentLag;
+    if (s < 0.0) {
+      s += 900.0;
+    }
+    return static_cast< float >(s);
+  }
+#endif
   return mSecondsMod900;
 }
 

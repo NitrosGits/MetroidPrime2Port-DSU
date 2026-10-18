@@ -2694,6 +2694,9 @@ void CSamusHud::UpdateHudLag(float dt, const CStateManager& mgr) {
     CGuiCamera* camera = mLoadedHudFrame->GetFrameCamera();
     camera->SetO2WTransform(camera->GetIdleXform());
     mTargetingManager.CompoundTargetReticle().SetLeadingOrientation(CQuaternion::NoRotation());
+#ifdef TARGET_PC
+    PortRecordHudLag(false, CQuaternion::NoRotation(), CVector3f::Zero());
+#endif
     return;
   }
 
@@ -2736,8 +2739,86 @@ void CSamusHud::UpdateHudLag(float dt, const CStateManager& mgr) {
   }
   mLoadedHudFrame->GetFrameCamera()->SetO2WTransform(hudTransform);
   mPreviousCameraDirection = cameraDirection;
+#ifdef TARGET_PC
+  PortRecordHudLag(true, lagRotation, lagOffset);
+#endif
 }
 
+#ifdef TARGET_PC
+void CSamusHud::PortRecordHudLag(bool lag, const CQuaternion& rotation, const CVector3f& offset) {
+  mPortLagPresented = false;
+  mPortLag[0] = mPortLag[1];
+  mPortLag[1].rotation = rotation;
+  mPortLag[1].offset = offset;
+  mPortLag[1].ball = mNextState == kHS_Ball;
+  mPortLag[1].lag = lag;
+  mPortLag[1].valid = true;
+  mPortLagPrevGeneration = mPortLagGeneration;
+  mPortLagGeneration = CActor::PortTickGeneration();
+}
+
+// UpdateHudLag's camera placement for one recorded state.
+void CSamusHud::PortApplyHudLag(const SPortHudLag& state) {
+  if (!state.lag) {
+    CGuiWidget* root = mLoadedHelmetFrame->GetRootWidget();
+    root->SetO2PTransform(root->GetIdleXform());
+    CGuiCamera* camera = mLoadedHudFrame->GetFrameCamera();
+    camera->SetO2WTransform(camera->GetIdleXform());
+    return;
+  }
+  CGuiCamera* helmetCamera = mLoadedHelmetFrame->GetFrameCamera();
+  const CVector3f helmetPosition = helmetCamera->GetIdleXform().GetTranslation();
+  const CVector3f helmetPivot =
+      mLoadedHelmetFrame->GetRootWidget()->GetIdleXform().GetTranslation();
+  CTransform4f helmetTransform =
+      BuildFinalCameraTransform(state.rotation, helmetPivot + state.offset, helmetPosition);
+  helmetTransform.SetTranslation(helmetTransform.GetTranslation() + state.offset);
+  helmetCamera->SetO2WTransform(helmetTransform);
+  const CVector3f hudPosition = mHudCamera->GetIdleXform().GetTranslation();
+  const CVector3f hudPivot = mLoadedHudFrame->GetRootWidget()->GetIdleXform().GetTranslation();
+  CTransform4f hudTransform =
+      BuildFinalCameraTransform(state.rotation, hudPivot + state.offset, hudPosition);
+  if (!state.ball) {
+    hudTransform.SetTranslation(hudTransform.GetTranslation() + state.offset);
+  }
+  mLoadedHudFrame->GetFrameCamera()->SetO2WTransform(hudTransform);
+}
+
+void CSamusHud::PortPresentHudLag(bool present, bool mouseLookFree) const {
+  CSamusHud& self = const_cast< CSamusHud& >(*this);
+  if (!present) {
+    if (mPortLagPresented) {
+      self.mPortLagPresented = false;
+      self.PortApplyHudLag(mPortLag[1]);
+    }
+    return;
+  }
+  if (mLoadedHudFrame == nullptr || mLoadedHelmetFrame == nullptr || mHudCamera == nullptr) {
+    return;
+  }
+  // Skipped (the tick's state stands) off the blend, when the pair is stale (a pause, a new HUD),
+  // and when lag switched on or off between the two ticks.
+  const float t = CCameraManager::GetPresentationInterpolation();
+  const SPortHudLag& prev = mPortLag[0];
+  const SPortHudLag& cur = mPortLag[1];
+  if (!(t >= 0.f && t < 1.f) || mPortLagGeneration != CActor::PortTickGeneration() ||
+      mPortLagPrevGeneration + 1 != mPortLagGeneration || !prev.valid || !cur.valid ||
+      prev.lag != cur.lag || !cur.lag) {
+    return;
+  }
+  SPortHudLag blend = cur;
+  // With mouse look free the world camera keeps this tick's rotation
+  // (CCameraManager::GetCurrentCameraTransform), so the Echo and Dark visors' reticle lag must not
+  // be slerped toward the previous tick or it moves against the world at every step.
+  if (!mouseLookFree) {
+    blend.rotation = CQuaternion::Slerp(prev.rotation, cur.rotation, t);
+  }
+  blend.offset = prev.offset + (cur.offset - prev.offset) * t;
+  self.mPortLagPresented = true;
+  self.PortApplyHudLag(blend);
+}
+
+#endif
 void CSamusHud::ApplyClassicLag(const CUnitVector3f& lookDirection, CQuaternion& rotation,
                                 const CStateManager& mgr, float dt, bool invert) {
   const CQuaternion lookRotation =

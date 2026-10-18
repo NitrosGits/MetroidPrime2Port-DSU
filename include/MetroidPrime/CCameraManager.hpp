@@ -91,6 +91,8 @@ public:
   static void SetPresentationInterpolation(float t);
   static float GetPresentationInterpolation();
   CTransform4f GetSimulationCameraTransform(const CStateManager& mgr, bool selector) const;
+  // MP1's MouseLookIsFree: mouse, stick or touch aim owns this player's view right now.
+  static bool PortLookIsFree(const CStateManager& mgr, int playerIndex);
 #endif
   const CGameArea::CAreaFog& GetFog() const { return mFog; } // Guessed name
   bool IsFogEnabled() const { return mFogEnabled; } // Guessed name, cached after fog update.

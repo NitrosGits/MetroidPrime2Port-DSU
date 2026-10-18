@@ -397,6 +397,9 @@ bool CGameArchitectureSupport::UpdateTicks() {
       mArchQueue.Push(MakeMsg::CreateTimerTick(kAMT_Game, 1.f / 60.f));
       mIoWinMgr.PumpMessages(mArchQueue);
     }
+    // MP1's GUI clock by tick: GUI frames and HUD materials advance with the game, not the frame
+    // rate (BeginScene skips its per-frame step after this).
+    CGraphics::PortAdvanceRenderTimings(ticks);
     // Back to the cap starts the retail remainder afresh.
     mTickRemainder = 0.f;
     mPreviousTickRemainder2 = 0.f;
@@ -782,11 +785,17 @@ int CMain::RsMain(int argc, const char* const* argv) {
             interpolation = -1.f;
           }
           CCameraManager::SetPresentationInterpolation(interpolation);
+          // MP1's GUI clock lag (particle toggle): the draw reads the GUI clock (1 - t) / 60 s
+          // behind the last tick, so GUI frames and HUD materials sit between the last two ticks.
+          if (interpolation >= 0.f && interpolation < 1.f && PortOverlay::ParticleInterpolation()) {
+            CGraphics::SetRenderTimePresentLag((1.f - interpolation) / 60.f);
+          }
         }
 #endif
         architecture->GetIOWinManager().Draw();
 #ifdef TARGET_PC
         CCameraManager::SetPresentationInterpolation(-1.f);
+        CGraphics::SetRenderTimePresentLag(0.f);
 #endif
         DrawDebugMetrics(tickTime, architecture->GetStopwatch2());
         const double drawTime = architecture->GetStopwatch2().GetElapsedTime();

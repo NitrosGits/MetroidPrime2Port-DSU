@@ -303,6 +303,9 @@ public:
   // mTransform. False when no blend applies (the view is left alone): smooth frames off, capped
   // frames, snapped moves, new actors.
   bool PortPresentedView(const CTransform4f& view, CTransform4f& out) const;
+  // MP1's PortPresentedPoint: a world point on this actor carried to where the actor is drawn
+  // (its blended transform); unchanged when no blend applies.
+  CVector3f PortPresentedPoint(const CVector3f& world) const;
   // Rigid blend of two transforms at t, with the snap rule (a teleport or 45 degrees apart =
   // false). `cur` gets the rigid form of `to`. A non-zero `pivot` (world offset to the visual
   // centre, the morph ball's radius) makes that centre lerp and the turn happen about it; then

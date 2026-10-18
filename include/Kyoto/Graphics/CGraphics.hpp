@@ -340,6 +340,15 @@ public:
 #ifdef TARGET_PC
   // Port: resize the internal framebuffer and viewport (the aspect setting, PortOverlay::ApplyAspect).
   static void PortResizeFrameBuffer(u16 fbWidth);
+  // Port: MP1's GUI clock by tick. With the 60 FPS cap off the clock steps once per 60 Hz tick
+  // (from CGameArchitectureSupport::UpdateTicks) instead of once per drawn frame, and
+  // CCubeRenderer::BeginScene skips its own step on such a frame (PortTakeRenderTimingsByTick).
+  static void PortAdvanceRenderTimings(uint ticks);
+  static bool PortTakeRenderTimingsByTick();
+  // Port: MP1's presentation lag for the GUI clock. During a blended draw GetSecondsMod900 reads
+  // this many seconds behind the last tick (wrapping at 900), so GUI frames and HUD materials
+  // land between the last two ticks with everything else; 0 outside the draw.
+  static void SetRenderTimePresentLag(float seconds);
 #endif
   static bool Is50Hz() { return sIs50Hz; } // Guessed name.
   static CVector3f GetViewPoint() { return mViewMatrix.GetTranslation(); }

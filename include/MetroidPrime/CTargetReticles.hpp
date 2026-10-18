@@ -94,6 +94,9 @@ public:
   float mPortXhairArmScale = 1.f;
   float mPortXhairCentreScale = 1.f;
   float mPortXhairTargetT = 0.f;
+  // MP1's PortPresentGroup: carry a group placed at the tick to where its target is drawn
+  // between ticks (CActor::PortPresentedPoint), or an idle group with the presented camera.
+  void PortPresentGroup(CTargetReticleRenderState& state, const CStateManager& mgr) const;
 #endif
   EReticleState GetDesiredReticleState(const CStateManager& mgr) const;
   bool CheckLoadComplete();

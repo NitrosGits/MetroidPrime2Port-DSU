@@ -693,6 +693,10 @@ void CCubeRenderer::BeginScene() {
   CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha, kBF_InvSrcAlpha, kLO_Clear);
   CGraphics::SetPerspective(75.f, 1.3333334f, 1.f, 4096.f);
   CGraphics::SetModelMatrix(CTransform4f::Identity());
+#ifdef TARGET_PC
+  // Port: with the cap off the clock already stepped by tick this frame (CGraphics.hpp).
+  if (!CGraphics::PortTakeRenderTimingsByTick())
+#endif
   CGraphics::TickRenderTimings();
   if (mSilhouetteMaskCountdown != 0) {
     --mSilhouetteMaskCountdown;

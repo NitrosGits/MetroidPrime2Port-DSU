@@ -97,6 +97,12 @@ public:
                                                 const CVector3f& cameraPosition);
   static rstl::pair< CVector3f, CVector3f > BallEnergyCoordFunc(float t);
   static rstl::pair< CVector3f, CVector3f > CombatEnergyCoordFunc(float t);
+#ifdef TARGET_PC
+  // MP1's frame interpolation (HUD and 2D): with present, draw the helmet and HUD frame cameras'
+  // lag/bob between the last two ticks (CInGameGuiManager::Draw); without, restore the tick's.
+  // mouseLookFree keeps the tick's lag rotation (the world camera keeps it too then).
+  void PortPresentHudLag(bool present, bool mouseLookFree = false) const;
+#endif
 
 private:
   static const char* const
@@ -107,6 +113,18 @@ private:
   void ApplyClassicLag(const CUnitVector3f& lookDirection, CQuaternion& rotation,
                        const CStateManager& mgr, float dt, bool invert);
   void UpdateHudLag(float dt, const CStateManager& mgr);
+#ifdef TARGET_PC
+  // One tick's lag/bob state, as UpdateHudLag applies it to the frame cameras.
+  struct SPortHudLag {
+    CQuaternion rotation;
+    CVector3f offset;
+    bool ball;
+    bool lag;
+    bool valid;
+  };
+  void PortRecordHudLag(bool lag, const CQuaternion& rotation, const CVector3f& offset);
+  void PortApplyHudLag(const SPortHudLag& state);
+#endif
   CRelAngle GetRelativeDirection(const CVector3f& position, const CStateManager& mgr) const;
   EHudState GetDesiredHudState(const CStateManager& mgr) const;
   EHudState GetNextState() const;
@@ -306,6 +324,13 @@ private:
   rstl::auto_ptr< CGuiFrameLoader > mBossLockOnFrameLoader;
   rstl::auto_ptr< CGuiFrame > mBossLockOnFrame;
   rstl::reserved_vector< SProfileInfo, 17 > mProfileInfo;
+#ifdef TARGET_PC
+  SPortHudLag mPortLag[2] = {{CQuaternion::NoRotation(), CVector3f::Zero(), false, false, false},
+                             {CQuaternion::NoRotation(), CVector3f::Zero(), false, false, false}};
+  uint mPortLagGeneration = 0;
+  uint mPortLagPrevGeneration = 0;
+  bool mPortLagPresented = false;
+#endif
 };
 
 CHECK_SIZEOF(CSamusHud, 0x1698)

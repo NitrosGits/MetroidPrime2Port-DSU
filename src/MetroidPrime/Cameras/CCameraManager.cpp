@@ -566,6 +566,10 @@ CTransform4f CCameraManager::GetSimulationCameraTransform(const CStateManager& m
   return camera->GetTransform() * CTransform4f::Translate(mCameraShakeManager->GetTranslation(mgr));
 }
 
+bool CCameraManager::PortLookIsFree(const CStateManager& mgr, int playerIndex) {
+  return PortMouseLookIsFree(mgr, playerIndex);
+}
+
 void CCameraManager::SetPresentationInterpolation(float t) { sPresentationInterpolation = t; }
 float CCameraManager::GetPresentationInterpolation() { return sPresentationInterpolation; }
 #endif
