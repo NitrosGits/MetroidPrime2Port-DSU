@@ -104,20 +104,30 @@ bool HideVisorEffects();
 // phone. The Prime port sets its crosshair bit from its `AimCrosshair` setting the same way.
 bool AimCrosshair();
 void SetAimCrosshair(bool enabled);
-// The crosshair the port draws itself, since this port's HUD never draws the game's reticle
-// (`CSamusHud`'s targeting manager is wired, but the reticle's model token never resolves here).
-// Drawn in the centre of the view while the port's aim owns it: a dot or a cross, sized in
-// pixels, at an opacity, as the Prime port's crosshair settings do. F1 > HUD, console `crosshair`.
-const int kCrosshairSizeMin = 2;
-const int kCrosshairSizeMax = 24;
-const int kCrosshairOpacityMin = 10;
+// The aim crosshair, with the Prime port's settings and its meanings (PortDebug's
+// ECrosshairStyle/kCrosshairSizeMin..Max/kCrosshairOpacity): the classic style is the game's own
+// reticle model with the port's size, opacity and colour applied, and `remastered` replaces it
+// with the cursor drawn procedurally in CTargetReticles.cpp (that is the one this port can show:
+// the classic model's token does not resolve here). Size is a percent of the model's own scale
+// (25..100) and applies only while the port's aim owns the view; opacity is 0..100.
+const int kCrosshairSizeMin = 25;
+const int kCrosshairSizeMax = 100;
+const int kCrosshairSizeDefault = 50;
+const int kCrosshairOpacityMin = 0;
 const int kCrosshairOpacityMax = 100;
-int CrosshairStyle();  // 0 dot, 1 cross
+const int kCrosshairStyle_Classic = 0;
+const int kCrosshairStyle_Remastered = 1;
+int CrosshairStyle();
 void SetCrosshairStyle(int style);
 int CrosshairSize();
-void SetCrosshairSize(int pixels);
+void SetCrosshairSize(int percent);
 int CrosshairOpacity();
 void SetCrosshairOpacity(int percent);
+// A custom colour for both styles, as the Prime port's "custom colour" option; false keeps the
+// tweak's own (the visor's colour).
+bool CrosshairColor(float rgb[3]);
+void SetCrosshairColor(float r, float g, float b);
+void ClearCrosshairColor();
 // The F1 window's size in percent of the display's own scale (`MP2_UI_SCALE=50..200`, F1 > Render,
 // console `uiscale`); the product is clamped to 1..4 by PortUi::ApplyTheme.
 const int kUiScaleMin = 50;

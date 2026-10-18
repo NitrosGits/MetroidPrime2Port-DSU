@@ -87,6 +87,14 @@ public:
   void UpdateNextLockOnGroup(float dt, const CStateManager& mgr);
   void UpdateCurrLockOnGroup(float dt, const CStateManager& mgr);
   void Update(float dt, const CStateManager& mgr);
+#ifdef TARGET_PC
+  // The Prime port's remastered crosshair (ported from its CTargetReticles.cpp): the distance
+  // scale of the cursor's arms and centre, and how far its colour has faded toward a hostile.
+  void PortUpdateRemasteredCrosshair(float dt, const CStateManager& mgr);
+  float mPortXhairArmScale = 1.f;
+  float mPortXhairCentreScale = 1.f;
+  float mPortXhairTargetT = 0.f;
+#endif
   EReticleState GetDesiredReticleState(const CStateManager& mgr) const;
   bool CheckLoadComplete();
 
