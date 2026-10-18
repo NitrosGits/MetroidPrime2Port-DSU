@@ -84,7 +84,12 @@ void CMappableObject::DrawDoorSurface(const CColor& surfaceColor, const CColor& 
                                       int surfaceIdx, bool needsVtxLoad) const {
   const SDrawData& drawData = skDoorSurfaceInfos[surfaceIdx];
   if (needsVtxLoad) {
+#ifdef TARGET_PC
+    // Built at runtime from the tweaks: host-order, with its real size (see CMapArea::Draw).
+    CGX::SetArrayNative(GX_VA_POS, skDoorVerts, sizeof(skDoorVerts), sizeof(skDoorVerts[0]));
+#else
     CGX::SetArray(GX_VA_POS, skDoorVerts, sizeof(skDoorVerts[0]));
+#endif
   }
 
   CGX::SetTevKColor(GX_KCOLOR0, surfaceColor.GetGXColor());
@@ -153,7 +158,11 @@ void CMappableObject::Draw(int curArea, const CMapWorldInfo& mwInfo, float alpha
   if (IsDoorType(mType)) {
     rstl::pair< CColor, CColor > colors = GetDoorColors(curArea, mwInfo, alpha);
     if (needsVtxLoad) {
+#ifdef TARGET_PC
+      CGX::SetArrayNative(GX_VA_POS, skDoorVerts, sizeof(skDoorVerts), sizeof(skDoorVerts[0]));
+#else
       CGX::SetArray(GX_VA_POS, skDoorVerts, sizeof(skDoorVerts[0]));
+#endif
     }
     draw_door(colors.first, colors.second);
     return;

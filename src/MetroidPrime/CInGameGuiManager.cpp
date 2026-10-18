@@ -743,6 +743,14 @@ bool CInGameGuiManager::IsTextureInPauseScreen(CAssetId id) const {
 }
 
 void CInGameGuiManager::DestroyAreaTextures(const CStateManager& mgr) {
+#ifdef TARGET_PC
+  // Entering the map or pause screen frees area texture bitmaps right away (UnloadBitmapData drops
+  // the MRAM buffer), and the first loop below does so before the StallAndFlushAllAllocations that
+  // retail relies on. Aurora resolves textures on its own FIFO thread, which may still be working
+  // through the last game frame's draws that sample them, so drain it first: otherwise it hashes
+  // freed texture bytes (a phone SIGSEGV in aurora::gx::texture::resolve_static_texture).
+  GXDrawDone();
+#endif
   rstl::vector< SDumpableTextureInfo > candidates;
   rstl::vector< SDumpableTextureInfo > fallbackCandidates;
   candidates.reserve(64);

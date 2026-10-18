@@ -32,6 +32,10 @@ public:
     CVector3f mCentroid;
     const int* mSurfOffset;
     const int* mOutlineOffset;
+#ifdef TARGET_PC
+    // Byte size of the owning area's vertex array, which Draw uploads natively (see CMapArea.cpp).
+    uint mVertexArraySize;
+#endif
   };
 
   enum EVisMode { kVM_Always, kVM_MapStationOrVisit, kVM_Visit, kVM_Never };

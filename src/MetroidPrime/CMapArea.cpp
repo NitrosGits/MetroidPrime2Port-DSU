@@ -128,6 +128,7 @@ void CMapArea::PostConstruct() {
 #ifdef TARGET_PC
   for (int i = 0; i < mSurfaceCount; ++i) {
     BuildHostSurface(mSurfaceStart[i], discSurfaces + i * kDiscSurfaceSize, mBuf.get());
+    mSurfaceStart[i].mVertexArraySize = mVertexCount * sizeof(CVector3f);
   }
 #else
   for (int i = 0; i < mSurfaceCount; ++i) {
@@ -309,7 +310,14 @@ void CMapArea::CMapAreaSurface::Draw(const CVector3f* verts, const CColor& surfC
   int numSurfaces = *mSurfOffset;
   int numOutlines = *mOutlineOffset;
   if (verts) {
+#ifdef TARGET_PC
+    // The area's vertices are host-order (PostConstruct swaps them), so they need the native path
+    // and their real size: the guest SetArray passes 0 and marks the data big-endian, and the map
+    // then drew as a fan of stretched lines.
+    CGX::SetArrayNative(GX_VA_POS, verts, mVertexArraySize, sizeof(CVector3f));
+#else
     CGX::SetArray(GX_VA_POS, verts, sizeof(CVector3f));
+#endif
   }
   if (hasSurfAlpha) {
     CGX::SetTevKColor(GX_KCOLOR0, surfColor.GetGXColor());
@@ -447,8 +455,16 @@ void CMapArea::Draw(const CColor& surfColor, const CColor& outlineColor,
   CGraphics::SetAlphaCompare(kAF_Always, 0, kAO_Or, kAF_Always, 0);
   CGX::SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
   CGX::SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR_NULL);
+#ifdef TARGET_PC
+  // The vertices are host-order (PostConstruct), the normals big-endian (written by
+  // CMemoryStreamOut); both need their real size or Aurora uploads nothing.
+  CGX::SetArrayNative(GX_VA_POS, mVertexStart, mVertexCount * sizeof(CVector3f),
+                      sizeof(CVector3f));
+  CGX::SetArray(GX_VA_NRM, mSurfaceNormals, mSurfaceCount * sizeof(CVector3f), sizeof(CVector3f));
+#else
   CGX::SetArray(GX_VA_POS, mVertexStart, sizeof(CVector3f));
   CGX::SetArray(GX_VA_NRM, mSurfaceNormals, sizeof(CVector3f));
+#endif
   CGX::SetTevKColor(GX_KCOLOR0, surfColor.GetGXColor());
 
   CGraphics::SetUseNormalMatrix(false);
@@ -475,7 +491,13 @@ void CMapArea::Draw(const CColor& surfColor, const CColor& outlineColor,
   for (int i = 0; i < mMappableObjCount; ++i) {
     const CMappableObject& obj = mMoStart[i];
     if (CMappableObject::IsDoorType(obj.GetType())) {
+#ifdef TARGET_PC
+      // Big-endian, like the normals (BuildDisplayLists writes them through CMemoryStreamOut).
+      CGX::SetArray(GX_VA_POS, mDoorVertices + doorOffset, 8 * sizeof(CVector3f),
+                    sizeof(CVector3f));
+#else
       CGX::SetArray(GX_VA_POS, mDoorVertices + doorOffset, sizeof(CVector3f));
+#endif
       obj.DrawDoor(curArea, mwInfo, alpha);
       doorOffset += 8 * sizeof(CVector3f);
     }
