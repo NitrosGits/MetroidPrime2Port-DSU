@@ -1426,6 +1426,20 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
     }
   }
 
+  // The energy sphere inside the ball (retail 800C4C98): drawn white-modulated, with its first two
+  // spawned systems, only while the ball is fully opaque and not hacked.
+  if (!hacked.first && baseFlags.GetColor().GetAlphau8() == 0xff &&
+      mBallInnerGlowGen.get() != nullptr) {
+    static const CColor skInnerGlowColor(static_cast< uchar >(0xff), static_cast< uchar >(0xff),
+                                         static_cast< uchar >(0xff), static_cast< uchar >(0xff));
+    CElementGen* glow = mBallInnerGlowGen.get();
+    glow->SetModulationColor(skInnerGlowColor);
+    for (int i = 0; i < 2 && i < glow->GetNumSpawnedParticleSystems(); ++i) {
+      glow->SpawnedParticleSystem(i)->SetModulationColor(skInnerGlowColor);
+    }
+    glow->Render();
+  }
+
   if (mDamageEffect > 0.f && !hacked.first) {
     RenderDamageEffects(mgr, ballXf);
   }

@@ -272,6 +272,40 @@ void CCameraFilterPass::DrawWideScreen(const CColor& color, const CTexture* tex,
   }
 }
 
+#ifdef TARGET_PC
+// The console's static is low main memory sampled as IA4: 0x8000 plus a 32-byte-aligned rand(),
+// whose RAND_MAX there is 0x7fff, so the "noise" is OS and game code. On the host rand() reaches
+// 2^31 and that address is whatever the process happens to have there - unmapped (no static on the
+// desktop), or mapped but unreadable, which faulted Aurora's FIFO thread hashing the 642x450 source
+// on the phone whenever the helmet faded through the cookie-cutter static (morphing). Sample a
+// port-owned noise block instead, at one of a few random 32-byte offsets so the static still moves.
+// A block outgrown by a larger viewport is kept, not freed: the FIFO may still read it.
+static void* PortRandomStaticSource(int width, int height) {
+  static const size_t kOffsets = 64;
+  static unsigned char* sNoise = nullptr;
+  static size_t sNoiseSize = 0;
+  const size_t texBytes = static_cast< size_t >((width + 7) & ~7) *
+                          static_cast< size_t >((height + 3) & ~3);
+  const size_t needed = texBytes + kOffsets * 0x20;
+  if (sNoise == nullptr || needed > sNoiseSize) {
+    unsigned char* noise = static_cast< unsigned char* >(malloc(needed));
+    if (noise == nullptr) {
+      return sNoise;
+    }
+    unsigned int state = 0x2545f491u;
+    for (size_t i = 0; i < needed; ++i) {
+      state ^= state << 13;
+      state ^= state >> 17;
+      state ^= state << 5;
+      noise[i] = static_cast< unsigned char >(state >> 24);
+    }
+    sNoise = noise;
+    sNoiseSize = needed;
+  }
+  return sNoise + static_cast< size_t >(rand() % kOffsets) * 0x20;
+}
+
+#endif
 void CCameraFilterPass::DrawRandomStatic(const CColor& color, float alpha, bool cookieCutterDepth) {
   rstl::pair< CVector2f, CVector2f > vp = gpRender->SetViewportOrtho(true, 0.f, 1.f);
   const CVector2f& lt = vp.first;
@@ -286,7 +320,13 @@ void CCameraFilterPass::DrawRandomStatic(const CColor& color, float alpha, bool 
     CGraphics::LoadDolphinSpareTexture(
         static_cast< int >(2.f + (rb.GetX() - lt.GetX())),
         static_cast< int >(2.f + (rb.GetY() - lt.GetY())), GX_TF_IA4,
+#ifdef TARGET_PC
+        PortRandomStaticSource(static_cast< int >(2.f + (rb.GetX() - lt.GetX())),
+                               static_cast< int >(2.f + (rb.GetY() - lt.GetY()))),
+        GX_TEXMAP0);
+#else
         reinterpret_cast< void* >(((rand() + 0x1f) & ~0x1f) + 0x8000), GX_TEXMAP0);
+#endif
   } else {
     gpRender->SetDepthReadWrite(false, false);
     CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulateColor);
@@ -294,7 +334,13 @@ void CCameraFilterPass::DrawRandomStatic(const CColor& color, float alpha, bool 
     CGraphics::LoadDolphinSpareTexture(
         static_cast< int >(2.f + (rb.GetX() - lt.GetX())),
         static_cast< int >(2.f + (rb.GetY() - lt.GetY())), GX_TF_IA4,
+#ifdef TARGET_PC
+        PortRandomStaticSource(static_cast< int >(2.f + (rb.GetX() - lt.GetX())),
+                               static_cast< int >(2.f + (rb.GetY() - lt.GetY()))),
+        GX_TEXMAP0);
+#else
         reinterpret_cast< void* >(((rand() + 0x1f) & ~0x1f) + 0x8000), GX_TEXMAP0);
+#endif
   }
 
   CGraphics::StreamBegin(kP_TriangleStrip);
