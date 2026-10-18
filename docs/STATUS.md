@@ -24,8 +24,11 @@ appended, dated as in the heading there.
   plus `MP2_GYRO_SOURCE`, `MP2_GYRO_SPACE`, `MP2_GYRO_AUTO_CALIBRATE`, `MP2_GYRO_SMOOTHING`,
   `MP2_GYRO_TIGHTENING`, `MP2_GYRO_CURSOR_ANGLE`. Reader in `PortInputDevices::PollGyro`
   (`platform/port_gyro_motion.cpp`, GamepadMotionHelpers 10 vendored in `extern/`, MIT). Built and
-  gated only: no controller was available. Not ported yet: MP1's gyro sensitivity and "gyro also
-  turns the camera", hold/pause/toggle modes for the GyroAim action, Recalibrate, status readout.
+  gated only: no controller was available. Also ported: gyro sensitivity, "gyro also turns the
+  camera", hold/pause/toggle modes for the GyroAim action (R3 or left Ctrl by default), Recalibrate
+  with a 5 s countdown, and the status readout. Open: the GyroAim default left Ctrl is also Morph
+  Ball's key in the optional `kMouseKeyboard` preset (`platform/port_controls.cpp:332`); the engine
+  defaults do not clash. Choose a different gyro key or keep MP1's default when that preset is used.
 
 ## 2026-10-18, eighteenth session: remastered charge (Power Beam only)
 

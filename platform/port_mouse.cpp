@@ -49,6 +49,12 @@ float sPendingX = 0.f;
 float sPendingY = 0.f;
 float sFrameX = 0.f;
 float sFrameY = 0.f;
+// "Gyro also turns the camera" (MP1's sGyroCameraPending): view travel in mouse pixels beside the
+// pointer's, pending and latched with it.
+float sCameraPendingX = 0.f;
+float sCameraPendingY = 0.f;
+float sCameraFrameX = 0.f;
+float sCameraFrameY = 0.f;
 // Pointer aim (MP1's sPointerAim/sPointerAimFree), configured each tick by CPlayer.
 PortMouse::PointerAim sPointer;
 bool sPointerEnabled = false;
@@ -68,6 +74,7 @@ constexpr float kTouchSpringHoldSeconds = 0.35f;
 void ClearPendingTravel() {
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX = sPendingY = sFrameX = sFrameY = 0.f;
+  sCameraPendingX = sCameraPendingY = sCameraFrameX = sCameraFrameY = 0.f;
 }
 
 float ClampTouchAimSpeed(float pixelsPerDp) {
@@ -331,6 +338,22 @@ void AddGyroPointer(float yaw, float pitch, float dt, float sweep) {
   sPendingY -= pitch * cursor;
 }
 
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity) {
+  ReadEnv();
+  if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sSensitivity > 0.f)) {
+    return;
+  }
+  // MP1's natural scale: the pending pixels become sSensitivity rad each, with the mouse inversion
+  // applied, so divide that out and pre-undo the inversion: the camera turns `sensitivity` times
+  // the pad's angle whatever the mouse is set to. x right / y up; the aim state expects right/down.
+  const float sx = sInvertX ? -1.f : 1.f;
+  const float sy = sInvertY ? -1.f : 1.f;
+  const float scale = sensitivity * dt / sSensitivity;
+  std::lock_guard< std::mutex > lock(sPendingMutex);
+  sCameraPendingX += sx * yaw * scale;
+  sCameraPendingY -= sy * pitch * scale;
+}
+
 void BeginFrame() {
   // The UI thread may be adding travel right now; latch and clear in one lock so a late
   // addition lands in this tick or the next, never in neither.
@@ -339,6 +362,10 @@ void BeginFrame() {
   sFrameY = sPendingY;
   sPendingX = 0.f;
   sPendingY = 0.f;
+  sCameraFrameX = sCameraPendingX;
+  sCameraFrameY = sCameraPendingY;
+  sCameraPendingX = 0.f;
+  sCameraPendingY = 0.f;
 }
 
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
@@ -376,8 +403,9 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
     } else {
       sPointer.Center();
     }
-    const bool applied = sAim.Update(active, held, x, y, z, 0.f, 0.f, sSensitivity, sInvertX,
-                                     sInvertY);
+    // The view turns only by the gyro's camera travel (zero unless it also turns the camera).
+    const bool applied = sAim.Update(active, held, x, y, z, owns ? sCameraFrameX : 0.f,
+                                     owns ? sCameraFrameY : 0.f, sSensitivity, sInvertX, sInvertY);
     if (applied && owns) {
       float dyaw = 0.f, dpitch = 0.f;
       PortMouse::PointerAim::TurnAt(sPointer.x, sPointer.y, sPointerBox, sPointerTurnRate, dt,
@@ -390,10 +418,12 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
     }
     if (applied) {
       sFrameX = sFrameY = 0.f;
+      sCameraFrameX = sCameraFrameY = 0.f;
     }
     return applied && owns;
   }
   sPointerFree = false;
+  sCameraFrameX = sCameraFrameY = 0.f;
   const bool applied = sAim.Update(active, held, x, y, z, sFrameX, sFrameY, sSensitivity,
                                    sInvertX, sInvertY);
   if (applied) {

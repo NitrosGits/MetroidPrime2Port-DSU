@@ -910,9 +910,10 @@ const std::vector<SGroup>& Groups() {
           Action::VisorPrev},
          true},
         {"Morph Ball", {Action::SpringBall}, true},
+        {"Gyro", {Action::GyroAim}, true},
         // Rows whose action has no consumer in this port yet are kept, named as such, so the
         // bindings stay where MP1 puts them; binding one does nothing until its feature lands.
-        {"Gyro (not in this port yet)", {Action::GyroAim, Action::ResetAim}, true},
+        {"Reset aim (not in this port yet)", {Action::ResetAim}, true},
         // Read instead of the game buttons in menus and on the map ("Separate menu buttons").
         {"Menus and map (not in this port yet)",
          {Action::MenuA, Action::MenuB, Action::MenuX, Action::MenuY, Action::MenuL, Action::MenuR,

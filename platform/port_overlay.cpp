@@ -13,6 +13,7 @@
 #include "port_photo.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
+#include "input/port_input_devices.h"
 #include "port_input_remap_ui.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
@@ -63,6 +64,9 @@ int sGyroAutoCalibrate = PortOverlay::kGyroAutoCalibrateDefault;
 float sGyroSmoothing = 0.f;
 float sGyroTightening = 0.f;
 float sGyroCursorAngle = PortOverlay::kGyroCursorAngleDefault;
+int sGyroMode = PortOverlay::kGyroModeDefault;
+float sGyroSensitivity = PortOverlay::kGyroSensitivityDefault;
+bool sGyroCursorCamera = false;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -599,6 +603,32 @@ void DrawControlsOptions() {
     if (sGyroAim) {
       Changed(PortUi::Combo("Gyro source", &sGyroSource, "Auto\0" "Controller\0" "Phone\0",
                             "MP2_GYRO_SOURCE=0..2", "auto takes the controller's gyro, else the phone's"));
+      // The combo lists MP1's modes 1..4; mode 0 (off) is the Gyro aim switch above.
+      int modeRow = std::clamp(sGyroMode, PortOverlay::kGyroModeMin, PortOverlay::kGyroModeMax) - 1;
+      if (PortUi::Combo("Mode##gyro", &modeRow,
+                        "Hold to aim\0" "Always aim\0" "Hold to pause\0" "Toggle to aim\0",
+                        "MP2_GYRO_MODE=1..4",
+                        "when the gyro moves the pointer. The hold and toggle modes use the Gyro aim "
+                        "button (R3 or left Ctrl by default, Controls > Remap)")) {
+        sGyroMode = std::clamp(modeRow + 1, PortOverlay::kGyroModeMin, PortOverlay::kGyroModeMax);
+        Changed(true);
+      }
+      Changed(PortUi::Toggle("Gyro also turns the camera", &sGyroCursorCamera,
+                             "MP2_GYRO_CURSOR_CAMERA=1",
+                             "turns the camera with the gyro (at the Sensitivity below) while it also "
+                             "moves the pointer, so the view follows the pad and the pointer "
+                             "fine-tunes the aim"));
+      ImGui::BeginDisabled(!sGyroCursorCamera);
+      if (PortUi::SliderFloat("Sensitivity##gyro", &sGyroSensitivity, PortOverlay::kGyroSensitivityMin,
+                              PortOverlay::kGyroSensitivityMax, "%.2fx", "MP2_GYRO_SENSITIVITY=0.1..10",
+                              "how far the camera turns per turn of the pad: at 1.00x turning the pad "
+                              "90 degrees turns the camera 90 degrees. Applies only if the gyro also "
+                              "turns the camera")) {
+        sGyroSensitivity = std::clamp(sGyroSensitivity, PortOverlay::kGyroSensitivityMin,
+                                      PortOverlay::kGyroSensitivityMax);
+        Changed(true);
+      }
+      ImGui::EndDisabled();
       if (PortUi::SliderFloat("Pointer speed##gyro", &sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin,
                               PortOverlay::kGyroCursorAngleMax, "%.0f deg across the screen",
                               "MP2_GYRO_CURSOR_ANGLE=5..180",
@@ -648,6 +678,34 @@ void DrawControlsOptions() {
                               "wobble the pointer. Keep it low")) {
         sGyroTightening = std::clamp(sGyroTightening, 0.f, PortOverlay::kGyroThresholdMax);
         Changed(true);
+      }
+      const float countdown = PortInputDevices::GyroRecalibrationCountdown();
+      if (countdown >= 0.f) {
+        ImGui::BeginDisabled();
+        char label[48];
+        std::snprintf(label, sizeof(label), "Calibrating in %d...", int(countdown) + 1);
+        ImGui::Button(label);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel##gyrorecal")) {
+          PortInputDevices::CancelGyroRecalibration();
+        }
+      } else if (ImGui::Button("Recalibrate##gyro")) {
+        PortInputDevices::StartGyroRecalibration();
+      }
+      PortUi::Note(nullptr,
+                   "waits 5 seconds so you can put the pad down, then clears the gyro's drift "
+                   "measurement and learns it again",
+                   true);
+      ImGui::Text("Gyro: %s", PortInputDevices::GyroStatus());
+      const float confidence = PortInputDevices::GyroCalibrationConfidence();
+      if (confidence >= 0.f) {
+        ImGui::Text("Calibration: %d%%%s", int(confidence * 100.f + 0.5f),
+                    PortInputDevices::GyroCalibrating() ? " (calibrating)"
+                    : confidence >= 0.99f              ? " (done)"
+                                                       : "");
+      } else {
+        ImGui::TextDisabled("Calibration: no accelerometer");
       }
     }
   }
@@ -1247,6 +1305,21 @@ float GyroTightening() {
 float GyroCursorAngle() {
   ReadEnv();
   return EnvFloatIn("MP2_GYRO_CURSOR_ANGLE", sGyroCursorAngle, kGyroCursorAngleMin, kGyroCursorAngleMax);
+}
+
+int GyroMode() {
+  ReadEnv();
+  return EnvIntIn("MP2_GYRO_MODE", sGyroMode, kGyroModeMin, kGyroModeMax);
+}
+
+float GyroSensitivity() {
+  ReadEnv();
+  return EnvFloatIn("MP2_GYRO_SENSITIVITY", sGyroSensitivity, kGyroSensitivityMin, kGyroSensitivityMax);
+}
+
+bool GyroCursorCamera() {
+  ReadEnv();
+  return EnvBool("MP2_GYRO_CURSOR_CAMERA", sGyroCursorCamera);
 }
 
 bool RapidCharge() {

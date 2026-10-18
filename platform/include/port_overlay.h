@@ -86,7 +86,20 @@ const float kGyroThresholdMax = 50.f;
 const float kGyroCursorAngleMin = 5.f;
 const float kGyroCursorAngleMax = 180.f;
 const float kGyroCursorAngleDefault = 40.f;
+// The "Gyro aim" binding's mode (`MP2_GYRO_MODE`, MP1's numbers): 1 hold to aim, 2 always aim,
+// 3 hold to pause, 4 toggle to aim. "Gyro also turns the camera" (`MP2_GYRO_CURSOR_CAMERA=1`)
+// turns the view by `MP2_GYRO_SENSITIVITY` (0.1..10, x the pad's turn) while the gyro moves the
+// pointer.
+const int kGyroModeMin = 1;
+const int kGyroModeMax = 4;
+const int kGyroModeDefault = 2;
+const float kGyroSensitivityMin = 0.1f;
+const float kGyroSensitivityMax = 10.f;
+const float kGyroSensitivityDefault = 2.f;
 bool GyroAim();
+int GyroMode();
+float GyroSensitivity();
+bool GyroCursorCamera();
 void SetGyroAim(bool enabled);
 int GyroSource();
 int GyroSpace();

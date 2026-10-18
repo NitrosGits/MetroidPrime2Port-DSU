@@ -156,6 +156,20 @@ const SettingKey kSettingKeys[] = {
     FloatKey< &sGyroSmoothing, 0, 50 >("gyro_smoothing", "0", "10"),
     FloatKey< &sGyroTightening, 0, 50 >("gyro_tightening", "0", "5"),
     FloatKey< &sGyroCursorAngle, 5, 180 >("gyro_cursor_angle", "40", "60"),
+    IntKey< &sGyroMode, PortOverlay::kGyroModeMin, PortOverlay::kGyroModeMax >("gyro_mode", "2", "1"),
+    // 0.1..10 has no whole-number lower bound, so not a FloatKey.
+    {"gyro_sensitivity",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kGyroSensitivityMin &&
+           parsed <= PortOverlay::kGyroSensitivityMax)
+         sGyroSensitivity = parsed;
+     },
+     [](std::ostream& out) { out << sGyroSensitivity; },
+     false,
+     "2",
+     "1"},
+    BoolKey< &sGyroCursorCamera >("gyro_cursor_camera"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),

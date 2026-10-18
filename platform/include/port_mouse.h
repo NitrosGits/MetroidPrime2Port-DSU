@@ -231,6 +231,9 @@ void AddMotion(float dx, float dy);
 // Gyro aim on the pointer (MP1's PollGyro pointer branch): yaw (right) and pitch (up) in rad/s
 // over dt seconds; `sweep` radians of pad turn move the pointer across the screen.
 void AddGyroPointer(float yaw, float pitch, float dt, float sweep);
+// "Gyro also turns the camera" (MP1's gyro camera pending): with pointer aim, the view turns by
+// `sensitivity` times the pad's turn (yaw right, pitch up, rad/s over dt) beside the pointer.
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity);
 void BeginFrame();
 // Called every tick, from CPlayer::UpdateMouseAim. `active` means a pointer source may own the
 // aim right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps

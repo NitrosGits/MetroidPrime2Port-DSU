@@ -10,7 +10,7 @@
 // Mouse motion is not an input here: it feeds only PortMouse::AddMotion.
 //
 // Not carried over from MP1 (no backend or setting here): the beam-shift chords' settings-driven shifts
-// (only the twin-stick ones exist) and turbo's key slots, the pad's alt buttons, gyro, save states, photo mode, the Original experience toggle, pointer menus'
+// (only the twin-stick ones exist) and turbo's key slots, the pad's alt buttons, gyro flicks and reset aim, save states, photo mode, the Original experience toggle, pointer menus'
 // Escape, and Aurora's key slots (MP2 has its own keyboard layout, BaseKeyboardProfile).
 
 #include "port_input_bindings.h"
@@ -56,8 +56,21 @@ PADStatus Poll();
 // loop iteration from port_events.cpp, so they work while the game is paused.
 void PollPortActions();
 // Gyro aim (MP1's PollGyro, pointer branch only): reads pad 0's gyro (or the phone's) and moves
-// the pointer, while F1's gyro aim and pointer aim are both on. Once a loop iteration.
+// the pointer (and the camera, with F1's "Gyro also turns the camera"), while F1's gyro aim and
+// pointer aim are both on and the Gyro aim button's mode lets it. Once a loop iteration.
 void PollGyro();
+// The Gyro aim binding's held state, from PollPortActions: drives the hold / pause / toggle modes.
+void SetGyroButton(bool held);
+// MP1's Recalibrate: Motion.Reset() 5 s after Start (the pad can be put down meanwhile).
+void StartGyroRecalibration();
+void CancelGyroRecalibration();
+// Seconds until the reset, or -1 when none is pending.
+float GyroRecalibrationCountdown();
+// F1's readout: "off", "controller", "phone", "no gyro found", ...; whether the drift is being
+// learned now; and the calibration confidence 0..1 (-1 without an accelerometer).
+const char* GyroStatus();
+bool GyroCalibrating();
+float GyroCalibrationConfidence();
 
 // The user's bindings from <user>/controls.toml (port_input_bindings.h), loaded on
 // first use and reloaded when the file changes (checked at most once a second). A
