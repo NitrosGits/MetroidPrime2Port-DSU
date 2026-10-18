@@ -34,6 +34,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <cfloat>
@@ -1130,7 +1131,14 @@ void Toggle() {
   }
 }
 
-void Wheel(float steps) { ImGui::GetIO().AddMouseWheelEvent(0.f, steps); }
+// Called on the UI thread (the two-finger scroll), but ImGui's input queue is only safe on the game
+// thread, so the steps wait here until Draw() hands them over.
+static std::atomic< int > sPendingWheelMilli{0};
+
+void Wheel(float steps) {
+  sPendingWheelMilli.fetch_add(static_cast< int >(std::lround(steps * 1000.f)),
+                               std::memory_order_relaxed);
+}
 
 bool Visible() {
   ReadEnv();
@@ -1676,6 +1684,9 @@ float AspectWiden() {
 
 void Draw() {
   TickFps();
+  if (const int milli = sPendingWheelMilli.exchange(0, std::memory_order_relaxed); milli != 0) {
+    ImGui::GetIO().AddMouseWheelEvent(0.f, static_cast< float >(milli) / 1000.f);
+  }
   PortPhoto::Frame();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();

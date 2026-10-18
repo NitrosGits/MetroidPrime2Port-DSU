@@ -50,6 +50,8 @@ public final class MetroidPrime2Activity extends SDLActivity {
         // ResolveAndroidPaths).
         writePortPaths();
         super.onCreate(savedInstanceState);
+        // SDLActivity.onCreate sets the window to non-fullscreen; the game wants the whole screen.
+        setWindowStyle(true);
         addTouchControls();
         Log.i(TAG, "activity created; files dir " + getFilesDir());
     }
