@@ -32,6 +32,10 @@
 #include "MetroidPrime/Player/CEnvironmentVariable.hpp"
 
 #include "rstl/math.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/CWorld.hpp"
+#include "port_randomizer.h"
+#endif
 #include <float.h>
 
 static TUniqueId skHomingPickupId = kInvalidUniqueId;
@@ -360,6 +364,15 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
       mFadeTime = 0.25f;
     }
 
+#ifdef TARGET_PC
+    if (mgr.GetWorld() != nullptr) {
+      PortRandomizer::RecordCheck(
+          static_cast< uint32_t >(mgr.GetWorld()->IGetWorldAssetId()),
+          static_cast< uint32_t >(
+              mgr.GetWorld()->IGetAreaAlways(GetCurrentAreaId())->IGetAreaAssetId()),
+          static_cast< uint32_t >(GetEditorId().value), static_cast< int >(itemType));
+    }
+#endif
     if (previousAmount < playerState->GetItemAmount(itemType)) {
       ShowAllKeysCollectedAlert(mgr, playerState, itemType);
     }
@@ -514,6 +527,18 @@ CEntity* LoadPickup(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
   SLdrPickup sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPickup.inc"
 
+#ifdef TARGET_PC
+  if (mgr.GetWorld() != nullptr) {
+    // Randomizer: rewrite (or, in dump mode, log) the item this location gives.
+    int randoItem = sldrThis.itemToGive.value;
+    PortRandomizer::ApplyPickup(
+        static_cast< uint32_t >(mgr.GetWorld()->IGetWorldAssetId()),
+        static_cast< uint32_t >(mgr.GetWorld()->IGetAreaAlways(info.GetAreaId())->IGetAreaAssetId()),
+        static_cast< uint32_t >(info.GetEditorId().value), randoItem, sldrThis.capacityIncrease,
+        sldrThis.amount);
+    sldrThis.itemToGive.value = randoItem;
+  }
+#endif
   rstl::optional_object< CModelData > modelData(
       LdrToModelData(sldrThis.editorProperties.transform.scale, sldrThis.model,
                      sldrThis.animationInformation, true));
