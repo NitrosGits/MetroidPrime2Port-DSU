@@ -10,6 +10,9 @@
 #ifdef TARGET_PC
 #include "Kyoto/Graphics/PortDrawDebug.hpp"
 #include "MetroidPrime/PortEfbCopy.hpp"
+#include "MetroidPrime/Tweaks/CTweakGui.hpp"
+#include <cstdio>
+#include <cstdlib>
 #endif
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "Kyoto/Graphics/CDrawablePlaneObject.hpp"
@@ -3379,8 +3382,51 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   CGraphicsPalette scanPalette(kPF_RGB565, paletteSize * 4);
   scanPalette.Lock();
   for (int i = 0; i < paletteSize * 4; ++i) {
+#ifdef TARGET_PC
+    // The palette is built here on the CPU, but Aurora reads a TLUT as guest (big-endian) memory, as
+    // it is for the disc's palettes. A host-order entry came out byte-swapped: the tweak's scan
+    // colours turned into unrelated hues (the critical/non-critical/scanned tints all wrong).
+    scanPalette.GetPaletteData()[i] = CBasics::SwapBytes(palette[i >> 2].ToRGB565());
+#else
     scanPalette.GetPaletteData()[i] = palette[i >> 2].ToRGB565();
+#endif
   }
+#ifdef TARGET_PC
+  // MP2_DEBUG_SCAN=1: the first few palettes with the disc tweak's scan colours beside them, so a
+  // screenshot's tint can be checked against the values the game asked for.
+  static const bool sDebugScanPalette = std::getenv("MP2_DEBUG_SCAN") != nullptr;
+  static int sLoggedScanPalette = 0;
+  if (sDebugScanPalette && paletteSize > 2 && sLoggedScanPalette < 4) {
+    if (sLoggedScanPalette++ == 0) {
+      const CTweakGui& tweak = *gpTweakGui;
+      const CColor tweakColors[] = {tweak.GetScanVisorNonCriticalColor(),
+                                    tweak.GetScanVisorCriticalColor(),
+                                    tweak.GetScanVisorPreviouslyScannedColor(),
+                                    tweak.GetScanVisorCriticalPreviouslyScannedColor(),
+                                    tweak.GetScanVisorHighlightColor(),
+                                    tweak.GetScanVisorCriticalHighlightColor(),
+                                    tweak.GetScanVisorPreviouslyScannedHighlightColor(),
+                                    tweak.GetScanVisorCriticalPreviouslyScannedHighlightColor(),
+                                    tweak.GetScanVisorBurnInColor(),
+                                    tweak.GetScanVisorSweepBarColor()};
+      static const char* const kNames[] = {"nonCritical",     "critical",
+                                           "prevScanned",     "critPrevScanned",
+                                           "highlight",       "critHighlight",
+                                           "prevScannedHl",   "critPrevScannedHl",
+                                           "burnIn",          "sweepBar"};
+      for (int i = 0; i < 10; ++i) {
+        std::fprintf(stderr, "[scan] tweak %-18s %02x%02x%02x%02x\n", kNames[i],
+                     tweakColors[i].GetRedu8(), tweakColors[i].GetGreenu8(),
+                     tweakColors[i].GetBlueu8(), tweakColors[i].GetAlphau8());
+      }
+    }
+    for (int i = 0; i < paletteSize && i < 8; ++i) {
+      std::fprintf(stderr, "[scan] palette[%d] = %02x%02x%02x%02x -> rgb565 %04x\n", i,
+              palette[i].GetRedu8(), palette[i].GetGreenu8(), palette[i].GetBlueu8(),
+              palette[i].GetAlphau8(), palette[i].ToRGB565());
+    }
+  }
+#endif
   scanPalette.UnLock();
   scanPalette.Load();
   CGraphics::LoadDolphinSpareTexture(vpWidth, vpHeight, GX_TF_C8, GX_TLUT0, nullptr, GX_TEXMAP0);

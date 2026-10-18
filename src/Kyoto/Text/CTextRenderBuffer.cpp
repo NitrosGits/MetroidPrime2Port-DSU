@@ -1,4 +1,8 @@
 #include "Kyoto/Text/CTextRenderBuffer.hpp"
+
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+#endif
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Graphics/CGX.hpp"
 #include "Kyoto/Graphics/CGraphicsPalette.hpp"
@@ -83,6 +87,18 @@ void CTextRenderBuffer::GeneratePalette(EFontMode mode, int layer, CGraphicsPale
                                         const CGraphicsPalette& source) {
   ushort* data = static_cast< ushort* >(dest.Lock());
   const ushort* colors = static_cast< const ushort* >(source.GetPaletteData());
+#ifdef TARGET_PC
+  // port palette swap: the font's palette is disc data (big-endian) and Aurora reads a TLUT as
+  // big-endian too (texture_convert.cpp byte-swaps every entry), while this builds the table on
+  // the CPU in host order - so both ends need swapping: the source as it is read, and the result
+  // as it is written. Without this every font colour comes out byte-swapped (white text drawn
+  // orange, the scan visor's tints red).
+  ushort swapped[4];
+  for (int i = 0; i < 4; ++i) {
+    swapped[i] = CBasics::SwapBytes(colors[i]);
+  }
+  colors = swapped;
+#endif
   if (mode == kFM_OneLayer || mode == kFM_OneLayerOutline) {
     memcpy(data, colors, 8);
   } else {
@@ -125,6 +141,12 @@ void CTextRenderBuffer::GeneratePalette(EFontMode mode, int layer, CGraphicsPale
       }
     }
   }
+#ifdef TARGET_PC
+  const int written = (mode == kFM_OneLayer || mode == kFM_OneLayerOutline) ? 4 : 16;
+  for (int i = 0; i < written; ++i) {
+    data[i] = CBasics::SwapBytes(data[i]);
+  }
+#endif
   dest.UnLock();
 }
 
