@@ -259,6 +259,11 @@ void RunInputScript(unsigned frame) {
   // and the game then gets no input messages at all (player dt stays 0, the gun never draws).
   status.err = PAD_ERR_NONE;
   status.button = held;
+  // A real pad's L/R click sits at the end of the analog travel, and the keyboard binding drives
+  // both too (port_binds.cpp). Commands bound to the analog trigger - the scan visor's Scan Item,
+  // for one - read only the analog half, so a held L that left it at 0 locked on but never scanned.
+  status.triggerLeft = (held & PAD_TRIGGER_L) != 0 ? 255 : 0;
+  status.triggerRight = (held & PAD_TRIGGER_R) != 0 ? 255 : 0;
   PADSetVirtualStatus(0, &status);
 }
 
