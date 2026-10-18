@@ -42,4 +42,12 @@ private:
   double mPeriod = kPeriod;
   double mRemainder = 0.0;
 };
+
+// MP1's CActor::PortBeginTickSnapshot/PortTickGeneration: bumped once per simulation tick, so a
+// snapshot written in a tick can tell whether it is still that tick's (PortSnapshotFresh). Never 0.
+inline unsigned gTickGeneration = 0;
+inline void BeginTick() {
+  if (++gTickGeneration == 0) gTickGeneration = 1;
+}
+inline unsigned TickGeneration() { return gTickGeneration; }
 } // namespace PortTiming

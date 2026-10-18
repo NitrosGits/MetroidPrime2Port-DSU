@@ -233,6 +233,9 @@ bool PortPumpEvents();
 // Port: MP1's 60 FPS cap, in platform/port_events.cpp: sleeps to the next 60 Hz deadline.
 void PortPaceFrame();
 
+#include "MetroidPrime/CCameraManager.hpp"
+#include "port_overlay.h"
+
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
 
 void CMain::ShutdownSubsystems() {
@@ -372,11 +375,44 @@ bool CGameArchitectureSupport::UpdateTicks() {
     gpMain->DecrementMaxSpeedDrawTimer(stopwatchTime);
     mTickRemainder = 1.f / 60.f;
   }
+#ifdef TARGET_PC
+  // Port: MP1's fixed-step clock (CGameArchitectureSupport::UpdateTicks there). With the 60 FPS cap
+  // off the loop runs faster than the game's tick, and the retail loop below runs at least one tick
+  // per drawn frame, so the game sped up with the frame rate. The clock runs the whole 1/60 s ticks
+  // the elapsed time holds (none on a short frame) and keeps the rest for the presentation blend.
+  // A slow frame (over 35 ms) and max speed still take exactly one tick, as retail does. Under the
+  // cap the retail loop is kept unchanged.
+  if (!PortOverlay::FrameLimit()) {
+    mPortTickClock.SetPeriod(1.0 / 60.0);
+    const unsigned ticks = mPortTickClock.Advance(stopwatchTime, maxSpeed || stopwatchTime > 0.035f,
+                                                  PortOverlay::FrameLimit());
+    mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
+    for (unsigned tick = 0; tick < ticks; ++tick) {
+      PortTiming::BeginTick();
+      if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
+        result = true;
+      }
+      mArchQueue.Push(MakeMsg::CreateTimerTick(kAMT_Game, 1.f / 60.f));
+      mIoWinMgr.PumpMessages(mArchQueue);
+    }
+    // Back to the cap starts the retail remainder afresh.
+    mTickRemainder = 0.f;
+    mPreviousTickRemainder2 = 0.f;
+    mPreviousTickRemainder = 0.f;
+    mIoWinMgr.PumpMessages(mArchQueue);
+    return !result;
+  }
+  // Leaving the clock idle under the cap: no leftover is carried into the next uncapped frame.
+  mPortTickClock.Advance(0.0, true);
+#endif
   bool keepLooping = true;
   mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
 
   while (keepLooping || mTickRemainder >= 1.f / 60.f) {
     keepLooping = false;
+#ifdef TARGET_PC
+    PortTiming::BeginTick();
+#endif
     if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
       result = true;
     }
@@ -728,7 +764,27 @@ int CMain::RsMain(int argc, const char* const* argv) {
       }
       if (drawFrame) {
         gpRender->BeginScene();
+#ifdef TARGET_PC
+        // Port: MP1's presentation blend (CMain::RsMain there). With the cap off and smooth frames
+        // on, the camera is drawn between the last two ticks by the clock's leftover fraction; -1
+        // (the cap, or the setting off) draws the simulation camera, as retail does.
+        {
+          float interpolation = architecture->GetTickInterpolation();
+          if (interpolation < 0.f) {
+            interpolation = 0.f;
+          } else if (interpolation > 1.f) {
+            interpolation = 1.f;
+          }
+          if (PortOverlay::FrameLimit() || !PortOverlay::SmoothFrames()) {
+            interpolation = -1.f;
+          }
+          CCameraManager::SetPresentationInterpolation(interpolation);
+        }
+#endif
         architecture->GetIOWinManager().Draw();
+#ifdef TARGET_PC
+        CCameraManager::SetPresentationInterpolation(-1.f);
+#endif
         DrawDebugMetrics(tickTime, architecture->GetStopwatch2());
         const double drawTime = architecture->GetStopwatch2().GetElapsedTime();
         mDrawTimes.AddValue(drawTime / (1.f / 60.f));

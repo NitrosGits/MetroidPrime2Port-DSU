@@ -39,6 +39,10 @@
 #include "rstl/algorithm.hpp"
 #ifdef TARGET_PC
 #include "port_overlay.h"
+#include "port_mouse.h"
+#include "port_presentation_rules.h"
+#include "port_timing.h"
+#include <math.h>
 #endif
 
 float CCameraManager::sFirstPersonFOV = 55.f;
@@ -47,6 +51,40 @@ float CCameraManager::sNearPlane = 0.2f;
 float CCameraManager::sFarPlane = 750.f;
 const float CCameraManager::sAspectRatio = 1.42f;
 
+#ifdef TARGET_PC
+// Port: MP1's camera snapshot for the presentation blend (CCameraManager.cpp there). Update records
+// the current camera's transform before and after each tick; the owner, camera id and tick
+// generation say whether the pair still describes the camera being drawn.
+namespace {
+const CCameraManager* sCameraSnapshotOwner = nullptr;
+TUniqueId sCameraSnapshotId = kInvalidUniqueId;
+unsigned sCameraSnapshotGeneration = 0;
+CTransform4f sPreviousCameraTransform = CTransform4f::Identity();
+CTransform4f sCurrentCameraTransform = CTransform4f::Identity();
+// Squared translation of the current camera over the last tick.
+float sCameraLastStep2 = 0.f;
+float sPresentationInterpolation = -1.f;
+
+CTransform4f InterpolateCameraTransform(const CTransform4f& previous, const CTransform4f& current,
+                                        float t) {
+  const CVector3f translation =
+      previous.GetTranslation() * (1.f - t) + current.GetTranslation() * t;
+  const CQuaternion rotation = CQuaternion::SlerpLocal(CQuaternion::FromMatrix(previous),
+                                                       CQuaternion::FromMatrix(current), t);
+  return rotation.BuildTransform4f(translation);
+}
+
+// MP1's MouseLookIsFree: the mouse (or stick/touch aim) owns the view right now.
+bool PortMouseLookIsFree(const CStateManager& mgr, int playerIndex) {
+  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+    return false;
+  }
+  const CPlayer* player = mgr.GetPlayer(playerIndex);
+  return player != nullptr && player->MouseAimAllowed(mgr);
+}
+} // namespace
+
+#endif
 CCameraManager::SCameraHistory::SCameraHistory(const CTransform4f& initial)
 : mTransforms(80, initial), mBegin(mTransforms.begin()), mEnd(mBegin + 1) {}
 
@@ -357,12 +395,43 @@ void CCameraManager::UpdateCameraTriggers(const TUniqueId& uid, CStateManager& m
 }
 
 void CCameraManager::Update(float dt, CStateManager& mgr) {
+#ifdef TARGET_PC
+  const TUniqueId previousId = GetCurrentCameraId(true);
+  const bool hadPrevious = GetCurrentCamera(mgr, true) != nullptr;
+  const CTransform4f previousTransform =
+      hadPrevious ? GetSimulationCameraTransform(mgr, true) : CTransform4f::Identity();
+#endif
   mCameraHintManager->Update(dt, mgr);
   UpdateCameras(dt, mgr);
   UpdateAudioListener(mgr);
   mCameraShakeManager->Update(dt, mgr);
   UpdateFilters(dt, mgr);
   UpdateCameraHistory(mgr);
+#ifdef TARGET_PC
+  // Port: MP1's snapshot. A camera switch, a teleport (PortIsTeleport) or a turn over 45 degrees
+  // outside free mouse look resets the previous snapshot, so cuts are not smeared.
+  if (GetCurrentCamera(mgr, true) == nullptr) {
+    sCameraSnapshotOwner = nullptr;
+    return;
+  }
+  const TUniqueId currentId = GetCurrentCameraId(true);
+  const CTransform4f currentTransform = GetSimulationCameraTransform(mgr, true);
+  const CQuaternion previousRotation = CQuaternion::FromMatrix(previousTransform);
+  const CQuaternion currentRotation = CQuaternion::FromMatrix(currentTransform);
+  const float step2 =
+      (currentTransform.GetTranslation() - previousTransform.GetTranslation()).MagSquared();
+  const bool sameCamera = hadPrevious && sCameraSnapshotOwner == this && previousId == currentId;
+  const bool discontinuity =
+      PortIsTeleport(step2, sameCamera ? sCameraLastStep2 : 0.f) ||
+      (!PortMouseLookIsFree(mgr, mPlayerIndex) &&
+       fabsf(CQuaternion::Dot(previousRotation, currentRotation)) < 0.9238795f);
+  sCameraLastStep2 = sameCamera ? step2 : 0.f;
+  sPreviousCameraTransform = (!sameCamera || discontinuity) ? currentTransform : previousTransform;
+  sCurrentCameraTransform = currentTransform;
+  sCameraSnapshotOwner = this;
+  sCameraSnapshotId = currentId;
+  sCameraSnapshotGeneration = PortTiming::TickGeneration();
+#endif
 }
 
 void CCameraManager::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
@@ -450,10 +519,36 @@ void CCameraManager::SetCinematicPaused(const bool paused) {
 
 CTransform4f CCameraManager::GetCurrentCameraTransform(const CStateManager& mgr,
                                                        bool selector) const {
+#ifdef TARGET_PC
+  if (sPresentationInterpolation >= 0.f && sCameraSnapshotOwner == this &&
+      sCameraSnapshotId == GetCurrentCameraId(selector) &&
+      PortSnapshotFresh(sCameraSnapshotGeneration, PortTiming::TickGeneration())) {
+    const CTransform4f presentation = InterpolateCameraTransform(
+        sPreviousCameraTransform, sCurrentCameraTransform, sPresentationInterpolation);
+    if (PortMouseLookIsFree(mgr, mPlayerIndex)) {
+      // Mouse aim fires along this tick's orientation; only the translation is blended, so the
+      // reticle never trails the shot. (MP1's per-frame look, phase 1, is not ported.)
+      CTransform4f latest = sCurrentCameraTransform;
+      latest.SetTranslation(presentation.GetTranslation());
+      return latest;
+    }
+    return presentation;
+  }
+#endif
   const CGameCamera* camera = GetCurrentCamera(mgr, selector);
   return camera->GetTransform() * CTransform4f::Translate(mCameraShakeManager->GetTranslation(mgr));
 }
 
+#ifdef TARGET_PC
+CTransform4f CCameraManager::GetSimulationCameraTransform(const CStateManager& mgr,
+                                                          bool selector) const {
+  const CGameCamera* camera = GetCurrentCamera(mgr, selector);
+  return camera->GetTransform() * CTransform4f::Translate(mCameraShakeManager->GetTranslation(mgr));
+}
+
+void CCameraManager::SetPresentationInterpolation(float t) { sPresentationInterpolation = t; }
+float CCameraManager::GetPresentationInterpolation() { return sPresentationInterpolation; }
+#endif
 CVector3f CCameraManager::GetGlobalCameraTranslation(const CStateManager& mgr,
                                                      bool selector) const {
   const CGameCamera* camera = GetCurrentCamera(mgr, selector);

@@ -476,6 +476,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                            color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"
       "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
+      "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
@@ -1114,6 +1115,19 @@ void CmdVsync(CStateManager&, const Args& args, std::string& out) {
   out += PortOverlay::Vsync() ? "vsync on\n" : "vsync off\n";
 }
 
+void CmdInterp(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    const int value = ArgToInt(args[1], -1);
+    if (value != 0 && value != 1) {
+      Fail("interp is 0 or 1");
+      return;
+    }
+    PortOverlay::SetSmoothFrames(value == 1);
+  }
+  out += PortOverlay::SmoothFrames() ? "smooth frames on" : "smooth frames off";
+  out += PortOverlay::FrameLimit() ? " (inactive: 60 FPS cap on)\n" : "\n";
+}
+
 // The Prime 1 port's CmdAspect; applied by PortOverlay::ApplyAspect on the next loop iteration.
 void CmdAspect(CStateManager&, const Args& args, std::string& out) {
   if (args.size() >= 2) {
@@ -1706,6 +1720,7 @@ constexpr SCommand kCommands[] = {
     {"crosshair", CmdCrosshair, true},
     {"uiscale", CmdUiScale, true},
     {"vsync", CmdVsync, true},
+    {"interp", CmdInterp, true},
     {"aspect", CmdAspect, true},
     {"objs", CmdObjs, true},
     {"obj", CmdObj, true},

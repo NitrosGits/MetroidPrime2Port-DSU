@@ -201,6 +201,10 @@ void SetVsync(bool enabled);
 // loop sleeps to a 60 Hz deadline in PortPaceFrame (platform/port_events.cpp).
 bool FrameLimit();
 void SetFrameLimit(bool enabled);
+// MP1's smooth frames (`MP2_SMOOTH_FRAMES=0|1`, F1 > Video > Frame rate, console `interp`); on by
+// default. With the cap off, the camera is drawn between the last two 60 Hz ticks.
+bool SmoothFrames();
+void SetSmoothFrames(bool enabled);
 // MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
 // (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
 // VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.

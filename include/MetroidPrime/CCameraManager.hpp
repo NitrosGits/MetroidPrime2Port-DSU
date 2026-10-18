@@ -85,6 +85,13 @@ public:
   void StopCinematics(CStateManager& mgr);
   void SetCinematicPaused(bool paused); // Guessed name
   CTransform4f GetCurrentCameraTransform(const CStateManager& mgr, bool selector) const;
+#ifdef TARGET_PC
+  // Port: MP1's presentation blend. While t >= 0 (set around the draw only), the current camera's
+  // transform is drawn between the last two ticks' snapshots (Update writes them); -1 = the sim's.
+  static void SetPresentationInterpolation(float t);
+  static float GetPresentationInterpolation();
+  CTransform4f GetSimulationCameraTransform(const CStateManager& mgr, bool selector) const;
+#endif
   const CGameArea::CAreaFog& GetFog() const { return mFog; } // Guessed name
   bool IsFogEnabled() const { return mFogEnabled; } // Guessed name, cached after fog update.
   CVector3f GetGlobalCameraTranslation(const CStateManager& mgr, bool selector) const;

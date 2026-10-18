@@ -218,6 +218,7 @@ const SettingKey kSettingKeys[] = {
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
     BoolKey< &sFrameLimit >("frame_limit"),
+    BoolKey< &sSmoothFrames >("smooth_frames"),
     // 0 is the window's own size; MP1 keeps any value up to 4.
     {"render_scale",
      [](const std::string& value) {

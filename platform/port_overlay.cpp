@@ -105,6 +105,9 @@ int sUiScale = 100;
 bool sVsync = false;
 // MP1's 60 FPS cap (`MP2_FRAME_LIMIT`), on by default as there: PortPaceFrame holds the loop to 60 Hz.
 bool sFrameLimit = true;
+// MP1's smooth frames (`MP2_SMOOTH_FRAMES`, on by default): with the cap off, the camera is drawn
+// between the last two ticks (CCameraManager::SetPresentationInterpolation, src/MetroidPrime/main.cpp).
+bool sSmoothFrames = true;
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -477,6 +480,14 @@ void DrawVideoFrameRate() {
                      "holds the game to 60 frames a second, the rate it was written for (F10)")) {
     PortOverlay::SetFrameLimit(frameLimit);
   }
+  // Read by the main loop's draw: with the cap on it changes nothing.
+  ImGui::BeginDisabled(sFrameLimit);
+  bool smoothFrames = sSmoothFrames;
+  if (PortUi::Toggle("Smooth frames", &smoothFrames, "MP2_SMOOTH_FRAMES=0|1",
+                     "with the cap off, draws the camera between the game's 60 Hz ticks")) {
+    PortOverlay::SetSmoothFrames(smoothFrames);
+  }
+  ImGui::EndDisabled();
 }
 
 void DrawVideoAspect() {
@@ -1468,6 +1479,19 @@ void SetFrameLimit(bool enabled) {
   ReadEnv();
   if (sFrameLimit != enabled) {
     sFrameLimit = enabled;
+    Persist();
+  }
+}
+
+bool SmoothFrames() {
+  ReadEnv();
+  return EnvBool("MP2_SMOOTH_FRAMES", sSmoothFrames);
+}
+
+void SetSmoothFrames(bool enabled) {
+  ReadEnv();
+  if (sSmoothFrames != enabled) {
+    sSmoothFrames = enabled;
     Persist();
   }
 }
