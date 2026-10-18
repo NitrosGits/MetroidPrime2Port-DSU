@@ -322,40 +322,8 @@ bool PortPumpEvents() {
          event->sdl.type == SDL_EVENT_MOUSE_BUTTON_DOWN)) {
       PortTouch::NotePhysicalInput();
     }
-    // Warp hotkeys, for testing the rest of the game by hand: F5/F6 step through the areas of
-    // the current world, F7/F8 through the game's worlds. They are always live, and the game
-    // ignores a request it cannot serve (no world loaded yet, bad area).
-    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
-        !event->sdl.key.repeat) {
-      // The F1 window's Controls page is recording an input; that key is not also a hotkey
-      // (binding F5 should not warp the game on the way in).
-      if (PortInputRemap::Capturing()) {
-        continue;
-      }
-      switch (event->sdl.key.scancode) {
-      // F1 (the overlay) is the input engine's PortMenu action now: PollPortActions below.
-      case SDL_SCANCODE_F5:
-        PortWarp::CycleArea(1);
-        break;
-      case SDL_SCANCODE_F6:
-        PortWarp::CycleArea(-1);
-        break;
-      case SDL_SCANCODE_F9:
-        PortWarp::Dock();
-        break;
-      case SDL_SCANCODE_F10:
-        PortWarp::Station();
-        break;
-      case SDL_SCANCODE_F7:
-        PortWarp::CycleWorld(1);
-        break;
-      case SDL_SCANCODE_F8:
-        PortWarp::CycleWorld(-1);
-        break;
-      default:
-        break;
-      }
-    }
+    // No warp hotkeys: warping is driven from the F1 menu's Game page (as in the Prime 1 port),
+    // so the function keys stay free for the input engine's bindings (F8 is photo mode's).
   }
   // Pad 0 is the input engine's (keyboard, mouse buttons and the controller through controls.toml),
   // read once per iteration, before the game's PADRead; Aurora still merges the console's and

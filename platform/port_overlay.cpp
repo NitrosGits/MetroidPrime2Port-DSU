@@ -1,6 +1,6 @@
 // The F1 debug overlay. It is deliberately small: every control here is wired to something that
 // exists, so nothing in the window lies about what it does. The teleport buttons drive the same
-// PortWarp requests as the F5-F8 hotkeys and the MP2_INPUT tokens, and the aim controls drive
+// PortWarp requests as the Game page's buttons and the MP2_INPUT tokens, and the aim controls drive
 // PortMouse, which the game reads every tick.
 //
 // Built by `mp_port_audio` (it needs ImGui, which Aurora brings in with SDL).
@@ -212,18 +212,18 @@ void TickFps() {
 void DrawGameSection() {
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
-  if (ImGui::Button("Previous area (F6)")) {
+  if (ImGui::Button("Previous area")) {
     PortWarp::CycleArea(-1);
   }
   ImGui::SameLine();
-  if (ImGui::Button("Next area (F5)")) {
+  if (ImGui::Button("Next area")) {
     PortWarp::CycleArea(1);
   }
-  if (ImGui::Button("Previous world (F8)")) {
+  if (ImGui::Button("Previous world")) {
     PortWarp::CycleWorld(-1);
   }
   ImGui::SameLine();
-  if (ImGui::Button("Next world (F7)")) {
+  if (ImGui::Button("Next world")) {
     PortWarp::CycleWorld(1);
   }
   PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
