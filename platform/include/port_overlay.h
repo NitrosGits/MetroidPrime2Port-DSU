@@ -54,6 +54,10 @@ bool StickyCharge();
 // The mouse buttons drive the pad's gameplay rows under mouse aim (`MP2_MOUSE_BUTTONS=0` turns off).
 bool MouseButtons();
 void SetStickyCharge(bool enabled);
+// Auto-aim (`MP2_AUTO_AIM=0` turns it off, default on): off, the arm cannon aims only at a
+// locked or orbited target, as MP1's auto-aim switch does (CPlayer::UpdateAimTarget).
+bool AutoAim();
+void SetAutoAim(bool enabled);
 // Remastered charge (`MP2_RAPID_CHARGE=1`), Power Beam only: holding fire after the press shot
 // fires two quick shots, then charges faster (CPlayerGun::PortRapidChargeShot).
 bool RapidCharge();

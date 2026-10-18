@@ -51,6 +51,7 @@ bool sFastMorph = false;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
+bool sAutoAim = true;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -559,6 +560,11 @@ void DrawControlsOptions() {
                "letting go of a long A hold keeps charging until the next press fires it"));
   Changed(PortUi::Toggle("Remastered charge", &sRapidCharge, "MP2_RAPID_CHARGE=1",
                "holding fire after the press shot fires a few quick shots, Power Beam only"));
+  ImGui::SeparatorText("Aiming");
+  Changed(PortUi::Toggle("Auto-aim", &sAutoAim, "MP2_AUTO_AIM=0",
+               "on, as the original: without Lock-On, the arm cannon turns toward the enemy nearest the "
+               "middle of the screen and shots home in on it. Off, shots go where you aim; Lock-On still "
+               "aims at its target"));
   ImGui::SeparatorText("Rumble");
   ImGui::BeginDisabled(gpGameState == nullptr);
   bool rumble = gpGameState != nullptr && gpGameState->GameOptions().GetIsRumbleEnabled();
@@ -1081,6 +1087,17 @@ bool StickyCharge() {
 void SetStickyCharge(bool enabled) {
   ReadEnv();
   sStickyCharge = enabled;
+  Persist();
+}
+
+bool AutoAim() {
+  ReadEnv();
+  return EnvBool("MP2_AUTO_AIM", sAutoAim);
+}
+
+void SetAutoAim(bool enabled) {
+  ReadEnv();
+  sAutoAim = enabled;
   Persist();
 }
 

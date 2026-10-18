@@ -18,6 +18,7 @@ extern bool sSpringBall;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
 extern bool sRapidCharge;
+extern bool sAutoAim;
 extern bool sMouseButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;

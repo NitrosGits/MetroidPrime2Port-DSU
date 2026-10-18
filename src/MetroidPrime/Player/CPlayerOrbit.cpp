@@ -1,6 +1,7 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #ifdef TARGET_PC
 #include <stdio.h>  // fprintf: the port's scan-target diagnostics
+#include "port_overlay.h"
 #endif
 
 #include "Collision/CCollidableAABox.hpp"
@@ -1119,6 +1120,17 @@ void CPlayer::UpdateAimTarget(CStateManager& mgr) {
   if (!GetCombatMode()) {
     SetAimTarget(kInvalidUniqueId);
     mAimTargetTimer = 0.f;
+#ifdef TARGET_PC
+    // Port: with auto-aim off (F1), aim only at a locked or orbited target, as MP1 does.
+  } else if (!PortOverlay::AutoAim()) {
+    SetAimTarget(kInvalidUniqueId);
+    mAimTargetTimer = 0.f;
+    if (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_ForcedOrbitObject) {
+      if (ValidateOrbitTargetId(GetOrbitTargetId(), mgr) == kOVR_OK) {
+        SetAimTarget(GetOrbitTargetId());
+      }
+    }
+#endif
   } else if (!gkAutoAim && gkAutoAimAtOrbitedObject) {
     if (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_ForcedOrbitObject) {
       if (ValidateOrbitTargetId(GetOrbitTargetId(), mgr) == kOVR_OK) {

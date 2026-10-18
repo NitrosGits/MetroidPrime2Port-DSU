@@ -3,6 +3,16 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18, nineteenth session: auto-aim
+
+- F1 > Controls > Buttons "Auto-aim" (`MP2_AUTO_AIM=0` turns it off, `auto_aim` key, default on).
+  Off, `CPlayer::UpdateAimTarget` clears the aim target and keeps only an orbited object as the
+  target, as MP1's `UpdateAimTarget` does (`PortOverlay::AutoAim()` gate under TARGET_PC).
+  Auto-aim on is the old behaviour.
+- Gates: strip check of `CPlayerOrbit.cpp` equals HEAD's non-PC text; `metroid_prime2_port` builds;
+  `gen_files_cmake.py --check` rc=0.
+- Not yet checked in game: a shot with the setting off flies at the crosshair with no homing.
+
 ## 2026-10-18, eighteenth session: remastered charge (Power Beam only)
 
 - F1 > Gameplay "Remastered charge" (`MP2_RAPID_CHARGE=1`, `rapid_charge` key): holding fire with the
