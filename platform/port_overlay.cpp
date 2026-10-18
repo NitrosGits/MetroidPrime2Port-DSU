@@ -250,8 +250,15 @@ void DrawGameSection() {
                                      "the game's own")) {
       PortPhoto::SetFov(fov);
     }
+    // The slider stops at 30, so the game's own FOV needs its own button once the slider is moved.
+    if (!gameFov) {
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Game FOV")) {
+        PortPhoto::SetFov(0.f);
+      }
+    }
     float roll = PortPhoto::Roll();
-    if (PortUi::SliderFloat("Roll", &roll, -45.f, 45.f, "%.0f deg", nullptr,
+    if (PortUi::SliderFloat("Roll", &roll, -180.f, 180.f, "%.0f deg", nullptr,
                             "tilts the picture about the view axis; movement ignores it")) {
       PortPhoto::SetRoll(roll);
     }
@@ -288,7 +295,7 @@ void DrawGameSection() {
       PortUi::Help(line);
     } else if (last.state < 0) {
       char line[512];
-      std::snprintf(line, sizeof(line), "Capture failed: %s", last.path.c_str());
+      std::snprintf(line, sizeof(line), "Capture failed; the log says why");
       PortUi::Help(line);
     }
   }
