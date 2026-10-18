@@ -32,6 +32,9 @@ bool sAiming = false;
 bool sUiActive = false;
 float sSensitivity = 0.0035f; // radians per pixel, the Prime port's default
 float sStickAimRate = 900.f;  // aim pixels per second at full stick deflection
+// MP1's "Separate vertical speed": with the split on, up and down use their own rate.
+bool sStickAimSplit = false;
+float sStickAimRateY = 900.f;
 float sTouchAimSpeed = 2.25f; // aim pixels per dp, the Prime port's touch_aim_speed default
 bool sInvertX = false;
 bool sInvertY = false;
@@ -79,6 +82,7 @@ void ReadEnv() {
   sStickEnabled = EnvFlag("MP2_TWIN_STICK");
   sInvertX = EnvFlag("MP2_MOUSE_INVERT_X");
   sInvertY = EnvFlag("MP2_MOUSE_INVERT_Y");
+  sStickAimSplit = EnvFlag("MP2_STICK_AIM_SPLIT");
   if (const char* sens = std::getenv("MP2_MOUSE_SENS")) {
     const float value = static_cast< float >(std::atof(sens));
     if (std::isfinite(value) && value > 0.f) {
@@ -179,6 +183,28 @@ void SetStickAimRate(float pixelsPerSecond) {
   }
 }
 
+bool StickAimSplit() {
+  ReadEnv();
+  return sStickAimSplit;
+}
+
+void SetStickAimSplit(bool enabled) {
+  ReadEnv();
+  sStickAimSplit = enabled;
+}
+
+float StickAimRateY() {
+  ReadEnv();
+  return sStickAimRateY;
+}
+
+void SetStickAimRateY(float pixelsPerSecond) {
+  ReadEnv();
+  if (std::isfinite(pixelsPerSecond) && pixelsPerSecond > 0.f) {
+    sStickAimRateY = pixelsPerSecond;
+  }
+}
+
 void AddStickAim(float x, float y, float dt) {
   if (!sStickEnabled || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
     return;
@@ -188,7 +214,7 @@ void AddStickAim(float x, float y, float dt) {
   }
   sPendingX += x * sStickAimRate * dt;
   // The aim's dy is screen-down positive, the stick's y is up positive.
-  sPendingY -= y * sStickAimRate * dt;
+  sPendingY -= y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt;
 }
 
 bool TouchEnabled() {

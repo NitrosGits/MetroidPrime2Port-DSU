@@ -528,6 +528,18 @@ void DrawControlsStickAim() {
                           "the right stick aims through the same path as the mouse")) {
     PortMouse::SetStickAimRate(rate);
   }
+  bool split = PortMouse::StickAimSplit();
+  if (PortUi::Toggle("Separate vertical speed", &split, "MP2_STICK_AIM_SPLIT=1",
+                     "gives looking up and down its own speed; Stick aim rate then sets only left and right")) {
+    PortMouse::SetStickAimSplit(split);
+  }
+  if (split) {
+    float rateY = PortMouse::StickAimRateY();
+    if (PortUi::SliderFloat("Vertical stick aim rate", &rateY, 200.f, 2000.f, "%.0f px/s", nullptr,
+                            "how fast the right stick turns the camera up and down at full tilt")) {
+      PortMouse::SetStickAimRateY(rateY);
+    }
+  }
   // The game's own option, saved with its settings (Reverse Y Axis in its pause menu).
   ImGui::BeginDisabled(gpGameState == nullptr);
   bool invertStickY = gpGameState != nullptr && gpGameState->GameOptions().GetInvertYAxis();

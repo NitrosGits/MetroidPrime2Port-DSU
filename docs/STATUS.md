@@ -15,6 +15,13 @@ appended, dated as in the heading there.
   `metroid_prime2_port` builds; `gen_files_cmake.py --check` rc=0.
 - Not yet checked in game: muzzle flash during quick shots (`mChargeEffectVisible` is false while
   `kCP_ChargeRequested`), and the damage scaling of a charged release during `kCP_Charging`.
+- Separate vertical speed: F1 > Controls > Controller settings, "Separate vertical speed"
+  (`PortMouse::SetStickAimSplit`, `MP2_STICK_AIM_SPLIT=1`), with "Vertical stick aim rate" when on.
+  `AddStickAim` uses the Y rate for up and down. Build-verified only; the stick rate is not persisted
+  in settings.cfg, and neither is this one.
+- Button glyphs is blocked, not a settings row: `platform/port_prompts.cpp` is in no CMake target,
+  its `Initialize`/`Poll` are not called, and there is no `tools/make_prompt_glyphs.py` or icon set.
+  The row needs those first.
 
 ## 2026-10-18, seventeenth session: photo mode stages 2a and 2b
 

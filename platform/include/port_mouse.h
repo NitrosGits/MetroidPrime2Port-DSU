@@ -112,6 +112,11 @@ bool StickEnabled();
 void SetStickEnabled(bool enabled);
 float StickAimRate();
 void SetStickAimRate(float pixelsPerSecond);
+// Separate vertical speed: with the split on, the stick's up and down use StickAimRateY instead.
+bool StickAimSplit();
+void SetStickAimSplit(bool enabled);
+float StickAimRateY();
+void SetStickAimRateY(float pixelsPerSecond);
 // Feeds a normalised right-stick vector (-1..1, x right, y up) for one tick.
 void AddStickAim(float x, float y, float dt);
 // Touch aim: the Android overlay's drag-to-aim, a third source alongside the mouse and the
