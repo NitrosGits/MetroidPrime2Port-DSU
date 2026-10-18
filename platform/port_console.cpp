@@ -15,7 +15,8 @@
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_save.h"
-#include "port_settings.h"
+#include "port_env.h"
+#include "port_overlay_internal.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
 
@@ -483,7 +484,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"
       "save backup | backups       copy the card now, or list the copies in save-backups\n"
       "cardbackup <0|1>            back the card up before each write (the F1 Saves row)\n"
-      "settings [<key> <value>]    settings.cfg's entries (value, file|env|default); set one, and save\n"
+      "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
@@ -862,25 +863,41 @@ void CmdLogFile(CStateManager&, const Args& args, std::string& out) {
   out += ")\n(takes effect next launch)\n";
 }
 
-// settings | settings <key> <value>: the settings file's entries and where each value came from
-// (`file`, `env` or `default`); with a key and a value, sets it and saves settings.cfg.
+// settings | settings <key> <value> | settings self-test: settings.cfg's entries (an MP2_<KEY>
+// environment variable that overrides one is named); with a key and a value, sets it and saves
+// settings.cfg; self-test writes every key, reads it back, and reports any that does not.
 void CmdSettings(CStateManager&, const Args& args, std::string& out) {
   if (args.size() == 1) {
-    for (const PortSettings::Info& info : PortSettings::List()) {
-      out += info.key + "=" + info.value + "  (" + info.source + ")\n";
+    for (const auto& [key, value] : PortOverlaySettings::SettingsValues(PortOverlaySettings::SettingsText())) {
+      out += key + "=" + value;
+      const std::string env = PortOverlaySettings::EnvName(key);
+      if (const char* set = port::EnvString(env.c_str())) {
+        out += "  (env " + env + "=" + set + " wins)";
+      }
+      out += "\n";
     }
     return;
   }
+  if (args.size() == 2 && args[1] == "self-test") {
+    // The test leaves the live variables at its samples: put back what was there, unmarked.
+    const std::string before = PortOverlaySettings::SettingsText();
+    PortOverlaySettings::SettingsSelfTest(out);
+    std::istringstream restore(before);
+    PortOverlaySettings::ApplySettingsText(restore);
+    return;
+  }
   if (args.size() != 3) {
-    Fail("usage: settings [<key> <value>]");
+    Fail("usage: settings [<key> <value> | self-test]");
     return;
   }
-  std::string error;
-  if (!PortSettings::Set(std::string(args[1]), std::string(args[2]), error)) {
-    Fail(error.c_str());
+  if (!PortOverlaySettings::ApplySetting(std::string(args[1]), std::string(args[2]))) {
+    Fail(("unknown setting " + std::string(args[1])).c_str());
     return;
   }
-  out += std::string(args[1]) + " set; saved to settings.cfg\n";
+  PortOverlaySettings::MarkDirty();
+  PortOverlaySettings::SaveSettings();
+  const auto values = PortOverlaySettings::SettingsValues(PortOverlaySettings::SettingsText());
+  out += std::string(args[1]) + "=" + values.at(std::string(args[1])) + "\n";
 }
 
 void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {

@@ -124,7 +124,7 @@ void Start(const std::string& userDirectory) {
     return; // once per run
   }
   // MP2_LOG_FILE, else `log_file` in settings.cfg (PortSettings::Initialize has run by now).
-  sEnabled = PortSettings::BoolValue("log_file", true);
+  sEnabled = PortSettings::LogFileEnabled();
   if (!sEnabled) {
     return;
   }

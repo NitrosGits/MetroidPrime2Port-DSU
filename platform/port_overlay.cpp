@@ -8,6 +8,8 @@
 #include "port_overlay.h"
 
 #include "port_binds.h"
+#include "port_env.h"
+#include "port_overlay_internal.h"
 #include "port_remap_ui.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
@@ -28,15 +30,13 @@
 #include <cstring>
 
 
-namespace {
+namespace PortOverlayState {
 
-bool sVisible = false;
 bool sSkipCinematics = false;
 // `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
 bool sLogFile = true;
-bool sGodMode = false; // never saved: a cheat must not persist, so it is not a registered setting
 // The gameplay tweaks (`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`,
 // `MP2_STICKY_CHARGE`), saved in settings.cfg.
 bool sFastMorph = false;
@@ -72,10 +72,18 @@ int sMsaa = 1;
 int sAnisotropy = 16;
 // HUD scale in percent (`MP2_HUD_SCALE`), and whether the HUD's own draw is the one being scaled.
 int sHudScale = PortOverlay::kHudScaleMax;
-bool sHudScaling = false;
 // Interface scale in percent (`MP2_UI_SCALE`) and vsync (`MP2_VSYNC`).
 int sUiScale = 100;
 bool sVsync = false;
+} // namespace PortOverlayState
+
+using namespace PortOverlayState;
+
+namespace {
+
+bool sVisible = false;
+bool sGodMode = false; // never saved: a cheat must not persist, so it is not a setting
+bool sHudScaling = false;
 bool sReadEnv = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
@@ -85,72 +93,61 @@ float sFps = 0.f;
 uint64_t sFpsWindowStart = 0;
 int sFpsFrames = 0;
 
-bool EnvFlag(const char* name) {
-  const char* value = std::getenv(name);
-  return value != nullptr && *value != '\0' && std::strcmp(value, "0") != 0;
-}
-
 // Handed to aurora_set_graphics_quality only when they change; 0 means "never applied yet".
 int sAppliedMsaa = 0;
 int sAppliedAnisotropy = 0;
 // Handed to aurora_enable_vsync only when it changes; -1 means "never applied yet".
 int sAppliedVsync = -1;
 
-bool MsaaValid(int samples) { return samples == 1 || samples == 4; }
-
-// Registers every setting; PortSettings resolves each as default, then <user>/settings.cfg, then its
-// MP2_<KEY> environment variable (the variable wins). Cheats (god mode) are not settings.
+// Applies <user>/settings.cfg once per run. An MP2_<KEY> environment variable is not applied here:
+// the accessors below read it each time, so it wins without ever reaching the file.
 void ReadEnv() {
   if (sReadEnv) {
     return;
   }
   sReadEnv = true;
-  sGodMode = EnvFlag("MP2_GODMODE");
-  PortSettings::AddBool("skip_cinematics", &sSkipCinematics, false);
-  PortSettings::AddBool("fast_morph", &sFastMorph, false);
-  PortSettings::AddBool("spring_ball", &sSpringBall, false);
-  PortSettings::AddBool("lockon_toggle", &sLockOnToggle, false);
-  PortSettings::AddBool("sticky_charge", &sStickyCharge, false);
-  PortSettings::AddBool("card_backup", &sCardBackup, false);
-  PortSettings::AddBool("log_file", &sLogFile, true);
-  PortSettings::AddBool("no_helmet", &sHideHelmet, false);
-  PortSettings::AddBool("no_visor_fx", &sHideVisorEffects, false);
-  PortSettings::AddBool("aim_crosshair", &sAimCrosshair, true);
-  PortSettings::AddInt("crosshair_style", &sCrosshairStyle, PortOverlay::kCrosshairStyle_Remastered,
-                       PortOverlay::kCrosshairStyle_Classic, PortOverlay::kCrosshairStyle_Remastered);
-  PortSettings::AddInt("crosshair_size", &sCrosshairSize, PortOverlay::kCrosshairSizeDefault,
-                       PortOverlay::kCrosshairSizeMin, PortOverlay::kCrosshairSizeMax);
-  PortSettings::AddInt("crosshair_opacity", &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMax,
-                       PortOverlay::kCrosshairOpacityMin, PortOverlay::kCrosshairOpacityMax);
-  PortSettings::AddFloat3("crosshair_color", sCrosshairColor, 0.f, 1.f);
-  PortSettings::AddBool("crosshair_custom_color", &sCrosshairCustomColor, false);
-  // 0 keeps the game's own FOV.
-  PortSettings::AddFloat("fov", &sFirstPersonFov, 0.f, 30.f, 120.f, true);
-  PortSettings::AddFloat3("gun_offset", sGunOffset, -PortOverlay::kGunOffsetMax,
-                          PortOverlay::kGunOffsetMax);
-  PortSettings::AddInt("msaa", &sMsaa, 1, 1, 4, MsaaValid);
-  // A max, not a step: any value in range is kept, and Aurora clamps what a sampler asks for.
-  PortSettings::AddInt("aniso", &sAnisotropy, 16, 1, 16);
-  // 0 means the full-size HUD.
-  PortSettings::AddInt("hud_scale", &sHudScale, PortOverlay::kHudScaleMax, PortOverlay::kHudScaleMin,
-                       PortOverlay::kHudScaleMax, nullptr, PortOverlay::kHudScaleMax);
-  PortSettings::AddInt("ui_scale", &sUiScale, 100, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax);
-  // The one source of truth for vsync: platform/main.cpp leaves AuroraConfig::vsync at its default.
-  PortSettings::AddBool("vsync", &sVsync, false);
+  sGodMode = port::EnvFlag("MP2_GODMODE");
+  PortOverlaySettings::LoadSettings();
 }
 
 // A setter's change is saved at once (a no-op when nothing differs from the file).
 void Persist() {
-  PortSettings::NoteChanged();
-  PortSettings::Save();
+  PortOverlaySettings::MarkDirty();
+  PortOverlaySettings::SaveSettings();
 }
 
 // A UI row's change is saved by Draw once the mouse is up, not on every frame of a slider drag.
 bool Changed(bool changed) {
   if (changed) {
-    PortSettings::NoteChanged();
+    PortOverlaySettings::MarkDirty();
   }
   return changed;
+}
+
+// The effective values: the file's/UI's variable, unless the environment names it.
+bool EnvBool(const char* name, bool value) { return port::EnvFlag(name, value); }
+
+int EnvIntIn(const char* name, int value, int min, int max) {
+  const int env = port::EnvInt(name, value);
+  return env >= min && env <= max ? env : value;
+}
+
+bool EnvFloat3(const char* name, float out[3], float min, float max) {
+  const char* text = port::EnvString(name);
+  float parsed[3];
+  char extra = 0;
+  if (text == nullptr || std::sscanf(text, "%f,%f,%f%c", &parsed[0], &parsed[1], &parsed[2], &extra) != 3) {
+    return false;
+  }
+  for (int i = 0; i < 3; ++i) {
+    if (!std::isfinite(parsed[i])) {
+      return false;
+    }
+  }
+  for (int i = 0; i < 3; ++i) {
+    out[i] = std::clamp(parsed[i], min, max);
+  }
+  return true;
 }
 
 void StoreGunOffset(const float offset[3]) {
@@ -164,24 +161,27 @@ void StoreGunOffset(const float offset[3]) {
 
 void ApplyGraphicsQuality() {
   ReadEnv();
-  if (sAppliedMsaa == sMsaa && sAppliedAnisotropy == sAnisotropy) {
+  const int msaa = PortOverlay::Msaa();
+  const int anisotropy = PortOverlay::Anisotropy();
+  if (sAppliedMsaa == msaa && sAppliedAnisotropy == anisotropy) {
     return;
   }
-  sAppliedMsaa = sMsaa;
-  sAppliedAnisotropy = sAnisotropy;
+  sAppliedMsaa = msaa;
+  sAppliedAnisotropy = anisotropy;
   // A request: Aurora rebuilds the framebuffers at the next frame start (a rebuild inside a frame
   // would invalidate the binds that frame already recorded).
-  aurora_set_graphics_quality(static_cast< uint32_t >(sMsaa),
-                              static_cast< uint16_t >(sAnisotropy));
+  aurora_set_graphics_quality(static_cast< uint32_t >(msaa),
+                              static_cast< uint16_t >(anisotropy));
 }
 
 void ApplyVsync() {
   ReadEnv();
-  if (sAppliedVsync == (sVsync ? 1 : 0)) {
+  const bool vsync = PortOverlay::Vsync();
+  if (sAppliedVsync == (vsync ? 1 : 0)) {
     return;
   }
-  sAppliedVsync = sVsync ? 1 : 0;
-  aurora_enable_vsync(sVsync);
+  sAppliedVsync = vsync ? 1 : 0;
+  aurora_enable_vsync(vsync);
 }
 
 void TickFps() {
@@ -587,7 +587,7 @@ void ApplyUiScale() {
 #if defined(__ANDROID__)
   base = std::min(base, 2.f);
 #endif
-  PortUi::ApplyTheme(base * static_cast< float >(sUiScale) / 100.f);
+  PortUi::ApplyTheme(base * static_cast< float >(PortOverlay::UiScale()) / 100.f);
 }
 
 // The "Filter settings" box above the sections (desktop) or the page list (phone).
@@ -717,7 +717,7 @@ bool Visible() {
 
 bool SkipCinematics() {
   ReadEnv();
-  return sSkipCinematics;
+  return EnvBool("MP2_SKIP_CINEMATICS", sSkipCinematics);
 }
 
 void SetSkipCinematics(bool skip) {
@@ -728,17 +728,17 @@ void SetSkipCinematics(bool skip) {
 
 bool HideHelmet() {
   ReadEnv();
-  return sHideHelmet;
+  return EnvBool("MP2_NO_HELMET", sHideHelmet);
 }
 
 bool HideVisorEffects() {
   ReadEnv();
-  return sHideVisorEffects;
+  return EnvBool("MP2_NO_VISOR_FX", sHideVisorEffects);
 }
 
 bool AimCrosshair() {
   ReadEnv();
-  return sAimCrosshair;
+  return EnvBool("MP2_AIM_CROSSHAIR", sAimCrosshair);
 }
 
 void SetAimCrosshair(bool enabled) {
@@ -749,7 +749,14 @@ void SetAimCrosshair(bool enabled) {
 
 int CrosshairStyle() {
   ReadEnv();
-  return sCrosshairStyle;
+  const char* env = port::EnvString("MP2_CROSSHAIR_STYLE");
+  if (env != nullptr && std::strcmp(env, "classic") == 0) {
+    return kCrosshairStyle_Classic;
+  }
+  if (env != nullptr && std::strcmp(env, "remastered") == 0) {
+    return kCrosshairStyle_Remastered;
+  }
+  return EnvIntIn("MP2_CROSSHAIR_STYLE", sCrosshairStyle, kCrosshairStyle_Classic, kCrosshairStyle_Remastered);
 }
 
 void SetCrosshairStyle(int style) {
@@ -760,7 +767,7 @@ void SetCrosshairStyle(int style) {
 
 int CrosshairSize() {
   ReadEnv();
-  return sCrosshairSize;
+  return EnvIntIn("MP2_CROSSHAIR_SIZE", sCrosshairSize, kCrosshairSizeMin, kCrosshairSizeMax);
 }
 
 void SetCrosshairSize(int percent) {
@@ -771,7 +778,7 @@ void SetCrosshairSize(int percent) {
 
 int CrosshairOpacity() {
   ReadEnv();
-  return sCrosshairOpacity;
+  return EnvIntIn("MP2_CROSSHAIR_OPACITY", sCrosshairOpacity, kCrosshairOpacityMin, kCrosshairOpacityMax);
 }
 
 void SetCrosshairOpacity(int percent) {
@@ -782,10 +789,12 @@ void SetCrosshairOpacity(int percent) {
 
 bool CrosshairColor(float rgb[3]) {
   ReadEnv();
-  if (!sCrosshairCustomColor) {
+  if (!EnvBool("MP2_CROSSHAIR_CUSTOM_COLOR", sCrosshairCustomColor)) {
     return false;
   }
-  std::copy_n(sCrosshairColor, 3, rgb);
+  if (!EnvFloat3("MP2_CROSSHAIR_COLOR", rgb, 0.f, 1.f)) {
+    std::copy_n(sCrosshairColor, 3, rgb);
+  }
   return true;
 }
 
@@ -806,11 +815,15 @@ void ClearCrosshairColor() {
 
 float FirstPersonFov() {
   ReadEnv();
-  return sFirstPersonFov;
+  const float env = port::EnvFloat("MP2_FOV", sFirstPersonFov);
+  return env == 0.f || (env >= 30.f && env <= 120.f) ? env : sFirstPersonFov;
 }
 
 void GunOffset(float out[3]) {
   ReadEnv();
+  if (EnvFloat3("MP2_GUN_OFFSET", out, -kGunOffsetMax, kGunOffsetMax)) {
+    return;
+  }
   out[0] = sGunOffset[0];
   out[1] = sGunOffset[1];
   out[2] = sGunOffset[2];
@@ -824,7 +837,8 @@ void SetGunOffset(const float offset[3]) {
 
 int Msaa() {
   ReadEnv();
-  return sMsaa;
+  const int env = port::EnvInt("MP2_MSAA", sMsaa);
+  return env == 1 || env == 4 ? env : sMsaa;
 }
 
 void SetMsaa(int samples) {
@@ -835,7 +849,7 @@ void SetMsaa(int samples) {
 
 int Anisotropy() {
   ReadEnv();
-  return sAnisotropy;
+  return EnvIntIn("MP2_ANISO", sAnisotropy, 1, 16);
 }
 
 void SetAnisotropy(int maxAnisotropy) {
@@ -846,7 +860,9 @@ void SetAnisotropy(int maxAnisotropy) {
 
 int HudScale() {
   ReadEnv();
-  return sHudScale;
+  // 0 means the full-size HUD.
+  const int env = port::EnvInt("MP2_HUD_SCALE", sHudScale);
+  return env == 0 ? kHudScaleMax : (env >= kHudScaleMin && env <= kHudScaleMax ? env : sHudScale);
 }
 
 void SetHudScale(int percent) {
@@ -871,7 +887,7 @@ void SetGodMode(bool enabled) {
 
 bool FastMorph() {
   ReadEnv();
-  return sFastMorph;
+  return EnvBool("MP2_FAST_MORPH", sFastMorph);
 }
 
 void SetFastMorph(bool enabled) {
@@ -882,7 +898,7 @@ void SetFastMorph(bool enabled) {
 
 bool SpringBall() {
   ReadEnv();
-  return sSpringBall;
+  return EnvBool("MP2_SPRING_BALL", sSpringBall);
 }
 
 void SetSpringBall(bool enabled) {
@@ -893,7 +909,7 @@ void SetSpringBall(bool enabled) {
 
 bool LockOnToggle() {
   ReadEnv();
-  return sLockOnToggle;
+  return EnvBool("MP2_LOCK_ON_TOGGLE", EnvBool("MP2_LOCKON_TOGGLE", sLockOnToggle));
 }
 
 void SetLockOnToggle(bool enabled) {
@@ -904,7 +920,7 @@ void SetLockOnToggle(bool enabled) {
 
 bool StickyCharge() {
   ReadEnv();
-  return sStickyCharge;
+  return EnvBool("MP2_STICKY_CHARGE", sStickyCharge);
 }
 
 void SetStickyCharge(bool enabled) {
@@ -915,7 +931,7 @@ void SetStickyCharge(bool enabled) {
 
 bool CardBackup() {
   ReadEnv();
-  return sCardBackup;
+  return EnvBool("MP2_CARD_BACKUP", sCardBackup);
 }
 
 void SetCardBackup(bool enabled) {
@@ -926,7 +942,7 @@ void SetCardBackup(bool enabled) {
 
 bool LogFile() {
   ReadEnv();
-  return sLogFile;
+  return EnvBool("MP2_LOG_FILE", sLogFile);
 }
 
 void SetLogFile(bool enabled) {
@@ -937,7 +953,7 @@ void SetLogFile(bool enabled) {
 
 int UiScale() {
   ReadEnv();
-  return sUiScale;
+  return EnvIntIn("MP2_UI_SCALE", sUiScale, kUiScaleMin, kUiScaleMax);
 }
 
 void SetUiScale(int percent) {
@@ -948,7 +964,7 @@ void SetUiScale(int percent) {
 
 bool Vsync() {
   ReadEnv();
-  return sVsync;
+  return EnvBool("MP2_VSYNC", sVsync);
 }
 
 void SetVsync(bool enabled) {
@@ -963,8 +979,8 @@ void Draw() {
   ApplyGraphicsQuality();
   ApplyVsync();
   // A row's change is written once the mouse is up, so a slider drag is one write.
-  if (PortSettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsMouseDown(0)) {
-    PortSettings::Save();
+  if (PortOverlaySettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsMouseDown(0)) {
+    PortOverlaySettings::SaveSettings();
   }
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
