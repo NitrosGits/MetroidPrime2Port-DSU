@@ -313,6 +313,24 @@ void AddMotion(float dx, float dy) {
   sPendingY += dy;
 }
 
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep) {
+  if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f)) {
+    return;
+  }
+  // MP1's PollGyro pointer branch: `sweep` radians of pad turn cross the screen (2 pointer units)
+  // at the same pixels per degree both ways, so divide out the window and mouse scaling the
+  // pointer applies to pending travel. No inversion.
+  float px = 0.f, py = 0.f;
+  PointerAimScale(px, py);
+  if (!(px > 0.f)) {
+    return;
+  }
+  const float cursor = 2.f / sweep * dt / px;
+  std::lock_guard< std::mutex > lock(sPendingMutex);
+  sPendingX += yaw * cursor;
+  sPendingY -= pitch * cursor;
+}
+
 void BeginFrame() {
   // The UI thread may be adding travel right now; latch and clear in one lock so a late
   // addition lands in this tick or the next, never in neither.

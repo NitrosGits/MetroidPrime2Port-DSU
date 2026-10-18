@@ -17,9 +17,15 @@ appended, dated as in the heading there.
   Mouse, twin-stick or touch aim must be on. `PortMouse::UpdateAim` steps the pointer; the gun and
   shots aim at the ray's hit (`CPlayer::UpdateGunTransform`, TARGET_PC block); the Remastered cursor
   sits at the pointer. Build-verified only: not run in game. Not ported: inter-tick smoothing,
-  gyro driving the pointer. Also: console `pointeraim [on|off|<x> <y>]`; shots fly to the pointer's
+  Also: console `pointeraim [on|off|<x> <y>]`; shots fly to the pointer's
   hit point (`CPlayerGun::PortAimShotAtPointer`, `CPlayer::UpdateGunTransform` TARGET_PC). Inter-tick
   smoothing does not apply: MP2 has no frame interpolation, so the presented pointer is the ticked one.
+- Gyro aim (MP1's, pointer only): F1 > Controls > Options > Aiming, `MP2_GYRO_AIM=1` (default off),
+  plus `MP2_GYRO_SOURCE`, `MP2_GYRO_SPACE`, `MP2_GYRO_AUTO_CALIBRATE`, `MP2_GYRO_SMOOTHING`,
+  `MP2_GYRO_TIGHTENING`, `MP2_GYRO_CURSOR_ANGLE`. Reader in `PortInputDevices::PollGyro`
+  (`platform/port_gyro_motion.cpp`, GamepadMotionHelpers 10 vendored in `extern/`, MIT). Built and
+  gated only: no controller was available. Not ported yet: MP1's gyro sensitivity and "gyro also
+  turns the camera", hold/pause/toggle modes for the GyroAim action, Recalibrate, status readout.
 
 ## 2026-10-18, eighteenth session: remastered charge (Power Beam only)
 

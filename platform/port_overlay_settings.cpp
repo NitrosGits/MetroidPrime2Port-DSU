@@ -121,6 +121,21 @@ constexpr SettingKey IntKey(const char* key, const char* sampleA, const char* sa
           sampleB};
 }
 
+// A key that is one float in [Min, Max] (whole-number bounds): anything else is ignored.
+template < float* Value, int Min, int Max >
+constexpr SettingKey FloatKey(const char* key, const char* sampleA, const char* sampleB) {
+  return {key,
+          [](const std::string& value) {
+            float parsed = 0.f;
+            if (ParseFloat(value, parsed) && parsed >= float(Min) && parsed <= float(Max))
+              *Value = parsed;
+          },
+          [](std::ostream& out) { out << *Value; },
+          false,
+          sampleA,
+          sampleB};
+}
+
 const SettingKey kSettingKeys[] = {
     BoolKey< &sSkipCinematics >("skip_cinematics"),
     BoolKey< &sFastMorph >("fast_morph"),
@@ -134,6 +149,13 @@ const SettingKey kSettingKeys[] = {
         "pointer_aim_box", "50", "70"),
     IntKey< &sPointerAimTurn, PortOverlay::kPointerAimTurnMin, PortOverlay::kPointerAimTurnMax >(
         "pointer_aim_turn", "180", "360"),
+    BoolKey< &sGyroAim >("gyro_aim"),
+    IntKey< &sGyroSource, 0, 2 >("gyro_source", "0", "1"),
+    IntKey< &sGyroSpace, 0, 4 >("gyro_space", "1", "2"),
+    IntKey< &sGyroAutoCalibrate, 0, 2 >("gyro_auto_calibrate", "1", "2"),
+    FloatKey< &sGyroSmoothing, 0, 50 >("gyro_smoothing", "0", "10"),
+    FloatKey< &sGyroTightening, 0, 50 >("gyro_tightening", "0", "5"),
+    FloatKey< &sGyroCursorAngle, 5, 180 >("gyro_cursor_angle", "40", "60"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),

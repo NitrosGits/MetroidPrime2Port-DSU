@@ -329,6 +329,7 @@ bool PortPumpEvents() {
   // read once per iteration, before the game's PADRead; Aurora still merges the console's and
   // MP2_INPUT's virtual pad on top of it.
   PortInputDevices::PollPortActions();
+  PortInputDevices::PollGyro();
   PADStatus pad0 = PortInputDevices::Poll();
   PADSetPortOverride(0, &pad0);
   return false;

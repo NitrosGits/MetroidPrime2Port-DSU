@@ -73,6 +73,27 @@ bool PointerAim();
 void SetPointerAim(bool enabled);
 int PointerAimBox();
 int PointerAimTurn();
+// Gyro aim (`MP2_GYRO_AIM=1`, default off; MP1's gyro aim in "always aim" mode, pointer only): a
+// controller's gyro (or the phone's, `MP2_GYRO_SOURCE` 0 auto, 1 controller, 2 phone) moves the
+// pointer while pointer aim is on. `MP2_GYRO_CURSOR_ANGLE` degrees of pad turn sweep the pointer
+// across the screen. Space (`MP2_GYRO_SPACE`, PortGyro::Space), auto calibrate
+// (`MP2_GYRO_AUTO_CALIBRATE` 0 off, 1 always, 2 only in menus), smoothing and tightening
+// (`MP2_GYRO_SMOOTHING`/`MP2_GYRO_TIGHTENING`, deg/s, 0 = off) are MP1's, ranges and defaults.
+const int kGyroSourceDefault = 0;
+const int kGyroSpaceDefault = 1;
+const int kGyroAutoCalibrateDefault = 1;
+const float kGyroThresholdMax = 50.f;
+const float kGyroCursorAngleMin = 5.f;
+const float kGyroCursorAngleMax = 180.f;
+const float kGyroCursorAngleDefault = 40.f;
+bool GyroAim();
+void SetGyroAim(bool enabled);
+int GyroSource();
+int GyroSpace();
+int GyroAutoCalibrate();
+float GyroSmoothing();
+float GyroTightening();
+float GyroCursorAngle();
 // Remastered charge (`MP2_RAPID_CHARGE=1`), Power Beam only: holding fire after the press shot
 // fires two quick shots, then charges faster (CPlayerGun::PortRapidChargeShot).
 bool RapidCharge();

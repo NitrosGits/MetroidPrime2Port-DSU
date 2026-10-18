@@ -9,6 +9,7 @@
 
 #include "port_controls.h"
 #include "port_freecam.h"
+#include "port_gyro_motion.h"
 #include "port_photo.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
@@ -55,6 +56,13 @@ bool sAutoAim = true;
 bool sPointerAim = false;
 int sPointerAimBox = PortOverlay::kPointerAimBoxDefault;
 int sPointerAimTurn = PortOverlay::kPointerAimTurnDefault;
+bool sGyroAim = false;
+int sGyroSource = PortOverlay::kGyroSourceDefault;
+int sGyroSpace = PortOverlay::kGyroSpaceDefault;
+int sGyroAutoCalibrate = PortOverlay::kGyroAutoCalibrateDefault;
+float sGyroSmoothing = 0.f;
+float sGyroTightening = 0.f;
+float sGyroCursorAngle = PortOverlay::kGyroCursorAngleDefault;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -148,6 +156,11 @@ bool EnvBool(const char* name, bool value) { return port::EnvFlag(name, value); 
 int EnvIntIn(const char* name, int value, int min, int max) {
   const int env = port::EnvInt(name, value);
   return env >= min && env <= max ? env : value;
+}
+
+float EnvFloatIn(const char* name, float value, float min, float max) {
+  const float env = port::EnvFloat(name, value);
+  return std::isfinite(env) && env >= min && env <= max ? env : value;
 }
 
 bool EnvFloat3(const char* name, float out[3], float min, float max) {
@@ -581,6 +594,62 @@ void DrawControlsOptions() {
                               PortOverlay::kPointerAimTurnMax, "%d deg/s",
                               "MP2_POINTER_AIM_TURN=30..720",
                               "the view's turn speed with the pointer at the screen edge"));
+    Changed(PortUi::Toggle("Gyro aim", &sGyroAim, "MP2_GYRO_AIM=1",
+                 "tilt the controller (or the phone) to move the pointer. Needs a pad with a gyro"));
+    if (sGyroAim) {
+      Changed(PortUi::Combo("Gyro source", &sGyroSource, "Auto\0" "Controller\0" "Phone\0",
+                            "MP2_GYRO_SOURCE=0..2", "auto takes the controller's gyro, else the phone's"));
+      if (PortUi::SliderFloat("Pointer speed##gyro", &sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin,
+                              PortOverlay::kGyroCursorAngleMax, "%.0f deg across the screen",
+                              "MP2_GYRO_CURSOR_ANGLE=5..180",
+                              "how far the pad turns to sweep the pointer from one side of the screen "
+                              "to the other. Smaller is faster. Independent of the mouse sensitivity")) {
+        sGyroCursorAngle = std::clamp(sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin,
+                                      PortOverlay::kGyroCursorAngleMax);
+        Changed(true);
+      }
+      // Listed by how common they are (MP1's order); the setting keeps PortGyro::Space's numbers.
+      static constexpr int kSpaceOrder[] = {PortGyro::kPlayer, PortGyro::kWorld, PortGyro::kLocal,
+                                            PortGyro::kLocalRoll, PortGyro::kLocalBoth};
+      int spaceRow = 0;
+      for (int i = 0; i < PortGyro::kSpaceCount; ++i) {
+        if (kSpaceOrder[i] == sGyroSpace) {
+          spaceRow = i;
+        }
+      }
+      if (PortUi::Combo("Gyro space", &spaceRow,
+                        "Player (turn)\0" "World (turn)\0" "Local yaw\0" "Local roll\0"
+                        "Local yaw and roll\0",
+                        "MP2_GYRO_SPACE=0..4",
+                        "which turn of the pad moves the pointer left and right. Player: turning the "
+                        "pad left and right, held flat or upright. World: about the real vertical "
+                        "only. Local yaw: the pad's own flat turn. Local roll: a pad held upright. "
+                        "Player and world need an accelerometer; without one they act as local yaw")) {
+        sGyroSpace = kSpaceOrder[std::clamp(spaceRow, 0, PortGyro::kSpaceCount - 1)];
+        Changed(true);
+      }
+      Changed(PortUi::Combo("Auto calibrate", &sGyroAutoCalibrate, "Off\0" "Always\0" "Only in menus\0",
+                            "MP2_GYRO_AUTO_CALIBRATE=0..2",
+                            "measures the gyro's drift while the pad is still and removes it. Needs "
+                            "an accelerometer. Only in menus learns with F1 open or outside free aim, "
+                            "and keeps what it learned while you play"));
+      if (PortUi::SliderFloat("Smoothing##gyro", &sGyroSmoothing, 0.f, PortOverlay::kGyroThresholdMax,
+                              sGyroSmoothing > 0.f ? "below %.0f deg/s" : "off",
+                              "MP2_GYRO_SMOOTHING=0..50",
+                              "averages slow turns over a few frames to hide sensor jitter; turns "
+                              "above twice this speed stay direct")) {
+        sGyroSmoothing = std::clamp(sGyroSmoothing, 0.f, PortOverlay::kGyroThresholdMax);
+        Changed(true);
+      }
+      if (PortUi::SliderFloat("Tightening##gyro", &sGyroTightening, 0.f, PortOverlay::kGyroThresholdMax,
+                              sGyroTightening > 0.f ? "below %.0f deg/s" : "off",
+                              "MP2_GYRO_TIGHTENING=0..50",
+                              "turns slower than this are scaled down, so a pad held still does not "
+                              "wobble the pointer. Keep it low")) {
+        sGyroTightening = std::clamp(sGyroTightening, 0.f, PortOverlay::kGyroThresholdMax);
+        Changed(true);
+      }
+    }
   }
   ImGui::SeparatorText("Rumble");
   ImGui::BeginDisabled(gpGameState == nullptr);
@@ -1137,6 +1206,47 @@ int PointerAimBox() {
 int PointerAimTurn() {
   ReadEnv();
   return EnvIntIn("MP2_POINTER_AIM_TURN", sPointerAimTurn, kPointerAimTurnMin, kPointerAimTurnMax);
+}
+
+bool GyroAim() {
+  ReadEnv();
+  return EnvBool("MP2_GYRO_AIM", sGyroAim);
+}
+
+void SetGyroAim(bool enabled) {
+  ReadEnv();
+  sGyroAim = enabled;
+  Persist();
+}
+
+int GyroSource() {
+  ReadEnv();
+  return EnvIntIn("MP2_GYRO_SOURCE", sGyroSource, 0, 2);
+}
+
+int GyroSpace() {
+  ReadEnv();
+  return EnvIntIn("MP2_GYRO_SPACE", sGyroSpace, 0, PortGyro::kSpaceCount - 1);
+}
+
+int GyroAutoCalibrate() {
+  ReadEnv();
+  return EnvIntIn("MP2_GYRO_AUTO_CALIBRATE", sGyroAutoCalibrate, 0, 2);
+}
+
+float GyroSmoothing() {
+  ReadEnv();
+  return EnvFloatIn("MP2_GYRO_SMOOTHING", sGyroSmoothing, 0.f, kGyroThresholdMax);
+}
+
+float GyroTightening() {
+  ReadEnv();
+  return EnvFloatIn("MP2_GYRO_TIGHTENING", sGyroTightening, 0.f, kGyroThresholdMax);
+}
+
+float GyroCursorAngle() {
+  ReadEnv();
+  return EnvFloatIn("MP2_GYRO_CURSOR_ANGLE", sGyroCursorAngle, kGyroCursorAngleMin, kGyroCursorAngleMax);
 }
 
 bool RapidCharge() {

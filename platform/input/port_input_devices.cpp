@@ -5,6 +5,7 @@
 
 #include "port_input_remap_ui.h"
 #include "port_freecam.h"
+#include "port_gyro_motion.h"
 #include "port_harness.h"
 #include "port_input_map.h"
 #include "port_mouse.h"
@@ -18,6 +19,7 @@
 #include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_sensor.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_touch.h>
 #include <SDL3/SDL_video.h>
@@ -1215,6 +1217,160 @@ void PollPortActions() {
   if (out.Pressed(Action::PhotoMode)) {
     PortFreeCam::SetActive(!PortFreeCam::Active(), nullptr);
   }
+}
+
+namespace {
+
+// MP1's gyro reader (platform/debug_ui/input.cpp ReadGyroRates). The phone's sensors are opened
+// once, on the first poll that wants them.
+PortGyro::Motion sGyroMotion;
+PortGyro::Filter sGyroFilter;
+const void* sGyroMotionSource = nullptr;
+bool sGyroHasAccel = false;
+SDL_Sensor* sPhoneGyro = nullptr;
+SDL_Sensor* sPhoneAccel = nullptr;
+bool sPhoneGyroSearched = false;
+
+int OrientationQuarters(SDL_DisplayOrientation orientation) {
+  switch (orientation) {
+  case SDL_ORIENTATION_LANDSCAPE:
+    return 1;
+  case SDL_ORIENTATION_PORTRAIT_FLIPPED:
+    return 2;
+  case SDL_ORIENTATION_LANDSCAPE_FLIPPED:
+    return 3;
+  default:
+    return 0;
+  }
+}
+
+// Pitch (x, positive tilts the far edge up) and yaw (positive turns right) rates in rad/s from
+// the chosen source, after calibration and gyro space; false when there is none. dt is the time
+// since the last call.
+bool ReadGyroRates(float& pitch, float& yaw, float dt) {
+  const int gyroSource = PortOverlay::GyroSource();
+  const bool wantController = gyroSource == 0 || gyroSource == 1;
+  const bool wantPhone = gyroSource == 0 || gyroSource == 2;
+  // SDL's sensor axes (x right, y up, z toward the player), rad/s and m/s^2.
+  float gyro[3];
+  float accel[3];
+  bool haveAccel = false;
+  const void* source = nullptr;
+
+  if (wantController) {
+    if (SDL_Gamepad* pad = PADGetSDLGamepadForIndex(0)) {
+      if (SDL_GamepadHasSensor(pad, SDL_SENSOR_GYRO)) {
+        // Asked per pad, so a reconnected or swapped pad gets its sensors on too.
+        if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_GYRO)) {
+          SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_GYRO, true);
+        }
+        if (SDL_GetGamepadSensorData(pad, SDL_SENSOR_GYRO, gyro, 3)) {
+          source = pad;
+          if (SDL_GamepadHasSensor(pad, SDL_SENSOR_ACCEL)) {
+            if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_ACCEL)) {
+              SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_ACCEL, true);
+            }
+            haveAccel = SDL_GetGamepadSensorData(pad, SDL_SENSOR_ACCEL, accel, 3);
+          }
+        }
+      }
+    }
+  }
+
+  if (source == nullptr && wantPhone) {
+    if (sPhoneGyro == nullptr && !sPhoneGyroSearched) {
+      sPhoneGyroSearched = true;
+      int count = 0;
+      if (SDL_SensorID* ids = SDL_GetSensors(&count)) {
+        for (int i = 0; i < count; ++i) {
+          const SDL_SensorType type = SDL_GetSensorTypeForID(ids[i]);
+          if (type == SDL_SENSOR_GYRO && sPhoneGyro == nullptr) {
+            sPhoneGyro = SDL_OpenSensor(ids[i]);
+          } else if (type == SDL_SENSOR_ACCEL && sPhoneAccel == nullptr) {
+            sPhoneAccel = SDL_OpenSensor(ids[i]);
+          }
+        }
+        SDL_free(ids);
+      }
+    }
+    if (sPhoneGyro != nullptr && SDL_GetSensorData(sPhoneGyro, gyro, 3)) {
+      source = sPhoneGyro;
+      haveAccel = sPhoneAccel != nullptr && SDL_GetSensorData(sPhoneAccel, accel, 3);
+      // The phone reports its own axes (x right, y up in its natural orientation), so turn them
+      // to the screen's, as SDL does for its accelerometer: landscape would otherwise swap pitch
+      // and yaw. Then it is held like a pad.
+      const SDL_DisplayID display = SDL_GetPrimaryDisplay();
+      const int quarters = (OrientationQuarters(SDL_GetCurrentDisplayOrientation(display)) -
+                            OrientationQuarters(SDL_GetNaturalDisplayOrientation(display)) + 4) %
+                           4;
+      const auto turn = [quarters](float v[3]) {
+        const float x = v[0];
+        const float y = v[1];
+        switch (quarters) {
+        case 1:
+          v[0] = -y;
+          v[1] = x;
+          break;
+        case 2:
+          v[0] = -x;
+          v[1] = -y;
+          break;
+        case 3:
+          v[0] = y;
+          v[1] = -x;
+          break;
+        default:
+          break;
+        }
+      };
+      turn(gyro);
+      if (haveAccel) {
+        turn(accel);
+      }
+    }
+  }
+
+  if (source == nullptr) {
+    return false;
+  }
+  if (source != sGyroMotionSource || haveAccel != sGyroHasAccel) {
+    sGyroMotion.Reset();
+    sGyroFilter.Reset();
+    sGyroMotionSource = source;
+    sGyroHasAccel = haveAccel;
+  }
+  // 2 = only in menus: F1 open or no free aim running (paused, a frontend screen). Outside them
+  // the learned drift is kept, only learning stops.
+  const int autoCalibrate = PortOverlay::GyroAutoCalibrate();
+  const bool inMenus = PortOverlay::Visible() || !PortMouse::Aiming();
+  const bool calibrate = autoCalibrate == 1 || (autoCalibrate == 2 && inMenus);
+  sGyroMotion.Process(gyro, haveAccel ? accel : nullptr, dt, PortOverlay::GyroSpace(), calibrate, pitch,
+                      yaw, autoCalibrate == 2);
+  sGyroFilter.Apply(pitch, yaw, dt, PortOverlay::GyroSmoothing(), PortOverlay::GyroTightening());
+  return true;
+}
+
+} // namespace
+
+void PollGyro() {
+  // Called once per loop iteration, which is not once per tick when the frame limiter is off, so
+  // the rates integrate over the real frame time.
+  static uint64_t sLastNs = 0;
+  // Gyro aim moves only the pointer, and only while pointer aim is applied (it needs mouse, twin
+  // stick or touch aim, as in MP1). Off, the sensors are never touched.
+  if (!PortOverlay::GyroAim() || !PortOverlay::PointerAim() || !PortMouse::PointerAimEnabled()) {
+    sLastNs = 0;
+    return;
+  }
+  const uint64_t nowNs = SDL_GetTicksNS();
+  const float dt = sLastNs == 0 ? 0.f : std::min(float(double(nowNs - sLastNs) * 1e-9), 0.1f);
+  sLastNs = nowNs;
+  float yaw = 0.f;
+  float pitch = 0.f;
+  if (!ReadGyroRates(pitch, yaw, dt) || !std::isfinite(dt) || dt <= 0.f) {
+    return;
+  }
+  PortMouse::AddGyroPointer(yaw, pitch, dt, PortOverlay::GyroCursorAngle() * (PortMouse::kPi / 180.f));
 }
 
 } // namespace PortInputDevices

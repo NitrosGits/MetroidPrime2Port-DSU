@@ -55,6 +55,9 @@ PADStatus Poll();
 // Runs the port's own actions (port menu, screenshot) from their bindings; called once a
 // loop iteration from port_events.cpp, so they work while the game is paused.
 void PollPortActions();
+// Gyro aim (MP1's PollGyro, pointer branch only): reads pad 0's gyro (or the phone's) and moves
+// the pointer, while F1's gyro aim and pointer aim are both on. Once a loop iteration.
+void PollGyro();
 
 // The user's bindings from <user>/controls.toml (port_input_bindings.h), loaded on
 // first use and reloaded when the file changes (checked at most once a second). A

@@ -228,6 +228,9 @@ bool UiActive();
 // Relative motion as it arrives from SDL's event queue, and the once-per-loop latch that
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);
+// Gyro aim on the pointer (MP1's PollGyro pointer branch): yaw (right) and pitch (up) in rad/s
+// over dt seconds; `sweep` radians of pad turn move the pointer across the screen.
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep);
 void BeginFrame();
 // Called every tick, from CPlayer::UpdateMouseAim. `active` means a pointer source may own the
 // aim right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps
