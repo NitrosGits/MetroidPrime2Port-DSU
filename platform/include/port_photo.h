@@ -33,7 +33,7 @@ void SetSupersample(int factor);
 bool RequestCapture(int factor = 0);
 bool Capturing();
 
-// What the last capture did, for the toast and the console.
+// What the last capture did, for the panel and the console.
 struct CaptureResult {
   int state = 0; // 0 none yet, 1 saved, -1 failed
   std::string path;
@@ -43,7 +43,5 @@ struct CaptureResult {
   bool clamped = false;
 };
 CaptureResult LastCapture();
-// A message for the toast once, then empty.
-std::string TakeMessage();
 
 } // namespace PortPhoto

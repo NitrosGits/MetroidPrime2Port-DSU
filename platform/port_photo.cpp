@@ -30,7 +30,6 @@ constexpr double kSaveTimeoutSeconds = 20.0;
 enum class Phase { Idle, Hiding, Settling, Saving };
 
 int sSupersample = 1;
-std::string sMessage;
 Phase sPhase = Phase::Idle;
 int sPhaseFrames = 0;
 double sPhaseAt = 0.0;
@@ -43,7 +42,6 @@ double Now() {
 }
 
 void Say(const std::string& text) {
-  sMessage = text;
   std::fprintf(stderr, "[photo] %s\n", text.c_str());
 }
 
@@ -206,11 +204,5 @@ bool RequestCapture(int factor) {
 
 bool Capturing() { return sPhase != Phase::Idle; }
 CaptureResult LastCapture() { return sLast; }
-
-std::string TakeMessage() {
-  std::string text;
-  text.swap(sMessage);
-  return text;
-}
 
 } // namespace PortPhoto
