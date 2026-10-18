@@ -28,7 +28,12 @@ appended, dated as in the heading there.
   Verified: gen --check rc 0; link 0 FAILED; host tests (presentation rules, input engine, input
   bindings) rc 0; matching build 94.14%/63.29%; strip-diff CLEAN on all upstream files; boot exit 124.
   Not ported: projectiles, swooshes, electric effects, beams (phase 6) - check before claiming done.
-- Next: phase 4 (look input), HUD/2D resets, sweep.
+- Phase 4 (`92acd3eb5`, MP1's "look input per frame", its phase 1): `PortMouse::PresentedAimDelta` previews
+  the pending mouse/gyro/stick turn; `CCameraManager::GetPresentedLookRotation` turns the presented view by
+  it. Setting `look_interpolation` (env `MP2_LOOK_INTERPOLATION`, F1 "Smooth look", ON by default as in MP1,
+  active only with smooth frames on and the cap off). Verified: link 0 FAILED; matching build 94.14%/63.29%;
+  strip-diff CLEAN; boot exit 124. Not checked on screen (no save). Pointer cursor still steps per tick.
+- Next: HUD/2D and resets (MP1 doc sections 5-6), then the sweep.
 - Gotcha: `/tmp/strip.py` (crude) dropped everything after `#else`; use a stripper that keeps the
   `#else` branch, or its CLEAN results mean nothing.
 
