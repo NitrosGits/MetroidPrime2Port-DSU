@@ -41,6 +41,14 @@
 #include "rstl/math.hpp"
 
 #include <float.h>
+#ifdef TARGET_PC
+#include "MetroidPrime/Player/CMorphBall.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
+#include "port_presentation_rules.h"
+#include "port_timing.h"
+#include <math.h>
+#include <string.h>
+#endif
 
 // TODO: how else would they end up in .data?
 static EMaterialTypes SolidMaterial = kMT_Solid;
@@ -134,7 +142,14 @@ CActor::CActor(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
 , mDamageHighlight(false)
 , mTakesProjectedShadow(params.TakesProjectedShadow())
 , mLoopingSoundCount(0)
+#ifdef TARGET_PC
+, mAlphaSorted(params.UseAlphaSorting())
+, mPortPrevTransform(xf)
+, mPortPrevGeneration(0)
+, mPortLastStep2(0.f) {
+#else
 , mAlphaSorted(params.UseAlphaSorting()) {
+#endif
   if (!mModelData.null()) {
     if (params.GetXRay().first != 0) {
       mModelData->SetEchoModel(params.GetXRay());
@@ -1196,3 +1211,107 @@ float CActor::GetDistanceToCamera(CStateManager& mgr) const {
 
 CActor::SSound::SSound(const CSfxHandle& handle, const CSegId& locator, const bool useEchoVolume)
 : mHandle(handle), mLocator(locator), mUseEchoVolume(useEchoVolume) {}
+#ifdef TARGET_PC
+
+// Port: actor transform smoothing, MP1's CActor.cpp port block (phase 1 of its
+// docs/FRAME_INTERPOLATION.md). The camera manager's presentation factor is -1 unless smooth frames
+// are on and the frame cap is off, which is what turns this on.
+namespace {
+bool sPortRenderScopeActive = false;
+
+// The rigid (unit, orthonormal) form of a transform and its rotation. Actors carry scale in their
+// transform; blending rotations needs it out.
+CTransform4f PortRigid(const CTransform4f& xf, CQuaternion& rot) {
+  CVector3f right = xf.GetRight();
+  CVector3f forward = xf.GetForward();
+  CVector3f up = xf.GetUp();
+  if (right.CanBeNormalized())
+    right.Normalize();
+  if (forward.CanBeNormalized())
+    forward.Normalize();
+  if (up.CanBeNormalized())
+    up.Normalize();
+  CTransform4f basis = CTransform4f::FromColumns(right, forward, up, CVector3f::Zero());
+  basis.Orthonormalize();
+  rot = CQuaternion::FromMatrix(basis);
+  return rot.BuildTransform4f(xf.GetTranslation());
+}
+
+struct PortRigidOps {
+  CTransform4f Rigid(const CTransform4f& xf, CQuaternion& rot) const { return PortRigid(xf, rot); }
+  CVector3f Translation(const CTransform4f& xf) const { return xf.GetTranslation(); }
+  void SetTranslation(CTransform4f& xf, const CVector3f& v) const { xf.SetTranslation(v); }
+  float AbsDot(const CQuaternion& a, const CQuaternion& b) const {
+    return fabsf(CQuaternion::Dot(a, b));
+  }
+  CQuaternion Slerp(const CQuaternion& a, const CQuaternion& b, float t) const {
+    return CQuaternion::SlerpLocal(a, b, t);
+  }
+  CTransform4f Build(const CQuaternion& q, const CVector3f& centre) const {
+    return q.BuildTransform4f(centre);
+  }
+};
+} // namespace
+
+uint CActor::PortTickGeneration() { return PortTiming::TickGeneration(); }
+
+void CActor::PortSnapshotRenderTransform() {
+  const uint gen = PortTickGeneration();
+  mPortLastStep2 = mPortPrevGeneration != 0 && mPortPrevGeneration + 1 == gen
+                       ? (mTransform.GetTranslation() - mPortPrevTransform.GetTranslation())
+                             .MagSquared()
+                       : 0.f;
+  mPortPrevTransform = mTransform;
+  mPortPrevGeneration = gen;
+}
+
+bool CActor::PortPresentedView(const CTransform4f& view, CTransform4f& out) const {
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f || t >= 1.f || !PortSnapshotFresh(mPortPrevGeneration, PortTickGeneration()))
+    return false;
+  // An actor that did not move this tick (CTransform4f's operator== has no definition here).
+  if (memcmp(&mPortPrevTransform, &mTransform, sizeof(CTransform4f)) == 0)
+    return false;
+  CTransform4f blend = CTransform4f::Identity();
+  CTransform4f cur = CTransform4f::Identity();
+  CVector3f pivot = CVector3f::Zero();
+  // The rolling ball turns about its centre, not the player's feet.
+  if (const CPlayer* player = TCastToConstPtr< CPlayer >(this)) {
+    if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed &&
+        player->GetMorphBall() != nullptr) {
+      pivot = CVector3f(0.f, 0.f, player->GetMorphBall()->GetBallRadius());
+    }
+  }
+  if (!PortBlendRigid(mPortPrevTransform, mTransform, t, blend, cur, pivot, mPortLastStep2))
+    return false;
+  // Draws place the model at mTransform: shift the view so it lands at the blend instead.
+  out = cur * blend.GetQuickInverse() * view;
+  return true;
+}
+
+bool CActor::PortBlendRigid(const CTransform4f& from, const CTransform4f& to, float t,
+                            CTransform4f& blend, CTransform4f& cur, const CVector3f& pivot,
+                            float lastStep2) {
+  return PortBlendRigidGeneric< CTransform4f, CVector3f, CQuaternion >(
+      PortRigidOps(), from, to, t, blend, cur, pivot, pivot.MagSquared() > 0.f, lastStep2);
+}
+
+CPortActorRenderScope::CPortActorRenderScope(const CActor& actor)
+: mSavedView(CGraphics::GetViewMatrix()), mActive(false) {
+  if (sPortRenderScopeActive)
+    return;
+  CTransform4f view = CTransform4f::Identity();
+  if (!actor.PortPresentedView(mSavedView, view))
+    return;
+  mActive = true;
+  sPortRenderScopeActive = true;
+  CGraphics::SetViewPointMatrix(view);
+}
+
+CPortActorRenderScope::~CPortActorRenderScope() {
+  if (!mActive)
+    return;
+  sPortRenderScopeActive = false;
+  CGraphics::SetViewPointMatrix(mSavedView);
+}
+#endif

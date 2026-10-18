@@ -292,6 +292,25 @@ public:
   // `src/MetroidPrime/CActorSetDirtyFlags.cpp` still has a declaration to define. It is a plain
   // non-virtual member, so it adds no vtable entry and moves no member.
   void SetDirtyFlags();
+
+  // Port: actor transform smoothing (MP1's docs/FRAME_INTERPOLATION.md, "1. Actor transforms").
+  // CStateManager::Update records every actor's transform before the tick; frames drawn between
+  // ticks then blend the two. The tick generation is PortTiming::TickGeneration (MP1's
+  // PortBeginTickSnapshot is PortTiming::BeginTick), bumped once per tick in main.cpp's loop.
+  static uint PortTickGeneration();
+  void PortSnapshotRenderTransform();
+  // The camera-to-world view that draws this actor at its blended transform instead of
+  // mTransform. False when no blend applies (the view is left alone): smooth frames off, capped
+  // frames, snapped moves, new actors.
+  bool PortPresentedView(const CTransform4f& view, CTransform4f& out) const;
+  // Rigid blend of two transforms at t, with the snap rule (a teleport or 45 degrees apart =
+  // false). `cur` gets the rigid form of `to`. A non-zero `pivot` (world offset to the visual
+  // centre, the morph ball's radius) makes that centre lerp and the turn happen about it; then
+  // only a teleport cuts, a big roll keeps the translation. `lastStep2` is the squared step of the
+  // tick before, so fast movers aren't taken for teleports (port_presentation_rules.h).
+  static bool PortBlendRigid(const CTransform4f& from, const CTransform4f& to, float t,
+                             CTransform4f& blend, CTransform4f& cur, const CVector3f& pivot,
+                             float lastStep2);
 #endif
 
 private:
@@ -365,9 +384,30 @@ private:
   uint mTakesProjectedShadow : 1;
   uint mLoopingSoundCount : 3;
   uint mAlphaSorted : 1; // Guessed name
+#ifdef TARGET_PC
+  CTransform4f mPortPrevTransform;
+  uint mPortPrevGeneration;
+  // Squared step of the tick before (0 when that tick had no snapshot).
+  float mPortLastStep2;
+#endif
 };
 CHECK_SIZEOF(CActor, 0x158)
 NESTED_CHECK_SIZEOF(CActor, SSound, 0x8)
 NESTED_CHECK_SIZEOF(CActor, TLoopingSound, 0xc)
+#ifdef TARGET_PC
+// Port: while alive, draws go through the actor's presented view (see
+// CActor::PortPresentedView). Nested scopes leave the outer one's view.
+class CPortActorRenderScope {
+public:
+  explicit CPortActorRenderScope(const CActor& actor);
+  ~CPortActorRenderScope();
+
+private:
+  CPortActorRenderScope(const CPortActorRenderScope&);
+  CPortActorRenderScope& operator=(const CPortActorRenderScope&);
+  CTransform4f mSavedView;
+  bool mActive;
+};
+#endif
 
 #endif // _CACTOR

@@ -993,7 +993,13 @@ void CStateManager::RenderActorQueue(rstl::reserved_vector< TUniqueId, 20 >& que
     CScopedProfiler profile(profileName, true);
     for (rstl::reserved_vector< TUniqueId, 20 >::const_iterator it = queue.begin();
          it != queue.end(); ++it) {
+#ifdef TARGET_PC
+      const CActor* queued = static_cast< const CActor* >(GetObjectById(*it));
+      CPortActorRenderScope presented(*queued);
+      queued->Render(*this);
+#else
       static_cast< const CActor* >(GetObjectById(*it))->Render(*this);
+#endif
     }
   }
 }
@@ -1072,7 +1078,14 @@ void CStateManager::RenderAreaActors(bool& deferPlayerRender, CEchoEmitter*& emi
         deferPlayerRender = true;
       }
     } else {
+#ifdef TARGET_PC
+      {
+        CPortActorRenderScope presented(*actor);
+        actor->AddToRenderer(*this);
+      }
+#else
       actor->AddToRenderer(*this);
+#endif
       if (CEchoEmitter* emitter = actor->EchoEmitter()) {
         emitter->SetNextEmitter(emitters);
         emitters = emitter;
@@ -1291,6 +1304,9 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
   }
   if (deferPlayerRender) {
     CScopedProfiler playerProfile(rstl::string_l("*2ndPlayerRender"), true);
+#ifdef TARGET_PC
+    CPortActorRenderScope presented(*player);
+#endif
     player->Render(*this);
   }
   if (visor == CPlayerState::kPV_Scan) {
@@ -2281,6 +2297,9 @@ void CStateManager::RecursiveDrawTree(TUniqueId uid) const {
       RecursiveDrawTree(nextNode);
     }
     if (mObjectDrawToken == actor->GetAddedToken()) {
+#ifdef TARGET_PC
+      CPortActorRenderScope presented(*actor);
+#endif
       actor->Render(*this);
     }
     actor->SetDrawToken(mObjectDrawToken);
@@ -2299,7 +2318,14 @@ void CStateManager::RendererDrawCallback(const void* drawable, const void* conte
     if (nextNode != kInvalidUniqueId) {
       mgr.RecursiveDrawTree(nextNode);
     }
+#ifdef TARGET_PC
+    {
+      CPortActorRenderScope presented(actor);
+      actor.Render(mgr);
+    }
+#else
     actor.Render(mgr);
+#endif
     actor.SetDrawToken(mgr.mObjectDrawToken);
     break;
   }
@@ -3966,6 +3992,17 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       std::fprintf(stderr, "[area] %d\n", areaNow);
     }
     PortOverlay::SetGameState(gpGameState->CurrentWorldAssetId(), areaNow);
+  }
+  // Actor transform smoothing: record every actor's transform before this tick moves it
+  // (CActor::PortPresentedView blends from it). After the free camera's freeze, so a frozen world
+  // keeps its snapshots stale and draws unblended.
+  {
+    CObjectList* actors = mObjectLists[kOL_Actor].get();
+    for (int idx = actors->GetFirstObjectIndex(); idx != -1;
+         idx = actors->GetNextObjectIndex(idx)) {
+      if (CActor* act = static_cast< CActor* >((*actors)[idx]))
+        act->PortSnapshotRenderTransform();
+    }
   }
 #endif
   mCurTimeMod900 += dt;
