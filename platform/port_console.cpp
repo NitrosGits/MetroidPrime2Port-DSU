@@ -16,6 +16,7 @@
 #include "port_overlay.h"
 #include "port_save.h"
 #include "port_settings.h"
+#include "port_ui_common.h"
 #include "port_warp.h"
 
 #include "MetroidPrime/CStateManager.hpp"
@@ -468,6 +469,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
       "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"
+      "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"
+      "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
+      "filter [<text>]             filter the F1 rows by label (no text clears); reports the count\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -956,6 +960,52 @@ void CmdHudScale(CStateManager&, const Args& args, std::string& out) {
   PortOverlay::SetHudScale(value);
   char line[64];
   std::snprintf(line, sizeof(line), "hud scale %d%%\n", PortOverlay::HudScale());
+  out += line;
+}
+
+void CmdUiScale(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < PortOverlay::kUiScaleMin || value > PortOverlay::kUiScaleMax) {
+      Fail("ui scale is 50..200 percent");
+      return;
+    }
+    PortOverlay::SetUiScale(value);
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "ui scale %d%%\n", PortOverlay::UiScale());
+  out += line;
+}
+
+void CmdVsync(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    const int value = ArgToInt(args[1], -1);
+    if (value != 0 && value != 1) {
+      Fail("vsync is 0 or 1");
+      return;
+    }
+    PortOverlay::SetVsync(value == 1);
+  }
+  out += PortOverlay::Vsync() ? "vsync on\n" : "vsync off\n";
+}
+
+// `filter <text>` sets the F1 window's filter (the rest of the line, so a label with a space works),
+// `filter` alone clears it. The count is of the row labels the window has drawn so far, so it
+// needs the F1 window to have been open once.
+void CmdFilter(CStateManager&, const Args& args, std::string& out) {
+  std::string text;
+  for (size_t i = 1; i < args.size(); ++i) {
+    if (i > 1) {
+      text += ' ';
+    }
+    text.append(args[i]);
+  }
+  PortUi::SetFilter(text.c_str());
+  int total = 0;
+  const int visible = PortUi::VisibleRows(&total);
+  char line[160];
+  std::snprintf(line, sizeof(line), "filter \"%s\": %d of %d rows visible%s\n", PortUi::Filter(),
+                visible, total, total == 0 ? " (open the F1 window once to list them)" : "");
   out += line;
 }
 
@@ -1590,6 +1640,9 @@ constexpr SCommand kCommands[] = {
     {"msaa", CmdMsaaAniso, true},
     {"aniso", CmdMsaaAniso, true},
     {"hudscale", CmdHudScale, true},
+    {"uiscale", CmdUiScale, true},
+    {"vsync", CmdVsync, true},
+    {"filter", CmdFilter, true},
     {"objs", CmdObjs, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},

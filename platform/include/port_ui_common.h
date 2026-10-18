@@ -11,10 +11,26 @@ struct ImGuiStyle;
 
 namespace PortUi {
 
-// The Prime 1 port's touch paddings and Prime colours, scaled for the display. Idempotent: call it
-// every frame and it restyles only when the display scale changed. Android only; the desktop window
-// is left as it is.
+// Scales the window by `scale` (clamped to 1..4). Idempotent: call it every frame and it restyles
+// only when the scale changed. On Android it also applies the Prime 1 port's touch paddings and
+// Prime colours; on the desktop it only scales ImGui's own style and font, so the look is the same.
 void ApplyTheme(float displayScale);
+
+// The settings filter (F1's "Filter settings" box, console `filter`). Empty shows every row.
+void SetFilter(const char* text);
+const char* Filter();
+// True when the filter is empty or `label` contains it, ignoring case. Every row's visible label
+// goes through it; if a section is open and its header has not been drawn yet, the first match
+// draws it.
+bool Matches(const char* label);
+// A titled group of rows. BeginSection draws nothing when a filter is set: the header appears
+// with the first row that matches, so a filtered window has no empty headers. It returns true when
+// the header was drawn at once (no filter).
+bool BeginSection(const char* name);
+void EndSection();
+// How many distinct row labels the window has offered so far, and how many of them match the
+// current filter (the console's `filter` reports it).
+int VisibleRows(int* total);
 
 // Dimmed, wrapped text under a control (ItemHelp on Android).
 void Help(const char* text);

@@ -97,6 +97,16 @@ void SetHudScalingActive(bool active);
 // (the per-visor effect: on this port that is the scan visor's window and edges).
 bool HideHelmet();
 bool HideVisorEffects();
+// The F1 window's size in percent of the display's own scale (`MP2_UI_SCALE=50..200`, F1 > Render,
+// console `uiscale`); the product is clamped to 1..4 by PortUi::ApplyTheme.
+const int kUiScaleMin = 50;
+const int kUiScaleMax = 200;
+int UiScale();
+void SetUiScale(int percent);
+// Vertical sync (`MP2_VSYNC=1`, F1 > Render, console `vsync`); off by default. Applied through
+// aurora_enable_vsync from Draw, even with the window closed.
+bool Vsync();
+void SetVsync(bool enabled);
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

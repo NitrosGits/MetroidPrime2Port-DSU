@@ -752,7 +752,7 @@ int main(int argc, char** argv) {
       .cachePath = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache),
       .resourcesPath = nullptr,
       .desiredBackend = BACKEND_AUTO,
-      .vsync = false,
+      .vsync = false, // the `vsync` setting (platform/port_overlay.cpp) is the source of truth
       .allowTextureDumps = false,
       .windowWidth = 854u,
       .windowHeight = 480u,

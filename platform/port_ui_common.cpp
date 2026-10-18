@@ -5,7 +5,12 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <set>
+#include <string>
 
 namespace PortUi {
 namespace {
@@ -162,10 +167,11 @@ void Lines(const char* env, const char* description, bool sameLine) {
 } // namespace
 
 void ApplyTheme(float displayScale) {
-  if (!kThemed || ImGui::GetCurrentContext() == nullptr) {
+  if (ImGui::GetCurrentContext() == nullptr) {
     return;
   }
   static float sApplied = 0.f;
+  static ImGuiStyle sBase; // the desktop's untouched style, captured before the first scaling
   const float scale = std::clamp(displayScale, 1.f, 4.f);
   if (sApplied == scale) {
     return;
@@ -174,13 +180,89 @@ void ApplyTheme(float displayScale) {
   ImGuiIO& io = ImGui::GetIO();
   if (sApplied != 0.f) {
     io.FontGlobalScale /= sApplied;
+  } else if (!kThemed) {
+    sBase = style;
   }
   // Rebuilt from the unscaled values, so a changed scale never compounds.
-  ApplyTouchStyle(style);
+  if (kThemed) {
+    ApplyTouchStyle(style);
+  } else {
+    style = sBase;
+  }
   style.ScaleAllSizes(scale);
   io.FontGlobalScale *= scale;
-  ApplyPrimeTheme(style, scale);
+  if (kThemed) {
+    ApplyPrimeTheme(style, scale);
+  }
   sApplied = scale;
+}
+
+namespace {
+char sFilter[128] = "";
+std::set<std::string> sSeenRows;
+const char* sSectionName = nullptr;
+bool sSectionDrawn = false;
+
+bool Contains(const char* text, const char* needle) {
+  const size_t n = std::strlen(needle);
+  for (const char* p = text; *p != '\0'; ++p) {
+    size_t i = 0;
+    while (i < n && p[i] != '\0' &&
+           std::tolower(static_cast< unsigned char >(p[i])) ==
+               std::tolower(static_cast< unsigned char >(needle[i]))) {
+      ++i;
+    }
+    if (i == n) {
+      return true;
+    }
+  }
+  return n == 0;
+}
+} // namespace
+
+void SetFilter(const char* text) {
+  std::snprintf(sFilter, sizeof(sFilter), "%s", text != nullptr ? text : "");
+}
+
+const char* Filter() { return sFilter; }
+
+bool Matches(const char* label) {
+  sSeenRows.insert(label);
+  if (sFilter[0] != '\0' && !Contains(label, sFilter)) {
+    return false;
+  }
+  if (sSectionName != nullptr && !sSectionDrawn) {
+    sSectionDrawn = true;
+    ImGui::SeparatorText(sSectionName);
+  }
+  return true;
+}
+
+bool BeginSection(const char* name) {
+  sSectionName = name;
+  sSectionDrawn = false;
+  if (sFilter[0] == '\0') {
+    sSectionDrawn = true;
+    ImGui::SeparatorText(name);
+    return true;
+  }
+  return false;
+}
+
+void EndSection() {
+  sSectionName = nullptr;
+  sSectionDrawn = false;
+}
+
+int VisibleRows(int* total) {
+  int visible = 0;
+  for (const std::string& row : sSeenRows) {
+    visible += (sFilter[0] == '\0' || Contains(row.c_str(), sFilter)) ? 1 : 0;
+  }
+  if (total != nullptr) {
+    *total = static_cast< int >(sSeenRows.size());
+  }
+  return visible;
 }
 
 void Help(const char* text) {

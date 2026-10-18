@@ -3,6 +3,7 @@
 #include "port_remap_ui.h"
 
 #include "port_binds.h"
+#include "port_ui_common.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -113,15 +114,26 @@ void Draw() {
   if (!sPrimed) {
     Prime();
   }
-  ImGui::TextWrapped("Click a key, then press the new one. Esc cancels; right/middle/side mouse "
-                     "buttons bind too.");
-  if (ImGui::Button("Reset all")) {
-    PortBinds::Reset();
-    sArmed = -1;
+  // The settings filter: the intro and Reset all go with "Reset all bindings", the table keeps the
+  // rows whose input name matches (and is left out when none does).
+  if (PortUi::Matches("Reset all bindings")) {
+    ImGui::TextWrapped("Click a key, then press the new one. Esc cancels; right/middle/side mouse "
+                       "buttons bind too.");
+    if (ImGui::Button("Reset all")) {
+      PortBinds::Reset();
+      sArmed = -1;
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", PortBinds::Path()[0] != '\0' ? PortBinds::Path() : "(not saved)");
+    ImGui::Separator();
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("%s", PortBinds::Path()[0] != '\0' ? PortBinds::Path() : "(not saved)");
-  ImGui::Separator();
+  int shownRows = 0;
+  for (int row = 0; row < PortBinds::Count(); ++row) {
+    shownRows += PortUi::Matches(PortBinds::Input(row).label) ? 1 : 0;
+  }
+  if (shownRows == 0) {
+    return;
+  }
 
   const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
                                 ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
@@ -137,6 +149,9 @@ void Draw() {
   const int count = PortBinds::Count();
   for (int row = 0; row < count; ++row) {
     const PortBinds::SInput& input = PortBinds::Input(row);
+    if (!PortUi::Matches(input.label)) {
+      continue;
+    }
     const int key = PortBinds::Scancode(row);
     const bool armed = sArmed == row;
     const bool isDefault = key == input.defaultScancode;
