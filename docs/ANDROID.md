@@ -361,6 +361,12 @@ Four new files and four small edits, and no MP1-specific subsystem ported that M
   test has to hold a button (`adb shell input swipe x y x y 600`) to see it.
 - `MP2_DEBUG_PAD=1` (a line per button and stick change) is what made the touch readable in a
   device log; without it a working overlay and a dead one look identical from outside.
+- **Since M3 (2026-10-18)**: the overlay carries a MENU pill that toggles the F1 window, and while
+  it is open every touch but the pill goes to SDL as a mouse (MP1's approach), so the window is
+  usable with a finger; two fingers or a drag on its empty space scroll it. The port also writes
+  `metroid_prime2_port.log` (and the previous run as `.old.log`) into
+  `Android/data/org.metroidprime2.port/files/`, which `adb pull` can read; `MP2_LOG_FILE=0` turns it
+  off, and `MP2_DEBUG_ARAM=1` brings back the ARAM staging lines that are off by default.
 - What is still untested on the phone: drag-to-aim (`MP2_TOUCH_AIM=1`; it is off by default and
   the C-stick is the look stick), a physical pad taking the overlay over (the pad scan), and
   moving a control in the editor and re-launching to see the saved `layout=` restored.

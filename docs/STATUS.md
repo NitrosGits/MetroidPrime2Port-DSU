@@ -3,6 +3,50 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (twelfth session): a log file, the automapper, and the F1 menu on the phone
+
+Three things the phone asked for, all committed (`72d9e0d01`, `283278ddd`, `952ec24f0`).
+
+**A log file.** `<user>/metroid_prime2_port.log` now gets everything the process prints - the
+port's lines, Aurora's, SDL's, and what is printed just before an abort - with the previous run kept
+as `metroid_prime2_port.old.log`; 64 MiB cap; `MP2_LOG_FILE=0` turns it off, F1 > Testing has the
+row, `logfile [0|1]` the console command, and both say it takes effect next launch. On the desktop a
+forked copier writes the pipe to the file and to the terminal; on Android the existing
+stdout/stderr pump into logcat feeds it, and the file goes to the app's *external* folder
+(`Android/data/org.metroidprime2.port/files`) because the private user dir cannot be read without
+root - so `adb pull` works. Verified on the desktop (file created, rotation on the second run,
+`MP2_LOG_FILE=0` writes nothing) and on the phone (`adb pull` gives a 229-line run log).
+The `[aram]` staging lines are now behind `MP2_DEBUG_ARAM=1`: they were 253 of the 405 lines in a
+30 s desktop run and thousands on the phone, enough to bury anything worth reading.
+
+**The automapper.** The minimap drew as a fan of stretched lines over the whole view, and opening
+the map screen crashed the phone in `aurora::gx::texture::resolve_static_texture`. Two causes:
+`CMapArea::PostConstruct` converts the area's vertex floats to host order but `Draw` then used the
+3-argument `CGX::SetArray` (the disc path: size 0, data marked big-endian), so Aurora uploaded
+nothing or swapped it again - the vertex-array gotcha in AGENTS.md; the area vertices and the door
+corners in `CMappableObject` now go through `SetArrayNative` with their real sizes. And
+`CInGameGuiManager::DestroyAreaTextures`, then `CTexture::UnloadBitmapData` itself, freed texture
+data while Aurora's FIFO thread was still resolving texture objects - `GXDrawDone()` before the
+`CARAMToken` is dropped covers every free in one place. Verified on the desktop (minimap correct in
+areas 0 and 5, map screen renders and closes, upstream text identical with TARGET_PC blocks
+stripped) and on the phone (minimap correct, map screen no longer crashes).
+
+**The F1 window on the phone.** It had no touch path at all, which is why the overlay carried no
+MENU pill. Now it does: a MENU pill (in every layout, saved and movable like the rest) toggles the
+window, and while it is open every touch except the pill is handed to SDL - whose touch-to-mouse
+path is what ImGui reads, the way Metroid Prime 1's port does it - so coordinates and click timing
+are SDL's own. Injecting ImGui events from Java was tried first and got both wrong. The pill is
+hit-tested against the rect from its last draw, two fingers scroll the list (`nativeDebugWheel`),
+and a drag on the window's empty space scrolls it too, which is why the window is no longer
+movable. Verified on the phone: MENU opens and closes, a tap toggles the row under the finger
+(Log file), a drag scrolls to the Saves section, and the map screen opens without the crash.
+
+**Still open on the phone**: the map screen draws a huge gray triangle over half the view (it
+survives the crash fix, goes away when the area unloads, and does not on the desktop - the map
+screen's dim/background pass, with the map's own wireframe visible under it). And the touch control
+set is still M3's: MP1's MENU-toggled layout has missile, L/R buttons and triggers, beam/visor
+wheels and pointer menus for the game's own screens, none of which are here yet.
+
 ## 2026-10-18 (eleventh session): save tools (import/export/backup), and what of the slice does not fit
 
 The fifth slice `docs/QOL.md` listed, taken as far as MP2's own types carry it: the card's save file
