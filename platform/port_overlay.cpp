@@ -9,6 +9,7 @@
 
 #include "port_controls.h"
 #include "port_freecam.h"
+#include "port_photo.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
 #include "port_input_remap_ui.h"
@@ -1059,6 +1060,7 @@ void SetVsync(bool enabled) {
 
 void Draw() {
   TickFps();
+  PortPhoto::Frame();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();
   ApplyVsync();

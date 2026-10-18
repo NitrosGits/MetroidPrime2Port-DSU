@@ -10,6 +10,7 @@
 #include "port_console.h"
 #include "port_mouse.h"
 #include "port_freecam.h"
+#include "port_photo.h"
 
 #include "port_input.h"
 #include "port_logfile.h"
@@ -796,6 +797,31 @@ void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortFreeCam::Active() : ArgToInt(args[1], 1) != 0;
   PortFreeCam::SetActive(enabled, &mgr);
   out += enabled ? "free camera on\n" : "free camera off\n";
+}
+
+// `photo [1|2|4]`: saves a PNG of the free camera's picture, supersampled by the factor (default
+// the supersample setting). The shot is taken a few frames later; its result is logged as `[photo] ...`.
+void CmdPhoto(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2 && args[1] != "1" && args[1] != "2" && args[1] != "4") {
+    out += "usage: photo [1|2|4]\n";
+    return;
+  }
+  if (PortPhoto::Capturing()) {
+    out += "a capture is already running\n";
+    return;
+  }
+  if (!PortPhoto::Active()) {
+    out += "photo needs the free camera: freecam 1\n";
+    return;
+  }
+  const int factor = args.size() < 2 ? 0 : ArgToInt(args[1], 1);
+  PortPhoto::RequestCapture(factor);
+  const PortPhoto::CaptureResult last = PortPhoto::LastCapture();
+  out += "capture requested (";
+  out += factor > 0 ? std::to_string(factor) : std::to_string(PortPhoto::Supersample());
+  out += "x); last: ";
+  out += last.state == 0 ? "none" : last.state > 0 ? "saved" : "failed";
+  out += "\n";
 }
 
 void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
@@ -1619,6 +1645,7 @@ constexpr SCommand kCommands[] = {
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
     {"freecam", CmdFreeCam, true},
+    {"photo", CmdPhoto, true},
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
     {"springball", CmdSpringBall, true},
