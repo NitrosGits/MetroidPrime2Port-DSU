@@ -83,6 +83,7 @@ constexpr STouchInfo kTouchControls[] = {
     {"start", "Start"},
     {"map", "Map"},
     {"eye", "Hide controls"},
+    {"turbo", "Turbo (not in this port yet)"},
     {"jump", "Twin stick: Jump"},
     {"fire", "Twin stick: Fire"},
     {"morph", "Twin stick: Morph"},
@@ -92,6 +93,8 @@ constexpr STouchInfo kTouchControls[] = {
     {"rt", "Twin stick: RT Fire"},
     {"rb", "Twin stick: RB Missile"},
     {"tz", "Twin stick: Map (Z)"},
+    {"tturbo", "Twin stick: Turbo (not in this port yet)"},
+    {"beam_shift", "Twin stick: Beam (held, not in this port yet)"},
     {"map_tap", "Minimap tap"},
 };
 
@@ -907,23 +910,24 @@ const std::vector<SGroup>& Groups() {
           Action::VisorPrev},
          true},
         {"Morph Ball", {Action::SpringBall}, true},
-        // MP2: no Gyro or "Menus and map" rows (this port has no gyro aim and no separate menu
-        // buttons), and Port lists only what PortInputDevices routes (no save states, Original
-        // toggle or photo mode).
-        {"Port", {Action::PortMenu, Action::Screenshot}, true},
+        // Rows whose action has no consumer in this port yet are kept, named as such, so the
+        // bindings stay where MP1 puts them; binding one does nothing until its feature lands.
+        {"Gyro (not in this port yet)", {Action::GyroAim, Action::ResetAim}, true},
+        // Read instead of the game buttons in menus and on the map ("Separate menu buttons").
+        {"Menus and map (not in this port yet)",
+         {Action::MenuA, Action::MenuB, Action::MenuX, Action::MenuY, Action::MenuL, Action::MenuR,
+          Action::MenuLAnalog, Action::MenuRAnalog, Action::MenuUp, Action::MenuDown, Action::MenuLeft,
+          Action::MenuRight},
+         true},
+        {"Port", {Action::PortMenu, Action::SaveState, Action::LoadState, Action::Screenshot, Action::ToggleOriginal,
+          Action::PhotoMode}, true},
         {"Layers (shift keys, advanced)", {Action::Layer1, Action::Layer2, Action::Layer3, Action::Layer4}, false},
     };
     // An action added to the engine but not sorted here still gets a row.
     SGroup other{"Other", {}, true};
     // Aim*/Look* aren't read by the game yet (aim is the C-stick, mouse look its own path): no rows.
     const Action unused[] = {Action::AimUp, Action::AimDown, Action::AimLeft, Action::AimRight, Action::LookX,
-                             Action::LookY,
-                             // MP2: actions with no backend in this port (see the groups above).
-                             Action::GyroAim, Action::ResetAim, Action::SaveState, Action::LoadState,
-                             Action::ToggleOriginal, Action::PhotoMode, Action::MenuA, Action::MenuB,
-                             Action::MenuX, Action::MenuY, Action::MenuL, Action::MenuR, Action::MenuLAnalog,
-                             Action::MenuRAnalog, Action::MenuUp, Action::MenuDown, Action::MenuLeft,
-                             Action::MenuRight};
+                             Action::LookY};
     for (int i = 1; i < PortInput::kActionCount; ++i) {
       if (std::find(std::begin(unused), std::end(unused), Action(i)) != std::end(unused)) continue;
       const bool listed = std::any_of(g.begin(), g.end(), [&](const SGroup& s) {
