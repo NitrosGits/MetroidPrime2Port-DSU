@@ -10,6 +10,7 @@
 #include "port_input_map.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_savestate.h"
 #include "port_touch.h"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
@@ -358,8 +359,8 @@ void BindBeamChords(Profile& p) {
 // MP1's turbo (A on one poll and off the next from the turbo key and pad slots) hangs off settings
 // MP2 does not have; the engine's per-binding turbo_hz (Bind's turboHz, controls.toml, the F1
 // Controls page's turbo rows) is MP1's and works. The touch overlay's Turbo is PortTouch's own.
-// Not carried either: the pad's alt buttons (a setting), save states on F5/F9 (no backend; F5-F10
-// were MP2's warp keys), reset aim (no consumer), and pointer menus' Escape (no pointer menus).
+// Not carried either: the pad's alt buttons (a setting), reset aim (no consumer), and pointer menus'
+// Escape (no pointer menus). Save states are on F5/F9, as in MP1 (PortSaveState).
 void BindPortControls(Profile& p) {
   // The port's own keys and the pad's overlay chord. Back + Start is ordered both
   // ways, so either can be held first; the chord also keeps Start from pausing.
@@ -379,6 +380,9 @@ void BindPortControls(Profile& p) {
   Bind(p, Action::Screenshot, Make(Device::Key, SDL_SCANCODE_F12));
   // Photo mode toggles the free camera (PortFreeCam; stage 1 has no photo panel).
   Bind(p, Action::PhotoMode, Make(Device::Key, SDL_SCANCODE_F8));
+  // Save and load the selected save state slot (F1 > Game > Save states picks the slot).
+  Bind(p, Action::SaveState, Make(Device::Key, SDL_SCANCODE_F5));
+  Bind(p, Action::LoadState, Make(Device::Key, SDL_SCANCODE_F9));
   // Gyro aim's hold / pause / toggle button (F1 > Controls, the gyro Mode row), as in MP1.
   Bind(p, Action::GyroAim, NativeInput(SDL_GAMEPAD_BUTTON_RIGHT_STICK));
   Bind(p, Action::GyroAim, Make(Device::Key, SDL_SCANCODE_LCTRL));
@@ -1219,8 +1223,10 @@ void PollPortActions() {
     return;
   }
   SetGyroButton(out.Held(Action::GyroAim));
-  // MP1 also routes reset aim, save/load state and the Original toggle here.
+  // MP1 also routes reset aim and the Original toggle here.
   if (out.Pressed(Action::PortMenu)) PortOverlay::Toggle();
+  if (out.Pressed(Action::SaveState)) PortSaveState::RequestSave(PortSaveState::SelectedSlot());
+  if (out.Pressed(Action::LoadState)) PortSaveState::RequestLoad(PortSaveState::SelectedSlot());
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
   if (out.Pressed(Action::PhotoMode)) {
     PortFreeCam::SetActive(!PortFreeCam::Active(), nullptr);

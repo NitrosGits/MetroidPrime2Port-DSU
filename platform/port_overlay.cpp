@@ -18,6 +18,7 @@
 #include "port_logfile.h"
 #include "port_mouse.h"
 #include "port_touch.h"
+#include "port_savestate.h"
 #include "port_settings.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
@@ -280,6 +281,62 @@ void TickFps() {
   }
 }
 
+// MP1's save state rows: the selected slot is the one F5 saves and F9 loads.
+void DrawSaveStates() {
+  ImGui::SeparatorText("Save states");
+  if (PortSaveState::Folder().empty()) {
+    ImGui::TextDisabled("No user directory, so save states are off");
+    return;
+  }
+  const std::string save = PortInputRemap::BindingsText(PortInput::Action::SaveState, " / ");
+  const std::string load = PortInputRemap::BindingsText(PortInput::Action::LoadState, " / ");
+  ImGui::TextDisabled("%s: save the selected slot   %s: load it", save.empty() ? "unbound" : save.c_str(),
+                      load.empty() ? "unbound" : load.c_str());
+  for (int slot = PortSaveState::kUndoSlot; slot <= PortSaveState::kSlotCount; ++slot) {
+    ImGui::PushID(slot);
+    const PortSaveState::Info info = PortSaveState::SlotInfo(slot);
+    if (slot == PortSaveState::kUndoSlot) {
+      ImGui::BeginDisabled(!info.exists);
+      if (ImGui::Button("Undo last load")) {
+        PortSaveState::RequestLoad(slot);
+      }
+      ImGui::EndDisabled();
+    } else {
+      if (ImGui::RadioButton("##sel", PortSaveState::SelectedSlot() == slot)) {
+        PortSaveState::SetSelectedSlot(slot);
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Save")) {
+        PortSaveState::RequestSave(slot);
+      }
+      ImGui::SameLine();
+      ImGui::BeginDisabled(!info.exists);
+      if (ImGui::Button("Load")) {
+        PortSaveState::RequestLoad(slot);
+      }
+      ImGui::EndDisabled();
+      ImGui::SameLine();
+      ImGui::Text("%d", slot);
+    }
+    if (info.exists) {
+      const int t = static_cast< int >(info.playTime);
+      ImGui::SameLine();
+      ImGui::Text("%s  %d:%02d:%02d%s", info.room.c_str(), t / 3600, t / 60 % 60, t % 60,
+                  info.morphed ? "  (ball)" : "");
+    } else if (slot != PortSaveState::kUndoSlot) {
+      ImGui::SameLine();
+      ImGui::TextDisabled("empty");
+    }
+    ImGui::PopID();
+  }
+  const std::string message = PortSaveState::LastMessage();
+  if (!message.empty()) {
+    ImGui::TextWrapped("%s", message.c_str());
+  }
+  PortUi::Help("A state is the save data plus Samus's place; loading rebuilds the room as a card load "
+               "does (enemies and doors reset). Loading first writes the undo state.");
+}
+
 void DrawGameSection() {
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
@@ -298,6 +355,8 @@ void DrawGameSection() {
     PortWarp::CycleWorld(1);
   }
   PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
+
+  DrawSaveStates();
 
   ImGui::SeparatorText("Camera");
   {
@@ -961,7 +1020,7 @@ void DrawControlsSection() {
   // MP1's HotkeyHint (debug_ui/overlays.cpp): the port's own hotkeys, named by what is bound.
   const std::string menu = PortInputRemap::BindingsText(PortInput::Action::PortMenu, " / ");
   const std::string shot = PortInputRemap::BindingsText(PortInput::Action::Screenshot, " / ");
-  ImGui::TextDisabled("%s: this window   %s: screenshot   F5-F10: the port's other hotkeys",
+  ImGui::TextDisabled("%s: this window   %s: screenshot   F5/F9: save/load state   F8: photo mode",
                       menu.empty() ? "unbound" : menu.c_str(), shot.empty() ? "unbound" : shot.c_str());
 }
 
@@ -1092,7 +1151,7 @@ void DrawControlsSection() {
         ImGui::EndTabBar();
       }
       ImGui::SeparatorText("Hotkeys");
-      ImGui::TextDisabled("F1 overlay, F5/F6 area, F7/F8 world");
+      ImGui::TextDisabled("F1 overlay, F5/F9 save/load state, F8 photo mode");
     }
   }
   ImGui::End();

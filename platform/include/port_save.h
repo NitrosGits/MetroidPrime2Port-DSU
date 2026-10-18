@@ -15,10 +15,10 @@
 // slots, then the slots' CGameState buffers). Slot listing then calls the game's own
 // `CGameState::LoadGameFileState`, so the numbers are the ones the file select would show.
 //
-// What is *not* here, and why: MP1's save states (`port_savestate.cpp`) and its quick resume (a
-// savestate written on quit and loaded at launch) need the whole live world serialised - actors,
-// colliders, effects - which this tree does not have and which is a much larger piece than the card
-// tools. MP2's own resume is the card's save, which `MP2_SKIP_FRONTEND` boots straight into. See
+// What is *not* here, and why: MP1's quick resume (a savestate written on quit and loaded at launch)
+// and the room-state part of save states need the whole live world serialised - actors, colliders,
+// effects - which this tree does not have. Save states themselves are in port_savestate.cpp (phase 1:
+// the card stream plus Samus's place, no room state), and this file is the card tools. MP2's own resume is the card's save, which `MP2_SKIP_FRONTEND` boots straight into. See
 // docs/STATUS.md.
 namespace PortSave {
 

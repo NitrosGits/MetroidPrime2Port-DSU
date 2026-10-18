@@ -16,6 +16,7 @@
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_save.h"
+#include "port_savestate.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
 #include "port_ui_common.h"
@@ -1818,6 +1819,8 @@ void Start() {
 bool Enabled() { return sEnabled; }
 
 void Tick(CStateManager& mgr) {
+  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
+  PortSaveState::Tick(mgr);
 #ifndef _WIN32
   if (!sEnabled) {
     return;
