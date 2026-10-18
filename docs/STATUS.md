@@ -12,8 +12,11 @@ appended, dated as in the heading there.
 - **Checked on screen**: the FOV slider changes the picture (wider view after the click; camera pose
   unchanged). The slider's exact value was not read back.
 - Decided: photo mode is reached from the F1 menu only. No pause-menu entry.
-- Open: panel roll range (±45) vs `SetRoll` clamp (±180); no panel way back to FOV 0 once set; failed
-  capture line when the path is empty; whether stage 2 needs a toast.
+- Polish (`564da61bd`, `29270a223`): roll slider ±180 to match `SetRoll`; a "Game FOV" button returns
+  the override to 0; a failed capture says "see the log"; the unread toast message is gone. Checked
+  on screen: the roll range, the button's reset to "game (55)", and `photo 1` saving
+  `screenshots/metroid-prime-2-photo-*.png` (686x480).
+- No toast: the panel's Saved/failed line and the log carry the result.
 
 ## 2026-10-18, fifteenth session
 
