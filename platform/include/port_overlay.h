@@ -54,10 +54,6 @@ bool StickyCharge();
 // The mouse buttons drive the pad's gameplay rows under mouse aim (`MP2_MOUSE_BUTTONS=0` turns off).
 bool MouseButtons();
 void SetStickyCharge(bool enabled);
-// Scan and X-ray swap (`MP2_SWAP_SCAN_XRAY=1`, F1 > Controls): the two visor commands trade their
-// mappings while the Power Beam is equipped (CControlMapper::GetMapping, TARGET_PC only).
-bool SwapScanXray();
-void SetSwapScanXray(bool enabled);
 // Back up the card before the game writes it (`MP2_CARD_BACKUP=1`, F1 > Saves): each write to the
 // memory card copies the file as it is on disk first, into `<user>/save-backups`, so a save that
 // goes wrong can be imported back (console `save import latest`). Off by default; never saved.

@@ -3,17 +3,6 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-18, eighteenth session: scan/X-ray swap (NEEDS-BACKEND row)
-
-- Scan and X-ray visor mappings trade while the Power Beam is equipped: `CControlMapper::GetMapping`
-  (TARGET_PC block, reads `gpGameState->GetPlayerState()->GetCurrentBeam() == kBI_Power`).
-  Setting `swap_scan_xray` / `MP2_SWAP_SCAN_XRAY=1`, F1 > Controls "Swap scan and X-ray"; the
-  Remastered pad preset turns it on, the other presets off.
-- Gates: build rc=0, `gen_files_cmake.py --check` rc=0, `CControlMapper.cpp` strips to HEAD's
-  non-PC text. In-game D-pad check **not yet run**.
-- Still open from the NEEDS-BACKEND rows: remastered charge (Power Beam only), button glyphs,
-  auto-aim, pointer aim, remastered movement, separate vertical speed, minimap tap.
-
 ## 2026-10-18, seventeenth session: photo mode stages 2a and 2b
 
 - `c0ac5167f` stage 2a: supersampled capture (`RequestCapture`, PNG via `aurora::request_screenshot_png`),
