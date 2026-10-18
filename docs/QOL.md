@@ -24,7 +24,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | Console: `face`, `give`/`take`, `press`/`stick` (pad buttons and the main stick held on the virtual pad), `screenshot` | `platform/port_console.cpp`, `platform/port_events.cpp` (`port_input.h`) |
 | Console: `world <id> [area]` (a world warp), `worlds` (the memory card's world ids and name tables), `strg <id|name> [index]` (a string table) | `platform/port_console.cpp` |
 | Console: `gunoffset`, `msaa`, `aniso`, `hudscale` (the graphics settings, drivable from a headless run) | `platform/port_console.cpp` |
-| Keyboard rebinding: a 22-row keyboard table, the F1 Bindings section, `bind`/`binds`/`bind reset`, `keybinds.cfg` under the user dir | `platform/port_binds.cpp`, `platform/port_overlay.cpp`, `platform/port_console.cpp` |
+| Input remapping: MP1's remap UI (keyboard and pad rows, contexts, chords) and presets (`classic`, `mouse`, `gamecube`, `remastered`, `modern`, `southpaw`) in the F1 Controls page; bindings in `controls.toml` | `platform/input/port_input_remap_ui.cpp`, `platform/port_controls.cpp`, `platform/port_overlay.cpp` |
 | Graphics: first-person FOV, hide helmet, hide visor effects, arm-cannon offset, MSAA, anisotropic filtering, HUD scale | `port_overlay.cpp` + hooks in `CCameraManager`, `CInGameGuiManager`, `CPlayerVisor`, `CPlayer`, `CSamusHud`/`CGuiCamera`, and `aurora_set_graphics_quality` (vendored Aurora) |
 | Gameplay tweaks: fast morph, spring ball, toggle lock-on, sticky charge (F1 > Gameplay, `MP2_FAST_MORPH`/`MP2_SPRING_BALL`/`MP2_LOCK_ON_TOGGLE`/`MP2_STICKY_CHARGE`, console `fastmorph`/`springball`/`lockon`/`sticky`) | `platform/port_overlay.cpp`, `platform/include/port_hold_toggle.h` (+ its unit test), hooks in `CPlayer::UpdateMorphBallState`, `CMorphBall::ComputeBallMovement`, `CStateManager::ProcessInput` and `CFinalInput`'s `PortSetL`/`PortSetA` |
 | Log file: `metroid_prime2_port.log` next to the card (`.old.log` rotation, `MP2_LOG_FILE=0`, F1 > Testing, console `logfile`) | `platform/port_logfile.cpp`, fed by the Android logcat pump and by a forked copier on the desktop |
@@ -48,12 +48,10 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    the one setting whose cost is the whole framebuffer: 4x is for a desktop, not a phone.
 3. **Input settings**: the *engine* import is queued (MP1's `platform/input/`: bindings with
    `controls.toml`, device profiles, chords/contexts, its remap UI - 4,100 lines) as its own slice,
-   replacing `PortBinds`/`PortMouse`'s binding half and retiring the smaller remap page the F1 menu
-   has now; it is what "input bindings like Prime" actually needs. Keyboard rebinding is in - a 22-row table in `platform/port_binds.cpp`, the
-   F1 Bindings section, `bind`/`binds` on the console, and `keybinds.cfg` in the user directory. What
-   is left is key/button presets (MP1's classic / mouse-and-keyboard layouts, `port_controls.cpp`'s
-   `ApplyKeyPreset`), a controller (native pad) remap UI (MP1's `platform/input/` profile/toml
-   system), and export/import of the settings file.
+   replacing the 22-row Bindings table; it is what "input bindings like Prime" needs. Stage C is
+   in: MP1's remap UI and presets are the F1 Controls page (`platform/input/port_input_remap_ui.cpp`,
+   `platform/port_controls.cpp`), and `bind`/`binds` and `keybinds.cfg` are gone. What is left is
+   export/import of the settings file.
 4. **Gameplay tweaks**: done - fast morph, spring ball, toggle lock-on and sticky charge, verified on
    the desktop (see `docs/STATUS.md`). What MP1 has beside them and this tree does not: rapid charge,
    damage/ammo readouts on the HUD, and the morph-ball "hold to charge" variants; each needs a hook in

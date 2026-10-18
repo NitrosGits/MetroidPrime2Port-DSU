@@ -10,7 +10,6 @@
 #include "port_console.h"
 #include "port_mouse.h"
 
-#include "port_binds.h"
 #include "port_input.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
@@ -500,9 +499,6 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
-      "bind <action> <key>         rebind a pad input (a key name, MOUSE_LEFT..., or none);\n"
-      "                            `bind reset` restores the port's layout\n"
-      "binds                       every pad input's key, and the controls.toml it is saved in\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
       "help                        this list\n";
 }
@@ -1566,70 +1562,6 @@ void CmdSave(CStateManager&, const Args& args, std::string& out) {
   Fail("save <info|export|import|backup|backups> ...");
 }
 
-// binds: every pad input's key, as `bind` takes it, and the file the map is saved in.
-void CmdBinds(CStateManager&, const Args&, std::string& out) {
-  const char* path = PortBinds::Path();
-  out += "controls.toml: ";
-  out += *path != '\0' ? path : "(no user directory: nothing is saved)";
-  out += '\n';
-  char line[96];
-  for (int i = 0; i < PortBinds::Count(); ++i) {
-    const PortBinds::SInput& input = PortBinds::Input(i);
-    std::snprintf(line, sizeof(line), "%-12s %s\n", input.action,
-                  PortBinds::KeyName(PortBinds::Scancode(i)));
-    out += line;
-  }
-}
-
-// bind <action> <key> | bind reset: rebind a pad input, live and saved - the F1 window's Bindings
-// rows do the same. The key is the rest of the line, so "Left Shift" needs no quotes, and a row can
-// be left with no key ("none").
-void CmdBind(CStateManager&, const Args& args, std::string& out) {
-  if (args.size() < 2) {
-    Fail("usage: bind <action> <key>   (`binds` lists the actions; `bind reset` restores "
-         "the layout)");
-    return;
-  }
-  if (Lower(args[1]) == "reset") {
-    if (args.size() > 2) {
-      Fail("bind reset takes no key");
-      return;
-    }
-    PortBinds::Reset();
-    out += "the port's keyboard layout is back, and saved\n";
-    return;
-  }
-  const int row = PortBinds::Find(args[1]);
-  if (row < 0) {
-    Fail("no such pad input '" + Str(args[1]) + "' (see `binds`)");
-    return;
-  }
-  if (args.size() < 3) {
-    Fail("usage: bind <action> <key>");
-    return;
-  }
-  std::string key;
-  for (size_t i = 2; i < args.size(); ++i) {
-    if (i > 2) {
-      key += ' ';
-    }
-    key += Str(args[i]);
-  }
-  int scancode = PAD_KEY_INVALID;
-  if (!PortBinds::ParseKey(key, scancode)) {
-    Fail("no such key '" + key + "' (an SDL key name, MOUSE_LEFT/RIGHT/MIDDLE/X1/X2, or none)");
-    return;
-  }
-  const bool saved = PortBinds::Set(row, scancode);
-  out += PortBinds::Input(row).action;
-  out += " = ";
-  out += PortBinds::KeyName(scancode);
-  if (PortBinds::IsPortHotkey(scancode)) {
-    out += " (a port hotkey: it fires whenever the key is pressed)";
-  }
-  out += saved ? "\n" : "\n(in memory only: the file could not be written)\n";
-}
-
 // screenshot: the F12 capture. Aurora writes it under the working directory and logs the exact path.
 void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
   aurora::request_screenshot();
@@ -1710,8 +1642,6 @@ constexpr SCommand kCommands[] = {
     {"press", CmdPress, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
-    {"bind", CmdBind, true},
-    {"binds", CmdBinds, true},
     {"save", CmdSave, true},
     {"screenshot", CmdScreenshot, true},
 };

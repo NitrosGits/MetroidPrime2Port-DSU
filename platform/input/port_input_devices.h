@@ -92,7 +92,7 @@ struct SPadInfo {
   std::string name;
 };
 std::vector<SPadInfo> ConnectedPads();
-// The port's keyboard + mouse layout, before any user change (PortBinds' defaults).
+// The port's keyboard + mouse layout, before any user change (the Controls page's defaults).
 const PortInput::Profile& BaseKeyboardProfile();
 // The profile without the user's bindings: what each action inherits on a remap page.
 void BuildBaseProfile(PortInput::Profile& out);

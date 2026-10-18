@@ -373,14 +373,14 @@ endif()
 # mp_port_entry, which compile against Aurora's headers alone, and this file is
 # syntax-checked by the full build instead.
 if(AURORA_SDL3_TARGET)
-    add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_binds.cpp
+    add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
         platform/port_save.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_events.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_overlay_settings.cpp
         platform/port_overlay_search.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
-        platform/port_ui_common.cpp platform/port_remap_ui.cpp
+        platform/port_ui_common.cpp platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include

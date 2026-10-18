@@ -7,10 +7,10 @@
 
 #include "port_overlay.h"
 
-#include "port_binds.h"
+#include "port_controls.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
-#include "port_remap_ui.h"
+#include "port_input_remap_ui.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
 #include "port_settings.h"
@@ -20,6 +20,7 @@
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
 #include <aurora/gfx.h>
+#include <dolphin/pad.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -387,80 +388,28 @@ void DrawCheatsSection() {
                  "the player takes no damage; other actors still do. Not saved");
 }
 
-// The window's size multiplier for fixed widths: the window's UI scale (1 at 100% on a 1x display).
-float UiScale() { return ImGui::GetIO().FontGlobalScale; }
-
-// One row of the Bindings table: the pad input's name, then its key as a button that arms the row.
-void DrawBindRow(int row) {
-  const PortBinds::SInput& input = PortBinds::Input(row);
-  const bool capturing = PortBinds::CapturingRow() == row;
-  ImGui::TableNextColumn();
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted(input.label);
-  ImGui::TableNextColumn();
-  const char* text = capturing ? "press a key..." : PortBinds::KeyName(PortBinds::Scancode(row));
-  ImGui::PushID(row);
-  if (capturing) {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+// The Prime 1 port's Controls page (debug_ui/controls.cpp): the controller's sticks and triggers
+// (the end of its DrawControlsController), then its remap page, whose Reset popup carries the
+// key and pad presets. Its Options, Mouse settings and Touch & gyro sub-tabs are not here: this
+// port's gameplay options are the Gameplay page, mouse and stick aim are the Aim page, and the
+// touch overlay (touch.cfg) is the phone's own, so no sub-tab bar is left to draw.
+void DrawControlsSection() {
+  const s32 controllerIndex = PADGetIndexForPort(PAD_CHAN0);
+  if (SDL_Gamepad* pad = controllerIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(controllerIndex)) : nullptr;
+      pad != nullptr && SDL_IsJoystickVirtual(SDL_GetGamepadID(pad))) {
+    // Aurora ignores mappings on the virtual touch pad.
+    ImGui::TextWrapped("The touch controls always use the GameCube layout; presets and remaps apply to "
+                       "real controllers only.");
+  } else {
+    PortControls::DrawDeadZones();
   }
-  if (ImGui::Button(text, ImVec2(150.f * UiScale(), 0.f))) {
-    // A second click on the armed row is the way out of it without touching the keyboard.
-    if (capturing) {
-      PortBinds::CancelCapture();
-    } else {
-      PortBinds::BeginCapture(row);
-    }
-  }
-  if (capturing) {
-    ImGui::PopStyleColor();
-  }
-  if (ImGui::IsItemHovered()) {
-    ImGui::SetTooltip("%s = %s", input.action, text);
-  }
-  ImGui::PopID();
-}
-
-void DrawBindingsSection() {
-  ImGui::SeparatorText("Bindings");
-  // The Prime 1 port's remap page: one row per input with its key, a click-to-arm capture, a
-  // per-row reset and a conflict marker. It captures on its own (SDL scancodes) and writes
-  // controls.toml through PortBinds, so the console's bind/binds stay in step.
-  PortRemapUi::Draw();
-  PortUi::Help("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
-  return;
-#if 0
-  ImGui::SeparatorText("Bindings");
-  PortUi::Help("click a key, then press the one you want (Escape cancels)");
-  PortUi::Help("a mouse button is `bind A MOUSE_LEFT` on the console; this takes keys only");
-  // The buttons on the left, the stick inputs on the right: two pad inputs a row keeps 22 rows
-  // from filling the window.
-  int buttonRows = 0;
-  for (int i = 0; i < PortBinds::Count(); ++i) {
-    buttonRows += PortBinds::Input(i).axis ? 0 : 1;
-  }
-  const ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg;
-  if (ImGui::BeginTable("bindings", 4, flags)) {
-    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f * UiScale());
-    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f * UiScale());
-    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f * UiScale());
-    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f * UiScale());
-    for (int i = 0; i < buttonRows; ++i) {
-      ImGui::TableNextRow();
-      DrawBindRow(i);
-      if (buttonRows + i < PortBinds::Count()) {
-        DrawBindRow(buttonRows + i);
-      }
-    }
-    ImGui::EndTable();
-  }
-  if (ImGui::Button("Reset to defaults")) {
-    PortBinds::Reset();
-  }
-  ImGui::SameLine();
-  const char* path = PortBinds::Path();
-  ImGui::TextDisabled("%s", *path != '\0' ? path : "(no user directory: not saved)");
-  PortUi::Help("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
-#endif
+  ImGui::SeparatorText("Remap");
+  PortInputRemap::Draw();
+  // MP1's HotkeyHint (debug_ui/overlays.cpp): the port's own hotkeys, named by what is bound.
+  const std::string menu = PortInputRemap::BindingsText(PortInput::Action::PortMenu, " / ");
+  const std::string shot = PortInputRemap::BindingsText(PortInput::Action::Screenshot, " / ");
+  ImGui::TextDisabled("%s: this window   %s: screenshot   F5-F10: the port's other hotkeys",
+                      menu.empty() ? "unbound" : menu.c_str(), shot.empty() ? "unbound" : shot.c_str());
 }
 
 // The phone's window, as the Prime 1 port draws it (debug_ui/window.cpp's DrawPageWindow): full
@@ -605,7 +554,7 @@ const Page kPages[] = {
     {"Render", DrawRenderSection},     {"HUD", DrawHudSection},
     {"Testing", DrawTestingSection},   {"Gameplay", DrawGameplaySection},
     {"Saves", DrawSavesSection},       {"Cheats", DrawCheatsSection},
-    {"Bindings", DrawBindingsSection},
+    {"Controls", DrawControlsSection},
 };
 const int kPageCount = static_cast< int >(std::size(kPages));
 
@@ -897,9 +846,6 @@ void Draw() {
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {
-    // A row armed in the table belongs to the window: closing it disarms, so a key pressed later in
-    // the game is not silently bound to the row that was waiting.
-    PortBinds::CancelCapture();
     return;
   }
   PortUi::UpdateUiScale(static_cast< float >(PortOverlay::UiScale()) / 100.f);

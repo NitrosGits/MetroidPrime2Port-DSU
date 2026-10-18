@@ -7,7 +7,7 @@
 #include <dolphin/pad.h>
 
 #include "input/port_input_devices.h"
-#include "port_binds.h"
+#include "port_input_remap_ui.h"
 #include "port_harness.h"
 #include "port_input.h"
 #include "port_mouse.h"
@@ -248,7 +248,7 @@ void RunInputScript(unsigned frame) {
   status.err = PAD_ERR_NONE;
   status.button = held;
   // A real pad's L/R click sits at the end of the analog travel, and the keyboard binding drives
-  // both too (port_binds.cpp). Commands bound to the analog trigger - the scan visor's Scan Item,
+  // both too (the input engine's keyboard profile). Commands bound to the analog trigger - the scan visor's Scan Item,
   // for one - read only the analog half, so a held L that left it at 0 locked on but never scanned.
   status.triggerLeft = (held & PAD_TRIGGER_L) != 0 ? 255 : 0;
   status.triggerRight = (held & PAD_TRIGGER_R) != 0 ? 255 : 0;
@@ -327,9 +327,9 @@ bool PortPumpEvents() {
     // ignores a request it cannot serve (no world loaded yet, bad area).
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
         !event->sdl.key.repeat) {
-      // The F1 window's Bindings table arms a row and takes the next key it sees; that key is not
-      // also a hotkey (binding F5 should not warp the game on the way in).
-      if (PortBinds::OnKeyDown(static_cast< int >(event->sdl.key.scancode))) {
+      // The F1 window's Controls page is recording an input; that key is not also a hotkey
+      // (binding F5 should not warp the game on the way in).
+      if (PortInputRemap::Capturing()) {
         continue;
       }
       switch (event->sdl.key.scancode) {

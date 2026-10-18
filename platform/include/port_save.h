@@ -22,7 +22,7 @@
 // docs/STATUS.md.
 namespace PortSave {
 
-// The user directory, for the backups folder (`MP2_USER_PATH`, as PortBinds gets it). Empty: the
+// The user directory, for the backups folder (`MP2_USER_PATH`, as PortInputDevices gets it). Empty: the
 // folder is derived from the card's own path when that is a GCI folder, and backups are off if it
 // is not reachable.
 void Initialize(const std::string& userDirectory);

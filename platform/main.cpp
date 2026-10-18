@@ -62,7 +62,6 @@ extern void* gPortGameHeapHi;
 #include "Kyoto/Graphics/CGraphicsSys.hpp"
 #include "compiled_modules.h"
 #include "input/port_input_devices.h"
-#include "port_binds.h"
 #include "port_settings.h"
 #include "port_build_info.h"
 #include "port_console.h"
@@ -720,11 +719,10 @@ int main(int argc, char** argv) {
   const char* touchUser = EnvOrFallback("MP2_USER_PATH", appPaths.user);
   PortTouch::Initialize(touchUser != nullptr ? touchUser : std::string());
 
-  // The keyboard bindings (platform/port_binds.cpp) are saved beside touch.cfg, in the same
+  // The keyboard and pad bindings (controls.toml, platform/input/) are saved beside touch.cfg, in the same
   // directory. The file is read on the game thread's first frame rather than here, because its
   // key names come from SDL, which is only up after Aurora is.
   PortInputDevices::Initialize(touchUser != nullptr ? touchUser : std::string());
-  PortBinds::Initialize(touchUser != nullptr ? touchUser : std::string());
 
   // settings.cfg (platform/port_settings.cpp), in the same directory: read here, applied as the F1
   // overlay registers its settings (file, then the MP2_* environment on top). Written only when a

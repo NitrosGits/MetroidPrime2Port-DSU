@@ -3,7 +3,7 @@
 // Ported from the Prime 1 port's platform/input/port_input_devices.cpp. What MP2 has no backend or
 // setting for is left out, each at the place it would go: see the header for the list.
 
-#include "port_binds.h"
+#include "port_input_remap_ui.h"
 #include "port_harness.h"
 #include "port_input_map.h"
 #include "port_mouse.h"
@@ -255,7 +255,7 @@ void BindController(Profile& p) {
 // MP1's BindKeyboard reads Aurora's key slots; MP2 never installs any (it has its own layout,
 // below), so the keyboard's defaults are this profile instead. Q/E press L/R and pull the analog
 // triggers fully. The mouse buttons are DefaultMouseAction's (left A, middle Y, right L) and fire
-// under mouse aim only (ReadMouseButtons). PortBinds' Bindings page edits this layout.
+// under mouse aim only (ReadMouseButtons). The F1 Controls page edits it.
 Profile MakeKeyboardProfile() {
   Profile p;
   const auto key = [&p](Action a, SDL_Scancode sc) { Bind(p, a, Make(Device::Key, sc)); };
@@ -1065,8 +1065,8 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   const PortInput::Output& out =
       sRuntime.Poll(raw, contexts, nowMs, QuietContexts(sRuntime.ActiveContexts(), contexts));
   SPoll r;
-  if (PortBinds::CapturingRow() >= 0) {
-    // The F1 Bindings page is recording an input: it reaches no direct action (a bound
+  if (PortInputRemap::Capturing()) {
+    // The F1 Controls page is recording an input: it reaches no direct action (a bound
     // PortMenu would close the page mid-capture). The pad still reads it, as before the engine.
     r.status = Synthesize(out);
   } else {
@@ -1140,8 +1140,8 @@ void PollPortActions() {
   const uint16_t contexts = GameContexts();
   const PortInput::Output& out = sRuntime.Poll(raw, contexts, static_cast<double>(SDL_GetTicksNS()) / 1e6,
                                                QuietContexts(sRuntime.ActiveContexts(), contexts));
-  // The F1 Bindings page is recording an input: a bound PortMenu would close it.
-  if (PortBinds::CapturingRow() >= 0) return;
+  // The F1 Controls page is recording an input: a bound PortMenu would close it.
+  if (PortInputRemap::Capturing()) return;
   // MP1 also routes gyro aim, reset aim, save/load state, photo mode and the Original toggle here.
   if (out.Pressed(Action::PortMenu)) PortOverlay::Toggle();
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
