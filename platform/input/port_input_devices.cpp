@@ -4,6 +4,7 @@
 // setting for is left out, each at the place it would go: see the header for the list.
 
 #include "port_input_remap_ui.h"
+#include "port_freecam.h"
 #include "port_harness.h"
 #include "port_input_map.h"
 #include "port_mouse.h"
@@ -355,8 +356,8 @@ void BindBeamChords(Profile& p) {
 // MP1's turbo (A on one poll and off the next from the turbo key and pad slots) hangs off settings
 // MP2 does not have; the engine's per-binding turbo_hz (Bind's turboHz, controls.toml, the F1
 // Controls page's turbo rows) is MP1's and works. The touch overlay's Turbo is PortTouch's own.
-// Not carried either: the pad's alt buttons (a setting), save states on F5/F9 and photo mode on F8
-// (no backend; F5-F10 are MP2's warp keys), gyro aim (no gyro sensor reader or aim consumer), and
+// Not carried either: the pad's alt buttons (a setting), save states on F5/F9 (no backend; F5-F10
+// were MP2's warp keys), gyro aim (no gyro sensor reader or aim consumer), and
 // pointer menus' Escape (no pointer menus).
 void BindPortControls(Profile& p) {
   // The port's own keys and the pad's overlay chord. Back + Start is ordered both
@@ -375,6 +376,8 @@ void BindPortControls(Profile& p) {
     }
   }
   Bind(p, Action::Screenshot, Make(Device::Key, SDL_SCANCODE_F12));
+  // Photo mode toggles the free camera (PortFreeCam; stage 1 has no photo panel).
+  Bind(p, Action::PhotoMode, Make(Device::Key, SDL_SCANCODE_F8));
 
   BindBeamChords(p);
 
@@ -634,7 +637,7 @@ void RouteDirectActions(const PortInput::Output& out) {
 
 // The port's own actions: polled every frame by PollPortActions, not with the game
 // ticks, so they work while the game is paused or the F1 overlay is open.
-bool IsPortAction(Action a) { return a == Action::PortMenu || a == Action::Screenshot; }
+bool IsPortAction(Action a) { return a == Action::PortMenu || a == Action::Screenshot || a == Action::PhotoMode; }
 
 // Keys pressed since the last PollPortActions, added by an SDL event watch: a short
 // tap can begin and end between two frames, so the key state alone misses it.
@@ -1206,9 +1209,12 @@ void PollPortActions() {
                                                QuietContexts(sRuntime.ActiveContexts(), contexts));
   // The F1 Controls page is recording an input: a bound PortMenu would close it.
   if (PortInputRemap::Capturing()) return;
-  // MP1 also routes gyro aim, reset aim, save/load state, photo mode and the Original toggle here.
+  // MP1 also routes gyro aim, reset aim, save/load state and the Original toggle here.
   if (out.Pressed(Action::PortMenu)) PortOverlay::Toggle();
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
+  if (out.Pressed(Action::PhotoMode)) {
+    PortFreeCam::SetActive(!PortFreeCam::Active(), nullptr);
+  }
 }
 
 } // namespace PortInputDevices

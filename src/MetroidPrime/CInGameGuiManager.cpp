@@ -44,6 +44,7 @@
 
 #include <limits.h>
 #ifdef TARGET_PC
+#include "port_freecam.h"
 #include "port_overlay.h"
 #endif
 #include "MetroidPrime/SFX/UI.h"
@@ -229,7 +230,7 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
 #ifdef TARGET_PC
       // Port: MP2_NO_HELMET=1 / F1 > HUD draws the world without the helmet frame. The non-PC body is
       // repeated rather than wrapped, so the matching build's bytes for it do not change.
-      if (!PortOverlay::HideHelmet()) {
+      if (!PortOverlay::HideHelmet() && !PortFreeCam::Active()) {
         CGraphics::SetDepthRange(1.f / 512.f, 1.f / 256.f);
         mSamusHud->DrawHelmet(mgr, 0.f);
       }
@@ -238,6 +239,9 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
       mSamusHud->DrawHelmet(mgr, 0.f);
 #endif
     }
+#ifdef TARGET_PC
+    if (!PortFreeCam::Active())
+#endif
     if (mgr.GetPlayer(mPlayerIndex)->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed) {
       mSamusHud->GetTargetingManager().Draw(mgr, true);
     }
@@ -268,8 +272,16 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
                                       CCameraFilterPass::kFS_RandomStatic,
                                       CColor::White().WithAlphaOf(staticAlpha), nullptr, 1.f);
       }
+#ifdef TARGET_PC
+      // Port: the free camera draws no HUD.
+      if (!PortFreeCam::Active()) {
+        mSamusHud->Draw(mgr, mVisorStaticAlpha * (1.f - staticAlpha), 1, true, targeting);
+        mSamusHud->DrawHudMemo();
+      }
+#else
       mSamusHud->Draw(mgr, mVisorStaticAlpha * (1.f - staticAlpha), 1, true, targeting);
       mSamusHud->DrawHudMemo();
+#endif
     }
   }
 

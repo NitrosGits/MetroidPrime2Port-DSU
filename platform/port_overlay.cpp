@@ -8,6 +8,7 @@
 #include "port_overlay.h"
 
 #include "port_controls.h"
+#include "port_freecam.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
 #include "port_input_remap_ui.h"
@@ -227,6 +228,16 @@ void DrawGameSection() {
     PortWarp::CycleWorld(1);
   }
   PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
+
+  ImGui::SeparatorText("Camera");
+  {
+    bool freeCam = PortFreeCam::Active();
+    if (PortUi::Toggle("Free camera", &freeCam, nullptr,
+                       "fly a camera of your own with the pad (left stick, C stick, L/R, Z); HUD and arm "
+                       "cannon are hidden. The Photo mode key (F8) toggles it too")) {
+      PortFreeCam::SetActive(freeCam, nullptr);
+    }
+  }
 
   ImGui::SeparatorText("Cutscenes");
   // The game reads this every frame in its cinematic flow state.

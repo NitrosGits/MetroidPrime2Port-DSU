@@ -103,6 +103,7 @@
 #ifdef TARGET_PC
 #include "port_mouse.h"
 #include "MetroidPrime/PortScanTarget.hpp"
+#include "port_freecam.h"
 #include "port_overlay.h"
 #endif
 
@@ -3341,6 +3342,9 @@ void CPlayer::RenderGun(const CStateManager& mgr, const CVector3f& position) con
     CModelFlags flags = mPlayerState->GetItemAmount(CPlayerState::kIT_Invisibility, true) != 0
                             ? CModelFlags(GetModelFlags(), false, 0)
                             : CModelFlags::AlphaBlended(mGunAlpha);
+#ifdef TARGET_PC
+    if (!PortFreeCam::Active())
+#endif
     mGun->Render(mgr, position, flags);
   }
 }

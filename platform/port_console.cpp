@@ -9,6 +9,7 @@
 
 #include "port_console.h"
 #include "port_mouse.h"
+#include "port_freecam.h"
 
 #include "port_input.h"
 #include "port_logfile.h"
@@ -789,6 +790,12 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::GodMode() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetGodMode(enabled);
   out += enabled ? "god mode on\n" : "god mode off\n";
+}
+
+void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortFreeCam::Active() : ArgToInt(args[1], 1) != 0;
+  PortFreeCam::SetActive(enabled, &mgr);
+  out += enabled ? "free camera on\n" : "free camera off\n";
 }
 
 void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
@@ -1611,6 +1618,7 @@ constexpr SCommand kCommands[] = {
     {"kill", CmdKill, true},
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
+    {"freecam", CmdFreeCam, true},
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
     {"springball", CmdSpringBall, true},

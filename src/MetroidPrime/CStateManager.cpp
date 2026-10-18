@@ -137,6 +137,7 @@
 #ifdef TARGET_PC
 #include "port_console.h"
 #endif
+#include "port_freecam.h"
 #endif
 
 #include <alloca.h>
@@ -1160,7 +1161,13 @@ void CStateManager::RenderEchoEmitters(const CEchoEmitter* emitters) const {
 void CStateManager::SetupViewForDraw(const CViewport& viewport) {
   const CPlayer* player = mCurrentRenderPlayer;
   const CGameCamera* camera = mCameraManager->GetCurrentCamera(*this, true);
+#ifdef TARGET_PC
+  // Port: the free camera draws the world from a viewpoint of its own.
+  const CTransform4f cameraTransform =
+      PortFreeCam::View(mCameraManager->GetCurrentCameraTransform(*this, true));
+#else
   const CTransform4f cameraTransform = mCameraManager->GetCurrentCameraTransform(*this, true);
+#endif
   gpRender->SetWorldViewpoint(cameraTransform);
   CCubeModel::SetNewPlayerPositionAndTime(player->GetTranslation(),
                                           CStopwatch::GetGlobalTimerObj());
@@ -3863,6 +3870,12 @@ bool PortUnloadAreasExcept(CStateManager& mgr, CWorld& world, TAreaId keepA, TAr
 
 void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   mArchQueue = &queue;
+#ifdef TARGET_PC
+  // Port: the free camera can hold the simulation still while it flies.
+  if (PortFreeCam::Frozen()) {
+    return;
+  }
+#endif
   float dt = inputDt;
   float cameraDt = inputDt;
   if (mCameraManagers[0]->IsInCinematicCamera()) {

@@ -3,6 +3,7 @@
 #ifdef TARGET_PC
 #include <stdio.h>
 
+#include "port_freecam.h"
 #include "port_harness.h"
 #include "port_overlay.h"
 #endif
@@ -509,6 +510,10 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         }
       }
       mStateManager->SetRandomAvailable(true);
+#ifdef TARGET_PC
+      // Port: the free camera takes controller 0's input while it is on.
+      if (!(static_cast< int >(input.ControllerNumber()) == 0 && PortFreeCam::Input(input)))
+#endif
       mStateManager->ProcessInput(input);
       mStateManager->SetRandomAvailable(false);
       stopRumble = false;
