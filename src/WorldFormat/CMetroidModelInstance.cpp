@@ -5,6 +5,21 @@
 #include "MetaRender/IRenderer.hpp"
 
 #ifdef TARGET_PC
+#include "Kyoto/Graphics/CCubeModel.hpp"
+
+#include <stdio.h>
+
+const uchar* CMetroidModelInstance::PortRefuseMaterial(int index, uint count) {
+  static int sReported = 0;
+  if (sReported < 8) {
+    ++sReported;
+    fprintf(stderr, "[model] world model instance: material index %d out of range (%u materials); "
+                    "drawing nothing\n",
+            index, count);
+  }
+  return CCubeModel::PortNeutralMaterial();
+}
+
 // Disc data is big-endian.
 static CTransform4f TransformFromData(const void* data) {
   float values[12];

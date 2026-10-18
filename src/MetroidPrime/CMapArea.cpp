@@ -25,9 +25,12 @@
 static Mtx sViewMtx;
 
 #ifdef TARGET_PC
+#include <stdio.h>
 #include <string.h>
 
 static const int kDiscSurfaceSize = 0x20;
+// The MAPA being constructed, for the refusal line (FMapAreaFactory sets it).
+static CAssetId sPortLoadingMapArea = kInvalidAssetId;
 
 static uint ReadBigU32(const uchar* p) {
   return (uint(p[0]) << 24) | (uint(p[1]) << 16) | (uint(p[2]) << 8) | uint(p[3]);
@@ -80,6 +83,31 @@ CMapArea::CMapArea(CInputStream& in, uint size)
 , mMappableObjCount(in.ReadInt32())
 , mVertexCount(in.ReadInt32())
 , mSurfaceCount(in.ReadInt32()) {
+#ifdef TARGET_PC
+  // The counts come from the resource: refuse one too small for what it claims (it then has no
+  // objects, vertices or surfaces) rather than read past its buffer.
+  const uint headerSize = mVersion >= 3 ? 64 : 52;
+  const unsigned long long needed = headerSize +
+                                    static_cast< unsigned long long >(mMappableObjCount) *
+                                        sizeof(CMappableObject) +
+                                    static_cast< unsigned long long >(mVertexCount) * 12ull +
+                                    static_cast< unsigned long long >(mSurfaceCount) *
+                                        kDiscSurfaceSize;
+  if (size < headerSize || mMappableObjCount < 0 || mVertexCount < 0 || mSurfaceCount < 0 ||
+      needed > size) {
+    fprintf(stderr,
+            "[res] MAPA 0x%08X: %u bytes claim %d objects, %d vertices, %d surfaces (%llu bytes); "
+            "drawing nothing\n",
+            static_cast< uint >(sPortLoadingMapArea), size, mMappableObjCount, mVertexCount,
+            mSurfaceCount, needed);
+    mMappableObjCount = 0;
+    mVertexCount = 0;
+    mSurfaceCount = 0;
+    if (size < headerSize) {
+      size = headerSize;
+    }
+  }
+#endif
   mSize = size - 52;
   if (mVersion >= 3) {
     mSize -= 12;
@@ -509,5 +537,8 @@ static CAssetId gHackAssetId = kInvalidAssetId;
 CFactoryFnReturn FMapAreaFactory(const SObjectTag& objTag, CInputStream& in,
                                        const CVParamTransfer&) {
   gHackAssetId = objTag.GetId();
+#ifdef TARGET_PC
+  sPortLoadingMapArea = objTag.GetId();
+#endif
   return rs_new CMapArea(in, gpResourceFactory->ResourceSize(objTag));
 }

@@ -632,6 +632,7 @@ void CCubeRenderer::AddStaticGeometry(const rstl::vector< CMetroidModelInstance 
                          instance.GetVertexPointer(), instance.GetMaterialPointer());
           }
         }
+        CCubeModel::PortSetBuildContext(CCubeModel::kPortNoAsset, areaId, i);
         models->push_back(rs_new CCubeModel(
             const_cast< rstl::vector< void* >* >(&instance.GetSurfaces()), textures.get(),
             instance.GetMaterialPointer(), instance.GetVertexPointer(), instance.GetNormalPointer(),
@@ -639,6 +640,7 @@ void CCubeRenderer::AddStaticGeometry(const rstl::vector< CMetroidModelInstance 
             instance.GetBoundingBox(), instance.GetFlags(), false, i, instance.GetVertexSize(),
             instance.GetNormalSize(), instance.GetColorSize(), instance.GetTCSize(),
             instance.GetPackedTCSize()));
+        CCubeModel::PortClearBuildContext();
         PortDrawDebug::LabelWorld(models->back().get(), areaId, i);
 #else
         models->push_back(rs_new CCubeModel(

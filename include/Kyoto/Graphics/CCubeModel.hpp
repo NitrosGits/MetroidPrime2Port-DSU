@@ -98,6 +98,16 @@ public:
 #ifdef TARGET_PC
   // Port: unregisters the model from PortDrawDebug (whose labels are keyed by address).
   ~CCubeModel();
+
+  // Port: what a "[model] ..." refusal line names - the CMDL asset id, or the area and world model
+  // index. Set (thread-local) around a construction by the code that knows it.
+  static const uint kPortNoAsset = 0xffffffffu;
+  static void PortSetBuildContext(uint assetId, int areaId, int modelIndex);
+  static void PortClearBuildContext() { PortSetBuildContext(kPortNoAsset, -1, -1); }
+  static uint PortBuildAssetId();
+  uint PortAssetId() const { return mPortAssetId; }
+  // A material that draws nothing: big-endian zeros except a flag bit DrawSurface always skips.
+  static const uchar* PortNeutralMaterial();
 #endif
 
   static void SetRenderModelBlack(bool v);
@@ -155,6 +165,11 @@ public:
   }
 
   CCubeMaterial GetMaterialByIndex(int index) const {
+#ifdef TARGET_PC
+    if (static_cast< uint >(index) >= mPortMaterialCount) {
+      return CCubeMaterial(PortRefuseMaterial(index));
+    }
+#endif
     const uint offset = index != 0 ? CBasics::SwapBytes(mMaterialOffsets[index - 1]) : 0;
     return CCubeMaterial(mMaterialData + offset);
   }
@@ -174,6 +189,17 @@ private:
   int mIdx;
   const uint* mMaterialOffsets;
   const uchar* mMaterialData;
+#ifdef TARGET_PC
+  // Bounds for the material reads: a surface's material index comes straight from disc data.
+  const uchar* PortRefuseMaterial(int index) const;
+  void PortCheckSurfaces();
+  void PortDescribe(char* out, int len) const;
+  uint mPortMaterialCount;
+  uint mPortAssetId;
+  int mPortAreaId;
+  int mPortModelIndex;
+  mutable bool mPortMaterialRefused;
+#endif
 
   static bool sUsingPackedLightmaps;
 };

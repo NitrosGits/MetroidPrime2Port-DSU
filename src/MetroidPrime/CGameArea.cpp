@@ -144,6 +144,9 @@ CGameArea::CPostConstructed::CPostConstructed(const CGameArea& area)
 , mScriptObjectsInitialized(false)
 , mStreamingDelay(0)
 , mDocksDisabled(false)
+#ifdef TARGET_PC
+, mGeometryConverted(false)
+#endif
 , mWorldLightingLevel(1.f)
 , mXraySpeed(0.f)
 , mXrayTarget(1.f)
@@ -437,9 +440,14 @@ void CGameArea::FillInStaticGeometry() {
   // prints what was captured, per model.
   static const bool sLogArea = std::getenv("MP2_DEBUG_AREA") != nullptr;
   if (sLogArea) {
-    std::fprintf(stderr, "[area] %d FillInStaticGeometry (%zu sections)\n", mSelfIdx.Value(),
-                 mPostConst->GetSectionBuffers().size());
+    std::fprintf(stderr, "[area] %d FillInStaticGeometry (%zu sections%s)\n", mSelfIdx.Value(),
+                 mPostConst->GetSectionBuffers().size(),
+                 mPostConst->mGeometryConverted ? ", already converted" : "");
   }
+  // A rebuild after the area's geometry came back from ARAM reads bytes that were converted before
+  // they went there; converting them again turned every surface's material index back into a
+  // big-endian number (0x0N000000) and CCubeModel read its material table out of bounds.
+  const bool convert = !mPostConst->mGeometryConverted;
 #endif
   rstl::vector< rstl::pair< rstl::auto_ptr< char >, int > >::const_iterator section =
       mPostConst->GetSectionBuffers().begin() + mPostConst->mFirstMaterialSection;
@@ -498,7 +506,9 @@ void CGameArea::FillInStaticGeometry() {
                          mSelfIdx.Value(), model, surface, section->first.get(), header);
           }
         }
-        CCubeSurface::ConvertSurfaceHeader(section->first.get());
+        if (convert) {
+          CCubeSurface::ConvertSurfaceHeader(section->first.get());
+        }
         if (sLogArea) {
           const bool alreadyNative =
               *reinterpret_cast< const uint* >(
@@ -526,7 +536,7 @@ void CGameArea::FillInStaticGeometry() {
 #ifdef TARGET_PC
       const uint section2Size = section->second;
       // Surface records and surface groups are big-endian halfwords; swap once in place.
-      for (int part = 0; part < 2; ++part) {
+      for (int part = 0; convert && part < 2; ++part) {
         ushort* words = const_cast< ushort* >(
             static_cast< const ushort* >(part == 0 ? section1 : section2));
         const uint wordCount = (part == 0 ? section1Size : section2Size) / sizeof(ushort);
@@ -559,6 +569,9 @@ void CGameArea::FillInStaticGeometry() {
     mPostConst->mAmbientLightIds = rstl::vector< uint >(in);
     mPostConst->mAmbientLightIndices = rstl::vector< signed char >(in);
   }
+#ifdef TARGET_PC
+  mPostConst->mGeometryConverted = true;
+#endif
   mPostConst->mModelsConstructed = true;
 }
 

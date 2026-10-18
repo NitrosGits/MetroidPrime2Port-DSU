@@ -71,7 +71,13 @@ public:
     const uint* data = static_cast< const uint* >(mMaterialData);
 #ifdef TARGET_PC
     // Port: the material set is left big-endian on host (CCubeMaterial reads it with SwapBytes).
+    if (data == nullptr) {
+      return CCubeMaterial(PortRefuseMaterial(index, 0));
+    }
     const uint* offsets = data + CBasics::SwapBytes(data[0]) + 1;
+    if (static_cast< uint >(index) >= CBasics::SwapBytes(offsets[0])) {
+      return CCubeMaterial(PortRefuseMaterial(index, CBasics::SwapBytes(offsets[0])));
+    }
     const uint offset = index == 0 ? 0 : CBasics::SwapBytes(offsets[index]);
     const uchar* materials =
         reinterpret_cast< const uchar* >(offsets + CBasics::SwapBytes(offsets[0]) + 1);
@@ -85,6 +91,10 @@ public:
   }
 
 private:
+#ifdef TARGET_PC
+  // Logs the first few refusals and returns CCubeModel::PortNeutralMaterial().
+  static const uchar* PortRefuseMaterial(int index, uint count);
+#endif
   int mVisorFlags;
   CTransform4f mWorldTransform;
   CAABox mWorldBounds;

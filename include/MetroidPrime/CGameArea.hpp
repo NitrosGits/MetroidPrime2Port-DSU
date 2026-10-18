@@ -220,6 +220,12 @@ public:
     uint mScriptObjectsInitialized : 1;
     uint mStreamingDelay : 3;
     uint mDocksDisabled : 1;
+#ifdef TARGET_PC
+    // The port converts the static geometry's surface headers and halfword sections in place, and
+    // an occluded area's ARAM token then stores the *converted* bytes (CARAMToken::LoadToARAM from
+    // kS_One DMAs the current MRAM). Set after the first conversion so a rebuild does not swap again.
+    uint mGeometryConverted : 1;
+#endif
     float mWorldLightingLevel;
     float mXraySpeed;
     float mXrayTarget;

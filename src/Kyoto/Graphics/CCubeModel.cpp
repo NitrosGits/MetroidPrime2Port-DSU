@@ -13,9 +13,97 @@
 #endif
 
 #include <string.h>
+#ifdef TARGET_PC
+#include <stdio.h>
+#endif
 
 // Guessed name; bits 0x200 and 0x8000 reject material flags.
 static uint sSkippedMaterialFlags = 0x8200;
+#ifdef TARGET_PC
+namespace {
+struct SPortBuildContext {
+  uint mAssetId;
+  int mAreaId;
+  int mModelIndex;
+};
+thread_local SPortBuildContext sPortBuild = {CCubeModel::kPortNoAsset, -1, -1};
+
+// Upper bound for a material count read from data; a real model has a few hundred at most.
+const uint kPortMaxMaterials = 0x4000;
+
+void PortTakeBuildContext(uint& assetId, int& areaId, int& modelIndex) {
+  assetId = sPortBuild.mAssetId;
+  areaId = sPortBuild.mAreaId;
+  modelIndex = sPortBuild.mModelIndex;
+}
+} // namespace
+
+void CCubeModel::PortSetBuildContext(uint assetId, int areaId, int modelIndex) {
+  sPortBuild.mAssetId = assetId;
+  sPortBuild.mAreaId = areaId;
+  sPortBuild.mModelIndex = modelIndex;
+}
+
+uint CCubeModel::PortBuildAssetId() { return sPortBuild.mAssetId; }
+
+const uchar* CCubeModel::PortNeutralMaterial() {
+  // Flags 0x8000 (big-endian, like the disc's): sSkippedMaterialFlags always holds that bit, so
+  // DrawSurface and DrawSurfaceFlat return before touching the surface. No textures, zero mask.
+  alignas(8) static const uchar sNeutral[0x100] = {0x00, 0x00, 0x80, 0x00};
+  return sNeutral;
+}
+
+void CCubeModel::PortDescribe(char* out, int len) const {
+  if (mPortAreaId >= 0) {
+    snprintf(out, len, "area %d world model %d", mPortAreaId, mPortModelIndex);
+  } else if (mPortAssetId != kPortNoAsset) {
+    snprintf(out, len, "CMDL 0x%08X", mPortAssetId);
+  } else {
+    snprintf(out, len, "model@%p#%d", static_cast< const void* >(this), mIdx);
+  }
+}
+
+const uchar* CCubeModel::PortRefuseMaterial(int index) const {
+  if (!mPortMaterialRefused) {
+    mPortMaterialRefused = true;
+    char what[64];
+    PortDescribe(what, sizeof(what));
+    fprintf(stderr, "[model] %s: material index %d out of range (%u materials); drawing nothing\n",
+            what, index, mPortMaterialCount);
+  }
+  return PortNeutralMaterial();
+}
+
+// A surface whose material index is out of range is bad data: it gets the neutral material and an
+// empty display list, so no draw path reads through it. One line per model names it.
+void CCubeModel::PortCheckSurfaces() {
+  rstl::vector< void* >& surf = mInstance.Surfaces();
+  uint bad = 0;
+  int firstSurface = 0;
+  uint firstIndex = 0;
+  for (int i = 0; i < surf.size(); ++i) {
+    CCubeSurface::SSurfaceData* data = static_cast< CCubeSurface::SSurfaceData* >(surf[i]);
+    if (data->mMaterialIndex < mPortMaterialCount) {
+      continue;
+    }
+    if (bad++ == 0) {
+      firstSurface = i;
+      firstIndex = data->mMaterialIndex;
+    }
+    data->mDisplayListSizeAndNormalHint = 0;
+    data->mExtraSize = 0;
+  }
+  if (bad != 0 && !mPortMaterialRefused) {
+    mPortMaterialRefused = true;
+    char what[64];
+    PortDescribe(what, sizeof(what));
+    fprintf(stderr,
+            "[model] %s: %u of %d surfaces have a material index out of range (surface %d: index "
+            "0x%08x, %u materials); they draw nothing\n",
+            what, bad, surf.size(), firstSurface, firstIndex, mPortMaterialCount);
+  }
+}
+#endif
 static bool sDrawingWireframe = false;
 bool CCubeModel::sUsingPackedLightmaps = false;
 
@@ -43,8 +131,23 @@ CCubeModel::CCubeModel(rstl::vector< void* >* surfaces,
 , mVisorFlags(visorFlags)
 , mIdx(idx)
 , mMaterialOffsets(nullptr)
+#ifdef TARGET_PC
+, mMaterialData(nullptr)
+, mPortMaterialCount(0)
+, mPortAssetId(kPortNoAsset)
+, mPortAreaId(-1)
+, mPortModelIndex(-1)
+, mPortMaterialRefused(false) {
+#else
 , mMaterialData(nullptr) {
+#endif
+#ifdef TARGET_PC
+  PortTakeBuildContext(mPortAssetId, mPortAreaId, mPortModelIndex);
+#endif
   CacheMaterialData();
+#ifdef TARGET_PC
+  PortCheckSurfaces();
+#endif
   rstl::vector< void* >& surf = mInstance.Surfaces();
   for (rstl::vector< void* >::iterator it = surf.begin(); it != surf.end(); ++it) {
     CCubeSurface::SSurfaceData* data = static_cast< CCubeSurface::SSurfaceData* >(*it);
@@ -492,9 +595,27 @@ void CCubeModel::DrawNormal(ESurfaceSelection which) const {
 
 void CCubeModel::CacheMaterialData() {
   const uint* data = static_cast< const uint* >(mInstance.GetMaterialPointer());
+#ifdef TARGET_PC
+  if (data == nullptr) {
+    mMaterialOffsets = nullptr;
+    mMaterialData = nullptr;
+    mPortMaterialCount = 0;
+    return;
+  }
+#endif
   data += mTextures->size() + 1;
   const uint materialCount = CBasics::SwapBytes(*data++);
   mMaterialOffsets = data;
   data += materialCount;
   mMaterialData = reinterpret_cast< const uchar* >(data);
+#ifdef TARGET_PC
+  mPortMaterialCount = materialCount;
+  if (materialCount > kPortMaxMaterials) {
+    mPortMaterialCount = 0;
+    char what[64];
+    PortDescribe(what, sizeof(what));
+    fprintf(stderr, "[model] %s: material set claims %u materials (%d textures); drawing nothing\n",
+            what, materialCount, mTextures->size());
+  }
+#endif
 }
