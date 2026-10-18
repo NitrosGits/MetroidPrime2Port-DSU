@@ -13,6 +13,17 @@ bool Active();
 // Once per rendered frame (PortOverlay::Draw): the capture sequence.
 void Frame();
 
+// The panel's camera controls; all held by PortFreeCam. Fov is the override in degrees, 0 for the
+// game's own; Roll is in degrees about the view axis; Speed is metres per second at a full stick.
+float Fov();
+void SetFov(float degrees);
+float Roll();
+void SetRoll(float degrees);
+float Speed();
+void SetSpeed(float speed);
+bool ShowSamus();
+void SetShowSamus(bool show);
+
 // Capture size multiplier: 1, 2 or 4.
 int Supersample();
 void SetSupersample(int factor);

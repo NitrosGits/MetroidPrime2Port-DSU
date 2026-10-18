@@ -240,6 +240,59 @@ void DrawGameSection() {
     }
   }
 
+  if (PortFreeCam::Active()) {
+    ImGui::SeparatorText("Photo");
+    // 0 keeps the game's own FOV (55 in first person); the slider shows that until it is moved.
+    const bool gameFov = PortPhoto::Fov() <= 0.f;
+    float fov = gameFov ? 55.f : PortPhoto::Fov();
+    if (PortUi::SliderFloat("Field of view", &fov, 30.f, 100.f, gameFov ? "game (%.0f)" : "%.0f deg",
+                            nullptr, "the free camera's vertical field of view; untouched, it keeps "
+                                     "the game's own")) {
+      PortPhoto::SetFov(fov);
+    }
+    float roll = PortPhoto::Roll();
+    if (PortUi::SliderFloat("Roll", &roll, -45.f, 45.f, "%.0f deg", nullptr,
+                            "tilts the picture about the view axis; movement ignores it")) {
+      PortPhoto::SetRoll(roll);
+    }
+    float speed = PortPhoto::Speed();
+    if (PortUi::SliderFloat("Camera speed", &speed, 0.5f, 50.f, "%.1f m/s", nullptr,
+                            "metres per second at a full stick; the right trigger multiplies it by four")) {
+      PortPhoto::SetSpeed(speed);
+    }
+    int ss = PortPhoto::Supersample() >= 4 ? 2 : PortPhoto::Supersample() >= 2 ? 1 : 0;
+    if (PortUi::Combo("Supersample", &ss, "1x\0" "2x\0" "4x\0", nullptr,
+                      "renders the photo at 2x or 4x the window's size; a size the GPU can't hold "
+                      "steps down")) {
+      PortPhoto::SetSupersample(ss == 2 ? 4 : ss == 1 ? 2 : 1);
+    }
+    bool showSamus = PortPhoto::ShowSamus();
+    if (PortUi::Toggle("Show Samus", &showSamus, nullptr,
+                       "draws Samus's body where the player stands")) {
+      PortPhoto::SetShowSamus(showSamus);
+    }
+    ImGui::BeginDisabled(PortPhoto::Capturing());
+    if (ImGui::Button("Take photo")) {
+      PortPhoto::RequestCapture(0);
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+      ImGui::SetTooltip("saves a PNG of the picture without the HUD to screenshots/");
+    }
+    const PortPhoto::CaptureResult last = PortPhoto::LastCapture();
+    if (PortPhoto::Capturing()) {
+      PortUi::Help("Capturing...");
+    } else if (last.state > 0) {
+      char line[512];
+      std::snprintf(line, sizeof(line), "Saved %ux%u: %s", last.width, last.height, last.path.c_str());
+      PortUi::Help(line);
+    } else if (last.state < 0) {
+      char line[512];
+      std::snprintf(line, sizeof(line), "Capture failed: %s", last.path.c_str());
+      PortUi::Help(line);
+    }
+  }
+
   ImGui::SeparatorText("Cutscenes");
   // The game reads this every frame in its cinematic flow state.
   Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",

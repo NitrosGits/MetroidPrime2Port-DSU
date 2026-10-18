@@ -1195,7 +1195,14 @@ void CStateManager::SetupViewForDraw(const CViewport& viewport) {
   const float topScale = splitScreen ? 0.25f : 0.5f;
   const int top = viewport.mTop + static_cast< int >(topScale * (viewport.mHeight - height));
   const float aspect = (widthScale * camera->GetAspectRatio()) / heightScale;
-  const float tangent = static_cast< float >(tan(CMath::Deg2Rad(0.5f * camera->GetFov())));
+#ifdef TARGET_PC
+  // Port: photo mode's field of view (0 keeps the camera's own).
+  const float fovDegrees =
+      PortFreeCam::FovOverride() > 0.f ? PortFreeCam::FovOverride() : camera->GetFov();
+#else
+  const float fovDegrees = camera->GetFov();
+#endif
+  const float tangent = static_cast< float >(tan(CMath::Deg2Rad(0.5f * fovDegrees)));
   const float fieldOfView = 2.f * static_cast< float >(atan(tangent * heightScale));
 
   gpRender->SetViewport(left, top, width, height);

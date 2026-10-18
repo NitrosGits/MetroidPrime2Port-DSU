@@ -7,6 +7,7 @@
 #include <dolphin/vi.h>
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 
@@ -114,6 +115,25 @@ float PickCaptureScale() {
 } // namespace
 
 bool Active() { return PortFreeCam::Active(); }
+
+float Fov() { return PortFreeCam::FovOverride(); }
+void SetFov(float degrees) {
+  if (std::isfinite(degrees)) {
+    PortFreeCam::SetFovOverride(degrees > 0.f ? std::clamp(degrees, 20.f, 120.f) : 0.f);
+  }
+}
+float Roll() { return PortFreeCam::GetPose().roll; }
+void SetRoll(float degrees) {
+  if (std::isfinite(degrees)) {
+    PortFreeCam::Pose pose = PortFreeCam::GetPose();
+    pose.roll = std::clamp(degrees, -180.f, 180.f);
+    PortFreeCam::SetPose(pose);
+  }
+}
+float Speed() { return PortFreeCam::Speed(); }
+void SetSpeed(float speed) { PortFreeCam::SetSpeed(speed); }
+bool ShowSamus() { return PortFreeCam::ShowPlayer(); }
+void SetShowSamus(bool show) { PortFreeCam::SetShowPlayer(show); }
 
 int Supersample() { return sSupersample; }
 void SetSupersample(int factor) { sSupersample = factor >= 4 ? 4 : factor >= 2 ? 2 : 1; }
