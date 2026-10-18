@@ -131,6 +131,7 @@
 #ifdef TARGET_PC
 #include "port_harness.h"
 #include "port_hold_toggle.h"
+#include "port_livesplit.h"
 #include "port_overlay.h"
 #include "port_warp.h"
 #include "MetroidPrime/PortScanTarget.hpp"
@@ -2205,6 +2206,11 @@ CStateManager::CStateManager(
 }
 
 CStateManager::~CStateManager() {
+#ifdef TARGET_PC
+  if (gpGameState != nullptr) {
+    PortLiveSplit::GameSessionEnd(gpGameState->GetTotalPlayTime());
+  }
+#endif
   mTearingDown = true;
   CMemory::OffsetFakeStatics(-(mObjectLists.size() * sizeof(CObjectList) +
                                mFilteredObjectLists.size() * sizeof(CFilteredObjectList) + 0x12c));
@@ -4022,6 +4028,17 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       gpGameState->SetTotalPlayTime(dt + gpGameState->GetTotalPlayTime());
       UpdateHintState(dt);
     }
+#ifdef TARGET_PC
+    // Port: the speedrun timer's LiveSplit feed (game time, upgrade splits).
+    if (!IsMultiplayer() && mPlayerStates[0] != nullptr) {
+      static_assert(PortLiveSplit::kItemCount == CPlayerState::kIT_Max, "item count");
+      int capacities[PortLiveSplit::kItemCount];
+      for (int i = 0; i < PortLiveSplit::kItemCount; ++i) {
+        capacities[i] = mPlayerStates[0]->GetItemCapacity(static_cast< CPlayerState::EItemType >(i));
+      }
+      PortLiveSplit::GameTick(gpGameState->GetTotalPlayTime(), capacities);
+    }
+#endif
 
     for (int player = 0; player < 4; ++player) {
       for (int pass = 0; pass < 11; ++pass) {

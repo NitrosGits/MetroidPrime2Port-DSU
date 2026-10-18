@@ -2,6 +2,8 @@
 
 #ifdef TARGET_PC
 #include <stdio.h>
+
+#include "port_livesplit.h"
 #endif
 #include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
@@ -502,6 +504,9 @@ void CScriptSpecialFunction::AcceptBossEnergyBar(CStateManager& mgr, const CScri
 
 void CScriptSpecialFunction::AcceptEndGame(CStateManager& mgr, const CScriptMsg& msg) {
   if (msg.GetMessage() == kSM_Action) {
+#ifdef TARGET_PC
+    PortLiveSplit::GameEnd(gpGameState->GetTotalPlayTime());
+#endif
     static_cast< const CGameState* >(gpGameState)->GetGameMode().EndGame(mIntParm1, mgr);
   }
 }

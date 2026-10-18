@@ -10,6 +10,7 @@
 #include "port_console.h"
 #include "port_mouse.h"
 #include "port_freecam.h"
+#include "port_livesplit.h"
 #include "port_photo.h"
 
 #include "port_input.h"
@@ -899,6 +900,34 @@ void CmdCardBackup(CStateManager&, const Args& args, std::string& out) {
                  : "card backup before writes: off (MP2_CARD_BACKUP)\n";
 }
 
+// livesplit <0|1> | addr <host:port> | send <command> | status: the F1 Game > Speedrun rows
+// (`MP2_LIVESPLIT`, `MP2_LIVESPLIT_ADDR`) - the LiveSplit Server client.
+void CmdLiveSplit(CStateManager&, const Args& args, std::string& out) {
+  const std::string action = args.size() > 1 ? std::string(args[1]) : "status";
+  if (action == "0" || action == "1") {
+    PortLiveSplit::SetEnabled(action == "1");
+  } else if (action == "addr" && args.size() == 3) {
+    PortLiveSplit::SetAddress(std::string(args[2]));
+  } else if (action == "send" && args.size() > 2) {
+    std::string line(args[2]);
+    for (size_t i = 3; i < args.size(); ++i) {
+      line += ' ';
+      line.append(args[i]);
+    }
+    PortLiveSplit::SendRaw(line);
+  } else if (action != "status") {
+    Fail("livesplit <0|1> | addr <host:port> | send <command> | status");
+    return;
+  }
+  static const char* const kStatusNames[] = {"off", "connecting", "connected", "failed"};
+  out += std::string("livesplit ") + (PortLiveSplit::Enabled() ? "on " : "off ") +
+         PortLiveSplit::Address() + " " + kStatusNames[PortLiveSplit::Status()] + "\n";
+  const std::string error = PortLiveSplit::LastError();
+  if (!error.empty()) {
+    out += "last error: " + error + "\n";
+  }
+}
+
 // logfile [0|1]: the F1 Testing row (`MP2_LOG_FILE`) - everything the process prints also goes
 // to metroid_prime2_port.log in the user folder. PortLogFile::Start reads the setting before
 // Aurora comes up, so a change here is what the next launch will do, not this one.
@@ -1713,6 +1742,7 @@ constexpr SCommand kCommands[] = {
     {"pointeraim", CmdPointerAim, true},
     {"cardbackup", CmdCardBackup, true},
     {"logfile", CmdLogFile, true},
+    {"livesplit", CmdLiveSplit, true},
     {"settings", CmdSettings, true},
     {"gunoffset", CmdGunOffset, true},
     {"msaa", CmdMsaaAniso, true},

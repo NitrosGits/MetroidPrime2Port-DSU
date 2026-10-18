@@ -10,6 +10,7 @@
 #include "port_controls.h"
 #include "port_freecam.h"
 #include "port_gyro_motion.h"
+#include "port_livesplit.h"
 #include "port_photo.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
@@ -425,6 +426,46 @@ void DrawGameSection() {
       char line[512];
       std::snprintf(line, sizeof(line), "Capture failed; the log says why");
       PortUi::Help(line);
+    }
+  }
+
+  ImGui::SeparatorText("Speedrun");
+  {
+    bool liveSplit = PortLiveSplit::Enabled();
+    if (PortUi::Toggle("LiveSplit", &liveSplit, "MP2_LIVESPLIT=1",
+                       "In LiveSplit: right-click, Control > Start TCP Server (port 16834), and compare "
+                       "against Game Time. A new file starts the timer; the final blow splits")) {
+      PortLiveSplit::SetEnabled(liveSplit);
+    }
+    switch (PortLiveSplit::Status()) {
+    case PortLiveSplit::kStatus_Off:
+      ImGui::TextDisabled("off");
+      break;
+    case PortLiveSplit::kStatus_Connecting:
+      ImGui::TextUnformatted("connecting...");
+      break;
+    case PortLiveSplit::kStatus_Connected:
+      ImGui::TextUnformatted("connected");
+      break;
+    case PortLiveSplit::kStatus_Failed:
+      ImGui::TextWrapped("%s", PortLiveSplit::LastError().c_str());
+      break;
+    }
+    static char address[128];
+    static bool addressInit = false;
+    if (!addressInit) {
+      std::snprintf(address, sizeof(address), "%s", PortLiveSplit::Address().c_str());
+      addressInit = true;
+    }
+    if (ImGui::InputText("Server (host:port)", address, sizeof(address),
+                         ImGuiInputTextFlags_EnterReturnsTrue)) {
+      PortLiveSplit::SetAddress(address);
+    }
+    PortUi::Note("MP2_LIVESPLIT_ADDR=<host:port>", "LiveSplit's TCP server; Enter applies it");
+    bool splitUpgrades = PortLiveSplit::SplitUpgrades();
+    if (PortUi::Toggle("Split on upgrades", &splitUpgrades, "MP2_LIVESPLIT_SPLIT_UPGRADES=0",
+                       "a split for every new suit, beam, visor, ball part, key or other upgrade")) {
+      PortLiveSplit::SetSplitUpgrades(splitUpgrades);
     }
   }
 

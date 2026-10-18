@@ -261,6 +261,19 @@ iteration, so a log says how long each phase took.
   `InvokeCMain` seam instead of Metroid Prime's `metroid_main`, and builds the OS
   context and memory system that seam takes.
 
+## LiveSplit
+
+`port_livesplit.cpp` is MP1's LiveSplit Server client: a background TCP thread that connects to
+LiveSplit (Control > Start TCP Server, port 16834) and sends `reset`/`starttimer`/`pausegametime`
+on a new file (play time under a second), `setgametime` as the in-game time advances, `split` on
+each new upgrade, and a final `split` on the EndGame special function. Compare against Game Time.
+Settings are environment variables (not saved): `MP2_LIVESPLIT=1`, `MP2_LIVESPLIT_ADDR=<host:port>`
+(default `127.0.0.1:16834`), `MP2_LIVESPLIT_SPLIT_UPGRADES=0` to split only at the end. F1 > Game >
+Speedrun and the console's `livesplit <0|1>|addr <host:port>|send <command>|status` set the same
+values for a run. The hooks are in `CStateManager` (tick, destructor) and
+`CScriptSpecialFunction::AcceptEndGame`; the upgrade list is `CountsAsUpgrade` in
+`include/port_livesplit.h`.
+
 ## Waiting
 
 - `disc.cpp`, `include/port_disc.h` — reads embedded DOL resources by console
