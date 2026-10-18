@@ -26,6 +26,15 @@ static bool PortDvdTraceEnabled() {
   static const bool sEnabled = getenv("MP2_DEBUG_DVD") != nullptr;
   return sEnabled;
 }
+
+// The ARAM staging lines below, pair for pair. A boot stages every pak and the per-pair line is
+// thousands of them - the other big noise source beside the DVD trace - so they are off unless
+// MP2_DEBUG_ARAM=1. The "Alloc FAILED" line stays ungated: it says a pak will not be staged at
+// all, which is a failure rather than a trace.
+static bool PortAramTraceEnabled() {
+  static const bool sEnabled = getenv("MP2_DEBUG_ARAM") != nullptr;
+  return sEnabled;
+}
 #endif
 
 static CDvdFile* sFirstARAM = nullptr;
@@ -194,9 +203,11 @@ void CDvdFile::TryARAMFile() {
   arfile->mFileSize1 = arfile->mCurBufferLen = arfile->mBufferLen = GetFileSize();
   mARAMAllocated = true;
 #ifdef TARGET_PC
-  printf("[aram] TryARAMFile(%s): alloc %p ok, %d bytes; queued for staging.\n",
-         mFilename.data(), static_cast< void* >(mARAMBuffer), mSize);
-  fflush(nullptr);
+  if (PortAramTraceEnabled()) {
+    printf("[aram] TryARAMFile(%s): alloc %p ok, %d bytes; queued for staging.\n",
+           mFilename.data(), static_cast< void* >(mARAMBuffer), mSize);
+    fflush(nullptr);
+  }
 #endif
   PushARAMFileLoad();
 }
@@ -257,7 +268,7 @@ bool CDvdFile::IsARAMFileLoaded() {
                     ((mARAMFile.get() != nullptr && mARAMFile->mGotARAMInterrupt) ? 4 : 0) |
                     ((mARAMFile.get() != nullptr && mARAMFile->mGotDvdInterrupt) ? 2 : 0) |
                     (mARAMFile.get() == nullptr ? 1 : 0);
-    if (sLast != this || sLastKey != key) {
+    if (PortAramTraceEnabled() && (sLast != this || sLastKey != key)) {
       sLast = this;
       sLastKey = key;
       CDvdFileARAM* ar = mARAMFile.get();
@@ -327,12 +338,14 @@ void CDvdFile::StartARAMFileLoad() {
 #ifdef TARGET_PC
     const BOOL opened = DVDOpen(const_cast< char* >(DecodeARAMFile(mFilename.data())),
                                 &aramFile->mInfo.mDvdFileInfo);
-    printf("[aram] StartARAMFileLoad(%s): DVDOpen(\"%s\") -> %d, first read %d bytes at 0, "
-           "buf0=%p align32=%d\n",
-           mFilename.data(), DecodeARAMFile(mFilename.data()), static_cast< int >(opened), len,
-           aramFile->mBuffers[0].get(),
-           (reinterpret_cast< uintptr_t >(aramFile->mBuffers[0].get()) & 31) == 0);
-    fflush(nullptr);
+    if (PortAramTraceEnabled()) {
+      printf("[aram] StartARAMFileLoad(%s): DVDOpen(\"%s\") -> %d, first read %d bytes at 0, "
+             "buf0=%p align32=%d\n",
+             mFilename.data(), DecodeARAMFile(mFilename.data()), static_cast< int >(opened), len,
+             aramFile->mBuffers[0].get(),
+             (reinterpret_cast< uintptr_t >(aramFile->mBuffers[0].get()) & 31) == 0);
+      fflush(nullptr);
+    }
 #else
     DVDOpen(const_cast< char* >(DecodeARAMFile(mFilename.data())), &aramFile->mInfo.mDvdFileInfo);
 #endif
@@ -341,10 +354,12 @@ void CDvdFile::StartARAMFileLoad() {
                DVDARAMXferCallback);
   gDvdActivity = true;
 #ifdef TARGET_PC
-  printf("[aram] StartARAMFileLoad(%s): DVDReadAsync issued, cb.state=%d userData=%p\n",
-         mFilename.data(), static_cast< int >(aramFile->mInfo.mDvdFileInfo.cb.state),
-         aramFile->mInfo.mDvdFileInfo.cb.userData);
-  fflush(nullptr);
+  if (PortAramTraceEnabled()) {
+    printf("[aram] StartARAMFileLoad(%s): DVDReadAsync issued, cb.state=%d userData=%p\n",
+           mFilename.data(), static_cast< int >(aramFile->mInfo.mDvdFileInfo.cb.state),
+           aramFile->mInfo.mDvdFileInfo.cb.userData);
+    fflush(nullptr);
+  }
 #endif
 }
 

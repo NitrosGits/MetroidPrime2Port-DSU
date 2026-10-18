@@ -65,6 +65,7 @@ extern void* gPortGameHeapHi;
 #include "port_build_info.h"
 #include "port_console.h"
 #include "port_entry.h"
+#include "port_logfile.h"
 #include "port_save.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
@@ -144,6 +145,8 @@ void PortLogLine(const std::string& line) {
   // A whole line at a time, `%.*s` rather than a format string the writer chose.
   __android_log_print(ANDROID_LOG_INFO, "mp2port", "%.*s", static_cast<int>(line.size()),
                       line.c_str());
+  // ... and the same line into the log file, since this pump is what sees stdout and stderr.
+  PortLogFile::Write(line);
 }
 
 void PortLogPump() {
@@ -673,6 +676,10 @@ int main(int argc, char** argv) {
   // directory. The file is read on the game thread's first frame rather than here, because its
   // key names come from SDL, which is only up after Aurora is.
   PortBinds::Initialize(touchUser != nullptr ? touchUser : std::string());
+
+  // The log file (platform/port_logfile.cpp) starts here, before aurora_initialize below, so
+  // Aurora's own startup lines and anything that aborts during it land in the file too.
+  PortLogFile::Start(touchUser != nullptr ? touchUser : std::string());
 
   // The save tools (platform/port_save.cpp) keep their backups beside keybinds.cfg; the card's own
   // path comes from Aurora when a command needs it.

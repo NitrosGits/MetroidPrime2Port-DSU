@@ -8,6 +8,7 @@
 #include "port_overlay.h"
 
 #include "port_binds.h"
+#include "port_logfile.h"
 #include "port_mouse.h"
 #include "port_warp.h"
 
@@ -26,6 +27,10 @@ namespace {
 
 bool sVisible = false;
 bool sSkipCinematics = false;
+// `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
+// PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
+// launch will take.
+bool sLogFile = true;
 bool sGodMode = false; // never saved: there is no settings file, and a cheat must not persist
 // The gameplay tweaks (`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`,
 // `MP2_STICKY_CHARGE`), never saved: there is no settings file, and they are preference rather
@@ -82,6 +87,7 @@ void ReadEnv() {
   sLockOnToggle = EnvFlag("MP2_LOCK_ON_TOGGLE");
   sStickyCharge = EnvFlag("MP2_STICKY_CHARGE");
   sCardBackup = EnvFlag("MP2_CARD_BACKUP");
+  sLogFile = PortLogFile::Enabled();
   sHideHelmet = EnvFlag("MP2_NO_HELMET");
   sHideVisorEffects = EnvFlag("MP2_NO_VISOR_FX");
   if (const char* fov = std::getenv("MP2_FOV")) {
@@ -284,6 +290,11 @@ void DrawTestingSection() {
   ImGui::SameLine();
   ImGui::TextDisabled("(MP2_SKIP_CINEMATICS=1)");
   ImGui::TextDisabled("ends every cinematic at once, seen or not; makes tests 3-5x faster");
+  ImGui::Checkbox("Log file", &sLogFile);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_LOG_FILE=1)");
+  ImGui::TextDisabled(
+      "stdout and stderr go to metroid_prime2_port.log in the user folder; takes effect next launch");
 }
 
 void DrawGameplaySection() {
@@ -537,6 +548,16 @@ bool CardBackup() {
 void SetCardBackup(bool enabled) {
   ReadEnv();
   sCardBackup = enabled;
+}
+
+bool LogFile() {
+  ReadEnv();
+  return sLogFile;
+}
+
+void SetLogFile(bool enabled) {
+  ReadEnv();
+  sLogFile = enabled;
 }
 
 void Draw() {

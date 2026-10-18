@@ -55,6 +55,11 @@ void SetStickyCharge(bool enabled);
 // Hooked in CMemoryCardSys::CCardFileInfo::WriteFile through PortSave::BeforeCardWrite.
 bool CardBackup();
 void SetCardBackup(bool enabled);
+// Whether stdout and stderr also go to a file (`MP2_LOG_FILE=1`, F1 > Testing, console `logfile`).
+// On unless the variable is `0`; PortLogFile::Start reads it at startup, so a change here only
+// reports what the next launch will do.
+bool LogFile();
+void SetLogFile(bool enabled);
 // First-person field of view in degrees (`MP_FOV=<deg>`, F1 > Render), or 0 for the game's own 55.
 // Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
 // built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.

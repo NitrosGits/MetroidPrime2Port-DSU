@@ -11,6 +11,7 @@
 
 #include "port_binds.h"
 #include "port_input.h"
+#include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_save.h"
 #include "port_warp.h"
@@ -474,6 +475,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"
       "save backup | backups       copy the card now, or list the copies in save-backups\n"
       "cardbackup <0|1>            back the card up before each write (the F1 Saves row)\n"
+      "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
@@ -823,6 +825,25 @@ void CmdCardBackup(CStateManager&, const Args& args, std::string& out) {
   }
   out += enabled ? "card backup before writes: on (MP2_CARD_BACKUP)\n"
                  : "card backup before writes: off (MP2_CARD_BACKUP)\n";
+}
+
+// logfile [0|1]: the F1 Testing row (`MP2_LOG_FILE`) - everything the process prints also goes
+// to metroid_prime2_port.log in the user folder. PortLogFile::Start reads the setting before
+// Aurora comes up, so a change here is what the next launch will do, not this one.
+void CmdLogFile(CStateManager&, const Args& args, std::string& out) {
+  bool enabled = PortOverlay::LogFile();
+  if (args.size() >= 2) {
+    if (args.size() > 2 || (args[1] != "0" && args[1] != "1")) {
+      Fail("logfile <0|1>");
+      return;
+    }
+    enabled = args[1] == "1";
+    PortOverlay::SetLogFile(enabled);
+  }
+  const std::string path = PortLogFile::Path();
+  out += enabled ? "log file: on (" : "log file: off (";
+  out += path.empty() ? std::string("no file") : path;
+  out += ")\n(takes effect next launch)\n";
 }
 
 void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {
@@ -1532,6 +1553,7 @@ constexpr SCommand kCommands[] = {
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
     {"cardbackup", CmdCardBackup, true},
+    {"logfile", CmdLogFile, true},
     {"gunoffset", CmdGunOffset, true},
     {"msaa", CmdMsaaAniso, true},
     {"aniso", CmdMsaaAniso, true},
