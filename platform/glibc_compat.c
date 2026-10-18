@@ -35,14 +35,26 @@ float log10f(float x) { return (float)log10(x); }
 float sinhf(float x) { return (float)sinh(x); }
 float hypotf(float x, float y) { return (float)hypot(x, y); }
 
-// remainder() and hypot() are versioned too. remainder() is rebuilt from
-// nearbyint(), which is not; hypot() is bound to its original version, since
-// the later one only changed how it rounds.
+// remainder() is versioned too; it is rebuilt from nearbyint(), which is
+// not. hypot() is versioned as well, and it cannot be reached the same way a
+// float function can: an alias whose symbol is also "hypot" resolves back to
+// this very definition, and with -O2 that is a tail call into itself - the
+// first caller spins the thread it is on (the game's update thread, when
+// PortMouse::ClampPlanar asked for one). Built from sqrt() instead, with the
+// scaling that keeps a large pair from overflowing before the root.
 double remainder(double x, double y) { return x - nearbyint(x / y) * y; }
 
-extern double glibc_hypot(double, double) __asm__("hypot");
-__asm__(".symver glibc_hypot,hypot@GLIBC_2.2.5");
-double hypot(double x, double y) { return glibc_hypot(x, y); }
+double hypot(double x, double y) {
+  const double a = fabs(x);
+  const double b = fabs(y);
+  const double big = a > b ? a : b;
+  const double small = a > b ? b : a;
+  if (big == 0.0) {
+    return 0.0;
+  }
+  const double ratio = small / big;
+  return big * sqrt(1.0 + ratio * ratio);
+}
 
 // Pre-C23 parsing, referenced by its original name so this does not recurse
 // into the wrapper it is defining.

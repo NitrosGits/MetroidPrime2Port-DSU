@@ -469,6 +469,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
       "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"
+      "crosshair <0|1>             the aim crosshair while the port owns the view (F1 HUD)\n"
       "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
       "filter [<text>]             filter the F1 rows by label (no text clears); reports the count\n"
@@ -960,6 +961,49 @@ void CmdHudScale(CStateManager&, const Args& args, std::string& out) {
   PortOverlay::SetHudScale(value);
   char line[64];
   std::snprintf(line, sizeof(line), "hud scale %d%%\n", PortOverlay::HudScale());
+  out += line;
+}
+
+// crosshair [<0|1> | style <dot|cross> | size <px> | opacity <percent>]
+void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    const std::string_view what = args[1];
+    if (what == "style" && args.size() >= 3) {
+      const std::string_view style = args[2];
+      if (style != "dot" && style != "cross") {
+        Fail("crosshair style is dot or cross");
+        return;
+      }
+      PortOverlay::SetCrosshairStyle(style == "dot" ? 0 : 1);
+    } else if (what == "size" && args.size() >= 3) {
+      const int pixels = ArgToInt(args[2], -1);
+      if (pixels < PortOverlay::kCrosshairSizeMin || pixels > PortOverlay::kCrosshairSizeMax) {
+        Fail("crosshair size is 2..24 pixels");
+        return;
+      }
+      PortOverlay::SetCrosshairSize(pixels);
+    } else if (what == "opacity" && args.size() >= 3) {
+      const int percent = ArgToInt(args[2], -1);
+      if (percent < PortOverlay::kCrosshairOpacityMin ||
+          percent > PortOverlay::kCrosshairOpacityMax) {
+        Fail("crosshair opacity is 10..100 percent");
+        return;
+      }
+      PortOverlay::SetCrosshairOpacity(percent);
+    } else {
+      const int value = ArgToInt(args[1], -1);
+      if (value != 0 && value != 1) {
+        Fail("usage: crosshair [<0|1> | style dot|cross | size <px> | opacity <percent>]");
+        return;
+      }
+      PortOverlay::SetAimCrosshair(value != 0);
+    }
+  }
+  char line[128];
+  std::snprintf(line, sizeof(line), "aim crosshair %s, %s, %d px, %d%%\n",
+                PortOverlay::AimCrosshair() ? "on" : "off",
+                PortOverlay::CrosshairStyle() == 0 ? "dot" : "cross",
+                PortOverlay::CrosshairSize(), PortOverlay::CrosshairOpacity());
   out += line;
 }
 
@@ -1640,6 +1684,7 @@ constexpr SCommand kCommands[] = {
     {"msaa", CmdMsaaAniso, true},
     {"aniso", CmdMsaaAniso, true},
     {"hudscale", CmdHudScale, true},
+    {"crosshair", CmdCrosshair, true},
     {"uiscale", CmdUiScale, true},
     {"vsync", CmdVsync, true},
     {"filter", CmdFilter, true},

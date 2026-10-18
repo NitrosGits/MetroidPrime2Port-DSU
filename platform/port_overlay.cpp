@@ -52,6 +52,16 @@ float sFirstPersonFov = 0.f;
 // screenshots of an area, and for looking at what a visor effect covers.
 bool sHideHelmet = false;
 bool sHideVisorEffects = false;
+// `aim_crosshair`: draw the reticle while the port's own aim owns the body heading (see
+// PortOverlay::AimCrosshair). On by default: without it the reticle never appears under mouse,
+// twin-stick or touch aim, which is the only way the phone plays.
+bool sAimCrosshair = true;
+// The port's own crosshair (see PortOverlay::CrosshairStyle): this port's HUD never draws the
+// game's reticle, so the aim needs one of its own. Sized in pixels, no bigger than the Prime
+// port's, and dimmed by an opacity so it does not fight the game's own target boxes.
+int sCrosshairStyle = 1;
+int sCrosshairSize = 6;
+int sCrosshairOpacity = 70;
 // Arm cannon offset in metres along the camera's right, forward and up axes (`MP2_GUN_OFFSET`).
 float sGunOffset[3] = {0.f, 0.f, 0.f};
 // Anti-aliasing and filtering (`MP2_MSAA`, `MP2_ANISO`). The defaults are Aurora's own, so an
@@ -103,6 +113,12 @@ void ReadEnv() {
   PortSettings::AddBool("log_file", &sLogFile, true);
   PortSettings::AddBool("no_helmet", &sHideHelmet, false);
   PortSettings::AddBool("no_visor_fx", &sHideVisorEffects, false);
+  PortSettings::AddBool("aim_crosshair", &sAimCrosshair, true);
+  PortSettings::AddInt("crosshair_style", &sCrosshairStyle, 1, 0, 1);
+  PortSettings::AddInt("crosshair_size", &sCrosshairSize, 6, PortOverlay::kCrosshairSizeMin,
+                       PortOverlay::kCrosshairSizeMax);
+  PortSettings::AddInt("crosshair_opacity", &sCrosshairOpacity, 70,
+                       PortOverlay::kCrosshairOpacityMin, PortOverlay::kCrosshairOpacityMax);
   // 0 keeps the game's own FOV.
   PortSettings::AddFloat("fov", &sFirstPersonFov, 0.f, 30.f, 120.f, true);
   PortSettings::AddFloat3("gun_offset", sGunOffset, -PortOverlay::kGunOffsetMax,
@@ -360,6 +376,30 @@ void DrawHudSection() {
   if (PortUi::Matches("Hide visor effects")) {
     Changed(PortUi::Toggle("Hide visor effects", &sHideVisorEffects, "MP2_NO_VISOR_FX=1",
                  "the scan visor's window and edges are what a visor effect draws here"));
+  }
+  if (PortUi::Matches("Aim crosshair")) {
+    Changed(PortUi::Toggle(
+        "Aim crosshair", &sAimCrosshair, "MP2_AIM_CROSSHAIR=0",
+        "the port's own crosshair while the mouse, the twin stick or a touch drag is aiming; the "
+        "game's reticle never draws in this port, so without this nothing marks the aim"));
+  }
+  if (sAimCrosshair) {
+    int style = sCrosshairStyle;
+    if (PortUi::Matches("Crosshair style") &&
+        PortUi::Combo("Crosshair style", &style, "Dot\0" "Cross\0", "MP2_CROSSHAIR_STYLE=0|1")) {
+      sCrosshairStyle = style;
+      Changed(true);
+    }
+    if (PortUi::Matches("Crosshair size")) {
+      Changed(PortUi::SliderInt("Crosshair size", &sCrosshairSize, PortOverlay::kCrosshairSizeMin,
+                                PortOverlay::kCrosshairSizeMax, "%d px",
+                                "MP2_CROSSHAIR_SIZE=2..24"));
+    }
+    if (PortUi::Matches("Crosshair opacity")) {
+      Changed(PortUi::SliderInt("Crosshair opacity", &sCrosshairOpacity,
+                                PortOverlay::kCrosshairOpacityMin, PortOverlay::kCrosshairOpacityMax,
+                                "%d%%", "MP2_CROSSHAIR_OPACITY=10..100"));
+    }
   }
   // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
   // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
@@ -685,6 +725,50 @@ bool HideVisorEffects() {
   return sHideVisorEffects;
 }
 
+bool AimCrosshair() {
+  ReadEnv();
+  return sAimCrosshair;
+}
+
+void SetAimCrosshair(bool enabled) {
+  ReadEnv();
+  sAimCrosshair = enabled;
+  Persist();
+}
+
+int CrosshairStyle() {
+  ReadEnv();
+  return sCrosshairStyle;
+}
+
+void SetCrosshairStyle(int style) {
+  ReadEnv();
+  sCrosshairStyle = std::clamp(style, 0, 1);
+  Persist();
+}
+
+int CrosshairSize() {
+  ReadEnv();
+  return sCrosshairSize;
+}
+
+void SetCrosshairSize(int pixels) {
+  ReadEnv();
+  sCrosshairSize = std::clamp(pixels, kCrosshairSizeMin, kCrosshairSizeMax);
+  Persist();
+}
+
+int CrosshairOpacity() {
+  ReadEnv();
+  return sCrosshairOpacity;
+}
+
+void SetCrosshairOpacity(int percent) {
+  ReadEnv();
+  sCrosshairOpacity = std::clamp(percent, kCrosshairOpacityMin, kCrosshairOpacityMax);
+  Persist();
+}
+
 float FirstPersonFov() {
   ReadEnv();
   return sFirstPersonFov;
@@ -838,10 +922,48 @@ void SetVsync(bool enabled) {
   Persist();
 }
 
+// The aim's crosshair, in the middle of the view. ImGui's foreground list draws over whatever the
+// game has presented, which is the cheapest place for it and the one the phone can use too: the
+// game's own reticle never appears in this port (the targeting manager is wired, but the reticle's
+// model token does not resolve), so without this nothing marks where the gun is pointing.
+void DrawCrosshair() {
+  if (!sAimCrosshair || !PortMouse::Aiming()) {
+    return;
+  }
+  ImDrawList* draw = ImGui::GetForegroundDrawList();
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  const ImVec2 centre(viewport->Pos.x + viewport->Size.x * 0.5f,
+                      viewport->Pos.y + viewport->Size.y * 0.5f);
+  const float alpha = static_cast< float >(sCrosshairOpacity) / 100.f;
+  const ImU32 colour = ImGui::GetColorU32(ImVec4(1.f, 1.f, 1.f, alpha));
+  const ImU32 shadow = ImGui::GetColorU32(ImVec4(0.f, 0.f, 0.f, alpha * 0.6f));
+  const float size = static_cast< float >(sCrosshairSize);
+  // A one-pixel dark outline keeps it readable on snow and on the dark visors.
+  if (sCrosshairStyle == 0) {
+    draw->AddCircleFilled(centre, size * 0.5f + 1.f, shadow, 12);
+    draw->AddCircleFilled(centre, size * 0.5f, colour, 12);
+    return;
+  }
+  const float reach = size;
+  const float thickness = std::max(1.f, size * 0.18f);
+  const float gap = std::max(1.f, size * 0.35f);
+  for (int i = 0; i < 4; ++i) {
+    const bool vertical = (i & 1) == 0;
+    const float sign = (i & 2) == 0 ? -1.f : 1.f;
+    const ImVec2 from = vertical ? ImVec2(centre.x, centre.y + sign * gap)
+                                 : ImVec2(centre.x + sign * gap, centre.y);
+    const ImVec2 to = vertical ? ImVec2(centre.x, centre.y + sign * (gap + reach))
+                              : ImVec2(centre.x + sign * (gap + reach), centre.y);
+    draw->AddLine(from, to, shadow, thickness + 2.f);
+    draw->AddLine(from, to, colour, thickness);
+  }
+}
+
 void Draw() {
   TickFps();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();
+  DrawCrosshair();
   ApplyVsync();
   // A row's change is written once the mouse is up, so a slider drag is one write.
   if (PortSettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsMouseDown(0)) {

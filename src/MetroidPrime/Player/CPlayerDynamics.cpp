@@ -28,6 +28,9 @@
 #include "WorldFormat/CCollisionCache.hpp"
 #include <float.h>
 #include <math.h>
+#ifdef TARGET_PC
+#include "port_mouse.h"
+#endif
 
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/Cameras/CBallCamera.hpp"
@@ -325,9 +328,33 @@ void CPlayer::ComputeDash(const CFinalInput& input, float dt, CStateManager& mgr
 
 void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, float dt) {
   const float jumpInput = JumpInput(input, mgr);
+#ifdef TARGET_PC
+  // The Prime port's rule for direct aim (`MetroidPrimePort`'s "direct aim without Remastered
+  // movement"): when the mouse, the twin stick or the touch aim owns the view, the game's own
+  // left/right cannot turn the player - the port turns the body to the aim every tick, so a turn
+  // is undone before it moves anything and the stick's sideways travel did nothing at all.
+  // Instead the stick moves the player along its own direction, which is the body's: the retail
+  // strafe force takes the sideways part, and the turn is dropped.
+  const bool portAimMovement = MouseAimAllowed(mgr) && mOrbitState == kOS_NoOrbit;
+  float turnInput = portAimMovement ? 0.f : TurnInput(input, mgr);
+  float forwardInput = ForwardInput(input, turnInput);
+  float strafeInput = StrafeInput(input);
+  if (portAimMovement) {
+    strafeInput = mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeRight, input) -
+                  mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeLeft, input);
+    // A diagonal must not outrun a straight line: clamp the pair to the unit circle, as the
+    // Prime port does, and let the stick reach full speed in every direction.
+    const PortMouse::Planar axes = PortMouse::ClampPlanar({strafeInput, forwardInput}, 1.f);
+    strafeInput = axes.right;
+    forwardInput = axes.forward;
+    // No leftover spin: the aim owns the body's heading while it is in charge.
+    SetAngularVelocityOR(CAxisAngle::Identity());
+  }
+#else
   float turnInput = TurnInput(input, mgr);
   const float forwardInput = ForwardInput(input, turnInput);
   const float strafeInput = StrafeInput(input);
+#endif
   SetVelocityWR(GetDampedClampedVelocityWR());
   float turnSpeedMultiplier = GetTweakPlayer()->GetTurnSpeedMultiplier();
   if (GetTweakPlayerControls()->GetFreeLookTurnsPlayer()) {

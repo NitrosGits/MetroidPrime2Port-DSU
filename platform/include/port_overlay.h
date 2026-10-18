@@ -97,6 +97,27 @@ void SetHudScalingActive(bool active);
 // (the per-visor effect: on this port that is the scan visor's window and edges).
 bool HideHelmet();
 bool HideVisorEffects();
+// The view's aim crosshair while the port's aim owns the body heading (`aim_crosshair`, on by
+// default; F1 > HUD, console `crosshair`). The game's own crosshair is a digital input retail
+// presses with the look control, which the port never presses - without this the reticle stays
+// faded out whenever the mouse, the twin stick or a touch drag is aiming, which is always on the
+// phone. The Prime port sets its crosshair bit from its `AimCrosshair` setting the same way.
+bool AimCrosshair();
+void SetAimCrosshair(bool enabled);
+// The crosshair the port draws itself, since this port's HUD never draws the game's reticle
+// (`CSamusHud`'s targeting manager is wired, but the reticle's model token never resolves here).
+// Drawn in the centre of the view while the port's aim owns it: a dot or a cross, sized in
+// pixels, at an opacity, as the Prime port's crosshair settings do. F1 > HUD, console `crosshair`.
+const int kCrosshairSizeMin = 2;
+const int kCrosshairSizeMax = 24;
+const int kCrosshairOpacityMin = 10;
+const int kCrosshairOpacityMax = 100;
+int CrosshairStyle();  // 0 dot, 1 cross
+void SetCrosshairStyle(int style);
+int CrosshairSize();
+void SetCrosshairSize(int pixels);
+int CrosshairOpacity();
+void SetCrosshairOpacity(int percent);
 // The F1 window's size in percent of the display's own scale (`MP2_UI_SCALE=50..200`, F1 > Render,
 // console `uiscale`); the product is clamped to 1..4 by PortUi::ApplyTheme.
 const int kUiScaleMin = 50;

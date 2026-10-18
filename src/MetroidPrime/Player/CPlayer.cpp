@@ -1382,6 +1382,16 @@ void CPlayer::UpdateVisorTransition(float dt, CStateManager& mgr) {
 
 void CPlayer::UpdateCrosshairsState(const CFinalInput& input) {
   mDrawCrosshairs = mControlMapper.GetDigitalInput(CControlMapper::kC_Crosshairs, input);
+#ifdef TARGET_PC
+  // The Prime port does the same through its `AimCrosshair` setting: retail's crosshair input is
+  // pressed with the look control, and the port never presses it - the mouse, the twin stick and
+  // the touch drag own the view instead - so the reticle would stay faded out for the whole game
+  // (on the phone it is the only way to play). PortMouse::Aiming is true on exactly the ticks the
+  // port turned the body to the aim, so a lock-on, the morph ball or a cinematic still hide it.
+  if (PortMouse::Aiming() && PortOverlay::AimCrosshair()) {
+    mDrawCrosshairs = true;
+  }
+#endif
 }
 
 void CPlayer::UpdatePlayerSounds(float dt) {
