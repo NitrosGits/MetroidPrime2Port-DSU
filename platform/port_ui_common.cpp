@@ -2,6 +2,9 @@
 // (MetroidPrimePort/platform/debug_ui/ui_common.cpp), reduced to the Prime theme.
 #include "port_ui_common.h"
 
+#include "port_env.h"
+#include "port_overlay_internal.h"
+
 #include <SDL3/SDL.h>
 #include <imgui.h>
 
@@ -118,8 +121,30 @@ void ApplyTouchStyle(ImGuiStyle& style) {
 // the one the theme's borders and rounding were last set for.
 float sUiAppliedScale = 1.f;
 float sThemeAppliedScale = 0.f;
-void ApplyPrimeTheme(ImGuiStyle& style) {
+enum UiThemeId { kThemeAuto = 0, kThemePrime = 1, kThemePlain = 2 };
+int sThemeApplied = -1;
+
+int ResolveTheme() {
+  if (PortOverlayState::sUiTheme != kThemeAuto) {
+    return PortOverlayState::sUiTheme;
+  }
+  return kThemePrime;
+}
+
+// Only colours, borders and rounding; paddings and sizes stay ApplyTouchStyle's.
+void ApplyPrimeTheme(ImGuiStyle& style, int theme) {
   const float scale = sUiAppliedScale;
+  if (theme == kThemePlain) {
+    ImGui::StyleColorsDark(&style);
+    style.WindowBorderSize = style.ChildBorderSize = style.PopupBorderSize = std::round(scale);
+    style.FrameBorderSize = 0.f;
+    style.TabBorderSize = 0.f;
+    style.WindowRounding = style.ChildRounding = style.PopupRounding = 0.f;
+    // ApplyTouchStyle's values, which a switch from another theme must restore.
+    style.FrameRounding = style.GrabRounding = style.TabRounding = 5.f * scale;
+    style.ScrollbarRounding = 9.f * scale;
+    return;
+  }
   Palette p;
   p.bg = {0.020f, 0.063f, 0.102f};  // #05101A
   p.bgAlpha = 0.92f;
@@ -138,11 +163,7 @@ void ApplyPrimeTheme(ImGuiStyle& style) {
   style.ScrollbarRounding = 2.f * scale;
 }
 
-#if defined(__ANDROID__)
 constexpr bool kThemed = true;
-#else
-constexpr bool kThemed = false;
-#endif
 
 // The env var and description under a control (themed), or beside/under it (the original look).
 void Lines(const char* env, const char* description, bool sameLine) {
@@ -236,11 +257,24 @@ void ApplyThemeIfChanged() {
   if (!kThemed || ImGui::GetCurrentContext() == nullptr) {
     return;
   }
-  if (sUiAppliedScale == sThemeAppliedScale) {
+  const int resolved = ResolveTheme();
+  if (resolved == sThemeApplied && sUiAppliedScale == sThemeAppliedScale) {
     return;
   }
+  sThemeApplied = resolved;
   sThemeAppliedScale = sUiAppliedScale;
-  ApplyPrimeTheme(ImGui::GetStyle());
+  ApplyPrimeTheme(ImGui::GetStyle(), resolved);
+}
+
+// The overlay is a full-screen panel with a page list instead of tabs. The desktop can go back to
+// the old floating tabbed window (`overlay_windowed`); MP_TOUCH_UI forces the page layout.
+bool PageLayout() {
+#if defined(__ANDROID__)
+  return true;
+#else
+  static const bool sForced = port::EnvFlag("MP_TOUCH_UI");
+  return sForced || !PortOverlayState::sOverlayWindowed;
+#endif
 }
 
 void Help(const char* text) {

@@ -173,6 +173,13 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
+    BoolKey< &sOverlayWindowed >("overlay_windowed"),
+    {"ui_theme",
+     [](const std::string& value) {
+       sUiTheme = value == "prime" ? 1 : value == "plain" ? 2 : 0;
+     },
+     [](std::ostream& out) { out << (sUiTheme == 1 ? "prime" : sUiTheme == 2 ? "plain" : "auto"); },
+     false, "plain", "auto"},
     BoolKey< &sAimCrosshair >("aim_crosshair"),
     IntKey< &sCrosshairStyle, PortOverlay::kCrosshairStyle_Classic,
             PortOverlay::kCrosshairStyle_Remastered >("crosshair_style", "0", "1"),

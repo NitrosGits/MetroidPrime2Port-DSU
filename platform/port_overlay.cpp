@@ -77,6 +77,10 @@ int sHudScale = PortOverlay::kHudScaleMax;
 // Interface scale in percent (`MP2_UI_SCALE`) and vsync (`MP2_VSYNC`).
 int sUiScale = 100;
 bool sVsync = false;
+// MP1's sOverlayWindowed (desktop: the old floating window instead of the page window) and sUiTheme
+// (0 auto, 1 Prime, 2 Plain; MP1's 2 is Remastered, which MP2 has no theme for).
+bool sOverlayWindowed = false;
+int sUiTheme = 0;
 } // namespace PortOverlayState
 
 using namespace PortOverlayState;
@@ -310,6 +314,12 @@ void DrawRenderSection() {
                          "waits for the display's refresh before presenting a frame"));
 
   ImGui::SeparatorText("Interface");
+#if !defined(__ANDROID__)
+  Changed(PortUi::Toggle("Overlay as a floating window", &sOverlayWindowed, nullptr));
+#endif
+  Changed(PortUi::Combo("Menu theme", &sUiTheme, "Auto\0Metroid Prime\0Plain\0", nullptr,
+                        "The look of this overlay. Auto is the Metroid Prime pause-screen style; Plain is "
+                        "stock Dear ImGui."));
   // Multiplies the display's own scale (PortUi::UpdateUiScale); the product is clamped to 1..4, so on a
   // desktop at scale 1 only values above 100% make the window larger.
   Changed(PortUi::SliderInt("UI scale", &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax, "%d%%",
@@ -852,13 +862,13 @@ void Draw() {
   PortUi::ApplyThemeIfChanged();
 
   PortOverlaySearch::BeginSearchJump();
-#if defined(__ANDROID__)
-  if (!DrawPageWindow()) {
-    sVisible = false;
+  if (PortUi::PageLayout()) {
+    if (!DrawPageWindow()) {
+      sVisible = false;
+    }
+  } else {
+    DrawDesktopWindow();
   }
-#else
-  DrawDesktopWindow();
-#endif
   PortOverlaySearch::EndSearchJump();
 }
 

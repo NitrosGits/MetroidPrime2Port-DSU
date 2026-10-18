@@ -33,6 +33,8 @@ extern int sAnisotropy;
 extern int sHudScale;
 extern int sUiScale;
 extern bool sVsync;
+extern bool sOverlayWindowed;
+extern int sUiTheme;
 
 } // namespace PortOverlayState
 

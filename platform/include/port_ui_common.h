@@ -25,6 +25,9 @@ void UpdateUiScale(float userScale);
 // applies the Prime colours, borders and rounding for the current scale when the scale changed. The
 // desktop keeps ImGui's own colours, so there it does nothing.
 void ApplyThemeIfChanged();
+// MP1's PageLayout: the full-screen page window (always on the phone, or MP_TOUCH_UI) unless the
+// `overlay_windowed` setting asks for the floating tabbed window.
+bool PageLayout();
 
 // Dimmed, wrapped text under a control (ItemHelp on Android).
 void Help(const char* text);
