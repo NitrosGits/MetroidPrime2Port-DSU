@@ -16,7 +16,27 @@
 #include "dolphin/gx.h"
 #include "dolphin/os.h"
 #ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
 #include "Kyoto/Graphics/PortDrawDebug.hpp"
+#include <string.h>
+
+namespace {
+// A model's position and normal arrays stay in disc (big-endian) order in memory: the GPU reads
+// them through the guest array path, which swaps them itself. Skinning on the CPU has to swap each
+// component first - read raw they are NaNs and values near 1e6 (the swarm drew as one huge gray
+// triangle on the phone because of exactly this; see SwarmRenderHelpers.cpp).
+inline CVector3f PortGuestVector(const CVector3f& vector) {
+  // Swapped as integers: a byte-swapped float is a signalling-NaN pattern until it is put right.
+  uint components[3];
+  memcpy(components, &vector, sizeof(components));
+  for (int i = 0; i < 3; ++i) {
+    components[i] = CBasics::SwapBytes(components[i]);
+  }
+  CVector3f result;
+  memcpy(&result, components, sizeof(components));
+  return result;
+}
+} // namespace
 #endif
 
 CSkinnedModel::TPointGenFunc CSkinnedModel::sPointGen;
@@ -277,17 +297,31 @@ void CSkinnedModel::ClearPointGeneratorFunc() { sPointGen = nullptr; }
 CVector3f CSkinnedModel::GetSkinnedPosition(const SSkinningWorkspace& workspace, int vertex) const {
   const CTransform4f* transforms = workspace.mTransforms;
   const int bone = mSkinRules->GetVertexToBoneMap()[vertex];
+#ifdef TARGET_PC
+  const CVector3f raw =
+      reinterpret_cast< const CVector3f* >(mModel->GetPositions())[vertex];
+  return transforms[bone] * PortGuestVector(raw);
+#else
   return transforms[bone] * reinterpret_cast< const CVector3f* >(mModel->GetPositions())[vertex];
+#endif
 }
 
 CVector3f CSkinnedModel::GetSkinnedNormal(const SSkinningWorkspace& workspace, int vertex) const {
   const int bone = mSkinRules->GetVertexToBoneMap()[vertex];
   const CVector3f& normal = reinterpret_cast< const CVector3f* >(mModel->GetNormals())[vertex];
   const CTransform4f& transform = workspace.mTransforms[bone];
+#ifdef TARGET_PC
+  const CVector3f local = PortGuestVector(normal);
+  if (workspace.mUniformScale) {
+    return CUnitVector3f(transform.Rotate(local));
+  }
+  return CUnitVector3f(transform.GetQuickInverse().TransposeRotate(local));
+#else
   if (workspace.mUniformScale) {
     return CUnitVector3f(transform.Rotate(normal));
   }
   return CUnitVector3f(transform.GetQuickInverse().TransposeRotate(normal));
+#endif
 }
 
 namespace {

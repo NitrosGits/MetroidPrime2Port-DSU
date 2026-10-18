@@ -10,6 +10,28 @@
 
 #include <dolphin/os.h>
 #include <string.h>
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+
+namespace {
+// A model's position and normal arrays stay in disc (big-endian) order on the host: the GPU reads
+// them through the guest array path, which swaps them itself. The swarm reads them on the CPU to
+// skin each boid, so every component has to be swapped here; read raw, they came out as NaNs and
+// values near 1e6, which drew every swarm as a ball of strands on the desktop and as one huge gray
+// triangle across the view on the phone's GPU (it rasterises the non-finite vertices lavapipe drops).
+inline CVector3f GuestVector(const CVector3f& vector) {
+  // Swap as integers: a swapped float can be a signalling-NaN pattern until it is put right.
+  uint components[3];
+  memcpy(components, &vector, sizeof(components));
+  for (int i = 0; i < 3; ++i) {
+    components[i] = CBasics::SwapBytes(components[i]);
+  }
+  CVector3f result;
+  memcpy(&result, components, sizeof(components));
+  return result;
+}
+} // namespace
+#endif
 
 namespace SwarmRenderHelpers {
 
@@ -114,7 +136,11 @@ void CSwarmSkinnedModelState::StateToArrays() {
     const CTransform4f& transform = transforms[bone];
     const int count = bones[bone].GetVertexCount();
     for (int i = 0; i < count; ++i, ++vertex) {
+#ifdef TARGET_PC
+      skinnedPositions[vertex] = transform * GuestVector(positions[vertex]);
+#else
       skinnedPositions[vertex] = transform * positions[vertex];
+#endif
     }
   }
   DCFlushRange(skinnedPositions, vertex * sizeof(CVector3f));
@@ -125,12 +151,20 @@ void CSwarmSkinnedModelState::StateToArrays() {
     const int count = bones[bone].GetVertexCount();
     if (workspace.mUniformScale) {
       for (int i = 0; i < count; ++i, ++vertex) {
+#ifdef TARGET_PC
+        skinnedNormals[vertex] = transform.Rotate(GuestVector(normals[vertex]));
+#else
         skinnedNormals[vertex] = transform.Rotate(normals[vertex]);
+#endif
       }
     } else {
       const CTransform4f inverse = transform.GetQuickInverse();
       for (int i = 0; i < count; ++i, ++vertex) {
+#ifdef TARGET_PC
+        skinnedNormals[vertex] = inverse.TransposeRotate(GuestVector(normals[vertex]));
+#else
         skinnedNormals[vertex] = inverse.TransposeRotate(normals[vertex]);
+#endif
       }
     }
   }
@@ -146,9 +180,20 @@ CSwarmSkinnedModelState::CSwarmSkinnedModelState(const CSkinnedModel& model)
   mNormals = rstl::auto_ptr< CVector3f >(static_cast< CVector3f* >(
       CMemory::Alloc(skinRules.GetNumPoints() * sizeof(CVector3f), IAllocator::kHI_RoundUpLen)));
 
+#ifdef TARGET_PC
+  // The unskinned pose, host-order (see GuestVector).
+  const CVector3f* positions = static_cast< const CVector3f* >(cubeModel.GetPositions());
+  const CVector3f* normals = static_cast< const CVector3f* >(cubeModel.GetNormals());
+  for (int i = 0; i < skinRules.GetNumPoints(); ++i) {
+    mPositions.get()[i] = GuestVector(positions[i]);
+    mNormals.get()[i] = GuestVector(normals[i]);
+  }
+  DCFlushRange(mPositions.get(), skinRules.GetNumPoints() * sizeof(CVector3f));
+#else
   memcpy(mPositions.get(), cubeModel.GetPositions(), skinRules.GetNumPoints() * sizeof(CVector3f));
   DCFlushRange(mPositions.get(), skinRules.GetNumPoints() * sizeof(CVector3f));
   memcpy(mNormals.get(), cubeModel.GetNormals(), skinRules.GetNumPoints() * sizeof(CVector3f));
+#endif
   DCFlushRange(mNormals.get(), skinRules.GetNumPoints() * sizeof(CVector3f));
 }
 
