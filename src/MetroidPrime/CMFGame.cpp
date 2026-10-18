@@ -80,8 +80,16 @@ CMFGame::~CMFGame() {
   gpMain->SetMaxSpeed(false);
   CSfxManager::SetMuted(false);
   CDecalManager::Reinitialize();
+#ifdef TARGET_PC
+  // Port: the render mode is widened by the aspect setting.
+  CGraphics::SetViewport(0, 0, CGraphics::GetRenderMode().fbWidth,
+                         CGraphics::GetRenderMode().efbHeight);
+  CGraphics::SetScissor(0, 0, CGraphics::GetRenderMode().fbWidth,
+                        CGraphics::GetRenderMode().efbHeight);
+#else
   CGraphics::SetViewport(0, 0, 640, 448);
   CGraphics::SetScissor(0, 0, 640, 448);
+#endif
 }
 
 void CMFGame::SetFlowState(EFlowState state) {
@@ -594,8 +602,16 @@ void CMFGame::DrawGui(bool singleViewport) const {
     }
   }
   mStateManager->DrawDebugStuff();
+#ifdef TARGET_PC
+  // Port: the render mode is widened by the aspect setting.
+  CGraphics::SetViewport(0, 0, CGraphics::GetRenderMode().fbWidth,
+                         CGraphics::GetRenderMode().efbHeight);
+  CGraphics::SetScissor(0, 0, CGraphics::GetRenderMode().fbWidth,
+                        CGraphics::GetRenderMode().efbHeight);
+#else
   CGraphics::SetViewport(0, 0, 640, 448);
   CGraphics::SetScissor(0, 0, 640, 448);
+#endif
   if (mGuiManager->GetIsGameDraw() && mStateManager->IsMultiplayer() && !singleViewport) {
     mGuiManager->DrawMultiplayerGui();
   }

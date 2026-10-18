@@ -462,6 +462,20 @@ void CGraphics::ConfigureVideo(bool initial, uchar progressive) {
                   mRenderModeObj.vfilter);
 }
 
+#ifdef TARGET_PC
+// Port: the Prime 1 port's PortResizeFrameBuffer. Aurora sizes the EFB it presents from the render
+// mode, so a new fbWidth widens the picture; the viewport and scissor follow it.
+void CGraphics::PortResizeFrameBuffer(u16 fbWidth) {
+  if (fbWidth == 0 || fbWidth == mRenderModeObj.fbWidth) {
+    return;
+  }
+  mRenderModeObj.fbWidth = fbWidth;
+  SetViewport(0, 0, fbWidth, mRenderModeObj.efbHeight);
+  SetScissor(0, 0, fbWidth, mRenderModeObj.efbHeight);
+  VIConfigure(&mRenderModeObj);
+}
+
+#endif
 GXTexRegion* CGraphics::TexRegionCallback(const GXTexObj* obj, GXTexMapID id) {
   static signed char nextTexRgn = 0;
   static signed char nextTexRgnCI = 0;

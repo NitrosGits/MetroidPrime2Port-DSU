@@ -217,6 +217,11 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
+    // The Prime 1 port's names; anything else is ignored.
+    {"aspect",
+     [](const std::string& value) { PortOverlay::ParseAspect(value.c_str(), sAspectMode); },
+     [](std::ostream& out) { out << PortOverlay::AspectName(sAspectMode); }, false, "16:9",
+     "4:3"},
     BoolKey< &sOverlayWindowed >("overlay_windowed"),
     {"ui_theme",
      [](const std::string& value) {

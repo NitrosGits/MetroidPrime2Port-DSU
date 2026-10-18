@@ -197,6 +197,25 @@ void SetUiScale(int percent);
 // aurora_enable_vsync from Draw, even with the window closed.
 bool Vsync();
 void SetVsync(bool enabled);
+// Rendering aspect ratio, as the Prime 1 port's (`MP2_ASPECT=4:3|16:9|window`, `MP2_WIDESCREEN=1`
+// for 16:9, F1 > Video > Display, console `aspect`); Window by default. 4:3 keeps the game's own
+// 640x448 picture; 16:9 widens the render mode to 16:9 at the same height, and Window follows the
+// window's shape as it is resized. Applied by ApplyAspect.
+const int kAspect_4_3 = 0;
+const int kAspect_16_9 = 1;
+const int kAspect_Window = 2;
+int AspectMode();
+void SetAspectMode(int mode);
+// "4:3", "16:9", "window"; ParseAspect takes the same names (and "16x9"/"4x3") and leaves `mode`
+// alone on anything else.
+const char* AspectName(int mode);
+bool ParseAspect(const char* name, int& mode);
+// Widens (or narrows) the render mode's fbWidth to the aspect setting. Called every iteration of
+// the game loop by PortPumpEvents, so a window resize and a setting change apply on the next frame.
+void ApplyAspect();
+// The render mode's width over the game's own (1 at 4:3): CGuiCamera::Draw widens its projection by
+// it, so the GUI keeps its proportions on a wide framebuffer.
+float AspectWiden();
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

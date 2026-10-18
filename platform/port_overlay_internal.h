@@ -49,6 +49,7 @@ extern int sAnisotropy;
 extern int sHudScale;
 extern int sUiScale;
 extern bool sVsync;
+extern int sAspectMode;
 extern bool sOverlayWindowed;
 extern int sUiTheme;
 

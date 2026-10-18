@@ -337,6 +337,10 @@ public:
   static const CViewport& GetViewport() { return mViewport; }
   static float GetPixelAspectRatio() { return mPixelAspectRatio; }
   static const GXRenderModeObj& GetRenderMode() { return mRenderModeObj; }
+#ifdef TARGET_PC
+  // Port: resize the internal framebuffer and viewport (the aspect setting, PortOverlay::ApplyAspect).
+  static void PortResizeFrameBuffer(u16 fbWidth);
+#endif
   static bool Is50Hz() { return sIs50Hz; } // Guessed name.
   static CVector3f GetViewPoint() { return mViewMatrix.GetTranslation(); }
   static const CTransform4f& GetViewMatrix() { return mViewMatrix; }

@@ -45,6 +45,7 @@
 #include <aurora/gfx.h>
 
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -475,6 +476,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                            color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"
       "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
+      "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -1112,6 +1114,25 @@ void CmdVsync(CStateManager&, const Args& args, std::string& out) {
   out += PortOverlay::Vsync() ? "vsync on\n" : "vsync off\n";
 }
 
+// The Prime 1 port's CmdAspect; applied by PortOverlay::ApplyAspect on the next loop iteration.
+void CmdAspect(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    std::string name(args[1]);
+    for (char& c : name) {
+      c = static_cast< char >(std::tolower(static_cast< unsigned char >(c)));
+    }
+    int mode = 0;
+    if (!PortOverlay::ParseAspect(name.c_str(), mode)) {
+      Fail("usage: aspect <4:3|16:9|window>");
+      return;
+    }
+    PortOverlay::SetAspectMode(mode);
+  }
+  out += "aspect ";
+  out += PortOverlay::AspectName(PortOverlay::AspectMode());
+  out += '\n';
+}
+
 // One object as `objs` and `obj` show it: uid, editor id, class, area; an actor's position too when
 // `withPosition`. `inactive` when it is not active.
 void DescribeObject(const CEntity& ent, bool withPosition, std::string& out) {
@@ -1685,6 +1706,7 @@ constexpr SCommand kCommands[] = {
     {"crosshair", CmdCrosshair, true},
     {"uiscale", CmdUiScale, true},
     {"vsync", CmdVsync, true},
+    {"aspect", CmdAspect, true},
     {"objs", CmdObjs, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},

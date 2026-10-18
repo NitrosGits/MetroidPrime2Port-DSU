@@ -289,6 +289,8 @@ void Clear() {
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
 bool PortPumpEvents() {
   PortWarp::ApplyEnvOnce();
+  // The aspect setting: widens the render mode before anything this iteration draws.
+  PortOverlay::ApplyAspect();
   // A run that has reached its MP2_FRAMES limit leaves through the same door the window's close
   // button opens: the game loop ends, Aurora shuts down and the process exits 0. The check is here
   // rather than in the game because the loop asks this every iteration, whatever the game is doing.

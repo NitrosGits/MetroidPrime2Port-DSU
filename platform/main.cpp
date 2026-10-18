@@ -69,6 +69,7 @@ extern void* gPortGameHeapHi;
 #include "port_breadcrumb.h"
 #include "port_logfile.h"
 #include "port_save.h"
+#include "port_overlay.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
 
@@ -742,8 +743,9 @@ int main(int argc, char** argv) {
   // queued here and run inside the state manager's update, where the world is live.
   PortConsole::Start();
 
-  // 16:9 at the game's logical height. The render mode is widened to match when
-  // the widescreen work lands; Aurora upscales to the window either way.
+  // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
+  // follows the setting (PortOverlay::ApplyAspect); Aurora upscales to the window either way.
+  const bool widescreen = PortOverlay::AspectMode() != PortOverlay::kAspect_4_3;
   const AuroraConfig config = {
       .appName = kAppName,
       .userPath = EnvOrFallback("MP2_USER_PATH", appPaths.user),
@@ -752,8 +754,8 @@ int main(int argc, char** argv) {
       .desiredBackend = BACKEND_AUTO,
       .vsync = false, // the `vsync` setting (platform/port_overlay.cpp) is the source of truth
       .allowTextureDumps = false,
-      .windowWidth = 854u,
-      .windowHeight = 480u,
+      .windowWidth = static_cast< uint32_t >(widescreen ? 1280 : 960),
+      .windowHeight = 720u,
       .mem1Size = MEM1_DEFAULT_SIZE,
       .mem2Size = ARAM_DEFAULT_SIZE,
   };

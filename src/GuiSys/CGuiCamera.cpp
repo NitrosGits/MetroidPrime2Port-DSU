@@ -72,37 +72,38 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
       PortOverlay::HudScalingActive() && portHudScale != PortOverlay::kHudScaleMax;
   // Scaling the projection about its centre draws the HUD smaller around the middle of the screen
   // without moving the camera.
-  const float portHudInvScale = 100.f / static_cast< float >(portHudScale);
+  const float portHudInvScale = portHudScaled ? 100.f / static_cast< float >(portHudScale) : 1.f;
+  // Port: the aspect setting (PortOverlay::ApplyAspect). The frames are authored for the game's own
+  // 640x448; on a wider framebuffer the projection is widened by the same factor, as the Prime 1
+  // port's aspect-matched GUI cameras are, so the GUI keeps its proportions instead of stretching.
+  const float portWiden = PortOverlay::AspectWiden();
 #endif
   if (mProjection == kProjection_Perspective) {
 #ifdef TARGET_PC
     // A wider field of view shrinks the content about the view axis, the perspective counterpart of
     // the orthographic branch below.
+    float fov = mCameraParms.mPerspective.mFov;
     if (portHudScaled) {
-      const float halfTan =
-          tanf(0.5f * mCameraParms.mPerspective.mFov * 3.14159265f / 180.f) * portHudInvScale;
-      CGraphics::SetPerspective(2.f * atanf(halfTan) * 180.f / 3.14159265f,
-                                mCameraParms.mPerspective.mAspect,
-                                mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
-    } else {
-      CGraphics::SetPerspective(mCameraParms.mPerspective.mFov, mCameraParms.mPerspective.mAspect,
-                                mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
+      const float halfTan = tanf(0.5f * fov * 3.14159265f / 180.f) * portHudInvScale;
+      fov = 2.f * atanf(halfTan) * 180.f / 3.14159265f;
     }
+    CGraphics::SetPerspective(fov, mCameraParms.mPerspective.mAspect * portWiden,
+                              mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
 #else
     CGraphics::SetPerspective(mCameraParms.mPerspective.mFov, mCameraParms.mPerspective.mAspect,
                               mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
 #endif
   } else {
 #ifdef TARGET_PC
-    if (portHudScaled) {
+    if (portHudScaled || portWiden != 1.f) {
       const float left = mCameraParms.mOrthographic.mLeft;
       const float right = mCameraParms.mOrthographic.mRight;
       const float top = mCameraParms.mOrthographic.mTop;
       const float bottom = mCameraParms.mOrthographic.mBottom;
       const float midX = 0.5f * (left + right);
       const float midY = 0.5f * (top + bottom);
-      CGraphics::SetOrtho(midX + (left - midX) * portHudInvScale,
-                          midX + (right - midX) * portHudInvScale,
+      const float scaleX = portHudInvScale * portWiden;
+      CGraphics::SetOrtho(midX + (left - midX) * scaleX, midX + (right - midX) * scaleX,
                           midY + (top - midY) * portHudInvScale,
                           midY + (bottom - midY) * portHudInvScale,
                           mCameraParms.mOrthographic.mNear, mCameraParms.mOrthographic.mFar);

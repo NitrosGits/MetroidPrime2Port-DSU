@@ -22,6 +22,7 @@
 #include "port_ui_common.h"
 #include "port_warp.h"
 
+#include "Kyoto/Graphics/CGraphics.hpp"
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 
@@ -101,6 +102,8 @@ int sHudScale = PortOverlay::kHudScaleMax;
 // Interface scale in percent (`MP2_UI_SCALE`) and vsync (`MP2_VSYNC`).
 int sUiScale = 100;
 bool sVsync = false;
+// Aspect ratio (`MP2_ASPECT`): follows the window by default, as the Prime 1 port.
+int sAspectMode = PortOverlay::kAspect_Window;
 // MP1's sOverlayWindowed (desktop: the old floating window instead of the page window) and sUiTheme
 // (0 auto, 1 Prime, 2 Plain; MP1's 2 is Remastered, which MP2 has no theme for).
 bool sOverlayWindowed = false;
@@ -128,6 +131,8 @@ int sAppliedMsaa = 0;
 int sAppliedAnisotropy = 0;
 // Handed to aurora_enable_vsync only when it changes; -1 means "never applied yet".
 int sAppliedVsync = -1;
+// The render mode's fbWidth as CGraphics::ConfigureVideo set it, before ApplyAspect first widened it.
+int sBaseFbWidth = 0;
 
 // Applies <user>/settings.cfg once per run. An MP2_<KEY> environment variable is not applied here:
 // the accessors below read it each time, so it wins without ever reaching the file.
@@ -416,6 +421,19 @@ void DrawVideoFrameRate() {
                          "waits for the display's refresh before presenting a frame"));
 }
 
+void DrawVideoAspect() {
+  ImGui::SeparatorText("Aspect ratio");
+  // Applied by ApplyAspect on the next loop iteration: the render mode is widened and the world and
+  // GUI cameras follow its viewport.
+  int aspect = sAspectMode;
+  if (PortUi::Combo("Aspect ratio", &aspect, "4:3 (original)\0" "16:9\0" "Follow window\0",
+                    "MP2_ASPECT=4:3|16:9|window",
+                    "4:3 keeps the game's own picture; Follow window fills the window's shape")) {
+    sAspectMode = aspect;
+    Changed(true);
+  }
+}
+
 // MP1 files its renderer workarounds (texture copy paths, backend and API choices) here; this port
 // has no such knob on a page yet, so the tab says so rather than inventing one.
 void DrawVideoCompatibility() {
@@ -427,6 +445,7 @@ void DrawVideoCompatibility() {
 void DrawVideoSection() {
   if (ImGui::BeginTabBar("videoPages")) {
     if (PortOverlaySearch::SubTab("Video", "Display")) {
+      DrawVideoAspect();
       DrawVideoDisplay();
       ImGui::EndTabItem();
     }
@@ -1380,6 +1399,102 @@ void SetVsync(bool enabled) {
   ReadEnv();
   sVsync = enabled;
   Persist();
+}
+
+const char* AspectName(int mode) {
+  return mode == kAspect_4_3 ? "4:3" : mode == kAspect_16_9 ? "16:9" : "window";
+}
+
+bool ParseAspect(const char* name, int& mode) {
+  if (name == nullptr) {
+    return false;
+  }
+  if (std::strcmp(name, "4:3") == 0 || std::strcmp(name, "4x3") == 0) {
+    mode = kAspect_4_3;
+  } else if (std::strcmp(name, "16:9") == 0 || std::strcmp(name, "16x9") == 0) {
+    mode = kAspect_16_9;
+  } else if (std::strcmp(name, "window") == 0) {
+    mode = kAspect_Window;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+int AspectMode() {
+  ReadEnv();
+  int mode = sAspectMode;
+  if (ParseAspect(port::EnvString("MP2_ASPECT"), mode)) {
+    return mode;
+  }
+  if (port::EnvFlag("MP2_WIDESCREEN")) {
+    return kAspect_16_9;
+  }
+  return mode;
+}
+
+void SetAspectMode(int mode) {
+  ReadEnv();
+  sAspectMode = std::clamp(mode, kAspect_4_3, kAspect_Window);
+  Persist();
+}
+
+// The Prime 1 port's ApplyAspectMode (src/MetroidPrime/main.cpp there), with one difference: 4:3
+// is the game's own width (640 at 448 lines, the 1.42 CCameraManager was built for), not
+// efbHeight * 4 / 3.
+void ApplyAspect() {
+  const GXRenderModeObj& renderMode = CGraphics::GetRenderMode();
+  const int efbHeight = renderMode.efbHeight;
+  if (efbHeight <= 0) {
+    return; // CGraphics::ConfigureVideo has not run yet
+  }
+  if (sBaseFbWidth == 0) {
+    sBaseFbWidth = renderMode.fbWidth;
+  }
+  int fbWidth = sBaseFbWidth;
+  switch (AspectMode()) {
+  case kAspect_16_9:
+    fbWidth = (efbHeight * 16 + 8) / 9;
+    break;
+  case kAspect_Window: {
+    // Ask the window rather than track resize events, as the Prime 1 port does: the loading loops
+    // that run before the main loop drain the startup resize.
+    int windowWidth = 0;
+    int windowHeight = 0;
+    SDL_Window* window = PortUi::MainWindow();
+    if (window == nullptr || !SDL_GetWindowSize(window, &windowWidth, &windowHeight) ||
+        windowWidth <= 0 || windowHeight <= 0) {
+      windowWidth = 854;
+      windowHeight = 480;
+    }
+    fbWidth = static_cast< int >(static_cast< double >(efbHeight) *
+                                     static_cast< double >(windowWidth) /
+                                     static_cast< double >(windowHeight) +
+                                 0.5);
+    break;
+  }
+  default:
+    break;
+  }
+  fbWidth &= ~1;
+  // The GX scissor is a 12-bit field biased by 342, so a framebuffer wider than 3754 wraps it to zero
+  // width and clips every draw (an all-black picture).
+  const int maxWidth = 3754;
+  if (fbWidth > maxWidth) {
+    fbWidth = maxWidth;
+  }
+  if (fbWidth <= 0 || fbWidth == renderMode.fbWidth) {
+    return;
+  }
+  CGraphics::PortResizeFrameBuffer(static_cast< u16 >(fbWidth));
+}
+
+float AspectWiden() {
+  const int fbWidth = CGraphics::GetRenderMode().fbWidth;
+  if (sBaseFbWidth <= 0 || fbWidth <= 0) {
+    return 1.f;
+  }
+  return static_cast< float >(fbWidth) / static_cast< float >(sBaseFbWidth);
 }
 
 void Draw() {

@@ -3,6 +3,17 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (nineteenth session, later): aspect ratio
+
+- MP1's aspect setting ported: 4:3 / 16:9 / Follow window (default, as MP1). Settings key `aspect`,
+  env `MP2_ASPECT` / `MP2_WIDESCREEN`, F1 > Video > Display combo, console `aspect [4:3|16:9|window]`.
+  Render target is resized through `CGraphics::PortResizeFrameBuffer`; world viewports in CMFGame and
+  GUI cameras are widened (`CGuiCamera::Draw`) so menus keep their proportions. Window opens 1280x720
+  for widescreen, 960x720 for 4:3.
+- Not ported: the Widescreen HUD spread (MP1's HudWide and per-screen SetAspectMatch).
+- Verified: port build, gen --check, host tests, matching build (63.29% matched), strip-diff of the
+  four upstream files; a 90 s desktop boot ran with no crash. Not yet checked on screen.
+
 ## 2026-10-18, nineteenth session: auto-aim
 
 - F1 > Controls > Buttons "Auto-aim" (`MP2_AUTO_AIM=0` turns it off, `auto_aim` key, default on).
