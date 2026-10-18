@@ -3,6 +3,18 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18, seventeenth session: photo mode stages 2a and 2b
+
+- `c0ac5167f` stage 2a: supersampled capture (`RequestCapture`, PNG via `aurora::request_screenshot_png`),
+  console `photo [1|2|4]`.
+- `c368b4530` stage 2b: F1 Game page Photo block (FOV 20-120 or game default at 0, roll, speed,
+  supersample, show Samus, Take photo). FOV reaches `CStateManager::SetupViewForDraw` under TARGET_PC.
+- **Checked on screen**: the FOV slider changes the picture (wider view after the click; camera pose
+  unchanged). The slider's exact value was not read back.
+- Decided: photo mode is reached from the F1 menu only. No pause-menu entry.
+- Open: panel roll range (±45) vs `SetRoll` clamp (±180); no panel way back to FOV 0 once set; failed
+  capture line when the path is empty; whether stage 2 needs a toast.
+
 ## 2026-10-18, fifteenth session
 
 - F1 menu ported from MP1: `61a8244fb` (page window + Prime theme on desktop), `0ca0a556b`
