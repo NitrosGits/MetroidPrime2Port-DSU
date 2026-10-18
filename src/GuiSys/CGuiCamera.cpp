@@ -7,6 +7,10 @@
 #include "Kyoto/Math/CVector3f.hpp"
 
 #include "Kyoto/Streams/CInputStream.hpp"
+#ifdef TARGET_PC
+#include <math.h>
+#include "port_overlay.h"
+#endif
 
 const char* const eCamTypePerspective = "eCamTypePerspective";
 const char* const eCamTypeOrthogonal = "eCamTypeOrthogonal";
@@ -60,13 +64,58 @@ CGuiCamera::CGuiCamera(const CGuiWidgetParms& parms, float left, float right, fl
 }
 
 void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
+#ifdef TARGET_PC
+  // Port: HUD scale (`MP2_HUD_SCALE`, F1 > HUD). Only CSamusHud::Draw sets the flag, so the pause
+  // screen, the inventory, the helmet and memo screens keep the size the game authored.
+  const int portHudScale = PortOverlay::HudScale();
+  const bool portHudScaled =
+      PortOverlay::HudScalingActive() && portHudScale != PortOverlay::kHudScaleMax;
+  // Scaling the projection about its centre draws the HUD smaller around the middle of the screen
+  // without moving the camera.
+  const float portHudInvScale = 100.f / static_cast< float >(portHudScale);
+#endif
   if (mProjection == kProjection_Perspective) {
+#ifdef TARGET_PC
+    // A wider field of view shrinks the content about the view axis, the perspective counterpart of
+    // the orthographic branch below.
+    if (portHudScaled) {
+      const float halfTan =
+          tanf(0.5f * mCameraParms.mPerspective.mFov * 3.14159265f / 180.f) * portHudInvScale;
+      CGraphics::SetPerspective(2.f * atanf(halfTan) * 180.f / 3.14159265f,
+                                mCameraParms.mPerspective.mAspect,
+                                mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
+    } else {
+      CGraphics::SetPerspective(mCameraParms.mPerspective.mFov, mCameraParms.mPerspective.mAspect,
+                                mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
+    }
+#else
     CGraphics::SetPerspective(mCameraParms.mPerspective.mFov, mCameraParms.mPerspective.mAspect,
                               mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
+#endif
   } else {
+#ifdef TARGET_PC
+    if (portHudScaled) {
+      const float left = mCameraParms.mOrthographic.mLeft;
+      const float right = mCameraParms.mOrthographic.mRight;
+      const float top = mCameraParms.mOrthographic.mTop;
+      const float bottom = mCameraParms.mOrthographic.mBottom;
+      const float midX = 0.5f * (left + right);
+      const float midY = 0.5f * (top + bottom);
+      CGraphics::SetOrtho(midX + (left - midX) * portHudInvScale,
+                          midX + (right - midX) * portHudInvScale,
+                          midY + (top - midY) * portHudInvScale,
+                          midY + (bottom - midY) * portHudInvScale,
+                          mCameraParms.mOrthographic.mNear, mCameraParms.mOrthographic.mFar);
+    } else {
+      CGraphics::SetOrtho(mCameraParms.mOrthographic.mLeft, mCameraParms.mOrthographic.mRight,
+                          mCameraParms.mOrthographic.mTop, mCameraParms.mOrthographic.mBottom,
+                          mCameraParms.mOrthographic.mNear, mCameraParms.mOrthographic.mFar);
+    }
+#else
     CGraphics::SetOrtho(mCameraParms.mOrthographic.mLeft, mCameraParms.mOrthographic.mRight,
                         mCameraParms.mOrthographic.mTop, mCameraParms.mOrthographic.mBottom,
                         mCameraParms.mOrthographic.mNear, mCameraParms.mOrthographic.mFar);
+#endif
   }
 
   CGraphics::SetViewPointMatrix(CTransform4f::Translate(parms.GetCameraOffset()) *

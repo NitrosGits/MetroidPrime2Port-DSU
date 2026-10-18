@@ -3,6 +3,47 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (eighth session): the rest of the graphics toggles
+
+Three settings, the shapes `MP2_FOV` and `MP2_NO_HELMET` established: a field in
+`platform/port_overlay.cpp` with its `MP2_*` env var and F1 row, a console command so a headless run
+can drive the same thing, and one `#ifdef TARGET_PC` hook per upstream file.
+
+- **Arm cannon offset** (`MP2_GUN_OFFSET="<right>,<forward>,<up>"`, `gunoffset <r> <f> <u>`, F1 >
+  Render). Applied in `CPlayer::UpdateArmAndGunTransforms` where the game adds the tweak gun
+  position: the user offset goes into `gunOffset` (so the shots leave from the moved muzzle) and into
+  `grappleOffset` whenever the game is placing that arm itself. The morph-ball branch is untouched -
+  it uses its own fixed offset. The overlay's three sliders plus "Reset arm cannon"; values are
+  clamped to +-1 m and a non-finite one becomes 0, because the value lands in a transform.
+- **MSAA and anisotropic filtering** (`MP2_MSAA=1|4`, `MP2_ANISO=1..16`, `msaa` / `aniso`, F1 >
+  Render). Aurora took both only in `AuroraConfig` at init, so the vendored tree gained MP1's shape:
+  `aurora_set_graphics_quality` queues `msaa << 16 | anisotropy`, `begin_frame` hands it to
+  `webgpu::set_quality`, which synchronises, drops the bind-group caches (they hold samplers built for
+  the old anisotropy) and rebuilds the framebuffers at the current size when the sample count changed.
+  `PortOverlay::Draw` sends it only when the values changed, so an untouched port issues nothing.
+  Anisotropy needs no rebuild: samplers are cached by their descriptor, which contains the anisotropy.
+  The port's EFB read-back already reads the *resolve* target, so the scan visor and the camera
+  filters survive 4x MSAA (checked with `visor scan`; `scan_peek` still reports the EFB as
+  multisampled, which is its own older instrument, not the copy path the port uses).
+- **HUD scale** (`MP2_HUD_SCALE=50..100`, `hudscale`, F1 > HUD). The whole HUD is scaled about the
+  screen centre, rather than MP1's per-element "shrink toward the nearest edge", because MP2's GUI
+  frame has no per-widget spread machinery to hang that on. `CSamusHud::Draw` sets a flag for the
+  length of its own body (an RAII scope, so every early return clears it); `CGuiCamera::Draw` scales
+  its orthographic extents - or widens the perspective FOV - by `100/percent` while it is set. The
+  HUD frame, the radar and the scan interface all draw through a `CGuiCamera` inside that body, so
+  they scale together; the helmet, memo screens, pause screen and inventory draw outside it and keep
+  their size.
+
+**Verified on the desktop** (`MP2_TELEPORT=0`, area 0; screenshots under `/tmp/opencode/qol_*.png`,
+`v2_*.png`): the gun moves with `gunoffset 0.3 0.2 -0.1` and returns with `gunoffset 0 0 0`; the HUD
+at 70% shrinks toward the middle with the helmet frame unchanged; `msaa 4` and `aniso 1` log
+`Graphics quality: 4x MSAA, ... anisotropy` and the frame is unchanged apart from its edges; all four
+from the env at start-up (`MP2_MSAA=4 MP2_ANISO=8 MP2_HUD_SCALE=80 MP2_GUN_OFFSET="0.25,0.2,-0.1"`)
+apply before gameplay; the F1 rows read those values back; and `MP2_HUD_SCALE=60` with `MP2_INPUT=START@400`
+draws the pause menu at the authored size. Gates: `gen_files_cmake.py --check` rc=0, matching build
+`Game Code: 94.14% fuzzy, 63.29% matched` rc=0, and `CPlayer.cpp`, `CSamusHud.cpp` and
+`CGuiCamera.cpp` strip to their pre-change non-PC text exactly.
+
 ## 2026-10-18 (seventh session, continued once more): hide helmet, hide visor effects
 
 Two more graphics toggles, both env-only plus a checkbox in the overlay's HUD section:

@@ -103,6 +103,7 @@
 #ifdef TARGET_PC
 #include "port_mouse.h"
 #include "MetroidPrime/PortScanTarget.hpp"
+#include "port_overlay.h"
 #endif
 
 // NonMatching structure pass; incomplete behavior is explicit below.
@@ -993,6 +994,20 @@ void CPlayer::UpdateArmAndGunTransforms(float dt, CStateManager& mgr) {
     CGrappleArm* arm = mGun->GrappleArm();
     grappleOffset = arm && !arm->IsGrappling() ? CVector3f::Zero()
                                                : gpTweakPlayerGun->GetGrapplingArmPosition();
+#ifdef TARGET_PC
+    // Port: the player's arm cannon offset (`MP2_GUN_OFFSET`, F1 > Render). It moves the gun itself,
+    // so the shots leave from the muzzle that is drawn; the grapple arm moves with it while the game
+    // is placing that arm itself (a zeroed grapple offset stays at zero).
+    float userOffset[3];
+    PortOverlay::GunOffset(userOffset);
+    const CVector3f userGunOffset(userOffset[0], userOffset[1], userOffset[2]);
+    if (userGunOffset.IsNonZero()) {
+      gunOffset += userGunOffset;
+      if (grappleOffset.IsNonZero()) {
+        grappleOffset += userGunOffset;
+      }
+    }
+#endif
     gunOffset[kDZ] += GetEyeHeight();
     grappleOffset[kDZ] += GetEyeHeight();
   }

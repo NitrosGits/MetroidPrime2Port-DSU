@@ -65,6 +65,10 @@ bool refresh_surface(bool recreate = true);
 // the SDL window, so it has to be rebuilt instead of reconfigured.
 bool surface_window_changed();
 void resize_swapchain(uint32_t width, uint32_t height, uint32_t nativeWidth, uint32_t nativeHeight, bool force = false);
+// MSAA samples (1 or 4) and max texture anisotropy (1-16), taking effect now: the framebuffers are
+// rebuilt at the current size and the bind-group caches are dropped. Called from begin_frame with a
+// request queued by aurora_set_graphics_quality.
+void set_quality(uint32_t msaaSamples, uint16_t anisotropy);
 TextureWithSampler create_render_texture(uint32_t width, uint32_t height, bool multisampled);
 const TextureWithSampler& present_source() noexcept;
 wgpu::BindGroup create_copy_bind_group(const TextureWithSampler& source);

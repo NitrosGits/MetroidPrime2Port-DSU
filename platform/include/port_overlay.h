@@ -28,6 +28,31 @@ void SetGodMode(bool enabled);
 // Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
 // built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.
 float FirstPersonFov();
+// Arm cannon offset from its retail place, in metres along the camera's right, forward and up axes
+// (`MP2_GUN_OFFSET="<right>,<forward>,<up>"`, F1 > Render), each clamped to +-kGunOffsetMax. It moves
+// the real gun, so shots leave from the moved muzzle (CPlayer::UpdateArmAndGunTransforms).
+const float kGunOffsetMax = 1.f;
+void GunOffset(float out[3]);
+void SetGunOffset(const float offset[3]);
+// Multisample anti-aliasing (1 = off, 4 = 4x, the only counts WebGPU guarantees) and the max texture
+// anisotropy (1-16; retail-style mipmapped textures ask for the max). `MP2_MSAA` / `MP2_ANISO`, F1 >
+// Render; applied by aurora_set_graphics_quality at the next frame start, so a change rebuilds the
+// framebuffers and costs a frame.
+int Msaa();
+void SetMsaa(int samples);
+int Anisotropy();
+void SetAnisotropy(int maxAnisotropy);
+// HUD scale in percent (`MP2_HUD_SCALE=<50-100>`, F1 > HUD), 100 = the layout the game authored. It
+// scales the HUD's own projection about the screen centre, so every element shrinks toward the
+// middle; the helmet, menus and memo screens are not scaled.
+const int kHudScaleMin = 50;
+const int kHudScaleMax = 100;
+int HudScale();
+void SetHudScale(int percent);
+// True while CSamusHud::Draw is drawing the HUD: CGuiCamera::Draw scales its projection while it is
+// set, so nothing else (pause screen, inventory, memo) is affected.
+bool HudScalingActive();
+void SetHudScalingActive(bool active);
 // Draw without the HUD's view overlays (`MP2_NO_HELMET=1`, `MP2_NO_VISOR_FX=1`, F1 > HUD). Read by
 // CInGameGuiManager::Draw (the helmet, through its own mHelmetVisMode gate) and CPlayerVisor::Draw
 // (the per-visor effect: on this port that is the scan visor's window and edges).

@@ -38,6 +38,9 @@
 #include "MetroidPrime/Player/CPlayerCameraBob.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 #include "MetroidPrime/SFX/UI.h"
 #include "MetroidPrime/SFX/UI2.h"
 #include "MetroidPrime/SFX/UI3.h"
@@ -2442,6 +2445,17 @@ void CSamusHud::Draw(const CStateManager& mgr, float alpha, uint helmetVisibilit
       mLoadedHudFrame == nullptr || mGuiState == 1) {
     return;
   }
+#ifdef TARGET_PC
+  // Port: HUD scale (`MP2_HUD_SCALE`, F1 > HUD). CGuiCamera::Draw scales the projection while this
+  // is set, so it covers the HUD frame, the scan interface and the radar - all drawn from here - and
+  // nothing else (the helmet, the memo screens and the pause menu keep their size).
+  struct CPortHudScaleScope {
+    CPortHudScaleScope() {
+      PortOverlay::SetHudScalingActive(PortOverlay::HudScale() != PortOverlay::kHudScaleMax);
+    }
+    ~CPortHudScaleScope() { PortOverlay::SetHudScalingActive(false); }
+  } portHudScaleScope;
+#endif
 
   if (mBootTimer > 0.f || mBootTextFade > 0.f ||
       (player.GetRezbitState() == CPlayer::kRS_Infected && ballState != CPlayer::kMS_Morphed)) {

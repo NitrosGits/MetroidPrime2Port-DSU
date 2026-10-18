@@ -11,8 +11,12 @@
 #include "port_warp.h"
 
 #include <SDL3/SDL.h>
+#include <aurora/aurora.h>
 #include <imgui.h>
 
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -28,6 +32,15 @@ float sFirstPersonFov = 0.f;
 // screenshots of an area, and for looking at what a visor effect covers.
 bool sHideHelmet = false;
 bool sHideVisorEffects = false;
+// Arm cannon offset in metres along the camera's right, forward and up axes (`MP2_GUN_OFFSET`).
+float sGunOffset[3] = {0.f, 0.f, 0.f};
+// Anti-aliasing and filtering (`MP2_MSAA`, `MP2_ANISO`). The defaults are Aurora's own, so an
+// untouched port applies nothing.
+int sMsaa = 1;
+int sAnisotropy = 16;
+// HUD scale in percent (`MP2_HUD_SCALE`), and whether the HUD's own draw is the one being scaled.
+int sHudScale = PortOverlay::kHudScaleMax;
+bool sHudScaling = false;
 bool sReadEnv = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
@@ -41,6 +54,10 @@ bool EnvFlag(const char* name) {
   const char* value = std::getenv(name);
   return value != nullptr && *value != '\0' && std::strcmp(value, "0") != 0;
 }
+
+// Handed to aurora_set_graphics_quality only when they change; 0 means "never applied yet".
+int sAppliedMsaa = 0;
+int sAppliedAnisotropy = 0;
 
 void ReadEnv() {
   if (sReadEnv) {
@@ -57,6 +74,46 @@ void ReadEnv() {
       sFirstPersonFov = value;
     }
   }
+  if (const char* offset = std::getenv("MP2_GUN_OFFSET")) {
+    float parsed[3];
+    if (std::sscanf(offset, "%f,%f,%f", &parsed[0], &parsed[1], &parsed[2]) == 3) {
+      PortOverlay::SetGunOffset(parsed);
+    }
+  }
+  if (const char* msaa = std::getenv("MP2_MSAA")) {
+    const int samples = std::atoi(msaa);
+    if (samples == 1 || samples == 4) {
+      sMsaa = samples;
+    }
+  }
+  if (const char* aniso = std::getenv("MP2_ANISO")) {
+    // A max, not a step: any value in range is kept, and Aurora clamps what a sampler asks for.
+    const int value = std::atoi(aniso);
+    if (value >= 1 && value <= 16) {
+      sAnisotropy = value;
+    }
+  }
+  if (const char* hudScale = std::getenv("MP2_HUD_SCALE")) {
+    const int percent = std::atoi(hudScale);
+    if (percent == 0) {
+      sHudScale = PortOverlay::kHudScaleMax;
+    } else if (percent >= PortOverlay::kHudScaleMin && percent <= PortOverlay::kHudScaleMax) {
+      sHudScale = percent;
+    }
+  }
+}
+
+void ApplyGraphicsQuality() {
+  ReadEnv();
+  if (sAppliedMsaa == sMsaa && sAppliedAnisotropy == sAnisotropy) {
+    return;
+  }
+  sAppliedMsaa = sMsaa;
+  sAppliedAnisotropy = sAnisotropy;
+  // A request: Aurora rebuilds the framebuffers at the next frame start (a rebuild inside a frame
+  // would invalidate the binds that frame already recorded).
+  aurora_set_graphics_quality(static_cast< uint32_t >(sMsaa),
+                              static_cast< uint16_t >(sAnisotropy));
 }
 
 void TickFps() {
@@ -140,6 +197,48 @@ void DrawRenderSection() {
     // built, so the live change goes through CCameraManager::mFirstPersonFov.
   }
   ImGui::TextDisabled("(MP2_FOV=<deg>; 0 keeps the game's 55)");
+  float offset[3] = {sGunOffset[0], sGunOffset[1], sGunOffset[2]};
+  bool gunChanged = false;
+  gunChanged |= ImGui::SliderFloat("Arm cannon right", &offset[0], -PortOverlay::kGunOffsetMax,
+                                   PortOverlay::kGunOffsetMax, "%.2f m");
+  gunChanged |= ImGui::SliderFloat("Arm cannon forward", &offset[1], -PortOverlay::kGunOffsetMax,
+                                   PortOverlay::kGunOffsetMax, "%.2f m");
+  gunChanged |= ImGui::SliderFloat("Arm cannon up", &offset[2], -PortOverlay::kGunOffsetMax,
+                                   PortOverlay::kGunOffsetMax, "%.2f m");
+  if (gunChanged) {
+    // Read every frame by CPlayer::UpdateArmAndGunTransforms, so the gun moves on the next update
+    // and the shots leave from the muzzle that is drawn.
+    PortOverlay::SetGunOffset(offset);
+  }
+  if (ImGui::Button("Reset arm cannon")) {
+    const float zero[3] = {0.f, 0.f, 0.f};
+    PortOverlay::SetGunOffset(zero);
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_GUN_OFFSET=\"right,forward,up\" in metres, +-1)");
+  int msaa = sMsaa >= 4 ? 1 : 0;
+  if (ImGui::Combo("Anti-aliasing", &msaa, "Off\0" "4x MSAA\0")) {
+    // Applied by PortOverlay::Draw through aurora_set_graphics_quality: the framebuffers are rebuilt
+    // at the next frame start.
+    sMsaa = msaa == 1 ? 4 : 1;
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_MSAA=1|4)");
+  // A max, so the combo shows the smallest offered step that covers it (a hand-written MP2_ANISO=3
+  // reads as 4x); picking a row sets that step.
+  static const int kAnisoSteps[] = {1, 2, 4, 8, 16};
+  int aniso = 4;
+  for (int i = 0; i < 5; ++i) {
+    if (kAnisoSteps[i] >= sAnisotropy) {
+      aniso = i;
+      break;
+    }
+  }
+  if (ImGui::Combo("Anisotropic filtering", &aniso, "1x\0" "2x\0" "4x\0" "8x\0" "16x\0")) {
+    sAnisotropy = kAnisoSteps[aniso];
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_ANISO=1..16)");
 }
 
 void DrawHudSection() {
@@ -151,6 +250,14 @@ void DrawHudSection() {
   ImGui::SameLine();
   ImGui::TextDisabled("(MP2_NO_VISOR_FX=1)");
   ImGui::TextDisabled("the scan visor's window and edges are what a visor effect draws here");
+  if (ImGui::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin,
+                       PortOverlay::kHudScaleMax, "%d%%")) {
+    // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
+    // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_HUD_SCALE=50..100)");
+  ImGui::TextDisabled("shrinks the HUD toward the middle; the helmet and menus keep their size");
 }
 
 void DrawTestingSection() {
@@ -218,6 +325,57 @@ float FirstPersonFov() {
   return sFirstPersonFov;
 }
 
+void GunOffset(float out[3]) {
+  ReadEnv();
+  out[0] = sGunOffset[0];
+  out[1] = sGunOffset[1];
+  out[2] = sGunOffset[2];
+}
+
+void SetGunOffset(const float offset[3]) {
+  ReadEnv();
+  for (int i = 0; i < 3; ++i) {
+    // A NaN slider value or a hand-written env var must not reach the gun's transform.
+    sGunOffset[i] = std::isfinite(offset[i])
+                        ? std::clamp(offset[i], -kGunOffsetMax, kGunOffsetMax)
+                        : 0.f;
+  }
+}
+
+int Msaa() {
+  ReadEnv();
+  return sMsaa;
+}
+
+void SetMsaa(int samples) {
+  ReadEnv();
+  sMsaa = samples >= 4 ? 4 : 1;
+}
+
+int Anisotropy() {
+  ReadEnv();
+  return sAnisotropy;
+}
+
+void SetAnisotropy(int maxAnisotropy) {
+  ReadEnv();
+  sAnisotropy = std::clamp(maxAnisotropy, 1, 16);
+}
+
+int HudScale() {
+  ReadEnv();
+  return sHudScale;
+}
+
+void SetHudScale(int percent) {
+  ReadEnv();
+  sHudScale = std::clamp(percent, kHudScaleMin, kHudScaleMax);
+}
+
+bool HudScalingActive() { return sHudScaling; }
+
+void SetHudScalingActive(bool active) { sHudScaling = active; }
+
 bool GodMode() {
   ReadEnv();
   return sGodMode;
@@ -230,6 +388,8 @@ void SetGodMode(bool enabled) {
 
 void Draw() {
   TickFps();
+  // Even with the window closed: the env vars are settings, and a headless run never opens it.
+  ApplyGraphicsQuality();
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {

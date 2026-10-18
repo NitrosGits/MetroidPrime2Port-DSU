@@ -460,6 +460,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
+      "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
+      "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
+      "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
@@ -755,6 +758,88 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::SkipCinematics() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetSkipCinematics(enabled);
   out += enabled ? "skip cutscenes on\n" : "skip cutscenes off\n";
+}
+
+void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {
+  float offset[3];
+  PortOverlay::GunOffset(offset);
+  if (args.size() >= 4) {
+    float parsed[3];
+    for (int i = 0; i < 3; ++i) {
+      if (!ParseFloat(args[i + 1], parsed[i])) {
+        Fail("gunoffset takes three numbers: right forward up (metres, +-1)");
+        return;
+      }
+      if (parsed[i] < -PortOverlay::kGunOffsetMax || parsed[i] > PortOverlay::kGunOffsetMax) {
+        Fail("each offset is clamped to +-1 m");
+        return;
+      }
+    }
+    PortOverlay::SetGunOffset(parsed);
+    PortOverlay::GunOffset(offset);
+  } else if (args.size() != 1) {
+    Fail("usage: gunoffset [<right> <forward> <up>]");
+    return;
+  }
+  char line[128];
+  std::snprintf(line, sizeof(line), "gun offset %.2f %.2f %.2f m\n", offset[0], offset[1],
+                offset[2]);
+  out += line;
+}
+
+void CmdMsaaAniso(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2) {
+    char line[128];
+    std::snprintf(line, sizeof(line), "msaa %dx, anisotropy %dx\n", PortOverlay::Msaa(),
+                  PortOverlay::Anisotropy());
+    out += line;
+    return;
+  }
+  // The command's own name is the setting (`msaa <n>`), the argument is the value.
+  const bool isMsaa = args[0] == "msaa";
+  const bool isAniso = args[0] == "aniso";
+  if (!isMsaa && !isAniso) {
+    Fail("usage: msaa <1|4> | aniso <1..16>");
+    return;
+  }
+  const int value = ArgToInt(args[1], -1);
+  if (isMsaa) {
+    if (value != 1 && value != 4) {
+      Fail("MSAA is 1 (off) or 4");
+      return;
+    }
+    PortOverlay::SetMsaa(value);
+  } else {
+    if (value < 1 || value > 16) {
+      Fail("anisotropy is 1..16");
+      return;
+    }
+    PortOverlay::SetAnisotropy(value);
+  }
+  // PortOverlay::Draw hands it to aurora_set_graphics_quality, which rebuilds the framebuffers at the
+  // next frame start.
+  char line[128];
+  std::snprintf(line, sizeof(line), "msaa %dx, anisotropy %dx (applied next frame)\n",
+                PortOverlay::Msaa(), PortOverlay::Anisotropy());
+  out += line;
+}
+
+void CmdHudScale(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2) {
+    char line[64];
+    std::snprintf(line, sizeof(line), "hud scale %d%%\n", PortOverlay::HudScale());
+    out += line;
+    return;
+  }
+  const int value = ArgToInt(args[1], -1);
+  if (value < PortOverlay::kHudScaleMin || value > PortOverlay::kHudScaleMax) {
+    Fail("hud scale is 50..100 percent (100 = the game's own layout)");
+    return;
+  }
+  PortOverlay::SetHudScale(value);
+  char line[64];
+  std::snprintf(line, sizeof(line), "hud scale %d%%\n", PortOverlay::HudScale());
+  out += line;
 }
 
 // One object as `objs` and `obj` show it: uid, editor id, class, area; an actor's position too when
@@ -1176,6 +1261,10 @@ constexpr SCommand kCommands[] = {
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
     {"skipcine", CmdSkipCine, true},
+    {"gunoffset", CmdGunOffset, true},
+    {"msaa", CmdMsaaAniso, true},
+    {"aniso", CmdMsaaAniso, true},
+    {"hudscale", CmdHudScale, true},
     {"objs", CmdObjs, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
