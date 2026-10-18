@@ -19,13 +19,17 @@ appended, dated as in the heading there.
 
 ### Parity with Prime 1 (read-only audit, 2026-10-18)
 
-- ABSENT, by value on a phone: save states and quick resume (needs a live-world serialiser,
-  `platform/include/port_save.h:18`); Remastered ground movement and moving platforms (needs MP2's
-  ground mover); built-in randomizer (`platform/port_randomizer.cpp` is in no CMake target, and
-  nothing calls it); Archipelago (needs a websocket client and an MP2 location table).
+- DONE since the audit (2026-10-19): save states with room state (F5/F9, 8 slots + undo; see
+  `platform/port_savestate*.cpp`), the randomizer seed loader and no-logic generator
+  (`docs/RANDOMIZER.md`), and the LiveSplit client with an F1 Speedrun section
+  (`platform/port_livesplit.cpp`, `platform/README.md`). Photo mode and free camera are also in tree
+  (`platform/port_photo.cpp`, `platform/port_freecam.cpp`).
+- ABSENT, by value on a phone: Remastered ground movement and moving platforms (needs MP2's
+  ground mover); Archipelago (needs a websocket client and an MP2 location table); randomizer
+  logic (seeds can be unbeatable: no-logic shuffle over the Temple Grounds dump only).
 - ABSENT, smaller: audio volume and mute row; GPU/Vulkan driver choice (`platform/main.cpp:754`
-  is fixed to `BACKEND_AUTO`); speedrun timer and LiveSplit; sim rate; original-experience preset;
-  Discord presence (no backend); mods folder (no loader).
+  is fixed to `BACKEND_AUTO`); sim rate; original-experience preset; Discord presence (no
+  backend); mods folder (no loader).
 - Unbuilt: `port_textures.cpp` and `port_prompts.cpp` are in no target (HD texture sets and
   device button glyphs need wiring).
 - PARTIAL: desktop F11 fullscreen toggle (only Android sets it); widescreen HUD spread; gyro aim

@@ -58,20 +58,20 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    `CPlayerGun` that MP2 does not expose as a getter today.
 5. **Save tools**: the card file is done - `save info|export|import|backup|backups` on the console,
    `MP2_CARD_BACKUP` (F1 > Saves) and a hook that copies the card before every write (detail in
-   `docs/STATUS.md`). What is left of MP1's set does not fit this tree yet: **quick resume** and
-   **save states** both need a live-world serialiser MP2 has no equivalent of, so MP2 resumes from
-   the card's own save (`MP2_SKIP_FRONTEND`); **region conversion** is refused by design (MP2's save
+   `docs/STATUS.md`). What is left of MP1's set does not fit this tree yet: **save states** are done
+   (F5/F9, `platform/port_savestate*.cpp`, room state included). **Quick resume** is not: MP2 resumes
+   from the card's own save (`MP2_SKIP_FRONTEND`); **region conversion** is refused by design (MP2's save
    carries per-release `SAVW`/area data); **slot-level copy/erase** would have to reproduce the front
    end's option shuffling; raw-image cards are **import only**, and MP1's Dolphin/Trilogy folder
    discovery has no MP2 counterpart.
-6. **Photo mode / free camera** (MP1's `port_photo.cpp`, `port_freecam.cpp`): needs a free camera and
-   a high-resolution capture path.
+6. **Photo mode / free camera**: done (`platform/port_photo.cpp`, `platform/port_freecam.cpp`).
 7. **Map and tracker** (MP1's `port_map_marks.cpp`, `port_tracker.cpp`): reveal the map, item and scan
    tracking. MP2's map is a different format (`CMapWorld`/`CMapArea`), so this is a rewrite.
 8. **Remastered assets** (MP1's `port_remastered_*`): import models/effects from a Metroid Prime
    Remastered dump. Very large; MP2's asset formats are its own.
-9. **Discord Rich Presence** (`port_discord.cpp`, needs the RPC library), **Livesplit** integration,
-   **randomizer** and **Archipelago** - all MP1 features with no MP2 design yet.
+9. **Discord Rich Presence** (`port_discord.cpp`, needs the RPC library) and **Archipelago** - MP1
+   features with no MP2 design yet. LiveSplit and the randomizer are in tree (`docs/RANDOMIZER.md`,
+   `platform/port_livesplit.cpp`).
 10. **Texture packs / mods** (`port_mods.cpp`, `port_texture_replacement`): Aurora already has texture
     replacement; what is missing is the pack loader and the settings UI.
 
