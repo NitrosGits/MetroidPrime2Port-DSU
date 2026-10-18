@@ -58,6 +58,21 @@ void SetStickyCharge(bool enabled);
 // locked or orbited target, as MP1's auto-aim switch does (CPlayer::UpdateAimTarget).
 bool AutoAim();
 void SetAutoAim(bool enabled);
+// Pointer aim, Trilogy style (`MP2_POINTER_AIM=1`, default off; MP1's pointer aim): the mouse,
+// twin stick or touch aim moves a pointer instead of the view. Inside the dead box
+// (`MP2_POINTER_AIM_BOX`, percent of the half-screen) the view holds still; past it the view
+// turns toward that edge, up to `MP2_POINTER_AIM_TURN` degrees per second at the edge. The arm
+// cannon aims along the pointer's ray (CPlayer::UpdateGunTransform). Needs a direct aim source.
+const int kPointerAimBoxMin = 20;
+const int kPointerAimBoxMax = 95;
+const int kPointerAimBoxDefault = 70;
+const int kPointerAimTurnMin = 30;
+const int kPointerAimTurnMax = 720;
+const int kPointerAimTurnDefault = 180;
+bool PointerAim();
+void SetPointerAim(bool enabled);
+int PointerAimBox();
+int PointerAimTurn();
 // Remastered charge (`MP2_RAPID_CHARGE=1`), Power Beam only: holding fire after the press shot
 // fires two quick shots, then charges faster (CPlayerGun::PortRapidChargeShot).
 bool RapidCharge();

@@ -12,6 +12,12 @@ appended, dated as in the heading there.
 - Gates: strip check of `CPlayerOrbit.cpp` equals HEAD's non-PC text; `metroid_prime2_port` builds;
   `gen_files_cmake.py --check` rc=0.
 - Not yet checked in game: a shot with the setting off flies at the crosshair with no homing.
+- Pointer aim (MP1's Trilogy style): F1 > Controls > Options > Aiming, `MP2_POINTER_AIM=1`,
+  `MP2_POINTER_AIM_BOX` (20..95, default 70), `MP2_POINTER_AIM_TURN` (30..720, default 180).
+  Mouse, twin-stick or touch aim must be on. `PortMouse::UpdateAim` steps the pointer; the gun and
+  shots aim at the ray's hit (`CPlayer::UpdateGunTransform`, TARGET_PC block); the Remastered cursor
+  sits at the pointer. Build-verified only: not run in game. Not ported: inter-tick smoothing,
+  gyro driving the pointer, `PortSetPointerAimPoint` shot repositioning, a console command.
 
 ## 2026-10-18, eighteenth session: remastered charge (Power Beam only)
 

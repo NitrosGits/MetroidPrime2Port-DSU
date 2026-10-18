@@ -74,10 +74,89 @@ struct AimState {
     return true;
   }
 
+  // A direct turn in radians (world yaw +left, pitch +up), as pointer aim's edge turn makes.
+  void Turn(float dyaw, float dpitch) {
+    if (!initialized || !std::isfinite(dyaw) || !std::isfinite(dpitch)) return;
+    yaw = static_cast<float>(std::remainder(double(yaw) + dyaw, 2.0 * kPi));
+    pitch = ClampPitch(double(pitch) + dpitch);
+  }
+
 private:
   static float ClampPitch(double angle) {
     return static_cast<float>(angle < -kMaxPitch ? -kMaxPitch : angle > kMaxPitch ? kMaxPitch : angle);
   }
+};
+
+// Pointer aim (Trilogy style), MP1's PortMouse::PointerAim: the aim travel moves a pointer over
+// the screen (x right, y down, -1..1 at the edges) instead of the view. Inside the dead box
+// the view holds still; past it the view turns toward that edge, faster the further out the
+// pointer is. The gun aims along the ray through the pointer. MP2 draws one frame per tick,
+// so MP1's lagged (between-tick) travel is not needed here.
+struct PointerAim {
+  float x = 0.f;
+  float y = 0.f;
+
+  void Center() { x = y = 0.f; }
+
+  // dx, dy: window-space travel already scaled to the -1..1 range.
+  void Move(float dx, float dy) {
+    if (!std::isfinite(dx) || !std::isfinite(dy)) return;
+    x = Clamp1(x + dx);
+    y = Clamp1(y + dy);
+  }
+
+  // How far past the dead box (0..1) the pointer is on one axis, signed.
+  static float Overshoot(float value, float box) {
+    if (!(box >= 0.f && box < 1.f)) return 0.f;
+    const float past = (std::fabs(value) - box) / (1.f - box);
+    if (!(past > 0.f)) return 0.f;
+    return value < 0.f ? -std::fmin(past, 1.f) : std::fmin(past, 1.f);
+  }
+
+  // The view turn for dt seconds at (px, py): radians, world yaw (+left) and
+  // pitch (+up). maxRate is the turn speed in radians/second at the screen edge.
+  static void TurnAt(float px, float py, float box, float maxRate, float dt, float& dyaw,
+                     float& dpitch) {
+    dyaw = dpitch = 0.f;
+    if (!std::isfinite(maxRate) || !std::isfinite(dt) || maxRate <= 0.f || dt <= 0.f) return;
+    dyaw = -Overshoot(px, box) * maxRate * dt;
+    dpitch = -Overshoot(py, box) * maxRate * dt;
+  }
+
+  // The view ray through (px, py) in camera space as yaw (+right) and pitch (+up)
+  // angles applied in that order, for a vertical fov (degrees) and aspect ratio.
+  static void RayAngles(float px, float py, float fovYDeg, float aspect, float& yaw,
+                        float& pitch) {
+    yaw = pitch = 0.f;
+    const float tanY = std::tan(0.5f * fovYDeg * (kPi / 180.f));
+    if (!std::isfinite(tanY) || !(tanY > 0.f) || !(aspect > 0.f)) return;
+    const float right = px * tanY * aspect;
+    const float up = -py * tanY;
+    yaw = std::atan(right);
+    pitch = std::atan2(up, std::sqrt(1.f + right * right));
+  }
+
+  // The camera-space direction (x right, y forward, z up) of RayAngles' angles.
+  static void RayDirection(float yaw, float pitch, float& x, float& y, float& z) {
+    x = std::sin(yaw) * std::cos(pitch);
+    y = std::cos(yaw) * std::cos(pitch);
+    z = std::sin(pitch);
+  }
+
+  // Scales (yaw, pitch) so the direction stays within maxAngle of straight ahead.
+  // The angle is not linear in the scale, so a few passes settle it onto maxAngle.
+  static void ClampAngles(float& yaw, float& pitch, float maxAngle) {
+    for (int pass = 0; pass < 4; ++pass) {
+      const float angle = std::acos(std::cos(yaw) * std::cos(pitch));
+      if (!std::isfinite(angle) || !(angle > maxAngle) || !(angle > 0.f)) return;
+      const float scale = maxAngle / angle;
+      yaw *= scale;
+      pitch *= scale;
+    }
+  }
+
+private:
+  static float Clamp1(float v) { return v < -1.f ? -1.f : v > 1.f ? 1.f : v; }
 };
 
 class ButtonGate {
@@ -156,7 +235,16 @@ void BeginFrame();
 // An enabled touch source with no finger down counts as locked until TouchAimActive(), so the
 // aim tracks the camera the rest of the time without turning the player.
 // Returns true when the caller should rotate the player to Yaw().
-bool UpdateAim(bool active, bool locked, float x, float y, float z);
+// dt is the tick period, which pointer aim's edge turn integrates over.
+bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt = 0.f);
+// Pointer aim: CPlayer pushes the F1 settings here every tick (this file is built without the
+// overlay). box is the dead box as a fraction of the half-screen (0.2..0.95), turnRate the edge
+// turn in radians per second. It needs a direct source (mouse, twin stick or touch aim) on.
+void SetPointerAim(bool enabled, float box, float turnRate);
+bool PointerAimEnabled();
+// The pointer (x right, y down, -1..1) and whether it is free this tick: pointer aim is on and
+// the last UpdateAim applied it. Outside that the pointer is centred and the aim is retail's.
+bool PointerAimPosition(float& x, float& y);
 void Synchronize(float x, float y, float z);
 void Reset();
 bool Aiming();

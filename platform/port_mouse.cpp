@@ -49,6 +49,12 @@ float sPendingX = 0.f;
 float sPendingY = 0.f;
 float sFrameX = 0.f;
 float sFrameY = 0.f;
+// Pointer aim (MP1's sPointerAim/sPointerAimFree), configured each tick by CPlayer.
+PortMouse::PointerAim sPointer;
+bool sPointerEnabled = false;
+bool sPointerFree = false;
+float sPointerBox = 0.7f;
+float sPointerTurnRate = PortMouse::kPi;
 
 // Pending travel is written by the UI thread (AddTouchAim) and latched by the game thread
 // (BeginFrame, and the clears), so every read or write of it takes this lock. The mouse's
@@ -139,6 +145,22 @@ void SetCapture(bool captured) {
     SDL_ShowCursor();
     ClearPendingTravel();
   }
+}
+
+// MP1's PointerAimScale: aim travel (pixels at the reference sensitivity) to the pointer's
+// -1..1 range, so a mouse crosses the screen in one window's width of travel.
+void PointerAimScale(float& sx, float& sy) {
+  constexpr float kReferenceSensitivity = 0.0035f;
+  int width = 0, height = 0;
+  SDL_Window* window = GameWindow();
+  if (window == nullptr || !SDL_GetWindowSize(window, &width, &height) || width <= 0 ||
+      height <= 0) {
+    width = 640;
+    height = 480;
+  }
+  const float speed = sSensitivity / kReferenceSensitivity;
+  sx = 2.f / static_cast< float >(width) * speed;
+  sy = 2.f / static_cast< float >(height) * speed;
 }
 
 } // namespace
@@ -301,10 +323,12 @@ void BeginFrame() {
   sPendingY = 0.f;
 }
 
-bool UpdateAim(bool active, bool locked, float x, float y, float z) {
+bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
   ReadEnv();
   if ((!sEnabled && !sStickEnabled && !sTouchEnabled.load()) || sUiActive) {
     sAiming = false;
+    sPointerFree = false;
+    sPointer.Center();
     SetCapture(false);
     return false;
   }
@@ -324,12 +348,63 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z) {
   sAiming = owns;
   // Only mouse aim needs the pointer grabbed; twin-stick and touch leave the cursor alone.
   SetCapture(owns && sEnabled);
+  if (sPointerEnabled) {
+    // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
+    // stops free look) re-centres it, so lock-on, scan and grapple still aim through the centre.
+    if (owns) {
+      float sx = 0.f, sy = 0.f;
+      PointerAimScale(sx, sy);
+      sPointer.Move(sFrameX * sx, sFrameY * sy);
+    } else {
+      sPointer.Center();
+    }
+    const bool applied = sAim.Update(active, held, x, y, z, 0.f, 0.f, sSensitivity, sInvertX,
+                                     sInvertY);
+    if (applied && owns) {
+      float dyaw = 0.f, dpitch = 0.f;
+      PortMouse::PointerAim::TurnAt(sPointer.x, sPointer.y, sPointerBox, sPointerTurnRate, dt,
+                                    dyaw, dpitch);
+      sAim.Turn(dyaw, dpitch);
+    }
+    sPointerFree = applied && owns;
+    if (!sPointerFree) {
+      sPointer.Center();
+    }
+    if (applied) {
+      sFrameX = sFrameY = 0.f;
+    }
+    return applied && owns;
+  }
+  sPointerFree = false;
   const bool applied = sAim.Update(active, held, x, y, z, sFrameX, sFrameY, sSensitivity,
                                    sInvertX, sInvertY);
   if (applied) {
     sFrameX = sFrameY = 0.f;
   }
   return applied && owns;
+}
+
+void SetPointerAim(bool enabled, float box, float turnRate) {
+  if (enabled != sPointerEnabled) {
+    // MP1's SetPointerAim: switching either way starts from the centre.
+    sPointer.Center();
+    sPointerFree = false;
+    sPointerEnabled = enabled;
+  }
+  if (std::isfinite(box)) {
+    sPointerBox = box < 0.f ? 0.f : box > 0.99f ? 0.99f : box;
+  }
+  if (std::isfinite(turnRate) && turnRate >= 0.f) {
+    sPointerTurnRate = turnRate;
+  }
+}
+
+bool PointerAimEnabled() { return sPointerEnabled; }
+
+bool PointerAimPosition(float& x, float& y) {
+  x = sPointer.x;
+  y = sPointer.y;
+  return sPointerFree;
 }
 
 void Synchronize(float x, float y, float z) {
@@ -342,6 +417,8 @@ void Reset() {
   sAim.Reset();
   sAiming = false;
   ClearPendingTravel();
+  sPointer.Center();
+  sPointerFree = false;
   // A finger's state belongs to the aim being reset: a held spring must not re-open the view
   // the next frame, and a later down must not inherit a stale hold.
   sTouchAimDown = false;

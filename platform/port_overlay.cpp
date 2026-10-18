@@ -52,6 +52,9 @@ bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
+bool sPointerAim = false;
+int sPointerAimBox = PortOverlay::kPointerAimBoxDefault;
+int sPointerAimTurn = PortOverlay::kPointerAimTurnDefault;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -565,6 +568,20 @@ void DrawControlsOptions() {
                "on, as the original: without Lock-On, the arm cannon turns toward the enemy nearest the "
                "middle of the screen and shots home in on it. Off, shots go where you aim; Lock-On still "
                "aims at its target"));
+  Changed(PortUi::Toggle("Pointer aim (Trilogy style)", &sPointerAim, "MP2_POINTER_AIM=1",
+               "the mouse, stick or touch moves a pointer over the screen; past the dead box the view "
+               "turns toward that edge, and the arm cannon aims at the pointer. Needs mouse, twin-stick "
+               "or touch aim"));
+  if (sPointerAim) {
+    Changed(PortUi::SliderInt("Dead box", &sPointerAimBox, PortOverlay::kPointerAimBoxMin,
+                              PortOverlay::kPointerAimBoxMax, "%d%%", "MP2_POINTER_AIM_BOX=20..95",
+                              "how far out, as a share of the half-screen, the pointer moves before "
+                              "the view turns"));
+    Changed(PortUi::SliderInt("Edge turn speed", &sPointerAimTurn, PortOverlay::kPointerAimTurnMin,
+                              PortOverlay::kPointerAimTurnMax, "%d deg/s",
+                              "MP2_POINTER_AIM_TURN=30..720",
+                              "the view's turn speed with the pointer at the screen edge"));
+  }
   ImGui::SeparatorText("Rumble");
   ImGui::BeginDisabled(gpGameState == nullptr);
   bool rumble = gpGameState != nullptr && gpGameState->GameOptions().GetIsRumbleEnabled();
@@ -1099,6 +1116,27 @@ void SetAutoAim(bool enabled) {
   ReadEnv();
   sAutoAim = enabled;
   Persist();
+}
+
+bool PointerAim() {
+  ReadEnv();
+  return EnvBool("MP2_POINTER_AIM", sPointerAim);
+}
+
+void SetPointerAim(bool enabled) {
+  ReadEnv();
+  sPointerAim = enabled;
+  Persist();
+}
+
+int PointerAimBox() {
+  ReadEnv();
+  return EnvIntIn("MP2_POINTER_AIM_BOX", sPointerAimBox, kPointerAimBoxMin, kPointerAimBoxMax);
+}
+
+int PointerAimTurn() {
+  ReadEnv();
+  return EnvIntIn("MP2_POINTER_AIM_TURN", sPointerAimTurn, kPointerAimTurnMin, kPointerAimTurnMax);
 }
 
 bool RapidCharge() {

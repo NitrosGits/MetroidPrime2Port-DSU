@@ -129,6 +129,11 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sStickyCharge >("sticky_charge"),
     BoolKey< &sRapidCharge >("rapid_charge"),
     BoolKey< &sAutoAim >("auto_aim"),
+    BoolKey< &sPointerAim >("pointer_aim"),
+    IntKey< &sPointerAimBox, PortOverlay::kPointerAimBoxMin, PortOverlay::kPointerAimBoxMax >(
+        "pointer_aim_box", "50", "70"),
+    IntKey< &sPointerAimTurn, PortOverlay::kPointerAimTurnMin, PortOverlay::kPointerAimTurnMax >(
+        "pointer_aim_turn", "180", "360"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),

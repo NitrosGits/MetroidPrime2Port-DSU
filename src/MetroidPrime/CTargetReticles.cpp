@@ -1366,7 +1366,20 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     const float fovRad = cam->GetFov() * 3.14159265f / 180.f;
     const float units = tanf(0.5f * fovRad) / tanf(0.5f * kRemasteredFov * 3.14159265f / 180.f) *
                         static_cast< float >(PortOverlay::CrosshairSize()) / 100.f;
-    const CVector3f cursor = camXf * CVector3f(0.f, kCursorPlane, 0.f);
+    CVector3f cursorLocal(0.f, kCursorPlane, 0.f);
+    // Pointer aim: the cursor is the pointer, on the same plane where the ray through it meets.
+    float pointerX = 0.f;
+    float pointerY = 0.f;
+    if (PortMouse::PointerAimPosition(pointerX, pointerY) && (pointerX != 0.f || pointerY != 0.f)) {
+      float yaw = 0.f, pitch = 0.f, rayX = 0.f, rayY = 1.f, rayZ = 0.f;
+      PortMouse::PointerAim::RayAngles(pointerX, pointerY, cam->GetFov(), cam->GetAspectRatio(),
+                                       yaw, pitch);
+      PortMouse::PointerAim::RayDirection(yaw, pitch, rayX, rayY, rayZ);
+      if (rayY > 0.01f) {
+        cursorLocal = CVector3f(rayX, rayY, rayZ) * (kCursorPlane / rayY);
+      }
+    }
+    const CVector3f cursor = camXf * cursorLocal;
     CColor rc = PortRemasteredCrosshairColor(mPreviousState, mPortXhairTargetT);
     rc = CColor(rc.GetRed(), rc.GetGreen(), rc.GetBlue(),
                 mCrosshairsDrawScale * static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f);
@@ -1399,6 +1412,17 @@ void CCompoundTargetReticle::PortUpdateRemasteredCrosshair(float dt, const CStat
   const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
   CVector3f eye = camMgr->GetLastCameraTransform().GetTranslation();
   CVector3f dir = mTargetPosition - eye;
+  // Pointer aim: what is under the pointer, not under the screen centre.
+  float pointerX = 0.f;
+  float pointerY = 0.f;
+  if (PortMouse::PointerAimPosition(pointerX, pointerY) && (pointerX != 0.f || pointerY != 0.f)) {
+    const CGameCamera* cam = camMgr->GetCurrentCamera(mgr, true);
+    float yaw = 0.f, pitch = 0.f, rayX = 0.f, rayY = 1.f, rayZ = 0.f;
+    PortMouse::PointerAim::RayAngles(pointerX, pointerY, cam->GetFov(), cam->GetAspectRatio(), yaw,
+                                     pitch);
+    PortMouse::PointerAim::RayDirection(yaw, pitch, rayX, rayY, rayZ);
+    dir = camMgr->GetLastCameraTransform().Rotate(CVector3f(rayX, rayY, rayZ));
+  }
   const float kRange = 100.f;
   float distance = kRange;
   bool overTarget = false;

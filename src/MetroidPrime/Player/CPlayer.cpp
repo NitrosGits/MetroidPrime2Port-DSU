@@ -974,6 +974,66 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
 #else
   cameraTransform.SetTranslation(gunPosition);
 #endif
+#ifdef TARGET_PC
+  // Port: pointer aim (MP1's pointer block in CPlayer::UpdateGunTransform). The gun sits off to
+  // the side of the eye, so a shot parallel to the ray through the pointer would miss what the
+  // pointer is on. Shots (mAssistAimXf, which CPlayerGun fires along) and the gun model aim from
+  // the gun at the point the ray hits instead, or a far point when it hits nothing; the model
+  // turns only so far, so it stays in view. No assist bends the shot off the pointer (a lock
+  // re-centres the pointer and aims as usual).
+  float pointerX = 0.f;
+  float pointerY = 0.f;
+  if (mGun->GetGunHolsterState() == CPlayerGunBase::kGHS_Drawn &&
+      PortMouse::PointerAimPosition(pointerX, pointerY) && (pointerX != 0.f || pointerY != 0.f) &&
+      MouseAimAllowed(mgr)) {
+    const CFirstPersonCamera* cam = mCameraManager->GetFirstPersonCamera();
+    // The view's own transform: the crosshair is drawn from it.
+    const CTransform4f& viewXf = cam->GetTransform();
+    float yaw = 0.f;
+    float pitch = 0.f;
+    PortMouse::PointerAim::RayAngles(pointerX, pointerY, cam->GetFov(), cam->GetAspectRatio(),
+                                     yaw, pitch);
+    float rayX = 0.f, rayY = 1.f, rayZ = 0.f;
+    PortMouse::PointerAim::RayDirection(yaw, pitch, rayX, rayY, rayZ);
+    const CVector3f rayDir = viewXf.Rotate(CVector3f(rayX, rayY, rayZ));
+    const CVector3f eye = viewXf.GetTranslation();
+    const float kAimRange = 100.f;
+    const float kMinAimDistance = 3.f;
+    float distance = kAimRange;
+    {
+      const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+          CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
+      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      mgr.BuildNearList(nearList, eye, rayDir, kAimRange, filter, this);
+      TUniqueId hitId = kInvalidUniqueId;
+      const CRayCastResult hit =
+          mgr.RayWorldIntersection(hitId, eye, rayDir, kAimRange, filter, nearList);
+      if (hit.IsValid()) {
+        distance = CMath::Max((hit.GetPoint() - eye).Magnitude(), kMinAimDistance);
+      }
+    }
+    CVector3f toAim = eye + rayDir * distance - gunPosition;
+    if (!toAim.CanBeNormalized()) {
+      toAim = rayDir;
+    }
+    CTransform4f aimXf = CTransform4f::LookAt(CVector3f::Zero(), toAim);
+    aimXf.SetTranslation(gunPosition);
+    // The same direction as camera-space yaw (+right) and pitch (+up), for the clamp.
+    const CVector3f local = viewXf.TransposeRotate(toAim.AsNormalized());
+    yaw = atan2f(local.GetX(), local.GetY());
+    pitch = atan2f(local.GetZ(), sqrtf(local.GetX() * local.GetX() + local.GetY() * local.GetY()));
+    const float kMaxGunAngle = 50.f * (PortMouse::kPi / 180.f);
+    PortMouse::PointerAim::ClampAngles(yaw, pitch, kMaxGunAngle);
+    CTransform4f gunXf = viewXf.GetRotation() * CTransform4f::RotateZ(CRelAngle::FromRadians(-yaw)) *
+                         CTransform4f::RotateX(CRelAngle::FromRadians(pitch));
+    gunXf.SetTranslation(gunPosition);
+    // Drawn, UpdateTransform keeps the result as the gun's transform.
+    mGun->UpdateTransform(mgr, gunPosition, cameraTransform, gunXf);
+    UpdateAimPrediction(aimXf, mgr);
+    mGun->SetAssistAimTransform(aimXf);
+    return;
+  }
+#endif
   mGun->UpdateTransform(mgr, gunPosition, cameraTransform, gunTransform);
   CTransform4f aimTransform = gunTransform;
   UpdateAimPrediction(aimTransform, mgr);
@@ -2808,7 +2868,13 @@ bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
 }
 
 void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+  const bool direct =
+      PortMouse::Enabled() || PortMouse::StickEnabled() || PortMouse::TouchEnabled();
+  // Pointer aim's settings live in the overlay, which PortMouse is built without.
+  PortMouse::SetPointerAim(direct && PortOverlay::PointerAim(),
+                           PortOverlay::PointerAimBox() / 100.f,
+                           PortOverlay::PointerAimTurn() * (PortMouse::kPi / 180.f));
+  if (!direct) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);
@@ -2822,7 +2888,7 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   const CVector3f forward = fpCamera != nullptr && mCameraManager->IsInFPCamera()
                                 ? fpCamera->GetTransform().GetForward()
                                 : GetTransform().GetForward();
-  if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ())) {
+  if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ(), dt)) {
     return;
   }
 
