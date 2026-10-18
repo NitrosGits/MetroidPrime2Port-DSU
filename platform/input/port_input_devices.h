@@ -9,8 +9,8 @@
 // PADSetPortOverride. The console's and MP2_INPUT's virtual status still merges on top of it.
 // Mouse motion is not an input here: it feeds only PortMouse::AddMotion.
 //
-// Not carried over from MP1 (no backend or setting here): the beam-shift chords and turbo, the
-// pad's alt buttons, gyro, save states, photo mode, the Original experience toggle, pointer menus'
+// Not carried over from MP1 (no backend or setting here): the beam-shift chords' settings-driven shifts
+// (only the twin-stick ones exist) and turbo's key slots, the pad's alt buttons, gyro, save states, photo mode, the Original experience toggle, pointer menus'
 // Escape, and Aurora's key slots (MP2 has its own keyboard layout, BaseKeyboardProfile).
 
 #include "port_input_bindings.h"

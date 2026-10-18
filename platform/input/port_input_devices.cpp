@@ -290,10 +290,73 @@ Profile MakeKeyboardProfile() {
 
 bool IsPadFamily(const Input& in) { return in.device == Device::PadButton || in.device == Device::PadAxis; }
 
-// MP1's BindBeamChords (shift + D-pad beams, the shift's spring ball) and turbo are not here: they
-// hang off settings (shift and turbo bindings) MP2 does not have, and the touch overlay's Beam and
-// Turbo buttons work inside PortTouch. Neither are the pad's alt buttons (a setting), save states
-// on F5/F9 and photo mode on F8 (no backend; F5-F10 are MP2's warp keys), gyro aim (no gyro), and
+bool IsKeyboardFamily(const Input& in) { return in.device == Device::Key || in.device == Device::MouseButton; }
+
+// LB is the pad's beam shift under twin stick, unless it presses another PAD button: held as the
+// shift, it would turn that D-pad press into a beam. (MP1's PadButtonBoundBesidesL; MP2 has no
+// alt-button setting to check, only Aurora's mappings.)
+bool PadButtonBoundBesidesL(s32 native) {
+  u32 count = 0;
+  const PADButtonMapping* list = PADGetButtonMappings(kPort, &count);
+  for (u32 i = 0; list != nullptr && i < count; ++i) {
+    if (list[i].nativeButton == static_cast<u32>(native) && list[i].padButton != PAD_TRIGGER_L) return true;
+  }
+  return false;
+}
+
+// MP1's BindBeamChords: a shift plus a D-pad direction picks a beam, the direction the retail
+// C-stick picks them with (Power up, Dark left, Light right, Annihilator down), for the layouts
+// that take the C-stick away (the touch overlay's twin stick). A shift pairs with the D-pad inputs
+// of its own family: the keyboard's shift with the keyboard's D-pad keys, the pad's shift with the
+// pad's D-pad. MP1's shifts come from settings (key slots, mouse shift action, pad shift) that MP2
+// does not have, so only its twin-stick shifts exist: Left Shift unless a key takes it, and LB.
+// The overlay's own Beam button works inside PortTouch. MP1 also makes the shifts spring the ball
+// in morph ball; MP2's RouteDirectActions has no spring request (MP2_SPRING_BALL is CMorphBall's).
+void BindBeamChords(Profile& p) {
+  if (!PortTouch::TwinStick()) return;
+  std::vector<Input> keyShifts;
+  std::vector<Input> padShifts;
+  bool lshiftTaken = false;
+  for (const Binding& b : p.bindings) {
+    if (b.count == 1 && b.inputs[0].device == Device::Key && b.inputs[0].code == SDL_SCANCODE_LSHIFT) {
+      lshiftTaken = true;
+    }
+  }
+  if (!lshiftTaken) keyShifts.push_back(Make(Device::Key, SDL_SCANCODE_LSHIFT));
+  if (!PortTouch::ControlsEnabled() && !PadButtonBoundBesidesL(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) {
+    padShifts.push_back(NativeInput(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER));
+  }
+
+  // The engine's beam actions are MP1's names for MP2's slots, in the order RouteDirectActions
+  // requests them: Power, Ice (Dark), Wave (Light), Plasma (Annihilator).
+  static constexpr Action kDirs[4] = {Action::PadUp, Action::PadDown, Action::PadLeft, Action::PadRight};
+  static constexpr Action kBeams[4] = {Action::BeamPower, Action::BeamPlasma, Action::BeamIce, Action::BeamWave};
+  const std::vector<Binding> base = p.bindings;
+  const uint16_t noBall = static_cast<uint16_t>(PortInput::kCtxAll & ~PortInput::kCtxMorphBall);
+  for (int d = 0; d < 4; ++d) {
+    for (const Binding& dir : base) {
+      if (dir.action != kDirs[d] || dir.count != 1) continue;
+      const bool keyboard = IsKeyboardFamily(dir.inputs[0]);
+      if (!keyboard && !IsPadFamily(dir.inputs[0])) continue;
+      for (const Input& shift : keyboard ? keyShifts : padShifts) {
+        if (!shift.Valid() || shift == dir.inputs[0]) continue;
+        Binding b;
+        b.action = kBeams[d];
+        b.inputs[0] = shift;
+        b.inputs[1] = dir.inputs[0];
+        b.count = 2;
+        b.contexts = noBall;
+        p.bindings.push_back(b);
+      }
+    }
+  }
+}
+
+// MP1's turbo (A on one poll and off the next from the turbo key and pad slots) hangs off settings
+// MP2 does not have; the engine's per-binding turbo_hz (Bind's turboHz, controls.toml, the F1
+// Controls page's turbo rows) is MP1's and works. The touch overlay's Turbo is PortTouch's own.
+// Not carried either: the pad's alt buttons (a setting), save states on F5/F9 and photo mode on F8
+// (no backend; F5-F10 are MP2's warp keys), gyro aim (no gyro sensor reader or aim consumer), and
 // pointer menus' Escape (no pointer menus).
 void BindPortControls(Profile& p) {
   // The port's own keys and the pad's overlay chord. Back + Start is ordered both
@@ -312,6 +375,8 @@ void BindPortControls(Profile& p) {
     }
   }
   Bind(p, Action::Screenshot, Make(Device::Key, SDL_SCANCODE_F12));
+
+  BindBeamChords(p);
 
   // The wheel cycles beams, as in PrimeHack; retail has no wheel.
   Bind(p, Action::BeamPrev, Make(Device::MouseWheel, 0, 1));
