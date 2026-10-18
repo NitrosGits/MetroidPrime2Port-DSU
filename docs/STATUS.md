@@ -21,7 +21,14 @@ appended, dated as in the heading there.
   upstream files; desktop boot with `MP2_POSE_INTERPOLATION=1` exit 124, no crash lines.
 - Not verified on screen: no save file exists (`/tmp/opencode/u_a10`, `mp2card/user` absent), so
   gameplay cannot be reached. Front-end boot only.
-- Next: phase 3 (particles/projectiles, `particle_interpolation`), then look input, HUD/2D resets, sweep.
+- Phase 3 (`a84d788b0`): `CElementGen` draws between its last two tick states (retail sub-frame path
+  fed the presentation factor, global translation blended, newborns shifted, lines at the presented
+  position); `CEnvFxManager` rain/underwater step back, snow per flake. Setting
+  `particle_interpolation` (env `MP2_PARTICLE_INTERPOLATION`, F1 "Smooth effects", off by default).
+  Verified: gen --check rc 0; link 0 FAILED; host tests (presentation rules, input engine, input
+  bindings) rc 0; matching build 94.14%/63.29%; strip-diff CLEAN on all upstream files; boot exit 124.
+  Not ported: projectiles, swooshes, electric effects, beams (phase 6) - check before claiming done.
+- Next: phase 4 (look input), HUD/2D resets, sweep.
 - Gotcha: `/tmp/strip.py` (crude) dropped everything after `#else`; use a stripper that keeps the
   `#else` branch, or its CLEAN results mean nothing.
 
