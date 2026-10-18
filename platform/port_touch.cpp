@@ -62,6 +62,8 @@ struct Settings {
   float stickInset = 32.f;
   float buttonInset = 0.f;
   float opacity = 100.f;
+  float aimSpeed = kAimSpeed;
+  bool springSwipe = true;
   std::string layout;
 };
 
@@ -71,8 +73,6 @@ std::string sConfigPath;
 bool sLoaded = false; // guarded by sMutex
 bool sDirty = false;
 bool sPadAttachFailed = false; // guarded by sPadMutex: the failure is logged once, not per event
-
-float sAimSpeed = kAimSpeed;
 
 std::atomic< bool > sEditRequested{false};
 std::atomic< bool > sPhysicalInput{false};
@@ -130,6 +130,7 @@ void ApplyEnvironmentLocked() {
       {"MP2_TOUCH_FLOATING", &Settings::floating},
       {"MP2_TOUCH_VISOR_TAP_SCAN", &Settings::visorTapScan},
       {"MP2_TOUCH_CONTROLS", &Settings::controls},
+      {"MP2_TOUCH_SPRING_SWIPE", &Settings::springSwipe},
   };
   for (const Flag& flag : kFlags) {
     if (const char* value = std::getenv(flag.name)) {
@@ -163,7 +164,7 @@ void ApplyEnvironmentLocked() {
   if (const char* speed = std::getenv("MP2_TOUCH_AIM_SPEED")) {
     const float value = static_cast< float >(std::atof(speed));
     if (std::isfinite(value) && value > 0.f) {
-      sAimSpeed = value < 0.25f ? 0.25f : (value > 10.f ? 10.f : value);
+      sSettings.aimSpeed = value < 0.25f ? 0.25f : (value > 10.f ? 10.f : value);
     }
   }
 }
@@ -237,6 +238,10 @@ void LoadConfig() {
       s.stickInset = static_cast< float >(std::atof(value.c_str()));
     } else if (key == "button_inset") {
       s.buttonInset = static_cast< float >(std::atof(value.c_str()));
+    } else if (key == "aim_speed") {
+      s.aimSpeed = static_cast< float >(std::atof(value.c_str()));
+    } else if (key == "spring_swipe") {
+      s.springSwipe = ParseBool(value);
     } else if (key == "opacity") {
       s.opacity = static_cast< float >(std::atof(value.c_str()));
     }
@@ -277,6 +282,8 @@ void SaveConfigLocked() {
     file << "stick_inset=" << s.stickInset << '\n';
     file << "button_inset=" << s.buttonInset << '\n';
     file << "opacity=" << s.opacity << '\n';
+    file << "aim_speed=" << s.aimSpeed << '\n';
+    file << "spring_swipe=" << (s.springSwipe ? 1 : 0) << '\n';
     file << "layout=" << s.layout << '\n';
     file.flush();
     if (!file) {
@@ -472,7 +479,7 @@ void BeginFrame() {
     // The finger's release may never arrive (the overlay opened under it).
     PortMouse::SetTouchAimDown(false);
   }
-  PortMouse::SetTouchAimSpeed(sAimSpeed);
+  PortMouse::SetTouchAimSpeed(AimSpeed());
 
   CPlayerState* const player = PlayerInPlay();
   ApplyRequests(player);
@@ -530,14 +537,13 @@ void AddAim(float dxDp, float dyDp) {
 
 void SetAimDown(bool down) { PortMouse::SetTouchAimDown(down); }
 
-void SpringSwipe() { PortMouse::SpringSwipe(); }
+void SpringSwipe() {
+  if (SpringSwipeEnabled()) PortMouse::SpringSwipe();
+}
 
 bool AimEnabled() { return Read(&Settings::aim); }
 
-float AimSpeed() {
-  ReadEnvironment();
-  return sAimSpeed;
-}
+float AimSpeed() { return Read(&Settings::aimSpeed); }
 
 bool Classic() { return Read(&Settings::classic); }
 bool TwinStick() { return Read(&Settings::twin); }
@@ -552,6 +558,7 @@ float SideMarginDp() { return Read(&Settings::sideMargin); }
 float StickInsetDp() { return Read(&Settings::stickInset); }
 float ButtonInsetDp() { return Read(&Settings::buttonInset); }
 float Opacity() { return Read(&Settings::opacity); }
+bool SpringSwipeEnabled() { return Read(&Settings::springSwipe); }
 
 std::string Layout() { return Read(&Settings::layout); }
 
@@ -566,6 +573,50 @@ void SetLayout(const std::string& layout) {
   // Under the same lock the mutation took: never a half-updated Settings in the file.
   SaveConfigLocked();
 }
+
+namespace {
+void SetSetting(bool Settings::* field, bool value) {
+  LoadConfig();
+  std::lock_guard< std::mutex > lock(sMutex);
+  if (sSettings.*field == value) {
+    return;
+  }
+  sSettings.*field = value;
+  sDirty = true;
+  SaveConfigLocked();
+}
+} // namespace
+
+void SetControlsEnabled(bool enabled) { SetSetting(&Settings::controls, enabled); }
+
+void SetAimEnabled(bool enabled) { SetSetting(&Settings::aim, enabled); }
+void SetColors(bool enabled) { SetSetting(&Settings::colors, enabled); }
+void SetLabels(bool enabled) { SetSetting(&Settings::labels, enabled); }
+void SetTurbo(bool enabled) { SetSetting(&Settings::turbo, enabled); }
+void SetFloatingStick(bool enabled) { SetSetting(&Settings::floating, enabled); }
+void SetWheelsEnabled(bool enabled) { SetSetting(&Settings::wheels, enabled); }
+void SetVisorTapScan(bool enabled) { SetSetting(&Settings::visorTapScan, enabled); }
+void SetSpringSwipe(bool enabled) { SetSetting(&Settings::springSwipe, enabled); }
+
+namespace {
+void SetNumber(float Settings::* field, float value, float low, float high) {
+  LoadConfig();
+  std::lock_guard< std::mutex > lock(sMutex);
+  value = value < low ? low : (value > high ? high : value);
+  if (sSettings.*field == value) {
+    return;
+  }
+  sSettings.*field = value;
+  sDirty = true;
+  SaveConfigLocked();
+}
+} // namespace
+
+void SetSideMarginDp(float dp) { SetNumber(&Settings::sideMargin, dp, 0.f, 300.f); }
+void SetStickInsetDp(float dp) { SetNumber(&Settings::stickInset, dp, 0.f, 300.f); }
+void SetButtonInsetDp(float dp) { SetNumber(&Settings::buttonInset, dp, 0.f, 300.f); }
+void SetOpacity(float percent) { SetNumber(&Settings::opacity, percent, 10.f, 100.f); }
+void SetAimSpeed(float pxPerDp) { SetNumber(&Settings::aimSpeed, pxPerDp, 0.5f, 6.f); }
 
 void RequestEdit() { sEditRequested.store(true, std::memory_order_release); }
 

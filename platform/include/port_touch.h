@@ -19,8 +19,8 @@
 //
 // Settings are MP1's touch settings, persisted in `<user>/touch.cfg` (`key=value`) and
 // overridable with `MP2_TOUCH_*` env vars (an env value wins over the file). MP2's F1 window
-// has no touch rows, so the overlay's own Edit button opens the editor and the editor's Layout
-// button cycles the layouts.
+// has MP1's touch rows of Controls > Touch & gyro; the overlay's own Edit button opens the
+// editor and the editor's Layout button cycles the layouts.
 //
 // Not ported, because MP2 has no backend for them: the minimap tap and the map screen's
 // pan/zoom/rotate, pointer menus, the game's own wheel icons (the wheels show text), the
@@ -75,6 +75,23 @@ bool Turbo();
 bool WheelsEnabled();
 bool VisorTapScan();
 bool ControlsEnabled();
+// The F1 Controls > Touch & gyro rows' setters; each persists to touch.cfg.
+void SetControlsEnabled(bool enabled);
+void SetAimEnabled(bool enabled);
+void SetColors(bool enabled);
+void SetLabels(bool enabled);
+void SetTurbo(bool enabled);
+void SetFloatingStick(bool enabled);
+void SetWheelsEnabled(bool enabled);
+void SetVisorTapScan(bool enabled);
+// A quick swipe up on the free area springs the ball (MP1's `touch_spring_swipe`; default on).
+bool SpringSwipeEnabled();
+void SetSpringSwipe(bool enabled);
+void SetSideMarginDp(float dp);
+void SetStickInsetDp(float dp);
+void SetButtonInsetDp(float dp);
+void SetOpacity(float percent);
+void SetAimSpeed(float pxPerDp);
 float SideMarginDp();
 float StickInsetDp();
 float ButtonInsetDp();
