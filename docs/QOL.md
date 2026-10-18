@@ -46,7 +46,10 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    empty stubs here, so `MP2_NO_VISOR_FX` currently only suppresses what the scan visor draws (its
    frame/edges; the scan window itself is the HUD's own scan interface and stays), and that MSAA is
    the one setting whose cost is the whole framebuffer: 4x is for a desktop, not a phone.
-3. **Input settings**: keyboard rebinding is in - a 22-row table in `platform/port_binds.cpp`, the
+3. **Input settings**: the *engine* import is queued (MP1's `platform/input/`: bindings with
+   `controls.toml`, device profiles, chords/contexts, its remap UI - 4,100 lines) as its own slice,
+   replacing `PortBinds`/`PortMouse`'s binding half and retiring the smaller remap page the F1 menu
+   has now; it is what "input bindings like Prime" actually needs. Keyboard rebinding is in - a 22-row table in `platform/port_binds.cpp`, the
    F1 Bindings section, `bind`/`binds` on the console, and `keybinds.cfg` in the user directory. What
    is left is key/button presets (MP1's classic / mouse-and-keyboard layouts, `port_controls.cpp`'s
    `ApplyKeyPreset`), a controller (native pad) remap UI (MP1's `platform/input/` profile/toml
