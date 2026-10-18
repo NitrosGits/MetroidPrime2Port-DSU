@@ -51,6 +51,7 @@ bool sFastMorph = false;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
+bool sSwapScanXray = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
 // Saves, `cardbackup`).
@@ -544,6 +545,8 @@ void DrawControlsOptions() {
                "an L press latches the lock until the next; one that ends lets go"));
   Changed(PortUi::Toggle("Sticky charge", &sStickyCharge, "MP2_STICKY_CHARGE=1",
                "letting go of a long A hold keeps charging until the next press fires it"));
+  Changed(PortUi::Toggle("Swap scan and X-ray", &sSwapScanXray, "MP2_SWAP_SCAN_XRAY=1",
+               "the Scan and X-Ray visors trade D-pad directions while the Power Beam is equipped"));
   ImGui::SeparatorText("Rumble");
   ImGui::BeginDisabled(gpGameState == nullptr);
   bool rumble = gpGameState != nullptr && gpGameState->GameOptions().GetIsRumbleEnabled();
@@ -1066,6 +1069,17 @@ bool StickyCharge() {
 void SetStickyCharge(bool enabled) {
   ReadEnv();
   sStickyCharge = enabled;
+  Persist();
+}
+
+bool SwapScanXray() {
+  ReadEnv();
+  return EnvBool("MP2_SWAP_SCAN_XRAY", sSwapScanXray);
+}
+
+void SetSwapScanXray(bool enabled) {
+  ReadEnv();
+  sSwapScanXray = enabled;
   Persist();
 }
 

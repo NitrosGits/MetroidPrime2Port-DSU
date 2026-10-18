@@ -127,6 +127,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sSpringBall >("spring_ball"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),
+    BoolKey< &sSwapScanXray >("swap_scan_xray"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),

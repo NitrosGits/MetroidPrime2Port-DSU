@@ -7,6 +7,7 @@
 #include "port_input_bindings.h"
 #include "port_input_map.h"
 #include "port_mouse.h"
+#include "port_overlay.h"
 #include "input/port_input_devices.h"
 
 #include "MetroidPrime/CControlMapper.hpp"
@@ -97,9 +98,10 @@ s32 OtherStick(s32 axis) {
 void ApplyPadPreset(EPadPreset preset) {
   PADRestoreDefaultMapping(kControlPort);
   // The GameCube layouts use the C-stick; the dual-stick ones turn twin-stick
-  // back on. MP2 has no pad beam shift, scan/X-ray swap or pad alt buttons
-  // (MP1 PortDebug settings), so those resets are gone.
+  // back on. MP2 has no pad beam shift or pad alt buttons (MP1 PortDebug settings),
+  // so those resets are gone.
   PortMouse::SetStickEnabled(false);
+  PortOverlay::SetSwapScanXray(preset == EPadPreset::kRemastered);
   switch (preset) {
   case EPadPreset::kGameCube:
     break;
@@ -123,8 +125,8 @@ void ApplyPadPreset(EPadPreset preset) {
     }
     PADSetAxisMapping(kControlPort, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
     // MP2: MP1 also gives A the east button and B the left shoulder (pad alt
-    // buttons), the top face button the beam shift and swaps scan and X-ray;
-    // none of those settings exist here.
+    // buttons) and the top face button the beam shift; those settings do not
+    // exist here. The scan/X-ray swap is set above.
     PortMouse::SetStickEnabled(true);
     break;
   }

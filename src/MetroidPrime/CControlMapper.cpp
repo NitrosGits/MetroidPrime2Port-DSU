@@ -3,6 +3,11 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerControls.hpp"
 
 #include "Kyoto/Input/CFinalInput.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
+#include "port_overlay.h"
+#endif
 
 const FAnalogInput CControlMapper::gAnalogInputs[] = {
     nullptr,
@@ -336,6 +341,15 @@ CControlMapper::EFunctionList CControlMapper::GetMapping(ECommands command) cons
       }
     }
   }
+#ifdef TARGET_PC
+  // Scan and X-ray trade places while the Power Beam is equipped (MP2_SWAP_SCAN_XRAY).
+  if ((command == kC_EnviroVisor || command == kC_XrayVisor) && PortOverlay::SwapScanXray() &&
+      gpGameState != nullptr && gpGameState->GetPlayerState().GetPtr() != nullptr &&
+      gpGameState->GetPlayerState()->GetCurrentBeam() == CPlayerState::kBI_Power) {
+    return GetTweakPlayerControls()->GetMapping(command == kC_EnviroVisor ? kC_XrayVisor
+                                                                          : kC_EnviroVisor);
+  }
+#endif
   return GetTweakPlayerControls()->GetMapping(command);
 }
 
