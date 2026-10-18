@@ -41,11 +41,20 @@ and a drag on the window's empty space scrolls it too, which is why the window i
 movable. Verified on the phone: MENU opens and closes, a tap toggles the row under the finger
 (Log file), a drag scrolls to the Saves section, and the map screen opens without the crash.
 
-**Still open on the phone**: the map screen draws a huge gray triangle over half the view (it
-survives the crash fix, goes away when the area unloads, and does not on the desktop - the map
-screen's dim/background pass, with the map's own wireframe visible under it). And the touch control
-set is still M3's: MP1's MENU-toggled layout has missile, L/R buttons and triggers, beam/visor
-wheels and pointer menus for the game's own screens, none of which are here yet.
+**The gray triangle** (`4c834b5ad`): not the map screen at all, though that is where it looked like
+it came from - the Landing Site's fish swarm skins each boid on the CPU from the model's position and
+normal arrays, and those stay in disc (big-endian) order in memory because the GPU's guest array path
+swaps them itself. Read as host floats they are NaNs and values near 1e6, so every boid had garbage
+vertices: a ball of strands on the desktop, one huge gray triangle on the phone's GPU (which
+rasterises non-finite vertices lavapipe drops). That also explains the user's two clues - turning the
+camera away cannot fix geometry that is rebuilt wrong every frame, and changing area drops the
+swarm's model. `SwarmRenderHelpers.cpp` now swaps positions and normals, and
+`CSkinnedModel::GetSkinnedPosition/GetSkinnedNormal` - what `CAnimData`'s bounds and
+`CActorModelParticles`' emitters read - get the same swap, since they read the same arrays.
+Verified on the phone: gameplay and the map screen are clean, the swarm draws as small white specks,
+no crash in the run. Still open there: the Landing Site's radial "strand ball" is a separate effect
+that has not been checked against retail, and the touch control set is still M3's (MP1's missile,
+L/R buttons and triggers, beam/visor wheels, pointer menus for the game's own screens).
 
 ## 2026-10-18 (eleventh session): save tools (import/export/backup), and what of the slice does not fit
 
