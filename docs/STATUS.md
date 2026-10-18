@@ -3,6 +3,55 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (thirteenth session): the phone becomes the target
+
+The APK was built and installed (debug-key signed, because the installed copy is; the release key
+would need an uninstall that deletes the app's private disc image and card). Everything below was
+then driven by what the phone showed.
+
+**Diagnostics** (`eea16f8a1`): the Android fault handler walks `_Unwind_Backtrace` and prints
+`module+0xoffset (symbol)` frames, and `platform/port_breadcrumb.cpp` keeps a 48-entry ring of recent
+actions (texture binds/frees, resources in no loaded pak) dumped as `[crumb]` lines before the
+re-raise. It turned "SIGSEGV in resolve_static_texture" into "this 642x450 texture, this pointer" in
+one run. Plus texture-safety fixes it exposed: `texture_source_is_mapped` checks every page of the
+source, and `CTexture::UnloadBitmapData` re-loads the emptied object into the GX slots holding it.
+
+**The morph transition** (`917f82173`): the crash was `CCameraFilterPass::DrawRandomStatic` passing
+`((rand()+0x1f)&~0x1f)+0x8000` as texture data - low RAM on the console, garbage on the host. The
+port owns a noise block now. The Morph Ball's missing inner glow was `CMorphBall::Render` never
+drawing `mBallInnerGlowGen`; retail's table is plain white and its condition is "opaque and not
+hacked". The later "lights up like a boost charge" report is retail's own pulsing glow (checked
+against Dolphin) - the port's shell reads more golden, which makes it stand out.
+
+**Colours** (`e32a7bc36`, `61336daf4`): Aurora reads every TLUT big-endian, and two palettes were
+built on the CPU in host order - `CCubeRenderer::DrawScanVisor`'s scan lookup table (every scannable
+object pink instead of blue) and the font palettes (`CTextRenderBuffer::GeneratePalette` reads disc
+order; `CRasterFont::DrawString` builds its table in memory and needs the swap on the write side).
+HUD text is white/light blue now.
+
+**Scan visor**: the code was complete - `DrawScanEffect`, `CScanDisplay`, `CHudDecoInterfaceScan` all
+match retail's calls, and `DrawDarkEffect`/`DrawEchoEffect` are empty in retail too. Scanning never
+started because Scan Item reads the *analog* L trigger and the virtual pad only set the digital bit
+(`251c2b04d`).
+
+**Music** (`5a1361d56`): silent for three reasons - `SRSFHeader` read raw (magic `'SR'`, version
+check failed, stream dropped), the stream pointer passed as MusyX's 32-bit `user` (a SIGSEGV on the
+audio thread at the first refill), and MusyX reading the ADPCM predictor/scale from byte 3. Music
+plays now (rms 1100-6600, MusyX peak 0 -> ~5000); its loop point is being fixed.
+
+**The phone's F1 and touch controls** (`bed7f6ce7`, `7b88f433f`): the on-screen pad is MP1's
+`TouchControlsView` copied, with all 48 natives implemented in `platform/port_touch_jni.cpp` (wheels,
+Missile, L/R, START, the editor, aim, spring flick, hide/restore; minimap taps, pointer menus, the
+toast, `touch:` bindings and wheel icons answer safely). The F1 window is MP1's full-screen page
+window inside the SDL safe area with the Prime theme from `ui_common.cpp`, a page list, thumb-sized
+rows at display scale clamped to 2, and `port_remap_ui`'s Controls > Remap page (click-to-arm
+capture, per-row Default, Reset all, conflict markers). Still missing from menu parity: the search
+bar, a UI scale control, the settings file, and video/audio pages with real backends.
+
+**Not a bug**: the see-through Worker Splinter in Temple Grounds area 12 - its model (716998c9) is
+additive with no depth write in the disc data itself (the game's creature log calls it a mucus
+layer), unlike the ordinary Splinter's opaque model.
+
 ## 2026-10-18 (twelfth session): a log file, the automapper, and the F1 menu on the phone
 
 Three things the phone asked for, all committed (`72d9e0d01`, `283278ddd`, `952ec24f0`).
