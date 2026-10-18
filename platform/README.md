@@ -274,3 +274,6 @@ iteration, so a log says how long each phase took.
   HD textures, button prompts, randomizer and the opt-in smoke driver. All
   Metroid-Prime-specific; see the Prime port's `docs/NATIVE_PORT.md` for what each
   does, and expect to rewrite them against Echoes' assets and UI.
+  Randomizer env vars (see `docs/RANDOMIZER.md`): `MP_RANDO_DUMP=1` logs every pickup location to
+  `<user>/randomizer_locations.log`; `MP_RANDO_GEN=<name>` builds a no-logic seed from that log;
+  `MP_RANDO_SEED=<path>` overrides the seed file; `MP_USER_PATH` sets `<user>` for these.

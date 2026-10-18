@@ -1,5 +1,7 @@
 #include "port_randomizer.h"
 
+#include "port_rando_gen.h"
+
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -22,23 +24,39 @@ struct ItemEntry {
   int value;
 };
 
-// Frozen retail data. The enum source is include/MetroidPrime/Player/CPlayerState.hpp;
-// tests/port_randomizer.cpp drift-checks these values against the real enum.
+// Frozen retail data. The enum source is include/MetroidPrime/Player/CPlayerState.hpp
+// (Echoes' EItemType, not Prime 1's; names are the enumerators without the kIT_ prefix).
 constexpr ItemEntry kItems[] = {
-    {"PowerBeam", 0},      {"IceBeam", 1},       {"WaveBeam", 2},
-    {"PlasmaBeam", 3},     {"Missiles", 4},      {"ScanVisor", 5},
-    {"MorphBallBombs", 6}, {"PowerBombs", 7},    {"Flamethrower", 8},
-    {"ThermalVisor", 9},   {"ChargeBeam", 10},   {"SuperMissile", 11},
-    {"GrappleBeam", 12},   {"XRayVisor", 13},    {"IceSpreader", 14},
-    {"SpaceJumpBoots", 15},{"MorphBall", 16},    {"CombatVisor", 17},
-    {"BoostBall", 18},     {"SpiderBall", 19},   {"PowerSuit", 20},
-    {"GravitySuit", 21},   {"VariaSuit", 22},    {"PhazonSuit", 23},
-    {"EnergyTanks", 24},   {"UnknownItem1", 25}, {"HealthRefill", 26},
-    {"UnknownItem2", 27},  {"Wavebuster", 28},   {"Truth", 29},
-    {"Strength", 30},      {"Elder", 31},        {"Wild", 32},
-    {"Lifegiver", 33},     {"Warrior", 34},      {"Chozo", 35},
-    {"Nature", 36},        {"Sun", 37},          {"World", 38},
-    {"Spirit", 39},        {"Newborn", 40},
+    {"PowerBeam", 0}, {"DarkBeam", 1}, {"LightBeam", 2}, {"AnnihilatorBeam", 3},
+    {"SuperMissile", 4}, {"Darkburst", 5}, {"Sunburst", 6}, {"SonicBoom", 7}, {"CombatVisor", 8},
+    {"ScanVisor", 9}, {"DarkVisor", 10}, {"EchoVisor", 11}, {"VariaSuit", 12}, {"DarkSuit", 13},
+    {"LightSuit", 14}, {"MorphBall", 15}, {"BoostBall", 16}, {"SpiderBall", 17},
+    {"MorphBallBombs", 18}, {"DarkBomb", 19}, {"LightBomb", 20}, {"AnnihilatorBomb", 21},
+    {"ChargeBeam", 22}, {"GrappleBeam", 23}, {"SpaceJumpBoots", 24}, {"GravityBoost", 25},
+    {"SeekerLauncher", 26}, {"ScrewAttack", 27}, {"TranslatorUpgrade_TempETM", 28},
+    {"TempleKey1", 29}, {"TempleKey2", 30}, {"TempleKey3", 31}, {"AgonKey1", 32}, {"AgonKey2", 33},
+    {"AgonKey3", 34}, {"TorvusKey1", 35}, {"TorvusKey2", 36}, {"TorvusKey3", 37}, {"HiveKey1", 38},
+    {"HiveKey2", 39}, {"HiveKey3", 40}, {"HealthRefill", 41}, {"EnergyTanks", 42},
+    {"Powerbomb", 43}, {"Missile", 44}, {"DarkAmmo", 45}, {"LightAmmo", 46},
+    {"ItemPercentage", 47}, {"Multiplayer_NumPlayersJoined", 48},
+    {"Multiplayer_NumPlayersInOptionsMenu", 49}, {"MiscCounter3", 50},
+    {"Multiplayer_Archenemy", 51}, {"SwitchWeaponPower", 52}, {"SwitchWeaponDark", 53},
+    {"SwitchWeaponLight", 54}, {"SwitchWeaponAnnihilator", 55}, {"MultiChargeUpgrade", 56},
+    {"Invisibility", 57}, {"DoubleDamage", 58}, {"Invincibility", 59}, {"MiscCounter1a", 60},
+    {"MiscCounter2a", 61}, {"MiscCounter3a", 62}, {"MiscCounter4a", 63}, {"FragCount", 64},
+    {"DiedCount", 65}, {"ArchenemyCount", 66}, {"PersistentCounter1", 67},
+    {"PersistentCounter2", 68}, {"PersistentCounter3", 69}, {"PersistentCounter4", 70},
+    {"PersistentCounter5", 71}, {"PersistentCounter6", 72}, {"PersistentCounter7", 73},
+    {"PersistentCounter8", 74}, {"SwitchVisorCombat", 75}, {"SwitchVisorScan", 76},
+    {"SwitchVisorDark", 77}, {"SwitchVisorEcho", 78}, {"CoinAmplifier", 79}, {"CoinCounter", 80},
+    {"UnlimitedMissiles", 81}, {"UnlimitedBeamAmmo", 82}, {"DarkShield", 83}, {"LightShield", 84},
+    {"AbsorbAttack", 85}, {"DeathBall", 86}, {"ScanVirus", 87}, {"VisorStatic", 88},
+    {"BeamWeaponsDisabled", 89}, {"MissileWeaponsDisabled", 90}, {"Unknown_91", 91},
+    {"DisableBall", 92}, {"DisableSpaceJump", 93}, {"ActivateMorphballBoost", 94},
+    {"HackedEffect", 95}, {"CannonBall", 96}, {"VioletTranslator", 97}, {"AmberTranslator", 98},
+    {"EmeraldTranslator", 99}, {"CobaltTranslator", 100}, {"TempleKey4", 101}, {"TempleKey5", 102},
+    {"TempleKey6", 103}, {"TempleKey7", 104}, {"TempleKey8", 105}, {"TempleKey9", 106},
+    {"EnergyTransferModule", 107}, {"ChargeCombo", 108},
 };
 
 struct Placement {
@@ -406,6 +424,11 @@ void EnsureLoaded() {
       try {
         State& state = GetState();
         state.dump = EnvEnabled("MP_RANDO_DUMP");
+        // MP_RANDO_GEN=<seed name>: build the seed from the dump log first, then load it.
+        if (const char* gen = std::getenv("MP_RANDO_GEN")) {
+          if (gen[0] != '\0' && !state.dump)
+            (void)GenerateSeedFile(LogPath("randomizer_locations.log"), gen, SeedPath());
+        }
         (void)LoadSeed(state);
       } catch (const ParseError& error) {
         State& state = GetState();
