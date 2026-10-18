@@ -30,6 +30,7 @@
 #include <aurora/aurora.h>
 #include <aurora/gfx.h>
 #include <dolphin/pad.h>
+#include <dolphin/vi.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -102,6 +103,12 @@ int sHudScale = PortOverlay::kHudScaleMax;
 // Interface scale in percent (`MP2_UI_SCALE`) and vsync (`MP2_VSYNC`).
 int sUiScale = 100;
 bool sVsync = false;
+// MP1's 60 FPS cap (`MP2_FRAME_LIMIT`), on by default as there: PortPaceFrame holds the loop to 60 Hz.
+bool sFrameLimit = true;
+// MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
+// "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
+// before this setting, so that stays the default here (MP1's is 1).
+float sRenderScale = 0.f;
 // Aspect ratio (`MP2_ASPECT`): follows the window by default, as the Prime 1 port.
 int sAspectMode = PortOverlay::kAspect_Window;
 // MP1's sOverlayWindowed (desktop: the old floating window instead of the page window) and sUiTheme
@@ -131,6 +138,8 @@ int sAppliedMsaa = 0;
 int sAppliedAnisotropy = 0;
 // Handed to aurora_enable_vsync only when it changes; -1 means "never applied yet".
 int sAppliedVsync = -1;
+// Handed to VISetFrameBufferScale only when it changes; -1 means "never applied yet".
+float sAppliedRenderScale = -1.f;
 // The render mode's fbWidth as CGraphics::ConfigureVideo set it, before ApplyAspect first widened it.
 int sBaseFbWidth = 0;
 
@@ -222,6 +231,26 @@ void ApplyVsync() {
   }
   sAppliedVsync = vsync ? 1 : 0;
   aurora_enable_vsync(vsync);
+}
+
+// Photo mode's capture holds its own scale until it is done, and puts this one back itself.
+void ApplyRenderScale() {
+  ReadEnv();
+  if (PortPhoto::Capturing()) {
+    return;
+  }
+  const float scale = PortOverlay::RenderScale();
+  if (sAppliedRenderScale == scale) {
+    return;
+  }
+  sAppliedRenderScale = scale;
+  // Each change reallocates the EFB targets at the next frame start.
+  VISetFrameBufferScale(scale);
+  if (scale > 0.f) {
+    std::fprintf(stderr, "[video] render scale %.2fx\n", static_cast< double >(scale));
+  } else {
+    std::fprintf(stderr, "[video] render scale native\n");
+  }
 }
 
 void TickFps() {
@@ -412,6 +441,29 @@ void DrawVideoQuality() {
     sAnisotropy = kAnisoSteps[aniso];
     Changed(true);
   }
+  // MP1's render scale, without its dynamic resolution. Applied by ApplyRenderScale from Draw.
+  bool autoScale = sRenderScale <= 0.f;
+  if (PortUi::Toggle("Auto render scale (native)", &autoScale, "MP2_RENDER_SCALE=0",
+                     "draws at the window's own size")) {
+    sRenderScale = autoScale ? 0.f : 1.f;
+    Changed(true);
+  }
+  if (!autoScale) {
+    // Applied when the slider is let go: each new scale reallocates the EFB targets, which a drag
+    // would otherwise do every frame.
+    static float sPendingScale = 0.f;
+    float scale = sPendingScale > 0.f ? sPendingScale : sRenderScale;
+    if (PortUi::SliderFloat("EFB scale", &scale, 1.f, 4.f, "%.2fx", "MP2_RENDER_SCALE=1..4",
+                            "scales the internal EFB from the 480-line base; above 2x it "
+                            "supersamples, and each step costs much more GPU time")) {
+      sPendingScale = scale;
+    }
+    if (sPendingScale > 0.f && !ImGui::IsAnyItemActive()) {
+      sRenderScale = sPendingScale;
+      sPendingScale = 0.f;
+      Changed(true);
+    }
+  }
 }
 
 void DrawVideoFrameRate() {
@@ -419,6 +471,12 @@ void DrawVideoFrameRate() {
   // Applied by PortOverlay::Draw through aurora_enable_vsync, every frame it changes.
   Changed(PortUi::Toggle("VSync", &sVsync, "MP2_VSYNC=1",
                          "waits for the display's refresh before presenting a frame"));
+  // Paced by PortPaceFrame at the top of each main-loop iteration; F10 toggles it, as in MP1.
+  bool frameLimit = sFrameLimit;
+  if (PortUi::Toggle("60 FPS cap (target)", &frameLimit, "MP2_FRAME_LIMIT=0|1",
+                     "holds the game to 60 frames a second, the rate it was written for (F10)")) {
+    PortOverlay::SetFrameLimit(frameLimit);
+  }
 }
 
 void DrawVideoAspect() {
@@ -1401,6 +1459,33 @@ void SetVsync(bool enabled) {
   Persist();
 }
 
+bool FrameLimit() {
+  ReadEnv();
+  return EnvBool("MP2_FRAME_LIMIT", sFrameLimit);
+}
+
+void SetFrameLimit(bool enabled) {
+  ReadEnv();
+  if (sFrameLimit != enabled) {
+    sFrameLimit = enabled;
+    Persist();
+  }
+}
+
+float RenderScale() {
+  ReadEnv();
+  const float env = EnvFloatIn("MP2_RENDER_SCALE", sRenderScale, 0.f, kRenderScaleMax);
+  return env > 0.f && env < kRenderScaleMin ? kRenderScaleMin : env;
+}
+
+void SetRenderScale(float scale) {
+  ReadEnv();
+  if (std::isfinite(scale)) {
+    sRenderScale = scale <= 0.f ? 0.f : std::clamp(scale, kRenderScaleMin, kRenderScaleMax);
+    Persist();
+  }
+}
+
 const char* AspectName(int mode) {
   return mode == kAspect_4_3 ? "4:3" : mode == kAspect_16_9 ? "16:9" : "window";
 }
@@ -1503,6 +1588,7 @@ void Draw() {
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();
   ApplyVsync();
+  ApplyRenderScale();
   // A row's change is written once no item is active (MP1's window.cpp), so a slider drag is one write.
   if (PortOverlaySettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsAnyItemActive()) {
     PortOverlaySettings::SaveSettings();

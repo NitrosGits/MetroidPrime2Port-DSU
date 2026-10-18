@@ -45,8 +45,8 @@ void Say(const std::string& text) {
   std::fprintf(stderr, "[photo] %s\n", text.c_str());
 }
 
-// MP2 never sets a render scale of its own: 0 means the window's own size. The capture restores it.
-constexpr float kNativeScale = 0.f;
+// The render scale setting (0 = the window's own size), which the capture puts back when it is done.
+float RestoreScale() { return PortOverlay::RenderScale(); }
 
 // The scale that gives the window's own size, from the size one unit of scale gives.
 float NativeEquivalentScale(uint32_t w1, uint32_t h1) {
@@ -107,7 +107,7 @@ float PickCaptureScale() {
     Say("A " + std::to_string(wanted) + "x capture is too large for this GPU, taking " +
         std::to_string(sCaptureFactor) + "x");
   }
-  return sCaptureFactor > 1 ? scale : kNativeScale;
+  return sCaptureFactor > 1 ? scale : RestoreScale();
 }
 
 } // namespace
@@ -141,7 +141,7 @@ void Frame() {
   if (!Active()) {
     if (sPhase != Phase::Idle) {
       sPhase = Phase::Idle;
-      VISetFrameBufferScale(kNativeScale);
+      VISetFrameBufferScale(RestoreScale());
     }
     return;
   }
@@ -152,7 +152,7 @@ void Frame() {
     if (++sPhaseFrames >= kHideFrames) {
       const float scale = PickCaptureScale();
       sLast.scale = scale;
-      VISetFrameBufferScale(sCaptureFactor > 1 ? scale : kNativeScale);
+      VISetFrameBufferScale(sCaptureFactor > 1 ? scale : RestoreScale());
       sPhase = Phase::Settling;
       sPhaseFrames = 0;
     }
@@ -175,7 +175,7 @@ void Frame() {
     if (state == 0 && now - sPhaseAt < kSaveTimeoutSeconds) {
       break;
     }
-    VISetFrameBufferScale(kNativeScale);
+    VISetFrameBufferScale(RestoreScale());
     sPhase = Phase::Idle;
     sLast.state = state > 0 ? 1 : -1;
     sLast.width = w;

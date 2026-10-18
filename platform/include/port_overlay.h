@@ -197,6 +197,17 @@ void SetUiScale(int percent);
 // aurora_enable_vsync from Draw, even with the window closed.
 bool Vsync();
 void SetVsync(bool enabled);
+// MP1's 60 FPS cap (`MP2_FRAME_LIMIT=0|1`, F1 > Video > Frame rate, F10); on by default. The main
+// loop sleeps to a 60 Hz deadline in PortPaceFrame (platform/port_events.cpp).
+bool FrameLimit();
+void SetFrameLimit(bool enabled);
+// MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
+// (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
+// VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.
+const float kRenderScaleMin = 0.5f;
+const float kRenderScaleMax = 4.f;
+float RenderScale();
+void SetRenderScale(float scale);
 // Rendering aspect ratio, as the Prime 1 port's (`MP2_ASPECT=4:3|16:9|window`, `MP2_WIDESCREEN=1`
 // for 16:9, F1 > Video > Display, console `aspect`); Window by default. 4:3 keeps the game's own
 // 640x448 picture; 16:9 widens the render mode to 16:9 at the same height, and Window follows the

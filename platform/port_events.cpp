@@ -2,6 +2,7 @@
 // src/MetroidPrime/main.cpp because aurora/event.h includes SDL3, which only the
 // full build (mp_port_audio) has on its include path.
 
+#include <SDL3/SDL.h>
 #include <aurora/aurora.h>
 #include <aurora/event.h>
 #include <dolphin/pad.h>
@@ -286,6 +287,43 @@ void Clear() {
 
 } // namespace PortInput
 
+namespace {
+// The 60 FPS cap's next frame deadline; 0 while the cap is off, so turning it on starts afresh.
+uint64_t sNextFrameDeadline = 0;
+} // namespace
+
+// MP1's frame pacing (src/MetroidPrime/main.cpp there), called once per main-loop iteration: under
+// the 60 FPS cap, sleeps to the next 60 Hz deadline. A frame that overran by more than a period
+// resets the deadline instead of racing to catch up.
+void PortPaceFrame() {
+  if (!PortOverlay::FrameLimit()) {
+    sNextFrameDeadline = 0;
+    return;
+  }
+  constexpr uint64_t kFramePeriodNs = 1000000000ull / 60;
+  if (sNextFrameDeadline == 0) {
+    sNextFrameDeadline = SDL_GetTicksNS();
+    return;
+  }
+  sNextFrameDeadline += kFramePeriodNs;
+  const uint64_t now = SDL_GetTicksNS();
+  if (sNextFrameDeadline > now) {
+    // SDL_DelayPrecise sleeps in 1 ms slices, about sixteen wake-ups a frame at 60 Hz. One plain
+    // sleep up to 2 ms short of the deadline first leaves it only the last stretch, which saves the
+    // wake-ups (and battery on phones).
+    constexpr uint64_t kCoarseMarginNs = 2000000;
+    if (sNextFrameDeadline - now > kCoarseMarginNs) {
+      SDL_DelayNS(sNextFrameDeadline - now - kCoarseMarginNs);
+    }
+    const uint64_t afterCoarse = SDL_GetTicksNS();
+    if (sNextFrameDeadline > afterCoarse) {
+      SDL_DelayPrecise(sNextFrameDeadline - afterCoarse);
+    }
+  } else if (now - sNextFrameDeadline > kFramePeriodNs) {
+    sNextFrameDeadline = now;
+  }
+}
+
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
 bool PortPumpEvents() {
   PortWarp::ApplyEnvOnce();
@@ -323,6 +361,13 @@ bool PortPumpEvents() {
         (event->sdl.type == SDL_EVENT_KEY_DOWN ||
          event->sdl.type == SDL_EVENT_MOUSE_BUTTON_DOWN)) {
       PortTouch::NotePhysicalInput();
+    }
+    // MP1's F10: the 60 FPS cap on and off.
+    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
+        !event->sdl.key.repeat && event->sdl.key.scancode == SDL_SCANCODE_F10) {
+      PortOverlay::SetFrameLimit(!PortOverlay::FrameLimit());
+      sNextFrameDeadline = 0;
+      std::fprintf(stderr, "Frame limit: %s\n", PortOverlay::FrameLimit() ? "60 FPS" : "unlimited");
     }
     // No warp hotkeys: warping is driven from the F1 menu's Game page (as in the Prime 1 port),
     // so the function keys stay free for the input engine's bindings (F8 is photo mode's).

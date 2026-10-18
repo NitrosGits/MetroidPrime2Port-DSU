@@ -217,6 +217,16 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
+    BoolKey< &sFrameLimit >("frame_limit"),
+    // 0 is the window's own size; MP1 keeps any value up to 4.
+    {"render_scale",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 0.f && parsed <= PortOverlay::kRenderScaleMax) {
+         sRenderScale = parsed;
+       }
+     },
+     [](std::ostream& out) { out << sRenderScale; }, false, "0.5", "2"},
     // The Prime 1 port's names; anything else is ignored.
     {"aspect",
      [](const std::string& value) { PortOverlay::ParseAspect(value.c_str(), sAspectMode); },

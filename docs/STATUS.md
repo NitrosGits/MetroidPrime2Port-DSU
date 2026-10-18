@@ -3,6 +3,18 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (nineteenth session, later): frame cap and render scale
+
+- MP1's 60 fps cap (`frame_limit`, default on, env `MP2_FRAME_LIMIT=0|1`, F10 toggle, F1 Video >
+  Frame rate) paced by `PortPaceFrame` in `platform/port_events.cpp` at the top of the main loop
+  (`src/MetroidPrime/main.cpp`, TARGET_PC only; the loading loop is not capped). Headless runs are
+  now capped too unless `MP2_FRAME_LIMIT=0`, so harness timings in AGENTS.md may change.
+- Static render scale (`render_scale`, env `MP2_RENDER_SCALE`, 0.5-4, F1 Video > Quality). Default
+  0 = native, not MP1's 1.0 (MP2 has always drawn native and photo mode assumes it). Photo capture
+  keeps its own scale. Dynamic resolution and the sim-rate setting are not ported.
+- Verified: port build, gen --check, host tests, matching build 63.29% matched, desktop boot with
+  `MP2_RENDER_SCALE=2` for 60 s with no crash. Not checked on screen.
+
 ## 2026-10-18 (nineteenth session, later): aspect ratio
 
 - MP1's aspect setting ported: 4:3 / 16:9 / Follow window (default, as MP1). Settings key `aspect`,

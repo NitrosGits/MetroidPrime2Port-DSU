@@ -230,6 +230,8 @@ void CMain::InitializeSubsystems() {
 // and delivers window events; nothing else in the game calls it. Returns true on a quit request.
 // Defined in platform/port_events.cpp (aurora/event.h needs SDL3, which only the full build has).
 bool PortPumpEvents();
+// Port: MP1's 60 FPS cap, in platform/port_events.cpp: sleeps to the next 60 Hz deadline.
+void PortPaceFrame();
 
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
 
@@ -685,6 +687,7 @@ int CMain::RsMain(int argc, const char* const* argv) {
 
     while (!mFinished) {
 #ifdef TARGET_PC
+      PortPaceFrame();
       if (PortPumpEvents()) {
         mFinished = true;
         break;
