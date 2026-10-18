@@ -273,6 +273,38 @@ public:
   float mLFOR;
   float mLSLA;
   CColor mModuColor;
+#ifdef TARGET_PC
+  // Port: particle interpolation (MP1's docs/FRAME_INTERPOLATION.md, "Particles"). Frames drawn
+  // between ticks feed the retail sub-frame path (mTimeDeltaScale) the presentation factor and
+  // blend the global translation; newborns are shifted back with the spawn point. All of it is
+  // undone after the draw, so the simulation never sees it. Gated by
+  // PortOverlay::ParticleInterpolation.
+  // The owner's global translation has been presented this tick (the HUD's billboards follow
+  // the presented camera already, so they must not blend again).
+  void PortGlobalIsPresented();
+
+private:
+  bool PortBeginPresent(CVector3f& savedGlobal);
+  bool PortSpawnOffset(CVector3f& offset) const;
+  void PortShiftNewborns(const CVector3f& shift);
+  void PortRestoreNewborns();
+  CVector3f PortLinePos(const CParticle& particle) const;
+
+  // Tick generation of the last update that took exactly one whole step (0 = not one).
+  uint mPortStepGeneration = 0;
+  uint mPortGlobalGeneration = 0;
+  CVector3f mPortPrevGlobalTranslation = CVector3f(0.f, 0.f, 0.f);
+  CVector3f mPortSpawnTranslation = CVector3f(0.f, 0.f, 0.f);
+  CVector3f mPortPrevSpawnTranslation = CVector3f(0.f, 0.f, 0.f);
+  uint mPortSpawnGeneration = 0;
+  uint mPortPrevSpawnGeneration = 0;
+  // True between PortBeginPresent and the restore at the end of Render.
+  bool mPortPresenting = false;
+  // pos/prevPos pairs of the newborns PortShiftNewborns moved.
+  rstl::vector< CVector3f > mPortNewbornSaved;
+
+public:
+#endif
 
   static bool sSubtractBlend;
   // Guessed names, correlated with Prime's seed and live-system accounting.

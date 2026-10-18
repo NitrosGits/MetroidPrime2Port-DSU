@@ -23,6 +23,11 @@
 #include "dolphin/gx.h"
 
 #ifdef TARGET_PC
+#include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "port_overlay.h"
+#endif
+#ifdef TARGET_PC
 namespace {
 
 // Port: with GX_DIRECT attributes the FIFO decoder reads each attribute with the *named format's*
@@ -345,6 +350,15 @@ void CElementGen::SetTranslation(const CVector3f& translation) {
 }
 
 void CElementGen::SetGlobalTranslation(const CVector3f& translation) {
+#ifdef TARGET_PC
+  // The first set in a tick keeps the translation the last tick ended with, for
+  // PortBeginPresent's blend (a new system starts from where it is).
+  const uint gen = CActor::PortTickGeneration();
+  if (mPortGlobalGeneration != gen) {
+    mPortPrevGlobalTranslation = mPortGlobalGeneration == 0 ? translation : mGlobalTranslation;
+    mPortGlobalGeneration = gen;
+  }
+#endif
   mGlobalTranslation = translation;
   for (rstl::vector< CParticleGen* >::iterator it = mActivePartChildren.begin();
        it != mActivePartChildren.end(); ++it) {
@@ -502,6 +516,20 @@ bool CElementGen::InternalUpdate(double dt) {
     UpdateChildParticleSystems(scaledDt - frameUpdateCount * skTickTime);
     mTimeDeltaScale = 1.f - static_cast< float >((time - mCurSeconds) / skTickTime);
   }
+#ifdef TARGET_PC
+  // Only an update that took exactly one whole step can be drawn between its two states.
+  if (frameUpdateCount == 1 && mTimeDeltaScale == 1.f) {
+    mPortStepGeneration = CActor::PortTickGeneration();
+  } else if (frameUpdateCount != 0 || mTimeDeltaScale != 1.f) {
+    mPortStepGeneration = 0;
+  }
+  if (frameUpdateCount != 0) {
+    mPortPrevSpawnTranslation = mPortSpawnTranslation;
+    mPortPrevSpawnGeneration = mPortSpawnGeneration;
+    mPortSpawnTranslation = mTranslation;
+    mPortSpawnGeneration = frameUpdateCount == 1 ? mPortStepGeneration : 0;
+  }
+#endif
   if (mEnableFixedBounds) {
     float radius = 0.f;
     if (mLoadedGenDesc->mFXBR) {
@@ -1076,6 +1104,22 @@ void CElementGen::Render() {
   }
 
   CParticleGlobals::SParticleSystem system('PART', this);
+#ifdef TARGET_PC
+  // A system whose spawn point moved draws through its own blend, not its owner's render scope
+  // (the shifts would add up); otherwise the scope's view stands and the system does not blend.
+  CVector3f portSpawnOffset = CVector3f::Zero();
+  const bool portSpawnMoved = PortSpawnOffset(portSpawnOffset);
+  CPortRenderScopeSuspend portSuspend(portSpawnMoved);
+  const float portSavedScale = mTimeDeltaScale;
+  CVector3f portSavedGlobal = mGlobalTranslation;
+  mPortPresenting = PortBeginPresent(portSavedGlobal);
+  if (!mPortPresenting) {
+    portSuspend.Resume();
+  } else if (portSpawnMoved) {
+    // Newborns sit at this tick's spawn point; draw them at the presented one.
+    PortShiftNewborns(portSpawnOffset * (mTimeDeltaScale - 1.f));
+  }
+#endif
   if (mParticles.size() > 0 && ShouldDraw()) {
     if (mLoadedGenDesc->mPMDL || mLoadedGenDesc->mPMUS) {
       RenderModels();
@@ -1105,6 +1149,14 @@ void CElementGen::Render() {
       }
     }
   }
+#ifdef TARGET_PC
+  if (mPortPresenting) {
+    PortRestoreNewborns();
+    mGlobalTranslation = portSavedGlobal;
+    mTimeDeltaScale = portSavedScale;
+    mPortPresenting = false;
+  }
+#endif
   mRenderTime = stopwatch.GetElapsedTime();
 }
 
@@ -2636,9 +2688,16 @@ void CElementGen::RenderLines() {
         direction *= 1.f / magnitude;
       }
     }
+#ifdef TARGET_PC
+    // Retail draws lines at mPos even mid-step; between ticks draw them where the quads would be.
+    const CVector3f linePos = PortLinePos(particle);
+    const CVector3f p1 = systemCameraMatrix * linePos;
+    const CVector3f p2 = systemCameraMatrix * (linePos + particle.mLineLengthOrSize * direction);
+#else
     const CVector3f p1 = systemCameraMatrix * particle.mPos;
     const CVector3f p2 =
         systemCameraMatrix * (particle.mPos + particle.mLineLengthOrSize * direction);
+#endif
 
     if (widtConst) {
 #ifdef TARGET_PC
@@ -3266,3 +3325,98 @@ const CTransform4f& CElementGen::GetGlobalOrientation() const { return mGlobalOr
 const CTransform4f& CElementGen::GetOrientation() const { return mOrientation; }
 
 const CVector3f& CElementGen::GetGlobalTranslation() const { return mGlobalTranslation; }
+#ifdef TARGET_PC
+
+// Port: particle interpolation, MP1's port_element_gen.cpp (phase 3 of
+// docs/FRAME_INTERPOLATION.md). Draws the system between its last two tick states when uncapped.
+// The retail sub-frame path (mTimeDeltaScale < 1) already draws particles between their previous
+// and current positions; this feeds it the presentation factor and blends the system's global
+// translation. Systems drawn inside a shifted actor draw follow the actor instead.
+bool CElementGen::PortBeginPresent(CVector3f& savedGlobal) {
+  savedGlobal = mGlobalTranslation;
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f || t >= 1.f || !PortOverlay::ParticleInterpolation() ||
+      CActor::PortRenderScopeActive())
+    return false;
+  const uint gen = CActor::PortTickGeneration();
+  bool presenting = false;
+  if (mPortGlobalGeneration == gen) {
+    const CVector3f delta = mGlobalTranslation - mPortPrevGlobalTranslation;
+    // Same snap rule as actors: a jump of more than 4 units is a teleport.
+    if (delta.MagSquared() <= 16.f) {
+      mGlobalTranslation = mPortPrevGlobalTranslation + delta * t;
+      presenting = true;
+    }
+  }
+  if (mPortStepGeneration == gen && mTimeDeltaScale == 1.f) {
+    mTimeDeltaScale = t;
+    presenting = true;
+  }
+  return presenting;
+}
+
+// How far (in particle space) the local emitter moved in this tick's step, when it stepped in
+// this tick and the last one. Particles born in the step sit at the new emitter position, a tick
+// ahead of the presented actor.
+bool CElementGen::PortSpawnOffset(CVector3f& offset) const {
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f || t >= 1.f || !PortOverlay::ParticleInterpolation())
+    return false;
+  const uint gen = CActor::PortTickGeneration();
+  if (gen <= 1 || mPortStepGeneration != gen || mTimeDeltaScale != 1.f ||
+      mPortSpawnGeneration != gen || mPortPrevSpawnGeneration != gen - 1)
+    return false;
+  const CVector3f delta = mPortSpawnTranslation - mPortPrevSpawnTranslation;
+  // Same snap rule as actors: a jump of more than 4 units is a teleport.
+  const float magSq = delta.MagSquared();
+  if (magSq == 0.f || magSq > 16.f)
+    return false;
+  offset = (mGlobalScaleTransformInverse * mLocalScaleTransformInverse).Rotate(delta);
+  return true;
+}
+
+void CElementGen::PortShiftNewborns(const CVector3f& shift) {
+  mPortNewbornSaved.clear();
+  const int born = mCurFrame - 1;
+  for (int i = 0; i < mParticles.size(); ++i) {
+    CParticle& particle = mParticles[i];
+    if (particle.mStartFrame != born)
+      continue;
+    mPortNewbornSaved.push_back(particle.mPos);
+    mPortNewbornSaved.push_back(particle.mPrevPos);
+    particle.mPos += shift;
+    particle.mPrevPos += shift;
+  }
+}
+
+void CElementGen::PortRestoreNewborns() {
+  if (mPortNewbornSaved.empty())
+    return;
+  const int born = mCurFrame - 1;
+  int saved = 0;
+  for (int i = 0; i < mParticles.size() && saved < mPortNewbornSaved.size(); ++i) {
+    CParticle& particle = mParticles[i];
+    if (particle.mStartFrame != born)
+      continue;
+    particle.mPos = mPortNewbornSaved[saved++];
+    particle.mPrevPos = mPortNewbornSaved[saved++];
+  }
+  mPortNewbornSaved.clear();
+}
+
+CVector3f CElementGen::PortLinePos(const CParticle& particle) const {
+  if (!mPortPresenting)
+    return particle.mPos;
+  return (particle.mPos - particle.mPrevPos) * mTimeDeltaScale + particle.mPrevPos;
+}
+
+void CElementGen::PortGlobalIsPresented() {
+  mPortPrevGlobalTranslation = mGlobalTranslation;
+  mPortGlobalGeneration = CActor::PortTickGeneration();
+  for (rstl::vector< CParticleGen* >::iterator it = mActivePartChildren.begin();
+       it != mActivePartChildren.end(); ++it) {
+    if ((*it)->Get4CharId() == 'PART')
+      static_cast< CElementGen* >(*it)->PortGlobalIsPresented();
+  }
+}
+#endif

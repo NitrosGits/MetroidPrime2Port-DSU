@@ -64,6 +64,11 @@ void CHUDBillboardEffect::PreRender(CStateManager& mgr) {
     CTransform4f camXf = mgr.GetCurrentRenderCameraManager()->GetCurrentCameraTransform(mgr, true);
     mGenerator->SetGlobalTranslation(camXf * mTranslation);
     mGenerator->SetGlobalOrientation(camXf);
+#ifdef TARGET_PC
+    // camXf is the presented camera already: the particle blend must not move it again.
+    if (mIsElementGen)
+      static_cast< CElementGen& >(*mGenerator).PortGlobalIsPresented();
+#endif
     mEnableRender = true;
   } else {
     mEnableRender = false;

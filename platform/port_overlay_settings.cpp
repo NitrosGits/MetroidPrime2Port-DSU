@@ -220,6 +220,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sFrameLimit >("frame_limit"),
     BoolKey< &sSmoothFrames >("smooth_frames"),
     BoolKey< &sPoseInterpolation >("pose_interpolation"),
+    BoolKey< &sParticleInterpolation >("particle_interpolation"),
     // 0 is the window's own size; MP1 keeps any value up to 4.
     {"render_scale",
      [](const std::string& value) {

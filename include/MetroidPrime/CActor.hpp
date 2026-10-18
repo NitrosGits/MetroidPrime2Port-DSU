@@ -311,6 +311,9 @@ public:
   static bool PortBlendRigid(const CTransform4f& from, const CTransform4f& to, float t,
                              CTransform4f& blend, CTransform4f& cur, const CVector3f& pivot,
                              float lastStep2);
+  // True while a CPortActorRenderScope has the view shifted (MP1's PortRenderScopeActive): a
+  // particle system drawn inside one must not blend its own translation again.
+  static bool PortRenderScopeActive();
 #endif
 
 private:
@@ -406,6 +409,22 @@ private:
   CPortActorRenderScope(const CPortActorRenderScope&);
   CPortActorRenderScope& operator=(const CPortActorRenderScope&);
   CTransform4f mSavedView;
+  bool mActive;
+};
+
+// Port: puts back the view an active CPortActorRenderScope replaced, until Resume or the end of
+// its life (MP1's CPortRenderScopeSuspend). A particle system whose spawn point moved draws
+// through its own blend instead of the owner's, so the two shifts don't add up.
+class CPortRenderScopeSuspend {
+public:
+  explicit CPortRenderScopeSuspend(bool enable);
+  ~CPortRenderScopeSuspend();
+  void Resume();
+
+private:
+  CPortRenderScopeSuspend(const CPortRenderScopeSuspend&);
+  CPortRenderScopeSuspend& operator=(const CPortRenderScopeSuspend&);
+  CTransform4f mScopedView;
   bool mActive;
 };
 #endif

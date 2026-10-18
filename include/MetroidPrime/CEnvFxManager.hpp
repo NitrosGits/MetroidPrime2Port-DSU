@@ -212,6 +212,15 @@ private:
   rstl::optional_object< TLockedToken< CTexture > > mUnderwaterFlake;
   TLockedToken< CTexture > mDarkWorldParticleTexture; // Guessed name
   EEnvFxType mPreviousFxType;                         // Guessed name
+#ifdef TARGET_PC
+  // Port: the last tick's particle step, for drawing weather between ticks (MP1's
+  // xPortStep*, docs/FRAME_INTERPOLATION.md phase 3). Recorded by Update, read by Render.
+  uint mPortStepGeneration = 0;
+  EEnvFxType mPortStepType = kEFX_None;
+  CVectorFixed8_8 mPortStep;                                    // rain, underwater: every particle
+  rstl::reserved_vector< CVectorFixed8_8, 256 > mPortSnowSteps; // snow: by force index
+  int mPortSnowFirst = 0;
+#endif
 };
 CHECK_SIZEOF(CEnvFxManager, 0x147c)
 

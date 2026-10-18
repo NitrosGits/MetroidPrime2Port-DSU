@@ -1218,6 +1218,8 @@ CActor::SSound::SSound(const CSfxHandle& handle, const CSegId& locator, const bo
 // are on and the frame cap is off, which is what turns this on.
 namespace {
 bool sPortRenderScopeActive = false;
+// The view the active render scope replaced (CPortRenderScopeSuspend puts it back).
+CTransform4f sPortScopeSavedView = CTransform4f::Identity();
 
 // The rigid (unit, orthonormal) form of a transform and its rotation. Actors carry scale in their
 // transform; blending rotations needs it out.
@@ -1305,6 +1307,7 @@ CPortActorRenderScope::CPortActorRenderScope(const CActor& actor)
     return;
   mActive = true;
   sPortRenderScopeActive = true;
+  sPortScopeSavedView = mSavedView;
   CGraphics::SetViewPointMatrix(view);
 }
 
@@ -1313,5 +1316,25 @@ CPortActorRenderScope::~CPortActorRenderScope() {
     return;
   sPortRenderScopeActive = false;
   CGraphics::SetViewPointMatrix(mSavedView);
+}
+
+bool CActor::PortRenderScopeActive() { return sPortRenderScopeActive; }
+
+CPortRenderScopeSuspend::CPortRenderScopeSuspend(bool enable)
+: mScopedView(CGraphics::GetViewMatrix()), mActive(enable && sPortRenderScopeActive) {
+  if (!mActive)
+    return;
+  sPortRenderScopeActive = false;
+  CGraphics::SetViewPointMatrix(sPortScopeSavedView);
+}
+
+CPortRenderScopeSuspend::~CPortRenderScopeSuspend() { Resume(); }
+
+void CPortRenderScopeSuspend::Resume() {
+  if (!mActive)
+    return;
+  mActive = false;
+  sPortRenderScopeActive = true;
+  CGraphics::SetViewPointMatrix(mScopedView);
 }
 #endif

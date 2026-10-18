@@ -111,6 +111,9 @@ bool sSmoothFrames = true;
 // MP1's pose interpolation (`MP2_POSE_INTERPOLATION`, off by default as there): with smooth frames
 // on, skinned poses are blended between the last two ticks (CAnimData::PortPresentedPose).
 bool sPoseInterpolation = false;
+// MP1's particle interpolation (`MP2_PARTICLE_INTERPOLATION`, off by default as there): with smooth
+// frames on, particle systems and weather draw between the last two ticks (CElementGen::Render).
+bool sParticleInterpolation = false;
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -496,6 +499,12 @@ void DrawVideoFrameRate() {
   if (PortUi::Toggle("Smooth animation", &poseInterpolation, "MP2_POSE_INTERPOLATION=0|1",
                      "with smooth frames, also draws animated models between the game's ticks")) {
     PortOverlay::SetPoseInterpolation(poseInterpolation);
+  }
+  // Read by CElementGen::PortBeginPresent and CEnvFxManager::Render, under the same condition.
+  bool particleInterpolation = sParticleInterpolation;
+  if (PortUi::Toggle("Smooth effects", &particleInterpolation, "MP2_PARTICLE_INTERPOLATION=0|1",
+                     "with smooth frames, also draws particles and weather between the game's ticks")) {
+    PortOverlay::SetParticleInterpolation(particleInterpolation);
   }
   ImGui::EndDisabled();
   ImGui::EndDisabled();
@@ -1516,6 +1525,19 @@ void SetPoseInterpolation(bool enabled) {
   ReadEnv();
   if (sPoseInterpolation != enabled) {
     sPoseInterpolation = enabled;
+    Persist();
+  }
+}
+
+bool ParticleInterpolation() {
+  ReadEnv();
+  return EnvBool("MP2_PARTICLE_INTERPOLATION", sParticleInterpolation);
+}
+
+void SetParticleInterpolation(bool enabled) {
+  ReadEnv();
+  if (sParticleInterpolation != enabled) {
+    sParticleInterpolation = enabled;
     Persist();
   }
 }
