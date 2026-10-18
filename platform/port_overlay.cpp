@@ -8,8 +8,10 @@
 #include "port_overlay.h"
 
 #include "port_binds.h"
+#include "port_remap_ui.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
+#include "port_ui_common.h"
 #include "port_warp.h"
 
 #include <SDL3/SDL.h>
@@ -169,17 +171,15 @@ void DrawGameSection() {
   if (ImGui::Button("Next world (F7)")) {
     PortWarp::CycleWorld(1);
   }
-  ImGui::TextDisabled("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
+  PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
 }
 
 void DrawAimSection() {
   ImGui::SeparatorText("Aim");
   bool mouseAim = PortMouse::Enabled();
-  if (ImGui::Checkbox("Mouse aim", &mouseAim)) {
+  if (PortUi::Toggle("Mouse aim", &mouseAim, "MP2_MOUSE_AIM=1")) {
     PortMouse::SetEnabled(mouseAim);
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_MOUSE_AIM=1)");
   bool invertX = PortMouse::InvertX();
   if (ImGui::Checkbox("Invert X", &invertX)) {
     PortMouse::SetInvertX(invertX);
@@ -193,32 +193,31 @@ void DrawAimSection() {
   // Radians per pixel is a poor thing to read; degrees per pixel is not much better, so the
   // slider shows a 1x-100x multiplier over the default instead.
   float scale = sensitivity / 0.0035f;
-  if (ImGui::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx")) {
+  char sensText[64];
+  std::snprintf(sensText, sizeof(sensText), "MP2_MOUSE_SENS=%.5f (radians per pixel)",
+                static_cast< double >(PortMouse::Sensitivity()));
+  if (PortUi::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx", nullptr, sensText)) {
     PortMouse::SetSensitivity(0.0035f * scale);
   }
-  ImGui::TextDisabled("MP2_MOUSE_SENS=%.5f (radians per pixel)", PortMouse::Sensitivity());
 
   bool twinStick = PortMouse::StickEnabled();
-  if (ImGui::Checkbox("Twin stick", &twinStick)) {
+  if (PortUi::Toggle("Twin stick", &twinStick, "MP2_TWIN_STICK=1")) {
     PortMouse::SetStickEnabled(twinStick);
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_TWIN_STICK=1)");
   float rate = PortMouse::StickAimRate();
-  if (ImGui::SliderFloat("Stick aim rate", &rate, 200.f, 2000.f, "%.0f px/s")) {
+  if (PortUi::SliderFloat("Stick aim rate", &rate, 200.f, 2000.f, "%.0f px/s", nullptr,
+                          "the right stick aims through the same path as the mouse")) {
     PortMouse::SetStickAimRate(rate);
   }
-  ImGui::TextDisabled("the right stick aims through the same path as the mouse");
 }
 
 void DrawRenderSection() {
   ImGui::SeparatorText("Render");
-  if (ImGui::SliderFloat("Field of view (1st person)", &sFirstPersonFov, 0.f, 120.f,
-                         sFirstPersonFov <= 0.f ? "game (%.0f)" : "%.0f deg")) {
-    // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
-    // built, so the live change goes through CCameraManager::mFirstPersonFov.
-  }
-  ImGui::TextDisabled("(MP2_FOV=<deg>; 0 keeps the game's 55)");
+  // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
+  // built, so the live change goes through CCameraManager::mFirstPersonFov.
+  PortUi::SliderFloat("Field of view (1st person)", &sFirstPersonFov, 0.f, 120.f,
+                      sFirstPersonFov <= 0.f ? "game (%.0f)" : "%.0f deg",
+                      "MP2_FOV=<deg>; 0 keeps the game's 55");
   float offset[3] = {sGunOffset[0], sGunOffset[1], sGunOffset[2]};
   bool gunChanged = false;
   gunChanged |= ImGui::SliderFloat("Arm cannon right", &offset[0], -PortOverlay::kGunOffsetMax,
@@ -236,16 +235,13 @@ void DrawRenderSection() {
     const float zero[3] = {0.f, 0.f, 0.f};
     PortOverlay::SetGunOffset(zero);
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_GUN_OFFSET=\"right,forward,up\" in metres, +-1)");
+  PortUi::Note("MP2_GUN_OFFSET=\"right,forward,up\" in metres, +-1", nullptr, true);
   int msaa = sMsaa >= 4 ? 1 : 0;
-  if (ImGui::Combo("Anti-aliasing", &msaa, "Off\0" "4x MSAA\0")) {
-    // Applied by PortOverlay::Draw through aurora_set_graphics_quality: the framebuffers are rebuilt
-    // at the next frame start.
+  // Applied by PortOverlay::Draw through aurora_set_graphics_quality: the framebuffers are rebuilt
+  // at the next frame start.
+  if (PortUi::Combo("Anti-aliasing", &msaa, "Off\0" "4x MSAA\0", "MP2_MSAA=1|4")) {
     sMsaa = msaa == 1 ? 4 : 1;
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_MSAA=1|4)");
   // A max, so the combo shows the smallest offered step that covers it (a hand-written MP2_ANISO=3
   // reads as 4x); picking a row sets that step.
   static const int kAnisoSteps[] = {1, 2, 4, 8, 16};
@@ -256,82 +252,66 @@ void DrawRenderSection() {
       break;
     }
   }
-  if (ImGui::Combo("Anisotropic filtering", &aniso, "1x\0" "2x\0" "4x\0" "8x\0" "16x\0")) {
+  if (PortUi::Combo("Anisotropic filtering", &aniso, "1x\0" "2x\0" "4x\0" "8x\0" "16x\0",
+                    "MP2_ANISO=1..16")) {
     sAnisotropy = kAnisoSteps[aniso];
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_ANISO=1..16)");
 }
 
 void DrawHudSection() {
   ImGui::SeparatorText("HUD");
-  ImGui::Checkbox("Hide helmet", &sHideHelmet);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_NO_HELMET=1)");
-  ImGui::Checkbox("Hide visor effects", &sHideVisorEffects);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_NO_VISOR_FX=1)");
-  ImGui::TextDisabled("the scan visor's window and edges are what a visor effect draws here");
-  if (ImGui::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin,
-                       PortOverlay::kHudScaleMax, "%d%%")) {
-    // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
-    // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
-  }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_HUD_SCALE=50..100)");
-  ImGui::TextDisabled("shrinks the HUD toward the middle; the helmet and menus keep their size");
+  PortUi::Toggle("Hide helmet", &sHideHelmet, "MP2_NO_HELMET=1");
+  PortUi::Toggle("Hide visor effects", &sHideVisorEffects, "MP2_NO_VISOR_FX=1",
+                 "the scan visor's window and edges are what a visor effect draws here");
+  // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
+  // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
+  PortUi::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin, PortOverlay::kHudScaleMax,
+                    "%d%%", "MP2_HUD_SCALE=50..100",
+                    "shrinks the HUD toward the middle; the helmet and menus keep their size");
 }
 
 void DrawTestingSection() {
   ImGui::SeparatorText("Testing");
-  if (ImGui::Checkbox("Skip cinematics", &sSkipCinematics)) {
-    // The game reads this every frame in its cinematic flow state.
-  }
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_SKIP_CINEMATICS=1)");
-  ImGui::TextDisabled("ends every cinematic at once, seen or not; makes tests 3-5x faster");
-  ImGui::Checkbox("Log file", &sLogFile);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_LOG_FILE=1)");
-  ImGui::TextDisabled(
-      "stdout and stderr go to metroid_prime2_port.log in the user folder; takes effect next launch");
+  // The game reads this every frame in its cinematic flow state.
+  PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
+                 "ends every cinematic at once, seen or not; makes tests 3-5x faster");
+  PortUi::Toggle("Log file", &sLogFile, "MP2_LOG_FILE=1",
+                 "stdout and stderr go to metroid_prime2_port.log in the user folder; takes "
+                 "effect next launch");
 }
 
 void DrawGameplaySection() {
   ImGui::SeparatorText("Gameplay");
-  ImGui::Checkbox("Fast morph", &sFastMorph);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_FAST_MORPH=1)");
-  ImGui::TextDisabled("the morph and unmorph transitions take 0.2 s instead of the game's second");
-  ImGui::Checkbox("Spring Ball", &sSpringBall);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_SPRING_BALL=1)");
-  ImGui::TextDisabled("C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)");
-  ImGui::Checkbox("Toggle lock-on", &sLockOnToggle);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_LOCK_ON_TOGGLE=1)");
-  ImGui::TextDisabled("an L press latches the lock until the next; one that ends lets go");
-  ImGui::Checkbox("Sticky charge", &sStickyCharge);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_STICKY_CHARGE=1)");
-  ImGui::TextDisabled("letting go of a long A hold keeps charging until the next press fires it");
+  PortUi::Toggle("Fast morph", &sFastMorph, "MP2_FAST_MORPH=1",
+                 "the morph and unmorph transitions take 0.2 s instead of the game's second");
+  PortUi::Toggle("Spring Ball", &sSpringBall, "MP2_SPRING_BALL=1",
+                 "C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)");
+  PortUi::Toggle("Toggle lock-on", &sLockOnToggle, "MP2_LOCK_ON_TOGGLE=1",
+                 "an L press latches the lock until the next; one that ends lets go");
+  PortUi::Toggle("Sticky charge", &sStickyCharge, "MP2_STICKY_CHARGE=1",
+                 "letting go of a long A hold keeps charging until the next press fires it");
 }
 
 void DrawSavesSection() {
   ImGui::SeparatorText("Saves");
-  ImGui::Checkbox("Back up the card", &sCardBackup);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_CARD_BACKUP=1)");
-  ImGui::TextDisabled("copies the save file into save-backups before each card write;");
-  ImGui::TextDisabled("`save import latest` on the console puts one back");
+  PortUi::Toggle("Back up the card", &sCardBackup, "MP2_CARD_BACKUP=1",
+                 "copies the save file into save-backups before each card write; `save import "
+                 "latest` on the console puts one back");
 }
 
 void DrawCheatsSection() {
   ImGui::SeparatorText("Cheats");
-  ImGui::Checkbox("God mode", &sGodMode);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(MP2_GODMODE=1)");
-  ImGui::TextDisabled("the player takes no damage; other actors still do. Not saved");
+  PortUi::Toggle("God mode", &sGodMode, "MP2_GODMODE=1",
+                 "the player takes no damage; other actors still do. Not saved");
+}
+
+// The window's size multiplier for fixed widths: the phone's themed scale, 1 on the desktop.
+float UiScale() {
+#if defined(__ANDROID__)
+  return ImGui::GetIO().FontGlobalScale;
+#else
+  return 1.f;
+#endif
 }
 
 // One row of the Bindings table: the pad input's name, then its key as a button that arms the row.
@@ -347,7 +327,7 @@ void DrawBindRow(int row) {
   if (capturing) {
     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
   }
-  if (ImGui::Button(text, ImVec2(150.f, 0.f))) {
+  if (ImGui::Button(text, ImVec2(150.f * UiScale(), 0.f))) {
     // A second click on the armed row is the way out of it without touching the keyboard.
     if (capturing) {
       PortBinds::CancelCapture();
@@ -366,8 +346,16 @@ void DrawBindRow(int row) {
 
 void DrawBindingsSection() {
   ImGui::SeparatorText("Bindings");
-  ImGui::TextDisabled("click a key, then press the one you want (Escape cancels)");
-  ImGui::TextDisabled("a mouse button is `bind A MOUSE_LEFT` on the console; this takes keys only");
+  // The Prime 1 port's remap page: one row per input with its key, a click-to-arm capture, a
+  // per-row reset and a conflict marker. It captures on its own (SDL scancodes) and writes
+  // keybinds.cfg through PortBinds, so the console's bind/binds stay in step.
+  PortRemapUi::Draw();
+  PortUi::Help("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
+  return;
+#if 0
+  ImGui::SeparatorText("Bindings");
+  PortUi::Help("click a key, then press the one you want (Escape cancels)");
+  PortUi::Help("a mouse button is `bind A MOUSE_LEFT` on the console; this takes keys only");
   // The buttons on the left, the stick inputs on the right: two pad inputs a row keeps 22 rows
   // from filling the window.
   int buttonRows = 0;
@@ -376,10 +364,10 @@ void DrawBindingsSection() {
   }
   const ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg;
   if (ImGui::BeginTable("bindings", 4, flags)) {
-    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f);
-    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f);
-    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f);
-    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f);
+    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f * UiScale());
+    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f * UiScale());
+    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f * UiScale());
+    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f * UiScale());
     for (int i = 0; i < buttonRows; ++i) {
       ImGui::TableNextRow();
       DrawBindRow(i);
@@ -395,7 +383,8 @@ void DrawBindingsSection() {
   ImGui::SameLine();
   const char* path = PortBinds::Path();
   ImGui::TextDisabled("%s", *path != '\0' ? path : "(no user directory: not saved)");
-  ImGui::TextDisabled("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
+  PortUi::Help("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
+#endif
 }
 
 #if defined(__ANDROID__)
@@ -429,16 +418,20 @@ SDL_Window* UiWindow() {
   return sWindow;
 }
 
-// Scale the style and the font once, rather than padding each widget: fingers need taller rows.
+// The Prime 1 port's touch style and Prime theme, scaled to the display's density (about 3 on a
+// phone), as its UpdateUiScale does; watches the scale each frame since it may not be known yet.
 void ApplyTouchScale() {
-  static bool sApplied = false;
-  if (sApplied) {
-    return;
+  SDL_Window* window = UiWindow();
+  if (window != nullptr) {
+    // MP1 clamps the display scale to 1-4; on a 3x phone that makes the nine page rows taller than
+    // the list, so Bindings sat below the fold and could not be tapped. 2 is the largest that
+    // keeps the whole page list on screen here (and still thumb-sized).
+    float scale = SDL_GetWindowDisplayScale(window);
+    if (scale > 2.f) {
+      scale = 2.f;
+    }
+    PortUi::ApplyTheme(scale);
   }
-  sApplied = true;
-  constexpr float kScale = 1.5f;
-  ImGui::GetStyle().ScaleAllSizes(kScale);
-  ImGui::GetIO().FontGlobalScale *= kScale;
 }
 
 // Returns false once Close is pressed.
@@ -472,7 +465,9 @@ bool DrawPageWindow() {
     const char* const kClose = "Close";
     const float closeWidth = ImGui::CalcTextSize(kClose).x + style.FramePadding.x * 4.f;
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Metroid Prime 2 port  %.1f fps", static_cast< double >(sFps));
+    ImGui::TextUnformatted("Metroid Prime 2 Port");
+    ImGui::SameLine(0.f, style.ItemSpacing.x * 2.f);
+    ImGui::TextDisabled("%.1f fps", static_cast< double >(sFps));
     ImGui::SameLine();
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - closeWidth);
     if (ImGui::Button(kClose, ImVec2(closeWidth, 0.f))) {
