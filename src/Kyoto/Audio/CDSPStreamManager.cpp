@@ -7,6 +7,40 @@
 #include "dolphin/os.h"
 
 #include <string.h>
+#ifdef TARGET_PC
+
+#include "Kyoto/Basics/CBasics.hpp"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+namespace {
+bool DebugAudio() {
+  static const bool enabled = getenv("MP2_DEBUG_AUDIO") != nullptr;
+  return enabled;
+}
+
+// The .rsf header is disc data (big-endian); the sample data after it is ADPCM bytes, which MusyX
+// decodes in disc order.
+void SwapHeader(SRSFHeader& h) {
+  h.mMagic = CBasics::SwapBytes(h.mMagic);
+  h.mVersion = CBasics::SwapBytes(h.mVersion);
+  h.mNumChannels = CBasics::SwapBytes(h.mNumChannels);
+  h.x8_ = CBasics::SwapBytes(h.x8_);
+  h.mSampleRate = CBasics::SwapBytes(h.mSampleRate);
+  h.mDataSize = CBasics::SwapBytes(h.mDataSize);
+  h.mLoopFlag = CBasics::SwapBytes(h.mLoopFlag);
+  h.mLoopStart = CBasics::SwapBytes(h.mLoopStart);
+  h.mLoopEnd = CBasics::SwapBytes(h.mLoopEnd);
+  for (int c = 0; c < 2; ++c) {
+    for (int j = 0; j < 8; ++j) {
+      h.mAdpcmInfo[c].coefTab[j][0] = CBasics::SwapBytes(h.mAdpcmInfo[c].coefTab[j][0]);
+      h.mAdpcmInfo[c].coefTab[j][1] = CBasics::SwapBytes(h.mAdpcmInfo[c].coefTab[j][1]);
+    }
+  }
+}
+} // namespace
+#endif
 
 CDSPStreamManager sStreams[2];
 rstl::reserved_vector< SDSPStreamVoice, 4 > sVoices;
@@ -69,6 +103,12 @@ int CDSPStreamManager::StartStreaming(const rstl::string& fileName, int volume, 
       }
     }
 
+#ifdef TARGET_PC
+    if (DebugAudio()) {
+      fprintf(stderr, "[audio] dsp start '%s' vol=%d type=%d stream=%d preload=%d\n", path.data(),
+              volume, type, i, stream.mPreload ? 1 : 0);
+    }
+#endif
     if (DVDOpen(const_cast< char* >(path.data()), &stream.mFiles[0])) {
       stream.mDataOffset = sizeof(SRSFHeader);
       stream.mState = kSS_ReadingHeader;
@@ -122,7 +162,9 @@ int CDSPStreamManager::AllocateVoice(int volume, uchar pan, SND_ADPCMSTREAM_INFO
                                      volume, it->mPan, 0, 0, 0, 0, 0x30001,
                                      primary ? UpdateStream : UpdateSecondaryStream,
 #ifdef TARGET_PC
-                                     reinterpret_cast< uintptr_t >(this),
+                                     // MusyX keeps `user` as a u32, which truncates a host
+                                     // pointer: pass the stream's index instead.
+                                     static_cast< u32 >(this - sStreams),
 #else
                                      reinterpret_cast< u32 >(this),
 #endif
@@ -194,6 +236,17 @@ void CDSPStreamManager::ReadCompleted(s32 result, DVDFileInfo* fileInfo) {
     switch (stream.mState) {
     case kSS_ReadingHeader:
       DCInvalidateRange(&stream.mHeader, sizeof(SRSFHeader));
+#ifdef TARGET_PC
+      SwapHeader(stream.mHeader);
+      if (DebugAudio()) {
+        fprintf(stderr,
+                "[audio] dsp header stream=%d magic=%04x ver=%u ch=%u rate=%u size=%u loop=%u "
+                "[%u,%u]\n",
+                i, stream.mHeader.mMagic, stream.mHeader.mVersion, stream.mHeader.mNumChannels,
+                stream.mHeader.mSampleRate, stream.mHeader.mDataSize, stream.mHeader.mLoopFlag,
+                stream.mHeader.mLoopStart, stream.mHeader.mLoopEnd);
+      }
+#endif
       if (stream.mHeader.mMagic != 'RS' || stream.mHeader.mVersion != 3) {
         stream.Deallocate();
         return;
@@ -353,15 +406,28 @@ void CDSPStreamManager::BufferStream() {
 }
 
 u32 CDSPStreamManager::UpdateStream(void* buf1, u32 len1, void* buf2, u32 len2, u32 user) {
-  CDSPStreamManager* stream = reinterpret_cast< CDSPStreamManager* >(
 #ifdef TARGET_PC
-      uintptr_t
+  if (user >= 2) {
+    return 0;
+  }
+  CDSPStreamManager* stream = &sStreams[user];
 #else
+  CDSPStreamManager* stream = reinterpret_cast< CDSPStreamManager* >(
       u32
-#endif
       (user));
+#endif
   len1 += len2;
   u32 half = sVoices[stream->mVoices[0]].mNumSamples / 2;
+#ifdef TARGET_PC
+  if (DebugAudio()) {
+    static int sCalls = 0;
+    if ((sCalls++ & 63) == 0) {
+      fprintf(stderr, "[audio] dsp update #%d stream=%d played=%u half=%u pending=%d state=%d\n",
+              sCalls, static_cast< int >(stream - sStreams), len1, half, stream->mReadsPending,
+              stream->mState);
+    }
+  }
+#endif
   if (len1 < half) {
     return 0;
   }

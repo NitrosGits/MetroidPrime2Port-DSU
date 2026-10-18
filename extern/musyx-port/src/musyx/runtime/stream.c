@@ -265,14 +265,14 @@ void streamHandle() {
           hwSetStreamLoopPS(si->voice,
                             (si->lastPSFromBuffer = *(u32*)OSCachedToUncached(si->buffer) >> 24));
 #elif MUSY_TARGET == MUSY_TARGET_PC
-          hwSetStreamLoopPS(si->voice, (si->lastPSFromBuffer = *(u32*)si->buffer >> 24));
+          hwSetStreamLoopPS(si->voice, (si->lastPSFromBuffer = *(u8*)si->buffer));
 #endif
 #else
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
 
           hwSetStreamLoopPS(si->voice, *(u32*)OSCachedToUncached(si->buffer) >> 24);
 #elif MUSY_TARGET == MUSY_TARGET_PC
-          hwSetStreamLoopPS(si->voice, *(u32*)si->buffer >> 24);
+          hwSetStreamLoopPS(si->voice, *(u8*)si->buffer);
 #endif
 #endif
         }
@@ -462,8 +462,14 @@ void sndStreamARAMUpdate(u32 stid, u32 off1, u32 len1, u32 off2, u32 len2) {
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 0)
     if (streamInfo[i].type == 1) {
+#if MUSY_TARGET == MUSY_TARGET_PC
+      // The PS byte is the first byte of the ADPCM frame; `*(u32*)buf >> 24` is that byte only on a
+      // big-endian host.
+      streamInfo[i].lastPSFromBuffer = *(u8*)streamInfo[i].buffer;
+#else
       streamInfo[i].lastPSFromBuffer =
           (*(u32*)MUSY_CACHED_TO_UNCACHED_ADDR(streamInfo[i].buffer)) >> 24;
+#endif
       if (streamInfo[i].voice != -1) {
         hwSetStreamLoopPS(streamInfo[i].voice, streamInfo[i].lastPSFromBuffer);
       }

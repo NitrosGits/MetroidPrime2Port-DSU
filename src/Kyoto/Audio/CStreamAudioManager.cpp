@@ -6,6 +6,10 @@
 #include "rstl/StringExtras.hpp"
 
 #include <float.h>
+#ifdef TARGET_PC
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 rstl::string CStreamAudioManager::mDefaultAudioFile;
 rstl::string CStreamAudioManager::mCurrentAudioFile;
@@ -175,6 +179,12 @@ void CStreamAudioManager::PlaySoftwareAudio(ESoftwareChannel chan, const rstl::s
   SDSPStreamCacheEntry& p = s_Players[chan];
   SDSPStreamCacheEntry& qp = s_QueuedPlayers[chan];
 
+#ifdef TARGET_PC
+  if (getenv("MP2_DEBUG_AUDIO") != nullptr) {
+    fprintf(stderr, "[audio] software audio chan=%d '%s' fade=%.2f/%.2f vol=%d music=%d state=%d\n",
+            chan, fileName.data(), fadeIn, fadeOut, volume, music ? 1 : 0, p.mPlayState);
+  }
+#endif
   bool sameFile = CStringExtras::CompareCaseInsensitive(p.mFileName, fileName) == 0;
   bool playing = p.mPlayState != 0;
 
@@ -409,6 +419,12 @@ void CStreamAudioManager::PlayTrack(const rstl::string& fileName) {
     mCurrentAudioFile = fileName;
     doPlay = true;
   }
+#ifdef TARGET_PC
+  if (getenv("MP2_DEBUG_AUDIO") != nullptr) {
+    fprintf(stderr, "[audio] DTK track '%s' play=%d enable=%d\n", fileName.data(), doPlay ? 1 : 0,
+            mEnable ? 1 : 0);
+  }
+#endif
   if (doPlay && mEnable) {
     if (fileName != rstl::string_l("")) {
       CAudioSys::TrkFlushTracks();
