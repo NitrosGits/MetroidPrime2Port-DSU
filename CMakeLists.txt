@@ -263,6 +263,8 @@ add_library(mp_platform OBJECT
     platform/sdk_stubs.cpp
     platform/port_reset.cpp
     platform/port_settings.cpp
+    platform/input/port_input_engine.cpp
+    platform/input/port_input_bindings.cpp
     platform/glibc_compat.c)
 set_source_files_properties(platform/compiled_modules.cpp PROPERTIES
     OBJECT_DEPENDS "${MP_MODULE_REGISTRY}")
@@ -443,6 +445,20 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_hold_toggle_tests PRIVATE platform/include)
     add_test(NAME port_hold_toggle_tests COMMAND port_hold_toggle_tests)
     set_tests_properties(port_hold_toggle_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The input engine (platform/input/port_input_engine.cpp): bindings, chords, contexts and
+    # device profiles resolve to the right pad state. Engine-independent: no SDL, Aurora or game.
+    add_executable(port_input_engine_tests tests/port_input_engine.cpp
+        platform/input/port_input_engine.cpp)
+    target_include_directories(port_input_engine_tests PRIVATE platform/include)
+    add_test(NAME port_input_engine_tests COMMAND port_input_engine_tests)
+    set_tests_properties(port_input_engine_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The bindings parser/writer (platform/input/port_input_bindings.cpp): a controls file parses
+    # into engine bindings and round-trips, with bad input rejected rather than half-applied.
+    add_executable(port_input_bindings_tests tests/port_input_bindings.cpp
+        platform/input/port_input_bindings.cpp platform/input/port_input_engine.cpp)
+    target_include_directories(port_input_bindings_tests PRIVATE platform/include)
+    add_test(NAME port_input_bindings_tests COMMAND port_input_bindings_tests)
+    set_tests_properties(port_input_bindings_tests PROPERTIES TIMEOUT 30 LABELS port)
 endif()
 
 # ---------------------------------------------------------------------------
