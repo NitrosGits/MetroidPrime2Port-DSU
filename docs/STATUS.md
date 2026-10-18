@@ -3,6 +3,57 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (fourteenth session): the two open bugs closed, and the settings file in
+
+**The Sanctuary area-return crash is gone, on the phone** (`0c33bd5a6`, confirmed rather than
+changed here). Sanctuary Fortress is world `42b935e4`; the console's `world 42b935e4` loads area 0
+(`57ce3a52`, 552 sections / 525 surfaces), `door` stands the player in front of the nearest door,
+`press a 90` breaks it and `stick 0 127 240` walks through, so the transition is on foot and the
+area behind is occluded, not warped away. Area 0 -> 1 -> 0 gave, on the return,
+`AddStaticGeometry: aram=1 constructed=0 instances=1 occl=1` and
+`FillInStaticGeometry (552 sections, already converted)` with `525 surfaces, 0 bad` — the same
+counts as the first load — and the whole session's log has **zero** `[model]`/`[res]` refusal lines
+and no fault. The Temple Grounds pair (areas 51 and 48) came back the same way earlier in the same
+run. That process had `MP2_DEBUG_AREA=1` in force — the `[area]` lines are behind it
+(`CGameArea::FillInStaticGeometry`), so the flag is what makes the phone run readable.
+
+**The music loop race is fixed and quiet** (`00869fb76`). On the phone, `port_paths.txt` with
+`env.MP2_DEBUG_AUDIO=1`, `env.MP_AUDIO_STATS=1` and `env.MP_AUDIO_DUMP=<files>/music.raw` captured
+443 s (56.7 MB) of the Temple Grounds save's own track (`/audio/SplinterHive-132.dsp`,
+`loop=1 [0x6280,0x1af400]`). Four wraps happened; each is the documented shape — a refill that
+reads to the end (`read=0x2400 loopLen=0x6b00`) and continues from `loopStart=0x6280` — and the
+run has **zero** `dsp read completed ... raced` lines, `pending=0` on every update and the halves
+alternating without a hiccup. Offline, 221 adjacent 2-second blocks contain no near-duplicate pair
+(the pre-fix symptom was one half replaying the previous one), no 0.25 s window is silent after the
+music starts at 2.9 s, and the largest adjacent-window RMS jump is 0.017 — an envelope, not a
+seam. `ffmpeg -f s16le -ar 32000 -ac 2` turns the dump into a wav; `music_full.wav` and a 34 s
+`music_loop_seam.wav` around the first wrap are in `/tmp/opencode` for a listen.
+
+**The settings file is in** (`8fff230de`): `<user>/settings.cfg`, 14 keys, `MP2_<KEY>` wins over
+the file, and the write rule that matters — an entry remembers the value it started with, a save
+writes only entries that differ, and nothing is written (or created) when nothing changed. The
+reverted attempt's bug (a second run writing defaults back) cannot recur. Detail in the commit; the
+console's `settings [<key> <value>]` lists and sets.
+
+**The input engine import reached pad 0.** `cc210f983` is stage A: MP1's `port_input_engine` and
+`port_input_bindings` with `port_strings.h` and both host tests, in `mp_platform`, nothing calling
+them. `431f82995` is stage B: `platform/input/port_input_devices.cpp` reads port 0's SDL gamepad
+(Aurora's mappings and deadzones), the keyboard, the mouse buttons and the extended buttons into a
+`RawState`, builds the port's keyboard layout with `controls.toml` overlaid, runs the engine and
+synthesises a `PADStatus`; `PortPumpEvents` hands that to Aurora through a new
+`PADSetPortOverride` in the vendored Aurora, and the virtual pad still merges afterwards, which is
+why the console's `press`/`stick`/`cstick`, `MP2_INPUT` and the phone's touch pad are untouched.
+The override stays set until the port replaces it: the one-shot version (MP1's) lost the keyboard
+in the real game, so the game evidently reads the pad more than once in an iteration.
+
+Desktop, all with `MP2_CONSOLE=4799` and `tools/keytap.py` sending real keys to the Xvfb window: a
+held `w` moves the player (`-106` to `-80` after `face 180`, which is what proved the first
+"no movement" reading was a wall), `x` reports `game input A=1` in `status`, `bind A b` writes
+`controls.toml`, `b` then fires and `x` does not, and a relaunch loads it
+(`[input] .../controls.toml loaded (1 profiles)`). `press a` and `stick` from the console still reach
+the game. On the phone (APK rebuilt and installed): the touch stick moves the player and a press on
+the touch A pill gives `game input A=1`, so the overlay's virtual gamepad survives the new path.
+
 ## 2026-10-18 (thirteenth session): the phone becomes the target
 
 The APK was built and installed (debug-key signed, because the installed copy is; the release key
