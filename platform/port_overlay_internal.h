@@ -17,6 +17,7 @@ extern bool sFastMorph;
 extern bool sSpringBall;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
+extern bool sRapidCharge;
 extern bool sMouseButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;

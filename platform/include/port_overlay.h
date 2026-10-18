@@ -54,6 +54,10 @@ bool StickyCharge();
 // The mouse buttons drive the pad's gameplay rows under mouse aim (`MP2_MOUSE_BUTTONS=0` turns off).
 bool MouseButtons();
 void SetStickyCharge(bool enabled);
+// Remastered charge (`MP2_RAPID_CHARGE=1`), Power Beam only: holding fire after the press shot
+// fires two quick shots, then charges faster (CPlayerGun::PortRapidChargeShot).
+bool RapidCharge();
+void SetRapidCharge(bool enabled);
 // Back up the card before the game writes it (`MP2_CARD_BACKUP=1`, F1 > Saves): each write to the
 // memory card copies the file as it is on disk first, into `<user>/save-backups`, so a save that
 // goes wrong can be imported back (console `save import latest`). Off by default; never saved.

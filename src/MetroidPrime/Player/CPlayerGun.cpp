@@ -68,6 +68,10 @@
 #include "dolphin/gx/GXManage.h"
 #include "dolphin/types.h"
 #include <math.h>
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#include "port_power_charge_release.h"
+#endif
 
 static const TStateMachineState< CPlayerGun >::STriggerFunction skGunTriggerFunctions[] = {
     {"ShouldHolster", &CPlayerGun::ShouldHolster},
@@ -115,6 +119,23 @@ static const int skComboAmmoCosts[] = {0, 30, 30, 30};
 static const float kFactorMultiplierForBeamCombo =
     1.0f / CPlayerState::GetMissileComboChargeFactor();
 static const float kChargeDtFactor = 1.0f / CPlayerState::GetMissileComboChargeFactor();
+#ifdef TARGET_PC
+// Port: Metroid Prime Remastered's Power Beam charge tunables (CPlayerGunMP1, in frames at 60 fps).
+// With PortOverlay::RapidCharge, holding fire after the press shot fires `shots` more, each
+// `shotFrames[i]` after the last, and only then charges: anim and charge FX at `triggered`/`warmUp`,
+// full at `full` (retail: 27/60/108 here). Ice, Wave and Plasma keep retail's behaviour.
+struct SPortRapidCharge {
+  int shots;
+  int shotFrames[3];
+  int triggered;
+  int warmUp;
+  int full;
+};
+static const SPortRapidCharge skPortRapidChargePower = {2, {10, 10, 0}, 22, 22, 82};
+static const SPortRapidCharge* PortRapidChargeFor(CPlayerState::EBeamId beam) {
+  return beam == CPlayerState::kBI_Power ? &skPortRapidChargePower : nullptr;
+}
+#endif
 static const ushort skEmptyBeamSfx[] = {
     SFXsam_b_malfxn_00_oneshot,
     SFXsa2_b_malfxn_00_oneshot,
@@ -244,10 +265,61 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
                      mgr.GetNextAreaId().Value(), mUnderwater, 0);
   }
 }
+#ifdef TARGET_PC
+void CPlayerGun::PortStartRapidCharge() {
+  mPortRapidCharge = PortOverlay::RapidCharge() && PortRapidChargeFor(mCurrentBeamId) != nullptr;
+  mPortRapidShots = 0;
+  mPortRapidTimer = 0.f;
+}
+
+// Fires the beam's next quick shot when it is due. True while shots remain, so the charge waits
+// for them (CPlayerGunMP1::UpdateChargeState's rapid-fire state).
+bool CPlayerGun::PortRapidChargeShot(float dt, CStateManager& mgr) {
+  const SPortRapidCharge* beam = mPortRapidCharge ? PortRapidChargeFor(mCurrentBeamId) : nullptr;
+  if (beam == nullptr || mPortRapidShots >= beam->shots) {
+    return false;
+  }
+  // Wait for a beam switch to finish rather than firing into it.
+  if (mBeamChangeState != kBCS_Idle) {
+    return true;
+  }
+  mPortRapidTimer += dt;
+  if (mPortRapidTimer < float(beam->shotFrames[mPortRapidShots]) / 60.f) {
+    return true;
+  }
+  mPortRapidTimer = 0.f;
+  ++mPortRapidShots;
+  UpdateNormalShotCycle(dt, mgr);
+  return mPortRapidShots < beam->shots;
+}
+
+bool CPlayerGun::PortScopedRapidCharge() const {
+  return NPortPowerChargeRelease::IsScopedRapidCharge(mPortRapidCharge,
+                                                      mCurrentBeamId == CPlayerState::kBI_Power);
+}
+
+float CPlayerGun::PortChargeAnimStart(float retail) const {
+  const SPortRapidCharge* beam = mPortRapidCharge ? PortRapidChargeFor(mCurrentBeamId) : nullptr;
+  return beam != nullptr ? float(beam->triggered) / float(beam->full) : retail;
+}
+
+float CPlayerGun::PortChargeFxStart(float retail) const {
+  const SPortRapidCharge* beam = mPortRapidCharge ? PortRapidChargeFor(mCurrentBeamId) : nullptr;
+  return beam != nullptr ? float(beam->warmUp) / float(beam->full) : retail;
+}
+
+float CPlayerGun::PortChargeRate(float retail) const {
+  const SPortRapidCharge* beam = mPortRapidCharge ? PortRapidChargeFor(mCurrentBeamId) : nullptr;
+  return beam != nullptr ? 1.f / (float(beam->full) / 60.f) : retail;
+}
+#endif
 void CPlayerGun::UpdateChargeState(float dt, CStateManager& mgr) {
 
   CPlayerState* playerState = GetPlayerFromAll(mgr)->GetPlayerState();
 
+#ifdef TARGET_PC
+  bool portHoldForShots = false;
+#endif
   switch (mChargePhase) {
   case kCP_Charged:
     mChargeRumbleTimer += dt;
@@ -268,7 +340,17 @@ void CPlayerGun::UpdateChargeState(float dt, CStateManager& mgr) {
   if (mChargePhase != kCP_NotCharging) {
     switch (mChargePhase) {
     case kCP_ChargeRequested:
+#ifdef TARGET_PC
+      if (PortRapidChargeShot(dt, mgr)) {
+        portHoldForShots = true;
+        playerState->SetChargeBeamFactor(0.f);
+        break;
+      }
+      if (playerState->GetChargeBeamFactor() >
+          PortChargeAnimStart(playerState->GetChargeAnimStart())) {
+#else
       if (playerState->GetChargeBeamFactor() > playerState->GetChargeAnimStart()) {
+#endif
         mChargePhase = kCP_Charging;
       }
       break;
@@ -276,9 +358,15 @@ void CPlayerGun::UpdateChargeState(float dt, CStateManager& mgr) {
     if (mChargeSfx && mSeekerChargeState != kSCS_FullyCharged) {
       CSfxManager::PitchBend(mChargeSfx, mUnderwater ? 0 : 0x2000);
     }
+#ifdef TARGET_PC
+    if (!portHoldForShots && kCP_NotCharging < mChargePhase && mChargePhase < kCP_Charged) {
+      playerState->IncrementChargeBeamFactor(PortChargeRate(kChargeDtFactor) * dt);
+    }
+#else
     if (kCP_NotCharging < mChargePhase && mChargePhase < kCP_Charged) {
       playerState->IncrementChargeBeamFactor(kChargeDtFactor * dt);
     }
+#endif
   } else {
     if (playerState->GetChargeBeamFactor() > 0.0f) {
       playerState->IncrementChargeBeamFactor(-dt);
@@ -298,7 +386,12 @@ void CPlayerGun::Charging(CStateManager& mgr, int param, float dt) {
     float factor = IsOutOfAmmoToShoot(mgr) ? 0.5f : 1.f;
     switch (mChargePhase) {
     case kCP_Charging:
+#ifdef TARGET_PC
+      if (playerState->GetChargeBeamFactor() >=
+          PortChargeFxStart(kFactorMultiplierForBeamCombo) * factor) {
+#else
       if (playerState->GetChargeBeamFactor() >= kFactorMultiplierForBeamCombo * factor) {
+#endif
         mChargeEffectVisible = true;
         mChargePhase = kCP_ChargeFx;
         mChargeState = CPlayerState::kCS_Charged;
@@ -520,8 +613,26 @@ void CPlayerGun::Main(CStateManager& mgr, int message, float dt) {
         mChargePhase = kCP_ChargeRequested;
         mFiring = false;
         state->SetChargeBeamFactor(0.f);
+#ifdef TARGET_PC
+        PortStartRapidCharge();
+#endif
       }
     }
+#ifdef TARGET_PC
+    // Remastered without the Charge Beam: the same quick shots while fire is held, then nothing
+    // until release.
+    if ((mReleasedInputFlags & 1) != 0) {
+      mPortRapidCharge = false;
+    } else if (!state->ItemEnabled(CPlayerState::kIT_ChargeBeam)) {
+      if ((mPressedInputFlags & 1) != 0) {
+        PortStartRapidCharge();
+      } else if ((mInputFlags & 1) != 0 && mPortRapidCharge &&
+                 mChargePhase == CPlayerGun::kCP_NotCharging &&
+                 !PortRapidChargeShot(dt, mgr)) {
+        mPortRapidCharge = false;
+      }
+    }
+#endif
     if (!mgr.IsMultiplayer()) {
       UpdateGunIdle(dt, mgr);
     }
@@ -557,6 +668,18 @@ void CPlayerGun::Recoil(CStateManager& mgr, int message, float dt) {
     EnableChargeFx(mgr, false);
     switch (mChargePhase) {
     case kCP_Charging:
+#ifdef TARGET_PC
+      // Power rapid charge: warmUp == triggered, so a release once charging has begun is a
+      // charged release (the charge FX is one update away).
+      if (NPortPowerChargeRelease::IsChargedRelease(int(mChargePhase), int(kCP_ChargeFx),
+                                                    int(kCP_Charging), true,
+                                                    PortScopedRapidCharge())) {
+        mChargeState = CPlayerState::kCS_Charged;
+        UpdateNormalShotCycle(dt, mgr);
+        StopChargeSound(mgr, false);
+        break;
+      }
+#endif
       mChargePhase = kCP_ChargeDone;
       PlaySfxForPlayer(GetPlayer(mgr), skEmptyBeamSfx[mSoundSetIndex], mSoundVolume,
                        mgr.GetNextAreaId().Value(), mUnderwater, 0);
@@ -740,6 +863,9 @@ void CPlayerGun::MissileClosing(CStateManager& mgr, int message, float dt) {
         GetPlayer(mgr)->GetPlayerState()->ItemEnabled(CPlayerState::kIT_ChargeBeam) &&
         (mInputFlags & 4) != 0) {
       mChargePhase = kCP_ChargeRequested;
+#ifdef TARGET_PC
+      PortStartRapidCharge();
+#endif
     }
     break;
   }
@@ -1726,6 +1852,9 @@ void CPlayerGun::ResetCharge(CStateManager& mgr, bool playAnimation) {
   mChargeState = CPlayerState::kCS_Normal;
   mChargeRumbleTimer = 0.f;
   mAbsorbedPhazonShots = 0;
+#ifdef TARGET_PC
+  mPortRapidCharge = false;
+#endif
   if (mCurrentBeam != nullptr) {
     mCurrentBeam->OnChargeReset();
   }
@@ -3097,7 +3226,15 @@ CPlayerGun::CPlayerGun(TUniqueId playerId, int characterIndex)
 , mMissileAnimActive(false)
 , mMissileCloseAnimDone(false)
 , mCommonDependenciesLoaded(false)
+#ifdef TARGET_PC
+, mBeamLoadRequested(false)
+, mPortRapidCharge(false)
+, mPortRapidShots(0)
+, mPortRapidTimer(0.f)
+{
+#else
 , mBeamLoadRequested(false) {
+#endif
   mStateMachineToken.Lock();
   InitBeamData();
   InitBombData();

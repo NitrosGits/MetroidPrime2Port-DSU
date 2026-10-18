@@ -3,6 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18, eighteenth session: remastered charge (Power Beam only)
+
+- F1 > Gameplay "Remastered charge" (`MP2_RAPID_CHARGE=1`, `rapid_charge` key): holding fire with the
+  Power Beam fires MP1's quick shots (`skPortRapidChargePower`), and the charged release uses that
+  table's timing. Other beams are unchanged: `PortRapidChargeFor` returns null for them.
+- The no-Charge-Beam branch in `UpdateNormalShotCycle`'s caller (`Main`) follows MP1's
+  `ProcessNormalState`. It is Power-only in effect because `mPortRapidCharge` is only set for the
+  Power Beam.
+- Gates: strip check of `CPlayerGun.cpp` and `CPlayerGun.hpp` equals HEAD's non-PC text;
+  `metroid_prime2_port` builds; `gen_files_cmake.py --check` rc=0.
+- Not yet checked in game: muzzle flash during quick shots (`mChargeEffectVisible` is false while
+  `kCP_ChargeRequested`), and the damage scaling of a charged release during `kCP_Charging`.
+
 ## 2026-10-18, seventeenth session: photo mode stages 2a and 2b
 
 - `c0ac5167f` stage 2a: supersampled capture (`RequestCapture`, PNG via `aurora::request_screenshot_png`),

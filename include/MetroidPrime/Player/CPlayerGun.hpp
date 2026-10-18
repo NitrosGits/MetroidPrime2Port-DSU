@@ -136,6 +136,14 @@ public:
   void EnableChargeFx(CStateManager& mgr, bool enable);
   void UpdateNormalShotCycle(float dt, CStateManager& mgr);
   void UpdateChargeState(float dt, CStateManager& mgr);
+#ifdef TARGET_PC
+  void PortStartRapidCharge();
+  bool PortRapidChargeShot(float dt, CStateManager& mgr);
+  bool PortScopedRapidCharge() const;
+  float PortChargeAnimStart(float retail) const;
+  float PortChargeFxStart(float retail) const;
+  float PortChargeRate(float retail) const;
+#endif
   void ResetSeeker(CStateManager& mgr);
   void UpdateSeeker(float dt, CStateManager& mgr);
   void UpdateSeekerEffects(float dt);
@@ -342,6 +350,12 @@ private:
   bool mMissileCloseAnimDone : 1;
   bool mCommonDependenciesLoaded : 1;
   bool mBeamLoadRequested : 1;
+#ifdef TARGET_PC
+  // Port: Remastered charge (Power Beam only), see CPlayerGun::PortRapidChargeShot.
+  bool mPortRapidCharge;
+  int mPortRapidShots;
+  float mPortRapidTimer;
+#endif
 };
 NESTED_CHECK_SIZEOF(CPlayerGun, CGunMorph, 0x28)
 NESTED_CHECK_SIZEOF(CPlayerGun, CMotionState, 0x2c)
