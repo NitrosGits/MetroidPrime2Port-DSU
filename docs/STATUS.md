@@ -48,6 +48,22 @@ rows at display scale clamped to 2, and `port_remap_ui`'s Controls > Remap page 
 capture, per-row Default, Reset all, conflict markers). Still missing from menu parity: the search
 bar, a UI scale control, the settings file, and video/audio pages with real backends.
 
+**Aim and the Sanctuary crash** (`a35193272`, `0c33bd5a6`): a touch aim drag snapped the camera
+back to level on release because `PortMouse::UpdateAim` treated touch as idle once `TouchAimActive()`
+went false and synchronised to the free-look camera; MP1's direct aim is persistent relative deltas,
+so a latch now keeps the aim the owner after the lift (-48.7 deg held at -48.6 after release on the
+phone). And the Sanctuary door crash was not disc data: `FillInStaticGeometry` converts surface
+headers and halfword sections in place, an occluded area's ARAM token stores the *converted* bytes,
+and the return path converted them again - every material index became its byte-swapped self.
+`CPostConstructed::mGeometryConverted` skips the second pass, and the model/resource parsers now
+refuse data they cannot use with a one-line `[model]`/`[res]` message naming the asset instead of
+dereferencing it.
+
+**Settings file**: a lane started `PortSettings` (`<user>/settings.cfg`, env wins over the file) and
+was cancelled mid-work; it compiled but a second run wrote the defaults back over the file
+(`MP2_FAST_MORPH=0`), so it was reverted rather than committed. It needs a proper pass, including a
+save only when a value actually changed.
+
 **Not a bug**: the see-through Worker Splinter in Temple Grounds area 12 - its model (716998c9) is
 additive with no depth write in the disc data itself (the game's creature log calls it a mucus
 layer), unlike the ordinary Splinter's opaque model.
