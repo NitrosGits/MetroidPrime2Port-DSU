@@ -3,6 +3,17 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (fifteenth session): stage C, the F1 Controls page
+
+- **The Bindings page is MP1's remap UI and presets** (`1e436a53c`): `platform/input/port_input_remap_ui.cpp`
+  (minus gyro, menu/map, pointer and turbo rows) and `platform/port_controls.cpp` (presets `classic`,
+  `mouse`; pad `gamecube`, `remastered`, `modern`, `southpaw`). Bindings live in `controls.toml`.
+  Removed: `platform/port_binds.{h,cpp}`, `platform/port_remap_ui.{h,cpp}`, console `bind`/`binds`,
+  `keybinds.cfg`.
+- **Verified**: `port_input_engine` and bindings host tests pass, `gen_files_cmake.py --check` rc 0,
+  `metroid_prime2_port` relinks from current sources.
+- **Not yet verified**: the phone's F1 page window (search, Controls, scale) with the phone free.
+
 ## 2026-10-18 (fourteenth session): the two open bugs closed, and the settings file in
 
 **The Sanctuary area-return crash is gone, on the phone** (`0c33bd5a6`, confirmed rather than
@@ -65,8 +76,8 @@ its files, in this order:
   paths, a click jumping to Gameplay with the row shown, `uiscale 150` growing the window); the
   phone's page window with the search still needs one run with the phone free.
 
-Still to do the same way: stage C (`port_input_remap_ui.cpp` + `port_controls.cpp` presets) in place
-of the 22-row Bindings bridge in `platform/port_binds.cpp`.
+Stage C (MP1's remap UI and presets) is done, see the fifteenth session above; the 22-row Bindings
+bridge it replaced is gone.
 
 **The input engine import reached pad 0.** `cc210f983` is stage A: MP1's `port_input_engine` and
 `port_input_bindings` with `port_strings.h` and both host tests, in `mp_platform`, nothing calling
