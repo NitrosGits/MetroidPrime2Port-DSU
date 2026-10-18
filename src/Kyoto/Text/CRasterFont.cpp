@@ -1,6 +1,9 @@
 #include "Kyoto/Text/CRasterFont.hpp"
 
 #include "Kyoto/CFactoryMgr.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+#endif
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/CVParamTransfer.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
@@ -153,6 +156,13 @@ void CRasterFont::DrawString(const CDrawStringOptions& options, int x, int y, in
     data[1] = CColor(options.GetPaletteEntry(0)).ToRGB5A3();
     data[2] = CColor(options.GetPaletteEntry(1)).ToRGB5A3();
     data[3] = CColor(0.f, 0.f, 0.f, 0.f).ToRGB5A3();
+#ifdef TARGET_PC
+    // TLUT entries are read as big-endian (disc data); store these host-built ones the same way,
+    // or a coloured main/outline entry decodes as a different, half-transparent colour.
+    for (int i = 0; i < 4; ++i) {
+      data[i] = CBasics::SwapBytes(data[i]);
+    }
+#endif
     pal.UnLock();
     buffer->AddPaletteChange(pal, GetMode());
   }
