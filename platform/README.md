@@ -36,7 +36,9 @@ waits for. See `../PORT_NOTES.md` for the measured SDK link gap.
 Aurora reads a real controller by itself, but its keyboard map is empty
 (`g_defaultKeys` is all `PAD_KEY_INVALID`), so a machine with no pad reported
 `PAD_ERR_NO_CONTROLLER` and the game got no input at all. `InstallDefaultKeyBindings`
-in `port_events.cpp` installs the Prime port's layout once at startup:
+in `port_events.cpp` now just calls `PortBinds::Install()`: the layout is a table in
+`platform/port_binds.cpp`, one row per pad input (the 12 buttons and the 10 stick
+inputs), installed once at startup. It is the Prime port's layout:
 
 | Key | Pad | Key | Pad |
 | --- | --- | --- | --- |
@@ -46,8 +48,32 @@ in `port_events.cpp` installs the Prime port's layout once at startup:
 | arrows | D-pad | Enter | Start |
 
 Keyboard state merges with a connected controller's and with `MP2_INPUT`'s virtual
-pad, so neither replaces the other. There is no remap UI yet (see `debug_ui.cpp`
-under "Waiting").
+pad, so neither replaces the other.
+
+The table is the port's own and is saved in `keybinds.cfg`, in the same user
+directory as `touch.cfg` (`MP2_USER_PATH`, else Aurora's prefer-path user dir): one
+`<ACTION>=<key>` line per pad input, key names as SDL scancode names (`X`,
+`Left Shift`, `Space`, any case) or `MOUSE_LEFT`/`MOUSE_MIDDLE`/`MOUSE_RIGHT`/
+`MOUSE_X1`/`MOUSE_X2`, and `none` for unbound. `#` comments are allowed, unknown
+lines are ignored with one `[binds] ignoring ...` log line each, and a missing file
+means the built-in layout. Writes are atomic (tmp + rename), and the file is read
+once on the game thread's first frame, so a saved map survives a restart. Aurora's
+binary `keyboard_bindings.dat` is never written and never relied on (whatever it
+holds, the port's table replaces it): `keybinds.cfg` is the port's keyboard settings.
+
+F1 > Bindings lists all 22 rows with their current key: clicking a row's key button
+arms it and the next key pressed is bound and saved, Escape cancels, and "Reset to
+defaults" restores the built-in layout. A mouse button has no press there: bind it
+from the console (`bind A MOUSE_LEFT`). A key the port also uses as its own hotkey
+(F1, F5-F10, F12) still binds, but the hotkey fires whenever it is pressed. The
+console has the same through `bind <action> <key>` (`bind A Space`,
+`bind STICK_LEFT Q`, `bind A none`), `bind reset`, and `binds`, which lists every
+row's key and the file's path. A key may be bound to more than one row - Q is on
+both L and TRIGGER_L by default.
+
+`tools/keytap.py <display> <key> [...]` puts a real key press on an X display (XTEST), which is
+the only way to test the keyboard map headless: `MP2_INPUT` and the console's `press` write the
+*virtual* pad, past it. The script unsets `XAUTHORITY`, since a bare Xvfb needs none.
 
 ### `MP2_INPUT` frames
 

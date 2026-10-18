@@ -24,6 +24,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | Console: `face`, `give`/`take`, `press`/`stick` (pad buttons and the main stick held on the virtual pad), `screenshot` | `platform/port_console.cpp`, `platform/port_events.cpp` (`port_input.h`) |
 | Console: `world <id> [area]` (a world warp), `worlds` (the memory card's world ids and name tables), `strg <id|name> [index]` (a string table) | `platform/port_console.cpp` |
 | Console: `gunoffset`, `msaa`, `aniso`, `hudscale` (the graphics settings, drivable from a headless run) | `platform/port_console.cpp` |
+| Keyboard rebinding: a 22-row keyboard table, the F1 Bindings section, `bind`/`binds`/`bind reset`, `keybinds.cfg` under the user dir | `platform/port_binds.cpp`, `platform/port_overlay.cpp`, `platform/port_console.cpp` |
 | Graphics: first-person FOV, hide helmet, hide visor effects, arm-cannon offset, MSAA, anisotropic filtering, HUD scale | `port_overlay.cpp` + hooks in `CCameraManager`, `CInGameGuiManager`, `CPlayerVisor`, `CPlayer`, `CSamusHud`/`CGuiCamera`, and `aurora_set_graphics_quality` (vendored Aurora) |
 
 ## Next, cheapest and most useful first
@@ -41,8 +42,11 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    empty stubs here, so `MP2_NO_VISOR_FX` currently only suppresses what the scan visor draws (its
    frame/edges; the scan window itself is the HUD's own scan interface and stays), and that MSAA is
    the one setting whose cost is the whole framebuffer: 4x is for a desktop, not a phone.
-3. **Input settings**: rebinding UI and presets (MP1's `port_input_settings.cpp`), plus the settings
-   file export/import. The bindings themselves already exist; the editor does not.
+3. **Input settings**: keyboard rebinding is in - a 22-row table in `platform/port_binds.cpp`, the
+   F1 Bindings section, `bind`/`binds` on the console, and `keybinds.cfg` in the user directory. What
+   is left is key/button presets (MP1's classic / mouse-and-keyboard layouts, `port_controls.cpp`'s
+   `ApplyKeyPreset`), a controller (native pad) remap UI (MP1's `platform/input/` profile/toml
+   system), and export/import of the settings file.
 4. **Gameplay tweaks** (MP1 names): fast morph, spring ball, toggle lock-on, sticky charge. Each is a
    small game-side change behind a setting; MP2's equivalents live in `CPlayer`/`CPlayerGun`.
 5. **Save tools**: quick resume after quitting, save import/export (MP1's `port_gci.cpp`), save

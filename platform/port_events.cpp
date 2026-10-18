@@ -6,6 +6,7 @@
 #include <aurora/event.h>
 #include <dolphin/pad.h>
 
+#include "port_binds.h"
 #include "port_harness.h"
 #include "port_input.h"
 #include "port_mouse.h"
@@ -50,39 +51,13 @@ using PortInput::kButtonNames;
 // the port installs a map, so pad 0 reports PAD_ERR_NO_CONTROLLER on a machine
 // with no pad and the game gets no input at all. The layout is the Prime port's
 // (`MetroidPrimePort/platform/port_controls.cpp`): WASD moves, IJKL is the C-stick
-// (which aims and switches the visor in Echoes), the rest mirrors the pad.
+// (which aims and switches the visor in Echoes), the rest mirrors the pad. It is a
+// table in `port_binds.cpp` now, which is also what the F1 window edits, `bind`
+// changes and keybinds.cfg stores; this installs it once, or loads a saved one.
 //
 // Keyboard state merges into the real controller's and into MP2_INPUT's virtual
 // pad rather than replacing either, so this only adds input.
-void InstallDefaultKeyBindings() {
-  static bool installed = false;
-  if (installed) {
-    return;
-  }
-  installed = true;
-
-  PADKeyButtonBinding buttons[PAD_BUTTON_COUNT] = {
-      {SDL_SCANCODE_X, PAD_BUTTON_A},          {SDL_SCANCODE_Z, PAD_BUTTON_B},
-      {SDL_SCANCODE_C, PAD_BUTTON_X},          {SDL_SCANCODE_V, PAD_BUTTON_Y},
-      {SDL_SCANCODE_RETURN, PAD_BUTTON_START}, {SDL_SCANCODE_F, PAD_TRIGGER_Z},
-      {SDL_SCANCODE_Q, PAD_TRIGGER_L},         {SDL_SCANCODE_E, PAD_TRIGGER_R},
-      {SDL_SCANCODE_UP, PAD_BUTTON_UP},        {SDL_SCANCODE_DOWN, PAD_BUTTON_DOWN},
-      {SDL_SCANCODE_LEFT, PAD_BUTTON_LEFT},    {SDL_SCANCODE_RIGHT, PAD_BUTTON_RIGHT},
-  };
-  // Q/E also drive the analog triggers, so L/R reach the game as held rather than
-  // tapped when the button and axis bindings disagree about the frame.
-  PADKeyAxisBinding axes[PAD_AXIS_COUNT] = {
-      {SDL_SCANCODE_D, PAD_AXIS_LEFT_X_POS, 1},  {SDL_SCANCODE_A, PAD_AXIS_LEFT_X_NEG, 1},
-      {SDL_SCANCODE_W, PAD_AXIS_LEFT_Y_POS, 1},  {SDL_SCANCODE_S, PAD_AXIS_LEFT_Y_NEG, 1},
-      {SDL_SCANCODE_L, PAD_AXIS_RIGHT_X_POS, 1}, {SDL_SCANCODE_J, PAD_AXIS_RIGHT_X_NEG, 1},
-      {SDL_SCANCODE_I, PAD_AXIS_RIGHT_Y_POS, 1}, {SDL_SCANCODE_K, PAD_AXIS_RIGHT_Y_NEG, 1},
-      {SDL_SCANCODE_Q, PAD_AXIS_TRIGGER_L, 1},   {SDL_SCANCODE_E, PAD_AXIS_TRIGGER_R, 1},
-  };
-
-  if (PADSetKeyButtonBindings(0, buttons) && PADSetKeyAxisBindings(0, axes)) {
-    PADSetKeyboardActive(0, TRUE);
-  }
-}
+void InstallDefaultKeyBindings() { PortBinds::Install(); }
 
 // One token of the MP2_INPUT script, "NAME@frame[+frames]". Parsed once, because a token fires once:
 // `fired` is what makes a token whose frame has already gone by fire at the first frame the script
@@ -352,6 +327,11 @@ bool PortPumpEvents() {
     // ignores a request it cannot serve (no world loaded yet, bad area).
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
         !event->sdl.key.repeat) {
+      // The F1 window's Bindings table arms a row and takes the next key it sees; that key is not
+      // also a hotkey (binding F5 should not warp the game on the way in).
+      if (PortBinds::OnKeyDown(static_cast< int >(event->sdl.key.scancode))) {
+        continue;
+      }
       switch (event->sdl.key.scancode) {
       case SDL_SCANCODE_F1:
         PortOverlay::Toggle();

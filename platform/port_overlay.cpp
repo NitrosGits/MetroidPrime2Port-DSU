@@ -7,6 +7,7 @@
 
 #include "port_overlay.h"
 
+#include "port_binds.h"
 #include "port_mouse.h"
 #include "port_warp.h"
 
@@ -278,10 +279,68 @@ void DrawCheatsSection() {
   ImGui::TextDisabled("the player takes no damage; other actors still do. Not saved");
 }
 
-void DrawKeyboardSection() {
-  ImGui::SeparatorText("Keyboard map");
-  ImGui::TextDisabled("WASD move, IJKL C-stick, X/Z/C/V = A/B/X/Y,");
-  ImGui::TextDisabled("Q/E = L/R, F = Z, Enter = Start, arrows = D-pad");
+// One row of the Bindings table: the pad input's name, then its key as a button that arms the row.
+void DrawBindRow(int row) {
+  const PortBinds::SInput& input = PortBinds::Input(row);
+  const bool capturing = PortBinds::CapturingRow() == row;
+  ImGui::TableNextColumn();
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(input.label);
+  ImGui::TableNextColumn();
+  const char* text = capturing ? "press a key..." : PortBinds::KeyName(PortBinds::Scancode(row));
+  ImGui::PushID(row);
+  if (capturing) {
+    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+  }
+  if (ImGui::Button(text, ImVec2(150.f, 0.f))) {
+    // A second click on the armed row is the way out of it without touching the keyboard.
+    if (capturing) {
+      PortBinds::CancelCapture();
+    } else {
+      PortBinds::BeginCapture(row);
+    }
+  }
+  if (capturing) {
+    ImGui::PopStyleColor();
+  }
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip("%s = %s", input.action, text);
+  }
+  ImGui::PopID();
+}
+
+void DrawBindingsSection() {
+  ImGui::SeparatorText("Bindings");
+  ImGui::TextDisabled("click a key, then press the one you want (Escape cancels)");
+  ImGui::TextDisabled("a mouse button is `bind A MOUSE_LEFT` on the console; this takes keys only");
+  // The buttons on the left, the stick inputs on the right: two pad inputs a row keeps 22 rows
+  // from filling the window.
+  int buttonRows = 0;
+  for (int i = 0; i < PortBinds::Count(); ++i) {
+    buttonRows += PortBinds::Input(i).axis ? 0 : 1;
+  }
+  const ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg;
+  if (ImGui::BeginTable("bindings", 4, flags)) {
+    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f);
+    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f);
+    ImGui::TableSetupColumn("pad input", ImGuiTableColumnFlags_WidthFixed, 120.f);
+    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 170.f);
+    for (int i = 0; i < buttonRows; ++i) {
+      ImGui::TableNextRow();
+      DrawBindRow(i);
+      if (buttonRows + i < PortBinds::Count()) {
+        DrawBindRow(buttonRows + i);
+      }
+    }
+    ImGui::EndTable();
+  }
+  if (ImGui::Button("Reset to defaults")) {
+    PortBinds::Reset();
+  }
+  ImGui::SameLine();
+  const char* path = PortBinds::Path();
+  ImGui::TextDisabled("%s", *path != '\0' ? path : "(no user directory: not saved)");
+  ImGui::TextDisabled("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
 }
 
 } // namespace
@@ -393,6 +452,9 @@ void Draw() {
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {
+    // A row armed in the table belongs to the window: closing it disarms, so a key pressed later in
+    // the game is not silently bound to the row that was waiting.
+    PortBinds::CancelCapture();
     return;
   }
 
@@ -404,7 +466,7 @@ void Draw() {
     DrawHudSection();
     DrawTestingSection();
     DrawCheatsSection();
-    DrawKeyboardSection();
+    DrawBindingsSection();
     ImGui::SeparatorText("Hotkeys");
     ImGui::TextDisabled("F1 overlay, F5/F6 area, F7/F8 world");
   }

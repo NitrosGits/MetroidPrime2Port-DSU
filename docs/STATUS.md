@@ -3,6 +3,64 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (ninth session): keyboard bindings
+
+The input slice `docs/QOL.md` listed third: rebinding over Aurora's pad key tables, with the F1
+editor row, `bind`/`binds`, and one file under the user directory. MP1's `port_input_settings.cpp`
+was the reference only for the shape of the editor - its settings model (profiles, toml, action
+binding, touch layout) is far wider than this tree's, so the take is the rebinding part alone.
+
+- **`platform/port_binds.{h,cpp}`** own the map. The table is 22 rows - the 12 pad buttons
+  (A/B/X/Y/START/Z/L/R/UP/DOWN/LEFT/RIGHT) then the 10 stick inputs (`STICK_*`, `CSTICK_*`,
+  `TRIGGER_L`, `TRIGGER_R`) - each with the port's built-in key, the pad input it drives and the
+  action name the console and the file use. `Install()` replaces the literal `port_events.cpp` used
+  to hold; `PADSetKeyButtonBindings`/`PADSetKeyAxisBindings` take the whole table on every change,
+  because it is 22 tiny calls and tracking which row moved buys nothing.
+- **`keybinds.cfg`** beside the memory card and `touch.cfg` (`MP2_USER_PATH`, else Aurora's
+  prefer-path): `<ACTION>=<key>` per row, keys as SDL scancode names ("X", "Left Shift", any case)
+  or `MOUSE_LEFT/MIDDLE/RIGHT/X1/X2`, `none` to unbind, `#` comments. Missing file = the built-in
+  layout (deleting it is the reset), unknown rows and keys are skipped one log line each, and writes
+  are atomic (tmp + rename). Read once on the game thread's first frame: the key names are SDL's, so
+  it cannot be read in `main` before Aurora is up - `PortBinds::Initialize` only stores the path.
+- **Aurora's own `keyboard_bindings.dat`** is neither written nor relied on. It is binary, has no
+  names and Aurora loads it before the port's map replaces it; `keybinds.cfg` is the port's file.
+- **F1 > Bindings** shows all 22 rows with their keys, two rows side by side (buttons left, stick
+  inputs right, `SizingFixedFit` + `RowBg`). Clicking a row's key button arms it - the button reads
+  "press a key..." with the active colour and the tooltip follows - and the next key-down the event
+  pump sees is bound and saved. `PortBinds::OnKeyDown` returns true while a capture consumed the key,
+  so the pump `continue`s past its hotkey switch: binding F5 does not warp the world on the way in.
+  `Escape` cancels, a second click on the armed row cancels, closing the window disarms (`Draw`'s
+  not-visible path), and "Reset to defaults" rewrites the file. A port hotkey still binds; the log,
+  the console reply and the window all say the hotkey will fire with it.
+- **Console**: `bind <action> <key>` (the key is the rest of the line, so `bind START Left Shift`
+  needs no quotes), `bind reset`, and `binds` (the table plus the file's path). `Set` returns whether
+  the file was written, so the reply distinguishes "saved" from "in memory only".
+- **`tools/keytap.py`** is the instrument this slice needed: XTEST key presses on a display
+  (`XAUTHORITY` unset, since a bare Xvfb needs none). `MP2_INPUT` and the console's `press` write the
+  *virtual* pad, past the keyboard map, so nothing else in the tree can test a binding. A `--hold`
+  of 20 ms was too short to be seen: SDL can process the press and the release in one frame's event
+  queue, and the pad then reads the key as up. That looked exactly like "the binding did not work"
+  and cost the first pass at the pause-screen test.
+- **Verified on the desktop** (`MP2_TELEPORT=0`, area 0, `MP2_CONSOLE=4780`, the run driven from
+  `tools/mp2con.py`, `tools/keytap.py` and an XTEST click helper; screenshots `/tmp/opencode/b*.png`
+  and `c*.png`): `binds` lists the built-in layout and the path; `bind A g` saves `A=G` in the file
+  and applies (`bind START Left Shift` proves the joined multi-word name, `bind A none` the unbound
+  row, `bind reset` the whole table); `bind nosuchrow x`, `bind A nosuchkey` and bare `bind` answer
+  the error text; the F1 row arms on a click, captures `A=G` with the tooltip following, Escape
+  leaves `X=C` in place and Reset restores every row (the file's `STICK_UP=U` gone); `STICK_UP=u`
+  walks forward and `W` then does not; after a restart `[binds] ...: 22 bindings` and the loaded
+  `STICK_UP=U` still walks; `bind START p` then a real `p` opens the pause screen (the Inventory/
+  Options/Data Network screen in `c4_pause_p.png`).
+- A fresh-context review found no functional defect and three small ones, two of which went in: a
+  UTF-8 BOM on `keybinds.cfg`'s first line is skipped (an editor writes one, and it otherwise lost
+  exactly the first binding), and a key SDL cannot name (scancode 0: some media/Fn keys) is refused
+  while the row stays armed, since it would be saved as `none` and be gone after a restart. The
+  third - the F1 capture sees key-downs only, so a mouse button is bound from the console - is a
+  hint in the window rather than code: a click that armed or pressed a row would otherwise also bind.
+- Gates: `tools/gen_files_cmake.py --check` rc=0, `tools/gen_console_names.py --check` rc=0, the
+  upstream matching build `Game Code: 94.14% fuzzy, 63.29% matched` rc=0. Every changed source is a
+  platform file, so no upstream file changed and no `#ifdef TARGET_PC` block was needed.
+
 ## 2026-10-18 (eighth session): the rest of the graphics toggles
 
 Three settings, the shapes `MP2_FOV` and `MP2_NO_HELMET` established: a field in
