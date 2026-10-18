@@ -35,6 +35,32 @@ writes only entries that differ, and nothing is written (or created) when nothin
 reverted attempt's bug (a second run writing defaults back) cannot recur. Detail in the commit; the
 console's `settings [<key> <value>]` lists and sets.
 
+**Correction (same session): port, do not reimplement.** Three pieces of this session were
+written from scratch where the Prime 1 port already has them, and are being replaced by ports of
+its files, in this order:
+
+- The aim crosshair (`a53472d61`): MP1's `CTargetReticles.cpp` cursor code transplanted -
+  `PortXhairVertex` and the arm/centre station tables, `PortDrawRemasteredCrosshair`,
+  `PortRemasteredCrosshairColor`, `PortUpdateRemasteredCrosshair` and its three members - with its
+  settings' meanings (classic|remastered, size 25..100%, opacity 0..100, custom colour) instead of
+  an ImGui cross I invented. The classic model does not resolve in this port, so `remastered` is the
+  default. One deliberate difference: the cursor sits on its own 1.25 m plane in front of the
+  camera, because the game's reticle position is tens of metres away (its model is scaled to
+  compensate) and made the ported geometry several times too large.
+- The device layer (`59f2e4a00`): MP1's 1,209-line `port_input_devices.cpp` ported over the
+  reduced version, with the Aurora calls it needs (`PADGetRawState`, `PADGetDefaultMapping`,
+  `PAD_NATIVE_BUTTON_TRIGGER_*`) and MP1's `port_input_map.h` verbatim. The drops (save states,
+  photo, pointer menus, beam chords, turbo, gyro, the Original toggle, MorphedBall/Map contexts,
+  MP1's tick clock) are listed in the commit message with their reasons.
+- The settings file: MP1's `debug_ui/settings.cpp` mechanism (`SettingKey` table, `SettingsText`,
+  `SaveSettings` writing only when the text changed, and its `settings self-test`) and its
+  `port_env.h`, replacing my `AddBool`/`AddInt`/`Resolve` registry. In flight.
+
+Still to do the same way: the F1 window's search (`debug_ui/search.cpp`, which wants MP1's Aurora
+ImGui item hooks) and its `ui_common.cpp` `UpdateUiScale`, in place of the filter/section mechanism
+added earlier this session, and stage C (`port_input_remap_ui.cpp` + `port_controls.cpp` presets) in
+place of the 22-row Bindings bridge.
+
 **The input engine import reached pad 0.** `cc210f983` is stage A: MP1's `port_input_engine` and
 `port_input_bindings` with `port_strings.h` and both host tests, in `mp_platform`, nothing calling
 them. `431f82995` is stage B: `platform/input/port_input_devices.cpp` reads port 0's SDL gamepad
