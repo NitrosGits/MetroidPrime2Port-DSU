@@ -5,6 +5,9 @@
 #include "Kyoto/CDvdFile.hpp"
 
 #include "dolphin/os.h"
+#ifdef TARGET_PC
+#include "musyx/hardware.h"
+#endif
 
 #include <string.h>
 #ifdef TARGET_PC
@@ -13,11 +16,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 namespace {
 bool DebugAudio() {
   static const bool enabled = getenv("MP2_DEBUG_AUDIO") != nullptr;
   return enabled;
+}
+
+// When each stream's last refill was issued, to measure how long the DVD took to deliver it.
+double sRefillIssued[2];
+double NowMs() {
+  timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
 }
 
 // The .rsf header is disc data (big-endian); the sample data after it is ADPCM bytes, which MusyX
@@ -39,7 +51,19 @@ void SwapHeader(SRSFHeader& h) {
     }
   }
 }
+// The console's interrupts are threads on the host: the DVD completion runs on Aurora's worker, the
+// refill on MusyX's audio thread, the start/stop on the game's, and OSDisableInterrupts is a no-op,
+// so CInterruptGuard guarded nothing. A completion landing between ReadData's IssueRead and its
+// `mReadsPending += 2` would run UpdateARAM early (and again later), putting the halves' toggle out of
+// step so one half of the ring replays stale audio. Use MusyX's own (recursive) lock instead: the
+// audio thread already holds it around UpdateStream, so there is one lock and no lock order.
+class CStreamLockGuard {
+public:
+  CStreamLockGuard() { hwDisableIrq(); }
+  ~CStreamLockGuard() { hwEnableIrq(); }
+};
 } // namespace
+#define CInterruptGuard CStreamLockGuard
 #endif
 
 CDSPStreamManager sStreams[2];
@@ -181,6 +205,10 @@ void CDSPStreamManager::DVDCallback(s32 result, DVDFileInfo* fileInfo) {
   static volatile int sReadIdx = 0;
   static volatile int sWriteIdx = 0;
   static DVDFileInfo* volatile sQueue[8];
+#ifdef TARGET_PC
+  // On the console this runs as an interrupt, atomic against the game and the audio refill.
+  CInterruptGuard callbackGuard;
+#endif
 
   {
     CInterruptGuard guard;
@@ -228,6 +256,12 @@ void CDSPStreamManager::ReadCompleted(s32 result, DVDFileInfo* fileInfo) {
 
   CDSPStreamManager& stream = sStreams[i];
   --stream.mReadsPending;
+#ifdef TARGET_PC
+  if (DebugAudio() && stream.mReadsPending < 0) {
+    fprintf(stderr, "[audio] dsp read completed with pending=%d (a completion raced ReadData)\n",
+            stream.mReadsPending);
+  }
+#endif
   if (stream.mReadsPending > 0) {
     return;
   }
@@ -285,6 +319,14 @@ void CDSPStreamManager::ReadCompleted(s32 result, DVDFileInfo* fileInfo) {
 }
 
 void CDSPStreamManager::UpdateARAM() {
+#ifdef TARGET_PC
+  if (DebugAudio() && !mVoices.empty()) {
+    const int index = static_cast< int >(this - sStreams);
+    fprintf(stderr, "[audio] dsp aram stream=%d flush %s half, fileCur=0x%x, %.0f ms after issue\n",
+            index, sVoices[mVoices[0]].mUpperHalf ? "upper" : "lower", mFileCur,
+            NowMs() - sRefillIssued[index & 1]);
+  }
+#endif
   for (int* it = mVoices.begin(); it != mVoices.end(); ++it) {
     SDSPStreamVoice& voice = sVoices[*it];
     sndStreamARAMUpdate(voice.mStreamId, voice.mUpperHalf ? voice.mNumSamples / 2 : 0,
@@ -381,6 +423,16 @@ void CDSPStreamManager::BufferStream() {
     }
   }
 
+#ifdef TARGET_PC
+  if (DebugAudio()) {
+    fprintf(stderr,
+            "[audio] dsp refill stream=%d %s half: fileCur=0x%x read=0x%x loopLen=0x%x end=0x%x "
+            "loopStart=0x%x\n",
+            static_cast< int >(this - sStreams), sVoices[mVoices[0]].mUpperHalf ? "upper" : "lower",
+            mFileCur, readLen, loopLen, end, mHeader.mLoopStart);
+    sRefillIssued[(this - sStreams) & 1] = NowMs();
+  }
+#endif
   CInterruptGuard guard;
   sDeferCallbacks = true;
   if (readLen > 0) {

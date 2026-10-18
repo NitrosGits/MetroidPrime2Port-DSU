@@ -952,6 +952,20 @@ static int salAudioThreadFunc(void* data) {
         salStatsPeak = 0;
       }
     }
+    {
+      // MP_AUDIO_DUMP=<path>: append the mixed 32 kHz s16 stereo output, to check offline what
+      // was actually played.
+      static FILE* sDump = NULL;
+      static int sDumpOpened = 0;
+      if (!sDumpOpened) {
+        sDumpOpened = 1;
+        const char* path = getenv("MP_AUDIO_DUMP");
+        sDump = path != NULL ? fopen(path, "wb") : NULL;
+      }
+      if (sDump != NULL) {
+        fwrite(buf, 1, SAL_BUFFER_BYTES, sDump);
+      }
+    }
     if (salAudioStream) {
       if (SDL_GetAtomicInt(&salMuted)) {
         memset(buf, 0, SAL_BUFFER_BYTES);
