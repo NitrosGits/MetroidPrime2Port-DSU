@@ -985,6 +985,44 @@ void PADSetPortOverride(const u32 port, const PADStatus* status) {
   }
 }
 
+// Port addition.
+BOOL PADGetRawState(const u32 port, PADRawState* state) {
+  if (state == nullptr) {
+    return FALSE;
+  }
+  *state = {};
+  auto* controller = port < PAD_CHANMAX ? aurora::input::get_controller_for_player(port) : nullptr;
+  if (controller == nullptr || controller->m_controller == nullptr) {
+    return FALSE;
+  }
+  EnsureMappingLoaded(controller);
+  static_assert(SDL_GAMEPAD_BUTTON_COUNT <= PAD_RAW_BUTTON_TRIGGER_LEFT);
+  for (int b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; ++b) {
+    if (SDL_GetGamepadButton(controller->m_controller, static_cast<SDL_GamepadButton>(b))) {
+      state->buttons |= 1u << b;
+    }
+  }
+  for (int a = 0; a < PAD_RAW_AXIS_COUNT; ++a) {
+    state->axes[a] = SDL_GetGamepadAxis(controller->m_controller, static_cast<SDL_GamepadAxis>(a));
+  }
+  const Sint16 tl = state->axes[SDL_GAMEPAD_AXIS_LEFT_TRIGGER];
+  const Sint16 tr = state->axes[SDL_GAMEPAD_AXIS_RIGHT_TRIGGER];
+  // native_button_held's half pull, and PADRead's emulated trigger click.
+  if (tl >= 16384) {
+    state->buttons |= 1u << PAD_RAW_BUTTON_TRIGGER_LEFT;
+  }
+  if (tr >= 16384) {
+    state->buttons |= 1u << PAD_RAW_BUTTON_TRIGGER_RIGHT;
+  }
+  if (tl > controller->m_deadZones.leftTriggerActivationZone) {
+    state->buttons |= 1u << PAD_RAW_BUTTON_TRIGGER_LEFT_CLICK;
+  }
+  if (tr > controller->m_deadZones.rightTriggerActivationZone) {
+    state->buttons |= 1u << PAD_RAW_BUTTON_TRIGGER_RIGHT_CLICK;
+  }
+  return TRUE;
+}
+
 void PADClearVirtualStatus(const u32 port) {
   if (port >= PAD_CHANMAX) {
     return;
@@ -1703,6 +1741,27 @@ void PADSetDefaultMapping(const PADDefaultMapping* mapping, const PADControllerT
     break;
   }
   g_defaultAxes = toStdArray(mapping->axes);
+}
+
+// Port addition.
+void PADGetDefaultMapping(PADDefaultMapping* mapping, const PADControllerType type) {
+  const std::array<PADButtonMapping, PAD_BUTTON_COUNT>* buttons = &g_defaultButtonsStandard;
+  switch (type) {
+  case PAD_TYPE_XBOX360: buttons = &g_defaultButtonsXBox360; break;
+  case PAD_TYPE_XBOXONE: buttons = &g_defaultButtonsXBoxOne; break;
+  case PAD_TYPE_PS3: buttons = &g_defaultButtonsPS3; break;
+  case PAD_TYPE_PS4: buttons = &g_defaultButtonsPS4; break;
+  case PAD_TYPE_PS5: buttons = &g_defaultButtonsPS5; break;
+  case PAD_TYPE_SWITCH_PROCON: buttons = &g_defaultButtonsProCon; break;
+  case PAD_TYPE_JOYCON_LEFT: buttons = &g_defaultButtonsJoyConLeft; break;
+  case PAD_TYPE_JOYCON_RIGHT: buttons = &g_defaultButtonsJoyConRight; break;
+  case PAD_TYPE_JOYCON_PAIR: buttons = &g_defaultButtonsJoyPair; break;
+  case PAD_TYPE_GAMECUBE: buttons = &g_defaultButtonsGamecube; break;
+  case PAD_TYPE_NSO_GAMECUBE: buttons = &g_defaultButtonsNSOGamecube; break;
+  default: break;
+  }
+  std::copy(buttons->begin(), buttons->end(), mapping->buttons);
+  std::copy(g_defaultAxes.begin(), g_defaultAxes.end(), mapping->axes);
 }
 
 BOOL PADSetColor(const u32 port, const u8 red, const u8 green, const u8 blue) {

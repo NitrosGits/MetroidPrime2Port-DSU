@@ -88,6 +88,8 @@ extern "C" {
 #endif
 
 #define PAD_NATIVE_BUTTON_INVALID 0xFFFFFFFF
+#define PAD_NATIVE_BUTTON_TRIGGER_LEFT 0x1000
+#define PAD_NATIVE_BUTTON_TRIGGER_RIGHT 0x1001
 
 typedef struct PADStatus {
   u16 button;
@@ -229,6 +231,21 @@ void PADClearAllVirtualStatus();
  * next PADRead only (the virtual status still merges on top); nullptr clears it. */
 void PADSetPortOverride(u32 port, const PADStatus* status);
 
+/* The unmapped state of the port's controller: SDL gamepad buttons in bits
+ * 0..SDL_GAMEPAD_BUTTON_COUNT-1, the analog triggers as buttons in the bits
+ * below (half pulled, and past the emulated-click activation zone), and the
+ * SDL gamepad axes. Returns FALSE (and zeroes it) without a controller. */
+#define PAD_RAW_BUTTON_TRIGGER_LEFT 26
+#define PAD_RAW_BUTTON_TRIGGER_RIGHT 27
+#define PAD_RAW_BUTTON_TRIGGER_LEFT_CLICK 28
+#define PAD_RAW_BUTTON_TRIGGER_RIGHT_CLICK 29
+#define PAD_RAW_AXIS_COUNT 6
+typedef struct PADRawState {
+  u32 buttons;
+  s16 axes[PAD_RAW_AXIS_COUNT];
+} PADRawState;
+BOOL PADGetRawState(u32 port, PADRawState* state);
+
 /**
  * Set the default controller mapping used.
  *
@@ -252,6 +269,8 @@ typedef enum {
 } PADControllerType;
 
 void PADSetDefaultMapping(const PADDefaultMapping* mapping, PADControllerType type);
+/* The default mapping a newly connected controller of that type starts with. */
+void PADGetDefaultMapping(PADDefaultMapping* mapping, PADControllerType type);
 
 BOOL PADSetColor(u32 port, u8 red, u8 green, u8 blue);
 BOOL PADGetColor(u32 port, u8* red, u8* green, u8* blue);
