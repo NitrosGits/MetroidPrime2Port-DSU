@@ -120,6 +120,15 @@ public:
   CVector3f GetRainSplashPosition() const;
   const CTransform4f& GetGunWorldTransform() const { return mGunWorldXf; }
   const CTransform4f& GetBeamLocalTransform() const { return mBeamLocalXf; }
+#ifdef TARGET_PC
+  // Port: pointer aim's hit point (MP1's PortSetPointerAimPoint), set by
+  // CPlayer::UpdateGunTransform every tick: while valid, a shot heads from its own start to it.
+  void PortSetPointerAimPoint(bool valid, const CVector3f& point) {
+    mPortPointerAimValid = valid;
+    mPortPointerAimPoint = point;
+  }
+  void PortAimShotAtPointer(CTransform4f& xf) const;
+#endif
   int GetBombsAvailable(CStateManager& mgr) const;
   TUniqueId DropPowerBomb(CStateManager& mgr) const;
   void DropBomb(EBWeapon type, CStateManager& mgr);
@@ -355,6 +364,8 @@ private:
   bool mPortRapidCharge;
   int mPortRapidShots;
   float mPortRapidTimer;
+  bool mPortPointerAimValid;
+  CVector3f mPortPointerAimPoint;
 #endif
 };
 NESTED_CHECK_SIZEOF(CPlayerGun, CGunMorph, 0x28)

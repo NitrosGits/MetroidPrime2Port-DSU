@@ -209,6 +209,9 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
       const CVector3f position = xf.GetTranslation();
       xf = mAssistAimXf;
       xf.SetTranslation(position);
+#ifdef TARGET_PC
+      PortAimShotAtPointer(xf);
+#endif
     }
     xf.AddTranslation(player->GetCameraManager()->GetGlobalCameraTranslation(mgr, true));
     switch (mCurrentBeamId) {
@@ -266,6 +269,22 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
   }
 }
 #ifdef TARGET_PC
+// Pointer aim (MP1's mPortPointerAimPoint in CPlayerGun::PortShotFromDrawnMuzzle): the assist
+// transform is aimed from the gun's origin, and the muzzle sits off it, so a shot along it would
+// pass beside the pointed point by that offset. Aim it from its own start instead.
+void CPlayerGun::PortAimShotAtPointer(CTransform4f& xf) const {
+  if (!mPortPointerAimValid) {
+    return;
+  }
+  const CVector3f position = xf.GetTranslation();
+  const CVector3f toAim = mPortPointerAimPoint - position;
+  if (!toAim.CanBeNormalized()) {
+    return;
+  }
+  xf = CTransform4f::LookAt(CVector3f::Zero(), toAim);
+  xf.SetTranslation(position);
+}
+
 void CPlayerGun::PortStartRapidCharge() {
   mPortRapidCharge = PortOverlay::RapidCharge() && PortRapidChargeFor(mCurrentBeamId) != nullptr;
   mPortRapidShots = 0;
@@ -2311,6 +2330,9 @@ void CPlayerGun::FireSecondary(float dt, CStateManager& mgr, TUniqueId target, u
     const CVector3f position = xf.GetTranslation();
     xf = mAssistAimXf;
     xf.SetTranslation(position);
+#ifdef TARGET_PC
+    PortAimShotAtPointer(xf);
+#endif
   }
   xf.AddTranslation(GetPlayer(mgr)->GetCameraManager()->GetGlobalCameraTranslation(mgr, true));
   if (transform != nullptr) {
@@ -3231,6 +3253,8 @@ CPlayerGun::CPlayerGun(TUniqueId playerId, int characterIndex)
 , mPortRapidCharge(false)
 , mPortRapidShots(0)
 , mPortRapidTimer(0.f)
+, mPortPointerAimValid(false)
+, mPortPointerAimPoint(CVector3f::Zero())
 {
 #else
 , mBeamLoadRequested(false) {

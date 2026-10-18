@@ -479,6 +479,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
       "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"
+      "pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)\n"
       "save [info] [<file>]        the card's save slots, or one .gci on disk: world, items, time\n"
       "save export [<path>]        write the card's save file out (default: save-backups/)\n"
       "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"
@@ -854,6 +855,28 @@ void CmdSticky(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::StickyCharge() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetStickyCharge(enabled);
   out += enabled ? "sticky charge on\n" : "sticky charge off\n";
+}
+
+// pointeraim [on|off|<x> <y>]: MP1's console command. on/off is the F1 Controls row
+// (`MP2_POINTER_AIM`); x, y place the pointer (-1..1 of the half view, x right, y down), which
+// holds only while pointer aim is free. Every form prints the state it ends in.
+void CmdPointerAim(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() == 2 && (args[1] == "on" || args[1] == "off")) {
+    PortOverlay::SetPointerAim(args[1] == "on");
+  } else if (args.size() == 3) {
+    PortMouse::SetPointerAimPosition(static_cast< float >(std::atof(std::string(args[1]).c_str())),
+                                     static_cast< float >(std::atof(std::string(args[2]).c_str())));
+  } else if (args.size() != 1) {
+    Fail("pointeraim [on|off|<x> <y>]   x, y in -1..1 of the half view");
+    return;
+  }
+  float x = 0.f;
+  float y = 0.f;
+  const bool free = PortMouse::PointerAimPosition(x, y);
+  char line[96];
+  std::snprintf(line, sizeof(line), "pointeraim %s %s x=%.3f y=%.3f\n",
+                PortOverlay::PointerAim() ? "on" : "off", free ? "free" : "centred", x, y);
+  out += line;
 }
 
 // cardbackup [0|1]: the F1 Saves row (`MP2_CARD_BACKUP`) - copy the card's save file into
@@ -1651,6 +1674,7 @@ constexpr SCommand kCommands[] = {
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
+    {"pointeraim", CmdPointerAim, true},
     {"cardbackup", CmdCardBackup, true},
     {"logfile", CmdLogFile, true},
     {"settings", CmdSettings, true},

@@ -407,6 +407,11 @@ bool PointerAimPosition(float& x, float& y) {
   return sPointerFree;
 }
 
+void SetPointerAimPosition(float x, float y) {
+  sPointer.Center();
+  sPointer.Move(x, y);
+}
+
 void Synchronize(float x, float y, float z) {
   if (Enabled()) {
     sAim.Synchronize(x, y, z);

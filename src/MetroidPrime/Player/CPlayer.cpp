@@ -983,6 +983,7 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
   // re-centres the pointer and aims as usual).
   float pointerX = 0.f;
   float pointerY = 0.f;
+  mGun->PortSetPointerAimPoint(false, CVector3f::Zero());
   if (mGun->GetGunHolsterState() == CPlayerGunBase::kGHS_Drawn &&
       PortMouse::PointerAimPosition(pointerX, pointerY) && (pointerX != 0.f || pointerY != 0.f) &&
       MouseAimAllowed(mgr)) {
@@ -1012,6 +1013,8 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
         distance = CMath::Max((hit.GetPoint() - eye).Magnitude(), kMinAimDistance);
       }
     }
+    // Shots head from their own start to the pointed point (CPlayerGun::PortAimShotAtPointer).
+    mGun->PortSetPointerAimPoint(true, eye + rayDir * distance);
     CVector3f toAim = eye + rayDir * distance - gunPosition;
     if (!toAim.CanBeNormalized()) {
       toAim = rayDir;

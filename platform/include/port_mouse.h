@@ -245,6 +245,9 @@ bool PointerAimEnabled();
 // The pointer (x right, y down, -1..1) and whether it is free this tick: pointer aim is on and
 // the last UpdateAim applied it. Outside that the pointer is centred and the aim is retail's.
 bool PointerAimPosition(float& x, float& y);
+// The console's `pointeraim <x> <y>` (MP1's PortDebug::SetPointerAimPosition): moves the pointer
+// there from the centre, clamped to -1..1. A tick that does not leave it free re-centres it.
+void SetPointerAimPosition(float x, float y);
 void Synchronize(float x, float y, float z);
 void Reset();
 bool Aiming();

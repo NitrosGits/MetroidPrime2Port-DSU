@@ -17,7 +17,9 @@ appended, dated as in the heading there.
   Mouse, twin-stick or touch aim must be on. `PortMouse::UpdateAim` steps the pointer; the gun and
   shots aim at the ray's hit (`CPlayer::UpdateGunTransform`, TARGET_PC block); the Remastered cursor
   sits at the pointer. Build-verified only: not run in game. Not ported: inter-tick smoothing,
-  gyro driving the pointer, `PortSetPointerAimPoint` shot repositioning, a console command.
+  gyro driving the pointer. Also: console `pointeraim [on|off|<x> <y>]`; shots fly to the pointer's
+  hit point (`CPlayerGun::PortAimShotAtPointer`, `CPlayer::UpdateGunTransform` TARGET_PC). Inter-tick
+  smoothing does not apply: MP2 has no frame interpolation, so the presented pointer is the ticked one.
 
 ## 2026-10-18, eighteenth session: remastered charge (Power Beam only)
 
