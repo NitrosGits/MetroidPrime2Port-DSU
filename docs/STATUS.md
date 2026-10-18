@@ -56,10 +56,17 @@ its files, in this order:
   `SaveSettings` writing only when the text changed, and its `settings self-test`) and its
   `port_env.h`, replacing my `AddBool`/`AddInt`/`Resolve` registry. In flight.
 
-Still to do the same way: the F1 window's search (`debug_ui/search.cpp`, which wants MP1's Aurora
-ImGui item hooks) and its `ui_common.cpp` `UpdateUiScale`, in place of the filter/section mechanism
-added earlier this session, and stage C (`port_input_remap_ui.cpp` + `port_controls.cpp` presets) in
-place of the 22-row Bindings bridge.
+- The F1 window (`f21e742a9`): MP1's `debug_ui/search.cpp` ported into
+  `platform/port_overlay_search.cpp` with its settings index (`port_settings_index.inc`), plus the
+  Aurora ImGui item hooks it needs (`extern/aurora/extern/imgui_item_hook.cpp`), and MP1's
+  `UpdateUiScale`/`ApplyThemeIfChanged` in `platform/port_ui_common.cpp`. The filter/section
+  mechanism and the console's `filter` are gone. Verified on the desktop (the window's page tabs and
+  "Search settings (Ctrl+F)" field, `morph` listing Fast morph and Spring Ball with their page
+  paths, a click jumping to Gameplay with the row shown, `uiscale 150` growing the window); the
+  phone's page window with the search still needs one run with the phone free.
+
+Still to do the same way: stage C (`port_input_remap_ui.cpp` + `port_controls.cpp` presets) in place
+of the 22-row Bindings bridge in `platform/port_binds.cpp`.
 
 **The input engine import reached pad 0.** `cc210f983` is stage A: MP1's `port_input_engine` and
 `port_input_bindings` with `port_strings.h` and both host tests, in `mp_platform`, nothing calling
