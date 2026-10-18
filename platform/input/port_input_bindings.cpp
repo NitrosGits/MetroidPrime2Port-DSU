@@ -744,7 +744,7 @@ bool ParseUserBindings(std::string_view text, UserBindings& out, std::string* er
 }
 
 std::string SerializeUserBindings(const UserBindings& bindings) {
-  std::string s = "# Metroid Prime Port controls (F1 > Controls > Remap). See docs/NATIVE_PORT.md.\n";
+  std::string s = "# Metroid Prime 2 port controls (F1 > Controls > Remap, or `bind`/`binds` on the console).\n";
   const Binding def;
   for (const UserProfile& p : bindings.profiles) {
     s += "\n[[profile]]\n";

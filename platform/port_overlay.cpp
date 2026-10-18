@@ -356,7 +356,7 @@ void DrawBindingsSection() {
   ImGui::SeparatorText("Bindings");
   // The Prime 1 port's remap page: one row per input with its key, a click-to-arm capture, a
   // per-row reset and a conflict marker. It captures on its own (SDL scancodes) and writes
-  // keybinds.cfg through PortBinds, so the console's bind/binds stay in step.
+  // controls.toml through PortBinds, so the console's bind/binds stay in step.
   PortRemapUi::Draw();
   PortUi::Help("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
   return;

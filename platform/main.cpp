@@ -61,6 +61,7 @@ extern void* gPortGameHeapHi;
 #include "Kyoto/Basics/COsContext.hpp"
 #include "Kyoto/Graphics/CGraphicsSys.hpp"
 #include "compiled_modules.h"
+#include "input/port_input_devices.h"
 #include "port_binds.h"
 #include "port_settings.h"
 #include "port_build_info.h"
@@ -722,6 +723,7 @@ int main(int argc, char** argv) {
   // The keyboard bindings (platform/port_binds.cpp) are saved beside touch.cfg, in the same
   // directory. The file is read on the game thread's first frame rather than here, because its
   // key names come from SDL, which is only up after Aurora is.
+  PortInputDevices::Initialize(touchUser != nullptr ? touchUser : std::string());
   PortBinds::Initialize(touchUser != nullptr ? touchUser : std::string());
 
   // settings.cfg (platform/port_settings.cpp), in the same directory: read here, applied as the F1
@@ -733,7 +735,7 @@ int main(int argc, char** argv) {
   // Aurora's own startup lines and anything that aborts during it land in the file too.
   PortLogFile::Start(touchUser != nullptr ? touchUser : std::string());
 
-  // The save tools (platform/port_save.cpp) keep their backups beside keybinds.cfg; the card's own
+  // The save tools (platform/port_save.cpp) keep their backups beside controls.toml; the card's own
   // path comes from Aurora when a command needs it.
   PortSave::Initialize(touchUser != nullptr ? touchUser : std::string());
 

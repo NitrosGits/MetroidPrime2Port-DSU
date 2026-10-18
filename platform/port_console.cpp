@@ -496,7 +496,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "bind <action> <key>         rebind a pad input (a key name, MOUSE_LEFT..., or none);\n"
       "                            `bind reset` restores the port's layout\n"
-      "binds                       every pad input's key, and the keybinds.cfg it is saved in\n"
+      "binds                       every pad input's key, and the controls.toml it is saved in\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
       "help                        this list\n";
 }
@@ -1468,7 +1468,7 @@ void CmdSave(CStateManager&, const Args& args, std::string& out) {
 // binds: every pad input's key, as `bind` takes it, and the file the map is saved in.
 void CmdBinds(CStateManager&, const Args&, std::string& out) {
   const char* path = PortBinds::Path();
-  out += "keybinds.cfg: ";
+  out += "controls.toml: ";
   out += *path != '\0' ? path : "(no user directory: nothing is saved)";
   out += '\n';
   char line[96];

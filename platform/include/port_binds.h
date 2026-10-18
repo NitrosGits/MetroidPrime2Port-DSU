@@ -1,19 +1,15 @@
 #pragma once
 
-// Keyboard bindings. Aurora's pad keyboard map (`g_defaultKeys`) is empty, so the port installs a
-// layout of its own (`port_events.cpp`'s InstallDefaultKeyBindings did, before this module
-// existed); this is that layout as data, so it can be edited - the F1 window's Bindings table and
-// the console's `bind`/`binds` - and stored in `keybinds.cfg` under MP2_USER_PATH, the directory
-// the port owns beside the memory card (the same place touch.cfg lives).
+// Keyboard bindings: the 22 pad inputs a key drives, as the F1 window's Bindings table and the
+// console's `bind`/`binds` show and edit them. The storage is the input engine's: a row reads the
+// first key (or mouse button) bound to its engine action in the base keyboard profile overlaid with
+// controls.toml's default profile, and an edit writes that profile's keyboard bindings back to
+// `<user>/controls.toml` (platform/input/port_input_devices.cpp, which drives pad 0 from them).
+// `keybinds.cfg`, this module's old file, is no longer read or written.
 //
-// A row is one pad input a key drives: a GameCube button, or one direction/trigger of a stick. A
-// key may drive more than one input (the port's own layout puts Q on L and on the analog L trigger,
-// so a trigger reaches the game as held rather than tapped); nothing here forbids a key on two
-// rows.
-//
-// The map is pad 0's, and it replaces Aurora's own keyboard file rather than reading it: Aurora's
-// keyboard_bindings.dat is binary and has no names, so the port never writes it - this file is the
-// port's keyboard settings.
+// A row is one pad input: a GameCube button, or one direction/trigger of a stick. A key may drive
+// more than one input (the port's own layout puts Q on L and on the analog L trigger, so a trigger
+// reaches the game as held rather than tapped); nothing here forbids a key on two rows.
 
 #include <dolphin/pad.h>
 
@@ -40,13 +36,8 @@ const SInput& Input(int row);
 // The row an action names, in any case, or -1.
 int Find(std::string_view action);
 
-// The user directory, from main: `keybinds.cfg` goes there. Called before Aurora is up, so the file
-// is read on the game thread's first Install rather than here.
+// Kept for callers; the user directory is PortInputDevices::Initialize's now, and both do nothing.
 void Initialize(const std::string& userDirectory);
-
-// Applies the saved map to pad 0, reading the file the first time; once per process, cheap after
-// that. The keyboard map is empty until this runs, which is why pad 0 reported
-// PAD_ERR_NO_CONTROLLER on a machine with no gamepad.
 void Install();
 
 // The key bound to a row (PAD_KEY_INVALID when unbound), and its name as the file spells it.
@@ -59,12 +50,12 @@ bool ParseKey(std::string_view name, int& scancode);
 // hotkey fire whenever the key is pressed.
 bool IsPortHotkey(int scancode);
 
-// Binds a row, applies it to the pad and writes the file. False only when the row is out of range
+// Binds a row and writes controls.toml; the engine picks it up on its next poll. False only when the row is out of range
 // or the file could not be written; a failed write leaves the binding in force for the session.
 bool Set(int row, int scancode);
 // The port's own layout, applied and written.
 void Reset();
-// `keybinds.cfg`'s path, or "" when the run has no user directory (nothing is saved then).
+// controls.toml's path, or "" when the run has no user directory (nothing is saved then).
 const char* Path();
 
 // The F1 editor's capture: arms a row and the next key the event pump sees is bound to it; Escape

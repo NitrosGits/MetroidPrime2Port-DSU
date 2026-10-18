@@ -1,18 +1,20 @@
-// Keyboard bindings: the port's own table, `keybinds.cfg`, and applying it to Aurora's pad.
+// Keyboard bindings: the port's 22 pad-input rows, stored as the input engine's keyboard bindings
+// in controls.toml (platform/input/port_input_devices.cpp, which also drives pad 0 from them).
 
 #include "port_binds.h"
+
+#include "input/port_input_devices.h"
 
 #include <SDL3/SDL.h>
 #include <dolphin/pad.h>
 
 #include <cstdio>
-#include <fstream>
 #include <string>
 
 namespace PortBinds {
 namespace {
 
-// The port's layout (MetroidPrimePort's `port_controls.cpp`): WASD moves, IJKL is the C-stick
+// The port's layout (MetroidPrimePort's `port_controls.cpp`, and the engine's base keyboard profile): WASD moves, IJKL is the C-stick
 // (which aims and switches the visor in Echoes), X/Z/C/V are A/B/X/Y, Q/E are L/R and the analog
 // triggers, F is Z, Enter is Start and the arrows are the D-pad. One row type covers both kinds:
 // `padAxis` means nothing on a button row and `button` nothing on a stick row, so the table fills
@@ -47,14 +49,19 @@ const SInput kRows[] = {
 
 constexpr int kRowCount = static_cast< int >(sizeof(kRows) / sizeof(kRows[0]));
 
-// The file the map is saved in, under MP2_USER_PATH beside the memory card and touch.cfg.
-constexpr const char* kFileName = "keybinds.cfg";
+// The engine action each row edits, in kRows' order.
+const PortInput::Action kActions[] = {
+    PortInput::Action::PadA,      PortInput::Action::PadB,      PortInput::Action::PadX,
+    PortInput::Action::PadY,      PortInput::Action::PadStart,  PortInput::Action::PadZ,
+    PortInput::Action::PadL,      PortInput::Action::PadR,      PortInput::Action::PadUp,
+    PortInput::Action::PadDown,   PortInput::Action::PadLeft,   PortInput::Action::PadRight,
+    PortInput::Action::MainUp,    PortInput::Action::MainDown,  PortInput::Action::MainLeft,
+    PortInput::Action::MainRight, PortInput::Action::CUp,       PortInput::Action::CDown,
+    PortInput::Action::CLeft,     PortInput::Action::CRight,    PortInput::Action::LAnalog,
+    PortInput::Action::RAnalog,
+};
+static_assert(sizeof(kActions) / sizeof(kActions[0]) == kRowCount, "one action per row");
 
-constexpr int kPort = 0;
-
-bool sLoaded = false;
-bool sInstalled = false;
-int sScancodes[kRowCount];
 std::string sPath;
 int sCapturing = -1;
 
@@ -91,134 +98,53 @@ std::string_view Trim(std::string_view text) {
   return text.substr(first, last - first);
 }
 
-void ResetToDefaults() {
-  for (int i = 0; i < kRowCount; ++i) {
-    sScancodes[i] = kRows[i].defaultScancode;
+// A row's input as a PAD_KEY_* value (scancode, or PAD_KEY_MOUSE_*), and back.
+int ToScancode(const PortInput::Input& in) {
+  if (in.device == PortInput::Device::Key) {
+    return in.code;
   }
+  if (in.device == PortInput::Device::MouseButton && in.code <= 4) {
+    return PAD_KEY_MOUSE_LEFT - in.code;
+  }
+  return PAD_KEY_INVALID;
 }
 
-// Reads keybinds.cfg: `action=key` lines, `#` comments, anything else ignored with a line each. A
-// file that is missing leaves the port's layout in place, so deleting it is how a fresh start is
-// asked for; a line that names no row or no key is skipped rather than ending the load.
-void Load() {
-  if (sLoaded) {
-    return;
+PortInput::Input FromScancode(int scancode) {
+  PortInput::Input in;
+  if (scancode >= 0) {
+    in.device = PortInput::Device::Key;
+    in.code = static_cast< uint16_t >(scancode);
+  } else if (scancode <= PAD_KEY_MOUSE_LEFT && scancode >= PAD_KEY_MOUSE_X2) {
+    in.device = PortInput::Device::MouseButton;
+    in.code = static_cast< uint16_t >(PAD_KEY_MOUSE_LEFT - scancode);
   }
-  sLoaded = true;
-  ResetToDefaults();
-  if (sPath.empty()) {
-    std::fprintf(stderr, "[binds] no user directory; the port's keyboard layout, not saved\n");
-    return;
-  }
-  std::ifstream file(sPath);
-  if (!file) {
-    std::fprintf(stderr, "[binds] %s does not exist; the port's keyboard layout\n", sPath.c_str());
-    return;
-  }
-  int applied = 0;
-  int ignored = 0;
-  std::string line;
-  bool firstLine = true;
-  while (std::getline(file, line)) {
-    std::string_view entry = Trim(line);
-    // A hand-edited file saved by an editor that writes a UTF-8 BOM would otherwise fail on the
-    // first row only, which reads as "one binding silently forgotten".
-    if (firstLine) {
-      firstLine = false;
-      if (entry.starts_with("\xEF\xBB\xBF")) {
-        entry.remove_prefix(3);
-        entry = Trim(entry);
-      }
-    }
-    if (entry.empty() || entry[0] == '#') {
-      continue;
-    }
-    const size_t equals = entry.find('=');
-    if (equals == std::string_view::npos) {
-      ++ignored;
-      if (ignored <= 8) {
-        std::fprintf(stderr, "[binds] ignoring '%.*s': no '=' in it\n",
-                     static_cast< int >(entry.size()), entry.data());
-      }
-      continue;
-    }
-    const std::string_view action = Trim(entry.substr(0, equals));
-    const std::string_view key = Trim(entry.substr(equals + 1));
-    const int row = Find(action);
-    int scancode = PAD_KEY_INVALID;
-    if (row < 0 || !ParseKey(key, scancode)) {
-      ++ignored;
-      if (ignored <= 8) {
-        std::fprintf(stderr, "[binds] ignoring '%.*s': %s\n", static_cast< int >(entry.size()),
-                     entry.data(), row < 0 ? "no such pad input" : "no such key");
-      }
-      continue;
-    }
-    sScancodes[row] = scancode;
-    ++applied;
-  }
-  std::fprintf(stderr, "[binds] %s: %d bindings%s\n", sPath.c_str(), applied,
-               ignored != 0 ? " (some lines ignored, see above)" : "");
+  return in;
 }
 
-// Pushes the whole table into Aurora's pad keyboard map. It is 22 tiny calls, so a change reapplies
-// everything rather than tracking which row moved.
-void Apply() {
-  PADKeyButtonBinding buttons[PAD_BUTTON_COUNT] = {};
-  PADKeyAxisBinding axes[PAD_AXIS_COUNT] = {};
-  int buttonRows = 0;
-  int axisRows = 0;
-  for (int i = 0; i < kRowCount; ++i) {
-    const SInput& row = kRows[i];
-    if (row.axis) {
-      if (axisRows < PAD_AXIS_COUNT) {
-        axes[axisRows++] = PADKeyAxisBinding{sScancodes[i], row.padAxis, 1};
-      }
-    } else if (buttonRows < PAD_BUTTON_COUNT) {
-      buttons[buttonRows++] = PADKeyButtonBinding{sScancodes[i], row.button};
-    }
-  }
-  // The table covers every pad button and every axis, which is what these two arrays are sized for;
-  // a row added without its pad input would land here as a rejected map rather than silently.
-  if (!PADSetKeyButtonBindings(kPort, buttons) || !PADSetKeyAxisBindings(kPort, axes)) {
-    std::fprintf(stderr, "[binds] the pad rejected the map (a row names no pad input)\n");
-  }
-  PADSetKeyboardActive(kPort, TRUE);
+// The binding a row shows: the first single-input key or mouse-button binding of its action.
+bool IsRowBinding(const PortInput::Binding& b, PortInput::Action action) {
+  return b.action == action && b.count == 1 && ToScancode(b.inputs[0]) != PAD_KEY_INVALID;
 }
 
-// Writes `<path>.tmp` and renames it over the file: a write that dies part way must not leave a
-// truncated keybinds.cfg for the next launch to read as a half-layout.
-bool Save() {
-  if (sPath.empty()) {
-    return false;
-  }
-  const std::string temporary = sPath + ".tmp";
-  {
-    std::ofstream file(temporary, std::ios::trunc);
-    if (!file) {
-      std::fprintf(stderr, "[binds] cannot write %s\n", temporary.c_str());
-      return false;
-    }
-    file << "# Metroid Prime 2 port keyboard bindings.\n"
-            "# One pad input per line: <action>=<key>, or none. Actions are what `binds` prints;\n"
-            "# keys are SDL scancode names (any case), or MOUSE_LEFT/MIDDLE/RIGHT/X1/X2.\n"
-            "# Edited by the F1 window and by the console's `bind`; `bind reset` rewrites this.\n";
-    for (int i = 0; i < kRowCount; ++i) {
-      file << kRows[i].action << '=' << KeyName(sScancodes[i]) << '\n';
-    }
-    file.flush();
-    if (!file) {
-      std::fprintf(stderr, "[binds] cannot write %s\n", temporary.c_str());
-      std::remove(temporary.c_str());
-      return false;
+const PortInput::UserProfile* FindDefault(const PortInput::UserBindings& user) {
+  for (const PortInput::UserProfile& profile : user.profiles) {
+    if (profile.match.empty()) {
+      return &profile;
     }
   }
-  if (std::rename(temporary.c_str(), sPath.c_str()) != 0) {
-    std::fprintf(stderr, "[binds] cannot replace %s\n", sPath.c_str());
-    std::remove(temporary.c_str());
-    return false;
+  return nullptr;
+}
+
+PortInput::UserProfile& GetDefault(PortInput::UserBindings& user) {
+  for (PortInput::UserProfile& profile : user.profiles) {
+    if (profile.match.empty()) {
+      return profile;
+    }
   }
-  return true;
+  PortInput::UserProfile profile;
+  profile.name = "Default";
+  user.profiles.insert(user.profiles.begin(), profile);
+  return user.profiles.front();
 }
 
 } // namespace
@@ -237,25 +163,26 @@ int Find(std::string_view action) {
   return -1;
 }
 
-void Initialize(const std::string& userDirectory) {
-  if (userDirectory.empty()) {
-    return;
-  }
-  sPath = userDirectory + "/" + kFileName;
-}
+void Initialize(const std::string&) {}
 
-void Install() {
-  Load();
-  if (sInstalled) {
-    return;
-  }
-  sInstalled = true;
-  Apply();
-}
+// The engine reads the keyboard itself now; nothing goes into Aurora's keyboard map.
+void Install() {}
 
 int Scancode(int row) {
-  Load();
-  return row >= 0 && row < kRowCount ? sScancodes[row] : PAD_KEY_INVALID;
+  if (row < 0 || row >= kRowCount) {
+    return PAD_KEY_INVALID;
+  }
+  PortInput::Profile effective = PortInputDevices::BaseKeyboardProfile();
+  const auto user = PortInputDevices::UserBindings();
+  if (const PortInput::UserProfile* profile = FindDefault(*user)) {
+    PortInput::Overlay(effective, *profile);
+  }
+  for (const PortInput::Binding& b : effective.bindings) {
+    if (IsRowBinding(b, kActions[row])) {
+      return ToScancode(b.inputs[0]);
+    }
+  }
+  return PAD_KEY_INVALID;
 }
 
 const char* KeyName(int scancode) {
@@ -336,14 +263,48 @@ bool IsPortHotkey(int scancode) {
   }
 }
 
+// Edits the default user profile's keyboard bindings of the row's action: the binding the row shows
+// becomes the new key (other bindings of the action, like A's mouse button, stay), and "none"
+// removes it.
 bool Set(int row, int scancode) {
-  Load();
   if (row < 0 || row >= kRowCount) {
     return false;
   }
-  sScancodes[row] = scancode;
-  Apply();
-  const bool saved = Save();
+  const PortInput::Action action = kActions[row];
+  const int shown = Scancode(row);
+  PortInput::UserBindings user = *PortInputDevices::UserBindings();
+  PortInput::UserProfile& profile = GetDefault(user);
+  PortInput::Materialize(profile, action, PortInput::Family::Keyboard,
+                         PortInputDevices::BaseKeyboardProfile());
+  size_t shownIndex = profile.bindings.size();
+  bool present = false;
+  for (size_t i = 0; i < profile.bindings.size(); ++i) {
+    const PortInput::Binding& b = profile.bindings[i];
+    if (!IsRowBinding(b, action)) {
+      continue;
+    }
+    if (shownIndex == profile.bindings.size() && ToScancode(b.inputs[0]) == shown) {
+      shownIndex = i;
+    }
+    if (ToScancode(b.inputs[0]) == scancode) {
+      present = true;
+    }
+  }
+  const PortInput::Input input = FromScancode(scancode);
+  if (!input.Valid() || present) {
+    if (shownIndex < profile.bindings.size() && shown != scancode) {
+      PortInput::RemoveUserBinding(profile, shownIndex);
+    }
+  } else if (shownIndex < profile.bindings.size()) {
+    profile.bindings[shownIndex].inputs[0] = input;
+  } else {
+    PortInput::Binding b;
+    b.action = action;
+    b.inputs[0] = input;
+    b.count = 1;
+    PortInput::AddUserBinding(profile, b);
+  }
+  const bool saved = PortInputDevices::SetUserBindings(user);
   std::fprintf(stderr, "[binds] %s = %s%s%s\n", kRows[row].action, KeyName(scancode),
                IsPortHotkey(scancode) ? " (a port hotkey: it fires whenever the key is pressed)"
                                       : "",
@@ -352,17 +313,18 @@ bool Set(int row, int scancode) {
 }
 
 void Reset() {
-  Load();
-  ResetToDefaults();
-  Apply();
-  const bool saved = Save();
+  PortInput::UserBindings user = *PortInputDevices::UserBindings();
+  PortInput::ClearFamily(GetDefault(user), PortInput::Family::Keyboard);
+  const bool saved = PortInputDevices::SetUserBindings(user);
   std::fprintf(stderr, "[binds] the port's keyboard layout%s\n", saved ? "" : " (not saved)");
 }
 
-const char* Path() { return sPath.c_str(); }
+const char* Path() {
+  sPath = PortInputDevices::UserBindingsPath();
+  return sPath.c_str();
+}
 
 void BeginCapture(int row) {
-  Load();
   sCapturing = row >= 0 && row < kRowCount ? row : -1;
 }
 

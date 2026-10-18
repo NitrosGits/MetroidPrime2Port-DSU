@@ -6,6 +6,7 @@
 #include <aurora/event.h>
 #include <dolphin/pad.h>
 
+#include "input/port_input_devices.h"
 #include "port_binds.h"
 #include "port_harness.h"
 #include "port_input.h"
@@ -45,19 +46,6 @@ bool NameIs(const char* name, const char* p, const char* at) {
 
 // The button names are shared with the console's `press` (port_input.h).
 using PortInput::kButtonNames;
-
-// Keyboard bindings, so the port is playable without a gamepad. Aurora's own
-// defaults are empty (`g_defaultKeys` is all PAD_KEY_INVALID) and nothing else in
-// the port installs a map, so pad 0 reports PAD_ERR_NO_CONTROLLER on a machine
-// with no pad and the game gets no input at all. The layout is the Prime port's
-// (`MetroidPrimePort/platform/port_controls.cpp`): WASD moves, IJKL is the C-stick
-// (which aims and switches the visor in Echoes), the rest mirrors the pad. It is a
-// table in `port_binds.cpp` now, which is also what the F1 window edits, `bind`
-// changes and keybinds.cfg stores; this installs it once, or loads a saved one.
-//
-// Keyboard state merges into the real controller's and into MP2_INPUT's virtual
-// pad rather than replacing either, so this only adds input.
-void InstallDefaultKeyBindings() { PortBinds::Install(); }
 
 // One token of the MP2_INPUT script, "NAME@frame[+frames]". Parsed once, because a token fires once:
 // `fired` is what makes a token whose frame has already gone by fire at the first frame the script
@@ -300,7 +288,6 @@ void Clear() {
 
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
 bool PortPumpEvents() {
-  InstallDefaultKeyBindings();
   PortWarp::ApplyEnvOnce();
   // A run that has reached its MP2_FRAMES limit leaves through the same door the window's close
   // button opens: the game loop ends, Aurora shuts down and the process exits 0. The check is here
@@ -372,5 +359,10 @@ bool PortPumpEvents() {
       }
     }
   }
+  // Pad 0 is the input engine's (keyboard, mouse buttons and the controller through controls.toml),
+  // read once per iteration, before the game's PADRead; Aurora still merges the console's and
+  // MP2_INPUT's virtual pad on top of it.
+  PADStatus pad0 = PortInputDevices::Poll();
+  PADSetPortOverride(0, &pad0);
   return false;
 }

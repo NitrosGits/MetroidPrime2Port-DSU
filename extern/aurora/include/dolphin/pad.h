@@ -225,6 +225,9 @@ void PADBlockInput(bool block);
 void PADSetVirtualStatus(u32 port, const PADStatus* status);
 void PADClearVirtualStatus(u32 port);
 void PADClearAllVirtualStatus();
+/* Port addition to the vendored Aurora: replace port's controller + keyboard read with status on the
+ * next PADRead only (the virtual status still merges on top); nullptr clears it. */
+void PADSetPortOverride(u32 port, const PADStatus* status);
 
 /**
  * Set the default controller mapping used.

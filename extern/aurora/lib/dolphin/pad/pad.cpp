@@ -35,6 +35,10 @@ std::array<PADButtonMapping, PAD_BUTTON_COUNT> g_defaultButtonsStandard{{
 
 std::array<PADStatus, PAD_CHANMAX> g_virtualPadStatus{};
 std::array<bool, PAD_CHANMAX> g_virtualPadActive{};
+// Port addition to the vendored Aurora (MetroidPrime2Port, after the Prime 1 port's): a one-shot
+// status that replaces the controller + keyboard merge for a port on the next PADRead.
+std::array<PADStatus, PAD_CHANMAX> g_portOverride{};
+std::array<bool, PAD_CHANMAX> g_portOverrideSet{};
 
 std::array<PADButtonMapping, PAD_BUTTON_COUNT> g_defaultButtonsXBox360{{
     {SDL_GAMEPAD_BUTTON_SOUTH, PAD_BUTTON_A},
@@ -726,8 +730,10 @@ u32 PADRead(PADStatus* status) {
     if (device_rumble_available_for_port(i)) {
       rumbleSupport |= PAD_CHAN0_BIT;
     }
+    const bool overridden = g_portOverrideSet[i];
+    g_portOverrideSet[i] = false;
     auto controller = aurora::input::get_controller_for_player(i);
-    if (controller == nullptr && !g_keyboardBindings[i].m_mappingsSet && !g_virtualPadActive[i]) {
+    if (controller == nullptr && !g_keyboardBindings[i].m_mappingsSet && !g_virtualPadActive[i] && !overridden) {
       status[i].err = PAD_ERR_NO_CONTROLLER;
       g_suppressedButtons[i] = 0;
       g_suppressLeftTrigger[i] = false;
@@ -736,7 +742,10 @@ u32 PADRead(PADStatus* status) {
     }
 
     status[i].err = PAD_ERR_NONE;
-    if (g_keyboardBindings[i].m_mappingsSet) {
+    if (overridden) {
+      status[i] = g_portOverride[i];
+      status[i].err = PAD_ERR_NONE;
+    } else if (g_keyboardBindings[i].m_mappingsSet) {
       std::ranges::for_each(
           g_keyboardBindings[i].m_buttonMapping, [&kbState, &i, &status](const PADKeyButtonBinding& mapping) {
             if (mapping.scancode > PAD_KEY_INVALID && kbState[mapping.scancode]) {
@@ -800,7 +809,14 @@ u32 PADRead(PADStatus* status) {
       status[i].triggerRight = static_cast<u8>(std::min(static_cast<int>(status[i].triggerRight) + tr, 255));
     }
 
-    if (controller) {
+    // An override already carries this port's controller (the port reads the gamepad itself), so the
+    // mapped read below would overwrite its sticks and triggers; only the LED update still applies.
+    if (controller && overridden && controller->m_hasRgbLed && controller->m_isColorDirty) {
+      SDL_SetGamepadLED(controller->m_controller, controller->m_ledRed, controller->m_ledGreen, controller->m_ledBlue);
+      controller->m_isColorDirty = false;
+    }
+
+    if (controller && !overridden) {
       EnsureMappingLoaded(controller);
       bool leftTriggerSet = false;
       bool rightTriggerSet = false;
@@ -956,6 +972,17 @@ void PADSetVirtualStatus(const u32 port, const PADStatus* virtualStatus) {
   g_virtualPadStatus[port] = *virtualStatus;
   g_virtualPadStatus[port].err = PAD_ERR_NONE;
   g_virtualPadActive[port] = true;
+}
+
+// Port addition (see g_portOverride): one-shot, so the port sets it before every PADRead.
+void PADSetPortOverride(const u32 port, const PADStatus* status) {
+  if (port >= PAD_CHANMAX) {
+    return;
+  }
+  g_portOverrideSet[port] = status != nullptr;
+  if (status != nullptr) {
+    g_portOverride[port] = *status;
+  }
 }
 
 void PADClearVirtualStatus(const u32 port) {
