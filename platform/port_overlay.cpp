@@ -11,6 +11,7 @@
 #include "port_remap_ui.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
+#include "port_settings.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
 
@@ -33,16 +34,15 @@ bool sSkipCinematics = false;
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
 bool sLogFile = true;
-bool sGodMode = false; // never saved: there is no settings file, and a cheat must not persist
+bool sGodMode = false; // never saved: a cheat must not persist, so it is not a registered setting
 // The gameplay tweaks (`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`,
-// `MP2_STICKY_CHARGE`), never saved: there is no settings file, and they are preference rather
-// than state, so a restart goes back to the untouched game.
+// `MP2_STICKY_CHARGE`), saved in settings.cfg.
 bool sFastMorph = false;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
-// Saves, `cardbackup`). A setting, so a restart goes back to off.
+// Saves, `cardbackup`).
 bool sCardBackup = false;
 // First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
 float sFirstPersonFov = 0.f;
@@ -77,53 +77,57 @@ bool EnvFlag(const char* name) {
 int sAppliedMsaa = 0;
 int sAppliedAnisotropy = 0;
 
+bool MsaaValid(int samples) { return samples == 1 || samples == 4; }
+
+// Registers every setting; PortSettings resolves each as default, then <user>/settings.cfg, then its
+// MP2_<KEY> environment variable (the variable wins). Cheats (god mode) are not settings.
 void ReadEnv() {
   if (sReadEnv) {
     return;
   }
   sReadEnv = true;
-  sSkipCinematics = EnvFlag("MP2_SKIP_CINEMATICS");
   sGodMode = EnvFlag("MP2_GODMODE");
-  sFastMorph = EnvFlag("MP2_FAST_MORPH");
-  sSpringBall = EnvFlag("MP2_SPRING_BALL");
-  sLockOnToggle = EnvFlag("MP2_LOCK_ON_TOGGLE");
-  sStickyCharge = EnvFlag("MP2_STICKY_CHARGE");
-  sCardBackup = EnvFlag("MP2_CARD_BACKUP");
-  sLogFile = PortLogFile::Enabled();
-  sHideHelmet = EnvFlag("MP2_NO_HELMET");
-  sHideVisorEffects = EnvFlag("MP2_NO_VISOR_FX");
-  if (const char* fov = std::getenv("MP2_FOV")) {
-    const float value = static_cast< float >(std::atof(fov));
-    if (value == 0.f || (value >= 30.f && value <= 120.f)) {
-      sFirstPersonFov = value;
-    }
+  PortSettings::AddBool("skip_cinematics", &sSkipCinematics, false);
+  PortSettings::AddBool("fast_morph", &sFastMorph, false);
+  PortSettings::AddBool("spring_ball", &sSpringBall, false);
+  PortSettings::AddBool("lockon_toggle", &sLockOnToggle, false);
+  PortSettings::AddBool("sticky_charge", &sStickyCharge, false);
+  PortSettings::AddBool("card_backup", &sCardBackup, false);
+  PortSettings::AddBool("log_file", &sLogFile, true);
+  PortSettings::AddBool("no_helmet", &sHideHelmet, false);
+  PortSettings::AddBool("no_visor_fx", &sHideVisorEffects, false);
+  // 0 keeps the game's own FOV.
+  PortSettings::AddFloat("fov", &sFirstPersonFov, 0.f, 30.f, 120.f, true);
+  PortSettings::AddFloat3("gun_offset", sGunOffset, -PortOverlay::kGunOffsetMax,
+                          PortOverlay::kGunOffsetMax);
+  PortSettings::AddInt("msaa", &sMsaa, 1, 1, 4, MsaaValid);
+  // A max, not a step: any value in range is kept, and Aurora clamps what a sampler asks for.
+  PortSettings::AddInt("aniso", &sAnisotropy, 16, 1, 16);
+  // 0 means the full-size HUD.
+  PortSettings::AddInt("hud_scale", &sHudScale, PortOverlay::kHudScaleMax, PortOverlay::kHudScaleMin,
+                       PortOverlay::kHudScaleMax, nullptr, PortOverlay::kHudScaleMax);
+}
+
+// A setter's change is saved at once (a no-op when nothing differs from the file).
+void Persist() {
+  PortSettings::NoteChanged();
+  PortSettings::Save();
+}
+
+// A UI row's change is saved by Draw once the mouse is up, not on every frame of a slider drag.
+bool Changed(bool changed) {
+  if (changed) {
+    PortSettings::NoteChanged();
   }
-  if (const char* offset = std::getenv("MP2_GUN_OFFSET")) {
-    float parsed[3];
-    if (std::sscanf(offset, "%f,%f,%f", &parsed[0], &parsed[1], &parsed[2]) == 3) {
-      PortOverlay::SetGunOffset(parsed);
-    }
-  }
-  if (const char* msaa = std::getenv("MP2_MSAA")) {
-    const int samples = std::atoi(msaa);
-    if (samples == 1 || samples == 4) {
-      sMsaa = samples;
-    }
-  }
-  if (const char* aniso = std::getenv("MP2_ANISO")) {
-    // A max, not a step: any value in range is kept, and Aurora clamps what a sampler asks for.
-    const int value = std::atoi(aniso);
-    if (value >= 1 && value <= 16) {
-      sAnisotropy = value;
-    }
-  }
-  if (const char* hudScale = std::getenv("MP2_HUD_SCALE")) {
-    const int percent = std::atoi(hudScale);
-    if (percent == 0) {
-      sHudScale = PortOverlay::kHudScaleMax;
-    } else if (percent >= PortOverlay::kHudScaleMin && percent <= PortOverlay::kHudScaleMax) {
-      sHudScale = percent;
-    }
+  return changed;
+}
+
+void StoreGunOffset(const float offset[3]) {
+  for (int i = 0; i < 3; ++i) {
+    // A NaN slider value or a hand-written env var must not reach the gun's transform.
+    sGunOffset[i] = std::isfinite(offset[i])
+                        ? std::clamp(offset[i], -PortOverlay::kGunOffsetMax, PortOverlay::kGunOffsetMax)
+                        : 0.f;
   }
 }
 
@@ -215,9 +219,9 @@ void DrawRenderSection() {
   ImGui::SeparatorText("Render");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
   // built, so the live change goes through CCameraManager::mFirstPersonFov.
-  PortUi::SliderFloat("Field of view (1st person)", &sFirstPersonFov, 0.f, 120.f,
-                      sFirstPersonFov <= 0.f ? "game (%.0f)" : "%.0f deg",
-                      "MP2_FOV=<deg>; 0 keeps the game's 55");
+  Changed(PortUi::SliderFloat("Field of view (1st person)", &sFirstPersonFov, 0.f, 120.f,
+                              sFirstPersonFov <= 0.f ? "game (%.0f)" : "%.0f deg",
+                              "MP2_FOV=<deg>; 0 keeps the game's 55"));
   float offset[3] = {sGunOffset[0], sGunOffset[1], sGunOffset[2]};
   bool gunChanged = false;
   gunChanged |= ImGui::SliderFloat("Arm cannon right", &offset[0], -PortOverlay::kGunOffsetMax,
@@ -229,11 +233,13 @@ void DrawRenderSection() {
   if (gunChanged) {
     // Read every frame by CPlayer::UpdateArmAndGunTransforms, so the gun moves on the next update
     // and the shots leave from the muzzle that is drawn.
-    PortOverlay::SetGunOffset(offset);
+    StoreGunOffset(offset);
+    Changed(true);
   }
   if (ImGui::Button("Reset arm cannon")) {
     const float zero[3] = {0.f, 0.f, 0.f};
-    PortOverlay::SetGunOffset(zero);
+    StoreGunOffset(zero);
+    Changed(true);
   }
   PortUi::Note("MP2_GUN_OFFSET=\"right,forward,up\" in metres, +-1", nullptr, true);
   int msaa = sMsaa >= 4 ? 1 : 0;
@@ -241,6 +247,7 @@ void DrawRenderSection() {
   // at the next frame start.
   if (PortUi::Combo("Anti-aliasing", &msaa, "Off\0" "4x MSAA\0", "MP2_MSAA=1|4")) {
     sMsaa = msaa == 1 ? 4 : 1;
+    Changed(true);
   }
   // A max, so the combo shows the smallest offered step that covers it (a hand-written MP2_ANISO=3
   // reads as 4x); picking a row sets that step.
@@ -255,48 +262,49 @@ void DrawRenderSection() {
   if (PortUi::Combo("Anisotropic filtering", &aniso, "1x\0" "2x\0" "4x\0" "8x\0" "16x\0",
                     "MP2_ANISO=1..16")) {
     sAnisotropy = kAnisoSteps[aniso];
+    Changed(true);
   }
 }
 
 void DrawHudSection() {
   ImGui::SeparatorText("HUD");
-  PortUi::Toggle("Hide helmet", &sHideHelmet, "MP2_NO_HELMET=1");
-  PortUi::Toggle("Hide visor effects", &sHideVisorEffects, "MP2_NO_VISOR_FX=1",
-                 "the scan visor's window and edges are what a visor effect draws here");
+  Changed(PortUi::Toggle("Hide helmet", &sHideHelmet, "MP2_NO_HELMET=1"));
+  Changed(PortUi::Toggle("Hide visor effects", &sHideVisorEffects, "MP2_NO_VISOR_FX=1",
+                 "the scan visor's window and edges are what a visor effect draws here"));
   // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
   // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
-  PortUi::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin, PortOverlay::kHudScaleMax,
+  Changed(PortUi::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin, PortOverlay::kHudScaleMax,
                     "%d%%", "MP2_HUD_SCALE=50..100",
-                    "shrinks the HUD toward the middle; the helmet and menus keep their size");
+                    "shrinks the HUD toward the middle; the helmet and menus keep their size"));
 }
 
 void DrawTestingSection() {
   ImGui::SeparatorText("Testing");
   // The game reads this every frame in its cinematic flow state.
-  PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
-                 "ends every cinematic at once, seen or not; makes tests 3-5x faster");
-  PortUi::Toggle("Log file", &sLogFile, "MP2_LOG_FILE=1",
+  Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
+                 "ends every cinematic at once, seen or not; makes tests 3-5x faster"));
+  Changed(PortUi::Toggle("Log file", &sLogFile, "MP2_LOG_FILE=1",
                  "stdout and stderr go to metroid_prime2_port.log in the user folder; takes "
-                 "effect next launch");
+                 "effect next launch"));
 }
 
 void DrawGameplaySection() {
   ImGui::SeparatorText("Gameplay");
-  PortUi::Toggle("Fast morph", &sFastMorph, "MP2_FAST_MORPH=1",
-                 "the morph and unmorph transitions take 0.2 s instead of the game's second");
-  PortUi::Toggle("Spring Ball", &sSpringBall, "MP2_SPRING_BALL=1",
-                 "C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)");
-  PortUi::Toggle("Toggle lock-on", &sLockOnToggle, "MP2_LOCK_ON_TOGGLE=1",
-                 "an L press latches the lock until the next; one that ends lets go");
-  PortUi::Toggle("Sticky charge", &sStickyCharge, "MP2_STICKY_CHARGE=1",
-                 "letting go of a long A hold keeps charging until the next press fires it");
+  Changed(PortUi::Toggle("Fast morph", &sFastMorph, "MP2_FAST_MORPH=1",
+                 "the morph and unmorph transitions take 0.2 s instead of the game's second"));
+  Changed(PortUi::Toggle("Spring Ball", &sSpringBall, "MP2_SPRING_BALL=1",
+                 "C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)"));
+  Changed(PortUi::Toggle("Toggle lock-on", &sLockOnToggle, "MP2_LOCK_ON_TOGGLE=1",
+                 "an L press latches the lock until the next; one that ends lets go"));
+  Changed(PortUi::Toggle("Sticky charge", &sStickyCharge, "MP2_STICKY_CHARGE=1",
+                 "letting go of a long A hold keeps charging until the next press fires it"));
 }
 
 void DrawSavesSection() {
   ImGui::SeparatorText("Saves");
-  PortUi::Toggle("Back up the card", &sCardBackup, "MP2_CARD_BACKUP=1",
+  Changed(PortUi::Toggle("Back up the card", &sCardBackup, "MP2_CARD_BACKUP=1",
                  "copies the save file into save-backups before each card write; `save import "
-                 "latest` on the console puts one back");
+                 "latest` on the console puts one back"));
 }
 
 void DrawCheatsSection() {
@@ -539,6 +547,7 @@ bool SkipCinematics() {
 void SetSkipCinematics(bool skip) {
   ReadEnv();
   sSkipCinematics = skip;
+  Persist();
 }
 
 bool HideHelmet() {
@@ -565,12 +574,8 @@ void GunOffset(float out[3]) {
 
 void SetGunOffset(const float offset[3]) {
   ReadEnv();
-  for (int i = 0; i < 3; ++i) {
-    // A NaN slider value or a hand-written env var must not reach the gun's transform.
-    sGunOffset[i] = std::isfinite(offset[i])
-                        ? std::clamp(offset[i], -kGunOffsetMax, kGunOffsetMax)
-                        : 0.f;
-  }
+  StoreGunOffset(offset);
+  Persist();
 }
 
 int Msaa() {
@@ -581,6 +586,7 @@ int Msaa() {
 void SetMsaa(int samples) {
   ReadEnv();
   sMsaa = samples >= 4 ? 4 : 1;
+  Persist();
 }
 
 int Anisotropy() {
@@ -591,6 +597,7 @@ int Anisotropy() {
 void SetAnisotropy(int maxAnisotropy) {
   ReadEnv();
   sAnisotropy = std::clamp(maxAnisotropy, 1, 16);
+  Persist();
 }
 
 int HudScale() {
@@ -601,6 +608,7 @@ int HudScale() {
 void SetHudScale(int percent) {
   ReadEnv();
   sHudScale = std::clamp(percent, kHudScaleMin, kHudScaleMax);
+  Persist();
 }
 
 bool HudScalingActive() { return sHudScaling; }
@@ -625,6 +633,7 @@ bool FastMorph() {
 void SetFastMorph(bool enabled) {
   ReadEnv();
   sFastMorph = enabled;
+  Persist();
 }
 
 bool SpringBall() {
@@ -635,6 +644,7 @@ bool SpringBall() {
 void SetSpringBall(bool enabled) {
   ReadEnv();
   sSpringBall = enabled;
+  Persist();
 }
 
 bool LockOnToggle() {
@@ -645,6 +655,7 @@ bool LockOnToggle() {
 void SetLockOnToggle(bool enabled) {
   ReadEnv();
   sLockOnToggle = enabled;
+  Persist();
 }
 
 bool StickyCharge() {
@@ -655,6 +666,7 @@ bool StickyCharge() {
 void SetStickyCharge(bool enabled) {
   ReadEnv();
   sStickyCharge = enabled;
+  Persist();
 }
 
 bool CardBackup() {
@@ -665,6 +677,7 @@ bool CardBackup() {
 void SetCardBackup(bool enabled) {
   ReadEnv();
   sCardBackup = enabled;
+  Persist();
 }
 
 bool LogFile() {
@@ -675,12 +688,17 @@ bool LogFile() {
 void SetLogFile(bool enabled) {
   ReadEnv();
   sLogFile = enabled;
+  Persist();
 }
 
 void Draw() {
   TickFps();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();
+  // A row's change is written once the mouse is up, so a slider drag is one write.
+  if (PortSettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsMouseDown(0)) {
+    PortSettings::Save();
+  }
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {

@@ -15,6 +15,7 @@
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_save.h"
+#include "port_settings.h"
 #include "port_warp.h"
 
 #include "MetroidPrime/CStateManager.hpp"
@@ -476,6 +477,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"
       "save backup | backups       copy the card now, or list the copies in save-backups\n"
       "cardbackup <0|1>            back the card up before each write (the F1 Saves row)\n"
+      "settings [<key> <value>]    settings.cfg's entries (value, file|env|default); set one, and save\n"
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
@@ -852,6 +854,27 @@ void CmdLogFile(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "log file: on (" : "log file: off (";
   out += path.empty() ? std::string("no file") : path;
   out += ")\n(takes effect next launch)\n";
+}
+
+// settings | settings <key> <value>: the settings file's entries and where each value came from
+// (`file`, `env` or `default`); with a key and a value, sets it and saves settings.cfg.
+void CmdSettings(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() == 1) {
+    for (const PortSettings::Info& info : PortSettings::List()) {
+      out += info.key + "=" + info.value + "  (" + info.source + ")\n";
+    }
+    return;
+  }
+  if (args.size() != 3) {
+    Fail("usage: settings [<key> <value>]");
+    return;
+  }
+  std::string error;
+  if (!PortSettings::Set(std::string(args[1]), std::string(args[2]), error)) {
+    Fail(error.c_str());
+    return;
+  }
+  out += std::string(args[1]) + " set; saved to settings.cfg\n";
 }
 
 void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {
@@ -1562,6 +1585,7 @@ constexpr SCommand kCommands[] = {
     {"sticky", CmdSticky, true},
     {"cardbackup", CmdCardBackup, true},
     {"logfile", CmdLogFile, true},
+    {"settings", CmdSettings, true},
     {"gunoffset", CmdGunOffset, true},
     {"msaa", CmdMsaaAniso, true},
     {"aniso", CmdMsaaAniso, true},

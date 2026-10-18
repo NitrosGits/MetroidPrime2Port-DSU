@@ -262,6 +262,7 @@ add_library(mp_platform OBJECT
     platform/shims.cpp
     platform/sdk_stubs.cpp
     platform/port_reset.cpp
+    platform/port_settings.cpp
     platform/glibc_compat.c)
 set_source_files_properties(platform/compiled_modules.cpp PROPERTIES
     OBJECT_DEPENDS "${MP_MODULE_REGISTRY}")
@@ -433,6 +434,10 @@ if(AURORA_SDL3_TARGET)
     target_link_libraries(port_touch_pad_tests PRIVATE ${AURORA_SDL3_TARGET})
     add_test(NAME port_touch_pad_tests COMMAND port_touch_pad_tests)
     set_tests_properties(port_touch_pad_tests PROPERTIES TIMEOUT 30 LABELS port)
+    add_executable(port_settings_tests tests/port_settings.cpp platform/port_settings.cpp)
+    target_include_directories(port_settings_tests PRIVATE platform/include)
+    add_test(NAME port_settings_tests COMMAND port_settings_tests)
+    set_tests_properties(port_settings_tests PROPERTIES TIMEOUT 30 LABELS port)
     # Header-only (port_hold_toggle.h): no Aurora link, no TARGET_PC.
     add_executable(port_hold_toggle_tests tests/port_hold_toggle.cpp)
     target_include_directories(port_hold_toggle_tests PRIVATE platform/include)

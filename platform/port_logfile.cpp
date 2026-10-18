@@ -1,4 +1,5 @@
 #include "port_logfile.h"
+#include "port_settings.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -122,9 +123,8 @@ void Start(const std::string& userDirectory) {
   if (sStarted) {
     return; // once per run
   }
-  if (const char* value = std::getenv("MP2_LOG_FILE")) {
-    sEnabled = value[0] != '0'; // "0" (or anything starting with it) turns the file off
-  }
+  // MP2_LOG_FILE, else `log_file` in settings.cfg (PortSettings::Initialize has run by now).
+  sEnabled = PortSettings::BoolValue("log_file", true);
   if (!sEnabled) {
     return;
   }
