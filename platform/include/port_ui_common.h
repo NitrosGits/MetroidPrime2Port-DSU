@@ -28,6 +28,10 @@ void ApplyThemeIfChanged();
 // MP1's PageLayout: the full-screen page window (always on the phone, or MP_TOUCH_UI) unless the
 // `overlay_windowed` setting asks for the floating tabbed window.
 bool PageLayout();
+// MP1's UpdateControllerNav (the gamepad half): turns on ImGui's gamepad navigation and feeds it
+// from pad 0 (D-pad or left stick, the face buttons, the shoulders; a Nintendo pad confirms on A).
+// The only writer of ImGui's gamepad keys. Call every frame, before the overlay draws.
+void UpdateControllerNav();
 
 // Dimmed, wrapped text under a control (ItemHelp on Android).
 void Help(const char* text);

@@ -127,6 +127,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sSpringBall >("spring_ball"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),
+    BoolKey< &sMouseButtons >("mouse_buttons"),
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),
     BoolKey< &sHideHelmet >("no_helmet"),
@@ -287,6 +288,19 @@ void LoadSettings() {
   sBaseline = SettingsText();
 }
 
+// One log line per key whose value differs between the old and new settings text (MP1's
+// LogSettingChanges); the old text is the baseline, so only real changes are named.
+void LogSettingChanges(const std::string& before, const std::string& after) {
+  const std::map< std::string, std::string > old = SettingsValues(before);
+  for (const auto& [key, value] : SettingsValues(after)) {
+    const auto it = old.find(key);
+    if (it == old.end() || it->second != value) {
+      std::fprintf(stderr, "port: setting %s: %s -> %s\n", key.c_str(),
+                   it == old.end() ? "(unset)" : it->second.c_str(), value.c_str());
+    }
+  }
+}
+
 void SaveSettings() {
   std::lock_guard< std::mutex > lock(sMutex);
   if (!sLoaded || !sSettingsDirty.load() || PortSettings::FilePath().empty()) {
@@ -301,6 +315,7 @@ void SaveSettings() {
     sSettingsDirty = true;
     return;
   }
+  LogSettingChanges(sBaseline, text);
   std::fprintf(stderr, "port: saved settings to %s\n", PortSettings::FilePath().c_str());
   sBaseline = text;
 }

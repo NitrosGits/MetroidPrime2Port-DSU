@@ -13,9 +13,13 @@
 #include "port_input_remap_ui.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
+#include "port_touch.h"
 #include "port_settings.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
+
+#include "MetroidPrime/Player/CGameOptions.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
 
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
@@ -45,6 +49,7 @@ bool sFastMorph = false;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
+bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
 // Saves, `cardbackup`).
 bool sCardBackup = false;
@@ -222,46 +227,17 @@ void DrawGameSection() {
     PortWarp::CycleWorld(1);
   }
   PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
+
+  ImGui::SeparatorText("Cutscenes");
+  // The game reads this every frame in its cinematic flow state.
+  Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
+               "ends every cinematic at once, seen or not; makes tests 3-5x faster"));
 }
 
-void DrawAimSection() {
-  ImGui::SeparatorText("Aim");
-  bool mouseAim = PortMouse::Enabled();
-  if (PortUi::Toggle("Mouse aim", &mouseAim, "MP2_MOUSE_AIM=1")) {
-    PortMouse::SetEnabled(mouseAim);
-  }
-  bool invertX = PortMouse::InvertX();
-  if (ImGui::Checkbox("Invert X", &invertX)) {
-    PortMouse::SetInvertX(invertX);
-  }
-  ImGui::SameLine();
-  bool invertY = PortMouse::InvertY();
-  if (ImGui::Checkbox("Invert Y", &invertY)) {
-    PortMouse::SetInvertY(invertY);
-  }
-  // Radians per pixel is a poor thing to read; degrees per pixel is not much better, so the
-  // slider shows a 1x-100x multiplier over the default instead.
-  float scale = PortMouse::Sensitivity() / 0.0035f;
-  char sensText[64];
-  std::snprintf(sensText, sizeof(sensText), "MP2_MOUSE_SENS=%.5f (radians per pixel)",
-                static_cast< double >(PortMouse::Sensitivity()));
-  if (PortUi::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx", nullptr, sensText)) {
-    PortMouse::SetSensitivity(0.0035f * scale);
-  }
-
-  bool twinStick = PortMouse::StickEnabled();
-  if (PortUi::Toggle("Twin stick", &twinStick, "MP2_TWIN_STICK=1")) {
-    PortMouse::SetStickEnabled(twinStick);
-  }
-  float rate = PortMouse::StickAimRate();
-  if (PortUi::SliderFloat("Stick aim rate", &rate, 200.f, 2000.f, "%.0f px/s", nullptr,
-                          "the right stick aims through the same path as the mouse")) {
-    PortMouse::SetStickAimRate(rate);
-  }
-}
-
-void DrawRenderSection() {
-  ImGui::SeparatorText("Render");
+// The Prime 1 port's Video page (debug_ui/tabs.cpp's DrawVideoTab) with its four sub-tabs. Display
+// holds the view (FOV, arm cannon, helmet, HUD); Quality the render settings; Frame rate the vsync.
+void DrawVideoDisplay() {
+  ImGui::SeparatorText("HUD and view");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
   // built, so the live change goes through CCameraManager::mFirstPersonFov.
   Changed(PortUi::SliderFloat("Field of view (1st person)", &sFirstPersonFov, 0.f, 120.f,
@@ -287,6 +263,34 @@ void DrawRenderSection() {
     Changed(true);
   }
   PortUi::Note("MP2_GUN_OFFSET=\"right,forward,up\" in metres, +-1", nullptr, true);
+  Changed(PortUi::Toggle("Hide helmet", &sHideHelmet, "MP2_NO_HELMET=1"));
+  Changed(PortUi::Toggle("Hide visor effects", &sHideVisorEffects, "MP2_NO_VISOR_FX=1",
+               "the scan visor's window and edges are what a visor effect draws here"));
+  if (sAimCrosshair) {
+    int style = sCrosshairStyle;
+    if (PortUi::Combo("Crosshair style", &style, "Classic\0" "Remastered\0",
+                      "MP2_CROSSHAIR_STYLE=classic|remastered",
+                      "Remastered is the one this port can draw: the classic reticle's model does "
+                      "not load here")) {
+      sCrosshairStyle = style == PortOverlay::kCrosshairStyle_Remastered
+                            ? PortOverlay::kCrosshairStyle_Remastered
+                            : PortOverlay::kCrosshairStyle_Classic;
+      Changed(true);
+    }
+    Changed(PortUi::SliderInt("Crosshair opacity", &sCrosshairOpacity,
+                              PortOverlay::kCrosshairOpacityMin, PortOverlay::kCrosshairOpacityMax,
+                              "%d%%", "MP2_CROSSHAIR_OPACITY=0..100"));
+  }
+  // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
+  // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
+  Changed(PortUi::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin,
+                            PortOverlay::kHudScaleMax, "%d%%", "MP2_HUD_SCALE=50..100",
+                            "shrinks the HUD toward the middle; the helmet and menus keep "
+                            "their size"));
+}
+
+void DrawVideoQuality() {
+  ImGui::SeparatorText("Quality");
   int msaa = sMsaa >= 4 ? 1 : 0;
   // Applied by PortOverlay::Draw through aurora_set_graphics_quality: the framebuffers are rebuilt
   // at the next frame start.
@@ -309,11 +313,49 @@ void DrawRenderSection() {
     sAnisotropy = kAnisoSteps[aniso];
     Changed(true);
   }
+}
+
+void DrawVideoFrameRate() {
+  ImGui::SeparatorText("Frame rate");
   // Applied by PortOverlay::Draw through aurora_enable_vsync, every frame it changes.
   Changed(PortUi::Toggle("VSync", &sVsync, "MP2_VSYNC=1",
                          "waits for the display's refresh before presenting a frame"));
+}
 
-  ImGui::SeparatorText("Interface");
+// MP1 files its renderer workarounds (texture copy paths, backend and API choices) here; this port
+// has no such knob on a page yet, so the tab says so rather than inventing one.
+void DrawVideoCompatibility() {
+  ImGui::BeginDisabled();
+  ImGui::TextWrapped("No compatibility options in this port yet.");
+  ImGui::EndDisabled();
+}
+
+void DrawVideoSection() {
+  if (ImGui::BeginTabBar("videoPages")) {
+    if (PortOverlaySearch::SubTab("Video", "Display")) {
+      DrawVideoDisplay();
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Video", "Quality")) {
+      DrawVideoQuality();
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Video", "Frame rate")) {
+      DrawVideoFrameRate();
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Video", "Compatibility")) {
+      DrawVideoCompatibility();
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
+}
+
+// The Prime 1 port's System page (DrawSystemTab) with the sections this port has rows for, in its
+// order: Overlay, Settings, MemoryCard, Log, About. Discord and Update have no MP2 backend.
+void DrawSystemSection() {
+  ImGui::SeparatorText("Overlay");
 #if !defined(__ANDROID__)
   Changed(PortUi::Toggle("Overlay as a floating window", &sOverlayWindowed, nullptr));
 #endif
@@ -325,71 +367,35 @@ void DrawRenderSection() {
   Changed(PortUi::SliderInt("UI scale", &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax, "%d%%",
                             "MP2_UI_SCALE=50..200",
                             "the size of this window's text and controls"));
-}
 
-void DrawHudSection() {
-  ImGui::SeparatorText("HUD");
-  Changed(PortUi::Toggle("Hide helmet", &sHideHelmet, "MP2_NO_HELMET=1"));
-  Changed(PortUi::Toggle("Hide visor effects", &sHideVisorEffects, "MP2_NO_VISOR_FX=1",
-               "the scan visor's window and edges are what a visor effect draws here"));
-  Changed(PortUi::Toggle(
-      "Aim crosshair", &sAimCrosshair, "MP2_AIM_CROSSHAIR=0",
-      "the game's crosshair input is a look control the port never presses, so the port holds "
-      "the reticle on while its own aim owns the view"));
-  if (sAimCrosshair) {
-    int style = sCrosshairStyle;
-    if (PortUi::Combo("Crosshair style", &style, "Classic\0" "Remastered\0",
-                      "MP2_CROSSHAIR_STYLE=classic|remastered",
-                      "Remastered is the one this port can draw: the classic reticle's model does "
-                      "not load here")) {
-      sCrosshairStyle = style == PortOverlay::kCrosshairStyle_Remastered
-                            ? PortOverlay::kCrosshairStyle_Remastered
-                            : PortOverlay::kCrosshairStyle_Classic;
-      Changed(true);
-    }
-    Changed(PortUi::SliderInt("Crosshair size", &sCrosshairSize, PortOverlay::kCrosshairSizeMin,
-                              PortOverlay::kCrosshairSizeMax, "%d%%",
-                              "MP2_CROSSHAIR_SIZE=25..100",
-                              "a percentage of the reticle's own scale, while the port is aiming"));
-    Changed(PortUi::SliderInt("Crosshair opacity", &sCrosshairOpacity,
-                              PortOverlay::kCrosshairOpacityMin, PortOverlay::kCrosshairOpacityMax,
-                              "%d%%", "MP2_CROSSHAIR_OPACITY=0..100"));
+  ImGui::SeparatorText("Settings");
+  const bool dirty = PortOverlaySettings::Dirty();
+  ImGui::TextUnformatted(dirty ? "Unsaved changes" : "Saved");
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!dirty);
+  if (ImGui::Button("Save settings now")) {
+    PortOverlaySettings::SaveSettings();
   }
-  // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
-  // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
-  Changed(PortUi::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin,
-                            PortOverlay::kHudScaleMax, "%d%%", "MP2_HUD_SCALE=50..100",
-                            "shrinks the HUD toward the middle; the helmet and menus keep "
-                            "their size"));
-}
+  ImGui::EndDisabled();
+  if (const std::string& path = PortSettings::FilePath(); !path.empty()) {
+    ImGui::TextWrapped("%s", path.c_str());
+  }
+  PortUi::Help("Changes are written when no control is being edited; MP2_<KEY> environment "
+               "variables override the file for one run");
 
-void DrawTestingSection() {
-  ImGui::SeparatorText("Testing");
-  // The game reads this every frame in its cinematic flow state.
-  Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
-               "ends every cinematic at once, seen or not; makes tests 3-5x faster"));
-  Changed(PortUi::Toggle("Log file", &sLogFile, "MP2_LOG_FILE=1",
-               "stdout and stderr go to metroid_prime2_port.log in the user folder; takes "
-               "effect next launch"));
-}
-
-void DrawGameplaySection() {
-  ImGui::SeparatorText("Gameplay");
-  Changed(PortUi::Toggle("Fast morph", &sFastMorph, "MP2_FAST_MORPH=1",
-               "the morph and unmorph transitions take 0.2 s instead of the game's second"));
-  Changed(PortUi::Toggle("Spring Ball", &sSpringBall, "MP2_SPRING_BALL=1",
-               "C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)"));
-  Changed(PortUi::Toggle("Toggle lock-on", &sLockOnToggle, "MP2_LOCK_ON_TOGGLE=1",
-               "an L press latches the lock until the next; one that ends lets go"));
-  Changed(PortUi::Toggle("Sticky charge", &sStickyCharge, "MP2_STICKY_CHARGE=1",
-               "letting go of a long A hold keeps charging until the next press fires it"));
-}
-
-void DrawSavesSection() {
-  ImGui::SeparatorText("Saves");
+  ImGui::SeparatorText("MemoryCard");
   Changed(PortUi::Toggle("Back up the card", &sCardBackup, "MP2_CARD_BACKUP=1",
                "copies the save file into save-backups before each card write; `save import "
                "latest` on the console puts one back"));
+
+  ImGui::SeparatorText("Log");
+  Changed(PortUi::Toggle("Log file", &sLogFile, "MP2_LOG_FILE=1",
+               "stdout and stderr go to metroid_prime2_port.log in the user folder; takes "
+               "effect next launch"));
+
+  ImGui::SeparatorText("About");
+  ImGui::TextUnformatted("Metroid Prime 2: Echoes native port (G2ME01)");
+  ImGui::TextUnformatted("Aurora (SDL3 / WebGPU), Dear ImGui");
 }
 
 void DrawCheatsSection() {
@@ -398,23 +404,205 @@ void DrawCheatsSection() {
                  "the player takes no damage; other actors still do. Not saved");
 }
 
-// The Prime 1 port's Controls page (debug_ui/controls.cpp): the controller's sticks and triggers
-// (the end of its DrawControlsController), then its remap page, whose Reset popup carries the
-// key and pad presets. Its Options, Mouse settings and Touch & gyro sub-tabs are not here: this
-// port's gameplay options are the Gameplay page, mouse and stick aim are the Aim page, and the
-// touch overlay (touch.cfg) is the phone's own, so no sub-tab bar is left to draw.
-void DrawControlsSection() {
-  const s32 controllerIndex = PADGetIndexForPort(PAD_CHAN0);
-  if (SDL_Gamepad* pad = controllerIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(controllerIndex)) : nullptr;
-      pad != nullptr && SDL_IsJoystickVirtual(SDL_GetGamepadID(pad))) {
-    // Aurora ignores mappings on the virtual touch pad.
-    ImGui::TextWrapped("The touch controls always use the GameCube layout; presets and remaps apply to "
-                       "real controllers only.");
-  } else {
-    PortControls::DrawDeadZones();
+void DrawControlsMouse() {
+  ImGui::SeparatorText("Mouse aim");
+  bool mouseAim = PortMouse::Enabled();
+  if (PortUi::Toggle("Mouse aim", &mouseAim, "MP2_MOUSE_AIM=1")) {
+    PortMouse::SetEnabled(mouseAim);
   }
-  ImGui::SeparatorText("Remap");
-  PortInputRemap::Draw();
+  bool invertX = PortMouse::InvertX();
+  if (ImGui::Checkbox("Invert X", &invertX)) {
+    PortMouse::SetInvertX(invertX);
+  }
+  ImGui::SameLine();
+  bool invertY = PortMouse::InvertY();
+  if (ImGui::Checkbox("Invert Y", &invertY)) {
+    PortMouse::SetInvertY(invertY);
+  }
+  // Radians per pixel is a poor thing to read; degrees per pixel is not much better, so the
+  // slider shows a 1x-100x multiplier over the default instead.
+  float scale = PortMouse::Sensitivity() / 0.0035f;
+  char sensText[64];
+  std::snprintf(sensText, sizeof(sensText), "MP2_MOUSE_SENS=%.5f (radians per pixel)",
+                static_cast< double >(PortMouse::Sensitivity()));
+  if (PortUi::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx", nullptr, sensText)) {
+    PortMouse::SetSensitivity(0.0035f * scale);
+  }
+  Changed(PortUi::Toggle("Weapon buttons", &sMouseButtons, "MP2_MOUSE_BUTTONS=0",
+                         "the mouse buttons drive the pad's gameplay rows (fire, missile, jump...) "
+                         "while mouse aim holds the cursor; bind them on the Remap tab"));
+  ImGui::SeparatorText("Crosshair");
+  Changed(PortUi::Toggle(
+      "Aim crosshair", &sAimCrosshair, "MP2_AIM_CROSSHAIR=0",
+      "the game's crosshair input is a look control the port never presses, so the port holds "
+      "the reticle on while its own aim owns the view"));
+  if (sAimCrosshair) {
+    Changed(PortUi::SliderInt("Crosshair size", &sCrosshairSize, PortOverlay::kCrosshairSizeMin,
+                              PortOverlay::kCrosshairSizeMax, "%d%%",
+                              "MP2_CROSSHAIR_SIZE=25..100",
+                              "a percentage of the reticle's own scale, while the port is aiming"));
+  }
+}
+
+void DrawControlsStickAim() {
+  ImGui::SeparatorText("Stick aim");
+  bool twinStick = PortMouse::StickEnabled();
+  if (PortUi::Toggle("Twin stick", &twinStick, "MP2_TWIN_STICK=1")) {
+    PortMouse::SetStickEnabled(twinStick);
+  }
+  float rate = PortMouse::StickAimRate();
+  if (PortUi::SliderFloat("Stick aim rate", &rate, 200.f, 2000.f, "%.0f px/s", nullptr,
+                          "the right stick aims through the same path as the mouse")) {
+    PortMouse::SetStickAimRate(rate);
+  }
+  // The game's own option, saved with its settings (Reverse Y Axis in its pause menu).
+  ImGui::BeginDisabled(gpGameState == nullptr);
+  bool invertStickY = gpGameState != nullptr && gpGameState->GameOptions().GetInvertYAxis();
+  if (PortUi::Toggle("Invert stick aim Y", &invertStickY, nullptr,
+                     "the game's Reverse Y Axis option; the stick and free look use it") &&
+      gpGameState != nullptr) {
+    gpGameState->GameOptions().SetInvertYAxis(invertStickY);
+  }
+  ImGui::EndDisabled();
+}
+
+void DrawControlsOptions() {
+  ImGui::SeparatorText("Buttons");
+  Changed(PortUi::Toggle("Toggle lock-on", &sLockOnToggle, "MP2_LOCK_ON_TOGGLE=1",
+               "an L press latches the lock until the next; one that ends lets go"));
+  Changed(PortUi::Toggle("Sticky charge", &sStickyCharge, "MP2_STICKY_CHARGE=1",
+               "letting go of a long A hold keeps charging until the next press fires it"));
+  ImGui::SeparatorText("Rumble");
+  ImGui::BeginDisabled(gpGameState == nullptr);
+  bool rumble = gpGameState != nullptr && gpGameState->GameOptions().GetIsRumbleEnabled();
+  if (PortUi::Toggle("Rumble", &rumble, nullptr,
+                     "controller vibration, the same switch as Rumble in the pause menu's options") &&
+      gpGameState != nullptr) {
+    gpGameState->GameOptions().SetIsRumbleEnabled(rumble);
+  }
+  ImGui::EndDisabled();
+  ImGui::SeparatorText("Morph ball");
+  Changed(PortUi::Toggle("Fast morph", &sFastMorph, "MP2_FAST_MORPH=1",
+               "the morph and unmorph transitions take 0.2 s instead of the game's second"));
+  Changed(PortUi::Toggle("Spring Ball", &sSpringBall, "MP2_SPRING_BALL=1",
+               "C-stick up on the ground bomb-jumps the ball (needs Morph Ball Bombs)"));
+}
+
+void DrawControlsTouchGyro() {
+  ImGui::SeparatorText("Touch controls");
+  bool controls = PortTouch::ControlsEnabled();
+  if (PortUi::Toggle("On-screen controls", &controls, "MP2_TOUCH_CONTROLS=0",
+                     "the phone's touch overlay; touch.cfg in the user folder")) {
+    PortTouch::SetControlsEnabled(controls);
+  }
+  bool aim = PortTouch::AimEnabled();
+  if (PortUi::Toggle("Touch aim", &aim, "MP2_TOUCH_AIM=1",
+                     "drag on the free screen to aim")) {
+    PortTouch::SetAimEnabled(aim);
+  }
+  const bool classic = PortTouch::Classic();
+  const bool twin = PortTouch::TwinStick();
+  int layoutIndex = classic ? 1 : (twin ? 2 : 0);
+  if (PortUi::Combo("Layout", &layoutIndex, "Default\0" "Classic GameCube\0" "Twin stick (Remastered)\0",
+                    "MP2_TOUCH_CLASSIC=1|MP2_TOUCH_TWIN=1",
+                    "Default: free-area drag aims, wheels pick beams and visors. Classic: the "
+                    "C-stick and D-pad. Twin stick: a right stick that aims")) {
+    // CycleLayout steps Default -> Classic -> Twin -> Default.
+    for (int i = 0; i < 3 && (PortTouch::Classic() ? 1 : (PortTouch::TwinStick() ? 2 : 0)) != layoutIndex; ++i) {
+      PortTouch::CycleLayout();
+    }
+    if (layoutIndex == 2) PortTouch::SetWheelsEnabled(false);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Edit layout")) {
+    PortTouch::RequestEdit();
+  }
+  ImGui::BeginDisabled(!controls);
+  bool b = PortTouch::Colors();
+  if (PortUi::Toggle("Coloured buttons", &b, "MP2_TOUCH_COLORS=1",
+                     "the on-screen buttons in the GameCube pad's colours")) PortTouch::SetColors(b);
+  b = PortTouch::Labels();
+  if (PortUi::Toggle("Button descriptions", &b, "MP2_TOUCH_LABELS=0",
+                     "what each on-screen button does, next to its letter")) PortTouch::SetLabels(b);
+  b = PortTouch::Turbo();
+  if (PortUi::Toggle("Turbo fire button", &b, "MP2_TOUCH_TURBO=1",
+                     "a Turbo button next to Fire that fires as fast as the game accepts")) PortTouch::SetTurbo(b);
+  b = PortTouch::FloatingStick();
+  if (PortUi::Toggle("Floating left stick", &b, "MP2_TOUCH_FLOATING=0",
+                     "the left stick appears under the finger on the left half of the screen")) PortTouch::SetFloatingStick(b);
+  ImGui::BeginDisabled(!classic && !twin);
+  b = PortTouch::WheelsEnabled();
+  if (PortUi::Toggle("Beam and visor wheels", &b, "MP2_TOUCH_WHEELS=0",
+                     "replaces the D-pad with a Visor and a Beam button")) PortTouch::SetWheelsEnabled(b);
+  ImGui::EndDisabled();
+  ImGui::BeginDisabled(!((!classic && !twin) || PortTouch::WheelsEnabled()));
+  b = PortTouch::VisorTapScan();
+  if (PortUi::Toggle("Tap Visor for Scan Visor", &b, "MP2_TOUCH_VISOR_TAP_SCAN=1",
+                     "a quick tap on the Visor button selects the Scan Visor")) PortTouch::SetVisorTapScan(b);
+  ImGui::EndDisabled();
+  float speed = PortTouch::AimSpeed();
+  if (PortUi::SliderFloat("Touch aim speed", &speed, 0.5f, 6.f, "%.2f px/dp", nullptr,
+                          "MP2_TOUCH_AIM_SPEED=0.25..10")) PortTouch::SetAimSpeed(speed);
+  b = PortTouch::SpringSwipeEnabled();
+  if (PortUi::Toggle("Spring Ball on swipe up", &b, "MP2_TOUCH_SPRING_SWIPE=0",
+                     "in morph ball, a quick swipe up on the free area springs; needs the Spring Ball option")) PortTouch::SetSpringSwipe(b);
+  float v = PortTouch::Opacity();
+  if (PortUi::SliderFloat("Opacity", &v, 10.f, 100.f, "%.0f%%", "MP2_TOUCH_OPACITY=10..100")) PortTouch::SetOpacity(v);
+  v = PortTouch::SideMarginDp();
+  if (PortUi::SliderFloat("Side margin", &v, 0.f, 300.f, "%.0f dp", "MP2_TOUCH_SIDE_MARGIN")) PortTouch::SetSideMarginDp(v);
+  v = PortTouch::StickInsetDp();
+  if (PortUi::SliderFloat("Stick inset", &v, 0.f, 300.f, "%.0f dp", "MP2_TOUCH_STICK_INSET")) PortTouch::SetStickInsetDp(v);
+  v = PortTouch::ButtonInsetDp();
+  if (PortUi::SliderFloat("Button inset", &v, 0.f, 300.f, "%.0f dp", "MP2_TOUCH_BUTTON_INSET")) PortTouch::SetButtonInsetDp(v);
+  if (ImGui::Button("Reset margins")) {
+    PortTouch::SetSideMarginDp(16.f);
+    PortTouch::SetStickInsetDp(32.f);
+    PortTouch::SetButtonInsetDp(0.f);
+  }
+  ImGui::EndDisabled();
+  ImGui::SeparatorText("Gyro aim");
+  ImGui::BeginDisabled();
+  ImGui::TextUnformatted("Gyro aim (not in this port yet)");
+  ImGui::EndDisabled();
+}
+
+// The Prime 1 port's Controls page (debug_ui/tabs.cpp's DrawControlsTab) with its five sub-tabs in
+// its order. Each draws this port's rows for what MP1 files there; the rows MP2 has no backend
+// for (button glyphs, pointer aim, rumble, mouse buttons, gyro) are not drawn, gyro as a note.
+void DrawControlsSection() {
+  if (ImGui::BeginTabBar("controlsPages")) {
+    if (PortOverlaySearch::SubTab("Controls", "Options")) {
+      DrawControlsOptions();
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Controls", "Mouse settings")) {
+      DrawControlsMouse();
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Controls", "Controller settings")) {
+      DrawControlsStickAim();
+      const s32 controllerIndex = PADGetIndexForPort(PAD_CHAN0);
+      if (SDL_Gamepad* pad =
+              controllerIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(controllerIndex)) : nullptr;
+          pad != nullptr && SDL_IsJoystickVirtual(SDL_GetGamepadID(pad))) {
+        // Aurora ignores mappings on the virtual touch pad.
+        ImGui::TextWrapped("The touch controls always use the GameCube layout; presets and remaps apply to "
+                           "real controllers only.");
+      } else {
+        PortControls::DrawDeadZones();
+      }
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Controls", "Touch & gyro")) {
+      DrawControlsTouchGyro();
+      ImGui::EndTabItem();
+    }
+    if (PortOverlaySearch::SubTab("Controls", "Remap")) {
+      PortInputRemap::Draw();
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
   // MP1's HotkeyHint (debug_ui/overlays.cpp): the port's own hotkeys, named by what is bound.
   const std::string menu = PortInputRemap::BindingsText(PortInput::Action::PortMenu, " / ");
   const std::string shot = PortInputRemap::BindingsText(PortInput::Action::Screenshot, " / ");
@@ -560,11 +748,9 @@ void DrawControlsSection() {
 namespace PortOverlaySearch {
 
 const Page kPages[] = {
-    {"Game", DrawGameSection},         {"Aim", DrawAimSection},
-    {"Render", DrawRenderSection},     {"HUD", DrawHudSection},
-    {"Testing", DrawTestingSection},   {"Gameplay", DrawGameplaySection},
-    {"Saves", DrawSavesSection},       {"Cheats", DrawCheatsSection},
-    {"Controls", DrawControlsSection},
+    {"Game", DrawGameSection},         {"Controls", DrawControlsSection},
+    {"Video", DrawVideoSection},       {"Cheats", DrawCheatsSection},
+    {"System", DrawSystemSection},
 };
 const int kPageCount = static_cast< int >(std::size(kPages));
 
@@ -577,7 +763,18 @@ void SetGameState(uint32_t worldId, int areaId) {
   sAreaId = areaId;
 }
 
-void Toggle() { sVisible = !sVisible; }
+void Toggle() {
+  sVisible = !sVisible;
+  // MP1's Toggle: the cursor goes back to the window (releases the mouse capture), and opening
+  // drops any button or key ImGui still holds (a press whose release never came would make it
+  // ignore every later click), as a focus loss would.
+  PortMouse::SetUiActive(sVisible);
+  if (sVisible && ImGui::GetCurrentContext() != nullptr) {
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddFocusEvent(false);
+    io.AddFocusEvent(true);
+  }
+}
 
 void Wheel(float steps) { ImGui::GetIO().AddMouseWheelEvent(0.f, steps); }
 
@@ -800,6 +997,11 @@ void SetStickyCharge(bool enabled) {
   Persist();
 }
 
+bool MouseButtons() {
+  ReadEnv();
+  return EnvBool("MP2_MOUSE_BUTTONS", sMouseButtons);
+}
+
 bool CardBackup() {
   ReadEnv();
   return EnvBool("MP2_CARD_BACKUP", sCardBackup);
@@ -849,10 +1051,11 @@ void Draw() {
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();
   ApplyVsync();
-  // A row's change is written once the mouse is up, so a slider drag is one write.
-  if (PortOverlaySettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsMouseDown(0)) {
+  // A row's change is written once no item is active (MP1's window.cpp), so a slider drag is one write.
+  if (PortOverlaySettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsAnyItemActive()) {
     PortOverlaySettings::SaveSettings();
   }
+  PortUi::UpdateControllerNav();
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {

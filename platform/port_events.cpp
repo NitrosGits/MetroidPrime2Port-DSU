@@ -333,9 +333,7 @@ bool PortPumpEvents() {
         continue;
       }
       switch (event->sdl.key.scancode) {
-      case SDL_SCANCODE_F1:
-        PortOverlay::Toggle();
-        break;
+      // F1 (the overlay) is the input engine's PortMenu action now: PollPortActions below.
       case SDL_SCANCODE_F5:
         PortWarp::CycleArea(1);
         break;

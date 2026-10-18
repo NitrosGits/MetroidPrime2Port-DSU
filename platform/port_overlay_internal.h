@@ -17,6 +17,7 @@ extern bool sFastMorph;
 extern bool sSpringBall;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
+extern bool sMouseButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;
 extern bool sHideHelmet;
@@ -85,6 +86,8 @@ struct SettingsIndexRow {
 extern char sSearch[128];
 // The page a search result asked for, once (-1 when none).
 int TakeJumpPage();
+// A page's inner tab (BeginTabItem), opened when a search result names it; end with EndTabItem.
+bool SubTab(const char* page, const char* name);
 // Draws a page's rows, where a jump looks for its widget.
 void DrawPageBody(const Page& page);
 // Around the window: install and remove the item hooks a jump finds its widget with, and flash it.

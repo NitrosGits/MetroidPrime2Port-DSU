@@ -3,10 +3,13 @@
 #include "port_ui_common.h"
 
 #include "port_env.h"
+#include "port_input_remap_ui.h"
 #include "port_overlay_internal.h"
 
 #include <SDL3/SDL.h>
+#include <dolphin/pad.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include <algorithm>
 #include <cmath>
@@ -312,6 +315,48 @@ bool Combo(const char* label, int* current, const char* items, const char* env,
   const bool changed = ImGui::Combo(label, current, items);
   Lines(env, description, true);
   return changed;
+}
+
+void UpdateControllerNav() {
+  if (ImGui::GetCurrentContext() == nullptr) {
+    return;
+  }
+  ImGuiIO& io = ImGui::GetIO();
+  io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+  // ImGui applies one change per key and frame and holds everything queued behind a second one.
+  // Nothing should queue faster than that; if something does, take the queue in one go.
+  io.ConfigInputTrickleEventQueue = ImGui::GetCurrentContext()->InputEventsQueue.Size <= 64;
+
+  // While the Controls page captures a pad input, the pad binds instead of navigating (releasing
+  // everything here also ends any nav press in progress); a pad that went away releases it too.
+  SDL_Gamepad* pad = PADGetSDLGamepadForIndex(0);
+  const bool capturing = pad == nullptr || PortInputRemap::Capturing();
+  const auto held = [pad, capturing](SDL_GamepadButton button) {
+    return !capturing && SDL_GetGamepadButton(pad, button);
+  };
+  const auto axis = [pad, capturing](SDL_GamepadAxis a) {
+    return capturing ? Sint16{0} : SDL_GetGamepadAxis(pad, a);
+  };
+  constexpr Sint16 kStickThreshold = 16000;
+  io.AddKeyEvent(ImGuiKey_GamepadDpadUp,
+                 held(SDL_GAMEPAD_BUTTON_DPAD_UP) || axis(SDL_GAMEPAD_AXIS_LEFTY) < -kStickThreshold);
+  io.AddKeyEvent(ImGuiKey_GamepadDpadDown,
+                 held(SDL_GAMEPAD_BUTTON_DPAD_DOWN) || axis(SDL_GAMEPAD_AXIS_LEFTY) > kStickThreshold);
+  io.AddKeyEvent(ImGuiKey_GamepadDpadLeft,
+                 held(SDL_GAMEPAD_BUTTON_DPAD_LEFT) || axis(SDL_GAMEPAD_AXIS_LEFTX) < -kStickThreshold);
+  io.AddKeyEvent(ImGuiKey_GamepadDpadRight,
+                 held(SDL_GAMEPAD_BUTTON_DPAD_RIGHT) || axis(SDL_GAMEPAD_AXIS_LEFTX) > kStickThreshold);
+  // ImGui activates with FaceDown and cancels with FaceRight. On a Nintendo pad (A on the right)
+  // confirm on A.
+  const PADControllerType padType = pad != nullptr ? PADGetControllerTypeForIndex(0) : PAD_TYPE_UNKNOWN;
+  const bool nintendo = padType == PAD_TYPE_SWITCH_PROCON || padType == PAD_TYPE_JOYCON_PAIR;
+  io.AddKeyEvent(ImGuiKey_GamepadFaceDown, held(nintendo ? SDL_GAMEPAD_BUTTON_EAST : SDL_GAMEPAD_BUTTON_SOUTH));
+  io.AddKeyEvent(ImGuiKey_GamepadFaceRight, held(nintendo ? SDL_GAMEPAD_BUTTON_SOUTH : SDL_GAMEPAD_BUTTON_EAST));
+  io.AddKeyEvent(ImGuiKey_GamepadFaceLeft, held(nintendo ? SDL_GAMEPAD_BUTTON_NORTH : SDL_GAMEPAD_BUTTON_WEST));
+  io.AddKeyEvent(ImGuiKey_GamepadFaceUp, held(nintendo ? SDL_GAMEPAD_BUTTON_WEST : SDL_GAMEPAD_BUTTON_NORTH));
+  io.AddKeyEvent(ImGuiKey_GamepadL1, held(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER));
+  io.AddKeyEvent(ImGuiKey_GamepadR1, held(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER));
 }
 
 } // namespace PortUi

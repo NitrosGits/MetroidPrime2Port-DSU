@@ -1,6 +1,6 @@
 // F1 overlay: the settings search (index, jumps, results), the Prime 1 port's
-// platform/debug_ui/search.cpp ported. Its pages are port_overlay.cpp's kPages; this port's pages
-// have no sub-tabs, so the index's sub column is always "".
+// platform/debug_ui/search.cpp ported. Its pages are port_overlay.cpp's kPages; the Controls page
+// has sub-tabs (SubTab), so the index's sub column names one there and is "" elsewhere.
 
 #include "port_overlay_internal.h"
 
@@ -33,6 +33,7 @@ namespace {
 struct SearchJump {
   const SettingsIndexRow* row = nullptr;
   int page = -1;      // kPages index still to select
+  bool sub = false;   // the row's sub-tab is still to select
   int occurrence = 0; // which of the items with this label on the page
   int seen = 0;       // items with the label drawn so far this frame
   bool found = false;
@@ -49,6 +50,24 @@ int TakeJumpPage() {
   const int page = sJump.page;
   sJump.page = -1;
   return page;
+}
+
+bool TakeJumpSub(const char* page, const char* name) {
+  if (!sJump.sub || std::strcmp(sJump.row->page, page) != 0 || std::strcmp(sJump.row->sub, name) != 0) {
+    return false;
+  }
+  sJump.sub = false;
+  return true;
+}
+
+// A page's inner tab, selected when a search result names it. The caller ends the item with
+// EndTabItem when this returns true.
+bool SubTab(const char* page, const char* name) {
+  const bool jump = TakeJumpSub(page, name);
+  const bool inPage = std::exchange(sJump.inPage, false); // the tab is not a setting
+  const bool shown = ImGui::BeginTabItem(name, nullptr, jump ? ImGuiTabItemFlags_SetSelected : 0);
+  sJump.inPage = inPage;
+  return shown;
 }
 
 // A page's settings, where a jump looks for its widget.
@@ -156,6 +175,7 @@ void JumpTo(const SettingsIndexRow& row) {
     }
   }
   sJump.row = &row;
+  sJump.sub = *row.sub != '\0';
   // Rows with the same label on one page are in draw order.
   for (const SettingsIndexRow& other : kSettingsIndex) {
     if (&other == &row) {

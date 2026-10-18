@@ -51,6 +51,8 @@ const float kStickyChargeAfter = 0.35f;
 bool LockOnToggle();
 void SetLockOnToggle(bool enabled);
 bool StickyCharge();
+// The mouse buttons drive the pad's gameplay rows under mouse aim (`MP2_MOUSE_BUTTONS=0` turns off).
+bool MouseButtons();
 void SetStickyCharge(bool enabled);
 // Back up the card before the game writes it (`MP2_CARD_BACKUP=1`, F1 > Saves): each write to the
 // memory card copies the file as it is on disk first, into `<user>/save-backups`, so a save that

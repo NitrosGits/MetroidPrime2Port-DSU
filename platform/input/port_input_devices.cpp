@@ -412,7 +412,7 @@ uint16_t GameContexts();
 uint32_t ReadMouseButtons(unsigned mouseHeld) {
   static PortMouse::ButtonGate sGate;
   SDL_Window* window = SDL_GetMouseFocus();
-  const bool live = PortMouse::Enabled() && !PortMouse::UiActive() && !PortOverlay::Visible() &&
+  const bool live = PortMouse::Enabled() && PortOverlay::MouseButtons() && !PortMouse::UiActive() && !PortOverlay::Visible() &&
                     window != nullptr && SDL_GetWindowRelativeMouseMode(window);
   return sGate.Poll(live, mouseHeld & PortInputMap::kMouseButtonMask);
 }
@@ -1197,10 +1197,9 @@ void PollPortActions() {
       raw.keys.set(w * 64 + static_cast<size_t>(bit));
     }
   }
-  // F1 and F12 already have their handlers (port_events.cpp's key-down switch, Aurora's window
-  // screenshot key), so this path takes them only when the user bound them to something else
-  // and leaves the defaults to those handlers rather than firing twice.
-  raw.keys.reset(SDL_SCANCODE_F1);
+  // F12 already has Aurora's window screenshot key, so this path takes it only when the user
+  // bound it to something else and leaves the default to that handler rather than firing twice.
+  // F1 is the Port menu's default binding and has no other handler.
   raw.keys.reset(SDL_SCANCODE_F12);
   const uint16_t contexts = GameContexts();
   const PortInput::Output& out = sRuntime.Poll(raw, contexts, static_cast<double>(SDL_GetTicksNS()) / 1e6,
