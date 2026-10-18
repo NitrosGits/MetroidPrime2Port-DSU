@@ -1258,3 +1258,229 @@ verification is the one still-open item. Next: **M3**, the touch controls.
 (2) the 53 -> 56 freeze if it survives (1); (3) the hazards and the layer areas of `1baa96c2` area 11
 as gameplay; (4) the family bodies in the priority order; (5) a no-present option.
 
+
+
+---
+
+## Archived AGENTS.md snapshots (moved 2026-10-18)
+
+The following six sections are preserved verbatim for reference. They predate the
+nineteenth-session updates above; prefer those newer entries when they conflict.
+
+## Status (2026-10-18, seventeenth session)
+
+- **Committed**: `c0ac5167f` photo stage 2a (supersampled capture, console `photo [1|2|4]`);
+  `c368b4530` stage 2b (F1 Game page Photo block: FOV, roll, speed, supersample, show Samus,
+  Take photo). The FOV override is read in `CStateManager::SetupViewForDraw` under TARGET_PC.
+- **Verified**: the boot enters free camera (`/tmp/opencode/fov_check.png`). Gates after the edit:
+  `gen_files_cmake.py --check` rc=0, `metroid_prime2_port` built rc=0, both host tests rc=0.
+  The FOV slider changes the picture on screen (`/tmp/opencode/fov_a.png` baseline, `fov_b.png` after
+  the click: wider view, same pose). Slider value not read back.
+- **Open (photo)**: roll panel range ±45 vs `SetRoll` ±180; no panel way back to FOV 0; failed-capture
+  line when the path is empty; toast or log line only.
+- **Decided**: photo mode is reached from the F1 menu only (Game page Camera row and Photo block, F8).
+  No pause-menu entry for now. Open F1 items: the open items from the fifteenth session (NEEDS-BACKEND rows, gyro, pointer menus,
+  phone check of the F1 page).
+- **Ports**: keep `MP2_CONSOLE=4790`; the host `adb` holds 4780.
+
+## Status (2026-10-18, sixteenth session)
+
+- **Committed**: `2cd2d2b20` warp from the F1 Game page (F5-F10 gone); `0817708b8`→`a8e42297e`
+  photo mode stage 1 (free camera on F8 and the Game page's Camera row; HUD, helmet, arm cannon hidden;
+  start pose from the game camera, verified on screen at `/tmp/opencode/fc_after.png`);
+  `d7bf2b7a3` Aurora PNG screenshot API (`request_screenshot_png`, `screenshot_png_state`,
+  `frame_buffer_size_for_scale`, `max_texture_dimension`), not yet called by the game.
+- **Gates at `d7bf2b7a3`**: port build rc=0, both host tests rc=0, `gen_files_cmake.py --check` rc=0,
+  upstream matching build rc=0 with Game Code 63.29% matched.
+- **Photo mode stage 2, not started**: port `../MetroidPrimePort/platform/port_photo.cpp` (523 lines,
+  read-only reference) and its header. Its dependencies map to MP2 as: `PortDebug::Msaa/BaseRenderScale/
+  SetCaptureRenderScale` -> a capture scale through `VISetFrameBufferScale` (vendored
+  `extern/aurora/include/dolphin/vi.h`, used by `platform/debug_ui.cpp` which is in no MP2 target, so
+  the call needs a home in a built file); `PortLog::Write` -> the port's log; the panel -> `PortOverlay`
+  (MP2's F1 page window), not `debug_ui.cpp`; `CMFGame` Tick/Input hooks and the pause-menu entry need
+  `#ifdef TARGET_PC` in upstream files; the Android share path (JNI) is out of scope for stage 2.
+- **Next**: stage 2a = the capture (`RequestCapture`, supersample via the frame-buffer scale, PNG via
+  `aurora::request_screenshot_png`), console `photo`, one toast; then 2b = the panel (FOV, roll, speed,
+  supersample, show Samus) in `PortOverlay`; then 2c = pause-menu and F1 Game entries.
+- **Rules**: `../MetroidPrimePort` is read-only (read and run only; no code, commits or pushes).
+
+## Status (2026-10-18, fifteenth session)
+
+- **The F1 menu is MP1's menu** (commits `61a8244fb`, `0ca0a556b`, `7d7fb1e57`): pages Game,
+  Controls, Video, Cheats, System with sub-tabs; desktop opens the page window with the Prime theme
+  (`overlay_windowed`, `ui_theme` in settings.cfg); F1 is the input engine's PortMenu action only;
+  Save settings now + "Unsaved changes"; pad navigation via `UpdateControllerNav()`. Video's
+  Display sub-tab checked on screen (`/tmp/opencode/f1_video4.png`). Gates: `gen_files_cmake.py
+  --check` rc=0, `metroid_prime2_port` up to date, `port_input_engine_tests` and
+  `port_input_bindings_tests` rc=0.
+- **Vendored Aurora**: `extern/aurora/lib/imgui.cpp` +6 lines (SDL3 gamepad Manual mode, HasGamepad
+  kept across NewFrame). Documented in the commit message.
+- **Not yet done** (details in `docs/STATUS.md`): NEEDS-BACKEND rows (button glyphs, remastered
+  charge, swap scan/X-ray, auto-aim, pointer aim, remastered movement, separate vertical speed,
+  minimap tap); photo mode (F8 conflicts with MP2 warp keys F5-F10: key choice needed); save states
+  (no serializer); gyro reader and aim consumer; pointer menus; phone check of the F1 page; the
+  System page and sub-tab search jumps not checked on screen.
+- **Next**: the NEEDS-BACKEND rows, one bounded lane each, with `#ifdef TARGET_PC` and the upstream
+  matching build kept green.
+
+## Status (2026-10-18, fourteenth session)
+
+- **The two open bugs are closed, verified on the phone**, and the settings file is in.
+  - Sanctuary area-return crash (`0c33bd5a6`): walked on foot in Sanctuary Fortress (world
+    `42b935e4`), area 0 -> 1 -> 0 with the console (`world`, `door`, `press a 90`, `stick 0 127
+    240`). The return prints `FillInStaticGeometry (552 sections, already converted)`, the same
+    `525 surfaces, 0 bad`, and the run has no `[model]`/`[res]` refusal. `MP2_DEBUG_AREA=1` is the
+    flag behind those lines.
+  - Music loop race (`00869fb76`): 443 s of `SplinterHive-132.dsp` captured on the phone with
+    `MP2_DEBUG_AUDIO`/`MP_AUDIO_STATS`/`MP_AUDIO_DUMP` - four wraps, no `raced` line, `pending=0`,
+    no near-duplicate 2 s block. `music_loop_seam.wav` in `/tmp/opencode` is there to listen to.
+  - Settings file (`8fff230de`): `<user>/settings.cfg`, 14 keys, `MP2_<KEY>` wins, and a run that
+    changes nothing never writes or creates it. Console `settings [<key> <value>]`.
+- **The input engine is in charge of pad 0** (`cc210f983` + `431f82995`). MP1's `port_input_engine`
+  and `port_input_bindings` live in `platform/input/` with their host tests; `port_input_devices.cpp`
+  reads SDL into `RawState`, runs the engine and synthesises a `PADStatus`; `PortPumpEvents` hands it
+  to Aurora through `PADSetPortOverride` (a vendored-Aurora addition, see Gotchas) while the virtual
+  pad still merges, so the console's `press`/`stick`/`cstick`, `MP2_INPUT` and the phone's touch
+  overlay keep working. Keyboard bindings are `<user>/controls.toml` now; `keybinds.cfg` is dead.
+  Verified on the desktop with real key presses (`tools/keytap.py`) and on the phone (touch stick
+  moves, touch A fires).
+- **Next**: the F1 menu parity slice (UI scale, a settings filter, and video/audio pages with real
+  backends - `aurora_enable_vsync` exists; a render-scale and an audio gain need small additions),
+  then stage C of the input slice: MP1's remap UI (`platform/input/port_input_remap_ui.cpp`) in
+  place of the 22-row Bindings page, so contexts, chords, turbo and layers become reachable.
+
+## Status (2026-10-18, thirteenth session)
+
+- **The phone is the target now** and the APK is installed (debug-key signed: the installed copy is,
+  and the release key needs an uninstall that deletes the app's disc image and card). Work in the
+  tree since the log-file commit, all committed except the music loop: crash breadcrumbs + Android
+  stack walker (`eea16f8a1`), the morph-static crash and the ball's inner glow (`917f82173`), TLUT
+  byte order in the scan visor and the font palettes (`e32a7bc36`, `61336daf4`), the virtual pad's
+  analog triggers (`251c2b04d`), music (`5a1361d56`), MP1's touch controls + the F1 page window
+  (`bed7f6ce7`), and the Prime theme with the remap page (`7b88f433f`). Detail in `docs/STATUS.md`.
+- **The F1 menu is not yet MP1's**: missing the search bar, a UI scale control, the settings file
+  (everything is still `MP2_*` env vars), and video/audio pages *with backends* (vsync, fps cap,
+  render scale and volumes are hard-coded in `platform/main.cpp`). The pages MP2 has no backend for
+  (savestates, tracker, photo, randomizer/archipelago, mods, remastered) are out of the menu.
+- **Next slice, agreed**: import MP1's input engine (`platform/input/`: `controls.toml` bindings,
+  device profiles, chords/contexts, its remap UI - 4,100 lines) to replace `PortBinds`/`PortMouse`'s
+  binding half and the smaller remap page now in the F1 menu.
+- **Fixed since**: the touch aim's release recenter (`a35193272`), and the Sanctuary door crash -
+  `FillInStaticGeometry` converted a returned area's geometry a second time, byte-swapping every
+  material index (`0c33bd5a6`), with model/resource refusal lines around it. **The settings file was
+  reverted**: the cancelled lane's `PortSettings` wrote defaults back over the file on a second run.
+  Needs a redo (save only on change, env wins).
+- **Open bugs**: the music's loop point (a lane is reading the RSF loop offset against where the
+  refill wraps); the ball's shell reads more golden than retail's; the Worker Splinter's transparency
+  is in the disc data (a mucus layer), not a bug.
+- **Phone test recipes**: `adb shell input swipe X Y X Y 250` for a press (a plain tap can be shorter
+  than a frame); the cog at the bottom-left opens F1, the page list is thumb-sized at scale 2; the
+  X Morph pill is at (2334, 808) in the Default layout. The log file is at
+  `Android/data/org.metroidprime2.port/files/metroid_prime2_port.log`.
+- **`/tmp/opencode/apk_debug.sh`** builds a debug-signed release APK (it hides
+  `android/keystore.properties`, which must be restored - a killed run used to leave it moved).
+
+- **In from today, earlier** (each committed; detail in `docs/STATUS.md`): the save tools, the log
+  file, the automapper fix, and the pointer work below.
+
+## Status (2026-10-18, twelfth session)
+
+- **Phone session** (commits `72d9e0d01`, `283278ddd`, `952ec24f0`): a log file, the automapper, and
+  an F1 window you can open with a finger.
+  - **Log file**: `<user>/metroid_prime2_port.log` gets stdout+stderr (previous run as `.old.log`,
+    64 MiB cap); on Android it lands in the app's *external* folder (`Android/data/<pkg>/files`), so
+    `adb pull` works although the user dir is private. `MP2_LOG_FILE=0` (F1 > Testing, console
+    `logfile [0|1]`; next launch). The `[aram]` staging lines moved behind `MP2_DEBUG_ARAM=1` - they
+    were 62% of a 30 s run's log.
+  - **Automapper**: `CMapArea`'s vertices are host-order after `PostConstruct` but were drawn through
+    the guest `CGX::SetArray`, so the minimap exploded into stretched lines; `SetArrayNative` with
+    real sizes for the area vertices and `CMappableObject`'s door corners fixed it. The map screen's
+    phone crash was texture data freed under Aurora's FIFO thread: `GXDrawDone()` before
+    `CTexture::UnloadBitmapData` drops the `CARAMToken` (see Gotchas).
+  - **F1 on the phone**: a MENU pill toggles the window; while it is open, every touch except the
+    pill goes to SDL (its touch-to-mouse path is what ImGui reads - injecting ImGui events from Java
+    got the scale and the click timing wrong), two fingers scroll, and a drag on empty window space
+    scrolls (so the window is not movable). Verified on the device.
+  - **The gray triangle** over half the phone's view was the Landing Site's fish swarm, not the map
+    screen: the swarm also skins on the CPU from the model's position/normal arrays, which stay
+    big-endian in memory (the GPU's guest array path swaps them itself), so every boid got NaN
+    vertices - one huge triangle on the phone's GPU, a ball of strands on the desktop. Fixed with a
+    byte-swap in `SwarmRenderHelpers.cpp` and in `CSkinnedModel::GetSkinnedPosition/GetSkinnedNormal`
+    (`4c834b5ad`); after it the map screen opens and draws cleanly on the phone with no crash.
+  - **Open**: the touch control set is still M3's - MP1's missile, L/R buttons and triggers,
+    beam/visor wheels and pointer menus for the game's own screens are not ported yet. The Landing
+    Site's radial "strand ball" is a separate effect and has not been checked against retail.
+
+- **Save tools** (earlier today): the card's save file can be read, exported, imported
+  back and backed up before every write. New `platform/port_save.cpp` +
+  `platform/include/port_save.h`; console `save [info] [<file>]`, `save export [<path>]`,
+  `save import <path|latest>`, `save backup`, `save backups`; one setting, `MP2_CARD_BACKUP=1`
+  (F1 > Saves "Back up the card", console `cardbackup <0|1>`), hooked at the top of
+  `CMemoryCardSys::CCardFileInfo::WriteFile` under TARGET_PC - the one point both a first create and
+  every later write pass through. Copies live in `<user>/save-backups` (`card-*`, `export-*`,
+  `replaced-*`), the newest 20 `card-*` kept; an import copies the file it replaces aside first and
+  remounts the card (`aurora_card_remount`).
+  - The layout is `CMemoryCardSys::CCardFileInfo`'s and `CMemoryCardDriver::BuildSaveBuffer`'s:
+    0x40 directory entry, 0x2000 header block, two 0x2000 copies of CRC + generation + 0x1ff8 user
+    bytes, and in the user bytes `SSaveHeader` (15) + 192 system + 3x32 options + 32 global (0x14f)
+    then 3x0xa38 `SGameFileSlot`s. Slots are listed with the game's own
+    `CGameState::LoadGameFileState`.
+  - The one non-obvious fact: the CRC and generation are **host-endian in a save this port wrote**
+    (`BuildSaveSlot` assigns through a `uint*`) and big-endian in a console/Dolphin one, so the CRC
+    is checked both ways and the generation read in the order that matched. The newer copy is chosen
+    by slot timestamp, not generation - the generations alternate 0/1, so the greater is not newer.
+  - Verified on the desktop (card copy, `MP2_SKIP_FRONTEND=1`, `MP2_CONSOLE=4780`,
+    `tools/mp2con.py`): `save info` agrees with the boot's own `[skip] card slots` line, an export is
+    byte-identical, `save import latest` round-trips and keeps `replaced-*.gci`, a backup with 27
+    `card-*` files prunes to 20, and `MP2_INPUT="STATION@100,A@220+3,..."` with `MP2_CARD_BACKUP=1`
+    logged the backup on the save station's own write. That A press leaves the run paused in the save
+    screen, where no update runs and the console goes silent.
+  - **What of the slice does not fit** (detail in `docs/STATUS.md`): save states and MP1's quick
+    resume, which both need a live-world serialiser this tree does not have (MP2's resume is the
+    card's save plus `MP2_SKIP_FRONTEND`); region conversion (refused: MP2 carries per-release
+    SAVW/area data); slot-level copy/erase; MP1's Dolphin/Trilogy folders. Raw-image cards: import
+    only.
+  - Gates: `gen_files_cmake.py --check` rc=0, upstream `Game Code: 94.14% fuzzy, 63.29% matched`
+    rc=0, and `DolphinCMemoryCardSys.cpp` (the only upstream file touched) strips to its HEAD non-PC
+    text.
+
+- **In from the previous sessions** (each verified on the desktop then; detail in `docs/STATUS.md`):
+  the gameplay tweaks - fast morph, spring ball, toggle lock-on, sticky charge (`MP2_FAST_MORPH`,
+  `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`, `MP2_STICKY_CHARGE`, F1 > Gameplay, console
+  `fastmorph`/`springball`/`lockon`/`sticky`, the first two in `CPlayer`/`CMorphBall`, the other two
+  as MP1's state machines in `platform/include/port_hold_toggle.h` applied to `CFinalInput`'s L/A);
+  the graphics toggles - `MP2_FOV`, `MP2_NO_HELMET`, `MP2_NO_VISOR_FX`, `MP2_GUN_OFFSET`
+  (`"<right>,<forward>,<up>"`), `MP2_MSAA`, `MP2_ANISO`, `MP2_HUD_SCALE` (`50..100`) - with their
+  F1 rows and the console commands `gunoffset`/`msaa`/`aniso`/`hudscale`; the EFB-into-CPU copy that
+  serves the scan visor and the camera filters; `MP2_SKIP_INTRO` skipping the level-load text;
+  the door crash's `memmove` fix; the TCP debug console (`MP2_CONSOLE`) with `status`, `areas`,
+  `warp`, `nextarea`/`prevarea`, `door`/`dock`/`station`, `heal`/`kill`, `layer`, `god`, `skipcine`,
+  `objs`/`obj`/`send`, `visor`/`beam`, `tp`, `face`, `items`, `world`/`worlds`/`strg`,
+  `give`/`take`, `press`/`stick`/`cstick`, `screenshot`; `MP2_DEBUG_IOWIN`; the keyboard rebinding
+  slice (`platform/port_binds.cpp`, 22 rows, F1 > Bindings, `bind`/`binds`, now stored in
+  `controls.toml`, and `tools/keytap.py` for real key presses on a headless display); and M4's
+  release signing
+  (`docs/ANDROID.md`, and the `adb uninstall` a key switch costs).
+- Settings are `<user>/settings.cfg` (14 keys, `MP2_<KEY>` wins, written only when a value
+  changed) plus `controls.toml` (bindings) and `touch.cfg` (the phone's overlay); knobs that are not
+  registered as settings are still `MP2_*` env vars, and `platform/debug_ui.cpp` is in no CMake
+  target at all.
+- Knobs: `MP2_EFB_COPY=0`, `MP2_DEBUG_EFB_COPY=1`, `MP2_NO_COPY_TEX=1`, `MP2_DEBUG_IOWIN=1`,
+  `MP2_DEBUG_AREA=1`, `MP2_DEBUG_DOORS=1`, `MP2_WARP_DOOR=<id>`, `MP2_GUARD_GEOMETRY=1`,
+  `MP2_WARP_HANDED=1`, `MP2_DEBUG_VIS=1`, `MP2_DEBUG_TRANS=1`, `MP2_DEBUG_FILTERS=1`,
+  `MP2_FOV=<deg>`, `MP2_NO_HELMET=1`, `MP2_NO_VISOR_FX=1`, `MP2_GUN_OFFSET="r,f,u"`, `MP2_MSAA=1|4`,
+  `MP2_ANISO=1..16`, `MP2_HUD_SCALE=50..100`, `MP2_CONSOLE=<port>`, `MP2_GODMODE=1`, `MP2_INPUT`,
+  `MP2_FAST_MORPH=1`, `MP2_SPRING_BALL=1`, `MP2_LOCK_ON_TOGGLE=1`, `MP2_STICKY_CHARGE=1`,
+  `MP2_CARD_BACKUP=1`, `MP2_LOG_FILE=0`, `MP2_DEBUG_ARAM=1`, `MP2_DEBUG_DVD=1`, `MP2_DEBUG_PAD=1`.
+  A blank screen with the HUD on it is a full-screen camera filter or a stuck transition: `status`
+  (draw calls, camera, transition) plus `MP2_DEBUG_FILTERS=1` and `MP2_DEBUG_TRANS=1` answer it in
+  one run.
+- **The QoL inventory is `docs/QOL.md`**: what the tree has, the next slices in order, and the rules
+  each follows.
+- Next: **photo mode / free camera** (MP1's `port_photo.cpp`/`port_freecam.cpp`), then the map and
+  tracker (MP2's `CMapWorld` is a different format, so that one is a rewrite). Save states stay the
+  one large item with no foothold yet (see `docs/QOL.md` item 5). Left over from earlier slices:
+  key/button presets (MP1's `ApplyKeyPreset`) and a native-pad remap UI (MP1's `platform/input/`
+  profile system), plus the graphics knobs `platform/main.cpp` still hard-codes (aspect, render
+  scale, vsync, sim rate). All listed in `docs/QOL.md`.
+- Detail, per session: `docs/STATUS.md` (top of file = newest).
