@@ -39,6 +39,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <filesystem>
@@ -549,7 +550,32 @@ std::string LastMessage() {
   return sMessage;
 }
 
+// Test hook: MP2_SAVESTATE_AT=<save frame>,<load frame> queues a save of the selected slot and
+// later a load of it, counted in Tick calls (game updates). Lets a headless run exercise the
+// round trip, since the harness cannot press F5/F9.
+void TestHook() {
+  static const char* env = std::getenv("MP2_SAVESTATE_AT");
+  static long saveAt = -1;
+  static long loadAt = -1;
+  static bool parsed = false;
+  static long frame = 0;
+  if (!parsed) {
+    parsed = true;
+    if (env != nullptr) {
+      std::sscanf(env, "%ld,%ld", &saveAt, &loadAt);
+    }
+  }
+  ++frame;
+  if (frame == saveAt) {
+    RequestSave(SelectedSlot());
+  }
+  if (frame == loadAt) {
+    RequestLoad(SelectedSlot());
+  }
+}
+
 void Tick(CStateManager& mgr) {
+  TestHook();
   if (sPlace.active) {
     TickPlacement(mgr);
   }
