@@ -33,7 +33,13 @@ appended, dated as in the heading there.
   it. Setting `look_interpolation` (env `MP2_LOOK_INTERPOLATION`, F1 "Smooth look", ON by default as in MP1,
   active only with smooth frames on and the cap off). Verified: link 0 FAILED; matching build 94.14%/63.29%;
   strip-diff CLEAN; boot exit 124. Not checked on screen (no save). Pointer cursor still steps per tick.
-- Next: HUD/2D and resets (MP1 doc sections 5-6), then the sweep.
+- Phase 5 HUD/2D (`bb7161ca6`, MP1 doc section 5): reticles present at their between-tick position
+  (`CActor::PortPresentedPoint`), GUI clock lags by (1-t)/60 s (steps per tick with the cap off), HUD
+  lag/bob blends the last two ticks during the draw. Resets (section 6) need no new code: stale pairs,
+  teleports, 45-degree turns and camera switches already snap. Verified: 0 FAILED link; presentation
+  tests pass; matching build 94.14%/63.29%; strip-diff CLEAN on 13 files; boot exit 124. Not checked on
+  screen (no save). Caveat: GUI animation no longer speeds up with the frame rate when the cap is off.
+- Next: the sweep (MP1 doc section 7). Needs a playthrough or save to be meaningful, so it is not run.
 - Gotcha: `/tmp/strip.py` (crude) dropped everything after `#else`; use a stripper that keeps the
   `#else` branch, or its CLEAN results mean nothing.
 
