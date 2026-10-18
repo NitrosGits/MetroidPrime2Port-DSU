@@ -296,10 +296,23 @@ bool texture_source_is_mapped(const GXTexObj_& obj) noexcept {
   if (pageSize <= 0) {
     return true;
   }
+  // The whole source, not just its first page: a pointer into a freed heap block is in a mapped
+  // region at its start, and hashing the texture then runs off the end of the mapping - a SIGSEGV
+  // inside XXH3 on the FIFO thread (seen when a texture's data is unloaded while the game still
+  // draws with it). Every page the source covers has to be there.
+  const size_t bytes =
+      texture::texture_source_size(obj.format(), obj.width(), obj.height(), obj.mip_count());
+  const size_t span = bytes != 0 ? bytes : 1;
   const uintptr_t addr = reinterpret_cast<uintptr_t>(obj.data);
-  const uintptr_t page = addr & ~static_cast<uintptr_t>(pageSize - 1);
-  unsigned char resident = 0;
-  return mincore(reinterpret_cast<void*>(page), 1, &resident) == 0;
+  const uintptr_t first = addr & ~static_cast<uintptr_t>(pageSize - 1);
+  const uintptr_t last = (addr + span - 1) & ~static_cast<uintptr_t>(pageSize - 1);
+  for (uintptr_t page = first; page <= last; page += static_cast<uintptr_t>(pageSize)) {
+    unsigned char resident = 0;
+    if (mincore(reinterpret_cast<void*>(page), 1, &resident) != 0) {
+      return false;
+    }
+  }
+  return true;
 #else
   return true;
 #endif
@@ -322,6 +335,14 @@ void log_invalid_texture_source(const GXTexObj_& obj, const char* where) noexcep
 TextureKeys hash_texture_source(const GXTexObj_& obj, const GXTlutObj_* tlut, bool buildSourceKey) {
   ZoneScoped;
   const size_t textureBytes = texture::texture_source_size(obj.format(), obj.width(), obj.height(), obj.mip_count());
+  // MP2_DEBUG_TEX: what is about to be hashed, for a texture that faults while hashing.
+  if (std::getenv("MP2_DEBUG_TEX") != nullptr) {
+    std::fprintf(stderr,
+                 "[tex] hash data=%p user=%p bytes=%zu fmt=%u %ux%u mips=%u id=%u flags=%02X "
+                 "image0=%08X image3=%08X\n",
+                 obj.data, obj.userData, textureBytes, obj.format(), obj.width(), obj.height(),
+                 obj.mip_count(), obj.texObjId, obj.flags, obj.image0, obj.image3);
+  }
   CHECK(obj.has_data() && textureBytes != 0, "invalid texture source for content hash");
 
   TextureKeys keys;

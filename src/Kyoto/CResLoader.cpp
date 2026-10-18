@@ -1,6 +1,7 @@
 #include "Kyoto/CResLoader.hpp"
 
 #ifdef TARGET_PC
+#include "port_breadcrumb.h"
 #include <stdio.h>
 #include <string.h>
 #endif
@@ -48,6 +49,13 @@ void WarnMissingResource(const SObjectTag& tag, const char* where) {
     // The type matters as much as the id: it says which family of pak the resource should have come
     // from (a world pak, a shared pak, or one the port never mounts).
     const uint type = tag.GetType();
+#ifdef TARGET_PC
+    PortBreadcrumb::Add("missing resource %08x type '%c%c%c%c' (%s)", id,
+                        static_cast< char >((type >> 24) & 0xff),
+                        static_cast< char >((type >> 16) & 0xff),
+                        static_cast< char >((type >> 8) & 0xff),
+                        static_cast< char >(type & 0xff), where);
+#endif
     std::fprintf(stderr,
                  "[res] %s: %08x is in no loaded pak (type '%c%c%c%c'); serving an empty resource\n",
                  where, id, static_cast< char >((type >> 24) & 0xff),

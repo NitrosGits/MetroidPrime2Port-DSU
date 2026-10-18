@@ -65,6 +65,7 @@ extern void* gPortGameHeapHi;
 #include "port_build_info.h"
 #include "port_console.h"
 #include "port_entry.h"
+#include "port_breadcrumb.h"
 #include "port_logfile.h"
 #include "port_save.h"
 #include "port_touch.h"
@@ -583,12 +584,56 @@ void PortLogDrain() {}
 // address is the one piece of information a tombstone alone makes awkward to pin down. The
 // re-raise is unchanged, so bionic still writes its own tombstone.
 #if defined(__ANDROID__)
+#include <dlfcn.h>
+#include <unwind.h>
+
+// The stack, as "module+0xoffset (symbol)" lines: bionic prints no backtrace of its own before the
+// re-raise, and the tombstone it writes is only readable with the app's unstripped .so to hand.
+// Printing the frames here means a crash is one `adb logcat -s mp2port` away, and the offsets
+// symbolise with `llvm-symbolizer --obj=<unstripped libmetroid_prime2_port.so> 0x<offset>`.
+// Formatted into a buffer and written with write(2): the signal handler may be on a thread whose
+// stdio locks are held.
+struct PortWalk {
+  int frame;
+};
+
+static _Unwind_Reason_Code PortWalkFrame(_Unwind_Context* context, void* argument) {
+  PortWalk* walk = static_cast< PortWalk* >(argument);
+  const uintptr_t pc = _Unwind_GetIP(context);
+  if (pc == 0 || walk->frame >= 32) {
+    return _URC_END_OF_STACK;
+  }
+  char line[384];
+  Dl_info symbol{};
+  int used = 0;
+  if (dladdr(reinterpret_cast< void* >(pc), &symbol) != 0 && symbol.dli_fname != nullptr) {
+    const char* name = std::strrchr(symbol.dli_fname, '/');
+    name = name != nullptr ? name + 1 : symbol.dli_fname;
+    used = std::snprintf(line, sizeof line, "[port]   #%d %s+0x%lx%s%s\n", walk->frame, name,
+                         static_cast< unsigned long >(
+                             pc - reinterpret_cast< uintptr_t >(symbol.dli_fbase)),
+                         symbol.dli_sname != nullptr ? " " : "",
+                         symbol.dli_sname != nullptr ? symbol.dli_sname : "");
+  } else {
+    used = std::snprintf(line, sizeof line, "[port]   #%d 0x%lx\n", walk->frame,
+                         static_cast< unsigned long >(pc));
+  }
+  if (used > 0) {
+    ::write(STDERR_FILENO, line, static_cast< size_t >(used < int(sizeof line) ? used : int(sizeof line) - 1));
+  }
+  ++walk->frame;
+  return _URC_NO_REASON;
+}
+
 static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
   const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
   const void* faultAddress = info != nullptr ? info->si_addr : nullptr;
   // Not "backtrace follows" as the desktop path says: bionic prints none, and the
-  // tombstone the re-raise produces is the stack this platform gets.
-  std::fprintf(stderr, "\n[port] caught %s (%d) - tombstone follows\n", name, sig);
+  // tombstone the re-raise produces is the stack this platform gets. The frames below are ours.
+  std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
+  PortBreadcrumb::Dump();
+  PortWalk walk{0};
+  _Unwind_Backtrace(PortWalkFrame, &walk);
   std::fflush(stderr);
   __android_log_print(ANDROID_LOG_FATAL, "mp2port", "[port] caught %s (%d) at %p", name, sig,
                       faultAddress);
@@ -604,6 +649,7 @@ static void PortFaultHandler(int sig) {
   const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
   std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
   std::fflush(stderr);
+  PortBreadcrumb::Dump();
   void* frames[64];
   const int n = ::backtrace(frames, 64);
   ::backtrace_symbols_fd(frames, n, STDERR_FILENO);

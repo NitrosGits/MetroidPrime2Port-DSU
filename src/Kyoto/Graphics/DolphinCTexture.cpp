@@ -9,6 +9,7 @@
 #include "dolphin/gx/GXTexture.h"
 #ifdef TARGET_PC
 #include "dolphin/gx/GXManage.h"
+#include "port_breadcrumb.h"
 #endif
 #include "dolphin/os.h"
 #include "dolphin/os/OSCache.h"
@@ -146,6 +147,11 @@ void CTexture::Load(GXTexMapID tex, EClampMode clamp) const {
   if (reinterpret_cast< LoadedTexKey >(this) + clamp != sLoadedTextures[tex]) {
     if (mCanLoadObj) {
       void* ptr = mARAMToken.GetMRAMSafe();
+#ifdef TARGET_PC
+      // Breadcrumb only (see port_breadcrumb.h): a crash log names the texture that was bound.
+      PortBreadcrumb::Add("texture bound: data=%p %ux%u fmt=%u", ptr, unsigned(mWidth),
+                          unsigned(mHeight), unsigned(mNativeFormat));
+#endif
       CountMemory();
       if (!mGraphicsPalette.null()) {
         mGraphicsPalette->Load();
@@ -209,6 +215,20 @@ void CTexture::UnloadBitmapData(CAssetId textureId) const {
     // aurora::gx::texture::resolve_static_texture - seen on the phone when the scan visor and the
     // map screen free their textures. Every free of texture data goes through here.
     GXDrawDone();
+    // The copies of this object already loaded into GX slots still point at that data, and the game
+    // can draw with them before the texture is reloaded (retail's GX reads freed memory harmlessly;
+    // Aurora hashes it and runs off the mapping). Re-load it, now empty, into the slots that hold
+    // it - after the drain above, so the FIFO sees the reload before any later draw - and forget
+    // those cache entries so the next Load re-inits the object from the reloader's data.
+    PortBreadcrumb::Add("texture freed: id=%08x %ux%u fmt=%u", unsigned(textureId),
+                        unsigned(mWidth), unsigned(mHeight), unsigned(mNativeFormat));
+    GXInitTexObjData(&mTexObj, nullptr);
+    for (int tex = 0; tex < GX_MAX_TEXMAP; ++tex) {
+      if (sLoadedTextures[tex] == reinterpret_cast< LoadedTexKey >(this) + mClampMode) {
+        GXLoadTexObj(&mTexObj, GXTexMapID(tex));
+      }
+    }
+    InvalidateTexmaps();
 #endif
     mARAMToken = CARAMToken();
     mBitmapReloader = rs_new CDumpedBitmapDataReloader(textureId, mMemoryAllocated, complete);

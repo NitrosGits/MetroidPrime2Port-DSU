@@ -371,7 +371,7 @@ endif()
 # syntax-checked by the full build instead.
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_binds.cpp
-        platform/port_save.cpp platform/port_logfile.cpp
+        platform/port_save.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_events.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_touch.cpp platform/touch_pad.cpp)
