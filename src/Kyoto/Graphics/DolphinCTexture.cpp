@@ -7,6 +7,9 @@
 #include "dolphin/gx/GXEnum.h"
 #include "dolphin/gx/GXStruct.h"
 #include "dolphin/gx/GXTexture.h"
+#ifdef TARGET_PC
+#include "dolphin/gx/GXManage.h"
+#endif
 #include "dolphin/os.h"
 #include "dolphin/os/OSCache.h"
 #include "rstl/single_ptr.hpp"
@@ -199,6 +202,14 @@ void CTexture::UnloadBitmapData(CAssetId textureId) const {
                     mARAMToken.GetStatus() == CARAMToken::kS_Two ||
                     mARAMToken.GetStatus() == CARAMToken::kS_Five;
 
+#ifdef TARGET_PC
+    // Dropping the token below frees the texture's data, and Aurora resolves texture objects on
+    // its own FIFO thread while it may still be working through draws that sample them (the game's
+    // GX is synchronous and has no such window). Without this drain that is a SIGSEGV in
+    // aurora::gx::texture::resolve_static_texture - seen on the phone when the scan visor and the
+    // map screen free their textures. Every free of texture data goes through here.
+    GXDrawDone();
+#endif
     mARAMToken = CARAMToken();
     mBitmapReloader = rs_new CDumpedBitmapDataReloader(textureId, mMemoryAllocated, complete);
     mCanLoadObj = true;

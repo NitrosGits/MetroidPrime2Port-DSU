@@ -409,6 +409,8 @@ void SetGameState(uint32_t worldId, int areaId) {
 
 void Toggle() { sVisible = !sVisible; }
 
+void Wheel(float steps) { ImGui::GetIO().AddMouseWheelEvent(0.f, steps); }
+
 bool Visible() {
   ReadEnv();
   return sVisible;
@@ -573,8 +575,19 @@ void Draw() {
     return;
   }
 
-  if (ImGui::Begin("Metroid Prime 2 port", &sVisible)) {
+  // Not movable: on the phone a drag on the window's empty space is how the list is scrolled (a
+  // finger cannot turn a mouse wheel), and a window-drag would move it instead.
+  if (ImGui::Begin("Metroid Prime 2 port", &sVisible, ImGuiWindowFlags_NoMove)) {
     ImGui::Text("%.1f fps", static_cast< double >(sFps));
+    // A drag on the window that no item took: scroll by the drag, like a wheel would. An item
+    // that holds the mouse (a slider, a checkbox press) keeps its own drag.
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+        !ImGui::IsAnyItemActive()) {
+      const float dy = ImGui::GetIO().MouseDelta.y;
+      if (dy > 0.f || dy < 0.f) {
+        ImGui::SetScrollY(ImGui::GetScrollY() - dy);
+      }
+    }
     DrawGameSection();
     DrawAimSection();
     DrawRenderSection();

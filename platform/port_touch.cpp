@@ -536,6 +536,17 @@ Java_org_metroidprime2_port_TouchControlsView_nativeDebugOverlayVisible(JNIEnv*,
 }
 
 JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeToggleDebugOverlay(JNIEnv*, jclass) {
+  PortOverlay::Toggle();
+}
+
+// A two-finger vertical drag on the open F1 window: the wheel it would get from a mouse.
+JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeDebugWheel(
+    JNIEnv*, jclass, jfloat steps) {
+  PortOverlay::Wheel(steps);
+}
+
+JNIEXPORT void JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeSetTouchDevice(JNIEnv*, jclass,
                                                                   jboolean xbox) {
   PortTouch::NoteDevice(xbox == JNI_TRUE);

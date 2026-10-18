@@ -7,6 +7,7 @@ import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -146,11 +147,16 @@ final class TouchControlsView extends View {
         ControlButton.round("Missile", BTN_NORTH, 0f, -TWIN_DIAMOND, 0.055f, GC_GREY),
     };
 
+    // A pill id that is no pad button: pressing it toggles the F1 debug window.
+    private static final int BTN_DEBUG_MENU = 0x7000;
+
     private static final PillButton[] GAMECUBE_PILLS = {
         new PillButton("L Lock", AXIS_TRIGGER_L, -1, 0.020f, 0.030f, 0.150f, 0.190f, GC_GREY),
         new PillButton("R Look", AXIS_TRIGGER_R, -1, 0.850f, 0.030f, 0.980f, 0.190f, GC_GREY),
         new PillButton("Z Map", -1, BTN_RIGHT_SHOULDER, 0.870f, 0.205f, 0.960f, 0.265f, GC_PURPLE),
         new PillButton("START", -1, BTN_START, 0f, 0f, 0f, 0f),
+        new PillButton("MENU", -1, BTN_DEBUG_MENU, 0.440f, 0.030f, 0.560f, 0.100f, 0,
+                       TouchControlsView.C_MENU),
     };
 
     // Twin stick's shoulders, like Remastered's: LT locks on (the L trigger), RT
@@ -171,6 +177,8 @@ final class TouchControlsView extends View {
         new PillButton("Map", -1, BTN_RIGHT_SHOULDER, 0.730f, 0.030f, 0.830f, 0.100f, GC_PURPLE,
                        TouchControlsView.C_TZ),
         new PillButton("START", -1, BTN_START, 0f, 0f, 0f, 0f),
+        new PillButton("MENU", -1, BTN_DEBUG_MENU, 0.440f, 0.030f, 0.560f, 0.100f, 0,
+                       TouchControlsView.C_MENU),
     };
 
     // The round buttons along the bottom: START on the left, the eye on the
@@ -211,6 +219,7 @@ final class TouchControlsView extends View {
     private static final int C_VISOR = 10; // the beam button follows
     private static final int C_BEAM = 11;
     private static final int C_START = 12;
+    // The MENU pill (opens the F1 window); its id was MP1's, retired here until now.
     private static final int C_MENU = 13;
     private static final int C_MAP = 14;
     private static final int C_EYE = 15;
@@ -329,6 +338,10 @@ final class TouchControlsView extends View {
     private final Path shapePath = new Path();
     private final Path crossArmPath = new Path();
     private static native boolean nativeDebugOverlayVisible();
+    // Opens or closes the F1 window (the MENU pill).
+    private static native void nativeToggleDebugOverlay();
+    // A two-finger drag on the open window: mouse-wheel steps (ImGui scrolls on the wheel).
+    private static native void nativeDebugWheel(float steps);
     private static native boolean nativeTouchClassic();
     private static native boolean nativeTouchTwinStick();
     private static native boolean nativeTouchColors();
@@ -430,6 +443,8 @@ final class TouchControlsView extends View {
         // hears about, so keep checking; otherwise the controls stayed invisible
         // until the next touch happened to redraw them.
         if (nativeDebugOverlayVisible() && !editing) {
+            // Only the MENU pill stays, so the window can be closed again.
+            drawMenuOnly(canvas, getWidth(), getHeight());
             postInvalidateDelayed(150);
             return;
         }
@@ -463,6 +478,25 @@ final class TouchControlsView extends View {
             if (savedLayer >= 0) {
                 canvas.restoreToCount(savedLayer);
             }
+        }
+    }
+
+    // The MENU pill alone, over the open F1 window. Sets what drawPillButton reads, as a
+    // normal draw would.
+    private void drawMenuOnly(Canvas canvas, float width, float height) {
+        final boolean classic = nativeTouchClassic();
+        twin = !classic && nativeTouchTwinStick();
+        pills = twin ? TWIN_PILLS : GAMECUBE_PILLS;
+        colored = false;
+        labels = true;
+        sideMargin = dp(nativeTouchSideMarginDp());
+        stickInset = dp(nativeTouchStickInsetDp());
+        buttonInset = dp(nativeTouchButtonInsetDp());
+        syncLayout();
+        final PillButton menu = pillOf(C_MENU);
+        if (menu != null) {
+            drawPillButton(canvas, menu, width, height);
+            pillRect(menu, width, height, menuDrawn);
         }
     }
 
@@ -578,6 +612,9 @@ final class TouchControlsView extends View {
         if (overlayVisible && (!targets.isEmpty() || !held.isEmpty())) {
             releaseAll();
         }
+        if (overlayVisible || menuPointer != -1) {
+            return onDebugTouch(event, action, actionIndex, overlayVisible);
+        }
         if (action == MotionEvent.ACTION_DOWN) {
             cancelForwarded(event);
             if (overlayVisible) {
@@ -645,6 +682,104 @@ final class TouchControlsView extends View {
         }
         invalidate();
         return true;
+    }
+
+    // The MENU pill's rect as it was last drawn over the window, which is what a tap is tested
+    // against so the two cannot disagree.
+    private final RectF menuDrawn = new RectF();
+    // The finger that went down on MENU, so a drag off it does not toggle the window.
+    private int menuPointer = -1;
+    // A two-finger drag scrolls the window: a finger cannot turn a mouse wheel, and the settings
+    // list is taller than a phone screen.
+    private boolean scrolling;
+    private float scrollLastY;
+
+    // Touches while the F1 window is open: MENU stays live so the window can be closed, a
+    // two-finger drag scrolls, and everything else is handed to SDL, whose touch-to-mouse path is
+    // what the ImGui window reads (Metroid Prime 1's port works the same way). Forwarding through
+    // SDL rather than injecting ImGui events here is also what makes the coordinates right:
+    // sendToSdl normalises them against the surface SDL knows about.
+    private boolean onDebugTouch(MotionEvent event, int action, int actionIndex,
+                                 boolean overlayVisible) {
+        final int id = event.getPointerId(actionIndex);
+        if (!overlayVisible) {
+            // The window closed under a finger: SDL must not keep it held.
+            cancelForwarded(event);
+            menuPointer = -1;
+            scrolling = false;
+            return true;
+        }
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                if (menuDrawn.contains(event.getX(actionIndex), event.getY(actionIndex))) {
+                    menuPointer = id;
+                    return true;
+                }
+                forwarded.add(id);
+                sendToSdl(event, actionIndex, MotionEvent.ACTION_DOWN);
+                return true;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                // A second finger: the gesture is a scroll, and the finger SDL already holds has
+                // to let go or its drag would move the window while it scrolls.
+                if (!scrolling) {
+                    scrolling = true;
+                    scrollLastY = averageY(event);
+                    cancelForwarded(event);
+                }
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (scrolling) {
+                    final float y = averageY(event);
+                    final float dy = y - scrollLastY;
+                    scrollLastY = y;
+                    if (Math.abs(dy) >= 1f) {
+                        nativeDebugWheel(dy / dp(24));
+                    }
+                    return true;
+                }
+                for (int i = 0; i < event.getPointerCount(); ++i) {
+                    if (forwarded.contains(event.getPointerId(i))) {
+                        sendToSdl(event, i, MotionEvent.ACTION_MOVE);
+                    }
+                }
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                if (id == menuPointer) {
+                    menuPointer = -1;
+                    if (menuDrawn.contains(event.getX(actionIndex), event.getY(actionIndex))) {
+                        cancelForwarded(event);
+                        nativeToggleDebugOverlay();
+                        invalidate();
+                    }
+                    return true;
+                }
+                if (scrolling) {
+                    if (event.getPointerCount() <= 2) {
+                        scrolling = false;
+                    }
+                    return true;
+                }
+                if (forwarded.remove(id)) {
+                    sendToSdl(event, actionIndex, MotionEvent.ACTION_UP);
+                }
+                return true;
+            case MotionEvent.ACTION_CANCEL:
+                cancelForwarded(event);
+                menuPointer = -1;
+                scrolling = false;
+                return true;
+            default:
+                return true;
+        }
+    }
+
+    private static float averageY(MotionEvent event) {
+        float sum = 0f;
+        for (int i = 0; i < event.getPointerCount(); ++i) {
+            sum += event.getY(i);
+        }
+        return sum / Math.max(1, event.getPointerCount());
     }
 
     @Override
@@ -1086,7 +1221,9 @@ final class TouchControlsView extends View {
     private void pressControl(int id) {
         int count = held.containsKey(id) ? held.get(id) : 0;
         if (count == 0) {
-            if (id >= AXIS_ID_BASE) {
+            if (id == BTN_DEBUG_MENU) {
+                nativeToggleDebugOverlay();
+            } else if (id >= AXIS_ID_BASE) {
                 nativeVirtualAxis(id - AXIS_ID_BASE, 1f);
             } else {
                 nativeVirtualButton(id, true);
@@ -1102,7 +1239,9 @@ final class TouchControlsView extends View {
         }
         if (current <= 1) {
             held.remove(id);
-            if (id >= AXIS_ID_BASE) {
+            if (id == BTN_DEBUG_MENU) {
+                // A toggle on press; nothing to release.
+            } else if (id >= AXIS_ID_BASE) {
                 // Triggers are axes, and SDL's joystick axes run -32768..32767
                 // with a trigger resting at the minimum: releasing with 0 left
                 // the trigger half pressed, so the game stayed locked on (and
@@ -1701,7 +1840,6 @@ final class TouchControlsView extends View {
             case C_TTURBO:
             case C_VISOR:
             case C_BEAM:
-            case C_MENU:
             case C_MAP:
                 return false; // MP1's, not drawn on MP2; kept so saved ids don't shift
             case C_Z:
@@ -1781,7 +1919,8 @@ final class TouchControlsView extends View {
             case C_RT:
             case C_RB:
             case C_TZ:
-            case C_TR: {
+            case C_TR:
+            case C_MENU: {
                 final PillButton pill = pillOf(control);
                 if (pill != null) {
                     pillRect(pill, width, height, out);
@@ -1795,7 +1934,6 @@ final class TouchControlsView extends View {
                 return;
             case C_VISOR:
             case C_BEAM:
-            case C_MENU:
             case C_MAP:
             case C_TURBO:
             case C_TTURBO:

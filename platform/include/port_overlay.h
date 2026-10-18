@@ -15,6 +15,9 @@ namespace PortOverlay {
 void SetGameState(uint32_t worldId, int areaId);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
+// Scrolls the open window by `steps` rows: the phone's two-finger drag, since a finger cannot turn
+// a mouse wheel and the window is taller than the screen. Queued in ImGui's input queue.
+void Wheel(float steps);
 // Debug setting (`MP2_SKIP_CINEMATICS=1`): cinematics end as soon as they start, including ones
 // the player has never seen, which the game otherwise refuses to skip. Testing only - it skips
 // story beats along with the intro.
