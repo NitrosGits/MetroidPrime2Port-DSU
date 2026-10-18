@@ -398,6 +398,126 @@ void DrawBindingsSection() {
   ImGui::TextDisabled("F1/F5-F10/F12 are the port's own hotkeys; they still fire when bound");
 }
 
+#if defined(__ANDROID__)
+// The phone's window, as the Prime 1 port draws it: full screen inside the display's safe area,
+// no title bar, a Close button a thumb can hit, and a page list down the side in place of a
+// scroll of nine sections.
+struct Page {
+  const char* name;
+  void (*draw)();
+};
+const Page kPages[] = {
+    {"Game", DrawGameSection},         {"Aim", DrawAimSection},
+    {"Render", DrawRenderSection},     {"HUD", DrawHudSection},
+    {"Testing", DrawTestingSection},   {"Gameplay", DrawGameplaySection},
+    {"Saves", DrawSavesSection},       {"Cheats", DrawCheatsSection},
+    {"Bindings", DrawBindingsSection},
+};
+constexpr int kPageCount = sizeof(kPages) / sizeof(kPages[0]);
+
+SDL_Window* UiWindow() {
+  static SDL_Window* sWindow = nullptr;
+  if (sWindow == nullptr) {
+    int count = 0;
+    if (SDL_Window** windows = SDL_GetWindows(&count)) {
+      if (count > 0) {
+        sWindow = windows[0];
+      }
+      SDL_free(windows);
+    }
+  }
+  return sWindow;
+}
+
+// Scale the style and the font once, rather than padding each widget: fingers need taller rows.
+void ApplyTouchScale() {
+  static bool sApplied = false;
+  if (sApplied) {
+    return;
+  }
+  sApplied = true;
+  constexpr float kScale = 1.5f;
+  ImGui::GetStyle().ScaleAllSizes(kScale);
+  ImGui::GetIO().FontGlobalScale *= kScale;
+}
+
+// Returns false once Close is pressed.
+bool DrawPageWindow() {
+  ApplyTouchScale();
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  ImVec2 pos = viewport->WorkPos;
+  ImVec2 size = viewport->WorkSize;
+  SDL_Window* window = UiWindow();
+  SDL_Rect safe;
+  int windowWidth = 0, windowHeight = 0;
+  if (window != nullptr && SDL_GetWindowSafeArea(window, &safe) &&
+      SDL_GetWindowSize(window, &windowWidth, &windowHeight) && windowWidth > 0 &&
+      windowHeight > 0 && safe.w > 0 && safe.h > 0) {
+    // ImGui's display size need not be in window coordinates.
+    const float sx = size.x / static_cast< float >(windowWidth);
+    const float sy = size.y / static_cast< float >(windowHeight);
+    pos = ImVec2(pos.x + safe.x * sx, pos.y + safe.y * sy);
+    size = ImVec2(safe.w * sx, safe.h * sy);
+  }
+  ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+  ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+  constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
+                                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
+                                      ImGuiWindowFlags_NoSavedSettings |
+                                      ImGuiWindowFlags_NoScrollbar |
+                                      ImGuiWindowFlags_NoScrollWithMouse;
+  bool open = true;
+  if (ImGui::Begin("Metroid Prime 2 port##touch", nullptr, kFlags)) {
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const char* const kClose = "Close";
+    const float closeWidth = ImGui::CalcTextSize(kClose).x + style.FramePadding.x * 4.f;
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Metroid Prime 2 port  %.1f fps", static_cast< double >(sFps));
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - closeWidth);
+    if (ImGui::Button(kClose, ImVec2(closeWidth, 0.f))) {
+      open = false;
+    }
+    ImGui::Separator();
+
+    static int sPage = 0;
+    float listWidth = 0.f;
+    for (int i = 0; i < kPageCount; ++i) {
+      listWidth = std::max(listWidth, ImGui::CalcTextSize(kPages[i].name).x);
+    }
+    listWidth += style.FramePadding.x * 2.f + style.WindowPadding.x * 2.f;
+    const float rowHeight = ImGui::GetFrameHeight() * 1.2f;
+    if (ImGui::BeginChild("##pages", ImVec2(listWidth, 0.f), ImGuiChildFlags_Borders)) {
+      for (int i = 0; i < kPageCount; ++i) {
+        if (ImGui::Selectable(kPages[i].name, sPage == i, ImGuiSelectableFlags_None,
+                              ImVec2(0.f, rowHeight))) {
+          sPage = i;
+        }
+      }
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    // Keyed by page, so each page keeps its own scroll position.
+    ImGui::PushID(sPage);
+    if (ImGui::BeginChild("##page", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders)) {
+      // A drag that no item took scrolls the page, like a wheel (a finger has no wheel).
+      if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+          !ImGui::IsAnyItemActive()) {
+        const float dy = ImGui::GetIO().MouseDelta.y;
+        if (dy > 0.f || dy < 0.f) {
+          ImGui::SetScrollY(ImGui::GetScrollY() - dy);
+        }
+      }
+      kPages[sPage].draw();
+    }
+    ImGui::EndChild();
+    ImGui::PopID();
+  }
+  ImGui::End();
+  return open;
+}
+#endif
+
 } // namespace
 
 namespace PortOverlay {
@@ -575,6 +695,12 @@ void Draw() {
     return;
   }
 
+#if defined(__ANDROID__)
+  if (!DrawPageWindow()) {
+    sVisible = false;
+  }
+  return;
+#endif
   // Not movable: on the phone a drag on the window's empty space is how the list is scrolled (a
   // finger cannot turn a mouse wheel), and a window-drag would move it instead.
   if (ImGui::Begin("Metroid Prime 2 port", &sVisible, ImGuiWindowFlags_NoMove)) {

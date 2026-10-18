@@ -62,6 +62,9 @@ double Seconds();
 
 // CMFGame::SetFlowState publishes every flow state here (state is CMFGame::EFlowState).
 void GameFlowState(int state, bool inGame);
+// The last flow state published there (CMFGame::EFlowState: 1 kFS_InGame, 2 kFS_Paused), -1
+// before the first; safe from any thread (the touch overlay polls it from Android's UI thread).
+int FlowState();
 
 // CMFGame::EnterMessageScreen asks this before pausing for a HUD memo (message is its STRG id).
 // True: dismiss it (logged).

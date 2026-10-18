@@ -3,6 +3,7 @@
 
 #include "port_harness.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -27,6 +28,7 @@ bool sIntroDone = false;
 int sIntroBudget = 3600;  // game updates
 int sIntroUpdates = 0;    // game updates seen while armed
 bool sFlowInGame = false;
+std::atomic< int > sFlowState{-1}; // GameFlowState's last state, read by FlowState()
 int sPlayingUpdates = 0;  // consecutive game updates that were "playing"
 int sDismissed = 0;
 constexpr int kSettleUpdates = 120;
@@ -121,8 +123,10 @@ void IdleCheck() {
                idle, sUpdates, sLimit);
 }
 
+int FlowState() { return sFlowState.load(std::memory_order_acquire); }
+
 void GameFlowState(int state, bool inGame) {
-  (void)state;
+  sFlowState.store(state, std::memory_order_release);
   sFlowInGame = inGame;
   if (!inGame) {
     sPlayingUpdates = 0;

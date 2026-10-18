@@ -1,33 +1,33 @@
 // The Android on-screen controller's native side: milestone M3 of docs/ANDROID.md.
 //
-// It is the MP2 counterpart of `MetroidPrimePort`'s touch handling, which is spread across
-// that tree's `platform/touch_pad.cpp` (the SDL virtual gamepad), `platform/debug_ui/*.inc`
-// (the settings and the touch aim) and `platform/debug_ui/android_jni.inc` (the JNI entry
-// points the Java view calls). MP2 has none of those three homes - no input-settings module
-// and no JNI bridge - so they collapse into this one module, which is why the JNI entry
-// points live here rather than in a header of their own. The virtual gamepad itself is
-// `platform/touch_pad.cpp`, ported from MP1 unchanged because it is host-testable there.
+// The Java view (`android/app/src/main/java/org/metroidprime2/port/TouchControlsView.java`) is
+// a copy of `MetroidPrimePort`'s, and this is the native side it expects. MP1 spreads that over
+// `platform/touch_pad.cpp` (the SDL virtual gamepad), `platform/debug_ui/input.cpp` (the touch
+// settings, the wheels, turbo and beam shift) and `platform/debug_ui/android_jni.cpp` (the JNI
+// entry points). MP2 has no input-settings module, so the settings and the game hooks live
+// here, and the JNI entry points are `platform/port_touch_jni.cpp`. The virtual gamepad itself
+// is `platform/touch_pad.cpp`, ported from MP1 unchanged because it is host-testable there.
 //
-// Three things reach the game, and nothing else:
+// What reaches the game:
 //
-//   - a *real* SDL virtual gamepad (see touch_pad.h), so the overlay is a pad rather than
-//     four keys pretending to be a stick: the game's own control mapper, its prompts and its
-//     C-stick handling all apply to touch exactly as they do to a Bluetooth pad;
-//   - the touch *aim*, through `PortMouse`, because the port's aim state is where the
-//     player's yaw and the camera's pitch are owned for a non-stick pointer;
-//   - the overlay's own settings, which is the small settings block MP1 keeps in its input
-//     settings module and MP2 keeps here, persisted in `<user>/touch.cfg`.
+//   - a *real* SDL virtual gamepad (see touch_pad.h): the game's own control mapper, its
+//     prompts and its C-stick handling all apply to touch exactly as they do to a real pad;
+//   - the touch *aim*, through `PortMouse`;
+//   - the visor/beam wheels and the twin layout's beam shift, as `CPlayerState` switches made
+//     on the game thread in `BeginFrame` (the console's `visor`/`beam` path);
+//   - Turbo, as the pad's A mashed every other two iterations while the button is held.
 //
-// The Java view (`android/app/src/main/java/org/metroidprime2/port/TouchControlsView.java`)
-// polls most of this once per draw, on the Android UI thread, while the game thread reads the
-// same state each iteration: every getter here is safe to call from either thread, which is
-// what the mutex and the atomics in port_touch.cpp are for.
+// Settings are MP1's touch settings, persisted in `<user>/touch.cfg` (`key=value`) and
+// overridable with `MP2_TOUCH_*` env vars (an env value wins over the file). MP2's F1 window
+// has no touch rows, so the overlay's own Edit button opens the editor and the editor's Layout
+// button cycles the layouts.
 //
-// WHAT THIS MODULE DOES NOT DO. MP1's overlay drives a lot more than a pad: hold-and-slide
-// beam/visor wheels, a minimap tap, map pan/zoom, pointer menus, a Turbo button, Remastered
-// beam shift, the port's F1 overlay button and an update toast. None of that is ported, in
-// the Java view or here, and no native exists for any of it: a future port of one subsystem
-// adds its Java declaration and its native together.
+// Not ported, because MP2 has no backend for them: the minimap tap and the map screen's
+// pan/zoom/rotate, pointer menus, the game's own wheel icons (the wheels show text), the
+// update toast and `touch:` control bindings. Their natives answer "no" (see the JNI file).
+//
+// Every getter here is safe from either thread: the Java view polls on the Android UI thread
+// while the game thread reads the same state each iteration.
 
 #pragma once
 
@@ -36,100 +36,85 @@
 namespace PortTouch {
 
 // Called once from the entry, before Aurora and before the game exists, with the user
-// directory from `main.cpp`'s path resolution (the same one the memory card lives under).
-// An empty path leaves the settings at their defaults and writes nothing.
+// directory from `main.cpp`'s path resolution. An empty path keeps the defaults, writes nothing.
 void Initialize(const std::string& userDirectory);
 
-// One per game-loop iteration, from `PortPumpEvents`: applies the pending touch aim to
-// `PortMouse` and flushes a settings change to `touch.cfg`. The Java side may call any
-// setter at any time (it is a different thread); this is where that becomes visible to the
-// game.
+// One per game-loop iteration, on the game thread, from `PortPumpEvents`: applies the aim
+// source to `PortMouse`, the wheel and beam-shift requests to the player, Turbo to the pad,
+// rebuilds the wheel state the Java side polls, and flushes a settings change to touch.cfg.
 void BeginFrame();
 
-// --- the virtual gamepad (the Java view's `nativeVirtualButton` / `nativeVirtualAxis`) ---
+// --- the virtual gamepad (`nativeVirtualButton` / `nativeVirtualAxis`) ---
 
-// SDL_GamepadButton index and a normalised -1..1 axis value, exactly as the overlay sends
-// them. The pad attaches on first use: the attach is lazy so that a build without the
-// overlay never attaches a device, and `BeginFrame` retries a failed one (SDL's joystick
-// subsystem may not be up yet) on the game thread.
+// SDL_GamepadButton index and a normalised -1..1 axis value. The pad attaches on first use and
+// `BeginFrame` retries a failed attach. While the beam shift is held a D-pad press picks a beam
+// instead of reaching the pad.
 void SetButton(int button, bool down);
 void SetAxis(int axis, float value);
 
-// --- aim (the Java view's `nativeTouchAim` / `nativeTouchAimDown`) ---
+// --- aim (`nativeTouchAim` / `nativeTouchAimDown` / `nativeTouchSpringSwipe`) ---
 
-// A drag on the free part of the screen, in density-independent pixels, positive right and
-// down. Converted to aim pixels (see AimSpeed) and handed to `PortMouse::AddTouchAim`.
 void AddAim(float dxDp, float dyDp);
-// A finger is down on the aim area: the aim owns the view until it lifts. This is what makes
-// `PortMouse` aim at all - without it the aim state would only track the camera.
 void SetAimDown(bool down);
-// A quick swipe that lifted: hold the aim open for a moment afterwards, so a flick turns the
-// view by its whole travel instead of stopping where the finger left the glass (MP1's
-// `spring_swipe`). Called by the Java side only for a swipe it measured as quick.
 void SpringSwipe();
 
-// True when the active layout aims by dragging. Off by default in neither layout (both use
-// the C-stick as the game does); `MP2_TOUCH_AIM=1` turns it on for testing. MP1 has the same
-// switch, wired to its F1 overlay; MP2 has no touch settings UI yet, so it is the env for now.
+// Drag on the free screen to aim (MP1's `touch_aim`, on by default; `MP2_TOUCH_AIM`).
 bool AimEnabled();
-// Aim pixels per dp of drag (MP1's `touch_aim_speed`, 2.25 by default); `MP2_TOUCH_AIM_SPEED`.
+// Aim pixels per dp of drag (MP1's `touch_aim_speed`, 2.25); `MP2_TOUCH_AIM_SPEED`.
 float AimSpeed();
 
-// --- layouts (the Java view polls all of these once per draw) ---
+// --- layouts and cosmetics (polled once per draw) ---
 
-// The classic GameCube shape: main stick, C-stick, D-pad, face buttons, Z, L, R, START. This
-// is the default, unlike MP1, because MP2's beams and visors are switched with the C-stick
-// and MP2 has no wheel control to switch them with instead (see the module comment).
+// Default (both false: MP1's layout with the wheels), Classic (GameCube) or Twin stick.
 bool Classic();
-// The Remastered/Xbox arrangement: the same controls, placed as an Xbox pad, with the right
-// stick on the right. Exclusive with Classic; the last one switched wins.
 bool TwinStick();
-// Cosmetics and margins, MP1's names and defaults: `touch_labels`, `touch_colors`,
-// `touch_floating_stick`, `touch_side_margin`, `touch_stick_inset`, `touch_button_inset`,
-// `touch_opacity`. The layout editor writes the margins back through these.
 bool Labels();
 bool Colors();
 bool FloatingStick();
+bool Turbo();
+bool WheelsEnabled();
+bool VisorTapScan();
+bool ControlsEnabled();
 float SideMarginDp();
 float StickInsetDp();
 float ButtonInsetDp();
 float Opacity();
 
-// The per-control layout the Java editor edits: `<id>:<dx>,<dy>,<scale>;...`, empty for a
-// layout nothing has moved. Opaque to this module - it is the Java view's format and this
-// only has to keep it across runs (MP1 stores it as `touch_layout` in its settings file;
-// here it is the `layout=` line of `touch.cfg`).
+// The per-control layout the Java editor edits: `<id>:<dx>,<dy>,<scale>;...`. Opaque here.
 std::string Layout();
 void SetLayout(const std::string& layout);
 
-// The editor's two entry points. A phone has no F1 key, so the overlay's own edit pill is
-// what asks (MP1 opens the editor from the F1 window's "Edit layout"): `RequestEdit` raises
-// the flag and `TakeEditRequested` clears it and reports it once.
+// The editor's entry points: the overlay's Edit button raises the request, the view takes it.
 void RequestEdit();
 bool TakeEditRequested();
-// Steps Classic -> Twin -> Classic, persists it, and clears the per-control offsets, which
-// belong to the layout they were made in (the Java side reloads from `Layout`).
+// Steps Default -> Classic -> Twin -> Default and persists it. The per-control offsets stay:
+// the Java view keys them by control id, which differs between layouts, as in MP1.
 void CycleLayout();
 
-// --- the rest of the overlay's questions ---
+// --- the game state the overlay reads ---
 
-// True while the port's F1 overlay is up: the game is paused and the touches belong to that
-// window, so the overlay hides and stops claiming them.
+// Bits 0-3 visors owned, 4-7 beams owned (item indices: visors Combat/Echo/Scan/Dark, beams
+// Power/Dark/Light/Annihilator), 8-9 current visor, 10-11 current beam, 12 valid. 0 when no
+// player is in play. Built on the game thread by `BeginFrame`.
+int WheelState();
+// Queue a switch to an owned visor or beam (item index); applied by the next `BeginFrame`.
+void RequestVisor(int visor);
+void RequestBeam(int beam);
+// The twin layout's Beam button, and the Turbo button.
+void SetBeamShift(bool held);
+void SetTurboFire(bool held);
+// The game is paused (kFS_Paused: the pause menu, or a HUD memo / message screen - MP2's flow
+// state does not tell those apart).
+bool PauseScreenOpen();
+
+// True while the port's F1 overlay is up.
 bool OverlayVisible();
 
-// The overlay has just been used, and in which layout, so the game's button prompts can
-// follow the input the player actually reached for. MP2 does not build its prompt-icons
-// module yet (platform/port_prompts.cpp), so this only records the layout; `DeviceIsXbox` is
-// what that module will read.
+// The overlay has just been used, and in which layout (for the prompt icons, not built yet).
 void NoteDevice(bool xboxLayout);
 bool DeviceIsXbox();
 
-// Whether a real pad, keyboard or mouse has been used since the last call - the overlay
-// hides itself once a physical pad takes over, as it does in MP1. The scan of SDL's device
-// list (`SDL_GetJoysticks`/`SDL_IsJoystickVirtual`) stays on the game thread, in `BeginFrame`;
-// the only SDL calls the UI thread makes are `SDL_SetJoystickVirtualButton`/`Axis` (and the
-// first attach), which SDL protects with its own joystick lock. This also remembers what the
-// event loop saw.
+// Whether a real pad, keyboard or mouse has been used since the last call: the overlay hides.
 void NotePhysicalInput();
 bool TakePhysicalInput();
 

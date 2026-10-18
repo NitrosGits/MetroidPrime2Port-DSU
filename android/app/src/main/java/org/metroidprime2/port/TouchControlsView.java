@@ -7,7 +7,7 @@ import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
-import android.util.Log;
+import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -16,6 +16,7 @@ import org.libsdl.app.SDLActivity;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -27,17 +28,19 @@ import java.util.Set;
  * game's own controller mapping, prompts and rebinding treat it as a real pad,
  * and its sticks are sticks rather than four keys pretending to be one.
  *
- * Two layouts, switched from the layout editor. Default: the classic GameCube pad with the
- * C-stick and the D-pad, because MP2 switches beams and visors with the C-stick. Twin stick
- * is a placement variant (Remastered's Dual Sticks labels and positions): its right stick is
- * still the C-stick, and no PortMouse stick source is behind it. Drag-to-aim on the free
- * screen area is opt-in on the native side (`MP2_TOUCH_AIM=1` via the app's port_paths.txt).
- * The game assigns the actions.
+ * Three layouts (the F1 "Layout" setting). Default: the GameCube pad's, with no
+ * C-stick; a drag on the free screen area aims like a mouse. Classic GameCube
+ * brings back the C-stick and the D-pad. Twin stick (Remastered) has a right
+ * stick that aims directly and Remastered's Dual Sticks button labels. The game
+ * assigns the actions.
  *
- * This MP2 port keeps MP1's layout editor and removed the beam and visor wheels, the map
- * (minimap tap, pan and pinch), the pointer menus, Turbo, beam shift, the Remastered update
- * toast and the F1 overlay button: MP2 has none of those subsystems yet. MP2's F1 window takes
- * no touch, so the editor opens from the Edit button beside the eye.
+ * Metroid Prime 2: this is Metroid Prime 1's view (MetroidPrimePort), copied. What MP2 changes:
+ * the wheels name MP2's visors and beams; the layout and the touch settings live in
+ * <user>/touch.cfg, not in the F1 window, so the editor opens from the Edit button beside the
+ * eye and switches layouts from its own "Layout" button; and while the F1 window is open only
+ * MENU is drawn and every other touch goes to SDL (two fingers scroll it). The map gestures,
+ * pointer menus, update toast and touch: bindings have no MP2 backend: their natives answer
+ * "not there" (no minimap rect, no map screen, no pointer menu, nothing bound).
  */
 final class TouchControlsView extends View {
     // Touch target types.
@@ -47,9 +50,25 @@ final class TouchControlsView extends View {
     private static final int HIDE = 4;
     // A drag on the free screen area that turns the view by its travel.
     private static final int AIM = 5;
-    // The bottom-row Edit button, which opens the layout editor.
-    private static final int EDIT = 6;
+    // A tap on the HUD minimap, which opens the map.
+    private static final int MAP_TAP = 6;
+    // A one-finger drag on the open map screen pans it.
+    private static final int MAP_PAN = 7;
+    // A second finger on the map: with the MAP_PAN one it pinches to zoom.
+    private static final int MAP_PAN2 = 8;
+    // Hold-and-slide wheels that replace the D-pad: id 0 = Visor, 1 = Beam.
+    private static final int WHEEL = 9;
+    // MP2: the Edit button beside the eye, which opens the layout editor.
+    private static final int EDIT = 10;
 
+    // Port-only actions, not game inputs.
+    private static final int TOGGLE_DEBUG_OVERLAY = -1;
+    // Twin stick's Beam button: held, it turns the D-pad into the beam picker (the
+    // port's pad preset does the same with Y). It sends no GameCube button.
+    private static final int BEAM_SHIFT = -2;
+    // The Turbo button: held, the game behaves as if Fire were mashed. Like
+    // BEAM_SHIFT it sends no GameCube button itself.
+    private static final int TURBO_FIRE = -3;
     // Axis-held controls are tracked with ids above this, to share one press map.
     private static final int AXIS_ID_BASE = 100;
 
@@ -114,6 +133,19 @@ final class TouchControlsView extends View {
     };
     // What each GameCube face button does, drawn small under its letter.
     private static final String[] GAMECUBE_FUNCTIONS = {"Fire", "Jump", "Morph", "Missile"};
+    // The same buttons while morphed (#106): A lays a bomb, B boosts, X still morphs (out),
+    // Y lays a power bomb.
+    private static final String[] GAMECUBE_MORPH_FUNCTIONS = {"Bomb", "Boost", "Morph", "P.Bomb"};
+    // In the pause menu (Y turns the inventory's suit view), on the map screen
+    // (A switches area and world map, Y shows the legend) and in save station or
+    // message boxes; blank where the button does nothing there.
+    private static final String[] GAMECUBE_PAUSE_FUNCTIONS = {"Select", "Back", "", "View"};
+    private static final String[] GAMECUBE_MAP_FUNCTIONS = {"World", "Exit", "", "Legend"};
+    private static final String[] GAMECUBE_DIALOG_FUNCTIONS = {"OK", "", "", ""};
+    // The optional Turbo button (F1 "Turbo fire button"), above the cluster on the
+    // right. Not in the face arrays: those index the editor ids and are always drawn.
+    private static final ControlButton GAMECUBE_TURBO =
+        ControlButton.round("Turbo", TURBO_FIRE, 0.05f, -0.27f, 0.045f, GC_GREEN);
 
     // The D-pad is one cross, as on the GameCube pad: its centre as fractions of
     // the view, its arms in view heights so it stays square.
@@ -131,12 +163,12 @@ final class TouchControlsView extends View {
 
     // L and R are the pad's analog triggers; Z is its digital shoulder. Z sits in
     // front of R on the GameCube pad, so Z goes under R here. L and R are tall so
-    // a quick lock-on is hard to miss; L stops just above the D-pad. START
-    // ignores its rect: see cornerSlot.
+    // a quick lock-on is hard to miss; L stops just above the D-pad. START and
+    // MENU ignore their rects: see cornerSlot.
     // Twin stick (Remastered): a diamond in Xbox positions, round A's spot, with
     // Remastered's Dual Sticks functions on the GameCube buttons they send: Jump
-    // is B, Fire is A, Morph is X and Missile is Y (the RB pill sends Y too).
-    // Bottom, right, left, top, so
+    // is B, Fire is A, Morph is X, and Y held shifts the D-pad to beams (Missile is
+    // the RB pill). Bottom, right, left, top, so
     // the controls are C_JUMP + index. Coloured, each takes the colour of the
     // GameCube button it sends.
     private static final float TWIN_DIAMOND = 0.095f;
@@ -144,24 +176,29 @@ final class TouchControlsView extends View {
         ControlButton.round("Jump", BTN_EAST, 0f, TWIN_DIAMOND, 0.055f, GC_RED),
         ControlButton.round("Fire", BTN_SOUTH, TWIN_DIAMOND, 0f, 0.055f, GC_GREEN),
         ControlButton.round("Morph", BTN_WEST, -TWIN_DIAMOND, 0f, 0.055f, GC_GREY),
-        ControlButton.round("Missile", BTN_NORTH, 0f, -TWIN_DIAMOND, 0.055f, GC_GREY),
+        ControlButton.round("Beam", BEAM_SHIFT, 0f, -TWIN_DIAMOND, 0.055f, GC_GREY),
     };
-
-    // A pill id that is no pad button: pressing it toggles the F1 debug window.
-    private static final int BTN_DEBUG_MENU = 0x7000;
+    // Turbo, above Beam.
+    // TWIN_FACE's functions while morphed; Beam still shifts the D-pad.
+    private static final String[] TWIN_MORPH_FUNCTIONS = {"Boost", "Bomb", "Morph", "Beam"};
+    // The menus' TWIN_FACE functions, as GAMECUBE_PAUSE_FUNCTIONS and the rest.
+    private static final String[] TWIN_PAUSE_FUNCTIONS = {"Back", "Select", "", ""};
+    private static final String[] TWIN_MAP_FUNCTIONS = {"Exit", "World", "", ""};
+    private static final String[] TWIN_DIALOG_FUNCTIONS = {"", "OK", "", ""};
+    private static final ControlButton TWIN_TURBO =
+        ControlButton.round("Turbo", TURBO_FIRE, 0f, -0.21f, 0.045f, GC_GREEN);
 
     private static final PillButton[] GAMECUBE_PILLS = {
         new PillButton("L Lock", AXIS_TRIGGER_L, -1, 0.020f, 0.030f, 0.150f, 0.190f, GC_GREY),
         new PillButton("R Look", AXIS_TRIGGER_R, -1, 0.850f, 0.030f, 0.980f, 0.190f, GC_GREY),
         new PillButton("Z Map", -1, BTN_RIGHT_SHOULDER, 0.870f, 0.205f, 0.960f, 0.265f, GC_PURPLE),
         new PillButton("START", -1, BTN_START, 0f, 0f, 0f, 0f),
-        new PillButton("MENU", -1, BTN_DEBUG_MENU, 0.440f, 0.030f, 0.560f, 0.100f, 0,
-                       TouchControlsView.C_MENU),
+        new PillButton("MENU", -1, TOGGLE_DEBUG_OVERLAY, 0f, 0f, 0f, 0f),
     };
 
     // Twin stick's shoulders, like Remastered's: LT locks on (the L trigger), RT
     // fires, LB jumps and RB fires missiles. Z (the map) sits inboard of the
-    // right pair; R (free look) has no use with a right stick that aims. START as in the GameCube layout.
+    // right pair; R (free look) has no use with a right stick that aims. START and MENU as in the GameCube layout.
     // The Xbox letter drawn big on each diamond button, matching the in-game hint.
     private static final String[] TWIN_LETTERS = {"A", "B", "X", "Y"};
 
@@ -177,35 +214,62 @@ final class TouchControlsView extends View {
         new PillButton("Map", -1, BTN_RIGHT_SHOULDER, 0.730f, 0.030f, 0.830f, 0.100f, GC_PURPLE,
                        TouchControlsView.C_TZ),
         new PillButton("START", -1, BTN_START, 0f, 0f, 0f, 0f),
-        new PillButton("MENU", -1, BTN_DEBUG_MENU, 0.440f, 0.030f, 0.560f, 0.100f, 0,
-                       TouchControlsView.C_MENU),
+        new PillButton("MENU", -1, TOGGLE_DEBUG_OVERLAY, 0f, 0f, 0f, 0f),
     };
 
-    // The round buttons along the bottom: START on the left, the eye on the
-    // right. Inset from the sides and bottom so rounded
+    // The round buttons along the bottom: START and MENU on the left, the map
+    // and the eye on the right. Inset from the sides and bottom so rounded
     // display corners don't cut them off.
     private static final float BOTTOM_BUTTON_RADIUS_DP = 22f;
     private static final float BOTTOM_BUTTON_SIDE_DP = 28f;
     private static final float BOTTOM_BUTTON_BOTTOM_DP = 12f;
     private static final float BOTTOM_BUTTON_GAP_DP = 8f;
 
-    // A flick up that counts as a swipe (native SpringSwipe holds the aim): at least this far,
-    // in dp, within this many ms of the stroke's start (about 270 dp/s or faster).
+    // The Visor and Beam buttons and their wheels.
+    private static final String[] WHEEL_BUTTON_LABELS = {"Visor", "Beam"};
+    // Sectors run up, right, down, left, as the stock D-pad (visors) and C-stick
+    // (beams) directions do. Items are numbered as the native side does: visors
+    // Combat/Echo/Scan/Dark, beams Power/Dark/Light/Annihilator (MP2's).
+    private static final String[][] WHEEL_LABELS = {
+        {"Combat", "Echo", "Dark", "Scan"},
+        {"Power", "Light", "Annihil.", "Dark"},
+    };
+    private static final int[][] WHEEL_ITEMS = {{0, 1, 3, 2}, {0, 2, 3, 1}};
+    // Each beam icon's colour: Power yellow, Dark purple, Light white, Annihilator grey.
+    // Visor icons stay white.
+    private static final int[] BEAM_ICON_COLORS = {0xFFFFFF00, 0xFF8033FF, 0xFFFFFFFF, 0xFFB0B0C0};
+    // The bit of nativeWheelOwned() that is set once there is a player.
+    private static final int WHEEL_VALID_BIT = 1 << 12;
+    // Set while Samus is morphed or morphing.
+    private static final int WHEEL_MORPHED_BIT = 1 << 13;
+    private static final float WHEEL_BUTTON_RADIUS = 0.072f;
+    private static final float WHEEL_BUTTON_GAP_DP = 8f; // wheel to edge / other button
+    private static final float WHEEL_BUTTON_ANCHOR_DP = 16f; // gap to the stick / face buttons
+    // The open wheel: its outer radius, the dead centre that cancels, and a sector's icon.
+    private static final float WHEEL_RADIUS_DP = 112f;
+    private static final float WHEEL_DEAD_DP = 30f;
+    private static final float WHEEL_ICON_DP = 44f;
+
+    // A swipe up that springs the morph ball: at least this far, in dp, within
+    // this many ms of the stroke's start (about 270 dp/s or faster).
     private static final float SWIPE_UP_DP = 40f;
     private static final long SWIPE_UP_MS = 150;
 
     // Finger spread, in dp, under which a pinch is ignored (the ratio blows up).
     private static final float MAP_PINCH_MIN_DP = 20f;
-    // Travel, in dp, past which a touch is a drag and not a tap (Fire, Jump).
+    // Travel, in dp, past which a touch is a drag and not a tap (minimap, wheel, A).
     private static final float MAP_TAP_SLOP_DP = 12f;
 
+    // Tells the game a finger is still down on the map, so it doesn't drift back.
+    private static final long MAP_PAN_KEEPALIVE_MS = 100;
+    private static final long MAP_BUTTON_POLL_MS = 200;
     private static final long PHYSICAL_INPUT_POLL_MS = 250;
+    private static final long WHEEL_ICON_RETRY_MS = 1000;
+    private static final long WHEEL_TAP_MS = 250;
 
     // Every control is one movable unit. Its override is an offset (in layoutU
     // units, so it follows the screen's size) and a size scale, both applied on
     // top of the default position, which still follows the F1 margin settings.
-    // MP2 draws no Visor, Beam, Menu, Map or Turbo control: their ids stay, retired
-    // like C_TR, so the saved ids don't shift (see editShown).
     private static final int C_LSTICK = 0;
     private static final int C_CSTICK = 1;
     private static final int C_DPAD = 2;
@@ -219,7 +283,6 @@ final class TouchControlsView extends View {
     private static final int C_VISOR = 10; // the beam button follows
     private static final int C_BEAM = 11;
     private static final int C_START = 12;
-    // The MENU pill (opens the F1 window); its id was MP1's, retired here until now.
     private static final int C_MENU = 13;
     private static final int C_MAP = 14;
     private static final int C_EYE = 15;
@@ -237,10 +300,10 @@ final class TouchControlsView extends View {
     private static final int C_RB = 24;
     private static final int C_TZ = 25;
     private static final int C_TR = 26;
-    // MP1's Turbo button, once for the default/classic layouts and once for twin.
+    // The Turbo button, once for the default/classic layouts and once for twin.
     private static final int C_TURBO = 27;
     private static final int C_TTURBO = 28;
-    // The Edit pill beside the eye; appended so no saved id shifts.
+    // MP2: the Edit button (MP2's F1 window has no "Edit layout").
     private static final int C_EDIT = 29;
     private static final int CONTROLS = 30;
     // The ids the saved layout uses; never rename one.
@@ -260,7 +323,8 @@ final class TouchControlsView extends View {
     private static final float SCALE_STEP = 0.1f;
     // A saved offset beyond this many layout heights is junk, not a layout.
     private static final float MAX_OFFSET = 4f;
-    // The editor's toolbar: -, +, Reset, Reset all, Layout (GameCube <-> twin stick), Done.
+    // The editor's toolbar: -, +, Reset, Reset all, Layout (MP2: the F1 "Layout" setting's
+    // place), Done.
     private static final String[] EDIT_LABELS = {"−", "+", "Reset", "Reset all", "Layout",
                                                  "Done"};
     private static final float[] EDIT_WIDTHS_DP = {48f, 48f, 72f, 96f, 80f, 72f};
@@ -311,6 +375,9 @@ final class TouchControlsView extends View {
     private float floatY;
     // The held left stick is a floating one (stays so if the map opens meanwhile).
     private boolean leftFloated;
+    // F1's "Turbo fire button", re-read every draw; the button when it is on.
+    private boolean turbo;
+    private ControlButton turboButton;
     // F1 settings too, in px: every control's gap to the side edges, and the
     // left stick's on top of it.
     private float sideMargin;
@@ -322,15 +389,66 @@ final class TouchControlsView extends View {
     // Twin stick (Remastered) layout, also an F1 setting re-read every draw: the
     // right stick is drawn (cStick is on too) but aims, with Jump/Fire/Morph/Missile.
     private boolean twin;
-    // A drag on the free area aims (mouse-style). Opt-in on the native side on
-    // MP2 (MP2_TOUCH_AIM=1), re-read every draw.
+    // A drag on the free area aims (mouse-style, or the classic turn and look
+    // up/down). Always on unless the classic layout turns it off.
     private boolean aim;
+    // Beam and visor wheels replace the D-pad. F1 settings, re-read every draw.
+    private boolean wheels;
+    private boolean visorTapScan;
+    private int lastWheelMask;
+    // The open wheel (the WHEEL target's pointer), else -1.
+    private int wheelPointer = -1;
+    private float wheelCx;
+    private float wheelCy;
+    // Tap the minimap to open the map; replaces the GameCube layout's Z pill. An
+    // F1 setting, re-read every draw.
+    private boolean mapTap;
+    // x0, y0, x1, y1 (fractions of the view), then 1 when the minimap is drawn there.
+    private final float[] minimapRect = new float[5];
+    // Wherever the map can open or close, a map button sits left of the eye (the minimap
+    // is not always drawn: the visors other than Combat hide it). The HUD
+    // changes without a touch, so a poll redraws when the button comes or goes.
+    // The same poll shows and hides the wheel buttons (only drawn while the
+    // wheels work).
+    private final RectF mapButtonRect = new RectF();
+    private boolean mapButtonShown;
+    private boolean wheelButtonsShown;
+    // rHidden() as of the last draw; touches go by what is drawn.
+    private boolean rHiddenNow;
+    // nativePointerMenuActive() as of the last draw: then only the back button
+    // shows, and every other finger goes to the SDL surface for the game.
+    private boolean pointerMenuNow;
+    // nativeTouchControlsEnabled() as of the last draw or poll; touches go by it.
+    private boolean controlsOnNow = true;
+    private final RectF backButtonRect = new RectF();
+    private final RectF cogButtonRect = new RectF();
+    private final Runnable mapButtonPoll = new Runnable() {
+        @Override
+        public void run() {
+            // The editor shows every control; leaving it redraws and re-arms this.
+            if (editing) {
+                return;
+            }
+            if (nativeTouchControlsEnabled() != controlsOnNow ||
+                (controlsOnNow &&
+                 ((mapTap && mapButtonState(getWidth(), getHeight()) != mapButtonShown) ||
+                  (wheels && ((nativeWheelOwned() & WHEEL_VALID_BIT) != 0) != wheelButtonsShown) ||
+                  rHidden() != rHiddenNow)) ||
+                nativePointerMenuActive() != pointerMenuNow) {
+                invalidate();
+            } else {
+                postDelayed(this, MAP_BUTTON_POLL_MS);
+            }
+        }
+    };
 
     private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Map<Integer, TouchTarget> targets = new HashMap<>();
     private final Map<Integer, Integer> held = new HashMap<>();
+    // Fingers on each editor control (C_*), for touch: bindings in controls.toml.
+    private final int[] touchHeld = new int[CONTROL_IDS.length];
     // Fingers passed on to SDL; see forwardToSdl.
     private final Set<Integer> forwarded = new HashSet<>();
     private final RectF hideBounds = new RectF();
@@ -338,15 +456,13 @@ final class TouchControlsView extends View {
     private final Path shapePath = new Path();
     private final Path crossArmPath = new Path();
     private static native boolean nativeDebugOverlayVisible();
-    // Opens or closes the F1 window (the MENU pill).
-    private static native void nativeToggleDebugOverlay();
-    // A two-finger drag on the open window: mouse-wheel steps (ImGui scrolls on the wheel).
-    private static native void nativeDebugWheel(float steps);
+    private static native boolean nativeTapUpdateToast(float x, float y);
     private static native boolean nativeTouchClassic();
     private static native boolean nativeTouchTwinStick();
     private static native boolean nativeTouchColors();
     private static native boolean nativeTouchLabels();
     private static native boolean nativeTouchFloatingStick();
+    private static native boolean nativeTouchTurbo();
     // F1's side margin (every control) and the left stick's extra inset, in dp.
     private static native float nativeTouchSideMarginDp();
     private static native float nativeTouchStickInsetDp();
@@ -354,49 +470,129 @@ final class TouchControlsView extends View {
     private static native float nativeTouchButtonInsetDp();
     // F1's opacity for the gameplay controls, in percent (10-100).
     private static native float nativeTouchOpacity();
+    // F1's "On-screen controls": false leaves only the MENU and START pills.
+    private static native boolean nativeTouchControlsEnabled();
     // The saved per-control layout (`<id>:<dx>,<dy>,<scale>;...`), and its writer, which
     // also saves F1's config.
     private static native String nativeTouchLayout();
     private static native void nativeSetTouchLayout(String layout);
     // True once after F1's "Edit layout" was pressed.
     private static native boolean nativeTouchEditRequested();
-    // Asks for the same editor F1's "Edit layout" does, for a phone with no F1 touch.
-    private static native void nativeRequestTouchEdit();
-    // Switches GameCube <-> twin stick and clears the per-control offsets.
-    private static native void nativeCycleTouchLayout();
     private static native boolean nativeTouchAimEnabled();
     private static native void nativeTouchAim(float dxDp, float dyDp);
     private static native void nativeTouchAimDown(boolean down);
-    // A quick swipe on the aim drag (trackSwipe); the native side keeps the aim live a moment.
+    // A quick swipe up on the aim drag (trackSwipe): the Spring Ball, if F1 allows it.
     private static native void nativeTouchSpringSwipe();
+    private static native boolean nativeTouchWheelsEnabled();
+    private static native boolean nativeTouchVisorTapScan();
+    // Bits 0-3 visors owned, 4-7 beams owned, 8-9 current visor, 10-11 current
+    // beam, 12 valid (0 = no player: wheels disabled).
+    private static native int nativeWheelOwned();
+    // {width, height, ARGB pixels...} of the game's beam/visor icon, or null until the HUD has it.
+    private static native int[] nativeWheelIcon(int wheel, int item);
+    private static native void nativeRequestVisor(int visor);
+    private static native void nativeRequestBeam(int beam);
+    private static native boolean nativeTouchMapTapEnabled();
+    // The minimap's screen rect into out5: x0, y0, x1, y1 as fractions of the view, then 1
+    // when the minimap is drawn there (0: draw a map button instead). False when no rect.
+    private static native boolean nativeMinimapRect(float[] out5);
+    private static native void nativeMapTap();
+    // A map-screen drag in dp (zero deltas = finger still down); the view height in dp.
+    private static native void nativeMapPan(float dxDp, float dyDp, float viewHeightDp);
+    // True while the map screen is open and can be panned.
+    private static native boolean nativeMapScreenOpen();
+    // True while the pause menu (inventory, logbook) is up.
+    private static native boolean nativePauseScreenOpen();
+    // A save station or message box over the paused game (not the pause menu).
+    private static native boolean nativeMessageBoxOpen();
+    // A game menu or the map takes touches itself (the pointer_menus setting).
+    private static native boolean nativePointerMenuActive();
+    // A pinch: ratio of the finger spread now to before; above 1 zooms in.
+    private static native void nativeMapZoom(float ratio);
+    // A twist, in radians; positive turns the map as the stick's right does.
+    private static native void nativeMapRotate(float radians);
     private static native void nativeSetTouchDevice(boolean xboxLayout);
+    private static native void nativeToggleDebugOverlay();
+    // MP2: a two-finger drag on the open F1 window, as mouse-wheel steps.
+    private static native void nativeDebugWheel(float steps);
+    // MP2: the Edit button asks for the editor (MP1's F1 "Edit layout"), and the editor's
+    // Layout button steps Default -> Classic -> Twin stick.
+    private static native void nativeRequestTouchEdit();
+    private static native void nativeCycleTouchLayout();
     private static native void nativeVirtualButton(int button, boolean down);
+    // Every control's press and release (touch: bindings), and whether a binding
+    // takes the control over, so the overlay doesn't send its own button too.
+    private static native void nativeTouchControl(int control, boolean down);
+    private static native boolean nativeTouchControlBound(int control);
+    // The twin layout's Beam button is held: the D-pad picks beams, not visors.
+    private static native void nativeTouchBeamShift(boolean held);
+    // The Turbo button is held: the game acts as if Fire were mashed.
+    private static native void nativeTouchTurboFire(boolean held);
     private static native void nativeVirtualAxis(int axis, float value);
     private static native boolean nativeTakePhysicalInput();
     private int leftPointer = -1;
     private int rightPointer = -1;
     private int aimPointer = -1;
+    private int panPointer = -1;
+    private int pan2Pointer = -1;
+    private final Runnable panKeepAlive = new Runnable() {
+        @Override
+        public void run() {
+            if (panPointer != -1) {
+                nativeMapPan(0f, 0f, panViewDp());
+                postDelayed(this, MAP_PAN_KEEPALIVE_MS);
+            }
+        }
+    };
     private boolean hidden;
     // Hidden because a real pad, keyboard or mouse was used. Unlike HIDE, which
     // leaves a SHOW button, nothing is drawn and any touch brings them back.
     private boolean autoHidden;
     private boolean lastOverlayVisible;
+    // What the buttons are labelled for (#106): play, morph ball, pause menu, map
+    // screen or a message box. labelContext() as of the last draw; the poll
+    // redraws when it changes.
+    private static final int LABELS_PLAY = 0;
+    private static final int LABELS_MORPH = 1;
+    private static final int LABELS_PAUSE = 2;
+    private static final int LABELS_MAP = 3;
+    private static final int LABELS_DIALOG = 4;
+    private int labelContextNow = LABELS_PLAY;
 
     private final Runnable physicalInputPoll = new Runnable() {
         @Override
         public void run() {
             // Always drained, so input from while the controls were already
             // hidden cannot hide them again the moment they come back.
-            if (nativeTakePhysicalInput() && !hidden && !autoHidden && !editing) {
+            // With the controls off only MENU and START are left and they stay up.
+            if (nativeTakePhysicalInput() && !hidden && !autoHidden && !editing &&
+                nativeTouchControlsEnabled()) {
                 autoHidden = true;
                 releaseAll();
+            }
+            if (syncControlsOn()) {
+                invalidate();
             }
             if (nativeTouchEditRequested()) {
                 editPending = true;
             }
+            // F1 can switch Turbo off while the overlay hides this view's draws.
+            if (turboTouched() && !nativeTouchTurbo()) {
+                releaseTurbo();
+            }
             // The overlay can open without this view hearing of it (a pad, or
-            // F1 while the first frames are slow enough that a one-off
+            // MENU while the first frames are slow enough that a one-off
             // redraw ran before the toggle landed), so redraw on any change.
+            if (wheels) {
+                final int mask = nativeWheelOwned();
+                if (mask != lastWheelMask) {
+                    lastWheelMask = mask;
+                    invalidate();
+                }
+            }
+            if (labels && !hidden && !autoHidden && labelContext() != labelContextNow) {
+                invalidate();
+            }
             final boolean overlayVisible = nativeDebugOverlayVisible();
             if (overlayVisible != lastOverlayVisible) {
                 lastOverlayVisible = overlayVisible;
@@ -443,18 +639,20 @@ final class TouchControlsView extends View {
         // hears about, so keep checking; otherwise the controls stayed invisible
         // until the next touch happened to redraw them.
         if (nativeDebugOverlayVisible() && !editing) {
-            // Only the MENU pill stays, so the window can be closed again.
+            // MP2: only MENU stays, so the window can be closed again.
             drawMenuOnly(canvas, getWidth(), getHeight());
             postInvalidateDelayed(150);
             return;
         }
-        if ((autoHidden || hidden) && !editing) {
+        syncControlsOn();
+        if ((autoHidden || hidden) && !editing && controlsOnNow) {
             return;
         }
 
         float width = getWidth();
         float height = getHeight();
         // The classic setting can change mid-session, so re-check it every draw.
+        // Off, aim and the wheels are always on.
         final boolean classic = nativeTouchClassic();
         colored = nativeTouchColors();
         labels = nativeTouchLabels();
@@ -462,8 +660,29 @@ final class TouchControlsView extends View {
         sideMargin = dp(nativeTouchSideMarginDp());
         stickInset = dp(nativeTouchStickInsetDp());
         buttonInset = dp(nativeTouchButtonInsetDp());
+        pointerMenuNow = !editing && nativePointerMenuActive();
+        if (pointerMenuNow) {
+            bottomButtonRect(0, false, width, height, backButtonRect);
+            drawBackButton(canvas);
+            // The cog stays beside it, so the overlay opens from any menu.
+            bottomButtonRect(1, false, width, height, cogButtonRect);
+            final boolean cogDown = held.containsKey(TOGGLE_DEBUG_OVERLAY);
+            fillPaint.setColor(cogDown ? 0xCC48C8E8 : 0x99081218);
+            strokePaint.setColor(cogDown ? 0xFFE1F8FF : 0xCCFFFFFF);
+            drawCornerButton(canvas, 1, cogButtonRect);
+            removeCallbacks(mapButtonPoll);
+            postDelayed(mapButtonPoll, MAP_BUTTON_POLL_MS);
+            return;
+        }
+        if (!controlsOnNow && !editing) {
+            drawMenuPills(canvas, width, height);
+            removeCallbacks(mapButtonPoll);
+            postDelayed(mapButtonPoll, MAP_BUTTON_POLL_MS);
+            return;
+        }
         // F1's opacity for the on-screen controls: the gameplay controls (and the
-        // layout editor over them) fade together.
+        // layout editor over them) fade together. The pointer menu's back and cog
+        // buttons were drawn above this and stay fully visible.
         final float touchOpacity = editing ? 100f : nativeTouchOpacity();
         final int controlsAlpha = Math.round(touchOpacity * 2.55f);
         // 255 means no layer at all, the default, so nothing changes (and nothing
@@ -481,8 +700,36 @@ final class TouchControlsView extends View {
         }
     }
 
-    // The MENU pill alone, over the open F1 window. Sets what drawPillButton reads, as a
-    // normal draw would.
+    // Re-reads F1's "On-screen controls"; true when it changed. Nothing held may
+    // outlive the controls it came from, so a change lets go of everything.
+    private boolean syncControlsOn() {
+        final boolean on = nativeTouchControlsEnabled();
+        if (on == controlsOnNow) {
+            return false;
+        }
+        controlsOnNow = on;
+        releaseAll();
+        return true;
+    }
+
+    // The controls-off view: only START and MENU, fully opaque and at their default
+    // spots (applyOverride skips a saved layout), so MENU is always reachable.
+    private void drawMenuPills(Canvas canvas, float width, float height) {
+        colored = false;
+        labels = false;
+        pills = GAMECUBE_PILLS;
+        wheels = false;
+        mapTap = false;
+        mapButtonShown = false;
+        for (PillButton pill : pills) {
+            if (isMenuPill(pill)) {
+                drawPillButton(canvas, pill, width, height);
+            }
+        }
+    }
+
+    // MP2: MENU alone, over the open F1 window. Sets what drawPillButton reads, as a
+    // normal draw would, and keeps the rect a tap is tested against.
     private void drawMenuOnly(Canvas canvas, float width, float height) {
         final boolean classic = nativeTouchClassic();
         twin = !classic && nativeTouchTwinStick();
@@ -493,23 +740,33 @@ final class TouchControlsView extends View {
         stickInset = dp(nativeTouchStickInsetDp());
         buttonInset = dp(nativeTouchButtonInsetDp());
         syncLayout();
-        final PillButton menu = pillOf(C_MENU);
-        if (menu != null) {
-            drawPillButton(canvas, menu, width, height);
-            pillRect(menu, width, height, menuDrawn);
+        for (PillButton pill : pills) {
+            if (cornerSlot(pill) == 1) {
+                drawPillButton(canvas, pill, width, height);
+                pillRect(pill, width, height, menuDrawn);
+            }
         }
     }
 
-    // The gameplay controls and the layout editor.
+    // The gameplay controls and the layout editor, without the pointer menu's own
+    // buttons, which onDraw draws before this (outside the opacity layer).
     private void drawControls(Canvas canvas, float width, float height, boolean classic) {
         // Classic and twin stick are exclusive (the native side keeps them so).
         twin = !classic && nativeTouchTwinStick();
         face = twin ? TWIN_FACE : GAMECUBE_FACE;
         pills = twin ? TWIN_PILLS : GAMECUBE_PILLS;
-        aim = nativeTouchAimEnabled();
-        // MP2 looks and switches beams and visors with the C-stick, so without
-        // drag-to-aim the default layout draws it as well.
-        cStick = classic || twin || !aim;
+        turbo = nativeTouchTurbo();
+        turboButton = turbo ? (twin ? TWIN_TURBO : GAMECUBE_TURBO) : null;
+        if (!turbo) {
+            releaseTurbo();
+        }
+        cStick = classic || twin;
+        aim = !classic || nativeTouchAimEnabled();
+        // The wheels are the default layout's only beam and visor control; classic and
+        // twin stick have the D-pad (twin: Beam held + D-pad) and the setting.
+        wheels = (!classic && !twin) || nativeTouchWheelsEnabled();
+        visorTapScan = nativeTouchVisorTapScan();
+        mapTap = nativeTouchMapTapEnabled();
         if (!editing) {
             // A layout made on another screen, or before a rotation or resize,
             // must not leave a control off screen where it can't be grabbed.
@@ -520,7 +777,7 @@ final class TouchControlsView extends View {
             }
         }
         bottomButtonRect(0, true, width, height, hideBounds);
-        bottomButtonRect(1, true, width, height, editBounds);
+        editButtonRect(width, height, editBounds);
         if (leftPointer != -1 && leftFloated) {
             drawStick(canvas, floatX, floatY, leftStickRadius(height), leftPointer, 0);
         } else if (!floatingStick()) {
@@ -535,22 +792,54 @@ final class TouchControlsView extends View {
                       rightStickRadius(height), rightPointer, colored && !twin ? GC_YELLOW : 0);
         }
 
+        rHiddenNow = !editing && rHidden();
+        labelContextNow = labels ? labelContext() : LABELS_PLAY;
         for (PillButton pill : pills) {
-            drawPillButton(canvas, pill, width, height);
+            if (pillShown(pill)) {
+                drawPillButton(canvas, pill, width, height);
+            }
         }
         for (ControlButton button : face) {
             drawButton(canvas, button, width, height);
         }
-        drawDpad(canvas, width, height);
+        if (turboButton != null) {
+            drawButton(canvas, turboButton, width, height);
+        }
+        if (wheels) {
+            drawWheelButtons(canvas, width, height);
+        } else {
+            drawDpad(canvas, width, height);
+        }
         drawEye(canvas, hideBounds);
         drawEditButton(canvas, editBounds);
+        mapButtonShown = mapButtonState(width, height);
+        if (mapButtonShown) {
+            drawMapButton(canvas);
+        }
+        removeCallbacks(mapButtonPoll);
+        postDelayed(mapButtonPoll, MAP_BUTTON_POLL_MS);
+        if (wheels && wheelPointer != -1) {
+            drawWheel(canvas);
+        }
         if (editing) {
             drawEditOverlay(canvas, width, height);
         }
     }
 
-    // The square around bottom button `slot`, counted from the side edge: 0 is
-    // the eye on the right and START on the left.
+    // True, with mapButtonRect set, when the map button should show.
+    private boolean mapButtonState(float width, float height) {
+        // Shown in the open map too: a tap is a Z press, which closes it. The
+        // editor shows it whenever it can appear.
+        if (!mapTap || width <= 0f || height <= 0f ||
+            (!editing && !nativeMinimapRect(minimapRect) && !nativeMapScreenOpen())) {
+            return false;
+        }
+        bottomButtonRect(1, true, width, height, mapButtonRect);
+        return true;
+    }
+
+    // The square around bottom button `slot`, counted from the side edge: on the
+    // right, 0 is the eye and 1 the map; on the left, 0 is START and 1 MENU.
     private void bottomButtonRect(int slot, boolean right, float width, float height,
                                   RectF out) {
         final float d = 2f * dp(BOTTOM_BUTTON_RADIUS_DP);
@@ -558,13 +847,37 @@ final class TouchControlsView extends View {
         final float left = right ? width - fromSide - d : fromSide;
         final float bottom = height - dp(BOTTOM_BUTTON_BOTTOM_DP);
         out.set(left, bottom - d, left + d, bottom);
-        // The Edit pill (right, slot 1) has its own override so it can be moved and scaled
-        // without dragging the eye along.
-        applyOverride(!right ? C_START : slot == 0 ? C_EYE : C_EDIT, out, height);
+        applyOverride(right ? (slot == 0 ? C_EYE : C_MAP) : (slot == 0 ? C_START : C_MENU), out,
+                      height);
+    }
+
+    // MP2: the Edit button sits in the map button's slot (MP2 draws no map button), with an
+    // override of its own so it moves without the eye.
+    private void editButtonRect(float width, float height, RectF out) {
+        final float d = 2f * dp(BOTTOM_BUTTON_RADIUS_DP);
+        final float fromSide = sideMargin + dp(BOTTOM_BUTTON_SIDE_DP) + d + dp(BOTTOM_BUTTON_GAP_DP);
+        final float bottom = height - dp(BOTTOM_BUTTON_BOTTOM_DP);
+        out.set(width - fromSide - d, bottom - d, width - fromSide, bottom);
+        applyOverride(C_EDIT, out, height);
+    }
+
+    private void drawEditButton(Canvas canvas, RectF bounds) {
+        if (mapTap) {
+            return; // the map button has the slot
+        }
+        fillPaint.setColor(0x99081218);
+        strokePaint.setColor(0xCCFFFFFF);
+        final float r = bounds.width() * 0.5f;
+        canvas.drawCircle(bounds.centerX(), bounds.centerY(), r, fillPaint);
+        canvas.drawCircle(bounds.centerX(), bounds.centerY(), r, strokePaint);
+        drawCenteredLabel(canvas, "Edit", bounds.centerX(), bounds.centerY(), dp(11));
     }
 
     // Moves and scales a control's default rect by its override, round its centre.
     private void applyOverride(int control, RectF rect, float height) {
+        if (!controlsOnNow && !editing) {
+            return; // MENU and START stay put and reachable
+        }
         if (ovDx[control] == 0f && ovDy[control] == 0f && ovScale[control] == 1f) {
             return; // the default layout stays bit-for-bit what it was
         }
@@ -574,6 +887,66 @@ final class TouchControlsView extends View {
         final float halfW = rect.width() * 0.5f * ovScale[control];
         final float halfH = rect.height() * 0.5f * ovScale[control];
         rect.set(cx - halfW, cy - halfH, cx + halfW, cy + halfH);
+    }
+
+    // The back button of a pointer menu, where START sits; hiding the controls hides it.
+    private boolean onBackButton(float x, float y) {
+        return pointerMenuNow && (!controlsOnNow || (!hidden && !autoHidden)) && backButtonRect.contains(x, y);
+    }
+
+    // The cog beside it, where MENU sits.
+    private boolean onCogButton(float x, float y) {
+        return pointerMenuNow && (!controlsOnNow || (!hidden && !autoHidden)) && cogButtonRect.contains(x, y);
+    }
+
+    // A round button with a left arrow: B in the game's menus and map.
+    private void drawBackButton(Canvas canvas) {
+        final float cx = backButtonRect.centerX();
+        final float cy = backButtonRect.centerY();
+        final float radius = backButtonRect.width() * 0.5f;
+        fillPaint.setColor(held.containsKey(BTN_EAST) ? 0xCC3A5A70 : 0x99081218);
+        strokePaint.setColor(0xBBFFFFFF);
+        canvas.drawCircle(cx, cy, radius, fillPaint);
+        canvas.drawCircle(cx, cy, radius, strokePaint);
+        final float w = radius * 0.5f;
+        shapePath.reset();
+        shapePath.moveTo(cx + w, cy);
+        shapePath.lineTo(cx - w, cy);
+        shapePath.moveTo(cx - w * 0.3f, cy - w * 0.7f);
+        shapePath.lineTo(cx - w, cy);
+        shapePath.lineTo(cx - w * 0.3f, cy + w * 0.7f);
+        canvas.drawPath(shapePath, strokePaint);
+    }
+
+    // A round button with a folded map: three panels, the middle one raised.
+    private void drawMapButton(Canvas canvas) {
+        final float cx = mapButtonRect.centerX();
+        final float cy = mapButtonRect.centerY();
+        final float radius = mapButtonRect.width() * 0.5f;
+        fillPaint.setColor(0x99081218);
+        strokePaint.setColor(0xBBFFFFFF);
+        canvas.drawCircle(cx, cy, radius, fillPaint);
+        canvas.drawCircle(cx, cy, radius, strokePaint);
+        final float w = radius * 1.1f;
+        final float h = radius * 0.8f;
+        final float l = cx - w / 2f;
+        final float t = cy - h / 2f;
+        final float tilt = h * 0.12f;
+        shapePath.reset();
+        shapePath.moveTo(l, t + tilt);
+        shapePath.lineTo(l + w / 3f, t);
+        shapePath.lineTo(l + 2f * w / 3f, t + tilt);
+        shapePath.lineTo(l + w, t);
+        shapePath.lineTo(l + w, t + h - tilt);
+        shapePath.lineTo(l + 2f * w / 3f, t + h);
+        shapePath.lineTo(l + w / 3f, t + h - tilt);
+        shapePath.lineTo(l, t + h);
+        shapePath.close();
+        shapePath.moveTo(l + w / 3f, t);
+        shapePath.lineTo(l + w / 3f, t + h - tilt);
+        shapePath.moveTo(l + 2f * w / 3f, t + tilt);
+        shapePath.lineTo(l + 2f * w / 3f, t + h);
+        canvas.drawPath(shapePath, strokePaint);
     }
 
     // A mouse is not a finger on the overlay. Its clicks are dispatched as
@@ -608,6 +981,7 @@ final class TouchControlsView extends View {
         // Anything still held has to go first: once this view stops claiming
         // touches the matching releases never arrive, which left whatever was
         // down (a trigger, say) held for the rest of the session.
+        syncControlsOn();
         final boolean overlayVisible = nativeDebugOverlayVisible();
         if (overlayVisible && (!targets.isEmpty() || !held.isEmpty())) {
             releaseAll();
@@ -615,16 +989,34 @@ final class TouchControlsView extends View {
         if (overlayVisible || menuPointer != -1) {
             return onDebugTouch(event, action, actionIndex, overlayVisible);
         }
+        // In a pointer menu every finger but one on the back or cog button is the game's.
+        final boolean menu = !overlayVisible && nativePointerMenuActive();
+        final float actionX = event.getX(actionIndex);
+        final float actionY = event.getY(actionIndex);
+        final boolean toGame = overlayVisible ||
+            (menu && !onBackButton(actionX, actionY) && !onCogButton(actionX, actionY));
         if (action == MotionEvent.ACTION_DOWN) {
             cancelForwarded(event);
-            if (overlayVisible) {
+            if (toGame) {
                 return false;
             }
-        } else if (forwardToSdl(event, action, actionIndex, overlayVisible) || overlayVisible) {
+        } else if (forwardToSdl(event, action, actionIndex, toGame) || overlayVisible) {
             return true;
         }
 
-        if (autoHidden) {
+        // A tap on the "newer release" toast opens its page and is not also a press.
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+            View parent = (View) getParent();
+            if (parent != null
+                    && nativeTapUpdateToast(
+                            (getLeft() + event.getX(actionIndex)) / Math.max(1, parent.getWidth() - 1),
+                            (getTop() + event.getY(actionIndex)) / Math.max(1, parent.getHeight() - 1))) {
+                return true;
+            }
+        }
+
+        // With the controls off nothing is hidden and no touch brings anything back.
+        if (autoHidden && controlsOnNow) {
             // The touch that brings them back is not also a press.
             if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
                 autoHidden = false;
@@ -635,7 +1027,7 @@ final class TouchControlsView extends View {
             return true;
         }
 
-        if (hidden) {
+        if (hidden && controlsOnNow) {
             // Any touch brings the controls back, and is not also a press.
             if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
                 setHidden(false);
@@ -651,12 +1043,24 @@ final class TouchControlsView extends View {
             int pointerId = event.getPointerId(actionIndex);
             float x = event.getX(actionIndex);
             float y = event.getY(actionIndex);
-            if (hideBounds.contains(x, y)) {
+            if (menu) {
+                // Only the back and cog buttons get here (toGame took the rest).
+                final int id = onCogButton(x, y) ? TOGGLE_DEBUG_OVERLAY : BTN_EAST;
+                targets.put(pointerId, new TouchTarget(BUTTON, id));
+                pressControl(id);
+                invalidate();
+                return true;
+            }
+            if (controlsOnNow && hideBounds.contains(x, y)) {
                 targets.put(pointerId, new TouchTarget(HIDE, 0));
                 return true;
             }
-            if (editBounds.contains(x, y)) {
+            if (controlsOnNow && !mapTap && editBounds.contains(x, y)) {
                 targets.put(pointerId, new TouchTarget(EDIT, 0));
+                return true;
+            }
+            if (controlsOnNow && mapButtonShown && mapButtonRect.contains(x, y)) {
+                targets.put(pointerId, TouchTarget.begin(MAP_TAP, 0, x, y));
                 return true;
             }
             assignPointer(pointerId, x, y);
@@ -673,7 +1077,20 @@ final class TouchControlsView extends View {
                 } else if (target.type == BUTTON && aimsWhileHeld(target) && aim &&
                            aimPointer == -1) {
                     startButtonAim(event.getPointerId(i), target, event, i);
+                } else if (target.type == MAP_PAN) {
+                    if (pan2Pointer == -1) {
+                        updateMapPan(target, event, i);
+                    }
+                } else if (target.type == WHEEL) {
+                    target.x = event.getX(i);
+                    target.y = event.getY(i);
+                } else if (target.type == MAP_TAP) {
+                    target.x = event.getX(i);
+                    target.y = event.getY(i);
                 }
+            }
+            if (panPointer != -1 && pan2Pointer != -1) {
+                updatePinch(event);
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
             releasePointer(event.getPointerId(actionIndex));
@@ -684,8 +1101,8 @@ final class TouchControlsView extends View {
         return true;
     }
 
-    // The MENU pill's rect as it was last drawn over the window, which is what a tap is tested
-    // against so the two cannot disagree.
+    // MP2: the MENU pill's rect as it was last drawn over the window, which is what a tap is
+    // tested against so the two cannot disagree.
     private final RectF menuDrawn = new RectF();
     // The finger that went down on MENU, so a drag off it does not toggle the window.
     private int menuPointer = -1;
@@ -696,9 +1113,8 @@ final class TouchControlsView extends View {
 
     // Touches while the F1 window is open: MENU stays live so the window can be closed, a
     // two-finger drag scrolls, and everything else is handed to SDL, whose touch-to-mouse path is
-    // what the ImGui window reads (Metroid Prime 1's port works the same way). Forwarding through
-    // SDL rather than injecting ImGui events here is also what makes the coordinates right:
-    // sendToSdl normalises them against the surface SDL knows about.
+    // what the ImGui window reads. Forwarding through SDL rather than injecting ImGui events here
+    // is also what makes the coordinates right: sendToSdl normalises them against the surface.
     private boolean onDebugTouch(MotionEvent event, int action, int actionIndex,
                                  boolean overlayVisible) {
         final int id = event.getPointerId(actionIndex);
@@ -791,6 +1207,7 @@ final class TouchControlsView extends View {
     @Override
     protected void onDetachedFromWindow() {
         removeCallbacks(physicalInputPoll);
+        removeCallbacks(mapButtonPoll);
         // No more touch events will arrive to release what is held.
         releaseAll();
         super.onDetachedFromWindow();
@@ -808,16 +1225,24 @@ final class TouchControlsView extends View {
         }
         targets.clear();
         held.clear();
+        for (int control = 0; control < touchHeld.length; ++control) {
+            if (touchHeld[control] != 0) {
+                touchHeld[control] = 0;
+                nativeTouchControl(control, false);
+            }
+        }
         leftPointer = -1;
         rightPointer = -1;
         aimPointer = -1;
+        panPointer = -1;
+        pan2Pointer = -1;
         invalidate();
     }
 
     // Android sends a new finger to the view that already owns the gesture,
     // without asking whether it wants it. So while any finger that went down on
     // these controls is still held (a thumb resting on the stick, or the one that
-    // tapped START), every tap on the debug overlay lands here rather than on the
+    // tapped MENU), every tap on the debug overlay lands here rather than on the
     // SDL surface, and the overlay seems frozen until that finger lifts. Fingers
     // that go down while the overlay is open are handed to SDL directly instead,
     // and keep going there until they lift, even if the overlay closes first:
@@ -889,37 +1314,79 @@ final class TouchControlsView extends View {
                                   pressure);
     }
 
-    // Touch-down routing, first match wins: pills, face buttons, the D-pad, the
-    // left stick, the C-stick zone, and the free area aims.
+    // Touch-down routing, first match wins: pills, face buttons, the wheel
+    // buttons (a hit swallows the touch even when no wheel opens), the D-pad,
+    // the HUD minimap, the left stick, then the open map's pan (nothing else
+    // applies while the map is open), the classic C-stick zone, and the free
+    // area aims.
     private void assignPointer(int pointerId, float x, float y) {
         float width = getWidth();
         float height = getHeight();
         for (PillButton pill : pills) {
+            if (!pillShown(pill)) {
+                continue;
+            }
             pillRect(pill, width, height, pillHit);
             if (pillHit.contains(x, y)) {
                 final TouchTarget target = new TouchTarget(BUTTON, pill.id());
                 target.control = pill;
                 targets.put(pointerId, target);
-                pressControl(target.id);
+                pressTarget(target, pillControl(pill), pill.id() != TOGGLE_DEBUG_OVERLAY);
                 return;
             }
+        }
+        if (!controlsOnNow) {
+            return; // only the two menu pills above; the rest of the screen does nothing
         }
         for (ControlButton button : face) {
             if (hitButton(button, x, y, width, height)) {
                 final TouchTarget target = TouchTarget.begin(BUTTON, button.button, x, y);
                 target.control = button;
                 targets.put(pointerId, target);
-                pressControl(target.id);
+                pressTarget(target, controlOf(button), true);
                 return;
             }
         }
-        int dpadButton = dpadButtonAt(x, y, width, height);
+        if (turboButton != null && hitButton(turboButton, x, y, width, height)) {
+            final TouchTarget target = TouchTarget.begin(BUTTON, TURBO_FIRE, x, y);
+            target.control = turboButton;
+            targets.put(pointerId, target);
+            pressTarget(target, controlOf(turboButton), true);
+            return;
+        }
+        // Hidden wheel buttons (wheels unusable) let the touch through.
+        if (wheels && (nativeWheelOwned() & WHEEL_VALID_BIT) != 0) {
+            final int wheel = wheelButtonAt(x, y, width, height);
+            if (wheel != -1) {
+                // Not while the map is open (the overlay is handled before this).
+                if (wheelPointer == -1 && !nativeMapScreenOpen()) {
+                    TouchTarget target = TouchTarget.begin(WHEEL, wheel, x, y);
+                    target.startMs = SystemClock.uptimeMillis();
+                    // A moved button must still open its wheel on screen.
+                    final float reach = dp(WHEEL_RADIUS_DP);
+                    wheelCx = Math.max(reach, Math.min(width - reach,
+                                                       wheelButtonX(wheel, width, height)));
+                    wheelCy = Math.max(reach, Math.min(height - reach,
+                                                       wheelButtonY(wheel, height)));
+                    wheelPointer = pointerId;
+                    targets.put(pointerId, target);
+                }
+                return;
+            }
+        }
+        int dpadButton = wheels ? -1 : dpadButtonAt(x, y, width, height);
         if (dpadButton != -1) {
             targets.put(pointerId, new TouchTarget(BUTTON, dpadButton));
             pressControl(dpadButton);
             return;
         }
 
+        if (mapTap && width > 0f && height > 0f && nativeMinimapRect(minimapRect) &&
+            minimapRect[4] != 0f && x >= minimapRect[0] * width && x <= minimapRect[2] * width &&
+            y >= minimapRect[1] * height && y <= minimapRect[3] * height) {
+            targets.put(pointerId, TouchTarget.begin(MAP_TAP, 0, x, y));
+            return;
+        }
         final boolean floatHere = floatingStick() && x < width * 0.5f;
         if ((floatHere || (!floatingStick() && onLeftStick(x, y, width, height))) &&
             leftPointer == -1) {
@@ -933,6 +1400,17 @@ final class TouchControlsView extends View {
             leftFloated = floatHere;
             targets.put(pointerId, target);
             updateStick(target, x, y);
+        } else if (nativeMapScreenOpen()) {
+            // Everything else that is free pans the open map, one finger at a time.
+            if (panPointer == -1) {
+                panPointer = pointerId;
+                targets.put(pointerId, TouchTarget.begin(MAP_PAN, 0, x, y));
+                nativeMapPan(0f, 0f, panViewDp());
+                postDelayed(panKeepAlive, MAP_PAN_KEEPALIVE_MS);
+            } else if (pan2Pointer == -1) {
+                pan2Pointer = pointerId;
+                targets.put(pointerId, TouchTarget.begin(MAP_PAN2, 0, x, y));
+            }
         } else if (cStick && inRightStickGrab(x, y, width, height)) {
             if (rightPointer == -1) {
                 TouchTarget target = new TouchTarget(RIGHT_STICK, 0);
@@ -948,9 +1426,10 @@ final class TouchControlsView extends View {
         }
     }
 
-    // The floating left stick, except in the layout editor, which places the fixed one.
+    // The floating left stick, except on the map screen (whose free area pans)
+    // and in the layout editor, which place the fixed one.
     private boolean floatingStick() {
-        return floating && !editing;
+        return floating && !editing && !nativeMapScreenOpen();
     }
 
     // A press within half a stick radius outside the left stick's ring grabs it.
@@ -1075,14 +1554,14 @@ final class TouchControlsView extends View {
                y > cy - (baseCy - baseTop) * scale && y <= cy + (height - baseCy) * scale;
     }
 
-    // Fire and Jump face buttons aim when slid (see startButtonAim). Pills
+    // Fire, Jump and Turbo face buttons aim when slid (see startButtonAim). Pills
     // and the D-pad don't: their targets carry no start point.
     private static boolean aimsWhileHeld(TouchTarget target) {
         return target.control instanceof ControlButton &&
-               (target.id == BTN_SOUTH || target.id == BTN_EAST);
+               (target.id == BTN_SOUTH || target.id == BTN_EAST || target.id == TURBO_FIRE);
     }
 
-    // A held Fire (charging) or Jump that slides past the tap slop aims
+    // A held Fire (charging), Jump or Turbo that slides past the tap slop aims
     // too, so one thumb can press and aim; the button stays held until the
     // finger lifts.
     private void startButtonAim(int pointerId, TouchTarget target, MotionEvent event, int index) {
@@ -1117,11 +1596,10 @@ final class TouchControlsView extends View {
         target.y = lastY;
     }
 
-    // A quick swipe up while aiming tells the native side to keep the aim live for a moment
-    // (PortMouse::SpringSwipe), so a flick turns the view by its whole travel. On MP2 it does
-    // not spring the morph ball. A stroke starts where the finger last moved down or stalled;
-    // it counts once it has gone SWIPE_UP_DP up, more up than sideways, within SWIPE_UP_MS.
-    // Positions are in dp.
+    // A quick swipe up while aiming springs the morph ball (F1 "Spring Ball on
+    // swipe up"; the game ignores it out of the ball). A stroke starts where the
+    // finger last moved down or stalled; it springs once it has gone SWIPE_UP_DP
+    // up, more up than sideways, within SWIPE_UP_MS. Positions are in dp.
     private void trackSwipe(TouchTarget target, float x, float y, long timeMs) {
         if (target.swipeMs < 0 || y >= target.swipeY || timeMs - target.swipeMs > SWIPE_UP_MS) {
             target.swipeX = x;
@@ -1134,6 +1612,65 @@ final class TouchControlsView extends View {
         if (!target.swiped && up >= SWIPE_UP_DP && Math.abs(x - target.swipeX) < up) {
             target.swiped = true;
             nativeTouchSpringSwipe();
+        }
+    }
+
+    private float panViewDp() {
+        return getHeight() / getResources().getDisplayMetrics().density;
+    }
+
+    // Like updateAim, but the deltas pan the map screen.
+    private void updateMapPan(TouchTarget target, MotionEvent event, int index) {
+        final float density = getResources().getDisplayMetrics().density;
+        final float viewDp = panViewDp();
+        float lastX = target.x;
+        float lastY = target.y;
+        final int history = event.getHistorySize();
+        for (int h = 0; h <= history; ++h) {
+            final float x = h < history ? event.getHistoricalX(index, h) : event.getX(index);
+            final float y = h < history ? event.getHistoricalY(index, h) : event.getY(index);
+            nativeMapPan((x - lastX) / density, (y - lastY) / density, viewDp);
+            lastX = x;
+            lastY = y;
+        }
+        target.x = lastX;
+        target.y = lastY;
+    }
+
+    // Two fingers on the map: the midpoint's travel pans, the change in their
+    // spread zooms. Uses the latest positions only.
+    private void updatePinch(MotionEvent event) {
+        final int a = event.findPointerIndex(panPointer);
+        final int b = event.findPointerIndex(pan2Pointer);
+        final TouchTarget ta = targets.get(panPointer);
+        final TouchTarget tb = targets.get(pan2Pointer);
+        if (a < 0 || b < 0 || ta == null || tb == null) {
+            return;
+        }
+        final float density = getResources().getDisplayMetrics().density;
+        final float ax = event.getX(a);
+        final float ay = event.getY(a);
+        final float bx = event.getX(b);
+        final float by = event.getY(b);
+        final float midDx = ((ax + bx) - (ta.x + tb.x)) * 0.5f / density;
+        final float midDy = ((ay + by) - (ta.y + tb.y)) * 0.5f / density;
+        final float beforeAngle = (float) Math.atan2(tb.y - ta.y, tb.x - ta.x);
+        final float before = (float) Math.hypot(ta.x - tb.x, ta.y - tb.y) / density;
+        final float now = (float) Math.hypot(ax - bx, ay - by) / density;
+        ta.x = ax;
+        ta.y = ay;
+        tb.x = bx;
+        tb.y = by;
+        nativeMapPan(midDx, midDy, panViewDp());
+        if (before >= MAP_PINCH_MIN_DP && now >= MAP_PINCH_MIN_DP) {
+            nativeMapZoom(now / before);
+            float turn = (float) Math.atan2(by - ay, bx - ax) - beforeAngle;
+            if (turn > Math.PI) {
+                turn -= 2f * (float) Math.PI;
+            } else if (turn <= -Math.PI) {
+                turn += 2f * (float) Math.PI;
+            }
+            nativeMapRotate(turn);
         }
     }
 
@@ -1185,6 +1722,19 @@ final class TouchControlsView extends View {
             }
             return;
         }
+        if (target.type == WHEEL) {
+            wheelPointer = -1;
+            finishWheel(target);
+            return;
+        }
+        if (target.type == MAP_TAP) {
+            // A tap, not a drag that began on the minimap.
+            final float slop = dp(MAP_TAP_SLOP_DP);
+            if (Math.hypot(target.x - target.startX, target.y - target.startY) < slop) {
+                nativeMapTap();
+            }
+            return;
+        }
         releaseTarget(target);
         if (pointerId == leftPointer) {
             leftPointer = -1;
@@ -1195,19 +1745,47 @@ final class TouchControlsView extends View {
         if (pointerId == aimPointer) {
             aimPointer = -1;
         }
+        if (pointerId == pan2Pointer) {
+            pan2Pointer = -1;
+        } else if (pointerId == panPointer) {
+            if (pan2Pointer != -1) {
+                // The other finger carries on panning from where it is.
+                TouchTarget second = targets.get(pan2Pointer);
+                if (second != null) {
+                    TouchTarget carried = new TouchTarget(MAP_PAN, 0);
+                    carried.x = second.x;
+                    carried.y = second.y;
+                    targets.put(pan2Pointer, carried);
+                }
+                panPointer = pan2Pointer;
+                pan2Pointer = -1;
+            } else {
+                panPointer = -1;
+                removeCallbacks(panKeepAlive);
+            }
+        }
     }
 
     private void releaseTarget(TouchTarget target) {
-        // Nothing to zero for a hide tap or an aim drag (a distance).
+        // Nothing to zero for a hide tap, an aim drag (a distance) or a map tap
+        // (fired on release only; a cancelled touch is no tap).
         if (target.type == AIM) {
             nativeTouchAimDown(false);
             return;
         }
-        if (target.type == HIDE || target.type == EDIT) {
+        if (target.type == WHEEL) {
+            wheelPointer = -1;
+            return;
+        }
+        if (target.type == HIDE || target.type == EDIT || target.type == MAP_TAP ||
+            target.type == MAP_PAN || target.type == MAP_PAN2) {
             return;
         }
         if (target.type == BUTTON) {
-            releaseControl(target.id);
+            releaseTouchControl(target);
+            if (!target.bound) {
+                releaseControl(target.id);
+            }
             if (target.aiming) {
                 nativeTouchAimDown(false);
             }
@@ -1218,11 +1796,61 @@ final class TouchControlsView extends View {
         nativeVirtualAxis(left ? AXIS_LEFTY : AXIS_RIGHTY, 0f);
     }
 
+    // Presses a pill or face button: reports the control, and sends its own button
+    // unless a touch: binding takes the control over (MENU always opens F1).
+    private void pressTarget(TouchTarget target, int control, boolean remappable) {
+        target.touchControl = control;
+        if (control >= 0 && control < touchHeld.length && touchHeld[control]++ == 0) {
+            nativeTouchControl(control, true);
+        }
+        target.bound = remappable && control >= 0 && nativeTouchControlBound(control);
+        if (!target.bound) {
+            pressControl(target.id);
+        }
+    }
+
+    private void releaseTouchControl(TouchTarget target) {
+        final int control = target.touchControl;
+        target.touchControl = -1;
+        if (control >= 0 && control < touchHeld.length && touchHeld[control] > 0 &&
+            --touchHeld[control] == 0) {
+            nativeTouchControl(control, false);
+        }
+    }
+
+    private boolean turboTouched() {
+        for (TouchTarget target : targets.values()) {
+            if (target.id == TURBO_FIRE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void pressControl(int id) {
+        if (id == TOGGLE_DEBUG_OVERLAY) {
+            // Drive the overlay directly; polling a synthetic F1 key press is
+            // unreliable and depends on SDL having keyboard focus.
+            if (!held.containsKey(id)) {
+                held.put(id, 1);
+                nativeToggleDebugOverlay();
+                // The toggle lands on the next game frame; redraw after it so
+                // the controls get out of the overlay's way.
+                postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        invalidate();
+                    }
+                }, 150);
+            }
+            return;
+        }
         int count = held.containsKey(id) ? held.get(id) : 0;
         if (count == 0) {
-            if (id == BTN_DEBUG_MENU) {
-                nativeToggleDebugOverlay();
+            if (id == BEAM_SHIFT) {
+                nativeTouchBeamShift(true);
+            } else if (id == TURBO_FIRE) {
+                nativeTouchTurboFire(true);
             } else if (id >= AXIS_ID_BASE) {
                 nativeVirtualAxis(id - AXIS_ID_BASE, 1f);
             } else {
@@ -1232,15 +1860,45 @@ final class TouchControlsView extends View {
         held.put(id, count + 1);
     }
 
+    // Lets go of Turbo when its button is no longer drawn (F1 turned it off while
+    // a finger was on it), so it cannot stay on with nothing to release it.
+    private void releaseTurbo() {
+        if (!held.containsKey(TURBO_FIRE) && !turboTouched()) {
+            return;
+        }
+        final Iterator<TouchTarget> it = targets.values().iterator();
+        while (it.hasNext()) {
+            final TouchTarget target = it.next();
+            if (target.id == TURBO_FIRE) {
+                it.remove();
+                releaseTouchControl(target);
+                // A finger sliding on Turbo was also aiming.
+                if (target.aiming) {
+                    aimPointer = -1;
+                    nativeTouchAimDown(false);
+                }
+            }
+        }
+        held.remove(TURBO_FIRE);
+        nativeTouchTurboFire(false);
+        invalidate();
+    }
+
     private void releaseControl(int id) {
         Integer current = held.get(id);
         if (current == null) {
             return;
         }
+        if (id == TOGGLE_DEBUG_OVERLAY) {
+            held.remove(id);
+            return;
+        }
         if (current <= 1) {
             held.remove(id);
-            if (id == BTN_DEBUG_MENU) {
-                // A toggle on press; nothing to release.
+            if (id == BEAM_SHIFT) {
+                nativeTouchBeamShift(false);
+            } else if (id == TURBO_FIRE) {
+                nativeTouchTurboFire(false);
             } else if (id >= AXIS_ID_BASE) {
                 // Triggers are axes, and SDL's joystick axes run -32768..32767
                 // with a trigger resting at the minimum: releasing with 0 left
@@ -1304,6 +1962,9 @@ final class TouchControlsView extends View {
     }
 
     private int controlOf(ControlButton button) {
+        if (button == turboButton) {
+            return twin ? C_TTURBO : C_TURBO;
+        }
         final int first = twin ? C_JUMP : C_A;
         for (int i = 0; i < face.length; ++i) {
             if (face[i] == button) {
@@ -1469,6 +2130,27 @@ final class TouchControlsView extends View {
         return 0xDD000000 | (r << 16) | (g << 8) | b;
     }
 
+    // The GameCube layout's Z pill only opens the map, which a minimap tap does.
+    private boolean pillHidden(PillButton pill) {
+        return mapTap && pill.axis < 0 && pill.button == BTN_RIGHT_SHOULDER;
+    }
+
+    // With drag-to-aim, R's hold-still free look is redundant, so R only shows
+    // where it does something else: morphed (Spider Ball), in the pause menu,
+    // and on the map screen. Not part of pillHidden, so the pills' layout
+    // doesn't jump as R comes and goes. Twin stick always shows it.
+    private boolean rHidden() {
+        return aim && !twin && (nativeWheelOwned() & WHEEL_MORPHED_BIT) == 0 && !nativePauseScreenOpen() &&
+               !nativeMapScreenOpen();
+    }
+
+    private boolean pillShown(PillButton pill) {
+        if (!controlsOnNow && !editing) {
+            return isMenuPill(pill);
+        }
+        return !pillHidden(pill) && !(pill.axis == AXIS_TRIGGER_R && rHiddenNow);
+    }
+
     private final Path facePath = new Path();
     private final RectF faceRect = new RectF();
     private final RectF faceTmp = new RectF();
@@ -1497,13 +2179,32 @@ final class TouchControlsView extends View {
         }
     }
 
-    // START sits in the bottom-left corner (slot 0); -1 for the pills placed
-    // from their rects. The triggers are axes with button -1, hence the axis check.
+    // Past the cap, with no D-pad under them, the top pills drop together until
+    // the lowest shown pill (the triggers, or Z) is dp(12) above the stick ring
+    // or face cluster.
+    private float pillShift(float width, float height) {
+        if (layoutU(height) >= height || !wheels) {
+            return 0f;
+        }
+        float bottom = 0f;
+        for (PillButton pill : pills) {
+            if (!pillHidden(pill) && cornerSlot(pill) < 0) {
+                bottom = Math.max(bottom, layoutY(pill.bottom, height));
+            }
+        }
+        faceBounds(width, height, faceRect);
+        final float stickTop = baseLeftStickY(width, height) - STICK_RADIUS * layoutU(height);
+        return Math.max(0f, Math.min(stickTop, faceRect.top) - dp(12) - bottom);
+    }
+
+    // START (slot 0) and MENU (slot 1) sit side by side in the bottom-left
+    // corner; -1 for the pills placed from their rects. The triggers are axes
+    // with button -1, which is also TOGGLE_DEBUG_OVERLAY, hence the axis check.
     private static int cornerSlot(PillButton pill) {
         if (pill.axis >= 0) {
             return -1;
         }
-        return pill.button == BTN_START ? 0 : -1;
+        return pill.button == BTN_START ? 0 : pill.button == TOGGLE_DEBUG_OVERLAY ? 1 : -1;
     }
 
     // A pill's rect, from its side edge and the top of the layout band, or its
@@ -1514,15 +2215,16 @@ final class TouchControlsView extends View {
             bottomButtonRect(slot, false, width, height, out);
             return;
         }
-        out.set(layoutX(pill.left, width, height), layoutY(pill.top, height),
-                layoutX(pill.right, width, height), layoutY(pill.bottom, height));
+        final float shift = pillShift(width, height);
+        out.set(layoutX(pill.left, width, height), layoutY(pill.top, height) + shift,
+                layoutX(pill.right, width, height), layoutY(pill.bottom, height) + shift);
         applyOverride(pillControl(pill), out, height);
     }
 
     private static int pillControl(PillButton pill) {
         final int slot = cornerSlot(pill);
         if (slot >= 0) {
-            return C_START;
+            return slot == 0 ? C_START : C_MENU;
         }
         if (pill.control >= 0) {
             return pill.control;
@@ -1557,7 +2259,7 @@ final class TouchControlsView extends View {
         strokePaint.setColor(active ? 0xFFE1F8FF : 0xCCFFFFFF);
         final int slot = cornerSlot(pill);
         if (slot >= 0) {
-            drawCornerButton(canvas, pillHit);
+            drawCornerButton(canvas, slot, pillHit);
             return;
         }
         final RectF bounds = pillHit;
@@ -1585,17 +2287,119 @@ final class TouchControlsView extends View {
             return;
         }
         // "LB Jump": without descriptions, just the button's name.
-        final String label = labels ? pill.label : pill.label.split(" ")[0];
+        final String label = labels ? pillLabel(pill) : pill.label.split(" ")[0];
         drawCenteredLabel(canvas, label, bounds.centerX(), bounds.centerY(),
                           label.length() > 2 ? dp(11) : dp(13));
     }
 
-    // A face button's function, drawn small under its letter.
+    // Which functions the buttons wear. The map screen comes first: the pause
+    // menu's map is one too. Morphed (or morphing) is only in play: paused, the
+    // wheel state reads 0. The editor always shows the usual names.
+    private int labelContext() {
+        if (editing) {
+            return LABELS_PLAY;
+        }
+        if (nativeMapScreenOpen()) {
+            return LABELS_MAP;
+        }
+        if (nativePauseScreenOpen()) {
+            return LABELS_PAUSE;
+        }
+        if (nativeMessageBoxOpen()) {
+            return LABELS_DIALOG;
+        }
+        return (nativeWheelOwned() & WHEEL_MORPHED_BIT) != 0 ? LABELS_MORPH : LABELS_PLAY;
+    }
+
+    // A shoulder pill's text for labelContextNow. In a menu, a pill that does
+    // nothing there shows just its button's name.
+    private String pillLabel(PillButton pill) {
+        if (labelContextNow == LABELS_PLAY || isMenuPill(pill)) {
+            return pill.label;
+        }
+        final String name = pill.label.split(" ")[0];
+        final int sent = pill.axis >= 0 ? -1 : pill.button;
+        switch (labelContextNow) {
+        case LABELS_MORPH:
+            if (pill.axis == AXIS_TRIGGER_R) {
+                return "R Spider";
+            }
+            if (sent == BTN_EAST) {
+                return "LB Boost";
+            }
+            if (sent == BTN_SOUTH) {
+                return "RT Bomb";
+            }
+            if (sent == BTN_NORTH) {
+                return "RB P.Bomb";
+            }
+            return pill.label;
+        case LABELS_PAUSE:
+            // L and R page through the subscreens.
+            if (pill.axis == AXIS_TRIGGER_L) {
+                return name + " Prev";
+            }
+            if (pill.axis == AXIS_TRIGGER_R) {
+                return name + " Next";
+            }
+            if (sent == BTN_EAST) {
+                return name + " Back";
+            }
+            if (sent == BTN_SOUTH) {
+                return name + " Select";
+            }
+            if (sent == BTN_NORTH) {
+                return name + " View";
+            }
+            return name;
+        case LABELS_MAP:
+            // L zooms out and R in; B and Z leave.
+            if (pill.axis == AXIS_TRIGGER_L) {
+                return name + " Out";
+            }
+            if (pill.axis == AXIS_TRIGGER_R) {
+                return name + " In";
+            }
+            if (sent == BTN_EAST || sent == BTN_RIGHT_SHOULDER) {
+                return name + " Exit";
+            }
+            if (sent == BTN_SOUTH) {
+                return name + " World";
+            }
+            if (sent == BTN_NORTH) {
+                return name + " Legend";
+            }
+            return name;
+        default:
+            return sent == BTN_SOUTH ? name + " OK" : name;
+        }
+    }
+
+    // START and MENU, whose labels name no game function.
+    private static boolean isMenuPill(PillButton pill) {
+        return pill.axis < 0 && (pill.button == BTN_START || pill.button == TOGGLE_DEBUG_OVERLAY);
+    }
+
+    // A face button's function for labelContextNow.
     private String faceFunction(ControlButton button) {
         if (twin) {
-            return button.label;
+            final int i = controlOf(button) - C_JUMP;
+            switch (labelContextNow) {
+            case LABELS_MORPH: return TWIN_MORPH_FUNCTIONS[i];
+            case LABELS_PAUSE: return TWIN_PAUSE_FUNCTIONS[i];
+            case LABELS_MAP: return TWIN_MAP_FUNCTIONS[i];
+            case LABELS_DIALOG: return TWIN_DIALOG_FUNCTIONS[i];
+            default: return button.label;
+            }
         }
-        return GAMECUBE_FUNCTIONS[controlOf(button) - C_A];
+        final int i = controlOf(button) - C_A;
+        switch (labelContextNow) {
+        case LABELS_MORPH: return GAMECUBE_MORPH_FUNCTIONS[i];
+        case LABELS_PAUSE: return GAMECUBE_PAUSE_FUNCTIONS[i];
+        case LABELS_MAP: return GAMECUBE_MAP_FUNCTIONS[i];
+        case LABELS_DIALOG: return GAMECUBE_DIALOG_FUNCTIONS[i];
+        default: return GAMECUBE_FUNCTIONS[i];
+        }
     }
 
     private void drawButton(Canvas canvas, ControlButton button, float width, float height) {
@@ -1623,13 +2427,15 @@ final class TouchControlsView extends View {
             canvas.drawCircle(x, y, radius, strokePaint);
         }
         // The letter big (twin: the Xbox one), the function small under it.
-        final String letter = twin ? TWIN_LETTERS[controlOf(button) - C_JUMP] : button.label;
+        final boolean isTurbo = button == turboButton;
+        final String letter = isTurbo ? "T"
+                              : twin ? TWIN_LETTERS[controlOf(button) - C_JUMP] : button.label;
         final float letterSize = (twin ? dp(17) : dp(15)) * scale;
         if (!labels) {
             drawCenteredLabel(canvas, letter, x, y, letterSize);
             return;
         }
-        final String function = faceFunction(button);
+        final String function = isTurbo ? button.label : faceFunction(button);
         // The function goes below the letter. A kidney is sized by its half width,
         // and a mostly level one (Y) has its text slanted along the band: upright,
         // "Missile" ran into the border of Y's tilted band.
@@ -1651,24 +2457,52 @@ final class TouchControlsView extends View {
     }
 
     // The hide button: an eye.
-    // START as a pause glyph, in a circle like the eye's. The paints are already
-    // set for the held state.
-    private void drawCornerButton(Canvas canvas, RectF bounds) {
+    // START as a pause glyph, MENU (the F1 overlay) as a cog, in a circle like the
+    // map button's. The paints are already set for the held state.
+    private void drawCornerButton(Canvas canvas, int slot, RectF bounds) {
         final float cx = bounds.centerX();
         final float cy = bounds.centerY();
         final float radius = bounds.width() * 0.5f;
         canvas.drawCircle(cx, cy, radius, fillPaint);
         canvas.drawCircle(cx, cy, radius, strokePaint);
         final float s = radius * 0.36f;
-        final int fill = fillPaint.getColor();
-        fillPaint.setColor(strokePaint.getColor());
-        final float barW = s * 0.55f;
-        final float corner = barW * 0.3f;
-        canvas.drawRoundRect(cx - s * 0.75f - barW / 2f, cy - s, cx - s * 0.75f + barW / 2f,
-                             cy + s, corner, corner, fillPaint);
-        canvas.drawRoundRect(cx + s * 0.75f - barW / 2f, cy - s, cx + s * 0.75f + barW / 2f,
-                             cy + s, corner, corner, fillPaint);
-        fillPaint.setColor(fill);
+        if (slot == 0) {
+            final int fill = fillPaint.getColor();
+            fillPaint.setColor(strokePaint.getColor());
+            final float barW = s * 0.55f;
+            final float corner = barW * 0.3f;
+            canvas.drawRoundRect(cx - s * 0.75f - barW / 2f, cy - s, cx - s * 0.75f + barW / 2f,
+                                 cy + s, corner, corner, fillPaint);
+            canvas.drawRoundRect(cx + s * 0.75f - barW / 2f, cy - s, cx + s * 0.75f + barW / 2f,
+                                 cy + s, corner, corner, fillPaint);
+            fillPaint.setColor(fill);
+        } else {
+            // A cog: eight square teeth around a ring, with a hole.
+            final int teeth = 8;
+            final float outer = s * 1.3f;
+            final float inner = s * 0.98f;
+            final double step = 2.0 * Math.PI / teeth;
+            final double half = step * 0.22;
+            shapePath.reset();
+            for (int i = 0; i < teeth; i++) {
+                final double a = i * step;
+                final double[] angles = {a - step / 2 + half, a - half, a - half * 0.8,
+                                         a + half * 0.8, a + half, a + step / 2 - half};
+                final float[] radii = {inner, inner, outer, outer, inner, inner};
+                for (int k = 0; k < angles.length; k++) {
+                    final float px = cx + radii[k] * (float) Math.cos(angles[k]);
+                    final float py = cy + radii[k] * (float) Math.sin(angles[k]);
+                    if (i == 0 && k == 0) {
+                        shapePath.moveTo(px, py);
+                    } else {
+                        shapePath.lineTo(px, py);
+                    }
+                }
+            }
+            shapePath.close();
+            canvas.drawPath(shapePath, strokePaint);
+            canvas.drawCircle(cx, cy, s * 0.42f, strokePaint);
+        }
     }
 
     private void drawEye(Canvas canvas, RectF bounds) {
@@ -1692,13 +2526,219 @@ final class TouchControlsView extends View {
         canvas.drawCircle(cx, cy, lid * 0.55f, fillPaint);
     }
 
-    private void drawEditButton(Canvas canvas, RectF bounds) {
-        fillPaint.setColor(0x99081218);
-        strokePaint.setColor(0xCCFFFFFF);
-        float r = bounds.width() * 0.5f;
-        canvas.drawCircle(bounds.centerX(), bounds.centerY(), r, fillPaint);
-        canvas.drawCircle(bounds.centerX(), bounds.centerY(), r, strokePaint);
-        drawCenteredLabel(canvas, "Edit", bounds.centerX(), bounds.centerY(), dp(11));
+    // The Visor (left) and Beam (right) buttons sit near the bottom, each a wheel
+    // radius up from the edge so its wheel opens on screen. Visor sits just
+    // outside the left stick ring, Beam just outside the face cluster (or, in
+    // classic, the C-stick ring), where the thumbs already are.
+    private float wheelButtonX(int wheel, float width, float height) {
+        final float edge = dp(WHEEL_BUTTON_ANCHOR_DP) + WHEEL_BUTTON_RADIUS * layoutU(height);
+        float x;
+        if (wheel == 0) {
+            x = baseLeftStickX(width, height) + STICK_RADIUS * layoutU(height) + edge;
+        } else if (cStick) {
+            x = baseRightStickX(width, height) - layoutU(height) * rightStickBaseRadius() - edge;
+        } else {
+            faceBounds(width, height, faceRect);
+            x = faceRect.left - edge;
+        }
+        // The open wheel must stay on screen.
+        final float reach = dp(WHEEL_RADIUS_DP);
+        return Math.max(reach, Math.min(width - reach, x)) +
+               ovDx[C_VISOR + wheel] * layoutU(height);
+    }
+
+    private float wheelButtonY(int wheel, float height) {
+        return height - dp(WHEEL_RADIUS_DP) - dp(WHEEL_BUTTON_GAP_DP) +
+               ovDy[C_VISOR + wheel] * layoutU(height);
+    }
+
+    private float wheelButtonRadius(int wheel, float height) {
+        return WHEEL_BUTTON_RADIUS * layoutU(height) * ovScale[C_VISOR + wheel];
+    }
+
+    private int wheelButtonAt(float x, float y, float width, float height) {
+        for (int wheel = 0; wheel < 2; ++wheel) {
+            final float radius = wheelButtonRadius(wheel, height) * 1.1f;
+            final double dx = x - wheelButtonX(wheel, width, height);
+            final double dy = y - wheelButtonY(wheel, height);
+            if (dx * dx + dy * dy <= radius * radius) {
+                return wheel;
+            }
+        }
+        return -1;
+    }
+
+    // The game's own icons, decoded by the native side once the HUD has loaded them and
+    // traced into outlines (they are 32x32, too coarse to scale up). Until one arrives (or
+    // when it never does) the text label is drawn.
+    private final Path[][] wheelIcons = new Path[2][4];
+    private final int[][][] wheelIconSize = new int[2][4][2];
+    private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private long wheelIconTryMs = -WHEEL_ICON_RETRY_MS;
+
+    private void refreshWheelIcons() {
+        final long now = SystemClock.uptimeMillis();
+        if (now - wheelIconTryMs < WHEEL_ICON_RETRY_MS) {
+            return;
+        }
+        wheelIconTryMs = now;
+        for (int wheel = 0; wheel < 2; ++wheel) {
+            for (int item = 0; item < 4; ++item) {
+                if (wheelIcons[wheel][item] != null) {
+                    continue;
+                }
+                final int[] raw = nativeWheelIcon(wheel, item);
+                if (raw == null || raw.length < 3) {
+                    continue;
+                }
+                final int w = raw[0];
+                final int h = raw[1];
+                if (w <= 0 || h <= 0 || raw.length != 2 + w * h) {
+                    continue;
+                }
+                wheelIcons[wheel][item] = IconTracer.trace(raw, 2, w, h);
+                wheelIconSize[wheel][item][0] = w;
+                wheelIconSize[wheel][item][1] = h;
+            }
+        }
+    }
+
+    // Draws the icon fitted into a size x size box at (cx, cy); false when it has none yet.
+    private boolean drawWheelIcon(Canvas canvas, int wheel, int item, float cx, float cy, float size,
+                                  int alpha) {
+        final Path icon = wheelIcons[wheel][item];
+        if (icon == null) {
+            return false;
+        }
+        final int w = wheelIconSize[wheel][item][0];
+        final int h = wheelIconSize[wheel][item][1];
+        final float scale = size / Math.max(w, h);
+        canvas.save();
+        canvas.translate(cx - w * scale / 2f, cy - h * scale / 2f);
+        canvas.scale(scale, scale);
+        iconPaint.setColor(wheel == 1 ? BEAM_ICON_COLORS[item] : Color.WHITE);
+        iconPaint.setAlpha(alpha);
+        canvas.drawPath(icon, iconPaint);
+        canvas.restore();
+        return true;
+    }
+
+    private void drawWheelButtons(Canvas canvas, float width, float height) {
+        final int mask = nativeWheelOwned();
+        wheelButtonsShown = (mask & WHEEL_VALID_BIT) != 0 || editing;
+        if (!wheelButtonsShown) {
+            return;
+        }
+        refreshWheelIcons();
+        for (int wheel = 0; wheel < 2; ++wheel) {
+            final float cx = wheelButtonX(wheel, width, height);
+            final float cy = wheelButtonY(wheel, height);
+            final float radius = wheelButtonRadius(wheel, height);
+            final boolean active = wheelPointer != -1 && wheelTarget() != null &&
+                                   wheelTarget().id == wheel;
+            fillPaint.setColor(active ? 0xCC48C8E8 : 0x77081218);
+            strokePaint.setColor(active ? 0xFFE1F8FF : 0xBBFFFFFF);
+            canvas.drawCircle(cx, cy, radius, fillPaint);
+            canvas.drawCircle(cx, cy, radius, strokePaint);
+            final int current = wheel == 0 ? (mask >> 8) & 3 : (mask >> 10) & 3;
+            if (!drawWheelIcon(canvas, wheel, current, cx, cy, radius * 1.4f, 255)) {
+                drawCenteredLabel(canvas, WHEEL_BUTTON_LABELS[wheel], cx, cy,
+                                  dp(13) * ovScale[C_VISOR + wheel]);
+            }
+        }
+    }
+
+    private TouchTarget wheelTarget() {
+        return wheelPointer == -1 ? null : targets.get(wheelPointer);
+    }
+
+    // The sector under (x, y) of the open wheel, or -1 inside the centre.
+    private int wheelSector(float x, float y) {
+        final float dx = x - wheelCx;
+        final float dy = y - wheelCy;
+        final float dead = dp(WHEEL_DEAD_DP);
+        if (dx * dx + dy * dy < dead * dead) {
+            return -1;
+        }
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 1 : 3;
+        }
+        return dy < 0 ? 0 : 2;
+    }
+
+    private static boolean wheelOwned(int mask, int wheel, int item) {
+        return (mask & (1 << (wheel * 4 + item))) != 0;
+    }
+
+    private final RectF wheelOval = new RectF();
+    private final RectF wheelHole = new RectF();
+
+    // The wheel opens over everything: four sectors, the one under the finger lit.
+    private void drawWheel(Canvas canvas) {
+        final TouchTarget target = wheelTarget();
+        if (target == null) {
+            return;
+        }
+        final int mask = nativeWheelOwned();
+        final int sector = wheelSector(target.x, target.y);
+        final float outer = dp(WHEEL_RADIUS_DP);
+        final float inner = dp(WHEEL_DEAD_DP);
+        wheelOval.set(wheelCx - outer, wheelCy - outer, wheelCx + outer, wheelCy + outer);
+        wheelHole.set(wheelCx - inner, wheelCy - inner, wheelCx + inner, wheelCy + inner);
+        final int currentIndex = target.id == 0 ? (mask >> 8) & 3 : (mask >> 10) & 3;
+        for (int i = 0; i < 4; ++i) {
+            final int item = WHEEL_ITEMS[target.id][i];
+            final boolean owned = wheelOwned(mask, target.id, item);
+            // Sector i is centred on up (-90), right (0), down (90), left (180).
+            final float start = -135f + 90f * i;
+            shapePath.reset();
+            shapePath.arcTo(wheelOval, start, 90f, true);
+            shapePath.arcTo(wheelHole, start + 90f, -90f, false);
+            shapePath.close();
+            final boolean lit = i == sector && owned;
+            fillPaint.setColor(lit ? 0xDD48C8E8 : owned ? 0xAA081218 : 0x66081218);
+            canvas.drawPath(shapePath, fillPaint);
+            strokePaint.setColor(item == currentIndex ? 0xFFE0C020 : 0xBBFFFFFF);
+            canvas.drawPath(shapePath, strokePaint);
+            // An item not found yet leaves its sector empty.
+            if (!owned) {
+                continue;
+            }
+            final double mid = Math.toRadians(start + 45f);
+            final float labelR = (outer + inner) / 2f;
+            final float lx = wheelCx + labelR * (float) Math.cos(mid);
+            final float ly = wheelCy + labelR * (float) Math.sin(mid);
+            if (!drawWheelIcon(canvas, target.id, item, lx, ly, dp(WHEEL_ICON_DP), 255)) {
+                drawCenteredLabel(canvas, WHEEL_LABELS[target.id][i], lx, ly, dp(12));
+            }
+        }
+    }
+
+    // A finger lifted off a wheel: a slide to an owned sector picks it; a quick
+    // tap on Visor picks Scan when the setting is on; the centre cancels.
+    private void finishWheel(TouchTarget target) {
+        final int mask = nativeWheelOwned();
+        if ((mask & WHEEL_VALID_BIT) == 0) {
+            return;
+        }
+        final int sector = wheelSector(target.x, target.y);
+        if (sector >= 0) {
+            final int item = WHEEL_ITEMS[target.id][sector];
+            if (wheelOwned(mask, target.id, item)) {
+                if (target.id == 0) {
+                    nativeRequestVisor(item);
+                } else {
+                    nativeRequestBeam(item);
+                }
+            }
+            return;
+        }
+        final boolean quick = SystemClock.uptimeMillis() - target.startMs < WHEEL_TAP_MS;
+        final boolean still = Math.hypot(target.x - target.startX, target.y - target.startY) <
+                              dp(MAP_TAP_SLOP_DP);
+        if (target.id == 0 && visorTapScan && quick && still && wheelOwned(mask, 0, 2)) {
+            nativeRequestVisor(2);
+        }
     }
 
     private void drawCenteredLabel(Canvas canvas, String label, float x, float y, float size) {
@@ -1837,15 +2877,22 @@ final class TouchControlsView extends View {
             case C_TR:
                 return false; // retired: twin's R pill, kept so saved ids don't shift
             case C_TURBO:
+                return turbo && !twin;
             case C_TTURBO:
+                return turbo && twin;
+            case C_DPAD:
+                return !wheels;
+            case C_Z:
+                return !twin && !mapTap;
+            case C_TZ:
+                return twin && !mapTap;
+            case C_MAP:
+                return mapTap;
+            case C_EDIT:
+                return !mapTap;
             case C_VISOR:
             case C_BEAM:
-            case C_MAP:
-                return false; // MP1's, not drawn on MP2; kept so saved ids don't shift
-            case C_Z:
-                return !twin;
-            case C_TZ:
-                return twin;
+                return wheels;
             default:
                 return true;
         }
@@ -1893,9 +2940,12 @@ final class TouchControlsView extends View {
             case C_JUMP:
             case C_FIRE:
             case C_MORPH:
-            case C_MISSILE: {
+            case C_MISSILE:
+            case C_TURBO:
+            case C_TTURBO: {
                 final ControlButton button =
-                    face[control >= C_JUMP ? control - C_JUMP : control - C_A];
+                    control == C_TURBO || control == C_TTURBO ? turboButton
+                    : face[control >= C_JUMP ? control - C_JUMP : control - C_A];
                 if (button == null) {
                     out.setEmpty();
                     return;
@@ -1919,8 +2969,7 @@ final class TouchControlsView extends View {
             case C_RT:
             case C_RB:
             case C_TZ:
-            case C_TR:
-            case C_MENU: {
+            case C_TR: {
                 final PillButton pill = pillOf(control);
                 if (pill != null) {
                     pillRect(pill, width, height, out);
@@ -1929,18 +2978,26 @@ final class TouchControlsView extends View {
                 }
                 return;
             }
+            case C_VISOR:
+            case C_BEAM: {
+                final int wheel = control - C_VISOR;
+                final float r = wheelButtonRadius(wheel, height);
+                final float x = wheelButtonX(wheel, width, height);
+                final float y = wheelButtonY(wheel, height);
+                out.set(x - r, y - r, x + r, y + r);
+                return;
+            }
             case C_START:
                 bottomButtonRect(0, false, width, height, out);
                 return;
-            case C_VISOR:
-            case C_BEAM:
+            case C_MENU:
+                bottomButtonRect(1, false, width, height, out);
+                return;
             case C_MAP:
-            case C_TURBO:
-            case C_TTURBO:
-                out.setEmpty();
+                bottomButtonRect(1, true, width, height, out);
                 return;
             case C_EDIT:
-                bottomButtonRect(1, true, width, height, out);
+                editButtonRect(width, height, out);
                 return;
             default:
                 bottomButtonRect(0, true, width, height, out);
@@ -2010,16 +3067,12 @@ final class TouchControlsView extends View {
                     resetControl(i);
                 }
                 break;
-            case EDIT_LAYOUT: {
-                // The native side switches GameCube <-> twin stick and clears the
-                // offsets; re-read them so the new placement shows at once.
+            case EDIT_LAYOUT:
+                // MP2: the native side steps Default -> Classic -> Twin stick; the next draw
+                // reads it. Each layout keeps its own controls' offsets, as in MP1.
                 nativeCycleTouchLayout();
-                final String text = nativeTouchLayout();
-                layoutText = text != null ? text : "";
-                loadLayout(layoutText);
                 selected = -1;
                 break;
-            }
             default:
                 endEdit(true);
                 return;
@@ -2129,7 +3182,7 @@ final class TouchControlsView extends View {
     }
 
     // The smallest shown control under (x, y), so a small button on a big one
-    // (B near A) is still reachable.
+    // (B near A, the stick under Visor) is still reachable.
     private int editHit(float x, float y, float width, float height) {
         int best = -1;
         float bestArea = Float.MAX_VALUE;
@@ -2309,13 +3362,18 @@ final class TouchControlsView extends View {
         float y;
         float startX;
         float startY;
+        long startMs;
         // A held A button that also aims; see startButtonAim.
         boolean aiming;
         // The pill or face button a BUTTON target pressed. Twin sends one GC button
         // from two controls, so the highlight follows the control, not `held`.
         Object control;
+        // Its editor control (C_*), still reported as held, or -1.
+        int touchControl = -1;
+        // A touch: binding took the control over: no button of its own to release.
+        boolean bound;
         // The aiming finger's current upward stroke (see trackSwipe): where and
-        // when it began (swipeMs -1: none yet), and whether it already counted as a swipe.
+        // when it began (swipeMs -1: none yet), and whether it already sprang.
         float swipeX;
         float swipeY;
         long swipeMs = -1;
