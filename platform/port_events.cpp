@@ -6,6 +6,7 @@
 #include <aurora/aurora.h>
 #include <aurora/event.h>
 #include <dolphin/pad.h>
+#include <dolphin/vi.h>
 
 #include "input/port_input_devices.h"
 #include "port_input_remap_ui.h"
@@ -369,6 +370,18 @@ bool PortPumpEvents() {
       sNextFrameDeadline = 0;
       std::fprintf(stderr, "Frame limit: %s\n", PortOverlay::FrameLimit() ? "60 FPS" : "unlimited");
     }
+    // F11 toggles fullscreen on desktop. Android is always fullscreen (MetroidPrime2Activity),
+    // so the key does nothing there.
+#if !defined(__ANDROID__)
+    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
+        !event->sdl.key.repeat && event->sdl.key.scancode == SDL_SCANCODE_F11) {
+      SDL_Window* window = SDL_GetWindowFromID(event->sdl.key.windowID);
+      if (window != nullptr) {
+        const bool full = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+        VISetWindowFullscreen(!full);
+      }
+    }
+#endif
     // No warp hotkeys: warping is driven from the F1 menu's Game page (as in the Prime 1 port),
     // so the function keys stay free for the input engine's bindings (F8 is photo mode's).
   }
