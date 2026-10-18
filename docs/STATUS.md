@@ -3,6 +3,34 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (twenty-first session): FOV culling, Android fullscreen and scroll, MP1 parity audit
+
+- Fixed: first-person FOV above ~75 deg (more on a phone) culled geometry. `CFrustumPlanes`
+  scaled the vertical half-angle by aspect before taking the tangent, so the side planes flipped once
+  `fovy/2 * aspect` passed 90 deg (about 83 deg at 2.16:1). TARGET_PC now uses
+  `nearZ * tan(fovy/2) * aspect`, the width `CGraphics::SetPerspective` builds. Commit `b04621e20`.
+- Fixed: Android window was not fullscreen (SDLActivity.onCreate forces `setWindowStyle(false)`);
+  `MetroidPrime2Activity` now calls `setWindowStyle(true)` after `super.onCreate`.
+- Fixed: F1 two-finger scroll called `ImGui::GetIO().AddMouseWheelEvent` from the Java UI thread;
+  `PortOverlay::Wheel` now queues steps atomically and `Draw()` applies them on the game thread.
+  Commit `d3e178014`. Neither Android fix is verified on the phone (screen locked, no save).
+- Matching build unchanged: 94.14% fuzzy, 63.29% matched. Release APK re-signed with the debug key and
+  installed in place (`adb install -r`).
+
+### Parity with Prime 1 (read-only audit, 2026-10-18)
+
+- ABSENT, by value on a phone: save states and quick resume (needs a live-world serialiser,
+  `platform/include/port_save.h:18`); Remastered ground movement and moving platforms (needs MP2's
+  ground mover); built-in randomizer (`platform/port_randomizer.cpp` is in no CMake target, and
+  nothing calls it); Archipelago (needs a websocket client and an MP2 location table).
+- ABSENT, smaller: audio volume and mute row; GPU/Vulkan driver choice (`platform/main.cpp:754`
+  is fixed to `BACKEND_AUTO`); speedrun timer and LiveSplit; sim rate; original-experience preset;
+  Discord presence (no backend); mods folder (no loader).
+- Unbuilt: `port_textures.cpp` and `port_prompts.cpp` are in no target (HD texture sets and
+  device button glyphs need wiring).
+- PARTIAL: desktop F11 fullscreen toggle (only Android sets it); widescreen HUD spread; gyro aim
+  (built, never run with a controller); save import (no folder discovery, no region conversion).
+
 ## 2026-10-18 (twentieth session): frame interpolation phases 0-2
 
 - Ported MP1's smooth-frames system (`../MetroidPrimePort/docs/FRAME_INTERPOLATION.md`), in commits
