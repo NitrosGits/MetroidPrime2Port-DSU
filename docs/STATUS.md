@@ -3,6 +3,92 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18 (eleventh session): save tools (import/export/backup), and what of the slice does not fit
+
+The fifth slice `docs/QOL.md` listed, taken as far as MP2's own types carry it: the card's save file
+can now be read, exported, imported back and backed up before every write. MP1's other two pieces -
+save states and quick resume - **do not fit this tree** and are named below rather than faked.
+
+**The format, as it actually is.** `CMemoryCardSys::CCardFileInfo` is the authority (its read is
+`StartRead`/`PumpCardRead`, its write `WriteFile`/`BuildSaveSlot`), and a save file is:
+
+- 0x40 bytes: the GCI directory entry (game `G2ME`, maker `01`, name `MetroidPrime2`);
+- 0x2000 bytes: the header block (comment, banner, icons, CRC) - irrelevant to the tools;
+- two copies of `mAlignedUserDataSize` (0x2000 for this game), each a `uint` CRC then a `uint`
+  generation (`BuildSaveSlot`), then 0x1ff8 user bytes;
+- in the user bytes: `SSaveHeader` (signature, save index, three present flags, the `SAVH` marker -
+  15 bytes), 192 bytes of system options, one 32-byte game-options block per slot, 32 bytes of
+  global options (0x14f in all), then one `SGameFileSlot` (0xa38, starting with `GMST`) per present
+  slot. `CMemoryCardDriver::ReadFinished` reads exactly this, and slot listing hands each buffer to
+  the game's own `CGameState::LoadGameFileState`, so `save info` prints what the file select would.
+
+**Two endiannesses, decided by the CRC.** The CRC and generation are written through a `uint*`
+(`BuildSaveSlot`), so a save this port wrote has them **host-endian**, while one a console or Dolphin
+wrote has them big-endian. `Inspect` computes the CRC over `block + 4` (the same call the writer
+makes) and accepts the copy if the stored word matches either order; the order that matched is also
+how the generation is read. The newer copy is then chosen by the greatest stored slot timestamp, not
+by generation: the generations alternate 0/1 by construction, so the greater number is not the newer
+copy (a save written during this session left generation 0 in one copy and 1 in the other, and the
+1 was the new one only because the previous save happened to be 0).
+
+**What is ported.** `platform/port_save.cpp` + `platform/include/port_save.h`:
+`Directory`/`ImagePath`/`IsImage` (Aurora's `aurora_card_get_path`/`aurora_card_get_type`),
+`Files` (the card folder's GCIs, by directory entry rather than file name), `Inspect`, `Export`,
+`Import`, `Backup`/`Backups`/`BackupsDirectory`, and `BeforeCardWrite`. The console grows one
+command with subcommands - `save [info] [<file>]`, `save export [<path>]`, `save import
+<path|latest>`, `save backup`, `save backups` - and the setting is `MP2_CARD_BACKUP=1`, F1 > Saves
+("Back up the card"), `cardbackup <0|1>` on the console, hooked at the top of
+`CMemoryCardSys::CCardFileInfo::WriteFile` under `#ifdef TARGET_PC`, which is the one place both a
+first create and every later write pass through. Backups, exports and replaced files live in
+`<user>/save-backups` (`card-<stamp>.gci`, `export-<stamp>.gci`, `replaced-<stamp>.gci`); the newest
+20 `card-*` copies are kept. An import never deletes: the file it replaces is copied to
+`replaced-<stamp>.gci` first, and Aurora is remounted (`aurora_card_remount`) so the front end sees
+the new file.
+
+**Verified on the desktop** (`MP2_USER_PATH` a copy of the phone's card, `MP2_SKIP_FRONTEND=1`,
+`MP2_CONSOLE=4780`, `tools/mp2con.py`):
+- `save info` printed `copy 2 of 2 (generation 1)`, `slot 0: world 3bfa3eff, 0% items, 0% scans,
+  00:00:02, 99 energy, 0 tanks`, matching the boot's own `[skip] card slots 0=3bfa3eff 0% 00:00`
+  (two independent readers agreeing on the same file); `save info <old-backup>` printed copy 1 of 2,
+  generation 0, 00:00:00.
+- `save export` produced a byte-identical file (`cmp`), `save export <dir>/` kept the card's own
+  name, and `save import latest` replaced the card file with a `replaced-*.gci` kept and the card
+  unchanged afterwards (`cmp` after the round trip).
+- `save backup` and `save backups` listed the copies; with 27 `card-*` files present a backup pruned
+  to the newest 20 (oldest removed).
+- The write hook: `MP2_INPUT="STATION@100,A@220+3,..."` with `MP2_CARD_BACKUP=1` fired
+  `[save] card backup before the write to 'MetroidPrime2': .../card-20261018-093126.gci` on the save
+  the save station's own A press made, and the card's copy 2 came back with generation 1 and a newer
+  timestamp. Note that this A press leaves the run **paused in the save screen**, where no game
+  update runs: the console stops answering (30 s, `[harness] no game update`), which is the same trap
+  the sweep notes describe.
+- Gates: `tools/gen_files_cmake.py --check` rc=0; the upstream matching build
+  `Game Code: 94.14% fuzzy, 63.29% matched` rc=0; the only upstream file touched,
+  `src/Kyoto/DolphinCMemoryCardSys.cpp`, strips to its `HEAD` non-PC text exactly (checked with a
+  `#ifdef TARGET_PC` stripper, not by eye).
+
+**What does not fit, and why (this is the part worth not inventing):**
+- **Save states** (`port_savestate.cpp`, 1200 lines in MP1): a whole live world - actors, colliders,
+  effects, pools - serialised and restored. MP2's `CGameState::PutTo` is the *save* state (world
+  layers, player state, options), not the runtime; there is no equivalent serialiser to build on, so
+  this stays the largest single item and is not started.
+- **Quick resume** (MP1: a snapshot written on quit, loaded at launch): it is a savestate with a
+  trigger, so it inherits the same wall. MP2's resume today is the card's own save, which
+  `MP2_SKIP_FRONTEND=1` boots straight into (slot from the card header, or the first non-empty one) -
+  that is the honest MP2 answer until savestates exist.
+- **Region conversion** (MP1's `port_save_convert`): MP1 converts GM8E/GM8P because both releases
+  share a save layout. MP2's save carries the world table's `SAVW` hashes and area/layer data that
+  differ by release, so `Inspect` recognises `G2ME`/`G2MP` and *refuses* a foreign one with a clear
+  error instead of converting it.
+- **Raw card images**: Aurora may mount a raw image instead of a GCI folder. `Import` handles that
+  (`aurora_card_raw_insert` + remount), but `Files`/`Inspect`/`Export`/`Backup` need paths, so on an
+  image they report "the card has no save file". Neither this desktop nor the phone uses one.
+- **Slot-level tools** (copy one save slot over another, erase one, rename a file): not done. It
+  means rewriting the user data, both CRCs and the present flags offline; the front end already does
+  it, and a port copy would have to reproduce its option-block shuffling. Next slice if wanted.
+- **Dolphin-emulator and Trilogy-save folders**: MP1-specific discovery and formats; MP2's own save
+  formats there are unknown, so nothing was guessed.
+
 ## 2026-10-18 (tenth session): gameplay tweaks
 
 The fourth slice `docs/QOL.md` listed, and the first one with game-side hooks in *four* upstream

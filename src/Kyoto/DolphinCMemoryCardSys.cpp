@@ -7,6 +7,9 @@
 #include "dolphin/os/OSCache.h"
 
 #include "Kyoto/MemoryCopy.hpp"
+#ifdef TARGET_PC
+#include "port_save.h"
+#endif
 
 static uint RoundUp(uint value, uint align) { return (value + align - 1) & ~(align - 1); }
 
@@ -139,6 +142,11 @@ ECardResult CMemoryCardSys::CCardFileInfo::WriteSaveSlot(int slot) {
 }
 
 ECardResult CMemoryCardSys::CCardFileInfo::WriteFile() {
+#ifdef TARGET_PC
+  // The port's card backup (MP2_CARD_BACKUP, F1 > Saves): a copy of the file as it is on disk
+  // before this write replaces it. A no-op unless the setting is on.
+  PortSave::BeforeCardWrite(mFileName.data());
+#endif
   ECardResult result;
   BuildSaveSlot();
   if (mNewFile) {

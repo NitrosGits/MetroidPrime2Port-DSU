@@ -12,6 +12,7 @@
 #include "port_binds.h"
 #include "port_input.h"
 #include "port_overlay.h"
+#include "port_save.h"
 #include "port_warp.h"
 
 #include "MetroidPrime/CStateManager.hpp"
@@ -468,6 +469,11 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
       "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"
+      "save [info] [<file>]        the card's save slots, or one .gci on disk: world, items, time\n"
+      "save export [<path>]        write the card's save file out (default: save-backups/)\n"
+      "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"
+      "save backup | backups       copy the card now, or list the copies in save-backups\n"
+      "cardbackup <0|1>            back the card up before each write (the F1 Saves row)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
@@ -801,6 +807,22 @@ void CmdSticky(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::StickyCharge() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetStickyCharge(enabled);
   out += enabled ? "sticky charge on\n" : "sticky charge off\n";
+}
+
+// cardbackup [0|1]: the F1 Saves row (`MP2_CARD_BACKUP`) - copy the card's save file into
+// save-backups before every write the game makes to it. Bare, it prints the state it is in.
+void CmdCardBackup(CStateManager&, const Args& args, std::string& out) {
+  bool enabled = PortOverlay::CardBackup();
+  if (args.size() >= 2) {
+    if (args.size() > 2 || (args[1] != "0" && args[1] != "1")) {
+      Fail("cardbackup <0|1>");
+      return;
+    }
+    enabled = args[1] == "1";
+    PortOverlay::SetCardBackup(enabled);
+  }
+  out += enabled ? "card backup before writes: on (MP2_CARD_BACKUP)\n"
+                 : "card backup before writes: off (MP2_CARD_BACKUP)\n";
 }
 
 void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {
@@ -1275,6 +1297,122 @@ void CmdCstick(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// The rest of the line from `first`, joined with spaces: a card path can hold one (`USA/Card A`).
+std::string RestOf(const Args& args, size_t first) {
+  std::string text;
+  for (size_t i = first; i < args.size(); ++i) {
+    if (i > first) {
+      text += ' ';
+    }
+    text += Str(args[i]);
+  }
+  return text;
+}
+
+// save info [<file>] | export [<path>] | import <path|latest> | backup | backups: the card's save
+// as the file it is (platform/port_save.cpp). `info` reads a .gci without mounting the card, so a
+// backup can be checked while the game runs; with no file it reads the card's own.
+void CmdSave(CStateManager&, const Args& args, std::string& out) {
+  const std::string sub = args.size() < 2 ? std::string("info") : Lower(args[1]);
+  // `save <file>` is `save info <file>`: an argument that names no subcommand is a path to read,
+  // which is what the help line says (`save [info] [<file>]`).
+  const bool known =
+      sub == "export" || sub == "import" || sub == "backup" || sub == "backups";
+  if (!known) {
+    const size_t first = sub == "info" ? 2 : 1;
+    std::string path;
+    if (args.size() > first) {
+      path = RestOf(args, first);
+    } else {
+      const std::vector< std::string > files = PortSave::Files();
+      if (files.empty()) {
+        Fail("the card has no save file");
+        return;
+      }
+      path = files.front();
+    }
+    PortSave::File file;
+    std::string error;
+    if (!PortSave::Inspect(path, file, error)) {
+      Fail(error);
+      return;
+    }
+    out += PortSave::IsImage() ? "card image: " + PortSave::ImagePath()
+                               : "card: " + PortSave::Directory();
+    out += '\n';
+    out += "file: " + file.path + " (" + file.note + "; the header points at slot " +
+           std::to_string(file.saveIdx) + ")\n";
+    char line[224];
+    for (int i = 0; i < 3; ++i) {
+      const PortSave::Slot& slot = file.slots[i];
+      if (!slot.present) {
+        std::snprintf(line, sizeof(line), "slot %d: empty\n", i);
+        out += line;
+        continue;
+      }
+      const int seconds = static_cast< int >(slot.playTime);
+      std::snprintf(line, sizeof(line),
+                    "slot %d: world %08x, %.0f%% items, %.0f%% scans, %02d:%02d:%02d, %.0f energy, "
+                    "%u tanks%s\n",
+                    i, slot.worldId, static_cast< double >(slot.itemPercent),
+                    static_cast< double >(slot.scanPercent), seconds / 3600, (seconds / 60) % 60,
+                    seconds % 60, static_cast< double >(slot.health), slot.energyTanks,
+                    slot.hardMode ? ", hard" : "");
+      out += line;
+    }
+    return;
+  }
+  if (sub == "export") {
+    std::string message;
+    if (!PortSave::Export(args.size() >= 3 ? RestOf(args, 2) : std::string(), message)) {
+      Fail(message);
+      return;
+    }
+    out += message;
+    out += '\n';
+    return;
+  }
+  if (sub == "import") {
+    if (args.size() < 3) {
+      Fail("usage: save import <path|latest>");
+      return;
+    }
+    std::string message;
+    if (!PortSave::Import(RestOf(args, 2), message)) {
+      Fail(message);
+      return;
+    }
+    out += message;
+    out += '\n';
+    return;
+  }
+  if (sub == "backup") {
+    std::string written;
+    std::string error;
+    if (!PortSave::Backup(&written, error)) {
+      Fail(error);
+      return;
+    }
+    out += "card backup: " + written + "\n";
+    return;
+  }
+  if (sub == "backups") {
+    const std::vector< std::string > backups = PortSave::Backups();
+    if (backups.empty()) {
+      out += "no card backups\n";
+      const std::string dir = PortSave::BackupsDirectory();
+      out += dir.empty() ? "(no user directory: nothing can be kept)\n" : dir + "\n";
+      return;
+    }
+    for (const std::string& path : backups) {
+      out += path;
+      out += '\n';
+    }
+    return;
+  }
+  Fail("save <info|export|import|backup|backups> ...");
+}
+
 // binds: every pad input's key, as `bind` takes it, and the file the map is saved in.
 void CmdBinds(CStateManager&, const Args&, std::string& out) {
   const char* path = PortBinds::Path();
@@ -1393,6 +1531,7 @@ constexpr SCommand kCommands[] = {
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
+    {"cardbackup", CmdCardBackup, true},
     {"gunoffset", CmdGunOffset, true},
     {"msaa", CmdMsaaAniso, true},
     {"aniso", CmdMsaaAniso, true},
@@ -1415,6 +1554,7 @@ constexpr SCommand kCommands[] = {
     {"cstick", CmdCstick, true},
     {"bind", CmdBind, true},
     {"binds", CmdBinds, true},
+    {"save", CmdSave, true},
     {"screenshot", CmdScreenshot, true},
 };
 

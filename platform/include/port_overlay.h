@@ -49,6 +49,12 @@ bool LockOnToggle();
 void SetLockOnToggle(bool enabled);
 bool StickyCharge();
 void SetStickyCharge(bool enabled);
+// Back up the card before the game writes it (`MP2_CARD_BACKUP=1`, F1 > Saves): each write to the
+// memory card copies the file as it is on disk first, into `<user>/save-backups`, so a save that
+// goes wrong can be imported back (console `save import latest`). Off by default; never saved.
+// Hooked in CMemoryCardSys::CCardFileInfo::WriteFile through PortSave::BeforeCardWrite.
+bool CardBackup();
+void SetCardBackup(bool enabled);
 // First-person field of view in degrees (`MP_FOV=<deg>`, F1 > Render), or 0 for the game's own 55.
 // Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
 // built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.

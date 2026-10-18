@@ -27,6 +27,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | Keyboard rebinding: a 22-row keyboard table, the F1 Bindings section, `bind`/`binds`/`bind reset`, `keybinds.cfg` under the user dir | `platform/port_binds.cpp`, `platform/port_overlay.cpp`, `platform/port_console.cpp` |
 | Graphics: first-person FOV, hide helmet, hide visor effects, arm-cannon offset, MSAA, anisotropic filtering, HUD scale | `port_overlay.cpp` + hooks in `CCameraManager`, `CInGameGuiManager`, `CPlayerVisor`, `CPlayer`, `CSamusHud`/`CGuiCamera`, and `aurora_set_graphics_quality` (vendored Aurora) |
 | Gameplay tweaks: fast morph, spring ball, toggle lock-on, sticky charge (F1 > Gameplay, `MP2_FAST_MORPH`/`MP2_SPRING_BALL`/`MP2_LOCK_ON_TOGGLE`/`MP2_STICKY_CHARGE`, console `fastmorph`/`springball`/`lockon`/`sticky`) | `platform/port_overlay.cpp`, `platform/include/port_hold_toggle.h` (+ its unit test), hooks in `CPlayer::UpdateMorphBallState`, `CMorphBall::ComputeBallMovement`, `CStateManager::ProcessInput` and `CFinalInput`'s `PortSetL`/`PortSetA` |
+| Save tools: read/export/import the card's save file, back it up before every write (`save [info|export|import|backup|backups]`, `MP2_CARD_BACKUP`, F1 > Saves, console `cardbackup`) | `platform/port_save.cpp`, hook in `CMemoryCardSys::CCardFileInfo::WriteFile` |
 
 ## Next, cheapest and most useful first
 
@@ -52,8 +53,14 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    the desktop (see `docs/STATUS.md`). What MP1 has beside them and this tree does not: rapid charge,
    damage/ammo readouts on the HUD, and the morph-ball "hold to charge" variants; each needs a hook in
    `CPlayerGun` that MP2 does not expose as a getter today.
-5. **Save tools**: quick resume after quitting, save import/export (MP1's `port_gci.cpp`), save
-   states (`port_savestate.cpp`, the largest of these).
+5. **Save tools**: the card file is done - `save info|export|import|backup|backups` on the console,
+   `MP2_CARD_BACKUP` (F1 > Saves) and a hook that copies the card before every write (detail in
+   `docs/STATUS.md`). What is left of MP1's set does not fit this tree yet: **quick resume** and
+   **save states** both need a live-world serialiser MP2 has no equivalent of, so MP2 resumes from
+   the card's own save (`MP2_SKIP_FRONTEND`); **region conversion** is refused by design (MP2's save
+   carries per-release `SAVW`/area data); **slot-level copy/erase** would have to reproduce the front
+   end's option shuffling; raw-image cards are **import only**, and MP1's Dolphin/Trilogy folder
+   discovery has no MP2 counterpart.
 6. **Photo mode / free camera** (MP1's `port_photo.cpp`, `port_freecam.cpp`): needs a free camera and
    a high-resolution capture path.
 7. **Map and tracker** (MP1's `port_map_marks.cpp`, `port_tracker.cpp`): reveal the map, item and scan

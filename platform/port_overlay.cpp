@@ -34,6 +34,9 @@ bool sFastMorph = false;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
+// `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
+// Saves, `cardbackup`). A setting, so a restart goes back to off.
+bool sCardBackup = false;
 // First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
 float sFirstPersonFov = 0.f;
 // Draw the world without the HUD's view overlays (`MP2_NO_HELMET`, `MP2_NO_VISOR_FX`): for
@@ -78,6 +81,7 @@ void ReadEnv() {
   sSpringBall = EnvFlag("MP2_SPRING_BALL");
   sLockOnToggle = EnvFlag("MP2_LOCK_ON_TOGGLE");
   sStickyCharge = EnvFlag("MP2_STICKY_CHARGE");
+  sCardBackup = EnvFlag("MP2_CARD_BACKUP");
   sHideHelmet = EnvFlag("MP2_NO_HELMET");
   sHideVisorEffects = EnvFlag("MP2_NO_VISOR_FX");
   if (const char* fov = std::getenv("MP2_FOV")) {
@@ -302,6 +306,15 @@ void DrawGameplaySection() {
   ImGui::TextDisabled("letting go of a long A hold keeps charging until the next press fires it");
 }
 
+void DrawSavesSection() {
+  ImGui::SeparatorText("Saves");
+  ImGui::Checkbox("Back up the card", &sCardBackup);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(MP2_CARD_BACKUP=1)");
+  ImGui::TextDisabled("copies the save file into save-backups before each card write;");
+  ImGui::TextDisabled("`save import latest` on the console puts one back");
+}
+
 void DrawCheatsSection() {
   ImGui::SeparatorText("Cheats");
   ImGui::Checkbox("God mode", &sGodMode);
@@ -516,6 +529,16 @@ void SetStickyCharge(bool enabled) {
   sStickyCharge = enabled;
 }
 
+bool CardBackup() {
+  ReadEnv();
+  return sCardBackup;
+}
+
+void SetCardBackup(bool enabled) {
+  ReadEnv();
+  sCardBackup = enabled;
+}
+
 void Draw() {
   TickFps();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
@@ -537,6 +560,7 @@ void Draw() {
     DrawHudSection();
     DrawTestingSection();
     DrawGameplaySection();
+    DrawSavesSection();
     DrawCheatsSection();
     DrawBindingsSection();
     ImGui::SeparatorText("Hotkeys");

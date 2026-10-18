@@ -65,6 +65,7 @@ extern void* gPortGameHeapHi;
 #include "port_build_info.h"
 #include "port_console.h"
 #include "port_entry.h"
+#include "port_save.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
 
@@ -672,6 +673,10 @@ int main(int argc, char** argv) {
   // directory. The file is read on the game thread's first frame rather than here, because its
   // key names come from SDL, which is only up after Aurora is.
   PortBinds::Initialize(touchUser != nullptr ? touchUser : std::string());
+
+  // The save tools (platform/port_save.cpp) keep their backups beside keybinds.cfg; the card's own
+  // path comes from Aurora when a command needs it.
+  PortSave::Initialize(touchUser != nullptr ? touchUser : std::string());
 
   // The debug command console (platform/port_console.cpp): with MP2_CONSOLE=<port> it listens on
   // 127.0.0.1 before the game starts, so a test can drive it from the first update. Commands are
