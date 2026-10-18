@@ -215,6 +215,12 @@ void SetPoseInterpolation(bool enabled);
 // tick states (CElementGen::PortBeginPresent) and rain/underwater flakes one step back.
 bool ParticleInterpolation();
 void SetParticleInterpolation(bool enabled);
+// MP1's look input per frame (`MP2_LOOK_INTERPOLATION=0|1`, F1 > Video > Frame rate); on by
+// default, as MP1's phase 1 is. With smooth frames on, the cap off and mouse/stick/touch aim
+// owning the view, the camera turns between ticks by the pending look travel
+// (CCameraManager::GetCurrentCameraTransform, PortMouse::PresentedAimDelta).
+bool LookInterpolation();
+void SetLookInterpolation(bool enabled);
 // MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
 // (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
 // VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.

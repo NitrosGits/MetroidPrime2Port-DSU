@@ -340,7 +340,7 @@ bool PortPumpEvents() {
   // thing a paused or wedged game still runs.
   PortHarness::IdleCheck();
   PortTouch::BeginFrame();
-  PortMouse::BeginFrame();
+  // PortMouse's travel is latched per tick (PortMouse::BeginTick, from CMain), not here.
   RunInputScript(ScriptFrame());
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
        ++event) {

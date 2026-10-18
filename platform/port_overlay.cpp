@@ -114,6 +114,9 @@ bool sPoseInterpolation = false;
 // MP1's particle interpolation (`MP2_PARTICLE_INTERPOLATION`, off by default as there): with smooth
 // frames on, particle systems and weather draw between the last two ticks (CElementGen::Render).
 bool sParticleInterpolation = false;
+// MP1's look input per frame (`MP2_LOOK_INTERPOLATION`, on by default as there): with smooth
+// frames on, pointer aim turns the camera between ticks (CCameraManager, PortMouse::PresentedAimDelta).
+bool sLookInterpolation = true;
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -505,6 +508,12 @@ void DrawVideoFrameRate() {
   if (PortUi::Toggle("Smooth effects", &particleInterpolation, "MP2_PARTICLE_INTERPOLATION=0|1",
                      "with smooth frames, also draws particles and weather between the game's ticks")) {
     PortOverlay::SetParticleInterpolation(particleInterpolation);
+  }
+  // Read by CCameraManager::GetCurrentCameraTransform, under the same condition.
+  bool lookInterpolation = sLookInterpolation;
+  if (PortUi::Toggle("Smooth look", &lookInterpolation, "MP2_LOOK_INTERPOLATION=0|1",
+                     "with smooth frames, also turns the view between the game's ticks as the mouse, stick or touch aims")) {
+    PortOverlay::SetLookInterpolation(lookInterpolation);
   }
   ImGui::EndDisabled();
   ImGui::EndDisabled();
@@ -1538,6 +1547,19 @@ void SetParticleInterpolation(bool enabled) {
   ReadEnv();
   if (sParticleInterpolation != enabled) {
     sParticleInterpolation = enabled;
+    Persist();
+  }
+}
+
+bool LookInterpolation() {
+  ReadEnv();
+  return EnvBool("MP2_LOOK_INTERPOLATION", sLookInterpolation);
+}
+
+void SetLookInterpolation(bool enabled) {
+  ReadEnv();
+  if (sLookInterpolation != enabled) {
+    sLookInterpolation = enabled;
     Persist();
   }
 }

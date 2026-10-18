@@ -82,6 +82,21 @@ bool PortMouseLookIsFree(const CStateManager& mgr, int playerIndex) {
   const CPlayer* player = mgr.GetPlayer(playerIndex);
   return player != nullptr && player->MouseAimAllowed(mgr);
 }
+
+// MP1's GetPresentedLookRotation (look input per frame): the world rotation that turns this
+// tick's camera to the aim the pending look travel reaches - yaw about world up, pitch about the
+// camera's own right axis. False (the tick's orientation stands) with the setting off or no
+// pending turn to show.
+bool PortPresentedLookRotation(float t, CTransform4f& rotation) {
+  float dyaw = 0.f, dpitch = 0.f;
+  if (!PortOverlay::LookInterpolation() || !PortMouse::PresentedAimDelta(t, dyaw, dpitch)) {
+    return false;
+  }
+  const CTransform4f camRot = sCurrentCameraTransform.GetRotation();
+  rotation = CTransform4f::RotateZ(CRelAngle::FromRadians(dyaw)) * camRot *
+             CTransform4f::RotateX(CRelAngle::FromRadians(dpitch)) * camRot.GetInverse();
+  return true;
+}
 } // namespace
 
 #endif
@@ -526,9 +541,14 @@ CTransform4f CCameraManager::GetCurrentCameraTransform(const CStateManager& mgr,
     const CTransform4f presentation = InterpolateCameraTransform(
         sPreviousCameraTransform, sCurrentCameraTransform, sPresentationInterpolation);
     if (PortMouseLookIsFree(mgr, mPlayerIndex)) {
-      // Mouse aim fires along this tick's orientation; only the translation is blended, so the
-      // reticle never trails the shot. (MP1's per-frame look, phase 1, is not ported.)
+      // Mouse aim fires along this tick's orientation, so the rotation is not blended toward the
+      // last tick (the reticle would trail the shot); it is turned ahead by the look travel the
+      // next tick will take instead (MP1's per-frame look, `MP2_LOOK_INTERPOLATION`).
       CTransform4f latest = sCurrentCameraTransform;
+      CTransform4f look = CTransform4f::Identity();
+      if (PortPresentedLookRotation(sPresentationInterpolation, look)) {
+        latest = look * latest.GetRotation();
+      }
       latest.SetTranslation(presentation.GetTranslation());
       return latest;
     }

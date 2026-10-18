@@ -90,8 +90,8 @@ private:
 // Pointer aim (Trilogy style), MP1's PortMouse::PointerAim: the aim travel moves a pointer over
 // the screen (x right, y down, -1..1 at the edges) instead of the view. Inside the dead box
 // the view holds still; past it the view turns toward that edge, faster the further out the
-// pointer is. The gun aims along the ray through the pointer. MP2 draws one frame per tick,
-// so MP1's lagged (between-tick) travel is not needed here.
+// pointer is. The gun aims along the ray through the pointer. Between ticks the view's turn
+// is previewed by PresentedAimDelta; the pointer itself still moves once per tick.
 struct PointerAim {
   float x = 0.f;
   float y = 0.f;
@@ -234,7 +234,15 @@ void AddGyroPointer(float yaw, float pitch, float dt, float sweep);
 // "Gyro also turns the camera" (MP1's gyro camera pending): with pointer aim, the view turns by
 // `sensitivity` times the pad's turn (yaw right, pitch up, rad/s over dt) beside the pointer.
 void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity);
-void BeginFrame();
+// Latches the pending travel for the tick about to run (MP1's per-tick latch): called beside
+// PortTiming::BeginTick in CMain, so a frame that runs no tick (the cap off) loses nothing.
+void BeginTick();
+// MP1's PresentedAimDelta (look input per frame): the turn, in radians (world yaw +left, pitch
+// +up), that the travel not yet taken by a tick adds to the aim the last tick applied. Mouse,
+// touch and gyro travel shows fully; the stick's share shows `fraction` of it, as the next tick
+// would integrate it (MP1's issue #128 lag), and pointer aim's edge turn runs `fraction` of a
+// tick from the presented pointer. False when the last tick did not apply the aim.
+bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch);
 // Called every tick, from CPlayer::UpdateMouseAim. `active` means a pointer source may own the
 // aim right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps
 // the aim glued to the camera direction (x, y, z) instead of turning the player under it.

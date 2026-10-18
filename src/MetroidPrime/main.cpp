@@ -234,6 +234,7 @@ bool PortPumpEvents();
 void PortPaceFrame();
 
 #include "MetroidPrime/CCameraManager.hpp"
+#include "port_mouse.h"
 #include "port_overlay.h"
 
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
@@ -389,6 +390,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
     mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
     for (unsigned tick = 0; tick < ticks; ++tick) {
       PortTiming::BeginTick();
+      PortMouse::BeginTick();
       if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
         result = true;
       }
@@ -412,6 +414,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
     keepLooping = false;
 #ifdef TARGET_PC
     PortTiming::BeginTick();
+    PortMouse::BeginTick();
 #endif
     if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
       result = true;

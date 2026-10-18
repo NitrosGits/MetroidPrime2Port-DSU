@@ -55,6 +55,12 @@ float sCameraPendingX = 0.f;
 float sCameraPendingY = 0.f;
 float sCameraFrameX = 0.f;
 float sCameraFrameY = 0.f;
+// The stick's part of sPendingX/Y (PresentedAimDelta shows only a tick's fraction of it), and
+// whether the last tick applied the aim, with the dt it was given.
+float sStickPendingX = 0.f;
+float sStickPendingY = 0.f;
+bool sAppliedLastTick = false;
+float sLastTickDt = 1.f / 60.f;
 // Pointer aim (MP1's sPointerAim/sPointerAimFree), configured each tick by CPlayer.
 PortMouse::PointerAim sPointer;
 bool sPointerEnabled = false;
@@ -74,6 +80,7 @@ constexpr float kTouchSpringHoldSeconds = 0.35f;
 void ClearPendingTravel() {
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX = sPendingY = sFrameX = sFrameY = 0.f;
+  sStickPendingX = sStickPendingY = 0.f;
   sCameraPendingX = sCameraPendingY = sCameraFrameX = sCameraFrameY = 0.f;
 }
 
@@ -241,9 +248,15 @@ void AddStickAim(float x, float y, float dt) {
   if (x * x + y * y < 0.04f) {
     return; // inside the dead zone; a resting stick must not creep the view
   }
-  sPendingX += x * sStickAimRate * dt;
+  const float dx = x * sStickAimRate * dt;
   // The aim's dy is screen-down positive, the stick's y is up positive.
-  sPendingY -= y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt;
+  const float dy = -y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt;
+  // Same thread as the latch (see sPendingMutex), but PresentedAimDelta reads both under the lock.
+  std::lock_guard< std::mutex > lock(sPendingMutex);
+  sPendingX += dx;
+  sPendingY += dy;
+  sStickPendingX += dx;
+  sStickPendingY += dy;
 }
 
 bool TouchEnabled() {
@@ -354,14 +367,17 @@ void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity) {
   sCameraPendingY -= sy * pitch * scale;
 }
 
-void BeginFrame() {
+void BeginTick() {
   // The UI thread may be adding travel right now; latch and clear in one lock so a late
   // addition lands in this tick or the next, never in neither.
   std::lock_guard< std::mutex > lock(sPendingMutex);
+  sAppliedLastTick = false;
   sFrameX = sPendingX;
   sFrameY = sPendingY;
   sPendingX = 0.f;
   sPendingY = 0.f;
+  sStickPendingX = 0.f;
+  sStickPendingY = 0.f;
   sCameraFrameX = sCameraPendingX;
   sCameraFrameY = sCameraPendingY;
   sCameraPendingX = 0.f;
@@ -370,6 +386,10 @@ void BeginFrame() {
 
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
   ReadEnv();
+  sAppliedLastTick = false;
+  if (std::isfinite(dt) && dt > 0.f) {
+    sLastTickDt = dt;
+  }
   if ((!sEnabled && !sStickEnabled && !sTouchEnabled.load()) || sUiActive) {
     sAiming = false;
     sPointerFree = false;
@@ -420,6 +440,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
       sFrameX = sFrameY = 0.f;
       sCameraFrameX = sCameraFrameY = 0.f;
     }
+    sAppliedLastTick = applied && owns;
     return applied && owns;
   }
   sPointerFree = false;
@@ -429,7 +450,48 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
   if (applied) {
     sFrameX = sFrameY = 0.f;
   }
+  sAppliedLastTick = applied && owns;
   return applied && owns;
+}
+
+bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch) {
+  dyaw = dpitch = 0.f;
+  if (!sAppliedLastTick || !sAiming || !sAim.initialized || !std::isfinite(fraction) ||
+      fraction < 0.f) {
+    return false;
+  }
+  if (fraction > 1.f) {
+    fraction = 1.f;
+  }
+  float dx = 0.f, dy = 0.f, cx = 0.f, cy = 0.f;
+  {
+    std::lock_guard< std::mutex > lock(sPendingMutex);
+    dx = sPendingX - sStickPendingX * (1.f - fraction);
+    dy = sPendingY - sStickPendingY * (1.f - fraction);
+    cx = sCameraPendingX;
+    cy = sCameraPendingY;
+  }
+  // The aim the next tick would reach, through the same Update/Turn as UpdateAim.
+  PortMouse::AimState next = sAim;
+  if (sPointerEnabled) {
+    if (!sPointerFree) {
+      return false;
+    }
+    float sx = 0.f, sy = 0.f;
+    PointerAimScale(sx, sy);
+    PortMouse::PointerAim pointer = sPointer;
+    pointer.Move(dx * sx, dy * sy);
+    next.Update(true, false, 0.f, 0.f, 0.f, cx, cy, sSensitivity, sInvertX, sInvertY);
+    float turnYaw = 0.f, turnPitch = 0.f;
+    PortMouse::PointerAim::TurnAt(pointer.x, pointer.y, sPointerBox, sPointerTurnRate,
+                                  fraction * sLastTickDt, turnYaw, turnPitch);
+    next.Turn(turnYaw, turnPitch);
+  } else {
+    next.Update(true, false, 0.f, 0.f, 0.f, dx, dy, sSensitivity, sInvertX, sInvertY);
+  }
+  dyaw = static_cast< float >(std::remainder(double(next.yaw) - sAim.yaw, 2.0 * PortMouse::kPi));
+  dpitch = next.pitch - sAim.pitch;
+  return std::isfinite(dyaw) && std::isfinite(dpitch);
 }
 
 void SetPointerAim(bool enabled, float box, float turnRate) {
