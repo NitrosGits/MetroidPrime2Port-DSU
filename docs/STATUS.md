@@ -3,6 +3,16 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-18, fifteenth session
+
+- F1 menu ported from MP1: `61a8244fb` (page window + Prime theme on desktop), `0ca0a556b`
+  (sub-tabs, search jumps, theme, pad nav, settings dirty state, vendored Aurora imgui.cpp change),
+  `7d7fb1e57` (touch aim speed / spring swipe in touch.cfg).
+- Checked on the desktop: Controls sub-tabs and the Video Display sub-tab render.
+- Not checked on screen: System page, sub-tab search jumps (`MP2_DEBUG_SEARCH_AUDIT`), phone F1 page.
+- Open: NEEDS-BACKEND rows, photo mode key choice (F8 vs warp keys F5-F10), save states (no
+  serializer), gyro reader/aim consumer, pointer menus.
+
 ## 2026-10-18 (fifteenth session): stage C, the F1 Controls page
 
 - **The Bindings page is MP1's remap UI and presets** (`1e436a53c`): `platform/input/port_input_remap_ui.cpp`
