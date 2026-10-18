@@ -20,6 +20,12 @@
 #ifdef TARGET_PC
 #include "Kyoto/Graphics/CGX.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
+#include "MetroidPrime/CActor.hpp"
+#include "port_overlay.h"
+
+#include <stdlib.h>
+#include <string.h>
 #endif
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
@@ -37,6 +43,22 @@ rstl::reserved_vector< CSoundPOINode, 48 > CAnimData::mSoundPOINodes;
 static rstl::reserved_vector< CInt32POINode, 16 > sInt32TransientCache;
 static CInt32POINode* sInt32TransientCacheData;
 static int sPOICacheReferenceCount;
+#ifdef TARGET_PC
+
+// Previous tick's pose for smoothing (see PortNotePoseBuild at the end).
+static const int kPortPoseBones = 100;
+struct CAnimData::SPortPoseHistory {
+  struct Bone {
+    float rot[4];
+    float offset[3];
+    float scale[3];
+  };
+  uint prevGeneration;
+  int count;
+  CPoseAsTransforms_Linear* blend;
+  Bone bones[kPortPoseBones];
+};
+#endif
 
 CAnimData::CAnimData(
     CAssetId selfId, const CCECharacterInfo& charInfo, int defaultAnim, int charIdx, bool loop,
@@ -112,6 +134,12 @@ CAnimData::CAnimData(
 }
 
 CAnimData::~CAnimData() {
+#ifdef TARGET_PC
+  if (mPortPoseHistory != nullptr) {
+    delete mPortPoseHistory->blend;
+    free(mPortPoseHistory);
+  }
+#endif
   if (--sPOICacheReferenceCount == 0) {
     mBoolPOINodes.clear();
     mInt32POINodes.clear();
@@ -279,7 +307,7 @@ void CAnimData::DrawSkinnedModel(const CSkinnedModel& model, const CModelFlags& 
   CGX::SetChanCtrl(CGX::Channel0, lights != 0 ? GX_TRUE : GX_FALSE, GX_SRC_REG, GX_SRC_REG,
                    static_cast< GXLightID >(lights), lights != 0 ? GX_DF_CLAMP : GX_DF_NONE,
                    lights != 0 ? GX_AF_SPOT : GX_AF_NONE);
-  model.Draw(&mPose, flags);
+  model.Draw(&PortPresentedPose(), flags);
 #else
   // TODO: Set lighting/debug render state and draw with the linear pose.
 #endif
@@ -595,6 +623,13 @@ void CAnimData::RecalcPoseBuilder(const CCharAnimTime* time) const {
     mAnimRoot->VGetJointData_Linear(layout, *storage, *time);
   }
   AddAdditiveSegData(*storage);
+#ifdef TARGET_PC
+  if (time == nullptr) {
+    PortNotePoseBuild();
+  } else {
+    mPortPoseSampled = true;
+  }
+#endif
   mPose.BuildPose(layout, *storage);
 }
 
@@ -1261,3 +1296,136 @@ void CAnimData::AddAnimatedScale() {
   mAnimatedScale = true;
   mPose.AllocateScale();
 }
+#ifdef TARGET_PC
+
+// Port: pose smoothing (MP1's docs/FRAME_INTERPOLATION.md, "2. Skinned poses"). The pose built on
+// the previous tick is kept per bone as a quaternion, a scale and an offset; presented frames
+// between ticks skin a per-bone blend of it and the current pose. Only drawing reads the blend: the
+// tree, events, particles, locators and Pose() stay on the tick, and bone tracking and IK are
+// already part of both poses. SPortPoseHistory is defined at the top of the file.
+namespace {
+void PortDecompose(CPoseAsTransforms_Linear& pose, int i, CQuaternion& rot, CVector3f& scale) {
+  const CSegId id(static_cast< uchar >(i));
+  if (pose.HasScale()) {
+    const CMatrix3f m = pose.GetRotation(id);
+    rot = CQuaternion::FromMatrixRows(m.GetRow(kDX), m.GetRow(kDY), m.GetRow(kDZ))
+              .BuildNormalized();
+    scale = pose.PortScale(i);
+    return;
+  }
+  const CMatrix3f& m = pose.GetTransformMinusOffset(id);
+  float s = m.GetColumn(kDX).Magnitude();
+  if (s < 1e-6f)
+    s = 1.f;
+  const float inv = 1.f / s;
+  rot = CQuaternion::FromMatrixRows(m.GetRow(kDX) * inv, m.GetRow(kDY) * inv, m.GetRow(kDZ) * inv)
+            .BuildNormalized();
+  scale = CVector3f(s, s, s);
+}
+} // namespace
+
+void CAnimData::PortNotePoseBuild() const {
+  const uint gen = CActor::PortTickGeneration();
+  const uint builtGen = mPortPoseGeneration;
+  const bool sampled = mPortPoseSampled;
+  mPortPoseGeneration = gen;
+  mPortPoseSampled = false;
+  // Rebuilt within one tick (bone tracking, IK, a sim-side BuildPose before the advance): the pose
+  // from the previous tick is still the one kept.
+  if (builtGen == gen)
+    return;
+  SPortPoseHistory* hist = mPortPoseHistory;
+  const int count = mPose.GetElements().size();
+  // A pose older than the last tick (off screen, paused, several ticks in one frame) is not the
+  // previous pose, nor is one sampled at another time: the next frames snap.
+  if (!PortOverlay::PoseInterpolation() || sampled || builtGen == 0 || builtGen + 1 != gen ||
+      count > kPortPoseBones) {
+    if (hist != nullptr)
+      hist->prevGeneration = 0;
+    return;
+  }
+  if (hist == nullptr) {
+    hist = static_cast< SPortPoseHistory* >(calloc(1, sizeof(SPortPoseHistory)));
+    if (hist == nullptr)
+      return;
+    mPortPoseHistory = hist;
+  }
+  for (int i = 0; i < count; ++i) {
+    SPortPoseHistory::Bone& bone = hist->bones[i];
+    CQuaternion rot = CQuaternion::NoRotation();
+    CVector3f scale = CVector3f::One();
+    PortDecompose(mPose, i, rot, scale);
+    bone.rot[0] = rot.GetScalar();
+    bone.rot[1] = rot.GetVector().GetX();
+    bone.rot[2] = rot.GetVector().GetY();
+    bone.rot[3] = rot.GetVector().GetZ();
+    const CVector3f& offset = mPose.GetElements()[i].mOffset;
+    bone.offset[0] = offset.GetX();
+    bone.offset[1] = offset.GetY();
+    bone.offset[2] = offset.GetZ();
+    bone.scale[0] = scale.GetX();
+    bone.scale[1] = scale.GetY();
+    bone.scale[2] = scale.GetZ();
+  }
+  hist->count = count;
+  hist->prevGeneration = builtGen;
+}
+
+const CPoseAsTransforms_Linear& CAnimData::PortPresentedPose() const {
+  SPortPoseHistory* hist = mPortPoseHistory;
+  if (hist == nullptr || hist->prevGeneration == 0 ||
+      hist->prevGeneration + 1 != mPortPoseGeneration ||
+      mPortPoseGeneration != CActor::PortTickGeneration() || !PortOverlay::PoseInterpolation())
+    return mPose;
+  // Negative with the cap on or smooth frames off (src/MetroidPrime/main.cpp).
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f || t >= 1.f)
+    return mPose;
+  const int count = mPose.GetElements().size();
+  if (count != hist->count)
+    return mPose;
+  if (hist->blend == nullptr)
+    hist->blend = new CPoseAsTransforms_Linear(mPose);
+  CPoseAsTransforms_Linear& blend = *hist->blend;
+  // Same shape and flags as the sim pose; every element is overwritten below.
+  blend = mPose;
+  const bool hasScale = mPose.HasScale();
+  for (int i = 0; i < count; ++i) {
+    const SPortPoseHistory::Bone& prev = hist->bones[i];
+    CQuaternion cur = CQuaternion::NoRotation();
+    CVector3f curScale = CVector3f::One();
+    PortDecompose(mPose, i, cur, curScale);
+    CQuaternion from(prev.rot[0], prev.rot[1], prev.rot[2], prev.rot[3]);
+    float dot = CQuaternion::Dot(from, cur);
+    if (dot < 0.f) {
+      from = CQuaternion(-from.GetScalar(), -from.GetVector());
+      dot = -dot;
+    }
+    const CVector3f prevOffset(prev.offset[0], prev.offset[1], prev.offset[2]);
+    const CVector3f& curOffset = mPose.GetElements()[i].mOffset;
+    // Same cut rule as the actor transforms: a bone that turned more than 45 degrees or moved more
+    // than 4 units in one tick is a new animation.
+    if (dot < 0.9238795f || (curOffset - prevOffset).MagSquared() > 16.f)
+      return mPose;
+    // Normalised lerp: the angles here are small, so it matches a slerp.
+    const CQuaternion rot =
+        CQuaternion(from.GetScalar() + (cur.GetScalar() - from.GetScalar()) * t,
+                    from.GetVector() + (cur.GetVector() - from.GetVector()) * t)
+            .BuildNormalized();
+    const CVector3f prevScale(prev.scale[0], prev.scale[1], prev.scale[2]);
+    const CVector3f scale = prevScale + (curScale - prevScale) * t;
+    const CMatrix3f unscaled = rot.BuildTransform();
+    CPoseAsTransforms_Linear::CElementType& elem = blend.PortElement(i);
+    if (hasScale) {
+      elem.mRotation = unscaled * CMatrix3f::Scale(scale.GetX(), scale.GetY(), scale.GetZ());
+      blend.PortSetScaled(i, unscaled, scale);
+    } else if (scale.GetX() != 1.f) {
+      elem.mRotation = unscaled * CMatrix3f::Scale(scale.GetX());
+    } else {
+      elem.mRotation = unscaled;
+    }
+    elem.mOffset = prevOffset + (curOffset - prevOffset) * t;
+  }
+  return blend;
+}
+#endif

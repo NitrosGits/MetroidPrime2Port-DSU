@@ -172,7 +172,11 @@ void CModelData::DisintegrateDraw(EWhichModel which, const CTransform4f& xf,
   if (HasAnimation()) {
     const CSkinnedModel& model = PickAnimatedModel(which);
     mAnimData->SetupRender();
+#ifdef TARGET_PC
+    const SModelRenderData renderData(model, mAnimData->PortPresentedPose());
+#else
     const SModelRenderData renderData(model, mAnimData->Pose());
+#endif
     gpRender->DrawModelDisintegrate(renderData, texture, color, amount);
   } else {
     const SModelRenderData renderData(**PickStaticModel(which));
@@ -195,7 +199,11 @@ void CModelData::RenderNoise(EWhichModel which, const CTransform4f& xf, const CC
   if (HasAnimation()) {
     const CSkinnedModel& model = PickAnimatedModel(which);
     mAnimData->SetupRender();
+#ifdef TARGET_PC
+    const SModelRenderData renderData(model, mAnimData->PortPresentedPose());
+#else
     const SModelRenderData renderData(model, mAnimData->Pose());
+#endif
     gpRender->DrawModelNoise(renderData, color, additive);
   } else {
     const SModelRenderData renderData(**PickStaticModel(which));
@@ -217,7 +225,11 @@ void CModelData::RenderSolid(EWhichModel which, const CTransform4f& xf, bool uns
   if (HasAnimation()) {
     const CSkinnedModel& model = PickAnimatedModel(which);
     mAnimData->SetupRender();
+#ifdef TARGET_PC
+    const SModelRenderData renderData(model, mAnimData->PortPresentedPose());
+#else
     const SModelRenderData renderData(model, mAnimData->Pose());
+#endif
     gpRender->DrawModelFlat(renderData, flags, unsortedOnly);
   } else {
     const SModelRenderData renderData(**PickStaticModel(which));
@@ -243,7 +255,11 @@ void CModelData::RenderModelMultipleTimesWithFlags(EWhichModel which, const CTra
     const CSkinnedModel& model = PickAnimatedModel(which);
     mAnimData->SetupRender();
     SModelDataMultipassContext context(model, flags, masks, colors, planes, count);
+#ifdef TARGET_PC
+    model.Draw(&mAnimData->PortPresentedPose(), &MultipassDrawCallback, &context);
+#else
     model.Draw(&mAnimData->Pose(), &MultipassDrawCallback, &context);
+#endif
   } else {
     const CModel& model = **PickStaticModel(which);
     for (int i = 0; i < count; ++i) {

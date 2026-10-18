@@ -40,6 +40,16 @@ public:
   const rstl::vector< CElementType >& GetElements() const { return mElements; }
   bool HasScale() const { return !mScales.empty(); }
   bool HasUniformScale() const { return mUniformScale; }
+#ifdef TARGET_PC
+  // Port: frame interpolation writes a blended copy of a built pose
+  // (CAnimData::PortPresentedPose).
+  CElementType& PortElement(int i) { return mElements[i]; }
+  const CVector3f& PortScale(int i) const { return mScales[i]; }
+  void PortSetScaled(int i, const CMatrix3f& unscaled, const CVector3f& scale) {
+    mUnscaledRotations[i] = unscaled;
+    mScales[i] = scale;
+  }
+#endif
 
 private:
   rstl::vector< CElementType > mElements;

@@ -183,6 +183,9 @@ public:
   // Guessed names; gun turrets drive a joint rotation directly and rebuild the pose.
   CJointData_LinearStorage& JointData() const { return *mJointData; }
   void BuildPose(const CJointData_LinearStorage& data) const {
+#ifdef TARGET_PC
+    PortNotePoseBuild();
+#endif
     mPose.BuildPose(**mLayoutData, data);
   }
   const CParticleDatabase& GetParticleDB() const { return mParticleDB; }
@@ -209,7 +212,20 @@ public:
   // Guessed name. Returns the transition that would be used to start the requested animation.
   rstl::rc_ptr< IMetaTrans > BuildMetaTransition(const CAnimPlaybackParms& parms) const;
 
+#ifdef TARGET_PC
+  // Port: pose smoothing between ticks (MP1's docs/FRAME_INTERPOLATION.md, "2. Skinned poses").
+  // The pose skinning should draw: a blend of the last two tick poses while a presented frame is
+  // drawn, otherwise the sim pose.
+  const CPoseAsTransforms_Linear& PortPresentedPose() const;
+  struct SPortPoseHistory;
+  // Owns mPortPoseHistory; never copied.
+  CAnimData(const CAnimData&) = delete;
+  CAnimData& operator=(const CAnimData&) = delete;
+#endif
 private:
+#ifdef TARGET_PC
+  void PortNotePoseBuild() const;
+#endif
   // Guessed names.
   rstl::ncrc_ptr< CAnimTreeNode > BuildAnimationTree(const CAnimPlaybackParms& parms) const;
 
@@ -258,6 +274,13 @@ private:
   rstl::reserved_vector< rstl::pair< uint, CAdditiveAnimPlayback >, 8 > mAdditiveAnims;
   mutable uint mCachedBoundsAnimId;
   mutable CAABox mCachedAnimBounds;
+#ifdef TARGET_PC
+  mutable SPortPoseHistory* mPortPoseHistory = nullptr;
+  // Tick generation of the last build into mPose (CActor::PortTickGeneration).
+  mutable uint mPortPoseGeneration = 0;
+  // mPose last held a pose sampled at another time (GetLocatorTransform with a time).
+  mutable bool mPortPoseSampled = false;
+#endif
 
   static rstl::reserved_vector< CBoolPOINode, 8 > mBoolPOINodes;
   static rstl::reserved_vector< CInt32POINode, 16 > mInt32POINodes;

@@ -108,6 +108,9 @@ bool sFrameLimit = true;
 // MP1's smooth frames (`MP2_SMOOTH_FRAMES`, on by default): with the cap off, the camera is drawn
 // between the last two ticks (CCameraManager::SetPresentationInterpolation, src/MetroidPrime/main.cpp).
 bool sSmoothFrames = true;
+// MP1's pose interpolation (`MP2_POSE_INTERPOLATION`, off by default as there): with smooth frames
+// on, skinned poses are blended between the last two ticks (CAnimData::PortPresentedPose).
+bool sPoseInterpolation = false;
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -487,6 +490,14 @@ void DrawVideoFrameRate() {
                      "with the cap off, draws the camera between the game's 60 Hz ticks")) {
     PortOverlay::SetSmoothFrames(smoothFrames);
   }
+  // Read by CAnimData::PortPresentedPose: needs smooth frames, so it changes nothing without them.
+  ImGui::BeginDisabled(!sSmoothFrames);
+  bool poseInterpolation = sPoseInterpolation;
+  if (PortUi::Toggle("Smooth animation", &poseInterpolation, "MP2_POSE_INTERPOLATION=0|1",
+                     "with smooth frames, also draws animated models between the game's ticks")) {
+    PortOverlay::SetPoseInterpolation(poseInterpolation);
+  }
+  ImGui::EndDisabled();
   ImGui::EndDisabled();
 }
 
@@ -1492,6 +1503,19 @@ void SetSmoothFrames(bool enabled) {
   ReadEnv();
   if (sSmoothFrames != enabled) {
     sSmoothFrames = enabled;
+    Persist();
+  }
+}
+
+bool PoseInterpolation() {
+  ReadEnv();
+  return EnvBool("MP2_POSE_INTERPOLATION", sPoseInterpolation);
+}
+
+void SetPoseInterpolation(bool enabled) {
+  ReadEnv();
+  if (sPoseInterpolation != enabled) {
+    sPoseInterpolation = enabled;
     Persist();
   }
 }

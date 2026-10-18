@@ -205,6 +205,11 @@ void SetFrameLimit(bool enabled);
 // default. With the cap off, the camera is drawn between the last two 60 Hz ticks.
 bool SmoothFrames();
 void SetSmoothFrames(bool enabled);
+// MP1's pose interpolation (`MP2_POSE_INTERPOLATION=0|1`, F1 > Video > Frame rate); off by default.
+// With smooth frames on and the cap off, skinned models draw a blend of their last two tick poses
+// (CAnimData::PortPresentedPose).
+bool PoseInterpolation();
+void SetPoseInterpolation(bool enabled);
 // MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
 // (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
 // VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.

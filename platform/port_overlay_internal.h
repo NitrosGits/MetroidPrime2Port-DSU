@@ -51,6 +51,7 @@ extern int sUiScale;
 extern bool sVsync;
 extern bool sFrameLimit;
 extern bool sSmoothFrames;
+extern bool sPoseInterpolation;
 extern float sRenderScale;
 extern int sAspectMode;
 extern bool sOverlayWindowed;
