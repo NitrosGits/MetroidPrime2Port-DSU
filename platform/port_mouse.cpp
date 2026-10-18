@@ -38,6 +38,9 @@ bool sInvertY = false;
 // The aim's down state is set by the UI thread (a finger lift) and read every tick by the game
 // thread, so it is atomic rather than mutex-guarded: it is a flag, not a value to accumulate.
 std::atomic<bool> sTouchAimDown{false};
+// Set by the first finger-down and kept until Reset: like MP1's direct aim, a drag leaves the
+// view where it was aimed instead of handing it back to the free-look pitch (which is level).
+std::atomic<bool> sTouchAimLatched{false};
 std::atomic<uint64_t> sTouchHoldUntilNs{0};
 float sPendingX = 0.f;
 float sPendingY = 0.f;
@@ -209,12 +212,19 @@ void AddTouchAim(float dxDp, float dyDp) {
   if (!sTouchEnabled.load() || !std::isfinite(dxDp) || !std::isfinite(dyDp)) {
     return;
   }
+  // Plain drags feed deltas only (MP1's model); the deltas themselves claim the view.
+  sTouchAimLatched = true;
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX += dxDp * sTouchAimSpeed;
   sPendingY += dyDp * sTouchAimSpeed;
 }
 
-void SetTouchAimDown(bool down) { sTouchAimDown = down; }
+void SetTouchAimDown(bool down) {
+  sTouchAimDown = down;
+  if (down) {
+    sTouchAimLatched = true;
+  }
+}
 
 void SpringSwipe() {
   sTouchHoldUntilNs = SDL_GetTicksNS() + static_cast< uint64_t >(kTouchSpringHoldSeconds * 1e9);
@@ -276,7 +286,10 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z) {
   // flick's hold is live). Without that check the idle overlay would own it: CPlayer would turn
   // the body to the last drag's yaw every tick, pinning it so the C-stick and stick-free
   // movement could no longer turn the player - so idle must read as `locked` below.
-  const bool touchIdle = sTouchEnabled.load() && !TouchAimActive();
+  // Once a finger has aimed (or whenever mouse/stick aim is on) the aim stays the owner after
+  // the lift - handing the view back snapped the pitch to the free-look level.
+  const bool touchIdle = sTouchEnabled.load() && !sEnabled && !sStickEnabled &&
+                         !sTouchAimLatched.load() && !TouchAimActive();
   // `locked` means something else owns the view (a lock-on, the morph ball, a cinematic): the
   // aim tracks that direction and the caller must not turn the player. `touchIdle` is the same
   // situation, so a drag that begins there does not snap the view either.
@@ -306,6 +319,7 @@ void Reset() {
   // A finger's state belongs to the aim being reset: a held spring must not re-open the view
   // the next frame, and a later down must not inherit a stale hold.
   sTouchAimDown = false;
+  sTouchAimLatched = false;
   sTouchHoldUntilNs = 0;
   SetCapture(false);
 }

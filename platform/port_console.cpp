@@ -8,6 +8,7 @@
 // row in `kCommands`.
 
 #include "port_console.h"
+#include "port_mouse.h"
 
 #include "port_binds.h"
 #include "port_input.h"
@@ -549,6 +550,13 @@ void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
     std::snprintf(line, sizeof(line), "camera %s fov %.1f at (%.2f, %.2f, %.2f)\n", kind,
                   camera != nullptr ? camera->GetFov() : 0.f, at.GetX(), at.GetY(), at.GetZ());
     out += line;
+    {
+      // The view's pitch, so an aim drag's release can be read as a number.
+      const CVector3f fwd = cameraXf.GetForward();
+      std::snprintf(line, sizeof(line), "camera pitch %.1f deg (aim %s)\n",
+                    asinf(fwd.GetZ()) * (180.f / 3.14159265f), PortMouse::Aiming() ? "on" : "off");
+      out += line;
+    }
     // The area's fog, because a white screen with the HUD drawn on it is what a fog range of
     // "everything" looks like from inside.
     const CGameArea::CAreaFog& fog = cameras->GetFog();
