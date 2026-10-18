@@ -7,6 +7,9 @@
     <!-- SDL's Android haptics call Vibrator.cancel() unconditionally, which throws without
          this and poisons the next JNI call. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The debug console (MP2_CONSOLE) listens on 127.0.0.1: without INTERNET, socket() fails
+         with EPERM on Android. It is a loopback socket only; nothing here talks to the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
         android:appCategory="game"
