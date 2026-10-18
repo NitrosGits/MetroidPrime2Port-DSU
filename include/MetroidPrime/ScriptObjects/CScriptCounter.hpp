@@ -17,6 +17,9 @@ public:
   int GetMax() const { return mMax; }
 
 private:
+#ifdef TARGET_PC
+  friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+#endif
   int mInitial;
   int mCurrent;
   int mMax;

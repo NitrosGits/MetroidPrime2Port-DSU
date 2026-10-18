@@ -1,4 +1,4 @@
-// Save states, phase 1 (no room state). See platform/include/port_savestate.h.
+// Save states (room state: port_savestate_room.cpp). See platform/include/port_savestate.h.
 //
 // The hard part is the load, because nothing in the platform layer can stop the game between two
 // frames: Tick runs at the start of a CStateManager update, so the old world is still live for the
@@ -52,13 +52,17 @@ namespace PortSaveState {
 namespace {
 
 constexpr uint32_t kMagic = 0x5332504d; // "MP2S" read little-endian
-constexpr uint32_t kVersion = 1;
+// 2: a room state section follows the blob. Version 1 states still load, without room state.
+constexpr uint32_t kVersion = 2;
+constexpr uint32_t kVersionNoRoom = 1;
 // The card slot holds 0xa38 bytes of CGameState stream (SGameFileSlot::mSaveBuffer); the state
 // keeps more room than that so a port-only addition to the stream cannot be cut off silently.
 constexpr size_t kBlobSize = 0x2000;
 // Frames the rebuilt world runs before Samus is put back, and how long a load may take at most.
 constexpr int kSettleFrames = 3;
 constexpr int kPlaceTimeoutFrames = 60 * 90;
+// How long after Samus is placed the saved areas still loading may take to come back.
+constexpr int kRoomTimeoutFrames = 60 * 20;
 
 struct State {
   uint32_t worldId = 0;
@@ -71,6 +75,7 @@ struct State {
   int64_t savedAt = 0;
   std::string room;
   std::vector< uint8_t > blob;
+  RoomState roomState; // empty for a version 1 state
 };
 
 std::atomic< int > sSaveRequest{-1};
@@ -89,6 +94,15 @@ struct Placement {
   int waited = 0;
 };
 Placement sPlace;
+
+// A load that has put Samus back and applies the room state as the saved areas load.
+struct RoomRestore {
+  bool active = false;
+  RoomState state;
+  RoomApplyProgress progress;
+  int waited = 0;
+};
+RoomRestore sRoom;
 CGameState* sRetired = nullptr; // the game state a load replaced, deleted once the world restarted
 
 void SetMessage(const std::string& message) {
@@ -181,6 +195,9 @@ std::string Encode(const State& s) {
   Put64(out, static_cast< uint64_t >(s.savedAt));
   PutBytes(out, s.room.data(), s.room.size());
   PutBytes(out, s.blob.data(), s.blob.size());
+  std::string room;
+  EncodeRoomState(s.roomState, room);
+  PutBytes(out, room.data(), room.size());
   return out;
 }
 
@@ -191,7 +208,7 @@ bool Decode(const std::string& in, State& s, std::string& error) {
     return false;
   }
   const uint32_t version = r.U32();
-  if (version != kVersion) {
+  if (version != kVersion && version != kVersionNoRoom) {
     error = "save state version " + std::to_string(version) + " is not supported";
     return false;
   }
@@ -215,6 +232,13 @@ bool Decode(const std::string& in, State& s, std::string& error) {
     return false;
   }
   s.blob.assign(blob.begin(), blob.end());
+  if (version >= kVersion) {
+    const std::string room = r.Bytes();
+    if (!r.ok || !DecodeRoomState(room, s.roomState)) {
+      error = "save state's room state is damaged";
+      return false;
+    }
+  }
   return true;
 }
 
@@ -274,7 +298,8 @@ const char* NotReady(CStateManager& mgr) {
   if (!mgr.IsFullyInitialized() || mgr.mQuitGame) {
     return "the world is loading";
   }
-  if (sPlace.active || PortWarp::Pending() || mgr.mPortPendingWarpArea != kInvalidAreaId ||
+  if (sPlace.active || sRoom.active || PortWarp::Pending() ||
+      mgr.mPortPendingWarpArea != kInvalidAreaId ||
       mgr.mPortSpawnAtArea != kInvalidAreaId || mgr.mPortWarpQueuedArea != kInvalidAreaId) {
     return "a warp or load is in progress";
   }
@@ -330,6 +355,7 @@ bool Capture(CStateManager& mgr, State& s, std::string& error) {
     gpGameState->PutTo(writer);
   }
   worldState.SetDesiredAreaAssetId(desired);
+  CaptureRoomState(mgr, s.roomState);
   return true;
 }
 
@@ -495,6 +521,33 @@ void TickPlacement(CStateManager& mgr) {
     cameras->ResetCameras(mgr);
   }
   SetMessage("loaded " + s.room);
+  if (!s.roomState.areas.empty()) {
+    sRoom = RoomRestore();
+    sRoom.active = true;
+    sRoom.state = s.roomState;
+  }
+}
+
+// Apply the room state to each saved area once it is back, Samus's own first.
+void TickRoom(CStateManager& mgr) {
+  if (mgr.mQuitGame || !mgr.IsFullyInitialized() || mgr.World() == nullptr ||
+      mgr.World()->IGetWorldAssetId() != sPlace.state.worldId) {
+    sRoom.active = false;
+    SetMessage("room state dropped: the world changed before it was applied");
+    return;
+  }
+  const int waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress);
+  if (waiting > 0 && ++sRoom.waited <= kRoomTimeoutFrames) {
+    return;
+  }
+  sRoom.active = false;
+  const RoomApplyStats& st = sRoom.progress.stats;
+  SetMessage("room state restored: " + std::to_string(sRoom.progress.done.size()) + " of " +
+             std::to_string(sRoom.state.areas.size()) + " areas, " + std::to_string(st.applied) +
+             " objects applied, " + std::to_string(st.changed) + " changed, " +
+             std::to_string(st.removed) + " removed, " + std::to_string(st.unmatched) +
+             " unmatched, " + std::to_string(st.otherLayer) + " on other layers" +
+             (waiting > 0 ? ", " + std::to_string(waiting) + " areas never loaded" : ""));
 }
 
 } // namespace
@@ -578,6 +631,8 @@ void Tick(CStateManager& mgr) {
   TestHook();
   if (sPlace.active) {
     TickPlacement(mgr);
+  } else if (sRoom.active) {
+    TickRoom(mgr);
   }
   const int save = sSaveRequest.exchange(-1);
   if (save >= 0) {

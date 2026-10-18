@@ -21,6 +21,9 @@ public:
   void StartTiming(bool isTiming) { mIsTiming = isTiming; }
 
 private:
+#ifdef TARGET_PC
+  friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+#endif
   uint mStartFrame;
   float mTime;
   float mStartTime;
