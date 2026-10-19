@@ -267,7 +267,7 @@ CSandBoss::GetDeathExplosionParticle() const {
 // fn_55_AC (ported, not exercised yet)
 bool CSandBoss::CanBeShot(const CStateManager&, int) { return true; }
 
-// fn_55_B4 (ported, not exercised yet)
+// @ fn_55_B4
 bool CSandBoss::Listen(CStateManager&, const CVector3f&, EListenNoiseType) { return false; }
 
 // fn_55_BC (ported, not exercised yet)

@@ -450,6 +450,16 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   so it does not show later rounds. Newly `// @`: 1AEC 783C 79B0 7C68 974C 98FC 9BB8 9E3C C9B8 CA10 CA90
   CDF8 CF6C CF8C 10CB4.
 - Exit 13 (twice) is the shell tool's 120 s timeout killing a foreground run; run in the background.
+- Slice 5 (2026-10-20): the ball-in-mouth core (5B38 6250 62E4 6434 B658 B544 C188) and then the sphere/ball
+  states and helpers (5C6C 5E5C 5FEC 51BC 560C B718 AED8 B2D8 B06C) replaced their stand-ins; only
+  `HandleScreenShake` (4C60) and `HandleGroundImpact` (528C) are left in the stampede path. Traced runs
+  sbB/sbC/sbD/sbL (same area/layer, FRAMES 3000-6000, exit 0, 0 caught, 0 reach-stub) are identical to
+  slice 4: none of the ball/attack states runs, and `mRound`/`mWaitMode`/`mCinematicState` stay 0 (the new
+  `[sbstate]` tick). Newly `// @`: B4 (Listen, reached by the later runs).
+- Probe knobs in `/tmp/opencode/sb_run.sh` (local only): `MP2_SB_BALL=1` parks a morphed player on each
+  worm's mouth locator every frame (sets `mMorphBallState` and the translation), `MP2_SB_FSM=1` dumps the
+  FSM2 graph once and prints the per-worm state tick every 180 `Think` calls.
+
 - One run of the same command exited 13 right after `[area] 36` with no diagnostics; three reruns
   were clean. Unexplained.
 - Slice 4 (charge-beam list and volleys, same command with `SECS=1500`, exit 0, 0 caught, 0 reach-stub):
