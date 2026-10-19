@@ -3,6 +3,22 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-fifth session): the glyph keys were right all along
+
+- **Echoes uses Prime 1's button textures.** Opening the pause screen (START) and diffing its texture
+  dumps against a gameplay run leaves 19 textures, and four are the hashes already in `kKeys`:
+  `32x32 bb21e8755f36b2f0` (`AButtonIn`), `32x32 e6dbfd18d4666ee7` (`BButtonIn`), and the two `64x80`
+  `AButtonOut`/`BButtonOut` sets. Keys are content hashes (`XXH64` of the decoded bytes,
+  `extern/aurora/lib/gfx/texture_replacement.cpp:428`), and the art is shared between the games.
+- So the earlier "the binding icons replace nothing in Echoes" was wrong: every run up to then
+  dismissed the HUD memo (`MP2_SKIP_INTRO=1`) and never drew a prompt, so the textures were never
+  loaded. Evidence: `/tmp/opencode/pause.png`, `/tmp/opencode/pause_only.txt`.
+- The `MP2_DEBUG_PROMPTS` hook (`36775d730`) and its constructor variant were reverted: only one
+  `CGuiModel` is ever built in a run (id `ffffffff`), so Echoes' prompt widget is not a `CGuiModel`
+  and the hook told us nothing about it.
+- **Left to do:** run `tools/make_prompt_glyphs.py` to produce a `bindings/` set, point `MP2_TEXTURES`
+  at it, and confirm the pause screen's bottom bar shows keyboard glyphs instead of A/B/C/Y.
+
 ## 2026-10-19 (twenty-fourth session): the texture dump path, and where Echoes' prompts are
 
 - **`f558e5b3f`:** a texture dump dropped every file. `dump_editable_texture_dds` wrote into
