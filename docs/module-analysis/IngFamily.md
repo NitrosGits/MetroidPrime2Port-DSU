@@ -184,6 +184,47 @@ Construction order:
    LoadActorParameters, patternedInfo, data)` = `fn_29_D540`.
 10. `fn_29_10F8` destroys the CIngData temp.
 
+### A.5 CIng behaviour port (`src/MetroidPrime/Enemies/PortCIng.cpp`, 2026-10-19)
+
+Behaviour port, not a matching one. Retail functions are named in comments; `// @ fn_29_<off>`
+marks only the 45 functions a run actually called (an instrumented build, run below). The other
+44 that were read against retail carry `// fn_29_<off> (not yet exercised in a run)`.
+
+- **Tables** (registered in `SetupStateMachine`): 49 triggers, 29 states and 12 code functions.
+  The code functions take `(CStateManager&, float)` and run as FSM2 code nodes (`SetTargetDest`,
+  `SetCoverDest`, `SetRecoverDest`, `SetPointCoverDest`, `SetWallPointCoverDest`,
+  `SetExitHostDest`, `SetLuredDest`, `SetLuredPointDest`, `StartRangedAttack`,
+  `EndRangedAttack`, `SplatOntoMesh`, `ExpelGrappledBall`).
+- **Forms** (`mForm`): 2 corporeal, 3 ing spot, 4 body projectile, 5 evaporating. 0/1 (host) and
+  6..9 (wall/portal) are [?].
+- **FSM graph** (the disc's FSM2, dumped by `MP2_DEBUG_ING=1`):
+  - `Start` -> HasAttackPattern / HasPatrolPath / IsCorporeal / IsIngSpot / IsLuredBySafeZone.
+  - `BecomeCorporeal` -StateOver-> `Lurk` or `Patrol`.
+  - `Lurk` -InDetectionRange|HeardShot|UnderFire-> `SelectTarget` -> sub-machine IngCorporeal
+    (or IngPuddle in ing-spot form); ShouldEvaporate leads to `SafeZoneReaction` / `Evaporate`.
+  - AttackPatternOver -> IsCorporeal -> `Lurk` -> IngPuddle; IsBodyProjectile ->
+    `BodyProjectileFlight` -> IngCorporeal.
+- **Minimal `[?]` bodies** (the state ends or the function returns at once):
+  - States: Become* (BecomeCorporeal, BecomeIngSpot, BecomeBodyProjectile, BecomeWallProjectile:
+    form switch only), ArmSwipe, GrappleBall, MiniPortalAttack, FindMiniPortals, SuckEnergy,
+    BodyProjectileFlight and ExitHost.
+  - Code functions: SetExitHostDest, SplatOntoMesh and ExpelGrappledBall.
+- **Other `[?]` values:**
+  - Values borrowed from MinorIng (`fn_44_9D58`): the line-of-sight eye segment and times
+    (0.1/0.05), the surface-alignment mode (1), the team roles and the touch box.
+  - Retail details not read: the loop-sfx choice and parameters, steering speed ranges, the
+    script messages `SelectTarget` sends, the burn effects in `Dead`, the contact damage in
+    `Touch`, `Listen`'s noise filter, the source of the state timer (`mStateTime`, host) and
+    `SetRecoverDest` (taken as the closest path point within 20).
+- **Verified at runtime** (Sanctuary 0i_cliff_hall_dark, MLVL `1baa96c2` MREA `2735236b`, layer 0):
+  - The area places two INGS objects (`00390081`, `00390089`). They load **inactive** with
+    detection range 0, so a run must `send <uid> Activate` over `MP2_CONSOLE`, and the beam
+    (HeardShot) is what wakes them.
+  - Observed: Start -> BecomeCorporeal -> Lurk -> SelectTarget -> FaceTarget -> Alert ->
+    SetTargetDest -> PathFind -> BecomeIngSpot -> (form 3) Start -> Lurk -> FindCoverPoint.
+  - No `[port] caught`, no `[reach-stub]`, exit 0. Driver: `/tmp/opencode/ing_run2.sh` with
+    `ing_con.py`: activate, `tp 58.4 356 9`, then `press a 4` every 2 s.
+
 ---
 
 ## B. MinorIng.rel (module 44)

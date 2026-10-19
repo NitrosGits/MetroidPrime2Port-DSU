@@ -15,6 +15,18 @@ public:
   CAssetId GetBlobEffect() const { return mBlobEffect; }
   CAssetId GetNormalHitEffect() const { return mNormalHitEffect; }
   CAssetId GetHeavyHitEffect() const { return mHeavyHitEffect; }
+  CAssetId GetDeathEffect() const { return mDeathEffect; }
+  float GetMaxSpeed() const { return mMaxSpeed; }
+  float GetMaxWallSpeed() const { return mMaxWallSpeed; }
+  float GetBallPursuitSpeed() const { return mBallPursuitSpeed; }
+  float GetSpeedModifier() const { return x1c_; }
+  float GetTurnSpeed() const { return mTurnSpeed; }
+  const CDamageVulnerability& GetVulnerability() const { return mVulnerability; }
+  ushort GetIdleSound() const { return mIdleSound; }
+  ushort GetMoveSound() const { return mMoveSound; }
+  ushort GetNormalHitSound() const { return mNormalHitSound; }
+  ushort GetHeavyHitSound() const { return mHeavyHitSound; }
+  ushort GetDeathSound() const { return mDeathSound; }
 #endif
 
 private:
