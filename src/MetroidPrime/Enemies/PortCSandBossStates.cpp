@@ -11,6 +11,7 @@
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/Player/CStaticInterference.hpp"
@@ -53,14 +54,55 @@ bool CSandBoss::FoundStampedePoint(CStateManager& mgr, const CTriggerData&) cons
 // @ fn_55_C9B8
 bool CSandBoss::StampedeOver(CStateManager&, const CTriggerData&) const { return mStampedeHP <= 0.f; }
 
-bool CSandBoss::ShouldDarkBeamAttack(CStateManager&, const CTriggerData&) const { // fn_55_C894
-  PortSandBossStandIn("CSandBoss::ShouldDarkBeamAttack (fn_55_C894)");
-  return false;
+// @ fn_55_C894
+// Dark-beam gate, and the first thing it checks is that no charge probe is running. A non-leader
+// just reports its own probing bit, since the leader's probe is what asks it. The leader fires at
+// once when it is the only attached worm and its dark-beam timer has run out; with more worms
+// attached it also needs a beam cooldown spent, and then fn_55_42A8's pick decides: retail returns
+// that pick's uid, so this worm answers true when it is the pick and otherwise makes the picked
+// worm run its own probe (fn_55_8CB4). The host declares fn_55_42A8 as bool, so only the "this worm
+// is the pick" half is expressible; the sibling-probe half needs the uid back [uncertain: callee
+// signature].
+bool CSandBoss::ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData&) const {
+  if (mProbingDoubleCharge || mProbingTripleCharge) { // 0x165E b7 / b6
+    return false;
+  }
+  if (!IsAttachedLeader(mgr)) { // fn_55_5A84
+    return mProbingDarkBeam;    // 0x165E b5
+  }
+  if (CountAttachedSiblings(mgr) == 1) { // fn_55_595C
+    return mDarkBeamTimer <= 0.f;        // 0xF1C
+  }
+  if (mChargeBeamCooldown <= 0 || mDarkBeamTimer > 0.f) { // 0xF44, 0xF1C
+    return false;
+  }
+  return ShouldDarkBeamAttackCheck(mgr); // fn_55_42A8
 }
 
-bool CSandBoss::ShouldRepeaterAttack(CStateManager&, const CTriggerData&) const { // fn_55_C750
-  PortSandBossStandIn("CSandBoss::ShouldRepeaterAttack (fn_55_C750)");
-  return false;
+// @ fn_55_C750
+// Repeater-barrage gate: with no active safe zone among this worm's connections it fires at once
+// (fn_55_1B94 counts them); otherwise the player must be within 70 degrees of the forward axis and
+// a roll out of 100 decides. Retail keeps the roll above a per-worm threshold, which is
+// mData.unknown_0x2b42dddf (0x810) while the player stands in a safe zone and
+// mData.unknown_0x1562e0d6 (0x814) outside one [inferred: field identity, the loader's defaults are
+// 90 and 10], so the barrage is the ten-percent answer to a covered player.
+bool CSandBoss::ShouldRepeaterAttack(CStateManager& mgr, const CTriggerData&) const {
+  if (!ShouldRepeaterAttackCheck(mgr)) { // fn_55_1B94
+    return true;
+  }
+  const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (player == nullptr) {
+    return false;
+  }
+  const CVector3f delta = player->GetTranslation() - GetTranslation(); // player 0x54..0x5C
+  const CVector3f flatDelta(CVector2f(delta.GetX(), delta.GetY()), 0.f);
+  if (CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), flatDelta) > 1.2217304706573486f) {
+    return false; // 70 degrees
+  }
+  const float threshold = mgr.GetSafeZoneManager()->IsObjectInSafeZone(*player, mgr)
+                              ? mData.unknown_0x2b42dddf  // 0x810
+                              : mData.unknown_0x1562e0d6; // 0x814
+  return threshold < mgr.Random()->Range(0.f, 100.f); // mgr 0x16E4, 0x40590000 = 100.0
 }
 
 // fn_55_C730 (ported, not exercised yet)
@@ -147,9 +189,25 @@ bool CSandBoss::ShouldDoubleCharge(CStateManager& mgr, const CTriggerData&) cons
   return false;
 }
 
-bool CSandBoss::ShouldSnapJaws(CStateManager&, const CTriggerData&) const { // fn_55_C2A0
-  PortSandBossStandIn("CSandBoss::ShouldSnapJaws (fn_55_C2A0)");
-  return false;
+// @ fn_55_C2A0
+// Snap-jaw bite gate: no charge probe running, the player inside the patterned attack-range band
+// (compared squared, CPatterned mMinAttackRange / mMaxAttackRange at 0x3DC / 0x3E0 [inferred: field
+// identity]) and within 30 degrees of the forward axis.
+bool CSandBoss::ShouldSnapJaws(CStateManager& mgr, const CTriggerData&) const {
+  if (mProbingDoubleCharge) { // 0x165E b7
+    return false;
+  }
+  const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (player == nullptr) {
+    return false;
+  }
+  const CVector3f delta = player->GetTranslation() - GetTranslation(); // player 0x54..0x5C
+  const float distanceSq = delta.MagSquared();
+  if (distanceSq < mMinAttackRange * mMinAttackRange ||
+      distanceSq > mMaxAttackRange * mMaxAttackRange) {
+    return false;
+  }
+  return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), delta) < 0.5235987901687622f;
 }
 
 // fn_55_C258 (ported, not exercised yet)
@@ -936,7 +994,11 @@ void CSandBoss::SnapJawsCollisionSetup(CStateManager&) { // fn_55_78E0
   PortSandBossStandIn("CSandBoss::SnapJawsCollisionSetup (fn_55_78E0)");
 }
 
-bool CSandBoss::CheckBodyStateForDarkBeam(CStateManager&) const { // fn_55_8C88
-  PortSandBossStandIn("CSandBoss::CheckBodyStateForDarkBeam (fn_55_8C88)");
-  return false;
+// fn_55_8C88 (ported, not exercised yet)
+// A worm may be picked for the dark beam only while it has no dark-beam answer yet and its body is
+// walking (retail's body state id 5 = pas::kAS_Locomotion); fn_55_42A8 asks this when it scores the
+// attached siblings.
+bool CSandBoss::CheckBodyStateForDarkBeam(CStateManager&) const {
+  return !mDarkBeamResult && // 0x165C b3
+         GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion; // 0x37C == 5
 }

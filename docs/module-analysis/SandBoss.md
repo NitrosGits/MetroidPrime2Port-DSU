@@ -289,7 +289,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 88D0 | CSandBoss::RenderSphere | [proven] host body |
 | 89E8 | CSandBoss::RenderWithArmor | [proven] host body |
 | 8A8C | CSandBoss::RenderArmor | [proven] host body |
-| 8C88 | CSandBoss::CheckBodyStateForDarkBeam | [stand-in] log-once |
+| 8C88 | CSandBoss::CheckBodyStateForDarkBeam | [ported] host body, not exercised yet |
 | 8CB4 | CSandBoss::ProbeDarkBeam | [proven] host body |
 | 8D24 | CSandBoss::ProbeTripleCharge | [proven] host body |
 | 8D94 | CSandBoss::ProbeDoubleCharge | [proven] host body |
@@ -346,12 +346,12 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | C188 | CSandBoss::IsBallInSuckRange | [ported] host body, not exercised yet |
 | C1CC | CSandBoss::IsFacingPlayer | [stand-in] log-once |
 | C258 | CSandBoss::ShouldDestroySphere | [proven] host body |
-| C2A0 | CSandBoss::ShouldSnapJaws | [stand-in] log-once |
+| C2A0 | CSandBoss::ShouldSnapJaws | [proven] host body |
 | C378 | CSandBoss::ShouldDoubleCharge | [proven] host body |
 | C534 | CSandBoss::ShouldTripleCharge | [proven] host body |
 | C730 | CSandBoss::FoundSafeZoneTarget | [proven] host body |
-| C750 | CSandBoss::ShouldRepeaterAttack | [stand-in] log-once |
-| C894 | CSandBoss::ShouldDarkBeamAttack | [stand-in] log-once |
+| C750 | CSandBoss::ShouldRepeaterAttack | [proven] host body |
+| C894 | CSandBoss::ShouldDarkBeamAttack | [proven] host body |
 | C9B8 | CSandBoss::StampedeOver | [proven] host body |
 | C9D8 | CSandBoss::FoundStampedePoint | [proven] host body |
 | CA10 | CSandBoss::BeginStampede | [proven] host body |
@@ -475,6 +475,15 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   the stampede. Stand-ins now reached: 4C60, 528C, 22E4, 83AC, C2A0, C894 (8258/7E60/8008 were not: the
   probe drains the HP directly instead of damaging the armour). Newly `// @` (20): 595C 59E4 5C30 64E4 6960
   8E3C 8E60 8F88 917C 91B8 91CC 91E0 91F4 96B0 B98C BAAC BFF8 C154 C378 C534.
+- Slice 7 (2026-10-20, run sbS, same area/layer, `MP2_SB_FSM=1 MP2_SB_HP=1`, FRAMES 6000, exit 0, 0 caught,
+  0 reach-stub): the attack slice's four triggers are now host bodies. `ShouldRepeaterAttack` (C750) answered
+  true on the Attack submachine and it entered `RepeaterAttack` (A9DC, still a stand-in); C894 and C2A0 were
+  evaluated too (`[sbtrace]`). Newly `// @`: C2A0 C750 C894.
+- `CheckBodyStateForDarkBeam` (8C88) was not reached: only `ShouldDarkBeamAttackCheck` (42A8) calls it, and
+  42A8 is still a stand-in. The full retail logic of C894/C750 cannot be expressed with the current callee
+  signatures — 42A8 returns the uid of the worm it picks (C894 compares it to `GetUniqueId()` and otherwise
+  makes that sibling run its dark-beam probe) and 1B94 returns the count of active safe zones. Next slice:
+  signature change, 42A8 -> `TUniqueId`, 1B94 -> `int` count, and the C894/C750 call sites with them.
 - `GetName()` on the FSM2 machine is useless as a state tick: the three top-level states are all literally
   named `UnderGround`. Read the `[sbtrace]` order instead.
 
