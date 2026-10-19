@@ -202,9 +202,14 @@ protected:
   bool mBlowing : 1;
   bool mWindPending : 1;
   bool mBubbleCreated : 1;
+  bool mBubbleTelegraphed : 1; // one-shot for anim event 7 (fn_79_A838 -> fn_79_1E40)
   int mAdditiveAnim;                                          // 0xc78
   float mAdditiveWeight;                                      // 0xc7c
   float mAdditiveRate;                                        // 0xc80
+  // Random per-frame jitter; written by BecomeDarkFlyer (fn_79_91A4) and read by the additive
+  // update and GetIngSnatchingNormal (fn_79_5E3C).
+  float mAdditiveJitterX;                                     // 0xc84
+  float mAdditiveJitterY;                                     // 0xc88
   int mChainDepth;                                            // 0xc8c
   float mGrowthVulnerableTime;                                // 0xc90
   int mPhase;                                                 // 0xc94

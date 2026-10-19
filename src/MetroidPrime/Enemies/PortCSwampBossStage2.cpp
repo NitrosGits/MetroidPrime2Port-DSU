@@ -8,12 +8,14 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CRandom16.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 #include "MetroidPrime/Enemies/CAiKnockBackMgr.hpp"
@@ -67,6 +69,10 @@ const int kSplashActor = 6;    // spine6_Lockon_LCTR -> mSplashPos
 float RandomRange(CStateManager& mgr, float lo, float hi) {
   return mgr.Random()->Float() * (hi - lo) + lo;
 }
+
+// fn_79_3E50: retail rebuilds the AABB collidable's vtable and copies its material list and box
+// into the stack copy the water splash probe tests against; the host equivalent is a copy.
+CCollidableAABox CopyCollidableAABox(const CCollidableAABox& source) { return source; }
 } // namespace
 
 // fn_79_7404
@@ -116,9 +122,12 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mBlowing(false)
 , mWindPending(false)
 , mBubbleCreated(false)
+, mBubbleTelegraphed(false)
 , mAdditiveAnim(-1)
 , mAdditiveWeight(0.f)
 , mAdditiveRate(0.f)
+, mAdditiveJitterX(0.f)
+, mAdditiveJitterY(0.f)
 , mChainDepth(0)
 , mGrowthVulnerableTime(0.f)
 , mPhase(0)
@@ -516,9 +525,77 @@ void CSwampBossStage2::UpdateAdditive(CStateManager& mgr, float dt) {
   // TODO(uncertain): not decoded.
 }
 
+// fn_79_3900: head/tail water splash. `pos` is the splash point and `lastSplash` the last one
+// emitted, kept just above the water surface.
 void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
                                    CVector3f& lastSplash) {
-  // TODO(uncertain): not decoded.
+  const float heightAboveWater = mWaterZ - pos.GetZ();
+  const bool hasEmitter = static_cast< bool >(mWaterSfx);
+  bool aboveSurface = false;
+  if (heightAboveWater > 0.f) {
+    if (heightAboveWater < 4.f) {
+      // Hovering just over the water: start the splash sounds (the second one loops and is kept).
+      if (!hasEmitter && !mBlowPushed) {
+        const CVector3f forward = GetTransform().GetForward();
+        PlayCustomSound(pos, forward, mData.audioPlaybackParms, false);
+        mWaterSfx = PlayCustomSound(pos, forward, mData.audioPlaybackParms_0x2b3c923a, true);
+      }
+      aboveSurface = true;
+    }
+    // rodata: splash plane is a centimetre above the surface.
+    const float splashZ = mWaterZ + 0.01f;
+    const CVector3f delta(pos.GetX() - lastSplash.GetX(), pos.GetY() - lastSplash.GetY(),
+                          splashZ - lastSplash.GetZ());
+    // rodata: only splash again once the point has moved sqrt(8) from the last one.
+    if (8.f < delta.MagSquared()) {
+      CTransform4f xf(GetTransform());
+      xf.SetTranslation(CVector3f(pos.GetX(), pos.GetY(), splashZ));
+      const CAABox bounds(CVector3f(pos.GetX() - 1.f, pos.GetY() - 1.f, splashZ - 1.f),
+                          CVector3f(pos.GetX() + 1.f, pos.GetY() + 1.f, splashZ + 1.f));
+      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      // rodata data_41C: the include filter the probe gathers nearby objects with.
+      const CMaterialFilter nearFilter(CMaterialList((u64(1) << 32) | 0x31u), CMaterialList(),
+                                       CMaterialFilter::kFT_Include);
+      mgr.BuildNearList(nearList, bounds, nearFilter, this);
+      bool blocked = false;
+      if (nearList.size() != 0) {
+        // rodata data_420: the probe's own material list.
+        const CCollidableAABox probe(bounds, CMaterialList(0x3bu));
+        blocked = CGameCollision::DetectDynamicCollisionBoolean(CopyCollidableAABox(probe),
+                                                               CTransform4f::Identity(), nearList,
+                                                               mgr);
+      }
+      if (!blocked) {
+        // rodata: the splash grows with the drop height, up to 1.6.
+        float scale = heightAboveWater * 0.2f + 0.8f;
+        if (scale > 1.6f) {
+          scale = 1.6f;
+        }
+        CExplosion* splash = rs_new CExplosion(
+            mSplashGen, mgr.AllocateUniqueId(),
+            CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+            rstl::string_l("Chykka head/tail splash"), xf, 0,
+            CVector3f(scale, scale, scale), CColor::White(), -1);
+        // TODO(uncertain): retail links the splash to the water actor (CExplosion +0x12a =
+        // mWater); the host CExplosion exposes no such field.
+        mgr.AddObject(splash);
+      }
+      lastSplash = CVector3f(pos.GetX(), pos.GetY(), splashZ);
+    }
+  }
+  if (hasEmitter && !aboveSurface) {
+    // Left the surface: stop the loop and splash out.
+    CSfxManager::RemoveEmitter(mWaterSfx);
+    mWaterSfx = CSfxHandle::NullHandle();
+    if (!mBlowPushed) {
+      PlayCustomSound(pos, GetTransform().GetForward(), mData.audioPlaybackParms_0xc05d5c7a,
+                      false);
+    }
+  }
+  if (mBlowPushed && mWaterSfx) {
+    CSfxManager::RemoveEmitter(mWaterSfx);
+    mWaterSfx = CSfxHandle::NullHandle();
+  }
 }
 
 void CSwampBossStage2::UpdateHealthFraction(CStateManager& mgr) {
@@ -765,7 +842,42 @@ void CSwampBossStage2::BecomeLightFlyer(CStateManager& mgr, EStateMsg msg, float
 
 // fn_79_91A4
 void CSwampBossStage2::BecomeDarkFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(CVector3f::Forward(), pas::kS_One, -1));
+    }
+    if (mSurfaced) {
+      if (!mFacePlayer) {
+        // rodata: face the player plus or minus 70 degrees, by mRotateSign.
+        BodyController()->FaceDirection(
+            CTransform4f::RotateZ(CRelAngle::FromDegrees(mRotateSign ? -70.f : 70.f)) *
+                DirectionToPlayerAim(mgr),
+            dt);
+      } else {
+        BodyController()->FaceDirection(DirectionToPlayerAim(mgr), dt);
+      }
+    }
+    // rodata: per-frame additive jitter of 0.2 either side of zero.
+    mAdditiveJitterX = (mgr.Random()->Float() - 0.5f) * 0.2f;
+    mAdditiveJitterY = (mgr.Random()->Float() - 0.5f) * 0.2f;
+    UpdateWater(mgr, mHeadPos, mLastTailSplash);
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mSurfaced = false;
+    mRotateSign = mgr.Random()->Float() > 0.5f;
+    mFacePlayer = false;
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);
+    ++mPhase;
+    mAttackIndex = 0;
+    mBubbleTelegraphed = false;
+    mOvipositorHealth = CurrentPhase().health;
+    mPendingFlinch = 0.f;
+    mBlowPushed = true;
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mBlowPushed = false;
+  }
 }
 
 // fn_79_8FAC
