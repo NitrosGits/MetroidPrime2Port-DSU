@@ -195,8 +195,7 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
                           xa1c_coverRange * xa1c_coverRange;
       }
     }
-    // TODO(fn_72_D800): retail picks/keeps its guard position here and refreshes
-    // x8f7_28_noPlayerLos; not ported yet (see Lurk).
+    UpdateGuardPosition(mgr, dt);
     UpdateHeldPosition(mgr, dt);
     break;
   }
@@ -246,6 +245,47 @@ void CSpacePirate::UpdateHeldPosition(CStateManager& mgr, float dt) {
     xba8_heldPositionY = pos.GetY();
     xbac_holdPositionTime = 0.f;
   }
+}
+
+// @ fn_72_D800
+// Ten times a second retail re-derives the point the pirate guards from and tests
+// the line to the player's aim position. Behind cover (a cover point is held) the eye moves two
+// units along the body's right axis, the sign taken from xa68_coverDir; in the open it is nudged
+// 1.1 units across the look direction, a peek. A blocked ray restarts xa78_, so x8f7_28_noPlayerLos
+// stays set for the 0.5 s (CSpacePirateData +0xc4) after the pirate loses sight of the player.
+void CSpacePirate::UpdateGuardPosition(CStateManager& mgr, float dt) {
+  xa80_cantSeePlayerCycleCounter += dt;
+  xa78_ += dt;
+  if (xa80_cantSeePlayerCycleCounter > 0.1f) {
+    xa80_cantSeePlayerCycleCounter = 0.f;
+    CVector3f guardPos = GetTranslation();
+    guardPos.SetZ(guardPos.GetZ() + xa74_eyeHeight);
+    // Retail: the attack target when it is a player, otherwise (single player) the state manager's
+    // cached player at +0x14fc.
+    const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+    if (player == nullptr && !mgr.IsMultiplayer()) {
+      player = mgr.GetPlayer(0);
+    }
+    if (player != nullptr) {
+      const CVector3f aimPos = player->GetAimPosition(mgr, 0.f);
+      if (GetCoverPoint(mgr, x900_coverPoint) != nullptr) {
+        if (xa68_coverDir == 0) {
+          guardPos = guardPos - 2.f * GetTransform().GetRight();
+        } else if (xa68_coverDir == 1) {
+          guardPos = guardPos + 2.f * GetTransform().GetRight();
+        }
+      } else {
+        const CVector3f side =
+            CVector3f::Cross((aimPos - guardPos).AsNormalized(), CVector3f::Up());
+        guardPos = guardPos + 1.1f * side;
+      }
+      if (!LineOfSightTest(mgr, guardPos, aimPos,
+                           CMaterialList(kMT_Player, kMT_ProjectilePassthrough))) {
+        xa78_ = 0.f;
+      }
+    }
+  }
+  x8f7_28_noPlayerLos = xa78_ < 0.5f;
 }
 
 // @ fn_72_AF70
@@ -308,8 +348,7 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
         body->SetLocomotionType(pas::kLT_Combat);
       }
     }
-    // TODO(fn_72_D800): retail also picks/keeps its guard position here (cover-point nudge plus
-    // the line-of-sight test that drives x8f7_28_noPlayerLos); not ported yet.
+    UpdateGuardPosition(mgr, dt);
     UpdateHeldPosition(mgr, dt);
     break;
   }

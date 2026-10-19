@@ -207,6 +207,7 @@ private:
   void SquadRemove(CStateManager& mgr);                  // DF2C
   void SquadJoin(CStateManager& mgr);                    // DFD4
   void UpdateHeldPosition(CStateManager& mgr, float dt); // D720
+  void UpdateGuardPosition(CStateManager& mgr, float dt); // D800
   void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
   void SetVelocityForJump();                             // E168
   // Think path (fn_72_1980); the comment on each is its retail function.
@@ -309,7 +310,7 @@ private:
   float xa74_eyeHeight;                   // 0xa74
   float xa78_;                            // 0xa78
   float xa7c_timeNoPlayerLos;             // 0xa7c
-  int xa80_cantSeePlayerCycleCounter;     // 0xa80
+  float xa80_cantSeePlayerCycleCounter;   // 0xa80 (retail lfs/stfs: a float, the 0.1 s re-test timer)
   TUniqueId mAttachedActor;               // 0xa84
   CSegId xa86_gunSeg;                     // 0xa86 "gun_LCTR"
   CSegId xa87_elbowSeg;                   // 0xa87 "R_elbow"
