@@ -458,3 +458,35 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
 - Not tested: ASAN, the intro cinema path, any attack, sphere/ball phases.
+
+## 6. FSM2 graph (dumped from the loaded asset)
+
+`[sbfsm]` probe in `Think` (`MP2_SB_FSM=1` in `/tmp/opencode/sb_run.sh`, run sbJ, 2026-10-20): the actor's
+machine is a `CGenericFSM2` (`GetStateMachine2()`), not the `CStateMachine` that
+`CAi::GetStateMachine()` casts the same token to — dumping the latter reads a different object (it printed
+4 bogus states and segfaulted). Nodes are `state#`, `trigger#+10`, `code#+20`, `submachine#+30`; a
+transition's bracket is its label and `#n` is the resolved target. Only the top machine and its two
+direct submachines are dumped so far; `Attack#31` and `Damaged#30` (nested in `AttachedToSphere`) are not.
+
+**top**: Start#3 -> UnderGround#1 | UnderGround#1 -> CanStartNewRound#15 -> code WaitStampede#20 ->
+code SetCinematicStateUnderGround#23 -> UnderGround#0 | UnderGround#0 -> SyncStampede#11 -> [Start]
+submachine Stampede#30 -> trigger IsUnderGround#10 -> UnderGround#2 | UnderGround#2 -> Delay#12(3.0 s)
+-> code WaitAttachToSphere#21 -> SyncAttachToSphere#14 -> [Start] submachine AttachedToSphere#31 ->
+trigger IsUnderGround#13 -> code UnLockSphere#22 -> code WaitStampede#20.
+
+**Stampede** (5 states, 5 triggers, 4 codes): Start#2 -> SetCinematicStateStampede#21 -> SetStampedeArmor#20
+-> code BeginStampede#22 -> Delay#14(3.0 s) -> SelectStampedePoint#3 -> FoundStampedePoint#10 ->
+SeekStampedePoint#0 -> BeginStampede#12 -> (trigger) -> Stampede#1 -> StateOver#11 -> {StampedeOver#13 ->
+code EndStampede#23 -> UnderGround#4 (no triggers: the submachine's exit); repeat SelectStampedePoint#3}.
+
+**AttachedToSphere** (2 states, 3 triggers, 6 codes): Start#1 -> SetCinematicStateNormal#24 ->
+code LockSphere#20 -> state AttachToSphere#0 -> StateOver#10 -> code ResetHeadArmorHP#22 ->
+code SetAttachedArmor#21 -> [Start] submachine Attack#31; trigger HeadArmorDestroyed#11 ->
+code PreventSyncAttacks#23 -> [Start] submachine Damaged#30; trigger IsRecovered#12 ->
+code SetCinematicStateNormal#25.
+
+So `SuckAir`, `SuckBall`, `BallInMouth`, `SpitOutBall`, `DestroySphere`, `JumpOffSphere`, `DarkBeamAttack`,
+`RepeaterAttack`, `DoubleCharge`, `TripleCharge`, `SnapJaws`, `RotateToPlayer`, `Recover`, `Dead` and
+`Deactivate` all live inside `Attack`/`Damaged` (and their own nested machines) — the FSM must reach
+`AttachedToSphere` before any of them can run, and that needs the top-level `UnderGround#2 -> Delay(3 s) ->
+WaitAttachToSphere -> SyncAttachToSphere` chain after the stampede sub-machine exits.
