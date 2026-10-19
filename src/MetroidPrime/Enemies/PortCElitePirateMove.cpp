@@ -257,6 +257,7 @@ void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // Chases the attack target (xa26_), or the last goal when it is gone. xa44_ marks when the chase began.
+// @ fn_15_5BB4
 void CElitePirate::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     CVector3f dest = x810_;

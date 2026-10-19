@@ -224,8 +224,11 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
   const CVector3f scale = GetModelData()->GetScale();
   const float radius = 1.5f * scale.GetY();
   const float height = 6.f * scale.GetZ();
-  SetBoundingBox(CAABox(-radius, -radius, 0.f, radius, radius, height));
-  mCollidableBox = CCollidableAABox(GetBoundingBox(), GetMaterialList());
+  // The primitive keeps the local box (0x9d0 = the box fn_15_2CFC built); GetBoundingBox() is the
+  // world-space box, and an offset primitive never meets the floor.
+  const CAABox localBox(-radius, -radius, 0.f, radius, radius, height);
+  SetBoundingBox(localBox);
+  mCollidableBox = CCollidableAABox(localBox, GetMaterialList());
   mPathFindSearch.SetCharacterRadius(radius);
   mPathFindSearch.SetCharacterHeight(height);
 

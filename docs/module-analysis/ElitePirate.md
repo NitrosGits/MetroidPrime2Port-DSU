@@ -287,9 +287,11 @@ Open:
 1. Entered at runtime (area 4 L3, console `send u<id> Activate`, `tp`, `hurt`, polled with `obj`):
    PowerUp, PowerDown, FollowAttackPattern, Turn, Alert, ShieldUp, Shielding, MeleeAttack,
    Shockwave, SpreadShot, ProjectileAttack, Dead (600 hp, power-beam `hurt` to <=0), and
-   AngryAttackBegin/End. Not entered (no `// @` marker): Taunt, Patrol, TargetPatrol, Pursue,
-   Wait, Stunned, InvulnAlert. Open bug: an active Ingsmasher slid along -z at ~600 u/s
-   (z -150 -> -13756 in ~35 s) [being traced].
+   AngryAttackBegin/End, Pursue. Not entered (no `// @` marker): Taunt, Patrol, TargetPatrol,
+   Wait, Stunned, InvulnAlert. Fixed 2026-10-19: active Ingsmashers fell through the floor
+   (free fall at the 24.525 gravity) because the ctor built `mCollidableBox` from
+   `GetBoundingBox()`, the world-space box; fn_15_2CFC stores the local box. With the fix both
+   stand at z -152 for 60 s and u04ff walks, pursues and attacks.
 2. `[?]` members: 0x7c0, 0x810/0x81c, 0xa26, 0xa38/0xa40/0xa44, 0xc14/0xc28/0xc3c/0xc48/0xc4c,
    0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
 3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
