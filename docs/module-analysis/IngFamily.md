@@ -223,6 +223,44 @@ Construction order:
   Which entries are states vs code functions is **[?]** (the 15/5 split mixes Set*Dest names into
   the first table).
 
+### B.2 MinorIng behaviour port (`src/MetroidPrime/Enemies/PortCMinorIng.cpp`, 2026-10-19)
+
+- **State/code split [proven by the FSM2 resource]**: `data_47C` (15) are *states*, `data_5A8` (5) are
+  *code functions*: SelectTarget 8C1C, FindCoverPoint 4E84, SetPointCoverDest 4AC4, SetLuredDest 21A8,
+  SetLuredPointDest 22B0. SetCoverDest/SetWallPointCoverDest are activate-only states.
+- **22B0 [proven]**: `rodata_450` holds the string `"SetLuredPointDest"` (the name pointer is an
+  offset into .rodata, not a non-string).
+- **FSM2, not AFSM [proven at runtime]**: MinorIng's patterned `stateMachine2` is a `CGenericFSM2`,
+  so `CGenericFSM2State::SetCodeFunctions` installs and *runs* the code functions (the AFSM
+  `TStateMachineState` no-op does not apply). `MP2_DEBUG_MINORING=1` dumps the graph once
+  (`[minoring] fsm ...`) and prints each state change. Main loop: Start -> SelectTarget ->
+  FoundMovementPos -> PathFind; PathFind: Delay(0.2) -> ShouldFire -> IntoCorporealForm ->
+  AnimOver -> ProjectileAttack; Idle: Delay(1) -> ShouldPathFind -> PathFind; SelectTarget ->
+  !FoundMovementPos -> Idle; PuddleHitByWeapon -> Stunned; StunOver -> CancelStun/StateOver ->
+  IntoPuddleForm.
+- **vtable `data_620` slots overridden by the module** (offset -> fn -> CPatterned-chain name,
+  `vtable-offsets.md`): 0x8 97E4 dtor; 0x10 8FCC PreThink; 0x14 8E5C Think; 0x18 9150
+  AcceptScriptMsg; 0x24 8E10 PreRender; 0x28 8DF0 AddToRenderer; 0x2C 8E30 Render; 0x3C 70
+  GetHealthInfo; 0x40 8DBC GetDamageVulnerability; 0x48 41AC GetTouchBounds; 0x4C 424C Touch; 0x54
+  6FA0 GetAimPosition; 0x70 6384 DoUserAnimEvent; 0x80 4050 GetPrimitiveTransform; 0x98 76CC Death;
+  0x9C 8D2C KnockBack; 0xA4 18 TakeDamage; 0xA8 68 CanBeShot; 0xAC 10 IsListening; 0xB0 38A8 Listen;
+  0xB4 59E8 GetOrigin; 0xC8 28; 0xD4 7058 MassiveDeath; 0xDC 5AB8 ProjectileInfo; 0xE0 0
+  GetSearchPath; 0xE4 8 GetPointSearchPath; 0xF0 9758 SetupStateMachine; 0xF4 30 GetRagDoll; 0x10C
+  38 GetAttackTarget; 0x110 48 IsOnGround; 0x114 54 GetGravityConstant; 0x124 60
+  GetDeathExplosionParticle.
+- **States -> retail function** (`// @` = behaviour checked): PathFind 8128 @, PointPathFind 7F98 @,
+  Stunned 85DC @, ProjectileAttack 777C @, Patrol 7740 @, Dead 6EB8 @, IntoPuddleForm 8460 @,
+  IntoCorporealForm 82A0 @, Idle 7960 @, WaitForFSMTransition 6A3C @; **[?]**: SetWallPointCoverDest
+  5264 and SetCoverDest 4C9C (no-ops), FollowAttackPattern 6A40 (patrol stand-in),
+  MoveAwayFromSafeZone 6BD4 (timer only), AlwaysPointPathFind 7D20 (calls PointPathFind).
+  All 34 triggers carry `// @`. Code functions: SelectTarget 8C1C @ (ProjectOntoMesh 8B38 checked:
+  +1 z, `GetHeightOfPointAboveMesh` padding `rodata_7C` = 0.0, drop by height-0.5); the four
+  cover/lure ones are **[?]** no-ops.
+- **Not modelled on the host [?]**: collision actor (319C), blob effect (48F0/458C), touch AABBs
+  (3E8C), the inglet spawn in MassiveDeath (7058), damage particles (25E4/29D4), PreThink's +0x68
+  flag. Visor checks read `mgr.GetPlayerState(0)` (retail `mgr+0x150c`); `mgr.GetPlayerState()` is
+  null on the host, and `CBouncyGrenade.cpp:166/188` has the same latent bug.
+
 ---
 
 ## C. Reuse of in-tree code, and gaps
