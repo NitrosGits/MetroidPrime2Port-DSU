@@ -3,6 +3,23 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-second session, continued): the two "problems" closed
+
+- **The shard's 54/55 gap is the ending, not a bug.** Areas 53, 56 and 58 of this save are
+  `game_end_part3/4/5`: entering 53 starts the ending and the game walks its own areas, so the sweep's
+  tokens never reach 54 or 55. `tools/sweep_report.py` now says "the ending took over at area N
+  (CREDITS)" and lists the un-walked slots as the ending's own, instead of calling the first one
+  "missing" (commit `ef51d7f24`, checked on both the shard log and the earlier hang log).
+- **The 162 unmatched objects are fixed** (`cb36d6d52`): the restore now activates each layer its saved
+  objects live in (through `CStateManager::PortWarpToLayer`, one per tick, waiting on the new
+  `PortLayerRequestPending`) before applying that area, because a layer switched on in the live room
+  before the save is not always in the reload's layer bits. Measured: `/tmp/opencode/layer_run2.log`
+  reports `0 unmatched` (was 162) and logs `area 0 layer 3 activated`, where before the whole layer was
+  missing. One caveat from the same run: `1 of 2 areas` - area 1 had not loaded by the frame limit, so
+  its objects were not applied that run.
+- Still open: the phone check of Android fullscreen and the F1 two-finger scroll needs the phone
+  unlocked.
+
 ## 2026-10-19 (twenty-second session): the shard-4 timeout, and a warped hand-over that waits
 
 - **Shard 4's `exit=124` is the ending, not a hang.** A fresh run of `SHARD=4 SHARDS=5` on `port`
