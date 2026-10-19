@@ -200,44 +200,54 @@ CSwampBossStage2::~CSwampBossStage2() {}
 // --------------------------------------------------------------------------------------------
 // Helpers
 
+// fn_79_3524
 const SLdrSwampBossStage2Phase& CSwampBossStage2::CurrentPhase() const {
-  switch (mPhase) {
-  case 0:
-    return mData.lightFlyer1;
-  case 1:
-    return mData.darkFlyer1;
-  case 2:
+  if (mPhase == 2) {
     return mData.lightFlyer2;
-  default:
+  }
+  if (mPhase < 2) {
+    return mPhase == 0 ? mData.lightFlyer1 : mData.darkFlyer1;
+  }
+  if (mPhase < 4) {
     return mData.darkFlyer2;
   }
+  // Retail falls back to the first light phase for any phase past the fourth.
+  return mData.lightFlyer1;
 }
 
+// fn_79_34CC: the attack slot for an index; 8 means "no attack".
 int CSwampBossStage2::AttackForIndex(int idx) const {
   const SLdrSwampBossStage2Phase& phase = CurrentPhase();
-  switch (idx) {
-  case 0:
-    return phase.firstAttack;
-  case 1:
-    return phase.secondAttack;
-  case 2:
+  if (idx == 2) {
     return phase.thirdAttack;
-  case 3:
-    return phase.fourthAttack;
-  default:
-    return phase.fifthAttack;
   }
+  if (idx > 1) {
+    if (idx == 4) {
+      return phase.fifthAttack;
+    }
+    if (idx > 3) {
+      return 8;
+    }
+    return phase.fourthAttack;
+  }
+  if (idx == 0) {
+    return phase.firstAttack;
+  }
+  if (idx < 0) {
+    return 8;
+  }
+  return phase.secondAttack;
 }
 
+// fn_79_3458: take the current slot's attack, wrap to the first slot on the "no attack" sentinel,
+// then advance the index. Lurk raises mAttackReady itself once the attack delay runs out.
 void CSwampBossStage2::NextAttack() {
-  // TODO(uncertain): retail walks the five attack slots, skipping negative entries.
-  int tries = 0;
-  do {
+  mAttackType = AttackForIndex(mAttackIndex);
+  if (mAttackType == 8) {
+    mAttackIndex = 0;
     mAttackType = AttackForIndex(mAttackIndex);
-    mAttackIndex = (mAttackIndex + 1) % 5;
-    ++tries;
-  } while (mAttackType < 0 && tries < 5);
-  mAttackReady = true;
+  }
+  ++mAttackIndex;
 }
 
 // fn_79_6754: retail resolves the actor through
@@ -725,7 +735,32 @@ void CSwampBossStage2::Start(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_9534
 void CSwampBossStage2::BecomeLightFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(CVector3f::Forward(), pas::kS_Two, -1));
+    }
+  } else if (msg == kStateMsg_Activate) {
+    // A new light flyer: wings back at full health, next phase in, at rest.
+    for (int i = 0; i < mGrowthHealth.size(); ++i) {
+      mGrowthHealth[i] = mData.wingGrowthHealth;
+    }
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    ++mPhase;
+    mAttackIndex = 0;
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    mFlyersLeft = 0x14;
+    mLightFlyer = true;
+    if (mPhase == 4) {
+      SendScriptMsgs(kSS_Dead, mgr, kInvalidUniqueId, kSM_None);
+    } else {
+      SendScriptMsgs(kSS_InternalState13, mgr, kInvalidUniqueId, kSM_None);
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mHeadHealth = CurrentPhase().health;
+    mLightFlyer = false;
+  }
 }
 
 // fn_79_91A4
@@ -735,7 +770,22 @@ void CSwampBossStage2::BecomeDarkFlyer(CStateManager& mgr, EStateMsg msg, float 
 
 // fn_79_8FAC
 void CSwampBossStage2::DeathSequence(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Fall)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockDownCmd(CVector3f::Forward(), pas::kS_One));
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    if (CPlayer* player = mgr.GetPlayer(0)) {
+      player->ClearRadarRadiusOverride();
+    }
+    // Clears the boss bar (invalid id, no energy) and tells the script the boss is dead.
+    mgr.SetBossParams(kInvalidUniqueId, 0.f, 0);
+    SendScriptMsgs(kSS_Dead, mgr, kInvalidUniqueId, kSM_None);
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_9A3C
