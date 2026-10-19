@@ -55,6 +55,8 @@ public:
 
   // CPatterned
   void SetupStateMachine(CStateManager& mgr) override;
+  // fn_79_A4AC
+  CProjectileInfo* ProjectileInfo() override { return &mSpitProjectile; }
   CVector3f GetIngSnatchingNormal(float t) const override;
   CVector3f GetIngSnatchingPoint(float t) const override;
 

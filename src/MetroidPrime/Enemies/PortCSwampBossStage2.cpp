@@ -142,6 +142,9 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mSpitNode(kInvalidUniqueId)
 , mBarrageCount(1)
 , mNodeSpacing(20.f)
+, mSplashGen(gpSimplePool->GetObj(SObjectTag('PART', data.splash)))
+, mWingDamageGen(gpSimplePool->GetObj(SObjectTag('PART', data.wingDamageEffect)))
+, mBlowGen(gpSimplePool->GetObj(SObjectTag('PART', data.blowEffect)))
 , mLastHeadSplash(CVector3f::Zero())
 , mLastTailSplash(CVector3f::Zero())
 , mWaterZ(0.f)
@@ -185,15 +188,6 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
   if (data.scanInfoDark != kInvalidAssetId) {
     mScanDark = TLockedToken< CScannableObjectInfo >(
         gpSimplePool->GetObj(SObjectTag('SCAN', data.scanInfoDark)));
-  }
-  if (data.splash != kInvalidAssetId) {
-    mSplashGen = gpSimplePool->GetObj(SObjectTag('PART', data.splash));
-  }
-  if (data.wingDamageEffect != kInvalidAssetId) {
-    mWingDamageGen = gpSimplePool->GetObj(SObjectTag('PART', data.wingDamageEffect));
-  }
-  if (data.blowEffect != kInvalidAssetId) {
-    mBlowGen = gpSimplePool->GetObj(SObjectTag('PART', data.blowEffect));
   }
   if (data.spitVisorEffect != kInvalidAssetId) {
     mSpitVisorGen = TLockedToken< CGenDescription >(
