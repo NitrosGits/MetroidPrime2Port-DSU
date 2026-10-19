@@ -640,14 +640,36 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
     out += "no world yet\n";
     return;
   }
+  // Per area: phase/chain/active, the live objects it owns (what holds the 1024-entry id pool) and
+  // the areas its docks attach, so "who loaded this neighbour" can be read off one reply.
+  const int count = world->IGetAreaCount();
+  std::vector< int > owned(count > 0 ? count : 0, 0);
+  const CObjectList& list = mgr.GetObjectListById(kOL_All);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const int a = list[i]->GetCurrentAreaId().Value();
+    if (a >= 0 && a < count) {
+      ++owned[a];
+    }
+  }
   char line[160];
-  for (int i = 0; i < world->IGetAreaCount(); ++i) {
+  for (int i = 0; i < count; ++i) {
     const CGameArea* area = world->Area(TAreaId(i));
     const IGameArea* any = world->IGetAreaAlways(TAreaId(i));
-    std::snprintf(line, sizeof(line), "%2d  %08x  %s\n", i,
+    std::snprintf(line, sizeof(line), "%2d  %08x  %s", i,
                   any != nullptr ? any->IGetAreaAssetId() : 0u,
                   area != nullptr ? "loaded" : "");
     out += line;
+    if (area != nullptr) {
+      std::snprintf(line, sizeof(line), " phase %d chain %d%s%s  %d objs  attached", area->GetPhase(),
+                    area->GetCurChain(), area->IsActive() ? " active" : "",
+                    area->IsLoaded() ? " ready" : "", owned[i]);
+      out += line;
+      for (int k = 0; k < area->GetNumAttachedAreas(); ++k) {
+        std::snprintf(line, sizeof(line), " %d", area->GetAttachedAreaId(k).Value());
+        out += line;
+      }
+    }
+    out += '\n';
   }
 }
 
