@@ -4,6 +4,13 @@
 // from docs/module-analysis/SpacePirate.md and build/G2ME01/SpacePirate/m2c/fn_72_<off>.c.
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
+#include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
+#include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
+
 void PortSpacePirateStandIn(const char* what);
 
 void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -72,8 +79,91 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Lurk state (fn_72_AF70)");
 }
 
+// Retail fn_72_DFD4: find the squad this pirate belongs to (the field starts invalid) and take a
+// role in it - melee or projectile, the same role SquadReset later gives up.
+void CSpacePirate::SquadJoin(CStateManager& mgr) {
+  if (xba0_teamAiMgrId == kInvalidUniqueId) {
+    xba0_teamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
+  }
+  if (xba0_teamAiMgrId == kInvalidUniqueId) {
+    return;
+  }
+  CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
+  if (team != nullptr) {
+    team->JoinTeam(*this,
+                   x8f4_27_melee ? CTeamAiRole::kTAR_Melee : CTeamAiRole::kTAR_Projectile,
+                   CTeamAiRole::kTAR_Unknown, CTeamAiRole::kTAR_Invalid);
+  }
+}
+
+// @ fn_72_B59C
 void CSpacePirate::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Taunt state (fn_72_B59C)");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mEnableAim = true;
+    BodyController()->AbortScriptedAnimations();
+    SquadJoin(mgr);
+    if (mAttackTarget == kInvalidUniqueId) {
+      mAttackTarget = ChooseTeamTarget(mgr);
+      UpdateTeamTarget(mgr);
+    }
+    mBoneTracking.SetActive(true);
+    mBoneTracking.SetTarget(mAttackTarget);
+    if (!BodyController()->HasBodyState(pas::kAS_Taunt)) {
+      // No taunt animation: just the alert sound.
+      CSfxManager::AddEmitter(mData.mAlertSfx, GetTranslation(), GetCurrentAreaId().Value(), true,
+                              false, CSfxManager::kMedPriority);
+      break;
+    }
+    if (!x8f5_27_shadowPirate) {
+      bool findOtherPirate = true;
+      // A melee pirate has a two-pirate taunt animation: when it exists, taunt the pair.
+      if (x8f4_27_melee) {
+        const CPASAnimParmData parms(pas::kAS_Taunt, CPASAnimParm::FromEnum(2));
+        const rstl::pair< float, int > anim =
+            BodyController()->GetPASDatabase().FindBestAnimation(parms, *mgr.Random(), -1);
+        if (anim.first > 0.f) {
+          findOtherPirate = false;
+          xa28_taunt = pas::kTT_Two;
+        }
+      }
+      if (findOtherPirate) {
+        // Taunt a squad mate within hearing range, or taunt on its own when there is none.
+        bool withOtherPirate = false;
+        const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
+        for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+          const CSpacePirate* pirate = TCastToConstPtr< CSpacePirate >(list[i]);
+          if (pirate == nullptr || pirate == this || pirate->mEnableAim ||
+              !pirate->GetAlive() || pirate->GetCurrentAreaId() != GetCurrentAreaId()) {
+            continue;
+          }
+          if ((pirate->GetTranslation() - GetTranslation()).MagSquared() <
+              mData.mHearingRadius * mData.mHearingRadius) {
+            withOtherPirate = true;
+          }
+        }
+        xa28_taunt = withOtherPirate ? pas::kTT_Zero : pas::kTT_One;
+      }
+    } else {
+      xa28_taunt = x8f5_28_alertBeforeCloak ? pas::kTT_One : pas::kTT_Zero;
+    }
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  }
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCTauntCmd(static_cast< pas::ETauntType >(xa28_taunt)));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    // Retail calls the player out after a paired taunt (the noise is what Listen hears).
+    if (xa28_taunt == pas::kTT_Zero) {
+      mgr.InformListeners(GetTranslation(), kLNT_PlayerFire);
+    }
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 void CSpacePirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {

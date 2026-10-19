@@ -1387,6 +1387,7 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
   data.mImpactSfx = static_cast< ushort >(sldrThis.sound_Impact);
   data.mIntraBurstTime = sldrThis.intraBurstShotTime;
   data.mIntraBurstVariation = sldrThis.intraBurstShotVariation;
+  data.mAlertSfx = static_cast< ushort >(sldrThis.sound_Alert);
   data.mGunTrackDelay = sldrThis.gunTrackDelay;
   data.mFirstBurstCount = static_cast< uint >(sldrThis.unknown_0x1b454a27);
   data.mCloakOpacity = sldrThis.cloakOpacity;

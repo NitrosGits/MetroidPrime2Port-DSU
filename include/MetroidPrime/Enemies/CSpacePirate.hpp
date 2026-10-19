@@ -37,6 +37,7 @@ struct CSpacePirateData {
   ushort mImpactSfx;           // +0x88
   float mIntraBurstTime;       // +0x8c
   float mIntraBurstVariation;  // +0x90
+  ushort mAlertSfx;            // +0x9c
   float mGunTrackDelay;        // +0xa0
   uint mFirstBurstCount;       // +0xa4
   float mCloakOpacity;         // +0xa8
@@ -204,6 +205,7 @@ private:
 #ifdef TARGET_PC
   void EnsureBodyActive(CStateManager& mgr);
   void SquadRemove(CStateManager& mgr);                  // DF2C
+  void SquadJoin(CStateManager& mgr);                    // DFD4
   void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
   void SetVelocityForJump();                             // E168
   // Think path (fn_72_1980); the comment on each is its retail function.

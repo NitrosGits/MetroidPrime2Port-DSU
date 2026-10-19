@@ -225,11 +225,12 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 | 0xb34 | `CIkChain` (`fn_72_10568` is its default ctor) |
 | Body controller | retail activates it only in Think; the port also does in PreThink |
 | Anim events handled | 19 BecomeRagDoll, 22 BreakLockOn (23/24 fall to CPatterned) |
-| Non-lethal hit | `damage u04d0 15 6` -> `208 state Patrol -> Taunt` (Attacked, 0xb24 < 0.5 s) |
+| Aggro recipe | a console `damage` does **not** reset 0xb24 (`Attacked`): `CPatterned` sets `mHitByPlayerProjectile` only from a `CGameProjectile` sender (`kSM_Damage`/`kSM_ResistedDamage`, `CPatterned.cpp:300`/`310`) or a projectile `Touch`. Firing the power beam at a pirate (`tp`/`face` then `press a`) does: `208 state Patrol -> Taunt` |
+| Taunt `B59C` | traced: msg 0 `hasTaunt 1`, `xa28` -1 -> 1 (`kTT_One`, right for this area: `mHearingRadius` 0 means no mate in range), `mEnableAim` 0 -> 1; exactly one `CBCTauntCmd(kTT_One)` delivered and body 5 -> **16 = `kAS_Taunt`**; msg 2 after the anim, `kTT_One` so no `InformListeners`, then `Taunt -> Lurk` and the Lurk/TargetPlayer/Run/PathFind cycle starts |
 | Data floats | the MREA's own values, not a loader fault: every property is present with a 4-byte payload, so the SLdr defaults never apply; `hearingRadius` is 0 on all six actors, so `HearPlayer` cannot fire in this area (detail below) |
 | 0xb28 | time since a player shot was near (ShotAt `7BA0`); header name `xb28_lowHealthFrenzyTimer` is wrong |
 | Ported, unmarked | HearPlayer BBC0 (needs `mData.mHearingRadius > 0`, which is 0 in this area), SpotPlayer 938C, LineOfSight 9378 (0x8f7 bit 0x08), ShotAt 7BA0: no state these pirates reach (Patrol/Taunt) lists the last three, so nothing has exercised them |
-| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C |
+| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) |
 
 **CSpacePirateData floats are the MREA's, not a loader fault** (2026-10-19; loader instrumented behind
 `MP2_DEBUG_SPACEPIRATE=1`, then reverted). Every one of the six actors' property blocks carries
