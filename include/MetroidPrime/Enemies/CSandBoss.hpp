@@ -222,6 +222,8 @@ private:
   void RenderArmor(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& bodyFlags,
                    const CModelFlags& headFlags) const;                    // fn_55_8A8C
   int CountAttachedSiblings(const CStateManager& mgr) const;               // fn_55_595C
+  int CollectAttachedSiblings(CStateManager& mgr,
+                              rstl::vector< TUniqueId >& ids) const;    // fn_55_58B4
   bool NoSiblingHasSphereLocked(const CStateManager& mgr) const;           // fn_55_59E4
   bool IsAttachedLeader(const CStateManager& mgr) const;                   // fn_55_5A84
   bool ProbeDarkBeam(CStateManager& mgr);                                  // fn_55_8CB4

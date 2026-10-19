@@ -142,6 +142,19 @@ ids, builds the armour (`fn_55_6A68`) and turns off the shadow.
 - `fn_55_26C0` counts entries whose object exists, whose byte `0x6A6` has bit5 set and whose int
   `0x5E8` is not 3: the plasma projectile's bitfield byte and its expansion state (`!= kES_Release`).
   `fn_55_2CA4` calls vtable +0x90 (`ResetBeam(mgr, false)`) on every listed beam.
+- `fn_55_1027C` (the beam's world raycast override): no world raycast at all. It clears `idOut` and
+  its own 0x3F6 last-resolved id, clips `start..end` against the 0x6A8 plane when the segment runs
+  into it (`denom = dot(dir, normal) < 0`, `t = -(dot(start, normal) - constant) / denom`) and takes
+  the result only when `t` is inside the magnitude; that result's material is `CMaterialList` bit 59
+  (`kMT_Solid`, the `1 << lbl_55_data_73C` word). Then `CGameProjectile::CanCollideWith(player, mgr)`
+  (player = `mgr+0x14FC`): a nearer hit calls the player's vtable +0x4C with (beam, mgr), replaces the
+  result, sets `idOut` and 0x3F6. The near list and static-geometry test are unused.
+- Volley geometry (3ACC/3F44, and 3434 sweeping the ends): each participating sibling contributes a
+  point; the beams' start is the centroid (`/3`, `/2`), each end is `bossPos + radius * dir` with
+  `radius` = `tripleCharge.innerRadius` (0x8C4) / `doubleCharge.innerRadius` (0x87C) and `dir` the
+  normalized axis between the worms (triple: the three pairwise edges, double: one axis and its
+  negation). Sounds: `tripleCharge.sound_ChargeBeam` (0x8DC) / `doubleCharge.sound_ChargeBeam`
+  (0x894). 0x8C8 = `tripleCharge.outerRadius` (fn_55_3434 oscillates between the two radii).
 - `fn_55_2D40`: `TLdrToBeamInfo(chargeBeamInfo, 0x91 | flag ? 0x100 : 0)`, `AllocateUniqueId`,
   `rs_new SandBossChargeBeam(mChargeBeamInfo.Token() (0xE28), beamInfo, uid, area, owner, plane)`;
   the plane is normal up with constant `up . translation`; then `Fire(LookAt(start, end, up), mgr,
@@ -208,8 +221,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 3324 | CSandBoss::ChargeHelper3324 | [stand-in] log-once |
 | 3434 | CSandBoss::ChargeHelper3434 | [stand-in] log-once |
 | 37F4 | CSandBoss::ChargeHelper37F4 | [stand-in] log-once |
-| 3ACC | CSandBoss::StartTripleChargeBeam | [stand-in] log-once |
-| 3F44 | CSandBoss::StartDoubleChargeBeam | [stand-in] log-once |
+| 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
+| 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck | [stand-in] log-once |
 | 44CC | CSandBoss::FireDarkBeam | [stand-in] log-once |
 | 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
@@ -217,6 +230,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 528C | CSandBoss::HandleGroundImpact | [stand-in] log-once |
 | 560C | CSandBoss::CrackSphere | [stand-in] log-once |
 | 595C | CSandBoss::CountAttachedSiblings | [proven] host body |
+| 58B4 | CSandBoss::CollectAttachedSiblings (attached ids) | [ported] host body, not exercised yet |
 | 59E4 | CSandBoss::NoSiblingHasSphereLocked | [proven] host body |
 | 5A84 | CSandBoss::IsAttachedLeader | [proven] host body |
 | 5B38 | CSandBoss::IsBallInRange | [stand-in] log-once |
@@ -338,7 +352,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | D8BC | CSandBoss::AcceptScriptMsg | [proven] host body |
 | DB60 | CSandBoss::~CSandBoss | [proven] host body |
 | E170 | CSandBoss::CSandBoss | [proven] host body |
-| 1027C | SandBossChargeBeam::RayCollisionCheckWithWorld | [stand-in] log-once |
+| 1027C | SandBossChargeBeam::RayCollisionCheckWithWorld (plane + player clip) | [ported] host body, not exercised yet |
 | 107B0 | SandBossChargeBeam::SandBossChargeBeam | [ported] host body, not exercised yet |
 | 108E4 / 10C18 | SandBossChargeBeam::~SandBossChargeBeam | [stand-in] empty, base dtor |
 | 10CB4 | CSandBoss::SortStampedePoints | [proven] host body |
@@ -354,11 +368,19 @@ Notes:
 - `fn_55_D384` (DoUserAnimEvent) and `fn_55_D620` (Think) are proven but dispatch to stand-ins
   (screen shake, ground impact, `UpdateAttacks`, ...), so their effects are incomplete until slice B/C.
 - Set*Armor (9600..986C) and ResetAttackTimes (8E60) are kept as stand-ins on purpose.
+- Slice E (charge-beam volleys, 3ACC 3F44 58B4 1027C): `58B4` is the attached-sibling id list the
+  volleys need (both call `2CA4` first, then require exactly 3 / 2 attached worms, then fire from the
+  centroid of their locator translations to `bossPos + innerRadius * dir`, `dir` from the pairwise
+  differences, and call `311C` with the centroid). Two [inferred] points: retail reads each sibling's
+  direction point from three floats at sibling+0x28/0x38/0x48 instead of `GetLctrTransform` (the host
+  uses the same locator translation as the centroid), and the player hit calls the player's vtable
+  slot +0x4C, taken to be `CActor::Touch`. `31E8`/`3324` stay stand-ins: `A360`/`A6CC` are their only
+  callers and are not ported.
 - Slice D (charge-beam list, 26C0 2750 2CA4 2D40 311C 107B0): `26C0` counts beams with
   `IsFiring()` instead of reading the private expansion state (retail also requires it not to be
   `kES_Release`); the shrink phase omits retail's per-beam `CVector3f` at beam+0x674 (host member
-  not identified); `2D40` takes the retail-shaped arguments, so its callers (`3ACC`, `3F44`, still
-  stand-ins) will pass (start, end, sound_ChargeBeam, charged).
+  not identified); `2D40` takes the retail-shaped arguments, so its callers `3ACC`/`3F44` pass
+  (start, end, sound_ChargeBeam, charged) directly.
 
 ## 5. Runtime
 

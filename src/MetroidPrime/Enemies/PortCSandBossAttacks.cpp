@@ -37,13 +37,42 @@ SandBossChargeBeam::SandBossChargeBeam(const TToken< CWeaponDescription >& descr
 
 SandBossChargeBeam::~SandBossChargeBeam() {} // fn_55_108E4 / fn_55_10C18
 
+// fn_55_1027C (ported, not exercised yet)
+// The beam does not raycast the world: it clips its segment against the plane stored at 0x6A8 and
+// then against the player (CGameProjectile::CanCollideWith), keeping whichever hit is nearer. A
+// player hit touches the player and records the actor id in idOut and in the projectile's
+// last-resolved field (retail 0x3F6). The near list and the static-geometry test are unused.
 CRayCastResult SandBossChargeBeam::RayCollisionCheckWithWorld(
     TUniqueId& idOut, const CVector3f& start, const CVector3f& end, float magnitude,
-    rstl::reserved_vector< TUniqueId, 1024 >& nearList, CStateManager& mgr,
-    EStaticGeometryTest staticTest) { // fn_55_1027C
-  PortSandBossStandIn("SandBossChargeBeam::RayCollisionCheckWithWorld (fn_55_1027C)");
-  return CPlasmaProjectile::RayCollisionCheckWithWorld(idOut, start, end, magnitude, nearList, mgr,
-                                                       staticTest);
+    rstl::reserved_vector< TUniqueId, 1024 >&, CStateManager& mgr, EStaticGeometryTest) {
+  idOut = kInvalidUniqueId;
+  SetLastResolvedObject(kInvalidUniqueId);
+  CRayCastResult result;
+  const CVector3f delta = end - start;
+  if (!delta.IsMagnitudeSafe()) {
+    return result;
+  }
+  const CVector3f direction = delta.AsNormalized();
+  const float denominator = CVector3f::Dot(direction, mPlane.GetNormal());
+  if (denominator < 0.f) { // the segment runs into the plane
+    const float time =
+        -(CVector3f::Dot(start, mPlane.GetNormal()) - mPlane.GetConstant()) / denominator;
+    if (time < magnitude) {
+      result = CRayCastResult(time, start + time * direction, mPlane, CMaterialList(kMT_Solid));
+      magnitude = time;
+    }
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player != nullptr) {
+    const CProjectileTouchResult touch = CanCollideWith(*player, mgr);
+    if (touch.HasRayCastResult() && touch.GetRayCastResult().GetTime() < magnitude) {
+      player->Touch(*this, mgr); // vtable +0x4C [inferred: CActor::Touch]
+      result = touch.GetRayCastResult();
+      idOut = touch.GetActorId();
+      SetLastResolvedObject(idOut);
+    }
+  }
+  return result;
 }
 
 // @ fn_55_1AEC
@@ -266,12 +295,90 @@ void CSandBoss::ChargeHelper37F4(CStateManager&) { // fn_55_37F4
   PortSandBossStandIn("CSandBoss::ChargeHelper37F4 (fn_55_37F4)");
 }
 
-void CSandBoss::StartTripleChargeBeam(CStateManager&, const rstl::string&) { // fn_55_3ACC
-  PortSandBossStandIn("CSandBoss::StartTripleChargeBeam (fn_55_3ACC)");
+// fn_55_58B4 (ported, not exercised yet)
+// The siblings currently attached to the sphere, in list order; the charge volleys need exactly
+// three (triple) or two (double) of them.
+int CSandBoss::CollectAttachedSiblings(CStateManager& mgr, rstl::vector< TUniqueId >& ids) const {
+  ids.clear();
+  for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling->mAttachedToSphere) { // 0x165D b7
+      ids.push_back(mSiblings[i]);
+    }
+  }
+  return ids.size();
 }
 
-void CSandBoss::StartDoubleChargeBeam(CStateManager&, const rstl::string&) { // fn_55_3F44
-  PortSandBossStandIn("CSandBoss::StartDoubleChargeBeam (fn_55_3F44)");
+// fn_55_3ACC (ported, not exercised yet)
+// Triple charge volley: every listed charge beam is released first; then, only with all three worms
+// attached to the sphere, three beams start at the centroid of the worms' mouth locators and end
+// innerRadius from this worm along the three edges of that triangle (the beam list's start points,
+// so fn_55_3434 can sweep the ends later), with the triple charge's beam sound.
+void CSandBoss::StartTripleChargeBeam(CStateManager& mgr, const rstl::string& locator) {
+  ResetChargeBeams(mgr); // fn_55_2CA4
+  rstl::vector< TUniqueId > ids;
+  if (CollectAttachedSiblings(mgr, ids) != 3) {
+    return;
+  }
+  CVector3f points[3];
+  for (int i = 0; i < 3; ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
+    if (sibling == nullptr) {
+      return;
+    }
+    // [inferred] retail reads three floats off each sibling (0x28/0x38/0x48) instead of calling
+    // GetLctrTransform; the locator's translation is the same point up to the body offset.
+    points[i] = sibling->GetLctrTransform(locator).GetTranslation();
+  }
+  const CVector3f centre = (points[0] + points[1] + points[2]) * (1.f / 3.f); // 0.33333334
+  const CVector3f bossPos = GetTranslation();
+  const float radius = mData.unknown_0x7619e561.tripleCharge.innerRadius; // 0x8C4
+  const ushort sfx =
+      static_cast< ushort >(mData.unknown_0x7619e561.tripleCharge.sound_ChargeBeam); // 0x8DC
+  for (int i = 0; i < 3; ++i) {
+    const CVector3f edge = points[i] - points[(i + 1) % 3];
+    if (!edge.IsMagnitudeSafe()) {
+      continue;
+    }
+    CreateChargeBeam(mgr, centre, bossPos + radius * edge.AsNormalized(), sfx, false); // fn_55_2D40
+  }
+  if (!mChargeBeams.empty()) { // 0xE94
+    StartChargeBeamGrow(mgr, centre); // fn_55_311C
+  }
+}
+
+// fn_55_3F44 (ported, not exercised yet)
+// Double charge volley: same shape with two worms -- two opposite beams from the midpoint of the two
+// mouths, each pointing innerRadius away from this worm along the line between them, with the double
+// charge's beam sound.
+void CSandBoss::StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& locator) {
+  ResetChargeBeams(mgr); // fn_55_2CA4
+  rstl::vector< TUniqueId > ids;
+  if (CollectAttachedSiblings(mgr, ids) != 2) {
+    return;
+  }
+  CVector3f points[2];
+  for (int i = 0; i < 2; ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
+    if (sibling == nullptr) {
+      return;
+    }
+    points[i] = sibling->GetLctrTransform(locator).GetTranslation(); // [inferred] as fn_55_3ACC
+  }
+  const CVector3f centre = (points[0] + points[1]) * 0.5f;
+  const CVector3f bossPos = GetTranslation();
+  const float radius = mData.unknown_0x7619e561.doubleCharge.innerRadius; // 0x87C
+  const ushort sfx =
+      static_cast< ushort >(mData.unknown_0x7619e561.doubleCharge.sound_ChargeBeam); // 0x894
+  const CVector3f axis = points[0] - points[1];
+  if (axis.IsMagnitudeSafe()) {
+    const CVector3f dir = axis.AsNormalized();
+    CreateChargeBeam(mgr, centre, bossPos + radius * dir, sfx, false); // fn_55_2D40
+    CreateChargeBeam(mgr, centre, bossPos - radius * dir, sfx, false); // fn_55_2D40
+  }
+  if (!mChargeBeams.empty()) { // 0xE94
+    StartChargeBeamGrow(mgr, centre); // fn_55_311C
+  }
 }
 
 bool CSandBoss::ShouldDarkBeamAttackCheck(CStateManager&) const { // fn_55_42A8
