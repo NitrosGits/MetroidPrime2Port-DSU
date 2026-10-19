@@ -3,6 +3,10 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrRelay.hpp"
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 CScriptRelay::CScriptRelay(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const bool oneShot)
@@ -10,6 +14,12 @@ CScriptRelay::CScriptRelay(TUniqueId uid, const rstl::string& name, const CEntit
 
 void CScriptRelay::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CEntity::AcceptScriptMsg(mgr, msg);
+#ifdef TARGET_PC
+  if (std::getenv("MP2_DEBUG_BALL") != nullptr) {
+    std::fprintf(stderr, "[ball] relay %04x eid %04x got %08x active %d\n", GetUniqueId().Value(),
+                 GetEditorId().Value(), unsigned(msg.GetMessage()), int(GetActive()));
+  }
+#endif
 
   if (GetActive()) {
     switch (msg.GetMessage()) {

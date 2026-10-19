@@ -136,10 +136,24 @@ void CScriptCannonBall::TrackedShot::Think(float dt, CStateManager& mgr, int ind
     if (uVar3 < uVar4) {
       uVar3 = uVar4;
     }
+#ifdef TARGET_PC
+    // Port: the decompiled ternary was inverted. The same "is the player in the ball" idiom
+    // elsewhere in the tree reads
+    //   (spawned == kMS_Unmorphed ? GetMorphballTransitionState() : kMS_Unmorphed) == kMS_Morphed
+    // and this one tested the spawn state for kMS_Morphed and returned kMS_Unmorphed otherwise,
+    // so a player who did not spawn in the ball - everyone who rolls into a cannon - read as
+    // "not morphed" and the flag was dropped on the first tick after it was raised. The effect's
+    // damage pass then never ran and the ball bounced off the wall instead of breaking it.
+    const bool notMorphed = !((player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+                                   ? player->GetMorphballTransitionState()
+                                   : CPlayer::kMS_Unmorphed) == CPlayer::kMS_Morphed);
+    if (uVar3 > 5 || morph->GetBallState() == CMorphBall::kBS_Spider || notMorphed) {
+#else
     if (uVar3 > 5 || morph->GetBallState() == CMorphBall::kBS_Spider ||
         (player->GetSpawnedMorphballState() == CPlayer::kMS_Morphed
              ? player->GetMorphballTransitionState()
              : CPlayer::kMS_Unmorphed) != CPlayer::kMS_Morphed) {
+#endif
 
 #ifdef TARGET_PC
       if (PortBallDebug()) {

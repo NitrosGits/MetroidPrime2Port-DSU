@@ -2013,8 +2013,10 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
       &mPlayer);
 #ifdef TARGET_PC
   if (PortBallDebug() && hasCannonBall) {
-    std::fprintf(stderr, "[ball] pass: speed %.2f damage %.1f radius %.2f near %d ->", speed,
-                 damage.GetDamage(), damage.GetRadius(), int(nearList.size()));
+    std::fprintf(stderr,
+                 "[ball] pass: speed %.2f weapon %d damage %.1f radius %.2f near %d ->", speed,
+                 int(damage.GetWeaponMode().GetRawType()), damage.GetDamage(),
+                 damage.GetRadius(), int(nearList.size()));
     for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator dbg = nearList.begin();
          dbg != nearList.end(); ++dbg) {
       std::fprintf(stderr, " %04x", dbg->Value());

@@ -3623,6 +3623,12 @@ void CStateManager::ShowPausedHUDMemo(CAssetId strg, float time) {
 }
 
 void CStateManager::SendScriptMsg(const CScriptMsg& msg) {
+#ifdef TARGET_PC
+  if (std::getenv("MP2_DEBUG_BALL") != nullptr && msg.GetMessage() == kSM_SetToZero) {
+    std::fprintf(stderr, "[ball] queue SetToZero -> %04x from %04x (depth %d)\n",
+                 msg.GetId().Value(), msg.GetSenderId().Value(), int(mScriptMsgs.GetCount()));
+  }
+#endif
   mScriptMsgs.Append(msg);
   int v = mScriptMsgs.GetCount();
   if (0x80 < v && !mDispatchingScriptMessages) {

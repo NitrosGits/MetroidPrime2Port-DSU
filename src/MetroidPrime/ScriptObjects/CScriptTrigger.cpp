@@ -1,4 +1,8 @@
 #include "MetroidPrime/ScriptObjects/CScriptTrigger.hpp"
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
@@ -262,6 +266,12 @@ void CScriptTrigger::NotifyInhabitantExited(CActor& actor, CStateManager& mgr) {
 }
 
 void CScriptTrigger::NotifyInhabitantAdded(CActor& actor, CStateManager& mgr) {
+#ifdef TARGET_PC
+  if (std::getenv("MP2_DEBUG_BALL") != nullptr) {
+    std::fprintf(stderr, "[ball] trigger %04x eid %04x: inhabitant %04x added\n",
+                 GetUniqueId().Value(), GetEditorId().Value(), actor.GetUniqueId().Value());
+  }
+#endif
   InhabitantAdded(actor, mgr);
   if (ShouldSendScriptMsgs(actor, mgr)) {
     SendScriptMsgs(kSS_Entered, mgr, actor.GetUniqueId(), kSM_None);
