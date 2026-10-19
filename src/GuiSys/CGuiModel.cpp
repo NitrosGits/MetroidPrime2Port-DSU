@@ -9,6 +9,23 @@
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
+#ifdef TARGET_PC
+#include <set>
+#include <stdio.h>
+#include <stdlib.h>
+
+// Port: name every GUI model widget that draws, once per asset id. A button prompt is a model
+// widget (`model_abutton` and friends), not one of the textures Prime 1's glyph table keys on, so
+// this is how Echoes' prompt art is identified: run with MP2_DEBUG_PROMPTS=1 while a memo is up and
+// read the ids it prints. Set<CAssetId::Value()> keeps it to one line per model.
+static void PortLogGuiModel(CAssetId id) {
+  static bool sEnabled = std::getenv("MP2_DEBUG_PROMPTS") != nullptr;
+  static std::set< unsigned int > sSeen;
+  if (sEnabled && sSeen.insert(id).second) {
+    std::fprintf(stderr, "[guimodel] %08x draws\n", id);
+  }
+}
+#endif
 
 // Guessed names: shared rendering state for a frame's model-widget batch.
 static int sDrawFlags = 7;
@@ -68,6 +85,9 @@ CGuiModel::~CGuiModel() {}
 void CGuiModel::Draw(const CGuiWidgetDrawParms& parms) const {
   CGraphics::SetModelMatrix(GetWorldTransform());
   if (GetIsVisible()) {
+#ifdef TARGET_PC
+    PortLogGuiModel(mModelId);
+#endif
     if (!sDrawing) {
       CCubeMaterial::ResetCachedMaterials();
       CCubeMaterial::ResetTransparencyKColor();
