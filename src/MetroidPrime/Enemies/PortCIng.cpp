@@ -1,8 +1,9 @@
 // The REL's CIng (module 29, Ing.rel), ported for behaviour rather than bytes. The state machine is
 // fn_29_B208's: 49 triggers, 29 states and 12 code functions, all registered under the REL's own
-// names. Functions checked against the retail code carry `// @ fn_29_<offset>`; the form changes,
-// the attacks, the mini-portal and exit-host states and three code functions are minimal bodies
-// marked [?]. The analysis is docs/module-analysis/IngFamily.md, section A (A.5 for this file).
+// names. Functions checked against the retail code carry `// @ fn_29_<offset>`; the body-projectile
+// and wall-projectile form changes, the attacks, the mini-portal and exit-host states and three code
+// functions are minimal bodies marked [?]. The analysis is docs/module-analysis/IngFamily.md,
+// section A (A.5 for this file).
 
 #include "MetroidPrime/Enemies/CIng.hpp"
 
@@ -12,6 +13,7 @@
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -118,12 +120,15 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 namespace {
 
 // The forms (mForm, retail 0x9d4). 0/1 are the host forms [?] (no body), 2 corporeal, 3 ing spot,
-// 4 body projectile, 5 evaporating; 6..9 are the wall/portal forms the attacks use [?].
+// 4 body projectile, 5 evaporating; 6/7 are the form changes' own in-between forms and 8/9 are the
+// wall/portal forms the attacks use [?].
 enum {
   kForm_Corporeal = 2,
   kForm_IngSpot = 3,
   kForm_BodyProjectile = 4,
   kForm_Evaporate = 5,
+  kForm_BecomingCorporeal = 6, // BecomeCorporeal's Activate, when it leaves the ing-spot form
+  kForm_BecomingIngSpot = 7,   // BecomeIngSpot's Activate, when it leaves the corporeal form
 };
 
 // mData.mFlags210 (SLdrIng.ingFlagsIng).
@@ -205,6 +210,14 @@ rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAssetId i
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
 }
 
+// The ctor's "head" locator (retail 0xd7b, the ctor's first GetLocatorSegId; fn_29_D540 reads
+// rodata 0x64e through the locator name table). It is the line-of-sight tracker's segment (0xd8a)
+// and BecomeCorporeal's Activate restores it.
+CSegId PortHeadSegId(const CModelData& model) {
+  const CAnimData* anim = model.GetAnimationData();
+  return anim != nullptr ? anim->GetLocatorSegId(rstl::string_l("head")) : CSegId();
+}
+
 } // namespace
 
 CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
@@ -236,11 +249,14 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mD76Id(kInvalidUniqueId)
 , mLureSafeZoneId(kInvalidUniqueId)
 , mDeathEffect(OptionalPart(data.mIngSpot.GetDeathEffect()))
-// [?] the eye locator's segment and both times are MinorIng's (fn_44_9D58); the Ing ctor's own
-// values were not read.
-, mLineOfSight(uid, CSegId(), 0.1f, 0.05f)
+// fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
+// 0.1f and 0.05f.
+, mEyeSegId(PortHeadSegId(modelData))
+, mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
 , mTargetPos(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
+, mPortalPlaneNormal(CVector3f::Zero())
+, mPortalPlaneConstant(0.f)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
 , mSafeZoneCount(0)
@@ -821,29 +837,127 @@ void CIng::ExitHost(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// [?] fn_29_9A74: the form is set on Activate and the desired form cleared; the transition
-// animation and the effects are not ported, so the state is over at once.
-void CIng::BecomeCorporeal(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
-    LogState("BecomeCorporeal");
-    mForm = kForm_Corporeal;
-    mDesiredForm = -1;
-    mFormTime = 0.f;
-    BodyController()->SetLocomotionType(pas::kLT_Combat);
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+// fn_29_1A80: turn to the lure safe zone (0xd78) when one is set, else to the target (0xd6c).
+// The offset is taken horizontally (z of the delta is zeroed) and only applied when its magnitude
+// is safe; the actor's own z is kept. Called by BecomeCorporeal's Activate.
+void CIng::FaceLureOrTarget(CStateManager& mgr) {
+  const CVector3f pos = GetTranslation();
+  // Retail reads the object's +0x54 without a type test; the port asks for an actor (the lure is a
+  // CScriptSafeZone, the target a CActor).
+  const CActor* other = TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mLureSafeZoneId));
+  if (other == nullptr) {
+    other = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
+  }
+  if (other == nullptr) {
+    return;
+  }
+  CVector3f delta = other->GetTranslation() - pos;
+  delta.SetZ(0.f);
+  if (delta.IsMagnitudeSafe()) {
+    SetTransform(CTransform4f::LookAt(pos, pos + delta, CVector3f::Up()));
   }
 }
 
-// [?] fn_29_9750: as BecomeCorporeal.
+// @ fn_29_9A74
+void CIng::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    LogState("BecomeCorporeal");
+    mProjectileFSMEntry = false; // 0xe5e bit 7
+    if (mForm == kForm_IngSpot) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+      // 0xdf0/0xdfc: the horizontal plane through the actor. The normal is (0,0,1) (retail
+      // normalises it) and the constant is dot(translation, normal) = translation.z.
+      mPortalPlaneNormal = CVector3f::Up();
+      mPortalPlaneConstant = CVector3f::Dot(GetTranslation(), mPortalPlaneNormal);
+      mPortalPlane = true; // 0xe5d bit 6
+      mForm = kForm_BecomingCorporeal;
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    }
+    // [?] SetActive(*(+0xc50), mgr, true): that CCollisionActorManager is built by fn_29_3190,
+    // which is not ported, so the port has no manager to set active.
+    mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp); // 0xca4 = 2
+    mLineOfSight.SetSegment(mEyeSegId);                            // 0xd8a = 0xd7b ("head")
+    FaceLureOrTarget(mgr);                                         // fn_29_1A80
+    mMoving = false;                                               // 0xe5d bit 1
+    Stop();
+    break;
+  case kStateMsg_Update:
+    // CTryCommand::ShouldRetry(this+0x6b4, *BodyController(), 0xc): 0xc is the body state
+    // kAS_Generate, i.e. the port's CAnimationState tracks the Generate animation.
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCGenerateCmd(pas::kGType_Zero, CVector3f::Zero()));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    Stop();
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    mPortalPlane = false;                                    // 0xe5d bit 6
+    mStartAsIngSpot = false;                                 // 0xe5d bit 5
+    mVerticalMovement = false;                               // CPatterned 0x34c bit 6
+    AddMaterial(kMT_GroundCollider, mgr);                    // 0x25
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    mForm = kForm_Corporeal;
+    mDesiredForm = -1;
+    mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_None); // 0xca4 = 0
+    mFormTime = 0.f;                                             // 0xe3c
+    if (AnimationData() != nullptr) {
+      // rodata_68E: "eyes"; the effect runs while the Ing is corporeal.
+      AnimationData()->SetEffectState(rstl::string_l("eyes"), true, mgr);
+    }
+    break;
+  default:
+    break;
+  }
+}
+
+// @ fn_29_9750
 void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("BecomeIngSpot");
+    if (mForm == kForm_Corporeal) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+      mPortalPlaneNormal = CVector3f::Up();                 // 0xdf0
+      mPortalPlaneConstant = CVector3f::Dot(GetTranslation(), mPortalPlaneNormal); // 0xdfc
+      mPortalPlane = true;                                  // 0xe5d bit 6
+      mForm = kForm_BecomingIngSpot;
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    }
+    mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_NearbySurface); // 0xca4 = 1
+    mBodyState5Time = 0.f;                                                // 0xe40
+    mSafeZoneIngSpot = false;                                             // 0xe5e bit 5
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
     mForm = kForm_IngSpot;
     mDesiredForm = -1;
-    mFormTime = 0.f;
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
-    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mLineOfSight.SetSegment(CSegId::Null()); // 0xd8a = 99
+    mVerticalMovement = true;                // CPatterned 0x34c bit 6
+    RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
+    // [?] SetActive(*(+0xc50), mgr, false): no CCollisionActorManager in the port (fn_29_3190).
+    mPortalPlane = false;   // 0xe5d bit 6
+    mStartAsIngSpot = true; // 0xe5d bit 5
+    if (AnimationData() != nullptr) {
+      AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr);
+    }
+    break;
+  default:
+    break;
   }
 }
 

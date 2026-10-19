@@ -361,6 +361,8 @@ private:
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
   void StopSfx();
+  // fn_29_1A80: turn horizontally to the lure safe zone when one is set, else to the target.
+  void FaceLureOrTarget(CStateManager& mgr);
 
   // Host layout (retail's CIng is 0xe60, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets
   // are the REL's, from the constructor fn_29_D540 and the tiny accessors fn_29_0 (this+0x9dc),
@@ -370,7 +372,7 @@ private:
   CPathFindPointSearch mPointPathFindSearch; // 0xac8 (0x188)
   CSurfaceAlignmentHelper mSurfaceAlignment; // 0xc58 (0x58)
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // 0xcb0 (0x10)
-  int mForm;                                 // 0x9d4 (2): 2 corporeal, 3 ing spot, 4 body proj, 5 evaporating
+  int mForm;                                 // 0x9d4 (2): 2 corporeal, 3 ing spot, 4 body proj, 5 evaporating, 6/7 the form changes' own forms
   int mDesiredForm;                          // 0x9d8 (-1)
   rstl::optional_object< CAABox > mTouchBox; // 0xcc0 (0xcd8 = engaged)
   TUniqueId mHostId;                         // 0xcdc
@@ -385,9 +387,12 @@ private:
   TUniqueId mLureSafeZoneId;                 // 0xd78
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect; // 0xd28
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
-  CLineOfSightTracker mLineOfSight;          // 0xd88
+  CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
+  CLineOfSightTracker mLineOfSight;          // 0xd88 (its segment is the byte at 0xd8a)
   CVector3f mTargetPos;                      // 0xdc8
   CVector3f mSurfaceMoveDir;                 // 0xde0
+  CVector3f mPortalPlaneNormal;              // 0xdf0: the portal plane's normal, Up() = (0,0,1)
+  float mPortalPlaneConstant;                // 0xdfc: dot(translation, normal) = translation.z
   CVector3f mModelScale;                     // host copy of the model data's scale
   int mMiniPortalCount;                      // 0xe00
   int mSafeZoneCount;                        // 0xe2c
@@ -422,8 +427,9 @@ private:
   const char* mLastLoggedState;              // host: MP2_DEBUG_ING
   float mStateTime;                          // host: time in the current state [?] retail's source
   CPFArea* mPathArea;                        // host: the area both searches were given on XALD
-  // Not held: the float at 0xc50, the other optional PART/GEN tokens at 0xce0..0xd58, the ten
-  // CSegId locators at 0xd7a..0xd83 (their names are not established) and the light at 0xd68.
+  // Not held: the CCollisionActorManager* at 0xc50 (fn_29_3190 builds it from seven joint spheres;
+  // not ported), the other optional PART/GEN tokens at 0xce0..0xd58, the nine CSegId locators at
+  // 0xd7a/0xd7c..0xd83 ("Collar_SDK", the shoulders/forearms/wrists/elbows) and the light at 0xd68.
 #else
   uchar x7c0_[0x6a0]; // CIngData, the path searches, the seg ids, the tokens and the flags
 #endif
