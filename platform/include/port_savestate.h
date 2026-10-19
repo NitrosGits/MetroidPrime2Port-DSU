@@ -16,7 +16,8 @@ class CStateManager;
 //
 // Room state (phase 2, MP1's "room state" section): the live script objects of the areas loaded
 // at save time - which of them still exist (collected pickups and killed enemies stay gone),
-// whether each is active, enemy health and pose, timers, counters and whether doors stand open.
+// whether each is active, enemy health and pose, timers, counters, and whether doors stand open
+// and are locked.
 // Once Samus is back it is applied to each saved area as that area finishes loading. Platforms
 // are not carried (MP2's waypoint tracker is not ported yet): they come back as a card load
 // leaves them.
@@ -54,6 +55,16 @@ std::string LastMessage();
 
 // Called on the game thread at the start of every CStateManager update (from PortConsole::Tick).
 void Tick(CStateManager& mgr);
+
+// Quick resume (MP1's resume.mpss): `<user>/savestates/resume.mp2ss`. ResumeSave captures the
+// running game on a clean quit (PortPumpEvents, when the window closes or MP2_FRAMES ends the run);
+// the next launch that skips the front end (MP2_SKIP_FRONTEND=1) loads it instead of the card's
+// save, once, if its world is on the disc, and deletes it when Samus is back. MP2_RESUME=0 turns
+// both sides off. An explicit boot warp (MP2_WORLD / MP2_TELEPORT) leaves the file for later.
+// `frameLimit` is the MP2_FRAMES exit of a test run, which writes one only with MP2_RESUME=1.
+void ResumeSave(bool frameLimit = false);
+// ~CStateManager: the quit path must not capture from a destroyed manager.
+void Forget(const CStateManager* mgr);
 
 // --- room state (platform/port_savestate_room.cpp), game thread only -------------------------
 

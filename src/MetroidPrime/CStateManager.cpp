@@ -133,6 +133,7 @@
 #include "port_hold_toggle.h"
 #include "port_livesplit.h"
 #include "port_overlay.h"
+#include "port_savestate.h"
 #include "port_warp.h"
 #include "MetroidPrime/PortScanTarget.hpp"
 #ifdef TARGET_PC
@@ -2210,6 +2211,7 @@ CStateManager::~CStateManager() {
   if (gpGameState != nullptr) {
     PortLiveSplit::GameSessionEnd(gpGameState->GetTotalPlayTime());
   }
+  PortSaveState::Forget(this);
 #endif
   mTearingDown = true;
   CMemory::OffsetFakeStatics(-(mObjectLists.size() * sizeof(CObjectList) +

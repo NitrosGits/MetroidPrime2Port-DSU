@@ -15,6 +15,7 @@
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_prompts.h"
+#include "port_savestate.h"
 #include "port_textures.h"
 #include "port_touch.h"
 #include "port_warp.h"
@@ -337,6 +338,7 @@ bool PortPumpEvents() {
   // rather than in the game because the loop asks this every iteration, whatever the game is doing.
   if (PortHarness::ExitRequested()) {
     std::fprintf(stderr, "[harness] the run is over (MP2_FRAMES); shutting down\n");
+    PortSaveState::ResumeSave(true);
     return true;
   }
   // A run that has stopped updating is reported here, every iteration, because this poll is the one
@@ -348,6 +350,9 @@ bool PortPumpEvents() {
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
        ++event) {
     if (event->type == AURORA_EXIT) {
+      // A clean quit: between updates, with the game still whole, so the quick-resume state is
+      // written here (MP1 does it at the same point of its loop).
+      PortSaveState::ResumeSave();
       return true;
     }
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_MOUSE_MOTION) {
