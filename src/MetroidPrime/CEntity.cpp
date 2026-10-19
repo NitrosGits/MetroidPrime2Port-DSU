@@ -1,6 +1,17 @@
 #include "MetroidPrime/CEntity.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+
+// MP2_DEBUG_BALL=1: a connection whose message is kSM_Increment is invisible from both ends when
+// its target editor id does not resolve - the relay sends it and the receiver never hears it.
+static bool PortConnDebug() {
+  static const bool enabled = std::getenv("MP2_DEBUG_BALL") != nullptr;
+  return enabled;
+}
+#endif
 
 rstl::vector< SConnection > CEntity::NullConnectionList;
 
@@ -60,6 +71,20 @@ void CEntity::SendScriptMsgs(EScriptObjectState state, CStateManager& mgr, TUniq
       CStateManager::TIdListResult search = mgr.GetIdListForScript(it->objId);
       CStateManager::TIdList::const_iterator current = search.first;
       CStateManager::TIdList::const_iterator end = search.second;
+#ifdef TARGET_PC
+      if (PortConnDebug() && (it->msg == kSM_Increment || it->msg == kSM_Action ||
+                              it->objId.Value() == 0x0034003f ||
+                              GetEditorId().Value() == 0x0034003f)) {
+        int matches = 0;
+        for (CStateManager::TIdList::const_iterator c = search.first; c != search.second; ++c) {
+          ++matches;
+        }
+        std::fprintf(stderr,
+                     "[ball] conn %04x (eid %04x) state %08x msg %08x -> eid %04x: %d match(es)\n",
+                     GetUniqueId().Value(), GetEditorId().Value(), unsigned(state),
+                     unsigned(it->msg), it->objId.Value(), matches);
+      }
+#endif
       while (current != end) {
         mgr.SendScriptMsg(CScriptMsg(GetUniqueId(), current->second, it->msg, id, state));
         ++current;

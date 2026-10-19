@@ -37,6 +37,17 @@ make_damageable_trigger_materials(CScriptDamageableTrigger::ECanOrbit canOrbit,
 CEntity* LoadDamageableTrigger(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDamageableTrigger sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDamageableTrigger.inc"
+#ifdef TARGET_PC
+  if (PortBallDebug()) {
+    std::fprintf(stderr,
+                 "[ball] DTRG loaded: %d properties, missile effect %d x%.2f, cannon effect %d "
+                 "x%.2f\n",
+                 propertyCount, int(sldrThis.vulnerability.missile.effect),
+                 static_cast< double >(sldrThis.vulnerability.missile.damageMultiplier),
+                 int(sldrThis.vulnerability.cannonBall.effect),
+                 static_cast< double >(sldrThis.vulnerability.cannonBall.damageMultiplier));
+  }
+#endif
 
   return rs_new CScriptDamageableTrigger(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,

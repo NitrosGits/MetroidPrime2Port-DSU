@@ -470,7 +470,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
-      "damage <id> <n> [kb]        hit an actor for n as a player power-beam shot (kb = knockback power)\n"
+      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile or\n"
+      "                            cannonball; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -1308,10 +1309,29 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
 void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
-  if (args.size() < 3 || !ParseFloat(args[2], amount) ||
-      (args.size() > 3 && !ParseFloat(args[3], knockback))) {
-    Fail("usage: damage <id> <amount> [knockback-power]");
+  if (args.size() < 3 || !ParseFloat(args[2], amount)) {
+    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball]");
     return;
+  }
+  // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
+  // only a missile or the cannon ball may break cannot be tested with the default power beam.
+  EWeaponType weapon = kWT_Power;
+  for (size_t i = 3; i < args.size(); ++i) {
+    float number = 0.f;
+    if (ParseFloat(args[i], number)) {
+      knockback = number;
+      continue;
+    }
+    if (args[i] == "missile") {
+      weapon = kWT_Missile;
+    } else if (args[i] == "cannonball") {
+      weapon = kWT_CannonBall;
+    } else if (args[i] == "power") {
+      weapon = kWT_Power;
+    } else {
+      Fail("damage: weapon is power, missile or cannonball");
+      return;
+    }
   }
   CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
   CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
@@ -1321,7 +1341,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   const float before = actor->GetHealthInfo()->GetHP();
-  const CDamageInfo info(CWeaponMode(kWT_Power), amount, 0.f, knockback);
+  const CDamageInfo info(CWeaponMode(weapon), amount, 0.f, knockback);
   const CVector3f direction = actor->GetTranslation() - player->GetTranslation();
   mgr.ApplyDamage(player->GetUniqueId(), actor->GetUniqueId(), player->GetUniqueId(), info,
                   CMaterialFilter::GetPassEverything(), direction);

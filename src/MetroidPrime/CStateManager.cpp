@@ -78,6 +78,9 @@
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDock.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptDamageableTrigger.hpp"
+#endif
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDynamicLight.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
@@ -2947,6 +2950,27 @@ void CStateManager::ApplyDamage(TUniqueId damagerId, TUniqueId damageeId, TUniqu
     const CDamageVulnerability* vulnerability =
         useWeaponDirection ? damagee->GetDamageVulnerability(position, direction, info)
                            : damagee->GetDamageVulnerability();
+#ifdef TARGET_PC
+    if (const char* dbg = std::getenv("MP2_DEBUG_BALL"); dbg != nullptr) {
+      if (TCastToConstPtr< CScriptDamageableTrigger >(damagee) != nullptr) {
+        std::fprintf(stderr,
+                     "[ball] applydamage to trigger %04x: weapon %d hits %d damage %.1f "
+                     "(power %d/%.2f missile %d/%.2f cannon %d/%.2f)\n",
+                     damageeId.Value(), int(info.GetWeaponMode().GetRawType()),
+                     int(vulnerability->WeaponHits(info.GetWeaponMode(), 0)),
+                     static_cast< double >(info.GetDamage(*vulnerability)),
+                     int(vulnerability->WeaponHits(CWeaponMode(kWT_Power), 0)),
+                     static_cast< double >(vulnerability->GetVulnerability(CWeaponMode(kWT_Power))
+                                               .mDamageMultiplier),
+                     int(vulnerability->WeaponHits(CWeaponMode(kWT_Missile), 0)),
+                     static_cast< double >(vulnerability->GetVulnerability(CWeaponMode(kWT_Missile))
+                                               .mDamageMultiplier),
+                     int(vulnerability->WeaponHits(CWeaponMode(kWT_CannonBall), 0)),
+                     static_cast< double >(vulnerability->GetVulnerability(CWeaponMode(kWT_CannonBall))
+                                               .mDamageMultiplier));
+      }
+    }
+#endif
     if (info.GetWeaponMode().GetRawType() == kWT_None ||
         vulnerability->WeaponHits(info.GetWeaponMode(), 0)) {
       const float localDamage = info.GetDamage(*vulnerability);
