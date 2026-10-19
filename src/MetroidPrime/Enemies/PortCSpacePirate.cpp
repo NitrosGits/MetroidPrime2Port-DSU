@@ -11,9 +11,20 @@
 #include "MetroidPrime/CActorLights.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "MetroidPrime/CActorModelParticles.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Enemies/CTeamAiRole.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "MetroidPrime/Weapons/CGameProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSpacePirate.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
@@ -238,7 +249,8 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   x904_steeringSpeed = 1.f;
   x908_targetDelta = CVector3f::Forward();
   x914_coverPointRearDir = CVector3f::Zero();
-  xa10_unkTimer = 0.f;
+  xa0c_unkTimer = 0.f;
+  xa10_steeringDelayTimer = 0.f;
   xa14_ = 0;
   // TODO(fn_72_F49C): 0xa18 = pInfo+0x58 (MP1's x750_initialHP is the patterned health); not
   // resolved against CPatternedInfo's layout.
@@ -264,9 +276,6 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xb24_timeSinceHitByPlayer = FLT_MAX;
   xb28_lowHealthFrenzyTimer = FLT_MAX;
   xb2c_ragdollDelayTimer = 0.f;
-  // TODO(fn_72_10568): 0xb34 is built by a helper taking (id, &id, rodata_B9C, -1, zero, 0, z, 3.0);
-  // unidentified (CIkChain-sized), so it stays zeroed.
-  memset(xb34_ikChain_, 0, sizeof(xb34_ikChain_));
   xb7c_cloakDelayTimer = 0.f;
   xb80_electricParticleTimer = 0.f;
   xb84_cloakStepTime = 0.f;
@@ -367,19 +376,468 @@ void CSpacePirate::PortDetachActor() {
   mAttachedActor = kInvalidUniqueId;
 }
 
+// @ fn_72_24C4
 void CSpacePirate::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CSpacePirate::PreThink (fn_72_24C4)");
   EnsureBodyActive(mgr);
+  // Retail skips the head tracking while the ragdoll is primed (xb30_ is never set yet).
+  if (xb30_ == nullptr) {
+    mBoneTracking.PreThink(*ModelData()->AnimationData());
+  }
   CPatterned::PreThink(dt, mgr);
 }
 
+namespace {
+// MP2_DEBUG_SPACEPIRATE=1: one line per state change of each pirate.
+void TraceState(CSpacePirate& self, const char* name) {
+  static const bool sOn = getenv("MP2_DEBUG_SPACEPIRATE") != nullptr;
+  if (!sOn) {
+    return;
+  }
+  static unsigned short sIds[256];
+  static const char* sLast[256];
+  static int sCount = 0;
+  const unsigned short id = self.GetUniqueId().Value();
+  int i = 0;
+  while (i < sCount && sIds[i] != id) {
+    ++i;
+  }
+  if (i == sCount) {
+    if (sCount == 256) {
+      return;
+    }
+    sIds[sCount] = id;
+    sLast[sCount++] = nullptr;
+  }
+  if (sLast[i] == name || (sLast[i] && name && strcmp(sLast[i], name) == 0)) {
+    return;
+  }
+  fprintf(stderr, "[spacepirate] %u state %s -> %s\n", (unsigned)id, sLast[i] ? sLast[i] : "(none)",
+          name ? name : "(none)");
+  sLast[i] = name;
+}
+} // namespace
+
+// @ fn_72_1980
 void CSpacePirate::Think(float dt, CStateManager& mgr) {
-  StandIn("CSpacePirate::Think (fn_72_1980)");
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
+  CBodyController* body = BodyController();
+  const bool inCineCam = mgr.GetCameraManager(0)->IsInCinematicCamera();
+  if (inCineCam && !x8f7_31_prevInCineCam) {
+    SetCinematicCollision(mgr);
+  } else if (!inCineCam && x8f7_31_prevInCineCam && !x8f5_31_ragdollNoAiCollision) {
+    SetNonCinematicCollision(mgr);
+  }
+  x8f7_31_prevInCineCam = inCineCam;
+  const float steeringSpeed = xa10_steeringDelayTimer != 0.f ? 0.f : x904_steeringSpeed;
+  body->CommandMgr().SetSteeringSpeedRange(steeringSpeed, steeringSpeed);
+  xa0c_unkTimer = CMath::Max(0.f, xa0c_unkTimer - dt);
+  if (mAlive) {
+    xb24_timeSinceHitByPlayer += dt;
+    xb28_lowHealthFrenzyTimer += dt;
+    if (x8f7_27_inProjectilePath) {
+      xb28_lowHealthFrenzyTimer = 0.f;
+      x8f7_27_inProjectilePath = false;
+    }
+    if (mHitByPlayerProjectile) {
+      xb24_timeSinceHitByPlayer = 0.f;
+      mHitByPlayerProjectile = false;
+    }
+  }
+  UpdateCloak(dt, mgr);
+  if (body->GetPercentageFrozen() < 1.f) {
+    if (mAlive) {
+      xa10_steeringDelayTimer = CMath::Max(0.f, xa10_steeringDelayTimer - dt);
+      if (x8f7_28_noPlayerLos) {
+        xa7c_timeNoPlayerLos += dt;
+      } else {
+        xa7c_timeNoPlayerLos = 0.f;
+      }
+      xb0c_strafeDelayTimer = CMath::Max(0.f, xb0c_strafeDelayTimer - dt);
+      xb94_dodgeDelayTimer = CMath::Max(0.f, xb94_dodgeDelayTimer - dt);
+      CheckForProjectiles(mgr);
+      if (mEnableAim) {
+        mAttackTarget = ChooseTarget(mgr);
+        UpdateTeamTarget(mgr);
+      }
+    }
+    UpdateAttacks(dt, mgr);
+    UpdateAimBodyState(dt, mgr);
+    xb34_ikChain.Update(dt);
+  }
   CPatterned::Think(dt, mgr);
+  if (body->GetPercentageFrozen() != 1.f) {
+    mBoneTracking.Think(dt);
+  }
+  TraceState(*this, StateMachineState().GetName());
+}
+
+void CSpacePirate::SetCinematicCollision(CStateManager& mgr) {
+  RemoveMaterial(kMT_AIBlock, mgr);
+  CMaterialList include = GetMaterialFilter().GetIncludeList();
+  include.Remove(kMT_AIBlock);
+  SetMaterialFilter(
+      CMaterialFilter::MakeIncludeExclude(include, GetMaterialFilter().GetExcludeList()));
+}
+
+void CSpacePirate::SetNonCinematicCollision(CStateManager& mgr) {
+  AddMaterial(kMT_AIBlock, mgr);
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      GetMaterialFilter().GetIncludeList().Union(CMaterialList(kMT_AIBlock)),
+      GetMaterialFilter().GetExcludeList()));
+}
+
+// @ fn_72_DB48
+bool CSpacePirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
+                                   const CVector3f& end, const CMaterialList& exclude) {
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), exclude);
+  return mgr.RayCollideWorld(start, end, filter, this);
+}
+
+// Shadow pirates fade in and out; the cloak alpha lives in the actor's colour.
+void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
+  if (!x8f5_27_shadowPirate) {
+    return;
+  }
+  if (mAlive) {
+    if (xb7c_cloakDelayTimer > 0.f) {
+      xb7c_cloakDelayTimer -= dt;
+      if (xb7c_cloakDelayTimer <= 0.f) {
+        mAlphaDelta = -0.4f;
+      }
+    }
+  } else {
+    xb8c_minCloakAlpha = 0.f;
+    xb90_maxCloakAlpha = 1.f;
+  }
+  if (xb80_electricParticleTimer > 0.f) {
+    xb80_electricParticleTimer -= dt;
+    if (xb80_electricParticleTimer <= 0.f && !BodyController()->IsElectrocuting()) {
+      mgr.ActorModelParticles()->StopElectric(*this);
+    }
+  }
+  if (BodyController()->GetPercentageFrozen() != 1.f) {
+    mAlphaDelta = 2.f;
+  }
+  if (mAlphaDelta < 0.f && mColor.GetAlpha() < xb8c_minCloakAlpha) {
+    mColor.SetAlpha(xb8c_minCloakAlpha);
+    mAlphaDelta = 0.f;
+    RemoveMaterial(kMT_Target, mgr);
+  }
+  if (mAlphaDelta > 0.f && mColor.GetAlpha() > xb90_maxCloakAlpha) {
+    mColor.SetAlpha(xb90_maxCloakAlpha);
+    AddMaterial(kMT_Target, mgr);
+  }
+  xb84_cloakStepTime -= dt;
+  if (xb84_cloakStepTime < 0.f) {
+    const float random = mgr.Random()->Float();
+    xb84_cloakStepTime = (1.f - random) * 0.08f;
+    if (mAlphaDelta < 0.f) {
+      xb88_shadowPirateAlpha = mColor.GetAlpha();
+      if (mAlive) {
+        xb88_shadowPirateAlpha -= random * (mColor.GetAlpha() - xb8c_minCloakAlpha);
+      }
+    } else if (mAlphaDelta > 0.f) {
+      xb88_shadowPirateAlpha =
+          mColor.GetAlpha() + random * (xb90_maxCloakAlpha - mColor.GetAlpha());
+    } else {
+      xb88_shadowPirateAlpha = mColor.GetAlpha();
+    }
+  }
+}
+
+bool CSpacePirate::CheckTargetable(CStateManager& mgr) { return GetModelAlphau8(mgr) > 127; }
+
+// Ends the pirate's claim on a squad attack slot.
+void CSpacePirate::SquadReset(CStateManager& mgr) {
+  CScriptTeamAiMgr::EndAttack(x8f4_27_melee ? CScriptTeamAiMgr::kAT_Melee
+                                            : CScriptTeamAiMgr::kAT_Projectile,
+                              mgr, xba0_teamAiMgrId, GetUniqueId(), !x8f4_27_melee);
+}
+
+// Tells the squad manager who this member is shooting at.
+void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
+  if (xba0_teamAiMgrId == kInvalidUniqueId) {
+    return;
+  }
+  if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId))) {
+    team->SetMemberTargetId(GetUniqueId(), mAttackTarget);
+  }
+}
+
+TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
+  if (xba0_teamAiMgrId != kInvalidUniqueId) {
+    CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
+    if (team != nullptr && team->IsTeamMemberInRange(mgr, *this, 20.f)) {
+      return team->FindBestIndividualAttackTarget(mgr, *this);
+    }
+  }
+  return CScriptTeamAiMgr::ChoosePlayer(mgr, *this);
+}
+
+// Keeps the current target unless it has gone inactive, in which case the squad picks one; a distant target is dropped for a player within 10 units.
+TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
+  float nearest = 10.f;
+  float currentDist = 0.f;
+  TUniqueId nearestId = kInvalidUniqueId;
+  TUniqueId result = mAttackTarget;
+  for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
+    const CPlayer* player = mgr.GetPlayer(i);
+    if (player == nullptr) {
+      continue;
+    }
+    if (player->GetUniqueId() == mAttackTarget) {
+      if (!player->GetActive()) {
+        result = ChooseTeamTarget(mgr);
+      } else {
+        currentDist = (player->GetTranslation() - GetTranslation()).Magnitude();
+      }
+    } else {
+      const float dist = (player->GetTranslation() - GetTranslation()).Magnitude();
+      if (dist < nearest) {
+        nearest = dist;
+        nearestId = player->GetUniqueId();
+      }
+    }
+  }
+  if (currentDist > 30.f && nearest < 10.f) {
+    result = nearestId;
+  }
+  return result;
+}
+
+// Whether the next shot is a frenzy burst; a roll of 2..4 shots is queued and counted down.
+bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
+  bool reset = false;
+  if (x8f8_24_pendingFrenzyChance) {
+    x8f8_24_pendingFrenzyChance = false;
+    if (mgr.Random()->Next() % 100 < 25) {
+      reset = true;
+    }
+  }
+  // Retail also resets while the global charge-player list is non-empty (no port equivalent yet).
+  const CPlayer* target = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+  if (target != nullptr && target->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+    reset = true;
+  }
+  if (GetHealthInfo()->GetHP() < 0.3f * xa18_ && mgr.Random()->Next() % 100 < 60 &&
+      xb28_lowHealthFrenzyTimer < 0.5f) {
+    reset = true;
+  }
+  if (reset) {
+    x8fc_frenzyFrames = mgr.Random()->Range(2, 4);
+  }
+  return --x8fc_frenzyFrames >= 0;
+}
+
+// Where the pirate looks and aims: its target, or a point ahead if the target is gone.
+CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
+  CEntity* entity = mgr.ObjectById(mAttackTarget);
+  if (const CPlayer* player = TCastToPtr< CPlayer >(entity)) {
+    return player->GetTranslation();
+  }
+  if (const CActor* actor = TCastToPtr< CActor >(entity)) {
+    if (actor->GetActive()) {
+      return actor->GetTranslation();
+    }
+  }
+  mAttackTarget = ChooseTeamTarget(mgr);
+  UpdateTeamTarget(mgr);
+  mBoneTracking.SetTarget(mAttackTarget);
+  return GetTranslation() + 10.f * GetTransform().GetForward();
+}
+
+// Sets x8f7_27_inProjectilePath when a shot is flying at the pirate.
+void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
+  if (!x8f7_26_hearPlayerFire) {
+    return;
+  }
+  const CVector3f extent(5.f, 5.f, 5.f);
+  const CAABox bounds(xbb4_ - extent, xbb4_ + extent);
+  x8f7_27_inProjectilePath = false;
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
+                    nullptr);
+  for (int i = 0; i < nearList.size() && !x8f7_27_inProjectilePath; ++i) {
+    const CGameProjectile* projectile =
+        TCastToConstPtr< CGameProjectile >(mgr.GetObjectById(nearList[i]));
+    if (projectile == nullptr) {
+      continue;
+    }
+    CVector3f delta = GetBoundingBox().GetCenterPoint() - projectile->GetTranslation();
+    if (!delta.IsMagnitudeSafe()) {
+      x8f7_27_inProjectilePath = true;
+    } else if (CVector3f::Dot(GetTransform().GetForward(), delta) < 0.f) {
+      delta.Normalize();
+      CVector3f travel = projectile->GetTranslation() - projectile->GetPreviousPos();
+      if (travel.IsMagnitudeSafe()) {
+        travel.Normalize();
+        if (CVector3f::Dot(travel, delta) > 0.939f) {
+          x8f7_27_inProjectilePath = true;
+        }
+      }
+    }
+  }
+  x8f7_26_hearPlayerFire = false;
+}
+
+// Fires one shot from the gun locator at the target (or straight ahead if the pirate is dying).
+// @ fn_72_45F8
+bool CSpacePirate::FireProjectile(float dt, CStateManager& mgr) {
+  bool fired = false;
+  const CTransform4f gunXf = GetLctrTransform(xa86_gunSeg);
+  if (!mAlive) {
+    LaunchProjectile(gunXf, mgr, 6, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
+                     CVector3f(1.f, 1.f, 1.f));
+    fired = true;
+  } else if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget))) {
+    CVector3f pos = actor->GetTranslation();
+    bool isPlayer = false;
+    if (const CPlayer* player = TCastToConstPtr< CPlayer >(actor)) {
+      if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+        isPlayer = true;
+      } else {
+        pos = ProjectileInfo()->PredictInterceptPos(gunXf.GetTranslation(),
+                                                    player->GetAimPosition(mgr, 0.f), *player,
+                                                    true, dt);
+      }
+    }
+    CVector3f gunToPos = pos - gunXf.GetTranslation();
+    const float distance = gunToPos.Magnitude();
+    gunToPos *= 1.f / distance;
+    const float dot = CVector3f::Dot((GetLctrTransform(xa88_wristSeg).GetTranslation() -
+                                      GetLctrTransform(xa87_elbowSeg).GetTranslation())
+                                         .AsNormalized(),
+                                     gunToPos);
+    if ((dot > 0.707f || (distance < 6.f && dot > 0.5f)) &&
+        (isPlayer || LineOfSightTest(mgr, gunXf.GetTranslation(), pos,
+                                     CMaterialList(kMT_Player, kMT_ProjectilePassthrough)))) {
+      pos += GetTransform().Rotate(mBurstFire.GetDistanceCompensatedError(distance, 6.f));
+      const CTransform4f shotXf = CTransform4f::LookAt(gunXf.GetTranslation(), pos, CVector3f::Up());
+      LaunchProjectile(shotXf, mgr, 6, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
+                       CVector3f(1.f, 1.f, 1.f));
+      fired = true;
+    }
+  }
+  if (fired) {
+    CSfxManager::AddEmitter(mData.mProjectileSfx, GetTranslation(), GetCurrentAreaId().Value(),
+                            true, false, CSfxManager::kMedPriority);
+  }
+  return fired;
+}
+
+// Squad bookkeeping and the burst-fire pattern. Retail's switch has a second case (an inert
+// pirate that only counts its attack timer down) that no state reaches.
+// @ fn_72_28F0
+void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
+  bool reset = true;
+  const bool canShoot =
+      !mAlive || (BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot() &&
+                  mEnableAim && !x8f4_27_melee && !BodyController()->IsFrozen() &&
+                  !x8f4_25_ceilingAmbush && !x8f9_26_started &&
+                  !BodyController()->IsElectrocuting());
+  if (canShoot && mBurstFire.GetBurstType() != -1) {
+    const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+    if (mAlive && (!x8f4_29_onlyAttackInRange ||
+                   (player != nullptr &&
+                    (player->GetTranslation() - GetTranslation()).MagSquared() <
+                        mLeashRadius * mLeashRadius))) {
+      reset = false;
+      mAttackRemTime -= dt;
+      if (mAttackRemTime < 0.f) {
+        const CTeamAiRole* role =
+            CScriptTeamAiMgr::GetTeamAiRole(mgr, xba0_teamAiMgrId, GetUniqueId());
+        if ((role == nullptr || role->GetTeamAiRole() == CTeamAiRole::kTAR_Projectile) &&
+            (xba0_teamAiMgrId == kInvalidUniqueId ||
+             CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr,
+                                           xba0_teamAiMgrId, GetUniqueId()))) {
+          if (ShouldFrenzy(mgr)) {
+            mBurstFire.SetBurstType(2);
+          }
+          if (x8f5_26_seated) {
+            mBurstFire.SetBurstType(5);
+          }
+          // A player facing away from this pirate gets the "behind" bursts (6..12).
+          if (player != nullptr &&
+              CVector3f::Dot(GetTranslation() - player->GetTranslation(),
+                             player->GetTransform().GetForward()) < 0.f &&
+              mBurstFire.GetBurstType() < 6) {
+            mBurstFire.SetBurstType(mBurstFire.GetBurstType() + 6);
+          }
+          mBurstFire.Start(mgr);
+          mAttackRemTime = mgr.Random()->Float() * mAttackTimeVariation + GetAverageAttackTime();
+          if (player != nullptr) {
+            const CVector3f fromPlayer =
+                (GetGunEyePos() - player->GetAimPosition(mgr, 0.f)).AsNormalized();
+            if (CVector3f::Dot(fromPlayer, player->GetTransform().GetForward()) < 0.9f) {
+              // Another armed pirate in the same area is already shooting: wait a little longer.
+              const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
+              for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+                const CSpacePirate* other = TCastToConstPtr< CSpacePirate >(list[i]);
+                if (other != nullptr && other != this && other->mEnableAim &&
+                    other->GetCurrentAreaId() == GetCurrentAreaId()) {
+                  mAttackRemTime += 0.2f;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    mBurstFire.Update(mgr, dt);
+    if (mBurstFire.ShouldFire()) {
+      if (player != nullptr && player->GetSidewaysDashing() && mgr.Random()->Float() < 0.5f) {
+        mBurstFire.SetAvoidAccuracy(true);
+      }
+      FireProjectile(dt, mgr);
+      mBurstFire.SetAvoidAccuracy(false);
+      mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
+                                   mData.mIntraBurstTime);
+    } else if (!mBurstFire.IsBurstSet()) {
+      reset = true;
+    }
+  }
+  if (reset) {
+    SquadReset(mgr);
+  }
+  for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
+    SetValidTarget(static_cast< int >(i), CheckTargetable(mgr));
+  }
+}
+
+// Points the additive aim animation at the target while the pirate may aim, and eases it back to
+// straight ahead (then idle) once it may not. Retail also passes the wall-hang flag as the aim
+// command's type; CBCAdditiveAimCmd has no setter for it yet.
+// @ fn_72_253C
+void CSpacePirate::UpdateAimBodyState(float dt, CStateManager& mgr) {
+  CBodyController* body = BodyController();
+  CBodyStateCmdMgr& cmds = body->CommandMgr();
+  if (mAlive && mEnableAim && !body->IsFrozen() && !body->IsElectrocuting() && !x8f4_27_melee &&
+      xb30_ == nullptr && (!x8f5_26_seated || x8f9_28_satUp) && !x8fa_30_) {
+    xb98_aimDelayTimer = CMath::Max(0.f, xb98_aimDelayTimer - dt);
+    if (xb98_aimDelayTimer == 0.f) {
+      cmds.DeliverCmd(CBCAdditiveAimCmd());
+      const CVector3f gunPos = GetLctrTransform(xa86_gunSeg).GetTranslation();
+      CVector3f offset = x8f7_29_inWallHang ? CVector3f::Zero() : GetTranslation() - gunPos;
+      CVector3f aim = GetTransform().TransposeMultiply(GetTargetPos(mgr) + offset);
+      if (x8f7_29_inWallHang) {
+        aim.SetX(-aim.GetX());
+        aim.SetY(-aim.GetY());
+      }
+      cmds.DeliverAdditiveTargetVector(aim);
+      xb9c_ = 0.5f;
+    }
+  } else if (xb9c_ > 0.f) {
+    xb9c_ -= dt;
+    cmds.DeliverAdditiveTargetVector(GetTransform().GetForward());
+    if (xb9c_ <= 0.f) {
+      xb9c_ = 0.f;
+      cmds.DeliverCmd(kBSC_AdditiveIdle);
+    }
+  }
 }
 
 void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
