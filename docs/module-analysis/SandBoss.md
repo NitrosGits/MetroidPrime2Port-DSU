@@ -230,9 +230,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 178 | loader (PortLoadSandBoss, SLdrSandBoss.inc) | [proven] host body |
 | 1AEC | CSandBoss::GetStampedeDelay | [proven] host body |
 | 1B94 | CSandBoss::ShouldRepeaterAttackCheck (counts active safe zones) | [proven] host body |
-| 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [ported] host body, not exercised yet (caller: DarkBeamAttack AC68) |
+| 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [proven] host body (caller: DarkBeamAttack AC68) |
 | 1D74 | CSandBoss::RotateHelper1D74 | [stand-in] log-once |
-| 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [ported] host body, not exercised yet |
+| 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [proven] host body |
 | 2030 | CSandBoss::RotateHelper2030 | [stand-in] log-once |
 | 22E4 | CSandBoss::RotateToPlayerStep | [stand-in] log-once |
 | 2498 | CSandBoss::RotateHelper2498 | [stand-in] log-once |
@@ -250,7 +250,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [ported] host body, not exercised yet |
-| 44CC | CSandBoss::FireDarkBeam (mgr, dt) | [ported] host body, not exercised yet |
+| 44CC | CSandBoss::FireDarkBeam (mgr, dt) | [proven] host body |
 | 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
 | 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
 | 528C | CSandBoss::HandleGroundImpact | [stand-in] log-once |

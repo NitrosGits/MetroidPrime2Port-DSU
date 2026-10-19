@@ -125,7 +125,7 @@ int CSandBoss::ShouldRepeaterAttackCheck(CStateManager& mgr) const {
   return active;
 }
 
-// fn_55_1C70 (ported, not exercised yet)
+// @ fn_55_1C70
 // Synchronises the group's next volley: every attached worm's beam cooldown (0xF44) is set to the
 // smallest cooldown among this worm and its attached siblings plus delta, and each worm re-seeds
 // its attack timers.
@@ -155,7 +155,7 @@ void CSandBoss::RotateHelper1D74(CStateManager&, float) { // fn_55_1D74
   PortSandBossStandIn("CSandBoss::RotateHelper1D74 (fn_55_1D74)");
 }
 
-// fn_55_1F84 (ported, not exercised yet)
+// @ fn_55_1F84
 // Turns the body toward a world point at the controller's turn rate (only for a positive dt and a
 // point away from this worm).
 void CSandBoss::FaceTowardPoint(float dt, const CVector3f& target) {
@@ -595,7 +595,7 @@ TUniqueId CSandBoss::ShouldDarkBeamAttackCheck(CStateManager& mgr) const {
   return best;
 }
 
-// fn_55_44CC (ported, not exercised yet)
+// @ fn_55_44CC
 // Fires the dark beam from the head locator. With the probe result bit (0x165C b2) set the shot leads
 // the player: the dark beam's own CProjectileInfo predicts the intercept, and an aim more than 70
 // degrees (1.2217305 rad) off the body's facing axis is slewed back toward it; that shot also counts
