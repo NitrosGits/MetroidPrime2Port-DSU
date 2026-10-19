@@ -41,6 +41,8 @@
 #include "MetroidPrime/CEntity.hpp"
 #include "MetroidPrime/CEntityInfo.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
+#include "MetroidPrime/CDamageInfo.hpp"
+#include "Collision/CMaterialFilter.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -468,6 +470,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
+      "damage <id> <n> [kb]        hit an actor for n as a player power-beam shot (kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -1300,6 +1303,39 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   }
 }
 
+// `damage <id> <amount> [knockback]`: what a player power-beam shot does, through ApplyDamage, so
+// the target's TakeDamage / KnockBack / Death run. The player is the damager and the owner.
+void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
+  float amount = 0.f;
+  float knockback = 0.f;
+  if (args.size() < 3 || !ParseFloat(args[2], amount) ||
+      (args.size() > 3 && !ParseFloat(args[3], knockback))) {
+    Fail("usage: damage <id> <amount> [knockback-power]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  CPlayer* player = mgr.GetPlayer(0);
+  if (actor == nullptr || actor->GetHealthInfo() == nullptr || player == nullptr) {
+    Fail("not an actor with health (or no player)");
+    return;
+  }
+  const float before = actor->GetHealthInfo()->GetHP();
+  const CDamageInfo info(CWeaponMode(kWT_Power), amount, 0.f, knockback);
+  const CVector3f direction = actor->GetTranslation() - player->GetTranslation();
+  mgr.ApplyDamage(player->GetUniqueId(), actor->GetUniqueId(), player->GetUniqueId(), info,
+                  CMaterialFilter::GetPassEverything(), direction);
+  // The actor may have been deleted by its own death; look it up again.
+  const CActor* after = TCastToConstPtr< CActor >(mgr.GetObjectById(actor->GetUniqueId()));
+  char line[96];
+  if (after != nullptr && after->GetHealthInfo() != nullptr) {
+    std::snprintf(line, sizeof(line), "hp %.1f -> %.1f\n", before, after->GetHealthInfo()->GetHP());
+  } else {
+    std::snprintf(line, sizeof(line), "hp %.1f -> (gone)\n", before);
+  }
+  out += line;
+}
+
 void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() < 3) {
     Fail("usage: send <id> <msg>");
@@ -1752,6 +1788,7 @@ constexpr SCommand kCommands[] = {
     {"station", CmdStation, true},
     {"heal", CmdHeal, true},
     {"kill", CmdKill, true},
+    {"damage", CmdDamage, true},
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
     {"freecam", CmdFreeCam, true},

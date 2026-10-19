@@ -203,6 +203,9 @@ public:
 private:
 #ifdef TARGET_PC
   void EnsureBodyActive(CStateManager& mgr);
+  void SquadRemove(CStateManager& mgr);                  // DF2C
+  void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
+  void SetVelocityForJump();                             // E168
   // Think path (fn_72_1980); the comment on each is its retail function.
   void UpdateCloak(float dt, CStateManager& mgr);        // 2F4C
   void UpdateAttacks(float dt, CStateManager& mgr);      // 28F0
