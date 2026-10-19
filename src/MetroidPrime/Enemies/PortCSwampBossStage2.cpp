@@ -10,6 +10,7 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
@@ -78,7 +79,7 @@ float RandomRange(CStateManager& mgr, float lo, float hi) {
 CCollidableAABox CopyCollidableAABox(const CCollidableAABox& source) { return source; }
 } // namespace
 
-// fn_79_7404
+// @ fn_79_BE3C
 CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
                                    const CEntityInfo& info, const CTransform4f& xf,
                                    const CModelData& modelData, const CActorParameters& actParms,
@@ -169,8 +170,8 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mMoveTarget(CVector3f::Zero())
 , mMoveSpeed(0.f)
 , mFlashTime(0.f)
-, mLightVulnerability(pInfo.GetDamageVulnerability())
-, mDarkVulnerability(pInfo.GetDamageVulnerability())
+, mLightVulnerability(CDamageVulnerability::NormalVulnerabilty())
+, mDarkVulnerability(CDamageVulnerability::NormalVulnerabilty())
 , mRepeller(data.unknown_0x9347820e.range, data.unknown_0x9347820e.turnRate,
             static_cast< ushort >(data.unknown_0x9347820e.soundEffect),
             data.unknown_0x9347820e.warpScale, data.unknown_0x9347820e.repelOffset)
@@ -179,8 +180,6 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mDropFlyerCooldown(0.f)
 , mPendingFlinch(0.f)
 , mLastTouched(kInvalidUniqueId) {
-  // TODO(uncertain): the retail ctor fills mLightVulnerability/mDarkVulnerability from rodata
-  // vulnerability tables; both start as the patterned vulnerability here.
   if (data.scanInfoLight != kInvalidAssetId) {
     mScanLight = TLockedToken< CScannableObjectInfo >(
         gpSimplePool->GetObj(SObjectTag('SCAN', data.scanInfoLight)));
@@ -193,14 +192,29 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
     mSpitVisorGen = TLockedToken< CGenDescription >(
         gpSimplePool->GetObj(SObjectTag('PART', data.spitVisorEffect)));
   }
-  // TODO(uncertain): retail also disables part of the knockback controller here.
+  KnockBackController().EnableKnockBackPhysics(false);
+  KnockBackController().EnableAllAnimReactions(false);
   InitGrowths();
+  InitAdditiveAnim();
   for (int i = 0; i < 4; ++i) {
     mGrowthBroken.push_back(false);
   }
 }
 
-// fn_79_7010
+// @ fn_79_5AE4: the additive reaction (enum 5) UpdateAdditive drives.
+void CSwampBossStage2::InitAdditiveAnim() {
+  const CPASAnimParmData parms(
+      pas::kAS_AdditiveReaction, CPASAnimParm::FromEnum(5), CPASAnimParm::NoParameter(),
+      CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+      CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter());
+  const rstl::pair< float, int > best =
+      GetAnimationData()->GetPASDatabase().FindBestAnimation(parms, -1);
+  if (best.first > FLT_EPSILON) {
+    mAdditiveAnim = best.second;
+  }
+}
+
+// fn_79_B8D4
 CSwampBossStage2::~CSwampBossStage2() {}
 
 // --------------------------------------------------------------------------------------------
@@ -330,10 +344,6 @@ void CSwampBossStage2::SetBodyVulnerable(CStateManager& mgr, bool vulnerable) {
   }
 }
 
-CVector3f CSwampBossStage2::LevelTarget(const CStateManager& mgr) const {
-  return mLevelTarget;
-}
-
 CVector3f CSwampBossStage2::PlayerAimPoint(const CStateManager& mgr) const {
   return mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
 }
@@ -357,7 +367,7 @@ TUniqueId CSwampBossStage2::NearestNodeToPlayer(CStateManager& mgr) const {
   return best;
 }
 
-// fn_79_67A4
+// @ fn_79_67A4
 void CSwampBossStage2::InitGrowths() {
   // Retail model slots: 0 = LB, 1 = LF, 2 = RB, 3 = RF.
   const CAssetId models[4] = {mData.wingGrowthLB, mData.wingGrowthLF, mData.wingGrowthRB,
@@ -376,7 +386,7 @@ void CSwampBossStage2::InitGrowths() {
   }
 }
 
-// fn_79_6E68
+// @ fn_79_6E68
 void CSwampBossStage2::SetupCollisionManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(ARRAY_SIZE(kSphereJoints));
@@ -385,29 +395,43 @@ void CSwampBossStage2::SetupCollisionManager(CStateManager& mgr) {
     joints.push_back(CJointCollisionDescription::SphereCollision(
         seg, CVector3f::Zero(), kSphereJoints[i].mRadius, rstl::string_l(kSphereJoints[i].mName), kJointMass));
   }
-  mCollisionMgr = rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, true);
+  mCollisionMgr = rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
+  // fn_79_6B78: light phase uses the patterned vulnerability, dark phase the Ing-possessed one.
+  mLightVulnerability = *GetDamageVulnerability();
+  mDarkVulnerability = LdrToDamageVulnerability(mIngPossessionData.ingVulnerability);
   for (int i = 0; i < mCollisionMgr->GetNumCollisionActors(); ++i) {
     CCollisionActor* act = CollisionActor(mgr, i);
     if (!act) {
       continue;
     }
-    act->HealthInfo()->SetHP(kCollisionActorHP);
-    // fn_79_6B78: retail data_418 excludes material bit 0x31 from every joint's filter.
-    act->SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-        CMaterialList(kMT_Solid), CMaterialList(static_cast< EMaterialTypes >(0x31))));
+    act->SetDamageVulnerability(mLightVulnerability);
+    *act->HealthInfo() = *HealthInfo();
+    act->HealthInfo()->SetHP(mCollisionActorHP);
+    // fn_79_6B78: each joint keeps its own filter and also excludes platforms (data_418); the four
+    // growths are orbitable and seeker targets.
+    CMaterialFilter filter = act->GetMaterialFilter();
+    filter.ExcludeList().Add(kMT_Platform);
+    act->SetMaterialFilter(filter);
+    if (i < 4) {
+      act->AddMaterial(kMT_Orbit, kMT_SeekerTarget, mgr);
+    }
   }
-  SetGrowthsActive(mgr, false);
+  // The body itself collides with nothing; only its joints do.
+  AddMaterial(kMT_Unknown54, kMT_Scannable, mgr);
+  SetMaterialFilter(CMaterialFilter(CMaterialList(), CMaterialList(0x00000000FFFFFFFF),
+                                    CMaterialFilter::kFT_Never));
 }
 
-// fn_79_25C0
+// @ fn_79_25C0
 void CSwampBossStage2::Activate(CStateManager& mgr) {
   if (mCollisionMgr.null()) {
     SetupCollisionManager(mgr);
   }
-  mCollisionMgr->SetActive(mgr, true);
   BodyController()->Activate(mgr, pas::kAS_Invalid);
-  // TODO(uncertain): retail SetBossParams passes a string; the host takes a string index.
-  mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(), 0);
+  mCollisionMgr->SetActive(mgr, true);
+  SetGrowthsActive(mgr, false);
+  mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(),
+                    gpStringTable->GetStringIndex("BossSwampBossStage2"));
 }
 
 // fn_79_5D58
@@ -429,25 +453,20 @@ void CSwampBossStage2::SetGrowthTargetEffects(CStateManager& mgr, bool on) {
   }
 }
 
-// fn_79_5C74
+// @ fn_79_5C74
 void CSwampBossStage2::SetGrowthsActive(CStateManager& mgr, bool active) {
   for (int i = 0; i < 4; ++i) {
-    SetGrowthActive(mgr, i, active && mGrowthHealth[i] > 0.f);
+    if (!active || mGrowthHealth[i] > 0.f) {
+      SetGrowthActive(mgr, i, active);
+    }
   }
 }
 
-// fn_79_5D00: retail reaches the growth actor's vfunc at vtable+0x1c with the flag.
-// TODO(uncertain): the virtual slot is not identified; the port switches the growth's
-// Orbit/Target materials instead, which is what the setup (fn_79_6B78) and ProcessDamage imply.
+// @ fn_79_5D00: vtable+0x1c is CEntity::SetActive.
 void CSwampBossStage2::SetGrowthActive(CStateManager& mgr, int idx, bool active) {
   CCollisionActor* act = CollisionActor(mgr, idx);
-  if (!act) {
-    return;
-  }
-  if (active) {
-    act->AddMaterial(kMT_Orbit, kMT_Target, mgr);
-  } else {
-    act->RemoveMaterial(kMT_Orbit, kMT_Target, mgr);
+  if (act) {
+    act->SetActive(active);
   }
 }
 
@@ -510,7 +529,7 @@ CVector3f CSwampBossStage2::DirectionToPlayerAim(const CStateManager& mgr) const
   return (PlayerAimPoint(mgr) - GetTranslation()).AsNormalized();
 }
 
-// fn_79_215C: hover steering. Without a move request the speed decays and the body keeps its
+// @ fn_79_215C: hover steering. Without a move request the speed decays and the body keeps its
 // heading; with one it eases towards hoverSpeed, turns towards the target and moves.
 void CSwampBossStage2::UpdateHover(float dt) {
   const CVector3f toTarget = mMoveTarget - GetTranslation();
@@ -544,7 +563,7 @@ void CSwampBossStage2::UpdateHover(float dt) {
   }
 }
 
-// fn_79_58F0: the additive animation ramps towards mAdditiveRate (capped at 0.85) or decays, with a
+// @ fn_79_58F0: the additive animation ramps towards mAdditiveRate (capped at 0.85) or decays, with a
 // short sine pulse from the flash timer on top; the tail joint's sphere follows the weight.
 void CSwampBossStage2::UpdateAdditive(CStateManager& mgr, float dt) {
   bool active = false;
@@ -657,7 +676,7 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
   }
 }
 
-// fn_79_2928: the boss bar is quartered by phase. Phases 0 and 2 show the wing growths' health,
+// @ fn_79_2928: the boss bar is quartered by phase. Phases 0 and 2 show the wing growths' health,
 // phases 1 and 3 the ovipositor's; anything else contributes nothing.
 void CSwampBossStage2::UpdateHealthFraction(CStateManager& mgr) {
   const float initialHealth = GetHealthInfo()->GetInitialHP();
@@ -1119,7 +1138,7 @@ bool CSwampBossStage2::PlayerOnGrapplePoint(const CStateManager& mgr) const {
   return false;
 }
 
-// fn_79_61C4: collision-actor damage. Every joint is held at 500 HP, so the damage of a hit is the
+// @ fn_79_61C4: collision-actor damage. Every joint is held at 500 HP, so the damage of a hit is the
 // shortfall from that, and a hit counts once per touching object.
 void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
   CCollisionActor* colActor = TCastToPtr< CCollisionActor >(mgr.ObjectById(colActorId));
@@ -1280,11 +1299,11 @@ bool CSwampBossStage2::ShouldBlow(CStateManager& mgr, const CTriggerData&) const
 }
 
 bool CSwampBossStage2::IsLevel(CStateManager& mgr, const CTriggerData&) const {
-  if (GetBodyController()->GetLocomotionType() != 5 || mMoveSpeed >= 0.2f) {
+  if (GetBodyController()->GetCurrentStateId() != pas::kAS_Locomotion || mMoveSpeed >= 0.2f) {
     return false;
   }
   const CVector3f pos = GetTranslation();
-  const CVector3f target = LevelTarget(mgr);
+  const CVector3f target = TargetPoint(mgr);
   if (CMath::AbsF(target.GetZ() - pos.GetZ()) >= 1.f || (target - pos).Magnitude() >= 2.f) {
     return false;
   }
@@ -1319,7 +1338,7 @@ bool CSwampBossStage2::ShouldDropFlyer(CStateManager& mgr, const CTriggerData&) 
 // --------------------------------------------------------------------------------------------
 // States
 
-// fn_79_9F4C
+// @ fn_79_9F4C
 void CSwampBossStage2::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
@@ -1328,7 +1347,7 @@ void CSwampBossStage2::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   mgr.GetPlayer(0)->SetRadarRadiusOverride(mData.radarRange, mData.unknown_0xfe97e835);
 }
 
-// fn_79_9534
+// @ fn_79_9534
 void CSwampBossStage2::BecomeLightFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
@@ -1358,7 +1377,7 @@ void CSwampBossStage2::BecomeLightFlyer(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
-// fn_79_91A4
+// @ fn_79_91A4
 void CSwampBossStage2::BecomeDarkFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
@@ -1398,7 +1417,7 @@ void CSwampBossStage2::BecomeDarkFlyer(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
-// fn_79_8FAC
+// @ fn_79_8FAC
 void CSwampBossStage2::DeathSequence(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Fall)) {
@@ -1418,7 +1437,7 @@ void CSwampBossStage2::DeathSequence(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
-// fn_79_9A3C
+// @ fn_79_9A3C
 void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   const SLdrSwampBossStage2Phase& phase = CurrentPhase();
   if (msg == kStateMsg_Activate) {
@@ -1472,7 +1491,7 @@ void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_9754
+// @ fn_79_9754
 void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAttackType == 5) {
@@ -1516,7 +1535,7 @@ void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_8D90
+// @ fn_79_8D90
 void CSwampBossStage2::SpitWater(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
@@ -1537,7 +1556,7 @@ void CSwampBossStage2::SpitWater(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_8BB4
+// @ fn_79_8BB4
 void CSwampBossStage2::SpitBarrage(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
@@ -1751,7 +1770,7 @@ void CSwampBossStage2::Circle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_7870
+// @ fn_79_7870
 void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopReaction)) {
@@ -1793,7 +1812,7 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_76EC
+// @ fn_79_76EC
 void CSwampBossStage2::Recover(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
@@ -1824,7 +1843,7 @@ void CSwampBossStage2::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_7308
+// @ fn_79_7308
 void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     BodyController()->FaceDirection(CenterPosition(mgr) - GetTranslation(), dt);
@@ -1878,7 +1897,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 };
 } // namespace
 
-// fn_79_A4B4
+// @ fn_79_A4B4
 void CSwampBossStage2::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -1890,7 +1909,7 @@ void CSwampBossStage2::SetupStateMachine(CStateManager& mgr) {
 // --------------------------------------------------------------------------------------------
 // Entity / actor overrides
 
-// fn_79_6A9C
+// @ fn_79_AFB4
 void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   if (!GetActive()) {
@@ -1940,7 +1959,7 @@ void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_79_6849
+// @ fn_79_B3CC
 void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool wasActive = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -2152,7 +2171,7 @@ void CSwampBossStage2::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
   }
 }
 
-// fn_79_6380
+// fn_79_A540
 CVector3f CSwampBossStage2::GetAimPosition(const CStateManager& mgr, float dt) const {
   return mTailPos * mHeadBlend + mHeadPos * (1.f - mHeadBlend);
 }
@@ -2171,10 +2190,10 @@ void CSwampBossStage2::TakeDamage(const CVector3f& dir, float amount) {
   CPatterned::TakeDamage(dir, amount);
 }
 
-// fn_79_6370
+// @ fn_79_A76C
 void CSwampBossStage2::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
-// fn_79_A59C: queue the body, draw it immediately (or its ing-snatch transition), then draw each
+// @ fn_79_A59C: queue the body, draw it immediately (or its ing-snatch transition), then draw each
 // live wing growth at its locator - flashed towards the damage colour while mGrowthFlash runs - and
 // finally the bubble telegraph generator. fn_79_460/4A0/4C0 are the CModelData copy internals, so
 // the stored models are used directly.
@@ -2212,7 +2231,7 @@ void CSwampBossStage2::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
-// fn_79_A78C
+// @ fn_79_A78C
 void CSwampBossStage2::Render(const CStateManager& mgr) const {
   uint mask = 0;
   uint target = 0;

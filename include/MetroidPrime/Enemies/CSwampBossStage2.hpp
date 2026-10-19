@@ -116,7 +116,6 @@ protected:
   CVector3f CollisionActorPosition(const CStateManager& mgr, int idx) const;
   CVector3f CenterPosition(const CStateManager& mgr) const;
   CVector3f TargetPoint(const CStateManager& mgr) const;
-  CVector3f LevelTarget(const CStateManager& mgr) const;
   void RequestMove(const CVector3f& point);
   CActor* NextChainNode(CStateManager& mgr) const;
   void SetBodyVulnerable(CStateManager& mgr, bool vulnerable);
@@ -126,6 +125,7 @@ protected:
   CVector3f PlayerAimPoint(const CStateManager& mgr) const;
   TUniqueId NearestNodeToPlayer(CStateManager& mgr) const;
   void InitGrowths();
+  void InitAdditiveAnim();
   void SetupCollisionManager(CStateManager& mgr);
   void Activate(CStateManager& mgr);
   void SetHeadVulnerable(CStateManager& mgr, bool vulnerable);

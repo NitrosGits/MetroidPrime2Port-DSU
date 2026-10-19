@@ -129,22 +129,65 @@ B4 GetOrigin, D0 GetHealthInfo.
   - Angles: −70/70 (dark-flyer face jitter), 2° (in rad).
 - **Material bits:** data_418/41C = 0x31, data_420 = 0x3b.
 
-## 6. Not ported / uncertain
+## 6. Runtime status (2026-10-20)
 
-- **States:** Start, BecomeLightFlyer, BecomeDarkFlyer, DeathSequence, DarkLurk, SpitWater,
-  SpitBarrage, Taunt, Level, Swoop, Blow, Circle, Reel, Recover, Flinch, DropFlyer.
-- **Bodies:** ProcessDamage, DoUserAnimEvent, AddToRenderer, GetIngSnatchingNormal/Point.
-- **Helpers:**
-  - 24E0 facing material, 215C hover, 58F0 additive, 3900 water splash, 2928 health bar.
-  - 1E40 bubble, 2A84 shockwave, 3578 wind, 3774 wing effect.
-  - 3F30 water/nodes, 2E84 swoop target, 4090/4CA8 spit node, 4324 fire spit.
-  - 5030–5830 platform chain, 4F88 DECR, 3354 grapple.
-- **Uncertain:**
-  - NextAttack's slot skipping.
-  - The e5c vulnerability source (patterned +0x4c0).
-  - The 6E68 material filter.
-  - The SetBossParams name index.
-  - Knockback-controller setup.
-  - The 2928 target field.
-- **Upstream edits still needed for the full port** (TARGET_PC): CMissileRepeller::SetActive, CPlayer
-  radar setters, and possibly CGameProjectile SetProjExtent. None made yet.
+- **Ported:** every state and helper in sections 1 and 3 except 4F88 SendDecrement, 3354
+  PlayerOnGrapplePoint (both stubs, `TODO(uncertain)`) and 1B38 (an additive flinch with no
+  caller found).
+- **Verified in `04_swamp_temple_dark` with LAYER6 forced:** 0 `[port] caught`, 0 `reach-stub`.
+  - Without lock-on, player shots can't reach the growths, so the full fight was driven by
+    console `damage` with a test-only bypass of the weapon/same-toucher checks.
+  - **Light phase:** Start → Lurk ↔ SpitWater, then Reel and Recover once the growths break.
+  - **Dark phase:** BecomeDarkFlyer → DarkLurk → DropFlyer / SpitBarrage; HP goes 500 → 375 →
+    250 → BecomeLightFlyer.
+  - **Death:** DeathSequence (knockdown, then body state 2 = lying); the boss sends Dead and
+    the boss bar clears.
+  - **Not seen:** Taunt, Level, Swoop, Blow, Circle, Flinch.
+- **Crash fixes:**
+  - **Scan tokens:** the host `CToken()` leaves `mObjRef` uninitialized, so the ctor builds the
+    tokens in its init list.
+  - **mAdditiveAnim:** looked up by 5AE4 (PAS AdditiveReaction, enum 5). Without it,
+    UpdateAdditive adds anim −1 and segfaults.
+- **Verified facts:**
+  - **Body state:** bodyctl +0x37c holds the current body-state ID, so `IsLevel` checks
+    `GetCurrentStateId() == Locomotion` against `TargetPoint`.
+  - **Collision setup (6E68 → 6B78):**
+    - Each joint copies the boss's HealthInfo with HP = 500, adds `kMT_Platform` to its filter's
+      exclude list (data_418) and starts with the light vulnerability.
+    - The growths (i < 4) also get Orbit and SeekerTarget.
+    - The body gets Unknown54 and Scannable, plus a `kFT_Never` filter.
+  - **Vulnerabilities:** light = the patterned vulnerability; dark =
+    `LdrToDamageVulnerability(ingPossession.ingVulnerability)`.
+  - **5D00** is `CEntity::SetActive` (vtable +0x1c).
+  - **Ctor end:** `EnableKnockBackPhysics(false)` and `EnableAllAnimReactions(false)`, then
+    67A4, 5AE4, 2704.
+  - **Boss params:** Activate calls SetBossParams with string `BossSwampBossStage2`.
+  - **ProcessDamage (61C4):**
+    - Damage = 500 − joint HP. A hit from the same toucher as `mLastTouched` is ignored, so only
+      the first console `damage` lands (its toucher is the player, uid 0).
+    - A growth hit needs a CWeapon facing the same way as the boss (dot > 0) and
+      `mGrowthsVulnerable`.
+- **The Dead script chain (area 32) needs Stage 1:**
+  - Dead → relay 00200267 → SetToZero → relay 00200236 → Open switch 002000e0 → switch
+    00200238 → switch 00200244 → relay 00200243 → sequence timer 00200240. That timer
+    increments layer controller 00200239 (the post-battle cinematic).
+  - Switches 00200238 and 00200244 are opened only by layer controllers 002001bd and 002001bf
+    ("Arrived"). Those are incremented by sequence timer 00200234, which runs after the Stage 1
+    death: relay 0020022e → switches 00200230 and 00200232 → relay 00200235.
+  - With LAYER6 forced, that chain never runs, so timer 0020022f retries forever. The stall
+    comes from the test harness, not from the boss. An end-to-end check needs a Stage 1 →
+    Stage 2 run.
+- **Remaining `TODO(uncertain)`:**
+  - 5D58 head vulnerability swap.
+  - 3900 splash → water link.
+  - 4324 spit radius.
+  - ZeroHealth index field.
+  - Circle bit 5 of 0xc76.
+  - Riding-platform clear in water.
+  - 5830 chain walk.
+  - Scan by form.
+  - Actor +0x150 draw gate.
+  - AddParticleGen slot.
+  - mDrawParticles mask.
+- **Upstream edits still needed** (TARGET_PC): CMissileRepeller::SetActive, the CPlayer radar
+  setters, and possibly CGameProjectile SetProjExtent. None made yet.
