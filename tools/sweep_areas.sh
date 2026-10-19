@@ -6,7 +6,7 @@
 # script never presses `START`, but it does press `A`, see `write_input` below for why that matters).
 #
 #   USERDIR=<dir holding the card> [SHARD=<n>|all] [SHARDS=4] [COUNT=63] [DWELL=1400]
-#   [TAIL=1400] [HEAL=400] [TAG=sweep] [DISPLAY_BASE=86] [ASAN=1] tools/sweep_areas.sh
+#   [TAIL=1400] [HEAL=400] [AREAS=first:count, one shard over that run] [TAG=sweep] [DISPLAY_BASE=86] [ASAN=1] tools/sweep_areas.sh
 #
 # `COUNT` is the number of area *slots* in the world (Temple Grounds has 63, slots 0..62); the sweep
 # asks for them by index, which is what `[warp] world <id> areas:` prints and what the warp's `kArea`
@@ -63,6 +63,7 @@ mkdir -p "$LOGDIR"
 
 # slice(i) -> "<first> <count>": the contiguous run of area slots shard i walks.
 slice() {
+  if [ -n "${AREAS:-}" ]; then echo "${AREAS%:*} ${AREAS#*:}"; return; fi   # AREAS=first:count
   python3 - "$COUNT" "$SHARDS" "$1" <<'PY'
 import sys
 count, shards, i = (int(v) for v in sys.argv[1:4])
@@ -111,6 +112,12 @@ for k in range(n):
     # one heal per dwell left a ~23 s gap - that killed the player in 13->14, 21 and 35.
     tokens.append("HEAL@%d" % (t + heal + dwell // 2))
     tokens.append("B@%d+4" % (t + heal + 120))
+    # Not answered here: Temple Grounds 58 (`game_end_part5`) opens "Save progress to Memory Card?"
+    # about 120 updates after arrival. B does nothing there (the table maps it to DoCancel but
+    # CSaveGameScreen wires no cancel for kUIT_SaveReady), and DOWN+A (No) was measured to quit to
+    # the front end (`[warp] world 69802220 areas: 0=...:FrontEnd04`, the report's RELOAD) - it is
+    # the ending's save screen, so no token keeps the run going. STOP_ON_STALL below ends the shard
+    # ~30 s after the pause instead of at the backstop timeout.
     tokens.append("B@%d+4" % (t + dwell // 2))
 open(path, "w").write(",".join(tokens) + "\n")
 print(len(tokens))
@@ -146,9 +153,9 @@ run_shard() { # <index>
        "$tokens tokens, log $LOGDIR/log_${TAG}_$i.log"
   RUNTAG="${TAG}_$i" DISPLAY_NUM=":$display" USERDIR="$user" INPUT_FILE="$input" \
     TELEPORT="$first" FRAMES="$frames" SECS="$secs" LOG="$LOGDIR/log_${TAG}_$i.log" \
-    GODMODE="$GODMODE" ASAN="${ASAN:-}" "$ROOT/tools/run_gameplay.sh"
+    GODMODE="$GODMODE" ASAN="${ASAN:-}" STOP_ON_STALL=1 "$ROOT/tools/run_gameplay.sh"
   local rc=$?
-  echo "[sweep] shard $i: exit=$rc (0 clean, 124 timeout, 134 abort, 139 crash)"
+  echo "[sweep] shard $i: exit=$rc (0 clean, 124 timeout, 125 stalled and stopped early, 134 abort, 139 crash)"
   return $rc
 }
 

@@ -218,9 +218,10 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
         if (m := EXIT_RE.match(line)):
             shard.exit_code = int(m.group(1))
         elif (m := WORLD_RE.match(line)):
-            if not shard.world:      # the run's first world line is the save's own world
-                shard.world = m.group(1)
-                shard.world_areas = len(line.split("areas:", 1)[1].split())
+            # The first world line is the save's own world; a run that warps with MP2_WORLD prints a
+            # second one for the world it actually entered, so the last line is the one to report.
+            shard.world = m.group(1)
+            shard.world_areas = len(line.split("areas:", 1)[1].split())
         elif (m := AREA_RE.match(line)):
             current = Phase(area=int(m.group(1)), shard=shard.index)
             phases.append(current)

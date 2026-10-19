@@ -74,9 +74,29 @@ envs=(
 [ -n "${TELEPORT:-}" ] && envs+=("MP2_TELEPORT=$TELEPORT")
 
 DISPLAY=$DISPLAY_NUM SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dummy \
-  env "${envs[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1
+  env "${envs[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
+GAME=$!
+# STOP_ON_STALL=1: a paused game (a save screen with nothing to answer it, the ending's "Save
+# progress?" prompt in Temple Grounds 58) never reaches MP2_FRAMES, so only the timeout would end
+# the run. The harness's "no game update for" line is the signal; end the run on it, exit 125.
+STALLED=
+if [ -n "${STOP_ON_STALL:-}" ]; then
+  ( while kill -0 "$GAME" 2>/dev/null; do
+      if grep -q '^\[harness\] no game update for' "$LOG" 2>/dev/null; then
+        echo "[gameplay] STOP_ON_STALL: the game stopped updating; ending the run early" >> "$LOG"
+        kill -TERM "$GAME"; break
+      fi
+      sleep 2
+    done ) &
+  WATCH=$!
+fi
+wait "$GAME"
 RC=$?
+if [ -n "${WATCH:-}" ]; then
+  kill "$WATCH" 2>/dev/null
+  grep -q '^\[gameplay\] STOP_ON_STALL' "$LOG" && RC=125
+fi
 echo "exit=$RC at $(date +%T)" >> "$LOG"
-# The run's own exit code, so a caller can chain on it: 0 is the game's clean quit path (MP2_FRAMES),
+# The run's own exit code, so a caller can chain on it: 125 is a STOP_ON_STALL early end, 0 is the game's clean quit path (MP2_FRAMES),
 # 124 the backstop `timeout`, 139 a crash and 134 an abort.
 exit $RC
