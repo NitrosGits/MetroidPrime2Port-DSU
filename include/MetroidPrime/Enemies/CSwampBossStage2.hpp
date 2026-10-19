@@ -150,6 +150,7 @@ protected:
   void ProcessDamage(CStateManager& mgr, TUniqueId colActorId);
   float RecentDamage() const;
   void DecayDamageMemory(float dt);
+  void AddDamageMemory(float damage);
   bool PlayerOnGrapplePoint(const CStateManager& mgr) const;
 
   SLdrSwampBossStage2Data mData;                             // 0x7c0

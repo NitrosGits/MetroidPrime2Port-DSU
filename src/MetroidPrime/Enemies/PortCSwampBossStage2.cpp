@@ -28,6 +28,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
 
 #include <float.h>
 
@@ -638,8 +639,19 @@ void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
   mgr.AddObject(explosion);
 }
 
+// fn_79_3774: the wing damage burst, on the growth's own locator (rodata_50) at model scale.
 void CSwampBossStage2::SpawnWingDamageEffect(CStateManager& mgr, int idx) {
-  // TODO(uncertain): not decoded.
+  if (idx < 0 || idx >= ARRAY_SIZE(kGrowthLocators)) {
+    return;
+  }
+  const CTransform4f xf = GetLctrTransform(rstl::string_l(kGrowthLocators[idx]));
+  const float scale = GetModelData()->GetScale().GetX();
+  CExplosion* effect = rs_new CExplosion(
+      mWingDamageGen, mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+      rstl::string_l("Chykka wing damage effect"), xf, 0, CVector3f(scale, scale, scale),
+      CColor::White(), -1);
+  mgr.AddObject(effect);
 }
 
 void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
@@ -745,14 +757,115 @@ void CSwampBossStage2::DecayDamageMemory(float dt) {
   }
 }
 
+// fn_79_661C: append a hit to the damage memory list (fn_79_6644 is the list append itself). The
+// window length comes from the phase data.
+void CSwampBossStage2::AddDamageMemory(float damage) {
+  SDamageMemory entry;
+  entry.mTime = mData.unknown_0x13448a4a;
+  entry.mDamage = damage;
+  mDamageMemory.push_back(entry);
+}
+
 bool CSwampBossStage2::PlayerOnGrapplePoint(const CStateManager& mgr) const {
   // TODO(uncertain): not decoded.
   return false;
 }
 
-// fn_79_61C4
+// fn_79_61C4: collision-actor damage. Every joint is held at 500 HP, so the damage of a hit is the
+// shortfall from that, and a hit counts once per touching object.
 void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
-  // TODO(uncertain): body not yet ported.
+  CCollisionActor* colActor = TCastToPtr< CCollisionActor >(mgr.ObjectById(colActorId));
+  if (!colActor) {
+    return;
+  }
+  const TUniqueId lastTouched = colActor->GetLastTouchedObject();
+  if (mLastTouched != kInvalidUniqueId && lastTouched == mLastTouched) {
+    return;
+  }
+  mLastTouched = lastTouched;
+  int hitIndex = -1;
+  if (!mCollisionMgr.null()) {
+    const int numActors = mCollisionMgr->GetNumCollisionActors();
+    for (int i = 0; i < numActors; ++i) {
+      if (mCollisionMgr->GetCollisionDescFromIndex(i).GetCollisionActorId() == colActorId) {
+        hitIndex = i;
+        break;
+      }
+    }
+  }
+  const float damage = mCollisionActorHP - colActor->HealthInfo()->GetHP();
+  bool bodyHit = false;
+  bool damageTaken = false;
+  if (hitIndex < 0 || hitIndex > 3) {
+    // Body joints: only the ovipositor (actor 4) counts in head mode, and the body only while the
+    // growths are not vulnerable.
+    if (mHeadMode) {
+      if (hitIndex == kTailActor) {
+        bodyHit = true;
+        mOvipositorHealth -= damage;
+      }
+    } else if (!mGrowthsVulnerable) {
+      mHeadHealth -= damage;
+      if (!mClampHealth) {
+        mHeadHealth = rstl::max_val(mHeadHealth, 3.f);
+      }
+      bodyHit = true;
+      if (mCircleCounting) {
+        mCircleDamage += damage;
+      }
+      AddDamageMemory(damage);
+    }
+  } else {
+    // Wing growths: front hits only, and only while they are vulnerable.
+    CWeapon* weapon = TCastToPtr< CWeapon >(mgr.ObjectById(lastTouched));
+    if (weapon) {
+      if (CVector3f::Dot(weapon->GetTransform().GetForward(), GetTransform().GetForward()) > 0.f &&
+          mGrowthsVulnerable) {
+        bodyHit = true;
+        if (mGrowthHealth[hitIndex] > 0.f) {
+          damageTaken = true;
+          mGrowthHealth[hitIndex] -= damage;
+          mGrowthFlash[hitIndex] = 1.f;
+          if (mData.breakStunDamage <= damage) {
+            mGrowthBroken[hitIndex] = true;
+            int brokenCount = 0;
+            for (int i = 0; i < mGrowthBroken.size(); ++i) {
+              brokenCount += mGrowthBroken[i] ? 1 : 0;
+            }
+            // Two broken wings at once stun the boss outright.
+            if (brokenCount > 1) {
+              damageTaken = false;
+              mGrowthDestroyed = true;
+            }
+          }
+          if (mData.stunnedFlinchSoundDamageThreshold <= damage) {
+            mReelEffect = true;
+          }
+          if (mGrowthHealth[hitIndex] > 0.f) {
+            if (mReelEffect) {
+              PlayCustomSound(colActor->GetTranslation(), CVector3f::Up(),
+                              mData.audioPlaybackParms_0x692fa63c, false);
+            }
+          } else {
+            mGrowthDestroyed = true;
+            SpawnWingDamageEffect(mgr, hitIndex);
+            SetGrowthActive(mgr, hitIndex, false);
+            damageTaken = false;
+            PlayCustomSound(colActor->GetTranslation(), CVector3f::Up(),
+                            mData.audioPlaybackParms_0xbe3d39aa, false);
+          }
+        }
+      }
+    }
+  }
+  if (bodyHit) {
+    mDamageColor = (mHeadMode || mGrowthsVulnerable) ? skDamageColor : skHitsWithoutDamageColor;
+    if (!damageTaken) {
+      TakeDamage(GetTransform().GetForward(), damage);
+    }
+    AddAdditiveFlinch(damage);
+  }
+  colActor->HealthInfo()->SetHP(mCollisionActorHP);
 }
 
 // --------------------------------------------------------------------------------------------
