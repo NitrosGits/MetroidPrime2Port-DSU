@@ -3,6 +3,42 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-20 (twenty-ninth session): the F1 Teleport and items pages, Prime 1's shape
+
+- **This commit:** the F1 overlay gets MP1's two debug pages, in this game's terms.
+  - **Game page, Teleport block.** A room combo (`IGetAreaAlways` names, so unloaded areas are
+    named too; slots with no MREA are hidden) with a filter field, `Reload` (a world warp to the same
+    world and room - the area warp deliberately ignores a request for the room it is already in),
+    and a world combo built from the memory card's world table (`CSaveWorldMemory::GetFrontEndName`,
+    with the GuiSys markup and the hand-placed line break stripped: the entry is
+    `&line-spacing=75;Temple\nGrounds`).
+  - **Cheats page, items.** Echoes' abilities and keys as checkbox grids, missiles / power bombs /
+    dark and light ammo / energy tanks sliders bounded by `GetPowerUpMaxValue`, `Full health` and
+    `Grant everything`. A grant sets the capacity to the game's own maximum for a counter (1 for an
+    ability, 0 to remove it) and the amount to the slider's value: `AddPowerUp` for the capacity
+    difference, then `SetItemAmount` for the amount. That is MP1's `SetPowerUp`/`SetPickup` shape.
+    A first version moved both fields by the amount's delta, and a review caught what that does:
+    sliding missiles from 255 to 55 lowered the capacity to 55 and left the amount at 255, and
+    unticking an item whose amount was already 0 did nothing.
+- **The first version kept a `CWorld*` and segfaulted on a world warp from the menu** - the
+  outgoing world is freed while the overlay still draws the frames before the restart. The menu's
+  own world warp is what found it (`[warp] 3bfa3eff: the outgoing world's pak stays readable`, then
+  a fault); the console's `world` with the overlay closed survived, which is why it looked flaky.
+  The room list is now a snapshot copied in `SetGameState`, keyed on `CWorld::IGetWorldAssetId()` -
+  not on `gpGameState`'s id, which names the destination on the frame the warp is served while the
+  outgoing world is still the live one (that key left Torvus Bog's page showing Temple Grounds'
+  rooms).
+- **Measured** (run on Xvfb :441, `MP2_SKIP_FRONTEND=1`, a copy of the `/tmp/opencode/locktest`
+  card): the room picker lists `0  01_Temple_LandingSite` … 62 areas of Temple Grounds, and picking
+  one warped (`[warp] area 9: loading` -> `[area] 9` -> `the game's own transition arrived in area
+  9`); the world picker warped to `3dfd2249` and the page then read `0  00_Elev_Swamp_Temple_B`;
+  `Grant everything` moved health to 1499/1499, missiles/power bombs/dark ammo to 255/10/250 with
+  every box ticked; clicking the missiles slider at a quarter then put `55 / 255` on the HUD, and
+  unticking and re-ticking Power Beam followed in the grid. Screenshots `/tmp/opencode/final_game.png`,
+  `final_cheats.png`, `p2_torvus.png`, `r3_hud.png`.
+- Not covered: the Android page layout, and the items page in the front end beyond its
+  "Waiting for gameplay..." guard.
+
 ## 2026-10-19 (twenty-eighth session): widescreen HUD spread, the MP1 way
 
 - **`6ae31083e`, merged `f209d2f97`:** MP1's widescreen HUD. A first attempt spread widgets by their

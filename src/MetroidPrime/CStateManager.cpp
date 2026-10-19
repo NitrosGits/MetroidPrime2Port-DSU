@@ -4035,7 +4035,11 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       sLastArea = areaNow;
       std::fprintf(stderr, "[area] %d\n", areaNow);
     }
-    PortOverlay::SetGameState(gpGameState->CurrentWorldAssetId(), areaNow);
+    PortOverlay::SetGameState(gpGameState->CurrentWorldAssetId(), areaNow, w);
+  } else {
+    // A world that is gone (a world teleport's restart) must not leave the overlay drawing the
+    // room list of a freed world: the publish clears its snapshot.
+    PortOverlay::SetGameState(0u, -1, nullptr);
   }
   // Actor transform smoothing: record every actor's transform before this tick moves it
   // (CActor::PortPresentedView blends from it). After the free camera's freeze, so a frozen world

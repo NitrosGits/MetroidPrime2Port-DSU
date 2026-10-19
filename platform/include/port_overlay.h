@@ -7,12 +7,17 @@
 // without walking. Aurora creates the ImGui context and feeds it the SDL events; the overlay
 // only has to build its windows between `aurora_begin_frame` and `aurora_end_frame`.
 
+class CWorld;
+
 namespace PortOverlay {
 
-// Published by the game every update, so the window can say where the player is. The ids are
-// the game's own (a world asset id and an area index); resolving them to a name would mean
-// loading the world's string table, which is not worth it for a debug label.
-void SetGameState(uint32_t worldId, int areaId);
+// Published by the game every update, so the window can say where the player is and offer the
+// warp and item pages: the ids are the game's own (a world asset id and an area index), and
+// `world` is the live world, from which the room list is copied then and there - the list is a
+// snapshot, because a world teleport frees the world while the overlay still draws the frames
+// before the restart replaces it. `world` is null when there is none; the pages then say so
+// instead of drawing an empty list.
+void SetGameState(uint32_t worldId, int areaId, CWorld* world);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
 // Scrolls the open window by `steps` rows: the phone's two-finger drag, since a finger cannot turn
