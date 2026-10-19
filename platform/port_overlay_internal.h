@@ -54,6 +54,7 @@ extern bool sSmoothFrames;
 extern bool sPoseInterpolation;
 extern bool sParticleInterpolation;
 extern bool sLookInterpolation;
+extern bool sHudWide;
 extern float sRenderScale;
 extern int sAspectMode;
 extern bool sOverlayWindowed;

@@ -26,6 +26,12 @@ public:
   CVector3f RotateTranslateW2O(const CVector3f& vec) const;
   void MultiplyO2P(const CTransform4f& xf);
   void RecalculateTransforms();
+#ifdef TARGET_PC
+  // Port: the widescreen HUD spread draws a widget with a moved world transform. Set returns the
+  // state to hand back to Restore; a widget without a parent keeps its local transform.
+  bool PortSetWorldTransform(const CTransform4f& xf, CTransform4f& savedXf, bool& savedValid) const;
+  void PortRestoreWorldTransform(const CTransform4f& xf, bool valid) const;
+#endif
 
   CGuiObject* Parent();
   const CGuiObject* GetParent() const;

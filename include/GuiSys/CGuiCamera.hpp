@@ -36,12 +36,31 @@ public:
   static CGuiWidget* Create(CGuiFrame* frame, CInputStream& in, CSimplePool* pool, uint version);
 
   CVector3f ConvertToScreenSpace(const CVector3f& point) const;
+#ifdef TARGET_PC
+  // Port: widescreen HUD (PortOverlay::HudWide), as MP1's CGuiCamera. Only a camera marked
+  // spreadable spreads its frame's widgets; the pause, map and memo frames keep the game's
+  // proportions. Draw computes the factor, CGuiFrame::Draw moves each widget by it.
+  void SetSpreadable(bool spreadable) { mSpreadable = spreadable; }
+  float GetAspectSpread() const { return mSpread; }
+  float GetSpreadCenterX() const { return mSpreadCenterX; }
+  // Half the authored width as a tangent per unit depth (perspective), or in world units (ortho).
+  float GetSpreadHalfWidth() const { return mSpreadHalfWidth; }
+  bool IsPerspective() const { return mProjection == kProjection_Perspective; }
+  const CTransform4f& GetSpreadView() const { return mSpreadView; }
+#endif
   UCameraParms GetParms() const { return mCameraParms; }
   void SetParms(const UCameraParms& parms) { mCameraParms = parms; }
 
 private:
   EProjection mProjection;
   UCameraParms mCameraParms;
+#ifdef TARGET_PC
+  bool mSpreadable = false;
+  mutable float mSpread = 1.f;
+  mutable float mSpreadCenterX = 0.f;
+  mutable float mSpreadHalfWidth = 0.f;
+  mutable CTransform4f mSpreadView = CTransform4f::Identity();
+#endif
 };
 CHECK_SIZEOF(CGuiCamera, 0xd8)
 
