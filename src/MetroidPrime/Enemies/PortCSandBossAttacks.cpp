@@ -129,8 +129,8 @@ void CSandBoss::UpdateChargeBeams(CStateManager& mgr, float dt) {
   const CPlayer* player = mgr.GetPlayer(0);
   const CVector3f playerPos = player != nullptr ? player->GetTranslation() : CVector3f::Zero();
   const CDamageInfo damage = mDoubleChargeResult  // 0x165C b1: the probe chose the double charge
-                                 ? CDamageInfo(mDoubleChargeDamage, 1.f)  // 0x14E0
-                                 : CDamageInfo(mTripleChargeDamage, 1.f); // 0x14FC
+                                 ? CDamageInfo(mDoubleChargeDamage, dt)  // 0x14E0, per second
+                                 : CDamageInfo(mTripleChargeDamage, dt); // 0x14FC
   const CMaterialFilter filter =
       CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
   for (int i = 0; i < mChargeBeams.size(); ++i) {
