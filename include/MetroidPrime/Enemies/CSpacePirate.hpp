@@ -209,6 +209,7 @@ private:
   void UpdateHeldPosition(CStateManager& mgr, float dt); // D720
   void UpdateGuardPosition(CStateManager& mgr, float dt); // D800
   void AvoidActors(CStateManager& mgr);                  // D40C
+  void CheckBlade(CStateManager& mgr);                   // CC80
   void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
   void SetVelocityForJump();                             // E168
   // Think path (fn_72_1980); the comment on each is its retail function.

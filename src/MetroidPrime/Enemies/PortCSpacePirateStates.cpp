@@ -4,6 +4,7 @@
 // from docs/module-analysis/SpacePirate.md and build/G2ME01/SpacePirate/m2c/fn_72_<off>.c.
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
+#include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
@@ -35,8 +36,63 @@ void CSpacePirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::PostWarpOut state (fn_72_6DA4)");
 }
 
+// Retail fn_72_9F1C is MP1's CSpacePirate::Attack with Echoes' own members. Activate stores
+// kAS_Ready and combat locomotion, caches GetTargetPos (CB30) in xbc4_ and the delta from that point
+// to the actor's own bounding-box centre in x908, zeroes the steering speed (rodata 0xB9C) and
+// clears the melee bit; the close test is TooClose with a zero CTriggerData, and only enables the
+// melee bit plus the blade. Unlike MP1 the turn test is not an else: retail always runs it, asking
+// for a turn (zero move vector, the cached delta as the face vector, speed 1 = rodata 0xB54) when the
+// forward axis dots the normalized delta below 0.8 (rodata 0xB64). Update runs the melee / target
+// vector / blade / cloak block only while x8f6 bit 0x20 is set, and then always calls D800 and D720;
+// Deactivate clears both x8f6 bits and returns the animation to kAS_NotReady.
 void CSpacePirate::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Attack state (fn_72_9F1C)");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    xbc4_ = GetTargetPos(mgr);
+    x908_targetDelta = xbc4_ - GetBoundingBox().GetCenterPoint();
+    x904_steeringSpeed = 0.f;
+    x8f6_26_enableMeleeAttack = false;
+    if (!x8f5_24_noMeleeAttack) {
+      if (TooClose(mgr, CTriggerData(0.f))) {
+        x8f6_26_enableMeleeAttack = true;
+        x8f8_25_appliedBladeDamage = false;
+      }
+    }
+    if (CVector3f::Dot(GetTransform().GetForward(), x908_targetDelta.AsNormalized()) < 0.8f) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLocomotionCmd(CVector3f::Zero(), x908_targetDelta, 1.f));
+    }
+    x8f6_31_inAttackState = true;
+    xb90_maxCloakAlpha = 0.75f;
+    break;
+  }
+  case kStateMsg_Update:
+    if (x8f6_26_enableMeleeAttack) {
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+        BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_One));
+      }
+      BodyController()->CommandMgr().SetTargetVector(x908_targetDelta);
+      CheckBlade(mgr);
+      if (x8f5_27_shadowPirate) {
+        if (mAnimationState.GetState() == CAnimationState::kAS_Over) {
+          mAlphaDelta = -0.4f;
+        } else {
+          mAlphaDelta = 1.f;
+          xb90_maxCloakAlpha = 0.75f;
+        }
+      }
+    }
+    UpdateGuardPosition(mgr, dt);
+    UpdateHeldPosition(mgr, dt);
+    break;
+  case kStateMsg_Deactivate:
+    x8f6_26_enableMeleeAttack = false;
+    x8f6_31_inAttackState = false;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 void CSpacePirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -596,6 +652,36 @@ void CSpacePirate::AvoidActors(CStateManager& mgr) {
       }
     }
   }
+}
+
+// Retail fn_72_CC80 is MP1's CSpacePirate::CheckBlade: the swoosh locator's own box (the model's
+// scale halved around the locator translation, rodata 0xB44 = 0.5) tested against the attack
+// target's bounds, which once over the overlap damages that actor with the data's blade damage and
+// marks the blade spent. Echoes differs from MP1 in the guard: it bails on x8f8 bit 0x20
+// (alwaysAggressive, `rlwinm. r0,r0,26,31,31` at 0xCCA4) rather than on the appliedBladeDamage bit,
+// and only *sets* x8f8 bit 0x40 at the end (0xCE0C `rlwimi ..,1,6,25`).
+void CSpacePirate::CheckBlade(CStateManager& mgr) {
+  if (x8f8_26_alwaysAggressive) {
+    return;
+  }
+  if (xa89_swooshSeg == CSegId::Invalid()) {
+    return;
+  }
+  CPhysicsActor* actor = TCastToPtr< CPhysicsActor >(mgr.ObjectById(mAttackTarget));
+  if (actor == nullptr) {
+    return;
+  }
+  const CTransform4f swoosh = GetLctrTransform(xa89_swooshSeg);
+  const CVector3f scale = GetModelData()->GetScale();
+  const CVector3f half(scale.GetX() / 2.f, scale.GetY() / 2.f, scale.GetZ() / 2.f);
+  const CAABox box(swoosh.GetTranslation() - half, swoosh.GetTranslation() + half);
+  if (!box.DoBoundsOverlap(actor->GetBoundingBox())) {
+    return;
+  }
+  mgr.ApplyDamage(GetUniqueId(), actor->GetUniqueId(), GetUniqueId(), mData.mBladeDamage,
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                  CVector3f::Zero());
+  x8f8_25_appliedBladeDamage = true;
 }
 
 // @ fn_72_AF70
