@@ -90,15 +90,17 @@ withTailArmorModel 0x6f, withTailArmorSkinRules 0x70, vulnerabilities 0x71 / 0xc
 | 0xDEC | secondary `SCAN` token (scannableInfo1) |
 | 0xDF0 | wait mode: 1 WaitStampede, 2 WaitAttachToSphere |
 | 0xDF4 | cinematic state: 1 UnderGround, 2 Stampede, 3 Normal, 4 Stunned, 5 Choking, 6 ExitSphere |
-| 0xDFC | -1 |
+| 0xDFC | charge-beam phase: -1 none, 0 grow, 1 hold, 2 shrink (fn_55_2750 / 31E8 / 311C) |
 | 0xE00 | `CProjectileInfo` dark beam (darkBeamProjectile, darkBeamDamage) |
 | 0xE28 | `CProjectileInfo` charge beam (chargeBeamInfo weapon) |
 | 0xE50 / 0xE60 / 0xE70 | optional PART tokens: head-armour explosion, stampede-armour explosion, stampede sand fountain |
 | 0xE80..0xE90 | nine `TUniqueId`s; 0xE88 = safe-zone target (`FoundSafeZoneTarget`); 0xE8E = stampede cover point |
-| 0xE94 | 0 |
-| 0xEF8 / 0xEFC | id / 8 |
+| 0xE94 | charge-beam list: count 0xE94, data 0xE98, 0x20-byte entries, capacity 3 (ends at 0xEF8) |
+| 0xEF8 | the charge-beam `CScriptEffect` (PLAY connection): ACTV/DCTV, global scale, translation |
+| 0xEFC | 8 |
 | 0xF00..0xF07 | eight locator seg ids (the `lbl_55_rodata_48` names); 0xF08 = `Head_1` seg id |
-| 0xF0C | colour (black) |
+| 0xF0C | colour (black); 0xF10 flash timer (fn_55_7BB0) |
+| 0xF14 | charge-beam phase timer (float; grow counts down from 0.6 s, shrink from chargeBeamInfo.shutdownTime) |
 | 0xF18 | doubleCharge.minChargeBeamAttackTime (attack timer seed) |
 | 0xF1C | minDarkBeamAttackTime (timer seed) |
 | 0xF24 | stampede HP (breakStampedeHP); `StampedeOver` when <= 0 |
@@ -118,6 +120,34 @@ withTailArmorModel 0x6f, withTailArmorSkinRules 0x70, vulnerabilities 0x71 / 0xc
 
 At the end the constructor disables knock-back physics and anim reactions, resolves the locator seg
 ids, builds the armour (`fn_55_6A68`) and turns off the shadow.
+
+### 2a Charge-beam list, phases and projectile [proven]
+
+- `0xE94` is a `reserved_vector` (count `0xE94`, data `0xE98`, capacity 3: `0xE98 + 3*0x20 = 0xEF8`)
+  of `{ TUniqueId beam @+0x00, CVector3f start @+0x04, CVector3f end @+0x10, CSfxHandle sfx @+0x1C }`.
+  The ids are `SandBossChargeBeam` (a `CPlasmaProjectile` subclass, 0x6B8 allocated).
+- Phases (`0xDFC`, timer `0xF14`): -1 none, 0 grow (0.6 s; scale = 1 - timer/0.6), 1 hold (scale =
+  the model scale), 2 shrink (timer = `chargeBeamInfo.shutdownTime`, scale = timer/shutdownTime).
+  `0x918` = `mData.unknown_0x7619e561.chargeBeamInfo.shutdownTime` (0x12C + 0x2C, 0.25 s default);
+  `0x8EC` = the same `chargeBeamInfo` for `TLdrToBeamInfo`.
+- Shrink end: `kSM_Deactivate` (0x44435456) to the `0xEF8` `CScriptEffect`, `RemoveEmitter` for each
+  entry, `DeleteObjectRequest` for each beam, list cleared, phase -1. `fn_55_311C` starts a volley:
+  effect transform = `Translate(centre)`, `kSM_Activate` (0x41435456), phase 0, timer 0.6.
+- `0x60` is `CActor::mModelData`; the effect scale is `GetModelData()->GetScale()` times the phase
+  factor. Hold also moves the effect to entry[0]'s start (`0xE9C`).
+- Beam update: `LookAt(start, end, up)` -> `CPlasmaProjectile::UpdateFx` (vtable +0x8C),
+  `CSfxManager::UpdateEmitter(sfx, mCollisionPoint (0x444), up, 0x7f)`, and the damage info `0x14E0`
+  (when `0x165C` b1, the double-charge probe) or `0x14FC` is applied to the player when the beam tip
+  is within 10 units (`dist^2 < 100`) together with `0x421` bit1 and `0x73C = 1.0f`.
+- `fn_55_26C0` counts entries whose object exists, whose byte `0x6A6` has bit5 set and whose int
+  `0x5E8` is not 3: the plasma projectile's bitfield byte and its expansion state (`!= kES_Release`).
+  `fn_55_2CA4` calls vtable +0x90 (`ResetBeam(mgr, false)`) on every listed beam.
+- `fn_55_2D40`: `TLdrToBeamInfo(chargeBeamInfo, 0x91 | flag ? 0x100 : 0)`, `AllocateUniqueId`,
+  `rs_new SandBossChargeBeam(mChargeBeamInfo.Token() (0xE28), beamInfo, uid, area, owner, plane)`;
+  the plane is normal up with constant `up . translation`; then `Fire(LookAt(start, end, up), mgr,
+  false)`, `AddObject`, a looping `AddEmitter(sfx, mCollisionPoint, 0x7f, area, acoustics, med
+  priority)` and the entry push. The subclass writes 16 bytes at `0x6A8` (that plane: three normal
+  floats then the constant); `fn_55_1027C` clips the ray to it and `fn_55_31E8` stores 3 there.
 
 ## 3. Flags [proven from the triggers/code functions]
 
@@ -169,11 +199,11 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 2498 | CSandBoss::RotateHelper2498 | [stand-in] log-once |
 | 254C | CSandBoss::RotateHelper254C | [stand-in] log-once |
 | 25D0 | CSandBoss::RotateHelper25D0 | [stand-in] log-once |
-| 26C0 | CSandBoss::BuildPointList | [stand-in] log-once |
-| 2750 | CSandBoss::UpdateAttacks | [stand-in] log-once |
-| 2CA4 | CSandBoss::UpdatePointList | [stand-in] log-once |
-| 2D40 | CSandBoss::CreateChargeBeam | [stand-in] log-once |
-| 311C | CSandBoss::ChargeHelper311C | [stand-in] log-once |
+| 26C0 | CSandBoss::CountActiveChargeBeams (returns the count) | [ported] host body, not exercised yet |
+| 2750 | CSandBoss::UpdateChargeBeams | [ported] host body, not exercised yet |
+| 2CA4 | CSandBoss::ResetChargeBeams | [ported] host body, not exercised yet |
+| 2D40 | CSandBoss::CreateChargeBeam (start, end, sfx, charged) | [ported] host body, not exercised yet |
+| 311C | CSandBoss::StartChargeBeamGrow | [ported] host body, not exercised yet |
 | 31E8 | CSandBoss::ChargeHelper31E8 | [stand-in] log-once |
 | 3324 | CSandBoss::ChargeHelper3324 | [stand-in] log-once |
 | 3434 | CSandBoss::ChargeHelper3434 | [stand-in] log-once |
@@ -309,7 +339,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | DB60 | CSandBoss::~CSandBoss | [proven] host body |
 | E170 | CSandBoss::CSandBoss | [proven] host body |
 | 1027C | SandBossChargeBeam::RayCollisionCheckWithWorld | [stand-in] log-once |
-| 107B0 | SandBossChargeBeam::SandBossChargeBeam | [stand-in] log-once |
+| 107B0 | SandBossChargeBeam::SandBossChargeBeam | [ported] host body, not exercised yet |
 | 108E4 / 10C18 | SandBossChargeBeam::~SandBossChargeBeam | [stand-in] empty, base dtor |
 | 10CB4 | CSandBoss::SortStampedePoints | [proven] host body |
 | 11184 | static initialiser of the FSM tables | [proven] host static tables (PortCSandBoss.cpp) |
@@ -324,6 +354,11 @@ Notes:
 - `fn_55_D384` (DoUserAnimEvent) and `fn_55_D620` (Think) are proven but dispatch to stand-ins
   (screen shake, ground impact, `UpdateAttacks`, ...), so their effects are incomplete until slice B/C.
 - Set*Armor (9600..986C) and ResetAttackTimes (8E60) are kept as stand-ins on purpose.
+- Slice D (charge-beam list, 26C0 2750 2CA4 2D40 311C 107B0): `26C0` counts beams with
+  `IsFiring()` instead of reading the private expansion state (retail also requires it not to be
+  `kES_Release`); the shrink phase omits retail's per-beam `CVector3f` at beam+0x674 (host member
+  not identified); `2D40` takes the retail-shaped arguments, so its callers (`3ACC`, `3F44`, still
+  stand-ins) will pass (start, end, sound_ChargeBeam, charged).
 
 ## 5. Runtime
 

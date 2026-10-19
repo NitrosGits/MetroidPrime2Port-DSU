@@ -97,7 +97,7 @@ CSandBoss::CSandBoss(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mWaitMode(0)
 , mCinematicState(0)
 , mGroupCinematicState(0)
-, mDFC(-1)
+, mChargeBeamPhase(-1)
 , mDarkBeamInfo(data.darkBeamProjectile, LdrToDamageInfo(data.darkBeamDamage))
 , mChargeBeamInfo(data.unknown_0x7619e561.chargeBeamInfo.weaponSystem, CDamageInfo())
 , mIS02Target(kInvalidUniqueId)
@@ -109,11 +109,11 @@ CSandBoss::CSandBoss(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mHeadCollider(kInvalidUniqueId)
 , mStampedePoint(kInvalidUniqueId)
 , mCoverPoint(kInvalidUniqueId)
-, mPlayTarget(kInvalidUniqueId)
+, mScriptEffect(kInvalidUniqueId)
 , mEFC(8)
 , mFlashColor(CColor::Black())
 , mFlashTime(0.f)
-, mF14(0)
+, mChargeBeamPhaseTimer(0.f)
 , mChargeBeamTimer(data.unknown_0x7619e561.doubleCharge.minChargeBeamAttackTime)
 , mDarkBeamTimer(data.minDarkBeamAttackTime)
 , mF20(0.f)
@@ -334,7 +334,7 @@ void CSandBoss::Think(float dt, CStateManager& mgr) {
   mCollisionManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   mBoneTracking.Think(dt);
   UpdateTimers(dt);
-  UpdateAttacks(mgr, dt);
+  UpdateChargeBeams(mgr, dt);
   UpdateGroupCinematicState(mgr);
 }
 
@@ -485,7 +485,8 @@ void CSandBoss::UpdateGroupCinematicState(CStateManager& mgr) {
 // the sibling list, and draw after the sibling with the next-higher command index.
 void CSandBoss::FindConnections(CStateManager& mgr) {
   mSphere = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
-  mPlayTarget = FindConnectedObject(mgr, kSS_Play, kSM_Play);
+  // The PLAY connection is the charge-beam script effect (the 0xEF8 target fn_55_2750 scales).
+  mScriptEffect = FindConnectedObject(mgr, kSS_Play, kSM_Play);
   mBossInfoSource = FindConnectedObject(mgr, kSS_Modify, kSM_Activate);
   mIS02Target = FindConnectedObject(mgr, kSS_InternalState2, kSM_Follow);
   mIS01Target = FindConnectedObject(mgr, kSS_InternalState1, kSM_Follow);

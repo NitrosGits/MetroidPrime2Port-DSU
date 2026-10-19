@@ -5,6 +5,8 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/Audio/CSfxHandle.hpp"
+#include "Kyoto/Math/CPlane.hpp"
 #include "Kyoto/Math/CQuaternion.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -26,22 +28,23 @@ class CSkinnedModel;
 // The REL's charge-beam projectile ("SandBossChargeBeam"): a CPlasmaProjectile subclass whose own
 // code is fn_55_1027C..fn_55_10760 (fn_55_1027C overrides RayCollisionCheckWithWorld; 10548..10760
 // are inlined helpers of it), constructed by fn_55_107B0 (called from CreateChargeBeam,
-// fn_55_2D40) and destroyed by fn_55_108E4 / fn_55_10C18. Port stand-in: the constructor forwards
-// CPlasmaProjectile's own parameter list; retail passes extra arguments the analysis has not mapped.
+// fn_55_2D40) and destroyed by fn_55_108E4 / fn_55_10C18. The subclass adds one 16-byte member:
+// the plane its ray check clips to (retail 0x6A8: three normal floats, then a constant).
 class SandBossChargeBeam : public CPlasmaProjectile {
 public:
-  SandBossChargeBeam(const TToken< CWeaponDescription >& description, const rstl::string& name,
-                     EWeaponType type, const CBeamInfo& beamInfo, const CTransform4f& xf,
-                     EMaterialTypes material, const CDamageInfo& damage, TUniqueId uid,
-                     TAreaId areaId, TUniqueId owner, const CWeaponAssetInfo& resources,
-                     bool drawOwnerFirst, uint attribs); // fn_55_107B0
-  ~SandBossChargeBeam() override;                        // fn_55_108E4 / fn_55_10C18
+  SandBossChargeBeam(const TToken< CWeaponDescription >& description, const CBeamInfo& beamInfo,
+                     TUniqueId uid, TAreaId areaId, TUniqueId owner,
+                     const CPlane& plane); // fn_55_107B0
+  ~SandBossChargeBeam() override;      // fn_55_108E4 / fn_55_10C18
 
   CRayCastResult RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& start,
                                             const CVector3f& end, float magnitude,
                                             rstl::reserved_vector< TUniqueId, 1024 >& nearList,
                                             CStateManager& mgr,
                                             EStaticGeometryTest staticTest) override; // fn_55_1027C
+
+private:
+  CPlane mPlane; // 0x6A8 (up plane through the boss; fn_55_1027C clips the beam to it)
 };
 
 // One entry of the vector at 0x1478 (reserved to 0x10 by fn_55_10FA8, count 0x147C, capacity
@@ -49,6 +52,15 @@ public:
 struct SSandBossIdEntry {
   TUniqueId mId;
   float mValue; // squared distance (fn_55_9E3C)
+};
+
+// One entry of the charge-beam list at 0xE94 (count 0xE94, data 0xE98, 0x20 bytes each, capacity 3:
+// it ends exactly at 0xEF8): the beam actor, the segment it was fired along and its looping emitter.
+struct SSandBossChargeBeamEntry {
+  TUniqueId mBeam;  // +0x00
+  CVector3f mStart; // +0x04
+  CVector3f mEnd;   // +0x10
+  CSfxHandle mSfx;  // +0x1C
 };
 #endif
 
@@ -231,11 +243,12 @@ private:
   void RotateHelper2498(CStateManager& mgr, float dt);                     // fn_55_2498
   void RotateHelper254C(CStateManager& mgr, float dt);                     // fn_55_254C
   void RotateHelper25D0(CStateManager& mgr, float dt);                     // fn_55_25D0
-  void BuildPointList(CStateManager& mgr);                                 // fn_55_26C0
-  void UpdateAttacks(CStateManager& mgr, float dt);                        // fn_55_2750
-  void UpdatePointList(CStateManager& mgr);                                // fn_55_2CA4
-  void CreateChargeBeam(CStateManager& mgr);                               // fn_55_2D40
-  void ChargeHelper311C(CStateManager& mgr);                               // fn_55_311C
+  int CountActiveChargeBeams(CStateManager& mgr);                          // fn_55_26C0
+  void UpdateChargeBeams(CStateManager& mgr, float dt);                    // fn_55_2750
+  void ResetChargeBeams(CStateManager& mgr);                               // fn_55_2CA4
+  void CreateChargeBeam(CStateManager& mgr, const CVector3f& start, const CVector3f& end,
+                        ushort sfxId, bool charged);                       // fn_55_2D40
+  void StartChargeBeamGrow(CStateManager& mgr, const CVector3f& position); // fn_55_311C
   void ChargeHelper31E8(CStateManager& mgr);                               // fn_55_31E8
   void ChargeHelper3324(CStateManager& mgr);                               // fn_55_3324
   void ChargeHelper3434(CStateManager& mgr);                               // fn_55_3434
@@ -276,7 +289,7 @@ private:
   int mWaitMode;                                               // 0xDF0 (1 stampede, 2 sphere)
   int mCinematicState;                                         // 0xDF4 (1..6)
   int mGroupCinematicState;                                    // 0xDF8
-  int mDFC;                                                    // 0xDFC (-1; meaning unknown)
+  int mChargeBeamPhase;                                        // 0xDFC (-1 none, 0 grow, 1 hold, 2 shrink)
   CProjectileInfo mDarkBeamInfo;                               // 0xE00
   CProjectileInfo mChargeBeamInfo;                             // 0xE28
   rstl::optional_object< TLockedToken< CGenDescription > > mHeadArmorExplosion;     // 0xE50
@@ -291,14 +304,14 @@ private:
   TUniqueId mHeadCollider;    // 0xE8C (the Head_1 collision actor)
   TUniqueId mStampedePoint;   // 0xE8E
   TUniqueId mCoverPoint;      // 0xE90
-  rstl::reserved_vector< CVector3f, 8 > mPoints; // 0xE94 [inferred element type]
-  TUniqueId mPlayTarget;      // 0xEF8 (PLAY / PLAY)
+  rstl::reserved_vector< SSandBossChargeBeamEntry, 3 > mChargeBeams; // 0xE94 (count) / 0xE98 (data)
+  TUniqueId mScriptEffect;    // 0xEF8 (the charge-beam CScriptEffect: ACTV/DCTV, global scale)
   int mEFC;                   // 0xEFC (8; meaning unknown)
   CSegId mArmorLocators[8];   // 0xF00 (lbl_55_rodata_48 names)
   CSegId mHeadLocator;        // 0xF08 ("Head_1")
   CColor mFlashColor;         // 0xF0C
   float mFlashTime;           // 0xF10
-  int mF14;                   // 0xF14 (0; type unknown)
+  float mChargeBeamPhaseTimer; // 0xF14 (grow counts down from 0.6 s, shrink from shutdownTime)
   float mChargeBeamTimer;     // 0xF18
   float mDarkBeamTimer;       // 0xF1C
   float mF20;                 // 0xF20 (stampede wait timer; compared against fn_55_1AEC)

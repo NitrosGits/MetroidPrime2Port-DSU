@@ -1,7 +1,7 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the attack helpers and the charge-beam
-// projectile. The stampede helpers follow retail (`// fn_55_X (ported, not exercised yet)`); every
-// other function here is still a log-once stand-in (bool helpers return false, the rest do
-// nothing; the charge beam forwards to CPlasmaProjectile).
+// projectile. The stampede helpers and the charge-beam list (fn_55_26C0..fn_55_311C) follow retail
+// (`// fn_55_X (ported, not exercised yet)`); every other function here is still a log-once stand-in
+// (bool helpers return false, the rest do nothing).
 // docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 
@@ -9,22 +9,30 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
+#include "MetroidPrime/ScriptLoader.hpp"
+#include "MetroidPrime/Weapons/CBeamInfo.hpp"
+#include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
 void PortSandBossStandIn(const char* what);
 const CSandBoss* CastSandBoss(const CEntity* entity);
 
+// fn_55_107B0 (ported, not exercised yet)
+// The charge beam: a light plasma projectile with a zeroed damage info (fn_55_2750 applies the
+// double/triple-charge damage itself), no weapon assets, a 1-second damage duration and the plane
+// its own ray check clips to (fn_55_1027C).
 SandBossChargeBeam::SandBossChargeBeam(const TToken< CWeaponDescription >& description,
-                                       const rstl::string& name, EWeaponType type,
-                                       const CBeamInfo& beamInfo, const CTransform4f& xf,
-                                       EMaterialTypes material, const CDamageInfo& damage,
-                                       TUniqueId uid, TAreaId areaId, TUniqueId owner,
-                                       const CWeaponAssetInfo& resources, bool drawOwnerFirst,
-                                       uint attribs) // fn_55_107B0
-: CPlasmaProjectile(description, name, type, beamInfo, xf, material, damage, uid, areaId, owner,
-                    resources, drawOwnerFirst, attribs) {
-  PortSandBossStandIn("SandBossChargeBeam::SandBossChargeBeam (fn_55_107B0)");
+                                       const CBeamInfo& beamInfo, TUniqueId uid, TAreaId areaId,
+                                       TUniqueId owner, const CPlane& plane)
+: CPlasmaProjectile(description, rstl::string_l("SandBossChargeBeam"), kWT_Light, beamInfo,
+                    CTransform4f::Identity(), kMT_ProjectilePassthrough, CDamageInfo(), uid, areaId,
+                    owner, CWeaponAssetInfo(), true,
+                    CWeapon::kPA_KeepInCinematic | CWeapon::kPA_BigStrike)
+, mPlane(plane) {
+  SetDamageDuration(1.f); // retail stores 1.0 in the weapon's duration field after construction
 }
 
 SandBossChargeBeam::~SandBossChargeBeam() {} // fn_55_108E4 / fn_55_10C18
@@ -95,24 +103,151 @@ void CSandBoss::RotateHelper25D0(CStateManager&, float) { // fn_55_25D0
   PortSandBossStandIn("CSandBoss::RotateHelper25D0 (fn_55_25D0)");
 }
 
-void CSandBoss::BuildPointList(CStateManager&) { // fn_55_26C0
-  PortSandBossStandIn("CSandBoss::BuildPointList (fn_55_26C0)");
+// fn_55_26C0 (ported, not exercised yet)
+// How many of the listed charge beams are still live (retail: the object still exists, its plasma
+// projectile has not been reset and it is not releasing). DoubleCharge starts a second volley while
+// fewer than two are live, TripleCharge a third while fewer than three are.
+int CSandBoss::CountActiveChargeBeams(CStateManager& mgr) {
+  int count = 0;
+  for (int i = 0; i < mChargeBeams.size(); ++i) { // 0xE94
+    const CPlasmaProjectile* beam =
+        TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(mChargeBeams[i].mBeam));
+    if (beam != nullptr && beam->IsFiring()) {
+      ++count;
+    }
+  }
+  return count;
 }
 
-void CSandBoss::UpdateAttacks(CStateManager&, float) { // fn_55_2750
-  PortSandBossStandIn("CSandBoss::UpdateAttacks (fn_55_2750)");
+// fn_55_2750 (ported, not exercised yet)
+// Per-frame charge-beam update: aims each beam along its recorded segment, moves its looping
+// emitter there and damages the player when the beam tip is within ten units. Then runs the script
+// effect's phases (mChargeBeamPhase): 0 grow over 0.6 s, 1 hold at the model scale, 2 shrink over
+// chargeBeamInfo.shutdownTime; a finished shrink sends Deactivate to the effect and deletes the
+// beams.
+void CSandBoss::UpdateChargeBeams(CStateManager& mgr, float dt) {
+  const CPlayer* player = mgr.GetPlayer(0);
+  const CVector3f playerPos = player != nullptr ? player->GetTranslation() : CVector3f::Zero();
+  const CDamageInfo damage = mDoubleChargeResult  // 0x165C b1: the probe chose the double charge
+                                 ? CDamageInfo(mDoubleChargeDamage, 1.f)  // 0x14E0
+                                 : CDamageInfo(mTripleChargeDamage, 1.f); // 0x14FC
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
+  for (int i = 0; i < mChargeBeams.size(); ++i) {
+    SSandBossChargeBeamEntry& entry = mChargeBeams[i];
+    CPlasmaProjectile* beam = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(entry.mBeam));
+    if (beam == nullptr) {
+      continue;
+    }
+    beam->UpdateFx(CTransform4f::LookAt(entry.mStart, entry.mEnd, CVector3f::Up()), dt, mgr);
+    CSfxManager::UpdateEmitter(entry.mSfx, beam->GetCurrentPos(), CVector3f::Up(), 0x7f);
+    if (player != nullptr && (beam->GetCurrentPos() - playerPos).MagSquared() < 100.f) {
+      mIsMakingBigStrike = true;
+      mDamageDuration = 1.f;
+      mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), damage, filter,
+                      CVector3f::Zero());
+    }
+  }
+
+  CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(mScriptEffect)); // 0xEF8
+  if (effect == nullptr) {
+    return;
+  }
+  if (GetModelData() == nullptr) {
+    return;
+  }
+  const CVector3f baseScale = GetModelData()->GetScale();
+  if (mChargeBeamPhase == 1) { // hold
+    if (!mChargeBeams.empty()) {
+      effect->SetGlobalTranslation(mChargeBeams[0].mStart); // 0xE9C
+      effect->SetGlobalScale(baseScale);
+    }
+  } else if (mChargeBeamPhase < 1) {
+    if (mChargeBeamPhase >= 0) { // grow: 0.6 s from nothing to the model scale
+      mChargeBeamPhaseTimer -= dt;
+      if (mChargeBeamPhaseTimer <= 0.f) {
+        mChargeBeamPhase = 1;
+      } else {
+        float grow = 1.f - mChargeBeamPhaseTimer / 0.6f;
+        if (grow < 0.f) {
+          grow = 0.f;
+        }
+        effect->SetGlobalScale(grow * baseScale);
+      }
+    }
+  } else if (mChargeBeamPhase < 3) { // shrink over the beam's shutdown time
+    mChargeBeamPhaseTimer -= dt;
+    const float shutdownTime = mData.unknown_0x7619e561.chargeBeamInfo.shutdownTime; // 0x918
+    if (mChargeBeamPhaseTimer <= 0.f || shutdownTime <= 0.f) {
+      mgr.SendScriptMsg(effect, GetUniqueId(), kSM_Deactivate, kInvalidUniqueId);
+      mChargeBeamPhase = -1;
+      for (int i = 0; i < mChargeBeams.size(); ++i) {
+        if (mgr.ObjectById(mChargeBeams[i].mBeam) != nullptr) {
+          CSfxManager::RemoveEmitter(mChargeBeams[i].mSfx);
+          mgr.DeleteObjectRequest(mChargeBeams[i].mBeam);
+        }
+      }
+      mChargeBeams.clear();
+    } else {
+      float shrink = mChargeBeamPhaseTimer / shutdownTime;
+      if (shrink > 1.f) {
+        shrink = 1.f;
+      }
+      effect->SetGlobalScale(shrink * baseScale);
+      // Retail also writes `shrink` over a CVector3f at beam+0x674; the host class does not identify
+      // that member yet (its particles follow the beam's own expansion), so only the effect scales.
+    }
+  }
 }
 
-void CSandBoss::UpdatePointList(CStateManager&) { // fn_55_2CA4
-  PortSandBossStandIn("CSandBoss::UpdatePointList (fn_55_2CA4)");
+// fn_55_2CA4 (ported, not exercised yet)
+// Releases every listed beam: each plasma projectile stops expanding and fades out (ResetBeam with
+// fullReset false, so the actor stays until the effect finishes).
+void CSandBoss::ResetChargeBeams(CStateManager& mgr) {
+  for (int i = 0; i < mChargeBeams.size(); ++i) {
+    if (CPlasmaProjectile* beam =
+            TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(mChargeBeams[i].mBeam))) {
+      beam->ResetBeam(mgr, false);
+    }
+  }
 }
 
-void CSandBoss::CreateChargeBeam(CStateManager&) { // fn_55_2D40
-  PortSandBossStandIn("CSandBoss::CreateChargeBeam (fn_55_2D40)");
+// fn_55_2D40 (ported, not exercised yet)
+// Fires one charge beam along start..end: beam info from the loader's chargeBeamInfo, identity then
+// a LookAt transform, a looping emitter on the beam, and {beam, start, end, sfx} appended to the
+// list (three at most).
+void CSandBoss::CreateChargeBeam(CStateManager& mgr, const CVector3f& start, const CVector3f& end,
+                                 ushort sfxId, bool charged) {
+  const CBeamInfo beamInfo =
+      TLdrToBeamInfo(mData.unknown_0x7619e561.chargeBeamInfo, charged ? 0x191 : 0x91); // 0x8EC
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  const CPlane plane(CVector3f::Dot(GetTranslation(), CVector3f::Up()), CVector3f::Up());
+  SandBossChargeBeam* beam = rs_new SandBossChargeBeam(
+      mChargeBeamInfo.Token(), beamInfo, uid, GetCurrentAreaId(), GetUniqueId(), plane); // 0xE28
+  if (beam == nullptr) {
+    return;
+  }
+  beam->Fire(CTransform4f::LookAt(start, end, CVector3f::Up()), mgr, false);
+  mgr.AddObject(*beam);
+  const CSfxHandle sfx =
+      CSfxManager::AddEmitter(sfxId, beam->GetCurrentPos(), 0x7f, GetCurrentAreaId().Value(), true,
+                              true, CSfxManager::kMedPriority);
+  const SSandBossChargeBeamEntry entry = {uid, start, end, sfx};
+  mChargeBeams.push_back(entry); // 0xE94
 }
 
-void CSandBoss::ChargeHelper311C(CStateManager&) { // fn_55_311C
-  PortSandBossStandIn("CSandBoss::ChargeHelper311C (fn_55_311C)");
+// fn_55_311C (ported, not exercised yet)
+// Starts a charge-beam volley: the script effect moves to the volley's centre, receives Activate,
+// and the beam grows from nothing over 0.6 s.
+void CSandBoss::StartChargeBeamGrow(CStateManager& mgr, const CVector3f& position) {
+  CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(mScriptEffect)); // 0xEF8
+  if (effect == nullptr) {
+    return;
+  }
+  effect->SetTransform(CTransform4f::Translate(position));
+  mgr.SendScriptMsg(effect, GetUniqueId(), kSM_Activate, kInvalidUniqueId);
+  mChargeBeamPhase = 0;        // 0xDFC
+  mChargeBeamPhaseTimer = 0.6f; // 0xF14
 }
 
 void CSandBoss::ChargeHelper31E8(CStateManager&) { // fn_55_31E8
