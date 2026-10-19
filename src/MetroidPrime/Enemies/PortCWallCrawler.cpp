@@ -42,6 +42,9 @@
 
 namespace {
 
+// @ fn_83_1CB4
+// @ fn_83_1F04
+// @ fn_83_1E78
 bool PointOnSurface(const CCollisionSurface& surface, const CVector3f& point) {
   const CVector3f normal = surface.GetNormal();
   const CVector3f projected = point - CVector3f::Dot(point - surface.GetVert(0), normal) * normal;
@@ -72,6 +75,7 @@ void DeliverBend(CBodyController* bc, float weight, bool& playing, pas::EAdditiv
 
 } // namespace
 
+// @ fn_83_2374
 CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::string& name,
                            EFlavorType flavor, CEntityInfo& info, const CTransform4f& xf,
                            const CModelData& mData, const CPatternedInfo& pInfo,
@@ -113,8 +117,10 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
 , x861_24_(true)
 , mConstraintPlane(0.f, CUnitVector3f(0.f, 1.f, 0.f, CUnitVector3f::kN_No)) {}
 
+// @ fn_83_208C
 CWallCrawler::~CWallCrawler() {}
 
+// @ fn_83_1098
 void CWallCrawler::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
   if (!GetActive() || mPlayerObstructed) {
@@ -141,6 +147,7 @@ void CWallCrawler::PreThink(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_83_580
 void CWallCrawler::Think(float dt, CStateManager& mgr) {
   if (GetMovable()) {
     AddMaterial(kMT_Solid, mgr);
@@ -213,6 +220,7 @@ void CWallCrawler::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_83_1FD0
 void CWallCrawler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   if (msg.GetMessage() == kSM_Create) {
     AddMaterial(kMT_Immovable, mgr);
@@ -222,8 +230,10 @@ void CWallCrawler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_83_EE4
 void CWallCrawler::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_83_4C8
 rstl::optional_object< CAABox > CWallCrawler::GetTouchBounds() const {
   // Retail calls the CPhysicsActor vtable slot at 0x80 for the transform; GetPrimitiveTransform is
   // the virtual there (inferred from the slot, not from a symbol).
@@ -231,14 +241,17 @@ rstl::optional_object< CAABox > CWallCrawler::GetTouchBounds() const {
                                                   CTransform4f::Scale(x848_));
 }
 
+// @ fn_83_1308
 const CCollisionPrimitive* CWallCrawler::GetCollisionPrimitive() const { return &mColSphere; }
 
+// @ fn_83_D8
 TUniqueId CWallCrawler::GetNextWaypoint(CStateManager& mgr, const CScriptWaypoint* waypoint,
                                         bool reverse) {
   // Retail ignores `reverse` here; subclasses override the slot.
   return waypoint->NextWaypoint(mgr);
 }
 
+// @ fn_83_114
 void CWallCrawler::SetConstraint(CStateManager& mgr, int constraint) {
   x834_ = constraint;
   if (constraint != 0) {
@@ -246,6 +259,7 @@ void CWallCrawler::SetConstraint(CStateManager& mgr, int constraint) {
   }
 }
 
+// @ fn_83_148
 void CWallCrawler::UpdateConstraintPlane(CStateManager& mgr) {
   // The constraint plane runs through the next three non-collinear patrol waypoints (up to 30 are
   // walked). With only two, it is the vertical-ish plane through them and a point one unit above
@@ -285,6 +299,7 @@ void CWallCrawler::UpdateConstraintPlane(CStateManager& mgr) {
   x844_ = plane.GetConstant();
 }
 
+// @ fn_83_F04
 bool CWallCrawler::UpdateWPDestination(CStateManager& mgr) {
   CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(GetDestObj()));
   if (waypoint == nullptr) {
@@ -310,6 +325,7 @@ bool CWallCrawler::UpdateWPDestination(CStateManager& mgr) {
   return advanced;
 }
 
+// @ fn_83_1310
 void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3f& newPos, float dt) {
   float best = radius + mCollisionCloseMargin;
   const CVector3f extent(best, best, best);
@@ -382,6 +398,7 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
 }
 
 // `degrees` is the most the up vector may turn this call.
+// @ fn_83_1B50
 void CWallCrawler::AlignToPlane(const CUnitVector3f& normal, float degrees) {
   const CVector3f up = GetTransform().GetUp();
   const float dot = CVector3f::Dot(up, normal);
@@ -397,15 +414,18 @@ void CWallCrawler::AlignToPlane(const CUnitVector3f& normal, float degrees) {
 // GetPlane() builds the plane by value; returning it directly bound the reference to a temporary,
 // which GCC compiles to a null reference (PillBug's patrol then faulted in CPlane::GetClosestPoint).
 // Retail returns the constraint plane stored at 0x838 (x838_ normal, x844_ constant).
+// @ fn_83_D0
 const CPlane& CWallCrawler::GetConstraintPlane() const {
   mConstraintPlane = CPlane(x844_, CUnitVector3f(x838_, CUnitVector3f::kN_No));
   return mConstraintPlane;
 }
 
+// @ fn_83_1EB8
 CVector3f CWallCrawler::ProjectVectorToPlane(const CVector3f& vec, const CVector3f& planeDir) {
   return vec - CVector3f::Dot(vec, planeDir) * planeDir;
 }
 
+// @ fn_83_1F7C
 CVector3f CWallCrawler::GetClosestPointOnPlane(const CVector3f& point, const CPlane& plane) {
   return plane.GetClosestPoint(point);
 }
@@ -413,5 +433,7 @@ CVector3f CWallCrawler::GetClosestPointOnPlane(const CVector3f& point, const CPl
 // The module's entry points. Retail's are four bytes each (a bare `blr`), because the module's
 // constructors do any registration; `module prolog` in platform/compiled_modules.cpp is what the
 // port calls instead.
+// @ fn_83_C8
 void RELMain() {}
+// @ fn_83_CC
 void RELExit() {}
