@@ -251,10 +251,11 @@ private:
   void CreateChargeBeam(CStateManager& mgr, const CVector3f& start, const CVector3f& end,
                         ushort sfxId, bool charged);                       // fn_55_2D40
   void StartChargeBeamGrow(CStateManager& mgr, const CVector3f& position); // fn_55_311C
-  void ChargeHelper31E8(CStateManager& mgr);                               // fn_55_31E8
-  void ChargeHelper3324(CStateManager& mgr);                               // fn_55_3324
-  void ChargeHelper3434(CStateManager& mgr);                               // fn_55_3434
-  void ChargeHelper37F4(CStateManager& mgr);                               // fn_55_37F4
+  void EndChargeBeamVolley(CStateManager& mgr);                            // fn_55_31E8
+  void UpdateChargeBeamRetarget(CStateManager& mgr, float dt,
+                                const SLdrSandBossChargeBeamData& data);   // fn_55_3324
+  void UpdateTripleChargeSweep(CStateManager& mgr, float dt);              // fn_55_3434
+  void UpdateDoubleChargeSweep(CStateManager& mgr, float dt);              // fn_55_37F4
   void StartTripleChargeBeam(CStateManager& mgr, const rstl::string& locator); // fn_55_3ACC
   void StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& locator); // fn_55_3F44
   bool ShouldDarkBeamAttackCheck(CStateManager& mgr) const;                // fn_55_42A8
@@ -322,10 +323,10 @@ private:
   float mHeadArmorHP;         // 0xF2C
   float mF30;                 // 0xF30 (stampede piece timer, 0.2 s gate in fn_55_7C68)
   float mF34;                 // 0xF34 (counts up in fn_55_86D0)
-  int mF38;                   // 0xF38 (0; type unknown)
-  int mF3C;                   // 0xF3C (1; type unknown)
-  int mF40;                   // 0xF40 (0; type unknown)
-  int mF44;                   // 0xF44 (0; type unknown)
+  float mChargeBeamSweepPhase; // 0xF38 (sweep angle in radians, seeded to -pi/2)
+  int mChargeBeamSweepDir;     // 0xF3C (1 or 0: which way the sweep turns, fn_55_3324 flips it)
+  float mChargeBeamRetargetTimer; // 0xF40 (seconds until the sweep may change direction)
+  int mChargeBeamCooldown;     // 0xF44 (blocks a new volley while >= 1; set from the loader at end)
   int mF48;                   // 0xF48 (0; type unknown)
   // Retail holds these three as reserved_vectors whose count the constructor sets to 8 and nothing
   // changes, so the host keeps them as fixed arrays. Armour slots start empty; fn_55_6A68 fills

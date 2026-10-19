@@ -7,6 +7,7 @@
 
 #include "Collision/CRayCastResult.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -18,6 +19,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 
 void PortSandBossStandIn(const char* what);
+CSandBoss* CastSandBoss(CEntity* entity);
 const CSandBoss* CastSandBoss(const CEntity* entity);
 
 // fn_55_107B0 (ported, not exercised yet)
@@ -283,20 +285,123 @@ void CSandBoss::StartChargeBeamGrow(CStateManager& mgr, const CVector3f& positio
   mChargeBeamPhaseTimer = 0.6f; // 0xF14
 }
 
-void CSandBoss::ChargeHelper31E8(CStateManager&) { // fn_55_31E8
-  PortSandBossStandIn("CSandBoss::ChargeHelper31E8 (fn_55_31E8)");
+// fn_55_31E8 (ported, not exercised yet)
+// Ends a charge volley: every attached sibling is told to leave its loop attack (ExitState, its
+// animation state marked over), the beams are released, and a running grow/hold phase turns into the
+// shrink phase over the beam's shutdown time.
+void CSandBoss::EndChargeBeamVolley(CStateManager& mgr) {
+  for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
+    CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling->mAttachedToSphere) { // 0x165D b7
+      sibling->BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+      sibling->mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6B4 = 3
+    }
+  }
+  ResetChargeBeams(mgr); // fn_55_2CA4
+  if (mChargeBeamPhase >= 0 && mChargeBeamPhase < 2) { // 0xDFC: grow or hold
+    mChargeBeamPhase = 2;
+    mChargeBeamPhaseTimer = mData.unknown_0x7619e561.chargeBeamInfo.shutdownTime; // 0x918
+  }
 }
 
-void CSandBoss::ChargeHelper3324(CStateManager&) { // fn_55_3324
-  PortSandBossStandIn("CSandBoss::ChargeHelper3324 (fn_55_3324)");
+// fn_55_3324 (ported, not exercised yet)
+// Retargets a running volley: once the retarget timer runs out, either wait out the rest of the
+// state (interval + variance left) or flip the sweep direction with the loader's chance and wait a
+// new interval plus a random variance. The timer only runs while beams exist.
+void CSandBoss::UpdateChargeBeamRetarget(CStateManager& mgr, float dt,
+                                         const SLdrSandBossChargeBeamData& data) {
+  if (!mChargeBeams.empty()) { // 0xE94
+    mChargeBeamRetargetTimer -= dt; // 0xF40
+  }
+  if (mChargeBeamRetargetTimer > 0.f) {
+    return;
+  }
+  const float elapsed = mStateMachine->GetTime();
+  const float wait = data.changeDirectionInterval + data.changeDirectionVariance; // 0x14 + 0x18
+  if (data.duration - elapsed <= wait) { // 0x10
+    mChargeBeamRetargetTimer = wait;
+    return;
+  }
+  if (mgr.Random()->Range(0.f, 100.f) <= data.changeDirectionChance) { // 0x1C
+    mChargeBeamSweepDir = mChargeBeamSweepDir == 1 ? 0 : 1; // 0xF3C
+  }
+  mChargeBeamRetargetTimer =
+      data.changeDirectionInterval + mgr.Random()->Range(0.f, data.changeDirectionVariance);
 }
 
-void CSandBoss::ChargeHelper3434(CStateManager&) { // fn_55_3434
-  PortSandBossStandIn("CSandBoss::ChargeHelper3434 (fn_55_3434)");
+// fn_55_3434 (ported, not exercised yet)
+// Moves the three triple-charge beam ends: the sweep angle advances, the radius oscillates between
+// the triple charge's inner and outer radius, and each beam points along the bisector of two worms'
+// facing axes (their transform's local Y column).
+void CSandBoss::UpdateTripleChargeSweep(CStateManager& mgr, float dt) {
+  if (mChargeBeams.size() != 3) {
+    return;
+  }
+  rstl::vector< TUniqueId > ids;
+  if (CollectAttachedSiblings(mgr, ids) != 3) { // fn_55_58B4
+    return;
+  }
+  CVector3f facings[3];
+  for (int i = 0; i < 3; ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
+    if (sibling == nullptr) {
+      return;
+    }
+    facings[i] = sibling->GetTransform().GetColumn(kDY); // sibling + 0x28/0x38/0x48
+  }
+  const CVector3f bossPos = GetTranslation();
+  mChargeBeamSweepPhase +=
+      dt * (mData.unknown_0x7619e561.tripleCharge.unknown_0x47cde539 * 6.2831855f); // 0x8D8
+  const float innerRadius = mData.unknown_0x7619e561.tripleCharge.innerRadius; // 0x8C4
+  const float outerRadius = mData.unknown_0x7619e561.tripleCharge.outerRadius; // 0x8C8
+  const float radius =
+      (CMath::FastSinR(mChargeBeamSweepPhase) * (outerRadius - innerRadius) +
+       (outerRadius + innerRadius)) *
+      0.5f;
+  for (int i = 0; i < 3; ++i) {
+    const CVector3f bisector = facings[i] + facings[(i + 1) % 3];
+    if (!bisector.IsMagnitudeSafe()) {
+      continue;
+    }
+    mChargeBeams[i].mEnd = bossPos + radius * bisector.AsNormalized(); // 0xEA8 / 0xEC8 / 0xEE8
+  }
 }
 
-void CSandBoss::ChargeHelper37F4(CStateManager&) { // fn_55_37F4
-  PortSandBossStandIn("CSandBoss::ChargeHelper37F4 (fn_55_37F4)");
+// fn_55_37F4 (ported, not exercised yet)
+// The double charge's version: the sweep angle uses the double charge's rate and radii, and the two
+// beams point along the sum of the two worms' facing axes and its negation.
+void CSandBoss::UpdateDoubleChargeSweep(CStateManager& mgr, float dt) {
+  if (mChargeBeams.size() != 2) {
+    return;
+  }
+  rstl::vector< TUniqueId > ids;
+  if (CollectAttachedSiblings(mgr, ids) != 2) { // fn_55_58B4
+    return;
+  }
+  CVector3f facings[2];
+  for (int i = 0; i < 2; ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
+    if (sibling == nullptr) {
+      return;
+    }
+    facings[i] = sibling->GetTransform().GetColumn(kDY); // sibling + 0x28/0x38/0x48
+  }
+  const CVector3f bossPos = GetTranslation();
+  mChargeBeamSweepPhase +=
+      dt * (mData.unknown_0x7619e561.doubleCharge.unknown_0x47cde539 * 6.2831855f); // 0x890
+  const float innerRadius = mData.unknown_0x7619e561.doubleCharge.innerRadius; // 0x87C
+  const float outerRadius = mData.unknown_0x7619e561.doubleCharge.outerRadius; // 0x880
+  const float radius =
+      (CMath::FastSinR(mChargeBeamSweepPhase) * (outerRadius - innerRadius) +
+       (outerRadius + innerRadius)) *
+      0.5f;
+  const CVector3f bisector = facings[0] + facings[1];
+  if (!bisector.IsMagnitudeSafe()) {
+    return;
+  }
+  const CVector3f dir = bisector.AsNormalized();
+  mChargeBeams[0].mEnd = bossPos + radius * dir; // 0xEA8
+  mChargeBeams[1].mEnd = bossPos - radius * dir; // 0xEC8
 }
 
 // fn_55_58B4 (ported, not exercised yet)

@@ -66,13 +66,82 @@ bool CSandBoss::FoundSafeZoneTarget(CStateManager&, const CTriggerData&) const {
   return mSafeZoneTarget != kInvalidUniqueId;
 }
 
-bool CSandBoss::ShouldTripleCharge(CStateManager&, const CTriggerData&) const { // fn_55_C534
-  PortSandBossStandIn("CSandBoss::ShouldTripleCharge (fn_55_C534)");
+// fn_55_C534 (ported, not exercised yet)
+// Triple charge gate: all three worms attached and the leader; while another worm is the probe target
+// it just reports its probing bit. The leader needs its attack timer run out, sync attacks allowed
+// and no beam cooldown; then every attached sibling must pass its own triple probe, otherwise the
+// siblings probed so far are told to leave their loop attack and the trigger fails.
+bool CSandBoss::ShouldTripleCharge(CStateManager& mgr, const CTriggerData&) const {
+  if (CountAttachedSiblings(mgr) != 3) { // fn_55_595C
+    return false;
+  }
+  if (!IsAttachedLeader(mgr)) { // fn_55_5A84
+    return mProbingTripleCharge; // 0x165E b6
+  }
+  if (mChargeBeamTimer > 0.f || !mSyncAttacksAllowed || mChargeBeamCooldown >= 1) { // 0xF18, 0x165E b4
+    return false;
+  }
+  for (int i = 0; i < mSiblings.size(); ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling != this && sibling->mAttachedToSphere && // 0x165D b7
+        !sibling->mSyncAttacksAllowed) {                                       // 0x165E b4
+      return false;
+    }
+  }
+  int failed = mSiblings.size();
+  for (int i = 0; i < mSiblings.size(); ++i) {
+    CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling != this && sibling->mAttachedToSphere &&
+        !sibling->ProbeTripleCharge(mgr)) { // fn_55_8D24
+      failed = i;
+      break;
+    }
+  }
+  if (failed == mSiblings.size()) {
+    return true;
+  }
+  for (int i = 0; i < failed; ++i) {
+    CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling != this && sibling->mAttachedToSphere) {
+      sibling->BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+      sibling->mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6B4 = 3
+    }
+  }
   return false;
 }
 
-bool CSandBoss::ShouldDoubleCharge(CStateManager&, const CTriggerData&) const { // fn_55_C378
-  PortSandBossStandIn("CSandBoss::ShouldDoubleCharge (fn_55_C378)");
+// fn_55_C378 (ported, not exercised yet)
+// Double charge gate: two attached worms and the leader; a probing worm reports its sync flag. The
+// leader needs its attack timer run out, sync attacks allowed and no beam cooldown, and the player
+// must be in front of it along the local Y axis; the first attached sibling then answers the same
+// question about its own facing and, if it also faces the player, its double probe decides.
+bool CSandBoss::ShouldDoubleCharge(CStateManager& mgr, const CTriggerData&) const {
+  if (CountAttachedSiblings(mgr) != 2) { // fn_55_595C
+    return false;
+  }
+  if (!IsAttachedLeader(mgr)) { // fn_55_5A84
+    return mProbingDoubleCharge ? mSyncAttacksAllowed : false; // 0x165E b7 / b4
+  }
+  if (mChargeBeamTimer > 0.f || !mSyncAttacksAllowed || mChargeBeamCooldown >= 1) { // 0xF18, 0x165E b4
+    return false;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    return false;
+  }
+  const CVector3f toPlayer = player->GetTranslation() - GetTranslation(); // player + 0x54
+  if (CVector3f::Dot(GetTransform().GetColumn(kDY), toPlayer) <= 0.f) {    // this + 0x28/0x38/0x48
+    return false;
+  }
+  for (int i = 0; i < mSiblings.size(); ++i) {
+    CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling != this && sibling->mAttachedToSphere) { // 0x165D b7
+      if (CVector3f::Dot(sibling->GetTransform().GetColumn(kDY), toPlayer) > 0.f) {
+        return sibling->ProbeDoubleCharge(mgr); // fn_55_8D94
+      }
+      return false;
+    }
+  }
   return false;
 }
 
@@ -200,7 +269,7 @@ void CSandBoss::AttachToSphere(CStateManager& mgr, EStateMsg msg, float) {
     SetCollisionVulnerabilities(mgr, CDamageVulnerability::ReflectVulnerabilty(),
                                 CDamageVulnerability::ReflectVulnerabilty()); // fn_55_783C
     AddMaterial(kMT_Target, kMT_Orbit, mgr);
-    mF44 = 0;        // 0xF44
+    mChargeBeamCooldown = 0; // 0xF44
     m165D_b1 = true; // 0x165D b1
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
@@ -260,12 +329,85 @@ void CSandBoss::RepeaterAttack(CStateManager&, EStateMsg, float) { // fn_55_A9DC
   PortSandBossStandIn("CSandBoss::RepeaterAttack (fn_55_A9DC)");
 }
 
-void CSandBoss::DoubleCharge(CStateManager&, EStateMsg, float) { // fn_55_A6CC
-  PortSandBossStandIn("CSandBoss::DoubleCharge (fn_55_A6CC)");
+// fn_55_A6CC (ported, not exercised yet)
+// Double charge state: start opens the mouth loop attack, flags the probe result, seeds the sweep and
+// retarget timers and the turn speed; update keeps the loop attack commanded and, once the body is
+// in it and this worm leads, either ends the volley (state time over duration, or fewer than two
+// live beams) or sweeps the two beam ends; deactivate clears the flag, restores the turn speed and
+// ends the volley.
+void CSandBoss::DoubleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack && IsAttachedLeader(mgr)) {
+      if (!mChargeBeams.empty()) { // 0xE94
+        // Retail turns the body toward a point on the turning circle (fn_55_1F84 takes it); that
+        // helper is still a stand-in whose host signature has no point argument.
+        RotateHelper1F84(mgr, dt); // fn_55_1F84
+      }
+      if (mStateMachine->GetTime() > mData.unknown_0x7619e561.doubleCharge.duration || // 0x86C
+          (CountActiveChargeBeams(mgr) < 2 && !mChargeBeams.empty())) {                // fn_55_26C0
+        EndChargeBeamVolley(mgr); // fn_55_31E8
+      } else {
+        UpdateDoubleChargeSweep(mgr, dt);                          // fn_55_37F4
+        UpdateChargeBeamRetarget(mgr, dt, mData.unknown_0x7619e561.doubleCharge); // fn_55_3324
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    mDoubleChargeResult = true;                          // 0x165C b1
+    BodyController()->SetTurnSpeed(mData.unknown_0x7619e561.doubleCharge.turnSpeed); // 0x88C
+    mChargeBeamSweepPhase = -1.5707964f; // 0xF38
+    mChargeBeamSweepDir = 1;             // 0xF3C
+    mChargeBeamRetargetTimer = 0.f;      // 0xF40
+    UpdateChargeBeamRetarget(mgr, dt, mData.unknown_0x7619e561.doubleCharge); // fn_55_3324
+  } else if (msg == kStateMsg_Deactivate) {
+    mDoubleChargeResult = false;                  // 0x165C b1
+    mChargeBeamCooldown =                         // 0xF44 <- 0x898
+        mData.unknown_0x7619e561.doubleCharge.unknown_0x8d4f3b88;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    EndChargeBeamVolley(mgr);                               // fn_55_31E8
+    BodyController()->SetTurnSpeed(mPInfoTurnSpeed);        // 0xDE8
+  }
 }
 
-void CSandBoss::TripleCharge(CStateManager&, EStateMsg, float) { // fn_55_A360
-  PortSandBossStandIn("CSandBoss::TripleCharge (fn_55_A360)");
+// fn_55_A360 (ported, not exercised yet)
+// Triple charge state: the same shape with the triple charge's durations, radii, turn speed and
+// loader data; three beams is the full set, so the volley ends as soon as fewer than three live.
+void CSandBoss::TripleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack && IsAttachedLeader(mgr)) {
+      if (!mChargeBeams.empty()) { // 0xE94
+        // Retail turns the body toward a point on the turning circle (fn_55_1F84 takes it); that
+        // helper is still a stand-in whose host signature has no point argument.
+        RotateHelper1F84(mgr, dt); // fn_55_1F84
+      }
+      if (mStateMachine->GetTime() > mData.unknown_0x7619e561.tripleCharge.duration || // 0x8B4
+          (CountActiveChargeBeams(mgr) < 3 && !mChargeBeams.empty())) {                // fn_55_26C0
+        EndChargeBeamVolley(mgr); // fn_55_31E8
+      } else {
+        UpdateTripleChargeSweep(mgr, dt);                          // fn_55_3434
+        UpdateChargeBeamRetarget(mgr, dt, mData.unknown_0x7619e561.tripleCharge); // fn_55_3324
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    mTripleChargeResult = true;                          // 0x165C b0
+    mChargeBeamSweepPhase = -1.5707964f; // 0xF38
+    mChargeBeamSweepDir = 1;             // 0xF3C
+    mChargeBeamRetargetTimer = 0.f;      // 0xF40
+    BodyController()->SetTurnSpeed(mData.unknown_0x7619e561.tripleCharge.turnSpeed); // 0x8D4
+    UpdateChargeBeamRetarget(mgr, dt, mData.unknown_0x7619e561.tripleCharge); // fn_55_3324
+  } else if (msg == kStateMsg_Deactivate) {
+    mTripleChargeResult = false;                  // 0x165C b0
+    mChargeBeamCooldown =                         // 0xF44 <- 0x8E0
+        mData.unknown_0x7619e561.tripleCharge.unknown_0x8d4f3b88;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    EndChargeBeamVolley(mgr);                               // fn_55_31E8
+    BodyController()->SetTurnSpeed(mPInfoTurnSpeed);        // 0xDE8
+  }
 }
 
 void CSandBoss::SnapJaws(CStateManager&, EStateMsg, float) { // fn_55_A170

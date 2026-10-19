@@ -217,10 +217,10 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 2CA4 | CSandBoss::ResetChargeBeams | [ported] host body, not exercised yet |
 | 2D40 | CSandBoss::CreateChargeBeam (start, end, sfx, charged) | [ported] host body, not exercised yet |
 | 311C | CSandBoss::StartChargeBeamGrow | [ported] host body, not exercised yet |
-| 31E8 | CSandBoss::ChargeHelper31E8 | [stand-in] log-once |
-| 3324 | CSandBoss::ChargeHelper3324 | [stand-in] log-once |
-| 3434 | CSandBoss::ChargeHelper3434 | [stand-in] log-once |
-| 37F4 | CSandBoss::ChargeHelper37F4 | [stand-in] log-once |
+| 31E8 | CSandBoss::EndChargeBeamVolley | [ported] host body, not exercised yet |
+| 3324 | CSandBoss::UpdateChargeBeamRetarget | [ported] host body, not exercised yet |
+| 3434 | CSandBoss::UpdateTripleChargeSweep | [ported] host body, not exercised yet |
+| 37F4 | CSandBoss::UpdateDoubleChargeSweep | [ported] host body, not exercised yet |
 | 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck | [stand-in] log-once |
@@ -296,8 +296,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 9BB8 | CSandBoss::SeekStampedePoint | [proven] host body |
 | 9E3C | CSandBoss::SelectStampedePoint | [proven] host body |
 | A170 | CSandBoss::SnapJaws | [stand-in] log-once |
-| A360 | CSandBoss::TripleCharge | [stand-in] log-once |
-| A6CC | CSandBoss::DoubleCharge | [stand-in] log-once |
+| A360 | CSandBoss::TripleCharge | [ported] host body, not exercised yet |
+| A6CC | CSandBoss::DoubleCharge | [ported] host body, not exercised yet |
 | A9DC | CSandBoss::RepeaterAttack | [stand-in] log-once |
 | AC68 | CSandBoss::DarkBeamAttack | [stand-in] log-once |
 | AED8 | CSandBoss::SpitOutBall | [stand-in] log-once |
@@ -321,8 +321,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | C1CC | CSandBoss::IsFacingPlayer | [stand-in] log-once |
 | C258 | CSandBoss::ShouldDestroySphere | [proven] host body |
 | C2A0 | CSandBoss::ShouldSnapJaws | [stand-in] log-once |
-| C378 | CSandBoss::ShouldDoubleCharge | [stand-in] log-once |
-| C534 | CSandBoss::ShouldTripleCharge | [stand-in] log-once |
+| C378 | CSandBoss::ShouldDoubleCharge | [ported] host body, not exercised yet |
+| C534 | CSandBoss::ShouldTripleCharge | [ported] host body, not exercised yet |
 | C730 | CSandBoss::FoundSafeZoneTarget | [proven] host body |
 | C750 | CSandBoss::ShouldRepeaterAttack | [stand-in] log-once |
 | C894 | CSandBoss::ShouldDarkBeamAttack | [stand-in] log-once |
@@ -368,14 +368,27 @@ Notes:
 - `fn_55_D384` (DoUserAnimEvent) and `fn_55_D620` (Think) are proven but dispatch to stand-ins
   (screen shake, ground impact, `UpdateAttacks`, ...), so their effects are incomplete until slice B/C.
 - Set*Armor (9600..986C) and ResetAttackTimes (8E60) are kept as stand-ins on purpose.
+- Slice F (double/triple charge states): `A360`/`A6CC` are the two charge states -- activate marks the
+  animation ready, seeds 0xF38 (-pi/2), 0xF3C (1) and 0xF40 (0), opens the mouth loop attack
+  (`CBCLoopAttackCmd(kLAT_Zero)`) and sets the turn speed from `tripleCharge`/`doubleCharge.turnSpeed`;
+  update keeps the loop attack commanded and, once the body is in `kAS_LoopAttack` and this worm is
+  the leader, ends the volley (`31E8`: ExitState to every attached sibling, animation over, `2CA4`,
+  phase -> 2 with the beam's shutdown time) when the state time passes `duration` or the live-beam
+  count drops, else sweeps the beam ends (`3434` three bisectors of the worms' `kDY` columns, `37F4`
+  the two-worm sum and its negation, radius oscillating between inner and outer) and retargets the
+  sweep (`3324`: `changeDirectionInterval/Variance/Chance` off the `CStateManager` RNG, flipping
+  0xF3C); deactivate clears the probe bit, stores the loader's `unknown_0x8d4f3b88` in 0xF44, marks
+  the animation not ready, ends the volley and restores the pInfo turn speed. Triggers `C534`/`C378`
+  gate on `CountAttachedSiblings` (3/2), the leader (`5A84`), `0xF18`, `mSyncAttacksAllowed`,
+  `0xF44 < 1`, and then the siblings' own probes (`8D24`/`8D94`); the double one also requires the
+  player in front of this worm and of the first attached sibling along `GetColumn(kDY)`.
 - Slice E (charge-beam volleys, 3ACC 3F44 58B4 1027C): `58B4` is the attached-sibling id list the
   volleys need (both call `2CA4` first, then require exactly 3 / 2 attached worms, then fire from the
   centroid of their locator translations to `bossPos + innerRadius * dir`, `dir` from the pairwise
   differences, and call `311C` with the centroid). Two [inferred] points: retail reads each sibling's
   direction point from three floats at sibling+0x28/0x38/0x48 instead of `GetLctrTransform` (the host
   uses the same locator translation as the centroid), and the player hit calls the player's vtable
-  slot +0x4C, taken to be `CActor::Touch`. `31E8`/`3324` stay stand-ins: `A360`/`A6CC` are their only
-  callers and are not ported.
+  slot +0x4C, taken to be `CActor::Touch`.
 - Slice D (charge-beam list, 26C0 2750 2CA4 2D40 311C 107B0): `26C0` counts beams with
   `IsFiring()` instead of reading the private expansion state (retail also requires it not to be
   `kES_Release`); the shrink phase omits retail's per-beam `CVector3f` at beam+0x674 (host member
