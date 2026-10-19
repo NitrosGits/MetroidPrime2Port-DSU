@@ -252,10 +252,10 @@ generated reader and `fn_72_140` id for id, `ReadFloat`/`ReadInt32`/`ReadUint16`
 TARGET_PC, and the properties after them (42-byte damage infos, 200-byte weapon data, 90-byte editor
 properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 
-## 7. Port status / next (2026-10-19)
+## 7. Port status / next (2026-10-20)
 
-- Worktree `wt-mp2-port`, branch `port`; Taunt, Lurk, TargetPlayer, Run and PathFind are committed on top of `00e7e7de4`. The live path after a power-beam hit on pirate 208 is `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk`, repeating, and it is what every new state gets verified against.
-- Next slices, one `worker` lane each: the avoidance helper `D40C` (`CSteeringBehaviors::Separation` + its locomotion command, the last TODO in PathFind); then the remaining triggers (ShouldAttack A71C, ShouldMove 7BD4, ShouldRetreat 7C28, ...).
+- Worktree `wt-mp2-port`, branch `port`; Taunt, Lurk, TargetPlayer, Run, PathFind and the helpers `D720`/`D800`/`D40C` are committed on top of `00e7e7de4` (last: `cd0c05113`). The live path after a power-beam hit on pirate 208 is `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk`, repeating, and it is what every new state gets verified against. `PortCSpacePirateStates.cpp` has no `TODO` left except the ones the note lists.
+- Next slices, one `worker` lane each, in this order: the triggers the live cycle actually evaluates (`ShouldMove 7BD4`, `ShouldRetreat 7C28`, `ShouldAttack A71C`, `ShouldStrafe 960C`, `ShouldDodge 82D0` - pseudo-C in `/tmp/opencode/pseudo/SpacePirate/`), then the states nothing reaches yet (`Patrol BFCC`, `Halt BBB0`, `Approach 9478`, `Shuffle 8670`, `TurnAround 8464`, `Dodge 7DFC`), then combat (`Attack 9F1C` with `CBurstFire`). Each lane verifies against the 208 cycle and reports which trigger/state lines its run produced; a marker needs the run to have exercised it.
 - Lanes kill their game by pid only (other worktrees' games share the machine).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW expects.
 
