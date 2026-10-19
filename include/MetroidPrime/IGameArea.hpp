@@ -53,6 +53,11 @@ public:
   virtual int IGetAreaSaveId() const = 0;
   // Guessed name. Echoes replaces Prime's scripting-memory virtual with this string result.
   virtual rstl::string IGetInternalAreaName() const = 0;
+#ifdef TARGET_PC
+  // The area's MLVL name ("0b_sand_hall"), kept whether or not the area also has a name STRG
+  // (retail drops it then, see mInternalAreaName); used by the warp requests.
+  virtual const rstl::string& PortGetMlvlAreaName() const = 0;
+#endif
 };
 CHECK_SIZEOF(IGameArea, 0x4)
 NESTED_CHECK_SIZEOF(IGameArea, Dock, 0x4c)
