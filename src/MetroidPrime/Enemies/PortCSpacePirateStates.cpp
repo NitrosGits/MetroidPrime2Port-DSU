@@ -46,9 +46,10 @@ void CSpacePirate::Halt(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Halt state (fn_72_BBB0)");
 }
 
-void CSpacePirate::Run(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Run state (fn_72_BBA0)");
-}
+// @ fn_72_BBA0
+// Retail is 16 bytes and checks no message at all (rodata 0xB54 = 1.0): every call, Update
+// included, puts the steering speed back to full.
+void CSpacePirate::Run(CStateManager&, EStateMsg, float) { x904_steeringSpeed = 1.f; }
 
 void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::PathFind state (fn_72_8A90)");
@@ -285,8 +286,22 @@ void CSpacePirate::TargetCover(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::TargetCover state (fn_72_78DC)");
 }
 
+// @ fn_72_7868
+// Activate only (asm compares the message with 0 and bails on anything else). Retail takes the
+// first player out of the state manager: its unique id (player + 0x8) and its translation
+// (player + 0x54), then marks itself out of position so the path finder re-seeds the segment.
 void CSpacePirate::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::TargetPlayer state (fn_72_7868)");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  const CPlayer* player = mgr.Player(0);
+  if (player == nullptr) {
+    return;
+  }
+  mDestObj = player->GetUniqueId();
+  SetDestPos(player->GetTranslation());
+  mReflectedDestPos = GetTranslation();
+  mInPosition = false; // asm: rlwimi clears 0x34C bit 0x80, the bit declared first
 }
 
 void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
