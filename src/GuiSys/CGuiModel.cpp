@@ -195,6 +195,18 @@ void CGuiModel::DrawModel(const CModelFlags& flags) const {
   GetParentFrame()->GetModelDatabase()->Draw(mModelIndex, flags);
 }
 
+#ifdef TARGET_PC
+bool CGuiModel::PortGetBounds(CAABox& out) const {
+  const CGuiFrameModelDatabase* db = GetParentFrame()->GetModelDatabase();
+  const CCubeModel* model = db != nullptr ? db->GetModel(mModelIndex) : nullptr;
+  if (model == nullptr) {
+    return false;
+  }
+  out = model->GetBoundingBox();
+  return true;
+}
+
+#endif
 CGuiWidget::EWidgetUsageFlags CGuiModel::GetWidgetUsageFlags() const { return kWUF_PreDraw; }
 
 FourCC CGuiModel::GetWidgetTypeID() const { return 'MODL'; }

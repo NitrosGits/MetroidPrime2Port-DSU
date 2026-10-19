@@ -15,6 +15,61 @@
 #include "rstl/algorithm.hpp"
 #include "rstl/list.hpp"
 
+#ifdef TARGET_PC
+#include "Kyoto/Math/CAABox.hpp"
+
+// Port: widescreen HUD, as MP1's CGuiFrame::Draw. The camera widened the projection by `spread`
+// (CGuiCamera::Draw); each widget then moves out about the view axis by that factor at its own
+// anchor (a model's bounds centre, since several icons keep their place inside the vertices and
+// their widget at the frame centre), as a rigid slide in the view plane, so its shape and depth are
+// untouched. A model spanning both outer quarters of the authored view (the visor frame, the struts)
+// is stretched instead, so it still meets the wide view's edges.
+static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
+                           const CGuiWidgetDrawParms& parms) {
+  const float spread = camera.GetAspectSpread();
+  CTransform4f savedXf = CTransform4f::Identity();
+  bool savedValid = false;
+  if (spread == 1.f || widget->GetParent() == nullptr) {
+    widget->Draw(parms);
+    return;
+  }
+  const CTransform4f view = camera.GetSpreadView();
+  const CTransform4f invView = view.GetInverse();
+  const CTransform4f world = widget->GetWorldTransform();
+  CVector3f anchor = world.GetTranslation();
+  bool stretch = false;
+  CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
+  if (widget->GetWidgetTypeID() == 'MODL' &&
+      static_cast< const CGuiModel* >(widget)->PortGetBounds(bounds)) {
+    anchor = world * bounds.GetCenterPoint();
+    const CAABox eyeBounds = bounds.GetTransformedAABox(invView * world);
+    float quarterWidth = 0.5f * camera.GetSpreadHalfWidth();
+    if (camera.IsPerspective()) {
+      quarterWidth *= eyeBounds.GetMaxPoint().GetY();
+    }
+    const float centerX = camera.GetSpreadCenterX();
+    stretch = quarterWidth > 0.f && eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
+              eyeBounds.GetMaxPoint().GetX() > centerX + quarterWidth;
+  }
+  CTransform4f moved = world;
+  if (stretch) {
+    moved = view * CTransform4f::Translate(camera.GetSpreadCenterX(), 0.f, 0.f) *
+            CTransform4f::Scale(spread, 1.f, 1.f) *
+            CTransform4f::Translate(-camera.GetSpreadCenterX(), 0.f, 0.f) * invView * world;
+  } else {
+    const CVector3f eye = invView * anchor;
+    moved = CTransform4f::Translate(view.Rotate(
+                CVector3f((spread - 1.f) * (eye.GetX() - camera.GetSpreadCenterX()), 0.f, 0.f))) *
+            world;
+  }
+  if (widget->PortSetWorldTransform(moved, savedXf, savedValid)) {
+    widget->Draw(parms);
+    widget->PortRestoreWorldTransform(savedXf, savedValid);
+  } else {
+    widget->Draw(parms);
+  }
+}
+#endif
 namespace rstl {
 class CWidgetFartherFromCamera {
 public:
@@ -134,7 +189,11 @@ void CGuiFrame::Draw(const CGuiWidgetDrawParms& parms) const {
        it != mPreDrawWidgets.end(); ++it) {
     CGuiWidget* widget = *it;
     if (widget->GetIsVisible()) {
+#ifdef TARGET_PC
+      PortDrawSpread(*mCamera, widget, parms);
+#else
       widget->Draw(parms);
+#endif
     }
   }
   CGuiModel::EndDraw();
@@ -144,7 +203,11 @@ void CGuiFrame::Draw(const CGuiWidgetDrawParms& parms) const {
        it != mDrawWidgets.end(); ++it) {
     CGuiWidget* widget = *it;
     if (widget->GetIsVisible()) {
+#ifdef TARGET_PC
+      PortDrawSpread(*mCamera, widget, parms);
+#else
       widget->Draw(parms);
+#endif
     }
   }
   CGraphics::SetCullMode(kCM_Front);

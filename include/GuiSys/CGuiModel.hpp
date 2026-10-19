@@ -4,6 +4,9 @@
 #include "GuiSys/CGuiWidget.hpp"
 
 class CModelFlags;
+#ifdef TARGET_PC
+class CAABox;
+#endif
 
 class CGuiModel : public CGuiWidget {
 public:
@@ -18,6 +21,10 @@ public:
   void Draw(const CGuiWidgetDrawParms& parms) const override;
 
   void DrawModel(const CModelFlags& flags) const; // Guessed name
+#ifdef TARGET_PC
+  // Port: the model's local bounds, for the widescreen HUD spread. False until the frame has loaded.
+  bool PortGetBounds(CAABox& out) const;
+#endif
   static void BeginDraw();                        // Guessed name
   static void EndDraw();                          // Guessed name
   static CGuiModel* Create(CGuiFrame* frame, CInputStream& in, uint version);

@@ -221,6 +221,10 @@ void SetParticleInterpolation(bool enabled);
 // (CCameraManager::GetCurrentCameraTransform, PortMouse::PresentedAimDelta).
 bool LookInterpolation();
 void SetLookInterpolation(bool enabled);
+// Widescreen HUD (`MP2_HUD_WIDE`, MP1's HudWide): on spreads the GUI over the whole framebuffer, off
+// keeps the game's 4:3 proportions centred. Only matters while the framebuffer is wider than 4:3.
+bool HudWide();
+void SetHudWide(bool enabled);
 // MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
 // (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
 // VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.

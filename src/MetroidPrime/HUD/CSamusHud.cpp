@@ -243,6 +243,9 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
   }
   mEnergyBracket = mLoadedHudFrame->FindWidget("model_rightenergymeterbracket");
   mHudCamera = mLoadedHudFrame->GetFrameCamera();
+#ifdef TARGET_PC
+  mHudCamera->SetSpreadable(true);
+#endif
   mAutomapperRoot = mLoadedHudFrame->FindWidget(rstl::string_l("basewidget_automapper"));
   mAutomapperModel = mLoadedHudFrame->FindWidget(rstl::string_l("model_automapper"));
   mPowerBombDigits =
@@ -386,6 +389,9 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
     CGuiCamera* camera = mLoadedHelmetFrame->GetFrameCamera();
     const CGuiCamera* hudCamera = mLoadedHudFrame->GetFrameCamera();
     camera->SetParms(hudCamera->GetParms());
+#ifdef TARGET_PC
+    camera->SetSpreadable(true);
+#endif
     camera->SetO2WTransform(CTransform4f::Translate(hudCamera->GetLocalPosition()));
   }
   UpdateHelmetWidgets();

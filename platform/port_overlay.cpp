@@ -120,6 +120,9 @@ bool sParticleInterpolation = false;
 // MP1's look input per frame (`MP2_LOOK_INTERPOLATION`, on by default as there): with smooth
 // frames on, pointer aim turns the camera between ticks (CCameraManager, PortMouse::PresentedAimDelta).
 bool sLookInterpolation = true;
+// MP1's HudWide (`MP2_HUD_WIDE`, on by default as there): on a wide framebuffer the GUI spreads to the
+// screen edges; off keeps the game's 4:3 proportions, centred.
+bool sHudWide = true;
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -630,6 +633,11 @@ void DrawVideoAspect() {
                     "4:3 keeps the game's own picture; Follow window fills the window's shape")) {
     sAspectMode = aspect;
     Changed(true);
+  }
+  bool hudWide = sHudWide;
+  if (PortUi::Toggle("Widescreen HUD", &hudWide, "MP2_HUD_WIDE=0|1",
+                     "on spreads the HUD to the screen edges; off keeps its 4:3 proportions, centred")) {
+    PortOverlay::SetHudWide(hudWide);
   }
 }
 
@@ -1655,6 +1663,19 @@ void SetParticleInterpolation(bool enabled) {
   ReadEnv();
   if (sParticleInterpolation != enabled) {
     sParticleInterpolation = enabled;
+    Persist();
+  }
+}
+
+bool HudWide() {
+  ReadEnv();
+  return EnvBool("MP2_HUD_WIDE", sHudWide);
+}
+
+void SetHudWide(bool enabled) {
+  ReadEnv();
+  if (sHudWide != enabled) {
+    sHudWide = enabled;
     Persist();
   }
 }

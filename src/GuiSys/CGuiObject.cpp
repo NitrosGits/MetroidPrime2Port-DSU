@@ -121,6 +121,25 @@ void CGuiObject::SetO2WTransform(const CTransform4f& xf) {
   SetLocalTransform(local);
 }
 
+#ifdef TARGET_PC
+bool CGuiObject::PortSetWorldTransform(const CTransform4f& xf, CTransform4f& savedXf,
+                                       bool& savedValid) const {
+  if (mParent == nullptr) {
+    return false;
+  }
+  savedXf = mWorldXF;
+  savedValid = mWorldTransformValid;
+  mWorldXF = xf;
+  mWorldTransformValid = true;
+  return true;
+}
+
+void CGuiObject::PortRestoreWorldTransform(const CTransform4f& xf, bool valid) const {
+  mWorldXF = xf;
+  mWorldTransformValid = valid;
+}
+
+#endif
 inline const CTransform4f& CGuiObject::GetWorldTransform() const {
   if (!mWorldTransformValid) {
     if (mParent != nullptr) {
