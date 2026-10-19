@@ -6,6 +6,8 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/StateMachineCommon.hpp"
 
 void PortSpacePirateStandIn(const char* what);
 
@@ -26,9 +28,21 @@ bool CSpacePirate::HearShot(CStateManager& mgr, const CTriggerData& data) const 
   return heard;
 }
 
+// Retail polls one player per call (0xbc0 rotates), so a second player does not add hearing range
+// in the same frame: a moving player inside the data's hearing radius is heard.
 bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::HearPlayer trigger (fn_72_BBC0)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  const int count = static_cast< int >(mgr.GetNumPlayers());
+  if (count <= 0) {
+    return false;
+  }
+  self->xbc0_playerIndex = (self->xbc0_playerIndex + 1) % count;
+  const CPlayer* player = mgr.GetPlayer(self->xbc0_playerIndex);
+  if (player == nullptr || player->GetVelocityWR().MagSquared() <= 0.1f) {
+    return false;
+  }
+  const CVector3f delta = player->GetTranslation() - GetTranslation();
+  return delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
 }
 
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
@@ -65,17 +79,30 @@ bool CSpacePirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// Retail reads 0x8f7 bit 4: true while the Think's line-of-sight ray has not lost the player.
 bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::LineOfSight trigger (fn_72_9378)");
-  return false;
+  return !x8f7_28_noPlayerLos;
 }
 
 bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
   return GetDestObj() == kInvalidUniqueId;
 }
 
+// The detection cone test, over every player: the first one whose offset lies inside
+// mDetectionAngle (cosine) of the transform's forward is spotted.
 bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::SpotPlayer trigger (fn_72_938C)");
+  const uint count = mgr.GetNumPlayers();
+  for (uint i = 0; i < count; ++i) {
+    const CPlayer* player = mgr.GetPlayer(i);
+    if (player == nullptr) {
+      continue;
+    }
+    const CVector3f toPlayer = player->GetTranslation() - GetTranslation();
+    if (CVector3f::Dot(toPlayer, GetTransform().GetForward()) >
+        toPlayer.Magnitude() * mDetectionAngle) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -103,14 +130,17 @@ bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) cons
   return false;
 }
 
+// Retail 0xb24/0xb28 are time-since counters (Think zeroes them when a player projectile hits the
+// pirate, or is in its path); the trigger's argument is the window, 0.5 s when it is 0.
 bool CSpacePirate::ShotAt(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShotAt trigger (fn_72_7BA0)");
-  return false;
+  const float window = data.GetFloat() != 0.f ? data.GetFloat() : 0.5f;
+  return xb28_lowHealthFrenzyTimer < window;
 }
 
+// @ fn_72_7B6C
 bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::Attacked trigger (fn_72_7B6C)");
-  return false;
+  const float window = data.GetFloat() != 0.f ? data.GetFloat() : 0.5f;
+  return xb24_timeSinceHitByPlayer < window;
 }
 
 bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {

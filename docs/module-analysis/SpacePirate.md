@@ -225,7 +225,11 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 | 0xb34 | `CIkChain` (`fn_72_10568` is its default ctor) |
 | Body controller | retail activates it only in Think; the port also does in PreThink |
 | Anim events handled | 19 BecomeRagDoll, 22 BreakLockOn (23/24 fall to CPatterned) |
-| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 |
+| Non-lethal hit | `damage u04d0 15 6` -> `208 state Patrol -> Taunt` (Attacked, 0xb24 < 0.5 s) |
+| Data floats | in this area the CSpacePirateData floats load as 0 (aggression, search, hearing radius; flags 0x829c) though SLdr defaults are 10/20/20, so HearPlayer never fires: loader bug suspected (`fn_72_10A10`/`fn_72_140`) |
+| 0xb28 | time since a player shot was near (ShotAt `7BA0`); header name `xb28_lowHealthFrenzyTimer` is wrong |
+| Ported, unmarked | HearPlayer BBC0, SpotPlayer 938C, LineOfSight 9378 (0x8f7 bit 0x08), ShotAt 7BA0: wait on the data-float fix |
+| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C |
 
 ## Open questions (verify first)
 
