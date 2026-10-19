@@ -138,7 +138,7 @@ SSandwormBombPhase::SSandwormBombPhase()
 , x20_(0.f)
 , x24_(-1000.f) {}
 
-// @ fn_56_149D4
+// fn_56_149D4 (ported, not exercised yet)
 SSandwormBombPhase::SSandwormBombPhase(float x18, float x10)
 : x0_(CVector3f::Zero())
 , xc_flags(0)
@@ -281,7 +281,7 @@ CSandworm::CSandworm(TUniqueId uid, const rstl::string& name, const CEntityInfo&
   FinishConstruction();
 }
 
-// @ fn_56_14010
+// fn_56_14010 (ported, not exercised yet)
 CSandworm::CSandworm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& pInfo, CAssetId stateMachine2, float pincerScale,
@@ -550,7 +550,7 @@ void CSandworm::Think(float dt, CStateManager& mgr) {
   }
 }
 
-// @ fn_56_3990
+// fn_56_3990 (ported, not exercised yet)
 const SLdrSandwormStruct& CSandworm::GetPhaseParams() const {
   const float hp = GetHealthInfo()->GetHP();
   for (int i = 0; i < 4; ++i) {
@@ -657,7 +657,7 @@ void CSandworm::DetectIncomingProjectiles(CStateManager& mgr) {
   }
 }
 
-// @ fn_56_10F90
+// fn_56_10F90 (ported, not exercised yet)
 void CSandworm::UpdateBossParams(CStateManager& mgr) {
   if ((x8C0_flags & 0x08) == 0) {
     SpawnResidue(mgr, 0);
@@ -703,7 +703,7 @@ void CSandworm::DecayX1350(float dt) {
   }
 }
 
-// @ fn_56_5E94
+// fn_56_5E94 (ported, not exercised yet)
 void CSandworm::TeleportGrabbedPlayer(CStateManager& mgr) {
   CPlayer* player = mgr.Player(0);
   const CVector3f pos =
@@ -713,7 +713,7 @@ void CSandworm::TeleportGrabbedPlayer(CStateManager& mgr) {
   player->Teleport(xf, mgr, false);
 }
 
-// @ fn_56_14B58
+// fn_56_14B58 (ported, not exercised yet)
 void CSandworm::IssueTauntCmd(EStateMsg msg, pas::EAnimationState state, const CBCTauntCmd& cmd) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -796,13 +796,13 @@ CProjectileInfo* CSandworm::ProjectileInfo() { return &x1528_spit.x0_info; }
 // @ fn_56_14A64
 CPathFindSearch* CSandworm::GetSearchPath() { return &x7C4_search; }
 
-// @ fn_56_14AE4
+// fn_56_14AE4 (ported, not exercised yet)
 CPathFindPointSearch* CSandworm::GetPointSearchPath() { return nullptr; }
 
-// @ fn_56_14AEC
+// fn_56_14AEC (ported, not exercised yet)
 CRagDoll* CSandworm::GetRagDoll() const { return nullptr; }
 
-// @ fn_56_30F8
+// fn_56_30F8 (ported, not exercised yet)
 bool CSandworm::CanBeIngPossessed(CStateManager& mgr) const {
   if ((x8C0_flags & 0x10) == 0) {
     return false;
@@ -813,22 +813,22 @@ bool CSandworm::CanBeIngPossessed(CStateManager& mgr) const {
 // @ fn_56_30F0
 bool CSandworm::CanBeUnPossessed(CStateManager&) const { return false; }
 
-// @ fn_56_14AF4
+// fn_56_14AF4 (ported, not exercised yet)
 TUniqueId CSandworm::GetAttackTarget() const { return kInvalidUniqueId; }
 
 // @ fn_56_14B04
 bool CSandworm::IsOnGround() const { return mOnGround; }
 
-// @ fn_56_14B10
+// fn_56_14B10 (ported, not exercised yet)
 float CSandworm::GetGravityConstant() const { return kDefaultGravityAccel; }
 
-// @ fn_56_14B1C
+// fn_56_14B1C (ported, not exercised yet)
 const rstl::optional_object< TCachedToken< CGenDescription > >&
 CSandworm::GetDeathExplosionParticle() const {
   return mDeathExplosionParticle;
 }
 
-// @ fn_56_3180
+// fn_56_3180 (ported, not exercised yet)
 CVector3f CSandworm::GetIngSnatchingNormal(float) const {
   const CVector3f delta = x1394_snatchStart - x13A0_snatchEnd;
   if (!delta.CanBeNormalized()) {
@@ -838,33 +838,33 @@ CVector3f CSandworm::GetIngSnatchingNormal(float) const {
   return delta.AsNormalized();
 }
 
-// @ fn_56_312C
+// fn_56_312C (ported, not exercised yet)
 CVector3f CSandworm::GetIngSnatchingPoint(float t) const {
   const float t3 = t * (t * t);
   return (1.f - t3) * x1394_snatchStart + t3 * x13A0_snatchEnd;
 }
 
-// @ fn_56_9860
+// fn_56_9860 (ported, not exercised yet)
 float CSandworm::GetIngSnatchingModelOverlapSize() const { return 6.f; }
 
 // @ fn_56_11CE8
 void CSandworm::TakeDamage(const CVector3f&, float) { mDamageCooldownTimer = skDamageHitTime; }
 
-// @ fn_56_14B24
+// fn_56_14B24 (ported, not exercised yet)
 bool CSandworm::CanBeShot(const CStateManager&, int) { return true; }
 
 // @ fn_56_14B2C
 bool CSandworm::IsListening() const { return false; }
 
-// @ fn_56_14B34
+// fn_56_14B34 (ported, not exercised yet)
 bool CSandworm::Listen(CStateManager&, const CVector3f&, EListenNoiseType) { return false; }
 
-// @ fn_56_14B3C
+// fn_56_14B3C (ported, not exercised yet)
 CVector3f CSandworm::GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const {
   return GetTranslation();
 }
 
-// @ fn_56_14A6C
+// fn_56_14A6C (ported, not exercised yet)
 int CSandworm::Unknown23C() const { return 0; }
 
 // Loader and REL entry points.

@@ -442,36 +442,36 @@ public:
   void AddAnimatedScale();                                       // fn_56_A510
   void SetUnderground(CStateManager& mgr);                       // fn_56_AC24
   void OrientBodyToPath(CStateManager& mgr);                     // fn_56_AD14
-  void BodyHelper();                                             // fn_56_B0B0
+  void BodyHelperB0B0(rstl::reserved_vector< CVector3f, 180 >& vec, int index); // fn_56_B0B0
   void SpineUpdateHelper(CStateManager& mgr);                    // fn_56_B138
   void SpineHelperC600();                                        // fn_56_C600
   void SpineHelperC704();                                        // fn_56_C704
   bool SpineHelperC7F4(int index) const;                         // fn_56_C7F4
   void SpineHelperC828(CStateManager& mgr);                      // fn_56_C828
-  void SpineHelperC994(CStateManager& mgr);                      // fn_56_C994
+  CVector3f SpineHelperC994(CStateManager& mgr, const CVector3f& pt) const; // fn_56_C994
   void SpineHelperCBB4(CStateManager& mgr, int index);           // fn_56_CBB4
   void CreateCollisionActorManager(CStateManager& mgr);          // fn_56_CC8C
   void BuildSphereDescriptions();                                // fn_56_D09C
   void UpdateCollisionActors(CStateManager& mgr, float dt);      // fn_56_D350
   CSegId GetSegLocatorId(int index) const;                       // fn_56_E6BC
   CSegId GetSegId(int index) const;                              // fn_56_E728
-  void SpineHelperE738(const CQuaternion& q);                    // fn_56_E738: writes x1670_.x0_
+  void SpineHelperE738(int index, const CQuaternion& q);         // fn_56_E738: writes x1670_.x0_
   void SpineHelperE764();                                        // fn_56_E764
-  void SpineHelperEF20() const;                                  // fn_56_EF20
+  CQuaternion SpineHelperEF20(const CQuaternion& q) const;       // fn_56_EF20
   void SpineHelperF368();                                        // fn_56_F368
   void SpineHelperF384();                                        // fn_56_F384
-  void SpineHelperF5B0(CStateManager& mgr, int index);           // fn_56_F5B0
-  void SpineHelperF718() const;                                  // fn_56_F718
+  void SpineHelperF5B0(CStateManager& mgr, int index);           // fn_56_F5B0 (index unused)
+  void SpineHelperF718(const CSegId& segId, const CVector3f& scale) const; // fn_56_F718
   void SpineHelperF77C(CStateManager& mgr);                      // fn_56_F77C
   void SpineHelperFA30();                                        // fn_56_FA30
   void SpineHelperFB24(CStateManager& mgr);                      // fn_56_FB24
   void SpineHelperFC94(CStateManager& mgr);                      // fn_56_FC94
-  void SpineHelperFFBC(int index) const;                         // fn_56_FFBC
+  CVector3f SpineHelperFFBC(int index) const;                    // fn_56_FFBC
   CVector3f SpineHelper10038() const;                            // fn_56_10038
   CVector3f GetSegmentPosition(int index) const;                 // fn_56_10090
   void UnreferencedMath10110();                                  // fn_56_10110 (unreferenced)
   void UnreferencedMath10268();                                  // fn_56_10268 (unreferenced)
-  void SpineHelper10510(float dt);                               // fn_56_10510
+  CVector3f SpineHelper10510(float t) const;                     // fn_56_10510
   int SpineHelper106D4(float t) const;                           // fn_56_106D4
   float SpineHelper107E8() const;                                // fn_56_107E8
   float SpineHelper1080C(int count) const;                       // fn_56_1080C

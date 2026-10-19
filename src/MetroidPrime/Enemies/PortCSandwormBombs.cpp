@@ -34,7 +34,7 @@ void RotateSpinePoint(CVector3f& point, const CTransform4f& rot, const CVector3f
 } // namespace
 
 // Spawns at the mouth transform x1528_spit.x28_xf.
-// @ fn_56_9030
+// fn_56_9030 (ported, not exercised yet)
 CBouncingBomb* CSandworm::SpawnBouncingBomb(CStateManager& mgr, float fuseTime, float touchRadius,
                                             float gravityScale, float bounceRestitution) {
   CBouncingBomb* bomb = rs_new CBouncingBomb(
@@ -50,8 +50,8 @@ CBouncingBomb* CSandworm::SpawnBouncingBomb(CStateManager& mgr, float fuseTime, 
 // fn_56_F328 is CVector3f::Cross.
 // Turns the whole worm about the vertical axis through x1388 so that the direction x1388 -> x1394
 // swings toward `target`, by at most `rate` degrees per second (slowed inside 0.2 rad).
-// @ fn_56_EF8C
-// @ fn_56_F328
+// fn_56_EF8C (ported, not exercised yet)
+// fn_56_F328 (ported, not exercised yet)
 void CSandworm::RotateBodyForBombAttack(CStateManager& mgr, const CVector3f& target,
                                         CVector3f& pivot, float rate, float dt) {
   const CVector3f& center = x1388_;
@@ -97,7 +97,7 @@ void CSandworm::RotateBodyForBombAttack(CStateManager& mgr, const CVector3f& tar
 // @ fn_56_1E9C
 SSandwormBombs::SSandwormBombs() {}
 
-// @ fn_56_1FD8
+// fn_56_1FD8 (ported, not exercised yet)
 SSandwormBombs::SSandwormBombs(CAssetId bombFx, CAssetId explosionFx, const CDamageInfo& damage)
 : x20_damage(damage) {
   // Retail does not test the ids for kInvalidAssetId.
@@ -117,12 +117,12 @@ bool CSandworm::PickedBombFountain(CStateManager&, const CTriggerData&) const {
   return x1490_attacks.x0_picked == 7;
 }
 
-// @ fn_56_3764
+// fn_56_3764 (ported, not exercised yet)
 bool CSandworm::PickedBombSpread(CStateManager&, const CTriggerData&) const {
   return x1490_attacks.x0_picked == 6;
 }
 
-// @ fn_56_3778
+// fn_56_3778 (ported, not exercised yet)
 bool CSandworm::PickedBombToss(CStateManager&, const CTriggerData&) const {
   return x1490_attacks.x0_picked == 5;
 }
@@ -151,7 +151,7 @@ bool CSandworm::CanDropBomb(CStateManager& mgr) const {
 // @ fn_56_3B9C
 void CSandworm::ResetBombDropTimer() { x1984_bombDropTimer = 0.f; }
 
-// @ fn_56_3BAC
+// fn_56_3BAC (ported, not exercised yet)
 CBouncingBomb* CSandworm::DropBouncingBomb(CStateManager& mgr, const CVector3f& pos) {
   CBouncingBomb* bomb = rs_new CBouncingBomb(
       TToken< CGenDescription >(*x1944_bombs.x0_bombFx),
@@ -166,7 +166,7 @@ CBouncingBomb* CSandworm::DropBouncingBomb(CStateManager& mgr, const CVector3f& 
 
 // Anim-event spawns (called from DoUserAnimEvent)
 
-// @ fn_56_8E90
+// fn_56_8E90 (ported, not exercised yet)
 void CSandworm::SpawnBombToss(CStateManager& mgr) {
   CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 12.f, 3.f, 1.f, 0.7f);
   // Retail draws z, then y, then x.
@@ -185,7 +185,7 @@ void CSandworm::SpawnBombToss(CStateManager& mgr) {
   bomb->ApplyGravity();
 }
 
-// @ fn_56_91D4
+// fn_56_91D4 (ported, not exercised yet)
 void CSandworm::SpawnBombFountain(CStateManager& mgr) {
   CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 10.f, 5.f, 1.f, 0.65f);
   const CVector3f fwd = x1528_spit.x28_xf.GetColumn(kDY);
@@ -209,7 +209,7 @@ void CSandworm::SpawnBombFountain(CStateManager& mgr) {
   bomb->ApplyGravity();
 }
 
-// @ fn_56_9368
+// fn_56_9368 (ported, not exercised yet)
 void CSandworm::AttachHeldBomb(CStateManager& mgr) {
   if (x199A_ == 0) {
     return;
@@ -225,7 +225,7 @@ void CSandworm::AttachHeldBomb(CStateManager& mgr) {
   bomb->SetTranslation(x1528_spit.x28_xf.GetTranslation() + fwd * 0.9f);
 }
 
-// @ fn_56_9440
+// fn_56_9440 (ported, not exercised yet)
 void CSandworm::ReleaseHeldBomb(CStateManager& mgr) {
   CBouncingBomb* bomb = GetHeldBomb(mgr);
   if (bomb == nullptr) {
@@ -240,7 +240,7 @@ void CSandworm::ReleaseHeldBomb(CStateManager& mgr) {
   x199A_ = 0;
 }
 
-// @ fn_56_9590
+// fn_56_9590 (ported, not exercised yet)
 CBouncingBomb* CSandworm::GetHeldBomb(CStateManager& mgr) const {
   if (x1998_ == kInvalidUniqueId) {
     return nullptr;
@@ -248,7 +248,7 @@ CBouncingBomb* CSandworm::GetHeldBomb(CStateManager& mgr) const {
   return TCastToPtr< CBouncingBomb >(mgr.ObjectById(x1998_));
 }
 
-// @ fn_56_95E0
+// fn_56_95E0 (ported, not exercised yet)
 void CSandworm::DeleteHeldBomb(CStateManager& mgr) {
   if (x1998_ != kInvalidUniqueId) {
     mgr.DeleteObjectRequest(x1998_);
@@ -256,16 +256,16 @@ void CSandworm::DeleteHeldBomb(CStateManager& mgr) {
   }
 }
 
-// @ fn_56_9640
+// fn_56_9640 (ported, not exercised yet)
 ushort CSandworm::GetBombExplodeSfx() const { return x1828_sfx.xa_bombExplode; }
 
-// @ fn_56_9648
+// fn_56_9648 (ported, not exercised yet)
 ushort CSandworm::GetBombBounceSfx() const { return x1828_sfx.x8_bombBounce; }
 
-// @ fn_56_9650
+// fn_56_9650 (ported, not exercised yet)
 ushort CSandworm::GetInvalidSfx() const { return CSfxManager::kInternalInvalidSfxId; }
 
-// @ fn_56_9660
+// fn_56_9660 (ported, not exercised yet)
 void CSandworm::SpawnHeldBomb(CStateManager& mgr) {
   CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 10.f, 3.f, 1.f, 0.8f);
   x1998_ = bomb->GetUniqueId();
@@ -275,7 +275,7 @@ void CSandworm::SpawnHeldBomb(CStateManager& mgr) {
 
 // States
 
-// @ fn_56_B8B8
+// fn_56_B8B8 (ported, not exercised yet)
 void CSandworm::BombFountainAttack(CStateManager& mgr, EStateMsg msg, float) {
   BeginAttack(7, msg);
   x1520_flags |= 0x80;
@@ -305,7 +305,7 @@ void CSandworm::BombFountainAttack(CStateManager& mgr, EStateMsg msg, float) {
   IssueMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Four));
 }
 
-// @ fn_56_BAB8
+// fn_56_BAB8 (ported, not exercised yet)
 void CSandworm::BombSpreadAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   BeginAttack(6, msg);
   x1520_flags |= 0x80;
@@ -325,7 +325,7 @@ void CSandworm::BombSpreadAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Nine));
 }
 
-// @ fn_56_BC8C
+// fn_56_BC8C (ported, not exercised yet)
 void CSandworm::BombTossAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   BeginAttack(5, msg);
   x1520_flags |= 0x80;

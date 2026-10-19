@@ -306,9 +306,10 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
 
 ## Port status (2026-10-19)
 
-- Baseline `e67213940` (decomp/wallcrawler): header pass applied and the lane-local workarounds removed. Host build `0 FAILED`, `gen_files_cmake --check` rc 0, TARGET_PC strip-diff CLEAN (CSandworm.hpp, CBouncingBomb.hpp), upstream `87 files OK`. Runtime is **not yet checked**.
-- Link stubs (empty bodies, `TODO(WP5)` at the end of `PortCSandwormSpine.cpp`): AC24 SetUnderground, AD14 OrientBodyToPath, F5B0 SpineHelperF5B0, F754 Prime. Replace them with the retail bodies.
-- WP5 functions still to port (worker lanes only; fallback cat-jam-free/longcat/space-bunny, then haiku): A510 AD14 B0B0 B138 C828 C994 E738 E764 EF20 F384 F5B0 F718 F77C F754 FA30 FB24 FC94 FFBC 10110 10268 10510 106D4 AC24. The call chain is AC24 → C828 → C994 → `SpineRenderHelperD690(mgr, pos)` (in Render). For FB24, check the 0.7853982 threshold and the sense of its condition. Header signatures are already final: SpineHelperE738(const CQuaternion&) writes x1670_.x0_; `int SpineHelper106D4(float) const`; `x984_segCount` and `x988_segIds[15]`.
+- All WP5 bodies are ported in `PortCSandwormSpine.cpp` (worker lanes), and the `TODO(WP5)` stubs are gone. 10110 and 10268 were skipped because nothing references them. Guessed flags: CAnimData+0x2AC|=2 is `SetPoseBuilt(true)`, and the bit0 test is `!Pose().HasScale()`. Host build `0 FAILED`, `gen_files_cmake --check` rc 0, and the CSandworm.hpp TARGET_PC strip-diff vs the baseline is clean (checked with a Python stripper; unifdef isn't installed).
+- Runtime (`01_sand_entrance`, area 2): both worms work. u0596 is activated by trigger u0488 and u0517 by trigger u052c. Each cycles Pursue/SpitAttack, toggles its head/tail eyes, and dies at 0 HP: Dead state, then deleted along with its eyes and collision actors. 0 caught errors and 0 reach-stubs. When the player leaves the area, the worm runs Straighten → Descend → LurkUnderground → Deactivate and goes home.
+  - The kills used console `damage <worm uid>`. Damage to a collision actor only drives TakeDamage, as in retail, so the real eye-weapon path is **not exercised**: the tail eye's SetDead at half HP and damage from a real CWeapon.
+- Markers: 191 functions carry `// @` (186 gdb breakpoint hits during the fight, plus 5 Render helpers that their exercised callers call unconditionally). 92 are marked `(ported, not exercised yet)`, including GetRagDoll, GetDeathExplosionParticle and RenderIngSnatchingTransition.
 - WP2 has 34 of 35 functions; find the missing one.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
@@ -319,5 +320,4 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   - The "Sandworm.rel" token string at lbl_56_bss_C is a guess.
   - Render line 25 skips a missing model.
   - x1614 has no name; x199A_ is a byte.
-- Markers: about 260 (every asm-checked function). Prune them to the runtime-exercised functions after the fight check.
 - Pseudo-C is in `/tmp/opencode/pseudo/Sandworm/fn_56_XXXX.c`. Runtime areas are Agon Wastes `01_sand_entrance` L0, `03_sand_temple` L2 and `04_sand_mining` L3 (docs/module_spawns.tsv). The bar is a fight the player can finish.

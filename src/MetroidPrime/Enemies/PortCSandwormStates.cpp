@@ -61,7 +61,7 @@ void CSandworm::StopMoveSfx() {
 }
 
 // Unreferenced in retail: the number of 'GRNT'/'NEXT' connections that resolve to an actor.
-// @ fn_56_534C
+// fn_56_534C (ported, not exercised yet)
 int CSandworm::CountScriptActors(CStateManager& mgr) const {
   int count = 0;
   const rstl::vector< SConnection >& conns = GetConnectionList();
@@ -136,7 +136,7 @@ bool CSandworm::NearlyOnPath(const CVector3f& pos, float radius) const {
 }
 
 // x1354 moved to the 'GRNT'/'NEXT' actor farthest from the player; updates `index`.
-// @ fn_56_C468
+// fn_56_C468 (ported, not exercised yet)
 CTransform4f CSandworm::MoveToScriptActor(CStateManager& mgr, int& index) const {
   const CVector3f& playerPos = PlayerPos(mgr);
   float bestDistSq = 0.f;
@@ -171,7 +171,7 @@ CTransform4f CSandworm::MoveToScriptActor(CStateManager& mgr, int& index) const 
 }
 
 // Unreferenced in retail: ramps the steering speed over 1.2 s after x134C.
-// @ fn_56_10A68
+// fn_56_10A68 (ported, not exercised yet)
 void CSandworm::SetSteeringSpeedRange() {
   const float t = x8B0_activeTime - x134C_;
   BodyController()->CommandMgr().SetSteeringSpeedRange(0.f, t > 1.2f ? 1.f : t / 1.2f);
@@ -179,16 +179,16 @@ void CSandworm::SetSteeringSpeedRange() {
 
 // --- Members ---
 
-// @ fn_56_2718
+// fn_56_2718 (ported, not exercised yet)
 void CSandworm::DescendHelper() { x1490_attacks.x8_history.clear(); }
 
-// @ fn_56_33A4
+// fn_56_33A4 (ported, not exercised yet)
 void CSandworm::Interrupt(CStateManager& mgr, float dt) {
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState));
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted));
 }
 
-// @ fn_56_3484
+// fn_56_3484 (ported, not exercised yet)
 void CSandworm::EyeKilledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   SetBodyCmdRequest(3, 0xd);
   x1520_flags |= 0x80;
@@ -219,7 +219,7 @@ bool CSandworm::OneEyeKilled(CStateManager& mgr, const CTriggerData& data) const
   return dead == 1;
 }
 
-// @ fn_56_3D44
+// fn_56_3D44 (ported, not exercised yet)
 bool CSandworm::PlayerReachable(CStateManager& mgr, const CTriggerData& data) const {
   return PathReachable(mgr, PlayerPos(mgr));
 }
@@ -237,7 +237,7 @@ bool CSandworm::PathReachable(CStateManager& mgr, const CVector3f& pos) const {
   return x1850_ != 0;
 }
 
-// @ fn_56_3E1C
+// fn_56_3E1C (ported, not exercised yet)
 bool CSandworm::CanDescend(CStateManager& mgr, const CTriggerData& data) const {
   if (IsBombGuardian(*this)) {
     return false;
@@ -301,7 +301,7 @@ void CSandworm::StopVocalSfx(CStateManager& mgr) {
   }
 }
 
-// @ fn_56_4200
+// fn_56_4200 (ported, not exercised yet)
 void CSandworm::Straighten(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     x1520_flags &= ~0x80;
@@ -323,17 +323,17 @@ void CSandworm::Straighten(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_56_4384
+// fn_56_4384 (ported, not exercised yet)
 bool CSandworm::DoneStraightening(CStateManager& mgr, const CTriggerData& data) const {
   return x1670_.xfc_ <= 0.002f;
 }
 
-// @ fn_56_541C
+// fn_56_541C (ported, not exercised yet)
 bool CSandworm::DoneSulking(CStateManager& mgr, const CTriggerData& data) const {
   return x8B0_activeTime >= x165C_ && PlayerIsOnPathMesh(mgr, CTriggerData(0.f));
 }
 
-// @ fn_56_5470
+// fn_56_5470 (ported, not exercised yet)
 void CSandworm::Sulk(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->SetLocomotionType(pas::ELocomotionType(7));
   if (msg == kStateMsg_Activate) {
@@ -363,7 +363,7 @@ float CSandworm::SulkHelper() const {
   return 100.f * (GetHealthInfo()->GetHP() / initial);
 }
 
-// @ fn_56_58C0
+// fn_56_58C0 (ported, not exercised yet)
 bool CSandworm::DoneLurking(CStateManager& mgr, const CTriggerData& data) const {
   return GetActive() && PlayerIsOnPathMesh(mgr, CTriggerData(0.f));
 }
@@ -391,14 +391,14 @@ void CSandworm::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_56_5E5C
+// fn_56_5E5C (ported, not exercised yet)
 void CSandworm::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     SetActive(false);
   }
 }
 
-// @ fn_56_6A50
+// fn_56_6A50 (ported, not exercised yet)
 bool CSandworm::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const {
   return AngleToTarget(PlayerPos(mgr), x1528_spit.x28_xf.GetColumn(kDY)) < 0.20943952f;
 }
@@ -573,7 +573,7 @@ void CSandworm::SetPathDestination(CStateManager& mgr, const CVector3f& dest, fl
   mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this);
 }
 
-// @ fn_56_97FC
+// fn_56_97FC (ported, not exercised yet)
 bool CSandworm::SnatchEnded(CStateManager& mgr, const CTriggerData& data) const {
   return IsPossessedBombGuardian();
 }
@@ -583,7 +583,7 @@ bool CSandworm::SnatchStarted(CStateManager& mgr, const CTriggerData& data) cons
   return IsBombGuardian(*this) && !IsPossessedBombGuardian();
 }
 
-// @ fn_56_986C
+// fn_56_986C (ported, not exercised yet)
 void CSandworm::Snatch(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mSpeed = 0.66f;
@@ -662,7 +662,7 @@ bool CSandworm::PathHelper(CStateManager& mgr, TUniqueId) {
   return x134C_ + 5.f < x8B0_activeTime;
 }
 
-// @ fn_56_B320
+// fn_56_B320 (ported, not exercised yet)
 void CSandworm::Descend(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueGenerateCmd(msg, pas::kAS_Generate, CBCGenerateCmd(pas::EGenerateType(1), -1));
   if (msg == kStateMsg_Activate) {
@@ -703,7 +703,7 @@ void CSandworm::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueGenerateCmd(msg, pas::kAS_Generate, CBCGenerateCmd(pas::EGenerateType(0), -1));
 }
 
-// @ fn_56_C3D0
+// fn_56_C3D0 (ported, not exercised yet)
 bool CSandworm::Activated(CStateManager& mgr, const CTriggerData& data) const {
   return GetActive();
 }
@@ -713,7 +713,7 @@ bool CSandworm::BeginUnderground(CStateManager& mgr, const CTriggerData& data) c
   return (x8C0_flags & 0x80) != 0;
 }
 
-// @ fn_56_C3F4
+// fn_56_C3F4 (ported, not exercised yet)
 void CSandworm::LurkUnderground(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->SetLocomotionType(pas::ELocomotionType(7));
   if (msg == kStateMsg_Activate) {
