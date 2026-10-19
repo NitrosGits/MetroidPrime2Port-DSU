@@ -11,6 +11,7 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -20,6 +21,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/Weapons/CBeamInfo.hpp"
 #include "MetroidPrime/Weapons/CBomb.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -593,8 +595,53 @@ TUniqueId CSandBoss::ShouldDarkBeamAttackCheck(CStateManager& mgr) const {
   return best;
 }
 
-void CSandBoss::FireDarkBeam(CStateManager&) { // fn_55_44CC
-  PortSandBossStandIn("CSandBoss::FireDarkBeam (fn_55_44CC)");
+// fn_55_44CC (ported, not exercised yet)
+// Fires the dark beam from the head locator. With the probe result bit (0x165C b2) set the shot leads
+// the player: the dark beam's own CProjectileInfo predicts the intercept, and an aim more than 70
+// degrees (1.2217305 rad) off the body's facing axis is slewed back toward it; that shot also counts
+// 0xF48. Without the flag the shot goes to what the safe-zone target is wired to (a CONN/FOLW
+// waypoint, else the target actor itself). Either way the Attack submachine's pick timer (0xF34) is
+// cleared, so the next RotateToPlayer pass can choose again.
+void CSandBoss::FireDarkBeam(CStateManager& mgr, float dt) {
+  const CVector3f muzzle = GetLctrTransform(mHeadLocator).GetTranslation(); // 0xF08
+  if (m165C_b2) {                                                           // 0x165C b2
+    CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+    if (player != nullptr) {
+      // The aim point is the player's own predicted position (vtable +0x54).
+      const CVector3f aimPos = player->GetAimPosition(mgr, 0.f);
+      const CVector3f predicted = ProjectileInfo()->PredictInterceptPos( // fn_55_CDF0
+          muzzle, aimPos, *player, false, dt);
+      CVector3f delta = predicted - muzzle;
+      const CVector3f facing = GetTransform().GetColumn(kDY); // 0x28/0x38/0x48
+      if (CVector3f::GetAngleDiff(delta, facing) > 1.2217305f) { // 70 degrees
+        delta = CVector3f::Slerp(facing, delta.AsNormalized(),
+                                 CRelAngle::FromRadians(1.2217305f)); // 70 degrees
+      }
+      LaunchProjectile(CTransform4f::LookAt(muzzle, muzzle + delta, CVector3f::Up()), mgr, 6,
+                       CWeapon::kPA_None, false, CImpactVisorEffect::None(), CVector3f::One());
+      ++mF48; // 0xF48
+    }
+  } else {
+    CEntity* target = mgr.ObjectById(mSafeZoneTarget); // 0xE88
+    if (target != nullptr) {
+      CVector3f point = CVector3f::Zero();
+      bool hasPoint = false;
+      // Retail reads the target's translation (+0x54) unless the CONN/FOLW object is a waypoint.
+      if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(
+              mgr.ObjectById(target->CheckConnectedObject(mgr, kSS_Connect, kSM_Follow)))) {
+        point = waypoint->GetTranslation();
+        hasPoint = true;
+      } else if (CActor* actor = TCastToPtr< CActor >(target)) { // [inferred: the actor cast]
+        point = actor->GetTranslation();
+        hasPoint = true;
+      }
+      if (hasPoint) {
+        LaunchProjectile(CTransform4f::LookAt(muzzle, point, CVector3f::Up()), mgr, 6,
+                         CWeapon::kPA_None, false, CImpactVisorEffect::None(), CVector3f::One());
+      }
+    }
+  }
+  mF34 = 0.f; // 0xF34
 }
 
 void CSandBoss::HandleScreenShake(CStateManager&, const rstl::string&) { // fn_55_4C60

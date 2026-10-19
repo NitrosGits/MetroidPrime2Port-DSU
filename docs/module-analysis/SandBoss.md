@@ -230,7 +230,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 178 | loader (PortLoadSandBoss, SLdrSandBoss.inc) | [proven] host body |
 | 1AEC | CSandBoss::GetStampedeDelay | [proven] host body |
 | 1B94 | CSandBoss::ShouldRepeaterAttackCheck (counts active safe zones) | [proven] host body |
-| 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [ported] host body, not exercised yet (no caller yet) |
+| 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [ported] host body, not exercised yet (caller: DarkBeamAttack AC68) |
 | 1D74 | CSandBoss::RotateHelper1D74 | [stand-in] log-once |
 | 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [ported] host body, not exercised yet |
 | 2030 | CSandBoss::RotateHelper2030 | [stand-in] log-once |
@@ -250,7 +250,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [ported] host body, not exercised yet |
-| 44CC | CSandBoss::FireDarkBeam | [stand-in] log-once |
+| 44CC | CSandBoss::FireDarkBeam (mgr, dt) | [ported] host body, not exercised yet |
 | 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
 | 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
 | 528C | CSandBoss::HandleGroundImpact | [stand-in] log-once |
@@ -325,7 +325,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | A360 | CSandBoss::TripleCharge | [ported] host body, not exercised yet |
 | A6CC | CSandBoss::DoubleCharge | [ported] host body, not exercised yet |
 | A9DC | CSandBoss::RepeaterAttack | [stand-in] log-once |
-| AC68 | CSandBoss::DarkBeamAttack | [stand-in] log-once |
+| AC68 | CSandBoss::DarkBeamAttack | [ported] host body, not exercised yet |
 | AED8 | CSandBoss::SpitOutBall | [ported] host body, not exercised yet |
 | B06C | CSandBoss::JumpOffSphere | [ported] host body, not exercised yet |
 | B2D8 | CSandBoss::DestroySphere | [ported] host body, not exercised yet |
@@ -408,6 +408,16 @@ Notes:
   gate on `CountAttachedSiblings` (3/2), the leader (`5A84`), `0xF18`, `mSyncAttacksAllowed`,
   `0xF44 < 1`, and then the siblings' own probes (`8D24`/`8D94`); the double one also requires the
   player in front of this worm and of the first attached sibling along `GetColumn(kDY)`.
+- Slice 9 (the dark-beam pair, 44CC + AC68): retail `FireDarkBeam` takes `(mgr, dt)` (r3/r4/f1; the
+  only caller is `DoUserAnimEvent`'s `kUE_Projectile` branch, gated on 0x165C b3). It aims on 0x165C
+  **b2**: set = predicted-intercept lead (player `GetAimPosition`, `ProjectileInfo()`'s
+  `PredictInterceptPos`, and the delta slewed toward the facing column `kDY` by 70 deg when it is
+  further off than that, then 0xF48 += 1); clear = the safe-zone target's CONN/FOLW waypoint, else
+  that actor's own translation. Both fire
+  `LaunchProjectile(xf, mgr, 6, kPA_None, false, CImpactVisorEffect::None(), One())` and end with
+  0xF34 = 0. `AC68` writes the bone tracking's ang speed (0xDBC) to **+pi/2** on activate and **+pi**
+  on deactivate (rodata_D8/rodata_10C, not a +/-pi/2 pair); its deactivate is the only caller of
+  `SyncAttacker` (fn_55_1C70) with delta -1.
 - Slice E (charge-beam volleys, 3ACC 3F44 58B4 1027C): `58B4` is the attached-sibling id list the
   volleys need (both call `2CA4` first, then require exactly 3 / 2 attached worms, then fire from the
   centroid of their locator translations to `bossPos + innerRadius * dir`, `dir` from the pairwise
@@ -486,6 +496,13 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   but returns before its pick because it requires `mChargeBeamCooldown > 0` (0xF44), which only the
   charge-beam states' deactivate writes, so 42A8 stays unexercised and 8C88 with it. 1C70 has no caller yet.
   Newly `// @`: 1B94 83AC. Stand-ins still reached: 528C 4C60 A9DC 22E4.
+- Slice 9 (2026-10-20, run sbU, same area/layer, `MP2_SB_FSM=1 MP2_SB_HP=1`, FRAMES 6000, exit 0, 0 caught,
+  0 reach-stub): the dark-beam pair is a host body now but nothing reaches it. `[sbtrace]` holds no 44CC,
+  AC68 or 1C70; `stand-ins:` shrinks to 528C 4C60 A9DC 22E4; `[sbtrace]` adds only 1AEC 1B94 2750 83AC on
+  top of slice 8's set, and the Attack submachine still leaves through `ShouldRepeaterAttack` (C750) into
+  `RepeaterAttack` (A9DC). C894 stops at its `mChargeBeamCooldown > 0` (0xF44) gate, which only the
+  charge-beam states' deactivate writes, so 42A8 -> 8C88 -> `FoundSafeZoneTarget` and the DarkBeamAttack
+  state never run. Both bodies keep `// fn_55_X (ported, not exercised yet)`.
 - `CheckBodyStateForDarkBeam` (8C88) is still unreached: only `ShouldDarkBeamAttackCheck` (42A8) calls it, and
   42A8 only runs once C894's cooldown gate opens (slice 8). The two signature changes C894/C750 needed —
   42A8 returns the picked worm's uid (C894 compares it to `GetUniqueId()` and otherwise makes that sibling run

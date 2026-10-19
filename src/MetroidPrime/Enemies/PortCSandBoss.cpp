@@ -908,7 +908,7 @@ void CSandBoss::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
   switch (type) {
   case kUE_Projectile:
     if (mDarkBeamResult) {
-      FireDarkBeam(mgr);
+      FireDarkBeam(mgr, dt);
     }
     handled = true;
     break;

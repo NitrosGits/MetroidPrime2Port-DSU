@@ -556,8 +556,41 @@ void CSandBoss::SpitOutBall(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-void CSandBoss::DarkBeamAttack(CStateManager&, EStateMsg, float) { // fn_55_AC68
-  PortSandBossStandIn("CSandBoss::DarkBeamAttack (fn_55_AC68)");
+// fn_55_AC68 (ported, not exercised yet)
+// DarkBeamAttack: start aims the head bone tracking at the safe-zone target (turn rate +pi/2),
+// readies the animation and raises the probe result bit (0x165C b3) so this worm owns the shot; each
+// update re-issues the projectile-attack command toward the target's position while the animation
+// can take it, and ends the state once the target is gone; stop aborts a running projectile attack,
+// turns tracking off (+pi turn rate), drops the flag, clears the target and resyncs the group's
+// attack timers (fn_55_1C70 with the retail delta -1).
+void CSandBoss::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) { // 0x12
+      CEntity* target = mgr.ObjectById(mSafeZoneTarget); // 0xE88
+      if (target == nullptr) {
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6B4 = 3
+      } else if (const CActor* actor = TCastToPtr< CActor >(target)) { // [inferred: the actor cast]
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCProjectileAttackCmd(pas::kS_Zero, actor->GetTranslation(), false)); // 6, 0x54
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    mBoneTracking.SetActive(true);                        // 0xD9C
+    mBoneTracking.SetAngSpeed(1.5707964f);                // 0xDBC = +pi/2
+    mBoneTracking.SetTarget(mSafeZoneTarget);             // 0xE88
+    mDarkBeamResult = true;                               // 0x165C b3
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x37C == 0x12
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0xD
+    }
+    mBoneTracking.SetActive(false);      // 0xD9C
+    mBoneTracking.SetAngSpeed(3.1415927f); // 0xDBC = +pi
+    mDarkBeamResult = false;            // 0x165C b3
+    mSafeZoneTarget = kInvalidUniqueId; // 0xE88
+    SyncAttacker(mgr, -1);              // fn_55_1C70
+  }
 }
 
 void CSandBoss::RepeaterAttack(CStateManager&, EStateMsg, float) { // fn_55_A9DC

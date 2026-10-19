@@ -260,7 +260,7 @@ private:
   void StartTripleChargeBeam(CStateManager& mgr, const rstl::string& locator); // fn_55_3ACC
   void StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& locator); // fn_55_3F44
   TUniqueId ShouldDarkBeamAttackCheck(CStateManager& mgr) const;           // fn_55_42A8
-  void FireDarkBeam(CStateManager& mgr);                                   // fn_55_44CC
+  void FireDarkBeam(CStateManager& mgr, float dt);                         // fn_55_44CC
   void HandleScreenShake(CStateManager& mgr, const rstl::string& locator); // fn_55_4C60
   void DestroySphereHelper(CStateManager& mgr);                            // fn_55_51BC
   void HandleGroundImpact(CStateManager& mgr, const rstl::string& locator); // fn_55_528C
