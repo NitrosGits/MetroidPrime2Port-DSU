@@ -21,6 +21,44 @@ appended, dated as in the heading there.
   HUD and helmet cameras), MP1's explicit anchor clusters are not ported, and the spread ignores a HUD
   scale below 100%. Nothing was walked in gameplay, per usual: the screenshots are of a standing player.
 
+## 2026-10-19 (twenty-seventh session): every world swept
+
+- **Method.** I used a scratch copy of `tools/sweep_areas.sh` that sets `MP2_WORLD="<world>,<first area's MREA>"` instead of
+  `MP2_TELEPORT`, because the teleport only indexes the save's own world and wins when both are set. Settings: `NEXTAREA` walk,
+  `GODMODE=1`, `SHARDS=4 DWELL=900 TAIL=900`, save `/tmp/opencode/ss_user`, and the binary from 15:39 (`c334bc9ae`).
+  The logs are in `/tmp/opencode/wsw/log_w_<world>_<shard>.log`.
+- **Worlds.** The console's `worlds` command lists five campaign worlds, FrontEnd04 (`69802220`) and six 1-area
+  multiplayer maps. All of the 1-area worlds load, and boots of `233e42be` and `0x69802220` exit 0.
+
+  | World | Id | Areas | Reached | Verdicts |
+  |---|---|---|---|---|
+  | Temple Grounds | 3bfa3eff | 63 | 0-53, 56, 57 | shard 3 STALL at 57->58; 54/55 not in the walk; 59-62 not covered |
+  | Agon Wastes | 42b935e4 | 72 | 72 | all exit=0; reach stubs at 7 and 37 |
+  | Torvus Bog | 3dfd2249 | 70 | 70 | all exit=0; reach stub at 46 |
+  | Sanctuary Fortress | 1baa96c2 | 67 | 67 | all exit=0; area 16 POOL |
+  | Great Temple | 863fcd72 | 12 | 12 | all exit=0 |
+
+- **Totals across every log.** There were no `[port] caught`, `[player] killed`, missing-resource, `[model]`, assert or `[end]`
+  lines. The only `[warning]` is the shutdown `Device lost: Device was destroyed`.
+- **Temple Grounds 58 is a harness trap, not a game wall.** The log reads `[warp] area 58: its validation was held by a dock;
+  releasing it` and then `[harness] no game update for 30.0 s (6322 updates so far, limit 13500)`, exit=124. A lone
+  `WORLD=3bfa3eff,85499aa7` run reproduces it after 122 updates. The screenshot shows "Save progress to Memory Card in
+  Slot A? Yes/No": the arrival spawn is inside a save station, and the sweep's `B` does not answer that prompt. Under gdb
+  the main thread was idle in the frame limiter (`CGraphics::EndScene`).
+- **Top blockers, earliest first:**
+  1. Agon 7: `CParasite::ProjectVectorToPlane` reach stub (the parasites' plane projection is a no-op).
+  2. Agon 37: reach stub for `TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()`.
+  3. Torvus 46: the `CParasite::ProjectVectorToPlane` stub again.
+  4. Sanctuary 16: the id pool holds at `[ids] frame 14700: 982/1024 ids allocated, 982 objects` until frame 15000. That
+     follows `[warp] dropped the areas around 16 (650 object ids free)`, so one more spawn burst there could exhaust the pool.
+  5. Tooling: the save prompt at TG 58 (above) stops the sweep. `ResolveWarpAsset` reads an all-digit hex id as decimal
+     (`MP2_WORLD=69802220` → `0x042918ec`, "neither the save nor the disc's MLVL names an area"; `0x69802220` works).
+     The warp walk also never rolls credits, because slot 53 logged no `[end]`.
+  `DebugDrawAABox` also hits its stub (Sanctuary 0, TG 44/48, Agon 47/59), which is harmless.
+- **Coverage limit.** This sweep tests arrival plus about 15 s of standing gameplay under god mode. It does not test
+  traversal, doors, elevators, bosses or the ending. Next: real `ProjectVectorToPlane` and state-dtor bodies, a `B`/`Yes`
+  answer for save prompts in `sweep_areas.sh`, a hex-always parse in `ResolveWarpAsset`, and TG 59-62.
+
 ## 2026-10-19 (twenty-sixth session): interpolation phase 6, save-state resume and door locks
 
 - **Phase 6** (`9b651429a`, MP1's section 3 "swooshes, electric effects and beam weapons"):
