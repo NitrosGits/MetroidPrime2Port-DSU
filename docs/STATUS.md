@@ -3,6 +3,22 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-fourth session): the texture dump path, and where Echoes' prompts are
+
+- **`f558e5b3f`:** a texture dump dropped every file. `dump_editable_texture_dds` wrote into
+  `<cache>/texture_dumps`, but only `load_replacement_directory` ever created that folder, so a run
+  with no pack installed - the one way to author a pack - had nowhere to write. The dump now creates
+  the folder, and a dump skipped because the format did not convert logs why (once per format/size).
+  Verified: `MP2_DUMP_TEXTURES=1` writes 147 `tex1_*.dds` into the run's own cache folder
+  (`/tmp/opencode/c_run/texture_dumps`, because `tools/run_gameplay.sh` sets `MP2_CACHE_PATH` from
+  `CACHEDIR` - the `MP2_CACHE_PATH` a caller passes is overridden, which is why the first attempts
+  looked empty).
+- **Echoes' button prompts are not 32x32 textures.** Of the nine 32x32 dumps from a Temple Grounds
+  boot (`/tmp/opencode/glyphs_sheet.png`), none is a button: the game draws prompts from GUI *models*
+  (`model_abutton` in `CSamusHud.cpp:157`, `CHudDecoInterfaceScan.cpp:108`), whose texture is not one
+  of them. Building Echoes' `kKeys` therefore needs a dump taken while a prompt is up, plus the model's
+  own texture size/hash - still open.
+
 ## 2026-10-19 (twenty-third session): HD textures and prompt glyphs, ported and wired
 
 - **`d8a795ffc`:** `platform/port_textures.cpp` and `platform/port_prompts.cpp` (126 and 361 lines,
