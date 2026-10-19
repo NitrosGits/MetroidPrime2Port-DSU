@@ -118,6 +118,9 @@ CMaterialFilter SolidFilter() {
 
 } // namespace
 
+// The state files share the stand-in log (PortCElitePirateCombat.cpp / PortCElitePirateMove.cpp).
+void ElitePirateStandIn(const char* what) { StandIn(what); }
+
 // @ fn_15_A190
 // @ fn_15_2CFC
 CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
@@ -1522,48 +1525,6 @@ bool CElitePirate::TooClose(CStateManager& mgr, const CTriggerData&) const {
          DistSq(GetTranslation(), target->GetTranslation()) <
              mData.mMaxMeleeRange * mData.mMaxMeleeRange * 0.5f;
 }
-
-void CElitePirate::Alert(CStateManager&, EStateMsg, float) { StandIn("Alert (fn_15_5340)"); }
-
-void CElitePirate::AngryAttackBegin(CStateManager&, EStateMsg, float) { StandIn("AngryAttackBegin (fn_15_1900)"); }
-
-void CElitePirate::AngryAttackEnd(CStateManager&, EStateMsg, float) { StandIn("AngryAttackEnd (fn_15_18D8)"); }
-
-void CElitePirate::Dead(CStateManager&, EStateMsg, float) { StandIn("Dead (fn_15_7B00)"); }
-
-void CElitePirate::FollowAttackPattern(CStateManager&, EStateMsg, float) { StandIn("FollowAttackPattern (fn_15_6DDC)"); }
-
-void CElitePirate::InvulnAlert(CStateManager&, EStateMsg, float) { StandIn("InvulnAlert (fn_15_52D0)"); }
-
-void CElitePirate::MeleeAttack(CStateManager&, EStateMsg, float) { StandIn("MeleeAttack (fn_15_48BC)"); }
-
-void CElitePirate::Patrol(CStateManager&, EStateMsg, float) { StandIn("Patrol (fn_15_5708)"); }
-
-void CElitePirate::PowerDown(CStateManager&, EStateMsg, float) { StandIn("PowerDown (fn_15_5FF0)"); }
-
-void CElitePirate::PowerUp(CStateManager&, EStateMsg, float) { StandIn("PowerUp (fn_15_5F08)"); }
-
-void CElitePirate::ProjectileAttack(CStateManager&, EStateMsg, float) { StandIn("ProjectileAttack (fn_15_50BC)"); }
-
-void CElitePirate::Pursue(CStateManager&, EStateMsg, float) { StandIn("Pursue (fn_15_5BB4)"); }
-
-void CElitePirate::Shielding(CStateManager&, EStateMsg, float) { StandIn("Shielding (fn_15_41A0)"); }
-
-void CElitePirate::ShieldUp(CStateManager&, EStateMsg, float) { StandIn("ShieldUp (fn_15_44A8)"); }
-
-void CElitePirate::Shockwave(CStateManager&, EStateMsg, float) { StandIn("Shockwave (fn_15_4AE0)"); }
-
-void CElitePirate::SpreadShot(CStateManager&, EStateMsg, float) { StandIn("SpreadShot (fn_15_4D18)"); }
-
-void CElitePirate::Stunned(CStateManager&, EStateMsg, float) { StandIn("Stunned (fn_15_59BC)"); }
-
-void CElitePirate::TargetPatrol(CStateManager&, EStateMsg, float) { StandIn("TargetPatrol (fn_15_578C)"); }
-
-void CElitePirate::Taunt(CStateManager&, EStateMsg, float) { StandIn("Taunt (fn_15_5A60)"); }
-
-void CElitePirate::Turn(CStateManager&, EStateMsg, float) { StandIn("Turn (fn_15_5598)"); }
-
-void CElitePirate::Wait(CStateManager&, EStateMsg, float) { StandIn("Wait (fn_15_6064)"); }
 
 // @ fn_15_555C
 void CElitePirate::SelectTarget(CStateManager& mgr, float) {
