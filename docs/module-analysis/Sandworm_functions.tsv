@@ -1,0 +1,376 @@
+offset	size	owner	name	kind	callers	dol_counterpart	package
+0x0	0x2C	CActor (weak)	GetHealthInfo() const -> HealthInfo() [slot 0x3C, shared by both vtables]	inline-dol	data_734 data_8C0	CActor::GetHealthInfo (header inline)	-
+0x2C	0x24	(module)	RELExit	rel-entry	-	-	WP1
+0x50	0x20	(module)	RELMain	rel-entry	-	-	WP1
+0x70	0x6C	(module)	RegisterFuncPtrs (fills bss_38, SetSSandworm_FuncPtrs)	rel-entry	RELMain	-	WP1
+0xDC	0xF6C	(module)	LoadSandworm(CStateManager&,CInputStream&,const CEntityInfo&)	loader	-	-	WP1
+0x1048	0x40	CModelData/TToken	[?] CModelData move/copy chain used by the loader and x177C	inline-dol	DC	[?] CModelData/TToken copy (header inline)	-
+0x1088	0x20	CModelData/TToken	[?] CModelData move/copy chain used by the loader and x177C	inline-dol	1048 12B94	[?] CModelData/TToken copy (header inline)	-
+0x10A8	0x28	CModelData/TToken	[?] CModelData move/copy chain used by the loader and x177C	inline-dol	1088	[?] CModelData/TToken copy (header inline)	-
+0x10D0	0x13C	CModelData/TToken	[?] CModelData move/copy chain used by the loader and x177C	inline-dol	10A8	[?] CModelData/TToken copy (header inline)	-
+0x120C	0x6C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x1278	0x54	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x12CC	0x64	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x1330	0x60	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x1390	0xE8	SLdrSandworm (header inline)	SLdrSandworm::~SLdrSandworm	inline-hdr	-	SLdrSandworm.hpp	-
+0x1478	0x28C	SLdrSandworm (header inline)	SLdrSandworm::SLdrSandworm	inline-hdr	DC	SLdrSandworm.hpp	-
+0x1704	0x190	SLdrSandworm (header inline)	LoadTypedefSandwormStruct	inline-hdr	DC	SLdrSandworm.hpp	-
+0x1894	0x3C	SLdrSandworm (header inline)	SLdrSandwormStruct::~SLdrSandwormStruct	inline-hdr	1223C 1390 13F74 DC	SLdrSandworm.hpp	-
+0x18D0	0x4C	SLdrSandworm (header inline)	SLdrSandwormStruct::SLdrSandwormStruct	inline-hdr	1478	SLdrSandworm.hpp	-
+0x191C	0x11C	CSandworm	SGlowParticles::~SGlowParticles (x19D0, 4 owned CElementGen)	member-dtor	1223C	-	WP1
+0x1A38	0x398	CSandworm	SGlowParticles::SGlowParticles(id0,id1,id2) -> 4x new CElementGen(0x338)	member-ctor	12D68 14010	-	WP1
+0x1DD0	0x78	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x1E48	0x54	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x1E9C	0x40	CSandworm	SBombParams::SBombParams() (x1944, Sandigger: empty)	member-ctor	12D68	-	WP6
+0x1EDC	0x90	CDamageInfo	[?] CDamageInfo default ctor (inline)	inline-dol	1E9C	[?] CDamageInfo::CDamageInfo()	-
+0x1F6C	0x6C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x1FD8	0x1C0	CSandworm	SBombParams::SBombParams(bombFX,explosionFX,damage) (x1944, Bomb Guardian)	member-ctor	14010	-	WP6
+0x2198	0x58	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x21F0	0x14	CSandwormEye	[?] SetDead (x2F4 bit6)	method	11374 5D80	-	WP2
+0x2204	0xC	CSandwormEye	[?] IsDead (x2F4 bit6)	method	321C 35F8 36A0 441C E204 E2C0	-	WP2
+0x2210	0x1C	CSandwormEye	[?] GetX2E8 (CVector3f)	method	-	-	WP2
+0x222C	0x1C	CSandwormEye	[?] SetX2E8 (CVector3f)	method	441C	-	WP2
+0x2248	0x14	CSandwormEye	[?] SetX2F4bit7	method	441C	-	WP2
+0x225C	0xC	CSandwormEye	[?] GetX2F4bit7	method	441C	-	WP2
+0x2268	0x38	CSandwormEye	[?] material test (x68 & 0x200) inline HasMaterial	inline-dol	321C	CMaterialList::HasMaterial (inline)	-
+0x22A0	0x7C	CSandwormEye	[?] SetTargetable (Add/RemoveMaterial)	method	441C	-	WP2
+0x231C	0x34	CSandwormEye	SetTouchBounds (x2D0 CAABox)	method	441C	-	WP2
+0x2350	0x3C	CSandwormEye	GetTouchBounds [slot 0x48]	virtual	data_740	-	WP2
+0x238C	0x1C	CSandwormEye	GetAimPosition [slot 0x54] (x2E8)	virtual	data_74C	-	WP2
+0x23A8	0x1C	CSandwormEye	GetOrbitPosition [slot 0x50] (x2E8)	virtual	data_748	-	WP2
+0x23C4	0x70	CSandwormEye	~CSandwormEye [slot 0x08]	dtor	data_700	-	WP2
+0x2434	0x208	CSandwormEye	CSandwormEye::CSandwormEye(uid,name,info,xf)	ctor	5060	-	WP2
+0x263C	0x68	SMoverData	[?] SMoverData ctor (inline)	inline-dol	2434	[?] SMoverData::SMoverData	-
+0x26A4	0x20	CModelData	CModelData::CModelDataNull (inline)	inline-dol	2434	CModelData::CModelDataNull	-
+0x26C4	0x54	CSandworm	SAttackHistory::EndsWith(type,count) (x1490)	method	11374 3844 3DE4 573C 74B8 C168	-	WP1
+0x2718	0x58	CSandworm	[?] Descend helper	method	B320	-	WP3
+0x2770	0x78	CSandworm	[?] BeginAttack helper	method	B85C	-	WP4
+0x27E8	0x74	CSandworm	[?] BeginAttack helper	method	2770	-	WP4
+0x285C	0x94	CSandworm	SAttackHistory::~SAttackHistory (x1490)	member-dtor	1223C	-	WP1
+0x28F0	0x18	CSandworm	SAttackHistory::SAttackHistory (x1490)	member-ctor	12D68 14010	-	WP1
+0x2908	0x8C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x2994	0x29C	CSandworm	RenderIngSnatchingTransition [slot 0x144]	virtual	data_9C8	-	WP7
+0x2C30	0xBC	CSandworm	GetOrbitPosition [slot 0x50] (eye-based)	virtual	data_8D4	-	WP2
+0x2CEC	0x35C	CSandworm	[?] FindGrabAIHint (TCastToPtr<CScriptAIHint>)	method	59A8 C168	-	WP4
+0x3048	0xA8	CSandworm	[?] AIHint helper	method	C168 CBB4	-	WP4
+0x30F0	0x8	CSandworm	CanBeUnPossessed [slot 0xFC] -> false	virtual	data_980	-	WP1
+0x30F8	0x34	CSandworm	CanBeIngPossessed [slot 0xF8] (Bomb Guardian only)	virtual	data_97C	-	WP1
+0x312C	0x54	CSandworm	GetIngSnatchingPoint [slot 0x13C] (cubic of x1388..x13A8)	virtual	data_9C0	-	WP1
+0x3180	0x9C	CSandworm	GetIngSnatchingNormal [slot 0x138]	virtual	data_9BC	-	WP1
+0x321C	0x188	CSandworm	GetAimPosition [slot 0x54] (eye-based)	virtual	data_8D8	-	WP2
+0x33A4	0x98	CSandworm	Interrupt [slot 0x238, FSM extra state]	fsm-state	data_ABC	-	WP3
+0x343C	0x48	CBodyStateCmd	~CBodyStateCmd (data_878, REL copy)	inline-dol	data_880	CBodyStateCmd::~CBodyStateCmd	-
+0x3484	0x10C	CSandworm	EyeKilledReaction [state slot 0x1fc]	fsm-state	data_A80	-	WP3
+0x3590	0x5C	CBCTauntCmd	~CBCTauntCmd (data_86C, REL copy)	inline-dol	data_874	CBCTauntCmd::~CBCTauntCmd	-
+0x35EC	0xC	CSandworm	HitDuringWindUp [trigger slot 0x188]	fsm-trigger	data_A0C	-	WP4
+0x35F8	0xA8	CSandworm	OneEyeKilled [trigger slot 0x19c]	fsm-trigger	data_A20	-	WP3
+0x36A0	0xB0	CSandworm	[?] AnyEyeDead / eye-state query	method	11374 3484 3B24 441C 4AD8 74B8 AC80 E340	-	WP2
+0x3750	0x14	CSandworm	PickedBombFountain [trigger slot 0x1a0]	fsm-trigger	data_A24	-	WP6
+0x3764	0x14	CSandworm	PickedBombSpread [trigger slot 0x1a4]	fsm-trigger	data_A28	-	WP6
+0x3778	0x14	CSandworm	PickedBombToss [trigger slot 0x1a8]	fsm-trigger	data_A2C	-	WP6
+0x378C	0x14	CSandworm	PickedSpitAttack [trigger slot 0x1ac]	fsm-trigger	data_A30	-	WP4
+0x37A0	0xA4	CSandworm	PickMediumAttack [state slot 0x214]	fsm-state	data_A98	-	WP4
+0x3844	0x14C	CSandworm	[?] PickAttackType (random, history)	method	37A0	-	WP4
+0x3990	0x90	CSandworm	GetPhaseParams() (first SLdrSandwormStruct whose threshold < health)	method	10F90 3844 5CA4 74B8	-	WP1
+0x3A20	0x6C	CSandworm	IsPossessedBombGuardian (x8C0 bit4 && IsIngPossessed && !IsBeingSnatched)	method	11374 321C 36A0 37A0 3B24 441C 4AD8 5530 59A8 5AE0 5CA4 6C04 74B8 7A2C 97FC 981C E204 E340	-	WP1
+0x3A8C	0x98	CSandworm	[?] UpdateBombDrop(dt)	method	74B8 AA74	-	WP6
+0x3B24	0x78	CSandworm	[?] CanDropBomb	method	3A8C D898	-	WP6
+0x3B9C	0x10	CSandworm	ResetBombDropTimer (x1984=0)	method	74B8 AA74	-	WP6
+0x3BAC	0x198	CSandworm	[?] DropBouncingBomb (new CBouncingBomb 0x218)	method	3A8C	-	WP6
+0x3D44	0x20	CSandworm	PlayerReachable [trigger slot 0x1bc]	fsm-trigger	data_A40	-	WP3
+0x3D64	0x80	CSandworm	[?] PathReachable(pos)	method	3D44 C27C	-	WP3
+0x3DE4	0x38	CSandworm	CanSpitAgain [trigger slot 0x164]	fsm-trigger	data_9E8	-	WP4
+0x3E1C	0x50	CSandworm	CanDescend [trigger slot 0x158]	fsm-trigger	data_9DC	-	WP3
+0x3E6C	0xC	CSandworm	ForceUnderground [trigger slot 0x180]	fsm-trigger	data_A04	-	WP3
+0x3E78	0x34	CSandworm	PlayerHiding [trigger slot 0x1b0]	fsm-trigger	data_A34	-	WP3
+0x3EAC	0x48	CSandworm	[?] UpdateLoopedSfx (3 emitters)	method	110C0	-	WP3
+0x3EF4	0xC0	CSandworm	[?] UpdateEmitter helper	method	3EAC	-	WP3
+0x3FB4	0x88	CSandworm	[?] StartMeleeSfx	method	6FA0	-	WP4
+0x403C	0x4C	CSandworm	[?] StopMoveSfx	method	11374 4088 74B8 AA74	-	WP3
+0x4088	0x64	CSandworm	[?] StartMoveSfx	method	74B8 AA74	-	WP3
+0x40EC	0xD0	CSandworm	[?] StartVocalSfx (random)	method	74B8 AA74	-	WP3
+0x41BC	0x44	CSandworm	[?] StopVocalSfx	method	74B8 AA74	-	WP3
+0x4200	0x184	CSandworm	Straighten [state slot 0x230]	fsm-state	data_AB4	-	WP3
+0x4384	0x20	CSandworm	DoneStraightening [trigger slot 0x170]	fsm-trigger	data_9F4	-	WP3
+0x43A4	0x78	CSandworm	[?] UpdateBounds helper	method	441C	-	WP7
+0x441C	0x5F8	CSandworm	[?] UpdateEyes(mgr,dt) (eye pose/targetable/damage state)	method	110C0 9CD8 AD14	-	WP2
+0x4A14	0xBC	CSandworm	AddToRenderer [slot 0x28] (+glow gens 2,3)	virtual	data_8AC	-	WP7
+0x4AD0	0x8	(weak)	[?] inline getter (u8 at +0x80)	inline-dol	-	[?]	-
+0x4AD8	0x588	CSandworm	[?] UpdateEyeVulnerability/additive flinch	method	441C	-	WP2
+0x5060	0x1F0	CSandworm	CreateEyes (2x new CSandwormEye 0x300: "Sandworm Eye Head"/"Tail")	method	11374	-	WP2
+0x5250	0x50	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x52A0	0x58	CEntityInfo	~CEntityInfo (inline)	inline-dol	5060	CEntityInfo::~CEntityInfo	-
+0x52F8	0x54	rstl::vector<SConnection>	~vector<SConnection> (inline)	inline-dol	52A0	rstl::vector dtor	-
+0x534C	0xD0	CSandworm	[?] unreferenced script-actor lookup	unreferenced	-	-	WP3
+0x541C	0x54	CSandworm	DoneSulking [trigger slot 0x174]	fsm-trigger	data_9F8	-	WP3
+0x5470	0xC0	CSandworm	Sulk [state slot 0x234]	fsm-state	data_AB8	-	WP3
+0x5530	0x4C	CSandworm	SequenceAttack [trigger slot 0x1c8]	fsm-trigger	data_A4C	-	WP4
+0x557C	0x7C	CSandworm	ShouldSulk [trigger slot 0x1cc]	fsm-trigger	data_A50	-	WP3
+0x55F8	0x74	CSandworm	[?] sulk helper	method	5470 557C	-	WP3
+0x566C	0x68	CSandworm	[?] HitIsOnHeadEye(collisionActor)	method	11374	-	WP2
+0x56D4	0x68	CSandworm	[?] HitIsOnTailEye(collisionActor)	method	11374	-	WP2
+0x573C	0x74	CSandworm	CanMeleeAgain [trigger slot 0x160]	fsm-trigger	data_9E4	-	WP4
+0x57B0	0xD4	CSandworm	[?] KnockPlayer(impulse,dmg) (ApplyImpulseWR, Rumble)	method	5F5C 6E40 7EE4	-	WP4
+0x5884	0x3C	CSandworm	[?] segment helper	method	10038 D09C	-	WP5
+0x58C0	0x50	CSandworm	DoneLurking [trigger slot 0x16c]	fsm-trigger	data_9F0	-	WP3
+0x5910	0x28	CSandworm	Radar: GetRadarPointCount -> 13 when active && !x420bit6	radar	data_6F4	-	WP1
+0x5938	0x40	CSandworm	Radar: GetRadarPointPosition(index)	radar	data_6E8	-	WP1
+0x5978	0x30	CSandworm	PlayerIsOnPathMesh [trigger slot 0x1b4]	fsm-trigger	data_A38	-	WP3
+0x59A8	0x138	CSandworm	CanAttack [trigger slot 0x150]	fsm-trigger	data_9D4	-	WP4
+0x5AE0	0x19C	CSandworm	CanCharge [trigger slot 0x154]	fsm-trigger	data_9D8	-	WP4
+0x5C7C	0x28	CSandworm	[?] clamp x1350	method	110C0	-	WP1
+0x5CA4	0xDC	CSandworm	[?] ResetAttackTimer (Range, GetAverageAttackTime)	method	6FA0 8190 B6DC B8B8 BAB8 BC8C BEA4	-	WP4
+0x5D80	0xDC	CSandworm	Dead [state slot 0x1f4]	fsm-state	data_A78	-	WP3
+0x5E5C	0x38	CSandworm	Deactivate [state slot 0x1f0]	fsm-state	data_A74	-	WP3
+0x5E94	0xC8	CSandworm	[?] TeleportIfRequested (Think, x1604)	method	110C0 9CD8	-	WP1
+0x5F5C	0x1E8	CSandworm	[?] ApplyMeleeDamage	method	646C	-	WP4
+0x6144	0xA8	CSandworm	[?] ReleaseGrabbedPlayer (DetachActorFromPlayer)	method	646C 74B8 BF44	-	WP4
+0x61EC	0x138	CSandworm	[?] GrabPlayer (AttachActorToPlayer)	method	646C	-	WP4
+0x6324	0x94	CSandworm	[?] unreferenced (GetIdForScript)	unreferenced	-	-	WP4
+0x63B8	0x58	CSandworm	[?] SendGrabMsgs	method	646C BF44	-	WP4
+0x6410	0x5C	CSandworm	[?] SendAttackMsgs	method	646C	-	WP4
+0x646C	0x324	CSandworm	DoUserAnimEvent [slot 0x70] (jumptable data_790)	virtual	data_8F4	-	WP4
+0x6790	0x8	CSandworm	ProjectileInfo [slot 0xDC] -> &x1528	virtual	data_960	-	WP1
+0x6798	0x16C	CSandworm	ChargeOver [trigger slot 0x168]	fsm-trigger	data_9EC	-	WP4
+0x6904	0xD8	CSandworm	FacingPlayerForCharge [trigger slot 0x17c]	fsm-trigger	data_A00	-	WP4
+0x69DC	0x74	CSandworm	SpitAngleOK [trigger slot 0x1d8]	fsm-trigger	data_A5C	-	WP4
+0x6A50	0x58	CSandworm	FacingPlayer [trigger slot 0x178]	fsm-trigger	data_9FC	-	WP3
+0x6AA8	0xBC	CSandworm	[?] AngleToTarget	method	6904 6A50 6B64 8AAC	-	WP4
+0x6B64	0xA0	CSandworm	[?] SpitAimAngle	method	69DC 8AAC	-	WP4
+0x6C04	0xBC	CSandworm	InChargeRange [trigger slot 0x190]	fsm-trigger	data_A14	-	WP4
+0x6CC0	0xB4	CSandworm	[?] charge helper	method	8190	-	WP4
+0x6D74	0xCC	CSandworm	[?] pursue helper	method	74B8	-	WP3
+0x6E40	0x160	CSandworm	[?] UpdateContactDamage (Think)	method	110C0	-	WP4
+0x6FA0	0x15C	CSandworm	MeleeAttack [state slot 0x208]	fsm-state	data_A8C	-	WP4
+0x70FC	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x7138	0x184	CSandworm	[?] PickPASAnim	method	11E54 6FA0	-	WP2
+0x72BC	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x72F8	0x98	CSandworm	[?] InMeleeRange helper	method	6E40 73BC	-	WP4
+0x7390	0x2C	CSandworm	PlayerIsMorphball [trigger slot 0x1b8]	fsm-trigger	data_A3C	-	WP4
+0x73BC	0x38	CSandworm	MeleeAttackRange [trigger slot 0x198]	fsm-trigger	data_A1C	-	WP4
+0x73F4	0xC4	CSandworm	[?] pursue path speed helper	method	74B8	-	WP3
+0x74B8	0x574	CSandworm	Pursue [state slot 0x21c]	fsm-state	data_AA0	-	WP3
+0x7A2C	0x234	CSandworm	[?] FindCoverPoint	method	74B8	-	WP3
+0x7C60	0x1A8	CSandworm	[?] cover-point scan	method	7A2C	-	WP3
+0x7E08	0x58	CSandworm	[?] cover-point test	method	7C60	-	WP3
+0x7E60	0x84	CSandworm	[?] SetPathDestination	method	74B8	-	WP3
+0x7EE4	0x2AC	CSandworm	[?] ApplyChargeDamage	method	11374 8190	-	WP4
+0x8190	0x328	CSandworm	ChargePlayer [state slot 0x1e8]	fsm-state	data_A6C	-	WP4
+0x84B8	0xFC	CSandworm	[?] LaunchSpitProjectile	method	8AAC	-	WP4
+0x85B4	0x54	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	84B8	-	WP4
+0x8608	0x5C	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	85B4 86CC	-	WP4
+0x8664	0x20	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	8608	-	WP4
+0x8684	0x48	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	8664	-	WP4
+0x86CC	0x8C	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	84B8	-	WP4
+0x8758	0xB4	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	86CC	-	WP4
+0x880C	0x40	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	8758	-	WP4
+0x884C	0x20	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	880C 898C	-	WP4
+0x886C	0x28	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	884C	-	WP4
+0x8894	0x80	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	886C	-	WP4
+0x8914	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x8950	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x898C	0x38	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	86CC	-	WP4
+0x89C4	0x70	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x8A34	0x78	TToken/auto_ptr	[?] CImpactVisorEffect / token helper chain (template)	template	86CC	-	WP4
+0x8AAC	0x3E4	CSandworm	[?] FireSpit (anim event)	method	646C	-	WP4
+0x8E90	0x1A0	CSandworm	[?] BombToss spawn	method	646C	-	WP6
+0x9030	0x1A4	CSandworm	[?] SpawnBouncingBomb (new 0x218)	method	8E90 91D4	-	WP6
+0x91D4	0x194	CSandworm	[?] BombFountain spawn	method	646C	-	WP6
+0x9368	0xD8	CSandworm	[?] AttachHeldBomb	method	9660 B8B8 BC8C	-	WP6
+0x9440	0x104	CSandworm	[?] ReleaseHeldBomb	method	646C	-	WP6
+0x9544	0x4C	TCastToPtr<CBouncingBomb>	[?] const GetObjectById cast (weak)	template	-	TCastToPtr<CBouncingBomb>	-
+0x9590	0x50	CSandworm	[?] GetHeldBomb (TCastToPtr<CBouncingBomb>)	method	9368 9440	-	WP6
+0x95E0	0x60	CSandworm	[?] DeleteHeldBomb	method	11374 646C B8B8 BC8C	-	WP6
+0x9640	0x8	CSandworm	GetBombExplodeSfx (x1832)	method	3BAC 9030 9660	-	WP6
+0x9648	0x8	CSandworm	GetBombBounceSfx (x1830)	method	3BAC 9030 9660	-	WP6
+0x9650	0x10	CSandworm	GetInvalidSfx	method	3BAC 9030 9660	-	WP6
+0x9660	0x190	CSandworm	[?] SpawnHeldBomb (new 0x218)	method	646C	-	WP6
+0x97F0	0xC	CSandworm	ReadyToCharge [trigger slot 0x1c4]	fsm-trigger	data_A48	-	WP4
+0x97FC	0x20	CSandworm	SnatchEnded [trigger slot 0x1d4]	fsm-trigger	data_A58	-	WP3
+0x981C	0x44	CSandworm	SnatchStarted [trigger slot 0x1d0]	fsm-trigger	data_A54	-	WP3
+0x9860	0xC	CSandworm	GetIngSnatchingModelOverlapSize [slot 0x140] -> 6.0	virtual	data_9C4	-	WP1
+0x986C	0x134	CSandworm	Snatch [state slot 0x224]	fsm-state	data_AA8	-	WP3
+0x99A0	0xB8	CSandworm	ChargeWindUp [state slot 0x1ec]	fsm-state	data_A70	-	WP4
+0x9A58	0x1B8	CSandworm	[?] UpdateShadow	method	9CD8	-	WP7
+0x9C10	0x78	CSandworm	CreateProjectedShadow (x13BC)	method	128B0	-	WP7
+0x9C88	0x50	CSandworm	[?] bounds accumulate	method	A04C	-	WP7
+0x9CD8	0x374	CSandworm	PreRenderAllViewports [slot 0x34]	virtual	data_8B8	-	WP7
+0xA04C	0x2FC	CSandworm	[?] ComputeBounds	method	43A4 9CD8	-	WP7
+0xA348	0x1A8	CSandworm	[?] UpdateLocatorTransforms	method	11078 9CD8	-	WP7
+0xA4F0	0x20	CSandworm	PreRender [slot 0x24] -> CPatterned::PreRender	virtual	data_8A8	-	WP7
+0xA510	0x1F8	CSandworm	[?] AddAnimatedScale per segment	method	E764	-	WP5
+0xA708	0x1D8	CSandworm	[?] FollowPath	method	74B8 8190	-	WP3
+0xA8E0	0x114	CSandworm	[?] NearlyOnPath test	method	5978 6798 A708	-	WP3
+0xA9F4	0xC	CSandworm	SetBodyCmdRequest(a,b) (x1518/x151C)	method	3484 5D80 986C 99A0 AA00 B6DC B8B8 BAB8 BC8C BF44	-	WP1
+0xAA00	0x28	CSandworm	ClearBodyCmdRequest (-1,0xD)	method	74B8 8190 BEA4	-	WP1
+0xAA28	0x4C	CSandworm	[?] Think helper	method	10AD8	-	WP1
+0xAA74	0x1B0	CSandworm	Patrol [state slot 0x210]	fsm-state	data_A94	-	WP3
+0xAC24	0x5C	CSandworm	[?] SetUnderground (collision)	method	112E8 AA74	-	WP5
+0xAC80	0x94	CSandworm	[?] path helper	method	74B8 A708	-	WP3
+0xAD14	0x39C	CSandworm	[?] OrientBodyToPath (LookAt, SetTransform)	method	3484 74B8 A708	-	WP5
+0xB0B0	0x88	CSandworm	[?] body helper	method	AD14 FC94	-	WP5
+0xB138	0x1E8	CSandworm	[?] spine update helper	method	F5B0	-	WP5
+0xB320	0x190	CSandworm	Descend [state slot 0x1f8]	fsm-state	data_A7C	-	WP3
+0xB4B0	0x5C	CBCGenerateCmd	~CBCGenerateCmd (data_860, REL copy)	inline-dol	data_868	CBCGenerateCmd::~CBCGenerateCmd	-
+0xB50C	0x1D0	CSandworm	Rise [state slot 0x220]	fsm-state	data_AA4	-	WP3
+0xB6DC	0x124	CSandworm	SpitAttack [state slot 0x228]	fsm-state	data_AAC	-	WP4
+0xB800	0x5C	CBCMeleeAttackCmd	~CBCMeleeAttackCmd (data_854, REL copy)	inline-dol	data_85C	CBCMeleeAttackCmd::~CBCMeleeAttackCmd	-
+0xB85C	0x5C	CSandworm	[?] BeginAttack (common)	method	6FA0 74B8 8190 B6DC B8B8 BAB8 BC8C BF44	-	WP4
+0xB8B8	0x200	CSandworm	BombFountainAttack [state slot 0x1dc]	fsm-state	data_A60	-	WP6
+0xBAB8	0x1D4	CSandworm	BombSpreadAttack [state slot 0x1e0]	fsm-state	data_A64	-	WP6
+0xBC8C	0x218	CSandworm	BombTossAttack [state slot 0x1e4]	fsm-state	data_A68	-	WP6
+0xBEA4	0x94	CSandworm	StopGrabAttack [state slot 0x22c]	fsm-state	data_AB0	-	WP4
+0xBF38	0xC	CSandworm	GrabAttackFinished [trigger slot 0x184]	fsm-trigger	data_A08	-	WP4
+0xBF44	0x160	CSandworm	GrabAttack [state slot 0x200]	fsm-state	data_A84	-	WP4
+0xC0A4	0xC4	CSandworm	[?] grab helper	method	C168	-	WP4
+0xC168	0x114	CSandworm	CanGrabMorphball [trigger slot 0x15c]	fsm-trigger	data_9E0	-	WP4
+0xC27C	0xD4	CSandworm	InSpitRange [trigger slot 0x194]	fsm-trigger	data_A18	-	WP4
+0xC350	0x80	CSandworm	InAttackRange [trigger slot 0x18c]	fsm-trigger	data_A10	-	WP4
+0xC3D0	0x18	CSandworm	Activated [trigger slot 0x148]	fsm-trigger	data_9CC	-	WP3
+0xC3E8	0xC	CSandworm	BeginUnderground [trigger slot 0x14c]	fsm-trigger	data_9D0	-	WP3
+0xC3F4	0x74	CSandworm	LurkUnderground [state slot 0x204]	fsm-state	data_A88	-	WP3
+0xC468	0x198	CSandworm	[?] MoveToScriptActor (GetIdForScript)	method	5470 C3F4	-	WP3
+0xC600	0x104	CSandworm	[?] spine/segment chain helper	method	F5B0 F77C	-	WP5
+0xC704	0xF0	CSandworm	[?] spine/segment chain helper	method	C600 E764	-	WP5
+0xC7F4	0x34	CSandworm	[?] spine/segment chain helper	method	C704	-	WP5
+0xC828	0x16C	CSandworm	[?] spine/segment chain helper	method	AC24	-	WP5
+0xC994	0x15C	CSandworm	[?] spine/segment chain helper	method	B138 C828 F77C FC94	-	WP5
+0xCAF0	0xC4	CSandworm	[?] SetEyeCollisionVulnerability	method	4AD8	-	WP2
+0xCBB4	0xD8	CSandworm	[?] spine/segment chain helper	method	D350	-	WP5
+0xCC8C	0x2F4	CSandworm	CreateCollisionActorManager (new 0x18)	method	110C0 AC24	-	WP5
+0xCF80	0x84	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	CC8C	rstl::vector<CJointCollisionDescription>	-
+0xD004	0x38	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	CF80	rstl::vector<CJointCollisionDescription>	-
+0xD03C	0x60	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	D004	rstl::vector<CJointCollisionDescription>	-
+0xD09C	0x118	CSandworm	[?] BuildSphereDescriptions	method	CC8C	-	WP5
+0xD1B4	0x38	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	D09C	rstl::vector<CJointCollisionDescription>	-
+0xD1EC	0x20	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	14F40 D1B4	rstl::vector<CJointCollisionDescription>	-
+0xD20C	0x28	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	D1EC	rstl::vector<CJointCollisionDescription>	-
+0xD234	0xC0	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	D09C D20C	rstl::vector<CJointCollisionDescription>	-
+0xD2F4	0x5C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0xD350	0x1F8	CSandworm	[?] UpdateCollisionActors	method	110C0	-	WP5
+0xD548	0x8C	CSandworm	[?] InitStateMachine (InitializeStateMachine + 3 tables)	method	110C0	-	WP1
+0xD5D4	0x68	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0xD63C	0x54	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0xD690	0x1AC	CSandworm	[?] spine/segment chain helper	method	C994 EF8C	-	WP7
+0xD83C	0x5C	CSandworm	[?] spine/segment chain helper	method	D690 E008	-	WP7
+0xD898	0x2D4	CSandworm	[?] spine/segment chain helper	method	9CD8	-	WP7
+0xDB6C	0x38	CSandworm	[?] render helper	method	E3C0	-	WP7
+0xDBA4	0x84	CSandworm	[?] spine/segment chain helper	method	D898	-	WP7
+0xDC28	0x3E0	CSandworm	[?] spine/segment chain helper	method	9CD8	-	WP7
+0xE008	0x12C	CSandworm	[?] spine/segment chain helper	method	DC28	-	WP7
+0xE134	0x34	CSandworm	GetHeadEye(mgr) (TCastToPtr<CSandwormEye>)	method	11374 441C 5D80	-	WP2
+0xE168	0x34	CSandworm	GetTailEye(mgr)	method	441C 5D80	-	WP2
+0xE19C	0x34	CSandworm	GetTailEye(mgr) const [?]	method	321C 35F8 36A0 E204 E2C0	-	WP2
+0xE1D0	0x34	CSandworm	GetHeadEye(mgr) const [?]	method	2C30 321C 35F8 36A0 441C E204 E2C0	-	WP2
+0xE204	0xBC	CSandworm	[?] ShouldRenderHeadEye	method	9A58 E3C0	-	WP2
+0xE2C0	0x80	CSandworm	[?] ShouldRenderTailEye	method	9A58 E3C0	-	WP2
+0xE340	0x80	CSandworm	[?] eye-visible predicate	method	E204 E2C0	-	WP2
+0xE3C0	0x238	CSandworm	Render [slot 0x2C]	virtual	data_8B0	-	WP7
+0xE5F8	0xC4	CSandworm	[?] player-direction helper	method	61EC 72F8 C0A4	-	WP4
+0xE6BC	0x6C	CSandworm	GetSegLocatorId(i) (x974)	method	128B0	-	WP5
+0xE728	0x10	CSandworm	GetSegId(i) (x974)	method	C600 E764 F384	-	WP5
+0xE738	0x2C	CSandworm	[?] spine/segment chain helper	method	E764	-	WP5
+0xE764	0x7BC	CSandworm	[?] spine/segment chain helper	method	F5B0	-	WP5
+0xEF20	0x30	CSandworm	[?] spine/segment chain helper	method	E764	-	WP5
+0xEF50	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0xEF8C	0x39C	CSandworm	[?] RotateBodyForBombAttack (GetRotation/SetTransform)	method	BAB8 BC8C	-	WP6
+0xF328	0x40	CSandworm	[?] EF8C helper	method	EF8C	-	WP6
+0xF368	0x1C	CSandworm	[?] spine/segment chain helper	method	F5B0	-	WP5
+0xF384	0x22C	CSandworm	[?] spine/segment chain helper	method	F5B0	-	WP5
+0xF5B0	0x160	CSandworm	[?] spine/segment chain helper	method	9CD8 F77C	-	WP5
+0xF710	0x8	CSandworm	Primed [trigger slot 0x1c0] -> true	fsm-trigger	data_A44	-	WP5
+0xF718	0x3C	CSandworm	[?] spine/segment chain helper	method	A510	-	WP5
+0xF754	0x28	CSandworm	Prime [state slot 0x218] (spine prime/IK)	fsm-state	data_A9C	-	WP5
+0xF77C	0x2B4	CSandworm	[?] spine/segment chain helper	method	F754	-	WP5
+0xFA30	0xF4	CSandworm	[?] spine/segment chain helper	method	F5B0	-	WP5
+0xFB24	0x170	CSandworm	[?] spine/segment chain helper	method	FC94	-	WP5
+0xFC94	0x328	CSandworm	[?] spine/segment chain helper	method	F5B0	-	WP5
+0xFFBC	0x7C	CSandworm	[?] spine/segment chain helper	method	E764	-	WP5
+0x10038	0x58	CSandworm	[?] spine/segment chain helper	method	10090 4200 B138 F384 F5B0 F77C	-	WP5
+0x10090	0x80	CSandworm	[?] GetSegmentPosition(i)	method	11CF8 5938 A708 D350 FB24 FFBC	-	WP5
+0x10110	0x158	CSandworm	[?] unreferenced math helper	unreferenced	-	-	WP5
+0x10268	0x2A8	CSandworm	[?] unreferenced math helper	unreferenced	-	-	WP5
+0x10510	0x1C4	CSandworm	[?] spine/segment chain helper	method	FA30	-	WP5
+0x106D4	0x114	CSandworm	[?] spine/segment chain helper	method	AD14 FC94	-	WP5
+0x107E8	0x24	CSandworm	[?] spine/segment chain helper	method	AD14 C600 F5B0 F77C FC94	-	WP5
+0x1080C	0xB0	CSandworm	[?] spine/segment chain helper	method	107E8 FA30	-	WP5
+0x108BC	0xB0	CSandworm	[?] spine/segment chain helper	method	D350	-	WP5
+0x1096C	0xB4	CSandworm	[?] GetLocatorPosition(i)	method	5938 A04C A348 B138 D350 F384 F5B0	-	WP5
+0x10A20	0x48	CSandworm	[?] GetLctrTransform wrapper	method	108BC 1096C	-	WP5
+0x10A68	0x70	CSandworm	[?] unreferenced (SetSteeringSpeedRange)	unreferenced	-	-	WP3
+0x10AD8	0x110	CSandworm	[?] UpdateTimers (Think)	method	110C0	-	WP1
+0x10BE8	0xBC	CSandworm	[?] UpdateFade (Think)	method	110C0	-	WP1
+0x10CA4	0x30	CSandworm	[?] fade helper	method	10BE8	-	WP1
+0x10CD4	0x58	CSandworm	[?] Think helper	method	110C0	-	WP1
+0x10D2C	0xD8	CSandworm	[?] UpdateColorLerp (Yellow/Black)	method	110C0	-	WP1
+0x10E04	0x150	CSandworm	[?] DetectIncomingProjectiles (BuildNearList)	method	110C0	-	WP1
+0x10F54	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x10F90	0xE8	CSandworm	UpdateBossParams (SetBossParams, Bomb Guardian)	method	110C0	-	WP1
+0x11078	0x48	CSandworm	[?] UpdatePose (BuildPoseIfNecessary)	method	110C0 F77C	-	WP7
+0x110C0	0x228	CSandworm	Think [slot 0x14]	virtual	data_898	-	WP1
+0x112E8	0x48	CSandworm	Null [state slot 0x20c]	fsm-state	data_A90	-	WP3
+0x11330	0x44	CSandworm	[?] AcceptScriptMsg helper	method	11374	-	WP2
+0x11374	0x974	CSandworm	AcceptScriptMsg [slot 0x18]	virtual	data_89C	-	WP2
+0x11CE8	0x10	CSandworm	TakeDamage [slot 0xA4] (x448 = skDamageHitTime)	virtual	data_928	-	WP1
+0x11CF8	0x100	CSandworm	[?] AngleBetween	method	11374	-	WP2
+0x11DF8	0x5C	CSandworm	[?] RemoveAdditiveFlinch	method	4AD8	-	WP2
+0x11E54	0x158	CSandworm	[?] AddAdditiveFlinch	method	4AD8	-	WP2
+0x11FAC	0x22C	CSandworm	[?] SpawnScriptedFx/SendScriptMsgs	method	10F90 441C 5D80	-	WP1
+0x121D8	0x64	CSandworm	[?] post-ctor helper	method	128B0	-	WP1
+0x1223C	0x238	CSandworm	~CSandworm [slot 0x08]	dtor	data_88C	-	WP1
+0x12474	0x1E4	CPatterned	~CPatterned body (REL copy)	inline-dol	1223C	CPatterned::~CPatterned	-
+0x12658	0x94	[?] x620 member	[?] dtor of x620 member (vtable data_844)	inline-dol	12474	[?] CAiKnockBack-type member dtor	-
+0x126EC	0x94	CSandworm	~x1528 (CProjectileInfo+extras)	member-dtor	1223C	-	WP1
+0x12780	0x8C	CSandworm	~SPincers (x1770)	member-dtor	1223C	-	WP1
+0x1280C	0xA4	CSandworm	~SBombParams (x1944)	member-dtor	1223C	-	WP6
+0x128B0	0x2B4	CSandworm	[?] FinishConstruction (pincer models, seg ids, clamp impulses)	method	12D68 14010	-	WP1
+0x12B64	0x30	rstl::optional<CModelData>/auto_ptr	[?] model holder assign chain (template)	template	128B0	[?]	-
+0x12B94	0x48	rstl::optional<CModelData>/auto_ptr	[?] model holder assign chain (template)	template	12B64	[?]	-
+0x12BDC	0xC4	rstl::optional<CModelData>/auto_ptr	[?] model holder assign chain (template)	template	12B94	[?]	-
+0x12CA0	0xC8	rstl::optional<CModelData>/auto_ptr	[?] model holder assign chain (template)	template	12BDC	[?]	-
+0x12D68	0x834	CSandworm	CSandworm::CSandworm (Sandigger/Alpha form)	ctor	DC	-	WP1
+0x1359C	0x90	CSandworm	SGrab x19A8 ctor (Sandigger)	member-ctor	12D68	-	WP1
+0x1362C	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13668	0x3C	CSandworm	SSfx x1828 ctor	member-ctor	12D68 14010	-	WP1
+0x136A4	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x136E0	0x74	CSandworm	x1670 ctor	member-ctor	12D68 14010	-	WP1
+0x13754	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13790	0x68	CSandworm	SMelee x1620 ctor	member-ctor	12D68 14010	-	WP1
+0x137F8	0xF8	CSandworm	SToss x15AC ctor	member-ctor	12D68 14010	-	WP1
+0x138F0	0x234	CSandworm	x1528 projectile ctor	member-ctor	12D68 14010	-	WP1
+0x13B24	0x5C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13B80	0x78	CSandworm	SCharge x14D8 ctor	member-ctor	12D68 14010	-	WP1
+0x13BF8	0x64	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13C5C	0x60	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13CBC	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13CF8	0x58	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13D50	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13D8C	0x8C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13E18	0x8C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13EA4	0x58	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13EFC	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13F38	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13F74	0x60	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x13FD4	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
+0x14010	0x9C4	CSandworm	CSandworm::CSandworm (Bomb Guardian form)	ctor	DC	-	WP1
+0x149D4	0x90	CSandworm	SGrab x19A8 ctor (Bomb Guardian)	member-ctor	14010	-	WP1
+0x14A64	0x8	CSandworm	GetSearchPath [slot 0xE0] -> &x7C4	virtual	data_964	-	WP1
+0x14A6C	0x8	CSandworm	[?] slot 0x23C -> 0	virtual	data_AC0	-	WP1
+0x14A74	0x68	CSandworm	GetTouchBounds [slot 0x48] (GetBoundingBox)	virtual	data_8CC	-	WP1
+0x14ADC	0x8	CSandworm	GetModelAlphau8 [slot 0xC8] (x44F)	virtual	data_94C	-	WP1
+0x14AE4	0x8	CSandworm	GetPointSearchPath [slot 0xE4] -> null	virtual	data_968	-	WP1
+0x14AEC	0x8	CSandworm	GetRagDoll [slot 0xF4] -> null	virtual	data_978	-	WP1
+0x14AF4	0x10	CSandworm	GetAttackTarget [slot 0x10C] -> invalid	virtual	data_990	-	WP1
+0x14B04	0xC	CSandworm	IsOnGround [slot 0x110] (x34C)	virtual	data_994	-	WP1
+0x14B10	0xC	CSandworm	GetGravityConstant [slot 0x114] -> kDefaultGravityAccel	virtual	data_998	-	WP1
+0x14B1C	0x8	CSandworm	GetDeathExplosionParticle [slot 0x124] -> &x754	virtual	data_9A8	-	WP1
+0x14B24	0x8	CSandworm	CanBeShot [slot 0xA8] -> true	virtual	data_92C	-	WP1
+0x14B2C	0x8	CSandworm	IsListening [slot 0xAC] -> false	virtual	data_930	-	WP1
+0x14B34	0x8	CSandworm	Listen [slot 0xB0] -> false	virtual	data_934	-	WP1
+0x14B3C	0x1C	CSandworm	GetOrigin [slot 0xB4]	virtual	data_938	-	WP1
+0x14B58	0xCC	CSandworm	[?] IssueTauntCmd (CAnimationState-style, kBSC_Taunt)	template	3484 99A0	-	WP1
+0x14C24	0x11C	CSandworm	[?] IssueGenerateCmd (kBSC_Generate)	template	B320 B50C	-	WP1
+0x14D40	0x10C	CSandworm	[?] IssueMeleeAttackCmd (kBSC_MeleeAttack)	template	B6DC B8B8 BAB8 BC8C BF44	-	WP1
+0x14E4C	0x34	CTransform4f	CTransform4f copy (inline)	inline-dol	12D68 14010	CTransform4f::CTransform4f(const&)	-
+0x14E80	0xC0	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	CC8C	rstl::vector<CJointCollisionDescription>	-
+0x14F40	0x68	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	14E80	rstl::vector<CJointCollisionDescription>	-

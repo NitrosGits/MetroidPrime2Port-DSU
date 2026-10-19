@@ -810,7 +810,13 @@ set(MP_MODULE_SandBoss_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_Sandworm_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSandworm.cpp
+    src/MetroidPrime/Enemies/PortCSandwormAttacks.cpp
+    src/MetroidPrime/Enemies/PortCSandwormBombs.cpp
+    src/MetroidPrime/Enemies/PortCSandwormEye.cpp
+    src/MetroidPrime/Enemies/PortCSandwormRender.cpp
+    src/MetroidPrime/Enemies/PortCSandwormSpine.cpp
+    src/MetroidPrime/Enemies/PortCSandwormStates.cpp
 )
 set(MP_MODULE_ScriptPlayerTurret_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
