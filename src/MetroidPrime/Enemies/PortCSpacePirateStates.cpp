@@ -8,6 +8,7 @@
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 
@@ -75,8 +76,94 @@ void CSpacePirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Dodge state (fn_72_7DFC)");
 }
 
+// Retail fn_72_D720: how long the target has stayed put; ShouldJumpBack reads the timer.
+void CSpacePirate::UpdateHeldPosition(CStateManager& mgr, float dt) {
+  const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+  if (player == nullptr) {
+    xbac_holdPositionTime = 0.f;
+    return;
+  }
+  const CVector2f pos = player->GetTranslation().ToVec2f();
+  if ((pos - CVector2f(xba4_heldPositionX, xba8_heldPositionY)).MagSquared() < 3.f) {
+    xbac_holdPositionTime += dt;
+  } else {
+    xba4_heldPositionX = pos.GetX();
+    xba8_heldPositionY = pos.GetY();
+    xbac_holdPositionTime = 0.f;
+  }
+}
+
+// @ fn_72_AF70
 void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Lurk state (fn_72_AF70)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    ReleaseCoverPoint(mgr, x900_coverPoint, true);
+    x904_steeringSpeed = 0.f;
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    x8f7_28_noPlayerLos = true;
+    xa7c_timeNoPlayerLos = 0.f;
+    // Three 0-100 rolls against the data's own percentages: this lurk is aggressive, checks for
+    // cover and dodges only as often as its properties say.
+    x8f8_26_alwaysAggressive = mgr.Random()->Range(0.f, 100.f) < mData.mAggressiveness;
+    x8f8_27_coverCheck = mgr.Random()->Range(0.f, 100.f) < mData.mCoverCheck;
+    x8f8_28_enableDodge = mgr.Random()->Range(0.f, 100.f) < mData.mDodgeCheck;
+    mEnableAim = true;
+    BodyController()->AbortScriptedAnimations();
+    if (mAttackTarget == kInvalidUniqueId) {
+      mAttackTarget = ChooseTeamTarget(mgr);
+      UpdateTeamTarget(mgr);
+      mBoneTracking.SetActive(true);
+      mBoneTracking.SetTarget(mAttackTarget);
+    }
+    if (x8f4_29_onlyAttackInRange) {
+      mBurstFire.SetBurstType(4);
+      BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    x8fa_24_normalDodge = false;
+    break;
+  case kStateMsg_Update: {
+    CBodyController* body = BodyController();
+    if (body->HasBodyState(pas::kAS_Turn)) {
+      // Face the target, and repeat the turn command each time the turn animation comes round.
+      if (mAnimationState.GetState() != CAnimationState::kAS_NotReady &&
+          mAnimationState.CanIssueCommand(*body, pas::kAS_Turn)) {
+        const CVector3f toTarget = xbc4_ - GetTranslation();
+        if (toTarget.IsMagnitudeSafe()) {
+          body->CommandMgr().DeliverCmd(
+              CBCLocomotionCmd(CVector3f::Zero(), toTarget.AsNormalized(), 1.f));
+        }
+      }
+      if (mAnimationState.GetState() != CAnimationState::kAS_Repeat) {
+        xbc4_ = GetTargetPos(mgr);
+        CVector3f delta = xbc4_ - GetTranslation();
+        delta.SetZ(0.f);
+        // More than ~25 degrees off the forward axis: ask for another turn.
+        if (CVector3f::Dot(GetTransform().GetForward(), delta.AsNormalized()) < 0.9f) {
+          mAnimationState.SetState(CAnimationState::kAS_Ready);
+        }
+      }
+    }
+    // A sat-up pirate stands to attack, and sits down again once the shot is nearly due.
+    if (x8f5_26_seated && x8f9_28_satUp) {
+      if (mAttackRemTime > GetAverageAttackTime() &&
+          body->GetLocomotionType() == pas::kLT_Combat) {
+        body->SetLocomotionType(pas::kLT_Internal5);
+      } else if (mAttackRemTime < 0.5f * GetAverageAttackTime() &&
+                 body->GetLocomotionType() == pas::kLT_Internal5) {
+        body->SetLocomotionType(pas::kLT_Combat);
+      }
+    }
+    // TODO(fn_72_D800): retail also picks/keeps its guard position here (cover-point nudge plus
+    // the line-of-sight test that drives x8f7_28_noPlayerLos); not ported yet.
+    UpdateHeldPosition(mgr, dt);
+    break;
+  }
+  case kStateMsg_Deactivate:
+    x8f8_26_alwaysAggressive = false;
+    x8f8_29_noPlayerDodge = false;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 // Retail fn_72_DFD4: find the squad this pirate belongs to (the field starts invalid) and take a

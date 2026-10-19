@@ -206,6 +206,7 @@ private:
   void EnsureBodyActive(CStateManager& mgr);
   void SquadRemove(CStateManager& mgr);                  // DF2C
   void SquadJoin(CStateManager& mgr);                    // DFD4
+  void UpdateHeldPosition(CStateManager& mgr, float dt); // D720
   void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
   void SetVelocityForJump();                             // E168
   // Think path (fn_72_1980); the comment on each is its retail function.

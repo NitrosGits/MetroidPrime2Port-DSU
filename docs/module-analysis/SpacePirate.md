@@ -228,9 +228,10 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 | Aggro recipe | a console `damage` does **not** reset 0xb24 (`Attacked`): `CPatterned` sets `mHitByPlayerProjectile` only from a `CGameProjectile` sender (`kSM_Damage`/`kSM_ResistedDamage`, `CPatterned.cpp:300`/`310`) or a projectile `Touch`. Firing the power beam at a pirate (`tp`/`face` then `press a`) does: `208 state Patrol -> Taunt` |
 | Taunt `B59C` | traced: msg 0 `hasTaunt 1`, `xa28` -1 -> 1 (`kTT_One`, right for this area: `mHearingRadius` 0 means no mate in range), `mEnableAim` 0 -> 1; exactly one `CBCTauntCmd(kTT_One)` delivered and body 5 -> **16 = `kAS_Taunt`**; msg 2 after the anim, `kTT_One` so no `InformListeners`, then `Taunt -> Lurk` and the Lurk/TargetPlayer/Run/PathFind cycle starts |
 | Data floats | the MREA's own values, not a loader fault: every property is present with a 4-byte payload, so the SLdr defaults never apply; `hearingRadius` is 0 on all six actors, so `HearPlayer` cannot fire in this area (detail below) |
+| Lurk `AF70` | traced: msg 0 rolls the three 0-100 percentages against `mData` (208 gives `aggr 0 cover 0 dodge 1`, right for its data: aggr/cover 0, dodge 80), `mEnableAim` 1, locomotion 3 = `kLT_Combat`, target kept from Taunt; msg 1 turns to the target through `CAnimationState` Ready -> body `kAS_Turn` -> Repeat -> Over and counts `xbac_holdPositionTime` (D720: 0 -> 7.5 s while the player stands still, reset when it moves); it exits `Lurk -> TargetPlayer -> Run -> PathFind -> Lurk`. `fn_72_D800` is still TODO: it picks the guard/cover position and is also what refreshes `x8f7_28_noPlayerLos` every update |
 | 0xb28 | time since a player shot was near (ShotAt `7BA0`); header name `xb28_lowHealthFrenzyTimer` is wrong |
 | Ported, unmarked | HearPlayer BBC0 (needs `mData.mHearingRadius > 0`, which is 0 in this area), SpotPlayer 938C, LineOfSight 9378 (0x8f7 bit 0x08), ShotAt 7BA0: no state these pirates reach (Patrol/Taunt) lists the last three, so nothing has exercised them |
-| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) |
+| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) AF70 (with D720 `UpdateHeldPosition`) |
 
 **CSpacePirateData floats are the MREA's, not a loader fault** (2026-10-19; loader instrumented behind
 `MP2_DEBUG_SPACEPIRATE=1`, then reverted). Every one of the six actors' property blocks carries
@@ -246,9 +247,8 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 
 ## 7. Port status / next (2026-10-19)
 
-- Worktree `wt-mp2-port`, branch `port`; last commit `00e7e7de4` (Taunt). Taunt -> Lurk -> Lurk/TargetPlayer/Run/PathFind is the live path after a power-beam hit on pirate 208.
-- In flight at handoff: `worker` lane `ses_eaa7cd1aaffexDNVpOCl7X8kR5` porting Lurk `AF70` (baseline `00e7e7de4`, uncommitted). Read its final report (`session.messages`, lastAssistant), review `git diff`, then commit.
-- Next slices, one `worker` lane each: TargetPlayer, Run, PathFind (the post-Taunt cycle); then the remaining triggers (ShouldAttack A71C, ShouldMove 7BD4, ShouldRetreat 7C28, ...).
+- Worktree `wt-mp2-port`, branch `port`; Lurk `AF70` committed on top of `00e7e7de4` (Taunt). Taunt -> Lurk -> Lurk/TargetPlayer/Run/PathFind is the live path after a power-beam hit on pirate 208, and it repeats: `Lurk -> TargetPlayer -> Run -> PathFind -> Lurk`.
+- Next slices, one `worker` lane each: TargetPlayer `7868` + Run `BBA0` (both tiny, one lane), then PathFind `8A90` (387 lines of pseudo-C), then the Lurk guard-position helper `D800` (also what refreshes `x8f7_28_noPlayerLos` each update); then the remaining triggers (ShouldAttack A71C, ShouldMove 7BD4, ShouldRetreat 7C28, ...).
 - Lanes kill their game by pid only (other worktrees' games share the machine).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW expects.
 
