@@ -6,6 +6,7 @@
 #include "port_overlay_internal.h"
 
 #include "port_env.h"
+#include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_settings.h"
 
@@ -171,6 +172,48 @@ const SettingKey kSettingKeys[] = {
      "1"},
     BoolKey< &sGyroCursorCamera >("gyro_cursor_camera"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
+    // Mouse and stick aim. These live in PortMouse rather than here, and the file is read by
+    // PortMouse's own ReadEnv (the file first, the MP2_* environment on top), so the rows below
+    // would otherwise be the only F1 switches a restart forgot.
+    {"mouse_aim",
+     [](const std::string& value) { PortMouse::SetEnabled(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::Enabled()); }, false, "1", "0"},
+    {"mouse_invert_x",
+     [](const std::string& value) { PortMouse::SetInvertX(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::InvertX()); }, false, "1", "0"},
+    {"mouse_invert_y",
+     [](const std::string& value) { PortMouse::SetInvertY(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::InvertY()); }, false, "1", "0"},
+    {"mouse_sensitivity",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 0.0001f && parsed <= 0.1f) {
+         PortMouse::SetSensitivity(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::Sensitivity(); }, false, "0.0035", "0.007"},
+    {"twin_stick",
+     [](const std::string& value) { PortMouse::SetStickEnabled(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::StickEnabled()); }, false, "1", "0"},
+    {"stick_aim_rate",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 4000.f) {
+         PortMouse::SetStickAimRate(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::StickAimRate(); }, false, "900", "1200"},
+    {"stick_aim_split",
+     [](const std::string& value) { PortMouse::SetStickAimSplit(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::StickAimSplit()); }, false, "1", "0"},
+    {"stick_aim_rate_y",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 4000.f) {
+         PortMouse::SetStickAimRateY(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::StickAimRateY(); }, false, "900", "1200"},
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),
     BoolKey< &sHideHelmet >("no_helmet"),
@@ -260,7 +303,9 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sCrosshairCustomColor >("crosshair_custom_color"),
 };
 
-std::mutex sMutex;
+// Recursive: a key's read can call back into PortMouse, whose ReadEnv asks for this file (the
+// file is its base value), so applying the file can re-enter LoadSettings on the same thread.
+std::recursive_mutex sMutex;
 std::atomic< bool > sSettingsDirty{false};
 bool sLoaded = false;
 // The text last read from or written to the file: SaveSettings writes only when SettingsText()
@@ -337,7 +382,7 @@ std::string SettingsText() {
 }
 
 void LoadSettings() {
-  std::lock_guard< std::mutex > lock(sMutex);
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
   if (sLoaded) {
     return;
   }
@@ -365,7 +410,7 @@ void LogSettingChanges(const std::string& before, const std::string& after) {
 }
 
 void SaveSettings() {
-  std::lock_guard< std::mutex > lock(sMutex);
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
   if (!sLoaded || !sSettingsDirty.load() || PortSettings::FilePath().empty()) {
     return;
   }

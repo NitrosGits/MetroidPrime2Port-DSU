@@ -727,16 +727,16 @@ void DrawCheatsSection() {
 void DrawControlsMouse() {
   ImGui::SeparatorText("Mouse aim");
   bool mouseAim = PortMouse::Enabled();
-  if (PortUi::Toggle("Mouse aim", &mouseAim, "MP2_MOUSE_AIM=1")) {
+  if (Changed(PortUi::Toggle("Mouse aim", &mouseAim, "MP2_MOUSE_AIM=1"))) {
     PortMouse::SetEnabled(mouseAim);
   }
   bool invertX = PortMouse::InvertX();
-  if (ImGui::Checkbox("Invert X", &invertX)) {
+  if (Changed(ImGui::Checkbox("Invert X", &invertX))) {
     PortMouse::SetInvertX(invertX);
   }
   ImGui::SameLine();
   bool invertY = PortMouse::InvertY();
-  if (ImGui::Checkbox("Invert Y", &invertY)) {
+  if (Changed(ImGui::Checkbox("Invert Y", &invertY))) {
     PortMouse::SetInvertY(invertY);
   }
   // Radians per pixel is a poor thing to read; degrees per pixel is not much better, so the
@@ -745,7 +745,7 @@ void DrawControlsMouse() {
   char sensText[64];
   std::snprintf(sensText, sizeof(sensText), "MP2_MOUSE_SENS=%.5f (radians per pixel)",
                 static_cast< double >(PortMouse::Sensitivity()));
-  if (PortUi::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx", nullptr, sensText)) {
+  if (Changed(PortUi::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx", nullptr, sensText))) {
     PortMouse::SetSensitivity(0.0035f * scale);
   }
   Changed(PortUi::Toggle("Weapon buttons", &sMouseButtons, "MP2_MOUSE_BUTTONS=0",
@@ -767,23 +767,23 @@ void DrawControlsMouse() {
 void DrawControlsStickAim() {
   ImGui::SeparatorText("Stick aim");
   bool twinStick = PortMouse::StickEnabled();
-  if (PortUi::Toggle("Twin stick", &twinStick, "MP2_TWIN_STICK=1")) {
+  if (Changed(PortUi::Toggle("Twin stick", &twinStick, "MP2_TWIN_STICK=1"))) {
     PortMouse::SetStickEnabled(twinStick);
   }
   float rate = PortMouse::StickAimRate();
-  if (PortUi::SliderFloat("Stick aim rate", &rate, 200.f, 2000.f, "%.0f px/s", nullptr,
-                          "the right stick aims through the same path as the mouse")) {
+  if (Changed(PortUi::SliderFloat("Stick aim rate", &rate, 200.f, 2000.f, "%.0f px/s", nullptr,
+                                  "the right stick aims through the same path as the mouse"))) {
     PortMouse::SetStickAimRate(rate);
   }
   bool split = PortMouse::StickAimSplit();
-  if (PortUi::Toggle("Separate vertical speed", &split, "MP2_STICK_AIM_SPLIT=1",
-                     "gives looking up and down its own speed; Stick aim rate then sets only left and right")) {
+  if (Changed(PortUi::Toggle("Separate vertical speed", &split, "MP2_STICK_AIM_SPLIT=1",
+                             "gives looking up and down its own speed; Stick aim rate then sets only left and right"))) {
     PortMouse::SetStickAimSplit(split);
   }
   if (split) {
     float rateY = PortMouse::StickAimRateY();
-    if (PortUi::SliderFloat("Vertical stick aim rate", &rateY, 200.f, 2000.f, "%.0f px/s", nullptr,
-                            "how fast the right stick turns the camera up and down at full tilt")) {
+    if (Changed(PortUi::SliderFloat("Vertical stick aim rate", &rateY, 200.f, 2000.f, "%.0f px/s", nullptr,
+                                    "how fast the right stick turns the camera up and down at full tilt"))) {
       PortMouse::SetStickAimRateY(rateY);
     }
   }

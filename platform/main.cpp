@@ -130,6 +130,43 @@ const char* EnvOrFallback(const char* name, const std::string& fallback) {
   return fallback.empty() ? nullptr : fallback.c_str();
 }
 
+#if !defined(__ANDROID__)
+// SDL_GetPrefPath(nullptr, kAppName), worked out by hand: Aurora falls back to it for its own
+// user path, so the port has to name the same folder or the two disagree about where
+// settings.cfg, controls.toml and the tools' backups live. Not SDL's call itself because SDL is
+// only on the entry's include path on Android, and because asking it creates the folder.
+std::string DesktopUserFolder() {
+  std::string dir;
+#if defined(_WIN32)
+  if (const char* appdata = std::getenv("APPDATA"); appdata != nullptr && appdata[0] != '\0') {
+    dir = appdata;
+  }
+#elif defined(__APPLE__)
+  if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
+    dir = std::string(home) + "/Library/Application Support";
+  }
+#else
+  if (const char* data = std::getenv("XDG_DATA_HOME"); data != nullptr && data[0] == '/') {
+    dir = data;
+  } else if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
+    dir = std::string(home) + "/.local/share";
+  }
+#endif
+  if (dir.empty()) {
+    return {};
+  }
+  if (dir.back() != '/' && dir.back() != '\\') {
+    dir += '/';
+  }
+  // SDL's own name for the folder: the app name, verbatim, with no organisation above it.
+  dir += kAppName;
+  dir += '/';
+  std::error_code error;
+  std::filesystem::create_directories(dir, error);
+  return dir;
+}
+#endif
+
 #if defined(__ANDROID__)
 
 // ---------------------------------------------------------------------------
@@ -692,16 +729,29 @@ int main(int argc, char** argv) {
 #endif
 
   // Android has no environment to set, so the app's own directories stand in where the
-  // variables are unset (and print which they are); on the desktop this stays empty and
-  // everything below resolves exactly as it did before.
+  // variables are unset (and print which they are). On the desktop the user directory is the
+  // one Aurora itself falls back to, so settings.cfg, controls.toml, the touch layout and the
+  // save tools sit beside the memory card instead of in no folder at all (an empty user path
+  // disables every one of those files, which is why the F1 settings did not survive a restart).
   PortPaths appPaths;
 #if defined(__ANDROID__)
   appPaths = ResolveAndroidPaths();
+#else
+  appPaths.user = DesktopUserFolder();
+  if (!appPaths.user.empty()) {
+    std::printf("metroid_prime2_port: user folder %s\n", appPaths.user.c_str());
+  } else {
+    std::fprintf(stderr,
+                 "metroid_prime2_port: no home directory; set MP2_USER_PATH to keep settings, "
+                 "bindings and saves\n");
+  }
+#endif
 
   // The disc, resolved and - if the image is missing or is not this game - picked from the
   // user's storage, all before Aurora comes up: `EnsureDiscImage` says why the trigger is the
   // image not being usable rather than the disc check after the renderer starts. The desktop
   // keeps the resolution it always had, below.
+#if defined(__ANDROID__)
   const std::string androidDiscImage =
       EnsureDiscImage(port::entry::ResolveDiscPath(argc, argv, EnvOrFallback("MP2_DISC", appPaths.disc),
                                                    ExecutableDir(argc > 0 ? argv[0] : nullptr)),

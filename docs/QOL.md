@@ -10,8 +10,8 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 
 | Feature | Where |
 | --- | --- |
-| F1 debug overlay: skip cinematics, god mode, mouse/twin-stick aim, teleports, first-person FOV, hide helmet / hide visor effects, arm-cannon offset, MSAA / anisotropy, HUD scale | `platform/port_overlay.cpp` (env only: `MP2_*`; there is no settings file) |
-| Aspect ratio, widescreen HUD, render scale, vsync, 60 fps cap, sim-rate (fixed/adaptive) | **no setting yet in MP2**: `platform/main.cpp` fixes the viewport policy (`AURORA_VIEWPORT_FIT`) and `vsync = false`; the knobs themselves exist only in `platform/debug_ui.cpp`, which no CMake target builds |
+| F1 debug overlay: skip cinematics, god mode, mouse/twin-stick aim, teleports, first-person FOV, hide helmet / hide visor effects, arm-cannon offset, MSAA / anisotropy, HUD scale | `platform/port_overlay.cpp`; rows are saved in `<user>/settings.cfg` (`platform/port_overlay_settings.cpp`), an `MP2_*` environment variable wins for one run. The user folder is `$XDG_DATA_HOME/Metroid Prime 2: Echoes` (SDL's preference path) unless `MP2_USER_PATH` names another |
+| Aspect ratio, widescreen HUD, render scale, vsync, 60 fps cap, frame interpolation | F1 > Video/Render (`platform/port_overlay.cpp`: `aspect`, `hud_wide`, `render_scale`, `vsync`, `frame_limit`, `smooth_frames`), both in `settings.cfg` and as `MP2_*` for one run; `platform/main.cpp` still sets the viewport policy (`AURORA_VIEWPORT_FIT`) |
 | Skip / fast-forward cutscenes, cutscene speed, `MP2_SKIP_CINEMATICS`, `MP2_SKIP_INTRO` (level-load text + cinematic scene) | `platform/port_harness.cpp`, `CMFGame`, `CMFGameLoader` |
 | Mouse aim, twin-stick aim, gyro aim, full keyboard bindings | `platform/port_mouse.cpp`, `port_events.cpp`, `debug_ui.cpp` |
 | God mode, heal/kill, teleport to doorway/door/save station/elevator, area and world warps, layer activation | `platform/port_warp.cpp`, `port_overlay.cpp` |

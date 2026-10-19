@@ -9,6 +9,8 @@
 
 #include "port_mouse.h"
 
+#include "port_overlay_internal.h"
+
 #include <SDL3/SDL.h>
 
 #include <atomic>
@@ -93,16 +95,38 @@ bool EnvFlag(const char* name) {
   return value != nullptr && *value != '\0' && std::strcmp(value, "0") != 0;
 }
 
+// A flag that falls back to the value the settings file loaded: unset means "the file's", and
+// anything set wins, including a literal 0.
+bool EnvFlagOr(const char* name, bool fallback) {
+  return std::getenv(name) != nullptr ? EnvFlag(name) : fallback;
+}
+
 void ReadEnv() {
   if (sReadEnv) {
     return;
   }
   sReadEnv = true;
-  sEnabled = EnvFlag("MP2_MOUSE_AIM");
-  sStickEnabled = EnvFlag("MP2_TWIN_STICK");
-  sInvertX = EnvFlag("MP2_MOUSE_INVERT_X");
-  sInvertY = EnvFlag("MP2_MOUSE_INVERT_Y");
-  sStickAimSplit = EnvFlag("MP2_STICK_AIM_SPLIT");
+  // The settings file first, then the MP2_* environment on top, so a file value is the default
+  // and an environment variable still wins for one run. The file's keys reach these variables
+  // through the setters below; they see sReadEnv already set, so nothing recurses.
+  PortOverlaySettings::LoadSettings();
+  sEnabled = EnvFlagOr("MP2_MOUSE_AIM", sEnabled);
+  sStickEnabled = EnvFlagOr("MP2_TWIN_STICK", sStickEnabled);
+  sInvertX = EnvFlagOr("MP2_MOUSE_INVERT_X", sInvertX);
+  sInvertY = EnvFlagOr("MP2_MOUSE_INVERT_Y", sInvertY);
+  sStickAimSplit = EnvFlagOr("MP2_STICK_AIM_SPLIT", sStickAimSplit);
+  if (const char* rate = std::getenv("MP2_STICK_AIM_RATE")) {
+    const float value = static_cast< float >(std::atof(rate));
+    if (std::isfinite(value) && value > 0.f) {
+      sStickAimRate = value;
+    }
+  }
+  if (const char* rate = std::getenv("MP2_STICK_AIM_RATE_Y")) {
+    const float value = static_cast< float >(std::atof(rate));
+    if (std::isfinite(value) && value > 0.f) {
+      sStickAimRateY = value;
+    }
+  }
   if (const char* sens = std::getenv("MP2_MOUSE_SENS")) {
     const float value = static_cast< float >(std::atof(sens));
     if (std::isfinite(value) && value > 0.f) {
@@ -412,7 +436,12 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
   const bool owns = active && !held;
   sAiming = owns;
   // Only mouse aim needs the pointer grabbed; twin-stick and touch leave the cursor alone.
-  SetCapture(owns && sEnabled);
+  // The grab has to survive a lock: a target lock (and a cinematic, and the morph ball) makes
+  // `locked` true, and releasing the grab then would stop the mouse buttons reaching the pad
+  // - `ReadMouseButtons` only reads them while the window is in relative mode - so the L that
+  // started the lock would look released on the next tick and the lock would drop again. The
+  // grab is the game's, not the free look's.
+  SetCapture((owns || locked) && sEnabled);
   if (sPointerEnabled) {
     // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
     // stops free look) re-centres it, so lock-on, scan and grapple still aim through the centre.
