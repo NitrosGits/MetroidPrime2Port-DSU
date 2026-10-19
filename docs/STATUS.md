@@ -3,6 +3,24 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-eighth session): widescreen HUD spread, the MP1 way
+
+- **`6ae31083e`, merged `f209d2f97`:** MP1's widescreen HUD. A first attempt spread widgets by their
+  x position and detached the energy number from its bar; that was thrown away. MP1's mechanism is a
+  per-camera opt-out (`SetAspectMatch(match, spread)`, default spreadable) plus a per-widget move in
+  `CGuiFrame::Draw` after `CGuiCamera` widens the projection. `CSamusHud` marks the HUD and helmet
+  cameras spreadable; the pause and message screens keep the game's proportions. Setting
+  `MP2_HUD_WIDE` (key `hud_wide`, F1 > Video > Display, default on).
+- Measured before/after: MP2's HUD never spread before this (the pause frame spans x 197-1088 of 1280
+  at 16:9, which is MP1 with HudWide off). Now with it on the radar and energy readout sit at the left
+  edge and the ammo/missile cluster at the right; with it off the HUD is 4:3 centred; the pause screen
+  is identical either way. Screenshots `/tmp/opencode/hw2_{hud,pause}_{on,off}.png`.
+- Merged-tree gates: host build 0 FAILED (binary 15:39), `gen_files_cmake.py --check` rc 0, every
+  touched upstream file strips CLEAN, and the matching build still reads 94.14% fuzzy / 63.29% matched.
+- Not covered: the selected-visor HUD frames are not marked spreadable (`CSamusHud` exposes only the
+  HUD and helmet cameras), MP1's explicit anchor clusters are not ported, and the spread ignores a HUD
+  scale below 100%. Nothing was walked in gameplay, per usual: the screenshots are of a standing player.
+
 ## 2026-10-19 (twenty-sixth session): interpolation phase 6, save-state resume and door locks
 
 - **Phase 6** (`9b651429a`, MP1's section 3 "swooshes, electric effects and beam weapons"):
