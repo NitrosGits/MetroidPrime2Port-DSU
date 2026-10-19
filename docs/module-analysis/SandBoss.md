@@ -15,6 +15,31 @@ The goal is behaviour, not matching code. Tags: **[proven]** means read from an 
 entry. **[inferred]** means a strong reading that is not pinned to a symbol. `fn_55_X` names are REL
 `.text` offsets.
 
+Reading the pseudo-C (m2c) [proven]:
+
+- The first argument is the return-value slot when the function returns a struct; then come
+  `double dt` (states only), `int this`, `int mgr`, `int msg` (0 Activate, 1 Update, 2 Deactivate),
+  `float dt`. Check each function against the offsets it dereferences.
+- A pointer-typed parameter's offsets are **scaled by the pointee size** (`int*` `+ 0x597` is byte
+  0x165C, `int*` `[0x114]` is byte 0x450, `short*` `+ 4` is byte 8, `int*` `+ 0x3a3` is byte 0xE8C).
+  A scalar `int` parameter's offsets are already bytes (`+ 0x898`, `+ 0x14fc`, `+ 0xf00`).
+- `func_0x80000000(...)` is an indirect call m2c lost: identify it from the arguments at each site
+  (e.g. `(this+0x6b4, *(this+0x48c), 0xc)` is `mAnimationState.CanIssueCommand(*BodyController(),
+  pas::kAS_Generate)`; `TCastToPtr`-shaped sites take the `ObjectById` result).
+- `*(int*)(x + 0x6b4) = v` is `mAnimationState.SetState()`: 0 kAS_NotReady, 1 kAS_Ready, 3 kAS_Over.
+  Body controller state at `+0x37C` is a `pas::EAnimationState` (5 Locomotion, 12 Generate, 18
+  ProjectileAttack).
+- `lbl_55_data_*` command words: `0xD` kBSC_AbortScripted, `0xA` kBSC_ExitState, `0xF` CBCGenerateCmd
+  (type word 1, 5 or 9), `6` CBCProjectileAttackCmd, `7` CBCLoopAttackCmd. The 12-byte entries at
+  `lbl_55_data_970/97C/988/994/9A0` are the REL's own weak copies of those classes' vtables (their
+  dtors are inline), not data to port.
+
+How the fight advances [proven]: `mRound` (0xDE4) only moves in `AcceptScriptMsg` on
+`kSM_Increment` whose **sender** is this worm or whose `mWaitMode` is 0, and the only senders are
+`DestroySphere`'s deactivate loop (fn_55_B2D8, one message per attached sibling) and
+`JumpOffSphere`'s deactivate (fn_55_B06C, to itself). A run whose probe never reaches the
+sphere/ball states therefore stays in the stampede cycle and never evaluates an attack trigger.
+
 **Shape in one line:** a `CPatterned` (EPatternedAI 0x31) driven by an FSM2 asset, with 21 triggers, 20
 states and 25 code functions. Amorbis is several `CSandBoss` instances that coordinate through a sibling
 id list (`0xDD8` count, `0xDDC` ids). They share armour sets (attached, stampede, tail), a dark-beam
@@ -227,21 +252,21 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck | [stand-in] log-once |
 | 44CC | CSandBoss::FireDarkBeam | [stand-in] log-once |
 | 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
-| 51BC | CSandBoss::DestroySphereHelper | [stand-in] log-once |
+| 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
 | 528C | CSandBoss::HandleGroundImpact | [stand-in] log-once |
-| 560C | CSandBoss::CrackSphere | [stand-in] log-once |
+| 560C | CSandBoss::CrackSphere | [ported] host body, not exercised yet |
 | 595C | CSandBoss::CountAttachedSiblings | [proven] host body |
 | 58B4 | CSandBoss::CollectAttachedSiblings (attached ids) | [ported] host body, not exercised yet |
 | 59E4 | CSandBoss::NoSiblingHasSphereLocked | [proven] host body |
 | 5A84 | CSandBoss::IsAttachedLeader | [proven] host body |
-| 5B38 | CSandBoss::IsBallInRange | [stand-in] log-once |
+| 5B38 | CSandBoss::IsBallInRange (const CPlayer&) | [ported] host body, not exercised yet |
 | 5C30 | CSandBoss::AttachToSphereHelper | [ported] host body, not exercised yet |
-| 5C6C | CSandBoss::Helper5C6C | [stand-in] log-once |
-| 5E5C | CSandBoss::Helper5E5C | [stand-in] log-once |
-| 5FEC | CSandBoss::HandleObjectDrop | [stand-in] log-once |
-| 6250 | CSandBoss::SphereStateHelper6250 | [stand-in] log-once |
-| 62E4 | CSandBoss::SphereStateHelper62E4 | [stand-in] log-once |
-| 6434 | CSandBoss::SphereStateHelper6434 | [stand-in] log-once |
+| 5C6C | CSandBoss::Helper5C6C (mgr, dir) | [ported] host body, not exercised yet |
+| 5E5C | CSandBoss::Helper5E5C | [ported] host body, not exercised yet |
+| 5FEC | CSandBoss::HandleObjectDrop | [ported] host body, not exercised yet |
+| 6250 | CSandBoss::SphereStateHelper6250 (CPlayer&) | [ported] host body, not exercised yet |
+| 62E4 | CSandBoss::SphereStateHelper62E4 (dt, CPlayer&) -> bool | [ported] host body, not exercised yet |
+| 6434 | CSandBoss::SphereStateHelper6434 (dt) | [ported] host body, not exercised yet |
 | 64E4 | CSandBoss::Helper64E4 | [ported] host body, not exercised yet |
 | 6698 | CSandBoss::UpdateArmorResponseTypes | [proven] host body |
 | 6960 | CSandBoss::SetArmorPieceState | [proven] host body |
@@ -301,12 +326,12 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | A6CC | CSandBoss::DoubleCharge | [ported] host body, not exercised yet |
 | A9DC | CSandBoss::RepeaterAttack | [stand-in] log-once |
 | AC68 | CSandBoss::DarkBeamAttack | [stand-in] log-once |
-| AED8 | CSandBoss::SpitOutBall | [stand-in] log-once |
-| B06C | CSandBoss::JumpOffSphere | [stand-in] log-once |
-| B2D8 | CSandBoss::DestroySphere | [stand-in] log-once |
+| AED8 | CSandBoss::SpitOutBall | [ported] host body, not exercised yet |
+| B06C | CSandBoss::JumpOffSphere | [ported] host body, not exercised yet |
+| B2D8 | CSandBoss::DestroySphere | [ported] host body, not exercised yet |
 | B544 | CSandBoss::BallInMouth | [stand-in] log-once |
 | B658 | CSandBoss::SuckBall | [stand-in] log-once |
-| B718 | CSandBoss::SuckAir | [stand-in] log-once |
+| B718 | CSandBoss::SuckAir | [ported] host body, not exercised yet |
 | B98C | CSandBoss::RotateToPlayer | [ported] host body, not exercised yet |
 | BAAC | CSandBoss::AttachToSphere | [ported] host body, not exercised yet |
 | BD30 | CSandBoss::Deactivate | [ported] host body, not exercised yet |
@@ -318,7 +343,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | C148 | CSandBoss::ArmorDestroyed | [proven] host body |
 | C154 | CSandBoss::HeadArmorDestroyed | [proven] host body |
 | C174 | CSandBoss::IsLastStage | [proven] host body |
-| C188 | CSandBoss::IsBallInSuckRange | [stand-in] log-once |
+| C188 | CSandBoss::IsBallInSuckRange | [ported] host body, not exercised yet |
 | C1CC | CSandBoss::IsFacingPlayer | [stand-in] log-once |
 | C258 | CSandBoss::ShouldDestroySphere | [proven] host body |
 | C2A0 | CSandBoss::ShouldSnapJaws | [stand-in] log-once |
