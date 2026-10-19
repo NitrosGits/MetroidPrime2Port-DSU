@@ -80,9 +80,28 @@ void CSpacePirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Cover state (fn_72_A3C0)");
 }
 
+// @ fn_72_5C10
 void CSpacePirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Dead state (fn_72_5C10)");
   CPatterned::Dead(mgr, msg, dt);
+  switch (msg) {
+  case kStateMsg_Activate:
+    mBoneTracking.SetActive(false);
+    // Retail calls fn_72_E314(this, mgr, 0) here, which is an empty function (0xe314..0xe318 is a
+    // bare blr), so there is nothing to port.
+    SquadReset(mgr); // fn_72_DEDC
+    break;
+  case kStateMsg_Update:
+    // The corpse loses its target/orbit and ground collision and stops dead once the body has
+    // finished the death animation (pas::kAS_Death is 4 in retail, read straight off the controller).
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) {
+      RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
+      RemoveMaterial(kMT_GroundCollider, kMT_Solid, kMT_AIBlock, mgr);
+      AddMaterial(kMT_ProjectilePassthrough, mgr);
+      SetMomentumWR(CVector3f::Zero());
+      CPhysicsActor::Stop();
+    }
+    break;
+  }
 }
 
 void CSpacePirate::TargetCover(CStateManager& mgr, EStateMsg msg, float dt) {
