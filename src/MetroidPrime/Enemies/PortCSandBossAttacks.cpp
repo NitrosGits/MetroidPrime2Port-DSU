@@ -1,13 +1,19 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the attack helpers and the charge-beam
-// projectile. Every function here is a log-once stand-in (bool helpers return false, the rest do
-// nothing; the charge beam forwards to CPlasmaProjectile) until the attacks slice lands.
+// projectile. The stampede helpers follow retail (`// fn_55_X (ported, not exercised yet)`); every
+// other function here is still a log-once stand-in (bool helpers return false, the rest do
+// nothing; the charge beam forwards to CPlasmaProjectile).
 // docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 
 #include "Collision/CRayCastResult.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
+#include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 void PortSandBossStandIn(const char* what);
+const CSandBoss* CastSandBoss(const CEntity* entity);
 
 SandBossChargeBeam::SandBossChargeBeam(const TToken< CWeaponDescription >& description,
                                        const rstl::string& name, EWeaponType type,
@@ -32,8 +38,24 @@ CRayCastResult SandBossChargeBeam::RayCollisionCheckWithWorld(
                                                        staticTest);
 }
 
-void CSandBoss::SeekStampedePointStep(CStateManager&, float) { // fn_55_1AEC
-  PortSandBossStandIn("CSandBoss::SeekStampedePointStep (fn_55_1AEC)");
+// fn_55_1AEC (ported, not exercised yet)
+// How long to wait for the other worms before stampeding: three per-sibling delays in the
+// stampede loader data, picked by how many siblings are already stampeding (0x165C b4).
+float CSandBoss::GetStampedeDelay(CStateManager& mgr) const {
+  int stampeding = 0;
+  for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling->mStampedeActive) {
+      ++stampeding;
+    }
+  }
+  if (stampeding == 3) {
+    return mData.stampedeProperties.unknown_0x5fb66017; // 0x834
+  }
+  if (stampeding == 2) {
+    return mData.stampedeProperties.unknown_0xc2b98161; // 0x830
+  }
+  return mData.stampedeProperties.unknown_0xbed8a4ba; // 0x82C
 }
 
 bool CSandBoss::ShouldRepeaterAttackCheck(CStateManager&) const { // fn_55_1B94
@@ -175,12 +197,63 @@ void CSandBoss::SphereStateHelper6434(CStateManager&) { // fn_55_6434
   PortSandBossStandIn("CSandBoss::SphereStateHelper6434 (fn_55_6434)");
 }
 
-void CSandBoss::Helper64E4(CStateManager&) { // fn_55_64E4
-  PortSandBossStandIn("CSandBoss::Helper64E4 (fn_55_64E4)");
+// fn_55_64E4 (ported, not exercised yet)
+// A stampede armour piece came off: explosion at the locator, the 0.2 s gate before the next piece
+// can break (0xF30) and the IS01 waypoint taking the locator's transform.
+void CSandBoss::Helper64E4(CStateManager& mgr, const CTransform4f& locatorXf) {
+  if (mStampedeArmorExplosion.valid()) { // 0xE60
+    CExplosion* explosion = rs_new CExplosion(
+        *mStampedeArmorExplosion, mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+        rstl::string_l("StampedeArmorExplosionFx"), locatorXf, 0, GetModelData()->GetScale(),
+        CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+      mF30 = 0.2f; // 0xF30
+    }
+    if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(mIS01Target))) {
+      waypoint->SetTransform(locatorXf); // 0xE82
+      SendScriptMsgs(kSS_InternalState1, mgr, GetUniqueId(), kSM_None);
+    }
+  }
 }
 
-void CSandBoss::StampedeHelper(CStateManager&, float) { // fn_55_7C68
-  PortSandBossStandIn("CSandBoss::StampedeHelper (fn_55_7C68)");
+// fn_55_7C68 (ported, not exercised yet)
+// While stampeding, sheds one armour piece at a time (tail first, one eighth of the stampede HP
+// apart) as the stampede HP drops, with the armour explosion sound and the head pain sound while
+// HP remains.
+void CSandBoss::StampedeHelper(CStateManager& mgr, float dt) {
+  mF30 -= dt; // 0xF30
+  if (mF30 > 0.f) {
+    return;
+  }
+  float threshold = mData.stampedeProperties.breakStampedeHP; // 0x838
+  const float step = threshold * 0.125f;
+  int shed = -1;
+  for (int i = 7; i >= 0; --i) {
+    threshold -= step;
+    if ((mStampedeHP <= threshold || mStampedeHP <= 0.f) && mArmorState[i] != 0) { // 0x1458+4i
+      const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[i]); // 0xF00+i
+      Helper64E4(mgr, locatorXf);                                        // fn_55_64E4
+      mArmorState[i] = 0;
+      shed = i;
+      break;
+    }
+  }
+  if (shed == -1) {
+    return;
+  }
+  const CTransform4f shedXf = GetLctrTransform(mArmorLocators[shed]);
+  CSfxManager::AddEmitter(static_cast< ushort >(mData.stampedeProperties.sound_StampedeArmorExplode),
+                          shedXf.GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
+                          CSfxManager::kMedPriority); // 0x840
+  if (mStampedeHP > 0.f) {
+    const CTransform4f headXf = GetLctrTransform(mHeadLocator); // 0xF08
+    CSfxManager::AddEmitter(
+        static_cast< ushort >(mData.stampedeProperties.sound_StampedeArmorExplodePain),
+        headXf.GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
+        CSfxManager::kMedPriority); // 0x844
+  }
 }
 
 void CSandBoss::Helper7E60(CStateManager&) { // fn_55_7E60
@@ -199,6 +272,17 @@ void CSandBoss::RotateToPlayerHelper(const CVector3f&) { // fn_55_83AC
   PortSandBossStandIn("CSandBoss::RotateToPlayerHelper (fn_55_83AC)");
 }
 
-void CSandBoss::SortStampedePoints(CStateManager&) { // fn_55_10CB4
-  PortSandBossStandIn("CSandBoss::SortStampedePoints (fn_55_10CB4)");
+// fn_55_10CB4 (ported, not exercised yet)
+// Retail quicksorts the 0x1478 entries by their squared distance; at most sixteen entries, a host
+// insertion sort is the same order.
+void CSandBoss::SortStampedePoints() {
+  for (int i = 1; i < mIdEntries.size(); ++i) {
+    const SSandBossIdEntry entry = mIdEntries[i];
+    int j = i - 1;
+    while (j >= 0 && entry.mValue < mIdEntries[j].mValue) {
+      mIdEntries[j + 1] = mIdEntries[j];
+      --j;
+    }
+    mIdEntries[j + 1] = entry;
+  }
 }

@@ -1,17 +1,25 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the FSM triggers, states and code functions
 // (lbl_55_data_100 / lbl_55_data_340 / lbl_55_data_5AC, registered by fn_55_CAA4 in
 // PortCSandBoss.cpp). Functions marked `// @ fn_55_X` were checked against retail's behaviour;
-// the rest are log-once stand-ins (triggers return false, states and codes do nothing) until the
-// states slice lands. docs/module-analysis/SandBoss.md section 4 is the function map.
+// `// fn_55_X (ported, not exercised yet)` follows the retail pseudocode but has not run in game;
+// the rest are log-once stand-ins (triggers return false, states and codes do nothing).
+// docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 
+#include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 
 void PortSandBossStandIn(const char* what);
+CSandBoss* CastSandBoss(CEntity* entity);
 const CSandBoss* CastSandBoss(const CEntity* entity);
 
 // Triggers
@@ -264,50 +272,248 @@ void CSandBoss::SnapJaws(CStateManager&, EStateMsg, float) { // fn_55_A170
   PortSandBossStandIn("CSandBoss::SnapJaws (fn_55_A170)");
 }
 
-void CSandBoss::SelectStampedePoint(CStateManager&, EStateMsg, float) { // fn_55_9E3C
-  PortSandBossStandIn("CSandBoss::SelectStampedePoint (fn_55_9E3C)");
+// lbl_55_rodata_0, indexed by mRound: the chance (percent) of picking out of the far three
+// quarters of the stampede points instead of the nearest quarter.
+static const float skStampedePickChance[4] = {70.f, 50.f, 33.f, 0.f};
+
+// fn_55_9E3C (ported, not exercised yet)
+// Collects the cover points in reach of the player, sorts them by squared distance and keeps one:
+// the nearest quarter (or, by the table above, the rest) for this round.
+void CSandBoss::SelectStampedePoint(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Update) {
+    if (mStampedePoint == kInvalidUniqueId) {
+      const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();          // mgr 0x14FC
+      CObjectList& coverPoints = mgr.ObjectListById(kOL_AiWaypoint);           // mgr 0x838
+      for (int i = coverPoints.GetFirstObjectIndex(); i != -1;
+           i = coverPoints.GetNextObjectIndex(i)) {
+        CScriptCoverPoint* cover = TCastToPtr< CScriptCoverPoint >(coverPoints[i]);
+        if (cover == nullptr || !cover->GetActive() || cover->GetInUse(GetUniqueId()) ||
+            cover->GetCurrentAreaId() != GetCurrentAreaId() ||
+            cover->GetUniqueId() == mCoverPoint) { // 0xE90: not the point of the last round
+          continue;
+        }
+        // Score against the waypoint the point leads to when it has one, the point itself otherwise.
+        CVector3f goal = cover->GetTranslation();
+        if (CScriptAIWaypoint* waypoint = TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(
+                cover->FindConnectedObject(mgr, kSS_Arrived, kSM_Next)))) {
+          goal = waypoint->GetTranslation();
+        }
+        mIdEntries.push_back(
+            SSandBossIdEntry{cover->GetUniqueId(), (goal - playerPos).MagSquared()});
+        if (mIdEntries.size() == mIdEntries.capacity()) { // 0x147C == 0x1480 (sixteen)
+          break;
+        }
+      }
+      if (mIdEntries.size() != 0) {
+        SortStampedePoints(); // fn_55_10CB4
+        const int count = mIdEntries.size();
+        const int quarter = count / 4;
+        int first = 0;
+        int last = quarter;
+        if (skStampedePickChance[mRound] < mgr.Random()->Range(0.f, 100.f)) { // mgr 0x16E4
+          first = quarter;
+          last = count - 1;
+        }
+        const SSandBossIdEntry& pick = mIdEntries[mgr.Random()->Range(first, last)];
+        if (CScriptCoverPoint* cover =
+                TCastToPtr< CScriptCoverPoint >(mgr.ObjectById(pick.mId))) {
+          SetCoverPoint(cover, mStampedePoint); // 0xE8E
+          mCoverPoint = mStampedePoint;         // 0xE90
+        }
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    ReleaseCoverPoint(mgr, mStampedePoint, true);
+    mIdEntries.clear(); // fn_55_A164 (0x147C = 0)
+  }
 }
 
-void CSandBoss::SeekStampedePoint(CStateManager&, EStateMsg, float) { // fn_55_9BB8
-  PortSandBossStandIn("CSandBoss::SeekStampedePoint (fn_55_9BB8)");
+// fn_55_9BB8 (ported, not exercised yet)
+// Walks to the selected point at 100 units/s; on arrival sets BeginStampede once the delay the
+// stampeding siblings imply has elapsed (0xF20 counts up in fn_55_86D0).
+void CSandBoss::SeekStampedePoint(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Update) {
+    if (CScriptCoverPoint* cover = GetCoverPoint(mgr, mStampedePoint)) {
+      const CVector3f delta = cover->GetTranslation() - GetTranslation();
+      const float distance = delta.Magnitude();
+      const float step = dt * 100.f;
+      if (distance <= step) {
+        if (GetStampedeDelay(mgr) <= mF20) { // 0xF20
+          mBeginStampede = true;             // 0x165C b6
+        }
+      } else {
+        SetTranslation(GetTranslation() + delta * (step / distance));
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mBeginStampede = false; // 0x165C b6
+  } else if (msg == kStateMsg_Deactivate) {
+    // Face the waypoint the point leads to and remember its height for the stampede path (0xF28).
+    if (CScriptCoverPoint* cover = GetCoverPoint(mgr, mStampedePoint)) {
+      if (CScriptAIWaypoint* waypoint = TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(
+              cover->FindConnectedObject(mgr, kSS_Arrived, kSM_Next)))) {
+        SetTransform(CTransform4f::LookAt(cover->GetTranslation(), waypoint->GetTranslation(),
+                                          CVector3f::Up()));
+        mF28 = waypoint->GetTranslation().GetZ();
+      } else {
+        mF28 = cover->GetTranslation().GetZ();
+      }
+    }
+  }
 }
 
-void CSandBoss::Stampede(CStateManager&, EStateMsg, float) { // fn_55_98FC
-  PortSandBossStandIn("CSandBoss::Stampede (fn_55_98FC)");
+// fn_55_98FC (ported, not exercised yet)
+// Stomps along the path: the body starts generating (the stampede gait) and StampedeHelper sheds
+// armour pieces as the stampede HP drops. Activate also releases the siblings' wait timers.
+void CSandBoss::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) { // 0x6B4
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_Three, -1));
+    }
+    StampedeHelper(mgr, dt); // fn_55_7C68
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    mCollisionManager->SetActive(mgr, true);              // 0xD98
+    AddMaterial(kMT_Target, kMT_Orbit, mgr);
+    RemoveMaterial(kMT_GroundCollider, mgr);
+    mPrevOnGround = true; // 0x34C b6 [name uncertain: CPatterned's bit order puts this here]
+    for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
+      CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
+      if (sibling != nullptr && sibling != this) {
+        sibling->mF20 = 0.f; // 0xF20
+      }
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
+    AddMaterial(kMT_GroundCollider, mgr);
+    mPrevOnGround = false; // 0x34C b6
+    mF20 = 0.f;            // 0xF20
+  }
 }
 
 // Code functions
 
-void CSandBoss::SetTripleChargeArmor(CStateManager&, float) { // fn_55_986C
-  PortSandBossStandIn("CSandBoss::SetTripleChargeArmor (fn_55_986C)");
+// The armour setters swap the collision actors' damage vulnerability, the per-locator armour state
+// (1 stampede set, 2 attached set) and the response types, then reset the hit colour.
+// fn_55_986C (ported, not exercised yet)
+void CSandBoss::SetTripleChargeArmor(CStateManager& mgr, float) {
+  for (int i = 0; i < 8; ++i) {
+    mArmorState[i] = 2; // 0x1458..0x1474
+  }
+  SetCollisionVulnerabilities(mgr, mReflectVulnerability1, mReflectVulnerability1); // fn_55_783C
+  UpdateArmorResponseTypes(mgr);                                                  // fn_55_6698
+  mDamageColor = CPatterned::skHitsWithoutDamageColor;                             // 0x450
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-void CSandBoss::SetDoubleChargeArmor(CStateManager&, float) { // fn_55_97DC
-  PortSandBossStandIn("CSandBoss::SetDoubleChargeArmor (fn_55_97DC)");
+// fn_55_97DC (ported, not exercised yet)
+void CSandBoss::SetDoubleChargeArmor(CStateManager& mgr, float) {
+  for (int i = 0; i < 8; ++i) {
+    mArmorState[i] = 2; // 0x1458..0x1474
+  }
+  SetCollisionVulnerabilities(mgr, mReflectVulnerability0, mReflectVulnerability0); // fn_55_783C
+  UpdateArmorResponseTypes(mgr);                                                  // fn_55_6698
+  mDamageColor = CPatterned::skHitsWithoutDamageColor;                             // 0x450
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-void CSandBoss::SetStampedeArmor(CStateManager&, float) { // fn_55_974C
-  PortSandBossStandIn("CSandBoss::SetStampedeArmor (fn_55_974C)");
+// fn_55_974C (ported, not exercised yet)
+void CSandBoss::SetStampedeArmor(CStateManager& mgr, float) {
+  for (int i = 0; i < 8; ++i) {
+    mArmorState[i] = 1; // 0x1458..0x1474
+  }
+  SetCollisionVulnerabilities(mgr, mStampedeVulnerability, mStampedeVulnerability); // fn_55_783C
+  UpdateArmorResponseTypes(mgr);                                                  // fn_55_6698
+  mDamageColor = CPatterned::skHitsWithoutDamageColor;                            // 0x450
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-void CSandBoss::SetAttachedArmor(CStateManager&, float) { // fn_55_96B0
-  PortSandBossStandIn("CSandBoss::SetAttachedArmor (fn_55_96B0)");
+// fn_55_96B0 (ported, not exercised yet)
+void CSandBoss::SetAttachedArmor(CStateManager& mgr, float) {
+  for (int i = 0; i < 8; ++i) {
+    mArmorState[i] = 2; // 0x1458..0x1474
+  }
+  // The head keeps the normal vulnerability; the pieces are reflective.
+  SetCollisionVulnerabilities(mgr, mNormalVulnerability,
+                              CDamageVulnerability::ReflectVulnerabilty()); // fn_55_783C
+  UpdateArmorResponseTypes(mgr);                                        // fn_55_6698
+  mDamageColor = CPatterned::skHitsWithoutDamageColor;                  // 0x450
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-void CSandBoss::SetSuckAirArmor(CStateManager&, float) { // fn_55_9600
-  PortSandBossStandIn("CSandBoss::SetSuckAirArmor (fn_55_9600)");
+// fn_55_9600 (ported, not exercised yet)
+void CSandBoss::SetSuckAirArmor(CStateManager& mgr, float) {
+  mArmorState[0] = 0; // 0x1458: the head loses its armour piece
+  for (int i = 1; i < 8; ++i) {
+    mArmorState[i] = 2; // 0x145C..0x1474
+  }
+  SetCollisionVulnerabilities(mgr, mSuckAirVulnerability,
+                              CDamageVulnerability::ReflectVulnerabilty()); // fn_55_783C
+  UpdateArmorResponseTypes(mgr);                                        // fn_55_6698
+  mDamageColor = CPatterned::skDamageColor;                             // 0x450
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
 }
 
-void CSandBoss::RemovePlayerCollision(CStateManager&, float) { // fn_55_952C
-  PortSandBossStandIn("CSandBoss::RemovePlayerCollision (fn_55_952C)");
+// fn_55_952C (ported, not exercised yet)
+// Excluding kMT_NoStepLogic from the boss's own filter copy stops the player being pushed by the
+// stampede's collision actors.
+void CSandBoss::RemovePlayerCollision(CStateManager& mgr, float) {
+  CMaterialFilter filter = GetMaterialFilter();
+  filter.ExcludeList().Add(kMT_NoStepLogic);
+  for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = mCollisionManager->GetCollisionDescFromIndex(i); // 0xD98
+    if (CCollisionActor* colAct =
+            TCastToPtr< CCollisionActor >(mgr.ObjectById(desc.GetCollisionActorId()))) {
+      colAct->SetMaterialFilter(filter);
+    }
+  }
 }
 
-void CSandBoss::RestorePlayerCollision(CStateManager&, float) { // fn_55_9438
-  PortSandBossStandIn("CSandBoss::RestorePlayerCollision (fn_55_9438)");
+// fn_55_9438 (ported, not exercised yet)
+void CSandBoss::RestorePlayerCollision(CStateManager& mgr, float) {
+  CMaterialFilter filter = GetMaterialFilter();
+  filter.ExcludeList().Remove(kMT_NoStepLogic);
+  for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = mCollisionManager->GetCollisionDescFromIndex(i);
+    if (CCollisionActor* colAct =
+            TCastToPtr< CCollisionActor >(mgr.ObjectById(desc.GetCollisionActorId()))) {
+      colAct->SetMaterialFilter(filter);
+    }
+  }
+  // Retail also sets bit 7 of the byte at 0x1144 of the player. CPlayer.hpp only names the two
+  // morph-transition bits of that byte, so the store is left out until the bit is identified.
 }
 
-void CSandBoss::SelectSafeZoneTarget(CStateManager&, float) { // fn_55_920C
-  PortSandBossStandIn("CSandBoss::SelectSafeZoneTarget (fn_55_920C)");
+// fn_55_920C (ported, not exercised yet)
+// Picks the active CScriptSafeZone (ATTK / ATCH) most nearly ahead of the boss (within 70 degrees)
+// that is closest to the player.
+void CSandBoss::SelectSafeZoneTarget(CStateManager& mgr, float) {
+  const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation(); // mgr 0x14FC
+  const CVector3f origin = GetTranslation();
+  const CVector3f forward = GetTransform().GetForward(); // 0x28 / 0x38 / 0x48
+  float bestDistanceSq = 3.4028235e38f;
+  mSafeZoneTarget = kInvalidUniqueId; // 0xE88
+  const rstl::vector< SConnection >& connections = GetConnectionList(); // 0x1C / 0x14
+  for (int i = 0; i < connections.size(); ++i) {
+    const SConnection& conn = connections[i];
+    if (conn.state != kSS_Attack || conn.msg != kSM_Attach) { // 'ATTK' / 'ATCH'
+      continue;
+    }
+    CScriptSafeZone* zone = TCastToPtr< CScriptSafeZone >(
+        mgr.ObjectById(mgr.GetIdForScript(conn.objId)));
+    if (zone == nullptr || !zone->GetActive()) {
+      continue;
+    }
+    if (CVector3f::GetAngleDiff(forward, zone->GetTranslation() - origin) <= 1.2217304706573486f) {
+      const float distanceSq = (zone->GetTranslation() - playerPos).MagSquared();
+      if (distanceSq < bestDistanceSq) {
+        mSafeZoneTarget = zone->GetUniqueId();
+        bestDistanceSq = distanceSq;
+      }
+    }
+  }
 }
 
 // @ fn_55_9200
@@ -334,15 +540,51 @@ void CSandBoss::BeginStampedeCode(CStateManager&, float) { mStampedeActive = tru
 // fn_55_917C (ported, not exercised yet)
 void CSandBoss::EndStampede(CStateManager&, float) { mStampedeActive = false; }
 
-void CSandBoss::PlayHeadArmorExplosion(CStateManager&, float) { // fn_55_8F94
-  PortSandBossStandIn("CSandBoss::PlayHeadArmorExplosion (fn_55_8F94)");
+// fn_55_8F94 (ported, not exercised yet)
+// Head-armour explosion at the Head_1 locator plus the IS02 waypoint taking the boss's transform.
+void CSandBoss::PlayHeadArmorExplosion(CStateManager& mgr, float) {
+  const CTransform4f xf = GetLctrTransform(mHeadLocator); // 0xF08
+  if (mHeadArmorExplosion.valid()) {                      // 0xE50
+    CExplosion* explosion = rs_new CExplosion(
+        *mHeadArmorExplosion, mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+        rstl::string_l("ArmorExplosionFx"), xf, 0, GetModelData()->GetScale(), CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+    }
+  }
+  if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(mIS02Target))) {
+    waypoint->SetTransform(GetTransform()); // 0x24
+    SendScriptMsgs(kSS_InternalState2, mgr, GetUniqueId(), kSM_None);
+  }
 }
 
 // fn_55_8F88 (ported, not exercised yet)
 void CSandBoss::ResetHeadArmorHP(CStateManager&, float) { mHeadArmorHP = mData.headArmorHP; }
 
-void CSandBoss::ResetAttackTimes(CStateManager&, float) { // fn_55_8E60
-  PortSandBossStandIn("CSandBoss::ResetAttackTimes (fn_55_8E60)");
+// fn_55_8E60 (ported, not exercised yet)
+// Re-seeds the attack timers from the charge-beam data of the stage the attached count implies;
+// two attached siblings is the double charge, three the triple charge, anything else the dark beam.
+void CSandBoss::ResetAttackTimes(CStateManager& mgr, float) {
+  const int attached = CountAttachedSiblings(mgr); // fn_55_595C
+  const SLdrSandBossChargeBeamData& doubleCharge = mData.unknown_0x7619e561.doubleCharge; // 0x85C
+  const SLdrSandBossChargeBeamData& tripleCharge = mData.unknown_0x7619e561.tripleCharge; // 0x8A4
+  if (attached == 2) {
+    mChargeBeamTimer = doubleCharge.minChargeBeamAttackTime +
+                       mgr.Random()->Range(0.f, doubleCharge.chargeBeamAttackTimeVariance);
+    mDarkBeamTimer = doubleCharge.minDarkBeamAttackTime +
+                     mgr.Random()->Range(0.f, doubleCharge.darkBeamAttackTimeVariance);
+  } else if (attached < 2 || attached > 3) {
+    mChargeBeamTimer = 3.4028235e38f; // 0x7f7fffff: no charge beam
+    mDarkBeamTimer = mData.minDarkBeamAttackTime + // 0x7F4
+                     mgr.Random()->Range(0.f, mData.darkBeamAttackTimeVariance); // 0x7F8
+  } else {
+    mChargeBeamTimer = tripleCharge.minChargeBeamAttackTime +
+                       mgr.Random()->Range(0.f, tripleCharge.chargeBeamAttackTimeVariance);
+    mDarkBeamTimer = tripleCharge.minDarkBeamAttackTime +
+                     mgr.Random()->Range(0.f, tripleCharge.darkBeamAttackTimeVariance);
+  }
+  m165D_b1 = false; // 0x165D b1
 }
 
 // @ fn_55_8E54

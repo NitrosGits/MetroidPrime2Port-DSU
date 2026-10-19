@@ -44,11 +44,11 @@ public:
                                             EStaticGeometryTest staticTest) override; // fn_55_1027C
 };
 
-// One entry of the vector at 0x1478 (reserved to 0x10 by fn_55_10FA8, which copies 8-byte
-// elements: a TUniqueId then a word). What it records is not established by slice A.
+// One entry of the vector at 0x1478 (reserved to 0x10 by fn_55_10FA8, count 0x147C, capacity
+// 0x1480, data 0x1484): a candidate point and its squared distance from the player.
 struct SSandBossIdEntry {
   TUniqueId mId;
-  int mValue; // type unknown (copied as a word)
+  float mValue; // squared distance (fn_55_9E3C)
 };
 #endif
 
@@ -221,7 +221,7 @@ private:
   bool CheckBodyStateForDarkBeam(CStateManager& mgr) const;                // fn_55_8C88
 
   // Stand-ins (PortCSandBossAttacks.cpp)
-  void SeekStampedePointStep(CStateManager& mgr, float dt);                // fn_55_1AEC
+  float GetStampedeDelay(CStateManager& mgr) const;                        // fn_55_1AEC
   bool ShouldRepeaterAttackCheck(CStateManager& mgr) const;                // fn_55_1B94
   void SyncAttacker(CStateManager& mgr);                                   // fn_55_1C70
   void RotateToPlayerStep(CStateManager& mgr, const CVector3f& target, float dt); // fn_55_22E4
@@ -256,13 +256,13 @@ private:
   void SphereStateHelper6250(CStateManager& mgr);                          // fn_55_6250
   void SphereStateHelper62E4(CStateManager& mgr);                          // fn_55_62E4
   void SphereStateHelper6434(CStateManager& mgr);                          // fn_55_6434
-  void Helper64E4(CStateManager& mgr);                                     // fn_55_64E4
+  void Helper64E4(CStateManager& mgr, const CTransform4f& locatorXf);       // fn_55_64E4
   void StampedeHelper(CStateManager& mgr, float dt);                       // fn_55_7C68
   void Helper7E60(CStateManager& mgr);                                     // fn_55_7E60
   void Helper8008(CStateManager& mgr);                                     // fn_55_8008
   void HandleDamage(CStateManager& mgr, TUniqueId sender);                 // fn_55_8258
   void RotateToPlayerHelper(const CVector3f& target);                      // fn_55_83AC
-  static void SortStampedePoints(CStateManager& mgr);                      // fn_55_10CB4
+  void SortStampedePoints();                                               // fn_55_10CB4
 
   // Host layout (retail's is 0x1660, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets are
   // fn_55_E170's.
@@ -301,11 +301,11 @@ private:
   int mF14;                   // 0xF14 (0; type unknown)
   float mChargeBeamTimer;     // 0xF18
   float mDarkBeamTimer;       // 0xF1C
-  float mF20;                 // 0xF20 (counts up in fn_55_86D0)
+  float mF20;                 // 0xF20 (stampede wait timer; compared against fn_55_1AEC)
   float mStampedeHP;          // 0xF24
-  int mF28;                   // 0xF28 (0; type unknown)
+  float mF28;                 // 0xF28 (stampede waypoint z)
   float mHeadArmorHP;         // 0xF2C
-  int mF30;                   // 0xF30 (0; type unknown)
+  float mF30;                 // 0xF30 (stampede piece timer, 0.2 s gate in fn_55_7C68)
   float mF34;                 // 0xF34 (counts up in fn_55_86D0)
   int mF38;                   // 0xF38 (0; type unknown)
   int mF3C;                   // 0xF3C (1; type unknown)
@@ -318,7 +318,8 @@ private:
   // (stampedeArmor headArmor..tailArmor).
   rstl::optional_object< CModelData > mAttachedArmorModels[8]; // 0xF4C
   rstl::optional_object< CModelData > mStampedeArmorModels[8]; // 0x11D0
-  int mArmorState[8]; // 0x1454 (per locator: 0 none, 1 stampede set, 2 attached set)
+  int mArmorState[8]; // 0x1458 (retail reserved_vector<int,8>: count 0x1454, data 0x1458+4i;
+                      //            per locator: 0 none, 1 stampede set, 2 attached set)
   rstl::vector< SSandBossIdEntry > mIdEntries; // 0x1478
   TLockedToken< CSkinnedModel > mNormalSkinnedModel;   // 0x1488
   TLockedToken< CSkinnedModel > mTailArmorSkinnedModel; // 0x1494
