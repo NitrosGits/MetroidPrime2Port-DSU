@@ -211,7 +211,6 @@ void CElitePirate::PathToward(CStateManager& mgr, EStateMsg msg, float dt, const
   }
 }
 
-// @ fn_15_5708
 void CElitePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
@@ -220,7 +219,6 @@ void CElitePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
-// @ fn_15_578C
 // Back to the patrol route: Activate aims at the patrol path's current point (or the leash
 // position) and plans with the base class; Update steers to xb3c_ (the base PathFind, or an arrival
 // when the search fails) and sets ReturnedToPatrol (xc10_04_) once the path is spent.
@@ -258,7 +256,6 @@ void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_15_5BB4
 // Chases the attack target (xa26_), or the last goal when it is gone. xa44_ marks when the chase began.
 void CElitePirate::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
@@ -310,13 +307,11 @@ void CElitePirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_15_52D0
 void CElitePirate::InvulnAlert(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateAbsorb(mgr, msg);
   Alert(mgr, msg, dt);
 }
 
-// @ fn_15_6064
 void CElitePirate::Wait(CStateManager& mgr, EStateMsg msg, float) {
   UpdateAbsorb(mgr, msg);
   if (msg == kStateMsg_Activate) {
@@ -325,7 +320,6 @@ void CElitePirate::Wait(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// @ fn_15_59BC
 void CElitePirate::Stunned(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);

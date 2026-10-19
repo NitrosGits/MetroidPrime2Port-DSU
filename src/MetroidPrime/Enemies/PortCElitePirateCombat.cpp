@@ -286,7 +286,6 @@ void CElitePirate::AngryAttackEnd(CStateManager&, EStateMsg msg, float) {
   xd24_40_ = true; // AngryAttackOver
 }
 
-// @ fn_15_5A60
 // Taunts cycle 0 -> 6 -> 1 -> 0; each one leaves 1..3 angry attacks to make.
 void CElitePirate::Taunt(CStateManager& mgr, EStateMsg msg, float) {
   TauntCmd(msg, xd1c_);
