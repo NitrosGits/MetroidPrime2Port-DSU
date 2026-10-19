@@ -30,6 +30,7 @@
 #include "MetroidPrime/CMain.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/TGameTypes.hpp"
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPersistentOptions.hpp"
@@ -101,6 +102,11 @@ struct RoomRestore {
   RoomState state;
   RoomApplyProgress progress;
   int waited = 0;
+  // Layers the saved objects live in, activated before the areas are applied. A layer that was
+  // switched on in the live room but is not in the reload's layer bits spawns none of its objects,
+  // and those saved objects come back as unmatched (162 in area 0 of the Temple Grounds save).
+  std::vector< std::pair< int, int > > layers;
+  size_t nextLayer = 0;
 };
 RoomRestore sRoom;
 CGameState* sRetired = nullptr; // the game state a load replaced, deleted once the world restarted
@@ -525,6 +531,23 @@ void TickPlacement(CStateManager& mgr) {
     sRoom = RoomRestore();
     sRoom.active = true;
     sRoom.state = s.roomState;
+    // One entry per layer the saved objects live in: the area is the editor id's top bits, the layer
+    // its next byte (the same split port_savestate_room.cpp uses for LayerKey).
+    for (const RoomObject& obj : sRoom.state.objects) {
+      // The layer is the editor id's top six bits, the area the field below it (LayerKey's split).
+      const std::pair< int, int > key(TEditorId(obj.editorId).AreaNum(),
+                                      static_cast< int >(obj.editorId >> 26));
+      bool seen = false;
+      for (const std::pair< int, int >& have : sRoom.layers) {
+        if (have == key) {
+          seen = true;
+          break;
+        }
+      }
+      if (!seen) {
+        sRoom.layers.push_back(key);
+      }
+    }
   }
 }
 
@@ -535,6 +558,18 @@ void TickRoom(CStateManager& mgr) {
     sRoom.active = false;
     SetMessage("room state dropped: the world changed before it was applied");
     return;
+  }
+  // Activate the saved layers first, one per tick: a layer's objects only exist once its data has
+  // streamed in, and PortWarpToLayer is the port's own path for that (the `LAYER<n>` token uses it).
+  // PortWarpToLayer no-ops on a layer that is already active, so an unnecessary entry costs a call.
+  if (sRoom.nextLayer < sRoom.layers.size()) {
+    if (!mgr.PortLayerRequestPending()) {
+      const std::pair< int, int >& want = sRoom.layers[sRoom.nextLayer++];
+      mgr.PortWarpToLayer(TAreaId(want.first), want.second);
+    }
+    if (++sRoom.waited <= kRoomTimeoutFrames) {
+      return;
+    }
   }
   const int waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress);
   if (waiting > 0 && ++sRoom.waited <= kRoomTimeoutFrames) {

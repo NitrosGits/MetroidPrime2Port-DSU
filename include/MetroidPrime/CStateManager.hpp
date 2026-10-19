@@ -195,6 +195,10 @@ public:
   // in a non-zero layer - ElitePirate is in all five of its areas - is invisible until its layer
   // runs, so this is what makes such a module verifiable at all.
   void PortWarpToLayer(TAreaId aid, int layer);
+  // True while PortWarpToLayer's request is still streaming in (see PortLayerTick): the save-state
+  // restore waits for each layer before it applies that area's objects, so the objects a layer
+  // spawns exist by then.
+  bool PortLayerRequestPending() const { return mPortLayerArea != kInvalidAreaId; }
   // Drives a layer request to completion: ActivateLayerDynamic can only run once the layer's data
   // has streamed in (GetLayerPhase reports kLP_Ready), which takes frames.
   void PortLayerTick();
