@@ -737,12 +737,103 @@ void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
   }
 }
 
+// fn_79_4090: pick the spit node. Attack 4 (swoop) takes the follower of the node nearest the
+// player; everything else takes the best-scoring entry of the swoop-start list.
 void CSwampBossStage2::PickSpitNode(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  if (mAttackType == 4) {
+    const CActor* nearest = TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
+    if (nearest) {
+      // 0xc48 <- the node's FOLW connection.
+      mSwoopNode = nearest->FindConnectedObject(mgr, kSS_Arrived, kSM_Follow);
+    }
+  } else {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (!player) {
+      return;
+    }
+    const CVector3f playerPos = player->GetTranslation();
+    float bestScore = 0.f;
+    for (int i = 0; i < mSwoopStarts.size(); ++i) {
+      const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSwoopStarts[i]));
+      if (!node) {
+        continue;
+      }
+      const float score = (playerPos - node->GetTranslation()).Magnitude() +
+                          mNodeSpacing * 0.5f * mgr.Random()->Float();
+      if (score > bestScore) {
+        mSwoopNode = mSwoopStarts[i];
+        bestScore = score;
+      }
+    }
+  }
 }
 
+// fn_79_2DE8: a point half the player's bounding-box height above the player.
+CVector3f CSwampBossStage2::PlayerOverheadPosition(const CStateManager& mgr) const {
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (!player) {
+    return GetTranslation();
+  }
+  const CAABox& bounds = player->GetBaseBoundingBox();
+  const float halfHeight = (bounds.GetMaxPoint().GetZ() - bounds.GetMinPoint().GetZ()) * 0.5f;
+  return player->GetTranslation() + CVector3f::Up() * halfHeight;
+}
+
+// fn_79_4C1C: the spit origin: the current spit node, or above the player when there is none.
+CVector3f CSwampBossStage2::SpitOrigin(const CStateManager& mgr) const {
+  const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSpitNode));
+  return node ? node->GetTranslation() : PlayerOverheadPosition(mgr);
+}
+
+// fn_79_4CA8: the spit node walks to its ARRV/NEXT follower.
+void CSwampBossStage2::AdvanceSpitNode(CStateManager& mgr) {
+  const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSpitNode));
+  if (node) {
+    // 0xcf0 <- the node's NEXT connection.
+    mSpitNode = node->FindConnectedObject(mgr, kSS_Arrived, kSM_Next);
+  }
+}
+
+// fn_79_4324: fire one spit projectile from the event's locator. Attack 3 (barrage) predicts the
+// player's intercept and scatters it; otherwise it fires at the current spit node and advances the
+// chain. fn_79_4670/fn_79_4A1C/fn_79_4BC8 are the impact visor effect's ctors and dtor here.
 void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator) {
-  // TODO(uncertain): not decoded.
+  const CTransform4f lctrXf = GetLctrTransform(locator);
+  CPlayer* player = mgr.GetPlayer(0);
+  if (!player) {
+    return;
+  }
+  CVector3f target = player->GetTranslation();
+  if (mAttackType == 3) {
+    target = mSpitProjectile.PredictInterceptPos(lctrXf.GetTranslation(),
+                                                 PlayerOverheadPosition(mgr), *player, true,
+                                                 mInterceptTime);
+    const CActor* centre = TCastToConstPtr< CActor >(mgr.GetObjectById(mCenter));
+    if (centre && target.GetZ() < centre->GetTranslation().GetZ() + 1.f) {
+      target.SetZ(centre->GetTranslation().GetZ() + 1.f);
+    }
+    // rodata: 80% of barrage shots scatter up to +-10 units along both body axes.
+    if (mgr.Random()->Float() < 0.8f) {
+      target += GetTransform().GetForward() * ((mgr.Random()->Float() - 0.5f) * 20.f);
+      target += GetTransform().GetRight() * ((mgr.Random()->Float() - 0.5f) * 20.f);
+    }
+    ++mBarrageCount;
+  } else {
+    target = SpitOrigin(mgr);
+    AdvanceSpitNode(mgr);
+  }
+  const CTransform4f xf = CTransform4f::LookAt(lctrXf.GetTranslation(), target, CVector3f::Up());
+  // 0xea0 selects between the spit visor particle and an empty impact visor effect.
+  const CImpactVisorEffect visorEffect =
+      mSpitVisorGen ? CImpactVisorEffect::ParticleEffect(
+                          rstl::optional_object< TLockedToken< CGenDescription > >(mSpitVisorGen),
+                          static_cast< TSfxId >(mData.sound_SpitVisor & 0xffff), false)
+                    : CImpactVisorEffect::None();
+  CEnergyProjectile* projectile =
+      LaunchProjectile(xf, mgr, 0x40, 0x400, true, visorEffect, CVector3f(1.f, 1.f, 1.f));
+  // TODO(uncertain): retail writes the phase's spitProjectileRadius (mData.spitProjectileRadius)
+  // into the projectile at +0x3d4; the host CEnergyProjectile exposes no such field.
+  (void)projectile;
 }
 
 // TODO(uncertain): fn_79_55B0 not ported (sends ACTV/DECR to the chain and lays the platform chain

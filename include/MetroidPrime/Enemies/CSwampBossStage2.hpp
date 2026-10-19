@@ -144,6 +144,9 @@ protected:
   void PickSwoopTarget(CStateManager& mgr);
   void PickSpitNode(CStateManager& mgr);
   void FireSpit(CStateManager& mgr, const rstl::string& locator);
+  CVector3f PlayerOverheadPosition(const CStateManager& mgr) const;
+  CVector3f SpitOrigin(const CStateManager& mgr) const;
+  void AdvanceSpitNode(CStateManager& mgr);
   void LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
                            rstl::vector< TUniqueId >& nodes, rstl::vector< CVector3f >& positions,
                            const CVector3f& from);
