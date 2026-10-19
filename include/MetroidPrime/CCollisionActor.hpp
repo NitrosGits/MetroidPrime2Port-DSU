@@ -64,6 +64,11 @@ public:
   TUniqueId GetOwnerId() const { return mOwner; }
   float GetSphereRadius() const;
   void SetSphereRadius(float radius);
+#ifdef TARGET_PC
+  // Port: fn_55_78E0 (CSandBoss snap jaws) widens every collision actor's touch bounds while the
+  // jaws are closed; retail writes the member at +0x35C directly.
+  void SetExtendedTouchBounds(const CVector3f& bounds) { mExtendedTouchBounds = bounds; }
+#endif
 
 private:
   EPrimitiveType mPrimitiveType;

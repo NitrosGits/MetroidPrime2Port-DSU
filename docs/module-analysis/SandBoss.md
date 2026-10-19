@@ -275,7 +275,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 70D0 | CSandBoss::SyncCollisionHealth | [proven] host body |
 | 724C | CSandBoss::SetupCollisionActors | [proven] host body |
 | 783C | CSandBoss::SetCollisionVulnerabilities | [proven] host body |
-| 78E0 | CSandBoss::SnapJawsCollisionSetup | [stand-in] log-once |
+| 78E0 | CSandBoss::SnapJawsCollisionSetup (mgr, bounds) | [ported] host body, not exercised yet (only caller: A170) |
 | 79B0 | CSandBoss::HandleHitObject | [proven] host body |
 | 7BB0 | CSandBoss::UpdateFlashColor | [proven] host body |
 | 7C68 | CSandBoss::StampedeHelper | [proven] host body |
@@ -310,7 +310,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 91E0 | CSandBoss::LockSphere | [proven] host body |
 | 91F4 | CSandBoss::WaitAttachToSphere | [proven] host body |
 | 9200 | CSandBoss::WaitStampede | [proven] host body |
-| 920C | CSandBoss::SelectSafeZoneTarget | [ported] host body, not exercised yet |
+| 920C | CSandBoss::SelectSafeZoneTarget | [proven] host body |
 | 9438 | CSandBoss::RestorePlayerCollision | [ported] host body, not exercised yet |
 | 952C | CSandBoss::RemovePlayerCollision | [ported] host body, not exercised yet |
 | 9600 | CSandBoss::SetSuckAirArmor | [ported] host body, not exercised yet |
@@ -321,11 +321,11 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 98FC | CSandBoss::Stampede | [proven] host body |
 | 9BB8 | CSandBoss::SeekStampedePoint | [proven] host body |
 | 9E3C | CSandBoss::SelectStampedePoint | [proven] host body |
-| A170 | CSandBoss::SnapJaws | [stand-in] log-once |
+| A170 | CSandBoss::SnapJaws | [ported] host body, not exercised yet (ShouldSnapJaws (C2A0) answered false in run sbV) |
 | A360 | CSandBoss::TripleCharge | [ported] host body, not exercised yet |
 | A6CC | CSandBoss::DoubleCharge | [ported] host body, not exercised yet |
-| A9DC | CSandBoss::RepeaterAttack | [stand-in] log-once |
-| AC68 | CSandBoss::DarkBeamAttack | [ported] host body, not exercised yet |
+| A9DC | CSandBoss::RepeaterAttack | [proven] host body |
+| AC68 | CSandBoss::DarkBeamAttack | [proven] host body |
 | AED8 | CSandBoss::SpitOutBall | [ported] host body, not exercised yet |
 | B06C | CSandBoss::JumpOffSphere | [ported] host body, not exercised yet |
 | B2D8 | CSandBoss::DestroySphere | [ported] host body, not exercised yet |
@@ -408,6 +408,13 @@ Notes:
   gate on `CountAttachedSiblings` (3/2), the leader (`5A84`), `0xF18`, `mSyncAttacksAllowed`,
   `0xF44 < 1`, and then the siblings' own probes (`8D24`/`8D94`); the double one also requires the
   player in front of this worm and of the first attached sibling along `GetColumn(kDY)`.
+- Slice 10 (78E0): the vector it writes where retail stores three floats at collision actor +0x35C is
+  `CCollisionActor::mExtendedTouchBounds`, which `GetTouchBounds` expands the box by [inferred: it is the only
+  `CVector3f` in the class tail, and the tail arithmetic (mLastTouched 0x358, the vector 0x35C..0x368,
+  mResponseType 0x368, `ncrc_ptr` 0x36C = the 0x370 `CHECK_SIZEOF`) only adds up with the vector at 0x35C,
+  so the header's member order differs from retail's]. A170's activate passes `lbl_55_bss_8` (a lone `4.5f`
+  that `fn_55_11184` stores into bss, so the other two words read as 0) and its deactivate `CVector3f::Zero()`.
+  The host needs a setter, added as a `TARGET_PC` block in `include/MetroidPrime/CCollisionActor.hpp`.
 - Slice 9 (the dark-beam pair, 44CC + AC68): retail `FireDarkBeam` takes `(mgr, dt)` (r3/r4/f1; the
   only caller is `DoUserAnimEvent`'s `kUE_Projectile` branch, gated on 0x165C b3). It aims on 0x165C
   **b2**: set = predicted-intercept lead (player `GetAimPosition`, `ProjectileInfo()`'s
@@ -503,6 +510,19 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   `RepeaterAttack` (A9DC). C894 stops at its `mChargeBeamCooldown > 0` (0xF44) gate, which only the
   charge-beam states' deactivate writes, so 42A8 -> 8C88 -> `FoundSafeZoneTarget` and the DarkBeamAttack
   state never run. Both bodies keep `// fn_55_X (ported, not exercised yet)`.
+- Slice 10 (2026-10-20, run sbV, same area/layer, `MP2_SB_FSM=1 MP2_SB_HP=1`, FRAMES 6000, exit 0, 0 caught,
+  0 reach-stub): `RepeaterAttack` (A9DC) is a host body and the repeater runs end to end. The `[sbtrace]` order
+  after `PreventSyncAttacks` (91A4) is A9DC -> 1F84 `FaceTowardPoint` at the player (its activate sets 0x165C
+  b3, which is what lets the mouth's `kUE_Projectile` event fire) -> 44CC `FireDarkBeam` -> CDF0
+  `ProjectileInfo` -> 1C70 `SyncAttacker` (A9DC's deactivate, retail delta -1) -> 920C `SelectSafeZoneTarget` /
+  C730 `FoundSafeZoneTarget` -> AC68 `DarkBeamAttack`. So the repeater hands over to the dark beam once its
+  three shots are out (0xF48), and C894's `mChargeBeamCooldown` gate opens at last. `stand-ins:` shrinks to
+  528C 4C60 22E4. Newly `// @`: A9DC AC68 920C. 1C70, 1F84 and 44CC are exercised too but live in
+  `PortCSandBossAttacks.cpp`, which this patch does not stage, so their markers and rows still say ported.
+- `SnapJaws` (A170) never ran: `ShouldSnapJaws` (C2A0) is evaluated on every Attack pass but answers false in
+  this probe (the player is out of its range/angle band), so A170 and `SnapJawsCollisionSetup` (78E0) keep
+  `// fn_55_X (ported, not exercised yet)`. To exercise them the probe has to hold the player in front of the
+  worm and inside CPatterned's min/max attack range when RotateToPlayer runs its trigger pass.
 - `CheckBodyStateForDarkBeam` (8C88) is still unreached: only `ShouldDarkBeamAttackCheck` (42A8) calls it, and
   42A8 only runs once C894's cooldown gate opens (slice 8). The two signature changes C894/C750 needed —
   42A8 returns the picked worm's uid (C894 compares it to `GetUniqueId()` and otherwise makes that sibling run

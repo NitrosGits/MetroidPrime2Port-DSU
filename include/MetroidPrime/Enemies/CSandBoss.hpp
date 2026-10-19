@@ -231,8 +231,8 @@ private:
   bool ProbeTripleCharge(CStateManager& mgr);                              // fn_55_8D24
   bool ProbeDoubleCharge(CStateManager& mgr);                              // fn_55_8D94
 
-  // Stand-ins (PortCSandBossStates.cpp)
-  void SnapJawsCollisionSetup(CStateManager& mgr);                         // fn_55_78E0
+  // Helpers (PortCSandBossStates.cpp)
+  void SnapJawsCollisionSetup(CStateManager& mgr, const CVector3f& bounds); // fn_55_78E0
   bool CheckBodyStateForDarkBeam(CStateManager& mgr) const;                // fn_55_8C88
 
   // Stand-ins (PortCSandBossAttacks.cpp)

@@ -112,7 +112,7 @@ bool CSandBoss::ShouldRepeaterAttack(CStateManager& mgr, const CTriggerData&) co
   return threshold < mgr.Random()->Range(0.f, 100.f); // mgr 0x16E4, 0x40590000 = 100.0
 }
 
-// fn_55_C730 (ported, not exercised yet)
+// @ fn_55_C730
 bool CSandBoss::FoundSafeZoneTarget(CStateManager&, const CTriggerData&) const {
   return mSafeZoneTarget != kInvalidUniqueId;
 }
@@ -556,7 +556,7 @@ void CSandBoss::SpitOutBall(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_AC68 (ported, not exercised yet)
+// @ fn_55_AC68
 // DarkBeamAttack: start aims the head bone tracking at the safe-zone target (turn rate +pi/2),
 // readies the animation and raises the probe result bit (0x165C b3) so this worm owns the shot; each
 // update re-issues the projectile-attack command toward the target's position while the animation
@@ -593,8 +593,44 @@ void CSandBoss::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-void CSandBoss::RepeaterAttack(CStateManager&, EStateMsg, float) { // fn_55_A9DC
-  PortSandBossStandIn("CSandBoss::RepeaterAttack (fn_55_A9DC)");
+// @ fn_55_A9DC
+// RepeaterAttack: while the body can take the loop attack the mouth keeps asking for it; between
+// shots the worm faces the player -- but only while it is the unlocked leader and fewer than three
+// dark beams have gone out (0xF48 counts up in fn_55_44CC) -- and past that it exits the loop. Start
+// readies the animation, aims the head bone tracking at the player (+pi/2) and raises both the
+// tracking and the busy bits; stop drops them, turns tracking off (+pi) and resyncs the group's
+// attack timers (fn_55_1C70 with the retail delta -1).
+void CSandBoss::RepeaterAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) { // 9
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_One, true)); // 7
+    } else if (mF48 < 3) { // 0xF48
+      const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+      if (player != nullptr && NoSiblingHasSphereLocked(mgr) && IsAttachedLeader(mgr)) { // fn_55_59E4/5A84
+        FaceTowardPoint(dt, player->GetTranslation()); // player + 0x54, fn_55_1F84
+      }
+    } else {
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0xA
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x6B4 = 1
+    mBoneTracking.SetActive(true);                        // 0xD9C
+    mBoneTracking.SetAngSpeed(1.5707964f);                // 0xDBC = +pi/2
+    mBoneTracking.SetTarget(mgr.GetPlayer(0)->GetUniqueId()); // player + 0x8
+    m165C_b2 = true;                                     // 0x165C b2
+    mDarkBeamResult = true;                              // 0x165C b3
+    mF48 = 0;                                            // 0xF48
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) { // 0x37C == 9
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0xA
+    }
+    mBoneTracking.SetActive(false);        // 0xD9C
+    mBoneTracking.SetAngSpeed(3.1415927f); // 0xDBC = +pi
+    m165C_b2 = false;                      // 0x165C b2
+    mDarkBeamResult = false;               // 0x165C b3
+    SyncAttacker(mgr, -1);                 // fn_55_1C70
+  }
 }
 
 // fn_55_A6CC (ported, not exercised yet)
@@ -688,8 +724,29 @@ void CSandBoss::TripleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-void CSandBoss::SnapJaws(CStateManager&, EStateMsg, float) { // fn_55_A170
-  PortSandBossStandIn("CSandBoss::SnapJaws (fn_55_A170)");
+// fn_55_A170 (ported, not exercised yet)
+// SnapJaws: the bite is one melee-attack command. Start readies the animation, arms the snap-jaw
+// contact damage (0x165C b5, read by fn_55_79B0) and widens the collision actors' touch bounds
+// (fn_55_78E0) so the closed jaws reach; stop drops the contact bit, puts the touch bounds back and,
+// if the body is still mid-bite, moves it on to its next state.
+void CSandBoss::SnapJaws(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) { // 7
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_One));    // 5
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    mSnapJawContact = true;                               // 0x165C b5
+    // lbl_55_bss_8 is a lone 4.5f in the REL's bss [inferred: the other two floats read as 0].
+    SnapJawsCollisionSetup(mgr, CVector3f(4.5f, 0.0f, 0.0f)); // fn_55_78E0
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    mSnapJawContact = false;                                 // 0x165C b5
+    SnapJawsCollisionSetup(mgr, CVector3f::Zero());          // fn_55_78E0
+    if (BodyController()->GetCurrentStateId() == pas::kAS_MeleeAttack) { // 0x37C == 7
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState)); // 0xC
+    }
+  }
 }
 
 // lbl_55_rodata_0, indexed by mRound: the chance (percent) of picking out of the far three
@@ -909,7 +966,7 @@ void CSandBoss::RestorePlayerCollision(CStateManager& mgr, float) {
   // morph-transition bits of that byte, so the store is left out until the bit is identified.
 }
 
-// fn_55_920C (ported, not exercised yet)
+// @ fn_55_920C
 // Picks the active CScriptSafeZone (ATTK / ATCH) most nearly ahead of the boss (within 70 degrees)
 // that is closest to the player.
 void CSandBoss::SelectSafeZoneTarget(CStateManager& mgr, float) {
@@ -1030,8 +1087,18 @@ void CSandBoss::SetCinematicStateExitSphere(CStateManager&, float) { mCinematicS
 
 // Helpers
 
-void CSandBoss::SnapJawsCollisionSetup(CStateManager&) { // fn_55_78E0
-  PortSandBossStandIn("CSandBoss::SnapJawsCollisionSetup (fn_55_78E0)");
+// fn_55_78E0 (ported, not exercised yet)
+// Sets the touch-bounds expansion (the member retail writes at actor+0x35C, folded into
+// CCollisionActor::GetTouchBounds) on every collision actor this worm owns: the snap jaws widen it
+// while they are closed and put it back to zero when they open.
+void CSandBoss::SnapJawsCollisionSetup(CStateManager& mgr, const CVector3f& bounds) {
+  for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) { // 0xD98
+    const CJointCollisionDescription& desc = mCollisionManager->GetCollisionDescFromIndex(i);
+    const TUniqueId id = desc.GetCollisionActorId(); // desc + 0x3C
+    if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(id))) {
+      colAct->SetExtendedTouchBounds(bounds);
+    }
+  }
 }
 
 // fn_55_8C88 (ported, not exercised yet)
