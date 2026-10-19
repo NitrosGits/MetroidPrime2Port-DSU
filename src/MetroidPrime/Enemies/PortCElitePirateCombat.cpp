@@ -99,9 +99,12 @@ void CElitePirate::Shielding(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   case kStateMsg_Update:
     if (mXDamaged) {
-      // [?] nothing but the ctor writes 0xa38, so this clears XDamaged on the first update.
-      xa38_ -= dt;
-      if (xa38_ <= 0.f) {
+      // fn_15_41A0 is 0xa38's only writer besides the ctor (`param_1[0x28e] = 0`, fn_15_A190): it
+      // decrements it by dt and clears 0xc10 bit 6 (fn_15_1B50's XDamaged/ShotAt flag) at <= 0.
+      // Nothing in the REL arms the countdown (XRDG/XXDG/XHIT only set the flag), so the flag is
+      // cleared on the first Shielding update: the countdown never holds it.
+      mXDamagedTimer -= dt;
+      if (mXDamagedTimer <= 0.f) {
         mXDamaged = false;
       }
     }
@@ -128,7 +131,7 @@ void CElitePirate::ShieldUp(CStateManager& mgr, EStateMsg msg, float dt) {
     mShieldCollisionManager->SetActive(mgr, true);
     KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, false);
     BodyController()->CommandMgr().ClearLocomotionCmds();
-    xc5c_ = mTime;
+    mShieldUpTime = mTime; // the raise time ReadyToCharge and NotReachedTarget measure from
     switch (mShieldPolarity) {
     case 0:
       mShieldPolarity = 1;
@@ -215,7 +218,7 @@ void CElitePirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
 void CElitePirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mRocketsFired = 0;
-    xcfc_ = mgr.Random()->Range(mData.mUnknown624222F8, mData.mUnknown31E43A1C);
+    mRocketsToFire = mgr.Random()->Range(mData.mUnknown624222F8, mData.mUnknown31E43A1C);
     mRocketEventSeen = false;
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
   }
@@ -223,7 +226,7 @@ void CElitePirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Deactivate) {
     ResetAttackTimer(mgr);
   }
-  if (mRocketsFired < xcfc_) {
+  if (mRocketsFired < mRocketsToFire) {
     if (const CActor* target = TargetActor(mgr, xa26_)) {
       xcc4_ = target->GetTranslation();
       BodyController()->CommandMgr().SetTargetVector(target->GetTranslation() - GetTranslation());
@@ -239,7 +242,7 @@ void CElitePirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float) {
 void CElitePirate::SpreadShot(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mRocketsFired = 0;
-    xcfc_ = 4;
+    mRocketsToFire = 4; // the spread volley: FireRocket's offset table has four entries
     mRocketEventSeen = false;
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
   }

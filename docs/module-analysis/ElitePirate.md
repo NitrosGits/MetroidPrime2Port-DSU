@@ -155,7 +155,8 @@ unless tagged.
 | 0x7c4 | `CDamageVulnerability` copy of the patterned info's (`mBodyVulnerability`) | `fn_15_2B08(this+0x7c4, pInfo+0x74)`; read by `fn_15_27FC` [proven] |
 | 0x7f4 | **shield `CCollisionActorManager`** (one "Shield" OBB on L_Palm_LCTR) | built by `fn_15_36CC` [proven] |
 | 0x7f8 / 0x804 | L / R palm positions (`PreRender`, `fn_15_83C0`) | [proven] |
-| 0x810 / 0x81c | zeroed `CVector3f` | use [?] |
+| 0x810 | last path goal (`5CBC`/`PlanPath`); Alert (`5340`) stores its own position, `41A0` uses it as the target when the shield's target actor is gone | [proven] |
+| 0x81c | the position it powered up in (`5F08`); `ShouldAlert` (`684C`) is false within 5 m of it | [proven] |
 | 0x828 | **`CElitePirateData`, 0x190** | ends at 0x9b8, the next member [proven] |
 | 0x9b8 | **body `CCollisionActorManager`** (6 subdivided + 8 sphere joints) | `fn_15_36CC` [proven] |
 | 0x9c0 | `CCollidableAABox` (`GetCollisionPrimitive`, `fn_15_8`) | rebuilt by the bbox setup `fn_15_2CFC` |
@@ -166,21 +167,26 @@ unless tagged.
 | 0xa28 | `mSpeed` at construction (`mBaseSpeed`) | Think doubles it with the shield up [proven] |
 | 0xa2c | steering speed = walk speed × 0.99 / max speed (XCRT) | [proven] |
 | 0xa30 / 0xa34 / 0xa3c | HP at the last vulnerability set / count-down timer / accumulated time | `fn_15_27FC`, `fn_15_27DC`, Think |
-| 0xa38 / 0xa40 / 0xa44 | floats [?] | |
+| 0xa38 | countdown that clears the XDamaged/ShotAt bit during Shielding; only the ctor writes it (0) | `41A0`, `A190` [proven] |
+| 0xa40 | seconds at the end of the path with the player off it, reset by every re-plan | `5CBC` writes, `61E4`/`691C` read [proven] |
+| 0xa44 | time Pursue began; the ctor leaves it unset | `5BB4` writes, `691C` reads [proven] |
 | 0xa48 / 0xa4c | time of the last push-back / claimed path region (ctor stores **0**, `fn_15_1328` tests −1) [?] | |
 | 0xa50 | `CPathFindSearch`; flags `IsAnEncounter() ? 0x201 : 1` | [proven] |
+| 0xb3c | TargetPatrol's goal: a copy of the base's `mDestPos` (0x334) taken at Activate | `578C` writes, `6368` reads [proven] |
 | 0xb48 | `SPositionHistory(5.f)` (DOL `fn_801931E0`) | `fn_15_2204` [proven] |
 | 0xc10 | flags: event 8, XDamaged, alerted ×2, launcher-Ing-possessed, 3 [?] | |
 | 0xc2c | **attack kind**: 2/8 rocket, 4 melee, 7 shock wave; 3/5/6 skip push-back | DoUserAnimEvent, `fn_15_8FB8` |
 | 0xc30 | `'FSM2'` token (`data+0x00`) | [proven] |
 | 0xc40 | initial idle: **1**, then 10/11/12 if `FindBestAnimation(state 5, 0, n)` = the editor's initial anim | [proven] |
 | 0xc44 / 0xc50 / 0xc54 | event-7 bit / last melee time (−1000) / melee + knock pending bits (event 17) | |
-| 0xc58..0xc6c | `fn_15_B080` block: 0, −1000, shield damage, shield hit time, shield alpha, **polarity** (0 dark, 1 light, 2 none) | XDMG, Render [proven] |
+| 0xc58..0xc6c | `fn_15_B080` block: 0, **0xc5c = −1000** (the shield-raise time `44A8` then stores), shield damage, shield hit time, shield alpha, **polarity** (0 dark, 1 light, 2 none) | XDMG, Render [proven] |
 | 0xc70 / 0xc80 / 0xc94 / 0xc9c | light / dark shield-pop `'PART'`, hand `CElementGen`, shield `CSkinnedModel` | `fn_15_3C5C`, `fn_15_8E34`, `fn_15_8080` |
 | 0xcac | 0x40 shield-pop pending, 0x80 double speed | Think |
 | 0xcb0 | 1; **5** selects the double shock wave (`fn_15_1A48`) | |
 | 0xcd0 | `CProjectileInfo(data.rocket, data.rocketDamage)` | `fn_15_728C` |
 | 0xcf8 / 0xd00 / 0xd08 | rockets fired / rocket pattern (0 homing, 1 spread) / event 18 seen | `fn_15_728C` |
+| 0xcfc | rockets this salvo: 4 (`4D18`), a random data range (`50BC`, `0x8dc..0x8e0`) | `4D18`/`50BC` write, `50BC` gates on it |
+| 0xd04 | the pattern `PickAttackType` copies 20% of the time; the ctor's 1 is its only write | `A190`, `54AC` |
 | 0xd0c / 0xd10 | aim blend towards the shield / shield aim position | `fn_15_8D84`, `fn_15_7EEC` |
 | 0xd28 / 0xd2c | energy glow / absorbing | `fn_15_8EA0` |
 | 0x620 | knock-back: all anim reactions and burn/explode-death/burn/slow/freeze off, then `kAR_Flinch` on | [proven] |
@@ -264,10 +270,10 @@ are ported (`// @ fn_15_XXXX`). Retail's virtual self-calls map through the vtab
 navigation sits at 0x6b8), 0x728 = `mPredictedLeashTime`. `0xd20` is an int (`mAngryCount`, was a
 float in the header). `fn_15_6618` is `ShouldFire`'s only caller and is inlined, as is `fn_15_2284`
 (launcher "lockon_target_LCTR" world position). Filters: ClearLineOfSight include Solid / exclude
-Floor; ShouldFire include Solid|Character (bits 0x3b/0x1f/0x21). `[?]`: `ReadyToCharge` calling
-`ShieldKilled` when the player is in a no-attack hint (literal vtable reading), `x81c_` as an
-alert position in `ShouldAlert`, `xd04_`/the 20% repeat in `PickAttackType`, and the identity of
-`xa40_`/`xa44_`/`xc5c_`/`xb3c_` (read, not yet written by any ported code).
+Floor; ShouldFire include Solid|Character (bits 0x3b/0x1f/0x21). Resolved 2026-10-19 (section 5
+"Resolved `[?]` members"): 0x194 *is* `ShieldKilled` (word 101 of the table), `x81c_` is where the
+Ingsmasher powered up, `xd04_` is a ctor constant (a fixed 20% spread), and 0xa40/0xa44/0xc5c/0xb3c
+are the stuck/pursue/shield-raise times and TargetPatrol's goal.
 
 **Combat states (2026-10-19)** in `PortCElitePirateCombat.cpp`: Shielding `41A0`, ShieldUp `44A8`,
 MeleeAttack `48BC`, Shockwave `4AE0`, SpreadShot `4D18`, ProjectileAttack `50BC`, AngryAttackBegin
@@ -275,11 +281,43 @@ MeleeAttack `48BC`, Shockwave `4AE0`, SpreadShot `4D18`, ProjectileAttack `50BC`
 `ResetAttackTimer` (`1F2C`) and `TryCommand` (`BAF8`/`BC04`/`BD10`, retry a body command until the
 body state is entered). They reuse the movement file's `SetAttackKind`/`UpdateAbsorb`/`TauntCmd`/
 `TurnCmd`/`PathToward`. The shield's looping sound is a host member (`mShieldSfx`, after 0xc98).
-Writers: `xc5c_` = ShieldUp (shield-raise time), `xa40_` = PathToward (time stuck), `xa44_` = Pursue
-(`5BB4`, from 0xa3c), `xb3c_` = TargetPatrol (`578C`, from 0x334); `xd1c_` is the taunt type (an int,
-Taunt cycles 0 -> 6 -> 1 -> 0). `[?]`: Shielding's `xa38_` countdown (only the ctor writes 0xa38).
+Writers: `mShieldUpTime` (0xc5c) = ShieldUp, `mStuckTime` (0xa40) = PathToward, `mPursueStartTime`
+(0xa44) = Pursue (`5BB4`, from 0xa3c), `mPatrolGoal` (0xb3c) = TargetPatrol (`578C`, from 0x334);
+`xd1c_` is the taunt type (an int,
+Taunt cycles 0 -> 6 -> 1 -> 0). Shielding's `xa38_` countdown is dead in retail: the ctor writes it
+0 and `41A0` only decrements it, so it clears the XDamaged/ShotAt bit on the first update.
 In game (Sanctuary area 4, layer 3), Shockwave, ProjectileAttack, SpreadShot, AngryAttackBegin/End
 and PowerUp/PowerDown are entered with no fault; later runs reached the rest (item 1 below).
+
+### Resolved `[?]` members (2026-10-19)
+
+Writer/reader census over all 236 pseudo files, index and byte-offset forms both. Nothing else in
+the REL touches these offsets.
+
+| off | host name | type | writers | readers | meaning |
+|---|---|---|---|---|---|
+| 0xa38 | `mXDamagedTimer` | float | `A190` ctor `= 0`; `41A0` `-= dt` | `41A0` | countdown that clears the XDamaged/ShotAt bit (`1B50`); never armed, so the bit clears on the first Shielding update |
+| 0xa40 | `mStuckTime` | float | `5CBC` `+= dt` and `= 0` (twice) | `61E4` (`1.0 <`), `691C` (`<= 0.5` gates its early-out) | seconds parked at the path's last waypoint with the player off the path |
+| 0xa44 | `mPursueStartTime` | float | `5BB4` Activate `= 0xa3c` (the ctor leaves it) | `691C` | mTime when Pursue began; DonePursuing compares the last push (0xa48) and +2.5 s against it |
+| 0xb3c | `mPatrolGoal` | `CVector3f` | `A190` zero; `578C` Activate copies 0x334 | `6368` (`< 5 m`), `578C` (arrival steering) | TargetPatrol's goal, i.e. the base's `mDestPos` at Activate |
+| 0xc5c | `mShieldUpTime` | float | `B080` `= -1000`; `44A8` Activate `= 0xa3c` | `60D4`, `6D94` | mTime the shield went up; −1000 = never |
+| 0xcfc | `mRocketsToFire` | int | `4D18` `= 4`; `50BC` `= Range(data 0x8dc, data 0x8e0)` | `50BC` | salvo size |
+| 0xd04 | `mDefaultRocketPattern` | int | `A190` `= 1`, nothing else | `54AC` | with no later writer the 20% branch is a fixed spread pick |
+| 0x81c | `x81c_` | `CVector3f` | `A190` zero; `5F08` Activate `= own translation` | `684C` | where it powered up; no alert within 5 m of it |
+
+- `ReadyToCharge` (`60D4`) is `0xc5c + (HealthInfo[1] / HealthInfo[0]) * 1.7 + 0.3 < 0xa3c`: the
+  `GetHealthInfo()` floats are `CHealthInfo`'s initial HP (+0) and current HP (+4) - the same ratio
+  `8580` scales by 100 for its 25% test - not HP/knock-back (knock-back is +8). The port now uses
+  `GetHP() / GetInitialHP()`; it had knock-back over HP.
+- vt+0x194 is word 101 of `lbl_15_data_634` = `fn_15_6D68` (ShieldKilled), between `fn_15_60D4`
+  (word 100) and `fn_15_18AC` (102, ShockwaveIsNext), read from
+  `build/G2ME01/ElitePirate/asm/auto_04_00000000_data.s`.
+- `ShouldAlert` (`684C`) tests `x81c_` against the actor's **own** translation (0x54/0x58/0x5c), so
+  the old "alert here position" reading was wrong: it is "do not alert at the spot where I powered
+  up", and the only writer after the ctor's zero is `5F08`.
+- `PickAttackType` (`54AC`): jump-down hint (0x17) forces the spread; otherwise `Random(0,1) >= 0.8`
+  copies 0xd04 and the other 80% takes its opposite. 0xd04 is a ctor constant (1), so retail is a
+  fixed 20% spread / 80% homing, not a repeat of the previous pick.
 
 Open:
 
@@ -309,16 +347,19 @@ Open:
    (free fall at the 24.525 gravity) because the ctor built `mCollidableBox` from
    `GetBoundingBox()`, the world-space box; fn_15_2CFC stores the local box. With the fix both
    stand at z -152 for 60 s and u04ff walks, pursues and attacks.
-2. `[?]` members: 0x7c0, 0x810/0x81c, 0xa26, 0xa38/0xa40/0xa44, 0xc14/0xc28/0xc3c/0xc48/0xc4c,
-   0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
-3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
+2. `[?]` members still open: 0x7c0, 0xa26, 0xc14/0xc28/0xc3c/0xc48/0xc4c, 0xc58, 0xcb4,
+   0xcb8/0xcc4, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0. 0x810/0x81c, 0xa38/0xa40/0xa44,
+   0xb3c, 0xc5c, 0xcfc and 0xd04 are resolved in the table above.
+3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound in the function
+   itself. The volley is armed at four (`4D18` stores 0xcfc = 4; `50BC` fires only while
+   0xcf8 < 0xcfc) and the table is four triplets, so the port clamps the index to 0..3, which is
+   unchanged behaviour for any index retail reaches inside a volley.
 
 **Next (2026-10-19, `decomp/elitepirate` at the commit adding this line):**
 1. The `[?]` items above, as narrow `worker` lanes (decomp lanes are worker-only), each from a
    named commit.
 2. Optional: reach Stunned `59BC` with real shield hits (enter area 4 normally so the intro
    sequence runs, raise the shield, fire the matching beam), then mark it.
-3. Item 3 (`fn_15_728C` unbounded index): check retail's rocket count bound before guarding.
 Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/dark/stun_run.sh` (dark).
 Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
 `/tmp/opencode/ep/gate_run2.sh <log>` (0 crash lines), matching build 94.14%/63.29% if an

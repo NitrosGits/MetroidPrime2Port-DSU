@@ -273,7 +273,8 @@ private:
   CVector3f mLeftPalmPos;                        // 0x7f8 L_Palm_LCTR (PreRender)
   CVector3f mRightPalmPos;                       // 0x804 R_Palm_LCTR
   CVector3f x810_;                               // 0x810 [?]
-  CVector3f x81c_;                               // 0x81c [?]
+  CVector3f x81c_;                               // 0x81c place it powered up in (fn_15_5F08);
+                                                 // ShouldAlert is false within 5 m of it
   CElitePirateData mData;                        // 0x828
   rstl::single_ptr< CCollisionActorManager > mBodyCollisionManager; // 0x9b8 the joint spheres
   CCollidableAABox mCollidableBox;               // 0x9c0 GetCollisionPrimitive
@@ -288,14 +289,18 @@ private:
   float mSteeringSpeed;                          // 0xa2c XCRT: walk-speed ratio
   float mLastHP;                                 // 0xa30 HP when the vulnerability was last set
   float mTimer;                                  // 0xa34 counts down in Think (fn_15_27DC)
-  float xa38_;                                   // 0xa38 [?]
+  float mXDamagedTimer;                          // 0xa38 Shielding's countdown to clear mXDamaged;
+                                                 // only the ctor writes it (0), so it never runs
   float mTime;                                   // 0xa3c accumulated dt
-  float xa40_;                                   // 0xa40 [?]
-  float xa44_;                                   // 0xa44 [?] not set by the ctor
+  float mStuckTime;                              // 0xa40 s at the end of the path with the player
+                                                 // off it (fn_15_5CBC); TargetUnreachable > 1
+  float mPursueStartTime;                        // 0xa44 mTime when Pursue began (fn_15_5BB4);
+                                                 // not written by the ctor
   float mLastPushTime;                           // 0xa48 mTime of the last push-back
   int mClaimedRegion;                            // 0xa4c path region with avoidance flag 4
   CPathFindSearch mPathFindSearch;               // 0xa50 (fn_15_0)
-  CVector3f xb3c_;                               // 0xb3c [?]
+  CVector3f mPatrolGoal;                         // 0xb3c TargetPatrol's goal: the base's
+                                                 // mDestPos (0x334) at Activate; InPosition < 5 m
   SPositionHistory mPositionHistory;             // 0xb48 (DOL fn_801931E0, 5.f)
   bool mEvent8Active : 1;                        // 0xc10 0x80: user events 8 (set) / 9 (clear)
   bool mXDamaged : 1;                            // 0xc10 0x40: XDMG/XRDG/XXDG (fn_15_1B50)
@@ -319,7 +324,8 @@ private:
   bool mMeleeDamagePending : 1;                  // 0xc54 0x80 (event 17)
   bool mKnockPending : 1;                        // 0xc54 0x40 (event 17)
   float xc58_;                                   // 0xc58 = 0 [?] (fn_15_B080 block 0xc58..0xcb0)
-  float xc5c_;                                   // 0xc5c = -1000 [?]
+  float mShieldUpTime;                           // 0xc5c mTime of the last shield raise (44A8);
+                                                 // -1000 from fn_15_B080 until the first ShieldUp
   float mShieldDamage;                           // 0xc60 damage the shield absorbed
   float mShieldHitTime;                          // 0xc64 mTime of the last shield hit
   float mShieldAlpha;                            // 0xc68
@@ -336,9 +342,11 @@ private:
   CVector3f xcc4_;                               // 0xcc4 [?]
   CProjectileInfo mProjectileInfo;               // 0xcd0 (fn_15_52C8)
   int mRocketsFired;                             // 0xcf8
-  int xcfc_;                                     // 0xcfc [?]
+  int mRocketsToFire;                            // 0xcfc salvo size: SpreadShot sets 4, the
+                                                 // other attack a random data range
   int mRocketPattern;                            // 0xd00 0 homing, 1 spread
-  int xd04_;                                     // 0xd04 = 1 [?]
+  int mDefaultRocketPattern;                     // 0xd04 = 1, written by the ctor only: the pattern
+                                                 // PickAttackType copies 20% of the time
   bool mRocketEventSeen;                         // 0xd08 event 18 during attack kind 2
   float mAimBlend;                               // 0xd0c towards the shield collider
   mutable CVector3f mShieldAimPos;               // 0xd10

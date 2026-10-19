@@ -176,8 +176,8 @@ void CElitePirate::PlanPath(CStateManager& mgr, float dt, const CVector3f& dest)
 
 // @ fn_15_5CBC
 // Walks to `dest`: Activate plans the path; Update re-plans when the goal has moved 4 m, counts
-// xa40_ (seconds stuck at the end of the path with the player off it), and steers along the path
-// (or arrives at the goal when the search failed).
+// mStuckTime (seconds stuck at the end of the path with the player off it), and steers along the
+// path (or arrives at the goal when the search failed).
 void CElitePirate::PathToward(CStateManager& mgr, EStateMsg msg, float dt, const CVector3f& dest) {
   if (msg == kStateMsg_Update) {
     const float dx = dest.GetX() - x810_.GetX();
@@ -191,11 +191,11 @@ void CElitePirate::PathToward(CStateManager& mgr, EStateMsg msg, float dt, const
       const CVector3f toLast(GetTranslation().GetX() - last.GetX(),
                              GetTranslation().GetY() - last.GetY(), 0.f);
       if (toLast.Magnitude() < 4.f && !IsPlayerOnPath(mgr)) {
-        xa40_ += dt;
+        mStuckTime += dt;
         return;
       }
     }
-    xa40_ = 0.f;
+    mStuckTime = 0.f;
     CTriggerData data(0);
     CVector3f move;
     if (!PathShagged(mgr, data) && !mPathFindSearch.IsOver()) {
@@ -207,7 +207,7 @@ void CElitePirate::PathToward(CStateManager& mgr, EStateMsg msg, float dt, const
     BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(move, CVector3f::Zero(), 1.f));
   } else if (msg == kStateMsg_Activate) {
     PlanPath(mgr, dt, dest);
-    xa40_ = 0.f;
+    mStuckTime = 0.f;
   }
 }
 
@@ -220,8 +220,8 @@ void CElitePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // Back to the patrol route: Activate aims at the patrol path's current point (or the leash
-// position) and plans with the base class; Update steers to xb3c_ (the base PathFind, or an arrival
-// when the search fails) and sets ReturnedToPatrol (xc10_04_) once the path is spent.
+// position) and plans with the base class; Update steers to mPatrolGoal (the base PathFind, or an
+// arrival when the search fails) and sets ReturnedToPatrol (xc10_04_) once the path is spent.
 void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     CTriggerData data(0);
@@ -232,7 +232,7 @@ void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
         xc10_04_ = true;
       }
     } else {
-      const CVector3f move = mSteeringBehaviors.Arrival(*this, xb3c_, 25.f);
+      const CVector3f move = mSteeringBehaviors.Arrival(*this, mPatrolGoal, 25.f);
       BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(move, CVector3f::Zero(), 1.f));
       xc10_04_ = true;
     }
@@ -244,7 +244,7 @@ void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
     } else {
       SetDestPos(mLatestLeashPosition);
     }
-    xb3c_ = mDestPos;
+    mPatrolGoal = mDestPos;
     if (GetSearchPath() != nullptr) {
       PathFind(mgr, msg, dt);
     }
@@ -256,7 +256,8 @@ void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Chases the attack target (xa26_), or the last goal when it is gone. xa44_ marks when the chase began.
+// Chases the attack target (xa26_), or the last goal when it is gone. mPursueStartTime marks when
+// the chase began.
 // @ fn_15_5BB4
 void CElitePirate::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
@@ -268,7 +269,7 @@ void CElitePirate::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
     mAlerted = false;
-    xa44_ = mTime;
+    mPursueStartTime = mTime;
     mKnockBackController.EnableAnimReaction(CKnockBackMgr::kAR_Flinch, true);
   }
 }

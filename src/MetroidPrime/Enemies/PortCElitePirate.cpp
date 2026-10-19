@@ -146,16 +146,16 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
 , mSteeringSpeed(1.f)
 , mLastHP(0.f)
 , mTimer(0.f)
-, xa38_(0.f)
+, mXDamagedTimer(0.f)
 , mTime(0.f)
-, xa40_(0.f)
-, xa44_(0.f) // not written by the ctor; the console's heap is zeroed
+, mStuckTime(0.f)
+, mPursueStartTime(0.f) // not written by the ctor; the console's heap is zeroed
 , mLastPushTime(0.f)
 , mClaimedRegion(0) // [?] retail stores 0, though fn_15_1328 tests it against -1
 // The 0x200 flag is the patterned info's encounter byte (+0x120); the radii are rodata 1.0f.
 , mPathFindSearch(nullptr, pInfo.IsAnEncounter() ? 0x201 : 1, pInfo.GetPathfindingIndex(), 1.f,
                   1.f, 0, CPFRegion::kRP_Center)
-, xb3c_(CVector3f::Zero())
+, mPatrolGoal(CVector3f::Zero())
 , mPositionHistory(5.f)
 , mEvent8Active(false)
 , mXDamaged(false)
@@ -178,7 +178,7 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
 , mMeleeDamagePending(false)
 , mKnockPending(false)
 , xc58_(0.f)
-, xc5c_(-1000.f)
+, mShieldUpTime(-1000.f)
 , mShieldDamage(0.f)
 , mShieldHitTime(-1000.f)
 , mShieldAlpha(0.f)
@@ -191,9 +191,9 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
 , xcc4_(CVector3f::Zero())
 , mProjectileInfo(data.mRocket, data.mRocketDamage)
 , mRocketsFired(0)
-, xcfc_(0)
+, mRocketsToFire(0)
 , mRocketPattern(0)
-, xd04_(1)
+, mDefaultRocketPattern(1)
 , mRocketEventSeen(false)
 , mAimBlend(0.f)
 , mShieldAimPos(CVector3f::Zero())
@@ -762,8 +762,13 @@ void CElitePirate::FireRocket(CStateManager& mgr) {
           CVector3f(d.GetY() * 1.2f * s, -d.GetX() * 1.2f * s, 0.f),
           CVector3f(d.GetY() * 3.2f * s, -d.GetX() * 3.2f * s, 0.f),
       };
-      // [?] retail indexes with no bound; the states fire at most four per volley.
-      CVector3f target = player->GetAimPosition(mgr, 0.f) + offsets[mRocketsFired - 1];
+      // fn_15_728C indexes the offsets with `iVar7 = 0xcf8 - 1` and does not clamp. The volley is
+      // armed at four - SpreadShot (fn_15_4D18) stores 0xcfc = 4, ProjectileAttack fires only while
+      // 0xcf8 < 0xcfc - and the retail table is four triplets, so the port keeps the index inside
+      // its own array; 0..3 is unchanged behaviour.
+      const int shot = mRocketsFired < 1 ? 0 : mRocketsFired - 1;
+      const int index = shot > 3 ? 3 : shot;
+      CVector3f target = player->GetAimPosition(mgr, 0.f) + offsets[index];
       if (hint == 0x17) {
         target = CVector3f(target.GetX(), target.GetY(),
                            target.GetZ() + mgr.Random()->Range(6.f, 12.f));
@@ -1275,7 +1280,7 @@ bool CElitePirate::ClearLineOfSight(CStateManager& mgr, const CTriggerData&) con
 
 // @ fn_15_691C
 bool CElitePirate::DonePursuing(CStateManager& mgr, const CTriggerData& data) const {
-  if (xa40_ > 0.5f) {
+  if (mStuckTime > 0.5f) {
     return true;
   }
   const int hint = GetPlayerHintType(mgr);
@@ -1288,10 +1293,10 @@ bool CElitePirate::DonePursuing(CStateManager& mgr, const CTriggerData& data) co
     }
   }
   const CPlayer* player = mgr.GetPlayer(0);
-  if (mLastPushTime <= xa44_) {
+  if (mLastPushTime <= mPursueStartTime) {
     const CVector3f d = player->GetAimPosition(mgr, 0.f) - GetTranslation();
     if (mData.mMaxMeleeRange * mData.mMaxMeleeRange * 4.f <= DistSq(d, CVector3f::Zero())) {
-      if (mTime < xa44_ + 2.5f) {
+      if (mTime < mPursueStartTime + 2.5f) {
         if (ClearLineOfSight(mgr, data) || IsOnJumpHint(mgr)) {
           return true;
         }
@@ -1332,15 +1337,15 @@ bool CElitePirate::InDetectionRange(CStateManager& mgr, const CTriggerData& data
 
 // @ fn_15_6368
 bool CElitePirate::InPosition(CStateManager&, const CTriggerData&) const {
-  return DistSq(xb3c_, GetTranslation()) < 25.f;
+  return DistSq(mPatrolGoal, GetTranslation()) < 25.f;
 }
 
 // @ fn_15_6D94
 bool CElitePirate::NotReachedTarget(CStateManager&, const CTriggerData&) const {
-  if ((xc5c_ + mTime) * 0.5f < mLastPushTime) {
+  if ((mShieldUpTime + mTime) * 0.5f < mLastPushTime) {
     return true;
   }
-  return xc5c_ + 15.f < mTime;
+  return mShieldUpTime + 15.f < mTime;
 }
 
 // @ fn_15_4E7C
@@ -1362,8 +1367,13 @@ bool CElitePirate::PoweredDown(CStateManager&, const CTriggerData&) const {
 bool CElitePirate::PoweredUp(CStateManager&, const CTriggerData&) const { return mEvent7; }
 
 // @ fn_15_60D4
-// [?] retail's virtual call at vt+0x194 is the ShieldKilled slot (fn_15_6D68); the HP/knock-back
-// ratio is GetHealthInfo()'s two floats read as {first, second}.
+// Retail's virtual call at vt+0x194 is word 101 of lbl_15_data_634 = fn_15_6D68 (ShieldKilled);
+// its neighbours are fn_15_60D4 itself (word 100) and fn_15_18AC (102, ShockwaveIsNext). So in a
+// no-attack hint region (fn_15_15F8 answers 0x1b) the shield has to be broken first.
+// The test is `0xc5c + (HealthInfo[1] / HealthInfo[0]) * 1.7 + 0.3 < 0xa3c` (fn_15_60D4): more
+// than 0.3 s plus 1.7 s scaled by the remaining HP fraction (current HP at +4 over the initial HP
+// at +0, the same ratio fn_15_8580 scales to percent) since the shield went up, so a damaged
+// Ingsmasher charges sooner.
 bool CElitePirate::ReadyToCharge(CStateManager& mgr, const CTriggerData& data) const {
   if (GetPlayerHintType(mgr) == kHintNoAttack) {
     if (!ShieldKilled(mgr, data)) {
@@ -1371,7 +1381,7 @@ bool CElitePirate::ReadyToCharge(CStateManager& mgr, const CTriggerData& data) c
     }
   }
   const CHealthInfo* health = GetHealthInfo();
-  return xc5c_ + (health->GetKnockBackResistance() / health->GetHP()) * 1.7f + 0.3f < mTime;
+  return mShieldUpTime + (health->GetHP() / health->GetInitialHP()) * 1.7f + 0.3f < mTime;
 }
 
 // @ fn_15_60BC
@@ -1395,7 +1405,11 @@ bool CElitePirate::ShockwaveIsNext(CStateManager&, const CTriggerData&) const {
 bool CElitePirate::ShotAt(CStateManager&, const CTriggerData&) const { return mXDamaged; }
 
 // @ fn_15_684C
-// [?] x81c_ (zeroed by the ctor, never written in this slice) reads as an "alert here" position.
+// False once the alert latch (0xc10 bit 0) is set, and false while it stands within 5 m of x81c_ -
+// the place it powered up in: fn_15_5F08 copies the actor's own translation there at PowerUp, and
+// the ctor only zeroes it; nothing else in the REL writes it. The distance is measured from this
+// actor's own position (0x54/0x58/0x5c), not the player's, so the reading is "do not alert at the
+// spot where I powered up", not an alert position for the player.
 bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   if (xc10_01_) {
     return false;
@@ -1518,7 +1532,7 @@ bool CElitePirate::TargetUnreachable(CStateManager& mgr, const CTriggerData&) co
   if (hint == kHintJumpDown || hint == kHintNoAttack) {
     return true;
   }
-  return xa40_ > 1.f;
+  return mStuckTime > 1.f;
 }
 
 // @ fn_15_62CC
@@ -1535,7 +1549,10 @@ void CElitePirate::SelectTarget(CStateManager& mgr, float) {
 }
 
 // @ fn_15_54AC
-// [?] xd04_ (= 1 from the ctor) is the pattern repeated 20% of the time, otherwise the other one.
+// Sets the rocket pattern for the coming attack state: a jump-down hint (0x17) forces the spread,
+// otherwise Random(0,1) >= 0.8 copies mDefaultRocketPattern (0xd04) and the other 80% takes its
+// opposite. fn_15_A190 (the ctor, `param_1[0x341] = 1`) is 0xd04's only writer in the REL, so the
+// 20% is a fixed spread and the 80% a homing salvo - not a repeat of the previous pick.
 void CElitePirate::PickAttackType(CStateManager& mgr, float) {
   if (!mgr.IsRandomAvailable()) {
     return;
@@ -1543,8 +1560,8 @@ void CElitePirate::PickAttackType(CStateManager& mgr, float) {
   if (GetPlayerHintType(mgr) == kHintJumpDown) {
     mRocketPattern = 1;
   } else if (mgr.Random()->Range(0.f, 1.f) >= 0.8f) {
-    mRocketPattern = xd04_;
+    mRocketPattern = mDefaultRocketPattern;
   } else {
-    mRocketPattern = xd04_ == 0 ? 1 : 0;
+    mRocketPattern = mDefaultRocketPattern == 0 ? 1 : 0;
   }
 }
