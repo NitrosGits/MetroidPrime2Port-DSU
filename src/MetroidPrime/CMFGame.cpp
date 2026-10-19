@@ -369,11 +369,33 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           if (mStateManager->PrepareAreaTransition(mStateManager->GetPendingDockArea())) {
             SetFlowState(kFS_PortalTransition);
             mPortalTransition = mStateManager->TakePortalTransition();
+#ifdef TARGET_PC
+            // Port: a warp handed this hop over, so it is not a dock crossing. Its portal transition
+            // can never become ready while the port holds the destination's stream (see
+            // CStateManager::PortPlaceArrivalTick), and kTP_Load then waits on it forever: a Temple
+            // Grounds sweep hung entering the ending area this way. Drop it, as the arrival does.
+            if (mStateManager->PortIsWarpHandoff() && !mPortalTransition.null()) {
+              std::fprintf(stderr, "[warp] the game's transition is a warp's: dropping its portal "
+                                   "transition\n");
+              mPortalTransition = nullptr;
+            }
+#endif
             mPortalTransitionTime = 0.f;
             if (!mGuiManager.IsNull()) {
               mGuiManager->StopSounds(*mStateManager);
             }
           } else {
+#ifdef TARGET_PC
+            // Port: the other silent way this flow can stall - PrepareAreaTransition refuses while
+            // an area's transactions are still in flight, and the retry prints nothing. Name it once
+            // per 120 attempts so a hung run says which of the two paths it is on.
+            static unsigned sPortPrepareRetries = 0;
+            if ((++sPortPrepareRetries % 120u) == 1u) {
+              std::fprintf(stderr, "[warp] the game's transition cannot prepare area %d yet (retry "
+                                   "%u)\n",
+                           mStateManager->GetPendingDockArea().Value(), sPortPrepareRetries);
+            }
+#endif
             mTransitionFadeTime = 1.f;
           }
           mStateManager->SetRandomAvailable(false);

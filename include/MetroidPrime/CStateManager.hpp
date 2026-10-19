@@ -568,6 +568,11 @@ public:
   bool HasSaveGameScreen() const { return !mSaveGameScreen.null(); }
   TAreaId GetPendingDockArea() const { return mPendingDockArea; }
   void SetPendingDockArea(TAreaId area) { mPendingDockArea = area; }
+#ifdef TARGET_PC
+  // Port: true while the game's own transition is carrying a warp's hop, rather than a real dock
+  // crossing. Such a hop must not wait on a portal transition (see CMFGame's kFS_InGame branch).
+  bool PortIsWarpHandoff() const { return mPortSpawnAtArea != kInvalidAreaId; }
+#endif
   bool GetWantsToEnterMessageScreen() const { return mDeferredTransition == kSMT_MessageScreen; }
 
   const CCameraManager* GetCameraManager(int playerIndex) const {
