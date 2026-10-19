@@ -120,6 +120,7 @@ protected:
   void SetBodyVulnerable(CStateManager& mgr, bool vulnerable);
   void UpdatePlayerSideMaterials(CStateManager& mgr);
   CVector3f DirectionFromRandomNode(CStateManager& mgr) const;
+  CVector3f DirectionToPlayerAim(const CStateManager& mgr) const;
   CVector3f PlayerAimPoint(const CStateManager& mgr) const;
   TUniqueId NearestNodeToPlayer(CStateManager& mgr) const;
   void InitGrowths();

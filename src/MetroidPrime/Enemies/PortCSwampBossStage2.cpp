@@ -485,6 +485,14 @@ CVector3f CSwampBossStage2::DirectionFromRandomNode(CStateManager& mgr) const {
   return node ? (center - node->GetTranslation()).AsNormalized() : CVector3f::Zero();
 }
 
+// fn_79_6134: normalised direction from the body towards the player's aim point.
+CVector3f CSwampBossStage2::DirectionToPlayerAim(const CStateManager& mgr) const {
+  if (mgr.GetPlayer(0) == nullptr) {
+    return GetTransform().GetForward();
+  }
+  return (PlayerAimPoint(mgr) - GetTranslation()).AsNormalized();
+}
+
 void CSwampBossStage2::UpdateFacingMaterial(CStateManager& mgr) {
   // TODO(uncertain): not decoded. Retail's Lurk (fn_79_9A3C) turns the body towards the player
   // here through fn_79_6134, which is not ported yet.
@@ -776,12 +784,42 @@ void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_8D90
 void CSwampBossStage2::SpitWater(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      const CPlayer* player = mgr.GetPlayer(0);
+      const CVector3f target = player ? player->GetTranslation() : GetTranslation();
+      const pas::ESeverity severity =
+          mAttackType == 0 ? pas::kS_Zero : (mAttackType == 1 ? pas::kS_One : pas::kS_Two);
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(severity, target, false));
+    }
+    // Retail stores the direction to the player's aim point as the steering target vector.
+    BodyController()->CommandMgr().SetTargetVector(DirectionToPlayerAim(mgr));
+    RequestMove(TargetPoint(mgr));
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mSpitNode = kInvalidUniqueId;
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_8BB4
 void CSwampBossStage2::SpitBarrage(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLoopAttackCmd(mHeadMode ? pas::kLAT_Two : pas::kLAT_Zero, true));
+    } else if (mBarrageCount == CurrentPhase().unknown_0x2b0bfd51) {
+      BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);
+    }
+    BodyController()->CommandMgr().SetTargetVector(DirectionToPlayerAim(mgr));
+    RequestMove(TargetPoint(mgr));
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mBarrageCount = 0;
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_8A3C
@@ -793,7 +831,7 @@ void CSwampBossStage2::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
     RequestMove(TargetPoint(mgr));
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-  } else {
+  } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
   }
 }
@@ -825,12 +863,71 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_7BE0
 void CSwampBossStage2::Circle(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    // Light phases only, and only while the circle is being counted: enough damage in one circuit
+    // ends it.
+    const bool lightPhase = mPhase == 0 || mPhase == 2;
+    const float threshold = mPhase == 0 ? mData.unknown_0xf55924da : mData.unknown_0x83bc1de7;
+    if (lightPhase && threshold < mCircleDamage && mCircleCounting) {
+      mCircleDamaged = true;
+      mCircleDone = true;
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mClampHealth = false;
+    mCircleDone = false;
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    if (mCircleDone) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCGenerateCmd(mSwoopSide ? pas::kGType_Three : pas::kGType_Four, CVector3f::Zero(),
+                         false, false));
+    }
+    mClampHealth = true;
+    mCircleCounting = false;
+  }
 }
 
 // fn_79_7870
 void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopReaction)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopHitReactionCmd(pas::kRT_Three));
+    }
+    BodyController()->FaceDirection(mReelDir, dt);
+    RequestMove(CenterPosition(mgr));
+    UpdatePlayerSideMaterials(mgr);
+    // The same bit also holds the target effects on; they come up a second into the reel.
+    if (!mSuppressWaterSfx && StateMachineState().GetTime() > 1.f) {
+      SetGrowthTargetEffects(mgr, true);
+      mSuppressWaterSfx = true;
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mReelDir = DirectionFromRandomNode(mgr);
+    SetGrowthsActive(mgr, true);
+    SetBodyVulnerable(mgr, false);
+    mGrowthDestroyed = false;
+    mGrowthsVulnerable = true;
+    mPendingFlinch = 0.f;
+    BodyController()->SetTurnSpeed(BodyController()->GetTurnSpeed() * 0.125f);
+    SendScriptMsgs(kSS_InternalState10, mgr, kInvalidUniqueId, kSM_None);
+    // TODO(uncertain): retail also switches the missile repeller off here (0xee0, which is
+    // CMissileRepeller::mActive); it has no setter upstream.
+    mSuppressWaterSfx = false;
+    for (int i = 0; i < mGrowthBroken.size(); ++i) {
+      mGrowthBroken[i] = false;
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mGrowthVulnerableTime = 0.5f;
+    mHeadHealth = CurrentPhase().health;
+    BodyController()->SetTurnSpeed(BodyController()->GetTurnSpeed() * 8.f);
+    mAttackIndex = 0;
+    AddMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
+    // TODO(uncertain): retail switches the missile repeller back on (CMissileRepeller::mActive).
+    SetGrowthTargetEffects(mgr, false);
+  }
 }
 
 // fn_79_76EC
@@ -845,7 +942,7 @@ void CSwampBossStage2::Recover(CStateManager& mgr, EStateMsg msg, float dt) {
     }
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-  } else {
+  } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
   }
 }
@@ -858,7 +955,7 @@ void CSwampBossStage2::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
     }
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-  } else {
+  } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
     SetBodyVulnerable(mgr, true);
   }
@@ -866,7 +963,20 @@ void CSwampBossStage2::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_7308
 void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    BodyController()->FaceDirection(CenterPosition(mgr) - GetTranslation(), dt);
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_One, true));
+    } else if (mFlyersLeft < 1) {
+      BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mFlyersLeft = CurrentPhase().unknown_0x2e7e55f2;
+    mDropFlyerCooldown = mData.unknown_0x8fe0bf01;
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_72FC
