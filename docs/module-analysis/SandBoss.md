@@ -149,11 +149,12 @@ ids, builds the armour (`fn_55_6A68`) and turns off the shadow.
   (`kMT_Solid`, the `1 << lbl_55_data_73C` word). Then `CGameProjectile::CanCollideWith(player, mgr)`
   (player = `mgr+0x14FC`): a nearer hit calls the player's vtable +0x4C with (beam, mgr), replaces the
   result, sets `idOut` and 0x3F6. The near list and static-geometry test are unused.
-- Volley geometry (3ACC/3F44, and 3434 sweeping the ends): each participating sibling contributes a
-  point; the beams' start is the centroid (`/3`, `/2`), each end is `bossPos + radius * dir` with
-  `radius` = `tripleCharge.innerRadius` (0x8C4) / `doubleCharge.innerRadius` (0x87C) and `dir` the
-  normalized axis between the worms (triple: the three pairwise edges, double: one axis and its
-  horizontal mirror, x and y negated). Sounds: `tripleCharge.sound_ChargeBeam` (0x8DC) / `doubleCharge.sound_ChargeBeam`
+- Volley geometry (3ACC/3F44, and 3434 sweeping the ends): each participating sibling contributes its
+  mouth-locator point; the beams' start is the centroid (`/3`, `/2`), each end is `bossPos + radius * dir`
+  with `radius` = `tripleCharge.innerRadius` (0x8C4) / `doubleCharge.innerRadius` (0x87C) and `dir` a
+  normalized sum of the siblings' facings (`GetColumn(kDY)`, +0x28/0x38/0x48; triple: the three
+  neighbouring pairs, double: the sum and its horizontal mirror, x and y negated), falling back to one
+  worm's facing when the sum is not magnitude-safe. Sounds: `tripleCharge.sound_ChargeBeam` (0x8DC) / `doubleCharge.sound_ChargeBeam`
   (0x894). 0x8C8 = `tripleCharge.outerRadius` (fn_55_3434 oscillates between the two radii).
 - `fn_55_2D40`: `TLdrToBeamInfo(chargeBeamInfo, 0x91 | flag ? 0x100 : 0)`, `AllocateUniqueId`,
   `rs_new SandBossChargeBeam(mChargeBeamInfo.Token() (0xE28), beamInfo, uid, area, owner, plane)`;
