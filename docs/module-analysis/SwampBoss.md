@@ -60,6 +60,10 @@ Code functions: IncrementMisses 25F4, SetSplashRotation 5C30, ShreddersOn 2590, 
 
 ## Stage2 (module 79) — verified
 
+Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata
+constants: [SwampBoss-stage2.md](SwampBoss-stage2.md). Host body: `PortCSwampBossStage2.cpp`
+(skeleton: loader, ctor, Think, AcceptScriptMsg, triggers, Lurk; other states are stubs).
+
 | What | Value |
 |---|---|
 | Entry | `fn_79_140` sets `SSwampBossStage2_FuncPtrs` (`lbl_79_bss_8`) to loader `fn_79_170` |
