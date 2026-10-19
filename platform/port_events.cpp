@@ -14,6 +14,8 @@
 #include "port_input.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_prompts.h"
+#include "port_textures.h"
 #include "port_touch.h"
 #include "port_warp.h"
 
@@ -392,5 +394,9 @@ bool PortPumpEvents() {
   PortInputDevices::PollGyro();
   PADStatus pad0 = PortInputDevices::Poll();
   PADSetPortOverride(0, &pad0);
+  // A device or pack change requested since the last iteration swaps the replacement set here,
+  // and the binding icons follow the input used last (both throttle themselves).
+  PortTextures::Poll();
+  PortPrompts::Poll();
   return false;
 }

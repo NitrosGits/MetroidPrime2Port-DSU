@@ -382,7 +382,8 @@ if(AURORA_SDL3_TARGET)
         platform/port_overlay_search.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/port_ui_common.cpp platform/input/port_input_remap_ui.cpp
-        platform/input/port_input_devices.cpp)
+        platform/input/port_input_devices.cpp
+        platform/port_textures.cpp platform/port_prompts.cpp)
     target_include_directories(mp_port_audio PRIVATE
         platform/include
         extern/aurora/include

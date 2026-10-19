@@ -15,6 +15,7 @@
 #include "port_harness.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_prompts.h"
 #include "touch_pad.h"
 
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -655,9 +656,9 @@ bool PauseScreenOpen() { return PortHarness::FlowState() == kPaused; }
 bool OverlayVisible() { return PortOverlay::Visible(); }
 
 void NoteDevice(bool xboxLayout) {
-  // MP1 reaches `PortPrompts::NoteTouchInput` here; MP2 does not build its prompt module yet,
-  // so the layout is recorded for it.
+  // The prompt icons follow the on-screen layout while touch is the active input.
   sDeviceXbox.store(xboxLayout, std::memory_order_release);
+  PortPrompts::NoteTouchInput(xboxLayout);
 }
 
 bool DeviceIsXbox() { return sDeviceXbox.load(std::memory_order_acquire); }

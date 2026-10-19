@@ -66,10 +66,13 @@ extern void* gPortGameHeapHi;
 #include "port_build_info.h"
 #include "port_console.h"
 #include "port_entry.h"
+#include "port_env.h"
 #include "port_breadcrumb.h"
 #include "port_logfile.h"
 #include "port_save.h"
 #include "port_overlay.h"
+#include "port_prompts.h"
+#include "port_textures.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
 
@@ -753,7 +756,9 @@ int main(int argc, char** argv) {
       .resourcesPath = nullptr,
       .desiredBackend = BACKEND_AUTO,
       .vsync = false, // the `vsync` setting (platform/port_overlay.cpp) is the source of truth
-      .allowTextureDumps = false,
+      // MP2_DUMP_TEXTURES=1 writes every texture the game loads to <cache>/texture_dumps, named
+      // as a replacement pack must name it.
+      .allowTextureDumps = port::EnvFlag("MP2_DUMP_TEXTURES"),
       .windowWidth = static_cast< uint32_t >(widescreen ? 1280 : 960),
       .windowHeight = 720u,
       .mem1Size = MEM1_DEFAULT_SIZE,
@@ -764,6 +769,37 @@ int main(int argc, char** argv) {
   // Keep the internal framebuffer at the game's aspect rather than the window's,
   // so a mismatched window shape letterboxes instead of stretching.
   AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);
+
+  // Texture replacements (platform/port_textures.cpp) and the binding icons drawn over the game's
+  // button prompts (platform/port_prompts.cpp), as in the Prime 1 port: the built-in set is
+  // MP2_TEXTURES, else a `textures` folder beside the executable (on Android, in the user
+  // directory), and the user's pack MP2_USER_TEXTURES, else <user>/user_textures. Both need
+  // Aurora's texture registry, so they start after aurora_initialize.
+  {
+    std::string textures;
+    if (const char* env = port::EnvString("MP2_TEXTURES"); env != nullptr && env[0] != '\0') {
+      textures = env;
+    } else {
+#if defined(__ANDROID__)
+      const std::string base = touchUser != nullptr ? std::string(touchUser) : std::string();
+#else
+      const std::string base = ExecutableDir(argc > 0 ? argv[0] : nullptr);
+#endif
+      std::error_code error;
+      if (!base.empty() && std::filesystem::is_directory(base + "/textures", error)) {
+        textures = base + "/textures";
+      }
+    }
+    std::string userTextures;
+    if (const char* env = port::EnvString("MP2_USER_TEXTURES"); env != nullptr && env[0] != '\0') {
+      userTextures = env;
+    } else if (touchUser != nullptr && touchUser[0] != '\0') {
+      userTextures = std::string(touchUser) + "/user_textures";
+    }
+    PortTextures::Initialize(textures.empty() ? nullptr : textures.c_str(),
+                             userTextures.empty() ? nullptr : userTextures.c_str());
+    PortPrompts::Initialize(textures.empty() ? nullptr : textures.c_str());
+  }
 
   const std::string discImage =
 #if defined(__ANDROID__)

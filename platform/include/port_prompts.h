@@ -8,9 +8,22 @@
 // key or mouse button is reflected in game. The icons are pre-rendered per
 // input by tools/make_prompt_glyphs.py into <textures>/bindings/.
 //
-// Only the keyboard/mouse set follows the bindings; with a pad the static
-// per-device icons already match the pad's own labels.
+// A keyboard follows the key bindings and a pad follows its button mapping. The
+// icons are registered above the static per-device set, which stays in place
+// for any prompt the module has no icon for.
 namespace PortPrompts {
+// The device the player last used: "keyboard", the connected pad's type (see
+// PortTextures::PadDeviceName), or the touch overlay's layout ("xbox" or
+// "gamecube"). MP2_TEXTURE_DEVICE overrides it. Both the prompts and the static
+// texture set follow this.
+const char* ActiveDevice();
+
+// True while the keyboard or mouse is the input the player last used, ignoring
+// the MP2_TEXTURE_DEVICE override. The Prime 1 port holds rumble off then, so a
+// pad left plugged in does not shake while the game is played on keyboard/mouse;
+// nothing in Echoes asks yet.
+bool KeyboardActive();
+
 // Call once after Aurora is up, with the same texture root the replacements
 // came from (null or empty disables the module).
 void Initialize(const char* textureRoot);
