@@ -149,41 +149,44 @@ movement 0 (ground), collider 1, body 1 [proven: `fn_15_A190`'s register/stack a
 `__ct__10CPatternedF12EPatternedAI...`]. All offsets below are [proven] by a store in `fn_15_A190`
 unless tagged.
 
-| off | member | proof / note |
+| off | member (host name) | proof / note |
 |---|---|---|
-| 0x7c0 | int = −1 | `stw r0(-1), 0x7c0` |
-| 0x7c4 | 0x64-byte sub-object copied from **pInfo+0x74** | `fn_15_2B08(this+0x7c4, pInfo+0x74)`; identity [?] |
-| 0x7f4 | int 0 | |
-| 0x7f8 / 0x804 / 0x810 / 0x81c | four zeroed `CVector3f` | |
-| 0x828 | **`CElitePirateData`, 0x198** | `fn_15_B360(this+0x828, data)`; size = 0x9c0 − 0x828 [probable] |
-| 0x9c0 | `CCollidableAABox` (0x28) | `__ct__19CCollisionPrimitiveFRC13CMaterialList` + `__vt__16CCollidableAABox`, six floats from `GetBoundingBox` |
-| 0x9e8 | `CToken` for **data+0x34**, valid byte at 0x9f4 | `gpSimplePool->GetObj(SObjectTag('PART', data+0x34))` + `Lock` |
-| 0x9f8 / 0x9fa | `TUniqueId` ×2 = `kInvalidUniqueId` | |
-| 0x9fc / 0xa10 | int 0 ×2 | |
-| 0xa24 / 0xa26 | `TUniqueId` ×2 = `kInvalidUniqueId` | |
-| 0xa28 | float = the base's 0x3c8 (eye/bbox height?) | |
-| 0xa2c / 0xa30..0xa40 / 0xa48 | floats: 1.0 `rodata_DC`, 0.0 `rodata_114` ×5, 0.0 | |
-| 0xa4c | int 0 | |
-| 0xa50 | **`CPathFindSearch` (0xec)** | `__ct__15CPathFindSearchFP7CPFAreaUiiffUi...`; `fn_15_0` returns this+0xa50 |
-| 0xb3c | `CVector3f` zeroed | (0xa50 + 0xec = 0xb3c, so the path search is 0xec as in CIng) |
-| 0xb48 | 0x18-byte object, DOL `fn_801931E0` with 5.0f (`rodata_100`) | identity [?] |
-| 0xc10 | 7 flag bits cleared | rlwimi chain |
-| 0xc14 | int 0 | |
-| 0xc28 / 0xc2c | int −1 ×2 (uids?) | |
-| 0xc30 | object built by `fn_15_B748(this+0xc30, data+0x00)`: a **'FSM2'** token | [proven] tag + asset |
-| 0xc3c | int 6 | |
-| 0xc40 | initial body state: 6, then 0xa / 0xb / 0xc by `fn_15_9988(this, id)` (a `CPASAnimParmData`-based test) | |
-| 0xc44 / 0xc48 / 0xc4c / 0xc50 / 0xc54 | flag bit; int 1, int 1; float `rodata_194` = −1000; 2 flag bits | |
-| 0xc58 | 0x58-byte object built by `fn_15_B080` (floats incl. −1000, several flags) | [proven] call; identity [?] |
-| 0xcb0 / 0xcb4 | int 1 / int 7 | |
-| 0xcb8 / 0xcc4 | two zeroed `CVector3f` | the dtor checks 0xcc4 |
-| 0xcd0 | **`CProjectileInfo` (0x28)** | `__ct__15CProjectileInfoFUiRC11CDamageInfo(data+0x168, data+0x16c)`; `fn_15_52C8` returns this+0xcd0 |
-| 0xcf8 / 0xcfc / 0xd00 / 0xd04 / 0xd08 | int 0 ×3, int 1, bool | |
-| 0xd0c..0xd2c | float 0.0, zeroed `CVector3f`, int 0 ×2, 4 flag bits, float 0.0, bool | |
-| 0x620 | `CAiKnockBackMgr` (base): `EnableAllAnimReactions(false)` then `EnableAnimReaction(1 = kAR_Flinch, true)` | [proven] |
-| 0x681 | five bits of a base flag byte cleared | [proven] |
+| 0x7c0 | int = −1 (`x7c0_`) | `stw -1, 0x7c0`; use [?] |
+| 0x7c4 | `CDamageVulnerability` copy of the patterned info's (`mBodyVulnerability`) | `fn_15_2B08(this+0x7c4, pInfo+0x74)`; read by `fn_15_27FC` [proven] |
+| 0x7f4 | **shield `CCollisionActorManager`** (one "Shield" OBB on L_Palm_LCTR) | built by `fn_15_36CC` [proven] |
+| 0x7f8 / 0x804 | L / R palm positions (`PreRender`, `fn_15_83C0`) | [proven] |
+| 0x810 / 0x81c | zeroed `CVector3f` | use [?] |
+| 0x828 | **`CElitePirateData`, 0x190** | ends at 0x9b8, the next member [proven] |
+| 0x9b8 | **body `CCollisionActorManager`** (6 subdivided + 8 sphere joints) | `fn_15_36CC` [proven] |
+| 0x9c0 | `CCollidableAABox` (`GetCollisionPrimitive`, `fn_15_8`) | rebuilt by the bbox setup `fn_15_2CFC` |
+| 0x9e8 | optional `'PART'` token for data+0x34 | ctor |
+| 0x9f8 / 0x9fa | head collider uid / **grenade launcher uid** | `fn_15_3574`, `fn_15_2564` |
+| 0x9fc / 0xa10 | **R** / **L** arm collider lists (`reserved_vector<TUniqueId,8>`) | `fn_15_3574` via `fn_15_2F10` [proven] |
+| 0xa24 / 0xa26 | shield collider uid / uid [?] | `fn_15_36CC` |
+| 0xa28 | `mSpeed` at construction (`mBaseSpeed`) | Think doubles it with the shield up [proven] |
+| 0xa2c | steering speed = walk speed × 0.99 / max speed (XCRT) | [proven] |
+| 0xa30 / 0xa34 / 0xa3c | HP at the last vulnerability set / count-down timer / accumulated time | `fn_15_27FC`, `fn_15_27DC`, Think |
+| 0xa38 / 0xa40 / 0xa44 | floats [?] | |
+| 0xa48 / 0xa4c | time of the last push-back / claimed path region (ctor stores **0**, `fn_15_1328` tests −1) [?] | |
+| 0xa50 | `CPathFindSearch`; flags `IsAnEncounter() ? 0x201 : 1` | [proven] |
+| 0xb48 | `SPositionHistory(5.f)` (DOL `fn_801931E0`) | `fn_15_2204` [proven] |
+| 0xc10 | flags: event 8, XDamaged, alerted ×2, launcher-Ing-possessed, 3 [?] | |
+| 0xc2c | **attack kind**: 2/8 rocket, 4 melee, 7 shock wave; 3/5/6 skip push-back | DoUserAnimEvent, `fn_15_8FB8` |
+| 0xc30 | `'FSM2'` token (`data+0x00`) | [proven] |
+| 0xc40 | initial idle: **1**, then 10/11/12 if `FindBestAnimation(state 5, 0, n)` = the editor's initial anim | [proven] |
+| 0xc44 / 0xc50 / 0xc54 | event-7 bit / last melee time (−1000) / melee + knock pending bits (event 17) | |
+| 0xc58..0xc6c | `fn_15_B080` block: 0, −1000, shield damage, shield hit time, shield alpha, **polarity** (0 dark, 1 light, 2 none) | XDMG, Render [proven] |
+| 0xc70 / 0xc80 / 0xc94 / 0xc9c | light / dark shield-pop `'PART'`, hand `CElementGen`, shield `CSkinnedModel` | `fn_15_3C5C`, `fn_15_8E34`, `fn_15_8080` |
+| 0xcac | 0x40 shield-pop pending, 0x80 double speed | Think |
+| 0xcb0 | 1; **5** selects the double shock wave (`fn_15_1A48`) | |
+| 0xcd0 | `CProjectileInfo(data.rocket, data.rocketDamage)` | `fn_15_728C` |
+| 0xcf8 / 0xd00 / 0xd08 | rockets fired / rocket pattern (0 homing, 1 spread) / event 18 seen | `fn_15_728C` |
+| 0xd0c / 0xd10 | aim blend towards the shield / shield aim position | `fn_15_8D84`, `fn_15_7EEC` |
+| 0xd28 / 0xd2c | energy glow / absorbing | `fn_15_8EA0` |
+| 0x620 | knock-back: all anim reactions and burn/explode-death/burn/slow/freeze off, then `kAR_Flinch` on | [proven] |
+| 0x681 | the knock-back mgr's flag byte (+0x61): the five Enable*(false) above | [proven] |
 
-### CElitePirateData (0x198 at 0x828)
+### CElitePirateData (0x190 at 0x828)
 
 Built on the loader's stack by `fn_15_B82C` and copied in by `fn_15_B360`. Its parameter list is
 long and mixed (8 float registers, then 7 integer/pointer registers, then 24 stack slots), so only
@@ -195,8 +198,8 @@ the fields its *reader* (`fn_15_A190`) touches are proven:
 - **+0x08** = a `CDamageInfo` copied field-by-field out of the builder's damage argument
   (`mWeaponMode`, four floats, two u16 sfx ids) = `SLdrElitePirate.meleeDamage` [proven].
 - **+0x34** = an integer the ctor tests against −1 and, when set, loads as a **'PART'** asset
-  [proven offset and use; which property reaches it is [?] - the builder's frame offsets could not
-  be mapped back to its parameter list].
+  [proven offset and use]; the loader now feeds it `alwaysFF` (0x06cf4324) [probable].
+- **+0x04** = the editor's initial animation, which the ctor matches against idle 10/11/12 (0xc40).
 - **+0x168 / +0x16c** = the **rocket** projectile asset and its `CDamageInfo` (the
   `CProjectileInfo` at 0xcd0) [proven].
 - 0x144..0x164 = nine floats (shock-wave/taunt range block), 0x188/0x18c = two ints
@@ -242,25 +245,25 @@ the loader returns null when it is clear) · `LdrToDamageInfo` ×2 · `LdrToAnim
 
 ## 5. Status and open questions
 
-**Milestone 1 is implemented**: the loader, the constructor (base arguments, the path search, the
-projectile info, the knock-back reaction setup), the vtable overrides that matter (Think,
-AcceptScriptMsg, PreRender, AddToRenderer, Render, DoUserAnimEvent, TakeDamage, the three CAi
-accessors, ProjectileInfo / GetSearchPath / GetPointSearchPath / GetRagDoll / GetAttackTarget) and
-the port-only module registration. Everything else is a once-per-method `[elitepirate]` `StandIn`
-log, and the body controller is activated on `kSM_Create` and in `Think` (retail overrides neither
-`PreThink`, `Touch`, `Death` nor `KnockBack`, so those cannot be the activation point).
+**Slice 2 (2026-10-19) is implemented** in `PortCElitePirate.cpp`, each function behind a
+`// @ fn_15_XXXX` marker checked against the pseudocode: the ctor (`A190`, bbox `2CFC`), Think
+(`9598`: install the FSM via `9840` when it has no state, then launcher sync, both collision
+managers, speed, timers, position history, launcher transform, aim blend, shield/glow alpha,
+push-back `8FB8`), AcceptScriptMsg (`8580`), PreRender/Render/shield render/portal plane
+(`83C0`/`8294`/`8080`/`800C`), GetAimPosition (`7EEC`), DoUserAnimEvent (`7BFC`), the collision
+setup (`36CC`/`3574`/`2F10`), the shield vulnerability (`27FC`), the launcher (`2564`/`251C`/
+`2394`/`2448`), shock wave (`70D4`), rockets (`728C`), melee (`7004`), player pushes and rumble
+(`1B60`/`1C7C`), the shield pop (`3C5C`) and the AI-hint queries (`1788`/`15F8`). The body
+controller is activated on XCRT (retail). The 31 triggers / 21 states / 2 code functions are
+installed in `fn_15_9840`'s order; their bodies are `StandIn` shells (triggers return false).
 
-What is **not** established:
+Open:
 
-1. ~~Where the FSM is installed~~: resolved in section 0 (`fn_15_9840`, from `Think`).
-2. Which property reaches `CElitePirateData+0x34` (the 'PART' asset) and the rest of the builder's
-   parameter list: `fn_15_B82C`'s frame offsets could not be mapped back to its parameters.
-3. The identities of `0x7c4` (pInfo+0x74 copied), `0xb48` (DOL `fn_801931E0`), `0xc58`
-   (`fn_15_B080`), `0xc30` (the FSM2 token object) and the `fn_15_BC` (slot 45) accessor.
-4. ~~The FSM's function names~~: resolved in section 0.
-5. The enemies' own combat behaviour: melee, the dark/light shields, the two shock waves, the
-   rocket/rocket-launcher, energy absorption and the Ing-possession properties. MP1's
-   `CElitePirate.cpp` is the reference for the shared half (shields, shock waves, taunt, melee).
+1. The FSM bodies (the next slice): they need `SetShieldVulnerability`, `SendLauncherMsg`,
+   `GetPlayerHintType`, `IsOnJumpHint`, the attack kind (0xc2c) and the timers above.
+2. `[?]` members: 0x7c0, 0x810/0x81c, 0xa26, 0xa38/0xa40/0xa44, 0xc14/0xc28/0xc3c/0xc48/0xc4c,
+   0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
+3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
 
 ## 6. Verified in game, and how its actors are reached (2026-10-16, later session)
 

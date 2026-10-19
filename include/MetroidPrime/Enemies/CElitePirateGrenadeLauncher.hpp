@@ -25,6 +25,12 @@ public:
   void Render(const CStateManager& mgr) const override;
 
   void SetSlowedSpeed(float speed);
+#ifdef TARGET_PC
+  // Inline stores in the Ingsmasher's Think (REL 15, fn_15_9598) and rocket code (fn_15_728C).
+  void SetDamageAddColor(const CColor& color) { mDamageAddColor = color; } // 0x1f8
+  void SetFollowPlayer(bool follow) { mFollowPlayer = follow; }            // 0x200 bit 0x20
+  const CTransform4f& GetTurretTransform() const { return mTurretTransform; } // 0x204
+#endif
 
 private:
   bool IsTrackingPlayer() const;
