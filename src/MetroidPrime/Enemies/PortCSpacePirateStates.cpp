@@ -268,8 +268,46 @@ void CSpacePirate::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Shuffle state (fn_72_8670)");
 }
 
+// Retail fn_72_8464 rotates the pirate in place towards the target position it remembers.
+// Activate caches GetTargetPos in xbc4_ (asm 0x8504-0x8520: the CB30 result is stored to
+// 0xbc4/0xbc8/0xbcc, then the delta to the actor's own 0x54 translation is built with rodata
+// 0xB9C = 0 stored over its Z, so the test is horizontal). The forward axis it dots that with is
+// read at 0x28/0x38/0x48 off the actor - transform column 1, i.e. GetTransform().GetForward() -
+// and the cut-off is rodata 0xB64 = 0.8 (asm 0x855C fcmpo): a target less than 0.8 ahead asks for
+// a fresh turn. Update (0x8588) waits for CanIssueCommand(kAS_Turn) and then, only while the full
+// 3-D delta to the cached spot is magnitude-safe (this one is not flattened), delivers
+// CBCLocomotionCmd(zero move, normalized delta as the face vector, rodata 0xB54 = 1.0 weight; the
+// zero vector is stored first at 0x50-0x58, the normalized delta at 0x5c-0x64) and otherwise
+// gives up on the turn, kAS_Over. The guard position runs for every message; Deactivate returns
+// the animation to kAS_NotReady.
 void CSpacePirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::TurnAround state (fn_72_8464)");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xbc4_ = GetTargetPos(mgr);
+    CVector3f delta = xbc4_ - GetTranslation();
+    delta.SetZ(0.f);
+    if (CVector3f::Dot(GetTransform().GetForward(), delta.AsNormalized()) < 0.8f) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+      const CVector3f delta = xbc4_ - GetTranslation();
+      if (delta.IsMagnitudeSafe()) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f));
+      } else {
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    }
+    UpdateGuardPosition(mgr, dt);
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 void CSpacePirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
