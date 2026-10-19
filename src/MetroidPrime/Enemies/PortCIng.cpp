@@ -10,9 +10,11 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CRandom16.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -25,6 +27,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CIngMiniPortalAttack.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/PortIngShared.hpp"
@@ -180,6 +183,13 @@ CMaterialFilter SolidFilter() {
   return CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
 }
 
+// fn_29_61B4's search ring (rodata_44): eight angles in degrees, 180 first, taken in order.
+const float skMiniPortalAngles[] = {180.f, 0.f, 135.f, 45.f, -135.f, -45.f, 90.f, -90.f};
+
+// Retail keeps the next table index in the REL's bss (lbl_29_bss_64), not in the actor, so it is
+// shared by every Ing and survives across state entries; the port does the same on purpose.
+int sMiniPortalAngleIndex = 0;
+
 const char* Fsm2NodeName(const CState2* node) {
   if (node == nullptr) {
     return "?";
@@ -273,6 +283,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mNormalHitEffect(OptionalPart(data.mIngSpot.GetNormalHitEffect())) // 0xd08
 , mHeavyHitEffect(OptionalPart(data.mIngSpot.GetHeavyHitEffect()))   // 0xd18
 , mDeathEffect(OptionalPart(data.mIngSpot.GetDeathEffect()))         // 0xd28
+, mMiniPortalEffect(OptionalPart(data.mMiniPortal.mEffect))           // 0xd38
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
@@ -283,6 +294,8 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mPortalPlaneConstant(0.f)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
+, mMiniPortalPositions()
+, mMiniPortalIndex(-1)
 , mSafeZoneCount(0)
 , mHeardShotTime(1.5f)
 , mUnderFireTime(0.75f)
@@ -1647,19 +1660,85 @@ void CIng::GrappleBall(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// [?] fn_29_61B4: not ported; no mini portal is ever found.
-void CIng::FindMiniPortals(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// fn_29_61B4 (not yet exercised in a run). Two rays a frame, out from the head locator to the
+// target's aim point, until three hits are stored or the shared angle index runs out (the ring is
+// eight angles, so a FindMiniPortals entry never searches more than four frames). The filter and
+// the geometry are the Space Jump Guardian's (fn_29_1E6C's FindMiniPortals), which is verified.
+void CIng::FindMiniPortals(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("FindMiniPortals");
-    mMiniPortalCount = 0;
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    mMiniPortalCount = 0;                                 // 0xe00 = 0
+    sMiniPortalAngleIndex = 0;
+    // fn_29_4468: no target, no portals - the state is over at once.
+    if (!TargetAimPosition(mgr, mTargetPos)) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    }
+    break;
+  case kStateMsg_Update: {
+    if (mMiniPortalCount >= 3 || sMiniPortalAngleIndex >= 8) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      break;
+    }
+    // The ray runs from 3 model-scales in front of the head locator, plus the ring's offset.
+    const CVector3f origin = GetLctrTransform(mEyeSegId).GetTranslation(); // 0xd7b
+    const CVector3f start = origin + mModelScale.GetY() * (3.f * GetTransform().GetForward());
+    const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+        CMaterialList(kMT_Solid),
+        CMaterialList(kMT_Character, kMT_Player, kMT_CollisionActor, kMT_ProjectilePassthrough));
+    for (int i = 0; i < 2; ++i) {
+      // Retail takes the pair's angle without re-testing the bound, so its last pair reads one
+      // float past the table when the index is already 8 (the bss guard is tested once, above).
+      if (sMiniPortalAngleIndex >= 8) {
+        break;
+      }
+      const float angle = skMiniPortalAngles[sMiniPortalAngleIndex++] * 0.017453292f;
+      const float c = CMath::FastCosR(angle);
+      const float s = CMath::FastSinR(angle);
+      const CVector3f offset =
+          2.f * CVector3f(mModelScale.GetX() * c, mModelScale.GetY() * 0.f, mModelScale.GetZ() * s);
+      const CVector3f end = start + GetTransform().Rotate(offset);
+      if (mgr.RayCollideWorld(end, mTargetPos, filter, this)) { // 0xdc8
+        mMiniPortalPositions[mMiniPortalCount++] = end; // 0xe04 + 12 * count
+        if (mMiniPortalCount == 3) {
+          mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+          return;
+        }
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    break;
+  default:
+    break;
   }
 }
 
-// [?] fn_29_6008: not ported.
+// fn_29_6008 (not yet exercised in a run). Asks the body for one projectile attack; the animation's
+// kUE_Projectile events then spawn the portals FindMiniPortals queued (fn_29_C228).
 void CIng::MiniPortalAttack(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("MiniPortalAttack");
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    mMiniPortalIndex = 0;                                 // 0xe28 = 0
+    break;
+  case kStateMsg_Update:
+    // ShouldRetry(0x6b4, body, 0x12): 0x12 is pas::kAS_ProjectileAttack.
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_One, GetTranslation() + GetTransform().GetForward(), false));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    mMiniPortalIndex = -1;                                   // 0xe28 = -1
+    break;
+  default:
+    break;
   }
 }
 
@@ -2081,12 +2160,31 @@ void CIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserE
   bool handled = false;
   switch (type) {
   case kUE_Projectile: // 0
-    // [?] the mini portal attack is not ported: while the bool at 0xd44 is set and the count at
-    // 0xe28 is below 0xe00, retail takes that index's point (0xe04 + 12*i), makes a transform from
-    // the actor's own (+0x24) with that translation, builds the mini portal's info (fn_29_12100,
-    // the beam info at 0x940) and spawns a 0x238-byte CIngMiniPortalAttack (fn_29_11E8C) named
-    // "Ing Mini Portal Attack", then adds it to the state manager. Handled all the same, so the
-    // base class does not fire a generic projectile.
+    // fn_29_C228 @0xC368: one mini portal per event, as long as the effect is loaded (retail
+    // 0xd44) and FindMiniPortals queued a point still unused (0xe28 < 0xe00). The damage is the
+    // mini-portal block's (0x940 = CIngData 0x7c0 + 0x170 + 0x10) scaled by dt and made
+    // immunity-proof (retail sets bit 7 of damage+0x1a). The spawn's name is the rodata pointer
+    // lbl_29_rodata_120 + 0x573, which the dump does not resolve, so the guardian's identical
+    // spawn text stands in [?]. Handled all the same, so the base class does not fire a generic
+    // projectile.
+    if (mMiniPortalEffect && mMiniPortalIndex >= 0 && mMiniPortalIndex < mMiniPortalCount) {
+      const int index = mMiniPortalIndex++; // 0xe28
+      CTransform4f xf = GetTransform();
+      xf.SetTranslation(mMiniPortalPositions[index]); // 0xe04 + 12 * index
+      CDamageInfo damage(mData.mMiniPortal.mDamage);
+      damage.MultiplyDamage(dt);
+      damage.SetNoImmunity(true);
+      // CIngMiniPortalInfo's floats are retail's rodata_64 = 1 (aim time), rodata_74 = 2
+      // (lifetime), rodata_70 = 150 (sfx max distance) and rodata_64 = 1 (sfx falloff).
+      const CIngMiniPortalInfo info(mTargetId, 1.f, 2.f, *mMiniPortalEffect,
+                                    mData.mMiniPortal.mSound, 150.f, 1.f, damage,
+                                    mData.mMiniPortal.mBeamInfo);
+      CIngMiniPortalAttack* portal = rs_new CIngMiniPortalAttack(
+          mgr.AllocateUniqueId(), rstl::string_l("Ing Mini Portal Attack"),
+          CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true), xf, GetUniqueId(),
+          GetModelData()->GetScale(), info);
+      mgr.AddObject(portal);
+    }
     handled = true;
     break;
   case kUE_TakeOff: // 0xd

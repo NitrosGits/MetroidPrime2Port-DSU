@@ -132,8 +132,9 @@ into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (
 | 0xdf0 | CVector3f | normalised vector |
 | 0xdfc | float | dot product with the transform |
 | 0xe00 | | 0 |
-| 0xe04..0xe24 | ? | not initialised in the ctor body **[?]** |
-| 0xe28 / 0xe2c | -1 / 0 | |
+| 0xe04..0xe24 | CVector3f[3] mini-portal points | `fn_29_61B4` stores up to three ray hits here (`0xe04 + 12*i`); not initialised in the ctor body [proven] |
+| 0xe28 | int mini-portal event index | `fn_29_C228` uses it as `0xe04 + 12*i` and post-increments; `fn_29_6008` sets 0 on entry, -1 on exit [proven] |
+| 0xe2c | int | 0 |
 | 0xe30..0xe58 | floats | rodata constants |
 | 0xe5c..0xe5e | bitfields | one bit from CIngData+0x210 |
 
@@ -273,6 +274,17 @@ marks only the 45 functions a run actually called (an instrumented build, run be
   them. Exercise them by spawning a portal - `CStateManager::AddObject` delivers `kSM_Create`, so
   any spawn runs open + fire; the Jump Guardian (`Agon 02_sand_sandfalls_dark[L2]`) is the easiest
   spawner, since `CIngSpaceJumpGuardian`'s `kUE_Projectile` case is already upstream code.
+- **Mini-portal states and spawn** (`PortCIng.cpp`, 2026-10-20): `FindMiniPortals` `fn_29_61B4`
+  (two rays per update, from 3 model-scales in front of the head locator, rotated by
+  `{180, 0, 135, 45, -135, -45, 90, -90}` around the model scale, to `mTargetPos`; a file-static
+  angle index is shared by every Ing, as retail's REL bss is; the out-of-bounds read of the last
+  pair is guarded), `MiniPortalAttack` `fn_29_6008` (`CBCProjectileAttackCmd(kS_One, translation +
+  forward, false)` once `CanIssueCommand(kAS_ProjectileAttack)`), and `DoUserAnimEvent`'s
+  `kUE_Projectile` case `fn_29_C228` (one portal per event while `mMiniPortalEffect` is engaged and
+  `mMiniPortalIndex < mMiniPortalCount`, damage = the block's copy scaled by dt with
+  `SetNoImmunity(true)`, floats 1 / 2 / 150 / 1). The helper `fn_29_4468` is `TargetAimPosition`
+  (already there). The spawn name (`lbl_29_rodata_120 + 0x573`) does not resolve in the rodata dump;
+  the guardian's "Ing Mini Portal Attack" stands in **[?]**. Still no `// @`.
 - **Verified at runtime** (Sanctuary 0i_cliff_hall_dark, MLVL `1baa96c2` MREA `2735236b`, layer 0):
   - The area places two INGS objects (`00390081`, `00390089`). They load **inactive** with
     detection range 0, so a run must `send <uid> Activate` over `MP2_CONSOLE`, and the beam

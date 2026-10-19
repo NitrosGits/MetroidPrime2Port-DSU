@@ -404,6 +404,9 @@ private:
   rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // 0xd08 ing-spot hit fx
   rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // 0xd18 ing-spot heavy hit fx
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect; // 0xd28
+  // 0xd38: CIngData+0x178 (the mini-portal effect). Retail's engaged byte is 0xd44, which the ctor
+  // writes and fn_29_C228 reads; the optional's own engaged flag stands in for it.
+  rstl::optional_object< TLockedToken< CGenDescription > > mMiniPortalEffect;
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
   CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
   CLineOfSightTracker mLineOfSight;          // 0xd88 (its segment is the byte at 0xd8a)
@@ -413,6 +416,8 @@ private:
   float mPortalPlaneConstant;                // 0xdfc: dot(translation, normal) = translation.z
   CVector3f mModelScale;                     // host copy of the model data's scale
   int mMiniPortalCount;                      // 0xe00
+  CVector3f mMiniPortalPositions[3];         // 0xe04..0xe24: where FindMiniPortals' rays hit
+  int mMiniPortalIndex;                      // 0xe28: the next portal to fire (-1 when idle)
   int mSafeZoneCount;                        // 0xe2c
   float mHeardShotTime;                      // 0xe30
   float mUnderFireTime;                      // 0xe34
