@@ -217,19 +217,31 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 
 | Fact | Value / evidence |
 |---|---|
-| Test area | Agon Wastes `08_sand_casualpirates`, default layer: 4 pirates (ids 208/193/190/70; console u04d0 u04c1 u04be u0446), start state `Patrol` |
+| Test area | Agon Wastes `08_sand_casualpirates`, default layer: 6 CSpacePirate objects, start state `Patrol`. u0446 `SpacePirate-component`, u04be `SpacePirate-On Patrol`, u04c1 `SpacePirate-Already On`, u04d0 `SKIFF JUMPER` (= pirate id 208), u04d1 `Teleporting Pirate 1`, u04d8 `Teleporting Pirate 2`. `Already On` and `SKIFF JUMPER` are the passive pair (aggr/search/cover/hear all 0) - aggression tests want u0446/u04be/u04d1/u04d8 |
 | Run | `tools/run_gameplay.sh` WORLD/TELEPORT=08_sand_casualpirates, GODMODE=1, `MP2_DEBUG_SPACEPIRATE=1` (state changes, KnockBack/Death/anim-event trace) |
 | Damage test | console `damage <id> <n> [kb]`: hp 60 -> 55; kb 6 alive = reaction 1 (flinch); lethal = `Death`, `KnockBack dead reaction 4`, `Patrol -> Dead` |
-| HP | 60 (u0446 reads -1 from load: unexplained) |
+| HP | 60 for all six at load. u0446 reads -1 because its flags are 0x10000 (`x8f5_30_floatingCorpse`): `kSM_AreaLoaded` sets `mAlive = false`, `HealthInfo()->SetHP(-1)` and drops Character/Solid/Target/Orbit (`PortCSpacePirate.cpp:921`). It is a scene corpse, not a loader fault |
 | Slot 0x110 | `IsOnGround` (Landed/OffLine) |
 | 0xb34 | `CIkChain` (`fn_72_10568` is its default ctor) |
 | Body controller | retail activates it only in Think; the port also does in PreThink |
 | Anim events handled | 19 BecomeRagDoll, 22 BreakLockOn (23/24 fall to CPatterned) |
 | Non-lethal hit | `damage u04d0 15 6` -> `208 state Patrol -> Taunt` (Attacked, 0xb24 < 0.5 s) |
-| Data floats | in this area the CSpacePirateData floats load as 0 (aggression, search, hearing radius; flags 0x829c) though SLdr defaults are 10/20/20, so HearPlayer never fires: loader bug suspected (`fn_72_10A10`/`fn_72_140`) |
+| Data floats | the MREA's own values, not a loader fault: every property is present with a 4-byte payload, so the SLdr defaults never apply; `hearingRadius` is 0 on all six actors, so `HearPlayer` cannot fire in this area (detail below) |
 | 0xb28 | time since a player shot was near (ShotAt `7BA0`); header name `xb28_lowHealthFrenzyTimer` is wrong |
-| Ported, unmarked | HearPlayer BBC0, SpotPlayer 938C, LineOfSight 9378 (0x8f7 bit 0x08), ShotAt 7BA0: wait on the data-float fix |
+| Ported, unmarked | HearPlayer BBC0 (needs `mData.mHearingRadius > 0`, which is 0 in this area), SpotPlayer 938C, LineOfSight 9378 (0x8f7 bit 0x08), ShotAt 7BA0: no state these pirates reach (Patrol/Taunt) lists the last three, so nothing has exercised them |
 | Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C |
+
+**CSpacePirateData floats are the MREA's, not a loader fault** (2026-10-19; loader instrumented behind
+`MP2_DEBUG_SPACEPIRATE=1`, then reverted). Every one of the six actors' property blocks carries
+`9579b1f2` aggressiveness, `f89ab419` coverCheck, `ed9bf5a3` searchRadius, `c3a27cf8` fallBackCheck,
+`f0cf5dd7` fallBackRadius, `ed69488f` hearingRadius and `a64ab9b8` flags, each with a 4-byte payload,
+so the `SLdrSpacePirate` ctor defaults (10/20/20/50 - confirmed printed before the read) never apply.
+Loaded aggr/cover/search: `component` 50/50/20, `On Patrol` 20/50/20, `Already On` and `SKIFF JUMPER`
+0/0/0, both `Teleporting Pirate` 50/50/20; `hearingRadius` is `0x00000000` on all six, so `HearPlayer`
+cannot fire in this area (for retail as well). The decode is exact, not a mis-read: the ids match the
+generated reader and `fn_72_140` id for id, `ReadFloat`/`ReadInt32`/`ReadUint16` all byte-swap under
+TARGET_PC, and the properties after them (42-byte damage infos, 200-byte weapon data, 90-byte editor
+properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 
 ## Open questions (verify first)
 
