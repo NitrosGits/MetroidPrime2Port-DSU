@@ -180,9 +180,9 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
         }
       }
     }
-    // TODO(fn_72_D40C): retail avoids other actors here (CSteeringBehaviors::Separation plus its
-    // own locomotion command); the port has no equivalent, so only CPatterned's path command moves
-    // the pirate.
+    // @ fn_72_D40C: retail avoids the other ai actors here, between the jump point test and the
+    // cover-range block.
+    AvoidActors(mgr);
     if (!x8f9_27_inRange) {
       if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
         const float maxSpeed = BodyController()->GetBodyStateInfo().GetMaxSpeed();
@@ -286,6 +286,42 @@ void CSpacePirate::UpdateGuardPosition(CStateManager& mgr, float dt) {
     }
   }
   x8f7_28_noPlayerLos = xa78_ < 0.5f;
+}
+
+// @ fn_72_D40C
+// This is MP1's CSpacePirate::AvoidActors, confirmed offset by offset on the retail body: it walks
+// the listening-AI object list (state manager +0x830), and for every other CPatterned in the same
+// area (entities' +0x4 area id) asks CSteeringBehaviors::Separation (the pattern's steering object,
+// this+0x61c, at CSpacePirateData +0xc0 = avoidDistance). A usable separation is normalized and
+// delivered as a locomotion command with a zero look direction and speed 0.5 (rodata 0xB44); then
+// with both pirates' steering delay timers at zero (xa10, rodata 0xB9C) and this one facing the
+// other, which must also move along its own forward (velocity WR dot forward > 0), the timer is set
+// to 1 (rodata 0xB54). No message switch: it runs from PathFind's Update only.
+void CSpacePirate::AvoidActors(CStateManager& mgr) {
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CPatterned* ai = TCastToPtr< CPatterned >(list[i]);
+    if (ai == nullptr || ai == this || ai->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f separation =
+        mSteeringBehaviors.Separation(*this, ai->GetTranslation(), mData.mAvoidDistance);
+    if (!separation.IsMagnitudeSafe()) {
+      continue;
+    }
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCLocomotionCmd(separation.AsNormalized(), CVector3f::Zero(), 0.5f));
+    if (xa10_steeringDelayTimer == 0.f) {
+      CSpacePirate* pirate = TCastToPtr< CSpacePirate >(ai);
+      if (pirate != nullptr && pirate->xa10_steeringDelayTimer == 0.f) {
+        const CVector3f delta = pirate->GetTranslation() - GetTranslation();
+        if (CVector3f::Dot(GetTransform().GetForward(), delta) > 0.f &&
+            CVector3f::Dot(pirate->GetVelocityWR(), pirate->GetTransform().GetForward()) > 0.f) {
+          xa10_steeringDelayTimer = 1.f;
+        }
+      }
+    }
+  }
 }
 
 // @ fn_72_AF70
