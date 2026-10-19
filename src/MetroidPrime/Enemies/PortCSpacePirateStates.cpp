@@ -10,7 +10,11 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
+#include <float.h>
 
 void PortSpacePirateStandIn(const char* what);
 
@@ -51,9 +55,159 @@ void CSpacePirate::Halt(CStateManager& mgr, EStateMsg msg, float dt) {
 // included, puts the steering speed back to full.
 void CSpacePirate::Run(CStateManager&, EStateMsg, float) { x904_steeringSpeed = 1.f; }
 
+// @ fn_72_8A90
+// Activate turns the current destination into a path: the cover point it holds (if any) first,
+// otherwise whatever dest the previous state set, and when there is no path at all it hunts for an
+// unused jump point it can cross to (MP1's shape plus Echoes' jump-point type and apex fields).
+// Update leaves path following to CPatterned, aims the body at the player and starts the jump once
+// the jump point is within a body-length, then refreshes the cover range.
 void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::PathFind state (fn_72_8A90)");
-  CPatterned::PathFind(mgr, msg, dt);
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xb14_jumpPoint = kInvalidUniqueId;
+    if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+      mReflectedDestPos = GetTranslation();
+      mInPosition = false;
+      mDestObj = cover->GetUniqueId();
+      mDestPos = cover->GetTranslation();
+    }
+    if (GetSearchPath()->Search(GetTranslation(), mDestPos) == CPathFindSearch::kR_Success) {
+      mReflectedDestPos = GetTranslation();
+      mDestPos = GetSearchPath()->GetPoint();
+      mInPosition = false;
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLocomotionCmd(mDestPos - GetTranslation(), CVector3f::Zero(), 1.f));
+    } else {
+      // Score every free jump point by the walk there, the jump itself and the waypoint beyond
+      // it; a point whose far side has no path still counts, with a 1000 penalty.
+      CScriptAiJumpPoint* best = nullptr;
+      float minDistSq = FLT_MAX;
+      CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+      for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+        CScriptAiJumpPoint* jumpPoint = TCastToPtr< CScriptAiJumpPoint >(list[i]);
+        if (jumpPoint == nullptr || !jumpPoint->GetActive() || jumpPoint->GetType() != 0 ||
+            jumpPoint->GetInUse(GetUniqueId()) ||
+            jumpPoint->GetJumpTarget() != kInvalidUniqueId ||
+            jumpPoint->GetCurrentAreaId() != GetCurrentAreaId()) {
+          continue;
+        }
+        const CVector3f toJump = jumpPoint->GetTranslation() - GetTranslation();
+        const float distSq = toJump.MagSquared();
+        if (distSq <= 25.f ||
+            CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) <= 0.f) {
+          continue;
+        }
+        CScriptWaypoint* waypoint =
+            TCastToPtr< CScriptWaypoint >(mgr.ObjectById(jumpPoint->GetJumpPoint()));
+        if (waypoint == nullptr) {
+          continue;
+        }
+        // Only take a jump that leads towards the destination (the two height deltas agree).
+        if ((mDestPos.GetZ() - GetTranslation().GetZ()) *
+                (waypoint->GetTranslation().GetZ() - jumpPoint->GetTranslation().GetZ()) <= 0.f) {
+          continue;
+        }
+        const CVector3f toDest = mDestPos - waypoint->GetTranslation();
+        float score = distSq + 4.f * toJump.GetZ() * toJump.GetZ() + toDest.MagSquared() +
+                      9.f * toDest.GetZ() * toDest.GetZ();
+        if (score >= minDistSq ||
+            GetSearchPath()->PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
+                CPathFindSearch::kR_Success) {
+          continue;
+        }
+        bool good = false;
+        if (GetSearchPath()->PathExists(waypoint->GetTranslation(), mDestPos) !=
+            CPathFindSearch::kR_Success) {
+          score += 1000.f;
+        } else {
+          good = true;
+        }
+        if (score < minDistSq) {
+          minDistSq = score;
+          best = jumpPoint;
+          if (good) {
+            break;
+          }
+        }
+      }
+      if (best != nullptr) {
+        mDestPos = best->GetTranslation();
+        if (GetSearchPath()->Search(GetTranslation(), mDestPos) == CPathFindSearch::kR_Success) {
+          mReflectedDestPos = GetTranslation();
+          mDestPos = GetSearchPath()->GetPoint();
+          mInPosition = false;
+          xb14_jumpPoint = best->GetUniqueId();
+          xaf8_jumpHeight = best->GetJumpApex();
+          if (CScriptWaypoint* waypoint =
+                  TCastToPtr< CScriptWaypoint >(mgr.ObjectById(best->GetJumpPoint()))) {
+            xafc_patrolDestPos = waypoint->GetTranslation();
+            BodyController()->CommandMgr().DeliverCmd(
+                CBCLocomotionCmd(mDestPos, CVector3f::Zero(), 1.f));
+          }
+        }
+      }
+    }
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
+    if (mEnableAim) {
+      x904_steeringSpeed = 1.f;
+    }
+    x8f9_27_inRange = false;
+    x8fa_24_normalDodge = true;
+    break;
+  }
+  case kStateMsg_Update: {
+    CPatterned::PathFind(mgr, msg, dt);
+    // Retail reads the cached player straight out of the state manager (its +0x14fc, the member
+    // TargetPlayer also uses) and steers the body at it.
+    if (const CPlayer* player = mgr.Player(0)) {
+      BodyController()->CommandMgr().SetTargetVector(player->GetTranslation() - GetTranslation());
+    }
+    if (xb14_jumpPoint != kInvalidUniqueId) {
+      if (CScriptAiJumpPoint* jumpPoint =
+              TCastToPtr< CScriptAiJumpPoint >(mgr.ObjectById(xb14_jumpPoint))) {
+        const float maxSpeed = BodyController()->GetBodyStateInfo().GetMaxSpeed();
+        const float jumpDistance = maxSpeed * ((1.5f * dt + 0.1f) * GetModelData()->GetScale().GetY()) +
+                                   xa70_intoJumpDist;
+        if ((GetTranslation() - jumpPoint->GetTranslation()).MagSquared() <
+            jumpDistance * jumpDistance) {
+          mAnimationState.SetState(CAnimationState::kAS_Ready);
+          if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+            BodyController()->CommandMgr().DeliverCmd(
+                CBCJumpCmd(mDestPos, pas::kJT_Normal, pas::kJS_IntoJump, 0,
+                           CBCJumpCmd::kFF_AmbushJump));
+          }
+          x8fa_29_ = true;
+        }
+      }
+    }
+    // TODO(fn_72_D40C): retail avoids other actors here (CSteeringBehaviors::Separation plus its
+    // own locomotion command); the port has no equivalent, so only CPatterned's path command moves
+    // the pirate.
+    if (!x8f9_27_inRange) {
+      if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+        const float maxSpeed = BodyController()->GetBodyStateInfo().GetMaxSpeed();
+        xa1c_coverRange =
+            maxSpeed * ((1.5f * dt + 0.1f) * GetModelData()->GetScale().GetY());
+        if (cover->ShouldWallHang()) {
+          xa1c_coverRange += xa70_intoJumpDist;
+        }
+        x8f9_27_inRange = (GetTranslation() - cover->GetTranslation()).MagSquared() <
+                          xa1c_coverRange * xa1c_coverRange;
+      }
+    }
+    // TODO(fn_72_D800): retail picks/keeps its guard position here and refreshes
+    // x8f7_28_noPlayerLos; not ported yet (see Lurk).
+    UpdateHeldPosition(mgr, dt);
+    break;
+  }
+  case kStateMsg_Deactivate:
+    CPatterned::PathFind(mgr, msg, dt);
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    xb14_jumpPoint = kInvalidUniqueId;
+    x8f9_27_inRange = false;
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
+    break;
+  }
 }
 
 void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
