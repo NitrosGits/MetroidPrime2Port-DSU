@@ -3,6 +3,28 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-sixth session): interpolation phase 6, save-state resume and door locks
+
+- **Phase 6** (`9b651429a`, MP1's section 3 "swooshes, electric effects and beam weapons"):
+  `CParticleSwoosh` draws trails between the last two ticks (segments matched by age, spin the short
+  way, the actor's shift dropped while it blends), `CParticleElectric` blends its line transform, and
+  `CPlasmaProjectile` blends transform, length, width and angle (its Echoes `Render` did not fit MP1's
+  edit, so the PC version is duplicated ahead of the original under `#else`). Beams opt out of the actor
+  blend through `CActor::PortSetOwnPresentation`. `CWaveBuster`/`CFlameThrower` have no Echoes
+  counterpart. `platform/include/port_tick_pair.h` and `port_tick_pair_tests` come from MP1. Uses the
+  existing Smooth effects setting, so there is no new flag. Not seen on screen: both runs idled in area 0.
+- **Quick resume, door locks, a patient restore** (`65a05ac34`, merged `f117ba308`): the resume state
+  (`<user>/savestates/resume.mp2ss`) is written on a clean exit when `MP2_RESUME=1` and loaded at the next
+  launch when the front end is skipped and no `MP2_WORLD`/`MP2_TELEPORT` was asked for; it is deleted once
+  used and refused if its world is not on the disc. Doors keep their lock state in the room capture
+  (applied with `kSM_Lock`/`kSM_Unlock`; one friend line in `CScriptDoor.hpp`). `TickRoom` now gives up only
+  after 1,200 *idle* frames (a pending layer, a loading area or a progress change resets the count), with a
+  hard cap. Verified end to end: `resume: wrote ... (Area 0)` then `loading it instead of the card's save`
+  and `Samus is back in Area 0; the resume state is used up`, both runs exit 0, 0 unmatched. The door-lock
+  apply and the real window-close path were not exercised.
+- Merged-tree gates: host build 0 FAILED (binary 15:14), matching build "87 files OK",
+  94.14% fuzzy / 63.29% matched. Every touched upstream file strips CLEAN.
+
 ## 2026-10-19 (twenty-fifth session): the glyph keys were right all along
 
 - **Echoes uses Prime 1's button textures.** Opening the pause screen (START) and diffing its texture
