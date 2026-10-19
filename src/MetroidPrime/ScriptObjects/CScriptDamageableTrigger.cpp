@@ -40,9 +40,12 @@ CEntity* LoadDamageableTrigger(CStateManager& mgr, CInputStream& input, CEntityI
 #ifdef TARGET_PC
   if (PortBallDebug()) {
     std::fprintf(stderr,
-                 "[ball] DTRG loaded: %d properties, missile effect %d x%.2f, cannon effect %d "
-                 "x%.2f\n",
-                 propertyCount, int(sldrThis.vulnerability.missile.effect),
+                 "[ball] DTRG eid %04x loaded: %d props, power %d x%.2f, missile %d x%.2f, "
+                 "cannon %d x%.2f\n",
+                 info.GetEditorId().Value(), propertyCount,
+                 int(sldrThis.vulnerability.power.effect),
+                 static_cast< double >(sldrThis.vulnerability.power.damageMultiplier),
+                 int(sldrThis.vulnerability.missile.effect),
                  static_cast< double >(sldrThis.vulnerability.missile.damageMultiplier),
                  int(sldrThis.vulnerability.cannonBall.effect),
                  static_cast< double >(sldrThis.vulnerability.cannonBall.damageMultiplier));

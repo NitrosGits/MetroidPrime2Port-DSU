@@ -2952,11 +2952,12 @@ void CStateManager::ApplyDamage(TUniqueId damagerId, TUniqueId damageeId, TUniqu
                            : damagee->GetDamageVulnerability();
 #ifdef TARGET_PC
     if (const char* dbg = std::getenv("MP2_DEBUG_BALL"); dbg != nullptr) {
-      if (TCastToConstPtr< CScriptDamageableTrigger >(damagee) != nullptr) {
+      {
         std::fprintf(stderr,
-                     "[ball] applydamage to trigger %04x: weapon %d hits %d damage %.1f "
+                     "[ball] applydamage to %04x eid %04x: weapon %d hits %d damage %.1f "
                      "(power %d/%.2f missile %d/%.2f cannon %d/%.2f)\n",
-                     damageeId.Value(), int(info.GetWeaponMode().GetRawType()),
+                     damageeId.Value(), damagee->GetEditorId().Value(),
+                     int(info.GetWeaponMode().GetRawType()),
                      int(vulnerability->WeaponHits(info.GetWeaponMode(), 0)),
                      static_cast< double >(info.GetDamage(*vulnerability)),
                      int(vulnerability->WeaponHits(CWeaponMode(kWT_Power), 0)),
