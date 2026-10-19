@@ -12,6 +12,8 @@
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/Player/CStaticInterference.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
@@ -304,8 +306,45 @@ void CSandBoss::RotateToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-void CSandBoss::SuckAir(CStateManager&, EStateMsg, float) { // fn_55_B718
-  PortSandBossStandIn("CSandBoss::SuckAir (fn_55_B718)");
+// fn_55_B718 (ported, not exercised yet)
+// SuckAir: once mData.suckAirTime has passed the animation is over; until then the body is pushed
+// out of Locomotion with a NextState command, and an unmorphed player in front of the mouth
+// (fn_55_5B38) is pulled toward it at 150 units a second, with collision impulses, the minimal
+// acceleration timer and the HUD static interference. Start readies the animation, drops into
+// locomotion 5 and marks this worm not recovered (0x165D b5).
+void CSandBoss::SuckAir(CStateManager& mgr, EStateMsg msg, float dt) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (msg == kStateMsg_Update) {
+    if (mData.suckAirTime <= mStateMachine->GetTime()) {      // 0x81C
+      mAnimationState.SetState(CAnimationState::kAS_Over);     // 0x6B4 = 3
+      return;
+    }
+    if (BodyController()->GetCurrentStateId() != pas::kAS_Locomotion) { // body 0x37C == 5
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState)); // 0xD
+    }
+    if (mSuckAir && player->GetMorphballTransitionState() != CPlayer::kMS_Morphed && // 0x165D b4
+        IsBallInRange(*player)) {                                                   // fn_55_5B38
+      const CVector3f mouth = GetLctrTransform(mArmorLocators[0]).GetTranslation(); // 0xF00
+      const CVector3f toMouth = mouth - player->GetTranslation();
+      if (toMouth.IsMagnitudeSafe()) {
+        // Mass scaled, so the pull speed does not depend on the player's mass (retail's 0x158).
+        const CVector3f impulse = toMouth.AsNormalized() * (dt * (player->GetMass() * 150.f));
+        player->ApplyImpulseWR(impulse, CAxisAngle::Identity());
+        player->UseCollisionImpulses();
+        player->SetMinimalAccelerationTimer(dt * 2.f);
+        // HUD static interference; magnitude and duration read as 0.1 from the decompiler's literals.
+        if (CPlayerState* playerState = mgr.PlayerState(0)) {
+          playerState->StaticInterference().AddSource(GetUniqueId(), 0.1f, 0.1f);
+        }
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);      // 0x6B4 = 1
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);   // 5
+    mNotRecovered = true;                                     // 0x165D b5
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);   // 0x6B4 = 0
+  }
 }
 
 // fn_55_B658 (ported, not exercised yet)
@@ -353,16 +392,103 @@ void CSandBoss::BallInMouth(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-void CSandBoss::DestroySphere(CStateManager&, EStateMsg, float) { // fn_55_B2D8
-  PortSandBossStandIn("CSandBoss::DestroySphere (fn_55_B2D8)");
+// fn_55_B2D8 (ported, not exercised yet)
+// DestroySphere: each update re-parks the held ball on the mouth, keeps the generate command going
+// (locomotion 0 once the body is in kAS_Generate) and pulses the choke flash for the first five
+// seconds. Start readies the animation, frees the sphere (fn_55_51BC) and sends kSS_Retreat; stop
+// tells every sibling to increment its round (this is what advances mRound in AcceptScriptMsg),
+// drops the animation, crouches and clears the attached-to-sphere flag.
+void CSandBoss::DestroySphere(CStateManager& mgr, EStateMsg msg, float) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (msg == kStateMsg_Update) {
+    if (player->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4
+      SphereStateHelper6250(*player);                    // fn_55_6250
+    }
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCGenerateCmd(pas::kGType_Five, CVector3f::Zero())); // 0xF, type 5
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0
+    }
+    const float stateTime = mStateMachine->GetTime();
+    if (stateTime < 5.f) {
+      SphereStateHelper6434(stateTime); // fn_55_6434
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    DestroySphereHelper(mgr);                            // fn_55_51BC
+    SendScriptMsgs(kSS_Retreat, mgr, GetUniqueId(), kSM_None);
+  } else if (msg == kStateMsg_Deactivate) {
+    for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
+      mgr.DeliverScriptMsg(
+          CScriptMsg(GetUniqueId(), mSiblings[i], kSM_Increment, kInvalidUniqueId));
+    }
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);
+    mAttachedToSphere = false; // 0x165D b7
+  }
 }
 
-void CSandBoss::JumpOffSphere(CStateManager&, EStateMsg, float) { // fn_55_B06C
-  PortSandBossStandIn("CSandBoss::JumpOffSphere (fn_55_B06C)");
+// fn_55_B06C (ported, not exercised yet)
+// JumpOffSphere: the same update shape as DestroySphere with generate type 1. Start readies the
+// animation, marks the held ball (0x165D b3), breaks the player's orbit on this worm and drops the
+// orbit material; stop drops the animation, crouches, clears the attached-to-sphere and held-ball
+// flags and tells every sibling to increment its round.
+void CSandBoss::JumpOffSphere(CStateManager& mgr, EStateMsg msg, float) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (msg == kStateMsg_Update) {
+    if (player->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4
+      SphereStateHelper6250(*player);                    // fn_55_6250
+    }
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCGenerateCmd(pas::kGType_One, CVector3f::Zero())); // 0xF, type 1
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0
+    }
+    const float stateTime = mStateMachine->GetTime();
+    if (stateTime < 5.f) {
+      SphereStateHelper6434(stateTime); // fn_55_6434
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    mHoldingBall = true;                                  // 0x165D b3
+    player->SetOrbitRequestForTarget(GetUniqueId(), CPlayer::kOR_ActivateOrbitSource, mgr); // 8
+    RemoveMaterial(kMT_Orbit, mgr); // 0x29
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);
+    mAttachedToSphere = false; // 0x165D b7
+    mHoldingBall = false;      // 0x165D b3
+    mgr.DeliverScriptMsg(
+        CScriptMsg(GetUniqueId(), GetUniqueId(), kSM_Increment, kInvalidUniqueId));
+  }
 }
 
-void CSandBoss::SpitOutBall(CStateManager&, EStateMsg, float) { // fn_55_AED8
-  PortSandBossStandIn("CSandBoss::SpitOutBall (fn_55_AED8)");
+// fn_55_AED8 (ported, not exercised yet)
+// SpitOutBall: while the player still holds on, each update re-parks the ball on the mouth
+// (fn_55_6250) and runs the choke helper (fn_55_5E5C), then asks for the generate command (type 9).
+// Start readies the animation and raises 0x165E b3 (which fn_55_5FEC reads to throw the held bombs
+// with the ball); stop drops the animation and clears it.
+void CSandBoss::SpitOutBall(CStateManager& mgr, EStateMsg msg, float) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (msg == kStateMsg_Update) {
+    if (player->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4
+      SphereStateHelper6250(*player);                    // fn_55_6250
+      Helper5E5C(mgr);                                   // fn_55_5E5C
+    }
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      // Retail stores generate type 9; pas::EGenerateType stops at kGType_Eight.
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCGenerateCmd(static_cast< pas::EGenerateType >(9), CVector3f::Zero()));
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    m165E_b3 = true;                                     // 0x165E b3
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    m165E_b3 = false;                                       // 0x165E b3
+  }
 }
 
 void CSandBoss::DarkBeamAttack(CStateManager&, EStateMsg, float) { // fn_55_AC68

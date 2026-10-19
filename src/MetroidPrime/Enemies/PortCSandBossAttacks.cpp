@@ -6,7 +6,10 @@
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 
 #include "Collision/CRayCastResult.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -15,6 +18,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/Weapons/CBeamInfo.hpp"
+#include "MetroidPrime/Weapons/CBomb.hpp"
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -513,16 +517,46 @@ void CSandBoss::HandleScreenShake(CStateManager&, const rstl::string&) { // fn_5
   PortSandBossStandIn("CSandBoss::HandleScreenShake (fn_55_4C60)");
 }
 
-void CSandBoss::DestroySphereHelper(CStateManager&) { // fn_55_51BC
-  PortSandBossStandIn("CSandBoss::DestroySphereHelper (fn_55_51BC)");
+// fn_55_51BC (ported, not exercised yet)
+// The sphere is gone: take the DEAD/ATCH waypoint's transform, looking from this worm's origin at
+// it, so the post-destroy state starts from the sphere's frame.
+void CSandBoss::DestroySphereHelper(CStateManager& mgr) {
+  const TUniqueId waypointId = FindConnectedObject(mgr, kSS_Dead, kSM_Attach);
+  CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(waypointId));
+  if (waypoint != nullptr) {
+    SetTransform(CTransform4f::LookAt(GetTranslation(), waypoint->GetTranslation(),
+                                     CVector3f::Up()));
+  }
 }
 
 void CSandBoss::HandleGroundImpact(CStateManager&, const rstl::string&) { // fn_55_528C
   PortSandBossStandIn("CSandBoss::HandleGroundImpact (fn_55_528C)");
 }
 
-void CSandBoss::CrackSphere(CStateManager&) { // fn_55_560C
-  PortSandBossStandIn("CSandBoss::CrackSphere (fn_55_560C)");
+// fn_55_560C (ported, not exercised yet)
+// Cracked sphere model: the sphere actor takes the round's cracked model (crackedSphere1..3 by
+// mRound) with its own model scale, then the ZERO script message goes out.
+void CSandBoss::CrackSphere(CStateManager& mgr) {
+  CActor* sphere = TCastToPtr< CActor >(mgr.ObjectById(mSphere)); // 0xE8A
+  if (sphere != nullptr && sphere->GetModelData() != nullptr) {
+    CAssetId crackedModel = kInvalidAssetId;
+    if (mRound == 1) { // 0xDE4
+      crackedModel = mData.crackedSphere2; // 0x7CC
+    } else if (mRound < 1) {
+      if (mRound >= 0) {
+        crackedModel = mData.crackedSphere1; // 0x7C8
+      }
+    } else if (mRound < 3) {
+      crackedModel = mData.crackedSphere3; // 0x7D0
+    }
+    if (crackedModel != kInvalidAssetId) {
+      // Retail builds CModelData(CStaticRes(cracked, sphere scale)) and assigns it to the sphere.
+      const CModelData crackedModelData(
+          CStaticRes(crackedModel, sphere->GetModelData()->GetScale()));
+      sphere->SetModelData(crackedModelData, mgr);
+    }
+  }
+  SendScriptMsgs(kSS_Zero, mgr, GetUniqueId(), kSM_None);
 }
 
 // fn_55_5B38 (ported, not exercised yet)
@@ -543,16 +577,79 @@ bool CSandBoss::IsBallInRange(const CPlayer& player) const {
 // AttachToSphere's delay: half a second per command index, so the three worms attach in turn.
 float CSandBoss::AttachToSphereHelper() { return static_cast< float >(mData.commandIndex) * 0.5f; }
 
-void CSandBoss::Helper5C6C(CStateManager&) { // fn_55_5C6C
-  PortSandBossStandIn("CSandBoss::Helper5C6C (fn_55_5C6C)");
+// fn_55_5C6C (ported, not exercised yet)
+// Same mouth box as fn_55_5E5C, but the bombs found in it are thrown along dir at 20 units a second
+// (the ball's bombs leave the mouth with it).
+void CSandBoss::Helper5C6C(CStateManager& mgr, const CVector3f& dir) {
+  const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[0]); // 0xF00
+  const CVector3f mouth = locatorXf.GetTranslation();
+  const float range = GetModelData()->GetScale().GetY() * 5.f;
+  const CVector3f extent(range, range, range);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(mouth - extent, mouth + extent),
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Bomb), CMaterialList()),
+                    this);
+  for (int i = 0; i < nearList.size(); ++i) {
+    if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(nearList[i]))) {
+      bomb->SetVelocityWR(dir * 20.f);
+    }
+  }
 }
 
-void CSandBoss::Helper5E5C(CStateManager&) { // fn_55_5E5C
-  PortSandBossStandIn("CSandBoss::Helper5E5C (fn_55_5E5C)");
+// fn_55_5E5C (ported, not exercised yet)
+// Choke helper: every bomb in the box around the mouth locator is parked on the mouth (the ball's
+// bombs follow it while the mouth works).
+void CSandBoss::Helper5E5C(CStateManager& mgr) {
+  const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[0]); // 0xF00
+  const CVector3f mouth = locatorXf.GetTranslation();
+  const float range = GetModelData()->GetScale().GetY() * 5.f;
+  const CVector3f extent(range, range, range);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(mouth - extent, mouth + extent),
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Bomb), CMaterialList()),
+                    this);
+  for (int i = 0; i < nearList.size(); ++i) {
+    if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(nearList[i]))) {
+      bomb->SetTranslation(mouth);
+    }
+  }
 }
 
-void CSandBoss::HandleObjectDrop(CStateManager&) { // fn_55_5FEC
-  PortSandBossStandIn("CSandBoss::HandleObjectDrop (fn_55_5FEC)");
+// fn_55_5FEC (ported, not exercised yet)
+// Object drop (Dead, and after a spit): if the player still holds on to this worm, put a morphed
+// player where the mouth is with the held ball's rotation, half a unit lower, launch him along the
+// mouth's facing, apply the spit-out damage unless the head armour is already gone, throw the held
+// bombs too, then let go of the player and send kSS_Exited for him. The player gets his solid
+// material back either way.
+void CSandBoss::HandleObjectDrop(CStateManager& mgr) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  // Retail also sets bit 7 of the player's byte at 0x1144. CPlayer.hpp does not name that byte (the
+  // two morph-transition bits it does name are elsewhere), so the store is left out.
+  if (player->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4
+    if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) { // player 0x38C == 1
+      player->Stop();
+      CTransform4f xf = GetLctrTransform(mArmorLocators[0]) * m14A0; // 0xF00, 0x14A0
+      xf.SetTranslation(xf.GetTranslation() + CVector3f(0.f, 0.f, -0.5f));
+      player->Teleport(xf, mgr, false);
+      // The impulse is scaled by the player's mass so the launch speed is mass independent
+      // (retail reads 0x158, the first CPhysicsActor member).
+      const CVector3f facing = GetTransform().GetColumn(kDY); // 0x28/0x38/0x48
+      player->ApplyImpulseWR(facing * (player->GetMass() * 20.f), CAxisAngle::Identity());
+      player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+      if (!mArmorDestroyed) { // 0x165D b6
+        const CMaterialFilter filter =
+            CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
+        mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mSpitOutDamage,
+                        filter, CVector3f::Zero()); // 0x1550
+      }
+      if (m165E_b3) { // 0x165E b3
+        Helper5C6C(mgr, facing); // fn_55_5C6C
+      }
+    }
+    player->DetachActorFromPlayer();
+    SendScriptMsgs(kSS_Exited, mgr, player->GetUniqueId(), kSM_None); // 'EXIT' on the player
+  }
+  player->AddMaterial(kMT_Solid, mgr); // 0x3B
 }
 
 // fn_55_6250 (ported, not exercised yet)

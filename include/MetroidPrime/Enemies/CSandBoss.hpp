@@ -267,7 +267,7 @@ private:
   void CrackSphere(CStateManager& mgr);                                    // fn_55_560C
   bool IsBallInRange(const CPlayer& player) const;                         // fn_55_5B38
   float AttachToSphereHelper();                                            // fn_55_5C30
-  void Helper5C6C(CStateManager& mgr);                                     // fn_55_5C6C
+  void Helper5C6C(CStateManager& mgr, const CVector3f& dir);               // fn_55_5C6C
   void Helper5E5C(CStateManager& mgr);                                     // fn_55_5E5C
   void HandleObjectDrop(CStateManager& mgr);                               // fn_55_5FEC
   void SphereStateHelper6250(CPlayer& player);                             // fn_55_6250
@@ -376,6 +376,8 @@ private:
   bool mProbingTripleCharge;  // b6
   bool mProbingDarkBeam;      // b5
   bool mSyncAttacksAllowed;   // b4
+  bool m165E_b3 = false;      // b3 (set while SpitOutBall runs; fn_55_5FEC / fn_55_8008 read it;
+                              //     the constructor in PortCSandBoss.cpp predates it)
 
 #else
   uchar x7c0_[0x1660 - 0x7c0];
