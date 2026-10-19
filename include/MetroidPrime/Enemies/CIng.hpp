@@ -21,6 +21,7 @@
 #include "MetroidPrime/CLineOfSightTracker.hpp"
 #include "rstl/optional_object.hpp"
 
+class CCollisionActorManager;
 class CGenDescription;
 class CScriptAIHint;
 class CPFArea;
@@ -365,6 +366,12 @@ private:
   void FaceLureOrTarget(CStateManager& mgr);
   // fn_29_4468: the target's aim position (CActor's GetAimPosition), false when it is gone.
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out);
+  // fn_29_3190: builds the manager of seven joint spheres and installs it at 0xc50.
+  void CreateCollisionActorManager(CStateManager& mgr);
+  // fn_29_3014: gives every collision actor the Ing's health and damage vulnerability.
+  void SetupCollisionActors(CStateManager& mgr);
+  // fn_29_2ED8 (kSM_HitObject): a collision actor that last touched the player deals contact damage.
+  void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
 
   // Host layout (retail's CIng is 0xe60, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets
   // are the REL's, from the constructor fn_29_D540 and the tiny accessors fn_29_0 (this+0x9dc),
@@ -372,9 +379,10 @@ private:
   CIngData mData;                            // 0x7c0 (0x214)
   CPathFindSearch mPathFindSearch;           // 0x9dc (0xec)
   CPathFindPointSearch mPointPathFindSearch; // 0xac8 (0x188)
+  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager; // 0xc50
   CSurfaceAlignmentHelper mSurfaceAlignment; // 0xc58 (0x58)
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // 0xcb0 (0x10)
-  int mForm;                                 // 0x9d4 (2): 2 corporeal, 3 ing spot, 4 body proj, 5 evaporating, 6/7 the form changes' own forms
+  int mForm;                                 // 0x9d4 (2): 2 corporeal, 3 ing spot, 4 flying body proj, 5 evaporating, 6..9 the form changes' own forms
   int mDesiredForm;                          // 0x9d8 (-1)
   rstl::optional_object< CAABox > mTouchBox; // 0xcc0 (0xcd8 = engaged)
   TUniqueId mHostId;                         // 0xcdc
@@ -431,8 +439,7 @@ private:
   const char* mLastLoggedState;              // host: MP2_DEBUG_ING
   float mStateTime;                          // host: time in the current state [?] retail's source
   CPFArea* mPathArea;                        // host: the area both searches were given on XALD
-  // Not held: the CCollisionActorManager* at 0xc50 (fn_29_3190 builds it from seven joint spheres;
-  // not ported), the other optional PART/GEN tokens at 0xce0..0xd58, the nine CSegId locators at
+  // Not held: the other optional PART/GEN tokens at 0xce0..0xd58, the nine CSegId locators at
   // 0xd7a/0xd7c..0xd83 ("Collar_SDK", the shoulders/forearms/wrists/elbows) and the light at 0xd68.
 #else
   uchar x7c0_[0x6a0]; // CIngData, the path searches, the seg ids, the tokens and the flags

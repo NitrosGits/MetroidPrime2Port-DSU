@@ -14,6 +14,8 @@
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -147,6 +149,19 @@ enum {
 const float kFacingAngle = 0.349f; // rodata: 20 degrees
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface normal.
 const float kWallLaunchAngle = 0.7853981f; // 45 degrees
+
+// fn_29_3190's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.
+// Every radius is 1.5 (0x3FC00000); the pivot point is the zero vector and the mass is 1000.0
+// (rodata_C4). The names are the Ing model's locators.
+struct SIngJointSphere {
+  const char* mLocator;
+  float mRadius;
+};
+const SIngJointSphere skIngJointSpheres[] = {
+    {"head", 1.5f},   {"Pelvis_SDK", 1.5f}, {"L_knee", 1.5f}, {"R_knee", 1.5f},
+    {"F_elbow", 1.5f}, {"L_elbow", 1.5f},   {"R_elbow", 1.5f},
+};
+const float kIngJointMass = 1000.f; // rodata_C4
 
 bool DebugIng() {
   static int sEnabled = -1;
@@ -307,6 +322,70 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 }
 
 CIng::~CIng() {}
+
+// fn_29_3190: the Ing's collision actors, one 1.5-radius sphere on each of seven joints, with the
+// Ing's own health and vulnerability (fn_29_3014), the Unknown54 material and a Solid filter that
+// excludes collision actors, AI passthrough and the player. The manager starts inactive; the form
+// changes and the script messages set it active.
+void CIng::CreateCollisionActorManager(CStateManager& mgr) {
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(7);
+  const CAnimData* anim = GetAnimationData();
+  for (uint i = 0; i < 7; ++i) {
+    const SIngJointSphere& sphere = skIngJointSpheres[i];
+    const rstl::string name = rstl::string_l(sphere.mLocator);
+    const CSegId seg = anim != nullptr ? anim->GetLocatorSegId(name) : CSegId();
+    joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
+        seg, CVector3f::Zero(), sphere.mRadius, name, kIngJointMass));
+  }
+  // The ctor's last argument is false (the new manager is inactive).
+  mCollisionActorManager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
+  SetupCollisionActors(mgr);       // fn_29_3014
+  AddMaterial(kMT_Unknown54, mgr); // 0x36
+  // data_A14 = Solid; data_A18|data_A1C|data_A20 = CollisionActor|AIPassthrough|Player.
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
+}
+
+// fn_29_3014: every collision actor takes the Ing's health info and damage vulnerability.
+void CIng::SetupCollisionActors(CStateManager& mgr) {
+  if (mCollisionActorManager.null()) {
+    return;
+  }
+  const uint count = mCollisionActorManager->GetNumCollisionActors();
+  for (uint i = 0; i < count; ++i) {
+    const TUniqueId id =
+        mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {
+      continue;
+    }
+    actor->SetDamageVulnerability(*GetDamageVulnerability());
+    *actor->HealthInfo() = *HealthInfo();
+  }
+}
+
+// fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
+// and the contact damage is off cooldown, the player takes the Ing's contact damage.
+void CIng::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
+  const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (actor == nullptr) {
+    return;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr || actor->GetLastTouchedObject() != player->GetUniqueId()) {
+    return;
+  }
+  // xE5C_1 (0xe5c bit 1) suppresses the contact damage; fn_29_6A88 owns that bit.
+  if (mCurDamageRemTime > 0.f || xE5C_1) {
+    return;
+  }
+  mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
+                  SolidFilter(), CVector3f::Zero());
+  mCurDamageRemTime = mDamageWaitTime;
+}
 
 // A body state is only ever installed by CBodyController::Activate; retail activates it on
 // kSM_Create (fn_29_4C88). Kept as a guard for the entry points that can run first on the host.
@@ -878,8 +957,9 @@ void CIng::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
     } else {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
     }
-    // [?] SetActive(*(+0xc50), mgr, true): that CCollisionActorManager is built by fn_29_3190,
-    // which is not ported, so the port has no manager to set active.
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, true); // 0xc50
+    }
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp); // 0xca4 = 2
     mLineOfSight.SetSegment(mEyeSegId);                            // 0xd8a = 0xd7b ("head")
     FaceLureOrTarget(mgr);                                         // fn_29_1A80
@@ -952,7 +1032,9 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
     mLineOfSight.SetSegment(CSegId::Null()); // 0xd8a = 99
     mVerticalMovement = true;                // CPatterned 0x34c bit 6
     RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
-    // [?] SetActive(*(+0xc50), mgr, false): no CCollisionActorManager in the port (fn_29_3190).
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, false); // 0xc50
+    }
     mPortalPlane = false;   // 0xe5d bit 6
     mStartAsIngSpot = true; // 0xe5d bit 5
     if (AnimationData() != nullptr) {
@@ -1002,8 +1084,9 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
           BodyController()->CommandMgr().SetTargetVector(mTargetPos - GetTranslation());
         }
       } else {
-        // [?] SetActive(*(+0xc50), mgr, false): the CCollisionActorManager is built by fn_29_3190,
-        // which is not ported.
+        if (!mCollisionActorManager.null()) {
+          mCollisionActorManager->SetActive(mgr, false); // 0xc50
+        }
         mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
       }
     }
@@ -1012,7 +1095,9 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     mVerticalMovement = true;                                // CPatterned 0x34c bit 6
     RemoveMaterial(kMT_GroundCollider, mgr);                 // 0x25
-    // [?] SetActive(*(+0xc50), mgr, false): no CCollisionActorManager in the port (fn_29_3190).
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, false); // 0xc50
+    }
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
@@ -1718,6 +1803,9 @@ void CIng::Think(float dt, CStateManager& mgr) {
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+  if (!mCollisionActorManager.null()) {
+    mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
   mLineOfSight.Update(dt, mgr);
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
@@ -1755,8 +1843,13 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     } else {
       BodyController()->SetLocomotionType(pas::kLT_Combat);
     }
+    CreateCollisionActorManager(mgr); // fn_29_3190
     break;
   case kSM_Delete:
+    // Retail deletes the blob object first, then destroys the collision actor manager.
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->Destroy(mgr); // fn_29_C9A4's XDEL branch
+    }
     ReleaseCoverHint(mgr, mCoverHintId);
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
       team->QuitTeam(GetUniqueId());
@@ -1775,9 +1868,24 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_Activate:
     JoinTeam(mgr);
+    // Retail only sets it while the actor's 0x20 bit 7 is clear and only for the corporeal form.
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal);
+    }
     break;
   case kSM_Deactivate:
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, false);
+    }
     StopSfx();
+    break;
+  case kSM_AIUpdateDisabled:
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetPhysicsActive(mgr, false);
+    }
+    break;
+  case kSM_HitObject:
+    CollisionActorHitPlayer(mgr, sender); // fn_29_2ED8
     break;
   case kSM_XENZ:
     ++mSafeZoneCount;
