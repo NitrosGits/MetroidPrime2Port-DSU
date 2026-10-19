@@ -24,6 +24,7 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/PortIngShared.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/PathFinding/CPathFindArea.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -35,6 +36,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
@@ -200,6 +202,8 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mTargetId(kInvalidUniqueId)
 , mCoverHintId(kInvalidUniqueId)
 , mLastCoverId(kInvalidUniqueId)
+, mAttackPathLastId(kInvalidUniqueId)
+, mAttackPathId(kInvalidUniqueId)
 , mSafeZoneId(kInvalidUniqueId)
 , mBlobEffectId(kInvalidUniqueId)
 , mCollisionActorId(kInvalidUniqueId)
@@ -233,6 +237,9 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mShouldMoveUnderBall(false)
 , mInsideSafeZone(false)
 , mShouldEvaporate(false) {
+  // fn_44_9D58 locks the projectile's WPSC token (0x918); without it LaunchProjectile's TryCache
+  // never succeeds.
+  mProjectileInfo.Token().Lock();
   // fn_44_9D58: the surface helper's mode word (0xc24) is 1, the path search's character
   // height/radius are scale.y*3 and scale.z*5.
   mSurfaceAlignment.SetMode(static_cast< CSurfaceAlignmentHelper::EMode >(1));
@@ -361,9 +368,9 @@ CScriptAIHint* CMinorIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
 void CMinorIng::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id, bool keepTimer) {
   if (CScriptAIHint* hint = GetCoverHint(mgr, id)) {
     hint->SetInUse(false);
-    // [?] retail also zeroes the hint's float at +0x170 when !keepTimer; the host CScriptAIHint
-    // does not name it.
-    (void)keepTimer;
+    if (!keepTimer) {
+      hint->SetTimeRemaining(0.f); // hint+0x170
+    }
     id = kInvalidUniqueId;
   }
 }
@@ -1039,18 +1046,48 @@ void CMinorIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// [?] fn_44_5264: activate-only wall-cover point pick through the point search; not ported.
-void CMinorIng::SetWallPointCoverDest(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
-    LogState("SetWallPointCoverDest");
+// @ fn_44_5264
+void CMinorIng::SetWallPointCoverDest(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  LogState("SetWallPointCoverDest");
+  mFoundMovementPos = false;
+  mPointPathFindSearch.ClearWaypoints();
+  const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
+  if (hint == nullptr || mPathArea == nullptr) {
+    return;
+  }
+  int from = -1;
+  mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from,
+                                                CPathFindPointSearchFilter(20.f, 0, -1));
+  if (from == -1) {
+    return;
+  }
+  // [?] the second filter's third argument is not visible in the pseudocode; the register still
+  // holds the -1 of the first.
+  int to = -1;
+  mPointPathFindSearch.FindClosestPhysicalPoint(hint->GetTranslation(), to,
+                                                CPathFindPointSearchFilter(20.f, 0, -1));
+  if (to != -1 && PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
+    mFoundMovementPos = true;
   }
 }
 
-// [?] fn_44_4C9C: activate-only cover-hint destination; not ported.
-void CMinorIng::SetCoverDest(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
-    LogState("SetCoverDest");
+// @ fn_44_4C9C
+void CMinorIng::SetCoverDest(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg != kStateMsg_Activate) {
+    return;
   }
+  LogState("SetCoverDest");
+  CVector3f dest = GetTranslation();
+  mFoundMovementPos = false;
+  if (const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId)) {
+    dest = hint->GetTranslation();
+    mFoundMovementPos = true;
+  }
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
 // @ fn_44_8460
@@ -1135,35 +1172,123 @@ void CMinorIng::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// [?] fn_44_6A40: follows the ATTK/FOLW waypoint path; ported as the waypoint patrol it drives
-// (sets IsFollowingAttackPath), without the per-waypoint projectile flag handling.
+// @ fn_44_6A40
 void CMinorIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   if (msg == kStateMsg_Activate) {
     LogState("FollowAttackPattern");
+    const TUniqueId dest = mAttackPathId == kInvalidUniqueId
+                               ? GetConnectedObject(mgr, kSS_Attack, kSM_Follow)
+                               : mAttackPathId;
+    mWaypointNavigation.SetDestination(dest);
+    if (const CScriptWaypoint* waypoint =
+            TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(dest))) {
+      if (CVector3f::Dot(waypoint->GetTranslation() - GetTranslation(),
+                         GetTransform().GetForward()) <= 0.f) {
+        mWaypointNavigation.SetInPosition(true);
+      }
+    }
     mFollowingAttackPath = true;
+  } else if (msg == kStateMsg_Update) {
+    if (!mAttackPatternProjectile) {
+      MoveAlongPath(mgr, dt);
+    }
   } else if (msg == kStateMsg_Deactivate) {
-    mFollowingAttackPath = false;
+    mAttackPathLastId = mWaypointNavigation.GetLastDestination();
+    mAttackPathId = mWaypointNavigation.GetDestination();
   }
-  CPatterned::Patrol(mgr, msg, dt);
 }
 
-// [?] fn_44_6BD4: picks a point away from the safe zone and path-finds to it; ported as the
-// timer only, so the FSM's IsMoveAwayFromSafeZoneOver (needs FoundMovementPos) does not fire.
-void CMinorIng::MoveAwayFromSafeZone(CStateManager&, EStateMsg msg, float dt) {
+// @ fn_44_6BD4
+void CMinorIng::MoveAwayFromSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("MoveAwayFromSafeZone");
-    mMoveAwayTimer = 0.f;
+    mInsideSafeZone = false;
+    mFoundMovementPos = false;
+    mPathFindSearch.SetFlags(mPathFindSearch.GetRegionFlags() & ~0x300u);
+    if (mFollowingAttackPath && (mData.mFlags156 & 0x40) != 0) {
+      mFollowingAttackPath = false;
+    }
+    mPointPathFinding = false;
+    mMoveAwayTimer = 0.1f;
+    for (int i = 0; i < 3; ++i) {
+      FindCoverPoint(mgr, dt);
+      if (!HasCoverPoint(mgr, CTriggerData(0.f))) {
+        continue;
+      }
+      SetPointCoverDest(mgr, dt);
+      if (FoundPointPath(mgr, CTriggerData(0.f))) {
+        mFoundMovementPos = true;
+        mPointPathFinding = true;
+        break;
+      }
+      if (const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId)) {
+        // Retail also projects its own position onto the mesh here (fn_44_8B38) and never reads
+        // the result.
+        if (mPathFindSearch.PathExists(RaisedPoint(GetTranslation()), hint->GetTranslation()) ==
+            CPathFindSearch::kR_Success) {
+          mPathFindNavigation.SetDestination(hint->GetTranslation());
+          mFoundMovementPos = true;
+          break;
+        }
+      }
+    }
+    if (!mFoundMovementPos) {
+      MassiveDeath(mgr); // vtable slot 0xd4
+    }
   } else if (msg == kStateMsg_Update) {
-    mMoveAwayTimer += dt;
+    mMoveAwayTimer -= dt;
+  } else if (msg == kStateMsg_Deactivate) {
+    mFoundMovementPos = false;
+    mMoveAwayTimer = 0.f;
+    mPathFindSearch.SetFlags(mPathFindSearch.GetRegionFlags() | 0x300);
+    ReleaseCoverHint(mgr, mCoverHintId, false);
+  }
+  if (mFoundMovementPos && (msg == kStateMsg_Activate || mMoveAwayTimer < 0.f)) {
+    if (!mPointPathFinding) {
+      PathFind(mgr, msg, dt);
+    } else {
+      PointPathFind(mgr, msg, dt);
+    }
   }
 }
 
-// [?] fn_44_7D20: point path-find that keeps searching; ported as PointPathFind.
+// @ fn_44_7D20
 void CMinorIng::AlwaysPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  if (msg == kStateMsg_Activate) {
+  const CPathFindPointSearchFilter nearSelf(mData.mUnknownD6C8EAC2, 0, -1);
+  const CPathFindPointSearchFilter nearTarget(mData.mUnknown2A5449BA, 0, -1);
+  if (msg == kStateMsg_Update) {
+    int from = -1;
+    if (mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from, nearSelf) ==
+            CPathFindPointSearch::kCPR_Success &&
+        from != -1) {
+      CVector3f toTarget = mTargetPos - GetTranslation();
+      if (toTarget.CanBeNormalized() &&
+          toTarget.MagSquared() < mData.mUnknownD6C8EAC2 * mData.mUnknownD6C8EAC2) {
+        toTarget.Normalize();
+        BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(toTarget, toTarget, 2.f));
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
     LogState("AlwaysPointPathFind");
+    mPointPathFinding = true;
+    mFoundMovementPos = false;
+    int from = -1;
+    mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from, nearSelf);
+    if (from != -1) {
+      SelectTarget(mgr, dt);
+      int to = -1;
+      if (mPointPathFindSearch.FindClosestPhysicalPoint(mTargetPos, to, nearTarget) ==
+              CPathFindPointSearch::kCPR_Success &&
+          to != -1 && mPathArea != nullptr &&
+          PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
+        mFoundMovementPos = true;
+      }
+    }
   }
-  PointPathFind(mgr, msg, dt);
+  if (mFoundMovementPos) {
+    PointPathFind(mgr, msg, dt);
+  }
 }
 
 // @ fn_44_6A3C
@@ -1196,17 +1321,130 @@ void CMinorIng::SelectTarget(CStateManager& mgr, float) {
   }
 }
 
-// [?] fn_44_4E84: scans the AI hints for a free cover point; not ported.
-void CMinorIng::FindCoverPoint(CStateManager&, float) {}
+// fn_44_4DDC: the target's aim position (vtable 0x54, dt 0) into `out`.
+bool CMinorIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) const {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
+  if (target == nullptr) {
+    return false;
+  }
+  out = target->GetAimPosition(mgr, 0.f);
+  return true;
+}
 
-// [?] fn_44_4AC4: point-search destination at the cover hint; not ported.
-void CMinorIng::SetPointCoverDest(CStateManager&, float) {}
+// @ fn_44_4E84
+void CMinorIng::FindCoverPoint(CStateManager& mgr, float) {
+  ReleaseCoverHint(mgr, mCoverHintId, false);
+  if (!TargetAimPosition(mgr, mTargetPos)) {
+    return;
+  }
+  // Retail keeps the four best candidates, sorted by score, in a static reserved_vector.
+  struct SCandidate {
+    SCandidate() : id(kInvalidUniqueId), score(0.f) {}
+    TUniqueId id;
+    float score;
+  };
+  SCandidate best[4];
+  int count = 0;
+  // [?] retail walks the object list at mgr+0x838, taken to be kOL_AiWaypoint (the list the other
+  // AI-hint scans use).
+  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(list[i]);
+    // [?] hint type 5 has no name in CScriptAIHint::EHintType.
+    if (hint == nullptr || !hint->GetActive() ||
+        hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(5) ||
+        hint->GetInUse(GetUniqueId()) || hint->GetCurrentAreaId() != GetCurrentAreaId() ||
+        hint->GetUniqueId() == mLastCoverId ||
+        mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) {
+      continue;
+    }
+    const CVector3f delta = mTargetPos - hint->GetTranslation();
+    const float up = CVector3f::Dot(CVector3f::Up(), delta);
+    float score = delta.MagSquared();
+    if (up > 0.f) {
+      score += up * 4.f * up;
+    }
+    int slot;
+    if (count < 4) {
+      slot = count++;
+    } else if (score < best[3].score) {
+      slot = 3;
+    } else {
+      continue;
+    }
+    best[slot].id = hint->GetUniqueId();
+    best[slot].score = score;
+    for (; slot > 0 && best[slot].score < best[slot - 1].score; --slot) {
+      const SCandidate swap = best[slot];
+      best[slot] = best[slot - 1];
+      best[slot - 1] = swap;
+    }
+  }
+  if (count != 0) {
+    if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(best[0].id))) {
+      hint->SetInUse(true); // fn_44_2550
+      mCoverHintId = hint->GetUniqueId();
+      mLastCoverId = mCoverHintId;
+    }
+  }
+}
 
-// [?] fn_44_21A8 (= Ing fn_29_53E0 family): mesh destination in the luring safe zone; not ported.
-void CMinorIng::SetLuredDest(CStateManager&, float) {}
+// @ fn_44_4AC4
+void CMinorIng::SetPointCoverDest(CStateManager& mgr, float) {
+  mFoundMovementPos = false;
+  mPointPathFindSearch.ClearWaypoints();
+  const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
+  if (hint == nullptr || mPathArea == nullptr) {
+    return;
+  }
+  int from = -1;
+  mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from,
+                                                CPathFindPointSearchFilter(20.f, 0, -1));
+  if (from == -1) {
+    return;
+  }
+  const CVector3f cover = hint->GetTranslation();
+  float bestDistSq = 400.f;
+  int best = -1;
+  int previous = -1;
+  for (int i = 0; i < mPathArea->GetNumPoints(); ++i) {
+    const CPFPoint& point = mPathArea->GetPoint(i);
+    if (!mPathArea->PointPathExists(from, i)) {
+      continue;
+    }
+    const float distSq = (cover - point.GetPosition()).MagSquared();
+    if (distSq < bestDistSq &&
+        mPathFindSearch.PathExists(point.GetPosition(), cover) == CPathFindSearch::kR_Success) {
+      previous = best;
+      best = i;
+      bestDistSq = distSq;
+    }
+  }
+  if (best == -1) {
+    return;
+  }
+  if (best == from && previous != -1) {
+    best = previous;
+  }
+  if (PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, best)) {
+    mFoundMovementPos = true;
+  }
+}
 
-// [?] fn_44_22B0 (rodata_450 "SetLuredPointDest"): point-search version of SetLuredDest.
-void CMinorIng::SetLuredPointDest(CStateManager&, float) {}
+// @ fn_44_21A8
+void CMinorIng::SetLuredDest(CStateManager& mgr, float) {
+  CVector3f dest;
+  mFoundMovementPos =
+      PortIngLuredDest(mgr, mPathFindSearch, mSafeZoneId, GetTranslation(), dest);
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
+}
+
+// @ fn_44_22B0
+void CMinorIng::SetLuredPointDest(CStateManager& mgr, float) {
+  mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
+                                            mSafeZoneId, GetTranslation());
+}
 
 // ---- overrides -----------------------------------------------------------------------------
 
@@ -1398,9 +1636,13 @@ void CMinorIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
   if (type == kUE_Projectile) {
     const CTransform4f lctr = GetLctrTransform(node.GetLocatorName());
-    LaunchProjectile(CTransform4f::LookAt(lctr.GetTranslation(), mTargetPos, CVector3f::Up()), mgr,
-                     1, CWeapon::kPA_None, false, CImpactVisorEffect::None(),
-                     CVector3f(1.f, 1.f, 1.f));
+    const CEnergyProjectile* shot = LaunchProjectile(
+        CTransform4f::LookAt(lctr.GetTranslation(), mTargetPos, CVector3f::Up()), mgr, 1,
+        CWeapon::kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+    if (DebugMinorIng()) {
+      fprintf(stderr, "[minoring] %04x projectile %s\n", GetUniqueId().Value(),
+              shot != nullptr ? "launched" : "not launched");
+    }
     return;
   }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);

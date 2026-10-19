@@ -214,6 +214,7 @@ private:
   bool IsTargetInRange(CStateManager& mgr, const CVector3f& pos) const;
   bool IsTargetInAttackAngle(CStateManager& mgr) const;
   bool IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool checkStatic) const;
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id, bool keepTimer);
   void ResetAttackTimer(CStateManager& mgr);
@@ -251,6 +252,8 @@ private:
   TUniqueId mTargetId;                        // 0xcce
   TUniqueId mCoverHintId;                     // 0xcd0
   TUniqueId mLastCoverId;                     // 0xcd2
+  TUniqueId mAttackPathLastId;                // 0xcd4 (FollowAttackPattern: the waypoint nav's last)
+  TUniqueId mAttackPathId;                    // 0xcd6 (FollowAttackPattern: where to resume)
   TUniqueId mSafeZoneId;                      // 0xcda
   TUniqueId mBlobEffectId;                    // 0xcdc (never created on the host, see XCRT)
   TUniqueId mCollisionActorId;                // 0xcde (never created on the host, see XCRT)
