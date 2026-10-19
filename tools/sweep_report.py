@@ -357,8 +357,16 @@ def main() -> int:
             wall = [p for p in phases if p.shard == index and p.verdict != "OK"]
             inside = [a for a in missing if a in requested]
             if wall and wall[-1].verdict == "CREDITS":
-                reason = (f"the run reached the ending in area {wall[-1].area} (CREDITS), "
-                          f"so its slice ends there")
+                # The ending is a run of its own areas (`game_end_partN`): once one is entered the
+                # game walks the rest itself, so the slots after it are never visited by the tokens.
+                # They are not gaps in the sweep, and naming one as "first missing" reads as a hole.
+                ending = wall[-1].area
+                print(f"  shard {index}: reached {len(want) - len(missing)}/{len(want)} of "
+                      f"{first}..{first + count - 1}; the ending took over at area {ending} "
+                      f"(CREDITS)")
+                print(f"     not walked once the ending took over: {missing} - the game runs the "
+                      f"ending's own areas itself, so these are not gaps in the sweep")
+                continue
             elif wall:
                 reason = f"the run stopped in area {wall[-1].area} ({wall[-1].verdict})"
             elif inside:
