@@ -28,7 +28,15 @@ CBeamProjectile::CBeamProjectile(const TToken< CWeaponDescription >& description
 , x4b0_(CVector3f::Zero())
 , mPointCache(CVector3f::Zero())
 , mGrowingBeam(growingBeam)
+#ifdef TARGET_PC
+, mEnableTouchDamage(false) {
+  // Beams draw in world space from their own state (CPlasmaProjectile blends it), so the actor
+  // transform blend must not shift them too (MP1's PortSetOwnPresentation).
+  PortSetOwnPresentation();
+}
+#else
 , mEnableTouchDamage(false) {}
+#endif
 
 rstl::optional_object< CAABox > CBeamProjectile::GetTouchBounds() const {
   if (!GetActive() || !mEnableTouchDamage) {

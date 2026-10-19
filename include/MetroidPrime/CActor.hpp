@@ -312,11 +312,14 @@ public:
   // only a teleport cuts, a big roll keeps the translation. `lastStep2` is the squared step of the
   // tick before, so fast movers aren't taken for teleports (port_presentation_rules.h).
   static bool PortBlendRigid(const CTransform4f& from, const CTransform4f& to, float t,
-                             CTransform4f& blend, CTransform4f& cur, const CVector3f& pivot,
-                             float lastStep2);
+                             CTransform4f& blend, CTransform4f& cur,
+                             const CVector3f& pivot = CVector3f::Zero(), float lastStep2 = 0.f);
   // True while a CPortActorRenderScope has the view shifted (MP1's PortRenderScopeActive): a
   // particle system drawn inside one must not blend its own translation again.
   static bool PortRenderScopeActive();
+  // MP1's PortSetOwnPresentation: an actor that draws in world space from its own state (beam
+  // weapons) opts out of the rigid shift and blends what it draws itself.
+  void PortSetOwnPresentation() { mPortOwnPresentation = true; }
 #endif
 
 private:
@@ -395,6 +398,7 @@ private:
   uint mPortPrevGeneration;
   // Squared step of the tick before (0 when that tick had no snapshot).
   float mPortLastStep2;
+  bool mPortOwnPresentation;
 #endif
 };
 CHECK_SIZEOF(CActor, 0x158)

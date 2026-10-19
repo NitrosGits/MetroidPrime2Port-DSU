@@ -14,6 +14,9 @@
 #include "rstl/list.hpp"
 #include "rstl/reserved_vector.hpp"
 #include "rstl/vector.hpp"
+#ifdef TARGET_PC
+#include "port_tick_pair.h"
+#endif
 
 class CElectricDescription;
 class CElementGen;
@@ -174,6 +177,11 @@ private:
   bool mLocalScaleDirty : 1;
 
   static ushort sSeed;
+#ifdef TARGET_PC
+  // Presentation smoothing (particle_interpolation, MP1's FRAME_INTERPOLATION.md phase 6): the
+  // line transform the last two ticks drew. Child swooshes and generators smooth themselves.
+  PortTickPair< CTransform4f > mPortLineXf{CTransform4f::Identity()};
+#endif
 };
 CHECK_SIZEOF(CParticleElectric, 0x460)
 NESTED_CHECK_SIZEOF(CParticleElectric, CLineManager, 0x40)

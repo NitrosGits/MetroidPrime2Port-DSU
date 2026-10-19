@@ -23,6 +23,10 @@
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "Weapons/CWeaponDescription.hpp"
 #include "dolphin/gx.h"
+#ifdef TARGET_PC
+#include "MetroidPrime/CActor.hpp"
+#include "port_overlay.h"
+#endif
 
 const int CPlasmaProjectile::kMaxPlasmaLights = 3;
 const float CPlasmaProjectile::kInvMaxPlasmaLights = 1.f / (kMaxPlasmaLights - 1);
@@ -304,6 +308,64 @@ void CPlasmaProjectile::Render(const CStateManager& mgr) const {
   if (!GetActive()) {
     return;
   }
+#ifdef TARGET_PC
+  CTransform4f xf = GetBeamTransform();
+  float beamWidth = mBeamWidth;
+  float beamAngle = mBeamAngle;
+  // Draw the beam between the last two ticks when uncapped (MP1's phase 6).
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t >= 0.f && t < 1.f && PortOverlay::ParticleInterpolation()) {
+    SPortBeam now;
+    now.xf = xf;
+    now.length = GetCurrentLength();
+    now.width = beamWidth;
+    now.angle = beamAngle;
+    if (mPortBeam.Note(now, CActor::PortTickGeneration())) {
+      const SPortBeam& prev = mPortBeam.prev;
+      CTransform4f blend = CTransform4f::Identity();
+      CTransform4f cur = CTransform4f::Identity();
+      if (CActor::PortBlendRigid(prev.xf, xf, t, blend, cur)) {
+        xf = blend * cur.GetQuickInverse() * xf;
+        mPortDrawLength = prev.length + (now.length - prev.length) * t;
+        beamWidth = prev.width + (beamWidth - prev.width) * t;
+        // The spin wraps to 0 past 360 degrees; blend the short way.
+        float turn = beamAngle - prev.angle;
+        if (turn < -180.f) {
+          turn += 360.f;
+        } else if (turn > 180.f) {
+          turn -= 360.f;
+        }
+        beamAngle = prev.angle + turn * t;
+      }
+    }
+  }
+  if (!(mBeamAttributes & 1)) {
+    xf.AddTranslation(mgr.GetCurrentRenderCameraManager()->GetGlobalCameraTranslation(mgr, true));
+  }
+  gpRender->SetDepthReadWrite(true, false);
+  if ((mBeamAttributes & 1) && mEnableEnergyPulse && mExpansionState != kES_Attack) {
+    RenderMotionBlur();
+  }
+  if (!(mBeamAttributes & 0x10)) {
+    gpRender->SetModelMatrix(xf);
+    RenderBeam(3, 0.25f * beamWidth, mCoreColor, 4);
+  }
+  const CColor& innerColor = mInnerColor;
+  const CColor& outerColor = mOuterColor;
+  if (!(mBeamAttributes & 0x20)) {
+    gpRender->SetModelMatrix(xf * CTransform4f::RotateY(CRelAngle::FromDegrees(beamAngle)));
+    RenderBeam(4, 0.5f * beamWidth, innerColor, 1);
+  }
+  if (!(mBeamAttributes & 0x40)) {
+    gpRender->SetModelMatrix(xf * CTransform4f::RotateY(CRelAngle::FromDegrees(-beamAngle)));
+    RenderBeam(8, beamWidth, outerColor, 3);
+  }
+  if (!(mBeamAttributes & 0x80)) {
+    gpRender->SetModelMatrix(xf);
+    RenderBeam(6, 1.25f * beamWidth, outerColor, 0xd);
+  }
+  mPortDrawLength = -1.f;
+#else
   CTransform4f xf = GetBeamTransform();
   if (!(mBeamAttributes & 1)) {
     xf.AddTranslation(mgr.GetCurrentRenderCameraManager()->GetGlobalCameraTranslation(mgr, true));
@@ -330,6 +392,7 @@ void CPlasmaProjectile::Render(const CStateManager& mgr) const {
     gpRender->SetModelMatrix(xf);
     RenderBeam(6, 1.25f * mBeamWidth, outerColor, 0xd);
   }
+#endif
 }
 
 void CPlasmaProjectile::Fire(const CTransform4f& xf, CStateManager& mgr, bool flag) {
@@ -388,8 +451,14 @@ void CPlasmaProjectile::RenderBeam(int subdivisions, float width, const CColor& 
   const int count = subdivisions + 1;
   const float angleStep = (2.f * M_PIF) / subdivisions;
   const float uvY0 = -(0.0625f * mEnergyPulseStartY);
+#ifdef TARGET_PC
+  const float length = mPortDrawLength >= 0.f ? mPortDrawLength : GetCurrentLength();
+  const float uvY1 = uvY0 + ((flags & 3) == 3) ? 2.f : 0.5f * length;
+  const CVector3f beamEnd(0.f, length, 0.f);
+#else
   const float uvY1 = uvY0 + ((flags & 3) == 3) ? 2.f : 0.5f * GetCurrentLength();
   const CVector3f beamEnd(0.f, GetCurrentLength(), 0.f);
+#endif
   float angle = 0.f;
   CGraphics::SetAlphaCompare(kAF_Always, 0, kAO_And, kAF_Always, 0);
   const GXVtxDescList vtxDesc[] = {{GX_VA_POS, GX_DIRECT},

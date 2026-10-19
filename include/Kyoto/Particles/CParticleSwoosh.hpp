@@ -11,6 +11,10 @@
 #include "Kyoto/Particles/IElement.hpp"
 #include "Kyoto/TToken.hpp"
 #include "rstl/vector.hpp"
+#ifdef TARGET_PC
+#include "port_tick_pair.h"
+#include <vector>
+#endif
 
 class CSwooshDescription;
 class CTexture;
@@ -164,6 +168,28 @@ private:
   CVector3f mAabbMax;
   float mMaxRadius;
   CColor mModuColor;
+#ifdef TARGET_PC
+  // Presentation smoothing (particle_interpolation, MP1's FRAME_INTERPOLATION.md phase 6): what
+  // the last two ticks drew, recorded at draw time, since grapple and beam swooshes are written
+  // directly by their owners rather than stepped by Update.
+  struct SPortSegment {
+    CVector3f pos;
+    CVector3f useOffset;
+    float rot;
+    bool active;
+  };
+  struct SPortState {
+    SPortState() : head(0), frame(0), global(CTransform4f::Identity()) {}
+    std::vector< SPortSegment > segs;
+    int head;
+    int frame;
+    CTransform4f global;
+  };
+  PortTickPair< SPortState > mPortState;
+  std::vector< SPortSegment > mPortSaved;
+  bool PortBeginPresent();
+  void PortEndPresent();
+#endif
 
   static uint mSwooshAliveCount;
 };

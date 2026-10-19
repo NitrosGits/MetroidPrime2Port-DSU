@@ -19,6 +19,12 @@
 #include "float.h"
 #include "math.h"
 #include "rstl/math.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "port_overlay.h"
+#include <string.h>
+#endif
 
 static CVector3f sOneVector(1.f, 1.f, 1.f);
 
@@ -419,9 +425,28 @@ void CParticleElectric::RenderLines() {
   CGraphics::DisableAllLights();
   CGraphics::SetDepthWriteMode(true, kE_LEqual, false);
   CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha, kBF_One, kLO_Clear);
+#ifdef TARGET_PC
+  // Draw the lines at the transform between the last two ticks when uncapped (the fractal itself
+  // still changes once per tick).
+  CTransform4f lineXf = CTransform4f::Translate(mGlobalTranslation) * mGlobalOrientation *
+                        CTransform4f::Translate(mTranslation) * mOrientation;
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t >= 0.f && t < 1.f && PortOverlay::ParticleInterpolation() &&
+      !CActor::PortRenderScopeActive() &&
+      mPortLineXf.Note(lineXf, CActor::PortTickGeneration()) &&
+      memcmp(&mPortLineXf.prev, &lineXf, sizeof(CTransform4f)) != 0) {
+    CTransform4f blend = CTransform4f::Identity();
+    CTransform4f cur = CTransform4f::Identity();
+    if (CActor::PortBlendRigid(mPortLineXf.prev, lineXf, t, blend, cur))
+      lineXf = blend * cur.GetQuickInverse() * lineXf;
+  }
+  CGraphics::SetModelMatrix(lineXf * CTransform4f::Scale(mGlobalScale) *
+                            CTransform4f::Scale(mLocalScale));
+#else
   CGraphics::SetModelMatrix(CTransform4f::Translate(mGlobalTranslation) * mGlobalOrientation *
                             CTransform4f::Translate(mTranslation) * mOrientation *
                             CTransform4f::Scale(mGlobalScale) * CTransform4f::Scale(mLocalScale));
+#endif
   CGraphics::SetCullMode(kCM_None);
   const bool textured = mElecDesc->mTEXR != nullptr;
   SetupLineGXMaterial();

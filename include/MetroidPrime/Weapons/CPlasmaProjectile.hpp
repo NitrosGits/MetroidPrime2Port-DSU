@@ -3,6 +3,9 @@
 
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "MetroidPrime/Weapons/CBeamProjectile.hpp"
+#ifdef TARGET_PC
+#include "port_tick_pair.h"
+#endif
 
 class CBeamInfo;
 class CWeaponAssetInfo;
@@ -107,6 +110,19 @@ private:
   bool mDrawOwnerFirst : 1;
   bool mInitialDamageEnabled : 1; // Guessed name
   bool mInitialDamagePending : 1; // Guessed name
+#ifdef TARGET_PC
+  // Presentation smoothing (particle_interpolation, MP1's FRAME_INTERPOLATION.md phase 6): the
+  // beam the last two ticks drew, and the length RenderBeam uses for the blended draw.
+  struct SPortBeam {
+    SPortBeam() : xf(CTransform4f::Identity()), length(0.f), width(0.f), angle(0.f) {}
+    CTransform4f xf;
+    float length;
+    float width;
+    float angle;
+  };
+  mutable PortTickPair< SPortBeam > mPortBeam;
+  mutable float mPortDrawLength = -1.f;
+#endif
 };
 CHECK_SIZEOF(CPlasmaProjectile, 0x6a8)
 

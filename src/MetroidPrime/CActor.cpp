@@ -146,7 +146,8 @@ CActor::CActor(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
 , mAlphaSorted(params.UseAlphaSorting())
 , mPortPrevTransform(xf)
 , mPortPrevGeneration(0)
-, mPortLastStep2(0.f) {
+, mPortLastStep2(0.f)
+, mPortOwnPresentation(false) {
 #else
 , mAlphaSorted(params.UseAlphaSorting()) {
 #endif
@@ -1269,7 +1270,8 @@ void CActor::PortSnapshotRenderTransform() {
 
 bool CActor::PortPresentedView(const CTransform4f& view, CTransform4f& out) const {
   const float t = CCameraManager::GetPresentationInterpolation();
-  if (t < 0.f || t >= 1.f || !PortSnapshotFresh(mPortPrevGeneration, PortTickGeneration()))
+  if (t < 0.f || t >= 1.f || mPortOwnPresentation ||
+      !PortSnapshotFresh(mPortPrevGeneration, PortTickGeneration()))
     return false;
   // An actor that did not move this tick (CTransform4f's operator== has no definition here).
   if (memcmp(&mPortPrevTransform, &mTransform, sizeof(CTransform4f)) == 0)

@@ -452,6 +452,12 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_presentation_rules_tests PRIVATE platform/include)
     add_test(NAME port_presentation_rules_tests COMMAND port_presentation_rules_tests)
     set_tests_properties(port_presentation_rules_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The tick pair (platform/include/port_tick_pair.h) that swooshes, electric effects and beams
+    # blend between ticks with. Header-only.
+    add_executable(port_tick_pair_tests tests/port_tick_pair.cpp)
+    target_include_directories(port_tick_pair_tests PRIVATE platform/include)
+    add_test(NAME port_tick_pair_tests COMMAND port_tick_pair_tests)
+    set_tests_properties(port_tick_pair_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The input engine (platform/input/port_input_engine.cpp): bindings, chords, contexts and
     # device profiles resolve to the right pad state. Engine-independent: no SDL, Aurora or game.
     add_executable(port_input_engine_tests tests/port_input_engine.cpp
