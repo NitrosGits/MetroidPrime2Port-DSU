@@ -16,6 +16,9 @@ pointer to this file plus their slice, not a restatement of it.
   - `tools/rel_pseudo/` - REL plf -> ET_EXEC for REA/Ghidra, split per function, `relsim.py`
     REL similarity. (Supersedes `tools/rel_plf2exec.py`; don't add another linker.)
   - m2c pseudo-C over the whole REL; REA `batch_decompile`.
+- Lanes run only on `worker` (`opencode-go/deepseek-v4.1-flash`); never `haiku`, `sonnet` or
+  `claude`, not even to escalate. A lane that fails twice gets a narrower brief, or the
+  orchestrator does the piece itself.
 - Each lane gets an exclusive list of functions (by `fn_<id>_<off>`) and files. Two lanes never
   hold the same file at once; run them in sequence, or split the file.
 
