@@ -4229,16 +4229,17 @@ CAssetId ResolveWarpAsset(const char* text) {
   if (text == nullptr || *text == '\0') {
     return kInvalidAssetId;
   }
+  // An asset id is written as eight hex digits in the logs and symbol maps, and `strtoul` reads
+  // that as decimal only up to the first letter ("863fcd72" stops at the 'f'). The hex test comes
+  // first: with base 0 an all-digit id like "69802220" (FrontEnd04) parsed as decimal and the hex
+  // branch was never reached, so `MP2_WORLD=69802220` booted the save's own world instead.
+  if (strlen(text) == 8 && strspn(text, "0123456789abcdefABCDEF") == 8) {
+    return static_cast< CAssetId >(std::strtoul(text, nullptr, 16));
+  }
   char* end = nullptr;
   const unsigned long value = std::strtoul(text, &end, 0);
   if (end != nullptr && end != text && *end == '\0') {
     return static_cast< CAssetId >(value);
-  }
-  // An asset id is written as eight hex digits in the logs and symbol maps, and `strtoul` reads
-  // that as decimal only up to the first letter ("863fcd72" stops at the 'f'), so read the whole
-  // text as hex when it is all hex digits. `MP2_WORLD=<id>` is how a test boots into a world.
-  if (strlen(text) == 8 && strspn(text, "0123456789abcdefABCDEF") == 8) {
-    return static_cast< CAssetId >(std::strtoul(text, nullptr, 16));
   }
   const SObjectTag* tag =
       gpResourceFactory != nullptr ? gpResourceFactory->GetResourceIdByName(text) : nullptr;
