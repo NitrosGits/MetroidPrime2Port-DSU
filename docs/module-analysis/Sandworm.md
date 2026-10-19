@@ -306,54 +306,18 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
 
 ## Port status (2026-10-19)
 
-- Baseline `6d876487c` (decomp/wallcrawler, port `f62a43f7f` merged): WP1-WP4, WP6, WP7 bodies landed; WP2 has 34 of 35 functions (find the missing one); WP5 is partial. Each file compiles on its own, but the module **does not link yet**: the header pass below is still to do.
-- WP5 functions still to port: A510 AD14 B0B0 B138 C828 C994 E738 E764 EF20 F384 F5B0 F718 F77C F754(Prime) FA30 FB24 FC94 FFBC 10110 10268 10510 106D4 AC24. Call chain AC24 → C828 → C994 → D690(pos).
-- WP4 left out (wrong header signatures, no callers): SpitAimAngle, ChargeHelper, PlayerDirection, Unreferenced6324. Not yet re-checked: the DoUserAnimEvent event numbers against jumptable data_790, and the CBodyController+0x4C write in ChargePlayer.
-- Markers: lanes marked every function they checked against the asm (about 260). DECOMP_WORKFLOW wants markers only on runtime-exercised functions, so prune after the runtime check.
-- Pseudo-C: `/tmp/opencode/pseudo/Sandworm/fn_56_XXXX.c` (m2c), plus text.s, data.s, rodata.s, relocs.txt and fsm_map.txt.
-- Runtime: Agon Wastes `01_sand_entrance` layer 0, `03_sand_temple` layer 2, `04_sand_mining` layer 3 (docs/module_spawns.tsv). The bar is a fight the player can finish.
-
-### Header pass (CSandworm.hpp TARGET_PC; remove the lane-local workarounds afterwards)
-
-- WP4: BeginAttack(int type, EStateMsg); FindGrabAIHint/AIHintHelper(CStateManager&) const; KnockPlayer(mgr, const CVector3f&) with no damage argument; float AngleToTarget(const CVector3f&, const CVector3f& dir) const; float SpitAimAngle(const CVector3f&) const; CVector3f ChargeHelper(const CVector3f&) const; CVector3f PlayerDirection(float) const; bool GrabHelper(mgr); TUniqueId Unreferenced6324(mgr) const; x968_ is u8; BeginAttackHelper/2 operate on SSandwormAttackHistory.
-- Other lanes:
-  # Header fixes to apply after all WP lanes report (orchestrator merges)
-  
-  ## WP6 (PortCSandwormBombs.cpp) — remove its local workarounds afterwards
-  1. CSandworm.hpp: `CBouncingBomb* SpawnBouncingBomb(CStateManager&, float fuseTime, float touchRadius, float gravityScale, float bounceRestitution);` spawns at x1528_spit.x28_xf. Drop file-local SpawnBouncingBombAtMouth.
-  2. `RotateBodyForBombAttack(CStateManager&, const CVector3f& target, CVector3f& pivot, float rateDeg, float dt)`; delete RotateHelper (= Cross). Drop RotateBodyForBombAttackImpl.
-  3. `float SpineRenderHelperD690(CStateManager&, const CVector3f& pos) const;` (ground height). Remove `requires` shim (line ~44).
-  4. `rstl::reserved_vector< CVector3f, 180 > x99C_joints;` (0xC entries, limit 0xB4). Remove no-op overload. Check WP3 (spine) usage!
-  5. CBouncingBomb.hpp (TARGET_PC): `void SetVelocity(const CVector3f& v) { mVelocity = v; }`. Remove SBombVelocityAccess trick (line ~33).
-  6. `BeginAttack(int type, EStateMsg msg)` not (int first, int last) — reconcile with WP4.
-  ## WP7 (PortCSandwormRender.cpp)
-  - D690 is implemented there as file-local `FloorZ(const CStateManager&, const CVector3f&)` (~line 68). For fix 3: turn it into the member `SpineRenderHelperD690(mgr,pos)` (rename e.g. GetFloorZ), keep it in Render, and use it from WP5 (C994) and WP6 (EF8C).
-  - Undefined, must exist after merge: UpdateEyes, SpineHelperF5B0, TeleportGrabbedPlayer, CanDropBomb, GetLocatorPosition, ShouldRenderHeadEye/TailEye.
-  - Line 25: the port skips a missing model, where retail reads the model storage without checking (marked).
-  
-  Open: x1614 name (patrol drop spawn pos), x199A_ is a byte.
-  
-  ## WP5 (PortCSandwormSpine.cpp), slice 1 done (13/42 ported); the rest go to worker lanes AFTER the header fixes
-  - SpineHelper1080C -> `float (int) const`; SpineHelper108BC -> `CVector3f (int) const`; SpineHelper10038 -> `CVector3f () const`. Remove the file-local copies.
-  - AIHintHelper -> `bool (CStateManager&) const` (dummy vector in Spine; reconcile with WP4, which defines it)
-  - SpineHelper106D4 -> `int (float) const`; SpineHelperE738 -> takes CQuaternion, writes x1670_.x0_, non-const
-  - x984_/x988_ -> count + u8[15] segment ids; AC24's bool is unused
-  - Remaining: A510 AD14 B0B0 B138 C828 C994 E738 E764 EF20 F384 F5B0 F718 F77C F754(Prime) FA30 FB24 FC94 FFBC 10110 10268 10510 106D4
-    Dependency chain: AC24 -> C828 -> C994 -> D690(pos). FB24: check the 0.7853982 threshold and the sense of its condition.
-  
-  ## WP3 (PortCSandwormStates.cpp): done, 49 fns; workarounds tagged HEADER WORKAROUND
-  - Add `float x13AC_;` at 0x13AC (it is currently a file-static 4-slot table: remove it!)
-  - x1828_sfx.x14_/x18_/x1c_ -> CSfxHandle (remove the reinterpret_cast); UpdateEmitter(CSfxHandle&); StopMoveSfx()
-  - FindScriptActor -> `int CountScriptActors(mgr) const`; SulkHelper(); PursueHelper -> `CVector3f(const CVector3f&) const`
-  - FindCoverPoint -> `CVector3f(mgr)`; TestCoverPoint(const CActor*); NearlyOnPath(+float radius); MoveToScriptActor -> `CTransform4f(mgr,int&)`; SetSteeringSpeedRange()
-  - AngleToTarget(+dir = spit Y column); OrientBodyToPath(no dt); SetUnderground(no bool)
-  - The static helpers 3EF4 403C 534C 6D74 7A2C A8E0 C468 10A68 become members; drop the fn-ptr keep-alive table
-  - Open: CBCTauntCmd's second word (0/1) is lost on the host; constants 0.4-1.2, 0.1-0.5, 0.2094 and rodata_194 are not pinned
-  
-  ## WP2 (PortCSandwormEye.cpp): done, 35 fns
-  - Eye getters swapped: E134 (named GetHeadEye) returns the tail eye x14C6; E168 returns x14C4. Rename to match the bodies and check every caller (WP3, WP4, WP6).
-  - SpawnResidue(mgr, int headEyeDead?0:1): add the 2nd arg, and fix WP1's def
-  - AngleBetween: take const CTransform4f& (it reads only the Y column)
-  - StopMoveSfx(): reconcile with WP3
-  - TypesMatch.cpp: the eye is registered under CActor, but on PC it derives CPhysicsActor -> check whether CPhysicsActor TypesMatch is skipped (TARGET_PC)
-  - REL token string at lbl_56_bss_C: "Sandworm.rel" is a guess
+- Baseline `e67213940` (decomp/wallcrawler): header pass applied and the lane-local workarounds removed. Host build `0 FAILED`, `gen_files_cmake --check` rc 0, TARGET_PC strip-diff CLEAN (CSandworm.hpp, CBouncingBomb.hpp), upstream `87 files OK`. Runtime is **not yet checked**.
+- Link stubs (empty bodies, `TODO(WP5)` at the end of `PortCSandwormSpine.cpp`): AC24 SetUnderground, AD14 OrientBodyToPath, F5B0 SpineHelperF5B0, F754 Prime. Replace them with the retail bodies.
+- WP5 functions still to port (worker lanes only; fallback cat-jam-free/longcat/space-bunny, then haiku): A510 AD14 B0B0 B138 C828 C994 E738 E764 EF20 F384 F5B0 F718 F77C F754 FA30 FB24 FC94 FFBC 10110 10268 10510 106D4 AC24. The call chain is AC24 → C828 → C994 → `SpineRenderHelperD690(mgr, pos)` (in Render). For FB24, check the 0.7853982 threshold and the sense of its condition. Header signatures are already final: SpineHelperE738(const CQuaternion&) writes x1670_.x0_; `int SpineHelper106D4(float) const`; `x984_segCount` and `x988_segIds[15]`.
+- WP2 has 34 of 35 functions; find the missing one.
+- Open:
+  - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
+  - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.
+  - fn_56_6798 passes `arg0+0x54` and rodata_150 to A8E0; the port passes `pos, 0.f`.
+  - CBCTauntCmd's second word is lost on the host; constants 0.4-1.2, 0.1-0.5, 0.2094 and rodata_194 are not pinned.
+  - TypesMatch registers the eye under CActor, but on PC it derives CPhysicsActor.
+  - The "Sandworm.rel" token string at lbl_56_bss_C is a guess.
+  - Render line 25 skips a missing model.
+  - x1614 has no name; x199A_ is a byte.
+- Markers: about 260 (every asm-checked function). Prune them to the runtime-exercised functions after the fight check.
+- Pseudo-C is in `/tmp/opencode/pseudo/Sandworm/fn_56_XXXX.c`. Runtime areas are Agon Wastes `01_sand_entrance` L0, `03_sand_temple` L2 and `04_sand_mining` L3 (docs/module_spawns.tsv). The bar is a fight the player can finish.
