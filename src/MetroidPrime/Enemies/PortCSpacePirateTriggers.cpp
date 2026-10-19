@@ -6,6 +6,7 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CMetroid.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -267,9 +268,124 @@ bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const 
   return CPatterned::AnimOver(mgr, data);
 }
 
+// fn_72_CE30. Unmarked: ShouldStrafe never enters the branch that calls it in the 208 cycle
+// (the 0.66 s shot windows and the lost-LOS branch never open there).
+// Retail's step-direction picker for the strafe trigger: a side is dropped when another pirate of
+// the same area is that way (dot against the transform's right axis, in the squared-distance frame
+// MP1 uses), then the survivors must be on the path find mesh and have a clear dynamic ray. Both
+// sides clear is a coin flip on CRandom16 bit 0x4000. Returns pas::EStepDirection.
+int CSpacePirate::GetStrafeDir(CStateManager& mgr, float dist) {
+  const float distSquared = dist * dist;
+  bool canStrafeLeft = true;
+  bool canStrafeRight = true;
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CSpacePirate* other = TCastToConstPtr< CSpacePirate >(list[i]);
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f delta = other->GetTranslation() - GetTranslation();
+    const float magSquared = delta.MagSquared();
+    if (magSquared >= distSquared) {
+      continue;
+    }
+    const float rightDot = CVector3f::Dot(delta, GetTransform().GetRight());
+    if (rightDot > 0.866f * magSquared || (rightDot > 0.f && magSquared < 3.f)) {
+      canStrafeRight = false;
+    } else if (rightDot < 0.866f * -magSquared || (rightDot < 0.f && magSquared < 3.f)) {
+      canStrafeLeft = false;
+    }
+  }
+
+  const CVector3f center = GetBoundingBox().GetCenterPoint();
+  const CVector3f right = GetTransform().GetRight();
+  if (canStrafeRight) {
+    canStrafeRight =
+        mPathFindSearch.OnPath(center + dist * right) == CPathFindSearch::kR_Success;
+  }
+  if (canStrafeLeft) {
+    canStrafeLeft = mPathFindSearch.OnPath(center - dist * right) == CPathFindSearch::kR_Success;
+  }
+  if (!canStrafeLeft && !canStrafeRight) {
+    TraceCall(*this, "GetStrafeDir", pas::kSD_Invalid);
+    return pas::kSD_Invalid;
+  }
+
+  // The near list is anchored on the centre when the left side is open and on the left end point
+  // otherwise; its length doubles when both sides are still in play (0xB60 = 2).
+  const CVector3f startPoint = canStrafeLeft ? center : center - dist * right;
+  const float length = canStrafeLeft && canStrafeRight ? 2.f * dist : dist;
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, startPoint, right, length, filter, this);
+  if (canStrafeLeft) {
+    canStrafeLeft = CGameCollision::RayDynamicLineOfSightTest(mgr, startPoint, right, dist, filter,
+                                                             nearList, nullptr);
+  }
+  if (canStrafeRight) {
+    canStrafeRight = CGameCollision::RayDynamicLineOfSightTest(mgr, center, right, dist, filter,
+                                                               nearList, nullptr);
+  }
+  if (canStrafeLeft && canStrafeRight) {
+    if ((mgr.Random()->Next() & 0x4000) != 0) {
+      canStrafeLeft = false;
+    } else {
+      canStrafeRight = false;
+    }
+  }
+
+  int straightDir = pas::kSD_Invalid;
+  if (canStrafeLeft) {
+    straightDir = pas::kSD_Left;
+  } else if (canStrafeRight) {
+    straightDir = pas::kSD_Right;
+  }
+  TraceCall(*this, "GetStrafeDir", straightDir);
+  return straightDir;
+}
+
+// @ fn_72_960C
+// Two ways to skid: a hurt or frenzied pirate whose target is ahead and close to its own axis
+// strafes at 10 m (0xB58) around a 0.66 s (0xC04) window and a zero delay timer; failing that, a
+// player the pirate has lost line of sight to for over a second and that stands within 15 m
+// (0xB88) makes it strafe at 5 m (0xB78). Either way -1 leaves it facing the target.
 bool CSpacePirate::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldStrafe trigger (fn_72_960C)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  self->xb08_skidDir = -1;
+  bool result = false;
+  bool noPlayerStrafe = false;
+  if (!x8f4_26_nonAggressive) {
+    const CVector3f toTarget = self->GetTargetPos(mgr) - GetTranslation();
+    if (CVector3f::Dot(toTarget, GetTransform().GetForward()) > 0.f) {
+      if ((xb28_lowHealthFrenzyTimer < 0.66f || xb24_timeSinceHitByPlayer < 0.66f) &&
+          xb0c_strafeDelayTimer == 0.f) {
+        const CVector3f center = GetBoundingBox().GetCenterPoint();
+        const CVector3f toTargetFromCenter = (self->GetTargetPos(mgr) - center).AsNormalized();
+        if (CVector3f::Dot(toTargetFromCenter, GetTransform().GetForward()) > 0.707f) {
+          self->xb08_skidDir = self->GetStrafeDir(mgr, 10.f);
+          if (self->xb08_skidDir != -1) {
+            result = true;
+          } else {
+            noPlayerStrafe = true;
+          }
+        }
+      }
+      if (!noPlayerStrafe && !result && xa7c_timeNoPlayerLos > 1.f) {
+        const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+        if (player != nullptr) {
+          const CVector3f delta = player->GetTranslation() - GetTranslation();
+          if (delta.Magnitude() < 15.f && self->xb08_skidDir == -1) {
+            self->xb08_skidDir = self->GetStrafeDir(mgr, 5.f);
+            if (self->xb08_skidDir != -1) {
+              result = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  TraceCall(*this, "ShouldStrafe trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& data) const {

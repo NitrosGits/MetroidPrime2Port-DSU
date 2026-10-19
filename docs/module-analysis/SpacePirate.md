@@ -239,8 +239,10 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 | 0xb28 | time since a player shot was near (ShotAt `7BA0`); header name `xb28_lowHealthFrenzyTimer` is wrong |
 | Ported, unmarked | HearPlayer BBC0 (needs `mData.mHearingRadius > 0`, which is 0 in this area), SpotPlayer 938C, LineOfSight 9378 (0x8f7 bit 0x08), ShotAt 7BA0: no state these pirates reach (Patrol/Taunt) lists the last three, so nothing has exercised them. ShouldMove 7BD4 and ShouldAttack A71C (ported 2026-10-20): nothing in the live cycle lists them either |
 | Triggers 7BD4 A71C 7C28 82D0 | ported 2026-10-20. `7BD4` = `GetCoverPoint(x900) && !ShouldStay()`. `A71C` casts the attack target to CPlayer (not an id compare) and returns false once 4+ same-area pirates that are alive and `x8f6_31_inAttackState` sit closer to that player. `7C28` gate `x8f6_29_enableRetreat && !x8f6_24_trooper`; waypoint from `GetConnectedObject(kSS_Patrol, kSM_Follow)`, else a connection-list scan resolved with `GetIdForScript`; `mDestObj` keeps the **GetConnectedObject** id even when the scan found the waypoint (0x330; then mReflectedDestPos, mInPosition, ReleaseCoverPoint, hearNoise, mEnableAim, SetHitByPlayerProjectile). `82D0` reads 0x8f4 bit 0x20 = **nonAggressive** (mFlags 0x4), as MP1 does — mFlags 0x20 is `x8f4_29_onlyAttackInRange`, bit 0x04 — then 0xb24/0xb28 < 0.33, 0xa7c < 0.5, else the CMetroid-`mIsAttacking` (0xa40 bit 0x04) front test |
-| 2026-10-20 run (08_sand_casualpirates, 3200 frames, 65 state lines) | cycle repeats `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` 3×; `ShouldRetreat` and `ShouldDodge` evaluated 363× for 208 (1815× over all six ids), every one false — no xf6 bit or damage timer ever opens them here; `ShouldMove`/`ShouldAttack` 0×|
-| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) AF70 (with D720 `UpdateHeldPosition`) 7868 BBA0 8A90 D800 (`UpdateGuardPosition`) D40C (`AvoidActors`) 7C28 82D0 |
+| 2026-10-20 run (08_sand_casualpirates, 3200 frames, 65 state lines) | cycle repeats `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` 3×; `ShouldRetreat` and `ShouldDodge` evaluated 363× for 208 (1815× over all six ids), every one false — no xf6 bit or damage timer ever opens them here; `ShouldMove`/`ShouldAttack` 0× |
+| ShouldStrafe 960C + `GetStrafeDir` CE30 | ported 2026-10-20. `960C`: gate `!x8f4_26_nonAggressive`, target ahead of `GetForward()`, `(xb28<0.66 \|\| xb24<0.66) && xb0c==0` then center-normalized dot > 0.707 -> `CE30(mgr, 10)` (0xB58); else `!result && xa7c>1` and a `CPlayer` attack target within 15 (0xB88) -> `CE30(mgr, 5)` (0xB78). `CE30` (retail's own, not MP1's CantJumpBack): other same-area `CSpacePirate`s drop a side (dot vs `GetRight()` > 0.866d² or >0 with d²<3, 0xC14/0xB5C), each survivor must pass `mPathFindSearch.OnPath(center ± dist*right) == kR_Success` then a `BuildNearList` (anchor `center` if left open else `center-dist*right`, length `2*dist` when both, `MakeInclude(kMT_Solid)` = data 0x8A0/0x3B) + `CGameCollision::RayDynamicLineOfSightTest(center, right, dist, …)` (returns clear); both open -> `CRandom16::Next() & 0x4000` drops left, else right. Returns 2 = `kSD_Left`, 3 = `kSD_Right`, -1 |
+| 2026-10-20 run #2 (same area, 3200 frames) | `ShouldStrafe` evaluated 484× for 208, all false — the 0.66 s windows and the `xa7c>1` branch never open, so `CE30` is never reached; cycle now repeats 4×; 0 reach-stubs |
+| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) AF70 (with D720 `UpdateHeldPosition`) 7868 BBA0 8A90 D800 (`UpdateGuardPosition`) D40C (`AvoidActors`) 7C28 82D0 960C |
 **CSpacePirateData floats are the MREA's, not a loader fault** (2026-10-19; loader instrumented behind
 `MP2_DEBUG_SPACEPIRATE=1`, then reverted). Every one of the six actors' property blocks carries
 `9579b1f2` aggressiveness, `f89ab419` coverCheck, `ed9bf5a3` searchRadius, `c3a27cf8` fallBackCheck,
@@ -255,10 +257,24 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 
 ## 7. Port status / next (2026-10-20)
 
-- Worktree `wt-mp2-port`, branch `port`; Taunt, Lurk, TargetPlayer, Run, PathFind and the helpers `D720`/`D800`/`D40C` are committed on top of `00e7e7de4` (last: `cd0c05113`). The live path after a power-beam hit on pirate 208 is `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk`, repeating, and it is what every new state gets verified against. `PortCSpacePirateStates.cpp` has no `TODO` left except the ones the note lists.
-- Next slices, one `worker` lane each, in this order: the triggers the live cycle actually evaluates (`ShouldMove 7BD4`, `ShouldRetreat 7C28`, `ShouldAttack A71C`, `ShouldStrafe 960C`, `ShouldDodge 82D0` - pseudo-C in `/tmp/opencode/pseudo/SpacePirate/`), then the states nothing reaches yet (`Patrol BFCC`, `Halt BBB0`, `Approach 9478`, `Shuffle 8670`, `TurnAround 8464`, `Dodge 7DFC`), then combat (`Attack 9F1C` with `CBurstFire`). Each lane verifies against the 208 cycle and reports which trigger/state lines its run produced; a marker needs the run to have exercised it.
-- Lanes kill their game by pid only (other worktrees' games share the machine).
-- Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW expects.
+- Worktree `wt-mp2-port`, branch `port`; Taunt, Lurk, TargetPlayer, Run, PathFind and the helpers
+  `D720`/`D800`/`D40C` are committed, plus the five triggers of the live cycle (last: the commit
+  after `cd0c05113`, `port: CSpacePirate retreat/dodge/move/attack triggers are retail's`). The live
+  path after a power-beam hit on pirate 208 is `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run ->
+  PathFind -> Lurk`, repeating, and it is what every new state gets verified against.
+- Triggers done: 7C28, 82D0, 960C marked (the run evaluates them, always false here); 7BD4 and A71C
+  ported but nothing in the cycle lists them; `GetStrafeDir` CE30 ported but its caller's branch
+  never opens in this area.
+- Next slices, one `worker` lane each, in this order: the states nothing reaches yet (`Patrol BFCC`,
+  `Halt BBB0`, `Approach 9478`, `Shuffle 8670`, `TurnAround 8464`, `Dodge 7DFC` — pseudo-C in
+  `/tmp/opencode/pseudo/SpacePirate/`; Patrol is the load state and needs a layer where a pirate
+  actually patrols), then combat (`Attack 9F1C` with `CBurstFire`). Each lane verifies against the
+  208 cycle and reports which trigger/state lines its run produced; a marker needs a traced run.
+- Lanes kill their game by pid only (other worktrees' games share the machine). The verify harness is
+  `/tmp/opencode/sp_trig_verify.sh` (boots 08_sand_casualpirates, beams 208, greps transitions and
+  every `... trigger` line; `FRAMES`/`LOG`/`DISP`/`PORT` overridable).
+- Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
+  expects.
 
 ## Open questions (verify first)
 

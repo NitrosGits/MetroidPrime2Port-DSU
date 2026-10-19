@@ -217,6 +217,7 @@ private:
   void UpdateAimBodyState(float dt, CStateManager& mgr); // 253C
   bool ShouldFrenzy(CStateManager& mgr);                 // 3220
   CVector3f GetTargetPos(CStateManager& mgr);            // CB30
+  int GetStrafeDir(CStateManager& mgr, float dist);      // CE30
   void CheckForProjectiles(CStateManager& mgr);          // DBD4
   bool LineOfSightTest(CStateManager& mgr, const CVector3f& start, const CVector3f& end,
                        const CMaterialList& exclude);    // DB48
