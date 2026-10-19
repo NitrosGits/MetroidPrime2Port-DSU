@@ -323,6 +323,7 @@ void CElitePirate::Wait(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_15_59BC
 void CElitePirate::Stunned(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);

@@ -332,8 +332,8 @@ Open:
    - Stunned is reached only from Shielding on ShieldKilled (`mShieldDamage` over
      `mUnknown5236C2B6` at polarity 1, else `mUnknown01EAAB17`). Shield damage accrues only in
      kSM_Damage from a real projectile hitting the shield actor (polarity 1: weapon type 1/3,
-     polarity 0: 2/3); console `hurt` bypasses it and annihilator fire in the test did not
-     register a shield hit.
+     polarity 0: 2/3); console `hurt` bypasses it. **Entered 2026-10-20** (see "Shield gameplay
+     end to end" below).
    Console notes: `hurt` does not set ShotAt (`mXDamaged`); `send u<id> Alert` powers a
    PowerDown Ingsmasher up; `obj` takes uids only and prints connections as editor ids.
    u051b in area 4 stays in FollowAttackPattern at (81.1, 48.4, -152.1): its pattern is one
@@ -355,12 +355,40 @@ Open:
    0xcf8 < 0xcfc) and the table is four triplets, so the port clamps the index to 0..3, which is
    unchanged behaviour for any index retail reaches inside a volley.
 
-**Next (2026-10-19, `decomp/elitepirate` at the commit adding this line):**
+### Shield gameplay end to end (2026-10-20): Stunned `59BC` reached
+
+Area 4 layer 3, u04ff, no instrumentation in the committed tree. Console (`MP2_CONSOLE=4791`):
+`give annihilatorBeam`, `give darkBeam`, `give lightBeam`, `give darkAmmo 250`,
+`give lightAmmo 250`, `beam annihilator`, `send u04ff Activate`, `send u04ff Alert`, then the
+driver (`/tmp/opencode/ep/stun/stun9.py`, run by `/tmp/opencode/ep/stun/stun_run9.sh`, log
+`/tmp/opencode/ep/stun/stun9.log`) pins the player 6.5 m from the Ingsmasher, faces it, holds A
+(charge) and releases it the frame `obj u04ff` reports `ShieldUp`, then teleports 12 m out while
+the shot is in flight. t = 16.7 s after the driver start (about 35 s after boot), hp 588.
+
+What the run proved, with the logged values:
+
+- shield hits: polarity 1 (light shield), limit `mUnknown5236C2B6` = **55** (`mUnknown01EAAB17` =
+  **110** at polarity 0). A charged annihilator hit is **80**, an uncharged one **12**; the
+  `ShieldUp` window accumulated 80 + 5 x 12 = **140**, `ShieldKilled` went true, the shield burst
+  (Shielding's Deactivate sets `mShieldPopPending`) and the FSM entered `Stunned` (`@ fn_15_59BC`
+  in `PortCElitePirateMove.cpp`).
+- Shielding's transitions are tried in the FSM2 asset's order, **`ShouldMeleeAttack` before
+  `ShieldKilled`**, and the melee range is `mData.mMaxMeleeRange` = **9.00** (retail 0x97c is
+  `CElitePirateData` + 0x154, since `mData` sits at 0x828). At 6.5 m every earlier run left
+  Shielding for `MeleeAttack` and the accumulated damage was lost at the next `ShieldUp` (which
+  zeroes `mShieldDamage`); standing > 9 m at the `ShieldUp` -> `Shielding` handover is what makes
+  ShieldKilled win. `ShouldMeleeAttack` also needs `GetPlayerHintType() == -1`.
+- The shield window is 0.3 + 1.7 x (HP/initial HP) s of `ShieldUp` (2.0 s at full health), and
+  `ReadyToCharge` is its only exit, so damage for one burst has to land inside that window.
+- kSM_Damage arrives with sender = a body/shield `CCollisionActor` whose last-touched object is
+  the player's `CGameProjectile`; `IsShieldUp()` (locomotion `kLT_Crouch`, value 0) is true from
+  `ShieldUp`'s Activate onwards. No port bug was found on this path.
+
+**Next (2026-10-20, `decomp/elitepirate` at the commit adding this line):**
 1. The `[?]` items above, as narrow `worker` lanes (decomp lanes are worker-only), each from a
    named commit.
-2. Optional: reach Stunned `59BC` with real shield hits (enter area 4 normally so the intro
-   sequence runs, raise the shield, fire the matching beam), then mark it.
-Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/dark/stun_run.sh` (dark).
+Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/stun/stun_run9.sh`
+(Stunned), `/tmp/opencode/ep/dark/stun_run.sh` (dark).
 Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
 `/tmp/opencode/ep/gate_run2.sh <log>` (0 crash lines), matching build 94.14%/63.29% if an
 upstream file changed. Also tell the port orchestrator that `186fea1e7` touched the shared file
