@@ -6,7 +6,8 @@ appended, dated as in the heading there.
 ## 2026-10-20 (twenty-ninth session): the F1 Teleport and items pages, Prime 1's shape
 
 - **This commit:** the F1 overlay gets MP1's two debug pages, in this game's terms.
-  - **Game page, Teleport block.** A room combo (`IGetAreaAlways` names, so unloaded areas are
+  - **Cheats page, Teleport block** (where MP1 keeps it, below the items; the Game page keeps
+    this port's own area/world cycle buttons). A room combo (`IGetAreaAlways` names, so unloaded areas are
     named too; slots with no MREA are hidden) with a filter field, `Reload` (a world warp to the same
     world and room - the area warp deliberately ignores a request for the room it is already in),
     and a world combo built from the memory card's world table (`CSaveWorldMemory::GetFrontEndName`,
@@ -36,6 +37,9 @@ appended, dated as in the heading there.
   every box ticked; clicking the missiles slider at a quarter then put `55 / 255` on the HUD, and
   unticking and re-ticking Power Beam followed in the grid. Screenshots `/tmp/opencode/final_game.png`,
   `final_cheats.png`, `p2_torvus.png`, `r3_hud.png`.
+- **Layout.** The first version split the two: the warp pickers on the Game page and the items on
+  Cheats. MP1 has both on Cheats, in the order health/grants, abilities, counters, Teleport, and
+  this now does too (the port's `Previous/Next area/world` buttons stay on Game).
 - Not covered: the Android page layout, and the items page in the front end beyond its
   "Waiting for gameplay..." guard.
 

@@ -385,117 +385,6 @@ void DrawGameSection() {
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
 
-  // The Prime 1 port's Teleport block (debug_ui/cheats.cpp): a filtered list of the current
-  // world's rooms and the save's world table, both by name. The requests are the same PortWarp
-  // ones the console's `warp`/`world` verbs and MP2_TELEPORT use, so nothing here walks around
-  // what the game already does.
-  if (sRooms.empty()) {
-    ImGui::TextDisabled("(no world yet)");
-  } else {
-    const int areaCount = static_cast< int >(sRooms.size());
-    const int current = sAreaId;
-    // Between two updates the published ids are the same frame's, so this only guards a world
-    // that is arriving: an area index outside the table is not looked up.
-    const bool currentValid = current >= 0 && current < areaCount;
-    const auto roomLabel = [](int index) { return sRooms[index].name; };
-    const auto roomExists = [](int index) { return sRooms[index].real; };
-    const auto goToRoom = [](int index) {
-      char text[16];
-      std::snprintf(text, sizeof(text), "%d", index);
-      PortWarp::Area(text);
-    };
-
-    static char sRoomFilter[64] = {};
-    const float goWidth = ImGui::CalcTextSize("Reload").x + ImGui::GetStyle().FramePadding.x * 2.f;
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goWidth -
-                            ImGui::GetStyle().ItemSpacing.x);
-    if (ImGui::BeginCombo("##room", currentValid ? roomLabel(current).c_str() : "(no area)",
-                          ImGuiComboFlags_HeightLarge)) {
-#if !defined(__ANDROID__) // it would raise the on-screen keyboard every time
-      if (ImGui::IsWindowAppearing()) {
-        ImGui::SetKeyboardFocusHere();
-      }
-#endif
-      ImGui::SetNextItemWidth(-FLT_MIN);
-      ImGui::InputTextWithHint("##roomfilter", "Filter rooms", sRoomFilter, sizeof(sRoomFilter));
-      for (int i = 0; i < areaCount; ++i) {
-        if (!roomExists(i)) {
-          continue;
-        }
-        const std::string label = roomLabel(i);
-        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr) {
-          continue;
-        }
-        ImGui::PushID(i);
-        if (ImGui::Selectable(label.c_str(), i == current)) {
-          goToRoom(i);
-        }
-        ImGui::PopID();
-      }
-      ImGui::EndCombo();
-    }
-    ImGui::SetItemTooltip("Pick a room to go there. A room that is not loaded streams in first.");
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!currentValid);
-    if (ImGui::Button("Reload")) {
-      // The area warp ignores a request for the room it is already in, so a reload is the
-      // world warp the elevators use, to the same world and room.
-      char worldText[16];
-      char areaText[16];
-      std::snprintf(worldText, sizeof(worldText), "%08x", sWorldId);
-      std::snprintf(areaText, sizeof(areaText), "%d", current);
-      PortWarp::World(worldText, areaText);
-    }
-    ImGui::EndDisabled();
-    ImGui::SetItemTooltip("Rebuild the room from the disc, as leaving and coming back does.");
-
-    // Rebuilt when the card's table changes size, so loading another save does not leave the
-    // combo showing the previous one's worlds.
-    static size_t sWorldListCount = 0;
-    static std::vector< std::pair< uint32_t, std::string > > sWorldList;
-    const int worldCount =
-        gpMemoryCard != nullptr ? static_cast< int >(gpMemoryCard->GetMemoryWorlds().size()) : 0;
-    if (worldCount > 0 && static_cast< size_t >(worldCount) != sWorldListCount) {
-      sWorldListCount = static_cast< size_t >(worldCount);
-      sWorldList.clear();
-      const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
-      for (int i = 0; i < worlds.size(); ++i) {
-        const uint32_t id = static_cast< uint32_t >(worlds[i].first);
-        std::string name = PlainWorldName(worlds[i].second.GetFrontEndName());
-        if (name.empty()) {
-          char buf[32];
-          std::snprintf(buf, sizeof(buf), "MLVL %08X", static_cast< unsigned >(id));
-          name = buf;
-        }
-        sWorldList.emplace_back(id, name);
-      }
-    }
-    if (sWorldList.empty()) {
-      ImGui::TextDisabled("(the memory card's world table is not loaded yet)");
-    } else {
-      const char* currentName = "(another world)";
-      for (const std::pair< uint32_t, std::string >& entry : sWorldList) {
-        if (entry.first == sWorldId) {
-          currentName = entry.second.c_str();
-        }
-      }
-      ImGui::SetNextItemWidth(-FLT_MIN);
-      if (ImGui::BeginCombo("##world", currentName)) {
-        for (const std::pair< uint32_t, std::string >& entry : sWorldList) {
-          ImGui::PushID(static_cast< int >(entry.first));
-          if (ImGui::Selectable(entry.second.c_str(), entry.first == sWorldId)) {
-            char text[16];
-            std::snprintf(text, sizeof(text), "%08x", entry.first);
-            PortWarp::World(text, "");
-          }
-          ImGui::PopID();
-        }
-        ImGui::EndCombo();
-      }
-      ImGui::SetItemTooltip("Pick a world to reload into its first room.");
-    }
-  }
-
   if (ImGui::Button("Previous area")) {
     PortWarp::CycleArea(-1);
   }
@@ -510,7 +399,8 @@ void DrawGameSection() {
   if (ImGui::Button("Next world")) {
     PortWarp::CycleWorld(1);
   }
-  PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up");
+  PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up; the "
+               "room and world pickers are on the Cheats page, as in the Prime 1 port");
 
   DrawSaveStates();
 
@@ -959,11 +849,9 @@ void DrawItemChecks(CPlayerState& ps, const char* tableId, const SItemCheck* ite
 }
 
 void DrawCheatsSection() {
-  ImGui::SeparatorText("Cheats");
   PortUi::Toggle("God mode", &sGodMode, "MP2_GODMODE=1",
                  "the player takes no damage; other actors still do. Not saved");
 
-  ImGui::SeparatorText("Items");
   CPlayerState* ps = gpGameState != nullptr ? gpGameState->GetPlayerState().GetPtr() : nullptr;
   // The front end has its own player state and its own Samus; the page is about the game's.
   if (ps == nullptr ||
@@ -993,6 +881,7 @@ void DrawCheatsSection() {
     health->SetHP(ps->CalculateHealth());
   }
 
+  ImGui::SeparatorText("Abilities");
   DrawItemChecks(*ps, "##abilitychecks", kAbilityItems, int(std::size(kAbilityItems)));
   if (ImGui::CollapsingHeader("Keys")) {
     DrawItemChecks(*ps, "##keychecks", kKeyItems, int(std::size(kKeyItems)));
@@ -1025,6 +914,118 @@ void DrawCheatsSection() {
   }
   PortUi::Help("The items go into the save in memory: the next save on the memory card writes them, "
                "and nothing here is kept across a restart on its own.");
+  ImGui::SeparatorText("Teleport");
+  // The Prime 1 port's Teleport block (debug_ui/cheats.cpp): a filtered list of the current
+  // world's rooms and the save's world table, both by name. The requests are the same PortWarp
+  // ones the console's `warp`/`world` verbs and MP2_TELEPORT use, so nothing here walks around
+  // what the game already does.
+  if (sRooms.empty()) {
+    ImGui::TextDisabled("(no world yet)");
+  } else {
+    const int areaCount = static_cast< int >(sRooms.size());
+    const int current = sAreaId;
+    // Between two updates the published ids are the same frame's, so this only guards a world
+    // that is arriving: an area index outside the table is not looked up.
+    const bool currentValid = current >= 0 && current < areaCount;
+    const auto roomLabel = [](int index) { return sRooms[index].name; };
+    const auto roomExists = [](int index) { return sRooms[index].real; };
+    const auto goToRoom = [](int index) {
+      char text[16];
+      std::snprintf(text, sizeof(text), "%d", index);
+      PortWarp::Area(text);
+    };
+
+    static char sRoomFilter[64] = {};
+    const float goWidth = ImGui::CalcTextSize("Reload").x + ImGui::GetStyle().FramePadding.x * 2.f;
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goWidth -
+                            ImGui::GetStyle().ItemSpacing.x);
+    if (ImGui::BeginCombo("##room", currentValid ? roomLabel(current).c_str() : "(no area)",
+                          ImGuiComboFlags_HeightLarge)) {
+#if !defined(__ANDROID__) // it would raise the on-screen keyboard every time
+      if (ImGui::IsWindowAppearing()) {
+        ImGui::SetKeyboardFocusHere();
+      }
+#endif
+      ImGui::SetNextItemWidth(-FLT_MIN);
+      ImGui::InputTextWithHint("##roomfilter", "Filter rooms", sRoomFilter, sizeof(sRoomFilter));
+      for (int i = 0; i < areaCount; ++i) {
+        if (!roomExists(i)) {
+          continue;
+        }
+        const std::string label = roomLabel(i);
+        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr) {
+          continue;
+        }
+        ImGui::PushID(i);
+        if (ImGui::Selectable(label.c_str(), i == current)) {
+          goToRoom(i);
+        }
+        ImGui::PopID();
+      }
+      ImGui::EndCombo();
+    }
+    ImGui::SetItemTooltip("Pick a room to go there. A room that is not loaded streams in first.");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!currentValid);
+    if (ImGui::Button("Reload")) {
+      // The area warp ignores a request for the room it is already in, so a reload is the
+      // world warp the elevators use, to the same world and room.
+      char worldText[16];
+      char areaText[16];
+      std::snprintf(worldText, sizeof(worldText), "%08x", sWorldId);
+      std::snprintf(areaText, sizeof(areaText), "%d", current);
+      PortWarp::World(worldText, areaText);
+    }
+    ImGui::EndDisabled();
+    ImGui::SetItemTooltip("Rebuild the room from the disc, as leaving and coming back does.");
+
+    // Rebuilt when the card's table changes size, so loading another save does not leave the
+    // combo showing the previous one's worlds.
+    static size_t sWorldListCount = 0;
+    static std::vector< std::pair< uint32_t, std::string > > sWorldList;
+    const int worldCount =
+        gpMemoryCard != nullptr ? static_cast< int >(gpMemoryCard->GetMemoryWorlds().size()) : 0;
+    if (worldCount > 0 && static_cast< size_t >(worldCount) != sWorldListCount) {
+      sWorldListCount = static_cast< size_t >(worldCount);
+      sWorldList.clear();
+      const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
+      for (int i = 0; i < worlds.size(); ++i) {
+        const uint32_t id = static_cast< uint32_t >(worlds[i].first);
+        std::string name = PlainWorldName(worlds[i].second.GetFrontEndName());
+        if (name.empty()) {
+          char buf[32];
+          std::snprintf(buf, sizeof(buf), "MLVL %08X", static_cast< unsigned >(id));
+          name = buf;
+        }
+        sWorldList.emplace_back(id, name);
+      }
+    }
+    if (sWorldList.empty()) {
+      ImGui::TextDisabled("(the memory card's world table is not loaded yet)");
+    } else {
+      const char* currentName = "(another world)";
+      for (const std::pair< uint32_t, std::string >& entry : sWorldList) {
+        if (entry.first == sWorldId) {
+          currentName = entry.second.c_str();
+        }
+      }
+      ImGui::SetNextItemWidth(-FLT_MIN);
+      if (ImGui::BeginCombo("##world", currentName)) {
+        for (const std::pair< uint32_t, std::string >& entry : sWorldList) {
+          ImGui::PushID(static_cast< int >(entry.first));
+          if (ImGui::Selectable(entry.second.c_str(), entry.first == sWorldId)) {
+            char text[16];
+            std::snprintf(text, sizeof(text), "%08x", entry.first);
+            PortWarp::World(text, "");
+          }
+          ImGui::PopID();
+        }
+        ImGui::EndCombo();
+      }
+      ImGui::SetItemTooltip("Pick a world to reload into its first room.");
+    }
+  }
+
 }
 
 void DrawControlsMouse() {
