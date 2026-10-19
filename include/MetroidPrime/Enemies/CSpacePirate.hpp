@@ -7,6 +7,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CIkChain.hpp"
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
@@ -202,6 +203,26 @@ public:
 private:
 #ifdef TARGET_PC
   void EnsureBodyActive(CStateManager& mgr);
+  void SquadRemove(CStateManager& mgr);                  // DF2C
+  void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
+  void SetVelocityForJump();                             // E168
+  // Think path (fn_72_1980); the comment on each is its retail function.
+  void UpdateCloak(float dt, CStateManager& mgr);        // 2F4C
+  void UpdateAttacks(float dt, CStateManager& mgr);      // 28F0
+  void UpdateAimBodyState(float dt, CStateManager& mgr); // 253C
+  bool ShouldFrenzy(CStateManager& mgr);                 // 3220
+  CVector3f GetTargetPos(CStateManager& mgr);            // CB30
+  void CheckForProjectiles(CStateManager& mgr);          // DBD4
+  bool LineOfSightTest(CStateManager& mgr, const CVector3f& start, const CVector3f& end,
+                       const CMaterialList& exclude);    // DB48
+  void SetCinematicCollision(CStateManager& mgr);        // CA94
+  void SetNonCinematicCollision(CStateManager& mgr);     // C9DC
+  bool FireProjectile(float dt, CStateManager& mgr);     // 45F8
+  void SquadReset(CStateManager& mgr);                   // DEDC
+  TUniqueId ChooseTarget(CStateManager& mgr);            // EDEC
+  TUniqueId ChooseTeamTarget(CStateManager& mgr);        // EFD4
+  void UpdateTeamTarget(CStateManager& mgr);             // DE5C
+  bool CheckTargetable(CStateManager& mgr);              // E2DC
   // Host layout (retail's is 0xc70 bytes, CHECK_SIZEOF below). Guest offsets kept as comments.
   // Members up to 0xa94 sit at MP1 offset + 0x2c8..0x2d0, so MP1's names carry over. Bit names
   // are xOFF_BB_name for retail's flag byte and bit (24 = the byte's top bit, as in MP1).
@@ -271,7 +292,8 @@ private:
   CVector3f x908_targetDelta;             // 0x908 (forward)
   CVector3f x914_coverPointRearDir;       // 0x914 (zero)
   CPathFindSearch mPathFindSearch;        // 0x920 (0xf0); GetSearchPath
-  float xa10_unkTimer;                    // 0xa10
+  float xa0c_unkTimer;                    // 0xa0c (MP1 x744_unkTimer; counts down in Think)
+  float xa10_steeringDelayTimer;          // 0xa10 (MP1 x748; non-zero holds the steering speed at 0)
   int xa14_;                              // 0xa14
   float xa18_;                            // 0xa18 = pInfo+0x58; MP1 x750_initialHP? [unresolved]
   float xa1c_coverRange;                  // 0xa1c
@@ -309,7 +331,7 @@ private:
   float xb28_lowHealthFrenzyTimer;        // 0xb28 (FLT_MAX)
   float xb2c_ragdollDelayTimer;           // 0xb2c
   void* xb30_;                            // 0xb30 (null; GetRagDoll's slot, unidentified)
-  uchar xb34_ikChain_[0x48];              // 0xb34 built by fn_72_10568 (CIkChain-sized) [unresolved]
+  CIkChain xb34_ikChain;                  // 0xb34 (fn_72_10568 is CIkChain's default ctor)
   float xb7c_cloakDelayTimer;             // 0xb7c
   float xb80_electricParticleTimer;       // 0xb80
   float xb84_cloakStepTime;               // 0xb84
