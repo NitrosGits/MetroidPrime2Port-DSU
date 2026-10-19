@@ -269,6 +269,19 @@ Floor; ShouldFire include Solid|Character (bits 0x3b/0x1f/0x21). `[?]`: `ReadyTo
 alert position in `ShouldAlert`, `xd04_`/the 20% repeat in `PickAttackType`, and the identity of
 `xa40_`/`xa44_`/`xc5c_`/`xb3c_` (read, not yet written by any ported code).
 
+**Combat states (2026-10-19)** in `PortCElitePirateCombat.cpp`: Shielding `41A0`, ShieldUp `44A8`,
+MeleeAttack `48BC`, Shockwave `4AE0`, SpreadShot `4D18`, ProjectileAttack `50BC`, AngryAttackBegin
+`1900`, AngryAttackEnd `18D8`, Taunt `5A60`, PowerUp `5F08`, PowerDown `5FF0`, Dead `7B00`, plus
+`ResetAttackTimer` (`1F2C`) and `TryCommand` (`BAF8`/`BC04`/`BD10`, retry a body command until the
+body state is entered). They reuse the movement file's `SetAttackKind`/`UpdateAbsorb`/`TauntCmd`/
+`TurnCmd`/`PathToward`. The shield's looping sound is a host member (`mShieldSfx`, after 0xc98).
+Writers: `xc5c_` = ShieldUp (shield-raise time), `xa40_` = PathToward (time stuck), `xa44_` = Pursue
+(`5BB4`, from 0xa3c), `xb3c_` = TargetPatrol (`578C`, from 0x334); `xd1c_` is the taunt type (an int,
+Taunt cycles 0 -> 6 -> 1 -> 0). `[?]`: Shielding's `xa38_` countdown (only the ctor writes 0xa38).
+In game (Sanctuary area 4, layer 3), Shockwave, ProjectileAttack, SpreadShot, AngryAttackBegin/End
+and PowerUp/PowerDown are entered with no fault; Shielding, ShieldUp, MeleeAttack, Taunt and Dead
+were not reached by the test script.
+
 Open:
 
 1. The FSM bodies (the next slice): they need `SetShieldVulnerability`, `SendLauncherMsg`,
@@ -276,6 +289,13 @@ Open:
 2. `[?]` members: 0x7c0, 0x810/0x81c, 0xa26, 0xa38/0xa40/0xa44, 0xc14/0xc28/0xc3c/0xc48/0xc4c,
    0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
 3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
+
+**Movement states (2026-10-19)**: Patrol `5708`, TargetPatrol `578C`, Pursue `5BB4`, Turn `5598`, Alert `5340`,
+InvulnAlert `52D0`, Wait `6064`, Stunned `59BC`, FollowAttackPattern `6DDC` are in `PortCElitePirateMove.cpp`, with
+their callees (attack-kind history `4790`, absorb `850C`, retrying body commands `BDFC`/`BEA0`, path helpers
+`5CBC`/`1FC0`/`13B8`). The attack-kind history (0xc14..) is only pushed to; `xd1c_` is the taunt type
+(0 -> 6 -> 1 -> 0). In game (area 4, player teleported next to the pirates) Alert, Turn and
+FollowAttackPattern were entered with 0 crashes.
 
 ## 6. Verified in game, and how its actors are reached (2026-10-16, later session)
 

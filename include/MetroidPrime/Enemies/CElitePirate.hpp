@@ -6,6 +6,7 @@
 
 #ifdef TARGET_PC
 #include "Collision/CCollidableAABox.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/CToken.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
@@ -18,6 +19,7 @@
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
 
+class CBCLocomotionCmd;
 class CCollisionActorManager;
 class CElementGen;
 class CGenDescription;
@@ -248,6 +250,22 @@ private:
   void ApplyMeleeDamage(CStateManager& mgr, TUniqueId target);     // fn_15_7004
   void SetArmTouchBounds(CStateManager& mgr, const CVector3f& bounds); // part of fn_15_7BFC
 
+  // movement-state helpers (PortCElitePirateMove.cpp; shared with the combat states)
+  void SetAttackKind(int kind, EStateMsg msg);                     // fn_15_4790 (+47DC/4848)
+  void UpdateAbsorb(CStateManager& mgr, EStateMsg msg);            // fn_15_850C
+  void TauntCmd(EStateMsg msg, int tauntType);                     // fn_15_BEA0 (retry, body state 0x10)
+  void TurnCmd(EStateMsg msg, const CBCLocomotionCmd& cmd);        // fn_15_BDFC (retry, body state 8)
+  void PathToward(CStateManager& mgr, EStateMsg msg, float dt, const CVector3f& dest); // fn_15_5CBC
+  void PlanPath(CStateManager& mgr, float dt, const CVector3f& dest); // fn_15_1FC0
+  void ClaimPathRegion(CStateManager& mgr);                        // fn_15_13B8
+  bool IsPlayerOnPath(const CStateManager& mgr) const;             // fn_15_1A14
+
+  // combat-state helpers (PortCElitePirateCombat.cpp)
+  void ResetAttackTimer(CStateManager& mgr);                       // fn_15_1F2C
+  template < typename T >
+  void TryCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd); // fn_15_BAF8/BC04/BD10
+  CSfxHandle mShieldSfx;                         // 0xc98 the shield's looping emitter (ShieldUp/Shielding)
+
   // Host layout; retail offsets (fn_15_A190 and the helpers) on each. Retail is 0xd30 bytes.
   int x7c0_;                                     // 0x7c0 = -1 [?] not read in this slice
   CDamageVulnerability mBodyVulnerability;       // 0x7c4 copy of the patterned info's (fn_15_2B08)
@@ -288,6 +306,7 @@ private:
   bool mLauncherIngPossessed : 1;                // 0xc10 0x02: launcher built Ing-possessed
   bool xc10_01_ : 1;                             // 0xc10 0x01 [?]
   int xc14_;                                     // 0xc14 = 0 [?]
+  rstl::reserved_vector< int, 3 > mAttackKindHistory; // 0xc14.. (retail's xc14_ is its count; SetAttackKind pushes, never read)
   int xc28_;                                     // 0xc28 = -1 [?]
   int mAttackKind;                               // 0xc2c 2/8 rocket, 4 melee, 7 shockwave
   CToken mFsm2;                                  // 0xc30 'FSM2' data.mStateMachine (fn_15_B748)
@@ -323,7 +342,7 @@ private:
   bool mRocketEventSeen;                         // 0xd08 event 18 during attack kind 2
   float mAimBlend;                               // 0xd0c towards the shield collider
   mutable CVector3f mShieldAimPos;               // 0xd10
-  float xd1c_;                                   // 0xd1c [?]
+  int xd1c_;                                     // 0xd1c taunt type: Taunt cycles 0 -> 6 -> 1 -> 0
   int mAngryCount;                               // 0xd20 int: AngryAttackEnd decrements, StillAngry tests > 0
   bool xd24_80_ : 1;                             // 0xd24 [?]
   bool xd24_40_ : 1;
