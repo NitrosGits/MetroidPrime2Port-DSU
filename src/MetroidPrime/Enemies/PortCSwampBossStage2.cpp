@@ -836,20 +836,156 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
   (void)projectile;
 }
 
-// TODO(uncertain): fn_79_55B0 not ported (sends ACTV/DECR to the chain and lays the platform chain
-// out from the node and position lists).
+// fn_79_5030: put every chain node on its recorded position.
+void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
+                                       const rstl::vector< TUniqueId >& nodes,
+                                       const rstl::vector< CVector3f >& positions) const {
+  const int count = static_cast< int >(nodes.size());
+  for (int i = 0; i < count && i < static_cast< int >(positions.size()); ++i) {
+    CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodes[i]));
+    if (node) {
+      node->SetTranslation(positions[i]);
+    }
+  }
+}
+
+// fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
+                                       const rstl::vector< TUniqueId >& nodes,
+                                       const CVector3f& origin,
+                                       const CTransform4f& rotation) const {
+  const int count = static_cast< int >(nodes.size());
+  for (int i = 0; i < count; ++i) {
+    CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodes[i]));
+    if (!node) {
+      continue;
+    }
+    node->SetTranslation(origin + rotation * (node->GetTranslation() - origin));
+    const CVector3f centre = CenterPosition(mgr);
+    const CVector3f nodePos = node->GetTranslation();
+    if (mEdgeDistance * mEdgeDistance < (nodePos - centre).MagSquared()) {
+      const CVector3f dir = (nodePos - centre).AsNormalized();
+      // The node keeps its own height; only the horizontal distance is clamped.
+      node->SetTranslation(CVector3f(centre.GetX() + dir.GetX() * mEdgeDistance,
+                                     centre.GetY() + dir.GetY() * mEdgeDistance,
+                                     nodePos.GetZ()));
+    }
+  }
+}
+
+// fn_79_543C: swing one chain segment (the node and its NEXT connections) about the origin, counting
+// the depth and the nodes moved. fn_79_31C0/fn_79_32C0 are the vector copy and its free here.
+void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
+                                         const CVector3f& origin,
+                                         const CTransform4f& rotation) {
+  ++mChainDepth;
+  ++mBarrageCount;
+  chain.SetTranslation(origin + rotation * (chain.GetTranslation() - origin));
+  const rstl::vector< TUniqueId > next = chain.FindConnectedObjects(mgr, kSS_Arrived, kSM_Next);
+  for (int i = 0; i < static_cast< int >(next.size()); ++i) {
+    CActor* child = TCastToPtr< CActor >(mgr.ObjectById(next[i]));
+    if (child) {
+      PlaceChainSegment(mgr, *child, origin, rotation);
+    }
+  }
+  --mChainDepth;
+}
+
+// fn_79_4D20: take a random spit platform, walk its NEXT chain to the first active node, then swing
+// that whole segment towards the predicted intercept of the player.
+void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
+                                        const rstl::vector< TUniqueId >& platforms,
+                                        const CVector3f& from) {
+  const int count = static_cast< int >(platforms.size());
+  if (count < 1) {
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  if (!player) {
+    return;
+  }
+  const int random = mgr.Random()->Next();
+  mSpitNode = platforms[random - (random / count) * count];
+  CActor* first = TCastToPtr< CActor >(mgr.ObjectById(mSpitNode));
+  if (!first) {
+    return;
+  }
+  // Walk along the chain while the next entity is inactive; the first active one is the pivot.
+  CEntity* current = first;
+  while (true) {
+    const TUniqueId nextId = current->FindConnectedObject(mgr, kSS_Arrived, kSM_Next);
+    CEntity* nextEntity = mgr.ObjectById(nextId);
+    if (!nextEntity) {
+      return;
+    }
+    current = nextEntity;
+    if (current->GetActive()) {
+      break;
+    }
+  }
+  CActor* pivot = TCastToPtr< CActor >(current);
+  CActor* centre = TCastToPtr< CActor >(mgr.ObjectById(mCenter));
+  if (!pivot || !centre) {
+    return;
+  }
+  const CVector3f pivotPos = pivot->GetTranslation();
+  CVector3f target = mSpitProjectile.PredictInterceptPos(
+      from, PlayerOverheadPosition(mgr), *player, true, mInterceptTime);
+  if (target.GetZ() < centre->GetTranslation().GetZ() + 1.f) {
+    target.SetZ(centre->GetTranslation().GetZ() + 1.f);
+  }
+  // The segment swings by the difference between this actor's heading and the pivot's own heading.
+  const float thisHeading = static_cast< float >(
+      atan2(GetTransform().GetForward().GetY(), GetTransform().GetForward().GetX()));
+  const float pivotHeading = static_cast< float >(
+      atan2(pivot->GetTransform().GetForward().GetY(), pivot->GetTransform().GetForward().GetX()));
+  // Retail also writes the pivot->target offset into the transform, so the segment swings about the
+  // pivot and lands on the target.
+  CTransform4f rotation =
+      CTransform4f::RotateZ(CRelAngle::FromRadians(thisHeading - pivotHeading));
+  rotation.SetTranslation(target - pivotPos);
+  mBarrageCount = 0;
+  PlaceChainSegment(mgr, *first, pivotPos, rotation);
+  pivot->SetTransform(GetTransform());
+  pivot->SetTranslation(target);
+}
+
+// fn_79_55B0: wake the platform chain, drop its nodes on their recorded positions, swing them by the
+// heading difference to the chain's follow node and park that node at the event's locator.
 void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
                                            rstl::vector< TUniqueId >& nodes,
                                            rstl::vector< CVector3f >& positions,
                                            const CVector3f& from) {
-  // TODO(uncertain): fn_79_55B0 not ported.
-}
-
-// TODO(uncertain): fn_79_4D20 not ported (moves the spit platforms to their projectile intercepts).
-void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
-                                        const rstl::vector< TUniqueId >& platforms,
-                                        const CVector3f& from) {
-  // TODO(uncertain): fn_79_4D20 not ported.
+  CActor* chainActor = TCastToPtr< CActor >(mgr.ObjectById(chain));
+  if (!chainActor) {
+    return;
+  }
+  chainActor->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), chain, kSM_Activate));
+  chainActor->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), chain, kSM_Decrement));
+  const TUniqueId patrolId = chainActor->FindConnectedObject(mgr, kSS_Patrol, kSM_Follow);
+  CActor* patrol = TCastToPtr< CActor >(mgr.ObjectById(patrolId));
+  if (!patrol) {
+    return;
+  }
+  PlaceChainNodes(mgr, nodes, positions);
+  const TUniqueId nextId = patrol->FindConnectedObject(mgr, kSS_Arrived, kSM_Next);
+  const CActor* next = TCastToConstPtr< CActor >(mgr.GetObjectById(nextId));
+  if (!next) {
+    return;
+  }
+  const CVector3f patrolPos = patrol->GetTranslation();
+  const CVector3f nextPos = next->GetTranslation();
+  const float patrolHeading =
+      static_cast< float >(atan2(nextPos.GetY() - patrolPos.GetY(), nextPos.GetX() - patrolPos.GetX()));
+  const float thisHeading = static_cast< float >(
+      atan2(GetTransform().GetForward().GetY(), GetTransform().GetForward().GetX()));
+  // The transform also carries the horizontal patrol->locator offset (retail zeroes Z).
+  CTransform4f rotation =
+      CTransform4f::RotateZ(CRelAngle::FromRadians(thisHeading - patrolHeading));
+  rotation.SetTranslation(
+      CVector3f(from.GetX() - patrolPos.GetX(), from.GetY() - patrolPos.GetY(), 0.f));
+  SwingChainNodes(mgr, nodes, patrolPos, rotation);
+  patrol->SetTranslation(from);
 }
 
 void CSwampBossStage2::SendDecrement(CStateManager& mgr) {

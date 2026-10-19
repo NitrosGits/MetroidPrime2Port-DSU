@@ -152,6 +152,12 @@ protected:
                            const CVector3f& from);
   void AimSpitPlatforms(CStateManager& mgr, const rstl::vector< TUniqueId >& platforms,
                         const CVector3f& from);
+  void PlaceChainNodes(CStateManager& mgr, const rstl::vector< TUniqueId >& nodes,
+                       const rstl::vector< CVector3f >& positions) const;
+  void SwingChainNodes(CStateManager& mgr, const rstl::vector< TUniqueId >& nodes,
+                       const CVector3f& origin, const CTransform4f& rotation) const;
+  void PlaceChainSegment(CStateManager& mgr, CActor& chain, const CVector3f& origin,
+                         const CTransform4f& rotation);
   void SendDecrement(CStateManager& mgr);
   void ProcessDamage(CStateManager& mgr, TUniqueId colActorId);
   float RecentDamage() const;
