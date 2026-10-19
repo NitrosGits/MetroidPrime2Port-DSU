@@ -142,4 +142,10 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
     (`x27=0`), tumbling (`x27=1`, tumble angle growing 6–42°) and re-orienting (`x28=1`). The default
     plane was (0,1,0,0).
   - Their body controllers have no `kAS_AdditiveReaction` state, so the bend branch is correctly
-    skipped. The bend and the boost-ball/contact damage paths were not exercised in this run.
+    skipped.
+- Runtime: Agon Wastes (`42b935e4`) `0b_sand_hall` (area 40, MREA `84303dd5`, picked from
+  `docs/module_spawns.tsv`), 6000 frames, GODMODE: no `[port] caught` and no `[reach-stub]`. A
+  temporary probe saw the `EType 5` crawlers (PillBug) *with* `kAS_AdditiveReaction`: the weight
+  ramped and the kART_Six bend started (`x860_29_` = 1, w = 0.07).
+- Not exercised: the kART_Five bend, the boost-ball and contact damage (no player input in these
+  runs).
