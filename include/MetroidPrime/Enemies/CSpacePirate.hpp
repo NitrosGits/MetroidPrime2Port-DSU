@@ -7,7 +7,11 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/Enemies/CBurstFire.hpp"
+#include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "Kyoto/Math/CPlane.hpp"
+#include "rstl/optional_object.hpp"
 
 // Host copy of the properties the SpacePirate loader reads (retail: CSpacePirateData, 0x134 bytes
 // at 0x7c0, built by fn_72_10A10). Only the fields milestone 1a keeps are held; the retail offset
@@ -43,6 +47,8 @@ struct CSpacePirateData {
   float mAvoidDistance;        // +0xc0
   CAssetId mGrenadeLauncher;   // +0xcc (launcher block +4, i.e. +0xc8 + 4)
   uint mEquippedWeapon;        // +0xc8
+  float mGrenadeMinAttackDist; // +0x12c (launcher block +0x64)
+  float mGrenadeMaxAttackDist; // +0x130 (launcher block +0x68)
 };
 #endif
 
@@ -70,6 +76,117 @@ public:
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void SetupStateMachine(CStateManager& mgr) override;
   TUniqueId GetAttackTarget() const override { return mAttackTarget; }
+  void SetAttackTarget(CStateManager& mgr, TUniqueId target) override;
+
+  // CActor / CAi / CPatterned overrides the retail vtable (82 slots) replaces. The trivial ones
+  // are real; the rest forward to the base behind a StandIn until a later milestone ports them.
+  void PreRenderAllViewports(CStateManager& mgr) override;
+  const CHealthInfo* GetHealthInfo() const override;
+  const CDamageVulnerability* GetDamageVulnerability() const override;
+  const CDamageVulnerability* GetDamageVulnerability(const CVector3f& position,
+                                                     const CVector3f& direction,
+                                                     const CDamageInfo& damage) const override;
+  rstl::optional_object< CAABox > GetTouchBounds() const override;
+  CAABox GetSortingBounds(const CStateManager& mgr) const override;
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  bool CanBeShot(const CStateManager&, int) override { return true; } // fn_72_5C
+  bool IsListening() const override { return true; }                  // fn_72_10
+  bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+  CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
+                      const CVector3f& aimPos) const override;
+  uchar GetModelAlphau8(const CStateManager& mgr) const override;
+  CProjectileInfo* ProjectileInfo() override; // fn_72_4F0C
+  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // fn_72_8
+  CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // fn_72_40
+  CRagDoll* GetRagDoll() const override { return nullptr; } // fn_72_17A0; xb30_ is never set yet
+  float GetGravityConstant() const override { return 50.f; } // fn_72_24
+  bool IsScanVisorSelfRender() const override { return true; } // fn_72_0
+  CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
+  void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
+                       const CModelFlags& flags) const override;
+  bool TryToBeCaptured(CStateManager& mgr) override;
+
+  // The 39 triggers and 37 states of the retail table (fn_72_10E50), in table order. The
+  // comment on each is its retail function. Names that CPatterned also declares hide it.
+  // Triggers
+  bool Stuck(CStateManager& mgr, const CTriggerData& data) const;             // C488
+  bool PatternShagged(CStateManager& mgr, const CTriggerData& data) const;    // C468
+  bool HearShot(CStateManager& mgr, const CTriggerData& data) const;          // BC78
+  bool HearPlayer(CStateManager& mgr, const CTriggerData& data) const;        // BBC0
+  bool AggressionCheck(CStateManager& mgr, const CTriggerData& data) const;   // ADC0
+  bool CoverCheck(CStateManager& mgr, const CTriggerData& data) const;        // ADB4
+  bool CoverFind(CStateManager& mgr, const CTriggerData& data) const;         // ABC0
+  bool CoverBlown(CStateManager& mgr, const CTriggerData& data) const;        // AA64
+  bool CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const;  // A988
+  bool CoveringFire(CStateManager& mgr, const CTriggerData& data) const;      // A8D0
+  bool ShouldAttack(CStateManager& mgr, const CTriggerData& data) const;      // A71C
+  bool LineOfSight(CStateManager& mgr, const CTriggerData& data) const;       // 9378
+  bool PatternOver(CStateManager& mgr, const CTriggerData& data) const;       // BC94
+  bool SpotPlayer(CStateManager& mgr, const CTriggerData& data) const;        // 938C
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;       // 82D0
+  bool ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const;     // 7C28
+  bool InRange(CStateManager& mgr, const CTriggerData& data) const;           // 8A84
+  bool ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const;      // 99A4
+  bool ShouldMove(CStateManager& mgr, const CTriggerData& data) const;        // 7BD4
+  bool ShotAt(CStateManager& mgr, const CTriggerData& data) const;            // 7BA0
+  bool Attacked(CStateManager& mgr, const CTriggerData& data) const;          // 7B6C
+  bool HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const; // 7970
+  bool ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const;    // 767C
+  bool AnimOver(CStateManager& mgr, const CTriggerData& data) const;          // 689C
+  bool ShouldStrafe(CStateManager& mgr, const CTriggerData& data) const;      // 960C
+  bool ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& data) const; // 638C
+  bool StartAttack(CStateManager& mgr, const CTriggerData& data) const;       // 6334
+  bool BreakAttack(CStateManager& mgr, const CTriggerData& data) const;       // 6328
+  bool LostInterest(CStateManager& mgr, const CTriggerData& data) const;      // 635C
+  bool BounceFind(CStateManager& mgr, const CTriggerData& data) const;        // 602C
+  bool OffLine(CStateManager& mgr, const CTriggerData& data) const;           // 55B8
+  bool Landed(CStateManager& mgr, const CTriggerData& data) const;            // 558C
+  bool ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const;    // 686C
+  bool Leash(CStateManager& mgr, const CTriggerData& data) const;             // 52F8
+  bool HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const;  // 7810
+  bool IsAmbushing(CStateManager& mgr, const CTriggerData& data) const;       // 7804
+  bool ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const;      // 77D0
+  bool ShouldLaunchGrenade(CStateManager& mgr, const CTriggerData& data) const; // 779C
+  bool InProjectileRange(CStateManager& mgr, const CTriggerData& data) const; // 76D0
+  // States (Patrol, Dead and PathFind hide CPatterned's)
+  void Ambushing(CStateManager& mgr, EStateMsg msg, float dt);     // 7630
+  void WarpIn(CStateManager& mgr, EStateMsg msg, float dt);        // 7078
+  void WarpOut(CStateManager& mgr, EStateMsg msg, float dt);       // 6E6C
+  void PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt);   // 6DA4
+  void Attack(CStateManager& mgr, EStateMsg msg, float dt);        // 9F1C
+  void Crouch(CStateManager& mgr, EStateMsg msg, float dt);        // 98D8
+  void CoverAttack(CStateManager& mgr, EStateMsg msg, float dt);   // A310
+  void Halt(CStateManager& mgr, EStateMsg msg, float dt);          // BBB0
+  void Run(CStateManager& mgr, EStateMsg msg, float dt);           // BBA0
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);      // 8A90
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);        // BFCC
+  void TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt);  // BCB0
+  void Shuffle(CStateManager& mgr, EStateMsg msg, float dt);       // 8670
+  void TurnAround(CStateManager& mgr, EStateMsg msg, float dt);    // 8464
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);         // 7DFC
+  void Lurk(CStateManager& mgr, EStateMsg msg, float dt);          // AF70
+  void Taunt(CStateManager& mgr, EStateMsg msg, float dt);         // B59C
+  void Cover(CStateManager& mgr, EStateMsg msg, float dt);         // A3C0
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);          // 5C10
+  void TargetCover(CStateManager& mgr, EStateMsg msg, float dt);   // 78DC
+  void TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt);  // 7868
+  void Approach(CStateManager& mgr, EStateMsg msg, float dt);      // 9478
+  void WallHang(CStateManager& mgr, EStateMsg msg, float dt);      // 69AC
+  void WallDetach(CStateManager& mgr, EStateMsg msg, float dt);    // 68E4
+  void GetUp(CStateManager& mgr, EStateMsg msg, float dt);         // B3D4
+  void Generate(CStateManager& mgr, EStateMsg msg, float dt);      // C1A4
+  void Skid(CStateManager& mgr, EStateMsg msg, float dt);          // 94D0
+  void DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt);    // 99F0
+  void JumpBack(CStateManager& mgr, EStateMsg msg, float dt);      // 63C8
+  void Bounce(CStateManager& mgr, EStateMsg msg, float dt);        // 5D0C
+  void PathFindEx(CStateManager& mgr, EStateMsg msg, float dt);    // 5EA4
+  void Enraged(CStateManager& mgr, EStateMsg msg, float dt);       // A2B8
+  void Jump(CStateManager& mgr, EStateMsg msg, float dt);          // 5310
+  void Deactivate(CStateManager& mgr, EStateMsg msg, float dt);    // 5BF4
+  void LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt); // 58D8
+  void Captured(CStateManager& mgr, EStateMsg msg, float dt);      // 5610
+  void RemoveFromWorld(CStateManager& mgr, EStateMsg msg, float dt); // 5B88
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
@@ -86,17 +203,138 @@ private:
 #ifdef TARGET_PC
   void EnsureBodyActive(CStateManager& mgr);
   // Host layout (retail's is 0xc70 bytes, CHECK_SIZEOF below). Guest offsets kept as comments.
+  // Members up to 0xa94 sit at MP1 offset + 0x2c8..0x2d0, so MP1's names carry over. Bit names
+  // are xOFF_BB_name for retail's flag byte and bit (24 = the byte's top bit, as in MP1).
   CSpacePirateData mData;       // 0x7c0 (0x134)
-  CSegId mHeadSegId;            // 0xa20 "Head_1"
-  CBoneTracking mBoneTracking;  // 0xa2c (0x3c)
-  // 0x8f4..0x8fa flag bits are not unpacked yet (milestone 2); the two the other modules read:
-  bool mEnableAim;              // 0x8f7 bit 25
-  bool mAllEnergyDrained;       // 0x8f8 bit 30
-  TUniqueId mAttachedActor;     // 0xa84
-  TUniqueId mAttackTarget;      // 0xa94
-  float mAttackRemTime;         // 0xa90 (1.0)
-  void* xb30_;                  // 0xb30 (null; GetRagDoll's slot, unidentified)
-  CPlane mPortalPlane;          // 0xc5c (0x10); written by the WispTentacle while it drags the pirate
+  // 0x8f4..0x8fa: bits 0x8f4_24..0x8f6_24 are unpacked from mData.mFlags by the ctor, the rest
+  // start cleared. 0x8f4_24 is `flags & 3` (MP1: `& 1`).
+  bool x8f4_24_pendingAmbush : 1;         // flags & 3
+  bool x8f4_25_ceilingAmbush : 1;         // flags 0x2
+  bool x8f4_26_nonAggressive : 1;         // flags 0x4
+  bool x8f4_27_melee : 1;                 // flags 0x8
+  bool x8f4_28_noShuffleCloseCheck : 1;   // flags 0x10
+  bool x8f4_29_onlyAttackInRange : 1;     // flags 0x20
+  bool x8f4_30_ : 1;                      // flags 0x40
+  bool x8f4_31_noKnockbackImpulseReset : 1; // flags 0x80
+  bool x8f5_24_noMeleeAttack : 1;         // flags 0x200
+  bool x8f5_25_breakAttack : 1;           // flags 0x400
+  bool x8f5_26_seated : 1;                // flags 0x1000
+  bool x8f5_27_shadowPirate : 1;          // flags 0x2000
+  bool x8f5_28_alertBeforeCloak : 1;      // flags 0x4000
+  bool x8f5_29_noBreakDodge : 1;          // flags 0x8000
+  bool x8f5_30_floatingCorpse : 1;        // flags 0x10000
+  bool x8f5_31_ragdollNoAiCollision : 1;  // flags 0x20000
+  bool x8f6_24_trooper : 1;               // flags 0x40000
+  bool x8f6_25_hearNoise : 1;
+  bool x8f6_26_enableMeleeAttack : 1;
+  bool x8f6_27_ : 1;
+  bool x8f6_28_ : 1;
+  bool x8f6_29_enableRetreat : 1;
+  bool x8f6_30_shuffleClose : 1;
+  bool x8f6_31_inAttackState : 1;
+  bool x8f7_24_enablePatrol : 1;
+  bool mEnableAim : 1;                    // 0x8f7_25 (MP1 x637_25_enableAim)
+  bool x8f7_26_hearPlayerFire : 1;
+  bool x8f7_27_inProjectilePath : 1;
+  bool x8f7_28_noPlayerLos : 1;
+  bool x8f7_29_inWallHang : 1;
+  bool x8f7_30_jumpVelSet : 1;
+  bool x8f7_31_prevInCineCam : 1;
+  bool x8f8_24_pendingFrenzyChance : 1;
+  bool x8f8_25_appliedBladeDamage : 1;
+  bool x8f8_26_alwaysAggressive : 1;
+  bool x8f8_27_coverCheck : 1;
+  bool x8f8_28_enableDodge : 1;
+  bool x8f8_29_noPlayerDodge : 1;
+  bool mAllEnergyDrained : 1;             // 0x8f8_30 (MP1 x638_30_allEnergyDrained)
+  bool x8f8_31_mayStartAttack : 1;
+  bool x8f9_24_ : 1;
+  bool x8f9_25_useJumpBackJump : 1;
+  bool x8f9_26_started : 1;
+  bool x8f9_27_inRange : 1;
+  bool x8f9_28_satUp : 1;
+  bool x8f9_29_enableBreakDodge : 1;      // the retail ctor never clears this bit
+  bool x8f9_30_closeMelee : 1;
+  bool x8f9_31_sentAttackMsg : 1;
+  bool x8fa_24_normalDodge : 1;
+  bool x8fa_25_ : 1;
+  bool x8fa_26_ : 1;                      // ShouldWarpIn (fn_72_77D0) reads it; Echoes-only
+  bool x8fa_27_ : 1;
+  bool x8fa_28_ : 1;
+  bool x8fa_29_ : 1;
+  bool x8fa_30_ : 1;
+  bool x8fa_31_ : 1;
+  int x8fc_frenzyFrames;                  // 0x8fc
+  TUniqueId x900_coverPoint;              // 0x900
+  TUniqueId x902_previousCoverPoint;      // 0x902
+  float x904_steeringSpeed;               // 0x904 (1.0)
+  CVector3f x908_targetDelta;             // 0x908 (forward)
+  CVector3f x914_coverPointRearDir;       // 0x914 (zero)
+  CPathFindSearch mPathFindSearch;        // 0x920 (0xf0); GetSearchPath
+  float xa10_unkTimer;                    // 0xa10
+  int xa14_;                              // 0xa14
+  float xa18_;                            // 0xa18 = pInfo+0x58; MP1 x750_initialHP? [unresolved]
+  float xa1c_coverRange;                  // 0xa1c
+  CSegId mHeadSegId;                      // 0xa20 "Head_1"
+  int xa24_;                              // 0xa24
+  int xa28_taunt;                         // 0xa28 (-1)
+  CBoneTracking mBoneTracking;            // 0xa2c (0x3c)
+  int xa68_coverDir;                      // 0xa68 (-1)
+  float xa70_intoJumpDist;                // 0xa70
+  float xa74_eyeHeight;                   // 0xa74
+  float xa78_;                            // 0xa78
+  float xa7c_timeNoPlayerLos;             // 0xa7c
+  int xa80_cantSeePlayerCycleCounter;     // 0xa80
+  TUniqueId mAttachedActor;               // 0xa84
+  CSegId xa86_gunSeg;                     // 0xa86 "gun_LCTR"
+  CSegId xa87_elbowSeg;                   // 0xa87 "R_elbow"
+  CSegId xa88_wristSeg;                   // 0xa88 "R_wrist"
+  CSegId xa89_swooshSeg;                  // 0xa89 "Swoosh_LCTR"
+  CSegId xa8a_lHipSeg;                    // 0xa8a "L_hip"
+  CSegId xa8b_rHipSeg;                    // 0xa8b "R_hip"
+  CSegId xa8c_collarSeg;                  // 0xa8c "Collar"
+  float mAttackRemTime;                   // 0xa90 (1.0)
+  TUniqueId mAttackTarget;                // 0xa94
+  CBurstFire mBurstFire;                  // 0xa98 (0x60)
+  float xaf8_jumpHeight;                  // 0xaf8 (3.0)
+  CVector3f xafc_patrolDestPos;           // 0xafc
+  int xb08_skidDir;                       // 0xb08 (-1)
+  float xb0c_strafeDelayTimer;            // 0xb0c
+  int xb10_meleeSeverity;                 // 0xb10 (-1)
+  TUniqueId xb14_jumpPoint;               // 0xb14
+  int xb18_dodgeDir;                      // 0xb18 (-1)
+  float xb1c_dodgeDist;                   // 0xb1c
+  float xb20_breakDodgeDist;              // 0xb20
+  float xb24_timeSinceHitByPlayer;        // 0xb24 (FLT_MAX)
+  float xb28_lowHealthFrenzyTimer;        // 0xb28 (FLT_MAX)
+  float xb2c_ragdollDelayTimer;           // 0xb2c
+  void* xb30_;                            // 0xb30 (null; GetRagDoll's slot, unidentified)
+  uchar xb34_ikChain_[0x48];              // 0xb34 built by fn_72_10568 (CIkChain-sized) [unresolved]
+  float xb7c_cloakDelayTimer;             // 0xb7c
+  float xb80_electricParticleTimer;       // 0xb80
+  float xb84_cloakStepTime;               // 0xb84
+  float xb88_shadowPirateAlpha;           // 0xb88 (0.5)
+  float xb8c_minCloakAlpha;               // 0xb8c = data.mCloakOpacity
+  float xb90_maxCloakAlpha;               // 0xb90 = data.mMaxCloakOpacity
+  float xb94_dodgeDelayTimer;             // 0xb94 = data.mBreakDodgeMinTime
+  float xb98_aimDelayTimer;               // 0xb98 = data.mGunTrackDelay
+  float xb9c_;                            // 0xb9c
+  TUniqueId xba0_teamAiMgrId;             // 0xba0
+  float xba4_heldPositionX;               // 0xba4 (CVector2f)
+  float xba8_heldPositionY;               // 0xba8
+  float xbac_holdPositionTime;            // 0xbac
+  float xbb0_leashTimer;                  // 0xbb0
+  CVector3f xbb4_;                        // 0xbb4
+  int xbc0_playerIndex;                   // 0xbc0 (-1); HearPlayer's round-robin
+  CVector3f xbc4_;                        // 0xbc4
+  float xbd0_;                            // 0xbd0
+  rstl::optional_object< CProjectileInfo > mProjectileInfo; // 0xbd4 (0x28), only if projectile valid
+  bool xbfc_;                             // 0xbfc
+  int xc00_;                              // 0xc00
+  int xc04_warpPoint;                     // 0xc04 (-1); ShouldWarpIn
+  bool xc54_;                             // 0xc54
+  int xc58_;                              // 0xc58
+  CPlane mPortalPlane;                    // 0xc5c (0x10); written by the WispTentacle while it drags the pirate
 #else
   uchar x7c0_[0x137];
   bool x8f7_24_ : 1;
