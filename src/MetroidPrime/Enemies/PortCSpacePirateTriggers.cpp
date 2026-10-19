@@ -6,10 +6,30 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Enemies/CMetroid.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
+#include "MetroidPrime/TCastTo.hpp"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 void PortSpacePirateStandIn(const char* what);
+
+// PortCSpacePirate.cpp's TraceCall sits in that file's anonymous namespace, so it has no external
+// linkage to declare here; this is the same MP2_DEBUG_SPACEPIRATE gate and line format, so a run
+// that exercises a trigger below proves it exactly like the entry points there do.
+namespace {
+void TraceCall(const CSpacePirate& self, const char* what, int arg) {
+  static const bool sOn = getenv("MP2_DEBUG_SPACEPIRATE") != nullptr;
+  if (sOn) {
+    fprintf(stderr, "[spacepirate] %u %s %d\n", self.GetUniqueId().Value(), what, arg);
+  }
+}
+} // namespace
 
 bool CSpacePirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   if (mStateMachine->GetTime() > 0.5f) {
@@ -74,9 +94,33 @@ bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// fn_72_A71C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// The asm casts the attack target to CPlayer (it does not compare ids as MP1 does) and then refuses
+// the attack while more than three other pirates, alive and in the attack state in this area, are
+// closer to that player than this one.
 bool CSpacePirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldAttack trigger (fn_72_A71C)");
-  return false;
+  bool result = true;
+  if (TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget)) != nullptr) {
+    const CVector3f target = const_cast< CSpacePirate* >(this)->GetTargetPos(mgr);
+    const float distSq = (GetTranslation() - target).MagSquared();
+    int closer = 0;
+    const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
+    for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+      const CSpacePirate* pirate = TCastToConstPtr< CSpacePirate >(list[i]);
+      if (pirate == nullptr || pirate == this || !pirate->x8f6_31_inAttackState ||
+          !pirate->GetAlive() || pirate->GetCurrentAreaId() != GetCurrentAreaId()) {
+        continue;
+      }
+      if ((pirate->GetTranslation() - target).MagSquared() < distSq) {
+        ++closer;
+        if (closer > 3) {
+          result = false;
+        }
+      }
+    }
+  }
+  TraceCall(*this, "ShouldAttack trigger", result ? 1 : 0);
+  return result;
 }
 
 // Retail reads 0x8f7 bit 4: true while the Think's line-of-sight ray has not lost the player.
@@ -106,14 +150,74 @@ bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) cons
   return false;
 }
 
+// @ fn_72_82D0
+// Retail reads 0x8f4 bit 0x20, the nonAggressive bit, as MP1 does (the ctor unpacks mFlags 0x4
+// into it; mFlags 0x20 is x8f4_29_onlyAttackInRange, bit 0x04).
 bool CSpacePirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldDodge trigger (fn_72_82D0)");
-  return false;
+  bool result = false;
+  if (x8f8_28_enableDodge) {
+    if (!x8f4_26_nonAggressive && !x8f8_29_noPlayerDodge) {
+      const CVector3f toTarget =
+          const_cast< CSpacePirate* >(this)->GetTargetPos(mgr) - GetTranslation();
+      result = CVector3f::Dot(toTarget, GetTransform().GetForward()) > 0.f &&
+               (xb24_timeSinceHitByPlayer < 0.33f || xb28_lowHealthFrenzyTimer < 0.33f) &&
+               xa7c_timeNoPlayerLos < 0.5f;
+    }
+    // A dodge also answers a metroid that is attacking this pirate from the front.
+    if (!result) {
+      const CMetroid* metroid = TCastToConstPtr< CMetroid >(mgr.GetObjectById(mAttackTarget));
+      if (metroid != nullptr && metroid->IsAttacking()) {
+        const CVector3f delta = GetTranslation() - metroid->GetTranslation();
+        if (CVector3f::Dot(delta, metroid->GetTransform().GetForward()) > 0.f) {
+          result = true;
+        }
+      }
+    }
+  }
+  TraceCall(*this, "ShouldDodge trigger", result ? 1 : 0);
+  return result;
 }
 
+// @ fn_72_7C28
+// This trigger writes: the retreat waypoint becomes the destination and the pirate drops its cover
+// point, aim and noise state. With no waypoint it retreats to where it already stands, and mDestObj
+// keeps whatever GetConnectedObject returned (kInvalidUniqueId), as retail stores that same value.
 bool CSpacePirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldRetreat trigger (fn_72_7C28)");
-  return false;
+  if (!x8f6_29_enableRetreat || x8f6_24_trooper) {
+    TraceCall(*this, "ShouldRetreat trigger", 0);
+    return false;
+  }
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  const TUniqueId wpId = GetConnectedObject(mgr, kSS_Patrol, kSM_Follow);
+  const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(wpId));
+  if (wp == nullptr) {
+    const rstl::vector< SConnection >& connections = GetConnectionList();
+    for (AUTO(it, connections.begin()); it != connections.end(); ++it) {
+      if (it->state != kSS_Patrol || it->msg != kSM_Follow) {
+        continue;
+      }
+      wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mgr.GetIdForScript(it->objId)));
+      if (wp != nullptr) {
+        break;
+      }
+    }
+  }
+  if (wp != nullptr) {
+    self->mDestObj = wpId;
+    self->SetDestPos(wp->GetTranslation());
+  } else {
+    self->mDestObj = kInvalidUniqueId;
+    self->SetDestPos(GetTranslation());
+  }
+  self->x8f6_29_enableRetreat = false;
+  self->mReflectedDestPos = GetTranslation();
+  self->mInPosition = false;
+  self->ReleaseCoverPoint(mgr, self->x900_coverPoint, true);
+  self->x8f6_25_hearNoise = false;
+  self->mEnableAim = false;
+  self->SetHitByPlayerProjectile(false);
+  TraceCall(*this, "ShouldRetreat trigger", 1);
+  return true;
 }
 
 bool CSpacePirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
@@ -125,9 +229,12 @@ bool CSpacePirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// fn_72_7BD4. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldMove trigger (fn_72_7BD4)");
-  return false;
+  const CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint);
+  const bool result = cover != nullptr && !cover->ShouldStay();
+  TraceCall(*this, "ShouldMove trigger", result ? 1 : 0);
+  return result;
 }
 
 // Retail 0xb24/0xb28 are time-since counters (Think zeroes them when a player projectile hits the

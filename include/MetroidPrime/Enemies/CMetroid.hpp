@@ -174,6 +174,10 @@ public:
                                  const CTransform4f& xf);
   void ApplyDamageGrowth(CStateManager& mgr, TUniqueId sender); // Guessed name.
   void DetachFromTarget(CStateManager& mgr, bool fromDock);     // Guessed second parameter.
+#ifdef TARGET_PC
+  // Retail 0xa40 bit 0x04, read by CSpacePirate::ShouldDodge (fn_72_82D0).
+  bool IsAttacking() const { return mIsAttacking; }
+#endif
 
 protected:
   enum EAIState {
