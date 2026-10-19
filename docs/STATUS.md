@@ -3,6 +3,29 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-second session): the shard-4 timeout, and a warped hand-over that waits
+
+- **Shard 4's `exit=124` is the ending, not a hang.** A fresh run of `SHARD=4 SHARDS=5` on `port`
+  (`/tmp/opencode/log_shard4b_4.log`) reached area 56, printed `[end] the credits are rolling`, and
+  `tools/sweep_report.py` calls area 56 `CREDITS` with no walls. A `CCredits` window means no
+  `CStateManager::Update`, so the run can only end on its timeout.
+- **What did look like a hang** was the earlier randomizer-build run (`/tmp/opencode/log_rando_4.log`):
+  the hop into area 56 was handed to the game's own transition ("681 ids free is too tight for the
+  direct route") and `[area] 56` never followed, with no credits line. Not reproduced before or after:
+  forced hand-overs into 52->53 and 55->56 arrive normally on both builds, and the fresh shard run
+  went through 56.
+- **Hardened, unconfirmed:** `CMFGame`'s `kFS_InGame`/`kTP_Load` now drops the portal transition when
+  the hop is a warp's (`CStateManager::PortIsWarpHandoff`), because `kTP_Load` waits on
+  `CPortalTransition::IsReady()` and that cannot become ready while the port holds the destination's
+  stream - the same reason `PortPlaceArrivalTick` ends such a transition after arrival. A
+  `PrepareAreaTransition` refusal (the other silent way this flow can stall) now logs every 120
+  retries. Commit `9cd10f103`; both files strip CLEAN.
+- **Separate finding, not fixed:** the shard reached only 52, 53 and 56 of its 52..62 slice. Between
+  `[area] 53` and `[area] 56` no warp request was served (`[warp] serving a request` counts 7 against
+  10 `NEXTAREA` tokens), so the area changed without the port's warp path. The sweep's coverage check
+  reports `first missing 54`, which is the sweep-as-measurement problem `tools/sweep_areas.sh`
+  warns about elsewhere, not (yet) a game fault.
+
 ## 2026-10-18 (twenty-first session): FOV culling, Android fullscreen and scroll, MP1 parity audit
 
 - Fixed: first-person FOV above ~75 deg (more on a phone) culled geometry. `CFrustumPlanes`
