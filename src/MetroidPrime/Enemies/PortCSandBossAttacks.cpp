@@ -256,11 +256,15 @@ void CSandBoss::CreateChargeBeam(CStateManager& mgr, const CVector3f& start, con
   if (beam == nullptr) {
     return;
   }
+  beam->SetDamageDuration(1.f); // 0x158 |= kPA_BigStrike, 0x1C0 = 1.f
   beam->Fire(CTransform4f::LookAt(start, end, CVector3f::Up()), mgr, false);
   mgr.AddObject(*beam);
+  CAudioSys::C3DEmitterParmData parms(150.f, 0.1f, 1, 0x7f, 0x14);
+  parms.mPos = beam->GetCurrentPos();
+  parms.mDir = CVector3f::Up();
+  parms.mSfxId = sfxId;
   const CSfxHandle sfx =
-      CSfxManager::AddEmitter(sfxId, beam->GetCurrentPos(), 0x7f, GetCurrentAreaId().Value(), true,
-                              true, CSfxManager::kMedPriority);
+      CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true, CSfxManager::kMedPriority);
   const SSandBossChargeBeamEntry entry = {uid, start, end, sfx};
   mChargeBeams.push_back(entry); // 0xE94
 }
@@ -312,8 +316,9 @@ int CSandBoss::CollectAttachedSiblings(CStateManager& mgr, rstl::vector< TUnique
 // fn_55_3ACC (ported, not exercised yet)
 // Triple charge volley: every listed charge beam is released first; then, only with all three worms
 // attached to the sphere, three beams start at the centroid of the worms' mouth locators and end
-// innerRadius from this worm along the three edges of that triangle (the beam list's start points,
-// so fn_55_3434 can sweep the ends later), with the triple charge's beam sound.
+// innerRadius from this worm along the bisectors of each neighbouring pair of worms' facings (the
+// beam list keeps the end points so fn_55_3434 can sweep them later), with the triple charge's beam
+// sound.
 void CSandBoss::StartTripleChargeBeam(CStateManager& mgr, const rstl::string& locator) {
   ResetChargeBeams(mgr); // fn_55_2CA4
   rstl::vector< TUniqueId > ids;
@@ -321,26 +326,25 @@ void CSandBoss::StartTripleChargeBeam(CStateManager& mgr, const rstl::string& lo
     return;
   }
   CVector3f points[3];
+  CVector3f forward[3];
   for (int i = 0; i < 3; ++i) {
     const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
     if (sibling == nullptr) {
       return;
     }
-    // [inferred] retail reads three floats off each sibling (0x28/0x38/0x48) instead of calling
-    // GetLctrTransform; the locator's translation is the same point up to the body offset.
     points[i] = sibling->GetLctrTransform(locator).GetTranslation();
+    forward[i] = sibling->GetTransform().GetColumn(kDY); // 0x28/0x38/0x48
   }
-  const CVector3f centre = (points[0] + points[1] + points[2]) * (1.f / 3.f); // 0.33333334
-  const CVector3f bossPos = GetTranslation();
+  const CVector3f centre = (points[0] + points[1] + points[2]) * 0.33333334f;
+  const CVector3f bossPos = GetTranslation(); // 0x54
   const float radius = mData.unknown_0x7619e561.tripleCharge.innerRadius; // 0x8C4
   const ushort sfx =
       static_cast< ushort >(mData.unknown_0x7619e561.tripleCharge.sound_ChargeBeam); // 0x8DC
+  // Each beam points along the bisector of two neighbouring worms' facings.
   for (int i = 0; i < 3; ++i) {
-    const CVector3f edge = points[i] - points[(i + 1) % 3];
-    if (!edge.IsMagnitudeSafe()) {
-      continue;
-    }
-    CreateChargeBeam(mgr, centre, bossPos + radius * edge.AsNormalized(), sfx, false); // fn_55_2D40
+    const CVector3f sum = forward[i] + forward[(i + 1) % 3];
+    const CVector3f dir = sum.IsMagnitudeSafe() ? sum.AsNormalized() : forward[i];
+    CreateChargeBeam(mgr, centre, bossPos + radius * dir, sfx, false); // fn_55_2D40
   }
   if (!mChargeBeams.empty()) { // 0xE94
     StartChargeBeamGrow(mgr, centre); // fn_55_311C
@@ -348,9 +352,9 @@ void CSandBoss::StartTripleChargeBeam(CStateManager& mgr, const rstl::string& lo
 }
 
 // fn_55_3F44 (ported, not exercised yet)
-// Double charge volley: same shape with two worms -- two opposite beams from the midpoint of the two
-// mouths, each pointing innerRadius away from this worm along the line between them, with the double
-// charge's beam sound.
+// Double charge volley: same shape with two worms -- two beams from the midpoint of the two mouths,
+// ending innerRadius from this worm along the worms' summed facing and its horizontal mirror, with
+// the double charge's beam sound.
 void CSandBoss::StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& locator) {
   ResetChargeBeams(mgr); // fn_55_2CA4
   rstl::vector< TUniqueId > ids;
@@ -358,24 +362,27 @@ void CSandBoss::StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& lo
     return;
   }
   CVector3f points[2];
+  CVector3f forward[2];
   for (int i = 0; i < 2; ++i) {
     const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
     if (sibling == nullptr) {
       return;
     }
-    points[i] = sibling->GetLctrTransform(locator).GetTranslation(); // [inferred] as fn_55_3ACC
+    points[i] = sibling->GetLctrTransform(locator).GetTranslation();
+    forward[i] = sibling->GetTransform().GetColumn(kDY); // 0x28/0x38/0x48
   }
   const CVector3f centre = (points[0] + points[1]) * 0.5f;
-  const CVector3f bossPos = GetTranslation();
+  const CVector3f bossPos = GetTranslation(); // 0x54
   const float radius = mData.unknown_0x7619e561.doubleCharge.innerRadius; // 0x87C
   const ushort sfx =
       static_cast< ushort >(mData.unknown_0x7619e561.doubleCharge.sound_ChargeBeam); // 0x894
-  const CVector3f axis = points[0] - points[1];
-  if (axis.IsMagnitudeSafe()) {
-    const CVector3f dir = axis.AsNormalized();
-    CreateChargeBeam(mgr, centre, bossPos + radius * dir, sfx, false); // fn_55_2D40
-    CreateChargeBeam(mgr, centre, bossPos - radius * dir, sfx, false); // fn_55_2D40
-  }
+  // The two beams take the summed facing and its horizontal mirror (x and y negated, z kept).
+  const CVector3f sum = forward[0] + forward[1];
+  const CVector3f mirrored(-sum.GetX(), -sum.GetY(), sum.GetZ());
+  const CVector3f dir0 = sum.IsMagnitudeSafe() ? sum.AsNormalized() : forward[0];
+  const CVector3f dir1 = mirrored.IsMagnitudeSafe() ? mirrored.AsNormalized() : forward[1];
+  CreateChargeBeam(mgr, centre, bossPos + radius * dir0, sfx, false); // fn_55_2D40
+  CreateChargeBeam(mgr, centre, bossPos + radius * dir1, sfx, false); // fn_55_2D40
   if (!mChargeBeams.empty()) { // 0xE94
     StartChargeBeamGrow(mgr, centre); // fn_55_311C
   }
