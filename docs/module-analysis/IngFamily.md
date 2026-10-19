@@ -281,6 +281,12 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     SetTargetDest -> PathFind -> BecomeIngSpot -> (form 3) Start -> Lurk -> FindCoverPoint.
   - No `[port] caught`, no `[reach-stub]`, exit 0. Driver: `/tmp/opencode/ing_run2.sh` with
     `ing_con.py`: activate, `tp 58.4 356 9`, then `press a 4` every 2 s.
+  - Portal exercise attempt (2026-10-20): `Agon Wastes/02_sand_sandfalls_dark` (MLVL `42b935e4`,
+    area 25) does place the Jump Guardian (`u051f`, editor `001900e9`, layer 2, inactive,
+    hp 1100/1100). `send Activate` works (`obj` then reports it active) but two runs that teleported
+    the player next to it and held fire for 120 s did **not** damage it (hp unchanged, screenshots
+    black), so no portal ever spawned. Not diagnosed yet: `// @` for the mini-portal classes waits
+    on a fight that actually lands hits.
 
 ---
 
