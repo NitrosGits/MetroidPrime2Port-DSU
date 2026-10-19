@@ -3,6 +3,29 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-19 (twenty-third session): HD textures and prompt glyphs, ported and wired
+
+- **`d8a795ffc`:** `platform/port_textures.cpp` and `platform/port_prompts.cpp` (126 and 361 lines,
+  reduced rewrites of MP1's 357 and 876, and in no CMake target) are replaced with ports of MP1's
+  files and added to `mp_port_audio`. `Initialize` runs once after `aurora_initialize` in
+  `platform/main.cpp`, `Poll` at the end of `PortPumpEvents`, and `PortPrompts::NoteTouchInput` in
+  `platform/port_touch.cpp`. `MP2_TEXTURES`, `MP2_USER_TEXTURES`, `MP2_TEXTURE_DEVICE` and
+  `MP2_DUMP_TEXTURES` replace MP1's `MP_*` names; `MP2_DUMP_TEXTURES` now feeds Aurora's
+  `allowTextureDumps`. `tools/make_prompt_glyphs.py` and its 181 CC0 icons are copied, not run.
+  `platform/README.md` documents the four settings and the `bindings/` folder.
+- Verified: `gen_files_cmake.py --check` rc 0, `metroid_prime2_port` 0 FAILED, boot exit 0 with
+  `[textures] device 'keyboard'; built-in set: (none); user pack: /tmp/opencode/ss_user/user_textures`
+  and `[prompts] no texture folder; binding icons off`.
+- **Open:** `kKeys` in `port_prompts.cpp` still holds MP1's asset hashes (`AButtonIn`,
+  `AButtonOut`, ...), so the binding icons replace nothing in Echoes. Echoes draws its prompts from
+  GUI *models* (`model_abutton` in `CSamusHud.cpp`, `CHudDecoInterfaceScan.cpp`), not from the
+  standalone textures MP1 keys on, so MP2 needs its own key list - a texture dump while a prompt is
+  up, or the model's TXTR asset ids - before this does anything visible. `MP2_DUMP_TEXTURES=1` wrote
+  no dumps in a 400-frame boot (`/tmp/opencode/dump_run.log`), so that route needs work too.
+- **Open:** the desktop's touch overlay pads show as an Xbox controller, so the texture set resolves
+  to `xbox` on a PC boot; harmless with no packs installed. `PortPrompts::KeyboardActive` has no
+  caller here.
+
 ## 2026-10-19 (twenty-second session, continued): the two "problems" closed
 
 - **The shard's 54/55 gap is the ending, not a bug.** Areas 53, 56 and 58 of this save are
