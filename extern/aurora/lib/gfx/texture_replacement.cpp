@@ -1,3 +1,4 @@
+#include <set>
 #include "texture_replacement.hpp"
 
 #include "../io.hpp"
@@ -1227,10 +1228,24 @@ bool dump_editable_texture_dds(const TextureSourceKey& key, const GXTexObj_& obj
 
   const uint64_t rgbaBytes = gfx::calc_texture_size(wgpu::TextureFormat::RGBA8Unorm, texWidth, texHeight, 1);
   if (pixels.data.empty() || pixels.format != wgpu::TextureFormat::RGBA8Unorm || pixels.data.size() != rgbaBytes) {
+    // Port: say why once per format/size, so a dump run that writes nothing is not a silent no-op.
+    static std::set<std::pair<int, std::pair<u32, u32>>> sExplained;
+    const auto reason = std::make_pair(static_cast<int>(pixels.format), std::make_pair(texWidth, texHeight));
+    if (sExplained.insert(reason).second) {
+      Log.warn("texture_replacement: no dump for {}x{} fmt {}: converted to fmt {} ({} bytes, want {})",
+               texWidth, texHeight, static_cast<int>(obj.format()), static_cast<int>(pixels.format),
+               pixels.data.size(), rgbaBytes);
+    }
     return false;
   }
 
   const auto dumpRoot = io::fs_path_from_string(g_config.cachePath) / "texture_dumps";
+  // Port: create the folder here too. load_replacement_directory is the only other creator, and a
+  // run with no packs installed (the usual way to author one) never calls it, so every dump was
+  // dropped.
+  if (!io::create_directories(dumpRoot)) {
+    return false;
+  }
   const auto path = dumpRoot / format_replacement_filename(key);
   return gfx::dds::write_rgba8_dds(path, texWidth, texHeight, pixels.data);
 }
