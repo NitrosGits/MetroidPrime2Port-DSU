@@ -184,8 +184,13 @@ Also in the ctor: `SetDrawShadow(false)`.
 
 **vtable `lbl_29_data_CE4` [proven, `auto_04_00000000_data.s`]**: only four slots leave `CActor`'s
 chain - 0x08 `fn_29_114B0` (dtor), 0x14 `fn_29_11CA4` (Think), 0x18 `fn_29_11C14`
-(AcceptScriptMsg), and 0x3C `fn_29_90`, which just calls slot 0x38. Everything else (PreThink,
-PreRender, AddToRenderer, Render, Touch, DoUserAnimEvent, ...) is `CActor`'s. 0x00/0x04 are null.
+(AcceptScriptMsg), and 0x3C `fn_29_90`, which just calls slot 0x38 (`HealthInfo`) and is exactly
+the host's `CActor::GetHealthInfo`, so it needs no override. Everything else (PreThink, PreRender,
+AddToRenderer, Render, Touch, DoUserAnimEvent, ...) is `CActor`'s. 0x00/0x04 are null.
+
+Slots the portal calls on its *beam* (`CPlasmaProjectile`, DOL vtable `__vt__17CPlasmaProjectile`
+0x803b2a98) [proven]: 0x8c `UpdateFx(xf, dt, mgr)`, 0x90 `ResetBeam(mgr, fullReset)`, 0x94
+`Fire(xf, mgr, flag)`.
 
 `CIngExitHostEffect` members: not mapped (out of scope for a first slice).
 
@@ -258,10 +263,16 @@ marks only the 45 functions a run actually called (an instrumented build, run be
   `CIngMiniPortalAttack`'s ctor `fn_29_11E8C` (member maps in A.1/A.3). The dtor `fn_29_114B0` is
   the implicit destructor, and `fn_29_11490` is inlined as `CModelData()`. Nothing exercises them
   yet, so no `// @` markers. The token at 0x228 is retail's `CRELFileToken("Grenchler.rel", 0)`.
-  The actor's own methods (`fn_29_11CA4` Think, `fn_29_11C14` AcceptScriptMsg, `fn_29_11570` aim,
-  `fn_29_11840` fire) are still unported; the class inherits `CActor`'s. Its spawn sites are
-  `fn_29_C228`'s `kUE_Projectile` case (CIng) and `CIngSpaceJumpGuardian`, so a run that fires
-  either exercises the ctors.
+  Behaviour is ported too (2026-10-20): Think `fn_29_11CA4`, AcceptScriptMsg `fn_29_11C14`
+  (`kSM_Create` -> open, `kSM_Delete` -> drop the beam), open `fn_29_11A7C` (`CExplosion`
+  "Ing Mini Portal Fx" + 3D emitter + fire), fire `fn_29_11840` (one `CPlasmaProjectile`
+  "Ing Mini Portal Beam" from `TLdrToBeamInfo(beamInfo, 0x291)`, material `kMT_ProjectilePassthrough`,
+  `EWeaponType` from the damage's weapon mode) and aim `fn_29_11570` (blend of two `GetAimPosition`
+  samples at t = 0 and t = distance / `travelSpeed`, clamped to 70 deg off `GetForward()`).
+  `fn_29_90` is not needed (slot 0x3C is `CActor::GetHealthInfo`). Still no `// @`: nothing has run
+  them. Exercise them by spawning a portal - `CStateManager::AddObject` delivers `kSM_Create`, so
+  any spawn runs open + fire; the Jump Guardian (`Agon 02_sand_sandfalls_dark[L2]`) is the easiest
+  spawner, since `CIngSpaceJumpGuardian`'s `kUE_Projectile` case is already upstream code.
 - **Verified at runtime** (Sanctuary 0i_cliff_hall_dark, MLVL `1baa96c2` MREA `2735236b`, layer 0):
   - The area places two INGS objects (`00390081`, `00390089`). They load **inactive** with
     detection range 0, so a run must `send <uid> Activate` over `MP2_CONSOLE`, and the beam
