@@ -90,20 +90,17 @@ are invalid and the count is 0, so the token/`CElementGen` members stay empty [p
 `li r0,0`, stores at 0x34..0x40]. The retail loader does not check the ANCS; the host one skips an
 object with no `ANCS` and logs it.
 
-## 4. Host body (milestone 1) - real vs stand-in
+## 4. Host body (milestone 2) - MP1's CSnakeWeedSwarm
 
-Real (decided by the disassembly): the loader; the constructor's base call, scale, floats,
-`cos(maxSlope)`, bounds, damage and sound ids; `GetTouchBounds`; `ApplyRadiusDamage` (bomb/power-bomb
-filter, then `ScareSnakeWeeds(mgr, pos, info.GetRadius())`); `AcceptScriptMsg` (`CActor` first; on
-`kSM_Create` = 'XCRT' `SetCalculateLighting(true)`; on `kSM_Delete` = 'XDEL' remove the emitter);
-the module table (loader + both pointers-to-member, `static_cast` to the `CEntity` bridge type).
-
-Stand-ins (once-per-method `[snakeweed] ... is a port stand-in` line): `Think` (`CActor::Think`
-only), `PreRender` / `AddToRenderer` (forward to `CActor`, so the swarm draws its own model once at
-its origin instead of a field of boids), `Touch` (forwards to `CActor`; unreachable while the
-bounds flag is clear), `ScareSnakeWeeds` (no boids), and `fn_71_256C` from `kSM_Create`. Not held:
-boids, model slots, workspaces, particles, the actor-lights cast-shadow bit set on create
-(`lwz 0xbc` -> `+0x2a0` bit 0x40). No contact damage is ever dealt.
+`PortCSnakeWeedSwarm.cpp` is MP1's class (`MetroidPrimePort`, `CSnakeWeedSwarm.cpp`) on Echoes'
+CActor, with its boid states, flood fill, variance hashes, constants and "Whole Body" offsets kept.
+Changed only where the REL or Echoes' headers differ: `CActor::Think` first and no rendering-model
+switch; skinning through `CSkinnedModelState` (`StoreCalculation`/`DrawFromState`, one pose per model
+per frame as in `fn_71_17C0`); `kSM_InShrubbery` and a per-player touching mask, each touching
+player taking the contact damage in `Think`; no thermal branch in `PreRender`; `AddToRenderer`
+follows `fn_71_163C` (lights or white ambient, destination alpha). Particles are left out: the
+loader passes invalid ids. Run log: `[snakeweed] <uid> placed N weeds` when a field is complete and
+`[snakeweed] <uid> thinking: R of N weeds raised` at the 300th active update.
 
 ## 5. Where its actors are
 
@@ -117,6 +114,9 @@ the save's own world: `MP2_TELEPORT=40` reaches it.
 body runs: `[snakeweed] CSnakeWeedSwarm::AllocateSkinnedModels (fn_71_256C, from kSM_Create)`,
 `Think` (slot 5), `PreRender` (slot 9) and `AddToRenderer` (slot 10) each report their stand-in, i.e.
 the loader creates the actor, `kSM_Create` reaches the class, and the draw path calls it every frame
-(`/tmp/runD.log`). The module is no longer an entry-point-only stub, and no run faulted. What the log
-also shows as absent is what section 4 lists: the boids themselves never exist, so there is one
-model at the origin and no contact damage.
+(`/tmp/runD.log`).
+
+**Milestone 2 verified (2026-10-19).** `TELEPORT=40 GODMODE=1 FRAMES=2500 tools/run_gameplay.sh`
+with a G2ME save: `[snakeweed] 0264 placed 53 weeds`, `0254 placed 106 weeds`, and at update 300
+all of them raised; the third swarm (`026f`) found no ground under its box and holds no boids, which
+is MP1's behaviour too. 2500 updates in area 40, no `[port] caught`, no `[reach-stub]`.
