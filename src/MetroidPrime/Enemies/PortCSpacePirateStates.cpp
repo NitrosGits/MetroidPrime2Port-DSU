@@ -382,8 +382,66 @@ void CSpacePirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_7DFC is MP1's CSpacePirate::Dodge with TryCommand(TryDodge/TryRollingDodge/
+// TryBreakDodge) replaced by a direct CBCStepCmd; the asm's three deliveries are the step types
+// 1/3/2 at 0x7FC4/0x80A8/0x8158 and all sit behind CAnimationState::CanIssueCommand(kAS_Step) at
+// fn_801B73E4. Activate clears the break-dodge bit (0x7E50 rlwimi over 0x8f9 bit 0x04) and then,
+// only while neither normalDodge (0x8fa bit 0x80) nor noBreakDodge (0x8f5 bit 0x04) is set and the
+// delay timer has run out (0x7E7C fcmpo against rodata 0xB9C = 0), rolls MP1's HP-scaled chance -
+// rodata 0xBFC = 0.15 times (0xB54 = 1.0 + 0xB50 = 4.0 * lostHP / xa18_) - and re-arms xb94 from
+// Range(0x870, 0x874), the CSpacePirateData break-dodge min/max. It then stores GetStrafeDir at
+// xb18 over xb20 when the bit is set and xb1c otherwise, and asks for kAS_Ready only when that
+// direction is valid. Update draws the 50/50 (rodata 0xB44) before the CanIssueCommand test, so the
+// draw happens even when the body cannot step. The break-dodge half then drops the orbit material
+// and asks the player to break its orbit once the state is older than 0.5 s.
 void CSpacePirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Dodge state (fn_72_7DFC)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    x8f9_29_enableBreakDodge = false;
+    if (!x8fa_24_normalDodge && !x8f5_29_noBreakDodge && xb94_dodgeDelayTimer <= 0.f) {
+      const float chance = 0.15f * (1.f + (4.f * (xa18_ - HealthInfo()->GetHP())) / xa18_);
+      if (mgr.Random()->Float() < chance) {
+        x8f9_29_enableBreakDodge = true;
+      }
+      xb94_dodgeDelayTimer =
+          mgr.Random()->Range(mData.mBreakDodgeMinTime, mData.mBreakDodgeMaxTime);
+    }
+    xb18_dodgeDir =
+        GetStrafeDir(mgr, x8f9_29_enableBreakDodge ? xb20_breakDodgeDist : xb1c_dodgeDist);
+    if (xb18_dodgeDir != pas::kSD_Invalid) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+    }
+    break;
+  case kStateMsg_Update:
+    if (!x8f9_29_enableBreakDodge) {
+      const bool normalStep = x8fa_24_normalDodge || mgr.Random()->Float() < 0.5f;
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCStepCmd(static_cast< pas::EStepDirection >(xb18_dodgeDir),
+                       normalStep ? pas::kStep_Dodge : pas::kStep_RollDodge));
+      }
+    } else {
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCStepCmd(static_cast< pas::EStepDirection >(xb18_dodgeDir), pas::kStep_BreakDodge));
+      }
+      if (GetMaterialList().HasMaterial(kMT_Orbit) && mStateMachine->GetTime() > 0.5f) {
+        RemoveMaterial(kMT_Orbit, mgr);
+        // Retail dereferences the state manager's player without a check, as the shuffle path does.
+        if (CPlayer* player = mgr.Player(0)) {
+          player->SetOrbitRequestForTarget(GetUniqueId(), CPlayer::kOR_ActivateOrbitSource, mgr);
+        }
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x8f8_29_noPlayerDodge = true;
+    if (!GetMaterialList().HasMaterial(kMT_Orbit)) {
+      AddMaterial(kMT_Orbit, mgr);
+    }
+    break;
+  }
 }
 
 // Retail fn_72_D720: how long the target has stayed put; ShouldJumpBack reads the timer.
