@@ -257,6 +257,18 @@ setup (`36CC`/`3574`/`2F10`), the shield vulnerability (`27FC`), the launcher (`
 controller is activated on XCRT (retail). The 31 triggers / 21 states / 2 code functions are
 installed in `fn_15_9840`'s order; their bodies are `StandIn` shells (triggers return false).
 
+**Triggers + code functions (slice 3, 2026-10-19)**: all 31 triggers and `SelectTarget`/`PickAttackType`
+are ported (`// @ fn_15_XXXX`). Retail's virtual self-calls map through the vtable label
+(`lbl_15_data_634 + off`, slot = off/4): 0x160 = `ClearLineOfSight`, 0x194 = `ShieldKilled`, 0x1a4 =
+`ShouldTurn`. Retail CPatterned offsets: 0x6c0 = the waypoint navigation's destination uid (the
+navigation sits at 0x6b8), 0x728 = `mPredictedLeashTime`. `0xd20` is an int (`mAngryCount`, was a
+float in the header). `fn_15_6618` is `ShouldFire`'s only caller and is inlined, as is `fn_15_2284`
+(launcher "lockon_target_LCTR" world position). Filters: ClearLineOfSight include Solid / exclude
+Floor; ShouldFire include Solid|Character (bits 0x3b/0x1f/0x21). `[?]`: `ReadyToCharge` calling
+`ShieldKilled` when the player is in a no-attack hint (literal vtable reading), `x81c_` as an
+alert position in `ShouldAlert`, `xd04_`/the 20% repeat in `PickAttackType`, and the identity of
+`xa40_`/`xa44_`/`xc5c_`/`xb3c_` (read, not yet written by any ported code).
+
 Open:
 
 1. The FSM bodies (the next slice): they need `SetShieldVulnerability`, `SendLauncherMsg`,

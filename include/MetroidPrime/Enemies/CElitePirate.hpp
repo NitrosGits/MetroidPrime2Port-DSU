@@ -324,7 +324,7 @@ private:
   float mAimBlend;                               // 0xd0c towards the shield collider
   mutable CVector3f mShieldAimPos;               // 0xd10
   float xd1c_;                                   // 0xd1c [?]
-  float xd20_;                                   // 0xd20 [?]
+  int mAngryCount;                               // 0xd20 int: AngryAttackEnd decrements, StillAngry tests > 0
   bool xd24_80_ : 1;                             // 0xd24 [?]
   bool xd24_40_ : 1;
   bool xd24_20_ : 1;

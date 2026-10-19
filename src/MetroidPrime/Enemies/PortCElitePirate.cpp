@@ -40,6 +40,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrElitePirate.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
@@ -194,7 +195,7 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
 , mAimBlend(0.f)
 , mShieldAimPos(CVector3f::Zero())
 , xd1c_(0.f)
-, xd20_(0.f)
+, mAngryCount(0)
 , xd24_80_(false)
 , xd24_40_(false)
 , xd24_20_(false)
@@ -1195,159 +1196,331 @@ void RELExit() { SetSElitePirate_FuncPtrs(nullptr); }
 
 // ---- FSM triggers/states (later slices)
 
-bool CElitePirate::Alerted(CStateManager&, const CTriggerData&) const {
-  StandIn("Alerted (fn_15_60C8)");
-  return false;
+namespace {
+
+// Retail's 0x17/0x1b hint types: a jump-down zone / a "no attack" zone around the player.
+const int kHintJumpDown = 0x17;
+const int kHintNoAttack = 0x1b;
+// Angle (rad) past which the Ingsmasher must turn before it attacks (lbl_804... 0.5497787).
+const float kTurnAngle = 0.5497787f;
+
+// The 2D angle between this actor's forward vector and the direction to `target`.
+float AngleToTarget(const CActor& self, const CActor& target) {
+  const CVector3f d = target.GetTranslation() - self.GetTranslation();
+  const CVector3f fwd = self.GetTransform().GetForward();
+  return CVector2f::GetAngleDiff(CVector2f(fwd.GetX(), fwd.GetY()), CVector2f(d.GetX(), d.GetY()));
 }
 
+float DistSq(const CVector3f& a, const CVector3f& b) {
+  const CVector3f d = a - b;
+  return d.GetX() * d.GetX() + d.GetY() * d.GetY() + d.GetZ() * d.GetZ();
+}
+
+} // namespace
+
+// @ fn_15_60C8
+bool CElitePirate::Alerted(CStateManager&, const CTriggerData&) const { return mAlerted2; }
+
+// @ fn_15_18CC
 bool CElitePirate::AngryAttackOver(CStateManager&, const CTriggerData&) const {
-  StandIn("AngryAttackOver (fn_15_18CC)");
-  return false;
+  return xd24_40_;
 }
 
+// @ fn_15_6F28
 bool CElitePirate::AttackPatternOver(CStateManager&, const CTriggerData&) const {
-  StandIn("AttackPatternOver (fn_15_6F28)");
-  return false;
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// @ fn_15_50B4
 bool CElitePirate::BreakProjectileAttack(CStateManager&, const CTriggerData&) const {
-  StandIn("BreakProjectileAttack (fn_15_50B4)");
-  return false;
+  return mRocketEventSeen;
 }
 
-bool CElitePirate::CanShockwave(CStateManager&, const CTriggerData&) const {
-  StandIn("CanShockwave (fn_15_5084)");
-  return false;
+// @ fn_15_5084
+bool CElitePirate::CanShockwave(CStateManager& mgr, const CTriggerData&) const {
+  return GetPlayerHintType(mgr) != kHintJumpDown;
 }
 
-bool CElitePirate::ClearLineOfSight(CStateManager&, const CTriggerData&) const {
-  StandIn("ClearLineOfSight (fn_15_4E90)");
-  return false;
+// @ fn_15_4E90
+// A static line of sight from the launcher's turret to the player, when the player is within
+// 1/sqrt(2) of the shock wave range in the XY plane.
+bool CElitePirate::ClearLineOfSight(CStateManager& mgr, const CTriggerData&) const {
+  const CElitePirateGrenadeLauncher* launcher =
+      static_cast< const CElitePirateGrenadeLauncher* >(mgr.GetObjectById(mLauncherId));
+  if (launcher == nullptr) {
+    return false;
+  }
+  const CVector3f start = launcher->GetTurretTransform().GetTranslation();
+  CVector3f d = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f) - start;
+  if (!d.CanBeNormalized()) {
+    return false;
+  }
+  if (d.GetX() * d.GetX() + d.GetY() * d.GetY() >
+      mData.mMaxShockwaveRange * mData.mMaxShockwaveRange * 0.5f) {
+    return false;
+  }
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList(kMT_Floor));
+  const float length = d.Magnitude();
+  d.Normalize();
+  return CGameCollision::RayStaticLineOfSightTest(
+      mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()), start, d, length, filter);
 }
 
-bool CElitePirate::DonePursuing(CStateManager&, const CTriggerData&) const {
-  StandIn("DonePursuing (fn_15_691C)");
-  return false;
+// @ fn_15_691C
+bool CElitePirate::DonePursuing(CStateManager& mgr, const CTriggerData& data) const {
+  if (xa40_ > 0.5f) {
+    return true;
+  }
+  const int hint = GetPlayerHintType(mgr);
+  if (hint == kHintNoAttack) {
+    return true;
+  }
+  if (hint == kHintJumpDown) {
+    if (PathShagged(mgr, data) || mPathFindSearch.IsOver()) {
+      return true;
+    }
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (mLastPushTime <= xa44_) {
+    const CVector3f d = player->GetAimPosition(mgr, 0.f) - GetTranslation();
+    if (mData.mMaxMeleeRange * mData.mMaxMeleeRange * 4.f <= DistSq(d, CVector3f::Zero())) {
+      if (mTime < xa44_ + 2.5f) {
+        if (ClearLineOfSight(mgr, data) || IsOnJumpHint(mgr)) {
+          return true;
+        }
+      }
+      return mPredictedLeashTime > 3.f;
+    }
+    return true;
+  }
+  if (GetCurrentAreaId() != player->GetCurrentAreaId()) {
+    return true;
+  }
+  if (hint != kHintJumpDown) {
+    const CVector3f d = player->GetAimPosition(mgr, 0.f) - GetTranslation();
+    if (DistSq(d, CVector3f::Zero()) < mData.mMaxShockwaveRange * mData.mMaxShockwaveRange) {
+      return true;
+    }
+  }
+  if (IsOnJumpHint(mgr)) {
+    return true;
+  }
+  return ClearLineOfSight(mgr, data);
 }
 
-bool CElitePirate::DoneTurning(CStateManager&, const CTriggerData&) const {
-  StandIn("DoneTurning (fn_15_6C64)");
-  return false;
+// @ fn_15_6C64
+bool CElitePirate::DoneTurning(CStateManager& mgr, const CTriggerData& data) const {
+  return AnimOver(mgr, data);
 }
 
-bool CElitePirate::HasAttackPattern(CStateManager&, const CTriggerData&) const {
-  StandIn("HasAttackPattern (fn_15_6F44)");
-  return false;
+// @ fn_15_6F44
+bool CElitePirate::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
+  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
-bool CElitePirate::InDetectionRange(CStateManager&, const CTriggerData&) const {
-  StandIn("InDetectionRange (fn_15_6F9C)");
-  return false;
+// @ fn_15_6F9C
+bool CElitePirate::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
+  return mAlerted ? true : CPatterned::InDetectionRange(mgr, data);
 }
 
+// @ fn_15_6368
 bool CElitePirate::InPosition(CStateManager&, const CTriggerData&) const {
-  StandIn("InPosition (fn_15_6368)");
-  return false;
+  return DistSq(xb3c_, GetTranslation()) < 25.f;
 }
 
+// @ fn_15_6D94
 bool CElitePirate::NotReachedTarget(CStateManager&, const CTriggerData&) const {
-  StandIn("NotReachedTarget (fn_15_6D94)");
-  return false;
+  if ((xc5c_ + mTime) * 0.5f < mLastPushTime) {
+    return true;
+  }
+  return xc5c_ + 15.f < mTime;
 }
 
+// @ fn_15_4E7C
 bool CElitePirate::PickedSpreadShot(CStateManager&, const CTriggerData&) const {
-  StandIn("PickedSpreadShot (fn_15_4E7C)");
-  return false;
+  return mRocketPattern == 1;
 }
 
-bool CElitePirate::PlayerInNoAttack(CStateManager&, const CTriggerData&) const {
-  StandIn("PlayerInNoAttack (fn_15_15CC)");
-  return false;
+// @ fn_15_15CC
+bool CElitePirate::PlayerInNoAttack(CStateManager& mgr, const CTriggerData&) const {
+  return GetPlayerHintType(mgr) == kHintNoAttack;
 }
 
+// @ fn_15_61CC
 bool CElitePirate::PoweredDown(CStateManager&, const CTriggerData&) const {
-  StandIn("PoweredDown (fn_15_61CC)");
-  return false;
+  return mInitialAnimState != 1;
 }
 
-bool CElitePirate::PoweredUp(CStateManager&, const CTriggerData&) const {
-  StandIn("PoweredUp (fn_15_61C0)");
-  return false;
+// @ fn_15_61C0
+bool CElitePirate::PoweredUp(CStateManager&, const CTriggerData&) const { return mEvent7; }
+
+// @ fn_15_60D4
+// [?] retail's virtual call at vt+0x194 is the ShieldKilled slot (fn_15_6D68); the HP/knock-back
+// ratio is GetHealthInfo()'s two floats read as {first, second}.
+bool CElitePirate::ReadyToCharge(CStateManager& mgr, const CTriggerData& data) const {
+  if (GetPlayerHintType(mgr) == kHintNoAttack) {
+    if (!ShieldKilled(mgr, data)) {
+      return false;
+    }
+  }
+  const CHealthInfo* health = GetHealthInfo();
+  return xc5c_ + (health->GetKnockBackResistance() / health->GetHP()) * 1.7f + 0.3f < mTime;
 }
 
-bool CElitePirate::ReadyToCharge(CStateManager&, const CTriggerData&) const {
-  StandIn("ReadyToCharge (fn_15_60D4)");
-  return false;
-}
-
+// @ fn_15_60BC
 bool CElitePirate::ReturnedToPatrol(CStateManager&, const CTriggerData&) const {
-  StandIn("ReturnedToPatrol (fn_15_60BC)");
-  return false;
+  return xc10_04_;
 }
 
+// @ fn_15_6D68
 bool CElitePirate::ShieldKilled(CStateManager&, const CTriggerData&) const {
-  StandIn("ShieldKilled (fn_15_6D68)");
-  return false;
+  const float limit =
+      mShieldPolarity == 1 ? mData.mUnknown5236C2B6 : mData.mUnknown01EAAB17;
+  return limit < mShieldDamage;
 }
 
+// @ fn_15_18AC
 bool CElitePirate::ShockwaveIsNext(CStateManager&, const CTriggerData&) const {
-  StandIn("ShockwaveIsNext (fn_15_18AC)");
-  return false;
+  return xd24_80_;
 }
 
-bool CElitePirate::ShotAt(CStateManager&, const CTriggerData&) const {
-  StandIn("ShotAt (fn_15_63B0)");
-  return false;
-}
+// @ fn_15_63B0
+bool CElitePirate::ShotAt(CStateManager&, const CTriggerData&) const { return mXDamaged; }
 
+// @ fn_15_684C
+// [?] x81c_ (zeroed by the ctor, never written in this slice) reads as an "alert here" position.
 bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
-  StandIn("ShouldAlert (fn_15_684C)");
+  if (xc10_01_) {
+    return false;
+  }
+  if (x81c_ != CVector3f::Zero() && DistSq(x81c_, GetTranslation()) <= 25.f) {
+    return false;
+  }
+  return true;
+}
+
+// @ fn_15_6820
+// @ fn_15_6618
+// The launcher can fire: no cooldown, a target in the rocket range band, the body already turned
+// to it, and (retail's RayCollideWorld result) a clear shot from the launcher's lock-on locator.
+bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
+  if (mTimer > 0.f || mLauncherId == kInvalidUniqueId) {
+    return false;
+  }
+  const CElitePirateGrenadeLauncher* launcher =
+      static_cast< const CElitePirateGrenadeLauncher* >(mgr.GetObjectById(mLauncherId));
+  if (launcher == nullptr) {
+    return false;
+  }
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
+  if (target == nullptr) {
+    return false;
+  }
+  const CVector3f aim = target->GetAimPosition(mgr, 0.f);
+  const float distSq = DistSq(aim, GetTranslation());
+  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&
+        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) {
+    return false;
+  }
+  if (ShouldTurn(mgr, data)) {
+    return false;
+  }
+  // fn_15_2284: the launcher's "lockon_target_LCTR" locator in world space.
+  const CVector3f lockon = launcher->GetTransform().Rotate(
+                               launcher->GetLocatorTransform("lockon_target_LCTR").GetTranslation()) +
+                           launcher->GetTranslation();
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Character));
+  return mgr.RayCollideWorld(lockon, aim, filter, this);
+}
+
+// @ fn_15_6500
+bool CElitePirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
+  if (GetPlayerHintType(mgr) != -1) {
+    return false;
+  }
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
+  if (target == nullptr ||
+      DistSq(target->GetTranslation(), GetTranslation()) >
+          mData.mMaxMeleeRange * mData.mMaxMeleeRange) {
+    return false;
+  }
+  return AngleToTarget(*this, *target) < kTurnAngle;
+}
+
+// @ fn_15_63BC
+bool CElitePirate::ShouldShockwave(CStateManager& mgr, const CTriggerData&) const {
+  if (mTimer > 0.f) {
+    return false;
+  }
+  for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
+    const CPlayer* player = mgr.GetPlayer(i);
+    if (GetCurrentAreaId() != player->GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f aim = player->GetAimPosition(mgr, 0.f);
+    const float distSq = DistSq(aim, GetTranslation());
+    if (distSq > mData.mMaxShockwaveRange * mData.mMaxShockwaveRange) {
+      continue;
+    }
+    const bool morphed =
+        player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed &&
+        player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
+    if (morphed) {
+      return true;
+    }
+    if (mData.mMinShockwaveRange * mData.mMinShockwaveRange <= distSq) {
+      return fabsf(aim.GetZ() - GetTranslation().GetZ()) < 3.f;
+    }
+  }
   return false;
 }
 
-bool CElitePirate::ShouldFire(CStateManager&, const CTriggerData&) const {
-  StandIn("ShouldFire (fn_15_6820)");
-  return false;
+// @ fn_15_6C84
+bool CElitePirate::ShouldTurn(CStateManager& mgr, const CTriggerData&) const {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
+  return target != nullptr && AngleToTarget(*this, *target) > kTurnAngle;
 }
 
-bool CElitePirate::ShouldMeleeAttack(CStateManager&, const CTriggerData&) const {
-  StandIn("ShouldMeleeAttack (fn_15_6500)");
-  return false;
+// @ fn_15_6FD0
+bool CElitePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) const {
+  return mAlerted ? true : CPatterned::SpotPlayer(mgr, data);
 }
 
-bool CElitePirate::ShouldShockwave(CStateManager&, const CTriggerData&) const {
-  StandIn("ShouldShockwave (fn_15_63BC)");
-  return false;
-}
-
-bool CElitePirate::ShouldTurn(CStateManager&, const CTriggerData&) const {
-  StandIn("ShouldTurn (fn_15_6C84)");
-  return false;
-}
-
-bool CElitePirate::SpotPlayer(CStateManager&, const CTriggerData&) const {
-  StandIn("SpotPlayer (fn_15_6FD0)");
-  return false;
-}
-
+// @ fn_15_18B8
 bool CElitePirate::StillAngry(CStateManager&, const CTriggerData&) const {
-  StandIn("StillAngry (fn_15_18B8)");
-  return false;
+  return mAngryCount > 0;
 }
 
-bool CElitePirate::TargetNotOnMesh(CStateManager&, const CTriggerData&) const {
-  StandIn("TargetNotOnMesh (fn_15_6240)");
-  return false;
+// @ fn_15_6240
+bool CElitePirate::TargetNotOnMesh(CStateManager& mgr, const CTriggerData&) const {
+  const int hint = GetPlayerHintType(mgr);
+  if (hint == kHintNoAttack) {
+    return false;
+  }
+  if (hint == kHintJumpDown) {
+    return true;
+  }
+  return mPathFindSearch.NearlyOnPath(mgr.GetPlayer(0)->GetTranslation(), 4.f) !=
+         CPathFindSearch::kR_Success;
 }
 
-bool CElitePirate::TargetUnreachable(CStateManager&, const CTriggerData&) const {
-  StandIn("TargetUnreachable (fn_15_61E4)");
-  return false;
+// @ fn_15_61E4
+bool CElitePirate::TargetUnreachable(CStateManager& mgr, const CTriggerData&) const {
+  const int hint = GetPlayerHintType(mgr);
+  if (hint == kHintJumpDown || hint == kHintNoAttack) {
+    return true;
+  }
+  return xa40_ > 1.f;
 }
 
-bool CElitePirate::TooClose(CStateManager&, const CTriggerData&) const {
-  StandIn("TooClose (fn_15_62CC)");
-  return false;
+// @ fn_15_62CC
+bool CElitePirate::TooClose(CStateManager& mgr, const CTriggerData&) const {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
+  return target != nullptr &&
+         DistSq(GetTranslation(), target->GetTranslation()) <
+             mData.mMaxMeleeRange * mData.mMaxMeleeRange * 0.5f;
 }
 
 void CElitePirate::Alert(CStateManager&, EStateMsg, float) { StandIn("Alert (fn_15_5340)"); }
@@ -1392,6 +1565,22 @@ void CElitePirate::Turn(CStateManager&, EStateMsg, float) { StandIn("Turn (fn_15
 
 void CElitePirate::Wait(CStateManager&, EStateMsg, float) { StandIn("Wait (fn_15_6064)"); }
 
-void CElitePirate::SelectTarget(CStateManager&, float) { StandIn("SelectTarget (fn_15_555C)"); }
+// @ fn_15_555C
+void CElitePirate::SelectTarget(CStateManager& mgr, float) {
+  xa26_ = CScriptTeamAiMgr::ChoosePlayer(mgr, *this);
+}
 
-void CElitePirate::PickAttackType(CStateManager&, float) { StandIn("PickAttackType (fn_15_54AC)"); }
+// @ fn_15_54AC
+// [?] xd04_ (= 1 from the ctor) is the pattern repeated 20% of the time, otherwise the other one.
+void CElitePirate::PickAttackType(CStateManager& mgr, float) {
+  if (!mgr.IsRandomAvailable()) {
+    return;
+  }
+  if (GetPlayerHintType(mgr) == kHintJumpDown) {
+    mRocketPattern = 1;
+  } else if (mgr.Random()->Range(0.f, 1.f) >= 0.8f) {
+    mRocketPattern = xd04_;
+  } else {
+    mRocketPattern = xd04_ == 0 ? 1 : 0;
+  }
+}
