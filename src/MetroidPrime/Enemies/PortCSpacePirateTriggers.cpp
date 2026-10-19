@@ -1,0 +1,203 @@
+// The 39 triggers of the SpacePirate state machine (retail table fn_72_10E50 ->
+// lbl_72_data_1D8). The trivial retail bodies (under 0x100 bytes, read from
+// build/G2ME01/SpacePirate/m2c/fn_72_<off>.c) are translated; every other one returns false behind
+// a once-per-name StandIn that names the retail function. Triggers that read a flag bit use the
+// names in CSpacePirate.hpp (MP1's where the mask matches).
+#include "MetroidPrime/Enemies/CSpacePirate.hpp"
+
+#include "MetroidPrime/BodyState/CBodyController.hpp"
+
+void PortSpacePirateStandIn(const char* what);
+
+bool CSpacePirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
+  if (mStateMachine->GetTime() > 0.5f) {
+    return CPatterned::Stuck(mgr, data) || CPatterned::PathShagged(mgr, data);
+  }
+  return false;
+}
+
+bool CSpacePirate::PatternShagged(CStateManager& mgr, const CTriggerData& data) const {
+  return CPatterned::Stuck(mgr, data);
+}
+
+bool CSpacePirate::HearShot(CStateManager& mgr, const CTriggerData& data) const {
+  const bool heard = x8f6_25_hearNoise;
+  const_cast< CSpacePirate* >(this)->x8f6_25_hearNoise = false;
+  return heard;
+}
+
+bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::HearPlayer trigger (fn_72_BBC0)");
+  return false;
+}
+
+bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::AggressionCheck trigger (fn_72_ADC0)");
+  return false;
+}
+
+bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) const {
+  return x8f8_27_coverCheck;
+}
+
+bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::CoverFind trigger (fn_72_ABC0)");
+  return false;
+}
+
+bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::CoverBlown trigger (fn_72_AA64)");
+  return false;
+}
+
+bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::CoverNearlyBlown trigger (fn_72_A988)");
+  return false;
+}
+
+bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::CoveringFire trigger (fn_72_A8D0)");
+  return false;
+}
+
+bool CSpacePirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldAttack trigger (fn_72_A71C)");
+  return false;
+}
+
+bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::LineOfSight trigger (fn_72_9378)");
+  return false;
+}
+
+bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
+  return GetDestObj() == kInvalidUniqueId;
+}
+
+bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::SpotPlayer trigger (fn_72_938C)");
+  return false;
+}
+
+bool CSpacePirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldDodge trigger (fn_72_82D0)");
+  return false;
+}
+
+bool CSpacePirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldRetreat trigger (fn_72_7C28)");
+  return false;
+}
+
+bool CSpacePirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
+  return x8f9_27_inRange;
+}
+
+bool CSpacePirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldCrouch trigger (fn_72_99A4)");
+  return false;
+}
+
+bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldMove trigger (fn_72_7BD4)");
+  return false;
+}
+
+bool CSpacePirate::ShotAt(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShotAt trigger (fn_72_7BA0)");
+  return false;
+}
+
+bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::Attacked trigger (fn_72_7B6C)");
+  return false;
+}
+
+bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::HasTargetingPoint trigger (fn_72_7970)");
+  return false;
+}
+
+bool CSpacePirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldWallHang trigger (fn_72_767C)");
+  return false;
+}
+
+bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
+  if (x8f7_29_inWallHang) {
+    return GetBodyController()->GetCurrentStateId() != pas::kAS_WallHang;
+  }
+  return CPatterned::AnimOver(mgr, data);
+}
+
+bool CSpacePirate::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldStrafe trigger (fn_72_960C)");
+  return false;
+}
+
+bool CSpacePirate::ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return x8f4_29_onlyAttackInRange && !mBurstFire.IsBurstSet() && mAttackRemTime > 2.f;
+}
+
+bool CSpacePirate::StartAttack(CStateManager& mgr, const CTriggerData& data) const {
+  if (x8f8_31_mayStartAttack) {
+    const_cast< CSpacePirate* >(this)->x8f8_31_mayStartAttack = false;
+    return true;
+  }
+  return false;
+}
+
+bool CSpacePirate::BreakAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return x8f5_25_breakAttack;
+}
+
+bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) const {
+  return x8f4_29_onlyAttackInRange && mAttackRemTime < 1.5f;
+}
+
+bool CSpacePirate::BounceFind(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::BounceFind trigger (fn_72_602C)");
+  return false;
+}
+
+bool CSpacePirate::OffLine(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::OffLine trigger (fn_72_55B8)");
+  return false;
+}
+
+bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::Landed trigger (fn_72_558C)");
+  return false;
+}
+
+bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
+  return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
+}
+
+bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::Leash trigger (fn_72_52F8)");
+  return false;
+}
+
+bool CSpacePirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::HasAttackPattern trigger (fn_72_7810)");
+  return false;
+}
+
+bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) const {
+  return x8f4_24_pendingAmbush;
+}
+
+bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
+  return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
+}
+
+bool CSpacePirate::ShouldLaunchGrenade(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::ShouldLaunchGrenade trigger (fn_72_779C)");
+  return false;
+}
+
+bool CSpacePirate::InProjectileRange(CStateManager& mgr, const CTriggerData& data) const {
+  PortSpacePirateStandIn("CSpacePirate::InProjectileRange trigger (fn_72_76D0)");
+  return false;
+}
