@@ -35,11 +35,8 @@ Sanctuary Fortress, area/layer): `02_cliff_reactorcore_dark` L5, `03_cliff_chica
 
 ### Pseudocode
 
-REA's Ghidra lane takes only ET_EXEC images, so `tools/rel_plf2exec.py <rel.plf> <main.elf> <out>`
-links the REL's plf against the DOL ELF (REL sections from 0x81000000, so `fn_15_X` is at
-0x81000000+X; DOL code as NOBITS so its symbols name every call; Gekko `psq_l`/`psq_st` rewritten to
-`lfd`/`stfd`, which Ghidra's PowerPC language lacks). All 236 functions decompile; the dump is
-regenerated with `procedure_pseudo_code` per function.
+One `.c` per function (all 236) in `/tmp/opencode/pseudo/ElitePirate/fn_15_<off>.c`, named by REL
+offset. Regenerate with the shared `tools/rel_pseudo/` (see its `link_rel.sh` header).
 
 ### FSM tables [proven]
 
