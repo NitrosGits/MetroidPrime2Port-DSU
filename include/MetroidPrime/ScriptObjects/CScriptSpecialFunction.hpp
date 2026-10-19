@@ -93,6 +93,9 @@ public:
   enum ESpinnerControllerMode { kSCM_Spinner, kSCM_ShotSpinner };
 
   ESpecialFunction GetFunction() const { return mFunction; }
+#ifdef TARGET_PC
+  const CDamageInfo& GetDamageInfo() const { return mDamageInfo; }
+#endif
 
   CScriptSpecialFunction(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                          const CTransform4f& xf, ESpecialFunction function,

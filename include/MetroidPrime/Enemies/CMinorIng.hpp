@@ -16,6 +16,12 @@
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "MetroidPrime/CLineOfSightTracker.hpp"
+#include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/TToken.hpp"
+#include "rstl/optional_object.hpp"
+
+class CGenDescription;
 
 class CScriptAIHint;
 class CPFArea;
@@ -132,6 +138,8 @@ public:
                        float dt) override;
   using CPatterned::GetDamageVulnerability;
   const CDamageVulnerability* GetDamageVulnerability() const override;
+  rstl::optional_object< CAABox > GetTouchBounds() const override;
+  CTransform4f GetPrimitiveTransform() const override;
 
   // CAi
   bool IsListening() const override { return true; }
@@ -234,18 +242,33 @@ private:
   void EndAttack(CStateManager& mgr, bool projectile);
   void ApplySeparation(CStateManager& mgr);
   void MoveAlongPath(CStateManager& mgr, float dt);
+  CTransform4f PrimitiveTransform(bool raised) const;
+  void CreateCollisionActor(CStateManager& mgr);
+  void SetCollisionActorActive(CStateManager& mgr, bool active);
+  void UpdateCollisionActor(CStateManager& mgr, float dt);
+  void CreateBlobEffect(CStateManager& mgr, const TLockedToken< CGenDescription >& desc);
+  void SetBlobEffectActive(CStateManager& mgr, bool active);
+  void UpdateBlobEffect(CStateManager& mgr);
+  void UpdateTouchBounds();
+  void PuddleDamage(CStateManager& mgr, TUniqueId sender);
+  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
+  bool DamageSource(CStateManager& mgr, TUniqueId touched, TUniqueId& attacker,
+                    CVector3f& direction, rstl::optional_object< CDamageInfo >& damage) const;
   void MoveOnSurface(float speed, float dt, const CVector3f& move);
   // Host layout (retail's CMinorIng is 0xd40, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest
   // offsets are the REL's, from the constructor fn_44_9D58 and the two accessors fn_44_0
   // (this+0x960 = GetSearchPath) and fn_44_8 (this+0xa4c = GetPointSearchPath).
   CMinorIngData mData;                        // 0x7c0 (0x158)
   CProjectileInfo mProjectileInfo;            // 0x918 (0x28)
+  rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // 0x940
+  rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // 0x950
   CPathFindSearch mPathFindSearch;            // 0x960 (0xec)
   CPathFindPointSearch mPointPathFindSearch;  // 0xa4c (0x188)
   CSurfaceAlignmentHelper mSurfaceAlignment;  // 0xbd8 (0x58)
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // 0xc30 (0x10)
   CVector3f mSurfaceMoveDir;                  // 0xc40
-  // Not held: the puddle/corporeal touch AABBs at 0xc4c/0xc68 (fn_44_3E8C).
+  rstl::optional_object< CAABox > mPuddleTouchBounds; // 0xc4c (fn_44_3E8C)
+  rstl::optional_object< CAABox > mBodyTouchBounds;   // 0xc68 (fn_44_3E8C)
   CLineOfSightTracker mLineOfSight;          // 0xc88 (retail CVisualKnowledge(uid, seg, 0.1, 0.05))
   int mForm;                                  // 0xcc8 EForm
   TUniqueId mTeamId;                          // 0xccc
@@ -255,8 +278,8 @@ private:
   TUniqueId mAttackPathLastId;                // 0xcd4 (FollowAttackPattern: the waypoint nav's last)
   TUniqueId mAttackPathId;                    // 0xcd6 (FollowAttackPattern: where to resume)
   TUniqueId mSafeZoneId;                      // 0xcda
-  TUniqueId mBlobEffectId;                    // 0xcdc (never created on the host, see XCRT)
-  TUniqueId mCollisionActorId;                // 0xcde (never created on the host, see XCRT)
+  TUniqueId mBlobEffectId;                    // 0xcdc CCollisionTracker (fn_44_48F0)
+  TUniqueId mCollisionActorId;                // 0xcde CCollisionActor (fn_44_319C)
   CSfxHandle mLoopSfx[2];                     // 0xce4/0xce8: idle, move
   CVector3f mTargetPos;                       // 0xcec
   CVector3f mModelScale;                      // 0xcf8
@@ -271,6 +294,9 @@ private:
   int mSafeZoneEnterCount;                    // 0xd28
   float mEvaporate;                           // 0xd34
   float mDamageFxTimer;                       // 0xd38
+  int mIntoCorporealAnim;                     // 0xd2c ("Into Corporeal Form")
+  int mIntoStunnedAnim;                       // 0xd30 ("Into Stunned")
+  CSegId mLockOnLocator;                      // 0xd3c ("lockon_target_SDK")
   const char* mLastLoggedState;               // host: MP2_DEBUG_MINORING
   CPFArea* mPathArea;                         // host: the area both searches were given on XALD
   // 0xd3d

@@ -11,6 +11,11 @@ public:
                float unknown1c, float turnSpeed, const CDamageVulnerability& vulnerability,
                ushort idleSound, ushort moveSound, ushort normalHitSound, ushort heavyHitSound,
                ushort deathSound);
+#ifdef TARGET_PC
+  CAssetId GetBlobEffect() const { return mBlobEffect; }
+  CAssetId GetNormalHitEffect() const { return mNormalHitEffect; }
+  CAssetId GetHeavyHitEffect() const { return mHeavyHitEffect; }
+#endif
 
 private:
   CAssetId mBlobEffect;

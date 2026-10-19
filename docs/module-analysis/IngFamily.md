@@ -248,18 +248,32 @@ Construction order:
   GetSearchPath; 0xE4 8 GetPointSearchPath; 0xF0 9758 SetupStateMachine; 0xF4 30 GetRagDoll; 0x10C
   38 GetAttackTarget; 0x110 48 IsOnGround; 0x114 54 GetGravityConstant; 0x124 60
   GetDeathExplosionParticle.
-- **States -> retail function** (`// @` = behaviour checked): PathFind 8128 @, PointPathFind 7F98 @,
-  Stunned 85DC @, ProjectileAttack 777C @, Patrol 7740 @, Dead 6EB8 @, IntoPuddleForm 8460 @,
-  IntoCorporealForm 82A0 @, Idle 7960 @, WaitForFSMTransition 6A3C @; **[?]**: SetWallPointCoverDest
-  5264 and SetCoverDest 4C9C (no-ops), FollowAttackPattern 6A40 (patrol stand-in),
-  MoveAwayFromSafeZone 6BD4 (timer only), AlwaysPointPathFind 7D20 (calls PointPathFind).
-  All 34 triggers carry `// @`. Code functions: SelectTarget 8C1C @ (ProjectOntoMesh 8B38 checked:
-  +1 z, `GetHeightOfPointAboveMesh` padding `rodata_7C` = 0.0, drop by height-0.5); the four
-  cover/lure ones are **[?]** no-ops.
-- **Not modelled on the host [?]**: collision actor (319C), blob effect (48F0/458C), touch AABBs
-  (3E8C), the inglet spawn in MassiveDeath (7058), damage particles (25E4/29D4), PreThink's +0x68
-  flag. Visor checks read `mgr.GetPlayerState(0)` (retail `mgr+0x150c`); `mgr.GetPlayerState()` is
-  null on the host, and `CBouncyGrenade.cpp:166/188` has the same latent bug.
+- **States -> retail function** (`// @` = behaviour checked): PathFind 8128, PointPathFind 7F98,
+  Stunned 85DC, ProjectileAttack 777C, Patrol 7740, Dead 6EB8, IntoPuddleForm 8460,
+  IntoCorporealForm 82A0, Idle 7960, WaitForFSMTransition 6A3C, SetWallPointCoverDest 5264,
+  SetCoverDest 4C9C, FollowAttackPattern 6A40, MoveAwayFromSafeZone 6BD4, AlwaysPointPathFind 7D20:
+  all `@`. All 34 triggers and the five code functions (8C1C, 4E84, 4AC4, 21A8, 22B0) carry `@`.
+- **Collision actor, touch bounds, blob effect, damage (all `@`)**: 4080/4050 primitive transform
+  (lock-on locator, or +1.8 up for the move check); 319C creates the `CCollisionActor`
+  (0.675/0.675/2.8 x scale, health copied, filter Solid minus CollisionActor/AIPassthrough/Player);
+  305C/30F4 activate it for every form but the puddle and `MoveToWR` it to `lockon_target_SDK`;
+  48F0/3004/458C the `CCollisionTracker` blob (size/density from the Into Corporeal/Into Stunned anim
+  progress, rate scaled while evaporating); 3E8C/41AC puddle/body touch AABBs; 25E4 puddle hit
+  (normal/heavy PART at damage >= 10 against the ing-spot vulnerability, sfx 4/5, 0.111 s timer);
+  2CD8/29D4 the collision-actor relay (weapon / safe zone / radial-damage special function source,
+  health difference applied, Death(DeathRattle), knockback). PreThink's +0x68 flag is
+  `kMT_GroundCollider`. Dead (6EB8) waits for the blob's `GetParticleCount()` (CElementGen vtable
+  0x74) to reach 0. The ctor lock-on check is against `CSegId::Invalid()` (255), not `Null()`.
+- **[?] still**: the inglet spawn in MassiveDeath (7058: needs the inglet CHealthInfo at data+0xb0,
+  CBouncyGrenadeData at +0xd0 and 0x8e0..0x8f8, none modelled by the host loader); fn_25_2554(0.5)
+  taken to be `SetMinimumPathLength`; the blob colour taken to be `CPatterned::mColor` (0x44c);
+  `UpdateHealthCause` mapped to `CStateManager::RecordDamageSource`. Visor checks read
+  `mgr.GetPlayerState(0)` (retail `mgr+0x150c`); `mgr.GetPlayerState()` is null on the host, and
+  `CBouncyGrenade.cpp:166/188` has the same latent bug.
+- **Runtime (area 13, 2026-10-19, `MP2_DEBUG_MINORING=1`, GODMODE)**: 12 IntoCorporealForm ->
+  ProjectileAttack cycles, 11 `projectile launched`, 5 `puddle hit, fx 1`, one `state Dead`;
+  0 `[port] caught`, 0 `[reach-stub]`, frame limit reached at 133.1 s. No `body hit` line yet: the
+  Dead came from a hit while corporeal that did not go through the collision actor.
 
 ---
 

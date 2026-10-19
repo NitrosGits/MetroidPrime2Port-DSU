@@ -10,18 +10,27 @@
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CRayCastResult.hpp"
 #include "Kyoto/Animation/CInt32POINode.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Particles/CGenDescription.hpp"
 #include "Kyoto/CRandom16.hpp"
 #include "Kyoto/Math/CPlane.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/Enemies/CCollisionTracker.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/PortIngShared.hpp"
@@ -35,6 +44,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -181,6 +191,15 @@ void DumpFsm2(const CGenericFSM2& machine) {
 
 } // namespace
 
+// fn_44_9D58 locks the ing-spot hit effects (0x940/0x950) only when the asset is set.
+static rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return rstl::optional_object< TLockedToken< CGenDescription > >();
+  }
+  return rstl::optional_object< TLockedToken< CGenDescription > >(
+      TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
+}
+
 CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& pInfo, const CActorParameters& actParms,
@@ -191,6 +210,8 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
 , mData(data)
 , mProjectileInfo(data.mProjectile, data.mProjectileDamage)
+, mNormalHitEffect(OptionalPart(data.mIngSpot.GetNormalHitEffect()))
+, mHeavyHitEffect(OptionalPart(data.mIngSpot.GetHeavyHitEffect()))
 , mPathFindSearch(nullptr, 0x301, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center)
 , mPointPathFindSearch(nullptr)
 , mSurfaceAlignment()
@@ -220,6 +241,8 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mSafeZoneEnterCount(0)
 , mEvaporate(0.f)
 , mDamageFxTimer(0.f)
+, mIntoCorporealAnim(-1)
+, mIntoStunnedAnim(-1)
 , mLastLoggedState(nullptr)
 , mPathArea(nullptr)
 , mHasPatrolPath(false)
@@ -253,11 +276,20 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
   // the line-of-sight tracker casts from "Eye_LCTR" (the REL's next string, bss_40) through
   // Solid minus Player/CollisionActor (bss_0 / DAT_80900d10 in fn_44_ABCC).
   if (const CAnimData* animData = GetModelData()->GetAnimationData()) {
-    const CSegId lockOn = animData->GetLocatorSegId(rstl::string_l("lockon_target_SDK"));
-    if (lockOn != CSegId::Null()) {
-      mLockOnTarget = lockOn;
+    mLockOnLocator = animData->GetLocatorSegId(rstl::string_l("lockon_target_SDK"));
+    if (mLockOnLocator != CSegId::Invalid()) {
+      mLockOnTarget = mLockOnLocator;
     }
     mLineOfSight.SetSegment(animData->GetLocatorSegId(rstl::string_l("Eye_LCTR")));
+    // fn_44_AB78 keeps an animation only when its score is above FLT_EPSILON.
+    const CPASDatabase& pas = animData->GetPASDatabase();
+    rstl::pair< float, int > best = pas.FindBestAnimation(
+        CPASAnimParmData(pas::kAS_Generate, CPASAnimParm::FromEnum(0)), -1);
+    mIntoCorporealAnim = best.first > 1.1920929e-07f ? best.second : -1;
+    best = pas.FindBestAnimation(CPASAnimParmData(pas::kAS_LoopReaction, CPASAnimParm::FromEnum(3),
+                                                  CPASAnimParm::FromEnum(0)),
+                                 -1);
+    mIntoStunnedAnim = best.first > 1.1920929e-07f ? best.second : -1;
   }
   mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
@@ -333,8 +365,7 @@ bool CMinorIng::IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool ch
   if (prim == nullptr) {
     return true;
   }
-  // [?] retail builds the transform with its own GetPrimitiveTransform (fn_44_4080, locator-based)
-  CTransform4f xf = GetPrimitiveTransform();
+  CTransform4f xf = PrimitiveTransform(true);
   xf.SetTranslation(xf.GetTranslation() + offset);
   const CMaterialFilter filter =
       CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList(kMT_Player));
@@ -509,7 +540,7 @@ void CMinorIng::SetForm(CStateManager& mgr, int form, bool setLocomotion) {
     }
     RemoveMaterial(kMT_NonSolidDamageable, mgr);
   }
-  // [?] fn_44_305C activates the collision actor for forms 0/2/3; it does not exist on the host.
+  SetCollisionActorActive(mgr, form != kF_Puddle);
   if (form == kF_IntoCorporeal) {
     SnapToFloor(mgr);
   }
@@ -1034,11 +1065,14 @@ void CMinorIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
     mEvaporate = 2.f;
   }
   if (mShouldEvaporate) {
-    // Retail waits while the blob-effect actor (0xcdc) still reports itself active; the host
-    // never creates one, so the lookup always fails and the actor deletes itself.
+    // Retail waits while the blob effect's particle system still has particles (CElementGen
+    // vtable 0x74, GetParticleCount).
     bool remove = true;
-    if (const CActor* blob = TCastToConstPtr< CActor >(mgr.GetObjectById(mBlobEffectId))) {
-      remove = !blob->GetActive();
+    if (CEntity* ent = mgr.ObjectById(mBlobEffectId)) {
+      CElementGen* gen = static_cast< CCollisionTracker* >(ent)->ParticleSystem();
+      if (gen != nullptr && gen->GetParticleCount() != 0) {
+        remove = false;
+      }
     }
     if (remove) {
       mgr.DeleteObjectRequest(GetUniqueId());
@@ -1446,13 +1480,274 @@ void CMinorIng::SetLuredPointDest(CStateManager& mgr, float) {
                                             mSafeZoneId, GetTranslation());
 }
 
+// ---- collision actor, touch bounds, blob effect, damage -------------------------------------
+
+// @ fn_44_4080
+CTransform4f CMinorIng::PrimitiveTransform(bool raised) const {
+  CTransform4f xf = GetTransform();
+  if (!raised) {
+    const CAnimData* animData = GetModelData()->GetAnimationData();
+    if (animData != nullptr) {
+      const CVector3f lctr = animData->GetLocatorTransform(mLockOnTarget, nullptr).GetTranslation();
+      xf.SetTranslation(GetTransform() * CVector3f::ByElementMultiply(mModelScale, lctr));
+    }
+  } else {
+    xf.SetTranslation(xf.GetTranslation() + xf.GetUp() * 1.8f);
+  }
+  return xf;
+}
+
+// @ fn_44_4050
+CTransform4f CMinorIng::GetPrimitiveTransform() const { return PrimitiveTransform(false); }
+
+// @ fn_44_319C
+void CMinorIng::CreateCollisionActor(CStateManager& mgr) {
+  const CVector3f extent(mModelScale.GetX() * 0.675f, mModelScale.GetY() * 0.675f,
+                         mModelScale.GetZ() * 2.8f);
+  const CVector3f center = CVector3f::Up() * (extent.GetZ() / -2.f + 0.5f);
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CCollisionActor* colAct = rs_new CCollisionActor(uid, GetCurrentAreaId(), GetUniqueId(), extent,
+                                                   center, false, GetMass());
+  if (colAct != nullptr) {
+    mCollisionActorId = uid;
+    mgr.AddObject(colAct);
+    // fn_44_D00 copies the Ing's CHealthInfo whole.
+    *colAct->HealthInfo() = *GetHealthInfo();
+    colAct->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
+    colAct->SetCallTouch(true);
+  }
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
+}
+
+// @ fn_44_305C
+void CMinorIng::SetCollisionActorActive(CStateManager& mgr, bool active) {
+  if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(mCollisionActorId))) {
+    colAct->SetActive(active);
+    colAct->SetTransform(
+        CQuaternion::FromMatrix(GetTransform()).BuildTransform4f(colAct->GetTranslation()));
+  }
+}
+
+// @ fn_44_30F4
+void CMinorIng::UpdateCollisionActor(CStateManager& mgr, float dt) {
+  CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(mCollisionActorId));
+  if (colAct != nullptr && colAct->GetActive()) {
+    colAct->MoveToWR(GetLctrTransform(mLockOnLocator).GetTranslation(), dt);
+  }
+}
+
+// @ fn_44_48F0
+void CMinorIng::CreateBlobEffect(CStateManager& mgr, const TLockedToken< CGenDescription >& desc) {
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CCollisionTracker* effect = rs_new CCollisionTracker(
+      desc, uid, GetCurrentAreaId(), true, rstl::string_l("MinorIngBlobEffect"),
+      CTransform4f::Translate(GetTranslation()), GetUniqueId(), 0, 10.f);
+  if (effect != nullptr) {
+    mBlobEffectId = uid;
+    effect->SetNextDrawNode(GetUniqueId());
+    effect->SetActive(GetActive());
+    // [?] fn_25_2554(0.5): by elimination the tracker's other float setter.
+    effect->SetMinimumPathLength(0.5f);
+    mgr.AddObject(effect);
+  }
+}
+
+// @ fn_44_3004
+void CMinorIng::SetBlobEffectActive(CStateManager& mgr, bool active) {
+  if (CEntity* effect = mgr.ObjectById(mBlobEffectId)) {
+    effect->SetActive(active);
+  }
+}
+
+// @ fn_44_458C
+void CMinorIng::UpdateBlobEffect(CStateManager& mgr) {
+  CEntity* ent = mgr.ObjectById(mBlobEffectId);
+  if (ent == nullptr) {
+    return;
+  }
+  CCollisionTracker* effect = static_cast< CCollisionTracker* >(ent);
+  float size = 1.f;
+  float density = 1.f;
+  float rate = 1.f;
+  if (GetActive()) {
+    if (mForm == kF_IntoCorporeal || mForm == kF_Corporeal) {
+      float progress = 1.f;
+      const CAnimData* animData = GetModelData()->GetAnimationData();
+      if (mForm == kF_IntoCorporeal && animData != nullptr) {
+        const int anim = mPuddleHitByWeapon ? mIntoStunnedAnim : mIntoCorporealAnim;
+        if (anim == animData->GetCurrentAnimation()) {
+          progress = 1.f - animData->GetAnimTimeRemaining(rstl::string_l("Whole Body")) /
+                               animData->GetAnimationDuration(anim);
+        }
+      }
+      density = 1.f - progress * 0.3f;
+      size = density < 0.1f ? 0.1f : density;
+    }
+  } else {
+    rate = 0.f;
+  }
+  if (mShouldEvaporate) {
+    rate *= (2.f - mEvaporate) * 0.5f;
+  }
+  if (rate > 0.f) {
+    const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
+    const CVector3f pos = GetTranslation();
+    effect->SetTransform(CTransform4f::LookAt(pos + CVector3f::Up() * 0.1f, pos + normal,
+                                              normal.GetZ() < 0.95f ? CVector3f::Up()
+                                                                    : CVector3f::Right()));
+    if (CElementGen* gen = effect->GetParticleSystem()) {
+      gen->SetExternalParam(0, size);
+      gen->SetExternalParam(1, density);
+    }
+  }
+  effect->SetParticleEmissionRateScalar(rate);
+  // [?] the colour is the RGB at this+0x44c, taken to be CPatterned::mColor.
+  effect->SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0, static_cast< CModelFlags::EFlags >(3),
+                                    CColor(mColor.GetRedu8(), mColor.GetGreenu8(),
+                                           mColor.GetBlueu8(), 0xff)));
+}
+
+// @ fn_44_3E8C
+void CMinorIng::UpdateTouchBounds() {
+  const float half = mModelScale.GetX() * 0.5625f;
+  mPuddleTouchBounds = CAABox(CVector3f(-half, -half, 0.f),
+                              CVector3f(half, half, mModelScale.GetX()))
+                           .GetTransformedAABox(GetTransform());
+  if (const CCollisionPrimitive* prim = GetCollisionPrimitive()) {
+    mBodyTouchBounds = prim->CalculateAABox(GetPrimitiveTransform());
+  }
+}
+
+// @ fn_44_41AC
+rstl::optional_object< CAABox > CMinorIng::GetTouchBounds() const {
+  return mForm == kF_Puddle ? mPuddleTouchBounds : mBodyTouchBounds;
+}
+
+// @ fn_44_25E4
+void CMinorIng::PuddleDamage(CStateManager& mgr, TUniqueId sender) {
+  if (mDamageFxTimer > 0.f) {
+    return;
+  }
+  const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(sender));
+  if (weapon == nullptr) {
+    return;
+  }
+  const bool heavy =
+      !(weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpotVulnerability) < 10.f);
+  const rstl::optional_object< TLockedToken< CGenDescription > >& hitEffect =
+      heavy ? mHeavyHitEffect : mNormalHitEffect;
+  CEntity* fx = nullptr;
+  if (hitEffect) {
+    fx = rs_new CExplosion(
+        *hitEffect, mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        rstl::string_l("Ing Damage Fx"), GetTransform(), 0, GetModelData()->GetScale(),
+        CColor::White(), -1);
+  }
+  PlaySfx(heavy ? 5 : 4, true);
+  if (DebugMinorIng()) {
+    fprintf(stderr, "[minoring] %04x puddle hit%s, fx %d\n", GetUniqueId().Value(),
+            heavy ? " (heavy)" : "", fx != nullptr);
+  }
+  if (fx != nullptr) {
+    mgr.AddObject(fx);
+  }
+  mDamageFxTimer = 0.111f;
+}
+
+// @ fn_44_2CD8
+bool CMinorIng::DamageSource(CStateManager& mgr, TUniqueId touched, TUniqueId& attacker,
+                             CVector3f& direction,
+                             rstl::optional_object< CDamageInfo >& damage) const {
+  const CEntity* ent = mgr.GetObjectById(touched);
+  if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(ent)) {
+    direction = weapon->GetTransform().GetForward();
+    damage = weapon->GetCurrentDamageInfo();
+    attacker = weapon->GetOwnerId();
+    return true;
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(ent);
+  if (const CScriptSafeZone* zone = TCastToConstPtr< CScriptSafeZone >(actor)) {
+    direction = GetTranslation() - zone->GetTranslation();
+    if (direction.CanBeNormalized()) {
+      direction.Normalize();
+    }
+    damage = CDamageInfo(CWeaponMode(kWT_AreaLight), 100.f, 0.f, 0.f, false, false);
+    attacker = touched;
+    return true;
+  }
+  const CScriptSpecialFunction* func = TCastToConstPtr< CScriptSpecialFunction >(actor);
+  if (func == nullptr || func->GetFunction() != CScriptSpecialFunction::kSF_RadialDamage) {
+    return false;
+  }
+  direction = GetTranslation() - func->GetTranslation();
+  if (direction.CanBeNormalized()) {
+    direction.Normalize();
+  }
+  damage = func->GetDamageInfo();
+  attacker = func->GetUniqueId();
+  return true;
+}
+
+// @ fn_44_29D4
+void CMinorIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
+  if (!GetAlive()) {
+    return;
+  }
+  CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (colAct == nullptr) {
+    return;
+  }
+  const TUniqueId touched = colAct->GetLastTouchedObject();
+  TUniqueId attacker = kInvalidUniqueId;
+  CVector3f direction = CVector3f::Zero();
+  rstl::optional_object< CDamageInfo > damage;
+  DamageSource(mgr, touched, attacker, direction, damage);
+  CHealthInfo* colHealth = colAct->HealthInfo();
+  CHealthInfo* health = HealthInfo();
+  if (colHealth != nullptr && health != nullptr) {
+    // The collision actor carries a copy of the Ing's health: what it lost is the hit.
+    const float initial = health->GetInitialHP();
+    const float hp = health->GetHP();
+    const float amount = initial - colHealth->GetHP();
+    health->SetHP(hp - amount);
+    TakeDamage(direction, amount);
+    if (hp <= amount) {
+      Death(mgr, direction, kSS_DeathRattle);
+      // [?] retail's UpdateHealthCause(actor, attacker, CWeaponMode(none), true, false); the host's
+      // equivalent is RecordDamageSource.
+      mgr.RecordDamageSource(*this, attacker, CDamageInfo(CWeaponMode(), 0.f, 0.f, 0.f), true,
+                             false);
+    }
+    colHealth->SetHP(initial);
+    if (DebugMinorIng()) {
+      fprintf(stderr, "[minoring] %04x body hit %.1f, hp %.1f\n", GetUniqueId().Value(), amount,
+              health->GetHP());
+    }
+    mKnockDamage += mHpTracker - health->GetHP();
+    mHpTracker = health->GetHP();
+    if (mPuddleHitByWeapon) {
+      mCancelStun = true;
+      mStunTimer = 0.3f;
+    }
+  }
+  if (!damage) {
+    if (!GetAlive()) {
+      MassiveDeath(mgr);
+    }
+  } else {
+    KnockBack(mgr, CKnockBackInfo(direction, touched, attacker, *damage, true));
+  }
+}
+
 // ---- overrides -----------------------------------------------------------------------------
 
 // @ fn_44_8FCC
 void CMinorIng::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
-  // [?] retail also requires bit 0x20 of the word at +0x68 to be clear.
-  if (mForm == kF_Puddle) {
+  // Retail tests bit 0x20 of the material list's high word (+0x68): material 37.
+  if (mForm == kF_Puddle && !GetMaterialList().HasMaterial(kMT_GroundCollider)) {
     const CPlane plane = mSurfaceAlignment.GetSurface().GetPlane();
     if (CVector3f::Dot(mSurfaceMoveDir, plane.GetNormal()) < 0.95f) {
       const CVector3f pos = GetTranslation();
@@ -1472,12 +1767,13 @@ void CMinorIng::Think(float dt, CStateManager& mgr) {
     EnsureBodyActive(mgr);
     CPatterned::Think(dt, mgr);
     UpdateTargetPos(mgr);
-    // [?] fn_44_30F4 moves the collision actor to the lock-on locator; there is none on the host.
+    UpdateCollisionActor(mgr, dt);
     mLineOfSight.Update(dt, mgr);
     UpdateBallPursuit(mgr);
     UpdateTimers(dt);
     mSurfaceAlignment.Update(*this, mgr, dt);
     UpdateValidTarget(mgr);
+    UpdateTouchBounds();
     UpdateLoopSfx();
     mTouched = false;
     if (GetAlive()) {
@@ -1491,7 +1787,7 @@ void CMinorIng::Think(float dt, CStateManager& mgr) {
     }
     UpdateSafeZone(mgr);
   }
-  // [?] fn_44_458C keeps the blob-effect actor on the Ing; there is none on the host.
+  UpdateBlobEffect(mgr);
 }
 
 // @ fn_44_9150
@@ -1504,17 +1800,25 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     AddMaterial(kMT_NoStaticCollision, mgr);
     RemoveMaterial(kMT_Solid, mgr);
     BodyController()->Activate(mgr, pas::kAS_Invalid);
-    // [?] fn_44_319C (collision actor) and fn_44_48F0 (blob effect from the ing-spot PART) are
-    // not created on the host.
+    CreateCollisionActor(mgr);
     SetForm(mgr, kF_Puddle, true);
+    // Host guard: retail asks the pool for the PART without checking the id.
+    if (mData.mIngSpot.GetBlobEffect() != kInvalidAssetId) {
+      CreateBlobEffect(mgr, TLockedToken< CGenDescription >(gpSimplePool->GetObj(
+                                SObjectTag('PART', mData.mIngSpot.GetBlobEffect()))));
+    }
+    UpdateTouchBounds();
     UpdateLoopSfx();
     ResetAttackTimer(mgr);
     break;
   case kSM_Deactivate:
     StopSfx();
+    SetCollisionActorActive(mgr, false);
+    SetBlobEffectActive(mgr, false);
     break;
   case kSM_Activate:
     JoinTeam(mgr);
+    SetBlobEffectActive(mgr, true);
     break;
   case kSM_AreaLoaded: {
     const rstl::vector< SConnection >& conns = GetConnectionList();
@@ -1555,10 +1859,10 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     break;
   case kSM_Damage:
-    // [?] fn_44_25E4 (puddle: damage particles + hit sfx) and fn_44_29D4 (collision-actor relay).
-    if (mForm == kF_Puddle && mDamageFxTimer <= 0.f) {
-      PlaySfx(4, true);
-      mDamageFxTimer = 0.111f;
+    if (mForm == kF_Puddle) {
+      PuddleDamage(mgr, sender);
+    } else {
+      CollisionActorDamage(mgr, sender);
     }
     break;
   case kSM_Delete:
@@ -1567,6 +1871,8 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       team->QuitTeam(GetUniqueId());
     }
     StopSfx();
+    mgr.DeleteObjectRequest(mBlobEffectId);
+    mgr.DeleteObjectRequest(mCollisionActorId);
     break;
   case kSM_ResistedDamage:
     if (mForm == kF_Puddle && mPuddleHitTimer <= 0.f) {
@@ -1612,7 +1918,9 @@ void CMinorIng::Touch(CActor& actor, CStateManager& mgr) {
 // @ fn_44_76CC
 void CMinorIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   EnsureBodyActive(mgr);
-  // retail deactivates the blob effect first (fn_44_3004) while alive; there is none here.
+  if (GetAlive()) {
+    SetBlobEffectActive(mgr, false);
+  }
   CPatterned::Death(mgr, direction, state);
 }
 
