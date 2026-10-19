@@ -180,6 +180,13 @@ CParasite::CParasite(TUniqueId uid, const rstl::string& name, EFlavorType flavor
 
 CParasite::~CParasite() {}
 
+// Ported from the Prime 1 port's CWallWalker::ProjectVectorToPlane (its CWallWalker.cpp:53): the
+// component of `vec` in the plane whose normal is `planeDir`. CParasite's locomotion wants a move
+// vector that stays on the surface it is crawling, which is this projection.
+CVector3f CParasite::ProjectVectorToPlane(const CVector3f& vec, const CVector3f& planeDir) {
+  return vec - CVector3f::Dot(vec, planeDir) * planeDir;
+}
+
 void CParasite::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId uid = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();

@@ -146,9 +146,6 @@ extern "C" void reachstub_212() { mpReachStub("_ZN8CMetroid20PreDamageSpacePirat
 extern "C" void reachstub_300() asm("_ZN9CMatrix4fC1ERKS_");
 extern "C" void reachstub_300() { mpReachStub("_ZN9CMatrix4fC1ERKS_", "CMatrix4f::CMatrix4f(CMatrix4f const&)"); }
 
-// CParasite::ProjectVectorToPlane(CVector3f const&, CVector3f const&)
-extern "C" void reachstub_301() asm("_ZN9CParasite20ProjectVectorToPlaneERK9CVector3fS2_");
-extern "C" void reachstub_301() { mpReachStub("_ZN9CParasite20ProjectVectorToPlaneERK9CVector3fS2_", "CParasite::ProjectVectorToPlane(CVector3f const&, CVector3f const&)"); }
 
 // COsContext::GetOsKeyState(int) const
 extern "C" void reachstub_308() asm("_ZNK10COsContext13GetOsKeyStateEi");
