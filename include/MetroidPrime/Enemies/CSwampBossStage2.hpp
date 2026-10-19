@@ -144,8 +144,11 @@ protected:
   void PickSwoopTarget(CStateManager& mgr);
   void PickSpitNode(CStateManager& mgr);
   void FireSpit(CStateManager& mgr, const rstl::string& locator);
-  void LaunchPlatformChain(CStateManager& mgr, const rstl::vector< TUniqueId >& starts,
+  void LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
+                           rstl::vector< TUniqueId >& nodes, rstl::vector< CVector3f >& positions,
                            const CVector3f& from);
+  void AimSpitPlatforms(CStateManager& mgr, const rstl::vector< TUniqueId >& platforms,
+                        const CVector3f& from);
   void SendDecrement(CStateManager& mgr);
   void ProcessDamage(CStateManager& mgr, TUniqueId colActorId);
   float RecentDamage() const;

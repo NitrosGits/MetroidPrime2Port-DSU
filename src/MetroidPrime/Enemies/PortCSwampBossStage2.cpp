@@ -608,12 +608,32 @@ void CSwampBossStage2::AddAdditiveFlinch(float amount) {
   mPendingFlinch = rstl::max_val(mPendingFlinch, rstl::min_val(amount / 20.f, 1.f));
 }
 
+// fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface.
 void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f& pos) {
-  // TODO(uncertain): not decoded.
+  if (mData.bubbleTelegraphEffect == kInvalidAssetId) {
+    return;
+  }
+  mBubbleGen = rs_new CElementGen(
+      gpSimplePool->GetObj(SObjectTag('PART', mData.bubbleTelegraphEffect)),
+      CElementGen::kMOT_Normal, CElementGen::kOSF_One);
+  mBubbleGen->SetParticleEmission(true);
+  mBubbleGen->SetTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ));
 }
 
+// fn_79_2A84: the splash shockwave, on the locator's X/Y at the centre actor's height. The
+// CShockWaveInfo is the phase's splashShockWave loader struct (fn_79_2C20 is that conversion).
 void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) {
-  // TODO(uncertain): not decoded.
+  if (mData.splashShockWave.shockWaveEffect == kInvalidAssetId) {
+    return;
+  }
+  CTransform4f xf(GetTransform());
+  xf.SetTranslation(CVector3f(pos.GetX(), pos.GetY(), CenterPosition(mgr).GetZ()));
+  CShockWave* wave = rs_new CShockWave(
+      mgr.AllocateUniqueId(), rstl::string_l("SwampBossStage2 ShockWave"),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true), xf, GetUniqueId(),
+      CShockWaveInfo(mData.splashShockWave), mData.splashShockWaveMaxTime,
+      mData.unknown_0xe57ca27c);
+  mgr.AddObject(wave);
 }
 
 // fn_79_3578
@@ -725,10 +745,20 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
   // TODO(uncertain): not decoded.
 }
 
-void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr,
-                                           const rstl::vector< TUniqueId >& starts,
+// TODO(uncertain): fn_79_55B0 not ported (sends ACTV/DECR to the chain and lays the platform chain
+// out from the node and position lists).
+void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
+                                           rstl::vector< TUniqueId >& nodes,
+                                           rstl::vector< CVector3f >& positions,
                                            const CVector3f& from) {
-  // TODO(uncertain): not decoded.
+  // TODO(uncertain): fn_79_55B0 not ported.
+}
+
+// TODO(uncertain): fn_79_4D20 not ported (moves the spit platforms to their projectile intercepts).
+void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
+                                        const rstl::vector< TUniqueId >& platforms,
+                                        const CVector3f& from) {
+  // TODO(uncertain): fn_79_4D20 not ported.
 }
 
 void CSwampBossStage2::SendDecrement(CStateManager& mgr) {
@@ -1654,11 +1684,155 @@ void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
-// fn_79_6406
+// fn_79_A838: animation user events, by event id (the kUE_ names are given where the host enum has
+// one). Anything not handled here goes to CPatterned::DoUserAnimEvent, as retail does.
 void CSwampBossStage2::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                        EUserEventType type, float dt) {
-  // TODO(uncertain): body not yet ported.
-  CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+  bool handled = true;
+  switch (static_cast< int >(type)) {
+  case 0x00: // kUE_Projectile: spit
+    FireSpit(mgr, node.GetLocatorName());
+    break;
+  case 0x01: // kUE_EggLay: release the queued flyers from the active chain
+    if (mFlyersLeft > 0) {
+      // Retail picks 0xdd0 (mDarkChain) while 0xc76 bit 0 (mLightFlyer) is set; the chain names
+      // may be swapped, but the selection follows retail.
+      const TUniqueId chain = mLightFlyer ? mDarkChain : mLightChain;
+      CActor* chainActor = TCastToPtr< CActor >(mgr.ObjectById(chain));
+      if (chainActor) {
+        for (int i = 0; i < CurrentPhase().unknown_0xef3efec0; ++i) {
+          chainActor->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), chain, kSM_InternalMessage0));
+          if (--mFlyersLeft < 1) {
+            break;
+          }
+        }
+        if (mFlashTime == 0.f) {
+          mFlashTime = 0.3f;
+        }
+      }
+    }
+    break;
+  case 0x07: // kUE_GenerateEnd: break the surface, one bubble telegraph
+    mSurfaced = true;
+    if (!mBubbleTelegraphed) {
+      StartBubbleTelegraph(mgr, GetTranslation());
+      mBubbleTelegraphed = true;
+    }
+    SetTranslation(CVector3f(GetTranslation().GetX(), GetTranslation().GetY(), mWaterZ + 0.01f));
+    break;
+  case 0x08: // kUE_DamageOn: the swoop damage window opens
+    mSwoopWindow = true;
+    mClampHealth = false;
+    break;
+  case 0x09: // kUE_DamageOff
+    mSwoopWindow = false;
+    break;
+  case 0x0e: // kUE_FadeIn: head (ovipositor) mode on
+    mHeadMode = true;
+    SetIngPossessed(true, 15.f, mgr);
+    mAdditiveRate = 0.2f;
+    break;
+  case 0x0f: // kUE_FadeOut: head mode off
+    mHeadMode = false;
+    SetIngPossessed(false, 20.f, mgr);
+    mAdditiveRate = -0.5f;
+    break;
+  case 0x12: // kUE_EndAction: face the player and open the head
+    mFacePlayer = true;
+    SetBodyVulnerable(mgr, true);
+    break;
+  case 0x16: // kUE_BreakLockOn
+    if (CPlayer* player = mgr.GetPlayer(0)) {
+      player->SetOrbitRequestForTarget(GetUniqueId(), CPlayer::kOR_ActivateOrbitSource, mgr);
+    }
+    break;
+  case 0x1b: { // kUE_EventStart: launch the platform chain from this locator
+    const CVector3f from = GetLctrTransform(node.GetLocatorName()).GetTranslation();
+    if (!mLightFlyer) { // same retail selection as kUE_EggLay
+      LaunchPlatformChain(mgr, mLightChain, mChainANodes, mChainAPositions, from);
+    } else {
+      LaunchPlatformChain(mgr, mDarkChain, mChainBNodes, mChainBPositions, from);
+    }
+    break;
+  }
+  case 0x21: // kUE_EffectOn: start counting the circle, then test which side of it we are on
+    if (!mCircleCounting) {
+      mCircleCounting = true;
+      mCircleDamage = 0.f;
+      mCircleCount = 0;
+    } else {
+      const CActor* sideNode =
+          TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
+      const CVector3f centre = CenterPosition(mgr);
+      if (sideNode &&
+          CVector3f::Dot(sideNode->GetTranslation() - centre, GetTranslation() - centre) < 0.f) {
+        mCircleDone = true;
+      }
+      ++mCircleCount;
+    }
+    break;
+  case 0x22: // kUE_EffectOff
+    mCircleCounting = false;
+    break;
+  case 0x23: // drop the target materials and fire the splash shockwave at this locator
+    SendScriptMsgs(kSS_InternalState8, mgr, kInvalidUniqueId, kSM_None);
+    RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
+    SpawnShockWave(mgr, GetLctrTransform(node.GetLocatorName()).GetTranslation());
+    break;
+  case 0x24: // and take them back
+    SendScriptMsgs(kSS_InternalState9, mgr, kInvalidUniqueId, kSM_None);
+    AddMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
+    break;
+  case 0x25:
+    PickSpitNode(mgr);
+    AimSpitPlatforms(mgr, mPlatformsA, mHeadPos);
+    break;
+  case 0x26:
+    PickSpitNode(mgr);
+    AimSpitPlatforms(mgr, mPlatformsB, mHeadPos);
+    break;
+  case 0x27:
+    mSwooping = false;
+    break;
+  case 0x28: // bubble telegraph without breaking the surface
+    if (!mBubbleTelegraphed) {
+      StartBubbleTelegraph(mgr, GetTranslation());
+      mBubbleTelegraphed = true;
+    }
+    break;
+  case 0x29:
+    mBubbleCreated = true;
+    break;
+  case 0x2a:
+    mWindPending = true;
+    break;
+  case 0x2b:
+    mWindPending = false;
+    break;
+  case 0x2d: { // flinch / stun sounds at this locator
+    const CVector3f forward = GetTransform().GetForward();
+    const CVector3f pos = GetLctrTransform(node.GetLocatorName()).GetTranslation();
+    if (!mGrowthsVulnerable) {
+      if (mgr.Random()->Float() < mData.flinchSoundChance) {
+        PlayCustomSound(pos, forward, mData.flinchSound, false);
+      }
+    } else if (!mGrowthDestroyed) {
+      if (mReelEffect) {
+        PlayCustomSound(pos, forward, mData.stunnedFlinchSound, false);
+      }
+      mReelEffect = false;
+    } else {
+      PlayCustomSound(pos, forward, mData.stunnedReelSound, false);
+    }
+    break;
+  }
+  default:
+    handled = false;
+    break;
+  }
+  if (!handled) {
+    CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+  }
 }
 
 // fn_79_6380
