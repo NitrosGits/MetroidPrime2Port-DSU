@@ -213,7 +213,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 254C | CSandBoss::RotateHelper254C | [stand-in] log-once |
 | 25D0 | CSandBoss::RotateHelper25D0 | [stand-in] log-once |
 | 26C0 | CSandBoss::CountActiveChargeBeams (returns the count) | [ported] host body, not exercised yet |
-| 2750 | CSandBoss::UpdateChargeBeams | [ported] host body, not exercised yet |
+| 2750 | CSandBoss::UpdateChargeBeams | [ported] run-exercised (empty list) |
 | 2CA4 | CSandBoss::ResetChargeBeams | [ported] host body, not exercised yet |
 | 2D40 | CSandBoss::CreateChargeBeam (start, end, sfx, charged) | [ported] host body, not exercised yet |
 | 311C | CSandBoss::StartChargeBeamGrow | [ported] host body, not exercised yet |
@@ -413,4 +413,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
 - Exit 13 (twice) is the shell tool's 120 s timeout killing a foreground run; run in the background.
 - One run of the same command exited 13 right after `[area] 36` with no diagnostics; three reruns
   were clean. Unexplained.
+- Slice 4 (charge-beam list and volleys, same command with `SECS=1500`, exit 0, 0 caught, 0 reach-stub):
+  `UpdateChargeBeams` (2750) runs every frame on an empty list; newly `// @`: 2750. The only stand-ins
+  reached are `HandleScreenShake` (4C60) and 528C; the FSM never evaluates an attack trigger, so the
+  volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
+  3000 of 6000 frames (exit 124).
 - Not tested: ASAN, the intro cinema path, any attack, sphere/ball phases.

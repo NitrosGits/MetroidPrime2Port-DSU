@@ -148,7 +148,7 @@ int CSandBoss::CountActiveChargeBeams(CStateManager& mgr) {
   return count;
 }
 
-// fn_55_2750 (ported, not exercised yet)
+// @ fn_55_2750
 // Per-frame charge-beam update: aims each beam along its recorded segment, moves its looping
 // emitter there and damages the player when the beam tip is within ten units. Then runs the script
 // effect's phases (mChargeBeamPhase): 0 grow over 0.6 s, 1 hold at the model scale, 2 shrink over
