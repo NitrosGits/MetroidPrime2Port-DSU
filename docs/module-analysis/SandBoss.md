@@ -229,8 +229,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | D8 | CSandBoss::GetHealthInfo | [proven] host body |
 | 178 | loader (PortLoadSandBoss, SLdrSandBoss.inc) | [proven] host body |
 | 1AEC | CSandBoss::GetStampedeDelay | [proven] host body |
-| 1B94 | CSandBoss::ShouldRepeaterAttackCheck | [stand-in] log-once |
-| 1C70 | CSandBoss::SyncAttacker | [stand-in] log-once |
+| 1B94 | CSandBoss::ShouldRepeaterAttackCheck (counts active safe zones) | [proven] host body |
+| 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [ported] host body, not exercised yet (no caller yet) |
 | 1D74 | CSandBoss::RotateHelper1D74 | [stand-in] log-once |
 | 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [ported] host body, not exercised yet |
 | 2030 | CSandBoss::RotateHelper2030 | [stand-in] log-once |
@@ -249,7 +249,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 37F4 | CSandBoss::UpdateDoubleChargeSweep | [ported] host body, not exercised yet |
 | 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
 | 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
-| 42A8 | CSandBoss::ShouldDarkBeamAttackCheck | [stand-in] log-once |
+| 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [ported] host body, not exercised yet |
 | 44CC | CSandBoss::FireDarkBeam | [stand-in] log-once |
 | 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
 | 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
@@ -282,7 +282,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 7E60 | CSandBoss::Helper7E60 | [stand-in] log-once |
 | 8008 | CSandBoss::Helper8008 | [stand-in] log-once |
 | 8258 | CSandBoss::HandleDamage | [stand-in] log-once |
-| 83AC | CSandBoss::RotateToPlayerHelper | [stand-in] log-once |
+| 83AC | CSandBoss::RotateToPlayerHelper | [proven] host body |
 | 84A8 | CSandBoss::UpdateGroupCinematicState | [proven] host body |
 | 86D0 | CSandBoss::UpdateTimers | [proven] host body |
 | 8740 | CSandBoss::GetArmoredBounds | [proven] host body |
@@ -479,11 +479,17 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   0 reach-stub): the attack slice's four triggers are now host bodies. `ShouldRepeaterAttack` (C750) answered
   true on the Attack submachine and it entered `RepeaterAttack` (A9DC, still a stand-in); C894 and C2A0 were
   evaluated too (`[sbtrace]`). Newly `// @`: C2A0 C750 C894.
-- `CheckBodyStateForDarkBeam` (8C88) was not reached: only `ShouldDarkBeamAttackCheck` (42A8) calls it, and
-  42A8 is still a stand-in. The full retail logic of C894/C750 cannot be expressed with the current callee
-  signatures — 42A8 returns the uid of the worm it picks (C894 compares it to `GetUniqueId()` and otherwise
-  makes that sibling run its dark-beam probe) and 1B94 returns the count of active safe zones. Next slice:
-  signature change, 42A8 -> `TUniqueId`, 1B94 -> `int` count, and the C894/C750 call sites with them.
+- Slice 8 (2026-10-20, run sbT, same area/layer, `MP2_SB_FSM=1 MP2_SB_HP=1`, FRAMES 6000, exit 0, 0 caught,
+  0 reach-stub): the four attack helpers are host bodies and the two signature changes went through with
+  their call sites (1B94 -> `int`, 42A8 -> `TUniqueId`, 1C70 gains its `delta`; C894 now compares the pick
+  to `GetUniqueId()` and probes that sibling). `[sbtrace]` shows 1B94 and 83AC running; C894 is evaluated
+  but returns before its pick because it requires `mChargeBeamCooldown > 0` (0xF44), which only the
+  charge-beam states' deactivate writes, so 42A8 stays unexercised and 8C88 with it. 1C70 has no caller yet.
+  Newly `// @`: 1B94 83AC. Stand-ins still reached: 528C 4C60 A9DC 22E4.
+- `CheckBodyStateForDarkBeam` (8C88) is still unreached: only `ShouldDarkBeamAttackCheck` (42A8) calls it, and
+  42A8 only runs once C894's cooldown gate opens (slice 8). The two signature changes C894/C750 needed —
+  42A8 returns the picked worm's uid (C894 compares it to `GetUniqueId()` and otherwise makes that sibling run
+  its dark-beam probe) and 1B94 returns the count of active safe zones — landed with their call sites in slice 8.
 - `GetName()` on the FSM2 machine is useless as a state tick: the three top-level states are all literally
   named `UnderGround`. Read the `[sbtrace]` order instead.
 

@@ -15,6 +15,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/Weapons/CBeamInfo.hpp"
@@ -101,13 +102,47 @@ float CSandBoss::GetStampedeDelay(CStateManager& mgr) const {
   return mData.stampedeProperties.unknown_0xbed8a4ba; // 0x82C
 }
 
-bool CSandBoss::ShouldRepeaterAttackCheck(CStateManager&) const { // fn_55_1B94
-  PortSandBossStandIn("CSandBoss::ShouldRepeaterAttackCheck (fn_55_1B94)");
-  return false;
+// @ fn_55_1B94
+// Counts the safe zones this worm is still wired to: every Attack/Attach connection whose target
+// resolves to a CScriptSafeZone that is active (retail reads bit7 of the flag byte at +0x20, the
+// big-endian first bitfield word, which CEntity names mActive).
+int CSandBoss::ShouldRepeaterAttackCheck(CStateManager& mgr) const {
+  int active = 0;
+  const rstl::vector< SConnection >& connections = GetConnectionList(); // CEntity 0x10
+  for (int i = 0; i < connections.size(); ++i) {
+    const SConnection& connection = connections[i];
+    if (connection.state != kSS_Attack || connection.msg != kSM_Attach) { // 0x4154544b / 0x41544348
+      continue;
+    }
+    const CScriptSafeZone* safeZone = TCastToPtr< CScriptSafeZone >(
+        mgr.ObjectById(mgr.GetIdForScript(connection.objId)));
+    if (safeZone != nullptr && safeZone->GetActive()) {
+      ++active;
+    }
+  }
+  return active;
 }
 
-void CSandBoss::SyncAttacker(CStateManager&) { // fn_55_1C70
-  PortSandBossStandIn("CSandBoss::SyncAttacker (fn_55_1C70)");
+// fn_55_1C70 (ported, not exercised yet)
+// Synchronises the group's next volley: every attached worm's beam cooldown (0xF44) is set to the
+// smallest cooldown among this worm and its attached siblings plus delta, and each worm re-seeds
+// its attack timers.
+void CSandBoss::SyncAttacker(CStateManager& mgr, int delta) {
+  int minimum = mChargeBeamCooldown; // 0xF44
+  for (int i = 0; i < mSiblings.size(); ++i) {                          // 0xDD8 / 0xDDC
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling != this && sibling->mAttachedToSphere && // 0x165D b7
+        sibling->mChargeBeamCooldown < minimum) {
+      minimum = sibling->mChargeBeamCooldown;
+    }
+  }
+  for (int i = 0; i < mSiblings.size(); ++i) {
+    CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
+    if (sibling != nullptr && sibling->mAttachedToSphere) {
+      sibling->mChargeBeamCooldown = minimum + delta;
+      sibling->ResetAttackTimes(mgr, 0.f); // fn_55_8E60 (its argument is unused)
+    }
+  }
 }
 
 void CSandBoss::RotateToPlayerStep(CStateManager&, const CVector3f&, float) { // fn_55_22E4
@@ -504,9 +539,58 @@ void CSandBoss::StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& lo
   }
 }
 
-bool CSandBoss::ShouldDarkBeamAttackCheck(CStateManager&) const { // fn_55_42A8
-  PortSandBossStandIn("CSandBoss::ShouldDarkBeamAttackCheck (fn_55_42A8)");
-  return false;
+// fn_55_42A8 (ported, not exercised yet)
+// Picks the worm that should fire the dark beam and returns its uid (kInvalidUniqueId for none).
+// With two attached siblings the pick only happens once this worm's doubleCharge cooldown field
+// matches mChargeBeamCooldown (0x898 vs 0xF44), with three it is tripleCharge's (0x8E0); any other
+// sibling count always picks. The walk covers the whole sibling list, so this worm is a candidate;
+// it needs the worm attached to the sphere and in locomotion, stops at the first sibling whose
+// dark-beam probe already succeeded (0x165C b3), and prefers the smallest angle between that worm's
+// facing and the player (two siblings) or the largest 0xF34 (three).
+TUniqueId CSandBoss::ShouldDarkBeamAttackCheck(CStateManager& mgr) const {
+  const int attached = CountAttachedSiblings(mgr); // fn_55_595C
+  bool pick;
+  if (attached == 2) {
+    pick = mData.unknown_0x7619e561.doubleCharge.unknown_0x8d4f3b88 == mChargeBeamCooldown; // 0x898
+  } else if (attached < 2 || attached > 3) {
+    pick = true;
+  } else {
+    pick = mData.unknown_0x7619e561.tripleCharge.unknown_0x8d4f3b88 == mChargeBeamCooldown; // 0x8E0
+  }
+  if (!pick) {
+    return kInvalidUniqueId;
+  }
+  const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (player == nullptr) {
+    return kInvalidUniqueId;
+  }
+  const CVector3f toPlayer = player->GetTranslation() - GetTranslation(); // 0x54..0x5C
+  TUniqueId best = kInvalidUniqueId;
+  float bestValue = attached == 2 ? 3.4028234663852886e+38f : -1.f;
+  for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
+    if (sibling == nullptr || !sibling->mAttachedToSphere) { // 0x165D b7
+      continue;
+    }
+    if (sibling->mDarkBeamResult) { // 0x165C b3: someone already got the shot through
+      break;
+    }
+    if (!sibling->CheckBodyStateForDarkBeam(mgr)) { // fn_55_8C88
+      continue;
+    }
+    if (attached == 2) {
+      const float angle =
+          CVector3f::GetAngleDiff(sibling->GetTransform().GetColumn(kDY), toPlayer); // 0x28/38/48
+      if (angle < bestValue) {
+        bestValue = angle;
+        best = mSiblings[i];
+      }
+    } else if (bestValue < sibling->mF34) { // 0xF34
+      bestValue = sibling->mF34;
+      best = mSiblings[i];
+    }
+  }
+  return best;
 }
 
 void CSandBoss::FireDarkBeam(CStateManager&) { // fn_55_44CC
@@ -766,8 +850,21 @@ void CSandBoss::HandleDamage(CStateManager&, TUniqueId) { // fn_55_8258
   PortSandBossStandIn("CSandBoss::HandleDamage (fn_55_8258)");
 }
 
-void CSandBoss::RotateToPlayerHelper(const CVector3f&) { // fn_55_83AC
-  PortSandBossStandIn("CSandBoss::RotateToPlayerHelper (fn_55_83AC)");
+// @ fn_55_83AC
+// Picks the locomotion type from how far the player is off the facing axis: under 35 degrees or
+// over 145 (0.6108652 / 2.5307274 rad) the body relaxes (pas 1); otherwise 0xB when the player is
+// on one side of the local X axis and 0xA on the other. Retail's side test reads +0x24/+0x34/+0x44,
+// which under the proven kDY mapping (0x28/0x38/0x48) is the kDX column [uncertain: row vs column].
+void CSandBoss::RotateToPlayerHelper(const CVector3f& target) {
+  const CVector3f toTarget = target - GetTranslation(); // 0x54..0x5C
+  const float angle = CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), toTarget);
+  if (angle < 0.6108652353286743f || angle > 2.5307273864746094f) {
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 1
+  } else if (CVector3f::Dot(GetTransform().GetColumn(kDX), toTarget) <= 0.f) {
+    BodyController()->SetLocomotionType(pas::kLT_Internal11); // 0xB
+  } else {
+    BodyController()->SetLocomotionType(pas::kLT_Internal10); // 0xA
+  }
 }
 
 // @ fn_55_10CB4

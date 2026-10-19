@@ -58,11 +58,9 @@ bool CSandBoss::StampedeOver(CStateManager&, const CTriggerData&) const { return
 // Dark-beam gate, and the first thing it checks is that no charge probe is running. A non-leader
 // just reports its own probing bit, since the leader's probe is what asks it. The leader fires at
 // once when it is the only attached worm and its dark-beam timer has run out; with more worms
-// attached it also needs a beam cooldown spent, and then fn_55_42A8's pick decides: retail returns
-// that pick's uid, so this worm answers true when it is the pick and otherwise makes the picked
-// worm run its own probe (fn_55_8CB4). The host declares fn_55_42A8 as bool, so only the "this worm
-// is the pick" half is expressible; the sibling-probe half needs the uid back [uncertain: callee
-// signature].
+// attached it also needs a beam cooldown spent, and then fn_55_42A8's pick decides: this worm
+// answers true when it is the pick and otherwise makes the picked worm run its own probe
+// (fn_55_8CB4).
 bool CSandBoss::ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData&) const {
   if (mProbingDoubleCharge || mProbingTripleCharge) { // 0x165E b7 / b6
     return false;
@@ -76,7 +74,16 @@ bool CSandBoss::ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData&) co
   if (mChargeBeamCooldown <= 0 || mDarkBeamTimer > 0.f) { // 0xF44, 0xF1C
     return false;
   }
-  return ShouldDarkBeamAttackCheck(mgr); // fn_55_42A8
+  const TUniqueId pick = ShouldDarkBeamAttackCheck(mgr); // fn_55_42A8
+  if (pick == GetUniqueId()) {
+    return true;
+  }
+  if (pick != kInvalidUniqueId) {
+    if (CSandBoss* other = CastSandBoss(mgr.ObjectById(pick))) {
+      other->ProbeDarkBeam(mgr); // fn_55_8CB4
+    }
+  }
+  return false;
 }
 
 // @ fn_55_C750
@@ -87,7 +94,7 @@ bool CSandBoss::ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData&) co
 // mData.unknown_0x1562e0d6 (0x814) outside one [inferred: field identity, the loader's defaults are
 // 90 and 10], so the barrage is the ten-percent answer to a covered player.
 bool CSandBoss::ShouldRepeaterAttack(CStateManager& mgr, const CTriggerData&) const {
-  if (!ShouldRepeaterAttackCheck(mgr)) { // fn_55_1B94
+  if (ShouldRepeaterAttackCheck(mgr) == 0) { // fn_55_1B94
     return true;
   }
   const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC

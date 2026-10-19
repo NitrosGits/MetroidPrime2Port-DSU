@@ -237,8 +237,8 @@ private:
 
   // Stand-ins (PortCSandBossAttacks.cpp)
   float GetStampedeDelay(CStateManager& mgr) const;                        // fn_55_1AEC
-  bool ShouldRepeaterAttackCheck(CStateManager& mgr) const;                // fn_55_1B94
-  void SyncAttacker(CStateManager& mgr);                                   // fn_55_1C70
+  int ShouldRepeaterAttackCheck(CStateManager& mgr) const;                 // fn_55_1B94
+  void SyncAttacker(CStateManager& mgr, int delta);                        // fn_55_1C70
   void RotateToPlayerStep(CStateManager& mgr, const CVector3f& target, float dt); // fn_55_22E4
   void RotateHelper1D74(CStateManager& mgr, float dt);                     // fn_55_1D74
   void FaceTowardPoint(float dt, const CVector3f& target);                 // fn_55_1F84
@@ -259,7 +259,7 @@ private:
   void UpdateDoubleChargeSweep(CStateManager& mgr, float dt);              // fn_55_37F4
   void StartTripleChargeBeam(CStateManager& mgr, const rstl::string& locator); // fn_55_3ACC
   void StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& locator); // fn_55_3F44
-  bool ShouldDarkBeamAttackCheck(CStateManager& mgr) const;                // fn_55_42A8
+  TUniqueId ShouldDarkBeamAttackCheck(CStateManager& mgr) const;           // fn_55_42A8
   void FireDarkBeam(CStateManager& mgr);                                   // fn_55_44CC
   void HandleScreenShake(CStateManager& mgr, const rstl::string& locator); // fn_55_4C60
   void DestroySphereHelper(CStateManager& mgr);                            // fn_55_51BC
