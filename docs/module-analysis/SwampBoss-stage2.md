@@ -21,7 +21,7 @@ AcceptScriptMsg are ported. Most states and helpers are still `TODO(uncertain)` 
 | 2690 | `GetScannableObjectInfo` | ported (light/dark scan) |
 | 44 | `TakeDamage` | equals the base |
 | A76C / A78C | `PreRender` / `Render` | ported |
-| A59C | `AddToRenderer` | base call only (growth models and bubble gen TODO) |
+| A59C | `AddToRenderer` | ported (actor+0x150 bit-0 gate and AddParticleGen +0x44 args uncertain) |
 | A838 | `DoUserAnimEvent` | base call only (TODO, §3) |
 | 61C4 | `ProcessDamage` (collision damage) | stub (§3) |
 | 5E3C / 5D40 | `GetIngSnatchingNormal/Point` | stub |

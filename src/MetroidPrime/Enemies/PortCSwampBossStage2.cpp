@@ -30,6 +30,8 @@
 #include "MetroidPrime/Weapons/CShockWave.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
 
+#include "MetaRender/CCubeRenderer.hpp"
+
 #include <float.h>
 
 namespace {
@@ -2178,13 +2180,45 @@ void CSwampBossStage2::TakeDamage(const CVector3f& dir, float amount) {
 // fn_79_6370
 void CSwampBossStage2::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
-// fn_79_62E0
+// fn_79_A59C: queue the body, draw it immediately (or its ing-snatch transition), then draw each
+// live wing growth at its locator - flashed towards the damage colour while mGrowthFlash runs - and
+// finally the bubble telegraph generator. fn_79_460/4A0/4C0 are the CModelData copy internals, so
+// the stored models are used directly.
 void CSwampBossStage2::AddToRenderer(const CStateManager& mgr) const {
-  // TODO(uncertain): body not yet ported.
+  // TODO(uncertain): retail only draws when bit 0 of the CActor flag word at actor+0x150 is clear;
+  // no host member matches that gate (host 0x150 is mNextNonLoopingSfxHandle), so the common path
+  // is taken unconditionally.
   CPatterned::AddToRenderer(mgr);
+  if (IsBeingSnatched()) {
+    RenderIngSnatchingTransition(mgr);
+  } else {
+    CPhysicsActor::Render(mgr);
+  }
+  for (int i = 0; i < mGrowthModels.size(); ++i) {
+    const rstl::optional_object< CModelData >& model = mGrowthModels[i];
+    if (!model || mGrowthHealth[i] <= 0.f) {
+      continue;
+    }
+    const CTransform4f xf = GetLctrTransform(mGrowthLocators[i]);
+    const float flash = mGrowthFlash[i];
+    if (flash <= 0.f) {
+      model->Render(mgr, xf, GetActorLights(), GetModelFlags());
+    } else {
+      // rodata: a two-stage colour lerp from black to the damage colour by the flash amount.
+      const CModelFlags flashFlags(CModelFlags::kT_Two,
+                                   CColor::Lerp(CColor::Black(), mDamageColor, flash));
+      model->Render(mgr, xf, GetActorLights(), flashFlags);
+    }
+  }
+  if (!mBubbleGen.null()) {
+    // TODO(uncertain): retail calls IRenderer::AddParticleGen slot +0x44, the three-argument
+    // overload (generator, position, bounds), whose arguments the decompiler dropped; the host
+    // draws it through the one-argument overload (slot +0x40).
+    gpRender->AddParticleGen(*mBubbleGen);
+  }
 }
 
-// fn_79_6267
+// fn_79_A78C
 void CSwampBossStage2::Render(const CStateManager& mgr) const {
   uint mask = 0;
   uint target = 0;
