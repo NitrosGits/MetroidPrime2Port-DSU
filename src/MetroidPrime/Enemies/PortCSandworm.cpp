@@ -713,7 +713,7 @@ void CSandworm::TeleportGrabbedPlayer(CStateManager& mgr) {
   player->Teleport(xf, mgr, false);
 }
 
-// fn_56_14B58 (ported, not exercised yet)
+// @ fn_56_14B58
 void CSandworm::IssueTauntCmd(EStateMsg msg, pas::EAnimationState state, const CBCTauntCmd& cmd) {
   switch (msg) {
   case kStateMsg_Activate:

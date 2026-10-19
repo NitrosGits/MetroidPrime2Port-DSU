@@ -35,7 +35,7 @@ All `fn_56_X` names are offsets into the REL `.text`. All `data_X` names are off
 
 The constructors spawn these DOL classes: `CElementGen` (0x338, four of them in `fn_56_1A38`), `CBouncingBomb` (0x218, in `fn_56_3BAC`, `9030` and `9660`), `CCollisionActorManager` (0x18, in `fn_56_CC8C`), `CProjectedShadow` (in `fn_56_9C10`) and `CSandwormEye` (in `fn_56_5060`).
 
-Inline and template copies (no port body needed): 19 `inline-dol`, 5 `inline-hdr` (`SLdrSandworm.hpp` ctor/dtor/LoadTypedef), 29 `template` (TCastToPtr wrappers, the `rstl::vector<CJointCollisionDescription>` chain, the token chains, and the `CAnimationState`-style command helpers `14B58`/`14C24`/`14D40`), and 36 weak destructors used only by exception handling.
+Inline and template copies (no port body needed): 19 `inline-dol`, 6 `inline-hdr` (`SLdrSandworm.hpp` ctor/dtor/LoadTypedef and `CPASAnimParmData`'s ctor), 29 `template` (TCastToPtr wrappers, the `rstl::vector<CJointCollisionDescription>` chain, the token chains, and the `CAnimationState`-style command helpers `14B58`/`14C24`/`14D40`), and 36 weak destructors used only by exception handling.
 
 ## b. Layouts
 
@@ -269,22 +269,22 @@ Everything else is in the AFSM.
 
 | kind | count | kind | count |
 |---|---|---|---|
-| method | 158 | weak-dtor | 36 |
+| method | 157 | weak-dtor | 36 |
 | fsm-trigger | 37 | virtual | 34 |
 | template | 29 | fsm-state | 24 |
 | inline-dol | 19 | member-ctor | 12 |
-| inline-hdr | 5 | member-dtor | 5 |
+| inline-hdr | 6 | member-dtor | 5 |
 | unreferenced | 5 | ctor/dtor | 3/2 |
 | rel-entry / loader / radar | 3/1/2 | | |
 
 ## g. Work packages
 
-`-` (74 functions, 0x1F64 bytes) means no port body: inline, template or weak copies that come from headers. Byte totals are REL `.text` sizes.
+`-` (75 functions, 0x20E8 bytes) means no port body: inline, template or weak copies that come from headers. Byte totals are REL `.text` sizes.
 
 | WP | file (`src/MetroidPrime/Enemies/`) | fns | bytes | contents | depends on |
 |---|---|---|---|---|---|
 | WP1 | `PortCSandworm.cpp` | 67 | 0x4664 | `CSandworm.hpp` layout, both ctors and member structs, dtor, loader and `SSandworm_FuncPtrs` registration, radar, the simple virtual overrides, Think and its per-frame helpers, FSM init, the shared helpers (`3A20`, `3990`, `A9F4`/`AA00`, `26C4`, cmd helpers `14B58`/`14C24`/`14D40`) | none (do it first) |
-| WP2 | `PortCSandwormEye.cpp` | 35 | 0x2688 | the `CSandwormEye` class; CreateEyes; eye lookup and predicates (`E134`..`E340`, `36A0`); UpdateEyes (`441C`, `4AD8`, `CAF0`); additive flinch; Orbit/Aim position; **AcceptScriptMsg** (damage routing is eye-driven) | WP1 |
+| WP2 | `PortCSandwormEye.cpp` | 34 | 0x2504 | the `CSandwormEye` class; CreateEyes; eye lookup and predicates (`E134`..`E340`, `36A0`); UpdateEyes (`441C`, `4AD8`, `CAF0`); additive flinch; Orbit/Aim position; **AcceptScriptMsg** (damage routing is eye-driven) | WP1 |
 | WP3 | `PortCSandwormStates.cpp` | 49 | 0x25D0 | locomotion and lifecycle states (Patrol, Pursue, Descend, Rise, Lurk, Sulk, Straighten, Snatch, Interrupt, EyeKilledReaction, Dead, Deactivate, Null) with their triggers, path/cover helpers and move/vocal sounds | WP1, WP5 (`AD14`, `AC24`) |
 | WP4 | `PortCSandwormAttacks.cpp` | 63 | 0x356C | melee, spit (projectile and visor effect), charge, grab/toss; their triggers; **DoUserAnimEvent**; contact and charge damage | WP1, WP6 (bomb anim events) |
 | WP5 | `PortCSandwormSpine.cpp` | 42 | 0x33FC | spine/segment chain and IK (`C600`..`C994`, `E764`..`10A20`), body orientation (`AD14`), collision actor manager setup and update (`CC8C`, `D09C`, `D350`), Prime/Primed | WP1 |
@@ -308,9 +308,33 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
 
 - All WP5 bodies are ported in `PortCSandwormSpine.cpp` (worker lanes), and the `TODO(WP5)` stubs are gone. 10110 and 10268 were skipped because nothing references them. Guessed flags: CAnimData+0x2AC|=2 is `SetPoseBuilt(true)`, and the bit0 test is `!Pose().HasScale()`. Host build `0 FAILED`, `gen_files_cmake --check` rc 0, and the CSandworm.hpp TARGET_PC strip-diff vs the baseline is clean (checked with a Python stripper; unifdef isn't installed).
 - Runtime (`01_sand_entrance`, area 2): both worms work. u0596 is activated by trigger u0488 and u0517 by trigger u052c. Each cycles Pursue/SpitAttack, toggles its head/tail eyes, and dies at 0 HP: Dead state, then deleted along with its eyes and collision actors. 0 caught errors and 0 reach-stubs. When the player leaves the area, the worm runs Straighten → Descend → LurkUnderground → Deactivate and goes home.
-  - The kills used console `damage <worm uid>`. Damage to a collision actor only drives TakeDamage, as in retail, so the real eye-weapon path is **not exercised**: the tail eye's SetDead at half HP and damage from a real CWeapon.
-- Markers: 191 functions carry `// @` (186 gdb breakpoint hits during the fight, plus 5 Render helpers that their exercised callers call unconditionally). 92 are marked `(ported, not exercised yet)`, including GetRagDoll, GetDeathExplosionParticle and RenderIngSnatchingTransition.
-- WP2 has 34 of 35 functions; find the missing one.
+  - Earlier kills used console `damage <worm uid>`, which skips the eye path. The eye path from real
+    weapon fire is now exercised too — see the next bullet.
+- WP2 has no missing body. Its 35th row, `fn_56_7138` (0x184), is the inlined `CPASAnimParmData`
+  ctor, not a `CSandworm` method: both call sites (`6FA0` MeleeAttack, `11E54` AddAdditiveFlinch)
+  build one `CPASAnimParmData` each. Read from the asm: `6FA0` passes state `0x1A` and eight
+  `CPASAnimParm::NoParameter()`; `11E54` passes state `0x18` and `FromEnum(eye ? 10 : 9)` as parm 1
+  plus seven NoParameter; the thresholds are `rodata_150` = 0, `rodata_128` = 1.0 and `rodata_124`
+  = 0.5. Both port bodies match. The function row and the WP2 line in section g are corrected
+  (WP2 = 34 functions, 0x2504 bytes).
+- Eye weapon path (`01_sand_entrance`, area 2, 2026-10-19): with a temporary stderr probe on
+  `AcceptScriptMsg`'s `kSM_Damage` arm and `CSandwormEye::SetDead` (not committed), the player
+  killed both worms with the power beam only, no console `damage`. A hit arrives as
+  `kSM_Damage` from the tail eye's collision actor with a `CWeapon` as `GetLastTouchedObject`; the
+  worm's HP drops 2 per shot (120 → 0), and at `hp <= 0.5 * initialHP` the tail eye takes `SetDead`
+  (0224 for u0117 and 0226 for u0196, both printed at hp 62 → 60), after which hits still land
+  (`AnyEyeDead` true) until the Dead state kills both eyes and the worm is deleted. `566C`
+  (head-eye hit test) is not reachable for the Sandigger forms, as expected.
+  - Run method: `MP2_WORLD=01_sand_entrance MP2_CONSOLE=<port> MP2_GODMODE=1` under
+    `gdb -x cov2.py` (breakpoints on every `// @ fn_56_` and `(ported, not exercised yet)` body),
+    then console `objs sandworm`, `tp`/`face` 10 m from the worm every 4 shots, `press l 0` to hold
+    lock-on and `press l+a 2` / `press l 6` to fire. Both worms ended at 0 HP; 0 caught errors, 0
+    reach-stubs.
+- Markers: 204 functions carry `// @` — the previous 191 plus the 13 this weapon run exercised:
+  `14B58`, `56D4`, `F384`, `C468`, `2718`, `33A4`, `3484` (EyeKilledReaction), `4200` (Straighten),
+  `4384`, `58C0`, `5E5C`, `B320` (Descend), `C3F4` (LurkUnderground). 79 remain
+  `(ported, not exercised yet)`, including GetRagDoll, GetDeathExplosionParticle and
+  RenderIngSnatchingTransition.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
   - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.

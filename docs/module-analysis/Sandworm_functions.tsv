@@ -143,7 +143,7 @@ offset	size	owner	name	kind	callers	dol_counterpart	package
 0x6E40	0x160	CSandworm	[?] UpdateContactDamage (Think)	method	110C0	-	WP4
 0x6FA0	0x15C	CSandworm	MeleeAttack [state slot 0x208]	fsm-state	data_A8C	-	WP4
 0x70FC	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
-0x7138	0x184	CSandworm	[?] PickPASAnim	method	11E54 6FA0	-	WP2
+0x7138	0x184	CPASAnimParmData (header inline)	CPASAnimParmData::CPASAnimParmData	inline-hdr	11E54 6FA0	CPASAnimParmData.hpp	-
 0x72BC	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	-	[?] compiler-emitted dtor	-
 0x72F8	0x98	CSandworm	[?] InMeleeRange helper	method	6E40 73BC	-	WP4
 0x7390	0x2C	CSandworm	PlayerIsMorphball [trigger slot 0x1b8]	fsm-trigger	data_A3C	-	WP4

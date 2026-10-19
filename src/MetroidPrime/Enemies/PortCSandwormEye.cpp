@@ -146,7 +146,7 @@ bool CSandworm::HitIsOnHeadEye(CStateManager& mgr, TUniqueId collisionActor) con
   return actor != nullptr && actor->GetUniqueId() == collisionActor;
 }
 
-// fn_56_56D4 (ported, not exercised yet)
+// @ fn_56_56D4
 bool CSandworm::HitIsOnTailEye(CStateManager& mgr, TUniqueId collisionActor) const {
   const TUniqueId id = x998_collisionActors->GetCollisionDescFromIndex(0).GetCollisionActorId();
   CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));

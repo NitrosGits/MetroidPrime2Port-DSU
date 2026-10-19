@@ -488,7 +488,7 @@ void CSandworm::SpineUpdateHelper(CStateManager& mgr) {
 // Body pose from the cached joint rotations: segment 6 straight from x1670_, the rest of the chain
 // blended from the reference stance by each segment's fade, then the actor is moved onto radar
 // point 6.
-// fn_56_F384 (ported, not exercised yet)
+// @ fn_56_F384
 void CSandworm::SpineHelperF384() {
   CAnimData* animData = ModelData()->AnimationData();
   CJointData_LinearStorage& jointData = animData->JointData();

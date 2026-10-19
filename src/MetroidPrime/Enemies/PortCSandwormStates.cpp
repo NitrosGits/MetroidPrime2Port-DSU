@@ -136,7 +136,7 @@ bool CSandworm::NearlyOnPath(const CVector3f& pos, float radius) const {
 }
 
 // x1354 moved to the 'GRNT'/'NEXT' actor farthest from the player; updates `index`.
-// fn_56_C468 (ported, not exercised yet)
+// @ fn_56_C468
 CTransform4f CSandworm::MoveToScriptActor(CStateManager& mgr, int& index) const {
   const CVector3f& playerPos = PlayerPos(mgr);
   float bestDistSq = 0.f;
@@ -179,16 +179,16 @@ void CSandworm::SetSteeringSpeedRange() {
 
 // --- Members ---
 
-// fn_56_2718 (ported, not exercised yet)
+// @ fn_56_2718
 void CSandworm::DescendHelper() { x1490_attacks.x8_history.clear(); }
 
-// fn_56_33A4 (ported, not exercised yet)
+// @ fn_56_33A4
 void CSandworm::Interrupt(CStateManager& mgr, float dt) {
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState));
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted));
 }
 
-// fn_56_3484 (ported, not exercised yet)
+// @ fn_56_3484
 void CSandworm::EyeKilledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   SetBodyCmdRequest(3, 0xd);
   x1520_flags |= 0x80;
@@ -301,7 +301,7 @@ void CSandworm::StopVocalSfx(CStateManager& mgr) {
   }
 }
 
-// fn_56_4200 (ported, not exercised yet)
+// @ fn_56_4200
 void CSandworm::Straighten(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     x1520_flags &= ~0x80;
@@ -323,7 +323,7 @@ void CSandworm::Straighten(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_56_4384 (ported, not exercised yet)
+// @ fn_56_4384
 bool CSandworm::DoneStraightening(CStateManager& mgr, const CTriggerData& data) const {
   return x1670_.xfc_ <= 0.002f;
 }
@@ -363,7 +363,7 @@ float CSandworm::SulkHelper() const {
   return 100.f * (GetHealthInfo()->GetHP() / initial);
 }
 
-// fn_56_58C0 (ported, not exercised yet)
+// @ fn_56_58C0
 bool CSandworm::DoneLurking(CStateManager& mgr, const CTriggerData& data) const {
   return GetActive() && PlayerIsOnPathMesh(mgr, CTriggerData(0.f));
 }
@@ -391,7 +391,7 @@ void CSandworm::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_56_5E5C (ported, not exercised yet)
+// @ fn_56_5E5C
 void CSandworm::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     SetActive(false);
@@ -662,7 +662,7 @@ bool CSandworm::PathHelper(CStateManager& mgr, TUniqueId) {
   return x134C_ + 5.f < x8B0_activeTime;
 }
 
-// fn_56_B320 (ported, not exercised yet)
+// @ fn_56_B320
 void CSandworm::Descend(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueGenerateCmd(msg, pas::kAS_Generate, CBCGenerateCmd(pas::EGenerateType(1), -1));
   if (msg == kStateMsg_Activate) {
@@ -713,7 +713,7 @@ bool CSandworm::BeginUnderground(CStateManager& mgr, const CTriggerData& data) c
   return (x8C0_flags & 0x80) != 0;
 }
 
-// fn_56_C3F4 (ported, not exercised yet)
+// @ fn_56_C3F4
 void CSandworm::LurkUnderground(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->SetLocomotionType(pas::ELocomotionType(7));
   if (msg == kStateMsg_Activate) {
