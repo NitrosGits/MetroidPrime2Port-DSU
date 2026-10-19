@@ -224,7 +224,7 @@ private:
   void SeekStampedePointStep(CStateManager& mgr, float dt);                // fn_55_1AEC
   bool ShouldRepeaterAttackCheck(CStateManager& mgr) const;                // fn_55_1B94
   void SyncAttacker(CStateManager& mgr);                                   // fn_55_1C70
-  void RotateToPlayerStep(CStateManager& mgr, float dt);                   // fn_55_22E4
+  void RotateToPlayerStep(CStateManager& mgr, const CVector3f& target, float dt); // fn_55_22E4
   void RotateHelper1D74(CStateManager& mgr, float dt);                     // fn_55_1D74
   void RotateHelper1F84(CStateManager& mgr, float dt);                     // fn_55_1F84
   void RotateHelper2030(CStateManager& mgr, float dt);                     // fn_55_2030
@@ -249,7 +249,7 @@ private:
   void HandleGroundImpact(CStateManager& mgr, const rstl::string& locator); // fn_55_528C
   void CrackSphere(CStateManager& mgr);                                    // fn_55_560C
   bool IsBallInRange(CStateManager& mgr) const;                            // fn_55_5B38
-  void AttachToSphereHelper(CStateManager& mgr);                           // fn_55_5C30
+  float AttachToSphereHelper();                                            // fn_55_5C30
   void Helper5C6C(CStateManager& mgr);                                     // fn_55_5C6C
   void Helper5E5C(CStateManager& mgr);                                     // fn_55_5E5C
   void HandleObjectDrop(CStateManager& mgr);                               // fn_55_5FEC
@@ -261,7 +261,7 @@ private:
   void Helper7E60(CStateManager& mgr);                                     // fn_55_7E60
   void Helper8008(CStateManager& mgr);                                     // fn_55_8008
   void HandleDamage(CStateManager& mgr, TUniqueId sender);                 // fn_55_8258
-  void RotateToPlayerHelper(CStateManager& mgr, float dt);                 // fn_55_83AC
+  void RotateToPlayerHelper(const CVector3f& target);                      // fn_55_83AC
   static void SortStampedePoints(CStateManager& mgr);                      // fn_55_10CB4
 
   // Host layout (retail's is 0x1660, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets are

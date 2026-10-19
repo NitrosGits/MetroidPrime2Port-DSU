@@ -46,11 +46,10 @@ void PortSandBossStandIn(const char* what) {
   fprintf(stderr, "[sandboss] %s is a port stand-in (see PortCSandBoss*.cpp)\n", what);
 }
 
-namespace {
-
 // Entity type id 129 (TypesMatch.cpp lists it as the SandBoss REL's; there is no kET_ name).
-const int kSandBossTypeId = 129;
+static const int kSandBossTypeId = 129;
 
+// Shared with PortCSandBossStates.cpp / PortCSandBossAttacks.cpp.
 CSandBoss* CastSandBoss(CEntity* entity) {
   return entity != nullptr ? static_cast< CSandBoss* >(entity->TypesMatch(kSandBossTypeId))
                            : nullptr;
@@ -59,6 +58,8 @@ CSandBoss* CastSandBoss(CEntity* entity) {
 const CSandBoss* CastSandBoss(const CEntity* entity) {
   return CastSandBoss(const_cast< CEntity* >(entity));
 }
+
+namespace {
 
 // lbl_55_rodata_48: the eight armour locators, in armour-slot order.
 const char* const skArmorLocators[8] = {"Head_1",  "Spine_6", "Spine_5", "Spine_4",
@@ -222,7 +223,7 @@ CEntity* CSandBoss::TypesMatch(int typeId) const {
 // ---------------------------------------------------------------------------------------------
 // One-line accessors at the head of .text.
 
-// @ fn_55_0
+// fn_55_0 (ported, not exercised yet)
 bool CSandBoss::IsScanVisorSelfRender() const { return true; }
 
 // @ fn_55_8
@@ -231,45 +232,45 @@ bool CSandBoss::IsListening() const { return true; }
 // @ fn_55_10
 rstl::optional_object< CAABox > CSandBoss::GetTouchBounds() const { return GetBoundingBox(); }
 
-// @ fn_55_4C
+// fn_55_4C (ported, not exercised yet)
 void CSandBoss::TakeDamage(const CVector3f&, float) { mDamageCooldownTimer = skDamageHitTime; }
 
 // @ fn_55_5C
 uchar CSandBoss::GetModelAlphau8(const CStateManager&) const { return mColor.GetAlphau8(); }
 
-// @ fn_55_64
+// fn_55_64 (ported, not exercised yet)
 CPathFindSearch* CSandBoss::GetSearchPath() { return nullptr; }
 
-// @ fn_55_6C
+// fn_55_6C (ported, not exercised yet)
 CPathFindPointSearch* CSandBoss::GetPointSearchPath() { return nullptr; }
 
-// @ fn_55_74
+// fn_55_74 (ported, not exercised yet)
 CRagDoll* CSandBoss::GetRagDoll() const { return nullptr; }
 
-// @ fn_55_7C
+// fn_55_7C (ported, not exercised yet)
 TUniqueId CSandBoss::GetAttackTarget() const { return kInvalidUniqueId; }
 
-// @ fn_55_8C
+// fn_55_8C (ported, not exercised yet)
 // Retail reads bit 3 of the byte at 0x34c, the on-ground bit CPatterned's own accessor returns
 // [inferred: same bit].
 bool CSandBoss::IsOnGround() const { return CPatterned::IsOnGround(); }
 
-// @ fn_55_98
+// fn_55_98 (ported, not exercised yet)
 float CSandBoss::GetGravityConstant() const { return kDefaultGravityAccel; }
 
-// @ fn_55_A4
+// fn_55_A4 (ported, not exercised yet)
 const rstl::optional_object< TCachedToken< CGenDescription > >&
 CSandBoss::GetDeathExplosionParticle() const {
   return mDeathExplosionParticle;
 }
 
-// @ fn_55_AC
+// fn_55_AC (ported, not exercised yet)
 bool CSandBoss::CanBeShot(const CStateManager&, int) { return true; }
 
-// @ fn_55_B4
+// fn_55_B4 (ported, not exercised yet)
 bool CSandBoss::Listen(CStateManager&, const CVector3f&, EListenNoiseType) { return false; }
 
-// @ fn_55_BC
+// fn_55_BC (ported, not exercised yet)
 CVector3f CSandBoss::GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const {
   return GetTranslation();
 }
@@ -279,10 +280,10 @@ const CHealthInfo* CSandBoss::GetHealthInfo() const {
   return const_cast< CSandBoss* >(this)->HealthInfo();
 }
 
-// @ fn_55_CDF0
+// fn_55_CDF0 (ported, not exercised yet)
 CProjectileInfo* CSandBoss::ProjectileInfo() { return &mDarkBeamInfo; }
 
-// @ fn_55_CF6C
+// fn_55_CF6C (ported, not exercised yet)
 // The body itself is pass-through; shots are taken by the collision actors, which get
 // CPatterned's vulnerability (fn_55_724C / fn_55_70D0).
 const CDamageVulnerability* CSandBoss::GetDamageVulnerability() const {
@@ -590,7 +591,7 @@ void CSandBoss::UpdateArmorResponseTypes(CStateManager& mgr) {
   }
 }
 
-// @ fn_55_6960
+// fn_55_6960 (ported, not exercised yet)
 // Activate / Deactivate anim events: "Skeleton_Root" swaps the skinned model (tail armour on/off);
 // any other armour locator sets its slot to the attached set (on) or none (off). Ignored while
 // the stampede runs.
@@ -629,7 +630,7 @@ void CSandBoss::BuildArmorModels() {
   }
 }
 
-// @ fn_55_783C
+// fn_55_783C (ported, not exercised yet)
 void CSandBoss::SetCollisionVulnerabilities(CStateManager& mgr, const CDamageVulnerability& head,
                                             const CDamageVulnerability& body) {
   for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
@@ -641,7 +642,7 @@ void CSandBoss::SetCollisionVulnerabilities(CStateManager& mgr, const CDamageVul
   }
 }
 
-// @ fn_55_79B0
+// fn_55_79B0 (ported, not exercised yet)
 // HitObject from a collision actor that touched the player: snap-jaw damage while the jaws are
 // closing, otherwise contact damage unless the player is the morph ball being sucked in.
 void CSandBoss::HandleHitObject(CStateManager& mgr, TUniqueId sender) {
@@ -673,7 +674,7 @@ void CSandBoss::HandleHitObject(CStateManager& mgr, TUniqueId sender) {
 // ---------------------------------------------------------------------------------------------
 // Siblings and FSM probes.
 
-// @ fn_55_595C
+// fn_55_595C (ported, not exercised yet)
 int CSandBoss::CountAttachedSiblings(const CStateManager& mgr) const {
   int count = 0;
   for (int i = 0; i < mSiblings.size(); ++i) {
@@ -685,7 +686,7 @@ int CSandBoss::CountAttachedSiblings(const CStateManager& mgr) const {
   return count;
 }
 
-// @ fn_55_59E4
+// fn_55_59E4 (ported, not exercised yet)
 bool CSandBoss::NoSiblingHasSphereLocked(const CStateManager& mgr) const {
   for (int i = 0; i < mSiblings.size(); ++i) {
     const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
@@ -711,7 +712,7 @@ bool CSandBoss::IsAttachedLeader(const CStateManager& mgr) const {
   return true;
 }
 
-// @ fn_55_8CB4
+// fn_55_8CB4 (ported, not exercised yet)
 // The probes run one FSM update with a "probing" bit set; the attack triggers record their answer
 // in the result bit instead of acting.
 bool CSandBoss::ProbeDarkBeam(CStateManager& mgr) {
@@ -721,7 +722,7 @@ bool CSandBoss::ProbeDarkBeam(CStateManager& mgr) {
   return mDarkBeamResult;
 }
 
-// @ fn_55_8D24
+// fn_55_8D24 (ported, not exercised yet)
 bool CSandBoss::ProbeTripleCharge(CStateManager& mgr) {
   mProbingTripleCharge = true;
   mStateMachine->Update(mgr, *this, 0.f);
@@ -729,7 +730,7 @@ bool CSandBoss::ProbeTripleCharge(CStateManager& mgr) {
   return mTripleChargeResult;
 }
 
-// @ fn_55_8D94
+// fn_55_8D94 (ported, not exercised yet)
 bool CSandBoss::ProbeDoubleCharge(CStateManager& mgr) {
   if (mSyncAttacksAllowed) {
     mProbingDoubleCharge = true;
@@ -815,7 +816,7 @@ void CSandBoss::RenderArmor(const CStateManager& mgr, const CTransform4f& xf,
   }
 }
 
-// @ fn_55_89E8
+// fn_55_89E8 (ported, not exercised yet)
 void CSandBoss::RenderWithArmor(const CStateManager& mgr, const CTransform4f& xf,
                                 const CModelFlags& flags) const {
   if (!GetModelData()->IsNull()) {
@@ -824,7 +825,7 @@ void CSandBoss::RenderWithArmor(const CStateManager& mgr, const CTransform4f& xf
   RenderArmor(mgr, xf, flags, flags);
 }
 
-// @ fn_55_88D0
+// fn_55_88D0 (ported, not exercised yet)
 void CSandBoss::RenderSphere(const CStateManager& mgr, const CTransform4f& xf,
                              const CModelFlags& flags) const {
   if (const CActor* sphere = TCastToConstPtr< CActor >(mgr.GetObjectById(mSphere))) {
@@ -835,14 +836,14 @@ void CSandBoss::RenderSphere(const CStateManager& mgr, const CTransform4f& xf,
   }
 }
 
-// @ fn_55_8740
+// fn_55_8740 (ported, not exercised yet)
 CAABox CSandBoss::GetArmoredBounds() const {
   return GetAnimationData()->CalcBoundingBoxFromModelVerts().GetTransformedAABox(
       CTransform4f::Translate(-GetTranslation()) * GetTransform() *
       CTransform4f::Scale(GetModelData()->GetScale()));
 }
 
-// @ fn_55_CB30
+// fn_55_CB30 (ported, not exercised yet)
 void CSandBoss::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                 const CModelFlags& flags) const {
   if (!mAttachedToSphere) {
@@ -861,7 +862,7 @@ void CSandBoss::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf
   }
 }
 
-// @ fn_55_CC84
+// fn_55_CC84 (ported, not exercised yet)
 CAABox CSandBoss::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   CAABox bounds = GetArmoredBounds();
   if (mAttachedToSphere) {
@@ -877,7 +878,7 @@ CAABox CSandBoss::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return bounds;
 }
 
-// @ fn_55_CF8C
+// fn_55_CF8C (ported, not exercised yet)
 CAABox CSandBoss::GetSortingBounds(const CStateManager&) const {
   const CAABox bounds = GetModelData()->GetBounds(GetTransform());
   const CVector3f center = bounds.GetCenterPoint();
@@ -885,7 +886,7 @@ CAABox CSandBoss::GetSortingBounds(const CStateManager&) const {
   return CAABox(center - extent, center + extent);
 }
 
-// @ fn_55_CDF8
+// fn_55_CDF8 (ported, not exercised yet)
 CVector3f CSandBoss::GetAimPosition(const CStateManager&, float dt) const {
   CVector3f predicted = CVector3f::Zero();
   if (dt > 0.f) {
@@ -898,7 +899,7 @@ CVector3f CSandBoss::GetAimPosition(const CStateManager&, float dt) const {
   return aim;
 }
 
-// @ fn_55_D384
+// fn_55_D384 (ported, not exercised yet)
 void CSandBoss::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
   const rstl::string& locator = node.GetLocatorName();

@@ -45,7 +45,7 @@ void CSandBoss::SyncAttacker(CStateManager&) { // fn_55_1C70
   PortSandBossStandIn("CSandBoss::SyncAttacker (fn_55_1C70)");
 }
 
-void CSandBoss::RotateToPlayerStep(CStateManager&, float) { // fn_55_22E4
+void CSandBoss::RotateToPlayerStep(CStateManager&, const CVector3f&, float) { // fn_55_22E4
   PortSandBossStandIn("CSandBoss::RotateToPlayerStep (fn_55_22E4)");
 }
 
@@ -147,9 +147,9 @@ bool CSandBoss::IsBallInRange(CStateManager&) const { // fn_55_5B38
   return false;
 }
 
-void CSandBoss::AttachToSphereHelper(CStateManager&) { // fn_55_5C30
-  PortSandBossStandIn("CSandBoss::AttachToSphereHelper (fn_55_5C30)");
-}
+// fn_55_5C30 (ported, not exercised yet)
+// AttachToSphere's delay: half a second per command index, so the three worms attach in turn.
+float CSandBoss::AttachToSphereHelper() { return static_cast< float >(mData.commandIndex) * 0.5f; }
 
 void CSandBoss::Helper5C6C(CStateManager&) { // fn_55_5C6C
   PortSandBossStandIn("CSandBoss::Helper5C6C (fn_55_5C6C)");
@@ -195,7 +195,7 @@ void CSandBoss::HandleDamage(CStateManager&, TUniqueId) { // fn_55_8258
   PortSandBossStandIn("CSandBoss::HandleDamage (fn_55_8258)");
 }
 
-void CSandBoss::RotateToPlayerHelper(CStateManager&, float) { // fn_55_83AC
+void CSandBoss::RotateToPlayerHelper(const CVector3f&) { // fn_55_83AC
   PortSandBossStandIn("CSandBoss::RotateToPlayerHelper (fn_55_83AC)");
 }
 

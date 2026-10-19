@@ -334,7 +334,18 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
 - Three `CSandBoss` instances (uids 0169, 0183, 01da) construct and register, and get XALD/XCRT and
   later XDEL. No `[port] caught`, no `[reach-stub]`; the run ends at the frame limit (exit 0).
 - They stay inactive (the intro cinema layers activate them in retail), so no stand-in runs on its own.
-- With a temporary probe sending each instance `kSM_Activate` (removed before committing), the FSM
-  starts in `UnderGround` and stays there: the stand-ins seen are `UnderGround` (BEA4), `UpdateAttacks`
-  (2750) and the trigger `SyncStampede` (C0A0, returns false). No crash for the remaining ~2000 frames.
-- Not tested: ASAN (no `build-port-asan` in the worktree), the intro cinema path, any attack.
+- `INPUT_FILE` tokens are comma-separated (`LAYER5@400,LAYER16@470`); space-separated ones fire only
+  the first. Area 36 has 18 layers; 5 `Amorbis Boss`, 8 `Boss Intro Cinema`; 15 and 16 start active.
+  Layer 8 alone does not start the fight (the intro needs the player in its trigger).
+- Probe (local only, `/tmp/opencode/sb_probe.rdiff`): in `AcceptScriptMsg` `kSM_AreaLoaded`, after
+  `FindConnections`, send `kSM_Activate` to self when `MP2_SB_PROBE` is set and the actor is inactive.
+- Slice 2 (`MP2_SB_PROBE=1`, `LAYER5@400`, `FRAMES=6000`, exit 0, 0 caught, 0 reach-stub): the FSM goes
+  `UnderGround` -> (`CanStartNewRound`, `BeginStampede`) -> `SyncStampede` true -> `SelectStampedePoint`
+  stand-in (9E3C), so it stops there. `SetStampedeArmor` (974C) and `UpdateAttacks` (2750) stand-ins run.
+  A once-per-function trace showed these marked functions ran: 8 10 5C D8 178 5A84 6698 6A68 6EA0 70D0
+  724C 7BB0 84A8 86D0 8A8C 8E48 8E54 9190 9200 BEA4 C0A0 C9D8 CA1C CA84 CAA4 CDB0 D08C D208 D290 D304
+  D308 D620 D6BC D8BC DB60 E170. Only these carry `// @`; other ported functions carry
+  `// fn_55_X (ported, not exercised yet)` until a run reaches them.
+- One run of the same command exited 13 right after `[area] 36` with no diagnostics; three reruns
+  were clean. Unexplained.
+- Not tested: ASAN, the intro cinema path, any attack, sphere/ball phases.
