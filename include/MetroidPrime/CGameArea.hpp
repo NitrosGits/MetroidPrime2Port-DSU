@@ -288,6 +288,9 @@ public:
   CAssetId IGetAreaAssetId() const override;
   int IGetAreaSaveId() const override;
   rstl::string IGetInternalAreaName() const override;
+#ifdef TARGET_PC
+  const rstl::string& PortGetMlvlAreaName() const override { return mPortMlvlAreaName; }
+#endif
 
   int GetPhase() const { return mPhase; }
   CAssetId GetAreaAssetId() const { return mAreaAssetId; }
@@ -416,6 +419,9 @@ private:
   rstl::vector< rstl::string > mRelModules;
   rstl::vector< int > mRelOffsets;
   rstl::string mInternalAreaName;
+#ifdef TARGET_PC
+  rstl::string mPortMlvlAreaName;
+#endif
   rstl::vector< ELayerPhase > mLayerPhases;
   uint mSerializedDependencySize;
   void* mDependenciesInAram;
@@ -450,6 +456,9 @@ public:
   CAssetId IGetAreaAssetId() const override;
   int IGetAreaSaveId() const override;
   rstl::string IGetInternalAreaName() const override;
+#ifdef TARGET_PC
+  const rstl::string& PortGetMlvlAreaName() const override { return mPortMlvlAreaName; }
+#endif
 
 private:
   int mSelfIdx;
@@ -462,6 +471,9 @@ private:
   rstl::vector< rstl::string > mRelModules;
   rstl::vector< int > mRelOffsets;
   rstl::string mInternalAreaName;
+#ifdef TARGET_PC
+  rstl::string mPortMlvlAreaName;
+#endif
 };
 CHECK_SIZEOF(CDummyGameArea, 0x94)
 

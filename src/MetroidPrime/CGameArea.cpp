@@ -204,6 +204,9 @@ CGameArea::CGameArea(CInputStream& in, int index, int mlvlVersion)
   }
   if (mlvlVersion >= 20) {
     const rstl::string name(in);
+#ifdef TARGET_PC
+    mPortMlvlAreaName = name;
+#endif
     if (mNameSTRG == kInvalidAssetId) {
       mInternalAreaName = name;
     }
@@ -2006,6 +2009,9 @@ CDummyGameArea::CDummyGameArea(CInputStream& in, int index, int mlvlVersion)
   }
   if (mlvlVersion >= 20) {
     const rstl::string name(in);
+#ifdef TARGET_PC
+    mPortMlvlAreaName = name;
+#endif
     if (mNameSTRG == kInvalidAssetId) {
       mInternalAreaName = name;
     }
