@@ -82,9 +82,17 @@ State& GetState() {
 
 std::string UserDirectory() {
   std::string dir;
-  if (const char* env = std::getenv("MP_USER_PATH")) {
-    if (env[0] != '\0')
-      dir = env;
+  // MP2_USER_PATH is what this port's card, settings and logs use (MP_USER_PATH is the Prime 1
+  // port's name, kept for a script carried over from there).
+  for (const char* name : {"MP2_USER_PATH", "MP_USER_PATH"}) {
+    if (const char* env = std::getenv(name)) {
+      if (env[0] != '\0') {
+        dir = env;
+      }
+    }
+    if (!dir.empty()) {
+      break;
+    }
   }
   if (dir.empty()) {
     if (char* pref = SDL_GetPrefPath(nullptr, "Metroid Prime")) {
@@ -108,6 +116,7 @@ std::string SeedPath() {
 }
 
 std::string LogPath(const char* name) { return UserDirectory() + name; }
+
 
 bool EnvEnabled(const char* name) {
   const char* value = std::getenv(name);
@@ -417,6 +426,26 @@ void AppendLog(const char* fileName, const char* line) noexcept {
 }
 
 } // namespace
+
+// Exported for the F1 overlay's Randomizer page.
+std::string SeedFilePath() { return SeedPath(); }
+
+std::string DumpLogFilePath() { return LogPath("randomizer_locations.log"); }
+
+bool GenerateSeedFromDumpLog(const char* seedName, std::string& error) {
+  error.clear();
+  if (seedName == nullptr || seedName[0] == '\0') {
+    error = "Give the seed a name first.";
+    return false;
+  }
+  const std::string dump = LogPath("randomizer_locations.log");
+  if (!GenerateSeedFile(dump, seedName, SeedPath())) {
+    error = "No seed was written: the dump log is missing or has no records (see the log for why).";
+    return false;
+  }
+  return true;
+}
+
 
 void EnsureLoaded() {
   try {

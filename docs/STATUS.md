@@ -37,6 +37,18 @@ appended, dated as in the heading there.
   every box ticked; clicking the missiles slider at a quarter then put `55 / 255` on the HUD, and
   unticking and re-ticking Power Beam followed in the grid. Screenshots `/tmp/opencode/final_game.png`,
   `final_cheats.png`, `p2_torvus.png`, `r3_hud.png`.
+- **Pages.** The F1 window now has the Prime 1 port's page set, as far as this port has the
+  features behind each: Game (state and the area/world cycle buttons, Speedrun, Cutscenes),
+  Controls, Video, Cheats (items then Teleport), Save states, Randomizer, System, Debug. MP1's
+  Remastered, Mods, Archipelago and Tracker have no feature here, so no empty pages. `Debug` holds
+  the free camera and photo (moved off Game), the world/area and game-update readout, and the
+  console's commands; `Save states` is the old Game block on a page of its own; `Randomizer` reports
+  the loaded seed and writes one from the dump log (`PortRandomizer::SeedFilePath`,
+  `DumpLogFilePath`, `GenerateSeedFromDumpLog`).
+- **The randomizer's user directory was the Prime 1 port's** (`MP_USER_PATH`, else SDL's pref path
+  for "Metroid Prime"), so a dump or seed went somewhere the port's card and settings never look.
+  It now reads `MP2_USER_PATH` first; the Randomizer page showed `/tmp/opencode/ov_user/...` under a
+  run with that variable.
 - **Layout.** The first version split the two: the warp pickers on the Game page and the items on
   Cheats. MP1 has both on Cheats, in the order health/grants, abilities, counters, Teleport, and
   this now does too (the port's `Previous/Next area/world` buttons stay on Game).

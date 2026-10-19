@@ -17,7 +17,9 @@
 #include "input/port_input_devices.h"
 #include "port_input_remap_ui.h"
 #include "port_logfile.h"
+#include "port_harness.h"
 #include "port_mouse.h"
+#include "port_randomizer.h"
 #include "port_touch.h"
 #include "port_savestate.h"
 #include "port_settings.h"
@@ -381,28 +383,20 @@ std::string PlainWorldName(const wchar_t* text) {
   return first == std::string::npos ? std::string() : out.substr(first, last - first + 1);
 }
 
-void DrawGameSection() {
+// The Prime 1 port's Save states page (debug_ui/savestates.cpp): one page of slots, as there.
+void DrawSaveStatesSection() {
+  ImGui::TextDisabled("Save anywhere and load back to the same spot.");
+  DrawSaveStates();
+}
+
+// The Prime 1 port's Debug page (debug_ui/debug.cpp) with the sections this port has: the free
+// camera and photo, the live state a test wants to read, and the console that drives the rest.
+void DrawDebugSection() {
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
-
-  if (ImGui::Button("Previous area")) {
-    PortWarp::CycleArea(-1);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Next area")) {
-    PortWarp::CycleArea(1);
-  }
-  if (ImGui::Button("Previous world")) {
-    PortWarp::CycleWorld(-1);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Next world")) {
-    PortWarp::CycleWorld(1);
-  }
-  PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up; the "
-               "room and world pickers are on the Cheats page, as in the Prime 1 port");
-
-  DrawSaveStates();
+  ImGui::Text("game updates: %u", PortHarness::GameUpdates());
+  PortUi::Help("MP2_CONSOLE=<port> serves the debug console over TCP (tools/mp2con.py -p <port> "
+               "help); MP2_INPUT drives the pad from a script");
 
   ImGui::SeparatorText("Camera");
   {
@@ -473,6 +467,60 @@ void DrawGameSection() {
       PortUi::Help(line);
     }
   }
+
+
+  ImGui::SeparatorText("Console");
+  ImGui::TextWrapped("The console runs on the game thread and answers one command per update: "
+                     "`areas`, `warp`, `world`, `items`, `give`, `god`, `objs`, `send`, `press`.");
+}
+
+// The Randomizer page: this port's randomizer is the dump-then-shuffle one (docs/RANDOMIZER.md), so
+// the page reports what the running game loaded and can write a seed from the dump log.
+std::string sGenerateResult;
+
+void DrawRandomizerSection() {
+  ImGui::TextUnformatted(PortRandomizer::StatusText());
+  const std::string seedPath = PortRandomizer::SeedFilePath();
+  const std::string dumpPath = PortRandomizer::DumpLogFilePath();
+  ImGui::TextWrapped("seed: %s", seedPath.c_str());
+  ImGui::TextWrapped("dump log: %s", dumpPath.c_str());
+  static char sSeedName[64] = "echoes1";
+  ImGui::SetNextItemWidth(220.f);
+  ImGui::InputText("Seed name", sSeedName, sizeof(sSeedName));
+  if (ImGui::Button("Generate from the dump log")) {
+    std::string error;
+    sGenerateResult = PortRandomizer::GenerateSeedFromDumpLog(sSeedName, error)
+                          ? "Seed written. It loads on the next launch."
+                          : error;
+  }
+  if (!sGenerateResult.empty()) {
+    PortUi::Help(sGenerateResult.c_str());
+  }
+  PortUi::Help("MP_RANDO_DUMP=1 logs every pickup the areas you visit hold; generate here, then "
+               "restart without MP_RANDO_DUMP to play the seed. A seed only covers what was "
+               "dumped, and the shuffle has no logic, so a seed may not be beatable.");
+}
+
+void DrawGameSection() {
+  ImGui::SeparatorText("Game");
+  ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
+
+  if (ImGui::Button("Previous area")) {
+    PortWarp::CycleArea(-1);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Next area")) {
+    PortWarp::CycleArea(1);
+  }
+  if (ImGui::Button("Previous world")) {
+    PortWarp::CycleWorld(-1);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Next world")) {
+    PortWarp::CycleWorld(1);
+  }
+  PortUi::Help("MP2_WORLD=\"<world>[,<area>]\" and MP2_TELEPORT=\"<area>\" at start-up; the "
+               "room and world pickers are on the Cheats page, as in the Prime 1 port");
 
   ImGui::SeparatorText("Speedrun");
   {
@@ -1515,9 +1563,10 @@ void DrawControlsSection() {
 namespace PortOverlaySearch {
 
 const Page kPages[] = {
-    {"Game", DrawGameSection},         {"Controls", DrawControlsSection},
-    {"Video", DrawVideoSection},       {"Cheats", DrawCheatsSection},
-    {"System", DrawSystemSection},
+    {"Game", DrawGameSection},           {"Controls", DrawControlsSection},
+    {"Video", DrawVideoSection},         {"Cheats", DrawCheatsSection},
+    {"Save states", DrawSaveStatesSection}, {"Randomizer", DrawRandomizerSection},
+    {"System", DrawSystemSection},       {"Debug", DrawDebugSection},
 };
 const int kPageCount = static_cast< int >(std::size(kPages));
 

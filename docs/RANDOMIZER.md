@@ -23,7 +23,7 @@ be unbeatable (no logic) and only cover areas that were dumped.
    Same name + same log = same seed. The last record per key wins.
 3. Play: leave `MP_RANDO_GEN` off; the seed file is loaded at startup.
 
-`<user>` is `MP_USER_PATH` or SDL's pref path. Code: `platform/port_rando_gen.cpp`,
+`<user>` is `MP2_USER_PATH` (then `MP_USER_PATH`, the Prime 1 port's name) or SDL's pref path. Code: `platform/port_rando_gen.cpp`,
 `platform/port_randomizer.cpp`.
 
 ## Notes

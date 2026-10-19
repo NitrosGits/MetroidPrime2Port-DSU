@@ -1,6 +1,7 @@
 #ifndef METROID_PRIME_PORT_PORT_RANDOMIZER_H
 #define METROID_PRIME_PORT_PORT_RANDOMIZER_H
 #include <cstdint>
+#include <string>
 
 namespace PortRandomizer {
 
@@ -21,6 +22,15 @@ bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
                  int& itemType, int& capacity, int& amount);
 // Records a collected pickup check when randomizer or dump mode is active.
 void RecordCheck(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType);
+// The seed file the loader reads (MP_RANDO_SEED, else <user>/randomizer_seed.json) and the dump
+// log the generator reads (<user>/randomizer_locations.log).
+std::string SeedFilePath();
+std::string DumpLogFilePath();
+// Writes a seed built from the dump log, for the F1 overlay's Randomizer page. The running game
+// keeps the seed it loaded at start-up; the new one is read by the next launch. False, with the
+// reason in `error`, when the log is missing or has no records.
+bool GenerateSeedFromDumpLog(const char* seedName, std::string& error);
+
 // Returns the retail item name, or "Unknown" for an out-of-range item type.
 const char* ItemName(int itemType);
 // Returns an item type for a case-insensitive exact name, or -1 when unknown.
