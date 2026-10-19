@@ -41,7 +41,6 @@
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/WeaponTypes.hpp"
 #include <float.h>
-#include <stdio.h>
 #include <math.h>
 
 namespace {
@@ -86,7 +85,6 @@ void CElitePirate::ResetAttackTimer(CStateManager& mgr) {
 // @ fn_15_41A0
 // Shield up: keep closing on the target, drive the shield's emitter from the left palm.
 void CElitePirate::Shielding(CStateManager& mgr, EStateMsg msg, float dt) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "Shielding");
   if (!ShieldKilled(mgr, CTriggerData(0))) {
     CVector3f target = x810_;
     if (const CActor* actor = TargetActor(mgr, xa26_)) {
@@ -125,7 +123,6 @@ void CElitePirate::Shielding(CStateManager& mgr, EStateMsg msg, float dt) {
 // Raise the shield: crouch, switch polarity (dark <-> light, random from none), start the hand
 // effect and its sound, and make the body reflect.
 void CElitePirate::ShieldUp(CStateManager& mgr, EStateMsg msg, float dt) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "ShieldUp");
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
     mShieldCollisionManager->SetActive(mgr, true);
@@ -162,7 +159,6 @@ void CElitePirate::ShieldUp(CStateManager& mgr, EStateMsg msg, float dt) {
 // The ground smash. The projectile-attack severity picks the shock wave: weights data+0x144..0x150
 // for severities 0/1/2/5, and 5 is the double wave (GetShockWaveInfo).
 void CElitePirate::Shockwave(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "Shockwave");
   SetAttackKind(7, msg);
   if (msg == kStateMsg_Activate) {
     // [probable] the four weights are the loader's 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d in
@@ -197,7 +193,6 @@ void CElitePirate::Shockwave(CStateManager& mgr, EStateMsg msg, float) {
 // @ fn_15_48BC
 // The fist attack; its severity flips between 1 and 7 with 70% chance after each one.
 void CElitePirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "MeleeAttack");
   SetAttackKind(4, msg);
   TryCommand(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::ESeverity(xc48_)));
   if (msg == kStateMsg_Activate) {
@@ -218,7 +213,6 @@ void CElitePirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
 // @ fn_15_50BC
 // The missile salvo: a loop attack until data+0xb4..0xb8 (random) rockets are out, then exit.
 void CElitePirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "ProjectileAttack");
   if (msg == kStateMsg_Activate) {
     mRocketsFired = 0;
     xcfc_ = mgr.Random()->Range(mData.mUnknown624222F8, mData.mUnknown31E43A1C);
@@ -243,7 +237,6 @@ void CElitePirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float) {
 // @ fn_15_4D18
 // The four-rocket spread (FireRocket's pattern 1) as projectile attack severity 9.
 void CElitePirate::SpreadShot(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "SpreadShot");
   if (msg == kStateMsg_Activate) {
     mRocketsFired = 0;
     xcfc_ = 4;
@@ -266,7 +259,6 @@ void CElitePirate::SpreadShot(CStateManager& mgr, EStateMsg msg, float) {
 // Chooses the angry attack: shock wave (xd24_80_, read by ShockwaveIsNext) by the player's hint
 // (0x17 no, 0x16 yes), else 70% the first time and alternating after that.
 void CElitePirate::AngryAttackBegin(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "AngryAttackBegin");
   if (msg != kStateMsg_Activate) {
     return;
   }
@@ -287,7 +279,6 @@ void CElitePirate::AngryAttackBegin(CStateManager& mgr, EStateMsg msg, float) {
 
 // @ fn_15_18D8
 void CElitePirate::AngryAttackEnd(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "AngryAttackEnd");
   if (msg != kStateMsg_Activate) {
     return;
   }
@@ -298,7 +289,6 @@ void CElitePirate::AngryAttackEnd(CStateManager&, EStateMsg msg, float) {
 // @ fn_15_5A60
 // Taunts cycle 0 -> 6 -> 1 -> 0; each one leaves 1..3 angry attacks to make.
 void CElitePirate::Taunt(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "Taunt");
   TauntCmd(msg, xd1c_);
   if (msg == kStateMsg_Activate) {
     xc10_01_ = true;
@@ -321,7 +311,6 @@ void CElitePirate::Taunt(CStateManager& mgr, EStateMsg msg, float) {
 // Energy absorb: reflect while absorbing, remember where it powered up (x81c_, ShouldAlert),
 // and send ATTK; the launcher restarts when it ends.
 void CElitePirate::PowerUp(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "PowerUp");
   SetAttackKind(6, msg);
   UpdateAbsorb(mgr, msg);
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
@@ -336,7 +325,6 @@ void CElitePirate::PowerUp(CStateManager& mgr, EStateMsg msg, float) {
 
 // @ fn_15_5FF0
 void CElitePirate::PowerDown(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "PowerDown");
   SetAttackKind(5, msg);
   UpdateAbsorb(mgr, msg);
   BodyController()->SetLocomotionType(pas::ELocomotionType(mInitialAnimState));
@@ -345,7 +333,6 @@ void CElitePirate::PowerDown(CStateManager& mgr, EStateMsg msg, float) {
 
 // @ fn_15_7B00
 void CElitePirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  if (msg == kStateMsg_Activate) fprintf(stderr, "[ep-probe] %s\n", "Dead");
   if (msg == kStateMsg_Activate) {
     ReleaseClaimedRegion(mgr);
     RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
