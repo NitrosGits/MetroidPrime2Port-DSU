@@ -11,6 +11,69 @@ Confidence tags as in `SpacePirate.md`: **[proven]** = read from an instruction/
 offsets. The implementation is `src/MetroidPrime/Enemies/PortCElitePirate.cpp`,
 `include/MetroidPrime/Enemies/CElitePirate.hpp`.
 
+## 0. Which enemy this is: the Ingsmasher (2026-10-19)
+
+`CElitePirate` is Retro's internal class name; Echoes has no "Elite Pirate". The class is the
+**Ingsmasher**, the Ing-possessed Luminoth mechanoid of Sanctuary Fortress [proven, read at runtime
+by a temporary loader log in world `1baa96c2`, area 4 `b666b655`, layer 3]:
+
+- editor names `Ingsmasher Twisp` and `Insgsmasher Catsby` (sic), ANCS `6b45f06d` character 0;
+- scan `72dce8a4` -> STRG `b3845097`: "Mechanism: Ingsmasher" / "Mechanoid capable of generating
+  earth-shattering shock waves. Energy shield can be breached with opposite-polarity beam systems." /
+  "Designed to fight alongside the Luminoth, the Ingsmasher now seeks to destroy them. In close
+  combat, it smashes its energized fists into the earth to send out powerful shock waves, then
+  pulverizes any immobile prey. It will fire salvos of missiles at long-distance quarry. It uses an
+  energy shield in battle that can be adjusted to protect against a variety of beam weapons. The
+  shield can be overloaded by opposite-polarity beams, however, damaging the Ingsmasher in the
+  process."
+
+That is the yardstick for runtime checks: ground-smash shock waves up close, missile salvos at
+range, a dark/light polarity shield that opposite-polarity beams overload.
+
+### Pseudocode
+
+REA's Ghidra lane takes only ET_EXEC images, so `tools/rel_plf2exec.py <rel.plf> <main.elf> <out>`
+links the REL's plf against the DOL ELF (REL sections from 0x81000000, so `fn_15_X` is at
+0x81000000+X; DOL code as NOBITS so its symbols name every call; Gekko `psq_l`/`psq_st` rewritten to
+`lfd`/`stfd`, which Ghidra's PowerPC language lacks). All 236 functions decompile; the dump is
+regenerated with `procedure_pseudo_code` per function.
+
+### FSM tables [proven]
+
+`fn_15_C0D0` is the module's static initialiser: it copies 12-byte PTMFs `{0, vtbl_off, 0}` into
+the `{name, PTMF}` tables. Every entry is **virtual**: the function is the vtable word at
+`lbl_15_data_634 + vtbl_off`. `fn_15_9840` (class virtual slot 82, called by `Think` while the state
+machine has no state) is `InitializeStateMachine` + `SetTriggerFunctions(data_178, 31)` +
+`SetStateFunctions(data_464, 21)` + `SetCodeFunctions(data_5CC, 2)`.
+
+| trigger | fn | trigger | fn | state | fn |
+|---|---|---|---|---|---|
+| Alerted | 60C8 | ReadyToCharge | 60D4 | Alert | 5340 |
+| AngryAttackOver | 18CC | ReturnedToPatrol | 60BC | AngryAttackBegin | 1900 |
+| AttackPatternOver | 6F28 | ShieldKilled | 6D68 | AngryAttackEnd | 18D8 |
+| BreakProjectileAttack | 50B4 | ShockwaveIsNext | 18AC | Dead | 7B00 |
+| CanShockwave | 5084 | ShotAt | 63B0 | FollowAttackPattern | 6DDC |
+| ClearLineOfSight | 4E90 | ShouldAlert | 684C | InvulnAlert | 52D0 |
+| DonePursuing | 691C | ShouldFire | 6820 | MeleeAttack | 48BC |
+| DoneTurning | 6C64 | ShouldMeleeAttack | 6500 | Patrol | 5708 |
+| HasAttackPattern | 6F44 | ShouldShockwave | 63BC | PowerDown | 5FF0 |
+| InDetectionRange | 6F9C | ShouldTurn | 6C84 | PowerUp | 5F08 |
+| InPosition | 6368 | SpotPlayer | 6FD0 | ProjectileAttack | 50BC |
+| NotReachedTarget | 6D94 | StillAngry | 18B8 | Pursue | 5BB4 |
+| PickedSpreadShot | 4E7C | TargetNotOnMesh | 6240 | Shielding | 41A0 |
+| PlayerInNoAttack | 15CC | TargetUnreachable | 61E4 | ShieldUp | 44A8 |
+| PoweredDown | 61CC | TooClose | 62CC | Shockwave | 4AE0 |
+| PoweredUp | 61C0 | | | SpreadShot | 4D18 |
+| | | | | Stunned | 59BC |
+| code: SelectTarget | 555C | code: PickAttackType | 54AC | TargetPatrol | 578C |
+| | | | | Taunt | 5A60 |
+| | | | | Turn | 5598 |
+| | | | | Wait | 6064 |
+
+MP1 similarity (`similarity_match.py`'s tokeniser, Dice over n-grams): only `fn_15_2F10` =
+MP1 `IsArmClawCollider` (1.00) and `fn_15_6820`/`fn_15_24F0` ~ `ActivateGrenadeLauncher` (0.80)
+carry over; everything else is decompiled from retail.
+
 ## 1. Function map
 
 | fn | size | role | evidence |
@@ -32,7 +95,8 @@ offsets. The implementation is `src/MetroidPrime/Enemies/PortCElitePirate.cpp`,
 | `fn_15_84EC` | 0x20 | **`AddToRenderer`** (slot 10): only `CPatterned::AddToRenderer` | [proven] |
 | `fn_15_8294` | 0x12C | **`Render`** (slot 11): the shield/electric flavour (reads the timers at 0xc64 / 0xa3c, uses `CColor::Black`) | [proven] |
 | `fn_15_7BFC` | 0x2F0 | **`DoUserAnimEvent`** (slot 28): dispatches through `jumptable_15_data_864` (26 entries), falls back to the base | [proven] |
-| `fn_15_C0D0` | 0x808 | **FSM setup**: references the trigger/state triples `lbl_15_data_4`..`lbl_15_data_16C` and the 31-name table `lbl_15_data_178`. The vtable keeps `CPatterned::SetupStateMachine` (slot 60), so its call site is not established | [proven] table refs; [?] caller |
+| `fn_15_C0D0` | 0x808 | static initialiser of the FSM name/PTMF tables (section 0) | [proven] |
+| `fn_15_9840` | 0x8C | class virtual slot 82: installs the FSM (section 0); `Think` calls it while the machine has no state | [proven] |
 | `fn_15_800C` | 0x74 | slot 81 = `RenderIngSnatchingTransition` override | [proven] vtable slot |
 
 ### Vtable `lbl_15_data_634` (140 words, 2 leading zeros)
@@ -188,15 +252,12 @@ log, and the body controller is activated on `kSM_Create` and in `Think` (retail
 
 What is **not** established:
 
-1. Where `fn_15_C0D0` (the FSM setup, 0x808) is called from - the vtable keeps
-   `CPatterned::SetupStateMachine`, so the FSM must be installed from `AcceptScriptMsg`'s
-   `kSM_Create` arm or from `Think`; mp2's `CPatterned::Start` is an empty stub, which is the third
-   candidate.
+1. ~~Where the FSM is installed~~: resolved in section 0 (`fn_15_9840`, from `Think`).
 2. Which property reaches `CElitePirateData+0x34` (the 'PART' asset) and the rest of the builder's
    parameter list: `fn_15_B82C`'s frame offsets could not be mapped back to its parameters.
 3. The identities of `0x7c4` (pInfo+0x74 copied), `0xb48` (DOL `fn_801931E0`), `0xc58`
    (`fn_15_B080`), `0xc30` (the FSM2 token object) and the `fn_15_BC` (slot 45) accessor.
-4. The FSM's triggers/states/code functions and their names (section 1, last part).
+4. ~~The FSM's function names~~: resolved in section 0.
 5. The enemies' own combat behaviour: melee, the dark/light shields, the two shock waves, the
    rocket/rocket-launcher, energy absorption and the Ing-possession properties. MP1's
    `CElitePirate.cpp` is the reference for the shared half (shields, shock waves, taunt, melee).
