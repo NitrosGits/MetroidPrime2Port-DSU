@@ -244,6 +244,14 @@ generated reader and `fn_72_140` id for id, `ReadFloat`/`ReadInt32`/`ReadUint16`
 TARGET_PC, and the properties after them (42-byte damage infos, 200-byte weapon data, 90-byte editor
 properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 
+## 7. Port status / next (2026-10-19)
+
+- Worktree `wt-mp2-port`, branch `port`; last commit `00e7e7de4` (Taunt). Taunt -> Lurk -> Lurk/TargetPlayer/Run/PathFind is the live path after a power-beam hit on pirate 208.
+- In flight at handoff: `worker` lane `ses_eaa7cd1aaffexDNVpOCl7X8kR5` porting Lurk `AF70` (baseline `00e7e7de4`, uncommitted). Read its final report (`session.messages`, lastAssistant), review `git diff`, then commit.
+- Next slices, one `worker` lane each: TargetPlayer, Run, PathFind (the post-Taunt cycle); then the remaining triggers (ShouldAttack A71C, ShouldMove 7BD4, ShouldRetreat 7C28, ...).
+- Lanes kill their game by pid only (other worktrees' games share the machine).
+- Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW expects.
+
 ## Open questions (verify first)
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
