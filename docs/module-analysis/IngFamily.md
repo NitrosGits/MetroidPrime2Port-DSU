@@ -27,11 +27,12 @@ Areas needing **MinorIng** (14): 1baa96c2 18/31; 3bfa3eff 13; 3dfd2249 28/60;
 | `CIng : CPatterned` | 0xe60 | `lbl_29_data_A24` (82 words) | `fn_29_D540` (0x1110) / `fn_29_CF64` | **[proven]** name: Wii export `TypesMatch__4CIngCFi`; size: loader `rs_new(0xe60)`; vtable stored by the ctor |
 | `CIngData` (plain struct) | 0x214 | - | `fn_29_EE68` (0x158) / `fn_29_10F8`; copy `fn_29_E7C8` | **[proven]** ctor body + loader stack layout. Name **[?]** (by analogy with `CMediumIngData`) |
 | `CIngMiniPortalAttack : CActor` | 0x238 | `lbl_29_data_CE4` | `fn_29_11E8C` (0x190, named in symbols.txt) / `fn_29_114B0` | **[proven]** symbol name; size from `rs_new(0x238)` in `fn_29_C228` |
-| `CIngMiniPortalInfo` | ? | - | `fn_29_12100` (named) | **[proven]** symbol name and Wii ctor signature `(TUniqueId, f, f, TLockedToken<CGenDescription>, us, f, f, CDamageInfo, SLdrPlasmaBeamInfo)` |
+| `CIngMiniPortalInfo` | 0x88 | - | `fn_29_12100` (named) / copy `fn_29_1201C` | **[proven]** symbol name, Wii ctor signature `(TUniqueId, f, f, TLockedToken<CGenDescription>, us, f, f, CDamageInfo, SLdrPlasmaBeamInfo)`; size and members from the two ctors (A.3) |
 | `CIngExitHostEffect : CActor` | 0x5e8 | `lbl_29_data_C60` | `fn_29_1105C` (0x3DC) / `fn_29_FF88` | class at `data_C60` holds a `CPathFindSearch` + 2 tokens and is `rs_new(0x5e8)`'d in the ExitHost state `9D68` **[proven]**; that it *is* `CIngExitHostEffect` (Wii export ctor `(TUniqueId, CEntityInfo, CTransform4f, CVector3f, CVector3f, uint, uint, f, f, TUniqueId, f, f, us)`) is **[probable]** |
 | sub-structs of CIngData (body projectile 0x40, ing spot = `CIngSpotData` 0x60, grapple, mini-portal, swarm 0x2A) | see A.3 | - | builders `fn_29_F12C`, DOL `CIngSpotData` ctor 0x80218920, `fn_29_F090`, `fn_29_F000`, `fn_29_EFC0` | **[proven]** layouts; names **[?]** |
 
-`lbl_29_data_A20` (= 0x20) and `lbl_29_data_CE0` (= 0x23): meaning unknown **[?]**.
+`lbl_29_data_A20` (= 0x20): meaning unknown **[?]**. `lbl_29_data_CE0` (= 0x23) is the
+`CMaterialList(kMT_Projectile)` the mini-portal ctor passes [proven from `fn_29_11E8C`].
 
 ### A.2 Function map (functions >= 0x100, plus the module head)
 
@@ -64,10 +65,13 @@ into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (
 | `1105C` | 0x3DC | CIngExitHostEffect? ctor | as above |
 | `10154`, `1046C`, `1065C`, `1077C`, `10944`, `10F58` | 0x104..0x40C | CIngExitHostEffect? methods (lie between its dtor and ctor) | **[probable]** |
 | `114B0` | - | CIngMiniPortalAttack dtor | proven |
-| `11570`, `11CA4` | 0x2D0, 0x1E8 | CIngMiniPortalAttack methods | **[probable]** |
-| `11840` | 0x1A8 | CIngMiniPortalAttack fire: `rs_new(0x6a8)` `CPlasmaProjectile`, uses `TLdrToBeamInfo` | proven |
+| `11570` | 0x2D0 | CIngMiniPortalAttack aim helper: steers the aim point (0x214) at the target actor's touch bounds, speed = distance / `beamInfo.travelSpeed`, clamped at 1.2217 rad; calls the target's vtable 0x54 twice | proven |
+| `11CA4` | 0x1E8 | CIngMiniPortalAttack Think (vtable 0x14): ages 0x220, deletes the fired projectile and itself at the lifetime (info+0x08), fires (`fn_29_11840`) between info+0x04 and the lifetime, then `CActor::Think` | proven |
+| `11C14` | - | CIngMiniPortalAttack AcceptScriptMsg (vtable 0x18): `XDEL` deletes the projectile, `XCRT` calls `fn_29_11A7C` | proven |
+| `11840` | 0x1A8 | CIngMiniPortalAttack fire: aims (`fn_29_11570`), `TLdrToBeamInfo` (DOL 0x80239B64, attributes 0x291), `rs_new(0x6a8)` `CPlasmaProjectile` at the portal's transform, then `AddObject` and the projectile's 0x12a = the portal's uid | proven |
 | `11E8C` | 0x190 | CIngMiniPortalAttack ctor | proven |
 | `12100` | - | CIngMiniPortalInfo ctor | proven |
+| `121F4` | - | module static init: `lbl_29_bss_7C` = `string_l("Grenchler.rel")`, registered with dtor `fn_29_2144` | proven |
 | `131C`..`3E1C`, `432C`, `4604`, `4960`, `B294`..`C0B4`, `D128` | 0x108..0x45C | CIng private helpers (unassigned) | **[?]** |
 
 **State machine [proven by simulating `fn_29_F2C8`; 16-byte entries]**
@@ -150,7 +154,40 @@ Also in the ctor: `SetDrawShadow(false)`.
 | 0x1e4 | swarm / exit-host data: +0/+4/+8 assets, +0xc f, +0x10 asset, +0x14..0x1c floats, +0x20..0x28 five u16 sounds |
 | 0x210 | 8 flag bits from `ingFlags` |
 
-CIngMiniPortalAttack / CIngExitHostEffect members: not mapped (out of scope for a first slice).
+**CIngMiniPortalInfo (0x88) [proven from the ctor `fn_29_12100` and the copy ctor `fn_29_1201C`]**
+
+| off | member | note |
+|---|---|---|
+| 0x00 | TUniqueId target | the player the portal aims at |
+| 0x04 | float | read as a time at 0x15c by `fn_29_11CA4` (aim time) **[? name]** |
+| 0x08 | float | read as a time at 0x160 by `fn_29_11CA4` (lifetime) **[? name]** |
+| 0x0c | TLockedToken<CGenDescription> (0x0c) | CToken copy, the object word at token+0x08 copied from the source, then `Lock()` |
+| 0x18 | ushort sound | |
+| 0x1c / 0x20 | float x2 | **[? names]** |
+| 0x24 | CDamageInfo (0x1c) | field by field: 5 words, 3 u16 (0x38/0x3a/0x3c), then the byte at 0x3e |
+| 0x40 | SLdrPlasmaBeamInfo (0x48) | copied as 0x12 words by `fn_29_E9E8` |
+
+**CIngMiniPortalAttack (0x238; CActor 0x158; vtable `lbl_29_data_CE4`) [proven from the ctor `fn_29_11E8C` and the dtor `fn_29_114B0`]**
+
+| off | member | init |
+|---|---|---|
+| 0x000 | CActor | `(uid, name, info, 0, xf, CModelData(), CMaterialList(lbl_29_data_CE0 = 0x23 = kMT_Projectile), CActorParameters(), kInvalidUniqueId)`; the model temp is destroyed after |
+| 0x158 | CIngMiniPortalInfo (0x88) | copy of the ctor's `portalInfo` |
+| 0x1e0 | CProjectileInfo (0x28) | `(portalInfo+0x44 = beamInfo.weaponSystem, portalInfo+0x24 = the damage)` |
+| 0x208 | CVector3f | the ctor's `scale` |
+| 0x214 | CVector3f | `sZeroVector`; `fn_29_11CA4` looks at it from the actor's translation (0x54) |
+| 0x220 | float | `lbl_29_rodata_7E0` = 0.0; `fn_29_11CA4` adds dt |
+| 0x224 | TUniqueId | invalid; `fn_29_11CA4` looks it up and deletes it, `fn_29_11840` stores the fired projectile's id here |
+| 0x228 | CRELFileToken | `CRELFileToken("Grenchler.rel", 0)`: the name is the static `rstl::string` at `lbl_29_bss_7C`, which `fn_29_121F4` (module static init, registered with `__register_global_object` and dtor `fn_29_2144`) fills with `string_l("Grenchler.rel")` [proven]; loadMode 0 queues the load |
+| 0x230 | uchar | bit 7 cleared, the rest kept = read from uninitialised memory; `fn_29_11CA4` sets bit 7 once the portal has aimed |
+| 0x12a | CActor's `mNextDrawNode`, not a derived member | the ctor's `owner` id, stored last [proven by CActor's member order: 0x13c mNonLoopingSounds, 0x134 mPvsIndex, 0x130 mAddedToken, 0x12c mDrawnToken, 0x12a mNextDrawNode] |
+
+**vtable `lbl_29_data_CE4` [proven, `auto_04_00000000_data.s`]**: only four slots leave `CActor`'s
+chain - 0x08 `fn_29_114B0` (dtor), 0x14 `fn_29_11CA4` (Think), 0x18 `fn_29_11C14`
+(AcceptScriptMsg), and 0x3C `fn_29_90`, which just calls slot 0x38. Everything else (PreThink,
+PreRender, AddToRenderer, Render, Touch, DoUserAnimEvent, ...) is `CActor`'s. 0x00/0x04 are null.
+
+`CIngExitHostEffect` members: not mapped (out of scope for a first slice).
 
 ### A.4 Loader `fn_29_130` (0xFC8) [proven by simulation; `/tmp/ingan/ldr.py`]
 
@@ -216,6 +253,15 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     script messages `SelectTarget` sends, the burn effects in `Dead`, the contact damage in
     `Touch`, `Listen`'s noise filter, the source of the state timer (`mStateTime`, host) and
     `SetRecoverDest` (taken as the closest path point within 20).
+- **Mini-portal classes** (`src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp`, 2026-10-20):
+  `CIngMiniPortalInfo`'s ctor `fn_29_12100` and copy ctor `fn_29_1201C`, and
+  `CIngMiniPortalAttack`'s ctor `fn_29_11E8C` (member maps in A.1/A.3). The dtor `fn_29_114B0` is
+  the implicit destructor, and `fn_29_11490` is inlined as `CModelData()`. Nothing exercises them
+  yet, so no `// @` markers. The token at 0x228 is retail's `CRELFileToken("Grenchler.rel", 0)`.
+  The actor's own methods (`fn_29_11CA4` Think, `fn_29_11C14` AcceptScriptMsg, `fn_29_11570` aim,
+  `fn_29_11840` fire) are still unported; the class inherits `CActor`'s. Its spawn sites are
+  `fn_29_C228`'s `kUE_Projectile` case (CIng) and `CIngSpaceJumpGuardian`, so a run that fires
+  either exercises the ctors.
 - **Verified at runtime** (Sanctuary 0i_cliff_hall_dark, MLVL `1baa96c2` MREA `2735236b`, layer 0):
   - The area places two INGS objects (`00390081`, `00390089`). They load **inactive** with
     detection range 0, so a run must `send <uid> Activate` over `MP2_CONSOLE`, and the beam
@@ -328,7 +374,8 @@ marks only the 45 functions a run actually called (an instrumented build, run be
 - `CIngSpaceJumpGuardian` (`CHECK_SIZEOF 0xa38`) and `CIngSpiderballGuardian` (0x998) are
   separate CPatterned classes, **not** CIng bases or subclasses [proven by their headers]; useful
   only as references for mini-portal / jump code. CIngSpaceJumpGuardian *calls* Ing.rel's
-  `CIngMiniPortalAttack`/`CIngMiniPortalInfo` ctors (currently reach stubs).
+  `CIngMiniPortalAttack`/`CIngMiniPortalInfo` ctors, now real bodies in
+  `src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp`.
 - `CCollisionTracker` (`include/MetroidPrime/Enemies/CCollisionTracker.hpp`, 0x1e0, GeomBlobV2
   host body): Ing's `fn_29_4830` constructs one through GeomBlobV2 [proven]; the host CIng can
   call its ctor (`tools/scope_module.py` keeps symbols referenced outside a module global
@@ -343,10 +390,6 @@ marks only the 45 functions a run actually called (an instrumented build, run be
 - `include/MetroidPrime/CEntityInfo.hpp` - no `kET_Ing` (116) / `kET_MinorIng` (147).
 - `src/MetroidPrime/TypesMatch.cpp:324,355,589,642` - placeholder comments for both.
 - No `include/MetroidPrime/Enemies/CIng.hpp` / `CMinorIng.hpp`; no CIngData / CMinorIngData.
-- `include/MetroidPrime/Enemies/CIngMiniPortalAttack.hpp` - layout is a `mUnported` byte array;
-  `CIngMiniPortalInfo` fields guessed.
-- `src/MetroidPrime/PortLinkStubs.cpp:223-229` - reach stubs `reachstub_r12`/`r13` for the
-  CIngMiniPortalAttack / CIngMiniPortalInfo ctors: delete when Ing's real ones land.
 - No `CIngExitHostEffect` declaration anywhere.
 
 ---
@@ -362,8 +405,9 @@ marks only the 45 functions a run actually called (an instrumented build, run be
    PathFind / ProjectileAttack / Dead.
 3. **CIng passive**: `CIngData` + sub-structs, loader `fn_29_130`, ctor `fn_29_D540`, Start +
    WaitForFSMTransition + Dead only; `kET_Ing`; registration. Done when 3bfa3eff 34 loads.
-4. **CIngMiniPortalInfo / CIngMiniPortalAttack** real bodies (`11E8C`, `12100`, `11840`), then
-   delete the reach stubs - also unblocks the Space Jump Guardian's mini portals.
+4. **CIngMiniPortalInfo / CIngMiniPortalAttack**: the ctors `11E8C`, `12100`, `1201C` are ported
+   (2026-10-20) and the reach stubs are gone; left are the actor's own methods (`11CA4` Think,
+   `11570`, `11840` fire), which also completes the Space Jump Guardian's mini portals.
 5. **CIng FSM** in groups: movement (PathFind, Patrol, IngSpotPathFind...), form changes
    (BecomeCorporeal / IngSpot / BodyProjectile, `CCollisionTracker`), attacks (ArmSwipe,
    GrappleBall, MiniPortalAttack, SuckEnergy), then ExitHost with `CIngExitHostEffect`.

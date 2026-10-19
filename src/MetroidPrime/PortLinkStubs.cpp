@@ -207,16 +207,8 @@ __attribute__((aligned(32))) char reachdata_416[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_417[0x400] asm("lbl_804199CC");
 __attribute__((aligned(32))) char reachdata_417[0x400] = {};
 
-
 // Added 2026-10-14 after the upstream merge: declared and called upstream, never defined.
 // DebugDrawOBB(COBBox const&, float, float, float, float)
 extern "C" void reachstub_r5() asm("_Z12DebugDrawOBBRK6COBBoxffff");
 extern "C" void reachstub_r5() {}
 
-// CIngMiniPortalAttack::CIngMiniPortalAttack(TUniqueId, rstl::string const&, CEntityInfo const&, CTransform4f const&, TUniqueId, CVector3f const&, CIngMiniPortalInfo const&)
-extern "C" void reachstub_r12() asm("_ZN20CIngMiniPortalAttackC1E9TUniqueIdRKN4rstl12basic_stringIcNS1_11char_traitsIcEENS1_17rmemory_allocatorEEERK11CEntityInfoRK12CTransform4fS0_RK9CVector3fRK18CIngMiniPortalInfo");
-extern "C" void reachstub_r12() { mpReachStub("_ZN20CIngMiniPortalAttackC1E9TUniqueIdRKN4rstl12basic_stringIcNS1_11char_traitsIcEENS1_17rmemory_allocatorEEERK11CEntityInfoRK12CTransform4fS0_RK9CVector3fRK18CIngMiniPortalInfo", "CIngMiniPortalAttack::CIngMiniPortalAttack(...)"); }
-
-// CIngMiniPortalInfo::CIngMiniPortalInfo(TUniqueId, float, float, TLockedToken<CGenDescription> const&, unsigned short, float, float, CDamageInfo const&, SLdrPlasmaBeamInfo const&)
-extern "C" void reachstub_r13() asm("_ZN18CIngMiniPortalInfoC1E9TUniqueIdffRK12TLockedTokenI15CGenDescriptionEtffRK11CDamageInfoRK18SLdrPlasmaBeamInfo");
-extern "C" void reachstub_r13() { mpReachStub("_ZN18CIngMiniPortalInfoC1E9TUniqueIdffRK12TLockedTokenI15CGenDescriptionEtffRK11CDamageInfoRK18SLdrPlasmaBeamInfo", "CIngMiniPortalInfo::CIngMiniPortalInfo(...)"); }
