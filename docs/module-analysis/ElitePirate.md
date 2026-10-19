@@ -28,7 +28,10 @@ by a temporary loader log in world `1baa96c2`, area 4 `b666b655`, layer 3]:
   process."
 
 That is the yardstick for runtime checks: ground-smash shock waves up close, missile salvos at
-range, a dark/light polarity shield that opposite-polarity beams overload.
+range, a dark/light polarity shield that opposite-polarity beams overload. The disc also places
+the **Dark Ingsmasher** (same class, dark-world areas). Spawns (`docs/module_spawns.tsv`, all
+Sanctuary Fortress, area/layer): `02_cliff_reactorcore_dark` L5, `03_cliff_chicane` L4,
+`06_cliff_spiderballguardian` L7, `0c_cliff_hall` L3, `0m_cliff_hall_dark` L4 and L5.
 
 ### Pseudocode
 
@@ -284,8 +287,8 @@ were not reached by the test script.
 
 Open:
 
-1. The FSM bodies (the next slice): they need `SetShieldVulnerability`, `SendLauncherMsg`,
-   `GetPlayerHintType`, `IsOnJumpHint`, the attack kind (0xc2c) and the timers above.
+1. Not yet entered at runtime: Shielding, ShieldUp, MeleeAttack, Taunt, Dead, Patrol,
+   TargetPatrol, Pursue, Wait, Stunned, InvulnAlert (the test script lands no damage).
 2. `[?]` members: 0x7c0, 0x810/0x81c, 0xa26, 0xa38/0xa40/0xa44, 0xc14/0xc28/0xc3c/0xc48/0xc4c,
    0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
 3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
