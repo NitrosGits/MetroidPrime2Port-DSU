@@ -336,12 +336,20 @@ Open:
      end to end" below).
    Console notes: `hurt` does not set ShotAt (`mXDamaged`); `send u<id> Alert` powers a
    PowerDown Ingsmasher up; `obj` takes uids only and prints connections as editor ids.
-   u051b in area 4 stays in FollowAttackPattern at (81.1, 48.4, -152.1): its pattern is one
-   waypoint (u0518, 71.3, 38.6), the navigation commands (-3.3, -3.3) every frame (body state 5,
-   not frozen), but it sits inside its pod (CScriptActors u0455..u0464 at its position) with
-   platform u045d on the path. The intro trigger u04fc (inactive until the player enters) starts
-   sequence timer 000400af, which releases it; the console `Alert` skips that, so this is a test
-   artifact, not a port bug.
+   u051b's pod, entered the area's own way (2026-10-20, no console `Activate`/`Alert`; the player
+   is teleported into the intro trigger u04fc's volume) and the pod is two-stage: u04fc's `Entered`
+   starts sequence timer 000400af (u0483), which deactivates pod 1's lid, starts platform u0485 and
+   then activates + alerts **u04ff** only. u051b is released by **u04ff's death**: u04ff's
+   `DeathRattle` starts timer 000400b3 (u0454), which deactivates u051b's lid (u045b), starts
+   platform u045d and activates + alerts u051b. Run `intro3`: u04fc went inactive and u04ff went
+   `PowerUp` -> `FollowAttackPattern` with u051b still `(none)`/inactive; `damage u04ff 700` (hp
+   600 -> -100) then 0.6 s later u051b entered `PowerUp`, its lid went inactive, platform u045d
+   lowered (-152.1 -> -152.8 -> -153.5), and it walked out of the pod (`FollowAttackPattern` at
+   (80.8, 48.3), down to y 25.6) through `Turn`, `Alert`, `ShieldUp`, `Shielding`, `MeleeAttack`,
+   `Shockwave`, `ProjectileAttack`, `SpreadShot` and `AngryAttackBegin` for the remaining 3 min,
+   with no fault. So the earlier "u051b stays at (81.1, 48.4, -152.1)" reading was the pod still
+   shut: the console `Activate` never opens it, and no port bug is involved. Neither `Patrol` nor
+   `TargetPatrol` was entered, so no marker was added.
    Dark Ingsmasher (`0m_cliff_hall_dark`, layers 4/5): 0 caught; u04fa stands at z -114.7 and
    enters PowerUp, Wait, Turn, Alert, Taunt, ShieldUp, Shielding, MeleeAttack and Shockwave. Fixed 2026-10-19: active Ingsmashers fell through the floor
    (free fall at the 24.525 gravity) because the ctor built `mCollidableBox` from
@@ -402,10 +410,11 @@ is resolved. What is left unmarked, and what to do about it:
   tiny virtuals `0 8 10 4C 5C 64 6C 74 84 90 9C A4 AC B4 BC D8 104 128` and `A9D8`'s copy helpers
   `AAA0..B318`. Claim one only after a runtime gap shows the port is missing its effect; a lane
   brief must name the offset and the observed symptom.
-- Open runtime gaps worth a run: Dead while the shield is up (which state `7B00` takes), the dark
-  Ingsmasher against the same shield burst, and `u051b`'s pod (item 1 - the intro trigger path).
+- Open runtime gaps worth a run: Dead while the shield is up (which state `7B00` takes), and the dark
+  Ingsmasher against the same shield burst.
 Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/stun/stun_run9.sh`
-(Stunned), `/tmp/opencode/ep/dark/stun_run.sh` (dark).
+(Stunned), `/tmp/opencode/ep/dark/stun_run.sh` (dark), `/tmp/opencode/ep/intro/run3.sh` (the area's
+own intro path: trigger -> pod 1 -> u04ff's death -> u051b's pod).
 Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
 `/tmp/opencode/ep/gate_run2.sh <log>` (0 crash lines), matching build 94.14%/63.29% if an
 upstream file changed. Also tell the port orchestrator that `186fea1e7` touched the shared file
