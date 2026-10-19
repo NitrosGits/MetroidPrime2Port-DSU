@@ -1,0 +1,141 @@
+# Gotchas (port branch)
+
+Things that took real effort to find out. AGENTS.md keeps a one-line index; the detail lives here.
+
+
+- **`tools/link_check.sh` can report "nothing to relink; re-reading the existing link result" even
+  after a source changed** (its freshness check reads a stale `build-port-link/build.log`). The
+  runnable binary is `build-port-link/metroid_prime2_port` - the *full* build (build-port is
+  `MP_SDK_HEADERS_ONLY=ON` and does not compile `platform/`), so build it directly:
+  `$T/ninja -C build-port-link -k 0 metroid_prime2_port`. Check the binary's mtime against your
+  sources before trusting a run.
+- **Do not launch a tool a lane is editing.** A subagent mid-write in `tools/` breaks a run you start
+  from there: a shard launched while `run_gameplay.sh` was being edited died with
+  `line 76: LAY_NUM: command not found` and `exit=127`, which reads like a game failure in the sweep's
+  own summary line. `git status --short` before launching, and a lane editing `tools/` should own it
+  until it reports.
+- **`pgrep`/`pkill -f` match your own shell**: the process name is truncated, so match the full
+  command line with a bracket (`pgrep -af 'metroid_prime2_por[t]'`), or `pkill -f '<pattern>'` kills
+  the shell that is running it. The bracket only helps when the pattern is the *only* place the name
+  appears in the command line: a guard like `pgrep -f 'Xvf[b] :86' || (Xvfb :86 ...)` both matches
+  itself (the literal `Xvfb :86` it is about to start) and needs no start, so the display silently
+  never comes up - use `pgrep -x Xvfb -a` and check the display with `xdpyinfo` instead.
+- **A patterned actor crashes on its first Think unless its body controller is activated**
+  (`CPatterned::ThinkAboutMove` dereferences a null `CBodyStateInfo::GetCurrentState()`; only
+  `CBodyController::Activate` installs one). See Status, and `PortCSpacePirate.cpp` for the shape.
+- **A resource in no loaded pak is served as *empty bytes*** (`CResLoader::WarnMissingResource`, and
+  the report now names the resource's type). Parsers of such a resource read zeros: an animation
+  source's frame count comes out 0, and anything that divides by a parsed count must guard it under
+  TARGET_PC (`CAnimSource` did not, and an integer divide by zero ended a run). When a sweep sees a
+  stream of these after a world change, the question to answer is *which pak family* is missing.
+- **A save load comes up with ~1008 of the 1024 object ids allocated** and only settles near ~390 a
+  few hundred frames later (`MP2_DEBUG_IDS=1` prints the count every 300 frames). A warp that lands
+  in that window can exhaust the pool; `PortWarpSettle` waits for 256 free and drops the areas
+  around the player, which is what frees them (the first threshold, 512, was tuned for the boot
+  spike and blocked ordinary hops - 499 of 526 waits in one run were for an unreachable area).
+- **The console's heap is zeroed and the host's is not**, and audio code depends on it: MusyX's
+  `DSPvoice` array is `salMalloc`'d and `studio` is written only by `salActivateVoice`, but the
+  synth's zero-offset pass calls `hwSetVolume` for a voice that has never sounded, so an
+  uninitialised `studio` indexed `dspStudio` past its 8 entries - that was the intermittent
+  audio-thread SIGSEGV in `hwSetVolume` (`ed5b2518a` fixes it with the zeroing the console had plus a
+  guard). Suspect the same assumption in any other ported allocator that hands back memory read
+  before it is written.
+- **Never put a run pattern and the binary's literal name in one shell command**: `pkill -f
+  '<pattern>'` matches the shell that is running it, so the command kills itself (this cost two
+  builds and a launcher). Use `pgrep -af 'metroid_prime2_por[t]'` and put launch commands in a script
+  file (`/tmp/launch_sweep.sh`) instead.
+
+- **A host-generated vertex array must not go through the guest array path.** `CGX::SetArray(attr, data, stride)` is the *disc* path: it passes a size of 0 and marks the data big-endian, so Aurora uploads nothing or byte-swaps it. Anything the port computes itself (the swarm's skinned positions and normals, for instance) needs `CGX::SetArrayNative` with its real byte size, plus `CGX::ClearArray` first when the pointer is reused, since the backend's cache keys on pointer and size and the array is rewritten in place. `CSwarmDisplayList::Draw` had this wrong and every boid in a swarm drew as stretched slabs and strands until `23c928626`.
+- **A port guard must cover the helper too, not just the call site.** Adding `SwarmModelReady` and an `if` in `src/MetroidPrime/Enemies/CSwarmBasics.cpp` without `#ifdef TARGET_PC` moved the upstream matching build's *matched* percentage from 63.29% to 63.25% - under one file, which is why "87 files OK" still printed and why the number has to be read after every upstream edit. The cheap check: strip `#ifdef TARGET_PC`/`#else`/`#endif` from the file and diff against the pre-session revision (`git show <base>:<path>`); the non-PC text must be identical.
+- `orig/G2ME01/{files,sys}` are symlinks to the archive tree's extracted disc (git-ignored).
+- musyx-port's typedefs clash with Aurora's unless `MUSY_TARGET=MUSY_TARGET_PC` (set in CMakeLists.txt).
+- `src/MetroidPrime/PortLinkStubs.cpp` is generated reach stubs (`asm("<mangled>")` entries,
+  blank-line separated; `reachdata_N` zero arrays for data). When a real definition lands, delete
+  its entries or the link reports duplicates. Zeroed data stubs crash at runtime: non-zero
+  globals belong in `src/MetroidPrime/PortDataGlobals.cpp` (values from retail .sdata).
+- GCC "specialization after instantiation" in rstl: declare the specialization in the header's
+  `TARGET_PC` block (e.g. `include/rstl/string.hpp`), not the .cpp.
+- Host objects outgrow retail sizes: hard-coded `Alloc(0x20)` etc. need `sizeof` under TARGET_PC.
+- `src/MetroidPrime/PortGlobals.cpp`, `PortBoot.cpp`, `PortReachStubs.cpp` are old-tree files
+  not built; mine them for values only. So is `platform/debug_ui.cpp`: it is in no CMake target
+  (`CMakeLists.txt`'s `mp_platform` comment says why), so editing it changes nothing and a setting
+  added there will not link - the live F1 overlay is `platform/port_overlay.cpp`, and it keeps no
+  settings file at all (every knob is an `MP2_*` env var). `tools/boot_probe.sh` still references PortReachStubs (stale).
+- Upstream code casting pointers to `u32`/`uint` fails on 64-bit; most excluded units are that.
+- Disc data is big-endian: every raw read of resource bytes needs `CBasics::SwapBytes` under
+  TARGET_PC (material data, CMDL/TXTR headers, compressed-block lengths in `CResFactory`).
+- **A save file's CRC and generation words are host-endian in a save this port wrote, and big-endian
+  in one a console or Dolphin wrote**: `CCardFileInfo::BuildSaveSlot` assigns them through a `uint*`.
+  A parser that assumes either order calls half the cards corrupt - check the CRC both ways and read
+  the generation in the order that matched (`platform/port_save.cpp`). The newer of the two copies is
+  the one with the greater slot *timestamp*, not generation: the generations alternate 0/1.
+- **Saving at a save station pauses the run, and a paused game runs no console command.**
+  `MP2_INPUT="STATION@100,A@220+3,..."` gets into the save screen and its next A writes the card
+  (that is how the card-backup hook was verified), but from then on the port logs
+  `[harness] no game update` and `MP2_CONSOLE` goes silent until the process is restarted.
+- **A model's position/normal arrays are disc data in memory**: the GPU's guest array path swaps
+  them, so anything that skins or measures them on the *CPU* has to byte-swap each component first
+  (`SwarmRenderHelpers.cpp`, `CSkinnedModel::GetSkinnedPosition`). Read raw they are NaNs and values
+  near 1e6 - which the desktop drops and the phone's GPU draws as one enormous gray triangle.
+- **Freeing a texture's data while Aurora's FIFO thread is still resolving texture objects is a
+  `resolve_static_texture` SIGSEGV** (seen on the phone from the scan visor and the map screen): the
+  game's GX is synchronous and the port's is not, so every free the game assumes is safe needs a
+  `GXDrawDone()` first. `CTexture::UnloadBitmapData` (before the `CARAMToken` is dropped) is the one
+  choke point for texture data; `CInGameGuiManager::DestroyAreaTextures` needs one too.
+- `link_check.sh` after a direct `ninja` run reads a stale `build-port-link/build.log` and reports
+  false undefined counts; touch a source first. `drop_defined_stubs.py` crashes on missing .o paths.
+- **A sweep is only as good as what it walks.** The post-fix sweep (`TAG=postfix`, 4 shards) came back
+  with 48 of 53 reached areas `OK` and none of them a crash - 14/21/35 among them - and area 46 in
+  `STALL` with `[warning] [aurora::gpu] Device lost: Device was destroyed` just before it, which is
+  what four parallel software-Vulkan shards do to the renderer rather than a game fault. Check a lone
+  `AREA=46` run before believing that one.
+- **A dead player is what "the run stopped updating" usually means.** `MP2_GODMODE=1` (F1 > Cheats; `tools/sweep_areas.sh` sets it, `GODMODE=1` for `run_gameplay.sh`) keeps it out of a run. `PlayerDied` -> `CMFGame::EndGame`
+  -> `kRM_EndMovie2` -> `CMainFlow` puts `CPlayMovie(kWM_LoseGame)` on the IO stack, a "continue from
+  last save" screen that takes no `B`: the loop keeps rendering, no game update runs, and the harness
+  reports "no game update for 30 s". Dark-world areas (21 and 35 in the Temple Grounds, and 13 and 28
+  beside them) kill a suitless player in about 19 s, sooner than one `HEAL` per area keeps up, so a
+  sweep has to heal twice per area and read `[player] killed ...` in the log. This is what the old
+  "areas 14/21/35 stop updating" wall was (`05efe2ecc`). Whether `A` picks "continue" there is still
+  open - if it does, the RELOAD verdict's "walks into a save station" story below is wrong.
+- **A test script with no button tokens stalls the first time an area shows a memo, and a script that
+  presses `A` walks into a save station.** An area's script (`CScriptHUDMemo`, and `CPlayer`'s suit
+  messages) calls `CStateManager::ShowPausedHUDMemo` -> `kSMT_MessageScreen` ->
+  `CMFGame::EnterMessageScreen` -> `SetFlowState(kFS_Paused)`, and a paused game performs no
+  `CStateManager::Update`, so `MP2_FRAMES` never arrives and only the timeout ends the run (the
+  harness's `no game update for 30.0 s` is the only line that says why - and note that
+  `CMFGame::OnMessage` is then not called at all, so a breakpoint there proves nothing about *which*
+  screen is up). The token counter in `MP2_INPUT` keeps advancing while paused, so a periodic press
+  dismisses it - but choose the button: an arrival places the player at the area's first spawn point,
+  which is often inside a save station's trigger volume, and `A` is the *action* button
+  (`CScriptSpecialFunction::AcceptSaveStation` takes `kSM_Action` -> `EnterSaveGameScreen`), so a
+  sweep that presses `A` twice per area quits to the front end, the port's skip re-boots slot 0, and
+  the run then walks `NEXTAREA` from the save's own area with the update counter back at 0 - measured
+  2026-10-17 in three of four shards, and it read as "STALL in areas 14/21/35" until
+  `tools/sweep_report.py` learned to call that RELOAD. `B` is the cancel button: `tools/sweep_areas.sh`
+  presses it twice per area. The three traps compose: `START` pauses the game, *no* buttons leaves it
+  paused, and `A` leaves it in a save screen.
+- `MP_PORT_FRAMES` is only read by the unbuilt `PortBoot.cpp`: the current loop never exits, so
+  `timeout` ends boots (exit 124/137 = still running, not a crash). The fault handler prints
+  `[port] caught` + backtrace on real crashes, **and on an external `kill -SEGV`** (`main.cpp`
+  installs it for SIGSEGV/BUS/ILL/FPE and re-raises with the default handler, so the exit code still
+  says "died on signal 11"). That makes it the way to sample a *hung* process without ptrace on this
+  machine (`/proc/sys/kernel/yama/ptrace_scope` is 1, so `gdb -p` is refused - launch the run under
+  gdb and SIGINT it instead, `tools/gdb_interrupt.py`): SIGSEGV the stuck run, and the backtrace lands
+  in its log, which is how the two update stalls in the Temple Grounds sweep were placed in
+  `CGraphics::EndScene`.
+- On LP64 `u64` is `unsigned long`: `CInputStream::Get<unsigned long>` reads 64 bits under
+  TARGET_PC (a 32-bit read there broke COBBTree materials). Spell 32-bit fields `uint`.
+- Allocator pools scale by `kAllocatorPointerSize` (8 on host): retail fixed buffer sizes overrun.
+- `DefaultFont*.inc` come from the upstream build's `extract:` (`build/G2ME01/include`, on mp_game's
+  include path): run the upstream build once before the host build in a fresh checkout.
+- The GC compiler has no C++ standard headers: `#include <cstdio>`/`<cstring>` build on the host and
+  break the matching build ("the file 'cstdio' cannot be opened"). Use the C headers and guard them,
+  e.g. `#ifdef TARGET_PC` / `#include <string.h>` / `#endif`, and run the matching build after every
+  change that touches a shared header or a port edit in an upstream file.
+- **`PADSetPortOverride` is a vendored-Aurora addition** (`extern/aurora/lib/dolphin/pad/pad.cpp`,
+  `include/dolphin/pad.h`): pad 0's status comes from the input engine
+  (`platform/input/port_input_devices.cpp`, polled in `PortPumpEvents`), and Aurora then skips its
+  own controller/keyboard read for the port but still merges the virtual pad (console, `MP2_INPUT`,
+  touch) on top. A re-vendor of Aurora must keep the hook, or pad 0 silently loses the keyboard.
+  Keyboard bindings live in `<user>/controls.toml`; `keybinds.cfg` is no longer read.
+
