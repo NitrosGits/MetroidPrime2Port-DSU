@@ -283,7 +283,7 @@ const CHealthInfo* CSandBoss::GetHealthInfo() const {
 // fn_55_CDF0 (ported, not exercised yet)
 CProjectileInfo* CSandBoss::ProjectileInfo() { return &mDarkBeamInfo; }
 
-// fn_55_CF6C (ported, not exercised yet)
+// @ fn_55_CF6C
 // The body itself is pass-through; shots are taken by the collision actors, which get
 // CPatterned's vulnerability (fn_55_724C / fn_55_70D0).
 const CDamageVulnerability* CSandBoss::GetDamageVulnerability() const {
@@ -630,7 +630,7 @@ void CSandBoss::BuildArmorModels() {
   }
 }
 
-// fn_55_783C (ported, not exercised yet)
+// @ fn_55_783C
 void CSandBoss::SetCollisionVulnerabilities(CStateManager& mgr, const CDamageVulnerability& head,
                                             const CDamageVulnerability& body) {
   for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
@@ -642,7 +642,7 @@ void CSandBoss::SetCollisionVulnerabilities(CStateManager& mgr, const CDamageVul
   }
 }
 
-// fn_55_79B0 (ported, not exercised yet)
+// @ fn_55_79B0
 // HitObject from a collision actor that touched the player: snap-jaw damage while the jaws are
 // closing, otherwise contact damage unless the player is the morph ball being sucked in.
 void CSandBoss::HandleHitObject(CStateManager& mgr, TUniqueId sender) {
@@ -878,7 +878,7 @@ CAABox CSandBoss::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return bounds;
 }
 
-// fn_55_CF8C (ported, not exercised yet)
+// @ fn_55_CF8C
 CAABox CSandBoss::GetSortingBounds(const CStateManager&) const {
   const CAABox bounds = GetModelData()->GetBounds(GetTransform());
   const CVector3f center = bounds.GetCenterPoint();
@@ -886,7 +886,7 @@ CAABox CSandBoss::GetSortingBounds(const CStateManager&) const {
   return CAABox(center - extent, center + extent);
 }
 
-// fn_55_CDF8 (ported, not exercised yet)
+// @ fn_55_CDF8
 CVector3f CSandBoss::GetAimPosition(const CStateManager&, float dt) const {
   CVector3f predicted = CVector3f::Zero();
   if (dt > 0.f) {

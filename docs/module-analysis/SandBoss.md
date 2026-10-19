@@ -133,7 +133,8 @@ vtable +0x24) and read back the 0x165C result bit.
 ## 4. Function map
 
 Slice A (2026-10-19). `[proven]` = the host body follows the retail pseudocode and carries a
-`// @ fn_55_X` mark; `[stand-in]` = a log-once shell (`[sandboss] ... is a port stand-in`): triggers
+`// @ fn_55_X` mark (a run reached it); `[ported]` = the same, but no run has reached it yet
+(`// fn_55_X (ported, not exercised yet)`); `[stand-in]` = a log-once shell (`[sandboss] ... is a port stand-in`): triggers
 and bool helpers return false, states/code functions/void helpers do nothing, the charge beam forwards
 to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tables, loader),
 `PortCSandBossStates.cpp` (triggers/states/code functions, 78E0, 8C88), `PortCSandBossAttacks.cpp`
@@ -158,7 +159,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | BC | CSandBoss::GetOrigin | [proven] host body |
 | D8 | CSandBoss::GetHealthInfo | [proven] host body |
 | 178 | loader (PortLoadSandBoss, SLdrSandBoss.inc) | [proven] host body |
-| 1AEC | CSandBoss::SeekStampedePointStep | [stand-in] log-once |
+| 1AEC | CSandBoss::GetStampedeDelay | [proven] host body |
 | 1B94 | CSandBoss::ShouldRepeaterAttackCheck | [stand-in] log-once |
 | 1C70 | CSandBoss::SyncAttacker | [stand-in] log-once |
 | 1D74 | CSandBoss::RotateHelper1D74 | [stand-in] log-once |
@@ -189,14 +190,14 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 59E4 | CSandBoss::NoSiblingHasSphereLocked | [proven] host body |
 | 5A84 | CSandBoss::IsAttachedLeader | [proven] host body |
 | 5B38 | CSandBoss::IsBallInRange | [stand-in] log-once |
-| 5C30 | CSandBoss::AttachToSphereHelper | [stand-in] log-once |
+| 5C30 | CSandBoss::AttachToSphereHelper | [ported] host body, not exercised yet |
 | 5C6C | CSandBoss::Helper5C6C | [stand-in] log-once |
 | 5E5C | CSandBoss::Helper5E5C | [stand-in] log-once |
 | 5FEC | CSandBoss::HandleObjectDrop | [stand-in] log-once |
 | 6250 | CSandBoss::SphereStateHelper6250 | [stand-in] log-once |
 | 62E4 | CSandBoss::SphereStateHelper62E4 | [stand-in] log-once |
 | 6434 | CSandBoss::SphereStateHelper6434 | [stand-in] log-once |
-| 64E4 | CSandBoss::Helper64E4 | [stand-in] log-once |
+| 64E4 | CSandBoss::Helper64E4 | [ported] host body, not exercised yet |
 | 6698 | CSandBoss::UpdateArmorResponseTypes | [proven] host body |
 | 6960 | CSandBoss::SetArmorPieceState | [proven] host body |
 | 6A68 | CSandBoss::BuildArmorModels | [proven] host body |
@@ -207,7 +208,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 78E0 | CSandBoss::SnapJawsCollisionSetup | [stand-in] log-once |
 | 79B0 | CSandBoss::HandleHitObject | [proven] host body |
 | 7BB0 | CSandBoss::UpdateFlashColor | [proven] host body |
-| 7C68 | CSandBoss::StampedeHelper | [stand-in] log-once |
+| 7C68 | CSandBoss::StampedeHelper | [proven] host body |
 | 7E60 | CSandBoss::Helper7E60 | [stand-in] log-once |
 | 8008 | CSandBoss::Helper8008 | [stand-in] log-once |
 | 8258 | CSandBoss::HandleDamage | [stand-in] log-once |
@@ -228,9 +229,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 8E3C | CSandBoss::SetCinematicStateNormal | [proven] host body |
 | 8E48 | CSandBoss::SetCinematicStateStampede | [proven] host body |
 | 8E54 | CSandBoss::SetCinematicStateUnderGround | [proven] host body |
-| 8E60 | CSandBoss::ResetAttackTimes | [stand-in] log-once |
+| 8E60 | CSandBoss::ResetAttackTimes | [ported] host body, not exercised yet |
 | 8F88 | CSandBoss::ResetHeadArmorHP | [proven] host body |
-| 8F94 | CSandBoss::PlayHeadArmorExplosion | [stand-in] log-once |
+| 8F94 | CSandBoss::PlayHeadArmorExplosion | [ported] host body, not exercised yet |
 | 917C | CSandBoss::EndStampede | [proven] host body |
 | 9190 | CSandBoss::BeginStampedeCode | [proven] host body |
 | 91A4 | CSandBoss::PreventSyncAttacks | [proven] host body |
@@ -239,17 +240,17 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 91E0 | CSandBoss::LockSphere | [proven] host body |
 | 91F4 | CSandBoss::WaitAttachToSphere | [proven] host body |
 | 9200 | CSandBoss::WaitStampede | [proven] host body |
-| 920C | CSandBoss::SelectSafeZoneTarget | [stand-in] log-once |
-| 9438 | CSandBoss::RestorePlayerCollision | [stand-in] log-once |
-| 952C | CSandBoss::RemovePlayerCollision | [stand-in] log-once |
-| 9600 | CSandBoss::SetSuckAirArmor | [stand-in] log-once |
-| 96B0 | CSandBoss::SetAttachedArmor | [stand-in] log-once |
-| 974C | CSandBoss::SetStampedeArmor | [stand-in] log-once |
-| 97DC | CSandBoss::SetDoubleChargeArmor | [stand-in] log-once |
-| 986C | CSandBoss::SetTripleChargeArmor | [stand-in] log-once |
-| 98FC | CSandBoss::Stampede | [stand-in] log-once |
-| 9BB8 | CSandBoss::SeekStampedePoint | [stand-in] log-once |
-| 9E3C | CSandBoss::SelectStampedePoint | [stand-in] log-once |
+| 920C | CSandBoss::SelectSafeZoneTarget | [ported] host body, not exercised yet |
+| 9438 | CSandBoss::RestorePlayerCollision | [ported] host body, not exercised yet |
+| 952C | CSandBoss::RemovePlayerCollision | [ported] host body, not exercised yet |
+| 9600 | CSandBoss::SetSuckAirArmor | [ported] host body, not exercised yet |
+| 96B0 | CSandBoss::SetAttachedArmor | [ported] host body, not exercised yet |
+| 974C | CSandBoss::SetStampedeArmor | [proven] host body |
+| 97DC | CSandBoss::SetDoubleChargeArmor | [ported] host body, not exercised yet |
+| 986C | CSandBoss::SetTripleChargeArmor | [ported] host body, not exercised yet |
+| 98FC | CSandBoss::Stampede | [proven] host body |
+| 9BB8 | CSandBoss::SeekStampedePoint | [proven] host body |
+| 9E3C | CSandBoss::SelectStampedePoint | [proven] host body |
 | A170 | CSandBoss::SnapJaws | [stand-in] log-once |
 | A360 | CSandBoss::TripleCharge | [stand-in] log-once |
 | A6CC | CSandBoss::DoubleCharge | [stand-in] log-once |
@@ -261,14 +262,14 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | B544 | CSandBoss::BallInMouth | [stand-in] log-once |
 | B658 | CSandBoss::SuckBall | [stand-in] log-once |
 | B718 | CSandBoss::SuckAir | [stand-in] log-once |
-| B98C | CSandBoss::RotateToPlayer | [stand-in] log-once |
-| BAAC | CSandBoss::AttachToSphere | [stand-in] log-once |
-| BD30 | CSandBoss::Deactivate | [stand-in] log-once |
-| BDAC | CSandBoss::Dead | [stand-in] log-once |
-| BEA4 | CSandBoss::UnderGround | [stand-in] log-once |
-| BF64 | CSandBoss::Recover | [stand-in] log-once |
-| BFF8 | CSandBoss::SyncAttachToSphere | [stand-in] log-once |
-| C0A0 | CSandBoss::SyncStampede | [stand-in] log-once |
+| B98C | CSandBoss::RotateToPlayer | [ported] host body, not exercised yet |
+| BAAC | CSandBoss::AttachToSphere | [ported] host body, not exercised yet |
+| BD30 | CSandBoss::Deactivate | [ported] host body, not exercised yet |
+| BDAC | CSandBoss::Dead | [ported] host body, not exercised yet |
+| BEA4 | CSandBoss::UnderGround | [proven] host body |
+| BF64 | CSandBoss::Recover | [ported] host body, not exercised yet |
+| BFF8 | CSandBoss::SyncAttachToSphere | [ported] host body, not exercised yet |
+| C0A0 | CSandBoss::SyncStampede | [proven] host body |
 | C148 | CSandBoss::ArmorDestroyed | [proven] host body |
 | C154 | CSandBoss::HeadArmorDestroyed | [proven] host body |
 | C174 | CSandBoss::IsLastStage | [proven] host body |
@@ -310,7 +311,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 1027C | SandBossChargeBeam::RayCollisionCheckWithWorld | [stand-in] log-once |
 | 107B0 | SandBossChargeBeam::SandBossChargeBeam | [stand-in] log-once |
 | 108E4 / 10C18 | SandBossChargeBeam::~SandBossChargeBeam | [stand-in] empty, base dtor |
-| 10CB4 | CSandBoss::SortStampedePoints | [stand-in] log-once |
+| 10CB4 | CSandBoss::SortStampedePoints | [proven] host body |
 | 11184 | static initialiser of the FSM tables | [proven] host static tables (PortCSandBoss.cpp) |
 
 Host containers / inlined (no member function; rstl, token and template helpers the host's own
@@ -346,6 +347,13 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   724C 7BB0 84A8 86D0 8A8C 8E48 8E54 9190 9200 BEA4 C0A0 C9D8 CA1C CA84 CAA4 CDB0 D08C D208 D290 D304
   D308 D620 D6BC D8BC DB60 E170. Only these carry `// @`; other ported functions carry
   `// fn_55_X (ported, not exercised yet)` until a run reaches them.
+- Slice 3 (same command, exit 0, 0 caught, 0 reach-stub): `SelectStampedePoint` (9E3C) ->
+  `SeekStampedePoint` (9BB8, `GetStampedeDelay` 1AEC) -> `BeginStampede` -> `Stampede` (98FC,
+  `StampedeHelper` 7C68) -> `StateOver`/`StampedeOver`; the stampede hits the player (`HandleHitObject`
+  79B0) and the `HandleScreenShake`/`HandleGroundImpact` stand-ins run. The trace is once-per-function,
+  so it does not show later rounds. Newly `// @`: 1AEC 783C 79B0 7C68 974C 98FC 9BB8 9E3C C9B8 CA10 CA90
+  CDF8 CF6C CF8C 10CB4.
+- Exit 13 (twice) is the shell tool's 120 s timeout killing a foreground run; run in the background.
 - One run of the same command exited 13 right after `[area] 36` with no diagnostics; three reruns
   were clean. Unexplained.
 - Not tested: ASAN, the intro cinema path, any attack, sphere/ball phases.

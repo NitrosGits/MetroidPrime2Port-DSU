@@ -38,7 +38,7 @@ CRayCastResult SandBossChargeBeam::RayCollisionCheckWithWorld(
                                                        staticTest);
 }
 
-// fn_55_1AEC (ported, not exercised yet)
+// @ fn_55_1AEC
 // How long to wait for the other worms before stampeding: three per-sibling delays in the
 // stampede loader data, picked by how many siblings are already stampeding (0x165C b4).
 float CSandBoss::GetStampedeDelay(CStateManager& mgr) const {
@@ -218,7 +218,7 @@ void CSandBoss::Helper64E4(CStateManager& mgr, const CTransform4f& locatorXf) {
   }
 }
 
-// fn_55_7C68 (ported, not exercised yet)
+// @ fn_55_7C68
 // While stampeding, sheds one armour piece at a time (tail first, one eighth of the stampede HP
 // apart) as the stampede HP drops, with the armour explosion sound and the head pain sound while
 // HP remains.
@@ -272,7 +272,7 @@ void CSandBoss::RotateToPlayerHelper(const CVector3f&) { // fn_55_83AC
   PortSandBossStandIn("CSandBoss::RotateToPlayerHelper (fn_55_83AC)");
 }
 
-// fn_55_10CB4 (ported, not exercised yet)
+// @ fn_55_10CB4
 // Retail quicksorts the 0x1478 entries by their squared distance; at most sixteen entries, a host
 // insertion sort is the same order.
 void CSandBoss::SortStampedePoints() {

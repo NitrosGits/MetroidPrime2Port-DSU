@@ -24,7 +24,7 @@ const CSandBoss* CastSandBoss(const CEntity* entity);
 
 // Triggers
 
-// fn_55_CA90 (ported, not exercised yet)
+// @ fn_55_CA90
 bool CSandBoss::StateOver(CStateManager&, const CTriggerData&) const {
   return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
@@ -40,7 +40,7 @@ bool CSandBoss::CanStartNewRound(CStateManager&, const CTriggerData&) const {
   return mData.commandIndex <= mRound && mRound < 3;
 }
 
-// fn_55_CA10 (ported, not exercised yet)
+// @ fn_55_CA10
 bool CSandBoss::BeginStampede(CStateManager&, const CTriggerData&) const { return mBeginStampede; }
 
 // @ fn_55_C9D8
@@ -48,7 +48,7 @@ bool CSandBoss::FoundStampedePoint(CStateManager& mgr, const CTriggerData&) cons
   return GetCoverPoint(mgr, mStampedePoint) != nullptr;
 }
 
-// fn_55_C9B8 (ported, not exercised yet)
+// @ fn_55_C9B8
 bool CSandBoss::StampedeOver(CStateManager&, const CTriggerData&) const { return mStampedeHP <= 0.f; }
 
 bool CSandBoss::ShouldDarkBeamAttack(CStateManager&, const CTriggerData&) const { // fn_55_C894
@@ -276,7 +276,7 @@ void CSandBoss::SnapJaws(CStateManager&, EStateMsg, float) { // fn_55_A170
 // quarters of the stampede points instead of the nearest quarter.
 static const float skStampedePickChance[4] = {70.f, 50.f, 33.f, 0.f};
 
-// fn_55_9E3C (ported, not exercised yet)
+// @ fn_55_9E3C
 // Collects the cover points in reach of the player, sorts them by squared distance and keeps one:
 // the nearest quarter (or, by the table above, the rest) for this round.
 void CSandBoss::SelectStampedePoint(CStateManager& mgr, EStateMsg msg, float) {
@@ -328,7 +328,7 @@ void CSandBoss::SelectStampedePoint(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_9BB8 (ported, not exercised yet)
+// @ fn_55_9BB8
 // Walks to the selected point at 100 units/s; on arrival sets BeginStampede once the delay the
 // stampeding siblings imply has elapsed (0xF20 counts up in fn_55_86D0).
 void CSandBoss::SeekStampedePoint(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -352,7 +352,10 @@ void CSandBoss::SeekStampedePoint(CStateManager& mgr, EStateMsg msg, float dt) {
     if (CScriptCoverPoint* cover = GetCoverPoint(mgr, mStampedePoint)) {
       if (CScriptAIWaypoint* waypoint = TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(
               cover->FindConnectedObject(mgr, kSS_Arrived, kSM_Next)))) {
-        SetTransform(CTransform4f::LookAt(cover->GetTranslation(), waypoint->GetTranslation(),
+        // Level look: the waypoint's x/y at the point's own height.
+        const CVector3f& from = cover->GetTranslation();
+        const CVector3f& to = waypoint->GetTranslation();
+        SetTransform(CTransform4f::LookAt(from, CVector3f(to.GetX(), to.GetY(), from.GetZ()),
                                           CVector3f::Up()));
         mF28 = waypoint->GetTranslation().GetZ();
       } else {
@@ -362,7 +365,7 @@ void CSandBoss::SeekStampedePoint(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_98FC (ported, not exercised yet)
+// @ fn_55_98FC
 // Stomps along the path: the body starts generating (the stampede gait) and StampedeHelper sheds
 // armour pieces as the stampede HP drops. Activate also releases the siblings' wait timers.
 void CSandBoss::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -418,7 +421,7 @@ void CSandBoss::SetDoubleChargeArmor(CStateManager& mgr, float) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-// fn_55_974C (ported, not exercised yet)
+// @ fn_55_974C
 void CSandBoss::SetStampedeArmor(CStateManager& mgr, float) {
   for (int i = 0; i < 8; ++i) {
     mArmorState[i] = 1; // 0x1458..0x1474
