@@ -279,16 +279,33 @@ Writers: `xc5c_` = ShieldUp (shield-raise time), `xa40_` = PathToward (time stuc
 (`5BB4`, from 0xa3c), `xb3c_` = TargetPatrol (`578C`, from 0x334); `xd1c_` is the taunt type (an int,
 Taunt cycles 0 -> 6 -> 1 -> 0). `[?]`: Shielding's `xa38_` countdown (only the ctor writes 0xa38).
 In game (Sanctuary area 4, layer 3), Shockwave, ProjectileAttack, SpreadShot, AngryAttackBegin/End
-and PowerUp/PowerDown are entered with no fault; Shielding, ShieldUp, MeleeAttack, Taunt and Dead
-were not reached by the test script.
+and PowerUp/PowerDown are entered with no fault; later runs reached the rest (item 1 below).
 
 Open:
 
 1. Entered at runtime (area 4 L3, console `send u<id> Activate`, `tp`, `hurt`, polled with `obj`):
    PowerUp, PowerDown, FollowAttackPattern, Turn, Alert, ShieldUp, Shielding, MeleeAttack,
    Shockwave, SpreadShot, ProjectileAttack, Dead (600 hp, power-beam `hurt` to <=0), and
-   AngryAttackBegin/End, Pursue. Not entered (no `// @` marker): Taunt, Patrol, TargetPatrol,
-   Wait, Stunned, InvulnAlert. Fixed 2026-10-19: active Ingsmashers fell through the floor
+   AngryAttackBegin/End, Pursue; Taunt and Wait in the dark run (below). Not entered (no `// @`
+   marker), 2026-10-19:
+   - TargetPatrol and InvulnAlert are not states of the FSM2 asset graph (`fsm.txt`), so no
+     retail path reaches them.
+   - Patrol: neither Ingsmasher has a patrol waypoint chain, so FSM2 never goes there.
+   - Stunned is reached only from Shielding on ShieldKilled (`mShieldDamage` over
+     `mUnknown5236C2B6` at polarity 1, else `mUnknown01EAAB17`). Shield damage accrues only in
+     kSM_Damage from a real projectile hitting the shield actor (polarity 1: weapon type 1/3,
+     polarity 0: 2/3); console `hurt` bypasses it and annihilator fire in the test did not
+     register a shield hit.
+   Console notes: `hurt` does not set ShotAt (`mXDamaged`); `send u<id> Alert` powers a
+   PowerDown Ingsmasher up; `obj` takes uids only and prints connections as editor ids.
+   u051b in area 4 stays in FollowAttackPattern at (81.1, 48.4, -152.1): its pattern is one
+   waypoint (u0518, 71.3, 38.6), the navigation commands (-3.3, -3.3) every frame (body state 5,
+   not frozen), but it sits inside its pod (CScriptActors u0455..u0464 at its position) with
+   platform u045d on the path. The intro trigger u04fc (inactive until the player enters) starts
+   sequence timer 000400af, which releases it; the console `Alert` skips that, so this is a test
+   artifact, not a port bug.
+   Dark Ingsmasher (`0m_cliff_hall_dark`, layers 4/5): 0 caught; u04fa stands at z -114.7 and
+   enters PowerUp, Wait, Turn, Alert, Taunt, ShieldUp, Shielding, MeleeAttack and Shockwave. Fixed 2026-10-19: active Ingsmashers fell through the floor
    (free fall at the 24.525 gravity) because the ctor built `mCollidableBox` from
    `GetBoundingBox()`, the world-space box; fn_15_2CFC stores the local box. With the fix both
    stand at z -152 for 60 s and u04ff walks, pursues and attacks.
@@ -296,16 +313,13 @@ Open:
    0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
 3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
 
-**Next (handoff 2026-10-19, `decomp/elitepirate` at the commit adding this line):**
-1. Enter and mark Taunt `5A60`, Patrol `5708`, TargetPatrol `578C`, Wait `6064`, Stunned `59BC`,
-   InvulnAlert `52D0`. Read the FSM2 asset's transitions into them first (state/trigger tables in
-   `/tmp/opencode/ep/fsm.txt`; the FSM2 asset is `mData.mStateMachine`), then drive them over
-   the console. Harness: `/tmp/opencode/ep/trace/run.sh` (trace.py polls `obj` into trace.tsv;
-   `awk '{print $2,$3}' trace.tsv | sort | uniq -c` lists the states entered). u051b never left
-   PowerDown in the 60 s trace. Probes go in temporarily and are removed before a commit.
-2. Dark Ingsmasher: boot `0m_cliff_hall_dark` (layers 4/5, §0), check 0 caught and that it
-   stands and attacks.
-3. The `[?]` items above, as narrow `worker` lanes (decomp lanes are worker-only).
+**Next (2026-10-19, `decomp/elitepirate` at the commit adding this line):**
+1. The `[?]` items above, as narrow `worker` lanes (decomp lanes are worker-only), each from a
+   named commit.
+2. Optional: reach Stunned `59BC` with real shield hits (enter area 4 normally so the intro
+   sequence runs, raise the shield, fire the matching beam), then mark it.
+3. Item 3 (`fn_15_728C` unbounded index): check retail's rocket count bound before guarding.
+Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/dark/stun_run.sh` (dark).
 Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
 `/tmp/opencode/ep/gate_run2.sh <log>` (0 crash lines), matching build 94.14%/63.29% if an
 upstream file changed. Also tell the port orchestrator that `186fea1e7` touched the shared file

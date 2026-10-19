@@ -313,6 +313,7 @@ void CElitePirate::InvulnAlert(CStateManager& mgr, EStateMsg msg, float dt) {
   Alert(mgr, msg, dt);
 }
 
+// @ fn_15_6064
 void CElitePirate::Wait(CStateManager& mgr, EStateMsg msg, float) {
   UpdateAbsorb(mgr, msg);
   if (msg == kStateMsg_Activate) {
