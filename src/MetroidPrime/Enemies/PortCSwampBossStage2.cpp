@@ -527,8 +527,27 @@ void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) 
   // TODO(uncertain): not decoded.
 }
 
+// fn_79_3578
 void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mWindNode));
+  if (!node) {
+    return;
+  }
+  CTransform4f xf(GetTransform());
+  const CVector3f nodePos = node->GetTranslation();
+  const CVector3f pos = GetTranslation();
+  // Flat direction to the wind node; the effect sits 50 units short of it.
+  const CVector3f dir =
+      CVector3f(nodePos.GetX() - pos.GetX(), nodePos.GetY() - pos.GetY(), 0.f).AsNormalized();
+  xf.SetTranslation(CVector3f(nodePos.GetX() - dir.GetX() * 50.f,
+                              nodePos.GetY() - dir.GetY() * 50.f,
+                              nodePos.GetZ() - dir.GetZ() * 50.f));
+  // Scale 3, white, and -1 for "no player owner".
+  CExplosion* explosion = rs_new CExplosion(
+      mBlowGen, mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+      rstl::string_l("Chykka wind effect"), xf, 0, CVector3f(3.f, 3.f, 3.f), CColor::White(), -1);
+  mgr.AddObject(explosion);
 }
 
 void CSwampBossStage2::SpawnWingDamageEffect(CStateManager& mgr, int idx) {
@@ -850,12 +869,142 @@ void CSwampBossStage2::Level(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_82B8
 void CSwampBossStage2::Swoop(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCMeleeAttackCmd(mSwoopSide ? pas::kS_Zero : pas::kS_Two));
+    }
+    // The swoop rides just above the water surface.
+    const CVector3f pos = GetTranslation();
+    if (pos.GetZ() < mWaterZ + 5.f) {
+      SetTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ + 5.f));
+    }
+    CPlayer* player = mgr.GetPlayer(0);
+    if (!player) {
+      return;
+    }
+    const CVector3f rel = player->GetAimPosition(mgr, 0.f) - mHeadPos;
+    const CVector3f forward = GetTransform().GetForward();
+    const CVector3f right = GetTransform().GetRight();
+    const float alongForward = CVector3f::Dot(rel, forward);
+    const float alongRight = CVector3f::Dot(rel, right);
+    // rodata: the hit window is 30 units ahead and 18 model scales to either side.
+    if (mSwoopWindow && !mSwoopDamage && !mSwoopDone && mGrappleTime == 0.f && alongForward > 0.f &&
+        alongForward < 30.f &&
+        CMath::AbsF(alongRight) < GetModelData()->GetScale().GetX() * 18.f) {
+      player->PushSustainedDamage();
+      player->DisableControls(mgr, 0xe2, GetUniqueId(), mData.swoopDamageTime,
+                              CGameHint::kBHT_None);
+      mSwoopTimer = mData.swoopDamageTime;
+      mSwoopDamage = true;
+    }
+    if (mSwoopTimer > 0.f) {
+      const CMaterialFilter playerFilter(CMaterialList(kMT_Player), CMaterialList(),
+                                         CMaterialFilter::kFT_IncludeExclude);
+      if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+        // Morph Ball takes half the swoop damage.
+        CDamageInfo halfSwoop(mSwoopDamageInfo);
+        halfSwoop.SetDamage(mSwoopDamageInfo.GetDamage() * 0.5f);
+        mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(),
+                        CDamageInfo(halfSwoop, dt), playerFilter, CVector3f::Zero());
+      } else {
+        const CVector3f impulse =
+            (forward + right * (alongRight > 0.f ? 0.5f : -0.5f)) *
+            (mData.swoopPush * player->GetMass());
+        player->ApplyImpulseWR(impulse, CAxisAngle::Identity());
+        mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(),
+                        CDamageInfo(mSwoopDamageInfo, dt), playerFilter, CVector3f::Zero());
+      }
+      player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+      mSwoopTimer -= dt;
+      if (mSwoopTimer <= 0.f) {
+        player->PopSustainedDamage();
+        mSwoopDamage = false;
+        mSwoopDone = true;
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mSwoopWindow = false;
+    mSwoopDamage = false;
+    mSwoopDone = false;
+    mSwoopTimer = 0.f;
+    mCircleCounting = false;
+    mSwooping = true;
+    if (const CPlayer* player = mgr.GetPlayer(0)) {
+      mSwoopSide =
+          CVector3f::Dot(GetTransform().GetRight(), player->GetTranslation() - GetTranslation()) >
+          0.f;
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mSwoopWindow = false;
+    if (mSwoopDamage) {
+      if (CPlayer* player = mgr.GetPlayer(0)) {
+        player->PopSustainedDamage();
+      }
+      mSwoopDamage = false;
+    }
+  }
 }
 
 // fn_79_7E24
 void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_One));
+    }
+    if (mWindPending) {
+      if (CPlayer* player = mgr.GetPlayer(0)) {
+        const CVector3f rel = player->GetAimPosition(mgr, 0.f) - mHeadPos;
+        const CVector3f forward = GetTransform().GetForward();
+        // rodata: the blow window is in front of the head and 18 model scales wide.
+        if (CVector3f::Dot(rel, forward) > 0.f &&
+            CMath::AbsF(CVector3f::Dot(rel, GetTransform().GetRight())) <
+                GetModelData()->GetScale().GetX() * 18.f &&
+            mGrappleTime == 0.f) {
+          if (!mBlowing) {
+            player->PushSustainedDamage();
+            mBlowing = true;
+            player->DisableControls(mgr, 0xe2, GetUniqueId(), 1.f, CGameHint::kBHT_None);
+          }
+          // Retail tests the pending flag again here, so the push is always the blow push.
+          const float push = mWindPending ? mData.blowPush : mData.breakStunDamage;
+          player->ApplyImpulseWR(forward * (push * player->GetMass()), CAxisAngle::Identity());
+        }
+        if (mBlowing) {
+          mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(),
+                          CDamageInfo(mBlowDamageInfo, dt),
+                          CMaterialFilter(CMaterialList(kMT_Player), CMaterialList(),
+                                          CMaterialFilter::kFT_IncludeExclude),
+                          CVector3f::Zero());
+          player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+        }
+      }
+    }
+    if (mBlowing && !mWindPending) {
+      if (CPlayer* player = mgr.GetPlayer(0)) {
+        player->PopSustainedDamage();
+      }
+      mBlowing = false;
+    }
+    if (mBubbleCreated) {
+      SpawnWindEffect(mgr);
+      mBubbleCreated = false;
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mBubbleCreated = false;
+    mWindPending = false;
+    mBlowing = false;
+  } else if (msg == kStateMsg_Deactivate) {
+    if (mBlowing) {
+      if (CPlayer* player = mgr.GetPlayer(0)) {
+        player->PopSustainedDamage();
+      }
+      mBlowing = false;
+    }
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_7BE0
