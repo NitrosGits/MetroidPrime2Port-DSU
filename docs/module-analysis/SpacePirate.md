@@ -210,8 +210,25 @@ struct and adds the grenade launcher. Use the REL's sizes, not MP1's.
 4. Movement extras: PathFind(Ex), Cover*, Jump/JumpBack, WallHang, Taunt, Lurk.
 5. Echoes-only: WarpIn/Out, LaunchGrenade + bouncy grenade (`4174`), Captured, Bounce, Ing possession.
 
+## 6. Verified (2026-10-19)
+
+Pseudo-C: `/tmp/opencode/pseudo/SpacePirate/fn_72_<off>.c` (m2c, 253/254; `3B28` DoUserAnimEvent
+is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offsets.md`.
+
+| Fact | Value / evidence |
+|---|---|
+| Test area | Agon Wastes `08_sand_casualpirates`, default layer: 4 pirates (ids 208/193/190/70; console u04d0 u04c1 u04be u0446), start state `Patrol` |
+| Run | `tools/run_gameplay.sh` WORLD/TELEPORT=08_sand_casualpirates, GODMODE=1, `MP2_DEBUG_SPACEPIRATE=1` (state changes, KnockBack/Death/anim-event trace) |
+| Damage test | console `damage <id> <n> [kb]`: hp 60 -> 55; kb 6 alive = reaction 1 (flinch); lethal = `Death`, `KnockBack dead reaction 4`, `Patrol -> Dead` |
+| HP | 60 (u0446 reads -1 from load: unexplained) |
+| Slot 0x110 | `IsOnGround` (Landed/OffLine) |
+| 0xb34 | `CIkChain` (`fn_72_10568` is its default ctor) |
+| Body controller | retail activates it only in Think; the port also does in PreThink |
+| Anim events handled | 19 BecomeRagDoll, 22 BreakLockOn (23/24 fall to CPatterned) |
+| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 |
+
 ## Open questions (verify first)
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
-2. Identity of 0xa18 (pInfo+0x58), 0xb30 (null pointer) and 0xb34 (`fn_72_10568`).
+2. Identity of 0xa18 (pInfo+0x58) and 0xb30 (null pointer; ragdoll slot?).
 3. The [?] rows of section 1 (`253C`, `28F0`, `3220`, `3D7C`, `CB30`, `EDEC`).

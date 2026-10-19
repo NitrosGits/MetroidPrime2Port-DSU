@@ -9,7 +9,8 @@
 #   [GODMODE=1] (MP2_GODMODE: the player takes no damage; default off, an ordinary run takes damage)
 #   [LOG=<file>] [ASAN=1] [BUILD=<build dir>] tools/run_gameplay.sh
 #
-# `WORLD`/`TELEPORT`/the `MP2_INPUT` tokens are hex asset ids or names; the player's own run length is
+# `WORLD`/`TELEPORT`/the `MP2_INPUT` tokens are hex asset ids or names (an area may also be its MLVL name,
+# `0b_sand_hall`, and a world a part of its MLVL name, `sand_world`; `WORLD=0b_sand_hall` finds the world); the player's own run length is
 # `FRAMES` (game updates, not loop iterations). `SECS` is the backstop that ends a run which never
 # reaches the limit.
 #
