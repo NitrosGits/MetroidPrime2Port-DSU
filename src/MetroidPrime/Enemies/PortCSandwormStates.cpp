@@ -22,37 +22,6 @@
 
 namespace {
 
-// HEADER WORKAROUND: retail keeps a float at 0x13AC (between x13A0_snatchEnd and x13B0_): the time
-// the player has spent off the path mesh during Pursue. CSandworm.hpp lacks it (`float x13AC_;`),
-// so it is kept per instance here until the header gains the member.
-struct SSandwormX13AC {
-  const CSandworm* owner;
-  float value;
-};
-SSandwormX13AC sX13AC[4];
-
-float& X13AC(const CSandworm& self) {
-  for (int i = 0; i < 4; ++i) {
-    if (sX13AC[i].owner == &self) {
-      return sX13AC[i].value;
-    }
-  }
-  for (int i = 0; i < 4; ++i) {
-    if (sX13AC[i].owner == nullptr) {
-      sX13AC[i].owner = &self;
-      sX13AC[i].value = 0.f;
-      return sX13AC[i].value;
-    }
-  }
-  sX13AC[0].owner = &self;
-  sX13AC[0].value = 0.f;
-  return sX13AC[0].value;
-}
-
-// HEADER WORKAROUND: SSandwormSfx keeps the emitter handles as `int` (x14_/x18_/x1c_); retail
-// stores CSfxHandle there. CSfxHandle is one 32-bit id.
-CSfxHandle& SfxHandle(int& slot) { return reinterpret_cast< CSfxHandle& >(slot); }
-
 bool IsBombGuardian(const CSandworm& self) { return (self.x8C0_flags & 0x10) != 0; }
 
 const CVector3f& PlayerPos(const CStateManager& mgr) { return mgr.Player(0)->GetTranslation(); }
@@ -72,33 +41,30 @@ float WobbleStrength(const CSandworm& self) {
 
 } // namespace
 
-// fn_56_3EF4. Header declares UpdateEmitter(mgr, int index); retail takes the handle.
 // @ fn_56_3EF4
-static void UpdateSandwormEmitter(CSandworm& self, CSfxHandle& handle) {
+void CSandworm::UpdateEmitter(CSfxHandle& handle) {
   if (handle && !CSfxManager::IsPlaying(handle) && !CSfxManager::IsQueued(handle)) {
     CSfxManager::RemoveEmitter(handle);
     handle = CSfxHandle();
   } else {
-    CSfxManager::UpdateEmitter(handle, self.x1388_, self.GetTransform().GetColumn(kDY), 0x7f);
+    CSfxManager::UpdateEmitter(handle, x1388_, GetTransform().GetColumn(kDY), 0x7f);
   }
 }
 
-// fn_56_403C. Header declares StopMoveSfx(mgr, int index); retail takes only the worm.
 // @ fn_56_403C
-static void StopSandwormMoveSfx(CSandworm& self) {
-  CSfxHandle& handle = SfxHandle(self.x1828_sfx.x18_);
+void CSandworm::StopMoveSfx() {
+  CSfxHandle& handle = x1828_sfx.x18_;
   if (handle) {
     CSfxManager::RemoveEmitter(handle);
   }
   handle = CSfxHandle();
 }
 
-// fn_56_534C (unreferenced). Header declares FindScriptActor() -> TUniqueId; retail returns the
-// number of 'GRNT'/'NEXT' connections that resolve to an actor.
+// Unreferenced in retail: the number of 'GRNT'/'NEXT' connections that resolve to an actor.
 // @ fn_56_534C
-static int CountSandwormScriptActors(const CSandworm& self, CStateManager& mgr) {
+int CSandworm::CountScriptActors(CStateManager& mgr) const {
   int count = 0;
-  const rstl::vector< SConnection >& conns = self.GetConnectionList();
+  const rstl::vector< SConnection >& conns = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
     if (it->state != kSS_GRNT || it->msg != kSM_Next) {
       continue;
@@ -110,61 +76,58 @@ static int CountSandwormScriptActors(const CSandworm& self, CStateManager& mgr) 
   return count;
 }
 
-// fn_56_6D74. Header declares PursueHelper(mgr, CVector3f&) const; retail is
-// CVector3f(const CVector3f&) const. Blends the move vector toward its perpendicular.
+// Blends the move vector toward its perpendicular.
 // @ fn_56_6D74
-static CVector3f SandwormPursueWobble(const CSandworm& self, const CVector3f& v) {
-  const float period = WobblePeriod(self);
+CVector3f CSandworm::PursueHelper(const CVector3f& v) const {
+  const float period = WobblePeriod(*this);
   CVector3f perp;
-  if (self.x150C_cycle > 0.5f * period) {
+  if (x150C_cycle > 0.5f * period) {
     perp = CVector3f(v.GetY(), -v.GetX(), v.GetZ());
   } else {
     perp = CVector3f(-v.GetY(), v.GetX(), v.GetZ());
   }
-  const float t = WobbleStrength(self);
+  const float t = WobbleStrength(*this);
   return v * (1.f - t) + perp * t;
 }
 
-// fn_56_7A2C. Header declares bool FindCoverPoint(mgr, CVector3f&); retail returns the vector.
 // @ fn_56_7A2C
-static CVector3f FindSandwormCoverPoint(CSandworm& self, CStateManager& mgr) {
-  if (X13AC(self) < 6.f && self.x1384_ < 8.f && self.x184C_ == 0) {
-    if (self.IsPossessedBombGuardian()) {
-      if (self.x19FC_ + 1.f < self.x8B0_activeTime) {
-        self.x19F0_ = PlayerPos(mgr);
-        self.x19FC_ = self.x8B0_activeTime;
+CVector3f CSandworm::FindCoverPoint(CStateManager& mgr) {
+  if (x13AC_ < 6.f && x1384_ < 8.f && x184C_ == 0) {
+    if (IsPossessedBombGuardian()) {
+      if (x19FC_ + 1.f < x8B0_activeTime) {
+        x19F0_ = PlayerPos(mgr);
+        x19FC_ = x8B0_activeTime;
       }
-      return self.x19F0_;
+      return x19F0_;
     }
     return PlayerPos(mgr);
   }
 
-  if (self.x1848_ != kInvalidUniqueId) {
-    if (const CScriptCoverPoint* cp = self.GetCoverPoint(mgr, self.x1848_)) {
-      CVector3f delta = self.GetTranslation() - cp->GetTranslation();
+  if (x1848_ != kInvalidUniqueId) {
+    if (const CScriptCoverPoint* cp = GetCoverPoint(mgr, x1848_)) {
+      CVector3f delta = GetTranslation() - cp->GetTranslation();
       delta.SetZ(0.f);
       if (delta.Magnitude() < 4.f) {
-        self.x184A_ = self.x1848_;
-        self.x1848_ = kInvalidUniqueId;
+        x184A_ = x1848_;
+        x1848_ = kInvalidUniqueId;
       }
     }
   }
-  if (self.x1848_ == kInvalidUniqueId) {
-    self.x1848_ = self.ScanCoverPoints(mgr);
+  if (x1848_ == kInvalidUniqueId) {
+    x1848_ = ScanCoverPoints(mgr);
   }
-  if (self.x1848_ != kInvalidUniqueId) {
-    if (const CScriptCoverPoint* cp = self.GetCoverPoint(mgr, self.x1848_)) {
+  if (x1848_ != kInvalidUniqueId) {
+    if (const CScriptCoverPoint* cp = GetCoverPoint(mgr, x1848_)) {
       return cp->GetTranslation();
     }
   }
   return PlayerPos(mgr);
 }
 
-// fn_56_A8E0 with the radius retail passes; the header NearlyOnPath has no radius parameter.
 // @ fn_56_A8E0
-static bool SandwormNearlyOnPath(const CSandworm& self, const CVector3f& pos, float radius) {
+bool CSandworm::NearlyOnPath(const CVector3f& pos, float radius) const {
   for (float z = 0.f; z < 5.f; z += 1.f) {
-    if (self.x7C4_search.NearlyOnPath(pos + CVector3f(0.f, 0.f, z), radius) ==
+    if (x7C4_search.NearlyOnPath(pos + CVector3f(0.f, 0.f, z), radius) ==
         CPathFindSearch::kR_Success) {
       return true;
     }
@@ -172,17 +135,15 @@ static bool SandwormNearlyOnPath(const CSandworm& self, const CVector3f& pos, fl
   return false;
 }
 
-// fn_56_C468. Header declares void MoveToScriptActor(mgr, EScriptObjectState); retail returns
-// x1354 moved to the 'GRNT'/'NEXT' actor farthest from the player and updates `index`.
+// x1354 moved to the 'GRNT'/'NEXT' actor farthest from the player; updates `index`.
 // @ fn_56_C468
-static CTransform4f SandwormMoveToScriptActor(const CSandworm& self, CStateManager& mgr,
-                                              int& index) {
+CTransform4f CSandworm::MoveToScriptActor(CStateManager& mgr, int& index) const {
   const CVector3f& playerPos = PlayerPos(mgr);
   float bestDistSq = 0.f;
   const CActor* best = nullptr;
   int bestIndex = 0;
   int counter = 0;
-  const rstl::vector< SConnection >& conns = self.GetConnectionList();
+  const rstl::vector< SConnection >& conns = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
     if (it->state != kSS_GRNT || it->msg != kSM_Next) {
       continue;
@@ -201,7 +162,7 @@ static CTransform4f SandwormMoveToScriptActor(const CSandworm& self, CStateManag
     }
     ++counter;
   }
-  CTransform4f xf = self.x1354_;
+  CTransform4f xf = x1354_;
   if (best != nullptr) {
     xf.SetTranslation(best->GetTranslation());
     index = bestIndex;
@@ -209,18 +170,11 @@ static CTransform4f SandwormMoveToScriptActor(const CSandworm& self, CStateManag
   return xf;
 }
 
-// fn_56_10A68 (unreferenced). Not the header's SetSteeringSpeedRange(min, max): retail takes no
-// arguments and ramps the steering speed over 1.2 s after x134C.
+// Unreferenced in retail: ramps the steering speed over 1.2 s after x134C.
 // @ fn_56_10A68
-static void RampSandwormSteeringSpeed(CSandworm& self) {
-  const float t = self.x8B0_activeTime - self.x134C_;
-  self.BodyController()->CommandMgr().SetSteeringSpeedRange(0.f, t > 1.2f ? 1.f : t / 1.2f);
-}
-
-// fn_56_10038 (WP5). Header declares `void SpineHelper10038() const`; retail returns
-// (0, 0, pincerScale * fn_56_5884()) by value.
-static CVector3f SandwormSpineOffset(const CSandworm& self) {
-  return CVector3f(0.f, 0.f, self.x1770_pincers.x8_scale * self.SegmentHelper5884());
+void CSandworm::SetSteeringSpeedRange() {
+  const float t = x8B0_activeTime - x134C_;
+  BodyController()->CommandMgr().SetSteeringSpeedRange(0.f, t > 1.2f ? 1.f : t / 1.2f);
 }
 
 // --- Members ---
@@ -243,9 +197,9 @@ void CSandworm::EyeKilledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Deactivate && AnyEyeDead(mgr)) {
     x14D4_ = 1;
     if (!IsBombGuardian(*this)) {
-      OrientBodyToPath(mgr, 0.f); // HEADER WORKAROUND: retail fn_56_AD14 takes no dt
+      OrientBodyToPath(mgr);
     } else if ((x19A8_bombPhase.xc_flags & 0x20) != 0) {
-      OrientBodyToPath(mgr, 0.f);
+      OrientBodyToPath(mgr);
     }
   }
 }
@@ -256,10 +210,10 @@ bool CSandworm::OneEyeKilled(CStateManager& mgr, const CTriggerData& data) const
     return false;
   }
   int dead = 0;
-  if (GetHeadEye(mgr)->IsDead()) {
+  if (GetTailEye(mgr)->IsDead()) {
     ++dead;
   }
-  if (GetTailEye(mgr)->IsDead()) {
+  if (GetHeadEye(mgr)->IsDead()) {
     ++dead;
   }
   return dead == 1;
@@ -288,7 +242,7 @@ bool CSandworm::CanDescend(CStateManager& mgr, const CTriggerData& data) const {
   if (IsBombGuardian(*this)) {
     return false;
   }
-  if (X13AC(*this) > 6.f) {
+  if (x13AC_ > 6.f) {
     return true;
   }
   return x1384_ > 3.f;
@@ -304,20 +258,20 @@ bool CSandworm::PlayerHiding(CStateManager& mgr, const CTriggerData& data) const
   if (IsBombGuardian(*this)) {
     return false;
   }
-  return X13AC(*this) > 8.f;
+  return x13AC_ > 8.f;
 }
 
 // @ fn_56_3EAC
 void CSandworm::UpdateLoopedSfx(CStateManager& mgr) {
-  UpdateSandwormEmitter(*this, SfxHandle(x1828_sfx.x1c_));
-  UpdateSandwormEmitter(*this, SfxHandle(x1828_sfx.x14_));
-  UpdateSandwormEmitter(*this, SfxHandle(x1828_sfx.x18_));
+  UpdateEmitter(x1828_sfx.x1c_);
+  UpdateEmitter(x1828_sfx.x14_);
+  UpdateEmitter(x1828_sfx.x18_);
 }
 
 // @ fn_56_4088
 void CSandworm::StartMoveSfx(CStateManager& mgr) {
-  StopSandwormMoveSfx(*this);
-  SfxHandle(x1828_sfx.x18_) = CSfxManager::AddEmitter(
+  StopMoveSfx();
+  x1828_sfx.x18_ = CSfxManager::AddEmitter(
       x1828_sfx.x2_walkVocal, x1388_, 0x7f, GetCurrentAreaId().Value(), false, true,
       CSfxManager::kMedPriority + 8);
 }
@@ -329,7 +283,7 @@ void CSandworm::StartVocalSfx(CStateManager& mgr, float dt) {
   if (x1828_sfx.xc_ <= 0.f) {
     x1828_sfx.x10_ = 2.f * mgr.Random()->Float() + 4.f;
     x1828_sfx.xc_ += x1828_sfx.x10_;
-    CSfxHandle& handle = SfxHandle(x1828_sfx.x14_);
+    CSfxHandle& handle = x1828_sfx.x14_;
     if (handle) {
       CSfxManager::RemoveEmitter(handle);
     }
@@ -341,7 +295,7 @@ void CSandworm::StartVocalSfx(CStateManager& mgr, float dt) {
 // @ fn_56_41BC
 void CSandworm::StopVocalSfx(CStateManager& mgr) {
   x1828_sfx.xc_ = 0.f;
-  CSfxHandle& handle = SfxHandle(x1828_sfx.x14_);
+  CSfxHandle& handle = x1828_sfx.x14_;
   if (handle) {
     CSfxManager::RemoveEmitter(handle); // retail does not clear the handle
   }
@@ -359,7 +313,7 @@ void CSandworm::Straighten(CStateManager& mgr, EStateMsg msg, float dt) {
     x1670_.xfc_ = 0.f;
     const CTransform4f look = CTransform4f::LookAt(x1614_residuePosHighHealth, x1608_residuePos);
     SetTransform(CQuaternion::FromMatrix(look).BuildTransform4f(GetTranslation()));
-    SetTranslation(x1388_ - SandwormSpineOffset(*this));
+    SetTranslation(x1388_ - SpineHelper10038());
   }
   if (x1670_.xfc_ > 0.001f) {
     x1670_.xfc_ -= 2.f * dt;
@@ -384,9 +338,9 @@ void CSandworm::Sulk(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->SetLocomotionType(pas::ELocomotionType(7));
   if (msg == kStateMsg_Activate) {
     x165C_ = x8B0_activeTime + x1650_lurkMin + (x1654_lurkMax - x1650_lurkMin) * mgr.Random()->Float();
-    x1658_ = SulkHelper(0.f);
+    x1658_ = SulkHelper();
   } else if (msg == kStateMsg_Deactivate) {
-    SetTransform(SandwormMoveToScriptActor(*this, mgr, x166C_));
+    SetTransform(MoveToScriptActor(mgr, x166C_));
   }
 }
 
@@ -395,16 +349,16 @@ bool CSandworm::ShouldSulk(CStateManager& mgr, const CTriggerData& data) const {
   if (IsBombGuardian(*this)) {
     return false;
   }
-  const float healthPct = SulkHelper(0.f);
+  const float healthPct = SulkHelper();
   if (healthPct < 10.f) {
     return false;
   }
   return healthPct + x164C_ < x1658_;
 }
 
-// Health percentage. Retail takes no argument (header: `float SulkHelper() const`).
+// Health percentage.
 // @ fn_56_55F8
-float CSandworm::SulkHelper(float) const {
+float CSandworm::SulkHelper() const {
   const float initial = GetHealthInfo()->GetInitialHP();
   return 100.f * (GetHealthInfo()->GetHP() / initial);
 }
@@ -416,7 +370,7 @@ bool CSandworm::DoneLurking(CStateManager& mgr, const CTriggerData& data) const 
 
 // @ fn_56_5978
 bool CSandworm::PlayerIsOnPathMesh(CStateManager& mgr, const CTriggerData& data) const {
-  return NearlyOnPath(mgr, PlayerPos(mgr));
+  return NearlyOnPath(PlayerPos(mgr), 0.f);
 }
 
 // @ fn_56_5D80
@@ -426,9 +380,9 @@ void CSandworm::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
     SetBodyCmdRequest(3, 8);
     x1520_flags |= 0x80;
     x14C0_flags |= 0x80;
-    GetTailEye(mgr)->SetDead();
     GetHeadEye(mgr)->SetDead();
-    SpawnResidue(mgr);
+    GetTailEye(mgr)->SetDead();
+    SpawnResidue(mgr, 0);
   }
   // Retail reads a word at body controller +0x37C; taken to be the fall state (2 = landed).
   if (BodyController()->GetFallState() == pas::EFallState(2) && (x14C0_flags & 0x40) == 0) {
@@ -446,9 +400,7 @@ void CSandworm::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // @ fn_56_6A50
 bool CSandworm::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const {
-  // HEADER WORKAROUND: retail fn_56_6AA8 is AngleToTarget(target, dir) with dir = the spit
-  // transform's Y column (x1554/x1564/x1574); the header version takes only the target.
-  return AngleToTarget(PlayerPos(mgr)) < 0.20943952f;
+  return AngleToTarget(PlayerPos(mgr), x1528_spit.x28_xf.GetColumn(kDY)) < 0.20943952f;
 }
 
 // @ fn_56_73F4
@@ -472,7 +424,7 @@ void CSandworm::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   if (IsPossessedBombGuardian()) {
     cmdMgr.SetSteeringSpeedRange(0.f, 1.f);
   }
-  const CVector3f target = FindSandwormCoverPoint(*this, mgr);
+  const CVector3f target = FindCoverPoint(mgr);
 
   switch (msg) {
   case kStateMsg_Activate:
@@ -496,7 +448,7 @@ void CSandworm::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
     StopVocalSfx(mgr);
     StartMoveSfx(mgr);
     x1384_ = 0.f;
-    X13AC(*this) = 0.f;
+    x13AC_ = 0.f;
     x13B0_ = GetTranslation();
     x184C_ = 0;
     if (!x1490_attacks.EndsWith(2, 1)) {
@@ -516,7 +468,7 @@ void CSandworm::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
         x7C4_search.GetCurrentWaypoint() >= x7C4_search.GetWaypoints().size() - 1) {
       x1848_ = kInvalidUniqueId;
       if (PathHelper(mgr, kInvalidUniqueId)) {
-        OrientBodyToPath(mgr, 0.f); // HEADER WORKAROUND: retail fn_56_AD14 takes no dt
+        OrientBodyToPath(mgr);
         SetPathDestination(mgr, target, dt);
       } else {
         x184C_ = x184C_ == 1 ? 0 : 1;
@@ -524,21 +476,21 @@ void CSandworm::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
       }
     }
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
-    const CVector3f move = SandwormPursueWobble(*this, cmdMgr.GetMoveVector());
+    const CVector3f move = PursueHelper(cmdMgr.GetMoveVector());
     if (move.CanBeNormalized()) {
       cmdMgr.DeliverCmd(CBCLocomotionCmd(move.AsNormalized(), CVector3f::Zero(), 1.f));
     }
     if ((target - GetTranslation()).Magnitude() < x14B4_frustrationRadius) {
       x14B0_ += dt;
       if (!AnyEyeDead(mgr) && !IsBombGuardian(*this) && x14B0_ > x14B8_frustrationTimer) {
-        OrientBodyToPath(mgr, 0.f);
+        OrientBodyToPath(mgr);
       }
     }
     x1384_ += dt;
     if (PlayerIsOnPathMesh(mgr, CTriggerData(0.f))) {
-      X13AC(*this) = 0.f;
+      x13AC_ = 0.f;
     } else {
-      X13AC(*this) += dt;
+      x13AC_ += dt;
     }
     break;
   }
@@ -546,9 +498,9 @@ void CSandworm::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   case kStateMsg_Deactivate:
     BodyController()->SetTurnSpeed(x1A00_);
     StopVocalSfx(mgr);
-    StopSandwormMoveSfx(*this);
+    StopMoveSfx();
     x1384_ = 0.f;
-    X13AC(*this) = 0.f;
+    x13AC_ = 0.f;
     ResetBombDropTimer();
     break;
 
@@ -570,7 +522,7 @@ TUniqueId CSandworm::ScanCoverPoints(CStateManager& mgr) {
     ++count;
     const CScriptCoverPoint* cp =
         TCastToPtr< CScriptCoverPoint >(mgr.ObjectById(mgr.GetIdForScript(it->objId)));
-    if (cp == nullptr || !TestCoverPoint(mgr, *cp)) {
+    if (!TestCoverPoint(cp)) {
       continue;
     }
     // Retail tests a state-manager flag at 0x16E8 b7; taken to be "random available".
@@ -592,7 +544,7 @@ TUniqueId CSandworm::ScanCoverPoints(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_All);
   for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
     const CScriptCoverPoint* cp = TCastToPtr< CScriptCoverPoint >(list[idx]);
-    if (cp == nullptr || !TestCoverPoint(mgr, *cp)) {
+    if (!TestCoverPoint(cp)) {
       continue;
     }
     if (!mgr.IsRandomAvailable()) {
@@ -607,11 +559,10 @@ TUniqueId CSandworm::ScanCoverPoints(CStateManager& mgr) {
   return best;
 }
 
-// Retail takes a pointer and rejects null; callers here check for null first.
 // @ fn_56_7E08
-bool CSandworm::TestCoverPoint(CStateManager& mgr, const CActor& point) const {
-  return point.GetActive() && point.GetCurrentAreaId() == GetCurrentAreaId() &&
-         point.GetUniqueId() != x184A_ && point.GetUniqueId() != x1848_;
+bool CSandworm::TestCoverPoint(const CActor* point) const {
+  return point != nullptr && point->GetActive() && point->GetCurrentAreaId() == GetCurrentAreaId() &&
+         point->GetUniqueId() != x184A_ && point->GetUniqueId() != x1848_;
 }
 
 // Header names the last parameter `speed`; retail passes dt through to PathFind.
@@ -658,19 +609,14 @@ void CSandworm::FollowPath(CStateManager& mgr, float dt) {
     return;
   }
   const CVector3f ahead = GetTranslation() + GetTransform().GetColumn(kDY).AsNormalized() * 4.f;
-  if (SandwormNearlyOnPath(*this, ahead, 4.f)) {
+  if (NearlyOnPath(ahead, 4.f)) {
     return;
   }
   const CVector3f dir = (GetSegmentPosition(12) - GetSegmentPosition(11)).AsNormalized();
   const CVector3f tailAhead = GetSegmentPosition(12) + dir * 4.f;
-  if (SandwormNearlyOnPath(*this, tailAhead, 4.f)) {
-    OrientBodyToPath(mgr, 0.f); // HEADER WORKAROUND: retail fn_56_AD14 takes no dt
+  if (NearlyOnPath(tailAhead, 4.f)) {
+    OrientBodyToPath(mgr);
   }
-}
-
-// Header form without a radius: retail callers fn_56_5978 / fn_56_6798 pass 0.
-bool CSandworm::NearlyOnPath(CStateManager& mgr, const CVector3f& pos) const {
-  return SandwormNearlyOnPath(*this, pos, 0.f);
 }
 
 // @ fn_56_AA74
@@ -680,7 +626,7 @@ void CSandworm::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Clamped);
     StopVocalSfx(mgr);
     StartMoveSfx(mgr);
-    SetUnderground(mgr, false); // HEADER WORKAROUND: retail fn_56_AC24 takes no bool
+    SetUnderground(mgr);
     x8C0_flags |= 0x40;
     x8C0_flags &= ~0x01;
     ResetBombDropTimer();
@@ -688,7 +634,7 @@ void CSandworm::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Deactivate) {
     x8C0_flags &= ~0x40;
     StopVocalSfx(mgr);
-    StopSandwormMoveSfx(*this);
+    StopMoveSfx();
     ResetBombDropTimer();
     x1520_flags &= ~0x80;
   } else if (msg == kStateMsg_Update) {
@@ -771,20 +717,14 @@ bool CSandworm::BeginUnderground(CStateManager& mgr, const CTriggerData& data) c
 void CSandworm::LurkUnderground(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->SetLocomotionType(pas::ELocomotionType(7));
   if (msg == kStateMsg_Activate) {
-    SetTransform(SandwormMoveToScriptActor(*this, mgr, x166C_));
+    SetTransform(MoveToScriptActor(mgr, x166C_));
   }
 }
 
 // @ fn_56_112E8
 void CSandworm::Null(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
-    SetUnderground(mgr, false); // HEADER WORKAROUND: retail fn_56_AC24 takes no bool
+    SetUnderground(mgr);
     x1520_flags |= 0x80;
   }
 }
-
-// Keep the unreferenced retail helpers referenced so they are not flagged as unused.
-void (*const kSandwormStatesUnreferenced[])() = {
-    reinterpret_cast< void (*)() >(&CountSandwormScriptActors),
-    reinterpret_cast< void (*)() >(&RampSandwormSteeringSpeed),
-};

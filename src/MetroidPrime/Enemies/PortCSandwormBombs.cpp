@@ -22,32 +22,6 @@
 
 namespace {
 
-// HEADER WORKAROUND: retail fn_56_8E90/91D4/9440 write the bomb velocity (CBouncingBomb+0x1D0)
-// directly, but CBouncingBomb::mVelocity is private and has no setter. This reaches it through the
-// explicit-instantiation access rule; drop it once CBouncingBomb gets SetVelocity.
-CVector3f CBouncingBomb::*BombVelocityMember();
-template < CVector3f CBouncingBomb::*Member >
-struct SBombVelocityAccess {
-  friend CVector3f CBouncingBomb::*BombVelocityMember() { return Member; }
-};
-template struct SBombVelocityAccess< &CBouncingBomb::mVelocity >;
-
-void SetBombVelocity(CBouncingBomb& bomb, const CVector3f& velocity) {
-  bomb.*BombVelocityMember() = velocity;
-}
-
-// HEADER WORKAROUND: retail fn_56_D690 takes the position to probe and returns its ground height;
-// the header declares it without the position. Until the header is fixed the height is left as is,
-// which is not retail behaviour.
-template < typename T >
-float BombAttackGroundHeight(const T& self, CStateManager& mgr, const CVector3f& pos) {
-  if constexpr (requires { self.SpineRenderHelperD690(mgr, pos); }) {
-    return self.SpineRenderHelperD690(mgr, pos);
-  } else {
-    return pos.GetZ();
-  }
-}
-
 // One spine point of x99C, turned about the vertical axis through x1388. Retail x99C is a
 // reserved_vector<CVector3f, 180> (count at 0x99C, 0xC-byte entries, capacity 0xB4).
 void RotateSpinePoint(CVector3f& point, const CTransform4f& rot, const CVector3f& pivot) {
@@ -57,40 +31,33 @@ void RotateSpinePoint(CVector3f& point, const CTransform4f& rot, const CVector3f
                     (point.GetZ() - pivot.GetZ()) + pivot.GetZ());
 }
 
-// HEADER WORKAROUND: the header still types x99C entries as the 0x90-byte SSandwormSpineJoint; with
-// that type the spine points are not turned. Remove once x99C is reserved_vector<CVector3f, 180>.
-void RotateSpinePoint(SSandwormSpineJoint&, const CTransform4f&, const CVector3f&) {}
+} // namespace
 
-// HEADER WORKAROUND: retail fn_56_9030 takes four floats (fuse time, touch radius, gravity scale,
-// bounce restitution) and spawns at the mouth transform x1528_spit.x28_xf; the header declares
-// (mgr, pos, vel). Kept file-local until the declaration is fixed; only WP6 calls it.
+// Spawns at the mouth transform x1528_spit.x28_xf.
 // @ fn_56_9030
-CBouncingBomb* SpawnBouncingBombAtMouth(CSandworm& self, CStateManager& mgr, float fuseTime,
-                                        float touchRadius, float gravityScale,
-                                        float bounceRestitution) {
+CBouncingBomb* CSandworm::SpawnBouncingBomb(CStateManager& mgr, float fuseTime, float touchRadius,
+                                            float gravityScale, float bounceRestitution) {
   CBouncingBomb* bomb = rs_new CBouncingBomb(
-      TToken< CGenDescription >(*self.x1944_bombs.x0_bombFx),
-      TToken< CGenDescription >(*self.x1944_bombs.x10_explosionFx), mgr.AllocateUniqueId(),
-      self.GetCurrentAreaId(), self.GetUniqueId(), fuseTime, touchRadius, kWT_Bomb, 0x100,
-      self.x1528_spit.x28_xf, self.x1944_bombs.x20_damage, 8.f, self.GetInvalidSfx(),
-      self.GetBombBounceSfx(), self.GetBombExplodeSfx(), gravityScale, bounceRestitution);
+      TToken< CGenDescription >(*x1944_bombs.x0_bombFx),
+      TToken< CGenDescription >(*x1944_bombs.x10_explosionFx), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), fuseTime, touchRadius, kWT_Bomb, 0x100,
+      x1528_spit.x28_xf, x1944_bombs.x20_damage, 8.f, GetInvalidSfx(),
+      GetBombBounceSfx(), GetBombExplodeSfx(), gravityScale, bounceRestitution);
   mgr.AddObject(bomb);
   return bomb;
 }
 
-// HEADER WORKAROUND: retail fn_56_EF8C takes (mgr, target, pivot in/out, rate in degrees/s, dt);
-// the header declares (mgr, target, dt). Kept file-local until the declaration is fixed; only the
-// Spread and Toss states call it. fn_56_F328 is CVector3f::Cross.
+// fn_56_F328 is CVector3f::Cross.
 // Turns the whole worm about the vertical axis through x1388 so that the direction x1388 -> x1394
 // swings toward `target`, by at most `rate` degrees per second (slowed inside 0.2 rad).
 // @ fn_56_EF8C
 // @ fn_56_F328
-void RotateBodyForBombAttackImpl(CSandworm& self, CStateManager& mgr, const CVector3f& target,
-                                 CVector3f& pivot, float rate, float dt) {
-  const CVector3f& center = self.x1388_;
+void CSandworm::RotateBodyForBombAttack(CStateManager& mgr, const CVector3f& target,
+                                        CVector3f& pivot, float rate, float dt) {
+  const CVector3f& center = x1388_;
   CVector3f toTarget(target.GetX() - center.GetX(), target.GetY() - center.GetY(), 0.f);
-  CVector3f facing(self.x1394_snatchStart.GetX() - center.GetX(),
-                   self.x1394_snatchStart.GetY() - center.GetY(), 0.f);
+  CVector3f facing(x1394_snatchStart.GetX() - center.GetX(),
+                   x1394_snatchStart.GetY() - center.GetY(), 0.f);
   if (!toTarget.CanBeNormalized() || !facing.CanBeNormalized()) {
     return;
   }
@@ -108,23 +75,22 @@ void RotateBodyForBombAttackImpl(CSandworm& self, CStateManager& mgr, const CVec
   const CRelAngle relAngle = CRelAngle::FromRadians(angle);
   const CTransform4f rot = CTransform4f::RotateZ(relAngle);
 
-  for (int i = 0; i < self.x99C_joints.size(); ++i) {
-    RotateSpinePoint(self.x99C_joints[i], rot, center);
+  for (int i = 0; i < x99C_joints.size(); ++i) {
+    RotateSpinePoint(x99C_joints[i], rot, center);
   }
 
-  CTransform4f bodyRot = self.GetTransform().GetRotation();
+  CTransform4f bodyRot = GetTransform().GetRotation();
   bodyRot.RotateLocalZ(relAngle);
-  CVector3f pos = rot.Rotate(self.GetTranslation() - center) + center;
-  pos.SetZ(BombAttackGroundHeight(self, mgr, pos));
-  CTransform4f xf = self.GetTransform();
+  CVector3f pos = rot.Rotate(GetTranslation() - center) + center;
+  pos.SetZ(SpineRenderHelperD690(mgr, pos));
+  CTransform4f xf = GetTransform();
   xf.SetTranslation(pos);
   xf.SetRotation(bodyRot.GetRotation());
-  self.SetTransform(xf);
+  SetTransform(xf);
 
   pivot = rot.Rotate(pivot - center) + center;
 }
 
-} // namespace
 
 // SSandwormBombs (x1944)
 
@@ -202,7 +168,7 @@ CBouncingBomb* CSandworm::DropBouncingBomb(CStateManager& mgr, const CVector3f& 
 
 // @ fn_56_8E90
 void CSandworm::SpawnBombToss(CStateManager& mgr) {
-  CBouncingBomb* bomb = SpawnBouncingBombAtMouth(*this, mgr, 12.f, 3.f, 1.f, 0.7f);
+  CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 12.f, 3.f, 1.f, 0.7f);
   // Retail draws z, then y, then x.
   const float z = mgr.Random()->Range(1.f, 1.2f);
   const float y = mgr.Random()->Range(-1.f, 1.f);
@@ -215,13 +181,13 @@ void CSandworm::SpawnBombToss(CStateManager& mgr) {
   }
   dir = dir * 25.f;
   dir = dir * mgr.Random()->Range(0.5f, 1.f);
-  SetBombVelocity(*bomb, dir);
+  bomb->SetVelocity(dir);
   bomb->ApplyGravity();
 }
 
 // @ fn_56_91D4
 void CSandworm::SpawnBombFountain(CStateManager& mgr) {
-  CBouncingBomb* bomb = SpawnBouncingBombAtMouth(*this, mgr, 10.f, 5.f, 1.f, 0.65f);
+  CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 10.f, 5.f, 1.f, 0.65f);
   const CVector3f fwd = x1528_spit.x28_xf.GetColumn(kDY);
   CVector3f dir(fwd.GetX(), fwd.GetY(), 0.f);
   if (dir.CanBeNormalized()) {
@@ -239,7 +205,7 @@ void CSandworm::SpawnBombFountain(CStateManager& mgr) {
       scale = 1.f + (dist - 10.f) / 30.f;
     }
   }
-  SetBombVelocity(*bomb, dir * (15.f * scale));
+  bomb->SetVelocity(dir * (15.f * scale));
   bomb->ApplyGravity();
 }
 
@@ -270,7 +236,7 @@ void CSandworm::ReleaseHeldBomb(CStateManager& mgr) {
   if (dir.CanBeNormalized()) {
     dir.Normalize();
   }
-  SetBombVelocity(*bomb, dir * 35.f);
+  bomb->SetVelocity(dir * 35.f);
   x199A_ = 0;
 }
 
@@ -301,7 +267,7 @@ ushort CSandworm::GetInvalidSfx() const { return CSfxManager::kInternalInvalidSf
 
 // @ fn_56_9660
 void CSandworm::SpawnHeldBomb(CStateManager& mgr) {
-  CBouncingBomb* bomb = SpawnBouncingBombAtMouth(*this, mgr, 10.f, 3.f, 1.f, 0.8f);
+  CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 10.f, 3.f, 1.f, 0.8f);
   x1998_ = bomb->GetUniqueId();
   x199A_ = 1;
   AttachHeldBomb(mgr);
@@ -354,7 +320,7 @@ void CSandworm::BombSpreadAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (x1A08_ > 0.f) {
     x1A08_ -= dt;
     const CVector3f target = mgr.Player(0)->GetTranslation();
-    RotateBodyForBombAttackImpl(*this, mgr, target, x199C_, 100.f, dt);
+    RotateBodyForBombAttack(mgr, target, x199C_, 100.f, dt);
   }
   IssueMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Nine));
 }
@@ -381,7 +347,7 @@ void CSandworm::BombTossAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     if (x1A08_ > 0.f) {
       x1A08_ -= dt;
       const CVector3f target = mgr.Player(0)->GetTranslation();
-      RotateBodyForBombAttackImpl(*this, mgr, target, x198C_, 100.f, dt);
+      RotateBodyForBombAttack(mgr, target, x198C_, 100.f, dt);
     }
   }
   IssueMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eight));

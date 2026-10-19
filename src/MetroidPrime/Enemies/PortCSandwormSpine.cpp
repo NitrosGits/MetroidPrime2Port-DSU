@@ -36,40 +36,33 @@ const SSandwormSpineJointDesc skSpineJoints[15] = {
     {"back_spine_5", 1.1f, 0.6f},  {"back_spine_6", 1.2f, 0.8f},  {"back_spine_7", 2.4f, 1.0f},
 };
 
-// WORKAROUND (header): retail fn_56_1080C returns float; CSandworm.hpp declares it void.
+} // namespace
+
 // @ fn_56_1080C
-float SumSegmentLengths(const CSandworm& self, int count) {
+float CSandworm::SpineHelper1080C(int count) const {
   float sum = 0.f;
   for (int i = 0; i < count; ++i) {
-    sum += self.x131C_[i];
+    sum += x131C_[i];
   }
   return sum;
 }
 
-// WORKAROUND (header): retail fn_56_10038 returns CVector3f; CSandworm.hpp declares it void.
 // @ fn_56_10038
-CVector3f PincerOffset(const CSandworm& self) {
-  return CVector3f(0.f, 0.f, self.x1770_pincers.x8_scale * self.SegmentHelper5884());
+CVector3f CSandworm::SpineHelper10038() const {
+  return CVector3f(0.f, 0.f, x1770_pincers.x8_scale * SegmentHelper5884());
 }
 
-CSegId CachedSegId(const CSandworm& self, int idx) {
-  return CSegId(static_cast< int >(self.x988_[idx]));
-}
-
-// WORKAROUND (header): retail fn_56_108BC returns CVector3f; CSandworm.hpp declares it void.
 // Same as fn_56_1096C but indexes the joint table without the +1.
 // @ fn_56_108BC
-CVector3f JointLocatorPosition(const CSandworm& self, int idx) {
+CVector3f CSandworm::SpineHelper108BC(int idx) const {
   CSegId segId;
-  if (self.x984_ > 0) {
-    segId = CachedSegId(self, idx);
+  if (x984_segCount > 0) {
+    segId = CSegId(static_cast< int >(x988_segIds[idx]));
   } else {
-    segId = self.GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx].name));
+    segId = GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx].name));
   }
-  return self.GetLctrTransform(segId).GetTranslation();
+  return GetLctrTransform(segId).GetTranslation();
 }
-
-} // namespace
 
 // @ fn_56_F710
 bool CSandworm::Primed(CStateManager& mgr, const CTriggerData& data) const { return true; }
@@ -81,7 +74,7 @@ float CSandworm::SegmentHelper5884() const {
 }
 
 // @ fn_56_107E8
-float CSandworm::SpineHelper107E8() const { return SumSegmentLengths(*this, 12); }
+float CSandworm::SpineHelper107E8() const { return SpineHelper1080C(12); }
 
 // Caches the reference-stance length of each spine segment once.
 // fn_56_C704/fn_56_C7F4 are the inlined CCharLayoutInfo::GetFromParentUnrotated and its
@@ -116,8 +109,8 @@ CSegId CSandworm::GetSegLocatorId(int idx) const {
 // @ fn_56_1096C
 CVector3f CSandworm::GetLocatorPosition(int idx) const {
   CSegId segId;
-  if (x984_ > 0) {
-    segId = CachedSegId(*this, idx + 1);
+  if (x984_segCount > 0) {
+    segId = CSegId(static_cast< int >(x988_segIds[idx + 1]));
   } else {
     segId = GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx + 1].name));
   }
@@ -132,7 +125,7 @@ CTransform4f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
 }
 
 // @ fn_56_10090
-CVector3f CSandworm::GetSegmentPosition(int idx) const { return x1210_[idx] + PincerOffset(*this); }
+CVector3f CSandworm::GetSegmentPosition(int idx) const { return x1210_[idx] + SpineHelper10038(); }
 
 // @ fn_56_F368
 void CSandworm::SpineHelperF368() { x1670_.xf0_ = GetTranslation(); }
@@ -177,11 +170,11 @@ void CSandworm::CreateCollisionActorManager(CStateManager& mgr) {
   SetMass(20000.f);
   RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
 
-  // Retail appends without resetting x984_; a second call would overrun x988_.
+  // Retail appends without resetting x984_segCount; a second call would overrun x988_segIds.
   for (int i = 0; i < 15; ++i) {
     const CSegId segId = animData->GetLocatorSegId(rstl::string_l(skSpineJoints[i].name));
-    x988_[x984_] = static_cast< u8 >(segId.val());
-    ++x984_;
+    x988_segIds[x984_segCount] = static_cast< u8 >(segId.val());
+    ++x984_segCount;
   }
 }
 
@@ -193,8 +186,7 @@ void CSandworm::SpineHelperCBB4(CStateManager& mgr, int morphed) {
   }
   // Retail fn_56_3048 is (this, mgr) -> bool with no out parameter; the header (WP4) declares an
   // out vector, which is ignored here.
-  CVector3f unused = CVector3f::Zero();
-  if (AIHintHelper(mgr, unused) == true) {
+  if (AIHintHelper(mgr) == true) {
     return;
   }
   if (morphed == x7C0_) {
@@ -231,10 +223,23 @@ void CSandworm::UpdateCollisionActors(CStateManager& mgr, float dt) {
             x998_collisionActors->GetCollisionDescFromIndex(i).GetCollisionActorId()))) {
       actor->SetActive(true);
       if (((x1520_flags >> 7) & 1) == 1) {
-        actor->MoveToWR(JointLocatorPosition(*this, i) + offset, dt);
+        actor->MoveToWR(SpineHelper108BC(i) + offset, dt);
       } else {
-        actor->MoveToWR(JointLocatorPosition(*this, i), dt);
+        actor->MoveToWR(SpineHelper108BC(i), dt);
       }
     }
   }
 }
+
+// TODO(WP5): link-baseline stubs; worker lanes replace these with the retail bodies.
+// @ fn_56_AC24
+void CSandworm::SetUnderground(CStateManager& mgr) {}
+
+// @ fn_56_AD14
+void CSandworm::OrientBodyToPath(CStateManager& mgr) {}
+
+// @ fn_56_F5B0
+void CSandworm::SpineHelperF5B0(CStateManager& mgr, int index) {}
+
+// @ fn_56_F754
+void CSandworm::Prime(CStateManager& mgr, EStateMsg msg, float dt) {}

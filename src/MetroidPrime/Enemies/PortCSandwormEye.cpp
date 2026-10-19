@@ -117,15 +117,13 @@ void CSandworm::CreateEyes(CStateManager& mgr) {
   mgr.AddObject(tail);
 }
 
-// Retail fn_56_E134 looks up x14C6 (the "Tail" eye) although the header names it GetHeadEye;
-// fn_56_E168 looks up x14C4. Bodies follow the asm; see the WP2 report.
 // @ fn_56_E134
-CSandwormEye* CSandworm::GetHeadEye(CStateManager& mgr) {
+CSandwormEye* CSandworm::GetTailEye(CStateManager& mgr) {
   return TCastToPtr< CSandwormEye >(mgr.ObjectById(x14C6_tailEye));
 }
 
 // @ fn_56_E168
-CSandwormEye* CSandworm::GetTailEye(CStateManager& mgr) {
+CSandwormEye* CSandworm::GetHeadEye(CStateManager& mgr) {
   return TCastToPtr< CSandwormEye >(mgr.ObjectById(x14C4_headEye));
 }
 
@@ -240,8 +238,8 @@ bool CSandworm::ShouldRenderTailEye(const CStateManager& mgr) const {
 // @ fn_56_441C
 void CSandworm::UpdateEyes(CStateManager& mgr, float dt) {
   UpdateEyeVulnerability(mgr, dt);
-  CSandwormEye* eyeA = GetTailEye(mgr); // fn_56_E168: x14C4
-  CSandwormEye* eyeB = GetHeadEye(mgr); // fn_56_E134: x14C6
+  CSandwormEye* eyeA = GetHeadEye(mgr); // fn_56_E168: x14C4
+  CSandwormEye* eyeB = GetTailEye(mgr); // fn_56_E134: x14C6
 
   if (!GetAlive() || !GetActive() || (x1520_flags & 0x80) == 0) {
     if (eyeA) {
@@ -325,9 +323,8 @@ void CSandworm::UpdateEyes(CStateManager& mgr, float dt) {
 
   if (AnyEyeDead(mgr) && x14C8_ == 0) {
     x14C8_ = 1;
-    // Retail also passes (GetHeadEye(const) is dead ? 0 : 1) as a second argument; the header's
-    // SpawnResidue(mgr) has no parameter for it. [header mismatch, see the WP2 report]
-    SpawnResidue(mgr);
+    const CSandwormEye* head = GetHeadEye(static_cast< const CStateManager& >(mgr));
+    SpawnResidue(mgr, head != nullptr && head->IsDead() ? 0 : 1); // [port null check]
   }
 }
 
@@ -459,10 +456,10 @@ void CSandworm::AddAdditiveFlinch(CStateManager&, int eye) {
   }
 }
 
-// Retail receives the weapon's CTransform4f and reads its Y column (xf+4/+0x14/+0x24); the
-// header takes that column directly. [header mismatch, see the WP2 report]
+// Angle between the weapon's forward column and the tail segment.
 // @ fn_56_11CF8
-float CSandworm::AngleBetween(const CVector3f& dir) const {
+float CSandworm::AngleBetween(const CTransform4f& xf) const {
+  const CVector3f dir = xf.GetColumn(kDY);
   const CVector3f a = GetSegmentPosition(12);
   const CVector3f b = GetSegmentPosition(11);
   const CVector3f body(b.GetX() - a.GetX(), b.GetY() - a.GetY(), 0.f);
@@ -522,8 +519,7 @@ void CSandworm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       mgr.DeleteObjectRequest(x14C6_tailEye);
       x14C6_tailEye = kInvalidUniqueId;
     }
-    // Retail fn_56_403C takes only `this`; the header adds (mgr, index). [header mismatch]
-    StopMoveSfx(mgr, 0);
+    StopMoveSfx();
     break;
 
   case kSM_AreaLoaded:
@@ -597,7 +593,7 @@ void CSandworm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         if (x1490_attacks.x4_current == 7) {
           mgr.ApplyDamage(lastTouched, GetUniqueId(), lastTouched, dinfo, SolidFilter(),
                           CVector3f::Zero());
-        } else if (AngleBetween(weapon->GetTransform().GetColumn(kDY)) < 1.3089969f &&
+        } else if (AngleBetween(weapon->GetTransform()) < 1.3089969f &&
                    x1490_attacks.x4_current == 0) {
           x19A8_bombPhase.x1c_ += dinfo.GetDamage(*GetDamageVulnerability());
           x19A8_bombPhase.x20_ = CPatterned::skDamageHitTime;
@@ -617,7 +613,7 @@ void CSandworm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       if (!AnyEyeDead(mgr) && !IsPossessedBombGuardian() &&
           GetHealthInfo()->GetHP() <= 0.5f * GetHealthInfo()->GetInitialHP()) {
         // Retail calls SetDead on fn_56_E134's result without a null check. [port null check]
-        if (CSandwormEye* eye = GetHeadEye(mgr)) {
+        if (CSandwormEye* eye = GetTailEye(mgr)) {
           eye->SetDead();
         }
         if (x1490_attacks.x4_current == 7) {

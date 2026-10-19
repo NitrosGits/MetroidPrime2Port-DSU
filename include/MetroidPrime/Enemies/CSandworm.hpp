@@ -7,6 +7,7 @@
 #ifdef TARGET_PC
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/Animation/CharacterCommon.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/CToken.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CQuaternion.hpp"
@@ -136,9 +137,9 @@ struct SSandwormSfx {
   ushort xa_bombExplode; // fn_56_9640
   float xc_;
   float x10_;
-  int x14_; // looped emitters (fn_56_3EAC) [probable]
-  int x18_;
-  int x1c_;
+  CSfxHandle x14_; // looped emitters (fn_56_3EAC)
+  CSfxHandle x18_; // move loop (fn_56_403C)
+  CSfxHandle x1c_;
 };
 
 // x1944. fn_56_1E9C / fn_56_1FD8 ctors, fn_56_1280C dtor.
@@ -186,10 +187,6 @@ private:
   SSandwormGlow& operator=(const SSandwormGlow&);
 };
 
-// x99C entries; the layout belongs to the spine package (WP5).
-struct SSandwormSpineJoint {
-  u8 x0_[0x90];
-};
 #endif // TARGET_PC
 
 
@@ -359,7 +356,7 @@ public:
   void UpdateColorLerp(float dt);                  // fn_56_10D2C
   void DetectIncomingProjectiles(CStateManager& mgr); // fn_56_10E04
   void UpdateBossParams(CStateManager& mgr);       // fn_56_10F90
-  void SpawnResidue(CStateManager& mgr);           // fn_56_11FAC
+  void SpawnResidue(CStateManager& mgr, int eye);  // fn_56_11FAC: eye unused
   void DecayX1350(float dt);                       // fn_56_5C7C
   void TeleportGrabbedPlayer(CStateManager& mgr);  // fn_56_5E94
   void IssueTauntCmd(EStateMsg msg, pas::EAnimationState state, const CBCTauntCmd& cmd); // fn_56_14B58
@@ -377,15 +374,15 @@ public:
   bool HitIsOnTailEye(CStateManager& mgr, TUniqueId collisionActor) const; // fn_56_56D4
   void PickPASAnim(CStateManager& mgr, int state);               // fn_56_7138
   void SetEyeCollisionVulnerability(CStateManager& mgr, int eye, bool vulnerable); // fn_56_CAF0
-  CSandwormEye* GetHeadEye(CStateManager& mgr);                  // fn_56_E134
-  CSandwormEye* GetTailEye(CStateManager& mgr);                  // fn_56_E168
+  CSandwormEye* GetTailEye(CStateManager& mgr);                  // fn_56_E134: x14C6
+  CSandwormEye* GetHeadEye(CStateManager& mgr);                  // fn_56_E168: x14C4
   const CSandwormEye* GetTailEye(const CStateManager& mgr) const; // fn_56_E19C
   const CSandwormEye* GetHeadEye(const CStateManager& mgr) const; // fn_56_E1D0
   bool ShouldRenderHeadEye(const CStateManager& mgr) const;      // fn_56_E204
   bool ShouldRenderTailEye(const CStateManager& mgr) const;      // fn_56_E2C0
   bool IsEyeVisible(const CStateManager& mgr) const;             // fn_56_E340
   void AcceptScriptMsgHelper(CStateManager& mgr);                // fn_56_11330
-  float AngleBetween(const CVector3f& dir) const;                // fn_56_11CF8
+  float AngleBetween(const CTransform4f& xf) const;              // fn_56_11CF8
   void RemoveAdditiveFlinch(CStateManager& mgr, int eye);        // fn_56_11DF8
   void AddAdditiveFlinch(CStateManager& mgr, int eye);           // fn_56_11E54
 
@@ -393,58 +390,58 @@ public:
   void DescendHelper();                                          // fn_56_2718
   bool PathReachable(CStateManager& mgr, const CVector3f& pos) const; // fn_56_3D64
   void UpdateLoopedSfx(CStateManager& mgr);                      // fn_56_3EAC
-  void UpdateEmitter(CStateManager& mgr, int index);             // fn_56_3EF4
-  void StopMoveSfx(CStateManager& mgr, int index);               // fn_56_403C
+  void UpdateEmitter(CSfxHandle& handle);                        // fn_56_3EF4
+  void StopMoveSfx();                                            // fn_56_403C
   void StartMoveSfx(CStateManager& mgr);                         // fn_56_4088
   void StartVocalSfx(CStateManager& mgr, float chance);          // fn_56_40EC
   void StopVocalSfx(CStateManager& mgr);                         // fn_56_41BC
-  TUniqueId FindScriptActor(CStateManager& mgr) const;           // fn_56_534C (unreferenced)
-  float SulkHelper(float dt) const;                              // fn_56_55F8
-  void PursueHelper(CStateManager& mgr, CVector3f& out) const;   // fn_56_6D74
+  int CountScriptActors(CStateManager& mgr) const;               // fn_56_534C (unreferenced)
+  float SulkHelper() const;                                      // fn_56_55F8
+  CVector3f PursueHelper(const CVector3f& move) const;           // fn_56_6D74
   void UpdatePursuePathSpeed(CStateManager& mgr, float dt);      // fn_56_73F4
-  bool FindCoverPoint(CStateManager& mgr, CVector3f& out);       // fn_56_7A2C
+  CVector3f FindCoverPoint(CStateManager& mgr);                  // fn_56_7A2C
   TUniqueId ScanCoverPoints(CStateManager& mgr);                 // fn_56_7C60
-  bool TestCoverPoint(CStateManager& mgr, const CActor& point) const; // fn_56_7E08
+  bool TestCoverPoint(const CActor* point) const;                // fn_56_7E08
   void SetPathDestination(CStateManager& mgr, const CVector3f& dest, float speed); // fn_56_7E60
   void FollowPath(CStateManager& mgr, float dt);                 // fn_56_A708
-  bool NearlyOnPath(CStateManager& mgr, const CVector3f& pos) const; // fn_56_A8E0
+  bool NearlyOnPath(const CVector3f& pos, float radius) const;   // fn_56_A8E0
   bool PathHelper(CStateManager& mgr, TUniqueId id);             // fn_56_AC80
-  void MoveToScriptActor(CStateManager& mgr, EScriptObjectState state); // fn_56_C468
-  void SetSteeringSpeedRange(float min, float max);              // fn_56_10A68 (unreferenced)
+  CTransform4f MoveToScriptActor(CStateManager& mgr, int& index) const; // fn_56_C468
+  void SetSteeringSpeedRange();                                  // fn_56_10A68 (unreferenced)
 
   // WP4: attacks, grab, charge, spit, anim events.
   void BeginAttackHelper(int type);                              // fn_56_2770
   void BeginAttackHelper2(int type);                             // fn_56_27E8
-  bool FindGrabAIHint(CStateManager& mgr, CVector3f& out) const; // fn_56_2CEC
-  bool AIHintHelper(CStateManager& mgr, CVector3f& out) const;   // fn_56_3048
+  bool FindGrabAIHint(CStateManager& mgr) const;                 // fn_56_2CEC
+  bool AIHintHelper(CStateManager& mgr) const;                   // fn_56_3048
   int PickAttackType(CStateManager& mgr);                        // fn_56_3844
   void StartMeleeSfx(CStateManager& mgr);                        // fn_56_3FB4
-  void KnockPlayer(CStateManager& mgr, const CVector3f& impulse, const CDamageInfo& damage); // fn_56_57B0
+  void KnockPlayer(CStateManager& mgr, const CVector3f& impulse); // fn_56_57B0
   void ResetAttackTimer(CStateManager& mgr);                     // fn_56_5CA4
   void ApplyMeleeDamage(CStateManager& mgr);                     // fn_56_5F5C
   void ReleaseGrabbedPlayer(CStateManager& mgr);                 // fn_56_6144
   void GrabPlayer(CStateManager& mgr);                           // fn_56_61EC
-  void Unreferenced6324(CStateManager& mgr, int arg);            // fn_56_6324 (unreferenced)
+  TUniqueId Unreferenced6324(CStateManager& mgr) const;          // fn_56_6324 (unreferenced)
   void SendGrabMsgs(CStateManager& mgr);                         // fn_56_63B8
   void SendAttackMsgs(CStateManager& mgr);                       // fn_56_6410
-  float AngleToTarget(const CVector3f& target) const;            // fn_56_6AA8
-  CVector3f SpitAimAngle(const CVector3f& target) const;         // fn_56_6B64
-  CVector3f ChargeHelper(CStateManager& mgr) const;              // fn_56_6CC0
+  float AngleToTarget(const CVector3f& target, const CVector3f& dir) const; // fn_56_6AA8
+  float SpitAimAngle(const CVector3f& target) const;             // fn_56_6B64
+  CVector3f ChargeHelper(const CVector3f& dir) const;            // fn_56_6CC0
   void UpdateContactDamage(CStateManager& mgr, float dt);        // fn_56_6E40
   bool InMeleeRange(CStateManager& mgr) const;                   // fn_56_72F8
   void ApplyChargeDamage(CStateManager& mgr);                    // fn_56_7EE4
   void LaunchSpitProjectile(CStateManager& mgr, const CVector3f& target); // fn_56_84B8
   void FireSpit(CStateManager& mgr);                             // fn_56_8AAC
   // fn_56_85B4..fn_56_8A34: CImpactVisorEffect / token template instantiations used by FireSpit.
-  void BeginAttack(int first, int last);                         // fn_56_B85C
-  int GrabHelper(CStateManager& mgr);                            // fn_56_C0A4
-  CVector3f PlayerDirection(const CStateManager& mgr) const;     // fn_56_E5F8
+  void BeginAttack(int type, EStateMsg msg);                     // fn_56_B85C
+  bool GrabHelper(CStateManager& mgr);                           // fn_56_C0A4
+  CVector3f PlayerDirection(float scale) const;                  // fn_56_E5F8
 
   // WP5: spine segments, collision actors.
   float SegmentHelper5884() const;                               // fn_56_5884
   void AddAnimatedScale();                                       // fn_56_A510
-  void SetUnderground(CStateManager& mgr, bool underground);     // fn_56_AC24
-  void OrientBodyToPath(CStateManager& mgr, float dt);           // fn_56_AD14
+  void SetUnderground(CStateManager& mgr);                       // fn_56_AC24
+  void OrientBodyToPath(CStateManager& mgr);                     // fn_56_AD14
   void BodyHelper();                                             // fn_56_B0B0
   void SpineUpdateHelper(CStateManager& mgr);                    // fn_56_B138
   void SpineHelperC600();                                        // fn_56_C600
@@ -458,7 +455,7 @@ public:
   void UpdateCollisionActors(CStateManager& mgr, float dt);      // fn_56_D350
   CSegId GetSegLocatorId(int index) const;                       // fn_56_E6BC
   CSegId GetSegId(int index) const;                              // fn_56_E728
-  void SpineHelperE738(int index, CVector3f& out) const;         // fn_56_E738
+  void SpineHelperE738(const CQuaternion& q);                    // fn_56_E738: writes x1670_.x0_
   void SpineHelperE764();                                        // fn_56_E764
   void SpineHelperEF20() const;                                  // fn_56_EF20
   void SpineHelperF368();                                        // fn_56_F368
@@ -470,15 +467,15 @@ public:
   void SpineHelperFB24(CStateManager& mgr);                      // fn_56_FB24
   void SpineHelperFC94(CStateManager& mgr);                      // fn_56_FC94
   void SpineHelperFFBC(int index) const;                         // fn_56_FFBC
-  void SpineHelper10038() const;                                 // fn_56_10038
+  CVector3f SpineHelper10038() const;                            // fn_56_10038
   CVector3f GetSegmentPosition(int index) const;                 // fn_56_10090
   void UnreferencedMath10110();                                  // fn_56_10110 (unreferenced)
   void UnreferencedMath10268();                                  // fn_56_10268 (unreferenced)
   void SpineHelper10510(float dt);                               // fn_56_10510
-  int SpineHelper106D4() const;                                  // fn_56_106D4
+  int SpineHelper106D4(float t) const;                           // fn_56_106D4
   float SpineHelper107E8() const;                                // fn_56_107E8
-  void SpineHelper1080C(int index);                              // fn_56_1080C
-  void SpineHelper108BC(int index) const;                        // fn_56_108BC
+  float SpineHelper1080C(int count) const;                       // fn_56_1080C
+  CVector3f SpineHelper108BC(int index) const;                   // fn_56_108BC
   CVector3f GetLocatorPosition(int index) const;                 // fn_56_1096C
   CTransform4f GetLctrTransformWrapper(const CSegId& id) const;  // fn_56_10A20
 
@@ -488,8 +485,8 @@ public:
   void ResetBombDropTimer();                                     // fn_56_3B9C
   CBouncingBomb* DropBouncingBomb(CStateManager& mgr, const CVector3f& pos); // fn_56_3BAC
   void SpawnBombToss(CStateManager& mgr);                        // fn_56_8E90
-  CBouncingBomb* SpawnBouncingBomb(CStateManager& mgr, const CVector3f& pos,
-                                   const CVector3f& vel);        // fn_56_9030
+  CBouncingBomb* SpawnBouncingBomb(CStateManager& mgr, float fuseTime, float touchRadius,
+                                   float gravityScale, float bounceRestitution); // fn_56_9030
   void SpawnBombFountain(CStateManager& mgr);                    // fn_56_91D4
   void AttachHeldBomb(CStateManager& mgr);                       // fn_56_9368
   void ReleaseHeldBomb(CStateManager& mgr);                      // fn_56_9440
@@ -499,8 +496,8 @@ public:
   ushort GetBombBounceSfx() const;                               // fn_56_9648
   ushort GetInvalidSfx() const;                                  // fn_56_9650
   void SpawnHeldBomb(CStateManager& mgr);                        // fn_56_9660
-  void RotateBodyForBombAttack(CStateManager& mgr, const CVector3f& target, float dt); // fn_56_EF8C
-  void RotateHelper(const CVector3f& a, const CVector3f& b);     // fn_56_F328
+  void RotateBodyForBombAttack(CStateManager& mgr, const CVector3f& target, CVector3f& pivot,
+                               float rateDeg, float dt); // fn_56_EF8C (fn_56_F328 is Cross)
 
   // WP7: rendering, shadow, bounds, pose.
   void UpdateBoundsHelper();                                     // fn_56_43A4
@@ -509,14 +506,14 @@ public:
   void AccumulateBounds(CAABox& box, const CTransform4f& xf) const; // fn_56_9C88
   CAABox ComputeBounds() const;                                  // fn_56_A04C
   void UpdateLocatorTransforms();                                // fn_56_A348
-  float SpineRenderHelperD690(CStateManager& mgr) const;         // fn_56_D690
+  float SpineRenderHelperD690(const CStateManager& mgr, const CVector3f& pos) const; // fn_56_D690
   void SpineRenderHelperD83C() const;                            // fn_56_D83C
   void SpineRenderHelperD898(CStateManager& mgr) const;          // fn_56_D898
   void RenderModelHelper(const CStateManager& mgr, const CModelData& model,
                          const CTransform4f& xf) const;          // fn_56_DB6C
   void SpineRenderHelperDBA4() const;                            // fn_56_DBA4
   float SpineRenderHelperDC28(CStateManager& mgr) const;         // fn_56_DC28
-  float SpineRenderHelperE008(CStateManager& mgr) const;         // fn_56_E008
+  float SpineRenderHelperE008(const CStateManager& mgr, const CVector3f& pos) const; // fn_56_E008
   void UpdatePose();                                             // fn_56_11078
 
   // Members (offsets are the retail layout; CHECK_SIZEOF is retail-only).
@@ -530,13 +527,13 @@ public:
   u8 x8C1_flags; // b7, b6
   rstl::optional_object< SLdrSandwormStruct > x8C4_phases[5]; // Bomb Guardian only
   int x964_;
-  int x968_;
+  u8 x968_;
   float x96C_;
   rstl::reserved_vector< CSegId, 13 > x970_segIds; // fn_56_E6BC per spine locator
-  int x984_;
-  u8 x988_[0x10];
+  int x984_segCount;   // cached spine locator ids (fn_56_C704)
+  u8 x988_segIds[15];
   rstl::single_ptr< CCollisionActorManager > x998_collisionActors; // fn_56_CC8C, lazily in Think
-  rstl::reserved_vector< SSandwormSpineJoint, 15 > x99C_joints;
+  rstl::reserved_vector< CVector3f, 180 > x99C_joints; // spine path points
   rstl::reserved_vector< CVector3f, 13 > x1210_; // radar positions (fn_56_5938)
   rstl::reserved_vector< float, 13 > x12B0_;
   float x12E8_fade[13]; // per-segment fade (fn_56_10BE8)
@@ -548,6 +545,7 @@ public:
   CVector3f x1388_;
   CVector3f x1394_snatchStart; // fn_56_312C / fn_56_3180
   CVector3f x13A0_snatchEnd;
+  float x13AC_; // time the player has been off the path mesh in Pursue
   CVector3f x13B0_;
   rstl::single_ptr< CProjectedShadow > x13BC_shadow; // fn_56_9C10
   rstl::reserved_vector< CTransform4f, 4 > x13C0_;

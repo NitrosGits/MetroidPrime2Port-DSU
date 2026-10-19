@@ -52,39 +52,6 @@ void AccumulateModelBounds(CAABox& box, const CModelData* model, const CTransfor
   box.AccumulateBounds(bounds.GetMaxPoint());
 }
 
-// @ fn_56_E008
-// @ fn_56_D83C
-// Floor height under `pos`: a 20-unit ray down from 5 above. Retail keeps the filter in a
-// function-local static (bss_20).
-float FloorZNear(const CStateManager& mgr, const CVector3f& pos) {
-  const CRayCastResult res = CGameCollision::RayStaticIntersection(
-      mgr, pos + CVector3f(0.f, 0.f, 5.f), CVector3f(0.f, 0.f, -1.f), 20.f, SolidFilter());
-  if (!res.IsValid()) {
-    return pos.GetZ();
-  }
-  return res.GetPoint().GetZ();
-}
-
-// @ fn_56_D690
-// Floor height under `pos`: 20 units down from 2 above, then 40 units down from 6 above.
-// Retail is a CSandworm method (this unused) called by fn_56_C994 (WP5) and fn_56_EF8C (WP6);
-// the header declaration lacks the position argument.
-float FloorZ(const CStateManager& mgr, const CVector3f& pos) {
-  const CMaterialFilter filter = SolidFilter();
-  const CVector3f down(0.f, 0.f, -1.f);
-  CRayCastResult res = CGameCollision::RayStaticIntersection(
-      mgr, CVector3f(pos.GetX(), pos.GetY(), 2.f + pos.GetZ()), down, 20.f, filter);
-  if (res.IsValid()) {
-    return res.GetPoint().GetZ();
-  }
-  res = CGameCollision::RayStaticIntersection(
-      mgr, CVector3f(pos.GetX(), pos.GetY(), 6.f + pos.GetZ()), down, 40.f, filter);
-  if (res.IsValid()) {
-    return res.GetPoint().GetZ();
-  }
-  return pos.GetZ();
-}
-
 // @ fn_56_DBA4
 // A decaying wobble: sin(t * freq) fading out linearly over 0.7 s, in degrees times `amp`.
 CRelAngle Wobble(float t, float freq, float amp) {
@@ -161,7 +128,7 @@ float ClawLiftToClearFloor(const CSandworm& self, CStateManager& mgr, const char
   }
 
   CVector3f tip = xf.GetTranslation() + 2.4f * xf.GetColumn(kDY);
-  const float floorZ = FloorZNear(mgr, tip);
+  const float floorZ = self.SpineRenderHelperE008(mgr, tip);
   float lift = 0.f;
   // Retail also builds translation + 0.5 * (2.4 * Y) each step and never reads it.
   if (-0.6f + tip.GetZ() >= floorZ) {
@@ -179,6 +146,39 @@ float ClawLiftToClearFloor(const CSandworm& self, CStateManager& mgr, const char
 }
 
 } // namespace
+
+// @ fn_56_E008
+// @ fn_56_D83C
+// Floor height under `pos`: a 20-unit ray down from 5 above. Retail keeps the filter in a
+// function-local static (bss_20).
+float CSandworm::SpineRenderHelperE008(const CStateManager& mgr, const CVector3f& pos) const {
+  const CRayCastResult res = CGameCollision::RayStaticIntersection(
+      mgr, pos + CVector3f(0.f, 0.f, 5.f), CVector3f(0.f, 0.f, -1.f), 20.f, SolidFilter());
+  if (!res.IsValid()) {
+    return pos.GetZ();
+  }
+  return res.GetPoint().GetZ();
+}
+
+// @ fn_56_D690
+// Floor height under `pos`: 20 units down from 2 above, then 40 units down from 6 above.
+// Called by fn_56_C994 (WP5) and fn_56_EF8C (WP6); `this` is unused.
+float CSandworm::SpineRenderHelperD690(const CStateManager& mgr, const CVector3f& pos) const {
+  const CMaterialFilter filter = SolidFilter();
+  const CVector3f down(0.f, 0.f, -1.f);
+  CRayCastResult res = CGameCollision::RayStaticIntersection(
+      mgr, CVector3f(pos.GetX(), pos.GetY(), 2.f + pos.GetZ()), down, 20.f, filter);
+  if (res.IsValid()) {
+    return res.GetPoint().GetZ();
+  }
+  res = CGameCollision::RayStaticIntersection(
+      mgr, CVector3f(pos.GetX(), pos.GetY(), 6.f + pos.GetZ()), down, 40.f, filter);
+  if (res.IsValid()) {
+    return res.GetPoint().GetZ();
+  }
+  return pos.GetZ();
+}
+
 
 // @ fn_56_A4F0
 void CSandworm::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }

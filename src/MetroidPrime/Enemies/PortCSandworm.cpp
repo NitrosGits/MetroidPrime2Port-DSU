@@ -204,7 +204,7 @@ CSandworm::CSandworm(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , x964_(0)
 , x968_(0)
 , x96C_(-1000.f)
-, x984_(0)
+, x984_segCount(0)
 , x12B0_(13, 0.f)
 , x134C_(-1000.f)
 , x1350_(0.f)
@@ -311,7 +311,7 @@ CSandworm::CSandworm(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , x964_(0)
 , x968_(0)
 , x96C_(-1000.f)
-, x984_(0)
+, x984_segCount(0)
 , x12B0_(13, 0.f)
 , x134C_(-1000.f)
 , x1350_(0.f)
@@ -660,7 +660,7 @@ void CSandworm::DetectIncomingProjectiles(CStateManager& mgr) {
 // @ fn_56_10F90
 void CSandworm::UpdateBossParams(CStateManager& mgr) {
   if ((x8C0_flags & 0x08) == 0) {
-    SpawnResidue(mgr);
+    SpawnResidue(mgr, 0);
     x8C0_flags |= 0x08;
   }
   if ((x8C0_flags & 0x04) == 0) {
@@ -672,7 +672,7 @@ void CSandworm::UpdateBossParams(CStateManager& mgr) {
 }
 
 // @ fn_56_11FAC
-void CSandworm::SpawnResidue(CStateManager& mgr) {
+void CSandworm::SpawnResidue(CStateManager& mgr, int) {
   const float zOffset = x1770_pincers.x8_scale * (0.5f * GetModelData()->GetScale().GetZ());
   const rstl::vector< SConnection >& conns = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
