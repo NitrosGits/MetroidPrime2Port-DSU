@@ -2229,14 +2229,21 @@ void CSwampBossStage2::Render(const CStateManager& mgr) const {
   mRepeller.Render(mgr, *this);
 }
 
+// fn_79_5E3C: down, tilted along the body's right axis by 0xc84 as the snatch blend falls.
 CVector3f CSwampBossStage2::GetIngSnatchingNormal(float t) const {
-  // TODO(uncertain): not yet ported.
-  return CPatterned::GetIngSnatchingNormal(t);
+  const CTransform4f& xf = GetTransform();
+  const float tilt = (1.f - t) * mAdditiveJitterX;
+  return (CVector3f::Down() + tilt * CVector3f(xf.Get00(), xf.Get10(), xf.Get20())).AsNormalized();
 }
 
+// fn_79_5D40: the snatch plane starts (0xc88 + 2) scaled heights from the splash position and
+// moves back by the model's bounds height as the blend rises.
 CVector3f CSwampBossStage2::GetIngSnatchingPoint(float t) const {
-  // TODO(uncertain): not yet ported.
-  return CPatterned::GetIngSnatchingPoint(t);
+  const CAABox bounds = GetModelData()->GetBounds();
+  const CVector3f normal = GetIngSnatchingNormal(t);
+  const float dist = (mAdditiveJitterY + 2.f) * GetModelData()->GetScale().GetZ() -
+                     (bounds.GetMaxPoint().GetZ() - bounds.GetMinPoint().GetZ()) * t;
+  return mSplashPos + dist * normal;
 }
 
 // --------------------------------------------------------------------------------------------

@@ -24,7 +24,7 @@ AcceptScriptMsg are ported. Most states and helpers are still `TODO(uncertain)` 
 | A59C | `AddToRenderer` | ported (actor+0x150 bit-0 gate and AddParticleGen +0x44 args uncertain) |
 | A838 | `DoUserAnimEvent` | base call only (TODO, §3) |
 | 61C4 | `ProcessDamage` (collision damage) | stub (§3) |
-| 5E3C / 5D40 | `GetIngSnatchingNormal/Point` | stub |
+| 5E3C / 5D40 | `GetIngSnatchingNormal/Point` | ported |
 | 67A4 | `InitGrowths` | ported |
 | 6E68 + 6B78 | `SetupCollisionManager` | ported |
 | 25C0 | `Activate` | ported (SetBossParams string index TODO) |
