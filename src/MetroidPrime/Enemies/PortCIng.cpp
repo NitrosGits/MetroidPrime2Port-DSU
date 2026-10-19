@@ -1,9 +1,8 @@
 // The REL's CIng (module 29, Ing.rel), ported for behaviour rather than bytes. The state machine is
 // fn_29_B208's: 49 triggers, 29 states and 12 code functions, all registered under the REL's own
-// names. Functions checked against the retail code carry `// @ fn_29_<offset>`; the body-projectile
-// and wall-projectile form changes, the attacks, the mini-portal and exit-host states and three code
-// functions are minimal bodies marked [?]. The analysis is docs/module-analysis/IngFamily.md,
-// section A (A.5 for this file).
+// names. Functions checked against the retail code carry `// @ fn_29_<offset>`; the attacks, the
+// mini-portal and exit-host states and three code functions are minimal bodies marked [?]. The
+// analysis is docs/module-analysis/IngFamily.md, section A (A.5 for this file).
 
 #include "MetroidPrime/Enemies/CIng.hpp"
 
@@ -11,6 +10,7 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CRandom16.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
@@ -120,8 +120,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 namespace {
 
 // The forms (mForm, retail 0x9d4). 0/1 are the host forms [?] (no body), 2 corporeal, 3 ing spot,
-// 4 body projectile, 5 evaporating; 6/7 are the form changes' own in-between forms and 8/9 are the
-// wall/portal forms the attacks use [?].
+// 4 the flying body projectile, 5 evaporating; 6/7/8/9 are the four form changes' own forms.
 enum {
   kForm_Corporeal = 2,
   kForm_IngSpot = 3,
@@ -129,6 +128,8 @@ enum {
   kForm_Evaporate = 5,
   kForm_BecomingCorporeal = 6, // BecomeCorporeal's Activate, when it leaves the ing-spot form
   kForm_BecomingIngSpot = 7,   // BecomeIngSpot's Activate, when it leaves the corporeal form
+  kForm_BecomingBodyProjectile = 8, // BecomeBodyProjectile's Activate
+  kForm_BecomingWallProjectile = 9, // BecomeWallProjectile's Activate
 };
 
 // mData.mFlags210 (SLdrIng.ingFlagsIng).
@@ -144,6 +145,8 @@ enum {
 };
 
 const float kFacingAngle = 0.349f; // rodata: 20 degrees
+// rodata_104: the wall projectile's launch direction is clamped to this angle from the surface normal.
+const float kWallLaunchAngle = 0.7853981f; // 45 degrees
 
 bool DebugIng() {
   static int sEnabled = -1;
@@ -961,23 +964,127 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// [?] fn_29_94E8: as BecomeCorporeal.
-void CIng::BecomeBodyProjectile(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, zero offset).
+// False when the target id is empty; the caller then keeps whatever it had.
+bool CIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
+  if (target == nullptr) {
+    return false;
+  }
+  out = target->GetAimPosition(mgr, 0.f);
+  return true;
+}
+
+// fn_29_94E8 (not yet exercised in a run)
+void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("BecomeBodyProjectile");
-    mForm = kForm_BodyProjectile;
-    mDesiredForm = -1;
-    mFormTime = 0.f;
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    // Form 4, the flying body projectile, is only set by the kUE_BeginAction user anim event
+    // (fn_29_C228), which the port's DoUserAnimEvent does not handle yet.
+    mForm = kForm_BecomingBodyProjectile; // 0x9d4 = 8
+    mTakeOff = false;                                     // 0xe5c bit 0
+    mDesiredForm = -1;                                    // 0x9d8
+    break;
+  case kStateMsg_Update:
+    // The try command waits for the body state kAS_LoopAttack (9), then asks for the loop attack.
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      mVerticalMovement = true;               // CPatterned 0x34c bit 6
+      RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      if (!mTakeOff && mForm != kForm_BodyProjectile) {
+        // Aim at the target's aim position, flattened to the actor's own height (0xdd0 = 0x5c).
+        if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468
+          mTargetPos.SetZ(GetTranslation().GetZ());
+          BodyController()->CommandMgr().SetTargetVector(mTargetPos - GetTranslation());
+        }
+      } else {
+        // [?] SetActive(*(+0xc50), mgr, false): the CCollisionActorManager is built by fn_29_3190,
+        // which is not ported.
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    mVerticalMovement = true;                                // CPatterned 0x34c bit 6
+    RemoveMaterial(kMT_GroundCollider, mgr);                 // 0x25
+    // [?] SetActive(*(+0xc50), mgr, false): no CCollisionActorManager in the port (fn_29_3190).
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    if (AnimationData() != nullptr) {
+      AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
+    }
+    break;
+  default:
+    break;
   }
 }
 
-// [?] fn_29_8FE8: which form number the wall projectile is was not read; the form is left alone.
-void CIng::BecomeWallProjectile(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// fn_29_8FE8 (not yet exercised in a run)
+void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("BecomeWallProjectile");
-    mDesiredForm = -1;
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    mForm = kForm_BecomingWallProjectile;                 // 0x9d4 = 9
+    mForm9Render = false;                                 // 0xe5d bit 4
+    mTakeOff = false;                                     // 0xe5c bit 0
+    mDesiredForm = -1;                                    // 0x9d8
+    // Face out of the surface it is on: columns = (normal x up normalised, normal, up), origin one
+    // normal's length off the wall.
+    const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
+    const CVector3f side = CVector3f::Cross(normal, CVector3f::Up()); // fn_29_94A8
+    if (side.IsMagnitudeSafe()) {
+      SetTransform(CTransform4f::FromColumns(side.AsNormalized(), normal, CVector3f::Up(),
+                                            GetTranslation() + normal));
+    }
+    mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_None); // 0xca4 = 0
+    mPortalPlane = true;                                         // 0xe5d bit 6
+    // The portal plane sits the bounding box's Y extent below the actor along the normal; retail's
+    // scalarised dot pairs (y,nz)/(x,nx)/(z,ny), taken here as dot(translation - h*normal, normal).
+    const CAABox bounds = GetBoundingBox();
+    const float height = bounds.GetMaxPoint().GetY() - bounds.GetMinPoint().GetY();
+    mPortalPlaneNormal = normal;                                // 0xdf0
+    mPortalPlaneConstant = CVector3f::Dot(GetTranslation() - normal * height, normal); // 0xdfc
+    BodyController()->EnableAnimation(true);
+    mMoving = false; // 0xe5d bit 1
+    break;
+  }
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_One));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      mForm9Render = true; // 0xe5d bit 4
+      if (mTakeOff || mForm == kForm_BodyProjectile) {
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      } else if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468
+        mTargetPos.SetZ(GetTranslation().GetZ());
+        const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
+        CVector3f dir = mTargetPos - GetTranslation();
+        // Within 45 degrees of the surface normal, else clamp the direction to 45 degrees off it.
+        if (CVector3f::GetAngleDiff(dir, normal) > kWallLaunchAngle) {
+          dir = CVector3f::Slerp(normal, dir.AsNormalized(),
+                                 CRelAngle::FromRadians(kWallLaunchAngle));
+        }
+        BodyController()->CommandMgr().SetTargetVector(dir);
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mPortalPlane = false;    // 0xe5d bit 6
+    mStartAsIngSpot = false; // 0xe5d bit 5
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    if (AnimationData() != nullptr) {
+      AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
+    }
+    break;
+  default:
+    break;
   }
 }
 

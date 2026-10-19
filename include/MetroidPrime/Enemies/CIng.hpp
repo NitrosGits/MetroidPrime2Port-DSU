@@ -363,6 +363,8 @@ private:
   void StopSfx();
   // fn_29_1A80: turn horizontally to the lure safe zone when one is set, else to the target.
   void FaceLureOrTarget(CStateManager& mgr);
+  // fn_29_4468: the target's aim position (CActor's GetAimPosition), false when it is gone.
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out);
 
   // Host layout (retail's CIng is 0xe60, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets
   // are the REL's, from the constructor fn_29_D540 and the tiny accessors fn_29_0 (this+0x9dc),
@@ -412,6 +414,8 @@ private:
   bool mAggressive : 1;                      // 0xe5c bit 4
   bool mFoundMovementPos : 1;                // 0xe5c bit 3
   bool mRecalcPath : 1;                      // 0xe5c bit 2
+  bool xE5C_1 : 1;                           // 0xe5c bit 1 [?] set/cleared by fn_29_6A88 only
+  bool mTakeOff : 1;                         // 0xe5c bit 0: kUE_TakeOff sets it (fn_29_C228)
   bool mRenderModel : 1;                     // 0xe5d bit 7
   bool mPortalPlane : 1;                     // 0xe5d bit 6
   bool mStartAsIngSpot : 1;                  // 0xe5d bit 5 (data bit 7)
