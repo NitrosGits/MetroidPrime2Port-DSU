@@ -153,7 +153,7 @@ ids, builds the armour (`fn_55_6A68`) and turns off the shadow.
   point; the beams' start is the centroid (`/3`, `/2`), each end is `bossPos + radius * dir` with
   `radius` = `tripleCharge.innerRadius` (0x8C4) / `doubleCharge.innerRadius` (0x87C) and `dir` the
   normalized axis between the worms (triple: the three pairwise edges, double: one axis and its
-  negation). Sounds: `tripleCharge.sound_ChargeBeam` (0x8DC) / `doubleCharge.sound_ChargeBeam`
+  horizontal mirror, x and y negated). Sounds: `tripleCharge.sound_ChargeBeam` (0x8DC) / `doubleCharge.sound_ChargeBeam`
   (0x894). 0x8C8 = `tripleCharge.outerRadius` (fn_55_3434 oscillates between the two radii).
 - `fn_55_2D40`: `TLdrToBeamInfo(chargeBeamInfo, 0x91 | flag ? 0x100 : 0)`, `AllocateUniqueId`,
   `rs_new SandBossChargeBeam(mChargeBeamInfo.Token() (0xE28), beamInfo, uid, area, owner, plane)`;
@@ -206,7 +206,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 1B94 | CSandBoss::ShouldRepeaterAttackCheck | [stand-in] log-once |
 | 1C70 | CSandBoss::SyncAttacker | [stand-in] log-once |
 | 1D74 | CSandBoss::RotateHelper1D74 | [stand-in] log-once |
-| 1F84 | CSandBoss::RotateHelper1F84 | [stand-in] log-once |
+| 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [ported] host body, not exercised yet |
 | 2030 | CSandBoss::RotateHelper2030 | [stand-in] log-once |
 | 22E4 | CSandBoss::RotateToPlayerStep | [stand-in] log-once |
 | 2498 | CSandBoss::RotateHelper2498 | [stand-in] log-once |
@@ -375,7 +375,7 @@ Notes:
   the leader, ends the volley (`31E8`: ExitState to every attached sibling, animation over, `2CA4`,
   phase -> 2 with the beam's shutdown time) when the state time passes `duration` or the live-beam
   count drops, else sweeps the beam ends (`3434` three bisectors of the worms' `kDY` columns, `37F4`
-  the two-worm sum and its negation, radius oscillating between inner and outer) and retargets the
+  the two-worm sum and its horizontal mirror, radius oscillating between inner and outer) and retargets the
   sweep (`3324`: `changeDirectionInterval/Variance/Chance` off the `CStateManager` RNG, flipping
   0xF3C); deactivate clears the probe bit, stores the loader's `unknown_0x8d4f3b88` in 0xF44, marks
   the animation not ready, ends the volley and restores the pInfo turn speed. Triggers `C534`/`C378`

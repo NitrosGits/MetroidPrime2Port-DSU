@@ -114,8 +114,17 @@ void CSandBoss::RotateHelper1D74(CStateManager&, float) { // fn_55_1D74
   PortSandBossStandIn("CSandBoss::RotateHelper1D74 (fn_55_1D74)");
 }
 
-void CSandBoss::RotateHelper1F84(CStateManager&, float) { // fn_55_1F84
-  PortSandBossStandIn("CSandBoss::RotateHelper1F84 (fn_55_1F84)");
+// fn_55_1F84 (ported, not exercised yet)
+// Turns the body toward a world point at the controller's turn rate (only for a positive dt and a
+// point away from this worm).
+void CSandBoss::FaceTowardPoint(float dt, const CVector3f& target) {
+  if (dt <= 0.f) {
+    return;
+  }
+  const CVector3f toTarget = target - GetTranslation(); // 0x54
+  if (toTarget.IsMagnitudeSafe()) {
+    BodyController()->FaceDirection(toTarget.AsNormalized(), dt);
+  }
 }
 
 void CSandBoss::RotateHelper2030(CStateManager&, float) { // fn_55_2030
@@ -359,17 +368,15 @@ void CSandBoss::UpdateTripleChargeSweep(CStateManager& mgr, float dt) {
        (outerRadius + innerRadius)) *
       0.5f;
   for (int i = 0; i < 3; ++i) {
-    const CVector3f bisector = facings[i] + facings[(i + 1) % 3];
-    if (!bisector.IsMagnitudeSafe()) {
-      continue;
-    }
-    mChargeBeams[i].mEnd = bossPos + radius * bisector.AsNormalized(); // 0xEA8 / 0xEC8 / 0xEE8
+    const CVector3f sum = facings[i] + facings[(i + 1) % 3];
+    const CVector3f dir = sum.IsMagnitudeSafe() ? sum.AsNormalized() : facings[i];
+    mChargeBeams[i].mEnd = bossPos + radius * dir; // 0xEA8 / 0xEC8 / 0xEE8
   }
 }
 
 // fn_55_37F4 (ported, not exercised yet)
 // The double charge's version: the sweep angle uses the double charge's rate and radii, and the two
-// beams point along the sum of the two worms' facing axes and its negation.
+// beams point along the sum of the two worms' facing axes and its horizontal mirror.
 void CSandBoss::UpdateDoubleChargeSweep(CStateManager& mgr, float dt) {
   if (mChargeBeams.size() != 2) {
     return;
@@ -395,13 +402,13 @@ void CSandBoss::UpdateDoubleChargeSweep(CStateManager& mgr, float dt) {
       (CMath::FastSinR(mChargeBeamSweepPhase) * (outerRadius - innerRadius) +
        (outerRadius + innerRadius)) *
       0.5f;
-  const CVector3f bisector = facings[0] + facings[1];
-  if (!bisector.IsMagnitudeSafe()) {
-    return;
-  }
-  const CVector3f dir = bisector.AsNormalized();
-  mChargeBeams[0].mEnd = bossPos + radius * dir; // 0xEA8
-  mChargeBeams[1].mEnd = bossPos - radius * dir; // 0xEC8
+  // As fn_55_3F44: the summed facing and its horizontal mirror (x and y negated, z kept).
+  const CVector3f sum = facings[0] + facings[1];
+  const CVector3f mirrored(-sum.GetX(), -sum.GetY(), sum.GetZ());
+  const CVector3f dir0 = sum.IsMagnitudeSafe() ? sum.AsNormalized() : facings[0];
+  const CVector3f dir1 = mirrored.IsMagnitudeSafe() ? mirrored.AsNormalized() : facings[1];
+  mChargeBeams[0].mEnd = bossPos + radius * dir0; // 0xEA8
+  mChargeBeams[1].mEnd = bossPos + radius * dir1; // 0xEC8
 }
 
 // fn_55_58B4 (ported, not exercised yet)

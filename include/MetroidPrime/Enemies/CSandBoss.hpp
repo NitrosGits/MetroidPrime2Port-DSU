@@ -240,7 +240,7 @@ private:
   void SyncAttacker(CStateManager& mgr);                                   // fn_55_1C70
   void RotateToPlayerStep(CStateManager& mgr, const CVector3f& target, float dt); // fn_55_22E4
   void RotateHelper1D74(CStateManager& mgr, float dt);                     // fn_55_1D74
-  void RotateHelper1F84(CStateManager& mgr, float dt);                     // fn_55_1F84
+  void FaceTowardPoint(float dt, const CVector3f& target);                 // fn_55_1F84
   void RotateHelper2030(CStateManager& mgr, float dt);                     // fn_55_2030
   void RotateHelper2498(CStateManager& mgr, float dt);                     // fn_55_2498
   void RotateHelper254C(CStateManager& mgr, float dt);                     // fn_55_254C

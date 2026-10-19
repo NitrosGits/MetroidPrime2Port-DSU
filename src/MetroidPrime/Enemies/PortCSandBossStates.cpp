@@ -341,9 +341,14 @@ void CSandBoss::DoubleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack && IsAttachedLeader(mgr)) {
       if (!mChargeBeams.empty()) { // 0xE94
-        // Retail turns the body toward a point on the turning circle (fn_55_1F84 takes it); that
-        // helper is still a stand-in whose host signature has no point argument.
-        RotateHelper1F84(mgr, dt); // fn_55_1F84
+        // Face a point one unit off this worm, a turn step either side of its local Y axis
+        // depending on the sweep direction.
+        const float turn = dt * (mData.unknown_0x7619e561.doubleCharge.turnSpeed * 0.017453292f); // 0x88C
+        const float angle =
+            mChargeBeamSweepDir == 1 ? 1.5707964f - turn : turn + 1.5707964f; // 0xF3C
+        const CVector3f offset = GetTransform().Rotate(
+            CVector3f(CMath::FastCosR(angle), CMath::FastSinR(angle), 0.f));
+        FaceTowardPoint(dt, GetTranslation() + offset); // fn_55_1F84
       }
       if (mStateMachine->GetTime() > mData.unknown_0x7619e561.doubleCharge.duration || // 0x86C
           (CountActiveChargeBeams(mgr) < 2 && !mChargeBeams.empty())) {                // fn_55_26C0
@@ -380,9 +385,14 @@ void CSandBoss::TripleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack && IsAttachedLeader(mgr)) {
       if (!mChargeBeams.empty()) { // 0xE94
-        // Retail turns the body toward a point on the turning circle (fn_55_1F84 takes it); that
-        // helper is still a stand-in whose host signature has no point argument.
-        RotateHelper1F84(mgr, dt); // fn_55_1F84
+        // Face a point one unit off this worm, a turn step either side of its local Y axis
+        // depending on the sweep direction.
+        const float turn = dt * (mData.unknown_0x7619e561.tripleCharge.turnSpeed * 0.017453292f); // 0x8D4
+        const float angle =
+            mChargeBeamSweepDir == 1 ? 1.5707964f - turn : turn + 1.5707964f; // 0xF3C
+        const CVector3f offset = GetTransform().Rotate(
+            CVector3f(CMath::FastCosR(angle), CMath::FastSinR(angle), 0.f));
+        FaceTowardPoint(dt, GetTranslation() + offset); // fn_55_1F84
       }
       if (mStateMachine->GetTime() > mData.unknown_0x7619e561.tripleCharge.duration || // 0x8B4
           (CountActiveChargeBeams(mgr) < 3 && !mChargeBeams.empty())) {                // fn_55_26C0
