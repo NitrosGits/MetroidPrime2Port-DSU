@@ -1849,12 +1849,60 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
 }
 
-// @ fn_29_C228
+// @ fn_29_C228. The base class's handler runs only for the events this function does not handle
+// (retail's local `handled` flag, set by every case below). The area 57 run delivered
+// kUE_LoopedSoundStop (2), kUE_Activate (29), kUE_EffectOff (34) and kUE_Unknown37 (37).
 void CIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                            float dt) {
-  EnsureBodyActive(mgr);
-  // [?] the mini-portal events are not ported.
-  CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+  EnsureBodyActive(mgr); // host guard, not in retail
+  bool handled = false;
+  switch (type) {
+  case kUE_Projectile: // 0
+    // [?] the mini portal attack is not ported: while the bool at 0xd44 is set and the count at
+    // 0xe28 is below 0xe00, retail takes that index's point (0xe04 + 12*i), makes a transform from
+    // the actor's own (+0x24) with that translation, builds the mini portal's info (fn_29_12100,
+    // the beam info at 0x940) and spawns a 0x238-byte CIngMiniPortalAttack (fn_29_11E8C) named
+    // "Ing Mini Portal Attack", then adds it to the state manager. Handled all the same, so the
+    // base class does not fire a generic projectile.
+    handled = true;
+    break;
+  case kUE_TakeOff: // 0xd
+    mTakeOff = true; // 0xe5c bit 0
+    handled = true;
+    break;
+  case kUE_BeginAction: // 0x11
+    if (mAlive) {                      // CPatterned 0x420 bit 6
+      mForm = kForm_BodyProjectile; // 0x9d4 = 4 (the flying body projectile)
+      mBodyProjectileTime = 0.f;    // 0xe58 = rodata_6C
+    }
+    handled = true;
+    break;
+  case kUE_Activate: // 0x1d
+    mStartAsIngSpot = true; // 0xe5d bit 5
+    handled = true;
+    break;
+  case kUE_Deactivate: // 0x1e
+    mStartAsIngSpot = false; // 0xe5d bit 5
+    handled = true;
+    break;
+  case kUE_EffectOn: // 0x21
+    if (AnimationData() != nullptr) {
+      AnimationData()->SetEffectState(rstl::string_l("eyes"), true, mgr); // rodata_40 -> rodata_68E
+    }
+    handled = true;
+    break;
+  case kUE_EffectOff: // 0x22
+    if (AnimationData() != nullptr) {
+      AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr);
+    }
+    handled = true;
+    break;
+  default:
+    break;
+  }
+  if (!handled) {
+    CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+  }
 }
 
 // fn_29_B3C4 (not yet exercised in a run)
