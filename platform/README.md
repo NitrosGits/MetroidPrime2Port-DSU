@@ -235,6 +235,15 @@ and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
   `[harness] no game update for <n> s (... updates so far, limit ...)`, once per
   stall.
 
+- **`MP2_RESUME=0|1`** (default 1): quick resume, MP1's `resume.mpss`. A clean quit (the window's
+  close, which reaches `PortPumpEvents` as `AURORA_EXIT`) writes `<user>/savestates/resume.mp2ss`, a
+  save state of the running game; the next launch with `MP2_SKIP_FRONTEND=1` loads it instead of the
+  card's save once the game is first ready, provided its world is still on the disc, and deletes it
+  once Samus is back. `0` turns both sides off. An `MP2_FRAMES` exit writes one only with
+  `MP2_RESUME=1`, so test runs do not hand their end state to the next run; `MP2_WORLD`/
+  `MP2_TELEPORT` leave the file in place for a later launch. `[savestate] resume:` lines say which
+  happened. Code: `PortSaveState::ResumeSave`/`ResumeCheck` in `port_savestate.cpp`.
+
 `tools/run_gameplay.sh` is the wrapper the port's tests use for all of the above: it passes
 `MP2_SKIP_FRONTEND`, an optional `MP2_WORLD` restart, an `MP2_INPUT` script read from a file, the
 frame limit and the user/cache paths, and it warns about the two mistakes that quietly waste a run -

@@ -14,6 +14,8 @@
 #include "port_save.h"
 #include "port_warp.h"
 
+#include "MetroidPrime/PortSkipFrontEnd.hpp"
+
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/CPakFile.hpp"
 #include "Kyoto/CResFactory.hpp"
@@ -62,8 +64,13 @@ constexpr size_t kBlobSize = 0x2000;
 // Frames the rebuilt world runs before Samus is put back, and how long a load may take at most.
 constexpr int kSettleFrames = 3;
 constexpr int kPlaceTimeoutFrames = 60 * 90;
-// How long after Samus is placed the saved areas still loading may take to come back.
+// How long the room restore waits with nothing moving (no area loading, no layer streaming, no
+// saved area newly back) before it gives up on the saved areas still missing, and how long it may
+// take in all however busy the world stays.
 constexpr int kRoomTimeoutFrames = 60 * 20;
+constexpr int kRoomHardCapFrames = 60 * 300;
+// The quick-resume state's slot number: written on a clean quit, loaded on the next launch.
+constexpr int kResumeSlot = -1;
 
 struct State {
   uint32_t worldId = 0;
@@ -101,7 +108,9 @@ struct RoomRestore {
   bool active = false;
   RoomState state;
   RoomApplyProgress progress;
-  int waited = 0;
+  int waited = 0;           // ticks since Samus was placed
+  int idle = 0;             // ticks in which nothing the restore waits on changed
+  uint64_t signature = 0;   // RoomSignature on the last tick
   // Layers the saved objects live in, activated before the areas are applied. A layer that was
   // switched on in the live room but is not in the reload's layer bits spawns none of its objects,
   // and those saved objects come back as unmatched (162 in area 0 of the Temple Grounds save).
@@ -117,9 +126,23 @@ void SetMessage(const std::string& message) {
   sMessage = message;
 }
 
+// The last manager Tick ran on, cleared by its destructor (Forget): the quit path's resume write
+// runs between updates, outside any Tick.
+CStateManager* sLiveMgr = nullptr;
+// A quick resume being loaded: its file is deleted once Samus is back, as MP1 does.
+bool sResuming = false;
+
+std::string SlotName(int slot) {
+  return slot == kResumeSlot ? std::string("the resume state") : "slot " + std::to_string(slot);
+}
+
 std::string SlotPath(int slot) {
   const std::string folder = Folder();
-  return folder.empty() ? std::string() : folder + "/slot" + std::to_string(slot) + ".mp2ss";
+  if (folder.empty()) {
+    return std::string();
+  }
+  return slot == kResumeSlot ? folder + "/resume.mp2ss"
+                             : folder + "/slot" + std::to_string(slot) + ".mp2ss";
 }
 
 // --- file format: little-endian header, then the CGameState stream ---------------------------
@@ -256,7 +279,7 @@ bool ReadSlot(int slot, State& s, std::string& error) {
   }
   std::ifstream file(path, std::ios::binary);
   if (!file) {
-    error = "slot " + std::to_string(slot) + " is empty";
+    error = SlotName(slot) + " is empty";
     return false;
   }
   const std::string bytes((std::istreambuf_iterator< char >(file)), std::istreambuf_iterator< char >());
@@ -425,25 +448,33 @@ void DoSave(CStateManager& mgr, int slot) {
   SetMessage("saved slot " + std::to_string(slot) + " (" + s.room + ")");
 }
 
-void DoLoad(CStateManager& mgr, int slot) {
-  const std::string what = "load of slot " + std::to_string(slot);
+bool DoLoad(CStateManager& mgr, int slot) {
+  const std::string what = "load of " + SlotName(slot);
   if (const char* why = NotReady(mgr)) {
     SetMessage(what + " failed: " + why);
-    return;
+    return false;
   }
   State s;
   std::string error;
   if (!ReadSlot(slot, s, error)) {
     SetMessage(what + " failed: " + error);
-    return;
+    return false;
   }
   // PortWarpToWorld refuses an invalid world; check here, before the game state is swapped.
   if (s.worldId == kInvalidAssetId || s.areaAssetId == kInvalidAssetId) {
     SetMessage(what + " failed: the state names no world or area");
-    return;
+    return false;
+  }
+  // A world the disc no longer has (another disc, another version) would leave the swapped game
+  // state with nowhere to go: the save's world table and the disc's MLVLs are the authority.
+  if (mgr.PortFirstAreaOfWorld(s.worldId) == kInvalidAssetId) {
+    char id[16];
+    std::snprintf(id, sizeof id, "%08x", static_cast< uint32_t >(s.worldId));
+    SetMessage(what + " failed: world " + id + " is not on this disc");
+    return false;
   }
   std::string undo;
-  if (slot != kUndoSlot) {
+  if (slot != kUndoSlot && slot != kResumeSlot) {
     State current;
     if (!Capture(mgr, current, error) || !WriteSlot(kUndoSlot, current, error)) {
       undo = " (no undo state: " + error + ")";
@@ -462,7 +493,8 @@ void DoLoad(CStateManager& mgr, int slot) {
   sPlace.state = s;
   sPlace.oldMgr = &mgr;
   sPlace.oldWorld = mgr.World();
-  SetMessage("loading slot " + std::to_string(slot) + " (" + s.room + ")" + undo);
+  SetMessage("loading " + SlotName(slot) + " (" + s.room + ")" + undo);
+  return true;
 }
 
 // Put Samus back once the rebuilt world runs.
@@ -527,6 +559,13 @@ void TickPlacement(CStateManager& mgr) {
     cameras->ResetCameras(mgr);
   }
   SetMessage("loaded " + s.room);
+  if (sResuming) {
+    // MP1's rule: a resume state is used once. The next clean quit writes a fresh one.
+    sResuming = false;
+    std::error_code ec;
+    std::filesystem::remove(SlotPath(kResumeSlot), ec);
+    SetMessage("resume: Samus is back in " + s.room + "; the resume state is used up");
+  }
   if (!s.roomState.areas.empty()) {
     sRoom = RoomRestore();
     sRoom.active = true;
@@ -551,6 +590,23 @@ void TickPlacement(CStateManager& mgr) {
   }
 }
 
+// How far the room restore has got (areas applied and seen, layers requested, areas waiting, the
+// areas on the world's loading chain), so a stall can be told from a slow load. `busy` is set while
+// a layer streams or an area is loading.
+uint64_t RoomSignature(CStateManager& mgr, int waiting, bool& busy) {
+  busy = mgr.PortLayerRequestPending();
+  uint64_t signature = sRoom.progress.done.size();
+  signature = signature * 131 + sRoom.progress.seen.size();
+  signature = signature * 131 + sRoom.nextLayer;
+  signature = signature * 131 + static_cast< uint32_t >(waiting);
+  for (CGameArea::CConstChainIterator it = mgr.World()->GetChainHead(CWorld::kC_Loading);
+       CWorld::skGlobalEnd != it; ++it) {
+    busy = true;
+    signature = signature * 131 + static_cast< uint32_t >(it->GetId().Value());
+  }
+  return signature;
+}
+
 // Apply the room state to each saved area once it is back, Samus's own first.
 void TickRoom(CStateManager& mgr) {
   if (mgr.mQuitGame || !mgr.IsFullyInitialized() || mgr.World() == nullptr ||
@@ -562,18 +618,37 @@ void TickRoom(CStateManager& mgr) {
   // Activate the saved layers first, one per tick: a layer's objects only exist once its data has
   // streamed in, and PortWarpToLayer is the port's own path for that (the `LAYER<n>` token uses it).
   // PortWarpToLayer no-ops on a layer that is already active, so an unnecessary entry costs a call.
-  if (sRoom.nextLayer < sRoom.layers.size()) {
-    if (!mgr.PortLayerRequestPending()) {
+  // The last layer is waited out too: its objects only exist once its stream finished.
+  ++sRoom.waited;
+  int waiting = -1;
+  if (sRoom.nextLayer < sRoom.layers.size() || mgr.PortLayerRequestPending()) {
+    if (sRoom.nextLayer < sRoom.layers.size() && !mgr.PortLayerRequestPending()) {
       const std::pair< int, int >& want = sRoom.layers[sRoom.nextLayer++];
       mgr.PortWarpToLayer(TAreaId(want.first), want.second);
     }
-    if (++sRoom.waited <= kRoomTimeoutFrames) {
+  } else {
+    waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress);
+  }
+  if (waiting != 0) {
+    // Give up only once nothing has moved for kRoomTimeoutFrames: a world that is still loading
+    // areas or streaming a layer, or a saved area that just came back, restarts the count.
+    bool busy = false;
+    const uint64_t signature = RoomSignature(mgr, waiting, busy);
+    if (busy || signature != sRoom.signature) {
+      sRoom.signature = signature;
+      sRoom.idle = 0;
+    } else {
+      ++sRoom.idle;
+    }
+    if (sRoom.idle <= kRoomTimeoutFrames && sRoom.waited <= kRoomHardCapFrames) {
       return;
     }
-  }
-  const int waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress);
-  if (waiting > 0 && ++sRoom.waited <= kRoomTimeoutFrames) {
-    return;
+    std::fprintf(stderr, "[savestate] room: giving up after %d frames, the last %d with nothing "
+                         "changing\n",
+                 sRoom.waited, sRoom.idle);
+    if (waiting < 0) {
+      waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress); // the layers never settled
+    }
   }
   sRoom.active = false;
   const RoomApplyStats& st = sRoom.progress.stats;
@@ -662,8 +737,73 @@ void TestHook() {
   }
 }
 
+bool ResumeEnabled() {
+  const char* env = std::getenv("MP2_RESUME");
+  return env == nullptr || std::strcmp(env, "0") != 0;
+}
+
+// Quick resume, read side: the first time a front-end-skipped launch is ready, the resume state
+// replaces the card's save. An explicit boot warp (MP2_WORLD / MP2_TELEPORT) wins over it.
+void ResumeCheck(CStateManager& mgr) {
+  static bool decided = false;
+  if (decided || NotReady(mgr) != nullptr) {
+    return;
+  }
+  decided = true;
+  const std::string path = SlotPath(kResumeSlot);
+  std::error_code ec;
+  if (path.empty() || !std::filesystem::exists(path, ec)) {
+    return;
+  }
+  if (!ResumeEnabled()) {
+    SetMessage("resume: MP2_RESUME=0, so the card's save stays (" + path + " is kept)");
+    return;
+  }
+  if (!PortSkipFrontEnd::Started()) {
+    SetMessage("resume: the front end was not skipped, so the card's save stays");
+    return;
+  }
+  if (std::getenv("MP2_WORLD") != nullptr || std::getenv("MP2_TELEPORT") != nullptr) {
+    SetMessage("resume: a boot warp (MP2_WORLD/MP2_TELEPORT) was asked for; the resume state waits");
+    return;
+  }
+  SetMessage("resume: found " + path + "; loading it instead of the card's save");
+  sResuming = DoLoad(mgr, kResumeSlot);
+}
+
+void ResumeSave(bool frameLimit) {
+  if (Folder().empty() || !ResumeEnabled()) {
+    return;
+  }
+  // A test run that MP2_FRAMES ended would otherwise hand its end state to the next test run on the
+  // same user directory; those write one only when asked to (MP2_RESUME=1).
+  const char* env = std::getenv("MP2_RESUME");
+  if (frameLimit && (env == nullptr || std::strcmp(env, "1") != 0)) {
+    return;
+  }
+  if (sLiveMgr == nullptr) {
+    SetMessage("resume: not written - no game running at quit");
+    return;
+  }
+  State s;
+  std::string error;
+  if (!Capture(*sLiveMgr, s, error) || !WriteSlot(kResumeSlot, s, error)) {
+    SetMessage("resume: not written - " + error);
+    return;
+  }
+  SetMessage("resume: wrote " + SlotPath(kResumeSlot) + " (" + s.room + ")");
+}
+
+void Forget(const CStateManager* mgr) {
+  if (sLiveMgr == mgr) {
+    sLiveMgr = nullptr;
+  }
+}
+
 void Tick(CStateManager& mgr) {
+  sLiveMgr = &mgr;
   TestHook();
+  ResumeCheck(mgr);
   if (sPlace.active) {
     TickPlacement(mgr);
   } else if (sRoom.active) {

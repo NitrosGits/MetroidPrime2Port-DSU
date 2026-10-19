@@ -93,6 +93,9 @@ private:
   void UpdateShellColor(float dt);
   void ResetBurnOrigin();
 
+#ifdef TARGET_PC
+  friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+#endif
   // Target-derived field names; original spellings are not known.
   EDoorState mDoorState;
   float mOpenTime;

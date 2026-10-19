@@ -28,6 +28,10 @@ bool Pump();
 // caller must do nothing else: no front-end window, no `StartGameFromFrontEnd`.
 bool StartGame();
 
+// True once StartGame has made the card's save the running state (the save states' quick resume
+// only replaces a save the skip loaded).
+bool Started();
+
 } // namespace PortSkipFrontEnd
 
 #endif

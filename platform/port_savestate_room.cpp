@@ -30,8 +30,10 @@
 #include <map>
 #include <set>
 
-// Friend of CScriptTimer and CScriptCounter (their TARGET_PC blocks): their state is private.
+// Friend of CScriptTimer, CScriptCounter and CScriptDoor (their TARGET_PC blocks): their state is
+// private.
 struct PortRoomState {
+  static CScriptDoor::ELockState DoorLock(const CScriptDoor& d) { return d.mLockState; }
   static float TimerTime(const CScriptTimer& t) { return t.mTime; }
   static void SetTimer(CScriptTimer& t, float time, bool timing) {
     t.mTime = time;
@@ -228,8 +230,11 @@ void CaptureObject(CEntity& ent, RoomObject& obj) {
     obj.blocks.push_back({kTagCounter, w.bytes});
   }
   if (CScriptDoor* door = TCastToPtr< CScriptDoor >(&ent)) {
+    // Open, then the lock (MP1's door block carries open plus close flags; Echoes' doors have a
+    // lock machine instead, and a state written before it was saved has only the first word).
     BlockWriter w;
     w.U32(door->IsOpen() ? 1 : 0);
+    w.U32(static_cast< uint32_t >(PortRoomState::DoorLock(*door)));
     obj.blocks.push_back({kTagDoor, w.bytes});
   }
 }
@@ -311,6 +316,22 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
         mgr.SendScriptMsg(door, kInvalidUniqueId, open ? kSM_Open : kSM_Close);
         log.Note(obj.editorId, open ? "door opened" : "door closed");
         changed = true;
+      }
+      // The lock, through the same messages a script sends: kSM_Lock locks once Samus is in the
+      // door's area and it is shut (closing it first), kSM_Unlock plays the unlock. A lock that
+      // was mid-animation counts as where it was heading.
+      const CScriptDoor::ELockState saved = static_cast< CScriptDoor::ELockState >(r.U32());
+      if (r.ok) {
+        const CScriptDoor::ELockState live = PortRoomState::DoorLock(*door);
+        const bool wantLocked = saved == CScriptDoor::kLS_Pending ||
+                                saved == CScriptDoor::kLS_Locking || saved == CScriptDoor::kLS_Locked;
+        const bool isLocked = live == CScriptDoor::kLS_Pending || live == CScriptDoor::kLS_Locking ||
+                              live == CScriptDoor::kLS_Locked;
+        if (wantLocked != isLocked) {
+          mgr.SendScriptMsg(door, kInvalidUniqueId, wantLocked ? kSM_Lock : kSM_Unlock);
+          log.Note(obj.editorId, wantLocked ? "door locked" : "door unlocked");
+          changed = true;
+        }
       }
     }
   }

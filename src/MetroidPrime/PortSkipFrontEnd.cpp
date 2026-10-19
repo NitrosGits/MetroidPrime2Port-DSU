@@ -332,4 +332,6 @@ bool StartGame() {
   return true;
 }
 
+bool Started() { return sPhase == kStarted; }
+
 } // namespace PortSkipFrontEnd
