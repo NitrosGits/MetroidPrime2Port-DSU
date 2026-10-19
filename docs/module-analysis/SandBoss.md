@@ -260,14 +260,14 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 59E4 | CSandBoss::NoSiblingHasSphereLocked | [proven] host body |
 | 5A84 | CSandBoss::IsAttachedLeader | [proven] host body |
 | 5B38 | CSandBoss::IsBallInRange (const CPlayer&) | [ported] host body, not exercised yet |
-| 5C30 | CSandBoss::AttachToSphereHelper | [ported] host body, not exercised yet |
+| 5C30 | CSandBoss::AttachToSphereHelper | [proven] host body |
 | 5C6C | CSandBoss::Helper5C6C (mgr, dir) | [ported] host body, not exercised yet |
 | 5E5C | CSandBoss::Helper5E5C | [ported] host body, not exercised yet |
 | 5FEC | CSandBoss::HandleObjectDrop | [ported] host body, not exercised yet |
 | 6250 | CSandBoss::SphereStateHelper6250 (CPlayer&) | [ported] host body, not exercised yet |
 | 62E4 | CSandBoss::SphereStateHelper62E4 (dt, CPlayer&) -> bool | [ported] host body, not exercised yet |
 | 6434 | CSandBoss::SphereStateHelper6434 (dt) | [ported] host body, not exercised yet |
-| 64E4 | CSandBoss::Helper64E4 | [ported] host body, not exercised yet |
+| 64E4 | CSandBoss::Helper64E4 | [proven] host body |
 | 6698 | CSandBoss::UpdateArmorResponseTypes | [proven] host body |
 | 6960 | CSandBoss::SetArmorPieceState | [proven] host body |
 | 6A68 | CSandBoss::BuildArmorModels | [proven] host body |
@@ -299,7 +299,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 8E3C | CSandBoss::SetCinematicStateNormal | [proven] host body |
 | 8E48 | CSandBoss::SetCinematicStateStampede | [proven] host body |
 | 8E54 | CSandBoss::SetCinematicStateUnderGround | [proven] host body |
-| 8E60 | CSandBoss::ResetAttackTimes | [ported] host body, not exercised yet |
+| 8E60 | CSandBoss::ResetAttackTimes | [proven] host body |
 | 8F88 | CSandBoss::ResetHeadArmorHP | [proven] host body |
 | 8F94 | CSandBoss::PlayHeadArmorExplosion | [ported] host body, not exercised yet |
 | 917C | CSandBoss::EndStampede | [proven] host body |
@@ -314,7 +314,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 9438 | CSandBoss::RestorePlayerCollision | [ported] host body, not exercised yet |
 | 952C | CSandBoss::RemovePlayerCollision | [ported] host body, not exercised yet |
 | 9600 | CSandBoss::SetSuckAirArmor | [ported] host body, not exercised yet |
-| 96B0 | CSandBoss::SetAttachedArmor | [ported] host body, not exercised yet |
+| 96B0 | CSandBoss::SetAttachedArmor | [proven] host body |
 | 974C | CSandBoss::SetStampedeArmor | [proven] host body |
 | 97DC | CSandBoss::SetDoubleChargeArmor | [ported] host body, not exercised yet |
 | 986C | CSandBoss::SetTripleChargeArmor | [ported] host body, not exercised yet |
@@ -332,13 +332,13 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | B544 | CSandBoss::BallInMouth | [stand-in] log-once |
 | B658 | CSandBoss::SuckBall | [stand-in] log-once |
 | B718 | CSandBoss::SuckAir | [ported] host body, not exercised yet |
-| B98C | CSandBoss::RotateToPlayer | [ported] host body, not exercised yet |
-| BAAC | CSandBoss::AttachToSphere | [ported] host body, not exercised yet |
+| B98C | CSandBoss::RotateToPlayer | [proven] host body |
+| BAAC | CSandBoss::AttachToSphere | [proven] host body |
 | BD30 | CSandBoss::Deactivate | [ported] host body, not exercised yet |
 | BDAC | CSandBoss::Dead | [ported] host body, not exercised yet |
 | BEA4 | CSandBoss::UnderGround | [proven] host body |
 | BF64 | CSandBoss::Recover | [ported] host body, not exercised yet |
-| BFF8 | CSandBoss::SyncAttachToSphere | [ported] host body, not exercised yet |
+| BFF8 | CSandBoss::SyncAttachToSphere | [proven] host body |
 | C0A0 | CSandBoss::SyncStampede | [proven] host body |
 | C148 | CSandBoss::ArmorDestroyed | [proven] host body |
 | C154 | CSandBoss::HeadArmorDestroyed | [proven] host body |
@@ -347,8 +347,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | C1CC | CSandBoss::IsFacingPlayer | [stand-in] log-once |
 | C258 | CSandBoss::ShouldDestroySphere | [proven] host body |
 | C2A0 | CSandBoss::ShouldSnapJaws | [stand-in] log-once |
-| C378 | CSandBoss::ShouldDoubleCharge | [ported] host body, not exercised yet |
-| C534 | CSandBoss::ShouldTripleCharge | [ported] host body, not exercised yet |
+| C378 | CSandBoss::ShouldDoubleCharge | [proven] host body |
+| C534 | CSandBoss::ShouldTripleCharge | [proven] host body |
 | C730 | CSandBoss::FoundSafeZoneTarget | [proven] host body |
 | C750 | CSandBoss::ShouldRepeaterAttack | [stand-in] log-once |
 | C894 | CSandBoss::ShouldDarkBeamAttack | [stand-in] log-once |
@@ -458,7 +458,25 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   `[sbstate]` tick). Newly `// @`: B4 (Listen, reached by the later runs).
 - Probe knobs in `/tmp/opencode/sb_run.sh` (local only): `MP2_SB_BALL=1` parks a morphed player on each
   worm's mouth locator every frame (sets `mMorphBallState` and the translation), `MP2_SB_FSM=1` dumps the
-  FSM2 graph once and prints the per-worm state tick every 180 `Think` calls.
+  FSM2 graph once and prints the per-worm state tick every 180 `Think` calls. `/tmp/opencode/sb2_run.sh`
+  adds `MP2_SB_HP=1` (forces `mStampedeHP = 0` each frame) and dumps the graph two levels deep.
+- Slice 6 (2026-10-20, run sbM, same area/layer, `MP2_SB_FSM=1 MP2_SB_HP=1`, FRAMES 6000, exit 0, 0 caught,
+  0 reach-stub): **why the FSM never left the stampede cycle.** The Stampede submachine only leaves through
+  `StampedeOver` (C9B8: `mStampedeHP <= 0`), and `mStampedeHP` is only ever drained by `Helper7E60`
+  (7E60: `mStampedeHP -= dt` while >0, then `kBSC_AdditiveReaction` + pain sound) which `HandleDamage`
+  (8258, entered from `kSM_Damage`) calls when a weapon hits the armour. Both were stand-ins, so the HP
+  never moved and the submachine sat in its terminal state forever — not an FSM-engine or `IsUnderGround`
+  problem. With the HP forced to 0 the run walks the whole chain in one go: StateOver (CA90) -> StampedeOver
+  (C9B8) -> EndStampede (917C) -> WaitAttachToSphere (91F4) -> SyncAttachToSphere (BFF8) ->
+  SetCinematicStateNormal (8E3C) -> LockSphere (91E0) -> AttachToSphere (BAAC, AttachToSphereHelper 5C30) ->
+  SetArmorPieceState (6960) -> ResetHeadArmorHP (8F88) -> SetAttachedArmor (96B0) -> ResetAttackTimes (8E60)
+  -> `Attack` submachine: RotateToPlayer state evaluating ShouldSnapJaws (C2A0) / ShouldDarkBeamAttack
+  (C894) / ShouldDoubleCharge (C378) / ShouldTripleCharge (C534), then back out via UnLockSphere (91CC) to
+  the stampede. Stand-ins now reached: 4C60, 528C, 22E4, 83AC, C2A0, C894 (8258/7E60/8008 were not: the
+  probe drains the HP directly instead of damaging the armour). Newly `// @` (20): 595C 59E4 5C30 64E4 6960
+  8E3C 8E60 8F88 917C 91B8 91CC 91E0 91F4 96B0 B98C BAAC BFF8 C154 C378 C534.
+- `GetName()` on the FSM2 machine is useless as a state tick: the three top-level states are all literally
+  named `UnderGround`. Read the `[sbtrace]` order instead.
 
 - One run of the same command exited 13 right after `[area] 36` with no diagnostics; three reruns
   were clean. Unexplained.
@@ -475,8 +493,8 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
 machine is a `CGenericFSM2` (`GetStateMachine2()`), not the `CStateMachine` that
 `CAi::GetStateMachine()` casts the same token to — dumping the latter reads a different object (it printed
 4 bogus states and segfaulted). Nodes are `state#`, `trigger#+10`, `code#+20`, `submachine#+30`; a
-transition's bracket is its label and `#n` is the resolved target. Only the top machine and its two
-direct submachines are dumped so far; `Attack#31` and `Damaged#30` (nested in `AttachedToSphere`) are not.
+transition's bracket is its label and `#n` is the resolved target. Run sbM (`sb2_run.sh`, two levels deep)
+adds `Attack#31` and `Damaged#30`; every machine below is now dumped.
 
 **top**: Start#3 -> UnderGround#1 | UnderGround#1 -> CanStartNewRound#15 -> code WaitStampede#20 ->
 code SetCinematicStateUnderGround#23 -> UnderGround#0 | UnderGround#0 -> SyncStampede#11 -> [Start]
@@ -499,4 +517,28 @@ So `SuckAir`, `SuckBall`, `BallInMouth`, `SpitOutBall`, `DestroySphere`, `JumpOf
 `RepeaterAttack`, `DoubleCharge`, `TripleCharge`, `SnapJaws`, `RotateToPlayer`, `Recover`, `Dead` and
 `Deactivate` all live inside `Attack`/`Damaged` (and their own nested machines) — the FSM must reach
 `AttachedToSphere` before any of them can run, and that needs the top-level `UnderGround#2 -> Delay(3 s) ->
-WaitAttachToSphere -> SyncAttachToSphere` chain after the stampede sub-machine exits.
+WaitAttachToSphere -> SyncAttachToSphere` chain after the stampede sub-machine exits (slice 6 reached it,
+§5).
+
+**Attack** (7 states, 9 triggers, 12 codes, entered from `AttachedToSphere`'s `SetAttachedArmor#21`):
+Start#3 -> code ResetAttackTimes#30 -> code UnLockSphere#20 -> code AllowSyncAttacks#27 -> state
+RotateToPlayer#0. RotateToPlayer has four unordered transitions, tried in this order: ShouldSnapJaws#10 ->
+code LockSphere#21 -> code PreventSyncAttacks#28 -> state SnapJaws#1 -> (StateOver#14) -> code
+ResetAttackTimes#30; ShouldDarkBeamAttack#13 -> code ShouldRepeaterAttack#18 -> code
+PreventSyncAttacks#31 -> state RepeaterAttack#6 (StateOver#11 -> ResetAttackTimes) or, failing that, code
+SelectSafeZoneTarget#22 -> code FoundSafeZoneTarget#12 -> code PreventSyncAttacks#29 -> code LockSphere#23
+-> state DarkBeamAttack#2 (StateOver#11 -> ResetAttackTimes); ShouldDoubleCharge#15 -> code
+SetDoubleChargeArmor#24 -> state DoubleCharge#4 (StateOver#16 -> code SetAttachedArmor#25 ->
+ResetAttackTimes); ShouldTripleCharge#17 -> code SetTripleChargeArmor#26 -> state TripleCharge#5 (same
+StateOver#16 exit). Every attack therefore returns to RotateToPlayer through ResetAttackTimes.
+
+**Damaged** (11 states, 11 triggers, 11 codes, entered from `AttachedToSphere`'s `HeadArmorDestroyed#11` ->
+code PreventSyncAttacks#23): Start#7 -> code LockSphere#24 -> code SetCinematicStateStunned#23 -> code
+SetSuckAirArmor#20 -> state SuckAir#0 (IsBallInSuckRange#11 -> code RemovePlayerCollision#28 -> state
+SuckBall#1 -> StateOver#12 -> SetCinematicStateChoking#27 -> BallInMouth#2 | StateOver#10 -> code
+RestorePlayerCollision#21 -> Recover#8; or | BallInMouth#2: ArmorDestroyed#15 -> code ShouldDestroySphere#17
+-> {IsLastStage#19 -> RestorePlayerCollision#30 -> Dead#9 | SetCinematicStateExitSphere#25 ->
+DestroySphere#4 -> StateOver#16 -> RestorePlayerCollision#22 -> Recover#8} and SetCinematicStateNormal#26,
+else StateOver#13 -> SpitOutBall#3 -> StateOver#14 -> SetCinematicStateStunned#29 -> RestorePlayerCollision
+-> SuckAir#0 again). ShouldDestroySphere's other branch leaves the fight: IsLastStage#20 / RestorePlayerCollision
+#22, and IsLastStage#10 -> Deactivate#10.

@@ -578,7 +578,7 @@ bool CSandBoss::IsBallInRange(const CPlayer& player) const {
   return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), flatDelta) <= 0.2617994f;
 }
 
-// fn_55_5C30 (ported, not exercised yet)
+// @ fn_55_5C30
 // AttachToSphere's delay: half a second per command index, so the three worms attach in turn.
 float CSandBoss::AttachToSphereHelper() { return static_cast< float >(mData.commandIndex) * 0.5f; }
 
@@ -695,7 +695,7 @@ void CSandBoss::SphereStateHelper6434(float dt) {
   TakeDamage(CVector3f::Zero(), 0.f);                                  // 0x448 = skDamageHitTime
 }
 
-// fn_55_64E4 (ported, not exercised yet)
+// @ fn_55_64E4
 // A stampede armour piece came off: explosion at the locator, the 0.2 s gate before the next piece
 // can break (0xF30) and the IS01 waypoint taking the locator's transform.
 void CSandBoss::Helper64E4(CStateManager& mgr, const CTransform4f& locatorXf) {

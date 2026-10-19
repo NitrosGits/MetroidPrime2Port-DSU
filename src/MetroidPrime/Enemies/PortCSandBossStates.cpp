@@ -68,7 +68,7 @@ bool CSandBoss::FoundSafeZoneTarget(CStateManager&, const CTriggerData&) const {
   return mSafeZoneTarget != kInvalidUniqueId;
 }
 
-// fn_55_C534 (ported, not exercised yet)
+// @ fn_55_C534
 // Triple charge gate: all three worms attached and the leader; while another worm is the probe target
 // it just reports its probing bit. The leader needs its attack timer run out, sync attacks allowed
 // and no beam cooldown; then every attached sibling must pass its own triple probe, otherwise the
@@ -112,7 +112,7 @@ bool CSandBoss::ShouldTripleCharge(CStateManager& mgr, const CTriggerData&) cons
   return false;
 }
 
-// fn_55_C378 (ported, not exercised yet)
+// @ fn_55_C378
 // Double charge gate: two attached worms and the leader; a probing worm reports its sync flag. The
 // leader needs its attack timer run out, sync attacks allowed and no beam cooldown, and the player
 // must be in front of it along the local Y axis; the first attached sibling then answers the same
@@ -177,7 +177,7 @@ bool CSandBoss::IsBallInSuckRange(CStateManager& mgr, const CTriggerData&) const
 // fn_55_C174 (ported, not exercised yet)
 bool CSandBoss::IsLastStage(CStateManager&, const CTriggerData&) const { return mRound == 2; }
 
-// fn_55_C154 (ported, not exercised yet)
+// @ fn_55_C154
 bool CSandBoss::HeadArmorDestroyed(CStateManager&, const CTriggerData&) const {
   return mHeadArmorHP <= 0.f;
 }
@@ -197,7 +197,7 @@ bool CSandBoss::SyncStampede(CStateManager& mgr, const CTriggerData&) const {
   return true;
 }
 
-// fn_55_BFF8 (ported, not exercised yet)
+// @ fn_55_BFF8
 bool CSandBoss::SyncAttachToSphere(CStateManager& mgr, const CTriggerData&) const {
   for (int i = 0; i < mSiblings.size(); ++i) {
     const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
@@ -257,7 +257,7 @@ void CSandBoss::Deactivate(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_BAAC (ported, not exercised yet)
+// @ fn_55_BAAC
 void CSandBoss::AttachToSphere(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Update) {
     // 0x7C4 is mData.commandIndex: the wait is half a second per command index.
@@ -288,7 +288,7 @@ void CSandBoss::AttachToSphere(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_B98C (ported, not exercised yet)
+// @ fn_55_B98C
 void CSandBoss::RotateToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     const CVector3f target = mgr.GetPlayer(0)->GetTranslation(); // mgr 0x14FC = mPlayers[0]
@@ -754,7 +754,7 @@ void CSandBoss::SetStampedeArmor(CStateManager& mgr, float) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-// fn_55_96B0 (ported, not exercised yet)
+// @ fn_55_96B0
 void CSandBoss::SetAttachedArmor(CStateManager& mgr, float) {
   for (int i = 0; i < 8; ++i) {
     mArmorState[i] = 2; // 0x1458..0x1474
@@ -844,16 +844,16 @@ void CSandBoss::SelectSafeZoneTarget(CStateManager& mgr, float) {
 // @ fn_55_9200
 void CSandBoss::WaitStampede(CStateManager&, float) { mWaitMode = 1; }
 
-// fn_55_91F4 (ported, not exercised yet)
+// @ fn_55_91F4
 void CSandBoss::WaitAttachToSphere(CStateManager&, float) { mWaitMode = 2; }
 
-// fn_55_91E0 (ported, not exercised yet)
+// @ fn_55_91E0
 void CSandBoss::LockSphere(CStateManager&, float) { mSphereLocked = true; }
 
-// fn_55_91CC (ported, not exercised yet)
+// @ fn_55_91CC
 void CSandBoss::UnLockSphere(CStateManager&, float) { mSphereLocked = false; }
 
-// fn_55_91B8 (ported, not exercised yet)
+// @ fn_55_91B8
 void CSandBoss::AllowSyncAttacks(CStateManager&, float) { mSyncAttacksAllowed = true; }
 
 // fn_55_91A4 (ported, not exercised yet)
@@ -862,7 +862,7 @@ void CSandBoss::PreventSyncAttacks(CStateManager&, float) { mSyncAttacksAllowed 
 // @ fn_55_9190
 void CSandBoss::BeginStampedeCode(CStateManager&, float) { mStampedeActive = true; }
 
-// fn_55_917C (ported, not exercised yet)
+// @ fn_55_917C
 void CSandBoss::EndStampede(CStateManager&, float) { mStampedeActive = false; }
 
 // fn_55_8F94 (ported, not exercised yet)
@@ -884,10 +884,10 @@ void CSandBoss::PlayHeadArmorExplosion(CStateManager& mgr, float) {
   }
 }
 
-// fn_55_8F88 (ported, not exercised yet)
+// @ fn_55_8F88
 void CSandBoss::ResetHeadArmorHP(CStateManager&, float) { mHeadArmorHP = mData.headArmorHP; }
 
-// fn_55_8E60 (ported, not exercised yet)
+// @ fn_55_8E60
 // Re-seeds the attack timers from the charge-beam data of the stage the attached count implies;
 // two attached siblings is the double charge, three the triple charge, anything else the dark beam.
 void CSandBoss::ResetAttackTimes(CStateManager& mgr, float) {
@@ -918,7 +918,7 @@ void CSandBoss::SetCinematicStateUnderGround(CStateManager&, float) { mCinematic
 // @ fn_55_8E48
 void CSandBoss::SetCinematicStateStampede(CStateManager&, float) { mCinematicState = 2; }
 
-// fn_55_8E3C (ported, not exercised yet)
+// @ fn_55_8E3C
 void CSandBoss::SetCinematicStateNormal(CStateManager&, float) { mCinematicState = 3; }
 
 // fn_55_8E30 (ported, not exercised yet)

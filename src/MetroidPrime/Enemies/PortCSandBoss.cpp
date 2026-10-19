@@ -592,7 +592,7 @@ void CSandBoss::UpdateArmorResponseTypes(CStateManager& mgr) {
   }
 }
 
-// fn_55_6960 (ported, not exercised yet)
+// @ fn_55_6960
 // Activate / Deactivate anim events: "Skeleton_Root" swaps the skinned model (tail armour on/off);
 // any other armour locator sets its slot to the attached set (on) or none (off). Ignored while
 // the stampede runs.
@@ -675,7 +675,7 @@ void CSandBoss::HandleHitObject(CStateManager& mgr, TUniqueId sender) {
 // ---------------------------------------------------------------------------------------------
 // Siblings and FSM probes.
 
-// fn_55_595C (ported, not exercised yet)
+// @ fn_55_595C
 int CSandBoss::CountAttachedSiblings(const CStateManager& mgr) const {
   int count = 0;
   for (int i = 0; i < mSiblings.size(); ++i) {
@@ -687,7 +687,7 @@ int CSandBoss::CountAttachedSiblings(const CStateManager& mgr) const {
   return count;
 }
 
-// fn_55_59E4 (ported, not exercised yet)
+// @ fn_55_59E4
 bool CSandBoss::NoSiblingHasSphereLocked(const CStateManager& mgr) const {
   for (int i = 0; i < mSiblings.size(); ++i) {
     const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(mSiblings[i]));
