@@ -11,6 +11,7 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -260,8 +261,67 @@ void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_BCB0. Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
+// takes the kSS_Attack/kSM_Follow connected waypoint as the nav destination and, when the dot of the
+// forward axis with (waypoint - translation) is exactly zero (asm 0xBD90: fcmpo/cror/bne), marks the
+// nav in-position; Update
+// marks it in-position and sets the jump height when the AI waypoint's flags bit1/bit2 ask for a
+// jump/drop and the pirate is within a body-length, aims the cmd-manager target at the player while
+// the body state is kAS_Jump and the waypoint has no kSS_Arrived/kSM_Next connection, then caches
+// the nav destination position in xafc_patrolDestPos; Deactivate restores the normal blend. Retail
+// writes the nav destination (this+0x6c0 = nav+0x08), unlike MP1 which wrote mDestObj.
 void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::TargetPatrol state (fn_72_BCB0)");
+  CPatterned::Patrol(mgr, msg, dt);
+  switch (msg) {
+  case kStateMsg_Activate: {
+    x904_steeringSpeed = 1.f;
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
+    const TUniqueId id = GetConnectedObject(mgr, kSS_Attack, kSM_Follow);
+    if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id))) {
+      mWaypointNavigation.SetDestination(id);
+      if (CVector3f::Dot(GetTransform().GetForward(),
+                         waypoint->GetTranslation() - GetTranslation()) == 0.f) {
+        mWaypointNavigation.SetInPosition(true);
+      }
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    CScriptAIWaypoint* waypoint = TCastToPtr< CScriptAIWaypoint >(
+        mgr.ObjectById(mWaypointNavigation.GetDestination()));
+    if (waypoint != nullptr) {
+      const uint flags = waypoint->GetFlags();
+      const bool jump = (flags >> 1) & 1;
+      const bool drop = (flags >> 2) & 1;
+      if (jump || drop) {
+        const float maxSpeed = BodyController()->GetBodyStateInfo().GetMaxSpeed();
+        const float jumpDistance = maxSpeed * ((1.5f * dt + 0.1f) * GetModelData()->GetScale().GetY()) +
+                                   xa70_intoJumpDist;
+        if ((GetTranslation() - waypoint->GetTranslation()).MagSquared() <
+            jumpDistance * jumpDistance) {
+          mWaypointNavigation.SetInPosition(true);
+          xaf8_jumpHeight = jump ? 3.f : 0.f;
+        }
+      }
+    }
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Jump) {
+      bool setTarget = true;
+      if (waypoint != nullptr) {
+        if (waypoint->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next) != kInvalidUniqueId) {
+          setTarget = false;
+        }
+      }
+      if (setTarget) {
+        BodyController()->CommandMgr().SetTargetVector(GetTargetPos(mgr) - GetTranslation());
+      }
+    }
+    xafc_patrolDestPos = mWaypointNavigation.GetDestinationPosition();
+    break;
+  }
+  case kStateMsg_Deactivate:
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
+    break;
+  }
 }
 
 namespace {
