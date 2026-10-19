@@ -240,6 +240,8 @@ void CSwampBossStage2::NextAttack() {
   mAttackReady = true;
 }
 
+// fn_79_6754: retail resolves the actor through
+// CCollisionActorManager::GetCollisionDescFromIndex(idx) then ObjectById/TCastToPtr.
 CCollisionActor* CSwampBossStage2::CollisionActor(CStateManager& mgr, int idx) const {
   if (mCollisionMgr.null() || idx >= mCollisionMgr->GetNumCollisionActors()) {
     return nullptr;
@@ -257,9 +259,59 @@ CVector3f CSwampBossStage2::CollisionActorPosition(const CStateManager& mgr, int
   return act ? act->GetTranslation() : GetTranslation();
 }
 
+// fn_79_6054: the centre actor's position, or the origin when the chain has none.
 CVector3f CSwampBossStage2::CenterPosition(const CStateManager& mgr) const {
   const CActor* center = TCastToConstPtr< CActor >(mgr.GetObjectById(mCenter));
-  return center ? center->GetTranslation() : GetTranslation();
+  return center ? center->GetTranslation() : CVector3f::Zero();
+}
+
+// fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
+CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
+  if (mDashing) {
+    return mSwoopTarget;
+  }
+  const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSwoopNode));
+  return node ? node->GetTranslation() : GetTranslation();
+}
+
+// fn_79_6108: remember a move target and raise the move request.
+void CSwampBossStage2::RequestMove(const CVector3f& point) {
+  mMoveTarget = point;
+  mMoveRequested = true;
+}
+
+// fn_79_238C: the first chain node on the far side of the centre actor from the current target;
+// the last node is taken unconditionally. Returns null for an empty or unresolved chain.
+CActor* CSwampBossStage2::NextChainNode(CStateManager& mgr) const {
+  const int count = static_cast< int >(mPathNodes.size());
+  for (int i = 0; i < count; ++i) {
+    CActor* node = TCastToPtr< CActor >(mgr.ObjectById(mPathNodes[i]));
+    if (!node) {
+      continue;
+    }
+    if (i == count - 1) {
+      return node;
+    }
+    const CVector3f center = CenterPosition(mgr);
+    if (CVector3f::Dot(node->GetTranslation() - center, TargetPoint(mgr) - center) < 0.f) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+// fn_79_20D8: joints 4..9 follow the phase's vulnerability table while the body can be hurt, and
+// reflect damage otherwise.
+void CSwampBossStage2::SetBodyVulnerable(CStateManager& mgr, bool vulnerable) {
+  const CDamageVulnerability& vuln =
+      !vulnerable ? CDamageVulnerability::ReflectVulnerabilty()
+                  : ((mPhase & 1) != 0 ? mDarkVulnerability : mLightVulnerability);
+  for (int i = kTailActor; i < ARRAY_SIZE(kSphereJoints); ++i) {
+    CCollisionActor* act = CollisionActor(mgr, i);
+    if (act) {
+      act->SetDamageVulnerability(vuln);
+    }
+  }
 }
 
 CVector3f CSwampBossStage2::LevelTarget(const CStateManager& mgr) const {
@@ -360,12 +412,16 @@ void CSwampBossStage2::SetGrowthTargetEffects(CStateManager& mgr, bool on) {
   }
 }
 
+// fn_79_5C74
 void CSwampBossStage2::SetGrowthsActive(CStateManager& mgr, bool active) {
   for (int i = 0; i < 4; ++i) {
     SetGrowthActive(mgr, i, active && mGrowthHealth[i] > 0.f);
   }
 }
 
+// fn_79_5D00: retail reaches the growth actor's vfunc at vtable+0x1c with the flag.
+// TODO(uncertain): the virtual slot is not identified; the port switches the growth's
+// Orbit/Target materials instead, which is what the setup (fn_79_6B78) and ProcessDamage imply.
 void CSwampBossStage2::SetGrowthActive(CStateManager& mgr, int idx, bool active) {
   CCollisionActor* act = CollisionActor(mgr, idx);
   if (!act) {
@@ -378,8 +434,60 @@ void CSwampBossStage2::SetGrowthActive(CStateManager& mgr, int idx, bool active)
   }
 }
 
+// fn_79_24E0: growths are only targetable while the player is in front of the boss, and the boss
+// itself gains or drops its orbit/target/seeker materials with that side. Retail calls this from
+// Reel (fn_79_7870) only.
+void CSwampBossStage2::UpdatePlayerSideMaterials(CStateManager& mgr) {
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (!player) {
+    return;
+  }
+  const bool playerBehind = CVector3f::Dot(player->GetTranslation() - GetTranslation(),
+                                           GetTransform().GetForward()) < 0.f;
+  SetGrowthsActive(mgr, playerBehind);
+  if (playerBehind) {
+    RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
+  } else {
+    AddMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
+  }
+}
+
+// fn_79_5EC4: direction from a random chain node of the pair the boss picks between back towards
+// the centre actor. The node farthest along the boss's forward axis is never the one picked.
+CVector3f CSwampBossStage2::DirectionFromRandomNode(CStateManager& mgr) const {
+  const int count = static_cast< int >(mPathNodes.size());
+  if (count == 0) {
+    return CVector3f::Zero();
+  }
+  const CVector3f center = CenterPosition(mgr);
+  const CVector3f forward = GetTransform().GetForward();
+  int farthest = 0;
+  float farthestDot = FLT_MAX;
+  for (int i = 0; i < count; ++i) {
+    const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mPathNodes[i]));
+    if (!node) {
+      continue;
+    }
+    const float dot = CVector3f::Dot(center - node->GetTranslation(), forward);
+    if (dot < farthestDot) {
+      farthestDot = dot;
+      farthest = i;
+    }
+  }
+  int pick = mgr.Random()->Next() & 1;
+  if (pick == farthest) {
+    ++pick;
+  }
+  if (pick >= count) {
+    pick = 0;
+  }
+  const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mPathNodes[pick]));
+  return node ? (center - node->GetTranslation()).AsNormalized() : CVector3f::Zero();
+}
+
 void CSwampBossStage2::UpdateFacingMaterial(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  // TODO(uncertain): not decoded. Retail's Lurk (fn_79_9A3C) turns the body towards the player
+  // here through fn_79_6134, which is not ported yet.
 }
 
 void CSwampBossStage2::UpdateHover(CStateManager& mgr, float dt) {
@@ -581,7 +689,14 @@ bool CSwampBossStage2::ShouldDropFlyer(CStateManager& mgr, const CTriggerData&) 
 
 // fn_79_9F4C
 void CSwampBossStage2::Start(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  // Retail raises the player's radar radius override and sets its XY/Z radii from
+  // mData.radarRange and mData.unknown_0xfe97e835 for the length of the fight (fn_79_8FAC clears
+  // them again).
+  // TODO(uncertain): CPlayer exposes only the radar radius getters, so this needs upstream
+  // setters before the state can be ported.
 }
 
 // fn_79_9534
@@ -671,12 +786,31 @@ void CSwampBossStage2::SpitBarrage(CStateManager& mgr, EStateMsg msg, float dt) 
 
 // fn_79_8A3C
 void CSwampBossStage2::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Two));
+    }
+    RequestMove(TargetPoint(mgr));
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+  } else {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_8958
 void CSwampBossStage2::Level(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    const CVector3f toTarget = mLevelTarget - GetTranslation();
+    BodyController()->FaceDirection(toTarget, dt);
+    RequestMove(TargetPoint(mgr));
+  } else if (msg == kStateMsg_Activate) {
+    const CActor* node = NextChainNode(mgr);
+    if (node) {
+      mWindNode = node->GetUniqueId();
+      mLevelTarget = node->GetTranslation();
+    }
+  }
 }
 
 // fn_79_82B8
@@ -701,12 +835,33 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_76EC
 void CSwampBossStage2::Recover(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Forward, pas::kStep_Dodge));
+    } else if (mAnimationState.GetState() == CAnimationState::kAS_Over) {
+      // Recovered: tell the chain the reaction is over and take damage again.
+      SendScriptMsgs(kSS_InternalState11, mgr, kInvalidUniqueId, kSM_None);
+      SetBodyVulnerable(mgr, true);
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+  } else {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_79_755C
 void CSwampBossStage2::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Backward, pas::kStep_Dodge));
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+  } else {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    SetBodyVulnerable(mgr, true);
+  }
 }
 
 // fn_79_7308

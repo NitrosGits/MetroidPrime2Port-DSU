@@ -19,6 +19,7 @@
 #include "rstl/single_ptr.hpp"
 #include "rstl/vector.hpp"
 
+class CActor;
 class CCollisionActor;
 class CCollisionActorManager;
 class CElementGen;
@@ -112,7 +113,13 @@ protected:
   CCollisionActor* CollisionActor(CStateManager& mgr, int idx) const;
   CVector3f CollisionActorPosition(const CStateManager& mgr, int idx) const;
   CVector3f CenterPosition(const CStateManager& mgr) const;
+  CVector3f TargetPoint(const CStateManager& mgr) const;
   CVector3f LevelTarget(const CStateManager& mgr) const;
+  void RequestMove(const CVector3f& point);
+  CActor* NextChainNode(CStateManager& mgr) const;
+  void SetBodyVulnerable(CStateManager& mgr, bool vulnerable);
+  void UpdatePlayerSideMaterials(CStateManager& mgr);
+  CVector3f DirectionFromRandomNode(CStateManager& mgr) const;
   CVector3f PlayerAimPoint(const CStateManager& mgr) const;
   TUniqueId NearestNodeToPlayer(CStateManager& mgr) const;
   void InitGrowths();
