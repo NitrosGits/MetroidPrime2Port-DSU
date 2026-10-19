@@ -184,6 +184,7 @@ protected:
   bool mFacePlayer : 1;
   bool mRotateSign : 1;
   bool mClampHealth : 1;
+  bool mUnusedC75Bit5 : 1; // never read or written in the module
   bool mPlayerInWater : 1;
   bool mAttackReady : 1;
   // 0xc76

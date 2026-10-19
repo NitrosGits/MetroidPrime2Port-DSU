@@ -341,6 +341,7 @@ CVector3f CSwampBossStage2::PlayerAimPoint(const CStateManager& mgr) const {
   return mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
 }
 
+// fn_79_4220: the chain node nearest the player (retail returns the actor, used as its uid).
 TUniqueId CSwampBossStage2::NearestNodeToPlayer(CStateManager& mgr) const {
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
   TUniqueId best = kInvalidUniqueId;
@@ -645,8 +646,63 @@ void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
   // TODO(uncertain): not decoded.
 }
 
+// fn_79_2E84: pick the chain node to swoop at. Retail crosses the player-to-centre line with up
+// (fn_79_3314, the host's CVector3f::Cross) to walk the chain round to the far side, then keeps the
+// connected node that is farthest from the player with a random spread.
 void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (!player) {
+    return;
+  }
+  CActor* origin = nullptr;
+  if (mAttackType == 5) {
+    const CActor* nearest = TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
+    const CVector3f centre = CenterPosition(mgr);
+    const CVector3f across =
+        CVector3f::Cross(player->GetTranslation() - centre, CVector3f::Up());
+    const float bossSide = CVector3f::Dot(across, GetTranslation() - centre);
+    for (int i = 0; nearest && i < mPathNodes.size(); ++i) {
+      // Skip the node the player is nearest to; take the first node past the halfway line.
+      if (mPathNodes[i] == nearest->GetUniqueId()) {
+        continue;
+      }
+      CActor* node = TCastToPtr< CActor >(mgr.ObjectById(mPathNodes[i]));
+      if (!node) {
+        continue;
+      }
+      origin = node;
+      if (bossSide * CVector3f::Dot(across, node->GetTranslation() - centre) < 0.f) {
+        break;
+      }
+    }
+  } else {
+    origin = TCastToPtr< CActor >(mgr.ObjectById(NearestNodeToPlayer(mgr)));
+  }
+  if (!origin) {
+    return;
+  }
+  // The chain continues along the chosen node's ARRV/NEXT connections.
+  const rstl::vector< TUniqueId > candidates =
+      origin->FindConnectedObjects(mgr, kSS_Arrived, kSM_Next);
+  float bestScore = 0.f;
+  for (int i = 0; i < candidates.size(); ++i) {
+    const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(candidates[i]));
+    if (!node) {
+      continue;
+    }
+    // rodata: while diving, nodes too close to the current one are not worth swooping at.
+    if (mAttackType == 5 &&
+        (node->GetTranslation() - origin->GetTranslation()).Magnitude() <
+            mData.unknown_0x9e116385) {
+      continue;
+    }
+    const float score = (player->GetTranslation() - node->GetTranslation()).Magnitude() +
+                        mNodeSpacing * 0.5f * mgr.Random()->Float();
+    if (score > bestScore) {
+      mSwoopTarget = node->GetTranslation();
+      bestScore = score;
+    }
+  }
 }
 
 void CSwampBossStage2::PickSpitNode(CStateManager& mgr) {
@@ -667,6 +723,7 @@ void CSwampBossStage2::SendDecrement(CStateManager& mgr) {
   // TODO(uncertain): not decoded.
 }
 
+// fn_79_3390: total damage still inside the memory window.
 float CSwampBossStage2::RecentDamage() const {
   float sum = 0.f;
   for (rstl::list< SDamageMemory >::const_iterator it = mDamageMemory.begin();
@@ -957,7 +1014,46 @@ void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_79_9754
 void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
-  // TODO(uncertain): not yet ported.
+  if (msg == kStateMsg_Update) {
+    if (mAttackType == 5) {
+      BodyController()->FaceDirection(CenterPosition(mgr) - GetTranslation(), dt);
+    } else {
+      BodyController()->FaceDirection(DirectionToPlayerAim(mgr), dt);
+    }
+    RequestMove(TargetPoint(mgr));
+    if (GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
+      mDashTimer -= dt;
+      if (mDashTimer <= 0.f) {
+        PickSwoopTarget(mgr);
+        const SLdrSwampBossStage2Phase& phase = CurrentPhase();
+        mDashTimer = RandomRange(mgr, phase.unknown_0x29e6ead6, phase.unknown_0x1753225e);
+      }
+    }
+    if (StateMachineState().GetTime() > mAttackDelay &&
+        GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion &&
+        mDropFlyerCooldown <= 0.f) {
+      mAttackReady = true;
+      if (const CPlayer* player = mgr.GetPlayer(0)) {
+        // Close enough while diving: switch the queued attack to the flyer drop.
+        if (mAttackType == 3 &&
+            (player->GetTranslation() - GetTranslation()).Magnitude() <
+                mData.unknown_0x9e116385) {
+          mAttackType = 5;
+        }
+      }
+    }
+  } else if (msg == kStateMsg_Activate) {
+    const SLdrSwampBossStage2Phase& phase = CurrentPhase();
+    mAttackDelay = RandomRange(mgr, phase.minTimeBetweenAttacks, phase.maxTimeBetweenAttacks);
+    mAttackReady = false;
+    if (mgr.Random()->Float() >= phase.tauntChance) {
+      NextAttack();
+    } else {
+      mAttackType = 7;
+    }
+    mDashTimer = RandomRange(mgr, phase.unknown_0x29e6ead6, phase.unknown_0x1753225e);
+    PickSwoopTarget(mgr);
+  }
 }
 
 // fn_79_8D90
