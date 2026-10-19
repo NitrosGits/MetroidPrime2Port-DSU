@@ -514,17 +514,78 @@ CVector3f CSwampBossStage2::DirectionToPlayerAim(const CStateManager& mgr) const
   return (PlayerAimPoint(mgr) - GetTranslation()).AsNormalized();
 }
 
-void CSwampBossStage2::UpdateFacingMaterial(CStateManager& mgr) {
-  // TODO(uncertain): not decoded. Retail's Lurk (fn_79_9A3C) turns the body towards the player
-  // here through fn_79_6134, which is not ported yet.
+// fn_79_215C: hover steering. Without a move request the speed decays and the body keeps its
+// heading; with one it eases towards hoverSpeed, turns towards the target and moves.
+void CSwampBossStage2::UpdateHover(float dt) {
+  const CVector3f toTarget = mMoveTarget - GetTranslation();
+  const float step = dt * mData.hoverSpeed;
+  if (!mMoveRequested) {
+    mMoveSpeed = rstl::max_val(mMoveSpeed - step, 0.f);
+    if (mMoveSpeed == 0.f) {
+      mMoveDir = GetTransform().GetForward();
+    }
+  } else {
+    // rodata: ease off within an eighth of a unit per unit of distance, capped at hoverSpeed.
+    float speedLimit = mData.hoverSpeed;
+    const float distance = toTarget.Magnitude();
+    if (distance * 0.125f < 1.f) {
+      speedLimit = mData.hoverSpeed * (distance * 0.125f);
+    }
+    if (mMoveSpeed <= speedLimit) {
+      mMoveSpeed += step;
+    } else {
+      mMoveSpeed -= step;
+    }
+    mMoveSpeed = rstl::min_val(mMoveSpeed, mData.hoverSpeed);
+  }
+  mMoveRequested = false;
+  if (mMoveSpeed > 0.f && toTarget.IsMagnitudeSafe()) {
+    mMoveDir.Normalize();
+    // rodata: turn at 360 degrees per second.
+    const CRelAngle turn = CRelAngle::FromRadians(static_cast< float >(dt * 360.0 * 0.017453292));
+    mMoveDir = CVector3f::Slerp(mMoveDir, toTarget.AsNormalized(), turn);
+    MoveToInOneFrameWR(GetTranslation() + mMoveDir * (mMoveSpeed * dt), dt);
+  }
 }
 
-void CSwampBossStage2::UpdateHover(CStateManager& mgr, float dt) {
-  // TODO(uncertain): not decoded.
-}
-
+// fn_79_58F0: the additive animation ramps towards mAdditiveRate (capped at 0.85) or decays, with a
+// short sine pulse from the flash timer on top; the tail joint's sphere follows the weight.
 void CSwampBossStage2::UpdateAdditive(CStateManager& mgr, float dt) {
-  // TODO(uncertain): not decoded.
+  bool active = false;
+  if (mAdditiveRate <= 0.f) {
+    if (mAdditiveRate < 0.f) {
+      if (mAdditiveWeight <= 0.f) {
+        mAdditiveRate = 0.f;
+      } else {
+        mAdditiveWeight = rstl::max_val(mAdditiveWeight + dt * mAdditiveRate, 0.f);
+        active = true;
+      }
+    }
+  } else if (mAdditiveWeight >= 0.85f) {
+    mAdditiveRate = 0.f;
+  } else {
+    mAdditiveWeight = rstl::min_val(mAdditiveWeight + dt * mAdditiveRate, 0.85f);
+    active = true;
+  }
+  // rodata: the flash is a 0.3 second quarter-sine pulse of 0.15 on top of the weight.
+  float flashAmount = 0.f;
+  if (mFlashTime > 0.f) {
+    const float t = mFlashTime / 0.3f;
+    flashAmount = CMath::FastSinR(static_cast< float >(t * t * 360.0 * 0.017453292)) * 0.15f;
+    mFlashTime = rstl::max_val(mFlashTime - dt, 0.f);
+    active = true;
+  }
+  CAnimData* animData = AnimationData();
+  if (active) {
+    animData->AddAdditiveAnimation(mAdditiveAnim, mAdditiveWeight + flashAmount, false, false);
+    // rodata: the tail joint grows from radius 5 with twice the additive weight, at model scale.
+    CCollisionActor* tail = CollisionActor(mgr, kTailActor);
+    if (tail) {
+      tail->SetSphereRadius((mAdditiveWeight * 2.f + 5.f) * GetModelData()->GetScale().GetY());
+    }
+  } else if (mAdditiveWeight == 0.f) {
+    animData->DelAdditiveAnimationImmediately(mAdditiveAnim);
+  }
 }
 
 // fn_79_3900: head/tail water splash. `pos` is the splash point and `lastSplash` the last one
@@ -600,8 +661,23 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
   }
 }
 
+// fn_79_2928: the boss bar is quartered by phase. Phases 0 and 2 show the wing growths' health,
+// phases 1 and 3 the ovipositor's; anything else contributes nothing.
 void CSwampBossStage2::UpdateHealthFraction(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  const float initialHealth = GetHealthInfo()->GetInitialHP();
+  float fraction = 0.f;
+  if (mPhase == 0 || mPhase == 2) {
+    float growthHealth = 0.f;
+    for (int i = 0; i < mGrowthHealth.size(); ++i) {
+      if (mGrowthHealth[i] > 0.f) {
+        growthHealth += mGrowthHealth[i];
+      }
+    }
+    fraction = growthHealth / (mData.wingGrowthHealth * 4.f);
+  } else if (mPhase == 1 || mPhase == 3) {
+    fraction = mOvipositorHealth / CurrentPhase().health;
+  }
+  HealthInfo()->SetHP((static_cast< float >(3 - mPhase) + fraction) * 0.25f * initialHealth);
 }
 
 void CSwampBossStage2::AddAdditiveFlinch(float amount) {
@@ -674,8 +750,27 @@ void CSwampBossStage2::SpawnWingDamageEffect(CStateManager& mgr, int idx) {
   mgr.AddObject(effect);
 }
 
+// fn_79_3F30: the water height from the centre actor, the node spacing from the first chain node,
+// the edge radius from the edge marker, and the surface height from the water trigger's bounds.
 void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  const CActor* centre = TCastToConstPtr< CActor >(mgr.GetObjectById(mCenter));
+  if (centre) {
+    const CVector3f centrePos = centre->GetTranslation();
+    mWaterZ = centrePos.GetZ();
+    if (!mPathNodes.empty()) {
+      const CActor* first = TCastToConstPtr< CActor >(mgr.GetObjectById(mPathNodes[0]));
+      if (first) {
+        mNodeSpacing = (first->GetTranslation() - centrePos).Magnitude();
+      }
+    }
+    const CActor* marker = TCastToConstPtr< CActor >(mgr.GetObjectById(mEdgeMarker));
+    if (marker) {
+      mEdgeDistance = (marker->GetTranslation() - centrePos).Magnitude();
+    }
+  }
+  if (const CScriptWater* water = TCastToConstPtr< CScriptWater >(mgr.GetObjectById(mWater))) {
+    mWaterZ = water->GetTriggerBoundsWR().GetMaxPoint().GetZ();
+  }
 }
 
 // fn_79_2E84: pick the chain node to swoop at. Retail crosses the player-to-centre line with up
@@ -1359,14 +1454,13 @@ void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
     SetHeadVulnerable(mgr, true);
     PickSpitNode(mgr);
   } else if (msg == kStateMsg_Update) {
-    // fn_79_6134: face the player.
-    UpdateFacingMaterial(mgr);
+    BodyController()->FaceDirection(DirectionToPlayerAim(mgr), dt);
     if (mDashing) {
       mDashing = false;
       BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Up, pas::kStep_Dodge));
     }
     if (GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
-      // TODO(uncertain): fn_79_6108(LevelTarget) is a move request toward the level target.
+      RequestMove(TargetPoint(mgr));
       mDashTimer -= dt;
       if (mDashTimer <= 0.f) {
         BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Up, pas::kStep_Dodge));
@@ -1813,7 +1907,7 @@ void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
   mTailPos = CollisionActorPosition(mgr, kTailActor);
   mSplashPos = CollisionActorPosition(mgr, kSplashActor);
   UpdateAdditive(mgr, dt);
-  UpdateHover(mgr, dt);
+  UpdateHover(dt);
   if (mGrowthVulnerableTime > 0.f) {
     mGrowthVulnerableTime -= dt;
     if (mGrowthVulnerableTime <= 0.f) {

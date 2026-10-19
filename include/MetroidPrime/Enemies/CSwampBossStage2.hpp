@@ -130,8 +130,7 @@ protected:
   void SetGrowthTargetEffects(CStateManager& mgr, bool on);
   void SetGrowthsActive(CStateManager& mgr, bool active);
   void SetGrowthActive(CStateManager& mgr, int idx, bool active);
-  void UpdateFacingMaterial(CStateManager& mgr);
-  void UpdateHover(CStateManager& mgr, float dt);
+  void UpdateHover(float dt);
   void UpdateAdditive(CStateManager& mgr, float dt);
   void UpdateWater(CStateManager& mgr, const CVector3f& pos, CVector3f& lastSplash);
   void UpdateHealthFraction(CStateManager& mgr);
