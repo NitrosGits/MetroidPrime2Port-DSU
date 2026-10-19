@@ -372,6 +372,12 @@ private:
   void SetupCollisionActors(CStateManager& mgr);
   // fn_29_2ED8 (kSM_HitObject): a collision actor that last touched the player deals contact damage.
   void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
+  // fn_29_2B70 (kSM_Damage in the ing-spot form): the hit reaction and its effects.
+  void IngSpotDamage(CStateManager& mgr, TUniqueId sender);
+  // fn_29_2684 (kSM_Damage otherwise): a weapon hit on a collision actor becomes the Ing's damage.
+  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
+  // fn_29_2414: the explosion of the hit effect token (heavy when asked and loaded); not added.
+  CEntity* SpawnHitEffect(CStateManager& mgr, bool heavy);
 
   // Host layout (retail's CIng is 0xe60, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets
   // are the REL's, from the constructor fn_29_D540 and the tiny accessors fn_29_0 (this+0x9dc),
@@ -395,6 +401,8 @@ private:
   TUniqueId mLastCoverHintId;                // 0xd74
   TUniqueId mD76Id;                          // 0xd76, cleared once its object is gone
   TUniqueId mLureSafeZoneId;                 // 0xd78
+  rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // 0xd08 ing-spot hit fx
+  rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // 0xd18 ing-spot heavy hit fx
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect; // 0xd28
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
   CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
@@ -413,6 +421,7 @@ private:
   float mBodyState5Time;                     // 0xe40
   float mFrustrationTimer;                   // 0xe44
   float mBallCooldown;                       // 0xe48
+  float mHitReactionTime;                    // 0xe4c [?] set -1 by an ing-spot hit (fn_29_2B70), read by fn_29_6578/4D18
   float mLightBlend;                         // 0xe50
   float mDeadFade;                           // 0xe54
   float mBodyProjectileTime;                 // 0xe58

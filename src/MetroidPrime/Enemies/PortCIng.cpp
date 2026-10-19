@@ -17,6 +17,10 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CHealthInfo.hpp"
+#include "MetroidPrime/CKnockBackInfo.hpp"
+#include "MetroidPrime/Player/CMorphBall.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -266,7 +270,9 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mLastCoverHintId(kInvalidUniqueId)
 , mD76Id(kInvalidUniqueId)
 , mLureSafeZoneId(kInvalidUniqueId)
-, mDeathEffect(OptionalPart(data.mIngSpot.GetDeathEffect()))
+, mNormalHitEffect(OptionalPart(data.mIngSpot.GetNormalHitEffect())) // 0xd08
+, mHeavyHitEffect(OptionalPart(data.mIngSpot.GetHeavyHitEffect()))   // 0xd18
+, mDeathEffect(OptionalPart(data.mIngSpot.GetDeathEffect()))         // 0xd28
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
@@ -285,6 +291,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mBodyState5Time(0.f)
 , mFrustrationTimer(0.f)
 , mBallCooldown(0.f)
+, mHitReactionTime(0.f)
 , mLightBlend(0.f)
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
@@ -385,6 +392,93 @@ void CIng::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
   mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
                   SolidFilter(), CVector3f::Zero());
   mCurDamageRemTime = mDamageWaitTime;
+}
+
+// fn_29_2414 (not yet exercised in a run): the ing-spot hit effect explosion, from the heavy token
+// when it is loaded and asked for, else the normal one. The caller adds it to the state manager.
+CEntity* CIng::SpawnHitEffect(CStateManager& mgr, bool heavy) {
+  const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
+      heavy ? mHeavyHitEffect : mNormalHitEffect;
+  if (!effect) {
+    return nullptr;
+  }
+  return rs_new CExplosion(*effect, mgr.AllocateUniqueId(),
+                           CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                                       kInvalidEditorId),
+                           rstl::string_l("Ing Damage Fx"), GetTransform(), 0,
+                           GetModelData()->GetScale(), CColor::White(), -1);
+}
+
+// fn_29_2B70 (not yet exercised in a run): a shot on the ing-spot form. The hit resets the reaction timer and flags the spot,
+// then the weapon picks the light or heavy effect (25 damage on the ing-spot vulnerability) and
+// plays that hit's sound.
+void CIng::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
+  mHitReactionTime = -1.f; // 0xe4c
+  mSafeZoneIngSpot = true; // 0xe5e bit 5
+  const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(sender));
+  if (weapon == nullptr) {
+    return;
+  }
+  const bool heavy =
+      !(weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpot.GetVulnerability()) < 25.f);
+  CEntity* explosion = SpawnHitEffect(mgr, heavy);
+  CSfxManager::AddEmitter(heavy ? mData.mIngSpot.GetHeavyHitSound() : mData.mIngSpot.GetNormalHitSound(),
+                          GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
+                          CSfxManager::kMedPriority);
+  if (explosion != nullptr) {
+    mgr.AddObject(explosion);
+  }
+}
+
+// fn_29_2684 (not yet exercised in a run): a weapon (or the player) hit a collision actor. The actor carries a copy of the Ing's
+// initial health, so what it lost is the hit: the Ing's health drops by that much, it takes the hit
+// (fn_29_B890 only records the hit time), dies below zero, and is knocked back along the shot. The
+// actor's health is then re-armed.
+void CIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
+  if (!mAlive) { // CPatterned 0x420 bit 6
+    return;
+  }
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (actor == nullptr) {
+    return;
+  }
+  const TUniqueId touched = actor->GetLastTouchedObject();
+  CHealthInfo* actorHealth = actor->HealthInfo();
+  CHealthInfo* health = HealthInfo();
+  if (actorHealth == nullptr || health == nullptr) {
+    return;
+  }
+  const float initial = health->GetInitialHP();
+  const float hp = health->GetHP();
+  const float amount = initial - actorHealth->GetHP();
+  health->SetHP(hp - amount);
+
+  // The hit comes from the weapon the actor last touched, or from the player (morph ball).
+  CVector3f direction = CVector3f::Zero();
+  TUniqueId attacker = kInvalidUniqueId;
+  CDamageInfo damage;
+  if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
+    direction = weapon->GetTransform().GetForward();
+    damage = weapon->GetCurrentDamageInfo();
+    attacker = weapon->GetOwnerId();
+  } else if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(touched))) {
+    direction = GetTranslation() - player->GetTranslation();
+    const CMorphBall* ball = player->GetMorphBall();
+    if (ball != nullptr && ball->InScrewAttackMode()) {
+      damage = CDamageInfo(CWeaponMode(kWT_ScrewAttack), amount, 0.f, 0.f, false, false);
+    } else if (ball != nullptr && ball->IsBoosting()) {
+      damage = CDamageInfo(CWeaponMode(kWT_BoostBall), amount, 0.f, 0.f, false, false);
+    }
+  }
+
+  TakeDamage(direction, amount); // 0xa4 -> fn_29_B890
+  if (hp <= amount) {
+    Death(mgr, direction, kSS_DeathRattle); // 0x98 -> fn_29_B3C4, 0x5241544C
+    // Retail's UpdateHealthCause(actor, touched, damage, true, false).
+    mgr.RecordDamageSource(*this, touched, damage, true, false);
+  }
+  KnockBack(mgr, CKnockBackInfo(direction, touched, attacker, damage, true)); // 0x9c
+  actorHealth->SetHP(initial);
 }
 
 // A body state is only ever installed by CBodyController::Activate; retail activates it on
@@ -1868,8 +1962,9 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_Activate:
     JoinTeam(mgr);
-    // Retail only sets it while the actor's 0x20 bit 7 is clear and only for the corporeal form.
-    if (!mCollisionActorManager.null()) {
+    // Retail handles ACTV only while the entity is active (CEntity 0x20 bit 7, the first bitfield =
+    // mActive) and only turns the collision actors on for the corporeal form.
+    if (GetActive() && !mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal);
     }
     break;
@@ -1886,6 +1981,26 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_HitObject:
     CollisionActorHitPlayer(mgr, sender); // fn_29_2ED8
+    break;
+  case kSM_Damage:
+    // fn_29_2E8C (not yet exercised in a run): the ing-spot form reacts to the hit itself, every
+    // other form relays it.
+    if (mForm == kForm_IngSpot) {
+      IngSpotDamage(mgr, sender); // fn_29_2B70
+    } else {
+      CollisionActorDamage(mgr, sender); // fn_29_2684
+    }
+    break;
+  case kSM_ResistedDamage:
+    // fn_29_C9A4's XRDG branch: while grappled in the ing-spot form the hit timer ticks down and
+    // the hit effect plays; either way the actor is flagged as hit.
+    if (mForm == kForm_IngSpot && mGrappled) {
+      mHitReactionTime -= 0.5f;
+      if (CEntity* fx = SpawnHitEffect(mgr, static_cast< bool >(mHeavyHitEffect))) { // fn_29_2414
+        mgr.AddObject(fx);
+      }
+    }
+    mHitByPlayerProjectile = true; // 0x420 bit 7
     break;
   case kSM_XENZ:
     ++mSafeZoneCount;
