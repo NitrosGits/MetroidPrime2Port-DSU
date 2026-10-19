@@ -264,8 +264,80 @@ void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::TargetPatrol state (fn_72_BCB0)");
 }
 
+namespace {
+// Retail fn_72_D608 is MP1's CPatterned::Random2f, which this tree does not have. Two random
+// components in the XY plane - the *first* CRandom16 draw is y and the second is x, both minus
+// rodata 0xB44 = 0.5, while z is rodata 0xB9C = 0 (asm 0xD644-0xD688: the first draw lands at
+// sp+0xc and the second at sp+0x8, which is the vector base) - then the x term is forced to
+// rodata 0xBC8 = 0.001 when |x| is under 0.001 (0xD68C-0xD69C) so the normalize cannot collapse
+// the direction, the vector is normalized in place (0xD6A0), and a third draw lerps the length
+// minLen + (maxLen - minLen) * rand (0xD6C0 fmadds) which then scales the unit vector
+// (0xD6C4-0xD6E8). Retail leaves that scaled length in the return register unused.
+CVector3f ShuffleRandomVector(CStateManager& mgr, float minLen, float maxLen) {
+  const float y = mgr.Random()->Float() - 0.5f;
+  float x = mgr.Random()->Float() - 0.5f;
+  if (x > -0.001f && x < 0.001f) {
+    x = 0.001f;
+  }
+  CVector3f vec(x, y, 0.f);
+  vec.Normalize();
+  return (minLen + (maxLen - minLen) * mgr.Random()->Float()) * vec;
+}
+} // namespace
+
+// Retail fn_72_8670 (asm 0x8670-0x8B14) is MP1's CSpacePirate::Shuffle with Echoes' own pieces:
+// Activate runs only for kStateMsg_Activate (0x86B8-0x86CC jumps straight past it otherwise) and
+// first clears the body's steering blend to normal (0x4c = 0). The close check is rodata 0xB9C = 0
+// handed to CPatterned::TooClose as a CTriggerData, gated on x8f4 bit 0x08 being clear
+// (`extrwi. r0, r0, 1, 28`); when it fires the destination is the target position (CB30) plus
+// mMinAttackRange (0x3dc) along the normalized away-from-target vector plus fn_72_D608(mgr, 0, 5)
+// - rodata 0xB9C/0xB78 at 0x8730-0x8748 - and x8f6 bit 0x02 is set (0x880C `rlwimi ..,1,30,30`).
+// Otherwise the destination is the target position plus maxRange*(rand+1) along that vector and
+// 2*maxRange*(rand-0.5) along Up x (own translation - target) (fn_72_8A44 = CVector3f::Cross,
+// rodata 0xB60 = 2, 0x8850-0x8948), and the bit is cleared. Both branches set mDestObj
+// (0x330 = kInvalidUniqueId) and the steering speed to rodata 0xB54 = 1 (0x8968). Echoes writes no
+// behaviour orientation here, unlike MP1. Then CPatterned::PathFind runs for every message
+// (0x8974) and the body controller's command target (cmdMgr +0x34/0x38/0x3c = SetTargetVector) is
+// set to the state manager's player (+0x14fc, +0x54) minus this translation, also for every
+// message; only then does the second switch avoid the other actors on Update (fn_72_D40C) and
+// clear x8f6 bit 0x02 on Deactivate.
 void CSpacePirate::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Shuffle state (fn_72_8670)");
+  if (msg == kStateMsg_Activate) {
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
+    const CVector3f targetPos = GetTargetPos(mgr);
+    if (!x8f4_28_noShuffleCloseCheck && TooClose(mgr, CTriggerData(0.f))) {
+      SetDestPos(GetTranslation() +
+                 mMinAttackRange * (GetTranslation() - targetPos).AsNormalized() +
+                 ShuffleRandomVector(mgr, 0.f, 5.f));
+      mDestObj = kInvalidUniqueId;
+      x8f6_30_shuffleClose = true;
+    } else {
+      const CVector3f fromTarget = GetTranslation() - targetPos;
+      const CVector3f side = CVector3f::Cross(CVector3f::Up(), fromTarget);
+      const float range = mMaxAttackRange;
+      const float distance = range * mgr.Random()->Float() + range;
+      const float sideDistance = 2.f * mMaxAttackRange * (mgr.Random()->Float() - 0.5f);
+      SetDestPos(targetPos + distance * fromTarget.AsNormalized() +
+                 sideDistance * side.AsNormalized());
+      mDestObj = kInvalidUniqueId;
+      x8f6_30_shuffleClose = false;
+    }
+    x904_steeringSpeed = 1.f;
+  }
+  CPatterned::PathFind(mgr, msg, dt);
+  // Retail dereferences the state manager's player without a check; the port keeps the guard the
+  // other states use and simply leaves the previous target vector when there is no player.
+  if (const CPlayer* player = mgr.Player(0)) {
+    BodyController()->CommandMgr().SetTargetVector(player->GetTranslation() - GetTranslation());
+  }
+  switch (msg) {
+  case kStateMsg_Update:
+    AvoidActors(mgr);
+    break;
+  case kStateMsg_Deactivate:
+    x8f6_30_shuffleClose = false;
+    break;
+  }
 }
 
 // Retail fn_72_8464 rotates the pirate in place towards the target position it remembers.
