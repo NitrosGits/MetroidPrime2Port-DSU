@@ -63,6 +63,13 @@
 #include "rstl/math.hpp"
 #ifdef TARGET_PC
 #include "port_overlay.h"
+#include <cstdio>
+#include <cstdlib>
+
+static bool PortBallDebug() {
+  static const bool enabled = std::getenv("MP2_DEBUG_BALL") != nullptr;
+  return enabled;
+}
 #endif
 
 // Structure-first reconstruction. TODO bodies below are scaffolds, not equivalent implementations.
@@ -1652,6 +1659,13 @@ void CMorphBall::ApplyBoostBallDamage(CStateManager& mgr, TUniqueId id, const CD
   const bool boosting = IsBoosting();
   const bool hasCannonBall =
       mPlayer.GetPlayerState()->GetItemAmount(CPlayerState::kIT_CannonBall, true) != 0;
+#ifdef TARGET_PC
+  if (PortBallDebug() && (boosting || hasCannonBall)) {
+    std::fprintf(stderr, "[ball] damage id %04x: boost %d cannon %d damage %.1f radius %.2f\n",
+                 id.Value(), int(boosting), int(hasCannonBall), boostDamage.GetDamage(),
+                 boostDamage.GetRadius());
+  }
+#endif
 
   if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(id))) {
     const TUniqueId playerId = mPlayer.GetUniqueId();
@@ -1670,6 +1684,15 @@ void CMorphBall::ApplyBoostBallDamage(CStateManager& mgr, TUniqueId id, const CD
       }
 
       canDamage |= slowHit;
+#ifdef TARGET_PC
+      if (PortBallDebug()) {
+        std::fprintf(stderr,
+                     "[ball]  physics actor %04x: relSpeed %.2f playerSpeed %.2f min %.2f "
+                     "canDamage %d\n",
+                     physAct->GetUniqueId().Value(), relSpeed, playerSpeed,
+                     gpTweakBall->GetBoostBallMinRelativeSpeedForDamage(), int(canDamage));
+      }
+#endif
       if (canDamage) {
         bool shielded;
         CPlayer* otherPlayer = TCastToPtr< CPlayer >(physAct);
@@ -1852,6 +1875,14 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
   mTimeNotInBoost += dt;
   CPlayerState* playerState = mPlayer.GetPlayerState();
   const bool hasCannonBall = playerState->GetItemAmount(CPlayerState::kIT_CannonBall, true) != 0;
+#ifdef TARGET_PC
+  // MP2_DEBUG_BALL=1: the two-stage cannon puzzles break here, and the state is invisible from
+  // outside - `items` on the console answers kIT_CannonBall but not which tick it changed.
+  if (PortBallDebug() && hasCannonBall) {
+    std::fprintf(stderr, "[ball] cannon tick: speed %.2f boost %d enabled %d\n",
+                 mPlayer.GetVelocityWR().Magnitude(), int(IsBoosting()), int(mBoostEnabled));
+  }
+#endif
   if (playerState->GetItemAmount(CPlayerState::kIT_BoostBall, true) == 0 &&
       playerState->GetItemAmount(CPlayerState::kIT_ActivateMorphballBoost, true) == 0 &&
       !hasCannonBall) {
@@ -1980,6 +2011,17 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
       nearList, box,
       CMaterialFilter::MakeInclude(CMaterialList(BoostNearListMaterial1, BoostNearListMaterial2)),
       &mPlayer);
+#ifdef TARGET_PC
+  if (PortBallDebug() && hasCannonBall) {
+    std::fprintf(stderr, "[ball] pass: speed %.2f damage %.1f radius %.2f near %d ->", speed,
+                 damage.GetDamage(), damage.GetRadius(), int(nearList.size()));
+    for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator dbg = nearList.begin();
+         dbg != nearList.end(); ++dbg) {
+      std::fprintf(stderr, " %04x", dbg->Value());
+    }
+    std::fprintf(stderr, "\n");
+  }
+#endif
 
   TUniqueId hitId = kInvalidUniqueId;
   CCollisionInfo info;

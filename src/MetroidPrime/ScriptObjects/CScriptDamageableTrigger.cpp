@@ -5,6 +5,18 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDamageableTrigger.hpp"
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+
+// MP2_DEBUG_BALL=1: the wall of a two-stage cannon puzzle is one of these, so a damage message
+// and the HP it leaves behind are the only way to see whether the missile, the cannon ball or
+// neither got through.
+static bool PortBallDebug() {
+  static const bool enabled = std::getenv("MP2_DEBUG_BALL") != nullptr;
+  return enabled;
+}
+#endif
 
 static CMaterialList skDamageableTriggerMaterials(kMT_Trigger, kMT_Immovable,
                                                   kMT_NonSolidDamageable);
@@ -73,6 +85,13 @@ void CScriptDamageableTrigger::AcceptScriptMsg(CStateManager& mgr, const CScript
     }
     break;
   case kSM_Damage:
+#ifdef TARGET_PC
+    if (PortBallDebug()) {
+      std::fprintf(stderr, "[ball] trigger %04x damaged: hp %.1f/%.1f invulnerable %d\n",
+                   GetUniqueId().Value(), mHealth.GetHP(), mHealth.GetInitialHP(),
+                   int(mInvulnerable));
+    }
+#endif
     if (mHealth.GetHP() <= 0.f) {
       mDeathOriginator = msg.GetSenderId();
       if (mgr.IsMultiplayer()) {

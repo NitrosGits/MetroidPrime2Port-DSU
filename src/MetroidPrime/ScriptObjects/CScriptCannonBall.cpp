@@ -10,6 +10,18 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+
+// MP2_DEBUG_BALL=1: the cannon ball is a script flag, not an inventory item, and a launch that
+// clears it early leaves the ball with no damage pass (it bounces off the wall instead of
+// breaking it). This says when the flag goes up and why it comes down.
+static bool PortBallDebug() {
+  static const bool enabled = std::getenv("MP2_DEBUG_BALL") != nullptr;
+  return enabled;
+}
+#endif
 
 CScriptCannonBall::CScriptCannonBall(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CTransform4f& xf,
@@ -22,6 +34,14 @@ CScriptCannonBall::CScriptCannonBall(TUniqueId uid, const rstl::string& name,
 CScriptCannonBall::~CScriptCannonBall() {}
 
 void CScriptCannonBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
+#ifdef TARGET_PC
+  if (PortBallDebug()) {
+    const CEntity* origin = mgr.GetObjectById(msg.GetOriginator());
+    std::fprintf(stderr, "[ball] cannonscript %04x message %08x from %04x (%s)\n",
+                 GetUniqueId().Value(), unsigned(msg.GetMessage()), msg.GetOriginator().Value(),
+                 origin != nullptr ? "object" : "none");
+  }
+#endif
   switch (msg.GetMessage()) {
 
   case kSM_Increment: {
@@ -100,6 +120,11 @@ void CScriptCannonBall::TrackedShot::Think(float dt, CStateManager& mgr, int ind
       effect->AcceptScriptMsg(mgr,
                               CScriptMsg(kInvalidUniqueId, effect->GetUniqueId(), kSM_Activate));
       player->GetPlayerState()->SetItemAmount(CPlayerState::kIT_CannonBall, 1);
+#ifdef TARGET_PC
+      if (PortBallDebug()) {
+        std::fprintf(stderr, "[ball] cannon flag on (origin frame %d)\n", m_updateFrameIdx);
+      }
+#endif
     }
 
     CMorphBall* morph = player->GetMorphBall();
@@ -116,6 +141,15 @@ void CScriptCannonBall::TrackedShot::Think(float dt, CStateManager& mgr, int ind
              ? player->GetMorphballTransitionState()
              : CPlayer::kMS_Unmorphed) != CPlayer::kMS_Morphed) {
 
+#ifdef TARGET_PC
+      if (PortBallDebug()) {
+        std::fprintf(stderr,
+                     "[ball] cannon flag off: frames since hit %d, wall %d floor %d, ball state "
+                     "%d, morph %d\n",
+                     uVar3, morph->GetLastWallCollisionFrame(), morph->GetLastFloorCollisionFrame(),
+                     int(morph->GetBallState()), int(player->GetMorphballTransitionState()));
+      }
+#endif
       effect->AcceptScriptMsg(mgr,
                               CScriptMsg(kInvalidUniqueId, effect->GetUniqueId(), kSM_Deactivate));
       player->GetPlayerState()->SetItemAmount(CPlayerState::kIT_CannonBall, 0);
