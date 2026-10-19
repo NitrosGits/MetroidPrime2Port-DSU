@@ -384,9 +384,26 @@ What the run proved, with the logged values:
   the player's `CGameProjectile`; `IsShieldUp()` (locomotion `kLT_Crouch`, value 0) is true from
   `ShieldUp`'s Activate onwards. No port bug was found on this path.
 
-**Next (2026-10-20, `decomp/elitepirate` at the commit adding this line):**
-1. The `[?]` items above, as narrow `worker` lanes (decomp lanes are worker-only), each from a
-   named commit.
+**Next (2026-10-20, `decomp/elitepirate` at `4969dd112`):** every state the FSM2 asset graph can
+reach now carries a `// @` marker (100/241 functions, 30364/51836 bytes), and the `[?]` list above
+is resolved. What is left unmarked, and what to do about it:
+
+- Loader/struct machinery the port replaces wholesale, not decomp work: `178` (the loader itself,
+  `PortLoadElitePirate` in `PortCElitePirate.cpp`), `10C0` (`SLdrElitePirate` ctor), `B82C`/`B360`
+  (`CElitePirateData` builder/copy), `C0D0` (the FSM name/PTMF table static initialiser - the port
+  installs the tables in `fn_15_9840`), and the `SLdr*`/`CKnockBackMgr`/`CBodyStateInfo` ctors and
+  dtors `9AB0 9C34 9E14 9A74 9FF8 A08C C44 CA8 CE8 D08 D30 E6C ED8 F2C F90 FF0 B57C B5E0 B674
+  B6F0 B748 B7CC`. Do not mark these; most are compiler-generated.
+- Unreachable states: Patrol `5708`, TargetPatrol `578C`, InvulnAlert `52D0` (item 1 above).
+- ~100 small retail helpers with no marker: `2BB8 2E04 2ECC 2FC8 2FF0 306C 3180 3288 32C0 32E0
+  3308 33C8 3424 3AE0 3B40 3B78 3BD8 3FC0 4088 40F4 414C 4410 4488 47DC 4848 4A3C 4A98 4CBC 526C
+  5450` (collision/joint/shield setup), `776C 77B4 7868 78A8 78C8 78F0 7970 79AC 79E8 7A44 7A64
+  7AAC` (launcher/render), `98CC 9934 9988` (shield), `C8D8 C99C C9C0 C9E4 CA30` (tail), plus the
+  tiny virtuals `0 8 10 4C 5C 64 6C 74 84 90 9C A4 AC B4 BC D8 104 128` and `A9D8`'s copy helpers
+  `AAA0..B318`. Claim one only after a runtime gap shows the port is missing its effect; a lane
+  brief must name the offset and the observed symptom.
+- Open runtime gaps worth a run: Dead while the shield is up (which state `7B00` takes), the dark
+  Ingsmasher against the same shield burst, and `u051b`'s pod (item 1 - the intro trigger path).
 Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/stun/stun_run9.sh`
 (Stunned), `/tmp/opencode/ep/dark/stun_run.sh` (dark).
 Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
