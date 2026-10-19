@@ -296,6 +296,21 @@ Open:
    0xc58/0xc5c, 0xcb4, 0xcb8/0xcc4, 0xcfc, 0xd04, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0.
 3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound.
 
+**Next (handoff 2026-10-19, `decomp/elitepirate` at the commit adding this line):**
+1. Enter and mark Taunt `5A60`, Patrol `5708`, TargetPatrol `578C`, Wait `6064`, Stunned `59BC`,
+   InvulnAlert `52D0`. Read the FSM2 asset's transitions into them first (state/trigger tables in
+   `/tmp/opencode/ep/fsm.txt`; the FSM2 asset is `mData.mStateMachine`), then drive them over
+   the console. Harness: `/tmp/opencode/ep/trace/run.sh` (trace.py polls `obj` into trace.tsv;
+   `awk '{print $2,$3}' trace.tsv | sort | uniq -c` lists the states entered). u051b never left
+   PowerDown in the 60 s trace. Probes go in temporarily and are removed before a commit.
+2. Dark Ingsmasher: boot `0m_cliff_hall_dark` (layers 4/5, §0), check 0 caught and that it
+   stands and attacks.
+3. The `[?]` items above, as narrow `worker` lanes (decomp lanes are worker-only).
+Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
+`/tmp/opencode/ep/gate_run2.sh <log>` (0 crash lines), matching build 94.14%/63.29% if an
+upstream file changed. Also tell the port orchestrator that `186fea1e7` touched the shared file
+`platform/port_console.cpp` (`hurt`, `obj` FSM state).
+
 **Movement states (2026-10-19)**: Patrol `5708`, TargetPatrol `578C`, Pursue `5BB4`, Turn `5598`, Alert `5340`,
 InvulnAlert `52D0`, Wait `6064`, Stunned `59BC`, FollowAttackPattern `6DDC` are in `PortCElitePirateMove.cpp`, with
 their callees (attack-kind history `4790`, absorb `850C`, retrying body commands `BDFC`/`BEA0`, path helpers
