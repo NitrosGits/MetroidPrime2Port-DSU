@@ -46,9 +46,9 @@ void CSpacePirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::CoverAttack state (fn_72_A310)");
 }
 
-void CSpacePirate::Halt(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Halt state (fn_72_BBB0)");
-}
+// Retail fn_72_BBB0 is a bare `x904 = 0` (rodata 0xB9C): it is not a message handler at all, so
+// every call, Activate included, stops the steering speed that Think feeds to the body.
+void CSpacePirate::Halt(CStateManager&, EStateMsg, float) { x904_steeringSpeed = 0.f; }
 
 // @ fn_72_BBA0
 // Retail is 16 bytes and checks no message at all (rodata 0xB54 = 1.0): every call, Update
@@ -209,9 +209,55 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_72_BFCC
+// Retail is the patrol state plus the guard duties of a pirate that is on patrol duty. Ahead of
+// anything else: Activate drops to relaxed locomotion and scales the steering speed by walk/run
+// (rodata-free, the body state info's own speeds); Update refreshes the guard position; Deactivate
+// returns to combat locomotion and, once ever (0x8f9 bit 0x01), fires kSS_Attack. Then, only when
+// x8f7 bit 0x80 (enablePatrol) is set, every message also goes to CPatterned::Patrol: Activate
+// blends at full speed and divides the turn speed by 1.25 (rodata C10), Update avoids the other
+// actors and records the waypoint navigation's destination (0x6b8 + 0x1c = 0x6d4) in
+// xafc_patrolDestPos, Deactivate restores the normal blend and multiplies the turn speed back.
+// Traced 2026-10-20 on 08_sand_casualpirates: Activate/Update/Deactivate of the outer half run for
+// the load state; no pirate there has a kSS_Patrol/kSM_Follow connection, so the enablePatrol half
+// is translated from the asm only (see SpacePirate.md section 6).
 void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Patrol state (fn_72_BFCC)");
-  CPatterned::Patrol(mgr, msg, dt);
+  CBodyController* body = BodyController();
+  switch (msg) {
+  case kStateMsg_Activate:
+    body->SetLocomotionType(pas::kLT_Relaxed);
+    x904_steeringSpeed =
+        body->GetBodyStateInfo().GetLocomotionSpeed(pas::kLA_Walk) /
+        body->GetBodyStateInfo().GetLocomotionSpeed(pas::kLA_Run);
+    break;
+  case kStateMsg_Update:
+    UpdateGuardPosition(mgr, dt);
+    break;
+  case kStateMsg_Deactivate:
+    body->SetLocomotionType(pas::kLT_Combat);
+    if (!x8f9_31_sentAttackMsg) {
+      x8f9_31_sentAttackMsg = true;
+      SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None);
+    }
+    break;
+  }
+  if (x8f7_24_enablePatrol) {
+    CPatterned::Patrol(mgr, msg, dt);
+    switch (msg) {
+    case kStateMsg_Activate:
+      body->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
+      body->SetTurnSpeed(body->GetTurnSpeed() / 1.25f);
+      break;
+    case kStateMsg_Update:
+      AvoidActors(mgr);
+      xafc_patrolDestPos = mWaypointNavigation.GetDestinationPosition();
+      break;
+    case kStateMsg_Deactivate:
+      body->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
+      body->SetTurnSpeed(1.25f * body->GetTurnSpeed());
+      break;
+    }
+  }
 }
 
 void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -533,8 +579,19 @@ void CSpacePirate::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   mInPosition = false; // asm: rlwimi clears 0x34C bit 0x80, the bit declared first
 }
 
+// Retail fn_72_9478: Activate sets the normal steering blend and then a steering speed of one;
+// Update only avoids the other actors. There is no Deactivate case: the asm's unused branches
+// fall through to the shared epilogue.
 void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Approach state (fn_72_9478)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
+    x904_steeringSpeed = 1.f;
+    break;
+  case kStateMsg_Update:
+    AvoidActors(mgr);
+    break;
+  }
 }
 
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {

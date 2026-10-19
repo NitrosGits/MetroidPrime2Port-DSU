@@ -910,6 +910,8 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         }
       } else if (it->state == kSS_Patrol && it->msg == kSM_Follow) {
         x8f7_24_enablePatrol = true;
+        // The patrol state's CPatterned half (move along the waypoints) runs only under this bit.
+        TraceCall(*this, "enablePatrol", 1);
       }
     }
     mPathFindSearch.SetArea(
