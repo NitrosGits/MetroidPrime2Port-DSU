@@ -160,9 +160,16 @@ bool CSandBoss::IsFacingPlayer(CStateManager&, const CTriggerData&) const { // f
   return false;
 }
 
-bool CSandBoss::IsBallInSuckRange(CStateManager&, const CTriggerData&) const { // fn_55_C188
-  PortSandBossStandIn("CSandBoss::IsBallInSuckRange (fn_55_C188)");
-  return false;
+// fn_55_C188 (ported, not exercised yet)
+// The suck-air armour is on, the player is morphed, and the ball is within the mouth's range and
+// facing cone (fn_55_5B38).
+bool CSandBoss::IsBallInSuckRange(CStateManager& mgr, const CTriggerData&) const {
+  const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (!mSuckAir || player == nullptr ||
+      player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) { // player 0x38C == 1
+    return false;
+  }
+  return IsBallInRange(*player); // fn_55_5B38
 }
 
 // fn_55_C174 (ported, not exercised yet)
@@ -301,12 +308,49 @@ void CSandBoss::SuckAir(CStateManager&, EStateMsg, float) { // fn_55_B718
   PortSandBossStandIn("CSandBoss::SuckAir (fn_55_B718)");
 }
 
-void CSandBoss::SuckBall(CStateManager&, EStateMsg, float) { // fn_55_B658
-  PortSandBossStandIn("CSandBoss::SuckBall (fn_55_B658)");
+// fn_55_B658 (ported, not exercised yet)
+// SuckBall: each update pulls the morphed ball to the mouth (fn_55_62E4) and ends the state once
+// it arrives. Start readies the animation, drops into locomotion 5 and takes the player's solid
+// material away; stop drops the animation back to not-ready.
+void CSandBoss::SuckBall(CStateManager& mgr, EStateMsg msg, float dt) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (msg == kStateMsg_Update) {
+    if (SphereStateHelper62E4(dt, *player)) { // fn_55_62E4
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6B4 = 3
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    BodyController()->SetLocomotionType(pas::kLT_Internal5); // 5
+    // Retail also clears bit 7 of the player's byte at 0x1144. CPlayer.hpp only names the two
+    // morph-transition bits of that byte, so the store is left out until the bit is identified.
+    player->RemoveMaterial(kMT_Solid, mgr); // 0x3B
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+  }
 }
 
-void CSandBoss::BallInMouth(CStateManager&, EStateMsg, float) { // fn_55_B544
-  PortSandBossStandIn("CSandBoss::BallInMouth (fn_55_B544)");
+// fn_55_B544 (ported, not exercised yet)
+// BallInMouth: every update parks the ball on the mouth locator (fn_55_6250), runs the choke helper
+// (fn_55_5E5C) and spits the ball out once mData.spitMorphballTime has passed. Start readies the
+// animation, sends kSS_Entered for the player, drops into locomotion 6 and attaches the ball actor
+// to the player; stop drops the animation back to not-ready and clears the suck-air armour.
+void CSandBoss::BallInMouth(CStateManager& mgr, EStateMsg msg, float) {
+  CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (msg == kStateMsg_Update) {
+    SphereStateHelper6250(*player); // fn_55_6250
+    Helper5E5C(mgr);                // fn_55_5E5C
+    if (mData.spitMorphballTime <= mStateMachine->GetTime()) { // 0x824
+      mAnimationState.SetState(CAnimationState::kAS_Over);      // 0x6B4 = 3
+    }
+  } else if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
+    SendScriptMsgs(kSS_Entered, mgr, player->GetUniqueId(), kSM_None); // 'ENTR' on the player
+    BodyController()->SetLocomotionType(pas::kLT_Internal6);           // 6
+    player->AttachActorToPlayer(GetUniqueId(), false);
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
+    mSuckAir = false;                                        // 0x165D b4
+  }
 }
 
 void CSandBoss::DestroySphere(CStateManager&, EStateMsg, float) { // fn_55_B2D8

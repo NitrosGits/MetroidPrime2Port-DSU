@@ -22,6 +22,7 @@
 #include "rstl/vector.hpp"
 
 class CCollisionActorManager;
+class CPlayer;
 class CScannableObjectInfo;
 class CSkinnedModel;
 
@@ -264,14 +265,14 @@ private:
   void DestroySphereHelper(CStateManager& mgr);                            // fn_55_51BC
   void HandleGroundImpact(CStateManager& mgr, const rstl::string& locator); // fn_55_528C
   void CrackSphere(CStateManager& mgr);                                    // fn_55_560C
-  bool IsBallInRange(CStateManager& mgr) const;                            // fn_55_5B38
+  bool IsBallInRange(const CPlayer& player) const;                         // fn_55_5B38
   float AttachToSphereHelper();                                            // fn_55_5C30
   void Helper5C6C(CStateManager& mgr);                                     // fn_55_5C6C
   void Helper5E5C(CStateManager& mgr);                                     // fn_55_5E5C
   void HandleObjectDrop(CStateManager& mgr);                               // fn_55_5FEC
-  void SphereStateHelper6250(CStateManager& mgr);                          // fn_55_6250
-  void SphereStateHelper62E4(CStateManager& mgr);                          // fn_55_62E4
-  void SphereStateHelper6434(CStateManager& mgr);                          // fn_55_6434
+  void SphereStateHelper6250(CPlayer& player);                             // fn_55_6250
+  bool SphereStateHelper62E4(float dt, CPlayer& player);                   // fn_55_62E4
+  void SphereStateHelper6434(float dt);                                    // fn_55_6434
   void Helper64E4(CStateManager& mgr, const CTransform4f& locatorXf);       // fn_55_64E4
   void StampedeHelper(CStateManager& mgr, float dt);                       // fn_55_7C68
   void Helper7E60(CStateManager& mgr);                                     // fn_55_7E60
@@ -339,7 +340,8 @@ private:
   rstl::vector< SSandBossIdEntry > mIdEntries; // 0x1478
   TLockedToken< CSkinnedModel > mNormalSkinnedModel;   // 0x1488
   TLockedToken< CSkinnedModel > mTailArmorSkinnedModel; // 0x1494
-  CTransform4f m14A0;                                  // 0x14A0 (identity; meaning unknown)
+  CTransform4f m14A0;                                  // 0x14A0 (the held ball's rotation:
+                                                       //        fn_55_6250 stores the player's)
   CQuaternion mSpawnRotation;                          // 0x14D0
   CDamageInfo mDoubleChargeDamage;                     // 0x14E0
   CDamageInfo mTripleChargeDamage;                     // 0x14FC

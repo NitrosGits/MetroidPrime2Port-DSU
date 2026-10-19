@@ -525,9 +525,18 @@ void CSandBoss::CrackSphere(CStateManager&) { // fn_55_560C
   PortSandBossStandIn("CSandBoss::CrackSphere (fn_55_560C)");
 }
 
-bool CSandBoss::IsBallInRange(CStateManager&) const { // fn_55_5B38
-  PortSandBossStandIn("CSandBoss::IsBallInRange (fn_55_5B38)");
-  return false;
+// fn_55_5B38 (ported, not exercised yet)
+// The morph ball is in range when it is closer to the first armour locator than
+// mData.suckMorphballRange and within fifteen degrees of the boss' forward axis, flattened.
+bool CSandBoss::IsBallInRange(const CPlayer& player) const {
+  const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[0]); // 0xF00
+  const CVector3f delta = player.GetTranslation() - locatorXf.GetTranslation(); // player 0x54..0x5C
+  const float range = mData.suckMorphballRange; // 0x820
+  if (range * range <= delta.MagSquared()) {
+    return false;
+  }
+  const CVector3f flatDelta(CVector2f(delta.GetX(), delta.GetY()), 0.f);
+  return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), flatDelta) <= 0.2617994f;
 }
 
 // fn_55_5C30 (ported, not exercised yet)
@@ -546,16 +555,42 @@ void CSandBoss::HandleObjectDrop(CStateManager&) { // fn_55_5FEC
   PortSandBossStandIn("CSandBoss::HandleObjectDrop (fn_55_5FEC)");
 }
 
-void CSandBoss::SphereStateHelper6250(CStateManager&) { // fn_55_6250
-  PortSandBossStandIn("CSandBoss::SphereStateHelper6250 (fn_55_6250)");
+// fn_55_6250 (ported, not exercised yet)
+// The ball was caught: put the player on the mouth locator, stop him, and keep the player's
+// rotation in 0x14A0 (the held ball's orientation while BallInMouth re-parks it every frame).
+void CSandBoss::SphereStateHelper6250(CPlayer& player) {
+  const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[0]); // 0xF00
+  player.SetTranslation(locatorXf.GetTranslation());
+  player.Stop();
+  m14A0 = player.GetTransform().GetRotation(); // 0x14A0
 }
 
-void CSandBoss::SphereStateHelper62E4(CStateManager&) { // fn_55_62E4
-  PortSandBossStandIn("CSandBoss::SphereStateHelper62E4 (fn_55_62E4)");
+// fn_55_62E4 (ported, not exercised yet)
+// While the player is morphed, pulls the ball toward the mouth locator at 60 units a second; the
+// return value says the ball arrived (and is parked in the mouth by fn_55_6250).
+bool CSandBoss::SphereStateHelper62E4(float dt, CPlayer& player) {
+  if (player.GetMorphballTransitionState() != CPlayer::kMS_Morphed) { // player 0x38C == 1
+    return false;
+  }
+  const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[0]); // 0xF00
+  const CVector3f delta = locatorXf.GetTranslation() - player.GetTranslation();
+  const float step = dt * 60.f;
+  if (delta.MagSquared() < step * step || !delta.IsMagnitudeSafe()) {
+    SphereStateHelper6250(player); // fn_55_6250
+    return true;
+  }
+  player.Stop();
+  player.SetTranslation(player.GetTranslation() + delta.AsNormalized() * step);
+  return false;
 }
 
-void CSandBoss::SphereStateHelper6434(CStateManager&) { // fn_55_6434
-  PortSandBossStandIn("CSandBoss::SphereStateHelper6434 (fn_55_6434)");
+// fn_55_6434 (ported, not exercised yet)
+// Choke flash: the damage colour pulses between black and skDamageColor with |cos(pi t)| and the
+// damage-hit timer is restarted through TakeDamage (fn_55_4C only stores skDamageHitTime).
+void CSandBoss::SphereStateHelper6434(float dt) {
+  const float blend = CMath::AbsF(CMath::FastCosR(dt * M_PIF));
+  mDamageColor = CColor::Lerp(CColor::Black(), skDamageColor, blend); // 0x450
+  TakeDamage(CVector3f::Zero(), 0.f);                                  // 0x448 = skDamageHitTime
 }
 
 // fn_55_64E4 (ported, not exercised yet)
