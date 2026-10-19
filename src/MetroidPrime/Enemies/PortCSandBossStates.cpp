@@ -307,8 +307,8 @@ void CSandBoss::RotateToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_55_B718 (ported, not exercised yet)
-// SuckAir: once mData.suckAirTime has passed the animation is over; until then the body is pushed
-// out of Locomotion with a NextState command, and an unmorphed player in front of the mouth
+// SuckAir: once mData.suckAirTime has passed the animation is over; until then anything other than
+// Locomotion is aborted with an AbortScripted command, and an unmorphed player in front of the mouth
 // (fn_55_5B38) is pulled toward it at 150 units a second, with collision impulses, the minimal
 // acceleration timer and the HUD static interference. Start readies the animation, drops into
 // locomotion 5 and marks this worm not recovered (0x165D b5).
@@ -320,7 +320,7 @@ void CSandBoss::SuckAir(CStateManager& mgr, EStateMsg msg, float dt) {
       return;
     }
     if (BodyController()->GetCurrentStateId() != pas::kAS_Locomotion) { // body 0x37C == 5
-      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState)); // 0xD
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0xD
     }
     if (mSuckAir && player->GetMorphballTransitionState() != CPlayer::kMS_Morphed && // 0x165D b4
         IsBallInRange(*player)) {                                                   // fn_55_5B38

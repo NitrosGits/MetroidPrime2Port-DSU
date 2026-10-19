@@ -524,8 +524,13 @@ void CSandBoss::DestroySphereHelper(CStateManager& mgr) {
   const TUniqueId waypointId = FindConnectedObject(mgr, kSS_Dead, kSM_Attach);
   CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(waypointId));
   if (waypoint != nullptr) {
-    SetTransform(CTransform4f::LookAt(GetTranslation(), waypoint->GetTranslation(),
-                                     CVector3f::Up()));
+    // Retail overwrites the look point's Z with this worm's own Z before LookAt (the compiled
+    // code stores the waypoint's Z and then this worm's Z over it), so the sight line is flat.
+    const CVector3f waypointPos = waypoint->GetTranslation();
+    SetTransform(CTransform4f::LookAt(GetTranslation(),
+                                      CVector3f(waypointPos.GetX(), waypointPos.GetY(),
+                                                GetTranslation().GetZ()),
+                                      CVector3f::Up()));
   }
 }
 
