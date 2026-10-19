@@ -700,11 +700,8 @@ void CSwampBossStage2::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
   }
-  // Retail raises the player's radar radius override and sets its XY/Z radii from
-  // mData.radarRange and mData.unknown_0xfe97e835 for the length of the fight (fn_79_8FAC clears
-  // them again).
-  // TODO(uncertain): CPlayer exposes only the radar radius getters, so this needs upstream
-  // setters before the state can be ported.
+  // The radar radius override lasts the whole fight; DeathSequence (fn_79_8FAC) clears it.
+  mgr.GetPlayer(0)->SetRadarRadiusOverride(mData.radarRange, mData.unknown_0xfe97e835);
 }
 
 // fn_79_9534
@@ -911,8 +908,7 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
     mPendingFlinch = 0.f;
     BodyController()->SetTurnSpeed(BodyController()->GetTurnSpeed() * 0.125f);
     SendScriptMsgs(kSS_InternalState10, mgr, kInvalidUniqueId, kSM_None);
-    // TODO(uncertain): retail also switches the missile repeller off here (0xee0, which is
-    // CMissileRepeller::mActive); it has no setter upstream.
+    mRepeller.SetActive(false);
     mSuppressWaterSfx = false;
     for (int i = 0; i < mGrowthBroken.size(); ++i) {
       mGrowthBroken[i] = false;
@@ -925,7 +921,7 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->SetTurnSpeed(BodyController()->GetTurnSpeed() * 8.f);
     mAttackIndex = 0;
     AddMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
-    // TODO(uncertain): retail switches the missile repeller back on (CMissileRepeller::mActive).
+    mRepeller.SetActive(true);
     SetGrowthTargetEffects(mgr, false);
   }
 }
