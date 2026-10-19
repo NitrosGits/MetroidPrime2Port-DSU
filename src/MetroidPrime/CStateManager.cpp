@@ -3,6 +3,11 @@
 #ifdef TARGET_PC
 #include <stdlib.h>  // getenv: the port's opt-in diagnostics
 #include <string.h>
+#include <strings.h> // strcasecmp
+#include <cctype>
+#include <string>
+#include <utility>
+#include <vector>
 #include "Kyoto/CPakFile.hpp"
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
@@ -4225,7 +4230,7 @@ namespace {
 
 // A warp names an asset ("FrontEnd", "TempleGrounds", ...) or gives a hex asset id, so the
 // request text needs no table on the platform side; the names live in the resource table.
-CAssetId ResolveWarpAsset(const char* text) {
+CAssetId ResolveWarpAsset(const char* text, bool report = true) {
   if (text == nullptr || *text == '\0') {
     return kInvalidAssetId;
   }
@@ -4244,10 +4249,70 @@ CAssetId ResolveWarpAsset(const char* text) {
   const SObjectTag* tag =
       gpResourceFactory != nullptr ? gpResourceFactory->GetResourceIdByName(text) : nullptr;
   if (tag == nullptr) {
-    std::fprintf(stderr, "[warp] no asset named '%s'\n", text);
+    if (report) {
+      std::fprintf(stderr, "[warp] no asset named '%s'\n", text);
+    }
     return kInvalidAssetId;
   }
   return tag->id;
+}
+
+// Defined with the other MLVL readers further down.
+CAssetId PortFindAreaInMlvl(CAssetId worldId, const char* name, int* index);
+CAssetId PortFindWorldByName(const char* text);
+bool PortFindAreaInAnyWorld(const char* name, CAssetId* world, CAssetId* area);
+
+bool IsHexAssetId(const char* text) {
+  return strlen(text) == 8 && strspn(text, "0123456789abcdefABCDEF") == 8;
+}
+
+// An area of `worldId` from request text: a hex id wins, then the MLVL area name, then the
+// resource table. A name is reported when it matches nothing.
+CAssetId ResolveWarpArea(CAssetId worldId, const char* text) {
+  if (text == nullptr || *text == '\0') {
+    return kInvalidAssetId;
+  }
+  if (IsHexAssetId(text)) {
+    return ResolveWarpAsset(text);
+  }
+  int index = -1;
+  const CAssetId byName = PortFindAreaInMlvl(worldId, text, &index);
+  if (byName != kInvalidAssetId) {
+    std::fprintf(stderr, "[warp] area '%s' is area %d (%08x) of world %08x\n", text, index, byName,
+                 worldId);
+    return byName;
+  }
+  return ResolveWarpAsset(text);
+}
+
+// The world and area a MP2_WORLD request names. The world is a hex id, a resource name or a part
+// of an MLVL name; when it is empty or names no world, the area name alone picks the world (the
+// first MLVL with an area of that name), and so does a world text that is itself an area name.
+void ResolveWarpWorld(const char* worldText, const char* areaText, CAssetId* world,
+                      CAssetId* area) {
+  *world = kInvalidAssetId;
+  *area = kInvalidAssetId;
+  const bool haveWorld = worldText != nullptr && *worldText != '\0';
+  const bool haveArea = areaText != nullptr && *areaText != '\0';
+  if (haveWorld) {
+    *world = ResolveWarpAsset(worldText, false);
+    if (*world == kInvalidAssetId) {
+      *world = PortFindWorldByName(worldText);
+    }
+  }
+  if (*world != kInvalidAssetId) {
+    *area = ResolveWarpArea(*world, areaText);
+    return;
+  }
+  const char* areaName = haveArea ? areaText : (haveWorld ? worldText : nullptr);
+  if (areaName == nullptr) {
+    return;
+  }
+  if (haveWorld && haveArea) {
+    std::fprintf(stderr, "[warp] no world matches '%s'; looking for an area '%s' instead\n",
+                 worldText, areaText);
+  }
+  PortFindAreaInAnyWorld(areaName, world, area);
 }
 
 } // namespace
@@ -4276,8 +4341,10 @@ void CStateManager::PortWarpTick() {
       // CDummyGameArea), which is what makes `MP2_TELEPORT=<slot>` usable from a room name
       // ("the Hive Access Tunnel is area 7").
       const IGameArea* a = world->IGetAreaAlways(TAreaId(i));
+      // The MLVL name is the one a warp request matches (retail drops it for an area that has a
+      // name STRG, so IGetInternalAreaName() is empty for most).
       std::fprintf(stderr, " %d=%08x:%s", i, a != nullptr ? a->IGetAreaAssetId() : 0,
-                   a != nullptr ? a->IGetInternalAreaName().data() : "");
+                   a != nullptr ? a->PortGetMlvlAreaName().data() : "");
     }
     std::fprintf(stderr, "\n");
   }
@@ -4317,11 +4384,36 @@ void CStateManager::PortWarpTick() {
   case PortWarp::EKind::kArea: {
     // A plain number is an area *index* (that is what `[warp] area N` prints and what the sweeps
     // use), anything else - a name or a hex asset id - is resolved through the resource table.
-    const int index = std::atoi(request.area);
+    // The whole text must be digits: "0k_temple_hall" is a name, not area 0.
+    char* indexEnd = nullptr;
+    const long parsedIndex = std::strtol(request.area, &indexEnd, 10);
+    const int index = indexEnd != request.area && *indexEnd == '\0' ? static_cast< int >(parsedIndex) : -1;
     const CGameArea* byIndex =
         index >= 0 && index < world->IGetAreaCount() ? world->Area(TAreaId(index)) : nullptr;
     if (byIndex != nullptr && byIndex->GetAreaAssetId() != kInvalidAssetId) {
       PortWarpToArea(TAreaId(index));
+    } else if (!IsHexAssetId(request.area)) {
+      // An MLVL area name ("0b_sand_hall"), case-insensitive, before the resource table.
+      TAreaId named = kInvalidAreaId;
+      for (int i = 0; i < world->IGetAreaCount(); ++i) {
+        const IGameArea* a = world->IGetAreaAlways(TAreaId(i));
+        if (a != nullptr && a->IGetAreaAssetId() != kInvalidAssetId &&
+            strcasecmp(a->PortGetMlvlAreaName().data(), request.area) == 0) {
+          named = TAreaId(i);
+          break;
+        }
+      }
+      if (named != kInvalidAreaId) {
+        std::fprintf(stderr, "[warp] area '%s' is area %d\n", request.area, named.Value());
+        PortWarpToArea(named);
+      } else {
+        const CAssetId byAsset = ResolveWarpAsset(request.area);
+        if (byAsset == kInvalidAssetId || world->IGetAreaId(byAsset) == kInvalidAreaId) {
+          std::fprintf(stderr, "[warp] no area '%s' in world %08x\n", request.area,
+                       gpGameState != nullptr ? gpGameState->CurrentWorldAssetId() : 0u);
+        }
+        PortWarpToArea(world->IGetAreaId(byAsset));
+      }
     } else {
       PortWarpToArea(world->IGetAreaId(ResolveWarpAsset(request.area)));
     }
@@ -4370,7 +4462,10 @@ void CStateManager::PortWarpTick() {
     break;
   }
   case PortWarp::EKind::kWorld: {
-    PortWarpToWorld(ResolveWarpAsset(request.world), ResolveWarpAsset(request.area));
+    CAssetId worldId = kInvalidAssetId;
+    CAssetId areaId = kInvalidAssetId;
+    ResolveWarpWorld(request.world, request.area, &worldId, &areaId);
+    PortWarpToWorld(worldId, areaId);
     break;
   }
   case PortWarp::EKind::kCycleWorld: {
@@ -5105,18 +5200,19 @@ void CStateManager::PortWarpToWorldPortal() {
 // such a world out of reach of a direct boot. When the save has no area of the world, the disc
 // does: fall back to the world's own MLVL.
 namespace {
-// Reads the world's MLVL (`worldId`, which its pak must own) and returns the first of its areas
-// that names an MREA. The MLVL is parsed by `CDummyWorld`, the same reader `CWorld` and the data
-// network use, so the format is not parsed twice.
+// Reads the world's MLVL (`worldId`, which its pak must own) into a `CDummyWorld` and hands it to
+// `fn(world, loader)`; false when the MLVL could not be read. The MLVL is parsed by `CDummyWorld`,
+// the same reader `CWorld` and the data network use, so the format is not parsed twice.
 //
 // A world pak is normally stashed in ARAM while the game is in another world, and a stashed pak's
 // resource table cannot be read (an MLVL in a stashed pak has size 0), so the pak that owns the id
 // is unstashed first - and only that one: `CMain::EnsureWorldPakReady` stashes every pak that does
 // not own the id, which must not happen before the id is known to name a world (a mistyped
 // `MP2_WORLD` would leave every world pak stashed).
-CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
+template < typename F >
+bool PortWithMlvl(CAssetId worldId, F fn) {
   if (gpResourceFactory == nullptr || gpGameState == nullptr) {
-    return kInvalidAssetId;
+    return false;
   }
   CResLoader& loader = gpResourceFactory->GetResLoader();
   CPakFile* owner = nullptr;
@@ -5149,13 +5245,13 @@ CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
                  "[warp] %08x: none of the %d loaded paks owns it (all paks loaded: %d), so the "
                  "disc cannot name an area of it either\n",
                  worldId, pakCount, loader.AreAllPaksLoaded() ? 1 : 0);
-    return kInvalidAssetId;
+    return false;
   }
   if (!owner->IsCompletelyLoaded()) {
     std::fprintf(stderr, "[warp] %08x: the pak that owns it is still loading, so its areas are "
                          "not readable yet\n",
                  worldId);
-    return kInvalidAssetId;
+    return false;
   }
   if (owner->IsWorldPak()) {
     // A world pak is stashed in ARAM while the game is in another world, and a stashed pak has no
@@ -5164,7 +5260,7 @@ CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
   }
   if (loader.ResourceSize(SObjectTag('MLVL', worldId)) == 0) {
     std::fprintf(stderr, "[warp] %08x: the pak that owns it has no MLVL for it\n", worldId);
-    return kInvalidAssetId;
+    return false;
   }
 
   CDummyWorld world(worldId, false);
@@ -5173,51 +5269,159 @@ CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
   for (int spin = 0; !world.ICheckWorldComplete(); ++spin) {
     if (spin == 2000000) {
       std::fprintf(stderr, "[warp] %08x: its MLVL never finished loading\n", worldId);
-      return kInvalidAssetId;
+      return false;
     }
   }
 
-  const int areaCount = world.IGetAreaCount();
-  CAssetId firstUnbackedArea = kInvalidAssetId;
-  int firstUnbackedIndex = -1;
-  for (int i = 0; i < areaCount; ++i) {
-    const IGameArea* area = world.IGetAreaAlways(TAreaId(i));
-    if (area == nullptr) {
-      continue;
+  fn(world, loader);
+  return true;
+}
+
+// The first area of the world's MLVL that names an MREA.
+CAssetId PortFirstAreaFromMlvl(CAssetId worldId) {
+  CAssetId result = kInvalidAssetId;
+  PortWithMlvl(worldId, [&](CDummyWorld& world, CResLoader& loader) {
+    const int areaCount = world.IGetAreaCount();
+    CAssetId firstUnbackedArea = kInvalidAssetId;
+    int firstUnbackedIndex = -1;
+    for (int i = 0; i < areaCount; ++i) {
+      const IGameArea* area = world.IGetAreaAlways(TAreaId(i));
+      if (area == nullptr) {
+        continue;
+      }
+      const CAssetId areaId = area->IGetAreaAssetId();
+      if (areaId == kInvalidAssetId) {
+        // An area slot with no MREA at all: the game cannot travel to it (the map skips it for the
+        // same reason).
+        continue;
+      }
+      if (loader.ResourceExists(SObjectTag('MREA', areaId))) {
+        std::fprintf(stderr,
+                     "[warp] %08x: the save knows no area of it; the disc's MLVL has %d areas, taking "
+                     "area %d (%08x)\n",
+                     worldId, areaCount, i, areaId);
+        result = areaId;
+        return;
+      }
+      // An MREA the loader cannot see is served as *empty bytes*, so landing in such an area would
+      // only move the failure: remember the first one for the report and keep looking.
+      if (firstUnbackedArea == kInvalidAssetId) {
+        firstUnbackedArea = areaId;
+        firstUnbackedIndex = i;
+      }
     }
-    const CAssetId areaId = area->IGetAreaAssetId();
-    if (areaId == kInvalidAssetId) {
-      // An area slot with no MREA at all: the game cannot travel to it (the map skips it for the
-      // same reason).
-      continue;
-    }
-    if (loader.ResourceExists(SObjectTag('MREA', areaId))) {
+
+    if (firstUnbackedArea != kInvalidAssetId) {
       std::fprintf(stderr,
-                   "[warp] %08x: the save knows no area of it; the disc's MLVL has %d areas, taking "
-                   "area %d (%08x)\n",
-                   worldId, areaCount, i, areaId);
-      return areaId;
+                   "[warp] %08x: the save knows no area of it; the disc's MLVL has %d areas but no "
+                   "MREA of it is in a loaded pak (first is area %d, %08x; all paks loaded: %d)\n",
+                   worldId, areaCount, firstUnbackedIndex, firstUnbackedArea,
+                   loader.AreAllPaksLoaded() ? 1 : 0);
+      return;
     }
-    // An MREA the loader cannot see is served as *empty bytes*, so landing in such an area would
-    // only move the failure: remember the first one for the report and keep looking.
-    if (firstUnbackedArea == kInvalidAssetId) {
-      firstUnbackedArea = areaId;
-      firstUnbackedIndex = i;
+
+    std::fprintf(stderr, "[warp] %08x: the disc's MLVL has %d areas and none of them names an MREA\n",
+                 worldId, areaCount);
+    return;
+  });
+  return result;
+}
+
+// The area of `worldId`'s MLVL whose MLVL name is `name` (case-insensitive). Returns its MREA id,
+// and its index in `index`. An area slot without an MREA is not an area the game can travel to, so
+// a name that only matches one is reported as no match.
+CAssetId PortFindAreaInMlvl(CAssetId worldId, const char* name, int* index) {
+  CAssetId result = kInvalidAssetId;
+  PortWithMlvl(worldId, [&](CDummyWorld& world, CResLoader&) {
+    for (int i = 0; i < world.IGetAreaCount(); ++i) {
+      const IGameArea* area = world.IGetAreaAlways(TAreaId(i));
+      if (area != nullptr && area->IGetAreaAssetId() != kInvalidAssetId &&
+          strcasecmp(area->PortGetMlvlAreaName().data(), name) == 0) {
+        result = area->IGetAreaAssetId();
+        *index = i;
+        return;
+      }
+    }
+  });
+  return result;
+}
+
+// Every MLVL named in a loaded pak's name list, as (name, id). The lists survive a pak being
+// stashed, so this needs no unstashing.
+void PortCollectMlvls(std::vector< std::pair< std::string, CAssetId > >& out) {
+  if (gpResourceFactory == nullptr) {
+    return;
+  }
+  CResLoader& loader = gpResourceFactory->GetResLoader();
+  for (int i = 0; i < loader.GetPakCount(); ++i) {
+    CPakFile* pak = loader.GetPakFile(i);
+    if (pak == nullptr) {
+      continue;
+    }
+    const rstl::vector< rstl::pair< rstl::string, SObjectTag > >& names =
+        pak->GetStringToObjectList();
+    for (rstl::vector< rstl::pair< rstl::string, SObjectTag > >::const_iterator it = names.begin();
+         it != names.end(); ++it) {
+      if (it->second.GetType() == 'MLVL') {
+        out.push_back(std::make_pair(std::string(it->first.data()), it->second.GetId()));
+      }
     }
   }
+}
 
-  if (firstUnbackedArea != kInvalidAssetId) {
-    std::fprintf(stderr,
-                 "[warp] %08x: the save knows no area of it; the disc's MLVL has %d areas but no "
-                 "MREA of it is in a loaded pak (first is area %d, %08x; all paks loaded: %d)\n",
-                 worldId, areaCount, firstUnbackedIndex, firstUnbackedArea,
-                 loader.AreAllPaksLoaded() ? 1 : 0);
-    return kInvalidAssetId;
+// A world named by a case-insensitive substring of an MLVL resource name ("sand_world" for
+// `03_Sand_World_20041018`). Display names such as "Agon Wastes" are not resolved: they live in
+// STRGs, not in the name lists.
+CAssetId PortFindWorldByName(const char* text) {
+  std::vector< std::pair< std::string, CAssetId > > mlvls;
+  PortCollectMlvls(mlvls);
+  std::string needle(text);
+  for (size_t i = 0; i < needle.size(); ++i) {
+    needle[i] = static_cast< char >(std::tolower(static_cast< unsigned char >(needle[i])));
   }
+  CAssetId found = kInvalidAssetId;
+  int matches = 0;
+  for (size_t i = 0; i < mlvls.size(); ++i) {
+    std::string hay = mlvls[i].first;
+    for (size_t c = 0; c < hay.size(); ++c) {
+      hay[c] = static_cast< char >(std::tolower(static_cast< unsigned char >(hay[c])));
+    }
+    if (hay.find(needle) == std::string::npos) {
+      continue;
+    }
+    if (matches == 0) {
+      found = mlvls[i].second;
+      std::fprintf(stderr, "[warp] world '%s' is %s (%08x)\n", text, mlvls[i].first.c_str(), found);
+    }
+    ++matches;
+  }
+  if (matches > 1) {
+    std::fprintf(stderr, "[warp] world '%s' also matches %d other MLVL names; took the first\n",
+                 text, matches - 1);
+  }
+  return found;
+}
 
-  std::fprintf(stderr, "[warp] %08x: the disc's MLVL has %d areas and none of them names an MREA\n",
-               worldId, areaCount);
-  return kInvalidAssetId;
+// The world (and area) that owns an area called `name` in its MLVL, searching every MLVL the paks
+// name. Reading an MLVL unstashes its pak (see PortWithMlvl); the warp that follows restashes the
+// others.
+bool PortFindAreaInAnyWorld(const char* name, CAssetId* world, CAssetId* area) {
+  std::vector< std::pair< std::string, CAssetId > > mlvls;
+  PortCollectMlvls(mlvls);
+  for (size_t i = 0; i < mlvls.size(); ++i) {
+    int index = -1;
+    const CAssetId areaId = PortFindAreaInMlvl(mlvls[i].second, name, &index);
+    if (areaId != kInvalidAssetId) {
+      std::fprintf(stderr, "[warp] area '%s' is area %d (%08x) of world %s (%08x)\n", name, index,
+                   areaId, mlvls[i].first.c_str(), mlvls[i].second);
+      *world = mlvls[i].second;
+      *area = areaId;
+      return true;
+    }
+  }
+  std::fprintf(stderr, "[warp] no area named '%s' in any of the %d MLVLs\n", name,
+               static_cast< int >(mlvls.size()));
+  return false;
 }
 
 // The world pak that owns `worldId`, made readable again if it is stashed.

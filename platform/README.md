@@ -139,7 +139,9 @@ card's world table:
 Requests come from `MP2_WORLD="<world>[,<area>]"` and `MP2_TELEPORT="<area>"` at
 start-up, the F5/F6 (area) and F7/F8 (world) hotkeys, the `MP2_INPUT` tokens
 `NEXTAREA`/`PREVAREA`/`NEXTWORLD`/`PREVWORLD`, and the F1 overlay's buttons. World
-and area text is an asset name or a hex asset id. The same slot also carries the gameplay-test
+and area text is an asset name or a hex asset id; an area may also be its MLVL name (`0b_sand_hall`), a
+world a part of its MLVL resource name (`sand_world`), and `MP2_WORLD=0b_sand_hall` finds the world that has
+the area (display names such as "Agon Wastes" are not resolved). The same slot also carries the gameplay-test
 tokens `KILL` (the state manager's own kill, so a run reaches death and respawn), `HEAL`
 (refill the player's energy, so a sweep survives a damaging atmosphere) and `LAYER<layer>`
 (activate that layer of the current area, which is how a module whose actors live in a layer

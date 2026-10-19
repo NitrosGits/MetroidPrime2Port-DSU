@@ -468,6 +468,10 @@ CHECK_SIZEOF(CBCAdditiveLoopReactionCmd, 0x10)
 class CBCAdditiveWeightCmd : public CBodyStateCmd {
 public:
   CBCAdditiveWeightCmd() : CBodyStateCmd(kBSC_AdditiveWeight), mWeight(0.f) {}
+#ifdef TARGET_PC
+  // WallCrawler's Think builds one with the weight it is ramping (retail constructs it inline).
+  explicit CBCAdditiveWeightCmd(float weight) : CBodyStateCmd(kBSC_AdditiveWeight), mWeight(weight) {}
+#endif
 
   float GetWeight() const { return mWeight; }
 
@@ -586,6 +590,12 @@ public:
     DeliverCmd(cmd.GetCommandId());
     mAdditiveReaction = cmd;
   }
+#ifdef TARGET_PC
+  void DeliverCmd(const CBCAdditiveWeightCmd& cmd) {
+    DeliverCmd(cmd.GetCommandId());
+    mAdditiveWeight = cmd;
+  }
+#endif
 
   void DeliverCmd(const CBCAdditiveAimCmd& cmd) {
     DeliverCmd(cmd.GetCommandId());
