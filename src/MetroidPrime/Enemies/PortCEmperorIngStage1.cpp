@@ -377,6 +377,7 @@ void CEmperorIngStage1::UpdateTentacle(int index, float dt, CStateManager& mgr) 
 //     0 when it is done (0x29D0).
 // Then flag 0x40 (the collision wanted) and 0x20 (the collision on) are reconciled through
 // fn_16_3D64 (0x2A00 on, 0x2A30 off).
+// @ fn_16_26B8
 void CEmperorIngStage1::UpdateTentacleCore(int index, float dt, CStateManager& mgr) {
   CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
   CAnimData* animData = joint.mOwner->AnimationData();
@@ -490,6 +491,7 @@ void CEmperorIngStage1::UpdateTentacleMotion(int index, float dt, CStateManager&
 // fn_16_1FC0 (0x1FC0..0x2070): with a collision actor (fn_16_3AA8, 0x1FEC) the tentacle is flagged
 // shootable (0x10, 0x2004), +0x20 takes the actor's initial health (CHealthInfo +0x00, vtable slot
 // 12 HealthInfo at 0x2014) and the health is reset to it (+0x04, 0x204C).
+// @ fn_16_1FC0
 void CEmperorIngStage1::RestoreTentacleHealth(CEmperorIngStage1Joint& joint,
                                               CStateManager& mgr) {
   CCollisionActor* actor = joint.mOwner->GetTentacleActor(mgr, joint.mIndex);
@@ -595,6 +597,7 @@ CParticleGen* CEmperorIngStage1::GetEffectSystem(CParticleGenInfo* effect) {
 
 // fn_16_6D10 (0x6D10..0x6D94): unless null (0x6D34), the system takes the external parameter
 // (0x6D3C) and so does every system it spawned, recursively (0x6D50..0x6D70).
+// @ fn_16_6D10
 void CEmperorIngStage1::SetSystemParam(CParticleGen* system, uint index, float value) {
   CElementGen* gen = static_cast< CElementGen* >(system);  // fn_16_2204, fn_16_22B0 and fn_16_22D0: the external parameter and the spawned systems
   if (gen == nullptr) {
@@ -1179,6 +1182,7 @@ void CEmperorIngStage1::SetCollisionActorActive(CStateManager& mgr, int index, b
 
 // fn_16_830 (0x830..0x8E4): the script is told which stage this is - 1 sends IS01 (0x87C), 2
 // sends IS02 (0x8A8) and every other value IS00 (0x8D0).
+// @ fn_16_830
 void CEmperorIngStage1::SendStageMessage(CStateManager& mgr, int stage) {
   switch (stage) {
     case 1:
@@ -1275,6 +1279,7 @@ static CVector3f CrossProduct(const CVector3f& a, const CVector3f& b) {
 // 0x2D28) flattened (0.0f, 0x2D4C) and normalised (0x2D50); the angle is
 // CVector3f::GetAngleDiff (0x2D5C) and it is negated when the cross product of the facing and the
 // direction (fn_16_2DDC, 0x2D70) points down (its dot with the up vector below 0.0f, 0x2DA8).
+// @ fn_16_2C9C
 void CEmperorIngStage1::UpdateTurnAngle(CStateManager& mgr, const CVector3f& dir) {
   CActor* target = GetTargetActor(mgr);
   CActor* body = GetPlayActor(mgr); // fn_16_3060, 0x2CD4
@@ -1454,6 +1459,7 @@ void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
 // (0x2B98..0x2BA4), the time and the damage hit time (0x2BA8, 0x2BAC) and the speed (0x2BB0),
 // the flag byte with its six bits cleared (0x2BB4..0x2BF8), the state (0x2BFC), the id
 // (0x2C04, kInvalidUniqueId) and the zero and up vectors (0x2C08..0x2C34).
+// @ fn_16_2B68
 void CEmperorIngStage1::BuildTentacleJoint(int index, int animId1, int animId2, int animId3) {
   mJoint.mOwner = this;
   mJoint.mTimer = 0.f;
@@ -1476,6 +1482,7 @@ void CEmperorIngStage1::BuildTentacleJoint(int index, int animId1, int animId2, 
 // fn_16_1E6C (0x1E6C..0x1F34): the tentacle actor gets the module's health info (the copy at
 // 0x1EB8..0x1F04 takes the module's guest 0xAAC..0xAC8) and then its materials (fn_16_1F34 at
 // 0x1F14).
+// @ fn_16_1E6C
 void CEmperorIngStage1::AddTentacleJoint(CStateManager& mgr) {
   CCollisionActor* actor = GetTentacleActor(mgr, mJoint.mIndex);
   if (actor != nullptr) {
@@ -1506,6 +1513,7 @@ void CEmperorIngStage1::UpdateTentacleMaterials(const CEmperorIngStage1Joint& jo
 // raised (0x39B4). fn_16_39CC (0x39CC..0x39EC, 0x20) only calls fn_16_39EC (0x39EC..0x3A14), the
 // placement new's null test around the element's copy constructor fn_16_3A14 (0x3A14..0x3AA8);
 // the vector has a fixed capacity and never grows, so the host assignment is all three.
+// @ fn_16_3984
 void CEmperorIngStage1::AddTentacleJointToVector() {
   mJoints.mJoints[mJoints.mCount] = mJoint;  // fn_16_39CC, fn_16_39EC and fn_16_3A14: the joint is copy-constructed into the vector
   mJoints.mCount += 1;
@@ -2138,6 +2146,7 @@ bool CEmperorIngStage1::ShouldTaunt(CStateManager& mgr, const CTriggerData& data
 // 0x7C74); on update the body stands still - a locomotion command with the zero vector for both
 // the move and the face and the weight 1.0f (lbl_16_rodata_3B4, 0x7CC0) - and the turn angle
 // towards the player is updated (fn_16_7B40, 0x7CCC). Deactivate does nothing.
+// @ fn_16_7C28
 void CEmperorIngStage1::TrackPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate:
@@ -2899,6 +2908,7 @@ int CEmperorIngStage1::TentacleCount() const {
 // fn_16_2EE0: every live tentacle's flag byte (guest +0x24) gets its 0x80 bit set when the
 // argument is non-zero and the tentacle is one of the current sub-stage's slots; the others get
 // it cleared.
+// @ fn_16_2EE0
 void CEmperorIngStage1::SetTentacleFlags(uint flag) {
   const bool set = (flag & 0xff) != 0;
   const int count = TentacleCount();
