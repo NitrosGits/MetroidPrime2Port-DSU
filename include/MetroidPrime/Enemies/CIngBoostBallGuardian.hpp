@@ -393,6 +393,8 @@ private:
   void UpdateBoostAimPos(CStateManager& mgr);
   CVector3f FindBoostSpawnPos(CStateManager& mgr) const;
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
+  // fn_30_6064: release the cover hint (guest 0x108E); the id is cleared only if the hint exists.
+  void ReleaseOwnCoverHint(CStateManager& mgr);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();

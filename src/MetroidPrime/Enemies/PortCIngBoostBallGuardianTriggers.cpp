@@ -506,6 +506,15 @@ void CIngBoostBallGuardian::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id) 
   id = kInvalidUniqueId;
 }
 
+// @ fn_30_6064
+void CIngBoostBallGuardian::ReleaseOwnCoverHint(CStateManager& mgr) {
+  if (CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId)) { // fn_30_60C0
+    hint->SetInUse(false);
+    hint->SetTimeRemaining(0.f); // 0x0000609C: hint 0x170
+    mCoverHintId = kInvalidUniqueId;
+  }
+}
+
 // @ fn_30_5D90: the module's own timers. The Ing's ball cooldown and body-projectile time are not
 // in it; the boost countdowns are: in the boost puddle form (0x11EF 0x80, 0x11EE 0x08 and 0x20,
 // ing spot) 0x11E8 runs down to ShouldBoost; otherwise, outside the ing spot form, 0x11E4 runs down

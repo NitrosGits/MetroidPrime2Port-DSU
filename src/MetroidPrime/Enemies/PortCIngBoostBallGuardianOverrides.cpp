@@ -255,7 +255,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     mCollisionActorManager0->Destroy(mgr); // 0x0000E0C0
     mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
     mgr.DeleteObjectRequest(mHitLightId);  // 0x0000E0E0
-    ReleaseCoverHint(mgr, mCoverHintId);   // [host] the Ing's; retail has fn_30_6064 here
+    ReleaseOwnCoverHint(mgr);              // 0x0000E114: fn_30_6064
     LeaveTeam(mgr);                        // 0x0000E120: fn_30_510C
     break;
   case kSM_AreaLoaded:

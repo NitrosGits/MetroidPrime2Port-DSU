@@ -279,7 +279,7 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   (`67B4`, 0x1084); ACTV turns the light on and sets the boss params ("BossBoostBallGuardian"), DCTV
   runs `510C` (LeaveTeam), turns the light off and zeroes both trackers' emission; Delete deletes
   all three. Their per-frame drivers `6108`/`65C8` are still stand-ins. The host's ACTV `JoinTeam`
-  is the Ing's; Delete's `6064` is not ported (the host keeps the Ing's ReleaseCoverHint). Damage is retail's: XDMG runs `479C` (ing-spot form: `44A4`, the
+  is the Ing's; Delete runs `6064` (the cover hint at 0x108E). Damage is retail's: XDMG runs `479C` (ing-spot form: `44A4`, the
   puddle collider or a hit the boost ball relays; else `4078`, a body collider) and sets the
   player-projectile bit; XRDG runs `4324` in the ing-spot form only. Both count only a CWeapon as
   the collider's last-touched object, so the console's `damage <collider>` (the player as attacker)
