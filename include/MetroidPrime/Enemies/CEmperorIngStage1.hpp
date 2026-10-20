@@ -11,7 +11,9 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 
+class CCollisionActor;
 class CCollisionActorManager;
+class CParticleGenInfo;
 #endif
 
 // The REL's CEmperorIngStage1 (module 16): the Emperor Ing's first stage, the boss the player
@@ -115,8 +117,27 @@ private:
 
   // fn_16_3668: every live tentacle gets its per-frame update.
   void UpdateTentacles(float dt, CStateManager& mgr);
-  // fn_16_2B0C: the per-tentacle update (it calls three more module functions).
+  // fn_16_2B0C: the per-tentacle update.
   void UpdateTentacle(int index, float dt, CStateManager& mgr);
+  // fn_16_26B8: the tentacle's own update - too big for the slice's rule, so a stand-in.
+  void UpdateTentacleCore(int index);
+  // fn_16_2524: the tentacle's motion update - too big for the slice's rule, so a stand-in.
+  void UpdateTentacleMotion(int index, float dt, CStateManager& mgr);
+  // fn_16_24AC: the tentacle's dark and light vulnerability effect states.
+  void SetVulnerabilityEffects(int index);
+  // fn_16_2070: the effect state a tentacle carries - too big for the slice's rule, so a stand-in.
+  void SetTentacleEffectState(int index, const rstl::string& name);
+  // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
+  CActor* GetTargetActor(CStateManager& mgr) const;
+  // fn_16_2FA8: the collision actor of the second tentacle's collision actor manager.
+  CCollisionActor* GetCollisionActor(CStateManager& mgr) const;
+  // fn_16_4E44 / fn_16_BDD0: the particle effect's reference and its release. The reference
+  // counter lives in the retail particle effect, which the port does not have, so these stay
+  // stand-ins.
+  void AcquireParticleEffect(CParticleGenInfo* effect);
+  void ReleaseParticleEffect(CParticleGenInfo* effect);
+  // fn_16_6D10: the effect's own update.
+  void UpdateParticleEffect(CParticleGenInfo* effect, float scale);
   // fn_16_51D4: the module's own sound update.
   void UpdateVoice(float dt, CStateManager& mgr);
   // fn_16_4EB8: moves the actor onto the target's locator.
@@ -163,9 +184,12 @@ private:
   CCollisionActorManager* x7d0_;      // guest 0x7D0, 0: the third one's
   int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
   CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
+  TUniqueId xa1a_;                    // guest 0xA1A: the tracked actor's id (fn_16_302C)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
+  float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
+  float xa5c_;                        // guest 0xA5C, 0.0f: the "Telegraph" effect timer
   float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
   CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
   TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target

@@ -34,6 +34,18 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
 | `fn_16_4C8` | 0x368 | aims the actor at the player | [probable] |
 | `fn_16_8C` | 0x11C4 | the tentacles' hit test and damage | [probable] |
+| `fn_16_4C0C` | 0xBC | the track-player update: the "Damage" and "Telegraph" effect states | [probable] |
+| `fn_16_51D4` | 0x128 | the module's own sound update (it reads a float at the damage vulnerability's +4) | [probable] |
+| `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
+| `fn_16_24AC` | 0x78 | the tentacle's dark and light vulnerability effect states | [proven] |
+| `fn_16_2070` | 0x194 | the effect state a tentacle carries | [probable] |
+| `fn_16_26B8` | 0x3B0 | the tentacle's own update | [?] |
+| `fn_16_2524` | 0x194 | the tentacle's motion update | [?] |
+| `fn_16_302C` | 0x34 | the actor the module tracks (the id at guest 0xA1A) | [proven] |
+| `fn_16_2FA8` | 0x50 | the collision actor of the second tentacle's collision actor manager | [proven] |
+| `fn_16_4E44` | 0x24 | takes the particle effect's reference | [probable] |
+| `fn_16_BDD0` | 0x64 | releases that reference | [probable] |
+| `fn_16_6D10` | 0x84 | the particle effect's own update | [probable] |
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
@@ -142,6 +154,8 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0xA74 | byte | five bits cleared |
 | 0xA78 | float | 0 |
 | 0xA80-0xA8C | four ints | 0 (0xA8C the sound emitter's handle) |
+| 0xA1A | u16 | `kInvalidUniqueId` (the tracked actor's id) |
+| 0xA58, 0xA5C | floats | 0 (the "Damage" and "Telegraph" effect timers) |
 | 0xA90, 0xA98 | u16 | `kInvalidUniqueId` (0xA90 the emitter's target) |
 | 0xA94, 0xA9C | ints | 0 |
 | 0xAA0 | CVector3f | zero |
@@ -308,6 +322,34 @@ bigger keep a named private stand-in that logs once: fn_16_2B0C (0x50 - it is sm
 three more module functions), fn_16_51D4 (0x128), fn_16_4EB8 (0x31C), fn_16_4C0C (0xBC), fn_16_4C8
 (0x368) and fn_16_8C (0x11C4).
 
+### The Think's callees
+
+Ported: fn_16_2B0C (0x50, the per-tentacle update), fn_16_24AC (0x78, the tentacle's two
+vulnerability effect states), fn_16_302C (0x34, the tracked actor) and fn_16_2FA8 (0x50, the
+second tentacle's collision actor).
+
+Stand-ins, each a named private method that logs once: fn_16_26B8 (0x3B0), fn_16_2524 (0x194)
+and fn_16_2070 (0x194) for the tentacle's work, fn_16_4E44 (0x24), fn_16_BDD0 (0x64) and
+fn_16_6D10 (0x84) for the particle effect's reference and update - the reference counter the
+retail takes at the effect's +0x78/+0x7C lives in the retail particle effect, which the port does
+not have - and fn_16_51D4 (0x128) for the sound update, which reads a float at the damage
+vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
+(upstream's layout), so the port has no float there and the value's meaning is not established.
+
+### The target's float at guest +0x1C0
+
+The Think's emitter tail (0x58A8) reads a float at the target's +0x1C0, and it is
+**CPhysicsActor::mMomentum's X**:
+
+- the retail's CActor is 0x158 bytes (include/MetroidPrime/CActor.hpp's `CHECK_SIZEOF(CActor,
+  0x158)`), so the retail's CPhysicsActor starts at 0x158;
+- the port's CActor is 0x1B8 (the port's own presentation members), so the port's CPhysicsActor
+  starts 0x60 later - the port's mMass (its first member) is at 0x1B8;
+- CPhysicsActor's member order is upstream's (the port did not touch
+  include/MetroidPrime/CPhysicsActor.hpp), and mMomentum is the member at the CPhysicsActor's
+  +0x68 (the port's mMomentum is at 0x220 = 0x1B8 + 0x68);
+- 0x158 + 0x68 = 0x1C0, the same member in both.
+
 ### Still a stand-in: fn_16_7C28 (the state "TrackPlayer")
 
 Its body is three calls, all of them too big for the slice's rule: fn_16_830 (0xB4, the
@@ -363,6 +405,11 @@ triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM doe
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
 CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+
+With the Think's track-player update ported (fn_16_4C0C) the "Damage" and "Telegraph" effect
+states are turned on and their timers (guest 0xA58 and 0xA5C) count down; the particle effect's
+own update and the tentacle work stay stand-ins, and with no tentacle spawned the tentacle
+stand-ins do not even run.
 
 With the Think ported (fn_16_56D8) its timers run every frame: the attack timer (guest 0xA4C)
 counts down from 4.0f and the taunt timer (guest 0xA50) counts up from 0.0f, so the conditions

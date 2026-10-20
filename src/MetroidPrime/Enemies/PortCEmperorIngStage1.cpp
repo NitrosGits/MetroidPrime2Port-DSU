@@ -17,7 +17,9 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CParticleGenInfo.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -155,9 +157,12 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , x7d0_(nullptr)                                                  // guest 0x7D0, cleared
 , x7d4_(0)                                                        // guest 0x7D4, cleared
 , x7d8_()                                                         // guest 0x7D8, the tentacle slots
+, xa1a_(kInvalidUniqueId)                                         // guest 0xA1A, fn_16_900C clears it
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
+, xa58_(0.f)                                                      // guest 0xA58, rodata_380
+, xa5c_(0.f)                                                      // guest 0xA5C, rodata_380
 , xa78_(0.f)                                                      // guest 0xA78, rodata_380
 , xa8c_(CSfxHandle::NullHandle())                                  // guest 0xA8C, cleared
 , xa90_(kInvalidUniqueId)                                         // guest 0xA90, fn_16_900C clears it
@@ -228,6 +233,13 @@ void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
                       0.f);
         if (dir.CanBeNormalized()) {
           dir.Normalize();
+          // The retail's float at the target's +0x1C0 is CPhysicsActor::mMomentum's X. The
+          // retail's CActor is 0x158 bytes (include/MetroidPrime/CActor.hpp's
+          // CHECK_SIZEOF(CActor, 0x158)), so the retail's CPhysicsActor starts at 0x158; the
+          // port's CActor is 0x1B8 (the port's own presentation members), so the port's starts
+          // 0x60 later. The member order in CPhysicsActor is upstream's, and mMomentum is the
+          // member at the CPhysicsActor's +0x68 (the port's mMomentum is at 0x220 = 0x1B8 +
+          // 0x68), so 0x158 + 0x68 = 0x1C0 is the same member in both.
           const float offset = targetActor->GetMomentumWR().GetX();
           const CVector3f emitterPos(targetPos.GetX() + dir.GetX() * offset,
                                      targetPos.GetY() + dir.GetY() * offset, targetPos.GetZ());
@@ -245,15 +257,81 @@ void CEmperorIngStage1::UpdateTentacles(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_16_2B0C (0x2B0C..0x2B5C): the per-tentacle update. It calls three more module functions
-// (fn_16_26B8, fn_16_2524 and fn_16_24AC), all over the slice's size rule, so it stays a
-// stand-in here.
+// fn_16_2B0C (0x2B0C..0x2B68): the per-tentacle update - fn_16_26B8 (the tentacle's own work),
+// fn_16_2524 (its motion) and fn_16_24AC (its vulnerability effect states), in that order.
 void CEmperorIngStage1::UpdateTentacle(int index, float dt, CStateManager& mgr) {
-  StandInFn("fn_16_2B0C");
+  UpdateTentacleCore(index);
+  UpdateTentacleMotion(index, dt, mgr);
+  SetVulnerabilityEffects(index);
 }
 
-// fn_16_51D4 (0x51D4..0x52FC): the module's own sound update (it plays a custom sound and
-// reads the attack and taunt timers). Too big for the slice's rule, so it stays a stand-in.
+// fn_16_26B8 (0x26B8..0x2A68): the tentacle's own update. Too big for the slice's rule, so it
+// stays a stand-in.
+void CEmperorIngStage1::UpdateTentacleCore(int index) { StandInFn("fn_16_26B8"); }
+
+// fn_16_2524 (0x2524..0x26B8): the tentacle's motion update. Too big for the slice's rule, so it
+// stays a stand-in.
+void CEmperorIngStage1::UpdateTentacleMotion(int index, float dt, CStateManager& mgr) {
+  StandInFn("fn_16_2524");
+}
+
+// fn_16_24AC (0x24AC..0x2524): the tentacle's two vulnerability effect states - the strings
+// lbl_16_rodata_344 and lbl_16_rodata_348 point at ("DarkVulnerability" and
+// "LightVulnerability"), each handed to fn_16_2070.
+void CEmperorIngStage1::SetVulnerabilityEffects(int index) {
+  SetTentacleEffectState(index, rstl::string_l("DarkVulnerability"));
+  SetTentacleEffectState(index, rstl::string_l("LightVulnerability"));
+}
+
+// fn_16_2070 (0x2070..0x2204): the effect state a tentacle carries. Too big for the slice's rule,
+// so it stays a stand-in.
+void CEmperorIngStage1::SetTentacleEffectState(int index, const rstl::string& name) {
+  StandInFn("fn_16_2070");
+}
+
+// fn_16_302C (0x302C..0x3060): the actor the module tracks - the id at guest 0xA1A, looked up in
+// the state manager and cast to an actor.
+CActor* CEmperorIngStage1::GetTargetActor(CStateManager& mgr) const {
+  return TCastToPtr< CActor >(mgr.ObjectById(xa1a_));
+}
+
+// fn_16_2FA8 (0x2FA8..0x2FF8): the collision actor of the second tentacle's collision actor
+// manager (guest 0x7CC): its first joint description's collision actor id, looked up in the state
+// manager.
+CCollisionActor* CEmperorIngStage1::GetCollisionActor(CStateManager& mgr) const {
+  if (x7cc_ == nullptr) {
+    // The retail has no test here: the manager is set by the tentacle spawn code, which the port
+    // does not have yet.
+    return nullptr;
+  }
+  const TUniqueId id = x7cc_->GetCollisionDescFromIndex(0).GetCollisionActorId();
+  return TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+}
+
+// fn_16_4E44 (0x4E44..0x4E68): takes the particle effect's reference - the two pointers at the
+// effect's +0x78 and +0x7C and the counter at the second one's +0x00. The counter lives in the
+// retail particle effect, which the port does not have, so it stays a stand-in.
+void CEmperorIngStage1::AcquireParticleEffect(CParticleGenInfo* effect) {
+  StandInFn("fn_16_4E44");
+}
+
+// fn_16_BDD0 (0xBDD0..0xBE34): releases the reference the effect update took (it drops the
+// counter and frees the reference when it reaches zero). The counter lives in the retail particle
+// effect, which the port does not have, so it stays a stand-in.
+void CEmperorIngStage1::ReleaseParticleEffect(CParticleGenInfo* effect) {
+  StandInFn("fn_16_BDD0");
+}
+
+// fn_16_6D10 (0x6D10..0x6D94): the effect's own update, with the scale the caller computed.
+// Too big for the slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::UpdateParticleEffect(CParticleGenInfo* effect, float scale) {
+  StandInFn("fn_16_6D10");
+}
+
+// fn_16_51D4 (0x51D4..0x52FC): the module's own sound update. It reads a float at the damage
+// vulnerability's +4 (0x5214) - the retail's CDamageVulnerability is 0x54 bytes and the port's is
+// 0x38 (upstream's layout), so the port has no float there and the value's meaning is not
+// established. It stays a stand-in until that is.
 void CEmperorIngStage1::UpdateVoice(float dt, CStateManager& mgr) { StandInFn("fn_16_51D4"); }
 
 // fn_16_4EB8 (0x4EB8..0x51D4): moves the actor onto the target's locator. Too big for the
@@ -278,10 +356,34 @@ void CEmperorIngStage1::UpdateCollisionActors(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_16_4C0C (0x4C0C..0x4DF0): the module's track-player update. Too big for the slice's rule,
-// so it stays a stand-in.
+// fn_16_4C0C (0x4C0C..0x4DF0): the module's track-player update. It looks the tracked actor up
+// (fn_16_302C), and for the "Damage" and "Telegraph" effect states it finds the actor's first
+// particle effect of that name, hands it to the effect update (fn_16_4E44, fn_16_BDD0 and
+// fn_16_6D10) and turns the effect state on (SetEffectState at 0x4CF0 and 0x4DB0). The two
+// timers (guest 0xA58 and 0xA5C) count down between and after the blocks (0x4D0C and 0x4DC0).
 void CEmperorIngStage1::UpdateTrackPlayer(float dt, CStateManager& mgr) {
-  StandInFn("fn_16_4C0C");
+  CActor* target = GetTargetActor(mgr);
+  if (target == nullptr) {
+    return;
+  }
+  CParticleGenInfo* damage = target->AnimationData()->GetFirstParticleEffect(
+      rstl::string_l("Damage"));
+  if (damage != nullptr) {
+    AcquireParticleEffect(damage);
+    ReleaseParticleEffect(damage);
+    UpdateParticleEffect(damage, xa58_ > 0.f ? 1.f : 0.f);
+  }
+  target->AnimationData()->SetEffectState(rstl::string_l("Damage"), true, mgr);
+  xa58_ -= dt;
+  CParticleGenInfo* telegraph = target->AnimationData()->GetFirstParticleEffect(
+      rstl::string_l("Telegraph"));
+  if (telegraph != nullptr) {
+    AcquireParticleEffect(telegraph);
+    ReleaseParticleEffect(telegraph);
+    UpdateParticleEffect(telegraph, xa5c_ > 0.f ? 1.f : 0.f);
+  }
+  target->AnimationData()->SetEffectState(rstl::string_l("Telegraph"), true, mgr);
+  xa5c_ -= dt;
 }
 
 // fn_16_4C8 (0x4C8..0x830): aims the actor at the player. Too big for the slice's rule, so it
