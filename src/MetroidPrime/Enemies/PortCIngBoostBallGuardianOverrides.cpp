@@ -285,6 +285,7 @@ void CIngBoostBallGuardian::UpdateHitLight(float dt, CStateManager& mgr) {
 // fn_30_DDA0 (this module).
 // The Ing's AcceptScriptMsg (the Ing REL's fn_29_C9A4): the message switch that creates the body
 // and the collision actors, joins the team, relays the hits and cleans up on delete.
+// @ fn_30_DDA0
 void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   // fn_30_DDA0 (0x0000DDC4..0x0000DE08): the active bit (CEntity 0x20 bit 7) before the base
   // handles the message, as a float compared with 0 (f31 vs lbl_30_rodata_70). ACTV acts only on
@@ -507,6 +508,7 @@ void CIngBoostBallGuardian::UpdateHitDamageTime(float dt) {
 // events this function does not handle (retail's local `handled` flag, set by every case below).
 // The area 57 run delivered kUE_LoopedSoundStop (2), kUE_Activate (29), kUE_EffectOff (34) and
 // kUE_Unknown37 (37).
+// @ fn_30_D4F8
 void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                              EUserEventType type, float dt) {
   EnsureBodyActive(mgr); // host guard, not in retail
