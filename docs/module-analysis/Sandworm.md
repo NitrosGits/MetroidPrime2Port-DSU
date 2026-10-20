@@ -404,6 +404,26 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   `2210` (`GetX2E8`), `10A20` (`GetLctrTransformWrapper`) — no caller anywhere in the tree — and
   `534C`, `10A68`, `6324`, which already carried "unreferenced in retail" notes. `F328` is not a
   body at all: it is the inlined `CVector3f::Cross` inside `EF8C`, so its stale tag is gone.
+- Bomb and possession runs (2026-10-20, seven boots of 03_sand_temple L2 plus two of 01_sand_entrance):
+  - `C828` still has no route. `SetUnderground` (`AC24`) never ran in any area-26 boot — no cov hit and
+    the uid probe stayed silent — because u048f's FSM only ever goes `Start` → `Prime` → `Snatch` and
+    stays in `Snatch` (n≈3000-4200). `send Activate`/`Deactivate`, console `damage`, walking out to 40 m
+    and back and a 60 s dwell all left it there; `Null`/`Patrol` never activated, and the Ing possession
+    did not reproduce in any boot (hp stayed 950). The prefab precondition does hold live:
+    `x8C0_flags` reads `0x10` inert and `0x12` awake, bit 7 clear throughout. The `AC24`/`112E8` hits of
+    the earlier BG runs therefore belonged to the adjacent u04e9, not to the Bomb Guardian.
+  - The mol morphology is a `CWeapon`, not a `CGameProjectile`: `CBomb` (`CPlayerGun::DropBomb`) and
+    `CBouncingBomb` (`SpawnBouncingBomb`) both derive from `CWeapon`, whose `Think` does its own
+    box/sphere test and `Explode`, so neither ever reaches `CGameProjectile::CanCollideWith` and
+    `GetRagDoll`/`CanBeShot` cannot be reached through a bomb. The only `CGameProjectile`s in the tree
+    are `CBeamProjectile` (the player's beam) and `CEnergyProjectile`.
+  - A bomb kill works and is clean: worm u0596 at 12/120 hp, morphed (`press x`), 3 m away, ~9 x
+    `press a` → hp -9 and the actor deleted, 0 caught errors. It exercises neither `14AEC`/`14B24` nor
+    `14B1C`: the worm's death takes no `kFU_ExplodeDeath` follow-up, so `CreateXDamageParticles` never
+    runs.
+  - `14B10` `GetGravityConstant` is a dead slot: probed in 03_sand_temple, `HasBodyState(kAS_Jump)` and
+    `HasBodyState(kAS_Hurled)` are 0 on both worms at every sample, and those two body states are its
+    only callers.
 - Five bodies are still open and all five are reachable in principle: `C828` (`SpineHelperC828`
   needs `SetUnderground` on the one worm whose prefab has the underground bit clear, `u048f` in
   03_sand_temple L2), `14AEC`/`14B24` (`GetRagDoll`/`CanBeShot`, reached from
