@@ -962,6 +962,79 @@ and draws with the leg, shin and toe models; the beacon does not draw yet (its h
 above). No "[port] caught" and no reach-stub in the log.
 
 
+**WP2 part 2k done (2026-10-20): the Crippled state and the beacon's arrival.** `fn_14_7CB4`
+(the Crippled state, 0xD8) and `fn_14_28D0` (the beacon's arrival, 0x158) are ported;
+`fn_14_2A28` (the beacon's effect update, 0x29C) stays a stand-in.
+
+`fn_14_7CB4` dispatches on the state message the retail's way (the cmpwi at 0x7CBC against 1 and
+the cmpwi at 0x7CE0 against 0 - the host's `kStateMsg_Update` and `kStateMsg_Activate` have the
+same values): on Update the beacon's update runs (fn_14_2CC4, the call at 0x7D6C) and on
+Activate the knee joint colliders are woken and every collision actor but the guard's is put to
+sleep (the SetActive call at 0x7CF4 and the loop at 0x7D00-0x7D64). The activate path needs the
+collision actor managers at 0xE60 and 0xE64, which the constructor does not build yet, so it is
+a named once-logging stand-in.
+
+`fn_14_28D0` is the beacon's arrival: the guard's collision actor (the uid at 0x10CC) is woken -
+when its flag word's bit 24 is clear (the extrwi at 0x2910 - the byte's bit 7, the mask 0x80 -
+MWCC packs the bitfields from the MSB, so this is the CEntity's **first** bitfield, `mActive`,
+not `mUpdateDuringCinematicSkip`) the `CEntity::SetActive(true)` runs (the vtable slot 0x1C) - the particle generator starts (the CParticleGen's vtable slot 0x2C with the argument
+1, i.e. `SetGeneratorRate(1.f)`), the arrival sound plays (the PlayCustomSound call at 0x29E8: the
+position is the neck locator's translation, the direction the up vector and the parms are the
+transmission beacon's sound parms, the guest's 0x968..0x97F, with the maxVolume at 0x7F while the
+echo visor is active) and its handle goes to 0x1240, and the dark visor may orbit the beacon
+(the SetVisorOrbitableFlags call at 0x2A0C - the flag 8 is `kVOF_Dark`).
+
+**How the fight reaches Crippled** (the retail's chain, none of it in the port yet): the
+"VCTA"/"VCTD" script messages (the module's AcceptScriptMsg, fn_14_A6A8) call fn_14_3E88, which
+wakes the knee joint colliders; a knee's destruction (the helper that writes the word at 0x1284
+and asks for the knee's deletion) is what the `KneeDestroyed` trigger reads (fn_14_9A48, ported),
+and the state machine's transition then enters Crippled. In the port the word at 0x1284 stays -1:
+the module's AcceptScriptMsg (fn_14_A6A8, 0x4F0) is a stand-in and the port has no knee actors
+(the knee armour sub-actor, fn_14_4080, is not ported), so the trigger never fires and the
+Crippled state is unreachable - the beacon's pieces are in place, but nothing runs them. The
+console's `damage` does not help either: the guardian's vulnerability is pass-through
+(fn_14_9FE4) and the retail's damage path (fn_14_78) is not ported.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
+the leg, shin and toe models; the Crippled state is never entered, so the beacon does not draw
+yet. No "[port] caught" and no reach-stub in the log.
+
+
+**WP2 part 2l done (2026-10-20): the knee colliders' wake path, and how Crippled is reached.**
+`fn_14_3E88` (0x88) is ported and the module's AcceptScriptMsg handles the two messages that
+call it; the `fn_14_28D0` flag test is fixed (the byte's bit 7 is the CEntity's `mActive`, the
+first bitfield MWCC packs from the MSB).
+
+`fn_14_3E88` (0x88 bytes) walks the four knee ids (0xFB0, 0xFB2, 0xFB4 and 0xFB6 - the loop at
+0x3EB0) and sets the active flag of every knee that exists (the compare with kInvalidUniqueId at
+0x3EB4, the ObjectById call at 0x3ED0 and the `CEntity::SetActive` through the vtable slot 0x1C
+at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low byte of the third
+argument). The module's AcceptScriptMsg (fn_14_A6A8) calls it for the messages "ACTV"
+(0x41435456) and "DCTV" (0x44435456); the port handles those two cases and the rest of that
+function is still a stand-in.
+
+**Where the knee collision actors come from** (the retail's chain, and why the port cannot reach
+Crippled yet): the managers at 0xE60 and 0xE64 are **not** built by the constructor or by the
+AcceptScriptMsg - `fn_14_676C` (0xF8) builds them, and it is called from the module's
+`DoUserAnimEvent` (fn_14_A468, the call at 0xA604) when the animation asks for them. It calls
+`fn_14_61DC` (0x550, the manager at 0xE60) and `fn_14_5C30` (0x590, the manager at 0xE64), which
+build the joint collision descriptions; both are over this slice's ~0x200 limit, so they would
+be stand-ins and the managers would stay empty - and the knee actors themselves belong to the
+knee armour sub-actor (fn_14_4080, not ported), so the knee ids at 0xFB0..0xFB6 stay invalid.
+With no knee actor the helper that writes the word at 0x1284 (the one that also asks for the
+knee's deletion) has nothing to delete, the word stays -1, the `KneeDestroyed` trigger
+(fn_14_9A48, ported) never fires and the state machine never enters Crippled. So 7CB4's
+activate path stays a stand-in and the beacon does not draw yet.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
+the leg, shin and toe models; there are no knee collision actors and the Crippled state is not
+entered, so the beacon does not draw. No "[port] caught" and no reach-stub in the log.
+
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct

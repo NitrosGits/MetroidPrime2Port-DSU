@@ -26,6 +26,7 @@
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -184,6 +185,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10D7_(0xFF)
 , x10DC_{-1, -1, -1, -1}
 , x123C_(nullptr)
+, x10CC_(kInvalidUniqueId)
 , x1240_(CSfxHandle())
 , x1264_(0.f)
 , x1268_(0)
@@ -261,12 +263,43 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 }
 
 // vtable slot 6 = fn_14_A6A8 (0x4F0), the biggest body function: it switches on the script
-// message's four-character code.
+// message's four-character code. Two of its cases are ported: "ACTV" (0x41435456) and "DCTV"
+// (0x44435456), which wake the knee colliders and put them back to sleep (fn_14_3E88); the
+// rest of the function is still a stand-in.
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   CPatterned::AcceptScriptMsg(mgr, msg);
+  switch (static_cast< uint >(msg.GetMessage())) {
+  case 0x41435456: // "ACTV"
+    x3E88_(mgr, true);
+    break;
+  case 0x44435456: // "DCTV"
+    x3E88_(mgr, false);
+    break;
+  default:
+    break;
+  }
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);
+  }
+}
+
+// fn_14_3E88 (0x88 bytes): the knee colliders' active flag. The four knee ids (0xFB0, 0xFB2,
+// 0xFB4 and 0xFB6 - the loop at 0x3EB0, the ids two bytes apart) are walked; every knee that
+// exists (the compare with kInvalidUniqueId at 0x3EB4) is looked up (the ObjectById call at
+// 0x3ED0) and its collision actor's active flag is set (the CEntity::SetActive call through the
+// vtable slot 0x1C at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low
+// byte of the third argument).
+void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
+  const u16 ids[4] = {xFB0_, xFB2_, xFB4_, xFB6_};
+  for (int i = 0; i < 4; ++i) {
+    if (ids[i] == kInvalidUniqueId.value) {
+      continue;
+    }
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(TUniqueId(ids[i])));
+    if (actor != nullptr) {
+      actor->SetActive(active);
+    }
   }
 }
 
@@ -519,12 +552,32 @@ void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
   x2A28_(mgr, dt);
 }
 
-// fn_14_28D0 (0x158 bytes): the beacon's arrival - it hands the collision actor at 0x10CC a
-// flag, starts the particle generator (the virtual at 0x2C), plays the arrival sound (which is
-// what sets the emitter handle at 0x1240) and lets the visor orbit the beacon. Over this
-// slice's callee limit, so it is a stand-in.
+// fn_14_28D0 (0x158 bytes): the beacon's arrival. The guard's collision actor (the uid at
+// 0x10CC - the lhz at 0x28F0 and the ObjectById call at 0x28FC) is woken: when its flag
+// word's bit 24 is clear (the extrwi at 0x2910 - the byte's bit 7, the mask 0x80 - the CEntity's
+// first bitfield, mActive) the CEntity::SetActive(true) runs (the vtable slot 0x1C). Then the particle generator starts (the CParticleGen's vtable slot 0x2C with the
+// argument 1), the arrival sound plays (the PlayCustomSound call at 0x29E8: the position is
+// the neck locator's translation, the direction the up vector and the parms are the
+// transmission beacon's sound parms - the guest's 0x968..0x97F - with the maxVolume at 0x7F
+// while the echo visor is active) and its handle goes to 0x1240, and the dark visor may orbit
+// the beacon (the SetVisorOrbitableFlags call at 0x2A0C - the flag 8 is the dark visor).
 void CDigitalGuardian::x28D0_(CStateManager& mgr) {
-  StandInFn("fn_14_28D0 (the beacon's arrival, 0x158 bytes)");
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(x10CC_));
+  if (actor != nullptr && !actor->GetActive()) {
+    actor->SetActive(true);
+  }
+  if (x123C_ != nullptr) {
+    x123C_->SetGeneratorRate(1.f);
+  }
+  if (!x1240_) {
+    const CVector3f position = GetLctrTransform(CSegId(x10B9_)).GetTranslation();
+    SLdrAudioPlaybackParms parms = mData.mSoundTransmissionBeacon;
+    if (mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Echo) {
+      parms.maxVolume = 0x7F;
+    }
+    x1240_ = PlayCustomSound(position, CVector3f::Up(), parms, true);
+  }
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Dark, true);
 }
 
 // fn_14_2A28 (0x29C bytes): the beacon's effect update - it aims the particle generator at the
@@ -934,8 +987,24 @@ void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float
   StandInFn("fn_14_7D8C");
 }
 
+// fn_14_7CB4 (0xD8 bytes): the Crippled state. The message is the retail's (the cmpwi at
+// 0x7CBC against 1 and the cmpwi at 0x7CE0 against 0): on Activate the knee joint colliders
+// are woken and every other collision actor is put to sleep, and on Update the beacon's update
+// runs (fn_14_2CC4, the call at 0x7D6C).
 void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_7CB4");
+  switch (msg) {
+  case kStateMsg_Activate:
+    // The activate path (the SetActive call at 0x7CF4 and the loop at 0x7D00-0x7D64, which
+    // puts every collision actor but the guard's to sleep) needs the collision actor managers
+    // at 0xE60 and 0xE64, which the constructor does not build yet.
+    StandInFn("fn_14_7CB4: the Crippled state's activate path (the collision actor managers)");
+    break;
+  case kStateMsg_Update:
+    x2CC4_(mgr, dt);
+    break;
+  default:
+    break;
+  }
 }
 
 // The 13 codes of lbl_14_data_380 (.data 0x380; fn_14_D904's stores at 0xDEBC..0xE00C).

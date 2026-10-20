@@ -310,8 +310,9 @@ private:
   uchar x10D7_;      // 0x10D7: the fourth toe locator segment id
   int x10DC_[4];     // 0x10DC: the four per-leg words (0x10DC, 0x10E0, 0x10E4, 0x10E8); the
                      // value 3 skips the leg (fn_14_1700)
-  const CParticleGen* x123C_; // 0x123C: the particle generator the echo emitter's render
-                              // draws (a CElementGen in retail); fn_14_D664 creates it
+  CParticleGen* x123C_;  // 0x123C: the particle generator the echo emitter's render draws (a
+                         // CElementGen in retail); fn_14_D664 creates it
+  TUniqueId x10CC_;      // 0x10CC: the guard's collision actor (fn_14_28D0 wakes it)
   CSfxHandle x1240_;   // 0x1240: the beacon's sound emitter handle (fn_14_28D0 sets it)
   float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
   int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
@@ -332,6 +333,9 @@ private:
 
   // fn_14_2CC4 (0x19C bytes): the beacon's update.
   void x2CC4_(CStateManager& mgr, float dt);
+
+  // fn_14_3E88 (0x88 bytes): the knee colliders' active flag.
+  void x3E88_(CStateManager& mgr, bool active);
 
   // fn_14_28D0 (0x158 bytes) and fn_14_2A28 (0x29C bytes): the beacon's arrival and its
   // effect update. Both are over this slice's callee limit, so they are stand-ins.
