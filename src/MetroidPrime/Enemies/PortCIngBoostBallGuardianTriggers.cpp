@@ -211,6 +211,7 @@ void CIngBoostBallGuardian::SetBodyManagerReflect(CStateManager& mgr, bool refle
 // fn_30_3068: entering (when allowed) raises the boost, the puddle form and the puddle generate
 // bits and zeroes 0x11D4; anything else leaves the puddle form, zeroes 0x11D8/0x11DC and reloads
 // the puddle mode time from the current phase.
+// @ fn_30_3068
 void CIngBoostBallGuardian::SetBoostPuddleMode(bool enter) {
   if (enter && mBoostPuddleAllowed) { // 0x00003068; 0x00003074: 0x11EF 0x20
     mShouldBoost = true;              // 0x00003084: 0x11EE 0x10 = 1
@@ -652,6 +653,7 @@ void CIngBoostBallGuardian::UpdateLoopSfx() {
 // fn_30_3A60: the body projectile's (0x1070), the two loops' (0x1078/0x107C) and the suck
 // sound's (0xFFC) emitters are removed (0x00003A7C/0x00003A98/0x00003AB4/0x00003AD0: each only
 // when set); retail leaves the handles as they are.
+// @ fn_30_3A60
 void CIngBoostBallGuardian::RemoveSfxEmitters() {
   if (mBodyProjectileSfx) {
     CSfxManager::RemoveEmitter(mBodyProjectileSfx);

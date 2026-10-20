@@ -330,7 +330,8 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   switch (msg.GetMessage()) {
   case kSM_Create:
     // fn_30_68F0 tests the data byte's kFlag_StartAsIngSpot (0x0000690C/0x00006914 for the form,
-    // 0x00006924/0x00006928 for the locomotion), not the guest bit 0x11ED 0x40.
+    // 0x00006924/0x00006928 for the locomotion), not the guest bit 0x11ED 0x40. It stays folded
+    // into this case (no host function, so no marker).
     mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
     if ((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) {
       BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00006934: li r4, 0
@@ -745,22 +746,37 @@ void CIngBoostBallGuardian::TakeDamage(const CVector3f& direction, float magnitu
   CPatterned::TakeDamage(direction, magnitude);
 }
 
-// The Ing's Listen (the Ing REL's fn_29_B294): a path obstruction inside 40 units asks for a path
-// recalculation, every other noise inside the hearing radius counts as a heard shot.
+// A path obstruction inside 40 units asks for a path recalculation; a player shot inside the
+// hearing radius (0x7C4) and, with a leash time (0x3D4), less than its square above or below
+// counts as heard (0x11AC = 0). Other noises are ignored.
+// @ fn_30_C758
 bool CIngBoostBallGuardian::Listen(CStateManager&, const CVector3f& position,
                                    EListenNoiseType type) {
-  if (!GetAlive() || !GetActive()) {
-    return false;
+  bool heard = false;
+  if (!GetAlive()) { // 0x0000C760: 0x420 0x40
+    return heard;
   }
-  const float distSq = (position - GetTranslation()).MagSquared();
-  if (type == kLNT_PathObstruction) {
-    if (distSq < 1600.f) {
-      mRecalcPath = true;
-      return true;
+  const CVector3f delta = position - GetTranslation();
+  switch (type) {
+  case kLNT_PathObstruction: // 4
+    if (delta.MagSquared() < 1600.f) { // 0x0000C7B8: rodata_114
+      mRecalcPath = true;              // 0x0000C7C8: 0x11EC 0x08
+      heard = true;
     }
-  } else if (distSq < mData.mHearingRadius * mData.mHearingRadius) {
-    // [?] every other noise inside the hearing radius counts as a heard shot.
-    mHeardShotTime = 0.f;
+    break;
+  case kLNT_PlayerFire: { // 0
+    const float dzSq = delta.GetZ() * delta.GetZ();
+    if (delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius) { // 0x0000C810
+      // 0x0000C828: leash 0 hears at any height; 0x0000C830: else dz^2 < leash^2.
+      if (mCurPlayerLeashTime == 0.f || dzSq < mCurPlayerLeashTime * mCurPlayerLeashTime) {
+        heard = true;
+        mHeardShotTime = 0.f; // 0x0000C844
+      }
+    }
+    break;
   }
-  return false;
+  default:
+    break;
+  }
+  return heard;
 }

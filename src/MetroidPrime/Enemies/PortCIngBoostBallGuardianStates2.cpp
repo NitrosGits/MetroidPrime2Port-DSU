@@ -749,6 +749,7 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
     // The id came off the hint list, so retail takes the object as a hint with no type test.
     if (CScriptAIHint* hint = static_cast< CScriptAIHint* >(mgr.ObjectById(picked))) {
       // fn_30_6014 (asm 0x000088E4): in use, then the cover hint (0x108E) and the last one (0x1090).
+      // It stays folded into this caller (no host function, so no marker).
       hint->SetInUse(true);
       mCoverHintId = hint->GetUniqueId();
       mLastCoverHintId = mCoverHintId;
