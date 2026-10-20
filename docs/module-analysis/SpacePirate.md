@@ -159,8 +159,8 @@ in bodyController(0x48c)+0x56c is set. If pInfo+0x2a4 bit 0x80, builds a `CEchoE
 +0xb0/0xb4 breakDodge min/max · +0xb8/+0xba u16 hurled/death sfx · +0xbc (0x8708…) · +0xc0 avoidDistance ·
 +0xc4 = 0.5 (constant B44) · +0xc8 launcher data (0x6C): {equippedWeapon, launcher asset,
 +8 bouncy-grenade data 0x50 [mass, 0xed08…, CDamageInfo, numBounces, explosion×2, trail, effect,
-u16 bounce/explode sfx, 0.1, 150, 0.1, 150 (constants B3C/B40), bit 0x4c = 1], +0x58 (0xa95a025b),
-+0x5c/0x60 launch speed min/max, +0x64/0x68 attack distance min/max}.
+u16 bounce/explode sfx, 0.1, 150, 0.1, 150 (constants B3C/B40), bit 0x4c = 1], +0x58 (0xa95a025b,
++the 58D8 volley count), +0x5c/0x60 launch speed min/max, +0x64/0x68 attack distance min/max}.
 MP1's is 0xCC with an inline CProjectileInfo and no grenade block.
 
 ## 3. Loader `fn_72_140`
@@ -292,8 +292,9 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 - Movement extras are done: `Skid 94D0`, `GetUp B3D4`, `Jump 5310` + leash `5280`, `WallHang 69AC`,
   `WallDetach 68E4`, `DoubleSnap 99F0`, `JumpBack 63C8` + `CantJumpBack D2A0` are ported (unmarked, section 6).
   `Enraged A2B8`, `Deactivate 5BF4`, `RemoveFromWorld 5B88`, `Ambushing 7630` and `PostWarpOut 6DA4` are done
-  (section 6). **1 stub left, in PortCSpacePirateStates.cpp** (`grep PortSpacePirateStandIn`): only
-  `LaunchGrenade 58D8` (0x254). `WarpIn 7078`, `WarpOut 6E6C`, `Generate C1A4`, `Bounce 5D0C`,
+  (section 6). **No stub is left in PortCSpacePirateStates.cpp**: `LaunchGrenade 58D8` (0x254) went in this
+  session together with the `4174` grenade spawn and its `4030`/`3D7C` helpers (next bullet; the
+  stand-ins that remain are all in PortCSpacePirateTriggers.cpp). `WarpIn 7078`, `WarpOut 6E6C`, `Generate C1A4`, `Bounce 5D0C`,
   `PathFindEx 5EA4` and `Captured 5610` are ported (section 6, commits `c0a1fc9d6` and `bf95637f6`) and
   stay unmarked: none is reached in `08_sand_casualpirates` (arealess; `ShouldWarpIn`, `BounceFind`,
   `IsAmbushing` and `ShouldLaunchGrenade` are the triggers that list them, and no pirate here has the
@@ -311,40 +312,56 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 - Lanes kill their game by pid only (other worktrees' games share the machine). The verify harness is
   `/tmp/opencode/sp_trig_verify.sh` (boots 08_sand_casualpirates, beams 208, greps transitions and
   every `... trigger` line; `FRAMES`/`LOG`/`DISP`/`PORT` overridable).
-- **Next (last state): `LaunchGrenade 58D8` + the `4174` bouncy-grenade spawn.** `58D8` is decoded:
-  Update first, when `xba0_teamAiMgrId != kInvalidUniqueId`, calls
-  `CScriptTeamAiMgr::StartAttack(kAT_Projectile, mgr, xba0_teamAiMgrId, GetUniqueId())` and on refusal
-  sets `x6b4 = 3` (`kAS_Over`) and returns; otherwise `x6b4 = 1` (`kAS_Ready`) and
-  `xc58_ = mgr.Random()->Range(1, mData+0x120)`. Activate: `CanIssueCommand(&x6b4, body, 9 =
-  kAS_LoopAttack)` -> `CBCLoopAttackCmd(kLAT_Zero, waitForAnimOver = true)` (type 7, `{0, 1, skipInto
-  0}`), `else if (xc58_ <= 0)` -> bare `CBodyStateCmd(kBSC_ExitState)`. Deactivate: `x6b4 = 0`,
-  `mAttackRemTime = GetAverageAttackTime()` + `Random()->Float() * mAttackTimeVariation` (CPatterned
-  0x3e8) **only when `mgr.IsMultiplayer()`** (`mgr+0x16e8` bit 0x80), then a bare `kBSC_ExitState` and
-  `CScriptTeamAiMgr::EndAttack(kAT_Projectile, mgr, xba0_teamAiMgrId, GetUniqueId(), false)`.
-  `4174` is called from `DoUserAnimEvent 3B28`'s `kUE_Projectile` case (the port has a TODO + `--xc58_`
-  stand-in at `PortCSpacePirate.cpp:1248`): it decrements `xc58_`, takes
-  `GetLctrTransform(xa86_gunSeg)`, reads that transform's translation, needs a live `mAttackTarget`
-  (`GetObjectById` -> else no grenade), gets the target's eye point from `4030`, shapes the launch with
-  `3D7C` (0x2B4, 2D arc/Cos-Sin geometry) and two `CVector3f::Slerp` calls (rodata BD8 = 0.785 rad
-  limit, then `sUpVector`), builds the transform with `CTransform4f::LookAt`, then
-  `CBouncyGrenade` (0x390 bytes, name from rodata `C38+0x323`) with the tree's ctor exactly:
-  `(AllocateUniqueId, name, CEntityInfo(areaId = this->mAreaId, NullConnectionList, kInvalidEditorId),
-  LookAtTransform, CModelData from 452C, CActorParameters(), GetUniqueId(), f1 = mData+0x124,
-  *(CBouncyGrenadeData*)(this+0x890) = mData+0xd0, f2 = 5.0 (B78), mskInvertedBox,
-  TUniqueId = kInvalidUniqueId, 0.0 (B9C), 0, nullptr, nullptr)` and `mgr.AddObject`s it. Needs
-  `4030` (0x144) and `3D7C` (0x2B4) decoded first, plus `452C` (the CModelData builder at 0x452C).
-- **Launcher-data finding (blocks `58D8`, verify before writing it):** `CSpacePirateData` keeps a 0x6C
-  launcher block at +0xc8 (`fn_72_10C64` ctor: `{r4, r5, 0x50-byte copy of *r6 via 10954, r7 int at
-  +0x58, 4 floats at +0x5c..0x68}`; `fn_72_108D8` copies it into `CSpacePirateData`). The port's loader
-  (`PortLoadSpacePirate`) maps only 4 of its fields, so `mData+0x120` (= block +0x58, the int
-  `58D8` hands to `Range`) is **uninitialised stack** there, and `mGrenadeMinAttackDist`/
-  `mGrenadeMaxAttackDist` are mapped from the SLdr attack distances onto the block's last two floats
-  (+0x64/+0x68), which the ctor fills from `r6`'s tail rather than from those properties - so the
-  naming may be off. Identify block +0x58 (candidate: SLdr `unknown_0xa95a025b`, default 3, or
-  `grenadeNumBounces`) and the +0x5c..0x68 floats (candidates: `grenadeMass` 25,
-  `unknown_0xed086ce0` 0.4, `grenadeMinLaunchSpeed` 20, `grenadeMaxLaunchSpeed` 50 - `4174` reads
-  +0x124 = +0x5c as the grenade's launch speed, and 25 m/s there would match) before porting `4174`;
-  map the fields properly in `CSpacePirateData` + the loader rather than reading raw offsets.
+- **Last state done (2026-10-20, this session): `LaunchGrenade 58D8` + the `4174` bouncy-grenade spawn.**
+  No `// @` markers: neither is reachable in `08_sand_casualpirates` (no GRNT pattern), so neither state
+  nor spawn could be traced - the spawn was exercised with a temporary `MP2_SP_GRENADE` probe in `Think`
+  (removed before the commit), the state not at all.
+  `58D8` (unmarked): Update asks `CScriptTeamAiMgr::StartAttack(kAT_Projectile, mgr,
+  xba0_teamAiMgrId, GetUniqueId())` **only when the id is valid** - asm `cmplw`/`beq .L_59 60` sends an
+  invalid id straight to the launch path, so `x6b4 = 3` (`kAS_Over`) means "in a team and refused".
+  Otherwise `x6b4 = 1` (`kAS_Ready`) and `xc58_ = mgr.Random()->Range(1, mData.mGrenadeCount)`. Activate:
+  `CanIssueCommand(&x6b4, body, 9 = kAS_LoopAttack)` -> `CBCLoopAttackCmd(kLAT_Zero,
+  waitForAnimOver = true)` (type 7, `{0, 1, skipInto 0}`), `else if (xc58_ <= 0)` -> bare
+  `CBodyStateCmd(kBSC_ExitState)`. Deactivate: `x6b4 = 0`, `mAttackRemTime = GetAverageAttackTime()` +
+  `Random()->Float() * mAttackTimeVariation` (CPatterned 0x3e8) **only when `mgr.IsMultiplayer()`**
+  (`mgr+0x16e8` bit 0x80), then a bare `kBSC_ExitState` and `CScriptTeamAiMgr::EndAttack(kAT_Projectile,
+  mgr, xba0_teamAiMgrId, GetUniqueId(), false)`.
+  `4174` -> `CSpacePirate::SpawnGrenade`, called from `DoUserAnimEvent 3B28`'s `kUE_Projectile` case (it
+  owns the `--xc58_`): `GetLctrTransform(xa86_gunSeg)` -> origin, `mData.mGrenadeMinLaunchSpeed` seeds the
+  speed, `GetObjectById(mAttackTarget)` (no target -> no grenade), aim point from `4030`, ballistic solve
+  `3D7C`, `delta.z = 0`, `gunXf.GetForward()` fallback, one `Slerp` capped at rodata BD8 = 0.785 rad, a
+  second `Slerp` toward `sUpVector` by the solved angle, `CTransform4f::LookAt(origin, origin + dir,
+  sUpVector)`, then `CBouncyGrenade` (`rs_new 0x390`, name `"Bouncy Grenade"` = rodata F62, allocation
+  tag `"??(??)"` = F5B) with `(AllocateUniqueId, name, CEntityInfo(areaId, NullConnectionList, true,
+  kInvalidEditorId), LookAtTransform, CModelData() /*452C = default ctor*/, CActorParameters(),
+  GetUniqueId(), speed, mData.BuildGrenadeData() /*this+0x890*/, 5.0 /*B78*/, mskInvertedBox,
+  kInvalidUniqueId, 0.0 /*B9C*/, 0, nullptr, nullptr)` and `mgr.AddObject`.
+  `4030` -> `GetGrenadeAimPoint`: `target->GetAimPosition(mgr, 0.5f)` (vtable slot 0x54), minus
+  `0.5 * CPlayer::GetEyeHeight()` while the player is `kMS_Unmorphed`, and - when the launcher data has
+  bounces - pulled 70% back toward the pirate (BE0) for `aim.z <= pirate.z + 2.0` (B60): the asm is
+  `cror eq,lt,eq`, a `<=` test, **not** the equality one m2c prints.
+  `3D7C` -> `SolveGrenadeLaunch`: ten candidates from 0 upwards in pi/40 steps (from pi/4 downwards when
+  the target is above the gun), `speed^2 = (dist * 0.5*g*dist) / (dist*cos*sin - dz*cos^2)` - the same
+  denominator as `CDarkCommando::SolveGrenadeLaunch`, not its negation - accepting the first value inside
+  `[minLaunchSpeed^2, maxLaunchSpeed^2]` and otherwise keeping the closest miss, with
+  `mData.mGrenadeMinLaunchSpeed` as the initial speed.
+  Probe evidence (1080p, `MP2_GODMODE=1`, area 08, 1400 frames): 53 spawns on pirate 208, every one
+  `added` with a solved speed (3.8-26.6 m/s) and `bounces 2` (the prefab's own launcher data - so the
+  weapon-data property is present even though no connection lists the state); the boot stayed clean
+  (0 `[port] caught`/reach-stub, cycle unchanged) and the plain harness run without the probe was clean too.
+- **Launcher block, resolved (was the blocker for `58D8`/`4174`):** `CSpacePirateData` +0xc8..0x134, built
+  by `fn_72_10C64` from the SLdr weapon data (`fn_72_149C` reader; struct `SLdrSpacePirateWeaponData`) and
+  copied in by `fn_72_108D8`: `+0x00` `equippedWeapon`, `+0x04` `grenadeLauncher`, `+0x08` a 0x50
+  `CBouncyGrenadeData` built by `fn_72_C0C` = (mass `grenadeMass`, speed `unknown_0xed086ce0`, damage
+  `grenadeDamage` via `LdrToDamageInfo`, numBounces, gen ids **explosion, explosion, trail, effect** -
+  the asm loads `+0x24` into both of the first two slots - `sound_GrenadeBounce`/`sound_GrenadeExplode`,
+  then `grenadeMinAttackDist`/`grenadeMaxAttackDist` in the explode-sfx falloff/max-dist slots and the
+  constants 0.1 (B3C) / 150 (B40) / bit set), `+0x58` **`unknown_0xa95a025b`** (default 3) = grenades per
+  volley, the `58D8` Range cap and `xc58_`, `+0x5c`/`+0x60` `grenadeMinLaunchSpeed`/`MaxLaunchSpeed`
+  (`+0x5c` is the `4174`/`3D7C` speed seed - 20/50, not the mass 25 the first reading guessed),
+  `+0x64`/`+0x68` `grenadeMinAttackDist`/`MaxAttackDist` - **the old naming was right**, `fn_72_10C64`
+  takes them from `weaponData.grenadeMin/MaxAttackDist`. The host struct now names all of it and
+  `BuildGrenadeData()` reassembles the retail object; `mData+0x120` is no longer uninitialised.
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 

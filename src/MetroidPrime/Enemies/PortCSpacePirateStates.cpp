@@ -1558,8 +1558,45 @@ void CSpacePirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_58D8 (0x254): the team-AI handshake around a grenade volley. Update claims the
+// team's projectile-attack slot (fn_72_58D8 stores xbA0's manager id as the team, GetUniqueId as the
+// member); a granted claim, or a pirate in no team at all (0xba0 is kInvalidUniqueId), arms
+// kAS_Ready and seeds xc58_ with Range(1, mData.mGrenadeCount) - the grenades left in the volley,
+// each fired and decremented by fn_72_4174. A denied claim goes straight to kAS_Over. Activate
+// delivers CBCLoopAttackCmd(kLAT_Zero, waitForAnimOver) while kAS_LoopAttack can be issued, and
+// exits the state once xc58_ is spent; Deactivate re-arms the attack timer (with retail's
+// multiplayer variation), exits the state and releases the team slot.
 void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::LaunchGrenade state (fn_72_58D8)");
+  switch (msg) {
+  case kStateMsg_Update:
+    // The team test short-circuits to the launch path: no team means nothing to ask.
+    if (xba0_teamAiMgrId != kInvalidUniqueId &&
+        !CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, xba0_teamAiMgrId,
+                                       GetUniqueId())) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      xc58_ = mgr.Random()->Range(1, mData.mGrenadeCount);
+    }
+    break;
+  case kStateMsg_Activate:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero, true));
+    } else if (xc58_ <= 0) {
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mAttackRemTime = GetAverageAttackTime();
+    if (mgr.IsMultiplayer()) {
+      mAttackRemTime += mgr.Random()->Float() * mAttackTimeVariation;
+    }
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, xba0_teamAiMgrId,
+                                GetUniqueId(), false);
+    break;
+  }
 }
 
 // Retail fn_72_5610 (0x26C): Update stops the physics actor, stores 3 into CPatterned's two-bit

@@ -6,6 +6,8 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/Math/CVector2f.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "MetroidPrime/CActorLights.hpp"
@@ -700,6 +702,108 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
   x8f7_26_hearPlayerFire = false;
 }
 
+// Retail fn_72_3D7C: the launcher's ballistic solve. Ten candidate angles are tried from 0 (or from
+// pi/4 downwards when the target is above the gun); the first one whose required speed lands inside
+// [minLaunchSpeed, maxLaunchSpeed] wins, otherwise the closest miss is kept.
+static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float minLaunchSpeed,
+                               float maxLaunchSpeed, float& angle, float& speed) {
+  const float heightDelta = target.GetZ() - origin.GetZ();
+  const float distance =
+      CVector2f(target.GetX() - origin.GetX(), target.GetY() - origin.GetY()).Magnitude();
+  const float minSpeedSq = minLaunchSpeed * minLaunchSpeed;
+  const float maxSpeedSq = maxLaunchSpeed * maxLaunchSpeed;
+
+  float startAngle = 0.f;
+  float angleStep = 0.07853982f; // pi/40
+  if (target.GetZ() > origin.GetZ()) {
+    startAngle = 0.7853982f; // pi/4
+    angleStep = -angleStep;
+  }
+  const float halfGravityDist = 0.5f * kDefaultGravityAccel * distance;
+  const float lhs = distance * halfGravityDist;
+
+  float bestAngle = 0.f;
+  float bestSpeed = minLaunchSpeed;
+  float bestError = FLT_MAX;
+  for (float i = 0.f; i < 10.f; i += 1.f) {
+    const float candidate = angleStep * i + startAngle;
+    const float cosine = CMath::FastCosR(candidate);
+    const float sine = CMath::FastSinR(candidate);
+    // Retail's fmsubs leaves the terms in this order: distance*(cos*sin) - height*cos^2.
+    const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);
+    if (denominator > 1.1920929e-7f) {
+      const float speedSq = lhs / denominator;
+      if (speedSq >= minSpeedSq && speedSq <= maxSpeedSq) {
+        bestAngle = candidate;
+        bestSpeed = CMath::SqrtF(speedSq);
+        break; // retail branches straight past the loop counter here
+      }
+      const float error = speedSq > maxSpeedSq ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
+      if (error < bestError) {
+        bestAngle = candidate;
+        bestSpeed = CMath::SqrtF(speedSq);
+        bestError = error;
+      }
+    }
+  }
+  angle = bestAngle;
+  speed = bestSpeed;
+}
+
+// Retail fn_72_4030: the point the grenade is thrown at - the target's aim position, lowered to half
+// the player's eye height, then (for a bouncing launcher) pulled 70% of the way back towards the gun
+// when the aim is at most 2 m above the pirate (asm: cror lt/eq -> <=, not an equality test).
+static CVector3f GetGrenadeAimPoint(const CActor& target, const CStateManager& mgr,
+                                    const CVector3f& piratePos, uint numBounces) {
+  CVector3f aim = target.GetAimPosition(mgr, 0.5f);
+  const CPlayer* player = TCastToConstPtr< CPlayer >(target);
+  if (player && player->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed) {
+    aim -= CVector3f(0.f, 0.f, 0.5f * player->GetEyeHeight());
+  }
+  if (numBounces != 0 && aim.GetZ() <= piratePos.GetZ() + 2.0f) {
+    aim = piratePos + 0.7f * (aim - piratePos);
+  }
+  return aim;
+}
+
+// Retail fn_72_4174: launches one bouncy grenade from the gun locator, aimed by fn_72_4030 and
+// fn_72_3D7C, with retail's default model / actor parameters and 5 m player-explode distance.
+void CSpacePirate::SpawnGrenade(CStateManager& mgr) {
+  --xc58_;
+  const CTransform4f gunXf = GetLctrTransform(xa86_gunSeg);
+  const CVector3f origin = gunXf.GetTranslation();
+  float angle = 0.f;
+  float speed = mData.mGrenadeMinLaunchSpeed;
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget));
+  if (!target) {
+    return;
+  }
+  const CVector3f aim =
+      GetGrenadeAimPoint(*target, mgr, GetTranslation(), mData.mGrenadeNumBounces);
+  SolveGrenadeLaunch(aim, origin, mData.mGrenadeMinLaunchSpeed, mData.mGrenadeMaxLaunchSpeed,
+                     angle, speed);
+
+  CVector3f flat = aim - origin;
+  flat.SetZ(0.f);
+  const CVector3f forward = gunXf.GetForward();
+  CVector3f horizontal = flat.CanBeNormalized() ? flat.AsNormalized() : forward;
+  if (CVector3f::GetAngleDiff(forward, horizontal) > 0.7853982f) {
+    horizontal = CVector3f::Slerp(forward, horizontal, CRelAngle::FromRadians(0.7853982f));
+  }
+  const CVector3f launchDir =
+      CVector3f::Slerp(horizontal, CVector3f::Up(), CRelAngle::FromRadians(angle));
+  const CTransform4f xf = CTransform4f::LookAt(origin, origin + launchDir, CVector3f::Up());
+
+  CBouncyGrenade* grenade = rs_new CBouncyGrenade(
+      mgr.AllocateUniqueId(), rstl::string_l("Bouncy Grenade"),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId), xf,
+      CModelData(), CActorParameters(), GetUniqueId(), speed, mData.BuildGrenadeData(), 5.f,
+      CAABox::MakeMaxInvertedBox(), kInvalidUniqueId, 0.f, 0, nullptr, nullptr);
+  if (grenade) {
+    mgr.AddObject(*grenade);
+  }
+}
+
 // Fires one shot from the gun locator at the target (or straight ahead if the pirate is dying).
 // @ fn_72_45F8
 bool CSpacePirate::FireProjectile(float dt, CStateManager& mgr) {
@@ -1246,8 +1350,8 @@ void CSpacePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   TraceCall(*this, "UserAnimEvent", static_cast< int >(type));
   switch (type) {
   case kUE_Projectile:
-    // TODO(fn_72_4174): retail spawns the launcher's grenade (a 0x390-byte actor) here.
-    --xc58_;
+    // Retail fn_72_4174 launches the launcher's grenade here.
+    SpawnGrenade(mgr);
     handled = true;
     break;
   case kUE_BeginAction:
@@ -1407,6 +1511,26 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
   data.mGrenadeLauncher = sldrThis.weaponData.grenadeLauncher;
   data.mGrenadeMinAttackDist = sldrThis.weaponData.grenadeMinAttackDist;
   data.mGrenadeMaxAttackDist = sldrThis.weaponData.grenadeMaxAttackDist;
+  // fn_72_140 builds the bouncy-grenade data (fn_72_C0C) from the same weapon data, then the launcher
+  // block (fn_72_10C64). Retail passes the explosion gen id in both of the first two slots (the asm
+  // reloads the same property) and reuses the attack distances as the explode-sfx falloff/max-dist.
+  data.mGrenadeMass = sldrThis.weaponData.grenadeMass;
+  data.mGrenadeSpeed = sldrThis.weaponData.unknown_0xed086ce0;
+  data.mGrenadeDamage = LdrToDamageInfo(sldrThis.weaponData.grenadeDamage);
+  data.mGrenadeNumBounces = static_cast< uint >(sldrThis.weaponData.grenadeNumBounces);
+  data.mGrenadeExplosion = sldrThis.weaponData.grenadeExplosion;
+  data.mGrenadeTrail = sldrThis.weaponData.grenadeTrail;
+  data.mGrenadeEffect = sldrThis.weaponData.grenadeEffect;
+  data.mGrenadeBounceSfx = static_cast< ushort >(sldrThis.weaponData.sound_GrenadeBounce);
+  data.mGrenadeExplodeSfx = static_cast< ushort >(sldrThis.weaponData.sound_GrenadeExplode);
+  data.mGrenadeSfxFalloff = sldrThis.weaponData.grenadeMinAttackDist;
+  data.mGrenadeSfxMaxDist = sldrThis.weaponData.grenadeMaxAttackDist;
+  data.mGrenadeX44 = 0.1f;
+  data.mGrenadeX48 = 150.f;
+  data.mGrenadeX4c = true;
+  data.mGrenadeCount = sldrThis.weaponData.unknown_0xa95a025b;
+  data.mGrenadeMinLaunchSpeed = sldrThis.weaponData.grenadeMinLaunchSpeed;
+  data.mGrenadeMaxLaunchSpeed = sldrThis.weaponData.grenadeMaxLaunchSpeed;
 
   return rs_new CSpacePirate(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                              LdrToEntityInfo(info, sldrThis.editorProperties),

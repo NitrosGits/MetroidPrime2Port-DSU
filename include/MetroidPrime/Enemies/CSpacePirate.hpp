@@ -8,6 +8,7 @@
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CIkChain.hpp"
+#include "MetroidPrime/Enemies/CBouncyGrenade.hpp"
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
@@ -48,10 +49,38 @@ struct CSpacePirateData {
   ushort mHurledSfx;           // +0xb8
   ushort mDeathSfx;            // +0xba
   float mAvoidDistance;        // +0xc0
-  CAssetId mGrenadeLauncher;   // +0xcc (launcher block +4, i.e. +0xc8 + 4)
-  uint mEquippedWeapon;        // +0xc8
-  float mGrenadeMinAttackDist; // +0x12c (launcher block +0x64)
-  float mGrenadeMaxAttackDist; // +0x130 (launcher block +0x68)
+  // Launcher block, retail +0xc8..0x134 (built by fn_72_10C64; the loader's fn_72_140 fills it
+  // from the SLdr weapon-data property 0xdc89cc3c). The 0x50-byte bouncy-grenade data stays flat
+  // so the struct remains trivially copyable; BuildGrenadeData() assembles retail's
+  // CBouncyGrenadeData - the object at this+0x890 that 58D8/4174 hand to CBouncyGrenade.
+  uint mEquippedWeapon;          // +0xc8 (block +0x00) weaponData.equippedWeapon
+  CAssetId mGrenadeLauncher;     // +0xcc (block +0x04) weaponData.grenadeLauncher
+  float mGrenadeMass;            // +0xd0 (grenade data +0x00) weaponData.grenadeMass
+  float mGrenadeSpeed;           // +0xd4 (grenade data +0x04) weaponData.unknown_0xed086ce0
+  CDamageInfo mGrenadeDamage;    // +0xd8 (grenade data +0x08) weaponData.grenadeDamage
+  uint mGrenadeNumBounces;       // +0xf4 (grenade data +0x24) grenadeNumBounces; fn_72_4030 reads it
+  CAssetId mGrenadeExplosion;    // +0xf8 (grenade data +0x28/+0x2c: retail passes it as both gen ids)
+  CAssetId mGrenadeTrail;        // +0x100 (grenade data +0x30) grenadeTrail
+  CAssetId mGrenadeEffect;       // +0x104 (grenade data +0x34) grenadeEffect
+  ushort mGrenadeBounceSfx;      // +0x108 (grenade data +0x38) sound_GrenadeBounce
+  ushort mGrenadeExplodeSfx;     // +0x10a (grenade data +0x3a) sound_GrenadeExplode
+  float mGrenadeSfxFalloff;      // +0x10c (grenade data +0x3c) = grenadeMinAttackDist in the loader
+  float mGrenadeSfxMaxDist;      // +0x110 (grenade data +0x40) = grenadeMaxAttackDist in the loader
+  float mGrenadeX44;             // +0x114 (grenade data +0x44) constant 0.1 (rodata B3C)
+  float mGrenadeX48;             // +0x118 (grenade data +0x48) constant 150 (rodata B40)
+  bool mGrenadeX4c;              // +0x11c (grenade data +0x4c) constant true
+  int mGrenadeCount;             // +0x120 (block +0x58) weaponData.unknown_0xa95a025b; 58D8's Range cap
+  float mGrenadeMinLaunchSpeed;  // +0x124 (block +0x5c) grenadeMinLaunchSpeed; 4174 seeds the solve
+  float mGrenadeMaxLaunchSpeed;  // +0x128 (block +0x60) grenadeMaxLaunchSpeed
+  float mGrenadeMinAttackDist;   // +0x12c (block +0x64) grenadeMinAttackDist
+  float mGrenadeMaxAttackDist;   // +0x130 (block +0x68) grenadeMaxAttackDist
+
+  CBouncyGrenadeData BuildGrenadeData() const {
+    return CBouncyGrenadeData(
+        mGrenadeMass, mGrenadeSpeed, mGrenadeDamage, mGrenadeNumBounces, mGrenadeExplosion,
+        mGrenadeExplosion, mGrenadeTrail, mGrenadeEffect, mGrenadeBounceSfx, mGrenadeExplodeSfx,
+        mGrenadeSfxFalloff, mGrenadeSfxMaxDist, mGrenadeX44, mGrenadeX48, mGrenadeX4c);
+  }
 };
 #endif
 
@@ -93,6 +122,7 @@ public:
   CAABox GetSortingBounds(const CStateManager& mgr) const override;
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
+  void SpawnGrenade(CStateManager& mgr); // fn_72_4174, called from DoUserAnimEvent's kUE_Projectile
   bool CanBeShot(const CStateManager&, int) override { return true; } // fn_72_5C
   bool IsListening() const override { return true; }                  // fn_72_10
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
