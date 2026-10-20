@@ -206,6 +206,10 @@ void CIngBoostBallGuardian::UpdateHitLight(float, CStateManager&) {
 // The Ing's AcceptScriptMsg (the Ing REL's fn_29_C9A4): the message switch that creates the body
 // and the collision actors, joins the team, relays the hits and cleans up on delete.
 void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
+  // fn_30_DDA0 (0x0000DDC4..0x0000DE08): the active bit (CEntity 0x20 bit 7) before the base
+  // handles the message, as a float compared with 0 (f31 vs lbl_30_rodata_70). ACTV acts only on
+  // an inactive entity, DCTV only on an active one.
+  const bool wasActive = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
   const TUniqueId sender = msg.GetSenderId();
   if (DebugBg()) {
@@ -266,23 +270,27 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     break;
   case kSM_Activate:
     JoinTeam(mgr);
-    // Retail handles ACTV only while the entity is active (CEntity 0x20 bit 7, the first bitfield =
-    // mActive) and only turns the collision actors on for the corporeal form.
-    if (GetActive() && !mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal);
-    }
-    if (GetActive() && mCollisionActorManager1 != nullptr) {
-      mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
+    // 0x0000E134: only when it was inactive; each manager is on for its own form.
+    if (!wasActive) {
+      if (!mCollisionActorManager.null()) {
+        mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal); // 0x0000E150
+      }
+      if (mCollisionActorManager1 != nullptr) {
+        mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
+      }
     }
     break;
   case kSM_Deactivate:
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, false);
+    // 0x0000E204: only when it was active.
+    if (wasActive) {
+      if (!mCollisionActorManager.null()) {
+        mCollisionActorManager->SetActive(mgr, false); // 0x0000E214
+      }
+      if (mCollisionActorManager1 != nullptr) {
+        mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
+      }
+      StopSfx(); // 0x0000E2B8: fn_30_3A60
     }
-    if (mCollisionActorManager1 != nullptr) {
-      mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
-    }
-    StopSfx();
     break;
   case kSM_AIUpdateDisabled:
     if (!mCollisionActorManager.null()) {

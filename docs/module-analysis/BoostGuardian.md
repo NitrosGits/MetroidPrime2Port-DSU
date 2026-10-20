@@ -273,8 +273,11 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   (0xE0CC), Activate (`mForm == kForm_IngSpot`, 0xE16C), Deactivate (0xE224), AIUpdateDisabled
   (0xE2EC), BecomeIngSpot on (0xAF70), BecomeCorporeal off (0xB144), the dtor; BoostAttack's
   calls are unguarded as in retail. Area 28: the box is built (8th collision actor).
-  The host keeps the Ing message gates (Activate on `GetActive()`); retail `DDA0` gates Activate/
-  Deactivate on a float compare (`f31` vs rodata_70) not yet decoded. `4324`/`44A4` (0xD64 index
+  `DDA0`'s ACTV/DCTV gate (`f31` vs rodata_70) is the active bit taken before the base handles the
+  message: ACTV acts only when inactive, DCTV only when active (ported). Still missing from those
+  cases: ACTV's hit light (0x1084) `SetActive(true)` and `SetBossParams(.., "BossBoostBallGuardian")`;
+  DCTV's `510C` (QuitTeam), the light off and the 0x1074/0x1076 trackers' emission 0. The host's
+  ACTV `JoinTeam` is the Ing's. `4324`/`44A4` (0xD64 index
   lookups) are in the unported boost half.
 - *0xD60 (not done):* `4E90` builds the body manager (spheres + `AddMaterial` + `SetMaterialFilter`,
   like the Ing's `fn_29_3190`). Replacing the host's Ing-half `mCollisionActorManager` with it
