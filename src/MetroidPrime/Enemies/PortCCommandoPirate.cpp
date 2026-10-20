@@ -12,11 +12,14 @@
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
+#include "Kyoto/Animation/CPASAnimParm.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/BodyState/CBodyState.hpp"
 #include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -33,6 +36,8 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
 
 #include <stdio.h>
 #include "rstl/string.hpp"
@@ -630,13 +635,155 @@ void CCommandoPirate::x6390_UpdateBurstFire(CStateManager& mgr, float dt) {
   }
   mBurstFire.Update(mgr, dt);                            // 0x00006598..0x000065A4
   if (mBurstFire.ShouldFire()) {                         // 0x000065A8..0x000065B0 (guest +0xb04 bit 0x80)
-    StandInFn("fn_9_57A0 (0x370 bytes)");                // 0x000065C0
+    x57A0_FireShot(mgr, dt);                             // 0x000065C0
     const float shotTime = (mgr.Random()->Float() - 0.5f) * mData.mIntraBurstShotVariation +
                            mData.mIntraBurstShotTime;    // 0x000065C4..0x000065F0
     if (mBurstFire.GetTimeToNextShot() > 0.f) {          // 0x000065E4..0x000065F4
       mBurstFire.SetTimeToNextShot(shotTime);            // 0x000065F8
     }
   }
+}
+
+// @ fn_9_57A0
+// fn_9_57A0 (0x370 bytes): the module's shot - the burst fire's projectile. The guest's helper
+// takes the state manager and the frame time and answers whether it fired.
+//
+// 0x000057DC..0x000057F8: the gun locator's transform (the guest's locator at guest this+0xC5E) is
+//   fetched and copied.
+// 0x000057FC..0x00005804: while the actor is alive (the byte at guest this+0x420's 0x40 bit - the
+//   host's GetAlive()) the shot is aimed; a dead commando fires straight ahead (0x00005B84).
+// 0x00005808..0x00005820: the target (the id at guest this+0xBCA) is looked up; without it the
+//   helper gives up (0x00005BD4).
+// 0x00005824..0x0000583C: the target's position (the guest's this+0x54..0x5C) is the aim point.
+// 0x00005840..0x00005874: when the target is the player and the player's own state word (the guest's
+//   player+0x12F8) is 3 - the host's morph ball transition state kMS_Unmorphing - the player's own
+//   position is the aim point and the line of sight ray is skipped (the test at 0x00005A2C).
+// 0x00005878..0x000058EC: otherwise the projectile's intercept position is predicted (the
+//   PredictInterceptPos call at 0x000058E8): the gun's position, the player's aim position, the
+//   frame time and gravity.
+// 0x00005904..0x0000593C: the delta from the gun to the aim point and its length.
+// 0x00005940..0x00005998: the gun's own direction - the right wrist locator (guest this+0xC60)
+//   minus the right elbow locator (guest this+0xC61) - and the angle between it and the delta (the
+//   GetAngleDiff call at 0x00005998).
+// 0x0000599C..0x000059D4: the shot needs the angle to be at most 30 degrees (rodata_4C8), or at most
+//   45 degrees (rodata_4C0) when the target is within 6 units (rodata_49C).
+// 0x000059D8..0x00005A48: the line of sight filter: the include list is the material bit 27 (the
+//   shift 0x3B) and the exclude list the bits 0 and 60 (the shifts 0x20 and 0x14), with the filter
+//   type 3 (kFT_IncludeExclude).
+// 0x00005A4C..0x00005A80: the ray from the gun to the aim point; when it hits nothing the module's
+//   line of sight byte (guest this+0xAE8) loses its 0x80 bit (0x00005B70..0x00005B7C) and the shot
+//   is given up.
+// 0x00005A84..0x00005B08: the burst fire's own error (GetDistanceCompensatedError with the
+//   distance and 6.0f) is rotated by the actor's own frame and added to the aim point; the shot's
+//   transform looks from the gun to it (the LookAt call at 0x00005B0C).
+// 0x00005B1C..0x00005B68: the projectile is launched (the LaunchProjectile call at 0x00005B58)
+//   with the guest's type 6, no attributes, no homing and the scale 1.0f (rodata_43C).
+// 0x00005BD4..0x00005D18: after a shot the muzzle flash is played: the additive animation's state
+//   id is 0x18 and its one parameter is the enum 2, or 8 when the body is in its locomotion state
+//   (the body's own state word, the host's GetCurrentStateId) and that state says it is moving (the
+//   body state's vtable slot 0x18, the call at 0x00005C04); the animation is found in the body's
+//   animation database (the FindBestAnimation call at 0x00005CAC) and added as an additive
+//   animation (the AddAdditiveAnimation call at 0x00005CD8).
+// 0x00005CDC..0x00005D18: the shot's sound (the block's +0x48 = guest this+0x808) is emitted at the
+//   actor's own position.
+//
+// The guest builds the player's aim position with its own copy of the player (the vcall at
+// 0x000058B4); the port asks the player for its aim position instead (GetAimPosition), the host's
+// own accessor for it.
+bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
+  bool fired = false;
+  const CTransform4f gunXf = GetLctrTransform(mLocatorGun);        // 0x000057E4..0x000057F8
+  // The guest's visor effect: fn_9_6054 builds the default CImpactVisorEffect (its three optional
+  // members empty) and fn_9_5F3C releases it (the call at 0x00005B64) - the host's
+  // CImpactVisorEffect::None().
+  const CImpactVisorEffect visorEffect = CImpactVisorEffect::None();  // fn_9_6054, fn_9_5F3C
+  if (!GetAlive()) {                                                // 0x000057FC..0x00005804
+    // A dead commando fires straight ahead (0x00005B84..0x00005BC0).
+    LaunchProjectile(gunXf, mgr, 6, CWeapon::kPA_None, false, visorEffect,
+                     CVector3f(1.f, 1.f, 1.f));                     // rodata_43C
+    fired = true;                                                  // 0x00005BD0
+  } else {
+    // The guest's GetObjectById (the call at 0x00005818) hands out a mutable pointer and the cast
+    // to the player (the call at 0x00005840) needs one; the host's GetObjectById is the const one.
+    CEntity* target = const_cast< CEntity* >(mgr.GetObjectById(xbca_));  // 0x00005808..0x00005820
+    if (target == nullptr) {
+      return false;                                                // 0x00005BD4
+    }
+    // The guest reads the target's position without a cast; the host's CEntity has none, so the
+    // target is cast to an actor - the port limit the module's other helpers guard the same way.
+    CActor* actor = TCastToPtr< CActor >(target);
+    if (actor == nullptr) {
+      return false;
+    }
+    CVector3f pos = actor->GetTranslation();                       // 0x00005824..0x0000583C
+    bool skipRay = false;                                          // the guest's r30
+    if (CPlayer* player = TCastToPtr< CPlayer >(target)) {         // 0x00005840
+      if (player->GetMorphballTransitionState() == CPlayer::kMS_Unmorphing) {  // guest +0x12f8 == 3
+        skipRay = true;                                            // 0x0000585C (r30 = 1)
+        pos = player->GetTranslation();                            // 0x00005858..0x00005870
+      } else {
+        // The guest asks the module's own projectile info (the vcall at 0x000058C0, the vtable slot
+        // 0xDC - the port's own member, guest this+0xA14).
+        pos = mProjectileInfo.PredictInterceptPos(                 // 0x000058B8..0x000058EC
+            gunXf.GetTranslation(), player->GetAimPosition(mgr, 0.f), *player, true, dt);
+      }
+    }
+    const CVector3f delta = pos - gunXf.GetTranslation();          // 0x00005904..0x00005938
+    const float distance = delta.Magnitude();                      // 0x0000593C
+    const CVector3f gunDir = GetLctrTransform(mLocatorRWrist).GetTranslation() -
+                             GetLctrTransform(mLocatorRElbow).GetTranslation();  // 0x00005940..0x00005994
+    const float angle = CVector3f::GetAngleDiff(gunDir, delta);    // 0x00005998
+    if (!(angle <= 0.5235988f)) {                                   // rodata_4C8, 0x0000599C..0x000059AC
+      if (!(distance <= 6.f)) {                                     // rodata_49C, 0x000059B0..0x000059C0
+        return false;                                               // 0x00005BD4
+      }
+      if (!(angle <= 0.7853982f)) {                                 // rodata_4C0, 0x000059C4..0x000059D4
+        return false;                                               // 0x00005BD4
+      }
+    }
+    if (!skipRay) {
+      const CMaterialFilter losFilter = CMaterialFilter::MakeIncludeExclude(
+          CMaterialList(kMT_ScanPassthrough),                      // the material bit 27
+          CMaterialList(kMT_NoStepLogic, kMT_NoPlatformCollision));  // the bits 0 and 60
+      if (!mgr.RayCollideWorld(gunXf.GetTranslation(), pos, losFilter, this)) {  // 0x00005A4C
+        xae8_ &= ~0x80;                                            // 0x00005B70..0x00005B7C
+        return false;                                               // 0x00005BD4
+      }
+    }
+    const CVector3f error =
+        GetTransform().Rotate(mBurstFire.GetDistanceCompensatedError(distance, 6.f));  // 0x00005A84..0x00005AAC
+    pos += error;                                                  // 0x00005AB0..0x00005AFC
+    const CTransform4f shotXf =
+        CTransform4f::LookAt(gunXf.GetTranslation(), pos, CVector3f::Up());  // 0x00005B0C
+    LaunchProjectile(shotXf, mgr, 6, CWeapon::kPA_None, false, visorEffect,
+                     CVector3f(1.f, 1.f, 1.f));                     // 0x00005B58, rodata_43C
+    fired = true;                                                  // 0x00005B68
+  }
+  if (fired) {
+    // The muzzle flash: the guest's additive animation (the state id 0x18) with its one parameter
+    // (the enum 2, or 8 while the body moves).
+    int parm = 2;                                                  // 0x00005C4C
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion &&  // the guest's +0x37c == 5
+        BodyController()->BodyStateInfo().GetCurrentState()->IsMoving()) {  // the slot 0x18 vcall
+      parm = 8;                                                    // 0x00005C10
+    }
+    // The guest's fn_9_5D74 builds the animation's parameter block: the state id 0x18 and the eight
+    // parameters - the one enum above and seven NoParameter ones (the calls at 0x00005C18..0x00005C4C).
+    const CPASAnimParmData parms(static_cast< pas::EAnimationState >(0x18),
+                                 CPASAnimParm::FromEnum(parm),      // fn_9_5D74
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter());
+    const rstl::pair< float, int > best =
+        BodyController()->GetPASDatabase().FindBestAnimation(parms, *mgr.Random(), -1);  // 0x00005CAC
+    if (best.second != -1) {                                       // 0x00005CB0..0x00005CB8
+      AnimationData()->AddAdditiveAnimation(best.second, 1.f, false, true);  // 0x00005CD8
+    }
+    CSfxManager::AddEmitter(mData.mSoundProjectile, GetTranslation(),  // 0x00005CDC..0x00005D18
+                             GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
+  }
+  return fired;
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the

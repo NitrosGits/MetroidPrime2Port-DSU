@@ -685,6 +685,35 @@ module's .rodata at 0x0, 0x134, 0x1E4 and 0x318 and its fifth entry is null - th
 0.1f with a 0.05f variation. The constructor's own burst type is 0 (0x0000E420), not the -1 the
 `CBurstFire` constructor leaves, so the helper's burst path is live from the start.
 
+`fn_9_57A0` (0x370, the burst fire's shot) is host code since 2026-10-20 (the port's member
+`x57A0_FireShot`): the shot leaves the gun locator (guest this+0xC5E, `mLocatorGun`) and, while the
+actor is alive (the byte at guest this+0x420's 0x40 bit), it is aimed at the target (the id at
+guest this+0xBCA). The target's position is the aim point; when the target is the player and the
+player's own state word (the guest's player+0x12F8) is 3 - the host's morph ball transition state
+`kMS_Unmorphing` - the player's position is used and the line of sight ray is skipped
+(0x00005840..0x00005874, the test at 0x00005A2C). Otherwise the intercept position is predicted
+(`PredictInterceptPos`, 0x000058E8). The gun's own direction is the right wrist locator (guest
+this+0xC60) minus the right elbow locator (guest this+0xC61) (0x00005940..0x00005994) and the shot
+needs the angle between it and the aim point to be at most 30 degrees (rodata_4C8), or at most 45
+degrees (rodata_4C0) when the target is within 6 units (rodata_49C) (0x0000599C..0x000059D4).
+The line of sight ray runs from the gun to the aim point with the guest's own filter - the include
+list is the material bit 27 and the exclude list the bits 0 and 60, the filter type 3
+(0x000059D8..0x00005A48) - and when it hits nothing the module's line of sight byte (guest
+this+0xAE8, `xae8_`) loses its 0x80 bit (0x00005B70..0x00005B7C). The burst fire's own error
+(`GetDistanceCompensatedError`) is rotated by the actor's frame and added to the aim point, the
+shot's transform looks from the gun to it (`LookAt`, 0x00005B0C) and the projectile is launched
+with the guest's type 6, no attributes, no homing and the scale 1.0f (rodata_43C)
+(0x00005B58). After a shot the muzzle flash is played: the additive animation's state id is 0x18
+and its one parameter is the enum 2, or 8 when the body is in its locomotion state (the body's own
+state word, the host's `GetCurrentStateId`) and that state says it is moving (the body state's
+vtable slot 0x18 - the port's reading of that slot is `IsMoving`), and the shot's sound (the
+block's +0x48 = guest this+0x808, `mSoundProjectile`) is emitted at the actor's position.
+
+Two readings are the port's own and are marked as such in the code: the guest builds the player's
+aim position with its own copy of the player (the vcall at 0x000058B4) - the port asks the player
+for its aim position (`GetAimPosition`) - and the guest's visor effect (fn_9_6054, fn_9_5F3C) is
+the default one, which is the host's `CImpactVisorEffect::None()`.
+
 With the burst-fire helper ported the area 59 run (the note's run) still ends cleanly: gameplay
 at 10.1 s, exit=0 and `grep -c '[port] caught\|reach-stub'` = 0. The helper runs every frame and
 the burst fire asks to fire at least once (the stand-in log for `fn_9_57A0` is in the run), so

@@ -338,6 +338,9 @@ private:
   // and this+0xC38 follow the actor.
   void x4BC0_UpdateEmitters();
 
+  // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
+  bool x57A0_FireShot(CStateManager& mgr, float dt);
+
   // fn_9_4D84: the module's aim helper - the additive aim command and the aim direction.
   void x4D84_UpdateAim(CStateManager& mgr);
 
