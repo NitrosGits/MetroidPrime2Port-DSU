@@ -379,6 +379,7 @@ private:
   float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
+  TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
   CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
   CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)

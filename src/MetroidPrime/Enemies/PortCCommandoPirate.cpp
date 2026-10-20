@@ -25,6 +25,7 @@
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -180,6 +181,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbe4_(0.f)                                    // 0xbe4, a distance
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
+, xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -1553,8 +1555,63 @@ void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_728C");
 }
 
+// @ fn_9_709C
+// fn_9_709C (0x1f0 bytes): the CoverFind state. Only the activate message (the guest's test of
+// 0 at 0x000070BC) does anything: the module's flag byte at guest this+0xC63 loses its 0x40 bit
+// (the rlwimi at 0x000070D8) and then its 0x01 bit (the rlwimi at 0x000070F0), and the module's
+// own helper fn_9_3CBC has to answer with the target's aim position (the call at 0x000070F8),
+// which it stores at guest this+0xB94 (the argument at 0x000070E8).
+//
+// The AiWaypoint list (the state manager's +0x838, the load at 0x0000710C) is scanned for the
+// cover point: it has to be active (the byte at +0x20's 0x80 bit, the extrwi at 0x00007150),
+// refuse a landing (ShouldLandHere, the call at 0x00007158), be free (GetInUse with this
+// actor's id, the call at 0x00007178), be in this area (+0x04, the compare at 0x0000718C) and not
+// be the cover point the actor already holds (+0xBD4, the compare at 0x0000719C). It has to be
+// nearer than the block's search radius (the guest's this+0x814, the block's +0x54, squared at
+// 0x00007114) or nearer than the best candidate so far (the compare at 0x000071D4), must not be
+// blown (the Blown call at 0x000071E4) and the path find search (the guest's GetSearchPath, the
+// vtable call at 0x000071FC) has to connect the actor to it (the PathExists call at
+// 0x0000720C). The winner is handed to the base's SetCoverPoint (the call at 0x0000725C), which
+// writes the id at guest this+0xBD2, and that id is copied to +0xBD4 (the store at 0x00007264).
 void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_709C");
+  if (msg != kStateMsg_Activate) {
+    return;                                     // 0x000070BC..0x000070C8
+  }
+  xc63_ &= ~0x40;                               // 0x000070D0..0x000070E0
+  xc63_ &= ~0x01;                               // 0x000070EC..0x000070F4
+  if (!x3CBC_(mgr, xb94_, 0.f)) {                // 0x000070F8..0x00007100
+    return;
+  }
+  CScriptCoverPoint* best = nullptr;            // r31
+  float bestDistSq = mData.mSearchRadius * mData.mSearchRadius;  // 0x00007104..0x00007114
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);  // 0x0000710C
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptCoverPoint* cover = TCastToPtr< CScriptCoverPoint >(list[i]);
+    if (cover == nullptr || !cover->GetActive() ||            // 0x00007144..0x00007154
+        cover->ShouldLandHere() ||                            // 0x00007158..0x00007160
+        cover->GetInUse(GetUniqueId()) ||                      // 0x00007178..0x00007180
+        cover->GetCurrentAreaId() != GetCurrentAreaId() ||    // 0x00007184..0x00007190
+        cover->GetUniqueId() == xbd4_) {                       // 0x00007194..0x000071A0
+      continue;
+    }
+    const float distSq = (cover->GetTranslation() - GetTranslation()).MagSquared();  // 0x000071A4..0x000071D0
+    if (distSq >= bestDistSq) {                // 0x000071D4..0x000071D8
+      continue;
+    }
+    if (cover->Blown(xb94_)) {                 // 0x000071DC..0x000071EC
+      continue;
+    }
+    if (mPathFindSearch.PathExists(GetTranslation(), cover->GetTranslation()) !=
+        CPathFindSearch::kR_Success) {          // 0x000071F0..0x00007214
+      continue;
+    }
+    bestDistSq = distSq;                        // 0x00007218
+    best = cover;                               // 0x0000721C
+  }
+  if (best != nullptr) {                        // 0x00007244..0x0000724C
+    CPatterned::SetCoverPoint(best, xbd2_);     // 0x00007250..0x0000725C
+    xbd4_ = xbd2_;                              // 0x00007260..0x00007264
+  }
 }
 
 void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) {
