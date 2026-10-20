@@ -390,7 +390,8 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mHurtfulZone(false)
 , mLastLoggedState(nullptr)
 , mStateTime(0.f)
-, mPathArea(nullptr) {
+, mPathArea(nullptr)
+, mDebugPoll(0) {
   // The retail constructor turns knock-back physics off on CPatterned's own manager (@0x0000E3DC)
   // and stops the actor drawing a shadow (@0x0000E634).
   KnockBackController().EnableKnockBackPhysics(false);
@@ -2260,13 +2261,40 @@ void CIng::FailSafeMode(CStateManager& mgr, EStateMsg msg, float) {
     LogState("FailSafeMode");
     mAnimationState.SetState(CAnimationState::kAS_Ready);
     int idx = -1;
-    if (mPathArea != nullptr &&
-        mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), idx,
-                                                      CPathFindPointSearchFilter(1000.f, 0, -1)) ==
-            CPathFindPointSearch::kCPR_Success &&
-        idx != -1) {
+    const CVector3f before = GetTranslation();
+    CPathFindPointSearch::EClosestPointResult res = CPathFindPointSearch::kCPR_NoPoint;
+    int numPoints = 0;
+    // Port limit: an area with no path area leaves the host's CPFArea pointer null; the REL's search
+    // always has one, so the guard only keeps the host's null area from being dereferenced.
+    if (mPathArea != nullptr) {
+      numPoints = mPathArea->GetNumPoints();
+      res = mPointPathFindSearch.FindClosestPhysicalPoint(before, idx,
+                                                          CPathFindPointSearchFilter(1000.f, 0, -1));
+    }
+    if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x failsafe: points %d res %d idx %d at (%.1f, %.1f, %.1f)\n",
+              GetUniqueId().Value(), numPoints, static_cast< int >(res), idx, before.GetX(),
+              before.GetY(), before.GetZ());
+    }
+    if (res == CPathFindPointSearch::kCPR_Success && idx != -1) {
       SetTranslation(mPathArea->GetPoint(idx).GetPosition());
+      const CVector3f moved = GetTranslation();
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
+      if (DebugIng()) {
+        // Is the point the fail-safe picked on a walkable region at all? IsOffPath asks the ground
+        // search, so this says why the Ing can stay off the path after the teleport.
+        float height = 0.f;
+        const bool onMesh =
+            mPathFindSearch.GetHeightOfPointAboveMesh(moved, height, 0.f) == CPathFindSearch::kR_Success;
+        const bool near1 = mPathFindSearch.NearlyOnPath(moved, 1.f) == CPathFindSearch::kR_Success;
+        const bool near5 = mPathFindSearch.NearlyOnPath(moved, 5.f) == CPathFindSearch::kR_Success;
+        fprintf(stderr,
+                "[ing] %04x failsafe: moved %.2f to (%.1f, %.1f, %.1f), after align (%.1f, %.1f, %.1f)"
+                " onmesh %d near1 %d near5 %d height %.2f\n",
+                GetUniqueId().Value(), (moved - before).Magnitude(), moved.GetX(), moved.GetY(),
+                moved.GetZ(), GetTranslation().GetX(), GetTranslation().GetY(), GetTranslation().GetZ(),
+                onMesh ? 1 : 0, near1 ? 1 : 0, near5 ? 1 : 0, height);
+      }
       mAnimationState.SetState(CAnimationState::kAS_Over);
     }
   } else if (msg == kStateMsg_Deactivate) {
@@ -2794,6 +2822,13 @@ void CIng::Think(float dt, CStateManager& mgr) {
   }
   if (mD76Id != kInvalidUniqueId && mgr.GetObjectById(mD76Id) == nullptr) {
     mD76Id = kInvalidUniqueId;
+  }
+  // Once-a-second position poll: the off-navmesh Ing repeats Lurk -> SetRecoverDest ->
+  // FailSafeMode, and only a position trace says whether the fail-safe teleport moves it.
+  if (DebugIng() && (mDebugPoll++ % 60) == 0) {
+    const CVector3f pos = GetTranslation();
+    fprintf(stderr, "[ing] %04x pos (%.1f, %.1f, %.1f) form %d state %s\n", GetUniqueId().Value(),
+            pos.GetX(), pos.GetY(), pos.GetZ(), mForm, mLastLoggedState ? mLastLoggedState : "?");
   }
 }
 

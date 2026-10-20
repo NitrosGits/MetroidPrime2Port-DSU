@@ -490,6 +490,7 @@ private:
   float mStateTime;                          // host: time in the current state [?] retail's source
   bool mSuckTickLogged;                      // host: SuckEnergy's first-frame trace
   CPFArea* mPathArea;                        // host: the area both searches were given on XALD
+  int mDebugPoll;                            // host: MP2_DEBUG_ING's once-a-second position poll
   // Not held: the other optional PART/GEN tokens at 0xcf0..0xd58, the nine CSegId locators at
   // 0xd7a/0xd7c..0xd83 ("Collar_SDK", the shoulders/forearms/wrists/elbows) and the light at 0xd68.
 #else
