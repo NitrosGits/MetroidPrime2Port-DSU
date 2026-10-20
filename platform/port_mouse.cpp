@@ -557,6 +557,24 @@ void Synchronize(float x, float y, float z) {
   }
 }
 
+void SetAimAngles(float yawDeg, float pitchDeg) {
+  ReadEnv();
+  if (!std::isfinite(yawDeg) || !std::isfinite(pitchDeg)) {
+    return;
+  }
+  // The camera builds its direction as (sin -yaw, cos -yaw, sin pitch) and CPlayer turns the
+  // body by +yaw, so the world heading `face` names is -yaw here.
+  const double radians = -double(yawDeg) * (PortMouse::kPi / 180.f);
+  sAim.yaw = static_cast< float >(std::remainder(radians, 2.0 * PortMouse::kPi));
+  const double pitch = double(pitchDeg) * (PortMouse::kPi / 180.f);
+  const double limit = double(kMaxPitch);
+  sAim.pitch = static_cast< float >(pitch < -limit ? -limit : pitch > limit ? limit : pitch);
+  sAim.initialized = true;
+  // CFirstPersonCamera only consumes the aim while a direct source is on; mouse aim is the one
+  // with no input of its own here, so a console run cannot turn it by accident.
+  SetEnabled(true);
+}
+
 void Reset() {
   sAim.Reset();
   sAiming = false;
