@@ -592,6 +592,7 @@ void CIng::LogState(const char* name) {
 
 // ---- helpers --------------------------------------------------------------------------------
 
+// fn_29_372C (its only caller is SetTargetDest, fn_29_5B60)
 void CIng::JoinTeam(CStateManager& mgr) {
   if (mTeamId == kInvalidUniqueId) {
     mTeamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -660,12 +661,20 @@ CScriptAIHint* CIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   return TCastToPtr< CScriptAIHint >(mgr.ObjectById(id));
 }
 
+// fn_29_4560 (retail always passes 0xd72, mCoverHintId).
 void CIng::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id) {
   if (CScriptAIHint* hint = GetCoverHint(mgr, id)) {
     hint->SetInUse(false);
     hint->SetTimeRemaining(0.f);
   }
   id = kInvalidUniqueId;
+}
+
+// fn_29_4510: the picked hint goes in use and becomes both the current and the last cover hint.
+void CIng::UseCoverHint(CScriptAIHint& hint) {
+  hint.SetInUse(true);                    // asm 0x00004534
+  mCoverHintId = hint.GetUniqueId();      // asm 0x0000453C: 0xd72
+  mLastCoverHintId = mCoverHintId;        // asm 0x00004544: 0xd74
 }
 
 void CIng::UpdateTimers(float dt, CStateManager& mgr) {
@@ -915,14 +924,14 @@ bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
 
-// fn_29_AA4C (not yet exercised in a run)
-bool CIng::ShouldBecomeCorporeal(CStateManager&, const CTriggerData&) const {
-  return mDesiredForm == kForm_Corporeal && mForm != kForm_Corporeal;
+// fn_29_AA4C (not yet exercised in a run): 0x9d8 == 2 and not fn_29_AD54 (asm 0x0000AA6C).
+bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
+  return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
 
-// fn_29_AA04 (not yet exercised in a run)
-bool CIng::ShouldBecomeIngSpot(CStateManager&, const CTriggerData&) const {
-  return mDesiredForm == kForm_IngSpot && mForm != kForm_IngSpot;
+// fn_29_AA04 (not yet exercised in a run): 0x9d8 == 3 and not fn_29_AD40 (asm 0x0000AA24).
+bool CIng::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
+  return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
 
 // @ fn_29_A8CC
@@ -2169,9 +2178,7 @@ void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
     picked = sCandidates[index].id;
   }
   if (CScriptAIHint* hint = GetCoverHint(mgr, picked)) {
-    hint->SetInUse(true); // fn_29_4510
-    mCoverHintId = picked; // 0xd72
-    mLastCoverHintId = picked; // 0xd74
+    UseCoverHint(*hint); // fn_29_4510
   }
   if (DebugIng()) {
     fprintf(stderr,
@@ -2586,17 +2593,19 @@ void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
 
 // ---- code functions (the FSM2 runs them: CGenericFSM2State::SetCodeFunctions) -----------
 
-// @ fn_29_5B60
+// @ fn_29_5B60: SetCoverDest's shape with the target - the Ing's own position unless the target
+// exists (no type check, asm 0x00005BB4), then the face target at kInvalidUniqueId and the team.
 void CIng::SetTargetDest(CStateManager& mgr, float) {
   LogState("SetTargetDest");
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
-    return;
+  CVector3f dest = GetTranslation(); // asm 0x00005B84
+  mFoundMovementPos = false;         // asm 0x00005BA4
+  if (const CEntity* target = mgr.GetObjectById(mTargetId)) {        // asm 0x00005BB4
+    dest = static_cast< const CActor* >(target)->GetTranslation(); // asm 0x00005BC0
+    mFoundMovementPos = true;                                        // asm 0x00005BE0
   }
-  mTargetPos = target->GetTranslation();
-  mFoundMovementPos = true;
-  mPathFindNavigation.SetDestination(mTargetPos);
-  JoinTeam(mgr);
+  mPathFindNavigation.SetDestination(dest);            // asm 0x00005BF0
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId); // asm 0x00005C08: 0x718
+  JoinTeam(mgr);                                       // fn_29_372C
 }
 
 // @ fn_29_5AC4: destination = the cover hint's translation when there is one, else the Ing's own
@@ -2853,6 +2862,24 @@ void CIng::ExpelGrappledBall(CStateManager& mgr, float) {
   mMoving = false;        // 0xe5d bit 1
 }
 
+// fn_29_3C58: the touch box is a fixed 5x5x1.5 box on the Ing's position, neither scaled nor
+// rotated (rodata_CC -2.5, rodata_C8 2.5, rodata_6C 0, rodata_8C 1.5; asm 0x00003C88-0x00003CE4).
+void CIng::UpdateTouchBox() {
+  const CVector3f pos = GetTranslation();
+  mTouchBox = CAABox(pos + CVector3f(-2.5f, -2.5f, 0.f), pos + CVector3f(2.5f, 2.5f, 1.5f));
+}
+
+// fn_29_1C2C: the lure zone is dropped unless it is an active safe zone of type 2 (0x3f0); no
+// kInvalidUniqueId guard, the lookup fails for it (asm 0x00001C50-0x00001C80).
+void CIng::ValidateLureZone(CStateManager& mgr) {
+  const CScriptSafeZone* zone =
+      TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mLureSafeZoneId));
+  if (zone == nullptr || !zone->GetActive() ||
+      zone->GetZoneType() != static_cast< CScriptSafeZone::EZoneType >(2)) {
+    mLureSafeZoneId = kInvalidUniqueId;
+  }
+}
+
 // ---- overrides ------------------------------------------------------------------------------
 
 // @ fn_29_C814
@@ -2876,19 +2903,9 @@ void CIng::Think(float dt, CStateManager& mgr) {
   mSurfaceAlignment.Update(*this, mgr, dt);
   UpdateValidTarget(mgr);
   UpdateLoopSfx();
-  // [?] the touch box's shape: MinorIng's puddle box (fn_44_3E8C).
-  const float half = mModelScale.GetX() * 0.5625f;
-  mTouchBox = CAABox(CVector3f(-half, -half, 0.f), CVector3f(half, half, mModelScale.GetX()))
-                  .GetTransformedAABox(GetTransform());
-  if (mLureSafeZoneId != kInvalidUniqueId) {
-    const CScriptSafeZone* zone =
-        TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mLureSafeZoneId));
-    if (zone == nullptr || !zone->GetActive() ||
-        zone->GetZoneType() != static_cast< CScriptSafeZone::EZoneType >(2)) {
-      mLureSafeZoneId = kInvalidUniqueId;
-    }
-  }
-  if (mD76Id != kInvalidUniqueId && mgr.GetObjectById(mD76Id) == nullptr) {
+  UpdateTouchBox();      // fn_29_3C58, asm 0x0000C7B0
+  ValidateLureZone(mgr); // fn_29_1C2C, asm 0x0000C7CC
+  if (mgr.GetObjectById(mD76Id) == nullptr) { // asm 0x0000C7E0: no kInvalidUniqueId guard
     mD76Id = kInvalidUniqueId;
   }
   // Once-a-second position poll: the off-navmesh Ing repeats Lurk -> SetRecoverDest ->
@@ -2902,6 +2919,7 @@ void CIng::Think(float dt, CStateManager& mgr) {
 
 // @ fn_29_C9A4
 void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
+  const bool wasActive = GetActive(); // asm 0x0000C9C8: CEntity 0x20 bit 7 before the base class
   CPatterned::AcceptScriptMsg(mgr, msg);
   const TUniqueId sender = msg.GetSenderId();
   if (DebugIng()) {
@@ -2932,39 +2950,50 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     CreateCollisionActorManager(mgr); // fn_29_3190
     break;
   case kSM_Delete:
-    // Retail deletes the blob object first, then destroys the collision actor manager.
+    // Retail deletes the blob object (0xd5c, never spawned on the host), stops the sounds,
+    // destroys the collision actor manager, then deletes the light (0xd68, unported) and the
+    // exit effect.
+    StopSfx(); // fn_29_2194, asm 0x0000CBC8
     if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->Destroy(mgr); // fn_29_C9A4's XDEL branch
+      mCollisionActorManager->Destroy(mgr); // asm 0x0000CBD4
     }
-    ReleaseCoverHint(mgr, mCoverHintId);
+    if (mD76Id != kInvalidUniqueId) { // asm 0x0000CBF8
+      mgr.DeleteObjectRequest(mD76Id);
+    }
+    ReleaseCoverHint(mgr, mCoverHintId); // fn_29_4560
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId());
+      team->QuitTeam(GetUniqueId()); // fn_29_3684
     }
-    StopSfx();
     break;
   case kSM_AreaLoaded:
     mPathArea =
         mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
     mPathFindSearch.SetArea(mPathArea);
     mPointPathFindSearch = CPathFindPointSearch(mPathArea);
-    JoinTeam(mgr);
-    break;
+    break; // retail joins the team only in SetTargetDest (fn_29_372C has no other caller)
   case kSM_Alert:
-    mAlert = true;
+    // asm 0x0000CD44: ALRT sets CPatterned 0x420 bit 7; mAlert (0xe5d bit 2) is Lurk's.
+    SetHitByPlayerProjectile(true);
     break;
   case kSM_Activate:
-    JoinTeam(mgr);
-    // Retail handles ACTV only while the entity is active (CEntity 0x20 bit 7, the first bitfield =
-    // mActive) and only turns the collision actors on for the corporeal form.
-    if (GetActive() && !mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal);
+    // Retail handles ACTV only when the entity was inactive before the base class ran (asm
+    // 0x0000CC3C) and turns the collision actors on only for the corporeal form. The light at
+    // 0xd68 (asm 0x0000CC6C) is unported.
+    if (!wasActive && !mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal); // asm 0x0000CC50
     }
     break;
   case kSM_Deactivate:
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, false);
+    if (!wasActive) { // asm 0x0000CC9C: only when it was active
+      break;
     }
-    StopSfx();
+    if (!mCollisionActorManager.null()) {
+      mCollisionActorManager->SetActive(mgr, false); // asm 0x0000CCAC
+    }
+    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
+      team->QuitTeam(GetUniqueId()); // fn_29_3684, asm 0x0000CCB8
+    }
+    StopSfx(); // fn_29_2194, asm 0x0000CD18
     break;
   case kSM_AIUpdateDisabled:
     if (!mCollisionActorManager.null()) {
@@ -2982,6 +3011,7 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     } else {
       CollisionActorDamage(mgr, sender); // fn_29_2684
     }
+    SetHitByPlayerProjectile(true); // asm 0x0000CDA8: 0x420 bit 7
     break;
   case kSM_ResistedDamage:
     // fn_29_C9A4's XRDG branch: while grappled in the ing-spot form the hit timer ticks down and

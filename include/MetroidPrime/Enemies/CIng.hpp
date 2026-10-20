@@ -359,6 +359,9 @@ private:
   float DistSqToTarget(const CStateManager& mgr) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
+  void UseCoverHint(CScriptAIHint& hint);
+  void UpdateTouchBox();
+  void ValidateLureZone(CStateManager& mgr);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
