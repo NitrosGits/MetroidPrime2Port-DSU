@@ -1688,6 +1688,13 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
       // homing target, no attributes, unit scale, guest 0xBE0's visor particle (fn_16_853C, no
       // sound, collide message), impact sound on, charge factor 1.0f and impact distances 4.0f
       // (lbl_16_rodata_3B4/38C); it is added at 0x81F0.
+      // fn_16_853C (0x853C..0x8600) copies the visor effect's particle descriptor into the
+      // projectile: fn_16_85C8 (0x85C8..0x868C) copies the emitter's token and its vectors,
+      // fn_16_867C (0x867C..0x8740) copies the token, fn_16_86BC -> fn_16_86DC ->
+      // fn_16_8704 (0x8704..0x87C8) copies and locks the CToken and copies the id, and
+      // fn_16_8980 (0x8980..0x8A44) sets the flag first. The host's
+      // CImpactVisorEffect::ParticleEffect takes the locked token itself, so the functions are
+      // cited and not ported.
       xa78_ = 0.f;
       if ((xa74_ & 0x08) != 0) {
         const CVector3f origin =
