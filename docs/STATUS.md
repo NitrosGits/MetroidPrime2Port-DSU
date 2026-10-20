@@ -3,6 +3,43 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-20 (thirty-second session): the Boost Guardian's state machine - the tables, the probe and the Ing half
+
+Milestone 1 of the `IngBoostBallGuardian` port (the loader, the constructor, the accessors) is
+done; this session is milestone 2, the state machine. The work is on branch `decomp/boostguardian`
+in `wt-mp2-boostguardian`.
+
+- **The probe.** `MP2_BG_FSM=1` makes the actor dump its `CGenericFSM2` machine: every state,
+  trigger, code function and sub-machine with each transition's *target* (the transition's own
+  `mName` is empty in this asset, so the target node is the information - the `MP2_SB_FSM`
+  recipe's shape). The dump lives in `PortCIngBoostBallGuardian.cpp`; the boss is an inactive
+  actor until the fight's script starts it (the console's `objs` lists it as `inactive`), so the
+  probe wakes it up the way the Sand Boss probe does.
+- **The tables.** `docs/module-analysis/BoostGuardian_fsm.tsv` (86 rows) gives every node's name
+  and the `fn_30_<hex>` that implements it, with the evidence. The mechanism: the three .data
+  tables (`lbl_30_data_250`, `_6B0`, `_8DC`) hold the name pointers, and the `.ctors` initialiser
+  `fn_30_110C4` copies the 86 12-byte records (`{0, 0xFFFFFFFF, fn}`) into the entries - the first
+  49 into the trigger table, the next 28 into the state table, the last 9 into the code table.
+  The boost half's own bodies are the six bit-test triggers at `fn_30_B788`..`fn_30_B7D4` and
+  the two states `fn_30_79C0` (BoostAttack) and `fn_30_7728` (BoostModeRetreat).
+- **The port.** The three tables are registered under the REL's own names
+  (`PortCIngBoostBallGuardianFsm.cpp`), so the machine finds the handler for a node. The Ing
+  half's bodies are ported from the Ing host body (branch `decomp/ing`), under the Ing REL's
+  member names, because this module is the Ing REL with the boost half added; the boost half
+  comes from this module's own bodies. The host layout is now the Ing's members plus the boost
+  members, so the host's own size differs from the guest's 0x11F0 (the `CHECK_SIZEOF` is the
+  guest's, and the non-host build keeps it) - the guest offsets stay in
+  `docs/module-analysis/BoostGuardian.md` section e.
+- **It runs.** With `MP2_BG_FSM=1 MP2_DEBUG_BG=1` the boss wakes up (the probe's own activation:
+  the console's `objs` lists it as an inactive actor until the fight's script starts it), the
+  state machine is set up and the actor walks its Ing states - `Start`, `WaitForFSMTransition`,
+  `BecomeCorporeal`, `Lurk`, `Alert`, `SelectTarget`, `FaceTarget`, `FindCoverPoint`,
+  `IngSpotPathFind`, `PathFind` - in area 28, with `[port] caught|reach-stub` at 0.
+- **Open.** The exit host (this module's own copy of the Ing's exit-host body and the
+  exit-host class), the mini portal attack, the second class (the crystal the boost ball
+  collides with) and the nav-point finder `fn_30_2F9C` that `BoostModeRetreat` needs are later
+  slices; each is marked in the source with what it needs.
+
 ## 2026-10-20 (thirty-first session): the Boost Guardian module starts - it loads, stands and thinks
 
 Sandworm is closed (20 bodies left, each with its reason in the source and in

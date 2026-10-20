@@ -13,11 +13,14 @@
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrIngBoostBallGuardian.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+#include <cstdlib>
 #include <stdio.h>
 
 namespace {
@@ -37,6 +40,150 @@ void StandIn(const char* what) {
   fprintf(stderr, "[ibbg] %s is a port stand-in (see PortCIngBoostBallGuardian.cpp)\n", what);
 }
 
+// ---------------------------------------------------------------------------------------------
+// The module's FSM2 probe (MP2_BG_FSM). The transitions are not in the REL's .data - they come
+// from the actor's 'FSM2' asset - and a transition's own mName is empty in this asset, so the
+// TARGET node is the information a dump has to carry: which kind of node (state, trigger, code
+// or sub-machine), its index in the machine's own list and its name.
+
+// The node a transition points at.
+struct SBGFsmNode {
+  const char* mKind; // "state", "trigger", "code", "submachine" or "none".
+  int mIndex;        // Index in the machine's own list, -1 when the target is not in it.
+  const char* mName; // The node's name.
+};
+
+// Finds the list the target belongs to (by its type) and then the element the target points at.
+SBGFsmNode BGFsmNodeOf(const CGenericFSM2& machine, const CState2* target) {
+  SBGFsmNode node = { "none", -1, "" };
+  if (target == nullptr) {
+    return node;
+  }
+  switch (target->GetType()) {
+  case CState2::kType_State: {
+    const rstl::vector< CState2State >& states = machine.GetStates();
+    for (int i = 0; i < states.size(); ++i) {
+      if (static_cast< const CState2* >( &states[i] ) == target) {
+        node.mKind = "state";
+        node.mIndex = i;
+        node.mName = states[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  case CState2::kType_Trigger: {
+    const rstl::vector< CState2Trigger >& triggers = machine.GetTriggers();
+    for (int i = 0; i < triggers.size(); ++i) {
+      if (static_cast< const CState2* >( &triggers[i] ) == target) {
+        node.mKind = "trigger";
+        node.mIndex = i;
+        node.mName = triggers[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  case CState2::kType_Code: {
+    const rstl::vector< CState2Code >& codes = machine.GetCodes();
+    for (int i = 0; i < codes.size(); ++i) {
+      if (static_cast< const CState2* >( &codes[i] ) == target) {
+        node.mKind = "code";
+        node.mIndex = i;
+        node.mName = codes[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  case CState2::kType_SubMachine: {
+    const rstl::vector< CState2SubMachine >& subMachines = machine.GetSubMachines();
+    for (int i = 0; i < subMachines.size(); ++i) {
+      if (static_cast< const CState2* >( &subMachines[i] ) == target) {
+        node.mKind = "submachine";
+        node.mIndex = i;
+        node.mName = subMachines[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  }
+  return node;
+}
+
+// One line per transition: the transition's own name (when it has one) and its target.
+void DumpBGFsmTransitions(const CGenericFSM2& machine,
+                           const rstl::vector< SStateMachine2Transition >& transitions,
+                           const char* indent) {
+  for (int i = 0; i < transitions.size(); ++i) {
+    const SStateMachine2Transition& transition = transitions[i];
+    const SBGFsmNode node = BGFsmNodeOf(machine, transition.mTarget);
+    if (transition.mName.size() > 0) {
+      fprintf(stderr, "[bgfsm] %s[%s] -> %s %d %s\n", indent, transition.mName.data(),
+              node.mKind, node.mIndex, node.mName);
+    } else {
+      fprintf(stderr, "[bgfsm] %s-> %s %d %s\n", indent, node.mKind, node.mIndex, node.mName);
+    }
+  }
+}
+
+// One line per node and one line per transition, for every list of the machine. A sub-machine
+// that carries its own machine is dumped one level deeper.
+void DumpBGFsmMachine(const CGenericFSM2& machine, const char* indent, const char* childIndent) {
+  fprintf(stderr, "[bgfsm] %smachine: %d states, %d triggers, %d codes, %d sub-machines\n", indent,
+          machine.GetStates().size(), machine.GetTriggers().size(), machine.GetCodes().size(),
+          machine.GetSubMachines().size());
+
+  const rstl::vector< CState2State >& states = machine.GetStates();
+  for (int i = 0; i < states.size(); ++i) {
+    fprintf(stderr, "[bgfsm] %sstate %d %s\n", indent, i, states[i].GetName().data());
+    DumpBGFsmTransitions(machine, states[i].GetTransitions(), childIndent);
+  }
+
+  const rstl::vector< CState2Trigger >& triggers = machine.GetTriggers();
+  for (int i = 0; i < triggers.size(); ++i) {
+    fprintf(stderr, "[bgfsm] %strigger %d %s negate=%d arg=%f\n", indent, i,
+            triggers[i].GetName().data(), triggers[i].IsNegated() ? 1 : 0,
+            triggers[i].GetArgument().GetFloat());
+    DumpBGFsmTransitions(machine, triggers[i].GetTransitions(), childIndent);
+  }
+
+  const rstl::vector< CState2Code >& codes = machine.GetCodes();
+  for (int i = 0; i < codes.size(); ++i) {
+    fprintf(stderr, "[bgfsm] %scode %d %s\n", indent, i, codes[i].GetName().data());
+    DumpBGFsmTransitions(machine, codes[i].GetTransitions(), childIndent);
+  }
+
+  const rstl::vector< CState2SubMachine >& subMachines = machine.GetSubMachines();
+  for (int i = 0; i < subMachines.size(); ++i) {
+    fprintf(stderr, "[bgfsm] %ssubmachine %d %s\n", indent, i, subMachines[i].GetName().data());
+    DumpBGFsmTransitions(machine, subMachines[i].GetTransitions(), childIndent);
+    const CGenericFSM2* sub = subMachines[i].GetMachine();
+    if (sub != nullptr) {
+      fprintf(stderr, "[bgfsm] %ssubmachine %d machine:\n", indent, i);
+      DumpBGFsmMachine(*sub, "    ", "      ");
+    }
+  }
+}
+
+// Dumps the machine once per process. The machine is the actor's 'FSM2' asset; its nodes carry
+// the names the REL's own tables (fn_30_C6CC) use, so the dump gives the machine's shape and
+// the names the module looks its handlers up by.
+void DumpBGFsmOnce(CIngBoostBallGuardian* guardian) {
+  static bool sDumped = false;
+  if (sDumped) {
+    return;
+  }
+  sDumped = true;
+  CGenericFSM2* machine = guardian->GetStateMachine2();
+  if (machine == nullptr) {
+    fprintf(stderr, "[bgfsm] no FSM2 machine\n");
+    return;
+  }
+  DumpBGFsmMachine(*machine, "", "  ");
+}
+
 } // namespace
 
 // fn_30_EC6C. The base call is the retail one: EPatternedAI 0x19 (`li r4, 0x19` at 0x0000ECC0),
@@ -54,8 +201,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 : CPatterned(static_cast< EPatternedAI >(0x19), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
 , mData(data)      // guest 0x7C0, copied by fn_30_1056C
-, mGuestAE4(2)     // 0x0000ED00
-, mGuestAE8(-1)    // 0x0000ED10
+, mForm(2)         // 0x0000ED00
+, mDesiredForm(-1) // 0x0000ED10
 , mPathFindSearch(nullptr, 0x301, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
                   CPFRegion::kRP_Center) // 0x0000ED24
 , mPointPathFindSearch(nullptr)          // 0x0000ED30, the DOL's CPathFindPointSearch ctor
@@ -67,6 +214,88 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mVulnerability(mBoost.mVulnerability)  // 0x0000FD48 builds a CWeaponTypeVulnerability-derived
                                          // CDamageVulnerability; its source is still open, this
                                          // uses the boost ball's until the asm says otherwise
+, mHostId(kInvalidUniqueId)
+, mPossessedEffectId(kInvalidUniqueId)
+, mSwarmEffect(BgOptionalPart(data.mSwarm.mPART))
+, mSwarmEffect2(BgOptionalPart(data.mSwarm.mPART081E))
+, mBlobId(kInvalidUniqueId)
+, mTeamId(kInvalidUniqueId)
+, mTargetId(kInvalidUniqueId)
+, mPrevTargetId(kInvalidUniqueId)
+, mAttackPathResumeId(kInvalidUniqueId)
+, mCoverHintId(kInvalidUniqueId)
+, mLastCoverHintId(kInvalidUniqueId)
+, mD76Id(kInvalidUniqueId)
+, mNormalHitEffect(BgOptionalPart(data.mIngSpot.GetNormalHitEffect()))
+, mHeavyHitEffect(BgOptionalPart(data.mIngSpot.GetHeavyHitEffect()))
+, mDeathEffect(BgOptionalPart(data.mIngSpot.GetDeathEffect()))
+, mMiniPortalEffect(BgOptionalPart(data.mMiniPortal.mEffect))
+, mSplatEffect(BgOptionalPart(data.mBodyProjectile.mSplatEffect))
+, mEyeSegId(BgHeadSegId(modelData))
+, mRightShoulderSegId(BgArmSegId(modelData, "R_shoulder"))
+, mRightElbowSegId(BgArmSegId(modelData, "R_elbow"))
+, mRightForearmSegId(BgArmSegId(modelData, "R_forearm"))
+, mRightWristSegId(BgArmSegId(modelData, "R_wrist_end"))
+, mLeftShoulderSegId(BgArmSegId(modelData, "L_shoulder"))
+, mLeftElbowSegId(BgArmSegId(modelData, "L_elbow"))
+, mLeftForearmSegId(BgArmSegId(modelData, "L_forearm"))
+, mLeftWristSegId(BgArmSegId(modelData, "L_wrist_end"))
+, mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
+, mTargetPos(CVector3f::Zero())
+, mSurfaceMoveDir(CVector3f::Zero())
+, mPortalPlaneNormal(CVector3f::Zero())
+, mPortalPlaneConstant(0.f)
+, mSwipeArm(-1)
+, mModelScale(modelData.GetScale())
+, mMiniPortalCount(0)
+, mMiniPortalPositions()
+, mMiniPortalIndex(-1)
+, mHeardShotTime(0.f)
+, mUnderFireTime(0.f)
+, mArmSwipeTime(0.f)
+, mFormTime(0.f)
+, mBodyState5Time(0.f)
+, mFrustrationTimer(0.f)
+, mBallCooldown(0.f)
+, mHitReactionTime(0.f)
+, mLightBlend(0.f)
+, mDeadFade(0.f)
+, mBodyProjectileTime(0.f)
+, mBoostRetreatActive(false)
+, x11EDBit1(false)
+, mCollidedWithCrystal(false)
+, mBoostPuddleForm(false)
+, mShouldBoost(false)
+, mBoostOver(false)
+, mBoostModeRetreatActive(false)
+, mCurrentlyInBoostPuddleForm(false)
+, mBoostChildId(kInvalidUniqueId)
+, mBoostNavPointId(kInvalidUniqueId)
+, mBoostNavPointId2(kInvalidUniqueId)
+, mBoostTimer(0.f)
+, mBoostRandomFloat(0.f)
+, mAggressive(false)
+, mFoundMovementPos(false)
+, mRecalcPath(false)
+, mTakeOff(false)
+, mStartAsIngSpot(false)
+, mMoving(false)
+, mGrappled(false)
+, mProjectileFSMEntry(false)
+, mSplat(false)
+, mHurtfulZone(false)
+, mPortalPlane(false)
+, mRenderModel(false)
+, mForm9Render(false)
+, mFollowingAttackPath(false)
+, mAlert(false)
+, mTaunt(false)
+, mBodyProjectileAllowed(false)
+, mLastLoggedState(nullptr)
+, mStateTime(0.f)
+, mSuckTickLogged(false)
+, mPathArea(nullptr)
+, mDebugPoll(0)
 {
   // The retail constructor turns knock-back physics off on CPatterned's own manager
   // (@0x0000FF40) and leaves the shadow off; everything else it builds - the locator segment ids
@@ -74,6 +303,22 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
   // to the state machine and the render paths this milestone does not enter.
   KnockBackController().EnableKnockBackPhysics(false);
   SetDrawShadow(false);
+  // The path searches' radii come from the model's scale, and the line-of-sight tracker only sees
+  // solid material (the Ing's own settings, fn_29_D540).
+  mPathFindSearch.SetCharacterHeight(mModelScale.GetY() * 3.f);
+  mPathFindSearch.SetCharacterRadius(mModelScale.GetZ() * 5.f);
+  mLineOfSight.SetRayFilter(
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                          CMaterialList(kMT_Player, kMT_CollisionActor)));
+  if (std::getenv("MP2_BG_FSM") != nullptr) {
+    // The 'FSM2' asset is loaded with the actor, so the machine is already here. The state
+    // machine itself is only set up when the actor is active (CPatterned::Think reaches
+    // InitializeStateMachine), which the boss of this area is not yet, so the dump is taken
+    // here as well as in SetupStateMachine.
+    fprintf(stderr, "[bgfsm] ctor: the FSM2 machine is %s\n",
+            GetStateMachine2() != nullptr ? "loaded" : "missing");
+    DumpBGFsmOnce(this);
+  }
 }
 
 CIngBoostBallGuardian::~CIngBoostBallGuardian() {}
@@ -87,47 +332,6 @@ void CIngBoostBallGuardian::EnsureBodyActive(CStateManager& mgr) {
     BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
 }
-
-// vtable slot 2 = fn_30_DC10 (0x190).
-void CIngBoostBallGuardian::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::PreThink (vtable slot 2, fn_30_DC10)");
-  EnsureBodyActive(mgr);
-  CPatterned::PreThink(dt, mgr);
-}
-
-// vtable slot 3 = fn_30_D94C (0x2c4): surfaces alignment, the collision actors, the line-of-sight
-// tracker and the actor behind the current attack target.
-void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::Think (vtable slot 3, fn_30_D94C)");
-  if (!GetActive()) {
-    return;
-  }
-  EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);
-}
-
-// vtable slot 4 = fn_30_DDA0 (0x690): the message switch that activates the body, spawns the
-// collision actors, sends SetBossParams and deletes the actor when the boss dies.
-void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CIngBoostBallGuardian::AcceptScriptMsg (vtable slot 4, fn_30_DDA0)");
-  CPatterned::AcceptScriptMsg(mgr, msg);
-  if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
-  }
-}
-
-// vtable slot 7 = fn_30_D2E0 (0xa4), gated on the actor state; slot 8 = fn_30_D250, slot 9 =
-// fn_30_D384 (the render override that sets up the world-space portal plane).
-void CIngBoostBallGuardian::PreRender(CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::PreRender (vtable slot 7, fn_30_D2E0)");
-  CPatterned::PreRender(mgr);
-}
-
-void CIngBoostBallGuardian::Render(const CStateManager& mgr) const {
-  StandIn("CIngBoostBallGuardian::Render (vtable slot 9, fn_30_D384)");
-  CPatterned::Render(mgr);
-}
-
 // vtable slot 31 = fn_30_C850 (0x1c8): what the boost ball hits.
 void CIngBoostBallGuardian::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                          CStateManager& mgr) {
@@ -137,37 +341,19 @@ void CIngBoostBallGuardian::CollidedWith(const TUniqueId& id, const CCollisionIn
 
 // vtable slot 58 = fn_30_C6CC (0x8c): CPatterned's own setup, then the three name tables are
 // handed to the machine - lbl_30_data_250 (49 triggers), lbl_30_data_6B0 (28 states) and
-// lbl_30_data_8DC (9 codes). Those are the module's FSM; it is milestone 2, so only the base
-// setup runs here.
+// lbl_30_data_8DC (9 codes). That is the module's FSM, and it is installed here.
 void CIngBoostBallGuardian::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::SetupStateMachine (vtable slot 58, fn_30_C6CC)");
   CPatterned::SetupStateMachine(mgr);
-}
+  // The three tables the REL hands the machine (the 49 triggers, the 28 states and the 9 code
+  // functions) go in under the REL's own names; the machine finds a node's handler by name.
+  InstallStateMachineFunctions();
 
-// vtable slot 17 = fn_30_CE50 (0x174): the contact-damage half of Touch, applied to the player.
-void CIngBoostBallGuardian::Touch(CActor& actor, CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::Touch (vtable slot 17, fn_30_CE50)");
-  CPatterned::Touch(actor, mgr);
-}
-
-void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
-                                            EUserEventType type, float dt) {
-  StandIn("CIngBoostBallGuardian::DoUserAnimEvent (fn_30_D4F8's tail call)");
-  CPatterned::DoUserAnimEvent(mgr, node, type, dt);
-}
-
-// vtable slot 36 = fn_30_76F4 (0x34): the retail body forces the attack state to 2 when it is 7
-// and then calls CPatterned::Death.
-void CIngBoostBallGuardian::Death(CStateManager& mgr, const CVector3f& direction,
-                                  EScriptObjectState state) {
-  StandIn("CIngBoostBallGuardian::Death (vtable slot 36, fn_30_76F4)");
-  CPatterned::Death(mgr, direction, state);
-}
-
-// vtable slot 37 = fn_30_CB84 (0xb0): enables the knock-back reaction and forwards.
-void CIngBoostBallGuardian::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  StandIn("CIngBoostBallGuardian::KnockBack (vtable slot 37, fn_30_CB84)");
-  CPatterned::KnockBack(mgr, info);
+  // The transitions are only in the actor's 'FSM2' asset, so the probe (MP2_BG_FSM) dumps the
+  // machine the asset holds: every state, trigger, code and sub-machine with the target of each
+  // of their transitions. Once per process.
+  if (std::getenv("MP2_BG_FSM") != nullptr) {
+    DumpBGFsmOnce(this);
+  }
 }
 
 // vtable slot 67 = fn_30_3C: stores kInvalidUniqueId, i.e. the actor never reports an attack
@@ -199,6 +385,11 @@ static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& i
   // (fn_30_1988 into sp+0x41c).
   const SLdrIngBoostBallGuardianData& ing = sldrThis.guardianProperties;
   const SLdrBoostBallGuardianData& boostSldr = sldrThis.boostBallGuardian;
+
+  if (std::getenv("MP2_BG_FSM") != nullptr) {
+    fprintf(stderr, "[bgfsm] loader: stateMachine=%08x stateMachine2=%08x\n",
+            sldrThis.patterned.stateMachine, sldrThis.patterned.stateMachine2);
+  }
 
   const CIngSpotData ingSpot(
       ing.ingSpotBlobEffect, ing.ingSpotHitNormalDamage, ing.ingSpotHitHeavyDamage, ing.ingSpotDeath,

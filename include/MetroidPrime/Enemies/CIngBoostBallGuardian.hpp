@@ -5,18 +5,26 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
+#include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/SObjectTag.hpp"
+#include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/CLineOfSightTracker.hpp"
 #include "MetroidPrime/CSurfaceAlignmentHelper.hpp"
 #include "MetroidPrime/Enemies/CIng.hpp"
 #include "MetroidPrime/Enemies/CIngSpotPathFindNavigation.hpp"
 #include "MetroidPrime/PathFinding/CPathFindPointSearch.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrPlasmaBeamInfo.hpp"
+#include "rstl/optional_object.hpp"
 
 class CCollisionActorManager;
+class CGenDescription;
+class CScriptAIHint;
+class CPFArea;
 
 // Host copies of the two parameter blocks the REL's constructor copies into the object
 // (guest +0x7C0, 0x320 bytes, by fn_30_1056C; guest +0xDEC, 0x110 bytes, by fn_30_10250). The
@@ -36,7 +44,7 @@ struct CIngBoostBallGuardianData {
                             const CIngBodyProjectileData& bodyProjectile,
                             const CIngSpotData& ingSpot, const CIngMiniPortalData& miniPortal,
                             const CIngSwarmData& swarm)
-  : mUnknownFlags(unknownFlags)
+  : mFlags210(unknownFlags)
   , mHearingRadius(hearingRadius)
   , mUnknown5D0D(unknown5D0D)
   , mUnknownC620(unknownC620)
@@ -52,7 +60,7 @@ struct CIngBoostBallGuardianData {
   , mMiniPortal(miniPortal)
   , mSwarm(swarm) {}
 
-  uint mUnknownFlags;                          // SLdrIngBoostBallGuardianData.unknown_0x01789abd
+  uint mFlags210;                          // SLdrIngBoostBallGuardianData.unknown_0x01789abd
   float mHearingRadius;                        // hearingRadius
   float mUnknown5D0D;                          // unknown_0x5d0d2c40
   float mUnknownC620;                          // unknown_0xc620183a
@@ -242,14 +250,162 @@ public:
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
 
+  // The Ing half's overrides of the base class (the Ing REL's own copies of them).
+  using CPatterned::GetDamageVulnerability;
+  const CDamageVulnerability* GetDamageVulnerability() const override;
+  rstl::optional_object< CAABox > GetTouchBounds() const override;
+  void TakeDamage(const CVector3f& direction, float magnitude) override;
+  bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+
+  // ---------------------------------------------------------------------------------------------
+  // The state machine. fn_30_C6CC installs three tables into the machine: the 49 triggers
+  // (lbl_30_data_250), the 28 states (lbl_30_data_6B0) and the 9 code functions
+  // (lbl_30_data_8DC). The names are the REL's own strings; the order is the table order.
+  // The Ing half of the names is the Ing REL's (docs/module-analysis/IngFamily.md section A.2);
+  // the boost half is this module's own.
+
+  // Triggers (fn_30_C6CC's table order).
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsAlert(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsControllingHost(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasNewTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const;
+  bool UnderFire(CStateManager& mgr, const CTriggerData& data) const;
+  bool HeardShot(CStateManager& mgr, const CTriggerData& data) const;
+  bool AreaClear(CStateManager& mgr, const CTriggerData& data) const;
+  bool CoverLeash(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasCoverPoint(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasWallCoverPoint(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasMiniPortals(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsCorporeal(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsIngSpot(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsBodyProjectile(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsFrustrated(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsAggressive(CStateManager& mgr, const CTriggerData& data) const;
+  bool UseProjectileFSMEntry(CStateManager& mgr, const CTriggerData& data) const;
+  bool TargetInSafeZone(CStateManager& mgr, const CTriggerData& data) const;
+  bool TargetInLightSafeZone(CStateManager& mgr, const CTriggerData& data) const;
+  bool CanChangeForm(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldFleeSafeZone(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldArmSwipe(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldBodyProjectile(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData& data) const;
+  bool ProjectileSplat(CStateManager& mgr, const CTriggerData& data) const;
+  bool ProjectileHitTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool FoundMovementPos(CStateManager& mgr, const CTriggerData& data) const;
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;
+  bool PathOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool PointPathOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool FoundPointPath(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsOffPath(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const;
+  bool AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool TargetIsBall(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasPathToTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool CanGrappleTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsBoostPuddleForm(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsCurrentlyInBoostPuddleForm(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsBoostOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldBoost(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasCollidedWithCrystal(CStateManager& mgr, const CTriggerData& data) const;
+  bool BoostModeRetreatOver(CStateManager& mgr, const CTriggerData& data) const;
+
+  // States.
+  void Start(CStateManager& mgr, EStateMsg msg, float dt);
+  void WaitForFSMTransition(CStateManager& mgr, EStateMsg msg, float dt);
+  void ExitHost(CStateManager& mgr, EStateMsg msg, float dt);
+  void BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float dt);
+  void BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float dt);
+  void BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float dt);
+  void BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float dt);
+  void Alert(CStateManager& mgr, EStateMsg msg, float dt);
+  void Taunt(CStateManager& mgr, EStateMsg msg, float dt);
+  void Lurk(CStateManager& mgr, EStateMsg msg, float dt);
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);
+  void IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt);
+  void IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt);
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);
+  void FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt);
+  void BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt);
+  void SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt);
+  void SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt);
+  void SelectTarget(CStateManager& mgr, EStateMsg msg, float dt);
+  void FaceTarget(CStateManager& mgr, EStateMsg msg, float dt);
+  void FindCoverPoint(CStateManager& mgr, EStateMsg msg, float dt);
+  void ArmSwipe(CStateManager& mgr, EStateMsg msg, float dt);
+  void FailSafeMode(CStateManager& mgr, EStateMsg msg, float dt);
+  void FindMiniPortals(CStateManager& mgr, EStateMsg msg, float dt);
+  void MiniPortalAttack(CStateManager& mgr, EStateMsg msg, float dt);
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);
+  void BoostAttack(CStateManager& mgr, EStateMsg msg, float dt);
+  void BoostModeRetreat(CStateManager& mgr, EStateMsg msg, float dt);
+
+  // Code functions.
+  void SetTargetDest(CStateManager& mgr, float dt);
+  void SetCoverDest(CStateManager& mgr, float dt);
+  void SetRecoverDest(CStateManager& mgr, float dt);
+  void SetPointCoverDest(CStateManager& mgr, float dt);
+  void SetWallPointCoverDest(CStateManager& mgr, float dt);
+  void SetExitHostDest(CStateManager& mgr, float dt);
+  void StartRangedAttack(CStateManager& mgr, float dt);
+  void EndRangedAttack(CStateManager& mgr, float dt);
+  void SplatOntoMesh(CStateManager& mgr, float dt);
+
 private:
   void EnsureBodyActive(CStateManager& mgr);
+  // fn_30_C6CC's three tables go into the machine under the REL's own names; the tables live in
+  // PortCIngBoostBallGuardianFsm.cpp.
+  void InstallStateMachineFunctions();
+  // fn_30_*: the helpers the states and triggers share. The names are the Ing REL's
+  // (fn_29_*), because this module carries its own copy of the Ing code; the behaviour is the
+  // Ing's, ported from the Ing host body.
+  void LogState(const char* name);
+  void JoinTeam(CStateManager& mgr);
+  void MoveOnSurface(const CVector3f& move, float speed, float dt);
+  void ApplySeparation(CStateManager& mgr);
+  float DistSqToTarget(const CStateManager& mgr) const;
+  CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
+  void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
+  void UpdateTimers(float dt, CStateManager& mgr);
+  void UpdateValidTarget(CStateManager& mgr);
+  void UpdateLoopSfx();
+  void StopSfx();
+  // The target's aim position (CActor's GetAimPosition, prediction in f1), false when it is gone.
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f);
+  // One arm's segment boxes against the target's bounds; on a hit, the arm swipe damage with the
+  // given knock-back.
+  void ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b, const CSegId& c,
+                       const CSegId& d, const CVector3f& knockback);
+  // The exit host's Deactivate smoke, at the Ing's transform, plus the swarm block's own sound.
+  void SpawnExitHostSmoke(CStateManager& mgr);
+  // Turn horizontally to the target (the Ing turns to the lure safe zone when one is set; this
+  // module has no lure safe zone).
+  void FaceLureOrTarget(CStateManager& mgr);
+  // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
+  void CreateCollisionActorManager(CStateManager& mgr);
+  void SetupCollisionActors(CStateManager& mgr);
+  // A collision actor that last touched the player deals contact damage.
+  void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
+  // The hit reaction in the ing-spot form, and the weapon hit on a collision actor otherwise.
+  void IngSpotDamage(CStateManager& mgr, TUniqueId sender);
+  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
+  // The explosion of the hit effect token (heavy when asked and loaded).
+  CEntity* SpawnHitEffect(CStateManager& mgr, bool heavy);
 
   // Host layout (retail's object is 0x11F0; CPatterned is 0x7C0). Guest offsets are the REL's,
-  // from the constructor fn_30_EC6C - the full table is in the analysis note.
+  // from the constructor fn_30_EC6C - the full table is in the analysis note. The host layout is
+  // its own: it holds the Ing half's members under the Ing REL's names, because this module is the
+  // Ing REL with the boost half added (the guest offsets are shifted, the names are not). The
+  // CHECK_SIZEOF below is the guest's size, which the non-host build keeps; the host's size is
+  // its own and is not checked.
   CIngBoostBallGuardianData mData;                       // guest 0x7C0 (0x320)
-  int mGuestAE4;                                         // guest 0xAE4, 2
-  int mGuestAE8;                                         // guest 0xAE8, -1
+  int mForm;                                             // guest 0xAE4, 2 (CIng: 0x9D4)
+  int mDesiredForm;                                      // guest 0xAE8, -1 (CIng: 0x9D8)
   CPathFindSearch mPathFindSearch;                       // guest 0xAEC
   CPathFindPointSearch mPointPathFindSearch;             // guest 0xBD8
   CCollisionActorManager* mCollisionActorManager0;       // guest 0xD60
@@ -258,6 +414,101 @@ private:
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // guest 0xDC0
   CBoostBallGuardianData mBoost;                         // guest 0xDEC (0x110)
   CDamageVulnerability mVulnerability;                   // guest 0x1178
+  // The Ing half's members, under the Ing REL's names (the guest offsets are in
+  // docs/module-analysis/BoostGuardian.md section e; the host layout is its own).
+  // The manager of the seven joint spheres (the Ing's own at guest 0xC50; the guest's 0xD60/0xD64
+  // are this module's own two managers, which the boost half uses).
+  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager;
+  rstl::optional_object< CAABox > mTouchBox;            // CIng: 0xCC0
+  TUniqueId mHostId;                                     // CIng: 0xCDC
+  TUniqueId mPossessedEffectId;                          // CIng: 0xCDE
+  rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect;  // CIng: 0xCE0
+  rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect2; // CIng: 0xCF0
+  TUniqueId mBlobId;                                     // CIng: 0xD5C
+  TUniqueId mTeamId;                                     // CIng: 0xD6A
+  TUniqueId mTargetId;                                   // CIng: 0xD6C
+  TUniqueId mPrevTargetId;                               // CIng: 0xD6E
+  TUniqueId mAttackPathResumeId;                         // CIng: 0xD70
+  TUniqueId mCoverHintId;                                // CIng: 0xD72
+  TUniqueId mLastCoverHintId;                            // CIng: 0xD74
+  TUniqueId mD76Id;                                      // CIng: 0xD76
+  CSfxHandle mSuckSfx;                                   // CIng: 0xD00
+  rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // CIng: 0xD08
+  rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // CIng: 0xD18
+  rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect;    // CIng: 0xD28
+  rstl::optional_object< TLockedToken< CGenDescription > > mMiniPortalEffect; // CIng: 0xD38
+  rstl::optional_object< TLockedToken< CGenDescription > > mSplatEffect;   // CIng: 0xD48
+  CSfxHandle mBodyProjectileSfx;                         // CIng: 0xD58
+  CSfxHandle mLoopSfx[2];                                // CIng: 0xD60/0xD64
+  CSegId mEyeSegId;                                      // CIng: 0xD7B
+  CSegId mRightShoulderSegId;                            // CIng: 0xD7C
+  CSegId mRightElbowSegId;                               // CIng: 0xD7D
+  CSegId mRightForearmSegId;                             // CIng: 0xD7E
+  CSegId mRightWristSegId;                               // CIng: 0xD7F
+  CSegId mLeftShoulderSegId;                             // CIng: 0xD80
+  CSegId mLeftElbowSegId;                                // CIng: 0xD81
+  CSegId mLeftForearmSegId;                              // CIng: 0xD82
+  CSegId mLeftWristSegId;                                // CIng: 0xD83
+  CLineOfSightTracker mLineOfSight;                      // CIng: 0xD88
+  CVector3f mTargetPos;                                  // CIng: 0xDC8
+  CVector3f mSurfaceMoveDir;                             // CIng: 0xDE0
+  CVector3f mPortalPlaneNormal;                          // CIng: 0xDF0
+  float mPortalPlaneConstant;                            // CIng: 0xDFC
+  int mSwipeArm;                                         // CIng: 0xDEC
+  CVector3f mModelScale;                                 // host copy of the model data's scale
+  int mMiniPortalCount;                                  // CIng: 0xE00
+  CVector3f mMiniPortalPositions[3];                     // CIng: 0xE04
+  int mMiniPortalIndex;                                  // CIng: 0xE28
+  float mHeardShotTime;                                  // CIng: 0xE30
+  float mUnderFireTime;                                  // CIng: 0xE34
+  float mArmSwipeTime;                                   // CIng: 0xE38
+  float mFormTime;                                       // CIng: 0xE3C
+  float mBodyState5Time;                                 // CIng: 0xE40
+  float mFrustrationTimer;                               // CIng: 0xE44
+  float mBallCooldown;                                   // CIng: 0xE48
+  float mHitReactionTime;                                // CIng: 0xE4C
+  float mLightBlend;                                     // CIng: 0xE50
+  float mDeadFade;                                       // CIng: 0xE54
+  float mBodyProjectileTime;                             // CIng: 0xE58
+  // The boost half's members (this module's own; the guest offsets are in
+  // docs/module-analysis/BoostGuardian.md section e and in docs/module-analysis/BoostGuardian_fsm.tsv).
+  bool mBoostRetreatActive : 1;                          // guest 0x11EC bit 4
+  bool x11EDBit1 : 1;                                    // guest 0x11ED bit 1
+  bool mCollidedWithCrystal : 1;                         // guest 0x11EE bit 0
+  bool mBoostPuddleForm : 1;                             // guest 0x11EE bit 3
+  bool mShouldBoost : 1;                                 // guest 0x11EE bit 4
+  bool mBoostOver : 1;                                   // guest 0x11EE bit 5
+  bool mBoostModeRetreatActive : 1;                      // guest 0x11EE bit 7
+  bool mCurrentlyInBoostPuddleForm : 1;                  // guest 0x11EF bit 7
+  TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
+  TUniqueId mBoostNavPointId;                            // guest 0x1096: the retreat's first point
+  TUniqueId mBoostNavPointId2;                           // guest 0x1098: the retreat's second point
+  float mBoostTimer;                                     // guest 0x11DC
+  float mBoostRandomFloat;                               // guest 0x11E8
+  bool mAggressive : 1;                                  // CIng: 0xE5C bit 4
+  bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag)
+  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3
+  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2
+  bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0
+  bool mStartAsIngSpot : 1;                              // CIng: 0xE5D bit 5
+  bool mMoving : 1;                                      // CIng: 0xE5D bit 1
+  bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
+  bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7
+  bool mSplat : 1;                                       // CIng: 0xE5E bit 6
+  bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4
+  bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6
+  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7
+  bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4
+  bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3
+  bool mAlert : 1;                                       // CIng: 0xE5D bit 2
+  bool mTaunt : 1;                                       // CIng: 0xE5C bit 6
+  bool mBodyProjectileAllowed : 1;                       // CIng: 0xE5C bit 5
+  // Host-only bookkeeping.
+  const char* mLastLoggedState;                          // host: the last state logged
+  float mStateTime;                                      // host: time in the current state
+  bool mSuckTickLogged;                                  // host: SuckEnergy's first-frame trace
+  CPFArea* mPathArea;                                    // host: the area both searches were given
+  int mDebugPoll;                                        // host: the once-a-second position poll
 
 #else
   uchar x7c0_[0x11f0 - 0x7c0];

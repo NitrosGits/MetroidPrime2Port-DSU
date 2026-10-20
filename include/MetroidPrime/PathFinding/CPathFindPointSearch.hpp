@@ -20,6 +20,10 @@ public:
                                               const CPathFindPointSearchFilter& filter) const;
   CVector3f GetSplinePoint(int waypoint, float t) const; // Guessed name
   const rstl::reserved_vector< CVector3f, 32 >& GetWaypoints() const { return mWaypoints; }
+#ifdef TARGET_PC
+  // Host: the Ings zero the waypoint count in place (MinorIng `this+0xa50 = 0`).
+  void ClearWaypoints() { mWaypoints.clear(); }
+#endif
 
 private:
   EResult SearchInternal(const CPFPoint& source, const CPFPoint& destination); // Guessed name

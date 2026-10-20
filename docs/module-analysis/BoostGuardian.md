@@ -64,6 +64,77 @@ Boost additions: trigger `TargetIsBall`, `IsBoostPuddleForm`, `IsCurrentlyInBoos
 `.data` (no table big enough), so they come from the actor's `'FSM2'` asset — the same route
 SandBoss used (`MP2_SB_FSM` probe dumping `CGenericFSM2`), reachable only once the class runs.
 
+### b.1 The transitions: the actor's 'FSM2' asset
+
+The transitions are not in the REL; they are in the actor's `'FSM2'` asset, and the probe
+(`MP2_BG_FSM=1`, `PortCIngBoostBallGuardian.cpp`) dumps it: every state, trigger, code function and
+sub-machine with each transition's *target* (the transition's own `mName` is empty in this asset, so
+the target node is the information). The dump is 442 lines; the raw one is
+`/tmp/opencode/bg_fsm_dump.txt` (the probe prints it again on every run).
+
+The asset is `b5d55287` (the actor's `stateMachine` is invalid, so the `FSM2` branch is the one
+that is used). It is a wrapper around three sub-machines:
+
+| machine | states | triggers | codes | what it is |
+|---|---|---|---|---|
+| top level | 8 | 16 | 0 | the wrapper: it decides which sub-machine to enter (`IngCorporeal`, `IngPuddle`, `IngAttackPattern`) |
+| `IngAttackPattern` | 6 | 5 | 0 | `SelectTarget`, `BecomeCorporeal`, `BecomeIngSpot`, `FollowAttackPattern`, `Start` |
+| `IngCorporeal` | 20 | 52 | 9 | the Ing's own FSM: `SelectTarget`, `Alert`, `FaceTarget`, `Lurk`, `PathFind`, `Taunt`, `ArmSwipe`, `FindMiniPortals`, `MiniPortalAttack`, `BecomeIngSpot`, `BecomeBodyProjectile`, `BodyProjectileFlight`, `SuckEnergy`, `ExitHost`, `WaitForFSMTransition` |
+| `IngPuddle` | 20 | 46 | 5 | **the Boost Guardian's own FSM**: the same Ing states plus `BoostAttack` and `BoostModeRetreat`, and the boost triggers `IsBoostPuddleForm`, `IsCurrentlyInBoostPuddleForm`, `IsBoostOver`, `ShouldBoost`, `HasCollidedWithCrystal`, `BoostModeRetreatOver` |
+
+54 states, 119 triggers, 14 codes and 3 sub-machines in all; 242 transitions. The boost half's
+graph, from the `IngPuddle` sub-machine:
+
+- `Start` -> `UseProjectileFSMEntry` (code `SetRecoverDest`), `IsCurrentlyInBoostPuddleForm`
+- `Lurk` -> `IsOffPath`, `HasTarget`
+- `FindCoverPoint` -> `IsBoostPuddleForm`, `HasCoverPoint` (code `SetCoverDest`)
+- `IngSpotPathFind` -> `PathOver`, `PathShagged`, `Delay`, `IsCurrentlyInBoostPuddleForm`,
+  `IsBoostPuddleForm`, `ShouldBoost` (code `SetPointCoverDest` on `PathShagged`)
+- `IngSpotPointPathFind` -> `PointPathOver`
+- `BecomeCorporeal` -> `StateOver`
+- `BecomeWallProjectile` -> `StateOver`
+- `FailSafeMode` -> `StateOver`
+- `WaitForFSMTransition` -> `Delay`
+- `SeekWallPoint` -> `HasLineOfSight`, `Delay`
+- `BoostAttack` -> `HasCollidedWithCrystal`, `IsBoostOver`
+- `BoostModeRetreat` -> `BoostModeRetreatOver`, `PathOver`
+- `FaceTarget` -> `StateOver`
+
+The host's machine finds a node's handler **by name** (`CGenericFSM2State::SetStateFunctions` and
+its two siblings walk the machine's node lists and match the name, and the call is propagated into
+the sub-machines), so the port's tables - the REL's 49 triggers, 28 states and 9 code functions -
+bind to the nodes of all three sub-machines whose names they carry. A name the asset does not have
+(`BoostAttack` outside `IngPuddle`, `HasPatrolPath`, `InDetectionRange`, `Delay`, ...) simply has
+no node, and the port's body for it never runs: the asset's graph, not the REL's tables, decides
+what runs.
+
+### b.2 Which function implements which node
+
+
+`docs/module-analysis/BoostGuardian_fsm.tsv` (86 rows: 49 triggers, 28 states, 9 code functions)
+gives every node's name and the `fn_30_<hex>` that implements it, with the evidence (the .data
+label of the 12-byte record the `.ctors` initialiser `fn_30_110C4` copies into the table entry,
+and the store offsets). The mechanism: the three destination tables are .data objects
+`lbl_30_data_250` (triggers), `lbl_30_data_6B0` (states) and `lbl_30_data_8DC` (codes), each entry
+16 bytes with the name pointer in word 0; the 86 source records are .data objects at a 0xC stride
+from `lbl_30_data_4` and hold `{0, 0xFFFFFFFF, fn_30_XXXX}`, and the initialiser copies them in
+order - the first 49 into the trigger table, the next 28 into the state table, the last 9 into the
+code table. `fn_30_C6CC` (SetupStateMachine) then hands the three tables to the machine with the
+counts 0x31, 0x1C and 9.
+
+The boost half's own bodies (the only ones this module does not share with the Ing REL):
+
+| node | function | what it does |
+|---|---|---|
+| `HasCollidedWithCrystal` | `fn_30_B788` | bit 0 of the byte at guest 0x11EE |
+| `ShouldBoost` | `fn_30_B794` | bit 4 of that byte |
+| `IsCurrentlyInBoostPuddleForm` | `fn_30_B7A0` | bit 7 of the byte at guest 0x11EF |
+| `IsBoostPuddleForm` | `fn_30_B7AC` | bit 3 of 0x11EE and not bit 1 of 0x11ED |
+| `IsBoostOver` | `fn_30_B7D4` | bit 5 of 0x11EE |
+| `BoostModeRetreatOver` | `fn_30_B76C` | the u16 at guest 0x1096 is kInvalidUniqueId |
+| state `BoostAttack` | `fn_30_79C0` | Activate spawns the second class (`fn_30_3478`) and deactivates the collision manager at 0xD64; Update copies the child's translation (+0x54/+0x58/+0x5C, z from 0x1174) onto the actor and sets bit 5 of 0x11EE when `fn_30_13B98()` is not zero; Deactivate stops the child (its byte 0x5D8 bit 0), sends the script state `EXIT` (0x45584954), randomises the float at 0x11E8 from the array element at 0x11D0 (+0x10, +0x14), clears bit 0 of 0x11EE and zeroes the float at 0x11DC, activates the collision manager at 0xD64 and deletes the child (the id at 0x1094) |
+| state `BoostModeRetreat` | `fn_30_7728` | Activate clears bit 4 of 0x11EC, sets bit 7 of 0x11EE and finds two nav points (`fn_30_2F9C` with 0xE and 0xF), storing their ids at 0x1096 and 0x1098, sets the navigation's destination and the navigation's face target to kInvalidUniqueId; Update clears 0x1096 when the actor is within 1.0 of the first point; Deactivate looks at the second point, clears bit 7 of 0x11EE, sends the script state `CTIM` (0x4354494D) and tail-calls this module's IngSpotPathFind (`fn_30_9DA0`) |
+
 ## c. Parameters (from `SLdrIngBoostBallGuardian.hpp`, upstream)
 
 Ing block = `SLdrIng`: hearing 50, ingSpot speeds 15/7/25, turn 360, frustration 2, taunt 25,
@@ -153,22 +224,49 @@ state bodies. The vtable word lists for both classes: `docs/module-analysis/Boos
 
 ## i. Port plan
 
-- **WP1 (this session):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)
+- **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)
   and the `RELMain`/`RELExit` registration, so the actor loads and stands. Model of the shape:
   `PortCIng.cpp`'s milestone 1 (StandIn log per override, forward to `CPatterned`).
-- **WP2:** the FSM. Dump it with an `MP2_BG_FSM` probe (the `MP2_SB_FSM` recipe), then port the
-  Ing half (42 triggers, 24 states) from `PortCIng.cpp`/`IngFamily.md` and the seven boost
-  triggers plus `BoostAttack`/`BoostModeRetreat` from this module's own bodies.
+- **WP2 (this session):** the FSM. The probe (`MP2_BG_FSM`) dumps the `CGenericFSM2` machine; the
+  three tables (49 triggers, 28 states, 9 codes) are registered under the REL's own names in
+  `PortCIngBoostBallGuardianFsm.cpp`; the Ing half's bodies come from the Ing host body (branch
+  `decomp/ing`) and the boost half from this module's own bodies (section b.2).
 - **WP3:** the boost ball — the rolling state, the crystal collision, the puddle form, the three
   phase structs and their damage thresholds.
 - **WP4:** mini portals (`fn_30_D4F8` builds `CIngMiniPortalAttack`), the swarm/exit-host half,
   the second class and the render paths.
 
+### i.1 What the port's files are
+
+| file | what it holds |
+|---|---|
+| `PortCIngBoostBallGuardian.cpp` | the loader, the constructor, the module's own entry points and the `MP2_BG_FSM` probe |
+| `PortCIngBoostBallGuardianFsm.cpp` | the three tables (49 triggers, 28 states, 9 codes) and their registration |
+| `PortCIngBoostBallGuardianTriggers.cpp` | the trigger and code-function bodies (the Ing half) |
+| `PortCIngBoostBallGuardianStates1.cpp`, `...States2.cpp` | the state bodies (the Ing half) |
+| `PortCIngBoostBallGuardianOverrides.cpp` | the base-class overrides the Ing half needs (Think, AcceptScriptMsg, DoUserAnimEvent, ...) |
+| `PortCIngBoostBallGuardianBoost.cpp` | the boost half: the six boost triggers and the two boost states, from this module's own bodies |
+| `include/MetroidPrime/Enemies/PortBoostGuardianShared.hpp` | the form constants, the property-flag bits, the joint-sphere table and the small shared helpers |
+
+The host layout is its own: the guest's object is 0x11F0 (the non-host build keeps that size, and
+the `CHECK_SIZEOF` is the guest's), but the host's members are the Ing's (the Ing half, under the
+Ing REL's names) plus this module's boost members, so the host's own size differs. The guest
+offsets are in section e; the module's own addresses for the state machine's nodes are in
+`BoostGuardian_fsm.tsv`.
+
 ## j. Open
 
-- transitions of the FSM (needs a running class; `MP2_SB_FSM`-style probe).
-- what the second class is (§f).
+- what the second class is (section f) and the boost ball's own states.
+- the exit host: this module's own copy of the Ing's exit-host body and the exit-host class (the
+  Ing's `CIngExitHostEffect` is not in this branch).
+- the mini portal attack: this module's own copy of the Ing's `CIngMiniPortalAttack`.
+- the nav-point finder `fn_30_2F9C`, which `BoostModeRetreat`'s Activate needs.
 - the "PuddleCollisionActor" named child and the crystal behind `HasCollidedWithCrystal`.
+- the module's own copies of the base-class overrides (`fn_30_DC10` PreThink, `fn_30_D94C` Think,
+  `fn_30_DDA0` AcceptScriptMsg, `fn_30_D2E0` PreRender, `fn_30_D384` Render, `fn_30_CE50` Touch,
+  `fn_30_D4F8` DoUserAnimEvent, `fn_30_76F4` Death, `fn_30_CB84` KnockBack): the port uses the Ing
+  half's copies, and the module's own ones may carry boost-specific code. Compare their sizes
+  (the module's Think is 0x2C4) before trusting the Ing half's behaviour.
 
 ## k. What the loader and the constructor actually pass
 

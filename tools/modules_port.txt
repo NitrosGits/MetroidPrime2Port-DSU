@@ -12,6 +12,12 @@ EmperorIngStage1;src/MetroidPrime/PortModuleStubs.cpp
 EmperorIngStage3;src/MetroidPrime/PortModuleStubs.cpp
 Ing;src/MetroidPrime/Enemies/PortCIng.cpp
 IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardian.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianFsm.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianTriggers.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianStates1.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianStates2.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianOverrides.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianBoost.cpp
 IngSwarm;src/MetroidPrime/PortModuleStubs.cpp
 MinorIng;src/MetroidPrime/Enemies/PortCMinorIng.cpp
 SandBoss;src/MetroidPrime/PortModuleStubs.cpp
