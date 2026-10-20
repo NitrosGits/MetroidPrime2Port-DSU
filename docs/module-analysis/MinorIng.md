@@ -28,13 +28,13 @@ port names it once per run, so the log says which body is missing. The names are
 
 | retail function | size | why the host does not have it |
 |---|---|---|
-| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are read by the host's loader now, but the spawn itself is not ported |
+| - | - | nothing: the module's stand-ins are all ported now |
 
-`fn_44_97E4` (the destructor), `fn_44_34B0` (the ray), `fn_44_9D58` (the constructor) and
-`fn_44_110` (the loader) were stand-ins and are ported now: the destructor is the host's member
-destruction (the retail's body is the members' own teardown), the ray is `CMinorIng::RayDown`, the
-constructor fills the members in the retail's order and the loader reads the same properties into
-the same members.
+`fn_44_97E4` (the destructor), `fn_44_34B0` (the ray), `fn_44_9D58` (the constructor), `fn_44_110`
+(the loader) and `fn_44_7058` (the massive death) were stand-ins and are ported now: the destructor
+is the host's member destruction (the retail's body is the members' own teardown), the ray is
+`CMinorIng::RayDown`, the constructor fills the members in the retail's order, the loader reads the
+same properties into the same members and the massive death spawns the inglets.
 
 ## The inglet's data (modelled)
 
@@ -140,6 +140,40 @@ What the retail's constructor fills, in its order (the host does the same):
   `CPatternedInfo`'s health at +0x54), not the actor's own health info.
 - the flag bytes: the retail clears every flag of 0xd3d (asm 0xA284-0xA2DC) and every flag of
   0xd3e (asm 0xA2E4-0xA330), most significant bit first.
+
+### The massive death (fn_44_7058)
+
+The retail's massive death (fn_44_7058, 0x654) spawns the inglets, and the host's
+`CMinorIng::MassiveDeath` does the same now:
+
+- the guards (asm 0x70CC-0x70F0): the health info's weapon mode (the halfword at +0x0e) must not be
+  2 or 0x12, and an Ing in the puddle form (1) only spawns inglets when the data's byte 0x155 is
+  set. The host's `CHealthInfo` does not expose the halfword at +0x0e (its weapon modes are four
+  bytes wide), so it uses the cause-of-death weapon instead; the puddle guard is the data's
+  `mFlags155` (the property 0x9207f51).
+- the count (asm 0x71D8-0x7238): the distance to the target less the actor's own health (the
+  health info's float at +0x04), clamped to 0..the inglet's spawn distance (the data's 0x134),
+  gives the fraction of the maximum count (the data's 0x12c) that is spawned, rounded up and never
+  below the minimum count (the data's 0x128). The retail reads the base class's distance at 0x408,
+  which the host does not model, so the host uses the distance to the target.
+- the materials (asm 0x7140-0x71D8): the inglet collides with the seeker-target material and, when
+  the ing spot allows lock-on (the data's byte 0x154's bit 7), with the target and orbit materials
+  too.
+- the spawn point (asm 0x7274-0x7300): the Ing's position plus half the transform's up vector, and
+  the look-at takes the same up vector. The direction is the normalised vector to the target.
+- the angles (asm 0x73F4-0x7464): a random 35..60 degrees around the local X, then the table's
+  value in tens of degrees less 50 around the local Z. The table is the REL's lbl_44_rodata_0
+  (`{0, 8, 2, 6, 9, 3, 0, 5, 1, 7}`) and the index walks it from a random start.
+- the inglet (asm 0x74A8-0x762C): a `CBouncyGrenade` named "Inglet" with the launch speed random out
+  of the data's range (0x120..0x124), the grenade data (0xd0), the explode distance (0x138), the
+  max homing angle (0x130), the health (0xb0), the flags 0xf, the inverted box and the Ing as the
+  parent; it removes the projectile material from itself.
+- the retail's stack box (the six floats at asm 0x7468-0x74A4) is doubled and then dropped: the
+  bounds the inglet gets are the constant inverted box, so the host leaves it out.
+
+The loader logs the inglets' count once per spawn (`[minoring] inglets <min>..<max> spawn distance
+<d>`), so a run shows which placement has any. The area the run reaches (13 of 63) has 0..0.
+
 
 ## The functions that are still not ported
 

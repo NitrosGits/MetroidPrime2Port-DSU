@@ -15,6 +15,7 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Math/CQuaternion.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "Kyoto/CRandom16.hpp"
@@ -128,6 +129,9 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 };
 
 namespace {
+
+// The ten inglet angles (the REL's lbl_44_rodata_0): the value in tens of degrees, less 50.
+const int skIngletAngles[] = {0, 8, 2, 6, 9, 3, 0, 5, 1, 7};
 
 bool DebugMinorIng() {
   static int sEnabled = -1;
@@ -2063,9 +2067,74 @@ void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   CPatterned::KnockBack(mgr, info);
 }
 
-// [?] fn_44_7058: retail also spawns the inglets (CBouncyGrenade, data at guest 0x8e0..0x8f8).
+// fn_44_7058: the retail's massive death spawns the inglets (asm 0x7058-0x76A8). The number of
+// them falls off with the distance to the player, and each one is a CBouncyGrenade named "Inglet"
+// that leaves the Ing's top at the angle the ten-entry table gives.
 void CMinorIng::MassiveDeath(CStateManager& mgr) {
-  PortMinorIngStandIn("fn_44_7058 (0x654 bytes)");
+  const CHealthInfo& health = *GetHealthInfo();
+  // The retail's first guard (asm 0x70CC): the health info's weapon mode (the halfword at +0x0e)
+  // must not be 2 or 0x12.
+  const int mode = static_cast< int >(health.GetCauseOfDeathWeapon().GetType());
+  if (mode != 2 && mode != 0x12) {
+    // The retail's second guard (asm 0x70DC): an Ing in the puddle form only spawns inglets when
+    // the ing spot's flag byte at 0x155 is set.
+    if (mForm != kF_Puddle || mData.mFlags155 != 0) {
+      // The distance (asm 0x710C-0x7140): the distance to the target minus the actor's own
+      // health (the health info's float at +0x04), clamped to 0..the inglet's spawn distance (the
+      // data's 0x134).
+      const float maxDist = mData.mIngletSpawnDistance;
+      const float raw = CMath::FastSqrtF((mTargetPos - GetTranslation()).MagSquared()) - health.GetHP();
+      float dist = 0.f;
+      if (raw >= 0.f) {
+        dist = raw < maxDist ? raw : maxDist;
+      }
+      // The count (asm 0x71D8-0x7238): the fraction of the maximum count the distance leaves,
+      // rounded up, and never below the minimum count.
+      const int count = static_cast< int >(
+          CMath::CeilingF((1.f - dist / maxDist) * static_cast< float >(mData.mIngletMaxCount)));
+      const int total = count < mData.mIngletMinCount ? mData.mIngletMinCount : count;
+      if (total > 0) {
+        // The materials (asm 0x7140-0x71D8): the inglet collides with the seeker-target material
+        // and, when the ing spot allows lock-on, with the target and orbit materials too.
+        CMaterialList materials(kMT_SeekerTarget);
+        if (mData.mIngSpotAllowLockOn) {
+          materials.Add(kMT_Target);
+          materials.Add(kMT_Orbit);
+        }
+        // The direction (asm 0x723C-0x7270): from the Ing's top towards the target.
+        CVector3f dir = mTargetPos - GetTranslation();
+        dir.Normalize();
+        // The spawn point (asm 0x7274-0x7300): the Ing's top, half the up vector above its
+        // position, and the up vector is what the look-at takes.
+        const CVector3f up = GetTransform().GetUp();
+        const CVector3f at = GetTranslation() + up * 0.5f;
+        // The first angle (asm 0x73F4-0x7414) is a random 35..60 degrees around the local X, the
+        // second (asm 0x7418-0x7464) comes from the table: the value in tens of degrees, less 50.
+        const int base = mgr.Random()->Range(0, 9);
+        for (int i = 0; i < total; ++i) {
+          CTransform4f xf = CTransform4f::LookAt(at, at + dir, up);
+          const float pitch =
+              mgr.Random()->Range(35.f, 60.f) * 0.017453292f;
+          xf.RotateLocalX(CRelAngle::FromRadians(pitch));
+          const float yaw = (skIngletAngles[(base + i) % 10] * 10.f - 50.f) * 0.017453292f;
+          xf.RotateLocalZ(CRelAngle::FromRadians(yaw));
+          // The inglet (asm 0x74A8-0x75CC): the launch speed is random out of the data's range,
+          // the model data and the actor parameters are the empty ones and the bounds are the
+          // inverted box.
+          CBouncyGrenade* const inglet = rs_new CBouncyGrenade(
+              mgr.AllocateUniqueId(), rstl::string_l("Inglet"),
+              CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+              xf, CModelData::CModelDataNull(), CActorParameters::None(), GetUniqueId(),
+              mgr.Random()->Range(mData.mIngletMinLaunchSpeed, mData.mIngletMaxLaunchSpeed),
+              mData.mGrenadeData, mData.mIngletExplodeDistance, CAABox::MakeMaxInvertedBox(),
+              mTargetId, mData.mIngletMaxTurnAngle, 0xf, &materials, &mData.mIngletHealth);
+          mgr.AddObject(inglet);
+          // The inglet does not collide with the other projectiles (asm 0x762C).
+          inglet->RemoveMaterial(kMT_Projectile, mgr);
+        }
+      }
+    }
+  }
   PlaySfx(3, true);
   CPatterned::MassiveDeath(mgr);
 }
@@ -2131,7 +2200,7 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
 // Retail fn_44_110. The property ids and their order are the generated SLdrMinorIng reader's,
 // which the analysis checked against the REL id by id: it reads all 20. The retail's own loop
 // reads the same properties into the same places (fn_44_9B4's packing gives each bool its bit),
-// so the loader holds no stand-in.
+// so the loader models the retail's reads.
 // @ fn_44_D54
 // The retail copy moves a whole CIngSpotData from the source to the destination: the blob
 // effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds
@@ -2224,6 +2293,15 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
   }
   if (sldrThis.allowPuddleLockOn) {
     flags156 |= 0x04; // 0x2107e4fb
+  }
+
+  // The inglet's spawn values (the retail's data 0x120..0x138): the inglets' count is the
+  // minimum and the maximum of the generation range, and the massive death falls off with the
+  // distance. The log says the count once per spawn, so a run shows which placement has any.
+  if (DebugMinorIng()) {
+    fprintf(stderr, "[minoring] inglets %d..%d spawn distance %g\n", sldrThis.unknown_0x3da35851.minGeneration,
+            sldrThis.unknown_0x3da35851.maxGeneration,
+            static_cast< double >(sldrThis.unknown_0x3da35851.unknown_0xfbf8ea0a));
   }
 
   // The retail's loader reads the ing spot (fn_44_194C) and builds the bouncing-projectile
