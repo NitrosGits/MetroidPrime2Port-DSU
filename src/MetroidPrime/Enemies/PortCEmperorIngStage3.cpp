@@ -1951,12 +1951,13 @@ void CEmperorIngStage3::SetHeartState(CStateManager& mgr, int heart, bool applyV
 // 2.0 (rodata 0x274) and the player then has to be nearer than 20 units (rodata 0x270). A vector
 // that cannot be normalized counts as too close.
 // fn_18_2D1C (0x34) is the vector from the actor to the first player, flattened to the XY plane;
-// fn_18_2C98 (0x20) copies a vector the retail then never reads, so it is left out.
+// fn_18_2C98 (0x20), the flat facing, is called next (0x8E04) but its result is never read.
 bool CEmperorIngStage3::TooClose(CStateManager& mgr, const CTriggerData& data) const {
   if (mX7d4_ < 2.f) { // rodata 0x274
     return false;
   }
   const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
+  (void)FlatFacing();                              // fn_18_2C98, 0x8E04: unused
   if (!toPlayer.CanBeNormalized()) {
     return true;
   }
