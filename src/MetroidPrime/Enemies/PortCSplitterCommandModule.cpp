@@ -50,7 +50,6 @@ void StandInFn_75_10D0() { StandIn("fn_75_10D0 (0xB8, the module's own transform
 // The module's own calls in the command module's script-message handler (fn_75_654C). Both are
 // over 0x80, so each stays a named once-logging shell.
 void StandInFn_75_3460() { StandIn("fn_75_3460 (0x218)"); }
-void StandInFn_75_1790() { StandIn("fn_75_1790 (0xBC)"); }
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
@@ -283,6 +282,10 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
 // slot 35 is not named in the port, so the call stays a once-logging shell.
 void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vtable slot 0x8C"); }
 
+// The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
+// of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
+void StandInCEntityVirtual0x24() { StandIn("the DOL's CEntity virtual at the vtable word 0x24"); }
+
 // @ fn_75_184C
 // The command module's look-at (0x184C-0x1974): the target id (the u16 at 0xF02, 0x1874 lhz) is
 // looked up (0x1888 ObjectById) and, when it is there, the module's locator transform (the
@@ -413,6 +416,28 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortAutoDestructTimer(dt);
 }
 
+// @ fn_75_1790
+// The head's laser-pulse projectile despawn (0x1790-0x184C): the projectile's id at 0xF02 is
+// looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x24 is
+// called with the manager and false (0x17C8-0x17DC), the sound handle at 0xF5C is removed
+// (0x17EC RemoveEmitter) and the object is deleted (0x1800 DeleteObjectRequest). Then the id
+// at 0xF02 is cleared (0x1814), the handle at 0xF5C is zeroed (0x1818) and, when the base's
+// flag byte at 0x420 has its 0x20 bit (the word's bit 25, 0x1820 extrwi) set, the module's own
+// call runs (0x1830 fn_75_1578).
+void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
+  CEntity* projectile = mgr.ObjectById(mLookAtTargetId);
+  if (projectile != nullptr) {
+    StandInCEntityVirtual0x24();
+    StandInSfxRemoveEmitter();
+    mgr.DeleteObjectRequest(mLookAtTargetId);
+  }
+  mLookAtTargetId = kInvalidUniqueId;
+  mLookAtSfxHandle = 0;
+  if (GetFlag26()) {
+    StandInFn_75_1578();
+  }
+}
+
 // @ fn_75_3A8C
 // The command module's connected-object lookup (0x3A8C-0x3ADC): the object connected with the
 // state "CONN" (0x3AA4) and the message "ATCH" (0x3AA8) is looked up (0x3ABC FindConnectedObject)
@@ -463,7 +488,7 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
     if (mBeamEffectId != kInvalidUniqueId) {
       mgr.DeleteObjectRequest(mBeamEffectId);
     }
-    StandInFn_75_1790();
+    PortDespawnProjectile(mgr);
     break;
   }
   case kSM_Activate: { // "ACTV" (0x65B8)

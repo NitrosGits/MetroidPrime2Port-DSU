@@ -209,6 +209,8 @@ private:
   // The retail's fn_75_3A8C (the connected-object lookup) and fn_75_2CC0 (the flash start).
   void PortUpdateConnectedObject(CStateManager& mgr);
   void PortStartFlashIfTarget(const CScriptMsg& msg);
+  // The retail's fn_75_1790: the laser-pulse projectile's despawn.
+  void PortDespawnProjectile(CStateManager& mgr);
 };
 
 #endif // _CSPLITTERCOMMANDMODULE
