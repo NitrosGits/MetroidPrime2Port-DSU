@@ -174,6 +174,11 @@ const char* const skPortalNames[8] = {"portal1_LCTR_SDK", "portal2_LCTR_SDK", "p
 // fn_16_900C. The base call is the retail one: EPatternedAI 0x0D (`li r4, 0xd` at 0x00009068),
 // flavor 0 (`li r7, 0x0` at 0x0000905C), movement 1 (kMT_Flyer), collider 1 (kCT_One) and body 2
 // (kBT_Restricted) - the three constants stored to the stack arguments at 0x00009060..0x00009070.
+// The retail's own helpers it calls: fn_16_9AB0 (the health info, 0x9204), fn_16_98D0 (the
+// damage vulnerability, 0x921C), fn_16_9700 (the shock wave block, 0x955C) and fn_16_9610 (the
+// plasma beam info, 0x958C) - the host's LdrToHealthInfo and LdrToDamageVulnerability and the
+// verbatim copies do them. The token it locks (0x9444) is the host's TLockedToken's own
+// constructor and the projectile info (0x9580) the host's CProjectileInfo.
 CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CTransform4f& xf,
                                      const CModelData& modelData,
@@ -255,7 +260,6 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa70_(0)                                                        // guest 0xA70, cleared
 , xa74_(0)                                                        // guest 0xA74, 0x9178
 , xa78_(0.f)                                                      // guest 0xA78, rodata_380
-, xa7c_()                                                         // guest 0xA7C, empty
 , xa8c_(CSfxHandle::NullHandle())                                  // guest 0xA8C, cleared
 , xa90_(kInvalidUniqueId)                                         // guest 0xA90, fn_16_900C clears it
 , xa94_(CSfxHandle::NullHandle())                                  // guest 0xA94, cleared
@@ -268,6 +272,10 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
   // port's CAiKnockBackMgr has no such call yet, so that half is missing.
   // The shock-wave block at guest 0xC40 and the two tokens at guest 0xBB8 and 0xBE0 belong to
   // attacks the port has not reached yet.
+  // 0x917C..0x91AC: the flag byte (guest 0xA74) has its bits 0x80, 0x40, 0x20, 0x10 and 0x08
+  // cleared one at a time. The host's heap is not zeroed, so the byte is zeroed in the member
+  // list; the mask says the same.
+  xa74_ &= ~0xF8;
   SetDrawShadow(false);
 }
 
