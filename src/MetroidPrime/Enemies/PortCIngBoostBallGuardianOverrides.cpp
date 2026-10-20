@@ -279,9 +279,8 @@ rstl::optional_object< CAABox > CIngBoostBallGuardian::GetTouchBounds() const {
 // The Ing's Touch (the Ing REL's fn_29_BB8C): the ing-spot form's contact damage.
 void CIngBoostBallGuardian::Touch(CActor& actor, CStateManager& mgr) {
   EnsureBodyActive(mgr);
-  // The arm swipe's live flag (0xe5c bit 1) pauses the contact damage while the swing is out.
   if (mForm == kForm_IngSpot && !mGrappled && actor.GetUniqueId() == mTargetId &&
-      mCurDamageRemTime <= 0.f && !xE5C_1) {
+      mCurDamageRemTime <= 0.f) {
     // [?] the damage: the patterned contact damage.
     mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), GetContactDamage(), SolidFilter(),
                     CVector3f::Zero());

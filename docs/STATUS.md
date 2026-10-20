@@ -39,11 +39,17 @@ in `wt-mp2-boostguardian`.
   exit-host class), the mini portal attack, the second class (the crystal the boost ball
   collides with) and the nav-point finder `fn_30_2F9C` that `BoostModeRetreat` needs are later
   slices; each is marked in the source with what it needs.
-- **One correction to the Ing port.** `FollowAttackPattern` picks the form from the waypoint's
-  flags: the asm (`fn_30_99D4` at 0x00009B44/0x00009B4C/0x00009B60, the same three `rlwinm`s as the
-  Ing's `fn_29_82D4` at 0x00008438) tests bits 25, 24 and 23, not 0x40/0x80/0x100. The Ing host body
-  read them as 0x40/0x80/0x100; this module's copy uses the bits the asm tests, and the Ing
-  session should make the same change there.
+- **The Ing half matches `decomp/ing` at `1776bb60b`.** The Ing half's bodies were copied from
+  the Ing host body (branch `decomp/ing`) and then carried over that commit's `SetRecoverDest`
+  fix (the second point query's filter uses the first query's index `from` as its connected point,
+  asm 0x5A2C r5) and the ones it read against the asm after that (`AreaClear`,
+  `CollisionActorHitPlayer`, `HasMiniPortals`, `EndRangedAttack`, `ProjectileHitTarget`,
+  `SetWallPointCoverDest`): 96 of the 112 bodies the two share are now token-identical, the 16
+  that differ are this module's adaptations (no lure safe zone, no grapple block, no exit-host or
+  mini-portal class, the probe's activation in `Think`). When the Ing session commits a fix to a
+  body this module also carries, it has to be carried over here: the two files are `decomp/ing`'s
+  `src/MetroidPrime/Enemies/PortCIng.cpp` against this module's
+  `PortCIngBoostBallGuardian{Triggers,States1,States2,Overrides}.cpp`.
 - **The Ing half is the Ing port's code, and 17 nodes differ.** Comparing the two RELs' function
   sizes for the 78 nodes they share, 61 are the same size and 17 are not, so for those the
   module's own body is the authority: `CanGrappleTarget`, `ExitHost`, `BecomeCorporeal`,

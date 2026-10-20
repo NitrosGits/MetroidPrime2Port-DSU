@@ -118,9 +118,8 @@ void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueI
   if (player == nullptr || actor->GetLastTouchedObject() != player->GetUniqueId()) {
     return;
   }
-  // The Ing also tests 0xe5c bit 1 (xE5C_1), which suppresses the contact damage; fn_29_6A88 owns
-  // that bit. This module's class has no member for it, so only the timer is left.
-  if (mCurDamageRemTime > 0.f) {
+  // xE5C_1 (0xe5c bit 1) suppresses the contact damage; fn_29_6A88 owns that bit.
+  if (mCurDamageRemTime > 0.f || xE5C_1) {
     return;
   }
   mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
@@ -135,13 +134,13 @@ CEntity* CIngBoostBallGuardian::SpawnHitEffect(CStateManager& mgr, bool heavy) {
       heavy ? mHeavyHitEffect : mNormalHitEffect;
   if (!effect) {
     if (DebugBg()) {
-      fprintf(stderr, "[bg] %04x hit fx: the %s token is not loaded\n", GetUniqueId().Value(),
+      fprintf(stderr, "[ibbg] %04x hit fx: the %s token is not loaded\n", GetUniqueId().Value(),
               heavy ? "heavy" : "normal");
     }
     return nullptr;
   }
   if (DebugBg()) {
-    fprintf(stderr, "[bg] %04x hit fx: %s explosion\n", GetUniqueId().Value(),
+    fprintf(stderr, "[ibbg] %04x hit fx: %s explosion\n", GetUniqueId().Value(),
             heavy ? "heavy" : "normal");
   }
   return rs_new CExplosion(*effect, mgr.AllocateUniqueId(),
@@ -170,7 +169,7 @@ void CIngBoostBallGuardian::IngSpotDamage(CStateManager& mgr, TUniqueId sender) 
   if (DebugBg()) {
     // What a run cannot otherwise see: the spot form has no health of its own, so a landed shot
     // shows only as this line plus the effect it spawns.
-    fprintf(stderr, "[bg] %04x spot hit heavy %d\n", GetUniqueId().Value(), heavy ? 1 : 0);
+    fprintf(stderr, "[ibbg] %04x spot hit heavy %d\n", GetUniqueId().Value(), heavy ? 1 : 0);
   }
   CEntity* explosion = SpawnHitEffect(mgr, heavy);
   CSfxManager::AddEmitter(heavy ? mData.mIngSpot.GetHeavyHitSound()
@@ -446,11 +445,10 @@ bool CIngBoostBallGuardian::HeardShot(CStateManager&, const CTriggerData&) const
 
 // fn_29_AE68 (not yet exercised in a run)
 bool CIngBoostBallGuardian::AreaClear(CStateManager& mgr, const CTriggerData&) const {
-  const float half = mModelScale.GetX() * 10.f;
+  const CVector3f half = mModelScale * 10.f;
   const CVector3f pos = GetTranslation();
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
-  mgr.BuildNearList(nearList,
-                    CAABox(pos - CVector3f(half, half, half), pos + CVector3f(half, half, half)),
+  mgr.BuildNearList(nearList, CAABox(pos - half, pos + half),
                     CMaterialFilter::MakeInclude(CMaterialList(kMT_Player, kMT_Character)), this);
   return nearList.empty();
 }
@@ -475,7 +473,7 @@ bool CIngBoostBallGuardian::HasWallCoverPoint(CStateManager& mgr, const CTrigger
 
 // fn_29_AD68 (not yet exercised in a run)
 bool CIngBoostBallGuardian::HasMiniPortals(CStateManager&, const CTriggerData&) const {
-  return mMiniPortalCount > 0;
+  return mMiniPortalCount != 0;
 }
 
 // Ing body fn_29_AD54
@@ -611,7 +609,7 @@ bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTrig
   static int sTick = 0;
   if (BgLogTick(sTick)) {
     fprintf(stderr,
-            "[bg] %04x body proj trigger: target %04x dist %.1f [%.1f..%.1f] dz %.1f -> %d\n",
+            "[ibbg] %04x body proj trigger: target %04x dist %.1f [%.1f..%.1f] dz %.1f -> %d\n",
             GetUniqueId().Value(), mTargetId.Value(), CMath::SqrtF(distSq), minDist, maxDist,
             delta.GetZ(), inRange ? 1 : 0);
   }
@@ -641,20 +639,20 @@ bool CIngBoostBallGuardian::ProjectileSplat(CStateManager&, const CTriggerData&)
 
 // fn_29_A4EC (not yet exercised in a run)
 bool CIngBoostBallGuardian::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
-  const CPhysicsActor* target = TCastToConstPtr< CPhysicsActor >(mgr.GetObjectById(mTargetId));
+  const CEntity* entity = mgr.GetObjectById(mTargetId);
+  const CPhysicsActor* target = TCastToConstPtr< CPhysicsActor >(entity);
   if (target == nullptr) {
     return false;
   }
-  if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId))) {
-    if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed ||
-        player->GetMorphballTransitionState() == CPlayer::kMS_Morphing) {
+  if (const CPlayer* player = TCastToConstPtr< CPlayer >(entity)) {
+    const CPlayer::EPlayerMorphBallState state = player->GetMorphballTransitionState();
+    if (state != CPlayer::kMS_Unmorphed && state != CPlayer::kMS_Unmorphing) {
       return false;
     }
   }
-  const float half = mModelScale.GetX() * 2.5f;
+  const CVector3f half = mModelScale * 2.5f;
   const CVector3f pos = GetTranslation();
-  return CAABox(pos - CVector3f(half, half, half), pos + CVector3f(half, half, half))
-      .DoBoundsOverlap(target->GetBoundingBox());
+  return CAABox(pos - half, pos + half).DoBoundsOverlap(target->GetBoundingBox());
 }
 
 // fn_29_A4E0 (not yet exercised in a run)
@@ -712,7 +710,7 @@ bool CIngBoostBallGuardian::TargetIsBall(CStateManager& mgr, const CTriggerData&
                       player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
   static int sTick = 0;
   if (BgLogTick(sTick)) {
-    fprintf(stderr, "[bg] %04x target is ball: target %04x player %d morph %d -> %d\n",
+    fprintf(stderr, "[ibbg] %04x target is ball: target %04x player %d morph %d -> %d\n",
             GetUniqueId().Value(), mTargetId.Value(), player != nullptr ? 1 : 0,
             player != nullptr ? int(player->GetMorphballTransitionState()) : -1,
             isBall ? 1 : 0);
@@ -769,8 +767,11 @@ void CIngBoostBallGuardian::SetCoverDest(CStateManager& mgr, float) {
 }
 
 // Ing body fn_29_59D0: two closest-point queries from the Ing's own position - filter (20, 0, -1) then
-// (20, 1, -1), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
-// (0x00005A94). It sets no destination: mFoundMovementPos is what IngSpotPathFind reads.
+// (20, 1, from), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
+// (0x00005A94). The second filter's connected point is the *first* query's index (the asm keeps it
+// in r5 from 0x00005A2C), so the second point is one the graph connects to the first - without
+// that the pair is unrelated and the search below fails. It sets no destination:
+// mFoundMovementPos is what IngSpotPathFind reads.
 void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
   LogState("SetRecoverDest");
   mFoundMovementPos = false;
@@ -784,7 +785,7 @@ void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
   }
   int to = -1;
   if (mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), to,
-                                                    CPathFindPointSearchFilter(20.f, 1, -1)) !=
+                                                    CPathFindPointSearchFilter(20.f, 1, from)) !=
           CPathFindPointSearch::kCPR_Success ||
       to == -1) {
     return;
@@ -840,8 +841,10 @@ void CIngBoostBallGuardian::SetPointCoverDest(CStateManager& mgr, float) {
 void CIngBoostBallGuardian::SetWallPointCoverDest(CStateManager& mgr, float) {
   LogState("SetWallPointCoverDest");
   mFoundMovementPos = false;
-  mPointPathFindSearch.ClearWaypoints();
-  const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
+  mPointPathFindSearch.ClearWaypoints(); // 0xacc = 0, asm 0x0000573C
+  const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId); // fn_29_45BC, id at 0xd72
+  // Retail tests the hint only (fn_29_45BC returns null when the id is not a CScriptAIHint); the
+  // host can run without a path area, so the point queries are skipped when mPathArea is null.
   if (hint == nullptr || mPathArea == nullptr) {
     return;
   }
@@ -852,8 +855,10 @@ void CIngBoostBallGuardian::SetWallPointCoverDest(CStateManager& mgr, float) {
     return;
   }
   int to = -1;
+  // asm 0x00005778: the second filter's connected point is the index the first query found, so only
+  // points the graph connects to the Ing's own point are candidates.
   mPointPathFindSearch.FindClosestPhysicalPoint(hint->GetTranslation(), to,
-                                                CPathFindPointSearchFilter(20.f, 0, -1));
+                                                CPathFindPointSearchFilter(20.f, 0, from));
   if (to != -1 && BgPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
     mFoundMovementPos = true;
   }
@@ -902,7 +907,7 @@ void CIngBoostBallGuardian::StartRangedAttack(CStateManager& mgr, float) {
 // fn_29_514C (not yet exercised in a run)
 void CIngBoostBallGuardian::EndRangedAttack(CStateManager& mgr, float) {
   CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
-                              true);
+                              false);
 }
 
 // Ing body fn_29_4F14: the body projectile hit the mesh, so the Ing splats back
@@ -922,7 +927,7 @@ void CIngBoostBallGuardian::SplatOntoMesh(CStateManager& mgr, float) {
                           GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   const bool splatFx = static_cast< bool >(mSplatEffect); // 0xd54, the token's engaged byte
   if (DebugBg()) {
-    fprintf(stderr, "[bg] %04x splat: splat fx %s\n", GetUniqueId().Value(),
+    fprintf(stderr, "[ibbg] %04x splat: splat fx %s\n", GetUniqueId().Value(),
             splatFx ? "explosion" : "token not loaded");
   }
   if (splatFx) {

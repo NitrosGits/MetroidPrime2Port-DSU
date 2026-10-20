@@ -253,6 +253,22 @@ port's body is (at best) a near neighbour. These are the ones to read against th
 `BecomeCorporeal` and `BecomeIngSpot` are the ones the boost half changed most (the module's are
 0x148 and 0x154 bytes bigger): they are where the form change meets the boost ball.
 
+**Which Ing commit this module's Ing half matches.** The Ing half's bodies are the Ing host
+body's (branch `decomp/ing`, `src/MetroidPrime/Enemies/PortCIng.cpp`), and they match that branch
+at **`1776bb60b`** ("CIng SetRecoverDest's second point query is connected to the first": the second
+point query's filter uses the first query's index `from` as its connected point, the asm keeping it
+in r5 from 0x00005A2C). Of the 112 bodies the two share, 96 are token-identical after the renames
+(`CIng::` -> `CIngBoostBallGuardian::`, `DebugIng` -> `DebugBg`, `OptionalPart` ->
+`BgOptionalPart`, `PortIngPointSearch` -> `BgPointSearch`, `SolidFilter` -> the shared header's,
+`[ing]` -> `[ibbg]`) and the 16 that differ are this module's adaptations, all of them the lure
+safe zone the module does not have (`mLureSafeZoneId`, `mSafeZoneCount`, `mSafeZoneIngSpot`), the
+grapple block and the trigger vulnerability it does not have, the exit host and the mini-portal
+attack (the classes are not in this branch), and the probe's own activation in `Think`. A fix the
+Ing session commits afterwards has to be carried over: the files are `PortCIng.cpp` against this
+module's `PortCIngBoostBallGuardian{Triggers,States1,States2,Overrides}.cpp`. Note the two RELs'
+*bodies* also differ for the 17 nodes in the table above, so a fix there is the Ing's fix and this
+module's body is still to be read.
+
 ## i. Port plan
 
 - **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)
