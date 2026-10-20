@@ -21,10 +21,12 @@
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "types.h"
 
@@ -156,6 +158,200 @@ const SStateFunction skStates[] = {
     DS_STATE(TurnToFacePlayer), // fn_10_FE18
 };
 
+// ---- the FSM2 probe (MP2_DS_FSM) --------------------------------------------------------------
+//
+// The transitions are not in the REL's .data - they come from the actor's 'FSM2' asset - so the
+// machine is what tells which trigger leads to which state. The probe has the shape of the Boost
+// Guardian's MP2_BG_FSM probe: one line per node and per transition, once per process.
+
+// The node a transition points at.
+struct SDsFsmNode {
+  const char* mKind; // "state", "trigger", "code", "submachine" or "none".
+  int mIndex;        // Index in the machine's own list, -1 when the target is not in it.
+  const char* mName; // The node's name.
+};
+
+// Finds the list the target belongs to (by its type) and then the element the target points at.
+SDsFsmNode DsFsmNodeOf(const CGenericFSM2& machine, const CState2* target) {
+  SDsFsmNode node = { "none", -1, "" };
+  if (target == nullptr) {
+    return node;
+  }
+  switch (target->GetType()) {
+  case CState2::kType_State: {
+    const rstl::vector< CState2State >& states = machine.GetStates();
+    for (int i = 0; i < states.size(); ++i) {
+      if (static_cast< const CState2* >( &states[i] ) == target) {
+        node.mKind = "state";
+        node.mIndex = i;
+        node.mName = states[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  case CState2::kType_Trigger: {
+    const rstl::vector< CState2Trigger >& triggers = machine.GetTriggers();
+    for (int i = 0; i < triggers.size(); ++i) {
+      if (static_cast< const CState2* >( &triggers[i] ) == target) {
+        node.mKind = "trigger";
+        node.mIndex = i;
+        node.mName = triggers[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  case CState2::kType_Code: {
+    const rstl::vector< CState2Code >& codes = machine.GetCodes();
+    for (int i = 0; i < codes.size(); ++i) {
+      if (static_cast< const CState2* >( &codes[i] ) == target) {
+        node.mKind = "code";
+        node.mIndex = i;
+        node.mName = codes[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  case CState2::kType_SubMachine: {
+    const rstl::vector< CState2SubMachine >& subMachines = machine.GetSubMachines();
+    for (int i = 0; i < subMachines.size(); ++i) {
+      if (static_cast< const CState2* >( &subMachines[i] ) == target) {
+        node.mKind = "submachine";
+        node.mIndex = i;
+        node.mName = subMachines[i].GetName().data();
+        return node;
+      }
+    }
+    break;
+  }
+  }
+  return node;
+}
+
+// The state a node's own transitions lead to (the first one that is a state).
+const char* DsFsmStateOf(const CState2* node) {
+  if (node == nullptr) {
+    return "none";
+  }
+  const rstl::vector< SStateMachine2Transition >* transitions = nullptr;
+  switch (node->GetType()) {
+  case CState2::kType_Trigger:
+    transitions = &static_cast< const CState2Trigger* >( node )->GetTransitions();
+    break;
+  case CState2::kType_Code:
+    transitions = &static_cast< const CState2Code* >( node )->GetTransitions();
+    break;
+  default:
+    break;
+  }
+  if (transitions != nullptr) {
+    for (int i = 0; i < transitions->size(); ++i) {
+      const CState2* target = (*transitions)[i].mTarget;
+      if (target != nullptr && target->GetType() == CState2::kType_State) {
+        return static_cast< const CState2State* >( target )->GetName().data();
+      }
+    }
+  }
+  return "none";
+}
+
+// One line per transition of a node: the trigger it waits for (with the parameter the trigger
+// carries) and the state that trigger leads to.
+void DsDumpFsmTransitions(const CGenericFSM2& machine,
+                          const rstl::vector< SStateMachine2Transition >& transitions,
+                          const char* indent) {
+  for (int i = 0; i < transitions.size(); ++i) {
+    const SStateMachine2Transition& transition = transitions[i];
+    const CState2* target = transition.mTarget;
+    if (target == nullptr) {
+      fprintf(stderr, "[dsfsm] %s-> none\n", indent);
+      continue;
+    }
+    if (target->GetType() == CState2::kType_Trigger) {
+      const CState2Trigger* trigger = static_cast< const CState2Trigger* >( target );
+      fprintf(stderr, "[dsfsm] %strigger %s (parm=%f negate=%d) -> state %s\n", indent,
+              trigger->GetName().data(), trigger->GetArgument().GetFloat(),
+              trigger->IsNegated() ? 1 : 0, DsFsmStateOf(target));
+    } else {
+      const SDsFsmNode node = DsFsmNodeOf(machine, target);
+      fprintf(stderr, "[dsfsm] %s%s %s\n", indent, node.mKind, node.mName);
+      if (node.mKind[0] == 'c' || node.mKind[0] == 's') {
+        // A code or a sub-machine carries its own transitions: the state it leads to is in them.
+        DsDumpFsmTransitions(machine,
+                             node.mKind[0] == 'c'
+                                 ? static_cast< const CState2Code* >( target )->GetTransitions()
+                                 : static_cast< const CState2SubMachine* >( target )->GetTransitions(),
+                             indent);
+      }
+    }
+  }
+}
+
+// One line per node and one line per transition, for every list of the machine. A sub-machine
+// that carries its own machine is dumped one level deeper.
+void DsDumpFsmMachine(const CGenericFSM2& machine, const char* indent, const char* childIndent) {
+  fprintf(stderr, "[dsfsm] %smachine: %d states, %d triggers, %d codes, %d sub-machines\n", indent,
+          machine.GetStates().size(), machine.GetTriggers().size(), machine.GetCodes().size(),
+          machine.GetSubMachines().size());
+
+  const rstl::vector< CState2State >& states = machine.GetStates();
+  for (int i = 0; i < states.size(); ++i) {
+    fprintf(stderr, "[dsfsm] %sstate %d %s\n", indent, i, states[i].GetName().data());
+    DsDumpFsmTransitions(machine, states[i].GetTransitions(), childIndent);
+  }
+
+  const rstl::vector< CState2Trigger >& triggers = machine.GetTriggers();
+  for (int i = 0; i < triggers.size(); ++i) {
+    fprintf(stderr, "[dsfsm] %strigger %d %s (parm=%f negate=%d)\n", indent, i,
+            triggers[i].GetName().data(), triggers[i].GetArgument().GetFloat(),
+            triggers[i].IsNegated() ? 1 : 0);
+  }
+
+  const rstl::vector< CState2Code >& codes = machine.GetCodes();
+  for (int i = 0; i < codes.size(); ++i) {
+    fprintf(stderr, "[dsfsm] %scode %d %s\n", indent, i, codes[i].GetName().data());
+    DsDumpFsmTransitions(machine, codes[i].GetTransitions(), childIndent);
+  }
+
+  const rstl::vector< CState2SubMachine >& subMachines = machine.GetSubMachines();
+  for (int i = 0; i < subMachines.size(); ++i) {
+    fprintf(stderr, "[dsfsm] %ssubmachine %d %s\n", indent, i, subMachines[i].GetName().data());
+    DsDumpFsmTransitions(machine, subMachines[i].GetTransitions(), childIndent);
+    const CGenericFSM2* sub = subMachines[i].GetMachine();
+    if (sub != nullptr) {
+      fprintf(stderr, "[dsfsm] %ssubmachine %d machine:\n", indent, i);
+      DsDumpFsmMachine(*sub, "    ", "      ");
+    }
+  }
+}
+
+// Dumps the machine once per process. The machine is the actor's 'FSM2' asset; its nodes carry
+// the names the REL's own tables (fn_10_18D78) use, so the dump gives the machine's shape and
+// the names the module looks its handlers up by.
+void DsDumpFsmOnce(CDarkSamus* darksamus) {
+  static bool sDumped = false;
+  if (sDumped) {
+    return;
+  }
+  sDumped = true;
+  const CGenericFSM2* machine = darksamus->GetStateMachine2();
+  if (machine == nullptr) {
+    fprintf(stderr, "[dsfsm] no FSM2 machine\n");
+    return;
+  }
+  DsDumpFsmMachine(*machine, "", "  ");
+}
+
+// The state change itself: the machine sends the state its body the Activate message when it
+// enters it.
+void DsStateEntered(const char* name, EStateMsg msg) {
+  if (msg == kStateMsg_Activate && getenv("MP2_DS_FSM") != nullptr) {
+    fprintf(stderr, "[dsfsm] state change: %s\n", name);
+  }
+}
+
 } // namespace
 
 // The two tables go into the machine under the REL's own names, which is how the machine finds the
@@ -164,6 +360,13 @@ void CDarkSamus::InstallStateMachineFunctions() {
   StateMachine* stateMachine = mStateMachine.get();
   stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
+
+  // The transitions are only in the actor's 'FSM2' asset, so the probe (MP2_DS_FSM) dumps the
+  // machine the asset holds: every state with the trigger of each of its transitions, the
+  // parameter that trigger carries and the state it leads to. Once per process.
+  if (getenv("MP2_DS_FSM") != nullptr) {
+    DsDumpFsmOnce(this);
+  }
 }
 
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
@@ -415,106 +618,131 @@ bool CDarkSamus::WasHeavyHit(CStateManager&, const CTriggerData&) const {
 
 // ---- the state bodies (stand-ins) --------------------------------------------------------------
 
-void CDarkSamus::BoostBallFire(CStateManager&, EStateMsg, float) {
+void CDarkSamus::BoostBallFire(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_9724", "state BoostBallFire");
+  DsStateEntered("BoostBallFire", msg);
 }
 
-void CDarkSamus::BoostBallInto(CStateManager&, EStateMsg, float) {
+void CDarkSamus::BoostBallInto(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_B164", "state BoostBallInto");
+  DsStateEntered("BoostBallInto", msg);
 }
 
-void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg, float) {
+void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_A3B0", "state BoostBallRoll");
+  DsStateEntered("BoostBallRoll", msg);
 }
 
-void CDarkSamus::FreezeBeam(CStateManager&, EStateMsg, float) {
+void CDarkSamus::FreezeBeam(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_16CDC", "state FreezeBeam");
+  DsStateEntered("FreezeBeam", msg);
 }
 
-void CDarkSamus::Dash(CStateManager&, EStateMsg, float) {
+void CDarkSamus::Dash(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_150DC", "state Dash");
+  DsStateEntered("Dash", msg);
 }
 
-void CDarkSamus::DiveAttack(CStateManager&, EStateMsg, float) {
+void CDarkSamus::DiveAttack(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_11FA4", "state DiveAttack");
+  DsStateEntered("DiveAttack", msg);
 }
 
-void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg, float) {
+void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_9424", "state DiveFromBoost");
+  DsStateEntered("DiveFromBoost", msg);
 }
 
-void CDarkSamus::EnrageHitReact(CStateManager&, EStateMsg, float) {
+void CDarkSamus::EnrageHitReact(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_7A14", "state EnrageHitReact");
+  DsStateEntered("EnrageHitReact", msg);
 }
 
-void CDarkSamus::EnragedTravel(CStateManager&, EStateMsg, float) {
+void CDarkSamus::EnragedTravel(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_6E38", "state EnragedTravel");
+  DsStateEntered("EnragedTravel", msg);
 }
 
-void CDarkSamus::FadeIn(CStateManager&, EStateMsg, float) {
+void CDarkSamus::FadeIn(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_BD40", "state FadeIn");
+  DsStateEntered("FadeIn", msg);
 }
 
-void CDarkSamus::FadeOut(CStateManager&, EStateMsg, float) {
+void CDarkSamus::FadeOut(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_BC54", "state FadeOut");
+  DsStateEntered("FadeOut", msg);
 }
 
-void CDarkSamus::FallFromTheAir(CStateManager&, EStateMsg, float) {
+void CDarkSamus::FallFromTheAir(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_F86C", "state FallFromTheAir");
+  DsStateEntered("FallFromTheAir", msg);
 }
 
-void CDarkSamus::GetUp(CStateManager&, EStateMsg, float) {
+void CDarkSamus::GetUp(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_18EAC", "state GetUp");
+  DsStateEntered("GetUp", msg);
 }
 
-void CDarkSamus::GoToPhazonAttack(CStateManager&, EStateMsg, float) {
+void CDarkSamus::GoToPhazonAttack(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_652C", "state GoToPhazonAttack");
+  DsStateEntered("GoToPhazonAttack", msg);
 }
 
-void CDarkSamus::GoToPhazonEnrage(CStateManager&, EStateMsg, float) {
+void CDarkSamus::GoToPhazonEnrage(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_6460", "state GoToPhazonEnrage");
+  DsStateEntered("GoToPhazonEnrage", msg);
 }
 
-void CDarkSamus::HeavyHit(CStateManager&, EStateMsg, float) {
+void CDarkSamus::HeavyHit(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_10C9C", "state HeavyHit");
+  DsStateEntered("HeavyHit", msg);
 }
 
-void CDarkSamus::Interrupt(CStateManager&, EStateMsg, float) {
+void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_10FF4", "state Interrupt");
+  DsStateEntered("Interrupt", msg);
 }
 
-void CDarkSamus::MeleeAttack(CStateManager&, EStateMsg, float) {
+void CDarkSamus::MeleeAttack(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_17BC0", "state MeleeAttack");
+  DsStateEntered("MeleeAttack", msg);
 }
 
-void CDarkSamus::MeleeDash(CStateManager&, EStateMsg, float) {
+void CDarkSamus::MeleeDash(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_17ABC", "state MeleeDash");
+  DsStateEntered("MeleeDash", msg);
 }
 
-void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg, float) {
+void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_178E4", "state MissileDeflect");
+  DsStateEntered("MissileDeflect", msg);
 }
 
-void CDarkSamus::MissileJump(CStateManager&, EStateMsg, float) {
+void CDarkSamus::MissileJump(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_177BC", "state MissileJump");
+  DsStateEntered("MissileJump", msg);
 }
 
-void CDarkSamus::MovingScatterShot(CStateManager&, EStateMsg, float) {
+void CDarkSamus::MovingScatterShot(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_11AD8", "state MovingScatterShot");
+  DsStateEntered("MovingScatterShot", msg);
 }
 
-void CDarkSamus::NormalMissileAttack(CStateManager&, EStateMsg, float) {
+void CDarkSamus::NormalMissileAttack(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_17448", "state NormalMissileAttack");
+  DsStateEntered("NormalMissileAttack", msg);
 }
 
-void CDarkSamus::Null(CStateManager&, EStateMsg, float) {
+void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_14448", "state Null");
+  DsStateEntered("Null", msg);
 }
 
 // The base's Dead body is the host's death path (the die command, the fade and the material
 // change); it stands in for the module's until that one is ported, so the actor can still die.
 void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_143A8", "state Dead");
+  DsStateEntered("Dead", msg);
   CPatterned::Dead(mgr, msg, dt);
 }
 
@@ -522,75 +750,93 @@ void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 // that one is ported.
 void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_1142C", "state Patrol");
+  DsStateEntered("Patrol", msg);
   CPatterned::Patrol(mgr, msg, dt);
 }
 
-void CDarkSamus::Pause(CStateManager&, EStateMsg, float) {
+void CDarkSamus::Pause(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_10710", "state Pause");
+  DsStateEntered("Pause", msg);
 }
 
-void CDarkSamus::PhazonAttack(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PhazonAttack(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_81D4", "state PhazonAttack");
+  DsStateEntered("PhazonAttack", msg);
 }
 
-void CDarkSamus::PhazonEnraged(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PhazonEnraged(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_7BC0", "state PhazonEnraged");
+  DsStateEntered("PhazonEnraged", msg);
 }
 
-void CDarkSamus::PhazonFall(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PhazonFall(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_6BA0", "state PhazonFall");
+  DsStateEntered("PhazonFall", msg);
 }
 
-void CDarkSamus::PhazonMissiles(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PhazonMissiles(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_67B8", "state PhazonMissiles");
+  DsStateEntered("PhazonMissiles", msg);
 }
 
-void CDarkSamus::PhazonRise(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PhazonRise(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_7054", "state PhazonRise");
+  DsStateEntered("PhazonRise", msg);
 }
 
-void CDarkSamus::PhazonSuck(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PhazonSuck(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_4AC8", "state PhazonSuck");
+  DsStateEntered("PhazonSuck", msg);
 }
 
-void CDarkSamus::PissedOff(CStateManager&, EStateMsg, float) {
+void CDarkSamus::PissedOff(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_F930", "state PissedOff");
+  DsStateEntered("PissedOff", msg);
 }
 
-void CDarkSamus::ScatterShot(CStateManager&, EStateMsg, float) {
+void CDarkSamus::ScatterShot(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_175AC", "state ScatterShot");
+  DsStateEntered("ScatterShot", msg);
 }
 
-void CDarkSamus::SideDash(CStateManager&, EStateMsg, float) {
+void CDarkSamus::SideDash(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_153EC", "state SideDash");
+  DsStateEntered("SideDash", msg);
 }
 
 // The base's Start body is empty, so it stands in for the module's until that one is ported.
 void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_F920", "state Start");
+  DsStateEntered("Start", msg);
   CPatterned::Start(mgr, msg, dt);
 }
 
-void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg, float) {
+void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_16ECC", "state SuperMissileAttack");
+  DsStateEntered("SuperMissileAttack", msg);
 }
 
-void CDarkSamus::SweepBeam(CStateManager&, EStateMsg, float) {
+void CDarkSamus::SweepBeam(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_CA0C", "state SweepBeam");
+  DsStateEntered("SweepBeam", msg);
 }
 
-void CDarkSamus::Taunt(CStateManager&, EStateMsg, float) {
+void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_11544", "state Taunt");
+  DsStateEntered("Taunt", msg);
 }
 
-void CDarkSamus::TravelToCoverPoints(CStateManager&, EStateMsg, float) {
+void CDarkSamus::TravelToCoverPoints(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_1DF74", "state TravelToCoverPoints");
+  DsStateEntered("TravelToCoverPoints", msg);
 }
 
-void CDarkSamus::TravelToPissedOff(CStateManager&, EStateMsg, float) {
+void CDarkSamus::TravelToPissedOff(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_FB8C", "state TravelToPissedOff");
+  DsStateEntered("TravelToPissedOff", msg);
 }
 
-void CDarkSamus::TurnToFacePlayer(CStateManager&, EStateMsg, float) {
+void CDarkSamus::TurnToFacePlayer(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_FE18", "state TurnToFacePlayer");
+  DsStateEntered("TurnToFacePlayer", msg);
 }
