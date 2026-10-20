@@ -191,16 +191,15 @@ private:
   float mFlashAlpha = 0.f;                     // guest 0xF08 (the Lerp's weight, 0x3368)
   CColor mFlashColor;                          // guest 0xF04 (the Lerp's result, 0x33C8)
   float mDeathTimer = 0.f;                     // guest 0xEF0 (counted down at 0x33EC)
-  // The retail's CActor 0x28, 0x38 and 0x48 (the death direction); the host has no
-  // accessor for it, so the port keeps its own.
+  // The retail's CActor 0x28, 0x38 and 0x48 - the three floats the death direction is
+  // built from. They are base-class fields (the module's first own field is 0x7C0) and the
+  // host has no accessor for them, so the port keeps its own copy.
   CVector3f mDeathDirection;
 
   // The fields the retail's fn_75_3004 touches.
   void PortUpdateCollision(CStateManager& mgr);
   uint mSoundHandle = 0;                        // guest 0xF60 (the sound handle, 0x306C)
   TUniqueId mSoundTargetId = kInvalidUniqueId;  // guest 0xF00 (the id it looks up, 0x3078)
-  // The retail's CActor 0x54 (the sound position); the host has no accessor for it.
-  CVector3f mSoundPosition;
   int mCollisionState = 0;                      // guest 0xEE0 (the state, 0x30C4)
   int mPreviousCollisionState = 0;              // guest 0xEE4 (the previous state, 0x315C)
 };
