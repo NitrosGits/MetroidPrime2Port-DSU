@@ -285,6 +285,8 @@ private:
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
+  int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
+                    // fn_14_4F2C reads it)
   float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
@@ -371,6 +373,8 @@ private:
   // fn_14_1A68 (0x580 bytes): a toe target's state (0 attack, 1 target, 2 flinch, 3 destroyed):
   // its effects, its sound and, for 3, the explosion.
   void x1A68_(CStateManager& mgr, int leg, int state);
+  // fn_14_3D2C (0x7C bytes): bit 5 of 0x128C, and IS10 when it is set, else IS11.
+  void x3D2C_(CStateManager& mgr, bool set);
   // fn_14_14F8 (0x74 bytes): the speed for the number of knee armours left.
   void x14F8_();
 

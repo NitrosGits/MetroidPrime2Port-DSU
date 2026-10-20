@@ -19,6 +19,8 @@
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
@@ -262,6 +264,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x11B8_(0)
 , x11E0_(0.f)
 , x11E4_(0.f)
+, x11E8_(1) // the store at 0xB6A0
 , x1274_(0.f)
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
@@ -1462,6 +1465,18 @@ void CDigitalGuardian::x5470_(CStateManager& mgr, TUniqueId sender, int knee) {
   }
 }
 
+// @ fn_14_3D2C
+void CDigitalGuardian::x3D2C_(CStateManager& mgr, bool set) {
+  // Bit 5 of 0x128C (the rlwimi at 0x3D40).
+  if (set) {
+    x128C_ |= 0x20;
+    SendScriptMsgs(kSS_InternalState10, mgr, GetUniqueId(), kSM_None);
+  } else {
+    x128C_ &= ~0x20;
+    SendScriptMsgs(kSS_InternalState11, mgr, GetUniqueId(), kSM_None);
+  }
+}
+
 // fn_14_4080 (0x274 bytes): the four knee armours. Only with the knee model (the optional at
 // 0xF0C, its flag at 0xF58, the test at 0x4098): for each knee locator (0x10C0..0x10C3) a new
 // id, the locator's transform, and a CDigitalGuardianKneeArmor named "Knee Armor <i>" (.rodata
@@ -1689,8 +1704,45 @@ void CDigitalGuardian::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_14_8580");
 }
 
+// @ fn_14_8090
 void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8090");
+  switch (msg) {
+  case kStateMsg_Activate:
+    // Ready when a knee was destroyed (0x1284), else already over (0x80D0..0x80EC).
+    mAnimationState.SetState(x1284_ != -1 ? CAnimationState::kAS_Ready
+                                          : CAnimationState::kAS_Over);
+    x3D2C_(mgr, true); // fn_14_3D2C
+    x3A44_(mgr);       // fn_14_3A44
+    x24E4_(mgr);       // fn_14_24E4
+    x11E8_ = 0;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      // The knee's angle (.rodata 0x20C: 135, 225, 45, 315) picks the knock-back (fn_14_83C0
+      // builds the parm data at 0x81D4); it is sent only when an animation scores above 0.
+      static const float kKneeAngles[4] = {135.f, 225.f, 45.f, 315.f};
+      const rstl::pair< float, int > best =
+          BodyController()->GetPASDatabase().FindBestAnimation(
+              CPASAnimParmData(pas::kAS_KnockBack, CPASAnimParm::FromReal32(kKneeAngles[x1284_]),
+                               CPASAnimParm::FromEnum(2)),
+              -1);
+      if (best.first > 0.f) { // .rodata 0x264
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCKnockBackCmd(GetTranslation(), pas::kS_Two, best.second, false));
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x14F8_(); // fn_14_14F8
+    x1284_ = -1;
+    SendScriptMsgs(kSS_InternalState9, mgr, GetUniqueId(), kSM_None);
+    x3D2C_(mgr, false); // fn_14_3D2C
+    x3A44_(mgr);        // fn_14_3A44
+    break;
+  default:
+    break;
+  }
 }
 
 void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
