@@ -36,6 +36,7 @@
 #include "Collision/CRayCastResult.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
@@ -219,8 +220,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , x8a8_(-1)                                               // guest 0x8A8 (0x9CF8)
 , mX8e0_(0)                                               // guest 0x8E0 (0x9D58)
 , mX8e4_(0)                                               // guest 0x8E4 (0x9D5C)
+, mX828_(FLT_MAX)                                         // guest 0x828 (rodata 0x2C8)
 , mX82c_(0.f)                                             // guest 0x82C (0x9C80)
 , mX860_(0.f)                                             // guest 0x860 (0x9CAC)
+, mX8e8_(0.f)                                             // guest 0x8E8
 , mX8f8_(0.f)                                             // guest 0x8F8 (0x9D70)
 , mX8fc_(CVector3f::Zero())                               // guest 0x8FC (0x9D78..0x9D88)
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
@@ -898,7 +901,8 @@ void CEmperorIngStage3::UpdateHearts(CStateManager& mgr, float dt) {
 // CCollisionActor::GetLastTouchedObject); when that is the player and the base's damage time
 // (guest 0x440) is not above zero (rodata 0x258), the contact damage (the vtable slot 0xE8)
 // goes from the ing to the player with a solid-only filter (lbl_18_data_4EC = 59, kMT_Solid)
-// and the ing's translation, and the damage time restarts at the base's wait (guest 0x444).
+// and the ing's facing (the transform's Y column, guest 0x28/0x38/0x48), and the damage time
+// restarts at the base's wait (guest 0x444).
 void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
   if ((x824_ & 0x40) != 0 || (x824_ & 0x20) != 0 || (x825_ & 0x10) != 0) {
     return; // 0x2D7C..0x2D98
@@ -914,7 +918,7 @@ void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
   }
   mgr.ApplyDamage(GetUniqueId(), touched, GetUniqueId(), GetContactDamage(),
                   CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
-                  GetTranslation()); // fn_8003E25C
+                  GetTransform().GetColumn(kDY)); // fn_8003E25C
   mCurDamageRemTime = mDamageWaitTime; // 0x2EC8
 }
 
@@ -1163,6 +1167,24 @@ CVector3f CEmperorIngStage3::PlayerDirection(CStateManager& mgr) const {
 // XY plane, the zero at rodata 0x258).
 float CEmperorIngStage3::PlayerDistance(CStateManager& mgr) const {
   return PlayerDirection(mgr).Magnitude();
+}
+
+// @ fn_18_25C
+// fn_18_25C (0x150): the room ahead. A ray from the point of the collision primitive's box
+// (the vtable slot 0x7C, the box at the transform) furthest along the facing (the transform's Y
+// column) runs along the facing for 1000 units (rodata 0x260, the default filter); a hit
+// answers its distance (fn_18_3AC copies the result), a miss answers nothing.
+bool CEmperorIngStage3::ForwardClearance(CStateManager& mgr, float& distance) const {
+  const CVector3f facing = GetTransform().GetColumn(kDY);
+  const CAABox box = GetCollisionPrimitive()->CalculateAABox(GetTransform());
+  const CRayCastResult result = mgr.RayStaticIntersection(box.FurthestPointAlongVector(facing),
+                                                          facing, 1000.f, CMaterialFilter());
+  const CRayCastResult copy = CopyRayResult(result); // fn_18_3AC
+  if (!copy.IsValid()) {
+    return false;
+  }
+  distance = copy.GetTime();
+  return true;
 }
 
 // fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
@@ -1549,9 +1571,11 @@ bool CEmperorIngStage3::ShouldGrowHeart(CStateManager& mgr, const CTriggerData& 
   return mVulnerableDamageThreshold < 1.1920929e-07f;
 }
 
+// @ fn_18_8600
+// fn_18_8600 (0x48): "JumpSlideAttackOver": the slide's done flag (0x40 of guest 0x825, 0x8618:
+// extrwi 1,25) and the base's AnimOver.
 bool CEmperorIngStage3::JumpSlideAttackOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_8600");
-  return false;
+  return (x825_ & 0x40) != 0 && AnimOver(mgr, data);
 }
 
 // fn_18_85A4 (0x85A4): "ShouldEyeShut". The look check has to pass (rodata 0x2CC = 90.0f) and
@@ -2002,8 +2026,116 @@ void CEmperorIngStage3::PortalAttack(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_18_5844
+// fn_18_5844 (0x630): the "JumpSlideAttack" state. Activate (0x5898) sets the animation state to
+// `kAS_Ready`, clears 0x10/0x40/0x01/0x04/0x08 of guest 0x825 and 0x80/0x40 of 0x826, and the
+// slide's end time (guest 0x828) to FLT_MAX (rodata 0x2C8). Update (0x5908): a set 0x10 of 0x825
+// moves to 0x20 of 0x824; a set 0x08 of 0x825 (the room check) measures the room ahead
+// (fn_18_25C) - none, or under 40 (rodata 0x2E0), aborts the slide (0x04 of 0x825) - and the
+// extra slide time (guest 0x8E8) is the room past 20 over 90 (rodata 0x270, 0x2CC). While the
+// body can take one (state 9) it issues loop attack type 5. Otherwise the slide runs the loop
+// attack animation's duration (state 9, parms enum 0 and 5) plus the extra time, plus 6.5 with
+// 0x01 of 0x825 or 2 without (rodata 0x2F4, 0x274); the first frame 0x80 of 0x826 (a heart hit)
+// is seen with 0x01 set the end time becomes the state time plus 4 (rodata 0x2AC, 0x40 of 0x826
+// marks it). An abort (body command 0xD), a knock-back (fn_18_E0: the body state 6), the time
+// past that total (unless the end time is set) or past the end time sets the done flag (0x40 of
+// 0x825, `fn_18_8600`); past the duration plus the extra time the body exits, the hearts swap
+// (fn_18_214: 1 on, 0 off) and 0x80 of 0x826 clears; before that, past 9 s (rodata 0x2F8) the
+// slide steers at the player (fn_18_2D1C) with 0x20 of 0x825 set and the player over 15 units
+// away (fn_18_2CB8, rodata 0x2B4) - before 9 s with 0x20 alone - and the locomotion type is 5.
+// Deactivate (0x5D98) swaps the hearts back (1 off, 0 on), switches the knock-back reactions on,
+// clears 0x20 of 0x824, the animation state and the attack timer (guest 0x7D0), exits the body
+// state, sets the locomotion type to 0 and clears 0x20/0x10 of 0x825.
 void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_5844");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x58A0, the value one
+    x825_ &= ~0x10;
+    x825_ &= ~0x40;
+    x825_ &= ~0x01;
+    x826_ &= ~0x80;
+    x826_ &= ~0x40;
+    mX828_ = FLT_MAX; // rodata 0x2C8
+    x825_ &= ~0x04;
+    x825_ &= ~0x08;
+    break;
+  case kStateMsg_Update: {
+    if ((x825_ & 0x10) != 0) { // 0x590C: extrwi 1,27
+      x825_ &= ~0x10;
+      x824_ |= 0x20;
+    }
+    bool abort = false;
+    if ((x825_ & 0x08) != 0) { // 0x5938: extrwi 1,28
+      float room = 0.f;
+      const bool hit = ForwardClearance(mgr, room); // fn_18_25C
+      if (!hit || room < 40.f) {                    // rodata 0x2E0
+        x825_ |= 0x04;
+        abort = true;
+      }
+      if (hit) {
+        float extra = room - 20.f; // rodata 0x270
+        if (0.f >= extra) {
+          extra = 0.f;
+        }
+        mX8e8_ = extra / 90.f; // rodata 0x2CC
+      }
+      x825_ &= ~0x08;
+    }
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLoopAttackCmd(static_cast< pas::ELoopAttackType >(5), false)); // 0x5A54
+      break;
+    }
+    const float slide =
+        GetAnimationDuration(CPASAnimParmData(pas::kAS_LoopAttack, CPASAnimParm::FromEnum(0),
+                                              CPASAnimParm::FromEnum(5))) +
+        mX8e8_; // fn_18_5EB0, 0x5B18
+    const float tail = (x825_ & 0x01) != 0 ? 6.5f : 2.f; // rodata 0x2F4, 0x274
+    if ((x826_ & 0x40) == 0 && (x826_ & 0x80) != 0 && (x825_ & 0x01) != 0) {
+      mX828_ = 4.f + mStateMachine->GetTime(); // rodata 0x2AC
+      x826_ |= 0x40;
+    }
+    if (abort || BodyController()->GetCurrentStateId() == pas::kAS_KnockBack || // fn_18_E0
+        ((x826_ & 0x40) == 0 && mStateMachine->GetTime() > slide + tail) ||
+        mStateMachine->GetTime() > mX828_) {
+      if (abort) {
+        BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0xD
+      }
+      x825_ |= 0x40; // 0x5C38
+      break;
+    }
+    if (mStateMachine->GetTime() > slide) {
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x5C80
+      SetHeartActive(mgr, 1, true);                                             // fn_18_214
+      SetHeartActive(mgr, 0, false);                                            // fn_18_214
+      x826_ &= ~0x80;
+      break;
+    }
+    if (mStateMachine->GetTime() > 9.f) { // rodata 0x2F8
+      if ((x825_ & 0x20) != 0 && PlayerDistance(mgr) > 15.f) { // fn_18_2CB8, rodata 0x2B4
+        BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+      }
+    } else if ((x825_ & 0x20) != 0) {
+      BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+    }
+    BodyController()->SetLocomotionType(static_cast< pas::ELocomotionType >(5)); // 0x5D90
+    break;
+  }
+  case kStateMsg_Deactivate:
+    SetHeartActive(mgr, 1, false); // fn_18_214
+    SetHeartActive(mgr, 0, true);  // fn_18_214
+    mKnockBackController.EnableAllAnimReactions(true);
+    x824_ &= ~0x20;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x5DE4, the value zero
+    mX7d0_ = 0.f;                                            // 0x5DF4
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x5E08
+    BodyController()->SetLocomotionType(static_cast< pas::ELocomotionType >(0));
+    x825_ &= ~0x20;
+    x825_ &= ~0x10;
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_18_A00

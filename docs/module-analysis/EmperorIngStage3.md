@@ -278,8 +278,9 @@ vulnerability (0x960 red, 0x9C0 dark, 0x990 light).
 The retail keeps a 32-bit word at guest 0x824, but every test the module makes is a single byte's
 bit, so the host keeps the two bytes: `x824_` (0x824: the listen flag 0x02, the jump-attack flag
 0x04, the dodge flag 0x08, the heart-hit flag 0x80), `x825_` (0x825: the stampede-react flag
-0x01, the grow-heart flag 0x02, the aborted jump-slide flag 0x04, the no-contact-damage flag 0x10)
-and `x826_` (0x826: the heart-reacted flag 0x80). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
+0x01, the grow-heart flag 0x02, the aborted jump-slide flag 0x04, the room-check flag 0x08, the
+no-contact-damage flag 0x10, the slide-steer flag 0x20, the slide-done flag 0x40) and `x826_`
+(0x826: the heart-reacted flag 0x80, the slide's end-time-set flag 0x40). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
 0x04 (PowerPC bit N is 1u << (31-N)), and the bit 0 is the mask 0x01.
 
 ## 5. Runtime
@@ -365,7 +366,17 @@ Stampede -> GrowHeart -> Dodge -> JumpSlideAttack; the ing goes 1000 -> 850 -> 7
 over two vulnerable windows (the boss bar at half), the hearts reset to the yellow 100 and die at
 84 s, then the FSM stays in JumpSlideAttack (`5844`, a stand-in) and the stage does not end.
 ChangeVulnerability is not seen in the 3 s samples (it is a one-frame step).
-Reached stand-ins left: JumpSlideAttack `5844`, `8600`, Think's `1370`/`22E0`/`E40` and the sound.
+
+Slice 4 ports JumpSlideAttack `5844` (0x630: loop attack type 5, the slide time from the loop
+attack animation's duration plus `25C`'s room ahead, the done flag 0x40 of 0x825, the heart swap
+on exit), its trigger `8600` (the done flag and AnimOver) and `25C` (a 1000-unit ray along the
+facing from the collision box). The contact damage `2D50` now passes the facing, not the
+translation: the transform sits at guest 0x24, so 0x28/0x38/0x48 are its Y column. With the
+console's `damage <id> <n> dark|light` (commit `port_console`), the same 220 s run: the FSM walks
+EyeShut, GrowHeart, Stampede, Taunt, Dodge and JumpSlideAttack three times; the ing goes 1000 ->
+750 -> 500 -> 250 -> 0 at 105 s, the FSM enters Dead, the ing is deleted and the post-fight
+cinematic plays (`/tmp/opencode/emp3run/shot_stage_end.png`). 0 caught / reach-stub lines.
+Reached stand-ins left: `4C3C`, Think's `1370`/`22E0`/`E40` and the sound.
 
 ### The base-class members (the sweep)
 

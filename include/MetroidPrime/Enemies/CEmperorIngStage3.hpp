@@ -197,6 +197,8 @@ private:
   CVector3f PlayerDirection(CStateManager& mgr) const;
   // fn_18_2CB8: the distance from the actor to the player.
   float PlayerDistance(CStateManager& mgr) const;
+  // fn_18_25C: the distance to the static geometry ahead, along the facing; false on a miss.
+  bool ForwardClearance(CStateManager& mgr, float& distance) const;
   // fn_18_2C98: the actor's facing, flattened to the XY plane.
   CVector3f FlatFacing() const;
   // fn_18_1BD8: both hearts get the module's vulnerability at guest 0x86C.
@@ -304,8 +306,10 @@ private:
   int x8a8_;                             // guest 0x8A8, -1: the taunt type
   int mX8e0_;                            // guest 0x8E0, 0: the portal attack's count (fn_18_508)
   int mX8e4_;                            // guest 0x8E4, 0: the portal attack's portal, 0..3
+  float mX828_;                          // guest 0x828, FLT_MAX: the jump slide's end time
   float mX82c_;                          // guest 0x82C, 0.0f: the heart effect's growth
   float mX860_;                          // guest 0x860, 0.0f: the heart hit timer
+  float mX8e8_;                          // guest 0x8E8, 0.0f: the jump slide's extra time
   float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
   CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
   float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime
