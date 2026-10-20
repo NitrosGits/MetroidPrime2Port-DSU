@@ -921,6 +921,8 @@ void queue_efb_cpu_copy(efb_copy::Request req) {
 
 bool is_offscreen() noexcept { return g_recorder.inOffscreen; }
 
+bool has_render_pass() noexcept { return g_recorder.active() && g_recorder.currentRenderPass != UINT32_MAX; }
+
 uint32_t get_sample_count() noexcept {
   CHECK(g_recorder.currentRenderPass != UINT32_MAX, "get_sample_count called outside of a frame");
   return current_render_passes()[g_recorder.currentRenderPass].msaaSamples;

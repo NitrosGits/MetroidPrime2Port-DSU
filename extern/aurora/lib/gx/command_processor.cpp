@@ -449,6 +449,11 @@ static u32 calc_vtx_size(GXVtxFmt fmt) noexcept {
 
 static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange, gfx::Range idxRange,
                          u32 numIndices) noexcept {
+  // A frame begin_frame declined (Android surface lost or invalidated, e.g. mid scan-visor open)
+  // still runs the game's draws; with no render pass, building a pipeline would index the pass
+  // list with UINT32_MAX, so drop the draw like push_command drops the frame's other commands.
+  if (!gfx::has_render_pass())
+    UNLIKELY { return; }
   auto& state = g_gxState;
   auto& cache = sDrawCache;
 
