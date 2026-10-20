@@ -99,6 +99,8 @@ public:
   TUniqueId GetAttackTarget() const override;
   bool IsOnGround() const override;
   float GetGravityConstant() const override;
+  const rstl::optional_object< TCachedToken< CGenDescription > >&
+  GetDeathExplosionParticle() const override; // fn_18_88
   void SetupStateMachine(CStateManager& mgr) override;
 
   // The body's state machine. Retail fn_18_943C (vtable slot 60) calls the base's setup and

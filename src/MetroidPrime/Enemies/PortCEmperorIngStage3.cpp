@@ -842,6 +842,14 @@ bool CEmperorIngStage3::IsOnGround() const { return CPatterned::IsOnGround(); }
 // vtable slot 69 = fn_18_8E78: the gravity constant, rodata 0x2A4 = 200.0f.
 float CEmperorIngStage3::GetGravityConstant() const { return 200.f; }
 
+// vtable slot 73 = fn_18_88: `addi r3, r3, 0x754` - CPatterned's death explosion particle (the
+// same body as fn_55_A4 and fn_56_14B1C).
+const rstl::optional_object< TCachedToken< CGenDescription > >&
+// @ fn_18_88
+CEmperorIngStage3::GetDeathExplosionParticle() const {
+  return mDeathExplosionParticle;
+}
+
 // @ fn_18_943C
 // vtable slot 60 = fn_18_943C: CPatterned's own setup first (the call at 0x9450), then the
 // module's three name tables are handed to the state machine - the triggers (lbl_18_data_34C, 21
@@ -1277,14 +1285,14 @@ const CCollisionActor* CEmperorIngStage3::HeartCollisionActorById(CStateManager&
   return nullptr;
 }
 
+// @ fn_18_3B14
 // fn_18_3B14 (0x4C): the heart's description: the manager's description 0xA (the first heart,
 // "mainHeart_SDK", the index at 0x3B2C) or 0xB (the second, "tentacle_6_1", 0x3B44); any other
 // heart is no heart (0x3B50). Retail reads the manager without a test; the port's guard covers
-// a lookup before kSM_AreaLoaded made it.
+// a lookup before kSM_AreaLoaded made it (no collision actors yet).
 const CJointCollisionDescription* CEmperorIngStage3::HeartRecord(int heart) const {
   if (x7c0_ == nullptr) {
-    StandIn("heart lookup before kSM_AreaLoaded (no collision actors yet)");
-    return nullptr;
+    return nullptr; // port guard
   }
   if (heart == 0) {
     return &x7c0_->GetCollisionDescFromIndex(0xA);
