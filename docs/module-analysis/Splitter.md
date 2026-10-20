@@ -557,3 +557,15 @@ Resolved since (2026-10-20, for the next slice):
   of the chassis's 0xCC0), 0xEFC (the second id it checks), 0xF14 (the timer, set to 3.0f) and
   0x12A (a base-class id, cleared together with 0xEFA at 0x3240-0x324C); the data's flag byte at
   0x7C0 bit 0x8 (0x3258 `rlwinm` 28-28) is the port's `mData.mUnknownBD80FD94 & 0x8`.
+
+#### fn_75_3004 (0x1A4) - the command module's collision update (not ported yet)
+
+Read on 2026-10-20, left for a slice with room. The body: a module call (fn_75_2BE0 = .text:0x00002BE0; // type:function size:0xE0 fn_75_2CE0 = .text:0x00002CE0; // type:function size:0x324 , 0x3024) whose result
+is tested (0x3028) and then used through a virtual call (0x3040), the DOL's
+CSfxManager::UpdateEmitter (0x3074), an object lookup and a CCollisionActor cast (0x3088-0x3094),
+the command module's manager at 0xE58 (0x309C), the DOL's fn_80135C28 (0x30C0), a state in 0xEE0
+that has to be 0..2 (0x30C8-0x30D8), the flag byte 0xF6A's 0x08 (0x30E0), a CCollisionActor
+virtual at 0x38 (0x30F8) and its 0x4 field (0x3104-0x3110), the state 0xEE0 cleared (0x311C), the
+timer 0xF10 set to a constant (0x312C), another module call (0x3130) and the flag's 0x08 again
+(0x313C). Several of those are DOL functions or virtuals the port has no name for yet, so the
+body needs a slice that can identify them.
