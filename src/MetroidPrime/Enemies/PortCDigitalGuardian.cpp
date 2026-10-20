@@ -1745,8 +1745,43 @@ void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, 
   }
 }
 
+// fn_14_7D8C (0x260 bytes): the guardian falls. The head part of the activate path (the
+// TCastToPtr<CDigitalGuardianHead> of 0x1082 at 0x7EC0: the head is put at the locator 0x10B8,
+// then bit 1 of 0x128C is cleared) cannot run: the head class is WP3 and its loader is a
+// stand-in, so no head exists in the port.
 void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_7D8C");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x3D2C_(mgr, true); // fn_14_3D2C
+    x3A44_(mgr);       // fn_14_3A44
+    x11E8_ = 0;
+    x128C_ |= 0x40; // the rlwimi at 0x7E00
+    for (int i = 0; i < 4; ++i) {
+      x1A68_(mgr, i, 3); // fn_14_1A68: every toe target destroyed
+    }
+    SendScriptMsgs(kSS_DeathRattle, mgr, GetUniqueId(), kSM_None);
+    // The guardian moves to the DeathRattle/Follow waypoint.
+    const TUniqueId id = CheckConnectedObject(mgr, kSS_DeathRattle, kSM_Follow);
+    const CScriptWaypoint* waypoint = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id));
+    if (waypoint == nullptr) { // the TCastToPtr test at 0x7E8C
+      break;
+    }
+    SetTransform(waypoint->GetTransform());
+    break;
+  }
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Fall)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockDownCmd(GetTranslation(), pas::kS_Two, false));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_14_7CB4 (0xD8 bytes): the Crippled state. The message is the retail's (the cmpwi at
