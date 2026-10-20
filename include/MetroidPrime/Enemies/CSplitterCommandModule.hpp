@@ -211,6 +211,8 @@ private:
   void PortStartFlashIfTarget(const CScriptMsg& msg);
   // The retail's fn_75_1790: the laser-pulse projectile's despawn.
   void PortDespawnProjectile(CStateManager& mgr);
+  // The retail's fn_75_3460: the head's collision actor manager.
+  void PortCreateCollisionActorManager(CStateManager& mgr);
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

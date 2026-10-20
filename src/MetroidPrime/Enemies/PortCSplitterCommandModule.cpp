@@ -14,6 +14,8 @@
 #include "MetroidPrime/TCastTo.hpp"
 
 #include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -49,7 +51,6 @@ void StandInFn_75_10D0() { StandIn("fn_75_10D0 (0xB8, the module's own transform
 
 // The module's own calls in the command module's script-message handler (fn_75_654C). Both are
 // over 0x80, so each stays a named once-logging shell.
-void StandInFn_75_3460() { StandIn("fn_75_3460 (0x218)"); }
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
@@ -438,6 +439,39 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   }
 }
 
+// @ fn_75_3460
+// The head's collision actor manager (0x3460-0x3674): the head's one joint sphere - the
+// "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f (rodata 0x4) and the mass 1000.0f
+// (rodata 0x94) - is built (0x34C0-0x3514 SphereCollision) and the manager is made with it
+// (0x35A4), the old one deleted (0x35B4) and the new one kept at 0xE58 (0x35B8). Then every
+// collision actor of the manager is walked (0x35C4-0x3644): the description's id (its 0x3C) is
+// looked up (0x35E8 ObjectById) and cast to a CCollisionActor (0x35EC); when the description's
+// name is "Beam_LCTR" (0x3614, the retail's string compare) the id goes to 0xF00 (0x3630).
+// Finally the module's own call runs (0x3654 fn_75_2CE0, over 0x80).
+void CSplitterCommandModule::PortCreateCollisionActorManager(CStateManager& mgr) {
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(1);
+  const CAnimData* anim = GetModelData()->GetAnimationData();
+  const CSegId seg = anim->GetLocatorSegId(rstl::string_l("Skeleton_Root"));
+  joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
+      seg, CVector3f::Zero(), 3.f, rstl::string_l("Skeleton_Root"), 1000.f));
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
+  delete mCollisionActorManager;
+  mCollisionActorManager = manager;
+  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = mCollisionActorManager->GetCollisionDescFromIndex(i);
+    const TUniqueId id = desc.GetCollisionActorId();
+    if (TCastToPtr< CCollisionActor >(mgr.ObjectById(id)) == nullptr) {
+      continue;
+    }
+    if (strcmp(desc.GetName().c_str(), "Beam_LCTR") == 0) {
+      mSoundTargetId = id;
+    }
+  }
+  PortFn_75_2CE0(mgr, 0, 0.f);
+}
+
 // @ fn_75_3A8C
 // The command module's connected-object lookup (0x3A8C-0x3ADC): the object connected with the
 // state "CONN" (0x3AA4) and the message "ATCH" (0x3AA8) is looked up (0x3ABC FindConnectedObject)
@@ -474,7 +508,7 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
     // manager's random, 0.0f to 100.0f): the state at 0xEE4 is 2 when the roll is 50.0f or more
     // and 1 otherwise (0x6668 stw).
     BodyController()->Activate(mgr, pas::kAS_Invalid);
-    StandInFn_75_3460();
+    PortCreateCollisionActorManager(mgr);
     mPreviousCollisionState = mgr.Random()->Range(0.f, 100.f) >= 50.f ? 2 : 1;
     break;
   }
