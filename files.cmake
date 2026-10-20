@@ -798,7 +798,7 @@ set(MP_MODULE_Ing_SOURCES
     src/MetroidPrime/Enemies/PortCIng.cpp
 )
 set(MP_MODULE_IngBoostBallGuardian_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardian.cpp
 )
 set(MP_MODULE_IngSwarm_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
