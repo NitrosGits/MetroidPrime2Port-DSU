@@ -1,6 +1,6 @@
 # ScriptPlayerTurret REL (module 63): analysis for a host body
 
-Analysis + host body, milestones 1-3 (2026-10-20). Sources: the archive build's disassembly
+Analysis + host body, milestones 1-4 (2026-10-20). Sources: the archive build's disassembly
 `../MetroidPrime2Port/build/G2ME01/ScriptPlayerTurret/asm/` (`auto_00_00000050_text.s` is the whole
 `.text`, `auto_03/04/05_*` are rodata/data/bss, `MetroidPrime/ScriptObjects/CScriptPlayerTurretRel.s`
 is the REL's own file), the m2c pseudo-C in `/tmp/opencode/pseudo/ScriptPlayerTurret/`, the
@@ -221,9 +221,12 @@ Facts the ported cases established:
   at the turret's target position (0x210), and takes the hull actor id (0x220) from the damaged
   actor's health info - the owner of the last damage (the guest's `CHealthInfo` + 0x18), or the
   message's originator when the actor has no health info.
-- The guest's `CGameState` byte 0xA4 bit 0x40 (`extrwi. r0,r0,1,25`) is the game's **invert Y**
-  option: it swaps the two stick axes of the turret's pitch (`CGameOptions::GetInvertYAxis`).
-  [probable]: the bit's position in the options' bitfield byte is the same as the host's.
+- The guest's `CGameState` byte 0xA4 bit 0x40 (`extrwi. r0,r0,1,25` - the word's bit 25 is the
+  byte's 0x40) is the game's **invert Y** option: it swaps the two stick axes of the turret's
+  pitch. The host's member is `CGameOptions::GetInvertYAxis()` (the options' bitfield byte has
+  `invertY` as its second field, so the bit is the same one the guest reads).
+  **[probable]**: the guest's `CGameState` and the host's have the same size (0x2f0) and the same
+  member order, but the offset 0xA4 was not confirmed inside the options' bitfield byte.
 
 ## 9. Milestone 2 (the message switch) - host body and runtime
 
@@ -257,6 +260,30 @@ the trigger that activates it are at (0, -27, 10); the player spawns at (-100, 2
   `kill` leaves the game in (checked: `kill` freezes the updates the same way), not a crash.
 - 2400 game updates, `exit=0`, no `[port] caught` and no `reach-stub` (both counts 0).
 
-**Milestone 3 (next).** `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
-turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC) and the rest of `fn_63_15B0`
-(the five animation ids), and `fn_63_84C` (0x184) for the shot itself.
+## 10. Milestone 4 (the shot) - host body and runtime
+
+`fn_63_84C` (0x184) is ported: the muzzle transform (`fn_63_1508`, 0x68, a named method), the
+projectile itself - a `CEnergyProjectile` with the turret's own token (0x1E8) as its weapon
+description, the exclude material 0x14 (kMT_ProjectilePassthrough), the damage's weapon mode as
+its type and the player's area - the top actor (0x19A) as its collision cooldown owner (the
+guest's call with lbl_63_rodata_18 = 3.4028235e38f), the base actor's shot animation (0x1A4) and
+the shot's sound (0x22A in multiplayer at the player's pan, 0x228 at the fixed pan 0x40 in single
+player). The guest's `fn_63_B18`/`fn_63_B60` build the projectile's visor effect; the host's
+`CImpactVisorEffect::None()` is the same empty effect (the retail's AI turret uses it too).
+
+The guest's muzzle locator is `lbl_63_bss_C` - a zeroed BSS string, so the locator name is
+**empty** and the muzzle transform is the base actor's own transform.
+
+**Runtime check (2026-10-20).** The same run as in section 9, with `press A 20`: the console's
+`objs projectile` lists nothing before the shot and
+
+    u0662 03ffffff  CEnergyProjectile          a00 (-0.0, -27.0, 10.0)
+
+after it - **the projectile spawns** at the turret's position. 2400 game updates, `exit=0`, no
+`[port] caught` and no `reach-stub` (both counts 0). The turret still does not aim (Think is
+parked), so the shot flies straight ahead and does not reach the gallery's targets.
+
+**Milestone 5 (next).** `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
+turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC), the rest of `fn_63_15B0`
+(the five animation ids - its own helper `fn_63_19B0`, 0x184, is over the 0x80 callee cap, so it
+stays a named stand-in too).

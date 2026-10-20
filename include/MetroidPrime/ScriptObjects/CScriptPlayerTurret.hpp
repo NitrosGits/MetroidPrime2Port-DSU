@@ -66,7 +66,8 @@ private:
   void AddSolidToTopActor(CStateManager& mgr);      // fn_63_14B4 (0x54)
   void RemoveSolidFromTopActor(CStateManager& mgr); // fn_63_1460 (0x54)
   void LoadHullActors(CStateManager& mgr);           // fn_63_15B0 (0x3C4): only the connections
-  void FireTurretShot(CStateManager& mgr);           // fn_63_84C (0x184): a stand-in for now
+  void FireTurretShot(CStateManager& mgr);           // fn_63_84C (0x184): the turret's shot
+  CTransform4f GetMuzzleTransform(CStateManager& mgr); // fn_63_1508 (0x68)
 
   // Host layout, in the guest's order. The guest offsets are in the comments.
   CAABox mBounds;                     // 0x158: a one-unit box around the actor's position

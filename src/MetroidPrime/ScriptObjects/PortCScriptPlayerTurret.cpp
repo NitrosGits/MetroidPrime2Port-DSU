@@ -26,11 +26,14 @@
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrPlayerTurret.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "Weapons/CWeaponDescription.hpp"
 
 #include <math.h>
 #include <stdio.h>
@@ -535,10 +538,73 @@ void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& 
   }
 }
 
-// fn_63_84C (0x184): the turret's shot. Too big for this slice: it stays a stand-in that logs
-// once.
+// fn_63_1508 (0x68): the muzzle transform - the base actor's (0x198) scaled locator in the
+// base actor's own frame.
+CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
+  // 0x1534: the turret's own transform.
+  CTransform4f turret = GetTransform();
+  // 0x1538: the base actor (0x198).
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (base == nullptr) {
+    return turret;
+  }
+  // 0x1558: the locator is lbl_63_bss_C - a zeroed BSS string, so the name is empty.
+  const CTransform4f locator = base->GetModelData()->GetScaledLocatorTransform("");
+  // 0x1578: the locator in the base actor's frame, times the base actor's transform.
+  return base->GetTransform() * locator;
+}
+
+// fn_63_84C (0x184): the turret's shot.
 void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
-  StandIn("fn_63_84C (the turret's shot)");
+  // 0x864: the muzzle transform.
+  const CTransform4f xf = GetMuzzleTransform(mgr);
+  // 0x880: the player in the turret.
+  CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+  if (player == nullptr) {
+    return;
+  }
+  // 0x8A0: the turret's own token (0x1E8) is the weapon description and has to be loaded.
+  if (mToken.null() || !mToken->IsLoaded()) {
+    return;
+  }
+  // 0x98C: the projectile's type is the damage's weapon mode (the guest's 0x1F0), its exclude
+  // material 0x14 (kMT_ProjectilePassthrough) and its area the player's (0x4 of the player).
+  const TToken< CWeaponDescription > description(*mToken);
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, description, static_cast< EWeaponType >(mWeaponDamage.GetWeaponMode1()), xf,
+      kMT_ProjectilePassthrough, mWeaponDamage, mgr.AllocateUniqueId(),
+      player->GetCurrentAreaId(), mPlayerId, kInvalidUniqueId, 0, false, CVector3f::One(),
+      CImpactVisorEffect::None(), false, true, false, 4.f, 1.f, 4.f);
+  if (projectile == nullptr) {
+    return;
+  }
+  // 0x9B8: the top actor (0x19A) is the one the projectile does not hit (the guest's call with
+  // lbl_63_rodata_18 = 3.4028235e38f).
+  projectile->AddCollisionCooldown(mTopActorId, 3.4028235e38f);
+  // 0x9E0: the projectile joins the world.
+  mgr.AddObject(projectile);
+  // 0x9E4: the base actor (0x198) plays the shot animation (0x1A4).
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (base != nullptr && base->GetModelData() != nullptr &&
+      base->GetModelData()->GetAnimationData() != nullptr) {
+    CAnimData* animData = base->AnimationData();
+    // 0xA24: the flag byte at 0x2AC loses bit 0x40 (the loop flag) and gains bit 0x80 (the
+    // animating flag).
+    animData->EnableLooping(false);
+    // 0xA4C: the animation id (0x1A4), -1, the weight 1.0 and "animating".
+    animData->SetAnimation(CAnimPlaybackParms(mUnknown1A4, -1, 1.f, true), false);
+  }
+  // 0xA84: the shot's sound.
+  if (mgr.IsMultiplayer()) {
+    // 0xA94: the multi-player projectile sound (0x22A) at the player's sound pan.
+    CSfxManager::SfxStart(mSfxMultiPlayerProjectile, 0x7f,
+                          player->GetSoundPan(CPlayer::kMSP_Player), CSfxManager::kAllAreas,
+                          false, false, CSfxManager::kMedPriority);
+  } else {
+    // 0xAEC: the single-player projectile sound (0x228) at the fixed pan 0x40.
+    CSfxManager::SfxStart(mSfxSinglePlayerProjectile, 0x7f, 0x40, CSfxManager::kAllAreas, false,
+                          false, CSfxManager::kMedPriority);
+  }
 }
 
 // fn_63_840 (0xC): the actor the turret HUD reads the hull's health from.
