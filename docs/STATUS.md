@@ -19,7 +19,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C `mData.mFlags210`, locomotion 0/1 = Crouch/Relaxed |
 | CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate @ `c8b8c5851` | PathFind state 9AAC + TooClose B76C |
 | EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
-| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `8af1f92ec` | rework: flag bytes 0x824/0x825 as two uchar members (8500 is 0x825 & 0x01); then Start/Idle + 7 triggers |
+| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `509ee62f4` | next (brief pending, openchamber tool down): fn_18_F8 random check, fn_18_1DF4, Idle 788C |
 | DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian @ `e4b13e532` | AddToRenderer's model renders fn_14_1994/18B4/17DC/1700 |
 | DarkSamus (worker) | `ses_ea70a143bffe4SLdq4LIY5V8bC` | decomp/darksamus on `232823309` | milestone 1 (`/tmp/opencode/briefs/m1.md`) |
 | ScriptPlayerTurret (worker) | `ses_ea70a1437ffeyp5d7K55HX0N2H` | decomp/playerturret on `232823309` | milestone 1 |
@@ -27,7 +27,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 
 Accepted, not yet merged (next batch: merge, build, smoke): emperoring `e1f34df29`, commandopirate
 up to `c8b8c5851`, spacepirate `0d38c3c08` (Render/ScanVisorRender parked for an Opus lane:
-fn_72_36CC + unidentified member), emperoring3 `a8787e7f4`, swampboss `59637cee5`;
+fn_72_36CC + unidentified member), emperoring3 `509ee62f4`, swampboss `59637cee5`;
 digitalguardian `e4b13e532` (model draws again).
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
 reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress.
