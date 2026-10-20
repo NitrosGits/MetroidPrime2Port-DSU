@@ -54,7 +54,8 @@ Run game runs in the foreground (with `timeout`). A lane that ends its turn wait
 background job is never woken; it must report, not wait. Find and kill only the pids its own
 script launched (bracketed `pgrep -f` names); other lanes run the game at the same time.
 
-Lanes never write `// @` markers. A marker needs a run that exercised the function and a pass of
+Lanes mark only bodies a run exercised fully (not just an early return), unless their brief says the
+orchestrator marks that module. A marker needs a run that exercised the function and a pass of
 the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
 compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
 tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every
