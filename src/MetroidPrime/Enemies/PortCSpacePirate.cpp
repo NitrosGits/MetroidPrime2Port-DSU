@@ -1426,7 +1426,7 @@ const CDamageVulnerability* CSpacePirate::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
-// Retail fn_72_3A88: a tail call through the vtable slot 0x40, which for CSpacePirate is the
+// @ fn_72_3A88: a tail call through the vtable slot 0x40, which for CSpacePirate is the
 // no-argument GetDamageVulnerability (fn_72_3AB4) - the three arguments are not read.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f& position,
                                                                  const CVector3f& direction,
