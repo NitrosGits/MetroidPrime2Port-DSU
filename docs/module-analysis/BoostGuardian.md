@@ -269,6 +269,28 @@ module's `PortCIngBoostBallGuardian{Triggers,States1,States2,Overrides}.cpp`. No
 *bodies* also differ for the 17 nodes in the table above, so a fix there is the Ing's fix and this
 module's body is still to be read.
 
+**Differences from `decomp/ing` introduced by the bit audit (2026-10-20).** The data flag byte
+(this+0xAE0) is not the raw property here: the loader `fn_30_10C24` packs it
+(`PackBgDataFlags` in `PortBoostGuardianShared.hpp`, with the asm offset of every rlwimi). The bit
+values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02,
+`kFlag_NoPathFind` 0x04, `kFlag_NoFormChange` 0x08 (there is no no-grapple bit), and
+`kFlag_StartAsIngSpot` (0x80) is always 0. Bodies that now differ from the Ing's copy:
+
+- `CanGrappleTarget` (`fn_30_B7E0`): no data-flag guard.
+- `Lurk` (`fn_30_A0D8`): sets `mAlert` from the target id alone, with no lookup. Its body-projectile
+  roll is not gated by any data flag.
+- `PathFind` (`fn_30_9F50`): the speed range is 1.0 or the walk/run ratio. It sets moved only when
+  it actually paths, and has no `ApplySeparation`. Deactivate only stops.
+- `BecomeCorporeal` (`fn_30_B03C`) clears `mCurrentlyInBoostPuddleForm` in Activate. Generate type 2
+  needs `mBoostPuddleGenerate` and no `mProjectileFSMEntry`. `mProjectileFSMEntry` is cleared in
+  Deactivate (not Activate), together with 0x11EE 0x04 and 0x1098.
+- `BecomeIngSpot` (`fn_30_ABC4`) sets `mCurrentlyInBoostPuddleForm` and clears
+  `mBoostModeRetreatActive` in Activate. Generate type is 5 when in the puddle form. Deactivate makes
+  the form 3 only from form 7.
+- `kSM_Create` (`fn_30_68F0`) reads the data byte's 0x80, not the guest bit.
+- In the constructor, `mFoundMovementPos`, `mRenderModel` and `mBoostOver` start true (0xFE0C,
+  0xFE3C, 0xFECC).
+
 ## i. Port plan
 
 - **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)

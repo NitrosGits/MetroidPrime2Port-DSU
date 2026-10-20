@@ -354,7 +354,7 @@ void CIngBoostBallGuardian::UpdateValidTarget(CStateManager& mgr) {
   case kForm_IngSpot:
   case kForm_Evaporate:
     SetValidTarget(0, mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark ||
-                          (mData.mFlags210 & kFlag_AlwaysTargetable) != 0);
+                          (mData.mFlags210 & kFlag_AlwaysTargetable) != 0); // 0x00005D58
     break;
   default:
     SetValidTarget(0, true);
@@ -523,6 +523,7 @@ bool CIngBoostBallGuardian::TargetInLightSafeZone(CStateManager& mgr, const CTri
 
 // Ing body fn_29_AAF8
 bool CIngBoostBallGuardian::CanChangeForm(CStateManager&, const CTriggerData&) const {
+  // 0x0000C0A8 (corporeal) / 0x0000C0D0 (ing spot): extrwi 1,28 = data 0x08.
   const bool locked = (mData.mFlags210 & kFlag_NoFormChange) != 0;
   switch (mForm) {
   case kForm_IngSpot:
@@ -559,6 +560,7 @@ bool CIngBoostBallGuardian::ShouldBecomeIngSpot(CStateManager&, const CTriggerDa
 
 // Ing body fn_29_A8CC
 bool CIngBoostBallGuardian::ShouldArmSwipe(CStateManager& mgr, const CTriggerData&) const {
+  // 0x0000BEB4 form == 2, 0x0000BEC0 data 0x40.
   if (mForm != kForm_Corporeal || (mData.mFlags210 & kFlag_NoArmSwipe) != 0 ||
       !(mArmSwipeTime > 1.f)) {
     return false;
@@ -590,6 +592,7 @@ bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTrig
   // The team gate only applies inside a team: retail compares mTeamId with kInvalidUniqueId
   // and skips CanStartAttack when they are equal (asm 0x0000A8A4, the branch that lands at
   // .L_0000A7FC). An unconditional gate keeps the state off for every Ing placed without a team.
+  // 0x0000BD68 (data 0x20), 0x0000BD70 (data 0x08), 0x0000BD7C (0x11EC 0x40).
   if ((mData.mFlags210 & (kFlag_NoBodyProjectile | kFlag_NoFormChange)) != 0 ||
       !mBodyProjectileAllowed ||
       (mTeamId != kInvalidUniqueId &&
@@ -620,6 +623,7 @@ bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTrig
 bool CIngBoostBallGuardian::ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData&) const {
   // Same team gate as fn_29_A780/A8CC: retail asks CanStartAttack only when mTeamId is set
   // (asm 0x0000A788, the compare that skips to .L_0000A6E0).
+  // 0x0000BC4C: data 0x10.
   if ((mData.mFlags210 & kFlag_NoMiniPortal) != 0 || mFormTime < mData.mUnknownC620 ||
       (mTeamId != kInvalidUniqueId &&
        !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
@@ -727,11 +731,9 @@ bool CIngBoostBallGuardian::HasPathToTarget(CStateManager& mgr, const CTriggerDa
              CPathFindSearch::kR_Success;
 }
 
-// Ing body fn_29_A098: the no-grapple flag (0x9d0 bit 3) and a target with nothing attached to it.
+// fn_30_B7E0: a target player with nothing attached to it (0x0000B818 compares the player's
+// 0x2e4 with kInvalidUniqueId). Unlike the Ing's fn_29_A098 it reads no data flag.
 bool CIngBoostBallGuardian::CanGrappleTarget(CStateManager& mgr, const CTriggerData&) const {
-  if ((mData.mFlags210 & kFlag_NoGrapple) != 0) {
-    return false;
-  }
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
   return player != nullptr && player->GetAttachedActorId() == kInvalidUniqueId;
 }

@@ -40,17 +40,50 @@ enum {
   kForm_BecomingWallProjectile = 9, // BecomeWallProjectile's Activate
 };
 
-// mData.mFlags210 (this module's ingFlags property, SLdrIngBoostBallGuardianData.unknown_0x01789abd).
+// mData.mFlags210: the parameter block's flag byte (guest +0x320 of the block, this+0xAE0). It is
+// not the property's raw value: the loader fn_30_10C24 derives every bit from the property
+// SLdrIngBoostBallGuardianData.unknown_0x01789abd (r10 = its word, 0x00010D24) - see
+// PackBgDataFlags. Each name comes from the bodies that test the bit (asm offsets of the reads).
 enum {
-  kFlag_AlwaysTargetable = 0x01,
-  kFlag_NoPathFind = 0x02,
-  kFlag_NoFormChange = 0x04,
-  kFlag_NoGrapple = 0x08,
-  kFlag_NoMiniPortal = 0x10,
-  kFlag_NoBodyProjectile = 0x20,
-  kFlag_NoArmSwipe = 0x40,
-  kFlag_StartAsIngSpot = 0x80,
+  // 0x01: never written by the loader and never read.
+  kFlag_AlwaysTargetable = 0x02, // fn_30_5CD0 0x00005D58: the ing spot stays targetable
+  kFlag_NoPathFind = 0x04,       // fn_30_9F50 0x00009FFC/0x0000A044, fn_30_9DA0 0x00009DFC,
+                                 // fn_30_9C7C 0x00009CC8
+  kFlag_NoFormChange = 0x08,     // fn_30_C070 0x0000C0A8/0x0000C0D0, fn_30_BD48 0x0000BD70
+  kFlag_NoMiniPortal = 0x10,     // fn_30_BC2C 0x0000BC4C
+  kFlag_NoBodyProjectile = 0x20, // fn_30_BD48 0x0000BD68, fn_30_8520 0x00008700
+  kFlag_NoArmSwipe = 0x40,       // fn_30_BE94 0x0000BEC0, fn_30_A0D8 0x0000A174
+  kFlag_StartAsIngSpot = 0x80,   // fn_30_68F0 0x00006914/0x00006928, ctor 0x0000FE60
 };
+
+// fn_30_10C24 0x00010D20-0x00010DE8: the flag byte, built bit by bit with rlwimi from the
+// property word r10: r6 = neg|or of (r10 & 3) (0x00010D30, 0x00010D3C-0x00010D40) and r5 = neg|or
+// of (r10 & 5) (0x00010D34, 0x00010D4C-0x00010D50) carry "non-zero" in their sign bit, r4 =
+// (r10 & 6) != 0 (rlwinm 0,29,30 at 0x00010D44, neg/or/srwi 31 at 0x00010D58-0x00010D64), and
+// r11 = 0 (0x00010D20). Bit 0x01 is not written (and never read).
+inline uint PackBgDataFlags(uint raw) {
+  uint flags = 0;
+  // 0x00010D9C rlwimi 7,24,24 from r11 = 0: kFlag_StartAsIngSpot is always clear.
+  if ((raw & 0x1) != 0) { // 0x00010DA8 rlwimi r10,6,25,25: bit 0 of the word
+    flags |= kFlag_NoArmSwipe;
+  }
+  if ((raw & 0x2) != 0) { // 0x00010DB4 rlwimi r10,4,26,26: bit 1 of the word
+    flags |= kFlag_NoBodyProjectile;
+  }
+  if ((raw & 0x3) != 0) { // 0x00010DC0 rlwimi r6,5,27,27: (word & 3) != 0
+    flags |= kFlag_NoMiniPortal;
+  }
+  if ((raw & 0x4) != 0) { // 0x00010DCC rlwimi r10,1,28,28: bit 2 of the word
+    flags |= kFlag_NoFormChange;
+  }
+  if ((raw & 0x5) != 0) { // 0x00010DD8 rlwimi r5,3,29,29: (word & 5) != 0
+    flags |= kFlag_NoPathFind;
+  }
+  if ((raw & 0x6) != 0) { // 0x00010DE4 rlwimi r4,1,30,30: (word & 6) != 0
+    flags |= kFlag_AlwaysTargetable;
+  }
+  return flags;
+}
 
 const float kFacingAngle = 0.349f; // rodata: 20 degrees
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface

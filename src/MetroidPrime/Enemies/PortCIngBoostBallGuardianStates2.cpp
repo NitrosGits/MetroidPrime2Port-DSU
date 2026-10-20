@@ -135,17 +135,17 @@ void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
       fprintf(stderr, "[ibbg] %04x lurk: detection range %.1f height %.1f\n", GetUniqueId().Value(),
               mDetectionRange, mDetectionHeightRange);
     }
-    if (mgr.GetObjectById(mTargetId) != nullptr) {
-      mAlert = true;
+    if (mTargetId != kInvalidUniqueId) { // 0x0000A11C: the id alone, no lookup
+      mAlert = true;                     // 0x0000A12C: 0x11ED 0x08 = 1
     }
     CRandom16* random = mgr.Random();
+    // 0x0000A158 cror eq,lt,eq: <= ; 0x0000A164: 0x11EC 0x80.
     mTaunt = random->Range(0.f, 100.f) <= mData.mTauntChance;
+    // 0x0000A174: data 0x40; 0x0000A1A0 <= ; 0x0000A1B8: 0x11EC 0x20.
     mAggressive = (mData.mFlags210 & kFlag_NoArmSwipe) == 0 &&
                   random->Range(0.f, 100.f) <= mData.mAggressiveness;
-    mBodyProjectileAllowed =
-        (mData.mFlags210 & kFlag_NoBodyProjectile) == 0 &&
-        ((mData.mFlags210 & kFlag_NoMiniPortal) != 0 ||
-         random->Range(0.f, 100.f) <= mData.mBodyProjectile.mOdds);
+    // 0x0000A1D8 <= ; 0x0000A1E4: 0x11EC 0x40. Unlike the Ing, no data flag gates this roll.
+    mBodyProjectileAllowed = random->Range(0.f, 100.f) <= mData.mBodyProjectile.mOdds;
   } else if (msg == kStateMsg_Update) {
     if (mForm == kForm_IngSpot) {
       Stop();
@@ -159,31 +159,32 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
   bool moved = false;
   if (msg == kStateMsg_Activate) {
     LogState("PathFind");
-    // Dropped: the Ing's lure safe zone (mLureSafeZoneId). This module has no lure safe zone, so
-    // the Ing's "lured" term is always false: the slow speed range is the one of a passive Ing and
-    // the search's flags are never changed here.
-    // [?] the slow speed range when neither aggressive nor lured.
-    BodyController()->CommandMgr().SetSteeringSpeedRange(mAggressive ? 1.f : 0.5f,
-                                                         mAggressive ? 1.f : 0.5f);
-    if (canPathFind) {
+    // fn_30_9F50 0x00009FE8: steering blend mode 1; 0x00009FC4: 0x11EC 0x20 (mAggressive) picks
+    // 1.0 over the walk/run speed ratio (0x00009FBC).
+    BodyController()->CommandMgr().SetSteeringBlendMode(ESteeringBlendMode::kSBM_FullSpeed);
+    const CBodyStateInfo& info = BodyController()->GetBodyStateInfo();
+    const float speed = mAggressive ? 1.f
+                                    : info.GetLocomotionSpeed(pas::kLA_Walk) /
+                                          info.GetLocomotionSpeed(pas::kLA_Run);
+    BodyController()->CommandMgr().SetSteeringSpeedRange(speed, speed);
+    if (canPathFind) { // 0x00009FFC: data 0x04; 0x0000A008: 0x11EC 0x10
       mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+      moved = true; // 0x0000A028
     }
-    moved = true;
-    mRecalcPath = false;
+    mRecalcPath = false; // 0x0000A034: 0x11EC 0x08 = 0
   } else if (msg == kStateMsg_Update) {
-    if (canPathFind) {
-      // Dropped: the Ing's safe-zone count (mSafeZoneCount) and its lure safe zone test.
+    if (canPathFind) { // 0x0000A044: data 0x04; 0x0000A050: 0x11EC 0x10
+      // 0x0000A058: 0x11EC 0x20, 0x0000A070: HasLineOfSight (fn_30_C4E0), 0x0000A080: retail
+      // also paths while its count at 0x115c is > 0 (the Ing's safe-zone count; this module's
+      // host has no such field, so that term is dropped).
       const bool hold = !mAggressive && mLineOfSight.HasLineOfSight();
       if (!hold) {
         mPathFindNavigation.PathFind(mgr, msg, dt, *this);
-        ApplySeparation(mgr);
-        moved = true;
+        moved = true; // 0x0000A0A0
       }
     }
-  } else if (msg == kStateMsg_Deactivate) {
-    mPathFindSearch.SetFlags(0x301);
-    moved = true;
   }
+  // Deactivate (0x00009F8C) and every other message only Stop() (0x0000A0B0).
   if (!moved) {
     Stop();
   }
@@ -198,9 +199,10 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
 void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
-    mRecalcPath = false; // 0xe5c bit 2
-    mMoving = true;      // 0xe5d bit 1
+    mRecalcPath = false; // 0x00009DE0: 0x11EC 0x08 = 0
+    mMoving = true;      // 0x00009DF0: 0x11ED 0x04 = 1
   }
+  // 0x00009DFC: data 0x04; 0x00009E08: 0x11EC 0x10.
   if ((mData.mFlags210 & kFlag_NoPathFind) != 0 || !mFoundMovementPos) {
     return;
   }
@@ -226,9 +228,10 @@ void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, f
 void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPointPathFind");
-    mRecalcPath = false; // 0xe5c bit 2
-    mMoving = true;      // 0xe5d bit 1
+    mRecalcPath = false; // 0x00009CAC: 0x11EC 0x08 = 0
+    mMoving = true;      // 0x00009CBC: 0x11ED 0x04 = 1
   }
+  // 0x00009CC8: data 0x04; 0x00009CD4: 0x11EC 0x10.
   if ((mData.mFlags210 & kFlag_NoPathFind) != 0 || !mFoundMovementPos) {
     return;
   }
@@ -669,9 +672,8 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
       continue;
     }
     if (type == 4) { // asm 0x00007074: wall hints only
-      // asm 0x00007080 reads 0x9d0 bit 5, which is CIngData's +0x210 flag byte (0x7c0 + 0x210),
-      // not the 0xe5d bitfield: an Ing whose properties forbid the body projectile never takes a
-      // wall point either.
+      // fn_30_8520 0x00008700 reads the data byte's 0x20 (this+0xAE0), not a guest bitfield: a
+      // guardian whose properties forbid the body projectile never takes a wall point either.
       if ((mData.mFlags210 & kFlag_NoBodyProjectile) != 0) {
         ++spotGated;
         continue;

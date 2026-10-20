@@ -261,31 +261,30 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mLightBlend(0.f)
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
-, mBoostRetreatActive(false)
-, x11EDBit1(false)
 , mCollidedWithCrystal(false)
 , mBoostPuddleForm(false)
 , mShouldBoost(false)
-, mBoostOver(false)
+, mBoostOver(true) // ctor 0x0000FECC: 0x11EE 0x20 = 1
 , mBoostModeRetreatActive(false)
 , mCurrentlyInBoostPuddleForm(false)
+, mBoostPuddleGenerate(false) // ctor 0x0000FEF0: 0x11EE 0x04 = 0
 , mBoostChildId(kInvalidUniqueId)
 , mBoostNavPointId(kInvalidUniqueId)
 , mBoostNavPointId2(kInvalidUniqueId)
 , mBoostTimer(0.f)
 , mBoostRandomFloat(0.f)
 , mAggressive(false)
-, mFoundMovementPos(false)
+, mFoundMovementPos(true) // ctor 0x0000FE0C: 0x11EC 0x10 = 1
 , mRecalcPath(false)
 , mTakeOff(false)
-, mStartAsIngSpot(false)
+, mStartAsIngSpot((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) // ctor 0x0000FE60: data 0x80
 , mMoving(false)
 , mGrappled(false)
 , mProjectileFSMEntry(false)
 , mSplat(false)
 , mHurtfulZone(false)
 , mPortalPlane(false)
-, mRenderModel(false)
+, mRenderModel(true) // ctor 0x0000FE3C: 0x11EC 0x01 = 1 (Render's 0x0000D408 test)
 , mForm9Render(false)
 , mFollowingAttackPath(false)
 , mAlert(false)
@@ -424,7 +423,7 @@ static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& i
                             static_cast< ushort >(ing.sound));
 
   const CIngBoostBallGuardianData data(
-      ing.unknown_0x01789abd, ing.hearingRadius, ing.unknown_0x5d0d2c40, ing.unknown_0xc620183a,
+      PackBgDataFlags(ing.unknown_0x01789abd), ing.hearingRadius, ing.unknown_0x5d0d2c40, ing.unknown_0xc620183a,
       ing.frustrationTime, ing.tauntChance, ing.aggressiveness, ing.lightColor,
       ing.lightAttenuation, LdrToDamageInfo(ing.armSwipeDamage),
       LdrToDamageVulnerability(ing.ingSpotVulnerability), bodyProjectile, ingSpot, miniPortal,

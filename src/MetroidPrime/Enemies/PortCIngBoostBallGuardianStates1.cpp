@@ -141,7 +141,9 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
   switch (msg) {
   case kStateMsg_Activate:
     LogState("BecomeCorporeal");
-    mProjectileFSMEntry = false; // 0xe5e bit 7
+    // 0x0000B088: 0x11EF 0x80 = 0. Retail clears 0x11ED 0x02 (mProjectileFSMEntry) in the
+    // Deactivate (0x0000B448), not here: the Update below still reads it.
+    mCurrentlyInBoostPuddleForm = false;
     if (mForm == kForm_IngSpot) {
       mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
       // 0xdf0/0xdfc: the horizontal plane through the actor. The normal is (0,0,1) (retail
@@ -166,8 +168,10 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     // CTryCommand::ShouldRetry(this+0x6b4, *BodyController(), 0xc): 0xc is the body state
     // kAS_Generate, i.e. the port's CAnimationState tracks the Generate animation.
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      // 0x0000B1A0: 0x11EE 0x04; 0x0000B1AC: 0x11ED 0x02. Type 2 (0x0000B1E8) or 0.
+      const bool puddle = mBoostPuddleGenerate && !mProjectileFSMEntry;
       BodyController()->CommandMgr().DeliverCmd(
-          CBCGenerateCmd(pas::kGType_Zero, CVector3f::Zero()));
+          CBCGenerateCmd(puddle ? pas::kGType_Two : pas::kGType_Zero, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
       BodyController()->SetLocomotionType(pas::kLT_Combat);
     }
@@ -188,6 +192,9 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
       // rodata_68E: "eyes"; the effect runs while the Ing is corporeal.
       AnimationData()->SetEffectState(rstl::string_l("eyes"), true, mgr);
     }
+    mBoostPuddleGenerate = false;           // 0x0000B42C: 0x11EE 0x04 = 0
+    mProjectileFSMEntry = false;            // 0x0000B448: 0x11ED 0x02 = 0
+    mBoostNavPointId2 = kInvalidUniqueId;   // 0x0000B458: 0x1098
     break;
   default:
     break;
@@ -208,15 +215,22 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
     } else {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
     }
+    // 0x0000AC98: 0x11ED 0x02 clear and 0x0000ACA4: 0x11EE 0x08 set -> 0x0000ACB4: 0x11EF 0x80 = 1.
+    if (!mProjectileFSMEntry && mBoostPuddleForm) {
+      mCurrentlyInBoostPuddleForm = true;
+      // NOT YET: fn_30_30E4, fn_30_3190, fn_30_3068 (0x0000ACC8-0x0000ACE8), the boost half.
+    }
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_NearbySurface); // 0xca4 = 1
     mBodyState5Time = 0.f;                                                // 0xe40
+    mBoostModeRetreatActive = false; // 0x0000AD08: 0x11EE 0x80 = 0
     // This module has no safe-zone ing-spot flag (the Ing's mSafeZoneIngSpot does not exist here),
     // so the Ing's "0xe5e bit 5 = false" has nothing to clear.
     break;
   case kStateMsg_Update:
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
-      BodyController()->CommandMgr().DeliverCmd(
-          CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
+      // 0x0000AD30: 0x11EF 0x80 picks type 5 (0x0000AD6C) over 1 (0x0000AE40).
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(
+          mCurrentlyInBoostPuddleForm ? pas::kGType_Five : pas::kGType_One, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed);
     }
@@ -224,7 +238,9 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
-    mForm = kForm_IngSpot;
+    if (mForm == kForm_BecomingIngSpot) { // 0x0000AF14: form == 7
+      mForm = kForm_IngSpot;
+    }
     mDesiredForm = -1;
     mLineOfSight.SetSegment(CSegId::Null()); // 0xd8a = 99
     mVerticalMovement = true;                // CPatterned 0x34c bit 6

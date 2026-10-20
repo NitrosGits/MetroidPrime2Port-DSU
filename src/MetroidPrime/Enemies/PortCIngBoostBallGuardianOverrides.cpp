@@ -140,8 +140,10 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   case kSM_Create:
     // fn_29_4C88
     EnsureBodyActive(mgr);
-    mForm = mStartAsIngSpot ? kForm_IngSpot : kForm_Corporeal;
-    if (mForm == kForm_IngSpot) {
+    // fn_30_68F0 tests the data byte's kFlag_StartAsIngSpot (0x0000690C/0x00006914 for the form,
+    // 0x00006924/0x00006928 for the locomotion), not the guest bit 0x11ED 0x40.
+    mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
+    if ((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed);
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
     } else {

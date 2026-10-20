@@ -60,7 +60,7 @@ struct CIngBoostBallGuardianData {
   , mMiniPortal(miniPortal)
   , mSwarm(swarm) {}
 
-  uint mFlags210;                          // SLdrIngBoostBallGuardianData.unknown_0x01789abd
+  uint mFlags210; // guest +0x320 (this+0xAE0): PackBgDataFlags(unknown_0x01789abd), fn_30_10C24
   float mHearingRadius;                        // hearingRadius
   float mUnknown5D0D;                          // unknown_0x5d0d2c40
   float mUnknownC620;                          // unknown_0xc620183a
@@ -472,14 +472,16 @@ private:
   float mBodyProjectileTime;                             // CIng: 0xE58
   // The boost half's members (this module's own; the guest offsets are in
   // docs/module-analysis/BoostGuardian.md section e and in docs/module-analysis/BoostGuardian_fsm.tsv).
-  bool mBoostRetreatActive : 1;                          // guest 0x11EC bit 4
-  bool x11EDBit1 : 1;                                    // guest 0x11ED bit 1
   bool mCollidedWithCrystal : 1;                         // guest 0x11EE bit 0
   bool mBoostPuddleForm : 1;                             // guest 0x11EE bit 3
   bool mShouldBoost : 1;                                 // guest 0x11EE bit 4
   bool mBoostOver : 1;                                   // guest 0x11EE bit 5
   bool mBoostModeRetreatActive : 1;                      // guest 0x11EE bit 7
   bool mCurrentlyInBoostPuddleForm : 1;                  // guest 0x11EF bit 7
+  // Guest 0x11EE bit 2 (0x04): set with mShouldBoost/mBoostPuddleForm by fn_30_3068 (0x000030A4),
+  // read by BecomeCorporeal's Update (0x0000B1A0) to pick generate type 2, cleared by its
+  // Deactivate (0x0000B42C).
+  bool mBoostPuddleGenerate : 1;
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
   TUniqueId mBoostNavPointId;                            // guest 0x1096: the retreat's first point
   TUniqueId mBoostNavPointId2;                           // guest 0x1098: the retreat's second point

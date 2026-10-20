@@ -45,9 +45,11 @@ bool CIngBoostBallGuardian::IsCurrentlyInBoostPuddleForm(CStateManager& mgr,
   return mCurrentlyInBoostPuddleForm;
 }
 
-// fn_30_B7AC: IsBoostPuddleForm (guest 0x11EE bit 3 and not guest 0x11ED bit 1).
+// fn_30_B7AC: IsBoostPuddleForm (guest 0x11EE bit 3 and not guest 0x11ED bit 1, the bit
+// UseProjectileFSMEntry fn_30_C1A4 reads).
 bool CIngBoostBallGuardian::IsBoostPuddleForm(CStateManager& mgr, const CTriggerData& data) const {
-  return mBoostPuddleForm && !x11EDBit1;
+  // 0x0000B7B4: 0x11EE 0x08; 0x0000B7C0: 0x11ED 0x02.
+  return mBoostPuddleForm && !mProjectileFSMEntry;
 }
 
 // fn_30_B7D4: IsBoostOver (guest 0x11EE bit 5).
@@ -92,10 +94,10 @@ void CIngBoostBallGuardian::BoostAttack(CStateManager&, EStateMsg msg, float) {
 
 // fn_30_7728: BoostModeRetreat.
 //
-// Retail's Activate clears bit 4 of 0x11EC (mBoostRetreatActive) and sets bit 7 of 0x11EE, then
+// Retail's Activate clears bit 4 of 0x11EC (mFoundMovementPos) and sets bit 7 of 0x11EE, then
 // finds two navigation points with fn_30_2F9C (this module's own nav-point finder, called with
 // 0xE and 0xF): the first point's id goes to 0x1096 (mBoostNavPointId) and its position becomes
-// the navigation's destination, the second point's id goes to 0x1098 (mBoostNavPointId2), and the
+// the navigation's destination and bit 4 of 0x11EC is set again, the second point's id goes to 0x1098 (mBoostNavPointId2), and the
 // navigation's face target (guest 0x718) is cleared.
 //
 // Retail's Update drops the first nav point (0x1096) when the actor is within 1.0 of it, and drops
@@ -109,15 +111,25 @@ void CIngBoostBallGuardian::BoostAttack(CStateManager&, EStateMsg msg, float) {
 //
 // NOT YET: fn_30_2F9C (the nav-point finder) is a later slice, so the Activate case only logs
 // and the nav-point work waits for it. The two flag bits retail writes here are written
-// anyway: bit 4 of 0x11EC (mBoostRetreatActive) is cleared and bit 7 of 0x11EE
+// anyway: bit 4 of 0x11EC (mFoundMovementPos) is cleared and bit 7 of 0x11EE
 // (mBoostModeRetreatActive) is set - the latter is what this module's own IngSpotPathFind
 // (fn_30_9DA0) reads to pick one of two speeds.
 void CIngBoostBallGuardian::BoostModeRetreat(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
     LogState("BoostModeRetreat");
-    mBoostRetreatActive = false;      // guest 0x11EC bit 4
-    mBoostModeRetreatActive = true;   // guest 0x11EE bit 7
+    mFoundMovementPos = false;        // 0x00007784: 0x11EC 0x10 = 0
+    mBoostModeRetreatActive = true;   // 0x000077A0: 0x11EE 0x80 = 1
+    {
+      // NOT YET: fn_30_2F9C(mgr, this, 0xE) (0x000077A8); until it is ported there is no point.
+      const CScriptAIHint* point = nullptr;
+      if (point != nullptr) {        // 0x000077AC
+        mFoundMovementPos = true;    // 0x000077BC: 0x11EC 0x10 = 1
+        mBoostNavPointId = point->GetUniqueId(); // 0x000077D0: 0x1096
+        mPathFindNavigation.SetDestination(point->GetTranslation()); // 0x000077D4
+        mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);         // 0x000077E0: 0x718
+      }
+    }
     if (DebugBg()) {
       fprintf(stderr,
               "[ibbg] %04x boost retreat: the nav points (fn_30_2F9C) are a later slice\n",
