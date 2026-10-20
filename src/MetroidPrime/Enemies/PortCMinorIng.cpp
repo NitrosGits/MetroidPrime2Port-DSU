@@ -271,6 +271,21 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
                      const CMinorIngData& data)
 // EPatternedAI 0x4b, flavor 0, movement 0 (ground), collider 1, body 1 (bipedal): the retail
 // constructor's arguments to CPatterned (fn_44_9D58).
+//
+// The retail's constructor (fn_44_9D58, asm 0x9D58) fills the members in this order; the host
+// does the same, so the stored state matches:
+// - the base class (asm 0x9DBC), the data copy (asm 0x9DD4) and the projectile info (asm 0x9DE4),
+// - the two hit-effect tokens and their "is set" bytes (asm 0x9EB0 for the normal one, asm 0xA02C
+//   for the heavy one: a valid asset id locks the token, an invalid one leaves it empty),
+// - the path find search (asm 0xA108), the point search (asm 0xA114), the surface helper
+//   (asm 0xA11C) and the ing-spot navigation (asm 0xA124),
+// - the zero move direction (asm 0xA148), the two empty touch bounds (asm 0xA174/0xA178) and the
+//   line-of-sight tracker (asm 0xA18C: the uid, the invalid segment, 0.1 and 0.05),
+// - the form (asm 0xA198) and the ten ids (asm 0xA1B8-0xA204),
+// - the two-int container (asm 0xA5B4), the zero target position (asm 0xA210), the model scale
+//   (asm 0xA344) and the timers (asm 0xA23C-0xA278),
+// - the health tracker (asm 0xA24C: the patterned info's health), the animation ids (asm 0xA264)
+//   and the lock-on locator (asm 0xA27C).
 : CPatterned(static_cast< EPatternedAI >(0x4b), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
 , mData(data)
@@ -294,13 +309,16 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mSafeZoneId(kInvalidUniqueId)
 , mBlobEffectId(kInvalidUniqueId)
 , mCollisionActorId(kInvalidUniqueId)
+, mUnusedZeros{0, 0}
 , mTargetPos(CVector3f::Zero())
 , mModelScale(modelData.GetScale())
 , mAttackTimer(0.f)
 , mLeashTimer(0.f)
 , mStunTimer(0.f)
 , mPuddleHitTimer(0.f)
-, mHpTracker(GetHealthInfo() != nullptr ? GetHealthInfo()->GetHP() : 0.f)
+// The retail takes the health out of the patterned info, not out of the actor (asm 0xA1BC reads
+// the CPatternedInfo's health at +0x54), so the actor's own health info is not read here.
+, mHpTracker(pInfo.GetHealthInfo().GetHP())
 , mKnockDamage(0.f)
 , mTimerD1C(0.f)
 , mMoveAwayTimer(0.f)
@@ -309,24 +327,27 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mDamageFxTimer(0.f)
 , mIntoCorporealAnim(-1)
 , mIntoStunnedAnim(-1)
+, mLockOnLocator(CSegId::Invalid())
 , mLastLoggedState(nullptr)
 , mPathArea(nullptr)
-, mHasPatrolPath(false)
-, mPathFindActive(false)
-, mPointPathFinding(false)
-, mFoundMovementPos(false)
-, mRecalculatePath(false)
-, mIdle(false)
-, mFollowingAttackPath(false)
-, mAttackPatternProjectile(false)
-, mPuddleHitByWeapon(false)
-, mCancelStun(false)
-, mKnockAnimCancel(false)
-, mTouched(false)
-, mShouldMoveUnderBall(false)
-, mInsideSafeZone(false)
-, mShouldEvaporate(false) {
-  PortMinorIngStandIn("fn_44_9D58 (0x878 bytes)");
+// The retail clears every flag of the byte at 0xd3d and every flag of the byte at 0xd3e in this
+// order (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330), most significant bit first.
+, mAttackPatternProjectile(false) // 0xd3d 0x80 (asm 0xA284)
+, mPathFindActive(false)          // 0xd3d 0x40 (asm 0xA290)
+, mPointPathFinding(false)        // 0xd3d 0x20 (asm 0xA29C)
+, mFoundMovementPos(false)        // 0xd3d 0x10 (asm 0xA2A8)
+, mRecalculatePath(false)         // 0xd3d 0x08 (asm 0xA2B4)
+, mIdle(false)                    // 0xd3d 0x04 (asm 0xA2C0)
+, mFollowingAttackPath(false)     // 0xd3d 0x02 (asm 0xA2CC)
+, mHasPatrolPath(false)           // 0xd3d 0x01 (asm 0xA2D8)
+, mPuddleHitByWeapon(false)       // 0xd3e 0x80 (asm 0xA2E4)
+, mCancelStun(false)              // 0xd3e 0x40 (asm 0xA2F0)
+, mKnockAnimCancel(false)         // 0xd3e 0x20 (asm 0xA2FC)
+, mTouched(false)                 // 0xd3e 0x10 (asm 0xA308)
+, mShouldMoveUnderBall(false)     // 0xd3e 0x08 (asm 0xA314)
+, mInsideSafeZone(false)          // 0xd3e 0x04 (asm 0xA320)
+, mShouldEvaporate(false)         // 0xd3e 0x02 (asm 0xA32C)
+{
   // fn_44_9D58 locks the projectile's WPSC token (0x918); without it LaunchProjectile's TryCache
   // never succeeds.
   mProjectileInfo.Token().Lock();

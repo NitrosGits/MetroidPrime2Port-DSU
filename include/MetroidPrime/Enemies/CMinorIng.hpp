@@ -321,6 +321,9 @@ private:
   TUniqueId mSafeZoneId;                      // 0xcda (fn_44_36FC/fn_44_3780: the zone that lured it)
   TUniqueId mBlobEffectId;                    // 0xcdc CCollisionTracker (fn_44_48F0)
   TUniqueId mCollisionActorId;                // 0xcde CCollisionActor (fn_44_319C)
+  // The retail's container at 0xce0: fn_44_A5D0 resizes it to two zero ints in the constructor
+  // (asm 0xA5B4) and nothing ever reads them.
+  int mUnusedZeros[2];                        // 0xce0
   CSfxHandle mLoopSfx[2];                     // 0xce4/0xce8: idle, move
   CVector3f mTargetPos;                       // 0xcec
   CVector3f mModelScale;                      // 0xcf8
@@ -363,6 +366,6 @@ private:
   uchar x960_[0x3e0]; // path find searches, surface alignment, nav, line of sight, flags
 #endif
 };
-CHECK_SIZEOF(CMinorIng, 0xd40)
+CHECK_SIZEOF(CMinorIng, 0xd48)
 
 #endif

@@ -28,13 +28,13 @@ port names it once per run, so the log says which body is missing. The names are
 
 | retail function | size | why the host does not have it |
 |---|---|---|
-| `fn_44_9D58` | 0x878 | the retail constructor: the host builds `CMinorIng` with its own ctor and the loader fills `CMinorIngData` through the generated `SLdrMinorIng` reader |
 | `fn_44_110` | 0x844 | the retail loader reads the REL's own binary format; the host reads the generated `SLdrMinorIng` |
 | `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are read by the host's loader now, but the spawn itself is not ported |
 
-`fn_44_97E4` (the destructor) and `fn_44_34B0` (the ray) were stand-ins and are
-ported now: the destructor is the host's member destruction (the retail's body is
-the members' own teardown) and the ray is `CMinorIng::RayDown`.
+`fn_44_97E4` (the destructor), `fn_44_34B0` (the ray) and `fn_44_9D58` (the constructor) were
+stand-ins and are ported now: the destructor is the host's member destruction (the retail's body is
+the members' own teardown), the ray is `CMinorIng::RayDown` and the constructor fills the members
+in the retail's order, so the stored state matches.
 
 ## The inglet's data (modelled)
 
@@ -96,8 +96,7 @@ host's `CIngSpotData` copy is the class's own, so those two take no marker.
 
 The retail's constructor (fn_44_9D58, 0x878) builds the actor and calls four module
 functions. The host builds `CMinorIng` with its own constructor, so the body itself
-takes no marker (the check finds the flag bits the retail's constructor clears and the
-host's does not), but its parts are:
+takes no marker, but its parts are:
 
 | retail function | size | the host's part |
 |---|---|---|
@@ -105,6 +104,24 @@ host's does not), but its parts are:
 | `fn_44_A5D0` | 0x74 | a vector resize; the host's `rstl::vector` does it |
 | `fn_44_A680` | 0x184 | a vector of float pairs for the two animation states; the host's `CPatternedInfo` holds them |
 | `fn_44_A9DC` | 0x19C | the copy of the data block into the actor; the host's `CMinorIngData` is its own shape, so the copy is the member's own |
+
+What the retail's constructor fills, in its order (the host does the same):
+
+- the two hit-effect tokens (asm 0x9EB0 for the normal one, asm 0xA02C for the heavy one) with
+  their "is set" bytes at 0x94c and 0x95c; a valid asset id locks the token, an invalid one leaves
+  it empty. The host's `rstl::optional_object< TLockedToken< CGenDescription > >` carries both.
+- the path find search (asm 0xA108: the null area, 0x301, the patterned info's pathfinding index
+  and 1.0/1.0 from the rodata at 0x44), the point search, the surface helper and the ing-spot
+  navigation.
+- the form (asm 0xA198) and the ten ids (asm 0xA1B8-0xA204): the retail stores 0xffff in each.
+- the two-int container at 0xce0: `fn_44_A5D0` resizes it to two zero ints (asm 0xA5B4). Nothing
+  reads them; the retail's destructor (asm 0x9820) and `fn_44_396C` (asm 0x39A4) only test the
+  container for emptiness, which is never the case after the constructor. The host keeps the two
+  zeros as `mUnusedZeros`.
+- the health tracker at 0xd14: the retail reads the patterned info's health (asm 0xA1BC reads the
+  `CPatternedInfo`'s health at +0x54), not the actor's own health info.
+- the flag bytes: the retail clears every flag of 0xd3d (asm 0xA284-0xA2DC) and every flag of
+  0xd3e (asm 0xA2E4-0xA330), most significant bit first.
 
 ## The functions that are still not ported
 
@@ -262,10 +279,12 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
   the constructor's body and in `IsMoveClear` do that, so those blocks are not
   covered by the check.
 - `fn_44_9D58` (the retail constructor) is not checked at all: the host's
-  constructor is the host's own, and it calls four module functions that are not
-  ported (`fn_44_AB78`, `fn_44_A5D0`, `fn_44_A680`, `fn_44_A9DC`), so it cannot
-  carry a marker. The same holds for `fn_44_110` (the loader) and `fn_44_7058`
-  (the massive death).
+  constructor is the host's own, so it carries no marker. It fills the same members in the
+  same order as the retail's, so the stored state matches. The same holds for
+  `fn_44_110` (the loader) and `fn_44_7058` (the massive death).
+- The container at 0xce0 is two zero ints in the host (`mUnusedZeros`); the check reports two
+  `CMP` findings for it (`fn_44_396C` and `fn_44_97E4` test it for emptiness, which the retail's
+  vector never is after the constructor). They are completeness findings, not correctness ones.
 - The retail `RELMain` (the module entry at 0xC0) cannot be marked: asmcheck
   looks a function up by its `fn_<id>_<offset>` name or by a bare offset, and the
   module's entry is a named symbol.
