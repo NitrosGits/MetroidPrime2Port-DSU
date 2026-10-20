@@ -114,6 +114,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -558,9 +559,9 @@ void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {
 // target id in the field at guest this+0xBCC (the store at 0x0000AE44) and marks the animation
 // state "ready" (the store at 0x0000AE48). On update (the guest's message 1, 0x0000AE0C) it asks
 // the animation state whether the alert command may be issued - the guest's ShouldRetry with the
-// command id 0x10 (0x0000AE58), which is the host's pas::kAS_Taunt - and, when it may, delivers
-// the attack pattern (the DeliverCmd calls at 0x0000AEAC and 0x0000AF10). On deactivate (the
-// guest's message 2, 0x0000AF40) the animation state goes back to "not ready".
+// command id 0x10 (0x0000AE58), which is the host's pas::kAS_Taunt - and, when it may, makes the
+// commando taunt (the DeliverCmd calls at 0x0000AEAC and 0x0000AF10). On deactivate (the guest's
+// message 2, 0x0000AF40) the animation state goes back to "not ready".
 void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -570,11 +571,18 @@ void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   case kStateMsg_Update: {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
-      // 0x0000AEAC / 0x0000AF10: the guest delivers the attack pattern command; the host's base
-      // has no attack pattern to deliver, so the call is a stand-in. The guest picks between two
-      // variants with the body controller's field at +0x580 (0x0000AE6C); without that field
-      // there is nothing to pick between.
-      StandInFn("CPatterned::DeliverAttackPattern (the guest's command 0x15)");
+      // 0x0000AE68..0x0000AE74: the body controller's field at +0x580 picks the taunt: the
+      // relaxed taunt (kTT_Two, the li r0, 2 at 0x0000AE90) while the actor is relaxed, the
+      // other one (kTT_Four, the li r0, 4 at 0x0000AEF4) otherwise. That field is the body
+      // controller's locomotion type: the DOL's SetLocomotionType (fn_800F73EC) is the single
+      // "stw r4, 0x580(r3)" that writes it, and 1 is the relaxed locomotion.
+      const pas::ETauntType type = BodyController()->GetLocomotionType() == pas::kLT_Relaxed
+                                       ? pas::kTT_Two
+                                       : pas::kTT_Four;
+      // 0x0000AEAC / 0x0000AF10: the taunt command itself; the guest's stores at the command
+      // manager's +0x2B0 and +0x2B4 (0x0000AEC0 and 0x0000AED0) are the command id and the
+      // taunt type, which is what the host's DeliverCmd does with the command.
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(type));
     }
     break;
   }
