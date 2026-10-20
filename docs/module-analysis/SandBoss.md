@@ -748,8 +748,18 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   ~95% of the completed peeks log `all 32x64 pixels are zero` *on frames where `[sbdraw]` proves
   the boss was drawn with destination alpha 80*; the few non-zero peeks hold a small object
   (86-88 pixels of one id). So the histogram is empty nearly every frame. That is the next thing
-  to fix, in `extern/aurora` (`GXSetDstAlpha`/`alphaUpdate` -> pipeline, and what the peek's copy
-  reads), not in this module.
+  to fix, in `extern/aurora`, not in this module.
+  (e) **Cause of the empty peeks** (code reading of the vendored Aurora; no run yet): the port
+  emulates `GXSetDstAlpha` as a *multiply*, where the console *forces* the value.
+  `to_blend_state` (`extern/aurora/lib/gx/gx.cpp:166-175`) sets the alpha blend to
+  `{Add, srcFactor Constant, dstFactor Zero}` and `pipeline.cpp:37-40` sets the blend constant to
+  `dstAlpha/255`, so the pixel alpha ends up `shaderAlpha * dstAlpha/255` — an opaque actor material
+  whose TEV alpha is 0 writes alpha 0, not 80. The read-back half of the path is sound
+  (`PortScanTarget::Request` -> `GXRequestScanPeek` -> `queue_scan_peek` on the current pass ->
+  `scan_peek::encode` copying byte 3 of the same `g_frameBuffer` texture the draws wrote, after the
+  pass end). A fix has to make the alpha the constant regardless of the source alpha — e.g. a
+  per-draw immediate that forces the fragment alpha to 1.0 when `dstAlpha != UINT32_MAX` — and
+  needs its own verification across areas, because `GXSetDstAlpha` is engine-wide.
   Newly `// @`: none.
 - **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
   here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
