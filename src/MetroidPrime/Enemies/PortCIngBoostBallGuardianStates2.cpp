@@ -989,64 +989,57 @@ void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, floa
   }
 }
 
-// fn_30_7390 (this module).
-// fn_29_5CB0 (not yet exercised in a run)
+// fn_30_7390: the module's own Dead. Activate restores the speed the ctor saved (0x11A8). Forms
+// 0/1 are deleted; the ing spot, the body projectile and the evaporating form leave the boost
+// puddle mode, drop the target/orbit materials, explode with the death effect and play the death
+// sound; the corporeal form and the form changes burn away through CPatterned::Dead (this module
+// has no burning-flag skip and no hit-cooldown store, unlike the Ing REL's fn_29_5CB0).
 void CIngBoostBallGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Dead");
+    mSpeed = mInitialSpeed; // 0x000073C8: 0x3C8 = 0x11A8
   }
-  if (mForm == 0 || mForm == 1) {
+  if (mForm == kForm_Host || mForm == kForm_ControllingHost) {
     if (msg == kStateMsg_Activate) {
-      DeathDelete(mgr);
+      DeathDelete(mgr); // 0x00007590
     }
     return;
   }
-  // 0x00005CFC: the ing spot, the body projectile and the evaporating form die on the Activate
-  // message: the target and orbit materials go, the death effect explodes, the death sound plays.
   if (mForm == kForm_IngSpot || mForm == kForm_BodyProjectile || mForm == kForm_Evaporate) {
     if (msg != kStateMsg_Activate) {
       return;
     }
-    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00005D18: 0x28/0x29
-    if (mDeathEffect) {
+    SetBoostPuddleMode(false);                   // 0x00007404: fn_30_3068
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00007418: 0x28/0x29
+    if (mDeathEffect) {                          // 0x0000741C: 0x104C
       mgr.AddObject(rs_new CExplosion(
           *mDeathEffect, mgr.AllocateUniqueId(),
           CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
-          rstl::string_l("Ing death Fx"), GetTransform(), 0, mModelScale, CColor::White(), -1));
+          rstl::string_l("Ing death Fx"), GetTransform(), 0, GetModelData()->GetScale(),
+          CColor::White(), -1)); // 0x00007504
     }
-    // 0x00005E68: AddEmitter(sfx, position, 0x7f, area, true, false, kMedPriority)
-    CSfxManager::AddEmitter(mData.mIngSpot.GetDeathSound(), GetTranslation(), 0x7f,
+    CSfxManager::AddEmitter(mData.mIngSpot.GetDeathSound(), GetTranslation(), 0x7f, // 0x0000756C
                             GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
-    DeathDelete(mgr);
+    DeathDelete(mgr); // 0x00007578
     return;
   }
-  // 0x00005E8C: the corporeal form (2) and the form changes (6 and up) burn away; the base class
-  // gets its own death message first.
-  CPatterned::Dead(mgr, msg, dt);
-  // 0x00005EA4/0x00005EAC: two of CPatterned's flags (0x421's bits 13 and 14) skip the burn. They
-  // are the pair the Ing's own death handler tests at 0x0000B478 before it clears the vertical
-  // movement bit, which the host's CPatterned::Death gates on its burning flags.
-  if (mBurning || mLaggedBurnDeath) {
-    return;
-  }
+  CPatterned::Dead(mgr, msg, dt); // 0x000075A8
   if (msg == kStateMsg_Activate) {
-    mDeadFade = 2.f; // 0x00005EE4: rodata_74
-    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00005EE8: 0x28/0x29
-    mDamageCooldownTimer = CPatterned::skDamageHitTime; // 0x00005EF4: 0x448
+    mDeadFade = 2.f;                             // 0x000075DC: 0x11C8, rodata_78
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x000075E0
   } else if (msg == kStateMsg_Update) {
-    mAlphaDelta = 0.f; // 0x00005F14: 0x40c
-    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), dt); // 0x00005F1C
-    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) { // 0x00005F28
+    mAlphaDelta = 0.f;                                                     // 0x00007600: 0x40C
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), dt); // 0x00007608
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) {        // 0x00007614
       const CVector3f scale = GetModelData()->GetScale();
-      const float z = scale.GetZ() - dt / 0.75f; // rodata_F4
-      // The scale is always written, its z clamped at zero (0x00005F74).
-      ModelData()->SetScale(CVector3f(scale.GetX(), scale.GetY(), z > 0.f ? z : 0.f));
+      const float z = scale.GetZ() - dt / 0.75f; // rodata_FC
+      ModelData()->SetScale(CVector3f(scale.GetX(), scale.GetY(), z > 0.f ? z : 0.f)); // 0x0000766C
       if (z <= 0.f) {
-        mDeadFade -= dt; // 0x00005FA0
-        mRenderModel = false; // 0x00005FAC: 0xe5d bit 7
-        mIngSpotBlobVisible = false; // 0x00005FB8: 0xe5d bit 5
+        mDeadFade -= dt;             // 0x00007690
+        mRenderModel = false;        // 0x0000769C: 0x11EC bit 0
+        mIngSpotBlobVisible = false; // 0x000076A8: 0x11ED bit 6
       }
-      if (mDeadFade <= 0.f) { // 0x00005FCC
+      if (mDeadFade <= 0.f) { // 0x000076BC
         DeathDelete(mgr);
       }
     }

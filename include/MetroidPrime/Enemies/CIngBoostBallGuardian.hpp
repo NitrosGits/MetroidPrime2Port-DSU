@@ -525,6 +525,7 @@ private:
   float mFrustrationTimer;                               // CIng: 0xE44
   float mBallCooldown;                                   // CIng: 0xE48
   float mHitReactionTime;                                // CIng: 0xE4C
+  float mInitialSpeed; // guest 0x11A8: mSpeed at construction (ctor 0x0000FD64); Dead restores it
   float mLightBlend;                                     // guest 0x11C4 (CIng: 0xE50)
   float mDeadFade;                                       // CIng: 0xE54
   float mBodyProjectileTime;                             // CIng: 0xE58

@@ -262,6 +262,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mFrustrationTimer(0.f)
 , mBallCooldown(0.f)
 , mHitReactionTime(0.f)
+, mInitialSpeed(mSpeed) // ctor 0x0000FD4C/0x0000FD64
 , mLightBlend(1.f) // ctor 0x0000FDA4: 0x11C4
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
