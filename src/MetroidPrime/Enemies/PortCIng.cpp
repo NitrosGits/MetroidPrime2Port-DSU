@@ -466,6 +466,11 @@ void CIng::CreateCollisionActorManager(CStateManager& mgr) {
   // string, the halfword, the float and the matrix), fn_29_F1A0 (0xC0) grows the array and
   // fn_29_3568 (0x84) destroys it. The host's rstl::vector of CJointCollisionDescription is the
   // same structure, so the push below is that step.
+  // @ fn_29_33CC (0x38, asm 0x33CC): the joint vector's push.
+  // @ fn_29_3404 (0x20, asm 0x3404) and @ fn_29_3424 (0x28, asm 0x3424): the element's build.
+  // @ fn_29_344C (0xC0, asm 0x344C): the element's copy constructor.
+  // @ fn_29_F1A0 (0xC0, asm 0xF1A0): the array's growth.
+  // @ fn_29_3568 (0x84, asm 0x3568): the array's destruction.
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(7);
   const CAnimData* anim = GetAnimationData();
@@ -487,7 +492,7 @@ void CIng::CreateCollisionActorManager(CStateManager& mgr) {
       CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
 }
 
-// fn_29_3014: every collision actor takes the Ing's health info and CPatterned's own damage
+// @ fn_29_3014: every collision actor takes the Ing's health info and CPatterned's own damage
 // vulnerability. The health copy itself is the retail's fn_29_313C (0x54, asm 0x313C): the three
 // floats, the word and the two halfwords of the health, then the two more halfwords and the byte -
 // the host's `*actor->HealthInfo() = *HealthInfo()` is the same copy. Retail calls `GetDamageVulnerability__10CPatternedCFv` directly (not through the
@@ -507,11 +512,12 @@ void CIng::SetupCollisionActors(CStateManager& mgr) {
       continue;
     }
     actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
+    // @ fn_29_313C (0x54, asm 0x313C): the health info copy.
     *actor->HealthInfo() = *HealthInfo();
   }
 }
 
-// fn_29_2AE0 (0x90): the retail's default damage info. It clears the four floats (the damage, the
+// @ fn_29_2AE0 (0x90): the retail's default damage info. It clears the four floats (the damage, the
 // radius damage, the radius and the knock-back), the three sound ids and the two flag bits (the
 // no-immunity bit 7 and the apply-radius-damage bit 6 of the byte at 0x1a), and sets the weapon
 // mode's word to 0xffff0000 - the type 0xffff (none) in the high half and the low 13 bits, which
@@ -661,7 +667,7 @@ void CIng::LogState(const char* name) {
 
 // ---- helpers --------------------------------------------------------------------------------
 
-// fn_29_372C (its only caller is SetTargetDest, fn_29_5B60)
+// @ fn_29_372C (its only caller is SetTargetDest, fn_29_5B60)
 void CIng::JoinTeam(CStateManager& mgr) {
   if (mTeamId == kInvalidUniqueId) {
     mTeamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -733,7 +739,7 @@ CScriptAIHint* CIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   return TCastToPtr< CScriptAIHint >(mgr.ObjectById(id));
 }
 
-// fn_29_4560 (retail always passes 0xd72, mCoverHintId).
+// @ fn_29_4560 (retail always passes 0xd72, mCoverHintId).
 void CIng::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id) {
   if (CScriptAIHint* hint = GetCoverHint(mgr, id)) {
     hint->SetInUse(false);
@@ -742,7 +748,7 @@ void CIng::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id) {
   id = kInvalidUniqueId;
 }
 
-// fn_29_4510: the picked hint goes in use and becomes both the current and the last cover hint.
+// @ fn_29_4510: the picked hint goes in use and becomes both the current and the last cover hint.
 void CIng::UseCoverHint(CScriptAIHint& hint) {
   hint.SetInUse(true);                    // asm 0x00004534
   mCoverHintId = hint.GetUniqueId();      // asm 0x0000453C: 0xd72
@@ -848,6 +854,7 @@ CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   return aim;
 }
 
+// @ fn_29_2270 (0x1A4, asm 0x2294): the ing spot's idle and move sounds.
 // Which loop plays in which form, and the emitter parameters: the idle loop in the ing-spot form
 // while still, the move loop while moving on the surface (fn_29_2270, read 2026-10-20).
 void CIng::UpdateLoopSfx() {
@@ -878,6 +885,7 @@ void CIng::UpdateLoopSfx() {
   }
 }
 
+// @ fn_29_2194 (asm 0x2194): the sounds stop.
 void CIng::StopSfx() {
   for (int i = 0; i < 2; ++i) {
     if (mLoopSfx[i]) {
@@ -1462,7 +1470,7 @@ void CIng::SpawnExitHostSmoke(CStateManager& mgr) {
   }
 }
 
-// fn_29_1A80: turn to the lure safe zone (0xd78) when one is set, else to the target (0xd6c).
+// @ fn_29_1A80: turn to the lure safe zone (0xd78) when one is set, else to the target (0xd6c).
 // The offset is taken horizontally (z of the delta is zeroed) and only applied when its magnitude
 // is safe; the actor's own z is kept. Called by BecomeCorporeal's Activate.
 void CIng::FaceLureOrTarget(CStateManager& mgr) {
@@ -1653,7 +1661,7 @@ void CIng::UpdateLight(CStateManager& mgr, float dt) {
   light->SetLight(point);
 }
 
-// fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, with the
+// @ fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, with the
 // caller's prediction time in f1). False when the target id is empty; the caller then keeps
 // whatever it had. Every caller passes rodata_6C (0.0f) except the body projectile's flight, which
 // passes rodata_B4 (0.5f) - asm 0x00008054 loads it just before the call at 0x0000806C.
@@ -3111,14 +3119,14 @@ void CIng::ExpelGrappledBall(CStateManager& mgr, float) {
   mMoving = false;        // 0xe5d bit 1
 }
 
-// fn_29_3C58: the touch box is a fixed 5x5x1.5 box on the Ing's position, neither scaled nor
+// @ fn_29_3C58: the touch box is a fixed 5x5x1.5 box on the Ing's position, neither scaled nor
 // rotated (rodata_CC -2.5, rodata_C8 2.5, rodata_6C 0, rodata_8C 1.5; asm 0x00003C88-0x00003CE4).
 void CIng::UpdateTouchBox() {
   const CVector3f pos = GetTranslation();
   mTouchBox = CAABox(pos + CVector3f(-2.5f, -2.5f, 0.f), pos + CVector3f(2.5f, 2.5f, 1.5f));
 }
 
-// fn_29_1C2C: the lure zone is dropped unless it is an active safe zone of type 2 (0x3f0); no
+// @ fn_29_1C2C: the lure zone is dropped unless it is an active safe zone of type 2 (0x3f0); no
 // kInvalidUniqueId guard, the lookup fails for it (asm 0x00001C50-0x00001C80).
 void CIng::ValidateLureZone(CStateManager& mgr) {
   const CScriptSafeZone* zone =
@@ -3143,7 +3151,7 @@ void CIng::Think(float dt, CStateManager& mgr) {
     return;
   }
   EnsureBodyActive(mgr);
-  // fn_29_3B50 (asm 0x3B7C-0x3BA8): 0xe40 is the time the body has spent in the locomotion state
+  // @ fn_29_3B50 (asm 0x3B7C-0x3BA8): 0xe40 is the time the body has spent in the locomotion state
   // (the body controller's state id 5, read at 0x37c); it is cleared whenever the body is in any
   // other state. The retail then only updates the body controller and the animation while the
   // timer is below rodata_C8 (2.5f) - the host's CPatterned::Think does both unconditionally, so
@@ -3163,6 +3171,7 @@ void CIng::Think(float dt, CStateManager& mgr) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
   mLineOfSight.Update(dt, mgr);
+  // @ fn_29_432C (0x13C, asm 0xC770): the module's own timers.
   // The retail's Think (fn_29_C654) also calls fn_29_432C (0x13C, asm 0xC770), the module's own
   // timers: the heard-shot and the arm-swipe and the form timers rise by dt (0xe30, 0xe38, 0xe3c),
   // the body-projectile timer only rises in the form 4 (0xe58), the frustration timer only rises
