@@ -60,7 +60,7 @@ Code functions: IncrementMisses 25F4, SetSplashRotation 5C30, ShreddersOn 2590, 
 
 ### Stage1 host body (`src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp`, 2026-10-20)
 
-Behaviour port, not matching. `// @ fn_78_<off>` marks the 54 functions a traced LAYER3 run
+Behaviour port, not matching. `// @ fn_78_<off>` marks the 105 functions the traced LAYER3 runs
 exercised (see the runtime status below); ported-but-unexercised bodies carry no marker. Unclear
 reads are `// TODO(uncertain)`. `tools/modules_port.txt` points `SwampBossStage1` at this file.
 
@@ -122,38 +122,47 @@ descriptor's taunt type is 6 (4AA8 → B9D0); projectile+0x19c is `CWeapon::mCur
 stores `mskNullBox` and −1000 in 0xb40/0xd0c (AA50/AE04); `SetBossParams` gets the initial HP
 (*GetHealthInfo() = +0).
 
-### Stage1 runtime status (2026-10-20)
+### Stage1 runtime status (2026-10-20, second pass)
 
 Traced runs in `04_swamp_temple_dark` with `LAYER3@200+4` (forced layer), MP2_GODMODE, a temporary
-per-function trace/state probe (never committed), the player driven through the debug console.
+per-function trace/state probe (never committed), the player driven through the debug console:
+`/tmp/opencode/sb1_kill.sh` (aimed shots), `sb1_lowhp.sh` (low-HP phase run), `sb1_dead.sh` (kill);
+`sb1_markers.py` writes the markers from a run's trace list.
 
-- **Runs:** 0 `[port] caught`, 0 `[reach-stub]`, `exit=0`.
+- **Runs:** 0 `[port] caught`, 0 `[reach-stub]`. The splash-cycle run and the low-HP run end
+  `exit=0`; the kill run ends on the harness wall clock (`exit=124`) with no signal.
 - **Spawn:** u05bb / editor 002001c1 at (−166.1, −123.7, 86.0), inactive until `Activate`; then all
   16 joint collision actors exist (joint HP 10000, initial 0).
-- **Attack cycle:** the FSM loops SplashWait (−1) ↔ Bob (1) → SplashRise/Jump/Descend (7) →
-  SplashTelegraph (8) and back; `Spit`, `LaunchShockWave`, `StartTelegraph`/`UpdateRing`,
-  `ShreddersOn/Off`, `Rumble`, `Swim`, `SetBeachMaterials`/`SetJointsActive` all run.
-- **Damage path:** close-range volleys (≤15 units from a joint) reach `ApplyDamageMsg` and move the
-  boss 1200 → 1199; the body joints are reflect outside the vulnerable window, so those hits land
-  at the reflect's 1 point. `SplashJump`'s Activate sets `kAllJoints` to `kJF_Vulnerable` (and its
-  Deactivate back to `kJF_Reflect`), so retail damage comes from shooting the leap. 260 s of
-  continuous fire from the arena ring (46 units out, state 7 three times) did not reach a joint at
-  all, so the harness only lands hits from close range — the kill is scripted-aim work, not a port
-  gap.
-- **Not reached:** Beach, ExposeBelly, PlatformReady, TongueLoop/TonguePull, Vomit,
-  HeavyHitReact, Dead. Two harness limits and two config facts:
-  - Phase 0's attack slots are `0,0,0,2` (first..fourth), so `ShouldBeach` (`CurrentAttack() == 1`)
-    never fires in phase 0 in retail either; the splash cycle is what the disc asks for at 1200 HP,
-    and the phase only advances below 50 HP.
-  - `ReadyToTongue` is behind `xbf8_platformTime >= 0.65`, and that clock only accrues in
-    PlatformReady (state 4), i.e. the tongue belongs to the Beach → PlatformReady → TongueLoop
-    chain. It also needs the player inside the arena `CScriptAIHint` (type 21) within its radius;
-    the only hint (u05b4) sits 1.7 units from the boss centre, and the player teleported around it
-    never stayed inside (`PlayerInsideHint` logged 0 at 24–36 units out).
-  - Console `damage` cannot stand in for a shot: `ApplyDamageMsg` needs a `CGameProjectile` as the
-    joint's last toucher, so a damaged joint with no projectile does nothing to the boss.
-- **Counted markers:** the runs traced 54 functions (48 markers kept, 6 added for triggers the run
-  evaluated); every ported-but-unexercised body carries none.
+- **States reached:** SplashWait (−1) ↔ Bob (1) → SplashRise/Jump/Descend (7) → SplashTelegraph (8)
+  at full health; and, at low health, Beach (0) → BeachBubbles/BeachWait/BeachRise → Dive (2),
+  PlatformReady (4), TongueLoop (9) → TonguePull (5) (the whole tongue: launch, tip ray, pull,
+  orbit lock, retract, render), Vomit (10), StopBeaching, Null, ResetPlatform and Dead.
+- **Phase gate (this is what unlocks the second half):** `ScheduleNextAttack` advances the phase
+  while `HP < CurrentPhase().unknown_0x98106ee2`; phase 1 was entered at 540 HP and phase 2 at 1 HP.
+  Phase 0's attack slots are `0,0,0,2`, so `ShouldBeach` (`CurrentAttack() == 1`) never fires at
+  1200 HP in retail either. Below 600 HP the beach/tongue/vomit attacks are what the disc asks for.
+- **The tongue needs the player inside the arena hint:** `ReadyToTongue` is behind
+  `xbf8_platformTime >= 0.65`, which only accrues in PlatformReady, and PlatformReady's trigger
+  needs the player inside the arena `CScriptAIHint` (type 21). The only hint (u05b4) sits 1.7 units
+  from the boss centre; parking the player there with `tp` every iteration (`PlayerInsideHint` →
+  true) is what made the whole chain fire — the first pass never stayed inside it.
+- **Shooting: the beam does not reach the joints.** `aim` puts the view where asked (sampled beam
+  positions match the requested yaw/pitch to under a degree) but only 9 of 588 aimed shots from 4
+  units delivered a joint hit, each 1.00 damage. `CBeamProjectile`'s per-frame
+  `RayCollisionCheckWithWorld` runs 50+ units through the boss and its joint spheres without a hit,
+  so damage only comes through the beam's touch box. Until that ray path is fixed a retail kill is
+  out of reach, and the death runs use the console's `damage` verb (the same knob the Stage 2 and
+  SandBoss runs used). Disc damage figures from `gpTweakPlayerGun`: power 2/50, dark 15/50, light
+  20/10, annihilator 12/80 (normal/charged), missile 30.
+- **`damage` is capped per call:** 1160 applied as 580, so the harness steps it in a loop.
+- **Not reached:** ExposeBelly, HeavyHitReact, LightHitReact, SlideIntoWater, and the HeavyHit /
+  LightHit triggers — all of them need a real hit to land. `ShouldExposeBelly` is evaluated but the
+  state never runs because `xd10_bellyAccum` never moves without damage.
+- **Counted markers:** 105 `// @ fn_78_<off>`, every one from a trace list (52 added in this pass).
+  `fn_78_A5A8` was dropped: `tools/port_progress.py` reports it as not a function in any module's
+  `symbols.txt`, and the min-health test is `fn_78_6548` (the FSM trigger). `BodyTaunt` is
+  `fn_78_B9D0`; `SetLocomotion` and `JointActor` are host helpers with no retail function of their
+  own.
 
 ## Stage2 (module 79) — verified
 

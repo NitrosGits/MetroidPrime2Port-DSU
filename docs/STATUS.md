@@ -3,7 +3,33 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-19 (twenty-eighth session): widescreen HUD spread, the MP1 way
+## 2026-10-20 (twenty-ninth session): SwampBoss Stage 1 walked to Dead, and the beam does not hit joints
+
+- **`decomp/swampboss` (worktree `wt-mp2-swampboss`).** The console gained `aim <yaw> <pitch>`
+  (`PortMouse::SetAimAngles`), cherry-picked from `decomp/ing` `6ad804a12` and committed here as
+  `4d1864f8e` so the two branches merge once, not twice. It places the view outright because retail
+  free look wants the look button held and `PortInput::Hold` replaces the held state, so `press`
+  cancelled every `cstick`.
+- **Stage 1 (Chykka Larva) is walked through its whole FSM.** `912ff29d9`: 52 more `// @ fn_78_*`
+  markers, 105 of 251. Phase 0 only asks for the splash cycle; below ~600 HP (`damage` is capped at
+  580 per call) the beach/tongue/vomit attacks are what the disc picks, and `PlatformReady ->
+  TongueLoop` also needs the player inside the arena `CScriptAIHint` - parking on it with `tp` is
+  what made the tongue chain run. Reached: Beach/BeachBubbles/BeachWait/BeachRise, Dive,
+  PlatformReady, TongueLoop, TonguePull, Vomit, StopBeaching, Null, ResetPlatform, Dead. Not
+  reached: ExposeBelly, the two hit reacts, SlideIntoWater and the Heavy/Light hit triggers - all
+  need a real hit to land.
+- **Found: the player's beam cannot damage a joint.** With `aim` the shot direction is exact
+  (sampled beam positions match the requested yaw/pitch to under a degree), yet 9 of 588 aimed
+  shots from 4 units hit, each 1.00 damage. `CBeamProjectile`'s `RayCollisionCheckWithWorld` runs
+  50+ units through the boss and its collision spheres without a hit, so damage only arrives via
+  the beam's touch box. This is a port bug, not a boss bug: it applies to every beam in the game,
+  and until it is fixed no boss can be killed retail-style in a harness. Numerals for the next
+  session: power beam 2/50, dark 15/50, light 20/10, annihilator 12/80, missile 30.
+- Gates on the marked runs: 0 `[port] caught`, 0 `[reach-stub]`, `exit=0`; `gen_files_cmake.py
+  --check` rc 0; the changes are `platform/` and one port-only `Port*.cpp`, so the matching build is
+  untouched by construction.
+
+
 
 - **`6ae31083e`, merged `f209d2f97`:** MP1's widescreen HUD. A first attempt spread widgets by their
   x position and detached the energy number from its bar; that was thrown away. MP1's mechanism is a
