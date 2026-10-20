@@ -65,7 +65,7 @@ DOL's own symbols, so the table also says what is *not* overridden: slot 4 is
 `CPatterned::PreThink`, slot 19 `Touch`, slot 38 `Death`, slot 39 `KnockBack`, slot 60
 `SetupStateMachine`, slot 70 `IsScanVisorSelfRender`.
 
-The **33 local overrides** (slot → function) are the ones listed in the function map above:
+The **32 local overrides** (slot → function) are the ones listed in the function map above:
 2 `fn_10_1EF38` (dtor) · 3 `TypesMatch__10CDarkSamusCFi` · 5 `fn_10_1B1FC` · 6 `fn_10_1E89C` ·
 9 `fn_10_18AB8` · 10 `fn_10_17F04` · 11 `fn_10_18964` · 15 `fn_10_0` · 16 `fn_10_100DC` ·
 18 `fn_10_F5C0` · 20 `fn_10_10358` · 21 `fn_10_10210` · 24 `fn_10_F84C` · 28 `fn_10_1BEFC` ·
@@ -76,9 +76,11 @@ The **33 local overrides** (slot → function) are the ones listed in the functi
 
 Slots **82..173** are not vtable entries: 92 further function pointers (`fn_10_F840`, `fn_10_1BB08`,
 `fn_10_62B4`, ... `fn_10_FE18`) sit inside the same label. They are the module's own state-machine
-tables (the count objects `lbl_10_data_0`..`lbl_10_data_5C` hold 0x3B, 0x20, 0x32, 0x14, 0x21,
-0x23, 0x14 - the trigger/state/code counts) [probable: the 82-entry prefix matches the chain
-exactly, so the tail is the module's own tables].
+tables. The count objects in front of the vtables are `lbl_10_data_0`..`lbl_10_data_3C` - 16 words
+holding 0x3B, 0x20, 0x32, 0x14, 0x2F, 0x21, 0x23, 0x14, 0x3B, 0x14, 0x20, 0x31, 0x3B, 0x14,
+0x3B, 0x14 - the trigger/state/code counts (`lbl_10_data_40` starts the CScattershotProjectile
+vtable) [probable: the 82-entry prefix matches the chain exactly, so the tail is the module's own
+tables].
 
 ## 2. CDarkSamus members (`CHECK_SIZEOF 0x1128`)
 

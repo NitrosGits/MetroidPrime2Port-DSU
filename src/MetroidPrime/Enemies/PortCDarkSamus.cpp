@@ -156,7 +156,7 @@ CVector3f CDarkSamus::GetAimPosition(const CStateManager& mgr, float dt) const {
 }
 
 // vtable slot 24 = fn_10_F84C (0x18): the byte at guest this+0xCD0 picks the response - 0x6A when
-// it is 1, 0x2E otherwise (`cmplwi r3, 0x1` at 0x0000F860, the two `li` at 0x0000F868/0x0000F874).
+// it is 1, 0x2E otherwise (`cmplwi r0, 0x1` at 0x0000F854, the two `li` at 0x0000F850/0x0000F85C).
 EWeaponCollisionResponseTypes CDarkSamus::GetCollisionResponseType(const CVector3f& position,
                                                                    const CVector3f& direction,
                                                                    const CWeaponMode& mode,
@@ -246,10 +246,10 @@ static CEntity* PortLoadDarkSamus(CStateManager& mgr, CInputStream& input, CEnti
     return nullptr;
   }
 
-  // The 60 properties the REL's own switch reads (fn_10_CF44's dispatch tree) are exactly the
-  // ids of the generated SLdrDarkSamus reader, so the reader above already read all of them.
-  // The host keeps them in one block; the fields are named after the property they come from and
-  // nothing in this milestone reads them.
+  // The 63 property ids the REL's own switch reads (fn_10_CF44's dispatch tree) are exactly the
+  // ids of the generated SLdrDarkSamus reader, so the reader above already read all of them. The
+  // host keeps the 60 data ones in one block; the fields are named after the property they come
+  // from and nothing in this milestone reads them.
   CDarkSamusData data;
   data.mUnknown72EDEB7D = sldrThis.unknown_0x72edeb7d;
   data.mUnknown74FA22F0 = sldrThis.unknown_0x74fa22f0;

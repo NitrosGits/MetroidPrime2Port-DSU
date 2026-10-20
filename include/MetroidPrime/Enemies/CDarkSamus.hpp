@@ -17,7 +17,9 @@
 // plus about fifty stack arguments, and the constructor spreads them over the sub-objects it
 // builds (0x94C, 0x9A4, 0x9E0, 0xA0C, 0xA4C, 0xA88, 0xAC0, 0xB50, 0xCD0, 0xD74, 0xDF0, 0xE10,
 // 0xEF0, 0xF68, 0xF80, 0x1064). The host therefore keeps them in one struct, one member per
-// property, named after the property it holds. Nothing in milestone 1 reads the values: the class
+// property (60 of the 63 ids: the editor properties, the patterned AI typedef and the actor
+// parameters are the three the loader passes on separately), named after the property it holds.
+// Nothing in milestone 1 reads the values: the class
 // holds them for the state machine the later milestones add. The guest offsets the constructor
 // writes them to are in docs/module-analysis/DarkSamus.md.
 struct CDarkSamusData {
@@ -148,7 +150,7 @@ struct CDarkSamusData {
 
 // The REL's CDarkSamus (module 10): the dark Samus boss. 0x1128 bytes on the GameCube (the
 // loader's __nw__FUlPCcPCc at 0x0000DA78), built by fn_10_1FA14; its vtable lbl_10_data_CBC
-// (174 words, 33 local overrides) and the analysis are docs/module-analysis/DarkSamus.md.
+// (174 words, 32 local overrides) and the analysis are docs/module-analysis/DarkSamus.md.
 //
 // Milestone 1 (this file's first slice) is load-and-think: the loader, the constructor and the
 // accessors the vtable gives one-line bodies, so the actor registers, takes kSM_Create and thinks.
@@ -228,7 +230,7 @@ private:
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
   CPathFindSearch mPathFindSearch; // guest 0x7C0 (0xEC): fn_10_CE4C returns this+0x7C0
-  CDarkSamusData mData;            // host only: the loader's 63 properties (see above)
+  CDarkSamusData mData;            // host only: the loader's 60 data properties (see above)
   uchar mGuestCD0;                 // guest 0xCD0, the first byte of the sub-object fn_10_E560
                                    // builds; fn_10_F84C reads it to pick the collision response
 #else
