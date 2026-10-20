@@ -556,6 +556,43 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
       .bindGroups = cache.bindGroups,
       .dstAlpha = state.dstAlpha,
   });
+
+  // An alpha-blended draw under GXSetDstAlpha keeps its TEV alpha for the colour blend, so the draw
+  // above wrote tevAlpha * dstAlpha/255 into the EFB alpha. The console writes the constant: a
+  // fading actor in the scan visor otherwise ramps its id through other objects' palettes and the
+  // reticle locks onto them (CMinorIng surfacing). Redraw the same fragments alpha-only, with the
+  // forced alpha and no blend; LESS/GREATER become LEQUAL/GEQUAL so the pass survives the depth
+  // the draw above may have written.
+  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate) {
+    PipelineConfig alphaConfig = cache.config;
+    alphaConfig.blendMode = GX_BM_NONE;
+    alphaConfig.blendFacSrc = GX_BL_ONE;
+    alphaConfig.blendFacDst = GX_BL_ZERO;
+    alphaConfig.blendOp = GX_LO_COPY;
+    alphaConfig.colorUpdate = false;
+    alphaConfig.depthUpdate = false;
+    if (alphaConfig.depthFunc == GX_LESS) {
+      alphaConfig.depthFunc = GX_LEQUAL;
+    } else if (alphaConfig.depthFunc == GX_GREATER) {
+      alphaConfig.depthFunc = GX_GEQUAL;
+    }
+    DrawImmediateData alphaImmediates = immediates;
+    alphaImmediates.forceDstAlpha = 1u;
+    gfx::push_draw_command(DrawData{
+        .pipeline = gfx::pipeline_ref(alphaConfig),
+        .vertRange = vertRange,
+        .idxRange = idxRange,
+        .uniformRange = cache.uniformRange,
+        .immediateData = alphaImmediates,
+        .vtxCount = vtxCount,
+        .indexCount = numIndices,
+        .instanceCount = instanceCount,
+        .bindGroups = cache.bindGroups,
+        .dstAlpha = state.dstAlpha,
+    });
+    // The next draw must not merge its vertices into this alpha pass instead of the draw above.
+    state.dirty |= DirtyPipeline;
+  }
 }
 
 static void handle_draw_unmerged(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange) noexcept {
