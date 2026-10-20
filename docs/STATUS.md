@@ -25,7 +25,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `614a8ed72` (m1 accepted) | reached stand-ins <=0x100 |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 | EmperorIngStage1 (Opus) | `ses_ea6700b83ffeiYYMVx9wazyiAs` | decomp/emperoring @ `87f405931` (42 collision actors exist) | fn_16_3D64, TrackPlayer 7C28, BeginHeartStage 78AC, onward; fold x7d4_/mJoints |
-| Agon black render (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | investigation; fix branch `fix/agon-black` if small | 08_sand_casualpirates normal view renders black |
+| Agon black render (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | fix/agon-black (wt-mp2-spacepirate worktree) | cause: Aurora copy-clear wipes the whole EFB (CVisorFlare::UpdateOcclusion clear=true); doing the GX-faithful rect clear in Aurora instead of the 447e47a64 workaround |
 
 Accepted, not yet merged (next batch: merge, build, smoke): ing `618c7e8f5`, playerturret `614a8ed72`, emperoring `87f405931`, commandopirate
 up to `b53f44229`, spacepirate `a9ba3f157` (Render/ScanVisorRender done), emperoring3 `528919371`, swampboss `59637cee5`;
