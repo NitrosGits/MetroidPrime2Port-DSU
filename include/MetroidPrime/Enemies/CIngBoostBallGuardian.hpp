@@ -260,6 +260,13 @@ public:
   CProjectileInfo* ProjectileInfo() override { return nullptr; }
   // @ fn_30_4C
   bool IsOnGround() const override { return mOnGround; } // 0x0000004C: 0x34C 0x08
+  // @ fn_30_64
+  const rstl::optional_object< TCachedToken< CGenDescription > >&
+  GetDeathExplosionParticle() const override {
+    return CPatterned::GetDeathExplosionParticle(); // 0x00000064: this + 0x754
+  }
+  // @ fn_30_18
+  float GetDeathTimeScale() const override { return 1.f; } // 0x00000018: rodata_64, no burn scale
 
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;

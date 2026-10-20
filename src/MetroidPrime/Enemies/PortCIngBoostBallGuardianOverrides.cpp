@@ -437,24 +437,23 @@ void CIngBoostBallGuardian::Render(const CStateManager& mgr) const {
     }
     return;
   }
-  CPatterned::Render(mgr);
+  if (form == kForm_IngSpot || form == kForm_Evaporate) {
+    if (mBodyState5Time < 2.5f && mDrawParticles) { // 0x0000D474: 0x11BC < rodata_E0; 0x421 0x01
+      uint mask = 0;
+      uint target = 0;
+      mgr.GetCharacterRenderMaskAndTarget(mask, target); // 0x0000D4AC
+      const CParticleDatabase& db = GetModelData()->GetAnimationData()->GetParticleDB();
+      db.RenderSystemsToBeDrawnFirstPOICheck(mask, target); // 0x0000D4C4
+      db.RenderSystemsToBeDrawnLastPOICheck(mask, target);  // 0x0000D4DC
+    }
+  }
 }
 
-// The Ing's GetDamageVulnerability (the Ing REL's fn_29_BF20).
+// Unlike the Ing's, this module's slot 14 never picks a form's vulnerability: the guardian's own
+// hits go through its collision actors (fn_30_30E4 / fn_30_3190 give them theirs).
+// @ fn_30_D230
 const CDamageVulnerability* CIngBoostBallGuardian::GetDamageVulnerability() const {
-  if (mForm == kForm_BodyProjectile) {
-    return CPatterned::GetDamageVulnerability();
-  }
-  if (mForm == kForm_IngSpot) {
-    // The Ing returns the grapple block's vulnerability while it holds the player; this module has
-    // no grapple block (its data block has no grapple properties), so the ing-spot vulnerability
-    // stands in for the grappled case too.
-    return &mData.mIngSpotVulnerability;
-  }
-  // The Ing's fallback is its trigger vulnerability (mData.mTriggerVulnerability). This module's
-  // data block has no trigger vulnerability - SLdrIngBoostBallGuardianData has no such property -
-  // so the ing-spot vulnerability stands in.
-  return &mData.mIngSpotVulnerability;
+  return &CDamageVulnerability::ImmuneVulnerabilty(); // 0x0000D23C: fn_800DBB60
 }
 
 // fn_30_CFC4: the module's GetAimPosition (CPhysicsActor's vtable slot 0x54), the Ing's
