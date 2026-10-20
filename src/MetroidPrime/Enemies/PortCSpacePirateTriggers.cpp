@@ -713,12 +713,11 @@ bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) 
 }
 
 // fn_72_52F8. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
-// Retail: the leash timer (0xbb0) is compared with the trigger's float argument and the
-// comparison result is the answer - the asm takes CR0's equal bit (fcmpo + mfcr +
-// extrwi ..., 1, 1), so the trigger is true when the timer is exactly the argument. MP1 returns
-// "timer > argument" instead.
+// Retail: the leash timer (0xbb0) against the trigger's float argument. `fcmpo cr0` + `mfcr` +
+// `extrwi r3, r0, 1, 1` takes CR bit 1, cr0's GT bit (LT is bit 0, EQ bit 2), so the trigger is
+// "timer > argument", as in MP1.
 bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
-  const bool result = xbb0_leashTimer == data.GetFloat();
+  const bool result = xbb0_leashTimer > data.GetFloat();
   TraceCall(*this, "Leash trigger", result ? 1 : 0);
   return result;
 }
