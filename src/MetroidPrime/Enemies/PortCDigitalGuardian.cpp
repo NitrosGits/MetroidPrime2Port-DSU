@@ -625,7 +625,7 @@ void CDigitalGuardian::x61DC_(CStateManager& mgr) {
     const CJointCollisionDescription& desc = xE60_->GetCollisionDescFromIndex(i);
     const TUniqueId id = desc.GetCollisionActorId();
     CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
-    if (actor == nullptr) {
+    if (actor == nullptr) { // the TCastToPtr test at 0x652C
       continue;
     }
     if (x44F8_(desc.GetName(), id)) {
@@ -691,7 +691,7 @@ void CDigitalGuardian::x5C30_(CStateManager& mgr) {
   for (uint i = 0; i < xE64_->GetNumCollisionActors(); ++i) {
     const TUniqueId id = xE64_->GetCollisionDescFromIndex(i).GetCollisionActorId();
     CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
-    if (actor == nullptr) {
+    if (actor == nullptr) { // the TCastToPtr test at 0x5E84
       continue;
     }
     actor->SetDamageVulnerability(x1044_);
@@ -714,7 +714,7 @@ void CDigitalGuardian::x59BC_(CStateManager& mgr) {
     const CJointCollisionDescription& desc = xE60_->GetCollisionDescFromIndex(i);
     const TUniqueId id = desc.GetCollisionActorId();
     CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
-    if (actor == nullptr) {
+    if (actor == nullptr) { // the TCastToPtr test at 0x5A0C
       continue;
     }
     if (x4408_(id)) {
