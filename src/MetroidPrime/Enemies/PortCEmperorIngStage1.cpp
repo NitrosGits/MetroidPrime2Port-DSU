@@ -19,6 +19,7 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
 
 #include "Kyoto/Animation/CPASAnimParm.hpp"
@@ -570,19 +571,78 @@ void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
   }
 }
 
-// fn_16_2B68 (0x2B68..0x2C3C): builds the joint description from the three animation ids. Too
-// big for the slice's rule, so it stays a stand-in.
+// fn_16_2B68 (0x2B68..0x2C3C): the joint description is filled in - the owner (0x2B6C), the
+// radius (0.2B88, 0.0f from lbl_16_rodata_380), the index and the three animation ids
+// (0x2B98..0x2BA4), the time and the damage hit time (0x2BA8, 0x2BAC) and the speed (0x2BB0),
+// the flag byte with its six bits cleared (0x2BB4..0x2BF8), the state (0x2BFC), the id
+// (0x2C04, kInvalidUniqueId) and the zero and up vectors (0x2C08..0x2C34).
 void CEmperorIngStage1::BuildTentacleJoint(int index, int animId1, int animId2, int animId3) {
-  StandInFn("fn_16_2B68");
+  mJoint.mOwner = this;
+  mJoint.mRadius = 0.f;
+  mJoint.mIndex = index;
+  mJoint.mAnimId1 = animId1;
+  mJoint.mAnimId2 = animId2;
+  mJoint.mAnimId3 = animId3;
+  mJoint.mTime = 0.f;
+  mJoint.mDamageHitTime = CPatterned::skDamageHitTime;
+  mJoint.mSpeed = 0.f;
+  // The flag byte keeps its low two bits: the retail clears 0x80 (0x2BB4), 0x40 (0x2BC0), 0x20
+  // (0x2BCC), 0x10 (0x2BD8), 0x08 (0x2BE4) and 0x04 (0x2BF0) one bit at a time.
+  mJoint.mFlags &= 0x03;
+  mJoint.mState = 0;
+  mJoint.mId = kInvalidUniqueId;
+  mJoint.mPosition = CVector3f::Zero();
+  mJoint.mUp = CVector3f::Up();
 }
 
-// fn_16_1E6C (0x1E6C..0x1F34): the joint's own work. Too big for the slice's rule, so it stays a
-// stand-in.
-void CEmperorIngStage1::AddTentacleJoint(CStateManager& mgr) { StandInFn("fn_16_1E6C"); }
+// fn_16_1E6C (0x1E6C..0x1F34): the tentacle actor gets the module's health info (the copy at
+// 0x1EB8..0x1F04 takes the module's guest 0xAAC..0xAC8) and then its materials (fn_16_1F34 at
+// 0x1F14).
+void CEmperorIngStage1::AddTentacleJoint(CStateManager& mgr) {
+  CCollisionActor* actor = GetTentacleActor(mgr, mJoint.mIndex);
+  if (actor != nullptr) {
+    *actor->HealthInfo() = mHealthInfo;
+  }
+  UpdateTentacleMaterials(mgr, 1);
+}
 
-// fn_16_3984 (0x3984..0x3A14): adds the joint to the vector at guest 0x7D4. Too big for the
-// slice's rule, so it stays a stand-in.
-void CEmperorIngStage1::AddTentacleJointToVector() { StandInFn("fn_16_3984"); }
+// fn_16_1F34 (0x1F34..0x1FC0): the tentacle actor's materials - kMT_Target (0x28), kMT_Orbit
+// (0x29), kMT_SeekerTarget (0x3F) and kMT_ExcludeFromRadar (0x39) are added when the flag's low
+// byte is not zero (the asm's clrlwi at 0x1F6C keeps the low byte of the flag) - 0x1F74..0x1F8C -
+// and removed when it is (0x1F90).
+void CEmperorIngStage1::UpdateTentacleMaterials(CStateManager& mgr, uint flag) {
+  CCollisionActor* actor = GetTentacleActor(mgr, mJoint.mIndex);
+  if (actor == nullptr) {
+    return;
+  }
+  if ((flag & 0xff) != 0) {
+    actor->AddMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, kMT_ExcludeFromRadar, mgr);
+  } else {
+    actor->RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, kMT_ExcludeFromRadar, mgr);
+  }
+}
+
+// fn_16_3984 (0x3984..0x39CC): the joint is added to the vector at guest 0x7D4 - the element is
+// written (0x39A8) and the count is raised (0x39B4). The retail's vector grows (fn_16_39CC,
+// 0xDC); the port's holds the eight tentacle slots, so it never has to.
+void CEmperorIngStage1::AddTentacleJointToVector() {
+  GrowTentacleJointVector();
+  mJoints.mJoints[mJoints.mCount] = mJoint;
+  mJoints.mCount += 1;
+}
+
+// fn_16_39CC (0x39CC..0x3AA8): the vector's growth. Too big for the slice's rule, so it stays a
+// stand-in - the port's vector holds the eight tentacle slots, so it never has to grow.
+void CEmperorIngStage1::GrowTentacleJointVector() { StandInFn("fn_16_39CC"); }
+
+// fn_16_3AA8 (0x3AA8..0x3AFC): the tentacle's collision actor - the owner's first collision actor
+// manager (guest 0x7C8) holds five joint descriptions per tentacle (the index is scaled by five
+// at 0x3AB4), the description's collision actor id (at +0x3C) is looked up in the state manager
+// and cast to a collision actor. Too big for the slice's rule, so it stays a stand-in.
+CCollisionActor* CEmperorIngStage1::GetTentacleActor(CStateManager& mgr, int index) {
+  StandInFn("fn_16_3AA8");
+  return nullptr;
+}
 
 // vtable slot 7 = fn_16_52FC (0x20): the retail override is the base class's own PreRender.
 void CEmperorIngStage1::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }

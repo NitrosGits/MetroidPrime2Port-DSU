@@ -50,9 +50,12 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_30C8` | 0x278 | the three tentacle animation ids | [proven] |
 | `fn_16_36E8` | 0x29C | the tentacle joint descriptions (eight slots) | [proven] |
 | `fn_16_337C` | 0x184 | fills a CPASAnimParmData's parm list - the port's own constructor does this | [probable] |
-| `fn_16_2B68` | 0xD4 | builds the joint description from the three animation ids | [?] |
-| `fn_16_1E6C` | 0xC8 | the joint's own work | [?] |
-| `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [?] |
+| `fn_16_2B68` | 0xD4 | fills the joint description in | [proven] |
+| `fn_16_1E6C` | 0xC8 | gives the tentacle actor the module's health info, then its materials | [probable] |
+| `fn_16_1F34` | 0x20 | the tentacle actor's materials | [proven] |
+| `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [proven] |
+| `fn_16_3AA8` | 0x54 | the tentacle's collision actor (the owner's first manager, five joints per tentacle) | [probable] |
+| `fn_16_39CC` | 0xDC | the joint vector's growth | [?] |
 | `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
 | `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
 | `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
@@ -374,6 +377,33 @@ fn_16_337C (0x184) fills the parm list of a CPASAnimParmData, which the port's o
 that build and add the joint are too big and stay stand-ins: fn_16_2B68 (0xD4), fn_16_1E6C (0xC8)
 and fn_16_3984 (0x90).
 
+### The joint work (fn_16_2B68, fn_16_1E6C, fn_16_3984)
+
+**fn_16_2B68** (0x2B68..0x2C3C) fills a joint description in (the retail element is 0x48 bytes
+and the module has its own type, so the port has its own struct): the owner (0x2B6C), the radius
+(0x2B88, 0.0f from lbl_16_rodata_380), the index and the three animation ids (0x2B98..0x2BA4),
+the time and the damage hit time (0x2BA8, 0x2BAC, the latter CPatterned::skDamageHitTime), the speed
+(0x2BB0), the flag byte with its six high bits cleared (0x2BB4..0x2BF8: 0x80, 0x40, 0x20, 0x10, 0x08
+and 0x04; the low two bits stay), the state (0x2BFC), the id (0x2C04, kInvalidUniqueId) and the
+zero and up vectors (0x2C08..0x2C34).
+
+**fn_16_1E6C** (0x1E6C..0x1F34) finds the tentacle's collision actor (fn_16_3AA8) and copies the
+module's health info into its (0x1EB8..0x1F04 take the module's guest 0xAAC..0xAC8), then calls
+fn_16_1F34 with the flag 1 (0x1F14).
+
+**fn_16_1F34** (0x1F34..0x1FC0) adds the materials kMT_Target (0x28), kMT_Orbit (0x29),
+kMT_SeekerTarget (0x3F) and kMT_ExcludeFromRadar (0x39) to the tentacle actor when the flag is
+set (0x1F74..0x1F8C) and removes them when it is not (0x1F90).
+
+**fn_16_3984** (0x3984..0x39CC) adds the joint to the vector at guest 0x7D4: the retail's vector
+grows first (fn_16_39CC, 0xDC - too big, so it stays a stand-in) and the count is raised
+(0x39B4); the port's vector holds the eight tentacle slots, so it never grows.
+
+**fn_16_3AA8** (0x3AA8..0x3AFC) finds the tentacle's collision actor: the owner's first collision
+actor manager (guest 0x7C8) holds five joint descriptions per tentacle (the index is scaled by five
+at 0x3AB4), the description's collision actor id (at +0x3C) is looked up in the state manager and
+cast to a collision actor. It is 0x54 bytes, just over the slice's line, so it stays a stand-in.
+
 ### The message switch (fn_16_7CE8, vtable slot 4)
 
 The base's own handler runs first (the call at 0x7D14), then the message decides:
@@ -471,6 +501,10 @@ triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM doe
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
 CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+
+With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
+descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC) and the
+tentacle actor lookup (fn_16_3AA8), both stand-ins, and nothing faults.
 
 With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
 fills the three animation ids (guest 0xA20, 0xA24 and 0xA28) and the eight joint slots, and the

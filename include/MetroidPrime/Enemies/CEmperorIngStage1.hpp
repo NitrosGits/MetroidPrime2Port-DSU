@@ -43,6 +43,52 @@ struct CEmperorIngStage1Tentacle {
   int x28_;   // guest +0x28: 0 = retracted, 1 or 2 = out (fn_16_1DFC, fn_16_4BD4)
 };
 
+class CEmperorIngStage1;
+
+// The module's own joint description (the retail element is 0x48 bytes; the member names are
+// guesses from what the code does with them).
+struct CEmperorIngStage1Joint {
+  CEmperorIngStage1Joint()
+  : mOwner(nullptr)
+  , mRadius(0.f)
+  , mIndex(0)
+  , mAnimId1(0)
+  , mAnimId2(0)
+  , mAnimId3(0)
+  , mTime(0.f)
+  , mDamageHitTime(0.f)
+  , mSpeed(0.f)
+  , mFlags(0)
+  , mState(0)
+  , mId(kInvalidUniqueId)
+  , mPosition(CVector3f::Zero())
+  , mUp(CVector3f::Up()) {}
+
+  CEmperorIngStage1* mOwner;  // +0x00
+  float mRadius;              // +0x04
+  int mIndex;                 // +0x08
+  int mAnimId1;               // +0x0C
+  int mAnimId2;               // +0x10
+  int mAnimId3;               // +0x14
+  float mTime;                // +0x18
+  float mDamageHitTime;       // +0x1C
+  float mSpeed;               // +0x20
+  uchar mFlags;               // +0x24
+  int mState;                 // +0x28
+  TUniqueId mId;              // +0x2C
+  CVector3f mPosition;        // +0x30
+  CVector3f mUp;              // +0x3C
+};
+
+// The module's own joint vector (the retail one is a count at +0x00 and the elements at +0x04,
+// 0x48 bytes each). The port's holds the eight tentacle slots.
+struct CEmperorIngStage1JointVector {
+  CEmperorIngStage1JointVector() : mCount(0) {}
+
+  int mCount;                          // +0x00
+  CEmperorIngStage1Joint mJoints[8];   // +0x04
+};
+
 class REL_EXPORT CEmperorIngStage1 : public CPatterned {
 public:
   // Argument order is the REL loader's call at 0x0000A51C (fn_16_A2A0 -> fn_16_900C): uid,
@@ -138,11 +184,19 @@ private:
   void SetupTentacleCollisions(CStateManager& mgr);
   // fn_16_36E8: the tentacle joint collision descriptions.
   void SetupTentacleJoints(CStateManager& mgr);
-  // fn_16_2B68 / fn_16_1E6C / fn_16_3984: the joint description and the joint vector at guest
-  // 0x7D4. Too big for the slice's rule, so they stay stand-ins.
+  // fn_16_2B68: the joint description is filled in.
   void BuildTentacleJoint(int index, int animId1, int animId2, int animId3);
+  // fn_16_1E6C: the tentacle actor gets the module's health info and its materials.
   void AddTentacleJoint(CStateManager& mgr);
+  // fn_16_1F34: the tentacle actor's materials.
+  void UpdateTentacleMaterials(CStateManager& mgr, uint flag);
+  // fn_16_3984: the joint is added to the vector at guest 0x7D4.
   void AddTentacleJointToVector();
+  // fn_16_39CC: the vector's growth. Too big for the slice's rule, so it stays a stand-in.
+  void GrowTentacleJointVector();
+  // fn_16_3AA8: the tentacle's collision actor. Too big for the slice's rule, so it stays a
+  // stand-in.
+  CCollisionActor* GetTentacleActor(CStateManager& mgr, int index);
   // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
   CActor* GetTargetActor(CStateManager& mgr) const;
   // fn_16_2FA8: the collision actor of the second tentacle's collision actor manager.
@@ -213,6 +267,8 @@ private:
   float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
   float xa5c_;                        // guest 0xA5C, 0.0f: the "Telegraph" effect timer
   float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
+  CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)
+  CEmperorIngStage1JointVector mJoints; // the joint vector at guest 0x7D4 (fn_16_3984)
   CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
   TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target
 };
