@@ -234,7 +234,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 1AEC | CSandBoss::GetStampedeDelay | [proven] host body |
 | 1B94 | CSandBoss::ShouldRepeaterAttackCheck (counts active safe zones) | [proven] host body |
 | 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [proven] host body (caller: DarkBeamAttack AC68) |
-| 1D74 | CSandBoss::RotateHelper1D74 | [ported] host body, not exercised yet |
+| 1D74 | CSandBoss::RotateHelper1D74 | [proven] host body (sbAx2) |
 | 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [proven] host body |
 | 2030 | CSandBoss::RotateHelper2030 | [proven] host body |
 | 22E4 | CSandBoss::RotateToPlayerStep | [proven] host body |
@@ -255,9 +255,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [proven] host body |
 | 44CC | CSandBoss::FireDarkBeam (mgr, dt) | [proven] host body |
 | 4C60 | CSandBoss::HandleScreenShake | [proven] host body |
-| 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
+| 51BC | CSandBoss::DestroySphereHelper | [proven] host body (sbAv/sbAw) |
 | 528C | CSandBoss::HandleGroundImpact | [proven] host body |
-| 560C | CSandBoss::CrackSphere | [ported] host body, not exercised yet |
+| 560C | CSandBoss::CrackSphere | [proven] host body (sbAv) |
 | 595C | CSandBoss::CountAttachedSiblings | [proven] host body |
 | 58B4 | CSandBoss::CollectAttachedSiblings (attached ids) | [proven] host body |
 | 59E4 | CSandBoss::NoSiblingHasSphereLocked | [proven] host body |
@@ -269,7 +269,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 5FEC | CSandBoss::HandleObjectDrop | [proven] host body |
 | 6250 | CSandBoss::SphereStateHelper6250 (CPlayer&) | [proven] host body |
 | 62E4 | CSandBoss::SphereStateHelper62E4 (dt, CPlayer&) -> bool | [proven] host body |
-| 6434 | CSandBoss::SphereStateHelper6434 (dt) | [ported] host body, not exercised yet |
+| 6434 | CSandBoss::SphereStateHelper6434 (dt) | [proven] host body (sbAv) |
 | 64E4 | CSandBoss::Helper64E4 | [proven] host body |
 | 6698 | CSandBoss::UpdateArmorResponseTypes | [proven] host body |
 | 6960 | CSandBoss::SetArmorPieceState | [proven] host body |
@@ -296,7 +296,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 8CB4 | CSandBoss::ProbeDarkBeam | [proven] host body |
 | 8D24 | CSandBoss::ProbeTripleCharge | [proven] host body |
 | 8D94 | CSandBoss::ProbeDoubleCharge | [proven] host body |
-| 8E18 | CSandBoss::SetCinematicStateExitSphere | [proven] host body |
+| 8E18 | CSandBoss::SetCinematicStateExitSphere | [proven] host body (sbAv) |
 | 8E24 | CSandBoss::SetCinematicStateChoking | [proven] host body |
 | 8E30 | CSandBoss::SetCinematicStateStunned | [proven] host body |
 | 8E3C | CSandBoss::SetCinematicStateNormal | [proven] host body |
@@ -304,7 +304,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 8E54 | CSandBoss::SetCinematicStateUnderGround | [proven] host body |
 | 8E60 | CSandBoss::ResetAttackTimes | [proven] host body |
 | 8F88 | CSandBoss::ResetHeadArmorHP | [proven] host body |
-| 8F94 | CSandBoss::PlayHeadArmorExplosion | [ported] host body, not exercised yet |
+| 8F94 | CSandBoss::PlayHeadArmorExplosion | [proven] host body (sbAy2) |
 | 917C | CSandBoss::EndStampede | [proven] host body |
 | 9190 | CSandBoss::BeginStampedeCode | [proven] host body |
 | 91A4 | CSandBoss::PreventSyncAttacks | [proven] host body |
@@ -330,15 +330,15 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | A9DC | CSandBoss::RepeaterAttack | [proven] host body |
 | AC68 | CSandBoss::DarkBeamAttack | [proven] host body |
 | AED8 | CSandBoss::SpitOutBall | [proven] host body |
-| B06C | CSandBoss::JumpOffSphere | [ported] host body, not exercised yet |
-| B2D8 | CSandBoss::DestroySphere | [ported] host body, not exercised yet |
+| B06C | CSandBoss::JumpOffSphere | [proven] host body (sbAu) |
+| B2D8 | CSandBoss::DestroySphere | [proven] host body (sbAv) |
 | B544 | CSandBoss::BallInMouth | [proven] host body |
 | B658 | CSandBoss::SuckBall | [proven] host body |
 | B718 | CSandBoss::SuckAir | [proven] host body |
 | B98C | CSandBoss::RotateToPlayer | [proven] host body |
 | BAAC | CSandBoss::AttachToSphere | [proven] host body |
-| BD30 | CSandBoss::Deactivate | [ported] host body, not exercised yet |
-| BDAC | CSandBoss::Dead | [ported] host body, not exercised yet |
+| BD30 | CSandBoss::Deactivate | [proven] host body (sbAu) |
+| BDAC | CSandBoss::Dead | [proven] host body (sbAw) |
 | BEA4 | CSandBoss::UnderGround | [proven] host body |
 | BF64 | CSandBoss::Recover | [proven] host body |
 | BFF8 | CSandBoss::SyncAttachToSphere | [proven] host body |
@@ -347,7 +347,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | C154 | CSandBoss::HeadArmorDestroyed | [proven] host body |
 | C174 | CSandBoss::IsLastStage | [proven] host body |
 | C188 | CSandBoss::IsBallInSuckRange | [proven] host body |
-| C1CC | CSandBoss::IsFacingPlayer | [ported] host body, not exercised yet |
+| C1CC | CSandBoss::IsFacingPlayer | [ported] host body, not exercised yet (the FSM asset never references it) |
 | C258 | CSandBoss::ShouldDestroySphere | [proven] host body |
 | C2A0 | CSandBoss::ShouldSnapJaws | [proven] host body |
 | C378 | CSandBoss::ShouldDoubleCharge | [proven] host body |
@@ -363,8 +363,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | CA84 | CSandBoss::IsUnderGround | [proven] host body |
 | CA90 | CSandBoss::StateOver | [proven] host body |
 | CAA4 | CSandBoss::SetupStateMachine | [proven] host body |
-| CB30 | CSandBoss::ScanVisorRender | [proven] host body |
-| CC84 | CSandBoss::GetScanVisorRenderBounds | [proven] host body |
+| CB30 | CSandBoss::ScanVisorRender | [ported] host body, not exercised yet (scan visor untested) |
+| CC84 | CSandBoss::GetScanVisorRenderBounds | [ported] host body, not exercised yet (scan visor untested) |
 | CDB0 | CSandBoss::GetScannableObjectInfo | [proven] host body |
 | CDF0 | CSandBoss::ProjectileInfo | [proven] host body |
 | CDF8 | CSandBoss::GetAimPosition | [proven] host body |
@@ -630,6 +630,51 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   `A@620+8000`, FRAMES 9000, SECS 780, exit 0) lands the same two hits (the second between the
   frame 8400 and 8700 ticks)
   with an identical trace, so a longer hold adds no hits. Newly `// @`: none.
+- Slice 19 (2026-10-20, runs sbAu/sbAv/sbAw/sbAx2/sbAy2, same area/layer, `FRAMES=4000 SECS=420`,
+  all exit 0, 0 caught, 0 reach-stub): **the sphere-destroy / round / dead chain, `1D74` and `8F94`.**
+  `/tmp/opencode/sb7_run.sh` gained `MP2_SB_DIE=1|2|3` (while
+  `mgr.GetPlayer(0)->GetAttachedActorId() == GetUniqueId()`: set `mArmorDestroyed`; at 2 also clear every
+  other sibling's `mAttachedToSphere` so `CountAttachedSiblings() == 1` and `ShouldDestroySphere`
+  answers true; at 3 also force `mRound = 2` so `IsLastStage` answers true), `MP2_SB_B2=1` (set
+  `m165C_b2` on the first attached sibling), `MP2_SB_HEAD=2` (`mHeadArmorHP = 0.5` instead of 0) and a
+  `[sbinc]` line in `AcceptScriptMsg`'s `kSM_Increment` case (sender, `mRound` before/after,
+  `mWaitMode`).
+  (a) sbAu (`TOKENS='LAYER5@400,A@900+2500' MP2_SB_ROUND=2 MP2_SB_HEAD=1 MP2_SB_BALL=1 MP2_SB_BOMB=1
+  MP2_SB_HP=1 MP2_SB_HIT=1 MP2_SB_DIE=1 MP2_SB_DUMP=1`): three worms attached, so `ShouldDestroySphere`
+  (C258) answers false and the asset takes the `SetCinematicStateNormal` branch into `JumpOffSphere`
+  (B06C) on 0169 and 0183; each then sends `kSM_Increment` to itself (`[sbinc] uid=0183 from=0183
+  round 2 -> 3 wait=2`, the same for 0169, so `mRound` 2 -> 3) and enters `Deactivate` (BD30).
+  (b) sbAv (same baseline, `MP2_SB_DIE=2 MP2_SB_ROUND=1`): two worms start (cmd 0/1) and the held worm
+  0183 clears 01da's attachment, so `CountAttachedSiblings() == 1` and
+  `SetCinematicStateExitSphere` (8E18) -> `DestroySphere` (B2D8) runs, with `DestroySphereHelper` (51BC),
+  `SphereStateHelper6250`/`6434` and `CrackSphere` (560C) from the `kUE_DamageOn` animation event. The
+  deactivate's `kSM_Increment` loop then reaches all three siblings: 0183 self `round 1 -> 2`, 0169
+  `from=0183 round 1 -> 2` (`mWaitMode` 0, accepted), 01da `from=0183 round 1 -> 1` (`mWaitMode` 2,
+  ignored) — the retail round chain including the sender-id/`mWaitMode` gate. (The `MP2_SB_ROUND` knob
+  re-seeds `mRound` while fewer than three worms are attached, so the later `[sbdump]` ticks read 1
+  again; the `[sbinc]` before/after is the evidence.)
+  (c) sbAw (same baseline, `MP2_SB_DIE=3`): `ArmorDestroyed` (C148) -> `ShouldDestroySphere` (C258) true
+  -> `IsLastStage` (C174) true -> `RestorePlayerCollision` (9438) -> `Dead` (BDAC) -> `51BC`, then the
+  worm's destructor; the last-stage path sends no `kSM_Increment` and does not pass `Deactivate`.
+  (d) sbAx2 (after sbAx: `TOKENS='LAYER5@400,A@900+2500' MP2_SB_ROUND=1 MP2_SB_HP=1 MP2_SB_FAR=2
+  MP2_SB_B2=1 MP2_SB_DUMP=1`): `1D74`. sbAx itself was the same with `MP2_SB_HEAD=1 MP2_SB_BALL=1
+  MP2_SB_BOMB=1`, which parks the FSM in `Damaged` (`SuckAir`/`SpitOutBall`) where `RotateToPlayerStep`
+  (22E4) never runs at all in its trace; dropping the ball/head knobs and parking the player far instead
+  makes `RotateToPlayer` run every round, `RotateHelper254C` finds the flagged sibling and
+  `RotateHelper1D74` takes the two-sibling steer (`22E4 -> 254C -> 1D74`, also inside `DoubleCharge`).
+  (e) sbAy2 (after sbAy: `TOKENS='LAYER5@400,A@900+2500' MP2_SB_ROUND=1 MP2_SB_HEAD=2 MP2_SB_HP=1
+  MP2_SB_AIM=1 MP2_SB_HIT=1 MP2_SB_DUMP=1`): the **non-held** head branch fires. sbAy (no
+  `MP2_SB_HP`) never leaves the stampede, so its charged-beam hit lands on a stampede armour collider
+  (`[sbhit] col=016a delta=50.00 base=150.00 prev=100.00 att=0 sm=1`) and `Helper8008` is not called.
+  With the stampede HP forced the worm attaches, and `[sbhit] col=0184 delta=50.00 base=150.00
+  prev=100.00 att=1 sm=0` (0184 is the head collider, the player not held) reaches `Helper8008`'s else
+  branch, which takes `mHeadArmorHP` from the knob's 0.5 through 0 and calls `PlayHeadArmorExplosion`
+  (8F94).
+  Still unexercised: `IsFacingPlayer` (C1CC) is registered as a trigger but the dumped FSM graph
+  references it nowhere (§6), so no transition can ever evaluate it — only a direct call could; and the
+  scan-visor pair `ScanVisorRender`/`GetScanVisorRenderBounds` (CB30/CC84). The §4 rows for `8E18`,
+  `C174` and `CB30`/`CC84` disagreed with their source markers; the rows now follow the markers.
+  Newly `// @` (12): 1D74 51BC 560C 6434 C174 C258 8E18 8F94 B06C B2D8 BD30 BDAC.
 - **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
   here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
   `mData.stampedeProperties.breakStampedeHP` and reading it back as 150 (three worms, offset 4204 in
@@ -657,7 +702,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   reached are `HandleScreenShake` (4C60) and 528C; the FSM never evaluates an attack trigger, so the
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
-- Not tested: ASAN, the intro cinema path, the sphere-destroy/round chain (B2D8 B06C 560C 51BC BD30 BDAC), `1D74`.
+- Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
+  so only a direct call could run it), the scan-visor pair `CB30`/`CC84`, and the getter/render slots no
+  probe calls (0 64 6C 74 7C 8C 98 A4 AC BC 8740 88D0 89E8).
 
 ## 6. FSM2 graph (dumped from the loaded asset)
 

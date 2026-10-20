@@ -216,7 +216,7 @@ bool CSandBoss::ShouldSnapJaws(CStateManager& mgr, const CTriggerData&) const {
   return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), delta) < 0.5235987901687622f;
 }
 
-// fn_55_C258 (ported, not exercised yet)
+// @ fn_55_C258
 bool CSandBoss::ShouldDestroySphere(CStateManager& mgr, const CTriggerData&) const {
   return mAttachedToSphere && CountAttachedSiblings(mgr) == 1;
 }
@@ -246,7 +246,7 @@ bool CSandBoss::IsBallInSuckRange(CStateManager& mgr, const CTriggerData&) const
   return IsBallInRange(*player); // fn_55_5B38
 }
 
-// fn_55_C174 (ported, not exercised yet)
+// @ fn_55_C174
 bool CSandBoss::IsLastStage(CStateManager&, const CTriggerData&) const { return mRound == 2; }
 
 // @ fn_55_C154
@@ -308,7 +308,7 @@ void CSandBoss::UnderGround(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_BDAC (ported, not exercised yet)
+// @ fn_55_BDAC
 void CSandBoss::Dead(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
@@ -322,7 +322,7 @@ void CSandBoss::Dead(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_BD30 (ported, not exercised yet)
+// @ fn_55_BD30
 void CSandBoss::Deactivate(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Update && mStateMachine->GetTime() > 3.f) {
     mgr.DeleteObjectRequest(GetUniqueId());
@@ -464,7 +464,7 @@ void CSandBoss::BallInMouth(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_B2D8 (ported, not exercised yet)
+// @ fn_55_B2D8
 // DestroySphere: each update re-parks the held ball on the mouth, keeps the generate command going
 // (locomotion 0 once the body is in kAS_Generate) and pulses the choke flash for the first five
 // seconds. Start readies the animation, frees the sphere (fn_55_51BC) and sends kSS_Retreat; stop
@@ -501,7 +501,7 @@ void CSandBoss::DestroySphere(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_B06C (ported, not exercised yet)
+// @ fn_55_B06C
 // JumpOffSphere: the same update shape as DestroySphere with generate type 1. Start readies the
 // animation, marks the held ball (0x165D b3), breaks the player's orbit on this worm and drops the
 // orbit material; stop drops the animation, crouches, clears the attached-to-sphere and held-ball
@@ -1027,7 +1027,7 @@ void CSandBoss::BeginStampedeCode(CStateManager&, float) { mStampedeActive = tru
 // @ fn_55_917C
 void CSandBoss::EndStampede(CStateManager&, float) { mStampedeActive = false; }
 
-// fn_55_8F94 (ported, not exercised yet)
+// @ fn_55_8F94
 // Head-armour explosion at the Head_1 locator plus the IS02 waypoint taking the boss's transform.
 void CSandBoss::PlayHeadArmorExplosion(CStateManager& mgr, float) {
   const CTransform4f xf = GetLctrTransform(mHeadLocator); // 0xF08
@@ -1089,7 +1089,7 @@ void CSandBoss::SetCinematicStateStunned(CStateManager&, float) { mCinematicStat
 // @ fn_55_8E24
 void CSandBoss::SetCinematicStateChoking(CStateManager&, float) { mCinematicState = 5; }
 
-// fn_55_8E18 (ported, not exercised yet)
+// @ fn_55_8E18
 void CSandBoss::SetCinematicStateExitSphere(CStateManager&, float) { mCinematicState = 6; }
 
 // Helpers

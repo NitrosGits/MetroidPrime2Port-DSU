@@ -187,7 +187,7 @@ void CSandBoss::RotateToPlayerStep(CStateManager& mgr, const CVector3f& target,
   }
 }
 
-// fn_55_1D74 (ported, not exercised yet)
+// @ fn_55_1D74
 // Turns the point round one sibling's facing axis: when it is more than ten degrees (0.17453292 rad)
 // off that axis, the flattened delta is turned by its own angle about the local Z axis and the point
 // is put back at the same horizontal range along the turned direction, then faced. The side comes
@@ -779,7 +779,7 @@ void CSandBoss::HandleScreenShake(CStateManager& mgr, const rstl::string& locato
   }
 }
 
-// fn_55_51BC (ported, not exercised yet)
+// @ fn_55_51BC
 // The sphere is gone: take the DEAD/ATCH waypoint's transform, looking from this worm's origin at
 // it, so the post-destroy state starts from the sphere's frame.
 void CSandBoss::DestroySphereHelper(CStateManager& mgr) {
@@ -832,7 +832,7 @@ void CSandBoss::HandleGroundImpact(CStateManager& mgr, const rstl::string& locat
   }
 }
 
-// fn_55_560C (ported, not exercised yet)
+// @ fn_55_560C
 // Cracked sphere model: the sphere actor takes the round's cracked model (crackedSphere1..3 by
 // mRound) with its own model scale, then the ZERO script message goes out.
 void CSandBoss::CrackSphere(CStateManager& mgr) {
@@ -980,7 +980,7 @@ bool CSandBoss::SphereStateHelper62E4(float dt, CPlayer& player) {
   return false;
 }
 
-// fn_55_6434 (ported, not exercised yet)
+// @ fn_55_6434
 // Choke flash: the damage colour pulses between black and skDamageColor with |cos(pi t)| and the
 // damage-hit timer is restarted through TakeDamage (fn_55_4C only stores skDamageHitTime).
 void CSandBoss::SphereStateHelper6434(float dt) {
