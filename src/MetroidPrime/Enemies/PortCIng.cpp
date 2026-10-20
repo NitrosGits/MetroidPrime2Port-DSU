@@ -1483,11 +1483,78 @@ void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// [?] fn_29_7E30: the body-projectile flight is not ported; the state ends at once.
-void CIng::BodyProjectileFlight(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// fn_29_7E30 (not yet exercised in a run): the body projectile in flight. The launch point and the
+// flight direction are two file statics in the REL's bss, seeded on the first call (bss_10,
+// bss_20) from Zero() and Forward() and shared by every Ing; each Activate rewrites both.
+void CIng::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
+  static bool sInit = false;
+  static CVector3f sLaunchPoint;
+  static CVector3f sFlightDir;
+  if (!sInit) {
+    sLaunchPoint = CVector3f::Zero();
+    sFlightDir = CVector3f::Forward();
+    sInit = true;
+  }
+
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("BodyProjectileFlight");
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mSplat = false;             // 0xe5e bit 6
+    mProjectileFSMEntry = true; // 0xe5e bit 7
+    sLaunchPoint = GetLctrTransform(mEyeSegId).GetTranslation(); // 0xd7b
+    sFlightDir = CVector3f::Forward();
+    if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8
+      // The aim position is dropped by the model's height (scale.z, the REL's only non-zero scale
+      // term); a shot that points upwards keeps Forward() as its direction.
+      const CVector3f scale = GetModelData()->GetScale(); // 0x60, model data's first CVector3f
+      CVector3f aim = mTargetPos - sLaunchPoint;
+      aim.SetZ(aim.GetZ() - scale.GetZ());
+      if (aim.GetZ() < 0.f && aim.IsMagnitudeSafe()) {
+        sFlightDir = GetTransform().TransposeRotate(aim.AsNormalized()); // 0x24
+      }
+    }
+    mBodyProjectileSfx =
+        CSfxManager::AddEmitter(mData.mBodyProjectile.mSoundProjectile, GetTranslation(), 0x7f,
+                                GetCurrentAreaId().Value(), true, true,
+                                CSfxManager::kMedPriority); // 0x850
+    break;
+  }
+  case kStateMsg_Update:
+    if (mBodyProjectileSfx) {
+      CSfxManager::UpdateEmitter(mBodyProjectileSfx, GetTranslation(),
+                                 GetTransform().GetForward(), 0x7f);
+    }
+    if (mForm == kForm_BodyProjectile) {
+      if (dt > 0.f) {
+        // Once the state has been running longer than the drop time the flight starts falling: the
+        // steer vector loses gravity along z, and the whole velocity follows the steer vector.
+        if (StateMachineState().GetTime() > mData.mBodyProjectile.mDropTime) { // 0x858
+          sFlightDir.SetZ(sFlightDir.GetZ() - dt * GetGravityConstant());
+        }
+        MoveInOneFrameOR((dt * mData.mBodyProjectile.mSpeed) * sFlightDir, dt); // 0x854
+      }
+    } else if (dt > 0.f) {
+      // Any other form: the horizontal speed along the steer vector, plus a slow drift (10 units a
+      // second) back onto the launch point's height so the body still comes down where it started.
+      CVector3f velocity = (dt * mData.mBodyProjectile.mSpeed) * sFlightDir;
+      velocity.SetZ(0.f);
+      CVector3f drift(0.f, 0.f, sLaunchPoint.GetZ() - GetTranslation().GetZ()); // 0x5c = z
+      if (drift.IsMagnitudeSafe()) {
+        velocity += drift.AsNormalized() * (dt * 10.f);
+      }
+      MoveInOneFrameOR(velocity, dt);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    // Command 10 (lbl_29_data_C50's id word) is kBSC_ExitState.
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    if (mBodyProjectileSfx) {
+      CSfxManager::RemoveEmitter(mBodyProjectileSfx);
+      mBodyProjectileSfx.Clear(); // 0xd58 = 0
+    }
+    break;
+  default:
+    break;
   }
 }
 
