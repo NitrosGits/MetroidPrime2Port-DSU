@@ -50,6 +50,10 @@ TARGET_PC strip-diff CLEAN and the matching build's `fuzzy/matched` percentages;
 area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skipped makes it
 `STATUS: INCOMPLETE - <what>`.
 
+Run game runs in the foreground (with `timeout`). A lane that ends its turn waiting on a
+background job is never woken; it must report, not wait. Find and kill only the pids its own
+script launched (bracketed `pgrep -f` names); other lanes run the game at the same time.
+
 Lanes never write `// @` markers. A marker needs a run that exercised the function and a pass of
 the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
 compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
