@@ -11,6 +11,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 
 #include "Kyoto/Math/CTransform4f.hpp"
+#include "rstl/reserved_vector.hpp"
 #include "rstl/vector.hpp"
 
 class CCollisionActor;
@@ -200,6 +201,23 @@ private:
   CVector3f FlatFacing() const;
   // fn_18_1BD8: both hearts get the module's vulnerability at guest 0x86C.
   void SetHeartVulnerability(CStateManager& mgr) const;
+  // fn_18_B04: the stage record for the actor's health percentage (guest 0xB54..0xC98).
+  const SLdrEmperorIngStage3Stage& CurrentStage();
+  // fn_18_AA4: a stage's action record (0 stampede .. 6 dark flier), null past six.
+  static const SLdrEmperorIngStage3Action* StageAction(const SLdrEmperorIngStage3Stage& stage,
+                                                       int action);
+  // fn_18_458C, 431C, 4468, 4528, 44C4, 4344, 436C: whether ChoseAction may pick an action.
+  bool CanStampede(CStateManager& mgr) const;
+  bool CanJumpSlide(CStateManager& mgr) const;
+  bool CanLightSwarm(CStateManager& mgr) const;
+  bool CanDarkBeam(CStateManager& mgr) const;
+  bool CanLightBeam(CStateManager& mgr) const;
+  bool CanPortalAttack(CStateManager& mgr) const;
+  bool CanDarkFlier(CStateManager& mgr) const;
+  // fn_18_408: the heart ChangeVulnerability turns on (1 dark, 2 light), counted per heart.
+  int PickHeart(CStateManager& mgr);
+  // fn_18_27DC: the melee contact - the leg locators' box against the player's.
+  void MeleeContact(CStateManager& mgr);
   // fn_18_1C34: saves the first heart's vulnerability and makes both hearts immune.
   void SetHeartsImmune(CStateManager& mgr);
   // fn_18_2B68: the entry kinds for the list at guest 0x840.
@@ -271,6 +289,18 @@ private:
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
   int mX868_;                            // guest 0x868, -1: the heart that is on
   int x8a4_;                             // guest 0x8A4, -1: the dodge's step direction
+  float mX7d8_;                          // guest 0x7D8, 0.0f: the dark-flier timer (fn_18_E40)
+  rstl::reserved_vector< int, 8 > mActionHistory; // guest 0x7EC: the last actions ChoseAction picked
+  int mX89c_;                            // guest 0x89C, 0: the light-heart count (fn_18_408)
+  int mX8a0_;                            // guest 0x8A0, 0: the dark-heart count (fn_18_408)
+  int x8a8_;                             // guest 0x8A8, -1: the taunt type
+  int mX8e0_;                            // guest 0x8E0, 0: the portal attack's count (fn_18_508)
+  int mX8e4_;                            // guest 0x8E4, 0: the portal attack's portal, 0..3
+  float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
+  CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
+  float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime
+  SLdrEmperorIngStage3Stage mStages[4];  // guest 0xB54, 0xBC0, 0xC2C, 0xC98: the data's stage1..4
+  float mBaseTurnSpeed;                  // guest 0xE5C, the patterned info's turn speed
 };
 #endif
 
