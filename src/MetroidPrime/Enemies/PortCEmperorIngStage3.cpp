@@ -769,10 +769,12 @@ void CEmperorIngStage3::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
   }
 }
 
+// @ fn_18_9044
 // vtable slot 41 = fn_18_9044: the retail body is a single `blr` - the boss takes its damage in
 // the state machine, not here.
 void CEmperorIngStage3::TakeDamage(const CVector3f& direction, float magnitude) {}
 
+// @ fn_18_90
 // vtable slot 42 = fn_18_90: `li r3, 0x1` - the actor can be shot.
 bool CEmperorIngStage3::CanBeShot(const CStateManager&, int) { return true; }
 
@@ -780,6 +782,7 @@ bool CEmperorIngStage3::CanBeShot(const CStateManager&, int) { return true; }
 // vtable slot 43 = fn_18_0: `li r3, 0x1` - the actor listens for noises.
 bool CEmperorIngStage3::IsListening() const { return true; }
 
+// @ fn_18_8E50
 // vtable slot 44 = fn_18_8E50: a player fire (the noise type 0) sets the flag byte at guest
 // 0x824 (its bit 30, the mask 0x02) and the actor says it heard it; every other noise is
 // ignored.
@@ -805,18 +808,23 @@ CVector3f CEmperorIngStage3::GetOrigin(const CStateManager& mgr, const CTeamAiRo
 // (CColor at 0x44C; the module never writes it).
 uchar CEmperorIngStage3::GetModelAlphau8(const CStateManager& mgr) const { return mColor.GetAlphau8(); }
 
+// @ fn_18_4C
 // vtable slot 55 = fn_18_4C: `li r3, 0x0` - the actor has no projectile info.
 CProjectileInfo* CEmperorIngStage3::ProjectileInfo() { return nullptr; }
 
+// @ fn_18_54
 // vtable slot 56 = fn_18_54: `li r3, 0x0` - the actor has no path search.
 CPathFindSearch* CEmperorIngStage3::GetSearchPath() { return nullptr; }
 
+// @ fn_18_5C
 // vtable slot 57 = fn_18_5C: `li r3, 0x0` - the actor has no point path search.
 CPathFindPointSearch* CEmperorIngStage3::GetPointSearchPath() { return nullptr; }
 
+// @ fn_18_64
 // vtable slot 61 = fn_18_64: `li r3, 0x0` - the actor has no rag doll.
 CRagDoll* CEmperorIngStage3::GetRagDoll() const { return nullptr; }
 
+// @ fn_18_6C
 // vtable slot 66 = fn_18_6C: stores kInvalidUniqueId, i.e. the actor never reports an attack
 // target through this accessor.
 TUniqueId CEmperorIngStage3::GetAttackTarget() const { return kInvalidUniqueId; }
