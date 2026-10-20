@@ -341,6 +341,9 @@ private:
   // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
   bool x57A0_FireShot(CStateManager& mgr, float dt);
 
+  // fn_9_3090: the module's drowning - the commando dies when its head is under water.
+  void x3090_Drown(CStateManager& mgr);
+
   // fn_9_4D84: the module's aim helper - the additive aim command and the aim direction.
   void x4D84_UpdateAim(CStateManager& mgr);
 
@@ -389,6 +392,7 @@ private:
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
+  float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid

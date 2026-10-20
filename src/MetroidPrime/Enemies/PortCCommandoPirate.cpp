@@ -12,6 +12,7 @@
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
+#include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Animation/CPASAnimParm.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
@@ -38,6 +39,9 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
+#include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
+#include "Kyoto/SObjectTag.hpp"
 
 #include <stdio.h>
 #include "rstl/string.hpp"
@@ -194,6 +198,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
 , xc50_(0.f)                                      // 0xc50, a counter; fn_9_662C lowers it
+, xc00_(0.f)                                      // 0xc00, a float; fn_9_3090 sets 0.01f
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
 , xbc4_teamId(kInvalidUniqueId)                    // 0xbc4, the team id; fn_9_19D8 sets it
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
@@ -422,7 +427,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x6390_UpdateBurstFire(mgr, dt);                     // 0x0000CA08
   x4D84_UpdateAim(mgr);                     // 0x0000CA18
   x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
-  StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
+  x3090_Drown(mgr);                             // 0x0000CA34
   StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
   x4BC0_UpdateEmitters();                     // 0x0000CA8C
   StandInFn("fn_9_3E1C (0x324 bytes)");        // 0x0000CAA0
@@ -784,6 +789,79 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
                              GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   }
   return fired;
+}
+
+// fn_9_3090 (0x2a8 bytes): the module's drowning. It runs from the module's Think (the call at
+// 0x0000CA34) and ends the commando when its head is under water.
+//
+// 0x000030A8..0x000030B8: while the actor is alive (the byte at guest this+0x420's 0x40 bit - the
+//   host's GetAlive()).
+// 0x000030C4..0x000030D8: the actor must be in a fluid (the host's InFluidId) and the fluid id must
+//   not be the invalid one.
+// 0x000030E4..0x00003104: the fluid is looked up (the id from the guest's InFluidId, the call at
+//   0x000030F8) and cast to the water script object.
+// 0x00003108..0x00003110: the water's own byte at +0x20 must have its 0x80 bit (the extrwi at
+//   0x0000310C).
+// 0x0000311C..0x0000315C: the water's trigger bounds (the GetTriggerBoundsWR call at 0x0000311C)
+//   and the head locator's (guest this+0xC5C) position: when the head is not below the bounds'
+//   height the commando does not drown.
+// 0x00003160..0x0000316C: the module's own float at guest this+0xC00 takes 0.01f (rodata_4A0).
+// 0x00003170..0x00003180: the health info's second float (the guest's +0x04) is cleared.
+// 0x00003184..0x000031C8: the actor dies with the script object state 0x5241544C ("RATL", the
+//   host's kSS_DeathRattle) and the actor's own forward vector as the death direction.
+// 0x000031CC..0x000032E4: the drowning explosion: the guest's effect token is at guest this+0xC28
+//   and the guest only builds the explosion when that token is loaded (the byte at +0xC34, the
+//   test at 0x000031CC); the explosion is a 0x180-byte CExplosion named "Commando Drowning Fx"
+//   (the module's .rodata at "StateOver" + 0x37A) at the actor's own transform, with the actor's
+//   own scale, the white colour and the player index -1 (the constructor call at 0x000032B4).
+// 0x000032F4..0x00003318: the drowning sound (the block's +0x06 = guest this+0x7C6) is emitted at
+//   the actor's own position with the volume 0x7f.
+void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
+  if (!GetAlive()) {                                             // 0x000030A8..0x000030B8
+    return;
+  }
+  const TUniqueId fluidId = InFluidId();                         // 0x000030C4
+  if (fluidId == kInvalidUniqueId) {                             // 0x000030C8..0x000030D8
+    return;
+  }
+  // The guest's GetObjectById (the call at 0x000030F8) hands out a mutable pointer and the cast to
+  // the water (the call at 0x000030FC) needs one; the host's GetObjectById is the const one.
+  CScriptWater* water = TCastToPtr< CScriptWater >(
+      const_cast< CEntity* >(mgr.GetObjectById(fluidId)));       // 0x000030E4..0x00003104
+  if (water == nullptr) {
+    return;
+  }
+  if ((water->GetTriggerFlags() & 0x80) == 0) {                 // 0x00003108..0x00003110
+    return;
+  }
+  const CAABox bounds = water->GetTriggerBoundsWR();            // 0x0000311C
+  const CVector3f head = GetLctrTransform(mLocatorHead).GetTranslation();  // 0x00003128..0x00003140
+  if (!(head.GetZ() < bounds.GetMaxPoint().GetZ())) {            // 0x0000314C..0x0000315C
+    return;
+  }
+  xc00_ = 0.01f;                                                // rodata_4A0, 0x0000316C
+  HealthInfo()->SetHP(0.f);                                     // the guest's +0x04, 0x0000319C
+  Death(mgr, GetTransform().GetForward(), kSS_DeathRattle);     // 0x000031C8 (the FourCC 0x5241544C)
+  // The guest's drowning effect: the particle it keeps at guest this+0xC28 (the copy at
+  // 0x0000DFF0) comes from the asset id in the block's +0x08 (the guest's own +0x7C8, the load at
+  // 0x0000DF08); the guest's "is it loaded" byte is at +0xC34 (the test at 0x000031CC).
+  const CAssetId effectId(static_cast< uint >(mData.mAlwaysFF2));
+  rstl::optional_object< TCachedToken< CGenDescription > > effect;
+  if (effectId != kInvalidAssetId) {
+    effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
+  }
+  if (effect.valid()) {
+    CExplosion* explosion = rs_new CExplosion(
+        TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        rstl::string_l("Commando Drowning Fx"), GetTransform(), 0, GetModelData()->GetScale(),
+        CColor::White(), -1);                                    // 0x000032B4
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);                                  // 0x000032F0
+    }
+  }
+  CSfxManager::AddEmitter(mData.mAlwaysFF, GetTranslation(), 0x7f, GetCurrentAreaId().Value(),
+                          true, false, CSfxManager::kMedPriority);  // 0x00003318
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the
