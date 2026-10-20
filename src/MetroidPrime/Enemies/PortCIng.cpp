@@ -418,7 +418,15 @@ CEntity* CIng::SpawnHitEffect(CStateManager& mgr, bool heavy) {
   const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
       heavy ? mHeavyHitEffect : mNormalHitEffect;
   if (!effect) {
+    if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x hit fx: the %s token is not loaded\n", GetUniqueId().Value(),
+              heavy ? "heavy" : "normal");
+    }
     return nullptr;
+  }
+  if (DebugIng()) {
+    fprintf(stderr, "[ing] %04x hit fx: %s explosion\n", GetUniqueId().Value(),
+            heavy ? "heavy" : "normal");
   }
   return rs_new CExplosion(*effect, mgr.AllocateUniqueId(),
                            CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true,
@@ -439,6 +447,11 @@ void CIng::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
   }
   const bool heavy =
       !(weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpot.GetVulnerability()) < 25.f);
+  if (DebugIng()) {
+    // What a run cannot otherwise see: the spot form has no health of its own, so a landed shot
+    // shows only as this line plus the effect it spawns.
+    fprintf(stderr, "[ing] %04x spot hit heavy %d\n", GetUniqueId().Value(), heavy ? 1 : 0);
+  }
   CEntity* explosion = SpawnHitEffect(mgr, heavy);
   CSfxManager::AddEmitter(heavy ? mData.mIngSpot.GetHeavyHitSound() : mData.mIngSpot.GetNormalHitSound(),
                           GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
