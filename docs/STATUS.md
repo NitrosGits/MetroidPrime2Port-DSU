@@ -11,8 +11,11 @@ Sandworm is closed (20 bodies left, each with its reason in the source and in
 `wt-mp2-boostguardian`, branch `decomp/boostguardian`, based on `port` at `c5e1e2042` plus the
 console `aim <yaw> <pitch>` verb cherry-picked from `decomp/swampboss` (`4d1864f8e`), because a
 boss fight needs to point the view at a low target. Its host build is `build-port-link` in the
-worktree (the `DefaultFont*.inc` blobs have to be copied in from another worktree's
-`build/G2ME01/include` before the first link).
+worktree. A fresh worktree needs three things before it builds and runs: `git submodule update
+--init extern/musyx`, the `orig/<game>/{files,sys}` symlinks to the archive tree (they are not
+tracked, so the upstream matching build stops at `dtk dol split` without them), and the
+`DefaultFont*.inc` blobs copied in from another worktree's `build/G2ME01/include` before the first
+host link.
 
 - **What the module is.** 309 functions, `.text` 0x110C4 + a second section from 0x11CD8, two
   classes: `CIngBoostBallGuardian` (0x11F0, `CPatterned` with character 0x19, vtable
