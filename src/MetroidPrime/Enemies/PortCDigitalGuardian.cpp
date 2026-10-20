@@ -292,6 +292,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
         kInvalidUniqueId.value}
 , x1078_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
          kInvalidUniqueId.value}
+, x1014_(LdrToDamageVulnerability(data.mKneeVulnerability)) // fn_14_3B4C, 0xB248
 , x1044_(CDamageVulnerability::ReflectVulnerabilty()) // ImmuneRicochetVulnerability, 0xB258
 , x1110_(LdrToDamageVulnerability(data.mToeTargetVulnerability))
 , x1188_(LdrToDamageVulnerability(data.mVortexVulnerability))
@@ -312,8 +313,6 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
         gpSimplePool->GetObj(SObjectTag('PART', mData.mToeTargetExplosion)));
   }
 
-  // The retail constructor also builds the vulnerability at 0x1014; the port does not keep it
-  // yet (fn_14_3A44, which reads it, is not ported).
 
   // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAF0
   // on): 0x10B9 is "neck_SDK" (the store at 0xBAFC), 0x10C0..0x10C3 the four knee locators
@@ -501,35 +500,35 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     break;
   case 0x494D3031: // "IM01"
     x1010_ = 1;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3032: // "IM02"
     x1010_ = 0;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3033: // "IM03"
     x1012_ = 1;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3034: // "IM04"
     x1012_ = 0;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3035: // "IM05"
     x1013_ = 1;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3036: // "IM06"
     x1013_ = 0;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3037: // "IM07"
     x1011_ = 1;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x494D3038: // "IM08"
     x1011_ = 0;
-    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    x3A44_(mgr); // fn_14_3A44
     break;
   case 0x58435254: // "XCRT", the case at 0xA81C
     BodyController()->Activate(mgr, pas::kAS_Invalid);
@@ -1360,6 +1359,33 @@ bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& 
     return false;
   }
   return mData.mUnknown4F5D725C <= 0.0f;
+}
+
+// @ fn_14_3A44
+void CDigitalGuardian::x3A44_(CStateManager& mgr) {
+  const uchar flags[4] = {x1010_, x1011_, x1012_, x1013_};
+  const u16* const armor[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
+  for (int i = 0; i < 4; ++i) {
+    if (*armor[i] == kInvalidUniqueId.value) {
+      continue;
+    }
+    // Open when the knee's flag byte is set and bit 5 of 0x128C (the extrwi at 0x3A8C) is clear.
+    bool open = false;
+    if ((x128C_ & 0x20) == 0 && flags[i] != 0) {
+      open = true;
+    }
+    CDigitalGuardianKneeArmor* knee =
+        static_cast< CDigitalGuardianKneeArmor* >(mgr.ObjectById(TUniqueId(*armor[i])));
+    if (knee != nullptr) { // the retail's test at 0x3AB8
+      knee->SetArmored(mgr, !open); // fn_14_CE94
+    }
+    const CDamageVulnerability vuln(open ? x1014_ : x1044_); // fn_14_3B4C (0x3AEC)
+    CCollisionActor* collider =
+        static_cast< CCollisionActor* >(mgr.ObjectById(TUniqueId(xFBC_[i])));
+    if (collider != nullptr) { // the retail's test at 0x3B04
+      collider->SetDamageVulnerability(vuln);
+    }
+  }
 }
 
 // fn_14_4080 (0x274 bytes): the four knee armours. Only with the knee model (the optional at

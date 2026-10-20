@@ -330,6 +330,9 @@ private:
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
   u16 xFBC_[4];      // 0xFBC: the four knee joint colliders ("*_knee_2" spheres; fn_14_44F8)
   u16 x1078_[4];     // 0x1078: the four toe target colliders ("*_col_LCTR" spheres; fn_14_4464)
+  // 0x1014: the knees' open vulnerability (kneeVulnerability, the ctor's 0xB1B0..0xB248);
+  // fn_14_3A44 gives it to a knee collider whose flag byte (0x1010 + i) is set.
+  CDamageVulnerability x1014_;
   // 0x1044: immune-ricochet with the AI weapon type passed through (the ctor's 0xB258/0xBEF4).
   CDamageVulnerability x1044_;
   CDamageVulnerability x1110_; // 0x1110: the toe targets' (toeTargetVulnerability, 0xB534)
@@ -344,6 +347,10 @@ private:
   float x1144_[4];      // 0x1144: the toe targets' health (toeTargetHP; fn_14_24E4, fn_14_5644)
   float x1158_[4];      // 0x1158: the toe targets' hit timers (0; fn_14_24E4, fn_14_5644)
 
+  // fn_14_3A44 (0x108 bytes): each knee's vulnerability - open (0x1014) when its flag byte
+  // (0x1010 + i) is set and bit 5 of 0x128C is clear, else the ricochet one (0x1044) - and its
+  // armour's armoured flag (fn_14_CE94).
+  void x3A44_(CStateManager& mgr);
   // fn_14_4080 (0x274 bytes): the four knee armours, one at each knee locator.
   void x4080_(CStateManager& mgr);
   // fn_14_24E4 (0x94 bytes): the toe targets' reset (health, state, timer), then state 1 each.
