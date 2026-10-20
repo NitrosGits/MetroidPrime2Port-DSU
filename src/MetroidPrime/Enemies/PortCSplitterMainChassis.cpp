@@ -16,6 +16,8 @@
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPlayerHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterMainChassis.hpp"
@@ -52,7 +54,6 @@ void StandInFn_75_9520() { StandIn("fn_75_9520 (0x11C)"); }
 
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
-void StandInFn_75_AAC4() { StandIn("fn_75_AAC4 (0xC8)"); }
 void StandInFn_75_A0A0() { StandIn("fn_75_A0A0 (0x2DC)"); }
 void StandInFn_75_9FA8() { StandIn("fn_75_9FA8 (0xF8)"); }
 void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
@@ -175,6 +176,24 @@ void CSplitterMainChassis::PortLeaveTeam(CStateManager& mgr) {
   mTeamId = kInvalidUniqueId;
 }
 
+// @ fn_75_AAC4
+// The chassis's player-hint release (0xAAC4-0xAB8C): the hint's id at 0xCC4 is looked up
+// (0xAAF0 ObjectById) and cast to a CScriptPlayerHint (0xAAF4); when the cast fails (0xAAF8)
+// or the hint's actor id (0x1AC) is not this actor's id (0xAB00-0xAB0C) nothing happens, else
+// the hint's actor id is cleared (0xAB28) and the hint gets a "DECR" message (0xAB70
+// DeliverScriptMsg: this actor is the sender, the player the originator, the hint the id).
+void CSplitterMainChassis::PortReleasePlayerHint(CStateManager& mgr) {
+  CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(mgr.ObjectById(mConnectedObjectId));
+  if (hint == nullptr || hint->GetActorId() != GetUniqueId()) {
+    return;
+  }
+  hint->SetActorId(kInvalidUniqueId);
+  const CPlayer* player = mgr.GetPlayer(0);
+  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), hint->GetUniqueId(), kSM_Decrement,
+                                  player != nullptr ? player->GetUniqueId() : kInvalidUniqueId,
+                                  kSS_InvalidState));
+}
+
 // @ fn_75_AA68
 // The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. The
 // word's bit 30 (the byte's 0x40, 0x0000AA78 rlwinm) gives kLT_Lurk (2, 0x0000AA88), the word's
@@ -217,7 +236,7 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     if (mCollisionActorManager != nullptr) {
       mCollisionActorManager->Destroy(mgr);
     }
-    StandInFn_75_AAC4();
+    PortReleasePlayerHint(mgr);
     PortLeaveTeam(mgr);
     break;
   }

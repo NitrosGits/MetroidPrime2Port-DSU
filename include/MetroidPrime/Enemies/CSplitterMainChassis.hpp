@@ -191,9 +191,11 @@ private:
   TUniqueId mFollowObjectId = kInvalidUniqueId;
   // guest 0xCBE: the team the chassis is in (fn_75_8D50 leaves it).
   TUniqueId mTeamId = kInvalidUniqueId;
-  // The retail's fn_75_AC68 (the connected-object lookups) and fn_75_8D50 (the team exit).
+  // The retail's fn_75_AC68 (the connected-object lookups), fn_75_8D50 (the team exit) and
+  // fn_75_AAC4 (the player-hint release).
   void PortUpdateConnectedObjects(CStateManager& mgr);
   void PortLeaveTeam(CStateManager& mgr);
+  void PortReleasePlayerHint(CStateManager& mgr);
   // guest 0xD00: the counter the XLND script message sets to 5 (fn_75_F1C0, 0x0000F4F0).
   int mLandedCount = 0;
   // guest 0xD2C: the timer the IM00 script message advances by the data's spin attack max time
