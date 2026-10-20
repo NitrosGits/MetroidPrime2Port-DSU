@@ -227,14 +227,37 @@ void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);             // 0x0000CB20
 }
 
-// vtable slot 0x14 = fn_9_C944 (0x184).
+// vtable slot 0x14 = fn_9_C944 (0x184): the actor's Think. The guest leaves everything out when
+// the entity is not active (the entity's flag byte at guest this+0x20, the mask 0x80, the test at
+// 0x0000C96C) - the port's GetActive() check is that test. The guest's rag-doll branches (the rag
+// doll at guest this+0xBFC) are dead here, so the body is the base's Think (0x0000C9A4), the two
+// collision actor managers' updates (the module's own at guest this+0xA3C and +0xA40, the calls at
+// 0x0000C9B8 and 0x0000C9CC - the port has no such managers, they are created by the melee and
+// grenade states), the bone tracking's Think (the call at 0x0000C9E8, which the guest makes only
+// when the body controller is not frozen - its byte at +0x594, the mask 0x20) and then the module's
+// own helpers: the visual knowledge's update (guest this+0xAB0, the call at 0x0000C9F8),
+// fn_9_6390 (0x0000CA08), fn_9_4D84 (0x0000CA18), fn_9_662C (0x0000CA28 - the helper that
+// advances the module's timers, including the melee cooldown at guest this+0xB7C) and fn_9_3090
+// (0x0000CA34), then the tail: fn_9_1C0C (0x0000CA88), fn_9_4BC0 (0x0000CA8C) and fn_9_3E1C
+// (0x0000CAA0).
 void CCommandoPirate::Think(float dt, CStateManager& mgr) {
-  StandIn("CCommandoPirate::Think (vtable slot 0x14, fn_9_C944)");
   if (!GetActive()) {
-    return;
+    return;                                    // 0x0000C96C
   }
   EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);
+  CPatterned::Think(dt, mgr);                  // 0x0000C9A4
+  StandIn("CCommandoPirate's collision actor managers (guest this+0xa3c, this+0xa40)");  // 0x0000C9B8
+  if (!BodyController()->IsFrozen()) {
+    mBoneTracking.Think(dt);                   // 0x0000C9E8
+  }
+  StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
+  StandInFn("fn_9_6390 (0x29c bytes)");        // 0x0000CA08
+  StandInFn("fn_9_4D84 (0x228 bytes)");        // 0x0000CA18
+  StandInFn("fn_9_662C (0x39c bytes)");        // 0x0000CA28
+  StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
+  StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
+  StandInFn("fn_9_4BC0 (0xe4 bytes)");         // 0x0000CA8C
+  StandInFn("fn_9_3E1C (0x324 bytes)");        // 0x0000CAA0
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the
