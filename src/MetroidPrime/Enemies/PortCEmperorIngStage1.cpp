@@ -1710,7 +1710,8 @@ void CEmperorIngStage1::Render(const CStateManager& mgr) const {
 // the tentacles and the heart. The switch is the jump table at lbl_16_data_314 (29 entries; the
 // event type is the index); the default entry (fn_16_7F8C+0x58C) and every type above 28 (the
 // bgt at 0x7FAC) call the base's own DoUserAnimEvent (the call at 0x8524).
-// Area 11 reaches only the event cases 0, 7, 17, 22, 27 and 28; the rest fall through to the base's own handling.
+// The hook pass dispatched all 29 event types: the retail's six case bodies (the types 0, 7,
+// 17, 23, 27 and 28) and, for the other 23, the base's own handling.
 // @ fn_16_7F8C
 void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                         EUserEventType type, float dt) {
