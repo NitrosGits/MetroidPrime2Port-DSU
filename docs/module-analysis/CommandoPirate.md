@@ -541,6 +541,16 @@ since 2026-10-20.
 - The step command the Dodge state delivers (0x00008A10) carries the direction from the module's
   own dodge id at guest this+0xBDC (the load at 0x000089BC) and the type 2 (`kStep_BreakDodge`);
   the host's `CBCStepCmd` takes them in that order (the base, the direction, the type).
+- `fn_9_3338` (0x148 bytes) is the module's jump-back helper, ported as
+  `x3338_IsJumpBackClear`: the ray from the actor's bounding-box centre (0x00003374, 0x00003380)
+  to the point that distance along the given vector (0x000033B0..0x000033D8) must not hit the
+  world (the RayCollideWorld call at 0x0000342C) and must be on the path (the OnPath call at
+  0x00003440). `ShouldJumpBack` calls it with the forward column negated and the module's float
+  at guest this+0xBE0 (the new member `xbe0_`; the constructor stores the animation distance
+  times the model's scale there at 0x0000E61C, and the same for the float at +0xBE4 - `xbe4_` -
+  at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). So the jump-back
+  trigger runs but stays false: the jump-back distance is still zero, so the ray's end point is
+  the actor's own centre.
 - `fn_9_3678` (0x288 bytes) is the Dodge state's picker - it is the only thing that sets the
   dodge id, and it is not ported yet, so the dodge id stays -1 and the animation state is never
   readied (no dodge). What it does: it walks the listening-AI object list (the state manager's

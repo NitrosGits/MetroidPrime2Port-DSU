@@ -325,6 +325,9 @@ private:
   // fn_9_662C: the module's per-frame helper - it advances the module's timers and flag bits.
   void x662C_UpdateTimers(CStateManager& mgr, float dt);
 
+  // fn_9_3338: the module's jump-back helper - is the point behind the actor clear?
+  bool x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir, float distance) const;
+
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
   // listening AIs of the same area.
@@ -364,6 +367,8 @@ private:
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
   int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
+  float xbe0_;                           // 0xbe0, the jump-back distance; fn_9_D904 @0x0000E61C
+  float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)

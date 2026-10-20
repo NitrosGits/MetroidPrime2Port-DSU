@@ -12,6 +12,8 @@
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -170,6 +172,8 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
 , xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
 , xbdc_(-1)                                    // 0xbdc, the dodge id; fn_9_8934 sets it
+, xbe0_(0.f)                                    // 0xbe0, the jump-back distance
+, xbe4_(0.f)                                    // 0xbe4, a distance
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -606,8 +610,30 @@ bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& dat
   if ((mData.mFlags0 & 0x08) != 0) {
     return false;                                   // 0x0000BB20
   }
-  StandInFn("fn_9_3338 (0x148 bytes)");              // 0x0000BB60
-  return false;
+  // 0x0000BB28..0x0000BB54: the actor's forward column, negated, and the module's float at
+  // guest this+0xBE0 as the distance (the load at 0x0000BB58).
+  return x3338_IsJumpBackClear(mgr, -GetTransform().GetForward(), xbe0_);  // 0x0000BB60
+}
+
+// fn_9_3338 (0x148 bytes): the module's jump-back helper, which both the jump-back trigger
+// (fn_9_BB10) and the dodge picker (fn_9_3678) call. The ray starts at the actor's bounding
+// box centre (the GetBoundingBox call at 0x00003374 and the GetCenterPoint call at
+// 0x00003380) and ends at the point that distance along the given vector (the adds at
+// 0x000033B0..0x000033D8); the end point must not hit the world (the RayCollideWorld call at
+// 0x0000342C - the answer is false when it does) and must be on the path (the OnPath call at
+// 0x00003440 - the answer is true when it returns 0).
+bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir,
+                                           float distance) const {
+  const CVector3f center = GetBoundingBox().GetCenterPoint();  // 0x00003374, 0x00003380
+  const CVector3f end = center + distance * dir;                // 0x000033B0..0x000033D8
+  // The guest's material filter comes from the module's own static lists (the .data words at
+  // lbl_9_data_810 and lbl_9_data_80C, the two __shl2i calls at 0x000033DC and 0x000033F8);
+  // the port uses the solid material list, the filter a collision ray needs.
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  if (mgr.RayCollideWorld(center, end, filter, this)) {
+    return false;                                                // 0x00003430
+  }
+  return mPathFindSearch.OnPath(end) == CPathFindSearch::kR_Success;  // 0x00003440
 }
 
 // fn_9_BB04: the block's flag byte at +0x15C (guest this+0x91C) has its 0x80 bit set (extrwi
