@@ -221,7 +221,7 @@ CSwampBossStage2::~CSwampBossStage2() {}
 // --------------------------------------------------------------------------------------------
 // Helpers
 
-// fn_79_3524
+// @ fn_79_3524
 const SLdrSwampBossStage2Phase& CSwampBossStage2::CurrentPhase() const {
   if (mPhase == 2) {
     return mData.lightFlyer2;
@@ -236,7 +236,7 @@ const SLdrSwampBossStage2Phase& CSwampBossStage2::CurrentPhase() const {
   return mData.lightFlyer1;
 }
 
-// fn_79_34CC: the attack slot for an index; 8 means "no attack".
+// @ fn_79_34CC: the attack slot for an index; 8 means "no attack".
 int CSwampBossStage2::AttackForIndex(int idx) const {
   const SLdrSwampBossStage2Phase& phase = CurrentPhase();
   if (idx == 2) {
@@ -260,7 +260,7 @@ int CSwampBossStage2::AttackForIndex(int idx) const {
   return phase.secondAttack;
 }
 
-// fn_79_3458: take the current slot's attack, wrap to the first slot on the "no attack" sentinel,
+// @ fn_79_3458: take the current slot's attack, wrap to the first slot on the "no attack" sentinel,
 // then advance the index. Lurk raises mAttackReady itself once the attack delay runs out.
 void CSwampBossStage2::NextAttack() {
   mAttackType = AttackForIndex(mAttackIndex);
@@ -271,7 +271,7 @@ void CSwampBossStage2::NextAttack() {
   ++mAttackIndex;
 }
 
-// fn_79_6754: retail resolves the actor through
+// @ fn_79_6754: retail resolves the actor through
 // CCollisionActorManager::GetCollisionDescFromIndex(idx) then ObjectById/TCastToPtr.
 CCollisionActor* CSwampBossStage2::CollisionActor(CStateManager& mgr, int idx) const {
   if (mCollisionMgr.null() || idx >= mCollisionMgr->GetNumCollisionActors()) {
@@ -290,13 +290,13 @@ CVector3f CSwampBossStage2::CollisionActorPosition(const CStateManager& mgr, int
   return act ? act->GetTranslation() : GetTranslation();
 }
 
-// fn_79_6054: the centre actor's position, or the origin when the chain has none.
+// @ fn_79_6054: the centre actor's position, or the origin when the chain has none.
 CVector3f CSwampBossStage2::CenterPosition(const CStateManager& mgr) const {
   const CActor* center = TCastToConstPtr< CActor >(mgr.GetObjectById(mCenter));
   return center ? center->GetTranslation() : CVector3f::Zero();
 }
 
-// fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
+// @ fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
 CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
   if (mDashing) {
     return mSwoopTarget;
@@ -305,7 +305,7 @@ CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
   return node ? node->GetTranslation() : GetTranslation();
 }
 
-// fn_79_6108: remember a move target and raise the move request.
+// @ fn_79_6108: remember a move target and raise the move request.
 void CSwampBossStage2::RequestMove(const CVector3f& point) {
   mMoveTarget = point;
   mMoveRequested = true;
@@ -331,7 +331,7 @@ CActor* CSwampBossStage2::NextChainNode(CStateManager& mgr) const {
   return nullptr;
 }
 
-// fn_79_20D8: joints 4..9 follow the phase's vulnerability table while the body can be hurt, and
+// @ fn_79_20D8: joints 4..9 follow the phase's vulnerability table while the body can be hurt, and
 // reflect damage otherwise.
 void CSwampBossStage2::SetBodyVulnerable(CStateManager& mgr, bool vulnerable) {
   const CDamageVulnerability& vuln =
@@ -349,7 +349,7 @@ CVector3f CSwampBossStage2::PlayerAimPoint(const CStateManager& mgr) const {
   return mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
 }
 
-// fn_79_4220: the chain node nearest the player (retail returns the actor, used as its uid).
+// @ fn_79_4220: the chain node nearest the player (retail returns the actor, used as its uid).
 TUniqueId CSwampBossStage2::NearestNodeToPlayer(CStateManager& mgr) const {
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
   TUniqueId best = kInvalidUniqueId;
@@ -435,7 +435,6 @@ void CSwampBossStage2::Activate(CStateManager& mgr) {
                     gpStringTable->GetStringIndex("BossSwampBossStage2"));
 }
 
-// fn_79_5D58
 void CSwampBossStage2::SetHeadVulnerable(CStateManager& mgr, bool vulnerable) {
   // TODO(uncertain): retail swaps the head collision actor's vulnerability between the light and
   // dark tables; reconstructed from the material/vulnerability writes only.
@@ -446,7 +445,7 @@ void CSwampBossStage2::SetHeadVulnerable(CStateManager& mgr, bool vulnerable) {
   }
 }
 
-// fn_79_5BC8
+// @ fn_79_5BC8
 void CSwampBossStage2::SetGrowthTargetEffects(CStateManager& mgr, bool on) {
   for (int i = 0; i < 4; ++i) {
     AnimationData()->SetEffectState(rstl::string_l(kGrowthTargetEffects[i]),
@@ -471,7 +470,7 @@ void CSwampBossStage2::SetGrowthActive(CStateManager& mgr, int idx, bool active)
   }
 }
 
-// fn_79_24E0: growths are only targetable while the player is in front of the boss, and the boss
+// @ fn_79_24E0: growths are only targetable while the player is in front of the boss, and the boss
 // itself gains or drops its orbit/target/seeker materials with that side. Retail calls this from
 // Reel (fn_79_7870) only.
 void CSwampBossStage2::UpdatePlayerSideMaterials(CStateManager& mgr) {
@@ -489,7 +488,7 @@ void CSwampBossStage2::UpdatePlayerSideMaterials(CStateManager& mgr) {
   }
 }
 
-// fn_79_5EC4: direction from a random chain node of the pair the boss picks between back towards
+// @ fn_79_5EC4: direction from a random chain node of the pair the boss picks between back towards
 // the centre actor. The node farthest along the boss's forward axis is never the one picked.
 CVector3f CSwampBossStage2::DirectionFromRandomNode(CStateManager& mgr) const {
   const int count = static_cast< int >(mPathNodes.size());
@@ -522,7 +521,7 @@ CVector3f CSwampBossStage2::DirectionFromRandomNode(CStateManager& mgr) const {
   return node ? (center - node->GetTranslation()).AsNormalized() : CVector3f::Zero();
 }
 
-// fn_79_6134: normalised direction from the body towards the player's aim point.
+// @ fn_79_6134: normalised direction from the body towards the player's aim point.
 CVector3f CSwampBossStage2::DirectionToPlayerAim(const CStateManager& mgr) const {
   if (mgr.GetPlayer(0) == nullptr) {
     return GetTransform().GetForward();
@@ -604,7 +603,7 @@ void CSwampBossStage2::UpdateAdditive(CStateManager& mgr, float dt) {
   }
 }
 
-// fn_79_3900: head/tail water splash. `pos` is the splash point and `lastSplash` the last one
+// @ fn_79_3900: head/tail water splash. `pos` is the splash point and `lastSplash` the last one
 // emitted, kept just above the water surface.
 void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
                                    CVector3f& lastSplash) {
@@ -766,7 +765,7 @@ void CSwampBossStage2::SpawnWingDamageEffect(CStateManager& mgr, int idx) {
   mgr.AddObject(effect);
 }
 
-// fn_79_3F30: the water height from the centre actor, the node spacing from the first chain node,
+// @ fn_79_3F30: the water height from the centre actor, the node spacing from the first chain node,
 // the edge radius from the edge marker, and the surface height from the water trigger's bounds.
 void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
   const CActor* centre = TCastToConstPtr< CActor >(mgr.GetObjectById(mCenter));
@@ -848,7 +847,7 @@ void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
   }
 }
 
-// fn_79_4090: pick the spit node. Attack 4 (swoop) takes the follower of the node nearest the
+// @ fn_79_4090: pick the spit node. Attack 4 (swoop) takes the follower of the node nearest the
 // player; everything else takes the best-scoring entry of the swoop-start list.
 void CSwampBossStage2::PickSpitNode(CStateManager& mgr) {
   if (mAttackType == 4) {
@@ -879,7 +878,7 @@ void CSwampBossStage2::PickSpitNode(CStateManager& mgr) {
   }
 }
 
-// fn_79_2DE8: a point half the player's bounding-box height above the player.
+// @ fn_79_2DE8: a point half the player's bounding-box height above the player.
 CVector3f CSwampBossStage2::PlayerOverheadPosition(const CStateManager& mgr) const {
   const CPlayer* player = mgr.GetPlayer(0);
   if (!player) {
@@ -890,13 +889,13 @@ CVector3f CSwampBossStage2::PlayerOverheadPosition(const CStateManager& mgr) con
   return player->GetTranslation() + CVector3f::Up() * halfHeight;
 }
 
-// fn_79_4C1C: the spit origin: the current spit node, or above the player when there is none.
+// @ fn_79_4C1C: the spit origin: the current spit node, or above the player when there is none.
 CVector3f CSwampBossStage2::SpitOrigin(const CStateManager& mgr) const {
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSpitNode));
   return node ? node->GetTranslation() : PlayerOverheadPosition(mgr);
 }
 
-// fn_79_4CA8: the spit node walks to its ARRV/NEXT follower.
+// @ fn_79_4CA8: the spit node walks to its ARRV/NEXT follower.
 void CSwampBossStage2::AdvanceSpitNode(CStateManager& mgr) {
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSpitNode));
   if (node) {
@@ -905,7 +904,7 @@ void CSwampBossStage2::AdvanceSpitNode(CStateManager& mgr) {
   }
 }
 
-// fn_79_4324: fire one spit projectile from the event's locator. Attack 3 (barrage) predicts the
+// @ fn_79_4324: fire one spit projectile from the event's locator. Attack 3 (barrage) predicts the
 // player's intercept and scatters it; otherwise it fires at the current spit node and advances the
 // chain. fn_79_4670/fn_79_4A1C/fn_79_4BC8 are the impact visor effect's ctors and dtor here.
 void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator) {
@@ -984,7 +983,7 @@ void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
   }
 }
 
-// fn_79_543C: swing one chain segment (the node and its NEXT connections) about the origin, counting
+// @ fn_79_543C: swing one chain segment (the node and its NEXT connections) about the origin, counting
 // the depth and the nodes moved. fn_79_31C0/fn_79_32C0 are the vector copy and its free here.
 void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
                                          const CVector3f& origin,
@@ -1002,7 +1001,7 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
   --mChainDepth;
 }
 
-// fn_79_4D20: take a random spit platform, walk its NEXT chain to the first active node, then swing
+// @ fn_79_4D20: take a random spit platform, walk its NEXT chain to the first active node, then swing
 // that whole segment towards the predicted intercept of the player.
 void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
                                         const rstl::vector< TUniqueId >& platforms,
@@ -1106,7 +1105,7 @@ void CSwampBossStage2::SendDecrement(CStateManager& mgr) {
   (void)mgr;
 }
 
-// fn_79_3390: total damage still inside the memory window.
+// @ fn_79_3390: total damage still inside the memory window.
 float CSwampBossStage2::RecentDamage() const {
   float sum = 0.f;
   for (rstl::list< SDamageMemory >::const_iterator it = mDamageMemory.begin();
@@ -1128,7 +1127,7 @@ void CSwampBossStage2::DecayDamageMemory(float dt) {
   }
 }
 
-// fn_79_661C: append a hit to the damage memory list (fn_79_6644 is the list append itself). The
+// @ fn_79_661C: append a hit to the damage memory list (fn_79_6644 is the list append itself). The
 // window length comes from the phase data.
 void CSwampBossStage2::AddDamageMemory(float damage) {
   SDamageMemory entry;
@@ -1249,7 +1248,6 @@ void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
 // --------------------------------------------------------------------------------------------
 // Triggers
 
-// fn_79_6250
 bool CSwampBossStage2::StateOver(CStateManager& mgr, const CTriggerData&) const {
   return mAnimationState.IsOver();
 }
@@ -1272,22 +1270,27 @@ bool CSwampBossStage2::ZeroHealth(CStateManager& mgr, const CTriggerData&) const
   return mPhase >= mData.unknown_0x96ce7897;
 }
 
+// @ fn_79_A3F8
 bool CSwampBossStage2::PlayerInWater(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mPlayerInWater;
 }
 
+// @ fn_79_A3A0
 bool CSwampBossStage2::ShouldSpit(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType >= 0 && mAttackType <= 2;
 }
 
+// @ fn_79_A378
 bool CSwampBossStage2::ShouldBarrage(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 3;
 }
 
+// @ fn_79_A350
 bool CSwampBossStage2::ShouldTaunt(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 7;
 }
 
+// @ fn_79_A328
 bool CSwampBossStage2::ShouldSwoop(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 4;
 }
@@ -1330,14 +1333,17 @@ bool CSwampBossStage2::SwitchedPlatform(CStateManager& mgr, const CTriggerData&)
   return mWindNode != NearestNodeToPlayer(mgr);
 }
 
+// @ fn_79_A044
 bool CSwampBossStage2::Stunned(CStateManager& mgr, const CTriggerData&) const {
   return mHeadHealth <= 0.f;
 }
 
+// @ fn_79_9FD4
 bool CSwampBossStage2::StunTimeOut(CStateManager& mgr, const CTriggerData&) const {
   return const_cast< CSwampBossStage2* >(this)->StateMachineState().GetTime() > mData.stunTime && mGrowthDeadTime == 0.f;
 }
 
+// @ fn_79_9FA4
 bool CSwampBossStage2::OneGrowthDead(CStateManager& mgr, const CTriggerData&) const {
   return mGrowthDestroyed && mGrowthDeadTime > 0.3f;
 }
@@ -1586,7 +1592,7 @@ void CSwampBossStage2::SpitBarrage(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
-// fn_79_8A3C
+// @ fn_79_8A3C
 void CSwampBossStage2::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
@@ -1872,7 +1878,6 @@ void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_72FC
 void CSwampBossStage2::ResetAttackPhase(CStateManager& mgr, float dt) { mAttackIndex = 0; }
 
 // --------------------------------------------------------------------------------------------
@@ -2031,7 +2036,7 @@ void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
-// fn_79_A838: animation user events, by event id (the kUE_ names are given where the host enum has
+// @ fn_79_A838: animation user events, by event id (the kUE_ names are given where the host enum has
 // one). Anything not handled here goes to CPatterned::DoUserAnimEvent, as retail does.
 void CSwampBossStage2::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                        EUserEventType type, float dt) {
@@ -2182,7 +2187,7 @@ void CSwampBossStage2::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
   }
 }
 
-// fn_79_A540
+// @ fn_79_A540
 CVector3f CSwampBossStage2::GetAimPosition(const CStateManager& mgr, float dt) const {
   return mTailPos * mHeadBlend + mHeadPos * (1.f - mHeadBlend);
 }
