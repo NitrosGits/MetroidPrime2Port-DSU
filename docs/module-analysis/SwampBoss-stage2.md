@@ -136,15 +136,44 @@ B4 GetOrigin, D0 GetHealthInfo.
   stays a documented no-op) and 1B38 (an additive flinch with no caller found). 3354
   PlayerOnGrapplePoint is ported (the player's orbit target casts to CScriptGrapplePoint) and runs
   from Think every frame.
-- **Verified in `04_swamp_temple_dark` with LAYER6 forced:** 0 `[port] caught`, 0 `reach-stub`.
+- **Verified in `04_swamp_temple_dark` with LAYER6 forced:** 0 `[port] caught`, 0 `reach-stub`,
+  `exit=0`.
   - Without lock-on, player shots can't reach the growths, so the full fight was driven by
     console `damage` with a test-only bypass of the weapon/same-toucher checks.
   - **Light phase:** Start → Lurk ↔ SpitWater, then Reel and Recover once the growths break.
+    **Taunt (fn_79_8A3C) is now reached too:** a probe run (no `damage`, one console `damage 250`
+    at most, `aim` + `press a` volleys) cycles `Lurk ↔ Taunt` for 2400+ frames at `mAttackType`
+    0, 1, 2, 4 and 7. Zeroing `mHeadHealth` (console `damage 250` on a body joint: head 100 →
+    −150) sends the boss back to **Reel**, i.e. `Stunned` → the LightLurk submachine's Reel.
   - **Dark phase:** BecomeDarkFlyer → DarkLurk → DropFlyer / SpitBarrage; HP goes 500 → 375 →
     250 → BecomeLightFlyer.
   - **Death:** DeathSequence (knockdown, then body state 2 = lying); the boss sends Dead and
     the boss bar clears.
-  - **Not seen:** Taunt, Level, Swoop, Blow, Circle, Flinch.
+  - **Where the graph lives:** the boss is a `CGenericFSM2` actor (`machine type 1`), so the FSM
+    is an FSM2 asset, not a `CStateMachine`: top machine Start / BecomeDarkFlyer /
+    BecomeLightFlyer / DeathSequence, submachines `LightFlyer` (Start, Reel, Recover, Flinch +
+    `LightLurk`: Lurk, SpitWater, Taunt, Swoop, Level, Circle, SpitBarrage) and `DarkFlyer`
+    (DarkLurk, SpitWater, DropFlyer, Taunt, SpitBarrage, Level, Blow).
+  - **Phase attack slots (from the SCLY pattern data, first…fifth):** light1 `0 1 2 4 8`,
+    dark1 `5 3 6 3 8`, light2 `1 4 2 4 8`, dark2 `3 5 6 8 8` (tauntChance 0.20/0.10/0.10/0.05,
+    attack delay 2–4 s, health 100/620/120/620). So Swoop (4) is scheduled in both light phases
+    and Blow (6) only exists in the dark ones.
+- **Not yet reached, and why (2026-10-20 probe run):**
+  - **Swoop, Level, Circle:** `mAttackType` 4 was queued (light1 slot 4, and the
+    `RecentDamage > 100` override) with `mAttackReady` set, yet Lurk always left to Taunt. The
+    host's FSM2 dump reads every *trigger* node's outgoing edge list as empty (LightLurk's Lurk
+    lists `PlayerInWater ShouldSwoop ShouldTaunt ShouldSpit ShouldBarrage`; default attack
+    `arg` 0.00 for all of them), so the real Lurk→Swoop / →Level / →Circle edge cannot be read
+    out of the loaded asset. Suspect `CGenericFSM2`'s trigger parse (`CGenericFSM2.cpp` reads
+    `CTriggerData` *before* the transition vector) - a follow-up on its own, since that loader is
+    shared by every FSM2 actor.
+  - **Blow:** attack 6 only exists in the dark phases, and the light phase ends only when all
+    four growths die. Growth damage needs a `CWeapon` whose forward has dot > 0 with the boss's,
+    and the boss faces the player, so a headless run firing from in front never satisfies it
+    (console `damage` has no weapon at all): growing all four dead was not achieved.
+  - **Flinch:** its entry trigger is not in any readable transition list; the one condition we
+    can force (`Stunned`, head health ≤ 0) goes to Reel instead, so the Flinch edge is still
+    unidentified.
 - **Crash fixes:**
   - **Scan tokens:** the host `CToken()` leaves `mObjRef` uninitialized, so the ctor builds the
     tokens in its init list.
