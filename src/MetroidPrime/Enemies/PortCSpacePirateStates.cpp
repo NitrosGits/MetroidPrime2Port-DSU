@@ -1451,12 +1451,69 @@ void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_5D0C (0x11C): Activate forces the state machine's code trigger once the machine has
+// been in the state for more than 0.1 s (rodata B3C) and the body is not already jumping. Update,
+// when xb14_jumpPoint is a jump point whose GetJumpTarget() resolves to a waypoint, delivers the
+// two-waypoint jump built by fn_72_5E28 (CBCJumpCmd: kJT_Normal, variant 0, kJS_IntoJump, ambush
+// facing flag, wall jump) from xafc_patrolDestPos to that waypoint. Deactivate and messages above 2
+// do nothing.
 void CSpacePirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Bounce state (fn_72_5D0C)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (mStateMachine->GetTime() > 0.1f &&
+        BodyController()->GetCurrentStateId() != pas::kAS_Jump) {
+      StateMachineState().SetCodeTrigger();
+    }
+    break;
+  case kStateMsg_Update: {
+    const CScriptAiJumpPoint* jumpPoint =
+        TCastToConstPtr< CScriptAiJumpPoint >(mgr.GetObjectById(xb14_jumpPoint));
+    if (jumpPoint == nullptr) {
+      break;
+    }
+    const CScriptWaypoint* waypoint =
+        TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(jumpPoint->GetJumpTarget()));
+    if (waypoint == nullptr) {
+      break;
+    }
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCJumpCmd(xafc_patrolDestPos, waypoint->GetTranslation()));
+    break;
+  }
+  }
 }
 
+// Retail fn_72_5EA4 (0x188): forwards to CPatterned::PathFind for every message first. Activate
+// avoids the other actors, returns at once when the jump point is already in range (0x8f9 bit
+// 0x10) and otherwise refreshes xa1c_coverRange from the body's max speed, the frame time and the
+// model's Y scale (1.5 dt + 0.1, rodata BEC/B3C) plus xa70_intoJumpDist, then marks the jump point
+// in range when its squared distance is below that range squared. Update and Deactivate clear the
+// bit.
 void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::PathFindEx state (fn_72_5EA4)");
+  CPatterned::PathFind(mgr, msg, dt);
+  switch (msg) {
+  case kStateMsg_Update:
+    x8f9_27_inRange = false;
+    break;
+  case kStateMsg_Activate:
+    AvoidActors(mgr);
+    if (!x8f9_27_inRange) {
+      const CScriptAiJumpPoint* jumpPoint =
+          TCastToConstPtr< CScriptAiJumpPoint >(mgr.GetObjectById(xb14_jumpPoint));
+      if (jumpPoint != nullptr) {
+        const float maxSpeed = BodyController()->GetBodyStateInfo().GetMaxSpeed();
+        xa1c_coverRange =
+            maxSpeed * ((1.5f * dt + 0.1f) * GetModelData()->GetScale().GetY()) +
+            xa70_intoJumpDist;
+        const CVector3f delta = jumpPoint->GetTranslation() - GetTranslation();
+        x8f9_27_inRange = delta.MagSquared() < xa1c_coverRange * xa1c_coverRange;
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    x8f9_27_inRange = false;
+    break;
+  }
 }
 
 // Retail fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
@@ -1505,8 +1562,29 @@ void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::LaunchGrenade state (fn_72_58D8)");
 }
 
+// Retail fn_72_5610 (0x26C): Update stops the physics actor, stores 3 into CPatterned's two-bit
+// mDisabledAnimationDeltas, arms kAS_Ready, delivers CBCGenerateCmd(kGType_Seven) and strips
+// Orbit/Target/Solid before switching the shadow off. Activate delivers the same generate command
+// while the animation allows kAS_Generate; Deactivate only returns the animation to kAS_NotReady.
 void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Captured state (fn_72_5610)");
+  switch (msg) {
+  case kStateMsg_Update:
+    mDisabledAnimationDeltas = 3;
+    Stop();
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_Seven, CVector3f::Zero()));
+    RemoveMaterial(kMT_Orbit, kMT_Target, kMT_Solid, mgr);
+    SetDrawShadow(false);
+    break;
+  case kStateMsg_Activate:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_Seven, CVector3f::Zero()));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 // Retail fn_72_5B88: Activate only. It clears the actor's active flag through vtable slot 0x1C
