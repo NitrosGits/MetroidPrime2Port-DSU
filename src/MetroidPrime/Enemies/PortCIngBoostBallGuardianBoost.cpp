@@ -37,17 +37,20 @@
 // ---- triggers -------------------------------------------------------------------------------
 
 // fn_30_B788: HasCollidedWithCrystal (guest 0x11EE bit 0).
+// @ fn_30_B788
 bool CIngBoostBallGuardian::HasCollidedWithCrystal(CStateManager& mgr,
                                                    const CTriggerData& data) const {
   return mCollidedWithCrystal;
 }
 
 // fn_30_B794: ShouldBoost (guest 0x11EE bit 4).
+// @ fn_30_B794
 bool CIngBoostBallGuardian::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {
   return mShouldBoost;
 }
 
 // fn_30_B7A0: IsCurrentlyInBoostPuddleForm (guest 0x11EF bit 7).
+// @ fn_30_B7A0
 bool CIngBoostBallGuardian::IsCurrentlyInBoostPuddleForm(CStateManager& mgr,
                                                         const CTriggerData& data) const {
   return mCurrentlyInBoostPuddleForm;
@@ -55,12 +58,14 @@ bool CIngBoostBallGuardian::IsCurrentlyInBoostPuddleForm(CStateManager& mgr,
 
 // fn_30_B7AC: IsBoostPuddleForm (guest 0x11EE bit 3 and not guest 0x11ED bit 1, the bit
 // UseProjectileFSMEntry fn_30_C1A4 reads).
+// @ fn_30_B7AC
 bool CIngBoostBallGuardian::IsBoostPuddleForm(CStateManager& mgr, const CTriggerData& data) const {
   // 0x0000B7B4: 0x11EE 0x08; 0x0000B7C0: 0x11ED 0x02.
   return mBoostPuddleForm && !mProjectileFSMEntry;
 }
 
 // fn_30_B7D4: IsBoostOver (guest 0x11EE bit 5).
+// @ fn_30_B7D4
 bool CIngBoostBallGuardian::IsBoostOver(CStateManager& mgr, const CTriggerData& data) const {
   return mBoostOver;
 }

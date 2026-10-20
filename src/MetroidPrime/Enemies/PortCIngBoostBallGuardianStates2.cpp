@@ -96,6 +96,7 @@ int sBgMiniPortalAngleIndex = 0;
 } // namespace
 
 // fn_29_8EF0
+// @ fn_30_A364
 void CIngBoostBallGuardian::Alert(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Alert");
@@ -112,6 +113,7 @@ void CIngBoostBallGuardian::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// fn_30_A21C (this module).
 // fn_29_8BAC (not yet exercised in a run)
 void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
@@ -127,6 +129,7 @@ void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// fn_30_A0D8 (this module).
 // fn_29_8A2C
 void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
@@ -153,6 +156,7 @@ void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// fn_30_9F50 (this module).
 // fn_29_8808
 void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   const bool canPathFind = (mData.mFlags210 & kFlag_NoPathFind) == 0 && mFoundMovementPos;
@@ -224,6 +228,7 @@ void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// fn_30_9C7C (this module).
 // fn_29_8570: the point-graph variant, same two guards and the same Activate stores as
 // fn_29_8684 (asm 0x0000858C-0x000086A8); the speed blends from the safe-zone-or-maximum base to
 // the wall speed by the angle between the actor's up and world up (asm 0x00008600-0x00008740).
@@ -249,6 +254,7 @@ void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg m
   MoveOnSurface(move, speed, dt);
 }
 
+// fn_30_9BB0 (this module).
 // fn_29_84A4 (not yet exercised in a run)
 void CIngBoostBallGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
@@ -265,6 +271,7 @@ void CIngBoostBallGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) 
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
+// fn_30_99D4 (this module).
 // fn_29_82D4 (not yet exercised in a run)
 void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
@@ -308,6 +315,7 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
   }
 }
 
+// fn_30_953C (this module).
 // fn_29_7E30: the body projectile in flight. The launch point and the flight direction are two
 // file statics in the REL's bss, seeded on the first call (bss_10, bss_20) from Zero() and
 // Forward() and shared by every Ing; each Activate rewrites both. Exercised in area 57
@@ -396,6 +404,7 @@ void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg m
   }
 }
 
+// fn_30_8DD4 (this module).
 // fn_29_76B8: the Ing possesses the player. Activate drops the body (form 0), clears its
 // particles, aborts the scripted body state, strips its materials, remembers the target as the host,
 // spawns the possessed-mold billboard and the drape voice, deals the body projectile's contact
@@ -513,6 +522,7 @@ void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
+// fn_30_8CC0 (this module).
 // fn_29_75C0 (not yet exercised in a run)
 void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
@@ -534,6 +544,7 @@ void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
+// fn_30_8C18 (this module).
 // fn_29_7518
 void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, float) {
   if (msg != kStateMsg_Activate) {
@@ -549,6 +560,7 @@ void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, floa
   // [?] retail sends script messages here; which state/message pair was not read.
 }
 
+// fn_30_8998 (this module).
 // fn_29_7244
 void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
@@ -588,6 +600,7 @@ void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
+// fn_30_8520 (this module).
 // fn_29_6DA0
 // Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_29_bss_40:
 // a count plus four {TUniqueId, float} entries), insertion-sorted ascending, then takes one entry
@@ -786,6 +799,7 @@ void CIngBoostBallGuardian::ArmSwipeSegment(CStateManager& mgr, const CSegId& a,
   xE5C_1 = false;                      // 0xe5c bit 1
 }
 
+// fn_30_8208 (this module).
 // fn_29_6A88
 void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
@@ -837,6 +851,7 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// fn_30_8120 (this module).
 // fn_29_69A0: the puddle is off the navmesh. Activate sets kAS_Ready, teleports the actor onto
 // the closest physical point within 1000 (rodata_C4) and re-aligns to the surface with 1.0
 // (rodata_64), then sets kAS_Over; Deactivate sets kAS_NotReady. Update does nothing (asm
@@ -887,6 +902,7 @@ void CIngBoostBallGuardian::FailSafeMode(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
+// fn_30_7D5C (this module).
 // fn_29_61B4: two rays a frame, out from the head locator to the
 // target's aim point, until three hits are stored or the shared angle index runs out (the ring is
 // eight angles, so a FindMiniPortals entry never searches more than four frames). The filter and
@@ -944,6 +960,7 @@ void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// fn_30_7BB0 (this module).
 // fn_29_6008: asks the body for one projectile attack; the animation's
 // kUE_Projectile events then spawn the portals FindMiniPortals queued (fn_29_C228).
 void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, float) {
@@ -969,6 +986,7 @@ void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, floa
   }
 }
 
+// fn_30_7390 (this module).
 // fn_29_5CB0 (not yet exercised in a run)
 void CIngBoostBallGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {

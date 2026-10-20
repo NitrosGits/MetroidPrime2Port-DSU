@@ -71,6 +71,7 @@
 // ---- states ---------------------------------------------------------------------------------
 
 // The Ing's fn_29_A094.
+// @ fn_30_B768
 void CIngBoostBallGuardian::Start(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Start");
@@ -78,12 +79,14 @@ void CIngBoostBallGuardian::Start(CStateManager&, EStateMsg msg, float) {
 }
 
 // The Ing's fn_29_A090 (not yet exercised in a run).
+// @ fn_30_B764
 void CIngBoostBallGuardian::WaitForFSMTransition(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("WaitForFSMTransition");
   }
 }
 
+// fn_30_B478 (this module).
 // The Ing's fn_29_9D68. The exit host: the Ing it leaves behind is a swarm. Its Activate swaps the
 // possessed-mold billboard for the exit-host effect (one rs_new of 0x5e8, the class's only
 // allocation), Update rides that effect until it reports it has arrived, and Deactivate drops the
@@ -136,6 +139,7 @@ void CIngBoostBallGuardian::FaceLureOrTarget(CStateManager& mgr) {
   }
 }
 
+// fn_30_B03C (this module).
 // The Ing's fn_29_9A74.
 void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
@@ -203,6 +207,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// fn_30_ABC4 (this module).
 // The Ing's fn_29_9750.
 void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
@@ -275,6 +280,7 @@ bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out
   return true;
 }
 
+// fn_30_A95C (this module).
 // The Ing's fn_29_94E8 (not yet exercised in a run).
 void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
@@ -325,6 +331,7 @@ void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg m
   }
 }
 
+// fn_30_A45C (this module).
 // The Ing's fn_29_8FE8 (not yet exercised in a run).
 void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
