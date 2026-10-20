@@ -24,6 +24,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
+#include "MetroidPrime/Enemies/CDigitalGuardianEchoTarget.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
@@ -152,7 +153,8 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDB0_(0.f)
 , xDB8_(0)
 , xF04_()
-, xF34_()
+, xF34_(3, kInvalidUniqueId) // 0x188A8..0x188C8
+, xF40_{CTransform4f::Identity(), CTransform4f::Identity(), CTransform4f::Identity()} // 0x188CC
 , xFE0_(3)
 , xFE8_(1)
 , xFEC_(CVector3f::Zero())
@@ -212,7 +214,7 @@ void CDigitalGuardianHead::Think(float dt, CStateManager& mgr) {
   StandInFn("CVisualKnowledge::Update (head 0xD80)");
   x13AE0_(dt);
   StandInFn("fn_14_12818 (0x2EC, head Think)");
-  StandInFn("fn_14_1223C (0xD8, head Think)");
+  x1223C_(mgr);
 }
 
 // fn_14_13AE0: the projectile attack timer counts down, the two timers at 0x10EC and 0x10F0 up.
@@ -324,7 +326,7 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     x13318_(mgr);
     SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
     RemoveMaterial(kMT_SeekerTarget, mgr); // li r4, 0x3F
-    StandInFn("fn_14_12314 (0x3B4, head echo targets)");
+    x12314_(mgr);
     break;
   case kSM_Delete: // "XDEL", 0x17E64
     if (xD70_ != nullptr) {
@@ -565,6 +567,95 @@ void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
   }
   PlayCustomSound(xf.GetTranslation(), GetTransform().GetColumn(kDY), mData.sound_EjectSplitter,
                   false);
+}
+
+// fn_14_12314: the offsets (0xF40): RotateX(pi/2), RotateX(-pi/2) * RotateY(pi/2) and
+// RotateX(-pi/2) * RotateY(-pi/2) (.rodata 0x9CC/0x9D0). With the echo-target model (data +0x9C)
+// at this head's scale, each target ("EchoTarget", .rodata 0xF2E) is built inactive-info
+// (li r6, 0) at locator 1 times its offset, solid, orbit, target and seeker-target (.data
+// 0xEA4..0xEB0: 59, 41, 40, 63), with the echo-target vulnerability (data +0x454), this head as
+// its owner and the parameter block; its id goes to 0xF34.
+// @ fn_14_12314
+void CDigitalGuardianHead::x12314_(CStateManager& mgr) {
+  xF40_[0] = CTransform4f::RotateX(CRelAngle::FromRadians(1.5707964f));
+  xF40_[1] = CTransform4f::RotateX(CRelAngle::FromRadians(-1.5707964f)) *
+             CTransform4f::RotateY(CRelAngle::FromRadians(1.5707964f));
+  xF40_[2] = CTransform4f::RotateX(CRelAngle::FromRadians(-1.5707964f)) *
+             CTransform4f::RotateY(CRelAngle::FromRadians(-1.5707964f));
+  if (mData.echoTargets == kInvalidAssetId) {
+    return;
+  }
+  const CModelData modelData(CStaticRes(mData.echoTargets, GetModelData()->GetScale()));
+  const CTransform4f lctr = GetLctrTransform(CSegId(1));
+  for (int i = 0; i < xF34_.size(); ++i) {
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    const CTransform4f xf = lctr * xF40_[i];
+    CDigitalGuardianEchoTarget* target = rs_new CDigitalGuardianEchoTarget(
+        uid, rstl::string_l("EchoTarget"),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, false, kInvalidEditorId), 0,
+        xf, modelData, CMaterialList(kMT_Solid, kMT_Orbit, kMT_Target, kMT_SeekerTarget),
+        LdrToDamageVulnerability(mData.echoTargetVulnerability), GetUniqueId(), mData);
+    if (target != nullptr) {
+      mgr.AddObject(target);
+      xF34_[i] = uid;
+    }
+  }
+}
+
+// fn_14_1223C: unless the armour is gone (0x10F4 bit 0x10), each echo target is placed at
+// locator 1 times its offset, pushed out by its extension (fn_14_19F18); a gone one's id is
+// cleared.
+// @ fn_14_1223C
+void CDigitalGuardianHead::x1223C_(CStateManager& mgr) {
+  if ((x10F4_ & 0x10) != 0) {
+    return;
+  }
+  const CTransform4f lctr = GetLctrTransform(CSegId(1));
+  for (int i = 0; i < xF34_.size(); ++i) {
+    CDigitalGuardianEchoTarget* target =
+        static_cast< CDigitalGuardianEchoTarget* >(mgr.ObjectById(xF34_[i]));
+    if (target != nullptr) {
+      target->SetExtendedTransform(lctr * xF40_[i]);
+    } else {
+      xF34_[i] = kInvalidUniqueId;
+    }
+  }
+}
+
+// fn_14_14CF4: every retracted or retracting echo target starts extending (fn_14_19DF8 with 3) and
+// takes damage again (+0x78C bit 0x80 cleared); bit 0x02 (EchoTargetDestroyed) is cleared.
+// @ fn_14_14CF4
+void CDigitalGuardianHead::ExtractEchoTargets(CStateManager& mgr, float) {
+  for (int i = 0; i < xF34_.size(); ++i) {
+    CDigitalGuardianEchoTarget* target =
+        static_cast< CDigitalGuardianEchoTarget* >(mgr.ObjectById(xF34_[i]));
+    if (target != nullptr && (target->GetState() == CDigitalGuardianEchoTarget::kS_Retracted ||
+                              target->GetState() == CDigitalGuardianEchoTarget::kS_Retracting)) {
+      target->SetState(mgr, CDigitalGuardianEchoTarget::kS_Extending);
+      target->SetDamageIgnored(false);
+    }
+  }
+  x10F4_ &= ~0x02;
+}
+
+// fn_14_14DA0: every extended or extending echo target starts retracting (fn_14_19DF8 with 2) and
+// ignores damage (+0x78C bit 0x80); bits 0x40 and 0x02 are cleared, the deployment time (0x10F0)
+// becomes data +0x20 and bit 0x04 is set.
+// @ fn_14_14DA0
+void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
+  for (int i = 0; i < xF34_.size(); ++i) {
+    CDigitalGuardianEchoTarget* target =
+        static_cast< CDigitalGuardianEchoTarget* >(mgr.ObjectById(xF34_[i]));
+    if (target != nullptr && (target->GetState() == CDigitalGuardianEchoTarget::kS_Extended ||
+                              target->GetState() == CDigitalGuardianEchoTarget::kS_Extending)) {
+      target->SetState(mgr, CDigitalGuardianEchoTarget::kS_Retracting);
+      target->SetDamageIgnored(true);
+    }
+  }
+  x10F4_ &= ~0x40;
+  x10F4_ &= ~0x02;
+  x10F0_ = mData.maxStage2StunnedTime;
+  x10F4_ |= 0x04;
 }
 
 // fn_14_17A44: the base's PreRender.
@@ -1027,8 +1118,6 @@ DGHD_CODE_STANDIN(SeekLineOfSight, fn_14_1524C)
 DGHD_CODE_STANDIN(DropShields, fn_14_15054)
 DGHD_CODE_STANDIN(RaiseShields, fn_14_14F74)
 DGHD_CODE_STANDIN(ExtractAntenna, fn_14_14E78)
-DGHD_CODE_STANDIN(ExtractEchoTargets, fn_14_14CF4)
-DGHD_CODE_STANDIN(RetractEchoTargets, fn_14_14DA0)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
 DGHD_CODE_STANDIN(EndSplitterDeployment, fn_14_14B60)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)

@@ -15,6 +15,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.hpp"
 
 #include "rstl/optional_object.hpp"
+#include "rstl/reserved_vector.hpp"
 #include "rstl/vector.hpp"
 #endif
 
@@ -173,6 +174,10 @@ private:
   int xF390_(CStateManager& mgr) const;
   // fn_14_F424 (0x280 bytes): eject one splitter from "B_ball_LCTR".
   void xF424_(CStateManager& mgr);
+  // fn_14_12314 (0x3B4 bytes): the three echo targets round locator 1, their offsets at 0xF40.
+  void x12314_(CStateManager& mgr);
+  // fn_14_1223C (0xD8 bytes): the echo targets follow locator 1 while the armour stands.
+  void x1223C_(CStateManager& mgr);
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
@@ -186,8 +191,9 @@ private:
   uchar xDB8_;
   // 0xF04: the 'PART' token (data +0x94), its valid flag at 0xF10.
   rstl::optional_object< TLockedToken< CGenDescription > > xF04_;
-  // 0xF30 / 0xF34: the echo targets' ids (count, then the ids); fn_14_12314 fills them.
-  rstl::vector< TUniqueId > xF34_;
+  // 0xF30 / 0xF34: the echo targets' ids (count 3, then the ids); fn_14_12314 fills them.
+  rstl::reserved_vector< TUniqueId, 3 > xF34_;
+  CTransform4f xF40_[3]; // 0xF40: the echo targets' offsets from locator 1 (fn_14_12314)
   int xFE0_;        // 0xFE0: the echo targets left (3)
   int xFE8_;        // 0xFE8: the attack mode (1 in the ctor; fn_14_13B30)
   CVector3f xFEC_;  // 0xFEC: the attack position (SetInitialAttackPosition, SeekAttackPosition)
