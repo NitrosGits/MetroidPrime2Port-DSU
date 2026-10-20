@@ -289,6 +289,7 @@ private:
   float mTurnSpeedAccel;                         // guest 0xBFC
   ushort mTentacleDamagedSound;                  // guest 0xC2C
   float mTauntFrequency;                         // guest 0xC34
+  float mTauntLoopDuration;                      // guest 0xC38: the taunt's loop duration
   float mAttackIntervalMin;                      // guest 0xCF4
   float mAttackIntervalMax;                      // guest 0xCF8
   float mModeOneHealth;                          // guest 0xBAC: below it the mode becomes 1 (fn_16_51D4)
@@ -321,6 +322,7 @@ private:
   float xa48_;                        // guest 0xA48, 0.0f: the contact damage cooldown (fn_16_8C)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
+  float xa54_;                        // guest 0xA54, 0.0f: the taunt attack's timer (fn_16_5DBC)
   float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
   float xa5c_;                        // guest 0xA5C, 0.0f: the "Telegraph" effect timer
   float xa60_;                        // guest 0xA60, 0.0f: the beam's refire timer (fn_16_A64)

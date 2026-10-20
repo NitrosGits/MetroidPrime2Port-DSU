@@ -152,6 +152,11 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 // The eight portal locators, lbl_16_rodata_1E0 (.rodata 0x1E0): the tentacle's portal that the
 // animation's EventStart/EventStop events name. The list is the retail's order (the seventh
 // portal comes before the sixth, like the tentacle order in fn_16_36E8).
+// fn_16_5DBC's two function-local statics (the retail's lbl_16_bss_C and lbl_16_bss_14, each
+// with its own "initialized" guard byte, lbl_16_bss_10 and lbl_16_bss_18).
+int sTauntState = 0; // lbl_16_bss_C: the retail never reads it
+int sTauntRetracted = 0; // lbl_16_bss_14: the retracted tentacle count at the activate
+
 const char* const skPortalNames[8] = {"portal1_LCTR_SDK", "portal2_LCTR_SDK", "portal3_LCTR_SDK",
                                       "portal4_LCTR_SDK", "portal5_LCTR_SDK", "portal7_LCTR_SDK",
                                       "portal6_LCTR_SDK", "portal8_LCTR_SDK"};
@@ -196,6 +201,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mTurnSpeedAccel(data.turnSpeedAccel)                            // guest 0xBFC
 , mTentacleDamagedSound(data.tentacle.tentacleDamagedSound)  // guest 0xC2C, data+0x57C at 0x95E0
 , mTauntFrequency(data.tauntFrequency)                            // guest 0xC34
+, mTauntLoopDuration(data.tauntAttack.loopDuration)                      // guest 0xC38, data+0x5D8
 , mAttackIntervalMin(data.attackIntervalMin)                      // guest 0xCF4
 , mAttackIntervalMax(data.attackIntervalMax)                      // guest 0xCF8
 , mModeOneHealth(data.unknown_0x905938b8)                         // guest 0xBAC, data+0x674
@@ -225,6 +231,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa48_(0.f)                                                      // guest 0xA48, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
+, xa54_(0.f)                                                      // guest 0xA54, rodata_380
 , xa58_(0.f)                                                      // guest 0xA58, rodata_380
 , xa5c_(0.f)                                                      // guest 0xA5C, rodata_380
 , xa60_(0.f)                                                      // guest 0xA60, rodata_380
@@ -2298,8 +2305,43 @@ void CEmperorIngStage1::WarpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
   StandInFn("fn_16_601C");
 }
 
+// fn_16_5DBC (0x5DBC..0x601C, 0x260): the state "TauntAttack" - the taunt's own timer (the
+// guest 0xA54) counts up and the taunt ends when it is over the taunt's loop duration (the guest
+// 0xC38, 0x5F78).
+//   Activate: the script hears IS00 (fn_16_830, 0x5E60), the tentacles get the mode 1
+//     vulnerability (fn_16_353C, 0x5E7C), the timer is 0.0f (0x5EA8) and the module's static
+//     (lbl_16_bss_14, 0x5EB4) takes the retracted tentacle count (fn_16_2E7C, 0x5EAC).
+//   Update: the actor looks at the player (fn_16_7B40, 0x5EC4), the timer counts up (0x5ED4) and
+//     the animation state is asked for the loop attack (ShouldRetry, pas 9 = kAS_LoopAttack,
+//     0x5EE0); if it may, the body gets the loop attack command (the id 7 with the type 2,
+//     0x5EEC), otherwise the timer over the loop duration gives the exit state command (the id
+//     10, 0x5FA8).
+//   Deactivate: the body gets the abort scripted command (the id 13, 0x5FDC) and the animation
+//     state is not ready (0x5FF8).
 void CEmperorIngStage1::TauntAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_5DBC");
+  switch (msg) {
+    case kStateMsg_Activate:
+      SendStageMessage(mgr, 0); // 0x5E60
+      SetTentacleVulnerability(mgr, 1); // 0x5E7C
+      xa54_ = 0.f; // 0x5EA8
+      sTauntRetracted = RetractedTentacleCount(); // 0x5EAC, 0x5EB4
+      break;
+    case kStateMsg_Update:
+      LookAtPlayer(mgr); // 0x5EC4
+      xa54_ += dt; // 0x5ED4
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) { // 0x5EE0
+        BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Two)); // 0x5F38
+      } else if (xa54_ > mTauntLoopDuration) { // 0x5F78, 0x5F84
+        BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x5FA8
+      }
+      break;
+    case kStateMsg_Deactivate:
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x5FDC
+      mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x5FF8
+      break;
+    default:
+      break;
+  }
 }
 
 // fn_16_5C4C (the state "Taunt").
