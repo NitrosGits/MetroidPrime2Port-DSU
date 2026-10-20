@@ -348,6 +348,16 @@ private:
                                    // only clears them, so they start at 0
   uchar mTurnDone;                 // guest 0xD4C, the "done turning" flag: fn_10_FE18 sets it and
                                    // fn_10_F864 (the DoneTurning trigger) reads it
+  uchar mPissedOff;                // guest 0xD58, the flag the PissedOff state clears (fn_10_F930)
+                                   // and the fight script sets; fn_10_FD30 (ShouldGetPissedOff)
+                                   // reads it
+  uchar mFadeOut;                  // guest 0xDEC, the fade flag: fn_10_117A0 (PickedNormalMissile)
+                                   // and fn_10_BBE4 (ShouldFadeOut) read it
+  int mPickedAttack;               // guest 0x984, the word the fight script writes and the
+                                   // Picked* triggers compare: the picked attack's id (1 melee,
+                                   // 2 boost ball, 4 melee dash, 8 scatter shot, 0x10 moving
+                                   // scatter shot, 0x20 dive attack, 0x40 normal missile, 0x80
+                                   // missile jump, 0x100 super missile, 0x200 taunt, 0x400 pause)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

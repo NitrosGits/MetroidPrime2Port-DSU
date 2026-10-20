@@ -477,9 +477,12 @@ bool CDarkSamus::OutOfMeleeRange(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_116F8 (0x000116F8): the word at 0x984 - the fight script's picked attack id - against 2, the
+// id of the boost ball. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_116F8
 bool CDarkSamus::PickedBoostBall(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_116F8", "trigger PickedBoostBall");
-  return false;
+  return mPickedAttack == 2;
 }
 
 bool CDarkSamus::PickedFreezeBeam(CStateManager&, const CTriggerData&) const {
@@ -487,39 +490,62 @@ bool CDarkSamus::PickedFreezeBeam(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_1174C (0x0001174C): the word at 0x984 - the fight script's picked attack id - against 0x20, the
+// id of the dive attack. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_1174C
 bool CDarkSamus::PickedDiveAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_1174C", "trigger PickedDiveAttack");
-  return false;
+  return mPickedAttack == 0x20;
 }
 
+// fn_10_117D8 (0x000117D8): the word at 0x984 - the fight script's picked attack id - against 1, the
+// id of the melee attack. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_117D8
 bool CDarkSamus::PickedMelee(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_117D8", "trigger PickedMelee");
-  return false;
+  return mPickedAttack == 1;
 }
 
+// fn_10_11710 (0x00011710): the word at 0x984 - the fight script's picked attack id - against 4, the
+// id of the melee dash. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_11710
 bool CDarkSamus::PickedMeleeDash(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11710", "trigger PickedMeleeDash");
-  return false;
+  return mPickedAttack == 4;
 }
 
+// fn_10_1178C (0x0001178C): the word at 0x984 - the fight script's picked attack id - against 0x80, the
+// id of the missile jump. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_1178C
 bool CDarkSamus::PickedMissileJump(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_1178C", "trigger PickedMissileJump");
-  return false;
+  return mPickedAttack == 0x80;
 }
 
+// fn_10_11724 (0x00011724): the word at 0x984 - the fight script's picked attack id - against 0x10, the
+// id of the moving scatter shot. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_11724
 bool CDarkSamus::PickedMovingSShot(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11724", "trigger PickedMovingSShot");
-  return false;
+  return mPickedAttack == 0x10;
 }
 
+// fn_10_117A0 (0x000117A0): the byte at 0xDEC (the fade flag) first - when it is 1 the
+// trigger answers for the dive attack's id (0x20, the compare at 0x000117B0), otherwise
+// for the normal missile's id (0x40, the compare at 0x000117C4).
 bool CDarkSamus::PickedNormalMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_117A0", "trigger PickedNormalMissile");
-  return false;
+  if (mFadeOut == 1) {
+    return mPickedAttack == 0x20;
+  }
+  return mPickedAttack == 0x40;
 }
 
+// fn_10_11800 (0x00011800): the word at 0x984 - the fight script's picked attack id - against 0x400, the
+// id of the pause. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_11800
 bool CDarkSamus::PickedPause(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11800", "trigger PickedPause");
-  return false;
+  return mPickedAttack == 0x400;
 }
 
 bool CDarkSamus::PickedPhazonAttack(CStateManager&, const CTriggerData&) const {
@@ -532,14 +558,20 @@ bool CDarkSamus::PickedPhazonEnrage(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_11738 (0x00011738): the word at 0x984 - the fight script's picked attack id - against 0x8, the
+// id of the scatter shot. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_11738
 bool CDarkSamus::PickedScatterShot(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11738", "trigger PickedScatterShot");
-  return false;
+  return mPickedAttack == 0x8;
 }
 
+// fn_10_11778 (0x00011778): the word at 0x984 - the fight script's picked attack id - against 0x100, the
+// id of the super missile. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_11778
 bool CDarkSamus::PickedSuperMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11778", "trigger PickedSuperMissile");
-  return false;
+  return mPickedAttack == 0x100;
 }
 
 bool CDarkSamus::PickedSweepBeam(CStateManager&, const CTriggerData&) const {
@@ -547,9 +579,12 @@ bool CDarkSamus::PickedSweepBeam(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_117EC (0x000117EC): the word at 0x984 - the fight script's picked attack id - against 0x200, the
+// id of the taunt. The body is the cntlzw/srwi idiom (the four instructions after the load),
+// which makes the result 1 only for an exact match.
+// @ fn_10_117EC
 bool CDarkSamus::PickedTaunt(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_117EC", "trigger PickedTaunt");
-  return false;
+  return mPickedAttack == 0x200;
 }
 
 bool CDarkSamus::PlayerIsMorphball(CStateManager&, const CTriggerData&) const {
@@ -587,8 +622,16 @@ bool CDarkSamus::ShouldFadeOut(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_FD30 (0x0000FD30): the byte at 0x420's bit 6 (0x40 - the extrwi at 0x0000FD34 keeps
+// the byte's bit 25, which is 1u << (31 - 25) = 0x40) and then the byte at 0xD58. The bit is
+// the base class' own flag: fn_10_F40C (the scannable info) and fn_10_17F04 (the render
+// pass) test it together with the frozen and the visible flags, so it is the alive flag
+// the host keeps in GetAlive(). The byte at 0xD58 is the flag the PissedOff state clears
+// (fn_10_F930) and the fight script sets.
 bool CDarkSamus::ShouldGetPissedOff(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_FD30", "trigger ShouldGetPissedOff");
+  if (GetAlive()) {
+    return mPissedOff != 0;
+  }
   return false;
 }
 

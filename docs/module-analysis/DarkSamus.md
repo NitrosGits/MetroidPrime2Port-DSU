@@ -153,6 +153,9 @@ The host does not reproduce the guest layout (the host object is larger than ret
 | `mPathFindSearch` | 0x7C0 | the `CPathFindSearch` the retail builds; `GetSearchPath` returns it |
 | `mData` (`CDarkSamusData`) | - | the loader's 60 properties, named after the property each comes from. Retail spreads them over the sub-objects above; the host keeps them in one block for the later milestones |
 | `mGuestCD0` | 0xCD0 | the first byte of the sub-object `fn_10_E560` builds; `GetCollisionResponseType` reads it (0x6A when it is 1, else 0x2E). It stays 0 in the port, so the actor always answers 0x2E |
+| `mPissedOff` | 0xD58 | the flag the PissedOff state clears (fn_10_F930) and the fight script sets; fn_10_FD30 reads it |
+| `mFadeOut` | 0xDEC | the fade flag; fn_10_117A0 and fn_10_BBE4 read it |
+| `mPickedAttack` | 0x984 | the word the fight script writes: the picked attack's id (the `Picked*` triggers compare it) |
 
 ## 3. Loader `fn_10_CF44`
 
@@ -303,27 +306,49 @@ read `inFront=1`), so the taunt command and the `AnimOver` branch never ran.
 
 **The guest's flag bytes** the port keeps: 0x90C (bit 6 = "starts in the air", bit 7 = "alerted";
 the constructor's `rlwimi` chain at 0x0001FBF8.. only clears them, so they start at 0), 0xD4C (the
-"done turning" flag) and 0x6B4 (the pending flag of the taunt command).
+"done turning" flag) and **0x6B4, which is the base class's animation state and not a pending
+flag**: `fn_10_8698` stores 1 to it on `Activate` (0x000087E0) and 0 to it on `Deactivate`
+(0x00008820), and the DOL's `ShouldRetry` (the call at 0x00008710, with 0x10 = `pas::kAS_Taunt`)
+advances it to kAS_Repeat and then to kAS_Over. It is the member the base's `GetAnimOver` reads,
+so the host drives it the way the other ported actors do (`CDarkCommando::Lurk`).
 
-**The `fn_10_FE18` branches** (2026-10-21): a temporary hook (reverted) that put the player
-behind the actor drove the state past the 90-degree test, so the taunt command path ran: the
-`Activate` case delivers the taunt (`kBSC_Taunt`, `pas::kTT_Six`), the `Update` case asks
-`CanIssueCommand` (false) and the `AnimOver` check answers false. The two arms that need a *true*
-answer never ran, so `fn_10_FE18` stays unmarked: the host's `AnimOver` is the port's own
-animation-state tracking (`CPatterned::GetAnimOver` = `mAnimationState.IsOver()`) and the DarkSamus
-never drives `mAnimationState`, so the turn can never end that way - with the player behind the
-actor the boss stays in `TurnToFacePlayer`. The other ports drive it (e.g. `CDarkCommando::Lurk`
-sets `kAS_Ready` on `Activate` and `kAS_Over` when the animation ends); that is the port's
-convention to copy here.
+**The `fn_10_FE18` branches** (2026-10-21, resolved): a temporary hook (reverted) that put the
+player behind the actor drove the state past the 90-degree test, so the taunt command path ran.
+With the animation state driven as above the taunt now *ends*: the probe printed anim=1 (Ready)
+on `Activate`, anim=2 (Repeat) while the body was in `kAS_Taunt`, and anim=3 (Over) when the
+taunt was over - then the base's `AnimOver` answered true, the turn ended and the machine walked
+on to `TravelToCoverPoints`. Both arms ran (the player in front ends the turn at once, the player
+behind runs the taunt), so `fn_10_FE18` is marked.
 
-**Next**: `TravelToCoverPoints` (`fn_10_1DF74`, 0x204 bytes - the cover-point choice and the move)
-and the triggers of that state that can lead out of it: `ShouldGetPissedOff` (`fn_10_FD30`, the
-flag byte at 0x420's bit 6 and the byte at 0xD58, which the `PissedOff` state `fn_10_F930` sets),
-`ShouldReact` (`fn_10_11158`), `ShouldFadeOut` (`fn_10_BBE4`, the helper `fn_10_17E14` and the byte
-at 0xDEC), `TooMuchDamage` (`fn_10_10698`, the words at 0x980/0x994/0x998) and `CanMissileDeflect`
-(`fn_10_14284`, the helper `fn_10_17E14` and the float at +0x24). The fight script's own
-`Picked*` triggers need the fight's script object, not the area run, and the fight flag (the byte
-at 0x420's bit 6) is only set while the fight runs - so the area run cannot answer them.
+**The `TravelToCoverPoints` triggers** (2026-10-21): the state checks 20 triggers (the FSM2 dump):
+`ShouldGetPissedOff`, `ShouldReact`, `CanMissileDeflect`, `ShouldFadeOut`, the eleven `Picked*`
+triggers of the fight script, `TooMuchDamage` and `WallCollision`. Ported so far: the ten
+`Picked*` triggers whose whole body is the word at 0x984 compared with the picked attack's id
+(`fn_10_117D8` melee 1, `fn_10_116F8` boost ball 2, `fn_10_11710` melee dash 4, `fn_10_11738`
+scatter shot 8, `fn_10_11724` moving scatter shot 0x10, `fn_10_1174C` dive attack 0x20,
+`fn_10_1178C` missile jump 0x80, `fn_10_11778` super missile 0x100, `fn_10_117EC` taunt 0x200,
+`fn_10_11800` pause 0x400), `fn_10_117A0` (`PickedNormalMissile`: the byte at 0xDEC picks the
+dive attack's id 0x20 or the normal missile's id 0x40) and `fn_10_FD30` (`ShouldGetPissedOff`:
+the byte at 0x420's bit 6 and then the byte at 0xD58). The port keeps the word at 0x984 as
+`mPickedAttack`, the byte at 0xD58 as `mPissedOff` and the byte at 0xDEC as `mFadeOut`.
+
+The byte at 0x420's bit 6 (0x40) is a *base class* flag (0x420 lies inside the guest's CPatterned,
+0x158..0x7C0) and the three places that test it (fn_10_F40C the scannable info, fn_10_17F04 the
+render pass, fn_10_1D6CC the fade) test it together with the frozen and the visible flags - so it
+is the alive flag, the host's `GetAlive()`.
+
+**Next**: the rest of the `TravelToCoverPoints` triggers. `ShouldReact` (`fn_10_11158`, 0x154
+bytes) and `TooMuchDamage` (`fn_10_10698`: the word at 0x980 - a TUniqueId - the count at 0x994
+and the array at 0x998, and the two floats at 0xCC0/0xCC8) are the module's own fields.
+`ShouldFadeOut` (`fn_10_BBE4`) and `CanMissileDeflect` (`fn_10_14284`) need the fight's script
+object: the helper `fn_10_17E14` gets it from the TUniqueId at 0x974 (`fn_10_17DE0` looks it up
+and casts it to `CScriptDarkSamusBattleStage`) and module 11's own accessor `fn_11_B70` then
+points at +0x24 of it - so the byte at +0x31 and the float at +0x24 live in the *battle stage*
+REL's object, which the host's `CDarkSamusBattleStage` (upstream's body) does not carry: those two
+triggers need module 11's data first. `WallCollision` (`fn_10_F800`) needs the three floats at
+0x964, 0xC44 and 0x8B0. The three `Picked*` triggers that are not in the REL's text
+(`PickedSweepBeam` = `fn_10_CDA0`, `PickedPhazonAttack` = `fn_10_8680`, `PickedPhazonEnrage` =
+`fn_10_8114`) are DOL functions the REL's table only names, so the port has no body for them yet.
 
 `fn_10_1DF74` is not a small body: it calls ten module helpers of its own (`fn_10_1D860`,
 `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`, `fn_10_1E26C`, `fn_10_1C778`,
