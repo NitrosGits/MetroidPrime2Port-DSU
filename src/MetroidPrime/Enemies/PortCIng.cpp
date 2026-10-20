@@ -3610,13 +3610,14 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
   if (type == kLNT_PlayerFire) {
     // asm 0xB32C-0xB3A4: inside the hearing radius (CIngData+0x0, the actor's 0x7c0) and not too
     // far above the Ing, the shot is heard.
-    if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
+    // asm 0xB368-0xB370: heard while distSq <= the radius squared (cror eq,lt,eq; bne).
+    if (distSq > mData.mHearingRadius * mData.mHearingRadius) {
       return false;
     }
-    // The retail also rejects the noise when it is more than 0x3d4 squared above the Ing (asm
-    // 0xB378-0xB390); 0x3d4 is CPatterned's mCurPlayerLeashTime.
+    // The retail also rejects the noise when dz squared (0xB35C) reaches 0x3d4 squared (asm
+    // 0xB378-0xB390, bge); 0x3d4 is CPatterned's mCurPlayerLeashTime, 0 disables the test.
     if (mCurPlayerLeashTime != 0.f &&
-        delta.GetZ() >= mCurPlayerLeashTime * mCurPlayerLeashTime) {
+        delta.GetZ() * delta.GetZ() >= mCurPlayerLeashTime * mCurPlayerLeashTime) {
       return false;
     }
     mHeardShotTime = 0.f; // 0xe30
