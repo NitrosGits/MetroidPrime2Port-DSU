@@ -288,9 +288,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 83AC | CSandBoss::RotateToPlayerHelper | [proven] host body |
 | 84A8 | CSandBoss::UpdateGroupCinematicState | [proven] host body |
 | 86D0 | CSandBoss::UpdateTimers | [proven] host body |
-| 8740 | CSandBoss::GetArmoredBounds | [proven] host body |
-| 88D0 | CSandBoss::RenderSphere | [proven] host body |
-| 89E8 | CSandBoss::RenderWithArmor | [proven] host body |
+| 8740 | CSandBoss::GetArmoredBounds | [ported] host body, not exercised yet (scan-visor path, `CC84`'s callee — slice 20) |
+| 88D0 | CSandBoss::RenderSphere | [ported] host body, not exercised yet (scan-visor path, `CB30`'s attached branch — slice 20) |
+| 89E8 | CSandBoss::RenderWithArmor | [ported] host body, not exercised yet (scan-visor path, `CB30` when unattached — slice 20) |
 | 8A8C | CSandBoss::RenderArmor | [proven] host body |
 | 8C88 | CSandBoss::CheckBodyStateForDarkBeam | [proven] host body |
 | 8CB4 | CSandBoss::ProbeDarkBeam | [proven] host body |
@@ -363,8 +363,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | CA84 | CSandBoss::IsUnderGround | [proven] host body |
 | CA90 | CSandBoss::StateOver | [proven] host body |
 | CAA4 | CSandBoss::SetupStateMachine | [proven] host body |
-| CB30 | CSandBoss::ScanVisorRender | [ported] host body, not exercised yet (scan visor untested) |
-| CC84 | CSandBoss::GetScanVisorRenderBounds | [ported] host body, not exercised yet (scan visor untested) |
+| CB30 | CSandBoss::ScanVisorRender | [ported] host body, not exercised yet (slice 20: the scan never locks the boss, so `CScanDisplay::Draw` never reaches its `IsScanVisorSelfRender` branch) |
+| CC84 | CSandBoss::GetScanVisorRenderBounds | [ported] host body, not exercised yet (slice 20: same, `PrepareScanDisplay`'s self-render branch never taken) |
 | CDB0 | CSandBoss::GetScannableObjectInfo | [proven] host body |
 | CDF0 | CSandBoss::ProjectileInfo | [proven] host body |
 | CDF8 | CSandBoss::GetAimPosition | [proven] host body |
@@ -675,6 +675,32 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   scan-visor pair `ScanVisorRender`/`GetScanVisorRenderBounds` (CB30/CC84). The §4 rows for `8E18`,
   `C174` and `CB30`/`CC84` disagreed with their source markers; the rows now follow the markers.
   Newly `// @` (12): 1D74 51BC 560C 6434 C174 C258 8E18 8F94 B06C B2D8 BD30 BDAC.
+- Slice 20 (2026-10-20, runs sbAz/sbBa/sbBb, same area/layer, `FRAMES=3000/3000/4500`
+  `SECS=360/330/420`, all exit 0, 0 caught, 0 reach-stub): **the scan-visor render path, and why the
+  five bodies on it stay unmarked.** The C-stick pulses of (a) never put the game in the scan visor,
+  so (b) drove it through the console's `visor` command (`MP2_CONSOLE=<port>`,
+  `platform/port_console.cpp:1364`) with the scan display's own read-back:
+  (a) sbAz (`TOKENS='LAYER5@400,CUP@700+4,CUP@780+4,CDOWN@860+4,CUP@940+4' MP2_SB_AIM=1
+  MP2_SB_HIT=1 MP2_SB_DUMP=1 MP2_SB_HP=1`): the worm is parked on the reticle (`[sbaim] col=0184
+  tgt=... pl=...`) but the log never shows a visor change and none of the five bodies runs.
+  (b) sbBa (`MP2_SB_AIM=1 MP2_SB_DUMP=1 MP2_SB_HP=1`) and sbBb (the same with `FRAMES=4500`), both
+  with the console visor: the read-back works and selects an object — `[scan] palette 23 selected
+  object 00000146 (92 id pixels, 92 non-zero)` (sbBa) / `(91 id pixels, 91 non-zero)` (sbBb), the
+  32x64 id peek — but no `[scan] palette N selected object` line ever names 0169/0183/01da, i.e. the
+  boss is never the scan target, and `CB30` never appears in either `[sbtrace]`.
+  (c) sbBb also clears the actor of suspicion with a temporary `[sbmat]` probe line in `Think` (not
+  committed): `[sbmat] uid=0169 scannable=1 token=1 object=1 info1=e46bbfa0 stampede=0
+  selfRender=1` (the same for 0183/01da) — the worms do carry `kMT_Scannable` and their SCAN token is
+  loaded (`CActor::AcceptScriptMsg kSM_Create` adds the material). So the blocker is **target
+  acquisition, not the actor**: with no worm as the scan's model object, `CScanDisplay` never takes
+  its `IsScanVisorSelfRender` branch, and `ScanVisorRender` (CB30) / `GetScanVisorRenderBounds`
+  (CC84) — with `RenderWithArmor` (89E8), `RenderSphere` (88D0) and `GetArmoredBounds` (8740) behind
+  them — never run. All five keep `// fn_55_X (ported, not exercised yet)`. What would unblock it: hold
+  the visor on scan for the whole stampede window (the worm is in front from the first `[sbaim]` line
+  on) and look for `[scan] palette N selected object <0169|0183|01da>`; the sphere branch
+  (`RenderSphere`) needs the same plus `MP2_SB_ROUND=2 MP2_SB_HEAD=1 MP2_SB_BALL=1`.
+  Newly `// @`: none. The §4 rows for `8740`/`88D0`/`89E8` said `[proven]` while their source
+  markers said ported; they now follow the markers.
 - **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
   here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
   `mData.stampedeProperties.breakStampedeHP` and reading it back as 150 (three worms, offset 4204 in
@@ -703,8 +729,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
 - Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
-  so only a direct call could run it), the scan-visor pair `CB30`/`CC84`, and the getter/render slots no
-  probe calls (0 64 6C 74 7C 8C 98 A4 AC BC 8740 88D0 89E8).
+  so only a direct call could run it), the scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8`
+  behind them (slice 20: the worms are scannable, but the scan never locks the boss), and the
+  getter/render slots no probe calls (64 6C 74 7C 8C 98 A4 AC BC).
 
 ## 6. FSM2 graph (dumped from the loaded asset)
 
