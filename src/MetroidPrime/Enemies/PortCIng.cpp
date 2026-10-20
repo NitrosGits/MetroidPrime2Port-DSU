@@ -8,6 +8,7 @@
 
 #include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Graphics/CLight.hpp"
 #include "Kyoto/CRandom16.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Math/CMath.hpp"
@@ -21,6 +22,7 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CGameLight.hpp"
 #include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
@@ -359,6 +361,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mSwarmEffect(OptionalPart(data.mSwarm.mPART))                   // 0xce0, CIngData+0x1e4
 , mSwarmEffect2(OptionalPart(data.mSwarm.mPART081E))              // 0xcf0, CIngData+0x1f4
 , mBlobId(kInvalidUniqueId)
+, mLightId(kInvalidUniqueId)
 , mTeamId(kInvalidUniqueId)
 , mTargetId(kInvalidUniqueId)
 , mPrevTargetId(kInvalidUniqueId)
@@ -1583,6 +1586,29 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   default:
     break;
   }
+}
+
+// @ fn_29_4960
+void CIng::UpdateLight(CStateManager& mgr, float dt) {
+  // The retail's light update (asm 0x4960-0x4A90): the light's blend (0xe50) rises by dt while
+  // the Ing is alive (the bit 6 of the byte at 0x420) and corporeal (the form 2), capped at
+  // rodata_64 (1.0), and falls by dt otherwise, stopped at zero (asm 0x4978-0x49D8). The light
+  // actor (0xd68) then takes the blend of the black and the data's light colour (0x7d8) at the eye
+  // segment's transform (0xd7b), with the attenuation 1/0x7dc (asm 0x49FC-0x4A8C).
+  if (GetAlive() && mForm == kForm_Corporeal) {
+    mLightBlend = CMath::Min(1.f, mLightBlend + dt);
+  } else {
+    mLightBlend = CMath::Max(0.f, mLightBlend - dt);
+  }
+  CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mLightId));
+  if (light == nullptr) {
+    return;
+  }
+  const CColor color = CColor::Lerp(CColor::Black(), mData.mLightColor, mLightBlend);
+  const CTransform4f xf = GetLctrTransform(mEyeSegId);
+  CLight point = CLight::BuildPoint(xf.GetTranslation(), color);
+  point.SetAttenuation(1.f / mData.mLightAttenuation, 0.f, 0.f);
+  light->SetLight(point);
 }
 
 // fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, with the
@@ -3107,7 +3133,7 @@ void CIng::Think(float dt, CStateManager& mgr) {
   UpdateValidTarget(mgr);
   UpdateLoopSfx(); // fn_29_2270 (0x1A4): the ing spot's looped sounds
   UpdateTouchBox();      // fn_29_3C58, asm 0x0000C7B0
-  PortIngStandIn("fn_29_4960 light blend (0x148)");
+  UpdateLight(mgr, dt);  // fn_29_4960, asm 0x0000C7C0
   ValidateLureZone(mgr); // fn_29_1C2C, asm 0x0000C7CC
   if (mgr.GetObjectById(mD76Id) == nullptr) { // asm 0x0000C7E0: no kInvalidUniqueId guard
     mD76Id = kInvalidUniqueId;

@@ -402,6 +402,8 @@ private:
   // fn_29_1F1C: ExitHost's Deactivate smoke, "IngExitHostSmokeFx" at the Ing's transform, plus the
   // swarm block's own sound (CIngData swarm +0x28); only when the second GEN token is loaded.
   void SpawnExitHostSmoke(CStateManager& mgr);
+  // fn_29_4960: the actor's light (0xd68) follows the Ing's eye segment and its data colour.
+  void UpdateLight(CStateManager& mgr, float dt);
   // fn_29_4468: the target's aim position (CActor's GetAimPosition, prediction in f1), false when
   // it is gone. Callers pass rodata_6C (0.0f) except the body projectile's flight (rodata_B4, 0.5f).
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f);
@@ -445,6 +447,7 @@ private:
   // flag stands in for it as with mSwarmEffect above.
   rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect2;
   TUniqueId mBlobId;                         // 0xd5c [?] never spawned yet
+  TUniqueId mLightId;                        // 0xd68: the actor's light (fn_29_4B4C)
   TUniqueId mTeamId;                         // 0xd6a
   TUniqueId mTargetId;                       // 0xd6c
   TUniqueId mPrevTargetId;                   // 0xd6e
