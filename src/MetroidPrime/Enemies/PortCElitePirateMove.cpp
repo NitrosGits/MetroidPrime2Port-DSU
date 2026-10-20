@@ -211,6 +211,9 @@ void CElitePirate::PathToward(CStateManager& mgr, EStateMsg msg, float dt, const
   }
 }
 
+// @ fn_15_5708
+// Patrol state: the base's patrol, with the actor's own locomotion type and the
+// hit-by-player-projectile flag reset on Activate (the retail clears the bit 24 of 0x420).
 void CElitePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
@@ -222,6 +225,7 @@ void CElitePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 // Back to the patrol route: Activate aims at the patrol path's current point (or the leash
 // position) and plans with the base class; Update steers to mPatrolGoal (the base PathFind, or an
 // arrival when the search fails) and sets ReturnedToPatrol (xc10_04_) once the path is spent.
+// @ fn_15_578C
 void CElitePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     CTriggerData data(0);
@@ -309,6 +313,9 @@ void CElitePirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_15_52D0
+// InvulnAlert state: the absorb update, then the Alert state (the retail calls the
+// vtable word 0x1c8, which is fn_15_5340 = Alert).
 void CElitePirate::InvulnAlert(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateAbsorb(mgr, msg);
   Alert(mgr, msg, dt);
