@@ -2489,8 +2489,11 @@ void CEmperorIngStage1::GetWarpPortalPlacement(CStateManager& mgr, CVector3f& po
     lookAt = eye;                                      // 0x6448
     return;
   }
-  // 0x6458: the ray path.
-  const CVector3f origin = player->GetTranslation();
+  // 0x6458: the ray path. The retail asks the player for its aim position - the CPlayer's
+  // vtable slot 21 (the word at 0x54 of __vt__7CPlayer) is GetAimPosition (the DOL's
+  // GetAimPosition__7CPlayerCFRC13CStateManagerf) - with the state manager and 0.75f
+  // (lbl_16_rodata_3A4, 0x6474).
+  const CVector3f origin = player->GetAimPosition(mgr, 0.75f);
   const CRayCastResult hit = mgr.RayStaticIntersection(
       origin + CVector3f::Up(), CVector3f::Down(), 50.f, CMaterialFilter());  // 0x6500
   pos = origin;                       // 0x6488..0x64A0
