@@ -322,9 +322,14 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
 }
 
-CMinorIng::~CMinorIng() {
-  PortMinorIngStandIn("fn_44_97E4 (0x15c bytes)");
-}
+// The retail destructor (fn_44_97E4, asm 0x97E4) puts the module's vtable back, tears the members
+// down - the two-entry container at guest 0xce0, the surface helper at 0xbd8 (asm 0x986C), the
+// two locked hit effects at 0x940/0x950 (asm 0x9898/0x98C4), the projectile's token at 0x918
+// (asm 0x98E8) and the ing-spot vulnerability at 0x834 (asm 0x9904) - runs the base destructor
+// (asm 0x9910) and frees the object (asm 0x9920). On the host every member owns its destruction
+// and the base destructor follows them, so the body is empty. The container at 0xce0 holds two
+// zero ints that nothing reads (fn_44_A5D0 only fills them in the constructor).
+CMinorIng::~CMinorIng() {}
 
 void CMinorIng::LogState(const char* name) {
   if (DebugMinorIng() && mLastLoggedState != name) {
