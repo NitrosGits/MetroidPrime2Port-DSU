@@ -5,6 +5,7 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "MetroidPrime/CBasicSwarmData.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
@@ -316,6 +317,8 @@ private:
   int mX868_;                            // guest 0x868, -1: the heart that is on
   int x8a4_;                             // guest 0x8A4, -1: the dodge's step direction
   float mX7d8_;                          // guest 0x7D8, 0.0f: the dark-flier timer (fn_18_E40)
+  float mX7dc_;                          // guest 0x7DC, 0.0f (0x9B5C): the time since the light
+                                        // swarm went (fn_18_E40)
   rstl::reserved_vector< int, 8 > mActionHistory; // guest 0x7EC: the last actions ChoseAction picked
   int mX89c_;                            // guest 0x89C, 0: the light-heart count (fn_18_408)
   int mX8a0_;                            // guest 0x8A0, 0: the dark-heart count (fn_18_408)
@@ -351,6 +354,10 @@ private:
                                         // (GrowHeart restores guest 0x814 from it)
   SLdrEmperorIngStage3Stage mStages[4];  // guest 0xB54, 0xBC0, 0xC2C, 0xC98: the data's stage1..4
   float mBaseTurnSpeed;                  // guest 0xE5C, the patterned info's turn speed
+  CAssetId mLightSwarmEffect;            // guest 0xB48, the data's lightSwarmEffect
+  CBasicSwarmData mLightSwarmData;       // guest 0xD7C, the data's lightSwarmProperties
+  SLdrAudioPlaybackParms mLightSwarmDeathSound;  // guest 0xE60, the data's lightSwarmDeathSound
+  SLdrAudioPlaybackParms mLightSwarmExpireSound; // guest 0xE78, the data's audioPlaybackParms
 };
 #endif
 

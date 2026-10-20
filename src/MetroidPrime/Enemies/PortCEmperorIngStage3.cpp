@@ -23,6 +23,7 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
+#include "MetroidPrime/Enemies/CEmperorIngLightSwarm.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -231,6 +232,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX868_(-1)                                              // guest 0x868 (0x9CB4)
 , x8a4_(-1)                                               // guest 0x8A4
 , mX7d8_(0.f)                                             // guest 0x7D8 (0x9B58)
+, mX7dc_(0.f)                                             // guest 0x7DC (0x9B5C)
 , mX89c_(0)                                               // guest 0x89C (0x9CD0)
 , mX8a0_(0)                                               // guest 0x8A0 (0x9CE0)
 , x8a8_(-1)                                               // guest 0x8A8 (0x9CF8)
@@ -265,6 +267,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
 , mVulnerableDamageThresholdReset(data.vulnerableDamageThreshold) // guest 0xB50
 , mBaseTurnSpeed(mTurnSpeed)                              // guest 0xE5C (0xA258)
+, mLightSwarmEffect(data.lightSwarmEffect)                // guest 0xB48 (0xA008)
+, mLightSwarmData(LdrToBasicSwarmData(data.lightSwarmProperties)) // guest 0xD7C (0xA23C)
+, mLightSwarmDeathSound(data.lightSwarmDeathSound)        // guest 0xE60 (0xA25C..0xA280)
+, mLightSwarmExpireSound(data.audioPlaybackParms)         // guest 0xE78 (0xA284..0xA2B0)
 
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
@@ -1501,8 +1507,36 @@ void CEmperorIngStage3::EggLayEvent(CStateManager& mgr, float dt) {
   mgr.AddObject(attackObj);
 }
 
-// fn_18_BB8 (0x204): spawns a module object (fn_18_817C/fn_18_BD84); not read yet.
-void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) { StandInFn("fn_18_BB8"); }
+// fn_18_BB8 (0x204): the light swarm (PortCEmperorIngLightSwarm.cpp). While none is out (guest
+// 0x8C0 invalid) one is spawned at the "Swarm_LCTR_SDK" locator (fn_18_817C), drawn after the
+// Ing (its next draw node, 0xD84). Its only connection is a copy of the Ing's first
+// INTERNAL_STATE_03 connection with the state changed to DEAD (0xC28..0xC9C), so the swarm's
+// death sends the Ing's IS03 message.
+void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) {
+  if (mX8c0_ != kInvalidUniqueId.value) {
+    return;
+  }
+  mX8c0_ = mgr.AllocateUniqueId().value;
+  rstl::vector< SConnection > conns;
+  conns.reserve(1); // fn_18_DB5C
+  const rstl::vector< SConnection >& own = GetConnectionList();
+  for (rstl::vector< SConnection >::const_iterator it = own.begin(); it != own.end(); ++it) {
+    if (it->state == kSS_InternalState3) {
+      SConnection conn = *it;
+      conn.state = kSS_Dead;
+      conns.push_back(conn);
+      break;
+    }
+  }
+  CEmperorIngLightSwarm* swarm = rs_new CEmperorIngLightSwarm(
+      TUniqueId(mX8c0_), CEntityInfo(GetCurrentAreaId(), conns, true, kInvalidEditorId),
+      CActorParameters(), mLightSwarmData, mLightSwarmEffect, GetUniqueId(),
+      EmperorIngSwarmLocator(*this), mLightSwarmDeathSound, mLightSwarmExpireSound);
+  if (swarm != nullptr) {
+    swarm->SetNextDrawNode(GetUniqueId());
+    mgr.AddObject(swarm);
+  }
+}
 
 // @ fn_18_1530
 // fn_18_1530 (0x3B4): the beam start. The light beam with 0x80 of guest 0x825, else the dark one:
