@@ -147,6 +147,12 @@ private:
   void x119E4_(CStateManager& mgr);
   // fn_14_13AE0 (0x28 bytes): the three timers.
   void x13AE0_(float dt);
+  // fn_14_13318 (0x490 bytes): the collision actor manager (two ball spheres and the root),
+  // the colliders' vulnerabilities and material bits, then the head's own material filter.
+  void x13318_(CStateManager& mgr);
+  // fn_14_13284 (0x94 bytes): a ball collider ("L_ball_LCTR"/"R_ball_LCTR") keeps its id at
+  // 0xDC4 + 2 * index; true for a ball.
+  bool x13284_(const rstl::string& name, const TUniqueId& id);
   // fn_14_13B38 (0xE4 bytes): the horizontal facing direction.
   CVector3f x13B38_() const;
   // fn_14_11C08 (0x15C bytes): a direction with its pitch limited to 55 degrees.
@@ -170,6 +176,8 @@ private:
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
+  TUniqueId xDC4_[2]; // 0xDC4: the ball colliders' ids (fn_14_13284)
+  TUniqueId xE00_;    // 0xE00: the root collider's id (fn_14_13318)
   // 0xDA0 / 0xDB0 / 0xDB8: the visual knowledge's target id, its sight time and its flag byte
   // (CVisualKnowledge at 0xD80; HasLineOfSight reads them). The class is not ported, so they keep
   // the "no target" value.

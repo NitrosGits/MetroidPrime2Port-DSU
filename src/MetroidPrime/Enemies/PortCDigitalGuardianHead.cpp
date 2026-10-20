@@ -12,6 +12,9 @@
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CExplosion.hpp"
@@ -143,6 +146,8 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
              kMT_Flyer, kCT_One, kBT_AiMovedFlyer, actParms)
 , mData(data)
 , xD70_(nullptr)
+, xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
+, xE00_(kInvalidUniqueId)
 , xDA0_(kInvalidUniqueId)
 , xDB0_(0.f)
 , xDB8_(0)
@@ -218,6 +223,97 @@ void CDigitalGuardianHead::x13AE0_(float dt) {
   x10F0_ += dt;
 }
 
+namespace {
+// .rodata 0x928: the three spheres (name, radius); .rodata 0x9D4 the mass (1000).
+struct SHeadSphereJoint {
+  const char* name;
+  float radius;
+};
+const SHeadSphereJoint skHeadSphereJoints[3] = {
+    {"L_ball_LCTR", 1.5f},
+    {"R_ball_LCTR", 1.5f},
+    {"Skeleton_Root", 6.f},
+};
+const float kHeadJointMass = 1000.f;
+// .rodata 0x954: the ball names fn_14_13284 compares.
+const char* const skHeadBallJoints[2] = {"L_ball_LCTR", "R_ball_LCTR"};
+} // namespace
+
+// @ fn_14_13284
+// The loop at 0x132AC: the name against the two ball names (fn_14_21A0, operator==); the id goes
+// to 0xDC4 + 2 * index (0x132E8).
+bool CDigitalGuardianHead::x13284_(const rstl::string& name, const TUniqueId& id) {
+  for (int i = 0; i < 2; ++i) {
+    if (name == rstl::string_l(skHeadBallJoints[i])) {
+      xDC4_[i] = id;
+      return true;
+    }
+  }
+  return false;
+}
+
+// @ fn_14_13318
+// The three spheres (the loop at 0x13378, room for 3 reserved at 0x13348), built active (li r8, 1
+// at 0x1345C); every collider (the loop at 0x13490) gets the include list's high word | 0x4000000
+// (material 58) first, then a ball the pass-through vulnerability and the exclude bits of .data
+// 0xE64..0xE74 (33, 47, 49, 60, 32), the root the immune-ricochet one and the bits of 0xE78..0xE84
+// (33, 47, 49, 60) and its id at 0xE00; then the knockback resistance .rodata 0x96C (1, the
+// HealthInfo slot at 0x13690). The head's own filter (0x136C0): include .data 0xE88 (59), exclude
+// 0xE8C..0xE9C (33, 32, 47, 49, 60), type 3. __shl2i(0, 1, n) is the 64-bit 1 << n.
+void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(3); // fn_14_D7DC
+  const CAnimData* anim = GetModelData()->GetAnimationData();
+  for (uint i = 0; i < 3; ++i) {
+    const SHeadSphereJoint& joint = skHeadSphereJoints[i];
+    const CSegId seg = anim->GetLocatorSegId(rstl::string_l(joint.name));
+    // fn_14_5FA4 (the description's copy)
+    // fn_14_5F24 (push_back)
+    joints.push_back(CJointCollisionDescription::SphereCollision(
+        seg, CVector3f::Zero(), joint.radius, rstl::string_l(joint.name), kHeadJointMass));
+  }
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, true);
+  delete xD70_;
+  xD70_ = manager;
+
+  for (uint i = 0; i < xD70_->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = xD70_->GetCollisionDescFromIndex(i);
+    const TUniqueId id = desc.GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) { // the TCastToPtr test at 0x134BC
+      continue;
+    }
+    CMaterialFilter filter = actor->GetMaterialFilter();
+    filter.IncludeList().Add(kMT_NoPlayerCollision);
+    if (x13284_(desc.GetName(), id)) {
+      actor->SetDamageVulnerability(CDamageVulnerability::PassThroughVulnerabilty());
+      filter.ExcludeList().Add(kMT_Character);
+      filter.ExcludeList().Add(kMT_CollisionActor);
+      filter.ExcludeList().Add(kMT_Platform);
+      filter.ExcludeList().Add(kMT_NoPlatformCollision);
+      filter.ExcludeList().Add(kMT_Player);
+    } else {
+      actor->SetDamageVulnerability(CDamageVulnerability::ReflectVulnerabilty());
+      filter.ExcludeList().Add(kMT_Character);
+      filter.ExcludeList().Add(kMT_CollisionActor);
+      filter.ExcludeList().Add(kMT_Platform);
+      filter.ExcludeList().Add(kMT_NoPlatformCollision);
+      xE00_ = id;
+    }
+    actor->SetMaterialFilter(filter);
+    actor->HealthInfo()->SetKnockbackResistance(1.f);
+  }
+  CMaterialList exclude;
+  exclude.Add(kMT_Character);
+  exclude.Add(kMT_Player);
+  exclude.Add(kMT_CollisionActor);
+  exclude.Add(kMT_Platform);
+  exclude.Add(kMT_NoPlatformCollision);
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), exclude));
+  // fn_14_60C0 (the vector's destructor, 0x13790)
+}
+
 // fn_14_17D38: the active flag is read before the base's call (0x17D64..0x17D78).
 void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool active = GetActive();
@@ -225,7 +321,7 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   switch (static_cast< uint >(msg.GetMessage())) {
   case kSM_Create: // "XCRT", 0x17E18
     BodyController()->Activate(mgr, pas::kAS_Invalid);
-    StandInFn("fn_14_13318 (0x490, head collision actors)");
+    x13318_(mgr);
     SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
     RemoveMaterial(kMT_SeekerTarget, mgr); // li r4, 0x3F
     StandInFn("fn_14_12314 (0x3B4, head echo targets)");
