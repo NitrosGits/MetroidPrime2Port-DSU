@@ -2961,6 +2961,12 @@ static CEntity* PortLoadEmperorIngStage1(CStateManager& mgr, CInputStream& input
                                          CEntityInfo& info) {
   SLdrEmperorIngStage1 sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.inc"
+  // The retail's reader (fn_16_ABD0) and its helpers - fn_16_AEDC, fn_16_AF7C, fn_16_B014,
+  // fn_16_B130, fn_16_B188, fn_16_B1D8, fn_16_B378, fn_16_B3DC, fn_16_B434, fn_16_B52C,
+  // fn_16_B584, fn_16_B5C8, fn_16_B668, fn_16_B6BC, fn_16_B6EC and fn_16_B86C - read the
+  // block's properties: the SLdr structs' constructors and destructors and the per-type
+  // readers (the animation set, the damage info and the health info with its four
+  // vulnerabilities). The host's generated SLdrEmperorIngStage1.inc does it.
 
   // The REL builds the model with LdrToModelData(scale, kInvalidAssetId, the patterned info's
   // animation set, true) at 0x0000A41C and moves the result into the object at 0x0000A434.
