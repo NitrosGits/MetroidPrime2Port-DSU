@@ -44,6 +44,56 @@ void StandIn(const char* what) {
           what);
 }
 
+// The head's FSM names: the REL's lbl_75_data_CC (the 17 triggers), lbl_75_data_284 (the
+// 14 states) and lbl_75_data_3B8 (the 7 codes). The retail's tables hold the names only -
+// the transitions live in the area script - so the function pointers are null.
+CPatterned::StateMachine::STriggerFunction skTriggers[] = {
+    {"StateOver", nullptr},
+    {"InDetectionRange", nullptr},
+    {"IsScanning", nullptr},
+    {"IsInitiallyDocked", nullptr},
+    {"IsDocked", nullptr},
+    {"HasDockingPath", nullptr},
+    {"HasDockingTarget", nullptr},
+    {"DockingPathOver", nullptr},
+    {"HasTarget", nullptr},
+    {"InHoverRange", nullptr},
+    {"InLaserPulseRange", nullptr},
+    {"ShouldDodge", nullptr},
+    {"ShouldAttack", nullptr},
+    {"ShouldFireAgain", nullptr},
+    {"ShouldLaserSweep", nullptr},
+    {"PathOver", nullptr},
+    {"PathShagged", nullptr},
+};
+
+CPatterned::StateMachine::SStateFunction skStates[] = {
+    {"Start", nullptr},
+    {"Idle", nullptr},
+    {"SpawnIdle", nullptr},
+    {"Dead", nullptr},
+    {"Scanning", nullptr},
+    {"FaceTarget", nullptr},
+    {"PathFind", nullptr},
+    {"Hover", nullptr},
+    {"Dodge", nullptr},
+    {"LaserPulse", nullptr},
+    {"LaserSweep", nullptr},
+    {"LostChassisReaction", nullptr},
+    {"SeekMainChassis", nullptr},
+    {"FollowDockingPath", nullptr},
+};
+
+CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
+    {"NotifyDocking", nullptr},
+    {"SelectTarget", nullptr},
+    {"SetTargetDest", nullptr},
+    {"SetDockingDest", nullptr},
+    {"FindBestDodgeDirection", nullptr},
+    {"RaiseShields", nullptr},
+    {"ResetAttackTimes", nullptr},
+};
+
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
 // function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
 // (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
@@ -639,9 +689,15 @@ bool CSplitterCommandModule::Listen(CStateManager& mgr, const CVector3f& positio
 
 // vtable slot 0xF0 = fn_75_5E8C: it registers the module's three tables (17 triggers, 14 states
 // and 7 codes) on the state machine. That is milestone 2, so only the base setup runs here.
+// @ fn_75_5E8C
+// The head's state machine (0x5E8C-0x5F18): the base's setup (0x5EA0) and then the module's own
+// tables - the 17 triggers (lbl_75_data_CC, 0x5EB4), the 14 states (lbl_75_data_284, 0x5ED4) and
+// the 7 codes (lbl_75_data_3B8, 0x5EF4).
 void CSplitterCommandModule::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::SetupStateMachine (vtable slot 0xF0, fn_75_5E8C)");
   CPatterned::SetupStateMachine(mgr);
+  mStateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
+  mStateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
+  mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
 // vtable slot 0xF8 = fn_75_5E50: it is only possessed while it is docked to a main chassis (the
