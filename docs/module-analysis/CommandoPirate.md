@@ -564,6 +564,15 @@ since 2026-10-20.
   from the module's animation list), so the animation ids are still unknown - porting `fn_9_5D74`
   (or reading the module's animation list out of its .rel) is the next step before the two
   stores can be ported at their retail spot.
+- `fn_9_5D74` (0x184 bytes) is the module's helper that builds the `CPASAnimParmData` objects
+  the constructor asks the animation distances of: it fills nine of them, each eight bytes - the
+  state id at +0 and the parm at +4 (the stores at 0x00005DA4/0x00005DAC and the seven that
+  follow) - the constructor passes the nine destinations (the stack slot at sp+0x310 and the
+  pointers at sp+0xC8, sp+0xC0, sp+0xB8, sp+0xB0, sp+0xA8 and sp+0xA0, the call at
+  0x0000E54C). The two parms the ctor then measures are the one at sp+0x310 (the store at
+  0x0000E56C) and the one built at sp+0x140 (the store at 0x0000E61C); their state ids and parm
+  values are still to be read out of the module's data tables, so the two constructor stores are
+  still not ported.
 - `fn_9_3678` (0x288 bytes) is the Dodge state's picker - it is the only thing that sets the
   dodge id, and it is not ported yet, so the dodge id stays -1 and the animation state is never
   readied (no dodge). What it does: it walks the listening-AI object list (the state manager's
