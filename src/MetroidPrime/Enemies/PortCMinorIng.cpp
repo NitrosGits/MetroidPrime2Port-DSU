@@ -138,8 +138,9 @@ bool DebugMinorIng() {
   return sEnabled != 0;
 }
 
-// Material filters from the REL's .data: data_0 (Touch), data_5F8/5FC (fn_44_88DC) and
-// data_60C (fn_44_34B0) are material numbers shifted into masks: 0x3b Solid, 0x20 Player.
+// Material filters from the REL's .data: data_0 (Touch), data_5F8/5FC (the move-clear check) and
+// data_60C (the snap-to-floor ray) are material numbers shifted into masks: 0x3b Solid, 0x20
+// Player. The ids are on the bodies that use them, not here.
 CMaterialFilter SolidFilter() {
   return CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
 }
@@ -305,7 +306,7 @@ void CMinorIng::LogState(const char* name) {
   }
 }
 
-// Retail activates the body controller on kSM_Create (fn_44_9150). Kept as a guard for the
+// Retail activates the body controller on the create message. Kept as a guard for the
 // entry points that can run before it on the host.
 void CMinorIng::EnsureBodyActive(CStateManager& mgr) {
   if (BodyController() != nullptr && !BodyController()->GetIsActive()) {
@@ -2076,8 +2077,9 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
 
 static SMinorIng_FuncPtrs REL_loader_MinorIng;
 
-// Retail's RELMain stores fn_44_110 into the module's table and registers it with the DOL's
-// SetSMinorIng_FuncPtrs (via fn_44_E0). The proxy in SMinorIng_FuncPtrs.cpp calls through it.
+// Retail's RELMain stores the loader into the module's table and registers it with the DOL's
+// SetSMinorIng_FuncPtrs (through the registration helper below). The proxy in
+// SMinorIng_FuncPtrs.cpp calls through it.
 void RELMain() {
   REL_loader_MinorIng.mLoader = PortLoadMinorIng;
   SetSMinorIng_FuncPtrs(&REL_loader_MinorIng);
