@@ -400,6 +400,7 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
 // targeting point that is active, in this area and not locked (fn_8012CB70) becomes the attack
 // target; the squad is told and the bone tracking follows. The asm breaks out of the loop on
 // that first hit (the m2c loop only looks like it does not advance).
+// @ fn_72_7970 (0x1FC): the HasTargetingPoint trigger.
 bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = false;
