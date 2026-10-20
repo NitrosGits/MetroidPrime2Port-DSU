@@ -147,12 +147,66 @@ void CSandBoss::SyncAttacker(CStateManager& mgr, int delta) {
   }
 }
 
-void CSandBoss::RotateToPlayerStep(CStateManager&, const CVector3f&, float) { // fn_55_22E4
-  PortSandBossStandIn("CSandBoss::RotateToPlayerStep (fn_55_22E4)");
+// fn_55_22E4 (ported, not exercised yet)
+// Picks how this worm turns toward the player out of the attached siblings: none or more than three
+// turns straight at the point; two turns off the sibling whose 0x165C b2 flag is set (or, with none,
+// off the facing their facings bracket); three drops the sibling furthest off the point and turns
+// off the other two.
+void CSandBoss::RotateToPlayerStep(CStateManager& mgr, const CVector3f& target,
+                                   float dt) { // fn_55_22E4
+  rstl::vector< TUniqueId > ids;
+  const int attached = CollectAttachedSiblings(mgr, ids); // fn_55_58B4
+  if (attached == 2) {
+    const int flagged = RotateHelper254C(mgr, ids); // fn_55_254C
+    if (flagged == -1) {
+      if (ids.size() < 2) {
+        return;
+      }
+      RotateHelper2030(mgr, target, dt, ids[0], ids[1]); // fn_55_2030
+    } else {
+      RotateHelper1D74(mgr, target, dt, ids[flagged]); // fn_55_1D74
+    }
+  } else if (attached < 2 || attached > 3) {
+    FaceTowardPoint(dt, target); // fn_55_1F84
+  } else {
+    const int flagged = RotateHelper254C(mgr, ids); // fn_55_254C
+    if (flagged == -1) {
+      const int furthest = RotateHelper25D0(mgr, ids, target); // fn_55_25D0
+      RotateHelper2498(ids, furthest);                         // fn_55_2498
+      if (ids.size() < 2) {
+        return;
+      }
+      RotateHelper2030(mgr, target, dt, ids[0], ids[1]); // fn_55_2030
+    } else {
+      RotateHelper1D74(mgr, target, dt, ids[flagged]); // fn_55_1D74
+    }
+  }
 }
 
-void CSandBoss::RotateHelper1D74(CStateManager&, float) { // fn_55_1D74
-  PortSandBossStandIn("CSandBoss::RotateHelper1D74 (fn_55_1D74)");
+// fn_55_1D74 (ported, not exercised yet)
+// Turns the point round one sibling's facing axis: when it is more than ten degrees (0.17453292 rad)
+// off that axis, the flattened delta is turned by its own angle about the local Z axis and the point
+// is put back at the same horizontal range along the turned direction, then faced. The side comes
+// from the local X column (0x24/0x34/0x44).
+void CSandBoss::RotateHelper1D74(CStateManager& mgr, const CVector3f& target, float dt,
+                                 TUniqueId siblingId) { // fn_55_1D74
+  const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(siblingId));
+  if (sibling == nullptr) {
+    return;
+  }
+  const CVector3f here = GetTranslation(); // 0x54..0x5C
+  const CVector3f toTarget(target.GetX() - here.GetX(), target.GetY() - here.GetY(), 0.f);
+  const CVector3f facing = sibling->GetTransform().GetColumn(kDY); // sibling + 0x28/0x38/0x48
+  float angle = CVector3f::GetAngleDiff(facing, toTarget);
+  if (angle <= 0.17453292f) {
+    return;
+  }
+  if (CVector3f::Dot(sibling->GetTransform().GetColumn(kDX), toTarget) > 0.f) { // 0x24/0x34/0x44
+    angle = -angle;
+  }
+  const CVector3f axis(CMath::FastCosR(angle + 1.5707964f), CMath::FastSinR(angle), 0.f);
+  const CVector3f dir = GetTransform().Rotate(axis);
+  FaceTowardPoint(dt, here + toTarget.Magnitude() * dir); // fn_55_1F84
 }
 
 // @ fn_55_1F84
@@ -168,20 +222,82 @@ void CSandBoss::FaceTowardPoint(float dt, const CVector3f& target) {
   }
 }
 
-void CSandBoss::RotateHelper2030(CStateManager&, float) { // fn_55_2030
-  PortSandBossStandIn("CSandBoss::RotateHelper2030 (fn_55_2030)");
+// fn_55_2030 (ported, not exercised yet)
+// The two-sibling version of 1D74: the reference axis is the normalised sum of both siblings'
+// facing axes (or the first sibling's X column when the sum has no safe magnitude), and the side
+// test is the cross product of the flattened delta with that raw sum (whose Z term a flattened
+// delta zeroes).
+void CSandBoss::RotateHelper2030(CStateManager& mgr, const CVector3f& target, float dt,
+                                 TUniqueId firstId, TUniqueId secondId) { // fn_55_2030
+  const CSandBoss* first = CastSandBoss(mgr.GetObjectById(firstId));
+  const CSandBoss* second = CastSandBoss(mgr.GetObjectById(secondId));
+  if (first == nullptr || second == nullptr) {
+    return;
+  }
+  const CVector3f here = GetTranslation(); // 0x54..0x5C
+  const CVector3f toTarget(target.GetX() - here.GetX(), target.GetY() - here.GetY(), 0.f);
+  const CVector3f sum = first->GetTransform().GetColumn(kDY) +   // 0x28/0x38/0x48
+                        second->GetTransform().GetColumn(kDY);   // 0x28/0x38/0x48
+  const CVector3f facing =
+      sum.IsMagnitudeSafe() ? sum.AsNormalized() : first->GetTransform().GetColumn(kDX);
+  float angle = CVector3f::GetAngleDiff(facing, toTarget);
+  if (angle <= 0.17453292f) {
+    return;
+  }
+  const float side =
+      sum.GetZ() * toTarget.GetZ() + sum.GetY() * toTarget.GetX() - sum.GetX() * toTarget.GetY();
+  if (side > 0.f) {
+    angle = -angle;
+  }
+  const CVector3f axis(CMath::FastCosR(angle + 1.5707964f), CMath::FastSinR(angle), 0.f);
+  const CVector3f dir = GetTransform().Rotate(axis);
+  FaceTowardPoint(dt, here + toTarget.Magnitude() * dir); // fn_55_1F84
 }
 
-void CSandBoss::RotateHelper2498(CStateManager&, float) { // fn_55_2498
-  PortSandBossStandIn("CSandBoss::RotateHelper2498 (fn_55_2498)");
+// fn_55_2498 (ported, not exercised yet)
+// Drops one id from the list, shifting the rest down (retail shifts the 16-bit ids inside the
+// reserved_vector and decrements its count).
+void CSandBoss::RotateHelper2498(rstl::vector< TUniqueId >& ids, int index) { // fn_55_2498
+  if (index < 0 || index >= ids.size()) {
+    return;
+  }
+  ids.erase(ids.begin() + index);
 }
 
-void CSandBoss::RotateHelper254C(CStateManager&, float) { // fn_55_254C
-  PortSandBossStandIn("CSandBoss::RotateHelper254C (fn_55_254C)");
+// fn_55_254C (ported, not exercised yet)
+// The first attached sibling whose 0x165C bit 2 is set, or -1 when none is.
+int CSandBoss::RotateHelper254C(CStateManager& mgr,
+                                const rstl::vector< TUniqueId >& ids) { // fn_55_254C
+  for (int i = 0; i < ids.size(); ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
+    if (sibling != nullptr && sibling->m165C_b2) { // 0x165C b2
+      return i;
+    }
+  }
+  return -1;
 }
 
-void CSandBoss::RotateHelper25D0(CStateManager&, float) { // fn_55_25D0
-  PortSandBossStandIn("CSandBoss::RotateHelper25D0 (fn_55_25D0)");
+// fn_55_25D0 (ported, not exercised yet)
+// Index of the attached sibling whose facing axis is furthest off the point (the largest angle to
+// it), -1 when no id resolves.
+int CSandBoss::RotateHelper25D0(CStateManager& mgr, const rstl::vector< TUniqueId >& ids,
+                                const CVector3f& target) { // fn_55_25D0
+  int furthest = -1;
+  float best = -3.1415927f;
+  for (int i = 0; i < ids.size(); ++i) {
+    const CSandBoss* sibling = CastSandBoss(mgr.GetObjectById(ids[i]));
+    if (sibling == nullptr) {
+      continue;
+    }
+    const CVector3f toTarget = target - sibling->GetTranslation(); // 0x54..0x5C
+    const float angle = CVector3f::GetAngleDiff( // (delta, sibling + 0x28/0x38/0x48)
+        toTarget, sibling->GetTransform().GetColumn(kDY));
+    if (best < angle) {
+      furthest = i;
+      best = angle;
+    }
+  }
+  return furthest;
 }
 
 // @ fn_55_26C0

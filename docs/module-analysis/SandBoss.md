@@ -234,13 +234,13 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 1AEC | CSandBoss::GetStampedeDelay | [proven] host body |
 | 1B94 | CSandBoss::ShouldRepeaterAttackCheck (counts active safe zones) | [proven] host body |
 | 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [proven] host body (caller: DarkBeamAttack AC68) |
-| 1D74 | CSandBoss::RotateHelper1D74 | [stand-in] log-once |
+| 1D74 | CSandBoss::RotateHelper1D74 | [ported] host body, not exercised yet |
 | 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [proven] host body |
-| 2030 | CSandBoss::RotateHelper2030 | [stand-in] log-once |
-| 22E4 | CSandBoss::RotateToPlayerStep | [stand-in] log-once |
-| 2498 | CSandBoss::RotateHelper2498 | [stand-in] log-once |
-| 254C | CSandBoss::RotateHelper254C | [stand-in] log-once |
-| 25D0 | CSandBoss::RotateHelper25D0 | [stand-in] log-once |
+| 2030 | CSandBoss::RotateHelper2030 | [ported] host body, not exercised yet |
+| 22E4 | CSandBoss::RotateToPlayerStep | [ported] host body, not exercised yet |
+| 2498 | CSandBoss::RotateHelper2498 | [ported] host body, not exercised yet |
+| 254C | CSandBoss::RotateHelper254C | [ported] host body, not exercised yet |
+| 25D0 | CSandBoss::RotateHelper25D0 | [ported] host body, not exercised yet |
 | 26C0 | CSandBoss::CountActiveChargeBeams (returns the count) | [proven] host body |
 | 2750 | CSandBoss::UpdateChargeBeams | [proven] host body (volleys) |
 | 2CA4 | CSandBoss::ResetChargeBeams | [proven] host body |

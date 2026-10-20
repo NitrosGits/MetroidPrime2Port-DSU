@@ -240,12 +240,15 @@ private:
   int ShouldRepeaterAttackCheck(CStateManager& mgr) const;                 // fn_55_1B94
   void SyncAttacker(CStateManager& mgr, int delta);                        // fn_55_1C70
   void RotateToPlayerStep(CStateManager& mgr, const CVector3f& target, float dt); // fn_55_22E4
-  void RotateHelper1D74(CStateManager& mgr, float dt);                     // fn_55_1D74
+  void RotateHelper1D74(CStateManager& mgr, const CVector3f& target, float dt,
+                        TUniqueId siblingId);                               // fn_55_1D74
   void FaceTowardPoint(float dt, const CVector3f& target);                 // fn_55_1F84
-  void RotateHelper2030(CStateManager& mgr, float dt);                     // fn_55_2030
-  void RotateHelper2498(CStateManager& mgr, float dt);                     // fn_55_2498
-  void RotateHelper254C(CStateManager& mgr, float dt);                     // fn_55_254C
-  void RotateHelper25D0(CStateManager& mgr, float dt);                     // fn_55_25D0
+  void RotateHelper2030(CStateManager& mgr, const CVector3f& target, float dt, TUniqueId firstId,
+                        TUniqueId secondId);                               // fn_55_2030
+  void RotateHelper2498(rstl::vector< TUniqueId >& ids, int index);       // fn_55_2498
+  int RotateHelper254C(CStateManager& mgr, const rstl::vector< TUniqueId >& ids); // fn_55_254C
+  int RotateHelper25D0(CStateManager& mgr, const rstl::vector< TUniqueId >& ids,
+                       const CVector3f& target);                           // fn_55_25D0
   int CountActiveChargeBeams(CStateManager& mgr);                          // fn_55_26C0
   void UpdateChargeBeams(CStateManager& mgr, float dt);                    // fn_55_2750
   void ResetChargeBeams(CStateManager& mgr);                               // fn_55_2CA4
