@@ -8,6 +8,7 @@
 
 #include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp"
 
+#include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -145,6 +146,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDB8_(0)
 , xFE0_(3)
 , xFE8_(1)
+, xFEC_(CVector3f::Zero())
 // 0x1004: the translation, then the transform's column 1 and the negated column 0 (fn_14_190E0).
 , x1004_(GetTranslation())
 , x1010_(GetTransform().GetColumn(kDY))
@@ -360,9 +362,37 @@ void CDigitalGuardianHead::x11D64_(CStateManager& mgr, float dt) {
   }
 }
 
+// fn_14_11698: with pos off the attack area's centre (0x1004), the angle from the first axis
+// (0x1010) to it, negative when it lies behind the second axis (0x101C; the dot product below
+// .rodata 0x960, 0). Returns false, leaving angle alone, when pos is the centre.
+// @ fn_14_11698
+bool CDigitalGuardianHead::x11698_(const CVector3f& pos, float& angle) const {
+  const CVector3f d = pos - x1004_;
+  if (d.GetX() == 0.f && d.GetY() == 0.f && d.GetZ() == 0.f) {
+    return false;
+  }
+  angle = CVector3f::GetAngleDiff(x1010_, d);
+  if (CVector3f::Dot(x101C_, d) < 0.f) {
+    angle = -angle;
+  }
+  return true;
+}
+
+// fn_14_11788: the point (50 cos a, 40 sin a, 0) (.rodata 0x9C4, 0x9C0) in the frame looking from
+// the centre (0x1004) along the second axis (0x101C, up is CVector3f::Up()), plus the centre.
+// @ fn_14_11788
+CVector3f CDigitalGuardianHead::x11788_(float angle) const {
+  const float y = 40.f * CMath::FastSinR(angle);
+  const float x = 50.f * CMath::FastCosR(angle);
+  const CTransform4f frame = CTransform4f::LookAt(x1004_, x1004_ + x101C_, CVector3f::Up());
+  return x1004_ + frame.Rotate(CVector3f(x, y, 0.f));
+}
+
 // fn_14_17A44: the base's PreRender.
 // @ fn_14_17A44
-void CDigitalGuardianHead::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
+void CDigitalGuardianHead::PreRender(CStateManager& mgr) {
+  CPatterned::PreRender(mgr);
+}
 
 // fn_14_17A00: the base's AddToRenderer, then the base's render (the relocations name both).
 // @ fn_14_17A00
@@ -622,6 +652,36 @@ void CDigitalGuardianHead::DetachFromBody(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
+// fn_14_15B94. Activate: animation state 1. Update: the head flies toward the attack position
+// (0xFEC) at data +0x14 (maxLinearVelocity) per second, in its own frame (TransposeRotate, then
+// MoveInOneFrameOR); once a step would reach it, it is placed there and the animation state is 3.
+// Then it turns toward the face target (fn_14_11D64). Deactivate: animation state 0.
+// @ fn_14_15B94
+void CDigitalGuardianHead::SeekAttackPosition(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  case kStateMsg_Update: {
+    const CVector3f delta = xFEC_ - GetTranslation();
+    const float step = mData.maxLinearVelocity * dt;
+    if (step < delta.Magnitude()) {
+      MoveInOneFrameOR(GetTransform().TransposeRotate(delta.AsNormalized() * step), dt);
+    } else {
+      SetTranslation(xFEC_);
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    x11D64_(mgr, dt);
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
 #define DGHD_STATE_STANDIN(name, fn)                                                               \
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
@@ -635,7 +695,6 @@ DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
 DGHD_STATE_STANDIN(StunnedReaction, fn_14_15F3C)
 DGHD_STATE_STANDIN(DeploySplitters, fn_14_15E18)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
-DGHD_STATE_STANDIN(SeekAttackPosition, fn_14_15B94)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
 DGHD_STATE_STANDIN(Dead, fn_14_1561C)
@@ -646,6 +705,15 @@ DGHD_STATE_STANDIN(Dead, fn_14_1561C)
 // @ fn_14_1560C
 void CDigitalGuardianHead::SetPlayerFaceTarget(CStateManager& mgr, float dt) {
   x1036_ = mgr.GetPlayer(0)->GetUniqueId();
+}
+
+// fn_14_143D8: the attack position is the attack area's point 45 degrees (.rodata 0x9E0,
+// 0.7853982) on from the player's angle (fn_14_11698, 0 when the player is at the centre).
+// @ fn_14_143D8
+void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt) {
+  float angle = 0.f;
+  x11698_(mgr.GetPlayer(0)->GetTranslation(), angle);
+  xFEC_ = x11788_(angle + 0.7853982f);
 }
 
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
@@ -671,7 +739,6 @@ DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
 DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
 DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
 DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_14470)
-DGHD_CODE_STANDIN(SetInitialAttackPosition, fn_14_143D8)
 DGHD_CODE_STANDIN(SetAttackPosition, fn_14_14254)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
 DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)

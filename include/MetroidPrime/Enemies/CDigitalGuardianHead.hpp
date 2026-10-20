@@ -150,6 +150,10 @@ private:
   CVector3f x11C08_(const CVector3f& dir) const;
   // fn_14_11D64 (0x144 bytes): turn toward the face target (0x1036).
   void x11D64_(CStateManager& mgr, float dt);
+  // fn_14_11698 (0xF0 bytes): pos's signed angle around the attack area's centre.
+  bool x11698_(const CVector3f& pos, float& angle) const;
+  // fn_14_11788 (0x168 bytes): the point at that angle on the attack area's ellipse.
+  CVector3f x11788_(float angle) const;
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
@@ -161,6 +165,7 @@ private:
   uchar xDB8_;
   int xFE0_;        // 0xFE0: the echo targets left (3)
   int xFE8_;        // 0xFE8: the attack mode (1 in the ctor; fn_14_13B30)
+  CVector3f xFEC_;  // 0xFEC: the attack position (SetInitialAttackPosition, SeekAttackPosition)
   CVector3f x1004_; // 0x1004: the attack area's centre (fn_14_119E4)
   CVector3f x1010_; // 0x1010: the attack area's first axis
   CVector3f x101C_; // 0x101C: the attack area's second axis
