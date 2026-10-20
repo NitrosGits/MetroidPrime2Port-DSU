@@ -382,9 +382,9 @@ bool CSpacePirate::PortAttachActor(TUniqueId id) {
     return false;                            // 0xE118 li r3, 0
   }
   if (xb30_ != nullptr) { // 0xE0F0 cmplwi 0xb30, 0
-    // 0xE100 rlwimi sets PowerPC bit 25 of the byte at 0x118 -> mask 0x40.
-    uchar* ragdollFlags = static_cast< uchar* >(xb30_);
-    ragdollFlags[0x118] = uchar(ragdollFlags[0x118] | 0x40);
+    // 0xE100 rlwimi sets PowerPC bit 25 of the ragdoll's byte 0x118 (mask 0x40). The ragdoll is
+    // not ported (xb30_ is never set), so there is no host member to set; port it with the ragdoll.
+    // Never write retail offsets into a host object.
   }
   mAttachedActor = id; // 0xE108 lhz 0x0(r4), 0xE10C sth 0xa84
   return true;        // 0xE110 li r3, 1
@@ -394,9 +394,7 @@ bool CSpacePirate::PortAttachActor(TUniqueId id) {
 void CSpacePirate::PortDetachActor() {
   mAttachedActor = kInvalidUniqueId; // 0xE0B4 sth 0xa84
   if (xb30_ != nullptr) { // 0xE0BC cmplwi 0xb30, 0
-    // 0xE0CC rlwimi clears PowerPC bit 25 of the byte at 0x118 -> mask 0x40.
-    uchar* ragdollFlags = static_cast< uchar* >(xb30_);
-    ragdollFlags[0x118] = uchar(ragdollFlags[0x118] & ~0x40);
+    // 0xE0CC rlwimi clears PowerPC bit 25 of the ragdoll's byte 0x118 (mask 0x40); see Attach.
   }
 }
 
