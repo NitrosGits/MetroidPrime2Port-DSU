@@ -50,17 +50,19 @@ TARGET_PC strip-diff CLEAN and the matching build's `fuzzy/matched` percentages;
 area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skipped makes it
 `STATUS: INCOMPLETE - <what>`.
 
-Lanes never write `// @` markers. The orchestrator adds one after a run exercised the function
-and after checking that every retail branch and call in its asm has a C++ counterpart (two
-audited markers on 2026-10-20 sat on bodies that skipped whole retail blocks).
+Lanes never write `// @` markers. A marker needs a run that exercised the function and a pass of
+the asm-vs-C++ structure check (calls, compares, conditional branches, stores line up; the
+orchestrator reads only what it flags). Until that check exists, the orchestrator compares by hand
+(two audited markers on 2026-10-20 sat on bodies that skipped whole retail blocks).
 
 ## Lane briefs
 
 - Every bit test, mask, flag set, compare and rodata constant a lane writes carries the asm offset
-  it came from (`// 0xCE2C`). Code with no offset is rejected.
+  it came from (`// 0xCE2C`); copy the annotator's comment where there is one. Code with no offset
+  is rejected.
 - Bit-heavy functions (message handlers, ctor flag unpacking, trigger tables, CR extractions) go
   one or two per lane. Long briefs are where MiniMax guesses.
-- One `claude` (Opus) bit-decoding audit per branch before it merges (read-only; findings only).
+- A `claude` (Opus) audit only for diffs the checks flag or that are bit-heavy, not per merge.
 
 ## Review every lane patch
 
