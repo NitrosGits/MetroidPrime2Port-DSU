@@ -20,7 +20,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `317c2f449` | fn_9_662C timer + stand-ins 0x100-0x200; run with the player on the linked nav region |
 | EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
 | EmperorIngStage3 (Opus) | `ses_ea61d5880ffejeb3NNt1B4Zpl5` | decomp/emperoring3 @ `ca6b8278a` | body-command classes (data_744/750/78C) + state update paths, fn_18_3BB0 heart holder, onward |
-| SwampBoss marking (worker, ex-EmperorIng3 lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC` (subagent) | decomp/swampboss @ `a681259dd` (+2 marks) | triage 27 new-checker findings on marked Stage2 fns -> /tmp/opencode/swamp_triage.md, no edits |
+| marking (worker, ex-EmperorIng3 lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC` (subagent) | decomp/spacepirate @ `a9ba3f157` | SpacePirate marking pass + triage of the 27 marked fns; SwampBoss done (`a681259dd`, 25 findings on marked fns all FP) |
 | DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `88381ebb9` (rework) | model members are optional_object<CModelData> (flag at +0x4C), not separate never-set flags |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` (subagent) | decomp/darksamus on `232823309` | milestone 1 (old lane did nothing) |
 | ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `1402494b4` | XCRT/XDMG/STOP cases, ProcessInput 1134; Think 23C0 (0x968) parked for Opus |
