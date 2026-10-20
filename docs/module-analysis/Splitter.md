@@ -695,3 +695,16 @@ empty (`CPatternedAiFunctions.cpp:19`), the module's own FSMs (`fn_75_5E8C`, `fn
 not ported, and the fight's script sends the head no `kSM_Activate`. The chassis is in the same
 state (its Think shells `fn_75_AFE8`/`ACEC`/`9520` never log either). This is the port's FSM
 gap, not a bug in a ported body, so nothing was changed for it.
+
+#### fn_75_3460 (0x218) - the head's collision actor manager (ported 2026-10-20)
+
+The head's one joint sphere - the "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f
+(rodata 0x4) and the mass 1000.0f (rodata 0x94) - is built and the collision actor manager is
+made with it (the old one deleted, the new one kept at 0xE58). Every collision actor of the
+manager is then walked: the description's id (its 0x3C) is looked up and cast to a
+CCollisionActor, and when the description's name is "Beam_LCTR" (rodata 0x8) the id goes to
+0xF00. The module's own call `fn_75_2CE0` (0x324) stays a once-logging shell - it is the last
+Splitter line the area-4 layer-3 fight logs.
+
+The module's own state machines are still shells: `fn_75_5E8C` (the head's FSM, **0x8C**) and
+`fn_75_E9E4` (the chassis's FSM, **0x8C**).
