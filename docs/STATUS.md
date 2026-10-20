@@ -38,7 +38,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | Splitter (worker) | `ses_ea456296affeAdkCwq7sVdpywE` | splitter @ `2cf00edf3` (IsDocked, Scanning, SelectTarget, Patrol, Hover) | head Idle 5538, shells 1578/2154/986C, ACEC, A4E4, AFE8/9520 re-check |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `27b4e4b15` (85/241) | per-branch tables for 0, 9C0, A64, CD0, 71BC, 774C, 1150, 1A50, 1950, 9BE8 |
-| MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `6d8c43d38` (116; 7058 + 9D58 marked, inglets confirmed in 0a_sand_hall_dark) | reclassify 75 "unreachable" (vtable slots), stand-ins 1114/28D8/9BB8/E08/9940, loader 110 + dtor |
+| MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `1186f7033` (122/217; vtable accessors, loader, dtor) | 13 vtable slots (9 base-inline cites), 23-fn unported chain, 4 fsm slots |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
 | DarkSamus (worker) | `ses_ea447b7a0ffeIznyYfgoy6BMEc` | darksamus2 @ `0f9dd35ed` (Picked* ids fixed: lis = N<<16; ShouldFadeOut/CanMissileDeflect via battle stage) | ShouldReact (clrlwi 24 = &0xFF), TooMuchDamage, WallCollision, 1DF74 helpers |
 
