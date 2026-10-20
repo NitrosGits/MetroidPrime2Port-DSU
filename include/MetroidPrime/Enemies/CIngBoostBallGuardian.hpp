@@ -503,17 +503,17 @@ private:
   float mBoostRandomFloat;                               // guest 0x11E8
   bool mAggressive : 1;                                  // CIng: 0xE5C bit 4
   bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag)
-  bool mFoundMovementPos : 1;                            // guest 0x11EC bit 4 (CIng: 0xE5C bit 3)
-  bool mRecalcPath : 1;                                  // guest 0x11EC bit 3 (CIng: 0xE5C bit 2)
+  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3
+  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2
   bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0
-  bool mStartAsIngSpot : 1;                              // guest 0x11ED bit 6 (CIng: 0xE5D bit 5)
-  bool mMoving : 1;                                      // guest 0x11ED bit 2 (CIng: 0xE5D bit 1)
+  bool mStartAsIngSpot : 1;                              // CIng: 0xE5D bit 5
+  bool mMoving : 1;                                      // CIng: 0xE5D bit 1
   bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
   bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7
   bool mSplat : 1;                                       // CIng: 0xE5E bit 6
   bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4
   bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6
-  bool mRenderModel : 1;                                 // guest 0x11EC bit 0 (CIng: 0xE5D bit 7)
+  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7
   bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4
   bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3
   bool mAlert : 1;                                       // CIng: 0xE5D bit 2

@@ -318,11 +318,15 @@ values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02
   called from `fn_30_4030`/`4078`/`4324`/`44A4`/`5D90`/`7390` (unported boost half). The current
   phase (0x11D0) is element 0 on the host: the phase advance in `fn_30_D94C` (0xDBC0) is unported.
 
-`tools/asmcheck.py check ... --only MASK,XBIT,CROP,XCMP,XSTORE,OFFS` is clean on
-`PortCIngBoostBallGuardian.cpp` (and on `fn_30_9DA0` in States2). Its earlier hits were header
-noise: Ing-half bitfields stated only by the Ing's offsets (`CIng: 0xE5C bit 3`), and a member with
-no position comment placed by the host bitfield layout. Those members now state the guest bit first
-(`guest 0x11EC bit 4 (CIng: ...)`), which the tool reads.
+`tools/asmcheck.py check IngBoostBallGuardian PortCIngBoostBallGuardian.cpp --only
+MASK,XBIT,CROP,XCMP,XSTORE,OFFS` leaves three XBIT hits on the ctor (`mFoundMovementPos`,
+`mStartAsIngSpot`, `mRenderModel`), and the same kind on `fn_30_9DA0` in States2: false
+positives. Those Ing-half members state the Ing's offsets (`CIng: 0xE5C bit 3`) because most bodies
+cite `fn_29_*` and `review_decomp_diff.sh` checks them against the Ing REL; the guardian's ctor
+stores the guest bits (0x11EC 0x10 at 0xFE0C, 0x11ED 0x40 at 0xFE60, 0x11EC 0x01 at 0xFE3C).
+Restating them as guest bits clears these and adds 24 XBITs on the Ing-module check, so they stay.
+The MASK hit (`mBoostPuddleGenerate` placed by the host bitfield layout at 0x11EF 0x04) is fixed
+with a position comment (`guest 0x11EE bit 2`).
 
 ## i. Port plan
 
