@@ -5,10 +5,14 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
+#include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -18,6 +22,8 @@
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
+#include "rstl/reserved_vector.hpp"
+#include "rstl/vector.hpp"
 #include <float.h>
 
 void PortSpacePirateStandIn(const char* what);
@@ -32,12 +38,120 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_7078 (0x528). Activate switches on xc04_warpPoint: at 0 it collects every
+// kSS_GRNT/kSM_Follow connection resolved through GetIdForScript and GetObjectById to a
+// CScriptWaypoint, teleports onto one of them chosen with mgr.Random()->Range(0, n - 1) through that
+// waypoint's own transform, then sweeps a +/-10 box (rodata B58) filtered to
+// kMT_Solid/kMT_Player/kMT_Character with DetectDynamicCollisionBoolean on its own collision
+// primitive: a clear box moves the point to 1 and puts Character/Solid/Target/Orbit back. At 1 it
+// delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate and fades in
+// (alpha = max(0, 1 - remaining/cached) once 0x8fa bit 0x08 is armed). Update strips those four
+// materials and zeroes the alpha; Deactivate re-adds them, restores alpha 1, resets the warp point
+// to -1 and clears 0x8fa bit 0x20.
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::WarpIn state (fn_72_7078)");
+  switch (msg) {
+  case kStateMsg_Update:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mColor.SetAlpha(0.f);
+    mAlphaDelta = 0.f;
+    xc04_warpPoint = 0;
+    x8fa_28_ = false;
+    RemoveMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+    break;
+  case kStateMsg_Activate:
+    switch (xc04_warpPoint) {
+    case 0: {
+      rstl::vector< CScriptWaypoint* > points;
+      const rstl::vector< SConnection >& connections = GetConnectionList();
+      points.reserve(connections.size());
+      for (rstl::vector< SConnection >::const_iterator it = connections.begin();
+           it != connections.end(); ++it) {
+        if (it->state != kSS_GRNT || it->msg != kSM_Follow) {
+          continue;
+        }
+        CScriptWaypoint* wp =
+            TCastToPtr< CScriptWaypoint >(mgr.ObjectById(mgr.GetIdForScript(it->objId)));
+        if (wp != nullptr) {
+          points.push_back(wp);
+        }
+      }
+      if (!points.empty()) {
+        CScriptWaypoint* wp = points[mgr.Random()->Range(0, int(points.size()) - 1)];
+        SetTranslation(wp->GetTranslation());
+        SetTransform(
+            CQuaternion::FromMatrix(wp->GetTransform()).BuildTransform4f(GetTranslation()));
+      }
+      const CVector3f extent(10.f, 10.f, 10.f);
+      const CAABox bounds(GetTranslation() - extent, GetTranslation() + extent);
+      const CMaterialFilter filter =
+          CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));
+      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      mgr.BuildNearList(nearList, bounds, filter, this);
+      if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
+                                                         nearList, mgr)) {
+        xc04_warpPoint = 1;
+        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+      }
+      break;
+    }
+    case 1:
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+        BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
+      } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+        if (!x8fa_28_) {
+          x8fa_28_ = true;
+          xbd0_ = BodyController()->GetAnimTimeRemaining();
+        } else if (xbd0_ > FLT_EPSILON) {
+          const float f = 1.f - BodyController()->GetAnimTimeRemaining() / xbd0_;
+          mColor.SetAlpha(f > 0.f ? f : 0.f);
+        }
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    AddMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+    mColor.SetAlpha(1.f);
+    mAlphaDelta = 0.f;
+    xc04_warpPoint = -1;
+    x8fa_26_ = false;
+    break;
+  }
 }
 
+// Retail fn_72_6E6C (0x20C): Activate arms kAS_Ready, sets the warp point to 1 and clears 0x8fa bit
+// 0x08. Update delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate; when the
+// body is already in that body state it arms the bit and caches the remaining animation time, then
+// fades the body out (alpha = min(1, remaining / cached), rodata B54 = 1). Deactivate zeroes the
+// alpha and mAlphaDelta.
 void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::WarpOut state (fn_72_6E6C)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    xc04_warpPoint = 1;
+    x8fa_28_ = false;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      if (!x8fa_28_) {
+        x8fa_28_ = true;
+        xbd0_ = BodyController()->GetAnimTimeRemaining();
+      } else if (xbd0_ > FLT_EPSILON) {
+        const float f = BodyController()->GetAnimTimeRemaining() / xbd0_;
+        mColor.SetAlpha(f > 1.f ? 1.f : f);
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mColor.SetAlpha(0.f);
+    mAlphaDelta = 0.f;
+    break;
+  }
 }
 
 // Retail fn_72_6DA4 (0xC8): Activate only. Unless 0x8fa bit 0x20 is set it posts kSM_Deactivate to
@@ -1143,8 +1257,70 @@ void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_C1A4 (0x2C4): Activate delivers the jump built by fn_72_5510 towards
+// xafc_patrolDestPos - jump type kJT_Ambush when 0x8f4 bit 0x40 is set, else kJT_Normal, initial
+// state kJS_IntoJump, variant 0, ambush facing flag. The ceiling variant (0x8f4 bit 0x40) aims one
+// unit below the pirate and zeroes xaf8_jumpHeight; otherwise the kSS_Attack/kSM_Follow object's
+// translation is the target with jumpHeight 3 (rodata B5C) and kAS_Over the fallback. Then kLT_Combat
+// when the animation state word is 2 (kAS_Repeat) and always a target vector of GetTargetPos minus
+// the translation with z = 0. Update sets 0x8f7 bit 0x40, aborts scripted animations, re-joins the
+// squad, sends kSS_Attack/kSM_None once, arms kAS_Ready and repeats the target/jumpHeight selection
+// (ceiling variant: one unit below, jumpHeight 0). Deactivate restores kLT_Combat, jumpHeight 3,
+// clears 0x8f4 bit 0x40 and re-enables bone tracking on the attack target.
 void CSpacePirate::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Generate state (fn_72_C1A4)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCJumpCmd(xafc_patrolDestPos,
+                     x8f4_25_ceilingAmbush ? pas::kJT_Ambush : pas::kJT_Normal,
+                     pas::kJS_IntoJump, 0, CBCJumpCmd::kFF_AmbushJump));
+    }
+    if (mAnimationState.GetState() == CAnimationState::kAS_Repeat) {
+      BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    {
+      const CVector3f target = GetTargetPos(mgr);
+      BodyController()->CommandMgr().SetTargetVector(
+          CVector3f(target.GetX() - GetTranslation().GetX(),
+                    target.GetY() - GetTranslation().GetY(), 0.f));
+    }
+    break;
+  case kStateMsg_Update:
+    mEnableAim = true;
+    BodyController()->AbortScriptedAnimations();
+    SquadJoin(mgr);
+    if (!x8f9_31_sentAttackMsg) {
+      x8f9_31_sentAttackMsg = true;
+      SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None);
+    }
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    if (x8f4_25_ceilingAmbush) {
+      xafc_patrolDestPos = GetTranslation() + CVector3f(0.f, 0.f, -1.f); // sDownVector
+      xaf8_jumpHeight = 0.f;
+      break;
+    }
+    {
+      const CActor* wp = TCastToConstPtr< CActor >(
+          mgr.GetObjectById(GetConnectedObject(mgr, kSS_Attack, kSM_Follow)));
+      if (wp != nullptr) {
+        xafc_patrolDestPos = wp->GetTranslation();
+        xaf8_jumpHeight = 3.f;
+      } else {
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+      BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    xaf8_jumpHeight = 3.f;
+    x8f4_25_ceilingAmbush = false;
+    mBoneTracking.SetActive(true);
+    mBoneTracking.SetTarget(mAttackTarget);
+    break;
+  }
 }
 
 // Retail fn_72_94D0: Activate stores rodata B50 = 4.0 into the strafe delay and flags the attack
