@@ -1988,28 +1988,53 @@ void CIng::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // @ fn_29_6DA0
-// The cover search MinorIng's fn_44_4E84 shares: the best free AI hint of type 5 in this area that
-// is not the last one used and not in a safe zone, scored by distance with height above the target
-// weighted.
+// Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_29_bss_40:
+// a count plus four {TUniqueId, float} entries), insertion-sorted ascending, then takes one entry
+// at random through the state manager's RNG. Cover hints are types 3 and 4 (asm 0x00006F2C:
+// cmpwi 0x3 then cmpwi 0x4) - the port had guessed 4 and 5, which matched nothing in the areas the
+// Ings actually live in; type 4 (wall, the kind HasWallCoverPoint tests) additionally needs the
+// body projectile to be allowed by the properties (0x9d0 bit 5) and the target outside a hurtful
+// safe zone.
 void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg != kStateMsg_Activate) {
+  if (msg != kStateMsg_Activate) { // asm 0x00006DCC
     return;
   }
   LogState("FindCoverPoint");
-  ReleaseCoverHint(mgr, mCoverHintId);
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
+  ReleaseCoverHint(mgr, mCoverHintId); // fn_29_4560
+  if (!TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8; f1 = rodata_6C (0.0)
     return;
   }
-  mTargetPos = target->GetAimPosition(mgr, 0.f);
-  TUniqueId best = kInvalidUniqueId;
-  float bestScore = FLT_MAX;
+  // The candidate array lives in the REL's bss (lbl_29_bss_40), so it is shared by every Ing and
+  // cleared on each call (asm 0x00006E8C); function-local statics do the same here.
+  struct SCandidate {
+    SCandidate() : id(kInvalidUniqueId), score(0.f) {}
+    TUniqueId id;
+    float score;
+  };
+  static SCandidate sCandidates[4];
+  static int sCandidateCount = 0;
+  sCandidateCount = 0;
+  // Near/far score bounds, each the max of two ranges, squared (asm 0x00006E98/0x00006EB0): f31
+  // from mMinAttackRange (0x3e0) vs body-projectile min (0x85c), f30 from body-projectile max
+  // (0x860) vs mini-portal max (0x934 = CIngData 0x7c0 + 0x174).
+  const float nearBound = mMinAttackRange >= mData.mBodyProjectile.mMinAttackDist
+                              ? mMinAttackRange
+                              : mData.mBodyProjectile.mMinAttackDist;
+  const float f31 = nearBound * nearBound;
+  const float farBound = mData.mBodyProjectile.mMaxAttackDist >= mData.mMiniPortal.mMaxAttackDist
+                             ? mData.mBodyProjectile.mMaxAttackDist
+                             : mData.mMiniPortal.mMaxAttackDist;
+  const float f30 = farBound * farBound;
+  // Evaluated once before the loop (asm 0x00006EE8, fn_29_ABC8): the target actor exists and sits
+  // in a hurtful safe zone.
+  const bool targetInHurtful = TargetInLightSafeZone(mgr, CTriggerData(0.f));
   int scanned = 0;
   // Debug: why the scan comes up empty (the puddle then never leaves FindCoverPoint, and the
   // grapple behind IngSpotPathFind stays unreachable).
   int inactive = 0, wrongType = 0, inUse = 0, wrongArea = 0, lastUsed = 0, safeZone = 0;
+  int spotGated = 0, hurtful = 0;
   int typeHist[32] = {0};
-  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
+  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint); // mgr+0x838
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(list[i]);
     ++scanned;
@@ -2019,45 +2044,90 @@ void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
         ++typeHist[type];
       }
     }
-    // [?] hint types 4 (wall) and 5 both count as cover for CIng (HasWallCoverPoint tests 4).
     if (hint == nullptr) {
       continue;
     }
-    if (!hint->GetActive()) { ++inactive; continue; }
-    if (hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(5) &&
-        hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(4)) {
+    if (!hint->GetActive()) { // asm 0x00006F20: byte 0x20 bit 0
+      ++inactive;
+      continue;
+    }
+    const int type = static_cast< int >(hint->GetHintType());
+    if (type != 3 && type != 4) { // asm 0x00006F2C
       ++wrongType;
       continue;
     }
-    if (hint->GetInUse(GetUniqueId())) { ++inUse; continue; }
-    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { ++wrongArea; continue; }
-    if (hint->GetUniqueId() == mLastCoverHintId) { ++lastUsed; continue; }
-    if (mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) {
+    if (hint->GetInUse(GetUniqueId())) { // asm 0x00006F50
+      ++inUse;
+      continue;
+    }
+    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { // asm 0x00006F60, area word 0x4
+      ++wrongArea;
+      continue;
+    }
+    if (hint->GetUniqueId() == mLastCoverHintId) { // asm 0x00006F74, 0xd74
+      ++lastUsed;
+      continue;
+    }
+    if (mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) { // 0x00006F8C
       ++safeZone;
       continue;
     }
-    const CVector3f delta = mTargetPos - hint->GetTranslation();
-    const float up = CVector3f::Dot(CVector3f::Up(), delta);
-    float score = delta.MagSquared();
-    if (up > 0.f) {
-      score += up * 4.f * up;
+    if (type == 4) { // asm 0x00007074: wall hints only
+      // asm 0x00007080 reads 0x9d0 bit 5, which is CIngData's +0x210 flag byte (0x7c0 + 0x210),
+      // not the 0xe5d bitfield: an Ing whose properties forbid the body projectile never takes a
+      // wall point either.
+      if ((mData.mFlags210 & kFlag_NoBodyProjectile) != 0) {
+        ++spotGated;
+        continue;
+      }
+      if (targetInHurtful) { // asm 0x0000708C
+        ++hurtful;
+        continue;
+      }
     }
-    if (score < bestScore) {
-      bestScore = score;
-      best = hint->GetUniqueId();
+    const CVector3f delta = mTargetPos - hint->GetTranslation(); // 0xdc8 - hint+0x54
+    float score = delta.MagSquared();
+    const float up = CVector3f::Dot(CVector3f::Up(), delta); // == delta.GetZ(), asm 0x000070D0
+    if (type != 4 || up > 0.f) { // asm 0x000070E4: wall hints at/below the target skip the term
+      score += 4.f * up * up; // rodata_AC
+    }
+    if (score < f31) { // asm 0x00007108
+      score += f30; // asm 0x00007110
+    }
+    // Same insertion shape as CMinorIng's copy of this routine: store at the end (or over the
+    // worst entry when full), then bubble down to keep the array ascending (asm 0x00007040).
+    int slot;
+    if (sCandidateCount < 4) { // asm 0x00007040
+      slot = sCandidateCount++;
+    } else if (score < sCandidates[3].score) {
+      slot = 3;
+    } else {
+      continue;
+    }
+    sCandidates[slot].id = hint->GetUniqueId();
+    sCandidates[slot].score = score;
+    for (; slot > 0 && sCandidates[slot].score < sCandidates[slot - 1].score; --slot) {
+      const SCandidate swap = sCandidates[slot];
+      sCandidates[slot] = sCandidates[slot - 1];
+      sCandidates[slot - 1] = swap;
     }
   }
-  if (CScriptAIHint* hint = GetCoverHint(mgr, best)) {
-    hint->SetInUse(true);
-    mCoverHintId = best;
-    mLastCoverHintId = best;
+  TUniqueId picked = kInvalidUniqueId;
+  if (sCandidateCount != 0) { // asm 0x00007148
+    const int index = mgr.Random()->Range(0, sCandidateCount - 1); // asm 0x00007234, mgr+0x16e4
+    picked = sCandidates[index].id;
+  }
+  if (CScriptAIHint* hint = GetCoverHint(mgr, picked)) {
+    hint->SetInUse(true); // fn_29_4510
+    mCoverHintId = picked; // 0xd72
+    mLastCoverHintId = picked; // 0xd74
   }
   if (DebugIng()) {
     fprintf(stderr,
-            "[ing] %04x cover scan: candidates %d, best %04x: inactive %d type %d inuse %d area %d "
-            "last %d safezone %d; types",
-            GetUniqueId().Value(), scanned, best.Value(), inactive, wrongType, inUse, wrongArea,
-            lastUsed, safeZone);
+            "[ing] %04x cover scan: candidates %d, pick %04x: inactive %d type %d inuse %d area %d "
+            "last %d safezone %d wallspot %d hurtful %d; types",
+            GetUniqueId().Value(), scanned, picked.Value(), inactive, wrongType, inUse, wrongArea,
+            lastUsed, safeZone, spotGated, hurtful);
     for (int t = 0; t < 32; ++t) {
       if (typeHist[t] != 0) {
         fprintf(stderr, " %d:%d", t, typeHist[t]);

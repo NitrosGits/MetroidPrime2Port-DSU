@@ -386,13 +386,13 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 
 | slice | functions | note |
 |---|---|---|
-| ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`), builds and runs but no run enters the state: it needs the player in morph ball inside `mPursuitRange`. Next run for it: `press b` to morph, then walk into the Ing |
+| ~~grapple~~ ported | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`); the run that has to reach it is the A.11 row below. Morphing is `press x` (`morphIntoBall` is function-list 17) and the player must stay inside the puddle's touch box |
 | ~~arm swipe~~ done | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | ported + `// @` 2026-10-20 (`1b058f9a4`); see A.7 |
 | ~~suck~~ done | `fn_29_76B8` SuckEnergy (0x778) | ported 2026-10-20, `// @`; see A.8. It also exposed a field-name shift in `CIngBodyProjectileData` (A.3) |
 | ~~splat~~ done | `fn_29_4F14` SplatOntoMesh (0x238) | ported 2026-10-20, `// @` (probe-driven); see A.8 |
 | ~~exit host~~ done | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `1006C`/`100B8`/`10154`/`1046C`/`1065C`/`1077C`/`10944`/`10DEC`/`10EB4`/`10F58`; `lbl_29_data_C60`) | ported 2026-10-20 (`2382c8e15`), `// @` except `10E64` (Render, never queued - no model); class identity [proven]; see A.9 |
 | ~~body projectile~~ done | `fn_29_7E30` BodyProjectileFlight (0x2E8) | ported + `// @` 2026-10-20 (`ing_bp3.log`); the audit also fixed the aim prediction (0.5f), the unconditional emitter calls and the 0x1144 bit-6 pair; see A.10 |
-| ~~grapple~~ rear | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported, still no `// @`: the puddle only reaches `IngSpotPathFind` through `SetCoverDest`, i.e. after `HasCoverPoint`, and every cover scan comes up empty (A.11) |
+| ~~grapple~~ rear | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported, still no `// @`: the puddle reaches `IngSpotPathFind` only through `SetCoverDest`, i.e. after `HasCoverPoint`; A.11 fixed the cover scan (wrong hint types) so it gets there now, and the ball half needs the player morphed - the `morphIntoBall` tweak is function-list 17, the **X** button (`press b` never morphed) |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
 Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
@@ -580,6 +580,38 @@ Three corrections the audit against the asm produced in the same slice:
 distances/odds/speed/drop/suck, grapple pursuit/hold/post-wait/spit/drain, mini-portal distances),
 one line a second for the `ShouldBodyProjectile` / `TargetIsBall` / `InBallPursuitRange` /
 `InGrappleRange` triggers, and the flight's form/time/direction.
+
+### A.11 The cover scan was looking for the wrong hint types (`fn_29_6DA0`, fixed 2026-10-20)
+
+The puddle (`mForm` 3) reaches `IngSpotPathFind` only through the `SetCoverDest` code node, i.e.
+only after `HasCoverPoint`, which is `GetCoverHint(mgr, mCoverHintId) != nullptr`: the id is set by
+`FindCoverPoint` `fn_29_6DA0` and by nothing else. With cover never resolving, every puddle sat in
+`FindCoverPoint` (area 57) or looped `Lurk -> SetRecoverDest -> FailSafeMode` (Agon), and the grapple
+behind `IngSpotPathFind` could not be reached at all.
+
+`MP2_DEBUG_ING`'s scan counters named the bug on the first run (`ing_gr4.log`, Agon
+`01_sand_entrance_dark`, 85 candidates, `types 3:64 5:21`, `type 64` rejected): retail filters
+**types 3 and 4** (asm 0x00006F2C: `cmpwi 0x3` then `cmpwi 0x4`), and the port had guessed 4 and 5
+from MinorIng's copy. The rewritten routine, from the asm:
+
+| item | retail |
+|---|---|
+| activate-only, then `fn_29_4560` (release) and `fn_29_4468` (aim, f1 = 0.0) | same as the port had |
+| candidates | a **file-static** array in the REL's bss (count + four `{TUniqueId, float}` entries), shared by every Ing, cleared per call |
+| near/far score bounds | `f31 = max(bodyProj.minAttackDist, mMinAttackRange)²`, `f30 = max(bodyProj.maxAttackDist, miniPortal.maxAttackDist)²` (asm 0x00006E98/0x00006EB0, offsets 0x85c/0x3e0, 0x860/0x934) |
+| filter | active bit, type 3 or 4, `!GetInUse(uid)`, same area, not `mLastCoverHintId` (0xd74), not in a safe zone |
+| type-4 (wall) only | skipped when `mData.mFlags210` bit 5 (0x9d0 bit 5, "no body projectile") is set, or when `fn_29_ABC8` - `TargetInLightSafeZone`, the target sitting in a hurtful safe zone - holds; both evaluated once per call |
+| score | `|mTargetPos - hint|² + 4·dz²`, the second term only when the type is not 4 or `dz > 0`; `+ f30` when the score is below `f31` |
+| pick | the four lowest, insertion-sorted, then **one at random** through the state manager's RNG (`Range(0, count-1)`, mgr+0x16e4), then `fn_29_4510` (in use, `mCoverHintId` 0xd72, `mLastCoverHintId` 0xd74) |
+
+Result (`ing_gr5.log`, same area): `023e cover scan: candidates 85, pick 0058` and the puddle walks
+`FindCoverPoint -> SetCoverDest -> IngSpotPathFind -> SetPointCoverDest -> IngSpotPointPathFind`,
+three states that had never run. The second Agon Ing (`0233`) still loops `Lurk -> SetRecoverDest ->
+FailSafeMode`, i.e. it is off the navmesh (`IsOffPath`), which is a separate question (A.6 row).
+
+**[?]** `0x3e0` is taken to be CPatterned's `mMinAttackRange` (the field `CPatterned` stores the
+patterned-info minimum attack range in, and the one whose meaning matches a "too close" floor);
+nothing in the module reads it elsewhere to confirm.
 
 ---
 
