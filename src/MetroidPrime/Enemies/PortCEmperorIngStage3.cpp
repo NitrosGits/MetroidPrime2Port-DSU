@@ -1408,6 +1408,7 @@ void CEmperorIngStage3::UpdateTargetMaterials(CStateManager& mgr) {
 // r3, 0x830` at 0x22C4).
 float CEmperorIngStage3::BoneAverage() const { return ListAverage(mX830_); }
 
+// @ fn_18_AB9C
 // fn_18_AB9C (0x64): the weighted average over a list: every entry counts its weight times
 // what is left of its threshold (one minus the timer over the threshold, capped at one).
 float CEmperorIngStage3::ListAverage(const SEmperorIngList& list) const {
@@ -1895,6 +1896,7 @@ void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_18_1DF4
 // fn_18_1DF4 (0x4A0): the heart switch. Heart 0 is the enraged heart: the two hearts get the
 // yellow health (guest 0x920, 0x1E8C) and the "EnragedHeart" effect; heart 1 the dark
 // heart: the actor's own health (the vtable slot 0x3C, 0x1F80) and the "DarkHeart" effect;
@@ -2022,6 +2024,7 @@ bool CEmperorIngStage3::ShouldChangeVulnerabilityToVulnerable(CStateManager& mgr
   return mVulnerabilityState == 1;
 }
 
+// @ fn_18_898C
 // fn_18_898C (0x898C): "ShouldChangeVulnerabilityToInvulnerable". The look check has to pass
 // (rodata 0x2CC = 90.0f); in the vulnerable state (3) the trigger is true, in the invulnerable
 // state (2) it needs the damage taken while vulnerable (guest 0x810) or the vulnerable damage
