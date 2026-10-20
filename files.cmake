@@ -783,7 +783,7 @@ set(MP_MODULE_DarkSamus_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_DigitalGuardian_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
 )
 set(MP_MODULE_ElitePirate_SOURCES
     src/MetroidPrime/Enemies/PortCElitePirate.cpp
@@ -842,7 +842,8 @@ set(MP_MODULE_SpacePirate_SOURCES
     src/MetroidPrime/Enemies/PortCSpacePirateTriggers.cpp
 )
 set(MP_MODULE_Splitter_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSplitterCommandModule.cpp
+    src/MetroidPrime/Enemies/PortCSplitterMainChassis.cpp
 )
 set(MP_MODULE_SwampBossStage1_SOURCES
     src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp

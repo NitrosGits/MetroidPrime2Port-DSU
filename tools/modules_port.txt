@@ -6,7 +6,7 @@
 WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 CommandoPirate;src/MetroidPrime/PortModuleStubs.cpp
 DarkSamus;src/MetroidPrime/PortModuleStubs.cpp
-DigitalGuardian;src/MetroidPrime/PortModuleStubs.cpp
+DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
 EmperorIngStage1;src/MetroidPrime/PortModuleStubs.cpp
 EmperorIngStage3;src/MetroidPrime/PortModuleStubs.cpp
@@ -37,7 +37,8 @@ SnakeWeedSwarm;src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirate.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateStates.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateTriggers.cpp
-Splitter;src/MetroidPrime/PortModuleStubs.cpp
+Splitter;src/MetroidPrime/Enemies/PortCSplitterMainChassis.cpp
+Splitter;src/MetroidPrime/Enemies/PortCSplitterCommandModule.cpp
 SwampBossStage1;src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp
 SwampBossStage2;src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp
 WallCrawlerSwarm;src/MetroidPrime/PortModuleStubs.cpp
