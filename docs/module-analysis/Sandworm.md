@@ -346,10 +346,29 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   `StopGrabAttack` → `GrabAttackFinished`, so all 11 bodies are marked. `2C30`
   (CSandworm::GetOrbitPosition, eye-based) was hit in the same run. The worm has to be
   re-`tp`ed onto every ~2.5 s because it keeps moving.
-- Markers: 224 functions carry `// @`; 59 remain `(ported, not exercised yet)`, including
+- Sulk group (`01_sand_entrance`, 2026-10-20): worm u0517 went `Pursue` → `PlayerHiding=1` +
+  `CanDescend=1` → `Straighten` → `Descend` → `Sulk` → `DoneSulking=1` → `Rise`, so `3E1C`
+  (`CanDescend`), `5470` (`Sulk`) and `541C` (`DoneSulking`) are marked. Sequence: `objs sandworm`,
+  `tp` 20 m in front of the worm + `face` it, 8 s still; `press l 0` (hold lock-on) then
+  `press l+a 3` / `press l 10` bursts to hp 120 → 90 (power beam, ~2 hp per hit), console
+  `damage u0517 18` to hp 60 for the sulk band; `tp` back 14 m from it every few bursts. Then stand
+  still on the path (`tp` worm + (0,-14)) for the sulk/DoneSulking, and step off it (worm + (10,-8),
+  8 s) to flip `PlayerHiding`/`CanDescend`. Proof: `[trig] CanDescend=1 neg=0 in=Pursue`,
+  `[trig] DoneSulking=0/1 neg=0 in=Sulk`, cov2 hits `PortCSandwormStates.cpp:240:fn_56_3E1C`,
+  `:336:fn_56_5470`, `:331:fn_56_541C`. `ShouldSulk` stayed 0 even at hp 60 (50%), so this prefab
+  sulks through the hide/descend gate, not the HP gate.
+- Still unexercised after that run: `C350` (`InAttackRange`) and `C3D0` (`Activated`). A temporary
+  dump of every `CGenericFSM2` the worm loads (three machines; the worm's is the 23-state one, all
+  23 states' transitions printed) shows no state referencing either trigger, and `Deactivate`'s
+  only transition is `DoneLurking` → `Rise`, so console `send Deactivate`/`Activate` never evaluates
+  `Activated`; `InAttackRange` is likewise never asked (`Pursue` uses `CanAttack`, `InSpitRange`,
+  `MeleeAttackRange`). Both must belong to another prefab's AFSM (Bomb Guardian), so they stay open
+  for that run. Probe reverted.
+- Markers: 227 functions carry `// @`; 56 remain `(ported, not exercised yet)`, including
   GetRagDoll, GetDeathExplosionParticle and RenderIngSnatchingTransition.
-  `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (all but `C828`/`3E1C` now done),
-  B 1, C 36 (Bomb Guardian/possession only), D 12, E 6.
+  `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (21 done; `C350`/`C3D0` have no
+  AFSM transition in this prefab, `C828` still open), B 1, C 36 (Bomb Guardian/possession only),
+  D 12, E 6.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
   - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.

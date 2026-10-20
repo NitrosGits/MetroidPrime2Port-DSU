@@ -237,7 +237,7 @@ bool CSandworm::PathReachable(CStateManager& mgr, const CVector3f& pos) const {
   return x1850_ != 0;
 }
 
-// fn_56_3E1C (ported, not exercised yet)
+// @ fn_56_3E1C
 bool CSandworm::CanDescend(CStateManager& mgr, const CTriggerData& data) const {
   if (IsBombGuardian(*this)) {
     return false;
@@ -328,12 +328,12 @@ bool CSandworm::DoneStraightening(CStateManager& mgr, const CTriggerData& data) 
   return x1670_.xfc_ <= 0.002f;
 }
 
-// fn_56_541C (ported, not exercised yet)
+// @ fn_56_541C
 bool CSandworm::DoneSulking(CStateManager& mgr, const CTriggerData& data) const {
   return x8B0_activeTime >= x165C_ && PlayerIsOnPathMesh(mgr, CTriggerData(0.f));
 }
 
-// fn_56_5470 (ported, not exercised yet)
+// @ fn_56_5470
 void CSandworm::Sulk(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->SetLocomotionType(pas::ELocomotionType(7));
   if (msg == kStateMsg_Activate) {
