@@ -416,6 +416,7 @@ void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg m
 // damage and attaches to the player (with the HUD warning); Update rides on the host's transform and
 // aim point, draining mUnknownA0D6 a second through a solid-only filter, until the body projectile's
 // suck time runs out; Exit releases the player and the voice.
+// @ fn_30_8DD4
 void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -909,6 +910,7 @@ void CIngBoostBallGuardian::FailSafeMode(CStateManager& mgr, EStateMsg msg, floa
 // target's aim point, until three hits are stored or the shared angle index runs out (the ring is
 // eight angles, so a FindMiniPortals entry never searches more than four frames). The filter and
 // the geometry are the Space Jump Guardian's (fn_29_1E6C's FindMiniPortals), which is verified.
+// @ fn_30_7D5C
 void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:

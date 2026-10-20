@@ -379,7 +379,8 @@ void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg m
 }
 
 // fn_30_A45C (this module).
-// The Ing's fn_29_8FE8 (not yet exercised in a run).
+// The Ing's fn_29_8FE8.
+// @ fn_30_A45C
 void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -392,7 +393,7 @@ void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg m
     // Face out of the surface it is on: columns = (normal x up normalised, normal, up), origin one
     // normal's length off the wall.
     const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
-    const CVector3f side = CVector3f::Cross(normal, CVector3f::Up()); // the Ing's fn_29_94A8
+    const CVector3f side = CVector3f::Cross(normal, CVector3f::Up()); // fn_30_A91C (the Ing's fn_29_94A8)
     if (side.IsMagnitudeSafe()) {
       SetTransform(CTransform4f::FromColumns(side.AsNormalized(), normal, CVector3f::Up(),
                                             GetTranslation() + normal));
