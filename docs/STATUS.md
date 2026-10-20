@@ -34,7 +34,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 |---|---|---|---|
 | BoostGuardian (Opus) | `ses_ea46ece9affeuZyMuj5zzrN83n` | boostguardian @ `942423d04` (159; B908 + 3A60 fixes b3079e925) | 19 stand-ins (D230 first), forced branches of 3068/3A60/CB54/B7E0 and the uncalled ones |
 | EmperorIng3 (Opus) | `ses_ea45e4aa2ffeRAGqNqMUhIB6Mk` | emperoring3 @ `585abecf9` (177/270; loader + 16 helpers, LightSwarm 15) | 59 todo, rstl cites, matching build for the SLdr header |
-| DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `d99bc2718` (echo targets, XDMG → lives 0x10E4 drop, ExtractAntenna) | 12818/126C8, the cycle stall, Dead 1561C, XRDG 12D98; hook-free fight end |
+| DigitalGuardian (Opus) | `ses_ea45ad902ffeFmjnji3eLDppq5` | digitalguardian @ `d503a8674` (echo targets, XDMG; hook-free cycle reaches Stage3Start with run11.sh) | 12818/126C8 balls, Dead 1561C, XRDG 12D98, cycle stand-ins |
 | Splitter (worker) | `ses_ea48561b5ffeRbtHcJxoGyecRD` | splitter @ `09665ac78` (squashed; 13 reached FSM entries ported; AFE8/9520 unmarked) | IsDocked 58BC, Scanning DCF8, SelectTarget 3E60, Hover 4D04, Patrol DCFC, ACEC |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `c626d9ca3` (72/241) | survey of 169 unmarked → emp1_unmarked.tsv, hook pass |
