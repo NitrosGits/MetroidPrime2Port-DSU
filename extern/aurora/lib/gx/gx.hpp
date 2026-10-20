@@ -313,6 +313,7 @@ struct GXState {
   struct CopyTextureRef {
     gfx::TextureHandle handle;
     u32 revision = 0;
+    u64 lastUse = 0; // Port: copy_tex's use stamp, for evicting a destination's stale sizes
 
     operator bool() const noexcept { return handle.operator bool(); }
   };
