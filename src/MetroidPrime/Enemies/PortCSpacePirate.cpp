@@ -1581,7 +1581,7 @@ CAABox CSpacePirate::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return local.GetTransformedAABox(xf);
 }
 
-// Retail fn_72_339C (ScanVisorRender): the body model with the scan flags and no lights, then the
+// @ fn_72_339C (ScanVisorRender): the body model with the scan flags and no lights, then the
 // launcher model.
 void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                    const CModelFlags& flags) const {
