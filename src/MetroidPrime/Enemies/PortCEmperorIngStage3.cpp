@@ -411,6 +411,7 @@ void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
   }
 }
 
+// @ fn_18_E40
 // fn_18_E40 (0x41C): the object-drop timer (guest 0x8DC, which kUE_ObjectDrop sets to 1.5)
 // runs down and the light-swarm timer (guest 0x7DC) up. While the drop timer runs, the
 // INTERNAL_STATE_01/PLAY effect (guest 0x8C4) emits and the INTERNAL_STATE_00 swarm (guest
@@ -1557,6 +1558,7 @@ void CEmperorIngStage3::EggLayEvent(CStateManager& mgr, float dt) {
   mgr.AddObject(attackObj);
 }
 
+// @ fn_18_BB8
 // fn_18_BB8 (0x204): the light swarm (PortCEmperorIngLightSwarm.cpp). While none is out (guest
 // 0x8C0 invalid) one is spawned at the "Swarm_LCTR_SDK" locator (fn_18_817C), drawn after the
 // Ing (its next draw node, 0xD84). Its only connection is a copy of the Ing's first
@@ -2477,6 +2479,7 @@ void CEmperorIngStage3::LightBeamAttack(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
+// @ fn_18_6698
 // fn_18_6698 (0x128): the "LightSwarmAttack" state, PortalAttack's shape with severity 11. The
 // attack animation's kUE_BeginAction event spawns the light swarm (BeginActionEvent, fn_18_BB8).
 // Activate (0x66D0) readies the animation state; Update (0x66DC) issues the projectile attack
