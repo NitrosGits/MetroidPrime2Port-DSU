@@ -115,6 +115,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -148,6 +149,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
+, xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -346,9 +348,14 @@ bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData&
   return false;
 }
 
+// fn_9_BB7C: the commando retreats when its flag byte at guest this+0xC63 has its 0x40 bit set
+// (extrwi. r0, r0, 1, 25 at 0x0000BB80), the block's flag byte at +0x15D does not have its 0x80
+// bit (extrwi. r0, r0, 1, 24 at 0x0000BB8C), the block's flag byte at +0x15C does not have its
+// 0x08 bit (extrwi. r0, r0, 1, 28 at 0x0000BB98) and the id at guest this+0xBCE is not
+// kInvalidUniqueId (the compare at 0x0000BBA0..0x0000BBB8).
 bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BB7C");
-  return false;
+  return (xc63_ & 0x40) != 0 && (mData.mFlags1 & 0x80) == 0 &&
+         (mData.mFlags0 & 0x08) == 0 && xbce_ != kInvalidUniqueId;
 }
 
 bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
@@ -408,14 +415,18 @@ bool CCommandoPirate::HasNewTarget(CStateManager& mgr, const CTriggerData& data)
   return HasTarget(mgr, data) && xbcc_ != xbca_;
 }
 
+// fn_9_B9D8: the commando's own flag byte at guest this+0xC63 has its 0x80 bit set (extrwi.
+// r0, r0, 1, 24 at 0x0000B9F0), or the base's own answer says the path is shagged (the call at
+// 0x0000B9F8).
 bool CCommandoPirate::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B9D8");
-  return false;
+  return (xc63_ & 0x80) != 0 || CPatterned::PathShagged(mgr, data);
 }
 
+// fn_9_B990: the commando's own flag byte at guest this+0xC65 does not have its 0x80 bit set
+// (extrwi. r0, r0, 1, 24 at 0x0000B9A8 - the beq at 0x0000B9AC takes the "true" branch), or the
+// base's own answer says the path is over (the call at 0x0000B9B0).
 bool CCommandoPirate::PathOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B990");
-  return false;
+  return (xc65_ & 0x80) == 0 || CPatterned::PathOver(mgr, data);
 }
 
 bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) const {
@@ -455,9 +466,12 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
   return false;
 }
 
+// fn_9_B660: the commando arms its shield when its flag byte at guest this+0xC64 has its 0x80
+// bit set (extrwi. r0, r4, 1, 24 at 0x0000B668), the block's flag byte at +0x15D does not have
+// its 0x20 bit (extrwi. r0, r0, 1, 26 at 0x0000B674) and that same byte's 0x01 bit is clear
+// (clrlwi. r0, r4, 31 at 0x0000B67C).
 bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B660");
-  return false;
+  return (xc64_ & 0x80) != 0 && (mData.mFlags1 & 0x20) == 0 && (xc64_ & 0x01) == 0;
 }
 
 bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const {

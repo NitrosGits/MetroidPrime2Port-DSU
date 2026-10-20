@@ -342,6 +342,7 @@ private:
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
+  TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)

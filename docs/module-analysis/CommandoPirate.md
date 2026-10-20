@@ -221,6 +221,10 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
 | UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (0.75f, `lbl_9_rodata_4E0`) |
 | HasTarget | `fn_9_BA78` | 0x599 | the target the commando holds (guest this+0xBCA) is still in the world | the base's `GetObjectById` |
 | HasNewTarget | `fn_9_BA20` | 0x5A3 | there is a target and it is a new one: `HasTarget(...)` and the id at guest this+0xBCC differs from the target id | `xbcc_` (new, kInvalidUniqueId) |
+| ShouldRetreat | `fn_9_BB7C` | 0x540 | the flag byte at guest this+0xC63 has its 0x40 bit set, the block's flag bytes at +0x15D and +0x15C do not have their 0x80 and 0x08 bits, and the id at guest this+0xBCE is not kInvalidUniqueId | `xbce_` (new, kInvalidUniqueId) |
+| ShouldArmShield | `fn_9_B660` | 0x626 | the flag byte at guest this+0xC64 has its 0x80 bit set and its 0x01 bit clear, and the block's flag byte at +0x15D does not have its 0x20 bit | `xc64_` (0) |
+| PathShagged | `fn_9_B9D8` | 0x5B0 | the flag byte at guest this+0xC63 has its 0x80 bit set, or the base's own `PathShagged` says so | `xc63_` (0) |
+| PathOver | `fn_9_B990` | 0x5BC | the flag byte at guest this+0xC65 does not have its 0x80 bit set, or the base's own `PathOver` says so | `xc65_` (0x80) |
 
 - `StateOver` reads guest +0x6B4, which is the base `CPatterned`'s animation state - the host
   already has it, as the DigitalGuardian's own `StateOver` (fn_14_9AA8) does. The guest's test is
@@ -291,7 +295,8 @@ actor reaches: Patrol, SelectTarget, FaceTarget, Alert and then Lurk - Alert put
 into the field at guest this+0xBCC (the store at 0x0000AE44), which is what `HasNewTarget`
 compares with the target id, so that trigger is false again after Alert, exactly as in retail.
 `HasTarget` and `HasNewTarget` are the first triggers of the module that return true in the port
-- the commando's target is in the world. FaceTarget ticks every frame; the angle test answers
+- the commando's target is in the world. In `Lurk` the combat triggers are evaluated for the first
+time: `ShouldRetreat` and `ShouldArmShield` answer false, and `PathShagged` answers true. FaceTarget ticks every frame; the angle test answers
 "ready" (the target is not yet in front) and the animation state is otherwise the base's own.
 Alert's taunt is delivered once (`pas::kTT_Four`, the actor is not relaxed by then), the
 animation state goes "over" and the walk leaves Alert for `Lurk`, where the combat triggers
@@ -410,10 +415,13 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 48 bodies: the two tables (34 triggers, 36 states) are registered,
-  eighteen of the triggers and five of the states are host code (the sections above), but every
+- The state machine's other 44 bodies: the two tables (34 triggers, 36 states) are registered,
+  twenty-two of the triggers and five of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value.
+  returns the neutral value. The combat triggers that are still stands in are `ShouldMeleeAttack`
+  (fn_9_BCB8, 0xE0), `ShouldDodge` (fn_9_B690, 0xDC), `ShouldShieldCharge` (fn_9_B250, 0x410),
+  `ShouldFireEGrenade` (fn_9_BBC8, 0xF0) and `TooClose` (fn_9_B76C, 0x90) - all over the 0x80 limit
+  for this slice - and the `PathFind` state (fn_9_9AAC, 0x108).
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
