@@ -19,7 +19,13 @@ MinorIng;src/MetroidPrime/Enemies/PortCMinorIng.cpp
 SandBoss;src/MetroidPrime/Enemies/PortCSandBoss.cpp
 SandBoss;src/MetroidPrime/Enemies/PortCSandBossStates.cpp
 SandBoss;src/MetroidPrime/Enemies/PortCSandBossAttacks.cpp
-Sandworm;src/MetroidPrime/PortModuleStubs.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandworm.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandwormEye.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandwormStates.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandwormAttacks.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandwormSpine.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandwormBombs.cpp
+Sandworm;src/MetroidPrime/Enemies/PortCSandwormRender.cpp
 ScriptPlayerTurret;src/MetroidPrime/PortModuleStubs.cpp
 SnakeWeedSwarm;src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirate.cpp
