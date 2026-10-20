@@ -181,6 +181,19 @@ private:
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
   TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
   float mChassisTimer = 0.f;                     // guest 0xF14 (set to 3.0f at 0x3230)
+
+  // The fields the retail's fn_75_32F4 touches.
+  void PortUpdateFlashAndDeath(CStateManager& mgr, float dt);
+  float mCountdownTimerA = 0.f;                // guest 0xF10 (counted down at 0x332C)
+  float mCountdownTimerB = 0.f;                // guest 0xF0C (counted down at 0x333C)
+  float mCountupTimerA = 0.f;                  // guest 0xF18 (counted up at 0x3354)
+  float mCountupTimerB = 0.f;                  // guest 0xF1C (counted up at 0x3360)
+  float mFlashAlpha = 0.f;                     // guest 0xF08 (the Lerp's weight, 0x3368)
+  CColor mFlashColor;                          // guest 0xF04 (the Lerp's result, 0x33C8)
+  float mDeathTimer = 0.f;                     // guest 0xEF0 (counted down at 0x33EC)
+  // The retail's CActor 0x28, 0x38 and 0x48 (the death direction); the host has no
+  // accessor for it, so the port keeps its own.
+  CVector3f mDeathDirection;
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

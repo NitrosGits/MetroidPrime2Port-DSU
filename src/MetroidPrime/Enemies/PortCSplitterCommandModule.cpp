@@ -44,7 +44,6 @@ void StandIn(const char* what) {
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
 // function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
 // (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
-void StandInFn_75_32F4() { StandIn("fn_75_32F4 (0x16C)"); }
 void StandInFn_75_3004() { StandIn("fn_75_3004 (0x1A4)"); }
 void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
 
@@ -100,6 +99,38 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 // stays a named once-logging shell.
 void StandInFn_75_1578() { StandIn("fn_75_1578 (0x218)"); }
 void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
+
+// @ fn_75_32F4
+// The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
+// 0x332C, 0xF0C at 0x333C and 0xF14 at 0x3344) and two counted up (0xF18 at 0x3354 and 0xF1C at
+// 0x3360). While the flash weight 0xF08 is above zero (0x336C-0x3370) it is counted down and
+// clamped at zero (0x3374-0x338C) and the colour at 0xF04 is the Lerp of the white and the base
+// colour (0x450) with the weight capped at 1.0f (0x3390-0x33A8, 0x33C0). Then the flag byte at
+// 0xF6A (the word's bit 29, the byte's 0x04, 0x33CC-0x33D4) and the alive bit of the byte at
+// 0x420 (the word's bit 25, the byte's 0x40, 0x33D8-0x33E0) gate the death timer 0xEF0, which is
+// counted down (0x33EC-0x33F4) and, at zero or below (0x33FC-0x3404), kills the actor with the
+// direction (0x28, 0x38 and 0x48) and the state 0x5241544C ('RATL', 0x340C-0x3434).
+void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float dt) {
+  mCountdownTimerA -= dt;
+  mCountdownTimerB -= dt;
+  mChassisTimer -= dt;
+  mCountupTimerA += dt;
+  mCountupTimerB += dt;
+  if (mFlashAlpha > 0.f) {
+    mFlashAlpha -= dt;
+    if (mFlashAlpha < 0.f) {
+      mFlashAlpha = 0.f;
+    }
+    const float weight = mFlashAlpha < 1.f ? mFlashAlpha : 1.f;
+    mFlashColor = CColor::Lerp(CColor::White(), mColor, weight);
+  }
+  if ((mAutoDestructFlags & 0x4) != 0 && GetAlive()) {
+    mDeathTimer -= dt;
+    if (mDeathTimer <= 0.f) {
+      Death(mgr, mDeathDirection, kSS_DeathRattle);
+    }
+  }
+}
 
 // @ fn_75_31A8
 // The command module's chassis check (0x31A8-0x32F4): the id at 0xEFA (0x31D8 lhz) is looked up
@@ -216,7 +247,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   }
   mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   PortUpdateChassis(mgr);
-  StandInFn_75_32F4();
+  PortUpdateFlashAndDeath(mgr, dt);
   StandInFn_75_3004();
   PortLookAtTarget(mgr, dt);
   StandInFn_75_1188();
