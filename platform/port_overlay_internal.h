@@ -49,6 +49,7 @@ extern int sAnisotropy;
 extern int sHudScale;
 extern int sUiScale;
 extern bool sVsync;
+extern bool sFullscreen;
 extern bool sFrameLimit;
 extern bool sSmoothFrames;
 extern bool sPoseInterpolation;

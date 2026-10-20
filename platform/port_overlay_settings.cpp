@@ -260,6 +260,7 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
+    BoolKey< &sFullscreen >("fullscreen"),
     BoolKey< &sFrameLimit >("frame_limit"),
     BoolKey< &sSmoothFrames >("smooth_frames"),
     BoolKey< &sPoseInterpolation >("pose_interpolation"),

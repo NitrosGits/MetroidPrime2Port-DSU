@@ -41,6 +41,7 @@
 #include <dolphin/pad.h>
 #include <dolphin/vi.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include <algorithm>
 #include <atomic>
@@ -116,6 +117,13 @@ int sHudScale = PortOverlay::kHudScaleMax;
 // Interface scale in percent (`MP2_UI_SCALE`) and vsync (`MP2_VSYNC`).
 int sUiScale = 100;
 bool sVsync = false;
+// Fullscreen (`MP2_FULLSCREEN`): Android hides the status and navigation bars by default, a desktop
+// starts windowed (MP1's sFullscreen).
+#if defined(__ANDROID__)
+bool sFullscreen = true;
+#else
+bool sFullscreen = false;
+#endif
 // MP1's 60 FPS cap (`MP2_FRAME_LIMIT`), on by default as there: PortPaceFrame holds the loop to 60 Hz.
 bool sFrameLimit = true;
 // MP1's smooth frames (`MP2_SMOOTH_FRAMES`, on by default): with the cap off, the camera is drawn
@@ -571,6 +579,15 @@ void DrawGameSection() {
 // The Prime 1 port's Video page (debug_ui/tabs.cpp's DrawVideoTab) with its four sub-tabs. Display
 // holds the view (FOV, arm cannon, helmet, HUD); Quality the render settings; Frame rate the vsync.
 void DrawVideoDisplay() {
+  ImGui::SeparatorText("Display");
+  bool fullscreen = sFullscreen;
+#if defined(__ANDROID__)
+  if (ImGui::Checkbox("Fullscreen (hide the status and navigation bars)", &fullscreen)) {
+#else
+  if (ImGui::Checkbox("Fullscreen (F11)", &fullscreen)) {
+#endif
+    PortOverlay::SetFullscreen(fullscreen);
+  }
   ImGui::SeparatorText("HUD and view");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
   // built, so the live change goes through CCameraManager::mFirstPersonFov.
@@ -849,15 +866,15 @@ constexpr SItemCheck kAbilityItems[] = {
     {"Boost Ball", CPlayerState::kIT_BoostBall},
     {"Spider Ball", CPlayerState::kIT_SpiderBall},
     {"Morph Ball Bombs", CPlayerState::kIT_MorphBallBombs},
-    {"Dark Bomb", CPlayerState::kIT_DarkBomb},
-    {"Light Bomb", CPlayerState::kIT_LightBomb},
-    {"Annihilator Bomb", CPlayerState::kIT_AnnihilatorBomb},
     {"Grapple Beam", CPlayerState::kIT_GrappleBeam},
     {"Space Jump Boots", CPlayerState::kIT_SpaceJumpBoots},
     {"Gravity Boost", CPlayerState::kIT_GravityBoost},
     {"Seeker Launcher", CPlayerState::kIT_SeekerLauncher},
     {"Screw Attack", CPlayerState::kIT_ScrewAttack},
-    {"Translator", CPlayerState::kIT_TranslatorUpgrade_TempETM},
+    {"Violet Translator", CPlayerState::kIT_VioletTranslator},
+    {"Amber Translator", CPlayerState::kIT_AmberTranslator},
+    {"Emerald Translator", CPlayerState::kIT_EmeraldTranslator},
+    {"Cobalt Translator", CPlayerState::kIT_CobaltTranslator},
 };
 
 constexpr SItemCheck kKeyItems[] = {
@@ -1558,6 +1575,129 @@ void DrawControlsSection() {
   ImGui::End();
 }
 
+bool IsResizeGrip(ImGuiWindow* window, ImGuiID id) {
+  for (int n = 0; n < 4; ++n) {
+    if (id == ImGui::GetWindowResizeCornerID(window, n) ||
+        id == ImGui::GetWindowResizeBorderID(window, static_cast< ImGuiDir >(n))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// The innermost window under the finger that can actually scroll vertically,
+// climbing out of child windows (a table, the page list) that cannot.
+ImGuiWindow* ScrollableWindowAt(ImGuiWindow* window) {
+  for (; window != nullptr; window = window->ParentWindow) {
+    if (window->ScrollMax.y > 0.f && (window->Flags & ImGuiWindowFlags_NoScrollWithMouse) == 0) {
+      return window;
+    }
+    if ((window->Flags & ImGuiWindowFlags_ChildWindow) == 0) {
+      break;
+    }
+  }
+  return nullptr;
+}
+
+// MP1's touch scrolling (platform/debug_ui/window.cpp). ImGui has no touch scrolling: a finger
+// dragged down a page presses whatever it landed on and scrolls nothing. A mostly vertical drag is
+// taken away from the widget it began on (so a button under it does not fire on release) and
+// scrolls the window instead, and the finger's speed carries on as a fling after it lifts. A mostly
+// horizontal drag is left alone, so sliders still work, and so are the scrollbar, a window being
+// moved or resized, and drags that start outside the content area. Runs before any window.
+struct TouchScroll {
+  ImGuiWindow* window = nullptr;
+  bool decided = false;
+  bool dragging = false;
+  float velocity = 0.f; // pixels per second, positive scrolls down
+};
+TouchScroll sTouchScroll;
+
+void UpdateTouchScroll() {
+  ImGuiContext& g = *ImGui::GetCurrentContext();
+  const ImGuiIO& io = g.IO;
+  TouchScroll& scroll = sTouchScroll;
+  const bool touch = io.MouseSource == ImGuiMouseSource_TouchScreen;
+
+  if (io.MouseClicked[0]) {
+    scroll = TouchScroll{};
+    if (touch) {
+      ImGuiWindow* window = ScrollableWindowAt(g.HoveredWindow);
+      if (window != nullptr && window->InnerClipRect.Contains(io.MouseClickedPos[0])) {
+        scroll.window = window;
+      }
+    }
+  }
+  if (scroll.window == nullptr) {
+    return;
+  }
+
+  if (io.MouseDown[0]) {
+    if (!scroll.decided) {
+      const ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.f);
+      // A share of the font size rather than io.MouseDragThreshold's fixed
+      // pixels, which on a dense phone screen is a jitter, not a drag.
+      const float threshold = g.FontSize * 0.6f;
+      if (delta.x * delta.x + delta.y * delta.y < threshold * threshold) {
+        return;
+      }
+      scroll.decided = true;
+      ImGuiWindow* activeWindow = g.ActiveIdWindow;
+      const bool ownDrag =
+          g.MovingWindow != nullptr ||
+          (g.ActiveId != 0 && activeWindow != nullptr &&
+           (g.ActiveId == ImGui::GetWindowScrollbarID(activeWindow, ImGuiAxis_X) ||
+            g.ActiveId == ImGui::GetWindowScrollbarID(activeWindow, ImGuiAxis_Y) ||
+            IsResizeGrip(activeWindow, g.ActiveId)));
+      if (std::fabs(delta.y) <= std::fabs(delta.x) || ownDrag) {
+        scroll.window = nullptr;
+        return;
+      }
+      scroll.dragging = true;
+    }
+    if (!scroll.dragging) {
+      return;
+    }
+    if (g.ActiveId != 0) {
+      ImGui::ClearActiveID();
+    }
+    ImGui::SetScrollY(scroll.window, scroll.window->Scroll.y - io.MouseDelta.y);
+    if (io.DeltaTime > 0.f) {
+      // Smoothed, so the last jittery frame before the finger lifts does not
+      // decide the whole fling.
+      const float instant = -io.MouseDelta.y / io.DeltaTime;
+      scroll.velocity += (instant - scroll.velocity) * 0.4f;
+    }
+    return;
+  }
+
+  // Released: keep scrolling at the finger's speed, easing off.
+  if (!scroll.dragging) {
+    scroll.window = nullptr;
+    return;
+  }
+  const float y = scroll.window->Scroll.y;
+  const bool atEdge = (scroll.velocity < 0.f && y <= 0.f) ||
+                      (scroll.velocity > 0.f && y >= scroll.window->ScrollMax.y);
+  if (atEdge || std::fabs(scroll.velocity) < g.FontSize) {
+    scroll = TouchScroll{};
+    return;
+  }
+  ImGui::SetScrollY(scroll.window, y + scroll.velocity * io.DeltaTime);
+  scroll.velocity *= std::exp(-4.f * io.DeltaTime);
+}
+
+// A finger that lifts leaves ImGui's cursor where it was, so whatever was last
+// tapped stays drawn as hovered. Move the cursor off-screen once the release
+// has been seen; queued now, it lands on the next frame.
+void ClearTouchHover() {
+  ImGuiIO& io = ImGui::GetIO();
+  if (io.MouseSource == ImGuiMouseSource_TouchScreen && io.MouseReleased[0] &&
+      !ImGui::IsAnyMouseDown()) {
+    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+  }
+}
+
 } // namespace
 
 namespace PortOverlaySearch {
@@ -1997,6 +2137,18 @@ void SetVsync(bool enabled) {
   Persist();
 }
 
+bool Fullscreen() {
+  ReadEnv();
+  return EnvBool("MP2_FULLSCREEN", sFullscreen);
+}
+
+void SetFullscreen(bool enabled) {
+  ReadEnv();
+  sFullscreen = enabled;
+  Persist();
+  VISetWindowFullscreen(enabled);
+}
+
 bool FrameLimit() {
   ReadEnv();
   return EnvBool("MP2_FRAME_LIMIT", sFrameLimit);
@@ -2203,11 +2355,13 @@ void Draw() {
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {
+    sTouchScroll = TouchScroll{};
     return;
   }
   PortUi::UpdateUiScale(static_cast< float >(PortOverlay::UiScale()) / 100.f);
   PortUi::ApplyThemeIfChanged();
 
+  UpdateTouchScroll();
   PortOverlaySearch::BeginSearchJump();
   if (PortUi::PageLayout()) {
     if (!DrawPageWindow()) {
@@ -2217,6 +2371,7 @@ void Draw() {
     DrawDesktopWindow();
   }
   PortOverlaySearch::EndSearchJump();
+  ClearTouchHover();
 }
 
 } // namespace PortOverlay

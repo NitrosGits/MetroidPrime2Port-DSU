@@ -202,6 +202,9 @@ void SetUiScale(int percent);
 // aurora_enable_vsync from Draw, even with the window closed.
 bool Vsync();
 void SetVsync(bool enabled);
+// Whether the window is fullscreen (on Android: the status and navigation bars hidden).
+bool Fullscreen();
+void SetFullscreen(bool enabled);
 // MP1's 60 FPS cap (`MP2_FRAME_LIMIT=0|1`, F1 > Video > Frame rate, F10); on by default. The main
 // loop sleeps to a 60 Hz deadline in PortPaceFrame (platform/port_events.cpp).
 bool FrameLimit();

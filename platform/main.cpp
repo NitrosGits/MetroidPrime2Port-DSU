@@ -806,6 +806,7 @@ int main(int argc, char** argv) {
       .resourcesPath = nullptr,
       .desiredBackend = BACKEND_AUTO,
       .vsync = false, // the `vsync` setting (platform/port_overlay.cpp) is the source of truth
+      .startFullscreen = PortOverlay::Fullscreen(),
       // MP2_DUMP_TEXTURES=1 writes every texture the game loads to <cache>/texture_dumps, named
       // as a replacement pack must name it.
       .allowTextureDumps = port::EnvFlag("MP2_DUMP_TEXTURES"),
