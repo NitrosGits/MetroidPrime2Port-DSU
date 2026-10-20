@@ -17,6 +17,7 @@
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -909,9 +910,33 @@ void CCommandoPirate::AddToRenderer(const CStateManager& mgr) const {
 }
 
 // vtable slot 0x2c = fn_9_C598 (0x13c).
+// fn_9_C598 (0x13c bytes): the actor's render (the vtable slot 0x2c). The guest fades the actor
+// with its colour's alpha (the psq_l at 0x0000C5C4 reads the alpha byte at guest this+0x44F and
+// rodata_4F0 is 1/255) and, while the actor is alive (the byte at guest this+0x420's 0x40 bit)
+// and its own word at guest this+0x920 is 1 (the port's `x920_`, the compare at 0x0000C5E4), it
+// draws the space warp at the bounding box's centre point with the sine of pi times the alpha
+// (rodata_4F4, the FastSinR call at 0x0000C5F8 and the DrawSpaceWarp call at 0x0000C634). With an
+// alpha above zero (the compare at 0x0000C640) the base's own render runs (the call at
+// 0x0000C650) and the module's own renderable follows - the one at guest this+0xC3C when the
+// module's state word at guest this+0xC4C (the port's `xc4c_`) is 0 (the compare at 0x0000C664)
+// and the one at guest this+0xC40 when it is 1 (the compare at 0x0000C658). The port has no such
+// renderables, so those two are named stand-ins.
 void CCommandoPirate::Render(const CStateManager& mgr) const {
-  StandIn("CCommandoPirate::Render (vtable slot 0x2c, fn_9_C598)");
-  CPatterned::Render(mgr);
+  const float alpha = mColor.GetAlpha();                        // 0x0000C5C4..0x0000C5D8
+  if (GetAlive() && x920_ == 1) {                                // 0x0000C5CC..0x0000C5E8
+    const float warp = CMath::FastSinR(3.1415927f * alpha);      // rodata_4F4, 0x0000C5F8
+    if (warp > 0.f) {                                            // 0x0000C608..0x0000C60C
+      mgr.DrawSpaceWarp(GetBoundingBox().GetCenterPoint(), warp);  // 0x0000C618..0x0000C634
+    }
+  }
+  if (alpha > 0.f) {                                            // 0x0000C640..0x0000C644
+    CPatterned::Render(mgr);                                    // 0x0000C650
+    if (xc4c_ == 0) {                                           // 0x0000C664..0x0000C668
+      StandIn("the module's own renderable at guest this+0xC3C (fn_9_C598)");
+    } else if (xc4c_ == 1) {                                    // 0x0000C658..0x0000C65C
+      StandIn("the module's own renderable at guest this+0xC40 (fn_9_C598)");
+    }
+  }
 }
 
 // vtable slot 0x34 = fn_9_C51C (0x7c): the base's own. The guest's rag doll (guest this+0xBFC)
