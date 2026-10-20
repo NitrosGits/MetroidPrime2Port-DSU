@@ -12,6 +12,7 @@
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -213,6 +214,17 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
     mLocatorRWrist = animData->GetLocatorSegId(rstl::string_l("R_wrist"));
     mLocatorRElbow = animData->GetLocatorSegId(rstl::string_l("R_elbow"));
     mLocatorLWrist = animData->GetLocatorSegId(rstl::string_l("L_wrist"));
+
+    // Two step distances (fn_9_5D74 is the module's inlined CPASAnimParmData ctor): the step
+    // with parms (3, 2) times the scale's X (0x0000E4DC..0x0000E56C) and the step with parms
+    // (1, 2) times the scale's Y (0x0000E570..0x0000E61C).
+    const CVector3f scale = GetModelData()->GetScale();
+    const CPASAnimParmData sideStep(pas::kAS_Step, CPASAnimParm::FromEnum(3),
+                                    CPASAnimParm::FromEnum(2));
+    xbe4_ = scale.GetX() * GetAnimationDistance(sideStep);
+    const CPASAnimParmData backStep(pas::kAS_Step, CPASAnimParm::FromEnum(1),
+                                    CPASAnimParm::FromEnum(2));
+    xbe0_ = scale.GetY() * GetAnimationDistance(backStep);
   }
 }
 
