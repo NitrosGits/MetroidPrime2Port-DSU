@@ -534,11 +534,12 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         }
       }
 #ifdef TARGET_PC
-      // Port: START or A skips any cinematic, seen or not (retail: START, and only one the player
-      // has seen). A counts once the cinematic has been on for a moment, so the press that walked
-      // the player into its trigger does not skip it. The skip takes the robust path in
-      // kFS_CinematicSkip (sPortUserCinematicSkip).
-      if (static_cast< int >(input.ControllerNumber()) == 0 && cineCam &&
+      // Port: with the "Skip cinematics" setting on, START or A skips any cinematic, seen or not
+      // (off, retail: START, and only one the player has seen). A counts once the cinematic has been
+      // on for a moment, so the press that walked the player into its trigger does not skip it. The
+      // skip takes the robust path in kFS_CinematicSkip (sPortUserCinematicSkip).
+      if (PortOverlay::SkipCinematics() && static_cast< int >(input.ControllerNumber()) == 0 &&
+          cineCam &&
           (input.PStart() || (input.PA() && sPortCinematicTime >= kPortSkipAGuard)) &&
           !mStateManager->IsMultiplayer() &&
           gpGameState->GetGameMode().GetGameModeType() != 'FRND') {
