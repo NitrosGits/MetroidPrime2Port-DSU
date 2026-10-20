@@ -95,6 +95,7 @@ private:
 
 #ifdef TARGET_PC
   friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+  friend struct PortConsoleDoor; // the console's `obj` door line (platform/port_console.cpp)
 #endif
   // Target-derived field names; original spellings are not known.
   EDoorState mDoorState;

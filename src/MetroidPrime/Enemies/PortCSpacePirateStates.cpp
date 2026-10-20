@@ -36,19 +36,23 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_7078 (0x528). Activate switches on xc04_warpPoint: at 0 it collects every
+// Retail fn_72_7078 (0x528). Activate (msg 0) arms kAS_Ready, zeroes the alpha, sets the warp point
+// to 0, clears 0x8fa bit 0x08 and strips Character/Solid/Target/Orbit. Update (msg 1) switches on
+// xc04_warpPoint: at 0 it collects every
 // kSS_GRNT/kSM_Follow connection resolved through GetIdForScript and GetObjectById to a
 // CScriptWaypoint, teleports onto one of them chosen with mgr.Random()->Range(0, n - 1) through that
 // waypoint's own transform, then sweeps a +/-10 box (rodata B58) filtered to
 // kMT_Solid/kMT_Player/kMT_Character with DetectDynamicCollisionBoolean on its own collision
-// primitive: a clear box moves the point to 1 and puts Character/Solid/Target/Orbit back. At 1 it
+// primitive: a clear box moves the point to 1 and puts Character/Solid/Target back (Orbit waits
+// for Deactivate). At 1 it
 // delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate and fades in
-// (alpha = max(0, 1 - remaining/cached) once 0x8fa bit 0x08 is armed). Update strips those four
-// materials and zeroes the alpha; Deactivate re-adds them, restores alpha 1, resets the warp point
-// to -1 and clears 0x8fa bit 0x20.
+// (alpha = max(0, 1 - remaining/cached) once 0x8fa bit 0x08 is armed). Deactivate re-adds the
+// materials, restores alpha 1, resets the warp point to -1 and clears 0x8fa bit 0x20. (The two
+// cases were once swapped, so every update reset the warp: a warped-in trooper stayed invisible,
+// unhittable and in "WarpIn" for good, and the counters its death feeds never moved.)
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
-  case kStateMsg_Update:
+  case kStateMsg_Activate:
     mAnimationState.SetState(CAnimationState::kAS_Ready);
     mColor.SetAlpha(0.f);
     mAlphaDelta = 0.f;
@@ -56,7 +60,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
     x8fa_28_ = false;
     RemoveMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
     break;
-  case kStateMsg_Activate:
+  case kStateMsg_Update:
     switch (xc04_warpPoint) {
     case 0: {
       rstl::vector< CScriptWaypoint* > points;
@@ -88,7 +92,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {
         xc04_warpPoint = 1;
-        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, mgr);
       }
       break;
     }

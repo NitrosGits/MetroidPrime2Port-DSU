@@ -48,6 +48,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -1280,6 +1281,35 @@ void CmdObjs(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+}  // namespace
+}  // namespace PortConsole
+
+// `obj <door>`: the door and lock state machines, which is what a door that will not open is stuck
+// in (a lock that never finishes unlocking, an open request count that never rose).
+struct PortConsoleDoor {
+  static void Describe(const CScriptDoor& door, CStateManager& mgr, std::string& out) {
+    static const char* const kDoor[] = {"closed", "waiting-for-area", "opening",
+                                        "open",   "close-delay",      "closing"};
+    static const char* const kLock[] = {"unlocked", "pending", "locking", "locked", "unlocking"};
+    const CActor* lock = TCastToConstPtr< CActor >(mgr.GetObjectById(door.mLockActorId));
+    char line[224];
+    std::snprintf(line, sizeof(line),
+                  "  door %s, lock %s (timer %.2f, lock actor u%04x%s), open requests %d%s\n",
+                  door.mDoorState <= CScriptDoor::kDS_Closing ? kDoor[door.mDoorState] : "?",
+                  door.mLockState <= CScriptDoor::kLS_Unlocking ? kLock[door.mLockState] : "?",
+                  door.mLockTimer, door.mLockActorId.Value(),
+                  lock == nullptr                          ? " missing"
+                  : lock->GetModelData() == nullptr        ? ""
+                  : lock->GetModelData()->IsAnimating()    ? " animating"
+                                                           : " still",
+                  door.mOpenRequestCount, door.mResetPending ? ", reset pending" : "");
+    out += line;
+  }
+};
+
+namespace PortConsole {
+namespace {
+
 void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() < 2) {
     Fail("usage: obj <id>");
@@ -1304,6 +1334,9 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   // reading TStateMachineState's own mState through that cast reads a vector's guts as a CState*.
   // The base subobject sits at the same address under both, so take it as the base interface and
   // make only virtual calls; the state's own data is touched only on the AFSM type.
+  if (const CScriptDoor* door = TCastToConstPtr< CScriptDoor >(ent)) {
+    ::PortConsoleDoor::Describe(*door, mgr, out);
+  }
   const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
   if (patterned != nullptr) {
     TStateMachineStateBase< CPatterned >* machine =
