@@ -53,12 +53,10 @@ CDigitalGuardianKneeArmor::CDigitalGuardianKneeArmor(
   AllocateEchoEmitter(true, GetModelData()->GetBounds(GetTransform()), echo);
 }
 
-// @ fn_14_D460
 // The retail destructor destroys the sound parameters (0x180) and the CActor base; its deleting
 // form's Free__7CMemoryFPCv (0xD4B0) is the compiler's.
 CDigitalGuardianKneeArmor::~CDigitalGuardianKneeArmor() {}
 
-// @ fn_14_CF94
 void CDigitalGuardianKneeArmor::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -147,17 +145,14 @@ void CDigitalGuardianKneeArmor::AcceptScriptMsg(CStateManager& mgr, const CScrip
   }
 }
 
-// @ fn_14_D7BC
 const CDamageVulnerability* CDigitalGuardianKneeArmor::GetDamageVulnerability() const {
   return &PassThruVulnerability(); // the call at 0xD7C8
 }
 
-// @ fn_14_D774
 rstl::optional_object< CAABox > CDigitalGuardianKneeArmor::GetTouchBounds() const {
   return x164_;
 }
 
-// @ fn_14_CE94
 void CDigitalGuardianKneeArmor::SetArmored(CStateManager& mgr, bool armored) {
   if (x19C_24_armored_ == armored) {
     return;
