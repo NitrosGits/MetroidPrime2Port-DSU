@@ -1581,6 +1581,7 @@ CCollisionActor* CEmperorIngStage1::GetTentacleActor(CStateManager& mgr, int ind
 }
 
 // vtable slot 7 = fn_16_52FC (0x20): the retail override is the base class's own PreRender.
+// @ fn_16_52FC
 void CEmperorIngStage1::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
 // fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass. The
@@ -2139,6 +2140,7 @@ void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, fl
 bool CEmperorIngStage1::CanBeShot(const CStateManager&, int) { return true; }
 
 // vtable slot 41 = fn_16_BA04: `li r3, 0x0` - the actor does not listen for noises.
+// @ fn_16_BA04
 bool CEmperorIngStage1::IsListening() const { return false; }
 
 // vtable slot 58 = fn_16_8AF4 (0x8AF4..0x8B80): CPatterned's own setup first (the call at
@@ -2146,6 +2148,7 @@ bool CEmperorIngStage1::IsListening() const { return false; }
 // - the triggers (lbl_16_data_19C, 6 entries) through the state manager's vtable slot +0x18 (the
 // call at 0x00008B20), the states (lbl_16_data_94, 12 entries) through +0x14 (0x00008B40) and
 // the codes (lbl_16_data_220, 3 entries) through +0x1C (0x00008B60).
+// @ fn_16_8AF4
 void CEmperorIngStage1::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   StateMachine* stateMachine = mStateMachine.get();
@@ -2940,6 +2943,7 @@ void CEmperorIngStage1::SetTentacleMaterials(CStateManager& mgr, uint flag) {
 void CEmperorIngStage1::BeginSubStage(CStateManager& mgr, float dt) {}
 
 // fn_16_1DFC: the tentacle's timer is cleared and its state becomes 1, unless it is already 2.
+// @ fn_16_1DFC
 static void ResetTentacle(CEmperorIngStage1Joint& tentacle) {
   tentacle.mTimer = 0.f;
   if (tentacle.mState != 2) {
