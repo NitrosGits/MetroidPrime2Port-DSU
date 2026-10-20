@@ -1257,6 +1257,15 @@ void CEmperorIngStage1::LookAtPlayer(CStateManager& mgr) {
   UpdateTurnAngle(mgr, dir);
 }
 
+// fn_16_2DDC (0x2DDC..0x2E1C, 0x40): the cross product of two vectors. The X is
+// a.y * b.z - b.y * a.z (the fmsubs at 0x2DFC), the Y is b.z * a.x - a.z * b.x (0x2E04) and the Z
+// is b.x * a.y - a.x * b.y (0x2E0C).
+static CVector3f CrossProduct(const CVector3f& a, const CVector3f& b) {
+  return CVector3f(a.GetY() * b.GetZ() - b.GetY() * a.GetZ(),
+                   b.GetZ() * a.GetX() - a.GetZ() * b.GetX(),
+                   b.GetX() * a.GetY() - a.GetX() * b.GetY());
+}
+
 // fn_16_2C9C (0x2C9C..0x2DDC): the angle (guest 0xA2C) between the 'PLAY' actor's facing and the
 // direction. Retail also builds the tracked actor's "sphere_base" world transform (0x2CFC..0x2D20)
 // and never reads it; the call has no side effect, so the port keeps it for the call order only.
@@ -1275,7 +1284,7 @@ void CEmperorIngStage1::UpdateTurnAngle(CStateManager& mgr, const CVector3f& dir
   CVector3f facing(column.GetX(), column.GetY(), 0.f);
   facing.Normalize();
   xa2c_ = CVector3f::GetAngleDiff(facing, dir);
-  if (CVector3f::Dot(CVector3f::Cross(facing, dir), CVector3f::Up()) < 0.f) {
+  if (CVector3f::Dot(CrossProduct(facing, dir), CVector3f::Up()) < 0.f) {  // fn_16_2DDC, 0x2D70
     xa2c_ = -xa2c_;
   }
 }
@@ -1732,7 +1741,7 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
             break;
           }
           // 0x82D0: the module's own function (fn_16_1A50) starts the portal's effect.
-          StartTentaclePortal(i, pos, up, mgr);
+StartTentaclePortal(i, pos, up, mgr);
           break;
         }
       }
@@ -2479,7 +2488,7 @@ void CEmperorIngStage1::ProjectileAttack(CStateManager& mgr, EStateMsg msg, floa
       CParticleGenInfo* effect =
           AnimationData()->GetFirstParticleEffect(rstl::string_l("DarkProjectileCharge"));
       if (effect != nullptr) {
-        SetSystemParam(GetEffectSystem(effect), 0, progress);
+SetSystemParam(GetEffectSystem(effect), 0, progress);
       }
       if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
         BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
