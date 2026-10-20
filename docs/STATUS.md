@@ -25,11 +25,11 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 
 | lane | session | branch @ base | task |
 |---|---|---|---|
-| BoostGuardian (Opus) | `ses_ea4fb9fb0ffegFft83zCXfOrRZ` | boostguardian @ `f7aa16f7a` (125 markers; port merged in) | ctor EC6C, 8DD4/A45C/7D5C, Dead 7390, 47E8, CFC4, 8208/5888 |
+| BoostGuardian (Opus) | `ses_ea4ef042fffekfCkg15H4f8DGy` | boostguardian @ `41a0e180b` (ctor EC6C, 7D5C fix; 126 markers) | exercise+mark 8DD4/A45C/7D5C, Dead 7390, 47E8, CFC4, 8208/5888 |
 | EmperorIng3 (Opus) | `ses_ea552cc99ffepxd6lIKfYVHqxe` | emperoring3 @ `e3971fcd3` | light swarm BD84 + vtable, BB8, E40, beam damage |
 | DigitalGuardian (Opus) | `ses_ea542bd35ffeRmTvcVUd6IIdU4` | digitalguardian @ `758e166ab` (0x150C fallback, 3F14, 2A28, 266C/2E60) | CDigitalGuardianHead class, head paths in 7D8C/2A28, 5644 |
 | Splitter (worker) | `ses_ea52a89c1ffenVqZ3wYvnAkNCS` | splitter @ `206a2e084` (3460, FSMs 5E8C/E9E4) | 2CE0, Think run via a copy of the ElitePirate driver that sends Activate |
-| CommandoPirate (worker) | `ses_ea569018cffeQjN5VdT4OQtoEr` | commandopirate @ `843ebf292` | 4CA4, 6390, 3090 |
+| CommandoPirate (worker) | `ses_ea4eed526ffeekPqrklrV6SXKb` | commandopirate @ `973a576ad` (4CA4 aim gate, 6390 burst fire) | 57A0 shot, 3090 death, matching build |
 | EmperorIng1 (worker) | `ses_ea53f0487ffeLDTNqYcJmJxJeS` | emperoring @ `2dae3c228` (601C, 9BE8, 1720 portal actor; 12 markers by orchestrator) | remaining reached stand-ins, 1950 proof |
 | MinorIng (worker) | `ses_ea550f1b2ffeU2N84DMkU5YP5z` | minoring (new, wt-mp2-ing) | stand-ins + marking pass |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` | darksamus @ `dead28a30` | milestone 2 (status unknown) |
