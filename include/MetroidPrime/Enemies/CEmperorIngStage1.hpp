@@ -140,6 +140,7 @@ private:
   int x7c4_;                          // guest 0x7C4, 0: the sub-stage fn_16_2F70 reads
   int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
   CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
+  float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
 };

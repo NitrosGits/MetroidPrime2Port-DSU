@@ -253,6 +253,10 @@ codes.
 | fn_16_4AEC (ShouldTaunt) | the taunt timer is past the taunt frequency | the float at guest 0xA50 (0.0f in the constructor) against the float at 0xC34 |
 | fn_16_4AE8 (BeginSubStage) | retail's body is a single `blr` | - |
 | fn_16_4A04 (ResetTentacles) | resets the current sub-stage's tentacle slots and tells the script which sub-stage this is | fn_16_1DFC (the slot reset), fn_16_2EE0 (the flags), the mode at guest 0x7C0 (2 -> the message IS7, 1 -> IS6) |
+| fn_16_4BB4 (HeartStageOver) | the heart-stage timer has run out | the float at guest 0xA3C (0.0f in the constructor) against 0.0f; the asm folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4), so the test is `<= 0.0f` |
+| fn_16_4B6C (IsDead) | the actor's health has run out | the health info from the vtable slot at +0x3C (slot 13, GetHealthInfo), its second float (CHealthInfo::mHealth at +0x04) against 0.0f (cror eq,lt,eq at 0x4B98) |
+| fn_16_716C (Dead) | on the activate message the script is told the actor died | the message is the state's second argument (`cmpwi r5, 0` at 0x7174); the state tag is 0x44454144 ('DEAD', 0x7198) |
+| fn_16_4954 (ChooseRandomTentacleCount) | the sub-stage is picked from a roll of 0..100 against 50 | the state manager's random (retail CStateManager+0x16E4) asked for Range(0.0f, 100.0f) at 0x497C (0.0f from lbl_16_rodata_380, 100.0f from lbl_16_rodata_3D4) against 50.0f (lbl_16_rodata_3BC); the mode at guest 0x7C0 picks the pair (0 -> 0/1, 1 -> 1/2, anything else 2) and the result is the sub-stage at guest 0x7C4 |
 
 Their callees, all small enough to port with them:
 
@@ -269,6 +273,15 @@ functions read: the timer (+0x04), the retraction timer (+0x18), the flag byte (
 state (+0x28). The eight slots are the array at guest 0x7D8 and the constructor leaves them
 empty (the live count at 0x7D4 is 0), so the ported triggers see no tentacles yet.
 
+### Still a stand-in: fn_16_7C28 (the state "TrackPlayer")
+
+Its body is three calls, all of them too big for the slice's rule: fn_16_830 (0xB4, the
+IS0/IS1/IS2 message), fn_16_353C (0x12C, the attack vulnerability and the tentacle effect states)
+and fn_16_7B40 (0xE8, the look-at-the-player helper). fn_16_353C itself calls fn_16_1E20 (0x214),
+which applies the damage vulnerability to a tentacle - a class the port does not have yet, so
+porting it would need an unported class. fn_16_7C28 therefore stays a stand-in, and the only
+ported state function is Dead (fn_16_716C).
+
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
 "LightVulnerability", "brainSpine_scale") - the tentacle and attack work, milestone 2.
@@ -283,9 +296,14 @@ log. The accessors that the vtable gives one-line bodies are real.
 
 `SetupStateMachine` (fn_16_8AF4) is ported: the base's setup first, then the module's three
 tables on the state machine (6 triggers, 12 states, 3 codes) with retail's name strings. The bodies
-of the four triggers and the two codes the run reaches are retail's bodies (section 4); the other
-15 are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and returns the neutral value (false
+of the six triggers, the two codes and the Dead state are retail's bodies (section 4); the rest
+are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and returns the neutral value (false
 for a trigger). No `// @` marker - only the ported bodies are retail's.
+
+The members the ported bodies need are named from their retail offsets and carry the
+constructor's values: x7c0_ (0), x7c4_ (0), x7d4_ (0), the eight tentacle slots x7d8_ (empty),
+xa3c_ (0.0f), xa4c_ (4.0f) and xa50_ (0.0f). The loader's data block ends at guest 0x6B4, so
+none of them is a script value - they are the module's own state.
 
 Not ported yet (milestone 2): the state functions' bodies, the tentacles and their collision
 actors, the five attacks, the heart stage, the shock wave, the projectile and the two tokens.
@@ -302,3 +320,11 @@ console, `MP2_CONSOLE=<port>`) wakes it. With the ported bodies the run answers:
 spawns 56 units away, the range is 30), ShouldAttack false (the timer is 4.0f) and ShouldTaunt
 false (the timer is 0.0f). The two timers are only updated by the module's Think (fn_16_56D8),
 which is still a stand-in, so those two triggers stay false until it is ported.
+
+With the ported bodies the FSM advances from TrackPlayer to BeginHeartStage (AllTentaclesRetracted
+is true, so the TrackPlayer state's transition fires at once) and evaluates that state's four
+triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM does not reach yet
+(their state body fn_16_76F0 is not ported), the Dead state is entered only on a normal death
+(the console's `damage` is an X-damage, which takes the massive-death path instead of
+CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
+the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.

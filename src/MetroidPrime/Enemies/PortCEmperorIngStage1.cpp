@@ -147,6 +147,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , x7c4_(0)                                                        // guest 0x7C4, cleared
 , x7d4_(0)                                                        // guest 0x7D4, cleared
 , x7d8_()                                                         // guest 0x7D8, the tentacle slots
+, xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
 {
@@ -263,14 +264,20 @@ bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTrigger
   return true;
 }
 
+// fn_16_4BB4 (the trigger "HeartStageOver", lbl_16_data_19C entry 1): the heart-stage timer
+// (guest 0xA3C, 0.0f in the constructor) has run out. The asm compares it with 0.0f
+// (lbl_16_rodata_380) and folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4),
+// so the test is "<= 0.0f".
 bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_16_4BB4");
-  return false;
+  return xa3c_ <= 0.f;
 }
 
+// fn_16_4B6C (the trigger "IsDead", lbl_16_data_19C entry 2): the actor's health has run out.
+// The asm calls the vtable slot at +0x3C (slot 13, GetHealthInfo) and reads the health info's
+// second float (CHealthInfo::mHealth at +0x04), then compares it with 0.0f the same way as
+// fn_16_4BB4 (cror eq,lt,eq at 0x4B98).
 bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_16_4B6C");
-  return false;
+  return GetHealthInfo()->GetHP() <= 0.f;
 }
 
 // fn_16_4B20 (the trigger "ShouldMeleeAttack", lbl_16_data_19C entry 3): the squared
@@ -299,6 +306,12 @@ bool CEmperorIngStage1::ShouldTaunt(CStateManager& mgr, const CTriggerData& data
 
 // The 12 states of lbl_16_data_94 (.data 0x94; fn_16_BF88's stores at 0x0000C0C0..0x0000C124 and
 // 0x0000C214).
+
+// fn_16_7C28 (the state "TrackPlayer", lbl_16_data_94 entry 0): retail's body calls three
+// functions that are too big for this slice - fn_16_830 (0xB4, the IS0/IS1/IS2 message),
+// fn_16_353C (0x12C, the attack vulnerability and the tentacle effect states, which itself
+// calls fn_16_1E20 at 0x214) and fn_16_7B40 (0xE8, the look-at-the-player helper) - so it
+// stays a stand-in here.
 void CEmperorIngStage1::TrackPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_16_7C28");
 }
@@ -315,8 +328,13 @@ void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float d
   StandInFn("fn_16_71BC");
 }
 
+// fn_16_716C (the state "Dead", lbl_16_data_94 entry 4): on the activate message - the asm's
+// `cmpwi r5, 0` at 0x7174, the message is the second argument - the script is told that the
+// actor died (the state tag 0x44454144, 'DEAD', at 0x7198).
 void CEmperorIngStage1::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_716C");
+  if (msg == kStateMsg_Activate) {
+    SendScriptMsgs(kSS_Dead, mgr, kInvalidUniqueId, kSM_None);
+  }
 }
 
 void CEmperorIngStage1::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -378,8 +396,23 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
   }
 }
 
+// fn_16_4954 (the code "ChooseRandomTentacleCount", lbl_16_data_220 entry 2): the sub-stage
+// (guest 0x7C4) is picked from a roll of 0..100 - the state manager's random (retail
+// CStateManager+0x16E4) asked for Range(0.0f, 100.0f) at 0x497C, with 0.0f from
+// lbl_16_rodata_380 and 100.0f from lbl_16_rodata_3D4 - against 50.0f (lbl_16_rodata_3BC): in
+// mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
-  StandInFn("fn_16_4954");
+  const float roll = mgr.Random()->Range(0.f, 100.f);
+  if (x7c0_ == 1) {
+    x7c4_ = roll >= 50.f ? 2 : 1;
+  } else if (x7c0_ >= 1) {
+    // The asm's `bge` at 0x498C: the mode is 2 or more here, because 1 was taken above.
+    x7c4_ = 2;
+  } else if (x7c0_ >= 0) {
+    x7c4_ = roll >= 50.f ? 1 : 0;
+  } else {
+    x7c4_ = 2;
+  }
 }
 
 // fn_16_2F70: how many tentacle slots the current sub-stage uses - four, six or eight. The
