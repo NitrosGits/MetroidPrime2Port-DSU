@@ -337,7 +337,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   case kSM_Delete:
     mgr.DeleteObjectRequest(mIngBlobTrackerId);   // 0x0000E098
     mgr.DeleteObjectRequest(mBoostBlobTrackerId); // 0x0000E0AC
-    StopSfx();                                    // 0x0000E0B4: fn_30_3A60
+    RemoveSfxEmitters();                          // 0x0000E0B4: fn_30_3A60
     mCollisionActorManager0->Destroy(mgr); // 0x0000E0C0
     mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
     mgr.DeleteObjectRequest(mHitLightId);  // 0x0000E0E0
@@ -383,7 +383,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
       if (CEntity* tracker = mgr.ObjectById(mBoostBlobTrackerId)) {
         static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E2B0: fn_25_256C
       }
-      StopSfx(); // 0x0000E2B8: fn_30_3A60
+      RemoveSfxEmitters(); // 0x0000E2B8: fn_30_3A60
     }
     break;
   case kSM_AIUpdateDisabled:
@@ -637,8 +637,9 @@ void CIngBoostBallGuardian::KnockBack(CStateManager& mgr, const CKnockBackInfo& 
   CPatterned::KnockBack(mgr, info);
 }
 
-// The Ing's TakeDamage (the Ing REL's fn_29_B890): the two host forms and the evaporating form
-// take no damage.
+// fn_30_CB54 (vtable slot 39; the Ing REL's fn_29_B890): the two host forms and the evaporating
+// form take no damage (0x0000CB5C: form 5; 0x0000CB6C: forms 0..1); CPatterned's body is the
+// cooldown store at 0x0000CB7C.
 void CIngBoostBallGuardian::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;

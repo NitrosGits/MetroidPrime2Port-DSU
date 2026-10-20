@@ -400,6 +400,7 @@ private:
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
   void StopSfx();
+  void RemoveSfxEmitters(); // fn_30_3A60
   // The target's aim position (CActor's GetAimPosition, prediction in f1), false when it is gone.
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f) const;
   // One arm's segment boxes against the target's bounds; on a hit, the arm swipe damage with the

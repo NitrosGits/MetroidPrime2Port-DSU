@@ -648,6 +648,25 @@ void CIngBoostBallGuardian::UpdateLoopSfx() {
   }
 }
 
+// fn_30_3A60: the body projectile's (0x1070), the two loops' (0x1078/0x107C) and the suck
+// sound's (0xFFC) emitters are removed (0x00003A7C/0x00003A98/0x00003AB4/0x00003AD0: each only
+// when set); retail leaves the handles as they are.
+void CIngBoostBallGuardian::RemoveSfxEmitters() {
+  if (mBodyProjectileSfx) {
+    CSfxManager::RemoveEmitter(mBodyProjectileSfx);
+  }
+  if (mLoopSfx[0]) {
+    CSfxManager::RemoveEmitter(mLoopSfx[0]);
+  }
+  if (mLoopSfx[1]) {
+    CSfxManager::RemoveEmitter(mLoopSfx[1]);
+  }
+  if (mSuckSfx) {
+    CSfxManager::RemoveEmitter(mSuckSfx);
+  }
+}
+
+// The Ing's StopSfx (the Ing REL's fn_29_2194), for the Ing half's Death.
 void CIngBoostBallGuardian::StopSfx() {
   for (int i = 0; i < 2; ++i) {
     if (mLoopSfx[i]) {
@@ -1004,14 +1023,11 @@ bool CIngBoostBallGuardian::HasAttackPattern(CStateManager& mgr, const CTriggerD
          kInvalidUniqueId;
 }
 
-// fn_30_B908 (this module).
-// fn_29_A340 (not yet exercised in a run)
+// fn_30_B908 (this module): over once the attack path is being followed (0x0000B910: 0x11ED
+// 0x10) and the waypoint navigation has no destination left (0x0000B924: this+0x6c0 against
+// kInvalidUniqueId). Unlike the Ing half's copy it stores nothing.
 bool CIngBoostBallGuardian::AttackPatternOver(CStateManager&, const CTriggerData&) const {
-  if (mFollowingAttackPath) {
-    const_cast< CIngBoostBallGuardian* >(this)->mFollowingAttackPath =
-        mWaypointNavigation.GetDestination() != kInvalidUniqueId;
-  }
-  return !mFollowingAttackPath;
+  return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 // fn_30_B8A0 (this module).
