@@ -500,3 +500,92 @@ The first is the host's `CCollisionActorManager::Update` on the manager at 0xC68
 0 = `kUO_ObjectSpace`); the second is the host's `CLineOfSightTracker::Update` on the visual
 knowledge at 0xC70 (the host's `CLineOfSightTracker` is the same thing - see
 `CMinorIng.hpp`'s `mLineOfSight`).
+
+**Condition for later**: the retail leaves the collision actor manager at 0xC68 null (the ctor
+writes 0 at 0x0000F6BC) until `fn_75_A4E4` (0x418) builds it. The port makes an empty manager
+instead, so that stand-in must go - and the port's manager must go back to null - when
+`fn_75_A4E4` is ported.
+
+#### fn_75_184C (0x128) - the command module's look-at
+
+The body: the target id (the u16 at 0xF02, 0x1874 `lhz`) is looked up (0x1888 `ObjectById`) and,
+when it is there, the module's locator transform (the segment id at 0xEF8, 0x18A0
+`GetLctrTransform`) gives the position; the offset vector (0xF50, 0xF54 and 0xF58, added at
+0x18E8-0x18F0) is added to it, the transform looks at that point (0x1900 `LookAt` with the up
+vector) and the result goes to the target's virtual at the vtable slot 0x8C (0x1924-0x192C). The
+sound (the handle at 0xF5C read at 0x1930, the target's position at 0x444 and the byte 0x7f, 0x194C
+`UpdateEmitter`) is the DOL's `CSfxManager::UpdateEmitter`, which the host spells differently.
+
+Two calls stay shells: the DOL's CEntity virtual at the slot 0x8C (the DOL's slot 35 is not named
+in the port) and the DOL's `CSfxManager::UpdateEmitter`. The four fields the body reads (0xF02,
+0xEF8, 0xF50-0xF58 and 0xF5C) are written by the retail's state machine, which the port has not
+entered, so they keep their defaults.
+
+#### fn_75_31A8 (0x14C) - the command module's "is the chassis ours" read (not ported yet)
+
+Read on 2026-10-20, left for a slice with room (the port needs six new fields and the chassis's
+own 0xCC0 and 0x420 semantics, so it is not a quick body):
+
+- the chassis id (the u16 at 0xEFA, 0x31C8 `lhz`): if it is the invalid id the function goes to
+  0x3254, otherwise the chassis is looked up (0x31E8 `GetObjectById`) and cast (0x31EC); a null
+  cast or a chassis whose command module id (0xC6C) is not ours (0x3200-0x3204) goes to 0x3238;
+- ours: 0xEFE takes the chassis's 0xCC0 (0x3210-0x3218), then `fn_75_1578` (0x3224) and the timer
+  0xF14 is set to 3.0f (`lbl_75_rodata_90`, 0x322C-0x3230);
+- 0x3238: the chassis id at 0xEFA is set to the invalid id (0x3240) and 0x12A is written (0x324C);
+- 0x3254: the data's flag byte (0x7C0) bit 0x8 (0x3258 `rlwinm` 28-28) and the timer 0xF14 <= 0.0f
+  (0x326C-0x3274) and the id 0xEFC being the invalid one (0x327C-0x3280) gate `fn_75_2280`
+  (0x3284) and the timer is set to 3.0f again (0x328C-0x3290);
+- 0x3298: the id 0xEFC (0x32A4) is looked up and cast (0x32B4-0x32B8); if the chassis's byte at
+  0x420 has the word's bit 25 set (0x32C4-0x32CC) the function ends, else 0xEFC is set to the
+  invalid id (0x32D0-0x32D8).
+
+Resolved since (2026-10-20, for the next slice):
+
+- the byte at 0x420, the word's bit 25 (= the byte's 0x40), is the CPatterned `mAlive` bit the
+  Ing port already maps (`grep 0x420 src/MetroidPrime/Enemies/PortCIng.cpp`: "CPatterned 0x420
+  bit 6"); the host's accessor is `CPatterned::GetAlive()`.
+- the chassis's 0xCC0 is a u16 id written at 0xBE54 and at 0xF764 (the constructor) and read at
+  0x320C, 0x9540, 0xB058, 0xB218, 0xB350, 0xB5A0 and 0xB730; what it names is still not
+  established, so the port would keep it as an id member with the offset in a comment.
+- the compare at 0x3200 is against **this+0x8** (0x31FC `lhz r0, 0x8(r31)`, not the stack copy at
+  0x31E4) - a u16 id in the base class, the command module's own id. The port has no host member
+  for the retail's CEntity+0x8 yet, and that is the one thing the body needs before it can be
+  written.
+- the two module calls are `fn_75_1578` (0x218) and `fn_75_2280` (0x170): both over 0x80, so
+  both stay named once-logging shells.
+- the command module's own fields the body touches: 0xEFA (the id it looks up), 0xEFE (the copy
+  of the chassis's 0xCC0), 0xEFC (the second id it checks), 0xF14 (the timer, set to 3.0f) and
+  0x12A (a base-class id, cleared together with 0xEFA at 0x3240-0x324C); the data's flag byte at
+  0x7C0 bit 0x8 (0x3258 `rlwinm` 28-28) is the port's `mData.mUnknownBD80FD94 & 0x8`.
+
+#### fn_75_3004 (0x1A4) - the command module's collision update (not ported yet)
+
+Read on 2026-10-20, left for a slice with room. The body: a module call (fn_75_2BE0 = .text:0x00002BE0; // type:function size:0xE0 fn_75_2CE0 = .text:0x00002CE0; // type:function size:0x324 , 0x3024) whose result
+is tested (0x3028) and then used through a virtual call (0x3040), the DOL's
+CSfxManager::UpdateEmitter (0x3074), an object lookup and a CCollisionActor cast (0x3088-0x3094),
+the command module's manager at 0xE58 (0x309C), the DOL's fn_80135C28 (0x30C0), a state in 0xEE0
+that has to be 0..2 (0x30C8-0x30D8), the flag byte 0xF6A's 0x08 (0x30E0), a CCollisionActor
+virtual at 0x38 (0x30F8) and its 0x4 field (0x3104-0x3110), the state 0xEE0 cleared (0x311C), the
+timer 0xF10 set to a constant (0x312C), another module call (0x3130) and the flag's 0x08 again
+(0x313C). Several of those are DOL functions or virtuals the port has no name for yet, so the
+body needs a slice that can identify them.
+
+#### fn_75_1188 (0x344) - the command module's spawn (not ported yet)
+
+Read on 2026-10-20, left for a slice with room. It is the biggest of the six callees: an object is
+looked up (0x11B0 ObjectById), a transform is built (0x11CC) and set (0x11E0), a module call
+(fn_75_10D0 = .text:0x000010D0; // type:function size:0xB8 fn_75_58E8 = .text:0x000058E8; // type:function size:0x5C fn_75_11884 = .text:0x00011884; // type:function size:0x208 ) decides whether the body runs (0x1200-0x1208), the timer at 0x3D0 is compared with zero
+(0x121C-0x1224), a unique id is allocated (0x1230) and kept at 0xF68 (0x1244), an actor is created
+(0x1258 the new, 0x12A0 the CEntityInfo, 0x12B8 the name), the rotation uses one degree in
+radians (0.017453292f, 0x12C4) and the body is driven by fn_75_11884 (0x1380). The port needs the
+host's actor creation path for the middle of it, so it is a slice of its own.
+
+The rest of `fn_75_1188` (0x1330-0x14CC) reads as the rest of the actor creation: the placement
+`new` at 0x1258 takes the size **0x1A0** (`li r3, 0x1a0`) and the class name at
+`lbl_75_rodata_A0 + 0x229`, the `CEntityInfo` at 0x12A0 is built from this+0x4 (the area id, twice
+- 0x1294 and 0x1298), `NullConnectionList` (0x1278) and `kInvalidEditorId` (0x1268), the actor's
+name is `lbl_75_rodata_A0 + 0x230` (0x12B8), and the rotation is built from the angle at 0x864
+(0x12CC) times one degree in radians (0.017453292f, `lbl_75_rodata_74`, 0x12C4), rounded with
+`fctiwz` (0x1308) and reduced by `fnmsubs` (0x1324) - the same pattern the other ports' spawn
+code uses. The class the `new` makes is the one whose size is 0x1A0 and whose name sits at
+`lbl_75_rodata_A0 + 0x229`; reading that string gives the host class to use.

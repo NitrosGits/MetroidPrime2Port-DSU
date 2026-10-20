@@ -77,6 +77,7 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
 // than 10 s (rodata B58). A charging pirate that is not in that list yet adds its id to it: the
 // asm walk ends at the list's tail sentinel, so "reached the tail" means "not in the list" and
 // pushes (fn_72_AEB8 -> fn_72_AEE0 is a push_back), while a match stops the walk and does not.
+// @ fn_72_ADC0 (0xF8): the AggressionCheck trigger.
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!x8f4_26_nonAggressive) {
@@ -399,6 +400,7 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
 // targeting point that is active, in this area and not locked (fn_8012CB70) becomes the attack
 // target; the squad is told and the bone tracking follows. The asm breaks out of the loop on
 // that first hit (the m2c loop only looks like it does not advance).
+// @ fn_72_7970 (0x1FC): the HasTargetingPoint trigger.
 bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = false;

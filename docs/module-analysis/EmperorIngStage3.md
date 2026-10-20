@@ -34,7 +34,7 @@ patterned AI typedef, the actor parameters and the module's own data block. The 
 | 0x48 | GetTouchBounds | `fn_18_8` | real (the actor's bounding box in an optional) |
 | 0x54 | GetAimPosition | `fn_18_8E84` | stand-in, forwards to CPatterned |
 | 0x6C | GetSortingBounds | `fn_18_45B4` | stand-in, forwards to CPatterned |
-| 0x70 | DoUserAnimEvent | `fn_18_9048` | stand-in, forwards to CPatterned |
+| 0x70 | DoUserAnimEvent | `fn_18_9048` | ported (slice 5); `4D0`/`BB8`/`1530` stand-ins |
 | 0xA4 | TakeDamage | `fn_18_9044` | real (the retail body is a single `blr`) |
 | 0xA8 | CanBeShot | `fn_18_90` | real (`li r3, 0x1`) |
 | 0xAC | IsListening | `fn_18_0` | real (`li r3, 0x1`) |
@@ -217,13 +217,13 @@ The base class's Think runs first (0x4818). Then:
   the module watches the object its id at guest 0x8C0 names and clears the id when the object
   is gone) and `fn_18_E40` (0x41C). `fn_18_125C` and `fn_18_27DC` (the melee contact: the
   three leg locator boxes grown by 2.5 against the player's touch bounds, the melee damage,
-  kMS_ApplyJump and the knock-back start) are ported; `3448`, `22E0`, `1370`, `E40` are
-  stand-ins, so nothing advances the dark-flier timer (0x7D8) and `CanDarkFlier` stays false.
+  kMS_ApplyJump and the knock-back start) and `fn_18_3448` (the hearts) are ported; `22E0`,
+  `1370`, `E40` are stand-ins, so nothing advances the dark-flier timer (0x7D8) and `CanDarkFlier` stays false.
 - The player knock-back (0x4A24..0x4A6C): while the timer at 0x8F8 is above zero it runs down
   and the DOL's `fn_801BF3DC` - `CPlayerKnockBackMgr::ApplyPlayerKnockBackForce` - pushes the
   player along 0x8FC normalised, power 100, 0. Ported.
 - The ing's sound (0x4A70..0x4BB8): the emitter (the handle at 0x908 and the object at 0x90C)
-  follows that object. A stand-in: only DoUserAnimEvent (`fn_18_9048`, a stand-in) writes them.
+  follows that object. A stand-in; DoUserAnimEvent's event 39 (`fn_18_9048`) writes them.
 
 ### The lists and the Think's per-frame calls
 
@@ -277,8 +277,10 @@ vulnerability (0x960 red, 0x9C0 dark, 0x990 light).
 
 The retail keeps a 32-bit word at guest 0x824, but every test the module makes is a single byte's
 bit, so the host keeps the two bytes: `x824_` (0x824: the listen flag 0x02, the jump-attack flag
-0x04, the dodge flag 0x08) and `x825_` (0x825: the stampede-react flag 0x01, the aborted
-jump-slide flag 0x04). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
+0x04, the dodge flag 0x08, the heart-hit flag 0x80), `x825_` (0x825: the stampede-react flag
+0x01, the grow-heart flag 0x02, the aborted jump-slide flag 0x04, the room-check flag 0x08, the
+no-contact-damage flag 0x10, the slide-steer flag 0x20, the slide-done flag 0x40) and `x826_`
+(0x826: the heart-reacted flag 0x80, the slide's end-time-set flag 0x40). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
 0x04 (PowerPC bit N is 1u << (31-N)), and the bit 0 is the mask 0x01.
 
 ## 5. Runtime
@@ -348,11 +350,53 @@ reach-stub lines; the FSM cycles EyeShut, JumpAttack, PortalAttack, Idle, Dodge 
 mainHeart_SDK goes 100 -> 60 on the first hit and stays there (EyeShut makes the hearts immune);
 ChangeVulnerability and Stampede are not reached and the stage does not end.
 
-Next slice: the hearts' vulnerability route. Think's `fn_18_3448` (0x1AC, the heart effects)
-calls `fn_18_2F04` (0x1E0, the only writer of vulnerability state 1, via `CKnockBackMgr` at
-0x620) and `fn_18_3164` (the heart damage reaction): unclear host mappings are the collision
-actor flag byte (`fn_80137718`), the fields 0x421/0x448/0x826/0x860 and body command 0x1C.
-Reached stand-ins left: Think's `1370`/`22E0`/`3448`/`E40` and the sound.
+Slice 3 ports the hearts' vulnerability route: `3448` (the heart effects' external params via
+`4BB8`), `2F04` (the hit timer at 0x860; a dead heart moves state 0 to 1 with a `kS_Two`
+knock-back when the base's `CKnockBackMgr` at 0x620 enables it, and state 2 to the base's
+`mPendingDeath`, 0x10 of 0x421), `3164` (`CBCAdditiveFlinchCmd` = body command 0x1C; state 2
+moves the heart's damage past the ing's health, capped by 0x814, onto the ing and 0x8EC; 0x448
+is `mDamageCooldownTimer`), EyeShutResetVulnerability `6B80`, GrowHeart `5614` (with `A00`, the
+health lost; 0xB50 is the threshold's reset copy) and the contact damage `2D50` (the DOL's
+`fn_80137718` is `CCollisionActor::GetLastTouchedObject`; 0x440/0x444 are
+`mCurDamageRemTime`/`mDamageWaitTime`; the old port inverted the 0x825 0x10 test). The vulnerable
+hearts take only the heart's beam (`SetHeartState`), so the run used a local, uncommitted console
+`damage ... dark|light` option: `damage u0597/u0598 150 power|dark|light` every 6 s, 220 s.
+0 caught / reach-stub lines. The FSM walks EyeShut -> GrowHeart -> Stampede -> EyeShut ->
+Stampede -> GrowHeart -> Dodge -> JumpSlideAttack; the ing goes 1000 -> 850 -> 750 -> 600 -> 500
+over two vulnerable windows (the boss bar at half), the hearts reset to the yellow 100 and die at
+84 s, then the FSM stays in JumpSlideAttack (`5844`, a stand-in) and the stage does not end.
+ChangeVulnerability is not seen in the 3 s samples (it is a one-frame step).
+
+Slice 4 ports JumpSlideAttack `5844` (0x630: loop attack type 5, the slide time from the loop
+attack animation's duration plus `25C`'s room ahead, the done flag 0x40 of 0x825, the heart swap
+on exit), its trigger `8600` (the done flag and AnimOver) and `25C` (a 1000-unit ray along the
+facing from the collision box). The contact damage `2D50` now passes the facing, not the
+translation: the transform sits at guest 0x24, so 0x28/0x38/0x48 are its Y column. With the
+console's `damage <id> <n> dark|light` (commit `port_console`), the same 220 s run: the FSM walks
+EyeShut, GrowHeart, Stampede, Taunt, Dodge and JumpSlideAttack three times; the ing goes 1000 ->
+750 -> 500 -> 250 -> 0 at 105 s, the FSM enters Dead, the ing is deleted and the post-fight
+cinematic plays (`/tmp/opencode/emp3run/shot_stage_end.png`). 0 caught / reach-stub lines.
+Reached stand-ins left: `4C3C`, Think's `1370`/`22E0`/`E40` and the sound.
+
+Slice 5 ports DoUserAnimEvent `9048` (the 40-entry event table: the slide flags 0x08/0x10/0x20
+of 0x825, the INTERNAL_STATE_01 actors moved to the event locator, 'IS04' on kUE_ScreenShake,
+the heart switches, the jump attack's shock wave from the data's `jumpAttackShockWaveInfo`
+(guest 0xE90) with the data's `sound` (0xECC) at 0x908/0x90C), `12C4` (stop the beam, guest
+0x8AC is the CPlasmaProjectile `1530` makes, 0x8B0 its sound) and `1B88`. `4D0` (module 29's
+object), `BB8` and `1530` are logged stand-ins. Run: JumpAttack now cycles, the ing reaches 0 at
+111 s and the FSM enters Dead; 0 caught / reach-stub lines.
+
+Then `22E0` (the charge contact: the three leg boxes and their body box against the player's
+touch bounds, the jump-slide or stampede damage, 0x20 of 0x824 cleared) and the Dead state `4C3C`
+(DEAD, then the base's Dead). Run: the stampede and slide now hurt the player; the hearts' last
+hits kill the ing at 114-117 s and the post-fight cinematic plays
+(`/tmp/opencode/emp3run/shot_slice5.png`); 0 caught / reach-stub lines.
+
+Then `1370`, the beam steer (the aim point at guest 0x8B4 moves 23/s towards the player, the
+beam takes the look-at from the DarkBeam locator via UpdateFx, the sound follows its end or goes
+in kES_Release). It needs a `CPlasmaProjectile::GetExpansionState` (TARGET_PC getter, 0x5E8).
+It runs only once `1530` makes the beam, so the runs do not reach it yet. Stand-ins left on the
+fight's path: `4D0`, `BB8`, `1530`, `E40` (module 80's swarm mapping) and the Think sound `47D4`.
 
 ### The base-class members (the sweep)
 

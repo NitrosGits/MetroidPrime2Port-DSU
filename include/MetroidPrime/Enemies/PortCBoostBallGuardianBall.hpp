@@ -44,6 +44,10 @@ public:
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
+  TUniqueId GetLastSender() const { return mId4F6; } // fn_30_13B7C
+  void AddToRenderer(const CStateManager& mgr) const override; // fn_30_13E68
+  void Render(const CStateManager& mgr) const override;        // fn_30_141B8
+  void PreRenderAllViewports(CStateManager& mgr) override;     // fn_30_13ECC
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
@@ -64,6 +68,8 @@ public:
   // fn_30_13B98: the shrink is over (guest 0x5D8 bit 0x04); BoostAttack's Update turns it into
   // the guardian's IsBoostOver.
   bool IsDone() const { return mDone; }
+  int GetState() const { return mState; }    // 0x2D4, read by fn_30_6108
+  float GetShrink() const { return mShrink; } // 0x530, read by fn_30_6108
   // BoostAttack's Deactivate sets guest 0x5D8 bit 0x01 (0x00007AC4).
   void SetHalted(bool halted) { mHalted = halted; }
 
@@ -123,7 +129,8 @@ private:
   bool mDirChosen : 1;                                 // 0x5D8 bit 0x80: GrowIn picked its heading
   bool mRandomDir : 1;                                 // 0x5D8 bit 0x40: set by the first roll; later
                                                        // grow-ins pick a random heading
-  bool m5D8_20 : 1;                                    // 0x5D8 bit 0x20
+  bool mEffectBounds : 1;                              // 0x5D8 bit 0x20: the render bounds are
+                                                       // the effects' (fn_30_13ECC)
   bool mBounced : 1;                                   // 0x5D8 bit 0x10: CollidedWith hit something
   bool mRolling : 1;                                   // 0x5D8 bit 0x08
   bool mDone : 1;                                      // 0x5D8 bit 0x04

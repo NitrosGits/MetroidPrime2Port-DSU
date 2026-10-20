@@ -30,6 +30,12 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CGameLight.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Graphics/CLight.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
+#include "MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp"
+#include "MetroidPrime/Enemies/CCollisionTracker.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
@@ -115,13 +121,9 @@ void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
     SetDrawShadow(mAlive);
     break;
   }
-  // 0x0000DA58: both managers, guest 0xD60 and 0xD64; the host builds only the first.
-  if (!mCollisionActorManager.null()) {
-    mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
-  if (mCollisionActorManager1 != nullptr) {
-    mCollisionActorManager1->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
+  // 0x0000DA58: both managers, guest 0xD60 and 0xD64.
+  mCollisionActorManager0->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  mCollisionActorManager1->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   mLineOfSight.Update(dt, mgr);
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
@@ -189,23 +191,103 @@ void CIngBoostBallGuardian::UpdateTouchBox() {
   mTouchBox = CAABox(min, max);
 }
 
-// fn_30_6108 (0x384): the puddle effects. It looks up the two effect actors at 0x1074 and 0x1076,
-// checks their live particle counts, and places the boost child (TCastToPtr<CBoostBallGuardian>)
-// - the second class is not in the port, so this is a stand-in.
-void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager&) {
-  BgStandIn("CIngBoostBallGuardian::UpdatePuddleEffects (fn_30_6108, 0x384)");
+static bool BgTrackerEmitting(CCollisionTracker* tracker) {
+  return tracker != nullptr && tracker->GetParticleSystem() != nullptr &&
+         tracker->GetParticleSystem()->GetParticleCount() > 0;
 }
 
-// fn_30_65C8 (0x148): the hit light's fade (the game light at 0x1084, the fade at 0x11C4); a
-// stand-in, the light is not created.
-void CIngBoostBallGuardian::UpdateHitLight(float, CStateManager&) {
-  BgStandIn("CIngBoostBallGuardian::UpdateHitLight (fn_30_65C8, 0x148)");
+// @ fn_30_6108
+// The two blob trackers (ing 0x1074, boost 0x1076): one is driven on the surface under the guardian
+// and the other is turned off. The driven one is the ing tracker in the boost puddle form while it
+// still emits, else the ing tracker unless the boost tracker still emits.
+void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager& mgr) {
+  CCollisionTracker* ing = static_cast< CCollisionTracker* >(mgr.ObjectById(mIngBlobTrackerId));
+  const bool ingEmitting = BgTrackerEmitting(ing);
+  CCollisionTracker* boost =
+      static_cast< CCollisionTracker* >(mgr.ObjectById(mBoostBlobTrackerId));
+  const bool boostEmitting = BgTrackerEmitting(boost);
+  const bool useIng = mCurrentlyInBoostPuddleForm ? ingEmitting : !boostEmitting; // 0x11EF 0x80
+  CCollisionTracker* driven = useIng ? ing : boost;
+  CCollisionTracker* other = useIng ? boost : ing;
+  if (driven != nullptr) {
+    float rate = 0.f;
+    switch (mForm) {
+    case kForm_IngSpot: // 0x00006274
+      rate = 1.f;
+      if (CBoostBallGuardianBall* ball =
+              TCastToPtr< CBoostBallGuardianBall >(mgr.ObjectById(mBoostChildId))) {
+        switch (ball->GetState()) { // ball 0x2D4
+        case 0:
+          rate *= ball->GetShrink(); // ball 0x530
+          break;
+        case 1:
+          rate = 0.f;
+          break;
+        case 2:
+          rate = 1.f;
+          break;
+        default:
+          break;
+        }
+      }
+      break;
+    case kForm_BecomingCorporeal:
+    case kForm_BecomingIngSpot:
+    case kForm_BecomingBodyProjectile:
+    case kForm_BecomingWallProjectile: // 0x000062EC
+      if (mStartAsIngSpot) {           // 0x11ED 0x40
+        rate = 1.f;
+      }
+      break;
+    case kForm_Corporeal: // 0x00006304
+      if (!GetAlive() && mStartAsIngSpot) {
+        rate = 1.f;
+      }
+      break;
+    default:
+      break;
+    }
+    if (rate > 0.f) {
+      const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal(); // 0xD68
+      const CVector3f pos = GetTranslation();
+      const CVector3f& up = normal.GetZ() < 0.95f ? CVector3f::Up() : CVector3f::Right();
+      driven->SetTransform(CTransform4f::LookAt(pos, pos + normal, up));
+      driven->SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0, CModelFlags::EFlags(3),
+                                        CColor(mColor.GetRedu8(), mColor.GetGreenu8(),
+                                               mColor.GetBlueu8(), 0xff)));
+    }
+    driven->SetParticleEmissionRateScalar(rate);
+  }
+  if (other != nullptr) {
+    other->SetParticleEmissionRateScalar(0.f);
+  }
+}
+
+// @ fn_30_65C8
+// The "Ing Light" (0x1084) on the head locator (0x10AD): it fades in (0x11C4) while the guardian is
+// alive and corporeal and out otherwise.
+void CIngBoostBallGuardian::UpdateHitLight(float dt, CStateManager& mgr) {
+  if (GetAlive() && mForm == kForm_Corporeal) { // 0x420 0x40, 0xAE4
+    mLightBlend = CMath::Min(1.f, mLightBlend + dt);
+  } else {
+    mLightBlend = CMath::Max(0.f, mLightBlend - dt);
+  }
+  if (CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mHitLightId))) {
+    const CColor color = CColor::Lerp(CColor::Black(), mData.mLightColor, mLightBlend); // 0x8F8
+    CLight lightData = CLight::BuildPoint(GetLctrTransform(mEyeSegId).GetTranslation(), color);
+    lightData.SetAttenuation(1.f / mData.mLightAttenuation, 0.f, 0.f); // 0x8FC
+    light->SetLight(lightData);
+  }
 }
 
 
 // The Ing's AcceptScriptMsg (the Ing REL's fn_29_C9A4): the message switch that creates the body
 // and the collision actors, joins the team, relays the hits and cleans up on delete.
 void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
+  // fn_30_DDA0 (0x0000DDC4..0x0000DE08): the active bit (CEntity 0x20 bit 7) before the base
+  // handles the message, as a float compared with 0 (f31 vs lbl_30_rodata_70). ACTV acts only on
+  // an inactive entity, DCTV only on an active one.
+  const bool wasActive = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
   const TUniqueId sender = msg.GetSenderId();
   if (DebugBg()) {
@@ -235,20 +317,27 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     } else {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
     }
-    CreateCollisionActorManager(mgr); // fn_29_3190
+    CreateCollisionActorManager(mgr); // 0x0000DF18: fn_30_4E90
+    CreateIngSpotManager(mgr);        // 0x0000DF24: fn_30_4A38
+    mIngBlobTrackerId = CreateBlobTracker( // 0x0000DF90
+        mgr, TLockedToken< CGenDescription >(
+                 gpSimplePool->GetObj(SObjectTag('PART', mData.mIngSpot.GetBlobEffect()))));
+    mBoostBlobTrackerId = CreateBlobTracker( // 0x0000E01C
+        mgr, TLockedToken< CGenDescription >(
+                 gpSimplePool->GetObj(SObjectTag('PART', mBoost.mBlobEffect))));
+    CreateHitLight(mgr); // 0x0000E048: fn_30_67B4
     // 0x0000E06C: the (kSS_Modify, kSM_Activate) connections, which the boost ball gets.
     mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate);
     break;
   case kSM_Delete:
-    // Retail deletes the blob object first, then destroys the collision actor manager.
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->Destroy(mgr); // fn_29_C9A4's XDEL branch
-    }
-    ReleaseCoverHint(mgr, mCoverHintId);
-    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId());
-    }
-    StopSfx();
+    mgr.DeleteObjectRequest(mIngBlobTrackerId);   // 0x0000E098
+    mgr.DeleteObjectRequest(mBoostBlobTrackerId); // 0x0000E0AC
+    StopSfx();                                    // 0x0000E0B4: fn_30_3A60
+    mCollisionActorManager0->Destroy(mgr); // 0x0000E0C0
+    mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
+    mgr.DeleteObjectRequest(mHitLightId);  // 0x0000E0E0
+    ReleaseOwnCoverHint(mgr);              // 0x0000E114: fn_30_6064
+    LeaveTeam(mgr);                        // 0x0000E120: fn_30_510C
     break;
   case kSM_AreaLoaded:
     mPathArea =
@@ -262,53 +351,61 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     break;
   case kSM_Activate:
     JoinTeam(mgr);
-    // Retail handles ACTV only while the entity is active (CEntity 0x20 bit 7, the first bitfield =
-    // mActive) and only turns the collision actors on for the corporeal form.
-    if (GetActive() && !mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal);
+    // 0x0000E134: only when it was inactive; each manager is on for its own form.
+    if (!wasActive) {
+      mCollisionActorManager0->SetActive(mgr, mForm == kForm_Corporeal); // 0x0000E150
+      mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
+      if (CEntity* light = mgr.ObjectById(mHitLightId)) {
+        light->SetActive(true); // 0x0000E19C
+      }
+      mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetInitialHP(), // 0x0000E1F0
+                        gpStringTable->GetStringIndex("BossBoostBallGuardian"));
     }
     break;
   case kSM_Deactivate:
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, false);
+    // 0x0000E204: only when it was active.
+    if (wasActive) {
+      mCollisionActorManager0->SetActive(mgr, false); // 0x0000E214
+      mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
+      LeaveTeam(mgr);                                 // 0x0000E230: fn_30_510C
+      if (CEntity* light = mgr.ObjectById(mHitLightId)) {
+        light->SetActive(false); // 0x0000E260
+      }
+      if (CEntity* tracker = mgr.ObjectById(mIngBlobTrackerId)) {
+        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E288
+      }
+      if (CEntity* tracker = mgr.ObjectById(mBoostBlobTrackerId)) {
+        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E2B0
+      }
+      StopSfx(); // 0x0000E2B8: fn_30_3A60
     }
-    StopSfx();
     break;
   case kSM_AIUpdateDisabled:
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetPhysicsActive(mgr, false);
+    if (mCollisionActorManager0 != nullptr) {
+      mCollisionActorManager0->SetPhysicsActive(mgr, false);
+    }
+    if (mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->SetPhysicsActive(mgr, false); // 0x0000E2EC
     }
     break;
   case kSM_HitObject:
     CollisionActorHitPlayer(mgr, sender); // fn_29_2ED8
     break;
   case kSM_Damage:
-    // fn_29_2E8C: the ing-spot form reacts to the hit itself, every
-    // other form relays it.
-    if (mForm == kForm_IngSpot) {
-      IngSpotDamage(mgr, sender); // fn_29_2B70
-    } else {
-      CollisionActorDamage(mgr, sender); // fn_29_2684
-    }
+    ColliderDamage(mgr, sender);   // 0x0000E354: fn_30_479C
+    mHitByPlayerProjectile = true; // 0x0000E364: 0x420 bit 7
     break;
   case kSM_ResistedDamage:
-    // fn_29_C9A4's XRDG branch: while grappled in the ing-spot form the hit timer ticks down and
-    // the hit effect plays; either way the actor is flagged as hit.
-    if (mForm == kForm_IngSpot && mGrappled) {
-      mHitReactionTime -= 0.5f;
-      if (CEntity* fx = SpawnHitEffect(mgr, static_cast< bool >(mHeavyHitEffect))) { // fn_29_2414
-        mgr.AddObject(fx);
-      }
+    if (mForm == kForm_IngSpot) {
+      PuddleColliderResistedDamage(mgr, sender); // 0x0000E390: fn_30_4324
     }
-    mHitByPlayerProjectile = true; // 0x420 bit 7
     break;
   case kSM_XENZ:
-    // [this module] the Ing's ++mSafeZoneCount is dropped: this module has no safe-zone count (it
-    // has no lure safe zone), so only the harmful-zone flag is kept.
-    mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr);
+    ++mSafeZoneCount; // 0x0000E3C4: 0x115C
+    mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr); // 0x11EE 0x40
     break;
   case kSM_XEXZ:
-    // [this module] the Ing's --mSafeZoneCount is dropped, for the same reason.
+    --mSafeZoneCount; // 0x0000E3F0
     mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr);
     break;
   default:
@@ -379,6 +476,27 @@ void CIngBoostBallGuardian::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
 }
 
+// @ fn_30_CA18
+// The hit tint: the damage colour while the cooldown runs, else the hits-without-damage colour
+// while a resisted bomb hit (0x1080) or a safe zone holds it. Retail sets no damage highlight and
+// drives no echo emitter here, unlike CPatterned's.
+void CIngBoostBallGuardian::UpdateHitDamageTime(float dt) {
+  mDamageCooldownTimer = 0.f >= mDamageCooldownTimer - dt ? 0.f : mDamageCooldownTimer - dt;
+  mBoostHitTimer = 0.f >= mBoostHitTimer - dt ? 0.f : mBoostHitTimer - dt;
+  if (mSafeZoneCount > 0) {
+    mBoostHitTimer = CPatterned::skDamageHitTime; // 0x0000CA90
+  }
+  if (mDamageCooldownTimer > 0.f) {
+    const float t = mDamageCooldownTimer / CPatterned::skDamageHitTime;
+    const CColor color = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t);
+    mColor.Set(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), mColor.GetAlphau8());
+  } else if (mBoostHitTimer > 0.f) {
+    const float t = mBoostHitTimer / CPatterned::skDamageHitTime;
+    const CColor color = CColor::Lerp(CColor::Black(), CPatterned::skHitsWithoutDamageColor, t);
+    mColor.Set(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), mColor.GetAlphau8());
+  }
+}
+
 // The Ing's DoUserAnimEvent (the Ing REL's fn_29_C228). The base class's handler runs only for the
 // events this function does not handle (retail's local `handled` flag, set by every case below).
 // The area 57 run delivered kUE_LoopedSoundStop (2), kUE_Activate (29), kUE_EffectOff (34) and
@@ -434,6 +552,14 @@ void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr);
     }
+    handled = true;
+    break;
+  case kUE_Unknown37: // [this module] fn_30_D4F8 @0xD548: body hits stop being lethal
+    mBodyHitsLethal = false; // 0x11EF 0x10 = 0
+    handled = true;
+    break;
+  case kUE_Unknown38: // [this module] fn_30_D4F8 @0xD560
+    mBodyHitsLethal = true; // 0x11EF 0x10 = 1
     handled = true;
     break;
   default:

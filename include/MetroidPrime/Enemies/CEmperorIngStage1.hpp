@@ -217,8 +217,6 @@ private:
   void SetTentacleMaterials(CStateManager& mgr, uint flag);
   // fn_16_3984: the joint is added to the vector at guest 0x7D4.
   void AddTentacleJointToVector();
-  // fn_16_39CC: the vector's growth. Too big for the slice's rule, so it stays a stand-in.
-  void GrowTentacleJointVector();
   // fn_16_3AA8: the tentacle's collision actor.
   CCollisionActor* GetTentacleActor(CStateManager& mgr, int index);
   // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
@@ -231,21 +229,23 @@ private:
   static void SetSystemParam(CParticleGen* system, uint index, float value);
   // fn_16_2E7C: how many of the used tentacle slots are retracted (state 0).
   int RetractedTentacleCount() const;
-  // fn_16_51D4: the module's own sound update.
-  void UpdateVoice(float dt, CStateManager& mgr);
-  // fn_16_4EB8: moves the actor onto the target's locator.
+  // fn_16_51D4: the heart's health becomes the boss's; the mode follows it.
+  void UpdateHeartHealth(CStateManager& mgr);
+  // fn_16_4EB8: the body follows the heart.
   void UpdateTentacleAnchor(float dt, CStateManager& mgr);
   // fn_16_3AFC: the three collision actor managers get their update.
   void UpdateCollisionActors(float dt, CStateManager& mgr);
   // fn_16_4C0C: the module's track-player update.
   void UpdateTrackPlayer(float dt, CStateManager& mgr);
-  // fn_16_4C8: aims the actor at the player.
-  void UpdateFacing(float dt, CStateManager& mgr);
-  // fn_16_8C: the tentacles' hit test and damage.
+  // fn_16_4C8: the melee sweep's contact damage to the player.
+  void UpdateMeleeHits(float dt, CStateManager& mgr);
+  // fn_16_8C: the sweeping tentacles' contact damage to the player.
   void UpdateTentacleHits(float dt, CStateManager& mgr);
 
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;
+  // fn_16_7AD4: every used tentacle slot's state becomes 2.
+  void RetractUsedTentacles();
   // fn_16_2EE0: set (or clear) the 0x80 flag of every live tentacle.
   void SetTentacleFlags(uint flag);
 
@@ -273,6 +273,9 @@ private:
   float mTauntFrequency;                         // guest 0xC34
   float mAttackIntervalMin;                      // guest 0xCF4
   float mAttackIntervalMax;                      // guest 0xCF8
+  float mModeOneHealth;                          // guest 0xBAC: below it the mode becomes 1 (fn_16_51D4)
+  float mModeTwoHealth;                          // guest 0xBB0: below it the mode becomes 2
+  SLdrAudioPlaybackParms mHeartDamageSound;      // guest 0xCFC
 
   // The module's own state, named from the retail offsets; the constructor's values are
   // fn_16_900C's.
@@ -290,9 +293,12 @@ private:
   int xa24_;                          // guest 0xA24, -1: the second one's
   int xa28_;                          // guest 0xA28, -1: the third one's
   float xa2c_;                        // guest 0xA2C, 0.0f: the turn angle (fn_16_2C9C)
+  float xa30_;                        // guest 0xA30, 0.0f: the current turn angle (fn_16_4EB8)
   float xa34_;                        // guest 0xA34, maxTurnSpeedNormal: the current turn speed
   float xa38_;                        // guest 0xA38, 0.0f: the jump rope's duration (fn_16_5928)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
+  float xa40_;                        // guest 0xA40, initial HP: the heart's last health (fn_16_51D4)
+  float xa48_;                        // guest 0xA48, 0.0f: the contact damage cooldown (fn_16_8C)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
   float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
@@ -302,7 +308,9 @@ private:
   float xa68_;                        // guest 0xA68, 0.0f: the beam's firing time (fn_16_774C)
   float xa6c_;                        // guest 0xA6C, 0.0f: the retracted share (fn_16_68F4)
   int xa70_;                          // guest 0xA70, 0: the next attack in the mode's list (fn_16_6D94)
-  uchar xa74_;                        // guest 0xA74, 0: flags; 0x08 the projectile is charged
+  uchar xa74_;                        // guest 0xA74, 0: flags; 0x08 the projectile is charged,
+                                      // 0x40 the jump rope (fn_16_5928), 0x80 the melee sweep
+                                      // (fn_16_6D94, 0x6F8C; fn_16_4C8's gate)
   float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
   rstl::vector< CSegId > xa7c_;       // guest 0xA7C, empty: the spine locators' segments (fn_16_3C58)
   CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)

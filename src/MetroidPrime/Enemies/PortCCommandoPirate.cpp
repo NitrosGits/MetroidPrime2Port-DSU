@@ -13,6 +13,7 @@
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -23,7 +24,10 @@
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
@@ -177,6 +181,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbe4_(0.f)                                    // 0xbe4, a distance
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
+, xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -393,8 +398,31 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
   StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
   StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
-  StandInFn("fn_9_4BC0 (0xe4 bytes)");         // 0x0000CA8C
+  x4BC0_UpdateEmitters();                     // 0x0000CA8C
   StandInFn("fn_9_3E1C (0x324 bytes)");        // 0x0000CAA0
+}
+
+// @ fn_9_4BC0
+// fn_9_4BC0 (0xe4 bytes): the module's two sound emitters. The handle at guest this+0xC04 is
+// updated while it is playing or queued (the IsPlaying and IsQueued calls at 0x00004BEC and
+// 0x00004C04); when it is neither, the handle is cleared (the store at 0x00004C4C). The
+// emitter's position is the actor's own (this+0x54, the argument at 0x00004C1C) and its direction
+// the actor's forward column (this+0x28, +0x38 and +0x48, the loads at
+// 0x00004C20..0x00004C34); the volume is 0x7f (0x00004C28). The second emitter, the handle at
+// guest this+0xC38, is updated the same way (the call at 0x00004C8C) but is never cleared.
+void CCommandoPirate::x4BC0_UpdateEmitters() {
+  if (xc04_ != CSfxHandle::NullHandle()) {                      // 0x00004BD4..0x00004BDC
+    if (CSfxManager::IsPlaying(xc04_) || CSfxManager::IsQueued(xc04_)) {  // 0x00004BEC..0x00004C0C
+      CSfxManager::UpdateEmitter(xc04_, GetTranslation(), GetTransform().GetForward(),
+                                 0x7f);                          // 0x00004C40
+    } else {
+      xc04_.Clear();                                            // 0x00004C48..0x00004C4C
+    }
+  }
+  if (xc38_ != CSfxHandle::NullHandle()) {                      // 0x00004C50..0x00004C58
+    CSfxManager::UpdateEmitter(xc38_, GetTranslation(), GetTransform().GetForward(),
+                               0x7f);                            // 0x00004C8C
+  }
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the
@@ -714,9 +742,13 @@ bool CCommandoPirate::PathOver(CStateManager& mgr, const CTriggerData& data) con
   return (xc65_ & 0x80) == 0 || CPatterned::PathOver(mgr, data);
 }
 
+// @ fn_9_B958
+// fn_9_B958 (0x38 bytes): the commando is off its path when its own position is not on the path
+// search's path. The guest asks its own CPathFindSearch (the one at guest this+0x928) about its
+// own position (the translation at this+0x54, the call at 0x0000B970) and answers true when the
+// answer is not kR_Success - the neg/or/srwi pair at 0x0000B974..0x0000B97C is the != 0 idiom.
 bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B958");
-  return false;
+  return mPathFindSearch.OnPath(GetTranslation()) != CPathFindSearch::kR_Success;  // 0x0000B970
 }
 
 // fn_9_B900: the state machine's asset has an "attack" connection that is being followed -
@@ -1094,8 +1126,31 @@ void CCommandoPirate::SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_A8E8");
 }
 
+// @ fn_9_A838
+// fn_9_A838 (0xb0 bytes): the SetPathMeshDest state. Only the activate message (the guest's test
+// of 0 at 0x0000A840) does anything: the module's flag byte at guest this+0xC65 loses its 0x80
+// bit (the rlwimi at 0x0000A888), the path find search (the CPathFindSearch at this+0x928) looks
+// for the closest reachable point (the call at 0x0000A890 - the guest's out point starts as the
+// zero vector, the sZeroVector copy at 0x0000A878..0x0000A880) and the path find navigation (the
+// CPathFindNavigation at this+0x6F4) takes that point as its destination (the call at
+// 0x0000A8A4). When the search finds no point, the navigation takes the actor's own position
+// instead (the call at 0x0000A8C4) and the flag byte's 0x80 bit stays clear. Either way the
+// navigation's face target id (guest this+0x718, the navigation's own member at +0x24) is
+// cleared (the store at 0x0000A8D0).
 void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A838");
+  if (msg != kStateMsg_Activate) {
+    return;                                     // 0x0000A840
+  }
+  xc65_ &= ~0x80;                               // 0x0000A884..0x0000A88C
+  CVector3f point = CVector3f::Zero();           // 0x0000A878..0x0000A880
+  if (mPathFindSearch.FindClosestReachablePoint(GetTranslation(), point) ==
+      CPathFindSearch::kR_Success) {             // 0x0000A890..0x0000A898
+    mPathFindNavigation.SetDestination(point);   // 0x0000A89C..0x0000A8A4
+    xc65_ |= 0x80;                              // 0x0000A8A8..0x0000A8B4
+  } else {
+    mPathFindNavigation.SetDestination(GetTranslation());  // 0x0000A8BC..0x0000A8C4
+  }
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000A8C8..0x0000A8D0
 }
 
 void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1110,8 +1165,63 @@ void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, floa
   StandInFn("fn_9_A110");
 }
 
+// @ fn_9_9F24
+// fn_9_9F24 (0x1ec bytes): the JumpPointFind state. Only the activate message (the guest's test
+// of 0 at 0x00009F44) does anything: the jump point id (guest this+0xBD0) is cleared (the store
+// at 0x00009F64), the timer at guest this+0xB78 has to be at least 2.0f (lbl_9_rodata_44C, the
+// compare at 0x00009F6C) and the module's own helper fn_9_3CBC has to answer with the target's
+// aim position (the call at 0x00009F84), which it stores at guest this+0xB94 (the argument at
+// 0x00009F7C). The timer is then cleared (the store at 0x00009FA0).
+//
+// The AiWaypoint list (the state manager's +0x838, the load at 0x00009FA4) is scanned for the
+// jump point to use: it has to be active (the byte at +0x20's 0x80 bit, the extrwi at
+// 0x00009FE4), free (GetInUse with this actor's id, the call at 0x00009FFC), of type 0 (the word
+// at +0x15C, the compare at 0x0000A00C), have no jump target (+0x182, the compare at
+// 0x0000A020) and be in this area (+0x04, the compare at 0x0000A030). Its current waypoint
+// (+0x180, the lookup at 0x0000A04C) has to resolve, and that waypoint has to be nearer to the
+// target's aim position than the best candidate so far (the squares at 0x0000A064..0x0000A090,
+// the limit lbl_9_rodata_4B8 = FLT_MAX). The path find search (the guest's GetSearchPath, the
+// vtable call at 0x0000A0A4) has to connect the actor to the jump point (the PathExists call at
+// 0x0000A0B0). The winner's id goes into guest this+0xBD0 (the store at 0x0000A0C4).
 void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9F24");
+  if (msg != kStateMsg_Activate) {
+    return;                                     // 0x00009F44..0x00009F50
+  }
+  xbd0_ = kInvalidUniqueId;                     // 0x00009F64
+  if (xb78_ < 2.f) {                            // 0x00009F6C..0x00009F74
+    return;
+  }
+  if (!x3CBC_(mgr, xb94_, 0.f)) {                // 0x00009F84..0x00009F8C
+    return;
+  }
+  xb78_ = 0.f;                                  // 0x00009FA0
+  float best = 3.4028235e+38f;                   // lbl_9_rodata_4B8, the load at 0x00009F9C
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);          // 0x00009FA4
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptAiJumpPoint* jumpPoint = TCastToPtr< CScriptAiJumpPoint >(list[i]);
+    if (jumpPoint == nullptr || !jumpPoint->GetActive() ||             // 0x00009FD8..0x00009FE8
+        jumpPoint->GetInUse(GetUniqueId()) ||                            // 0x00009FFC..0x0000A004
+        jumpPoint->GetType() != 0 ||                                    // 0x0000A008..0x0000A010
+        jumpPoint->GetJumpTarget() != kInvalidUniqueId ||               // 0x0000A014..0x0000A024
+        jumpPoint->GetCurrentAreaId() != GetCurrentAreaId()) {          // 0x0000A028..0x0000A034
+      continue;
+    }
+    const CScriptWaypoint* waypoint = TCastToConstPtr< CScriptWaypoint >(
+        mgr.GetObjectById(jumpPoint->GetJumpPoint()));  // 0x0000A038..0x0000A058
+    if (waypoint == nullptr) {
+      continue;
+    }
+    const float distSq = (waypoint->GetTranslation() - xb94_).MagSquared();  // 0x0000A05C..0x0000A088
+    if (distSq >= best) {                       // 0x0000A08C..0x0000A090
+      continue;
+    }
+    if (mPathFindSearch.PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
+        CPathFindSearch::kR_Success) {          // 0x0000A094..0x0000A0B8
+      continue;
+    }
+    best = distSq;                              // 0x0000A0C0
+    xbd0_ = jumpPoint->GetUniqueId();           // 0x0000A0BC..0x0000A0C4
+  }
 }
 
 void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1274,11 +1384,98 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_8B70");
 }
 
+// @ fn_9_3678
+// fn_9_3678 (0x288 bytes): the module's dodge picker, called by the Dodge state's activate (the
+// call at 0x00008974). It answers the dodge direction: 2 (the host's pas::kSD_Left) or 3 (its
+// pas::kSD_Right), or -1 when neither side is free.
+//
+// The two candidates are the actor's right column and its negation. The guest's transform is a
+// CTransform4f at this+0x24 (the FromMatrix call's argument at 0x000024C4), so its kDX column -
+// the right one - is this+0x24, +0x34 and +0x44 (the three loads at 0x000036A8..0x000036E4).
+//
+// The listening-AI list (the state manager's +0x830, the load at 0x000036E8) is walked. Every
+// other AI of the same area (the area ids at +0x04, compared at 0x00003710..0x0000371C) that is
+// nearer than the module's float at guest this+0xBE4 (its square at 0x000036B8, the compare at
+// 0x00003758) blocks the side it stands on: the dot product with the right column (the fmadds
+// chain at 0x0000376C..0x0000377C) says which side, and the angle to it must be under 60 degrees
+// (lbl_9_rodata_4A4 = 1.0471976f, the load at 0x000037A4; the GetAngleDiff calls at 0x0000379C
+// and 0x000037E0, the right column and its negation).
+//
+// Each side that is still free is then checked by the module's own helper fn_9_3338 (the calls
+// at 0x00003834 and 0x00003878): the point that distance along the side has to be clear. When
+// both sides are free, the state manager's random (its CRandom16 at +0x16E4, the call at
+// 0x00003894) picks one: its bit 14 (the rlwinm at 0x00003898) keeps the right, the clear bit
+// keeps the left.
+int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
+  const float distance = xbe4_;                                   // 0x000036A8
+  const float distanceSq = distance * distance;                   // 0x000036B8
+  const CVector3f right = GetTransform().GetRight();              // 0x000036A8..0x000036E4
+  const CVector3f position = GetTranslation();                    // 0x000036B0..0x000036C0
+  bool rightFree = true;                                          // r29
+  bool leftFree = true;                                           // r30
+
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);        // 0x000036E8
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    // The guest tests the object for null (0x00003700), then compares it with itself
+    // (0x00003708) and reads the area id at +0x04 (the compare at 0x00003718). The host's cast
+    // carries the null test and can also fail, where the guest's raw read of the area id could
+    // not.
+    CPatterned* other = TCastToPtr< CPatterned >(list[i]);       // 0x000036FC
+    if (other == nullptr || other == this) {                      // 0x00003700..0x0000370C
+      continue;
+    }
+    if (other->GetCurrentAreaId() != GetCurrentAreaId()) {        // 0x00003710..0x0000371C
+      continue;
+    }
+    const CVector3f delta = other->GetTranslation() - position;   // 0x00003720..0x00003734
+    if (delta.MagSquared() >= distanceSq) {                       // 0x00003738..0x0000375C
+      continue;
+    }
+    if (CVector3f::Dot(delta, right) >= 0.f) {                    // 0x0000376C..0x00003788
+      if (!rightFree) {                                           // 0x0000378C
+        continue;
+      }
+      if (CVector3f::GetAngleDiff(right, delta) >= 1.0471976f) {  // 0x0000379C..0x000037AC
+        continue;
+      }
+      rightFree = false;                                         // 0x000037B0
+    } else {
+      if (!leftFree) {                                            // 0x000037B8
+        continue;
+      }
+      if (CVector3f::GetAngleDiff(-right, delta) >= 1.0471976f) {  // 0x000037E0..0x000037F0
+        continue;
+      }
+      leftFree = false;                                          // 0x000037F4
+    }
+  }
+
+  if (rightFree) {                                                // 0x0000381C..0x00003824
+    rightFree = x3338_IsJumpBackClear(mgr, right, distance);      // 0x00003834
+  }
+  if (leftFree) {                                                 // 0x0000383C
+    leftFree = x3338_IsJumpBackClear(mgr, -right, distance);       // 0x00003878
+  }
+  if (rightFree && leftFree) {                                    // 0x00003880..0x0000388C
+    if ((mgr.Random()->Next() & 0x4000) != 0) {                   // 0x00003894..0x00003898
+      leftFree = false;                                           // 0x000038A0
+    } else {
+      rightFree = false;                                          // 0x000038A8
+    }
+  }
+  if (leftFree) {                                                 // 0x000038AC..0x000038B8
+    return pas::kSD_Left;                                         // 2
+  }
+  if (rightFree) {                                                // 0x000038BC..0x000038C4
+    return pas::kSD_Right;                                        // 3
+  }
+  return -1;                                                      // 0x000038C8
+}
+
 // fn_9_8934 (0x1e0 bytes): the Dodge state, in the guest's three parts.
 //
 // Activate (the guest's message 0, the test at 0x0000895C): the module's helper fn_9_3678
-// (0x288 bytes, over the 0x80 limit, so a named helper that returns the neutral value) picks
-// the dodge, the result goes into the module's field at guest this+0xBDC (the store at
+// picks the dodge, the result goes into the module's field at guest this+0xBDC (the store at
 // 0x00008978) and, when it is not -1 (the compare at 0x00008980), the animation state takes the
 // command id 1 (the store at 0x0000898C).
 //
@@ -1299,8 +1496,7 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
 void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
-    StandInFn("fn_9_3678 (0x288 bytes)");            // 0x00008974
-    xbdc_ = -1;                                       // 0x00008978 (the helper's neutral value)
+    xbdc_ = x3678_PickDodgeDirection(mgr);            // 0x00008974
     if (xbdc_ != -1) {                               // 0x00008980
       mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x0000898C
     }
@@ -1359,8 +1555,63 @@ void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_728C");
 }
 
+// @ fn_9_709C
+// fn_9_709C (0x1f0 bytes): the CoverFind state. Only the activate message (the guest's test of
+// 0 at 0x000070BC) does anything: the module's flag byte at guest this+0xC63 loses its 0x40 bit
+// (the rlwimi at 0x000070D8) and then its 0x01 bit (the rlwimi at 0x000070F0), and the module's
+// own helper fn_9_3CBC has to answer with the target's aim position (the call at 0x000070F8),
+// which it stores at guest this+0xB94 (the argument at 0x000070E8).
+//
+// The AiWaypoint list (the state manager's +0x838, the load at 0x0000710C) is scanned for the
+// cover point: it has to be active (the byte at +0x20's 0x80 bit, the extrwi at 0x00007150),
+// refuse a landing (ShouldLandHere, the call at 0x00007158), be free (GetInUse with this
+// actor's id, the call at 0x00007178), be in this area (+0x04, the compare at 0x0000718C) and not
+// be the cover point the actor already holds (+0xBD4, the compare at 0x0000719C). It has to be
+// nearer than the block's search radius (the guest's this+0x814, the block's +0x54, squared at
+// 0x00007114) or nearer than the best candidate so far (the compare at 0x000071D4), must not be
+// blown (the Blown call at 0x000071E4) and the path find search (the guest's GetSearchPath, the
+// vtable call at 0x000071FC) has to connect the actor to it (the PathExists call at
+// 0x0000720C). The winner is handed to the base's SetCoverPoint (the call at 0x0000725C), which
+// writes the id at guest this+0xBD2, and that id is copied to +0xBD4 (the store at 0x00007264).
 void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_709C");
+  if (msg != kStateMsg_Activate) {
+    return;                                     // 0x000070BC..0x000070C8
+  }
+  xc63_ &= ~0x40;                               // 0x000070D0..0x000070E0
+  xc63_ &= ~0x01;                               // 0x000070EC..0x000070F4
+  if (!x3CBC_(mgr, xb94_, 0.f)) {                // 0x000070F8..0x00007100
+    return;
+  }
+  CScriptCoverPoint* best = nullptr;            // r31
+  float bestDistSq = mData.mSearchRadius * mData.mSearchRadius;  // 0x00007104..0x00007114
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);  // 0x0000710C
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptCoverPoint* cover = TCastToPtr< CScriptCoverPoint >(list[i]);
+    if (cover == nullptr || !cover->GetActive() ||            // 0x00007144..0x00007154
+        cover->ShouldLandHere() ||                            // 0x00007158..0x00007160
+        cover->GetInUse(GetUniqueId()) ||                      // 0x00007178..0x00007180
+        cover->GetCurrentAreaId() != GetCurrentAreaId() ||    // 0x00007184..0x00007190
+        cover->GetUniqueId() == xbd4_) {                       // 0x00007194..0x000071A0
+      continue;
+    }
+    const float distSq = (cover->GetTranslation() - GetTranslation()).MagSquared();  // 0x000071A4..0x000071D0
+    if (distSq >= bestDistSq) {                // 0x000071D4..0x000071D8
+      continue;
+    }
+    if (cover->Blown(xb94_)) {                 // 0x000071DC..0x000071EC
+      continue;
+    }
+    if (mPathFindSearch.PathExists(GetTranslation(), cover->GetTranslation()) !=
+        CPathFindSearch::kR_Success) {          // 0x000071F0..0x00007214
+      continue;
+    }
+    bestDistSq = distSq;                        // 0x00007218
+    best = cover;                               // 0x0000721C
+  }
+  if (best != nullptr) {                        // 0x00007244..0x0000724C
+    CPatterned::SetCoverPoint(best, xbd2_);     // 0x00007250..0x0000725C
+    xbd4_ = xbd2_;                              // 0x00007260..0x00007264
+  }
 }
 
 void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) {

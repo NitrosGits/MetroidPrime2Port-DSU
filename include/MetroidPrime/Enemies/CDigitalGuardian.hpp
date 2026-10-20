@@ -7,12 +7,16 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "rstl/optional_object.hpp"
 
+class CCollisionActorManager;
 class CElementGen;
 class CParticleGen;
+class CGenDescription;
 
 #ifdef TARGET_PC
+#include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageInfo.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageVulnerability.hpp"
@@ -271,7 +275,12 @@ private:
   u16 xFB6_;        // 0xFB6: a knee id, kInvalidUniqueId (fn_14_705C counts these)
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
+  u16 x1080_;       // 0x1080: the root collider's id (fn_14_61DC sets it, fn_14_3974 reads it)
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  uchar x1010_;     // 0x1010: the flag byte the "IM01"/"IM02" messages set (fn_14_A6A8)
+  uchar x1011_;     // 0x1011: the flag byte the "IM07"/"IM08" messages set (fn_14_A6A8)
+  uchar x1012_;     // 0x1012: the flag byte the "IM03"/"IM04" messages set (fn_14_A6A8)
+  uchar x1013_;     // 0x1013: the flag byte the "IM05"/"IM06" messages set (fn_14_A6A8)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
@@ -285,6 +294,8 @@ private:
   // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
   // host class has its own layout. Each one is an optional: the guest's CModelData is 0x4C
   // bytes and the byte after it is the optional's valid flag, which the draws test.
+  CCollisionActorManager* xE60_; // 0xE60: the first collision actor manager (fn_14_61DC builds it)
+  CCollisionActorManager* xE64_; // 0xE64: the second collision actor manager (fn_14_5C30 builds it)
   // 0xE6C (0x4c, valid flag 0xEB8): the leg model, built by fn_14_6864 and drawn by
   // fn_14_1994 at the four knee locators.
   rstl::optional_object< CModelData > xE6C_;
@@ -317,6 +328,58 @@ private:
   float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
   int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
+  u16 xFBC_[4];      // 0xFBC: the four knee joint colliders ("*_knee_2" spheres; fn_14_44F8)
+  u16 x1078_[4];     // 0x1078: the four toe target colliders ("*_col_LCTR" spheres; fn_14_4464)
+  // 0x1014: the knees' open vulnerability (kneeVulnerability, the ctor's 0xB1B0..0xB248);
+  // fn_14_3A44 gives it to a knee collider whose flag byte (0x1010 + i) is set.
+  CDamageVulnerability x1014_;
+  // 0x1044: immune-ricochet with the AI weapon type passed through (the ctor's 0xB258/0xBEF4).
+  CDamageVulnerability x1044_;
+  CDamageVulnerability x1110_; // 0x1110: the toe targets' (toeTargetVulnerability, 0xB534)
+  CDamageVulnerability x1188_; // 0x1188: the root collider's (vortexVulnerability, 0xB618)
+  // 0xE00 (0x60): the actor parameters, a copy of the constructor's (fn_14_C57C at 0xB188); the
+  // knee armour is built with them (fn_14_4080).
+  CActorParameters xE00_;
+  // 0x1100 (present flag 0x110C): the toe target's explosion ('PART' toeTargetExplosion, locked by
+  // the constructor at 0xB3D0..0xB4A8).
+  rstl::optional_object< TLockedToken< CGenDescription > > x1100_;
+  CSfxHandle x10F0_[4]; // 0x10F0: the toe targets' sound emitters (fn_14_1A68)
+  float x1144_[4];      // 0x1144: the toe targets' health (toeTargetHP; fn_14_24E4, fn_14_5644)
+  float x1158_[4];      // 0x1158: the toe targets' hit timers (0; fn_14_24E4, fn_14_5644)
+
+  // 0x10CE: the id fn_14_5910 (the "XALC" case's helper, not ported) looks up; fn_14_5470 takes
+  // one from its health per destroyed knee.
+  TUniqueId x10CE_;
+
+  // fn_14_3A44 (0x108 bytes): each knee's vulnerability - open (0x1014) when its flag byte
+  // (0x1010 + i) is set and bit 5 of 0x128C is clear, else the ricochet one (0x1044) - and its
+  // armour's armoured flag (fn_14_CE94).
+  void x3A44_(CStateManager& mgr);
+  // fn_14_3E2C (0x5C bytes): which knee collider (0xFBC + 2i) an id is, or -1.
+  int x3E2C_(TUniqueId id) const;
+  // fn_14_143C (0xBC bytes): moves the IS06/Follow waypoint to a position, then sends a state.
+  void x143C_(CStateManager& mgr, const CVector3f& pos, EScriptObjectState state);
+  // fn_14_5838 (0xD8 bytes): the "XDMG" case - which collider was hit.
+  void x5838_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_5470 (0x1D4 bytes): a knee collider hit: the armour flashes, or goes when the knee's
+  // health is gone (KneeDestroyed: 0x1284 = the knee).
+  void x5470_(CStateManager& mgr, TUniqueId sender, int knee);
+  // fn_14_4080 (0x274 bytes): the four knee armours, one at each knee locator.
+  void x4080_(CStateManager& mgr);
+  // fn_14_24E4 (0x94 bytes): the toe targets' reset (health, state, timer), then state 1 each.
+  void x24E4_(CStateManager& mgr);
+  // fn_14_1A68 (0x580 bytes): a toe target's state (0 attack, 1 target, 2 flinch, 3 destroyed):
+  // its effects, its sound and, for 3, the explosion.
+  void x1A68_(CStateManager& mgr, int leg, int state);
+  // fn_14_14F8 (0x74 bytes): the speed for the number of knee armours left.
+  void x14F8_();
+
+  // fn_14_44F8 / fn_14_4464: record id in xFBC_ resp. x1078_ when name is one of the four knee
+  // resp. toe target locators. fn_14_4408 / fn_14_43AC: whether id is one of them.
+  bool x44F8_(const rstl::string& name, TUniqueId id);
+  bool x4464_(const rstl::string& name, TUniqueId id);
+  bool x4408_(TUniqueId id) const;
+  bool x43AC_(TUniqueId id) const;
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
   // named by their retail offset.
@@ -336,6 +399,17 @@ private:
 
   // fn_14_3E88 (0x88 bytes): the knee colliders' active flag.
   void x3E88_(CStateManager& mgr, bool active);
+
+  // fn_14_3974 (0x58 bytes): the object with the id at guest 0x1080 gets its active flag set.
+  void x3974_(CStateManager& mgr, bool active);
+
+  // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
+  // calls: fn_14_61DC (0x590 bytes, the manager at 0xE60), fn_14_5C30 (0x2F4 bytes, the manager
+  // at 0xE64) and fn_14_59BC (0x274 bytes, the colliders' health).
+  void x676C_(CStateManager& mgr);
+  void x61DC_(CStateManager& mgr);
+  void x5C30_(CStateManager& mgr);
+  void x59BC_(CStateManager& mgr);
 
   // fn_14_28D0 (0x158 bytes) and fn_14_2A28 (0x29C bytes): the beacon's arrival and its
   // effect update. Both are over this slice's callee limit, so they are stand-ins.

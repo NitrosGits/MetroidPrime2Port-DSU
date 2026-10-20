@@ -990,8 +990,9 @@ wakes the knee joint colliders; a knee's destruction (the helper that writes the
 and asks for the knee's deletion) is what the `KneeDestroyed` trigger reads (fn_14_9A48, ported),
 and the state machine's transition then enters Crippled. In the port the word at 0x1284 stays -1:
 the module's AcceptScriptMsg (fn_14_A6A8, 0x4F0) is a stand-in and the port has no knee actors
-(the knee armour sub-actor, fn_14_4080, is not ported), so the trigger never fires and the
-Crippled state is unreachable - the beacon's pieces are in place, but nothing runs them. The
+(since 2026-10-20 the knee chain fn_14_3A44/fn_14_5838/fn_14_5470 is ported and sets 0x1284,
+see "Knee chain" below; KneeDestroyedReaction fn_14_8090 is still a stand-in), so the
+Crippled state is still unreachable - the beacon's pieces are in place, but nothing runs them. The
 console's `damage` does not help either: the guardian's vulnerability is pass-through
 (fn_14_9FE4) and the retail's damage path (fn_14_78) is not ported.
 
@@ -1018,11 +1019,12 @@ function is still a stand-in.
 **Where the knee collision actors come from** (the retail's chain, and why the port cannot reach
 Crippled yet): the managers at 0xE60 and 0xE64 are **not** built by the constructor or by the
 AcceptScriptMsg - `fn_14_676C` (0xF8) builds them, and it is called from the module's
-`DoUserAnimEvent` (fn_14_A468, the call at 0xA604) when the animation asks for them. It calls
-`fn_14_61DC` (0x550, the manager at 0xE60) and `fn_14_5C30` (0x590, the manager at 0xE64), which
-build the joint collision descriptions; both are over this slice's ~0x200 limit, so they would
-be stand-ins and the managers would stay empty - and the knee actors themselves belong to the
-knee armour sub-actor (fn_14_4080, not ported), so the knee ids at 0xFB0..0xFB6 stay invalid.
+`Think` (fn_14_A5BC, the call at 0xA604) - see WP2 part 2m, which corrects the call site this
+section guessed. It calls `fn_14_61DC` (0x590, the manager at 0xE60) and `fn_14_5C30` (0x2F4,
+the manager at 0xE64), which build the joint collision descriptions; both are over this
+slice's ~0x200 limit, so they would be stand-ins and the managers would stay empty - and the
+knee actors themselves belong to the knee armour sub-actor (fn_14_4080, not ported), so the
+knee ids at 0xFB0..0xFB6 stay invalid.
 With no knee actor the helper that writes the word at 0x1284 (the one that also asks for the
 knee's deletion) has nothing to delete, the word stays -1, the `KneeDestroyed` trigger
 (fn_14_9A48, ported) never fires and the state machine never enters Crippled. So 7CB4's
@@ -1034,6 +1036,129 @@ clean, the guardian u054d is active (hp 150/150 - the damage passes through it) 
 the leg, shin and toe models; there are no knee collision actors and the Crippled state is not
 entered, so the beacon does not draw. No "[port] caught" and no reach-stub in the log.
 
+**WP2 part 2m done (2026-10-20): the collision actor managers' builder.** `fn_14_676C` (0xF8)
+is ported, its three builder callees are named stand-ins, and it is wired in at its retail
+call site.
+
+**The call site is the Think, not an animation event.** The call at 0xA604 is in
+`fn_14_A5BC` (0xCC bytes), the module's `Think` (vtable slot 5) - not in `DoUserAnimEvent`
+(fn_14_A468), as WP2 part 2l guessed. The Think's body is: the active bit test (the byte at
+guest 0x20, bit 0, read at 0xA5E0), the base's `CPatterned::Think` (the call at 0xA5EC), then
+the manager at guest 0xE60 (the load at 0xA5F0): when it is null the retail calls
+`fn_14_676C` (0xA604) to build both managers, otherwise it updates them (the two
+`CCollisionActorManager::Update` calls at 0xA610 and 0xA620, the options word 0 =
+`kUO_ObjectSpace`). So the trigger is **the manager at guest 0xE60 being null** - there is no
+animation event type in it. The Think then calls `fn_14_6E04`, `fn_14_2358`, `fn_14_38BC` and
+`fn_14_3F90`, which the port does not have yet.
+
+**`fn_14_676C` (0xF8 bytes)**, in retail order: `fn_14_61DC` (the call at 0x678C, 0x590
+bytes - the manager at 0xE60), `fn_14_5C30` (0x6798, 0x2F4 bytes - the manager at 0xE64),
+`fn_14_59BC` (0x67A4, 0x274 bytes), `fn_14_3974` (0x67B4, with the third argument 0) and the
+material filter (the `SetMaterialFilter` call at 0x6844). The three builders are over the
+~0x200 callee limit, so they are named once-logging stand-ins: the managers at 0xE60 and 0xE64
+stay null and the knee ids at 0xFB0..0xFB6 keep their invalid value - Crippled is still
+unreachable, exactly as WP2 part 2l described.
+
+**`fn_14_3974` (0x58 bytes)** is ported: the object with the id at guest 0x1080 (the halfword
+load at 0x3988) is looked up (the `ObjectById` call at 0x3998) and its active flag is set
+(the virtual call at 0x39B4, the vtable slot 0x1C = `CEntity::SetActive`) to the flag the
+third argument carries (the `clrlwi` at 0x39A8, its low byte).
+
+**The material filter** (0x67B8..0x6844) is built from the four `.rodata` words 0x470 (0x2F),
+0x474 (0x1C), 0x478 (0x20) and 0x46C (0x3B) with the MWCC helper `__shl2i` (the DOL's
+0x80345A44, 0x24 bytes). The helper is a 64-bit shift of the pair (r3:r4) by r5 that returns
+its high word in r3 and its low word in r4; for the call shape `__shl2i(0, 1, word)` it
+computes `1 << (word & 31)` in **both** words. The include list is the fourth word's shift
+(0x08000000 in both halves, the material types 27 and 59) and the exclude list is the or of
+the first three (0x10008001 in both halves, the types 0, 15, 27, 28, 32, 35, 59 and 60); the
+type word is 3, `kFT_IncludeExclude`. The port sets exactly those two lists.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is alive, and the log shows the three builder stand-ins once each -
+so the Think's manager branch runs. No "[port] caught" and no reach-stub in the log.
+
+**WP2 part 2n done (2026-10-20): the module's AcceptScriptMsg cases.** `fn_14_A6A8` (0x4F0)
+switches on the message's four-character code - a big-endian u32 of the four characters, each
+compare an `lis`/`addi` pair. The dispatch runs from 0xA6BC (the message load) to 0xA818, and
+the cases are:
+
+| message | FourCC | case | body |
+|---|---|---|---|
+| "IM01" | 0x494D3031 | 0xAAC8 | the byte at 0x1010 = 1, then fn_14_3A44 |
+| "IM02" | 0x494D3032 | 0xAAE0 | the byte at 0x1010 = 0, then fn_14_3A44 |
+| "IM03" | 0x494D3033 | 0xAAF8 | the byte at 0x1012 = 1, then fn_14_3A44 |
+| "IM04" | 0x494D3034 | 0xAB10 | the byte at 0x1012 = 0, then fn_14_3A44 |
+| "IM05" | 0x494D3035 | 0xAB28 | the byte at 0x1013 = 1, then fn_14_3A44 |
+| "IM06" | 0x494D3036 | 0xAB40 | the byte at 0x1013 = 0, then fn_14_3A44 |
+| "IM07" | 0x494D3037 | 0xAB58 | the byte at 0x1011 = 1, then fn_14_3A44 |
+| "IM08" | 0x494D3038 | 0xAB70 | the byte at 0x1011 = 0, then fn_14_3A44 |
+| "IM00" | 0x494D3030 | 0xAAB8 | fn_14_3F14 |
+| "XALC" | 0x58414C44 | 0xA998 | fn_14_5910 |
+| "XAUD" | 0x58415544 | 0xA9A8 | the two managers' `SetPhysicsActive(mgr, false)` |
+| "XDMG" | 0x58444D47 | 0xA9DC | fn_14_5838 with the message's first halfword |
+| "XRDG" | 0x58524447 | 0xA9FC | fn_14_5644 with the message's first halfword |
+| "XHIT" | 0x58484954 | 0xAA1C | fn_14_4F2C with the message's first halfword |
+| "ACTV" | 0x41435456 | 0xA8DC | the managers' `SetActive(mgr, true)`, fn_14_3E88, fn_14_7B24 |
+| "DCTV" | 0x44435456 | 0xA94C | the managers' `SetActive(mgr, false)`, fn_14_3E88 |
+| "OPEN" | 0x4F50454E | 0xAA3C | the state word at 0x1268 = 2 and the beacon's sound |
+| "CLOS" | 0x434C4F53 | 0xAA80 | the flag byte's bits 3 and 4, then the delete request |
+| "XDEL" | 0x5844454C | 0xA880 | the managers' `Destroy`, the sound emitter, fn_14_3F14 |
+| "XCRT" | 0x58435254 | 0xA81C | body controller `Activate`, fn_14_4080, fn_14_24E4, visor flags (0xF off, 2 on), `RemoveMaterial(0x3F)`, fn_14_14F8 |
+
+All cases are ported (the "XCRT" case since 2026-10-20, see "Knee chain" below). The helpers
+the ported cases call - fn_14_3F14, fn_14_5910, fn_14_5644 and fn_14_4F2C - are not ported
+either (fn_14_3A44 and fn_14_5838 are, 2026-10-20), so each case logs them once.
+
+The "ACTV" and "DCTV" cases only run when the actor's active bit is clear resp. set (the retail
+reads the byte at guest 0x20, bit 7, at 0xA6C4, before it calls the base), and the "ACTV"
+case only wakes the second manager when the flag byte's bit 6 is set (the `extrwi` at 0xA90C).
+The "OPEN" case needs the flag byte's bit 3 clear (the `extrwi` at 0xAA40) and the state word
+at 0x1268 different from 1 (the `cmpwi` at 0xAA4C); it plays the data block's +0x1C0 parms
+(sound_BeaconExtract) at the actor's translation. The "CLOS" case sets the flag byte's bits 3
+and 4 (the two `rlwimi` at 0xAA88 and 0xAA9C) and asks for the actor's own object to be
+deleted (the halfword at guest 0x8, the actor's id).
+
+Runtime (the same area-53 run): the run is clean, the guardian is alive, and the log shows the
+new case stand-ins ("XCRT", "XALC", "XRDG" and the "XDEL" case's helper) - the area's scripts
+do send those messages. No "[port] caught" and no reach-stub in the log.
+
+
+### Knee chain (2026-10-20)
+
+Ported: the collider builders fn_14_61DC (the xE60 manager: spheres, OBBs, per-collider
+vulnerabilities 0x1044/0x10CC/0x1110/0x1188), fn_14_5C30 (the xE64 manager: four knee-to-ankle
+OBBs, built inactive) and fn_14_59BC (collider health, knockback resistance 10); the knee-armour
+actor `CDigitalGuardianKneeArmor` (port-only `PortCDigitalGuardianKneeArmor.cpp`: ctor fn_14_D4D0,
+Think fn_14_CF94, AcceptScriptMsg fn_14_D320, GetDamageVulnerability fn_14_D7BC = pass-through,
+GetTouchBounds fn_14_D774, the armoured toggle fn_14_CE94); fn_14_4080 (one armour per knee
+locator, ids to 0xFB0..0xFB6), fn_14_24E4/fn_14_1A68 (toe-target state: effects "ToeTarget*",
+"ToeFlinch*", "SWBuildUp*", sounds, the "Toe Target Explosion Fx"), fn_14_14F8 (CPatterned's
+speed, guest 0x3C8, from data +0x17C..+0x188 by armours left) and the "XCRT" case. New host
+members: 0xE00 (the actor parameters, fn_14_C57C), 0x1100 (the explosion token), 0x10F0, 0x1144,
+0x1158.
+
+Retail damage flow: a knee collider's "XDMG" reaches fn_14_5838, which picks the head
+collider (0x10CC, fn_14_5274), a knee (fn_14_3E2C finds it in 0xFBC..; fn_14_5470 removes the
+armour and fires KneeDestroyed when its health is gone) or the root (fn_14_43AC / 0x1080,
+fn_14_5384). The knee colliders start with the ricochet vulnerability (0x1044); the "IM0x"
+messages' helper fn_14_3A44 swaps in the vulnerable one (0x1014) and calls fn_14_CE94 on the
+armour. Ported since the second slice: fn_14_3A44 (+ the 0x1014 vulnerability), fn_14_3E2C,
+fn_14_5470 (with fn_14_143C, which moves the IS06/Follow waypoint to the armour and sends IS07;
+0x10CE, which it decrements, is only set by the stand-in fn_14_5910) and fn_14_5838 (its head and
+root paths fn_14_5274/fn_14_5384 are stand-ins).
+
+Runtime, first slice (area 53, layers 3/11, `send u054d Activate`): clean; four
+`CDigitalGuardianKneeArmor` at the knee locators (inactive, like the guardian at XCRT); the knee
+colliders take `damage <id> 500` as 300 -> 300 (ricochet).
+
+Runtime, second slice (`/tmp/opencode/dgknee/run2.sh`): clean (0 caught, 0 reach-stub). After
+`send u054d 0x494d3031/3033/3035/3037` (IM01/03/05/07) each knee takes `damage 100` as 300 -> 200
+(the armour gets "XDMG"); `damage 500` takes it to -300, deletes its armour and sets 0x1284, and
+the FSM enters KneeDestroyedReaction (the fn_14_8090 stand-in logs). The level's IS07 links
+re-close the other knees (a later `damage` ricochets until IM0x is resent); with IM0x resent all
+four knees and armours go. Crippled is not entered: KneeDestroyedReaction (fn_14_8090) is a
+stand-in, so the walk stops there (guardian 150/150).
 
 ### WP3 — the head module
 
@@ -1045,7 +1170,7 @@ entered, so the beacon does not draw. No "[port] caught" and no reach-stub in th
 
 | piece | guest class | size | where |
 |---|---|---|---|
-| knee armour | `CActor` subclass, vtable `lbl_14_data_694` | 0x1A0 | `fn_14_4080` |
+| knee armour | `CDigitalGuardianKneeArmor : CActor` (ported), vtable `lbl_14_data_694` | 0x1A0 | `fn_14_4080` |
 | echo target | `CActor` subclass, vtable `lbl_14_data_10D0` | 0x790 | `fn_14_12314` |
 | guardian projectile | `CEnergyProjectile` subclass, vtable `lbl_14_data_1034` | 0x568 | `fn_14_10CA0` |
 | vortex | `CShockWave` | 0x9F8 | `fn_14_458C` |

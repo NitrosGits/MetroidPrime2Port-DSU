@@ -102,6 +102,10 @@ public:
   // calls the module's table through SSplitterMainChassis_FuncPtrs::mAutoDestruct.
   void AutoDestruct(float time);
 
+  // The command module reads these two ids (fn_75_31A8).
+  TUniqueId GetCommandModuleId() const { return mCommandModuleId; }
+  TUniqueId GetSyncId() const { return mSyncId; }
+
   // CEntity / CActor
   void PreThink(float dt, CStateManager& mgr) override;
   void Think(float dt, CStateManager& mgr) override;
@@ -166,6 +170,10 @@ private:
   // joint collision descriptions belong to the state machine.
   CCollisionActorManager* mCollisionActorManager = nullptr;
   TUniqueId mCommandModuleId;
+  // guest 0xCC0: the id the command module copies into its own 0xEFE (fn_75_31A8, 0x320C).
+  // The retail writes it at 0xBE54 and in its constructor (0xF764); what it names is not
+  // established, so the port keeps it invalid.
+  TUniqueId mSyncId = kInvalidUniqueId;
   // guest 0xC70: the retail's CVisualKnowledge, whose Update the Think calls (the DOL's
   // fn_801F55F0). The host's CLineOfSightTracker is the same thing.
   CLineOfSightTracker mVisualKnowledge;

@@ -258,14 +258,44 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   bounce counts at 0x5C8; the roll pops one per spline run and shrinks when none are left, which
   is what IsBoostOver sees). `FindBoostNavPoint` (`2F9C`) is a static taking the actor, so the
   ball shares it. Area 28: the ball rolls, bounces, ends BoostAttack and respawns on the next.
-- *Stand-ins:* the roll's contact sweep `14CCC` (0x608; damages patterned actors and damageable
-  triggers, so only the player takes contact damage now).
+- *Contact sweep (slice c):* `14CCC` sweeps a first-person-radius sphere along the frame's motion
+  above `mMinDamageSpeed`: a player hit becomes Think's `mTouchedId`, any other hit is damaged, and
+  the first non-actor hit ends the speed spline (`m5D9_80`); damageable triggers nearer than the
+  hit are damaged too. Area 28: hits the player and world actors.
 - *Retail quirks kept:* `12510` takes its pick modulo the exhausted list index (-1), so it always
   heads for the first candidate; `13260` normalises a nav-point line it never reads.
-- *Next:* the render overrides `13E68`/`141B8`/`13ECC` (the effects are updated but not drawn) and
-  `14CCC`. The 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
-  guardian's AcceptScriptMsg `fn_30_DDA0` (0xDF18/0xDF24), which the host does not have yet, so
-  BoostAttack's `SetActive` calls on 0xD64 stay null-guarded until that slice.
+- *Render (slice c):* AddToRenderer `13E68`, Render `141B8` (dark visor: alpha modulation),
+  PreRenderAllViewports `13ECC` (render bounds = the effects' union). The ball draws (area 28).
+- *0xD64 manager:* `CreateIngSpotManager` (`4A38`) builds one `PuddleCollisionActor` box (5,5,1.5,
+  mass 1000) at `Root` in kSM_Create (0xDF24, after the body manager); `SetupManagerActors` (`4924`)
+  gives it the health info and CPatterned's vulnerability. `10F9C`/`4BD8`/`4C58`/`4D74` are rstl
+  vector inlines (reserve, push_back_unsafe, copy, dtor). Its retail lifecycle is in: Delete
+  (0xE0CC), Activate (`mForm == kForm_IngSpot`, 0xE16C), Deactivate (0xE224), AIUpdateDisabled
+  (0xE2EC), BecomeIngSpot on (0xAF70), BecomeCorporeal off (0xB144), the dtor; BoostAttack's
+  calls are unguarded as in retail. Area 28: the box is built (8th collision actor).
+  `DDA0`'s ACTV/DCTV gate (`f31` vs rodata_70) is the active bit taken before the base handles the
+  message: ACTV acts only when inactive, DCTV only when active (ported). kSM_Create also builds the two
+  "IngBlobEffect" trackers (`648C`, 0x1074 ingSpot / 0x1076 boost blob effect) and the "Ing Light"
+  (`67B4`, 0x1084); ACTV turns the light on and sets the boss params ("BossBoostBallGuardian"), DCTV
+  runs `510C` (LeaveTeam), turns the light off and zeroes both trackers' emission; Delete deletes
+  all three. Their per-frame drivers are ported: `65C8` fades the light
+  (0x11C4) on the head locator; `6108` drives one tracker on the surface under the guardian. The host's ACTV `JoinTeam`
+  is the Ing's; Delete runs `6064` (the cover hint at 0x108E). Damage is retail's: XDMG runs `479C` (ing-spot form: `44A4`, the
+  puddle collider or a hit the boost ball relays; else `4078`, a body collider) and sets the
+  player-projectile bit; XRDG runs `4324` in the ing-spot form only. Both count only a CWeapon as
+  the collider's last-touched object, so the console's `damage <collider>` (the player as attacker)
+  moves no guardian HP, in retail too; real shots do. The puddle never kills (1 HP, puddle mode off
+  for good); `4030` turns puddle mode on with damage. `D4F8`'s events 37/38 clear/set 0x11EF 0x10
+  (`mBodyHitsLethal`) in the host's (Ing-derived) DoUserAnimEvent. `CA18` (UpdateHitDamageTime) tints
+  with 0x1080 and the XENZ/XEXZ count 0x115C; that count's other readers (`A07C`, `C05C`, `C1B0`)
+  are not checked.
+- *0xD60 manager:* `CreateCollisionActorManager` is now `4E90` (kSM_Create 0xDF18): the seven
+  `lbl_30_rodata_0` spheres (same table as the Ing's), `SetupManagerActors` (`4924`), `AddMaterial`
+  Unknown54 + ProjectilePassthrough, filter Solid / CollisionActor, AIPassthrough, Player,
+  Projectile, Bomb. It replaces the Ing-half `single_ptr` manager and `SetupCollisionActors`; both
+  managers are raw pointers deleted in the dtor (0xD64 then 0xD60). Retail calls them unchecked
+  everywhere but AIUpdateDisabled, and so does the host now. Area 28: a sphere hit relays to the
+  guardian; the puddle box takes the IngSpot form's turns.
 
 ## g. Function map
 
@@ -439,8 +469,7 @@ offsets are in section e; the module's own addresses for the state machine's nod
   half's copies, and the module's own ones may carry boost-specific code. Compare their sizes
   before trusting the Ing half's behaviour. `fn_30_D94C` Think is ported (2026-10-20) with
   `fn_30_5D90` timers, `fn_30_55D8` ing-spot think and `fn_30_56E0` touch box; its callees
-  `fn_30_6108` (puddle effects, 0x384) and `fn_30_65C8` (hit light, 0x148) are once-logging
-  stand-ins, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
+  `fn_30_6108` (tracker drivers) and `fn_30_65C8` (hit light) are ported, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
 - live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
   `BoostAttack`, which spawns the boost ball (`CBoostBallGuardianBall` in `objs`, at the ground
   under the guardian); with the ball's Think still a stand-in the state waits there (section f).

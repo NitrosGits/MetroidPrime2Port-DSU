@@ -4,6 +4,7 @@
 #include "MetroidPrime/CActor.hpp"
 #ifdef TARGET_PC
 #include "Kyoto/Animation/CPASAnimParm.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/CToken.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
@@ -36,8 +37,7 @@ public:
   // the five member functions the module hands the DOL through SPlayerTurret_FuncPtrs. Milestone 2
   // adds the message switch of AcceptScriptMsg (fn_63_1BE8): the player enters (kSM_Activate),
   // leaves (kSM_Deactivate) and the turret starts (kSM_Start). Think (fn_63_23C0) and PreRender
-  // (fn_63_2D68) are still too big for a slice and forward to CActor behind a once-only stand-in
-  // log.
+  // (fn_63_2D68) are ported as well.
   CScriptPlayerTurret(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                       const CTransform4f& xf, const CActorParameters& actParms, uint flags,
                       float maxHorizRotationLeft, float maxHorizRotationRight,
@@ -95,9 +95,10 @@ private:
   float mPitchTarget;               // 0x1B0: the pitch the input asks for
   float mPitch;                    // 0x1B4: the pitch the turret has reached
   float mUnknown1B8;                  // 0x1B8
-  float mUnknown1BC;                  // 0x1BC
-  float mUnknown1C0;                  // 0x1C0
-  CVector3f mBaseForward;             // 0x1C4..0x1CC: the editor transform's forward vector
+  float mUnknown1BC;                  // 0x1BC: Think's rotation sound debounce (0..0.05)
+  float mUnknown1C0;                  // 0x1C0: Think's alignment (1 = still)
+  CVector3f mBaseForward;             // 0x1C4..0x1CC: the editor transform's forward vector, then
+                                      // the top actor's one of the last Think
   float mYawTarget;                  // 0x1D0: the yaw the input asks for
   CModelFlags mModelFlags;            // 0x1D4..0x1DC: the base actor's model flags
   CAssetId mWeaponEffect;             // 0x1E0
@@ -106,7 +107,7 @@ private:
   CDamageInfo mWeaponDamage;          // 0x1F0
   float mUnknown20C;                  // 0x20C
   CVector3f mTargetPosition;          // 0x210: the editor transform's translation
-  uint mSfxHandle;                    // 0x21C
+  CSfxHandle mSfxHandle;              // 0x21C: the rotation sound
   TUniqueId mHullActorId;             // 0x220
   ushort mSfxTurretRotation;          // 0x222
   ushort mSfxSinglePlayerImpact;      // 0x224
