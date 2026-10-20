@@ -607,15 +607,24 @@ void CMinorIng::SetForm(CStateManager& mgr, int form, bool setLocomotion) {
   }
 }
 
-// @ fn_44_3670
-void CMinorIng::SnapToFloor(CStateManager& mgr) {
-  PortMinorIngStandIn("fn_44_34B0 (0x164 bytes)");
-  // fn_44_34B0: a ray down the actor's up axis, from one unit above it, 10 units long, Solid.
+// @ fn_44_34B0
+// The retail helper fires a ray from one unit above the actor, straight down its up axis, ten
+// units long, against Solid only - the material 0x3b of the module's data, shifted into the mask
+// at asm 0x34E8-0x350C - and writes the hit point, or the zero vector when the ray hits nothing
+// (asm 0x35A8-0x35DC). The copy of the result is the retail's fn_44_3614.
+void CMinorIng::RayDown(CVector3f& out, CStateManager& mgr) const {
   const CVector3f up = GetTransform().GetUp();
   const CRayCastResult result =
       mgr.RayStaticIntersection(GetTranslation() + up, up * -1.f, 10.f, SolidFilter());
-  if (result.IsValid() && result.GetPoint() != CVector3f::Zero()) {
-    SetTranslation(result.GetPoint());
+  out = result.IsValid() ? result.GetPoint() : CVector3f::Zero();
+}
+
+// @ fn_44_3670
+void CMinorIng::SnapToFloor(CStateManager& mgr) {
+  CVector3f point;
+  RayDown(point, mgr);
+  if (point != CVector3f::Zero()) {
+    SetTranslation(point);
   }
 }
 

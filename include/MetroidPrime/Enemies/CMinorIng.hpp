@@ -234,6 +234,7 @@ private:
   void UpdateLocomotionType();
   void SetForm(CStateManager& mgr, int form, bool setLocomotion);
   void SnapToFloor(CStateManager& mgr);
+  void RayDown(CVector3f& out, CStateManager& mgr) const;
   bool UpdateTargetPos(CStateManager& mgr);
   void UpdateBallPursuit(CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
