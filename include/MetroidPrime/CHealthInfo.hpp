@@ -25,6 +25,11 @@ public:
   TUniqueId GetDamageId2() const { return mDeathDamageSource; } // Guessed name.
 
   TUniqueId GetLastDamageSource() const { return mLastDamageSource; } // Guessed name.
+#ifdef TARGET_PC
+  // The guest's CHealthInfo + 0x18 (the archive's uidC): the owner of the last damage. The
+  // ScriptPlayerTurret's damage message reads it (fn_63_1BE8 at 0x00002338).
+  TUniqueId GetLastDamageOwner() const { return mLastDamageOwner; }
+#endif
 
   const CWeaponMode& GetCauseOfDeathWeapon() const { return mDeathWeaponMode; } // Guessed name.
 

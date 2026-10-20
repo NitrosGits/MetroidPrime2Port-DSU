@@ -3,7 +3,9 @@
 
 #include "MetroidPrime/CActor.hpp"
 #ifdef TARGET_PC
+#include "Kyoto/CToken.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -64,6 +66,7 @@ private:
   void AddSolidToTopActor(CStateManager& mgr);      // fn_63_14B4 (0x54)
   void RemoveSolidFromTopActor(CStateManager& mgr); // fn_63_1460 (0x54)
   void LoadHullActors(CStateManager& mgr);           // fn_63_15B0 (0x3C4): only the connections
+  void FireTurretShot(CStateManager& mgr);           // fn_63_84C (0x184): a stand-in for now
 
   // Host layout, in the guest's order. The guest offsets are in the comments.
   CAABox mBounds;                     // 0x158: a one-unit box around the actor's position
@@ -84,16 +87,17 @@ private:
   uint mUnknown1A4;                   // 0x1A4
   uint mUnknown1A8;                   // 0x1A8
   uint mUnknown1AC;                   // 0x1AC
-  float mHorizRotation;               // 0x1B0: the current horizontal rotation
-  float mVertRotation;                // 0x1B4: the current vertical rotation
+  float mPitchTarget;               // 0x1B0: the pitch the input asks for
+  float mPitch;                    // 0x1B4: the pitch the turret has reached
   float mUnknown1B8;                  // 0x1B8
   float mUnknown1BC;                  // 0x1BC
   float mUnknown1C0;                  // 0x1C0
   CVector3f mBaseForward;             // 0x1C4..0x1CC: the editor transform's forward vector
-  float mUnknown1D0;                  // 0x1D0
-  CColor mLightColor;                 // 0x1D4..0x1DC
+  float mYawTarget;                  // 0x1D0: the yaw the input asks for
+  CModelFlags mModelFlags;            // 0x1D4..0x1DC: the base actor's model flags
   CAssetId mWeaponEffect;             // 0x1E0
   CAssetId mWeaponEffectMulti;        // 0x1E4
+  rstl::single_ptr< CToken > mToken;  // 0x1E8: the hull's model token
   CDamageInfo mWeaponDamage;          // 0x1F0
   float mUnknown20C;                  // 0x20C
   CVector3f mTargetPosition;          // 0x210: the editor transform's translation

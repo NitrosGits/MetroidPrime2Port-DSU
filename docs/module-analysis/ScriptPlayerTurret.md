@@ -1,6 +1,6 @@
 # ScriptPlayerTurret REL (module 63): analysis for a host body
 
-Analysis + host body, milestones 1-2 (2026-10-20). Sources: the archive build's disassembly
+Analysis + host body, milestones 1-3 (2026-10-20). Sources: the archive build's disassembly
 `../MetroidPrime2Port/build/G2ME01/ScriptPlayerTurret/asm/` (`auto_00_00000050_text.s` is the whole
 `.text`, `auto_03/04/05_*` are rodata/data/bss, `MetroidPrime/ScriptObjects/CScriptPlayerTurretRel.s`
 is the REL's own file), the m2c pseudo-C in `/tmp/opencode/pseudo/ScriptPlayerTurret/`, the
@@ -43,6 +43,7 @@ Module: id 63, 14868 text bytes, 59 functions, script type `PLRT`, entity type
 | `fn_63_14B4` | 0x54 | helper of the `0x53545254` message: the actor at 0x19A gains `kMT_Solid` | [proven] call at 0x00001FF0 |
 | `fn_63_15B0` | 0x3C4 | reads the two connections (`FindConnectedObject`) and stores the base actor at 0x198 and the top actor at 0x19A, then looks up five animation ids (0x19C..0x1AC) and the base actor's light colour (0x1D4..0x1DC); called from the `0x58414C44` message | [proven] the two stores at 0x00001818/0x00001860 |
 | `fn_63_374C` | 0x20 | `CModelData`'s default constructor (the turret's empty model) | [proven] call at 0x00003268 |
+| `fn_63_84C` | 0x184 | the turret's **shot**: the energy projectile, spawned at the muzzle (the `muzzleleen_LCTR` locator) | [proven] call at 0x000012C8 |
 | `fn_63_349C` | 0x74 | `CToken(IObj* null)`: the turret's empty token at 0x1E8 | [proven] call at 0x00003384 |
 | `fn_63_674` | 0xB8 | `SLdrEditorProperties`' constructor (the loader's defaults) | [proven] call at 0x00000238 |
 | `fn_63_610` | 0x64 | `SLdrEditorProperties`' destructor | [proven] |
@@ -75,13 +76,15 @@ own fields run 0x158..0x22F. The host's layout is its own (Echoes' `CActor` grow
 | 0x19A | `u16` - the **top actor** (the one moved onto the hull's locator); also what `fn_63_840` returns | [proven] |
 | 0x19C, 0x1A0 | two animation ids (the additive animations) | [proven] zeroed |
 | 0x1A4, 0x1A8, 0x1AC | three zeroed words | [proven] |
-| 0x1B0, 0x1B4 | the current horizontal and vertical rotation | [probable]: `fn_63_23C0` reads and writes them |
+| 0x1B0 | the **pitch the input asks for**: `fn_63_1134` writes it (the stick's forward axis times the elevation limit) and `fn_63_23C0` reads it | [proven] the store at 0x00001430/0x00001440 |
+| 0x1B4 | the **pitch the turret has reached**: `fn_63_23C0` moves it toward 0x1B0 and clamps it to -0x180..0x17C | [proven] the clamp at 0x00002B00 |
 | 0x1B8, 0x1BC, 0x1C0 | three floats zeroed at birth | [proven] |
 | 0x1C4..0x1CC | the editor transform's forward vector (m01, m11, m21) | [proven] the loads from the transform |
-| 0x1D0 | a float zeroed at birth | [proven] |
-| 0x1D4..0x1DC | the light colour: a `CColor(1,1,1,1)` plus its flags | [proven] the `CColor` constructor call at 0x00003348 |
+| 0x1D0 | the **yaw the input asks for**: `fn_63_1134` writes the turn axis into it | [proven] the store at 0x00001334 |
+| 0x1C0 | the yaw the turret has reached: `fn_63_23C0` writes the top actor's forward dotted with the turret's | [proven] the store at 0x00002A50 |
+| 0x1D4..0x1DC | the base actor's **model flags**: a word, two bytes, a u16 and the packed `CColor(1,1,1,1)` - the flags 3 and the blend modes 0 and 5 in `fn_63_2D68` are `CModelFlags`' | [proven] the `CColor` constructor call at 0x00003348 and the blend modes at 0x00002E54/0x00002ED4 |
 | 0x1E0, 0x1E4 | the two weapon effect asset ids | [proven] the loader's args |
-| 0x1E8 | `CToken` - the hull's model token, created empty | [proven] `fn_63_349C` |
+| 0x1E8 | `CToken` - the hull's model token, created empty; the `kSM_Create` message fills it with the weapon effect's resource | [proven] `fn_63_349C`, the store at 0x00001D08 |
 | 0x1F0..0x20A | the weapon damage (`CDamageInfo`: mode, four floats, three ids, a byte) | [proven] the copy pattern at 0x00003398 |
 | 0x204 | overwritten with **0x2812** after the damage copy | [proven] the store at 0x00003444; the host's `CDamageInfo` has no setter for that field |
 | 0x20C | a float zeroed at birth | [proven] |
@@ -185,13 +188,13 @@ codes; every case ends in `CActor::AcceptScriptMsg` (0x2348). The cases and thei
 
 | msg | code | asm | size | what it does |
 |---|---|---|---|---|
-| `kSM_Create` | 0x58435254 | 0x1C9C | 0x108 | the hull's model token (0x1E8) from the weapon effect asset |
+| `kSM_Create` | 0x58435254 | 0x1C9C | 0x108 | the hull's model token (0x1E8) from the weapon effect asset (ported) |
 | `kSM_Activate` | 0x41435456 | 0x1DA4 | 0x1B4 | the player enters (ported) |
 | `kSM_Deactivate` | 0x44435456 | 0x1F58 | 0x58 | the player leaves (ported) |
 | `kSM_Start` | 0x53545254 | 0x1FB0 | 0x58 | the turret starts (ported) |
-| `kSM_Stop` | 0x53544F50 | 0x2008 | 0x23C | the player is ejected and killed |
-| `kSM_AreaLoaded` | 0x58414C44 | 0x2244 | 0x8 | `fn_63_15B0` (0x3C4) |
-| `kSM_Damage` | 0x58444D47 | 0x224C | 0xFC | the damage flash and the impact sound |
+| `kSM_Stop` | 0x53544F50 | 0x2008 | 0x23C | the player is ejected and killed (ported) |
+| `kSM_AreaLoaded` | 0x58414C44 | 0x2244 | 0x8 | `fn_63_15B0` (0x3C4): only its two connections are ported |
+| `kSM_Damage` | 0x58444D47 | 0x224C | 0xFC | the damage flash and the impact sound (ported) |
 
 Facts the ported cases established:
 
@@ -208,16 +211,32 @@ Facts the ported cases established:
 - The turret's base and top actors are its **connections**: `kSS_AttachedAnimatedObject` (0x41544F42,
   "ATOB") for the base actor and `kSS_AttachedCollisionObject` (0x4154434C, "ATCL") for the top
   actor, both with the message `kSM_Attach` (0x41544348) - `fn_63_15B0` at 0x15E4 and 0x1930.
+- `kSM_Stop` gives the base actor the turret's saved model flags (0x1D4..0x1DC) back, ejects the
+  player (`EjectFromTurret`), kills it (`KillPlayer` with the player's own health and the hull
+  actor id 0x220), zeroes both rotations and plays the turret's animation (0x1AC) on the base
+  actor; the animation data's flag byte at 0x2AC loses bit 0x40 (the loop flag) and gains bit 0x80
+  (the animating flag) - the host's `EnableLooping(false)` does both.
+- `kSM_Damage` sets the flash timer 0x20C to 0.15 (lbl_63_rodata_20), plays the multi-player
+  impact sound (0x226) at the player's sound pan or, in single player, the impact emitter (0x224)
+  at the turret's target position (0x210), and takes the hull actor id (0x220) from the damaged
+  actor's health info - the owner of the last damage (the guest's `CHealthInfo` + 0x18), or the
+  message's originator when the actor has no health info.
+- The guest's `CGameState` byte 0xA4 bit 0x40 (`extrwi. r0,r0,1,25`) is the game's **invert Y**
+  option: it swaps the two stick axes of the turret's pitch (`CGameOptions::GetInvertYAxis`).
+  [probable]: the bit's position in the options' bitfield byte is the same as the host's.
 
 ## 9. Milestone 2 (the message switch) - host body and runtime
 
-`AcceptScriptMsg` (fn_63_1BE8) now has retail's switch with the three ported cases above; the four
-cases that are still stand-ins fall through to `CActor::AcceptScriptMsg` and are named in the
-method's comment. `fn_63_14B4` (0x54) and `fn_63_1460` (0x54) are ported as named methods; of
-`fn_63_15B0` (0x3C4) only the two `FindConnectedObject` calls are ported - the animation lookup
-(0x2B4 of it) stays a stand-in - because the DOL's turret HUD (`CTurretHud::UpdateEnergy`) reads the
-hull actor's id and dereferences the actor it names: without the connections the run **crashes**
-(SIGSEGV in `CTurretHud::UpdateEnergy`) as soon as the player is in the turret.
+`AcceptScriptMsg` (fn_63_1BE8) now has retail's switch with **all seven cases ported**;
+`fn_63_14B4` (0x54) and `fn_63_1460` (0x54) are ported as named methods, and `ProcessInput`
+(fn_63_1134, 0x32C) is ported. Of `fn_63_15B0` (0x3C4) only the two `FindConnectedObject` calls and
+the base actor's model flags are ported - the animation lookup (0x2B4 of it) stays a stand-in -
+because the DOL's turret HUD (`CTurretHud::UpdateEnergy`) reads the hull actor's id and
+dereferences the actor it names: without the connections the run **crashes** (SIGSEGV in
+`CTurretHud::UpdateEnergy`) as soon as the player is in the turret.
+
+The module's own helper that is too big for a slice stays a named stand-in: `fn_63_84C` (0x184,
+the turret's shot - the energy projectile).
 
 **Runtime check (2026-10-20).** `WORLD=M06_ShootingGallery,06_ShootingGallery FRAMES=2400
 GODMODE=1 MP2_CONSOLE=4780 tools/run_gameplay.sh` with the console's `tp 0 -27 11` (the turret and
@@ -225,15 +244,19 @@ the trigger that activates it are at (0, -27, 10); the player spawns at (-100, 2
 
 - The stand-ins that log: `fn_63_15B0` (the hull's animation ids, at the area load),
   `fn_63_23C0` (Think), `fn_63_2D68` (PreRender, once the player is in the turret) and
-  `fn_63_1134` (ProcessInput, once the player is in the turret).
+  `fn_63_84C` (the turret's shot, once the player fires).
 - The player **gets on the turret**: the console's `status` prints `in-turret 1`, the player sits
   at the turret's position (0, -27, 10) and the camera is the turret's (`GetCameraTransform` over
   the base actor's locator: (0, -24, 10)).
-- The turret does **not aim and does not fire** yet: `fn_63_23C0` (Think, 0x968) and `fn_63_1134`
-  (ProcessInput, 0x32C) are still stand-ins, and the `kSM_Stop` case (0x23C) that ejects the player
-  is not ported either, so the player stays in the turret.
+- **The input reaches the turret**: the console's `press A 20` makes the turret fire, and the
+  `fn_63_84C` stand-in logs - so `ProcessInput` (the ported fn_63_1134) sees the fire button and
+  the reload timer (0x1B8) runs.
+- **`kSM_Stop` ejects the player**: the console's `send u040d Stop` (0x53544F50) prints
+  `in-turret 0` afterwards and the camera is the player's again. The case also kills the player
+  (`KillPlayer`), and the port then waits at the death memo - the same state the console's
+  `kill` leaves the game in (checked: `kill` freezes the updates the same way), not a crash.
 - 2400 game updates, `exit=0`, no `[port] caught` and no `reach-stub` (both counts 0).
 
-**Milestone 3 (next).** `fn_63_23C0` (Think) and `fn_63_1134` (ProcessInput) are the two that make
-the turret aim and fire; then `fn_63_2D68` (PreRender) and the four unported message cases, then
-the rest of `fn_63_15B0` (the animation ids and the light colour).
+**Milestone 3 (next).** `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
+turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC) and the rest of `fn_63_15B0`
+(the five animation ids), and `fn_63_84C` (0x184) for the shot itself.
