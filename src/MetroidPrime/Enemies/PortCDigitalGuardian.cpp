@@ -423,12 +423,12 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   switch (static_cast< uint >(msg.GetMessage())) {
   case 0x41435456: // "ACTV"
     if (!active) {
-      if (xE60_ != nullptr) {
+      if (xE60_ != nullptr) { // the retail's test at 0xA8E8
         xE60_->SetActive(mgr, true);
       }
       // The second manager is only woken when the flag byte's bit 6 is set (the extrwi at
       // 0xA90C, the byte's bit 6 = 0x40).
-      if (xE64_ != nullptr && (x128C_ & 0x40) != 0) {
+      if (xE64_ != nullptr && (x128C_ & 0x40) != 0) { // the tests at 0xA900 and 0xA910
         xE64_->SetActive(mgr, true);
       }
       x3E88_(mgr, true);
@@ -440,10 +440,10 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     break;
   case 0x44435456: // "DCTV"
     if (active) {
-      if (xE60_ != nullptr) {
+      if (xE60_ != nullptr) { // the retail's test at 0xA958
         xE60_->SetActive(mgr, false);
       }
-      if (xE64_ != nullptr) {
+      if (xE64_ != nullptr) { // the retail's test at 0xA970
         xE64_->SetActive(mgr, false);
       }
       x3E88_(mgr, false);
@@ -468,10 +468,10 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     mgr.DeleteObjectRequest(GetUniqueId());
     break;
   case 0x5844454C: // "XDEL"
-    if (xE60_ != nullptr) {
+    if (xE60_ != nullptr) { // the retail's test at 0xA884
       xE60_->Destroy(mgr);
     }
-    if (xE64_ != nullptr) {
+    if (xE64_ != nullptr) { // the retail's test at 0xA898
       xE64_->Destroy(mgr);
     }
     if (x1240_ != CSfxHandle()) {
@@ -481,10 +481,10 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     StandInFn("fn_14_3F14 (the XDEL case's helper)");
     break;
   case 0x58415544: // "XAUD"
-    if (xE60_ != nullptr) {
+    if (xE60_ != nullptr) { // the retail's test at 0xA9AC
       xE60_->SetPhysicsActive(mgr, false);
     }
-    if (xE64_ != nullptr) {
+    if (xE64_ != nullptr) { // the retail's test at 0xA9C4
       xE64_->SetPhysicsActive(mgr, false);
     }
     break;
