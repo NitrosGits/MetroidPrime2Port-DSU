@@ -260,7 +260,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1011_(0)
 , x1012_(0)
 , x1013_(0)
-, x1168_(TUniqueId(0))
+, x1168_(kInvalidUniqueId) // the store at 0xB5B8
 , x116A_(kInvalidUniqueId) // the store at 0xB5C0
 , x11B8_(0)
 , x11C0_(kInvalidUniqueId) // the store at 0xB668
