@@ -397,6 +397,8 @@ The user's phone (2026-10-20) runs a copy signed with the shared debug key
 --ks-key-alias androiddebugkey` (`-PmpDebugSigning=true` does not override a configured key).
 The phone is reachable over tailscale (`poco-f8-ultra`); wireless debugging shows up as an mDNS
 `adb-*._adb-tls-connect._tcp` device once it is switched on.
+The Lenovo tablet (TB710FU, LAN only, not on tailscale; `adb mdns services` gives its
+`192.168.68.x:<port>`) has the project's release key: install `app-release.apk` unchanged.
 
 **Reading a crash on the phone.** The port installs a fault handler that prints `[port] caught
 SIGSEGV (11)` and a backtrace to logcat (tag `mp2port`) before it re-raises, so `adb logcat -d |
