@@ -184,6 +184,20 @@ CMaterialFilter SolidFilter() {
   return CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
 }
 
+// @ fn_29_3D74: the box between two points, three units taller at each end (retail's double 3.0).
+CAABox PortSegmentBox(const CVector3f& a, const CVector3f& b) {
+  return CAABox(
+      CVector3f(CMath::Min(a.GetX(), b.GetX()), CMath::Min(a.GetY(), b.GetY()),
+                CMath::Min(a.GetZ(), b.GetZ()) - 3.f),
+      CVector3f(CMath::Max(a.GetX(), b.GetX()), CMath::Max(a.GetY(), b.GetY()),
+                CMath::Max(a.GetZ(), b.GetZ()) + 3.f));
+}
+
+// @ fn_29_421C: which arm swings; true is the left (0xd80..), false the right (0xd7c..).
+bool PortPickSwipeArm(CStateManager& mgr) {
+  return mgr.Random()->Range(0.f, 100.f) >= 50.f;
+}
+
 // fn_29_61B4's search ring (rodata_44): eight angles in degrees, 180 first, taken in order.
 const float skMiniPortalAngles[] = {180.f, 0.f, 135.f, 45.f, -135.f, -45.f, 90.f, -90.f};
 
@@ -251,6 +265,12 @@ CSegId PortHeadSegId(const CModelData& model) {
   return anim != nullptr ? anim->GetLocatorSegId(rstl::string_l("head")) : CSegId();
 }
 
+// The ctor's arm locators (fn_29_D540 @0x0000E4EC..0x0000E630), same lookup as the head's.
+CSegId PortArmSegId(const CModelData& model, const char* name) {
+  const CAnimData* anim = model.GetAnimationData();
+  return anim != nullptr ? anim->GetLocatorSegId(rstl::string_l(name)) : CSegId();
+}
+
 } // namespace
 
 CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
@@ -288,11 +308,22 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
+// The ctor's arm locators: R_shoulder/R_elbow/R_forearm/R_wrist_end, then the L_ set. The pseudo-C
+// puts the shoulders at CPatterned's 0x35f/0x360; the asm stores them here (0x0000E47C/0x0000E54C).
+, mRightShoulderSegId(PortArmSegId(modelData, "R_shoulder")) // 0xd7c
+, mRightElbowSegId(PortArmSegId(modelData, "R_elbow"))       // 0xd7d
+, mRightForearmSegId(PortArmSegId(modelData, "R_forearm"))   // 0xd7e
+, mRightWristSegId(PortArmSegId(modelData, "R_wrist_end"))   // 0xd7f
+, mLeftShoulderSegId(PortArmSegId(modelData, "L_shoulder"))  // 0xd80
+, mLeftElbowSegId(PortArmSegId(modelData, "L_elbow"))        // 0xd81
+, mLeftForearmSegId(PortArmSegId(modelData, "L_forearm"))    // 0xd82
+, mLeftWristSegId(PortArmSegId(modelData, "L_wrist_end"))    // 0xd83
 , mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
 , mTargetPos(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
 , mPortalPlaneNormal(CVector3f::Zero())
 , mPortalPlaneConstant(0.f)
+, mSwipeArm(-1)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
 , mMiniPortalPositions()
@@ -860,8 +891,10 @@ bool CIng::ShouldArmSwipe(CStateManager& mgr, const CTriggerData&) const {
       !(mArmSwipeTime > 1.f)) {
     return false;
   }
-  // [?] the team gate is taken to be CanStartAttack(melee).
-  if (!CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId,
+  // The team gate only applies inside a team (retail skips it when mTeamId is kInvalid, as
+  // fn_29_A8CC's branch at 0x0000A924 does).
+  if (mTeamId != kInvalidUniqueId &&
+      !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId,
                                         GetUniqueId())) {
     return false;
   }
@@ -1707,12 +1740,97 @@ void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// [?] fn_29_6A88: the arm swipe is not ported; the state ends at once.
-void CIng::ArmSwipe(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// @ fn_29_3E1C: the segment test of one arm. Four boxes along the arm (shoulder-elbow,
+// elbow-forearm, forearm-wrist, then the wrist extended six units along the forearm) are tested
+// against the target's bounding box; retail's chained early-outs are one OR. A hit deals the arm
+// swipe damage with the given knock-back and clears the contact-damage pause.
+void CIng::ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b, const CSegId& c,
+                           const CSegId& d, const CVector3f& knockback) {
+  if (!xE5C_1) { // 0xe5c bit 1: only while the swing is live
+    return;
+  }
+  CPhysicsActor* target = TCastToPtr< CPhysicsActor >(mgr.ObjectById(mTargetId));
+  if (target == nullptr) {
+    return;
+  }
+  const CAABox bounds = target->GetBoundingBox();
+  const CVector3f p0 = GetLctrTransform(a).GetTranslation();
+  const CVector3f p1 = GetLctrTransform(b).GetTranslation();
+  const CVector3f p2 = GetLctrTransform(c).GetTranslation();
+  const CVector3f p3 = GetLctrTransform(d).GetTranslation();
+  bool hit = bounds.DoBoundsOverlap(PortSegmentBox(p0, p1)) ||
+             bounds.DoBoundsOverlap(PortSegmentBox(p1, p2)) ||
+             bounds.DoBoundsOverlap(PortSegmentBox(p2, p3));
+  if (!hit) {
+    const CVector3f delta = p3 - p2;
+    if (!delta.IsMagnitudeSafe()) { // retail gives up here rather than normalising
+      return;
+    }
+    hit = bounds.DoBoundsOverlap(PortSegmentBox(p3, p3 + delta.AsNormalized() * 6.f));
+    if (!hit) {
+      return;
+    }
+  }
+  if (DebugIng()) {
+    fprintf(stderr, "[ing] %04x arm swipe hit: arm %d (%02x..%02x), target %04x, damage %.1f\n",
+            GetUniqueId().Value(), mSwipeArm, static_cast< int >(a.val()),
+            static_cast< int >(d.val()), mTargetId.Value(),
+            mData.mArmSwipeDamage.GetDamage());
+  }
+  // rodata A10 = 0x3B (kMT_Solid) and the filter's type word 3 = kFT_IncludeExclude.
+  mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), mData.mArmSwipeDamage,
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                  knockback);
+  mCurDamageRemTime = mDamageWaitTime; // 0x440 = 0x444
+  xE5C_1 = false;                      // 0xe5c bit 1
+}
+
+// @ fn_29_6A88
+void CIng::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("ArmSwipe");
-    mArmSwipeTime = 0.f;
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    if (!TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      break;
+    }
+    if (mTeamId != kInvalidUniqueId &&
+        !CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId())) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      break;
+    }
+    mFormTime += mData.mUnknownC620;                       // 0xe3c += 0x7c8
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x6b4 = 1
+    break;
+  case kStateMsg_Update:
+    // CTryCommand::ShouldRetry(this+0x6b4, *BodyController(), 7); 7 is pas::kAS_MeleeAttack.
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      mSwipeArm = PortPickSwipeArm(mgr) ? 1 : 0; // fn_29_421C, 0xdec
+      // rodata_38 = {1, 2}: the melee attack's severity, indexed by the arm.
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCMeleeAttackCmd(mSwipeArm == 0 ? pas::kS_One : pas::kS_Two));
+      xE5C_1 = true; // 0xe5c bit 1: the contact damage pauses during the swing
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_MeleeAttack) {
+      // The knock-back points sideways: the right arm pushes along -right, the left along +right
+      // (retail reads m00/m10/m20, i.e. CTransform4f::GetRight()).
+      const CVector3f right = GetTransform().GetRight();
+      ArmSwipeSegment(mgr, mRightShoulderSegId, mRightElbowSegId, mRightForearmSegId,
+                      mRightWristSegId, CVector3f::Zero() - right); // 0xd7c..0xd7f
+      if (mSwipeArm == 1) {
+        ArmSwipeSegment(mgr, mLeftShoulderSegId, mLeftElbowSegId, mLeftForearmSegId,
+                        mLeftWristSegId, right); // 0xd80..0xd83
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mSwipeArm = -1;                                        // 0xdec
+    xE5C_1 = false;                                        // 0xe5c bit 1
+    mArmSwipeTime = 0.f;                                   // 0xe38
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId(), false);
+    break;
+  default:
+    break;
   }
 }
 

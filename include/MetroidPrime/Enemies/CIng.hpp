@@ -366,6 +366,10 @@ private:
   void FaceLureOrTarget(CStateManager& mgr);
   // fn_29_4468: the target's aim position (CActor's GetAimPosition), false when it is gone.
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out);
+  // fn_29_3E1C: one arm's segment boxes (fn_29_3D74) against the target's bounds; on a hit, the
+  // arm swipe damage with the given knock-back.
+  void ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b, const CSegId& c,
+                       const CSegId& d, const CVector3f& knockback);
   // fn_29_3190: builds the manager of seven joint spheres and installs it at 0xc50.
   void CreateCollisionActorManager(CStateManager& mgr);
   // fn_29_3014: gives every collision actor the Ing's health and damage vulnerability.
@@ -412,11 +416,24 @@ private:
   CSfxHandle mBodyProjectileSfx;             // 0xd58: the body projectile's looping flight sound
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
   CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
+  // fn_29_6A88's arm locators, looked up by the ctor's GetLocatorSegId calls (the names are in
+  // rodata 0x68E: "R_shoulder" at +0x632, "R_elbow" at +0x55c, "R_forearm" at +0x63d,
+  // "R_wrist_end" at +0x647, "L_shoulder" at +0x653, "L_elbow" at +0x554, "L_forearm" at +0x65e,
+  // "L_wrist_end" at +0x668). 0xd7a is "Collar_SDK"; nothing reads it.
+  CSegId mRightShoulderSegId;                // 0xd7c
+  CSegId mRightElbowSegId;                   // 0xd7d
+  CSegId mRightForearmSegId;                 // 0xd7e
+  CSegId mRightWristSegId;                   // 0xd7f
+  CSegId mLeftShoulderSegId;                 // 0xd80
+  CSegId mLeftElbowSegId;                    // 0xd81
+  CSegId mLeftForearmSegId;                   // 0xd82
+  CSegId mLeftWristSegId;                    // 0xd83
   CLineOfSightTracker mLineOfSight;          // 0xd88 (its segment is the byte at 0xd8a)
   CVector3f mTargetPos;                      // 0xdc8
   CVector3f mSurfaceMoveDir;                 // 0xde0
   CVector3f mPortalPlaneNormal;              // 0xdf0: the portal plane's normal, Up() = (0,0,1)
   float mPortalPlaneConstant;                // 0xdfc: dot(translation, normal) = translation.z
+  int mSwipeArm;                             // 0xdec: 0 right, 1 left, -1 none (fn_29_6A88/421C)
   CVector3f mModelScale;                     // host copy of the model data's scale
   int mMiniPortalCount;                      // 0xe00
   CVector3f mMiniPortalPositions[3];         // 0xe04..0xe24: where FindMiniPortals' rays hit
