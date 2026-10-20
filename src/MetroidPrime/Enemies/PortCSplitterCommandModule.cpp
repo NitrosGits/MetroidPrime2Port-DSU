@@ -192,7 +192,7 @@ float StandInCollisionActorVirtual0x38() {
   return 0.f;
 }
 
-// @ fn_75_2CE0
+// fn_75_2CE0 (not marked: the run only reached the null collision-actor lookup)
 // The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
 // one: the asm tests its low byte (0x2D0C clrlwi with the word's bit 24 - the byte's 0xFF). With
 // it set the shield-on sound (the sound id at 0x89C) is added (0x2D1C-0x2E44: the volume 0x7F,
