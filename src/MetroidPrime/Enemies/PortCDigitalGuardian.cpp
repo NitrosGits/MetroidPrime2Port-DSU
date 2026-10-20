@@ -1454,7 +1454,7 @@ int CDigitalGuardian::x4350_(TUniqueId id) const {
   return -1;
 }
 
-// @ fn_14_5140
+// fn_14_5140: the area-53 run only reaches the early return (a root hit, no toe index).
 void CDigitalGuardian::x5140_(CStateManager& mgr, TUniqueId sender, float damage) {
   CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
   if (collider == nullptr) { // the TCastToPtr test at 0x5180
