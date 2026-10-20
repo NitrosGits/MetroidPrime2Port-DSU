@@ -16,6 +16,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -156,11 +157,17 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mStampedeDamage(LdrToDamageInfo(data.stampedeDamage))       // guest 0xA0C
 , mJumpSlideDamage(LdrToDamageInfo(data.jumpSlideDamage))     // guest 0xA28
 , mGroundPoundDamage(LdrToDamageInfo(data.groundPoundDamage)) // guest 0xA44
-, mFlags(0)                                                 // guest 0x824
+, x824_(0)                                                 // guest 0x824
+, x825_(0)                                                 // guest 0x825
 , x7c0_(0)                                                // guest 0x7C0
 , mVulnerabilityState(0)                                  // guest 0x7C4
+, mX7c8_(0.f)                                             // guest 0x7C8
+, mX7cc_(0.f)                                             // guest 0x7CC
+, mX7d4_(0.f)                                             // guest 0x7D4
+, mX7e0_(10000.f)                                         // guest 0x7E0
 , mAttackTimer(4.f)                                       // guest 0x7E4
 , mAction(-1)                                             // guest 0x7E8
+, mX810_(0.f)                                             // guest 0x810
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
@@ -264,7 +271,7 @@ bool CEmperorIngStage3::Listen(CStateManager& mgr, const CVector3f& position,
   if (type != kLNT_PlayerFire) {
     return false;
   }
-  mFlags |= 0x02;
+  x824_ |= 0x02;
   return true;
 }
 
@@ -318,12 +325,38 @@ void CEmperorIngStage3::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
+// fn_18_F8 (0x11C): the module's random check. It is not ported yet, so every trigger that
+// needs it answers false.
+bool CEmperorIngStage3::RandomCheck() const {
+  StandInFn("fn_18_F8");
+  return false;
+}
+
+// fn_18_2298 (0x24): the taunt average over the module's bone list. Its own callee fn_18_AB9C
+// (0x64) walks the list at guest 0x840, which the port does not model, so this stays a stand-in.
+void CEmperorIngStage3::TauntAverage() const {
+  StandInFn("fn_18_2298");
+}
+
 // The module's state machine functions. The eleven triggers whose retail body is small enough
 // are ported; the rest are stand-ins that log the retail function they stand in for and return the
 // neutral value (false for a trigger, nothing for a state or a code).
+// fn_18_8DA4 (0x8DA4): "TooClose". The module's own distance (guest 0x7D4) has to be at least
+// 2.0 (rodata 0x274) and the player then has to be nearer than 20 units (rodata 0x270). A vector
+// that cannot be normalized counts as too close.
+// fn_18_2D1C (0x34) is the vector from the actor to the first player, flattened to the XY plane;
+// fn_18_2C98 (0x20) copies a vector the retail then never reads, so it is left out.
 bool CEmperorIngStage3::TooClose(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_8DA4");
-  return false;
+  if (mX7d4_ < 2.f) { // rodata 0x274
+    return false;
+  }
+  const CVector3f& mine = GetTranslation();
+  const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+  const CVector3f toPlayer(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(), 0.f);
+  if (!toPlayer.CanBeNormalized()) {
+    return true;
+  }
+  return toPlayer.Magnitude() < 20.f; // rodata 0x270
 }
 
 // fn_18_8D88 (0x8D88): the attack timer (guest 0x7E4) against zero (rodata 0x258).
@@ -336,9 +369,18 @@ bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData
   return false;
 }
 
+// fn_18_8A4C (0x8A4C): "ShouldTaunt". The random check has to pass, the module's taunt
+// average runs, and the taunt timer (guest 0x7C8) has to be past the taunt frequency (guest
+// 0x91C). The constant compare is retail's (60.0f, rodata 0x2E4, against 50.0f, rodata 0x290).
 bool CEmperorIngStage3::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_8A4C");
-  return false;
+  if (!RandomCheck()) {
+    return false;
+  }
+  TauntAverage(); // fn_18_2298
+  if (60.f <= 50.f) { // rodata 0x2E4 against rodata 0x290
+    return false;
+  }
+  return mX7c8_ > mTauntFrequency;
 }
 
 // fn_18_897C (0x897C): the action (guest 0x7E8) is 0.
@@ -346,9 +388,9 @@ bool CEmperorIngStage3::ShouldStampede(CStateManager& mgr, const CTriggerData& d
   return mAction == 0;
 }
 
-// fn_18_8A34 (0x8A34): the flag byte at guest 0x824, its bit 28 (the mask 0x08).
+// fn_18_8A34 (0x8A34): the flag byte at guest 0x824, the bit 28 (the mask 0x08).
 bool CEmperorIngStage3::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
-  return (mFlags & 0x08) != 0;
+  return (x824_ & 0x08) != 0;
 }
 
 // fn_18_8A20 (0x8A20): the vulnerability state (guest 0x7C4) is 1.
@@ -356,9 +398,24 @@ bool CEmperorIngStage3::ShouldChangeVulnerabilityToVulnerable(CStateManager& mgr
   return mVulnerabilityState == 1;
 }
 
-bool CEmperorIngStage3::ShouldChangeVulnerabilityToInvulnerable(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_898C");
-  return false;
+// fn_18_898C (0x898C): "ShouldChangeVulnerabilityToInvulnerable". The random check has to pass;
+// in the vulnerable state (3) the trigger is true, in the invulnerable state (2) it needs the
+// damage taken while vulnerable (guest 0x810) or the vulnerable damage threshold (guest 0x814).
+bool CEmperorIngStage3::ShouldChangeVulnerabilityToInvulnerable(CStateManager& mgr,
+                                                               const CTriggerData& data) const {
+  if (!RandomCheck()) {
+    return false;
+  }
+  if (mVulnerabilityState == 3) {
+    return true;
+  }
+  if (mVulnerabilityState != 2) {
+    return false;
+  }
+  if (mX810_ < 0.f) { // rodata 0x258
+    return true;
+  }
+  return mVulnerableDamageThreshold < 1.1920929e-07f; // rodata 0x310
 }
 
 // fn_18_8968 (0x8968): the action (guest 0x7E8) is 3.
@@ -407,30 +464,45 @@ bool CEmperorIngStage3::JumpSlideAttackOver(CStateManager& mgr, const CTriggerDa
   return false;
 }
 
+// fn_18_85A4 (0x85A4): "ShouldEyeShut". The random check has to pass and the eye-shut timer
+// (guest 0x7CC) has to be below 8.0 (rodata 0x2A8).
 bool CEmperorIngStage3::ShouldEyeShut(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_85A4");
-  return false;
+  if (!RandomCheck()) {
+    return false;
+  }
+  return mX7cc_ < 8.f; // rodata 0x2A8
 }
 
-// fn_18_858C (0x858C): the flag byte at guest 0x825, its bit 29 (the mask 0x04 of that
-// byte, the word's 0x400).
+// fn_18_858C (0x858C): the flag byte at guest 0x825, the bit 29 (the mask 0x04).
 bool CEmperorIngStage3::AbortedJumpSlide(CStateManager& mgr, const CTriggerData& data) const {
-  return (mFlags & 0x400) != 0;
+  return (x825_ & 0x04) != 0;
 }
 
+// fn_18_8518 (0x8518): "ShouldJumpAttack". The random check has to pass, the jump-attack timer
+// (guest 0x7E0) has to be at least 2.5 (rodata 0x298) and the flag byte at guest 0x824 has to
+// have its bit 29 (the mask 0x04) set.
 bool CEmperorIngStage3::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_8518");
-  return false;
+  if (!RandomCheck()) {
+    return false;
+  }
+  if (mX7e0_ < 2.5f) { // rodata 0x298
+    return false;
+  }
+  return (x824_ & 0x04) != 0;
 }
 
-// fn_18_8500 (0x8500): the flag byte at guest 0x825 with its bit 31 cleared (the mask 0x7F
-// of that byte, the word's 0x7F00) is not zero.
+// fn_18_8500 (0x8500): the flag byte at guest 0x825, the bit 0 (the mask 0x01).
 bool CEmperorIngStage3::ShouldStampedeReact(CStateManager& mgr, const CTriggerData& data) const {
-  return (mFlags & 0x7f00) != 0;
+  return (x825_ & 0x01) != 0;
 }
 
+// fn_18_7ADC (0x7ADC): the "Start" state. On the deactivation message it hands over to
+// fn_18_1DF4 (0xC4 bytes), which stays a stand-in.
 void CEmperorIngStage3::Start(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_7ADC");
+  if (msg != kStateMsg_Deactivate) {
+    return;
+  }
+  StandInFn("fn_18_1DF4");
 }
 
 void CEmperorIngStage3::Idle(CStateManager& mgr, EStateMsg msg, float dt) {

@@ -110,6 +110,28 @@ eleven triggers whose retail body is 0x40 bytes or less are ported:
 
 The other thirty-three FSM functions are stand-ins that log the retail function they stand in for.
 
+### The functions the run reaches
+
+| fn | size | the retail body |
+|---|---|---|
+| `7ADC` Start | 0x38 | on the deactivation message (2) it calls `fn_18_1DF4` (0xC4, a stand-in) |
+| `8DA4` TooClose | 0xAC | the module's distance (0x7D4) must be at least 2.0 (rodata 0x274) and the player nearer than 20 units (rodata 0x270); a vector that cannot be normalized counts as too close. The vector comes from `fn_18_2D1C` (0x34, the player minus the actor, flattened to XY); `fn_18_2C98` (0x20) copies a vector retail then never reads, so it is left out |
+| `8A4C` ShouldTaunt | 0x80 | the random check `fn_18_F8` (0x11C, a stand-in), then `fn_18_2298` (0x24, a stand-in: its own callee `fn_18_AB9C` walks the bone list at 0x840, which the port does not model), then the taunt timer (0x7C8) past the taunt frequency (0x91C) |
+| `898C` ShouldChangeVulnerabilityToInvulnerable | 0x94 | the random check; the vulnerable state (3) is true, the invulnerable state (2) needs the damage taken while vulnerable (0x810) below zero (rodata 0x258) or the vulnerable damage threshold (0x814) below rodata 0x310 (1.1920929e-07f) |
+| `85A4` ShouldEyeShut | 0x5C | the random check and the eye-shut timer (0x7CC) below 8.0 (rodata 0x2A8) |
+| `8518` ShouldJumpAttack | 0x74 | the random check, the jump-attack timer (0x7E0) at least 2.5 (rodata 0x298) and the flag byte 0x824's bit 29 (the mask 0x04) |
+
+The three the run reaches that are too big for this slice stay stand-ins: `788C` Idle (0x250),
+`8C4C` ShouldMeleeAttack (0x13C) and `8ACC` ShouldGroundPound (0x180).
+
+### The flag bytes
+
+The retail keeps a 32-bit word at guest 0x824, but every test the module makes is a single byte's
+bit, so the host keeps the two bytes: `x824_` (0x824: the listen flag 0x02, the jump-attack flag
+0x04, the dodge flag 0x08) and `x825_` (0x825: the stampede-react flag 0x01, the aborted
+jump-slide flag 0x04). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
+0x04 (PowerPC bit N is 1u << (31-N)), and the bit 0 is the mask 0x01.
+
 ## 5. Runtime
 
 Great Temple world `863fcd72`, area 11 (`07_temple_mothlordsanctuary_dark`), layer 4: the actor
@@ -119,7 +141,8 @@ firing (`[emp3] ... Think`, `AcceptScriptMsg`, `PreRender`, `DoUserAnimEvent`,
 frame limit (3200 frames, 45 s).
 
 With the state machine registered (milestone 2) the run also reaches the FSM: the states entered
-are **Start** (`fn_18_7ADC`) and **Idle** (`fn_18_788C`), and the triggers the run evaluates are
-TooClose `8DA4`, ShouldMeleeAttack `8C4C`, ShouldGroundPound `8ACC`, ShouldTaunt `8A4C`,
+are **Start** (`fn_18_7ADC`, whose deactivation handler reaches the stand-in `fn_18_1DF4`) and
+**Idle** (`fn_18_788C`); the triggers the run evaluates are TooClose `8DA4`, ShouldMeleeAttack
+`8C4C`, ShouldGroundPound `8ACC`, ShouldTaunt `8A4C`,
 ShouldChangeVulnerabilityToInvulnerable `898C`, ShouldEyeShut `85A4` and ShouldJumpAttack
-`8518` (the eleven ported triggers answer silently).
+`8518` (the ported ones answer silently and log only the random check `fn_18_F8`).

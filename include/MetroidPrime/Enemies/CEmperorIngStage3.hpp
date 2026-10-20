@@ -128,6 +128,12 @@ public:
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
+  // fn_18_F8: the module's random check, used by the attack triggers. It is a stand-in for now, so
+  // the triggers that need it answer false.
+  bool RandomCheck() const;
+  // fn_18_2298: the taunt average over the module's bone list. Its own callee fn_18_AB9C needs the
+  // list at guest 0x840, which the port does not model, so this stays a stand-in too.
+  void TauntAverage() const;
 
   // Host layout. The guest offsets are the REL's (fn_18_9A8C); the full member map, including
   // the parts this milestone does not build, is in docs/module-analysis/EmperorIngStage3.md.
@@ -144,15 +150,21 @@ private:
   CDamageInfo mGroundPoundDamage;        // guest 0xA44, the data's groundPoundDamage
   // fn_18_44: GetModelAlphau8 reads the byte at guest 0x44F. It sits in CPatterned's own area in
   // the retail object, so the host keeps it here.
-  // The module's own flag word at guest 0x824 (the constructor clears its high bits). The bytes
-  // the module reads are its low byte (0x824: the listen flag 0x02 and the dodge flag 0x08) and
-  // its second byte (0x825: the aborted jump slide flag 0x400 of the word and the stampede-react
-  // bits 0x7f00 of the word).
-  uint mFlags;                           // guest 0x824, 0
+  // The module's own two flag bytes at guest 0x824 and 0x825. The retail word at 0x824 is 32 bits
+  // wide, but every test the module makes is a single byte's bit, so the host keeps the two bytes.
+  uchar x824_;                           // guest 0x824, 0: 0x02 the listen flag, 0x04/0x08 the
+                                        // jump-attack and dodge flags
+  uchar x825_;                           // guest 0x825, 0: 0x01 the stampede-react flag, 0x04 the
+                                        // aborted-jump-slide flag
   int x7c0_;                             // guest 0x7C0, 0: cleared by the constructor
   int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
+  float mX7c8_;                          // guest 0x7C8, 0.0f: the taunt timer
+  float mX7cc_;                          // guest 0x7CC, 0.0f: the eye-shut timer
+  float mX7d4_;                          // guest 0x7D4, 0.0f: the too-close distance
+  float mX7e0_;                          // guest 0x7E0, 10000.0f: the jump-attack timer
   float mAttackTimer;                    // guest 0x7E4, 4.0f in the constructor
   int mAction;                           // guest 0x7E8, -1 in the constructor
+  float mX810_;                          // guest 0x810, 0.0f: the damage taken while vulnerable
 };
 #endif
 
