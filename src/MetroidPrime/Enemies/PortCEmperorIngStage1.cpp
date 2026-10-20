@@ -289,6 +289,13 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 // base; fn_16_8FB8 (0x8FB8..0x900C, the call at 0x8D38) is the deleting destructor of the
 // rstl::vector<CSegId> at guest 0xA7C. The host's CPatterned, CAi and rstl::vector own those
 // members and destroy them themselves, so the retail functions are only cited here.
+// The retail's teardown in order: the four damage vulnerabilities (guest 0xACC..0xB5C, 0x8C3C..
+// 0x8C68), the segment vector (guest 0xA7C, fn_16_8FB8 at 0x8C74), the three collision actor
+// managers (guest 0x7D0, 0x7CC and 0x7C8, 0x8CDC..0x8D04) and then the base (fn_16_8D40 at
+// 0x8D10). The port deletes the three managers in the body - the host's members (the four
+// vulnerabilities and the vector) are destroyed after it and the base after them, where retail
+// destroys the managers last; the two orders differ only in members that do not use each
+// other.
 CEmperorIngStage1::~CEmperorIngStage1() {
   delete x7d0_;
   delete x7cc_;
