@@ -995,6 +995,8 @@ void CEmperorIngStage1::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
       // float at +0x00 of the result) and the string table index of the boss's name - the string
       // lbl_16_rodata_41C+0x670 points at, "BossTempleBossStage1".
       const float health = GetHealthInfo()->GetInitialHP();
+      // The retail looks the name's index up with CStringTable::GetStringIndexByName (0x7E6C);
+      // the host's CStringTable has one lookup, GetStringIndex.
       const int index = gpStringTable->GetStringIndex("BossTempleBossStage1");
       mgr.SetBossParams(GetUniqueId(), health, static_cast< uint >(index));
       break;
