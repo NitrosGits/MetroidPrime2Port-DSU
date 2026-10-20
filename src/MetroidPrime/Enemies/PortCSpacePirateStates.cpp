@@ -877,8 +877,47 @@ void CSpacePirate::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_A3C0 is MP1's CSpacePirate::Cover with Echoes' own members. Activate bails while the
+// body is already in pas::kAS_Cover (body +0x37c), otherwise takes the cover point x900_coverPoint,
+// stores the point's attack direction bit 1 (fn_800EC6D8, extrwi r0,r3,1,30 = MP1's `(dir >> 1) & 1`)
+// in xa68_coverDir, sets the animation ready, moves the dest pos to the point's translation (+0x54)
+// and - when fn_801B73E4 (CAnimationState::CanIssueCommand(&x6b4, body, 0x13)) allows it - delivers the
+// CBCCoverCmd (type 0x17) to the body's CommandMgr with the cover direction, target and the negated
+// cover forward (+0x28/0x38/0x48). That guarded delivery is Echoes inlining MP1's
+// TryCommand(mgr, pas::kAS_Cover, &CPatterned::TryCover, x79c_coverDir); Update repeats it, then
+// unconditionally aims the body at the negated cover forward (body +0x34/0x38/0x3c) and always runs
+// D800. Deactivate stores kAS_NotReady into x6b4.
 void CSpacePirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Cover state (fn_72_A3C0)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (BodyController()->GetCurrentStateId() != pas::kAS_Cover) {
+      if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+        xa68_coverDir = (static_cast< uint >(cover->GetAttackDirection()) >> 1) & 1;
+        mAnimationState.SetState(CAnimationState::kAS_Ready);
+        SetDestPos(cover->GetTranslation());
+        if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Cover)) {
+          BodyController()->CommandMgr().DeliverCmd(
+              CBCCoverCmd(static_cast< pas::ECoverDirection >(xa68_coverDir),
+                          cover->GetTranslation(), -cover->GetTransform().GetForward()));
+        }
+      }
+    }
+    break;
+  case kStateMsg_Update:
+    if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Cover)) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCCoverCmd(static_cast< pas::ECoverDirection >(xa68_coverDir),
+                        cover->GetTranslation(), -cover->GetTransform().GetForward()));
+      }
+      BodyController()->CommandMgr().SetTargetVector(-cover->GetTransform().GetForward());
+    }
+    UpdateGuardPosition(mgr, dt);
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 // @ fn_72_5C10

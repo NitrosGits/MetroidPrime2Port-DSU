@@ -251,6 +251,7 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 | Crouch `98D8` | ported 2026-10-20, unmarked (no state line in this area). MP1's Crouch **minus** its `TargetPlayer` call: the asm's only two calls are `SetLocomotionType` and `GetCoverPoint`. Activate: `SetLocomotionType(kLT_Crouch)` (asm `li r4,0` - Echoes' 0 is `kLT_Crouch`, MP1's enum has Relaxed there), cover point -> `x908_targetDelta = cp->GetTransform().GetForward()` (cover +0x28/0x38/0x48), `x904 = 0` (rodata B9C), `xa68_coverDir = -1`; Update: `CommandMgr().SetTargetVector(x908)` (body +0x34/0x38/0x3c) then D800 with **r3 = this** (the body pointer goes to r5); no Deactivate (`cmpwi r5,1` plus `bge`/`b<0` fall to the epilogue) |
 | CoverAttack `A310` | ported 2026-10-20, unmarked. Activate delivers a bare `CBodyStateCmd(kBSC_LeanFromCover)` (asm builds `{vtable, 0xB}` on the stack and calls `DeliverCmd` on body +0x4; 0xB is `kBSC_LeanFromCover`, and 0xD = `kBSC_AbortScripted` confirms the enum) and sets `x8f6_31_inAttackState` (`rlwimi ... 31,31` = 0x8f6 LSB). Update = D800 with r3 = this; Deactivate clears that bit; msg 3+ and negatives do nothing |
 | TargetCover `78DC` | ported 2026-10-20, unmarked. Activate only (`cmpwi r5,0`, everything else bails before the work): cover point -> `mDestObj = x900` (`sth 0x330`) and `SetDestPos(cp +0x54)`; unconditionally `mReflectedDestPos = GetTranslation()` (`0x340..0x348`) and `mInPosition = false` (`rlwimi` clears 0x34C bit 0x80) |
+| Cover `A3C0` | ported 2026-10-20, unmarked. MP1's `Cover` with Echoes inlining `TryCommand(mgr, kAS_Cover, &CPatterned::TryCover, x79c_coverDir)`: Activate bails while the body state (`lwz 0x37c`) is already 0x13 `kAS_Cover`, else takes the cover point, `xa68_coverDir = (cp->GetAttackDirection() >> 1) & 1` (asm `bl fn_800EC6D8` with the point in r3, `extrwi r0,r3,1,30`), `x6b4 = 1` (`kAS_Ready`), `SetDestPos(cp +0x54)`, and inside `CanIssueCommand(&x6b4, body, 0x13)` delivers `CBCCoverCmd(dir, cp translation, -cp forward)` (type 0x17, `{vtable, 0x17, dir, x/y/z, -fx/-fy/-fz}` on the stack, 0x24 bytes). Update repeats the guarded delivery, then inside the cover-point block `SetTargetVector(-cp forward)` (body +0x34), and calls D800 whether or not a point exists. Deactivate stores 0 into 0x6b4 (`kAS_NotReady`) |
 | 0x6b4 | is a **`CTryCommand`**, not `CAnimationState`: the reloc at fn_72_9F1C 0xA130 is `ShouldRetry__11CTryCommandFRC15CBodyControlleri` (the tree's `CAnimationState::CanIssueCommand` is the same function under an MP1-derived name, so the ported calls stand). Its 4-byte state word is `CAnimationState::EState`: 0 NotReady, 1 Ready, 3 Over |
 | 0x6d4 | not `mDestPos` (that is 0x334): `mAnimationState` is 4 bytes at 0x6b4, `CWaypointNavigation` (0x3c) starts 0x6b8, its `mDestinationPosition` is +0x1c; `TargetPatrol`'s post to 0x6f0 = nav+0x38 = `mInPosition` confirms the base |
 | 2026-10-20 run #3 (same area, 3200 + 1200 frames) | after Patrol: cycle still `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` 4x, 0 reach-stubs, player pushed 372.4,-284.1 -> 377.9,-285.9 |
@@ -278,10 +279,10 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 - Triggers done: 7C28, 82D0, 960C marked (the run evaluates them, always false here); 7BD4 and A71C
   ported but nothing in the cycle lists them; `GetStrafeDir` CE30 ported but its caller's branch
   never opens in this area.
-- Cover family next, one `worker` lane: `Cover A3C0` (0x300, needs the cover-point helpers) — the
-  `Crouch 98D8` + `CoverAttack A310` + `TargetCover 78DC` slice (0xCC/0xB0/0x94) is done, see section 6.
-  Then movement extras (`WallHang 69AC`, `GetUp B3D4`, `DoubleSnap 99F0`, `JumpBack 63C8`,
-  `Jump 5310`, `Skid 94D0`), then the Echoes-only tail (`WarpIn/WarpOut/PostWarpOut`, `Bounce`,
+- The whole cover family is done (`Crouch 98D8`, `CoverAttack A310`, `TargetCover 78DC`, `Cover A3C0`), all
+  unmarked - see section 6. Next slice, one `worker` lane: movement extras (`WallHang 69AC`, `GetUp B3D4`,
+  `DoubleSnap 99F0`, `JumpBack 63C8`, `Jump 5310`, `Skid 94D0`) — `WallHang` needs the cover point's
+  `kSS_Arrived`/`kSM_Next` connection walk. Then the Echoes-only tail (`WarpIn/WarpOut/PostWarpOut`, `Bounce`,
   `PathFindEx`, `Enraged`, `LaunchGrenade`, `Captured`, `Deactivate`, `RemoveFromWorld`, `Ambushing`,
   `Generate`, `WallDetach`). The four attack triggers `StartAttack 6334`, `BreakAttack 6328`,
   `LostInterest 635C`, `ShouldSpecialAttack 638C` are **already ported** (PortCSpacePirateTriggers.cpp
