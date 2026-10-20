@@ -22,7 +22,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `2c7c4ba38` | rework 8C4C/8ACC (dot > FastCosR(const); 22BC's return vs 10), then Think 47D4 |
 | DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `344f8e7d0` | fn_14_6864 model build, ctor locator ids, renderer slot 0x44 |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` (subagent) | decomp/darksamus on `232823309` | milestone 1 (old lane did nothing) |
-| ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `614a8ed72` (m1 accepted) | reached stand-ins <=0x100 |
+| ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `1402494b4` | XCRT/XDMG/STOP cases, ProcessInput 1134; Think 23C0 (0x968) parked for Opus |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 | EmperorIngStage1 (Opus) | `ses_ea6700b83ffeiYYMVx9wazyiAs` | decomp/emperoring @ `87f405931` (42 collision actors exist) | fn_16_3D64, TrackPlayer 7C28, BeginHeartStage 78AC, onward; fold x7d4_/mJoints |
 | Agon black render (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | fix/agon-black (wt-mp2-spacepirate worktree) | cause: Aurora copy-clear wipes the whole EFB (CVisorFlare::UpdateOcclusion clear=true); doing the GX-faithful rect clear in Aurora instead of the 447e47a64 workaround |
