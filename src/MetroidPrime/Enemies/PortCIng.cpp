@@ -53,6 +53,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef CPatterned::StateMachine::TriggerFunc TriggerFunc;
 typedef CPatterned::StateMachine::StateFunc StateFunc;
@@ -134,6 +135,22 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 #undef ING_STATE
 #undef ING_CODE
 
+// Reports a stand-in the first time it runs, so a run's log lists the retail functions the host
+// still substitutes. The name is the retail one and the number its size in the REL.
+void PortIngStandIn(const char* what) {
+  static const char* sSeen[64] = {};
+  static int sCount = 0;
+  for (int i = 0; i < sCount; ++i) {
+    if (strcmp(sSeen[i], what) == 0) {
+      return;
+    }
+  }
+  if (sCount < 64) {
+    sSeen[sCount++] = what;
+  }
+  fprintf(stderr, "[ing] stand-in %s (see PortCIng.cpp)\n", what);
+}
+
 namespace {
 
 // The forms (mForm, retail 0x9d4). 0 is the host form SuckEnergy sets (the Ing possesses the player
@@ -151,6 +168,22 @@ enum {
   kForm_BecomingBodyProjectile = 8, // BecomeBodyProjectile's Activate
   kForm_BecomingWallProjectile = 9, // BecomeWallProjectile's Activate
 };
+
+// fn_29_BF80 (asm 0xBF8C-0xBFE0) and fn_29_C010 (asm 0xC024-0xC07C) gate the draw on the form the
+// same way: the forms 2, 4 and 6..9 draw always, the forms 3 and 5 only while the body-state-5
+// timer (0xe40) is below rodata_C8 (2.5f), and the forms 0, 1 and 10 and up never draw.
+bool IngFormDraws(int form, float bodyState5Time) {
+  if (form == kForm_Corporeal || form == kForm_BodyProjectile) {
+    return true;
+  }
+  if (form >= kForm_BecomingCorporeal && form <= kForm_BecomingWallProjectile) {
+    return true;
+  }
+  if (form == kForm_IngSpot || form == kForm_Evaporate) {
+    return bodyState5Time < 2.5f; // lbl_29_rodata_C8
+  }
+  return false;
+}
 
 // mData.mFlags210 (SLdrIng.ingFlagsIng): the retail's flag word. The byte the REL reads at the
 // actor's 0x9d0 is the word's most significant byte, so the byte mask m is the word mask
@@ -397,6 +430,9 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mStateTime(0.f)
 , mPathArea(nullptr)
 , mDebugPoll(0) {
+  // fn_29_E7C8 (0x110) builds the data block's sub-structs inside the constructor; over the size
+  // line, so the host takes the loader's finished block and logs the stand-in.
+  PortIngStandIn("fn_29_E7C8 data build (0x110)");
   // The retail constructor turns knock-back physics off on CPatterned's own manager (@0x0000E3DC)
   // and stops the actor drawing a shadow (@0x0000E634).
   KnockBackController().EnableKnockBackPhysics(false);
@@ -409,13 +445,25 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
 }
 
-CIng::~CIng() {}
+// fn_29_CF64 (0x1C4): the retail's destructor frees the data block (fn_29_10F8, 0x94, the host's
+// own member destructors) and the exit-host effect; over the size line, so it stays a stand-in.
+CIng::~CIng() {
+  PortIngStandIn("fn_29_CF64 dtor (0x1C4)");
+}
 
 // fn_29_3190: the Ing's collision actors, one 1.5-radius sphere on each of seven joints, with the
 // Ing's own health and vulnerability (fn_29_3014), the Unknown54 material and a Solid filter that
 // excludes collision actors, AI passthrough and the player. The manager starts inactive; the form
-// changes and the script messages set it active.
+// changes and the script messages set it active. The joint vector is the retail's fn_29_33CC
+// (0x38, asm 0x33CC: the count at +4 goes up before the element at data + count * 0x68 is built
+// by fn_29_3404 (0x20) and fn_29_3424 (0x28)); the host's vector push is the same step.
 void CIng::CreateCollisionActorManager(CStateManager& mgr) {
+  // fn_29_3190's own data helpers: fn_29_344C (0xC0) builds the joint descriptions, fn_29_3568
+  // (0x84) and fn_29_F1A0 (0xC0) copy and free them. All three are over the size line, so the
+  // host keeps its own construction and logs the stand-ins.
+  PortIngStandIn("fn_29_344C joint descriptions (0xC0)");
+  PortIngStandIn("fn_29_3568 joint copy (0x84)");
+  PortIngStandIn("fn_29_F1A0 joint vector (0xC0)");
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(7);
   const CAnimData* anim = GetAnimationData();
@@ -438,7 +486,9 @@ void CIng::CreateCollisionActorManager(CStateManager& mgr) {
 }
 
 // fn_29_3014: every collision actor takes the Ing's health info and CPatterned's own damage
-// vulnerability. Retail calls `GetDamageVulnerability__10CPatternedCFv` directly (not through the
+// vulnerability. The health copy itself is the retail's fn_29_313C (0x54, asm 0x313C): the three
+// floats, the word and the two halfwords of the health, then the two more halfwords and the byte -
+// the host's `*actor->HealthInfo() = *HealthInfo()` is the same copy. Retail calls `GetDamageVulnerability__10CPatternedCFv` directly (not through the
 // vtable), so the colliders get the base table (CAi's normal one) rather than CIng's form-dependent
 // override - with the override the colliders inherit the trigger table, whose beams are
 // kE_PassThrough, and no projectile can reach a corporeal Ing at all.
@@ -457,6 +507,17 @@ void CIng::SetupCollisionActors(CStateManager& mgr) {
     actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
     *actor->HealthInfo() = *HealthInfo();
   }
+}
+
+// fn_29_2AE0 (0x90): the retail's default damage info. It clears the four floats (the damage, the
+// radius damage, the radius and the knock-back), the three sound ids and the two flag bits (the
+// no-immunity bit 7 and the apply-radius-damage bit 6 of the byte at 0x1a), and sets the weapon
+// mode's word to 0xffff0000 - the type 0xffff (none) in the high half and the low 13 bits, which
+// the retail reads from an uninitialised stack word (asm 0x2AF0 loads 0x8(r1), the callee's own
+// outgoing parameter save area), so the host leaves them zero.
+// Skipped: the host's CDamageInfo has no setter for the three sound ids, so they stay 0xffff.
+static CDamageInfo IngDefaultDamageInfo() {
+  return CDamageInfo(CWeaponMode(kWT_None), 0.f, 0.f, 0.f, false, false);
 }
 
 // @ fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
@@ -479,7 +540,8 @@ void CIng::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
   mCurDamageRemTime = mDamageWaitTime;
 }
 
-// @ fn_29_2414: the ing-spot hit effect explosion, from the heavy token
+// @ fn_29_2414: the ing-spot hit effect explosion, from the heavy token (the retail's
+// fn_29_2098 (0x58) allocates it and fn_29_20F0 (0x54) frees it; the host's rs_new does both)
 // when it is loaded and asked for, else the normal one. The caller adds it to the state manager.
 CEntity* CIng::SpawnHitEffect(CStateManager& mgr, bool heavy) {
   const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
@@ -554,7 +616,7 @@ void CIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
   // The hit comes from the weapon the actor last touched, or from the player (morph ball).
   CVector3f direction = CVector3f::Zero();
   TUniqueId attacker = kInvalidUniqueId;
-  CDamageInfo damage;
+  CDamageInfo damage = IngDefaultDamageInfo(); // fn_29_2AE0 (asm 0x2744)
   if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
     direction = weapon->GetTransform().GetForward();
     damage = weapon->GetCurrentDamageInfo();
@@ -1772,6 +1834,9 @@ void CIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
 // ball pursuit speed (asm 0x00008778-0x00008894). MoveOnSurface takes the raw separation vector,
 // FaceDirection the normalized one.
 void CIng::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
+  // fn_29_37D8 (0x170): the retail's own path walk over the ing-spot's graph; over the size line,
+  // so the host keeps its minimal body and logs the stand-in.
+  PortIngStandIn("fn_29_37D8 path helper (0x170)");
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
     mRecalcPath = false; // 0xe5c bit 2
@@ -3001,16 +3066,24 @@ void CIng::Think(float dt, CStateManager& mgr) {
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+  // The retail's Think (fn_29_C654) calls four more module functions the host has no body for:
+  // fn_29_3B50 (0x108) before the state machine thinks (asm 0xC704), fn_29_432C (0x13C) after the
+  // line-of-sight update (asm 0xC770), fn_29_2270 (0x1A4) before the touch box (asm 0xC7A8) and
+  // fn_29_4960 (0x148) after it (asm 0xC7C0). All four are over the size line: stand-ins.
+  PortIngStandIn("fn_29_3B50 (0x108)");
   if (!mCollisionActorManager.null()) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
   mLineOfSight.Update(dt, mgr);
+  PortIngStandIn("fn_29_432C (0x13C)");
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
   AlignBlobToSurface(mgr); // fn_29_4604, asm 0x0000C794
   UpdateValidTarget(mgr);
+  PortIngStandIn("fn_29_2270 (0x1A4)");
   UpdateLoopSfx();
   UpdateTouchBox();      // fn_29_3C58, asm 0x0000C7B0
+  PortIngStandIn("fn_29_4960 (0x148)");
   ValidateLureZone(mgr); // fn_29_1C2C, asm 0x0000C7CC
   if (mgr.GetObjectById(mD76Id) == nullptr) { // asm 0x0000C7E0: no kInvalidUniqueId guard
     mD76Id = kInvalidUniqueId;
@@ -3055,6 +3128,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00004CFC: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
+    // The retail also builds the actor's light from a token (fn_29_4830, asm 0xCB84) and finishes
+    // the create (fn_29_4B4C, asm 0xCBA8); both are over the size line, so they are stand-ins.
+    PortIngStandIn("fn_29_4830 light (0x130)");
+    PortIngStandIn("fn_29_4B4C create finish (0x13C)");
     break;
   case kSM_Delete:
     // Retail deletes the blob object (0xd5c, never spawned on the host), stops the sounds,
@@ -3148,13 +3225,48 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   (void)sender;
 }
 
-// fn_29_C010. Unmarked (audit 2026-10-20): incomplete - retail gates the base PreRender on mForm (2/4/6..9 always, 3/5 only while 0xe40 < rodata C8) and then sets 0x102 |= 0x80 when 0xe5d bit 0x40.
-void CIng::PreRender(CStateManager& mgr) {
-  CPatterned::PreRender(mgr);
+// fn_29_B784 (0x10C): the module overrides CPatterned's hit-damage timer (vtable slot 0xec);
+// over the size line, so the host runs the base class's body and logs the stand-in.
+void CIng::UpdateHitDamageTime(float dt) {
+  PortIngStandIn("fn_29_B784 UpdateHitDamageTime (0x10C)");
+  CPatterned::UpdateHitDamageTime(dt);
 }
 
-// fn_29_C0B4. Unmarked (audit 2026-10-20): incomplete - retail also gates on mPortalPlane (0xC0D4), on form 9 (0xC12C) and has a separate path through 0x421.
+// @ fn_29_C010
+void CIng::PreRender(CStateManager& mgr) {
+  // The retail gates the base PreRender on the form (asm 0xC024-0xC07C): the forms 2, 4 and 6..9
+  // always pre-render, the forms 3 and 5 only while the body-state-5 timer (0xe40) is below
+  // rodata_C8 (2.5f), and the forms 0, 1 and 10 and up never.
+  if (IngFormDraws(mForm, mBodyState5Time)) {
+    CPatterned::PreRender(mgr);
+  }
+  // The portal plane (0xe5d bit 6) sets the draw flags' kF_Unknown80: asm 0xC080-0xC09C reads the
+  // byte at 0xe5d and tests bit 25 of the word (extrwi. r0, r0, 1, 25), which is bit 6 of that
+  // byte, and `ori r3, r0, 0x80` adds 0x80 to the flags word at 0x102 (CModelFlags::mFlags).
+  if (mPortalPlane) {
+    const CModelFlags flags = GetModelFlags();
+    SetModelFlags(CModelFlags(flags, flags.GetOtherFlags() | 0x80));
+  }
+  // Skipped: the retail also stores a word into the draw flags' first field (0xfc) - asm 0xC094
+  // loads it from 0x8(r1), the callee's own outgoing parameter save area, which nothing writes, so
+  // the retail stores an uninitialised word there. The host's CModelFlags has that word (x0_) but
+  // no setter for it and nothing reads it.
+}
+
+// @ fn_29_BF80
+void CIng::AddToRenderer(const CStateManager& mgr) const {
+  // The same form gate as the PreRender above (asm 0xBF8C-0xBFEC): the forms 2, 4 and 6..9 are
+  // added to the renderer, the forms 3 and 5 only while 0xe40 is below rodata_C8 (2.5f), and the
+  // forms 0, 1 and 10 and up are not.
+  if (IngFormDraws(mForm, mBodyState5Time)) {
+    CPatterned::AddToRenderer(mgr);
+  }
+}
+
+// fn_29_C0B4 (0x174): over the slice's size line, so it stays a stand-in; the host's body is the
+// audited minimal one (the form gate, the portal plane and the 0x421 path are still missing).
 void CIng::Render(const CStateManager& mgr) const {
+  PortIngStandIn("fn_29_C0B4 Render (0x174)");
   if (!mRenderModel) {
     return;
   }
@@ -3332,6 +3444,9 @@ void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
 
 // @ fn_29_B294
 bool CIng::Listen(CStateManager&, const CVector3f& position, EListenNoiseType type) {
+  // fn_29_1DF4 (0x128): the retail's own distance and safe-zone test; over the size line, so the
+  // host keeps its minimal body and logs the stand-in.
+  PortIngStandIn("fn_29_1DF4 Listen helper (0x128)");
   if (!GetAlive() || !GetActive()) {
     return false;
   }
@@ -3366,8 +3481,13 @@ void CIng::SetupStateMachine(CStateManager& mgr) {
 
 // Retail fn_29_130. The property ids and their order are the generated SLdrIng reader's, which the
 // analysis checked against the REL id by id: it reads all 69. facePlateModel (0xbdcce71b) is
-// parsed and then never read, here as in retail.
+// parsed and then never read, here as in retail. The model data's move is the retail's fn_29_1294
+// (0x40, asm 0x1294) with fn_29_12D4 (0x20) and fn_29_12F4 (0x28); the host's LdrToModelData and
+// its optional are the same step.
 static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+  // fn_29_16AC (0x3D4): the retail's own data-block builder; over the size line, so the host keeps
+  // its own construction of the five sub-structs and logs the stand-in.
+  PortIngStandIn("fn_29_16AC data block (0x3D4)");
   SLdrIng sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIng.inc"
 
