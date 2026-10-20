@@ -118,28 +118,32 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
                                  const CCommandoPirateData& data)
 : CPatterned(static_cast< EPatternedAI >(0x5), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
-, mData(data)                                     // guest 0x7c0, copied by fn_9_EA24 @0x0000D980
-, mGuest920(-1)                                   // guest 0x920, fn_9_D904 @0x0000D994
-, mGuest924(-1)                                   // guest 0x924, fn_9_D904 @0x0000D9A4
+, x6b4_(0)                                  // 0x6b4, the guest's CTryCommand state word
+, mData(data)                                     // 0x7c0, copied by fn_9_EA24 @0x0000D980
+, x920_(-1)                                       // 0x920, fn_9_D904 @0x0000D994
+, x924_(-1)                                       // 0x924, fn_9_D904 @0x0000D9A4
 , mPathFindSearch(nullptr, 1, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
-                  CPFRegion::kRP_Center)           // guest 0x928, fn_9_D904 @0x0000D990
-, mProjectileInfo(data.mProjectile, data.mProjectileDamage) // guest 0xa14, fn_9_D904 @0x0000D9B8
-, mGuestA3C(0)                                    // guest 0xa3c, fn_9_D904 @0x0000D9D0
-, mGuestA40(0)                                    // guest 0xa40, fn_9_D904 @0x0000D9D8
-, mShieldVulnerability(data.mShield.mChargeVulnerability) // guest 0xa44, fn_9_D904 @0x0000D9D4
+                  CPFRegion::kRP_Center)           // 0x928, fn_9_D904 @0x0000D990
+, x91c_(0)                                        // 0x91c, the guest's flag byte
+, x91d_(0)                                        // 0x91d, the guest's flag byte
+, mProjectileInfo(data.mProjectile, data.mProjectileDamage) // 0xa14, fn_9_D904 @0x0000D9B8
+, xa3c_(0)                                        // 0xa3c, fn_9_D904 @0x0000D9D0
+, xa40_(0)                                        // 0xa40, fn_9_D904 @0x0000D9D8
+, mShieldVulnerability(data.mShield.mChargeVulnerability) // 0xa44, fn_9_D904 @0x0000D9D4
 , mBoneTracking(*AnimationData(), rstl::string_l("Head_1"), 1.2217305f, 3.1415927f,
-                kBTF_None)                        // guest 0xa74, fn_9_D904 @0x0000DA08
-, mLocatorHead(CSegId::Invalid())                 // guest 0xc5c, fn_9_D904 @0x0000E29C
-, mLocatorMidLaunch(CSegId::Invalid())            // guest 0xc5d, fn_9_D904 @0x0000E2D0
-, mLocatorGun(CSegId::Invalid())                  // guest 0xc5e, fn_9_D904 @0x0000E304
-, mLocatorGun2(CSegId::Invalid())                 // guest 0xc5f, fn_9_D904 @0x0000E338
-, mLocatorRWrist(CSegId::Invalid())               // guest 0xc60, fn_9_D904 @0x0000E36C
-, mLocatorRElbow(CSegId::Invalid())               // guest 0xc61, fn_9_D904 @0x0000E3A0
-, mLocatorLWrist(CSegId::Invalid())               // guest 0xc62, fn_9_D904 @0x0000E3D4
-, mGuestC63(0)                                    // guest 0xc63, fn_9_D904 @0x0000E0F0
-, mGuestC64(0)                                    // guest 0xc64, fn_9_D904 @0x0000E150
-, mGuestC65(0x80)                                 // guest 0xc65, fn_9_D904 @0x0000E1B0
-, mGuestC66(0)                                    // guest 0xc66, fn_9_D904 @0x0000E1E8
+                kBTF_None)                        // 0xa74, fn_9_D904 @0x0000DA08
+, xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
+, mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
+, mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
+, mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
+, mLocatorGun2(CSegId::Invalid())                 // 0xc5f, fn_9_D904 @0x0000E338
+, mLocatorRWrist(CSegId::Invalid())               // 0xc60, fn_9_D904 @0x0000E36C
+, mLocatorRElbow(CSegId::Invalid())               // 0xc61, fn_9_D904 @0x0000E3A0
+, mLocatorLWrist(CSegId::Invalid())               // 0xc62, fn_9_D904 @0x0000E3D4
+, xc63_(0)                                        // 0xc63, fn_9_D904 @0x0000E0F0
+, xc64_(0)                                        // 0xc64, fn_9_D904 @0x0000E150
+, xc65_(0x80)                                     // 0xc65, fn_9_D904 @0x0000E1B0
+, xc66_(0)                                        // 0xc66, fn_9_D904 @0x0000E1E8
 {
   // The retail constructor sets knock-back physics on CPatterned's own manager (@0x0000E264) to
   // !((byte at +0x91c >> 2) & 1) - that is, to the manager's own default while the flag bit is
@@ -236,7 +240,7 @@ void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
 // guest +0xc65 has its 0x04 bit set (the guest tests it with extrwi at 0x0000C2DC), the actor's
 // own vulnerability otherwise.
 const CDamageVulnerability* CCommandoPirate::GetDamageVulnerability() const {
-  if (mGuestC65 & 0x04) {
+  if (xc65_ & 0x04) {
     return &mShieldVulnerability;
   }
   return CPatterned::GetDamageVulnerability();
@@ -297,14 +301,21 @@ CDamageInfo CCommandoPirate::GetContactDamage() const {
 // the neutral value (false for a trigger, nothing for a state).
 //
 // The 34 triggers of lbl_9_data_198 (.data 0x198; fn_9_F9F8's stores at 0x0000FAD4..0x0000FF24).
+
+// fn_9_BDCC: the guest's try command's state word (guest +0x6B4, in the base's region - the host
+// has no CTryCommand, so the port keeps the word in its own member) is 3 when the state is over.
+// The guest's test is the cntlzw idiom: subfic r0, r0, 0x3 (0x0000BDD0), cntlzw (0x0000BDD4) and
+// srwi r3, r0, 5 (0x0000BDD8) - one iff the word is 3.
 bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BDCC");
-  return false;
+  return x6b4_ == 3;
 }
 
+// fn_9_BD98: the actor is warped in when the state machine's owner is unset (the word at guest
+// +0x920 is -1, cmpwi r0, -0x1 at 0x0000BDA0), the guest's flag byte at +0x91D has its 0x80 bit
+// set (extrwi. r0, r0, 1, 24 at 0x0000BDAC) and the module's flag byte at +0xC63 has its 0x20 bit
+// set (extrwi. r0, r0, 1, 26 at 0x0000BDB8).
 bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BD98");
-  return false;
+  return x920_ == -1 && (x91d_ & 0x80) != 0 && (xc63_ & 0x20) != 0;
 }
 
 bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
@@ -327,9 +338,10 @@ bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// fn_9_BB04: the guest's flag byte at +0x91C has its 0x80 bit set (extrwi r3, r0, 1, 24 at
+// 0x0000BB08). Nothing in the module writes that byte, so the bit is clear until the base does.
 bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BB04");
-  return false;
+  return (x91c_ & 0x80) != 0;
 }
 
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
@@ -342,9 +354,12 @@ bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// fn_9_BAD0: the actor is under fire while the float at guest +0xB64 is below 0.75f
+// (lbl_9_rodata_4E0, loaded at 0x0000BAD8). The compare is fcmpo cr0, f1, f0 (0x0000BADC) and the
+// return takes cr0.LT (mfcr r0 at 0x0000BAE0, srwi r3, r0, 31 at 0x0000BAE4). The constructor
+// sets that member to 0.75f, so the test is false until something lowers it.
 bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAD0");
-  return false;
+  return xb64_ < 0.75f;
 }
 
 bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
@@ -377,9 +392,12 @@ bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// fn_9_B900: the state machine's asset has an "attack" connection that is being followed -
+// GetConnectedObject(mgr, kSS_Attack, kSM_Follow) (the call at 0x0000B928, with the two FourCCs
+// built at 0x0000B908..0x0000B924) - and the actor's compare against kInvalidUniqueId
+// (0x0000B930..0x0000B944) is the != test.
 bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B900");
-  return false;
+  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
 bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {

@@ -194,6 +194,34 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 35 | Dead | `fn_9_69C8` | 0x85C |
 
 
+### The ported trigger bodies
+
+Five of the 34 triggers are host code; the other 29 are still stand-ins. Each body is read off
+the asm with `tools/asmcheck.py annotate` and carries the guest offset it came from.
+
+| trigger | fn | .rodata | body | host members |
+|---|---|---|---|---|
+| StateOver | `fn_9_BDCC` | 0x504 | `x6b4_ == 3` | `x6b4_` (new, 0) |
+| ShouldWarpIn | `fn_9_BD98` | 0x50E | `x920_ == -1 && (x91d_ & 0x80) != 0 && (xc63_ & 0x20) != 0` | `x920_` (-1), `x91d_` (new, 0), `xc63_` (0) |
+| ShouldAmbush | `fn_9_BB04` | 0x55D | `(x91c_ & 0x80) != 0` | `x91c_` (new, 0) |
+| UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (new, 0.75f, `lbl_9_rodata_4E0`) |
+| HasAttackPattern | `fn_9_B900` | 0x5CF | `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId` | the base's |
+
+- `x6b4_` is the guest's `CTryCommand` at +0x6B4 - a base-class member the host has no class for,
+  so the port keeps its first word (the state the try command is in) in a member of its own. The
+  guest's test is the cntlzw idiom (`subfic r0, r0, 0x3` at 0x0000BDD0, `cntlzw` at 0x0000BDD4,
+  `srwi r3, r0, 5` at 0x0000BDD8): one iff the word is 3.
+- `x91c_` and `x91d_` are the guest's flag bytes at +0x91C and +0x91D. Nothing in the module
+  writes either, so the bits the two triggers read are clear until the base writes them.
+- `xb64_` is the float at +0xB64; the constructor sets it to 0.75f (`lbl_9_rodata_4E0`), the same
+  constant the trigger compares against, so `UnderFire` is false until something lowers it.
+- `HasAttackPattern` calls the base's `GetConnectedObject` (already ported, in
+  `src/MetroidPrime/Enemies/CPatternedAiFunctions.cpp`); the two FourCCs the guest builds inline
+  are `kSS_Attack` and `kSM_Follow`.
+
+In area 59 (Temple Grounds/05_temple_federationsite_dark) the five are called but none of them
+returns true: the actor keeps the state machine in `Patrol`.
+
 ## 2. The loader (fn_9_168)
 
 The property ids and their order are the generated `SLdrCommandoPirate` reader's, and the REL's own
@@ -305,9 +333,9 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's 70 bodies: the two tables (34 triggers, 36 states) are registered, but
-  every function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value.
+- The state machine's other 65 bodies: the two tables (34 triggers, 36 states) are registered
+  and five of the triggers are host code (the section above), but every other function they point
+  at is a stand-in that logs the retail function it stands in for and returns the neutral value.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
