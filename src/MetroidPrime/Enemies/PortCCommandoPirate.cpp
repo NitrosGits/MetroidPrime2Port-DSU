@@ -172,6 +172,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
+, xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
 , xc50_(0.f)                                      // 0xc50, a counter; fn_9_662C lowers it
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
 , xbc4_teamId(kInvalidUniqueId)                    // 0xbc4, the team id; fn_9_19D8 sets it
@@ -429,8 +430,8 @@ void CCommandoPirate::x4BC0_UpdateEmitters() {
 // @ fn_9_4D84
 // fn_9_4D84 (0x228 bytes): the module's aim helper, one of the Think's own (the call at
 // 0x0000CA18). While the actor is alive (the byte at guest this+0x420's 0x40 bit, the extrwi at
-// 0x00004DA4 - the host's GetAlive()), the module's own helper fn_9_4CA4 (0xd8 bytes, over the
-// 0x80 limit - a named stand-in that answers false) has to agree; then the target's aim position
+// 0x00004DA4 - the host's GetAlive()), the module's own helper fn_9_4CA4 (0xd8 bytes - the gate
+// x4CA4_CanAim) has to agree; then the target's aim position
 // (the module's helper fn_9_3CBC, the call at 0x00004DFC) is delivered as an additive aim
 // command (the guest's command id 0x1b = 27 = kBSC_AdditiveAim, with the 0x02 bit of the
 // flag byte at guest this+0xC65 as the command's third field - the DeliverCmd call at
@@ -480,11 +481,56 @@ void CCommandoPirate::x4D84_UpdateAim(CStateManager& mgr) {
   }
 }
 
-// fn_9_4CA4 (0xd8 bytes): the module's own helper, over the 0x80 limit - a named stand-in that
-// answers false, so the aim code above does not run in the port.
+// @ fn_9_4CA4
+// fn_9_4CA4 (0xd8 bytes): the module's own gate - may the commando aim now? The body state's
+// answer comes first: the body controller (guest this+0x48C) holds its state info at +0x36C, whose
+// current state is asked through its vtable slot 0x28 (the vcall at 0x00004CC8) - the slot is
+// CBodyState::CanShoot. The guest keeps the low byte of the answer (the clrlwi at 0x00004CD4) and
+// gives up when it is zero (the beq at 0x00004CD8). Then the module's own flag bytes: the byte at
+// guest this+0xC64 must have its 0x10 bit (the extrwi at 0x00004CE0) and must not have its 0x20
+// bit (the extrwi at 0x00004CF4), the byte at guest this+0xC65 must not have its 0x01 bit (the
+// clrlwi at 0x00004D00), its 0x04 bit (the extrwi at 0x00004D08) or its 0x08 bit (the extrwi at
+// 0x00004D10), and the block's flag byte at guest this+0x91C must not have its 0x10 bit (the
+// extrwi at 0x00004CEC). The module's own word at guest this+0xC4C must be -1 (the cmpwi at
+// 0x00004D1C) and the melee cooldown at guest this+0xB7C must be above 1.0f (rodata_43C, the
+// compare at 0x00004D30). Last the body: it must not be frozen (its byte at guest this+0x48C +
+// 0x594, the 0x20 bit, the extrwi at 0x00004D40) and not electrocuting (its float at guest
+// this+0x48C + 0x5B8 above 0.0f, the compare at 0x00004D54).
 bool CCommandoPirate::x4CA4_CanAim() {
-  StandInFn("fn_9_4CA4 (0xd8 bytes)");
-  return false;
+  if (!BodyController()->BodyStateInfo().GetCurrentState()->CanShoot()) {  // 0x00004CB8..0x00004CD8
+    return false;
+  }
+  if ((xc64_ & 0x10) == 0) {                       // 0x00004CDC..0x00004CE4
+    return false;
+  }
+  if ((mData.mFlags0 & 0x10) != 0) {               // 0x00004CE8..0x00004CF0 (guest this+0x91c)
+    return false;
+  }
+  if ((xc64_ & 0x20) != 0) {                       // 0x00004CF4..0x00004CF8
+    return false;
+  }
+  if ((xc65_ & 0x01) != 0) {                       // 0x00004CFC..0x00004D04
+    return false;
+  }
+  if ((xc65_ & 0x04) != 0) {                       // 0x00004D08..0x00004D0C
+    return false;
+  }
+  if ((xc65_ & 0x08) != 0) {                       // 0x00004D10..0x00004D14
+    return false;
+  }
+  if (xc4c_ != -1) {                               // 0x00004D18..0x00004D20
+    return false;
+  }
+  if (xb7c_ <= 1.f) {                              // 0x00004D24..0x00004D34 (rodata_43c)
+    return false;
+  }
+  if (BodyController()->IsFrozen()) {               // 0x00004D38..0x00004D44 (guest +0x594 bit 0x20)
+    return false;
+  }
+  if (BodyController()->IsElectrocuting()) {         // 0x00004D48..0x00004D58 (guest +0x5b8 > 0.f)
+    return false;
+  }
+  return true;                                     // 0x00004D5C
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the

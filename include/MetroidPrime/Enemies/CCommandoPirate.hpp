@@ -171,9 +171,10 @@ struct CCommandoPirateData {
   CCommandoPirateGrenadeData mGrenade; // guest +0x68 (0x70), fn_9_EDC0 @0x0000E934
   CCommandoPirateShieldData mShield;   // guest +0xD8 (0x84), fn_9_EDC0 @0x0000E938
   // guest +0x15c / +0x15d: the guest packs eight and four bits of the "sound" property into these
-  // bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60); the bit map is in the analysis note.
-  uchar mFlags0;
-  uchar mFlags1;
+  // bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60); the bit map is in the analysis note. The block
+  // starts at guest +0x7C0, so the two bytes are the object's bytes at +0x91C and +0x91D.
+  uchar mFlags0;  // 0x15c (guest this+0x91c)
+  uchar mFlags1;  // 0x15d (guest this+0x91d)
 };
 #endif
 
@@ -339,7 +340,7 @@ private:
   // fn_9_4D84: the module's aim helper - the additive aim command and the aim direction.
   void x4D84_UpdateAim(CStateManager& mgr);
 
-  // fn_9_4CA4: the module's helper the aim helper asks first - over the 0x80 limit.
+  // fn_9_4CA4: the module's helper the aim helper asks first - may the actor aim now?
   bool x4CA4_CanAim();
 
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
@@ -375,6 +376,7 @@ private:
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it

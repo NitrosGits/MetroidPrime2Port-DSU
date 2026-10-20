@@ -265,7 +265,10 @@ read off the asm with `tools/asmcheck.py annotate` and carries the guest offset 
   (+0xB74), `xb78_` (+0xB78) and `xb84_` (+0xB84), and the counter it lowers is `xc50_`
   (+0xC50);
   `xb5c_` is the float at +0xB5C (the
-  constructor stores 0.f there at 0x0000DABC); `xb60_` is the float at +0xB60 (the constructor
+  constructor stores 0.f there at 0x0000DABC); `xc4c_` is the module's own state word at +0xC4C
+  (`fn_9_1C0C` reads it at 0x00001C30, sets it to -1 at 0x00001D0C and dispatches on it at
+  0x00001D14; the constructor does not write it, so the port starts it at -1, the value the aim
+  gate `fn_9_4CA4` wants); `xb60_` is the float at +0xB60 (the constructor
   stores 1.5f, `lbl_9_rodata_47C`, at 0x0000DACC; the `Listen` override rewrites it at 0x0000BF38);
   `xb8c_` and `xb90_` are the floats at +0xB8C and +0xB90 (both 0.f from the constructor, 0x0000DB08
   and 0x0000DB0C; the constructor's later locomotion term, 4.f * (this+0x814 / the locomotion speed)
@@ -584,13 +587,13 @@ Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHa
 (GetUp, 0x130), `fn_9_7724` (Crouch, 0x148), `fn_9_6C68` (CoverAttack, 0x154), `fn_9_A2EC`
 (EGrenadeAttack, 0x174), `fn_9_8B70` (the JumpBack state, 0x1b8), `fn_9_A110`
 (PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
-`fn_9_4D84` (0x228), `fn_9_786C`
+`fn_9_786C`
 (RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
 `fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_6390` (0x29c), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
 `fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
 `fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
 (ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
-reaches are `fn_9_4D84`, `fn_9_6390`, `fn_9_3090`,
+reaches are `fn_9_6390`, `fn_9_3090`,
 `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
 
 `fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
@@ -608,15 +611,48 @@ member `x4D84_UpdateAim`): the alive test is the host's `GetAlive()` (the byte a
 this+0x420's 0x40 bit), the aim command is the guest's id 0x1b = 27 = `kBSC_AdditiveAim` (with
 the 0x02 bit of the flag byte at guest this+0xC65 as the command's third field, which the host's
 `CBCAdditiveAimCmd` needed a setter for) and the idle command is 0x1a = 26 =
-`kBSC_AdditiveIdle`. Its helper `fn_9_4CA4` (0xd8 bytes, over the 0x80 limit) is a named stand-in
-that answers false, so the aim code does not run in the port.
+`kBSC_AdditiveIdle`. Its helper `fn_9_4CA4` (0xd8 bytes) is host code too - the port's member
+`x4CA4_CanAim`, below.
+
+`fn_9_4CA4` (0xd8 bytes, the gate the aim helper asks first) is host code since 2026-10-20 (the
+port's member `x4CA4_CanAim`): the body controller (guest this+0x48C) holds its state info at
++0x36C, whose current state is asked through its vtable slot 0x28 (the vcall at 0x00004CC8) - the
+slot is `CBodyState::CanShoot` (the DOL's `__vt__10CBodyState`: the dtor at +0x08, `IsInAir`
++0x0C, `IsDead` +0x10, `IsDying` +0x14, `IsMoving` +0x18, `ApplyGravity` +0x1C,
+`ApplyHeadTracking` +0x20, `ApplyAnimationDeltas` +0x24, `CanShoot` +0x28, `UnkVtable2C` +0x2C,
+`Start` +0x30, `UpdateBody` +0x34; the host's `CBodyState` has the same order). The guest keeps
+the low byte of the answer (the clrlwi at 0x00004CD4) and gives up when it is zero (the beq at
+0x00004CD8). Then the module's flag bytes: the byte at guest this+0xC64 must have its 0x10 bit
+(the extrwi at 0x00004CE0) and must not have its 0x20 bit (the extrwi at 0x00004CF4), the byte at
+guest this+0xC65 must not have its 0x01 bit (the clrlwi at 0x00004D00), its 0x04 bit (the extrwi
+at 0x00004D08) or its 0x08 bit (the extrwi at 0x00004D10), and the block's flag byte at guest
+this+0x91C (`mData.mFlags0`) must not have its 0x10 bit (the extrwi at 0x00004CEC). The module's
+own word at guest this+0xC4C (the new member `xc4c_`) must be -1 (the cmpwi at 0x00004D1C), the
+melee cooldown at guest this+0xB7C (`xb7c_`) must be above 1.0f (rodata_43C, the compare at
+0x00004D30) and the body must be neither frozen (its byte at guest this+0x48C + 0x594, the 0x20
+bit, the extrwi at 0x00004D40) nor electrocuting (its float at guest this+0x48C + 0x5B8 above
+0.0f, the compare at 0x00004D54).
+
+The word at guest this+0xC4C is the module's own state word: `fn_9_1C0C` reads it (0x00001C30),
+sets it to -1 (0x00001D0C) and dispatches on it (0x00001D14). The constructor does not write it,
+so the port starts it at -1 - the value the gate wants, and the value the module's own helper
+leaves it at.
+
+With the gate ported the area 59 run (the note's run: `tools/run_gameplay.sh`,
+`TELEPORT=05_temple_federationsite_dark`, `FRAMES=2400`, the card in /tmp/opencode/atk_user,
+`MP2_GODMODE=1`, the player teleported next to the commando with `tp 75.9 371.6 -47.1`) reaches
+gameplay at 10.2 s, ends with exit=0 and `grep -c '[port] caught\|reach-stub'` = 0 - and the aim
+path runs: the gate passes every frame (the body state is the locomotion state, whose `CanShoot`
+is true, the byte at guest this+0xC64 has its 0x10 bit, the byte at guest this+0xC65 is 0x80,
+the block's flag byte is 0, `xc4c_` is -1, the melee cooldown is above 1.0f and the body is
+neither frozen nor electrocuting), so `fn_9_4D84` now delivers the additive aim command.
 
 The read of `fn_9_4D84` that led to the port:
 the byte at guest this+0x420 is `CPatterned`'s flag byte and its 0x40 bit is the actor's alive
 bit (the host's `GetAlive()`), the body commands are the guest's command id 0x1b = 27 =
 `pas::kBSC_AdditiveAim` and 0x1a = 26 = `pas::kBSC_AdditiveIdle` (the host's EBodyStateCmd
-matches the DOL's order), the helper it calls first (`fn_9_4CA4`, 0xd8 bytes) is over the 0x80
-limit and would be a named stand-in, and the last step writes the aim direction into the body
+matches the DOL's order), the helper it calls first (`fn_9_4CA4`, 0xd8 bytes) was over the 0x80
+limit and stood in until 2026-10-20, and the last step writes the aim direction into the body
 controller's own vector at +0x40 (the command manager's sixth CVector3f, the command manager
 sits at body + 4 and its six vectors run from +0x00 to +0x48). What is missing is the retail's
 command payload (the static data objects `lbl_9_data_A78` and `lbl_9_data_AA0` the commands
