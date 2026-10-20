@@ -589,11 +589,27 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   }
 }
 
-// vtable slot 7 = fn_18_4650: the base's pre-render and then the damage flash (the model colour
-// lerped between black and CPatterned's damage colour by the damage timer).
+// @ fn_18_4650
+// fn_18_4650 (vtable slot 7, 0x164): the base's pre-render, then the draw flags (this+0xFC).
+// While the base's damage cooldown (guest 0x448) or the heart hit timer (0x860) is above zero
+// (rodata 0x258) the model draws with blend mode 2 and depth test/update in a colour lerped from
+// black to CPatterned::skDamageColor by the cooldown (clamped at zero) or, failing that, to
+// skHitsWithoutDamageColor by the hit timer, either over skDamageHitTime; otherwise it is opaque
+// white (rodata 0x264).
 void CEmperorIngStage3::PreRender(CStateManager& mgr) {
-  StandIn("CEmperorIngStage3::PreRender (vtable slot 7, fn_18_4650)");
   CPatterned::PreRender(mgr);
+  if (mDamageCooldownTimer > 0.f || mX860_ > 0.f) {
+    CColor color;
+    if (mDamageCooldownTimer > 0.f) {
+      color = CColor::Lerp(CColor::Black(), skDamageColor,
+                           rstl::max_val(mDamageCooldownTimer, 0.f) / skDamageHitTime);
+    } else {
+      color = CColor::Lerp(CColor::Black(), skHitsWithoutDamageColor, mX860_ / skDamageHitTime);
+    }
+    SetModelFlags(CModelFlags(CModelFlags::kT_Two, color)); // 0x4714
+  } else {
+    SetModelFlags(CModelFlags(CModelFlags::kT_Opaque, 1.f)); // 0x473C
+  }
 }
 
 // @ fn_18_47B4
