@@ -1202,3 +1202,10 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 7. `Splitter` (the head's sub-actor, layer 10 of the same area) is module 15/16-era and is still a
    stub in this port (`tools/modules_port.txt`); the head's `DeploySplitters` state cannot be
    exercised until it lands.
+
+### Knee reactions to Crippled (2026-10-20)
+
+- Ported: fn_14_8090 KneeDestroyedReaction, fn_14_3D2C (bit 5 of 0x128C + IS10/IS11), fn_14_7D8C CrippledReaction (no head path: the head class is unported), fn_14_5910 XALC (0x11C0/0x10CE/0x116A), fn_14_5384 + 5140 + 4350 (toe/root damage; vortex health 0x11C8, which BreakOutOfVortex now reads).
+- Armours were inactive because fn_14_3E88 cast the 0xFB0 ids to CCollisionActor; retail calls SetActive on the plain ObjectById result. Fixed: they activate on ACTV.
+- Area-53 run: each knee kill gives Idle -> KneeDestroyedReaction -> Idle and the 0x10CE counter drops 9->5. The 4th kill gives CrippledReaction -> Crippled (fn_14_7CB4 is still a stand-in). Knees close during the reaction (bit 5), so a kill needs ~15 s between hits.
+- Open: fn_14_5274 (head collider) needs fn_14_266C/2E60 and the beacon explosion token at 0x1244/0x1250 loaded in the ctor. fn_14_5140's toe path hasn't run yet, so it is unmarked.
