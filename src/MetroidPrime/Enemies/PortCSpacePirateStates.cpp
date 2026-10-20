@@ -1002,12 +1002,81 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_69AC (0x33C): Activate stores kAS_Ready, sets 0x8f7 bit 0x04 and, when the pirate has
+// a cover point, walks that point's kSS_Arrived/kSM_Next connection with an explicit
+// CValidEntityPredicate and stores the waypoint's own unique id (waypoint +0x8), not the
+// GetIdForScript result MP1 stores. The cover point's forward axis becomes the target delta. It then
+// sets the combat bit, switches bone tracking off and sets 0x8fa bit 0x02. Update skips the hung
+// command while the body still has to turn (more than 15 degrees, rodata 0xBF8) towards that axis;
+// the turn is the usual zero move vector with the axis as the face vector and speed 1 (rodata 0xB54).
+// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 and store the
+// negation of its byte into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::WallHang state (fn_72_69AC)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x8f7_29_inWallHang = true;
+    if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+      const TUniqueId id = cover->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next);
+      if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id))) {
+        mDestObj = waypoint->GetUniqueId();
+        SetDestPos(waypoint->GetTranslation());
+        mReflectedDestPos = GetTranslation();
+        mInPosition = false;
+      }
+      x908_targetDelta = cover->GetTransform().GetForward();
+    }
+    x8f6_31_inAttackState = true;
+    mBoneTracking.SetActive(false);
+    x8fa_30_ = true;
+    break;
+  case kStateMsg_Update: {
+    bool ready = true;
+    if (mAnimationState.GetState() == CAnimationState::kAS_Ready) {
+      if (CVector3f::GetAngleDiff(GetTransform().GetForward(), x908_targetDelta) > 0.26179939f) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCLocomotionCmd(CVector3f::Zero(), x908_targetDelta, 1.f));
+        ready = false;
+      }
+    }
+    if (ready && mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_WallHang)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCWallHangCmd(mDestObj));
+    }
+    if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {
+      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->UnkVtable2C();
+    }
+    mBurstFire.SetBurstType(1);
+    break;
+  }
+  case kStateMsg_Deactivate:
+    x8f7_29_inWallHang = false;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x8f6_31_inAttackState = false;
+    mBoneTracking.SetActive(true);
+    x8fa_30_ = false;
+    break;
+  }
 }
 
+// Retail fn_72_68E4 (0xC8): Activate sets 0x8f7 bit 0x04 and both 0x8fa bits 0x02 and 0x01, Update
+// delivers a bare kBSC_ExitState command to the body and Deactivate clears those three bits again.
+// Messages outside 1..3 and negative ones fall straight to the epilogue.
 void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::WallDetach state (fn_72_68E4)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    x8f7_29_inWallHang = true;
+    x8fa_30_ = true;
+    x8fa_31_ = true;
+    break;
+  case kStateMsg_Update:
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    break;
+  case kStateMsg_Deactivate:
+    x8f7_29_inWallHang = false;
+    x8fa_30_ = false;
+    x8fa_31_ = false;
+    break;
+  }
 }
 
 // Retail fn_72_B3D4: Activate re-arms the animation state and the squad, zeroes the leash timer and
