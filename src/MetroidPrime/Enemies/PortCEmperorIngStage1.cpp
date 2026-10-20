@@ -322,6 +322,7 @@ void CEmperorIngStage1::EnsureBodyActive(CStateManager& mgr) {
 // counts the attack timer down (0x5734) and the taunt timer up (0x5740) around the base's own
 // Think (the call at 0x5720). The retail's effect state name is a heap string whose destructor runs
 // at 0x57D4; the host's string_l is a literal, so there is nothing to destroy.
+// @ fn_16_56D8
 void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -1379,7 +1380,8 @@ CActor* CEmperorIngStage1::GetActivateActor(CStateManager& mgr) const {
 
 // fn_16_920 (0x920..0x9C0): the tracked actor's (fn_16_302C) "brainSpine_scale" locator
 // (lbl_16_rodata_378) in world space (0x968, 0x978); the result is its translation (0x99C).
-// Area 11 cannot reach fn_16_920's body: only the beam paths read the brain-spine position.
+// Area 11 cannot reach fn_16_920's body: only the beam paths read the brain-spine position. A temporary hook drove it (see the module note).
+// @ fn_16_920
 CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
   CActor* target = GetTargetActor(mgr);
   const CTransform4f locator =
@@ -2107,7 +2109,8 @@ void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScr
 // constant (0x10C4..0x111C); the model data's world space portal plane takes it (0x1128) and
 // the base's own render follows (0x1134). The retail's first call (the renderer's vtable slot
 // 16 with the transform, 0x10A8) is the base's own work.
-// Area 11 cannot reach fn_16_1088's body: the warp portal actor is never created there.
+// Area 11 cannot reach fn_16_1088's body: the warp portal actor is never created there. A temporary hook drove it (see the module note).
+// @ fn_16_1088
 void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
   const CVector3f normal = GetTransform().GetColumn(kDY);  // 0x10C4
   const CPlane plane(GetTranslation(), CUnitVector3f(normal));  // 0x10E0
@@ -2158,6 +2161,7 @@ void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, fl
 }
 
 // vtable slot 40 = fn_16_B9FC: `li r3, 0x1` - the actor can be shot.
+// @ fn_16_B9FC
 bool CEmperorIngStage1::CanBeShot(const CStateManager&, int) { return true; }
 
 // vtable slot 41 = fn_16_BA04: `li r3, 0x0` - the actor does not listen for noises.
@@ -2202,7 +2206,8 @@ bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTrigger
 // (guest 0xA3C, 0.0f in the constructor) has run out. The asm compares it with 0.0f
 // (lbl_16_rodata_380) and folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4),
 // so the test is "<= 0.0f".
-// Area 11 cannot reach fn_16_4BB4's true branch: the FSM only evaluates the trigger in the heart-stage state.
+// Area 11 cannot reach fn_16_4BB4's true branch: the FSM only evaluates the trigger in the heart-stage state. A temporary hook drove it (see the module note).
+// @ fn_16_4BB4
 bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
   return xa3c_ <= 0.f;
 }
@@ -2211,7 +2216,8 @@ bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& d
 // The asm calls the vtable slot at +0x3C (slot 13, GetHealthInfo) and reads the health info's
 // second float (CHealthInfo::mHealth at +0x04), then compares it with 0.0f the same way as
 // fn_16_4BB4 (cror eq,lt,eq at 0x4B98).
-// Area 11 cannot reach fn_16_4B6C's true branch: the FSM only evaluates the trigger in the heart-stage state.
+// Area 11 cannot reach fn_16_4B6C's true branch: the FSM only evaluates the trigger in the heart-stage state. A temporary hook drove it (see the module note).
+// @ fn_16_4B6C
 bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return GetHealthInfo()->GetHP() <= 0.f;
 }
