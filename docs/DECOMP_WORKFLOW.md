@@ -51,14 +51,18 @@ area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skippe
 `STATUS: INCOMPLETE - <what>`.
 
 Lanes never write `// @` markers. A marker needs a run that exercised the function and a pass of
-the asm-vs-C++ structure check (calls, compares, conditional branches, stores line up; the
-orchestrator reads only what it flags). Until that check exists, the orchestrator compares by hand
-(two audited markers on 2026-10-20 sat on bodies that skipped whole retail blocks).
+the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
+compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
+tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every
+changed `Port*.cpp` (`ASM` lines); any hit means an Opus audit before merge. Bit/compare reading
+for a brief: `asmcheck.py annotate <Module> fn_<id>_<off> [--header H --class C]`. Changing the
+tool: `tools/asmcheck_regress.sh` must stay all PASS.
 
 ## Lane briefs
 
 - Every bit test, mask, flag set, compare and rodata constant a lane writes carries the asm offset
-  it came from (`// 0xCE2C`); copy the annotator's comment where there is one. Code with no offset
+  it came from (`// 0xCE2C`); copy the annotator's comment (`asmcheck.py annotate`) where there
+  is one. Code with no offset
   is rejected.
 - Bit-heavy functions (message handlers, ctor flag unpacking, trigger tables, CR extractions) go
   one or two per lane. Long briefs are where MiniMax guesses.

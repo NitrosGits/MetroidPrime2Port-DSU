@@ -26,3 +26,22 @@ awk '
   function hit(tag) { printf "%s %s:%d: %s\n", tag, f, ln, t; n[tag]++ }
   END { for (k in n) printf "== %s %d\n", k, n[k] }
 '
+# Structure check (tools/asmcheck.py) on every changed Port*.cpp at <head>, correctness tags only.
+# The module is the one whose fn ids the file cites most (docs/modules.tsv id column). A hit here
+# means an Opus audit before merge; run `asmcheck.py check` with all tags before any `// @`.
+here=$(cd "$(dirname "$0")" && pwd)
+tmp=$(mktemp -d)
+for f in $(git diff --name-only "$base" "$head" -- 'src/*Port*.cpp'); do
+  git cat-file -e "$head:$f" 2>/dev/null || continue
+  id=$(git show "$head:$f" | grep -o 'fn_[0-9]\+_' | sort | uniq -c | sort -rn | awk 'NR==1{print $2}' | tr -dc '0-9')
+  [ -n "$id" ] || continue
+  mod=$(awk -F'\t' -v id="$id" '$2==id{print $1}' "$here/../docs/modules.tsv")
+  [ -n "$mod" ] || continue
+  if [ "$head" = HEAD ]; then src=$f; else mkdir -p "$tmp/$(dirname "$f")"; git show "$head:$f" >"$tmp/$f"; src=$tmp/$f; fi
+  out=$(python3 "$here/asmcheck.py" check "$mod" "$src" --root "$(git rev-parse --show-toplevel)" --only MASK,XBIT,CROP,XCMP,XSTORE,OFFS 2>&1)
+  rc=$?
+  [ $rc -eq 0 ] && continue
+  printf '%s\n' "$out" | sed "s|^|ASM $f ($mod): |"
+  printf '== ASM %s %d\n' "$f" "$(printf '%s\n' "$out" | grep -c '^[A-Z]')"
+done
+rm -rf "$tmp"
