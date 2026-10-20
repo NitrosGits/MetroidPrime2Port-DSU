@@ -27,6 +27,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 // Guessed names. Layer-name prefixes select which game mode owns each layer.
 struct SGameModeLayer {
   SGameModeLayer(const char* prefix, uint mode) : first(prefix), second(mode) {}
@@ -705,6 +709,10 @@ void CGameState::LoadCompressedGameOptions(int slot) {
                         mCompressedGameOptions[slot].capacity());
   CBitStreamReader reader(input);
   mGameOptions = CGameOptions(reader);
+#ifdef TARGET_PC
+  // The options are global on the port (settings.cfg), not per save file.
+  PortOverlay::ApplySavedGameOptions(mGameOptions);
+#endif
 }
 
 void CGameState::LoadCompressedMultiplayerOptions() {

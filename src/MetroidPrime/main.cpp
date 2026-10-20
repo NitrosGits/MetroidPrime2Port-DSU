@@ -623,6 +623,9 @@ bool CMain::CheckReset() {
       options.SetScreenStretch(0, false);
       __PADDisableRecalibration(true);
     }
+#ifdef TARGET_PC
+    PortOverlay::RestoreGameOptions();
+#endif
     {
       CMemoryStreamOut stream(CSaveRegion::GetSaveBuffer(), CSaveRegion::kSaveBufferSize);
       CBitStreamWriter writer(stream);
@@ -719,6 +722,10 @@ int CMain::RsMain(int argc, const char* const* argv) {
       gpGameState->GameOptions().EnsureOptions();
       sProgressiveModePrompt = reader.ReadPackedBool();
     }
+#ifdef TARGET_PC
+    // No save region outlives the process: settings.cfg keeps the game's options (as MP1's port).
+    PortOverlay::RestoreGameOptions();
+#endif
     const int gameMode = gpGameState->GetGameModeType();
     bool showSplash = true;
     if (gameMode == 'COIN' || gameMode == 'DTHM') {

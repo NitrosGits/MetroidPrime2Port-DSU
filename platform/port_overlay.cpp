@@ -442,12 +442,14 @@ void DrawDebugSection() {
     if (PortUi::SliderFloat("Camera speed", &speed, 0.5f, 50.f, "%.1f m/s", nullptr,
                             "metres per second at a full stick; the right trigger multiplies it by four")) {
       PortPhoto::SetSpeed(speed);
+      Changed(true);
     }
     int ss = PortPhoto::Supersample() >= 4 ? 2 : PortPhoto::Supersample() >= 2 ? 1 : 0;
     if (PortUi::Combo("Supersample", &ss, "1x\0" "2x\0" "4x\0", nullptr,
                       "renders the photo at 2x or 4x the window's size; a size the GPU can't hold "
                       "steps down")) {
       PortPhoto::SetSupersample(ss == 2 ? 4 : ss == 1 ? 2 : 1);
+      Changed(true);
     }
     bool showSamus = PortPhoto::ShowSamus();
     if (PortUi::Toggle("Show Samus", &showSamus, nullptr,
@@ -537,6 +539,7 @@ void DrawGameSection() {
                        "In LiveSplit: right-click, Control > Start TCP Server (port 16834), and compare "
                        "against Game Time. A new file starts the timer; the final blow splits")) {
       PortLiveSplit::SetEnabled(liveSplit);
+      Changed(true);
     }
     switch (PortLiveSplit::Status()) {
     case PortLiveSplit::kStatus_Off:
@@ -561,12 +564,14 @@ void DrawGameSection() {
     if (ImGui::InputText("Server (host:port)", address, sizeof(address),
                          ImGuiInputTextFlags_EnterReturnsTrue)) {
       PortLiveSplit::SetAddress(address);
+      Changed(true);
     }
     PortUi::Note("MP2_LIVESPLIT_ADDR=<host:port>", "LiveSplit's TCP server; Enter applies it");
     bool splitUpgrades = PortLiveSplit::SplitUpgrades();
     if (PortUi::Toggle("Split on upgrades", &splitUpgrades, "MP2_LIVESPLIT_SPLIT_UPGRADES=0",
                        "a split for every new suit, beam, visor, ball part, key or other upgrade")) {
       PortLiveSplit::SetSplitUpgrades(splitUpgrades);
+      Changed(true);
     }
   }
 
@@ -2347,6 +2352,7 @@ void Draw() {
   ApplyGraphicsQuality();
   ApplyVsync();
   ApplyRenderScale();
+  SyncGameOptions();
   // A row's change is written once no item is active (MP1's window.cpp), so a slider drag is one write.
   if (PortOverlaySettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsAnyItemActive()) {
     PortOverlaySettings::SaveSettings();
