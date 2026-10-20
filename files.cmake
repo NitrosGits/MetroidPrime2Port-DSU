@@ -780,7 +780,7 @@ set(MP_MODULE_CommandoPirate_SOURCES
     src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
 )
 set(MP_MODULE_DarkSamus_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamus.cpp
 )
 set(MP_MODULE_DigitalGuardian_SOURCES
     src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
