@@ -266,7 +266,8 @@ is a jump table, read its asm). Vtable slots: `docs/module-analysis/vtable-offse
 | 0x6d4 | not `mDestPos` (that is 0x334): `mAnimationState` is 4 bytes at 0x6b4, `CWaypointNavigation` (0x3c) starts 0x6b8, its `mDestinationPosition` is +0x1c; `TargetPatrol`'s post to 0x6f0 = nav+0x38 = `mInPosition` confirms the base |
 | 2026-10-20 run #3 (same area, 3200 + 1200 frames) | after Patrol: cycle still `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` 4x, 0 reach-stubs, player pushed 372.4,-284.1 -> 377.9,-285.9 |
 | 2026-10-20 run #2 (same area, 3200 frames) | `ShouldStrafe` evaluated 484× for 208, all false — the 0.66 s windows and the `xa7c>1` branch never open, so `CE30` is never reached; cycle now repeats 4×; 0 reach-stubs |
-| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) AF70 (with D720 `UpdateHeldPosition`) 7868 BBA0 8A90 D800 (`UpdateGuardPosition`) D40C (`AvoidActors`) 7C28 82D0 960C |
+| The 12 trigger stand-ins (`ADC0` `ABC0` `AA64` `A988` `A8D0` `99A4` `7970` `767C` `602C` `55B8` `558C` `52F8`) | ported 2026-10-20, **no stand-in is left in the module**. Three of them are marked because the 208 cycle evaluates them (all always false there): `ADC0` 2851 calls, `7970` ~2850, `55B8` 2980; the other nine are never evaluated and stay unmarked. Retail facts: **`ADC0`** = `!x8f4_26_nonAggressive` (0x8f4 mask 0x20) and (`x8f8_26_alwaysAggressive` (0x8f8 mask 0x20) or (the module's charge list `bss_40` empty and `xa7c_timeNoPlayerLos > 10` (rodata B58))); when it is true the pirate's id is **pushed** into that list if it is not in it - the asm walk stops at the list's tail sentinel, so "reached the tail" means "not found" and `fn_72_AEB8`->`fn_72_AEE0` is a push_back (m2c prints the walk inverted). **`ABC0`** = the `kOL_AiWaypoint` list (`mgr+0x838`) scanned for cover points: active (0x20 bit 7), `!ShouldLandHere` (fn_800EC6A8), `!GetInUse(this uid)` (fn_800EC550), same area, not the cover point in 0x902, closer than `mData.mSearchRadius` (**0x7c8** = data+0x08) squared, and `!Blown(GetTargetPos())` - **fn_72_CB30, not the player** (MP1 uses the player); the winner is taken with `ReleaseCoverPoint(retainCooldown=1)` + `SetCoverPoint`, `x902 = x900` and `x914 = -cover forward`. **`AA64`** = the target is `GetTargetPos()`; inside `mMinAttackRange` (0x3dc) the trigger is true, outside it the cover point's `Blown(target)` decides, and a cover that is not blown but more than `3.0 * scaleY` away (the model's Y scale at 0x60, **not squared**) also counts as blown (the gate is `x904_steeringSpeed == 0` and the body state != `kAS_Step`). **`A988`** = the attack target cast to **CPlayer** (not `mgr.GetPlayer()`), the position + `1.0 * GetVelocityWR()`, then `Blown`. **`A8D0`** = the `kOL_ListeningAi` list (`mgr+0x830`) scanned for a pirate with `x8f6_31_inAttackState` (0x8f6 mask 0x01) in the same area, with no early break. **`99A4`/`767C`** = the cover point's `ShouldCrouch` (fn_800EC6CC, returned unmasked) / `ShouldWallHang` (fn_800EC6B4, tested on the top byte). **`7970`** = the attack target cast to CActor and then CPlayer: an active non-player target returns true right away; otherwise, with no player target, `mAttackTarget = ChooseTeamTarget(mgr)` (fn_72_EFD4 returns the id), `UpdateTeamTarget(mgr)` (fn_72_DE5C) and `mBoneTracking.SetTarget(mAttackTarget)`; then a CAABox around the translation with the margin `mData.mSearchRadius * 1.0` and the filter `MakeExclude(CMaterialList(kMT_Solid))` (rodata `data_8A8` = 0x3b - the port's `GetStrafeDir` uses the include form, a different word), and the first targeting point that is active, in this area and not locked (fn_8012CB70) becomes the target (the asm **breaks** there). **`602C`** = the `kOL_AiWaypoint` list scanned for jump points: active, `!GetInUse(this uid)`, type (0x15c) == 0, a next waypoint (0x182) that is not invalid, same area, closer than the best, and its forward pointing along the way to it; the score is `distSq + |mDestPos (0x334) - nextWaypoint|^2 + 9*dz^2` (the asm adds the 9*dz^2 on top of the dz^2 inside the square, so the height weighs 10), the next waypoint's forward must point along the way to `mDestPos`, `PathExists(this -> jumpPoint)` must succeed and `PathExists(nextWaypoint -> mDestPos)` costs +1000 when it fails; the scan **breaks** at the first candidate that reaches the destination and beats the best; the winner's *current* waypoint (0x180) must still resolve, then `SetDestPos(jumpPoint)`, `xb14` = the jump point's id, `xaf8` = its jump apex (0x158) and `xafc` = the current waypoint's translation. **`55B8`** = false while the body state (0x37c) is `kAS_Jump`, otherwise `!IsOnGround()` (the vtable slot 0x110 call, tested on the top byte). **`558C`** = the vtable slot 0x110 call (IsOnGround), returned unmasked. **`52F8`** = `xbb0_leashTimer == the trigger's float` - the asm takes **CR0's equal bit** (`fcmpo` + `mfcr` + `extrwi ..., 1, 1`), so it is an equality, not MP1's `timer > argument` |
+| Done (`// @`) | 24C4 1980 DB48 45F8 28F0 253C E498 C538 C684 3B28 64 5C10 7B6C B59C (with DFD4 `SquadJoin`) AF70 (with D720 `UpdateHeldPosition`) 7868 BBA0 8A90 D800 (`UpdateGuardPosition`) D40C (`AvoidActors`) 7C28 82D0 960C ADC0 7970 55B8 |
 **CSpacePirateData floats are the MREA's, not a loader fault** (2026-10-19; loader instrumented behind
 `MP2_DEBUG_SPACEPIRATE=1`, then reverted). Every one of the six actors' property blocks carries
 `9579b1f2` aggressiveness, `f89ab419` coverCheck, `ed9bf5a3` searchRadius, `c3a27cf8` fallBackCheck,
@@ -286,15 +287,16 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   after `cd0c05113`, `port: CSpacePirate retreat/dodge/move/attack triggers are retail's`). The live
   path after a power-beam hit on pirate 208 is `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run ->
   PathFind -> Lurk`, repeating, and it is what every new state gets verified against.
-- Triggers done: 7C28, 82D0, 960C marked (the run evaluates them, always false here); 7BD4 and A71C
-  ported but nothing in the cycle lists them; `GetStrafeDir` CE30 ported but its caller's branch
-  never opens in this area.
+- Triggers done: **all 39**. 7C28, 82D0, 960C marked (the run evaluates them, always false here);
+  7BD4 and A71C ported but nothing in the cycle lists them; `GetStrafeDir` CE30 ported but its
+  caller's branch never opens in this area; ADC0, 7970 and 55B8 are marked for the same reason as
+  7C28 (the cycle evaluates them, always false there).
 - Movement extras are done: `Skid 94D0`, `GetUp B3D4`, `Jump 5310` + leash `5280`, `WallHang 69AC`,
   `WallDetach 68E4`, `DoubleSnap 99F0`, `JumpBack 63C8` + `CantJumpBack D2A0` are ported (unmarked, section 6).
   `Enraged A2B8`, `Deactivate 5BF4`, `RemoveFromWorld 5B88`, `Ambushing 7630` and `PostWarpOut 6DA4` are done
   (section 6). **No stub is left in PortCSpacePirateStates.cpp**: `LaunchGrenade 58D8` (0x254) went in this
-  session together with the `4174` grenade spawn and its `4030`/`3D7C` helpers (next bullet; the
-  stand-ins that remain are all in PortCSpacePirateTriggers.cpp). `WarpIn 7078`, `WarpOut 6E6C`, `Generate C1A4`, `Bounce 5D0C`,
+  session together with the `4174` grenade spawn and its `4030`/`3D7C` helpers (next bullet).
+  **No stub is left in PortCSpacePirateTriggers.cpp either** (next bullet). `WarpIn 7078`, `WarpOut 6E6C`, `Generate C1A4`, `Bounce 5D0C`,
   `PathFindEx 5EA4` and `Captured 5610` are ported (section 6, commits `c0a1fc9d6` and `bf95637f6`) and
   stay unmarked: none is reached in `08_sand_casualpirates` (arealess; `ShouldWarpIn`, `BounceFind`,
   `IsAmbushing` and `ShouldLaunchGrenade` are the triggers that list them, and no pirate here has the
@@ -370,8 +372,16 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `[mGrenadeMinAttackDist, mGrenadeMaxAttackDist]` squared (independent confirmation of that naming:
   they are the block's +0x64/+0x68), anything else is out of range; `HasAttackPattern 7810` is
   `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId`.
-  12 stand-ins are left in `PortCSpacePirateTriggers.cpp`, all cover/crouch/wallhang/bounce/leash:
-  `ADC0` `ABC0` `AA64` `A988` `A8D0` `99A4` `7970` `767C` `602C` `55B8` `558C` `52F8`.
+- **The 12 trigger stand-ins are gone (2026-10-20, this session):** `PortCSpacePirateTriggers.cpp`
+  has no stand-in left - every one of the 39 triggers is now retail's (section 6 has the facts).
+  Three of them carry a `// @` marker because the 208 cycle evaluates them (always false there):
+  `ADC0` (AggressionCheck), `7970` (HasTargetingPoint), `55B8` (OffLine). The other nine are never
+  evaluated, so they stay unmarked. `PortSpacePirateStandIn` is now called from nowhere but
+  `PortCSpacePirate.cpp`'s own `StandIn` wrapper (the module's other stand-ins); the dead
+  declarations in the states and triggers files are gone. Commits `6c8e91bcb`, `0af474a2f`,
+  `33a4f2ae1`, `e2194e6b5`. The module is at 27/262 marked functions
+  (`tools/port_progress.py`): every state and every trigger is ported, but only the states the
+  208 cycle reaches are marked.
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 

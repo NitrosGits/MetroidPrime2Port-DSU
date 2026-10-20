@@ -26,8 +26,6 @@
 #include "rstl/vector.hpp"
 #include <float.h>
 
-void PortSpacePirateStandIn(const char* what);
-
 // Retail fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
 // unnamed Echoes locomotion) when 0x8f4 bit 0x40 is set, otherwise 0 = kLT_Crouch. Every other
 // message returns.

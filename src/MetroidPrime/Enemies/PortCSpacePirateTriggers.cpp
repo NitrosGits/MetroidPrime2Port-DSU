@@ -1,8 +1,8 @@
 // The 39 triggers of the SpacePirate state machine (retail table fn_72_10E50 ->
-// lbl_72_data_1D8). The trivial retail bodies (under 0x100 bytes, read from
-// build/G2ME01/SpacePirate/m2c/fn_72_<off>.c) are translated; every other one returns false behind
-// a once-per-name StandIn that names the retail function. Triggers that read a flag bit use the
-// names in CSpacePirate.hpp (MP1's where the mask matches).
+// lbl_72_data_1D8). Every one of them is retail's: the bodies follow the REL's disassembly
+// (build/G2ME01/SpacePirate/asm/auto_00_00000000_text.s), and the m2c pseudo-C
+// (build/G2ME01/SpacePirate/m2c/fn_72_<off>.c) is only a reading aid. Triggers that read a flag
+// bit use the names in CSpacePirate.hpp (MP1's where the mask matches).
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -21,8 +21,6 @@
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-void PortSpacePirateStandIn(const char* what);
 
 // PortCSpacePirate.cpp's TraceCall sits in that file's anonymous namespace, so it has no external
 // linkage to declare here; this is the same MP2_DEBUG_SPACEPIRATE gate and line format, so a run
