@@ -249,6 +249,17 @@ public:
   // @ fn_30_34
   CRagDoll* GetRagDoll() const override { return nullptr; }                          // fn_30_34
   TUniqueId GetAttackTarget() const override;                                        // fn_30_3C
+  // The REL's own copies of base-class one-liners (vtable slots 43, 48, 53, 66, 71, 72).
+  // @ fn_30_74
+  CVector3f GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const override {
+    return GetTranslation(); // 0x00000074: 0x54/0x58/0x5C
+  }
+  // @ fn_30_24
+  uchar GetModelAlphau8(const CStateManager&) const override { return mColor.GetAlphau8(); } // 0x44F
+  // @ fn_30_2C
+  CProjectileInfo* ProjectileInfo() override { return nullptr; }
+  // @ fn_30_4C
+  bool IsOnGround() const override { return mOnGround; } // 0x0000004C: 0x34C 0x08
 
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
