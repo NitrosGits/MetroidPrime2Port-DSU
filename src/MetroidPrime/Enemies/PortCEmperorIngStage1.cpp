@@ -15,7 +15,8 @@
 // (fn_16_B994, fn_16_B9A4, fn_16_B9AC, fn_16_B9B4, fn_16_B9BC, fn_16_B9CC, fn_16_B9C4, fn_16_B9DC,
 // fn_16_B9E8, fn_16_B9F4 and fn_16_B994's neighbours in EmperorIngStage1Accessors.s) have
 // four-to-twelve-instruction bodies, so they are real rather than stand-ins. Two of the slots
-// the module's vtable replaces are the host base's own, so they are not ported: slot 13
+// the module's vtable replaces are the host base's own, so the port leaves them to the
+// base: slot 13
 // (fn_16_60) is CActor::GetHealthInfo and slot 16 (fn_16_B958) is CActor::GetTouchBounds
 // (the host's CPatterned::GetTouchBounds returns GetBoundingBox(), the retail's body).
 #include "MetroidPrime/Enemies/CEmperorIngStage1.hpp"
@@ -279,7 +280,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 // token), the possession data, the body state info and manager, the damage vulnerability and the
 // base; fn_16_8FB8 (0x8FB8..0x900C, the call at 0x8D38) is the deleting destructor of the
 // rstl::vector<CSegId> at guest 0xA7C. The host's CPatterned, CAi and rstl::vector own those
-// members and destroy them themselves, so the functions are cited and not ported.
+// members and destroy them themselves, so the retail functions are only cited here.
 CEmperorIngStage1::~CEmperorIngStage1() {
   delete x7d0_;
   delete x7cc_;
@@ -1701,7 +1702,7 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
       // fn_16_8704 (0x8704..0x87C8) copies and locks the CToken and copies the id, and
       // fn_16_8980 (0x8980..0x8A44) sets the flag first. The host's
       // CImpactVisorEffect::ParticleEffect takes the locked token itself, so the functions are
-      // cited and not ported.
+      // the retail functions are only cited here.
       xa78_ = 0.f;
       if ((xa74_ & 0x08) != 0) {
         const CVector3f origin =

@@ -130,7 +130,7 @@ public:
   ~CEmperorIngStage1() override;
 
   // The module's vtable (lbl_16_data_3C8, 80 slots) replaces 24 of CPatterned's slots. Two of
-  // them the host base already does, so they are not ported:
+  // them the host base already does, so the port leaves them to the base:
   //   slot 13 (fn_16_60) - CActor::GetHealthInfo: the retail body is the base's own (a virtual
   //     call to slot 12, HealthInfo) and the host's CActor::GetHealthInfo does the same.
   //   slot 16 (fn_16_B958) - CActor::GetTouchBounds: the retail body is CPhysicsActor's bounding
