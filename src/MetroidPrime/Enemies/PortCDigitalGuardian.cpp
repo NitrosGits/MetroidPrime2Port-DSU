@@ -17,6 +17,8 @@
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
 
 #include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Graphics/CColor.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -36,6 +38,10 @@ namespace {
 // renders, and its RenderSystemsToBeDrawnLast (fn_14_A3A4) only forwards to the base's while
 // it is set.
 uchar sRendering = 0;
+
+// The module's GX register colour (lbl_14_bss_30): the static initialiser (fn_14_D904) sets
+// it to (0.25, 0.25, 0.25, 1).
+const CColor sGXRegister1Color(0.25f, 0.25f, 0.25f, 1.f);
 
 // The retail's GenerateParticlePOIMask (the call at 0xA420) is the host's
 // CStateManager::GetCharacterRenderMaskAndTarget; the retail's name is kept here so the
@@ -213,10 +219,48 @@ void CDigitalGuardian::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
 }
 
-// vtable slot 10 = fn_14_A004.
+// fn_14_A004 (vtable slot 10, AddToRenderer): the base's AddToRenderer (the call at 0xA01C),
+// the module's GX register colour (the call at 0xA020), the base's render (the direct call at
+// 0xA04C - this is where the guardian's model is drawn; the REL's own Render does not draw it),
+// the character's alpha buffer alpha (the call at 0xA058), which is pushed to the renderer when
+// it is not -1 (the call at 0xA068). Then the module's own models are drawn (fn_14_1994,
+// fn_14_18B4, fn_14_17DC and fn_14_1700 - none of them is ported yet), the GX register colour
+// goes back to black (the Black() call at 0xA0B8 and the renderer call at 0xA0BC), and the
+// alpha is pushed again (the call at 0xA108; the cmpwi at 0xA100 skips it when the alpha is
+// -1).
+//
+// The four module calls, by size and by what their pseudo-C does:
+//   fn_14_1994 (0xD4): if the flag byte at guest this+0xEB8 is set, every locator id in the
+//     array at this+0x10C0 is walked and the model at this+0xE6C is drawn at that locator's
+//     scaled transform.
+//   fn_14_18B4 (0xE0): the same walk, but when bit 4 of the flag byte at this+0x128C is clear
+//     and the byte at this+0xF08 is set, drawing the model at this+0xEBC.
+//   fn_14_17DC (0xD8): when bit 3 of the flag byte at this+0x128C is clear, the byte at
+//     this+0x1238 is set and the float at this+0x1264 is positive, the model at this+0x11EC is
+//     drawn at the transform fn_14_2578 builds; the echo emitter at this+0x123C is then drawn
+//     through the renderer.
+//   fn_14_1700 (0xDC): the locator ids at this+0x10D4 are walked and the model at this+0xF5C
+//     is drawn at each of their scaled transforms.
 void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
-  StandIn("CDigitalGuardian::AddToRenderer (vtable slot 10, fn_14_A004)");
   CPatterned::AddToRenderer(mgr);
+  gpRender->SetGXRegister1Color(sGXRegister1Color);
+  CPatterned::Render(mgr);
+  const int alpha = GetRenderAlphaBufferAlpha(mgr);
+  if (alpha != -1) {
+    gpRender->SetDestinationAlpha(alpha);
+  }
+  // fn_14_1994: the module's leg model render, 0xD4 bytes - not ported yet.
+  StandInFn("fn_14_1994 (the module's leg model render, 0xD4 bytes)");
+  // fn_14_18B4: the module's second model render, 0xE0 bytes - not ported yet.
+  StandInFn("fn_14_18B4 (the module's second model render, 0xE0 bytes)");
+  gpRender->SetGXRegister1Color(CColor::Black());
+  // fn_14_17DC: the module's echo emitter render, 0xD8 bytes - not ported yet.
+  StandInFn("fn_14_17DC (the module's echo emitter render, 0xD8 bytes)");
+  // fn_14_1700: the module's toe model render, 0xDC bytes - not ported yet.
+  StandInFn("fn_14_1700 (the module's toe model render, 0xDC bytes)");
+  if (alpha != -1) {
+    gpRender->SetDestinationAlpha(alpha);
+  }
 }
 
 // fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set (the store at 0xA3FC)

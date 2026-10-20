@@ -768,20 +768,35 @@ GenerateParticlePOIMask call at 0xA420, under the flag byte at guest `this+0x421
 host's `CPatterned::Render` does that itself when the particles are drawn, so the port leaves it
 to the base.
 
-**The guardian's model stops drawing in the port** (the area-53 run's screenshot shows the arena
-without it). That is retail's structure, not a port mistake: the retail's `Render` (fn_14_A3D4)
-never calls the base's render - it calls its own `RenderSystemsToBeDrawnLast` (vtable slot 47)
-with the character's render mask and target, and the base's `RenderSystemsToBeDrawnLast` only
-draws the particle systems to be drawn last (the host's
-`CPatterned::RenderSystemsToBeDrawnLast`: `if (mDrawParticles) ...
+**The guardian's model stopped drawing when `Render` was ported** - that is retail's structure,
+not a port mistake: the retail's `Render` (fn_14_A3D4) never calls the base's render, it calls
+its own `RenderSystemsToBeDrawnLast` (vtable slot 47) with the character's render mask and
+target, and the base's `RenderSystemsToBeDrawnLast` only draws the particle systems to be
+drawn last (the host's `CPatterned::RenderSystemsToBeDrawnLast`: `if (mDrawParticles) ...
 RenderSystemsToBeDrawnLastPOICheck(mask, target)`). The model is drawn by the module's own
-`AddToRenderer` (fn_14_A004), which calls the base's `Render` directly (the call at 0xA04C) -
-that function is 0x134 bytes and is not ported yet, so the model is missing until it is. The
-orchestrator decides whether to take that slice next.
+`AddToRenderer` (fn_14_A004), which calls the base's `Render` directly (the call at 0xA04C).
 
-`AddToRenderer` (fn_14_A004) is 0x134 bytes and `PreRenderAllViewports` (fn_14_A138) is 0x210
-bytes - both over the 0x100 limit of this slice, so they stay stand-ins. `AddToRenderer` also
-calls three module functions (fn_14_1994, fn_14_18B4 and fn_14_17DC) that are not ported yet.
+**WP2 part 2g done (2026-10-20): `AddToRenderer`.** fn_14_A004 (0x134 bytes) is ported, so the
+guardian's model draws again (the area-53 screenshot shows its four legs on the platform and its
+body hanging from the ceiling). The sequence, with the offsets: the base's `AddToRenderer`
+(0xA01C), the module's GX register colour (0xA020 - the global `lbl_14_bss_30`, the static
+initialiser's (0.25, 0.25, 0.25, 1)), the base's `Render` (0xA04C, the direct call that draws
+the model), the character's alpha buffer alpha (0xA058) pushed to the renderer when it is not
+-1 (0xA068), the module's own model renders (0xA0A0, 0xA0B4, 0xA0E8, 0xA0FC), the GX register
+colour back to black (0xA0B8/0xA0BC) and the alpha again (0xA108; the cmpwi at 0xA100 skips it
+when the alpha is -1).
+
+The four module calls are all over 0x80 bytes, so they are named once-logging stand-ins for now:
+
+| module call | size | what its pseudo-C does |
+|---|---|---|
+| fn_14_1994 | 0xD4 | if the flag byte at guest `this+0xEB8` is set, every locator id in the array at `this+0x10C0` is walked and the model at `this+0xE6C` is drawn at that locator's scaled transform |
+| fn_14_18B4 | 0xE0 | the same walk, but when bit 4 of the flag byte at `this+0x128C` is clear and the byte at `this+0xF08` is set, drawing the model at `this+0xEBC` |
+| fn_14_17DC | 0xD8 | when bit 3 of the flag byte at `this+0x128C` is clear, the byte at `this+0x1238` is set and the float at `this+0x1264` is positive, the model at `this+0x11EC` is drawn at the transform fn_14_2578 builds; the echo emitter at `this+0x123C` is then drawn through the renderer |
+| fn_14_1700 | 0xDC | the locator ids at `this+0x10D4` are walked and the model at `this+0xF5C` is drawn at each of their scaled transforms |
+
+`PreRenderAllViewports` (fn_14_A138) is 0x210 bytes - over the 0x100 limit of this slice, so it
+stays a stand-in.
 
 
 
