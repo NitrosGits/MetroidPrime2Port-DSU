@@ -577,7 +577,10 @@ that has to be 0..2 (0x30C8-0x30D8), the flag byte 0xF6A's 0x08 (0x30E0), a CCol
 virtual at 0x38 (0x30F8) and its 0x4 field (0x3104-0x3110), the state 0xEE0 cleared (0x311C), the
 timer 0xF10 set to a constant (0x312C), another module call (0x3130) and the flag's 0x08 again
 (0x313C). Several of those are DOL functions or virtuals the port has no name for yet, so the
-body needs a slice that can identify them.
+body needs a slice that can identify them. **One of them is named now**: the CCollisionActor's
+virtual at the vtable word 0x38 (0x30F0-0x30F8) is `CCollisionActor::HealthInfo()` and the
+float at its +0x4 is the health (found while porting fn_75_2CE0, which calls the same virtual
+at 0x2D9C), so the port's shell for it in this body can go with the next slice.
 
 #### fn_75_1188 (0x344) - the command module's spawn (ported 2026-10-20)
 
@@ -708,3 +711,70 @@ Splitter line the area-4 layer-3 fight logs.
 
 The module's own state machines are still shells: `fn_75_5E8C` (the head's FSM, **0x8C**) and
 `fn_75_E9E4` (the chassis's FSM, **0x8C**).
+
+#### fn_75_2CE0 (0x324) - the head's shield (ported 2026-10-20)
+
+The head's shield: it applies the state at 0xEE0 to the beam collision actor (the id at 0xF00).
+The flag (the third argument, r5) is the "a shield goes up" one - the asm tests its low byte
+(0x2D0C `clrlwi` with the word's bit 24 - the byte's 0xFF).
+
+| what | where |
+|---|---|
+| the shield-on sound (the sound id at **0x89C**) is added when the flag is set; its handle is dropped (the retail writes it to a stack slot it never reads) | 0x2D1C-0x2E44 |
+| the tracked emitter (the handle at **0xF60**) is removed and the handle cleared | 0x2D48-0x2D6C |
+| the beam collision actor (the id at **0xF00**) is looked up and cast; with no actor the body ends | 0x2D6C-0x2D88 |
+| the collision actor's health info's health (the float at **+0x4**) is set to the shield's HP (the float at **0x804**) | 0x2D8C-0x2DA0 |
+| state **1**: `AddMaterial(0x21)` on the collision actor, `AddMaterial(0x36)` on the head, the light shield's vulnerability (**0xD0C**) on the actor, the effect "LightShield" on and "DarkShield" off, the light shield's sound (the id at **0x894**) added as a looping emitter whose handle goes to 0xF60 | 0x2DC4-0x2E80 |
+| state **2**: `RemoveMaterial(0x21)` on the actor, `AddMaterial(0x36)` on the head, the dark shield's vulnerability (**0xD3C**), the effects swapped, the dark shield's sound (the id at **0x898**) | 0x2E88-0x2F44 |
+| any other state: both materials removed, the actor's vulnerability becomes the pass-through one (fn_800DBB50), both effects off | 0x2F4C-0x2FD8 |
+
+The host mappings: the materials 0x21 / 0x36 are `kMT_Character` / `kMT_Unknown54`; the two
+effect names are the rodata strings **"LightShield"** (rodata 0x10) and **"DarkShield"**
+(rodata 0x14); the collision actor's virtual at the vtable word **0x38** is
+`CCollisionActor::HealthInfo()` (the float at its +0x4 is the health), so the same virtual in
+fn_75_3004 is no longer nameless; the emitter's position is the guest's vector at 0x54 (the
+actor's translation) and its area the guest's word at 0x4 (the actor's area); the sound ids are
+masked to 16 bits (the asm's `clrlwi` 16). The port's body is
+`CSplitterCommandModule::PortUpdateShield(CStateManager&, bool shieldUp)`.
+
+#### The head's Think in the area-4 fight (2026-10-20)
+
+**The Splitter's objects live in the *next* area.** The console prints them as **a05**
+(`02_cliff_reactorcore`, the world's area 5) while the player is in **a04**
+(`0c_cliff_hall`, where the Ingsmasher fight is). The port's update loop skips an entity whose
+area has been occluded for more than 5 s (`CStateManager::Think`'s occlusion check and
+`CGameArea::AliveUpdate`'s `mOccludedTime`), so **the Splitter does not think at all while the
+player is in area 4** - the head's `if (!GetActive()) return;` gate is not even the blocker
+(the `send <uid> Activate` does clear the "inactive" mark). The player has to be in area 5:
+the `NEXTAREA` input token moves them there and the Splitter updates from then on.
+
+The recipe (the input file's tokens are **comma-separated on one line**, not one per line):
+
+    # input file: LAYER3@600+4,NEXTAREA@1500+4
+    # driver: a copy of the ElitePirate driver that also activates the Splitter
+    #   /tmp/opencode/smoke/split_ep_con.py  (a copy of ep_con.py) and the run script
+    #   /tmp/opencode/smoke/split_run.sh
+    #   WORLD=1baa96c2,b666b655 (Sanctuary Fortress), area 4 -> the layer-3 objects
+    #   (the Splitter) load; the driver walks the player into the dock trigger and
+    #   sends `send <uid> Activate` to the chassis and the head once each.
+
+The run (`/tmp/opencode/smoke/split.log`, the driver `/tmp/opencode/smoke/split_con.out`)
+logs, once the player is in area 5:
+
+    [splitter] CSplitterCommandModule::PreRender / AddToRenderer / GetSortingBounds /
+               Render / GetAimPosition          (the head's render-path overrides)
+    [splitter] CSplitterMainChassis::CollidedWith
+    [splitter] fn_75_2BE0 (0xE0) + the DOL's CSfxManager::UpdateEmitter   (fn_75_3004)
+    [splitter] fn_75_10D0 (0xB8) + the DOL's CSfxManager::RemoveEmitter    (fn_75_1188)
+    [splitter] fn_75_A4E4 / fn_75_AFE8 / fn_75_ACEC / fn_75_9520          (the chassis's Think)
+
+**fn_75_1188's gate does not pass.** The gate (fn_75_58E8) looks the chassis up by the id at
+0xEFA, which the retail's state machine sets and the port's names-only FSM does not, so the
+gate is false and the log shows the gate-false path (the DOL's `CSfxManager::RemoveEmitter`).
+
+**fn_75_2CE0 runs, but only up to the collision-actor lookup.** The head's create message
+(XCRT) reaches fn_75_3460, which calls fn_75_2CE0 - but the head's only joint is
+"Skeleton_Root", so the id at 0xF00 stays invalid, the lookup gives nothing and the body
+returns at 0x2D88. The three states cannot run in the port yet: the state at 0xEE0 only
+advances when the flag byte 0xF6A's 0x08 is set (the retail's "RaiseShields" code sets it),
+and the port's FSM is names-only.
