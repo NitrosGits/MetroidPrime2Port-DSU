@@ -2336,9 +2336,18 @@ void CPlayer::Freeze(float timeout, CStateManager& mgr, CAssetId steamTexture, u
   }
 
   ResetRezbitRecoveryInput();
+#ifdef TARGET_PC
+  // Retail reads gpGameState+0x54 (0x80014534), the system options' variables, where
+  // LoadFields defines the freeze counters; the game-scope map (+0xDC) has no such entry and
+  // the lookup returned null.
+  CEnvironmentVariable* variable = gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable(
+      mMorphBallState == kMS_Unmorphed ? "FreezeInstructionsFirstPerson"
+                                       : "FreezeInstructionsMorphBall");
+#else
   CEnvironmentVariable* variable = gpGameState->PersistentOptions().FindEnvironmentVariable(
       mMorphBallState == kMS_Unmorphed ? "FreezeInstructionsFirstPerson"
                                        : "FreezeInstructionsMorphBall");
+#endif
   if (variable->GetValue() != variable->GetMaximum()) {
     const int playerIndex = GetPlayerIndex();
     const bool ball = mMorphBallState == kMS_Morphed || mMorphBallState == kMS_Morphing;
@@ -2409,8 +2418,14 @@ void CPlayer::BreakFrozenState(CStateManager& mgr, EBreakFrozenState state, bool
   mMorphBall->ResetMorphBallIceBreak();
   SetVisorSteam(0.f, 0.3f / 0.7f, 1.f / 14.f, mSteamTextureId);
   if (recordEscape) {
+#ifdef TARGET_PC
+    // gpGameState+0x54 (0x80014410), as in Freeze.
+    CEnvironmentVariable* variable = gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable(
+        "FreezeInstructionsFirstPerson");
+#else
     CEnvironmentVariable* variable =
         gpGameState->PersistentOptions().FindEnvironmentVariable("FreezeInstructionsFirstPerson");
+#endif
     variable->Set(variable->GetValue() + 1);
     const int playerIndex = GetPlayerIndex();
     CSamusHud::DisplayHudMemo(rstl::wstring_l(L""),
