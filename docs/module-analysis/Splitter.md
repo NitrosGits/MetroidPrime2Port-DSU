@@ -968,20 +968,22 @@ now, so the log no longer shows it:
 |---|---|---|---|
 | 1 | the head's Start state | `fn_75_5564` | `CSplitterCommandModule::Start` (the body is one `blr`) |
 | 2 | the head's IsInitiallyDocked trigger | `fn_75_58DC` | `IsInitiallyDocked` (the SPLU block's first word, bit 0) |
-| 3 | the head's HasDockingTarget trigger | `fn_75_57F0` | `HasDockingTarget` (the chassis at 0xEFC: alive, active, no command module) |
-| 4 | the chassis's Start state | `fn_75_DFE8` | `CSplitterMainChassis::Start` (the body is one `blr`) |
-| 5 | the chassis's IsDisabled trigger | `fn_75_E620` | `IsDisabled` (the flag byte 0xD40's 0x40) |
-| 6 | the chassis's DeployFromHoldingTube trigger | `fn_75_E034` | `DeployFromHoldingTube` (the data's flags at 0x828, bit 1) |
-| 7 | the chassis's Patrol state | `fn_75_DCFC` | still a shell |
-| 8 | the head's RaiseShields code | `fn_75_3B20` | `RaiseShields` (the flag byte 0xF6A's 0x08) |
-| 9 | the head's Hover state | `fn_75_4D04` | still a shell |
-| 10 | the chassis's ShotAt trigger | `fn_75_E5B8` | `ShotAt` (the base's flag byte 0x420's 0x80) |
-| 11 | the chassis's PatrolPathOver trigger | `fn_75_E478` | `PatrolPathOver` (the waypoint destination at 0x6C0) |
-| 12 | the chassis's LostHead trigger | `fn_75_E5AC` | `LostHead` (the flag byte 0xD41's 0x02) |
-| 13 | the chassis's ShouldWaitForSnatch trigger | `fn_75_E5D0` | `ShouldWaitForSnatch` (the id at 0xCBC or `IsBeingSnatched`) |
-| 14 | the chassis's PrepareForDocking trigger | `fn_75_DFEC` | `PrepareForDocking` (the second link at 0xC6E) |
-| 15 | the head's SelectTarget code | `fn_75_3E60` | still a shell |
-| 16 | the head's HasTarget trigger | `fn_75_57B4` | `HasTarget` (the synced id at 0xEFE) |
+| 3 | the head's IsDocked trigger | `fn_75_58BC` | `IsDocked` (the chassis id at 0xEFA is valid) |
+| 4 | the head's HasDockingTarget trigger | `fn_75_57F0` | `HasDockingTarget` (the chassis at 0xEFC: alive, active, no command module) |
+| 5 | the chassis's Start state | `fn_75_DFE8` | `CSplitterMainChassis::Start` (the body is one `blr`) |
+| 6 | the chassis's IsDisabled trigger | `fn_75_E620` | `IsDisabled` (the flag byte 0xD40's 0x40) |
+| 7 | the chassis's DeployFromHoldingTube trigger | `fn_75_E034` | `DeployFromHoldingTube` (the data's flags at 0x828, bit 1) |
+| 8 | the chassis's Patrol state | `fn_75_DCFC` | still a shell |
+| 9 | the head's RaiseShields code | `fn_75_3B20` | `RaiseShields` (the flag byte 0xF6A's 0x08) |
+| 10 | the head's Hover state | `fn_75_4D04` | still a shell |
+| 11 | the chassis's Scanning state | `fn_75_DCF8` | `Scanning` (the body is one `blr`) |
+| 12 | the chassis's ShotAt trigger | `fn_75_E5B8` | `ShotAt` (the base's flag byte 0x420's 0x80) |
+| 13 | the chassis's PatrolPathOver trigger | `fn_75_E478` | `PatrolPathOver` (the waypoint destination at 0x6C0) |
+| 14 | the chassis's LostHead trigger | `fn_75_E5AC` | `LostHead` (the flag byte 0xD41's 0x02) |
+| 15 | the chassis's ShouldWaitForSnatch trigger | `fn_75_E5D0` | `ShouldWaitForSnatch` (the id at 0xCBC or `IsBeingSnatched`) |
+| 16 | the chassis's PrepareForDocking trigger | `fn_75_DFEC` | `PrepareForDocking` (the second link at 0xC6E) |
+| 17 | the head's SelectTarget code | `fn_75_3E60` | still a shell |
+| 18 | the head's HasTarget trigger | `fn_75_57B4` | `HasTarget` (the synced id at 0xEFE) |
 
 The chassis's `fn_75_3B20` is the head's code, so it is the head's RaiseShields; the order above is
 the log's.
@@ -1003,11 +1005,12 @@ gave this:
 | `fn_75_AFE8` | 0xD3C cleared (0x0000B084) | yes (7499 frames) | - |
 | `fn_75_AFE8` | the death timer 0xD20 counted down (0x0000B0B0) | no | the flag byte 0xD41's 0x01 bit, which the retail's `fn_75_ACEC` sets (still a shell) |
 | `fn_75_AFE8` | the death call (0x0000B0F0) | no | the same bit, and the timer at 0xD20 at zero |
-| `fn_75_9520` | the fade counted down (0x0000958C) | no | the scan timer at 0xD28 above zero - the retail's ACTN message sets it, and the chassis's Scanning state (`fn_75_DCF8`, still a shell) sends it |
+| `fn_75_9520` | the fade counted down (0x0000958C) | no | the scan timer at 0xD28 above zero - the retail's ACTN message sets it, and that message comes from the AFSM script, not from a state body (the chassis's Scanning state `fn_75_DCF8` is a single `blr`) |
 | `fn_75_9520` | the fade counted up (0x000095B4) | yes (7499 frames) | - |
 | `fn_75_9520` | the additive animation added (0x000095FC) | yes (7499 frames) | - |
 | `fn_75_9520` | the additive animation deleted (0x00009618) | no | the fade weight at zero, which needs the fade-down branch |
 
-So the next ports that would close the gaps are the chassis's `fn_75_ACEC` (the head's placement,
-which sets the flag byte 0xD41's 0x01) and the chassis's Scanning state `fn_75_DCF8` (which sends
-the ACTN message that starts the scan timer).
+So the next port that would close the death gap is the chassis's `fn_75_ACEC` (the head's
+placement, which sets the flag byte 0xD41's 0x01). The fade-down gap needs the AFSM script to
+send the ACTN message that starts the scan timer at 0xD28: the chassis's Scanning state
+`fn_75_DCF8` is a single `blr` (ported 2026-10-21) and does not send it.

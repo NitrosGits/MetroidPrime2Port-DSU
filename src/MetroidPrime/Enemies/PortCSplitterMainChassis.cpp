@@ -49,8 +49,12 @@ void StandIn(const char* what) {
 // entries are 16 bytes {const char* name, 0, 0xFFFFFFFF, fn} and the module's static
 // initialiser (fn_75_FED0, in the REL's .ctors) fills the function word from the
 // three-word records of .data 0x5D0..0x714, so the retail function of each name is
-// known (docs/module-analysis/Splitter.md section b). None of them is ported yet:
-// each entry below is a once-logging stand-in for the retail function it names.
+// known (docs/module-analysis/Splitter.md section b). The ported ones are the Start state
+// (fn_75_DFE8), the Scanning state (fn_75_DCF8) and the IsDisabled (fn_75_E620),
+// DeployFromHoldingTube (fn_75_E034), ShotAt (fn_75_E5B8), PatrolPathOver (fn_75_E478),
+// LostHead (fn_75_E5AC), ShouldWaitForSnatch (fn_75_E5D0) and PrepareForDocking (fn_75_DFEC)
+// triggers; each other entry below is a once-logging stand-in for the retail function it
+// names.
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterMainChassis::name) }
 #define SPLITTER_STATE(name) \
@@ -99,7 +103,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE(Inactive),
     SPLITTER_STATE(Activate),
     SPLITTER_STATE(Patrol),
-    SPLITTER_STATE(Scanning),
+    SPLITTER_STATE_PORTED(Scanning),
     SPLITTER_STATE(PathFind),
     SPLITTER_STATE(LegStabAttack),
     SPLITTER_STATE(SpinAttack),
@@ -195,7 +199,6 @@ SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
 SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
 SPLITTER_STATE_STANDIN(Patrol, fn_75_DCFC)
-SPLITTER_STATE_STANDIN(Scanning, fn_75_DCF8)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_DC08)
 SPLITTER_STATE_STANDIN(LegStabAttack, fn_75_DA38)
 SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
@@ -232,6 +235,11 @@ SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 // fn_75_DFE8 (the chassis's Start state, 0x4 bytes): the body is a single return, so the state
 // does nothing.
 void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
+
+// fn_75_DCF8 (the chassis's Scanning state, 0xDCF8-0xDCFC): the retail body is a single return,
+// so the state does nothing. The scan timer at 0xD28 is not set here: the retail's ACTN script
+// message sets it in the chassis's script-message handler (fn_75_F1C0, 0x0000F40C-0x0000F42C).
+void CSplitterMainChassis::Scanning(CStateManager&, EStateMsg, float) {}
 
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its
 // 0x40 bit tested (0xE624 extrwi with the word's bit 25 - the byte's 0x40).

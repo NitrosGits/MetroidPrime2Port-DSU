@@ -143,10 +143,12 @@ public:
   // {const char* name, 0, 0xFFFFFFFF, fn}: the module's static initialiser
   // (fn_75_7C80, in the REL's .ctors) copies the three-word records of .data
   // 0x0..0x2D0 into the three tables, so the retail function of each name is that
-  // record's third word (docs/module-analysis/Splitter.md section b). Two of them
-  // are ported (the IsScanning trigger fn_75_58E8 and the NotifyDocking code
-  // fn_75_3EEC); the rest stand in for the retail function and log it once when the
-  // state machine runs them.
+  // record's third word (docs/module-analysis/Splitter.md section b). The ported ones are
+  // the IsScanning trigger (fn_75_58E8), the IsInitiallyDocked (fn_75_58DC), the IsDocked
+  // (fn_75_58BC), the HasDockingTarget (fn_75_57F0) and the HasTarget (fn_75_57B4)
+  // triggers, the Start state (fn_75_5564), the NotifyDocking code (fn_75_3EEC) and the
+  // RaiseShields code (fn_75_3B20); the rest stand in for the retail function and log it
+  // once when the state machine runs them.
   bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5A40
   bool InDetectionRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5944
   bool IsScanning(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58E8

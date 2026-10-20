@@ -160,9 +160,12 @@ public:
   // {const char* name, 0, 0xFFFFFFFF, fn}: the module's static initialiser
   // (fn_75_FED0, in the REL's .ctors) copies the three-word records of .data
   // 0x5D0..0x714 into the three tables, so the retail function of each name is that
-  // record's third word (docs/module-analysis/Splitter.md section b). None of these
-  // bodies is ported yet, so each stands in for the retail function and logs it once
-  // when the state machine runs it.
+  // record's third word (docs/module-analysis/Splitter.md section b). The ported ones are
+  // the Start state (fn_75_DFE8), the Scanning state (fn_75_DCF8) and the IsDisabled
+  // (fn_75_E620), DeployFromHoldingTube (fn_75_E034), ShotAt (fn_75_E5B8), PatrolPathOver
+  // (fn_75_E478), LostHead (fn_75_E5AC), ShouldWaitForSnatch (fn_75_E5D0) and
+  // PrepareForDocking (fn_75_DFEC) triggers; the rest stand in for the retail function and
+  // log it once when the state machine runs them.
   bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E64C
   bool IsIntact(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E62C
   bool IsDisabled(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E620

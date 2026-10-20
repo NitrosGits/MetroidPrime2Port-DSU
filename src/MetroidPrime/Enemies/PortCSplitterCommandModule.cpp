@@ -52,9 +52,11 @@ void StandIn(const char* what) {
 // entries are 16 bytes {const char* name, 0, 0xFFFFFFFF, fn} and the module's static
 // initialiser (fn_75_7C80, in the REL's .ctors) fills the function word from the
 // three-word records of .data 0x0..0x2D0, so the retail function of each name is
-// known (docs/module-analysis/Splitter.md section b). Two of them are ported - the
-// IsScanning trigger (fn_75_58E8) and the NotifyDocking code (fn_75_3EEC) - and the
-// rest are once-logging stand-ins for the retail function they name.
+// known (docs/module-analysis/Splitter.md section b). The ported ones are the IsScanning
+// trigger (fn_75_58E8), the IsInitiallyDocked (fn_75_58DC), the IsDocked (fn_75_58BC), the
+// HasDockingTarget (fn_75_57F0) and the HasTarget (fn_75_57B4) triggers, the Start state
+// (fn_75_5564), the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
+// the rest are once-logging stand-ins for the retail function they name.
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
 #define SPLITTER_STATE(name) \
@@ -76,7 +78,7 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(InDetectionRange),
     SPLITTER_TRIGGER_PORTED(IsScanning),
     SPLITTER_TRIGGER_PORTED(IsInitiallyDocked),
-    SPLITTER_TRIGGER(IsDocked),
+    SPLITTER_TRIGGER_PORTED(IsDocked),
     SPLITTER_TRIGGER(HasDockingPath),
     SPLITTER_TRIGGER_PORTED(HasDockingTarget),
     SPLITTER_TRIGGER(DockingPathOver),
@@ -174,7 +176,6 @@ void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float
   }
 SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_5A40)
 SPLITTER_TRIGGER_STANDIN(InDetectionRange, fn_75_5944)
-SPLITTER_TRIGGER_STANDIN(IsDocked, fn_75_58BC)
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
@@ -218,6 +219,13 @@ void CSplitterCommandModule::Start(CStateManager&, EStateMsg, float) {}
 // kept (0x58E0 clrlwi with the word's bit 31 - the byte's 0x01); that bit is the answer.
 bool CSplitterCommandModule::IsInitiallyDocked(CStateManager&, const CTriggerData&) const {
   return (mData.mUnknownBD80FD94 & 0x1) != 0;
+}
+
+// fn_75_58BC (the head's IsDocked trigger, 0x58BC-0x58DC): the id at 0xEFA (the chassis the
+// head is docked to) is compared with kInvalidUniqueId (0x58C0 lhz, 0x58C4 lhz, 0x58C8 subf,
+// 0x58CC subf, 0x58D0 or, 0x58D4 srwi by 31): the trigger is true when the id is valid.
+bool CSplitterCommandModule::IsDocked(CStateManager&, const CTriggerData&) const {
+  return mChassisId != kInvalidUniqueId;
 }
 
 // fn_75_3B20 (the head's RaiseShields code, 0x3B20-0x3B34): the flag byte at 0xF6A gets its
