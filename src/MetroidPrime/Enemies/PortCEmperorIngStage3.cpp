@@ -2340,8 +2340,32 @@ void CEmperorIngStage3::EyeShutResetVulnerability(CStateManager& mgr, EStateMsg 
   }
 }
 
+// @ fn_18_6904
+// fn_18_6904 (0x13C): the "DarkBeamAttack" state. Activate (0x693C) sets the
+// animation state to `kAS_Ready` and the dark-beam flag (0x01 of 0x824); Update (0x6954) issues the
+// projectile attack (severity 0, a zero target, no blend) while the body can take one (state
+// 0x12) - the beam starts on the animation's event (fn_18_1530); Deactivate (0x6A14) stops the
+// beam (fn_18_12C4), clears the flag and resets the animation state.
 void CEmperorIngStage3::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6904");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // the value one
+    x824_ |= 0x01; // 0x6948: the dark-beam flag
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Zero, CVector3f::Zero(), false)); // 0x69C4
+    }
+    break;
+  case kStateMsg_Deactivate:
+    StopBeam(mgr); // fn_18_12C4
+    x824_ &= ~0x01; // 0x6A20
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::LightBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
