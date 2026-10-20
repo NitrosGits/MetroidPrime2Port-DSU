@@ -311,7 +311,8 @@ void CEmperorIngStage1::EnsureBodyActive(CStateManager& mgr) {
 // vtable slot 3 = fn_16_56D8 (0x56D8..0x5928): retail's Think. The body only runs while the
 // actor is active - the asm's gate on the byte at 0x20 (CEntity::mActive) at 0x5708 - and it
 // counts the attack timer down (0x5734) and the taunt timer up (0x5740) around the base's own
-// Think (the call at 0x5720).
+// Think (the call at 0x5720). The retail's effect state name is a heap string whose destructor runs
+// at 0x57D4; the host's string_l is a literal, so there is nothing to destroy.
 void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
