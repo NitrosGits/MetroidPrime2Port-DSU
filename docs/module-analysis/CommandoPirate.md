@@ -551,6 +551,19 @@ since 2026-10-20.
   at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). So the jump-back
   trigger runs but stays false: the jump-back distance is still zero, so the ray's end point is
   the actor's own centre.
+- The two constructor stores the port still owes: `fn_9_D904` sets the float at guest this+0xBE0
+  (the jump-back distance) at 0x0000E61C and the one at +0xBE4 (the dodge picker's radius) at
+  0x0000E56C - each is an animation's travel distance times the model's scale X (the load at
+  0x0000E560 and the multiply at 0x0000E568; the same for the second at 0x0000E610 and 0x0000E618).
+  The distance comes from the retail `CPatterned::GetAnimationDistance` (the calls at 0x0000E55C
+  and 0x0000E60C) and the host has that query (include/MetroidPrime/Enemies/CPatterned.hpp:206,
+  used the same way by the Space Pirate's port, src/MetroidPrime/Enemies/PortCSpacePirate.cpp:334).
+  What the port does not have yet is the *animation* each store asks for: the guest builds the
+  `CPASAnimParmData` objects with the module's own helper `fn_9_5D74` (the call at 0x0000E54C,
+  which fills the parms at sp+0x310, sp+0xC8, sp+0xC0, sp+0xB8, sp+0xB0, sp+0xA8 and sp+0xA0
+  from the module's animation list), so the animation ids are still unknown - porting `fn_9_5D74`
+  (or reading the module's animation list out of its .rel) is the next step before the two
+  stores can be ported at their retail spot.
 - `fn_9_3678` (0x288 bytes) is the Dodge state's picker - it is the only thing that sets the
   dodge id, and it is not ported yet, so the dodge id stays -1 and the animation state is never
   readied (no dodge). What it does: it walks the listening-AI object list (the state manager's
