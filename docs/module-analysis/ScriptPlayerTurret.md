@@ -78,8 +78,8 @@ own fields run 0x158..0x22F. The host's layout is its own (Echoes' `CActor` grow
 | 0x1A4, 0x1A8, 0x1AC | three zeroed words | [proven] |
 | 0x1B0 | the **pitch the input asks for**: `fn_63_1134` writes it (the stick's forward axis times the elevation limit) and `fn_63_23C0` reads it | [proven] the store at 0x00001430/0x00001440 |
 | 0x1B4 | the **pitch the turret has reached**: `fn_63_23C0` moves it toward 0x1B0 and clamps it to -0x180..0x17C | [proven] the clamp at 0x00002B00 |
-| 0x1B8, 0x1BC, 0x1C0 | three floats zeroed at birth | [proven] |
-| 0x1C4..0x1CC | the editor transform's forward vector (m01, m11, m21) | [proven] the loads from the transform |
+| 0x1B8, 0x1BC, 0x1C0 | three floats zeroed at birth: the reload timer, `Think`'s rotation-sound debounce (0..0.05, lbl_63_rodata_48) and its alignment (top actor's forward . last frame's, forced to 1 with no input) | [proven] 0x2B28, 0x2BFC |
+| 0x1C4..0x1CC | the editor transform's forward vector (m01, m11, m21); `Think` overwrites it with the top actor's forward each frame | [proven] the loads from the transform, the stores at 0x2B78 |
 | 0x1D0 | the **yaw the input asks for**: `fn_63_1134` writes the turn axis into it | [proven] the store at 0x00001334 |
 | 0x1C0 | the yaw the turret has reached: `fn_63_23C0` writes the top actor's forward dotted with the turret's | [proven] the store at 0x00002A50 |
 | 0x1D4..0x1DC | the base actor's **model flags**: a word, two bytes, a u16 and the packed `CColor(1,1,1,1)` - the flags 3 and the blend modes 0 and 5 in `fn_63_2D68` are `CModelFlags`' | [proven] the `CColor` constructor call at 0x00003348 and the blend modes at 0x00002E54/0x00002ED4 |
@@ -315,3 +315,30 @@ lane. `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
 turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC), the rest of `fn_63_15B0`
 (the five animation ids - its own helper `fn_63_19B0`, 0x184, is over the 0x80 callee cap, so it
 stays a named stand-in too).
+
+## 12. Milestone 6 (Think) - host body and runtime
+
+`fn_63_23C0` (0x968) is ported in retail order, `// @` marked. It does **not** call
+`CActor::Think`. Per frame, while active: the flash timer 0x20C counts down; the base actor's
+flattened forward is turned by `ZRotation(dt * yawInput * 0x18C)` (only for |yaw input| >= 1e-5),
+or, with a player not in control (turret state != 3), swung back to the turret's forward with
+`CQuaternion::LookAt` at 4x speed; past the left/right limits (0x174/0x178, side from the cross
+product's z - `fn_63_2D28` is the inline `CVector3f::Cross`) the base keeps its forward, else it
+gets `CTransform4f::LookAt(pos, pos + dir, up)`; the yaw input 0x1D0 is zeroed. The pitch 0x1B4
+slews to 0x1B0 at `dt * 0x190 * (1 - PhongBlob(clamp(|d|/(pi/2)), 8))` (4x and no ease without
+control), clamped to -0x180..0x17C, and drives the additive animations 0x19C (up) / 0x1A0 (down)
+with weight |pitch|/(pi/2). The top actor goes onto the base's `upwardballsnap_LCTR`. With the
+player in control the rotation sound 0x222 starts/stops (looped, acoustics, the player's pan 4)
+once the alignment crosses `1 - 60 * 1.001358e-5 * dt` and the 0.05 s debounce ends, and is
+pitch-bent by `8192 + 4000 * pitch/(pi/2)`; without control the sound is stopped but the handle
+0x21C is left set (retail).
+
+asmcheck findings, all explained: x20 bit 0x80 is `GetActive()`; the 0x28F8 compare is inside
+`CMath::Clamp`; `string_l`/`internal_dereference` are the locator string temporary;
+`fn_63_2D28` is the host's `CVector3f::Cross`.
+
+**Runtime check (2026-10-20).** `/tmp/opencode/pt_think/run.sh` (06_ShootingGallery, console
+`tp 0 -27 11`, `stick 127 0 120`, `stick 0 127 90`, `press A 20`, `stick -127 -127 120`, `press B 20`):
+`in-turret 1`, the camera turns from (0, -24.05) to (-2.10, -24.92) around the turret, the shot
+spawns at (9.8, -26.7, 17.6) (aimed right), `B` gets off (`in-turret 0`); 4000 updates, `exit=0`,
+0 `[port] caught`/`reach-stub`; screenshots `/tmp/opencode/pt_think/grid.png`.
