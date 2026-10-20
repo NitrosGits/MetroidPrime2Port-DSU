@@ -289,12 +289,14 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   never opens in this area.
 - Movement extras are done: `Skid 94D0`, `GetUp B3D4`, `Jump 5310` + leash `5280`, `WallHang 69AC`,
   `WallDetach 68E4`, `DoubleSnap 99F0`, `JumpBack 63C8` + `CantJumpBack D2A0` are ported (unmarked, section 6).
-  Only the Echoes-only tail is left, 12 stubs, all in PortCSpacePirateStates.cpp: `Ambushing 7630`,
-  `WarpIn 7078`, `WarpOut 6E6C`, `PostWarpOut 6DA4`, `Generate C1A4`, `Bounce 5D0C`, `PathFindEx 5EA4`,
-  `Enraged A2B8`, `Deactivate 5BF4`, `LaunchGrenade 58D8` (needs `4174`), `Captured 5610`, `RemoveFromWorld 5B88`.
-  Suggested order: `Enraged` + `Deactivate` + `RemoveFromWorld` first (small, no new helpers), then `WarpOut`/
-  `PostWarpOut`/`WarpIn` (the `51C8` trooper-warp helper is already ported), then `Bounce`/`PathFindEx`/
-  `Ambushing`/`Generate`, then `LaunchGrenade` with its `4174` bouncy-grenade spawn. The four attack triggers `StartAttack 6334`, `BreakAttack 6328`,
+  `Enraged A2B8`, `Deactivate 5BF4`, `RemoveFromWorld 5B88`, `Ambushing 7630` and `PostWarpOut 6DA4` are done
+  (section 6). **7 stubs left, all in PortCSpacePirateStates.cpp** (`grep PortSpacePirateStandIn`): `WarpOut 6E6C`
+  (0x20C), `WarpIn 7078` (0x528), `Generate C1A4` (0x2C4), `Bounce 5D0C` (0x11C), `PathFindEx 5EA4` (0x188),
+  `LaunchGrenade 58D8` (0x254, needs the `4174` bouncy-grenade spawn), `Captured 5610` (0x26C). Decoded but not
+  yet written: `WarpOut` Activate sets `x6b4 = 1`, `xc04_warpPoint = 1` and clears `x8fa_27_`; Update is
+  `CanIssueCommand(&x6b4, body, 0xC = kAS_Generate)` -> a `CBCGenerateCmd` (type 0xF, fields
+  `{1, zero vector, -1, packed flags}` - read the rest at 0x6FB8..0x7044). `PostWarpOut`'s message is
+  `kSM_Deactivate` = 0x44435456. The four attack triggers `StartAttack 6334`, `BreakAttack 6328`,
   `LostInterest 635C`, `ShouldSpecialAttack 638C` are **already ported** (PortCSpacePirateTriggers.cpp
   ~391-409) and asm-verified: `StartAttack` = `x8f8_31_mayStartAttack` consume-once, `BreakAttack` =
   `x8f5_25_breakAttack` (asm bit 0x20 of 0x8f5), `LostInterest` = `x8f4_29_onlyAttackInRange` &&
