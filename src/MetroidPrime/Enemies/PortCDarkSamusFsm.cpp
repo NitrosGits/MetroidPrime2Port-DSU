@@ -477,17 +477,21 @@ bool CDarkSamus::OutOfMeleeRange(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-// fn_10_116F8 (0x000116F8): the word at 0x984 - the fight script's picked attack id - against 2, the
-// id of the boost ball. The body is the cntlzw/srwi idiom (the four instructions after the load),
-// which makes the result 1 only for an exact match.
+// fn_10_116F8 (0x000116F8): the word at 0x984 - the fight script's picked attack id - against
+// 0x20000, the id of the boost ball. The body is the cntlzw/srwi idiom over `lis r0,0x2`
+// (0x20000) - `subf` - `cntlzw` - `srwi r3,r0,5` (0x000116FC..0x0001170C), which makes the result
+// 1 only for an exact match.
 // @ fn_10_116F8
 bool CDarkSamus::PickedBoostBall(CStateManager&, const CTriggerData&) const {
-  return mPickedAttack == 2;
+  return mPickedAttack == 0x20000;
 }
 
+// fn_10_11760 (0x00011760): the word at 0x984 against 0x100000, the id of the freeze beam. The
+// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774). Not
+// marked: the freeze beam is not one of the TravelToCoverPoints state's transitions, so the body
+// did not run in the walk.
 bool CDarkSamus::PickedFreezeBeam(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11760", "trigger PickedFreezeBeam");
-  return false;
+  return mPickedAttack == 0x100000;
 }
 
 // fn_10_1174C (0x0001174C): the word at 0x984 - the fight script's picked attack id - against 0x20, the
@@ -531,11 +535,11 @@ bool CDarkSamus::PickedMovingSShot(CStateManager&, const CTriggerData&) const {
 }
 
 // fn_10_117A0 (0x000117A0): the byte at 0xDEC (the fade flag) first - when it is 1 the
-// trigger answers for the dive attack's id (0x20, the compare at 0x000117B0), otherwise
-// for the normal missile's id (0x40, the compare at 0x000117C4).
+// trigger answers for the id 0x200000 (the compare at 0x000117B0, `lis r0,0x20`), otherwise
+// for the normal missile's id 0x40 (the compare at 0x000117C4).
 bool CDarkSamus::PickedNormalMissile(CStateManager&, const CTriggerData&) const {
   if (mFadeOut == 1) {
-    return mPickedAttack == 0x20;
+    return mPickedAttack == 0x200000;
   }
   return mPickedAttack == 0x40;
 }
@@ -548,14 +552,21 @@ bool CDarkSamus::PickedPause(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x400;
 }
 
+// fn_10_8680 (DOL, the REL's table only names it): the word at 0x984 against 0x400000, the id of
+// the phazon attack. The body is the cntlzw/srwi idiom over `lis r0,0x40` (0x400000) -
+// `subf` - `cntlzw` - `srwi r3,r0,5` (0x00008680..0x00008698). The DOL's copy is not in the
+// port's sources, so the body is ported here against the host's member.
+// @ fn_10_8680
 bool CDarkSamus::PickedPhazonAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_8680", "trigger PickedPhazonAttack");
-  return false;
+  return mPickedAttack == 0x400000;
 }
 
+// fn_10_8114 (DOL, the REL's table only names it): the word at 0x984 against 0x800000, the id of
+// the phazon enrage. The body is the cntlzw/srwi idiom over `lis r0,0x80` (0x800000) (0x00008114
+// ..0x0000812C). The DOL's copy is not in the port's sources, so the body is ported here.
+// @ fn_10_8114
 bool CDarkSamus::PickedPhazonEnrage(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_8114", "trigger PickedPhazonEnrage");
-  return false;
+  return mPickedAttack == 0x800000;
 }
 
 // fn_10_11738 (0x00011738): the word at 0x984 - the fight script's picked attack id - against 0x8, the
@@ -574,9 +585,13 @@ bool CDarkSamus::PickedSuperMissile(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x100;
 }
 
+// fn_10_CDA0 (DOL, the REL's table only names it): the word at 0x984 against 0x10000, the id of
+// the sweep beam. The body is the cntlzw/srwi idiom over `lis r0,0x1` (0x10000) - `subf` -
+// `cntlzw` - `srwi r3,r0,5` (0x0000CDA0..0x0000CDB8). The DOL's copy is not in the port's
+// sources, so the body is ported here against the host's member.
+// @ fn_10_CDA0
 bool CDarkSamus::PickedSweepBeam(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_CDA0", "trigger PickedSweepBeam");
-  return false;
+  return mPickedAttack == 0x10000;
 }
 
 // fn_10_117EC (0x000117EC): the word at 0x984 - the fight script's picked attack id - against 0x200, the

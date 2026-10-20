@@ -337,6 +337,25 @@ The byte at 0x420's bit 6 (0x40) is a *base class* flag (0x420 lies inside the g
 render pass, fn_10_1D6CC the fade) test it together with the frozen and the visible flags - so it
 is the alive flag, the host's `GetAlive()`.
 
+**The picked attack's ids** (2026-10-21, proven): the word at 0x984 is a *bit mask* of the attack
+the fight script picked, and the ids are 1 melee, 4 melee dash, 8 scatter shot, 0x10 moving scatter
+shot, 0x20 dive attack, 0x40 normal missile, 0x80 missile jump, 0x100 super missile, 0x200 taunt,
+0x400 pause, 0x10000 sweep beam, 0x20000 boost ball, 0x100000 freeze beam, 0x200000 the fade
+variant of the normal missile, 0x400000 phazon attack, 0x800000 phazon enrage [proven: the
+archive tree's matched decomp of the module (`../MetroidPrime2Port`, `src/MetroidPrime/ScriptObjects/
+CDarkSamusState.cpp` and `CDarkSamusCDA0.cpp`/`CDarkSamus8680.cpp`/`CDarkSamus8114.cpp`, whose
+module sha1 is preserved) spells the constants out, and the retail bytes agree]. The trap: retail
+materialises a comparison as `subfic r0,r0,K` when K fits a signed 16-bit immediate and as
+`lis r0,hi` + `subf` when it does not - **`lis r0,N` builds N << 16**, so `lis r0,0x2` is 0x20000
+(the boost ball) and not 2. The port's `PickedBoostBall` and `PickedNormalMissile` had it wrong
+and are fixed.
+
+**The three DOL triggers** (2026-10-21): `PickedSweepBeam` (fn_10_CDA0), `PickedPhazonAttack`
+(fn_10_8680) and `PickedPhazonEnrage` (fn_10_8114) are not in the REL's .text - the REL's table
+(`lbl_10_data_CBC`, the words 113/109/110) points at the DOL's copies of them, whose bodies are the
+same one-word comparison (the ids 0x10000, 0x400000 and 0x800000). The DOL's copies are not in the
+port's sources, so the port implements the bodies itself against the host's member.
+
 **Next**: the rest of the `TravelToCoverPoints` triggers. `ShouldReact` (`fn_10_11158`, 0x154
 bytes) and `TooMuchDamage` (`fn_10_10698`: the word at 0x980 - a TUniqueId - the count at 0x994
 and the array at 0x998, and the two floats at 0xCC0/0xCC8) are the module's own fields.
@@ -346,9 +365,7 @@ and casts it to `CScriptDarkSamusBattleStage`) and module 11's own accessor `fn_
 points at +0x24 of it - so the byte at +0x31 and the float at +0x24 live in the *battle stage*
 REL's object, which the host's `CDarkSamusBattleStage` (upstream's body) does not carry: those two
 triggers need module 11's data first. `WallCollision` (`fn_10_F800`) needs the three floats at
-0x964, 0xC44 and 0x8B0. The three `Picked*` triggers that are not in the REL's text
-(`PickedSweepBeam` = `fn_10_CDA0`, `PickedPhazonAttack` = `fn_10_8680`, `PickedPhazonEnrage` =
-`fn_10_8114`) are DOL functions the REL's table only names, so the port has no body for them yet.
+0x964, 0xC44 and 0x8B0.
 
 `fn_10_1DF74` is not a small body: it calls ten module helpers of its own (`fn_10_1D860`,
 `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`, `fn_10_1E26C`, `fn_10_1C778`,
