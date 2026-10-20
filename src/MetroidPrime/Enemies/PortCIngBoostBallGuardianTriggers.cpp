@@ -634,10 +634,11 @@ bool CIngBoostBallGuardian::StateOver(CStateManager&, const CTriggerData&) const
 bool CIngBoostBallGuardian::IsAlert(CStateManager&, const CTriggerData&) const { return mAlert; }
 
 // fn_30_C68C (this module).
-// fn_29_B1C8 (not yet exercised in a run). The asm tests mHostId (0xcdc) against kInvalidUniqueId -
+// fn_29_B1C8. The asm tests mHostId (0xcdc) against kInvalidUniqueId -
 // the lhz/subf/or/srwi-31 idiom - and nothing else; it does not look at the form. That is what lets
 // SuckEnergy, which sets form 0 and then clears the host once its suck time runs out, take the
 // !IsControllingHost trigger into SetExitHostDest and on into ExitHost.
+// @ fn_30_C68C
 bool CIngBoostBallGuardian::IsControllingHost(CStateManager&, const CTriggerData&) const {
   return mHostId != kInvalidUniqueId; // 0xcdc
 }
@@ -676,6 +677,7 @@ bool CIngBoostBallGuardian::HasLineOfSight(CStateManager&, const CTriggerData&) 
 
 // fn_30_C4C4 (this module).
 // Ing body fn_29_B000
+// @ fn_30_C4C4
 bool CIngBoostBallGuardian::UnderFire(CStateManager&, const CTriggerData&) const {
   return mUnderFireTime < 0.75f;
 }
@@ -719,7 +721,8 @@ bool CIngBoostBallGuardian::HasWallCoverPoint(CStateManager& mgr, const CTrigger
 }
 
 // fn_30_C22C (this module).
-// fn_29_AD68 (not yet exercised in a run)
+// fn_29_AD68
+// @ fn_30_C22C
 bool CIngBoostBallGuardian::HasMiniPortals(CStateManager&, const CTriggerData&) const {
   return mMiniPortalCount != 0;
 }
@@ -761,7 +764,8 @@ bool CIngBoostBallGuardian::UseProjectileFSMEntry(CStateManager&, const CTrigger
 }
 
 // fn_30_C14C (this module).
-// fn_29_AC20 (not yet exercised in a run)
+// fn_29_AC20
+// @ fn_30_C14C
 bool CIngBoostBallGuardian::TargetInSafeZone(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   return target != nullptr && mgr.GetSafeZoneManager()->IsObjectInSafeZone(*target, mgr);
@@ -991,7 +995,8 @@ bool CIngBoostBallGuardian::TargetIsBall(CStateManager& mgr, const CTriggerData&
 }
 
 // fn_30_B83C (this module).
-// fn_29_A1C0 (not yet exercised in a run)
+// fn_29_A1C0
+// @ fn_30_B83C
 bool CIngBoostBallGuardian::HasPathToTarget(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   return target != nullptr &&
@@ -1148,6 +1153,7 @@ void CIngBoostBallGuardian::SetWallPointCoverDest(CStateManager& mgr, float) {
 // keeps a 400.0f (rodata_F0, i.e. 20 units squared) petal around zero: under it the *smaller*
 // non-negative score wins, over it the larger one does. Retail writes mTargetPos (0xdc8) and
 // nothing else - in particular it does not touch mFoundMovementPos, so neither does this.
+// @ fn_30_6C40
 void CIngBoostBallGuardian::SetExitHostDest(CStateManager& mgr, float) {
   LogState("SetExitHostDest");
   const CPlayer* player = mgr.GetPlayer(0); // mgr+0x14fc
@@ -1181,13 +1187,15 @@ void CIngBoostBallGuardian::SetExitHostDest(CStateManager& mgr, float) {
 }
 
 // fn_30_6C00 (this module).
-// fn_29_5190 (not yet exercised in a run)
+// fn_29_5190
+// @ fn_30_6C00
 void CIngBoostBallGuardian::StartRangedAttack(CStateManager& mgr, float) {
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
 // fn_30_6BBC (this module).
-// fn_29_514C (not yet exercised in a run)
+// fn_29_514C
+// @ fn_30_6BBC
 void CIngBoostBallGuardian::EndRangedAttack(CStateManager& mgr, float) {
   CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
                               false);

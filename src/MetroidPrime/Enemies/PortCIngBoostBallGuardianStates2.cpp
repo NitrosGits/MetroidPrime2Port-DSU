@@ -259,7 +259,8 @@ void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg m
 }
 
 // fn_30_9BB0 (this module).
-// fn_29_84A4 (not yet exercised in a run)
+// fn_29_84A4
+// @ fn_30_9BB0
 void CIngBoostBallGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Patrol");
@@ -856,6 +857,7 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
 // the closest physical point within 1000 (rodata_C4) and re-aligns to the surface with 1.0
 // (rodata_64), then sets kAS_Over; Deactivate sets kAS_NotReady. Update does nothing (asm
 // 0x00006A70 is the common tail).
+// @ fn_30_8120
 void CIngBoostBallGuardian::FailSafeMode(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("FailSafeMode");
@@ -963,6 +965,7 @@ void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, f
 // fn_30_7BB0 (this module).
 // fn_29_6008: asks the body for one projectile attack; the animation's
 // kUE_Projectile events then spawn the portals FindMiniPortals queued (fn_29_C228).
+// @ fn_30_7BB0
 void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:

@@ -71,6 +71,7 @@ bool CIngBoostBallGuardian::IsBoostOver(CStateManager& mgr, const CTriggerData& 
 }
 
 // fn_30_B76C: BoostModeRetreatOver (the u16 at guest 0x1096 is kInvalidUniqueId).
+// @ fn_30_B76C
 bool CIngBoostBallGuardian::BoostModeRetreatOver(CStateManager& mgr,
                                                  const CTriggerData& data) const {
   return mBoostNavPointId == kInvalidUniqueId;
