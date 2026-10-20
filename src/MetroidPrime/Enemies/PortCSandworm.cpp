@@ -822,6 +822,8 @@ TUniqueId CSandworm::GetAttackTarget() const { return kInvalidUniqueId; }
 bool CSandworm::IsOnGround() const { return mOnGround; }
 
 // fn_56_14B10 (ported, not exercised yet)
+// Dead slot: only CBSJump and CBSHurled read it, and neither worm's body database has the jump or
+// hurled state (probed on 03_sand_temple L2: HasBodyState(kAS_Jump)=0, kAS_Hurled=0 every sample).
 float CSandworm::GetGravityConstant() const { return kDefaultGravityAccel; }
 
 // fn_56_14B1C (ported, not exercised yet)
