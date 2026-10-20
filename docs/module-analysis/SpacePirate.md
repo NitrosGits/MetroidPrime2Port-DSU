@@ -415,6 +415,28 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   The area run (08_sand_casualpirates) is clean: 0 `[port] caught` / `[reach-stub]`, the 208 cycle
   `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` repeats, and the pirate draws
   (screenshot `/tmp/opencode/sp_vt_shot.png`).
+- **The marking pass over the ported-but-unmarked functions (2026-07-20, this session, branch
+  `decomp/spacepirate-vt`):** every ported function in the three `PortCSpacePirate*.cpp` files was run
+  through `tools/asmcheck.py check --all`. The marked count went from 61 to 67: `ADC0` (0xF8,
+  AggressionCheck - the port's comment cited only its helper `AEE0`), `7970` (0x1FC, HasTargetingPoint -
+  its helper `DE5C`), `4F28` (0x9C, InitLauncherModel), `36CC` (0xF8, RenderLauncherModel), `F0A0`
+  (0x6C, SetupStateMachine) and `BCB0` (0x31C, TargetPatrol). All six are exercised by the area run:
+  the log shows `AggressionCheck trigger 0` and `HasTargetingPoint trigger 0` 2858 times each,
+  `InitLauncherModel (fn_72_4F28) weapon 0` for every pirate, the state machine's setup in every
+  pirate's first frame and `state Taunt -> TargetPatrol` once. **No real mismatch was found** - the
+  remaining asmcheck findings on them are the known false positives (the `TCastToPtr` calls, the
+  navigation's `mInPosition` bit written through `SetInPosition`, the vtable tail call in `3A88` and
+  the `fn_72_CB30` helper call, which is the port's `GetTargetPos`).
+  **32 ported functions stay unmarked** because the area run never reaches them: the states WarpIn,
+  Attack, Crouch, CoverAttack, Halt, Shuffle, TurnAround, Dodge, SquadJoin, Cover, TargetCover,
+  Approach, WallHang, GetUp, Generate, DoubleSnap, Bounce, PathFindEx, Deactivate, LaunchGrenade and
+  Captured (no state line for them in the run), the triggers CoverFind, CoverBlown, CoverNearlyBlown,
+  CoveringFire, ShouldAttack, GetStrafeDir and BounceFind (never evaluated: the live cycle
+  `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` does not list them, and
+  `ShouldMove`/`ShouldAttack` are evaluated 0 times), and the main file's EnsureBodyActive,
+  SpawnGrenade, Touch, Listen (no grenade launcher data, no team AI and no CMetroid in the area, and
+  the pirate never touches the player). The loader `140` stays unmarked as well (asmcheck's 15
+  findings on it are the property reader's own calls).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 
