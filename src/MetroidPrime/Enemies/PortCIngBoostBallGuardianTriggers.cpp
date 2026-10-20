@@ -342,6 +342,11 @@ void CIngBoostBallGuardian::PuddleColliderResistedDamage(CStateManager& mgr, TUn
   }
   mBoostHitTimer = CPatterned::skDamageHitTime; // 0x000043E4: 0x1080
   mHitByPlayerProjectile = true;                // 0x000043F0: 0x420 bit 7
+  if (DebugBg()) { // host trace
+    fprintf(stderr, "[ibbg] %04x puddle resisted bomb %.1f: puddle form %d boost over %d 11D8 %.1f\n",
+            GetUniqueId().Value(), weapon->GetCurrentDamageInfo().GetDamage(),
+            int(mCurrentlyInBoostPuddleForm), int(mBoostOver), mBoost11D8);
+  }
   if (!mCurrentlyInBoostPuddleForm || !mBoostOver) {
     return;
   }
@@ -370,6 +375,10 @@ void CIngBoostBallGuardian::PuddleColliderDamage(CStateManager& mgr, TUniqueId s
     const float initial = health->GetInitialHP();
     if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
       const float damage = initial - actorHealth->GetHP();
+      if (DebugBg()) { // host trace
+        fprintf(stderr, "[ibbg] %04x puddle damage %.1f (weapon type %d), hp %.1f\n",
+                GetUniqueId().Value(), damage, int(weapon->GetType()), health->GetHP());
+      }
       const float hp = health->GetHP();
       AccumulatePuddleDamage(mgr, GetHealthInfo()->GetHP(), damage);
       // The puddle never kills: a lethal hit leaves 1 HP and ends puddle mode for good.
