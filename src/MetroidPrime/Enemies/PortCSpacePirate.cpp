@@ -1215,7 +1215,7 @@ void CSpacePirate::InitLauncherModel(const CSpacePirateData& data) {
   }
 }
 
-// Retail fn_72_36CC: draws the launcher model at the R_wrist locator inside the actor's render
+// @ fn_72_36CC (0xF8): draws the launcher model at the R_wrist locator inside the actor's render
 // alpha buffer pass.
 void CSpacePirate::RenderLauncherModel(const CStateManager& mgr, const CTransform4f& xf,
                                        const CModelFlags& flags) const {
