@@ -320,12 +320,11 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     }
     break;
   case kSM_XENZ:
-    // [this module] the Ing's ++mSafeZoneCount is dropped: this module has no safe-zone count (it
-    // has no lure safe zone), so only the harmful-zone flag is kept.
-    mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr);
+    ++mSafeZoneCount; // 0x0000E3C4: 0x115C
+    mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr); // 0x11EE 0x40
     break;
   case kSM_XEXZ:
-    // [this module] the Ing's --mSafeZoneCount is dropped, for the same reason.
+    --mSafeZoneCount; // 0x0000E3F0
     mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr);
     break;
   default:
@@ -394,6 +393,27 @@ void CIngBoostBallGuardian::Touch(CActor& actor, CStateManager& mgr) {
     mCurDamageRemTime = mDamageWaitTime;
   }
   CPatterned::Touch(actor, mgr);
+}
+
+// @ fn_30_CA18
+// The hit tint: the damage colour while the cooldown runs, else the hits-without-damage colour
+// while a resisted bomb hit (0x1080) or a safe zone holds it. Retail sets no damage highlight and
+// drives no echo emitter here, unlike CPatterned's.
+void CIngBoostBallGuardian::UpdateHitDamageTime(float dt) {
+  mDamageCooldownTimer = 0.f >= mDamageCooldownTimer - dt ? 0.f : mDamageCooldownTimer - dt;
+  mBoostHitTimer = 0.f >= mBoostHitTimer - dt ? 0.f : mBoostHitTimer - dt;
+  if (mSafeZoneCount > 0) {
+    mBoostHitTimer = CPatterned::skDamageHitTime; // 0x0000CA90
+  }
+  if (mDamageCooldownTimer > 0.f) {
+    const float t = mDamageCooldownTimer / CPatterned::skDamageHitTime;
+    const CColor color = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t);
+    mColor.Set(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), mColor.GetAlphau8());
+  } else if (mBoostHitTimer > 0.f) {
+    const float t = mBoostHitTimer / CPatterned::skDamageHitTime;
+    const CColor color = CColor::Lerp(CColor::Black(), CPatterned::skHitsWithoutDamageColor, t);
+    mColor.Set(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), mColor.GetAlphau8());
+  }
 }
 
 // The Ing's DoUserAnimEvent (the Ing REL's fn_29_C228). The base class's handler runs only for the

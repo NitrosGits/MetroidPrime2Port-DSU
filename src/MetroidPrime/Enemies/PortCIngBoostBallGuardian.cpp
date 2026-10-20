@@ -288,6 +288,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoost11D8(0.f)                                       // ctor 0x0000FDC8
 , mBoost11E0(0.f)                                       // ctor 0x0000FDD0
 , mBoostHitTimer(0.f)                                   // ctor 0x0000FB70
+, mSafeZoneCount(0)                                     // ctor 0x0000FD08
 , mBoostPuddleModeTimer(mBoost.mPhase0.mBoostPuddleModeTime) // ctor 0x0000FDDC: *(0x11D0)+0
 , mBoostRandomFloat(0.f)
 , mPhaseIndex(0)

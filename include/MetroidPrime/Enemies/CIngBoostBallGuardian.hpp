@@ -258,6 +258,7 @@ public:
                     CStateManager& mgr) override;
   void SetupStateMachine(CStateManager& mgr) override;
   void Touch(CActor& actor, CStateManager& mgr) override;
+  void UpdateHitDamageTime(float dt) override; // fn_30_CA18
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
 
@@ -557,6 +558,7 @@ private:
   float mBoost11D8;                                      // guest 0x11D8
   float mBoost11E0;     // guest 0x11E0: bomb damage relayed by the ball (fn_30_44A4)
   float mBoostHitTimer; // guest 0x1080: skDamageHitTime on a resisted bomb hit; fn_30_CA18 reads it
+  int mSafeZoneCount;   // guest 0x115C: XENZ/XEXZ count; while > 0 fn_30_CA18 keeps the hit tint
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
   int mPhaseIndex;                                       // guest 0x11CC: the current phase
