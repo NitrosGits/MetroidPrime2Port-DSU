@@ -59,6 +59,51 @@ in `wt-mp2-boostguardian`.
   sizes is in `docs/module-analysis/BoostGuardian.md` section b.3. `BecomeCorporeal` and
   `BecomeIngSpot` are where the boost half changed the most.
 
+### Where this stops, and what is next
+
+The session stops here: the port orchestrator runs the decomp families directly from now on.
+Everything below is committed on `decomp/boostguardian` (base `d6d1c6265`, four commits:
+`fa09810fd`, `62a01419a`, `828caa730`, `3bae3e479`), the worktree is clean, and no lane is
+running.
+
+- **Gates at the last commit.** The host build is clean, `python3 tools/gen_files_cmake.py
+  --check` is rc 0, and `tools/review_decomp_diff.sh d6d1c6265 HEAD` reports `== NULL 80` and
+  `== MASK 1`. The NULL hits are the accepted set: the Ing port's own target/hint/player guards
+  (kept for parity with `decomp/ing`), the host's own probe code, and the two the module's asm
+  tests. The one MASK hit is `flags & 0x100` in `FollowAttackPattern` - the Ing host body's value,
+  re-derived from the asm: PowerPC numbers the bits from the MSB, so `rlwinm. r0, r3, 0, N, N`
+  tests `1u << (31 - N)` (`fn_30_99D4` at 0x00009B44/0x00009B4C/0x00009B60 -> 0x40, 0x80, 0x100).
+- **The run.** Area 28 (`Torvus Bog/06_swamp_boostballguardian_dark`, layer 5) with
+  `MP2_BG_FSM=1 MP2_DEBUG_BG=1`: `Start` (form 2) -> `BecomeCorporeal` -> `Lurk` ->
+  `SelectTarget` -> `FaceTarget` -> `Alert` -> `SetTargetDest` -> `PathFind` -> `BecomeIngSpot` ->
+  `WaitForFSMTransition` (form 3) -> `Start` -> `Lurk` -> `FindCoverPoint` -> `SetCoverDest` ->
+  `IngSpotPathFind` -> `FaceTarget` -> `BecomeCorporeal` -> `WaitForFSMTransition` (form 2);
+  `[port] caught|reach-stub` 0, no crash.
+- **Next, in order.**
+  1. The module's own copies of the 17 nodes in `BoostGuardian.md` section b.3: read them
+     against this module's asm (the Ing port's body is a near neighbour there, not the
+     authority) and fix the port.
+  2. The exit host: this module's own copy of the Ing's exit-host body plus the exit-host class
+     (`ExitHost` and `SpawnExitHostSmoke` are stubs in
+     `PortCIngBoostBallGuardianStates1.cpp`).
+  3. The mini portal attack: this module's own copy of the Ing's `CIngMiniPortalAttack`
+     (`DoUserAnimEvent` in `PortCIngBoostBallGuardianOverrides.cpp` drops the spawn).
+  4. The second class - the crystal the boost ball collides with (`fn_30_3478`, a `CPhysicsActor`
+     of 0x5E0) - and then `BoostAttack` (`fn_30_79C0`), which is a stub until it exists.
+  5. The nav-point finder `fn_30_2F9C`, which `BoostModeRetreat`'s Activate needs
+     (`PortCIngBoostBallGuardianBoost.cpp`).
+  6. The boost ball itself: the rolling form, the puddle form and the three phase structs
+     (`CBoostBallGuardianData`'s phases, the thresholds in
+     `docs/module-analysis/BoostGuardian.md` section c).
+- **Carrying the Ing fixes over.** The Ing half matches `decomp/ing` at `1776bb60b`; when the Ing
+  session commits a fix to a body this module also carries, it has to be carried over here (the
+  file mapping and the list of this module's own adaptations are in
+  `docs/module-analysis/BoostGuardian.md` section b.3).
+- **Shared files this session touched** (the Ing session owns them; the additions are the same
+  ones `decomp/ing` made): `include/MetroidPrime/Enemies/CIngSpotData.hpp` (the accessors),
+  `include/MetroidPrime/PathFinding/CPathFindPointSearch.hpp` (`ClearWaypoints`),
+  `include/MetroidPrime/Player/CPlayer.hpp` (`EnableEnterMorphBall`).
+
 ## 2026-10-20 (thirty-first session): the Boost Guardian module starts - it loads, stands and thinks
 
 Sandworm is closed (20 bodies left, each with its reason in the source and in
