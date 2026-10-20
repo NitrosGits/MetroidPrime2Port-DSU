@@ -303,7 +303,7 @@ CDamageInfo CCommandoPirate::GetContactDamage() const {
 // "subfic r0, r0, 3; cntlzw r0, r0; srwi r3, r0, 5" (0x0000BDD0..0x0000BDD8), i.e. the answer is
 // true when the id is 3 - the host enum's kAS_Over (the ctor's state id 0 is "not ready").
 bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) const {
-  return mAnimationState.GetState() == CAnimationState::kAS_Over;;
+  return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
 
 // fn_9_BD98: the actor is warped in when the state machine's owner is unset (the word at guest
@@ -313,7 +313,7 @@ bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) co
 // The block's +0x15D is the loader's mFlags1 - the "sound" property's bits 6, 3, 0 and 29 (the
 // data ctor fn_9_EDC0 packs them at 0x0000EF34..0x0000EF60) - so the flag is script-supplied.
 bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
-  return x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0;;
+  return x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0;
 }
 
 bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
@@ -341,7 +341,7 @@ bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& dat
 // 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
 // - so the flag is script-supplied.
 bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
-  return (mData.mFlags0 & 0x80) != 0;;
+  return (mData.mFlags0 & 0x80) != 0;
 }
 
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
@@ -359,7 +359,7 @@ bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& dat
 // return takes cr0.LT (mfcr r0 at 0x0000BAE0, srwi r3, r0, 31 at 0x0000BAE4). The constructor
 // sets that member to 0.75f, so the test is false until something lowers it.
 bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) const {
-  return xb64_ < 0.75f;;
+  return xb64_ < 0.75f;
 }
 
 bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
@@ -397,7 +397,7 @@ bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) co
 // built at 0x0000B908..0x0000B924) - and the actor's compare against kInvalidUniqueId
 // (0x0000B930..0x0000B944) is the != test.
 bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
-  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;;
+  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
 bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {
