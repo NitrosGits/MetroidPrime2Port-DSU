@@ -865,15 +865,15 @@ bool CIngBoostBallGuardian::ShouldFleeSafeZone(CStateManager&, const CTriggerDat
 // fn_30_C014 (the Ing's fn_29_AA4C): the desired form (0xAE8) is 2 (0x0000C02C) and the form is
 // not corporeal yet (fn_30_C218, 0x0000C034).
 // @ fn_30_C014
-bool CIngBoostBallGuardian::ShouldBecomeCorporeal(CStateManager&, const CTriggerData&) const {
-  return mDesiredForm == kForm_Corporeal && mForm != kForm_Corporeal;
+bool CIngBoostBallGuardian::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
+  return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
 
 // fn_30_BFCC (the Ing's fn_29_AA04): the desired form (0xAE8) is 3 (0x0000BFE4) and the form is
 // not the ing spot yet (fn_30_C204, 0x0000BFEC).
 // @ fn_30_BFCC
-bool CIngBoostBallGuardian::ShouldBecomeIngSpot(CStateManager&, const CTriggerData&) const {
-  return mDesiredForm == kForm_IngSpot && mForm != kForm_IngSpot;
+bool CIngBoostBallGuardian::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
+  return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
 
 // Ing body fn_29_A8CC. Area 28 has no team (0x1086 stays invalid), so CanStartAttack only runs
