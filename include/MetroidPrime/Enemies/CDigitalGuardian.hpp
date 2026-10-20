@@ -4,8 +4,10 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "REL/REL_Setup.h"
 
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "rstl/optional_object.hpp"
 
+class CElementGen;
 class CParticleGen;
 
 #ifdef TARGET_PC
@@ -309,9 +311,10 @@ private:
   int x10DC_[4];     // 0x10DC: the four per-leg words (0x10DC, 0x10E0, 0x10E4, 0x10E8); the
                      // value 3 skips the leg (fn_14_1700)
   const CParticleGen* x123C_; // 0x123C: the particle generator the echo emitter's render
-                              // draws (a CElementGen in retail); null in the port until
-                              // fn_14_D664, which allocates it, is ported
-  float x1264_;      // 0x1264: the echo emitter's height (fn_14_17DC, fn_14_2578)
+                              // draws (a CElementGen in retail); fn_14_D664 creates it
+  CSfxHandle x1240_;   // 0x1240: the beacon's sound emitter handle (fn_14_28D0 sets it)
+  float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
+  int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
@@ -321,8 +324,19 @@ private:
   void x17DC_(const CStateManager& mgr, const CTransform4f& xf) const;
   void x1700_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
 
-  // fn_14_2578 (0xF4 bytes): the echo emitter's transform. A stand-in in this slice.
+  // fn_14_2578 (0xF4 bytes): the echo emitter's transform.
   void x2578_(CTransform4f& out, const CTransform4f& xf) const;
+
+  // fn_14_D664 (0x178 bytes): the beacon's particle generator.
+  CElementGen* xD664_(CAssetId id);
+
+  // fn_14_2CC4 (0x19C bytes): the beacon's update.
+  void x2CC4_(CStateManager& mgr, float dt);
+
+  // fn_14_28D0 (0x158 bytes) and fn_14_2A28 (0x29C bytes): the beacon's arrival and its
+  // effect update. Both are over this slice's callee limit, so they are stand-ins.
+  void x28D0_(CStateManager& mgr);
+  void x2A28_(CStateManager& mgr, float dt);
 
   // fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models.
   void x6864_();

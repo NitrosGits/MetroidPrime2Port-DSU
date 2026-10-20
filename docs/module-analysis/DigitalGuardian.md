@@ -930,6 +930,38 @@ guardian's render path only runs while the actor is active, so a run that does n
 shows the arena but not the guardian.
 
 
+**WP2 part 2j done (2026-10-20): the beacon.** The three pieces the beacon needs are ported:
+`fn_14_2578` (0xF4, the beacon's transform), `fn_14_D664` (0x178, the particle generator) and
+`fn_14_2CC4` (0x19C, the beacon's update - the only writer of the height at 0x1264). The
+constructor also resolves the melee trigger's locators (0x10C8..0x10CB) now.
+
+| piece | what it does |
+|---|---|
+| fn_14_2578 | the beacon's transform: the locator at 0x10B9 scaled (the GetScaledLocatorTransform call at 0x26A4), times the actor's transform (the __ml__ at 0x26B4), and - when the beacon's model is there (the byte at 0x1238, the model's valid flag, the test at 0x26C4) - moved along the transform's z axis by (0x1264 - 0.5f) * (0.8f * the model's height): the constants are .rodata 0x29C (0.5f) and 0x2A0 (0.8f) and the height is the model's bounds (the GetBounds call at 0x269C, the box's min z at 0x10(sp) and max z at 0x1c(sp)) |
+| fn_14_D664 | the beacon's particle generator: the "PART" object (the SObjectTag the retail builds at 0xD690 - the type "PART" and the id) becomes a CElementGen with the normal orientation and the kOSF_One flag (the li r5, 0 and li r6, 1 at 0xD720). The constructor calls it with the beacon's effect asset (guest 0x950, the data block's mTransmissionBeaconFx, the call at 0xB6AC) and keeps the pointer at 0x123C. The retail never frees it (its destructor leaves 0x123C alone), so the port does not either |
+| fn_14_2CC4 | the beacon's update: it runs while bit 3 of the flag byte at 0x128C is clear (the extrwi at 0x2CF0 - the byte's bit 3, the mask 0x08). The state word at 0x1268 drives the height (0x1264): in state 2 it rises by the frame time, clamped to 1.0 (the fcmpo at 0x2D28, the constant 1.0f at .rodata 0x270), and when it reaches 1.0 (the fcmpo at 0x2D48 with the cror eq, gt, eq) fn_14_28D0 runs and the state becomes 1 (the store at 0x2D64); in state 3 it falls by twice the frame time (the constant 2.0f at .rodata 0x26C), clamped to 0.0 (the fcmpo at 0x2D8C), and when it reaches 0.0 (the fcmpo at 0x2DA8 with the cror eq, lt, eq) the state becomes 0 (the store at 0x2DB8). The sound emitter (the handle at 0x1240, set by fn_14_28D0) follows the neck locator (the GetLctrTransform call at 0x2DD4) and its volume is 0x7F while the echo visor is active (the GetActiveVisor call at 0x2DF8 - the retail's visor 1, which is the echo visor) and the low byte of the transmission beacon's sound parms' maxVolume otherwise (the clrlwi at 0x2E10; the guest's 0x974 is the data block's +0x1B4) |
+
+`fn_14_2CC4`'s callees are over this slice's callee limit and are named once-logging stand-ins:
+**fn_14_28D0** (0x158 - the beacon's arrival: it hands the collision actor at 0x10CC a flag, starts
+the particle generator, plays the arrival sound, which is what sets the emitter handle at 0x1240,
+and lets the visor orbit the beacon) and **fn_14_2A28** (0x29C - the beacon's effect update: it
+aims the particle generator at the player and drives its external parameter).
+
+fn_14_2CC4's caller is **fn_14_7CB4** (the Crippled state), which is still a stand-in, so the
+beacon's height stays at 0 in the port and **the beacon's model does not draw yet** - the
+beacon's particle generator exists and is handed to the renderer every frame (fn_14_17DC's
+AddParticleGen), but nothing drives it until the Crippled state is ported.
+
+The constructor's melee locators (0x10C8..0x10CB) are the four "*_col_LCTR" names, taken from
+the pointer table at .rodata 0x10 (the stores at 0xBC00, 0xBC34, 0xBC68 and 0xBC9C): "L_front_
+col_LCTR", "L_back_col_LCTR", "R_front_col_LCTR" and "R_back_col_LCTR".
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate`, 1800 frames): the guardian u054d is active (hp 150/150)
+and draws with the leg, shin and toe models; the beacon does not draw yet (its height is 0, see
+above). No "[port] caught" and no reach-stub in the log.
+
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct

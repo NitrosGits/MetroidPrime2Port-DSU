@@ -18,8 +18,10 @@
 
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Particles/CParticleGen.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -182,7 +184,9 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10D7_(0xFF)
 , x10DC_{-1, -1, -1, -1}
 , x123C_(nullptr)
+, x1240_(CSfxHandle())
 , x1264_(0.f)
+, x1268_(0)
 , x1270_(0)
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
@@ -208,9 +212,19 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   x10D5_ = anim->GetLocatorSegId(rstl::string_l("L_back_ankle")).val();
   x10D6_ = anim->GetLocatorSegId(rstl::string_l("R_front_ankle")).val();
   x10D7_ = anim->GetLocatorSegId(rstl::string_l("R_back_ankle")).val();
+  // The melee trigger's locators (the stores at 0xBC00, 0xBC34, 0xBC68 and 0xBC9C, the names
+  // from the pointer table at .rodata 0x10).
+  x10C8_[0] = anim->GetLocatorSegId(rstl::string_l("L_front_col_LCTR"));
+  x10C8_[1] = anim->GetLocatorSegId(rstl::string_l("L_back_col_LCTR"));
+  x10C8_[2] = anim->GetLocatorSegId(rstl::string_l("R_front_col_LCTR"));
+  x10C8_[3] = anim->GetLocatorSegId(rstl::string_l("R_back_col_LCTR"));
 
   // fn_14_6864 (the call at 0xBD78): the module's five models.
   x6864_();
+
+  // fn_14_D664 (the call at 0xB6AC): the beacon's particle generator, from the beacon's effect
+  // asset (guest 0x950, the data block's mTransmissionBeaconFx).
+  x123C_ = xD664_(mData.mTransmissionBeaconFx);
 }
 
 CDigitalGuardian::~CDigitalGuardian() {}
@@ -428,15 +442,96 @@ void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
   }
 }
 
-// fn_14_2578 (0xF4 bytes): the echo emitter's transform. The retail walks the locator at guest
+// fn_14_2578 (0xF4 bytes): the beacon's transform. The retail walks the locator at guest
 // this+0x10B9 (the GetScaledLocatorTransform call at 0x26A4), multiplies the actor's transform
-// with it (the __ml__ at 0x26B4) and, when the byte at this+0x1238 is set, moves the result
-// along its own z axis by (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants
-// are .rodata 0x29C and 0x2A0 and the height comes from the model at this+0x11EC (the
-// GetBounds call at 0x269C). 0xF4 bytes is over this slice's limit, so it is a stand-in.
+// with it (the __ml__ at 0x26B4) and, when the beacon's model is there (the byte at this+0x1238,
+// the model's valid flag - the test at 0x26C4), moves the result along its own z axis by
+// (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants are .rodata 0x29C (0.5f)
+// and 0x2A0 (0.8f) and the height comes from the model's bounds (the GetBounds call at 0x269C:
+// the box's min z at 0x10(sp) and its max z at 0x1c(sp), the fsubs at 0x25F0).
 void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
-  StandInFn("fn_14_2578 (the echo emitter's transform, 0xF4 bytes)");
-  out = CTransform4f::Identity();
+  CTransform4f result = xf * GetScaledLocatorTransform(CSegId(x10B9_));
+  if (x11EC_.valid()) {
+    const CAABox bounds = x11EC_.data().GetBounds();
+    const float height = bounds.GetMaxPoint().GetZ() - bounds.GetMinPoint().GetZ();
+    const float scale = (x1264_ - 0.5f) * (0.8f * height);
+    // The transform's z axis (the retail's m02, m12 and m22, read at 0x2600, 0x2608 and 0x260C).
+    const CVector3f axis = result.GetUp();
+    result.SetTranslation(result.GetTranslation() + axis * scale);
+  }
+  out = result;
+}
+
+// fn_14_D664 (0x178 bytes): the beacon's particle generator. The asset id is the "PART" object
+// (the SObjectTag the retail builds at 0xD690: the type "PART" and the id) and the generator is a
+// CElementGen with the normal orientation and the kOSF_One flag (the li r5, 0 and the li r6, 1
+// at 0xD720). An invalid asset id (the cmplwi at 0xD674) gives no generator. The retail's
+// allocation also carries a memory-node name (a .rodata label); the host's rs_new has none.
+CElementGen* CDigitalGuardian::xD664_(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return nullptr;
+  }
+  const TToken< CGenDescription > token(gpSimplePool->GetObj(SObjectTag('PART', id)));
+  return rs_new CElementGen(token);
+}
+
+// fn_14_2CC4 (0x19C bytes): the beacon's update. It runs while bit 3 of the flag byte at guest
+// this+0x128C is clear (the extrwi at 0x2CF0 - the byte's bit 3, the mask 1u << (31 - 28) =
+// 0x08). The state word at 0x1268 drives the beacon's height (0x1264): in state 2 it rises by
+// the frame time and is clamped to 1.0 (the fcmpo at 0x2D28, the constant 1.0f at .rodata
+// 0x270), and when it reaches 1.0 (the fcmpo at 0x2D48 with the cror eq, gt, eq) the beacon's
+// arrival is handled (fn_14_28D0) and the state becomes 1 (the store at 0x2D64); in state 3 it
+// falls by twice the frame time (the constant 2.0f at .rodata 0x26C) and is clamped to 0.0 (the
+// fcmpo at 0x2D8C), and when it reaches 0.0 (the fcmpo at 0x2DA8 with the cror eq, lt, eq) the
+// state becomes 0 (the store at 0x2DB8).
+//
+// The sound emitter (the handle at 0x1240, set by fn_14_28D0) follows the neck locator: the
+// GetLctrTransform call at 0x2DD4, the position at 0x24(sp), 0x34(sp) and 0x44(sp) (the
+// transform's translation) and the volume is 0x7F while the echo visor is active (the
+// GetActiveVisor call at 0x2DF8 - the retail's visor 1) and the low byte of 0x974 otherwise
+// (the clrlwi at 0x2E10; the guest's 0x974 is the data block's +0x1B4, the transmission
+// beacon's sound parms' maxVolume).
+void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
+  if ((x128C_ & 0x08) != 0) {
+    return;
+  }
+  if (x1268_ == 2) {
+    x1264_ = rstl::min_val(1.f, x1264_ + dt);
+    if (x1264_ >= 1.f) {
+      x28D0_(mgr);
+      x1268_ = 1;
+    }
+  } else if (x1268_ == 3) {
+    x1264_ = rstl::max_val(0.f, x1264_ - 2.f * dt);
+    if (x1264_ <= 0.f) {
+      x1268_ = 0;
+    }
+  }
+  if (x1240_) {
+    const CVector3f position = GetLctrTransform(CSegId(x10B9_)).GetTranslation();
+    // The retail's visor 1 is the echo visor (the host's EPlayerVisor keeps the retail's
+    // order: combat, echo, scan, dark).
+    const uchar volume = mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Echo
+                             ? 0x7F
+                             : static_cast< uchar >(mData.mSoundTransmissionBeacon.maxVolume);
+    CSfxManager::UpdateEmitter(x1240_, position, CVector3f::Up(), volume);
+  }
+  x2A28_(mgr, dt);
+}
+
+// fn_14_28D0 (0x158 bytes): the beacon's arrival - it hands the collision actor at 0x10CC a
+// flag, starts the particle generator (the virtual at 0x2C), plays the arrival sound (which is
+// what sets the emitter handle at 0x1240) and lets the visor orbit the beacon. Over this
+// slice's callee limit, so it is a stand-in.
+void CDigitalGuardian::x28D0_(CStateManager& mgr) {
+  StandInFn("fn_14_28D0 (the beacon's arrival, 0x158 bytes)");
+}
+
+// fn_14_2A28 (0x29C bytes): the beacon's effect update - it aims the particle generator at the
+// player and drives its external parameter. Over this slice's callee limit, so it is a
+// stand-in.
+void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_2A28 (the beacon's effect update, 0x29C bytes)");
 }
 
 // fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models - the leg
