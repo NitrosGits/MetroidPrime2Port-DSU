@@ -236,11 +236,11 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 1C70 | CSandBoss::SyncAttacker (mgr, delta) | [proven] host body (caller: DarkBeamAttack AC68) |
 | 1D74 | CSandBoss::RotateHelper1D74 | [ported] host body, not exercised yet |
 | 1F84 | CSandBoss::FaceTowardPoint (dt, point) | [proven] host body |
-| 2030 | CSandBoss::RotateHelper2030 | [ported] host body, not exercised yet |
-| 22E4 | CSandBoss::RotateToPlayerStep | [ported] host body, not exercised yet |
-| 2498 | CSandBoss::RotateHelper2498 | [ported] host body, not exercised yet |
-| 254C | CSandBoss::RotateHelper254C | [ported] host body, not exercised yet |
-| 25D0 | CSandBoss::RotateHelper25D0 | [ported] host body, not exercised yet |
+| 2030 | CSandBoss::RotateHelper2030 | [proven] host body |
+| 22E4 | CSandBoss::RotateToPlayerStep | [proven] host body |
+| 2498 | CSandBoss::RotateHelper2498 | [proven] host body |
+| 254C | CSandBoss::RotateHelper254C | [proven] host body |
+| 25D0 | CSandBoss::RotateHelper25D0 | [proven] host body |
 | 26C0 | CSandBoss::CountActiveChargeBeams (returns the count) | [proven] host body |
 | 2750 | CSandBoss::UpdateChargeBeams | [proven] host body (volleys) |
 | 2CA4 | CSandBoss::ResetChargeBeams | [proven] host body |
@@ -254,9 +254,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [proven] host body |
 | 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [proven] host body |
 | 44CC | CSandBoss::FireDarkBeam (mgr, dt) | [proven] host body |
-| 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
+| 4C60 | CSandBoss::HandleScreenShake | [proven] host body |
 | 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
-| 528C | CSandBoss::HandleGroundImpact | [stand-in] log-once |
+| 528C | CSandBoss::HandleGroundImpact | [proven] host body |
 | 560C | CSandBoss::CrackSphere | [ported] host body, not exercised yet |
 | 595C | CSandBoss::CountAttachedSiblings | [proven] host body |
 | 58B4 | CSandBoss::CollectAttachedSiblings (attached ids) | [proven] host body |
@@ -332,8 +332,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | AED8 | CSandBoss::SpitOutBall | [ported] host body, not exercised yet |
 | B06C | CSandBoss::JumpOffSphere | [ported] host body, not exercised yet |
 | B2D8 | CSandBoss::DestroySphere | [ported] host body, not exercised yet |
-| B544 | CSandBoss::BallInMouth | [stand-in] log-once |
-| B658 | CSandBoss::SuckBall | [stand-in] log-once |
+| B544 | CSandBoss::BallInMouth | [ported] host body, not exercised yet |
+| B658 | CSandBoss::SuckBall | [ported] host body, not exercised yet |
 | B718 | CSandBoss::SuckAir | [ported] host body, not exercised yet |
 | B98C | CSandBoss::RotateToPlayer | [proven] host body |
 | BAAC | CSandBoss::AttachToSphere | [proven] host body |
@@ -347,7 +347,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | C154 | CSandBoss::HeadArmorDestroyed | [proven] host body |
 | C174 | CSandBoss::IsLastStage | [proven] host body |
 | C188 | CSandBoss::IsBallInSuckRange | [ported] host body, not exercised yet |
-| C1CC | CSandBoss::IsFacingPlayer | [stand-in] log-once |
+| C1CC | CSandBoss::IsFacingPlayer | [ported] host body, not exercised yet |
 | C258 | CSandBoss::ShouldDestroySphere | [proven] host body |
 | C2A0 | CSandBoss::ShouldSnapJaws | [proven] host body |
 | C378 | CSandBoss::ShouldDoubleCharge | [proven] host body |

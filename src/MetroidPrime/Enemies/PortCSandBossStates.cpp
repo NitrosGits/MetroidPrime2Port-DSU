@@ -21,7 +21,6 @@
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 
-void PortSandBossStandIn(const char* what);
 CSandBoss* CastSandBoss(CEntity* entity);
 const CSandBoss* CastSandBoss(const CEntity* entity);
 

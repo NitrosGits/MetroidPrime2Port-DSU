@@ -30,7 +30,6 @@
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
-void PortSandBossStandIn(const char* what);
 CSandBoss* CastSandBoss(CEntity* entity);
 const CSandBoss* CastSandBoss(const CEntity* entity);
 
@@ -152,7 +151,7 @@ void CSandBoss::SyncAttacker(CStateManager& mgr, int delta) {
   }
 }
 
-// fn_55_22E4 (ported, not exercised yet)
+// @ fn_55_22E4
 // Picks how this worm turns toward the player out of the attached siblings: none or more than three
 // turns straight at the point; two turns off the sibling whose 0x165C b2 flag is set (or, with none,
 // off the facing their facings bracket); three drops the sibling furthest off the point and turns
@@ -227,7 +226,7 @@ void CSandBoss::FaceTowardPoint(float dt, const CVector3f& target) {
   }
 }
 
-// fn_55_2030 (ported, not exercised yet)
+// @ fn_55_2030
 // The two-sibling version of 1D74: the reference axis is the normalised sum of both siblings'
 // facing axes (or the first sibling's X column when the sum has no safe magnitude), and the side
 // test is the cross product of the flattened delta with that raw sum (whose Z term a flattened
@@ -259,7 +258,7 @@ void CSandBoss::RotateHelper2030(CStateManager& mgr, const CVector3f& target, fl
   FaceTowardPoint(dt, here + toTarget.Magnitude() * dir); // fn_55_1F84
 }
 
-// fn_55_2498 (ported, not exercised yet)
+// @ fn_55_2498
 // Drops one id from the list, shifting the rest down (retail shifts the 16-bit ids inside the
 // reserved_vector and decrements its count).
 void CSandBoss::RotateHelper2498(rstl::vector< TUniqueId >& ids, int index) { // fn_55_2498
@@ -269,7 +268,7 @@ void CSandBoss::RotateHelper2498(rstl::vector< TUniqueId >& ids, int index) { //
   ids.erase(ids.begin() + index);
 }
 
-// fn_55_254C (ported, not exercised yet)
+// @ fn_55_254C
 // The first attached sibling whose 0x165C bit 2 is set, or -1 when none is.
 int CSandBoss::RotateHelper254C(CStateManager& mgr,
                                 const rstl::vector< TUniqueId >& ids) { // fn_55_254C
@@ -282,7 +281,7 @@ int CSandBoss::RotateHelper254C(CStateManager& mgr,
   return -1;
 }
 
-// fn_55_25D0 (ported, not exercised yet)
+// @ fn_55_25D0
 // Index of the attached sibling whose facing axis is furthest off the point (the largest angle to
 // it), -1 when no id resolves.
 int CSandBoss::RotateHelper25D0(CStateManager& mgr, const rstl::vector< TUniqueId >& ids,
@@ -765,7 +764,7 @@ void CSandBoss::FireDarkBeam(CStateManager& mgr, float dt) {
   mF34 = 0.f; // 0xF34
 }
 
-// fn_55_4C60 (ported, not exercised yet)
+// @ fn_55_4C60
 // Screen shake for a state: the shaker is the script object on this worm's PLAY/ATCH connection
 // (retail's 0x504c4159 / 0x41544348); its shake data is copied, moved to the locator's position and
 // handed to the camera-shaker manager without the sound or the cinematic block.
@@ -797,7 +796,7 @@ void CSandBoss::DestroySphereHelper(CStateManager& mgr) {
   }
 }
 
-// fn_55_528C (ported, not exercised yet)
+// @ fn_55_528C
 // The worm's body slams down: the player takes the stampede damage when he is closer to the locator
 // than that damage's radius, and the stampede sand fountain erupts at the head locator, on the
 // stampede waypoint's Z, three times this worm's scale.

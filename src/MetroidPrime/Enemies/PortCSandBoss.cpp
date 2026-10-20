@@ -30,22 +30,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// Reports a stand-in the first time it runs, so a log lists what is still a shell. Shared with
-// PortCSandBossStates.cpp and PortCSandBossAttacks.cpp.
-void PortSandBossStandIn(const char* what) {
-  static const char* sSeen[256] = {};
-  static int sCount = 0;
-  for (int i = 0; i < sCount; ++i) {
-    if (sSeen[i] == what || strcmp(sSeen[i], what) == 0) {
-      return;
-    }
-  }
-  if (sCount < 256) {
-    sSeen[sCount++] = what;
-  }
-  fprintf(stderr, "[sandboss] %s is a port stand-in (see PortCSandBoss*.cpp)\n", what);
-}
-
 // Entity type id 129 (TypesMatch.cpp lists it as the SandBoss REL's; there is no kET_ name).
 static const int kSandBossTypeId = 129;
 
