@@ -175,6 +175,27 @@ world, area 13) has a placement with 0..3; the run that reached it (0 `[port] ca
 `[reach-stub]`) confirmed the spawn: the Ing killed there left two inglets, the count the formula
 gives for the damage it took (2 = ceil((1 - 20/40) * 3)).
 
+#### fn_44_7058's branches
+
+The body is marked (`// @ fn_44_7058`). Every branch the host can reach ran in the Agon Wastes'
+`0a_sand_hall_dark` (the sand world, area 13), each with a temporary hook that was reverted:
+
+| branch | how it ran |
+|---|---|
+| the death weapon's flags != 2 and != 0x12 (asm 0x70CC) | the flags ran at 0 and at 2 (a comboed light weapon) |
+| the flags == 0x12 (asm 0x70D4) | unreachable: the host's CWeaponMode has three flags, so its byte is 0..7 |
+| the form is not the puddle, or the data's 0x155 is set (asm 0x70DC) | both: the form ran at 0 and at 1 (the ing spot) |
+| the damage is below zero (asm 0x7120) | the damage ran at -20 and at 20 |
+| the damage is past the spawn distance (asm 0x7130) | the damage ran at 20 and at 100 |
+| the count is under the minimum (asm 0x7228) | the count ran at 0 with the minimum at 1 |
+| the count is zero (asm 0x7238) | the maximum count ran at 0 |
+| the ing spot allows lock-on (asm 0x717C) | the materials ran with and without the target and orbit bits |
+| the spawn loop (asm 0x739C) | it ran with 0, 1, 2 and 3 inglets |
+| the inglet is added (asm 0x7614) | it ran with every count above |
+
+The two branches that are not reachable on the host are the failed allocation (asm 0x74C4) and the
+failed constructor (asm 0x74D4).
+
 
 ## The functions that are still not ported
 

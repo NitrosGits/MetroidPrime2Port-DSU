@@ -2050,7 +2050,8 @@ void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   CPatterned::KnockBack(mgr, info);
 }
 
-// fn_44_7058: the retail's massive death spawns the inglets (asm 0x7058-0x76A8). The number of
+// @ fn_44_7058
+// The retail's massive death spawns the inglets (asm 0x7058-0x76A8). The number of
 // them falls off with the distance to the player, and each one is a CBouncyGrenade named "Inglet"
 // that leaves the Ing's top at the angle the ten-entry table gives.
 void CMinorIng::MassiveDeath(CStateManager& mgr) {
