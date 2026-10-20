@@ -327,7 +327,10 @@ bool CWallCrawler::UpdateWPDestination(CStateManager& mgr) {
   return advanced;
 }
 
-// @ fn_83_1310
+// fn_83_1310 (0x6B8) - **not marked**: the retail's body also runs the player-obstruction scan
+// (asm 0x15C8-0x17A4) that sets mPlayerObstructed, and the port does not have it yet, so the
+// marker would claim more than the body does. The scan is the next slice's target; see
+// docs/module-analysis/WallCrawler.md.
 void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3f& newPos, float dt) {
   float best = radius + mCollisionCloseMargin;
   const CVector3f extent(best, best, best);
