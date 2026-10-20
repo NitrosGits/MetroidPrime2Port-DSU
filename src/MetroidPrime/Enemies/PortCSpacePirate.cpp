@@ -950,7 +950,8 @@ void CSpacePirate::UpdateAimBodyState(float dt, CStateManager& mgr) {
   if (mAlive && mEnableAim && !body->IsFrozen() && !body->IsElectrocuting() && !x8f4_27_melee &&
       xb30_ == nullptr && (!x8f5_26_seated || x8f9_28_satUp) && !x8fa_30_) {
     xb98_aimDelayTimer = CMath::Max(0.f, xb98_aimDelayTimer - dt);
-    if (xb98_aimDelayTimer == 0.f) {
+    // 0x2614 fcmpo + 0x2618 cror eq,lt,eq: the block runs while xb98 <= 0.f, not only at 0.
+    if (xb98_aimDelayTimer <= 0.f) {
       cmds.DeliverCmd(CBCAdditiveAimCmd());
       const CVector3f gunPos = GetLctrTransform(xa86_gunSeg).GetTranslation();
       CVector3f offset = x8f7_29_inWallHang ? CVector3f::Zero() : GetTranslation() - gunPos;
@@ -1316,10 +1317,13 @@ void CSpacePirate::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// Retail fn_72_E120 (SetAttackTarget): the new target, the squad manager's copy of it, a fresh
+// burst type and no attack time left.
 void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
-  StandIn("CSpacePirate::SetAttackTarget (fn_72_E120)");
-  CPatterned::SetAttackTarget(mgr, target);
-  mAttackTarget = target;
+  mAttackTarget = target;     // 0xE12C lhz 0x0(r5), 0xE138 sth 0xa94
+  UpdateTeamTarget(mgr);      // 0xE13C bl fn_72_DE5C
+  mBurstFire.SetBurstType(1); // 0xE148 stw 1, 0xa98 (CBurstFire's first field)
+  mAttackRemTime = 0.f;       // 0xE150 stfs 0, 0xa90 (rodata B9C)
 }
 
 void CSpacePirate::PreRenderAllViewports(CStateManager& mgr) {
@@ -1351,14 +1355,27 @@ const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f
   return GetDamageVulnerability();
 }
 
+// Retail fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
+// the actor's bounding box (fn_72_1854).
 rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
-  StandIn("CSpacePirate::GetTouchBounds (fn_72_17C8)");
-  return CPatterned::GetTouchBounds();
+  // 0x17DC-0x1834: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the
+  // touch bounds are the ragdoll's (ragdoll+0x58..0x70). The ragdoll is outside the port (xb30_
+  // is never set), so there is no host member to read: port it with the ragdoll.
+  // 0x183C bl fn_72_1854: the actor's own bounding box (GetBoundingBox).
+  return GetBoundingBox();
 }
 
+// Retail fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
+// quarter of their size around their centre.
 CAABox CSpacePirate::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CSpacePirate::GetSortingBounds (fn_72_35CC)");
-  return CPatterned::GetSortingBounds(mgr);
+  // 0x35F0 bl GetBounds: the model's bounds in the actor's transform (this+0x24).
+  const CAABox bounds = GetModelData()->GetBounds(GetTransform());
+  // 0x362C bl GetCenterPoint.
+  const CVector3f center = bounds.GetCenterPoint();
+  // 0x364C-0x3684: the half size = 0.25 (rodata BC0) * the bounds' size.
+  const CVector3f half = (bounds.GetMaxPoint() - bounds.GetMinPoint()) * 0.25f;
+  // 0x36B4 bl CAABox: (centre - half, centre + half).
+  return CAABox(center - half, center + half);
 }
 
 // Retail fn_72_3B28: a jump table over the event type; every other event is CPatterned's.
@@ -1448,10 +1465,11 @@ bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListen
   return heard;
 }
 
+// Retail fn_72_E090 (GetOrigin): the pirate's own position.
 CVector3f CSpacePirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                   const CVector3f& aimPos) const {
-  StandIn("CSpacePirate::GetOrigin (fn_72_E090)");
-  return CPatterned::GetOrigin(mgr, role, aimPos);
+  // 0xE090-0xE0A4: this+0x54/0x58/0x5c, the actor's translation.
+  return GetTranslation();
 }
 
 // Retail fn_72_3AE8.
