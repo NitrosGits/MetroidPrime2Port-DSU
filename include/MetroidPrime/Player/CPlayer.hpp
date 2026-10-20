@@ -309,6 +309,11 @@ public:
   bool CanLeaveMorphBallState(CStateManager& mgr, CVector3f& position) const;
   bool AttachActorToPlayer(TUniqueId actor, bool disableGun);
   void EnableLeaveMorphBall(bool enabled) { mCanStartUnmorphTransition = enabled; } // Prime name.
+#ifdef TARGET_PC
+  // Port: retail's 0x1144 bit 6, the morph half of the pair. CPlayer only had the unmorph accessor;
+  // CIng's grapple clears and restores both (fn_29_6578 asm 0x00006610 / 0x0000692C).
+  void EnableEnterMorphBall(bool enabled) { mCanStartMorphTransition = enabled; }
+#endif
   void DetachActorFromPlayer();
   void UpdateScanningState(const CFinalInput& input, CStateManager& mgr, float dt);
   bool ValidateScanning(const CFinalInput& input, CStateManager& mgr) const;

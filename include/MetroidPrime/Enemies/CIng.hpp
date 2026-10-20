@@ -368,8 +368,9 @@ private:
   // fn_29_1F1C: ExitHost's Deactivate smoke, "IngExitHostSmokeFx" at the Ing's transform, plus the
   // swarm block's own sound (CIngData swarm +0x28); only when the second GEN token is loaded.
   void SpawnExitHostSmoke(CStateManager& mgr);
-  // fn_29_4468: the target's aim position (CActor's GetAimPosition), false when it is gone.
-  bool TargetAimPosition(CStateManager& mgr, CVector3f& out);
+  // fn_29_4468: the target's aim position (CActor's GetAimPosition, prediction in f1), false when
+  // it is gone. Callers pass rodata_6C (0.0f) except the body projectile's flight (rodata_B4, 0.5f).
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f);
   // fn_29_3E1C: one arm's segment boxes (fn_29_3D74) against the target's bounds; on a hit, the
   // arm swipe damage with the given knock-back.
   void ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b, const CSegId& c,

@@ -190,6 +190,11 @@ bool DebugIng() {
   return sEnabled != 0;
 }
 
+// Per-trigger debug throttle: one line in sixty (about a second), keyed by the caller's own
+// counter. The body-projectile and grapple triggers are evaluated every frame while their state
+// is active, so a raw print would bury the log.
+bool IngLogTick(int& counter) { return DebugIng() && (counter++ % 60) == 0; }
+
 CMaterialFilter SolidFilter() {
   return CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
 }
@@ -952,15 +957,22 @@ bool CIng::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
     return false;
   }
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
-    return false;
-  }
-  const CVector3f delta = target->GetTranslation() - GetTranslation();
+  const CVector3f delta = target != nullptr ? target->GetTranslation() - GetTranslation()
+                                            : CVector3f::Zero();
   const float distSq = delta.MagSquared();
   const float minDist = mData.mBodyProjectile.mMinAttackDist; // 0x85c
   const float maxDist = mData.mBodyProjectile.mMaxAttackDist; // 0x860
-  return minDist * minDist <= distSq && distSq <= maxDist * maxDist && -15.f <= delta.GetZ() &&
-         delta.GetZ() <= 3.f;
+  const bool inRange = target != nullptr && minDist * minDist <= distSq &&
+                       distSq <= maxDist * maxDist && -15.f <= delta.GetZ() &&
+                       delta.GetZ() <= 3.f;
+  static int sTick = 0;
+  if (IngLogTick(sTick)) {
+    fprintf(stderr,
+            "[ing] %04x body proj trigger: target %04x dist %.1f [%.1f..%.1f] dz %.1f -> %d\n",
+            GetUniqueId().Value(), mTargetId.Value(), CMath::SqrtF(distSq), minDist, maxDist,
+            delta.GetZ(), inRange ? 1 : 0);
+  }
+  return inRange;
 }
 
 // @ fn_29_A664
@@ -1048,13 +1060,29 @@ bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
 // fn_29_A2D8 (not yet exercised in a run)
 bool CIng::TargetIsBall(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
-  return player != nullptr && player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
+  const bool isBall = player != nullptr && player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
+  static int sTick = 0;
+  if (IngLogTick(sTick)) {
+    fprintf(stderr, "[ing] %04x target is ball: target %04x player %d morph %d -> %d\n",
+            GetUniqueId().Value(), mTargetId.Value(), player != nullptr ? 1 : 0,
+            player != nullptr ? int(player->GetMorphballTransitionState()) : -1,
+            isBall ? 1 : 0);
+  }
+  return isBall;
 }
 
 // fn_29_A224 (not yet exercised in a run)
 bool CIng::InBallPursuitRange(CStateManager& mgr, const CTriggerData&) const {
-  return (mData.mFlags210 & kFlag_NoGrapple) == 0 && mBallCooldown <= 0.f &&
-         DistSqToTarget(mgr) < mData.mGrapple.mPursuitRange * mData.mGrapple.mPursuitRange;
+  const bool inRange = (mData.mFlags210 & kFlag_NoGrapple) == 0 && mBallCooldown <= 0.f &&
+                       DistSqToTarget(mgr) <
+                           mData.mGrapple.mPursuitRange * mData.mGrapple.mPursuitRange;
+  static int sTick = 0;
+  if (IngLogTick(sTick)) {
+    fprintf(stderr, "[ing] %04x ball pursuit: distSq %.1f [%.1f] cooldown %.2f -> %d\n",
+            GetUniqueId().Value(), DistSqToTarget(mgr), mData.mGrapple.mPursuitRange,
+            mBallCooldown, inRange ? 1 : 0);
+  }
+  return inRange;
 }
 
 // fn_29_A1C0 (not yet exercised in a run)
@@ -1068,15 +1096,23 @@ bool CIng::HasPathToTarget(CStateManager& mgr, const CTriggerData&) const {
 
 // fn_29_A100 (not yet exercised in a run)
 bool CIng::InGrappleRange(CStateManager& mgr, const CTriggerData&) const {
-  if ((mData.mFlags210 & kFlag_NoGrapple) != 0 || !mTouchBox) {
-    return false;
-  }
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
-  if (player == nullptr || player->GetMorphballTransitionState() != CPlayer::kMS_Morphed ||
-      mSurfaceAlignment.GetSurface().GetNormal().GetZ() < 0.9f) {
-    return false;
+  const float normalZ = mSurfaceAlignment.GetSurface().GetNormal().GetZ();
+  const bool overlap =
+      player != nullptr && mTouchBox && mTouchBox->DoBoundsOverlap(player->GetBoundingBox());
+  const bool inRange = (mData.mFlags210 & kFlag_NoGrapple) == 0 && mTouchBox && player != nullptr &&
+                       player->GetMorphballTransitionState() == CPlayer::kMS_Morphed &&
+                       normalZ >= 0.9f && overlap;
+  static int sTick = 0;
+  if (IngLogTick(sTick)) {
+    fprintf(stderr,
+            "[ing] %04x grapple range: touchbox %d player %04x morph %d normalZ %.2f overlap %d "
+            "flags %02x -> %d\n",
+            GetUniqueId().Value(), mTouchBox ? 1 : 0, mTargetId.Value(),
+            player != nullptr ? int(player->GetMorphballTransitionState()) : -1, normalZ,
+            overlap ? 1 : 0, mData.mFlags210, inRange ? 1 : 0);
   }
-  return mTouchBox->DoBoundsOverlap(player->GetBoundingBox());
+  return inRange;
 }
 
 // @ fn_29_A098
@@ -1337,14 +1373,16 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, zero offset).
-// False when the target id is empty; the caller then keeps whatever it had.
-bool CIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) {
+// fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, with the
+// caller's prediction time in f1). False when the target id is empty; the caller then keeps
+// whatever it had. Every caller passes rodata_6C (0.0f) except the body projectile's flight, which
+// passes rodata_B4 (0.5f) - asm 0x00008054 loads it just before the call at 0x0000806C.
+bool CIng::TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction) {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
     return false;
   }
-  out = target->GetAimPosition(mgr, 0.f);
+  out = target->GetAimPosition(mgr, prediction);
   return true;
 }
 
@@ -1354,8 +1392,9 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   case kStateMsg_Activate:
     LogState("BecomeBodyProjectile");
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
-    // Form 4, the flying body projectile, is only set by the kUE_BeginAction user anim event
-    // (fn_29_C228), which the port's DoUserAnimEvent does not handle yet.
+    // Form 4, the flying body projectile, is set by the kUE_BeginAction user anim event
+    // (fn_29_C228, handled in DoUserAnimEvent) once the anim reaches it; the state then ends and
+    // the flight takes over.
     mForm = kForm_BecomingBodyProjectile; // 0x9d4 = 8
     mTakeOff = false;                                     // 0xe5c bit 0
     mDesiredForm = -1;                                    // 0x9d8
@@ -1667,9 +1706,12 @@ void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_7E30 (not yet exercised in a run): the body projectile in flight. The launch point and the
-// flight direction are two file statics in the REL's bss, seeded on the first call (bss_10,
-// bss_20) from Zero() and Forward() and shared by every Ing; each Activate rewrites both.
+// @ fn_29_7E30: the body projectile in flight. The launch point and the flight direction are two
+// file statics in the REL's bss, seeded on the first call (bss_10, bss_20) from Zero() and
+// Forward() and shared by every Ing; each Activate rewrites both. Exercised in area 57
+// (/tmp/opencode/ing_bp3.log): BecomeBodyProjectile -> BodyProjectileFlight form 8 (the drift
+// branch, two frames) -> form 4 once the anim's kUE_BeginAction lands (35 units a second along the
+// launch direction) -> SuckEnergy on the hit, with the emitter removed in Deactivate.
 void CIng::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
   static bool sInit = false;
   static CVector3f sLaunchPoint;
@@ -1687,7 +1729,7 @@ void CIng::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
     mProjectileFSMEntry = true; // 0xe5e bit 7
     sLaunchPoint = GetLctrTransform(mEyeSegId).GetTranslation(); // 0xd7b
     sFlightDir = CVector3f::Forward();
-    if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8
+    if (TargetAimPosition(mgr, mTargetPos, 0.5f)) { // fn_29_4468, 0xdc8; f1 = rodata_B4
       // The aim position is dropped by the model's height (scale.z, the REL's only non-zero scale
       // term); a shot that points upwards keeps Forward() as its direction.
       const CVector3f scale = GetModelData()->GetScale(); // 0x60, model data's first CVector3f
@@ -1703,10 +1745,20 @@ void CIng::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
                                 CSfxManager::kMedPriority); // 0x850
     break;
   }
-  case kStateMsg_Update:
-    if (mBodyProjectileSfx) {
-      CSfxManager::UpdateEmitter(mBodyProjectileSfx, GetTranslation(),
-                                 GetTransform().GetForward(), 0x7f);
+  case kStateMsg_Update: {
+    // Retail calls UpdateEmitter unconditionally (asm 0x00008090), empty handle included.
+    CSfxManager::UpdateEmitter(mBodyProjectileSfx, GetTranslation(),
+                               GetTransform().GetForward(), 0x7f);
+    static int sTick = 0;
+    static int sLastForm = -1;
+    if (mForm != sLastForm || IngLogTick(sTick)) {
+      sLastForm = mForm;
+      fprintf(stderr,
+              "[ing] %04x flight: form %d time %.2f dt %.3f dir (%.2f, %.2f, %.2f) at "
+              "(%.1f, %.1f, %.1f)\n",
+              GetUniqueId().Value(), mForm, StateMachineState().GetTime(), dt, sFlightDir.GetX(),
+              sFlightDir.GetY(), sFlightDir.GetZ(), GetTranslation().GetX(),
+              GetTranslation().GetY(), GetTranslation().GetZ());
     }
     if (mForm == kForm_BodyProjectile) {
       if (dt > 0.f) {
@@ -1729,13 +1781,13 @@ void CIng::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
       MoveInOneFrameOR(velocity, dt);
     }
     break;
+  }
   case kStateMsg_Deactivate:
     // Command 10 (lbl_29_data_C50's id word) is kBSC_ExitState.
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
-    if (mBodyProjectileSfx) {
-      CSfxManager::RemoveEmitter(mBodyProjectileSfx);
-      mBodyProjectileSfx.Clear(); // 0xd58 = 0
-    }
+    // Retail removes unconditionally and then stores 0 to 0xd58 (asm 0x0000828C..0x000082A0).
+    CSfxManager::RemoveEmitter(mBodyProjectileSfx);
+    mBodyProjectileSfx.Clear(); // 0xd58 = 0
     break;
   default:
     break;
@@ -1778,8 +1830,10 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
     mgr.ApplyDamage(GetUniqueId(), mHostId, GetUniqueId(), mData.mBodyProjectile.mContactDamage,
                     CMaterialFilter(), GetTransform().GetForward());
     if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mHostId))) {
-      // 0x1144 bits 7/6 cleared: no morph transition while the Ing rides the player.
+      // 0x1144 bits 7/6 cleared (asm 0x00007A98/0x00007AB0): no morph transition of either kind
+      // while the Ing rides the player.
       player->EnableLeaveMorphBall(false);
+      player->EnableEnterMorphBall(false);
       player->AttachActorToPlayer(GetUniqueId(), false);
       CEnvironmentVariable* var =
           gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable("IngAttachedWarningCount");
@@ -1839,8 +1893,10 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
               mTargetId.Value());
     }
     if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId))) {
-      // 0x1144 bits 7/6 set again: the player may morph once the Ing lets go.
+      // 0x1144 bits 7/6 set again (asm 0x00007D74/0x00007D88): the player may morph once the Ing
+      // lets go.
       player->EnableLeaveMorphBall(true);
+      player->EnableEnterMorphBall(true);
       if (player->GetAttachedActorId() == GetUniqueId()) { // 0x2e4
         player->DetachActorFromPlayer();
       }
@@ -1948,16 +2004,36 @@ void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
   mTargetPos = target->GetAimPosition(mgr, 0.f);
   TUniqueId best = kInvalidUniqueId;
   float bestScore = FLT_MAX;
+  int scanned = 0;
+  // Debug: why the scan comes up empty (the puddle then never leaves FindCoverPoint, and the
+  // grapple behind IngSpotPathFind stays unreachable).
+  int inactive = 0, wrongType = 0, inUse = 0, wrongArea = 0, lastUsed = 0, safeZone = 0;
+  int typeHist[32] = {0};
   const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(list[i]);
+    ++scanned;
+    if (hint != nullptr) {
+      const int type = static_cast< int >(hint->GetHintType());
+      if (type >= 0 && type < 32) {
+        ++typeHist[type];
+      }
+    }
     // [?] hint types 4 (wall) and 5 both count as cover for CIng (HasWallCoverPoint tests 4).
-    if (hint == nullptr || !hint->GetActive() ||
-        (hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(5) &&
-         hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(4)) ||
-        hint->GetInUse(GetUniqueId()) || hint->GetCurrentAreaId() != GetCurrentAreaId() ||
-        hint->GetUniqueId() == mLastCoverHintId ||
-        mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) {
+    if (hint == nullptr) {
+      continue;
+    }
+    if (!hint->GetActive()) { ++inactive; continue; }
+    if (hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(5) &&
+        hint->GetHintType() != static_cast< CScriptAIHint::EHintType >(4)) {
+      ++wrongType;
+      continue;
+    }
+    if (hint->GetInUse(GetUniqueId())) { ++inUse; continue; }
+    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { ++wrongArea; continue; }
+    if (hint->GetUniqueId() == mLastCoverHintId) { ++lastUsed; continue; }
+    if (mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) {
+      ++safeZone;
       continue;
     }
     const CVector3f delta = mTargetPos - hint->GetTranslation();
@@ -1975,6 +2051,19 @@ void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
     hint->SetInUse(true);
     mCoverHintId = best;
     mLastCoverHintId = best;
+  }
+  if (DebugIng()) {
+    fprintf(stderr,
+            "[ing] %04x cover scan: candidates %d, best %04x: inactive %d type %d inuse %d area %d "
+            "last %d safezone %d; types",
+            GetUniqueId().Value(), scanned, best.Value(), inactive, wrongType, inUse, wrongArea,
+            lastUsed, safeZone);
+    for (int t = 0; t < 32; ++t) {
+      if (typeHist[t] != 0) {
+        fprintf(stderr, " %d:%d", t, typeHist[t]);
+      }
+    }
+    fprintf(stderr, "\n");
   }
 }
 
@@ -2106,9 +2195,10 @@ void CIng::GrappleBall(CStateManager& mgr, EStateMsg msg, float dt) {
     mHitReactionTime = 0.f;                               // 0xe4c
     CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId));
     if (player != nullptr) {
-      // 0x1144 bits 7/6: no morph transition while the ball is held. Only the unmorph bit has a
-      // CPlayer accessor, and the morph one cannot fire while the player is already a ball.
+      // 0x1144 bits 7/6 (asm 0x00006610): no morph transition of either kind while the ball is
+      // held, then the Ing rides the ball.
       player->EnableLeaveMorphBall(false);
+      player->EnableEnterMorphBall(false);
       player->AttachActorToPlayer(GetUniqueId(), false);
     }
     // 0x9ca: the fourth of the swarm block's u16 sounds, which this header calls mSoundInsideHost.
@@ -2154,7 +2244,9 @@ void CIng::GrappleBall(CStateManager& mgr, EStateMsg msg, float dt) {
     mBallCooldown = mData.mGrapple.mPostWaitTime;            // 0xe48 = 0x8f8
     CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId));
     if (player != nullptr) {
+      // Both bits back on (asm 0x0000692C).
       player->EnableLeaveMorphBall(true);
+      player->EnableEnterMorphBall(true);
       if (player->GetAttachedActorId() == GetUniqueId()) { // 0x2e4
         player->DetachActorFromPlayer();
       }
@@ -2952,7 +3044,20 @@ static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo
                       sldrThis.lightAttenuation);
 
   if (DebugIng()) {
-    fprintf(stderr, "[ing] load: %s\n", sldrThis.editorProperties.name.data());
+    fprintf(stderr,
+            "[ing] load: %s flags %02x hearing %.1f aggr %.1f taunt %.1f frust %.1f\n"
+            "[ing] load: body proj dist [%.1f..%.1f] odds %.1f speed %.1f drop %.1f suck %.1f\n"
+            "[ing] load: grapple pursuit %.1f hold %.1f postwait %.1f spit %.1f drain %.1f\n"
+            "[ing] load: mini portal dist [%.1f..%.1f]\n",
+            sldrThis.editorProperties.name.data(), int(data.mFlags210), data.mHearingRadius,
+            data.mAggressiveness, data.mTauntChance, data.mFrustrationTime,
+            data.mBodyProjectile.mMinAttackDist, data.mBodyProjectile.mMaxAttackDist,
+            data.mBodyProjectile.mOdds, data.mBodyProjectile.mSpeed,
+            data.mBodyProjectile.mDropTime, data.mBodyProjectile.mSuckTime,
+            data.mGrapple.mPursuitRange, data.mGrapple.mMaxHoldTime,
+            data.mGrapple.mPostWaitTime, data.mGrapple.mSpitForce,
+            data.mGrapple.mUnknown67F6, data.mMiniPortal.mMinAttackDist,
+            data.mMiniPortal.mMaxAttackDist);
   }
   return rs_new CIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                      LdrToEntityInfo(info, sldrThis.editorProperties),

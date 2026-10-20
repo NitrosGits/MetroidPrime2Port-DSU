@@ -277,8 +277,9 @@ run carry `// fn_29_<off> (not yet exercised in a run)`. (The exit host class is
 - **Minimal/unexercised bodies** (the source still says `not yet exercised in a run`; the state ends
   or the function returns at once):
   - States (15): WaitForFSMTransition, BecomeBodyProjectile, BecomeWallProjectile, SafeZoneReaction,
-    Taunt, IngSpotPathFind, IngSpotPointPathFind, Patrol, FollowAttackPattern, BodyProjectileFlight,
-    SeekWallPoint, FailSafeMode, GrappleBall, Dead, Evaporate.
+    Taunt, IngSpotPathFind, IngSpotPointPathFind, Patrol, FollowAttackPattern, SeekWallPoint,
+    FailSafeMode, GrappleBall, Dead, Evaporate. `BecomeBodyProjectile` and `BodyProjectileFlight`
+    left the list on 2026-10-20 (A.10).
   - Code functions (8): SetCoverDest, SetPointCoverDest, SetWallPointCoverDest, SetLuredDest,
     SetLuredPointDest, StartRangedAttack, EndRangedAttack, ExpelGrappledBall. `SetRecoverDest` carries
     the `[?]` marker instead (closest path point within 20).
@@ -324,8 +325,10 @@ run carry `// fn_29_<off> (not yet exercised in a run)`. (The exit host class is
   `GetSpawnedMorphballState() == kMS_Unmorphed && GetMorphballTransitionState() == kMS_Morphed`,
   damage = `dt * mUnknown67F6` with `kWT_AI` and no immunity, spit = `mass * mSpitForce` up the
   `Up()->forward` slerp of 20 deg, `mCurDamageRemTime = mDamageWaitTime`). `CSfxHandle mGrappleSfx`
-  is 0xd04. **[?]** in it: the morph half of the 0x1144 flag pair has no CPlayer setter, and the
-  damage word's two flag bits come from an uninitialised stack slot in the pseudo-C. No `// @`.
+  is 0xd04. The 0x1144 flag pair is now both halves: `CPlayer::EnableEnterMorphBall` (TARGET_PC, bit
+  6) joined `EnableLeaveMorphBall`, and retail sets the pair in `SuckEnergy` too (clears at
+  0x00007A98/0x00007AB0, restores at 0x00007D74/0x00007D88). **[?]** left: the damage word's two
+  flags. No `// @` yet - see A.10 for the gate that keeps the state unreachable.
 - **Verified at runtime** (Sanctuary 0i_cliff_hall_dark, MLVL `1baa96c2` MREA `2735236b`, layer 0):
   - The area places two INGS objects (`00390081`, `00390089`). They load **inactive** with
     detection range 0, so a run must `send <uid> Activate` over `MP2_CONSOLE`, and the beam
@@ -388,6 +391,8 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~suck~~ done | `fn_29_76B8` SuckEnergy (0x778) | ported 2026-10-20, `// @`; see A.8. It also exposed a field-name shift in `CIngBodyProjectileData` (A.3) |
 | ~~splat~~ done | `fn_29_4F14` SplatOntoMesh (0x238) | ported 2026-10-20, `// @` (probe-driven); see A.8 |
 | ~~exit host~~ done | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `1006C`/`100B8`/`10154`/`1046C`/`1065C`/`1077C`/`10944`/`10DEC`/`10EB4`/`10F58`; `lbl_29_data_C60`) | ported 2026-10-20 (`2382c8e15`), `// @` except `10E64` (Render, never queued - no model); class identity [proven]; see A.9 |
+| ~~body projectile~~ done | `fn_29_7E30` BodyProjectileFlight (0x2E8) | ported + `// @` 2026-10-20 (`ing_bp3.log`); the audit also fixed the aim prediction (0.5f), the unconditional emitter calls and the 0x1144 bit-6 pair; see A.10 |
+| ~~grapple~~ rear | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported, still no `// @`: the puddle only reaches `IngSpotPathFind` through `SetCoverDest`, i.e. after `HasCoverPoint`, and every cover scan comes up empty (A.11) |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
 Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
@@ -550,6 +555,31 @@ never queued for RenderActorQueue - the generators draw through AddToRenderer. V
 `/tmp/opencode/ing_run5.log`: `state SetExitHostDest` -> `state ExitHost` ->
 `exit host: swarm 021d, sound 20d0` -> `exit host: smoke explosion` ->
 `exit host: left at (78.0, 368.0, 4.9)`, with 0 `[port] caught` / `[reach-stub]` and exit 0.
+
+### A.10 Body projectile flight (ported + `// @` 2026-10-20)
+
+`fn_29_7E30` runs for the first time in `/tmp/opencode/ing_bp3.log` (area 57, the usual
+`ing_bp3.sh`, 14000 frames): `0018 state BecomeBodyProjectile form 2` ->
+`state BodyProjectileFlight form 8` -> `flight: form 8 ... at (58.5, 358.8, 5.0)` (two frames of the
+drift branch) -> `flight: form 4 ... at (70.5, 357.9, 7.9)` (the anim's `kUE_BeginAction` sets form
+4; 11.4 units in 0.33 s = the property's 35 units a second) -> `state SuckEnergy form 4` on the hit,
+so Activate, both Update branches and Deactivate all ran. `ShouldBodyProjectile` needs the target
+between `bodyProjectileMinAttackDist`/`MaxAttackDist` (10..45 on this prefab) with dz in
+[-15, 3] and `mBodyProjectileAllowed` (set in `Lurk`'s Activate from `bodyProjectileOdds`, 70 %), so
+standing ~6 units off and waiting is enough.
+
+Three corrections the audit against the asm produced in the same slice:
+
+| item | retail | port before |
+|---|---|---|
+| aim prediction | `fn_29_4468`'s f1 is a real argument: the flight passes `rodata_B4` = 0.5f (0x00008054), the other seven callers pass `rodata_6C` = 0.0f | helper hardcoded 0.f |
+| flight `UpdateEmitter` / `RemoveEmitter` | unconditional (0x00008090, 0x0000828C..0x000082A0) | guarded by `if (mBodyProjectileSfx)` |
+| 0x1144 pair | bit 7 *and* bit 6 (`mCanStartMorphTransition` too) are cleared in `SuckEnergy`/`GrappleBall`'s Activate and set in their exits | only bit 7 had a `CPlayer` setter; `EnableEnterMorphBall` added (TARGET_PC) |
+
+`MP2_DEBUG_ING` now also prints, at load, the property block the probes need (flags, body-projectile
+distances/odds/speed/drop/suck, grapple pursuit/hold/post-wait/spit/drain, mini-portal distances),
+one line a second for the `ShouldBodyProjectile` / `TargetIsBall` / `InBallPursuitRange` /
+`InGrappleRange` triggers, and the flight's form/time/direction.
 
 ---
 
