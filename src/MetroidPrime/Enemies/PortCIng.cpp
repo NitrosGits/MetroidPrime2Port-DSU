@@ -1630,43 +1630,56 @@ void CIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_8684 (not yet exercised in a run)
+// @ fn_29_8684: the puddle's mesh path find, and the one the grapple runs through. Activate clears
+// mRecalcPath and raises mMoving; the body (asm 0x000086DC) only paths when the properties allow
+// path finding (0x9d0 bit 1) and SetCoverDest/SetRecoverDest found a destination (0xe5c bit 3).
+// The speed is the safe-zone modifier or the maximum, and a ball target overrides both with the
+// ball pursuit speed (asm 0x00008778-0x00008894). MoveOnSurface takes the raw separation vector,
+// FaceDirection the normalized one.
 void CIng::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
+    mRecalcPath = false; // 0xe5c bit 2
+    mMoving = true;      // 0xe5d bit 1
   }
-  mRecalcPath = false;
-  mMoving = true;
+  if ((mData.mFlags210 & kFlag_NoPathFind) != 0 || !mFoundMovementPos) {
+    return;
+  }
   mPathFindNavigation.PathFind(mgr, msg, dt, *this);
   ApplySeparation(mgr);
   const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
   if (move.IsMagnitudeSafe() && dt > 0.f) {
-    float speed;
-    if (mSafeZoneIngSpot) {
-      speed = mData.mIngSpot.GetSpeedModifier();
-    } else if (TargetIsBall(mgr, CTriggerData(0.f))) {
+    float speed = mSafeZoneIngSpot ? mData.mIngSpot.GetSpeedModifier()
+                                   : mData.mIngSpot.GetMaxSpeed();
+    if (TargetIsBall(mgr, CTriggerData(0.f))) {
       speed = mData.mIngSpot.GetBallPursuitSpeed();
-    } else {
-      speed = mData.mIngSpot.GetMaxSpeed();
     }
     MoveOnSurface(move, speed, dt);
     BodyController()->FaceDirection(move.AsNormalized(), dt);
   }
 }
 
-// fn_29_8570 (not yet exercised in a run)
+// @ fn_29_8570: the point-graph variant, same two guards and the same Activate stores as
+// fn_29_8684 (asm 0x0000858C-0x000086A8); the speed blends from the safe-zone-or-maximum base to
+// the wall speed by the angle between the actor's up and world up (asm 0x00008600-0x00008740).
 void CIng::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPointPathFind");
+    mRecalcPath = false; // 0xe5c bit 2
+    mMoving = true;      // 0xe5d bit 1
+  }
+  if ((mData.mFlags210 & kFlag_NoPathFind) != 0 || !mFoundMovementPos) {
+    return;
   }
   mIngSpotPathFindNavigation.PathFind(mgr, msg, dt, *this);
   const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
-  const float maxSpeed = mData.mIngSpot.GetMaxSpeed();
+  const float baseSpeed = mSafeZoneIngSpot ? mData.mIngSpot.GetSpeedModifier()
+                                           : mData.mIngSpot.GetMaxSpeed();
   const float speed = CVector3f::GetAngleDiff(CVector3f::Up(), GetTransform().GetUp()) /
-                          3.1415927f * (mData.mIngSpot.GetMaxWallSpeed() - maxSpeed) +
-                      maxSpeed;
+                          3.1415927f * (mData.mIngSpot.GetMaxWallSpeed() - baseSpeed) +
+                      baseSpeed;
   MoveOnSurface(move, speed, dt);
 }
 
@@ -2238,7 +2251,10 @@ void CIng::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_69A0 (not yet exercised in a run)
+// @ fn_29_69A0: the puddle is off the navmesh. Activate sets kAS_Ready, teleports the actor onto
+// the closest physical point within 1000 (rodata_C4) and re-aligns to the surface with 1.0
+// (rodata_64), then sets kAS_Over; Deactivate sets kAS_NotReady. Update does nothing (asm
+// 0x00006A70 is the common tail).
 void CIng::FailSafeMode(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("FailSafeMode");
@@ -2508,7 +2524,9 @@ void CIng::SetTargetDest(CStateManager& mgr, float) {
   JoinTeam(mgr);
 }
 
-// fn_29_5AC4 (not yet exercised in a run)
+// @ fn_29_5AC4: destination = the cover hint's translation when there is one, else the Ing's own
+// position; mFoundMovementPos only in the first case; then SetDestination and the face target at
+// kInvalidUniqueId (0x718), asm 0x00005B00-0x00005B48.
 void CIng::SetCoverDest(CStateManager& mgr, float) {
   LogState("SetCoverDest");
   CVector3f dest = GetTranslation();
@@ -2521,22 +2539,36 @@ void CIng::SetCoverDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
-// [?] fn_29_59D0: taken to be the closest path point within 20 as the destination.
+// @ fn_29_59D0: two closest-point queries from the Ing's own position - filter (20, 0, -1) then
+// (20, 1, -1), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
+// (0x00005A94). It sets no destination: mFoundMovementPos is what IngSpotPathFind reads.
 void CIng::SetRecoverDest(CStateManager&, float) {
   LogState("SetRecoverDest");
   mFoundMovementPos = false;
-  int idx = -1;
-  if (mPathArea != nullptr &&
-      mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), idx,
-                                                    CPathFindPointSearchFilter(20.f, 0, -1)) ==
-          CPathFindPointSearch::kCPR_Success &&
-      idx != -1) {
-    mPathFindNavigation.SetDestination(mPathArea->GetPoint(idx).GetPosition());
+  mPointPathFindSearch.ClearWaypoints(); // 0xacc = 0, asm 0x00005A08
+  int from = -1;
+  if (mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from,
+                                                    CPathFindPointSearchFilter(20.f, 0, -1)) !=
+          CPathFindPointSearch::kCPR_Success ||
+      from == -1) {
+    return;
+  }
+  int to = -1;
+  if (mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), to,
+                                                    CPathFindPointSearchFilter(20.f, 1, -1)) !=
+          CPathFindPointSearch::kCPR_Success ||
+      to == -1) {
+    return;
+  }
+  if (mPathArea != nullptr && PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
     mFoundMovementPos = true;
   }
 }
 
-// fn_29_5820 (not yet exercised in a run)
+// @ fn_29_5820: the point-graph route to the cover hint. Filter (20, 0, -1) from the Ing's own
+// position, then the nearest flag-1 point that the graph connects to it, sits under 400
+// (rodata_F0) from the hint and has a mesh path to it (asm 0x00005844-0x00005998), then the point
+// search between the two.
 void CIng::SetPointCoverDest(CStateManager& mgr, float) {
   LogState("SetPointCoverDest");
   mFoundMovementPos = false;
@@ -2552,27 +2584,23 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
     return;
   }
   const CVector3f cover = hint->GetTranslation();
-  float bestDistSq = 400.f;
+  float bestDistSq = 400.f; // rodata_F0
   int best = -1;
-  int previous = -1;
   for (int i = 0; i < mPathArea->GetNumPoints(); ++i) {
     const CPFPoint& point = mPathArea->GetPoint(i);
-    if (!mPathArea->PointPathExists(from, i)) {
+    // asm 0x000058E0: only points whose flags word has bit 0 set are cover points.
+    if ((point.GetFlags() & 1) == 0 || !mPathArea->PointPathExists(from, i)) {
       continue;
     }
     const float distSq = (cover - point.GetPosition()).MagSquared();
     if (distSq < bestDistSq &&
         mPathFindSearch.PathExists(point.GetPosition(), cover) == CPathFindSearch::kR_Success) {
-      previous = best;
       best = i;
       bestDistSq = distSq;
     }
   }
   if (best == -1) {
     return;
-  }
-  if (best == from && previous != -1) {
-    best = previous;
   }
   if (PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, best)) {
     mFoundMovementPos = true;

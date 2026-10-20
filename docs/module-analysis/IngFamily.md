@@ -276,13 +276,13 @@ run carry `// fn_29_<off> (not yet exercised in a run)`. (The exit host class is
     `BodyProjectileFlight` -> IngCorporeal.
 - **Minimal/unexercised bodies** (the source still says `not yet exercised in a run`; the state ends
   or the function returns at once):
-  - States (13): WaitForFSMTransition, BecomeBodyProjectile, BecomeWallProjectile, SafeZoneReaction,
-    Taunt, IngSpotPathFind, IngSpotPointPathFind, Patrol, FollowAttackPattern, SeekWallPoint,
-    FailSafeMode, Dead, Evaporate. `BodyProjectileFlight` left the list on 2026-10-20 (A.10) and
-    `GrappleBall` on the same day (A.12).
-  - Code functions (7): SetCoverDest, SetPointCoverDest, SetWallPointCoverDest, SetLuredDest,
-    SetLuredPointDest, StartRangedAttack, EndRangedAttack (`ExpelGrappledBall` is marked, A.12).
-    `SetRecoverDest` carries the `[?]` marker instead (closest path point within 20).
+  - States (9): WaitForFSMTransition, BecomeBodyProjectile, BecomeWallProjectile, SafeZoneReaction,
+    Taunt, Patrol, FollowAttackPattern, SeekWallPoint, Dead, Evaporate. `BodyProjectileFlight` left
+    the list on 2026-10-20 (A.10), `GrappleBall` the same day (A.12), and `IngSpotPathFind`,
+    `IngSpotPointPathFind` and `FailSafeMode` in A.13.
+  - Code functions (6): SetWallPointCoverDest, SetLuredDest, SetLuredPointDest, StartRangedAttack,
+    EndRangedAttack (`ExpelGrappledBall` A.12; `SetCoverDest`, `SetPointCoverDest` and
+    `SetRecoverDest` A.13).
   - Not on either list: the exit host (state `9D68`, code `54E8` and the `CIngExitHostEffect` class) is
     ported and marked (A.9).
 - **Other `[?]` values:**
@@ -665,6 +665,31 @@ in these runs but none has been read against its asm yet, so they keep `not yet 
 that pass happens. The second Agon Ing (`0233`) still loops `Lurk -> SetRecoverDest -> FailSafeMode`
 - it is off the navmesh (`IsOffPath`), and `SetRecoverDest`'s "closest point within 20" is itself a
 `[?]`.
+
+### A.13 The puddle's path states, read against the asm (2026-10-20)
+
+A.12 left five functions that ran but had never been read against retail, plus `SetRecoverDest`'s
+guessed body. All six are now asm-faithful and marked (`Ing` 81 -> 87/274):
+
+| function | what was wrong |
+|---|---|
+| `IngSpotPathFind` `fn_29_8684` | the body ran unconditionally; retail returns before pathing unless the properties allow it (`0x9d0` bit 1, `kFlag_NoPathFind`) **and** a destination was found (`0xe5c` bit 3, `mFoundMovementPos`) - asm 0x000086DC. `mRecalcPath`/`mMoving` are stored on Activate only (0x000086BC). The speed was an else-if chain: retail takes the safe-zone modifier (0x888) or the maximum (0x87c) and then **overrides** with the ball pursuit speed (0x884) when `TargetIsBall` (0x00008778-0x00008894) |
+| `IngSpotPointPathFind` `fn_29_8570` | same two guards and the same Activate stores (0x0000858C); its blend starts from the safe-zone modifier or the maximum, not always from the maximum (0x00008628) |
+| `SetRecoverDest` `fn_29_59D0` | not the "closest point within 20 as the destination" it was guessed to be: two closest-point queries from the Ing's own position - filter `(20, 0, -1)` then `(20, 1, -1)` - and a point-graph search between the two results; it sets **no destination**, only `mFoundMovementPos` (0x000059E0-0x00005AA8) |
+| `SetPointCoverDest` `fn_29_5820` | only points whose flags word has **bit 0** set count (`clrlwi r0, r0, 31`, 0x000058E0 - not bit 31); the "when the best is also the closest point take the previous one" fallback was invented and is gone (0x00005974 keeps only the last best) |
+| `SetCoverDest` `fn_29_5AC4` | already correct - hint translation or the Ing's own position, `mFoundMovementPos` only with a hint, then `SetDestination` and face target `kInvalidUniqueId` at 0x718 |
+| `FailSafeMode` `fn_29_69A0` | already correct - kAS_Ready, teleport to the closest physical point within 1000 (rodata_C4), `AlignNearPosition(..., 1.0)`, kAS_Over; Update does nothing |
+
+The audit lane that proposed these had two wrong specifics, both rejected against the asm: it put
+the `SetCoverDest` waypoint clear at 0xacc (that store is in `SetRecoverDest`, 0x00005A08) and read
+the `SetPointCoverDest` point test as bit 31 (`clrlwi r0, r0, 31` is the low bit).
+
+Verified after the change (`ing_gr11.log`, same area): the puddle still walks
+`SetCoverDest -> IngSpotPathFind -> ... -> GrappleBall -> ExpelGrappledBall` twice, with 0
+`[port] caught` / `[reach-stub]` and a clean exit. The second Agon Ing (`0233`) still spends the run
+in `Lurk -> SetRecoverDest` without finding a connected point pair: it sits off the navmesh, and
+`FailSafeMode`'s teleport either does not move it or lands it off-mesh again - that is the next
+thing to measure (a position poll, not an asm question).
 
 ## B. MinorIng.rel (module 44)
 
