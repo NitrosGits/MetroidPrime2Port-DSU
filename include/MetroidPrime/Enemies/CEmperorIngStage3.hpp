@@ -236,6 +236,8 @@ private:
   void HeartsOff(CStateManager& mgr);
   // fn_18_12C4: resets and deletes the beam (guest 0x8AC) and removes its sound.
   void StopBeam(CStateManager& mgr);
+  // fn_18_1370: turns the beam towards the player and moves its sound with it.
+  void SteerBeam(CStateManager& mgr, float dt);
   // fn_18_1530 / fn_18_BB8 / fn_18_4D0: the beam start, kUE_BeginAction's and kUE_EggLay's spawns.
   void StartBeam(CStateManager& mgr);
   void BeginActionEvent(CStateManager& mgr);
@@ -325,6 +327,7 @@ private:
   float mX8dc_;                          // guest 0x8DC, 0.0f: set to 1.5 by kUE_ObjectDrop
   u16 mBeamId;                           // guest 0x8AC, 0xFFFF: the beam (fn_18_1530)
   CSfxHandle mBeamSfx;                   // guest 0x8B0, 0: the beam's looped sound
+  CVector3f mX8b4_;                      // guest 0x8B4, 0: the point the beam aims at
   u16 mShockWaveId;                      // guest 0x90C, 0xFFFF: the jump attack's shock wave
   CSfxHandle mShockWaveSfx;              // guest 0x908, 0: the shock wave's sound
   CShockWaveInfo mJumpAttackShockWave;   // guest 0xE90, the data's jumpAttackShockWaveInfo

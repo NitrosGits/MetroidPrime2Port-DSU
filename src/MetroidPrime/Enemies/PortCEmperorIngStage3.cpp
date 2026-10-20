@@ -230,6 +230,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX8dc_(0.f)                                             // guest 0x8DC
 , mBeamId(kInvalidUniqueId.Value())                       // guest 0x8AC
 , mBeamSfx()                                              // guest 0x8B0
+, mX8b4_(CVector3f::Zero())                               // guest 0x8B4 (0x9D0C)
 , mShockWaveId(kInvalidUniqueId.Value())                  // guest 0x90C
 , mShockWaveSfx()                                         // guest 0x908
 , mJumpAttackShockWave(data.jumpAttackShockWaveInfo)      // guest 0xE90 (fn_18_A2EC)
@@ -333,7 +334,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   MeleeContact(mgr);      // fn_18_27DC (0x38C)
   ChargeContact(mgr);     // fn_18_22E0 (0x4C0)
   CheckList(mgr);         // fn_18_1978 (0xDC)
-  StandInFn("fn_18_1370"); // 0x1C0
+  SteerBeam(mgr, dt);     // fn_18_1370 (0x1C0)
   WatchObject(mgr);       // fn_18_125C (0x68)
   StandInFn("fn_18_E40");  // 0x41C
 
@@ -1372,6 +1373,34 @@ void CEmperorIngStage3::StopBeam(CStateManager& mgr) {
   if (mBeamSfx) {
     CSfxManager::RemoveEmitter(mBeamSfx);
     mBeamSfx = CSfxHandle();
+  }
+}
+
+// @ fn_18_1370
+// fn_18_1370 (0x1C0): the beam (guest 0x8AC), while there is one, aims from the "DarkBeam_LCTR_SDK"
+// locator (fn_18_DBC) at a point (guest 0x8B4) that moves 23 units a second (rodata 0x280) towards
+// the player's X and Y and the actor's own Z; the beam takes the look-at transform (the vtable
+// slot 0x8C, UpdateFx). In the release state (0x5E8 == 3) its sound (guest 0x8B0) is removed;
+// otherwise the sound follows the beam's end (beam+0x444, GetCurrentPos).
+void CEmperorIngStage3::SteerBeam(CStateManager& mgr, float dt) {
+  CPlasmaProjectile* beam = static_cast< CPlasmaProjectile* >(mgr.ObjectById(TUniqueId(mBeamId)));
+  if (beam == nullptr) {
+    return;
+  }
+  const CVector3f origin = DarkBeamLocatorPosition(); // fn_18_DBC
+  const CVector3f& playerPos = mgr.Player(0)->GetTranslation();
+  CVector3f toPlayer(playerPos.GetX() - mX8b4_.GetX(), playerPos.GetY() - mX8b4_.GetY(),
+                     GetTranslation().GetZ() - mX8b4_.GetZ());
+  toPlayer.Normalize();
+  mX8b4_ += toPlayer * 23.f * dt; // rodata 0x280
+  beam->UpdateFx(CTransform4f::LookAt(origin, mX8b4_, CVector3f::Up()), dt, mgr);
+  if (beam->GetExpansionState() == CPlasmaProjectile::kES_Release) {
+    if (mBeamSfx) {
+      CSfxManager::RemoveEmitter(mBeamSfx);
+      mBeamSfx = CSfxHandle();
+    }
+  } else {
+    CSfxManager::UpdateEmitter(mBeamSfx, beam->GetCurrentPos(), CVector3f::Up(), 0x7f);
   }
 }
 

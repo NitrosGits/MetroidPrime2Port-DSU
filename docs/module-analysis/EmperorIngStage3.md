@@ -392,6 +392,12 @@ touch bounds, the jump-slide or stampede damage, 0x20 of 0x824 cleared) and the 
 hits kill the ing at 114-117 s and the post-fight cinematic plays
 (`/tmp/opencode/emp3run/shot_slice5.png`); 0 caught / reach-stub lines.
 
+Then `1370`, the beam steer (the aim point at guest 0x8B4 moves 23/s towards the player, the
+beam takes the look-at from the DarkBeam locator via UpdateFx, the sound follows its end or goes
+in kES_Release). It needs a `CPlasmaProjectile::GetExpansionState` (TARGET_PC getter, 0x5E8).
+It runs only once `1530` makes the beam, so the runs do not reach it yet. Stand-ins left on the
+fight's path: `4D0`, `BB8`, `1530`, `E40` (module 80's swarm mapping) and the Think sound `47D4`.
+
 ### The base-class members (the sweep)
 
 The port's members whose guest offset is below the module's first own field (the ctor's first
