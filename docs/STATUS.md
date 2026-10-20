@@ -32,7 +32,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 
 | lane | session | branch @ base | task |
 |---|---|---|---|
-| BoostGuardian (Opus) | `ses_ea4ef042fffekfCkg15H4f8DGy` | boostguardian @ `41a0e180b` (ctor EC6C, 7D5C fix; 126 markers) | exercise+mark 8DD4/A45C/7D5C, Dead 7390, 47E8, CFC4, 8208/5888 |
+| BoostGuardian (Opus) | `ses_ea4b20124ffeZUWwxeWcHUJMNE` | boostguardian @ `b6852158a` (~140 markers; 953C/A95C/99D4/53D0, 99D4 phase-scale fix) | 6F88, BAB4, BD48, BE94, BC2C, 8CC0, 6E7C, next largest |
 | EmperorIng3 (Opus) | `ses_ea4d6e0efffeSmmbyqhzttKvlD` | emperoring3 @ `4ea8781b5` (6258/6390/4CC8, CPlayer freeze fix fe0780e19, 5 overrides) | confirm 5 override marks, Think 47D4, AcceptScriptMsg 7B14 |
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `80b8edd2b` (head class + states, head colliders 13318) | echo-target class, 12314, XDMG 1303C → head lives 0x10E4 |
 | Splitter (worker) | `ses_ea4d1db0fffeNWn5f5JjkkYj8D` | splitter @ `e18e085bf` (2CE0, 3EEC/E6E4/8EA4, 2BE0, 10D0 marked) | FSM name tables wired to functions (drop Think→3EEC call), chassis AFE8/9520/ACEC/A4E4 |
