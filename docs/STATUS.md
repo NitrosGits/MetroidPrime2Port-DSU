@@ -26,7 +26,7 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 | lane | session | branch @ base | task |
 |---|---|---|---|
 | BoostGuardian (Opus) | `ses_ea4ef042fffekfCkg15H4f8DGy` | boostguardian @ `41a0e180b` (ctor EC6C, 7D5C fix; 126 markers) | exercise+mark 8DD4/A45C/7D5C, Dead 7390, 47E8, CFC4, 8208/5888 |
-| EmperorIng3 (Opus) | `ses_ea552cc99ffepxd6lIKfYVHqxe` | emperoring3 @ `e3971fcd3` | light swarm BD84 + vtable, BB8, E40, beam damage |
+| EmperorIng3 (Opus) | `ses_ea4d6e0efffeSmmbyqhzttKvlD` | emperoring3 @ `4ea8781b5` (6258/6390/4CC8, CPlayer freeze fix fe0780e19, 5 overrides) | confirm 5 override marks, Think 47D4, AcceptScriptMsg 7B14 |
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `80b8edd2b` (head class + states, head colliders 13318) | echo-target class, 12314, XDMG 1303C → head lives 0x10E4 |
 | Splitter (worker) | `ses_ea52a89c1ffenVqZ3wYvnAkNCS` | splitter @ `206a2e084` (3460, FSMs 5E8C/E9E4) | 2CE0, Think run via a copy of the ElitePirate driver that sends Activate |
 | CommandoPirate (worker) | `ses_ea4eed526ffeekPqrklrV6SXKb` | commandopirate @ `973a576ad` (4CA4 aim gate, 6390 burst fire) | 57A0 shot, 3090 death, matching build |
