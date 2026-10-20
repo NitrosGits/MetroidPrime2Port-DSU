@@ -682,7 +682,12 @@ writes the position and the up vector into the joint (0x1A88..0x1ABC) and turns 
 at 0x1B60); the effect hears "ACTV" (kSM_Activate, 0x41435456, 0x1B84). The stop (case 28) clears
 the flag (0x1980), the position and the up vector (0x1990..0x19C0) and the effect hears "DCTV"
 (kSM_Deactivate, 0x44435456, 0x19F8). The effect's creation (fn_16_9BE8, 0x9BE8, over the slice's
-0x80 line) stays a stand-in, so the joint's id stays invalid and the effect is never found.
+0x80 line) stays a stand-in, so the joint's id stays invalid and the effect is never found. The
+tail of fn_16_1A50 is still missing: a 3D emitter for the warp sound (the guest 0xC2E) on the
+joint's position (the CAudioSys::C3DEmitterParmData at 0x1BF4 with the max distance 50.0f
+(lbl_16_rodata_3BC) and the distance compensation lbl_16_rodata_39C, and the AddEmitter at
+0x1C3C) - the emitter's area argument is the joint's +0x04, which the port's joint does not
+carry.
 
 **fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** is still a stand-in: it is 2000 bytes of asm
 with its own statics (lbl_16_bss_4 with the guard lbl_16_bss_8) and its own body command tables.
