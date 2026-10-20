@@ -7,11 +7,12 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-20)
 
-- 111/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
+- 113/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
   registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
   copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the ray the snap to the floor
   uses), `fn_44_3614` (the copy of the ray result), `fn_44_FE8` (the grenade data
-  the loader builds) and `fn_44_C44` (the copy of it into the data).
+  the loader builds), `fn_44_C44` (the copy of it into the data), `fn_44_D54` (the
+  copy of the ing spot into the data) and `fn_44_9B4` (the data build).
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
@@ -68,9 +69,31 @@ members now:
 
 Still to model: the inglet spawn itself (`fn_44_7058`).
 
+### The loader's parts (fn_44_110)
+
+The retail's loader (fn_44_110, 0x844) is a property loop over the REL's own binary
+format. The host reads the same properties with the generated `SLdrMinorIng` reader
+(the analysis checked the ids one by one), so the loop itself is upstream's code and
+takes no marker here. Its parts:
+
+| retail function | size | the host's part |
+|---|---|---|
+| `fn_44_14D8` | 0x188 | the `SLdrMinorIng` default constructor; upstream's generated one sets the same defaults |
+| `fn_44_16C4`, `fn_44_1830` | 0x108, 0x11C | the two sub-blocks' default constructors, called by `fn_44_14D8` (upstream's generated ones) |
+| `fn_44_194C` | 0x394 | the ing spot reader: the generated `LoadTypedefMinorIngIngSpot` |
+| `fn_44_1CE0` | 0x358 | the inglet's block reader: the generated `LoadTypedefUnknownStruct34` |
+| `fn_44_9B4` | 0x290 | the data build: the host's `BuildMinorIngData` (marked) |
+| `fn_44_10D4` | 0x40 | the patterned info: the host's `LdrToPatternedInfo` |
+
+`fn_44_9B4` copies the three blocks the loader read into the data, and the host's
+body does the same with the marked copies `fn_44_D54` (the ing spot), `fn_44_D00`
+(the inglet's health) and `fn_44_C44` (the grenade data). The retail's ing spot copy
+runs in three steps (`fn_44_D54` calls `fn_44_E08`, which calls `fn_44_EB8`); the
+host's `CIngSpotData` copy is the class's own, so those two take no marker.
+
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 106 of the module's 217 functions as unmarked.
+`tools/port_progress.py` counts 104 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
@@ -90,7 +113,6 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_9B24` | 0x94 | fn_44_9940 |
 | `fn_44_9CC0` | 0x98 | fn_44_9C68 |
 | `fn_44_4DDC` | 0xA8 | fn_44_4E84 |
-| `fn_44_D54` | 0xB4 | fn_44_9B4, fn_44_A9DC |
 | `fn_44_5A04` | 0xB4 | - |
 | `fn_44_660C` | 0xB4 | fn_44_65C4 |
 | `fn_44_141C` | 0xBC | - |
@@ -105,7 +127,6 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_14D8` | 0x188 | fn_44_110 |
 | `fn_44_A9DC` | 0x19C | fn_44_9D58 |
 | `fn_44_9940` | 0x1E4 | fn_44_97E4 |
-| `fn_44_9B4` | 0x290 | fn_44_110 |
 | `fn_44_1CE0` | 0x358 | fn_44_110 |
 | `fn_44_194C` | 0x394 | fn_44_110 |
 | `fn_44_7058` | 0x654 | - |

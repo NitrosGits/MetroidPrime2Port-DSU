@@ -216,7 +216,7 @@ void CopyRayCastResult(CRayCastResult& dest, const CRayCastResult& src) { dest =
 // The retail copy moves a whole CHealthInfo from the source to the destination: the three floats
 // at +0x00..+0x08, the two weapon modes at +0x0c and +0x14, the four ids at +0x10..+0x1a and the
 // two flag bits at +0x1c (asm 0xD00-0xD4C). The host's CHealthInfo has that layout.
-void CopyHealthInfo(CHealthInfo& dest, const CHealthInfo& src) { dest = src; }
+CHealthInfo CopyHealthInfo(const CHealthInfo& src) { return src; }
 
 // @ fn_44_FE8
 // The retail reads the inglet's bouncing-projectile block into the grenade data (asm 0xFE8-0x107C):
@@ -1612,7 +1612,7 @@ void CMinorIng::CreateCollisionActor(CStateManager& mgr) {
     mCollisionActorId = uid;
     mgr.AddObject(colAct);
     // fn_44_319C copies the Ing's CHealthInfo whole into the collision actor's (asm 0x32F4).
-    CopyHealthInfo(*colAct->HealthInfo(), *GetHealthInfo());
+    *colAct->HealthInfo() = CopyHealthInfo(*GetHealthInfo());
     colAct->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
     colAct->SetCallTouch(true);
   }
@@ -2102,6 +2102,50 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
 
 // Retail fn_44_110. The property ids and their order are the generated SLdrMinorIng reader's,
 // which the analysis checked against the REL id by id: it reads all 20.
+// @ fn_44_D54
+// The retail copy moves a whole CIngSpotData from the source to the destination: the blob
+// effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds
+// at +0x2e..+0x36 and the rest of the block (asm 0xD54-0xE08). The host's CIngSpotData has the
+// retail's layout, so the copy is the class's own copy.
+CIngSpotData CopyIngSpotData(const CIngSpotData& src) { return src; }
+
+// @ fn_44_9B4
+// The retail's fn_44_9B4 (asm 0x9B4-0xC44) builds the data block the actor runs on: the
+// projectile and its damage, the ing spot, the inglet's health, the grenade data and the
+// inglet's spawn values. The host's block is its own shape (CMinorIngData), so the body is the
+// constructor call and not a field-by-field copy of the retail's offsets.
+static CMinorIngData BuildMinorIngData(const SLdrMinorIng& sldrThis, const CIngSpotData& ingSpotIn,
+                                       const CBouncyGrenadeData& grenadeDataIn, uchar flags156) {
+  // The retail's fn_44_9B4 copies the three blocks the loader read into the data: the ing spot
+  // (fn_44_D54), the inglet's health (fn_44_D00) and the grenade data (fn_44_C44).
+  const CIngSpotData ingSpot = CopyIngSpotData(ingSpotIn);
+  const CHealthInfo ingletHealth =
+      CopyHealthInfo(LdrToHealthInfo(sldrThis.unknown_0x3da35851.health));
+  const CBouncyGrenadeData grenadeData = CopyGrenadeData(grenadeDataIn);
+
+  return CMinorIngData(
+      sldrThis.projectile, LdrToDamageInfo(sldrThis.projectileDamage),
+      LdrToDamageInfo(sldrThis.ingSpot.damage), ingSpot, sldrThis.unknown_0xa03e450c,
+      sldrThis.ingSpot.morphballPursuitDistance, sldrThis.ingSpot.bombStunDuration,
+      sldrThis.ingSpot.unknown_0x7569fdba, sldrThis.ingSpot.sfxFallOff,
+      sldrThis.attackAngleLimit, sldrThis.lineOfSightHeightOffset, sldrThis.unknown_0xd6c8eac2,
+      sldrThis.unknown_0x2a5449ba, sldrThis.hearingRadius, sldrThis.ingSpot.speedModifier,
+      sldrThis.unknown_0x3da35851.allowLockOn,
+      static_cast< uchar >(sldrThis.unknown_0x09207f51), flags156, sldrThis.ingSpot.maxSpeed,
+      sldrThis.ingSpot.maxWallSpeed, sldrThis.ingSpot.ballPursuitSpeed,
+      LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
+      static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
+      static_cast< ushort >(sldrThis.ingSpot.sound_Move),
+      static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
+      static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
+      static_cast< ushort >(sldrThis.ingSpot.sound_Death),
+      ingletHealth, grenadeData, sldrThis.unknown_0x3da35851.minLaunchSpeed,
+      sldrThis.unknown_0x3da35851.maxLaunchSpeed, sldrThis.unknown_0x3da35851.minGeneration,
+      sldrThis.unknown_0x3da35851.maxGeneration, sldrThis.unknown_0x3da35851.maxTurnAngle,
+      sldrThis.unknown_0x3da35851.unknown_0xfbf8ea0a,
+      sldrThis.unknown_0x3da35851.unknown_0x47f99fbc);
+}
+
 static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   PortMinorIngStandIn("fn_44_110 (0x844 bytes)");
   SLdrMinorIng sldrThis;
@@ -2114,17 +2158,17 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
     return nullptr;
   }
 
-  const CIngSpotData ingSpot(sldrThis.ingSpot.blobEffect, sldrThis.ingSpot.hitNormalDamage,
-                             sldrThis.ingSpot.hitHeavyDamage, sldrThis.ingSpot.death,
-                             sldrThis.ingSpot.maxSpeed, sldrThis.ingSpot.maxWallSpeed,
-                             sldrThis.ingSpot.ballPursuitSpeed, sldrThis.ingSpot.speedModifier,
-                             sldrThis.ingSpot.turnSpeed,
-                             LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_Move),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_Death));
+  const CIngSpotData ingSpotBuilt(sldrThis.ingSpot.blobEffect, sldrThis.ingSpot.hitNormalDamage,
+                                  sldrThis.ingSpot.hitHeavyDamage, sldrThis.ingSpot.death,
+                                  sldrThis.ingSpot.maxSpeed, sldrThis.ingSpot.maxWallSpeed,
+                                  sldrThis.ingSpot.ballPursuitSpeed, sldrThis.ingSpot.speedModifier,
+                                  sldrThis.ingSpot.turnSpeed,
+                                  LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_Move),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_Death));
 
   // The three flag bytes: the REL's constructor takes them in an order that does not follow the
   // properties' declaration order, and the analysis does not pair the two, so the bits here follow
@@ -2149,32 +2193,11 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
     flags156 |= 0x04;
   }
 
-  // The retail's loader builds the bouncing-projectile struct out of the inglet's block
-  // (fn_44_FE8) and copies it into the data's 0xd0 (fn_44_C44).
-  const CBouncyGrenadeData grenadeData =
-      CopyGrenadeData(BuildGrenadeData(sldrThis.unknown_0x3da35851));
+  // The retail's loader reads the ing spot (fn_44_194C) and builds the bouncing-projectile
+  // struct out of the inglet's block (fn_44_FE8); the data build copies both into the data.
+  const CBouncyGrenadeData grenadeData = BuildGrenadeData(sldrThis.unknown_0x3da35851);
 
-  const CMinorIngData data(
-      sldrThis.projectile, LdrToDamageInfo(sldrThis.projectileDamage),
-      LdrToDamageInfo(sldrThis.ingSpot.damage), ingSpot, sldrThis.unknown_0xa03e450c,
-      sldrThis.ingSpot.morphballPursuitDistance, sldrThis.ingSpot.bombStunDuration,
-      sldrThis.ingSpot.unknown_0x7569fdba, sldrThis.ingSpot.sfxFallOff,
-      sldrThis.attackAngleLimit, sldrThis.lineOfSightHeightOffset, sldrThis.unknown_0xd6c8eac2,
-      sldrThis.unknown_0x2a5449ba, sldrThis.hearingRadius, sldrThis.ingSpot.speedModifier,
-      sldrThis.unknown_0x3da35851.allowLockOn,
-      static_cast< uchar >(sldrThis.unknown_0x09207f51), flags156, sldrThis.ingSpot.maxSpeed,
-      sldrThis.ingSpot.maxWallSpeed, sldrThis.ingSpot.ballPursuitSpeed,
-      LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Move),
-      static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
-      static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Death),
-      LdrToHealthInfo(sldrThis.unknown_0x3da35851.health), grenadeData,
-      sldrThis.unknown_0x3da35851.minLaunchSpeed, sldrThis.unknown_0x3da35851.maxLaunchSpeed,
-      sldrThis.unknown_0x3da35851.minGeneration, sldrThis.unknown_0x3da35851.maxGeneration,
-      sldrThis.unknown_0x3da35851.maxTurnAngle, sldrThis.unknown_0x3da35851.unknown_0xfbf8ea0a,
-      sldrThis.unknown_0x3da35851.unknown_0x47f99fbc);
+  const CMinorIngData data = BuildMinorIngData(sldrThis, ingSpotBuilt, grenadeData, flags156);
 
   return rs_new CMinorIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                           LdrToEntityInfo(info, sldrThis.editorProperties),
