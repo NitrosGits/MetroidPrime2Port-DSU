@@ -11,6 +11,69 @@ Confidence tags as in `SpacePirate.md`: **[proven]** = read from an instruction/
 offsets. The implementation is `src/MetroidPrime/Enemies/PortCElitePirate.cpp`,
 `include/MetroidPrime/Enemies/CElitePirate.hpp`.
 
+## 0. Which enemy this is: the Ingsmasher (2026-10-19)
+
+`CElitePirate` is Retro's internal class name; Echoes has no "Elite Pirate". The class is the
+**Ingsmasher**, the Ing-possessed Luminoth mechanoid of Sanctuary Fortress [proven, read at runtime
+by a temporary loader log in world `1baa96c2`, area 4 `b666b655`, layer 3]:
+
+- editor names `Ingsmasher Twisp` and `Insgsmasher Catsby` (sic), ANCS `6b45f06d` character 0;
+- scan `72dce8a4` -> STRG `b3845097`: "Mechanism: Ingsmasher" / "Mechanoid capable of generating
+  earth-shattering shock waves. Energy shield can be breached with opposite-polarity beam systems." /
+  "Designed to fight alongside the Luminoth, the Ingsmasher now seeks to destroy them. In close
+  combat, it smashes its energized fists into the earth to send out powerful shock waves, then
+  pulverizes any immobile prey. It will fire salvos of missiles at long-distance quarry. It uses an
+  energy shield in battle that can be adjusted to protect against a variety of beam weapons. The
+  shield can be overloaded by opposite-polarity beams, however, damaging the Ingsmasher in the
+  process."
+
+That is the yardstick for runtime checks: ground-smash shock waves up close, missile salvos at
+range, a dark/light polarity shield that opposite-polarity beams overload. The disc also places
+the **Dark Ingsmasher** (same class, dark-world areas). Spawns (`docs/module_spawns.tsv`, all
+Sanctuary Fortress, area/layer): `02_cliff_reactorcore_dark` L5, `03_cliff_chicane` L4,
+`06_cliff_spiderballguardian` L7, `0c_cliff_hall` L3, `0m_cliff_hall_dark` L4 and L5.
+
+### Pseudocode
+
+One `.c` per function (all 236) in `/tmp/opencode/pseudo/ElitePirate/fn_15_<off>.c`, named by REL
+offset. Regenerate with the shared `tools/rel_pseudo/` (see its `link_rel.sh` header).
+
+### FSM tables [proven]
+
+`fn_15_C0D0` is the module's static initialiser: it copies 12-byte PTMFs `{0, vtbl_off, 0}` into
+the `{name, PTMF}` tables. Every entry is **virtual**: the function is the vtable word at
+`lbl_15_data_634 + vtbl_off`. `fn_15_9840` (class virtual slot 82, called by `Think` while the state
+machine has no state) is `InitializeStateMachine` + `SetTriggerFunctions(data_178, 31)` +
+`SetStateFunctions(data_464, 21)` + `SetCodeFunctions(data_5CC, 2)`.
+
+| trigger | fn | trigger | fn | state | fn |
+|---|---|---|---|---|---|
+| Alerted | 60C8 | ReadyToCharge | 60D4 | Alert | 5340 |
+| AngryAttackOver | 18CC | ReturnedToPatrol | 60BC | AngryAttackBegin | 1900 |
+| AttackPatternOver | 6F28 | ShieldKilled | 6D68 | AngryAttackEnd | 18D8 |
+| BreakProjectileAttack | 50B4 | ShockwaveIsNext | 18AC | Dead | 7B00 |
+| CanShockwave | 5084 | ShotAt | 63B0 | FollowAttackPattern | 6DDC |
+| ClearLineOfSight | 4E90 | ShouldAlert | 684C | InvulnAlert | 52D0 |
+| DonePursuing | 691C | ShouldFire | 6820 | MeleeAttack | 48BC |
+| DoneTurning | 6C64 | ShouldMeleeAttack | 6500 | Patrol | 5708 |
+| HasAttackPattern | 6F44 | ShouldShockwave | 63BC | PowerDown | 5FF0 |
+| InDetectionRange | 6F9C | ShouldTurn | 6C84 | PowerUp | 5F08 |
+| InPosition | 6368 | SpotPlayer | 6FD0 | ProjectileAttack | 50BC |
+| NotReachedTarget | 6D94 | StillAngry | 18B8 | Pursue | 5BB4 |
+| PickedSpreadShot | 4E7C | TargetNotOnMesh | 6240 | Shielding | 41A0 |
+| PlayerInNoAttack | 15CC | TargetUnreachable | 61E4 | ShieldUp | 44A8 |
+| PoweredDown | 61CC | TooClose | 62CC | Shockwave | 4AE0 |
+| PoweredUp | 61C0 | | | SpreadShot | 4D18 |
+| | | | | Stunned | 59BC |
+| code: SelectTarget | 555C | code: PickAttackType | 54AC | TargetPatrol | 578C |
+| | | | | Taunt | 5A60 |
+| | | | | Turn | 5598 |
+| | | | | Wait | 6064 |
+
+MP1 similarity (`similarity_match.py`'s tokeniser, Dice over n-grams): only `fn_15_2F10` =
+MP1 `IsArmClawCollider` (1.00) and `fn_15_6820`/`fn_15_24F0` ~ `ActivateGrenadeLauncher` (0.80)
+carry over; everything else is decompiled from retail.
+
 ## 1. Function map
 
 | fn | size | role | evidence |
@@ -32,7 +95,8 @@ offsets. The implementation is `src/MetroidPrime/Enemies/PortCElitePirate.cpp`,
 | `fn_15_84EC` | 0x20 | **`AddToRenderer`** (slot 10): only `CPatterned::AddToRenderer` | [proven] |
 | `fn_15_8294` | 0x12C | **`Render`** (slot 11): the shield/electric flavour (reads the timers at 0xc64 / 0xa3c, uses `CColor::Black`) | [proven] |
 | `fn_15_7BFC` | 0x2F0 | **`DoUserAnimEvent`** (slot 28): dispatches through `jumptable_15_data_864` (26 entries), falls back to the base | [proven] |
-| `fn_15_C0D0` | 0x808 | **FSM setup**: references the trigger/state triples `lbl_15_data_4`..`lbl_15_data_16C` and the 31-name table `lbl_15_data_178`. The vtable keeps `CPatterned::SetupStateMachine` (slot 60), so its call site is not established | [proven] table refs; [?] caller |
+| `fn_15_C0D0` | 0x808 | static initialiser of the FSM name/PTMF tables (section 0) | [proven] |
+| `fn_15_9840` | 0x8C | class virtual slot 82: installs the FSM (section 0); `Think` calls it while the machine has no state | [proven] |
 | `fn_15_800C` | 0x74 | slot 81 = `RenderIngSnatchingTransition` override | [proven] vtable slot |
 
 ### Vtable `lbl_15_data_634` (140 words, 2 leading zeros)
@@ -85,41 +149,50 @@ movement 0 (ground), collider 1, body 1 [proven: `fn_15_A190`'s register/stack a
 `__ct__10CPatternedF12EPatternedAI...`]. All offsets below are [proven] by a store in `fn_15_A190`
 unless tagged.
 
-| off | member | proof / note |
+| off | member (host name) | proof / note |
 |---|---|---|
-| 0x7c0 | int = −1 | `stw r0(-1), 0x7c0` |
-| 0x7c4 | 0x64-byte sub-object copied from **pInfo+0x74** | `fn_15_2B08(this+0x7c4, pInfo+0x74)`; identity [?] |
-| 0x7f4 | int 0 | |
-| 0x7f8 / 0x804 / 0x810 / 0x81c | four zeroed `CVector3f` | |
-| 0x828 | **`CElitePirateData`, 0x198** | `fn_15_B360(this+0x828, data)`; size = 0x9c0 − 0x828 [probable] |
-| 0x9c0 | `CCollidableAABox` (0x28) | `__ct__19CCollisionPrimitiveFRC13CMaterialList` + `__vt__16CCollidableAABox`, six floats from `GetBoundingBox` |
-| 0x9e8 | `CToken` for **data+0x34**, valid byte at 0x9f4 | `gpSimplePool->GetObj(SObjectTag('PART', data+0x34))` + `Lock` |
-| 0x9f8 / 0x9fa | `TUniqueId` ×2 = `kInvalidUniqueId` | |
-| 0x9fc / 0xa10 | int 0 ×2 | |
-| 0xa24 / 0xa26 | `TUniqueId` ×2 = `kInvalidUniqueId` | |
-| 0xa28 | float = the base's 0x3c8 (eye/bbox height?) | |
-| 0xa2c / 0xa30..0xa40 / 0xa48 | floats: 1.0 `rodata_DC`, 0.0 `rodata_114` ×5, 0.0 | |
-| 0xa4c | int 0 | |
-| 0xa50 | **`CPathFindSearch` (0xec)** | `__ct__15CPathFindSearchFP7CPFAreaUiiffUi...`; `fn_15_0` returns this+0xa50 |
-| 0xb3c | `CVector3f` zeroed | (0xa50 + 0xec = 0xb3c, so the path search is 0xec as in CIng) |
-| 0xb48 | 0x18-byte object, DOL `fn_801931E0` with 5.0f (`rodata_100`) | identity [?] |
-| 0xc10 | 7 flag bits cleared | rlwimi chain |
-| 0xc14 | int 0 | |
-| 0xc28 / 0xc2c | int −1 ×2 (uids?) | |
-| 0xc30 | object built by `fn_15_B748(this+0xc30, data+0x00)`: a **'FSM2'** token | [proven] tag + asset |
-| 0xc3c | int 6 | |
-| 0xc40 | initial body state: 6, then 0xa / 0xb / 0xc by `fn_15_9988(this, id)` (a `CPASAnimParmData`-based test) | |
-| 0xc44 / 0xc48 / 0xc4c / 0xc50 / 0xc54 | flag bit; int 1, int 1; float `rodata_194` = −1000; 2 flag bits | |
-| 0xc58 | 0x58-byte object built by `fn_15_B080` (floats incl. −1000, several flags) | [proven] call; identity [?] |
-| 0xcb0 / 0xcb4 | int 1 / int 7 | |
-| 0xcb8 / 0xcc4 | two zeroed `CVector3f` | the dtor checks 0xcc4 |
-| 0xcd0 | **`CProjectileInfo` (0x28)** | `__ct__15CProjectileInfoFUiRC11CDamageInfo(data+0x168, data+0x16c)`; `fn_15_52C8` returns this+0xcd0 |
-| 0xcf8 / 0xcfc / 0xd00 / 0xd04 / 0xd08 | int 0 ×3, int 1, bool | |
-| 0xd0c..0xd2c | float 0.0, zeroed `CVector3f`, int 0 ×2, 4 flag bits, float 0.0, bool | |
-| 0x620 | `CAiKnockBackMgr` (base): `EnableAllAnimReactions(false)` then `EnableAnimReaction(1 = kAR_Flinch, true)` | [proven] |
-| 0x681 | five bits of a base flag byte cleared | [proven] |
+| 0x7c0 | int = −1 (`x7c0_`) | `stw -1, 0x7c0`; use [?] |
+| 0x7c4 | `CDamageVulnerability` copy of the patterned info's (`mBodyVulnerability`) | `fn_15_2B08(this+0x7c4, pInfo+0x74)`; read by `fn_15_27FC` [proven] |
+| 0x7f4 | **shield `CCollisionActorManager`** (one "Shield" OBB on L_Palm_LCTR) | built by `fn_15_36CC` [proven] |
+| 0x7f8 / 0x804 | L / R palm positions (`PreRender`, `fn_15_83C0`) | [proven] |
+| 0x810 | last path goal (`5CBC`/`PlanPath`); Alert (`5340`) stores its own position, `41A0` uses it as the target when the shield's target actor is gone | [proven] |
+| 0x81c | the position it powered up in (`5F08`); `ShouldAlert` (`684C`) is false within 5 m of it | [proven] |
+| 0x828 | **`CElitePirateData`, 0x190** | ends at 0x9b8, the next member [proven] |
+| 0x9b8 | **body `CCollisionActorManager`** (6 subdivided + 8 sphere joints) | `fn_15_36CC` [proven] |
+| 0x9c0 | `CCollidableAABox` (`GetCollisionPrimitive`, `fn_15_8`) | rebuilt by the bbox setup `fn_15_2CFC` |
+| 0x9e8 | optional `'PART'` token for data+0x34 | ctor |
+| 0x9f8 / 0x9fa | head collider uid / **grenade launcher uid** | `fn_15_3574`, `fn_15_2564` |
+| 0x9fc / 0xa10 | **R** / **L** arm collider lists (`reserved_vector<TUniqueId,8>`) | `fn_15_3574` via `fn_15_2F10` [proven] |
+| 0xa24 / 0xa26 | shield collider uid / uid [?] | `fn_15_36CC` |
+| 0xa28 | `mSpeed` at construction (`mBaseSpeed`) | Think doubles it with the shield up [proven] |
+| 0xa2c | steering speed = walk speed × 0.99 / max speed (XCRT) | [proven] |
+| 0xa30 / 0xa34 / 0xa3c | HP at the last vulnerability set / count-down timer / accumulated time | `fn_15_27FC`, `fn_15_27DC`, Think |
+| 0xa38 | countdown that clears the XDamaged/ShotAt bit during Shielding; only the ctor writes it (0) | `41A0`, `A190` [proven] |
+| 0xa40 | seconds at the end of the path with the player off it, reset by every re-plan | `5CBC` writes, `61E4`/`691C` read [proven] |
+| 0xa44 | time Pursue began; the ctor leaves it unset | `5BB4` writes, `691C` reads [proven] |
+| 0xa48 / 0xa4c | time of the last push-back / claimed path region (ctor stores **0**, `fn_15_1328` tests −1) [?] | |
+| 0xa50 | `CPathFindSearch`; flags `IsAnEncounter() ? 0x201 : 1` | [proven] |
+| 0xb3c | TargetPatrol's goal: a copy of the base's `mDestPos` (0x334) taken at Activate | `578C` writes, `6368` reads [proven] |
+| 0xb48 | `SPositionHistory(5.f)` (DOL `fn_801931E0`) | `fn_15_2204` [proven] |
+| 0xc10 | flags: event 8, XDamaged, alerted ×2, launcher-Ing-possessed, 3 [?] | |
+| 0xc2c | **attack kind**: 2/8 rocket, 4 melee, 7 shock wave; 3/5/6 skip push-back | DoUserAnimEvent, `fn_15_8FB8` |
+| 0xc30 | `'FSM2'` token (`data+0x00`) | [proven] |
+| 0xc40 | initial idle: **1**, then 10/11/12 if `FindBestAnimation(state 5, 0, n)` = the editor's initial anim | [proven] |
+| 0xc44 / 0xc50 / 0xc54 | event-7 bit / last melee time (−1000) / melee + knock pending bits (event 17) | |
+| 0xc58..0xc6c | `fn_15_B080` block: 0, **0xc5c = −1000** (the shield-raise time `44A8` then stores), shield damage, shield hit time, shield alpha, **polarity** (0 dark, 1 light, 2 none) | XDMG, Render [proven] |
+| 0xc70 / 0xc80 / 0xc94 / 0xc9c | light / dark shield-pop `'PART'`, hand `CElementGen`, shield `CSkinnedModel` | `fn_15_3C5C`, `fn_15_8E34`, `fn_15_8080` |
+| 0xcac | 0x40 shield-pop pending, 0x80 double speed | Think |
+| 0xcb0 | 1; **5** selects the double shock wave (`fn_15_1A48`) | |
+| 0xcd0 | `CProjectileInfo(data.rocket, data.rocketDamage)` | `fn_15_728C` |
+| 0xcf8 / 0xd00 / 0xd08 | rockets fired / rocket pattern (0 homing, 1 spread) / event 18 seen | `fn_15_728C` |
+| 0xcfc | rockets this salvo: 4 (`4D18`), a random data range (`50BC`, `0x8dc..0x8e0`) | `4D18`/`50BC` write, `50BC` gates on it |
+| 0xd04 | the pattern `PickAttackType` copies 20% of the time; the ctor's 1 is its only write | `A190`, `54AC` |
+| 0xd0c / 0xd10 | aim blend towards the shield / shield aim position | `fn_15_8D84`, `fn_15_7EEC` |
+| 0xd28 / 0xd2c | energy glow / absorbing | `fn_15_8EA0` |
+| 0x620 | knock-back: all anim reactions and burn/explode-death/burn/slow/freeze off, then `kAR_Flinch` on | [proven] |
+| 0x681 | the knock-back mgr's flag byte (+0x61): the five Enable*(false) above | [proven] |
 
-### CElitePirateData (0x198 at 0x828)
+### CElitePirateData (0x190 at 0x828)
 
 Built on the loader's stack by `fn_15_B82C` and copied in by `fn_15_B360`. Its parameter list is
 long and mixed (8 float registers, then 7 integer/pointer registers, then 24 stack slots), so only
@@ -131,8 +204,8 @@ the fields its *reader* (`fn_15_A190`) touches are proven:
 - **+0x08** = a `CDamageInfo` copied field-by-field out of the builder's damage argument
   (`mWeaponMode`, four floats, two u16 sfx ids) = `SLdrElitePirate.meleeDamage` [proven].
 - **+0x34** = an integer the ctor tests against −1 and, when set, loads as a **'PART'** asset
-  [proven offset and use; which property reaches it is [?] - the builder's frame offsets could not
-  be mapped back to its parameter list].
+  [proven offset and use]; the loader now feeds it `alwaysFF` (0x06cf4324) [probable].
+- **+0x04** = the editor's initial animation, which the ctor matches against idle 10/11/12 (0xc40).
 - **+0x168 / +0x16c** = the **rocket** projectile asset and its `CDamageInfo` (the
   `CProjectileInfo` at 0xcd0) [proven].
 - 0x144..0x164 = nine floats (shock-wave/taunt range block), 0x188/0x18c = two ints
@@ -178,28 +251,199 @@ the loader returns null when it is clear) · `LdrToDamageInfo` ×2 · `LdrToAnim
 
 ## 5. Status and open questions
 
-**Milestone 1 is implemented**: the loader, the constructor (base arguments, the path search, the
-projectile info, the knock-back reaction setup), the vtable overrides that matter (Think,
-AcceptScriptMsg, PreRender, AddToRenderer, Render, DoUserAnimEvent, TakeDamage, the three CAi
-accessors, ProjectileInfo / GetSearchPath / GetPointSearchPath / GetRagDoll / GetAttackTarget) and
-the port-only module registration. Everything else is a once-per-method `[elitepirate]` `StandIn`
-log, and the body controller is activated on `kSM_Create` and in `Think` (retail overrides neither
-`PreThink`, `Touch`, `Death` nor `KnockBack`, so those cannot be the activation point).
+**Slice 2 (2026-10-19) is implemented** in `PortCElitePirate.cpp`, each function behind a
+`// @ fn_15_XXXX` marker checked against the pseudocode: the ctor (`A190`, bbox `2CFC`), Think
+(`9598`: install the FSM via `9840` when it has no state, then launcher sync, both collision
+managers, speed, timers, position history, launcher transform, aim blend, shield/glow alpha,
+push-back `8FB8`), AcceptScriptMsg (`8580`), PreRender/Render/shield render/portal plane
+(`83C0`/`8294`/`8080`/`800C`), GetAimPosition (`7EEC`), DoUserAnimEvent (`7BFC`), the collision
+setup (`36CC`/`3574`/`2F10`), the shield vulnerability (`27FC`), the launcher (`2564`/`251C`/
+`2394`/`2448`), shock wave (`70D4`), rockets (`728C`), melee (`7004`), player pushes and rumble
+(`1B60`/`1C7C`), the shield pop (`3C5C`) and the AI-hint queries (`1788`/`15F8`). The body
+controller is activated on XCRT (retail). The 31 triggers / 21 states / 2 code functions are
+installed in `fn_15_9840`'s order; their bodies are `StandIn` shells (triggers return false).
 
-What is **not** established:
+**Triggers + code functions (slice 3, 2026-10-19)**: all 31 triggers and `SelectTarget`/`PickAttackType`
+are ported (`// @ fn_15_XXXX`). Retail's virtual self-calls map through the vtable label
+(`lbl_15_data_634 + off`, slot = off/4): 0x160 = `ClearLineOfSight`, 0x194 = `ShieldKilled`, 0x1a4 =
+`ShouldTurn`. Retail CPatterned offsets: 0x6c0 = the waypoint navigation's destination uid (the
+navigation sits at 0x6b8), 0x728 = `mPredictedLeashTime`. `0xd20` is an int (`mAngryCount`, was a
+float in the header). `fn_15_6618` is `ShouldFire`'s only caller and is inlined, as is `fn_15_2284`
+(launcher "lockon_target_LCTR" world position). Filters: ClearLineOfSight include Solid / exclude
+Floor; ShouldFire include Solid|Character (bits 0x3b/0x1f/0x21). Resolved 2026-10-19 (section 5
+"Resolved `[?]` members"): 0x194 *is* `ShieldKilled` (word 101 of the table), `x81c_` is where the
+Ingsmasher powered up, `xd04_` is a ctor constant (a fixed 20% spread), and 0xa40/0xa44/0xc5c/0xb3c
+are the stuck/pursue/shield-raise times and TargetPatrol's goal.
 
-1. Where `fn_15_C0D0` (the FSM setup, 0x808) is called from - the vtable keeps
-   `CPatterned::SetupStateMachine`, so the FSM must be installed from `AcceptScriptMsg`'s
-   `kSM_Create` arm or from `Think`; mp2's `CPatterned::Start` is an empty stub, which is the third
-   candidate.
-2. Which property reaches `CElitePirateData+0x34` (the 'PART' asset) and the rest of the builder's
-   parameter list: `fn_15_B82C`'s frame offsets could not be mapped back to its parameters.
-3. The identities of `0x7c4` (pInfo+0x74 copied), `0xb48` (DOL `fn_801931E0`), `0xc58`
-   (`fn_15_B080`), `0xc30` (the FSM2 token object) and the `fn_15_BC` (slot 45) accessor.
-4. The FSM's triggers/states/code functions and their names (section 1, last part).
-5. The enemies' own combat behaviour: melee, the dark/light shields, the two shock waves, the
-   rocket/rocket-launcher, energy absorption and the Ing-possession properties. MP1's
-   `CElitePirate.cpp` is the reference for the shared half (shields, shock waves, taunt, melee).
+**Combat states (2026-10-19)** in `PortCElitePirateCombat.cpp`: Shielding `41A0`, ShieldUp `44A8`,
+MeleeAttack `48BC`, Shockwave `4AE0`, SpreadShot `4D18`, ProjectileAttack `50BC`, AngryAttackBegin
+`1900`, AngryAttackEnd `18D8`, Taunt `5A60`, PowerUp `5F08`, PowerDown `5FF0`, Dead `7B00`, plus
+`ResetAttackTimer` (`1F2C`) and `TryCommand` (`BAF8`/`BC04`/`BD10`, retry a body command until the
+body state is entered). They reuse the movement file's `SetAttackKind`/`UpdateAbsorb`/`TauntCmd`/
+`TurnCmd`/`PathToward`. The shield's looping sound is a host member (`mShieldSfx`, after 0xc98).
+Writers: `mShieldUpTime` (0xc5c) = ShieldUp, `mStuckTime` (0xa40) = PathToward, `mPursueStartTime`
+(0xa44) = Pursue (`5BB4`, from 0xa3c), `mPatrolGoal` (0xb3c) = TargetPatrol (`578C`, from 0x334);
+`xd1c_` is the taunt type (an int,
+Taunt cycles 0 -> 6 -> 1 -> 0). Shielding's `xa38_` countdown is dead in retail: the ctor writes it
+0 and `41A0` only decrements it, so it clears the XDamaged/ShotAt bit on the first update.
+In game (Sanctuary area 4, layer 3), Shockwave, ProjectileAttack, SpreadShot, AngryAttackBegin/End
+and PowerUp/PowerDown are entered with no fault; later runs reached the rest (item 1 below).
+
+### Resolved `[?]` members (2026-10-19)
+
+Writer/reader census over all 236 pseudo files, index and byte-offset forms both. Nothing else in
+the REL touches these offsets.
+
+| off | host name | type | writers | readers | meaning |
+|---|---|---|---|---|---|
+| 0xa38 | `mXDamagedTimer` | float | `A190` ctor `= 0`; `41A0` `-= dt` | `41A0` | countdown that clears the XDamaged/ShotAt bit (`1B50`); never armed, so the bit clears on the first Shielding update |
+| 0xa40 | `mStuckTime` | float | `5CBC` `+= dt` and `= 0` (twice) | `61E4` (`1.0 <`), `691C` (`<= 0.5` gates its early-out) | seconds parked at the path's last waypoint with the player off the path |
+| 0xa44 | `mPursueStartTime` | float | `5BB4` Activate `= 0xa3c` (the ctor leaves it) | `691C` | mTime when Pursue began; DonePursuing compares the last push (0xa48) and +2.5 s against it |
+| 0xb3c | `mPatrolGoal` | `CVector3f` | `A190` zero; `578C` Activate copies 0x334 | `6368` (`< 5 m`), `578C` (arrival steering) | TargetPatrol's goal, i.e. the base's `mDestPos` at Activate |
+| 0xc5c | `mShieldUpTime` | float | `B080` `= -1000`; `44A8` Activate `= 0xa3c` | `60D4`, `6D94` | mTime the shield went up; −1000 = never |
+| 0xcfc | `mRocketsToFire` | int | `4D18` `= 4`; `50BC` `= Range(data 0x8dc, data 0x8e0)` | `50BC` | salvo size |
+| 0xd04 | `mDefaultRocketPattern` | int | `A190` `= 1`, nothing else | `54AC` | with no later writer the 20% branch is a fixed spread pick |
+| 0x81c | `x81c_` | `CVector3f` | `A190` zero; `5F08` Activate `= own translation` | `684C` | where it powered up; no alert within 5 m of it |
+
+- `ReadyToCharge` (`60D4`) is `0xc5c + (HealthInfo[1] / HealthInfo[0]) * 1.7 + 0.3 < 0xa3c`: the
+  `GetHealthInfo()` floats are `CHealthInfo`'s initial HP (+0) and current HP (+4) - the same ratio
+  `8580` scales by 100 for its 25% test - not HP/knock-back (knock-back is +8). The port now uses
+  `GetHP() / GetInitialHP()`; it had knock-back over HP.
+- vt+0x194 is word 101 of `lbl_15_data_634` = `fn_15_6D68` (ShieldKilled), between `fn_15_60D4`
+  (word 100) and `fn_15_18AC` (102, ShockwaveIsNext), read from
+  `build/G2ME01/ElitePirate/asm/auto_04_00000000_data.s`.
+- `ShouldAlert` (`684C`) tests `x81c_` against the actor's **own** translation (0x54/0x58/0x5c), so
+  the old "alert here position" reading was wrong: it is "do not alert at the spot where I powered
+  up", and the only writer after the ctor's zero is `5F08`.
+- `PickAttackType` (`54AC`): jump-down hint (0x17) forces the spread; otherwise `Random(0,1) >= 0.8`
+  copies 0xd04 and the other 80% takes its opposite. 0xd04 is a ctor constant (1), so retail is a
+  fixed 20% spread / 80% homing, not a repeat of the previous pick.
+
+Open:
+
+1. Entered at runtime (area 4 L3, console `send u<id> Activate`, `tp`, `hurt`, polled with `obj`):
+   PowerUp, PowerDown, FollowAttackPattern, Turn, Alert, ShieldUp, Shielding, MeleeAttack,
+   Shockwave, SpreadShot, ProjectileAttack, Dead (600 hp, power-beam `hurt` to <=0), and
+   AngryAttackBegin/End, Pursue; Taunt and Wait in the dark run (below). Not entered (no `// @`
+   marker), 2026-10-19:
+   - TargetPatrol and InvulnAlert are not states of the FSM2 asset graph (`fsm.txt`), so no
+     retail path reaches them.
+   - Patrol: neither Ingsmasher has a patrol waypoint chain, so FSM2 never goes there.
+   - Stunned is reached only from Shielding on ShieldKilled (`mShieldDamage` over
+     `mUnknown5236C2B6` at polarity 1, else `mUnknown01EAAB17`). Shield damage accrues only in
+     kSM_Damage from a real projectile hitting the shield actor (polarity 1: weapon type 1/3,
+     polarity 0: 2/3); console `hurt` bypasses it. **Entered 2026-10-20** (see "Shield gameplay
+     end to end" below).
+   Console notes: `hurt` does not set ShotAt (`mXDamaged`); `send u<id> Alert` powers a
+   PowerDown Ingsmasher up; `obj` takes uids only and prints connections as editor ids.
+   u051b's pod, entered the area's own way (2026-10-20, no console `Activate`/`Alert`; the player
+   is teleported into the intro trigger u04fc's volume) and the pod is two-stage: u04fc's `Entered`
+   starts sequence timer 000400af (u0483), which deactivates pod 1's lid, starts platform u0485 and
+   then activates + alerts **u04ff** only. u051b is released by **u04ff's death**: u04ff's
+   `DeathRattle` starts timer 000400b3 (u0454), which deactivates u051b's lid (u045b), starts
+   platform u045d and activates + alerts u051b. Run `intro3`: u04fc went inactive and u04ff went
+   `PowerUp` -> `FollowAttackPattern` with u051b still `(none)`/inactive; `damage u04ff 700` (hp
+   600 -> -100) then 0.6 s later u051b entered `PowerUp`, its lid went inactive, platform u045d
+   lowered (-152.1 -> -152.8 -> -153.5), and it walked out of the pod (`FollowAttackPattern` at
+   (80.8, 48.3), down to y 25.6) through `Turn`, `Alert`, `ShieldUp`, `Shielding`, `MeleeAttack`,
+   `Shockwave`, `ProjectileAttack`, `SpreadShot` and `AngryAttackBegin` for the remaining 3 min,
+   with no fault. So the earlier "u051b stays at (81.1, 48.4, -152.1)" reading was the pod still
+   shut: the console `Activate` never opens it, and no port bug is involved. Neither `Patrol` nor
+   `TargetPatrol` was entered, so no marker was added.
+   Dark Ingsmasher (`0m_cliff_hall_dark`, layers 4/5): 0 caught; u04fa stands at z -114.7 and
+   enters PowerUp, Wait, Turn, Alert, Taunt, ShieldUp, Shielding, MeleeAttack and Shockwave. Fixed 2026-10-19: active Ingsmashers fell through the floor
+   (free fall at the 24.525 gravity) because the ctor built `mCollidableBox` from
+   `GetBoundingBox()`, the world-space box; fn_15_2CFC stores the local box. With the fix both
+   stand at z -152 for 60 s and u04ff walks, pursues and attacks.
+2. `[?]` members still open: 0x7c0, 0xa26, 0xc14/0xc28/0xc3c/0xc48/0xc4c, 0xc58, 0xcb4,
+   0xcb8/0xcc4, 0xd1c/0xd20/0xd24, and 0xa4c's ctor value 0. 0x810/0x81c, 0xa38/0xa40/0xa44,
+   0xb3c, 0xc5c, 0xcfc and 0xd04 are resolved in the table above.
+3. `fn_15_728C` indexes its four spread offsets by the rocket count with no bound in the function
+   itself. The volley is armed at four (`4D18` stores 0xcfc = 4; `50BC` fires only while
+   0xcf8 < 0xcfc) and the table is four triplets, so the port clamps the index to 0..3, which is
+   unchanged behaviour for any index retail reaches inside a volley.
+
+### Shield gameplay end to end (2026-10-20): Stunned `59BC` reached
+
+Area 4 layer 3, u04ff, no instrumentation in the committed tree. Console (`MP2_CONSOLE=4791`):
+`give annihilatorBeam`, `give darkBeam`, `give lightBeam`, `give darkAmmo 250`,
+`give lightAmmo 250`, `beam annihilator`, `send u04ff Activate`, `send u04ff Alert`, then the
+driver (`/tmp/opencode/ep/stun/stun9.py`, run by `/tmp/opencode/ep/stun/stun_run9.sh`, log
+`/tmp/opencode/ep/stun/stun9.log`) pins the player 6.5 m from the Ingsmasher, faces it, holds A
+(charge) and releases it the frame `obj u04ff` reports `ShieldUp`, then teleports 12 m out while
+the shot is in flight. t = 16.7 s after the driver start (about 35 s after boot), hp 588.
+
+What the run proved, with the logged values:
+
+- shield hits: polarity 1 (light shield), limit `mUnknown5236C2B6` = **55** (`mUnknown01EAAB17` =
+  **110** at polarity 0). A charged annihilator hit is **80**, an uncharged one **12**; the
+  `ShieldUp` window accumulated 80 + 5 x 12 = **140**, `ShieldKilled` went true, the shield burst
+  (Shielding's Deactivate sets `mShieldPopPending`) and the FSM entered `Stunned` (`@ fn_15_59BC`
+  in `PortCElitePirateMove.cpp`).
+- Shielding's transitions are tried in the FSM2 asset's order, **`ShouldMeleeAttack` before
+  `ShieldKilled`**, and the melee range is `mData.mMaxMeleeRange` = **9.00** (retail 0x97c is
+  `CElitePirateData` + 0x154, since `mData` sits at 0x828). At 6.5 m every earlier run left
+  Shielding for `MeleeAttack` and the accumulated damage was lost at the next `ShieldUp` (which
+  zeroes `mShieldDamage`); standing > 9 m at the `ShieldUp` -> `Shielding` handover is what makes
+  ShieldKilled win. `ShouldMeleeAttack` also needs `GetPlayerHintType() == -1`.
+- The shield window is 0.3 + 1.7 x (HP/initial HP) s of `ShieldUp` (2.0 s at full health), and
+  `ReadyToCharge` is its only exit, so damage for one burst has to land inside that window.
+- kSM_Damage arrives with sender = a body/shield `CCollisionActor` whose last-touched object is
+  the player's `CGameProjectile`; `IsShieldUp()` (locomotion `kLT_Crouch`, value 0) is true from
+  `ShieldUp`'s Activate onwards. No port bug was found on this path.
+
+**Next (2026-10-20, `decomp/elitepirate` at `4969dd112`):** every state the FSM2 asset graph can
+reach now carries a `// @` marker (100/241 functions, 30364/51836 bytes), and the `[?]` list above
+is resolved. What is left unmarked, and what to do about it:
+
+- Loader/struct machinery the port replaces wholesale, not decomp work: `178` (the loader itself,
+  `PortLoadElitePirate` in `PortCElitePirate.cpp`), `10C0` (`SLdrElitePirate` ctor), `B82C`/`B360`
+  (`CElitePirateData` builder/copy), `C0D0` (the FSM name/PTMF table static initialiser - the port
+  installs the tables in `fn_15_9840`), and the `SLdr*`/`CKnockBackMgr`/`CBodyStateInfo` ctors and
+  dtors `9AB0 9C34 9E14 9A74 9FF8 A08C C44 CA8 CE8 D08 D30 E6C ED8 F2C F90 FF0 B57C B5E0 B674
+  B6F0 B748 B7CC`. Do not mark these; most are compiler-generated.
+- Unreachable states: Patrol `5708`, TargetPatrol `578C`, InvulnAlert `52D0` (item 1 above).
+- ~100 small retail helpers with no marker: `2BB8 2E04 2ECC 2FC8 2FF0 306C 3180 3288 32C0 32E0
+  3308 33C8 3424 3AE0 3B40 3B78 3BD8 3FC0 4088 40F4 414C 4410 4488 47DC 4848 4A3C 4A98 4CBC 526C
+  5450` (collision/joint/shield setup), `776C 77B4 7868 78A8 78C8 78F0 7970 79AC 79E8 7A44 7A64
+  7AAC` (launcher/render), `98CC 9934 9988` (shield), `C8D8 C99C C9C0 C9E4 CA30` (tail), plus the
+  tiny virtuals `0 8 10 4C 5C 64 6C 74 84 90 9C A4 AC B4 BC D8 104 128` and `A9D8`'s copy helpers
+  `AAA0..B318`. Claim one only after a runtime gap shows the port is missing its effect; a lane
+  brief must name the offset and the observed symptom.
+- Dead while the shield is up (2026-10-20, area 4 L3, u04ff): ShieldUp -> Shielding
+  (`ReadyToCharge`, 2.1 s) and then, after 10 x `damage u04ff 60` from 10.5 m (60-point chunks keep
+  every per-frame delta under `mXDamageThreshold`, so `CPatterned::Death` takes the ordinary branch
+  and sets the FSM's Dead), **Shielding -> Dead with nothing in between**. `Shielding`'s Deactivate
+  tore the shield down: the collision-actor list went 47 total / 41 active -> 47 / 40 at the kill
+  (the shield collider becomes inactive; the body colliders stay until `Delete`, 26 total / 20
+  active in the area afterwards), and `mShieldPopPending` popped exactly one `CExplosion` (0 -> 1 at
+  the kill, gone 1 s later). Dead then deleted the launcher u0515 and the actor (u04ff unresolvable
+  at +10 s, `send` says "no object"), and it stayed Dead: no PowerUp/PowerDown after Activate/Alert.
+  A kill 0.2 s into `ShieldUp` instead also goes straight to Dead, and that kill left the count at
+  47 / 41: `ShieldUp` has no Deactivate branch (retail `fn_15_44A8` has Activate and Update only),
+  so on that path the shield collider stays active until `Delete` - retail behaviour, not a port
+  bug. Sfx and `mShieldAlpha` are not observable from the console. Log
+  `/tmp/opencode/ep/gap/a2.out` (kill in ShieldUp: `a.out`), driver `a2.py`, run `a2_run.sh`.
+- Dark Ingsmasher against the same shield burst (2026-10-20, `0m_cliff_hall_dark` L4/5, u04fa,
+  hp 800): PowerUp -> Turn -> ShieldUp 3.1 s after the driver's Activate/Alert, and one charged
+  annihilator released on `ShieldUp` (then the step to 12 m) gave **ShieldUp -> Stunned at 5.0 s**,
+  the first window, hp unchanged. A charged hit is 80, over the polarity-1 limit 55 and under
+  polarity 0's 110, so that shield was polarity 1 [inference: the console has no polarity readout].
+  Log `/tmp/opencode/ep/gap/b.out`, driver `b.py`, run `b_run.sh`.
+Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/stun/stun_run9.sh`
+(Stunned), `/tmp/opencode/ep/dark/stun_run.sh` (dark), `/tmp/opencode/ep/intro/run3.sh` (the area's
+own intro path: trigger -> pod 1 -> u04ff's death -> u051b's pod).
+Gates: `/tmp/opencode/ep/gate_build.sh` (0 FAILED), `python3 tools/gen_files_cmake.py --check`,
+`/tmp/opencode/ep/gate_run2.sh <log>` (0 crash lines), matching build 94.14%/63.29% if an
+upstream file changed. Also tell the port orchestrator that `186fea1e7` touched the shared file
+`platform/port_console.cpp` (`hurt`, `obj` FSM state).
+
+**Movement states (2026-10-19)**: Patrol `5708`, TargetPatrol `578C`, Pursue `5BB4`, Turn `5598`, Alert `5340`,
+InvulnAlert `52D0`, Wait `6064`, Stunned `59BC`, FollowAttackPattern `6DDC` are in `PortCElitePirateMove.cpp`, with
+their callees (attack-kind history `4790`, absorb `850C`, retrying body commands `BDFC`/`BEA0`, path helpers
+`5CBC`/`1FC0`/`13B8`). The attack-kind history (0xc14..) is only pushed to; `xd1c_` is the taunt type
+(0 -> 6 -> 1 -> 0). In game (area 4, player teleported next to the pirates) Alert, Turn and
+FollowAttackPattern were entered with 0 crashes.
 
 ## 6. Verified in game, and how its actors are reached (2026-10-16, later session)
 

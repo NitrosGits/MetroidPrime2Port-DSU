@@ -25,3 +25,5 @@ Splitter;src/MetroidPrime/PortModuleStubs.cpp
 SwampBossStage1;src/MetroidPrime/PortModuleStubs.cpp
 SwampBossStage2;src/MetroidPrime/PortModuleStubs.cpp
 WallCrawlerSwarm;src/MetroidPrime/PortModuleStubs.cpp
+ElitePirate;src/MetroidPrime/Enemies/PortCElitePirateCombat.cpp
+ElitePirate;src/MetroidPrime/Enemies/PortCElitePirateMove.cpp
