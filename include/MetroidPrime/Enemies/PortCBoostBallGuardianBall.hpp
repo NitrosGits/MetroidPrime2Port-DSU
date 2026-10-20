@@ -44,6 +44,7 @@ public:
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
+  TUniqueId GetLastSender() const { return mId4F6; } // fn_30_13B7C
   void AddToRenderer(const CStateManager& mgr) const override; // fn_30_13E68
   void Render(const CStateManager& mgr) const override;        // fn_30_141B8
   void PreRenderAllViewports(CStateManager& mgr) override;     // fn_30_13ECC

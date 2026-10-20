@@ -53,6 +53,9 @@
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
+#include "MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -232,53 +235,32 @@ void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueI
   mCurDamageRemTime = mDamageWaitTime;
 }
 
-// Ing body fn_29_2414: the ing-spot hit effect explosion, from the heavy token
-// when it is loaded and asked for, else the normal one. The caller adds it to the state manager.
-CEntity* CIngBoostBallGuardian::SpawnHitEffect(CStateManager& mgr, bool heavy) {
-  const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
-      heavy ? mHeavyHitEffect : mNormalHitEffect;
-  if (!effect) {
-    if (DebugBg()) {
-      fprintf(stderr, "[ibbg] %04x hit fx: the %s token is not loaded\n", GetUniqueId().Value(),
-              heavy ? "heavy" : "normal");
+// @ fn_30_3CB0
+void CIngBoostBallGuardian::SpawnSpotHitEffect(CStateManager& mgr, float damage) {
+  // The ing-spot effects while the ing blob tracker (0x1074) has live particles, else the boost's.
+  bool emitting = false;
+  CEntity* ent = mgr.ObjectById(mIngBlobTrackerId);
+  if (ent != nullptr) {
+    CCollisionTracker* tracker = static_cast< CCollisionTracker* >(ent);
+    if (tracker->GetParticleSystem() != nullptr &&
+        tracker->GetParticleSystem()->GetParticleCount() > 0) {
+      emitting = true;
     }
-    return nullptr;
   }
-  if (DebugBg()) {
-    fprintf(stderr, "[ibbg] %04x hit fx: %s explosion\n", GetUniqueId().Value(),
-            heavy ? "heavy" : "normal");
+  CEntity* explosion = nullptr;
+  const bool heavy = !(damage < 25.f); // 0x00003D40: rodata_BC
+  const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
+      heavy ? (emitting ? mHeavyHitEffect : mBoostHeavyHitEffect)
+            : (emitting ? mNormalHitEffect : mBoostNormalHitEffect);
+  if (effect) {
+    explosion = rs_new CExplosion(*effect, mgr.AllocateUniqueId(),
+                                  CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                                              kInvalidEditorId),
+                                  rstl::string_l("Ing Damage Fx"), GetTransform(), 0,
+                                  GetModelData()->GetScale(), CColor::White(), -1);
   }
-  return rs_new CExplosion(*effect, mgr.AllocateUniqueId(),
-                           CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true,
-                                       kInvalidEditorId),
-                           rstl::string_l("Ing Damage Fx"), GetTransform(), 0,
-                           GetModelData()->GetScale(), CColor::White(), -1);
-}
-
-// Ing body fn_29_2B70: a shot on the ing-spot form. The hit resets the reaction timer and flags the spot,
-// then the weapon picks the light or heavy effect (25 damage on the ing-spot vulnerability) and
-// plays that hit's sound.
-void CIngBoostBallGuardian::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
-  mHitReactionTime = -1.f; // 0xe4c
-  // The Ing sets 0xe5e bit 5 (mSafeZoneIngSpot) here as well; this module has no lure safe zone,
-  // so there is no such member and the flag is dropped.
-  const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(sender));
-  if (weapon == nullptr) {
-    return;
-  }
-  // The Ing reads the ing-spot vulnerability out of the ing-spot block (CIngSpotData's
-  // GetVulnerability); the module's data block holds the same property in mIngSpotVulnerability
-  // as well (the loader builds both from ingSpotVulnerability).
-  const bool heavy =
-      !(weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpot.GetVulnerability()) < 25.f);
-  if (DebugBg()) {
-    // What a run cannot otherwise see: the spot form has no health of its own, so a landed shot
-    // shows only as this line plus the effect it spawns.
-    fprintf(stderr, "[ibbg] %04x spot hit heavy %d\n", GetUniqueId().Value(), heavy ? 1 : 0);
-  }
-  CEntity* explosion = SpawnHitEffect(mgr, heavy);
   CSfxManager::AddEmitter(heavy ? mData.mIngSpot.GetHeavyHitSound()
-                                : mData.mIngSpot.GetNormalHitSound(),
+                                : mData.mIngSpot.GetNormalHitSound(), // guest 0x7F8 / 0x7F4
                           GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
                           CSfxManager::kMedPriority);
   if (explosion != nullptr) {
@@ -286,11 +268,16 @@ void CIngBoostBallGuardian::IngSpotDamage(CStateManager& mgr, TUniqueId sender) 
   }
 }
 
-// Ing body fn_29_2684: a weapon (or the player) hit a collision actor. The actor carries a copy of the Ing's
-// initial health, so what it lost is the hit: the Ing's health drops by that much, it takes the hit
-// (fn_29_B890 only records the hit time), dies below zero, and is knocked back along the shot. The
-// actor's health is then re-armed.
-void CIngBoostBallGuardian::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
+// @ fn_30_4030
+void CIngBoostBallGuardian::AccumulatePuddleDamage(CStateManager& mgr, float hp, float damage) {
+  mBoost11D4 += damage;
+  if (mBoost11D4 >= hp * mBoost.mUnknownB0E8) { // guest 0xEC0
+    SetBoostPuddleMode(true);
+  }
+}
+
+// @ fn_30_4078
+void CIngBoostBallGuardian::BodyColliderDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) { // CPatterned 0x420 bit 6
     return;
   }
@@ -298,43 +285,139 @@ void CIngBoostBallGuardian::CollisionActorDamage(CStateManager& mgr, TUniqueId s
   if (actor == nullptr) {
     return;
   }
+  if (mCollisionActorManager0->GetCollisionDescIndexFromUniqueId(sender) == -1) { // guest 0xD60
+    return;
+  }
   const TUniqueId touched = actor->GetLastTouchedObject();
   CHealthInfo* actorHealth = actor->HealthInfo();
   CHealthInfo* health = HealthInfo();
-  if (actorHealth == nullptr || health == nullptr) {
+  const float initial = health->GetInitialHP();
+  if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
+    const float damage = initial - actorHealth->GetHP();
+    const float hp = health->GetHP();
+    if (!mBoostPuddleForm) {
+      AccumulatePuddleDamage(mgr, initial, damage);
+    }
+    // A hit that would kill leaves 1 HP and ends puddle mode for good, except while hits are
+    // lethal (outside the body-projectile form).
+    bool survive = false;
+    if ((mForm == kForm_BodyProjectile || !mBodyHitsLethal) && hp >= 0.f && hp <= damage) {
+      survive = true;
+    }
+    if (survive) {
+      health->SetHP(1.f);
+      SetBoostPuddleMode(false);
+      mBoostPuddleAllowed = false; // 0x00004204: 0x11EF 0x20 = 0
+    } else {
+      health->SetHP(hp - damage);
+    }
+    const CVector3f direction = weapon->GetTransform().GetForward();
+    TakeDamage(direction, damage); // 0xa4
+    if (hp <= damage && !survive) {
+      Death(mgr, direction, kSS_DeathRattle); // 0x98, 0x5241544C
+      mgr.RecordDamageSource(*this, weapon->GetUniqueId(), weapon->GetCurrentDamageInfo(), true,
+                             false);
+    }
+    KnockBack(mgr, CKnockBackInfo(direction, touched, weapon->GetOwnerId(),
+                                  weapon->GetCurrentDamageInfo(), true)); // 0x9c
+  }
+  actorHealth->SetHP(initial);
+}
+
+// @ fn_30_4324
+void CIngBoostBallGuardian::PuddleColliderResistedDamage(CStateManager& mgr, TUniqueId sender) {
+  if (!mAlive) {
     return;
   }
-  const float initial = health->GetInitialHP();
-  const float hp = health->GetHP();
-  const float amount = initial - actorHealth->GetHP();
-  health->SetHP(hp - amount);
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (actor == nullptr) {
+    return;
+  }
+  if (mCollisionActorManager1->GetCollisionDescIndexFromUniqueId(sender) == -1) { // guest 0xD64
+    return;
+  }
+  const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(actor->GetLastTouchedObject()));
+  if (weapon == nullptr || weapon->GetType() != kWT_Bomb) {
+    return;
+  }
+  mBoostHitTimer = CPatterned::skDamageHitTime; // 0x000043E4: 0x1080
+  mHitByPlayerProjectile = true;                // 0x000043F0: 0x420 bit 7
+  if (!mCurrentlyInBoostPuddleForm || !mBoostOver) {
+    return;
+  }
+  mBoost11D8 += weapon->GetCurrentDamageInfo().GetDamage();
+  mBoostTimer += weapon->GetCurrentDamageInfo().GetDamage(); // guest 0x11DC
+  const CIngBoostBallGuardianPhase& phase = CurrentPhase();
+  if (mBoost11D8 >= phase.mBreakBoostPuddleModeDamage) {
+    SetBoostPuddleMode(false);
+  } else if (mBoostTimer > phase.mUnknownABE9 * phase.mBreakBoostPuddleModeDamage) {
+    mShouldBoost = true; // 0x0000447C: 0x11EE 0x10 = 1
+    mBoostTimer = 0.f;
+  }
+}
 
-  // The hit comes from the weapon the actor last touched, or from the player (morph ball).
-  CVector3f direction = CVector3f::Zero();
-  TUniqueId attacker = kInvalidUniqueId;
-  CDamageInfo damage;
-  if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
-    direction = weapon->GetTransform().GetForward();
-    damage = weapon->GetCurrentDamageInfo();
-    attacker = weapon->GetOwnerId();
-  } else if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(touched))) {
-    direction = GetTranslation() - player->GetTranslation();
-    const CMorphBall* ball = player->GetMorphBall();
-    if (ball != nullptr && ball->InScrewAttackMode()) {
-      damage = CDamageInfo(CWeaponMode(kWT_ScrewAttack), amount, 0.f, 0.f, false, false);
-    } else if (ball != nullptr && ball->IsBoosting()) {
-      damage = CDamageInfo(CWeaponMode(kWT_BoostBall), amount, 0.f, 0.f, false, false);
+// @ fn_30_44A4
+void CIngBoostBallGuardian::PuddleColliderDamage(CStateManager& mgr, TUniqueId sender) {
+  if (!mAlive) {
+    return;
+  }
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (actor != nullptr &&
+      mCollisionActorManager1->GetCollisionDescIndexFromUniqueId(sender) != -1) { // guest 0xD64
+    const TUniqueId touched = actor->GetLastTouchedObject();
+    CHealthInfo* actorHealth = actor->HealthInfo();
+    CHealthInfo* health = HealthInfo();
+    const float initial = health->GetInitialHP();
+    if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
+      const float damage = initial - actorHealth->GetHP();
+      const float hp = health->GetHP();
+      AccumulatePuddleDamage(mgr, GetHealthInfo()->GetHP(), damage);
+      // The puddle never kills: a lethal hit leaves 1 HP and ends puddle mode for good.
+      if (hp >= 0.f && hp <= damage) {
+        health->SetHP(1.f);
+        SetBoostPuddleMode(false);
+        mBoostPuddleAllowed = false; // 0x00004610: 0x11EF 0x20 = 0
+      } else {
+        health->SetHP(hp - damage);
+      }
+      const CVector3f direction = weapon->GetTransform().GetForward();
+      TakeDamage(direction, damage); // 0xa4
+      KnockBack(mgr, CKnockBackInfo(direction, touched, weapon->GetOwnerId(),
+                                    weapon->GetCurrentDamageInfo(), true)); // 0x9c
+      SpawnSpotHitEffect(mgr, damage); // fn_30_3CB0
+    }
+    actorHealth->SetHP(initial);
+    return;
+  }
+  // 0x000046B8: the boost ball relays what hit it (its 0x4F6, fn_30_13B7C).
+  CEntity* ent = mgr.ObjectById(sender);
+  CBoostBallGuardianBall* ball =
+      ent != nullptr
+          ? static_cast< CBoostBallGuardianBall* >(ent->TypesMatch(CBoostBallGuardianBall::kTypeId))
+          : nullptr; // fn_800979F0
+  if (ball == nullptr) {
+    return;
+  }
+  const CEntity* hitter = mgr.GetObjectById(ball->GetLastSender());
+  if (TCastToConstPtr< CScriptSpecialFunction >(hitter)) {
+    mCollidedWithCrystal = true; // 0x00004714: 0x11EE 0x01
+  } else if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(hitter)) {
+    if (weapon->GetType() == kWT_Bomb) {
+      mBoost11E0 += weapon->GetCurrentDamageInfo().GetDamage();
+      if (mBoost11E0 >= CurrentPhase().mBreakBoostModeDamage) {
+        mCollidedWithCrystal = true; // 0x0000476C
+      }
     }
   }
+}
 
-  TakeDamage(direction, amount); // 0xa4 -> fn_29_B890
-  if (hp <= amount) {
-    Death(mgr, direction, kSS_DeathRattle); // 0x98 -> fn_29_B3C4, 0x5241544C
-    // Retail's UpdateHealthCause(actor, touched, damage, true, false).
-    mgr.RecordDamageSource(*this, touched, damage, true, false);
+// @ fn_30_479C
+void CIngBoostBallGuardian::ColliderDamage(CStateManager& mgr, TUniqueId sender) {
+  if (mForm == kForm_IngSpot) {
+    PuddleColliderDamage(mgr, sender);
+  } else {
+    BodyColliderDamage(mgr, sender);
   }
-  KnockBack(mgr, CKnockBackInfo(direction, touched, attacker, damage, true)); // 0x9c
-  actorHealth->SetHP(initial);
 }
 
 // ---- helpers ----------------------------------------------------------------------------------

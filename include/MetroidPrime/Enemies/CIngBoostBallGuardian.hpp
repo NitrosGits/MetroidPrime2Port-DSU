@@ -439,11 +439,16 @@ private:
   void LeaveTeam(CStateManager& mgr);
   // A collision actor that last touched the player deals contact damage.
   void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
-  // The hit reaction in the ing-spot form, and the weapon hit on a collision actor otherwise.
-  void IngSpotDamage(CStateManager& mgr, TUniqueId sender);
-  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
-  // The explosion of the hit effect token (heavy when asked and loaded).
-  CEntity* SpawnHitEffect(CStateManager& mgr, bool heavy);
+  // fn_30_479C: kSM_Damage. fn_30_4078: a weapon hit on a body (0xD60) collider. fn_30_44A4: a
+  // weapon hit on the puddle (0xD64) collider, or a hit the boost ball relays. fn_30_4324:
+  // kSM_ResistedDamage on the puddle collider. fn_30_4030: the damage that turns on puddle mode.
+  // fn_30_3CB0: the ing-spot hit effect and sound.
+  void ColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void BodyColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void PuddleColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void PuddleColliderResistedDamage(CStateManager& mgr, TUniqueId sender);
+  void AccumulatePuddleDamage(CStateManager& mgr, float hp, float damage);
+  void SpawnSpotHitEffect(CStateManager& mgr, float damage);
 
   // Host layout (retail's object is 0x11F0; CPatterned is 0x7C0). Guest offsets are the REL's,
   // from the constructor fn_30_EC6C - the full table is in the analysis note. The host layout is
@@ -483,6 +488,10 @@ private:
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect;    // CIng: 0xD28
   rstl::optional_object< TLockedToken< CGenDescription > > mMiniPortalEffect; // CIng: 0xD38
   rstl::optional_object< TLockedToken< CGenDescription > > mSplatEffect;   // CIng: 0xD48
+  // Guest 0x1020/0x1030: boostIngSpotHitNormalDamage / boostIngSpotHitHeavyDamage (ctor 0x0000F46C,
+  // 0x0000F5E8). mNormalHitEffect/mHeavyHitEffect are the guest's 0x1000/0x1010.
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostNormalHitEffect;
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostHeavyHitEffect;
   CSfxHandle mBodyProjectileSfx;                         // CIng: 0xD58
   CSfxHandle mLoopSfx[2];                                // CIng: 0xD60/0xD64
   CSegId mEyeSegId;                                      // CIng: 0xD7B
@@ -529,6 +538,9 @@ private:
   bool mBoostPuddleGenerate : 1;                        // guest 0x11EE bit 2
   bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
+  // Guest 0x11EF bit 4 (0x10), ctor 1: while set a body hit may kill (fn_30_4078). Retail's
+  // DoUserAnimEvent (fn_30_D4F8) toggles it; the host runs the Ing's, so it stays set.
+  bool mBodyHitsLethal : 1;
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
   TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect
   TUniqueId mBoostBlobTrackerId;                         // guest 0x1076: boostIngSpotBlobEffect
@@ -543,6 +555,8 @@ private:
   float mBoostTimer;                                     // guest 0x11DC
   float mBoost11D4;                                      // guest 0x11D4
   float mBoost11D8;                                      // guest 0x11D8
+  float mBoost11E0;     // guest 0x11E0: bomb damage relayed by the ball (fn_30_44A4)
+  float mBoostHitTimer; // guest 0x1080: skDamageHitTime on a resisted bomb hit; fn_30_CA18 reads it
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
   int mPhaseIndex;                                       // guest 0x11CC: the current phase

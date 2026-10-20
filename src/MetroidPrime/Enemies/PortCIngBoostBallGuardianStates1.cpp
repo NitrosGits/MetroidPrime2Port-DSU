@@ -195,6 +195,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     }
     mBoostPuddleGenerate = false;           // 0x0000B42C: 0x11EE 0x04 = 0
     mProjectileFSMEntry = false;            // 0x0000B448: 0x11ED 0x02 = 0
+    mBoost11E0 = 0.f;                       // 0x0000B450
     mBoostNavPointId2 = kInvalidUniqueId;   // 0x0000B458: 0x1098
     break;
   default:

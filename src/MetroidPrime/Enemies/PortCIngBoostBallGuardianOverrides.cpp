@@ -277,7 +277,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
       if (CEntity* light = mgr.ObjectById(mHitLightId)) {
         light->SetActive(true); // 0x0000E19C
       }
-      mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(), // 0x0000E1F0
+      mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetInitialHP(), // 0x0000E1F0
                         gpStringTable->GetStringIndex("BossBoostBallGuardian"));
     }
     break;
@@ -311,24 +311,13 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     CollisionActorHitPlayer(mgr, sender); // fn_29_2ED8
     break;
   case kSM_Damage:
-    // fn_29_2E8C: the ing-spot form reacts to the hit itself, every
-    // other form relays it.
-    if (mForm == kForm_IngSpot) {
-      IngSpotDamage(mgr, sender); // fn_29_2B70
-    } else {
-      CollisionActorDamage(mgr, sender); // fn_29_2684
-    }
+    ColliderDamage(mgr, sender);   // 0x0000E354: fn_30_479C
+    mHitByPlayerProjectile = true; // 0x0000E364: 0x420 bit 7
     break;
   case kSM_ResistedDamage:
-    // fn_29_C9A4's XRDG branch: while grappled in the ing-spot form the hit timer ticks down and
-    // the hit effect plays; either way the actor is flagged as hit.
-    if (mForm == kForm_IngSpot && mGrappled) {
-      mHitReactionTime -= 0.5f;
-      if (CEntity* fx = SpawnHitEffect(mgr, static_cast< bool >(mHeavyHitEffect))) { // fn_29_2414
-        mgr.AddObject(fx);
-      }
+    if (mForm == kForm_IngSpot) {
+      PuddleColliderResistedDamage(mgr, sender); // 0x0000E390: fn_30_4324
     }
-    mHitByPlayerProjectile = true; // 0x420 bit 7
     break;
   case kSM_XENZ:
     // [this module] the Ing's ++mSafeZoneCount is dropped: this module has no safe-zone count (it
