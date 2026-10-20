@@ -116,7 +116,6 @@ void CDigitalGuardianEchoTarget::Think(float dt, CStateManager& mgr) {
 // fcmpo/cror le at 0x1A48C) the target is destroyed: sound_EchoTargetExplosion (data +0x108) and
 // the transmit sound stops; otherwise sound_EchoTargetHit (data +0xF0). The owner gets the XDMG
 // with this target as the sender, and the echo emitter the flash time.
-// @ fn_14_1A430
 void CDigitalGuardianEchoTarget::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
@@ -145,7 +144,6 @@ void CDigitalGuardianEchoTarget::AcceptScriptMsg(CStateManager& mgr, const CScri
   }
 }
 
-// @ fn_14_1A168
 // Extending or extended: the emitter effect, then the model; retracting: the model only;
 // retracted or destroyed: nothing.
 void CDigitalGuardianEchoTarget::Render(const CStateManager& mgr) const {
@@ -174,12 +172,10 @@ const CDamageVulnerability* CDigitalGuardianEchoTarget::GetDamageVulnerability()
   return &PassThruVulnerability();
 }
 
-// @ fn_14_1AB50
 rstl::optional_object< CAABox > CDigitalGuardianEchoTarget::GetTouchBounds() const {
   return x718_;
 }
 
-// @ fn_14_1AB98
 CVector3f CDigitalGuardianEchoTarget::GetOrbitPosition(const CStateManager& mgr) const {
   return GetAimPosition(mgr, 0.f); // .rodata 0x960
 }
@@ -200,7 +196,6 @@ CVector3f CDigitalGuardianEchoTarget::GetAimPosition(const CStateManager& mgr, f
 
 // fn_14_19DF8: never out of the destroyed state; retracting plays sound_EchoTargetRetract (data
 // +0xC0), extending sound_EchoTargetExtract (data +0xA8), both one-shot.
-// @ fn_14_19DF8
 void CDigitalGuardianEchoTarget::SetState(CStateManager& mgr, int state) {
   if (x708_ == kS_Destroyed || x708_ == state) {
     return;
@@ -232,7 +227,6 @@ void CDigitalGuardianEchoTarget::SetExtendedTransform(const CTransform4f& xf) {
 // fn_14_19A08: extending, the looped transmit sound (data +0xD8) at the aim position along the up
 // column, full volume (0x7F) in the echo visor and the sound's max volume (the low byte at data
 // +0xE4) otherwise; any other state stops it.
-// @ fn_14_19A08
 void CDigitalGuardianEchoTarget::x19A08_(CStateManager& mgr) {
   switch (x708_) {
   case kS_Extending: {
@@ -259,7 +253,6 @@ void CDigitalGuardianEchoTarget::x19A08_(CStateManager& mgr) {
 
 // fn_14_19B70: extending or extended, the effect emits, faces up the up column from the aim
 // position and steps; otherwise it stops emitting.
-// @ fn_14_19B70
 void CDigitalGuardianEchoTarget::x19B70_(CStateManager& mgr, float dt) {
   if (x784_ == nullptr) {
     return;
@@ -280,7 +273,6 @@ void CDigitalGuardianEchoTarget::x19B70_(CStateManager& mgr, float dt) {
 // fn_14_19CE0: retracting, the extension falls 0.75/s (.rodata 0x9FC) to 0 and the target is
 // retracted; extending, it rises 0.25/s (.rodata 0x99C) to 1 and the target is extended. Extended
 // and extending targets carry the orbit, target and seeker-target materials (41, 40, 63).
-// @ fn_14_19CE0
 void CDigitalGuardianEchoTarget::x19CE0_(CStateManager& mgr, float dt) {
   switch (x708_) {
   case kS_Retracting:

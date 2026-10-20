@@ -591,7 +591,6 @@ void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
 // (li r6, 0) at locator 1 times its offset, solid, orbit, target and seeker-target (.data
 // 0xEA4..0xEB0: 59, 41, 40, 63), with the echo-target vulnerability (data +0x454), this head as
 // its owner and the parameter block; its id goes to 0xF34.
-// @ fn_14_12314
 void CDigitalGuardianHead::x12314_(CStateManager& mgr) {
   xF40_[0] = CTransform4f::RotateX(CRelAngle::FromRadians(1.5707964f));
   xF40_[1] = CTransform4f::RotateX(CRelAngle::FromRadians(-1.5707964f)) *
@@ -654,10 +653,25 @@ void CDigitalGuardianHead::ExtractEchoTargets(CStateManager& mgr, float) {
   x10F4_ &= ~0x02;
 }
 
+// fn_14_14E78: the body (0x1034) gets "OPEN" from this head; the head leaves every visor's
+// orbit list (0xF) but the echo visor's (2), and every inactive echo target (+0x20 bit 0x80, the
+// extrwi 1,24) is activated (vtable 0x1C).
+// @ fn_14_14E78
+void CDigitalGuardianHead::ExtractAntenna(CStateManager& mgr, float) {
+  mgr.SendScriptMsg(x1034_, GetUniqueId(), kSM_Open, GetUniqueId());
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
+  for (int i = 0; i < xF34_.size(); ++i) {
+    CEntity* target = mgr.ObjectById(xF34_[i]);
+    if (target != nullptr && !target->GetActive()) {
+      target->SetActive(true);
+    }
+  }
+}
+
 // fn_14_14DA0: every extended or extending echo target starts retracting (fn_14_19DF8 with 2) and
 // ignores damage (+0x78C bit 0x80); bits 0x40 and 0x02 are cleared, the deployment time (0x10F0)
 // becomes data +0x20 and bit 0x04 is set.
-// @ fn_14_14DA0
 void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
   for (int i = 0; i < xF34_.size(); ++i) {
     CDigitalGuardianEchoTarget* target =
@@ -1133,7 +1147,6 @@ DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
 DGHD_CODE_STANDIN(SeekLineOfSight, fn_14_1524C)
 DGHD_CODE_STANDIN(DropShields, fn_14_15054)
 DGHD_CODE_STANDIN(RaiseShields, fn_14_14F74)
-DGHD_CODE_STANDIN(ExtractAntenna, fn_14_14E78)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
 DGHD_CODE_STANDIN(EndSplitterDeployment, fn_14_14B60)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
@@ -1204,7 +1217,6 @@ void CDigitalGuardianHead::x1303C_(CStateManager& mgr, TUniqueId sender) {
 
 // fn_14_F2B8: the IS07/FOLW object (0xF2C0..0xF2D8), if a waypoint, goes to pos; then state is
 // sent with no message (-1).
-// @ fn_14_F2B8
 void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
                                   EScriptObjectState state) {
   const TUniqueId wpId = CheckConnectedObject(mgr, kSS_InternalState7, kSM_Follow);
@@ -1215,7 +1227,6 @@ void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
 }
 
 // fn_14_13248: the index of id among the ball colliders (count 0xDC0, 2), or -1.
-// @ fn_14_13248
 int CDigitalGuardianHead::x13248_(TUniqueId id) const {
   for (int i = 0; i < 2; ++i) {
     if (xDC4_[i] == id) {
@@ -1242,7 +1253,6 @@ bool CDigitalGuardianHead::x11F30_(TUniqueId id) const {
 // this head's scale, the IS04/ACTV object (0x103E) loses one health (.rodata 0x96C), one echo
 // target fewer (0xFE0); at none the armour is gone (bit 0x10) and IS00 is sent. The survivors
 // then ignore damage (0x78C bit 0x80).
-// @ fn_14_11FEC
 void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
   if (xFD0_.valid()) {
     const CVector3f scale = GetModelData()->GetScale();
@@ -1277,7 +1287,6 @@ void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
 // 0xF39) when set, the explosion sound (data +0x13C), the slot's destroyed effect state (.data
 // 0xE50) and, once, its looping sound (data +0x154) at 0xF28; the IS04/ACTV object loses one
 // health.
-// @ fn_14_12B04
 void CDigitalGuardianHead::x12B04_(CStateManager& mgr, int idx) {
   if (idx == -1) {
     return;
