@@ -1387,7 +1387,7 @@ void CDigitalGuardian::x4080_(CStateManager& mgr) {
     CDigitalGuardianKneeArmor* knee = rs_new CDigitalGuardianKneeArmor(
         uid, name, info, 0, xf, xF0C_.data(), list, GetUniqueId(), false, xE00_, echo,
         mData.mSoundKneeVulnerable);
-    if (knee != nullptr) {
+    if (knee != nullptr) { // the retail's test at 0x42B0
       mgr.AddObject(*knee);
       // The store at 0x42C8 (xFB0_ + 2i).
       switch (i) {
@@ -1478,7 +1478,7 @@ void CDigitalGuardian::x1A68_(CStateManager& mgr, int leg, int state) {
       const TUniqueId uid = mgr.AllocateUniqueId();
       CExplosion* explosion = rs_new CExplosion(x1100_.data(), uid, info, name, xf, 0, scale,
                                                 CColor::White(), -1);
-      if (explosion != nullptr) {
+      if (explosion != nullptr) { // the retail's test at 0x1F88
         mgr.AddObject(explosion);
       }
     }

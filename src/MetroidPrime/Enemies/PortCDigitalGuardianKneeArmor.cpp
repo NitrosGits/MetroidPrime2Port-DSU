@@ -108,7 +108,7 @@ void CDigitalGuardianKneeArmor::Think(float dt, CStateManager& mgr) {
   x164_ = CAABox(GetTranslation() - CVector3f::One(), GetTranslation() + CVector3f::One());
 
   // The echo emitter's bounds follow the model (0xD27C..0xD2F8).
-  if (EchoEmitter() != nullptr && HasModelData()) {
+  if (EchoEmitter() != nullptr && HasModelData()) { // the retail's tests at 0xD27C..0xD2A0
     EchoEmitter()->SetBounds(GetModelData()->GetBounds(GetTransform()));
   }
 }
@@ -136,7 +136,7 @@ void CDigitalGuardianKneeArmor::AcceptScriptMsg(CStateManager& mgr, const CScrip
     break;
   case kSM_Damage: // "XDMG", the case at 0xD424: the hit flash (.rodata 0x2A4, 1.5 s)
     x158_ = 1.5f;
-    if (EchoEmitter() != nullptr) {
+    if (EchoEmitter() != nullptr) { // the retail's test at 0xD440
       EchoEmitter()->SetAutoReducingDamage(x158_);
     }
     break;

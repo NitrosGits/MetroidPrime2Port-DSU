@@ -990,7 +990,8 @@ wakes the knee joint colliders; a knee's destruction (the helper that writes the
 and asks for the knee's deletion) is what the `KneeDestroyed` trigger reads (fn_14_9A48, ported),
 and the state machine's transition then enters Crippled. In the port the word at 0x1284 stays -1:
 the module's AcceptScriptMsg (fn_14_A6A8, 0x4F0) is a stand-in and the port has no knee actors
-(the knee armour sub-actor, fn_14_4080, is not ported), so the trigger never fires and the
+(the knee armour exists since 2026-10-20, but the knee damage helpers fn_14_3A44/fn_14_5838/
+fn_14_5470 are not ported), so the trigger never fires and the
 Crippled state is unreachable - the beacon's pieces are in place, but nothing runs them. The
 console's `damage` does not help either: the guardian's vulnerability is pass-through
 (fn_14_9FE4) and the retail's damage path (fn_14_78) is not ported.
@@ -1103,11 +1104,9 @@ the cases are:
 | "OPEN" | 0x4F50454E | 0xAA3C | the state word at 0x1268 = 2 and the beacon's sound |
 | "CLOS" | 0x434C4F53 | 0xAA80 | the flag byte's bits 3 and 4, then the delete request |
 | "XDEL" | 0x5844454C | 0xA880 | the managers' `Destroy`, the sound emitter, fn_14_3F14 |
-| **"XCRT"** | 0x58435254 | 0xA81C | **left as a stand-in** |
+| "XCRT" | 0x58435254 | 0xA81C | body controller `Activate`, fn_14_4080, fn_14_24E4, visor flags (0xF off, 2 on), `RemoveMaterial(0x3F)`, fn_14_14F8 |
 
-The port now has all but the "XCRT" case. The "XCRT" case (the body's controller activation,
-the knee armour actor fn_14_4080, fn_14_24E4, the two `SetVisorOrbitableFlags` calls,
-`RemoveMaterial(0x3F)` and fn_14_14F8) is the largest and stays a named stand-in. The helpers
+All cases are ported (the "XCRT" case since 2026-10-20, see "Knee chain" below). The helpers
 the ported cases call - fn_14_3A44, fn_14_3F14, fn_14_5910, fn_14_5838, fn_14_5644 and
 fn_14_4F2C - are not ported either, so each case logs them once.
 
@@ -1125,6 +1124,32 @@ new case stand-ins ("XCRT", "XALC", "XRDG" and the "XDEL" case's helper) - the a
 do send those messages. No "[port] caught" and no reach-stub in the log.
 
 
+### Knee chain (2026-10-20)
+
+Ported: the collider builders fn_14_61DC (the xE60 manager: spheres, OBBs, per-collider
+vulnerabilities 0x1044/0x10CC/0x1110/0x1188), fn_14_5C30 (the xE64 manager: four knee-to-ankle
+OBBs, built inactive) and fn_14_59BC (collider health, knockback resistance 10); the knee-armour
+actor `CDigitalGuardianKneeArmor` (port-only `PortCDigitalGuardianKneeArmor.cpp`: ctor fn_14_D4D0,
+Think fn_14_CF94, AcceptScriptMsg fn_14_D320, GetDamageVulnerability fn_14_D7BC = pass-through,
+GetTouchBounds fn_14_D774, the armoured toggle fn_14_CE94); fn_14_4080 (one armour per knee
+locator, ids to 0xFB0..0xFB6), fn_14_24E4/fn_14_1A68 (toe-target state: effects "ToeTarget*",
+"ToeFlinch*", "SWBuildUp*", sounds, the "Toe Target Explosion Fx"), fn_14_14F8 (CPatterned's
+speed, guest 0x3C8, from data +0x17C..+0x188 by armours left) and the "XCRT" case. New host
+members: 0xE00 (the actor parameters, fn_14_C57C), 0x1100 (the explosion token), 0x10F0, 0x1144,
+0x1158.
+
+Retail damage flow (not ported): a knee collider's "XDMG" reaches fn_14_5838, which picks the head
+collider (0x10CC, fn_14_5274), a knee (fn_14_3E2C finds it in 0xFBC..; fn_14_5470 removes the
+armour and fires KneeDestroyed when its health is gone) or the root (fn_14_43AC / 0x1080,
+fn_14_5384). The knee colliders start with the ricochet vulnerability (0x1044); the "IM0x"
+messages' helper fn_14_3A44 swaps in the vulnerable one (0x1014) and calls fn_14_CE94 on the
+armour. Those five functions are the next slice.
+
+Runtime (area 53, layers 3/11, `send u054d Activate`): clean (0 caught, 0 reach-stub); four
+`CDigitalGuardianKneeArmor` at the knee locators (inactive, like the guardian at XCRT); the four
+knee colliders take `damage <id> 500` as 300 -> 300 (ricochet) and the guardian stays 150/150,
+so Crippled is still not reachable.
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct
@@ -1135,7 +1160,7 @@ do send those messages. No "[port] caught" and no reach-stub in the log.
 
 | piece | guest class | size | where |
 |---|---|---|---|
-| knee armour | `CActor` subclass, vtable `lbl_14_data_694` | 0x1A0 | `fn_14_4080` |
+| knee armour | `CDigitalGuardianKneeArmor : CActor` (ported), vtable `lbl_14_data_694` | 0x1A0 | `fn_14_4080` |
 | echo target | `CActor` subclass, vtable `lbl_14_data_10D0` | 0x790 | `fn_14_12314` |
 | guardian projectile | `CEnergyProjectile` subclass, vtable `lbl_14_data_1034` | 0x568 | `fn_14_10CA0` |
 | vortex | `CShockWave` | 0x9F8 | `fn_14_458C` |
