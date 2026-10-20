@@ -222,6 +222,37 @@ callees: regenerate with the `.fn` walk used for `docs/module-analysis/Sandworm_
 0xEC6C ctor; 0x110C4 the `.ctors` FSM name-table copy; 0x11CD8.. the second class and the big
 state bodies. The vtable word lists for both classes: `docs/module-analysis/BoostGuardian_vtable.md`.
 
+### b.3 Where this module's copy of the Ing code differs from the Ing's
+
+The port's Ing half is the Ing host body's code (branch `decomp/ing`), because this module is the
+Ing REL with the boost half added. That is the right starting point, but it is not the same code
+everywhere: comparing the two RELs' function sizes for the 78 nodes the two modules share, 61 are
+the same size and **17 differ**, so for those the module's own body is the authority and the Ing
+port's body is (at best) a near neighbour. These are the ones to read against this module's asm:
+
+| node | Ing (`fn_29_`) | size | this module (`fn_30_`) | size |
+|---|---|---|---|---|
+| `CanGrappleTarget` | `fn_29_A098` | 0x68 | `fn_30_B7E0` | 0x5C |
+| `ExitHost` | `fn_29_9D68` | 0x328 | `fn_30_B478` | 0x2EC |
+| `BecomeCorporeal` | `fn_29_9A74` | 0x2F4 | `fn_30_B03C` | 0x43C |
+| `BecomeIngSpot` | `fn_29_9750` | 0x2C8 | `fn_30_ABC4` | 0x41C |
+| `Lurk` | `fn_29_8A2C` | 0x180 | `fn_30_A0D8` | 0x144 |
+| `PathFind` | `fn_29_8808` | 0x224 | `fn_30_9F50` | 0x188 |
+| `IngSpotPathFind` | `fn_29_8684` | 0x184 | `fn_30_9DA0` | 0x1B0 |
+| `IngSpotPointPathFind` | `fn_29_8570` | 0x114 | `fn_30_9C7C` | 0x124 |
+| `FollowAttackPattern` | `fn_29_82D4` | 0x1D0 | `fn_30_99D4` | 0x1DC |
+| `BodyProjectileFlight` | `fn_29_7E30` | 0x4A4 | `fn_30_953C` | 0x498 |
+| `SuckEnergy` | `fn_29_76B8` | 0x658 | `fn_30_8DD4` | 0x648 |
+| `SeekWallPoint` | `fn_29_75C0` | 0xF8 | `fn_30_8CC0` | 0x114 |
+| `FaceTarget` | `fn_29_7244` | 0x2D4 | `fn_30_8998` | 0x280 |
+| `FindCoverPoint` | `fn_29_6DA0` | 0x418 | `fn_30_8520` | 0x3EC |
+| `Dead` | `fn_29_5CB0` | 0x358 | `fn_30_7390` | 0x364 |
+| `SetExitHostDest` | `fn_29_54E8` | 0x22C | `fn_30_6C40` | 0x23C |
+| `SplatOntoMesh` | `fn_29_4F14` | 0x1F0 | `fn_30_6980` | 0x1F4 |
+
+`BecomeCorporeal` and `BecomeIngSpot` are the ones the boost half changed most (the module's are
+0x148 and 0x154 bytes bigger): they are where the form change meets the boost ball.
+
 ## i. Port plan
 
 - **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)

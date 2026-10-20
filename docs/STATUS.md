@@ -44,6 +44,14 @@ in `wt-mp2-boostguardian`.
   Ing's `fn_29_82D4` at 0x00008438) tests bits 25, 24 and 23, not 0x40/0x80/0x100. The Ing host body
   read them as 0x40/0x80/0x100; this module's copy uses the bits the asm tests, and the Ing
   session should make the same change there.
+- **The Ing half is the Ing port's code, and 17 nodes differ.** Comparing the two RELs' function
+  sizes for the 78 nodes they share, 61 are the same size and 17 are not, so for those the
+  module's own body is the authority: `CanGrappleTarget`, `ExitHost`, `BecomeCorporeal`,
+  `BecomeIngSpot`, `Lurk`, `PathFind`, `IngSpotPathFind`, `IngSpotPointPathFind`,
+  `FollowAttackPattern`, `BodyProjectileFlight`, `SuckEnergy`, `SeekWallPoint`, `FaceTarget`,
+  `FindCoverPoint`, `Dead`, `SetExitHostDest`, `SplatOntoMesh` - the table with both addresses and
+  sizes is in `docs/module-analysis/BoostGuardian.md` section b.3. `BecomeCorporeal` and
+  `BecomeIngSpot` are where the boost half changed the most.
 
 ## 2026-10-20 (thirty-first session): the Boost Guardian module starts - it loads, stands and thinks
 
