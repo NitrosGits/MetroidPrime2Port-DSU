@@ -5,6 +5,7 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
@@ -331,6 +332,10 @@ private:
   // fn_9_3678: the module's dodge picker - which side (left or right) can the commando dodge into?
   int x3678_PickDodgeDirection(CStateManager& mgr) const;
 
+  // fn_9_4BC0: the module's sound emitters - the two handles the guest keeps at guest this+0xC04
+  // and this+0xC38 follow the actor.
+  void x4BC0_UpdateEmitters();
+
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
   // listening AIs of the same area.
@@ -374,6 +379,8 @@ private:
   float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
+  CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
+  CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
   CSegId mLocatorMidLaunch;               // 0xc5d, "Mid_Launch_LCTRL" (fn_9_D904 @0x0000E2D0)
   CSegId mLocatorGun;                     // 0xc5e, "gun_LCTR" (fn_9_D904 @0x0000E304)

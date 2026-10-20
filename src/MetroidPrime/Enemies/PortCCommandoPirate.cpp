@@ -13,6 +13,7 @@
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -393,8 +394,31 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
   StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
   StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
-  StandInFn("fn_9_4BC0 (0xe4 bytes)");         // 0x0000CA8C
+  x4BC0_UpdateEmitters();                     // 0x0000CA8C
   StandInFn("fn_9_3E1C (0x324 bytes)");        // 0x0000CAA0
+}
+
+// @ fn_9_4BC0
+// fn_9_4BC0 (0xe4 bytes): the module's two sound emitters. The handle at guest this+0xC04 is
+// updated while it is playing or queued (the IsPlaying and IsQueued calls at 0x00004BEC and
+// 0x00004C04); when it is neither, the handle is cleared (the store at 0x00004C4C). The
+// emitter's position is the actor's own (this+0x54, the argument at 0x00004C1C) and its direction
+// the actor's forward column (this+0x28, +0x38 and +0x48, the loads at
+// 0x00004C20..0x00004C34); the volume is 0x7f (0x00004C28). The second emitter, the handle at
+// guest this+0xC38, is updated the same way (the call at 0x00004C8C) but is never cleared.
+void CCommandoPirate::x4BC0_UpdateEmitters() {
+  if (xc04_ != CSfxHandle::NullHandle()) {                      // 0x00004BD4..0x00004BDC
+    if (CSfxManager::IsPlaying(xc04_) || CSfxManager::IsQueued(xc04_)) {  // 0x00004BEC..0x00004C0C
+      CSfxManager::UpdateEmitter(xc04_, GetTranslation(), GetTransform().GetForward(),
+                                 0x7f);                          // 0x00004C40
+    } else {
+      xc04_.Clear();                                            // 0x00004C48..0x00004C4C
+    }
+  }
+  if (xc38_ != CSfxHandle::NullHandle()) {                      // 0x00004C50..0x00004C58
+    CSfxManager::UpdateEmitter(xc38_, GetTranslation(), GetTransform().GetForward(),
+                               0x7f);                            // 0x00004C8C
+  }
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the
