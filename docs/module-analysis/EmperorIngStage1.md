@@ -959,3 +959,19 @@ the host's own classes destroy their members, so none of them is ported.
 `lbl_16_data_3B0` a third subclass (`fn_16_5BA8`); the JumpRope state (fn_16_5928) hands them
 to `CBodyStateCmdMgr::DeliverCmd` at 0x00005A60. The whole map (with the sizes) is in
 `/tmp/opencode/emp1_vt.tsv`.
+
+## 7. The helper chains the host already does
+
+The module's own functions that are not vtable entries fall into chains whose work the host
+does in the caller. Each one is cited on the port's code that replaces it and is not ported.
+
+| chain | functions | what they do | the host's own |
+|---|---|---|---|
+| ← `fn_16_3EAC` | `fn_16_4838` `fn_16_48F4` | the joint vector's destructor and, per element, the release of the string at +0x2C | `rstl::vector` and `rstl::string` |
+| ← `fn_16_22D0` | `fn_16_22F8` `fn_16_231C` `fn_16_2398` | the name comparison of the effect lookup (`fn_16_219C` -> `fn_16_2204` -> `fn_16_22B0` -> `fn_16_22D0`) | `rstl::find_by_key` |
+| ← `fn_16_9BE8` | `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` | the `CGameSplineDesc`'s and the `CMayaSpline`'s deleting destructors | the host's own classes |
+| ← `fn_16_8B80` | `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` | `CPatterned`'s destructor, the `CAiKnockBackMgr`'s deleting destructor and the `rstl::vector<CSegId>`'s deleting destructor (the call at 0x8D38) | the host's `CPatterned`, `CAi` and `rstl::vector` |
+| ← `fn_16_7F8C` | `fn_16_853C` `fn_16_85C8` `fn_16_867C` `fn_16_86BC` `fn_16_86DC` `fn_16_8704` `fn_16_8980` | the copy of the visor effect's particle descriptor into the projectile: the emitter's token and vectors, the `CToken`'s copy and lock (0x8704), and the flag (0x8980) | `CImpactVisorEffect::ParticleEffect` |
+| ← `fn_16_601C` | `fn_16_6898` | the field-by-field copy of the `CRayCastResult` the ray cast returns | the host's assignment |
+| ← `fn_16_A2A0` | `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A644` | the loader's `optional<CModelData>` copy and the `CModelData` copy constructor (the fields and the three locked tokens) | the host's `CModelData` copy |
+| ← `fn_16_ABD0` | `fn_16_B130` `fn_16_B188` `fn_16_B1D8` `fn_16_B378` `fn_16_B3DC` `fn_16_B434` `fn_16_B52C` `fn_16_B584` `fn_16_B5C8` `fn_16_B668` `fn_16_B6BC` `fn_16_B6EC` `fn_16_B86C` | the data block's property readers: the `SLdr` structs' constructors and destructors and the per-type readers (the animation set, the damage info, the health info with its four vulnerabilities) | the generated `SLdrEmperorIngStage1.inc` |
