@@ -66,8 +66,8 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
 | `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) | [proven] |
-| `fn_16_7F8C` | 0x5B0 | `DoUserAnimEvent` (vtable slot 26); case 0 (charged projectile) ported, 7/17/22/27/28 stand-in | [proven] |
-| `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) | [proven] |
+| `fn_16_7F8C` | 0x5B0 | `DoUserAnimEvent` (vtable slot 26); case 0 (charged projectile), 7, 17, 22, 27 and 28 ported | [proven] |
+| `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) - ported | [proven] |
 | `fn_16_B958` | 0x30 | `GetTouchBounds` (vtable slot 16): the actor's bounding box | [proven] |
 | `fn_16_BA30` | 0x30 | builds the `optional<CAABox>` from the bounding box | [proven] |
 | `fn_16_9AB0` | 0xC4 | copies the `SLdrHealthInfo` into the actor's `CHealthInfo` (0x1E bytes) | [proven] |
@@ -497,8 +497,8 @@ never ends). 0 caught/reach-stub.
 
 Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
 EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
-reach the boss), fn_16_51D4 (0x128),
-fn_16_7F8C cases 7/17/22/27/28, Render fn_16_531C and ProcessSoundEvent fn_16_7EA8.
+reach the boss), fn_16_51D4 (0x128), fn_16_1A50 (0x20C) and fn_16_1950 (0xC4) (the tentacle's
+portal start and stop), and Render fn_16_531C.
 
 fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
 0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f
@@ -569,6 +569,81 @@ Extents (`.fn` markers of the retail listing, next prologue after each `blr`): f
   Taunt, 22 Scripted, 23 Cover, 24 WallHang, 25 Locomotion, 26 AdditiveIdle, 27 AdditiveAim, 28
   AdditiveFlinch. The host's `EBodyStateCmd` (include/Kyoto/Animation/CharacterCommon.hpp) is the
   same order, so `kBSC_Generate` is 15 = 0xF (14 is `kBSC_MaintainVelocity`).
+
+### Slice 5: the boss's own sound handling and the user-event cases
+
+**fn_16_7EA8 (ProcessSoundEvent, vtable slot 28, 0x7EA8..0x7F8C)**: the sound is swallowed while
+the locator belongs to a tentacle that cannot be shot. The tentacle is fn_16_3C58 (0x7F08, the
+segment's spine locator); -1 means there is none (0x7F0C) and the base's own handling runs. With a
+tentacle, the joint's flag byte (the joint's +0x24; the guest 0x7D8 + index * 0x48 + 0x24 = 0x7FC,
+read at 0x7F1C) is tested: the extrwi at 0x7F20 takes one bit at the bit 27, the bit 4 of the byte,
+so the mask is 1u << (31 - 27) = 0x10 - the "shootable" bit. Clear means no sound at all (0x7F24),
+set means the base's own `ProcessSoundEvent` runs (the call at 0x7F6C). Ported.
+
+**fn_16_7F8C (DoUserAnimEvent, vtable slot 26, 0x7F8C..0x853C)**: the switch is the jump table at
+lbl_16_data_314 (29 entries, the event type is the index); the default entry (fn_16_7F8C+0x58C)
+and every type above 28 (the bgt at 0x7FAC) call the base's own DoUserAnimEvent (0x8524). The
+cases that are not the base's:
+
+| type | name | entry | what it does |
+|---|---|---|---|
+| 0 | kUE_Projectile | +0x98 (0x8024) | the charged projectile (ported in slice 3) |
+| 7 | kUE_GenerateEnd | +0x404 (0x8390) | the flag byte at guest 0xA74 gets its bit 4 (0x10) set (the rlwimi at 0x8398 rotates 1 left by 4 into the bit 27) |
+| 17 | kUE_BeginAction | +0x418 (0x83A4) | the taunt's shock wave (below) |
+| 22 | kUE_BreakLockOn | +0x3C (0x7FC8) | every tentacle's collision actor becomes the player's orbit target (the request 8, `li r5, 0x8` at 0x7FF8) |
+| 27 | kUE_EventStart | +0x26C (0x81F8) | the tentacle's portal starts |
+| 28 | kUE_EventStop | +0x360 (0x82EC) | the tentacle's portal stops |
+
+**Case 17 (the shock wave)**: a new unique id from the state manager (0x83A8) is kept at guest
+0xA90 (0x83B8) and handed to the CShockWave (0x8464). The tracked actor's transform (fn_16_302C,
+the retail's +0x24) is the shock wave's; the CShockWave is 0x9F8 bytes, its name is the string at
+lbl_16_rodata_41C's 0x685 ("Shockwave"), the entity info is the area (the guest +0x04), no
+connections, active and no editor id, the parent is this actor's id (the guest +0x08), the shock
+wave info is the one at guest 0xC40 (data+0x5E0, `tauntAttack.shockWaveInfo`), and the two floats
+are 4.0f (lbl_16_rodata_38C) and 0.4f (lbl_16_rodata_40C). The wave is added at 0x84AC and the
+emitter for the shock wave's travel sound (the guest 0xC7C, data+0x610) is created on this actor's
+position (the guest 0x54) and kept at guest 0xA8C (0x8510). The host's `CEntity::NullConnectionList`
+is the empty connection list.
+
+**Cases 27 and 28 (the portal)**: the eight portal locators are lbl_16_rodata_1E0 ("portal1" ..
+"portal8" with the seventh before the sixth); the event's locator name is compared with them
+case-insensitively (0x8260, 0x8330) and the name's place in the list is the tentacle's index.
+Case 27 only runs while the flag byte's bit 5 (0x20) is set (the extrwi at 0x81FC takes one bit at
+the bit 26, so the mask is 1u << (31 - 26) = 0x20); it takes the locator's world transform
+(0x8204, `GetTransform() * GetScaledLocatorTransform`), the translation (the fourth column) and
+the Y column (the second basis vector, negated at 0x82A8). Both cases stop at the sub-stage's
+tentacle count (fn_16_2F70, 0x8284/0x8354). Case 28 computes the same world transform
+(0x82F0..0x8314) but never reads it.
+
+**fn_16_1A50 (0x1A50..0x1C5C, 0x20C) and fn_16_1950 (0x1950..0x1A14, 0xC4)**: the tentacle's
+portal effect. Both are over the slice's 0x80 line, so they stay stand-ins. fn_16_1A50 sets the
+joint's flag 0x08 (the rlwimi at 0x1A84), writes the position and the up vector into the joint
+(0x1B88..0x1BBC), turns the portal's effect towards the player (0x1BFC) and sends "ACTV" (0x1BC8);
+fn_16_1950 clears the joint's flag 0x08 (the rlwimi at 0x1980), zeroes the joint's position and
+sets its up vector (0x1990..0x19C0) and sends "ACTV" (0x1A18).
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send <uid> Activate`, the player teleported next to the boss): the run ends on the frame limit
+with 0 caught/reach-stub and only the Render stand-in left in the log. An instrumented build shows
+that the **only** user event the area-11 scenario fires is type 2 (kUE_LoopedSoundStop, twice), so
+none of the new cases runs there and no CShockWave object appears (the taunt attack, which would
+fire case 17, is still a stand-in). The new cases need their own scenario.
+
+**Render (fn_16_531C, 0x531C..0x55D4) is still a stand-in.** What it does, for the next slice:
+the particle POI mask and target (the flag byte at the guest 0x421's bit 0, 0x5340; the host's
+`mDrawParticles` and `mgr.GetCharacterRenderMaskAndTarget` - the host's CPatterned::Render does
+exactly this pair, so the correspondence is [probable]), `RenderSystemsToBeDrawnFirst` (the
+vtable slot 46, 0x535C), the particle hook (the byte at the guest 0x152's bit 6, 0x537C; the host's
+`GetPointGeneratorParticles`), the rendering model and the alpha buffer (0x5394..0x53D8; the host's
+`GetRenderAlphaBufferAlpha` and `gpRender->SetDestinationAlpha`), then a loop over the eight joints
+(0x5404..0x54E0) that fills four arrays - the CModelFlags (12 bytes each, fn_16_1D38, 0xC4 and
+therefore a stand-in; the retail leaves its first word uninitialised), the colors (fn_16_1C94:
+`CColor::Lerp(skDamageColor, CColor::Black(), joint's hit time / skDamageHitTime)`, 0x60), the
+planes (fn_16_1C5C, 0x38: the joint's up vector and the cyclic dot product of the position and the
+up vector) and the u64 masks (fn_16_1CF4, 0x44: the joint's state picks one of the two pairs at
+lbl_16_rodata_300) - and `RenderModelMultipleTimesWithFlags` (0x54FC, the host has the same
+signature), the alpha buffer again (0x5518) and `RenderSystemsToBeDrawnLast` (the vtable slot 47,
+0x55A0).
 
 ## 5. The port (milestone 1)
 
