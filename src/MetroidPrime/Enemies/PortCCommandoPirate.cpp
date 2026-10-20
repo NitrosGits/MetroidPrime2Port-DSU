@@ -1306,15 +1306,12 @@ int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
 
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);        // 0x000036E8
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
-    CEntity* entity = list[i];                                    // 0x000036FC
-    if (entity == nullptr) {                                      // 0x00003700..0x00003704
-      continue;
-    }
-    // The guest compares the object with itself (0x00003708) and then reads the area id at +0x04
-    // (the compare at 0x00003718); the host's cast can also fail, where the guest's raw read of
-    // the area id could not.
-    CPatterned* other = TCastToPtr< CPatterned >(entity);
-    if (other == nullptr || other == this) {                      // 0x00003708..0x0000370C
+    // The guest tests the object for null (0x00003700), then compares it with itself
+    // (0x00003708) and reads the area id at +0x04 (the compare at 0x00003718). The host's cast
+    // carries the null test and can also fail, where the guest's raw read of the area id could
+    // not.
+    CPatterned* other = TCastToPtr< CPatterned >(list[i]);       // 0x000036FC
+    if (other == nullptr || other == this) {                      // 0x00003700..0x0000370C
       continue;
     }
     if (other->GetCurrentAreaId() != GetCurrentAreaId()) {        // 0x00003710..0x0000371C

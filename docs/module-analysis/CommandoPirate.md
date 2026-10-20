@@ -386,6 +386,34 @@ animation state goes "over" and the walk leaves Alert for `Lurk`, where the comb
 `ShouldFireEGrenade`, `TooClose`, `PathShagged`, `PathOver`, `PathFind`) are evaluated for the
 first time.
 
+### The dodge picker (fn_9_3678)
+
+fn_9_3678 (0x288 bytes) is the module's dodge picker: the Dodge state's activate calls it (the
+call at 0x00008974), the result goes into the module's field at guest this+0xBDC (the store at
+0x00008978) and, when it is not -1 (the compare at 0x00008980), the animation state goes "ready"
+(the store at 0x0000898C). It answers 2 (the host's `pas::kSD_Left`) or 3 (its `pas::kSD_Right`),
+or -1 when neither side is free.
+
+The two candidates are the actor's **right** column and its negation. The guest's transform is a
+CTransform4f at this+0x24 (the FromMatrix call's argument at 0x000024C4), so its kDX column - the
+right one - is this+0x24, +0x34 and +0x44 (the three loads at 0x000036A8..0x000036E4); the
+forward column is this+0x28, +0x38 and +0x48 (what the jump-back trigger reads).
+
+The listening-AI list (the state manager's +0x830, the load at 0x000036E8) is walked: every other
+AI of the same area (the area ids at +0x04, compared at 0x00003710..0x0000371C) that is nearer
+than the module's float at guest this+0xBE4 (its square at 0x000036B8) blocks the side it stands
+on - the dot product with the right column (the fmadds chain at 0x0000376C..0x0000377C) says the
+side, and the angle to it must be under 60 degrees (lbl_9_rodata_4A4 = 1.0471976f, the GetAngleDiff
+calls at 0x0000379C and 0x000037E0). A side that is still free is then checked by the module's own
+helper fn_9_3338 (the calls at 0x00003834 and 0x00003878): the point that distance along the
+side has to be clear. When both sides are free, the state manager's random (its CRandom16 at
++0x16E4, the call at 0x00003894) picks one: its bit 14 (the rlwinm at 0x00003898) keeps the
+right, the clear bit keeps the left.
+
+The port's member is `x3678_PickDodgeDirection`
+(src/MetroidPrime/Enemies/PortCCommandoPirate.cpp); the retail function is marked
+`// @ fn_9_3678`.
+
 ## 2. The loader (fn_9_168)
 
 The property ids and their order are the generated `SLdrCommandoPirate` reader's, and the REL's own
@@ -422,7 +450,7 @@ stored to the stack arguments at 0x0000DA50..0x0000DA5C). The guest's own member
 | 0xB94..0xBC0 | four `CVector3f` | zero |
 | 0xBC4..0xBDA | eleven `u16` | `kInvalidUniqueId` |
 | 0xBDC | an int | -1 |
-| 0xBE0..0xBEC | four floats | 5.0f, 5.0f, then the two animation distances, 0 |
+| 0xBE0..0xBEC | four floats | the ctor's three animation distances: 0xBE0 is the scale's Y times the step distance of the parms (1, 2) (0x0000E61C), 0xBE4 the scale's X times the step distance of the parms (3, 2) (0x0000E56C), 0xBE8 the scale's Y times the jump distance of the parms (0, 0) (0x0000E4D4); 0xBEC is 0 |
 | 0xBF0 | a `CVector3f` | zero |
 | 0xBFC, 0xC04 | two ints | 0 |
 | 0xC08, 0xC18, 0xC28 | three `CToken` pairs | the script objects at this+0x8F0, +0x90C, +0x7C8 |
@@ -521,6 +549,18 @@ advanced by the module's per-frame helper `fn_9_662C` (0x39c bytes, not ported),
 and `ShouldFireEGrenade` need the flag bits at guest +0xC63 that the module's unported states
 set. The commando still does not walk: the path search finds no path to the player (above).
 
+With the ctor's two step distances and the dodge picker ported (2026-10-20) the run in area 59
+(`tools/run_gameplay.sh`, `TELEPORT=05_temple_federationsite_dark`, `FRAMES=2400`, the card in
+/tmp/opencode/atk_user, `MP2_GODMODE=1`) reaches gameplay at 10.3 s, runs to the frame limit at
+48.8 s and ends with exit=0; `grep -c '[port] caught\|reach-stub'` is 0. The commando's two
+distances are 7.886234 (guest +0xBE0, the jump-back) and 7.084501 (+0xBE4, the side step). The
+player teleported next to the commando (`tp 75.9 371.6 -47.1` through the debug console) makes
+the commando walk to it (it ends at 77.6, 371.8, -46.1 beside the player at 80.6, 370.4), and the
+Dodge state's activate then runs the picker. It answers -1 every time in that spot: both side
+rays hit the world (the jump-back helper's ray from the bounding-box centre, 7.08 units
+sideways), so neither side is free, no dodge command is issued and the animation state never
+enters kAS_Step. The `ShouldJumpBack` trigger runs there too (three calls) and answers false.
+
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
 as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a8), `fn_9_1C0C`
@@ -615,12 +655,11 @@ entered, so no grenade is thrown.
 - The state machine's other 42 bodies: the two tables (34 triggers, 36 states) are registered,
   twenty-three of the triggers and seven of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value. The seven triggers that are still stands in are `ShouldJumpBack`
-  (fn_9_8B70, 0x1b8), `IsOffPath` (fn_9_B958, 0x38), `ShouldShieldCharge` (fn_9_B250, 0x410),
-  `ShouldBoost` (fn_9_B1E0, 0x70), `ShouldCrouch` (fn_9_B168, 0x40), `ShouldWallHang`
-  (fn_9_B114, 0x54) and `CoverBlown` (fn_9_AFD4, 0xe0) - each over the 0x100 limit of this
-  slice, and the module's per-frame helper `fn_9_662C` (0x39c) that advances the timers the
-  triggers read.
+  returns the neutral value. The triggers that are still stand-ins are `IsOffPath`
+  (fn_9_B958, 0x38), `ShouldShieldCharge` (fn_9_B250, 0x410), `ShouldBoost` (fn_9_B1E0, 0x70),
+  `ShouldCrouch` (fn_9_B168, 0x40), `ShouldWallHang` (fn_9_B114, 0x54) and `CoverBlown`
+  (fn_9_AFD4, 0xe0); the JumpBack state (fn_9_8B70, 0x1b8) is a stand-in too, and so is the
+  module's per-frame helper `fn_9_662C` (0x39c) that advances the timers the triggers read.
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
@@ -629,5 +668,7 @@ entered, so no grenade is thrown.
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
   `CElementGen` effects.
-- The animation distances at +0xBE0/+0xBE4/+0xBE8 and the locomotion-speed term at +0xB90.
+- The animation distances at +0xBE0 and +0xBE4 are ported (the ctor's two step distances, the
+  scale's Y times the parms (1, 2) and the scale's X times the parms (3, 2)); +0xBE8 (the jump
+  distance) and the locomotion-speed term at +0xB90 are not.
 - The CVisualKnowledge at +0xAB0 (the host has no such class yet).
