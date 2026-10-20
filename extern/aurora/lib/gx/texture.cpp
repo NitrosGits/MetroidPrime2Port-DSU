@@ -439,7 +439,9 @@ gfx::TextureHandle get_tlut_texture(const GXTlutObj_& tlut) {
     if (cache.tlutTexture.handle && cache.tlutTexture.tlutDataVersion == tlut.tlutDataVersion) {
       return cache.tlutTexture.handle;
     }
-    cache.dynamicPaletteTextures.clear();
+    // Port: a dynamic palette texture keeps its handle across TLUT data versions; its entry's
+    // tlutDataVersion re-runs the conversion into it. Dropping it here re-made a render-scale texture
+    // on every palette edit.
     for (const u32 texObjId : cache.staticTextureUsers) {
       if (const auto textureIt = s_textureObjectCaches.find(texObjId); textureIt != s_textureObjectCaches.end()) {
         const uint64_t replacementId = textureIt->second.replacementId;
@@ -471,6 +473,24 @@ gfx::TextureHandle resolve_dynamic_palette_texture(const GXTexObj_& obj, const G
   tlutCache.lastUsedFrame = s_frameCount;
   auto& entry = tlutCache.dynamicPaletteTextures[make_dynamic_palette_key(obj, source)];
   entry.lastUsedFrame = s_frameCount;
+  if (!entry.handle) {
+    // Port: the scan visor builds a new CGraphicsPalette (a new TLUT identity) every frame, which made
+    // a new render-scale RGBA8 texture (~24 MB at 3195x1864) every frame - the scan visor's lag on the
+    // tablet. Take over the texture of an older identity's conversion of the same copy instead, unless
+    // it is bound in this frame. Same key, so same source size and format; the conversion below runs.
+    const auto key = make_dynamic_palette_key(obj, source);
+    for (auto& [tlutObjId, cache] : s_tlutObjectCaches) {
+      if (tlutObjId == tlut.tlutObjId) {
+        continue;
+      }
+      if (const auto it = cache.dynamicPaletteTextures.find(key);
+          it != cache.dynamicPaletteTextures.end() && it->second.lastUsedFrame < s_frameCount) {
+        entry.handle = std::move(it->second.handle);
+        cache.dynamicPaletteTextures.erase(it);
+        break;
+      }
+    }
+  }
   if (!entry.handle) {
     // Use source size instead of target (logical) size.
     entry.handle = gfx::new_conv_texture(source.handle->size.width, source.handle->size.height, GX_TF_RGBA8,

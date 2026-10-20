@@ -23,6 +23,13 @@ emperoring `bd4c2c25a` (7EA8, 7F8C cases, 1D38, Render 531C); splitter `b1f682ff
 C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090, 7D8C, 5910, 5384,
 7CB4, 5274/266C/2E60, 5838 marked); emperoring3 `e3971fcd3` (6904/67C0 beams, full-TUniqueId fix).
 
+Port fix 2026-10-20 (scan-visor lag, after the OOM fix `1f1c5c9a3`): `DrawScanVisor` builds a new
+CGraphicsPalette (new TLUT id) every frame, so Aurora made a render-scale palette texture every frame;
+`resolve_dynamic_palette_texture` now takes over an older identity's texture for the same copy (desktop:
+1 alloc on entry, then 0/120 frames). The two scan-visor EFB CPU read-backs (full render-scale frame
+each, every frame) are dropped: Aurora draws both from the copy textures (A/B identical; only
+`MP2_NO_COPY_TEX=1` uses the bytes). Desktop-verified; tablet not yet tried (ask before installing).
+
 | lane | session | branch @ base | task |
 |---|---|---|---|
 | BoostGuardian (Opus) | `ses_ea4ef042fffekfCkg15H4f8DGy` | boostguardian @ `41a0e180b` (ctor EC6C, 7D5C fix; 126 markers) | exercise+mark 8DD4/A45C/7D5C, Dead 7390, 47E8, CFC4, 8208/5888 |
