@@ -65,7 +65,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0x18 | `AcceptScriptMsg` | `fn_9_CB40` (0x754) | stand-in |
 | 0x24 | `PreRender` | `fn_9_C6D4` (0xc4) | host (the base's, then the bone tracking's own) |
 | 0x28 | `AddToRenderer` | `fn_9_C4FC` (0x20) | host (a straight base call) |
-| 0x2C | `Render` | `fn_9_C598` (0x13c) | stand-in |
+| 0x2C | `Render` | `fn_9_C598` (0x13c) | host (the base's render, the space warp; the module's own renderables stay stand-ins) |
 | 0x34 | `PreRenderAllViewports` | `fn_9_C51C` (0x7c) | host (the base's; the guest's rag-doll branch is dead) |
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
 | 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | stand-in |
@@ -881,3 +881,17 @@ entered, so no grenade is thrown.
   scale's Y times the parms (1, 2) and the scale's X times the parms (3, 2)); +0xBE8 (the jump
   distance) and the locomotion-speed term at +0xB90 are not.
 - The CVisualKnowledge at +0xAB0 (the host has no such class yet).
+
+`fn_9_C598` (0x13c, the actor's render - the vtable slot 0x2c) is ported (2026-10-21, the port's
+`Render`): the guest fades the actor with its colour's alpha (the psq_l at 0x0000C5C4 reads the
+alpha byte at guest this+0x44F and rodata_4F0 is 1/255) and, while the actor is alive (the byte
+at guest this+0x420's 0x40 bit) and its own word at guest this+0x920 is 1 (the port's `x920_`),
+it draws the space warp at the bounding box's centre point with the sine of pi times the alpha
+(rodata_4F4, the FastSinR call at 0x0000C5F8 and the DrawSpaceWarp call at 0x0000C634). With an
+alpha above zero the base's own render runs (the call at 0x0000C650) and the module's own
+renderable follows - the one at guest this+0xC3C when the module's state word at guest this+0xC4C
+(the port's `xc4c_`) is 0 and the one at guest this+0xC40 when it is 1. The port has no such
+renderables, so those two remain named stand-ins and the function is not marked. The base's render
+ran in the area 59 run (the stand-in log is gone); the two renderables and the warp's draw did not
+(the module's state word is not 0 or 1 in the run, and the actor's alpha is 1.0, which makes the
+sine 0).
