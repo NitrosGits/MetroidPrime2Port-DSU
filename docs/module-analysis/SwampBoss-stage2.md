@@ -145,6 +145,7 @@ B4 GetOrigin, D0 GetHealthInfo.
     at most, `aim` + `press a` volleys) cycles `Lurk ↔ Taunt` for 2400+ frames at `mAttackType`
     0, 1, 2, 4 and 7. Zeroing `mHeadHealth` (console `damage 250` on a body joint: head 100 →
     −150) sends the boss back to **Reel**, i.e. `Stunned` → the LightLurk submachine's Reel.
+    **Swoop, Level and Circle are reached as well** (see "the light-phase attack chain" below).
   - **Dark phase:** BecomeDarkFlyer → DarkLurk → DropFlyer / SpitBarrage; HP goes 500 → 375 →
     250 → BecomeLightFlyer.
   - **Death:** DeathSequence (knockdown, then body state 2 = lying); the boss sends Dead and
@@ -162,21 +163,85 @@ B4 GetOrigin, D0 GetHealthInfo.
   `tools/port_progress.py` reports them as not a function start in the module's `symbols.txt` and no
   trace ran them: `fn_79_6250` (it had been put on `StateOver`, whose real offset is still open - the
   doc's `A498` body is a small integer compare, not the animation-over test) and `fn_79_5D58`
-  (`SetHeadVulnerable`, carried over from the first pass). 64 unique retail functions are marked.
-- **Not yet reached, and why (2026-10-20 probe run):**
-  - **Swoop, Level, Circle:** `mAttackType` 4 was queued (light1 slot 4, and the
-    `RecentDamage > 100` override) with `mAttackReady` set, yet Lurk always left to Taunt.
-    The probe's dump printed only `SStateMachine2Transition::mName`, which is empty for these
-    edges, so the trigger lists *looked* empty; that is a probe artefact, not a loader bug (the
-    state-node dump, which prints `SB2TargetKind`/`SB2TargetName`, read its edges fine). Print the
-    transition targets the same way and the Lurk→Swoop/→Level/→Circle edges become readable.
-  - **Blow:** attack 6 only exists in the dark phases, and the light phase ends only when all
-    four growths die. Growth damage needs a `CWeapon` whose forward has dot > 0 with the boss's,
-    and the boss faces the player, so a headless run firing from in front never satisfies it
-    (console `damage` has no weapon at all): growing all four dead was not achieved.
-  - **Flinch:** its entry trigger is not in any readable transition list; the one condition we
-    can force (`Stunned`, head health ≤ 0) goes to Reel instead, so the Flinch edge is still
-    unidentified.
+  (`SetHeadVulnerable`, carried over from the first pass). 74 unique retail functions are marked.
+- **The asset's edges (2026-10-20 probe).** The trigger dump has to print the transition *targets*
+  (`SB2TargetKind`/`SB2TargetName`), not just `SStateMachine2Transition::mName`, which is empty for
+  these edges - that is why the lists used to look empty. With the targets printed the machines
+  read (the transition list of a node is in the order the asset stores it):
+
+      top               : Start -> sub:LightFlyer/Start
+                         BecomeDarkFlyer   : trig:StateOver -> sub:DarkFlyer/DarkLurk
+                         BecomeLightFlyer  : trig:StateOver -> sub:LightFlyer/Start
+                                            trig:StateOver -> sub:DarkFlyer/DarkLurk
+                         DeathSequence     : (no edges)
+                         AllGrowthsDead -> state:BecomeDarkFlyer
+                         OvipositorDead -> state:BecomeLightFlyer
+                         ZeroHealth -> state:DeathSequence
+
+      LightFlyer (entry): trig:Stunned -> Stunned -> state:Reel
+                                          else     StateOver -> state:Start
+      LightFlyer.Start   : sub:LightLurk/Lurk
+      LightFlyer.Reel    : trig:StunTimeOut trig:OneGrowthDead
+                           StunTimeOut   -> state:Recover
+                           OneGrowthDead -> state:Flinch
+      LightFlyer.Recover : trig:StateOver -> state:Start
+      LightFlyer.Flinch  : trig:StateOver -> state:Start
+
+      LightLurk.Lurk     : trig:PlayerInWater trig:ShouldSwoop trig:ShouldTaunt
+                           trig:ShouldSpit trig:ShouldBarrage
+                           PlayerInWater -> state:Taunt
+                           ShouldSwoop   -> state:Level
+                           ShouldTaunt   -> state:Taunt
+                           ShouldSpit    -> state:SpitWater
+                           ShouldBarrage -> state:SpitBarrage
+      LightLurk.Level    : trig:IsLevel   -> state:Swoop
+      LightLurk.Swoop    : trig:SwoopOver -> state:Circle
+      LightLurk.Circle   : trig:CircleOver trig:CircleDamage trig:StateOver -> state:Lurk
+      LightLurk.SpitWater / Taunt / SpitBarrage : trig:StateOver -> state:Lurk
+
+      DarkFlyer.DarkLurk : trig:ShouldTaunt trig:ShouldDropFlyer trig:ShouldSpit
+                           trig:PlayerInWater trig:ShouldBarrage trig:ShouldBlow
+                           ShouldTaunt     -> state:Taunt
+                           ShouldDropFlyer -> state:DropFlyer
+                           ShouldSpit      -> state:SpitWater
+                           PlayerInWater   -> state:Taunt
+                           ShouldBarrage   -> state:SpitBarrage
+                           ShouldBlow      -> state:Level
+      DarkFlyer.Level    : trig:IsLevel -> state:Blow
+
+      code ResetAttackPhase -> state:Taunt   (no state in the asset references this code node)
+
+- **The light-phase attack chain now runs end to end.** A traced run in `04_swamp_temple_dark`
+  (LAYER6 forced) with the player left on dry land gives `exit=0`, 0 `[port] caught`, 0
+  `reach-stub`, and walks `Lurk` (frame 3005, `mAttackType` 4, `mAttackReady` 1) → **Level**
+  (3180) → **Swoop** (3450) → **Circle** (3745) → `Lurk` (4420, `mAttackType` 7) → `Taunt` (4595).
+  - **Why the earlier runs never saw it:** `Lurk` tests `PlayerInWater` *first*, and that edge goes
+    to **Taunt**, so a player standing in the water swallows every attack type (`mAttackType`
+    0/1/2 included) and the boss only ever cycles `Lurk ↔ Taunt`. The old runs teleported the
+    player next to the boss, which is over the water; their dumps show `pwater=1` for most of the
+    run, while the successful one shows `pwater=0` throughout.
+  - `ShouldSwoop` needs `mAttackReady && mAttackType == 4`; light1's fourth slot is 4, so the
+    fourth `Lurk` activation queues it (the `RecentDamage > 100` override does the same).
+  - `Level → Swoop` is `IsLevel` (fn_79_A13C): the body must be in `Locomotion`, `mMoveSpeed`
+    < 0.2, the boss within 2 units of the target point and within 1 unit of its height, and its
+    forward within 2° of `mLevelTarget` (the chain node picked on `Level`'s activation). The boss
+    reaches it on its own: `Level` steers to the target point while facing `mLevelTarget`.
+  - `Swoop → Circle` is `SwoopOver` (fn_79_A31C) = bit 5 of 0xc76 = `mCircleCounting`, which the
+    animation event 0x21 (`kUE_EffectOn`) raises while the boss circles. The circle is counted
+    twice (`mCircleCount` 2) and the boss returns to `Lurk`.
+- **Still not reached, and why (2026-10-20):**
+  - **Blow:** attack 6 only exists in the dark phases, and the dark phase needs
+    `AllGrowthsDead`, i.e. all four growths at 0 HP. `mGrowthHealth` only drops in the growth
+    branch of `ProcessDamage` (61C4), which needs a `CWeapon` whose forward has dot > 0 with the
+    boss's and `mGrowthsVulnerable`. The platform's beam cannot damage a collision actor at all
+    (the known `CBeamProjectile` ray gap), and console `damage` carries no weapon, so the growths
+    cannot die without a test-only bypass of that check.
+  - **Flinch:** its entry edge is now known - `LightFlyer.Reel --OneGrowthDead--> Flinch`
+    (`mGrowthDestroyed && mGrowthDeadTime > 0.3`) - but a growth death needs the same weapon hit
+    as Blow, so the edge is identified but not exercisable yet.
+  - **The circle damage path** (`CircleDamage -> Lurk`): the trigger runs in the Circle state
+    (`mCircleDamaged`), but nothing damaged the boss there; a body joint hit would do it (the
+    head pool is clamped at 3 while the circle counts, so it does not stun the boss).
 - **Crash fixes:**
   - **Scan tokens:** the host `CToken()` leaves `mObjRef` uninitialized, so the ctor builds the
     tokens in its init list.
@@ -216,7 +281,6 @@ B4 GetOrigin, D0 GetHealthInfo.
   - 3900 splash → water link.
   - 4324 spit radius.
   - ZeroHealth index field.
-  - Circle bit 5 of 0xc76.
   - Riding-platform clear in water.
   - 5830 chain walk.
   - Scan by form.
