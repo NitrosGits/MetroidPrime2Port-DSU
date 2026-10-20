@@ -28,14 +28,14 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_56D8` | 0x250 | `Think` (vtable slot 3): the timers, the effect state and the emitter that follows the target | [proven] |
 | `fn_16_3668` | 0x80 | every live tentacle's per-frame update | [proven] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update (it calls three more module functions) | [proven] |
-| `fn_16_51D4` | 0x128 | the module's own sound update | [proven] |
-| `fn_16_4EB8` | 0x31C | moves the actor onto the target's locator | [probable] |
+| `fn_16_51D4` | 0x128 | the heart's health becomes the boss's (heart damage sound, the mode 0/1/2 thresholds) - ported, `UpdateHeartHealth` | [proven] |
+| `fn_16_4EB8` | 0x31C | the body follows the heart: the rotate actor on the heart's "brainSpine_scale", the 'PLAY' actor turned along the current angle, the body at the 'PLAY' actor's segment 1 - ported, `UpdateTentacleAnchor` | [proven] |
 | `fn_16_3AFC` | 0x74 | the three collision actor managers' update | [proven] |
 | `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
-| `fn_16_4C8` | 0x368 | aims the actor at the player | [probable] |
-| `fn_16_8C` | 0x11C4 | the tentacles' hit test and damage | [probable] |
+| `fn_16_4C8` | 0x368 | the melee sweep's contact damage to the player (the 0x80 flag; every box grows 4.0f) - ported, `UpdateMeleeHits` | [proven] |
+| `fn_16_8C` | 0x3B0 | the sweeping tentacles' contact damage to the player - ported, `UpdateTentacleHits` | [proven] |
+| `fn_16_6F28` | 0x244 | the state "MeleeAttack": the melee flag (0xA74 bit 0x80), the turn angle, the loop attack command - ported, `MeleeAttack` | [proven] |
 | `fn_16_4C0C` | 0xBC | the track-player update: the "Damage" and "Telegraph" effect states | [probable] |
-| `fn_16_51D4` | 0x128 | the module's own sound update (it reads a float at the damage vulnerability's +4) | [probable] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
 | `fn_16_24AC` | 0x78 | the tentacle's dark and light vulnerability effect states | [proven] |
 | `fn_16_2070` | 0x12C | the effect state a tentacle carries - ported `SetTentacleEffectState` | [probable] |
@@ -55,7 +55,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_1F34` | 0x20 | the tentacle actor's materials | [proven] |
 | `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [proven] |
 | `fn_16_3AA8` | 0x54 | the tentacle's collision actor (the owner's first manager, five descriptions per tentacle, the index 4 + index * 5) | [proven] |
-| `fn_16_39CC` | 0xDC | the joint vector's growth | [?] |
+| `fn_16_39CC` | 0x20 | the element's placement copy (calls fn_16_39EC, the null test, then fn_16_3A14, the joint's copy constructor) - the host assignment in `AddTentacleJointToVector` | [proven] |
 | `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
 | `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
 | `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
@@ -74,7 +74,6 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_98D0` | 0xC4 | copies an `SLdrDamageVulnerability` into a `CDamageVulnerability` (0x54 bytes) | [proven] |
 | `fn_16_9700` | 0xC4 | builds the shock-wave block at guest 0xC40 from the taunt attack's `SLdrShockWaveInfo` | [proven] |
 | `fn_16_9610` | 0x94 | copies the `SLdrPlasmaBeamInfo` (0x48 bytes) into guest 0xCA8 | [proven] |
-| `fn_16_8C` | 0x3B0 | tentacle hit/damage helper (accumulated bounds, `ApplyDamage`) | [?] |
 | `fn_16_830` | 0xB4 | sends IS01 (1), IS02 (2) or IS00 (anything else) to the script - ported, `SendStageMessage` | [proven] |
 | `fn_16_920` | 0xA0 | the tracked actor's "brainSpine_scale" locator position - ported, `GetBrainSpinePosition` | [proven] |
 | `fn_16_8E4` | 0x3C | the attack timer (guest 0xA4C) takes Random Range(attackIntervalMin, attackIntervalMax) - ported, `ResetAttackTimer` | [proven] |
@@ -173,7 +172,7 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0x7C0-0x7D4 | six ints | 0 (0x7C0 the mode, 0x7C4 the sub-stage, 0x7C8/0x7CC/0x7D0 the tentacle collision actor managers, 0x7D4 the live tentacle count) |
 | 0xA18-0xA1E | four u16 | `kInvalidUniqueId` |
 | 0xA20-0xA28 | three ints | -1 |
-| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA3C the heart-stage timer, 0xA50 the taunt timer) |
+| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA2C the turn angle, 0xA30 the current turn angle (fn_16_4EB8), 0xA3C the heart-stage timer, 0xA50 the taunt timer) |
 | 0xA34 | float | maxTurnSpeedNormal |
 | 0xA40 | float | the initial health (from `GetHealthInfo()`) |
 | 0xA4C | float | 4.0f |
@@ -334,21 +333,21 @@ The body only runs while the actor is active: the asm's gate is the byte at 0x20
 | 0x5710 | fn_16_3668: every live tentacle's per-frame update (fn_16_2B0C each) |
 | 0x5720 | `CPatterned::Think` - the base's own Think |
 | 0x5734 / 0x5740 | the attack timer (guest 0xA4C) counts down, the taunt timer (guest 0xA50) counts up |
-| 0x5748 | fn_16_51D4: the module's own sound update |
-| 0x5758 | fn_16_4EB8: moves the actor onto the target's locator |
+| 0x5748 | fn_16_51D4: the heart's health becomes the boss's |
+| 0x5758 | fn_16_4EB8: the body follows the heart |
 | 0x5768 | fn_16_3AFC: the three collision actor managers (guest 0x7C8, 0x7CC, 0x7D0) get their update |
 | 0x5778 | fn_16_4C0C: the module's track-player update |
 | 0x578C | the effect-state timer (guest 0xA78) counts down |
 | 0x57CC | `SetEffectState("DarkProjectileCharge", timer > 0.0f)` - the name is the string lbl_16_rodata_340 points at |
-| 0x57E4 | fn_16_4C8: aims the actor at the player |
-| 0x57F4 | fn_16_8C: the tentacles' hit test and damage |
+| 0x57E4 | fn_16_4C8: the melee sweep's contact damage |
+| 0x57F4 | fn_16_8C: the sweeping tentacles' contact damage |
 | 0x57F8..0x5900 | the emitter that follows the target: the handle (guest 0xA8C) must be playing, the target id (guest 0xA90) must exist, and the emitter sits on the target's momentum (its X) in the horizontal direction of the player |
 
 Ported with it (both at or under the slice's 0x80 line): fn_16_3668 (0x80, the loop over the live
 tentacles) and fn_16_3AFC (0x74, the collision actor managers' update). The six calls that are
 bigger keep a named private stand-in that logs once: fn_16_2B0C (0x50 - it is small, but it calls
 three more module functions), fn_16_51D4 (0x128), fn_16_4EB8 (0x31C), fn_16_4C0C (0xBC), fn_16_4C8
-(0x368) and fn_16_8C (0x11C4).
+(0x368) and fn_16_8C (0x3B0; the 0x11C4 was a wrong extent).
 
 ### The Think's callees
 
@@ -358,10 +357,9 @@ second tentacle's collision actor).
 
 Ported in slice 3: fn_16_26B8, fn_16_2524, fn_16_2070 (the tentacle's work) and fn_16_4E44 /
 fn_16_BDD0 / fn_16_6D10 (the +0x78/+0x7C counted reference is CParticleGenInfoGeneric's
-`ncrc_ptr<CParticleGen>`, so they become `GetEffectSystem` + `SetSystemParam`). Still a stand-in:
-fn_16_51D4 (0x128) for the sound update, which reads a float at the damage
-vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
-(upstream's layout), so the port has no float there and the value's meaning is not established.
+`ncrc_ptr<CParticleGen>`, so they become `GetEffectSystem` + `SetSystemParam`). fn_16_51D4 is
+not a sound update: the +4 it reads is the heart collision actor's CHealthInfo::mHealth (vtable slot
+14, HealthInfo), ported in slice 4.
 
 ### The animation builders (fn_16_30C8 and fn_16_36E8)
 
@@ -407,8 +405,8 @@ kMT_SeekerTarget (0x3F) and kMT_ExcludeFromRadar (0x39) to the tentacle actor wh
 set (0x1F74..0x1F8C) and removes them when it is not (0x1F90).
 
 **fn_16_3984** (0x3984..0x39CC) adds the joint to the vector at guest 0x7D4: the retail's vector
-grows first (fn_16_39CC, 0xDC - too big, so it stays a stand-in) and the count is raised
-(0x39B4); the port's vector holds the eight tentacle slots, so it never grows.
+copy-constructs the element at the count (fn_16_39CC, 0x20 -> fn_16_39EC -> fn_16_3A14) and the
+count is raised (0x39B4); the vector has a fixed capacity, so it never grows.
 
 **fn_16_3AA8** (0x3AA8..0x3AFC) finds the tentacle's collision actor: the owner's first collision
 actor manager (guest 0x7C8) holds five joint descriptions per tentacle - the index is scaled by
@@ -476,7 +474,9 @@ in LaunchProjectile).
 Joint fields: +0x0C out animation, +0x10 back animation, +0x14 retracted idle, +0x1C hit time,
 +0x20 last health. Joint flags: 0x04 forces state 2, 0x10 shootable, 0x20 collision on, 0x40
 collision wanted, 0x80 fn_16_2EE0's flag. States: 0 retracted, 1 coming out, 2 out, 3 going back.
-Guest 0xA74 flags: 0x08 projectile charged, 0x40 jump rope. Retail `CTryCommand::ShouldRetry(0x6B4,
+Guest 0xA74 flags: 0x04 ?, 0x08 projectile charged, 0x10 ?, 0x20 ?, 0x40 jump rope, 0x80 the melee
+sweep (fn_16_6F28 sets it at 0x6F8C and clears it at 0x7144; fn_16_4C8's gate). Retail
+`CTryCommand::ShouldRetry(0x6B4,
 bc, n)` is host `mAnimationState.CanIssueCommand(bc, n)`; the +0x350 vtable 0x30 call is
 `StateMachineState().GetTime()`.
 
@@ -497,12 +497,78 @@ never ends). 0 caught/reach-stub.
 
 Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
 EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
-reach the boss), fn_16_4C8 (0x368, facing), fn_16_4EB8 (0x31C, turning), fn_16_51D4 (0x128),
+reach the boss), fn_16_51D4 (0x128),
 fn_16_7F8C cases 7/17/22/27/28, Render fn_16_531C and ProcessSoundEvent fn_16_7EA8.
+
+fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
+0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f
+(lbl_16_rodata_38C: the box's minimum drops by 4.0f at 0x704, its maximum rises by 4.0f at
+0x734) instead of the tip pair reaching 8.0f past its end. The melee damage, the player's touch
+bounds and the 0.2f cooldown are the same. Ported as `UpdateMeleeHits`.
+
+fn_16_4EB8 (0x4EB8..0x51D4) is the body following the heart, not the facing: the CONNECT/ACTIVATE
+actor (fn_16_2FF8) goes to the heart's (fn_16_302C) "brainSpine_scale" locator (0x4F10), the 'PLAY'
+actor (fn_16_3060) is turned along its own flattened Y column, rotated by the current angle (guest
+0xA30) times dt and looked at the heart's "sphere_base" (rodata_37C) with the heart's Z column as
+up (0x5060..0x5110), and the body itself goes to the 'PLAY' actor's segment 1, 1.5f (rodata_394)
+along its X column (0x5120..0x51A8). The angle (guest 0xA2C) is approached at the accel (guest
+0xBFC, degrees per second, turned into radians with rodata_3DC = 0.017453292) and the current
+angle is clamped to the turn speed (guest 0xA34). Ported as `UpdateTentacleAnchor`; the guest
+0xA30 member is new to the port.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`): the boss moves from (1.7, -43.5, 105.0) to (3.2, -43.5, 104.9) - the body
+now rides the heart - and the run ends on the frame limit with 0 caught/reach-stub. fn_16_4C8 needs
+the player within the melee range (the trigger ShouldMeleeAttack, 30 units), so it does not run in
+that scenario; with the player teleported next to the boss (`tp 5.0 -43.5 104.9`) the FSM enters
+the state "MeleeAttack" (fn_16_6F28), which sets the 0x80 flag, and a gdb breakpoint on
+`CEmperorIngStage1::UpdateMeleeHits` with the condition `xa74_ & 0x80` is hit from
+`CEmperorIngStage1::Think` - fn_16_4C8's body runs.
+
+fn_16_6F28 (0x6F28..0x716C) is the state "MeleeAttack" (lbl_16_data_94 entry 5), not part of
+fn_16_6D94 (that is the state "Attack", already ported): on activate it sends IS00 (fn_16_830,
+0x6F6C), gives the tentacles the melee vulnerability (mode 2, fn_16_353C, 0x6F7C), sets the
+animation state ready (0x6F84), sets the melee flag (guest 0xA74 bit 0x80, 0x6F8C) and the melee
+turn speed (guest 0xBF4, 0x6F98). On update it asks the animation state for the loop attack
+(CanIssueCommand, pas 9 = kAS_LoopAttack, 0x6FAC) and delivers CBCLoopAttackCmd(kLAT_Four)
+(the retail's direction 4, 0x7004); otherwise it sets the turn angle (guest 0xA2C) to the melee
+turn speed in radians (lbl_16_rodata_3DC), positive once the state has run for 0.5f
+(lbl_16_rodata_3F4) and negative before, and after 3.0f (lbl_16_rodata_3C0) the melee trigger
+(fn_16_4B20) decides whether the animation state is over (0x70E8). On deactivate the body gets
+ExitState (0x7110), the animation state is not ready, the attack timer is re-rolled (fn_16_8E4),
+the melee flag is cleared (0x7144) and the turn speed is the normal one (guest 0xBF0). Ported as
+`MeleeAttack`.
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
 "LightVulnerability", "brainSpine_scale") - the tentacle and attack work, milestone 2.
+
+### Slice 4: the stage can be finished
+
+Extents (`.fn` markers of the retail listing, next prologue after each `blr`): fn_16_8C is
+0x8C..0x43C (0x3B0; fns.txt agrees, the old 0x11C4/0x1A50 were wrong); fn_16_39CC is 0x39CC..0x39EC
+(0x20, a call to fn_16_39EC; the old 0xDC was wrong).
+
+- fn_16_8C is not the heart's hit test: it is the tentacles' contact damage while flag 0x40 (JumpRope)
+  is set - 8 x 5 locator boxes (the tip box stretched 8.0f horizontally), player touch bounds,
+  melee damage (guest 0xB8C), 0.2 s cooldown (guest 0xA48).
+- The heart's hits land on its own collision actor (a copy of the boss's health info); fn_16_51D4
+  (Think, 0x5748) copies its health back to the boss, plays heartDamageSound (guest 0xCFC) on a drop
+  (guest 0xA40 the last value), pulses the "Damage" effect and steps the mode 0 -> 1 -> 2 at
+  unknown_0x905938b8 / unknown_0xb826317a (guest 0xBAC / 0xBB0, `mModeOneHealth` / `mModeTwoHealth`).
+- EndHeartStage fn_16_71BC: body sphere and 'PLAY' active, CONNECT/ACTIVATE actor DEACTIVATE, 'PLAY'
+  anim 3 + IS05; update issues a generate (type by sub-stage 0/1/2 -> 0/2/1) or sets used slots to
+  state 2 (fn_16_7AD4); over when "Whole Body" ends; deactivate restores anim 1, flags, attack timer,
+  normal vulnerability.
+- The body command id of that generate is 0xF (`li r4, 0xf` at 0x73D8, 0x74AC and 0x7580 before
+  `DeliverCmd__16CBodyStateCmdMgrF13EBodyStateCmd`), and 0xF is the retail's Generate: the DOL's
+  `CBodyStateCmdMgr` ctor (0x800EE990) stores {&__vt__14CBCGenerateCmd, 0xF} at 0x208/0x20C. The
+  DOL's order is 0 Getup, 1 Step, 2 Die, 3 KnockDown, 4 KnockBack, 5 MeleeAttack, 6
+  ProjectileAttack, 7 LoopAttack, 8 LoopReaction, 9 LoopHitReaction, 10..14 the base
+  CBodyStateCmd, 15 (0xF) Generate, 16 Hurled, 17 Jump, 18 Unknown18, 19 Unknown19, 20 Slide, 21
+  Taunt, 22 Scripted, 23 Cover, 24 WallHang, 25 Locomotion, 26 AdditiveIdle, 27 AdditiveAim, 28
+  AdditiveFlinch. The host's `EBodyStateCmd` (include/Kyoto/Animation/CharacterCommon.hpp) is the
+  same order, so `kBSC_Generate` is 15 = 0xF (14 is `kBSC_MaintainVelocity`).
 
 ## 5. The port (milestone 1)
 
@@ -555,8 +621,7 @@ CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
 
 With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
-descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC), which stays a
-stand-in because the port's vector holds the eight tentacle slots, and the tentacle actor lookup
+descriptions and the joint vector: the run reaches the element's copy (fn_16_39CC) and the tentacle actor lookup
 (fn_16_3AA8), which finds the tentacle's collision actor in fn_16_3EAC's manager.
 
 With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
