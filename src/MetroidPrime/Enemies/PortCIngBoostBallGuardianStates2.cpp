@@ -190,12 +190,12 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
-// fn_29_8684: the puddle's mesh path find, and the one the grapple runs through. Activate clears
-// mRecalcPath and raises mMoving; the body (asm 0x000086DC) only paths when the properties allow
-// path finding (0x9d0 bit 1) and SetCoverDest/SetRecoverDest found a destination (0xe5c bit 3).
-// The speed is the safe-zone modifier or the maximum, and a ball target overrides both with the
-// ball pursuit speed (asm 0x00008778-0x00008894). MoveOnSurface takes the raw separation vector,
-// FaceDirection the normalized one.
+// fn_30_9DA0 (the Ing's fn_29_8684): the puddle's mesh path find. Activate clears mRecalcPath and
+// raises mMoving; the body only paths when the properties allow path finding and a destination was
+// found. Unlike the Ing there is no separation and no ball-pursuit speed: the speed is the ing
+// spot's maximum, or the fast speed (data +0x14, unknown_0x50398a06) while retreating or in the
+// boost puddle form with a boost pending and a cover hint, times the phase's ingSpotSpeedScale; the
+// actor faces its move only while no retreat point is held.
 void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
@@ -206,19 +206,22 @@ void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, f
   if ((mData.mFlags210 & kFlag_NoPathFind) != 0 || !mFoundMovementPos) {
     return;
   }
-  mPathFindNavigation.PathFind(mgr, msg, dt, *this);
-  ApplySeparation(mgr);
+  mPathFindNavigation.PathFind(mgr, msg, dt, *this); // 0x00009E20: 0x6F4
+  // 0x00009E2C: 0x11EE 0x80; 0x00009E3C: 0x11EF 0x80; 0x00009E44: 0x11EE 0x10; 0x00009E54: fn_30_60C0.
+  const bool fast = mBoostModeRetreatActive ||
+                    (mCurrentlyInBoostPuddleForm && mShouldBoost &&
+                     GetCoverHint(mgr, mCoverHintId) != nullptr);
   const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
-  if (move.IsMagnitudeSafe() && dt > 0.f) {
-    // Dropped: the Ing's safe-zone ing-spot flag (mSafeZoneIngSpot). This module has none, so the
-    // speed is the ing spot's maximum speed.
-    float speed = mData.mIngSpot.GetMaxSpeed();
-    if (TargetIsBall(mgr, CTriggerData(0.f))) {
-      speed = mData.mIngSpot.GetBallPursuitSpeed();
+  if (move.IsMagnitudeSafe() && dt > 0.f) { // 0x00009EA8: rodata_70 (0.0)
+    const CVector3f dir = move.AsNormalized();
+    // 0x00009EE4: data 0x14 or 0x00009EEC: data 0x08, times 0x00009EF8: *(0x11D0)+0x34.
+    const float speed = (fast ? mData.mIngSpot.GetSpeedModifier() : mData.mIngSpot.GetMaxSpeed()) *
+                        CurrentPhase().mIngSpotSpeedScale;
+    MoveOnSurface(move, speed, dt); // 0x00009F00: fn_30_53D0
+    if (mBoostNavPointId2 == kInvalidUniqueId) { // 0x00009F10: 0x1098
+      BodyController()->FaceDirection(dir, dt);
     }
-    MoveOnSurface(move, speed, dt);
-    BodyController()->FaceDirection(move.AsNormalized(), dt);
   }
 }
 

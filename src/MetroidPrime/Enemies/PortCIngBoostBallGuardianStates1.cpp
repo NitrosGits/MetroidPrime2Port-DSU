@@ -144,6 +144,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     // 0x0000B088: 0x11EF 0x80 = 0. Retail clears 0x11ED 0x02 (mProjectileFSMEntry) in the
     // Deactivate (0x0000B448), not here: the Update below still reads it.
     mCurrentlyInBoostPuddleForm = false;
+    SetIngSpotManagerVulnerability(mgr, false); // 0x0000B094: fn_30_30E4
     if (mForm == kForm_IngSpot) {
       mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
       // 0xdf0/0xdfc: the horizontal plane through the actor. The normal is (0,0,1) (retail
@@ -163,6 +164,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     FaceLureOrTarget(mgr);                                         // the Ing's fn_29_1A80
     mMoving = false;                                               // 0xe5d bit 1
     Stop();
+    SetBodyManagerReflect(mgr, false); // 0x0000B17C: fn_30_3190
     break;
   case kStateMsg_Update:
     // CTryCommand::ShouldRetry(this+0x6b4, *BodyController(), 0xc): 0xc is the body state
@@ -173,7 +175,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
       BodyController()->CommandMgr().DeliverCmd(
           CBCGenerateCmd(puddle ? pas::kGType_Two : pas::kGType_Zero, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x0000B36C: li r4, 1
     }
     Stop();
     break;
@@ -183,7 +185,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     mStartAsIngSpot = false;                                 // 0xe5d bit 5
     mVerticalMovement = false;                               // CPatterned 0x34c bit 6
     AddMaterial(kMT_GroundCollider, mgr);                    // 0x25
-    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);   // 0x0000B3BC: li r4, 1
     mForm = kForm_Corporeal;
     mDesiredForm = -1;
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_None); // 0xca4 = 0
@@ -218,7 +220,9 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
     // 0x0000AC98: 0x11ED 0x02 clear and 0x0000ACA4: 0x11EE 0x08 set -> 0x0000ACB4: 0x11EF 0x80 = 1.
     if (!mProjectileFSMEntry && mBoostPuddleForm) {
       mCurrentlyInBoostPuddleForm = true;
-      // NOT YET: fn_30_30E4, fn_30_3190, fn_30_3068 (0x0000ACC8-0x0000ACE8), the boost half.
+      SetIngSpotManagerVulnerability(mgr, true); // 0x0000ACC8: fn_30_30E4
+      SetBodyManagerReflect(mgr, true);          // 0x0000ACD8: fn_30_3190
+      SetBoostPuddleMode(true);                  // 0x0000ACE8: fn_30_3068
     }
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_NearbySurface); // 0xca4 = 1
     mBodyState5Time = 0.f;                                                // 0xe40
@@ -232,12 +236,12 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
       BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(
           mCurrentlyInBoostPuddleForm ? pas::kGType_Five : pas::kGType_One, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x0000AEF0: li r4, 0
     }
     break;
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);    // 0x0000AF00: li r4, 0
     if (mForm == kForm_BecomingIngSpot) { // 0x0000AF14: form == 7
       mForm = kForm_IngSpot;
     }

@@ -291,6 +291,39 @@ values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02
 - In the constructor, `mFoundMovementPos`, `mRenderModel` and `mBoostOver` start true (0xFE0C,
   0xFE3C, 0xFECC).
 
+**The audit's three follow-ups, resolved against the asm (2026-10-20).**
+
+- *Locomotion types.* This module passes only 0 and 1 to `SetLocomotionType` (ten calls), and the
+  Ing REL does the same at the same places (`fn_29` 0x4CCC/0x4CF8, 0x9944/0x9954, 0x9C98/0x9CE8).
+  The port had copied `decomp/ing`'s Relaxed(1)/Combat(3) for the ing-spot/corporeal pair; it is
+  Crouch(0)/Relaxed(1): `kSM_Create` 0x6934/0x6960, `BecomeIngSpot` Update 0xAEF0 and Deactivate
+  0xAF00, `BecomeCorporeal` Update 0xB36C and Deactivate 0xB3BC. The body/wall projectile calls
+  (0xA6FC, 0xA838, 0xAA98, 0xAB6C) were already 0. **`decomp/ing`'s `PortCIng.cpp` has the same
+  slip** (lines ~1333/1343/1381/1386/2945/2948) - not fixed there.
+- *`IngSpotPathFind` (`fn_30_9DA0`).* No separation and no ball-pursuit speed (the Ing's shape).
+  The speed is `ingSpotMaxSpeed` (data +0x08, 0x9EEC) or, when "fast", data +0x14
+  (`unknown_0x50398a06`, `CIngSpotData::GetSpeedModifier`, 0x9EE4), times the current phase's
+  `ingSpotSpeedScale` (`*(0x11D0)+0x34`, 0x9EF8). Fast = retreating (0x11EE 0x80) or (puddle form
+  0x11EF 0x80 and boost pending 0x11EE 0x10 and a cover hint, `fn_30_60C0` = `GetCoverHint`).
+  `FaceDirection` only while 0x1098 (the retreat's second point) is empty (0x9F10).
+- *`fn_30_30E4` / `fn_30_3190` / `fn_30_3068`* are ported (`PortCIngBoostBallGuardianTriggers.cpp`,
+  `SetIngSpotManagerVulnerability` / `SetBodyManagerReflect` / `SetBoostPuddleMode`):
+  `30E4(b)` gives every collision actor of the 0xD64 manager the boost-ball vulnerability (0x1178)
+  or the ing spot's (0xA5C) - a no-op on the host, which never builds that manager; `3190(b)` sets
+  0x11EE 0x02 and gives the 0xD60 manager (the host's `mCollisionActorManager`) the reflect
+  vulnerability or `CPatterned::GetDamageVulnerability()`; `3068(b)` with 0x11EF 0x20 (ctor 1)
+  sets 0x11EE 0x10/0x08/0x04 and zeroes 0x11D4, else clears 0x11EE 0x08, zeroes 0x11D8/0x11DC and
+  reloads 0x11E4 from the phase's `boostPuddleModeTime`. Callers: `BecomeIngSpot` 0xACC8-0xACE8
+  (all true), `BecomeCorporeal` 0xB094 (`30E4(false)`) and 0xB17C (`3190(false)`); `3068` is also
+  called from `fn_30_4030`/`4078`/`4324`/`44A4`/`5D90`/`7390` (unported boost half). The current
+  phase (0x11D0) is element 0 on the host: the phase advance in `fn_30_D94C` (0xDBC0) is unported.
+
+`tools/asmcheck.py check ... --only MASK,XBIT,CROP,XCMP,XSTORE,OFFS` is clean on
+`PortCIngBoostBallGuardian.cpp` (and on `fn_30_9DA0` in States2). Its earlier hits were header
+noise: Ing-half bitfields stated only by the Ing's offsets (`CIng: 0xE5C bit 3`), and a member with
+no position comment placed by the host bitfield layout. Those members now state the guest bit first
+(`guest 0x11EC bit 4 (CIng: ...)`), which the tool reads.
+
 ## i. Port plan
 
 - **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)

@@ -268,10 +268,15 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoostModeRetreatActive(false)
 , mCurrentlyInBoostPuddleForm(false)
 , mBoostPuddleGenerate(false) // ctor 0x0000FEF0: 0x11EE 0x04 = 0
+, mReflectVulnerability(false) // ctor 0x0000FEFC: 0x11EE 0x02 = 0
+, mBoostPuddleAllowed(true)    // ctor 0x0000FF2C: 0x11EF 0x20 = 1
 , mBoostChildId(kInvalidUniqueId)
 , mBoostNavPointId(kInvalidUniqueId)
 , mBoostNavPointId2(kInvalidUniqueId)
 , mBoostTimer(0.f)
+, mBoost11D4(0.f)                                       // ctor 0x0000FDC4
+, mBoost11D8(0.f)                                       // ctor 0x0000FDC8
+, mBoostPuddleModeTimer(mBoost.mPhase0.mBoostPuddleModeTime) // ctor 0x0000FDDC: *(0x11D0)+0
 , mBoostRandomFloat(0.f)
 , mAggressive(false)
 , mFoundMovementPos(true) // ctor 0x0000FE0C: 0x11EC 0x10 = 1

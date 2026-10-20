@@ -144,10 +144,10 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     // 0x00006924/0x00006928 for the locomotion), not the guest bit 0x11ED 0x40.
     mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
     if ((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00006934: li r4, 0
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
     } else {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
     break;

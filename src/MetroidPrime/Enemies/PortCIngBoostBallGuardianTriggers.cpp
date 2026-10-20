@@ -107,6 +107,59 @@ void CIngBoostBallGuardian::SetupCollisionActors(CStateManager& mgr) {
   }
 }
 
+// fn_30_30E4: every collision actor of the guest's second manager (0xD64) takes the boost-ball
+// vulnerability (0x1178) or the ing spot's (0xA5C) (0x0000310C). The host never builds that
+// manager, so this is a no-op until the boost half does.
+void CIngBoostBallGuardian::SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost) {
+  if (mCollisionActorManager1 == nullptr) {
+    return;
+  }
+  const CDamageVulnerability& vuln = boost ? mVulnerability : mData.mIngSpotVulnerability;
+  for (uint i = 0; i < mCollisionActorManager1->GetNumCollisionActors(); ++i) {
+    const TUniqueId id =
+        mCollisionActorManager1->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    if (CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id))) {
+      actor->SetDamageVulnerability(vuln); // 0x00003158
+    }
+  }
+}
+
+// fn_30_3190: records the reflect flag, then every collision actor of the body manager (guest
+// 0xD60; the host's is mCollisionActorManager) takes the reflect vulnerability or CPatterned's own
+// (0x000031C8 / 0x000031D0, the non-virtual call).
+void CIngBoostBallGuardian::SetBodyManagerReflect(CStateManager& mgr, bool reflect) {
+  mReflectVulnerability = reflect; // 0x000031BC: 0x11EE 0x02
+  if (mCollisionActorManager.null()) {
+    return;
+  }
+  const CDamageVulnerability& vuln = reflect ? CDamageVulnerability::ReflectVulnerabilty()
+                                             : *CPatterned::GetDamageVulnerability();
+  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+    const TUniqueId id =
+        mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    if (CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id))) {
+      actor->SetDamageVulnerability(vuln); // 0x00003214
+    }
+  }
+}
+
+// fn_30_3068: entering (when allowed) raises the boost, the puddle form and the puddle generate
+// bits and zeroes 0x11D4; anything else leaves the puddle form, zeroes 0x11D8/0x11DC and reloads
+// the puddle mode time from the current phase.
+void CIngBoostBallGuardian::SetBoostPuddleMode(bool enter) {
+  if (enter && mBoostPuddleAllowed) { // 0x00003068; 0x00003074: 0x11EF 0x20
+    mShouldBoost = true;              // 0x00003084: 0x11EE 0x10 = 1
+    mBoostPuddleForm = true;          // 0x00003098: 0x11EE 0x08 = 1
+    mBoostPuddleGenerate = true;      // 0x000030A4: 0x11EE 0x04 = 1
+    mBoost11D4 = 0.f;                 // 0x000030AC
+    return;
+  }
+  mBoostPuddleForm = false; // 0x000030C0: 0x11EE 0x08 = 0
+  mBoost11D8 = 0.f;         // 0x000030CC
+  mBoostTimer = 0.f;        // 0x000030D0: 0x11DC
+  mBoostPuddleModeTimer = CurrentPhase().mBoostPuddleModeTime; // 0x000030DC: *(0x11D0)+0
+}
+
 // Ing body fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
 // and the contact damage is off cooldown, the player takes the Ing's contact damage.
 void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {

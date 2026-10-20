@@ -386,6 +386,15 @@ private:
   // Turn horizontally to the target (the Ing turns to the lure safe zone when one is set; this
   // module has no lure safe zone).
   void FaceLureOrTarget(CStateManager& mgr);
+  // fn_30_30E4: the guest's second manager (0xD64) takes the boost-ball vulnerability or the ing
+  // spot's. fn_30_3190: the body manager (guest 0xD60, the host's mCollisionActorManager) takes the
+  // reflect vulnerability or the base one. fn_30_3068: enter or leave the boost puddle mode.
+  void SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost);
+  void SetBodyManagerReflect(CStateManager& mgr, bool reflect);
+  void SetBoostPuddleMode(bool enter);
+  // Guest 0x11D0: the current phase. The phase advance (fn_30_D94C, 0x0000DBC0) is not ported, so
+  // it stays element 0, as the constructor sets it (0x0000FDC0).
+  const CIngBoostBallGuardianPhase& CurrentPhase() const { return mBoost.mPhase0; }
   // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
   void CreateCollisionActorManager(CStateManager& mgr);
   void SetupCollisionActors(CStateManager& mgr);
@@ -481,25 +490,30 @@ private:
   // Guest 0x11EE bit 2 (0x04): set with mShouldBoost/mBoostPuddleForm by fn_30_3068 (0x000030A4),
   // read by BecomeCorporeal's Update (0x0000B1A0) to pick generate type 2, cleared by its
   // Deactivate (0x0000B42C).
-  bool mBoostPuddleGenerate : 1;
+  bool mBoostPuddleGenerate : 1;                        // guest 0x11EE bit 2
+  bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
+  bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
   TUniqueId mBoostNavPointId;                            // guest 0x1096: the retreat's first point
   TUniqueId mBoostNavPointId2;                           // guest 0x1098: the retreat's second point
   float mBoostTimer;                                     // guest 0x11DC
+  float mBoost11D4;                                      // guest 0x11D4
+  float mBoost11D8;                                      // guest 0x11D8
+  float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
   bool mAggressive : 1;                                  // CIng: 0xE5C bit 4
   bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag)
-  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3
-  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2
+  bool mFoundMovementPos : 1;                            // guest 0x11EC bit 4 (CIng: 0xE5C bit 3)
+  bool mRecalcPath : 1;                                  // guest 0x11EC bit 3 (CIng: 0xE5C bit 2)
   bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0
-  bool mStartAsIngSpot : 1;                              // CIng: 0xE5D bit 5
-  bool mMoving : 1;                                      // CIng: 0xE5D bit 1
+  bool mStartAsIngSpot : 1;                              // guest 0x11ED bit 6 (CIng: 0xE5D bit 5)
+  bool mMoving : 1;                                      // guest 0x11ED bit 2 (CIng: 0xE5D bit 1)
   bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
   bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7
   bool mSplat : 1;                                       // CIng: 0xE5E bit 6
   bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4
   bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6
-  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7
+  bool mRenderModel : 1;                                 // guest 0x11EC bit 0 (CIng: 0xE5D bit 7)
   bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4
   bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3
   bool mAlert : 1;                                       // CIng: 0xE5D bit 2
