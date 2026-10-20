@@ -540,7 +540,7 @@ module's own slots are 0x08 `fn_29_FF88` (dtor), 0x14 `fn_29_10F58` (Think), 0x1
 0x3C `fn_29_90` thunk (it calls slot 0x38, exactly like the mini portal's); every other slot is the
 base's own symbol, including 0x0C `CActor::TypesMatch` and 0x10 `CEntity::PreThink`.
 
-**Ctor member map [proven from `fn_29_1105C`]**: CActor 0x158; 0x158 `CTransform4f` (copy of the
+**Ctor member map [proven from `fn_29_1105C`]** (the table with the asm offsets is A.18): CActor 0x158; 0x158 `CTransform4f` (copy of the
 ctor's transform); 0x188 `CPathFindSearch` (0xec); 0x274 `CVector3f` (the state's 0xdc8), 0x280
 `CVector3f` (the model scale), 0x28c int 0, 0x290 f2, 0x294 target `TUniqueId`, 0x298/0x29c f3, 0x2a0 f4,
 0x2a4 `CToken` (asset A) + 0x2ac byte "the effect was built" (`ptr != nullptr`) + 0x2b0
@@ -822,13 +822,83 @@ area is an ing spot by the time it can be killed. The same is true of `BecomeWal
    (Think, 0x1E8) and `fn_29_11A7C` (the effect, 0x198). The state is reachable: the Ing opens a
    mini portal when `ShouldOpenMiniPortal` fires (aggressive and the target in a safe zone), and
    `MiniPortalAttack` then asks the body for a projectile attack.
-2. `CIngExitHostEffect` - the exit host's effect actor. `fn_29_1105C` (the ctor, 0x3DC), the
-   bezier leg (`fn_29_10154`, `1046C`, `1065C`, `1077C`), the two particle systems (`fn_29_10944`,
-   0x40C, plus `10DEC`/`10E64`/`10EB4`), the Think (`fn_29_10F58`) and the swarm emitter
-   (`fn_29_1006C`/`100B8`). The state `ExitHost` is ported and marked; the effect actor is what it
-   spawns.
-3. The eight triggers no run has fired (A.15) - those need a scenario (a lure safe zone, an attack
+2. The eight triggers no run has fired (A.15) - those need a scenario (a lure safe zone, an attack
    pattern, a host), not an audit.
+
+### A.18 The exit host effect's member map, from the ctor's asm (2026-10-20)
+
+`fn_29_1105C` (0x3DC, asm 0x1105C-0x11434) read against the REL: every store below is the REL's own
+instruction, so the retail offset and the asm offset sit side by side. The class is
+`include/MetroidPrime/Enemies/CIngExitHostEffect.hpp` + `src/MetroidPrime/Enemies/
+PortCIngExitHostEffect.cpp`; retail's size is 0x5e8 (the CActor base is 0x158), the host's is larger
+(a CPathFindSearch and two CTokens carry pointers), so the host allocates `sizeof` and the retail
+offsets are comments only.
+
+| retail | member | value | asm |
+|---|---|---|---|
+| 0x000 | the vtable `lbl_29_data_C60` | - | 0x11160 |
+| 0x158 | `CTransform4f` | a copy of the ctor's transform (r25) | 0x11164 |
+| 0x188 | `CPathFindSearch` (0xec) | area null, flags 3, index 0, radius 1.0f, height 1.0f (`rodata_7A8`), filter 0, region kRP_Center | 0x11168-0x11190 |
+| 0x274 | `CVector3f` | the dest (r26) - CIng+0xdc8 | 0x111A4-0x111BC |
+| 0x280 | `CVector3f` | the scale (r27) - the model's scale | 0x111C4-0x111DC |
+| 0x28c | float | 0.0f (`rodata_798`) | 0x111DC |
+| 0x290 | float | f2 - the ctor's x290 (CIngData swarm +0x14) | 0x111E0 |
+| 0x294 | `TUniqueId` | the target id (the stack arg at 0x448, `lhz`/`sth`) | 0x111E4-0x111E8 |
+| 0x298 | float | f3 - the ctor's x298 (swarm +0x18) | 0x111EC |
+| 0x29c | float | f3 again | 0x111F0 |
+| 0x2a0 | float | f4 - the ctor's x2a0 (swarm +0x1c) | 0x111F4 |
+| 0x2a4 | `CToken` | assetA (r28) through the resource factory + the pool | 0x111F8-0x11238 |
+| 0x2ac | byte | the effect A "created" flag: `(neg r3 \| r3) >> 31` | 0x1125C-0x11270 |
+| 0x2b0 | `CParticleGen*` | fn_29_10D50(this, the scale, 0x54, token A) | 0x11248-0x11274 |
+| 0x2b4 | `CToken` | assetB (r29) | 0x11278-0x11394 |
+| 0x2bc | byte | the effect B "created" flag | 0x112DC-0x112F0 |
+| 0x2c0 | `CParticleGen*` | fn_29_10D50(this, the scale, 0x54, token B) | 0x112C8-0x11300 |
+| 0x2c4 | float | f1 - the ctor's x2c4 (swarm +0x0c) | 0x11308 |
+| 0x2c8 | int | 0 - the bezier point count | 0x1130C |
+| 0x2cc-0x2f8 | `CVector3f[4]` | **never written by the ctor** (no store between 0x2c8 and 0x2fc), so retail leaves them uninitialised; the host zeroes them | - |
+| 0x2fc | float | 0.0f (`rodata_798`) | 0x11310 |
+| 0x300 | float | 1.0f (`rodata_7A8`) | 0x11314 |
+| 0x304 | int | the trail container's size: 0, then 60 (0x3c) by fn_29_11438 | 0x11318, 0x11424-0x114FC |
+| 0x308 | `CVector3f[60]` | 60 copies of the actor's translation (0x54/0x58/0x5c), built in a temporary and copied in | 0x11348-0x113F0, 0x113F8 |
+| 0x5d8 | int | 0 - the trail write index | 0x1131C |
+| 0x5dc | `CSfxHandle` | 0 - null | 0x11320 |
+| 0x5e0 | `ushort` | the ctor's sound (the stack arg at 0x44e) - CIngData swarm +0x20 | 0x11324 |
+| 0x5e2 | byte | bit 7 cleared: `rlwimi r0, r6, 7, 24, 24` with r6 = 0 clears bit 24 of the word = 1u<<(31-24) = 0x80 of the byte; the other bits keep retail's uninitialised memory, the host zeroes them | 0x11328-0x11330 |
+
+The ctor's arguments (asm 0x11090-0x110C8): r3 = this, r4 = the uid pointer, r5 = the CEntityInfo, r6 =
+the transform, r7 = the dest vector, r8 = the scale vector, r9 = assetA, r10 = assetB, the stack at
+0x448 = the target id pointer and 0x44e = the sound; f1 = x2c4, f2 = x290, f3 = x298, f4 = x2a0. The
+caller (fn_29_9D68 at 0x9F48-0x9F54) is the module's only `rs_new(0x5e8)` and fills them in that
+order: the swarm block at CIng+0x9a8 (assetA), +0x9ac (assetB), +0x9b0 (f1), +0x9b8 (f2), +0x9bc
+(f3), +0x9c0 (f4), +0x9c4 (the sound), the dest CIng+0xdc8, the target CIng+0xd6c and the model's
+scale (CIng+0x60). The port's caller (`CIng::ExitHost`, `src/MetroidPrime/Enemies/PortCIng.cpp`)
+passes exactly those.
+
+**The dtor `fn_29_FF88`** (0xDC, asm 0xFF88-0x10140): the vtable is reset to `lbl_29_data_C60`
+(0xFFA8-0xFFB4), then the effect B is deleted through its vtable slot 0x08 with the deleting flag 1
+(0xFFBC-0xFFE4), the token B destroyed (0xFFE8), the effect A deleted the same way (0xFFF4-0x10024),
+the token A destroyed (0x10028), the CActor base destroyed (0x10034-0x1003C) and the block freed when
+the deleting flag is set (0x10040-0x1004C). The two "created" bytes only gate those two deletes
+(0xFFBC, 0xFFF4), so the host's `delete mEffectB; delete mEffectA;` is the same test, and the
+host's member order destroys them in the same order (mEffectB, mTokenB, mEffectA, mTokenA).
+
+**Runtime (2026-10-20, this lane)**: Temple Grounds area 57 (world 1baa96c2, area 2735236b), 12000
+frames, and Agon 01_sand_entrance_dark (world 42b935e4), 14000 frames - both exit 0 with 0
+`[port] caught` / `[reach-stub]`, and the Ing's FSM ran (Start -> BecomeCorporeal -> Lurk, ArmSwipe,
+BecomeIngSpot, IngSpotPathFind). The exit host effect's ctor did **not** run in either: only the
+ExitHost state builds it, and that needs the Ing to leave a host - the run that did reach it
+(`/tmp/opencode/ing_run5.log`) shows `exit host: swarm 021d, sound 20d0`.
+
+**Open question 1, answered: `data_C60` is `CIngExitHostEffect`.** The Wii export's own mangled ctor
+(`config/R3ME01/symbols.txt:3184`) is
+`__ct__18CIngExitHostEffectF9TUniqueIdRC11CEntityInfoRC12CTransform4fRC9CVector3fRC9CVector3fUiUiff9TUniqueIdffUs`,
+i.e. `CIngExitHostEffect(TUniqueId, const CEntityInfo&, const CTransform4f&, const CVector3f&,
+const CVector3f&, uint, uint, float, float, TUniqueId, float, float, ushort)` - 13 arguments - and
+they line up one for one with the REL ctor's use of them (uid, info, transform, dest, scale, the two
+asset ids, the two floats x2c4/x290, the target id, the two floats x298/x2a0, the sound). The name
+matches as well: the REL's rodata_7C8 is "IngExitHostSwarmFx" (asm 0x1108C), the vtable's slot 0x08
+is `fn_29_FF88` (a dtor), and the class is the only `rs_new(0x5e8)` in the module. No other class in
+the module has that ctor shape, so the identification is closed.
 
 ## B. MinorIng.rel (module 44)
 
@@ -947,7 +1017,6 @@ area is an ing spot by the time it can be killed. The same is true of `BecomeWal
 - `include/MetroidPrime/CEntityInfo.hpp` - no `kET_Ing` (116) / `kET_MinorIng` (147).
 - `src/MetroidPrime/TypesMatch.cpp:324,355,589,642` - placeholder comments for both.
 - No `include/MetroidPrime/Enemies/CIng.hpp` / `CMinorIng.hpp`; no CIngData / CMinorIngData.
-- No `CIngExitHostEffect` declaration anywhere.
 
 ---
 
@@ -971,10 +1040,8 @@ area is an ing spot by the time it can be killed. The same is true of `BecomeWal
 
 ## Open questions (verify first)
 
-1. `data_C60` (0x5e8, ctor `1105C`) is `CIngExitHostEffect` - compare its ctor's parameter use
-   with the Wii export signature.
-2. `facePlateModel` is unused by Ing's loader and ctor - confirm no later read via `SLdrIng`.
-3. Ing's dependency on GeomBlobV2's `CCollisionTracker` (`fn_29_4830` -> `fn_25_4290`) and that
+1. `facePlateModel` is unused by Ing's loader and ctor - confirm no later read via `SLdrIng`.
+2. Ing's dependency on GeomBlobV2's `CCollisionTracker` (`fn_29_4830` -> `fn_25_4290`) and that
    the host module link keeps that symbol global.
-4. CIng vtable slot roles (`C654`, `C814`, `C9A4`) and the arm segment-name strings.
-5. MinorIng's state / code-function split and the `22B0` entry.
+3. CIng vtable slot roles (`C654`, `C814`, `C9A4`) and the arm segment-name strings.
+4. MinorIng's state / code-function split and the `22B0` entry.

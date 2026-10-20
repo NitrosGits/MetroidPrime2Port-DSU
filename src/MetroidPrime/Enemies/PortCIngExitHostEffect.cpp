@@ -75,47 +75,53 @@ CIngExitHostEffect::CIngExitHostEffect(TUniqueId uid, const CEntityInfo& info,
 , mPathFindSearch(nullptr, 3, 0, 1.f, 1.f, 0, CPFRegion::kRP_Center)
 , mDest(dest)               // 0x274
 , mScale(scale)             // 0x280
-, mX28c(0.f)                // 0x28c
-, mX290(x290)               // 0x290
-, mTarget(target)           // 0x294
-, mX298(x298)               // 0x298
-, mX29c(x298)               // 0x29c, the same value again
-, mX2a0(x2a0)               // 0x2a0
-, mTokenA(LoadAssetToken(assetA)) // 0x2a4
-, mEffectA(nullptr)               // 0x2b0
-, mTokenB(LoadAssetToken(assetB)) // 0x2b4
-, mEffectB(nullptr)               // 0x2c0
-, mX2c4(x2c4)                     // 0x2c4
-, mBezierCount(0)                 // 0x2c8
-, mX2fc(0.f)                      // 0x2fc
-, mX300(1.f)                      // 0x300
-, mTrailIndex(0)                  // 0x5d8
-, mSwarmMoveHandle()              // 0x5dc, null
-, mSound(sound)                   // 0x5e0
-, mFlags(0)                       // 0x5e2
+, mX28c(0.f)                // 0x28c, asm 0x111DC (rodata_798 = 0.0f)
+, mX290(x290)               // 0x290, asm 0x111E0 (f2)
+, mTarget(target)           // 0x294, asm 0x111E8 (the target id, lhz/strh)
+, mX298(x298)               // 0x298, asm 0x111EC (f3)
+, mX29c(x298)               // 0x29c, asm 0x111F0 (f3 again)
+, mX2a0(x2a0)               // 0x2a0, asm 0x111F4 (f4)
+, mTokenA(LoadAssetToken(assetA)) // 0x2a4, asm 0x11238 (the pool + CToken copy)
+, mEffectA(nullptr)               // 0x2b0, asm 0x11274
+, mTokenB(LoadAssetToken(assetB)) // 0x2b4, asm 0x11394
+, mEffectB(nullptr)               // 0x2c0, asm 0x11300
+, mX2c4(x2c4)                     // 0x2c4, asm 0x11308 (f1)
+, mBezierCount(0)                 // 0x2c8, asm 0x1130C
+, mX2fc(0.f)                      // 0x2fc, asm 0x11310 (rodata_798 = 0.0f)
+, mX300(1.f)                      // 0x300, asm 0x11314 (rodata_7A8 = 1.0f)
+, mTrailIndex(0)                  // 0x5d8, asm 0x1131C
+, mSwarmMoveHandle()              // 0x5dc, null, asm 0x11320
+, mSound(sound)                   // 0x5e0, asm 0x11324
+, mFlags(0)                       // 0x5e2, asm 0x11328-0x11330 (bit 7 cleared)
 {
-  // 0x2cc..0x2f8: the four bezier control points, zero here (the array member cannot be
-  // value-initialised in the initialiser list).
+  // 0x2cc..0x2f8: the four bezier control points. Retail's ctor never writes them (no store between
+  // 0x2c8 at asm 0x1130C and 0x2fc at asm 0x11310), so they stay uninitialised there; the host
+  // zeroes them (the array member cannot be value-initialised in the initialiser list).
   mBezier[0] = CVector3f::Zero();
   mBezier[1] = CVector3f::Zero();
   mBezier[2] = CVector3f::Zero();
   mBezier[3] = CVector3f::Zero();
 
-  // The two effects, A then B, both from the actor's translation and the model scale.
+  // The two effects, A then B, both from the actor's translation and the model scale (asm 0x11248
+  // and 0x112C8: fn_29_10D50(this, the scale, 0x54, the token)).
   mEffectA = ConstructEffect(mTokenA, scale, GetTranslation());
   mEffectB = ConstructEffect(mTokenB, scale, GetTranslation());
 
-  // fn_29_1105C ends by calling retail slot 0x34 on mEffectA only - CParticleGen::SetGeneratorRate.
+  // fn_29_1105C ends by calling retail slot 0x34 on mEffectA only - CParticleGen::SetGeneratorRate
+  // (asm 0x11334-0x11344, with f1 = 1.0f from rodata_7A8).
   if (mEffectA) {
     mEffectA->SetGeneratorRate(1.f);
   }
 
   // 0x5e2: retail clears bit 7 and leaves the other bits as they were, i.e. read from uninitialised
   // memory, which the host does not do (zero above); the effect's Think sets bit 7 once it has
-  // arrived, and ExitHost's Update watcher reads it.
+  // arrived, and ExitHost's Update watcher reads it. The clear is `rlwimi r0, r6, 7, 24, 24` with
+  // r6 = 0 (asm 0x1132C): bit 24 of the word = 1u<<(31-24) = 0x80 of the byte.
   //
   // 0x304/0x308: fn_29_11438 is retail's copy-assignment for the inline trail container - the ctor
-  // builds 60 copies of the actor's translation (retail 0x54) in a temporary and copies them in.
+  // builds 60 copies of the actor's translation (retail 0x54) in a temporary and copies them in
+  // (asm 0x11348-0x113F0 fills the temporary, asm 0x113F8 copies it into 0x304; the container's
+  // size word at 0x304 is the 0x3c = 60 of asm 0x11424, and the host keeps the count in the array).
   const CVector3f translation = GetTranslation();
   for (int i = 0; i < 60; ++i) {
     mTrail[i] = translation;
@@ -123,8 +129,10 @@ CIngExitHostEffect::CIngExitHostEffect(TUniqueId uid, const CEntityInfo& info,
 }
 
 // @ fn_29_FF88
-// Retail resets the vtable, deletes each effect through CParticleGen's deleting destructor (slot
-// 0x08) when its pointer is non-null, then destroys the two tokens and the CActor base in reverse.
+// Retail resets the vtable (asm 0xFFA8-0xFFB4), deletes each effect through CParticleGen's deleting
+// destructor (slot 0x08, with the deleting flag 1) when its pointer is non-null, then destroys the
+// two tokens and the CActor base in reverse. The two "created" bytes (0x2ac/0x2bc) only gate those
+// deletes (asm 0xFFBC, 0xFFF4), so the host's null check on the pointers is the same test.
 CIngExitHostEffect::~CIngExitHostEffect() {
   delete mEffectB;
   delete mEffectA;
