@@ -551,13 +551,13 @@ void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, floa
     return;
   }
   LogState("SelectTarget");
-  if (mgr.GetObjectById(mTargetId) == nullptr) {
-    if (const CPlayer* player = mgr.GetPlayer(0)) {
-      mTargetId = player->GetUniqueId();
-    }
+  // 0x00008C58: a live target keeps everything as it is - no line-of-sight retarget, no message.
+  if (mgr.GetObjectById(mTargetId) != nullptr) {
+    return;
   }
-  mLineOfSight.SetTarget(mTargetId);
-  // [?] retail sends script messages here; which state/message pair was not read.
+  mTargetId = mgr.GetPlayer(0)->GetUniqueId(); // 0x00008C6C: mgr+0x14FC, no null test
+  mLineOfSight.SetTarget(mTargetId);           // 0x00008C78: 0x10B8
+  SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x00008CA4: 'ATTK', -1
 }
 
 // fn_30_8998 (this module).
