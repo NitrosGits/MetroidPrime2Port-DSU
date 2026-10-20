@@ -502,6 +502,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
       "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
+      "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"
       "items                       power-up amounts and capacities\n"
       "world <world> [area]        load another world (the MP1 console's `warp <world>`)\n"
       "worlds                      the memory card's world ids, areas and name tables\n"
@@ -1498,6 +1499,24 @@ void CmdFace(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// aim <yaw_deg> <pitch_deg>: point the view where the run cannot turn it. Yaw reads as `face`
+// does (0 = +y, 90 = +x) and a negative pitch looks down, which is how a level shot reaches a
+// puddle on the floor. It turns mouse aim on for the rest of the run, since that is the source
+// CFirstPersonCamera takes its pitch from; `aim` again re-places the view.
+void CmdAim(CStateManager&, const Args& args, std::string& out) {
+  float yaw = 0.f;
+  float pitch = 0.f;
+  if (args.size() != 3 || !ParseFloat(args[1], yaw) || !ParseFloat(args[2], pitch)) {
+    Fail("usage: aim <yaw_deg> <pitch_deg>   (0 = +y, 90 = +x; negative pitch looks down)");
+    return;
+  }
+  PortMouse::SetAimAngles(yaw, pitch);
+  char line[96];
+  std::snprintf(line, sizeof(line), "aim yaw %.0f pitch %.0f (yaw as `face`, pitch +up)\n",
+                static_cast< double >(yaw), static_cast< double >(pitch));
+  out += line;
+}
+
 // give adds capacity and fills it; take removes capacity, and the amount with it (which is how a
 // suit upgrade is lost). This is CScriptPickup's own path (CScriptPickup.cpp:342-349).
 void CmdGive(CStateManager& mgr, const Args& args, bool take, std::string& out) {
@@ -1823,6 +1842,7 @@ constexpr SCommand kCommands[] = {
     {"worlds", CmdWorlds, true},
     {"strg", CmdStrg, true},
     {"face", CmdFace, true},
+    {"aim", CmdAim, true},
     {"give", CmdGiveAdd, true},
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
