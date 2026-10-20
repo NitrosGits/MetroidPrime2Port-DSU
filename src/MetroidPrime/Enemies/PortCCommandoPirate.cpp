@@ -554,8 +554,7 @@ void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) 
   // 0x0000AB4C: the guest takes the id the state manager holds for the player (its +0x14FC, the
   // id at +8 of it); the host's state manager has no member at that offset, so the port uses the
   // player actor's id, which is what the bone tracking and the script message want.
-  const TUniqueId target = mgr.GetNumPlayers() > 0 ? mgr.GetPlayer(0)->GetUniqueId()
-                                                    : kInvalidUniqueId;
+  const TUniqueId target = mgr.GetPlayer(0)->GetUniqueId(); // mgr+0x14FC, +0x8 at 0x0000AB50
   xbca_ = target;                                    // 0x0000AB5C
   // 0x0000AB68: the guest tells its visual knowledge the new target (guest this+0xAB0). The host
   // has no CVisualKnowledge class yet, so the call is a stand-in.
