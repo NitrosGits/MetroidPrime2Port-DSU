@@ -520,3 +520,21 @@ Two calls stay shells: the DOL's CEntity virtual at the slot 0x8C (the DOL's slo
 in the port) and the DOL's `CSfxManager::UpdateEmitter`. The four fields the body reads (0xF02,
 0xEF8, 0xF50-0xF58 and 0xF5C) are written by the retail's state machine, which the port has not
 entered, so they keep their defaults.
+
+#### fn_75_31A8 (0x14C) - the command module's "is the chassis ours" read (not ported yet)
+
+Read on 2026-10-20, left for a slice with room (the port needs six new fields and the chassis's
+own 0xCC0 and 0x420 semantics, so it is not a quick body):
+
+- the chassis id (the u16 at 0xEFA, 0x31C8 `lhz`): if it is the invalid id the function goes to
+  0x3254, otherwise the chassis is looked up (0x31E8 `GetObjectById`) and cast (0x31EC); a null
+  cast or a chassis whose command module id (0xC6C) is not ours (0x3200-0x3204) goes to 0x3238;
+- ours: 0xEFE takes the chassis's 0xCC0 (0x3210-0x3218), then `fn_75_1578` (0x3224) and the timer
+  0xF14 is set to 3.0f (`lbl_75_rodata_90`, 0x322C-0x3230);
+- 0x3238: the chassis id at 0xEFA is set to the invalid id (0x3240) and 0x12A is written (0x324C);
+- 0x3254: the data's flag byte (0x7C0) bit 0x8 (0x3258 `rlwinm` 28-28) and the timer 0xF14 <= 0.0f
+  (0x326C-0x3274) and the id 0xEFC being the invalid one (0x327C-0x3280) gate `fn_75_2280`
+  (0x3284) and the timer is set to 3.0f again (0x328C-0x3290);
+- 0x3298: the id 0xEFC (0x32A4) is looked up and cast (0x32B4-0x32B8); if the chassis's byte at
+  0x420 has the word's bit 25 set (0x32C4-0x32CC) the function ends, else 0xEFC is set to the
+  invalid id (0x32D0-0x32D8).
