@@ -990,9 +990,9 @@ wakes the knee joint colliders; a knee's destruction (the helper that writes the
 and asks for the knee's deletion) is what the `KneeDestroyed` trigger reads (fn_14_9A48, ported),
 and the state machine's transition then enters Crippled. In the port the word at 0x1284 stays -1:
 the module's AcceptScriptMsg (fn_14_A6A8, 0x4F0) is a stand-in and the port has no knee actors
-(the knee armour exists since 2026-10-20, but the knee damage helpers fn_14_3A44/fn_14_5838/
-fn_14_5470 are not ported), so the trigger never fires and the
-Crippled state is unreachable - the beacon's pieces are in place, but nothing runs them. The
+(since 2026-10-20 the knee chain fn_14_3A44/fn_14_5838/fn_14_5470 is ported and sets 0x1284,
+see "Knee chain" below; KneeDestroyedReaction fn_14_8090 is still a stand-in), so the
+Crippled state is still unreachable - the beacon's pieces are in place, but nothing runs them. The
 console's `damage` does not help either: the guardian's vulnerability is pass-through
 (fn_14_9FE4) and the retail's damage path (fn_14_78) is not ported.
 
@@ -1107,8 +1107,8 @@ the cases are:
 | "XCRT" | 0x58435254 | 0xA81C | body controller `Activate`, fn_14_4080, fn_14_24E4, visor flags (0xF off, 2 on), `RemoveMaterial(0x3F)`, fn_14_14F8 |
 
 All cases are ported (the "XCRT" case since 2026-10-20, see "Knee chain" below). The helpers
-the ported cases call - fn_14_3A44, fn_14_3F14, fn_14_5910, fn_14_5838, fn_14_5644 and
-fn_14_4F2C - are not ported either, so each case logs them once.
+the ported cases call - fn_14_3F14, fn_14_5910, fn_14_5644 and fn_14_4F2C - are not ported
+either (fn_14_3A44 and fn_14_5838 are, 2026-10-20), so each case logs them once.
 
 The "ACTV" and "DCTV" cases only run when the actor's active bit is clear resp. set (the retail
 reads the byte at guest 0x20, bit 7, at 0xA6C4, before it calls the base), and the "ACTV"
@@ -1138,17 +1138,27 @@ speed, guest 0x3C8, from data +0x17C..+0x188 by armours left) and the "XCRT" cas
 members: 0xE00 (the actor parameters, fn_14_C57C), 0x1100 (the explosion token), 0x10F0, 0x1144,
 0x1158.
 
-Retail damage flow (not ported): a knee collider's "XDMG" reaches fn_14_5838, which picks the head
+Retail damage flow: a knee collider's "XDMG" reaches fn_14_5838, which picks the head
 collider (0x10CC, fn_14_5274), a knee (fn_14_3E2C finds it in 0xFBC..; fn_14_5470 removes the
 armour and fires KneeDestroyed when its health is gone) or the root (fn_14_43AC / 0x1080,
 fn_14_5384). The knee colliders start with the ricochet vulnerability (0x1044); the "IM0x"
 messages' helper fn_14_3A44 swaps in the vulnerable one (0x1014) and calls fn_14_CE94 on the
-armour. Those five functions are the next slice.
+armour. Ported since the second slice: fn_14_3A44 (+ the 0x1014 vulnerability), fn_14_3E2C,
+fn_14_5470 (with fn_14_143C, which moves the IS06/Follow waypoint to the armour and sends IS07;
+0x10CE, which it decrements, is only set by the stand-in fn_14_5910) and fn_14_5838 (its head and
+root paths fn_14_5274/fn_14_5384 are stand-ins).
 
-Runtime (area 53, layers 3/11, `send u054d Activate`): clean (0 caught, 0 reach-stub); four
-`CDigitalGuardianKneeArmor` at the knee locators (inactive, like the guardian at XCRT); the four
-knee colliders take `damage <id> 500` as 300 -> 300 (ricochet) and the guardian stays 150/150,
-so Crippled is still not reachable.
+Runtime, first slice (area 53, layers 3/11, `send u054d Activate`): clean; four
+`CDigitalGuardianKneeArmor` at the knee locators (inactive, like the guardian at XCRT); the knee
+colliders take `damage <id> 500` as 300 -> 300 (ricochet).
+
+Runtime, second slice (`/tmp/opencode/dgknee/run2.sh`): clean (0 caught, 0 reach-stub). After
+`send u054d 0x494d3031/3033/3035/3037` (IM01/03/05/07) each knee takes `damage 100` as 300 -> 200
+(the armour gets "XDMG"); `damage 500` takes it to -300, deletes its armour and sets 0x1284, and
+the FSM enters KneeDestroyedReaction (the fn_14_8090 stand-in logs). The level's IS07 links
+re-close the other knees (a later `damage` ricochets until IM0x is resent); with IM0x resent all
+four knees and armours go. Crippled is not entered: KneeDestroyedReaction (fn_14_8090) is a
+stand-in, so the walk stops there (guardian 150/150).
 
 ### WP3 — the head module
 
