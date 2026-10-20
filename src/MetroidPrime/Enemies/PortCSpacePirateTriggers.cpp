@@ -254,8 +254,12 @@ bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) con
   return !x8f7_28_noPlayerLos;
 }
 
+// Retail reads the waypoint navigation's destination (this+0x6c0, which TargetPatrol sets), not
+// MP1's mDestObj: with mDestObj, TargetPatrol ended on its first tick and the skiff pirates in
+// Central Mining Station lurked on the skiff instead of walking off it.
+// @ fn_72_BC94
 bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
-  return GetDestObj() == kInvalidUniqueId;
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 // The detection cone test, over every player: the first one whose offset lies inside
