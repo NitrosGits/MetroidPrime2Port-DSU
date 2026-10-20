@@ -15,6 +15,7 @@
 
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CParticleGenInfo.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -97,9 +98,7 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 };
 
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
-// function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
-// (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
-void StandInFn_75_10D0() { StandIn("fn_75_10D0 (0xB8, the module's own transform)"); }
+// function and its size.
 
 // The module's own calls in the command module's script-message handler (fn_75_654C). Both are
 // over 0x80, so each stays a named once-logging shell.
@@ -175,22 +174,11 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 void StandInFn_75_1578() { StandIn("fn_75_1578 (0x218)"); }
 void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
 
-// The module's own calls in the collision update: fn_75_2BE0 is over 0x80, so it stays a named
-// once-logging shell that returns the neutral value (no object).
-CEntity* PortFn_75_2BE0() {
-  StandIn("fn_75_2BE0 (0xE0)");
-  return nullptr;
-}
-// The vtable word 0x4C of the object fn_75_2BE0 returns, and the CCollisionActor's virtual at
-// the vtable word 0x38 (its 0x4 field is what the body reads). The port has no name for the
-// first DOL virtual yet, so it stays a shell; the second one is CCollisionActor::HealthInfo()
-// (found while porting fn_75_2CE0, which calls it), but this body still asks the shell and the
-// second one answers the neutral 0.0f.
+// The vtable word 0x4C of the object fn_75_2BE0 returns. The port has no name for that DOL
+// virtual yet, so it stays a shell. The CCollisionActor's virtual at the vtable word 0x38 (the
+// float at its +0x4) is CCollisionActor::HealthInfo() (found while porting fn_75_2CE0, which
+// calls it), so the body asks the host for it now.
 void StandInVTable0x4C() { StandIn("the vtable word 0x4C of fn_75_2BE0's result"); }
-float StandInCollisionActorVirtual0x38() {
-  StandIn("the CCollisionActor virtual at the vtable word 0x38");
-  return 0.f;
-}
 
 // fn_75_2CE0 (not marked: the run only reached the null collision-actor lookup)
 // The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
@@ -283,6 +271,33 @@ void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp)
   }
 }
 
+// fn_75_2BE0 (not marked: the run only reached the state-0 return)
+// The head's shield particle effect (0x2BE0-0x2BC4): the state at 0xEE0 picks the name - 1 gives
+// "LightShield" (rodata 0x10, 0x2C18-0x2C34), any other state gives "DarkShield" (rodata 0x14,
+// 0x2C38-0x2C50) and the state 0 gives nothing (0x2C00-0x2C04, the return at 0x2CA0). The name is
+// the animation data's first particle effect (0x2C88 GetFirstParticleEffect), which is what the
+// body returns.
+CParticleGenInfo* CSplitterCommandModule::PortGetShieldEffect() {
+  if (mCollisionState == 0) {
+    return nullptr;
+  }
+  const char* name = mCollisionState == 1 ? "LightShield" : "DarkShield";
+  return AnimationData()->GetFirstParticleEffect(rstl::string_l(name));
+}
+
+// @ fn_75_10D0
+// The module's own transform (0x10D0-0x1188): the actor's own transform (the guest's at 0x24) is
+// copied (0x10F0-0x10F4), the "Beam_LCTR" locator's transform (rodata 0x293, 0x1118
+// GetLocatorTransform) gives the point, the point is moved through the copy (0x1140 the
+// operator*) and the result's translation goes into the copy (0x1154-0x115C), which is the
+// result.
+void CSplitterCommandModule::PortModuleTransform(CTransform4f& out) const {
+  CTransform4f copy = GetTransform();
+  const CVector3f moved = copy * GetLocatorTransform(rstl::string_l("Beam_LCTR")).GetTranslation();
+  copy.SetTranslation(moved);
+  out = copy;
+}
+
 // fn_75_3004 (0x1A4) - the command module's collision update. The body: the module's own call
 // fn_75_2BE0 (0x3024) gives an object whose vtable word 0x4C is called with the colour at 0xF04
 // (0x3030-0x3040); the DOL's CSfxManager::UpdateEmitter runs with the handle at 0xF60, the
@@ -296,16 +311,17 @@ void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp)
 // and the timer at zero or below advances the state to 1 or 2 (0x3138-0x3170) and runs
 // fn_75_2CE0 with it (0x3174-0x3188).
 void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
-  CEntity* sound = PortFn_75_2BE0();
-  if (sound != nullptr) {
+  CParticleGenInfo* effect = PortGetShieldEffect();
+  if (effect != nullptr) {
     StandInVTable0x4C();
   }
   StandInSfxUpdateEmitter();
-  const CEntity* actor = mgr.ObjectById(mSoundTargetId);
-  if (actor == nullptr) {
+  CEntity* entity = mgr.ObjectById(mSoundTargetId);
+  if (entity == nullptr) {
     return;
   }
-  if (TCastToConstPtr< CCollisionActor >(actor) == nullptr) {
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(entity);
+  if (actor == nullptr) {
     return;
   }
   if (mCollisionActorManager != nullptr) {
@@ -313,7 +329,10 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   }
   if (mCollisionState > 0 && mCollisionState < 3) {
     if ((mAutoDestructFlags & 0x8) != 0) {
-      if (StandInCollisionActorVirtual0x38() <= 0.f) {
+      // 0x30E8-0x3110: the collision actor's virtual at the vtable word 0x38 is
+      // CCollisionActor::HealthInfo() and the float at its +0x4 is the health; the shield goes
+      // down when that health is zero or below.
+      if (actor->HealthInfo()->GetHP() <= 0.f) {
         mCollisionState = 0;
         mCountdownTimerA = mData.mResetShieldTime;
         // 0x3124-0x3130: the retail calls fn_75_2CE0 with the flag clear (the shield goes down).
@@ -517,8 +536,14 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   // 0x11A4-0x11B4: the beam effect's id (0xF68) is looked up.
   CEntity* beam = mgr.ObjectById(mBeamEffectId);
   // 0x11B8-0x11E0: the module's own transform (fn_75_10D0) is built and copied and, when the
-  // beam effect is there, set on it. The transform's own body is a once-logging shell.
-  StandInFn_75_10D0();
+  // beam effect is there, set on it. The retail casts the object to a CActor without a check;
+  // the port's beam effect is never created (fn_75_11884 is a shell), so the cast is the only
+  // way to keep the call safe here.
+  CTransform4f moduleTransform = GetTransform();
+  PortModuleTransform(moduleTransform);
+  if (CActor* beamActor = TCastToPtr< CActor >(beam)) {
+    beamActor->SetTransform(moduleTransform);
+  }
   // 0x1200-0x1208: the gate (fn_75_58E8) decides whether the body runs.
   if (!PortChassisTimerRunning(mgr)) {
     if (beam == nullptr) {

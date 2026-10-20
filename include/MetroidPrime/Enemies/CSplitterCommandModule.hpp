@@ -2,6 +2,7 @@
 #define _CSPLITTERCOMMANDMODULE
 
 class CCollisionActorManager;
+class CParticleGenInfo;
 
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -212,6 +213,13 @@ private:
   // states and the shield's sound emitter (the handle at 0xF60). The flag is the "a shield goes
   // up" one: it plays the shield-on sound (the sound id at 0x89C).
   void PortUpdateShield(CStateManager& mgr, bool shieldUp);
+  // The retail's fn_75_2BE0: the shield's particle effect. The state at 0xEE0 picks the name
+  // (1 gives "LightShield", any other state "DarkShield", the state 0 nothing) and the body
+  // returns the animation data's first particle effect with that name.
+  CParticleGenInfo* PortGetShieldEffect();
+  // The retail's fn_75_10D0: the module's own transform - the actor's own transform with the
+  // "Beam_LCTR" locator's translation moved through it.
+  void PortModuleTransform(CTransform4f& out) const;
 
   // The retail's fn_75_1188 (the head's beam-effect spawner) and the gate it asks first
   // (fn_75_58E8: the chassis must be there and its scan timer must run).
