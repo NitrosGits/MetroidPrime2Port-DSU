@@ -994,3 +994,13 @@ flags, modes, timers and ids forced, the hooks and their once-logs reverted afte
   0 (fn_16_7F8C+0x98), 7 (+0x404), 17 (+0x418), 23 (+0x3C), 27 (+0x26C) and 28 (+0x360) - and
   the other 23 point at the default (+0x58C), the base's own DoUserAnimEvent, which is what the
   port's default case does.
+* The module's own deleting destructors that the port never names - fn_16_4E68, fn_16_992C,
+  fn_16_9B90, fn_16_A7EC, fn_16_A8A4, fn_16_A980, fn_16_AA70, fn_16_AAD4, fn_16_BA6C,
+  fn_16_BB1C, fn_16_BD04, fn_16_BE34, fn_16_BF14 - and the five entries of the particle
+  system's own vtable (lbl_16_data_510: fn_16_BE98, fn_16_BE9C, fn_16_BEA4, fn_16_BEB0 and
+  fn_16_BEB8) are the host's own: its collision actor manager, its model data, its particle
+  generator and its script loader destroy their members and dispatch their own tables.
+* The ten ported bodies that had no evidence yet all run in area 11: an entry once-log
+  (temporary, reverted) showed fn_16_1DFC, fn_16_52FC, fn_16_56D8, fn_16_7CE8, fn_16_8AF4,
+  fn_16_8B80, fn_16_900C and fn_16_BA04; fn_16_0 (the warp portal's destructor) and fn_16_B9FC
+  (CanBeShot) do not - the portal actor is never created there and nothing shoots the boss.
