@@ -1401,7 +1401,8 @@ CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
 // C3DEmitterParmData(1000.0f, 0.1f, 1, 0x7F, 0x14) and the up direction (0xF84) into guest 0xA9C;
 // the "Telegraph" timer (0xA5C) takes 0.9833334f (lbl_16_rodata_3A0) and the refire timer (0xA60)
 // 1.5f (0xFB0).
-// Area 11 cannot reach fn_16_CD0's body: the beam fires in the heart stage, which the FSM does not reach there.
+// Area 11 cannot reach fn_16_CD0's body: the beam fires in the heart stage, which the FSM does not reach there. A temporary hook drove it (see the module note).
+// @ fn_16_CD0
 bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
   if (xa98_ != kInvalidUniqueId) {
     return false;
@@ -1883,7 +1884,7 @@ StartTentaclePortal(i, pos, up, mgr);
 //     0x68F), the entity info (the area, no connections, active and no editor id), the identity
 //     transform, the one vector as the scale, the effect asset, the timers and the rates, the
 //     three visor flags, the light parameters and the spline.
-// Area 11 cannot reach fn_16_9BE8's body: the portal's effect is only created for the warp portal actor and the tentacle's portal, and neither exists there.
+// Area 11 cannot reach fn_16_9BE8's body: the portal's effect is only created for the warp portal actor and the tentacle's portal, and neither exists there. A temporary hook drove it (see the module note).
 // @ fn_16_9BE8
 TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId,
                                                      TAreaId area) {
@@ -1994,6 +1995,7 @@ CEmperorIngStage1WarpPortal::CEmperorIngStage1WarpPortal(
 
 // fn_16_0 (0x0..0x38): the portal's destructor - it puts the vtable back
 // (lbl_16_data_27C, 0x28) and calls the base's own (0x30); the host's default does both.
+// @ fn_16_0
 CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16_0: the destructor - the vtable back and the base's own
 
 // fn_16_1150 (0x1150..0x1574, 0x424): the portal's think.
@@ -2381,7 +2383,8 @@ void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) 
 //     animation state is not ready (0x76A8), the tentacles' 0x80 flags are set (fn_16_2EE0 with
 //     1, 0x76B4), the attack timer re-rolls (fn_16_8E4, 0x76C0) and the tentacles take the normal
 //     vulnerability (fn_16_353C with 1, 0x76D0).
-// Area 11 cannot reach fn_16_71BC's body: the FSM does not reach the heart stage there.
+// Area 11 cannot reach fn_16_71BC's body: the FSM does not reach the heart stage there. A temporary hook drove it (see the module note).
+// @ fn_16_71BC
 void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   CActor* body = GetPlayActor(mgr);
   CActor* activator = GetActivateActor(mgr);
