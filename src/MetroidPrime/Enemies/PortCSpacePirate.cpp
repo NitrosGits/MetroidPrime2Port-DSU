@@ -1434,7 +1434,7 @@ const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f
   return GetDamageVulnerability();
 }
 
-// Retail fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
+// @ fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
 // the actor's bounding box (fn_72_1854).
 rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
   // 0x17DC-0x1834: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the
