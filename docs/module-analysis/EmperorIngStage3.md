@@ -27,7 +27,7 @@ patterned AI typedef, the actor parameters and the module's own data block. The 
 |---|---|---|---|
 | 0x08 | the deleting destructor | `fn_18_94C8` | the host destructor |
 | 0x14 | Think | `fn_18_47D4` | ported, marked (no active test in retail; run e3chk reached all but the knock-back branch) |
-| 0x18 | AcceptScriptMsg | `fn_18_7B14` | partly ported (see section 4) |
+| 0x18 | AcceptScriptMsg | `fn_18_7B14` | ported, marked (section 4; run e3chk reached every case) |
 | 0x24 | PreRender | `fn_18_4650` | stand-in (the base's pre-render plus the damage flash) |
 | 0x2C | Render | `fn_18_47B4` | stand-in, forwards to CPatterned |
 | 0x3C | GetHealthInfo | `fn_18_B4` | real (a call through the vtable slot 0x38) |
@@ -260,7 +260,7 @@ list helpers `2BF0` (list 0x830) and `2B68` (list 0x840).
 The base class's handler runs first, then one case per message: kSM_Damage, kSM_Create,
 kSM_AreaLoaded (0x330: the INTERNAL_STATE_00/01/02 connections into 0x8C2..0x8C8 and the portal
 list 0x8CC, `fn_18_3BB0`, the boss health and `SetBossParams` with "BossTempleBossStage3"),
-kSM_Delete (the manager's `Destroy`), kSM_Launching (ported: the base's off-ground message, the off-ground force and the jump velocity to 0x910 with the apex 7.5 above the higher end), kSM_HitObject, kSM_OffGround.
+kSM_Delete (the manager's `Destroy`), kSM_Launching (the base's off-ground message, sDownVector times gravity times mass, then a second gravity read and the jump velocity to 0x910 with the apex 7.5 above the higher end), kSM_HitObject, kSM_OffGround. All ported.
 
 ### `fn_18_1DF4` (0x4A0), the heart switch
 

@@ -460,6 +460,7 @@ void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_18_7B14
 // vtable slot 4 = fn_18_7B14 (0x668): retail's message switch. The base class's message
 // handler runs first (0x7B50) and then the module's own cases, one per message: the constants
 // are 0x58444D47 (kSM_Damage, 0x7B60), 0x58435254 (kSM_Create, 0x7B74), 0x58414C44
@@ -468,8 +469,7 @@ void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
 // case says whether it is ported; the bodies are the module's own work (the collision actor
 // list, the id lists, the boss parameters, the launch jump).
 void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CEmperorIngStage3::AcceptScriptMsg (vtable slot 4, fn_18_7B14)");
-  CPatterned::AcceptScriptMsg(mgr, msg);
+  CPatterned::AcceptScriptMsg(mgr, msg); // 0x7B50
   switch (msg.GetMessage()) {
   case kSM_Create: // 0x7BE0, 0x14
     // The module's body controller is activated with the invalid animation state (0x7BE8).
@@ -563,22 +563,25 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     // actor's id, 0x7FC4..0x8014) - CPatterned's handler, not this one - and the off-ground
     // force is written as in kSM_OffGround (mass times gravity along the down vector).
     CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround));
-    const float gravity = GetGravityConstant();
-    SetConstantForceWR(CVector3f(0.f, 0.f, -(GetMass() * gravity)));
+    // The force is sDownVector times the gravity constant (slot 0x114), times the mass (0x8030).
+    const float mass = GetMass();
+    SetConstantForceWR((CVector3f(CVector3f::Down()) * GetGravityConstant()) * mass);
     // The jump to the launch target (guest 0x910): the apex is 7.5 (rodata 0x304) above the
     // higher of the actor and the target; the upward speed reaches it, and the flight time is
     // the rise plus the fall to the target's height (0x80D4..0x811C). The flat speed covers the
-    // flat distance in that time (0x8130..0x8138).
+    // flat distance in that time (0x8130..0x8138). Retail reads the gravity constant again
+    // (slot 0x114, 0x80AC).
     const CVector3f& mine = GetTranslation();
     const float dx = mX910_.GetX() - mine.GetX();
     const float dy = mX910_.GetY() - mine.GetY();
+    const float gravity = GetGravityConstant();
     float top = mX910_.GetZ();
     if (mine.GetZ() >= top) {
       top = mine.GetZ();
     }
-    const float apex = 7.5f + top;
+    const float apex = 7.5f + top; // rodata 0x304
     const float up = CMath::SqrtF(2.f * gravity * (apex - mine.GetZ())); // rodata 0x274
-    const float time = up / gravity + CMath::SqrtF(2.f * (apex - mX910_.GetZ()) / gravity);
+    const float time = up / gravity + CMath::SqrtF(2.f * (apex - mX910_.GetZ()) / gravity); // 0x274
     const float inverse = 1.f / time; // rodata 0x264
     SetVelocityWR(CVector3f(inverse * dx, inverse * dy, up));
     break;
