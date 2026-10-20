@@ -16,7 +16,7 @@ IngSwarm;src/MetroidPrime/PortModuleStubs.cpp
 MinorIng;src/MetroidPrime/Enemies/PortCMinorIng.cpp
 SandBoss;src/MetroidPrime/PortModuleStubs.cpp
 Sandworm;src/MetroidPrime/PortModuleStubs.cpp
-ScriptPlayerTurret;src/MetroidPrime/PortModuleStubs.cpp
+ScriptPlayerTurret;src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp
 SnakeWeedSwarm;src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirate.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateStates.cpp

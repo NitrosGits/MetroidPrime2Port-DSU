@@ -813,7 +813,7 @@ set(MP_MODULE_Sandworm_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_ScriptPlayerTurret_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp
 )
 set(MP_MODULE_SnakeWeedSwarm_SOURCES
     src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp
