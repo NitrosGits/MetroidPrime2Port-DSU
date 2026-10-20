@@ -16,6 +16,7 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -106,6 +107,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 #undef CMDO_STATE
 
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -136,6 +138,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
+, xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -536,8 +539,31 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_ABDC");
 }
 
+// fn_9_AB08: on the activate message (the guest's test of 0 at 0x0000AB10) the commando takes the
+// player as its target - but only when the target it had is gone (the object lookup at
+// 0x0000AB40..0x0000AB48). It then points the bone tracking at that target (0x0000AB74 and
+// 0x0000AB88), tells the script that the attack connection changed (0x0000ABB4, the message is
+// the host's kSM_None, the guest's -1) and switches to the combat locomotion (0x0000ABC0).
 void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_AB08");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  if (mgr.GetObjectById(xbca_) != nullptr) {
+    return;
+  }
+  // 0x0000AB4C: the guest takes the id the state manager holds for the player (its +0x14FC, the
+  // id at +8 of it); the host's state manager has no member at that offset, so the port uses the
+  // player actor's id, which is what the bone tracking and the script message want.
+  const TUniqueId target = mgr.GetNumPlayers() > 0 ? mgr.GetPlayer(0)->GetUniqueId()
+                                                    : kInvalidUniqueId;
+  xbca_ = target;                                    // 0x0000AB5C
+  // 0x0000AB68: the guest tells its visual knowledge the new target (guest this+0xAB0). The host
+  // has no CVisualKnowledge class yet, so the call is a stand-in.
+  StandInFn("CVisualKnowledge::SetVisualTarget (guest this+0xab0)");
+  mBoneTracking.SetActive(true);                     // 0x0000AB74
+  mBoneTracking.SetTarget(target);                   // 0x0000AB88
+  SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x0000ABB4
+  BodyController()->SetLocomotionType(pas::kLT_Combat);   // 0x0000ABC0
 }
 
 void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -580,8 +606,36 @@ void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_9AAC");
 }
 
+// fn_9_996C: the message picks the locomotion the patrol uses and the waypoint navigation then
+// patrols (the call at 0x00009A78). The guest's own enum has more messages than the host's, so
+// the two the body tests are the host's kStateMsg_Activate (0) and kStateMsg_Deactivate (2);
+// every other message skips the setup (0x00009A9C0..0x00009A9C8 and 0x00009A9BC).
 void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_996C");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    // 0x000099D4: the relaxed locomotion; 0x000099EC: half the turn speed (lbl_9_rodata_440 is
+    // 0.5f); 0x00009A10: the ratio of the two locomotion speeds (the walk's over the run's);
+    // 0x00009A2C: the steering speed range, that ratio twice.
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetTurnSpeed(0.5f * BodyController()->GetTurnSpeed());
+    const float ratio = BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Walk) /
+                         BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Run);
+    BodyController()->CommandMgr().SetSteeringSpeedRange(ratio, ratio);
+    // 0x00009A1C: the guest's body controller takes a flag at +0x4C, one here and zero in the
+    // other branch (0x00009A60); the host's body controller has no such member.
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    // 0x00009A3C: the combat locomotion; 0x00009A50: twice the turn speed (lbl_9_rodata_44C is
+    // 2.f); 0x00009A60: the same flag at +0x4C, cleared.
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    BodyController()->SetTurnSpeed(2.f * BodyController()->GetTurnSpeed());
+    break;
+  }
+  default:
+    break;
+  }
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
 void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {

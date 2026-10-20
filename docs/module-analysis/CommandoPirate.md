@@ -259,6 +259,21 @@ In area 59 (Temple Grounds/05_temple_federationsite_dark) the actor keeps the st
 them returns true (the script leaves the `sound` property at 0, so both flag bytes are clear).
 The eleven triggers of the cover, shield, grenade, melee and jump states do not run there.
 
+### The ported state bodies
+
+| state | fn | .rodata | body | notes |
+|---|---|---|---|---|
+| Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
+| SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
+| FaceTarget | `fn_9_ABDC` | 0x6E4 | **not ported** - the body is 0x1C4 bytes, over the 0x150 limit for this slice | the stand-in still runs |
+
+The player id the guest takes (its state manager's +0x14FC, the id at +8 of it, 0x0000AB4C) has no
+member at that offset in the host's state manager, so the port uses the player actor's id.
+
+In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine now walks the three
+states it visited before (Patrol, SelectTarget, FaceTarget): each of the two ported states is
+entered, updated and left once, and FaceTarget is still the stand-in.
+
 ## 2. The loader (fn_9_168)
 
 The property ids and their order are the generated `SLdrCommandoPirate` reader's, and the REL's own
@@ -370,10 +385,12 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 54 bodies: the two tables (34 triggers, 36 states) are registered
-  and sixteen of the triggers are host code (the section above), but every other function they
-  point at is a stand-in that logs the retail function it stands in for and returns the neutral
-  value.
+- The state machine's other 53 bodies: the two tables (34 triggers, 36 states) are registered,
+  sixteen of the triggers and two of the states are host code (the sections above), but every
+  other function they point at is a stand-in that logs the retail function it stands in for and
+  returns the neutral value.
+- The guest's `CVisualKnowledge` (this+0xAB0) and the `CTryCommand` the base keeps at +0x6B4:
+  the host has no class for either, so the calls that use them are stand-ins.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
