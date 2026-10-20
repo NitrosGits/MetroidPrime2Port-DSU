@@ -182,6 +182,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX7c8_(0.f)                                             // guest 0x7C8
 , mX7cc_(0.f)                                             // guest 0x7CC
 , mX7d4_(0.f)                                             // guest 0x7D4
+, mX158_(0.f)                                             // guest 0x158
 , mX7d0_(0.f)                                             // guest 0x7D0
 , mX7e0_(10000.f)                                         // guest 0x7E0
 , mAttackTimer(4.f)                                       // guest 0x7E4
@@ -192,6 +193,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
+, mX1c0_(CVector3f::Zero())                               // guest 0x1C0
 , mX910_(CVector3f::Zero())                               // guest 0x910
 , mX818_(CVector3f::Zero())                               // guest 0x818
 , mX864_(0.f)                                             // guest 0x864
@@ -308,27 +310,37 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   StandIn("CEmperorIngStage3::AcceptScriptMsg (vtable slot 4, fn_18_7B14)");
   CPatterned::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
-  case kSM_Damage:
-    StandInFn("fn_18_7B14 kSM_Damage");
+  case kSM_Create: // 0x7BE0, 0x14
+    // The module's body controller is activated with the invalid animation state (0x7BE8).
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
     break;
-  case kSM_Create:
-    StandInFn("fn_18_7B14 kSM_Create");
-    EnsureBodyActive(mgr);
+  case kSM_Delete: // 0x7BF4, 0x24
+    // The heart holder is destroyed (fn_18_3B8C, 0x28 - a stand-in: it calls the DOL's
+    // fn_80135CF8 on the holder) and the object the module watches is deleted (0x7C00).
+    StandInFn("fn_18_3B8C");
+    mgr.DeleteObjectRequest(TUniqueId(mX8c0_));
     break;
-  case kSM_AreaLoaded:
+  case kSM_AreaLoaded: // 0x7C18, 0xC8
+    // The connected object (the fourcc 0x49533030), the id lists of the list's entries and the
+    // actor's bone math. A stand-in.
     StandInFn("fn_18_7B14 kSM_AreaLoaded");
     break;
-  case kSM_Delete:
-    StandInFn("fn_18_7B14 kSM_Delete");
+  case kSM_Damage: // 0x7F4C, 0x20
+    // fn_18_36BC (0x88) takes the damage's source id. A stand-in.
+    StandInFn("fn_18_36BC");
     break;
-  case kSM_Launching:
+  case kSM_HitObject: // 0x7F6C, 0x20
+    // fn_18_2D50 (0xB4) takes the hit object's id. A stand-in.
+    StandInFn("fn_18_2D50");
+    break;
+  case kSM_OffGround: // 0x7F8C, 0x38
+    // The off-ground direction: the actor's gravity constant times the module's speed at guest
+    // 0x158, negated (0x7FA4..0x7FC0).
+    mX1c0_ = CVector3f(0.f, 0.f, -(GetGravityConstant() * mX158_));
+    break;
+  case kSM_Launching: // 0x7FC4, 0x184
+    // The module re-sends the message and computes the launch velocity. A stand-in.
     StandInFn("fn_18_7B14 kSM_Launching");
-    break;
-  case kSM_HitObject:
-    StandInFn("fn_18_7B14 kSM_HitObject");
-    break;
-  case kSM_OffGround:
-    StandInFn("fn_18_7B14 kSM_OffGround");
     break;
   default:
     break;

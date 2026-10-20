@@ -226,6 +226,8 @@ private:
   float mX7c8_;                          // guest 0x7C8, 0.0f: the taunt timer
   float mX7cc_;                          // guest 0x7CC, 0.0f: the eye-shut timer
   float mX7d4_;                          // guest 0x7D4, 0.0f: the too-close distance
+  float mX158_;                          // guest 0x158, 0.0f: a CPatterned field the module
+                                        // reads (the off-ground speed)
   float mX7d0_;                          // guest 0x7D0, 0.0f: the time since the last attack
   float mX7e0_;                          // guest 0x7E0, 10000.0f: the jump-attack timer
   float mAttackTimer;                    // guest 0x7E4, 4.0f in the constructor
@@ -240,6 +242,7 @@ private:
   float mX8ec_;                          // guest 0x8EC, 0.0f: the eye-shut time
   float mX8f0_;                          // guest 0x8F0, 0.0f: the eye-shut duration
   float mX8f4_;                          // guest 0x8F4, 0.0f: the eye-shut random time
+  CVector3f mX1c0_;                      // guest 0x1C0, 0: the off-ground direction
   CVector3f mX910_;                      // guest 0x910, 0: the jump attack's target
   CVector3f mX818_;                      // guest 0x818, 0: the facing the idle state turns
                                         // towards the player (fn_18_3804 writes it)

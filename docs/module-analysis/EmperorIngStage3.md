@@ -70,6 +70,8 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | 0x86C | the hearts' vulnerability | the constructor copies the immune vulnerability into it (0x9CB8..0x9CC4); `fn_18_1BD8` gives it to both hearts |
 | 0x830 / 0x840 / 0x850 | the module's three lists | the count at +0x4, the entries at +0xC, each entry 0xC bytes (a weight at +0x0, a threshold at +0x4, a timer at +0x8). The first is the attack list (`fn_18_2BF0` fills it), the second is the one the taunt average reads and the third the one the flag check reads |
 | 0x8C0 | the id of the object the module watches | `fn_18_125C` clears it when the object is gone (0x12AC) |
+| 0x158 | a CPatterned field the module reads | the off-ground speed: the off-ground direction is the gravity constant times it, negated (0x7FA4..0x7FC0) |
+| 0x1C0 | the off-ground direction | the message handler's `kSM_OffGround` writes it (0x7FB0..0x7FC0) |
 | 0x8EC | the eye-shut time | the EyeShut state's activate reads it (0x52BC) and clears it |
 | 0x8F0 | the eye-shut duration | the EyeShut state's activate computes it (0x52F4) and the update counts it down |
 | 0x8F4 | the eye-shut random time | the EyeShut state's activate rolls it (0x5338) and the update counts it down |
