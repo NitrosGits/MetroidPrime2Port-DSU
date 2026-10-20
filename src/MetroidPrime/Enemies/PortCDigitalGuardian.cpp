@@ -261,7 +261,9 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1012_(0)
 , x1013_(0)
 , x1168_(TUniqueId(0))
+, x116A_(kInvalidUniqueId) // the store at 0xB5C0
 , x11B8_(0)
+, x11C0_(kInvalidUniqueId) // the store at 0xB668
 , x11E0_(0.f)
 , x11E4_(0.f)
 , x11E8_(1) // the store at 0xB6A0
@@ -409,9 +411,8 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
 // at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
-// 0xAA1C). The "XCRT" case (0x58435254, the case at 0xA81C) is still a stand-in, and the
-// helpers the cases call (fn_14_3A44, fn_14_3F14, fn_14_5910, fn_14_5838, fn_14_5644 and
-// fn_14_4F2C) are not ported yet.
+// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helpers fn_14_3F14, fn_14_5644 and
+// fn_14_4F2C the cases call are not ported yet.
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
@@ -487,7 +488,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     }
     break;
   case 0x58414C44: // "XALC"
-    StandInFn("fn_14_5910 (the XALC case's helper)");
+    x5910_(mgr); // fn_14_5910
     break;
   case 0x58444D47: // "XDMG": the sender (the message's +0)
     x5838_(mgr, msg.GetSenderId()); // fn_14_5838
@@ -1475,6 +1476,13 @@ void CDigitalGuardian::x3D2C_(CStateManager& mgr, bool set) {
     x128C_ &= ~0x20;
     SendScriptMsgs(kSS_InternalState11, mgr, GetUniqueId(), kSM_None);
   }
+}
+
+// @ fn_14_5910
+void CDigitalGuardian::x5910_(CStateManager& mgr) {
+  x11C0_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_Attach);
+  x10CE_ = FindConnectedObject(mgr, kSS_InternalState4, kSM_Activate);
+  x116A_ = CheckConnectedObject(mgr, kSS_InternalState5, kSM_Follow);
 }
 
 // fn_14_4080 (0x274 bytes): the four knee armours. Only with the knee model (the optional at

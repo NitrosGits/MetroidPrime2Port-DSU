@@ -282,7 +282,9 @@ private:
   uchar x1012_;     // 0x1012: the flag byte the "IM03"/"IM04" messages set (fn_14_A6A8)
   uchar x1013_;     // 0x1013: the flag byte the "IM05"/"IM06" messages set (fn_14_A6A8)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
+  TUniqueId x116A_; // 0x116A: the IS05/Follow object (fn_14_5910)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
+  TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
@@ -349,8 +351,8 @@ private:
   float x1144_[4];      // 0x1144: the toe targets' health (toeTargetHP; fn_14_24E4, fn_14_5644)
   float x1158_[4];      // 0x1158: the toe targets' hit timers (0; fn_14_24E4, fn_14_5644)
 
-  // 0x10CE: the id fn_14_5910 (the "XALC" case's helper, not ported) looks up; fn_14_5470 takes
-  // one from its health per destroyed knee.
+  // 0x10CE: the IS04/Activate object (fn_14_5910, the "XALC" case); fn_14_5470 takes one from
+  // its health per destroyed knee.
   TUniqueId x10CE_;
 
   // fn_14_3A44 (0x108 bytes): each knee's vulnerability - open (0x1014) when its flag byte
@@ -375,6 +377,8 @@ private:
   void x1A68_(CStateManager& mgr, int leg, int state);
   // fn_14_3D2C (0x7C bytes): bit 5 of 0x128C, and IS10 when it is set, else IS11.
   void x3D2C_(CStateManager& mgr, bool set);
+  // fn_14_5910 (0xAC bytes): the "XALC" case - the connected objects at 0x11C0, 0x10CE, 0x116A.
+  void x5910_(CStateManager& mgr);
   // fn_14_14F8 (0x74 bytes): the speed for the number of knee armours left.
   void x14F8_();
 
