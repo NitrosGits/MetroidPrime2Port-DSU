@@ -32,6 +32,10 @@ public:
                      float x2a0, ushort sound);
   ~CIngExitHostEffect() override;
 
+  // Retail 0x5e2 bit 7: set once the swarm has arrived, which is what CIng::ExitHost's Update
+  // watches to end the state (fn_29_9D68 reads the byte and branches on its sign).
+  bool IsDone() const { return (mFlags & 0x80) != 0; }
+
 private:
   // The host layout (retail offsets in the comments, from fn_29_1105C).
   // 0x158: retail's own copy of the ctor's transform, not CActor's at 0x54.

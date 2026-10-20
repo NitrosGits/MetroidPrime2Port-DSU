@@ -365,6 +365,9 @@ private:
   void StopSfx();
   // fn_29_1A80: turn horizontally to the lure safe zone when one is set, else to the target.
   void FaceLureOrTarget(CStateManager& mgr);
+  // fn_29_1F1C: ExitHost's Deactivate smoke, "IngExitHostSmokeFx" at the Ing's transform, plus the
+  // swarm block's own sound (CIngData swarm +0x28); only when the second GEN token is loaded.
+  void SpawnExitHostSmoke(CStateManager& mgr);
   // fn_29_4468: the target's aim position (CActor's GetAimPosition), false when it is gone.
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out);
   // fn_29_3E1C: one arm's segment boxes (fn_29_3D74) against the target's bounds; on a hit, the
@@ -402,6 +405,10 @@ private:
   // token's +0xc) and SuckEnergy reads it, so the optional's engaged flag stands in for it, as with
   // mMiniPortalEffect below.
   rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect;
+  // 0xcf0: CIngData+0x1e4+0x10, the swarm block's second GEN token (SLdrIng.pART_0x081e9e6c). Its
+  // engaged byte is 0xcfc, which ExitHost's smoke helper fn_29_1F1C tests, so the optional's own
+  // flag stands in for it as with mSwarmEffect above.
+  rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect2;
   TUniqueId mBlobId;                         // 0xd5c [?] never spawned yet
   TUniqueId mTeamId;                         // 0xd6a
   TUniqueId mTargetId;                       // 0xd6c

@@ -1,8 +1,8 @@
 // The REL's CIng (module 29, Ing.rel), ported for behaviour rather than bytes. The state machine is
 // fn_29_B208's: 49 triggers, 29 states and 12 code functions, all registered under the REL's own
-// names. Functions checked against the retail code carry `// @ fn_29_<offset>`; the attacks, the
-// mini-portal and exit-host states and three code functions are minimal bodies marked [?]. The
-// analysis is docs/module-analysis/IngFamily.md, section A (A.5 for this file).
+// names. Functions checked against the retail code carry `// @ fn_29_<offset>`; the remaining
+// minimal bodies are marked [?]. The analysis is docs/module-analysis/IngFamily.md, section A (A.5
+// for this file).
 
 #include "MetroidPrime/Enemies/CIng.hpp"
 
@@ -29,6 +29,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CIngExitHostEffect.hpp"
 #include "MetroidPrime/Enemies/CIngMiniPortalAttack.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
@@ -136,10 +137,11 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 namespace {
 
 // The forms (mForm, retail 0x9d4). 0 is the host form SuckEnergy sets (the Ing possesses the player
-// and has no body of its own), 1 is the other host form [?], 2 corporeal, 3 ing spot, 4 the flying
-// body projectile, 5 evaporating; 6/7/8/9 are the four form changes' own forms.
+// and has no body of its own), 1 is the exit host form ExitHost's Activate sets, 2 corporeal, 3 ing
+// spot, 4 the flying body projectile, 5 evaporating; 6/7/8/9 are the four form changes' own forms.
 enum {
   kForm_Host = 0,
+  kForm_ControllingHost = 1, // the second host form, ExitHost's Activate; nothing else reads it
   kForm_Corporeal = 2,
   kForm_IngSpot = 3,
   kForm_BodyProjectile = 4,
@@ -255,6 +257,17 @@ void DumpFsm2(const CGenericFSM2& machine) {
     }
     fprintf(stderr, "\n");
   }
+  // The sub-machines carry their own states, codes and triggers (the body projectile's and the
+  // ing spot's); retail loads each as its own FSM2 resource, so the transition into one of them is
+  // only visible once its contents are dumped too.
+  const rstl::vector< CState2SubMachine >& subMachines = machine.GetSubMachines();
+  for (int i = 0; i < subMachines.size(); ++i) {
+    fprintf(stderr, "[ing] fsm submachine %s\n", subMachines[i].GetName().data());
+    const CGenericFSM2* sub = subMachines[i].GetMachine();
+    if (sub != nullptr) {
+      DumpFsm2(*sub);
+    }
+  }
 }
 
 rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAssetId id) {
@@ -302,6 +315,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)                            // 0xcde
 , mSwarmEffect(OptionalPart(data.mSwarm.mPART))                   // 0xce0, CIngData+0x1e4
+, mSwarmEffect2(OptionalPart(data.mSwarm.mPART081E))              // 0xcf0, CIngData+0x1f4
 , mBlobId(kInvalidUniqueId)
 , mTeamId(kInvalidUniqueId)
 , mTargetId(kInvalidUniqueId)
@@ -727,9 +741,12 @@ bool CIng::StateOver(CStateManager&, const CTriggerData&) const { return mAnimat
 // fn_29_B1E8 (not yet exercised in a run)
 bool CIng::IsAlert(CStateManager&, const CTriggerData&) const { return mAlert; }
 
-// fn_29_B1C8 (not yet exercised in a run)
+// fn_29_B1C8 (not yet exercised in a run). The asm tests mHostId (0xcdc) against kInvalidUniqueId -
+// the lhz/subf/or/srwi-31 idiom - and nothing else; it does not look at the form. That is what lets
+// SuckEnergy, which sets form 0 and then clears the host once its suck time runs out, take the
+// !IsControllingHost trigger into SetExitHostDest and on into ExitHost.
 bool CIng::IsControllingHost(CStateManager&, const CTriggerData&) const {
-  return mForm == 0 || mForm == 1;
+  return mHostId != kInvalidUniqueId; // 0xcdc
 }
 
 // @ fn_29_B0E0
@@ -1087,11 +1104,109 @@ void CIng::WaitForFSMTransition(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// [?] fn_29_9D68: leaving a host is not ported (no host form is ever entered here).
-void CIng::ExitHost(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// @ fn_29_9D68. The exit host: the Ing it leaves behind is a swarm. Its
+// Activate swaps the possessed-mold billboard for a CIngExitHostEffect (one rs_new of 0x5e8, the
+// class's only allocation), Update rides that effect until it reports it has arrived, and Deactivate
+// drops the Ing back onto the mesh as an ing spot wherever SetExitHostDest pointed. Retail's Activate
+// adds kMT_Target (0x28), Deactivate adds back 0x21/0x3b/0x29.
+void CIng::ExitHost(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("ExitHost");
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    AddMaterial(kMT_Target, mgr);  // 0x28
+    mForm = kForm_ControllingHost; // 0x9d4 = 1
+    // The mold billboard and any earlier swarm effect go. Retail allocates the new id before the
+    // rs_new, so a failed build still consumes one.
+    if (mPossessedEffectId != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mPossessedEffectId); // 0xcde
+    }
+    if (mD76Id != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mD76Id); // 0xd76
+    }
+    mD76Id = mgr.AllocateUniqueId(); // 0xd76
+    // The ctor's argument order is the header's: the destination is the state's 0xdc8, the scale is
+    // the model's, and the two assets and the five swarm-block values follow the member order of
+    // CIngSwarmData (0x9a8..0x9c4 = mSRSC, mPART3DA2, the three unknown floats and the move sound).
+    CIngExitHostEffect* effect = rs_new CIngExitHostEffect(
+        mD76Id,
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        GetTransform(), mTargetPos, GetModelData()->GetScale(), mData.mSwarm.mSRSC,
+        mData.mSwarm.mPART3DA2, mData.mSwarm.mUnknown2327, mData.mSwarm.mUnknownCB39, mTargetId,
+        mData.mSwarm.mUnknown587C, mData.mSwarm.mUnknown0BD7, mData.mSwarm.mSoundSwarmMove);
+    if (effect == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    } else {
+      mgr.AddObject(*effect);
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    }
+    // One emitter, chosen by whether the target is in a safe zone. Retail builds an empty
+    // CTriggerData (its single float zeroed) on the stack for fn_29_AC20, which is why the port's
+    // TargetInSafeZone takes an argument it never reads.
+    const ushort sound = TargetInSafeZone(mgr, CTriggerData(0.f))
+                             ? mData.mSwarm.mSoundExitHostSafeZone // swarm +0x24
+                             : mData.mSwarm.mSoundExitHost;        // swarm +0x22
+    CSfxManager::AddEmitter(sound, GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
+                            CSfxManager::kMedPriority);
+    if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x exit host: swarm %04x, sound %04x\n", GetUniqueId().Value(),
+              mD76Id.Value(), sound);
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    // Retail looks the object up by id and reads its byte 0x5e2 with no type test; the class has
+    // retail's vtable and no TypesMatch override, so the cast is only to reach IsDone().
+    CIngExitHostEffect* effect = static_cast< CIngExitHostEffect* >(mgr.ObjectById(mD76Id));
+    if (effect == nullptr || effect->IsDone()) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    } else {
+      SetTranslation(effect->GetTranslation());
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    // The Ing lands where SetExitHostDest pointed and becomes an ing spot: snapped to the surface
+    // (CTerrainAlignment::AlignToSurface with 1.0f), solid again, and the grapple cooldown armed.
+    SetTranslation(mTargetPos); // 0xdc8
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, mTargetPos, 1.f);
+    AddMaterial(kMT_Character, kMT_Solid, kMT_Orbit, mgr); // 0x21/0x3b/0x29
+    mBallCooldown = mData.mGrapple.mPostWaitTime;          // 0xe48 = 0x8f8
+    SpawnExitHostSmoke(mgr);                               // fn_29_1F1C
+    mForm = kForm_IngSpot;                                 // 0x9d4 = 3
+    if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x exit host: left at (%.1f, %.1f, %.1f)\n", GetUniqueId().Value(),
+              mTargetPos.GetX(), mTargetPos.GetY(), mTargetPos.GetZ());
+    }
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_29_1F1C (not yet exercised in a run: ExitHost's Deactivate is unreachable until
+// CIngExitHostEffect's Think (fn_29_10F58, lane 3) sets retail's 0x5e2 bit 7, which is what ends the
+// state): the exit host's smoke, spawned where the Ing lands. It
+// only fires when the swarm block's second GEN token is loaded (retail's engaged byte at 0xcfc);
+// then one CExplosion "IngExitHostSmokeFx" on the Ing's own transform at the model's scale (flags
+// 0, white, player -1) and the swarm block's own sound (0x9cc = CIngData swarm +0x28).
+void CIng::SpawnExitHostSmoke(CStateManager& mgr) {
+  const bool smokeLoaded = static_cast< bool >(mSwarmEffect2); // 0xcfc, the token's engaged byte
+  if (DebugIng()) {
+    fprintf(stderr, "[ing] %04x exit host: smoke %s\n", GetUniqueId().Value(),
+            smokeLoaded ? "explosion" : "token not loaded");
+  }
+  if (!smokeLoaded) {
+    return;
+  }
+  CExplosion* smoke = rs_new CExplosion(
+      *mSwarmEffect2, mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+      rstl::string_l("IngExitHostSmokeFx"), GetTransform(), 0, GetModelData()->GetScale(),
+      CColor::White(), -1);
+  if (smoke != nullptr) {
+    mgr.AddObject(*smoke);
+    CSfxManager::AddEmitter(mData.mSwarm.mSound, GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   }
 }
 
@@ -2308,10 +2423,39 @@ void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// [?] fn_29_54E8: no host is ever entered, so there is no exit point.
-void CIng::SetExitHostDest(CStateManager&, float) {
+// @ fn_29_54E8. Where the exit host lands: the AI hint that best matches
+// the way the player is facing. Retail starts from the player's own position (uid +8, transform
+// +0x24) and takes mgr+0x14fc as the player with no null test, which the port keeps as a guard.
+// The score is (GetAngleDiff(forward, hint - Ing) + 1) * |hint - Ing|^2, and the comparison pair
+// keeps a 400.0f (rodata_F0, i.e. 20 units squared) petal around zero: under it the *smaller*
+// non-negative score wins, over it the larger one does. Retail writes mTargetPos (0xdc8) and
+// nothing else - in particular it does not touch mFoundMovementPos, so neither does this.
+void CIng::SetExitHostDest(CStateManager& mgr, float) {
   LogState("SetExitHostDest");
-  mFoundMovementPos = false;
+  const CPlayer* player = mgr.GetPlayer(0); // mgr+0x14fc
+  if (player == nullptr) {
+    return;
+  }
+  const CVector3f forward = player->GetTransform().GetForward();
+  float best = 0.f; // rodata_6C
+  CVector3f bestPos = player->GetTranslation();
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
+    // Retail compares the object's own area word against the Ing's (there is no active/in-use test)
+    // and skips hint type 4, a type with no name in CScriptAIHint::EHintType.
+    if (hint == nullptr || hint->GetCurrentAreaId() != GetCurrentAreaId() ||
+        static_cast< int >(hint->GetHintType()) == 4) {
+      continue;
+    }
+    const CVector3f delta = hint->GetTranslation() - GetTranslation();
+    const float score = (CVector3f::GetAngleDiff(forward, delta) + 1.f) * delta.MagSquared();
+    if ((score < best && score >= 400.f) || (score > best && best <= 400.f)) {
+      best = score;
+      bestPos = hint->GetTranslation();
+    }
+  }
+  mTargetPos = bestPos; // 0xdc8
 }
 
 // fn_29_53E0 (not yet exercised in a run)
