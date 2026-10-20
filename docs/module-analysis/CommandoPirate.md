@@ -528,6 +528,16 @@ as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a
 the visual knowledge, which the port has no classes for. `fn_9_662C` (0x39c) is host code too
 since 2026-10-20.
 
+- The Dodge state `fn_9_8934` (0x1e0) is host code since 2026-10-20: the activate part asks
+  the module's helper `fn_9_3678` (0x288 bytes, over the 0x80 limit, so a named stand-in that
+  returns the neutral value - the dodge id at guest +0xBDC stays -1 and the animation state is
+  not armed), the update part asks the animation state for the guest's command id 3 and delivers
+  the step command (the direction 1 = `kSD_Backward`, the type 2 = `kStep_BreakDodge`) or, when
+  the command may not be issued and the body state is 3, writes the direction to the target's aim
+  position into the body controller's target vector, and the deactivate part clears the animation
+  state, the dodge id, the flag byte at +0xC63's 0x04 bit and the timer at +0xB68. With the
+  player teleported next to the commando the state runs all three parts (two activates, two
+  updates, two deactivates in the run).
 - The stand-ins the walking commando reaches are `fn_9_8934` (the Dodge state, 0x1e0),
   `fn_9_9F24` (the JumpPointFind state, 0x1ec), `fn_9_B958` (the IsOffPath trigger, 0x38),
   `fn_9_B250` (the ShouldShieldCharge trigger, 0x410) and, with the player close,

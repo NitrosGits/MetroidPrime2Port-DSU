@@ -169,6 +169,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbc4_teamId(kInvalidUniqueId)                    // 0xbc4, the team id; fn_9_19D8 sets it
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
 , xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
+, xbdc_(-1)                                    // 0xbdc, the dodge id; fn_9_8934 sets it
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -1235,8 +1236,62 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_8B70");
 }
 
+// fn_9_8934 (0x1e0 bytes): the Dodge state, in the guest's three parts.
+//
+// Activate (the guest's message 0, the test at 0x0000895C): the module's helper fn_9_3678
+// (0x288 bytes, over the 0x80 limit, so a named helper that returns the neutral value) picks
+// the dodge, the result goes into the module's field at guest this+0xBDC (the store at
+// 0x00008978) and, when it is not -1 (the compare at 0x00008980), the animation state takes the
+// command id 1 (the store at 0x0000898C).
+//
+// Update (the guest's message 1, the test at 0x0000893C): the animation state is asked whether
+// the dodge command may be issued (the guest's command id 3 - the call at 0x000089A0). When it
+// may, the dodge command is delivered (the DeliverCmd call at 0x00008A10 - the direction 1, the
+// dodge id at guest this+0xBDC, the type 2 and a zero target position), and the command's fields
+// are copied into the base's own record at guest this+0x11C..0x134 (the stores at
+// 0x00008A24..0x00008A5C; the host's body controller has no such record). When the command may
+// not be issued, and the body controller's body state is 3 (the load at 0x00008A6C, the compare
+// at 0x00008A70), the module's helper fn_9_3CBC (the call at 0x00008A90) gives the target's aim
+// position and the direction to it (the module's fields at guest this+0xB94..0xB9C) goes into
+// the body controller's vector at +0x34..+0x3C (the stores at 0x00008AC4..0x00008ACC).
+//
+// Deactivate (the guest's message 2, the test at 0x00008968): the animation state goes back to 0
+// (the store at 0x00008ADC), the dodge id at guest this+0xBDC goes back to -1 (0x00008AE8), the
+// module's flag byte at +0xC63 loses its 0x04 bit (the rlwimi at 0x00008AF0, the mask
+// 1u << (31 - 29) = 0x04) and the timer at guest this+0xB68 is cleared (0x00008AF8).
 void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_8934");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    StandInFn("fn_9_3678 (0x288 bytes)");            // 0x00008974
+    xbdc_ = -1;                                       // 0x00008978 (the helper's neutral value)
+    if (xbdc_ != -1) {                               // 0x00008980
+      mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x0000898C
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {  // 0x000089A0
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCStepCmd(pas::kSD_Backward, pas::kStep_BreakDodge));  // 0x00008A10
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Step) {  // 0x00008A6C
+      CVector3f aim;
+      if (x3CBC_(mgr, aim, 0.f)) {                     // 0x00008A90
+        const CVector3f delta = aim - GetTranslation();
+        BodyController()->CommandMgr().SetTargetVector(delta);  // 0x00008AC4..0x00008ACC
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x00008ADC
+    xbdc_ = -1;                                        // 0x00008AE8
+    xc63_ &= ~0x04;                                    // 0x00008AF0
+    xb68_ = 0.f;                                       // 0x00008AF8
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {

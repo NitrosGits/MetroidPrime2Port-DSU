@@ -363,6 +363,7 @@ private:
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
+  int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
