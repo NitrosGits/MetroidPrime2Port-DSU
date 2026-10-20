@@ -11,6 +11,7 @@
 // guest order, the flag bytes are one-bit members).
 
 #include "Collision/CCollidableSphere.hpp"
+#include "Collision/CCollisionInfoList.hpp"
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
 #include "Kyoto/Particles/CParticleGen.hpp"
@@ -44,6 +45,7 @@ public:
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
   void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
   // CActor
   CHealthInfo* HealthInfo() override;
@@ -56,6 +58,8 @@ public:
 
   // CPhysicsActor
   const CCollisionPrimitive* GetCollisionPrimitive() const override;
+  void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
+                    CStateManager& mgr) override;
 
   // fn_30_13B98: the shrink is over (guest 0x5D8 bit 0x04); BoostAttack's Update turns it into
   // the guardian's IsBoostOver.
@@ -64,53 +68,71 @@ public:
   void SetHalted(bool halted) { mHalted = halted; }
 
 private:
+  void GrowIn(float dt, CStateManager& mgr);                       // fn_30_137C0
+  void UpdateEffects(float dt, CStateManager& mgr, uint mask);      // fn_30_13C78
+  void UpdateScale(float dt, CStateManager& mgr);                   // fn_30_152D4
+  void Shrink(float dt);                                            // fn_30_13760
+  void Roll(float dt, CStateManager& mgr);                          // fn_30_12AB0
+  void ContactSweep(float dt, CStateManager& mgr);                  // fn_30_14CCC
+  void UpdateRollingSfx();                                          // fn_30_1282C
+  void PlaySound(int sound, bool start);                            // fn_30_12904
+  float EvaluateSpeed(float time) const;                            // fn_30_11E4C
+  void ApplySpeedImpulse(float delta);                              // fn_30_11E70
+  bool IsPathClear(CStateManager& mgr, const CVector3f& dir);       // fn_30_148DC
+  bool Steer(CStateManager& mgr, const CVector3f& dir, CVector3f& out, float bias); // fn_30_12124
+  bool TurnWithinCone(const CVector3f& cur, const CVector3f& target, float& out) const; // fn_30_123CC
+  bool AimAtPlayer(CStateManager& mgr, const CVector3f& cur, CVector3f& out);      // fn_30_11F2C
+  bool AimAtCoverPoint(CStateManager& mgr, const CVector3f& cur, CVector3f& out);  // fn_30_12510
+  CVector3f FlatDelta(const CVector3f& pos) const;                  // fn_30_127FC
+
   int mPhaseIndex;                                     // 0x2D0: the guardian's phase at spawn
   int mState;                                          // 0x2D4: 0 grow in, 1 roll, 2 shrink
   CVector3f mHomePos;                                  // 0x2D8
   CBoostBallGuardianData mData;                        // 0x2E4: the guardian's boost data
   CCollidableSphere mSphere;                           // 0x4D0
   TUniqueId mOwnerId;                                  // 0x4F0: the guardian
-  TUniqueId mId4F2;                                    // 0x4F2
-  TUniqueId mId4F4;                                    // 0x4F4
+  TUniqueId mCollidedId;                               // 0x4F2: CollidedWith's actor
+  TUniqueId mLastCollidedId;                           // 0x4F4
   TUniqueId mId4F6;                                    // 0x4F6: AcceptScriptMsg's sender (0x000146F8)
   TUniqueId mTouchedId;                                // 0x4F8: Think's damage target
   rstl::vector< TUniqueId > mModifyTargets;            // 0x4FC: the guardian's 0x109C
   float mDamageTimer;                                  // 0x50C, 1.0 (guessed name)
-  float m510;                                          // 0x510, 0.0
+  float mSpeedDelta;                                   // 0x510, 0.0: the spline's last step
   float mSplineDuration;                               // 0x514: the speed spline's duration
   float mHalfHeight;                                   // 0x518: half the sphere's local height
   float mSplineTime;                                   // 0x51C: the roll's time on the spline
-  float m520;                                          // 0x520, 0.4
-  float m524;                                          // 0x524, 0.0
+  float mShieldTime;                                   // 0x520, 0.4: the shield's fade
+  float mRollSpeed;                                    // 0x524, 0.0: the roll's top speed
   float mSplineEndTime;                                // 0x528
   float mStateTime;                                    // 0x52C: zeroed on each state change
-  float m530;                                          // 0x530, 1.0
+  float mShrink;                                       // 0x530, 1.0: 0 grown, 1 shrunk
   CVector3f mScale;                                    // 0x534, (1, 1, 1)
-  CVector3f m540;                                      // 0x540, zero
-  CVector3f m54C;                                      // 0x54C, zero
-  int m558;                                            // 0x558: index into m5C8
-  int m55C;                                            // 0x55C
-  int m560;                                            // 0x560: a counter the roll increments
+  CVector3f mBounceNormal;                             // 0x540, zero: CollidedWith's normal
+  CVector3f mLastVelocity;                             // 0x54C, zero: Think's last velocity
+  int mBounces;                                        // 0x558: compared with mBounceCounts[0]
+  int mMissBounces;                                    // 0x55C: bounces without a player touch
+  int mCoverBounces;                                   // 0x560
   rstl::single_ptr< CParticleGen > mTrailGen;          // 0x564: data+0xA8 trail ('SPSC')
   rstl::single_ptr< CParticleGen > mShieldGen;         // 0x568: data+0xAC shield ('PART')
   rstl::single_ptr< CParticleGen > mChargeUpGen;       // 0x56C: data+0xB0 charge up ('PART')
   CDamageVulnerability mVulnerability;                 // 0x570
   rstl::optional_object< CHealthInfo > mHealthInfo;    // 0x5A0, present flag 0x5C0
   CSfxHandle mRollingSfx;                              // 0x5C4: fn_30_1282C's handle
-  rstl::vector< int > m5C8;                            // 0x5C8: an int list the roll compares
-                                                       // with m558 (0x00012CE4); unread so far
-  bool m5D8_80 : 1;                                    // 0x5D8 bit 0x80
-  bool m5D8_40 : 1;                                    // 0x5D8 bit 0x40
+  rstl::vector< int > mBounceCounts;                   // 0x5C8: per roll, the bounces before the
+                                                       // spline runs (kSM_Create fills it)
+  bool mDirChosen : 1;                                 // 0x5D8 bit 0x80: GrowIn picked its heading
+  bool mRandomDir : 1;                                 // 0x5D8 bit 0x40: set by the first roll; later
+                                                       // grow-ins pick a random heading
   bool m5D8_20 : 1;                                    // 0x5D8 bit 0x20
-  bool m5D8_10 : 1;                                    // 0x5D8 bit 0x10
-  bool m5D8_08 : 1;                                    // 0x5D8 bit 0x08
+  bool mBounced : 1;                                   // 0x5D8 bit 0x10: CollidedWith hit something
+  bool mRolling : 1;                                   // 0x5D8 bit 0x08
   bool mDone : 1;                                      // 0x5D8 bit 0x04
-  bool m5D8_02 : 1;                                    // 0x5D8 bit 0x02
+  bool mOnSpline : 1;                                  // 0x5D8 bit 0x02: the speed spline runs
   bool mHalted : 1;                                    // 0x5D8 bit 0x01
   bool m5D9_80 : 1;                                    // 0x5D9 bit 0x80
-  bool m5D9_40 : 1;                                    // 0x5D9 bit 0x40
-  bool m5D9_20 : 1;                                    // 0x5D9 bit 0x20, set by the ctor
-  bool m5D9_10 : 1;                                    // 0x5D9 bit 0x10, set by the ctor
+  bool mGrown : 1;                                     // 0x5D9 bit 0x40
+  bool mIntoBallSfx : 1;                               // 0x5D9 bit 0x20, set by the ctor
+  bool mLoopSfx : 1;                                   // 0x5D9 bit 0x10, set by the ctor
 };
 
 template <>

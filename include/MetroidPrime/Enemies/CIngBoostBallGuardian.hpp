@@ -366,6 +366,8 @@ public:
   void StartRangedAttack(CStateManager& mgr, float dt);
   void EndRangedAttack(CStateManager& mgr, float dt);
   void SplatOntoMesh(CStateManager& mgr, float dt);
+  // fn_30_2F9C takes the actor by pointer; the boost ball calls it too (0x00013304, 0x000144E4).
+  static CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, const CActor& actor, int hintType);
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
@@ -381,7 +383,9 @@ private:
   void ApplySeparation(CStateManager& mgr);
   float DistSqToTarget(const CStateManager& mgr) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
-  CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, int hintType) const; // fn_30_2F9C
+  CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, int hintType) const {
+    return FindBoostNavPoint(mgr, *this, hintType);
+  }
   // fn_30_3478: spawns the boost ball (PortCBoostBallGuardianBall.hpp); fn_30_340C stores the
   // player's aim position, fn_30_324C finds the ground under the actor.
   void SpawnBoostBall(CStateManager& mgr);

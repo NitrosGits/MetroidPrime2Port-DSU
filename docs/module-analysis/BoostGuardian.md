@@ -250,14 +250,22 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   pair at +0xC0/+0xC4 are the loader's constants 1000.0/1.0 (`fn_30_748` 0x8E8/0x8EC), the
   rolling sfx's `C3DEmitterParmData(maxDist, distComp)` (0x129C8): `mSoundMaxDistance`/
   `mSoundDistanceComp`.
-- *Ported (slice a):* ctor, dtor, the small overrides, `fn_30_16238`, spawn `3478` with `340C`/
-  `324C`, BoostAttack `79C0`. Think is a named stand-in, so the ball sits at its spawn point and
-  BoostAttack waits: it ends on IsBoostOver (the ball's shrink, slice b) or HasCollidedWithCrystal
-  (nothing on the host sets it yet; slice c). The 0xD64 manager is never built on the host, so
-  BoostAttack's `SetActive` calls on it are null-guarded.
-- *Next slices:* (b)
-  Think with `137C0`/`13C78`/`152D4`/`13760`/`1282C`; (c) `12AB0`, CollidedWith,
-  AcceptScriptMsg, the three render overrides.
+- *Ported (slices a, b):* ctor, dtor, the small overrides, `fn_30_16238`, spawn `3478` with `340C`/
+  `324C`, BoostAttack `79C0`; Think `1548C` with grow-in `137C0`, effects `13C78`, scale/fade
+  `152D4`, shrink `13760`, rolling sfx `1282C`, PlaySound `12904`, the roll `12AB0` (impulse
+  `11E70`, path check `148DC`, steering `12124`/`123CC`, aim at player `11F2C`, cover point
+  `12510`), CollidedWith `142BC` and AcceptScriptMsg `1466C` (kSM_Create fills the per-roll
+  bounce counts at 0x5C8; the roll pops one per spline run and shrinks when none are left, which
+  is what IsBoostOver sees). `FindBoostNavPoint` (`2F9C`) is a static taking the actor, so the
+  ball shares it. Area 28: the ball rolls, bounces, ends BoostAttack and respawns on the next.
+- *Stand-ins:* the roll's contact sweep `14CCC` (0x608; damages patterned actors and damageable
+  triggers, so only the player takes contact damage now).
+- *Retail quirks kept:* `12510` takes its pick modulo the exhausted list index (-1), so it always
+  heads for the first candidate; `13260` normalises a nav-point line it never reads.
+- *Next:* the render overrides `13E68`/`141B8`/`13ECC` (the effects are updated but not drawn) and
+  `14CCC`. The 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
+  guardian's AcceptScriptMsg `fn_30_DDA0` (0xDF18/0xDF24), which the host does not have yet, so
+  BoostAttack's `SetActive` calls on 0xD64 stay null-guarded until that slice.
 
 ## g. Function map
 

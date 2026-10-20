@@ -75,11 +75,12 @@ bool CIngBoostBallGuardian::BoostModeRetreatOver(CStateManager& mgr,
 // (byte 0x20 bit 0x80, 0x00002FE4), in this actor's area (+0x04, 0x00003000) and of the given
 // type (+0x158, 0x00003010); null when there is none (0x00003044).
 // @ fn_30_2F9C
-CScriptAIHint* CIngBoostBallGuardian::FindBoostNavPoint(CStateManager& mgr, int hintType) const {
+CScriptAIHint* CIngBoostBallGuardian::FindBoostNavPoint(CStateManager& mgr, const CActor& actor,
+                                                       int hintType) {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
-    if (hint != nullptr && hint->GetActive() && hint->GetCurrentAreaId() == GetCurrentAreaId() &&
+    if (hint != nullptr && hint->GetActive() && hint->GetCurrentAreaId() == actor.GetCurrentAreaId() &&
         static_cast< int >(hint->GetHintType()) == hintType) {
       return hint;
     }
