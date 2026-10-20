@@ -144,6 +144,12 @@ private:
   void x119E4_(CStateManager& mgr);
   // fn_14_13AE0 (0x28 bytes): the three timers.
   void x13AE0_(float dt);
+  // fn_14_13B38 (0xE4 bytes): the horizontal facing direction.
+  CVector3f x13B38_() const;
+  // fn_14_11C08 (0x15C bytes): a direction with its pitch limited to 55 degrees.
+  CVector3f x11C08_(const CVector3f& dir) const;
+  // fn_14_11D64 (0x144 bytes): turn toward the face target (0x1036).
+  void x11D64_(CStateManager& mgr, float dt);
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
@@ -158,8 +164,9 @@ private:
   CVector3f x1004_; // 0x1004: the attack area's centre (fn_14_119E4)
   CVector3f x1010_; // 0x1010: the attack area's first axis
   CVector3f x101C_; // 0x101C: the attack area's second axis
+  CVector3f x1028_; // 0x1028: the direction the head turns to (fn_14_11D64)
   TUniqueId x1034_; // 0x1034: the body (fn_14_13830)
-  TUniqueId x1036_; // 0x1036
+  TUniqueId x1036_; // 0x1036: the face target (SetPlayerFaceTarget)
   TUniqueId x1038_; // 0x1038
   TUniqueId x103A_; // 0x103A: the destroyed bomb pit (BombPitDestroyed)
   TUniqueId x103C_; // 0x103C: the MDFY/FOLW waypoint

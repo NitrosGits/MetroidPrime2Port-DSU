@@ -8,11 +8,13 @@
 
 #include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp"
 
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CObjectList.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
@@ -147,6 +149,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x1004_(GetTranslation())
 , x1010_(GetTransform().GetColumn(kDY))
 , x101C_(-GetTransform().GetColumn(kDX))
+, x1028_(CVector3f::Zero())
 , x1034_(kInvalidUniqueId)
 , x1036_(kInvalidUniqueId)
 , x1038_(kInvalidUniqueId)
@@ -298,6 +301,62 @@ void CDigitalGuardianHead::x119E4_(CStateManager& mgr) {
                        0.5f * (pos[0].GetZ() + pos[1].GetZ()));
     x1010_ = CVector3f(dx, dy, 0.f);
     x101C_ = CVector3f(-dy, dx, 0.f);
+  }
+}
+
+// fn_14_13B38: the transform's forward column (0x28/0x38/0x48) flattened (z is .rodata 0x960, 0)
+// and normalised; when that is not safe (the head looks straight up or down) the up column
+// (0x2C/0x3C/0x4C), negated if forward's z is above 0.
+// @ fn_14_13B38
+CVector3f CDigitalGuardianHead::x13B38_() const {
+  const CVector3f forward = GetTransform().GetColumn(kDY);
+  const CVector3f flat(forward.GetX(), forward.GetY(), 0.f);
+  if (flat.IsMagnitudeSafe()) {
+    return flat.AsNormalized();
+  }
+  const CVector3f up = GetTransform().GetColumn(kDZ);
+  if (forward.GetZ() > 0.f) {
+    return -up;
+  }
+  return up;
+}
+
+// fn_14_11C08: with dir and its horizontal part both safe, dir normalised, slerped from the
+// horizontal toward it by 55 degrees (.rodata 0x9B8, 0.9599311) when its pitch is larger;
+// otherwise fn_14_13B38.
+// @ fn_14_11C08
+CVector3f CDigitalGuardianHead::x11C08_(const CVector3f& dir) const {
+  const CVector3f fallback = x13B38_();
+  const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
+  if (dir.IsMagnitudeSafe() && flat.IsMagnitudeSafe()) {
+    const CVector3f dirN = dir.AsNormalized();
+    const CVector3f flatN = flat.AsNormalized();
+    if (CVector3f::GetAngleDiff(flatN, dirN) > 0.9599311f) {
+      return CVector3f::Slerp(flatN, dirN, CRelAngle::FromRadians(0.9599311f));
+    }
+    return dirN;
+  }
+  return fallback;
+}
+
+// fn_14_11D64: only for dt > 0 (.rodata 0x960). 0x1028 becomes the direction to the face target
+// (0x1036; its +0x54 minus this one's, through fn_14_11C08), or fn_14_13B38 with no target. Unless
+// bit 0x08 of 0x10F4 is set (extrwi. 1, 28 at 0x11E54), the body controller faces it.
+// @ fn_14_11D64
+void CDigitalGuardianHead::x11D64_(CStateManager& mgr, float dt) {
+  if (dt <= 0.f) {
+    return;
+  }
+  if (const CEntity* ent = mgr.GetObjectById(x1036_)) {
+    // Retail reads the entity's translation unchecked (lfs 0x54(r3) at 0x11DA8); the face target is
+    // the player.
+    const CActor* target = static_cast< const CActor* >(ent);
+    x1028_ = x11C08_(target->GetTranslation() - GetTranslation());
+  } else {
+    x1028_ = x13B38_();
+  }
+  if ((x10F4_ & 0x08) == 0 && x1028_.IsMagnitudeSafe()) {
+    BodyController()->FaceDirection(x1028_.AsNormalized(), dt);
   }
 }
 
@@ -501,11 +560,30 @@ void CDigitalGuardianHead::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_14_1709C: on activate the head faces its horizontal forward (fn_14_13B38, stored at
+// 0x1028); each update turns it toward the face target (fn_14_11D64); on deactivate 0x1028 is
+// cleared.
+// @ fn_14_1709C
+void CDigitalGuardianHead::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    x1028_ = x13B38_();
+    break;
+  case kStateMsg_Update:
+    x11D64_(mgr, dt);
+    break;
+  case kStateMsg_Deactivate:
+    x1028_ = CVector3f::Zero();
+    break;
+  default:
+    break;
+  }
+}
+
 #define DGHD_STATE_STANDIN(name, fn)                                                               \
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
   }
-DGHD_STATE_STANDIN(FaceTarget, fn_14_1709C)
 DGHD_STATE_STANDIN(ProjectileTelegraph, fn_14_16F74)
 DGHD_STATE_STANDIN(PulseAttack, fn_14_16D64)
 DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
@@ -523,11 +601,16 @@ DGHD_STATE_STANDIN(Dead, fn_14_1561C)
 #undef DGHD_STATE_STANDIN
 
 // Codes not ported yet: once-logging stand-ins (the FSM2 state machine runs codes by name).
+// fn_14_1560C: the player (state manager +0x14FC) becomes the face target (0x1036).
+// @ fn_14_1560C
+void CDigitalGuardianHead::SetPlayerFaceTarget(CStateManager& mgr, float dt) {
+  x1036_ = mgr.GetPlayer(0)->GetUniqueId();
+}
+
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
   }
-DGHD_CODE_STANDIN(SetPlayerFaceTarget, fn_14_1560C)
 DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
 DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
 DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
