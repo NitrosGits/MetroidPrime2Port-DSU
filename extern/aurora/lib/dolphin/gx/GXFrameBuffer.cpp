@@ -67,6 +67,12 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
       }
     }
     if (sameDest >= MaxCopyTexturesPerDest) {
+      // Its palette conversions go with it: they are keyed by the copy texture's address and are
+      // as large as the copy, so on the tablet (3195x1864) each stale one held ~24 MB for the
+      // 600-frame idle sweep, and the scan visor made one per frame - over 1 GB in two seconds.
+      if (oldest->second.handle) {
+        evict_dynamic_palettes(oldest->second.handle.get());
+      }
       g_gxState.copyTextureCache.erase(oldest);
     }
     gfx::TextureHandle handle;

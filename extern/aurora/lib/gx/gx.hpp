@@ -443,6 +443,9 @@ void set_viewport_policy(AuroraViewportPolicy policy) noexcept;
 void clear_static_texture_cache() noexcept;
 void clear_copy_texture_cache() noexcept;
 void evict_copy_texture(const void* dest) noexcept;
+// Port: drops the palette-converted textures made from one copy texture, for a caller that
+// releases that copy texture itself (copy_tex's per-destination eviction).
+void evict_dynamic_palettes(const void* sourceIdentity) noexcept;
 void evict_texture_object(u32 texObjId) noexcept;
 void evict_tlut_object(u32 tlutObjId) noexcept;
 Vec2<uint32_t> logical_fb_size() noexcept;
