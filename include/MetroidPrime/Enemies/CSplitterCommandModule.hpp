@@ -152,6 +152,52 @@ private:
   // at 0x64C8). It holds the head's joint collision descriptions, which belong to the state
   // machine, so the port starts it empty.
   CCollisionActorManager* mCollisionActorManager = nullptr;
+
+  // The module's auto-destruct (fn_75_5A54) and the retail's fn_75_21FC, which runs it when
+  // the timer reaches 5.0f. The auto-destruct's own body is still unknown (the module note's
+  // section j), so it is the same once-logging shell the main chassis has.
+  void PortAutoDestruct(float time);
+  void PortAutoDestructTimer(float dt);
+
+  // guest 0xF6A: the auto-destruct flag byte; the retail's fn_75_21FC tests its 0x01 (the
+  // word's bit 31) and clears it.
+  uchar mAutoDestructFlags = 0;
+  // guest 0xEF4: the auto-destruct timer the same function advances.
+  float mAutoDestructTimer = 0.f;
+
+  // The retail's fn_75_184C: the target it looks at, the locator it looks from, the offset it
+  // adds and the sound handle. The retail's own writers of those fields are in the state
+  // machine, which the port has not entered, so they keep their defaults here.
+  void PortLookAtTarget(CStateManager& mgr, float dt);
+  TUniqueId mLookAtTargetId = kInvalidUniqueId;  // guest 0xF02 (the u16 the retail keeps here)
+  CSegId mLookAtSegment;                         // guest 0xEF8 (the locator)
+  CVector3f mLookAtOffset;                       // guest 0xF50, 0xF54, 0xF58
+  int mLookAtSfxHandle = 0;                      // guest 0xF5C (the sound handle)
+
+  // The fields the retail's fn_75_31A8 touches.
+  void PortUpdateChassis(CStateManager& mgr);
+  TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
+  TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
+  TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
+  TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
+  float mChassisTimer = 0.f;                     // guest 0xF14 (set to 3.0f at 0x3230)
+
+  // The fields the retail's fn_75_32F4 touches.
+  void PortUpdateFlashAndDeath(CStateManager& mgr, float dt);
+  float mCountdownTimerA = 0.f;                // guest 0xF10 (counted down at 0x332C)
+  float mCountdownTimerB = 0.f;                // guest 0xF0C (counted down at 0x333C)
+  float mCountupTimerA = 0.f;                  // guest 0xF18 (counted up at 0x3354)
+  float mCountupTimerB = 0.f;                  // guest 0xF1C (counted up at 0x3360)
+  float mFlashAlpha = 0.f;                     // guest 0xF08 (the Lerp's weight, 0x3368)
+  CColor mFlashColor;                          // guest 0xF04 (the Lerp's result, 0x33C8)
+  float mDeathTimer = 0.f;                     // guest 0xEF0 (counted down at 0x33EC)
+
+  // The fields the retail's fn_75_3004 touches.
+  void PortUpdateCollision(CStateManager& mgr);
+  uint mSoundHandle = 0;                        // guest 0xF60 (the sound handle, 0x306C)
+  TUniqueId mSoundTargetId = kInvalidUniqueId;  // guest 0xF00 (the id it looks up, 0x3078)
+  int mCollisionState = 0;                      // guest 0xEE0 (the state, 0x30C4)
+  int mPreviousCollisionState = 0;              // guest 0xEE4 (the previous state, 0x315C)
 };
 
 #endif // _CSPLITTERCOMMANDMODULE
