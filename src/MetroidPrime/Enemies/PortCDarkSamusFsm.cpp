@@ -511,12 +511,18 @@ void CDarkSamus::Null(CStateManager&, EStateMsg, float) {
   FsmStandIn("fn_10_14448", "state Null");
 }
 
-void CDarkSamus::Dead(CStateManager&, EStateMsg, float) {
+// The base's Dead body is the host's death path (the die command, the fade and the material
+// change); it stands in for the module's until that one is ported, so the actor can still die.
+void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_143A8", "state Dead");
+  CPatterned::Dead(mgr, msg, dt);
 }
 
-void CDarkSamus::Patrol(CStateManager&, EStateMsg, float) {
+// The base's Patrol body is the host's waypoint patrol; it stands in for the module's until
+// that one is ported.
+void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_1142C", "state Patrol");
+  CPatterned::Patrol(mgr, msg, dt);
 }
 
 void CDarkSamus::Pause(CStateManager&, EStateMsg, float) {
@@ -559,8 +565,10 @@ void CDarkSamus::SideDash(CStateManager&, EStateMsg, float) {
   FsmStandIn("fn_10_153EC", "state SideDash");
 }
 
-void CDarkSamus::Start(CStateManager&, EStateMsg, float) {
+// The base's Start body is empty, so it stands in for the module's until that one is ported.
+void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_F920", "state Start");
+  CPatterned::Start(mgr, msg, dt);
 }
 
 void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg, float) {

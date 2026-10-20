@@ -276,3 +276,9 @@ No other state is entered in 6000 frames (the run with two `damage u0732 100` hi
 nothing): the other 90 handlers are never called, because the stand-in triggers answer false.
 The state machine's transitions live in the FSM2 asset, so the next slice needs that asset's
 transitions (the Boost Guardian's probe, `MP2_BG_FSM`, is the shape of it).
+
+The three state names the base class also has - `Start` (`fn_10_F920`), `Dead` (`fn_10_143A8`) and
+`Patrol` (`fn_10_1142C`) - forward to `CPatterned`'s body after the log, the way the port's other
+stand-ins do, so the death path keeps working until the module's own bodies are ported: three
+`damage u0732 200` hits take the actor to `hp 0/600`, the machine enters `Dead` and the actor
+leaves the area (checked in the same run).
