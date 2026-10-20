@@ -374,6 +374,8 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId`.
 - **The 12 trigger stand-ins are gone (2026-10-20, this session):** `PortCSpacePirateTriggers.cpp`
   has no stand-in left - every one of the 39 triggers is now retail's (section 6 has the facts).
+  (`PortCSpacePirateStates.cpp` had none either; `PortCSpacePirate.cpp` still has 14 vtable-override
+  stand-ins.)
   Three of them carry a `// @` marker because the 208 cycle evaluates them (always false there):
   `ADC0` (AggressionCheck), `7970` (HasTargetingPoint), `55B8` (OffLine). The other nine are never
   evaluated, so they stay unmarked. `PortSpacePirateStandIn` is now called from nowhere but
