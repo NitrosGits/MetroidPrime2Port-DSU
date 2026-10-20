@@ -1380,7 +1380,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 } // namespace
 
-// Retail fn_72_F0A0: CPatterned's tables first, then its own 39 triggers (0x27) and 37 states
+// @ fn_72_F0A0 (0x6C): CPatterned's tables first, then its own 39 triggers (0x27) and 37 states
 // (0x25). The state bodies live in PortCSpacePirateStates.cpp, the triggers in
 // PortCSpacePirateTriggers.cpp.
 void CSpacePirate::SetupStateMachine(CStateManager& mgr) {
