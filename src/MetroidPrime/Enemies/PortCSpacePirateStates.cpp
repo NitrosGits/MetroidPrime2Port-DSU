@@ -27,12 +27,12 @@
 #include <float.h>
 
 // Retail fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
-// unnamed Echoes locomotion) when 0x8f4 bit 0x40 is set, otherwise 0 = kLT_Crouch. Every other
-// message returns.
+// unnamed Echoes locomotion) when 0x8f4 byte bit 0x40 (`x8f4_25_ceilingAmbush`, data flag 0x2) is
+// set, otherwise 0 = kLT_Crouch. Every other message returns.
 void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(
-        x8f4_30_ ? pas::kLT_Internal6 : pas::kLT_Crouch);
+        x8f4_25_ceilingAmbush ? pas::kLT_Internal6 : pas::kLT_Crouch);
   }
 }
 
@@ -847,11 +847,10 @@ void CSpacePirate::AvoidActors(CStateManager& mgr) {
 // Retail fn_72_CC80 is MP1's CSpacePirate::CheckBlade: the swoosh locator's own box (the model's
 // scale halved around the locator translation, rodata 0xB44 = 0.5) tested against the attack
 // target's bounds, which once over the overlap damages that actor with the data's blade damage and
-// marks the blade spent. Echoes differs from MP1 in the guard: it bails on x8f8 bit 0x20
-// (alwaysAggressive, `rlwinm. r0,r0,26,31,31` at 0xCCA4) rather than on the appliedBladeDamage bit,
-// and only *sets* x8f8 bit 0x40 at the end (0xCE0C `rlwimi ..,1,6,25`).
+// marks the blade spent. As in MP1 the guard is the appliedBladeDamage bit: `extrwi. r0,r0,1,25` at
+// 0xCCA4 tests byte bit 0x40 of 0x8f8 (`x8f8_25`), the bit 0xCE0C (`rlwimi ..,1,6,25`) sets.
 void CSpacePirate::CheckBlade(CStateManager& mgr) {
-  if (x8f8_26_alwaysAggressive) {
+  if (x8f8_25_appliedBladeDamage) {
     return;
   }
   if (xa89_swooshSeg == CSegId::Invalid()) {
