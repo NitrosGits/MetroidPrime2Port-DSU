@@ -303,7 +303,14 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
   SetDrawShadow(false);
 }
 
-// The collision actor manager at guest 0x7C0 is owned by the actor.
+// @ fn_18_94C8
+// fn_18_94C8 (0x220, the vtable's destructor slot): the collision actor manager at guest 0x7C0 is
+// owned by the actor (fn_801362C4 with 1, 0x96A4); the rest is the members' destructors in reverse
+// order (0x9C0..0xE78) and ~CPatterned (0x96B8), which the host's implicit member destructors do.
+// The weak copies it calls are cited, not marked: fn_18_96E8 is CPatterned's destructor (its
+// knock-back member at guest 0x620 is fn_18_98CC), fn_18_9960/fn_18_99B4 the three lists'
+// rstl::vector< SEmperorIngListEntry > destructor and fn_18_9A38 the portal list's
+// rstl::vector< SEmperorIngPortal > destructor.
 CEmperorIngStage3::~CEmperorIngStage3() { delete x7c0_; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
@@ -475,6 +482,7 @@ void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
 }
 
 // @ fn_18_7B14
+// @ fn_18_DB28
 // @ fn_18_3B8C
 // vtable slot 4 = fn_18_7B14 (0x668): retail's message switch. The base class's message
 // handler runs first (0x7B50) and then the module's own cases, one per message: the constants
@@ -1218,6 +1226,7 @@ static void SetExternalParamTree(CElementGen* gen, uint index, float value) {
 }
 
 // @ fn_18_3448
+// @ fn_18_3648
 // fn_18_3448 (0x1AC): the heart damage update (fn_18_2F04), then the heart effect of the heart
 // that is on (guest 0x868: 0 "EnragedHeart", 1 "DarkHeart", 2 "LightHeart"; none past two) gets
 // the growth (guest 0x82C) as param 0, and params 2 and 3 at one past 0.49 / 0.74 (rodata
@@ -1352,6 +1361,7 @@ const SEmperorIng3Sphere skSpheres[3] = {
 } // namespace
 
 // @ fn_18_3BB0
+// @ fn_18_4080
 // fn_18_3BB0 (0x450): the collision actors. The vector reserves 0xD (0x3BDC); the ten leg boxes
 // (OBBAutoSizeCollision, fn_80137338: the two locators' segments on the actor's own animation
 // data, a cube of the extent, kOT_BetweenJoints (`li r7, 0x1`, 0x3CE8), the name from + "->"

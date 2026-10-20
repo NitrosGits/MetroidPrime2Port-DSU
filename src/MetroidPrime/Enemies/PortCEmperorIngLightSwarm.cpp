@@ -265,7 +265,8 @@ CVector3f CEmperorIngLightSwarm::GetLockOnLocation(int) const {
   return GetTranslation() - 1.5f * mDirection;
 }
 
-// fn_18_B614
+// @ fn_18_B614
+// fn_18_B614 (0x4, a lone blr): the light swarm draws no boid of its own.
 void CEmperorIngLightSwarm::RenderBoid(CBoid*) const {}
 
 // Every boid moves forward at the swarm's speed (guest 0x1CC), half again as fast once dying.
