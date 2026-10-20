@@ -1238,7 +1238,7 @@ void CSpacePirate::RenderLauncherModel(const CStateManager& mgr, const CTransfor
   }
 }
 
-// Retail fn_72_37C4 (Render): the space warp while warping in, the scoped time provider, the
+// @ fn_72_37C4 (Render): the space warp while warping in, the scoped time provider, the
 // portal plane, the patterned render and the launcher model.
 void CSpacePirate::Render(const CStateManager& mgr) const {
   // 0x37E0: the seconds mod 900 while alive (0x420 bit 0x40), else 0 (rodata B9C).
