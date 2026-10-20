@@ -194,8 +194,7 @@ private:
   void AddTentacleJointToVector();
   // fn_16_39CC: the vector's growth. Too big for the slice's rule, so it stays a stand-in.
   void GrowTentacleJointVector();
-  // fn_16_3AA8: the tentacle's collision actor. Too big for the slice's rule, so it stays a
-  // stand-in.
+  // fn_16_3AA8: the tentacle's collision actor.
   CCollisionActor* GetTentacleActor(CStateManager& mgr, int index);
   // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
   CActor* GetTargetActor(CStateManager& mgr) const;

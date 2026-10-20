@@ -54,7 +54,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_1E6C` | 0xC8 | gives the tentacle actor the module's health info, then its materials | [probable] |
 | `fn_16_1F34` | 0x20 | the tentacle actor's materials | [proven] |
 | `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [proven] |
-| `fn_16_3AA8` | 0x54 | the tentacle's collision actor (the owner's first manager, five joints per tentacle) | [probable] |
+| `fn_16_3AA8` | 0x54 | the tentacle's collision actor (the owner's first manager, five descriptions per tentacle, the index 4 + index * 5) | [proven] |
 | `fn_16_39CC` | 0xDC | the joint vector's growth | [?] |
 | `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
 | `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
@@ -374,8 +374,8 @@ guest 0x7D4 (0x3928..0x3958).
 
 fn_16_337C (0x184) fills the parm list of a CPASAnimParmData, which the port's own
 `CPASAnimParmData` constructor does, so it is not a separate function here. The three functions
-that build and add the joint are too big and stay stand-ins: fn_16_2B68 (0xD4), fn_16_1E6C (0xC8)
-and fn_16_3984 (0x90).
+that build and add the joint are ported with the joint work (fn_16_2B68, fn_16_1E6C and
+fn_16_3984 below).
 
 ### The joint work (fn_16_2B68, fn_16_1E6C, fn_16_3984)
 
@@ -400,9 +400,13 @@ grows first (fn_16_39CC, 0xDC - too big, so it stays a stand-in) and the count i
 (0x39B4); the port's vector holds the eight tentacle slots, so it never grows.
 
 **fn_16_3AA8** (0x3AA8..0x3AFC) finds the tentacle's collision actor: the owner's first collision
-actor manager (guest 0x7C8) holds five joint descriptions per tentacle (the index is scaled by five
-at 0x3AB4), the description's collision actor id (at +0x3C) is looked up in the state manager and
-cast to a collision actor. It is 0x54 bytes, just over the slice's line, so it stays a stand-in.
+actor manager (guest 0x7C8) holds five joint descriptions per tentacle - the index is scaled by
+five (0x3AB4) and the group starts four earlier (the callers pass 4 in r6: `li r6, 0x4` at
+0x1E2C, 0x1E74, 0x1F58, 0x1FE0, 0x2560 and 0x7FDC), so the tentacle's own description is the last
+of its five, at 4 + index * 5. The description's collision actor id (at +0x3C) is looked up in the
+state manager (0x3AE0) and cast to a collision actor (0x3AE4). It is 0x54 bytes, under the slice's
+0x80 line, so the port has it; the manager itself comes from fn_16_3EAC, which is reserved, so on
+the host the pointer at guest 0x7C8 is still null and the port takes that null path.
 
 ### The message switch (fn_16_7CE8, vtable slot 4)
 
@@ -503,8 +507,10 @@ CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
 
 With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
-descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC) and the
-tentacle actor lookup (fn_16_3AA8), both stand-ins, and nothing faults.
+descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC), which stays a
+stand-in because the port's vector holds the eight tentacle slots, and the tentacle actor lookup
+(fn_16_3AA8), which is ported and takes its null path because the manager at guest 0x7C8 comes
+from fn_16_3EAC (reserved) - nothing faults.
 
 With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
 fills the three animation ids (guest 0xA20, 0xA24 and 0xA28) and the eight joint slots, and the

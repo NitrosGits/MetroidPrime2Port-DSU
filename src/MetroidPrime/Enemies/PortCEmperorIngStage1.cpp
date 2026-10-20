@@ -636,12 +636,20 @@ void CEmperorIngStage1::AddTentacleJointToVector() {
 void CEmperorIngStage1::GrowTentacleJointVector() { StandInFn("fn_16_39CC"); }
 
 // fn_16_3AA8 (0x3AA8..0x3AFC): the tentacle's collision actor - the owner's first collision actor
-// manager (guest 0x7C8) holds five joint descriptions per tentacle (the index is scaled by five
-// at 0x3AB4), the description's collision actor id (at +0x3C) is looked up in the state manager
-// and cast to a collision actor. Too big for the slice's rule, so it stays a stand-in.
+// manager (guest 0x7C8) holds five joint descriptions per tentacle: the index is scaled by five
+// (0x3AB4) and the group starts four earlier (the callers pass 4 in r6 - `li r6, 0x4` at 0x1E2C,
+// 0x1E74, 0x1F58, 0x1FE0, 0x2560 and 0x7FDC), so the tentacle's own description is the last of
+// its five. The description's collision actor id (at +0x3C) is looked up in the state manager
+// (0x3AE0) and cast to a collision actor (0x3AE4).
 CCollisionActor* CEmperorIngStage1::GetTentacleActor(CStateManager& mgr, int index) {
-  StandInFn("fn_16_3AA8");
-  return nullptr;
+  if (x7c8_ == nullptr) {
+    // A port limit, not retail's: the manager at guest 0x7C8 is the one fn_16_3EAC creates, and
+    // fn_16_3EAC (the tentacle spawn code) is reserved, so on the host the pointer is still null.
+    return nullptr;
+  }
+  const uint descIndex = 4 + index * 5; // 0x3AB4, 0x3AC0
+  const TUniqueId id = x7c8_->GetCollisionDescFromIndex(descIndex).GetCollisionActorId(); // 0x3AC8
+  return TCastToPtr< CCollisionActor >(mgr.ObjectById(id)); // 0x3AE0, 0x3AE4
 }
 
 // vtable slot 7 = fn_16_52FC (0x20): the retail override is the base class's own PreRender.
