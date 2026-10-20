@@ -13,7 +13,7 @@ DarkTrooper	12	29564	172	upstream	src/MetroidPrime/Enemies/CDarkTrooper.cpp	DKTR
 DestructibleBarrier	13	29948	117	upstream	src/MetroidPrime/ScriptObjects/CScriptDestructibleBarrier.cpp	DBAR*	?	0	-
 DigitalGuardian	14	112796	420	entry-stub	src/MetroidPrime/PortModuleStubs.cpp	DGHD,DGRD	Mechanism: Quadraxis | Mechanism: Shielded Head Module | Mechanism: Stunned Head Module	1	Sanctuary Fortress/09_cliff_temple_dark[L3,11]
 ElitePirate	15	51836	241	port-body	src/MetroidPrime/Enemies/PortCElitePirate.cpp	EPRT	Mechanism: Ingsmasher | Mechanism: Dark Ingsmasher	5	Sanctuary Fortress/02_cliff_reactorcore_dark[L5]; Sanctuary Fortress/03_cliff_chicane[L4]; Sanctuary Fortress/06_cliff_spiderballguardian[L7]; Sanctuary Fortress/0c_cliff_hall[L3]; Sanctuary Fortress/0m_cliff_hall_dark[L4,5]
-EmperorIngStage1	16	50248	241	entry-stub	src/MetroidPrime/PortModuleStubs.cpp	EMS1	?	1	Great Temple/07_temple_mothlordsanctuary_dark[L2]
+EmperorIngStage1	16	50248	241	port-body	src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp	EMS1	?	1	Great Temple/07_temple_mothlordsanctuary_dark[L2]
 EmperorIngStage2Tentacle	17	8500	69	upstream	src/MetroidPrime/Enemies/CEmperorIngStage2Tentacle.cpp	EM2T	?	1	Great Temple/07_temple_mothlordsanctuary_dark[L3]
 EmperorIngStage3	18	59816	270	entry-stub	src/MetroidPrime/PortModuleStubs.cpp	EMS3	Morphology: Mutated Emperor Ing	1	Great Temple/07_temple_mothlordsanctuary_dark[L4]
 EyeBall	19	10356	68	upstream	src/MetroidPrime/Enemies/CEyeBall.cpp	EYEB	Mechanism: Corrupted Sentreye	2	Temple Grounds/0q_temple_hall_dark; Temple Grounds/10_temple_pathofeyes_dark
