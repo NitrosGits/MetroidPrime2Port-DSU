@@ -2703,6 +2703,8 @@ void CEmperorIngStage1::GetWarpPortalPlacement(CStateManager& mgr, CVector3f& po
   const CVector3f origin = player->GetAimPosition(mgr, 0.75f);
   const CRayCastResult hit = mgr.RayStaticIntersection(
       origin + CVector3f::Up(), CVector3f::Down(), 50.f, CMaterialFilter());  // 0x6500
+  // fn_16_6898 (0x6898..0x6914): the result is copied field by field into the stack's own slot
+  // (the eight floats, the two ints and the byte); the host's assignment does it.
   pos = origin;                       // 0x6488..0x64A0
   if (hit.IsValid()) {                // 0x6514
     pos = hit.GetPoint();             // 0x6528
