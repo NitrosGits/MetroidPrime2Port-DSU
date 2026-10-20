@@ -266,6 +266,7 @@ private:
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)

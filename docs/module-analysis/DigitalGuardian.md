@@ -708,6 +708,29 @@ The flag byte at `this+0x128C` is now written by a state (the Idle state's bit 7
 three triggers (`fn_14_9930` bit 0, `fn_14_966C` bit 2, `fn_14_9A9C` bit 7), so the "is idle"
 trigger and the Idle state agree on the same byte, as in retail.
 
+**WP2 part 2d done (2026-10-20): six code functions.** The bodies of `ResetJumpTime`
+(fn_14_7B84), `ResetProtectKneesTime` (fn_14_7B90), `ResetHeadAttacks` (fn_14_7648),
+`DisableHeadAttacks` (fn_14_768C), `SelectExitVortexTarget` (fn_14_7600) and `ResetAttackTimes`
+(fn_14_7B24) are ported. `SetNormalAttackMode` (fn_14_76D0) is **not**: it calls fn_14_3A44
+(the call at 0x7718), 0x108 bytes, which walks the four knees, resets their damage
+vulnerabilities (guest `this+0x1014` and `this+0x1044`) and calls fn_14_CE94 - too big for one
+slice.
+
+| code | fn | what it does | asm |
+|---|---|---|---|
+| ResetJumpTime | `fn_14_7B84` | the jump timer (guest `this+0x938` = the data block's +0x178, `mJumpTimer`) into the member at `this+0x11E4` | the load at 0x7B84 and the store at 0x7B88 |
+| ResetProtectKneesTime | `fn_14_7B90` | the member at `this+0x1274` becomes the data block's +0x174 (`mUnknown6A754EBD`) when all four knees are set (fn_14_705C's count >= 4, the cmpwi at 0x7BA8), otherwise the block's +0x170 (`mUnknownA324E26C`) | the call at 0x7BA4, the loads at 0x7BB0/0x7BB8, the store at 0x7BBC |
+| ResetAttackTimes | `fn_14_7B24` | the member at `this+0x11E0` becomes the data block's +0x0C (`mMinLegStabAttackTime`) and the one at `this+0x11E4` the jump timer | the loads/stores at 0x7B3C-0x7B48 |
+| DisableHeadAttacks | `fn_14_768C` | the head module (looked up by the uid at `this+0x1082`) is asked to disable its attacks with the argument 3 | the lhz at 0x7698, the li r4, 3 at 0x76B8, the call at 0x76BC |
+| ResetHeadAttacks | `fn_14_7648` | the same lookup, the head is asked to reset its attacks with the argument 4 | the lhz at 0x7654, the li r4, 4 at 0x7674, the call at 0x7678 |
+| SelectExitVortexTarget | `fn_14_7600` | the closest active waypoint to the player (fn_14_308C) and its id into the member at `this+0x1168` | the lwz at 0x761C, the addi at 0x7624, the call at 0x7628, the store at 0x7630 |
+
+New host member: `x1168_` (0x1168, the exit vortex target's waypoint id; the ctor stores 0
+there, the sth at 0x0000B67C). `ResetHeadAttacks` and `DisableHeadAttacks` are empty in the
+port: the head class is WP3 and its loader is a stand-in, so no head can exist and the call
+cannot be made - WP3 has to add both.
+
+
 
 
 ### WP3 — the head module

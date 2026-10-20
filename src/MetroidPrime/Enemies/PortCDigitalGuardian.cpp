@@ -115,6 +115,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 
 
 
+
 } // namespace
 
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
@@ -133,6 +134,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10C4_(4)
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
 , x1082_(0)
+, x1168_(TUniqueId(0))
 , x11B8_(0)
 , x11E0_(0.f)
 , x11E4_(0.f)
@@ -560,16 +562,31 @@ void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
   StandInFn("fn_14_7BD4");
 }
 
+// fn_14_7B90: the number of knees that are set (fn_14_705C, the call at 0x7BA4) picks the
+// float that is copied into the member at guest this+0x1274 (the store at 0x7BBC): the data
+// block's +0x174 (mUnknown6A754EBD) when all four knees are set (the cmpwi with 4 at 0x7BA8),
+// otherwise the block's +0x170 (mUnknownA324E26C) (the two loads at 0x7BB0/0x7BB8).
 void CDigitalGuardian::ResetProtectKneesTime(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7B90");
+  x1274_ = x705C_() >= 4 ? mData.mUnknown6A754EBD : mData.mUnknownA324E26C;
 }
 
+// fn_14_7B84: the jump timer (the float at guest this+0x938 = the data block's +0x178,
+// mJumpTimer, the load at 0x7B84) is copied into the member at guest this+0x11E4 (the store at
+// 0x7B88).
 void CDigitalGuardian::ResetJumpTime(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7B84");
+  x11E4_ = mData.mJumpTimer;
 }
 
+// fn_14_7B24: the minimum leg stab attack time (the float at guest this+0x7CC = the data
+// block's +0x0C, mMinLegStabAttackTime, the load at 0x7B3C) goes into the member at guest
+// this+0x11E0 (the store at 0x7B40) and the jump timer (guest this+0x938) into the member at
+// guest this+0x11E4 (the load at 0x7B44 and the store at 0x7B48). Then the head module is
+// asked to reset its attack times (the head's fn_14_13B08, the call at 0x7B6C): the head class
+// is WP3 and its loader is a stand-in, so no head can exist in the port and that call cannot
+// be made.
 void CDigitalGuardian::ResetAttackTimes(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7B24");
+  x11E0_ = mData.mMinLegStabAttackTime;
+  x11E4_ = mData.mJumpTimer;
 }
 
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
@@ -580,20 +597,32 @@ void CDigitalGuardian::SetVortexAttackMode(CStateManager& mgr, float dt) {
   StandInFn("fn_14_775C");
 }
 
+// fn_14_76D0 is not ported yet: it calls fn_14_3A44 (the call at 0x7718), 0x108 bytes, which
+// walks the four knees, resets their damage vulnerabilities (guest this+0x1014 and this+0x1044)
+// and calls fn_14_CE94 - too big for one slice.
 void CDigitalGuardian::SetNormalAttackMode(CStateManager& mgr, float dt) {
   StandInFn("fn_14_76D0");
 }
 
-void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_768C");
-}
+// fn_14_768C: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7698)
+// and, if it exists, asked to disable its attacks with the argument 3 (the li r4, 3 at 0x76B8
+// and the call at 0x76BC). The head class is WP3 and its loader is a stand-in, so no head can
+// exist in the port and that call cannot be made.
+void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {}
 
-void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7648");
-}
+// fn_14_7648: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7654)
+// and, if it exists, asked to reset its attacks with the argument 4 (the li r4, 4 at 0x7674 and
+// the call at 0x7678). The head class is WP3 and its loader is a stand-in, so no head can
+// exist in the port and that call cannot be made.
+void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {}
 
+// fn_14_7600: the closest active waypoint to the player (the state manager's player at
+// +0x14FC, the lwz at 0x761C, and its position at +0x54, the addi at 0x7624) is picked by
+// fn_14_308C (the call at 0x7628) and its id is stored in the member at guest this+0x1168 (the
+// store at 0x7630).
 void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7600");
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  x1168_ = x308C_(mgr, player);
 }
 
 void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
