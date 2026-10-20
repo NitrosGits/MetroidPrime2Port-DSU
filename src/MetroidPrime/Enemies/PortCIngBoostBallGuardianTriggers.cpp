@@ -855,7 +855,7 @@ bool CIngBoostBallGuardian::ShouldOpenMiniPortal(CStateManager& mgr, const CTrig
   return minDist * minDist <= distSq && distSq <= maxDist * maxDist;
 }
 
-// fn_29_A658 (not yet exercised in a run)
+// @ fn_30_BC20 (the Ing's fn_29_A658): 0x11ED 0x01, raised by CollidedWith
 bool CIngBoostBallGuardian::ProjectileSplat(CStateManager&, const CTriggerData&) const {
   return mSplat;
 }
