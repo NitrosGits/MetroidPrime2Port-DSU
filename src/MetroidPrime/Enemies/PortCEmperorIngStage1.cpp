@@ -1045,6 +1045,8 @@ CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {  // fn_16_30
 // (0x4004, 0x41D0, 0x4500). The module's own helpers it calls are rstl template bodies the host's
 // rstl provides: fn_16_BC44 the vector's reserve, fn_16_471C the description's copy, push_back_unsafe
 // the vector's push_back, fn_16_4838 the vector's destructor and fn_16_4640 the string's operator+.
+// fn_16_48F4 (0x48F4..0x4954), called from fn_16_48BC for every element, releases the element's
+// string at +0x2C - the host's rstl::string destructor does it.
 // The rs_new null tests (0x3FC8, 0x4194, 0x44C0) and the string destructors' tests are the
 // compiler's; the host's rs_new does not return null.
 // @ fn_16_3EAC
