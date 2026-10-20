@@ -7,3 +7,4 @@ date	covered_fns	total_fns	covered_bytes	total_bytes	modules_touched
 2026-10-20	351	11739	116080	2726308	ElitePirate:100,Ing:99,MinorIng:103,SpacePirate:27,WallCrawler:22
 2026-10-20	951	11739	297340	2726308	ElitePirate:100,Ing:99,MinorIng:103,SandBoss:159,Sandworm:262,SpacePirate:27,SwampBossStage1:105,SwampBossStage2:74,WallCrawler:22
 2026-10-20	954	11739	297872	2726308	ElitePirate:100,Ing:99,MinorIng:103,SandBoss:159,Sandworm:262,SpacePirate:27,SwampBossStage1:108,SwampBossStage2:74,WallCrawler:22
+2026-10-20	1000	11739	309148	2726308	ElitePirate:103,EmperorIngStage3:8,Ing:99,IngBoostBallGuardian:6,MinorIng:103,SandBoss:159,Sandworm:262,SpacePirate:54,SwampBossStage1:108,SwampBossStage2:76,WallCrawler:22
