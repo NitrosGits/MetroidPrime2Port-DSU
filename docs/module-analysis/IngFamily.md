@@ -469,6 +469,52 @@ without it, so the trace came from a local probe (`getenv("MP2_ING_PROBE_SPLAT")
 reached the machine; 0 `[port] caught`, 0 `[reach-stub]`, exit 0. The `MP2_ING_PROBE_SPLAT` hook is
 not in the tree; re-add it locally to re-trace.
 
+### A.9 Exit host (next slice, decoded 2026-10-20)
+
+`fn_29_9D68` ExitHost (0x32C), `fn_29_54E8` SetExitHostDest (0x22C), and the `CIngExitHostEffect`
+class the state spawns. Pseudo-C: `/tmp/opencode/pseudo/Ing/{fn_29_9D68,fn_29_54E8,fn_29_1105C,
+fn_29_FF88,fn_29_10154,fn_29_1046C,fn_29_1065C,fn_29_1077C,fn_29_10944,fn_29_10F58}.c`.
+
+**ExitHost `fn_29_9D68`** (three branches on the msg, from the pseudo + asm):
+
+| branch | retail |
+|---|---|
+| Activate | `AddMaterial(kMT_Target, mgr)`; `mForm = 1` (the other host form); delete `mPossessedEffectId` (0xcde) and `mD76Id` (0xd76) if valid; `mD76Id = mgr.AllocateUniqueId()`; `rs_new(0x5e8)` + `fn_29_1105C`; on a null return `mAnimationState = kAS_Over` else `AddObject` + `mAnimationState = kAS_Ready`; then `AddEmitter(fn_29_AC20(mgr, &data) ? mSoundExitHostSafeZone(swarm+0x24) : mSoundExitHost(swarm+0x22), translation, 0x7f, area, true, false, med)` |
+| Update | look up 0xd76; when it is gone **or its byte 0x5e2 has bit 7 set** (the effect's own "done" flag, cleared in its ctor) `mAnimationState = kAS_Over`, else `SetTranslation(effect+0x54)` |
+| Deactivate | `SetTranslation(mTargetPos 0xdc8)`; `mSurfaceAlignment.AlignToSurface(*this, mgr, mTargetPos, 1.f)`; `AddMaterial(kMT_Character, kMT_Solid, kMT_Orbit, mgr)`; `mBallCooldown(0xe48) = mData.mGrapple.mPostWaitTime(0x8f8)`; `fn_29_1F1C(this, mgr)` (an explosion spawner, same family as `fn_29_2414`); `mForm = 3` |
+
+**Ctor call site** (`fn_29_9D68` @0x00009F3C..: the only `rs_new(0x5e8)`), which fixes the argument
+order the Wii export only hinted at: `(uint2b, uid, entityInfo, xf, vecA=0xdc8, vecB=model scale,
+assetA=swarm+0x04 mSRSC, assetB=swarm+0x08 mPART3DA2, u16 sound=swarm+0x20 mSoundSwarmMove)` plus four
+floats taken from the swarm block: `f1 = +0x0c mUnknown2327, f2 = +0x14 mUnknownCB39, f3 = +0x18
+mUnknown587C (stored twice), f4 = +0x1c mUnknown0BD7`, and a `TUniqueId*` at 0xd6c. In the ctor body
+those floats land at 0x2c4, 0x290, 0x298/0x29c, 0x2a0.
+
+**`CIngExitHostEffect` vtable `lbl_29_data_C60` [proven from the data dump]** — 32 words, 0x80; the
+module's own slots are 0x08 `fn_29_FF88` (dtor), 0x14 `fn_29_10F58` (Think), 0x18 `fn_29_10EB4`
+(AcceptScriptMsg), 0x28 `fn_29_10DEC` (AddToRenderer), 0x2C `fn_29_10E64` (Render) and the shared
+0x3C `fn_29_90` thunk (it calls slot 0x38, exactly like the mini portal's); every other slot is the
+base's own symbol, including 0x0C `CActor::TypesMatch` and 0x10 `CEntity::PreThink`.
+
+**Ctor member map [proven from `fn_29_1105C`]**: CActor 0x158; 0x158 `CTransform4f` (copy of the
+ctor's transform); 0x188 `CPathFindSearch` (0xec); 0x274 `CVector3f` (the state's 0xdc8), 0x280
+`CVector3f` (the model scale), 0x28c int 0, 0x290 f2, 0x294 u16 sound, 0x298/0x29c f3, 0x2a0 f4,
+0x2a4 `CToken` (asset A) + 0x2ac byte "failed" + 0x2b0 int (the `fn_29_10D50` result), 0x2b4 `CToken`
+(asset B) + 0x2bc byte + 0x2c0 int, 0x2c4 f1, 0x2c8 0, 0x2fc 0, 0x300 1.0f, 0x304 a container filled
+by `fn_29_11438` from ten copies of six positions (0x48 each), 0x5d8/0x5dc 0, 0x5e0 u16, 0x5e2 bit 7
+cleared. `fn_29_10D50(this, vecB, translation, token)` returns the int at 0x2b0/0x2c0 and its sign is
+the byte at 0x2ac/0x2bc.
+
+**Split for the lanes** (one at a time, `worker` only):
+1. `CIngExitHostEffect` header + ctor + dtor + the two `fn_29_10D50`/`fn_29_11438` helpers (new
+   `PortCIngExitHostEffect.cpp`; `src/**/Port*.cpp` is picked up by `files.cmake` automatically). The
+   class has to exist before the state compiles, and it must clear 0x5e2 bit 7 in the ctor.
+2. `ExitHost` + `SetExitHostDest` in `PortCIng.cpp`.
+3. The class's Think `fn_29_10F58`, AcceptScriptMsg `fn_29_10EB4`, AddToRenderer `fn_29_10DEC`,
+   Render `fn_29_10E64` and the six helpers `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10EB4`'s tail.
+Every slice: `// @` only after a traced run — ExitHost is reachable in area 57 through the same
+SuckEnergy path (the state deletes the possessed-mold billboard and spawns this effect).
+
 ---
 
 ## B. MinorIng.rel (module 44)
