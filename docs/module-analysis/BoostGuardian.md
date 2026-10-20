@@ -258,13 +258,15 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   bounce counts at 0x5C8; the roll pops one per spline run and shrinks when none are left, which
   is what IsBoostOver sees). `FindBoostNavPoint` (`2F9C`) is a static taking the actor, so the
   ball shares it. Area 28: the ball rolls, bounces, ends BoostAttack and respawns on the next.
-- *Stand-ins:* the roll's contact sweep `14CCC` (0x608; damages patterned actors and damageable
-  triggers, so only the player takes contact damage now).
+- *Contact sweep (slice c):* `14CCC` sweeps a first-person-radius sphere along the frame's motion
+  above `mMinDamageSpeed`: a player hit becomes Think's `mTouchedId`, any other hit is damaged, and
+  the first non-actor hit ends the speed spline (`m5D9_80`); damageable triggers nearer than the
+  hit are damaged too. Area 28: hits the player and world actors.
 - *Retail quirks kept:* `12510` takes its pick modulo the exhausted list index (-1), so it always
   heads for the first candidate; `13260` normalises a nav-point line it never reads.
 - *Render (slice c):* AddToRenderer `13E68`, Render `141B8` (dark visor: alpha modulation),
   PreRenderAllViewports `13ECC` (render bounds = the effects' union). The ball draws (area 28).
-- *Next:* `14CCC`. The 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
+- *Next:* the 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
   guardian's AcceptScriptMsg `fn_30_DDA0` (0xDF18/0xDF24), which the host does not have yet, so
   BoostAttack's `SetActive` calls on 0xD64 stay null-guarded until that slice.
 

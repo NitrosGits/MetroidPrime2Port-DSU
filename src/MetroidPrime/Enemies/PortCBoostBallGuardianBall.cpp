@@ -1,14 +1,13 @@
 // Port-only: the IngBoostBallGuardian REL's second class (module 30), the boost attack's rolling
 // ball (include/MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp). The behaviour is ported
 // from the module's own bodies at 0x11CD8..0x164D0; the addresses are the module's own.
-//
-// Not here yet (BoostGuardian.md section f): the roll's contact sweep fn_30_14CCC (a named
-// stand-in below).
 #include "MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp"
 
+#include "Collision/CCollidableSphere.hpp"
 #include "Collision/CCollisionInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
+#include "Collision/CollisionUtil.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
@@ -29,11 +28,13 @@
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptDamageableTrigger.hpp"
 
 #include <math.h>
 #include <stddef.h>
@@ -673,16 +674,87 @@ void CBoostBallGuardianBall::Roll(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_30_14CCC: the roll's contact sweep (0x608 bytes) - a sphere swept along the velocity that
-// damages patterned actors, the player and damageable triggers it meets (two ApplyDamage calls).
-// Not ported yet: the roll runs without it; the player still takes Think's contact damage from
-// CollidedWith.
+// fn_30_14CCC: the roll's contact sweep. Above the minimum damage speed, a sphere of the
+// first-person damage radius at the primitive's position is swept along this frame's motion. The
+// first actor it meets (the guardian aside) is the player, kept for Think's contact damage, or is
+// damaged here; the first non-actor hit ends the speed spline early (once). Damageable triggers
+// in the near list closer than that hit are damaged too.
+// @ fn_30_14CCC
 void CBoostBallGuardianBall::ContactSweep(float dt, CStateManager& mgr) {
-  static bool sLogged = false;
-  if (!sLogged && DebugBg()) {
-    sLogged = true;
-    fprintf(stderr, "[ibbg] %04x boost ball: contact sweep fn_30_14CCC (0x608) not ported yet\n",
-            GetUniqueId().Value());
+  const CDamageInfo& info = mData.mDamageToFirstPerson;
+  const float speed = GetVelocityWR().Magnitude();
+  if (!(speed >= mData.mMinDamageSpeed)) {
+    return;
+  }
+  double distance = speed * dt;
+  double triggerDistance = distance;
+  const CVector3f dir = GetVelocityWR() * (1.f / speed);
+  const CMaterialList material(kMT_Solid); // lbl_30_data_C14
+  const CVector3f center = GetPrimitiveTransform().GetTranslation();
+  const CCollidableSphere sphere(CSphere(center, info.GetRadius()), material);
+  const CVector3f motion = dir * static_cast< float >(distance);
+  const CAABox local = sphere.CalculateLocalAABox();
+  CAABox box(local);
+  box.AccumulateBounds(local.GetMinPoint() + motion);
+  box.AccumulateBounds(local.GetMaxPoint() + motion);
+
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, box,
+                    CMaterialFilter::MakeInclude(CMaterialList(
+                        kMT_Solid, kMT_NonSolidDamageable)), // lbl_30_data_C18, lbl_30_data_C1C
+                    this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    if (*it == mOwnerId) {
+      nearList.erase(it); // fn_30_14C54
+      break;
+    }
+  }
+  if (nearList.empty()) {
+    return;
+  }
+
+  const CMaterialFilter damageFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                     CMaterialFilter::kFT_IncludeExclude); // lbl_30_data_C00
+  TUniqueId hitId = kInvalidUniqueId;
+  CCollisionInfo collision(CCollisionInfo::kI_Invalid);
+  if (CGameCollision::DetectDynamicCollisionMoving(sphere, CTransform4f::Identity(), nearList,
+                                                   dir, hitId, collision, distance, mgr) &&
+      hitId != kInvalidUniqueId) {
+    if (TCastToConstPtr< CPlayer >(mgr.GetObjectById(hitId))) {
+      mTouchedId = hitId;
+    } else {
+      mgr.ApplyDamage(GetUniqueId(), hitId, GetUniqueId(), info, damageFilter,
+                      CVector3f::Zero());
+    }
+    if (!m5D9_80 && !TCastToConstPtr< CPatterned >(mgr.GetObjectById(hitId)) &&
+        !TCastToConstPtr< CPlayer >(mgr.GetObjectById(hitId))) {
+      m5D9_80 = true;
+      if (mSplineEndTime > 0.f) {
+        mSplineTime = mSplineEndTime;
+      }
+    }
+  }
+
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    const CScriptDamageableTrigger* trigger =
+        TCastToConstPtr< CScriptDamageableTrigger >(mgr.GetObjectById(*it));
+    if (trigger == nullptr) {
+      continue;
+    }
+    const rstl::optional_object< CAABox > bounds = trigger->GetTouchBounds();
+    if (!bounds.valid()) {
+      continue;
+    }
+    CVector3f point = CVector3f::Zero();
+    CVector3f normal = CVector3f::Up();
+    if ((CollisionUtil::AABoxSphereIntersection(bounds.data(), sphere.GetSphere()) ||
+         CollisionUtil::MovingSphereAABox(sphere.GetSphere(), bounds.data(), dir, triggerDistance,
+                                          point, normal)) &&
+        triggerDistance < distance) {
+      mgr.ApplyDamage(GetUniqueId(), *it, GetUniqueId(), info, damageFilter, CVector3f::Zero());
+    }
   }
 }
 
