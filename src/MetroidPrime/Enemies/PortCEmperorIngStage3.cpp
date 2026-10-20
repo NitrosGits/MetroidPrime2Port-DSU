@@ -846,6 +846,7 @@ void CEmperorIngStage3::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
+// @ fn_18_F8
 // fn_18_F8 (0x11C): the module's look check. The parameter is the angle in degrees the player
 // may be off the actor's facing by. Retail: the vector from the actor's "DarkBeam_LCTR_SDK"
 // locator (fn_18_DBC) to the player, normalised (0x170) and flattened to the XY plane (the
@@ -1002,6 +1003,7 @@ void CEmperorIngStage3::ChargeContact(CStateManager& mgr) {
   x824_ &= ~0x20; // 0x277C
 }
 
+// @ fn_18_1A54
 // fn_18_1A54 (0xE0): the look along the actor's facing. The ray starts at the furthest point of
 // the actor's collision box along the facing (the actor's own transform, 0x1AE0) and runs the
 // length the caller gives; the answer is "the way is clear", true when the ray hit nothing:
@@ -1023,6 +1025,7 @@ bool CEmperorIngStage3::LineOfSight(CStateManager& mgr, const CVector3f& facing,
   return !copy.IsValid();              // 0x1B5C: the byte the copy has at +0x28
 }
 
+// @ fn_18_3804
 // fn_18_3804 (0x25C): the turn towards a position. The facing at guest 0x818 is cleared first
 // (0x382C, 0x3840, 0x3848) and only written at the end (0x3970..0x3980): the angle between
 // the actor's facing and the direction to the target (0x38A4), snapped to the nearest 45
@@ -1761,6 +1764,7 @@ void CEmperorIngStage3::AddTauntEntry(int kind) {
 // vulnerability change.
 void CEmperorIngStage3::SetCurrentHeart(CStateManager& mgr) { SetHeartState(mgr, mX868_, false); }
 
+// @ fn_18_8C4C
 // fn_18_8C4C (0x13C): "ShouldMeleeAttack". The module's time since the last attack (guest
 // 0x7D0) has to be at least 2.0 (rodata 0x274), the module's average over the bone list runs
 // (fn_18_22BC) and the time has to be at least 10.0 (rodata 0x294). The vector to the player
@@ -1787,6 +1791,7 @@ bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData
   return CVector3f::Dot(facing, toPlayer) > CMath::FastCosR(1.3089969f); // rodata 0x318
 }
 
+// @ fn_18_8ACC
 // fn_18_8ACC (0x180): "ShouldGroundPound". The module's time since the last attack (guest
 // 0x7D0) has to be at least 2.0 (rodata 0x274). The vector from the ing's "head" locator
 // (rodata 0x704) to the player has to be normalisable, and the player has to be below the ing:
@@ -1946,6 +1951,7 @@ void CEmperorIngStage3::SetHeartState(CStateManager& mgr, int heart, bool applyV
   AnimationData()->SetEffectState(rstl::string_l("DarkHeart"), dark, mgr);       // 0x2278
 }
 
+// @ fn_18_8DA4
 // The module's state machine functions. The eleven triggers whose retail body is small enough
 // are ported; the rest are stand-ins that log the retail function they stand in for and return the
 // neutral value (false for a trigger, nothing for a state or a code).
@@ -2153,6 +2159,7 @@ void CEmperorIngStage3::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   SetHeartState(mgr, 0, true); // fn_18_1DF4
 }
 
+// @ fn_18_788C
 // fn_18_788C (0x250): the "Idle" state.
 //  - Activate (0x78D0): the timer at guest 0x864 is set to the biggest float (rodata 0x2C8)
 //    and the body's steering is set up: the walk speed over the run speed (the two
@@ -2863,6 +2870,7 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_18_4EB4
 // fn_18_4EB4 (0x23C): the "JumpAttack" state. Its activate path (0x4F0C) sets the flag at guest
 // 0x6B4 and picks the jump target: the player's position, or - when the player is over fifty
 // units away (rodata 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the
