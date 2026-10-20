@@ -29,9 +29,11 @@ public:
   // constructor fn_63_30E8. The analysis is docs/module-analysis/ScriptPlayerTurret.md.
   //
   // Milestone 1 is load-and-think: the loader, the constructor, the vtable's GetTouchBounds and
-  // the five member functions the module hands the DOL through SPlayerTurret_FuncPtrs. Think
-  // (fn_63_23C0), AcceptScriptMsg (fn_63_1BE8) and PreRender (fn_63_2D68) are too big for this
-  // slice and forward to CActor behind a once-only stand-in log.
+  // the five member functions the module hands the DOL through SPlayerTurret_FuncPtrs. Milestone 2
+  // adds the message switch of AcceptScriptMsg (fn_63_1BE8): the player enters (kSM_Activate),
+  // leaves (kSM_Deactivate) and the turret starts (kSM_Start). Think (fn_63_23C0) and PreRender
+  // (fn_63_2D68) are still too big for a slice and forward to CActor behind a once-only stand-in
+  // log.
   CScriptPlayerTurret(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                       const CTransform4f& xf, const CActorParameters& actParms, uint flags,
                       float maxHorizRotationLeft, float maxHorizRotationRight,
@@ -58,47 +60,52 @@ public:
   TUniqueId GetHullActorId();                             // fn_63_840
 
 private:
+  // The turret's own helpers, the module functions below 0x80 bytes that the ported code calls.
+  void AddSolidToTopActor(CStateManager& mgr);      // fn_63_14B4 (0x54)
+  void RemoveSolidFromTopActor(CStateManager& mgr); // fn_63_1460 (0x54)
+  void LoadHullActors(CStateManager& mgr);           // fn_63_15B0 (0x3C4): only the connections
+
   // Host layout, in the guest's order. The guest offsets are in the comments.
-  CAABox mBounds;                     // guest 0x158: a one-unit box around the actor's position
-  uint mFlags;                        // guest 0x170: the flagsPlayerTurret property
-  float mMaxHorizRotationLeft;        // guest 0x174, radians
-  float mMaxHorizRotationRight;       // guest 0x178, radians
-  float mMaxVertElevationUp;          // guest 0x17C, radians
-  float mMaxVertElevationDown;        // guest 0x180, radians
-  float mMaxAimAngle;                 // guest 0x184, radians; retail stores the damage angle here
-  TUniqueId mPlayerId;                // guest 0x188
-  float mHorizSpeed;                  // guest 0x18C, radians
-  float mVertSpeed;                   // guest 0x190, radians
-  float mFireRate;                    // guest 0x194
-  TUniqueId mBaseActorId;             // guest 0x198: the actor that carries the model
-  TUniqueId mTopActorId;              // guest 0x19A: the actor moved onto the hull's locator
-  uint mAnimId1;                      // guest 0x19C
-  uint mAnimId2;                      // guest 0x1A0
-  uint mUnknown1A4;                   // guest 0x1A4
-  uint mUnknown1A8;                   // guest 0x1A8
-  uint mUnknown1AC;                   // guest 0x1AC
-  float mHorizRotation;               // guest 0x1B0: the current horizontal rotation
-  float mVertRotation;                // guest 0x1B4: the current vertical rotation
-  float mUnknown1B8;                  // guest 0x1B8
-  float mUnknown1BC;                  // guest 0x1BC
-  float mUnknown1C0;                  // guest 0x1C0
-  CVector3f mBaseForward;             // guest 0x1C4..0x1CC: the editor transform's forward vector
-  float mUnknown1D0;                  // guest 0x1D0
-  CColor mLightColor;                 // guest 0x1D4..0x1DC
-  CAssetId mWeaponEffect;             // guest 0x1E0
-  CAssetId mWeaponEffectMulti;        // guest 0x1E4
-  CDamageInfo mWeaponDamage;          // guest 0x1F0
-  float mUnknown20C;                  // guest 0x20C
-  CVector3f mTargetPosition;          // guest 0x210: the editor transform's translation
-  uint mSfxHandle;                    // guest 0x21C
-  TUniqueId mHullActorId;             // guest 0x220
-  ushort mSfxTurretRotation;          // guest 0x222
-  ushort mSfxSinglePlayerImpact;      // guest 0x224
-  ushort mSfxMultiPlayerImpact;       // guest 0x226
-  ushort mSfxSinglePlayerProjectile;  // guest 0x228
-  ushort mSfxMultiPlayerProjectile;   // guest 0x22A
-  bool mPlayerInTurret : 1;           // guest 0x22C bit 0x80
-  bool mUnknown22C_6 : 1;             // guest 0x22C bit 0x40
+  CAABox mBounds;                     // 0x158: a one-unit box around the actor's position
+  uint mFlags;                        // 0x170: the flagsPlayerTurret property
+  float mMaxHorizRotationLeft;        // 0x174, radians
+  float mMaxHorizRotationRight;       // 0x178, radians
+  float mMaxVertElevationUp;          // 0x17C, radians
+  float mMaxVertElevationDown;        // 0x180, radians
+  float mMaxAimAngle;                 // 0x184, radians; retail stores the damage angle here
+  TUniqueId mPlayerId;                // 0x188
+  float mHorizSpeed;                  // 0x18C, radians
+  float mVertSpeed;                   // 0x190, radians
+  float mFireRate;                    // 0x194
+  TUniqueId mBaseActorId;             // 0x198: the actor that carries the model
+  TUniqueId mTopActorId;              // 0x19A: the actor moved onto the hull's locator
+  uint mAnimId1;                      // 0x19C
+  uint mAnimId2;                      // 0x1A0
+  uint mUnknown1A4;                   // 0x1A4
+  uint mUnknown1A8;                   // 0x1A8
+  uint mUnknown1AC;                   // 0x1AC
+  float mHorizRotation;               // 0x1B0: the current horizontal rotation
+  float mVertRotation;                // 0x1B4: the current vertical rotation
+  float mUnknown1B8;                  // 0x1B8
+  float mUnknown1BC;                  // 0x1BC
+  float mUnknown1C0;                  // 0x1C0
+  CVector3f mBaseForward;             // 0x1C4..0x1CC: the editor transform's forward vector
+  float mUnknown1D0;                  // 0x1D0
+  CColor mLightColor;                 // 0x1D4..0x1DC
+  CAssetId mWeaponEffect;             // 0x1E0
+  CAssetId mWeaponEffectMulti;        // 0x1E4
+  CDamageInfo mWeaponDamage;          // 0x1F0
+  float mUnknown20C;                  // 0x20C
+  CVector3f mTargetPosition;          // 0x210: the editor transform's translation
+  uint mSfxHandle;                    // 0x21C
+  TUniqueId mHullActorId;             // 0x220
+  ushort mSfxTurretRotation;          // 0x222
+  ushort mSfxSinglePlayerImpact;      // 0x224
+  ushort mSfxMultiPlayerImpact;       // 0x226
+  ushort mSfxSinglePlayerProjectile;  // 0x228
+  ushort mSfxMultiPlayerProjectile;   // 0x22A
+  bool mPlayerInTurret : 1;           // 0x22C bit 0x80
+  bool mUnknown22C_6 : 1;             // 0x22C bit 0x40
 #else
   uchar x158_[0x2c];
   float mMaxAimAngle; // 0x184

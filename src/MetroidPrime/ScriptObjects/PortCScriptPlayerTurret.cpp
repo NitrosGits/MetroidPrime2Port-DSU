@@ -6,17 +6,21 @@
 // Which methods the REL overrides is not guessed: its vtable lbl_63_data_40 lists them by
 // address and the slots line up with CActor's declaration order (slot 5 Think, slot 6
 // AcceptScriptMsg, slot 9 PreRender, slot 18 GetTouchBounds; the entries in between are the
-// DOL's own CActor/CEntity symbols). Think (fn_63_23C0, 0x968 bytes), AcceptScriptMsg
-// (fn_63_1BE8, 0x784) and PreRender (fn_63_2D68, 0x2CC) are too big for this slice and forward
-// to CActor behind a once-only stand-in log; the five member functions the module hands the DOL
-// through SPlayerTurret_FuncPtrs are ported, so the turret camera, the exit path and the turret
-// HUD keep working. The analysis is docs/module-analysis/ScriptPlayerTurret.md.
+// DOL's own CActor/CEntity symbols). AcceptScriptMsg (fn_63_1BE8, 0x784 bytes) has its message
+// switch ported: the player enters the turret (kSM_Activate), leaves it (kSM_Deactivate) and the
+// turret starts (kSM_Start); the four cases that are still stand-ins are named in its comment.
+// Think (fn_63_23C0, 0x968 bytes) and PreRender (fn_63_2D68, 0x2CC) are too big for this slice
+// and forward to CActor behind a once-only stand-in log; the five member functions the module
+// hands the DOL through SPlayerTurret_FuncPtrs are ported, so the turret camera, the exit path
+// and the turret HUD keep working. The analysis is docs/module-analysis/ScriptPlayerTurret.md.
 #include "MetroidPrime/ScriptObjects/CScriptPlayerTurret.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Input/CFinalInput.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrPlayerTurret.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -132,10 +136,133 @@ void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
 }
 
-// vtable slot 6 = fn_63_1BE8 (0x784): the turret's script messages (enter, exit, damage).
+// vtable slot 6 = fn_63_1BE8 (0x784): the turret's script messages.
+//
+// Retail switches on the message's four-character code (the comparison tree at 0x1BE8..0x1C9C)
+// and every case ends in CActor::AcceptScriptMsg (0x2348). The three cases ported here are
+// retail's, in retail's order:
+//
+//   kSM_Activate   (0x41435456, asm 0x1DA4): the player enters the turret.
+//   kSM_Deactivate (0x44435456, asm 0x1F58): the player leaves it.
+//   kSM_Start      (0x53545254, asm 0x1FB0): the turret starts; its top actor becomes solid.
+//
+// The other four cases are still stand-ins and fall through to CActor::AcceptScriptMsg:
+// kSM_Create (0x58435254, asm 0x1C9C, 0x108 bytes: the hull's model token), kSM_Stop
+// (0x53544F50, asm 0x2008, 0x23C bytes: the player is ejected and killed), kSM_AreaLoaded
+// (0x58414C44, asm 0x2244: fn_63_15B0, 0x3C4 bytes, of which only the two connections are
+// ported) and kSM_Damage (0x58444D47, asm 0x224C, 0xFC bytes: the damage flash and the impact
+// sound).
 void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("fn_63_1BE8 (CScriptPlayerTurret::AcceptScriptMsg)");
+  switch (msg.GetMessage()) {
+  case kSM_Activate: {
+    // 0x1DA4: the message's originator (the guest's message + 0x2) is the player that entered
+    // the trigger; the turret remembers it as its player.
+    mPlayerId = msg.GetOriginator();
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+    // 0x1DC8: the player's health is the float at + 4 of its CHealthInfo (the guest's CHealthInfo
+    // starts with the initial health), and a dead player cannot enter the turret.
+    if (player != nullptr && player->GetHealthInfo()->GetHP() > 0.f) {
+      // 0x1DF0: the turret's own unique id (the guest's + 0x8) is what the player enters.
+      player->StartTurret(GetUniqueId(), mgr);
+      // 0x1E0C: the flag byte's bit 0x80 - the player is in the turret.
+      mPlayerInTurret = true;
+    }
+    // 0x1E30: both rotations start at zero.
+    mVertRotation = 0.f;
+    mHorizRotation = 0.f;
+    // 0x1E38: the base actor (0x198) and the top actor (0x19A).
+    CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+    CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
+    // 0x1E70: the base actor's model is read without a test in the guest - a port limit, the host
+    // allows an actor without a model.
+    CModelData* model = base != nullptr ? base->ModelData() : nullptr;
+    // 0x1E64: the base actor needs its animation data, and the top actor has to exist.
+    if (base != nullptr && model != nullptr && model->GetAnimationData() != nullptr &&
+        top != nullptr) {
+      // 0x1E88: the base actor keeps its own position but takes the turret's rotation.
+      const CVector3f position = base->GetTranslation();
+      base->SetTransform(GetTransform());
+      base->SetTranslation(position);
+      // 0x1EC4: the two additive animations (0x19C and 0x1A0) at weight zero.
+      base->AnimationData()->AddAdditiveAnimation(mAnimId1, 0.f, false, false);
+      base->AnimationData()->AddAdditiveAnimation(mAnimId2, 0.f, false, false);
+      // 0x1F00: the top actor goes onto the base actor's "upwardballsnapp_LCTR" locator.
+      const CTransform4f locator = model->GetLocatorTransform("upwardballsnapp_LCTR");
+      top->SetTransform(base->GetTransform() * locator);
+    }
+    // 0x1F48: the damage flash timer.
+    mUnknown20C = 0.f;
+    break;
+  }
+  case kSM_Deactivate: {
+    // 0x1F58: the player that was in the turret leaves it.
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+    if (player != nullptr) {
+      // 0x1F80: the state is 0 (kTS_None).
+      player->SetTurretState(CPlayer::kTS_None, mgr);
+    }
+    // 0x1F94: the turret has no player any more.
+    mPlayerId = kInvalidUniqueId;
+    // 0x1F9C: the vtable's slot 7 with 0 - the turret is deactivated.
+    SetActive(false);
+    break;
+  }
+  case kSM_Start: {
+    // 0x1FB0: only an active turret starts (the guest's byte 0x20 is CEntity's active flag).
+    if (!GetActive()) {
+      break;
+    }
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+    if (player != nullptr) {
+      // 0x1FE0: the state is 3 (kTS_Active).
+      player->SetTurretState(CPlayer::kTS_Active, mgr);
+    }
+    // 0x1FF0: fn_63_14B4 - the top actor becomes solid.
+    AddSolidToTopActor(mgr);
+    // 0x1FFC: the material is 0x29 (kMT_Orbit): the turret orbits the player.
+    AddMaterial(kMT_Orbit, mgr);
+    break;
+  }
+  case kSM_AreaLoaded: {
+    // 0x2244: fn_63_15B0 (0x3C4 bytes) - the hull's base and top actors and its five animation
+    // ids. Only its two connections are ported (see LoadHullActors).
+    LoadHullActors(mgr);
+    break;
+  }
+  default:
+    break;
+  }
+  // 0x2348: every case ends in CActor's own handler.
   CActor::AcceptScriptMsg(mgr, msg);
+}
+
+// fn_63_14B4 (0x54): the turret's top actor (0x19A) becomes solid.
+void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
+  // 0x14CC: the top actor's id.
+  CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
+  // 0x14E0
+  if (top != nullptr) {
+    // 0x14EC: the material is 0x3b (kMT_Solid).
+    top->AddMaterial(kMT_Solid, mgr);
+  }
+}
+
+// fn_63_15B0 (0x3C4): the base actor (0x198) and the top actor (0x19A) come from the turret's
+// "AttachedAnimatedObject" and "AttachedCollisionObject" connections, and the base actor's
+// animation database gives the five additive animation ids (0x19C..0x1AC) and the light colour
+// (0x1D4..0x1DC).
+//
+// Only the two connections are ported here: the animation lookup is 0x2B4 bytes of it and stays a
+// stand-in. The connections have to be real, because the DOL's turret HUD (CTurretHud::
+// UpdateEnergy) reads the hull actor's id and dereferences the actor it names.
+void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
+  // 0x15E4: the base actor is the turret's "AttachedAnimatedObject" connection.
+  mBaseActorId = FindConnectedObject(mgr, kSS_AttachedAnimatedObject, kSM_Attach);
+  // The base actor's animation database gives the five animation ids (0x19C..0x1AC) and the
+  // light colour (0x1D4..0x1DC); that part of fn_63_15B0 is still a stand-in.
+  StandIn("fn_63_15B0 (the hull's animation ids)");
+  // 0x1930: the top actor is the turret's "AttachedCollisionObject" connection.
+  mTopActorId = FindConnectedObject(mgr, kSS_AttachedCollisionObject, kSM_Attach);
 }
 
 // vtable slot 9 = fn_63_2D68 (0x2CC): the turret's light colour on the hull.
@@ -182,8 +309,17 @@ CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
 void CScriptPlayerTurret::ExitTurret(CStateManager& mgr) {
   mPlayerInTurret = false; // guest 0x22C bit 0x80, cleared at 0x00001BA0
   SendScriptMsgs(kSS_Exited, mgr, kInvalidUniqueId, kSM_None);
-  // fn_63_1460 (0x54): the top actor (0x19A) loses kMT_Solid.
-  if (CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId))) {
+  // 0x1BCC: fn_63_1460 - the top actor (0x19A) loses kMT_Solid.
+  RemoveSolidFromTopActor(mgr);
+}
+
+// fn_63_1460 (0x54): the turret's top actor (0x19A) loses kMT_Solid.
+void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
+  // 0x1478: the top actor's id.
+  CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
+  // 0x148C
+  if (top != nullptr) {
+    // 0x1498: the material is 0x3b (kMT_Solid).
     top->RemoveMaterial(kMT_Solid, mgr);
   }
 }
