@@ -94,7 +94,7 @@ area loads, no crash, the boss does not appear.
 ## e. Layout of `CIngBoostBallGuardian` (guest offsets, from the ctor `fn_30_EC6C`)
 
 The ctor's member stores and DOL constructor calls, in offset order (full table with one asm
-address per row: `/tmp/opencode/ibbg_layout.md`, 0x11F0 total, base 0x7C0):
+address per row: `docs/module-analysis/BoostGuardian_layout.md`, 0x11F0 total, base 0x7C0):
 
 | offset | what | evidence |
 |---|---|---|
@@ -149,7 +149,7 @@ class's own behaviour are the next thing to read (`fn_30_1466C`, `fn_30_13E68`).
 callees: regenerate with the `.fn` walk used for `docs/module-analysis/Sandworm_functions.tsv`
 (309 functions). Rough shape by address: 0x0..0x130 trivial accessors; 0x130 loader;
 0xEC6C ctor; 0x110C4 the `.ctors` FSM name-table copy; 0x11CD8.. the second class and the big
-state bodies. The vtable word lists for both classes: `/tmp/opencode/ibbg_vtable.md`.
+state bodies. The vtable word lists for both classes: `docs/module-analysis/BoostGuardian_vtable.md`.
 
 ## i. Port plan
 
@@ -172,7 +172,7 @@ state bodies. The vtable word lists for both classes: `/tmp/opencode/ibbg_vtable
 
 ## k. What the loader and the constructor actually pass
 
-`fn_30_EC6C` takes nine arguments, all read (full derivation: `/tmp/opencode/ibbg_ctor_args.md`):
+`fn_30_EC6C` takes nine arguments, all read (full derivation: `docs/module-analysis/BoostGuardian_ctor.md`):
 
 | # | argument | evidence |
 |---|---|---|
@@ -191,7 +191,7 @@ The base call is `CPatterned(` `character 0x19`, uid, name, `kFT_Zero`, info, xf
 0x0000ECAC/0x0000ECBC/0x0000ECC4/0x0000ECC8. 0x19 is the one free value in the DOL type list, which
 is why `kET_IngBoostBallGuardian = 117` is the tag to use.
 
-**The two blocks** (`/tmp/opencode/ibbg_datablock.md`, 69 + 31 rows, every field traced):
+**The two blocks** (`docs/module-analysis/BoostGuardian_datablocks.md`, 69 + 31 rows, every field traced):
 
 - guardian, `obj+0x07C0`: the first **0x29C bytes are a verbatim copy of
   `SLdrIngBoostBallGuardianData`** itself (three copiers walk it: `fn_30_10694`, `fn_30_10B90`,
