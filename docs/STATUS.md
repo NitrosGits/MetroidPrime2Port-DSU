@@ -3,6 +3,52 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-20 (thirtieth session): SwampBoss - the beam was never broken, the harness was aiming wrong
+
+- **`decomp/swampboss` (worktree `wt-mp2-swampboss`).** The open item from the last session - "the
+  ray probe on a shot that starts inside a joint sphere, why only ~1 shot in 100 lands" - is
+  answered, and the answer is that **the game was never at fault: the harness was aiming at a
+  target that had already moved away.**
+  - **The projectile follows the camera's aim exactly.** 18 charged shots were fired at the Chykka
+    Larva's joints from five stand-off distances (0, 1, 2, 4, 6 units) with the projectile sampled
+    every 30 ms (`/tmp/opencode/sb1_inside_summary.json`): in every shot the sampled flight
+    direction matched the requested yaw/pitch to about a degree. So `aim` ->
+    `CPlayer::UpdateAssistedAiming` -> `mAssistAimXf` -> `CGunWeapon::Fire` -> the projectile's
+    transform is right, and `CGameProjectile::RayCollisionCheckWithWorld` sees the joint when the
+    ray crosses it.
+  - **The shot's line passed 1.8-4.4 units from the joint's centre** in every shot. Eight of the
+    sixteen joints are 1.5-2.5 unit spheres, so only the big ones (5.0-5.5) could be hit by luck -
+    about one shot in a hundred.
+  - **Why the line missed:** a joint's position moved up to **24.5 units** between the aim and the
+    shot (the larva leaps), and the aim went stale while the shot charged: the player is
+    teleported into mid-air over the deep pool (the arena floor is at z ~ 47, the water surface at
+    z ~ 81.5) and keeps falling, while the charged shot only leaves the muzzle a second later.
+    Aiming from the player's **feet** (as the first driver did) is worse: a 2.5-unit vertical
+    error, 32 degrees at a 4-unit stand-off.
+  - **A closed-loop aim correction works**: correcting the aim by the measured line error between
+    shots brought the line down to 0.26-1.4 units from the joint - inside the radius - and still
+    nothing was hit, because the joint had moved 24 units away by then. The fix is to shoot a
+    target that is not moving: below 600 HP the larva beaches and stays put.
+  - **A real joint hit landed** (the boss's own damage probe fired): `[sb1dmg] state=7 weak=0
+    canHit=0 dmg=1.00 orig=2.00 ... joint=230` - the shot was an uncharged one (2 damage, 1.00
+    after the boss's 0.5 multiplier), so a *charged* hit (50 -> 25) is what the belly accumulator
+    needs. With the lead, **82 shots over four runs landed 6 hits, and every shot that reached a
+    sphere landed** (6/6 produced a `[sb1dmg]` line and the boss's HP fell 1200 -> 1199 -> 1198).
+    **A shot that touches a joint is never rejected; the misses are pure geometry.**
+  - **The numbers the next session needs:** the 16 joint spheres swim with the larva at **22-28
+    units/s** (all 16 translate rigidly), and the muzzle is still 2-11 units/s off the camera's
+    aim line right after a teleport (0.46 units with a stationary player) because the gun's follow
+    transform settles - so the aim has to lead the joint and the driver has to wait. Stage 1's
+    belly threshold is 50 (the Ldr field `unknown_0x78755da3`, 5 at min health), a heavy hit is
+    15 and adds 180; Stage 2's growth hit needs the shot's direction within 90 degrees of the
+    boss's facing, so shoot when the boss faces away.
+- The Stage-1 joint table was re-read from the rodata entry by entry (radii, beach radii, types,
+  flags) - it matches the port's table, and no joint ever gets `kMT_ProjectilePassthrough` from the
+  beach state (`fn_78_8868` only tests bit 0 of the flags, and no entry has it set).
+- Stage 2's growth-hit facing test was re-derived from the asm (`fn_79_61C4`, 0x62E4..0x632C): the
+  three floats it loads from each transform are `m01`, `m11`, `m21` - the forward vector's
+  components - so the test is the dot of the two forward vectors, which is what the port does.
+
 ## 2026-10-20 (twenty-ninth session): SwampBoss walked - Stage 1 to Dead, Stage 2 through Swoop/Level/Circle
 
 - **`decomp/swampboss` (worktree `wt-mp2-swampboss`).** The console gained `aim <yaw> <pitch>`

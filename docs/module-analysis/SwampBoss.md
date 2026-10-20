@@ -84,6 +84,16 @@ HP is reset after every hit in 9B74). Min health is 1.01 (A5A8). Other literals 
 cpp with their function: tongue reach 85° / 100 units, vomit range 6 (morphed, XY) / 8.5, vomit
 knockback ±12, give-up 8 s or 3 misses, pull limit 8 s, step-up 0.5, sort-bounds shrink 0.85.
 
+**The joint table, re-read from the rodata** (`build/G2ME01/SwampBossStage1/asm/auto_03_*_rodata.s`,
+`lbl_78_rodata_8`, 16 entries of 0x14 bytes: name, water radius, beach radius, type, flags):
+head 5.0/5.5, tongue_LCTR_SDK 3.2/3.2 (type 2), L_upper_1 and R_upper_1 2.0/2.0, Spine_2 5.0/5.0,
+Spine_3 5.0/5.0, Spine_4 4.1/4.1, Spine_5 3.7/15.0, Spine_6 3.0/15.0, Spine_7 2.5/2.5,
+Spine_8 2.0/2.0, Spine_9 1.8/1.8, Spine_11 1.6/1.6, Spine_13 1.5/1.5, Spine_15 1.5/1.5 and
+L_middle2_boob_LCTR 2.5/0.1 (type 1, the belly - its *beach* radius is 0.1, so it is a
+0.1-unit sphere while the larva is beached). The flags are 0, 2, 4 or 5; `fn_78_8868` only tests
+bit 0, and no entry has it set, so no joint ever gets `kMT_ProjectilePassthrough` from the
+beach state. The port's table matches the rodata entry for entry.
+
 **Attacks**
 - *Tongue* (TongueLoop 31E8 → TonguePull 44CC): event 0x1b launches (6C2C), the tip ray-tests the
   player (716C/772C); a hit pulls the player (3AD0, morph ball 39C0) towards the mouth and locks
@@ -165,6 +175,67 @@ per-function trace/state probe (never committed), the player driven through the 
     (1 hit in ~250 s of firing). The joints are 1.5-5.5 unit spheres and the aim is 2-3 frames
     stale against a moving target, which does not account for it; the next measurement is the
     ray probe on a shot that starts inside a joint sphere, to see what rejects it.
+- **Shooting, measured (2026-10-20, third pass - the ray probe answered it):** the game path is
+  fine; every miss was the harness. 18 charged shots were fired at the joints from five stand-off
+  distances (0, 1, 2, 4, 6 units) with the projectile's position sampled every 30 ms
+  (`/tmp/opencode/sb1_inside_summary.json`):
+  - **The projectile follows the camera's aim exactly.** In all 18 shots the sampled flight
+    direction matched the requested yaw/pitch to about a degree (e.g. requested yaw -88.3,
+    pitch -18.9; sampled -88.5, -22.5 with the first sample already 3.7 units along the ray). So
+    `aim` -> `CPlayer::UpdateAssistedAiming` -> `mAssistAimXf` -> `CGunWeapon::Fire` -> the
+    projectile's transform is correct, and `CGameProjectile::RayCollisionCheckWithWorld` sees the
+    joint when the ray crosses it.
+  - **The shot's line passed 1.8-4.4 units from the joint's centre** in every shot - more than the
+    radius of 8 of the 16 joints (1.5-2.5 units), which is why only about one shot in a hundred
+    landed (the big 5.0-5.5 unit joints were hit by luck).
+  - **Why the line missed:** the driver teleported the player to the joint and then aimed from the
+    camera position it read at that instant, but the player is then in mid-air over the deep water
+    and keeps falling (the camera sits 2.5 above the feet and drops every frame), and the charged
+    shot only leaves the muzzle after the ~1 s charge - so the muzzle was metres away from the
+    point the driver aimed from. The joint itself also leaps (its z moves several units between
+    two reads). Aiming from the player's **feet** (as the first driver did) is worse still: a
+    2.5-unit vertical error, 32 degrees at a 4-unit stand-off.
+  - **The water surface did not eat the shots in the sampled runs:** every sampled projectile flew
+    40+ units and lived for the whole 2.6 s sampling window. All of them started under the surface
+    (the camera sits 2.5 above the feet and the arena's water surface is at z ~ 81.5) and stayed
+    under it, so a shot that *crosses* the surface upwards is still untested.
+  - **The recipe that lands hits** (six driver passes, `/tmp/opencode/sb1_inside6_summary.json`):
+    teleport the player so the **camera** ends up ~1 unit from the joint (the camera is 2.5 above
+    the feet, so teleport to the joint's z - 2.5), read the joint's position twice 0.12 s apart to
+    get its velocity, aim at the **predicted** position `p1 + v * T` with `T = 0.60 + 0.12 + D/120`,
+    wait 0.60 s (the gun's follow transform settles after a teleport), then `beam power` and
+    `press a 60`, and correct the aim by the measured line error before the next shot. Two hits
+    landed that way: `[sb1dmg] state=1 ... joint=231` (Spine_3) and `[sb1dmg] state=7 ... joint=239`
+    (Spine_13), both `dmg=1.00 orig=2.00` - an *uncharged* shot (the `press a 60` fires its normal
+    shot at once; the charged one only leaves on the release 60 updates later). A charged hit is
+    50 damage (25 after the boss's 0.5 multiplier) and the belly accumulator needs 50.
+  - **With the lead, 82 shots over four runs landed 6 hits** - and every shot that reached a
+    sphere landed: 6/6 hits produced a `[sb1dmg]` line and the boss's HP fell 1200 -> 1199 -> 1198.
+    **A shot that touches a joint is never rejected; the misses are pure geometry.**
+  - **Why the lead is needed:** the 16 joint spheres swim with the larva at **22-28 units/s** (all
+    16 translate rigidly), and the muzzle is still 2-11 units/s off the camera's aim line right
+    after a teleport (0.46 units with a stationary player) because the gun's follow transform
+    settles. Between the placement and the muzzle the sphere swims 8-20 units away, so no shot
+    ever *started* inside a sphere.
+  - **The arena has no ground near the boss**: the pool floor is 30-40 units below the larva and
+    the player sinks 12-50 units/s, so a short stand-off only exists by teleporting next to the
+    joint in mid-air. Below 600 HP the larva beaches and stops leaping - that is the state where
+    a stand-off and a fresh aim can both be had.
+  - **A phase-1 run with the recipe** (2026-10-20, `/tmp/opencode/log_sb1b.log`): the boss was
+    dropped to 785 HP with two console `damage` calls, and it then ran Beach (state 0), Dive (2),
+    PlatformReady (4), TonguePull (5), TongueLoop (9) and Vomit (10). Five joint hits landed:
+    `[sb1dmg] state=4 ... dmg=14.12 orig=28.24 joint=231`, `state=5 ... dmg=1.00 orig=2.00
+    joint=230`, `state=9 ... dmg=1.00 orig=2.00 joint=22d`, `state=4 ... dmg=14.58 orig=29.17
+    joint=22c`, `state=5 ... dmg=1.00 orig=2.00 joint=230` - a charged shot does 28-29 damage
+    (14-15 after the 0.5 multiplier) and an uncharged one 2 (1 after it). The belly accumulator
+    reached **16.6** of the 50 it needs, so `ShouldExposeBelly` was evaluated (it is in the run's
+    `[sb1trace]` list) but ExposeBelly did not run yet. The run's trace also covers the beach
+    path (`Beach`, `BeachBubbles`, `BeachWait`, `BeachRise`, `BeachAttackOver`, `SetBeachMaterials`,
+    `ShouldBeach`, `DecrementAttached`, `AlertShredders`, `AnyJointOnRadar`, `IsJointOfType`,
+    `ApplyDamageMsg`, `Vomit`, `VomitHit`, `Spit`, `Wait`, `TongueHit`, `TongueMissed`,
+    `LockOrbitOnTongue`, `PullPlayer`, `ReleaseOrbitLock`, `KnockPlayer`, `LaunchTongue`,
+    `ExtendTongue`, `FacePlatform`, `PickPlatform`, `PlayerInsideHint`) - the next session can
+    turn that list into markers with `python3 /tmp/opencode/sb1_markers.py --apply <log>`.
 - **`damage` is capped per call:** 1160 applied as 580, so the harness steps it in a loop.
 - **Not reached:** ExposeBelly, HeavyHitReact, LightHitReact, SlideIntoWater, and the HeavyHit /
   LightHit triggers — all of them need a real hit to land. `ShouldExposeBelly` is evaluated but the

@@ -233,9 +233,14 @@ B4 GetOrigin, D0 GetHealthInfo.
   - **Blow:** attack 6 only exists in the dark phases, and the dark phase needs
     `AllGrowthsDead`, i.e. all four growths at 0 HP. `mGrowthHealth` only drops in the growth
     branch of `ProcessDamage` (61C4), which needs a `CWeapon` whose forward has dot > 0 with the
-    boss's and `mGrowthsVulnerable`. The platform's beam cannot damage a collision actor at all
-    (the known `CBeamProjectile` ray gap), and console `damage` carries no weapon, so the growths
-    cannot die without a test-only bypass of that check.
+    boss's and `mGrowthsVulnerable`. Console `damage` carries no weapon, so the growths cannot die
+    without a real beam hit on a growth.
+    **The "the platform's beam cannot damage a collision actor" note in the first pass was wrong:**
+    the beam's ray path is fine (SwampBoss.md, "Shooting, measured" - the projectile follows the
+    camera's aim exactly). What was missing was a way to *aim*: the harness aimed from a camera
+    that was falling and from stale joint positions, so every shot missed. The dot > 0 test is
+    real, though: the shot's direction has to be within 90 degrees of the boss's facing, so the
+    player has to shoot when the boss faces away (or from behind it).
   - **Flinch:** its entry edge is now known - `LightFlyer.Reel --OneGrowthDead--> Flinch`
     (`mGrowthDestroyed && mGrowthDeadTime > 0.3`) - but a growth death needs the same weapon hit
     as Blow, so the edge is identified but not exercisable yet.
@@ -266,6 +271,13 @@ B4 GetOrigin, D0 GetHealthInfo.
       the first console `damage` lands (its toucher is the player, uid 0).
     - A growth hit needs a CWeapon facing the same way as the boss (dot > 0) and
       `mGrowthsVulnerable`.
+    - **The facing test, re-derived from the asm** (fn_79_61C4, 0x62E4..0x632C): the three floats
+      it loads from each transform are `+0x28`, `+0x38`, `+0x48`, and `CActor::mTransform` sits at
+      `+0x24`, so they are `m01`, `m11`, `m21` - the *forward* vector's components, 0x10 apart in
+      the row-major 4x4. The sum is `w_fwd.x*b_fwd.x + w_fwd.y*b_fwd.y + w_fwd.z*b_fwd.z`, compared
+      against 0 with `fcmpo`/`ble` (so `<= 0` rejects). The port's
+      `Dot(weapon->GetTransform().GetForward(), GetTransform().GetForward()) > 0.f` is the same
+      test, not an approximation.
 - **The Dead script chain (area 32) needs Stage 1:**
   - Dead → relay 00200267 → SetToZero → relay 00200236 → Open switch 002000e0 → switch
     00200238 → switch 00200244 → relay 00200243 → sequence timer 00200240. That timer
