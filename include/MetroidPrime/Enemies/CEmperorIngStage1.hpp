@@ -237,8 +237,8 @@ private:
   void UpdateCollisionActors(float dt, CStateManager& mgr);
   // fn_16_4C0C: the module's track-player update.
   void UpdateTrackPlayer(float dt, CStateManager& mgr);
-  // fn_16_4C8: aims the actor at the player.
-  void UpdateFacing(float dt, CStateManager& mgr);
+  // fn_16_4C8: the melee sweep's contact damage to the player.
+  void UpdateMeleeHits(float dt, CStateManager& mgr);
   // fn_16_8C: the sweeping tentacles' contact damage to the player.
   void UpdateTentacleHits(float dt, CStateManager& mgr);
 
@@ -307,7 +307,9 @@ private:
   float xa68_;                        // guest 0xA68, 0.0f: the beam's firing time (fn_16_774C)
   float xa6c_;                        // guest 0xA6C, 0.0f: the retracted share (fn_16_68F4)
   int xa70_;                          // guest 0xA70, 0: the next attack in the mode's list (fn_16_6D94)
-  uchar xa74_;                        // guest 0xA74, 0: flags; 0x08 the projectile is charged
+  uchar xa74_;                        // guest 0xA74, 0: flags; 0x08 the projectile is charged,
+                                      // 0x40 the jump rope (fn_16_5928), 0x80 the melee sweep
+                                      // (fn_16_6D94, 0x6F8C; fn_16_4C8's gate)
   float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
   rstl::vector< CSegId > xa7c_;       // guest 0xA7C, empty: the spine locators' segments (fn_16_3C58)
   CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)

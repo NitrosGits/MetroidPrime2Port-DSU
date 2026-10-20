@@ -32,7 +32,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_4EB8` | 0x31C | moves the actor onto the target's locator | [probable] |
 | `fn_16_3AFC` | 0x74 | the three collision actor managers' update | [proven] |
 | `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
-| `fn_16_4C8` | 0x368 | aims the actor at the player | [probable] |
+| `fn_16_4C8` | 0x368 | the melee sweep's contact damage to the player (the 0x80 flag; every box grows 4.0f) - ported, `UpdateMeleeHits` | [proven] |
 | `fn_16_8C` | 0x3B0 | the sweeping tentacles' contact damage to the player - ported, `UpdateTentacleHits` | [proven] |
 | `fn_16_4C0C` | 0xBC | the track-player update: the "Damage" and "Telegraph" effect states | [probable] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
@@ -338,7 +338,7 @@ The body only runs while the actor is active: the asm's gate is the byte at 0x20
 | 0x5778 | fn_16_4C0C: the module's track-player update |
 | 0x578C | the effect-state timer (guest 0xA78) counts down |
 | 0x57CC | `SetEffectState("DarkProjectileCharge", timer > 0.0f)` - the name is the string lbl_16_rodata_340 points at |
-| 0x57E4 | fn_16_4C8: aims the actor at the player |
+| 0x57E4 | fn_16_4C8: the melee sweep's contact damage |
 | 0x57F4 | fn_16_8C: the sweeping tentacles' contact damage |
 | 0x57F8..0x5900 | the emitter that follows the target: the handle (guest 0xA8C) must be playing, the target id (guest 0xA90) must exist, and the emitter sits on the target's momentum (its X) in the horizontal direction of the player |
 
@@ -473,7 +473,9 @@ in LaunchProjectile).
 Joint fields: +0x0C out animation, +0x10 back animation, +0x14 retracted idle, +0x1C hit time,
 +0x20 last health. Joint flags: 0x04 forces state 2, 0x10 shootable, 0x20 collision on, 0x40
 collision wanted, 0x80 fn_16_2EE0's flag. States: 0 retracted, 1 coming out, 2 out, 3 going back.
-Guest 0xA74 flags: 0x08 projectile charged, 0x40 jump rope. Retail `CTryCommand::ShouldRetry(0x6B4,
+Guest 0xA74 flags: 0x04 ?, 0x08 projectile charged, 0x10 ?, 0x20 ?, 0x40 jump rope, 0x80 the melee
+sweep (fn_16_6D94 sets it at 0x6F8C and clears it at 0x713C; fn_16_4C8's gate). Retail
+`CTryCommand::ShouldRetry(0x6B4,
 bc, n)` is host `mAnimationState.CanIssueCommand(bc, n)`; the +0x350 vtable 0x30 call is
 `StateMachineState().GetTime()`.
 
@@ -494,8 +496,14 @@ never ends). 0 caught/reach-stub.
 
 Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
 EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
-reach the boss), fn_16_4C8 (0x368, facing), fn_16_4EB8 (0x31C, turning), fn_16_51D4 (0x128),
+reach the boss), fn_16_4EB8 (0x31C, turning), fn_16_51D4 (0x128),
 fn_16_7F8C cases 7/17/22/27/28, Render fn_16_531C and ProcessSoundEvent fn_16_7EA8.
+
+fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
+0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f
+(lbl_16_rodata_38C: the box's minimum drops by 4.0f at 0x704, its maximum rises by 4.0f at
+0x734) instead of the tip pair reaching 8.0f past its end. The melee damage, the player's touch
+bounds and the 0.2f cooldown are the same. Ported as `UpdateMeleeHits`.
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
@@ -518,6 +526,15 @@ Extents (`.fn` markers of the retail listing, next prologue after each `blr`): f
   anim 3 + IS05; update issues a generate (type by sub-stage 0/1/2 -> 0/2/1) or sets used slots to
   state 2 (fn_16_7AD4); over when "Whole Body" ends; deactivate restores anim 1, flags, attack timer,
   normal vulnerability.
+- The body command id of that generate is 0xF (`li r4, 0xf` at 0x73D8, 0x74AC and 0x7580 before
+  `DeliverCmd__16CBodyStateCmdMgrF13EBodyStateCmd`), and 0xF is the retail's Generate: the DOL's
+  `CBodyStateCmdMgr` ctor (0x800EE990) stores {&__vt__14CBCGenerateCmd, 0xF} at 0x208/0x20C. The
+  DOL's order is 0 Getup, 1 Step, 2 Die, 3 KnockDown, 4 KnockBack, 5 MeleeAttack, 6
+  ProjectileAttack, 7 LoopAttack, 8 LoopReaction, 9 LoopHitReaction, 10..14 the base
+  CBodyStateCmd, 15 (0xF) Generate, 16 Hurled, 17 Jump, 18 Unknown18, 19 Unknown19, 20 Slide, 21
+  Taunt, 22 Scripted, 23 Cover, 24 WallHang, 25 Locomotion, 26 AdditiveIdle, 27 AdditiveAim, 28
+  AdditiveFlinch. The host's `EBodyStateCmd` (include/Kyoto/Animation/CharacterCommon.hpp) is the
+  same order, so `kBSC_Generate` is 15 = 0xF (14 is `kBSC_MaintainVelocity`).
 
 ## 5. The port (milestone 1)
 

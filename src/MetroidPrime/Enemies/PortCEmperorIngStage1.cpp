@@ -5,7 +5,7 @@
 // EndHeartStage; the heart stage's beam (FireBeam), the heart's damage reaching the boss
 // (fn_16_51D4) and the charged projectile of DoUserAnimEvent. What remains a stand-in logs once
 // and names the REL function it stands in for (MeleeAttack, WarpAttack, TauntAttack, the
-// facing/anchor updates fn_16_4C8 and fn_16_4EB8, Render, ProcessSoundEvent and DoUserAnimEvent's
+// anchor update fn_16_4EB8, Render, ProcessSoundEvent and DoUserAnimEvent's
 // other cases) - docs/module-analysis/EmperorIngStage1.md has the map.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
@@ -275,7 +275,7 @@ void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
   // The effect state's name is the string lbl_16_rodata_340 points at (0x5780), and it is on
   // while the timer is above zero (the compare at 0x57B0).
   AnimationData()->SetEffectState(rstl::string_l("DarkProjectileCharge"), xa78_ > 0.f, mgr); // 0x57CC
-  UpdateFacing(dt, mgr);      // fn_16_4C8, 0x57E4
+  UpdateMeleeHits(dt, mgr);   // fn_16_4C8, 0x57E4
   UpdateTentacleHits(dt, mgr); // fn_16_8C, 0x57F4
   // The emitter that follows the target (0x57F8..0x5900): the handle must be playing, the
   // target must exist, and the emitter sits on the target's momentum, pointing at the player.
@@ -647,10 +647,6 @@ void CEmperorIngStage1::UpdateTrackPlayer(float dt, CStateManager& mgr) {
   xa5c_ -= dt;
 }
 
-// fn_16_4C8 (0x4C8..0x830): aims the actor at the player. Too big for the slice's rule, so it
-// stays a stand-in.
-void CEmperorIngStage1::UpdateFacing(float dt, CStateManager& mgr) { StandInFn("fn_16_4C8"); }
-
 // The tentacles' joint pairs (lbl_16_rodata_0, 0x1E0 bytes): eight tentacles of five 12-byte
 // records {from locator, to locator, the box's extent}, the tentacle stride 0x3C (0x4498). The
 // order is retail's - "seven" comes before "six".
@@ -768,6 +764,60 @@ void CEmperorIngStage1::UpdateTentacleHits(float dt, CStateManager& mgr) {
                                                             CMaterialList()),
                         CVector3f::Zero());
         xa48_ = 0.2f;
+        return;
+      }
+    }
+  }
+}
+
+// fn_16_4C8 (0x4C8..0x830, 0x368): the melee sweep's contact damage. It is fn_16_8C's body with
+// two differences: the gate is the 0x80 flag of guest 0xA74 (the melee attack - fn_16_6D94 sets
+// it at 0x6F8C and clears it at 0x713C; the test at 0x4F0), and every box grows by 4.0f
+// (lbl_16_rodata_38C: the box's minimum drops by 4.0f on each axis at 0x704 and its maximum
+// rises by 4.0f at 0x734) instead of the tip pair reaching 8.0f past its end. The player's touch
+// bounds (its vtable slot 16, GetTouchBounds, at 0x50C) must exist (0x554). The cooldown (guest
+// 0xA48) runs down by dt and, once it is <= 0.0f (lbl_16_rodata_380, the cror at 0x57C), the
+// 8 * 5 joint pairs of skTentacleJointPairs (the loops at 0x5A8 and 0x5B0) each give a box: the
+// two locators' scaled transforms (0x614, 0x664), their translations through this actor's
+// transform (0x63C, 0x68C), accumulated into an inverted box (0x6E0, 0x6EC) and grown by 4.0f
+// (0x71C, 0x74C). The first box the player's bounds overlap (0x758) damages the player with the
+// melee damage (guest 0xB8C) - this actor the damager and the owner, the filter including
+// kMT_Solid (lbl_16_data_0, 0x3B; type 3) and the zero direction (ApplyDamage at 0x7E0) - and the
+// cooldown becomes 0.2f (lbl_16_rodata_388, 0x7EC).
+void CEmperorIngStage1::UpdateMeleeHits(float dt, CStateManager& mgr) {
+  if ((xa74_ & 0x80) == 0) { // 0x4F0
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  const rstl::optional_object< CAABox > touch = player->GetTouchBounds(); // 0x50C
+  if (!touch.valid()) {                                                    // 0x554
+    return;
+  }
+  xa48_ -= dt;           // 0x568
+  if (!(xa48_ <= 0.f)) { // 0x578
+    return;
+  }
+  const CAnimData* animData = GetModelData()->GetAnimationData(); // 0x598
+  for (int tentacle = 0; tentacle < 8; ++tentacle) {              // 0x804
+    for (int joint = 0; joint < 5; ++joint) {                     // 0x7FC
+      const SEmperorIngStage1JointPair& pair = skTentacleJointPairs[tentacle][joint];
+      const CSegId from = animData->GetLocatorSegId(rstl::string_l(pair.from)); // 0x5C8
+      const CSegId to = animData->GetLocatorSegId(rstl::string_l(pair.to));     // 0x5F4
+      const CVector3f p1 = GetTransform() * GetScaledLocatorTransform(from).GetTranslation(); // 0x614
+      const CVector3f p2 = GetTransform() * GetScaledLocatorTransform(to).GetTranslation();   // 0x664
+      CAABox box = CAABox::MakeMaxInvertedBox();
+      box.AccumulateBounds(p1); // 0x6E0
+      box.AccumulateBounds(p2); // 0x6EC
+      // 0x704: the box's minimum drops by 4.0f on every axis, 0x734: its maximum rises by 4.0f.
+      const CVector3f grow(4.f, 4.f, 4.f);
+      box.AccumulateBounds(box.GetMinPoint() - grow); // 0x71C
+      box.AccumulateBounds(box.GetMaxPoint() + grow); // 0x74C
+      if (touch.data().DoBoundsOverlap(box)) { // 0x758
+        mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mMeleeDamage,
+                        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                                            CMaterialList()),
+                        CVector3f::Zero()); // 0x7E0
+        xa48_ = 0.2f; // 0x7EC
         return;
       }
     }
