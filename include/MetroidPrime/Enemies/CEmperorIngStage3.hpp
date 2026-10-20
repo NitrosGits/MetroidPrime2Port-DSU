@@ -9,6 +9,8 @@
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
+
+class CCollisionActor;
 #endif
 
 // The REL's CEmperorIngStage3 (module 18): the mutated Emperor Ing, the boss the player fights
@@ -128,12 +130,23 @@ public:
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
-  // fn_18_F8: the module's random check, used by the attack triggers. It is a stand-in for now, so
-  // the triggers that need it answer false.
-  bool RandomCheck() const;
-  // fn_18_2298: the taunt average over the module's bone list. Its own callee fn_18_AB9C needs the
-  // list at guest 0x840, which the port does not model, so this stays a stand-in too.
-  void TauntAverage() const;
+  // fn_18_F8: the module's look check. The parameter is the angle in degrees the player may
+  // be off the actor's facing by; the triggers that need it pass retail's constant.
+  bool RandomCheck(CStateManager& mgr, float maxAngleDeg) const;
+  // fn_18_DBC: the actor's "DarkBeam_LCTR_SDK" locator in world space.
+  CVector3f DarkBeamLocatorPosition() const;
+  // fn_18_2298: the taunt average over the module's bone list. Its own callee fn_18_AB9C
+  // needs the list at guest 0x840, which the port does not model, so this stays a stand-in.
+  float TauntAverage() const;
+  // fn_18_1A54: the look along the actor's facing for something to hit. A stand-in.
+  bool LineOfSight(CStateManager& mgr, const CVector3f& facing, float length) const;
+  // fn_18_3804: the turn towards a position, which writes the facing at guest 0x818. A
+  // stand-in.
+  void FaceTarget(const CVector3f& target);
+  // fn_18_1DF4: the heart switch (0 the enraged heart, 1 the dark heart, 2 the light heart).
+  void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
+  // fn_18_3ACC: the collision actor of a heart. A stand-in.
+  CCollisionActor* HeartCollisionActor(CStateManager& mgr, int index) const;
 
   // Host layout. The guest offsets are the REL's (fn_18_9A8C); the full member map, including
   // the parts this milestone does not build, is in docs/module-analysis/EmperorIngStage3.md.
@@ -156,7 +169,9 @@ private:
                                         // jump-attack and dodge flags
   uchar x825_;                           // guest 0x825, 0: 0x01 the stampede-react flag, 0x04 the
                                         // aborted-jump-slide flag
-  int x7c0_;                             // guest 0x7C0, 0: cleared by the constructor
+  void* x7c0_;                           // guest 0x7C0, 0: the pointer to the module's heart
+                                        // holder (fn_18_3B14 reads it); the port does not
+                                        // model the holder
   int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
   float mX7c8_;                          // guest 0x7C8, 0.0f: the taunt timer
   float mX7cc_;                          // guest 0x7CC, 0.0f: the eye-shut timer
@@ -165,6 +180,10 @@ private:
   float mAttackTimer;                    // guest 0x7E4, 4.0f in the constructor
   int mAction;                           // guest 0x7E8, -1 in the constructor
   float mX810_;                          // guest 0x810, 0.0f: the damage taken while vulnerable
+  CVector3f mX818_;                      // guest 0x818, 0: the facing the idle state turns
+                                        // towards the player (fn_18_3804 writes it)
+  float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
+  int mX868_;                            // guest 0x868, 0: the heart that is on
 };
 #endif
 

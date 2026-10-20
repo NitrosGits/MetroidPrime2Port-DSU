@@ -14,6 +14,8 @@
 #include "MetroidPrime/Enemies/CEmperorIngStage3.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -21,6 +23,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+#include <float.h>
 #include <stdio.h>
 
 namespace {
@@ -159,7 +162,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mGroundPoundDamage(LdrToDamageInfo(data.groundPoundDamage)) // guest 0xA44
 , x824_(0)                                                 // guest 0x824
 , x825_(0)                                                 // guest 0x825
-, x7c0_(0)                                                // guest 0x7C0
+, x7c0_(nullptr)                                           // guest 0x7C0
 , mVulnerabilityState(0)                                  // guest 0x7C4
 , mX7c8_(0.f)                                             // guest 0x7C8
 , mX7cc_(0.f)                                             // guest 0x7CC
@@ -168,6 +171,9 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mAttackTimer(4.f)                                       // guest 0x7E4
 , mAction(-1)                                             // guest 0x7E8
 , mX810_(0.f)                                             // guest 0x810
+, mX818_(CVector3f::Zero())                               // guest 0x818
+, mX864_(0.f)                                             // guest 0x864
+, mX868_(0)                                               // guest 0x868
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
@@ -325,17 +331,133 @@ void CEmperorIngStage3::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
-// fn_18_F8 (0x11C): the module's random check. It is not ported yet, so every trigger that
-// needs it answers false.
-bool CEmperorIngStage3::RandomCheck() const {
-  StandInFn("fn_18_F8");
-  return false;
+// fn_18_F8 (0x11C): the module's look check. The parameter is the angle in degrees the player
+// may be off the actor's facing by. Retail: the vector from the actor's "DarkBeam_LCTR_SDK"
+// locator (fn_18_DBC) to the player, normalised (0x170) and flattened to the XY plane (the
+// zero at rodata 0x258, 0x198), has to be normalisable (0x260); the angle between it and the
+// actor's facing (the transform's Y column, guest 0x28/0x38/0x48) is turned into degrees
+// (rodata 0x25C = 57.295776, 0x1D8) and has to be below the parameter (0x1E0).
+bool CEmperorIngStage3::RandomCheck(CStateManager& mgr, float maxAngleDeg) const {
+  const CVector3f& mine = DarkBeamLocatorPosition();
+  const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+  CVector3f direction(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(),
+                       theirs.GetZ() - mine.GetZ());
+  direction.Normalize();
+  direction.SetZ(0.f); // rodata 0x258
+  if (!direction.CanBeNormalized()) {
+    return false;
+  }
+  direction.Normalize();
+  const float degrees =
+      57.295776f * CVector3f::GetAngleDiff(direction, GetTransform().GetColumn(kDY));
+  return degrees < maxAngleDeg;
+}
+
+// fn_18_DBC (0x40): the actor's "DarkBeam_LCTR_SDK" locator (rodata 0xA8) in world space: the
+// actor's transform times the model's scaled locator transform, and the translation of the
+// product (0xE08..0xE20).
+CVector3f CEmperorIngStage3::DarkBeamLocatorPosition() const {
+  const CTransform4f locator = GetScaledLocatorTransform(rstl::string_l("DarkBeam_LCTR_SDK"));
+  return (GetTransform() * locator).GetTranslation();
 }
 
 // fn_18_2298 (0x24): the taunt average over the module's bone list. Its own callee fn_18_AB9C
-// (0x64) walks the list at guest 0x840, which the port does not model, so this stays a stand-in.
-void CEmperorIngStage3::TauntAverage() const {
+// (0x64) walks the list at guest 0x840, which the port does not model, so this stays a
+// stand-in: it names the retail function once and answers the neutral zero.
+float CEmperorIngStage3::TauntAverage() const {
   StandInFn("fn_18_2298");
+  return 0.f;
+}
+
+// fn_18_1A54 (0xE0): the look along the actor's facing for something to hit (the ray from
+// the actor's bounds, 15 units long). A stand-in: it names the retail function once and
+// answers "nothing hit".
+bool CEmperorIngStage3::LineOfSight(CStateManager& mgr, const CVector3f& facing,
+                                     float length) const {
+  StandInFn("fn_18_1A54");
+  return false;
+}
+
+// fn_18_3804 (0x25C): the turn towards a position; it writes the facing at guest 0x818 that
+// the idle state's locomotion command carries. A stand-in: it names the retail function
+// once and leaves the facing alone.
+void CEmperorIngStage3::FaceTarget(const CVector3f& target) { StandInFn("fn_18_3804"); }
+
+// fn_18_3ACC (0x48): the collision actor of a heart. Its own callee fn_18_3B14 (0x4C) reads
+// the module's holder at guest 0x7C0 - an array of 0x68-byte records that fn_80135AD4
+// indexes, record 0xA the first heart and 0xB the second - which the port does not model,
+// so the lookup finds no actor.
+CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int index) const {
+  StandInFn("fn_18_3ACC");
+  return nullptr;
+}
+
+// fn_18_1DF4 (0x4A0): the heart switch. Heart 0 is the enraged heart: the two hearts get the
+// yellow health (guest 0x920, 0x1E8C) and the "EnragedHeart" effect; heart 1 the dark
+// heart: the actor's own health (the vtable slot 0x3C, 0x1F80) and the "DarkHeart" effect;
+// heart 2 the light heart: the same health (0x208C) and the "LightHeart" effect. The heart
+// that is on is remembered at guest 0x868 (0x2164) and, when the caller asks for it, the two
+// hearts get that heart's vulnerability (0x960 red, 0x9C0 dark, 0x990 light, 0x219C..0x21E4).
+// The lookup of the two hearts is a stand-in that finds none, and retail returns early then
+// (0x1E38), so the body below does not run on the host.
+void CEmperorIngStage3::SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability) {
+  CCollisionActor* first = HeartCollisionActor(mgr, 0);  // fn_18_3ACC
+  CCollisionActor* second = HeartCollisionActor(mgr, 1); // fn_18_3ACC
+  if (first == nullptr) {
+    return; // 0x1E34: the retail's own test of the first heart
+  }
+  bool enraged = false;
+  bool light = false;
+  bool dark = false;
+  switch (heart) {
+  case 0:
+    if (heart != mX868_) {
+      *first->HealthInfo() = mYellowHealth;  // 0x1E8C: the yellow health at guest 0x920
+      *second->HealthInfo() = mYellowHealth; // 0x1FDC
+    }
+    enraged = true; // 0x1F40
+    break;
+  case 1:
+    if (heart != mX868_) {
+      *first->HealthInfo() = *GetHealthInfo();  // 0x1F80: the actor's own health
+      *second->HealthInfo() = *GetHealthInfo(); // 0x2000
+    }
+    dark = true; // 0x204C
+    break;
+  case 2:
+    if (heart != mX868_) {
+      *first->HealthInfo() = *GetHealthInfo();  // 0x208C
+      *second->HealthInfo() = *GetHealthInfo(); // 0x2108
+    }
+    light = true; // 0x2158
+    break;
+  default:
+    break;
+  }
+  if (heart != 3) {
+    mX868_ = heart; // 0x2164
+  }
+  if (applyVulnerability) {
+    switch (mX868_) {
+    case 0:
+      first->SetDamageVulnerability(mRedVulnerability);  // 0x219C: guest 0x960
+      second->SetDamageVulnerability(mRedVulnerability); // 0x21A8
+      break;
+    case 1:
+      first->SetDamageVulnerability(mDarkVulnerability);  // 0x21B4: guest 0x9C0
+      second->SetDamageVulnerability(mDarkVulnerability); // 0x21C0
+      break;
+    case 2:
+      first->SetDamageVulnerability(mLightVulnerability);  // 0x21D0: guest 0x990
+      second->SetDamageVulnerability(mLightVulnerability); // 0x21DC
+      break;
+    default:
+      break;
+    }
+  }
+  AnimationData()->SetEffectState(rstl::string_l("EnragedHeart"), enraged, mgr); // 0x2210
+  AnimationData()->SetEffectState(rstl::string_l("LightHeart"), light, mgr);     // 0x2244
+  AnimationData()->SetEffectState(rstl::string_l("DarkHeart"), dark, mgr);       // 0x2278
 }
 
 // The module's state machine functions. The eleven triggers whose retail body is small enough
@@ -369,15 +491,14 @@ bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData
   return false;
 }
 
-// fn_18_8A4C (0x8A4C): "ShouldTaunt". The random check has to pass, the module's taunt
-// average runs, and the taunt timer (guest 0x7C8) has to be past the taunt frequency (guest
-// 0x91C). The constant compare is retail's (60.0f, rodata 0x2E4, against 50.0f, rodata 0x290).
+// fn_18_8A4C (0x8A4C): "ShouldTaunt". The look check has to pass (rodata 0x2E4 = 60.0f),
+// the module's taunt average runs and has to be above 50.0 (rodata 0x290), and the taunt
+// timer (guest 0x7C8) has to be past the taunt frequency (guest 0x91C).
 bool CEmperorIngStage3::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
-  if (!RandomCheck()) {
+  if (!RandomCheck(mgr, 60.f)) { // rodata 0x2E4
     return false;
   }
-  TauntAverage(); // fn_18_2298
-  if (60.f <= 50.f) { // rodata 0x2E4 against rodata 0x290
+  if (TauntAverage() <= 50.f) { // fn_18_2298, rodata 0x290
     return false;
   }
   return mX7c8_ > mTauntFrequency;
@@ -398,12 +519,13 @@ bool CEmperorIngStage3::ShouldChangeVulnerabilityToVulnerable(CStateManager& mgr
   return mVulnerabilityState == 1;
 }
 
-// fn_18_898C (0x898C): "ShouldChangeVulnerabilityToInvulnerable". The random check has to pass;
-// in the vulnerable state (3) the trigger is true, in the invulnerable state (2) it needs the
-// damage taken while vulnerable (guest 0x810) or the vulnerable damage threshold (guest 0x814).
+// fn_18_898C (0x898C): "ShouldChangeVulnerabilityToInvulnerable". The look check has to pass
+// (rodata 0x2CC = 90.0f); in the vulnerable state (3) the trigger is true, in the invulnerable
+// state (2) it needs the damage taken while vulnerable (guest 0x810) or the vulnerable damage
+// threshold (guest 0x814).
 bool CEmperorIngStage3::ShouldChangeVulnerabilityToInvulnerable(CStateManager& mgr,
                                                                const CTriggerData& data) const {
-  if (!RandomCheck()) {
+  if (!RandomCheck(mgr, 90.f)) { // rodata 0x2CC
     return false;
   }
   if (mVulnerabilityState == 3) {
@@ -464,10 +586,10 @@ bool CEmperorIngStage3::JumpSlideAttackOver(CStateManager& mgr, const CTriggerDa
   return false;
 }
 
-// fn_18_85A4 (0x85A4): "ShouldEyeShut". The random check has to pass and the eye-shut timer
-// (guest 0x7CC) has to be below 8.0 (rodata 0x2A8).
+// fn_18_85A4 (0x85A4): "ShouldEyeShut". The look check has to pass (rodata 0x2CC = 90.0f) and
+// the eye-shut timer (guest 0x7CC) has to be below 8.0 (rodata 0x2A8).
 bool CEmperorIngStage3::ShouldEyeShut(CStateManager& mgr, const CTriggerData& data) const {
-  if (!RandomCheck()) {
+  if (!RandomCheck(mgr, 90.f)) { // rodata 0x2CC
     return false;
   }
   return mX7cc_ < 8.f; // rodata 0x2A8
@@ -478,11 +600,11 @@ bool CEmperorIngStage3::AbortedJumpSlide(CStateManager& mgr, const CTriggerData&
   return (x825_ & 0x04) != 0;
 }
 
-// fn_18_8518 (0x8518): "ShouldJumpAttack". The random check has to pass, the jump-attack timer
-// (guest 0x7E0) has to be at least 2.5 (rodata 0x298) and the flag byte at guest 0x824 has to
-// have its bit 29 (the mask 0x04) set.
+// fn_18_8518 (0x8518): "ShouldJumpAttack". The look check has to pass (rodata 0x30C = 35.0f),
+// the jump-attack timer (guest 0x7E0) has to be at least 2.5 (rodata 0x298) and the flag byte at
+// guest 0x824 has to have its bit 29 (the mask 0x04) set.
 bool CEmperorIngStage3::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
-  if (!RandomCheck()) {
+  if (!RandomCheck(mgr, 35.f)) { // rodata 0x30C
     return false;
   }
   if (mX7e0_ < 2.5f) { // rodata 0x298
@@ -497,16 +619,64 @@ bool CEmperorIngStage3::ShouldStampedeReact(CStateManager& mgr, const CTriggerDa
 }
 
 // fn_18_7ADC (0x7ADC): the "Start" state. On the deactivation message it hands over to
-// fn_18_1DF4 (0xC4 bytes), which stays a stand-in.
+// fn_18_1DF4 with the enraged heart (0) and the flag set (0x7AF8..0x7B00).
 void CEmperorIngStage3::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Deactivate) {
     return;
   }
-  StandInFn("fn_18_1DF4");
+  SetHeartState(mgr, 0, true); // fn_18_1DF4
 }
 
+// fn_18_788C (0x250): the "Idle" state.
+//  - Activate (0x78D0): the timer at guest 0x864 is set to the biggest float (rodata 0x2C8)
+//    and the body's steering is set up: the walk speed over the run speed (the two
+//    GetLocomotionSpeed calls, pas::kLA_Walk over pas::kLA_Run, 0x78E4..0x78FC), the steering
+//    blend mode (the write of one at 0x7908) and the steering speed range (0x7918).
+//  - Update (0x7920): the vector to the player; fn_18_1A54 (0xE0, a stand-in) looks along the
+//    actor's facing for something to hit and fn_18_3804 (0x25C, a stand-in) turns the actor
+//    towards the player; over fifty units (rodata 0x290) the timer is cleared (rodata 0x258);
+//    the locomotion command carries the normalised direction to the player when the look hit
+//    and the timer is below half a second (rodata 0x2A0), the zero vector otherwise; then the
+//    timer grows by the frame time (0x7AB0).
 void CEmperorIngStage3::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_788C");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mX864_ = FLT_MAX; // rodata 0x2C8
+    const float run = BodyController()->GetBodyStateInfo().GetLocomotionSpeed(pas::kLA_Run);
+    const float walk = BodyController()->GetBodyStateInfo().GetLocomotionSpeed(pas::kLA_Walk);
+    const float ratio = walk / run; // 0x78FC
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed); // 0x7908
+    BodyController()->CommandMgr().SetSteeringSpeedRange(ratio, ratio);  // 0x7918
+    break;
+  }
+  case kStateMsg_Update: {
+    const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+    const CVector3f& mine = GetTranslation();
+    CVector3f toPlayer(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(),
+                       theirs.GetZ() - mine.GetZ());
+    if (!toPlayer.CanBeNormalized()) {
+      return; // 0x796C: the retail leaves the state without the timer
+    }
+    const bool hit = LineOfSight(mgr, GetTransform().GetColumn(kDY), 15.f); // fn_18_1A54
+    FaceTarget(theirs);                                                   // fn_18_3804
+    const float distance = toPlayer.Magnitude();
+    const float scale = 1.f / distance;
+    const CVector3f direction(toPlayer.GetX() * scale, toPlayer.GetY() * scale,
+                              toPlayer.GetZ() * scale);
+    if (distance > 50.f) { // rodata 0x290
+      mX864_ = 0.f;        // rodata 0x258
+    }
+    if (hit && mX864_ < 0.5f) { // rodata 0x2A0
+      BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(direction, mX818_, 1.f));
+    } else {
+      BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(CVector3f::Zero(), mX818_, 1.f));
+    }
+    mX864_ += dt; // 0x7AB0
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {

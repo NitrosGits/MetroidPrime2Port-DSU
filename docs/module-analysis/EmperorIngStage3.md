@@ -59,8 +59,12 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | offset | member | proof |
 |---|---|---|
 | 0x44F | the model alpha byte | `fn_18_44` reads it; the constructor does not write it, so it starts 0 |
+| 0x7C0 | the pointer to the module's heart holder | `fn_18_3B14` reads it and `fn_80135AD4` indexes the array of 0x68-byte records it points at (0xA the first heart, 0xB the second); the constructor clears it |
 | 0x814 | the vulnerable damage threshold | the constructor copies the data's `vulnerableDamageThreshold` (the data's +0x18) |
+| 0x818 | the facing the idle state turns towards the player | `fn_18_3804` writes it; the constructor zeroes it (0x9B80) |
 | 0x824 | the noise flag byte | `fn_18_8E50` sets its bit 30 (the mask 0x02) when the actor hears the player fire; the constructor clears the word's high bits |
+| 0x864 | the idle state's timer | `fn_18_788C` sets it to FLT_MAX on enter, clears it when the player is over fifty units away and grows it by the frame time |
+| 0x868 | the heart that is on | `fn_18_1DF4` writes it; the constructor clears it (0x9CB4) |
 | 0x91C | the taunt frequency | the constructor copies the data's `tauntFrequency` |
 | 0x920 | the yellow health | `LdrToHealthInfo` of the data's `yellowHealth` |
 | 0x940 | the health | `LdrToHealthInfo` of the data's `health` |
@@ -114,15 +118,50 @@ The other thirty-three FSM functions are stand-ins that log the retail function 
 
 | fn | size | the retail body |
 |---|---|---|
-| `7ADC` Start | 0x38 | on the deactivation message (2) it calls `fn_18_1DF4` (0xC4, a stand-in) |
+| `7ADC` Start | 0x38 | on the deactivation message (2) it calls `fn_18_1DF4` with the enraged heart (0) and the flag set |
 | `8DA4` TooClose | 0xAC | the module's distance (0x7D4) must be at least 2.0 (rodata 0x274) and the player nearer than 20 units (rodata 0x270); a vector that cannot be normalized counts as too close. The vector comes from `fn_18_2D1C` (0x34, the player minus the actor, flattened to XY); `fn_18_2C98` (0x20) copies a vector retail then never reads, so it is left out |
-| `8A4C` ShouldTaunt | 0x80 | the random check `fn_18_F8` (0x11C, a stand-in), then `fn_18_2298` (0x24, a stand-in: its own callee `fn_18_AB9C` walks the bone list at 0x840, which the port does not model), then the taunt timer (0x7C8) past the taunt frequency (0x91C) |
-| `898C` ShouldChangeVulnerabilityToInvulnerable | 0x94 | the random check; the vulnerable state (3) is true, the invulnerable state (2) needs the damage taken while vulnerable (0x810) below zero (rodata 0x258) or the vulnerable damage threshold (0x814) below rodata 0x310 (1.1920929e-07f) |
-| `85A4` ShouldEyeShut | 0x5C | the random check and the eye-shut timer (0x7CC) below 8.0 (rodata 0x2A8) |
-| `8518` ShouldJumpAttack | 0x74 | the random check, the jump-attack timer (0x7E0) at least 2.5 (rodata 0x298) and the flag byte 0x824's bit 29 (the mask 0x04) |
+| `8A4C` ShouldTaunt | 0x80 | the look check `fn_18_F8` (0x11C) with 60.0 (rodata 0x2E4), then `fn_18_2298` (0x24, a stand-in: its own callee `fn_18_AB9C` walks the bone list at 0x840, which the port does not model), whose answer has to be above 50.0 (rodata 0x290), then the taunt timer (0x7C8) past the taunt frequency (0x91C) |
+| `898C` ShouldChangeVulnerabilityToInvulnerable | 0x94 | the look check with 90.0 (rodata 0x2CC); the vulnerable state (3) is true, the invulnerable state (2) needs the damage taken while vulnerable (0x810) below zero (rodata 0x258) or the vulnerable damage threshold (0x814) below rodata 0x310 (1.1920929e-07f) |
+| `85A4` ShouldEyeShut | 0x5C | the look check with 90.0 (rodata 0x2CC) and the eye-shut timer (0x7CC) below 8.0 (rodata 0x2A8) |
+| `8518` ShouldJumpAttack | 0x74 | the look check with 35.0 (rodata 0x30C), the jump-attack timer (0x7E0) at least 2.5 (rodata 0x298) and the flag byte 0x824's bit 29 (the mask 0x04) |
 
-The three the run reaches that are too big for this slice stay stand-ins: `788C` Idle (0x250),
-`8C4C` ShouldMeleeAttack (0x13C) and `8ACC` ShouldGroundPound (0x180).
+The two the run reaches that are too big for this slice stay stand-ins: `8C4C` ShouldMeleeAttack
+(0x13C) and `8ACC` ShouldGroundPound (0x180).
+
+### The look check `fn_18_F8` (0x11C)
+
+The name says "random check", but the body has no random: the parameter (f1) is the angle in
+degrees the player may be off the actor's facing by. The vector from the actor's
+`DarkBeam_LCTR_SDK` locator (`fn_18_DBC`, 0x40: the actor's transform times the model's scaled
+locator transform, rodata 0xA8) to the player is normalised, flattened to XY (rodata 0x258) and
+has to be normalisable; the angle between it and the actor's facing (the transform's Y column,
+guest 0x28/0x38/0x48) is turned into degrees (rodata 0x25C = 57.295776) and has to be below the
+parameter. The triggers that use it pass 60.0 (0x8A4C), 90.0 (0x898C, 0x85A4) and 35.0 (0x8518).
+
+### `fn_18_1DF4` (0x4A0), the heart switch
+
+The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`
+(0x4C) reads the module's holder at guest 0x7C0 - an array of 0x68-byte records that
+`fn_80135AD4` indexes, 0xA the first heart and 0xB the second - and looks their unique id (the
+record's +0x3C) up in the state manager. The port does not model the holder, so the lookup is a
+stand-in that finds no actor, and retail returns early then (0x1E34). The body: heart 0 is the
+enraged heart (the hearts get the yellow health at guest 0x920 and the `EnragedHeart` effect),
+heart 1 the dark heart (the actor's own health, the `DarkHeart` effect), heart 2 the light heart
+(the same health, the `LightHeart` effect); the heart that is on is remembered at guest 0x868 and,
+when the caller asks for it, the hearts get that heart's vulnerability (0x960 red, 0x9C0 dark,
+0x990 light).
+
+### `fn_18_788C` (0x250), the Idle state
+
+Activate: the timer at guest 0x864 becomes FLT_MAX (rodata 0x2C8) and the body's steering is
+set up - the walk speed over the run speed (`GetLocomotionSpeed` with `pas::kLA_Walk` over
+`pas::kLA_Run`), the steering blend mode (the write of one at 0x7908) and the steering speed
+range (0x7918). Update: the vector to the player; `fn_18_1A54` (0xE0, a stand-in) looks along the
+actor's facing for something to hit and `fn_18_3804` (0x25C, a stand-in) turns the actor towards
+the player and writes the facing at guest 0x818; over fifty units (rodata 0x290) the timer is
+cleared (rodata 0x258); the locomotion command carries the normalised direction to the player
+when the look hit and the timer is below half a second (rodata 0x2A0), the zero vector
+otherwise; then the timer grows by the frame time.
 
 ### The flag bytes
 
@@ -141,8 +180,14 @@ firing (`[emp3] ... Think`, `AcceptScriptMsg`, `PreRender`, `DoUserAnimEvent`,
 frame limit (3200 frames, 45 s).
 
 With the state machine registered (milestone 2) the run also reaches the FSM: the states entered
-are **Start** (`fn_18_7ADC`, whose deactivation handler reaches the stand-in `fn_18_1DF4`) and
+are **Start** (`fn_18_7ADC`, whose deactivation handler reaches `fn_18_1DF4`) and
 **Idle** (`fn_18_788C`); the triggers the run evaluates are TooClose `8DA4`, ShouldMeleeAttack
 `8C4C`, ShouldGroundPound `8ACC`, ShouldTaunt `8A4C`,
 ShouldChangeVulnerabilityToInvulnerable `898C`, ShouldEyeShut `85A4` and ShouldJumpAttack
-`8518` (the ported ones answer silently and log only the random check `fn_18_F8`).
+`8518` (the ported ones answer silently).
+
+With the look check, the heart switch and the Idle state ported, a run that walks and fires
+after the layer is loaded logs the module's own stand-ins `fn_18_3ACC` (the heart lookup),
+`fn_18_1A54` (the look) and `fn_18_3804` (the turn) - the Idle state's own body is retail's - and
+the EyeShut state `fn_18_5264` is entered, which means the look check answered true. The run
+still ends on the frame limit (2400 updates) with `grep -c '[port] caught\|reach-stub'` = 0.
