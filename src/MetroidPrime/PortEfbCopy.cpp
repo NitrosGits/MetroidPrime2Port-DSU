@@ -43,7 +43,6 @@ struct Slot {
   uint32_t sequence = 0;
   uint32_t consumedSequence = 0;
   uint32_t lastUsed = 0;
-  bool ownsDestination = false; // false: the copy still lands in the game's shared buffer
   std::vector< unsigned char > staging;
   std::vector< unsigned char > destination;
 
@@ -114,7 +113,6 @@ Slot* AcquireSlot(void* shared, int width, int height, int texelBytes, bool priv
   for (Slot& slot : sSlots) {
     if (!slot.used()) {
       freeSlot = &slot;
-      slot.staging.assign(needed, 0);
       break;
     }
   }
@@ -137,7 +135,6 @@ Slot* AcquireSlot(void* shared, int width, int height, int texelBytes, bool priv
   // Exact sizes, and an identity's buffers never change size once it exists, so nothing is
   // reallocated while the render thread may still be writing a read-back into it.
   freeSlot->staging.assign(needed, 0);
-  freeSlot->ownsDestination = privateDestination;
   if (privateDestination) {
     freeSlot->destination.assign(needed, 0);
     freeSlot->dest = freeSlot->destination.data();
