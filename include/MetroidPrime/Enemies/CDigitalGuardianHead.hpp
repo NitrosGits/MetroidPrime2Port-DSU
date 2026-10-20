@@ -154,6 +154,11 @@ private:
   bool x11698_(const CVector3f& pos, float& angle) const;
   // fn_14_11788 (0x168 bytes): the point at that angle on the attack area's ellipse.
   CVector3f x11788_(float angle) const;
+  // fn_14_118B0 (0x134 bytes): the attack area's points at the head's angle and 8 degrees either
+  // side; returns the count (0 or 3).
+  int x118B0_(CVector3f* points) const;
+  // fn_14_114C8 (0x1D0 bytes): the attack point with a line of sight to the player (stand-in).
+  CVector3f x114C8_(const CVector3f& player, const CVector3f* points, int count);
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
@@ -166,6 +171,7 @@ private:
   int xFE0_;        // 0xFE0: the echo targets left (3)
   int xFE8_;        // 0xFE8: the attack mode (1 in the ctor; fn_14_13B30)
   CVector3f xFEC_;  // 0xFEC: the attack position (SetInitialAttackPosition, SeekAttackPosition)
+  CVector3f xFF8_;  // 0xFF8: the previous attack position (SetAttackPosition)
   CVector3f x1004_; // 0x1004: the attack area's centre (fn_14_119E4)
   CVector3f x1010_; // 0x1010: the attack area's first axis
   CVector3f x101C_; // 0x101C: the attack area's second axis

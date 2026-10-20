@@ -147,6 +147,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xFE0_(3)
 , xFE8_(1)
 , xFEC_(CVector3f::Zero())
+, xFF8_(CVector3f::Zero())
 // 0x1004: the translation, then the transform's column 1 and the negated column 0 (fn_14_190E0).
 , x1004_(GetTranslation())
 , x1010_(GetTransform().GetColumn(kDY))
@@ -386,6 +387,27 @@ CVector3f CDigitalGuardianHead::x11788_(float angle) const {
   const float x = 50.f * CMath::FastCosR(angle);
   const CTransform4f frame = CTransform4f::LookAt(x1004_, x1004_ + x101C_, CVector3f::Up());
   return x1004_ + frame.Rotate(CVector3f(x, y, 0.f));
+}
+
+// fn_14_118B0: none when the head is at the attack area's centre (fn_14_11698); else the area's
+// points at its angle, that plus 8 degrees and that minus 8 degrees (.rodata 0x9C8, 0.13962634).
+// @ fn_14_118B0
+int CDigitalGuardianHead::x118B0_(CVector3f* points) const {
+  int count = 0;
+  float angle = 0.f;
+  if (x11698_(GetTranslation(), angle)) {
+    points[count++] = x11788_(angle);
+    points[count++] = x11788_(0.13962634f + angle);
+    points[count++] = x11788_(angle - 0.13962634f);
+  }
+  return count;
+}
+
+// fn_14_114C8 needs the visual knowledge's line of sight, which the host never reports yet.
+CVector3f CDigitalGuardianHead::x114C8_(const CVector3f& player, const CVector3f* points,
+                                         int count) {
+  StandInFn("fn_14_114C8 (0x1D0, attack point in sight of the player)");
+  return xFEC_;
 }
 
 // fn_14_17A44: the base's PreRender.
@@ -682,6 +704,42 @@ void CDigitalGuardianHead::SeekAttackPosition(CStateManager& mgr, EStateMsg msg,
   }
 }
 
+// fn_14_15F3C. Activate: animation state 1. Update: while a knock-back may be issued
+// (CanIssueCommand with 6 = kAS_KnockBack, 0x15F94) one is sent along the forward column
+// (0x28/0x38/0x48) with severity 1 (kS_One); otherwise, once the body is in the knock-back state
+// (its current state id 6, 0x16070), the locomotion type becomes 5 and the head drifts toward the
+// attack position (0xFEC) at data +0x1C (maxStunnedLinearVelocity) per second, only while a step
+// falls short of it. Deactivate: animation state 0, locomotion type 5.
+// @ fn_14_15F3C
+void CDigitalGuardianHead::StunnedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(GetTransform().GetColumn(kDY), pas::kS_One));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_KnockBack) {
+      BodyController()->SetLocomotionType(pas::kLT_Internal5);
+      const CVector3f delta = xFEC_ - GetTranslation();
+      if (delta.IsMagnitudeSafe()) {
+        const float step = mData.maxStunnedLinearVelocity * dt;
+        if (step < delta.Magnitude()) {
+          MoveInOneFrameOR(GetTransform().TransposeRotate(delta.AsNormalized() * step), dt);
+        }
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);
+    break;
+  default:
+    break;
+  }
+}
+
 #define DGHD_STATE_STANDIN(name, fn)                                                               \
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
@@ -692,7 +750,6 @@ DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
 DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
 DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
-DGHD_STATE_STANDIN(StunnedReaction, fn_14_15F3C)
 DGHD_STATE_STANDIN(DeploySplitters, fn_14_15E18)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
@@ -716,6 +773,53 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
   xFEC_ = x11788_(angle + 0.7853982f);
 }
 
+// fn_14_15284: the attack position becomes the head's translation. With bit 0x10 of 0x10F4 set
+// (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
+// point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
+// direction to the platform.
+// @ fn_14_15284
+void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
+  xFEC_ = GetTranslation();
+  if ((x10F4_ & 0x10) == 0) {
+    return;
+  }
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+    const CVector3f d = plat->GetTranslation() - x1004_;
+    if (d.IsMagnitudeSafe()) {
+      float angle = 0.f;
+      if (x11698_(x1004_ + d.AsNormalized() * 50.f, angle)) {
+        xFEC_ = x11788_(angle);
+      }
+    }
+  }
+}
+
+// fn_14_14254: the attack position starts as the head's translation and the candidates come
+// from fn_14_118B0. When the visual knowledge sees the player (flag 0x80 of 0xDB8) for over 2.25 s
+// (.rodata 0x9DC; 0xDB0) fn_14_114C8 picks one; otherwise the candidate furthest along the
+// previous move (translation minus 0xFF8, dot product >= the best so far, from 0) wins. 0xFF8
+// then keeps the result.
+// @ fn_14_14254
+void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
+  xFEC_ = GetTranslation();
+  CVector3f points[3];
+  const int count = x118B0_(points);
+  if ((xDB8_ & 0x80) != 0 && xDB0_ > 2.25f) {
+    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count);
+  } else {
+    const CVector3f move = GetTranslation() - xFF8_;
+    float best = 0.f;
+    for (int i = 0; i < count; ++i) {
+      const float dot = CVector3f::Dot(move, points[i] - xFF8_);
+      if (dot >= best) {
+        xFEC_ = points[i];
+        best = dot;
+      }
+    }
+  }
+  xFF8_ = xFEC_;
+}
+
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
@@ -723,7 +827,6 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
 DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
 DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
-DGHD_CODE_STANDIN(SetStunnedPosition, fn_14_15284)
 DGHD_CODE_STANDIN(SeekLineOfSight, fn_14_1524C)
 DGHD_CODE_STANDIN(DropShields, fn_14_15054)
 DGHD_CODE_STANDIN(RaiseShields, fn_14_14F74)
@@ -739,7 +842,6 @@ DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
 DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
 DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
 DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_14470)
-DGHD_CODE_STANDIN(SetAttackPosition, fn_14_14254)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
 DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
 DGHD_CODE_STANDIN(GrabPlayerHintControl, fn_14_13F70)
