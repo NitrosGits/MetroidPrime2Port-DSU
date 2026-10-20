@@ -23,6 +23,13 @@
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+#include "Collision/CCollisionPrimitive.hpp"
+#include "Collision/CRayCastResult.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
+
 #include <float.h>
 #include <stdio.h>
 
@@ -132,6 +139,14 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef EMP3_TRIGGER
 #undef EMP3_STATE
 #undef EMP3_CODE
+
+// fn_18_39A0 (0x3C): the cross product of two vectors: the result is (a.y*b.z - a.z*b.y,
+// a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x) (0x39CC..0x39D0).
+CVector3f Cross3f(const CVector3f& a, const CVector3f& b) { return CVector3f::Cross(a, b); }
+
+// fn_18_3AC (0x20): the copy of the ray's result. The host's CRayCastResult is copyable, so the
+// copy is the assignment; the byte the retail reads at +0x28 is the result's mValid.
+CRayCastResult CopyRayResult(const CRayCastResult& result) { return result; }
 
 } // namespace
 
@@ -369,27 +384,98 @@ float CEmperorIngStage3::TauntAverage() const {
   return 0.f;
 }
 
-// fn_18_1A54 (0xE0): the look along the actor's facing for something to hit (the ray from
-// the actor's bounds, 15 units long). A stand-in: it names the retail function once and
-// answers "nothing hit".
+// fn_18_1A54 (0xE0): the look along the actor's facing. The ray starts at the furthest point of
+// the actor's collision box along the facing (the actor's own transform, 0x1AE0) and runs the
+// length the caller gives; the answer is "the way is clear", true when the ray hit nothing:
+// the retail reads the result's byte at +0x28 and answers true when it is zero (0x1B5C).
 bool CEmperorIngStage3::LineOfSight(CStateManager& mgr, const CVector3f& facing,
                                      float length) const {
-  StandInFn("fn_18_1A54");
-  return false;
+  CVector3f direction(facing.GetX(), facing.GetY(), facing.GetZ());
+  if (!direction.CanBeNormalized()) {
+    return false; // 0x1AB0
+  }
+  direction.Normalize(); // 0x1AB8
+  const CAABox bounds = GetCollisionPrimitive()->CalculateAABox(GetTransform()); // 0x1AE0
+  const CVector3f start = bounds.FurthestPointAlongVector(direction);           // 0x1AFC
+  // The retail's material filter is the type zero (always) with every material in the include
+  // list (0x1B38..0x1B48), which is the host's default filter.
+  const CRayCastResult result =
+      mgr.RayStaticIntersection(start, direction, length, CMaterialFilter()); // 0x1B4C
+  const CRayCastResult copy = CopyRayResult(result); // fn_18_3AC (0x20)
+  return !copy.IsValid();              // 0x1B5C: the byte the copy has at +0x28
 }
 
-// fn_18_3804 (0x25C): the turn towards a position; it writes the facing at guest 0x818 that
-// the idle state's locomotion command carries. A stand-in: it names the retail function
-// once and leaves the facing alone.
-void CEmperorIngStage3::FaceTarget(const CVector3f& target) { StandInFn("fn_18_3804"); }
+// fn_18_3804 (0x25C): the turn towards a position. The facing at guest 0x818 is cleared first
+// (0x382C, 0x3840, 0x3848) and only written at the end (0x3970..0x3980): the angle between
+// the actor's facing and the direction to the target (0x38A4), snapped to the nearest 45
+// degrees (fn_18_3744 at 0x38AC), signed by the up vector's dot with the cross product of the
+// two (fn_18_39A0 at 0x38E8, the dot at 0x3908..0x3920), and rotated around Z (0x3958).
+void CEmperorIngStage3::FaceTarget(const CVector3f& target) {
+  mX818_ = CVector3f::Zero(); // 0x382C, 0x3840, 0x3848
+  const CVector3f& mine = GetTranslation();
+  CVector3f toTarget(target.GetX() - mine.GetX(), target.GetY() - mine.GetY(),
+                     target.GetZ() - mine.GetZ());
+  if (!toTarget.CanBeNormalized()) {
+    return; // 0x3878
+  }
+  toTarget.Normalize(); // 0x3880
+  const CVector3f facing = GetTransform().GetColumn(kDY);
+  const float angle = SnapAngleTo45(CVector3f::GetAngleDiff(facing, toTarget)); // fn_18_3744
+  if (angle <= 0.f) {                                                          // rodata 0x258
+    return;                                                                    // 0x38C0
+  }
+  const CVector3f cross = Cross3f(facing, toTarget); // fn_18_39A0
+  const CVector3f& up = CVector3f::Up();
+  const float turn = up.GetX() * cross.GetX() + up.GetY() * cross.GetY() +
+                     up.GetZ() * cross.GetZ(); // 0x3908..0x3920
+  const float signedAngle = turn <= 0.f ? -angle : angle; // 0x3924..0x3930
+  const CTransform4f turn4f = CTransform4f::RotateZ(CRelAngle::FromRadians(signedAngle)); // 0x3958
+  mX818_ = turn4f * facing;                                                            // 0x3968
+}
 
-// fn_18_3ACC (0x48): the collision actor of a heart. Its own callee fn_18_3B14 (0x4C) reads
-// the module's holder at guest 0x7C0 - an array of 0x68-byte records that fn_80135AD4
-// indexes, record 0xA the first heart and 0xB the second - which the port does not model,
-// so the lookup finds no actor.
-CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int index) const {
-  StandInFn("fn_18_3ACC");
-  return nullptr;
+// fn_18_3744 (0xC0): the angle snapped to the nearest 45 degrees. The table at rodata 0x244
+// holds 0, pi/4, pi/2, 3pi/4 and pi, and the entry nearest the angle is the answer.
+float CEmperorIngStage3::SnapAngleTo45(float angle) const {
+  static const float kAngles[] = {0.f, 0.7853982f, 1.5707964f, 2.3561945f,
+                                  3.1415927f}; // rodata 0x244
+  float best = FLT_MAX; // rodata 0x2C8
+  u32 index = 0;
+  for (u32 i = 0; i < 5; ++i) {
+    const float diff = CMath::AbsF(angle - kAngles[i]);
+    if (diff < best) {
+      best = diff;
+      index = i;
+    }
+  }
+  return kAngles[index];
+}
+
+// fn_18_3B14 (0x4C): the module's heart record: the holder's record 0xA (the first heart, the
+// index at 0x3B2C) or 0xB (the second, 0x3B44); any other heart is no heart (0x3B50). The
+// holder is null until the module creates it - the module's fn_18_3BB0 hands the DOL's
+// fn_80136434 the ten leg bones of rodata 0x18 and gets the holder with the collision actors
+// back - and that creator is still a stand-in, so the port finds no record.
+const SEmperorIngHeartRecord* CEmperorIngStage3::HeartRecord(int heart) const {
+  if (x7c0_ == nullptr) {
+    return nullptr; // port limit: the holder is not created yet
+  }
+  if (heart == 0) {
+    return &x7c0_->mRecords[0xA];
+  }
+  if (heart == 1) {
+    return &x7c0_->mRecords[0xB];
+  }
+  return nullptr; // 0x3B50: any other heart is no heart
+}
+
+// fn_18_3ACC (0x48): the heart's collision actor: the unique id of the record (guest +0x3C,
+// read at 0x3AE8) looked up in the state manager (0x3AFC).
+CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int heart) const {
+  const SEmperorIngHeartRecord* record = HeartRecord(heart);
+  if (record == nullptr) {
+    return nullptr; // port limit: the holder is not created yet
+  }
+  return static_cast< CCollisionActor* >(mgr.ObjectById(TUniqueId(record->mUniqueId)));
 }
 
 // fn_18_1DF4 (0x4A0): the heart switch. Heart 0 is the enraged heart: the two hearts get the
@@ -398,8 +484,8 @@ CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int 
 // heart 2 the light heart: the same health (0x208C) and the "LightHeart" effect. The heart
 // that is on is remembered at guest 0x868 (0x2164) and, when the caller asks for it, the two
 // hearts get that heart's vulnerability (0x960 red, 0x9C0 dark, 0x990 light, 0x219C..0x21E4).
-// The lookup of the two hearts is a stand-in that finds none, and retail returns early then
-// (0x1E38), so the body below does not run on the host.
+// The lookup of the two hearts finds none while the module's holder is not created, and
+// retail returns early then (0x1E34), so the body below does not run on the host.
 void CEmperorIngStage3::SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability) {
   CCollisionActor* first = HeartCollisionActor(mgr, 0);  // fn_18_3ACC
   CCollisionActor* second = HeartCollisionActor(mgr, 1); // fn_18_3ACC

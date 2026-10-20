@@ -138,30 +138,54 @@ has to be normalisable; the angle between it and the actor's facing (the transfo
 guest 0x28/0x38/0x48) is turned into degrees (rodata 0x25C = 57.295776) and has to be below the
 parameter. The triggers that use it pass 60.0 (0x8A4C), 90.0 (0x898C, 0x85A4) and 35.0 (0x8518).
 
-### `fn_18_1DF4` (0x4A0), the heart switch
-
-The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`
-(0x4C) reads the module's holder at guest 0x7C0 - an array of 0x68-byte records that
-`fn_80135AD4` indexes, 0xA the first heart and 0xB the second - and looks their unique id (the
-record's +0x3C) up in the state manager. The port does not model the holder, so the lookup is a
-stand-in that finds no actor, and retail returns early then (0x1E34). The body: heart 0 is the
-enraged heart (the hearts get the yellow health at guest 0x920 and the `EnragedHeart` effect),
-heart 1 the dark heart (the actor's own health, the `DarkHeart` effect), heart 2 the light heart
-(the same health, the `LightHeart` effect); the heart that is on is remembered at guest 0x868 and,
-when the caller asks for it, the hearts get that heart's vulnerability (0x960 red, 0x9C0 dark,
-0x990 light).
-
 ### `fn_18_788C` (0x250), the Idle state
 
 Activate: the timer at guest 0x864 becomes FLT_MAX (rodata 0x2C8) and the body's steering is
 set up - the walk speed over the run speed (`GetLocomotionSpeed` with `pas::kLA_Walk` over
 `pas::kLA_Run`), the steering blend mode (the write of one at 0x7908) and the steering speed
-range (0x7918). Update: the vector to the player; `fn_18_1A54` (0xE0, a stand-in) looks along the
-actor's facing for something to hit and `fn_18_3804` (0x25C, a stand-in) turns the actor towards
-the player and writes the facing at guest 0x818; over fifty units (rodata 0x290) the timer is
-cleared (rodata 0x258); the locomotion command carries the normalised direction to the player
-when the look hit and the timer is below half a second (rodata 0x2A0), the zero vector
-otherwise; then the timer grows by the frame time.
+range (0x7918). Update: the vector to the player; `fn_18_1A54` (0xE0) looks along the actor's
+facing for something to hit and `fn_18_3804` (0x25C) turns the actor towards the player and
+writes the facing at guest 0x818; over fifty units (rodata 0x290) the timer is cleared
+(rodata 0x258); the locomotion command carries the normalised direction to the player when the
+look hit and the timer is below half a second (rodata 0x2A0), the zero vector otherwise; then
+the timer grows by the frame time.
+
+#### `fn_18_1A54` (0xE0), the look
+
+The ray starts at the furthest point of the actor's collision box along the facing (the actor's
+own transform, guest 0x24, through the vtable slots 0x7C and 0xC) and runs the length the
+caller gives; the material filter is the type zero (always) with every material in the include
+list. The answer is "the way is clear": the retail reads the result's byte at +0x28 (the
+result's mValid, copied by `fn_18_3AC`, 0x20) and answers true when it is zero - so true means
+the ray hit nothing.
+
+#### `fn_18_3804` (0x25C), the turn
+
+The facing at guest 0x818 is cleared first (0x382C, 0x3840, 0x3848) and only written at the
+end (0x3970..0x3980), so a turn that cannot be done leaves the facing at zero. The angle
+between the actor's facing (the transform's Y column) and the direction to the target
+(0x38A4) is snapped to the nearest 45 degrees by `fn_18_3744` (0xC0: the table at rodata 0x244
+holds 0, pi/4, pi/2, 3pi/4 and pi), signed by the up vector's dot with the cross product of
+the two (`fn_18_39A0`, 0x3C, the cross product) and rotated around Z (0x3958). The idle
+state's locomotion command then carries that facing as its face vector.
+
+### `fn_18_1DF4` (0x4A0), the heart switch
+
+The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`
+(0x4C) reads the module's holder at guest 0x7C0 - the list of the collision actors the module
+creates for the ing: the module's `fn_18_3BB0` hands the DOL's `fn_80136434` the ten leg bones
+of rodata 0x18 (F_hip, L_F_hip, R_F_hip, L_B_hip, R_B_hip with their knee and end bones) and
+gets the holder back - a count at +0x4, an array of 0x68-byte records at +0xC, each record
+holding its collision actor's unique id at +0x3C. The module reads the records 0xA (the first
+heart) and 0xB (the second) and looks their ids up in the state manager. The creator
+(`fn_18_3BB0`, 0x450) is still a stand-in, so the port's holder is null and the lookup finds
+no actor; retail returns early then (0x1E34), so the body below does not run on the host.
+
+The body: heart 0 is the enraged heart (the hearts get the yellow health at guest 0x920 and the
+`EnragedHeart` effect), heart 1 the dark heart (the actor's own health, the `DarkHeart`
+effect), heart 2 the light heart (the same health, the `LightHeart` effect); the heart that is
+on is remembered at guest 0x868 and, when the caller asks for it, the hearts get that heart's
+vulnerability (0x960 red, 0x9C0 dark, 0x990 light).
 
 ### The flag bytes
 
@@ -191,3 +215,8 @@ after the layer is loaded logs the module's own stand-ins `fn_18_3ACC` (the hear
 `fn_18_1A54` (the look) and `fn_18_3804` (the turn) - the Idle state's own body is retail's - and
 the EyeShut state `fn_18_5264` is entered, which means the look check answered true. The run
 still ends on the frame limit (2400 updates) with `grep -c '[port] caught\|reach-stub'` = 0.
+
+With the look and the turn ported as well, the idle state turns the ing towards the player (the
+facing at guest 0x818 is no longer zero, so the locomotion command carries a real face vector)
+and the heart lookup still finds no actor, because the holder at guest 0x7C0 is the product of
+the module's `fn_18_3BB0`, which is still a stand-in.

@@ -11,6 +11,18 @@
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 
 class CCollisionActor;
+
+// The module's heart holder at guest 0x7C0. The DOL's fn_80136434 (called from the module's
+// fn_18_3BB0) fills it: the count at +0x4, the records at +0xC, and each record is 0x68 bytes
+// with the collision actor's unique id at +0x3C. The host keeps the same shape, with only the
+// part the module's own lookup reads.
+struct SEmperorIngHeartRecord {
+  u16 mUniqueId; // guest +0x3C, the collision actor's unique id
+};
+struct SEmperorIngHeartHolder {
+  u32 mCount;                       // guest +0x4
+  SEmperorIngHeartRecord* mRecords; // guest +0xC
+};
 #endif
 
 // The REL's CEmperorIngStage3 (module 18): the mutated Emperor Ing, the boss the player fights
@@ -138,15 +150,19 @@ private:
   // fn_18_2298: the taunt average over the module's bone list. Its own callee fn_18_AB9C
   // needs the list at guest 0x840, which the port does not model, so this stays a stand-in.
   float TauntAverage() const;
-  // fn_18_1A54: the look along the actor's facing for something to hit. A stand-in.
+  // fn_18_1A54: the look along the actor's facing for something to hit. The answer is "the way
+  // is clear": true when the ray hit nothing.
   bool LineOfSight(CStateManager& mgr, const CVector3f& facing, float length) const;
-  // fn_18_3804: the turn towards a position, which writes the facing at guest 0x818. A
-  // stand-in.
+  // fn_18_3804: the turn towards a position, which writes the facing at guest 0x818.
   void FaceTarget(const CVector3f& target);
+  // fn_18_3744: the angle snapped to the nearest 45 degrees.
+  float SnapAngleTo45(float angle) const;
   // fn_18_1DF4: the heart switch (0 the enraged heart, 1 the dark heart, 2 the light heart).
   void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
-  // fn_18_3ACC: the collision actor of a heart. A stand-in.
-  CCollisionActor* HeartCollisionActor(CStateManager& mgr, int index) const;
+  // fn_18_3B14: the module's heart record (0 the first heart, 1 the second).
+  const SEmperorIngHeartRecord* HeartRecord(int heart) const;
+  // fn_18_3ACC: the collision actor of a heart.
+  CCollisionActor* HeartCollisionActor(CStateManager& mgr, int heart) const;
 
   // Host layout. The guest offsets are the REL's (fn_18_9A8C); the full member map, including
   // the parts this milestone does not build, is in docs/module-analysis/EmperorIngStage3.md.
@@ -169,9 +185,9 @@ private:
                                         // jump-attack and dodge flags
   uchar x825_;                           // guest 0x825, 0: 0x01 the stampede-react flag, 0x04 the
                                         // aborted-jump-slide flag
-  void* x7c0_;                           // guest 0x7C0, 0: the pointer to the module's heart
+  SEmperorIngHeartHolder* x7c0_;        // guest 0x7C0, 0: the pointer to the module's heart
                                         // holder (fn_18_3B14 reads it); the port does not
-                                        // model the holder
+                                        // create the holder yet
   int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
   float mX7c8_;                          // guest 0x7C8, 0.0f: the taunt timer
   float mX7cc_;                          // guest 0x7CC, 0.0f: the eye-shut timer
