@@ -525,6 +525,7 @@ float CIngBoostBallGuardian::DistSqToTarget(const CStateManager& mgr) const {
 
 // fn_30_60C0 (this module). Retail reads the cover hint id (0x108E) itself; the host takes the id
 // so ReleaseCoverHint can share it.
+// @ fn_30_60C0
 CScriptAIHint* CIngBoostBallGuardian::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   if (id == kInvalidUniqueId) {
     return nullptr;

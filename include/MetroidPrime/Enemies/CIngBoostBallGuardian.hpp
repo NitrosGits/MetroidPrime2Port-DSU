@@ -236,9 +236,12 @@ public:
   ~CIngBoostBallGuardian() override;
 
   // CPatterned accessors this REL overrides with a one-line body, so they are real, not stand-ins.
+  // @ fn_30_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }              // fn_30_0
+  // @ fn_30_8
   CPathFindPointSearch* GetPointSearchPath() override { return &mPointPathFindSearch; } // fn_30_8
   float GetGravityConstant() const override { return kDefaultGravityAccel; }          // fn_30_58
+  // @ fn_30_6C
   bool IsListening() const override { return true; }                                 // fn_30_6C
   bool CanBeShot(const CStateManager&, int) override { return true; }                // fn_30_10
   CRagDoll* GetRagDoll() const override { return nullptr; }                          // fn_30_34

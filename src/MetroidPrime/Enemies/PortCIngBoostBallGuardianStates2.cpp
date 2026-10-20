@@ -87,6 +87,7 @@ CAABox BgSegmentBox(const CVector3f& a, const CVector3f& b) {
 
 // fn_30_5C80 (the Ing's fn_29_421C): which arm swings; true is the left (0xd80..), false the right (0xd7c..).
 // Range(rodata_70 = 0, rodata_CC = 100) >= rodata_B4 = 50 (0x00005CA4..0x00005CB4).
+// @ fn_30_5C80
 bool BgPickSwipeArm(CStateManager& mgr) { return mgr.Random()->Range(0.f, 100.f) >= 50.f; }
 
 // fn_29_61B4's search ring (rodata_44): eight angles in degrees, 180 first, taken in order.

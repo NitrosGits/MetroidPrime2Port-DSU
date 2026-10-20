@@ -388,6 +388,7 @@ void CIngBoostBallGuardian::CollidedWith(const TUniqueId& id, const CCollisionIn
 // vtable slot 58 = fn_30_C6CC (0x8c): CPatterned's own setup, then the three name tables are
 // handed to the machine - lbl_30_data_250 (49 triggers), lbl_30_data_6B0 (28 states) and
 // lbl_30_data_8DC (9 codes). That is the module's FSM, and it is installed here.
+// @ fn_30_C6CC
 void CIngBoostBallGuardian::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   // The three tables the REL hands the machine (the 49 triggers, the 28 states and the 9 code
