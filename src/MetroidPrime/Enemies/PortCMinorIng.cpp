@@ -225,14 +225,15 @@ void CopyHealthInfo(CHealthInfo& dest, const CHealthInfo& src) { dest = src; }
 // ids at +0x28..+0x34 (asm 0x1044-0x1050: the explosion twice, then the trail and the effect), the
 // two sounds at +0x38/+0x3a (asm 0x1054/0x1058) and the four floats at +0x3c..+0x48 (asm
 // 0x105C-0x1068: 0.1 from the rodata at 0x28 and 150 from the rodata at 0x2c, asm 0x6A4/0x698).
-// The flag byte at +0x4c keeps its bit clear: the callee reads the caller's stack byte at +0xf (asm
-// 0x103C), which the caller leaves zero (asm 0x7D4 stores the word 1 in its low byte).
+// The flag byte at +0x4c takes the caller's bool argument: fn_44_FE8 is a leaf, so its +0xf is
+// the caller's stack byte, and the caller's `li r0, 1` (asm 0x680) stored at +0xc (asm 0x6D4)
+// puts the word's low byte - the one the callee reads (asm 0x103C) - at +0xf (big-endian).
 CBouncyGrenadeData BuildGrenadeData(const SLdrUnknownStruct34& sldr) {
   return CBouncyGrenadeData(sldr.mass, sldr.bounciness, LdrToDamageInfo(sldr.damage),
                              static_cast< uint >(sldr.numBounces), sldr.explosion, sldr.explosion,
                              sldr.trail, sldr.effect, static_cast< ushort >(sldr.sound_Bounce),
                              static_cast< ushort >(sldr.sound_Explode), 0.1f, 150.f, 0.1f, 150.f,
-                             false);
+                             true);
 }
 
 // @ fn_44_C44

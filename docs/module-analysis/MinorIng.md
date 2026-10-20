@@ -52,9 +52,10 @@ members now:
   `numBounces`, the four ids (+0x28..+0x34) are the block's `explosion` (twice),
   `trail` and `effect`, the sounds (+0x38/+0x3a) are `sound_Bounce` and
   `sound_Explode`, and the four floats (+0x3c..+0x48) are the rodata constants 0.1
-  and 150 (rodata 0x28 and 0x2c). The flag byte at +0x4c keeps its bit clear: the
-  callee reads the caller's stack byte at +0xf (asm 0x103C), which the caller
-  leaves zero (asm 0x7D4 stores the word 1 in its low byte). A run of area 13 logs
+  and 150 (rodata 0x28 and 0x2c). The flag byte at +0x4c takes the caller's bool
+  argument: fn_44_FE8 is a leaf, so its +0xf is the caller's stack byte, and the
+  caller's `li r0, 1` (asm 0x680) stored at +0xc (asm 0x6D4) puts the word's low byte
+  - the one the callee reads (asm 0x103C) - at +0xf (big-endian), so the flag is set. A run of area 13 logs
   4.0 mass, 0.5 speed, 5 bounces, 5.0 damage, the sounds 8717 and 8716 and the ids
   0x04213c3c (twice), 0x36f5ce3e and 0x56330f8c; all four resolve in the resource
   pool, so the read is sane.
