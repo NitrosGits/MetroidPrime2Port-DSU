@@ -26,7 +26,7 @@
 #include "rstl/vector.hpp"
 #include <float.h>
 
-// Retail fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
+// @ fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
 // unnamed Echoes locomotion) when 0x8f4 byte bit 0x40 (`x8f4_25_ceilingAmbush`, data flag 0x2) is
 // set, otherwise 0 = kLT_Crouch. Every other message returns.
 void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -120,7 +120,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_6E6C (0x20C): Activate arms kAS_Ready, sets the warp point to 1 and clears 0x8fa bit
+// @ fn_72_6E6C (0x20C): Activate arms kAS_Ready, sets the warp point to 1 and clears 0x8fa bit
 // 0x08. Update delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate; when the
 // body is already in that body state it arms the bit and caches the remaining animation time, then
 // fades the body out (alpha = min(1, remaining / cached), rodata B54 = 1). Deactivate zeroes the
@@ -152,7 +152,7 @@ void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_6DA4 (0xC8): Activate only. Unless 0x8fa bit 0x20 is set it posts kSM_Deactivate to
+// @ fn_72_6DA4 (0xC8): Activate only. Unless 0x8fa bit 0x20 is set it posts kSM_Deactivate to
 // itself (CScriptMsg sender = id = own unique id, originator invalid, state -1), then always resets
 // the warp point to -1 and, when 0x8fa bit 0x10 is set, asks the state manager to delete the actor.
 void CSpacePirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -726,7 +726,7 @@ void CSpacePirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5280: the leash timer accumulates while the body is not fully frozen (rodata B54 = 1.0,
+// @ fn_72_5280: the leash timer accumulates while the body is not fully frozen (rodata B54 = 1.0,
 // `fcmpu` + `beq` on GetPercentageFrozen) and not being electrocuted (body +0x5b8 > 0, i.e.
 // IsElectrocuting). MP1 spells the same test !IsFrozen() && !IsElectrocuting().
 void CSpacePirate::UpdateLeashTimer(float dt) {
@@ -793,7 +793,7 @@ void CSpacePirate::UpdateGuardPosition(CStateManager& mgr, float dt) {
   x8f7_28_noPlayerLos = xa78_ < 0.5f;
 }
 
-// Retail fn_72_D2A0 - MP1's CantJumpBack with Echoes' cheaper test: the landing point must be on the
+// @ fn_72_D2A0 - MP1's CantJumpBack with Echoes' cheaper test: the landing point must be on the
 // search path, and only when it is not does the swept ray from the bounding-box centre decide. Note
 // the asm returns the RAW RayDynamicLineOfSightTest result (1 = clear) on that second branch, i.e. the
 // polarity is retail's own and unproven here: no state in the verify area reaches it.
@@ -844,7 +844,7 @@ void CSpacePirate::AvoidActors(CStateManager& mgr) {
   }
 }
 
-// Retail fn_72_CC80 is MP1's CSpacePirate::CheckBlade: the swoosh locator's own box (the model's
+// @ fn_72_CC80 is MP1's CSpacePirate::CheckBlade: the swoosh locator's own box (the model's
 // scale halved around the locator translation, rodata 0xB44 = 0.5) tested against the attack
 // target's bounds, which once over the overlap damages that actor with the data's blade damage and
 // marks the blade spent. As in MP1 the guard is the appliedBladeDamage bit: `extrwi. r0,r0,1,25` at
@@ -1204,7 +1204,7 @@ void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_68E4 (0xC8): Activate sets 0x8f7 bit 0x04 and both 0x8fa bits 0x02 and 0x01, Update
+// @ fn_72_68E4 (0xC8): Activate sets 0x8f7 bit 0x04 and both 0x8fa bits 0x02 and 0x01, Update
 // delivers a bare kBSC_ExitState command to the body and Deactivate clears those three bits again.
 // Messages outside 1..3 and negative ones fall straight to the epilogue.
 void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1320,7 +1320,7 @@ void CSpacePirate::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_94D0: Activate stores rodata B50 = 4.0 into the strafe delay and flags the attack
+// @ fn_72_94D0: Activate stores rodata B50 = 4.0 into the strafe delay and flags the attack
 // state; Update keeps a step going in xb08_skidDir (body 0x37c compared with 3 = kAS_Step);
 // Deactivate clears the flag. Only messages 0-2 are handled.
 void CSpacePirate::Skid(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1513,7 +1513,7 @@ void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
+// @ fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
 // (type 0xA, no payload) to the body, as MP1's Enraged does.
 void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
@@ -1621,7 +1621,7 @@ void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5B88: Activate only. It clears the actor's active flag through vtable slot 0x1C
+// @ fn_72_5B88: Activate only. It clears the actor's active flag through vtable slot 0x1C
 // (CActor::SetActive(false)) and then asks the state manager to delete this unique id.
 void CSpacePirate::RemoveFromWorld(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {

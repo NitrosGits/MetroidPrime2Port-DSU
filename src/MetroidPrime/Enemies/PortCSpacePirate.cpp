@@ -377,7 +377,7 @@ void CSpacePirate::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// Retail fn_72_E0D8 (AttachActorToPirate): the pirate takes hold of one actor at a time and
+// @ fn_72_E0D8 (AttachActorToPirate): the pirate takes hold of one actor at a time and
 // refuses a second one. The ragdoll's flag byte at 0x118 is the "an actor is held" bit.
 bool CSpacePirate::PortAttachActor(TUniqueId id) {
   if (mAttachedActor != kInvalidUniqueId) { // 0xE0E4 cmplw 0xa84 with kInvalidUniqueId
@@ -392,7 +392,7 @@ bool CSpacePirate::PortAttachActor(TUniqueId id) {
   return true;        // 0xE110 li r3, 1
 }
 
-// Retail fn_72_E0AC (DetachActorFromPirate): the pirate lets go of the actor it was holding.
+// @ fn_72_E0AC (DetachActorFromPirate): the pirate lets go of the actor it was holding.
 void CSpacePirate::PortDetachActor() {
   mAttachedActor = kInvalidUniqueId; // 0xE0B4 sth 0xa84
   if (xb30_ != nullptr) { // 0xE0BC cmplwi 0xb30, 0
@@ -1142,7 +1142,7 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
-// Retail fn_72_DF2C: leave the team manager the pirate joined.
+// @ fn_72_DF2C: leave the team manager the pirate joined.
 void CSpacePirate::SquadRemove(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     return;
@@ -1163,7 +1163,7 @@ void CSpacePirate::TrooperWarpOut(CStateManager& mgr, bool flag) {
   }
 }
 
-// Retail fn_72_E168 (MP1 SetVelocityForJump): ballistic launch to the patrol destination.
+// @ fn_72_E168 (MP1 SetVelocityForJump): ballistic launch to the patrol destination.
 void CSpacePirate::SetVelocityForJump() {
   if (x8f7_30_jumpVelSet || x8fa_31_) {
     return;
@@ -1390,7 +1390,7 @@ void CSpacePirate::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
-// Retail fn_72_E120 (SetAttackTarget): the new target, the squad manager's copy of it, a fresh
+// @ fn_72_E120 (SetAttackTarget): the new target, the squad manager's copy of it, a fresh
 // burst type and no attack time left.
 void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
   mAttackTarget = target;     // 0xE12C lhz 0x0(r5), 0xE138 sth 0xa94
@@ -1415,7 +1415,7 @@ const CHealthInfo* CSpacePirate::GetHealthInfo() const {
   return const_cast< CSpacePirate* >(this)->HealthInfo(); // fn_72_64
 }
 
-// Retail fn_72_3AB4: a pirate that has warped (0xc04 is no longer -1) is pass-through; otherwise
+// @ fn_72_3AB4: a pirate that has warped (0xc04 is no longer -1) is pass-through; otherwise
 // the patterned default decides.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability() const {
   if (xc04_warpPoint != -1) { // 0x3AC0 lwz 0xc04, 0x3AC4 cmpwi -1
@@ -1444,7 +1444,7 @@ rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
   return GetBoundingBox();
 }
 
-// Retail fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
+// @ fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
 // quarter of their size around their centre.
 CAABox CSpacePirate::GetSortingBounds(const CStateManager& mgr) const {
   // 0x35F0 bl GetBounds: the model's bounds in the actor's transform (this+0x24).
@@ -1551,7 +1551,7 @@ CVector3f CSpacePirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& r
   return GetTranslation();
 }
 
-// Retail fn_72_3AE8.
+// @ fn_72_3AE8.
 uchar CSpacePirate::GetModelAlphau8(const CStateManager& mgr) const {
   if (x8f5_27_shadowPirate) {
     return static_cast< uchar >(255.f * xb88_shadowPirateAlpha);
@@ -1564,7 +1564,7 @@ CProjectileInfo* CSpacePirate::ProjectileInfo() {
   return mProjectileInfo.valid() ? &mProjectileInfo.data() : nullptr;
 }
 
-// Retail fn_72_343C (GetScanVisorRenderBounds): the model's vertex bounds, scaled by the model's
+// @ fn_72_343C (GetScanVisorRenderBounds): the model's vertex bounds, scaled by the model's
 // own scale and moved into world space.
 CAABox CSpacePirate::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   // 0x3490: the model's anim data -> the vertex bounds in local space.
