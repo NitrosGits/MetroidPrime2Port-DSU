@@ -398,6 +398,16 @@ in kES_Release). It needs a `CPlasmaProjectile::GetExpansionState` (TARGET_PC ge
 It runs only once `1530` makes the beam, so the runs do not reach it yet. Stand-ins left on the
 fight's path: `4D0`, `BB8`, `1530`, `E40` (module 80's swarm mapping) and the Think sound `47D4`.
 
+Then the light swarm: `CEmperorIngLightSwarm : CSwarmBasics` (`PortCEmperorIngLightSwarm.cpp`,
+ctor `BD84`, its overrides, the locator `817C`), its spawn `BB8` (kUE_BeginAction), the
+per-frame update `E40` and the LightSwarmAttack state `6698`. The trigger `87F0` fires only on low
+light/dark ammo or when ChoseAction picks action 2, so an idle harness player rarely sees it; with
+a temporary (uncommitted) override preferring action 2 the swarm spawns and lives (15 polls),
+0 caught / reach-stub lines. Godmode off (heals every 2 s): the player is hurt only by the area's
+triggers (weapon 10), the shock waves (25) and the dark atmosphere; no beam hit was recorded in two
+runs (DarkBeamAttack entered). Stand-ins left: GroundPound `6390`, GenerateDarkFliers `6258` (it
+resets 0x7D8/0x7DC at 0x6364), `4CC8`.
+
 ### The base-class members (the sweep)
 
 The port's members whose guest offset is below the module's first own field (the ctor's first
