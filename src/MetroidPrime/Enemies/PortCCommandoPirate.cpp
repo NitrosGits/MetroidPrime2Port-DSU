@@ -1098,8 +1098,31 @@ void CCommandoPirate::SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_A8E8");
 }
 
+// @ fn_9_A838
+// fn_9_A838 (0xb0 bytes): the SetPathMeshDest state. Only the activate message (the guest's test
+// of 0 at 0x0000A840) does anything: the module's flag byte at guest this+0xC65 loses its 0x80
+// bit (the rlwimi at 0x0000A888), the path find search (the CPathFindSearch at this+0x928) looks
+// for the closest reachable point (the call at 0x0000A890 - the guest's out point starts as the
+// zero vector, the sZeroVector copy at 0x0000A878..0x0000A880) and the path find navigation (the
+// CPathFindNavigation at this+0x6F4) takes that point as its destination (the call at
+// 0x0000A8A4). When the search finds no point, the navigation takes the actor's own position
+// instead (the call at 0x0000A8C4) and the flag byte's 0x80 bit stays clear. Either way the
+// navigation's face target id (guest this+0x718, the navigation's own member at +0x24) is
+// cleared (the store at 0x0000A8D0).
 void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A838");
+  if (msg != kStateMsg_Activate) {
+    return;                                     // 0x0000A840
+  }
+  xc65_ &= ~0x80;                               // 0x0000A884..0x0000A88C
+  CVector3f point = CVector3f::Zero();           // 0x0000A878..0x0000A880
+  if (mPathFindSearch.FindClosestReachablePoint(GetTranslation(), point) ==
+      CPathFindSearch::kR_Success) {             // 0x0000A890..0x0000A898
+    mPathFindNavigation.SetDestination(point);   // 0x0000A89C..0x0000A8A4
+    xc65_ |= 0x80;                              // 0x0000A8A8..0x0000A8B4
+  } else {
+    mPathFindNavigation.SetDestination(GetTranslation());  // 0x0000A8BC..0x0000A8C4
+  }
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000A8C8..0x0000A8D0
 }
 
 void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
