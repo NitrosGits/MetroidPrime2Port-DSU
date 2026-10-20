@@ -32,6 +32,11 @@
 
 namespace {
 
+// The module's render flag (lbl_14_bss_0): the module's render (fn_14_A3D4) sets it while it
+// renders, and its RenderSystemsToBeDrawnLast (fn_14_A3A4) only forwards to the base's while
+// it is set.
+uchar sRendering = 0;
+
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
   static const char* sSeen[32] = {};
@@ -116,6 +121,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 
 
 
+
 } // namespace
 
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
@@ -164,9 +170,10 @@ void CDigitalGuardian::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 4 = fn_14_A688.
+// fn_14_A688 (vtable slot 4): the base's PreThink (the call at 0xA694) and nothing else. The
+// port keeps the body activation the base's PreThink does not do (CPatterned::PreThink only
+// forwards to CEntity::PreThink), so the guardian still thinks.
 void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CDigitalGuardian::PreThink (vtable slot 4, fn_14_A688)");
   EnsureBodyActive(mgr);
   CPatterned::PreThink(dt, mgr);
 }
@@ -192,9 +199,8 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
-// vtable slot 9 = fn_14_A384.
+// fn_14_A384 (vtable slot 9): the base's PreRender (the call at 0xA390) and nothing else.
 void CDigitalGuardian::PreRender(CStateManager& mgr) {
-  StandIn("CDigitalGuardian::PreRender (vtable slot 9, fn_14_A384)");
   CPatterned::PreRender(mgr);
 }
 
@@ -220,16 +226,16 @@ void CDigitalGuardian::PreRenderAllViewports(CStateManager& mgr) {
 // its result, which is what the base class's own accessor does.
 const CHealthInfo* CDigitalGuardian::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
-// vtable slot 16 = fn_14_9FE4.
+// fn_14_9FE4 (vtable slot 16): the "pass through" vulnerability (the call at 0x9FF0) is the
+// answer - the guardian is not hurt by anything, the shots pass through it.
 const CDamageVulnerability* CDigitalGuardian::GetDamageVulnerability() const {
-  StandIn("CDigitalGuardian::GetDamageVulnerability (vtable slot 16, fn_14_9FE4)");
-  return CPatterned::GetDamageVulnerability();
+  return &CDamageVulnerability::PassThroughVulnerabilty();
 }
 
-// vtable slot 18 = fn_14_10: it builds the box from CPhysicsActor::GetBoundingBox.
+// fn_14_10 (vtable slot 18): the actor's bounding box (the GetBoundingBox call at 0x28) is the
+// touch bounds, and the optional is always valid (the byte at 0x18 is set to 1 at 0x30).
 rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
-  StandIn("CDigitalGuardian::GetTouchBounds (vtable slot 18, fn_14_10)");
-  return CPatterned::GetTouchBounds();
+  return rstl::optional_object< CAABox >(GetBoundingBox());
 }
 
 // vtable slot 21 = fn_14_9E88.
@@ -246,9 +252,12 @@ void CDigitalGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
-// vtable slot 29 = fn_14_9DBC.
+// fn_14_9DBC (vtable slot 29): when bit 6 (the mask 0x40, the extrwi at 0x9DCC) of the flag byte
+// at guest this+0x128C is set and the scannable token (guest this+0xE68, the lwz at 0x9DD4) is
+// there, that token's object is the answer (the lwz at 0x9DE0); otherwise the base's scannable
+// info (the call at 0x9DE8). The token is locked in the constructor, which the port does not do
+// yet, so only the base's answer is reachable.
 CScannableObjectInfo* CDigitalGuardian::GetScannableObjectInfo() const {
-  StandIn("CDigitalGuardian::GetScannableObjectInfo (vtable slot 29, fn_14_9DBC)");
   return CPatterned::GetScannableObjectInfo();
 }
 
@@ -258,18 +267,21 @@ void CDigitalGuardian::TakeDamage(const CVector3f& direction, float magnitude) {
   CPatterned::TakeDamage(direction, magnitude);
 }
 
-// vtable slot 45 = fn_14_F0: it returns the base's origin vector (the three floats at 0x454).
+// fn_14_F0 (vtable slot 45): the actor's translation (guest this+0x54, the three loads at
+// 0xF0/0xF8/0x100) is the origin.
 CVector3f CDigitalGuardian::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                       const CVector3f& point) const {
-  StandIn("CDigitalGuardian::GetOrigin (vtable slot 45, fn_14_F0)");
-  return CPatterned::GetOrigin(mgr, role, point);
+  return GetTranslation();
 }
 
-// vtable slot 47 = fn_14_A3A4.
+// fn_14_A3A4 (vtable slot 47): the base's call, but only while the module's render flag is set
+// (the byte at lbl_14_bss_0, the lbz at 0xA3B4). The flag is set by the module's render
+// (fn_14_A3D4, the stores at 0xA3FC and 0xA44C), which is not ported yet, so it stays clear.
 void CDigitalGuardian::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask,
                                                   uint target) const {
-  StandIn("CDigitalGuardian::RenderSystemsToBeDrawnLast (vtable slot 47, fn_14_A3A4)");
-  CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
+  if (sRendering) {
+    CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
+  }
 }
 
 // vtable slot 60 = fn_14_9DFC (0x9DFC..0x9FE4): the base's setup first (the call at 0x9ED0), then

@@ -730,6 +730,31 @@ there, the sth at 0x0000B67C). `ResetHeadAttacks` and `DisableHeadAttacks` are e
 port: the head class is WP3 and its loader is a stand-in, so no head can exist and the call
 cannot be made - WP3 has to add both.
 
+**WP2 part 2e done (2026-10-20): seven vtable overrides.** `GetTouchBounds` (fn_14_10),
+`RenderSystemsToBeDrawnLast` (fn_14_A3A4), `GetOrigin` (fn_14_F0), `GetDamageVulnerability`
+(fn_14_9FE4), `PreThink` (fn_14_A688), `PreRender` (fn_14_A384) and `GetScannableObjectInfo`
+(fn_14_9DBC) are ported; all seven are under 0x80 bytes.
+
+| override | fn | what it does | asm |
+|---|---|---|---|
+| GetTouchBounds | `fn_14_10` | the actor's bounding box, always valid | the GetBoundingBox call at 0x28, the valid byte at 0x30 |
+| RenderSystemsToBeDrawnLast | `fn_14_A3A4` | the base's call, but only while the module's render flag (`lbl_14_bss_0`) is set | the lbz at 0xA3B4, the call at 0xA3C0 |
+| GetOrigin | `fn_14_F0` | the actor's translation (guest `this+0x54`) | the three loads at 0xF0/0xF8/0x100 |
+| GetDamageVulnerability | `fn_14_9FE4` | the "pass through" vulnerability - the guardian is not hurt, the shots pass through it | the call at 0x9FF0 |
+| PreThink | `fn_14_A688` | the base's PreThink | the call at 0xA694 |
+| PreRender | `fn_14_A384` | the base's PreRender | the call at 0xA390 |
+| GetScannableObjectInfo | `fn_14_9DBC` | the scannable token's object when bit 6 (0x40) of the flag byte at `this+0x128C` is set and the token (guest `this+0xE68`) is there, otherwise the base's | the extrwi at 0x9DCC, the lwz at 0x9DD4/0x9DE0, the call at 0x9DE8 |
+
+Two notes:
+
+- The module's render flag (`lbl_14_bss_0`) is set by the module's render (fn_14_A3D4, the
+  stores at 0xA3FC and 0xA44C), which is 0x94 bytes and is not ported yet, so the flag stays
+  clear and `RenderSystemsToBeDrawnLast` does not forward to the base yet.
+- `GetScannableObjectInfo`'s branch needs the scannable token the constructor locks at guest
+  `this+0xE68`; the port's constructor does not lock it yet, so only the base's answer is
+  reachable.
+
+
 
 
 
