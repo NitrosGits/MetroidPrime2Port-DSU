@@ -24,6 +24,7 @@
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -369,6 +370,19 @@ void CDarkSamus::InstallStateMachineFunctions() {
   }
 }
 
+// fn_10_142F4: is the player within `angle` of the actor's facing axis? The direction to the
+// player and the forward axis (the guest's 0x28/0x38/0x48 = the transform's forward column) are
+// flattened into the XY plane (the two zero stores at 0x00014364/0x00014368), normalized (the two
+// calls at 0x0001436C/0x00014374) and compared (the fcmpo at 0x00014384; the cr bit 31 at
+// 0x0001438C is the "less than" of the compare, so the limit is strict).
+bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
+  const CVector3f toPlayer = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
+  const CVector3f forward = GetTransform().GetForward();
+  const CVector3f flatToPlayer = toPlayer.DropZ().AsNormalized();
+  const CVector3f flatForward = CVector3f(forward.GetX(), forward.GetY(), 0.f).AsNormalized();
+  return CVector3f::GetAngleDiff(flatForward, flatToPlayer) < angle;
+}
+
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
@@ -441,9 +455,11 @@ bool CDarkSamus::DoneRolling(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_F864: the trigger is the byte at 0xD4C (the lbz at 0x0000F864) - the flag the
+// TurnToFacePlayer state sets when the actor faces the player.
+// @ fn_10_F864
 bool CDarkSamus::DoneTurning(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_F864", "trigger DoneTurning");
-  return false;
+  return mTurnDone != 0;
 }
 
 bool CDarkSamus::FacingPlayer(CStateManager&, const CTriggerData&) const {
@@ -596,9 +612,11 @@ bool CDarkSamus::SkipPhazonAttack(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_F924: the trigger is the flag byte's bit 6 - the extrwi at 0x0000F928 keeps the byte's
+// bit 25, the mask 0x40 (the PowerPC bit 25 is 1u << (31 - 25) = 0x40).
+// @ fn_10_F924
 bool CDarkSamus::StartsInTheAir(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_F924", "trigger StartsInTheAir");
-  return false;
+  return (mFlags90C & 0x40) != 0;
 }
 
 bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
@@ -805,8 +823,10 @@ void CDarkSamus::SideDash(CStateManager&, EStateMsg msg, float) {
 }
 
 // The base's Start body is empty, so it stands in for the module's until that one is ported.
+// fn_10_F920: the state body is a single blr (0x0000F920) - the state does nothing but mark the
+// entry.
+// @ fn_10_F920
 void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
-  FsmStandIn("fn_10_F920", "state Start");
   DsStateEntered("Start", msg);
   CPatterned::Start(mgr, msg, dt);
 }
@@ -836,7 +856,40 @@ void CDarkSamus::TravelToPissedOff(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("TravelToPissedOff", msg);
 }
 
-void CDarkSamus::TurnToFacePlayer(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_FE18", "state TurnToFacePlayer");
+// fn_10_FE18: the TurnToFacePlayer state.
+void CDarkSamus::TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("TurnToFacePlayer", msg);
+  if (msg == kStateMsg_Activate) {
+    // 0x0000FE40: the flag byte's bit 7 (the rlwimi over the byte's bit 24) and the turn flag
+    // cleared (the stb at 0x0000FE5C).
+    mFlags90C |= 0x80;
+    mTurnDone = 0;
+    // 0x0000FE60: fn_10_142F4 - the player within 90 degrees (rodata_43C = 1.5707964) of the
+    // actor's facing axis ends the turn at once.
+    if (IsPlayerInFront(mgr, 1.5707964f)) {
+      mTurnDone = 1;
+    }
+  }
+  if (mTurnDone == 0) {
+    // fn_10_8698: the taunt command. The guest's byte at 0x6B4 is the pending flag and 0x10 the
+    // animation state the retry asks the body controller for (kAS_Taunt).
+    switch (msg) {
+    case kStateMsg_Activate:
+      mTauntPending = 1;
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Six));
+      break;
+    case kStateMsg_Update:
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+        BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Six));
+      }
+      break;
+    case kStateMsg_Deactivate:
+      mTauntPending = 0;
+      break;
+    }
+    // 0x0000FEEC: fn_801519A4, the base's AnimOver - the animation over ends the turn.
+    if (AnimOver(mgr, CTriggerData(0))) {
+      mTurnDone = 1;
+    }
+  }
 }

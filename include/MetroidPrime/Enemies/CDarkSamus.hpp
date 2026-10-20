@@ -330,6 +330,11 @@ public:
 
 private:
 #ifdef TARGET_PC
+  // fn_10_142F4: is the player within `angle` of the actor's facing axis? The direction to the
+  // player and the forward axis (the guest's 0x28/0x38/0x48) are flattened into the XY plane,
+  // normalized and compared (the fcmpo at 0x00014384).
+  bool IsPlayerInFront(CStateManager& mgr, float angle) const;
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -337,6 +342,14 @@ private:
   CDarkSamusData mData;            // host only: the loader's 60 data properties (see above)
   uchar mGuestCD0;                 // guest 0xCD0, the first byte of the sub-object fn_10_E560
                                    // builds; fn_10_F84C reads it to pick the collision response
+  uchar mFlags90C;                 // guest 0x90C, the flag byte: bit 6 (0x40) is the "starts in
+                                   // the air" flag (fn_10_F924) and bit 7 (0x80) the "alerted" one
+                                   // (fn_10_F840); the constructor's rlwimi chain (0x0001FBF8..)
+                                   // only clears them, so they start at 0
+  uchar mTurnDone;                 // guest 0xD4C, the "done turning" flag: fn_10_FE18 sets it and
+                                   // fn_10_F864 (the DoneTurning trigger) reads it
+  uchar mTauntPending;             // guest 0x6B4, the pending flag of the taunt command that
+                                   // fn_10_8698 (the TurnToFacePlayer state) delivers
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

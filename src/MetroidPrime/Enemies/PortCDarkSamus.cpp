@@ -56,7 +56,10 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPathFindSearch(nullptr, 0x401, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
                   CPFRegion::kRP_Center) // 0x0001FB44: fn_8013E6A0, the CPathFindSearch at 0x7C0
 , mData(data)
-, mGuestCD0(0) {
+, mGuestCD0(0)
+, mFlags90C(0)
+, mTurnDone(0)
+, mTauntPending(0) {
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
   // loaded at 0x0001FB38) and its root position kRP_Center (`li r8, 0x0` at 0x0001FB5C); the area
