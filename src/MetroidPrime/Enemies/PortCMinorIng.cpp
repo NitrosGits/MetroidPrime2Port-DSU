@@ -207,6 +207,11 @@ void PortMinorIngStandIn(const char* what) {
   fprintf(stderr, "[minoring] stand-in %s\n", what);
 }
 
+// @ fn_44_3614
+// The retail copy moves the whole ray result from the source to the destination: the eight floats
+// at +0x00..+0x1c, the two words at +0x20 and +0x24 and the valid byte at +0x28 (asm 0x3614-0x366C).
+void CopyRayCastResult(CRayCastResult& dest, const CRayCastResult& src) { dest = src; }
+
 // @ fn_44_D00
 // The retail copy moves a whole CHealthInfo from the source to the destination: the three floats
 // at +0x00..+0x08, the two weapon modes at +0x0c and +0x14, the four ids at +0x10..+0x1a and the
@@ -616,7 +621,9 @@ void CMinorIng::RayDown(CVector3f& out, CStateManager& mgr) const {
   const CVector3f up = GetTransform().GetUp();
   const CRayCastResult result =
       mgr.RayStaticIntersection(GetTranslation() + up, up * -1.f, 10.f, SolidFilter());
-  out = result.IsValid() ? result.GetPoint() : CVector3f::Zero();
+  CRayCastResult copy;
+  CopyRayCastResult(copy, result);
+  out = copy.IsValid() ? copy.GetPoint() : CVector3f::Zero();
 }
 
 // @ fn_44_3670
