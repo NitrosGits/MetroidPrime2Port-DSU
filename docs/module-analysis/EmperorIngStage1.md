@@ -899,3 +899,63 @@ count that was always 0. After the slice-2 fold (one `mJoints` at guest 0x7D4) R
 (code function, runs: mode 0, count 8) puts tentacles out, so the walk is TrackPlayer -> Attack ->
 ProjectileAttack (fn_16_68F4, a stand-in that never ends). BeginHeartStage/HeartStage are ported
 but not reached until the tentacles can be retracted (fn_16_26B8 and the attack states).
+
+## 6. The vtable's local slots
+
+`lbl_16_data_3C8` (CEmperorIngStage1) has 80 slots: 82 words, two leading zeros, then 80
+entries, of which **24 are the module's own** (`fn_16_*`); the rest are the inherited DOL entries,
+spelled out by name in the table. The WarpPortal's own vtable `lbl_16_data_27C` has 36 slots (38
+words, 2 + 36) and five local entries: the destructor `fn_16_0`, `Think` `fn_16_1150`,
+`AcceptScriptMsg` `fn_16_1574`, `Render` `fn_16_1088` and `fn_16_60` (slot 13).
+
+The module's local entries and what the host already does:
+
+| slot | fn | host virtual | the port |
+|---|---|---|---|
+| 0 | `fn_16_8B80` | `~CEmperorIngStage1()` | ported |
+| 3 | `fn_16_56D8` | `CEntity::Think` | ported |
+| 4 | `fn_16_7CE8` | `CEntity::AcceptScriptMsg` | ported |
+| 7 | `fn_16_52FC` | `CActor::PreRender` | ported (the base's body) |
+| 9 | `fn_16_531C` | `CActor::Render` | ported |
+| 13 | `fn_16_60` (0x2C) | `CActor::GetHealthInfo` | **not ported**: the retail body is the base's own (a virtual call to slot 12, `HealthInfo`), and so is the host's `CActor::GetHealthInfo`. Both module classes use it (it is slot 13 of `lbl_16_data_27C` too) |
+| 16 | `fn_16_B958` (0x3C) | `CActor::GetTouchBounds` | **not ported**: the retail body is `CPhysicsActor::GetBoundingBox` in an `optional_object<CAABox>` (`fn_16_BA30`), which is what the host's `CPatterned::GetTouchBounds` returns |
+| 26 | `fn_16_7F8C` | `CActor::DoUserAnimEvent` | ported |
+| 28 | `fn_16_7EA8` | `CActor::ProcessSoundEvent` | ported |
+| 39 | `fn_16_B994` | `CAi::TakeDamage` | the host's own |
+| 40 | `fn_16_B9FC` | `CAi::CanBeShot` | ported (`true`) |
+| 41 | `fn_16_BA04` | `CAi::IsListening` | ported (`false`) |
+| 42 | `fn_16_BA0C` | `CAi::Listen` | the host's own |
+| 43 | `fn_16_BA14` | `CAi::GetOrigin` | the host's own |
+| 48 | `fn_16_B9A4` | `CPatterned::GetModelAlphau8` | the host's own |
+| 53 | `fn_16_B9AC` | `CPatterned::ProjectileInfo` | the host's own |
+| 54 | `fn_16_B9B4` | `CPatterned::GetSearchPath` | the host's own |
+| 55 | `fn_16_B9BC` | `CPatterned::GetPointSearchPath` | the host's own |
+| 58 | `fn_16_8AF4` | `CPatterned::SetupStateMachine` | ported |
+| 59 | `fn_16_B9C4` | `CPatterned::GetRagDoll` | the host's own |
+| 65 | `fn_16_B9CC` | `CPatterned::GetAttackTarget` | the host's own |
+| 66 | `fn_16_B9DC` | `CPatterned::IsOnGround` | the host's own |
+| 67 | `fn_16_B9E8` | `CPatterned::GetGravityConstant` | the host's own |
+| 71 | `fn_16_B9F4` | `CPatterned::GetDeathExplosionParticle` | the host's own |
+
+The module's **deleting destructors** are the slot 0 of the classes it creates. They are thunks:
+the host's own classes destroy their members, so none of them is ported.
+
+| fn | size | class vtable | destroys |
+|---|---|---|---|
+| `fn_16_48C` `fn_16_3340` `fn_16_3500` `fn_16_55D4` `fn_16_5610` `fn_16_8844` `fn_16_8880` | 0x3C | REL-local (no vtable in the REL `.data`) | nothing (free only) |
+| `fn_16_2A68` `fn_16_2AB8` | 0x50/0x54 | REL-local | the counted reference release `fn_16_BD6C` |
+| `fn_16_4DF0` | 0x54 | REL-local | the counted reference release `fn_16_BDD0` |
+| `fn_16_87F0` `fn_16_9824` `fn_16_987C` `fn_16_96A4` `fn_16_97CC` | 0x54-0x5C | REL-local | a `CToken` |
+| `fn_16_8784` `fn_16_A780` | 0x6C | REL-local | a `CToken`, only when the byte at +0xC is set |
+| `fn_16_89B8` | 0x70 | REL-local | a `CToken` |
+| `fn_16_A840` | 0x64 | REL-local | a `CAnimData` |
+| `fn_16_47DC` | 0x5C | REL-local | the `rstl::string` at +0x2C |
+| `fn_16_564C` `fn_16_9B04` | 0x8C | REL-local | the block whose size is the word at +0x00 |
+| `fn_16_A904` | 0x7C | REL-local | the loader's script block (`SLdrActorParameters`, `SLdrPatternedAITypedef`, `SLdrEditorProperties`) |
+| `fn_16_5D60` | 0x5C | `lbl_16_data_3A4` (a `CBodyStateCmd` subclass) | the vtable back to `lbl_16_data_3A4`, then the base's `lbl_16_data_3BC` |
+| `fn_16_76F0` | 0x5C | `lbl_16_data_398` (a `CBodyStateCmd` subclass) | the vtable back to `lbl_16_data_398`, then the base's `lbl_16_data_3BC` |
+
+`lbl_16_data_3BC` is the base `CBodyStateCmd` (its only virtual is the destructor) and
+`lbl_16_data_3B0` a third subclass (`fn_16_5BA8`); the JumpRope state (fn_16_5928) hands them
+to `CBodyStateCmdMgr::DeliverCmd` at 0x00005A60. The whole map (with the sizes) is in
+`/tmp/opencode/emp1_vt.tsv`.

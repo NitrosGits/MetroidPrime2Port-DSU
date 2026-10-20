@@ -14,7 +14,10 @@
 // spelled out by name in the same table). The tiny accessors at the head of the module's .text
 // (fn_16_B994, fn_16_B9A4, fn_16_B9AC, fn_16_B9B4, fn_16_B9BC, fn_16_B9CC, fn_16_B9C4, fn_16_B9DC,
 // fn_16_B9E8, fn_16_B9F4 and fn_16_B994's neighbours in EmperorIngStage1Accessors.s) have
-// four-to-twelve-instruction bodies, so they are real rather than stand-ins.
+// four-to-twelve-instruction bodies, so they are real rather than stand-ins. Two of the slots
+// the module's vtable replaces are the host base's own, so they are not ported: slot 13
+// (fn_16_60) is CActor::GetHealthInfo and slot 16 (fn_16_B958) is CActor::GetTouchBounds
+// (the host's CPatterned::GetTouchBounds returns GetBoundingBox(), the retail's body).
 #include "MetroidPrime/Enemies/CEmperorIngStage1.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"

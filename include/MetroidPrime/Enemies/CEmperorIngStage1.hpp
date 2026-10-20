@@ -51,6 +51,11 @@ public:
                               const CDamageInfo& stabDamage, ushort warpSound, ushort warpSound2);
   ~CEmperorIngStage1WarpPortal() override;
 
+  // The class's vtable (lbl_16_data_27C, 36 slots) replaces five of CPhysicsActor's: the
+  // destructor (fn_16_0), Think (fn_16_1150), AcceptScriptMsg (fn_16_1574), Render (fn_16_1088)
+  // and slot 13 (fn_16_60 - CActor::GetHealthInfo, the base's own body). The last one is not
+  // ported: the host's CActor::GetHealthInfo does the same.
+
   // CEntity
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
@@ -123,6 +128,22 @@ public:
                     const CActorParameters& actParms, const CPatternedInfo& pInfo,
                     const SLdrEmperorIngStage1Data& data);
   ~CEmperorIngStage1() override;
+
+  // The module's vtable (lbl_16_data_3C8, 80 slots) replaces 24 of CPatterned's slots. Two of
+  // them the host base already does, so they are not ported:
+  //   slot 13 (fn_16_60) - CActor::GetHealthInfo: the retail body is the base's own (a virtual
+  //     call to slot 12, HealthInfo) and the host's CActor::GetHealthInfo does the same.
+  //   slot 16 (fn_16_B958) - CActor::GetTouchBounds: the retail body is CPhysicsActor's bounding
+  //     box in an optional (fn_16_BA30), which is what the host's CPatterned::GetTouchBounds
+  //     returns.
+  // The module's other deleting destructors (fn_16_48C, fn_16_3340, fn_16_3500, fn_16_55D4,
+  // fn_16_5610, fn_16_8844, fn_16_8880, fn_16_2A68, fn_16_2AB8, fn_16_4DF0, fn_16_87F0,
+  // fn_16_8784, fn_16_9824, fn_16_987C, fn_16_97CC, fn_16_9B04, fn_16_A780, fn_16_A840,
+  // fn_16_47DC, fn_16_5D60, fn_16_76F0, fn_16_96A4, fn_16_564C, fn_16_89B8 and fn_16_A904) are
+  // the slot 0 of the classes the module creates (the tokens, the animation data, the body
+  // state commands and the loader's script block); the host's own classes destroy their
+  // members, so none of them is ported. The map is in
+  // docs/module-analysis/EmperorIngStage1.md ("The vtable's local slots").
 
   // CEntity
   void Think(float dt, CStateManager& mgr) override;
