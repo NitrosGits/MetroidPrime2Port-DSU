@@ -28,7 +28,7 @@ Areas needing **MinorIng** (14): 1baa96c2 18/31; 3bfa3eff 13; 3dfd2249 28/60;
 | `CIngData` (plain struct) | 0x214 | - | `fn_29_EE68` (0x158) / `fn_29_10F8`; copy `fn_29_E7C8` | **[proven]** ctor body + loader stack layout. Name **[?]** (by analogy with `CMediumIngData`) |
 | `CIngMiniPortalAttack : CActor` | 0x238 | `lbl_29_data_CE4` | `fn_29_11E8C` (0x190, named in symbols.txt) / `fn_29_114B0` | **[proven]** symbol name; size from `rs_new(0x238)` in `fn_29_C228` |
 | `CIngMiniPortalInfo` | 0x88 | - | `fn_29_12100` (named) / copy `fn_29_1201C` | **[proven]** symbol name, Wii ctor signature `(TUniqueId, f, f, TLockedToken<CGenDescription>, us, f, f, CDamageInfo, SLdrPlasmaBeamInfo)`; size and members from the two ctors (A.3) |
-| `CIngExitHostEffect : CActor` | 0x5e8 | `lbl_29_data_C60` | `fn_29_1105C` (0x3DC) / `fn_29_FF88` | class at `data_C60` holds a `CPathFindSearch` + 2 tokens and is `rs_new(0x5e8)`'d in the ExitHost state `9D68` **[proven]**; that it *is* `CIngExitHostEffect` (Wii export ctor `(TUniqueId, CEntityInfo, CTransform4f, CVector3f, CVector3f, uint, uint, f, f, TUniqueId, f, f, us)`) is **[probable]** |
+| `CIngExitHostEffect : CActor` | 0x5e8 | `lbl_29_data_C60` | `fn_29_1105C` (0x3DC) / `fn_29_FF88` | **[proven]**: class at `data_C60` holds a `CPathFindSearch` + 2 tokens and is `rs_new(0x5e8)`'d in the ExitHost state `9D68`; the DOL's own mangled ctor `__ct__18CIngExitHostEffect...` (`config/R3ME01/symbols.txt:3184`) takes the same 13 arguments as `fn_29_1105C` |
 | sub-structs of CIngData (body projectile 0x40, ing spot = `CIngSpotData` 0x60, grapple, mini-portal, swarm 0x2A) | see A.3 | - | builders `fn_29_F12C`, DOL `CIngSpotData` ctor 0x80218920, `fn_29_F090`, `fn_29_F000`, `fn_29_EFC0` | **[proven]** layouts; names **[?]** |
 
 `lbl_29_data_A20` (= 0x20): meaning unknown **[?]**. `lbl_29_data_CE0` (= 0x23) is the
@@ -61,9 +61,19 @@ into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (
 | `4830` | 0x130 | builds a 0x1e0 `CCollisionTracker` via GeomBlobV2's `fn_25_4290` | proven |
 | `4B4C` | 0x13C | builds a 0x1b8 `CGameLight` | proven |
 | `76B8` | 0x658 | state SuckEnergy; also allocates a 0x180 `CHUDBillboardEffect` | proven |
-| `FF88` | - | CIngExitHostEffect? dtor | proven (class identity probable) |
-| `1105C` | 0x3DC | CIngExitHostEffect? ctor | as above |
-| `10154`, `1046C`, `1065C`, `1077C`, `10944`, `10F58` | 0x104..0x40C | CIngExitHostEffect? methods (lie between its dtor and ctor) | **[probable]** |
+| `FF88` | - | CIngExitHostEffect dtor | proven |
+| `1105C` | 0x3DC | CIngExitHostEffect ctor | proven |
+| `1006C` | 0x4C | stop the swarm-move emitter (`CSfxManager::RemoveEmitter` on 0x5dc) | proven |
+| `100B8` | 0x9C | the swarm-move emitter: `AddEmitter` (0x5e0, volume 0x7f, looped), else `UpdateEmitter` along `GetForward()` | proven |
+| `10154` | 0x318 | build the next bezier leg: path search at 0x188, the four control points at 0x2cc/0x2d8/0x2e4/0x2f0, then the length and the 1-Range(0,0.5) speed factor | proven |
+| `1046C` | 0x1F0 | bezier length as the four quarter chords | proven |
+| `1065C` | 0x120 | the random offset Range(0,4)*Up + Range(-2,2)*Right | proven |
+| `1077C` | 0x1C8 | the flight step: `t = mX28c / (mX2fc/mX300*mX290)`, rebuild at `t >= 1`, arrival `±dt*mX290` sets 0x5e2 bit 7 | proven |
+| `10944` | 0x40C | the two particle systems: aim blend while 0x29c runs down, the 60-slot trail ring at 0x308 (write index 0x5d8), effect A at the swarm and B `mX2c4`*60 frames behind, both gens' bounds accumulated into CActor's 0xcc/0xe4 | proven |
+| `10DEC` | 0x78 | AddToRenderer (`gpRender->AddParticleGen` B then A) | proven |
+| `10E64` | 0x50 | Render (B then A) | proven |
+| `10EB4` | 0xA4 | AcceptScriptMsg (`CEntity`'s handler): `XDEL` stops the emitter, `XALD` sets the path search's area | proven |
+| `10F58` | 0x104 | Think (vtable 0x14): returns unless the actor is active; Fly + particles + emitter; once 0x5e2 bit 7 is set both generators go to rate 0 and the actor deletes itself when both have no particles left; does not chain to `CActor::Think` | proven |
 | `114B0` | - | CIngMiniPortalAttack dtor | proven |
 | `11570` | 0x2D0 | CIngMiniPortalAttack aim helper: steers the aim point (0x214) at the target actor's touch bounds, speed = distance / `beamInfo.travelSpeed`, clamped at 1.2217 rad; calls the target's vtable 0x54 twice | proven |
 | `11CA4` | 0x1E8 | CIngMiniPortalAttack Think (vtable 0x14): ages 0x220, deletes the fired projectile and itself at the lifetime (info+0x08), fires (`fn_29_11840`) between info+0x04 and the lifetime, then `CActor::Think` | proven |
@@ -117,7 +127,7 @@ into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (
 | 0xcb0 | CIngSpotPathFindNavigation (0x10) | default |
 | 0xcc0 | CAABox | `mskNullBox`; 0xcd8 = 1 |
 | 0xcdc / 0xcde | TUniqueId x2 | invalid |
-| 0xce0, 0xcf0 | optional<TLockedToken<CGenDescription>> (0x10 each) | from data+0x1e4, +0x1f4 (swarm effects) |
+| 0xce0, 0xcf0 | optional<TLockedToken<CGenDescription>> (0x10 each) | from data+0x1e4, +0x1f4 (swarm effects); held as `mSwarmEffect` / `mSwarmEffect2` |
 | 0xd00 / 0xd04 | 0 / 0 | |
 | 0xd08, 0xd18, 0xd28 | optional PART tokens | data+0xb0, +0xb4, +0xb8 (ing-spot hit/heavy/death effects) |
 | 0xd38 | optional PART token | data+0x178 (mini-portal effect) |
@@ -139,6 +149,13 @@ into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (
 | 0xe5c..0xe5e | bitfields | one bit from CIngData+0x210 |
 
 Also in the ctor: `SetDrawShadow(false)`.
+
+- 0xcf0 (the second swarm GEN token, `CIngData` spark +0x10 mPART081E, engaged byte 0xcfc) is held by
+  the host as `mSwarmEffect2` - it was in the "not held" list before the exit host.
+- `IsControllingHost` (`fn_29_B1C8`) is `mHostId (0xcdc) != kInvalidUniqueId` **[proven]**. The port
+  had it as a form test until 2026-10-20, which is what kept ExitHost unreachable.
+- `fn_29_1F1C` is the landing smoke: a `CExplosion` "IngExitHostSmokeFx" on the 0xcf0 token, sound =
+  `CIngData` swarm +0x28 mSound.
 
 **CIngData (0x214) [proven from `fn_29_EE68`]**
 
@@ -193,7 +210,16 @@ Slots the portal calls on its *beam* (`CPlasmaProjectile`, DOL vtable `__vt__17C
 0x803b2a98) [proven]: 0x8c `UpdateFx(xf, dt, mgr)`, 0x90 `ResetBeam(mgr, fullReset)`, 0x94
 `Fire(xf, mgr, flag)`.
 
-`CIngExitHostEffect` members: not mapped (out of scope for a first slice).
+**`CIngExitHostEffect` members [proven]**: ported header
+`include/MetroidPrime/Enemies/CIngExitHostEffect.hpp` (retail 0x5e8; the host class is larger, nothing
+outside the REL reads it). Offsets that matter: 0x158 `CTransform4f` (the ctor's copy), 0x188
+`CPathFindSearch` (null area, flags 3, index 0, 1.0/1.0, `kRP_Center`), 0x274 destination, 0x280 model
+scale, 0x28c bezier time, 0x290 speed, 0x294 target id, 0x298/0x29c/0x2a0 the ctor's f3/f3/f4, 0x2a4
+and 0x2b4 the two `CToken`s (asset A = `CIngData` swarm +0x04 mSRSC, B = +0x08 mPART3DA2), 0x2b0/0x2c0
+the two `CParticleGen*` (deleted by the dtor), 0x2c4 the ctor's f1, 0x2c8 bezier count and 0x2cc the
+four control points, 0x2fc length, 0x300 speed factor, 0x304 the 60-slot trail container (the host's
+`CVector3f[60]` sits at 0x308), 0x5d8 write index, 0x5dc `CSfxHandle`, 0x5e0 sound, 0x5e2 bit 7
+arrival.
 
 ### A.4 Loader `fn_29_130` (0xFC8) [proven by simulation; `/tmp/ingan/ldr.py`]
 
@@ -230,8 +256,9 @@ Construction order:
 ### A.5 CIng behaviour port (`src/MetroidPrime/Enemies/PortCIng.cpp`, 2026-10-19)
 
 Behaviour port, not a matching one. Retail functions are named in comments; `// @ fn_29_<off>`
-marks only the 45 functions a run actually called (an instrumented build, run below). The other
-44 that were read against retail carry `// fn_29_<off> (not yet exercised in a run)`.
+marks only the 62 functions a run actually called. The 49 that were read against retail without a
+run carry `// fn_29_<off> (not yet exercised in a run)`. (The exit host class is its own file,
+`PortCIngExitHostEffect.cpp`: 12 more `// @`.)
 
 - **Tables** (registered in `SetupStateMachine`): 49 triggers, 29 states and 12 code functions.
   The code functions take `(CStateManager&, float)` and run as FSM2 code nodes (`SetTargetDest`,
@@ -247,11 +274,16 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     (or IngPuddle in ing-spot form); ShouldEvaporate leads to `SafeZoneReaction` / `Evaporate`.
   - AttackPatternOver -> IsCorporeal -> `Lurk` -> IngPuddle; IsBodyProjectile ->
     `BodyProjectileFlight` -> IngCorporeal.
-- **Minimal `[?]` bodies** (the state ends or the function returns at once):
-  - States: Become* (BecomeCorporeal, BecomeIngSpot, BecomeBodyProjectile, BecomeWallProjectile:
-    form switch only), ArmSwipe, GrappleBall, MiniPortalAttack, FindMiniPortals, SuckEnergy,
-    BodyProjectileFlight and ExitHost.
-  - Code functions: SetExitHostDest, SplatOntoMesh and ExpelGrappledBall.
+- **Minimal/unexercised bodies** (the source still says `not yet exercised in a run`; the state ends
+  or the function returns at once):
+  - States (15): WaitForFSMTransition, BecomeBodyProjectile, BecomeWallProjectile, SafeZoneReaction,
+    Taunt, IngSpotPathFind, IngSpotPointPathFind, Patrol, FollowAttackPattern, BodyProjectileFlight,
+    SeekWallPoint, FailSafeMode, GrappleBall, Dead, Evaporate.
+  - Code functions (8): SetCoverDest, SetPointCoverDest, SetWallPointCoverDest, SetLuredDest,
+    SetLuredPointDest, StartRangedAttack, EndRangedAttack, ExpelGrappledBall. `SetRecoverDest` carries
+    the `[?]` marker instead (closest path point within 20).
+  - Not on either list: the exit host (state `9D68`, code `54E8` and the `CIngExitHostEffect` class) is
+    ported and marked (A.9).
 - **Other `[?]` values:**
   - Values borrowed from MinorIng (`fn_44_9D58`): the line-of-sight eye segment and times
     (0.1/0.05), the surface-alignment mode (1), the team roles and the touch box.
@@ -331,6 +363,11 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     (`CGameProjectile::RayCollisionCheckWithWorld`), plus `MP2_DEBUG_ING=1` logs the damage
     messages that reach the Ing. The player's beams are `CEnergyProjectile` (`CGunWeapon.cpp:403`),
     not `CBeamProjectile`.
+- **Exit host reachable** (2026-10-20, area 57): SuckEnergy clears `mHostId` once the body
+  projectile's suck time (5.0 s) runs out, and the FSM takes `!IsControllingHost` -> the
+  `SetExitHostDest` code node -> `ExitHost`. The FSM2 dump now recurses into sub-machines
+  (`DumpFsm2`, `MP2_DEBUG_ING`), which is what shows `fsm trigger !IsControllingHost(0):
+  ->SetExitHostDest` and `fsm code SetExitHostDest: ->ExitHost`.
 
 ### A.6 Next slices (handoff, 2026-10-20)
 
@@ -350,7 +387,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~arm swipe~~ done | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | ported + `// @` 2026-10-20 (`1b058f9a4`); see A.7 |
 | ~~suck~~ done | `fn_29_76B8` SuckEnergy (0x778) | ported 2026-10-20, `// @`; see A.8. It also exposed a field-name shift in `CIngBodyProjectileData` (A.3) |
 | ~~splat~~ done | `fn_29_4F14` SplatOntoMesh (0x238) | ported 2026-10-20, `// @` (probe-driven); see A.8 |
-| exit host | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10F58`; `lbl_29_data_C60`) | biggest; the class identity is still only **[probable]** |
+| ~~exit host~~ done | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `1006C`/`100B8`/`10154`/`1046C`/`1065C`/`1077C`/`10944`/`10DEC`/`10EB4`/`10F58`; `lbl_29_data_C60`) | ported 2026-10-20 (`2382c8e15`), `// @` except `10E64` (Render, never queued - no model); class identity [proven]; see A.9 |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
 Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
@@ -469,7 +506,7 @@ without it, so the trace came from a local probe (`getenv("MP2_ING_PROBE_SPLAT")
 reached the machine; 0 `[port] caught`, 0 `[reach-stub]`, exit 0. The `MP2_ING_PROBE_SPLAT` hook is
 not in the tree; re-add it locally to re-trace.
 
-### A.9 Exit host (next slice, decoded 2026-10-20)
+### A.9 Exit host (ported 2026-10-20)
 
 `fn_29_9D68` ExitHost (0x32C), `fn_29_54E8` SetExitHostDest (0x22C), and the `CIngExitHostEffect`
 class the state spawns. Pseudo-C: `/tmp/opencode/pseudo/Ing/{fn_29_9D68,fn_29_54E8,fn_29_1105C,
@@ -498,22 +535,20 @@ base's own symbol, including 0x0C `CActor::TypesMatch` and 0x10 `CEntity::PreThi
 
 **Ctor member map [proven from `fn_29_1105C`]**: CActor 0x158; 0x158 `CTransform4f` (copy of the
 ctor's transform); 0x188 `CPathFindSearch` (0xec); 0x274 `CVector3f` (the state's 0xdc8), 0x280
-`CVector3f` (the model scale), 0x28c int 0, 0x290 f2, 0x294 u16 sound, 0x298/0x29c f3, 0x2a0 f4,
-0x2a4 `CToken` (asset A) + 0x2ac byte "failed" + 0x2b0 int (the `fn_29_10D50` result), 0x2b4 `CToken`
-(asset B) + 0x2bc byte + 0x2c0 int, 0x2c4 f1, 0x2c8 0, 0x2fc 0, 0x300 1.0f, 0x304 a container filled
-by `fn_29_11438` from ten copies of six positions (0x48 each), 0x5d8/0x5dc 0, 0x5e0 u16, 0x5e2 bit 7
-cleared. `fn_29_10D50(this, vecB, translation, token)` returns the int at 0x2b0/0x2c0 and its sign is
-the byte at 0x2ac/0x2bc.
+`CVector3f` (the model scale), 0x28c int 0, 0x290 f2, 0x294 target `TUniqueId`, 0x298/0x29c f3, 0x2a0 f4,
+0x2a4 `CToken` (asset A) + 0x2ac byte "failed" + 0x2b0 `CParticleGen*` (the `fn_29_10D50` result),
+0x2b4 `CToken` (asset B) + 0x2bc byte + 0x2c0 `CParticleGen*`, 0x2c4 f1, 0x2c8 0, 0x2fc 0, 0x300 1.0f,
+0x304 a container filled by `fn_29_11438` from ten copies of six positions (0x48 each), 0x5d8/0x5dc 0,
+0x5e0 u16 sound, 0x5e2 bit 7 cleared. `fn_29_10D50(this, vecB, translation, token)` returns the
+`CParticleGen*` stored at 0x2b0/0x2c0 and its sign is the byte at 0x2ac/0x2bc.
 
-**Split for the lanes** (one at a time, `worker` only):
-1. `CIngExitHostEffect` header + ctor + dtor + the two `fn_29_10D50`/`fn_29_11438` helpers (new
-   `PortCIngExitHostEffect.cpp`; `src/**/Port*.cpp` is picked up by `files.cmake` automatically). The
-   class has to exist before the state compiles, and it must clear 0x5e2 bit 7 in the ctor.
-2. `ExitHost` + `SetExitHostDest` in `PortCIng.cpp`.
-3. The class's Think `fn_29_10F58`, AcceptScriptMsg `fn_29_10EB4`, AddToRenderer `fn_29_10DEC`,
-   Render `fn_29_10E64` and the six helpers `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10EB4`'s tail.
-Every slice: `// @` only after a traced run — ExitHost is reachable in area 57 through the same
-SuckEnergy path (the state deletes the possessed-mold billboard and spawns this effect).
+**Port status [proven]**: all three slices are ported - `PortCIngExitHostEffect.cpp` and
+`CIng::ExitHost` / `SetExitHostDest` / `SpawnExitHostSmoke` in `PortCIng.cpp`. Every function carries
+a `// @` except `fn_29_10E64` (Render), which never runs because the actor has no model and so is
+never queued for RenderActorQueue - the generators draw through AddToRenderer. Verified log chain,
+`/tmp/opencode/ing_run5.log`: `state SetExitHostDest` -> `state ExitHost` ->
+`exit host: swarm 021d, sound 20d0` -> `exit host: smoke explosion` ->
+`exit host: left at (78.0, 368.0, 4.9)`, with 0 `[port] caught` / `[reach-stub]` and exit 0.
 
 ---
 
