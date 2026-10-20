@@ -28,6 +28,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+#include <math.h>
 #include <stdio.h>
 
 namespace {
@@ -102,7 +103,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE(Scanning),
     SPLITTER_STATE(FaceTarget),
     SPLITTER_STATE(PathFind),
-    SPLITTER_STATE(Hover),
+    SPLITTER_STATE_PORTED(Hover),
     SPLITTER_STATE(Dodge),
     SPLITTER_STATE(LaserPulse),
     SPLITTER_STATE(LaserSweep),
@@ -135,6 +136,19 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 // The module's own calls in the command module's script-message handler (fn_75_654C). Both are
 // over 0x80, so each stays a named once-logging shell.
+
+// The head's own move (fn_75_2154, 0xA8) - the Hover state asks it to move the head to a
+// position; the port logs the position once and does not move.
+void StandInFn_75_2154(const CVector3f& dest, float dt) {
+  static bool sLogged = false;
+  if (sLogged) {
+    return;
+  }
+  sLogged = true;
+  fprintf(stderr,
+          "[splitter] fn_75_2154 (0xA8) would move the head to (%.3f, %.3f, %.3f) in %.3f s\n",
+          dest.GetX(), dest.GetY(), dest.GetZ(), dt);
+}
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
@@ -193,7 +207,6 @@ SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
 SPLITTER_STATE_STANDIN(Scanning, fn_75_523C)
 SPLITTER_STATE_STANDIN(FaceTarget, fn_75_50B0)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
-SPLITTER_STATE_STANDIN(Hover, fn_75_4D04)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
 SPLITTER_STATE_STANDIN(LaserSweep, fn_75_44DC)
@@ -263,6 +276,49 @@ bool CSplitterCommandModule::HasDockingTarget(CStateManager& mgr, const CTrigger
   return chassis->GetCommandModuleId() == kInvalidUniqueId;
 }
 
+
+// fn_75_4D04 (the head's Hover state, 0x4D04-0x4F90): with the activate message (0x4D2C cmpwi
+// r5, 1 - 0x4D40 cmpwi r5, 0) the body controller's locomotion type becomes 3 (0x4D50 li r4, 3
+// - the host's kLT_Combat) (0x4D54 SetLocomotionType). With the update message and a frame time
+// above zero (0x4D5C-0x4D68: lbl_75_rodata_40 is 0.0f) the head's synced id at 0xEFE (0x4D6C
+// lhz) is looked up (0x4D7C GetObjectById) and that actor's aim position is asked for
+// (0x4D90-0x4DAC: the vtable's word 0x54 - the host's GetAimPosition - the state manager and
+// 0.0f); with an actor there (0x4D80 cmplwi) the head faces it (0x4DB0-0x4DF4: the direction is
+// the aim position's x and y less the head's own 0x54 and 0x58, its z is 0.0f - 0x4DD8
+// lbl_75_rodata_40 - and FaceDirection takes it with the frame time). The height difference
+// (0x4DB0-0x4E04: the aim position's z less the head's own 0x5C) decides the step: when it is
+// bigger than the frame time times the data's max linear velocity at 0x7C4 (0x4DFC-0x4E0C) the
+// head moves up or down by that step (0x4E10-0x4E54) and the module's own move runs
+// (0x4E64 fn_75_2154).
+void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    return;
+  }
+  if (msg != kStateMsg_Update) {
+    return;
+  }
+  if (dt <= 0.f) {
+    return;
+  }
+  // The retail calls the vtable's word 0x54 on the entity it looked up (0x4D90-0x4DAC); the
+  // host's GetAimPosition is CActor's, so the port casts - the asm's test is the null check
+  // below (0x4D80 cmplwi r3, 0).
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncedId));
+  if (target == nullptr) {
+    return;
+  }
+  const CVector3f aim = target->GetAimPosition(mgr, 0.f);
+  const CVector3f pos = GetTranslation();
+  BodyController()->FaceDirection(
+      CVector3f(aim.GetX() - pos.GetX(), aim.GetY() - pos.GetY(), 0.f), dt);
+  const float dz = aim.GetZ() - pos.GetZ();
+  const float step = dt * mData.mMaxLinearVelocity;
+  if (fabsf(dz) <= step) {
+    return;
+  }
+  StandInFn_75_2154(CVector3f(pos.GetX(), pos.GetY(), pos.GetZ() + (dz > 0.f ? step : -step)), dt);
+}
 
 // The two state machine entries whose retail body is ported: the IsScanning trigger
 // (fn_75_58E8, the chassis's scan timer) and the NotifyDocking code (fn_75_3EEC, the head's

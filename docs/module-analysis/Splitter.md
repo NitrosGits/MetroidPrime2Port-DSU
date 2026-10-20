@@ -975,7 +975,7 @@ now, so the log no longer shows it:
 | 7 | the chassis's DeployFromHoldingTube trigger | `fn_75_E034` | `DeployFromHoldingTube` (the data's flags at 0x828, bit 1) |
 | 8 | the chassis's Patrol state | `fn_75_DCFC` | `Patrol` (the base's waypoint navigation, the steering speed range, the two waypoint ids) |
 | 9 | the head's RaiseShields code | `fn_75_3B20` | `RaiseShields` (the flag byte 0xF6A's 0x08) |
-| 10 | the head's Hover state | `fn_75_4D04` | still a shell |
+| 10 | the head's Hover state | `fn_75_4D04` | `Hover` (the locomotion type, the aim position, the height step) |
 | 11 | the chassis's Scanning state | `fn_75_DCF8` | `Scanning` (the body is one `blr`) |
 | 12 | the chassis's ShotAt trigger | `fn_75_E5B8` | `ShotAt` (the base's flag byte 0x420's 0x80) |
 | 13 | the chassis's PatrolPathOver trigger | `fn_75_E478` | `PatrolPathOver` (the waypoint destination at 0x6C0) |
@@ -996,6 +996,15 @@ the log's.
 | the activate message | the body controller's 0x4C gets the word 1 (0x0000DD4C - the command manager's 0x48) and the steering speed range (0x0000DD50 the chassis's 0xD0C, 0x0000DD60) | `SetSteeringBlendMode(kSBM_FullSpeed)` and `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
 | the update message | the two waypoint ids (0x0000DD68 the last destination, 0x0000DD84 the destination) are looked up and cast to a script waypoint (0x0000DD7C, 0x0000DD9C); with both there `fn_75_986C` runs (0x0000DDB8) and the command manager's face vector (the body controller's 0x10, 0x14, 0x18) is copied to the chassis's 0x6E0, 0x6E4, 0x6E8 (0x0000DDC0-0x0000DDD8) | the same lookups and cast, `fn_75_986C` stays a shell, and the face vector goes to the port's `mPatrolFacing` (the host's `CPatterned` has no member at the guest's 0x6E0) |
 | guest 0xD0C | the ctor leaves 1.0f and then divides the walk speed (anim 1) by the run speed (0x0000F93C-0x0000F964); the first call's anim register is not set in the dump | the port takes the walk speed over the host's `GetMaxSpeed()` in its constructor |
+
+#### The head's Hover state, fn_75_4D04 (0x4D04-0x4F90) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the activate message | the body controller's locomotion type becomes 3 (0x00004D50 li r4, 3) | `SetLocomotionType(pas::kLT_Combat)` |
+| the update message | the head's synced id at 0xEFE (0x00004D6C) is looked up (0x00004D7C) and that actor's aim position is asked for (0x00004D90-0x00004DAC: the vtable's word 0x54, the out vector, the state manager, 0.0f) | the same lookup, cast to `CActor` (the host's `GetAimPosition` is `CActor`'s), and `GetAimPosition(mgr, 0.f)` |
+| facing | the direction is the aim position's x and y less the head's own 0x54 and 0x58, its z is 0.0f (0x00004DB0-0x00004DF4) | `FaceDirection` with that vector and the frame time |
+| the height step | the aim position's z less the head's own 0x5C, against the frame time times the data's max linear velocity at 0x7C4 (0x00004DFC-0x00004E0C); the head then moves up or down by that step (0x00004E10-0x00004E54) and the module's own move runs (0x00004E64 `fn_75_2154`) | the same step, and `fn_75_2154` (0xA8) stays a shell that logs the position once |
 
 **The port's own limits in these bodies**: the head's `HasDockingTarget` needs a chassis at 0xEFC
 (the head's second link), which the area-4 placement does not wire - so it is false in the run.
