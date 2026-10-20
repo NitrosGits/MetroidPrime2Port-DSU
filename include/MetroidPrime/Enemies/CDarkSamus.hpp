@@ -372,7 +372,35 @@ private:
                                    // 0x100 super missile, 0x200 taunt, 0x400 pause, 0x10000 sweep
                                    // beam, 0x20000 boost ball, 0x100000 freeze beam, 0x200000 the
                                    // fade variant, 0x400000 phazon attack, 0x800000 phazon
-                                   // enrage)
+                                   // enrage). The constructor writes 0xFFFF to it (0x0001FCE8),
+                                   // which is "no attack picked"
+  uint mCurrentAttack;             // guest 0x980, the word the module writes when an attack starts
+                                   // (fn_10_1B478, not ported yet) and reads in ShouldReact and
+                                   // TooMuchDamage: the id of the attack the actor is performing
+                                   // (the same id space as mPickedAttack; 0xFFFF = none). The
+                                   // constructor writes 0xFFFF to it (0x0001FCE4)
+  uint mAttackHistory[3];          // guest 0x998, the ids of the attacks the actor has finished:
+                                   // fn_10_1B478 pushes the current attack here and trims the
+                                   // oldest entry when there are three (not ported yet)
+  uint mAttackHistoryCount;        // guest 0x994, the number of ids in mAttackHistory; the
+                                   // constructor writes 0 to it (0x0001FCF8)
+  float mAccumulatedDamage;        // guest 0xCC0, the damage the actor has taken: fn_10_1E178 adds
+                                   // the difference of the last damage value and decays it (not
+                                   // ported yet); the constructor writes 0.0f to it (0x0001FF58)
+  float mDamageThreshold;          // guest 0xCC8, the threshold TooMuchDamage compares the
+                                   // accumulated damage with; the constructor writes its 8th float
+                                   // argument to it (0x0001FF60), the loader's
+                                   // damageInterruptThreshold (the property id 0x8f70d3f2)
+  float mTimeAtCoverPoint;         // guest 0x964, how long the actor has stayed at its cover
+                                   // point: fn_10_1D794 adds dt to it while the actor is within
+                                   // 0.6 of the point (not ported yet); the constructor writes
+                                   // 0.0f to it (0x0001FCB0)
+  float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
+                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it (not
+                                   // ported yet); the constructor writes 0.0f to it (0x0001FF38)
+  float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
+                                   // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
+                                   // writes 0.0f to it (0x0001FB88)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

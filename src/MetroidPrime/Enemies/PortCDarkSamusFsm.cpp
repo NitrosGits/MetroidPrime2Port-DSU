@@ -684,9 +684,45 @@ bool CDarkSamus::ShouldLeaveSphere(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::ShouldReact(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11158", "trigger ShouldReact");
-  return false;
+// fn_10_11158 (0x00011158, 0x154 bytes): the trigger's switch over the attack the actor is
+// performing (the word at 0x980, read at 0x00011218) stands behind four of the module's own
+// triggers, called through the handler table the vptr points at (the words at 0x208, 0x174,
+// 0x184 and 0x14C of lbl_10_data_CBC - docs/module-analysis/DarkSamus_fsm.tsv): the word at
+// 0x208 is WasHeavyHit (fn_10_112AC) and answers the trigger at once when it is true (the
+// li r3, 1 at 0x00011198), and then the words at 0x174 (CanMissileDeflect, fn_10_14284),
+// 0x184 (FacingPlayer, fn_10_142CC) and 0x14C (AnyIncomingMissiles, fn_10_1BB08) must all
+// answer true (the cmplwi against 1 at 0x000111C0, 0x000111E4 and 0x00011210) or the trigger
+// answers false (0x0001128C).
+//
+// The four answers are read as one byte: `clrlwi r0, r3, 24` clears the HIGH 24 bits and keeps
+// the low byte (the mask is 0xFF, not 0xFFFFFF), and `cmplwi r0, 1` compares that byte with 1.
+// The triggers return a bool, so the test is the bool itself.
+//
+// The switch over the attack id: 0x8 the scatter shot, 0x40 the normal missile, 0x200 the taunt,
+// 0x400 the pause, 0x10000 the sweep beam and 0x200000 the fade variant of the normal missile
+// answer true (0x0001127C), 0xFFFF (no attack) answers the fade flag at 0xDEC (0x00011284) and
+// everything else answers false.
+bool CDarkSamus::ShouldReact(CStateManager& mgr, const CTriggerData& data) const {
+  if (WasHeavyHit(mgr, data)) {
+    return true;
+  }
+  if (!CanMissileDeflect(mgr, data) || !FacingPlayer(mgr, data) ||
+      !AnyIncomingMissiles(mgr, data)) {
+    return false;
+  }
+  switch (mCurrentAttack) {
+  case 0x8:      // the scatter shot
+  case 0x40:     // the normal missile
+  case 0x200:    // the taunt
+  case 0x400:    // the pause
+  case 0x10000:  // the sweep beam
+  case 0x200000: // the fade variant of the normal missile
+    return true;
+  case 0xFFFF:   // no attack
+    return mFadeOut != 0;
+  default:
+    return false;
+  }
 }
 
 bool CDarkSamus::ShouldRiseAgain(CStateManager&, const CTriggerData&) const {
@@ -706,14 +742,39 @@ bool CDarkSamus::StartsInTheAir(CStateManager&, const CTriggerData&) const {
   return (mFlags90C & 0x40) != 0;
 }
 
+// fn_10_10698 (0x00010698, 0x5C bytes): the trigger answers when the damage the actor has taken
+// (the float at 0xCC0) is above the threshold (the float at 0xCC8): the fcmpo at 0x000106E8
+// and the extrwi at 0x000106F0, which takes the CR0 bit 1 - the "greater than" of an fcmpo
+// (bit 0 is the "less than") - so the test is 0xCC0 > 0xCC8.
+//
+// Two guards come first. The attack the actor is performing (the word at 0x980) must not be
+// 0x8000: the cmplwi at 0x000106A0 compares the low half of the word (bits 16..31) with
+// 0x8000, so the test is (id & 0xFFFF) == 0x8000. And when the actor has a history (the count
+// at 0x994, the ids at 0x998), the last id of the history (the word at 0x998 + (count - 1) * 4,
+// the slwi/add at 0x000106BC..0x000106C8) must not be 0x8000 either (0x000106D0).
 bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10698", "trigger TooMuchDamage");
-  return false;
+  if ((mCurrentAttack & 0xFFFF) == 0x8000) {
+    return false;
+  }
+  if (mAttackHistoryCount > 0 &&
+      (mAttackHistory[mAttackHistoryCount - 1] & 0xFFFF) == 0x8000) {
+    return false;
+  }
+  return mAccumulatedDamage > mDamageThreshold;
 }
 
+// fn_10_F800 (0x0000F800, 0x40 bytes): the trigger answers when the actor has been at its cover
+// point for more than 1.2 seconds (the float at 0x964 against lbl_10_rodata_42C = 1.2f: the
+// fcmpo at 0x0000F80C and the ble at 0x0000F810, so the test is 0x964 > 1.2f) - and otherwise
+// when more than 0.2 seconds have passed since the last wall collision (the float at 0xC44 plus
+// lbl_10_rodata_428 = 0.2f against the elapsed time at 0x8B0: the fadds at 0x0000F82C, the
+// fcmpo at 0x0000F830 and the extrwi at 0x0000F838, which takes the CR0 bit 1 - the "greater
+// than" of an fcmpo).
 bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_F800", "trigger WallCollision");
-  return false;
+  if (mTimeAtCoverPoint > 1.2f) {
+    return true;
+  }
+  return (0.2f + mLastWallHitTime) > mElapsedTime;
 }
 
 bool CDarkSamus::WasHeavyHit(CStateManager&, const CTriggerData&) const {

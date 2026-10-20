@@ -62,7 +62,15 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPissedOff(0)
 , mFadeOut(0)
 , mBattleStageUid(kInvalidUniqueId)
-, mPickedAttack(0) {
+, mPickedAttack(0xFFFF)
+, mCurrentAttack(0xFFFF)
+, mAttackHistory{0, 0, 0}
+, mAttackHistoryCount(0)
+, mAccumulatedDamage(0.f)
+, mDamageThreshold(data.mDamageInterruptThreshold)
+, mTimeAtCoverPoint(0.f)
+, mLastWallHitTime(0.f)
+, mElapsedTime(0.f) {
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
   // loaded at 0x0001FB38) and its root position kRP_Center (`li r8, 0x0` at 0x0001FB5C); the area
@@ -75,6 +83,14 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // Everything else it builds - the identity transform at 0x8CC, the 'SCAN' token at 0x92C, the
   // sixteen sub-objects at 0x94C..0x1064 and the CMdl/Cskr token pair at 0xD64 - belongs to the
   // state machine and the render paths this milestone does not enter.
+  //
+  // The scalars the three TravelToCoverPoints triggers read are set to retail's defaults: the
+  // attack words at 0x980 and 0x984 are 0xFFFF (0x0001FCE4/0x0001FCE8), the count at 0x994 is 0
+  // (0x0001FCF8), the accumulated damage at 0xCC0 is 0.0f (0x0001FF58), the damage threshold at
+  // 0xCC8 is the constructor's 8th float argument (0x0001FF60 - the loader's
+  // damageInterruptThreshold, the property id 0x8f70d3f2), the cover point timer at 0x964 is
+  // 0.0f (0x0001FCB0), the wall collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed
+  // time at 0x8B0 is 0.0f (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
 }
 
@@ -89,6 +105,8 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
     return;
   }
   CPatterned::Think(dt, mgr);
+  // 0x0001B2DC: the elapsed time at 0x8B0 grows by dt, right after the base's Think.
+  mElapsedTime += dt;
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it
