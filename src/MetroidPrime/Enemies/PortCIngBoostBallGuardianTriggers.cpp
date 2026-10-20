@@ -1152,9 +1152,11 @@ void CIngBoostBallGuardian::SetExitHostDest(CStateManager& mgr, float) {
     // Retail compares the object's own area word against the Ing's (there is no active/in-use test)
     // and skips hint types 4, 14 and 15 (asm 0x00006D20..0x00006D30), types with no name in
     // CScriptAIHint::EHintType.
-    const int hintType = hint != nullptr ? static_cast< int >(hint->GetHintType()) : 0;
-    if (hint == nullptr || hint->GetCurrentAreaId() != GetCurrentAreaId() || hintType == 4 ||
-        hintType == 14 || hintType == 15) {
+    if (hint == nullptr || hint->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const int hintType = static_cast< int >(hint->GetHintType());
+    if (hintType == 4 || hintType == 14 || hintType == 15) {
       continue;
     }
     const CVector3f delta = hint->GetTranslation() - GetTranslation();
