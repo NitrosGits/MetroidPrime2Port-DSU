@@ -23,7 +23,10 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Player/CPlayerKnockBackMgr.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -207,6 +210,16 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX864_(0.f)                                             // guest 0x864
 , mX868_(-1)                                              // guest 0x868 (0x9CB4)
 , x8a4_(-1)                                               // guest 0x8A4
+, mX7d8_(0.f)                                             // guest 0x7D8 (0x9B58)
+, mX89c_(0)                                               // guest 0x89C (0x9CD0)
+, mX8a0_(0)                                               // guest 0x8A0 (0x9CE0)
+, x8a8_(-1)                                               // guest 0x8A8 (0x9CF8)
+, mX8e0_(0)                                               // guest 0x8E0 (0x9D58)
+, mX8e4_(0)                                               // guest 0x8E4 (0x9D5C)
+, mX8f8_(0.f)                                             // guest 0x8F8 (0x9D70)
+, mX8fc_(CVector3f::Zero())                               // guest 0x8FC (0x9D78..0x9D88)
+, mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
+, mBaseTurnSpeed(mTurnSpeed)                              // guest 0xE5C (0xA258)
 
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
@@ -217,6 +230,11 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
   mX830_.reserve(0x10);
   mX840_.reserve(0x10);
   mX850_.reserve(0x10);
+  // The four stage records (0xB54, 0xBC0, 0xC2C, 0xC98) are copies of the data's stage1..4.
+  mStages[0] = data.stage1;
+  mStages[1] = data.stage2;
+  mStages[2] = data.stage3;
+  mStages[3] = data.stage4;
   SetDrawShadow(false);
 }
 
@@ -293,18 +311,26 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
     StandIn("Think before kSM_AreaLoaded (no collision actors yet)");
   }
   StandInFn("fn_18_3448"); // 0x1AC
-  StandInFn("fn_18_27DC"); // 0x38C
+  MeleeContact(mgr);      // fn_18_27DC (0x38C)
   StandInFn("fn_18_22E0"); // 0x4C0
   CheckList(mgr);         // fn_18_1978 (0xDC)
   StandInFn("fn_18_1370"); // 0x1C0
   WatchObject(mgr);       // fn_18_125C (0x68)
   StandInFn("fn_18_E40");  // 0x41C
 
-  // The ing's sound (0x4A28..0x4BB8): the module's sound timer (guest 0x8F8) and direction
-  // (guest 0x8FC) drive the DOL's fn_801BF3DC, and the emitter (the handle at guest 0x908 and
-  // the object at guest 0x90C) follows the player. A stand-in: the DOL's call has no host
-  // equivalent and the emitter's position needs the object's scale (guest 0x1C0), which the
-  // host does not expose.
+  // The player knock-back (0x4A24..0x4A6C): while the timer MeleeContact set (guest 0x8F8) is
+  // above zero (rodata 0x258) it runs down by the frame time and the player is pushed along
+  // the normalised direction (guest 0x8FC) with power 100 (rodata 0x27C) and zero (rodata
+  // 0x258). The DOL's fn_801BF3DC is CPlayerKnockBackMgr::ApplyPlayerKnockBackForce.
+  if (mX8f8_ > 0.f) {
+    mX8f8_ -= dt;
+    CPlayerKnockBackMgr::ApplyPlayerKnockBackForce(*mgr.Player(0), mX8fc_.AsNormalized(), 100.f,
+                                                   0.f);
+  }
+
+  // The ing's sound (0x4A70..0x4BB8): the emitter (the handle at guest 0x908, playing per
+  // CSfxManager::IsPlaying, and the object at guest 0x90C) follows that object. A stand-in:
+  // neither member is written outside DoUserAnimEvent (fn_18_9048), itself a stand-in.
   StandInFn("fn_18_47D4 sound");
 }
 
@@ -323,9 +349,9 @@ void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
 // handler runs first (0x7B50) and then the module's own cases, one per message: the constants
 // are 0x58444D47 (kSM_Damage, 0x7B60), 0x58435254 (kSM_Create, 0x7B74), 0x58414C44
 // (kSM_AreaLoaded, 0x7B88), 0x5844454C (kSM_Delete, 0x7B98), 0x584C4155 (kSM_Launching,
-// 0x7BAC), 0x58484954 (kSM_HitObject, 0x7BC0) and 0x584F4646 (kSM_OffGround, 0x7BD4). Every
-// case is a stand-in for now: the bodies are the module's own work (the collision actor list,
-// the id lists, the boss parameters) and the ones over about 0x100 bytes are the Opus lane's.
+// 0x7BAC), 0x58484954 (kSM_HitObject, 0x7BC0) and 0x584F4646 (kSM_OffGround, 0x7BD4). Each
+// case says whether it is ported; the bodies are the module's own work (the collision actor
+// list, the id lists, the boss parameters, the launch jump).
 void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CEmperorIngStage3::AcceptScriptMsg (vtable slot 4, fn_18_7B14)");
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -419,10 +445,31 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     // writes it to CPhysicsActor::mConstantForce (guest 0x1C0..0x1C8).
     SetConstantForceWR(CVector3f(0.f, 0.f, -(GetGravityConstant() * GetMass())));
     break;
-  case kSM_Launching: // 0x7FC4, 0x184
-    // The module re-sends the message and computes the launch velocity. A stand-in.
-    StandInFn("fn_18_7B14 kSM_Launching");
+  case kSM_Launching: { // 0x7FC4, 0x184
+    // The base class gets an off-ground message from the launcher (the message's sender, this
+    // actor's id, 0x7FC4..0x8014) - CPatterned's handler, not this one - and the off-ground
+    // force is written as in kSM_OffGround (mass times gravity along the down vector).
+    CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround));
+    const float gravity = GetGravityConstant();
+    SetConstantForceWR(CVector3f(0.f, 0.f, -(GetMass() * gravity)));
+    // The jump to the launch target (guest 0x910): the apex is 7.5 (rodata 0x304) above the
+    // higher of the actor and the target; the upward speed reaches it, and the flight time is
+    // the rise plus the fall to the target's height (0x80D4..0x811C). The flat speed covers the
+    // flat distance in that time (0x8130..0x8138).
+    const CVector3f& mine = GetTranslation();
+    const float dx = mX910_.GetX() - mine.GetX();
+    const float dy = mX910_.GetY() - mine.GetY();
+    float top = mX910_.GetZ();
+    if (mine.GetZ() >= top) {
+      top = mine.GetZ();
+    }
+    const float apex = 7.5f + top;
+    const float up = CMath::SqrtF(2.f * gravity * (apex - mine.GetZ())); // rodata 0x274
+    const float time = up / gravity + CMath::SqrtF(2.f * (apex - mX910_.GetZ()) / gravity);
+    const float inverse = 1.f / time; // rodata 0x264
+    SetVelocityWR(CVector3f(inverse * dx, inverse * dy, up));
     break;
+  }
   default:
     break;
   }
@@ -572,12 +619,58 @@ CVector3f CEmperorIngStage3::DarkBeamLocatorPosition() const {
   return (GetTransform() * locator).GetTranslation();
 }
 
-// fn_18_2298 (0x24): the taunt average over the module's bone list. Its own callee fn_18_AB9C
-// (0x64) walks the list at guest 0x840, which the port does not model, so this stays a
-// stand-in: it names the retail function once and answers the neutral zero.
-float CEmperorIngStage3::TauntAverage() const {
-  StandInFn("fn_18_2298");
-  return 0.f;
+// fn_18_2298 (0x24): the average (fn_18_AB9C) over the taunt list at guest 0x840 (`addi r3,
+// r3, 0x840` at 0x22A0), the list AddTauntEntry (fn_18_2B68) fills.
+float CEmperorIngStage3::TauntAverage() const { return ListAverage(mX840_); }
+
+// @ fn_18_27DC
+// fn_18_27DC (0x38C): the melee contact. While the melee flag (0x40 at guest 0x824) is set and
+// the player has touch bounds, the three leg locator pairs (rodata 0x90: F_knee/F_end,
+// L_F_knee/L_F_end, R_F_knee/R_F_end) each make a box - both locators' positions in world
+// space, grown by 2.5 (rodata 0x298) each way. The first box that meets the player's deals the
+// melee damage (guest 0x9F0) with the solid-only filter (data 0x0: 1 << 59, the include-exclude
+// type 3), puts the player in kMS_ApplyJump (2), starts the knock-back (the flat direction to
+// the player, its Z set to 1.5 - rodata 0x29C - and normalised again, for 0.5 seconds -
+// rodata 0x2A0) and clears the melee flag.
+void CEmperorIngStage3::MeleeContact(CStateManager& mgr) {
+  if ((x824_ & 0x40) == 0) { // 0x2800: extrwi 1,25 is the byte's 0x40
+    return;
+  }
+  CPlayer& player = *mgr.Player(0);
+  const rstl::optional_object< CAABox > touch = player.GetTouchBounds(); // vtable slot 0x48
+  if (!touch) {
+    return;
+  }
+  static const char* const kLocators[6] = {"F_knee",   "F_end",   "L_F_knee",
+                                           "L_F_end",  "R_F_knee", "R_F_end"};
+  const CAnimData* animData = GetModelData()->GetAnimationData();
+  for (int i = 0; i < 3; ++i) {
+    const CSegId first = animData->GetLocatorSegId(rstl::string_l(kLocators[i * 2]));
+    const CSegId second = animData->GetLocatorSegId(rstl::string_l(kLocators[i * 2 + 1]));
+    CAABox box = CAABox::MakeMaxInvertedBox();
+    box.AccumulateBounds(GetTransform() * GetScaledLocatorTransform(first).GetTranslation());
+    box.AccumulateBounds(GetTransform() * GetScaledLocatorTransform(second).GetTranslation());
+    const CVector3f grownMin(box.GetMinPoint().GetX() - 2.5f, box.GetMinPoint().GetY() - 2.5f,
+                             box.GetMinPoint().GetZ() - 2.5f);
+    const CVector3f grownMax(box.GetMaxPoint().GetX() + 2.5f, box.GetMaxPoint().GetY() + 2.5f,
+                             box.GetMaxPoint().GetZ() + 2.5f);
+    box.AccumulateBounds(grownMin);
+    box.AccumulateBounds(grownMax);
+    if (touch->DoBoundsOverlap(box)) {
+      mgr.ApplyDamage(GetUniqueId(), player.GetUniqueId(), GetUniqueId(), mMeleeDamage,
+                      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                                          CMaterialList()),
+                      CVector3f::Zero()); // the DOL's fn_8003E25C
+      player.SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+      mX8fc_ = PlayerDirection(mgr); // fn_18_2D1C
+      mX8fc_.Normalize();
+      mX8fc_.SetZ(1.5f);
+      mX8fc_.Normalize();
+      mX8f8_ = 0.5f;
+      x824_ &= ~0x40; // 0x2B30 (rlwimi 6,25,25)
+      return;
+    }
+  }
 }
 
 // fn_18_1A54 (0xE0): the look along the actor's facing. The ray starts at the furthest point of
@@ -816,9 +909,9 @@ void CEmperorIngStage3::UpdateTargetMaterials(CStateManager& mgr) {
   RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
 }
 
-// fn_18_22BC (0x24): the module's average over the list at guest 0x840, which its own callee
-// fn_18_AB9C (0x64) computes.
-float CEmperorIngStage3::BoneAverage() const { return ListAverage(mX840_); }
+// fn_18_22BC (0x24): the module's average (fn_18_AB9C) over the list at guest 0x830 (`addi r3,
+// r3, 0x830` at 0x22C4).
+float CEmperorIngStage3::BoneAverage() const { return ListAverage(mX830_); }
 
 // fn_18_AB9C (0x64): the weighted average over a list: every entry counts its weight times
 // what is left of its threshold (one minus the timer over the threshold, capped at one).
@@ -1250,14 +1343,46 @@ bool CEmperorIngStage3::ShouldLightBeamAttack(CStateManager& mgr, const CTrigger
   return mAction == 4;
 }
 
+// @ fn_18_87F0
+// fn_18_87F0 (0x164): the light swarm when the player is low on beam ammo and the light swarm is
+// possible (fn_18_4468), else when ChoseAction picked it (the action at guest 0x7E8 is 2).
 bool CEmperorIngStage3::ShouldLightSwarmAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_87F0");
-  return false;
+  // The player's light ammo (item 0x2E) or dark ammo (item 0x2D) under a tenth (rodata 0x28C)
+  // of its capacity, the amount read with the query flag set (`li r5, 0x1`).
+  const CPlayerState& state = *mgr.GetPlayerState(0);
+  const float light =
+      0.1f * static_cast< float >(state.GetItemCapacity(CPlayerState::kIT_LightAmmo));
+  bool low = static_cast< float >(state.GetItemAmount(CPlayerState::kIT_LightAmmo, true)) < light;
+  if (!low) {
+    const float dark =
+        0.1f * static_cast< float >(state.GetItemCapacity(CPlayerState::kIT_DarkAmmo));
+    low = static_cast< float >(state.GetItemAmount(CPlayerState::kIT_DarkAmmo, true)) < dark;
+  }
+  if (low && CanLightSwarm(mgr)) {
+    return true;
+  }
+  return mAction == 2;
 }
 
+// @ fn_18_868C
+// fn_18_868C (0x164): the dark fliers when the player is low on beam ammo and the fliers are
+// possible (fn_18_436C), else when ChoseAction picked them (the action is 6).
 bool CEmperorIngStage3::ShouldGenerateDarkFliers(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_868C");
-  return false;
+  // The player's light ammo (item 0x2E) or dark ammo (item 0x2D) under a tenth (rodata 0x28C)
+  // of its capacity, the amount read with the query flag set (`li r5, 0x1`).
+  const CPlayerState& state = *mgr.GetPlayerState(0);
+  const float light =
+      0.1f * static_cast< float >(state.GetItemCapacity(CPlayerState::kIT_LightAmmo));
+  bool low = static_cast< float >(state.GetItemAmount(CPlayerState::kIT_LightAmmo, true)) < light;
+  if (!low) {
+    const float dark =
+        0.1f * static_cast< float >(state.GetItemCapacity(CPlayerState::kIT_DarkAmmo));
+    low = static_cast< float >(state.GetItemAmount(CPlayerState::kIT_DarkAmmo, true)) < dark;
+  }
+  if (low && CanDarkFlier(mgr)) {
+    return true;
+  }
+  return mAction == 6;
 }
 
 // fn_18_8678 (0x8678): the action (guest 0x7E8) is 5.
@@ -1444,8 +1569,56 @@ void CEmperorIngStage3::GainDistance(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_18_71D8
+// fn_18_71D8 (0x32C): the "Stampede" state. Activate (0x7218) sets the animation state to
+// `kAS_Ready`, sets the stampede flag (0x20 at guest 0x824), clears the stampede-react flag
+// (0x01 at guest 0x825) and halves the turn speed (rodata 0x2A0 times guest 0xE5C). Update
+// (0x7258) issues the loop attack while the body can take one (type 6 when 0x04 at guest 0x825
+// is set, else 4); otherwise, while 0x20 at guest 0x825 is set and the player is over 15 units
+// away (fn_18_2CB8, rodata 0x2B4), it steers at the player (the command manager's target vector,
+// fn_18_2D1C). It then looks 15 units along the flat facing (fn_18_2C98) from the actor's
+// position with the pass-everything filter, and exits the state when the state time is over 5
+// (rodata 0x2BC) or the ray hit. Deactivate (0x74A4) restores the turn speed, clears the three
+// flags and the attack-cooldown timer (guest 0x7D0).
 void CEmperorIngStage3::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_71D8");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x7220, the value one
+    x824_ |= 0x20;                                        // 0x7230 (rlwimi 5,26,26)
+    x825_ &= ~0x01;                                       // 0x723C (rlwimi 0,31,31)
+    BodyController()->SetTurnSpeed(0.5f * mBaseTurnSpeed); // rodata 0x2A0
+    break;
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      // 0x7274: extrwi 1,29 is the byte's 0x04.
+      const pas::ELoopAttackType type =
+          static_cast< pas::ELoopAttackType >((x825_ & 0x04) != 0 ? 6 : 4);
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(type, false));
+      break;
+    }
+    // 0x7398: extrwi 1,26 is the byte's 0x20.
+    if ((x825_ & 0x20) != 0 && PlayerDistance(mgr) > 15.f) { // fn_18_2CB8, rodata 0x2B4
+      BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+    }
+    const CRayCastResult result = mgr.RayStaticIntersection(
+        GetTranslation(), FlatFacing(), 15.f, CMaterialFilter()); // fn_18_2C98, 0x7430
+    const CRayCastResult copy = CopyRayResult(result);             // fn_18_3AC
+    if (mStateMachine->GetTime() > 5.f || copy.IsValid()) {        // rodata 0x2BC, sp+0xC0
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x7490
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x74A8, the value zero
+    BodyController()->SetTurnSpeed(mBaseTurnSpeed);           // guest 0xE5C
+    x824_ &= ~0x20;                                           // 0x74C0 (rlwimi 5,26,26)
+    x825_ &= ~0x04;                                           // 0x74D4 (rlwimi 2,29,29)
+    x825_ &= ~0x20;                                           // 0x74E0 (rlwimi 5,26,26)
+    mX7d0_ = 0.f;                                             // rodata 0x258
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_18_6E80 (0x358): the "Dodge" state. Its activate path (0x6EC0) clears the dodge flag
@@ -1509,12 +1682,91 @@ void CEmperorIngStage3::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_18_6D84
+// fn_18_6D84 (0xFC): the "Taunt" state. Activate (0x6DBC) sets the animation state to
+// `kAS_Ready`, adds a taunt entry of kind 2 (fn_18_2B68) and sets the taunt type (guest 0x8A8)
+// to 1. Update (0x6DD8) issues the taunt while the body can take one (state 0x10). Deactivate
+// (0x6E58) clears the animation state and the taunt timer (guest 0x7C8).
 void CEmperorIngStage3::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6D84");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6DC4, the value one
+    AddTauntEntry(2);                                     // fn_18_2B68
+    x8a8_ = 1;                                            // 0x6DD0
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCTauntCmd(static_cast< pas::ETauntType >(x8a8_))); // 0x6E28
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6E60, the value zero
+    mX7c8_ = 0.f;                                            // rodata 0x258
+    break;
+  default:
+    break;
+  }
 }
 
+// @ fn_18_408
+// fn_18_408 (0xC8): the heart ChangeVulnerability turns on. With a roll (Range(0, 1), rodata
+// 0x258/0x264) under 0.3 (rodata 0x268) and the two heart counts (guest 0x89C, 0x8A0) one
+// apart, the heart counted less is picked again (1 when 0x89C is the smaller, else 2);
+// otherwise the other one (2 when 0x89C is the smaller, else 1). Heart 2 counts at 0x89C, heart
+// 1 at 0x8A0.
+int CEmperorIngStage3::PickHeart(CStateManager& mgr) {
+  int heart;
+  if (mgr.Random()->Range(0.f, 1.f) < 0.3f && abs(mX89c_ - mX8a0_) == 1) {
+    heart = mX89c_ < mX8a0_ ? 1 : 2;
+  } else {
+    heart = mX89c_ < mX8a0_ ? 2 : 1;
+  }
+  if (heart == 2) {
+    ++mX89c_;
+  } else {
+    ++mX8a0_;
+  }
+  return heart;
+}
+
+// @ fn_18_6A40
+// fn_18_6A40 (0x140): the "ChangeVulnerability" state. Activate (0x6A80) sets the animation state
+// to `kAS_Ready` and clears the action history (guest 0x7EC); from the vulnerability states 0
+// and 1 it goes to 2 and turns a heart on (fn_18_408, fn_18_1DF4 with the flag set), from 2 and
+// 3 back to 0 with the enraged heart (heart 0). Update (0x6B4C) sets the animation state to
+// `kAS_Over` every frame. Deactivate (0x6B58) restarts the vulnerable-damage timer (guest 0x810)
+// at the data's vulnerableTime (guest 0xB4C).
 void CEmperorIngStage3::ChangeVulnerability(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6A40");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6A88, the value one
+    mActionHistory.clear();                               // 0x6AD8
+    switch (mVulnerabilityState) {
+    case 0:
+    case 1:
+      mVulnerabilityState = 2;                    // 0x6B08
+      SetHeartState(mgr, PickHeart(mgr), true);   // fn_18_408, fn_18_1DF4
+      break;
+    case 2:
+    case 3:
+      mVulnerabilityState = 0;                    // 0x6B30
+      SetHeartState(mgr, 0, true);                // fn_18_1DF4
+      break;
+    default:
+      break;
+    }
+    break;
+  case kStateMsg_Update:
+    mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6B50, the value three
+    break;
+  case kStateMsg_Deactivate:
+    mX810_ = mVulnerableTime;                                // 0x6B60
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B64, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::EyeShutResetVulnerability(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1541,8 +1793,31 @@ void CEmperorIngStage3::GenerateDarkFliers(CStateManager& mgr, EStateMsg msg, fl
   StandInFn("fn_18_6258");
 }
 
+// @ fn_18_60AC
+// fn_18_60AC (0x14C): the "PortalAttack" state. Activate (0x60E4) clears the portal count (guest
+// 0x8E0) and sets the animation state to `kAS_Ready`. Update (0x60F8) issues the projectile
+// attack (severity 2, a zero target, no blend) while the body can take one (state 0x12); the
+// shot itself is the animation event's. Deactivate (0x61C0) moves on to the next of the four
+// portals (guest 0x8E4, the signed remainder of the increment by four).
 void CEmperorIngStage3::PortalAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_60AC");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mX8e0_ = 0;                                           // 0x60EC
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x60F0, the value one
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Two, CVector3f::Zero(), false)); // 0x6170
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mX8e4_ = (mX8e4_ + 1) % 4;                               // 0x61C0..0x61E0
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x61E4, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1611,12 +1886,160 @@ void CEmperorIngStage3::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_18_4C3C");
 }
 
-void CEmperorIngStage3::ResetAttackTimer(CStateManager& mgr, float dt) {
-  StandInFn("fn_18_84A8");
+// @ fn_18_B04
+// fn_18_B04 (0xB4): the stage record for the actor's health: the percentage (100, rodata 0x27C,
+// times the health info's hp over its initial hp, the vtable slot 0x3C) is checked against each
+// stage's minHealthPercentage in turn; past the third the fourth stage applies.
+const SLdrEmperorIngStage3Stage& CEmperorIngStage3::CurrentStage() {
+  const float initial = HealthInfo()->GetInitialHP(); // 0xB30
+  const float percent = 100.f * HealthInfo()->GetHP() / initial; // 0xB4C..0xB5C
+  for (int i = 0; i < 3; ++i) {
+    if (percent > mStages[i].minHealthPercentage) {
+      return mStages[i];
+    }
+  }
+  return mStages[3];
 }
 
+// @ fn_18_AA4
+// fn_18_AA4 (0x60): the stage's action record: 0 stampede (+0xC), 1 jump slide, 2 light swarm,
+// 3 dark beam, 4 light beam, 5 portal attack, 6 dark flier (+0x54); null past six.
+const SLdrEmperorIngStage3Action* CEmperorIngStage3::StageAction(
+    const SLdrEmperorIngStage3Stage& stage, int action) {
+  switch (action) {
+  case 0: return &stage.stampede;
+  case 1: return &stage.jumpSlide;
+  case 2: return &stage.lightSwarm;
+  case 3: return &stage.darkBeam;
+  case 4: return &stage.lightBeam;
+  case 5: return &stage.portalAttack;
+  case 6: return &stage.darkFlier;
+  default: return nullptr;
+  }
+}
+
+// @ fn_18_458C
+// fn_18_458C (0x28): the stampede's look check at 60 degrees (rodata 0x2E4).
+bool CEmperorIngStage3::CanStampede(CStateManager& mgr) const { return RandomCheck(mgr, 60.f); }
+
+// @ fn_18_431C
+// fn_18_431C (0x28): the jump slide's look check at 90 degrees (rodata 0x2CC).
+bool CEmperorIngStage3::CanJumpSlide(CStateManager& mgr) const { return RandomCheck(mgr, 90.f); }
+
+// @ fn_18_4344
+// fn_18_4344 (0x28): the portal attack's look check at 45 degrees (rodata 0x2D0).
+bool CEmperorIngStage3::CanPortalAttack(CStateManager& mgr) const {
+  return RandomCheck(mgr, 45.f);
+}
+
+// @ fn_18_4468
+// fn_18_4468 (0x5C): the light swarm needs heart 2 (guest 0x868), no watched object (guest
+// 0x8C0) and the look check at 90 degrees (rodata 0x2CC).
+bool CEmperorIngStage3::CanLightSwarm(CStateManager& mgr) const {
+  return mX868_ == 2 && mX8c0_ == kInvalidUniqueId.Value() && RandomCheck(mgr, 90.f);
+}
+
+// @ fn_18_44C4
+// fn_18_44C4 (0x64): the light beam needs no watched object, heart 2 and the look check at 40
+// degrees (rodata 0x2E0).
+bool CEmperorIngStage3::CanLightBeam(CStateManager& mgr) const {
+  if (mX8c0_ != kInvalidUniqueId.Value()) {
+    return false;
+  }
+  return mX868_ == 2 && RandomCheck(mgr, 40.f);
+}
+
+// @ fn_18_4528
+// fn_18_4528 (0x64): the dark beam needs no watched object, heart 1 and the look check at 40
+// degrees (rodata 0x2E0).
+bool CEmperorIngStage3::CanDarkBeam(CStateManager& mgr) const {
+  if (mX8c0_ != kInvalidUniqueId.Value()) {
+    return false;
+  }
+  return mX868_ == 1 && RandomCheck(mgr, 40.f);
+}
+
+// @ fn_18_436C
+// fn_18_436C (0xFC): the dark fliers need heart 1 and the look check at 90 degrees (rodata
+// 0x2CC); a swarm still alive (the id at guest 0x8C2, more than a tenth - rodata 0x28C - of its
+// boids active, CSwarmBasics::EvaluateActiveBoidCount against the boid vector's size) blocks
+// them, and the dark-flier timer (guest 0x7D8) has to be at least 10 (rodata 0x294).
+bool CEmperorIngStage3::CanDarkFlier(CStateManager& mgr) const {
+  if (mX868_ != 1) {
+    return false;
+  }
+  if (!RandomCheck(mgr, 90.f)) {
+    return false;
+  }
+  if (const CSwarmBasics* swarm = TCastToPtr< CSwarmBasics >(mgr.ObjectById(TUniqueId(x8c2_)))) {
+    // fn_80_1280 is CSwarmBasics::EvaluateActiveBoidCount (SwarmBasics symbols); +0x17C is the
+    // boid vector's size.
+    if (static_cast< float >(swarm->EvaluateActiveBoidCount()) >
+        0.1f * static_cast< float >(swarm->GetBoidCount())) {
+      return false;
+    }
+  }
+  return mX7d8_ >= 10.f;
+}
+
+// @ fn_18_84A8
+// fn_18_84A8 (0x58): the attack timer (guest 0x7E4) restarts at a random time between the
+// current stage's min and max time between attacks, and the action (guest 0x7E8) is cleared.
+void CEmperorIngStage3::ResetAttackTimer(CStateManager& mgr, float dt) {
+  const SLdrEmperorIngStage3Stage& stage = CurrentStage(); // fn_18_B04
+  mAttackTimer = mgr.Random()->Range(stage.minTimeBetweenAttacks, stage.maxTimeBetweenAttacks);
+  mAction = -1;
+}
+
+// @ fn_18_8200
+// fn_18_8200 (0x1F8): the action pick. Each of the seven actions (fn_18_AA4) scores its chance,
+// less its modifier once for every time it is in the action history (guest 0x7EC/0x7F0); a
+// disabled action, or one whose check fails (the jump table at data 0x654), scores -FLT_MAX
+// (rodata 0x308). The best score above -FLT_MAX wins (the first on a tie; -1 when none), and is
+// pushed onto the eight-entry history, dropping the oldest when it is full (fn_18_83F8).
 void CEmperorIngStage3::ChoseAction(CStateManager& mgr, float dt) {
-  StandInFn("fn_18_8200");
+  const SLdrEmperorIngStage3Stage& stage = CurrentStage(); // fn_18_B04
+  float scores[7];
+  for (int i = 0; i < 7; ++i) {
+    float score = -FLT_MAX; // rodata 0x308
+    const SLdrEmperorIngStage3Action* action = StageAction(stage, i);
+    if (action->enabled) {
+      score = action->chance;
+      for (int j = 0; j < mActionHistory.size(); ++j) {
+        if (mActionHistory[j] == i) {
+          score -= action->modifier;
+        }
+      }
+    }
+    bool possible;
+    switch (i) {
+    case 0: possible = CanStampede(mgr); break;     // fn_18_458C
+    case 1: possible = CanJumpSlide(mgr); break;    // fn_18_431C
+    case 2: possible = CanLightSwarm(mgr); break;   // fn_18_4468
+    case 3: possible = CanDarkBeam(mgr); break;     // fn_18_4528
+    case 4: possible = CanLightBeam(mgr); break;    // fn_18_44C4
+    case 5: possible = CanPortalAttack(mgr); break; // fn_18_4344
+    case 6: possible = CanDarkFlier(mgr); break;    // fn_18_436C
+    default: possible = true; break;
+    }
+    if (!possible) {
+      score = -FLT_MAX;
+    }
+    scores[i] = score;
+  }
+  int best = -1;
+  float bestScore = -FLT_MAX;
+  for (int i = 0; i < 7; ++i) {
+    if (scores[i] > bestScore) {
+      best = i;
+      bestScore = scores[i];
+    }
+  }
+  mAction = best;
+  if (mActionHistory.size() == 8) {
+    mActionHistory.erase(mActionHistory.begin()); // fn_18_83F8
+  }
+  mActionHistory.push_back(mAction);
 }
 
 // ---------------------------------------------------------------------------------------------
