@@ -386,7 +386,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 
 | slice | functions | note |
 |---|---|---|
-| ~~grapple~~ ported | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`); the run that has to reach it is the A.11 row below. Morphing is `press x` (`morphIntoBall` is function-list 17) and the player must stay inside the puddle's touch box |
+| ~~grapple~~ ported | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`); the run that reaches it is the row below (A.12). Morphing is `press x` (`morphIntoBall` is function-list 17) and the player must stay inside the puddle's touch box |
 | ~~arm swipe~~ done | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | ported + `// @` 2026-10-20 (`1b058f9a4`); see A.7 |
 | ~~suck~~ done | `fn_29_76B8` SuckEnergy (0x778) | ported 2026-10-20, `// @`; see A.8. It also exposed a field-name shift in `CIngBodyProjectileData` (A.3) |
 | ~~splat~~ done | `fn_29_4F14` SplatOntoMesh (0x238) | ported 2026-10-20, `// @` (probe-driven); see A.8 |
