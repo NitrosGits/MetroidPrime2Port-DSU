@@ -80,21 +80,46 @@ The constructor also ends with `SetDrawShadow(this, 0)` (0xA2D0).
 three name tables to the machine: the triggers (`lbl_18_data_34C`, 21 entries) through the
 machine's vtable slot +0x18 (0x9470), the states (`lbl_18_data_100`, 21 entries) through +0x14
 (0x9490) and the codes (`lbl_18_data_4B4`, 2 entries) through +0x1C (0x94B0). Each table holds
-28 three-word entries; the ones the machine uses carry the node name, the rest are empty.
+28 four-word entries {name, 0, 0xFFFFFFFF, fn}; the machine uses the first 21 (or 2) and the rest
+are empty. The static initialiser `fn_18_E180` copies the function pointers out of the .data
+records {0, 0xFFFFFFFF, fn}: the states' twenty-one at 0x4..0xF4, the triggers' twenty-one at
+0x250..0x344 and the codes' two at 0x49C..0x4A8.
 
-| table | the names it holds |
+| table | entry -> the retail function |
 |---|---|
-| triggers (21) | TooClose, ShouldTaunt, ShouldChangeVulnerabilityToVulnerable, ShouldLightBeamAttack, ShouldGenerateDarkFliers, ShouldGrowHeart, AbortedJumpSlide |
-| states (21) | Start, GainDistance, Taunt, DarkBeamAttack, GroundPound, JumpSlideAttack, JumpAttack |
-| codes (2) | ResetAttackTimer |
+| triggers (lbl_18_data_34C) | TooClose `8DA4`, ShouldAttack `8D88`, ShouldMeleeAttack `8C4C`, ShouldTaunt `8A4C`, ShouldStampede `897C`, ShouldDodge `8A34`, ShouldChangeVulnerabilityToVulnerable `8A20`, ShouldChangeVulnerabilityToInvulnerable `898C`, ShouldDarkBeamAttack `8968`, ShouldLightBeamAttack `8954`, ShouldLightSwarmAttack `87F0`, ShouldGroundPound `8ACC`, ShouldGenerateDarkFliers `868C`, ShouldPortalAttack `8678`, ShouldJumpSlideAttack `8664`, ShouldGrowHeart `8648`, JumpSlideAttackOver `8600`, ShouldEyeShut `85A4`, AbortedJumpSlide `858C`, ShouldJumpAttack `8518`, ShouldStampedeReact `8500` |
+| states (lbl_18_data_100) | Start `7ADC`, Idle `788C`, MeleeAttack `76D0`, GainDistance `7504`, Stampede `71D8`, Dodge `6E80`, Taunt `6D84`, ChangeVulnerability `6A40`, EyeShutResetVulnerability `6B80`, DarkBeamAttack `6904`, LightBeamAttack `67C0`, LightSwarmAttack `6698`, GroundPound `6390`, GenerateDarkFliers `6258`, PortalAttack `60AC`, JumpSlideAttack `5844`, GrowHeart `5614`, EyeShut `5264`, JumpAttack `4EB4`, StampedeReact `4CC8`, Dead `4C3C` |
+| codes (lbl_18_data_4B4) | ResetAttackTimer `84A8`, ChoseAction `8200` |
 
-The function pointers live in the module's `.data` records and are written by a static initialiser,
-so the port registers its own tables when the FSM is ported.
+The port registers the three tables with these names and the module's own member functions; the
+eleven triggers whose retail body is 0x40 bytes or less are ported:
 
-## 5. Runtime (milestone 1)
+| trigger | the retail body |
+|---|---|
+| ShouldAttack `8D88` | the attack timer (0x7E4) against zero (rodata 0x258) |
+| ShouldStampede `897C` | the action (0x7E8) is 0 |
+| ShouldDodge `8A34` | the flag word 0x824's bit 28 (the mask 0x08) is set |
+| ShouldChangeVulnerabilityToVulnerable `8A20` | the vulnerability state (0x7C4) is 1 |
+| ShouldDarkBeamAttack `8968` | the action (0x7E8) is 3 |
+| ShouldLightBeamAttack `8954` | the action (0x7E8) is 4 |
+| ShouldPortalAttack `8678` | the action (0x7E8) is 5 |
+| ShouldJumpSlideAttack `8664` | the action (0x7E8) is 1 |
+| ShouldGrowHeart `8648` | the vulnerable damage threshold (0x814) against rodata 0x310 (1.1920929e-07f) |
+| AbortedJumpSlide `858C` | the flag word 0x824's bit 29 (the mask 0x400) is set |
+| ShouldStampedeReact `8500` | the flag word 0x824's bits 8..14 (the mask 0x7F00) are not zero |
+
+The other thirty-three FSM functions are stand-ins that log the retail function they stand in for.
+
+## 5. Runtime
 
 Great Temple world `863fcd72`, area 11 (`07_temple_mothlordsanctuary_dark`), layer 4: the actor
 registers, takes kSM_Create and runs Think every frame. The run's log shows the module's stand-ins
 firing (`[emp3] ... Think`, `AcceptScriptMsg`, `PreRender`, `DoUserAnimEvent`,
-`GetSortingBounds`, `SetupStateMachine`), `grep -c '[port] caught\|reach-stub'` = 0 and the run
-ends on the frame limit (3200 frames, 45 s).
+`GetSortingBounds`, `Render`), `grep -c '[port] caught\|reach-stub'` = 0 and the run ends on the
+frame limit (3200 frames, 45 s).
+
+With the state machine registered (milestone 2) the run also reaches the FSM: the states entered
+are **Start** (`fn_18_7ADC`) and **Idle** (`fn_18_788C`), and the triggers the run evaluates are
+TooClose `8DA4`, ShouldMeleeAttack `8C4C`, ShouldGroundPound `8ACC`, ShouldTaunt `8A4C`,
+ShouldChangeVulnerabilityToInvulnerable `898C`, ShouldEyeShut `85A4` and ShouldJumpAttack
+`8518` (the eleven ported triggers answer silently).

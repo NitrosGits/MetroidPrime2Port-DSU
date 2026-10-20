@@ -39,6 +39,96 @@ void StandIn(const char* what) {
   fprintf(stderr, "[emp3] %s is a port stand-in (see PortCEmperorIngStage3.cpp)\n", what);
 }
 
+// The same, for the state machine's own functions: the message names the retail function the
+// entry stands in for, so the log says which of the module's FSM functions the run reached.
+void StandInFn(const char* fn) {
+  static const char* sSeen[64] = {};
+  static int sCount = 0;
+  for (int i = 0; i < sCount; ++i) {
+    if (sSeen[i] == fn) {
+      return;
+    }
+  }
+  if (sCount < 64) {
+    sSeen[sCount++] = fn;
+  }
+  fprintf(stderr, "[emp3] stand-in %s\n", fn);
+}
+
+// The body's three FSM tables. Retail builds them in a static initialiser (fn_18_E180): the
+// tables are lbl_18_data_100 (21 states, .data 0x100), lbl_18_data_34C (21 triggers, .data 0x34C)
+// and lbl_18_data_4B4 (2 codes, .data 0x4B4), each entry 16 bytes {name, 0, 0xFFFFFFFF, fn}, and
+// the function pointers come from the three-word records {0, 0xFFFFFFFF, fn} in .data: the states'
+// twenty-one at 0x4..0xF4, the triggers' twenty-one at 0x250..0x344 and the codes' two at
+// 0x49C..0x4A8.
+//
+// On the host the table addresses are irrelevant: the state machine matches a node by its name,
+// so the name strings are retail's and the entry's function is the module's member function.
+// The members are cast the way the DigitalGuardian, SpacePirate and EmperorIngStage1 ports do it.
+#define EMP3_TRIGGER(name)                                                                          \
+  { #name, reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CEmperorIngStage3::name) }
+#define EMP3_STATE(name)                                                                            \
+  { #name, reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CEmperorIngStage3::name) }
+#define EMP3_CODE(name)                                                                             \
+  { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CEmperorIngStage3::name) }
+
+CPatterned::StateMachine::STriggerFunction skTriggers[] = {
+    EMP3_TRIGGER(TooClose),
+    EMP3_TRIGGER(ShouldAttack),
+    EMP3_TRIGGER(ShouldMeleeAttack),
+    EMP3_TRIGGER(ShouldTaunt),
+    EMP3_TRIGGER(ShouldStampede),
+    EMP3_TRIGGER(ShouldDodge),
+    EMP3_TRIGGER(ShouldChangeVulnerabilityToVulnerable),
+    EMP3_TRIGGER(ShouldChangeVulnerabilityToInvulnerable),
+    EMP3_TRIGGER(ShouldDarkBeamAttack),
+    EMP3_TRIGGER(ShouldLightBeamAttack),
+    EMP3_TRIGGER(ShouldLightSwarmAttack),
+    EMP3_TRIGGER(ShouldGroundPound),
+    EMP3_TRIGGER(ShouldGenerateDarkFliers),
+    EMP3_TRIGGER(ShouldPortalAttack),
+    EMP3_TRIGGER(ShouldJumpSlideAttack),
+    EMP3_TRIGGER(ShouldGrowHeart),
+    EMP3_TRIGGER(JumpSlideAttackOver),
+    EMP3_TRIGGER(ShouldEyeShut),
+    EMP3_TRIGGER(AbortedJumpSlide),
+    EMP3_TRIGGER(ShouldJumpAttack),
+    EMP3_TRIGGER(ShouldStampedeReact),
+};
+
+CPatterned::StateMachine::SStateFunction skStates[] = {
+    EMP3_STATE(Start),
+    EMP3_STATE(Idle),
+    EMP3_STATE(MeleeAttack),
+    EMP3_STATE(GainDistance),
+    EMP3_STATE(Stampede),
+    EMP3_STATE(Dodge),
+    EMP3_STATE(Taunt),
+    EMP3_STATE(ChangeVulnerability),
+    EMP3_STATE(EyeShutResetVulnerability),
+    EMP3_STATE(DarkBeamAttack),
+    EMP3_STATE(LightBeamAttack),
+    EMP3_STATE(LightSwarmAttack),
+    EMP3_STATE(GroundPound),
+    EMP3_STATE(GenerateDarkFliers),
+    EMP3_STATE(PortalAttack),
+    EMP3_STATE(JumpSlideAttack),
+    EMP3_STATE(GrowHeart),
+    EMP3_STATE(EyeShut),
+    EMP3_STATE(JumpAttack),
+    EMP3_STATE(StampedeReact),
+    EMP3_STATE(Dead),
+};
+
+CPatterned::StateMachine::SCodeFunction skCodes[] = {
+    EMP3_CODE(ResetAttackTimer),
+    EMP3_CODE(ChoseAction),
+};
+
+#undef EMP3_TRIGGER
+#undef EMP3_STATE
+#undef EMP3_CODE
+
 } // namespace
 
 // fn_18_9A8C. The base call is the retail one: EPatternedAI 0x0F (`li r4, 0xf` at 0x9AF0),
@@ -66,6 +156,11 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mStampedeDamage(LdrToDamageInfo(data.stampedeDamage))       // guest 0xA0C
 , mJumpSlideDamage(LdrToDamageInfo(data.jumpSlideDamage))     // guest 0xA28
 , mGroundPoundDamage(LdrToDamageInfo(data.groundPoundDamage)) // guest 0xA44
+, mFlags(0)                                                 // guest 0x824
+, x7c0_(0)                                                // guest 0x7C0
+, mVulnerabilityState(0)                                  // guest 0x7C4
+, mAttackTimer(4.f)                                       // guest 0x7E4
+, mAction(-1)                                             // guest 0x7E8
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
@@ -169,7 +264,7 @@ bool CEmperorIngStage3::Listen(CStateManager& mgr, const CVector3f& position,
   if (type != kLNT_PlayerFire) {
     return false;
   }
-  mNoiseFlags |= 0x02;
+  mFlags |= 0x02;
   return true;
 }
 
@@ -214,8 +309,216 @@ float CEmperorIngStage3::GetGravityConstant() const { return 200.f; }
 // entries) through +0x14 (0x9490) and the codes (lbl_18_data_4B4, 2 entries) through +0x1C
 // (0x94B0). That FSM is milestone 2, so only the base setup runs here.
 void CEmperorIngStage3::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CEmperorIngStage3::SetupStateMachine (vtable slot 60, fn_18_943C)");
   CPatterned::SetupStateMachine(mgr);
+  StateMachine* stateMachine = mStateMachine.get();
+  stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
+  stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
+  // The host's FSM1 does not dispatch code nodes yet (TStateMachineState::SetCodeFunctions is
+  // empty), so this only records the table retail registers.
+  stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
+}
+
+// The module's state machine functions. The eleven triggers whose retail body is small enough
+// are ported; the rest are stand-ins that log the retail function they stand in for and return the
+// neutral value (false for a trigger, nothing for a state or a code).
+bool CEmperorIngStage3::TooClose(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_8DA4");
+  return false;
+}
+
+// fn_18_8D88 (0x8D88): the attack timer (guest 0x7E4) against zero (rodata 0x258).
+bool CEmperorIngStage3::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return mAttackTimer < 0.f;
+}
+
+bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_8C4C");
+  return false;
+}
+
+bool CEmperorIngStage3::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_8A4C");
+  return false;
+}
+
+// fn_18_897C (0x897C): the action (guest 0x7E8) is 0.
+bool CEmperorIngStage3::ShouldStampede(CStateManager& mgr, const CTriggerData& data) const {
+  return mAction == 0;
+}
+
+// fn_18_8A34 (0x8A34): the flag byte at guest 0x824, its bit 28 (the mask 0x08).
+bool CEmperorIngStage3::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
+  return (mFlags & 0x08) != 0;
+}
+
+// fn_18_8A20 (0x8A20): the vulnerability state (guest 0x7C4) is 1.
+bool CEmperorIngStage3::ShouldChangeVulnerabilityToVulnerable(CStateManager& mgr, const CTriggerData& data) const {
+  return mVulnerabilityState == 1;
+}
+
+bool CEmperorIngStage3::ShouldChangeVulnerabilityToInvulnerable(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_898C");
+  return false;
+}
+
+// fn_18_8968 (0x8968): the action (guest 0x7E8) is 3.
+bool CEmperorIngStage3::ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return mAction == 3;
+}
+
+// fn_18_8954 (0x8954): the action (guest 0x7E8) is 4.
+bool CEmperorIngStage3::ShouldLightBeamAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return mAction == 4;
+}
+
+bool CEmperorIngStage3::ShouldLightSwarmAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_87F0");
+  return false;
+}
+
+bool CEmperorIngStage3::ShouldGroundPound(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_8ACC");
+  return false;
+}
+
+bool CEmperorIngStage3::ShouldGenerateDarkFliers(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_868C");
+  return false;
+}
+
+// fn_18_8678 (0x8678): the action (guest 0x7E8) is 5.
+bool CEmperorIngStage3::ShouldPortalAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return mAction == 5;
+}
+
+// fn_18_8664 (0x8664): the action (guest 0x7E8) is 1.
+bool CEmperorIngStage3::ShouldJumpSlideAttack(CStateManager& mgr, const CTriggerData& data) const {
+  return mAction == 1;
+}
+
+// fn_18_8648 (0x8648): the vulnerable damage threshold (guest 0x814) against rodata
+// 0x310 (1.1920929e-07f).
+bool CEmperorIngStage3::ShouldGrowHeart(CStateManager& mgr, const CTriggerData& data) const {
+  return mVulnerableDamageThreshold < 1.1920929e-07f;
+}
+
+bool CEmperorIngStage3::JumpSlideAttackOver(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_8600");
+  return false;
+}
+
+bool CEmperorIngStage3::ShouldEyeShut(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_85A4");
+  return false;
+}
+
+// fn_18_858C (0x858C): the flag byte at guest 0x825, its bit 29 (the mask 0x04 of that
+// byte, the word's 0x400).
+bool CEmperorIngStage3::AbortedJumpSlide(CStateManager& mgr, const CTriggerData& data) const {
+  return (mFlags & 0x400) != 0;
+}
+
+bool CEmperorIngStage3::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_18_8518");
+  return false;
+}
+
+// fn_18_8500 (0x8500): the flag byte at guest 0x825 with its bit 31 cleared (the mask 0x7F
+// of that byte, the word's 0x7F00) is not zero.
+bool CEmperorIngStage3::ShouldStampedeReact(CStateManager& mgr, const CTriggerData& data) const {
+  return (mFlags & 0x7f00) != 0;
+}
+
+void CEmperorIngStage3::Start(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_7ADC");
+}
+
+void CEmperorIngStage3::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_788C");
+}
+
+void CEmperorIngStage3::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_76D0");
+}
+
+void CEmperorIngStage3::GainDistance(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_7504");
+}
+
+void CEmperorIngStage3::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_71D8");
+}
+
+void CEmperorIngStage3::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6E80");
+}
+
+void CEmperorIngStage3::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6D84");
+}
+
+void CEmperorIngStage3::ChangeVulnerability(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6A40");
+}
+
+void CEmperorIngStage3::EyeShutResetVulnerability(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6B80");
+}
+
+void CEmperorIngStage3::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6904");
+}
+
+void CEmperorIngStage3::LightBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_67C0");
+}
+
+void CEmperorIngStage3::LightSwarmAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6698");
+}
+
+void CEmperorIngStage3::GroundPound(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6390");
+}
+
+void CEmperorIngStage3::GenerateDarkFliers(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_6258");
+}
+
+void CEmperorIngStage3::PortalAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_60AC");
+}
+
+void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_5844");
+}
+
+void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_5614");
+}
+
+void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_5264");
+}
+
+void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_4EB4");
+}
+
+void CEmperorIngStage3::StampedeReact(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_4CC8");
+}
+
+void CEmperorIngStage3::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_18_4C3C");
+}
+
+void CEmperorIngStage3::ResetAttackTimer(CStateManager& mgr, float dt) {
+  StandInFn("fn_18_84A8");
+}
+
+void CEmperorIngStage3::ChoseAction(CStateManager& mgr, float dt) {
+  StandInFn("fn_18_8200");
 }
 
 // ---------------------------------------------------------------------------------------------

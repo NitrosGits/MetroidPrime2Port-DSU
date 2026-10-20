@@ -69,6 +69,63 @@ public:
   float GetGravityConstant() const override;
   void SetupStateMachine(CStateManager& mgr) override;
 
+  // The body's state machine. Retail fn_18_943C (vtable slot 60) calls the base's setup and
+  // then registers the three tables fn_18_E180 builds: 21 triggers (lbl_18_data_34C), 21 states
+  // (lbl_18_data_100) and 2 codes (lbl_18_data_4B4). The names are retail's - the state machine
+  // asset's nodes are matched by name - and each comment is the retail function the entry points
+  // at. The triggers whose retail body is small enough are ported; the rest are stand-ins that log
+  // the retail function they stand in for.
+  //
+  // Triggers (lbl_18_data_34C, 21 entries).
+  bool TooClose(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8DA4
+  bool ShouldAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8D88
+  bool ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8C4C
+  bool ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8A4C
+  bool ShouldStampede(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_897C
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8A34
+  bool ShouldChangeVulnerabilityToVulnerable(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8A20
+  bool ShouldChangeVulnerabilityToInvulnerable(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_898C
+  bool ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8968
+  bool ShouldLightBeamAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8954
+  bool ShouldLightSwarmAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_87F0
+  bool ShouldGroundPound(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8ACC
+  bool ShouldGenerateDarkFliers(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_868C
+  bool ShouldPortalAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8678
+  bool ShouldJumpSlideAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8664
+  bool ShouldGrowHeart(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8648
+  bool JumpSlideAttackOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8600
+  bool ShouldEyeShut(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_85A4
+  bool AbortedJumpSlide(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_858C
+  bool ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8518
+  bool ShouldStampedeReact(CStateManager& mgr, const CTriggerData& data) const;  // fn_18_8500
+
+  // States (lbl_18_data_100, 21 entries).
+  void Start(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_7ADC
+  void Idle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_788C
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_76D0
+  void GainDistance(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_7504
+  void Stampede(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_71D8
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6E80
+  void Taunt(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6D84
+  void ChangeVulnerability(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6A40
+  void EyeShutResetVulnerability(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6B80
+  void DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6904
+  void LightBeamAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_67C0
+  void LightSwarmAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6698
+  void GroundPound(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6390
+  void GenerateDarkFliers(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_6258
+  void PortalAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_60AC
+  void JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_5844
+  void GrowHeart(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_5614
+  void EyeShut(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_5264
+  void JumpAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_4EB4
+  void StampedeReact(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_4CC8
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);  // fn_18_4C3C
+
+  // Codes (lbl_18_data_4B4, 2 entries).
+  void ResetAttackTimer(CStateManager& mgr, float dt);  // fn_18_84A8
+  void ChoseAction(CStateManager& mgr, float dt);  // fn_18_8200
+
 private:
   void EnsureBodyActive(CStateManager& mgr);
 
@@ -87,9 +144,15 @@ private:
   CDamageInfo mGroundPoundDamage;        // guest 0xA44, the data's groundPoundDamage
   // fn_18_44: GetModelAlphau8 reads the byte at guest 0x44F. It sits in CPatterned's own area in
   // the retail object, so the host keeps it here.
-  // fn_18_8E50: the Listen flag byte at guest 0x824; its bit 30 (the mask 0x02) is set when the
-  // actor hears the player fire.
-  uchar mNoiseFlags;                     // guest 0x824, 0
+  // The module's own flag word at guest 0x824 (the constructor clears its high bits). The bytes
+  // the module reads are its low byte (0x824: the listen flag 0x02 and the dodge flag 0x08) and
+  // its second byte (0x825: the aborted jump slide flag 0x400 of the word and the stampede-react
+  // bits 0x7f00 of the word).
+  uint mFlags;                           // guest 0x824, 0
+  int x7c0_;                             // guest 0x7C0, 0: cleared by the constructor
+  int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
+  float mAttackTimer;                    // guest 0x7E4, 4.0f in the constructor
+  int mAction;                           // guest 0x7E8, -1 in the constructor
 };
 #endif
 
