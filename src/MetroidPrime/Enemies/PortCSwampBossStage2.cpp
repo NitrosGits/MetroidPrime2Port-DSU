@@ -435,7 +435,6 @@ void CSwampBossStage2::Activate(CStateManager& mgr) {
                     gpStringTable->GetStringIndex("BossSwampBossStage2"));
 }
 
-// @ fn_79_5D58
 void CSwampBossStage2::SetHeadVulnerable(CStateManager& mgr, bool vulnerable) {
   // TODO(uncertain): retail swaps the head collision actor's vulnerability between the light and
   // dark tables; reconstructed from the material/vulnerability writes only.
@@ -1249,7 +1248,6 @@ void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
 // --------------------------------------------------------------------------------------------
 // Triggers
 
-// @ fn_79_6250
 bool CSwampBossStage2::StateOver(CStateManager& mgr, const CTriggerData&) const {
   return mAnimationState.IsOver();
 }
@@ -1880,7 +1878,6 @@ void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_79_72FC
 void CSwampBossStage2::ResetAttackPhase(CStateManager& mgr, float dt) { mAttackIndex = 0; }
 
 // --------------------------------------------------------------------------------------------

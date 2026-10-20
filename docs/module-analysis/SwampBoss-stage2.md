@@ -29,7 +29,7 @@ AcceptScriptMsg are ported. Most states and helpers are still `TODO(uncertain)` 
 | 6E68 + 6B78 | `SetupCollisionManager` | ported |
 | 25C0 | `Activate` | ported (SetBossParams string index TODO) |
 | 5BC8 | `SetGrowthTargetEffects` | ported |
-| 5D58 | `SetHeadVulnerable` | uncertain |
+| 5D58? | `SetHeadVulnerable` | uncertain, and 5D58 is not a function start in `symbols.txt` |
 | 9F7C…A498 | 19 triggers | ported |
 | 72FC | `ResetAttackPhase` | ported |
 | 9A3C | `Lurk` | ported (6134 facing approximated) |
@@ -158,15 +158,18 @@ B4 GetOrigin, D0 GetHealthInfo.
     dark1 `5 3 6 3 8`, light2 `1 4 2 4 8`, dark2 `3 5 6 8 8` (tauntChance 0.20/0.10/0.10/0.05,
     attack delay 2–4 s, health 100/620/120/620). So Swoop (4) is scheduled in both light phases
     and Blow (6) only exists in the dark ones.
+- **Marker hygiene (2026-10-20):** two markers were dropped because
+  `tools/port_progress.py` reports them as not a function start in the module's `symbols.txt` and no
+  trace ran them: `fn_79_6250` (it had been put on `StateOver`, whose real offset is still open - the
+  doc's `A498` body is a small integer compare, not the animation-over test) and `fn_79_5D58`
+  (`SetHeadVulnerable`, carried over from the first pass). 64 unique retail functions are marked.
 - **Not yet reached, and why (2026-10-20 probe run):**
   - **Swoop, Level, Circle:** `mAttackType` 4 was queued (light1 slot 4, and the
-    `RecentDamage > 100` override) with `mAttackReady` set, yet Lurk always left to Taunt. The
-    host's FSM2 dump reads every *trigger* node's outgoing edge list as empty (LightLurk's Lurk
-    lists `PlayerInWater ShouldSwoop ShouldTaunt ShouldSpit ShouldBarrage`; default attack
-    `arg` 0.00 for all of them), so the real Lurk→Swoop / →Level / →Circle edge cannot be read
-    out of the loaded asset. Suspect `CGenericFSM2`'s trigger parse (`CGenericFSM2.cpp` reads
-    `CTriggerData` *before* the transition vector) - a follow-up on its own, since that loader is
-    shared by every FSM2 actor.
+    `RecentDamage > 100` override) with `mAttackReady` set, yet Lurk always left to Taunt.
+    The probe's dump printed only `SStateMachine2Transition::mName`, which is empty for these
+    edges, so the trigger lists *looked* empty; that is a probe artefact, not a loader bug (the
+    state-node dump, which prints `SB2TargetKind`/`SB2TargetName`, read its edges fine). Print the
+    transition targets the same way and the Lurk→Swoop/→Level/→Circle edges become readable.
   - **Blow:** attack 6 only exists in the dark phases, and the light phase ends only when all
     four growths die. Growth damage needs a `CWeapon` whose forward has dot > 0 with the boss's,
     and the boss faces the player, so a headless run firing from in front never satisfies it
