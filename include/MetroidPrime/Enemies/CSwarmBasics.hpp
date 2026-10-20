@@ -23,6 +23,9 @@ class CFlyerSwarm;
 class CMetareeSwarm;
 class CIngBlobSwarm;
 class CPlantScarabSwarm;
+#ifdef TARGET_PC
+class CEmperorIngLightSwarm;
+#endif
 
 namespace SwarmRenderHelpers {
 class CSwarmDisplayList;
@@ -37,6 +40,9 @@ public:
     friend class CMetareeSwarm;
     friend class CIngBlobSwarm;
     friend class CPlantScarabSwarm;
+#ifdef TARGET_PC
+    friend class CEmperorIngLightSwarm; // port-only: PortCEmperorIngLightSwarm.cpp
+#endif
 
   public:
     CBoid(const CTransform4f& xf, uint index);
