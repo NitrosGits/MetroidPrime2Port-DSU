@@ -222,9 +222,17 @@ bool CSandBoss::ShouldDestroySphere(CStateManager& mgr, const CTriggerData&) con
   return mAttachedToSphere && CountAttachedSiblings(mgr) == 1;
 }
 
-bool CSandBoss::IsFacingPlayer(CStateManager&, const CTriggerData&) const { // fn_55_C1CC
-  PortSandBossStandIn("CSandBoss::IsFacingPlayer (fn_55_C1CC)");
-  return false;
+// fn_55_C1CC (ported, not exercised yet)
+// IsFacingPlayer: the player is inside 20 degrees of the forward axis (the local Y column, this
+// +0x28/0x38/0x48), measured in three dimensions against the player's translation (player
+// +0x54..0x5C). The constant is lbl_55_rodata_134 = 0.34906584.
+bool CSandBoss::IsFacingPlayer(CStateManager& mgr, const CTriggerData&) const {
+  const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (player == nullptr) {
+    return false;
+  }
+  const CVector3f delta = player->GetTranslation() - GetTranslation(); // player 0x54..0x5C
+  return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), delta) <= 0.34906584f;
 }
 
 // fn_55_C188 (ported, not exercised yet)
