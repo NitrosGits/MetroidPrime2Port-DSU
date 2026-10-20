@@ -691,23 +691,26 @@ void CIng::MoveOnSurface(const CVector3f& moveIn, float speed, float dt) {
   Stop();
 }
 
+// @ fn_29_37D8
 void CIng::ApplySeparation(CStateManager& mgr) {
-  CVector3f total = CVector3f::Zero();
+  // The retail walks the state's listening-AI list (the CStateManager's list at 0x830) and, for
+  // every other CPatterned in the same area, asks the steering behaviours for the 3D separation
+  // with the radius rodata_7C (15) times the model's x scale (asm 0x383C-0x3878). A safe
+  // separation vector is delivered as a locomotion command in its normalized direction with the
+  // speed rodata_B4 (0.5) - once per neighbour, so the last one wins (asm 0x388C-0x3900).
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CPatterned* other = TCastToConstPtr< CPatterned >(list[i]);
-    if (other != nullptr && other != this && other->GetCurrentAreaId() == GetCurrentAreaId()) {
-      const CVector2f separation = mSteeringBehaviors.Separation2D(
-          *this, CVector2f(other->GetTranslation().GetX(), other->GetTranslation().GetY()),
-          mModelScale.GetX() * 15.f);
-      const CVector3f separation3(separation.GetX(), separation.GetY(), 0.f);
-      if (separation3.IsMagnitudeSafe()) {
-        total += separation3;
-      }
+    if (other == nullptr || other == this ||
+        other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
     }
-  }
-  if (total != CVector3f::Zero()) {
-    BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(total, CVector3f::Zero(), 0.5f));
+    const CVector3f separation =
+        mSteeringBehaviors.Separation(*this, other->GetTranslation(), mModelScale.GetX() * 15.f);
+    if (separation.IsMagnitudeSafe()) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLocomotionCmd(separation.AsNormalized(), CVector3f::Zero(), 0.5f));
+    }
   }
 }
 
@@ -1844,9 +1847,6 @@ void CIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
 // ball pursuit speed (asm 0x00008778-0x00008894). MoveOnSurface takes the raw separation vector,
 // FaceDirection the normalized one.
 void CIng::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  // fn_29_37D8 (0x170): the retail's own path walk over the ing-spot's graph; over the size line,
-  // so the host keeps its minimal body and logs the stand-in.
-  PortIngStandIn("fn_29_37D8 path helper (0x170)");
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
     mRecalcPath = false; // 0xe5c bit 2
