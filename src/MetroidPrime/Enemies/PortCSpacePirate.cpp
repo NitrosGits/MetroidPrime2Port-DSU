@@ -1326,8 +1326,14 @@ void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
   mAttackRemTime = 0.f;       // 0xE150 stfs 0, 0xa90 (rodata B9C)
 }
 
+// Retail fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
+// the model and the portal system is updated; otherwise the patterned path.
 void CSpacePirate::PreRenderAllViewports(CStateManager& mgr) {
-  StandIn("CSpacePirate::PreRenderAllViewports (fn_72_3A0C)");
+  // 0x3A28: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3A50 renders the ragdoll
+  // (PreRenderAllViewports__8CRagDollFR6CActorf, the rodata B6C float) and 0x3A5C calls
+  // UpdatePortalSystemState(mgr). The ragdoll is outside the port (xb30_ is never set), so that
+  // branch stays a comment.
+  // 0x3A6C: the patterned path.
   CPatterned::PreRenderAllViewports(mgr);
 }
 
@@ -1485,20 +1491,38 @@ CProjectileInfo* CSpacePirate::ProjectileInfo() {
   return mProjectileInfo.valid() ? &mProjectileInfo.data() : nullptr;
 }
 
+// Retail fn_72_343C (GetScanVisorRenderBounds): the model's vertex bounds, scaled by the model's
+// own scale and moved into world space.
 CAABox CSpacePirate::GetScanVisorRenderBounds(const CStateManager& mgr) const {
-  StandIn("CSpacePirate::GetScanVisorRenderBounds (fn_72_343C)");
-  return CPatterned::GetScanVisorRenderBounds(mgr);
+  // 0x3490: the model's anim data -> the vertex bounds in local space.
+  const CAABox local = GetModelData()->GetAnimationData()->CalcBoundingBoxFromModelVerts();
+  // 0x34D4: the model's scale.
+  const CVector3f scale = GetModelData()->GetScale();
+  // 0x34F0: the negated translation.
+  const CVector3f offset = -GetTranslation();
+  // 0x3514/0x3520: a scale transform and a translation transform; 0x3530 and 0x3540 multiply them
+  // with the actor's transform.
+  const CTransform4f xf =
+      CTransform4f::Translate(offset) * GetTransform() * CTransform4f::Scale(scale);
+  // 0x3550: the transformed box.
+  return local.GetTransformedAABox(xf);
 }
 
+// Retail fn_72_339C (ScanVisorRender) still waits for the module helper fn_72_36CC, which is
+// outside the port: that helper renders the scan-visor model this+0xc08 (the port has no member
+// there) and calls the retail's gpRender vtable slots 0x128/0x12C. Port the helper first.
 void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                    const CModelFlags& flags) const {
   StandIn("CSpacePirate::ScanVisorRender (fn_72_339C)");
   CPatterned::ScanVisorRender(mgr, xf, flags);
 }
 
+// Retail fn_72_18BC (TryToBeCaptured): the pirate switches to the "Captured" state and says so.
 bool CSpacePirate::TryToBeCaptured(CStateManager& mgr) {
-  StandIn("CSpacePirate::TryToBeCaptured (fn_72_18BC)");
-  return CPatterned::TryToBeCaptured(mgr);
+  // 0x18D8: the state name "Captured" (rodata 0xF42), set through the state machine's virtual
+  // slot 0x20 (SetState).
+  mStateMachine->SetState(mgr, *this, rstl::string_l("Captured"));
+  return true; // 0x1918 li r3, 1
 }
 
 // Retail fn_72_140. Property ids and order are the generated SLdrSpacePirate reader's, which the
