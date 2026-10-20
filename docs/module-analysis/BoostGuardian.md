@@ -266,9 +266,22 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   heads for the first candidate; `13260` normalises a nav-point line it never reads.
 - *Render (slice c):* AddToRenderer `13E68`, Render `141B8` (dark visor: alpha modulation),
   PreRenderAllViewports `13ECC` (render bounds = the effects' union). The ball draws (area 28).
-- *Next:* the 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
-  guardian's AcceptScriptMsg `fn_30_DDA0` (0xDF18/0xDF24), which the host does not have yet, so
-  BoostAttack's `SetActive` calls on 0xD64 stay null-guarded until that slice.
+- *0xD64 manager:* `CreateIngSpotManager` (`4A38`) builds one `PuddleCollisionActor` box (5,5,1.5,
+  mass 1000) at `Root` in kSM_Create (0xDF24, after the body manager); `SetupManagerActors` (`4924`)
+  gives it the health info and CPatterned's vulnerability. `10F9C`/`4BD8`/`4C58`/`4D74` are rstl
+  vector inlines (reserve, push_back_unsafe, copy, dtor). Its retail lifecycle is in: Delete
+  (0xE0CC), Activate (`mForm == kForm_IngSpot`, 0xE16C), Deactivate (0xE224), AIUpdateDisabled
+  (0xE2EC), BecomeIngSpot on (0xAF70), BecomeCorporeal off (0xB144), the dtor; BoostAttack's
+  calls are unguarded as in retail. Area 28: the box is built (8th collision actor).
+  The host keeps the Ing message gates (Activate on `GetActive()`); retail `DDA0` gates Activate/
+  Deactivate on a float compare (`f31` vs rodata_70) not yet decoded. `4324`/`44A4` (0xD64 index
+  lookups) are in the unported boost half.
+- *0xD60 (not done):* `4E90` builds the body manager (spheres + `AddMaterial` + `SetMaterialFilter`,
+  like the Ing's `fn_29_3190`). Replacing the host's Ing-half `mCollisionActorManager` with it
+  touches `CreateCollisionActorManager`/`SetupCollisionActors`, `SetBodyManagerReflect` (`3190`),
+  `CollisionActorDamage`/`CollisionActorHitPlayer`/`IngSpotDamage` (they look up colliders in it),
+  every `SetActive` in AcceptScriptMsg and the Become* states, Think's Update (0xDA58), kSM_Delete
+  and the dtor; the `skIngJointSpheres` table would give way to `4E90`'s own joints.
 
 ## g. Function map
 

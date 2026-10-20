@@ -159,6 +159,9 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, true); // 0xc50
     }
+    if (mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->SetActive(mgr, false); // fn_30_B03C 0x0000B144: guest 0xD64
+    }
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp); // 0xca4 = 2
     mLineOfSight.SetSegment(mEyeSegId);                            // 0xd8a = 0xd7b ("head")
     FaceLureOrTarget(mgr);                                         // the Ing's fn_29_1A80
@@ -251,6 +254,9 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
     RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, false); // 0xc50
+    }
+    if (mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->SetActive(mgr, true); // fn_30_ABC4 0x0000AF70: guest 0xD64
     }
     mPortalPlane = false;   // 0xe5d bit 6
     mStartAsIngSpot = true; // 0xe5d bit 5

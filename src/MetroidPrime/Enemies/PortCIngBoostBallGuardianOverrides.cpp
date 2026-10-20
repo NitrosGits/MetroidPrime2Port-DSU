@@ -115,7 +115,7 @@ void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
     SetDrawShadow(mAlive);
     break;
   }
-  // 0x0000DA58: both managers, guest 0xD60 and 0xD64; the host builds only the first.
+  // 0x0000DA58: both managers, guest 0xD60 and 0xD64.
   if (!mCollisionActorManager.null()) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
@@ -236,6 +236,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
+    CreateIngSpotManager(mgr);        // 0x0000DF24: fn_30_4A38
     // 0x0000E06C: the (kSS_Modify, kSM_Activate) connections, which the boost ball gets.
     mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate);
     break;
@@ -243,6 +244,9 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     // Retail deletes the blob object first, then destroys the collision actor manager.
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->Destroy(mgr); // fn_29_C9A4's XDEL branch
+    }
+    if (mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
     }
     ReleaseCoverHint(mgr, mCoverHintId);
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
@@ -267,16 +271,25 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     if (GetActive() && !mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal);
     }
+    if (GetActive() && mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
+    }
     break;
   case kSM_Deactivate:
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, false);
+    }
+    if (mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
     }
     StopSfx();
     break;
   case kSM_AIUpdateDisabled:
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetPhysicsActive(mgr, false);
+    }
+    if (mCollisionActorManager1 != nullptr) {
+      mCollisionActorManager1->SetPhysicsActive(mgr, false); // 0x0000E2EC
     }
     break;
   case kSM_HitObject:

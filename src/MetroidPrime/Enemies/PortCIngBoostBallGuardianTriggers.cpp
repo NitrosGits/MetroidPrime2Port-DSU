@@ -108,9 +108,40 @@ void CIngBoostBallGuardian::SetupCollisionActors(CStateManager& mgr) {
   }
 }
 
+// fn_30_4A38: the ing-spot manager (guest 0xD64), built in kSM_Create after the body manager. The
+// vector helpers are rstl inlines: fn_30_10F9C reserve, fn_30_4BD8 push_back_unsafe, fn_30_4C58
+// the description's copy, fn_30_4D74 the vector's destructor.
+// @ fn_30_4A38
+void CIngBoostBallGuardian::CreateIngSpotManager(CStateManager& mgr) {
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(1);
+  const CSegId root = GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("Root"));
+  joints.push_back_unsafe(CJointCollisionDescription::AABoxCollision(
+      root, CVector3f(5.f, 5.f, 1.5f), rstl::string_l("PuddleCollisionActor"), 1000.f));
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
+  delete mCollisionActorManager1;
+  mCollisionActorManager1 = manager;
+  SetupManagerActors(mgr, mCollisionActorManager1);
+}
+
+// fn_30_4924: like the Ing's fn_29_3014 (SetupCollisionActors), for a given manager; the
+// vulnerability call is the non-virtual CPatterned one.
+// @ fn_30_4924
+void CIngBoostBallGuardian::SetupManagerActors(CStateManager& mgr,
+                                               CCollisionActorManager* const& manager) {
+  for (uint i = 0; i < manager->GetNumCollisionActors(); ++i) {
+    const TUniqueId id = manager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    if (CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id))) {
+      const CHealthInfo health = *GetHealthInfo();
+      actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
+      *actor->HealthInfo() = health;
+    }
+  }
+}
+
 // fn_30_30E4: every collision actor of the guest's second manager (0xD64) takes the boost-ball
-// vulnerability (0x1178) or the ing spot's (0xA5C) (0x0000310C). The host never builds that
-// manager, so this is a no-op until the boost half does.
+// vulnerability (0x1178) or the ing spot's (0xA5C) (0x0000310C).
 void CIngBoostBallGuardian::SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost) {
   if (mCollisionActorManager1 == nullptr) {
     return;

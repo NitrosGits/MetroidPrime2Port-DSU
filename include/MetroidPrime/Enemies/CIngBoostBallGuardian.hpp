@@ -428,6 +428,11 @@ private:
   // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
   void CreateCollisionActorManager(CStateManager& mgr);
   void SetupCollisionActors(CStateManager& mgr);
+  // fn_30_4A38: the guest's second manager (0xD64), one "PuddleCollisionActor" box at the "Root"
+  // locator. fn_30_4924: a manager's collision actors take the health info and CPatterned's own
+  // damage vulnerability.
+  void CreateIngSpotManager(CStateManager& mgr);
+  void SetupManagerActors(CStateManager& mgr, CCollisionActorManager* const& manager);
   // A collision actor that last touched the player deals contact damage.
   void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
   // The hit reaction in the ing-spot form, and the weapon hit on a collision actor otherwise.
