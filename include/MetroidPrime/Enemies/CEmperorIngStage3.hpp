@@ -11,6 +11,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "rstl/optional_object.hpp"
 #include "Kyoto/Audio/CSfxHandle.hpp"
 
 #include "Kyoto/Math/CTransform4f.hpp"
@@ -242,7 +243,7 @@ private:
   // fn_18_1530 / fn_18_BB8 / fn_18_4D0: the beam start, kUE_BeginAction's and kUE_EggLay's spawns.
   void StartBeam(CStateManager& mgr);
   void BeginActionEvent(CStateManager& mgr);
-  void EggLayEvent(CStateManager& mgr);
+  void EggLayEvent(CStateManager& mgr, float dt);
   // fn_18_36BC: the damage's source id against the two hearts' ids.
   void OnDamage(CStateManager& mgr, u16 sourceId);
   // fn_18_3448: the heart damage update (fn_18_2F04) and the heart effect's external params.
@@ -339,6 +340,10 @@ private:
   CProjectileInfo mLightBeamProjectile;  // guest 0xAD4: lightBeamAttack's weapon and damage
   SLdrPlasmaBeamInfo mLightBeamInfo;     // guest 0xAFC: lightBeamAttack's beam info
   u16 mLightBeamSound;                   // guest 0xB44: lightBeamAttack's beamSound
+  rstl::optional_object< TLockedToken< CGenDescription > > mPortalEffect; // guest 0xD04
+  u16 mPortalSound;                      // guest 0xD14: portalAttack's portalOpenSound
+  CDamageInfo mPortalDamage;             // guest 0xD18: portalAttack's projectileDamage
+  SLdrPlasmaBeamInfo mPortalBeamInfo;    // guest 0xD34: portalAttack's beamInfo
   float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
   CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
   float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime

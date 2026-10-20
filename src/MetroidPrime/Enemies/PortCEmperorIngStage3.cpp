@@ -43,6 +43,8 @@
 #include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
 #include "MetroidPrime/Weapons/CBeamInfo.hpp"
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
+#include "MetroidPrime/Enemies/CIngMiniPortalAttack.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
@@ -167,6 +169,15 @@ CRayCastResult CopyRayResult(const CRayCastResult& result) { return result; }
 
 } // namespace
 
+// fn_18_9A8C (0xA044..0xA13C) locks the portal effect only when the asset is set.
+static rstl::optional_object< TLockedToken< CGenDescription > > PortalPart(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return rstl::optional_object< TLockedToken< CGenDescription > >();
+  }
+  return rstl::optional_object< TLockedToken< CGenDescription > >(
+      TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
+}
+
 // fn_18_9A8C. The base call is the retail one: EPatternedAI 0x0F (`li r4, 0xf` at 0x9AF0),
 // flavor 0 (`li r7, 0x0` at 0x9AC8), movement 0 / collider 1 / body 1 (the constants stored
 // to the stack arguments at 0x9AD8..0x9AE8 - kMT_Ground, kCT_One and kBT_BiPedal).
@@ -245,6 +256,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
                        LdrToDamageInfo(data.lightBeamAttack.damage)) // guest 0xAD4
 , mLightBeamInfo(data.lightBeamAttack.beamInfo)           // guest 0xAFC
 , mLightBeamSound(static_cast< u16 >(data.lightBeamAttack.beamSound)) // guest 0xB44
+, mPortalEffect(PortalPart(data.portalAttack.effect))     // guest 0xD04, 0xD10
+, mPortalSound(static_cast< u16 >(data.portalAttack.portalOpenSound)) // guest 0xD14
+, mPortalDamage(LdrToDamageInfo(data.portalAttack.projectileDamage)) // guest 0xD18
+, mPortalBeamInfo(data.portalAttack.beamInfo)             // guest 0xD34 (fn_18_A794)
 , mX8f8_(0.f)                                             // guest 0x8F8 (0x9D70)
 , mX8fc_(CVector3f::Zero())                               // guest 0x8FC (0x9D78..0x9D88)
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
@@ -570,7 +585,7 @@ void CEmperorIngStage3::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
                                         EUserEventType type, float dt) {
   switch (type) {
   case kUE_EggLay:
-    EggLayEvent(mgr); // fn_18_4D0
+    EggLayEvent(mgr, dt); // fn_18_4D0
     break;
   case kUE_ChangeMaterial:
     x825_ |= 0x02;
@@ -1432,9 +1447,59 @@ void CEmperorIngStage3::SteerBeam(CStateManager& mgr, float dt) {
 // fn_18_1B88 (0x28): the heart switch (fn_18_1DF4) with heart 3, no heart, and no vulnerability.
 void CEmperorIngStage3::HeartsOff(CStateManager& mgr) { SetHeartState(mgr, 3, false); }
 
-// fn_18_4D0 (0x3C0): builds an object from module 29 (fn_29_11E8C) at a rotated offset; that
-// module's mapping is not read yet.
-void CEmperorIngStage3::EggLayEvent(CStateManager& mgr) { StandInFn("fn_18_4D0"); }
+// fn_18_4D0's tables. rodata 0xC0: per portal attack (guest 0x8E4) eight X/Y/Z angles in degrees,
+// one per portal of the attack (guest 0x8E0). bss 0x0 (written by the static init fn_18_E180,
+// rodata 0x258/0x33C/0x2AC/0x2BC): the attack's offset added to each portal's position.
+static const float skPortalAngles[4][8][3] = {
+    {{10.f, 0.f, 90.f}, {170.f, 0.f, 90.f}, {30.f, 0.f, 90.f}, {150.f, 0.f, 90.f},
+     {50.f, 0.f, 90.f}, {130.f, 0.f, 90.f}, {70.f, 0.f, 90.f}, {110.f, 0.f, 90.f}},
+    {{0.f, 0.f, -70.f}, {0.f, 0.f, 70.f}, {0.f, 0.f, -50.f}, {0.f, 0.f, 50.f},
+     {0.f, 0.f, -30.f}, {0.f, 0.f, 30.f}, {0.f, 0.f, -10.f}, {0.f, 0.f, 10.f}},
+    {{0.f, 0.f, 180.f}, {0.f, 0.f, 135.f}, {0.f, 0.f, 225.f}, {0.f, 0.f, 90.f},
+     {0.f, 0.f, 270.f}, {0.f, 0.f, 45.f}, {0.f, 0.f, 315.f}, {0.f, 0.f, 0.f}},
+    {{3.5f, 0.f, -2.5f}, {0.f, 0.f, 1.5f}, {-6.f, 0.f, 7.f}, {7.f, 0.f, -4.5f},
+     {-7.f, 0.f, 4.f}, {8.f, 0.f, 10.f}, {-3.f, 0.f, -6.f}, {1.5f, 0.f, 0.f}},
+};
+static const float skPortalOffsets[4][3] = {
+    {0.f, 0.f, 0.f}, {0.f, 0.f, 2.85f}, {0.f, 0.f, 4.f}, {0.f, 0.f, 5.f}};
+
+// @ fn_18_4D0
+// fn_18_4D0 (0x3C0): one Ing mini portal (module 29's CIngMiniPortalAttack, fn_29_11E8C) per egg-lay
+// event. The portal's angles (rodata 0xC0, degrees by rodata 0x26C) are taken from the attack
+// (guest 0x8E4) and the portal count (guest 0x8E0, which steps on by one, the signed remainder
+// of eight); the Z*Y*X rotation applied to the actor's transform carries 20 units forward
+// (rodata 0x270), and the attack's offset (bss 0x0) is added. The portal's info (fn_29_12100)
+// aims at the player for 1 s (rodata 0x264) with a 2 s life (0x274), the effect (guest 0xD04),
+// the open sound (0xD14), 500 / 1 (0x278, 0x264) and the beam info (0xD34); its damage (0xD18)
+// is scaled by dt and made immunity-proof (0x1A bit 7). The 0x238-byte "Portal" gets a fresh
+// id, the actor's area and the null connection list, unit scale and the actor as its owner.
+void CEmperorIngStage3::EggLayEvent(CStateManager& mgr, float dt) {
+  const int portal = mX8e0_;
+  const int attack = mX8e4_;
+  mX8e0_ = (portal + 1) % 8; // 0x518..0x548
+  if (!mPortalEffect) {
+    return; // host guard: retail passes the empty token storage when the asset is unset
+  }
+  const float* angles = skPortalAngles[attack & 3][portal & 7];
+  CTransform4f xf = GetTransform();
+  const float deg = 0.017453292f; // rodata 0x26C
+  const CQuaternion rot = CQuaternion::ZRotation(CRelAngle::FromRadians(deg * angles[2])) *
+                          CQuaternion::YRotation(CRelAngle::FromRadians(deg * angles[1])) *
+                          CQuaternion::XRotation(CRelAngle::FromRadians(deg * angles[0]));
+  const CVector3f pos = (GetTransform() * rot.BuildTransform4f()) * (CVector3f::Forward() * 20.f);
+  const float* offset = skPortalOffsets[attack & 3];
+  xf.SetTranslation(CVector3f(offset[0], offset[1], offset[2]) + pos); // 0x194/0x1A4/0x1B4
+  CDamageInfo damage(mPortalDamage);
+  damage.MultiplyDamage(dt);  // 0x6E0
+  damage.SetNoImmunity(true); // 0x71C
+  const CIngMiniPortalInfo info(mgr.Player(0)->GetUniqueId(), 1.f, 2.f, *mPortalEffect,
+                                mPortalSound, 500.f, 1.f, damage, mPortalBeamInfo);
+  CIngMiniPortalAttack* attackObj = rs_new CIngMiniPortalAttack(
+      mgr.AllocateUniqueId(), rstl::string_l("Portal"),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true), xf, GetUniqueId(),
+      CVector3f(1.f, 1.f, 1.f), info);
+  mgr.AddObject(attackObj);
+}
 
 // fn_18_BB8 (0x204): spawns a module object (fn_18_817C/fn_18_BD84); not read yet.
 void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) { StandInFn("fn_18_BB8"); }
