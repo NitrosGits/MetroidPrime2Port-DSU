@@ -51,7 +51,7 @@ CBouncingBomb* CSandworm::SpawnBouncingBomb(CStateManager& mgr, float fuseTime, 
 // Turns the whole worm about the vertical axis through x1388 so that the direction x1388 -> x1394
 // swings toward `target`, by at most `rate` degrees per second (slowed inside 0.2 rad).
 // @ fn_56_EF8C
-// fn_56_F328 (ported, not exercised yet)
+// F328 has no body of its own: the REL's fn_56_F328 is the inlined CVector3f::Cross above.
 void CSandworm::RotateBodyForBombAttack(CStateManager& mgr, const CVector3f& target,
                                         CVector3f& pivot, float rate, float dt) {
   const CVector3f& center = x1388_;
