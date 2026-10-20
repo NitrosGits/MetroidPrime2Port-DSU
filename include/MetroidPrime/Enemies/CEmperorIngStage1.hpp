@@ -7,6 +7,7 @@
 #ifdef TARGET_PC
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Math/CPlane.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
@@ -253,6 +254,12 @@ private:
   void StopTentaclePortal(int index);
   // fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass.
   CModelFlags BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const;
+  // fn_16_1C94 (0x1C94..0x1CF4, 0x60): the tentacle's damage colour.
+  CColor GetJointDamageColor(const CEmperorIngStage1Joint& joint) const;
+  // fn_16_1C5C (0x1C5C..0x1C94, 0x38): the tentacle's plane (its up vector and its position).
+  CPlane GetJointPlane(const CEmperorIngStage1Joint& joint) const;
+  // fn_16_1CF4 (0x1CF4..0x1D38, 0x44): the tentacle's draw mask.
+  u64 GetJointDrawMask(const CEmperorIngStage1Joint& joint) const;
 
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;

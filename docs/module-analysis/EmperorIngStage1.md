@@ -629,21 +629,37 @@ that the **only** user event the area-11 scenario fires is type 2 (kUE_LoopedSou
 none of the new cases runs there and no CShockWave object appears (the taunt attack, which would
 fire case 17, is still a stand-in). The new cases need their own scenario.
 
-**Render (fn_16_531C, 0x531C..0x55D4) is still a stand-in.** What it does, for the next slice:
-the particle POI mask and target (the flag byte at the guest 0x421's bit 0, 0x5340; the host's
-`mDrawParticles` and `mgr.GetCharacterRenderMaskAndTarget` - the host's CPatterned::Render does
-exactly this pair, so the correspondence is [probable]), `RenderSystemsToBeDrawnFirst` (the
-vtable slot 46, 0x535C), the particle hook (the byte at the guest 0x152's bit 6, 0x537C; the host's
-`GetPointGeneratorParticles`), the rendering model and the alpha buffer (0x5394..0x53D8; the host's
-`GetRenderAlphaBufferAlpha` and `gpRender->SetDestinationAlpha`), then a loop over the eight joints
-(0x5404..0x54E0) that fills four arrays - the CModelFlags (12 bytes each, fn_16_1D38, 0xC4 and
-therefore a stand-in; the retail leaves its first word uninitialised), the colors (fn_16_1C94:
-`CColor::Lerp(skDamageColor, CColor::Black(), joint's hit time / skDamageHitTime)`, 0x60), the
-planes (fn_16_1C5C, 0x38: the joint's up vector and the cyclic dot product of the position and the
-up vector) and the u64 masks (fn_16_1CF4, 0x44: the joint's state picks one of the two pairs at
-lbl_16_rodata_300) - and `RenderModelMultipleTimesWithFlags` (0x54FC, the host has the same
-signature), the alpha buffer again (0x5518) and `RenderSystemsToBeDrawnLast` (the vtable slot 47,
-0x55A0).
+**Render (fn_16_531C, 0x531C..0x55D4) is ported.** The model is drawn eight times, once per
+tentacle: the particle POI mask and target (the flag byte at the guest 0x421's bit 0 = the host's
+`mDrawParticles`, 0x5340), `RenderSystemsToBeDrawnFirst` (the vtable slot 46, 0x535C), the point
+generator particles (the byte at the guest 0x152's bit 6 = the host's
+`GetPointGeneratorParticles`, 0x537C), the rendering model and the alpha buffer (0x5394..0x53D8),
+the eight passes (0x53DC..0x54E0) and `RenderModelMultipleTimesWithFlags` (0x54FC, the count 8),
+the alpha buffer again (0x5518), the point generator particles' own draw (0x5580) and
+`RenderSystemsToBeDrawnLast` (the vtable slot 47, 0x55A0). The host's masked draw keeps the
+surfaces whose material mask intersects the pass's mask, so every surface is drawn once, by the
+pass that owns it.
+
+The four values each pass gets (the joint's slot at guest 0x7D8 + index * 0x48):
+
+| fn | size | what it builds |
+|---|---|---|
+| fn_16_1D38 | 0xC4 | the draw flags: opaque (the blend mode 0), the shader set 0, the depth flags 0x03 (the depth compare and the depth update) and the colour white (the CColor at 0x1D88); the joint's flag 0x08 (the extrwi at 0x1D50, the bit 28) adds the 0x80 flag (the ori at 0x1D94). The retail leaves the flags' first word (the host's `x0_`, which nothing reads) uninitialised; the port zeroes it. |
+| fn_16_1C94 | 0x60 | the colour: `CColor::Lerp(skDamageColor, Black, hitTime / skDamageHitTime)` (the fdivs at 0x1CD4), so a tentacle that was just hit is dark red and one that was never hit is black |
+| fn_16_1C5C | 0x38 | the plane: the joint's up vector and the position's dot with it (the fmadds at 0x1C78 and 0x1C84) |
+| fn_16_1CF4 | 0x44 | the draw mask: the joint's index picks one of the eight u64s at lbl_16_rodata_300 (their high half is zero and their low half holds 0x200, 0x400, 0x100, 0x1000, 0x8, 0x4, 0x10 and 0x40); the index 0 also gets the bit 0x02000000 (the lis 0x200 at 0x1D00) |
+
+**The draw mask's byte order**: the host reads a material's mask as a native u64 (the material
+data stays big-endian in memory, `include/Kyoto/Graphics/CCubeMaterial.hpp`'s `GetMaterialMask`),
+so the host's masks are the retail's byte-swapped. The model's eight surfaces have the host's
+masks 0x0500002000000000, 0x0900002000000000, 0x1100002000000000, 0x4100002000000000,
+0x0101002000000000, 0x0102002000000000, 0x0104002000000000 and 0x0110002000000000, whose
+retail's values are 0x0000000020000005, 0x0000000020000009, 0x0000000020000011,
+0x0000000020000041, 0x0000000020010001, 0x0000000020020001, 0x0000000020040001 and
+0x0000000020100001 - each of them matches exactly one of the retail's table entries (the fifth,
+the fourth, the sixth, the seventh, the second, the zeroth, the first and the third). So the port
+passes the byte-swapped entries, and the host's masked draw (the material mask AND the pass's
+mask) keeps each surface in exactly one pass.
 
 ## 5. The port (milestone 1)
 

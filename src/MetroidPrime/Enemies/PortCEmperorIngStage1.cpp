@@ -17,6 +17,7 @@
 #include "MetroidPrime/Enemies/CEmperorIngStage1.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CActorModelParticles.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -45,8 +46,11 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Animation/CAnimTreeNode.hpp"
 #include "Kyoto/Animation/CCECharacterInfo.hpp"
+#include "Kyoto/Animation/CSkinnedModel.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/Math/CUnitVector3f.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CParticleDatabase.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
 #include "rstl/StringExtras.hpp"
@@ -1511,11 +1515,98 @@ CModelFlags CEmperorIngStage1::BuildJointModelFlags(const CEmperorIngStage1Joint
   return modelFlags;
 }
 
-// vtable slot 9 = fn_16_531C (0x2B8): retail's render path, which sets up the actor's own
-// model state before the base draws it.
+// fn_16_1C94 (0x1C94..0x1CF4, 0x60): the tentacle's damage colour - the colour lerps from the
+// damage colour (CPatterned::skDamageColor) to black with the joint's damage hit time over
+// skDamageHitTime (the fdivs at 0x1CD4), so a tentacle that was just hit is dark red and a
+// tentacle that was never hit is black.
+CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& joint) const {
+  const float t = joint.mDamageHitTime / CPatterned::skDamageHitTime; // 0x1CC0, 0x1CD4
+  return CColor::Lerp(CPatterned::skDamageColor, CColor::Black(), t); // 0x1CD8
+}
+
+// fn_16_1C5C (0x1C5C..0x1C94, 0x38): the tentacle's plane - the joint's up vector is the normal
+// and the constant is the position's dot with it (the fmadds at 0x1C78 and 0x1C84).
+CPlane CEmperorIngStage1::GetJointPlane(const CEmperorIngStage1Joint& joint) const {
+  const CVector3f up = joint.mUp; // 0x1C6C, 0x1C74, 0x1C7C
+  return CPlane(CVector3f::Dot(joint.mPosition, up), // 0x1C68, 0x1C78, 0x1C84
+                CUnitVector3f(up, CUnitVector3f::kN_No));
+}
+
+// fn_16_1CF4 (0x1CF4..0x1D38, 0x44): the tentacle's draw mask - the joint's index (the joint's
+// +0x08) picks one of the eight masks at lbl_16_rodata_300 (0x1D18, 0x1D20); an entry is a u64
+// whose high half is zero and whose low half holds the mask (the register pair holds the high
+// half in r3 and the low half in r4, 0x1D24, 0x1D28), and the index 0 also gets the bit
+// 0x02000000 (the lis 0x200 at 0x1D00, which lands in the low half, 0x1D30).
+// The host reads a material's mask as a native u64 - the material data stays big-endian in
+// memory (include/Kyoto/Graphics/CCubeMaterial.hpp's GetMaterialMask) - so the masks here are
+// the retail's byte-swapped: the retail's 0x200, 0x400, 0x100, 0x1000, 0x8, 0x4, 0x10 and 0x40
+// become 0x0002000000000000, 0x0004000000000000, 0x0001000000000000, 0x0010000000000000,
+// 0x0800000000000000, 0x0400000000000000, 0x1000000000000000 and 0x4000000000000000, and each
+// of the model's eight surfaces then matches exactly one of them.
+u64 CEmperorIngStage1::GetJointDrawMask(const CEmperorIngStage1Joint& joint) const {
+  static const u64 skMasks[8] = {
+      0x0002000000000000ull, 0x0004000000000000ull, 0x0001000000000000ull,
+      0x0010000000000000ull, 0x0800000000000000ull, 0x0400000000000000ull,
+      0x1000000000000000ull, 0x4000000000000000ull};
+  u64 mask = skMasks[joint.mIndex]; // 0x1D14, 0x1D20
+  if (joint.mIndex == 0) {
+    mask |= 0x0000000200000000ull; // 0x1D00, 0x1D30
+  }
+  return mask;
+}
+
+// vtable slot 9 = fn_16_531C (0x531C..0x55D4, 0x2B8): retail's own render path. The model is
+// drawn eight times, once per tentacle, each pass with that tentacle's draw flags, colour, plane
+// and mask; the mask picks the model's surfaces (the material mask), so every surface is drawn
+// once, by the pass that owns it.
 void CEmperorIngStage1::Render(const CStateManager& mgr) const {
-  StandIn("CEmperorIngStage1::Render (vtable slot 9, fn_16_531C)");
-  CPatterned::Render(mgr);
+  // 0x5340: the particle POI mask and target - the flag byte at the guest 0x421's bit 0 (the
+  // host's mDrawParticles, as the host's CPatterned::Render asks for the same pair).
+  uint mask = 0;
+  uint target = 0;
+  if (mDrawParticles) {
+    mgr.GetCharacterRenderMaskAndTarget(mask, target);
+  }
+  RenderSystemsToBeDrawnFirst(mgr, mask, target); // 0x535C, the vtable slot 46
+  // 0x537C: the point generator particles (the byte at the guest 0x152's bit 6).
+  if (GetPointGeneratorParticles()) {
+    mgr.SetupParticleHook(*this); // 0x5390
+  }
+  // 0x5394: the rendering model; 0x53AC: the alpha buffer's value.
+  const CModelData::EWhichModel which = CModelData::GetRenderingModel(mgr);
+  const int alpha = GetRenderAlphaBufferAlpha(mgr);
+  if (alpha != -1) {
+    gpRender->SetDestinationAlpha(alpha); // 0x53BC, the vtable slot 0x128
+  }
+  // 0x53DC: the eight tentacle passes.
+  rstl::vector< CModelFlags > flags;
+  rstl::vector< CColor > colors;
+  rstl::vector< CPlane > planes;
+  rstl::vector< u64 > masks;
+  flags.reserve(8);
+  colors.reserve(8);
+  planes.reserve(8);
+  masks.reserve(8);
+  for (int i = 0; i < 8; ++i) {
+    const CEmperorIngStage1Joint& joint = mJoints.mJoints[i];
+    flags.push_back(BuildJointModelFlags(joint)); // fn_16_1D38, 0x540C
+    colors.push_back(GetJointDamageColor(joint)); // fn_16_1C94, 0x545C
+    planes.push_back(GetJointPlane(joint)); // fn_16_1C5C, 0x5484
+    masks.push_back(GetJointDrawMask(joint)); // fn_16_1CF4, 0x54C4
+  }
+  // 0x54FC: the model is drawn once per pass (the count 8 at 0x54E4).
+  GetModelData()->RenderModelMultipleTimesWithFlags(which, GetTransform(), GetActorLights(),
+                                                     flags.data(), masks.data(), colors.data(),
+                                                     planes.data(), 8);
+  if (alpha != -1) {
+    gpRender->DisableDestinationAlpha(); // 0x5518, the vtable slot 0x12C
+  }
+  // 0x5580: the point generator particles' own draw.
+  if (GetPointGeneratorParticles()) {
+    CSkinnedModel::ClearPointGeneratorFunc(); // 0x558C
+    mgr.GetActorModelParticles()->Render(mgr, *this); // 0x559C
+  }
+  RenderSystemsToBeDrawnLast(mgr, mask, target); // 0x55A0, the vtable slot 47
 }
 
 // vtable slot 26 = fn_16_7F8C (0x7F8C..0x853C, 0x5B0): retail's user-event switch, which drives
