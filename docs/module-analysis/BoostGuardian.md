@@ -262,8 +262,9 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   triggers, so only the player takes contact damage now).
 - *Retail quirks kept:* `12510` takes its pick modulo the exhausted list index (-1), so it always
   heads for the first candidate; `13260` normalises a nav-point line it never reads.
-- *Next:* the render overrides `13E68`/`141B8`/`13ECC` (the effects are updated but not drawn) and
-  `14CCC`. The 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
+- *Render (slice c):* AddToRenderer `13E68`, Render `141B8` (dark visor: alpha modulation),
+  PreRenderAllViewports `13ECC` (render bounds = the effects' union). The ball draws (area 28).
+- *Next:* `14CCC`. The 0xD64 manager (and 0xD60) are built by `fn_30_4A38`/`fn_30_4E90`, called from the
   guardian's AcceptScriptMsg `fn_30_DDA0` (0xDF18/0xDF24), which the host does not have yet, so
   BoostAttack's `SetActive` calls on 0xD64 stay null-guarded until that slice.
 

@@ -44,6 +44,9 @@ public:
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
+  void AddToRenderer(const CStateManager& mgr) const override; // fn_30_13E68
+  void Render(const CStateManager& mgr) const override;        // fn_30_141B8
+  void PreRenderAllViewports(CStateManager& mgr) override;     // fn_30_13ECC
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
@@ -123,7 +126,8 @@ private:
   bool mDirChosen : 1;                                 // 0x5D8 bit 0x80: GrowIn picked its heading
   bool mRandomDir : 1;                                 // 0x5D8 bit 0x40: set by the first roll; later
                                                        // grow-ins pick a random heading
-  bool m5D8_20 : 1;                                    // 0x5D8 bit 0x20
+  bool mEffectBounds : 1;                              // 0x5D8 bit 0x20: the render bounds are
+                                                       // the effects' (fn_30_13ECC)
   bool mBounced : 1;                                   // 0x5D8 bit 0x10: CollidedWith hit something
   bool mRolling : 1;                                   // 0x5D8 bit 0x08
   bool mDone : 1;                                      // 0x5D8 bit 0x04

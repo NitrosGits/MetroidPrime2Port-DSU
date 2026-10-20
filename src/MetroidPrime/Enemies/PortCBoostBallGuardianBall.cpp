@@ -3,36 +3,37 @@
 // from the module's own bodies at 0x11CD8..0x164D0; the addresses are the module's own.
 //
 // Not here yet (BoostGuardian.md section f): the roll's contact sweep fn_30_14CCC (a named
-// stand-in below) and the three render overrides (fn_30_13E68, fn_30_141B8, fn_30_13ECC), so the
-// ball draws as a plain actor without its effects.
+// stand-in below).
 #include "MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp"
 
 #include "Collision/CCollisionInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
-#include "Kyoto/Math/CRelAngle.hpp"
-#include "MetroidPrime/CCollisionActor.hpp"
-#include "MetroidPrime/CGameCollision.hpp"
-#include "MetroidPrime/CObjectList.hpp"
-#include "MetroidPrime/CStateManager.hpp"
-#include "MetroidPrime/Player/CPlayer.hpp"
-#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
-#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
-#include "Collision/CMaterialList.hpp"
-#include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CMayaSpline.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Math/CSphere.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "Kyoto/Particles/CParticleSpawnSystem.hpp"
 #include "Kyoto/Particles/CSpawnSystemDescription.hpp"
 #include "Kyoto/SObjectTag.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CAxisAngle.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CModelData.hpp"
+#include "MetroidPrime/CObjectList.hpp"
+#include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 
 #include <math.h>
 #include <stddef.h>
@@ -137,7 +138,7 @@ CBoostBallGuardianBall::CBoostBallGuardianBall(
 , mRollingSfx()                               // 0x00015CBC
 , mDirChosen(false)                              // 0x00015CCC..0x00015D28: 0x5D8 all clear
 , mRandomDir(false)
-, m5D8_20(false)
+, mEffectBounds(false)
 , mBounced(false)
 , mRolling(false)
 , mDone(false)
@@ -205,6 +206,85 @@ template <>
 CBoostBallGuardianBall* TCastToPtr< CBoostBallGuardianBall >(CEntity* entity) {
   return static_cast< CBoostBallGuardianBall* >(TryCast(entity, CBoostBallGuardianBall::kTypeId));
 }
+// fn_30_13E68: the actor's own draw, plus a forced one while the effects' bounds stand in for
+// the render bounds and the ball is in view.
+// @ fn_30_13E68
+void CBoostBallGuardianBall::AddToRenderer(const CStateManager& mgr) const {
+  CActor::AddToRenderer(mgr);
+  if (mEffectBounds && mgr.IsActorVisible(*this)) {
+    EnsureRendered(mgr);
+  }
+}
+
+// fn_30_141B8: the model, then the three effects; through the dark visor with alpha modulation
+// and destination alpha.
+// @ fn_30_141B8
+void CBoostBallGuardianBall::Render(const CStateManager& mgr) const {
+  CPhysicsActor::Render(mgr);
+  const bool darkVisor = mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark;
+  if (darkVisor) {
+    CElementGen::sEnableAlphaModulation = darkVisor;
+    gpRender->SetDestinationAlpha(255);
+  }
+  if (mTrailGen.get() != nullptr) {
+    mTrailGen->Render();
+  }
+  if (mShieldGen.get() != nullptr) {
+    mShieldGen->Render();
+  }
+  if (mChargeUpGen.get() != nullptr) {
+    mChargeUpGen->Render();
+  }
+  if (darkVisor) {
+    gpRender->DisableDestinationAlpha();
+    CElementGen::sEnableAlphaModulation = false;
+  }
+}
+
+// fn_30_13ECC: the render bounds are the union of the effects' bounds, or the point at the
+// ball's position when none has any.
+// @ fn_30_13ECC
+void CBoostBallGuardianBall::PreRenderAllViewports(CStateManager& mgr) {
+  rstl::optional_object< CAABox > bounds;
+  if (mTrailGen.get() != nullptr) {
+    bounds = mTrailGen->GetBounds(); // fn_30_CD78: optional_object assignment
+  }
+  if (mShieldGen.get() != nullptr) {
+    const rstl::optional_object< CAABox > shield = mShieldGen->GetBounds();
+    if (shield.valid()) {
+      if (bounds.valid()) {
+        bounds.data().AccumulateBounds(shield.data().GetMinPoint());
+        bounds.data().AccumulateBounds(shield.data().GetMaxPoint());
+      } else {
+        bounds = shield;
+      }
+    }
+  }
+  if (mChargeUpGen.get() != nullptr) {
+    const rstl::optional_object< CAABox > chargeUp = mChargeUpGen->GetBounds();
+    if (chargeUp.valid()) {
+      if (bounds.valid()) {
+        bounds.data().AccumulateBounds(chargeUp.data().GetMinPoint());
+        bounds.data().AccumulateBounds(chargeUp.data().GetMaxPoint());
+      } else {
+        bounds = chargeUp;
+      }
+    }
+  }
+  if (bounds.valid()) {
+    SetOtherBounds(bounds.data());
+    SetRenderBounds(bounds.data());
+    mEffectBounds = true;
+  } else {
+    const CVector3f pos = GetTranslation();
+    const CAABox point(pos, pos);
+    SetOtherBounds(point);
+    SetRenderBounds(point);
+    mEffectBounds = false;
+  }
+  UpdatePortalSystemState(mgr);
+}
+
 
 // @ fn_30_1548C
 void CBoostBallGuardianBall::Think(float dt, CStateManager& mgr) {
