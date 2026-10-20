@@ -7,9 +7,10 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-20)
 
-- 107/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
+- 109/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
   registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
-  copy) and `fn_44_5894` (the team leave).
+  copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the ray the snap to the floor
+  uses) and `fn_44_3614` (the copy of the ray result).
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
@@ -26,13 +27,15 @@ port names it once per run, so the log says which body is missing. The names are
 |---|---|---|
 | `fn_44_9D58` | 0x878 | the retail constructor: the host builds `CMinorIng` with its own ctor and the loader fills `CMinorIngData` through the generated `SLdrMinorIng` reader |
 | `fn_44_110` | 0x844 | the retail loader reads the REL's own binary format; the host reads the generated `SLdrMinorIng` |
-| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`, the data at guest 0x8e0..0x8f8), which the host loader does not model |
-| `fn_44_97E4` | 0x15c | the retail destructor frees the module's own members |
-| `fn_44_34B0` | 0x164 | the retail's own ray down the actor's up axis (its length and filter are its own); the host uses `CStateManager::RayStaticIntersection` |
+| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are not read by the host's loader |
+
+`fn_44_97E4` (the destructor) and `fn_44_34B0` (the ray) were stand-ins and are
+ported now: the destructor is the host's member destruction (the retail's body is
+the members' own teardown) and the ray is `CMinorIng::RayDown`.
 
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 110 of the module's 217 functions as unmarked.
+`tools/port_progress.py` counts 108 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
@@ -65,7 +68,6 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_115C` | 0x13C | fn_44_1134 |
 | `fn_44_204C` | 0x15C | fn_44_21A8, fn_44_22B0 |
 | `fn_44_97E4` | 0x15C | - |
-| `fn_44_34B0` | 0x164 | fn_44_3670 |
 | `fn_44_A680` | 0x184 | fn_44_9D58 |
 | `fn_44_14D8` | 0x188 | fn_44_110 |
 | `fn_44_A9DC` | 0x19C | fn_44_9D58 |
@@ -145,7 +147,6 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_9C68` | 0x58 | fn_44_9C10 |
 | `__destroy_global_chain` | 0x58 | - |
 | `fn_44_E08` | 0x5C | fn_44_D54 |
-| `fn_44_3614` | 0x5C | fn_44_34B0 |
 | `fn_44_6500` | 0x5C | fn_44_64AC, fn_44_65C4 |
 | `fn_44_78BC` | 0x5C | - |
 | `fn_44_8404` | 0x5C | - |
@@ -161,6 +162,7 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_A5D0` | 0x74 | fn_44_9D58 |
 | `fn_44_57C4` | 0x80 | - |
 | `fn_44_6748` | 0x80 | fn_44_6720 |
+
 ## Layout facts the port depends on (all read from the REL's disassembly)
 
 - `0xcd8` is the safe zone the XENZ message names; `0xcda` is the zone that lured
