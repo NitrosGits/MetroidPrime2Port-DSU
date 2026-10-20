@@ -3,7 +3,29 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-20: per-family decomp state (the AGENTS.md Status as it stood, moved here)
+## 2026-10-20 (orchestrator handoff after compaction): lanes in flight
+
+Read a lane's result with the openchamber tool (`session.messages`, `lastAssistant`), review with
+`tools/review_decomp_diff.sh <base>` from its worktree, accept, then send the same session its next slice.
+Worktrees: `~/.local/share/opencode/worktree/3e7f972e5f2a67a4bf166b19e99a591913d8d4a4/wt-mp2-*`.
+
+| lane | session | branch / base | task |
+|---|---|---|---|
+| Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C reads `mData.mFlags210` (byte 0x9d0 = word MSB, mask m<<24), recheck 0xd7a claim; fix SetLocomotionType 0/1 = Crouch/Relaxed in PortCIng.cpp |
+| CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate on `7766b7fbd` | rework: StateOver via `mAnimationState` (as DG), x91c_/x91d_ are loader data-block fields (0x7C0..0x91E) |
+| EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring on `1d0eb3446` | triggers 4BD4/4B20/4B04/4AEC + codes 4AE8/4A04 |
+| DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian on `bffdb76d3` | fn_14_308C, ShouldJumpAttack 9678, states Start 9634 / Idle 95B8 |
+| SpacePirate (worker) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/spacepirate on `853da8e64` | 3A0C, 18BC, 343C, 339C |
+| DarkSamus (worker) | `ses_ea70a143bffe4SLdq4LIY5V8bC` | decomp/darksamus on `232823309` | milestone 1 (`/tmp/opencode/briefs/m1.md`) |
+| ScriptPlayerTurret (worker) | `ses_ea70a1437ffeyp5d7K55HX0N2H` | decomp/playerturret on `232823309` | milestone 1 |
+| asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | 8 false-positive patterns + regress cases; orchestrator reviews and commits |
+
+Accepted, not yet merged: boostguardian `87a580c7e` (locomotion fix, IngSpotPathFind speed,
+fn_30_30E4/3190/3068; open: guardian inert unless `MP2_BG_FSM=1`), ing `705548871`/`080c07d21`
+(pending rework), commandopirate `b3da76409`, emperoring `1d0eb3446`, digitalguardian `bffdb76d3`.
+Lane-review lesson: lanes call bytes inside the loader data block "never written" - check the
+data-block range before accepting a new zeroed member.
+
 
 Later in the day (port orchestrator, Opus): the five MiniMax family orchestrators were stopped and the
 watchdog `8dfd61bf` disabled; the port session runs every family. Two Opus bit-decoding audits found
