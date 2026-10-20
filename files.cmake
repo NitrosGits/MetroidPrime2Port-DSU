@@ -794,7 +794,7 @@ set(MP_MODULE_EmperorIngStage1_SOURCES
     src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp
 )
 set(MP_MODULE_EmperorIngStage3_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCEmperorIngStage3.cpp
 )
 set(MP_MODULE_Ing_SOURCES
     src/MetroidPrime/Enemies/PortCIng.cpp
