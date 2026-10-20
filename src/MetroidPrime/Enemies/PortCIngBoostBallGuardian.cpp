@@ -296,7 +296,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mFoundMovementPos(true) // ctor 0x0000FE0C: 0x11EC 0x10 = 1
 , mRecalcPath(false)
 , mTakeOff(false)
-, mStartAsIngSpot((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) // ctor 0x0000FE60: data 0x80
+, mIngSpotBlobVisible((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) // ctor 0x0000FE60: data 0x80
 , mMoving(false)
 , mGrappled(false)
 , mProjectileFSMEntry(false)

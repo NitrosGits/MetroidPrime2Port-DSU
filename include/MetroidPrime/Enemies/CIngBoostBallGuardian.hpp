@@ -569,7 +569,10 @@ private:
   bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3
   bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2
   bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0
-  bool mStartAsIngSpot : 1;                              // CIng: 0xE5D bit 5
+  // guest 0x11ED 0x40 (CIng: 0xE5D bit 5, there mStartAsIngSpot): ctor from the start-as-ing-spot
+  // flag, set by BecomeIngSpot and kUE_Activate, cleared by BecomeCorporeal, the death fade and
+  // kUE_Deactivate. Its only reader, fn_30_6108, keeps the blob tracker emitting while it is set.
+  bool mIngSpotBlobVisible : 1;
   bool mMoving : 1;                                      // CIng: 0xE5D bit 1
   bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
   bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7

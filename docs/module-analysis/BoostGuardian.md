@@ -415,7 +415,7 @@ values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02
 
 `tools/asmcheck.py check IngBoostBallGuardian PortCIngBoostBallGuardian.cpp --only
 MASK,XBIT,CROP,XCMP,XSTORE,OFFS` leaves three XBIT hits on the ctor (`mFoundMovementPos`,
-`mStartAsIngSpot`, `mRenderModel`), and the same kind on `fn_30_9DA0` in States2: false
+`mIngSpotBlobVisible`, `mRenderModel`), and the same kind on `fn_30_9DA0` in States2: false
 positives. Those Ing-half members state the Ing's offsets (`CIng: 0xE5C bit 3`) because most bodies
 cite `fn_29_*` and `review_decomp_diff.sh` checks them against the Ing REL; the guardian's ctor
 stores the guest bits (0x11EC 0x10 at 0xFE0C, 0x11ED 0x40 at 0xFE60, 0x11EC 0x01 at 0xFE3C).

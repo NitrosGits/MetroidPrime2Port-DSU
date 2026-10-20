@@ -235,12 +235,12 @@ void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager& mgr) {
     case kForm_BecomingIngSpot:
     case kForm_BecomingBodyProjectile:
     case kForm_BecomingWallProjectile: // 0x000062EC
-      if (mStartAsIngSpot) {           // 0x11ED 0x40
+      if (mIngSpotBlobVisible) {           // 0x11ED 0x40
         rate = 1.f;
       }
       break;
     case kForm_Corporeal: // 0x00006304
-      if (!GetAlive() && mStartAsIngSpot) {
+      if (!GetAlive() && mIngSpotBlobVisible) {
         rate = 1.f;
       }
       break;
@@ -523,23 +523,23 @@ void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
     }
     handled = true;
     break;
-  case kUE_TakeOff: // 0xd
-    mTakeOff = true; // 0xe5c bit 0
+  case kUE_TakeOff: // [this module] fn_30_D4F8 @0xD578
+    mTakeOff = true; // 0x11EC 0x02
     handled = true;
     break;
-  case kUE_BeginAction: // 0x11
-    if (mAlive) {                      // CPatterned 0x420 bit 6
-      mForm = kForm_BodyProjectile; // 0x9d4 = 4 (the flying body projectile)
-      mBodyProjectileTime = 0.f;    // 0xe58 = rodata_6C
+  case kUE_BeginAction: // [this module] fn_30_D4F8 @0xD590: the form only; the Ing's reset of
+                        // the body-projectile time is not in this module
+    if (mAlive) {                   // CPatterned 0x420 bit 6
+      mForm = kForm_BodyProjectile; // 0xAE4 = 4
     }
     handled = true;
     break;
-  case kUE_Activate: // 0x1d
-    mStartAsIngSpot = true; // 0xe5d bit 5
+  case kUE_Activate: // [this module] fn_30_D4F8 @0xD5AC
+    mIngSpotBlobVisible = true; // 0x11ED 0x40
     handled = true;
     break;
-  case kUE_Deactivate: // 0x1e
-    mStartAsIngSpot = false; // 0xe5d bit 5
+  case kUE_Deactivate: // [this module] fn_30_D4F8 @0xD5C4
+    mIngSpotBlobVisible = false; // 0x11ED 0x40
     handled = true;
     break;
   case kUE_EffectOn: // 0x21

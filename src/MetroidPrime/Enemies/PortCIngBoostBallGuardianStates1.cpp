@@ -181,7 +181,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     mPortalPlane = false;                                    // 0xe5d bit 6
-    mStartAsIngSpot = false;                                 // 0xe5d bit 5
+    mIngSpotBlobVisible = false;                                 // 0xe5d bit 5
     mVerticalMovement = false;                               // CPatterned 0x34c bit 6
     AddMaterial(kMT_GroundCollider, mgr);                    // 0x25
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);   // 0x0000B3BC: li r4, 1
@@ -252,7 +252,7 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
     mCollisionActorManager0->SetActive(mgr, false); // guest 0xD60
     mCollisionActorManager1->SetActive(mgr, true); // fn_30_ABC4 0x0000AF70: guest 0xD64
     mPortalPlane = false;   // 0xe5d bit 6
-    mStartAsIngSpot = true; // 0xe5d bit 5
+    mIngSpotBlobVisible = true; // 0xe5d bit 5
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr);
     }
@@ -380,7 +380,7 @@ void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg m
     break;
   case kStateMsg_Deactivate:
     mPortalPlane = false;    // 0xe5d bit 6
-    mStartAsIngSpot = false; // 0xe5d bit 5
+    mIngSpotBlobVisible = false; // 0xe5d bit 5
     // The Ing's asm 0x000093C4: SetLocomotionType(0), i.e. kLT_Crouch.
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0

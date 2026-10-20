@@ -1024,7 +1024,7 @@ void CIngBoostBallGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
       if (z <= 0.f) {
         mDeadFade -= dt; // 0x00005FA0
         mRenderModel = false; // 0x00005FAC: 0xe5d bit 7
-        mStartAsIngSpot = false; // 0x00005FB8: 0xe5d bit 5
+        mIngSpotBlobVisible = false; // 0x00005FB8: 0xe5d bit 5
       }
       if (mDeadFade <= 0.f) { // 0x00005FCC
         DeathDelete(mgr);
