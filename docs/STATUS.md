@@ -3,28 +3,34 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-20 (orchestrator handoff after compaction): lanes in flight
+## 2026-10-20 (port orchestrator): lanes in flight
 
 Read a lane's result with the openchamber tool (`session.messages`, `lastAssistant`), review with
 `tools/review_decomp_diff.sh <base>` from its worktree, accept, then send the same session its next slice.
 Worktrees: `~/.local/share/opencode/worktree/3e7f972e5f2a67a4bf166b19e99a591913d8d4a4/wt-mp2-*`.
 
+Merged into port (eb3252ed4, smoke clean on all 8, 951 markers, `60a51e2d8`): swampboss, sandboss,
+wallcrawler, boostguardian, digitalguardian, commandopirate, emperoring, spacepirate. Smoke logs:
+`/tmp/opencode/smoke/`. Smoke notes: EmperorIngStage1's actor is now `u04e3` (docs say u0687);
+DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
+
 | lane | session | branch / base | task |
 |---|---|---|---|
-| Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C reads `mData.mFlags210` (byte 0x9d0 = word MSB, mask m<<24), recheck 0xd7a claim; fix SetLocomotionType 0/1 = Crouch/Relaxed in PortCIng.cpp |
-| CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate on `7766b7fbd` | rework: StateOver via `mAnimationState` (as DG), x91c_/x91d_ are loader data-block fields (0x7C0..0x91E) |
-| EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring on `1d0eb3446` | triggers 4BD4/4B20/4B04/4AEC + codes 4AE8/4A04 |
-| DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian on `bffdb76d3` | fn_14_308C, ShouldJumpAttack 9678, states Start 9634 / Idle 95B8 |
-| SpacePirate (worker) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/spacepirate on `853da8e64` | 3A0C, 18BC, 343C, 339C |
+| Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C `mData.mFlags210`, locomotion 0/1 = Crouch/Relaxed |
+| CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate @ `6803f32e0` | rework Alert's Update: CBCTauntCmd kTT_Two/kTT_Four on bc+0x580 |
+| EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring @ `d83b04c5a` | AcceptScriptMsg fn_16_7CE8 (+ report spawn callee sizes) |
+| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `a8787e7f4` | milestone 2: FSM tables + triggers <=0x40 |
+| DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian @ `262078f10` | rework Render A3D4 (retail calls slot 47, never CPatterned::Render); stop if the model vanishes |
 | DarkSamus (worker) | `ses_ea70a143bffe4SLdq4LIY5V8bC` | decomp/darksamus on `232823309` | milestone 1 (`/tmp/opencode/briefs/m1.md`) |
 | ScriptPlayerTurret (worker) | `ses_ea70a1437ffeyp5d7K55HX0N2H` | decomp/playerturret on `232823309` | milestone 1 |
-| asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | 8 false-positive patterns + regress cases; orchestrator reviews and commits |
+| asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 
-Accepted, not yet merged: boostguardian `87a580c7e` (locomotion fix, IngSpotPathFind speed,
-fn_30_30E4/3190/3068; open: guardian inert unless `MP2_BG_FSM=1`), ing `705548871`/`080c07d21`
-(pending rework), commandopirate `b3da76409`, emperoring `1d0eb3446`, digitalguardian `bffdb76d3`.
-Lane-review lesson: lanes call bytes inside the loader data block "never written" - check the
-data-block range before accepting a new zeroed member.
+Accepted, not yet merged (next batch: merge, build, smoke): emperoring `d83b04c5a`, commandopirate
+up to `d2baea05b`, spacepirate `0d38c3c08` (Render/ScanVisorRender parked for an Opus lane:
+fn_72_36CC + unidentified member), emperoring3 `a8787e7f4`, swampboss `59637cee5`;
+digitalguardian `121b1c99a` only together with the Render rework (draw-last gate).
+Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
+reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress.
 
 
 Later in the day (port orchestrator, Opus): the five MiniMax family orchestrators were stopped and the
