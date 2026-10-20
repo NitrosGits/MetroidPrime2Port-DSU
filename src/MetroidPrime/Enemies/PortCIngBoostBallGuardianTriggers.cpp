@@ -220,6 +220,7 @@ void CIngBoostBallGuardian::SetBoostPuddleMode(bool enter) {
   mBoostPuddleModeTimer = CurrentPhase().mBoostPuddleModeTime; // 0x000030DC: *(0x11D0)+0
 }
 
+// fn_30_47E8 (this module).
 // Ing body fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
 // and the contact damage is off cooldown, the player takes the Ing's contact damage.
 void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {

@@ -282,6 +282,7 @@ void CIngBoostBallGuardian::UpdateHitLight(float dt, CStateManager& mgr) {
 }
 
 
+// fn_30_DDA0 (this module).
 // The Ing's AcceptScriptMsg (the Ing REL's fn_29_C9A4): the message switch that creates the body
 // and the collision actors, joins the team, relays the hits and cleans up on delete.
 void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -320,15 +321,16 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     }
     CreateCollisionActorManager(mgr); // 0x0000DF18: fn_30_4E90
     CreateIngSpotManager(mgr);        // 0x0000DF24: fn_30_4A38
-    mIngBlobTrackerId = CreateBlobTracker( // 0x0000DF90
+    mIngBlobTrackerId = CreateBlobTracker( // 0x0000DF90: fn_30_648C
         mgr, TLockedToken< CGenDescription >(
                  gpSimplePool->GetObj(SObjectTag('PART', mData.mIngSpot.GetBlobEffect()))));
-    mBoostBlobTrackerId = CreateBlobTracker( // 0x0000E01C
+    mBoostBlobTrackerId = CreateBlobTracker( // 0x0000E01C: fn_30_648C
         mgr, TLockedToken< CGenDescription >(
                  gpSimplePool->GetObj(SObjectTag('PART', mBoost.mBlobEffect))));
     CreateHitLight(mgr); // 0x0000E048: fn_30_67B4
     // 0x0000E06C: the (kSS_Modify, kSM_Activate) connections, which the boost ball gets.
-    mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate);
+    // 0x0000E074/0x0000E080: the vector's assignment and the temporary's destructor
+    mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate); // fn_30_E430, fn_30_E4EC
     break;
   case kSM_Delete:
     mgr.DeleteObjectRequest(mIngBlobTrackerId);   // 0x0000E098
@@ -348,7 +350,8 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     JoinTeam(mgr);
     break;
   case kSM_Alert:
-    mAlert = true;
+    // 0x0000E2F4: ALRT sets CPatterned 0x420 bit 7; mAlert (0x11ED 0x08) is Lurk's (0x0000A12C).
+    SetHitByPlayerProjectile(true);
     break;
   case kSM_Activate:
     JoinTeam(mgr);
@@ -373,10 +376,10 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
         light->SetActive(false); // 0x0000E260
       }
       if (CEntity* tracker = mgr.ObjectById(mIngBlobTrackerId)) {
-        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E288
+        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E288: fn_25_256C
       }
       if (CEntity* tracker = mgr.ObjectById(mBoostBlobTrackerId)) {
-        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E2B0
+        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E2B0: fn_25_256C
       }
       StopSfx(); // 0x0000E2B8: fn_30_3A60
     }
@@ -390,7 +393,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     }
     break;
   case kSM_HitObject:
-    CollisionActorHitPlayer(mgr, sender); // fn_29_2ED8
+    CollisionActorHitPlayer(mgr, sender); // 0x0000E3AC: fn_30_47E8
     break;
   case kSM_Damage:
     ColliderDamage(mgr, sender);   // 0x0000E354: fn_30_479C
@@ -498,6 +501,7 @@ void CIngBoostBallGuardian::UpdateHitDamageTime(float dt) {
   }
 }
 
+// fn_30_D4F8 (this module).
 // The Ing's DoUserAnimEvent (the Ing REL's fn_29_C228). The base class's handler runs only for the
 // events this function does not handle (retail's local `handled` flag, set by every case below).
 // The area 57 run delivered kUE_LoopedSoundStop (2), kUE_Activate (29), kUE_EffectOff (34) and
