@@ -28,7 +28,7 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 | BoostGuardian (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | boostguardian @ `999b51bdf` | 6980 splat, mini-portal + ExitHost, module-30 marking pass |
 | EmperorIng3 (Opus) | `ses_ea552cc99ffepxd6lIKfYVHqxe` | emperoring3 @ `e3971fcd3` | light swarm BD84 + vtable, BB8, E40, beam damage |
 | DigitalGuardian (Opus) | `ses_ea542bd35ffeRmTvcVUd6IIdU4` | digitalguardian @ `758e166ab` (0x150C fallback, 3F14, 2A28, 266C/2E60) | CDigitalGuardianHead class, head paths in 7D8C/2A28, 5644 |
-| Splitter (worker) | `ses_ea58db7b6ffe3wysciukole7Eq` | splitter @ `b1f682ff7` | 3460, Activate run, FSM 5E8C/E9E4 sizes |
+| Splitter (worker) | `ses_ea52a89c1ffenVqZ3wYvnAkNCS` | splitter @ `206a2e084` (3460, FSMs 5E8C/E9E4) | 2CE0, Think run via a copy of the ElitePirate driver that sends Activate |
 | CommandoPirate (worker) | `ses_ea569018cffeQjN5VdT4OQtoEr` | commandopirate @ `843ebf292` | 4CA4, 6390, 3090 |
 | EmperorIng1 (worker) | `ses_ea53f0487ffeLDTNqYcJmJxJeS` | emperoring @ `9559ffaff` (1A50/1950, Taunt 5DBC; markers owed by orchestrator) | Warp 601C, 9BE8, 1A50 emitter tail |
 | MinorIng (worker) | `ses_ea550f1b2ffeU2N84DMkU5YP5z` | minoring (new, wt-mp2-ing) | stand-ins + marking pass |
