@@ -176,6 +176,9 @@ void CIngBoostBallGuardian::LeaveTeam(CStateManager& mgr) {
 
 // fn_30_30E4: every collision actor of the guest's second manager (0xD64) takes the boost-ball
 // vulnerability (0x1178) or the ing spot's (0xA5C) (0x0000310C).
+// Both arms ran in area 28; every collision actor id resolves there, so the failed cast at
+// 0x00003150 is data-limited.
+// @ fn_30_30E4
 void CIngBoostBallGuardian::SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost) {
   const CDamageVulnerability& vuln = boost ? mVulnerability : mData.mIngSpotVulnerability;
   for (uint i = 0; i < mCollisionActorManager1->GetNumCollisionActors(); ++i) {
@@ -190,6 +193,8 @@ void CIngBoostBallGuardian::SetIngSpotManagerVulnerability(CStateManager& mgr, b
 // fn_30_3190: records the reflect flag, then every collision actor of the body manager (guest
 // 0xD60) takes the reflect vulnerability or CPatterned's own
 // (0x000031C8 / 0x000031D0, the non-virtual call).
+// Both arms ran in area 28; as in fn_30_30E4 the failed cast is data-limited.
+// @ fn_30_3190
 void CIngBoostBallGuardian::SetBodyManagerReflect(CStateManager& mgr, bool reflect) {
   mReflectVulnerability = reflect; // 0x000031BC: 0x11EE 0x02
   const CDamageVulnerability& vuln = reflect ? CDamageVulnerability::ReflectVulnerabilty()

@@ -130,6 +130,7 @@ void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008C70: 0x6b4 = 0
     mTaunt = false; // 0x00008C78: 0xe5c bit 6
   }
+  // Any other message falls through to the return (0x00008C80), as in the REL.
 }
 
 // fn_29_8A2C
