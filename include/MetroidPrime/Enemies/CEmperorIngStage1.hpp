@@ -231,7 +231,7 @@ private:
   int RetractedTentacleCount() const;
   // fn_16_51D4: the heart's health becomes the boss's; the mode follows it.
   void UpdateHeartHealth(CStateManager& mgr);
-  // fn_16_4EB8: moves the actor onto the target's locator.
+  // fn_16_4EB8: the body follows the heart.
   void UpdateTentacleAnchor(float dt, CStateManager& mgr);
   // fn_16_3AFC: the three collision actor managers get their update.
   void UpdateCollisionActors(float dt, CStateManager& mgr);
@@ -293,6 +293,7 @@ private:
   int xa24_;                          // guest 0xA24, -1: the second one's
   int xa28_;                          // guest 0xA28, -1: the third one's
   float xa2c_;                        // guest 0xA2C, 0.0f: the turn angle (fn_16_2C9C)
+  float xa30_;                        // guest 0xA30, 0.0f: the current turn angle (fn_16_4EB8)
   float xa34_;                        // guest 0xA34, maxTurnSpeedNormal: the current turn speed
   float xa38_;                        // guest 0xA38, 0.0f: the jump rope's duration (fn_16_5928)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)

@@ -46,6 +46,7 @@
 #include "Kyoto/Animation/CAnimTreeNode.hpp"
 #include "Kyoto/Animation/CCECharacterInfo.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CParticleDatabase.hpp"
 #include "rstl/algorithm.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
@@ -198,6 +199,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa24_(-1)                                                   // guest 0xA24, fn_16_900C clears it
 , xa28_(-1)                                                   // guest 0xA28, fn_16_900C clears it
 , xa2c_(0.f)                                                      // guest 0xA2C, rodata_380
+, xa30_(0.f)                                                      // guest 0xA30, rodata_380
 , xa34_(data.maxTurnSpeedNormal)                                   // guest 0xA34, 0x91B8
 , xa38_(0.f)                                                      // guest 0xA38, 0x91BC
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
@@ -607,10 +609,67 @@ void CEmperorIngStage1::UpdateHeartHealth(CStateManager& mgr) {
   HealthInfo()->SetHP(hp);
 }
 
-// fn_16_4EB8 (0x4EB8..0x51D4): moves the actor onto the target's locator. Too big for the
-// slice's rule, so it stays a stand-in.
+// fn_16_4EB8 (0x4EB8..0x51D4, 0x31C): the body follows the heart. The tracked actor (fn_16_302C)
+// is the heart, the 'PLAY' actor (fn_16_3060) is the actor the body is played on, and the
+// CONNECT/ACTIVATE actor (fn_16_2FF8) is the script actor that rotates.
+//   0x4F10: the rotate actor is put on the heart's "brainSpine_scale" locator (rodata_378).
+//   0x4FEC: the turn: the angle (guest 0xA2C) is approached at the accel (guest 0xBFC, degrees
+//     per second, turned into radians with rodata_3DC = 0.017453292), and the result (guest
+//     0xA30, the current angle) is clamped to the turn speed (guest 0xA34, degrees per second).
+//   0x5060: the 'PLAY' actor's Y column is flattened (its third component is 0.0f at 0x5088)
+//     and normalised, turned by the current angle times dt (RotateZ, 0x50A4), and the actor is
+//     turned to look along it from the heart's "sphere_base" (rodata_37C), the heart's Z column
+//     as up (LookAt, 0x5110).
+//   0x5120: the body itself goes to the 'PLAY' actor's segment 1, offset by 1.5f (rodata_394)
+//     along the 'PLAY' actor's X column.
 void CEmperorIngStage1::UpdateTentacleAnchor(float dt, CStateManager& mgr) {
-  StandInFn("fn_16_4EB8");
+  CActor* heart = GetTargetActor(mgr);   // fn_16_302C, 0x4EE8
+  CActor* body = GetPlayActor(mgr);      // fn_16_3060, 0x4EF8
+  CActor* rotate = GetActivateActor(mgr); // fn_16_2FF8, 0x4F0C
+  // 0x4F10: the rotate actor on the heart's "brainSpine_scale" locator; the translation of the
+  // copied transform is handed to SetTranslation at 0x4F80.
+  const CTransform4f spine =
+      heart->GetTransform() *
+      heart->GetModelData()->GetScaledLocatorTransform(rstl::string_l("brainSpine_scale"));
+  rotate->SetTranslation(spine.GetTranslation()); // 0x4F80
+  // 0x4F84: the heart's "sphere_base" in world space.
+  const CTransform4f base =
+      heart->GetTransform() *
+      heart->GetModelData()->GetScaledLocatorTransform(rstl::string_l("sphere_base"));
+  // 0x4FEC: the turn. The step is the difference to the angle, clamped to the accel (0x5004),
+  // the new angle is the step times dt plus the current one (0x5028) and it is clamped to the
+  // turn speed (0x503C..0x505C).
+  const float kDegToRad = 0.017453292f; // lbl_16_rodata_3DC
+  const float accel = kDegToRad * mTurnSpeedAccel;
+  const float diff = xa2c_ - xa30_;
+  float step = diff;
+  if (step < -accel) {
+    step = -accel;
+  } else if (step > accel) {
+    step = accel;
+  }
+  xa30_ = step * dt + xa30_; // 0x5028
+  const float speed = kDegToRad * xa34_;
+  if (xa30_ < -speed) {
+    xa30_ = -speed;
+  } else if (xa30_ > speed) {
+    xa30_ = speed;
+  } // 0x505C
+  // 0x5060: the 'PLAY' actor's Y column, flattened and normalised.
+  CVector3f facing = body->GetTransform().GetColumn(kDY);
+  facing.SetZ(0.f); // 0x5088
+  facing.Normalize(); // 0x508C
+  // 0x5090: the current angle times dt, around Z.
+  const CVector3f dir = CTransform4f::RotateZ(CRelAngle::FromRadians(xa30_ * dt)) * facing;
+  // 0x50B8: the position (the heart's "sphere_base"), the direction and the up (the heart's Z
+  // column) the body looks along; 0x5110: the 'PLAY' actor takes that transform.
+  body->SetTransform(CTransform4f::LookAt(base.GetTranslation(),
+                                           base.GetTranslation() + dir, base.GetColumn(kDZ)));
+  // 0x5120: the body at the 'PLAY' actor's segment 1, 1.5f along its X column (the X column is
+  // read after the new transform, 0x5124).
+  const CVector3f offset = body->GetTransform().GetColumn(kDX) * 1.5f; // lbl_16_rodata_394
+  const CTransform4f seg = body->GetModelData()->GetScaledLocatorTransform(CSegId(1));
+  SetTransform((body->GetTransform() * seg) * CTransform4f::Translate(offset)); // 0x51A8
 }
 
 // fn_16_3AFC (0x3AFC..0x3B70): the three collision actor managers get their update (the calls

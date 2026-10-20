@@ -29,7 +29,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_3668` | 0x80 | every live tentacle's per-frame update | [proven] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update (it calls three more module functions) | [proven] |
 | `fn_16_51D4` | 0x128 | the heart's health becomes the boss's (heart damage sound, the mode 0/1/2 thresholds) - ported, `UpdateHeartHealth` | [proven] |
-| `fn_16_4EB8` | 0x31C | moves the actor onto the target's locator | [probable] |
+| `fn_16_4EB8` | 0x31C | the body follows the heart: the rotate actor on the heart's "brainSpine_scale", the 'PLAY' actor turned along the current angle, the body at the 'PLAY' actor's segment 1 - ported, `UpdateTentacleAnchor` | [proven] |
 | `fn_16_3AFC` | 0x74 | the three collision actor managers' update | [proven] |
 | `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
 | `fn_16_4C8` | 0x368 | the melee sweep's contact damage to the player (the 0x80 flag; every box grows 4.0f) - ported, `UpdateMeleeHits` | [proven] |
@@ -171,7 +171,7 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0x7C0-0x7D4 | six ints | 0 (0x7C0 the mode, 0x7C4 the sub-stage, 0x7C8/0x7CC/0x7D0 the tentacle collision actor managers, 0x7D4 the live tentacle count) |
 | 0xA18-0xA1E | four u16 | `kInvalidUniqueId` |
 | 0xA20-0xA28 | three ints | -1 |
-| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA3C the heart-stage timer, 0xA50 the taunt timer) |
+| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA2C the turn angle, 0xA30 the current turn angle (fn_16_4EB8), 0xA3C the heart-stage timer, 0xA50 the taunt timer) |
 | 0xA34 | float | maxTurnSpeedNormal |
 | 0xA40 | float | the initial health (from `GetHealthInfo()`) |
 | 0xA4C | float | 4.0f |
@@ -333,7 +333,7 @@ The body only runs while the actor is active: the asm's gate is the byte at 0x20
 | 0x5720 | `CPatterned::Think` - the base's own Think |
 | 0x5734 / 0x5740 | the attack timer (guest 0xA4C) counts down, the taunt timer (guest 0xA50) counts up |
 | 0x5748 | fn_16_51D4: the heart's health becomes the boss's |
-| 0x5758 | fn_16_4EB8: moves the actor onto the target's locator |
+| 0x5758 | fn_16_4EB8: the body follows the heart |
 | 0x5768 | fn_16_3AFC: the three collision actor managers (guest 0x7C8, 0x7CC, 0x7D0) get their update |
 | 0x5778 | fn_16_4C0C: the module's track-player update |
 | 0x578C | the effect-state timer (guest 0xA78) counts down |
@@ -496,7 +496,7 @@ never ends). 0 caught/reach-stub.
 
 Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
 EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
-reach the boss), fn_16_4EB8 (0x31C, turning), fn_16_51D4 (0x128),
+reach the boss), fn_16_51D4 (0x128),
 fn_16_7F8C cases 7/17/22/27/28, Render fn_16_531C and ProcessSoundEvent fn_16_7EA8.
 
 fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
@@ -504,6 +504,21 @@ fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the 
 (lbl_16_rodata_38C: the box's minimum drops by 4.0f at 0x704, its maximum rises by 4.0f at
 0x734) instead of the tip pair reaching 8.0f past its end. The melee damage, the player's touch
 bounds and the 0.2f cooldown are the same. Ported as `UpdateMeleeHits`.
+
+fn_16_4EB8 (0x4EB8..0x51D4) is the body following the heart, not the facing: the CONNECT/ACTIVATE
+actor (fn_16_2FF8) goes to the heart's (fn_16_302C) "brainSpine_scale" locator (0x4F10), the 'PLAY'
+actor (fn_16_3060) is turned along its own flattened Y column, rotated by the current angle (guest
+0xA30) times dt and looked at the heart's "sphere_base" (rodata_37C) with the heart's Z column as
+up (0x5060..0x5110), and the body itself goes to the 'PLAY' actor's segment 1, 1.5f (rodata_394)
+along its X column (0x5120..0x51A8). The angle (guest 0xA2C) is approached at the accel (guest
+0xBFC, degrees per second, turned into radians with rodata_3DC = 0.017453292) and the current
+angle is clamped to the turn speed (guest 0xA34). Ported as `UpdateTentacleAnchor`; the guest
+0xA30 member is new to the port.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`): the boss moves from (1.7, -43.5, 105.0) to (3.2, -43.5, 104.9) - the body
+now rides the heart - and the run ends on the frame limit with 0 caught/reach-stub. fn_16_4C8 does
+not run: its 0x80 flag is set by the melee branch of fn_16_6D94, which is still a stand-in.
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
