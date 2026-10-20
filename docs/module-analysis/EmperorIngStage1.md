@@ -34,6 +34,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
 | `fn_16_4C8` | 0x368 | the melee sweep's contact damage to the player (the 0x80 flag; every box grows 4.0f) - ported, `UpdateMeleeHits` | [proven] |
 | `fn_16_8C` | 0x3B0 | the sweeping tentacles' contact damage to the player - ported, `UpdateTentacleHits` | [proven] |
+| `fn_16_6F28` | 0x244 | the state "MeleeAttack": the melee flag (0xA74 bit 0x80), the turn angle, the loop attack command - ported, `MeleeAttack` | [proven] |
 | `fn_16_4C0C` | 0xBC | the track-player update: the "Damage" and "Telegraph" effect states | [probable] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
 | `fn_16_24AC` | 0x78 | the tentacle's dark and light vulnerability effect states | [proven] |
@@ -474,7 +475,7 @@ Joint fields: +0x0C out animation, +0x10 back animation, +0x14 retracted idle, +
 +0x20 last health. Joint flags: 0x04 forces state 2, 0x10 shootable, 0x20 collision on, 0x40
 collision wanted, 0x80 fn_16_2EE0's flag. States: 0 retracted, 1 coming out, 2 out, 3 going back.
 Guest 0xA74 flags: 0x04 ?, 0x08 projectile charged, 0x10 ?, 0x20 ?, 0x40 jump rope, 0x80 the melee
-sweep (fn_16_6D94 sets it at 0x6F8C and clears it at 0x713C; fn_16_4C8's gate). Retail
+sweep (fn_16_6F28 sets it at 0x6F8C and clears it at 0x7144; fn_16_4C8's gate). Retail
 `CTryCommand::ShouldRetry(0x6B4,
 bc, n)` is host `mAnimationState.CanIssueCommand(bc, n)`; the +0x350 vtable 0x30 call is
 `StateMachineState().GetTime()`.
@@ -517,8 +518,26 @@ angle is clamped to the turn speed (guest 0xA34). Ported as `UpdateTentacleAncho
 
 Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
 `send u04e3 Activate`): the boss moves from (1.7, -43.5, 105.0) to (3.2, -43.5, 104.9) - the body
-now rides the heart - and the run ends on the frame limit with 0 caught/reach-stub. fn_16_4C8 does
-not run: its 0x80 flag is set by the melee branch of fn_16_6D94, which is still a stand-in.
+now rides the heart - and the run ends on the frame limit with 0 caught/reach-stub. fn_16_4C8 needs
+the player within the melee range (the trigger ShouldMeleeAttack, 30 units), so it does not run in
+that scenario; with the player teleported next to the boss (`tp 5.0 -43.5 104.9`) the FSM enters
+the state "MeleeAttack" (fn_16_6F28), which sets the 0x80 flag, and a gdb breakpoint on
+`CEmperorIngStage1::UpdateMeleeHits` with the condition `xa74_ & 0x80` is hit from
+`CEmperorIngStage1::Think` - fn_16_4C8's body runs.
+
+fn_16_6F28 (0x6F28..0x716C) is the state "MeleeAttack" (lbl_16_data_94 entry 5), not part of
+fn_16_6D94 (that is the state "Attack", already ported): on activate it sends IS00 (fn_16_830,
+0x6F6C), gives the tentacles the melee vulnerability (mode 2, fn_16_353C, 0x6F7C), sets the
+animation state ready (0x6F84), sets the melee flag (guest 0xA74 bit 0x80, 0x6F8C) and the melee
+turn speed (guest 0xBF4, 0x6F98). On update it asks the animation state for the loop attack
+(CanIssueCommand, pas 9 = kAS_LoopAttack, 0x6FAC) and delivers CBCLoopAttackCmd(kLAT_Four)
+(the retail's direction 4, 0x7004); otherwise it sets the turn angle (guest 0xA2C) to the melee
+turn speed in radians (lbl_16_rodata_3DC), positive once the state has run for 0.5f
+(lbl_16_rodata_3F4) and negative before, and after 3.0f (lbl_16_rodata_3C0) the melee trigger
+(fn_16_4B20) decides whether the animation state is over (0x70E8). On deactivate the body gets
+ExitState (0x7110), the animation state is not ready, the attack timer is re-rolled (fn_16_8E4),
+the melee flag is cleared (0x7144) and the turn speed is the normal one (guest 0xBF0). Ported as
+`MeleeAttack`.
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",

@@ -4,8 +4,8 @@
 // states TrackPlayer, Attack, ProjectileAttack, Taunt, JumpRope, BeginHeartStage, HeartStage and
 // EndHeartStage; the heart stage's beam (FireBeam), the heart's damage reaching the boss
 // (fn_16_51D4) and the charged projectile of DoUserAnimEvent. What remains a stand-in logs once
-// and names the REL function it stands in for (MeleeAttack, WarpAttack, TauntAttack, the
-// anchor update fn_16_4EB8, Render, ProcessSoundEvent and DoUserAnimEvent's
+// and names the REL function it stands in for (WarpAttack, TauntAttack, the
+// Render, ProcessSoundEvent and DoUserAnimEvent's
 // other cases) - docs/module-analysis/EmperorIngStage1.md has the map.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
@@ -1818,8 +1818,54 @@ void CEmperorIngStage1::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_16_6F28 (0x6F28..0x716C, 0x244): the state "MeleeAttack" (lbl_16_data_94 entry 5).
+//   Activate: the script hears IS00 (fn_16_830, 0x6F6C), the tentacles take the melee
+//     vulnerability (mode 2, fn_16_353C, 0x6F7C), the animation state is ready (0x6F84), the
+//     melee flag (guest 0xA74 bit 0x80, the gate of fn_16_4C8) is set (0x6F8C) and the turn
+//     speed is the melee one (guest 0xBF4, 0x6F98).
+//   Update: if the animation state lets the loop attack in (CanIssueCommand, pas 9 =
+//     kAS_LoopAttack, 0x6FAC) the body gets CBCLoopAttackCmd(kLAT_Four) (0x7004); otherwise the
+//     turn angle (guest 0xA2C) is the melee turn speed in radians (lbl_16_rodata_3DC), positive
+//     once the state has run for 0.5f (lbl_16_rodata_3F4, 0x7064) and negative before, and after
+//     3.0f (lbl_16_rodata_3C0, 0x70B8) the melee trigger (fn_16_4B20) decides whether the
+//     animation state is over (0x70E8).
+//   Deactivate: the body gets ExitState (0x7110), the animation state is not ready (0x7130), the
+//     attack timer is re-rolled (fn_16_8E4, 0x7138), the melee flag is cleared (0x7144) and the
+//     turn speed is the normal one (guest 0xBF0, 0x7150).
 void CEmperorIngStage1::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_6F28");
+  switch (msg) {
+    case kStateMsg_Activate:
+      SendStageMessage(mgr, 0);
+      SetTentacleVulnerability(mgr, 2);
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      xa74_ |= 0x80;
+      xa34_ = mMaxTurnSpeedMelee;
+      break;
+    case kStateMsg_Update: {
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+        BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four));
+      } else {
+        const float kDegToRad = 0.017453292f; // lbl_16_rodata_3DC
+        const float turn = kDegToRad * mMaxTurnSpeedMelee;
+        xa2c_ = StateMachineState().GetTime() >= 0.5f ? turn : -turn;
+        if (StateMachineState().GetTime() > 3.f) {
+          if (!ShouldMeleeAttack(mgr, CTriggerData(0.f))) {
+            mAnimationState.SetState(CAnimationState::kAS_Over);
+          }
+        }
+      }
+      break;
+    }
+    case kStateMsg_Deactivate:
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);
+      ResetAttackTimer(mgr);
+      xa74_ &= ~0x80;
+      xa34_ = mMaxTurnSpeedNormal;
+      break;
+    default:
+      break;
+  }
 }
 
 // The attack lists of fn_16_6D94, one per mode (guest 0x7C0): 0 ProjectileAttack, 1 WarpAttack,
