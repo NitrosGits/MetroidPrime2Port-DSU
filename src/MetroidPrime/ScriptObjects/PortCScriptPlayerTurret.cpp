@@ -16,6 +16,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptPlayerTurret.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Animation/CharacterCommon.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Input/CFinalInput.hpp"
@@ -375,6 +376,17 @@ void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
   }
 }
 
+// fn_63_19B0 (0x184): the animation parameters for one lookup - the state id, the number of
+// parameters and their pointers (the guest's CPASAnimParmData).
+CPASAnimParmData CScriptPlayerTurret::BuildAnimParmData(pas::EAnimationState state,
+                                                        const CPASAnimParm& parm) {
+  // 0x19E0: the state id; 0x19F8..0x1B18: the eight parameter slots, the first one the enum
+  // parameter and the seven others empty.
+  return CPASAnimParmData(state, parm, CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                          CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                          CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter());
+}
+
 // fn_63_15B0 (0x3C4): the base actor (0x198) and the top actor (0x19A) come from the turret's
 // "AttachedAnimatedObject" and "AttachedCollisionObject" connections, and the base actor's
 // animation database gives the five additive animation ids (0x19C..0x1AC) and the light colour
@@ -390,15 +402,27 @@ void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
   // 0x161C: the base actor's animation data; the guest reads the model pointer without a test
   // (a port limit: the host allows an actor without a model).
-  if (base != nullptr && base->GetModelData() != nullptr &&
-      base->GetModelData()->GetAnimationData() != nullptr) {
+  CAnimData* animData = base != nullptr && base->GetModelData() != nullptr
+                           ? base->AnimationData()
+                           : nullptr;
+  if (animData != nullptr) {
     // 0x1918: the base actor's model flags (the guest's 0xFC..0x104) become the turret's saved
     // copy (0x1D4..0x1DC), which the stop message hands back.
     mModelFlags = base->GetModelFlags();
   }
-  // The base actor's animation database gives the five animation ids (0x19C..0x1AC); that part of
-  // fn_63_15B0 is still a stand-in.
-  StandIn("fn_63_15B0 (the hull's animation ids)");
+  // 0x1634: the five animation ids (0x19C..0x1AC) come from the base actor's animation
+  // database: the getup (twice), the step, the death and the locomotion animation, each looked
+  // up with one enum parameter and seven empty ones.
+  mAnimId1 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Getup, CPASAnimParm::FromEnum(0)));
+  mAnimId2 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Getup, CPASAnimParm::FromEnum(1)));
+  mUnknown1A4 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3)));
+  mUnknown1A8 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Death, CPASAnimParm::FromEnum(4)));
+  mUnknown1AC = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Locomotion, CPASAnimParm::FromEnum(5)));
   // 0x1930: the top actor is the turret's "AttachedCollisionObject" connection.
   mTopActorId = FindConnectedObject(mgr, kSS_AttachedCollisionObject, kSM_Attach);
 }

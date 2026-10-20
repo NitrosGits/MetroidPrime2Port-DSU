@@ -3,6 +3,8 @@
 
 #include "MetroidPrime/CActor.hpp"
 #ifdef TARGET_PC
+#include "Kyoto/Animation/CPASAnimParm.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/CToken.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
@@ -68,6 +70,8 @@ private:
   void LoadHullActors(CStateManager& mgr);           // fn_63_15B0 (0x3C4): only the connections
   void FireTurretShot(CStateManager& mgr);           // fn_63_84C (0x184): the turret's shot
   CTransform4f GetMuzzleTransform(CStateManager& mgr); // fn_63_1508 (0x68)
+  // fn_63_19B0 (0x184): the animation parameters the lookup takes.
+  CPASAnimParmData BuildAnimParmData(pas::EAnimationState state, const CPASAnimParm& parm);
 
   // Host layout, in the guest's order. The guest offsets are in the comments.
   CAABox mBounds;                     // 0x158: a one-unit box around the actor's position

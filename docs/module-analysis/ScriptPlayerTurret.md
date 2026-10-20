@@ -232,10 +232,12 @@ Facts the ported cases established:
 
 `AcceptScriptMsg` (fn_63_1BE8) now has retail's switch with **all seven cases ported**;
 `fn_63_14B4` (0x54) and `fn_63_1460` (0x54) are ported as named methods, and `ProcessInput`
-(fn_63_1134, 0x32C) is ported. Of `fn_63_15B0` (0x3C4) only the two `FindConnectedObject` calls and
-the base actor's model flags are ported - the animation lookup (0x2B4 of it) stays a stand-in -
-because the DOL's turret HUD (`CTurretHud::UpdateEnergy`) reads the hull actor's id and
-dereferences the actor it names: without the connections the run **crashes** (SIGSEGV in
+(fn_63_1134, 0x32C) is ported. `fn_63_15B0` (0x3C4) is ported as well: the two
+`FindConnectedObject` calls, the base actor's model flags and the five animation ids (0x19C..0x1AC)
+- the getup twice, the step, the death and the locomotion animation, each looked up with one enum
+parameter and seven empty ones (fn_63_19B0, 0x184, now a named method). The connections have to be
+real because the DOL's turret HUD (`CTurretHud::UpdateEnergy`) reads the hull actor's id and
+dereferences the actor it names: without them the run **crashes** (SIGSEGV in
 `CTurretHud::UpdateEnergy`) as soon as the player is in the turret.
 
 The module's own helper that is too big for a slice stays a named stand-in: `fn_63_84C` (0x184,
