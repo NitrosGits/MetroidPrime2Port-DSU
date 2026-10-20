@@ -256,6 +256,7 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& pInfo, const CActorParameters& actParms,
                      const CMinorIngData& data)
+// @ fn_44_9D58
 // EPatternedAI 0x4b, flavor 0, movement 0 (ground), collider 1, body 1 (bipedal): the retail
 // constructor's arguments to CPatterned (fn_44_9D58).
 //

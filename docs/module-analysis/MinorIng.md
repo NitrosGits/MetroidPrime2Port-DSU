@@ -141,6 +141,12 @@ What the retail's constructor fills, in its order (the host does the same):
 - the flag bytes: the retail clears every flag of 0xd3d (asm 0xA284-0xA2DC) and every flag of
   0xd3e (asm 0xA2E4-0xA330), most significant bit first.
 
+The constructor is marked (`// @ fn_44_9D58`) and the check finds nothing in it. Its branches ran
+in the Temple Grounds' area 13 and in the Agon Wastes' `0a_sand_hall_dark`, each with a temporary
+hook that was reverted: the model has animation data (the Agon Wastes) or not (the Temple
+Grounds), the lock-on locator is valid (the Agon Wastes) or not, and the two hit-effect assets are
+set or not. The rest of the retail's branches (the token's own) are always taken.
+
 ### The massive death (fn_44_7058)
 
 The retail's massive death (fn_44_7058, 0x654) spawns the inglets, and the host's
@@ -340,6 +346,16 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
   clear `mInsideSafeZone` (asm 0x9640 and 0x9698).
 - `CHealthInfo` is 0x20 bytes with the retail's layout (three floats, two weapon
   modes, four ids, two flag bits), so `fn_44_D00`'s copy is a plain assignment.
+
+## The functions that are not marked
+
+`/tmp/opencode/mi_unmarked.tsv` lists every unmarked function of the module with its retail size
+and what the host does with it: 3 are ported but unmarked (the constructor, the loader and the
+destructor), 10 are the host's own inline or generated code (the SLdr readers and constructors, the
+model data, the vector resize), 5 are retail bodies the host does not model and that the live
+cycle reaches, and 75 are unreachable. The loader and the destructor cannot be marked: the
+check finds the generated property loop (37 calls, 43 conditions) and the members' own teardown
+(3 calls, 20 conditions) where the host has none. The constructor is marked.
 
 ## Gotchas
 
