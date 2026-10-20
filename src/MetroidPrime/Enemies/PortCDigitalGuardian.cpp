@@ -20,6 +20,7 @@
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Particles/CParticleGen.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
@@ -166,10 +167,11 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
 , x128C_(0)
-, xE6C_() // 0xE6C: the leg model, built by fn_14_6864 (not ported yet)
-, xEBC_() // 0xEBC: the shin model, built by fn_14_6864 (not ported yet)
-, xF5C_() // 0xF5C: the toe target's model, built by fn_14_6864 (not ported yet)
-, x11EC_() // 0x11EC: the echo emitter's model, built by fn_14_6864 (not ported yet)
+, xE6C_() // 0xE6C: the leg model (x6864_ fills it in)
+, xEBC_() // 0xEBC: the shin model (x6864_ fills it in)
+, xF0C_() // 0xF0C: the knee model (x6864_ fills it in)
+, xF5C_() // 0xF5C: the toe target's model (x6864_ fills it in)
+, x11EC_() // 0x11EC: the transmission beacon's model (x6864_ fills it in)
 , xEB8_(0)
 , xF08_(0)
 , x1238_(0)
@@ -188,11 +190,30 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
   // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
-  // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188, the five models at
-  // 0xE6C.. (fn_14_6864) and the 'PART' token at 0x1100. They belong to the state machine and the
-  // render paths this milestone does not enter, so the port keeps the parameter block only. The
-  // four model data members the render paths use (0xE6C, 0xEBC, 0xF5C and 0x11EC) are there, but
-  // empty: fn_14_6864, which fills them, is not ported yet.
+  // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188 and the 'PART' token at
+  // 0x1100. They belong to the state machine and the render paths this milestone does not enter,
+  // so the port keeps the parameter block only.
+
+  // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAF0
+  // on): 0x10B9 is "neck_SDK" (the store at 0xBAFC), 0x10C0..0x10C3 the four knee locators
+  // ("L_front_knee_2", "L_back_knee_2", "R_front_knee_2", "R_back_knee_2" - the stores at
+  // 0xBB30, 0xBB64, 0xBB98 and 0xBBCC) and 0x10D4..0x10D7 the four ankle locators
+  // ("L_front_ankle", "L_back_ankle", "R_front_ankle", "R_back_ankle" - the stores at 0xBCD0,
+  // 0xBD04, 0xBD38 and 0xBD6C). The ids at 0x10C8..0x10CB (the "*_col_LCTR" locators) belong
+  // to the melee trigger and are not resolved yet.
+  const CAnimData* anim = GetAnimationData();
+  x10B9_ = anim->GetLocatorSegId(rstl::string_l("neck_SDK")).val();
+  x10C0_ = anim->GetLocatorSegId(rstl::string_l("L_front_knee_2")).val();
+  x10C1_ = anim->GetLocatorSegId(rstl::string_l("L_back_knee_2")).val();
+  x10C2_ = anim->GetLocatorSegId(rstl::string_l("R_front_knee_2")).val();
+  x10C3_ = anim->GetLocatorSegId(rstl::string_l("R_back_knee_2")).val();
+  x10D4_ = anim->GetLocatorSegId(rstl::string_l("L_front_ankle")).val();
+  x10D5_ = anim->GetLocatorSegId(rstl::string_l("L_back_ankle")).val();
+  x10D6_ = anim->GetLocatorSegId(rstl::string_l("R_front_ankle")).val();
+  x10D7_ = anim->GetLocatorSegId(rstl::string_l("R_back_ankle")).val();
+
+  // fn_14_6864 (the call at 0xBD78): the module's five models.
+  x6864_();
 }
 
 CDigitalGuardian::~CDigitalGuardian() {}
@@ -375,7 +396,12 @@ void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) 
     x11EC_.Render(mgr, modelXf, GetActorLights(), flags);
   }
   if (x123C_ != nullptr) {
-    StandInFn("fn_14_17DC: the renderer's echo emitter draw (the vtable call at 0x1958)");
+    // The retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the bctrl at
+    // 0x1958) with the echo emitter in r4 (the lwz at 0x1874). The DOL's __vt__13CCubeRenderer
+    // has CCubeRenderer::AddParticleGen(const CParticleGen&) in that slot (the entry at 0x44,
+    // the 18th - the counting the SpacePirate lane used for 0x128), and the echo emitter at
+    // 0x123C is a CElementGen - a CParticleGen.
+    gpRender->AddParticleGen(*x123C_);
   }
 }
 
@@ -408,6 +434,34 @@ void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
 void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
   StandInFn("fn_14_2578 (the echo emitter's transform, 0xF4 bytes)");
   out = CTransform4f::Identity();
+}
+
+// fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models - the leg
+// model at 0xE6C (the asset id at 0x8DC, the data block's mLegModel), the shin model at 0xEBC
+// (0x8E0, mShinArmor), the knee model at 0xF0C (0x918, mKneeArmor), the transmission beacon's
+// model at 0x11EC (0x94C, mTransmissionBeacon) and the toe target's model at 0xF5C (0x7E4,
+// mToeTargetModel). Each one is built from a CStaticRes {the asset id, the actor's model scale}
+// - the scale comes from the actor's model data at 0x60 (the three lfs at 0x68A0, 0x68A4 and
+// 0x68A8) - and moved into the member (fn_14_6A20, the CModelData assignment at 0x68D4); the
+// temporary is destroyed right after (the __dt__ at 0x68E0). An invalid asset id (the cmplwi at
+// 0x689C) leaves the member empty.
+void CDigitalGuardian::x6864_() {
+  const CVector3f scale = GetModelData()->GetScale();
+  if (mData.mLegModel != kInvalidAssetId) {
+    xE6C_ = CModelData(CStaticRes(mData.mLegModel, scale));
+  }
+  if (mData.mShinArmor != kInvalidAssetId) {
+    xEBC_ = CModelData(CStaticRes(mData.mShinArmor, scale));
+  }
+  if (mData.mKneeArmor != kInvalidAssetId) {
+    xF0C_ = CModelData(CStaticRes(mData.mKneeArmor, scale));
+  }
+  if (mData.mTransmissionBeacon != kInvalidAssetId) {
+    x11EC_ = CModelData(CStaticRes(mData.mTransmissionBeacon, scale));
+  }
+  if (mData.mToeTargetModel != kInvalidAssetId) {
+    xF5C_ = CModelData(CStaticRes(mData.mToeTargetModel, scale));
+  }
 }
 
 // fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set (the store at 0xA3FC)

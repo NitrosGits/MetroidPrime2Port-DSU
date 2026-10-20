@@ -855,6 +855,65 @@ module's AddToRenderer, `/tmp/opencode/dg_render_models.png`); the four module r
 nothing yet, since their model data is empty. No "[port] caught" and no reach-stub in the log.
 
 
+**WP2 part 2i done (2026-10-20): the models and the locator ids.** `fn_14_6864` (0x1BC, the
+constructor's tail) is ported, and so are the constructor's `GetLocatorSegId` calls for the ids
+the four renders read. The five models are real now and the ids resolve, so the toe target's
+model draws at the guardian's four ankles.
+
+`fn_14_6864` builds the module's five models, each from a `CStaticRes` {the asset id, the
+actor's model scale} (the scale comes from the actor's model data at 0x60 - the three lfs at
+0x68A0, 0x68A4 and 0x68A8) and moved into the member (fn_14_6A20, 0x30 bytes - the `CModelData` assignment at
+0x68D4; the host's implicit copy-assignment is the same thing, the auto_ptr's assignment
+transferring the anim data, and the temporary is destroyed right after, the __dt__ at 0x68E0).
+An invalid asset id (the cmplwi at 0x689C) leaves the member empty.
+
+| member | asset id (guest) | the data block's field |
+|---|---|---|
+| 0xE6C, the leg model | 0x8DC | `mLegModel` (the block's +0x11C) |
+| 0xEBC, the shin model | 0x8E0 | `mShinArmor` (+0x120) |
+| 0xF0C, the knee model | 0x918 | `mKneeArmor` (+0x158) |
+| 0xF5C, the toe target's model | 0x7E4 | `mToeTargetModel` (+0x24) |
+| 0x11EC, the transmission beacon's model | 0x94C | `mTransmissionBeacon` (+0x18C) |
+
+The guest's model data is 0x4C bytes and the next field starts 0x50 later: the bytes at 0xEB8,
+0xF08, 0xF58 and 0xFA8 are the four bytes that follow the models.
+
+**Those four bytes are the flags of three of the four renders, and the module never sets them:**
+the only writes to 0xEB8, 0xF08 and 0x1238 in the whole REL are the constructor's (0xB1B8,
+0xB1BC and 0xB6A4), and they store 0. So in the retail the leg model (fn_14_1994), the shin
+model (fn_14_18B4) and the echo emitter's model (fn_14_17DC) never draw; only the toe
+target's model (fn_14_1700, which has no flag) draws, at the four ankles. The port is the
+same.
+
+The constructor's locator ids (the `GetLocatorSegId` calls from 0xBAF0 on):
+
+| member | the name | the store |
+|---|---|---|
+| 0x10B9 | "neck_SDK" (.rodata 0x91A) | 0xBAFC |
+| 0x10C0..0x10C3 | "L_front_knee_2", "L_back_knee_2", "R_front_knee_2", "R_back_knee_2" (.rodata 0x57D, 0x58C, 0x59A, 0x5A9) | 0xBB30, 0xBB64, 0xBB98, 0xBBCC |
+| 0x10D4..0x10D7 | "L_front_ankle", "L_back_ankle", "R_front_ankle", "R_back_ankle" (.rodata 0x5F9, 0x607, 0x614, 0x622, through the pointer table at 0x20) | 0xBCD0, 0xBD04, 0xBD38, 0xBD6C |
+
+The ids at 0x10C8..0x10CB (the four "*_col_LCTR" names, the pointer table at .rodata 0x10) are
+the melee trigger's and are still not resolved.
+
+**The renderer's vtable slot 0x44** (the lwz at 0x1954 and the bctrl at 0x1958) is
+`CCubeRenderer::AddParticleGen(const CParticleGen&)`: the DOL's `__vt__13CCubeRenderer` is at
+0x803B8C10 and its entry at 0x44 (the 18th) is that function - the counting the SpacePirate
+lane used for 0x128 (`SetDestinationAlpha`) ✓. The retail passes the echo emitter in r4 (the
+lwz at 0x1874), so the object at 0x123C is a particle generator (the host's `CElementGen`, a
+`CParticleGen`) and not an "echo emitter" as the note used to call it. The port now calls
+`gpRender->AddParticleGen(*x123C_)`; the object itself is still missing (fn_14_D664 allocates
+it), so the branch is not reachable yet.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate`, 1800 frames): the guardian u054d is active (hp 150/150)
+and its model draws with the toe target's model at the four ankles
+(`/tmp/opencode/dg_render_models.png`); the toe model's four draws land at the four ankle
+locators (the locators at (+-19, +-12, 7) around the guardian). No "[port] caught" and no
+reach-stub in the log. The guardian's render path only runs while the actor is active, so a
+run that does not activate it shows the arena but not the guardian.
+
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct

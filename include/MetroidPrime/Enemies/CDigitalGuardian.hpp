@@ -4,6 +4,8 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "REL/REL_Setup.h"
 
+class CParticleGen;
+
 #ifdef TARGET_PC
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -282,11 +284,13 @@ private:
   // nothing until it lands.
   CModelData xE6C_;  // 0xE6C: the leg model (fn_14_1994)
   CModelData xEBC_;  // 0xEBC: the shin model (fn_14_18B4)
+  CModelData xF0C_;  // 0xF0C: the knee model (fn_14_6864)
   CModelData xF5C_;  // 0xF5C: the toe target's model (fn_14_1700)
-  CModelData x11EC_; // 0x11EC: the echo emitter's model (fn_14_17DC)
+  CModelData x11EC_; // 0x11EC: the transmission beacon's model (fn_14_17DC draws it)
   uchar xEB8_;       // 0xEB8: the leg model's flag byte (fn_14_1994)
   uchar xF08_;       // 0xF08: the shin model's flag byte (fn_14_18B4)
   uchar x1238_;      // 0x1238: the echo emitter model's flag byte (fn_14_17DC, fn_14_2578)
+  uchar x10B9_;      // 0x10B9: the neck locator segment id (fn_14_2578)
   uchar x10C0_;      // 0x10C0: the first leg locator segment id (fn_14_1994, fn_14_18B4)
   uchar x10C1_;      // 0x10C1: the second leg locator segment id
   uchar x10C2_;      // 0x10C2: the third leg locator segment id
@@ -297,7 +301,9 @@ private:
   uchar x10D7_;      // 0x10D7: the fourth toe locator segment id
   int x10DC_[4];     // 0x10DC: the four per-leg words (0x10DC, 0x10E0, 0x10E4, 0x10E8); the
                      // value 3 skips the leg (fn_14_1700)
-  void* x123C_;      // 0x123C: the echo emitter (a CElementGen in retail); null in the port
+  const CParticleGen* x123C_; // 0x123C: the particle generator the echo emitter's render
+                              // draws (a CElementGen in retail); null in the port until
+                              // fn_14_D664, which allocates it, is ported
   float x1264_;      // 0x1264: the echo emitter's height (fn_14_17DC, fn_14_2578)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
 
@@ -310,6 +316,9 @@ private:
 
   // fn_14_2578 (0xF4 bytes): the echo emitter's transform. A stand-in in this slice.
   void x2578_(CTransform4f& out, const CTransform4f& xf) const;
+
+  // fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models.
+  void x6864_();
 
   // The retail's per-segment rotation: the character's rest pose rotation for that segment.
   CTransform4f SegmentRotation_(const CSegId& seg) const;
