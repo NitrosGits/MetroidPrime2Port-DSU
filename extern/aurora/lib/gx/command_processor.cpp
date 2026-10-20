@@ -452,7 +452,9 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
   auto& state = g_gxState;
   auto& cache = sDrawCache;
 
-  DrawImmediateData immediates{.vtxStart = vertRange.offset, .currentPnMtx = state.currentPnMtx};
+  DrawImmediateData immediates{.vtxStart = vertRange.offset,
+                                .currentPnMtx = state.currentPnMtx,
+                                .forceDstAlpha = state.dstAlpha != UINT32_MAX ? 1u : 0u};
   for (int i = GX_VA_POS; i <= GX_VA_TEX7; ++i) {
     if (state.vtxDesc[i] != GX_INDEX8 && state.vtxDesc[i] != GX_INDEX16) {
       continue;

@@ -16,7 +16,9 @@ Ing;src/MetroidPrime/Enemies/PortCIngExitHostEffect.cpp
 IngBoostBallGuardian;src/MetroidPrime/PortModuleStubs.cpp
 IngSwarm;src/MetroidPrime/PortModuleStubs.cpp
 MinorIng;src/MetroidPrime/Enemies/PortCMinorIng.cpp
-SandBoss;src/MetroidPrime/PortModuleStubs.cpp
+SandBoss;src/MetroidPrime/Enemies/PortCSandBoss.cpp
+SandBoss;src/MetroidPrime/Enemies/PortCSandBossStates.cpp
+SandBoss;src/MetroidPrime/Enemies/PortCSandBossAttacks.cpp
 Sandworm;src/MetroidPrime/PortModuleStubs.cpp
 ScriptPlayerTurret;src/MetroidPrime/PortModuleStubs.cpp
 SnakeWeedSwarm;src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp

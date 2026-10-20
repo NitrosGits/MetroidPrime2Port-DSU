@@ -81,7 +81,10 @@ struct DrawImmediateData {
   u32 vtxStart = 0;
   u32 currentPnMtx = 0;
   u32 fogRangeBase = 0;
-  u32 _pad = 0;
+  // 1 when GXSetDstAlpha is enabled for this draw: the fragment shader then forces its written
+  // alpha to 1.0 so the {Constant, Zero} alpha blend yields exactly dstAlpha/255, as the console's
+  // destination alpha does. 0 leaves the TEV alpha alone.
+  u32 forceDstAlpha = 0;
   std::array<u32, MaxIndexAttr> arrayStart{};
 };
 static_assert(std::has_unique_object_representations_v<DrawImmediateData>);
