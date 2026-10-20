@@ -747,9 +747,11 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
       }
     }
     if (!skipRay) {
+      // The guest's mask (the shifts 0x3B, 0x20 and 0x14): the include list is the material 59
+      // (kMT_Solid) and the exclude list the materials 32 and 20 (kMT_Player and
+      // kMT_ProjectilePassthrough) - the solid materials block the ray, the player does not.
       const CMaterialFilter losFilter = CMaterialFilter::MakeIncludeExclude(
-          CMaterialList(kMT_ScanPassthrough),                      // the material bit 27
-          CMaterialList(kMT_NoStepLogic, kMT_NoPlatformCollision));  // the bits 0 and 60
+          CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
       if (!mgr.RayCollideWorld(gunXf.GetTranslation(), pos, losFilter, this)) {  // 0x00005A4C
         xae8_ &= ~0x80;                                            // 0x00005B70..0x00005B7C
         return false;                                               // 0x00005BD4
@@ -769,7 +771,8 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
     // (the enum 2, or 8 while the body moves).
     int parm = 2;                                                  // 0x00005C4C
     if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion &&  // the guest's +0x37c == 5
-        BodyController()->BodyStateInfo().GetCurrentState()->IsMoving()) {  // the slot 0x18 vcall
+        // The body state's vtable slot 0x18 (the retail's __vt__10CBodyState: IsMoving).
+        BodyController()->BodyStateInfo().GetCurrentState()->IsMoving()) {
       parm = 8;                                                    // 0x00005C10
     }
     // The guest's fn_9_5D74 builds the animation's parameter block: the state id 0x18 and the eight
@@ -791,6 +794,7 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
   return fired;
 }
 
+// @ fn_9_3090
 // fn_9_3090 (0x2a8 bytes): the module's drowning. It runs from the module's Think (the call at
 // 0x0000CA34) and ends the commando when its head is under water.
 //
@@ -851,6 +855,9 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
     effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
   }
   if (effect.valid()) {
+    // fn_9_2378 - the guest releases its own CEntityInfo here (the call at 0x000032CC) and its
+    // string (the call at 0x000032DC); the host's CEntityInfo and the temporary string are
+    // released at the end of the statement.
     CExplosion* explosion = rs_new CExplosion(
         TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
         CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),

@@ -589,13 +589,11 @@ Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHa
 (PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
 `fn_9_786C`
 (RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
-`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
+`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_1C0C` (0x2ec),
 `fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
-`fn_9_57A0` (0x370), `fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528),
-`fn_9_7A98`
+`fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
 (ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
-reaches are `fn_9_3090`,
-`fn_9_1C0C`, `fn_9_3E1C`, `fn_9_57A0` and `fn_9_B250`.
+reaches are `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
 
 `fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
 and `fn_9_709C` (the CoverFind state, 0x1f0) are host code since 2026-10-20: the emitters follow
@@ -697,8 +695,8 @@ this+0xC60) minus the right elbow locator (guest this+0xC61) (0x00005940..0x0000
 needs the angle between it and the aim point to be at most 30 degrees (rodata_4C8), or at most 45
 degrees (rodata_4C0) when the target is within 6 units (rodata_49C) (0x0000599C..0x000059D4).
 The line of sight ray runs from the gun to the aim point with the guest's own filter - the include
-list is the material bit 27 and the exclude list the bits 0 and 60, the filter type 3
-(0x000059D8..0x00005A48) - and when it hits nothing the module's line of sight byte (guest
+list is the material 59 (`kMT_Solid`) and the exclude list the materials 32 and 20 (`kMT_Player`
+and `kMT_ProjectilePassthrough`), the filter type 3 (0x000059D8..0x00005A48) - and when it hits nothing the module's line of sight byte (guest
 this+0xAE8, `xae8_`) loses its 0x80 bit (0x00005B70..0x00005B7C). The burst fire's own error
 (`GetDistanceCompensatedError`) is rotated by the actor's frame and added to the aim point, the
 shot's transform looks from the gun to it (`LookAt`, 0x00005B0C) and the projectile is launched
@@ -706,13 +704,44 @@ with the guest's type 6, no attributes, no homing and the scale 1.0f (rodata_43C
 (0x00005B58). After a shot the muzzle flash is played: the additive animation's state id is 0x18
 and its one parameter is the enum 2, or 8 when the body is in its locomotion state (the body's own
 state word, the host's `GetCurrentStateId`) and that state says it is moving (the body state's
-vtable slot 0x18 - the port's reading of that slot is `IsMoving`), and the shot's sound (the
-block's +0x48 = guest this+0x808, `mSoundProjectile`) is emitted at the actor's position.
+vtable slot 0x18, which the retail's `__vt__10CBodyState` makes `IsMoving` - the base's own
+`ApplyHeadTracking` call at vptr+0x20 in `CBodyStateInfo.s` fixes the vtable's base), and the
+shot's sound (the block's +0x48 = guest this+0x808, `mSoundProjectile`) is emitted at the actor's
+position.
 
 Two readings are the port's own and are marked as such in the code: the guest builds the player's
 aim position with its own copy of the player (the vcall at 0x000058B4) - the port asks the player
 for its aim position (`GetAimPosition`) - and the guest's visor effect (fn_9_6054, fn_9_5F3C) is
 the default one, which is the host's `CImpactVisorEffect::None()`.
+
+With the shot ported the area 59 run (the note's run, the card in /tmp/opencode/atk_user,
+`MP2_GODMODE=1`, the player teleported next to the commando with `tp 75.9 371.6 -47.1` through the
+debug console - `MP2_CONSOLE=<port>`, one plain command per connection) reaches gameplay at
+10.0 s, ends with exit=0 and `grep -c '[port] caught|reach-stub'` = 0, and the commando shoots:
+with a temporary branch log (reverted) the shot helper takes the predicted-target path, the aim
+gate fails while the commando turns (the distance and the angle branches), the line of sight is
+blocked once, and then the helper fires - the projectile, the muzzle flash and the shot's sound
+all run.
+
+`fn_9_3090` (0x2a8, the module's drowning) is host code since 2026-10-20 (the port's member
+`x3090_Drown`): while the actor is alive (the byte at guest this+0x420's 0x40 bit) it must be in a
+fluid (the host's `InFluidId`), the fluid must be a water script object (the guest's cast at
+0x000030FC) whose own byte at +0x20 has its 0x80 bit (the extrwi at 0x0000310C - the port reads
+the trigger flags' low byte), and the head locator (guest this+0xC5C) must be below the water's
+trigger bounds (the GetTriggerBoundsWR call at 0x0000311C). Then the module's own float at guest
+this+0xC00 (new member `xc00_`) takes 0.01f (rodata_4A0), the health info's second float is
+cleared, the actor dies with the script object state 0x5241544C ("RATL" - the host's
+`kSS_DeathRattle`) and its own forward vector as the death direction (the vcall at 0x000031C8),
+the drowning explosion is built (the module's particle from the block's +0x08, the guest's token at
+guest this+0xC28; the guest only builds it when that token is loaded, the test at 0x000031CC) and
+the drowning sound (the block's +0x06 = guest this+0x7C6) is emitted at the actor's own position
+with the volume 0x7f.
+
+Area 59 has no water at all, so the drowning was driven with a temporary hook (reverted): the
+helper was run with a forced fluid, a trigger standing in for the water and the head forced under
+its bounds. Every statement of the body ran - the module's float, the health info, the death and
+the sound - and the explosion was skipped because the block's +0x08 particle is not in the pool,
+which is what the guest does with an unloaded token too.
 
 With the burst-fire helper ported the area 59 run (the note's run) still ends cleanly: gameplay
 at 10.1 s, exit=0 and `grep -c '[port] caught\|reach-stub'` = 0. The helper runs every frame and
