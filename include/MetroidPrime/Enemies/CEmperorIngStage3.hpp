@@ -251,8 +251,6 @@ private:
                                         // towards the player (fn_18_3804 writes it)
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
   int mX868_;                            // guest 0x868, 0: the heart that is on
-  int mX6b4_;                            // guest 0x6B4, 0: a CPatterned field the module's
-                                        // states use as a flag (the eye-shut flag)
 };
 #endif
 

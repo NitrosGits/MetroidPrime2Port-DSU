@@ -196,7 +196,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX818_(CVector3f::Zero())                               // guest 0x818
 , mX864_(0.f)                                             // guest 0x864
 , mX868_(0)                                               // guest 0x868
-, mX6b4_(0)                                               // guest 0x6B4
+
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
@@ -795,14 +795,14 @@ bool CEmperorIngStage3::ShouldGroundPound(CStateManager& mgr, const CTriggerData
 //    (rodata 0x274) over a hundred (rodata 0x27C), at most 2.5 (rodata 0x298), goes to guest
 //    0x8F0 and the module's time is cleared; a random time between one (rodata 0x264) and 1.2
 //    (rodata 0x2EC) times that, at most 5.0 (rodata 0x2BC), goes to guest 0x8F4; the eye-shut
-//    time then is at least 2.5 (rodata 0x298) plus that random time; the flag at guest 0x6B4 is
+//    time then is at least 2.5 (rodata 0x298) plus that random time; the animation state at
 //    set.
 //  - Update (0x5370): the body's eye-shut commands. A stand-in: the body needs the module's own
 //    command classes (the vtables at lbl_18_data_744, _750 and _78C) and the base member at
 //    guest 0x350, which the port does not model.
 //  - Deactivate (0x5518): the eye-shut timer (guest 0x7CC) is cleared, both hearts get the
 //    module's vulnerability (fn_18_1BD8) and the heart switch runs with the heart that is on
-//    (fn_18_1BB0); the flag at guest 0x6B4 is cleared.
+//    (fn_18_1BB0); the animation state at guest 0x6B4 is set to `kAS_NotReady` (0).
 void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -820,7 +820,7 @@ void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
     if (mX8f0_ < 2.5f + mX8f4_) { // rodata 0x298
       mX8f0_ = 2.5f + mX8f4_;
     }
-    mX6b4_ = 1;
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x5368, the value one
     break;
   }
   case kStateMsg_Update:
@@ -830,7 +830,7 @@ void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
     mX7cc_ = 0.f;
     SetHeartVulnerability(mgr); // fn_18_1BD8
     SetCurrentHeart(mgr);      // fn_18_1BB0
-    mX6b4_ = 0;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x5538, the value zero
     break;
   default:
     break;
@@ -1119,7 +1119,8 @@ void CEmperorIngStage3::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt)
 }
 
 // fn_18_7504 (0x1CC): the "GainDistance" state. Its activate path (0x7548) clears the module's
-// too-close distance (guest 0x7D4), sets the flag at guest 0x6B4 and looks thirty units along
+// too-close distance (guest 0x7D4), sets the animation state at guest 0x6B4 to `kAS_Ready` and
+// looks thirty units along
 // the actor's facing (fn_18_1A54); when the look finds nothing the module's fn_18_2BF0 (0xC4,
 // a stand-in) runs and the flag becomes 3. The update path (0x75B4) is a stand-in: it needs the
 // module's own body-command classes, the DOL's fn_801B73E4 and the body controller's steering
@@ -1128,10 +1129,10 @@ void CEmperorIngStage3::GainDistance(CStateManager& mgr, EStateMsg msg, float dt
   switch (msg) {
   case kStateMsg_Activate:
     mX7d4_ = 0.f; // rodata 0x258
-    mX6b4_ = 1;
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x7564, the value one
     if (!LineOfSight(mgr, GetTransform().GetColumn(kDY), 30.f)) { // rodata 0x2FC
       StandInFn("fn_18_2BF0"); // 0xC4
-      mX6b4_ = 3;
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x759C, the value three
       StandInFn("fn_18_2BF0"); // 0xC4
       StandInFn("fn_801B73E4");
     }
@@ -1140,7 +1141,7 @@ void CEmperorIngStage3::GainDistance(CStateManager& mgr, EStateMsg msg, float dt
     StandInFn("fn_18_7504 update");
     break;
   case kStateMsg_Deactivate:
-    mX6b4_ = 0;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x76B0, the value zero
     break;
   default:
     break;
@@ -1209,7 +1210,7 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
 void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
-    mX6b4_ = 1;
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x4F14, the value one
     const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
     const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
     const float distance = toPlayer.Magnitude();
@@ -1231,7 +1232,7 @@ void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
     StandInFn("fn_18_4EB4 update");
     break;
   case kStateMsg_Deactivate:
-    mX6b4_ = 0;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x50A8, the value zero
     mX7e0_ = 0.f;
     x824_ &= ~0x04; // the bit 29 (the mask 0x04) is cleared
     break;

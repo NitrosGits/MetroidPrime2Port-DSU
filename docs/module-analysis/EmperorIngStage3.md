@@ -59,7 +59,7 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | offset | member | proof |
 |---|---|---|
 | 0x44F | the model alpha byte | `fn_18_44` reads it; the constructor does not write it, so it starts 0 |
-| 0x6B4 | the eye-shut flag | a CPatterned field the module's states use as a flag: the EyeShut state sets it (0x5368) and clears it (0x5538), the other states use it too (0x4D0C, 0x4E3C, 0x4F14, 0x50A8) |
+| 0x6B4 | `CPatterned::mAnimationState` | the base class's animation state (`CAnimationState`): the module's states store 0 (`kAS_NotReady`), 1 (`kAS_Ready`) and 3 (`kAS_Over`) there (0x5368, 0x5538, 0x7564, 0x759C, 0x76B0, 0x4F14, 0x50A8) |
 | 0x7C0 | the pointer to the module's heart holder | `fn_18_3B14` reads it and `fn_80135AD4` indexes the array of 0x68-byte records it points at (0xA the first heart, 0xB the second); the constructor clears it |
 | 0x7D0 | the time since the last attack | the module's Think grows it every frame (0x494C); the melee and ground-pound triggers want it at least 2.0 |
 | 0x814 | the vulnerable damage threshold | the constructor copies the data's `vulnerableDamageThreshold` (the data's +0x18) |
@@ -148,7 +148,7 @@ Both triggers the run reaches are ported now; the only stand-in left among them 
   0x274) over a hundred (rodata 0x27C), at most 2.5 (rodata 0x298), goes to 0x8F0 and the
   module's time is cleared; a random time between one (rodata 0x264) and 1.2 (rodata 0x2EC) times
   that, at most 5.0 (rodata 0x2BC), goes to 0x8F4; the eye-shut time then is at least 2.5
-  (rodata 0x298) plus that random time; the flag at 0x6B4 is set.
+  (rodata 0x298) plus that random time; the animation state at 0x6B4 is set to `kAS_Ready` (1).
 - Update (0x5370): the body's eye-shut commands - the three commands the module's own command
   classes (the vtables at `lbl_18_data_744`, `_750` and `_78C`) carry, the flag's state machine
   (`fn_801B73E4`, which watches the body's animation) and the base member at guest 0x350. A
@@ -156,7 +156,7 @@ Both triggers the run reaches are ported now; the only stand-in left among them 
 - Deactivate (0x5518): the eye-shut timer (0x7CC) is cleared, both hearts get the module's
   vulnerability at 0x86C (`fn_18_1BD8`, 0x5C) and the heart switch runs with the heart that is on
   (`fn_18_1BB0`, 0x28, which is `fn_18_1DF4` with the heart at 0x868 and no vulnerability
-  change); the flag at 0x6B4 is cleared.
+  change); the animation state at 0x6B4 is set to `kAS_NotReady` (0).
 
 ### The look check `fn_18_F8` (0x11C)
 
@@ -242,7 +242,7 @@ has no such flag).
 ### `fn_18_7504` (0x1CC), the GainDistance state
 
 The activate path (0x7548) clears the module's too-close distance (guest 0x7D4), sets the flag
-at guest 0x6B4 and looks thirty units along the actor's facing (`fn_18_1A54`); when the look
+the animation state at guest 0x6B4 and looks thirty units along the actor's facing (`fn_18_1A54`); when the look
 finds nothing the module's `fn_18_2BF0` (0xC4, a stand-in) runs and the flag becomes 3. The
 update path (0x75B4) is a stand-in: it needs the module's own body-command classes, the DOL's
 `fn_801B73E4` and the body controller's steering fields. The deactivate path (0x76B4) clears the
@@ -250,7 +250,7 @@ flag.
 
 ### `fn_18_4EB4` (0x23C), the JumpAttack state
 
-The activate path (0x4F0C) sets the flag at guest 0x6B4 and picks the jump target (guests
+The activate path (0x4F0C) sets the animation state at guest 0x6B4 to `kAS_Ready` and picks the jump target (guests
 0x910..0x918): the player's position, or - when the player is over fifty units away (rodata
 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the direction to the
 player, starting at the actor's own position. The update path (0x500C) is a stand-in: it needs
@@ -346,6 +346,6 @@ path - the steering - is still a stand-in. The run ends on the frame limit with
 The port's members whose guest offset is below the module's first own field (the ctor's first
 store past CPatterned's size, 0x7C0) are base-class members: 0x158 -> `CPhysicsActor::mMass`
 (the host's `GetMass()`), 0x1C0 -> `CPhysicsActor::mConstantForce` (the host's
-`SetConstantForceWR()`), and 0x6B4 - the eye-shut flag - which the host's CPatterned has no
-member with that role for, so the port keeps its own copy. The retail's CActor is 0x158 bytes
+0x6B4 -> `CPatterned::mAnimationState`, which the module's states write with
+`mAnimationState.SetState()` (0 = `kAS_NotReady`, 1 = `kAS_Ready`, 3 = `kAS_Over`).
 and the host's 0x1B8, so the host's named members are used and never a raw offset.
