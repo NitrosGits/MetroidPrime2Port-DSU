@@ -45,8 +45,10 @@ void StandIn(const char* what) {
 void StandInFn_75_31A8() { StandIn("fn_75_31A8 (0x14C)"); }
 void StandInFn_75_32F4() { StandIn("fn_75_32F4 (0x16C)"); }
 void StandInFn_75_3004() { StandIn("fn_75_3004 (0x1A4)"); }
-void StandInFn_75_184C() { StandIn("fn_75_184C (0x128)"); }
 void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
+
+// The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
+void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
 
 } // namespace
 
@@ -112,6 +114,34 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
   }
 }
 
+// The DOL's CEntity virtual the look-at calls (the vtable slot 0x8C, 0x1924-0x192C): the DOL's
+// slot 35 is not named in the port, so the call stays a once-logging shell.
+void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vtable slot 0x8C"); }
+
+// @ fn_75_184C
+// The command module's look-at (0x184C-0x1974): the target id (the u16 at 0xF02, 0x1874 lhz) is
+// looked up (0x1888 ObjectById) and, when it is there, the module's locator transform (the
+// segment id at 0xEF8, 0x18A0 GetLctrTransform) gives the position; the offset vector (0xF50,
+// 0xF54 and 0xF58, added at 0x18E8-0x18F0) is added to it, the transform looks at that point
+// (0x1900 LookAt with the up vector) and the result goes to the target's virtual at the vtable
+// slot 0x8C (0x1924-0x192C). The sound (the handle at 0xF5C read at 0x1930, the target's position
+// at 0x444 and the byte 0x7f, 0x194C UpdateEmitter) is the DOL's CSfxManager call, which the host
+// spells differently, so it stays a shell too.
+void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
+  CEntity* target = mgr.ObjectById(mLookAtTargetId);
+  if (target == nullptr) {
+    return;
+  }
+  const CTransform4f locator = GetLctrTransform(mLookAtSegment);
+  const CVector3f position(locator.GetTranslation().GetX() + mLookAtOffset.GetX(),
+                            locator.GetTranslation().GetY() + mLookAtOffset.GetY(),
+                            locator.GetTranslation().GetZ() + mLookAtOffset.GetZ());
+  const CTransform4f lookAt =
+      CTransform4f::LookAt(locator.GetTranslation(), position, CVector3f::Up());
+  StandInCEntityVirtual0x8C();
+  StandInSfxUpdateEmitter();
+}
+
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
 // active gate, the base's Think, the collision actor manager's update and the module's
 // own six calls in order (their sizes are in the table in
@@ -140,7 +170,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   StandInFn_75_31A8();
   StandInFn_75_32F4();
   StandInFn_75_3004();
-  StandInFn_75_184C();
+  PortLookAtTarget(mgr, dt);
   StandInFn_75_1188();
   PortAutoDestructTimer(dt);
 }

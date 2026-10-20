@@ -505,3 +505,18 @@ knowledge at 0xC70 (the host's `CLineOfSightTracker` is the same thing - see
 writes 0 at 0x0000F6BC) until `fn_75_A4E4` (0x418) builds it. The port makes an empty manager
 instead, so that stand-in must go - and the port's manager must go back to null - when
 `fn_75_A4E4` is ported.
+
+#### fn_75_184C (0x128) - the command module's look-at
+
+The body: the target id (the u16 at 0xF02, 0x1874 `lhz`) is looked up (0x1888 `ObjectById`) and,
+when it is there, the module's locator transform (the segment id at 0xEF8, 0x18A0
+`GetLctrTransform`) gives the position; the offset vector (0xF50, 0xF54 and 0xF58, added at
+0x18E8-0x18F0) is added to it, the transform looks at that point (0x1900 `LookAt` with the up
+vector) and the result goes to the target's virtual at the vtable slot 0x8C (0x1924-0x192C). The
+sound (the handle at 0xF5C read at 0x1930, the target's position at 0x444 and the byte 0x7f, 0x194C
+`UpdateEmitter`) is the DOL's `CSfxManager::UpdateEmitter`, which the host spells differently.
+
+Two calls stay shells: the DOL's CEntity virtual at the slot 0x8C (the DOL's slot 35 is not named
+in the port) and the DOL's `CSfxManager::UpdateEmitter`. The four fields the body reads (0xF02,
+0xEF8, 0xF50-0xF58 and 0xF5C) are written by the retail's state machine, which the port has not
+entered, so they keep their defaults.

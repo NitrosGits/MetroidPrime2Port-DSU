@@ -164,6 +164,15 @@ private:
   uchar mAutoDestructFlags = 0;
   // guest 0xEF4: the auto-destruct timer the same function advances.
   float mAutoDestructTimer = 0.f;
+
+  // The retail's fn_75_184C: the target it looks at, the locator it looks from, the offset it
+  // adds and the sound handle. The retail's own writers of those fields are in the state
+  // machine, which the port has not entered, so they keep their defaults here.
+  void PortLookAtTarget(CStateManager& mgr, float dt);
+  TUniqueId mLookAtTargetId = kInvalidUniqueId;  // guest 0xF02 (the u16 the retail keeps here)
+  CSegId mLookAtSegment;                         // guest 0xEF8 (the locator)
+  CVector3f mLookAtOffset;                       // guest 0xF50, 0xF54, 0xF58
+  int mLookAtSfxHandle = 0;                      // guest 0xF5C (the sound handle)
 };
 
 #endif // _CSPLITTERCOMMANDMODULE
