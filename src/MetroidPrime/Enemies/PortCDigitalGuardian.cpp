@@ -1061,11 +1061,23 @@ void CDigitalGuardian::x28D0_(CStateManager& mgr) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_Dark, true);
 }
 
-// fn_14_2A28 (0x29C bytes): the beacon's effect update - it aims the particle generator at the
-// player and drives its external parameter. Over this slice's callee limit, so it is a
-// stand-in.
+// fn_14_2A28 (0x29C bytes): the beacon's effect update. While the beacon is up the echo flash
+// (0x126C) fades and tints the beacon model (0x1270), and the effect's external parameter 0 is
+// set; the effect always updates. The head part (the TCastToPtr<CDigitalGuardianHead> of 0x1084
+// at 0x2B04: the effect is aimed from the neck locator at the head, 0x2B10..0x2C6C, and the
+// parameter is dt times that distance) cannot run: the head class is WP3 and not ported, so the
+// parameter is the 1.0 the retail loads at 0x2AF4 for a missing head.
 void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_2A28 (the beacon's effect update, 0x29C bytes)");
+  if (x123C_ == nullptr || !x11EC_.valid()) { // the tests at 0x2A60 and 0x2A6C
+    return;
+  }
+  if (x1268_ != 0) {
+    x126C_ = rstl::max_val(0.f, x126C_ - dt); // .rodata 0x264
+    const float t = rstl::min_val(1.f, x126C_); // .rodata 0x270
+    x1270_ = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t).GetColor_u32();
+    static_cast< CElementGen* >(x123C_)->SetExternalParam(0, 1.f); // 0x2C7C
+  }
+  x123C_->Update(dt); // vtable 0xC
 }
 
 // fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models - the leg
