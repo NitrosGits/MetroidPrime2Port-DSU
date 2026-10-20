@@ -12,6 +12,7 @@
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "MetroidPrime/CActorLights.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CActorModelParticles.hpp"
@@ -374,16 +375,29 @@ void CSpacePirate::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
+// Retail fn_72_E0D8 (AttachActorToPirate): the pirate takes hold of one actor at a time and
+// refuses a second one. The ragdoll's flag byte at 0x118 is the "an actor is held" bit.
 bool CSpacePirate::PortAttachActor(TUniqueId id) {
-  // Retail fn_72_E0D8; the wisp tentacle attaches the actor it is dragging.
-  StandIn("CSpacePirate::AttachActorToPirate (fn_72_E0D8)");
-  mAttachedActor = id;
-  return true;
+  if (mAttachedActor != kInvalidUniqueId) { // 0xE0E4 cmplw 0xa84 with kInvalidUniqueId
+    return false;                            // 0xE118 li r3, 0
+  }
+  if (xb30_ != nullptr) { // 0xE0F0 cmplwi 0xb30, 0
+    // 0xE100 rlwimi sets PowerPC bit 25 of the byte at 0x118 -> mask 0x40.
+    uchar* ragdollFlags = static_cast< uchar* >(xb30_);
+    ragdollFlags[0x118] = uchar(ragdollFlags[0x118] | 0x40);
+  }
+  mAttachedActor = id; // 0xE108 lhz 0x0(r4), 0xE10C sth 0xa84
+  return true;        // 0xE110 li r3, 1
 }
 
+// Retail fn_72_E0AC (DetachActorFromPirate): the pirate lets go of the actor it was holding.
 void CSpacePirate::PortDetachActor() {
-  StandIn("CSpacePirate::DetachActorFromPirate (fn_72_E0AC)");
-  mAttachedActor = kInvalidUniqueId;
+  mAttachedActor = kInvalidUniqueId; // 0xE0B4 sth 0xa84
+  if (xb30_ != nullptr) { // 0xE0BC cmplwi 0xb30, 0
+    // 0xE0CC rlwimi clears PowerPC bit 25 of the byte at 0x118 -> mask 0x40.
+    uchar* ragdollFlags = static_cast< uchar* >(xb30_);
+    ragdollFlags[0x118] = uchar(ragdollFlags[0x118] & ~0x40);
+  }
 }
 
 // @ fn_72_24C4
@@ -1320,16 +1334,23 @@ const CHealthInfo* CSpacePirate::GetHealthInfo() const {
   return const_cast< CSpacePirate* >(this)->HealthInfo(); // fn_72_64
 }
 
+// Retail fn_72_3AB4: a pirate that has warped (0xc04 is no longer -1) is pass-through; otherwise
+// the patterned default decides.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability() const {
-  StandIn("CSpacePirate::GetDamageVulnerability (fn_72_3AB4)");
+  if (xc04_warpPoint != -1) { // 0x3AC0 lwz 0xc04, 0x3AC4 cmpwi -1
+    // 0x3ACC bl PassThroughVulnerabilty (the DOL's pass-through vulnerability record).
+    return &CDamageVulnerability::PassThroughVulnerabilty();
+  }
+  // 0x3AD4 bl GetDamageVulnerability__10CPatternedCFv.
   return CPatterned::GetDamageVulnerability();
 }
 
+// Retail fn_72_3A88: a tail call through the vtable slot 0x40, which for CSpacePirate is the
+// no-argument GetDamageVulnerability (fn_72_3AB4) - the three arguments are not read.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f& position,
                                                                  const CVector3f& direction,
                                                                  const CDamageInfo& damage) const {
-  StandIn("CSpacePirate::GetDamageVulnerability(pos,dir,dmg) (fn_72_3A88)");
-  return CPatterned::GetDamageVulnerability(position, direction, damage);
+  return GetDamageVulnerability();
 }
 
 rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
