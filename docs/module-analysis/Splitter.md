@@ -469,3 +469,21 @@ then the module's own six calls, in order:
 All six are over 0x80, so none of them is ported in this slice: they are the retail's own per-frame
 updates (the line-of-sight tracker and the derived state the state machine reads), and the port
 keeps them as named once-logging stand-ins that return neutral values.
+
+#### fn_75_F0E8 (0xB8) - the main chassis's Think
+
+The body: the active gate (the byte at 0x20, 0xF10C `lbz` and 0xF110 `extrwi` bit 24 - the byte's
+0x80), `CPatterned::Think` (0xF118), the docking link (the partner id at 0xC68, 0xF11C `lwz` and
+0xF120 `cmplwi 0`: with no partner the retail looks for one - 0xF130 `fn_75_A4E4` - otherwise it
+updates the dock - 0xF144 `fn_80135D84`, the DOL's), the line-of-sight tracker (the tracker at
+0xC70, 0xF154 `fn_801F55F0`, the DOL's) and the module's own three calls:
+
+| call | fn | size |
+|---|---|---|
+| 0xF130 | `fn_75_A4E4` | 0x418 |
+| 0xF164 | `fn_75_AFE8` | 0x11C |
+| 0xF174 | `fn_75_ACEC` | 0x2FC |
+| 0xF180 | `fn_75_9520` | 0x11C |
+
+All four are over 0x80 and the DOL's two have no module size, so each stays a named once-logging
+shell in the port.

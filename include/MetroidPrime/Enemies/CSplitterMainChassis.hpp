@@ -158,6 +158,9 @@ private:
   // bits, so a TUniqueId carries the same value). The retail's ctor writes kInvalidUniqueId
   // here (fn_75_F5F8 @0x0000F6E4) and the state machine's own code (0x0000AF74,
   // 0x0000E720, 0x0000EBD0) replaces it; those writers are missing from the port.
+  // guest 0xC68: the docking partner's id (the retail's Think reads it at 0xF11C and looks
+  // for a partner when it is 0; the retail's ctor writes 0 here at 0x0000F6BC).
+  uint mDockingPartnerId = 0;
   TUniqueId mCommandModuleId;
 #endif
 };
