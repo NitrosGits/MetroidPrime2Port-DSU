@@ -157,8 +157,12 @@ private:
   void FaceTarget(const CVector3f& target);
   // fn_18_3744: the angle snapped to the nearest 45 degrees.
   float SnapAngleTo45(float angle) const;
-  // fn_18_22BC: the module's average over its bone list at guest 0x830. A stand-in.
-  void BoneAverage() const;
+  // fn_18_22BC: the module's average over its bone list at guest 0x830. A stand-in that
+  // answers the neutral zero.
+  float BoneAverage() const;
+  // fn_18_125C: the module watches the object its id at guest 0x8C0 names and clears the id
+  // when the object is gone.
+  void WatchObject(CStateManager& mgr);
   // fn_18_2D1C: the vector from the actor to the first player, flattened to the XY plane.
   CVector3f PlayerDirection(CStateManager& mgr) const;
   // fn_18_2C98: the actor's facing, flattened to the XY plane.
@@ -208,6 +212,8 @@ private:
   int mAction;                           // guest 0x7E8, -1 in the constructor
   float mX810_;                          // guest 0x810, 0.0f: the damage taken while vulnerable
   CDamageVulnerability mX86c_;           // guest 0x86C: the hearts' vulnerability
+  u16 mX8c0_;                            // guest 0x8C0, 0xFFFF: the id of the object the
+                                        // module watches (fn_18_125C clears it)
   float mX8ec_;                          // guest 0x8EC, 0.0f: the eye-shut time
   float mX8f0_;                          // guest 0x8F0, 0.0f: the eye-shut duration
   float mX8f4_;                          // guest 0x8F4, 0.0f: the eye-shut random time

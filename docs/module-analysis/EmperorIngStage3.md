@@ -26,7 +26,7 @@ patterned AI typedef, the actor parameters and the module's own data block. The 
 | slot | method | fn | milestone 1 |
 |---|---|---|---|
 | 0x08 | the deleting destructor | `fn_18_94C8` | the host destructor |
-| 0x14 | Think | `fn_18_47D4` | stand-in, forwards to CPatterned |
+| 0x14 | Think | `fn_18_47D4` | ported (the base's Think, the stampede-react check, the timers; the module's per-frame calls and the sound are stand-ins) |
 | 0x18 | AcceptScriptMsg | `fn_18_7B14` | stand-in, forwards to CPatterned |
 | 0x24 | PreRender | `fn_18_4650` | stand-in (the base's pre-render plus the damage flash) |
 | 0x2C | Render | `fn_18_47B4` | stand-in, forwards to CPatterned |
@@ -68,6 +68,7 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | 0x864 | the idle state's timer | `fn_18_788C` sets it to FLT_MAX on enter, clears it when the player is over fifty units away and grows it by the frame time |
 | 0x868 | the heart that is on | `fn_18_1DF4` writes it; the constructor clears it (0x9CB4) |
 | 0x86C | the hearts' vulnerability | the constructor copies the immune vulnerability into it (0x9CB8..0x9CC4); `fn_18_1BD8` gives it to both hearts |
+| 0x8C0 | the id of the object the module watches | `fn_18_125C` clears it when the object is gone (0x12AC) |
 | 0x8EC | the eye-shut time | the EyeShut state's activate reads it (0x52BC) and clears it |
 | 0x8F0 | the eye-shut duration | the EyeShut state's activate computes it (0x52F4) and the update counts it down |
 | 0x8F4 | the eye-shut random time | the EyeShut state's activate rolls it (0x5338) and the update counts it down |
@@ -128,10 +129,10 @@ The other thirty-three FSM functions are stand-ins that log the retail function 
 | `8DA4` TooClose | 0xAC | the module's distance (0x7D4) must be at least 2.0 (rodata 0x274) and the player nearer than 20 units (rodata 0x270); a vector that cannot be normalized counts as too close. The vector comes from `fn_18_2D1C` (0x34, the player minus the actor, flattened to XY); `fn_18_2C98` (0x20) copies a vector retail then never reads, so it is left out |
 | `8A4C` ShouldTaunt | 0x80 | the look check `fn_18_F8` (0x11C) with 60.0 (rodata 0x2E4), then `fn_18_2298` (0x24, a stand-in: its own callee `fn_18_AB9C` walks the bone list at 0x840, which the port does not model), whose answer has to be above 50.0 (rodata 0x290), then the taunt timer (0x7C8) past the taunt frequency (0x91C) |
 | `898C` ShouldChangeVulnerabilityToInvulnerable | 0x94 | the look check with 90.0 (rodata 0x2CC); the vulnerable state (3) is true, the invulnerable state (2) needs the damage taken while vulnerable (0x810) below zero (rodata 0x258) or the vulnerable damage threshold (0x814) below rodata 0x310 (1.1920929e-07f) |
-| `85A4` ShouldEyeShut | 0x5C | the look check with 90.0 (rodata 0x2CC) and the eye-shut timer (0x7CC) below 8.0 (rodata 0x2A8) |
+| `85A4` ShouldEyeShut | 0x5C | the look check with 90.0 (rodata 0x2CC) and the eye-shut timer (0x7CC) above 8.0 (rodata 0x2A8): the retail takes the compare's GT bit (the mfcr and the extrwi at 0x85E0), so the timer has to have grown past eight seconds |
 | `8518` ShouldJumpAttack | 0x74 | the look check with 35.0 (rodata 0x30C), the jump-attack timer (0x7E0) at least 2.5 (rodata 0x298) and the flag byte 0x824's bit 29 (the mask 0x04) |
-| `8C4C` ShouldMeleeAttack | 0x13C | the time since the last attack (0x7D0) at least 2.0 (rodata 0x274), the module's average over the bone list (`fn_18_22BC`, 0x24, a stand-in: its own callee `fn_18_AB9C` walks the list at guest 0x830, which the port does not model) and the time at least 10.0 (rodata 0x294); the vector to the player (`fn_18_2D1C`) has to be normalisable and shorter than 30.0 (rodata 0x2FC), and the player has to be in front of the actor: the cosine of the angle between the actor's flattened facing (`fn_18_2C98`) and the direction to the player above 1.3089969 (rodata 0x318) |
-| `8ACC` ShouldGroundPound | 0x180 | the time since the last attack (0x7D0) at least 2.0 (rodata 0x274); the vector from the ing's "head" locator (rodata 0x704) to the player has to be normalisable, and the player has to be below the ing: the cosine of the angle between the direction to the player and the ing's down axis (the negated Z column of the transform) above 0.7853982 (rodata 0x314) |
+| `8C4C` ShouldMeleeAttack | 0x13C | the time since the last attack (0x7D0) at least 2.0 (rodata 0x274), the module's average over the bone list (`fn_18_22BC`, 0x24, a stand-in: its own callee `fn_18_AB9C` walks the list at guest 0x830, which the port does not model) at least 10.0 (rodata 0x294); the vector to the player (`fn_18_2D1C`) has to be normalisable and shorter than 30.0 (rodata 0x2FC), and the player has to be in front of the actor: the dot of the actor's flattened facing (`fn_18_2C98`) and the direction to the player above the cosine of 1.3089969 (rodata 0x318, the retail takes the cosine of the constant at 0x8D40 and compares the dot with it) |
+| `8ACC` ShouldGroundPound | 0x180 | the time since the last attack (0x7D0) at least 2.0 (rodata 0x274); the vector from the ing's "head" locator (rodata 0x704) to the player has to be normalisable, and the player has to be below the ing: the dot of the normalised direction to the player and the ing's down axis (the negated Z column of the transform) above the cosine of 0.7853982 (rodata 0x314, the cosine of the constant at 0x8C04) |
 
 Both triggers the run reaches are ported now; the only stand-in left among them is
 `fn_18_8A4C`'s bone average (`fn_18_2298`, the list at guest 0x840).
@@ -193,6 +194,27 @@ holds 0, pi/4, pi/2, 3pi/4 and pi), signed by the up vector's dot with the cross
 the two (`fn_18_39A0`, 0x3C, the cross product) and rotated around Z (0x3958). The idle
 state's locomotion command then carries that facing as its face vector.
 
+### `fn_18_47D4` (0x3E4), the module's Think
+
+The base class's Think runs first (0x4818). Then:
+
+- The stampede-react check (0x481C..0x4928): only while the flag at guest 0x825 is clear, and
+  only when the player is below the ing's head - the vector from the ing's "head" locator
+  (rodata 0x704) to the player, normalised, against the ing's down axis (the negated Z column
+  of the transform), past 0.70685834 radians (rodata 0x2E8) - sets the flag's bit 0.
+- The timers (0x492C..0x4984): the taunt (0x7C8), eye-shut (0x7CC), attack-cooldown (0x7D0),
+  too-close (0x7D4) and jump-attack (0x7E0) timers grow by the frame time; the attack timer
+  (0x7E4) and the damage taken while vulnerable (0x810) shrink by it.
+- The module's per-frame calls (0x4988..0x4A20), in retail order: `fn_18_AC44` (0xB4) three
+  times, `fn_18_3B64` (0x28), `fn_18_39E0` (0xA4), `fn_18_3448` (0x1AC), `fn_18_27DC` (0x38C),
+  `fn_18_22E0` (0x4C0), `fn_18_1978` (0xDC), `fn_18_1370` (0x1C0), `fn_18_125C` (0x68, ported:
+  the module watches the object its id at guest 0x8C0 names and clears the id when the object
+  is gone) and `fn_18_E40` (0x41C). All but `fn_18_125C` are stand-ins.
+- The ing's sound (0x4A28..0x4BB8): the module's sound timer (0x8F8) and direction (0x8FC)
+  drive the DOL's `fn_801BF3DC`, and the emitter (the handle at 0x908 and the object at 0x90C)
+  follows the player. A stand-in: the DOL's call has no host equivalent and the emitter's
+  position needs the object's scale (guest 0x1C0), which the host does not expose.
+
 ### `fn_18_1DF4` (0x4A0), the heart switch
 
 The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`
@@ -248,7 +270,15 @@ module's `fn_18_3BB0`, which is still a stand-in.
 
 With the two triggers and the EyeShut path ported, the run's log no longer names
 `fn_18_8C4C` or `fn_18_8ACC` (they are retail's now) and names `fn_18_5264 update` instead of
-the whole state. The FSM still stays in EyeShut: the state's exit trigger reads the eye-shut
-timer (guest 0x7CC) and the melee and ground-pound triggers read the time since the last attack
-(guest 0x7D0), and only the module's Think (`fn_18_47D4`, 0x3E4, still a stand-in) grows those
-timers. The run ends on the frame limit with `grep -c '[port] caught\|reach-stub'` = 0.
+the whole state. The FSM still stayed in EyeShut then: the state's exit trigger reads the
+eye-shut timer (guest 0x7CC) and the melee and ground-pound triggers read the time since the
+last attack (guest 0x7D0), and only the module's Think (`fn_18_47D4`, 0x3E4, still a stand-in)
+grows those timers.
+
+With the Think ported the timers grow, and the state walk starts: the attack timer (guest
+0x7E4) shrinks below zero, `ShouldAttack` fires and the FSM leaves Idle for the GainDistance
+state (`fn_18_7504`), and the log names the module's own per-frame calls (`fn_18_AC44` and the
+rest), the `ChoseAction` code (`fn_18_8200`) and the `ResetAttackTimer` code (`fn_18_84A8`).
+The EyeShut state is not reached in that run: its trigger wants the eye-shut timer past eight
+seconds *and* the player within ninety degrees of the ing's facing, and the FSM had left Idle
+by then. The run ends on the frame limit with `grep -c '[port] caught\|reach-stub'` = 0.

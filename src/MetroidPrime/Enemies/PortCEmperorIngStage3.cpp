@@ -188,6 +188,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mAction(-1)                                             // guest 0x7E8
 , mX810_(0.f)                                             // guest 0x810
 , mX86c_(CDamageVulnerability::ImmuneVulnerabilty())     // guest 0x86C
+, mX8c0_(0xffff)                                          // guest 0x8C0
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
@@ -218,8 +219,10 @@ void CEmperorIngStage3::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 3 = fn_18_47D4: retail's Think, which drives the state machine (the four forms and
-// the attack selection). That is milestone 2, so the base class's Think runs.
+// vtable slot 3 = fn_18_47D4 (0x3E4): retail's Think. The base class's Think runs first
+// (0x4818), then the module's own work: the stampede-react check (0x481C..0x4928), the timers
+// (0x492C..0x4984), the module's per-frame calls (0x4988..0x4A20) and the ing's sound
+// (0x4A28..0x4BB8, a stand-in).
 void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   StandIn("CEmperorIngStage3::Think (vtable slot 3, fn_18_47D4)");
   if (!GetActive()) {
@@ -227,6 +230,70 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+
+  // The stampede-react check (0x481C): only while the flag at guest 0x825 is clear, and only
+  // when the player is below the ing's head: the vector from the ing's "head" locator (rodata
+  // 0x704) to the player, normalised, against the ing's down axis (the negated Z column of the
+  // transform), has to be past 0.70685834 radians (rodata 0x2E8).
+  if ((x825_ & 0x01) == 0) {
+    const CVector3f head =
+        (GetTransform() * GetScaledLocatorTransform(rstl::string_l("head"))).GetTranslation();
+    const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+    CVector3f toPlayer(theirs.GetX() - head.GetX(), theirs.GetY() - head.GetY(),
+                       theirs.GetZ() - head.GetZ());
+    if (toPlayer.CanBeNormalized()) {
+      toPlayer = toPlayer.AsNormalized();
+      const CVector3f down = GetTransform().GetColumn(kDZ);
+      const float dot = -down.GetZ() * toPlayer.GetZ() +
+                        (-down.GetX() * toPlayer.GetX() + -down.GetY() * toPlayer.GetY());
+      if (dot > CMath::FastCosR(0.70685834f)) { // rodata 0x2E8
+        x825_ |= 0x01;
+      }
+    }
+  }
+
+  // The timers (0x492C): the taunt, eye-shut, attack-cooldown, too-close and jump-attack timers
+  // grow by the frame time; the attack timer and the damage taken while vulnerable shrink.
+  mX7c8_ += dt;
+  mX7cc_ += dt;
+  mX7d0_ += dt;
+  mX7d4_ += dt;
+  mX7e0_ += dt;
+  mAttackTimer -= dt;
+  mX810_ -= dt;
+
+  // The module's per-frame calls (0x4988..0x4A20), in retail order. Only fn_18_125C (0x68) is
+  // small enough to port; the rest are stand-ins, with their retail sizes.
+  StandInFn("fn_18_AC44"); // 0xB4
+  StandInFn("fn_18_AC44"); // 0xB4
+  StandInFn("fn_18_AC44"); // 0xB4
+  StandInFn("fn_18_3B64"); // 0x28
+  StandInFn("fn_18_39E0"); // 0xA4
+  StandInFn("fn_18_3448"); // 0x1AC
+  StandInFn("fn_18_27DC"); // 0x38C
+  StandInFn("fn_18_22E0"); // 0x4C0
+  StandInFn("fn_18_1978"); // 0xDC
+  StandInFn("fn_18_1370"); // 0x1C0
+  WatchObject(mgr);       // fn_18_125C (0x68)
+  StandInFn("fn_18_E40");  // 0x41C
+
+  // The ing's sound (0x4A28..0x4BB8): the module's sound timer (guest 0x8F8) and direction
+  // (guest 0x8FC) drive the DOL's fn_801BF3DC, and the emitter (the handle at guest 0x908 and
+  // the object at guest 0x90C) follows the player. A stand-in: the DOL's call has no host
+  // equivalent and the emitter's position needs the object's scale (guest 0x1C0), which the
+  // host does not expose.
+  StandInFn("fn_18_47D4 sound");
+}
+
+// fn_18_125C (0x68): the module watches the object its id at guest 0x8C0 names; when the
+// object is gone the id is cleared (0x12AC).
+void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
+  if (mX8c0_ == 0xffff) {
+    return;
+  }
+  if (mgr.GetObjectById(TUniqueId(mX8c0_)) == nullptr) {
+    mX8c0_ = 0xffff;
+  }
 }
 
 // vtable slot 4 = fn_18_7B14: retail's message switch (the forms and the attacks).
@@ -486,7 +553,12 @@ CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int 
 
 // fn_18_22BC (0x24): the module's average over its bone list at guest 0x830. Its own callee
 // fn_18_AB9C (0x64) walks the list, which the port does not model, so this stays a stand-in.
-void CEmperorIngStage3::BoneAverage() const { StandInFn("fn_18_22BC"); }
+// The answer is the neutral zero: the melee trigger wants the average above ten (rodata 0x294),
+// and zero keeps the trigger false instead of firing on a value the port made up.
+float CEmperorIngStage3::BoneAverage() const {
+  StandInFn("fn_18_22BC");
+  return 0.f;
+}
 
 // fn_18_2D1C (0x34): the vector from the actor to the first player, flattened to the XY plane
 // (the zero at rodata 0x258).
@@ -530,8 +602,7 @@ bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData
   if (mX7d0_ < 2.f) { // rodata 0x274
     return false;
   }
-  BoneAverage(); // fn_18_22BC
-  if (mX7d0_ < 10.f) { // rodata 0x294
+  if (BoneAverage() < 10.f) { // fn_18_22BC, rodata 0x294
     return false;
   }
   const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
@@ -542,8 +613,9 @@ bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData
     return false;
   }
   const CVector3f facing = FlatFacing(); // fn_18_2C98
-  const float cosine = CMath::FastCosR(CVector3f::Dot(facing, toPlayer));
-  return cosine > 1.3089969f; // rodata 0x318
+  // The retail takes the cosine of the constant (rodata 0x318) and compares the dot with it
+  // (0x8D40); the direction is not normalised here, only the facing is a unit vector.
+  return CVector3f::Dot(facing, toPlayer) > CMath::FastCosR(1.3089969f); // rodata 0x318
 }
 
 // fn_18_8ACC (0x180): "ShouldGroundPound". The module's time since the last attack (guest
@@ -565,10 +637,11 @@ bool CEmperorIngStage3::ShouldGroundPound(CStateManager& mgr, const CTriggerData
   }
   toPlayer = toPlayer.AsNormalized();
   const CVector3f down = GetTransform().GetColumn(kDZ);
-  const float cosine = CMath::FastCosR(-down.GetZ() * toPlayer.GetZ() +
-                                       (-down.GetX() * toPlayer.GetX() +
-                                        -down.GetY() * toPlayer.GetY()));
-  return cosine > 0.7853982f; // rodata 0x314
+  // The retail takes the cosine of the constant (rodata 0x314) and compares the dot with it
+  // (0x8C04).
+  const float dot = -down.GetZ() * toPlayer.GetZ() +
+                    (-down.GetX() * toPlayer.GetX() + -down.GetY() * toPlayer.GetY());
+  return dot > CMath::FastCosR(0.7853982f); // rodata 0x314
 }
 
 // fn_18_5264 (0x2F8): the "EyeShut" state.
@@ -801,12 +874,14 @@ bool CEmperorIngStage3::JumpSlideAttackOver(CStateManager& mgr, const CTriggerDa
 }
 
 // fn_18_85A4 (0x85A4): "ShouldEyeShut". The look check has to pass (rodata 0x2CC = 90.0f) and
-// the eye-shut timer (guest 0x7CC) has to be below 8.0 (rodata 0x2A8).
+// the eye-shut timer (guest 0x7CC) has to be above 8.0 (rodata 0x2A8): the retail takes the
+// compare's GT bit (the mfcr and the extrwi at 0x85E0), so the timer has to have grown past
+// eight seconds.
 bool CEmperorIngStage3::ShouldEyeShut(CStateManager& mgr, const CTriggerData& data) const {
   if (!RandomCheck(mgr, 90.f)) { // rodata 0x2CC
     return false;
   }
-  return mX7cc_ < 8.f; // rodata 0x2A8
+  return mX7cc_ > 8.f; // rodata 0x2A8
 }
 
 // fn_18_858C (0x858C): the flag byte at guest 0x825, the bit 29 (the mask 0x04).
