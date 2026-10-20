@@ -370,6 +370,7 @@ private:
   void ApplySeparation(CStateManager& mgr);
   float DistSqToTarget(const CStateManager& mgr) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
+  CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, int hintType) const; // fn_30_2F9C
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
