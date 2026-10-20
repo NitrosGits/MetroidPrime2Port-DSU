@@ -251,6 +251,14 @@ private:
   // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag and its
   // position are cleared and the portal's effect hears "DCTV".
   void StopTentaclePortal(int index, CStateManager& mgr);
+  // fn_16_601C (0x601C..0x67EC, 0x7D0): the state "WarpAttack" - the portal block.
+  // 0x6364 / 0x6458: where the warp portal appears - the random point around the player's eye
+  // position or the ground point under the player - and where it looks.
+  void GetWarpPortalPlacement(CStateManager& mgr, CVector3f& pos, CVector3f& lookAt) const;
+  // fn_16_1720 (0x1720..0x18E8): the module's own CPhysicsActor subclass - the "Attack Tip"
+  // portal actor. It is over the slice's 0x80 line, so it stays a stand-in.
+  void CreateWarpPortalActor(CStateManager& mgr, const CModelData& modelData,
+                             const CTransform4f& xf);
   // fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass.
   CModelFlags BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const;
   // fn_16_1C94 (0x1C94..0x1CF4, 0x60): the tentacle's damage colour.
@@ -277,6 +285,8 @@ private:
   CDamageInfo mMeleeDamage;                      // guest 0xB8C
   CProjectileInfo mProjectile;                   // guest 0xBB8 token, 0xBC4 damage
   TLockedToken< CGenDescription > mProjectileVisorEffect; // guest 0xBE0
+  CAssetId mWarpPortalEffect;                     // guest 0xC00: the warp portal's effect
+  SLdrAnimationSet mWarpAttackTip;                // guest 0xC04..0xC10: the "Attack Tip" ANCS
   CDamageInfo mWarpStabDamage;                   // guest 0xC10
   CProjectileInfo mBeamProjectile;               // guest 0xC80: the beam's weapon and damage
   SLdrPlasmaBeamInfo mBeamInfo;                  // guest 0xCA8: copied verbatim (fn_16_9610)
@@ -288,6 +298,8 @@ private:
   float mJumpRopeTurnSpeed;                      // guest 0xBF8, degrees per second (fn_16_5928)
   float mTurnSpeedAccel;                         // guest 0xBFC
   ushort mTentacleDamagedSound;                  // guest 0xC2C
+  ushort mWarpSound;                             // guest 0xC2E: the warp attack's sound
+  ushort mWarpSound2;                            // guest 0xC30: the warp portal's sound
   float mTauntFrequency;                         // guest 0xC34
   float mTauntLoopDuration;                      // guest 0xC38: the taunt's loop duration
   float mAttackIntervalMin;                      // guest 0xCF4
@@ -319,6 +331,7 @@ private:
   float xa38_;                        // guest 0xA38, 0.0f: the jump rope's duration (fn_16_5928)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa40_;                        // guest 0xA40, initial HP: the heart's last health (fn_16_51D4)
+  float xa44_;                        // guest 0xA44, 0.0f: the warp portal's timer (fn_16_601C)
   float xa48_;                        // guest 0xA48, 0.0f: the contact damage cooldown (fn_16_8C)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)

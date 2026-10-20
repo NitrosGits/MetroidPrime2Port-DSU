@@ -20,8 +20,12 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CActorModelParticles.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CAnimRes.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CModelData.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CRayCastResult.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
 #include "MetroidPrime/CParticleGenInfoGeneric.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
@@ -188,6 +192,8 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
               LdrToDamageInfo(data.projectile.projectileDamage))
 , mProjectileVisorEffect(gpSimplePool->GetObj(                     // guest 0xBE0
       SObjectTag('PART', data.projectile.projectileVisorEffect)))
+, mWarpPortalEffect(data.warp.portalEffect)                        // guest 0xC00, data+0x5A8
+, mWarpAttackTip(data.warp.attackTip)                               // guest 0xC04..0xC10, data+0x5AC
 , mWarpStabDamage(LdrToDamageInfo(data.warp.stabDamage))         // guest 0xC10
 , mBeamProjectile(data.beamAttack.beamInfo.weaponSystem,            // guest 0xC80, 0x9644
                   LdrToDamageInfo(data.beamAttack.damage))
@@ -200,6 +206,8 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mJumpRopeTurnSpeed(data.unknown_0xe5a7c358)                     // guest 0xBF8, data+0x6A0
 , mTurnSpeedAccel(data.turnSpeedAccel)                            // guest 0xBFC
 , mTentacleDamagedSound(data.tentacle.tentacleDamagedSound)  // guest 0xC2C, data+0x57C at 0x95E0
+, mWarpSound(data.warp.sound)                                // guest 0xC2E, data+0x5D0
+, mWarpSound2(data.warp.sound_0xa93f0198)                     // guest 0xC30, data+0x5D4
 , mTauntFrequency(data.tauntFrequency)                            // guest 0xC34
 , mTauntLoopDuration(data.tauntAttack.loopDuration)                      // guest 0xC38, data+0x5D8
 , mAttackIntervalMin(data.attackIntervalMin)                      // guest 0xCF4
@@ -228,6 +236,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa38_(0.f)                                                      // guest 0xA38, 0x91BC
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa40_(GetHealthInfo()->GetInitialHP())                          // guest 0xA40, 0x9120
+, xa44_(0.f)                                                      // guest 0xA44, 0x9188
 , xa48_(0.f)                                                      // guest 0xA48, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
@@ -2301,8 +2310,162 @@ int CEmperorIngStage1::RetractedTentacleCount() const {
   return retracted;
 }
 
+// fn_16_601C's own statics: the portal counter (lbl_16_bss_4, an int) and its initialisation
+// guard (lbl_16_bss_8, the byte the retail sets on the first call, 0x60A0..0x60B0).
+static int sWarpPortalCount = -1;                 // lbl_16_bss_4
+static bool sWarpPortalCountInitialized = false;  // lbl_16_bss_8
+
+// The module's two body-command records: lbl_16_data_3B0 (the loop attack's) and
+// lbl_16_data_3BC (the exit state's). The retail tells a command apart by the address of its
+// three-word record {0, 0, the record's own destroy helper (fn_16_5BA8 / fn_16_5C04)}; the port
+// keeps the command id and the loop attack's type in the tables.
+struct SEmperorIngStage1CmdRecord {
+  uint mTypeTag;  // 0 in both records
+  uint mId;       // the body command id
+  uint mParam;    // the loop attack's type
+};
+static const SEmperorIngStage1CmdRecord skLoopAttackCmd = {0, kBSC_LoopAttack, 1};  // lbl_16_data_3B0
+static const SEmperorIngStage1CmdRecord skExitStateCmd = {0, kBSC_ExitState, 0};    // lbl_16_data_3BC
+
+// fn_16_601C (0x601C..0x67EC, 0x7D0): the state "WarpAttack" (lbl_16_data_94 entry 8).
+//   Activate (0x60D8): the script hears IS02 (fn_16_830 with 2, 0x60E4), the animation state is
+//     ready (0x60F0), the tentacles take the warp vulnerability (mode 4, fn_16_353C, 0x60FC), the
+//     portal timer (guest 0xA44) is 0.0f (0x6100), the flag byte's bit 3 (0x08, the charged
+//     projectile) is cleared - the rlwimi at 0x6120 takes the bit 27, the byte's bit 4 (0x10) -
+//     and its bit 5 (0x20) is set (0x612C, the bit 26), and the portal counter is -1 (0x6134).
+//   Update (0x613C): past 4.0f (lbl_16_rodata_38C, 0x6158) the tentacles are immune
+//     (fn_16_353C with 0, 0x616C) and lose their materials (fn_16_2E1C with 0, 0x617C), and the
+//     portal counter takes the number of tentacles that are out (0x6194..0x6270). If the
+//     animation state lets the loop attack in (ShouldRetry, pas 9 = kAS_LoopAttack, 0x61BC) the
+//     body gets the loop attack command (the id 7 with the type 1, 0x61C8..0x6250) and the state
+//     is done. Otherwise the flag byte's bit 4 (0x10, the "GenerateEnd" event) has to be set
+//     (0x6258, the extrwi takes the bit 27), the portal timer counts down (0x6270) and while it
+//     is below 0.0f and the counter is above 0 a portal is made (0x62B0..0x66B4). When the
+//     counter is spent and the state has run for more than 5.0f (lbl_16_rodata_3AC, 0x6704) the
+//     animation state is over (0x6718).
+//   Deactivate (0x6720): the body gets the exit state command (the id 10, 0x6740), the flag
+//     byte's bit 5 (0x20) is cleared (0x6760, the bit 26), the tentacles get their materials back
+//     (fn_16_2E1C with 1, 0x6774) and the animation state is not ready (0x677C).
 void CEmperorIngStage1::WarpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_601C");
+  if (!sWarpPortalCountInitialized) {  // 0x6084..0x60B0: the static's guard.
+    sWarpPortalCountInitialized = true;
+    sWarpPortalCount = -1;
+  }
+  switch (msg) {
+    case kStateMsg_Activate:
+      SendStageMessage(mgr, 2);                             // 0x60E4
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x60F0
+      SetTentacleVulnerability(mgr, 4);                     // 0x60FC
+      xa44_ = 0.f;                                          // 0x6100
+      xa74_ &= ~0x10;                                       // 0x6120, the bit 27
+      xa74_ |= 0x20;                                        // 0x612C, the bit 26
+      sWarpPortalCount = -1;                                // 0x6134
+      break;
+    case kStateMsg_Update: {
+      if (StateMachineState().GetTime() > 4.f) {  // 0x6158, lbl_16_rodata_38C
+        SetTentacleVulnerability(mgr, 0);      // 0x616C
+        SetTentacleMaterials(mgr, 0);          // 0x617C
+        if (sWarpPortalCount == -1) {          // 0x618C
+          // 0x6194: the tentacle count (fn_16_2F70) minus the retracted one (fn_16_2E7C).
+          sWarpPortalCount = TentacleCount() - RetractedTentacleCount();
+        }
+      }
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {  // 0x61BC
+        // 0x61C8: the body gets the loop attack command (the id 7 with the type 1).
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCLoopAttackCmd(static_cast< pas::ELoopAttackType >(skLoopAttackCmd.mParam)));
+        break;
+      }
+      if ((xa74_ & 0x10) == 0) {  // 0x6258: the bit 27 of the byte, the "GenerateEnd" event.
+        break;
+      }
+      xa44_ -= dt;  // 0x6270
+      while (xa44_ < 0.f && sWarpPortalCount > 0) {  // 0x66B8
+        // 0x62B0: one warp portal. The counter is spent (0x62C0) and the portal timer is 0.75f
+        // (lbl_16_rodata_3A4, 0x62C8).
+        --sWarpPortalCount;  // 0x62C0
+        xa44_ = 0.75f;       // 0x62C8
+        // 0x62CC: the attack tip's CAnimRes - the ANCS id (guest 0xC04), the character index
+        // (guest 0xC08), the one vector as the scale and the default animation (guest 0xC0C).
+        const CAnimRes animRes(mWarpAttackTip.ancs, mWarpAttackTip.character_index,
+                                CVector3f::One(), mWarpAttackTip.initial_anim, false);
+        const CModelData modelData(animRes);  // 0x6300
+        CVector3f pos;
+        CVector3f lookAt;
+        GetWarpPortalPlacement(mgr, pos, lookAt);  // 0x6364 / 0x6458
+        // 0x6568: the portal's transform looks from the position to the look at point with the
+        // up vector.
+        const CTransform4f xf = CTransform4f::LookAt(pos, lookAt, CVector3f::Up());
+        CreateWarpPortalActor(mgr, modelData, xf);  // 0x6660
+      }
+      if (xa44_ < 0.f && sWarpPortalCount == 0 && StateMachineState().GetTime() > 5.f) {  // 0x66D0
+        mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x6718
+      }
+      break;
+    }
+    case kStateMsg_Deactivate:
+      // 0x6740: the body gets the exit state command (the id 10).
+      BodyController()->CommandMgr().DeliverCmd(
+          CBodyStateCmd(static_cast< EBodyStateCmd >(skExitStateCmd.mId)));
+      xa74_ &= ~0x20;                        // 0x6760, the bit 26
+      SetTentacleMaterials(mgr, 1);           // 0x6774
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x677C
+      break;
+    default:
+      break;
+  }
+}
+
+// 0x6364 (the random path) and 0x6458 (the ray path): where the warp portal appears.
+//   The random path (the player's morph ball state - the retail's CPlayer+0x38C - is zero): the
+//   portal is at the player's eye position plus an offset in the player's own space. The offset
+//   is the player's transform applied to the local vector (range2, 10.0f, range1) with range1 =
+//   Random Range(2.0f, 5.0f) (lbl_16_rodata_3B0/3AC, 0x637C) and range2 = Random
+//   Range(-10.0f, 10.0f) (lbl_16_rodata_3EC/390, 0x63AC) - the retail adds the three columns
+//   scaled by their own component (0x6394..0x642C). The portal looks at the player's eye
+//   position (0x6438..0x6450).
+//   The ray path (the player is morphed): the portal is at the ground under the player - the
+//   ray starts at the player's position plus the up vector (0x64A4..0x64FC), goes straight down
+//   (sDownVector) for 50.0f (lbl_16_rodata_3BC) and the hit point is the portal's position
+//   (0x651C..0x6530); without a hit the player's own position is used. The portal looks at the
+//   origin (the zero vector at 0x6404..0x6418).
+void CEmperorIngStage1::GetWarpPortalPlacement(CStateManager& mgr, CVector3f& pos,
+                                                CVector3f& lookAt) const {
+  CPlayer* player = mgr.GetPlayer(0);  // the state manager's first player (0x14FC, 0x6304)
+  const CVector3f eye = player->GetEyePosition();  // 0x63F0
+  if (player->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed) {  // 0x6358
+    // 0x6364: the random path.
+    const float range1 = mgr.Random()->Range(2.f, 5.f);     // 0x637C
+    const float range2 = mgr.Random()->Range(-10.f, 10.f);  // 0x63AC
+    const CVector3f local(range2, 10.f, range1);
+    // 0x6308: the player's transform (the guest's +0x24).
+    const CTransform4f& xf = player->GetTransform();
+    pos = eye + xf.GetColumn(kDX) * local.GetX() + xf.GetColumn(kDY) * local.GetY() +
+          xf.GetColumn(kDZ) * local.GetZ();  // 0x642C
+    lookAt = eye;                                      // 0x6448
+    return;
+  }
+  // 0x6458: the ray path.
+  const CVector3f origin = player->GetTranslation();
+  const CRayCastResult hit = mgr.RayStaticIntersection(
+      origin + CVector3f::Up(), CVector3f::Down(), 50.f, CMaterialFilter());  // 0x6500
+  pos = origin;                       // 0x6488..0x64A0
+  if (hit.IsValid()) {                // 0x6514
+    pos = hit.GetPoint();             // 0x6528
+  }
+  lookAt = CVector3f::Zero();  // 0x6404
+}
+
+// fn_16_1720 (0x1720..0x18E8, 0x1C8): the module's own CPhysicsActor subclass - the "Attack
+// Tip" portal actor (its vtable lbl_16_data_27C, the portal's effect at the guest 0xC00, the
+// warp stab damage and the two warp sounds). It is over the slice's 0x80 line, so it stays a
+// stand-in: no portal actor is created and the state manager gets no new object (0x6670).
+void CEmperorIngStage1::CreateWarpPortalActor(CStateManager& mgr, const CModelData& modelData,
+                                               const CTransform4f& xf) {
+  StandInFn("fn_16_1720");
+  (void)mgr;
+  (void)modelData;
+  (void)xf;
 }
 
 // fn_16_5DBC (0x5DBC..0x601C, 0x260): the state "TauntAttack" - the taunt's own timer (the
