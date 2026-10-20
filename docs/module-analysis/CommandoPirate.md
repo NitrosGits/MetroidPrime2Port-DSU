@@ -570,23 +570,38 @@ own test - the actor's position against the path search - and the state machine'
 with it: the commando reaches the SetPathMeshDest state (the stand-in log for `fn_9_A838` is
 gone) and the path find navigation takes the closest reachable point the search finds.
 
+With the emitters (`fn_9_4BC0`), the JumpPointFind state (`fn_9_9F24`) and the CoverFind state
+(`fn_9_709C`) ported (2026-10-20) the run still ends cleanly: gameplay at 10.0 s, the frame limit
+at 46.0 s, exit=0 and `grep -c '[port] caught\|reach-stub'` = 0. The three stand-in logs are gone
+and the commando still walks to the player.
+
 The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_ADA0` (the
 Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHang, 0x54),
 `fn_9_B1E0` (ShouldBoost, 0x70), `fn_9_69C8` (the Dead state, 0x78), `fn_9_A7A8` (SetCoverDest,
 0x90), `fn_9_A8E8` (SetJumpDest, 0x94), `fn_9_6BCC` (BreakCover, 0x9c), `fn_9_A97C`
 (SetRetreatDest, 0xa4), `fn_9_8D28` (PostWarpOut, 0xc8), `fn_9_728C` (WallDetach, 0xcc),
-`fn_9_AFD4` (CoverBlown, 0xe0), `fn_9_4BC0` (the module's sound emitters, 0xe4), `fn_9_6A40`
+`fn_9_AFD4` (CoverBlown, 0xe0), `fn_9_6A40`
 (GetUp, 0x130), `fn_9_7724` (Crouch, 0x148), `fn_9_6C68` (CoverAttack, 0x154), `fn_9_A2EC`
 (EGrenadeAttack, 0x174), `fn_9_8B70` (the JumpBack state, 0x1b8), `fn_9_A110`
-(PostEGrenadeAttack, 0x1dc), `fn_9_9F24` (JumpPointFind, 0x1ec), `fn_9_709C` (CoverFind, 0x1f0),
-`fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218), `fn_9_4D84` (0x228), `fn_9_786C`
+(PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
+`fn_9_4D84` (0x228), `fn_9_786C`
 (RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
 `fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_6390` (0x29c), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
 `fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
 `fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
 (ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
-reaches are `fn_9_4BC0`, `fn_9_9F24`, `fn_9_709C`, `fn_9_4D84`, `fn_9_6390`, `fn_9_3090`,
+reaches are `fn_9_4D84`, `fn_9_6390`, `fn_9_3090`,
 `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
+
+`fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
+and `fn_9_709C` (the CoverFind state, 0x1f0) are host code since 2026-10-20: the emitters follow
+the actor with the two handles at guest this+0xC04 and this+0xC38 (new members `xc04_` and
+`xc38_`), the jump point search walks the AiWaypoint list for the nearest usable jump point
+(the id at guest this+0xBD0) and the cover search walks the same list for the nearest free cover
+point (the id at guest this+0xBD2, copied to +0xBD4, a new member `xbd4_`). The host class is
+0xC40 bytes now (it was 0xC38; the retail's is 0xC68) - the loader allocates with `rs_new`, so it
+uses the host's own size, and the header's `CHECK_SIZEOF` (a no-op outside the retail build)
+still names the retail's 0xC68.
 
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
