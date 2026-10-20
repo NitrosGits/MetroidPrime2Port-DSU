@@ -273,6 +273,9 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mReflectVulnerability(false) // ctor 0x0000FEFC: 0x11EE 0x02 = 0
 , mBoostPuddleAllowed(true)    // ctor 0x0000FF2C: 0x11EF 0x20 = 1
 , mBoostChildId(kInvalidUniqueId)
+, mIngBlobTrackerId(kInvalidUniqueId)
+, mBoostBlobTrackerId(kInvalidUniqueId)
+, mHitLightId(kInvalidUniqueId)
 , mBoostAimPos(CVector3f::Zero())   // ctor 0x0000FD10
 , mBoostSpawnPos(CVector3f::Zero()) // ctor 0x0000FD28
 , mBoostNavPointId(kInvalidUniqueId)

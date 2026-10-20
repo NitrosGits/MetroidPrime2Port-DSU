@@ -30,6 +30,7 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/Enemies/CCollisionTracker.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
@@ -237,18 +238,25 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     }
     CreateCollisionActorManager(mgr); // 0x0000DF18: fn_30_4E90
     CreateIngSpotManager(mgr);        // 0x0000DF24: fn_30_4A38
+    mIngBlobTrackerId = CreateBlobTracker( // 0x0000DF90
+        mgr, TLockedToken< CGenDescription >(
+                 gpSimplePool->GetObj(SObjectTag('PART', mData.mIngSpot.GetBlobEffect()))));
+    mBoostBlobTrackerId = CreateBlobTracker( // 0x0000E01C
+        mgr, TLockedToken< CGenDescription >(
+                 gpSimplePool->GetObj(SObjectTag('PART', mBoost.mBlobEffect))));
+    CreateHitLight(mgr); // 0x0000E048: fn_30_67B4
     // 0x0000E06C: the (kSS_Modify, kSM_Activate) connections, which the boost ball gets.
     mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate);
     break;
   case kSM_Delete:
-    // Retail deletes the blob object first, then destroys the collision actor manager.
+    mgr.DeleteObjectRequest(mIngBlobTrackerId);   // 0x0000E098
+    mgr.DeleteObjectRequest(mBoostBlobTrackerId); // 0x0000E0AC
+    StopSfx();                                    // 0x0000E0B4: fn_30_3A60
     mCollisionActorManager0->Destroy(mgr); // 0x0000E0C0
     mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
-    ReleaseCoverHint(mgr, mCoverHintId);
-    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId());
-    }
-    StopSfx();
+    mgr.DeleteObjectRequest(mHitLightId);  // 0x0000E0E0
+    ReleaseCoverHint(mgr, mCoverHintId);   // [host] the Ing's; retail has fn_30_6064 here
+    LeaveTeam(mgr);                        // 0x0000E120: fn_30_510C
     break;
   case kSM_AreaLoaded:
     mPathArea =
@@ -266,6 +274,11 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     if (!wasActive) {
       mCollisionActorManager0->SetActive(mgr, mForm == kForm_Corporeal); // 0x0000E150
       mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
+      if (CEntity* light = mgr.ObjectById(mHitLightId)) {
+        light->SetActive(true); // 0x0000E19C
+      }
+      mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(), // 0x0000E1F0
+                        gpStringTable->GetStringIndex("BossBoostBallGuardian"));
     }
     break;
   case kSM_Deactivate:
@@ -273,6 +286,16 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     if (wasActive) {
       mCollisionActorManager0->SetActive(mgr, false); // 0x0000E214
       mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
+      LeaveTeam(mgr);                                 // 0x0000E230: fn_30_510C
+      if (CEntity* light = mgr.ObjectById(mHitLightId)) {
+        light->SetActive(false); // 0x0000E260
+      }
+      if (CEntity* tracker = mgr.ObjectById(mIngBlobTrackerId)) {
+        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E288
+      }
+      if (CEntity* tracker = mgr.ObjectById(mBoostBlobTrackerId)) {
+        static_cast< CCollisionTracker* >(tracker)->SetParticleEmissionRateScalar(0.f); // 0x0000E2B0
+      }
       StopSfx(); // 0x0000E2B8: fn_30_3A60
     }
     break;

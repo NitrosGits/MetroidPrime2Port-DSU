@@ -274,10 +274,12 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   (0xE2EC), BecomeIngSpot on (0xAF70), BecomeCorporeal off (0xB144), the dtor; BoostAttack's
   calls are unguarded as in retail. Area 28: the box is built (8th collision actor).
   `DDA0`'s ACTV/DCTV gate (`f31` vs rodata_70) is the active bit taken before the base handles the
-  message: ACTV acts only when inactive, DCTV only when active (ported). Still missing from those
-  cases: ACTV's hit light (0x1084) `SetActive(true)` and `SetBossParams(.., "BossBoostBallGuardian")`;
-  DCTV's `510C` (QuitTeam), the light off and the 0x1074/0x1076 trackers' emission 0. The host's
-  ACTV `JoinTeam` is the Ing's. `4324`/`44A4` (0xD64 index
+  message: ACTV acts only when inactive, DCTV only when active (ported). kSM_Create also builds the two
+  "IngBlobEffect" trackers (`648C`, 0x1074 ingSpot / 0x1076 boost blob effect) and the "Ing Light"
+  (`67B4`, 0x1084); ACTV turns the light on and sets the boss params ("BossBoostBallGuardian"), DCTV
+  runs `510C` (LeaveTeam), turns the light off and zeroes both trackers' emission; Delete deletes
+  all three. Their per-frame drivers `6108`/`65C8` are still stand-ins. The host's ACTV `JoinTeam`
+  is the Ing's; Delete's `6064` is not ported (the host keeps the Ing's ReleaseCoverHint). `4324`/`44A4` (0xD64 index
   lookups) are in the unported boost half.
 - *0xD60 manager:* `CreateCollisionActorManager` is now `4E90` (kSM_Create 0xDF18): the seven
   `lbl_30_rodata_0` spheres (same table as the Ing's), `SetupManagerActors` (`4924`), `AddMaterial`

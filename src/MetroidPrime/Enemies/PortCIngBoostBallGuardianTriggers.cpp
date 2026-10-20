@@ -24,6 +24,8 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CGameLight.hpp"
+#include "MetroidPrime/Enemies/CCollisionTracker.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
@@ -118,6 +120,48 @@ void CIngBoostBallGuardian::SetupManagerActors(CStateManager& mgr,
       const CHealthInfo health = *GetHealthInfo();
       actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
       *actor->HealthInfo() = health;
+    }
+  }
+}
+
+// @ fn_30_648C
+TUniqueId CIngBoostBallGuardian::CreateBlobTracker(CStateManager& mgr,
+                                                   const TLockedToken< CGenDescription >& desc) {
+  const TUniqueId id = mgr.AllocateUniqueId();
+  if (id != kInvalidUniqueId) {
+    CCollisionTracker* tracker = rs_new CCollisionTracker(
+        desc, id, GetCurrentAreaId(), true, rstl::string_l("IngBlobEffect"),
+        CTransform4f::Translate(GetTranslation()), GetUniqueId(), 0,
+        CCollisionTracker::skDefaultExtents);
+    tracker->SetParticleEmissionRateScalar(0.f);
+    tracker->SetNextDrawNode(GetUniqueId()); // 0x000065A4: CActor 0x12A
+    mgr.AddObject(tracker);
+  }
+  return id;
+}
+
+// @ fn_30_67B4
+void CIngBoostBallGuardian::CreateHitLight(CStateManager& mgr) {
+  const TUniqueId id = mgr.AllocateUniqueId();
+  CGameLight* light = rs_new CGameLight(
+      id, GetAreaIdForPersistence(), GetActive(), rstl::string_l("Ing Light"),
+      CTransform4f::Identity(), GetUniqueId(), CLight::BuildPoint(CVector3f::Zero(), CColor::Black()),
+      0, 0, 0.f);
+  if (light != nullptr) {
+    mHitLightId = id;
+    mgr.AddObject(light);
+  }
+}
+
+// @ fn_30_510C
+void CIngBoostBallGuardian::LeaveTeam(CStateManager& mgr) {
+  if (mTeamId == kInvalidUniqueId) { // guest 0x1086
+    return;
+  }
+  if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
+    if (team->IsPartOfTeam(GetUniqueId())) {
+      team->QuitTeam(GetUniqueId());
+      mTeamId = kInvalidUniqueId;
     }
   }
 }

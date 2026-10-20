@@ -432,6 +432,11 @@ private:
   // damage vulnerability.
   void CreateIngSpotManager(CStateManager& mgr);
   void SetupManagerActors(CStateManager& mgr, CCollisionActorManager* const& manager);
+  // fn_30_648C: an "IngBlobEffect" collision tracker drawn after the guardian, emission 0.
+  // fn_30_67B4: the "Ing Light" game light (black point light). fn_30_510C: leave the team.
+  TUniqueId CreateBlobTracker(CStateManager& mgr, const TLockedToken< CGenDescription >& desc);
+  void CreateHitLight(CStateManager& mgr);
+  void LeaveTeam(CStateManager& mgr);
   // A collision actor that last touched the player deals contact damage.
   void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
   // The hit reaction in the ing-spot form, and the weapon hit on a collision actor otherwise.
@@ -525,6 +530,9 @@ private:
   bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
+  TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect
+  TUniqueId mBoostBlobTrackerId;                         // guest 0x1076: boostIngSpotBlobEffect
+  TUniqueId mHitLightId;                                 // guest 0x1084: "Ing Light"
   // Guest 0x109C: the ids connected with (kSS_Modify, kSM_Activate), gathered on kSM_Create
   // (0x0000E06C) and handed to the boost ball.
   rstl::vector< TUniqueId > mModifyTargets;
