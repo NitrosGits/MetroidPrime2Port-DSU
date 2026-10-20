@@ -49,6 +49,15 @@ void StandInFn_75_AFE8() { StandIn("fn_75_AFE8 (0x11C)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
 void StandInFn_75_9520() { StandIn("fn_75_9520 (0x11C)"); }
 
+// The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
+// over the 0x80 a slice takes, so each stays a named once-logging shell.
+void StandInFn_75_AAC4() { StandIn("fn_75_AAC4 (0xC8)"); }
+void StandInFn_75_8D50() { StandIn("fn_75_8D50 (0xA8)"); }
+void StandInFn_75_A0A0() { StandIn("fn_75_A0A0 (0x2DC)"); }
+void StandInFn_75_9FA8() { StandIn("fn_75_9FA8 (0xF8)"); }
+void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
+void StandInFn_75_AC68() { StandIn("fn_75_AC68 (0x84)"); }
+
 } // namespace
 
 // The command module's loader lives in PortCSplitterCommandModule.cpp (the two files are the one
@@ -139,12 +148,145 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   StandInFn_75_9520();
 }
 
-// vtable slot 0x18 = fn_75_F1C0 (0x3A0): it switches on the script message's four-character code.
+// @ fn_75_AA68
+// The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. The
+// word's bit 30 (the byte's 0x40, 0x0000AA78 rlwinm) gives kLT_Lurk (2, 0x0000AA88), the word's
+// bit 31 (the byte's 0x80, 0x0000AA90 clrlwi) gives kLT_Crouch (0, 0x0000AAA0) and anything
+// else kLT_Relaxed (1, 0x0000AAB0).
+void CSplitterMainChassis::PortSetLocomotionType() {
+  const int flags = mData.mUnknownCEF5C2FE;
+  if ((flags & 0x40000000) != 0) {
+    BodyController()->SetLocomotionType(pas::kLT_Lurk);
+  } else if ((flags & 0x80000000) != 0) {
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);
+  } else {
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+  }
+}
+
+// @ fn_75_F1C0
+// The main chassis's script-message handler (0xF1C0-0xF560): the base's call (0x0000F1F4) and
+// then a switch on the message's four-character code (0x0000F1F8-0x0000F33C). The retail's
+// cases: XCRT (the locomotion type and the body controller's activation), XDEL (the collision
+// actor manager's destruction and two module calls), ACTV and DCVT (the collision actor
+// manager's activation), AUDT (its physics), ALRT (the base's flag byte), STRT (the flag byte
+// at 0xD41), ACTN (the scan timer at 0xD28), XAND, XCMG, XRDG, XXDG, XHIT, XLND, IM00 and IM01.
 void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CSplitterMainChassis::AcceptScriptMsg (vtable slot 0x18, fn_75_F1C0, 0x3A0 bytes)");
   CPatterned::AcceptScriptMsg(mgr, msg);
-  if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
+  // 0x0000F1E0-0x0000F1F0: the byte at 0x20's 0x80 bit (the word's bit 24) is the actor's
+  // active flag.
+  const bool active = GetActive();
+  switch (msg.GetMessage()) {
+  case kSM_Create: { // "XCRT" (0x0000F2C8)
+    // 0x0000F328-0x0000F33C: the locomotion type (fn_75_AA68) and the body controller's
+    // activation with the animation state -1.
+    PortSetLocomotionType();
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
+    break;
+  }
+  case kSM_Delete: { // "XDEL" (0x0000F2B4)
+    // 0x0000F344-0x0000F36C: the collision actor manager is destroyed (0x0000F354 Destroy) and
+    // the module's own two calls run (0x0000F360 fn_75_AAC4, 0x0000F36C fn_75_8D50).
+    if (mCollisionActorManager != nullptr) {
+      mCollisionActorManager->Destroy(mgr);
+    }
+    StandInFn_75_AAC4();
+    StandInFn_75_8D50();
+    break;
+  }
+  case kSM_Activate: { // "ACTV" (0x0000F220)
+    // 0x0000F374-0x0000F390: with the actor inactive and a collision actor manager there, the
+    // manager is activated (0x0000F390 SetActive with true).
+    if (!active && mCollisionActorManager != nullptr) {
+      mCollisionActorManager->SetActive(mgr, true);
+    }
+    break;
+  }
+  case kSM_Deactivate: { // "DCVT" (0x0000F20C)
+    // 0x0000F398-0x0000F3C0: with the actor active and a collision actor manager there, the
+    // manager is deactivated (0x0000F3B4 SetActive with false) and the module's own call runs
+    // (0x0000F3C0 fn_75_8D50).
+    if (active && mCollisionActorManager != nullptr) {
+      mCollisionActorManager->SetActive(mgr, false);
+    }
+    StandInFn_75_8D50();
+    break;
+  }
+  case kSM_AIUpdateDisabled: { // "AUDT" (0x0000F1F8)
+    // 0x0000F3C8-0x0000F3DC: the collision actor manager's physics is switched off (0x0000F3DC
+    // SetPhysicsActive with false).
+    if (mCollisionActorManager != nullptr) {
+      mCollisionActorManager->SetPhysicsActive(mgr, false);
+    }
+    break;
+  }
+  case kSM_Alert: { // "ALRT" (0x0000F244)
+    // 0x0000F3E4-0x0000F3F0: the base's flag byte at 0x420 gets its 0x80 bit (the word's bit 24)
+    // set - the Ing port maps that bit to the same flag.
+    SetHitByPlayerProjectile(true);
+    break;
+  }
+  case kSM_Start: { // "STRT" (0x0000F258)
+    // 0x0000F3F8-0x0000F404: the flag byte at 0xD41 gets its 0x04 bit (the word's bit 29) set.
+    mFlagsD41 |= 0x4;
+    break;
+  }
+  case kSM_Action: { // "ACTN" (0x0000F234)
+    // 0x0000F40C-0x0000F42C: the scan timer at 0xD28 is the data's scan duration (0x854) when
+    // that is above zero and FLT_MAX otherwise.
+    mScanTimer = mData.mScanDuration > 0.f ? mData.mScanDuration : FLT_MAX;
+    break;
+  }
+  case kSM_AreaLoaded: { // "XAND" (0x0000F290)
+    // 0x0000F434-0x0000F468: the value the retail reads out of the manager's area list is
+    // written to 0xB7C and the module's own call runs (0x0000F468 fn_75_AC68). The port has no
+    // name for that list, so the write stays out.
+    StandInFn_75_AC68();
+    break;
+  }
+  case kSM_Damage: { // "XCMG" (0x0000F2DC)
+    // 0x0000F470-0x0000F498: the module's own call (0x0000F488 fn_75_A0A0) and the base's flag
+    // byte at 0x420 gets its 0x80 bit set.
+    StandInFn_75_A0A0();
+    SetHitByPlayerProjectile(true);
+    break;
+  }
+  case kSM_ResistedDamage:   // "XRDG" (0x0000F2EC)
+  case kSM_ReflectedDamage: { // "XXDG" (0x0000F314)
+    // 0x0000F4A0-0x0000F4C8: the module's own call (0x0000F4B8 fn_75_9FA8) and the base's flag
+    // byte at 0x420 gets its 0x80 bit set.
+    StandInFn_75_9FA8();
+    SetHitByPlayerProjectile(true);
+    break;
+  }
+  case kSM_HitObject: { // "XHIT" (0x0000F2A0)
+    // 0x0000F4D0-0x0000F4E8: the module's own call (0x0000F4E8 fn_75_9B9C).
+    StandInFn_75_9B9C();
+    break;
+  }
+  case kSM_Landed: { // "XLND" (0x0000F300)
+    // 0x0000F4F0-0x0000F4F4: the counter at 0xD00 is set to 5.
+    mLandedCount = 5;
+    break;
+  }
+  case kSM_InternalMessage0: { // "IM00" (0x0000F280)
+    // 0x0000F4FC-0x0000F534: the flag byte at 0xD40 gets its 0x80 bit cleared and, when the
+    // byte at 0xD41 has its 0x80 bit set, the timer at 0xD2C gets the data's spin attack max
+    // time (0x88C) added and the counter at 0xCFC the data's unknown_0xd5f34476 (0x888).
+    mFlagsD40 &= static_cast< uchar >(~0x80);
+    if ((mFlagsD41 & 0x80) != 0) {
+      mSpinTimer += mData.mSpinAttackMaxTime;
+      mSpinCounter += mData.mUnknownD5F34476;
+    }
+    break;
+  }
+  case kSM_InternalMessage1: { // "IM01" (0x0000F26C)
+    // 0x0000F53C-0x0000F548: the flag byte at 0xD40 gets its 0x80 bit set.
+    mFlagsD40 |= 0x80;
+    break;
+  }
+  default:
+    break;
   }
 }
 

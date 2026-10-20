@@ -106,12 +106,11 @@ public:
   TUniqueId GetCommandModuleId() const { return mCommandModuleId; }
   TUniqueId GetSyncId() const { return mSyncId; }
 
-  // guest 0xD28: the chassis's scan timer, which the command module's fn_75_58E8 tests (the
-  // chassis must have it above zero for the head to spawn its beam effect). The retail's
-  // constructor leaves it at zero (fn_75_F5F8 stores lbl_75_rodata_390, 0.0f) and its
-  // script-message handler sets it to the scan duration when that is above zero and to FLT_MAX
-  // otherwise (fn_75_F1C0, 0x0000F40C-0x0000F42C). The port does not run that handler yet, so
-  // the timer stays zero.
+  // guest 0xD28: the scan timer, which the command module's fn_75_58E8 tests (the chassis must
+  // have it above zero for the head to spawn its beam effect). The retail's constructor leaves
+  // it at zero (fn_75_F5F8 stores lbl_75_rodata_390, 0.0f) and its script-message handler sets
+  // it to the scan duration when that is above zero and to FLT_MAX otherwise (fn_75_F1C0,
+  // 0x0000F40C-0x0000F42C).
   float GetScanTimer() const { return mScanTimer; }
 
   // CEntity / CActor
@@ -187,6 +186,20 @@ private:
   CLineOfSightTracker mVisualKnowledge;
   // guest 0xD28: the scan timer (see GetScanTimer).
   float mScanTimer = 0.f;
+  // guest 0xD00: the counter the XLND script message sets to 5 (fn_75_F1C0, 0x0000F4F0).
+  int mLandedCount = 0;
+  // guest 0xD2C: the timer the IM00 script message advances by the data's spin attack max time
+  // (fn_75_F1C0, 0x0000F518-0x0000F524).
+  float mSpinTimer = 0.f;
+  // guest 0xCFC: the counter the IM00 script message advances by the data's
+  // unknown_0xd5f34476 (fn_75_F1C0, 0x0000F528-0x0000F534).
+  int mSpinCounter = 0;
+  // guest 0xD40 / 0xD41: the flag bytes (the IM00 and IM01 script messages set 0xD40's 0x80
+  // bit, the STRT message sets 0xD41's 0x04 bit and IM00 tests 0xD41's 0x80 bit).
+  uchar mFlagsD40 = 0;
+  uchar mFlagsD41 = 0;
+  // The retail's fn_75_AA68: the locomotion type the data's flag word at 0x828 decides.
+  void PortSetLocomotionType();
 #endif
 };
 #else
