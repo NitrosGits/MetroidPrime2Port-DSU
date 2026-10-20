@@ -325,6 +325,7 @@ void CSwampBossStage1::BodyMelee(CStateManager& mgr, EStateMsg msg, int severity
   }
 }
 
+// @ fn_78_B9D0
 void CSwampBossStage1::BodyTaunt(CStateManager& mgr, EStateMsg msg, int taunt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -499,6 +500,7 @@ float CSwampBossStage1::WaterHeight(const CStateManager& mgr) const {
   return water->GetTriggerBoundsWR().GetMaxPoint().GetZ();
 }
 
+// @ fn_78_77C4
 CVector3f CSwampBossStage1::TongueTargetPos(const CStateManager& mgr) const {
   const CPlayer* player = mgr.GetPlayer(0);
   CVector3f pos = player->GetAimPosition(mgr, 0.f);
@@ -508,6 +510,7 @@ CVector3f CSwampBossStage1::TongueTargetPos(const CStateManager& mgr) const {
   return pos;
 }
 
+// @ fn_78_66E8
 float CSwampBossStage1::TongueAngleToPlayer(const CStateManager& mgr) const {
   const CVector3f toPlayer = mgr.GetPlayer(0)->GetTranslation() - xc0c_tonguePos;
   const CVector3f toSelf = GetTranslation() - xc0c_tonguePos;
@@ -519,6 +522,7 @@ float CSwampBossStage1::TongueAngleToPlayer(const CStateManager& mgr) const {
   return CMath::Rad2Deg(CVector3f::GetAngleDiff(a.AsNormalized(), b.AsNormalized()));
 }
 
+// @ fn_78_1F60
 bool CSwampBossStage1::PlayerInsideHint(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   for (int id = list.GetFirstObjectIndex(); id != -1; id = list.GetNextObjectIndex(id)) {
@@ -535,14 +539,17 @@ bool CSwampBossStage1::PlayerInsideHint(CStateManager& mgr) const {
 // --------------------------------------------------------------------------------------------
 // Head turn
 
+// @ fn_78_7224
 void CSwampBossStage1::HeadWeightDown(float dt) {
   xcf4_headWeight = rstl::max_val(xcf4_headWeight - dt / 0.2f, 0.f);
 }
 
+// @ fn_78_7260
 void CSwampBossStage1::HeadWeightUp(float dt) {
   xcf4_headWeight = rstl::min_val(xcf4_headWeight + dt / 0.3f, 1.f);
 }
 
+// @ fn_78_30C8
 CVector3f CSwampBossStage1::UpdateHeadLook(CStateManager& mgr, float dt) {
   const CVector3f target = TongueTargetPos(mgr);
   if (xc34_tongueState == 0) {
@@ -561,6 +568,7 @@ CVector3f CSwampBossStage1::UpdateHeadLook(CStateManager& mgr, float dt) {
   return xcf8_headDir;
 }
 
+// @ fn_78_2B20
 void CSwampBossStage1::ApplyHeadAdditive(CStateManager& mgr, float weight, int side) {
   if (!mgr.IsRandomAvailable()) {
     return;
@@ -575,6 +583,7 @@ void CSwampBossStage1::ApplyHeadAdditive(CStateManager& mgr, float weight, int s
   AnimationData()->AddAdditiveAnimation(best.second, weight, false, false);
 }
 
+// @ fn_78_2E38
 void CSwampBossStage1::UpdateHeadTurn(CStateManager& mgr, float dt) {
   if (xcf4_headWeight > 0.f) {
     const CVector3f toSelf(GetTranslation().GetX() - xc0c_tonguePos.GetX(),
@@ -607,6 +616,7 @@ void CSwampBossStage1::UpdateHeadTurn(CStateManager& mgr, float dt) {
 // --------------------------------------------------------------------------------------------
 // Tongue
 
+// @ fn_78_716C
 void CSwampBossStage1::UpdateTongueTip(CStateManager& mgr, float amp, bool ray) {
   if (xc34_tongueState == 0) {
     return;
@@ -619,6 +629,7 @@ void CSwampBossStage1::UpdateTongueTip(CStateManager& mgr, float amp, bool ray) 
   }
 }
 
+// @ fn_78_729C
 void CSwampBossStage1::RetractTongue(CStateManager& mgr, float dt) {
   xc30_extend = rstl::max_val(xc30_extend - dt / 0.25f, 0.f);
   if (xc30_extend >= 0.1f) {
@@ -636,6 +647,7 @@ void CSwampBossStage1::RetractTongue(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_78_73A4
 void CSwampBossStage1::ExtendTongue(CStateManager& mgr, float dt) {
   xc30_extend = rstl::min_val(xc30_extend + dt / 0.4f, 1.f);
   if (xc30_extend < 0.6f) {
@@ -643,6 +655,7 @@ void CSwampBossStage1::ExtendTongue(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_78_7440
 void CSwampBossStage1::TongueRayCheck(CStateManager& mgr, const CVector3f& tip) {
   if (xc34_tongueState != 1) {
     return;
@@ -680,11 +693,13 @@ void CSwampBossStage1::TongueRayCheck(CStateManager& mgr, const CVector3f& tip) 
   }
 }
 
+// @ fn_78_6B7C
 void CSwampBossStage1::StopTongueSounds() {
   StopSfx(xcec_retractSfx);
   StopSfx(xcf0_pullSfx);
 }
 
+// @ fn_78_6BEC
 void CSwampBossStage1::StopTongue() {
   if (xb14_state != 5 && xb14_state != 9) {
     xc34_tongueState = 0;
@@ -692,6 +707,7 @@ void CSwampBossStage1::StopTongue() {
   }
 }
 
+// @ fn_78_6C2C
 void CSwampBossStage1::LaunchTongue(CStateManager& mgr) {
   StopTongueSounds();
   xc18_tongueTarget = TongueTargetPos(mgr);
@@ -714,6 +730,7 @@ void CSwampBossStage1::Rumble(CStateManager& mgr) {
       ->Rumble(mgr, static_cast< ERumbleFxId >(0x17), 1.f, kRP_Two);
 }
 
+// @ fn_78_2A4C
 void CSwampBossStage1::KnockPlayer(CStateManager& mgr, const CVector3f& velocity) {
   CPlayer* player = mgr.GetPlayer(0);
   player->Stop();
@@ -734,6 +751,7 @@ void CSwampBossStage1::PullMorphedPlayer(CStateManager& mgr, const CVector3f& po
   }
 }
 
+// @ fn_78_3AD0
 void CSwampBossStage1::PullPlayer(CStateManager& mgr, float dt, const CVector3f& pos) {
   CPlayer* player = mgr.GetPlayer(0);
   if (player->IsOnGround()) {
@@ -794,6 +812,7 @@ EScriptObjectState PlatformTargetState(int idx) {
 }
 } // namespace
 
+// @ fn_78_260C
 void CSwampBossStage1::ResetPlatformConnection(CStateManager& mgr) {
   if (xbf0_platformIdx == -1) {
     return;
@@ -807,6 +826,7 @@ void CSwampBossStage1::ResetPlatformConnection(CStateManager& mgr) {
   }
 }
 
+// @ fn_78_2728
 void CSwampBossStage1::SetPlatformTarget(CStateManager& mgr) {
   if (xbf0_platformIdx != -1) {
     return;
@@ -821,6 +841,7 @@ void CSwampBossStage1::SetPlatformTarget(CStateManager& mgr) {
   }
 }
 
+// @ fn_78_2908
 void CSwampBossStage1::FacePlatform() {
   float deg = 0.f;
   switch (xbf4_platformPick) {
@@ -840,10 +861,12 @@ void CSwampBossStage1::FacePlatform() {
                    .BuildTransform4f(GetTranslation()));
 }
 
+// @ fn_78_29C4
 void CSwampBossStage1::PickPlatform(CStateManager& mgr) {
   xbf4_platformPick = mgr.IsRandomAvailable() ? mgr.Random()->Range(0, 3) : 0;
 }
 
+// @ fn_78_3D34
 void CSwampBossStage1::DeliverToConnected(CStateManager& mgr, EScriptObjectMessage msg) {
   const rstl::vector< SConnection >& conns = GetConnectionList();
   for (int i = 0; i < conns.size(); ++i) {
@@ -858,15 +881,18 @@ void CSwampBossStage1::DeliverToConnected(CStateManager& mgr, EScriptObjectMessa
   }
 }
 
+// @ fn_78_3E4C
 void CSwampBossStage1::IncrementAttached(CStateManager& mgr) {
   DeliverToConnected(mgr, kSM_Increment);
   mgr.GetPlayer(0)->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
 }
 
+// @ fn_78_3E90
 void CSwampBossStage1::DecrementAttached(CStateManager& mgr) {
   DeliverToConnected(mgr, kSM_Decrement);
 }
 
+// @ fn_78_390C
 void CSwampBossStage1::ReleaseOrbitMessage(CStateManager& mgr) {
   if (xce4_orbitMsg) {
     xce4_orbitMsg = false;
@@ -881,6 +907,7 @@ void CSwampBossStage1::SendOrbitMessage(CStateManager& mgr) {
   }
 }
 
+// @ fn_78_4870
 void CSwampBossStage1::ReleaseOrbitLock(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   if (player->GetOrbitState() == CPlayer::kOS_ForcedOrbitObject) {
@@ -888,6 +915,7 @@ void CSwampBossStage1::ReleaseOrbitLock(CStateManager& mgr) {
   }
 }
 
+// @ fn_78_48A8
 void CSwampBossStage1::LockOrbitOnTongue(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   if (player->GetOrbitTargetId() != kInvalidUniqueId) {
@@ -909,9 +937,10 @@ void CSwampBossStage1::LockOrbitOnTongue(CStateManager& mgr) {
 // --------------------------------------------------------------------------------------------
 // Triggers
 
-// @ fn_78_A5A8
+// @ fn_78_6548
 bool CSwampBossStage1::IsMinHealth() const { return GetHealthInfo()->GetHP() <= 1.01f; }
 
+// @ fn_78_653C
 bool CSwampBossStage1::BeachAttackOver(CStateManager&, const CTriggerData&) const {
   return xc04_beachOver;
 }
@@ -921,6 +950,7 @@ bool CSwampBossStage1::EnoughSplashing(CStateManager&, const CTriggerData&) cons
   return IsMinHealth() || xb84_phase != xbec_splashPhase || xbc8_jumps >= xbcc_jumpTarget;
 }
 
+// @ fn_78_65F0
 bool CSwampBossStage1::GivingUp(CStateManager&, const CTriggerData&) const {
   return xbf8_platformTime > 8.f || (xbfc_misses >= 3 && xbf8_platformTime > 0.5f);
 }
@@ -929,6 +959,7 @@ bool CSwampBossStage1::HeavyHit(CStateManager&, const CTriggerData&) const {
   return xd14_heavyHit;
 }
 
+// @ fn_78_624C
 bool CSwampBossStage1::InVomitRange(CStateManager& mgr, const CTriggerData&) const {
   if (xce4_playerTouched) {
     return true;
@@ -948,6 +979,7 @@ bool CSwampBossStage1::MinHealth(CStateManager&, const CTriggerData&) const {
   return IsMinHealth();
 }
 
+// @ fn_78_67C8
 bool CSwampBossStage1::ReadyToTongue(CStateManager& mgr, const CTriggerData&) const {
   return xbfc_misses < 3 && xbf8_platformTime >= 0.65f && TongueAngleToPlayer(mgr) <= 85.f &&
          PlayerInsideHint(mgr);
@@ -963,6 +995,7 @@ bool CSwampBossStage1::ShouldBob(CStateManager&, const CTriggerData&) const {
   return GetHealthInfo()->GetHP() > 1.f && xb7c_nextBobTime < xb1c_clock;
 }
 
+// @ fn_78_6458
 bool CSwampBossStage1::ShouldExposeBelly(CStateManager&, const CTriggerData&) const {
   return xd10_bellyAccum >
          (IsMinHealth() ? x7c0_data.unknown_0x74e1a041 : x7c0_data.unknown_0x78755da3);
@@ -978,15 +1011,18 @@ bool CSwampBossStage1::SplashAttackOver(CStateManager&, const CTriggerData&) con
   return xbd8_splashOver;
 }
 
+// @ fn_78_66D4
 bool CSwampBossStage1::TongueHit(CStateManager&, const CTriggerData&) const {
   return xc34_tongueState == kTS_Hit;
 }
 
+// @ fn_78_6638
 bool CSwampBossStage1::TongueMissed(CStateManager& mgr, const CTriggerData&) const {
   return TongueAngleToPlayer(mgr) > 85.f || !PlayerInsideHint(mgr) ||
          (xc30_extend >= 1.f && xc34_tongueState != kTS_Hit);
 }
 
+// @ fn_78_44B0
 bool CSwampBossStage1::TooMuchPulling(CStateManager&, const CTriggerData&) const {
   return xc38_pullTime > 8.f;
 }
@@ -1041,6 +1077,7 @@ void CSwampBossStage1::ShreddersOn(CStateManager& mgr, float) {
 // --------------------------------------------------------------------------------------------
 // States
 
+// @ fn_78_31E8
 void CSwampBossStage1::TongueLoop(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(9, msg);
   SetLocomotion(3);
@@ -1115,6 +1152,7 @@ void CSwampBossStage1::ExposeBelly(CStateManager& mgr, EStateMsg msg, float dt) 
   BodyMelee(mgr, msg, 9);
 }
 
+// @ fn_78_38A4
 void CSwampBossStage1::ResetPlatform(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     ResetPlatformConnection(mgr);
@@ -1124,6 +1162,7 @@ void CSwampBossStage1::ResetPlatform(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_78_4280
 void CSwampBossStage1::Vomit(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(10, msg);
   SetLocomotion(3);
@@ -1157,6 +1196,7 @@ void CSwampBossStage1::Vomit(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyMelee(mgr, msg, 1);
 }
 
+// @ fn_78_44CC
 void CSwampBossStage1::TonguePull(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(5, msg);
   CPlayer* player = mgr.GetPlayer(0);
@@ -1203,6 +1243,7 @@ void CSwampBossStage1::TonguePull(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_78_4984
 void CSwampBossStage1::PlatformReady(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(4, msg);
   if (msg == kStateMsg_Activate) {
@@ -1221,6 +1262,7 @@ void CSwampBossStage1::PlatformReady(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_78_4AA8
 void CSwampBossStage1::Beach(CStateManager& mgr, EStateMsg msg, float) {
   RecordState(0, msg);
   if (msg == kStateMsg_Activate) {
@@ -1247,6 +1289,7 @@ void CSwampBossStage1::Beach(CStateManager& mgr, EStateMsg msg, float) {
   BodyTaunt(mgr, msg, 6);
 }
 
+// @ fn_78_4C90
 void CSwampBossStage1::StopBeaching(CStateManager& mgr, EStateMsg msg, float) {
   SetLocomotion(7);
   xc04_beachOver = true;
@@ -1289,6 +1332,7 @@ void CSwampBossStage1::SplashTelegraph(CStateManager& mgr, EStateMsg msg, float)
   RecordState(8, msg);
 }
 
+// @ fn_78_5188
 void CSwampBossStage1::BeachBubbles(CStateManager& mgr, EStateMsg msg, float) {
   SetLocomotion(7);
   if (msg == kStateMsg_Activate) {
@@ -1302,6 +1346,7 @@ void CSwampBossStage1::BeachBubbles(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_78_5268
 void CSwampBossStage1::BeachWait(CStateManager& mgr, EStateMsg msg, float) {
   SetLocomotion(7);
   if (msg == kStateMsg_Activate) {
@@ -1314,6 +1359,7 @@ void CSwampBossStage1::BeachWait(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_78_5304
 void CSwampBossStage1::Null(CStateManager& mgr, EStateMsg msg, float) {
   SetLocomotion(7);
   if (msg == kStateMsg_Activate) {
@@ -1322,6 +1368,7 @@ void CSwampBossStage1::Null(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_78_5374
 void CSwampBossStage1::Dive(CStateManager& mgr, EStateMsg msg, float) {
   RecordState(2, msg);
   if (msg == kStateMsg_Activate) {
@@ -1346,6 +1393,7 @@ void CSwampBossStage1::SlideIntoWater(CStateManager& mgr, EStateMsg msg, float) 
   BodyMelee(mgr, msg, 3);
 }
 
+// @ fn_78_587C
 void CSwampBossStage1::BeachRise(CStateManager& mgr, EStateMsg msg, float) {
   RecordState(7, msg);
   if (msg == kStateMsg_Activate) {
@@ -1452,6 +1500,7 @@ void CSwampBossStage1::Swim(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_78_22C8
 void CSwampBossStage1::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     DecrementAttached(mgr);
@@ -1477,6 +1526,7 @@ void CSwampBossStage1::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 // --------------------------------------------------------------------------------------------
 // Attacks
 
+// @ fn_78_3EB8
 void CSwampBossStage1::VomitHit(CStateManager& mgr) {
   if (xd54_vomitHits >= 1 || TongueAngleToPlayer(mgr) > 100.f) {
     return;
@@ -1876,6 +1926,7 @@ void CSwampBossStage1::AddToRenderer(const CStateManager& mgr) const {
 
 // The tongue is 256 copies of the tongue model strung along the line from the mouth towards the
 // tip, swaying on two sine waves that fade out towards the tip.
+// @ fn_78_6D08
 void CSwampBossStage1::RenderTongue(const CStateManager& mgr) const {
   const CColor cA = CColor::White();
   const CColor cB = CColor::Lerp(CColor::White(), CColor::Red(), 0.8f);
