@@ -11,12 +11,15 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/TToken.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.hpp"
 
+#include "rstl/optional_object.hpp"
 #include "rstl/vector.hpp"
 #endif
 
 class CCollisionActorManager;
+class CGenDescription;
 class CInputStream;
 
 class REL_EXPORT CDigitalGuardianHead : public CPatterned {
@@ -159,6 +162,11 @@ private:
   int x118B0_(CVector3f* points) const;
   // fn_14_114C8 (0x1D0 bytes): the attack point with a line of sight to the player (stand-in).
   CVector3f x114C8_(const CVector3f& player, const CVector3f* points, int count);
+  // fn_14_F390 (0x94 bytes): the splitters to deploy, one more than the echo targets lost, at
+  // most 2.
+  int xF390_(CStateManager& mgr) const;
+  // fn_14_F424 (0x280 bytes): eject one splitter from "B_ball_LCTR".
+  void xF424_(CStateManager& mgr);
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
@@ -168,6 +176,10 @@ private:
   TUniqueId xDA0_;
   float xDB0_;
   uchar xDB8_;
+  // 0xF04: the 'PART' token (data +0x94), its valid flag at 0xF10.
+  rstl::optional_object< TLockedToken< CGenDescription > > xF04_;
+  // 0xF30 / 0xF34: the echo targets' ids (count, then the ids); fn_14_12314 fills them.
+  rstl::vector< TUniqueId > xF34_;
   int xFE0_;        // 0xFE0: the echo targets left (3)
   int xFE8_;        // 0xFE8: the attack mode (1 in the ctor; fn_14_13B30)
   CVector3f xFEC_;  // 0xFEC: the attack position (SetInitialAttackPosition, SeekAttackPosition)
@@ -189,8 +201,9 @@ private:
   int x10D8_;      // 0x10D8: the burst count
   float x10E0_;    // 0x10E0: the gravity repulsor's health (data +0x18)
   int x10E4_;      // 0x10E4: the lives left (2)
-  float x10EC_;    // 0x10EC
-  float x10F0_;    // 0x10F0
+  int x10E8_;      // 0x10E8: the splitters left to deploy (StartSplitterDeployment)
+  float x10EC_;    // 0x10EC: the time since the last splitter (fn_14_13AE0; 4 s apart)
+  float x10F0_;    // 0x10F0: the deployment time (fn_14_13AE0)
   uchar x10F4_;    // 0x10F4: the flag byte (0x80 IsIdle, 0x10 HeadArmorDestroyed, 0x02
                    // EchoTargetDestroyed; 0x20 stops the body's attacks; 0x08, set by the ctor,
                    // and 0x40 pick the scan info in fn_14_177C8)

@@ -10,9 +10,11 @@
 
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -144,6 +146,8 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDA0_(kInvalidUniqueId)
 , xDB0_(0.f)
 , xDB8_(0)
+, xF04_()
+, xF34_()
 , xFE0_(3)
 , xFE8_(1)
 , xFEC_(CVector3f::Zero())
@@ -166,11 +170,17 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x10D8_(0)
 , x10E0_(data.gravityRepulsorHP) // data +0x18
 , x10E4_(2)
+, x10E8_(0)
 , x10EC_(0.f)
 , x10F0_(0.f)
 , x10F4_(0x08) // only bit 0x08 is set (the rlwimi stores at the ctor's tail)
 , x10F5_(0)    // bit 0x80 cleared
-{}
+{
+  // The 'PART' token (0x185A0..0x18654): locked when data +0x94 is set.
+  if (mData.pART != kInvalidAssetId) {
+    xF04_ = TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', mData.pART)));
+  }
+}
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}
 
@@ -408,6 +418,57 @@ CVector3f CDigitalGuardianHead::x114C8_(const CVector3f& player, const CVector3f
                                          int count) {
   StandInFn("fn_14_114C8 (0x1D0, attack point in sight of the player)");
   return xFEC_;
+}
+
+// fn_14_F390: the echo targets (0xF30/0xF34) that are gone or inactive (+0x20 bit 0x80), plus
+// one, capped at 2.
+// @ fn_14_F390
+int CDigitalGuardianHead::xF390_(CStateManager& mgr) const {
+  int active = 0;
+  for (int i = 0; i < xF34_.size(); ++i) {
+    const CEntity* ent = mgr.GetObjectById(xF34_[i]);
+    if (ent != nullptr && ent->GetActive()) {
+      ++active;
+    }
+  }
+  const int count = xF34_.size() - active + 1;
+  return count > 2 ? 2 : count;
+}
+
+// fn_14_F424: with the MDFY/FOLW waypoint (0x103C) and 4 s (.rodata 0x998) since the last one
+// (0x10EC), a splitter is spent (0x10E8), the waypoint moves to the "B_ball_LCTR" locator
+// (.rodata 0x940), IS01 goes out from this head, 0x10EC restarts, the 'PART' token (0xF04) becomes
+// an "Eject Splitter Fx" explosion there (the model's scale, white) and sound_EjectSplitter (data
+// +0x7C) plays along the forward column. With no waypoint none are left.
+// @ fn_14_F424
+void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
+  CScriptWaypoint* wp = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(x103C_));
+  if (wp == nullptr) {
+    x10E8_ = 0;
+    return;
+  }
+  if (x10EC_ < 4.f) {
+    return;
+  }
+  --x10E8_;
+  const CTransform4f xf = GetLctrTransform(rstl::string_l("B_ball_LCTR"));
+  wp->SetTranslation(xf.GetTranslation());
+  SendScriptMsgs(kSS_InternalState1, mgr, GetUniqueId(), kSM_None);
+  x10EC_ = 0.f;
+  if (xF04_.valid()) {
+    const CVector3f scale = GetModelData()->GetScale();
+    const rstl::string name = rstl::string_l("Eject Splitter Fx");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    CExplosion* explosion = rs_new CExplosion(xF04_.data(), uid, info, name, xf, 0, scale,
+                                              CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+    }
+  }
+  PlayCustomSound(xf.GetTranslation(), GetTransform().GetColumn(kDY), mData.sound_EjectSplitter,
+                  false);
 }
 
 // fn_14_17A44: the base's PreRender.
@@ -740,6 +801,35 @@ void CDigitalGuardianHead::StunnedReaction(CStateManager& mgr, EStateMsg msg, fl
   }
 }
 
+// fn_14_15E18. Activate: locomotion type 5, animation state 1. Update: with splitters left
+// (0x10E8 > 0) and the deployment time (0x10F0) at data +0x20 (maxStage2StunnedTime), one is
+// ejected (fn_14_F424, after setting bit 0x04 of 0x10F4) when 0x04 is already set or every
+// splitter is dead (fn_14_17298). Otherwise, with none left, that time reached and 4 s since the
+// last (0x10EC, .rodata 0x998), the animation state is 3. Deactivate: animation state 0.
+// @ fn_14_15E18
+void CDigitalGuardianHead::DeploySplitters(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  case kStateMsg_Update:
+    if (x10E8_ > 0 && x10F0_ >= mData.maxStage2StunnedTime &&
+        ((x10F4_ & 0x04) != 0 || AllSplittersDead(mgr, CTriggerData(0.f)))) {
+      x10F4_ |= 0x04;
+      xF424_(mgr);
+    } else if (x10E8_ <= 0 && x10F0_ >= mData.maxStage2StunnedTime && x10EC_ >= 4.f) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
 #define DGHD_STATE_STANDIN(name, fn)                                                               \
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
@@ -750,7 +840,6 @@ DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
 DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
 DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
-DGHD_STATE_STANDIN(DeploySplitters, fn_14_15E18)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
@@ -820,6 +909,17 @@ void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
   xFF8_ = xFEC_;
 }
 
+// fn_14_14B98: bit 0x04 of 0x10F4 cleared, bit 0x40 set (rlwimi 6, 25, 25), the deployment
+// time (0x10F0) restarted; the splitters to deploy (0x10E8) are fn_14_F390's count when every
+// splitter is dead (fn_14_17298), else none.
+// @ fn_14_14B98
+void CDigitalGuardianHead::StartSplitterDeployment(CStateManager& mgr, float dt) {
+  x10F4_ &= ~0x04;
+  x10F4_ |= 0x40;
+  x10F0_ = 0.f;
+  x10E8_ = AllSplittersDead(mgr, CTriggerData(0.f)) ? xF390_(mgr) : 0;
+}
+
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
@@ -834,7 +934,6 @@ DGHD_CODE_STANDIN(ExtractAntenna, fn_14_14E78)
 DGHD_CODE_STANDIN(ExtractEchoTargets, fn_14_14CF4)
 DGHD_CODE_STANDIN(RetractEchoTargets, fn_14_14DA0)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
-DGHD_CODE_STANDIN(StartSplitterDeployment, fn_14_14B98)
 DGHD_CODE_STANDIN(EndSplitterDeployment, fn_14_14B60)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
 DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
