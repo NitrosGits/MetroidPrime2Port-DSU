@@ -492,7 +492,9 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     x8c2_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_None).value;
     const rstl::vector< SConnection >& conns = GetConnectionList();
     // INTERNAL_STATE_01: the first id of the connection's list - PLAY to guest 0x8C4, ACTIVATE
-    // to guest 0x8C6.
+    // to guest 0x8C6. Data-limited: the empty-list skips (both loops) and an INTERNAL_STATE_01
+    // message other than PLAY/ACTIVATE never run with the game's data (the module's only spawn,
+    // area 11 layer 4); the marker stands on every other branch.
     for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
       if (it->state != kSS_InternalState1) {
         continue;
@@ -2866,7 +2868,9 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
 // units away (rodata 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the
 // direction to the player, starting at the actor's own position. The update path (0x500C) jumps
 // at the player while the body can take a jump (fn_18_51E8 builds the CBCJumpCmd: the player's
-// position, kJT_Normal, kJS_IntoJump, variant 0, facing flags 2; fn_18_50F0 delivers it) and
+// position, kJT_Normal, kJS_IntoJump, variant 0, facing flags 2; fn_18_50F0 delivers it; both
+// are the module's weak copies of the header's inline CBCJumpCmd ctor and
+// CBodyStateCmdMgr::DeliverCmd(const CBCJumpCmd&), stores checked field by field) and
 // otherwise aims the body at the player. The deactivate path (0x50A0) clears the flag, the
 // jump-attack timer (guest 0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
 void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
