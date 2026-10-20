@@ -198,6 +198,8 @@ private:
   // fn_18_125C: the module watches the object its id at guest 0x8C0 names and clears the id
   // when the object is gone.
   void WatchObject(CStateManager& mgr);
+  // fn_18_E40: the per-frame light-swarm, effect and portal-actor update.
+  void UpdateLightSwarm(CStateManager& mgr, float dt);
   // fn_18_2D1C: the vector from the actor to the first player, flattened to the XY plane.
   CVector3f PlayerDirection(CStateManager& mgr) const;
   // fn_18_2CB8: the distance from the actor to the player.

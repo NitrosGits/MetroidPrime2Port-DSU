@@ -32,6 +32,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
 
 #include "Collision/CCollisionPrimitive.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -367,7 +368,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   CheckList(mgr);         // fn_18_1978 (0xDC)
   SteerBeam(mgr, dt);     // fn_18_1370 (0x1C0)
   WatchObject(mgr);       // fn_18_125C (0x68)
-  StandInFn("fn_18_E40");  // 0x41C
+  UpdateLightSwarm(mgr, dt); // fn_18_E40 (0x41C)
 
   // The player knock-back (0x4A24..0x4A6C): while the timer MeleeContact set (guest 0x8F8) is
   // above zero (rodata 0x258) it runs down by the frame time and the player is pushed along
@@ -407,6 +408,55 @@ void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
   }
   if (mgr.GetObjectById(TUniqueId(mX8c0_)) == nullptr) {
     mX8c0_ = 0xffff;
+  }
+}
+
+// fn_18_E40 (0x41C): the object-drop timer (guest 0x8DC, which kUE_ObjectDrop sets to 1.5)
+// runs down and the light-swarm timer (guest 0x7DC) up. While the drop timer runs, the
+// INTERNAL_STATE_01/PLAY effect (guest 0x8C4) emits and the INTERNAL_STATE_00 swarm (guest
+// 0x8C2) is activated and counted up; after it, the effect stops and the swarm counts down.
+// While that swarm has no active boid the dark-flier timer (guest 0x7D8) grows. The
+// INTERNAL_STATE_02 actors follow the "mainHeart_SDK" locator (rodata 0xBC -> 0x340): the
+// DEACTIVATE one (guest 0x8C8) shows once the light swarm has been gone 20 seconds (rodata
+// 0x270), the ACTIVATE ones (guest 0x8CC) until then, each at its own offset.
+void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
+  mX8dc_ -= dt;
+  mX7dc_ += dt;
+  if (CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(TUniqueId(x8c4_)))) {
+    if (mX8dc_ > 0.f) {
+      if (!effect->IsEmitting()) { // guest effect+0x2C8, 0x80
+        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), effect->GetUniqueId(), kSM_Activate));
+      }
+    } else if (effect->IsEmitting()) {
+      effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), effect->GetUniqueId(), kSM_Deactivate));
+    }
+  }
+  if (CSwarmBasics* swarm = TCastToPtr< CSwarmBasics >(mgr.ObjectById(TUniqueId(x8c2_)))) {
+    if (swarm->EvaluateActiveBoidCount() == 0) { // fn_80_1280
+      mX7d8_ += dt;
+    }
+    if (CEntity* shown = mgr.ObjectById(TUniqueId(x8c8_))) {
+      shown->SetActive(mX7dc_ > 20.f);
+    }
+    if (mX8dc_ > 0.f) {
+      if (!swarm->GetActive()) { // guest swarm+0x20, 0x80
+        swarm->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), TUniqueId(x8c2_), kSM_Activate));
+      }
+      swarm->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), TUniqueId(x8c2_), kSM_Increment));
+    } else {
+      swarm->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), TUniqueId(x8c2_), kSM_Decrement));
+    }
+  }
+  const CTransform4f xf =
+      GetTransform() * GetScaledLocatorTransform(rstl::string_l("mainHeart_SDK")); // 0x1138
+  if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(TUniqueId(x8c8_)))) {
+    actor->SetTransform(xf);
+  }
+  for (int i = 0; i < x8cc_.size(); ++i) { // stride 0x34
+    if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(x8cc_[i].mId))) {
+      actor->SetTransform(xf * x8cc_[i].mXf);
+      actor->SetActive(mX7dc_ < 20.f);
+    }
   }
 }
 
