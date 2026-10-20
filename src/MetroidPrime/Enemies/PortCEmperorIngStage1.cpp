@@ -370,9 +370,10 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
     x7d8_[i].x18_ = mStayRetractedTime;
   }
   SetTentacleFlags(1);
+  // The switch at 0x4A60..0x4A74: 2 sends IS07, 1 sends IS06, every other value sends nothing.
   if (x7c0_ == 2) {
     SendScriptMsgs(kSS_InternalState7, mgr, kInvalidUniqueId, kSM_None);
-  } else if (x7c0_ >= 1) {
+  } else if (x7c0_ == 1) {
     SendScriptMsgs(kSS_InternalState6, mgr, kInvalidUniqueId, kSM_None);
   }
 }
