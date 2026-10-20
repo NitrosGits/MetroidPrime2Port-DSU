@@ -168,4 +168,6 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   `rodata_24` and, when the point is on that surface (0x16F8-0x1700), stores the surface into the
   module's own copy (0x7c0) and sets `mPlayerObstructed` (the byte 0x860's bit 6, asm 0x179C-0x17A4).
   The port's `mPlayerObstructed` is therefore never set, so `PreThink`'s guard never blocks - the
-  next slice's target.
+  next slice's target. The `// @ fn_83_1310` marker came **off** in the meantime (commit
+  "WallCrawler: drop the fn_83_1310 marker until the player-obstruction scan is ported"): the marker
+  claimed the whole retail function, and the port still has only its floor half.
