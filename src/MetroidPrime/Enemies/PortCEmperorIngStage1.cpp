@@ -1606,7 +1606,8 @@ CModelFlags CEmperorIngStage1::BuildJointModelFlags(const CEmperorIngStage1Joint
 // damage colour (CPatterned::skDamageColor) to black with the joint's damage hit time over
 // skDamageHitTime (the fdivs at 0x1CD4), so a tentacle that was just hit is dark red and a
 // tentacle that was never hit is black.
-// fn_16_1C94 is never called in the port: the joint draw path does not use the damage colour.
+// fn_16_1C94 is called in the port's render path (the colour of the tentacle's pass, 0x545C):
+// an entry once-log proved it runs in area 11.
 CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& joint) const {
   const float t = joint.mDamageHitTime / CPatterned::skDamageHitTime; // 0x1CC0, 0x1CD4
   return CColor::Lerp(CPatterned::skDamageColor, CColor::Black(), t); // 0x1CD8
@@ -1614,7 +1615,8 @@ CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& join
 
 // fn_16_1C5C (0x1C5C..0x1C94, 0x38): the tentacle's plane - the joint's up vector is the normal
 // and the constant is the position's dot with it (the fmadds at 0x1C78 and 0x1C84).
-// fn_16_1C5C is never called in the port: the joint draw path does not use the tentacle's plane.
+// fn_16_1C5C is called in the port's render path (the plane of the tentacle's pass, 0x5484): an
+// entry once-log proved it runs in area 11.
 CPlane CEmperorIngStage1::GetJointPlane(const CEmperorIngStage1Joint& joint) const {
   const CVector3f up = joint.mUp; // 0x1C6C, 0x1C74, 0x1C7C
   return CPlane(CVector3f::Dot(joint.mPosition, up), // 0x1C68, 0x1C78, 0x1C84

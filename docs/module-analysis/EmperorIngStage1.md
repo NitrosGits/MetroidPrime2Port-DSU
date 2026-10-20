@@ -975,3 +975,14 @@ does in the caller. Each one is cited on the port's code that replaces it and is
 | ← `fn_16_601C` | `fn_16_6898` | the field-by-field copy of the `CRayCastResult` the ray cast returns | the host's assignment |
 | ← `fn_16_A2A0` | `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A644` | the loader's `optional<CModelData>` copy and the `CModelData` copy constructor (the fields and the three locked tokens) | the host's `CModelData` copy |
 | ← `fn_16_ABD0` | `fn_16_B130` `fn_16_B188` `fn_16_B1D8` `fn_16_B378` `fn_16_B3DC` `fn_16_B434` `fn_16_B52C` `fn_16_B584` `fn_16_B5C8` `fn_16_B668` `fn_16_B6BC` `fn_16_B6EC` `fn_16_B86C` | the data block's property readers: the `SLdr` structs' constructors and destructors and the per-type readers (the animation set, the damage info, the health info with its four vulnerabilities) | the generated `SLdrEmperorIngStage1.inc` |
+
+## 8. The branch sweep (the area-11 hooks)
+
+The branches the first run only entered early were driven with temporary hooks - the tested
+flags, modes, timers and ids forced, the hooks and their once-logs reverted afterwards.
+
+* fn_16_1C94 and fn_16_1C5C **are** called in the port, in the retail's order: the render path
+  (fn_16_531C) asks for the flags (fn_16_1D38, 0x540C), the colour (fn_16_1C94, 0x545C), the
+  plane (fn_16_1C5C, 0x5484) and the mask (fn_16_1CF4, 0x54C4) of each of the eight tentacle
+  passes before RenderModelMultipleTimesWithFlags (0x54E4), exactly as the retail does. An entry
+  once-log proved both run in area 11.
