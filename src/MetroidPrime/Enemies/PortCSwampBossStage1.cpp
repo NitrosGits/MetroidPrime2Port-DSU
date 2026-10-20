@@ -955,6 +955,7 @@ bool CSwampBossStage1::GivingUp(CStateManager&, const CTriggerData&) const {
   return xbf8_platformTime > 8.f || (xbfc_misses >= 3 && xbf8_platformTime > 0.5f);
 }
 
+// @ fn_78_65E8
 bool CSwampBossStage1::HeavyHit(CStateManager&, const CTriggerData&) const {
   return xd14_heavyHit;
 }
@@ -971,6 +972,7 @@ bool CSwampBossStage1::InVomitRange(CStateManager& mgr, const CTriggerData&) con
   return (xc0c_tonguePos - target).Magnitude() < 8.5f;
 }
 
+// @ fn_78_6590
 bool CSwampBossStage1::LightHit(CStateManager&, const CTriggerData&) const {
   return GetHealthInfo()->GetHP() <= xd0c_hpSnapshot - x7c0_data.unknown_0x1f4e7c2c;
 }
@@ -1132,6 +1134,7 @@ void CSwampBossStage1::HeavyHitReact(CStateManager& mgr, EStateMsg msg, float dt
   BodyTaunt(mgr, msg, 4);
 }
 
+// @ fn_78_3694
 void CSwampBossStage1::ExposeBelly(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(3, msg);
   SetLocomotion(5);
