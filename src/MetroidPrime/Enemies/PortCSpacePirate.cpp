@@ -1399,7 +1399,7 @@ void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
   mAttackRemTime = 0.f;       // 0xE150 stfs 0, 0xa90 (rodata B9C)
 }
 
-// Retail fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
+// @ fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
 // the model and the portal system is updated; otherwise the patterned path.
 void CSpacePirate::PreRenderAllViewports(CStateManager& mgr) {
   // 0x3A28: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3A50 renders the ragdoll
