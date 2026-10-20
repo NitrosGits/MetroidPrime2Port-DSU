@@ -16,6 +16,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CAxisAngle.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
@@ -369,7 +370,11 @@ void CIng::CreateCollisionActorManager(CStateManager& mgr) {
       CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
 }
 
-// fn_29_3014: every collision actor takes the Ing's health info and damage vulnerability.
+// fn_29_3014: every collision actor takes the Ing's health info and CPatterned's own damage
+// vulnerability. Retail calls `GetDamageVulnerability__10CPatternedCFv` directly (not through the
+// vtable), so the colliders get the base table (CAi's normal one) rather than CIng's form-dependent
+// override - with the override the colliders inherit the trigger table, whose beams are
+// kE_PassThrough, and no projectile can reach a corporeal Ing at all.
 void CIng::SetupCollisionActors(CStateManager& mgr) {
   if (mCollisionActorManager.null()) {
     return;
@@ -1718,12 +1723,79 @@ void CIng::FailSafeMode(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// [?] fn_29_6578: not ported.
-void CIng::GrappleBall(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// fn_29_6578 (not yet exercised in a run). Retail holds the morphed player for as long as the
+// grapple lives. Enter grabs the ball (attach, morph lock, looping voice), Update drags the Ing onto
+// the ball at the ing-spot wall speed while draining mUnknown67F6 damage a second (no immunity,
+// solid filter) and returns kAS_Over once the hold time runs out or a hit reaction (mHitReactionTime
+// < 0) ends it, and Exit releases the ball, stops the voice and arms the grapple cooldown.
+void CIng::GrappleBall(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("GrappleBall");
-    mBallCooldown = mData.mGrapple.mPostWaitTime;
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    mGrappled = true;                                     // 0xe5d bit 0
+    mHitReactionTime = 0.f;                               // 0xe4c
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId));
+    if (player != nullptr) {
+      // 0x1144 bits 7/6: no morph transition while the ball is held. Only the unmorph bit has a
+      // CPlayer accessor, and the morph one cannot fire while the player is already a ball.
+      player->EnableLeaveMorphBall(false);
+      player->AttachActorToPlayer(GetUniqueId(), false);
+    }
+    // 0x9ca: the fourth of the swarm block's u16 sounds, which this header calls mSoundInsideHost.
+    mGrappleSfx = CSfxManager::AddEmitter(mData.mSwarm.mSoundInsideHost, GetTranslation(), 0x7f,
+                                          GetCurrentAreaId().Value(), true, true,
+                                          CSfxManager::kMedPriority); // 0xd04
+    mMoving = false;                                              // 0xe5d bit 1
+    break;
+  }
+  case kStateMsg_Update: {
+    // The voice follows the Ing: its position, its forward as the emitter's direction.
+    CSfxManager::UpdateEmitter(mGrappleSfx, GetTranslation(), GetTransform().GetForward(), 0x7f);
+    if (StateMachineState().GetTime() > mData.mGrapple.mMaxHoldTime || // 0x8f4
+        mHitReactionTime < 0.f) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      break;
+    }
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId));
+    if (player == nullptr ||
+        player->GetSpawnedMorphballState() != CPlayer::kMS_Unmorphed || // 0x390
+        player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) { // 0x38c
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+      break;
+    }
+    player->Stop();
+    const CVector3f delta = player->GetTranslation() - GetTranslation();
+    if (!delta.IsMagnitudeSafe()) {
+      Stop();
+    } else {
+      MoveOnSurface(delta.AsNormalized(), mData.mIngSpot.GetMaxWallSpeed(), dt); // fn_29_3948, 0x880
+    }
+    mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(),
+                    CDamageInfo(CWeaponMode(kWT_AI), dt * mData.mGrapple.mUnknown67F6, 0.f, 0.f,
+                                true, false), // 0x8cc, no immunity
+                    SolidFilter(), CVector3f::Zero());
+    const float drain = mHitReactionTime + 0.3f * dt; // reaction ramp, rodata_FC
+    mHitReactionTime = drain > 1.f ? 1.f : drain;    // 0xe4c
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
+    mGrappled = false;                                       // 0xe5d bit 0
+    mBallCooldown = mData.mGrapple.mPostWaitTime;            // 0xe48 = 0x8f8
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId));
+    if (player != nullptr) {
+      player->EnableLeaveMorphBall(true);
+      if (player->GetAttachedActorId() == GetUniqueId()) { // 0x2e4
+        player->DetachActorFromPlayer();
+      }
+    }
+    CSfxManager::RemoveEmitter(mGrappleSfx); // 0xd04
+    mGrappleSfx = CSfxHandle();
+    break;
+  }
+  default:
+    break;
   }
 }
 
@@ -2022,10 +2094,32 @@ void CIng::SplatOntoMesh(CStateManager&, float) {
   mSplat = false;
 }
 
-// [?] fn_29_4D18: not ported.
-void CIng::ExpelGrappledBall(CStateManager&, float) {
+// fn_29_4D18 (not yet exercised in a run). The grapple's expiry: one last mExitGrappleDamage on the
+// held ball (unless a hit reaction already cancelled it), then the ball is spat away - up the
+// surface normal slerped 20 degrees (rodata_E8) toward the Ing's forward, times mass * mSpitForce
+// so its speed is the property's - and the reaction timer resets.
+void CIng::ExpelGrappledBall(CStateManager& mgr, float) {
   LogState("ExpelGrappledBall");
-  mGrappled = false;
+  CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId));
+  if (player != nullptr && player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed &&
+      player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+    if (mHitReactionTime >= 0.f) { // 0xe4c
+      mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), mData.mGrapple.mExitGrappleDamage,
+                      SolidFilter(), CVector3f::Zero()); // 0x8d0
+      mCurDamageRemTime = mDamageWaitTime;               // 0x440 = 0x444
+    }
+    player->Stop();
+    const CVector3f dir = CVector3f::Slerp(CVector3f::Up(), GetTransform().GetForward(),
+                                           CRelAngle::FromRadians(0.34906584f)); // rodata_E8
+    player->ApplyImpulseWR(dir * (mData.mGrapple.mSpitForce * player->GetMass()), // 0x8ec, 0x158
+                           CAxisAngle::Identity());
+    player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+    CSfxManager::AddEmitter(mData.mGrapple.mSoundExitGrapple, GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false,
+                            CSfxManager::kMedPriority); // 0x8f0
+  }
+  mHitReactionTime = 0.f; // 0xe4c
+  mMoving = false;        // 0xe5d bit 1
 }
 
 // ---- overrides ------------------------------------------------------------------------------

@@ -401,6 +401,8 @@ private:
   TUniqueId mLastCoverHintId;                // 0xd74
   TUniqueId mD76Id;                          // 0xd76, cleared once its object is gone
   TUniqueId mLureSafeZoneId;                 // 0xd78
+  // 0xd00 [?] is a second 4-byte slot the ctor zeroes and nothing here writes yet.
+  CSfxHandle mGrappleSfx;                    // 0xd04: the grapple's looping voice, fn_29_6578/4D18
   rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // 0xd08 ing-spot hit fx
   rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // 0xd18 ing-spot heavy hit fx
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect; // 0xd28
