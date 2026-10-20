@@ -714,9 +714,13 @@ bool CCommandoPirate::PathOver(CStateManager& mgr, const CTriggerData& data) con
   return (xc65_ & 0x80) == 0 || CPatterned::PathOver(mgr, data);
 }
 
+// @ fn_9_B958
+// fn_9_B958 (0x38 bytes): the commando is off its path when its own position is not on the path
+// search's path. The guest asks its own CPathFindSearch (the one at guest this+0x928) about its
+// own position (the translation at this+0x54, the call at 0x0000B970) and answers true when the
+// answer is not kR_Success - the neg/or/srwi pair at 0x0000B974..0x0000B97C is the != 0 idiom.
 bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B958");
-  return false;
+  return mPathFindSearch.OnPath(GetTranslation()) != CPathFindSearch::kR_Success;  // 0x0000B970
 }
 
 // fn_9_B900: the state machine's asset has an "attack" connection that is being followed -
