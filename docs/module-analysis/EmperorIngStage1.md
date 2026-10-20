@@ -191,15 +191,54 @@ parameters, 0x4a1e493b data).
 
 ## 4. The state machine (fn_16_8AF4)
 
-`SetupStateMachine` calls the base's setup on the state machine at `this + 0x350` and then hands
-three name tables to it (the pointer at each entry is patched at runtime by the module's static
-init):
+`SetupStateMachine` (vtable slot 58, 0x8AF4..0x8B80) calls the base's setup on the state machine
+at `this + 0x350` (the call at 0x00008B08) and then hands three name tables to it: the triggers
+(lbl_16_data_19C, 6 entries) through the state manager's vtable slot +0x18 (0x00008B20), the
+states (lbl_16_data_94, 12 entries) through +0x14 (0x00008B40) and the codes (lbl_16_data_220,
+3 entries) through +0x1C (0x00008B60).
 
-| table | count | names |
-|---|---|---|
-| `lbl_16_data_94` (states) | 12 | TrackPlayer, BeginHeartStage, HeartStage, EndHeartStage, Dead, MeleeAttack, Attack, ProjectileAttack, WarpAttack, TauntAttack, Taunt, JumpRope |
-| `lbl_16_data_19C` (triggers) | 6 | AllTentaclesRetracted, HeartStageOver, IsDead, ShouldMeleeAttack, ShouldAttack, ShouldTaunt |
-| `lbl_16_data_220` (code functions) | 3 | BeginSubStage, ResetTentacles, ChooseRandomTentacleCount |
+The tables are built by the static initialiser **fn_16_BF88** (`.ctors` at 0x0000C2A4): each entry
+is 16 bytes {name, 0, 0xFFFFFFFF, fn}, and the function pointers come from the three-word records
+{0, 0xFFFFFFFF, fn} in `.data` (the states' twelve at 0x4..0x88, the triggers' six at 0x154..0x190
+and the codes' three at 0x1FC..0x214). fn_16_BF88's stores: 0x0000C0C0..0x0000C124 and
+0x0000C214 for the states, 0x0000C234..0x0000C284 for the triggers, 0x0000C284..0x0000C294 for the
+codes.
+
+### States (lbl_16_data_94, .data 0x94, 12 entries)
+
+| # | name (.rodata) | fn | record |
+|---|---|---|---|
+| 0 | TrackPlayer (0x41C) | fn_16_7C28 | .data 0x4 |
+| 1 | BeginHeartStage (0x428) | fn_16_78AC | .data 0x10 |
+| 2 | HeartStage (0x438) | fn_16_774C | .data 0x1C |
+| 3 | EndHeartStage (0x443) | fn_16_71BC | .data 0x28 |
+| 4 | Dead (0x451) | fn_16_716C | .data 0x34 |
+| 5 | MeleeAttack (0x456) | fn_16_6F28 | .data 0x40 |
+| 6 | Attack (0x462) | fn_16_6D94 | .data 0x4C |
+| 7 | ProjectileAttack (0x469) | fn_16_68F4 | .data 0x58 |
+| 8 | WarpAttack (0x47A) | fn_16_601C | .data 0x64 |
+| 9 | TauntAttack (0x485) | fn_16_5DBC | .data 0x70 |
+| 10 | Taunt (0x491) | fn_16_5C4C | .data 0x7C |
+| 11 | JumpRope (0x497) | fn_16_5928 | .data 0x88 |
+
+### Triggers (lbl_16_data_19C, .data 0x19C, 6 entries)
+
+| # | name (.rodata) | fn | record |
+|---|---|---|---|
+| 0 | AllTentaclesRetracted (0x4A0) | fn_16_4BD4 | .data 0x154 |
+| 1 | HeartStageOver (0x4B6) | fn_16_4BB4 | .data 0x160 |
+| 2 | IsDead (0x4C5) | fn_16_4B6C | .data 0x16C |
+| 3 | ShouldMeleeAttack (0x4CC) | fn_16_4B20 | .data 0x178 |
+| 4 | ShouldAttack (0x4DE) | fn_16_4B04 | .data 0x184 |
+| 5 | ShouldTaunt (0x4EB) | fn_16_4AEC | .data 0x190 |
+
+### Codes (lbl_16_data_220, .data 0x220, 3 entries)
+
+| # | name (.rodata) | fn | record |
+|---|---|---|---|
+| 0 | BeginSubStage (0x4F7) | fn_16_4AE8 | .data 0x1FC |
+| 1 | ResetTentacles (0x505) | fn_16_4A04 | .data 0x208 |
+| 2 | ChooseRandomTentacleCount (0x514) | fn_16_4954 | .data 0x214 |
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
@@ -210,12 +249,23 @@ The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_S
 `include/MetroidPrime/Enemies/CEmperorIngStage1.hpp` and
 `src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp`. The loader and the constructor are ported;
 the six non-trivial vtable overrides (`Think`, `AcceptScriptMsg`, `Render`, `DoUserAnimEvent`,
-`ProcessSoundEvent`, `SetupStateMachine`) forward to `CPatterned` behind a once-only
-`[eis1] stand-in` log. The accessors that the vtable gives one-line bodies are real.
+`ProcessSoundEvent`) forward to `CPatterned` behind a once-only `[emp1] ... is a port stand-in`
+log. The accessors that the vtable gives one-line bodies are real.
 
-Not ported yet (milestone 2): the state machine's tables, the tentacles and their collision
+`SetupStateMachine` (fn_16_8AF4) is ported: the base's setup first, then the module's three
+tables on the state machine (6 triggers, 12 states, 3 codes) with retail's name strings. The 21
+functions the tables point at are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and
+returns the neutral value (false for a trigger). No `// @` marker - none of them is retail's body
+yet.
+
+Not ported yet (milestone 2): the state functions' bodies, the tentacles and their collision
 actors, the five attacks, the heart stage, the shock wave, the projectile and the two tokens.
 
 **Entity type**: the REL does **not** override `TypesMatch` (vtable slot 1 is the DOL's
 `TypesMatch__10CPatternedCFi`), so the actor keeps the base class's type (`kET_Patterned`) and
 `CEntityInfo.hpp` gets no new value.
+
+**Runtime**: Great Temple world `863fcd72`, area 11 (`07_temple_mothlordsanctuary_dark`). The
+actor's script leaves it inactive until the fight, so the FSM is reached only after the console
+activates it: `objs emperoringstage1` gives the uid and `send <uid> Activate` (the port console,
+`MP2_CONSOLE=<port>`) wakes it.

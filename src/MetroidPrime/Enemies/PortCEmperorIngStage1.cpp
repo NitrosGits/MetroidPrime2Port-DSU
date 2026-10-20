@@ -1,9 +1,11 @@
 // Host body for the EmperorIngStage1 REL (module 16), milestone 1: the actor loads, stands and
 // thinks. Every vtable override that belongs to retail's AI forwards to CPatterned behind a
 // once-only StandIn log, and the REL function it stands in for is named on each. The state
-// machine (fn_16_8AF4 installs the 6 triggers, 12 states and 3 code functions), the tentacles,
-// the five attacks (melee, projectile, warp, beam, taunt) and the heart stage are milestone 2 and
-// forward - docs/module-analysis/EmperorIngStage1.md has the plan.
+// machine's tables are registered (fn_16_8AF4 installs the 6 triggers, 12 states and 3 code
+// functions fn_16_BF88 builds), but the 21 functions they point at are stand-ins that log the
+// retail function they stand in for and return the neutral value. The tentacles, the five attacks
+// (melee, projectile, warp, beam, taunt) and the heart stage are milestone 2 - docs/module-
+// analysis/EmperorIngStage1.md has the plan.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
 // address, and the slots line up with CPatterned's declaration order (the inherited entries are
@@ -36,8 +38,76 @@ void StandIn(const char* what) {
   if (sCount < 32) {
     sSeen[sCount++] = what;
   }
-  fprintf(stderr, "[eis1] %s is a port stand-in (see PortCEmperorIngStage1.cpp)\n", what);
+  fprintf(stderr, "[emp1] %s is a port stand-in (see PortCEmperorIngStage1.cpp)\n", what);
 }
+
+// The same, for the state machine's own functions: the message names the retail function the
+// entry stands in for, so the log says which of the module's 21 FSM functions the run reached.
+void StandInFn(const char* fn) {
+  static const char* sSeen[32] = {};
+  static int sCount = 0;
+  for (int i = 0; i < sCount; ++i) {
+    if (sSeen[i] == fn) {
+      return;
+    }
+  }
+  if (sCount < 32) {
+    sSeen[sCount++] = fn;
+  }
+  fprintf(stderr, "[emp1] stand-in %s\n", fn);
+}
+
+// The body's three FSM tables. Retail builds them in a static initialiser (fn_16_BF88, .ctors at
+// 0x0000C2A4): the tables are lbl_16_data_19C (6 triggers, .data 0x19C), lbl_16_data_94 (12
+// states, .data 0x94) and lbl_16_data_220 (3 codes, .data 0x220), each entry 16 bytes
+// {name, 0, 0xFFFFFFFF, fn}, and the function pointers come from the three-word records
+// {0, 0xFFFFFFFF, fn} in .data: the states' twelve at 0x4..0x88 (fn_16_BF88's stores at
+// 0x0000C0C0..0x0000C124 and 0x0000C214), the triggers' six at 0x154..0x190 (0x0000C234..
+// 0x0000C284) and the codes' three at 0x1FC..0x214 (0x0000C284..0x0000C294).
+//
+// On the host the table addresses are irrelevant: the state machine matches a node by its name,
+// so the name strings are retail's and the entry's function is the module's member function.
+// The members are cast the way the DigitalGuardian and SpacePirate ports do it.
+#define EMP1_TRIGGER(name)                                                                          \
+  { #name, reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CEmperorIngStage1::name) }
+#define EMP1_STATE(name)                                                                            \
+  { #name, reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CEmperorIngStage1::name) }
+#define EMP1_CODE(name)                                                                             \
+  { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CEmperorIngStage1::name) }
+
+CPatterned::StateMachine::STriggerFunction skTriggers[] = {
+    EMP1_TRIGGER(AllTentaclesRetracted),
+    EMP1_TRIGGER(HeartStageOver),
+    EMP1_TRIGGER(IsDead),
+    EMP1_TRIGGER(ShouldMeleeAttack),
+    EMP1_TRIGGER(ShouldAttack),
+    EMP1_TRIGGER(ShouldTaunt),
+};
+
+CPatterned::StateMachine::SStateFunction skStates[] = {
+    EMP1_STATE(TrackPlayer),
+    EMP1_STATE(BeginHeartStage),
+    EMP1_STATE(HeartStage),
+    EMP1_STATE(EndHeartStage),
+    EMP1_STATE(Dead),
+    EMP1_STATE(MeleeAttack),
+    EMP1_STATE(Attack),
+    EMP1_STATE(ProjectileAttack),
+    EMP1_STATE(WarpAttack),
+    EMP1_STATE(TauntAttack),
+    EMP1_STATE(Taunt),
+    EMP1_STATE(JumpRope),
+};
+
+CPatterned::StateMachine::SCodeFunction skCodes[] = {
+    EMP1_CODE(BeginSubStage),
+    EMP1_CODE(ResetTentacles),
+    EMP1_CODE(ChooseRandomTentacleCount),
+};
+
+#undef EMP1_TRIGGER
+#undef EMP1_STATE
+#undef EMP1_CODE
 
 } // namespace
 
@@ -154,13 +224,114 @@ bool CEmperorIngStage1::CanBeShot(const CStateManager&, int) { return true; }
 // vtable slot 41 = fn_16_BA04: `li r3, 0x0` - the actor does not listen for noises.
 bool CEmperorIngStage1::IsListening() const { return false; }
 
-// vtable slot 58 = fn_16_8AF4 (0xC4): CPatterned's own setup, then the module's three name
-// tables are handed to the machine - lbl_16_data_19C (6 triggers), lbl_16_data_94 (12 states)
-// and lbl_16_data_220 (3 code functions). That is the module's FSM; it is milestone 2, so only the
-// base setup runs here.
+// vtable slot 58 = fn_16_8AF4 (0x8AF4..0x8B80): CPatterned's own setup first (the call at
+// 0x00008B08), then the module's three name tables are handed to the state machine at this+0x350
+// - the triggers (lbl_16_data_19C, 6 entries) through the state manager's vtable slot +0x18 (the
+// call at 0x00008B20), the states (lbl_16_data_94, 12 entries) through +0x14 (0x00008B40) and
+// the codes (lbl_16_data_220, 3 entries) through +0x1C (0x00008B60).
 void CEmperorIngStage1::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CEmperorIngStage1::SetupStateMachine (vtable slot 58, fn_16_8AF4)");
   CPatterned::SetupStateMachine(mgr);
+  StateMachine* stateMachine = mStateMachine.get();
+  stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
+  stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
+  // The host's FSM1 does not dispatch code nodes yet (TStateMachineState::SetCodeFunctions is
+  // empty), so this only records the table retail registers.
+  stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
+}
+
+// ---------------------------------------------------------------------------------------------
+// The body's FSM functions. Retail's entries are the module's own functions; their bodies are not
+// ported in this slice, so each one logs the retail function it stands in for and returns the
+// neutral value (false for a trigger, nothing for a state or a code).
+//
+// The 6 triggers of lbl_16_data_19C (.data 0x19C; fn_16_BF88's stores at 0x0000C234..0x0000C284).
+bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_16_4BD4");
+  return false;
+}
+
+bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_16_4BB4");
+  return false;
+}
+
+bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_16_4B6C");
+  return false;
+}
+
+bool CEmperorIngStage1::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_16_4B20");
+  return false;
+}
+
+bool CEmperorIngStage1::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_16_4B04");
+  return false;
+}
+
+bool CEmperorIngStage1::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_16_4AEC");
+  return false;
+}
+
+// The 12 states of lbl_16_data_94 (.data 0x94; fn_16_BF88's stores at 0x0000C0C0..0x0000C124 and
+// 0x0000C214).
+void CEmperorIngStage1::TrackPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_7C28");
+}
+
+void CEmperorIngStage1::BeginHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_78AC");
+}
+
+void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_774C");
+}
+
+void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_71BC");
+}
+
+void CEmperorIngStage1::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_716C");
+}
+
+void CEmperorIngStage1::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_6F28");
+}
+
+void CEmperorIngStage1::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_6D94");
+}
+
+void CEmperorIngStage1::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_68F4");
+}
+
+void CEmperorIngStage1::WarpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_601C");
+}
+
+void CEmperorIngStage1::TauntAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_5DBC");
+}
+
+void CEmperorIngStage1::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_5C4C");
+}
+
+void CEmperorIngStage1::JumpRope(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_16_5928");
+}
+
+// The 3 codes of lbl_16_data_220 (.data 0x220; fn_16_BF88's stores at 0x0000C284..0x0000C294).
+void CEmperorIngStage1::BeginSubStage(CStateManager& mgr, float dt) { StandInFn("fn_16_4AE8"); }
+
+void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) { StandInFn("fn_16_4A04"); }
+
+void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
+  StandInFn("fn_16_4954");
 }
 
 // ---------------------------------------------------------------------------------------------

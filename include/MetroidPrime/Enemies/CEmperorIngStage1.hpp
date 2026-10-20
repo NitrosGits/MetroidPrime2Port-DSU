@@ -17,10 +17,11 @@
 // is docs/module-analysis/EmperorIngStage1.md.
 //
 // Milestone 1 (this file's first slice) is load-and-stand: the loader, the constructor and the
-// accessors the vtable gives one-line bodies to. The state machine (fn_16_8AF4 installs the 6
-// triggers, 12 states and 3 code functions listed in the analysis), the tentacles, the attacks
-// (melee, projectile, warp, beam, taunt) and the heart stage are milestone 2 and forward to
-// CPatterned behind a once-only StandIn log.
+// accessors the vtable gives one-line bodies to. The state machine's tables are registered
+// (fn_16_8AF4 installs the 6 triggers, 12 states and 3 code functions fn_16_BF88 builds), but the
+// 21 functions they point at are stand-ins that log the retail function they stand in for. The
+// tentacles, the five attacks (melee, projectile, warp, beam, taunt) and the heart stage are
+// milestone 2 and forward to CPatterned behind a once-only StandIn log.
 //
 // The host layout is its own: the retail object is 0xD18 bytes, CPatterned is 0x7C0, and the
 // guest offsets of every member the constructor touches are in the comment above each one. Host
@@ -59,6 +60,40 @@ public:
 
   // CPatterned
   void SetupStateMachine(CStateManager& mgr) override;
+
+  // The body's state machine. Retail fn_16_8AF4 (vtable slot 58) calls the base's setup and
+  // then registers the three tables fn_16_BF88 builds: 6 triggers (lbl_16_data_19C), 12 states
+  // (lbl_16_data_94) and 3 codes (lbl_16_data_220). The names are retail's - the state machine
+  // asset's nodes are matched by name - and each comment is the retail function the entry points
+  // at. The bodies are stand-ins in this slice; a later one ports them.
+  //
+  // Triggers (lbl_16_data_19C, 6 entries).
+  bool AllTentaclesRetracted(CStateManager& mgr, const CTriggerData& data) const;  // fn_16_4BD4
+  bool HeartStageOver(CStateManager& mgr, const CTriggerData& data) const;        // fn_16_4BB4
+  bool IsDead(CStateManager& mgr, const CTriggerData& data) const;                 // fn_16_4B6C
+  bool ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const;      // fn_16_4B20
+  bool ShouldAttack(CStateManager& mgr, const CTriggerData& data) const;           // fn_16_4B04
+  bool ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const;           // fn_16_4AEC
+
+  // States (lbl_16_data_94, 12 entries). Dead hides CPatterned::Dead, which is what retail
+  // does too: the module's table replaces the base's "Dead" entry.
+  void TrackPlayer(CStateManager& mgr, EStateMsg msg, float dt);     // fn_16_7C28
+  void BeginHeartStage(CStateManager& mgr, EStateMsg msg, float dt); // fn_16_78AC
+  void HeartStage(CStateManager& mgr, EStateMsg msg, float dt);       // fn_16_774C
+  void EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt);   // fn_16_71BC
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);             // fn_16_716C
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt);      // fn_16_6F28
+  void Attack(CStateManager& mgr, EStateMsg msg, float dt);           // fn_16_6D94
+  void ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_16_68F4
+  void WarpAttack(CStateManager& mgr, EStateMsg msg, float dt);       // fn_16_601C
+  void TauntAttack(CStateManager& mgr, EStateMsg msg, float dt);      // fn_16_5DBC
+  void Taunt(CStateManager& mgr, EStateMsg msg, float dt);            // fn_16_5C4C
+  void JumpRope(CStateManager& mgr, EStateMsg msg, float dt);         // fn_16_5928
+
+  // Codes (lbl_16_data_220, 3 entries).
+  void BeginSubStage(CStateManager& mgr, float dt);             // fn_16_4AE8
+  void ResetTentacles(CStateManager& mgr, float dt);            // fn_16_4A04
+  void ChooseRandomTentacleCount(CStateManager& mgr, float dt); // fn_16_4954
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
