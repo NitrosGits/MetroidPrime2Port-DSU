@@ -1209,3 +1209,9 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 - Armours were inactive because fn_14_3E88 cast the 0xFB0 ids to CCollisionActor; retail calls SetActive on the plain ObjectById result. Fixed: they activate on ACTV.
 - Area-53 run: each knee kill gives Idle -> KneeDestroyedReaction -> Idle and the 0x10CE counter drops 9->5. The 4th kill gives CrippledReaction -> Crippled (fn_14_7CB4 is still a stand-in). Knees close during the reaction (bit 5), so a kill needs ~15 s between hits.
 - Open: fn_14_5274 (head collider) needs fn_14_266C/2E60 and the beacon explosion token at 0x1244/0x1250 loaded in the ctor. fn_14_5140's toe path hasn't run yet, so it is unmarked.
+
+### Crippled and the beacon (2026-10-20)
+
+- Ported: fn_14_7CB4 Crippled (wakes 0xE64; 0xE60 goes to sleep except the head collider 0x10CC), and fn_14_5274/266C/2E60 for beacon damage. The ctor now locks the beacon tokens 0x1244/0x1254 (data +0x1F4/+0x1F8). 0x1168 starts as invalid. All eight manager null tests in AcceptScriptMsg are retail's and cite their offsets.
+- Area-53 run: the beacon (head collider) goes 240 → 140 (fn_14_2E60 returns early: the collider is asleep) → −160 (back to 250; fn_14_266C returns early: x1268 is 0, the beacon is closed). The guardian stays at 150/150, and `damage u054d 50` does nothing.
+- Blocker: OPEN (which opens the beacon) crashes in x28D0_ through `mgr.GetPlayerState()->GetActiveVisor` because the pointer is null. Retail writes CStateManager 0x150C only in fn_80040D88, to mPlayerStates[i]. Upstream sets it in the per-viewport render setup and nulls it in EndPlayerRender, so it is null during Think.
