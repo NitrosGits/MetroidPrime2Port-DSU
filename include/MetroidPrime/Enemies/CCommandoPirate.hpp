@@ -1,0 +1,264 @@
+#ifndef _CCOMMANDOPIRATE
+#define _CCOMMANDOPIRATE
+
+#include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "REL/REL_Setup.h"
+
+#ifdef TARGET_PC
+#include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/SObjectTag.hpp"
+#include "MetroidPrime/CBoneTracking.hpp"
+#include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+
+// The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
+// is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
+// floats on top); the guest offsets are the REL's and the host layout is its own. The four
+// constants 0.1f/150.f/0.1f/150.f are the guest's (fn_9_98C stores them from its own arguments at
+// 0x0000098C..0x00000A0C) and the flag byte at guest +0x4C is the guest's zero.
+struct CCommandoPirateGrenadeData {
+  CCommandoPirateGrenadeData(float grenadeMass, float unknownED086CE0,
+                             const CDamageInfo& bladeDamage, int grenadeNumBounces,
+                             CAssetId grenadeExplosion, CAssetId grenadeExplosion2,
+                             CAssetId grenadeTrail, CAssetId grenadeEffect,
+                             ushort soundGrenadeBounce, float empDuration,
+                             float grenadeAttackChance, float grenadeMinAttackInterval,
+                             float grenadePostAttackPause, float grenadeMinAttackDist,
+                             float grenadeMaxAttackDist, float grenadeMinLaunchSpeed,
+                             float grenadeMaxLaunchSpeed)
+  : mGrenadeMass(grenadeMass)
+  , mUnknownED086CE0(unknownED086CE0)
+  , mBladeDamage(bladeDamage)
+  , mGrenadeNumBounces(grenadeNumBounces)
+  , mGrenadeExplosion(grenadeExplosion)
+  , mGrenadeExplosion2(grenadeExplosion2)
+  , mGrenadeTrail(grenadeTrail)
+  , mGrenadeEffect(grenadeEffect)
+  , mSoundGrenadeBounce(soundGrenadeBounce)
+  , mEMPDuration(empDuration)
+  , mGrenadeAttackChance(grenadeAttackChance)
+  , mGrenadeMinAttackInterval(grenadeMinAttackInterval)
+  , mGrenadePostAttackPause(grenadePostAttackPause)
+  , mGrenadeMinAttackDist(grenadeMinAttackDist)
+  , mGrenadeMaxAttackDist(grenadeMaxAttackDist)
+  , mGrenadeMinLaunchSpeed(grenadeMinLaunchSpeed)
+  , mGrenadeMaxLaunchSpeed(grenadeMaxLaunchSpeed) {}
+
+  float mGrenadeMass;              // guest +0x00, fn_9_98C @0x0000098C
+  float mUnknownED086CE0;          // guest +0x04, fn_9_98C @0x00000994
+  CDamageInfo mBladeDamage;        // guest +0x08 (0x1c), fn_9_98C @0x0000099C..0x000009D8
+  int mGrenadeNumBounces;          // guest +0x24, fn_9_98C @0x000009E4
+  CAssetId mGrenadeExplosion;      // guest +0x28, fn_9_98C @0x000009E8
+  CAssetId mGrenadeExplosion2;     // guest +0x2c, fn_9_98C @0x000009EC (the same asset again)
+  CAssetId mGrenadeTrail;          // guest +0x30, fn_9_98C @0x000009F0
+  CAssetId mGrenadeEffect;         // guest +0x34, fn_9_98C @0x000009F4
+  ushort mSoundGrenadeBounce;      // guest +0x38, fn_9_98C @0x000009F8
+  // guest +0x3a: the guest reads the high half of the word it stored at its own stack +0x8
+  // (fn_9_98C @0x000009D8 reads 0xa(r1)), so the guest stores zero here.
+  float mRadiusMin;                // guest +0x3c, fn_9_98C @0x00000A00 (the guest's 0.1f)
+  float mDamageMax;                // guest +0x40, fn_9_98C @0x00000A04 (the guest's 150.f)
+  float mRadiusMax;                // guest +0x44, fn_9_98C @0x00000A08 (the guest's 0.1f)
+  float mDamageMin;                // guest +0x48, fn_9_98C @0x00000A0C (the guest's 150.f)
+  uchar mFlags;                    // guest +0x4c, fn_9_98C @0x00000A14 (the guest's zero)
+  float mEMPDuration;              // guest +0x50, fn_9_F50C @0x00000A28
+  float mGrenadeAttackChance;      // guest +0x54, fn_9_F50C @0x00000A2C
+  float mGrenadeMinAttackInterval; // guest +0x58, fn_9_F50C @0x00000A30
+  float mGrenadePostAttackPause;   // guest +0x5c, fn_9_F50C @0x00000A34
+  float mGrenadeMinAttackDist;     // guest +0x60, fn_9_F50C @0x00000A38
+  float mGrenadeMaxAttackDist;     // guest +0x64, fn_9_F50C @0x00000A3C
+  float mGrenadeMinLaunchSpeed;    // guest +0x68, fn_9_F50C @0x00000A40
+  float mGrenadeMaxLaunchSpeed;    // guest +0x6c, fn_9_F50C @0x00000A44
+};
+
+// The shield half of the REL's parameter block (guest data+0xD8, 0x84 bytes), built by
+// fn_9_EF80 out of the shield property block (fn_9_1308) and copied by fn_9_EB84.
+struct CCommandoPirateShieldData {
+  CCommandoPirateShieldData(const CDamageInfo& chargeDamage,
+                             const CDamageVulnerability& chargeVulnerability,
+                             float chargeMinAttackDist, float chargeMaxAttackDist,
+                             float chargeSpeed, CAssetId explodeEffect, ushort soundExplode,
+                             float unknown6CB0DA5A, float unknownC3938663, float armChance,
+                             float armTime, float armTimeVariation, CAssetId armExplodeEffect,
+                             CAssetId chargeEffect, CAssetId armEffect, ushort soundTurnOn,
+                             ushort soundTurnOff)
+  : mChargeDamage(chargeDamage)
+  , mChargeVulnerability(chargeVulnerability)
+  , mChargeMinAttackDist(chargeMinAttackDist)
+  , mChargeMaxAttackDist(chargeMaxAttackDist)
+  , mChargeSpeed(chargeSpeed)
+  , mExplodeEffect(explodeEffect)
+  , mSoundExplode(soundExplode)
+  , mUnknown6CB0DA5A(unknown6CB0DA5A)
+  , mUnknownC3938663(unknownC3938663)
+  , mArmChance(armChance)
+  , mArmTime(armTime)
+  , mArmTimeVariation(armTimeVariation)
+  , mArmExplodeEffect(armExplodeEffect)
+  , mChargeEffect(chargeEffect)
+  , mArmEffect(armEffect)
+  , mSoundTurnOn(soundTurnOn)
+  , mSoundTurnOff(soundTurnOff) {}
+
+  CDamageInfo mChargeDamage;            // guest +0x00 (0x1c), fn_9_EF80 @0x0000EF80
+  CDamageVulnerability mChargeVulnerability; // guest +0x1c (0x30), fn_9_EF80 @0x0000EFA4
+  float mChargeMinAttackDist;           // guest +0x4c, fn_9_EF80 @0x0000EFB4
+  float mChargeMaxAttackDist;           // guest +0x50, fn_9_EF80 @0x0000EFB8
+  float mChargeSpeed;                   // guest +0x54, fn_9_EF80 @0x0000EFBC
+  CAssetId mExplodeEffect;              // guest +0x58, fn_9_EF80 @0x0000EFC0
+  ushort mSoundExplode;                 // guest +0x5c, fn_9_EF80 @0x0000EFC4
+  float mUnknown6CB0DA5A;                // guest +0x60, fn_9_EF80 @0x0000EFC8
+  float mUnknownC3938663;                // guest +0x64, fn_9_EF80 @0x0000EFCC
+  float mArmChance;                     // guest +0x68, fn_9_EF80 @0x0000EFD0
+  float mArmTime;                       // guest +0x6c, fn_9_EF80 @0x0000EFD4
+  float mArmTimeVariation;              // guest +0x70, fn_9_EF80 @0x0000EFD8
+  CAssetId mArmExplodeEffect;           // guest +0x74, fn_9_EF80 @0x0000EFDC
+  CAssetId mChargeEffect;               // guest +0x78, fn_9_EF80 @0x0000EFE0
+  CAssetId mArmEffect;                  // guest +0x7c, fn_9_EF80 @0x0000EFE4
+  ushort mSoundTurnOn;                  // guest +0x80, fn_9_EF80 @0x0000EFE8
+  ushort mSoundTurnOff;                 // guest +0x82, fn_9_EF80 @0x0000EFEC
+};
+
+// The REL's parameter block (guest 0x15e bytes at guest 0x7C0), built by fn_9_EDC0 and copied into
+// the object by fn_9_EA24. The guest offsets are the REL's; the host layout is its own.
+struct CCommandoPirateData {
+  CCommandoPirateData(ushort soundImpact, ushort soundHurled, ushort soundDeath, ushort alwaysFF,
+                      int alwaysFF2, const CDamageInfo& bladeDamage, CAssetId projectile,
+                      const CDamageInfo& projectileDamage, ushort soundProjectile,
+                      float aggressiveness, float coverCheck, float searchRadius, float dodgeCheck,
+                      float hearingRadius, float intraBurstShotTime, float intraBurstShotVariation,
+                      const CCommandoPirateGrenadeData& grenade,
+                      const CCommandoPirateShieldData& shield, uchar flags0, uchar flags1)
+  : mSoundImpact(soundImpact)
+  , mSoundHurled(soundHurled)
+  , mSoundDeath(soundDeath)
+  , mAlwaysFF(alwaysFF)
+  , mAlwaysFF2(alwaysFF2)
+  , mBladeDamage(bladeDamage)
+  , mProjectile(projectile)
+  , mProjectileDamage(projectileDamage)
+  , mSoundProjectile(soundProjectile)
+  , mAggressiveness(aggressiveness)
+  , mCoverCheck(coverCheck)
+  , mSearchRadius(searchRadius)
+  , mDodgeCheck(dodgeCheck)
+  , mHearingRadius(hearingRadius)
+  , mIntraBurstShotTime(intraBurstShotTime)
+  , mIntraBurstShotVariation(intraBurstShotVariation)
+  , mGrenade(grenade)
+  , mShield(shield)
+  , mFlags0(flags0)
+  , mFlags1(flags1) {}
+
+  ushort mSoundImpact;             // guest +0x00, fn_9_EDC0 @0x0000E83C
+  ushort mSoundHurled;             // guest +0x02, fn_9_EDC0 @0x0000E844
+  ushort mSoundDeath;              // guest +0x04, fn_9_EDC0 @0x0000E84C
+  ushort mAlwaysFF;                // guest +0x06, fn_9_EDC0 @0x0000E854
+  int mAlwaysFF2;                  // guest +0x08, fn_9_EDC0 @0x0000E85C
+  CDamageInfo mBladeDamage;        // guest +0x0c (0x1c), fn_9_EDC0 @0x0000E864..0x0000E8B4
+  CAssetId mProjectile;            // guest +0x28, fn_9_EDC0 @0x0000E8B8
+  CDamageInfo mProjectileDamage;   // guest +0x2c (0x1c), fn_9_EDC0 @0x0000E8BC..0x0000E90C
+  ushort mSoundProjectile;         // guest +0x48, fn_9_EDC0 @0x0000E910
+  float mAggressiveness;           // guest +0x4c, fn_9_EDC0 @0x0000E918
+  float mCoverCheck;               // guest +0x50, fn_9_EDC0 @0x0000E91C
+  float mSearchRadius;             // guest +0x54, fn_9_EDC0 @0x0000E920
+  float mDodgeCheck;               // guest +0x58, fn_9_EDC0 @0x0000E924
+  float mHearingRadius;            // guest +0x5c, fn_9_EDC0 @0x0000E928
+  float mIntraBurstShotTime;       // guest +0x60, fn_9_EDC0 @0x0000E92C
+  float mIntraBurstShotVariation;  // guest +0x64, fn_9_EDC0 @0x0000E930
+  CCommandoPirateGrenadeData mGrenade; // guest +0x68 (0x70), fn_9_EDC0 @0x0000E934
+  CCommandoPirateShieldData mShield;   // guest +0xD8 (0x84), fn_9_EDC0 @0x0000E938
+  // guest +0x15c / +0x15d: the guest packs eight and four bits of the "sound" property into these
+  // bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60); the bit map is in the analysis note.
+  uchar mFlags0;
+  uchar mFlags1;
+};
+#endif
+
+// The REL's CCommandoPirate (module 9): the Pirate Commando. The retail object is 0xC68 bytes on
+// the GameCube, built by fn_9_D904, and its vtable is lbl_9_data_828 (82 words, 34 local
+// overrides); the analysis is docs/module-analysis/CommandoPirate.md.
+//
+// Milestone 1 (this file's first slice) is load-and-stand: the loader, the constructor, the path
+// search, the projectile info, the bone tracking and the accessors the vtable gives one-line
+// bodies to are host code. The state machine (the module's trigger, state and code tables), the
+// melee, the E-grenade, the shield and the burst fire are milestone 2 and forward, and every
+// override that belongs to them forwards to CPatterned behind a once-only StandIn log.
+class REL_EXPORT CCommandoPirate : public CPatterned {
+public:
+#ifdef TARGET_PC
+  // Argument order is the REL loader's call at 0x00000964 (fn_9_168): uid, editor-property name,
+  // entity info, transform, model, actor parameters, patterned info, then the parameter block.
+  CCommandoPirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                  const CTransform4f& xf, const CModelData& modelData,
+                  const CActorParameters& actParms, const CPatternedInfo& pInfo,
+                  const CCommandoPirateData& data);
+#endif
+  ~CCommandoPirate() override;
+
+  // CEntity
+  void PreThink(float dt, CStateManager& mgr) override;
+  void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
+
+  // CActor
+  void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  void Render(const CStateManager& mgr) const override;
+  void PreRenderAllViewports(CStateManager& mgr) override;
+  const CDamageVulnerability* GetDamageVulnerability() const override;
+
+  // CAi
+  void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
+  bool CanBeShot(const CStateManager& mgr, int attributes) override;
+  bool IsListening() const override;
+  bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+
+  // CPatterned
+  CProjectileInfo* ProjectileInfo() override;
+  CPathFindSearch* GetSearchPath() override;
+  float GetGravityConstant() const override;
+  CPathFindPointSearch* GetPointSearchPath() override;
+  CDamageInfo GetContactDamage() const override;
+  CRagDoll* GetRagDoll() const override;
+  TUniqueId GetAttackTarget() const override;
+  void SetupStateMachine(CStateManager& mgr) override;
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
+                    CStateManager& mgr) override;
+
+private:
+  void EnsureBodyActive(CStateManager& mgr);
+
+  // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
+  // match (host objects outgrow retail). The guest member map is in the analysis note.
+#ifdef TARGET_PC
+  CCommandoPirateData mData;             // guest 0x7c0 (0x15e)
+  int mGuest920;                          // guest 0x920, -1 (fn_9_D904 @0x0000D994)
+  int mGuest924;                          // guest 0x924, -1 (fn_9_D904 @0x0000D9A4)
+  CPathFindSearch mPathFindSearch;        // guest 0x928 (fn_9_D904 @0x0000D990)
+  CProjectileInfo mProjectileInfo;        // guest 0xa14 (fn_9_D904 @0x0000D9B8)
+  int mGuestA3C;                          // guest 0xa3c, 0 (fn_9_D904 @0x0000D9D0)
+  int mGuestA40;                          // guest 0xa40, 0 (fn_9_D904 @0x0000D9D8)
+  CDamageVulnerability mShieldVulnerability; // guest 0xa44 (fn_9_D904 @0x0000D9D4)
+  CBoneTracking mBoneTracking;            // guest 0xa74 (fn_9_D904 @0x0000DA08)
+  CSegId mLocatorHead;                    // guest 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
+  CSegId mLocatorMidLaunch;               // guest 0xc5d, "Mid_Launch_LCTRL" (fn_9_D904 @0x0000E2D0)
+  CSegId mLocatorGun;                     // guest 0xc5e, "gun_LCTR" (fn_9_D904 @0x0000E304)
+  CSegId mLocatorGun2;                    // guest 0xc5f, "gun_LCTR" (fn_9_D904 @0x0000E338)
+  CSegId mLocatorRWrist;                  // guest 0xc60, "R_wrist" (fn_9_D904 @0x0000E36C)
+  CSegId mLocatorRElbow;                  // guest 0xc61, "R_elbow" (fn_9_D904 @0x0000E3A0)
+  CSegId mLocatorLWrist;                  // guest 0xc62, "L_wrist" (fn_9_D904 @0x0000E3D4)
+  uchar mGuestC63;                        // guest 0xc63, cleared (fn_9_D904 @0x0000E0F0)
+  uchar mGuestC64;                        // guest 0xc64, cleared (fn_9_D904 @0x0000E150)
+  uchar mGuestC65;                        // guest 0xc65, 0x80 (fn_9_D904 @0x0000E1B0)
+  uchar mGuestC66;                        // guest 0xc66, cleared (fn_9_D904 @0x0000E1E8)
+#else
+  uchar x7c0_[0xc68 - 0x7c0];
+#endif
+};
+CHECK_SIZEOF(CCommandoPirate, 0xc68)
+
+#endif

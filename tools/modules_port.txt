@@ -4,7 +4,7 @@
 # shared entry-point stub and src/MetroidPrime/Enemies/PortCWallCrawler.cpp for a module
 # that has been given a real body.
 WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
-CommandoPirate;src/MetroidPrime/PortModuleStubs.cpp
+CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
 DarkSamus;src/MetroidPrime/PortModuleStubs.cpp
 DigitalGuardian;src/MetroidPrime/PortModuleStubs.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
