@@ -297,6 +297,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1110_(LdrToDamageVulnerability(data.mToeTargetVulnerability))
 , x1188_(LdrToDamageVulnerability(data.mVortexVulnerability))
 , xE00_(actParms) // fn_14_C57C (0xB188)
+, x10CE_(kInvalidUniqueId) // the store at 0xB31C
 , x1100_()
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
@@ -1385,6 +1386,48 @@ void CDigitalGuardian::x3A44_(CStateManager& mgr) {
     if (collider != nullptr) { // the retail's test at 0x3B04
       collider->SetDamageVulnerability(vuln);
     }
+  }
+}
+
+// @ fn_14_143C
+void CDigitalGuardian::x143C_(CStateManager& mgr, const CVector3f& pos,
+                              EScriptObjectState state) {
+  const TUniqueId id = CheckConnectedObject(mgr, kSS_InternalState6, kSM_Follow);
+  CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));
+  if (waypoint != nullptr) { // the TCastToPtr test at 0x14A4
+    waypoint->SetTranslation(pos);
+    SendScriptMsgs(state, mgr, GetUniqueId(), kSM_None);
+  }
+}
+
+// @ fn_14_5470
+void CDigitalGuardian::x5470_(CStateManager& mgr, TUniqueId sender, int knee) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x54B0
+    return;
+  }
+  u16* const armor[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
+  CActor* armour = static_cast< CActor* >(mgr.ObjectById(TUniqueId(*armor[knee])));
+  if (armour == nullptr) { // the retail's test at 0x54D4
+    return;
+  }
+  if (collider->GetHealthInfo()->GetHP() <= 0.f) {
+    // The knee is gone (0x5508): KneeDestroyed reads 0x1284; the IS06/Follow waypoint goes to
+    // the armour and IS07 is sent (fn_14_143C), the armour is deleted and its id cleared.
+    x1284_ = knee;
+    x143C_(mgr, armour->GetTranslation(), kSS_InternalState7); // fn_14_143C
+    mgr.DeleteObjectRequest(armour->GetUniqueId());
+    *armor[x1284_] = kInvalidUniqueId.value; // the sthx at 0x5558 (xFB0_ + 2 * 0x1284)
+    CActor* counter = static_cast< CActor* >(mgr.ObjectById(x10CE_));
+    if (counter != nullptr) { // the retail's test at 0x5568
+      const float hp = counter->GetHealthInfo()->GetHP();
+      counter->HealthInfo()->SetHP(hp - 1.f); // .rodata 0x270
+    }
+  } else {
+    // The armour flashes ("XDMG" from the knee collider, 0x55AC) and the hit sound plays
+    // (sound_KneeArmorHit, data +0x128) once at the collider.
+    armour->AcceptScriptMsg(mgr, CScriptMsg(sender, armour->GetUniqueId(), kSM_Damage));
+    PlayCustomSound(collider->GetTranslation(), CVector3f::Up(), mData.mSoundKneeArmorHit, false);
   }
 }
 

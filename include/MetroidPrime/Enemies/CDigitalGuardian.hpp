@@ -347,10 +347,19 @@ private:
   float x1144_[4];      // 0x1144: the toe targets' health (toeTargetHP; fn_14_24E4, fn_14_5644)
   float x1158_[4];      // 0x1158: the toe targets' hit timers (0; fn_14_24E4, fn_14_5644)
 
+  // 0x10CE: the id fn_14_5910 (the "XALC" case's helper, not ported) looks up; fn_14_5470 takes
+  // one from its health per destroyed knee.
+  TUniqueId x10CE_;
+
   // fn_14_3A44 (0x108 bytes): each knee's vulnerability - open (0x1014) when its flag byte
   // (0x1010 + i) is set and bit 5 of 0x128C is clear, else the ricochet one (0x1044) - and its
   // armour's armoured flag (fn_14_CE94).
   void x3A44_(CStateManager& mgr);
+  // fn_14_143C (0xBC bytes): moves the IS06/Follow waypoint to a position, then sends a state.
+  void x143C_(CStateManager& mgr, const CVector3f& pos, EScriptObjectState state);
+  // fn_14_5470 (0x1D4 bytes): a knee collider hit: the armour flashes, or goes when the knee's
+  // health is gone (KneeDestroyed: 0x1284 = the knee).
+  void x5470_(CStateManager& mgr, TUniqueId sender, int knee);
   // fn_14_4080 (0x274 bytes): the four knee armours, one at each knee locator.
   void x4080_(CStateManager& mgr);
   // fn_14_24E4 (0x94 bytes): the toe targets' reset (health, state, timer), then state 1 each.
