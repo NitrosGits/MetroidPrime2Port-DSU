@@ -89,6 +89,9 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_CD0` | 0x324 | creates the heart stage's beam (rs_new 0x6A8, guest 0xA98) - ported `FireBeam` | [probable] |
 | `fn_16_A64` | 0x26C | aims and updates the beam (CBeamProjectile slots 35 Fire, 33 UpdateFx; emitter 0xA9C) - ported, `UpdateBeam` | [probable] |
 | `fn_16_9C0` | 0xA4 | resets (slot 34 ResetBeam) and deletes the beam - ported, `StopBeam` | [probable] |
+| `fn_16_9BE8` | 0x260 | the portal's effect (a CScriptEffect) is created - ported | [proven] |
+| `fn_16_9E9C` | 0x68 | the CGameSplineDesc from a CMayaSpline (the type 3, the duration 1.0f, no closed loop) | [proven] |
+| `fn_16_1720` | 0x1C8 | the module's own CPhysicsActor subclass - the "Attack Tip" portal actor (a stand-in) | [proven] |
 | `fn_16_1DFC` | 0x24 | resets one tentacle slot (the timer, the state) | [proven] |
 | `fn_16_2F70` | 0x38 | the number of tentacle slots the sub-stage uses (4, 6 or 8) | [proven] |
 | `fn_16_2EE0` | 0x90 | sets the 0x80 flag of the live tentacles' slots | [proven] |
@@ -496,9 +499,8 @@ waits until it is sent Activate too; then HeartStage fires the beam three times 
 new ids) and the heart-exposed time runs out into EndHeartStage (fn_16_71BC, 0x534, a stand-in that
 never ends). 0 caught/reach-stub.
 
-Still stand-ins: WarpAttack fn_16_601C (0x7D0), EndHeartStage fn_16_71BC (0x534), fn_16_8C
-(0x3B0, tentacle/heart hit test - heart damage does not reach the boss), fn_16_51D4 (0x128) and
-fn_16_9BE8 (the portal effect's creation).
+Still stand-ins: EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test -
+heart damage does not reach the boss) and fn_16_51D4 (0x128).
 
 fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
 0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f
@@ -681,16 +683,10 @@ writes the position and the up vector into the joint (0x1A88..0x1ABC) and turns 
 (the joint's id, the joint's +0x2C) along the up vector (the fadds at 0x1B34..0x1B4C and the LookAt
 at 0x1B60); the effect hears "ACTV" (kSM_Activate, 0x41435456, 0x1B84). The stop (case 28) clears
 the flag (0x1980), the position and the up vector (0x1990..0x19C0) and the effect hears "DCTV"
-(kSM_Deactivate, 0x44435456, 0x19F8). The effect's creation (fn_16_9BE8, 0x9BE8, over the slice's
-0x80 line) stays a stand-in, so the joint's id stays invalid and the effect is never found. The
-tail of fn_16_1A50 is still missing: a 3D emitter for the warp sound (the guest 0xC2E) on the
-joint's position (the CAudioSys::C3DEmitterParmData at 0x1BF4 with the max distance 50.0f
-(lbl_16_rodata_3BC) and the distance compensation lbl_16_rodata_39C, and the AddEmitter at
-0x1C3C) - the emitter's area argument is the joint's +0x04, which the port's joint does not
-carry.
+(kSM_Deactivate, 0x44435456, 0x19F8). The effect's creation (fn_16_9BE8) and the tail of
+fn_16_1A50 are ported in slice 7 below.
 
-**fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** is still a stand-in: it is 2000 bytes of asm
-with its own statics (lbl_16_bss_4 with the guard lbl_16_bss_8) and its own body command tables.
+**fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** is ported in slice 7 below.
 
 Runtime (area 11, 2026-10-20, a temporary hook that forces the mode to 2 in the heart's health
 update, reverted before the commit): the FSM's Attack state uses the mode 2 list {2, 3, 1, 0} -
@@ -699,6 +695,68 @@ the run shows the taunt attack's activate, update and deactivate and, with a lon
 warp attack's stand-in as well. **No user event fires in area 11 at all** (not the portal's 27 and
 28 and not any other type), so the two portal functions are not exercised by this scenario. 0
 caught/reach-stub.
+
+### Slice 7: the warp attack, the portal's effect and the warp sound
+
+**fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** - ported. The switch on the message is the
+retail's: 0 activate (0x60D8), 1 update (0x613C), 2 deactivate (0x6720), everything else returns.
+
+| at | what |
+|---|---|
+| 0x6084 | the function's own statics: the portal counter (lbl_16_bss_4, an int) and its initialisation guard (lbl_16_bss_8, a byte); the guard sets the counter to -1 on the first call |
+| 0x60E4 | the script hears IS02 (fn_16_830 with 2) |
+| 0x60F0 | the animation state is ready |
+| 0x60FC | the tentacles take the warp vulnerability (mode 4, fn_16_353C) |
+| 0x6100 | the portal timer (the guest 0xA44) is 0.0f |
+| 0x6120 / 0x612C | the flag byte (the guest 0xA74): the bit 27 (the byte's 0x10) is cleared and the bit 26 (the byte's 0x20) is set |
+| 0x6134 | the portal counter is -1 |
+| 0x6158 | past 4.0f (lbl_16_rodata_38C) the tentacles are immune (fn_16_353C with 0) and lose their materials (fn_16_2E1C with 0) |
+| 0x618C | the portal counter takes the tentacles that are out (fn_16_2F70 - fn_16_2E7C) |
+| 0x61BC | the loop attack (ShouldRetry, pas 9): the body gets CBCLoopAttackCmd(kLAT_One) - the id 7 with the type 1 |
+| 0x6258 | otherwise the flag byte's bit 27 (0x10, the "GenerateEnd" event) has to be set |
+| 0x6270 | the portal timer counts down |
+| 0x62B0 | one portal: the counter is spent, the timer is 0.75f (lbl_16_rodata_3A4) and the portal is made |
+| 0x66D0 | the state is over when the counter is spent and the state has run for more than 5.0f (lbl_16_rodata_3AC) |
+| 0x6740 | the body gets the exit state command (the id 10) |
+| 0x6760 / 0x6774 / 0x677C | the flag byte's bit 26 (0x20) is cleared, the tentacles get their materials back and the animation state is not ready |
+
+The two body-command records are lbl_16_data_3B0 {0, 0, fn_16_5BA8} (the loop attack) and
+lbl_16_data_3BC {0, 0, fn_16_5C04} (the exit state); the retail tells the two apart by the
+address of the record.
+
+**The portal (0x62B0..0x66AC)**: the "Attack Tip" model data is the CAnimRes of the guest 0xC04
+(the ANCS id), 0xC08 (the character index), 0xC0C (the default animation) with the one vector as
+its scale and no loop. The portal's position has two paths: the random one (0x6364) and the ray
+one (0x6458). The player's **morph ball state** (the retail's CPlayer+0x38C, the host's
+CPlayer::mMorphBallState) picks between them: zero gives the random path, anything else the ray
+path. The random path puts the portal at the player's eye position plus the player's transform
+applied to the local vector (range2, 10.0f, range1), with range1 = Random Range(2.0f, 5.0f)
+(lbl_16_rodata_3B0/3AC) and range2 = Random Range(-10.0f, 10.0f) (lbl_16_rodata_3EC/390), and the
+portal looks at the eye position. The ray path drops a ray of 50.0f (lbl_16_rodata_3BC) from the
+player's position plus the up vector and takes the hit point (the look at point stays the
+origin). The portal actor itself (fn_16_1720, 0x1C8: the module's own CPhysicsActor subclass
+with the portal's effect, the warp stab damage and the two warp sounds) is over the slice's 0x80
+line and stays a stand-in, so no portal actor is created.
+
+**fn_16_9BE8 (the portal's effect, 0x9BE8..0x9E48, 0x260)** - ported. The id comes from the state
+manager (0x9C08); the effect is a CScriptEffect (0x2D0 bytes) named "WarpPortalEffect" (the
+string at lbl_16_rodata_41C's 0x68F) with the identity transform, the one vector as the scale,
+the entity info (the area, no connections, active and no editor id), the light parameters
+(CLightParameters(false, 1.0f, kST_Zero, 0.0f, 0.0f, Black, true, kLO_NoShadowCast,
+kLR_FourFrames, the zero vector, 2, 2, false, 0, true)) and the spline (fn_16_9E9C: a default
+CMayaSpline, the type 3 (kST_Bezier), the duration 1.0f and no closed loop).
+
+**fn_16_1A50's tail (0x1BD0..0x1C3C)** - ported: the emitter for the warp sound (the guest 0xC2E)
+at the effect's own position, the max distance 50.0f (lbl_16_rodata_3BC), the distance
+compensation 0.1f (lbl_16_rodata_39C), the flags 1, the max volume 0x7F and the min volume 0; the
+emitter's area is the effect's own area and the retail throws the handle away.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`, a temporary hook that forces the mode to 2 in the heart's health update,
+reverted before the commit): the warp attack runs (its portal block logs the fn_16_1720
+stand-in), **four portal effects are created** (the ids 414, 416, 418 and 420 in area 11 - one
+per tentacle that gets the portal's "EventStart" event) and the run ends on the frame limit with
+0 caught/reach-stub.
 
 ## 5. The port (milestone 1)
 
