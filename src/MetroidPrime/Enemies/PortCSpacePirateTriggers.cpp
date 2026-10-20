@@ -77,6 +77,7 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
 // than 10 s (rodata B58). A charging pirate that is not in that list yet adds its id to it: the
 // asm walk ends at the list's tail sentinel, so "reached the tail" means "not in the list" and
 // pushes (fn_72_AEB8 -> fn_72_AEE0 is a push_back), while a match stops the walk and does not.
+// @ fn_72_ADC0 (0xF8): the AggressionCheck trigger.
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!x8f4_26_nonAggressive) {
