@@ -11,6 +11,8 @@ class CCollisionActorManager;
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 
+#include "Kyoto/Audio/CSfxHandle.hpp"
+
 #include "REL/REL_Setup.h"
 
 // Host copy of the SPLU parameter block (docs/module-analysis/Splitter.md section c). Retail
@@ -194,10 +196,16 @@ private:
 
   // The fields the retail's fn_75_3004 touches.
   void PortUpdateCollision(CStateManager& mgr);
-  uint mSoundHandle = 0;                        // guest 0xF60 (the sound handle, 0x306C)
+  CSfxHandle mSoundHandle;                       // guest 0xF60 (the sound handle, 0x306C)
   TUniqueId mSoundTargetId = kInvalidUniqueId;  // guest 0xF00 (the id it looks up, 0x3078)
   int mCollisionState = 0;                      // guest 0xEE0 (the state, 0x30C4)
   int mPreviousCollisionState = 0;              // guest 0xEE4 (the previous state, 0x315C)
+
+  // The retail's fn_75_2CE0: the head's shield. It applies the state at 0xEE0 to the beam
+  // collision actor (the id at 0xF00): the materials, the damage vulnerability, the two effect
+  // states and the shield's sound emitter (the handle at 0xF60). The flag is the "a shield goes
+  // up" one: it plays the shield-on sound (the sound id at 0x89C).
+  void PortUpdateShield(CStateManager& mgr, bool shieldUp);
 
   // The retail's fn_75_1188 (the head's beam-effect spawner) and the gate it asks first
   // (fn_75_58E8: the chassis must be there and its scan timer must run).

@@ -17,6 +17,8 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 
+#include "Kyoto/Audio/CSfxManager.hpp"
+
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -173,23 +175,112 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 void StandInFn_75_1578() { StandIn("fn_75_1578 (0x218)"); }
 void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
 
-// The module's own calls in the collision update: both are over 0x80, so each stays a named
-// once-logging shell. fn_75_2BE0 returns the neutral value (no object) and fn_75_2CE0 does
-// nothing.
+// The module's own calls in the collision update: fn_75_2BE0 is over 0x80, so it stays a named
+// once-logging shell that returns the neutral value (no object).
 CEntity* PortFn_75_2BE0() {
   StandIn("fn_75_2BE0 (0xE0)");
   return nullptr;
 }
-void PortFn_75_2CE0(CStateManager& mgr, int mode, float value) {
-  StandIn("fn_75_2CE0 (0x324)");
-}
 // The vtable word 0x4C of the object fn_75_2BE0 returns, and the CCollisionActor's virtual at
-// the vtable word 0x38 (its 0x4 field is what the body reads). The port has no names for either
-// DOL virtual yet, so both stay shells; the second one answers the neutral 0.0f.
+// the vtable word 0x38 (its 0x4 field is what the body reads). The port has no name for the
+// first DOL virtual yet, so it stays a shell; the second one is CCollisionActor::HealthInfo()
+// (found while porting fn_75_2CE0, which calls it), but this body still asks the shell and the
+// second one answers the neutral 0.0f.
 void StandInVTable0x4C() { StandIn("the vtable word 0x4C of fn_75_2BE0's result"); }
 float StandInCollisionActorVirtual0x38() {
   StandIn("the CCollisionActor virtual at the vtable word 0x38");
   return 0.f;
+}
+
+// @ fn_75_2CE0
+// The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
+// one: the asm tests its low byte (0x2D0C clrlwi with the word's bit 24 - the byte's 0xFF). With
+// it set the shield-on sound (the sound id at 0x89C) is added (0x2D1C-0x2E44: the volume 0x7F,
+// the area at 0x4, useAcoustics true, looped false) and its handle is dropped - the retail writes
+// it to a stack slot it never reads. Then the tracked emitter (the handle at 0xF60) is removed and
+// cleared (0x2D48-0x2D6C). The beam collision actor (the id at 0xF00) is looked up (0x2D7C
+// ObjectById) and cast (0x2D80); with no actor the body ends (0x2D88). Its health info's health
+// (the float at +0x4, 0x2DA0) is set to the shield's HP (the float at 0x804). The state at 0xEE0
+// (0x2DA8-0x2DC0) then picks one of three:
+//   1 (0x2DC4): the character material (0x21) goes to the collision actor and the material 0x36 to
+//     the head, the light shield's vulnerability (0xD0C) goes to the collision actor, the
+//     "LightShield" effect is on and the "DarkShield" effect is off, and the light shield's sound
+//     (the sound id at 0x894) is added as a looping emitter whose handle goes to 0xF60
+//     (0x2E78-0x2E80).
+//   2 (0x2E88): the same with the material removed from the collision actor, the dark shield's
+//     vulnerability (0xD3C), the effects swapped and the dark shield's sound (the sound id at
+//     0x898).
+//   otherwise (0x2F4C): both materials are removed, the collision actor's vulnerability becomes the
+//     pass-through one (fn_800DBB50) and both effects are off.
+void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp) {
+  if (shieldUp) {
+    // 0x2D1C-0x2E44: the shield-on sound. The retail's emitter position is the vector at 0x54
+    // and its area the word at 0x4; the host's are the actor's translation and its area.
+    CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundShieldOn & 0xFFFF), GetTranslation(),
+                            0x7F, GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
+  }
+  // 0x2D48-0x2D6C: the tracked emitter (the handle at 0xF60) is removed and the handle cleared.
+  if (mSoundHandle) {
+    CSfxManager::RemoveEmitter(mSoundHandle);
+    mSoundHandle.Clear();
+  }
+  // 0x2D6C-0x2D88: the beam collision actor (the id at 0xF00) is looked up and cast; with no
+  // actor the body ends.
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(mSoundTargetId));
+  if (actor == nullptr) {
+    return;
+  }
+  // 0x2D8C-0x2DA0: the collision actor's health info (the vtable word 0x38) and its health (the
+  // float at +0x4) get the shield's HP (the float at 0x804).
+  actor->HealthInfo()->SetHP(mData.mShieldHP);
+  switch (mCollisionState) {
+  case 1: {
+    // 0x2DC4-0x2EA4: the character material (0x21) goes to the collision actor and the material
+    // 0x36 to the head.
+    actor->AddMaterial(kMT_Character, mgr);
+    AddMaterial(kMT_Unknown54, mgr);
+    // 0x2EA8-0x2EB0: the light shield's vulnerability (0xD0C) goes to the collision actor.
+    actor->SetDamageVulnerability(mData.mLightShieldVulnerability);
+    // 0x2EB4-0x2F0C: the "LightShield" effect (rodata 0x10) is on and the "DarkShield" effect
+    // (rodata 0x14) is off.
+    AnimationData()->SetEffectState(rstl::string_l("LightShield"), true, mgr);
+    AnimationData()->SetEffectState(rstl::string_l("DarkShield"), false, mgr);
+    // 0x2F14-0x2F80: the light shield's sound (the sound id at 0x894) is added as a looping
+    // emitter and its handle goes to 0xF60.
+    mSoundHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundLightShield & 0xFFFF),
+                                           GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true,
+                                           true, CSfxManager::kMedPriority);
+    break;
+  }
+  case 2: {
+    // 0x2E88-0x2EA4: the character material (0x21) is removed from the collision actor and the
+    // material 0x36 is added to the head.
+    actor->RemoveMaterial(kMT_Character, mgr);
+    AddMaterial(kMT_Unknown54, mgr);
+    // 0x2EA8-0x2EB0: the dark shield's vulnerability (0xD3C) goes to the collision actor.
+    actor->SetDamageVulnerability(mData.mDarkShieldVulnerability);
+    // 0x2EB4-0x2F0C: the effects are swapped.
+    AnimationData()->SetEffectState(rstl::string_l("LightShield"), false, mgr);
+    AnimationData()->SetEffectState(rstl::string_l("DarkShield"), true, mgr);
+    // 0x2F14-0x2F80: the dark shield's sound (the sound id at 0x898) is added as a looping
+    // emitter and its handle goes to 0xF60.
+    mSoundHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundDarkShield & 0xFFFF),
+                                           GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true,
+                                           true, CSfxManager::kMedPriority);
+    break;
+  }
+  default: {
+    // 0x2F4C-0x2F6C: both materials are removed.
+    actor->RemoveMaterial(kMT_Character, mgr);
+    RemoveMaterial(kMT_Unknown54, mgr);
+    // 0x2F6C-0x2F78: the collision actor's vulnerability becomes the pass-through one.
+    actor->SetDamageVulnerability(CDamageVulnerability::PassThroughVulnerabilty());
+    // 0x2F7C-0x2FD8: both effects are off.
+    AnimationData()->SetEffectState(rstl::string_l("LightShield"), false, mgr);
+    AnimationData()->SetEffectState(rstl::string_l("DarkShield"), false, mgr);
+    break;
+  }
+  }
 }
 
 // fn_75_3004 (0x1A4) - the command module's collision update. The body: the module's own call
@@ -225,13 +316,15 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
       if (StandInCollisionActorVirtual0x38() <= 0.f) {
         mCollisionState = 0;
         mCountdownTimerA = mData.mResetShieldTime;
-        PortFn_75_2CE0(mgr, 0, mData.mResetShieldTime);
+        // 0x3124-0x3130: the retail calls fn_75_2CE0 with the flag clear (the shield goes down).
+        PortUpdateShield(mgr, false);
       }
     }
   } else if ((mAutoDestructFlags & 0x8) != 0 && mCountdownTimerA <= 0.f) {
     mCollisionState = mPreviousCollisionState == 1 ? 2 : 1;
     mPreviousCollisionState = mCollisionState;
-    PortFn_75_2CE0(mgr, 1, static_cast< float >(mCollisionState));
+    // 0x317C-0x3188: the retail calls fn_75_2CE0 with the flag set (a shield goes up).
+    PortUpdateShield(mgr, true);
   }
 }
 
@@ -497,7 +590,7 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
 // collision actor of the manager is walked (0x35C4-0x3644): the description's id (its 0x3C) is
 // looked up (0x35E8 ObjectById) and cast to a CCollisionActor (0x35EC); when the description's
 // name is "Beam_LCTR" (0x3614, the retail's string compare) the id goes to 0xF00 (0x3630).
-// Finally the module's own call runs (0x3654 fn_75_2CE0, over 0x80).
+// Finally the module's own call runs (0x3654 fn_75_2CE0, the shield, ported).
 void CSplitterCommandModule::PortCreateCollisionActorManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(1);
@@ -519,7 +612,8 @@ void CSplitterCommandModule::PortCreateCollisionActorManager(CStateManager& mgr)
       mSoundTargetId = id;
     }
   }
-  PortFn_75_2CE0(mgr, 0, 0.f);
+  // 0x3648-0x3654: the retail calls fn_75_2CE0 with the flag clear (no shield goes up).
+  PortUpdateShield(mgr, false);
 }
 
 // @ fn_75_3A8C
