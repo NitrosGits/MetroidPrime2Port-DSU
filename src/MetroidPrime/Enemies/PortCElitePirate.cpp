@@ -762,10 +762,10 @@ void CElitePirate::FireRocket(CStateManager& mgr) {
           CVector3f(d.GetY() * 1.2f * s, -d.GetX() * 1.2f * s, 0.f),
           CVector3f(d.GetY() * 3.2f * s, -d.GetX() * 3.2f * s, 0.f),
       };
-      // fn_15_728C indexes the offsets with `iVar7 = 0xcf8 - 1` and does not clamp. The volley is
-      // armed at four - SpreadShot (fn_15_4D18) stores 0xcfc = 4, ProjectileAttack fires only while
-      // 0xcf8 < 0xcfc - and the retail table is four triplets, so the port keeps the index inside
-      // its own array; 0..3 is unchanged behaviour.
+      // port limit: fn_15_728C indexes the offsets with `iVar7 = 0xcf8 - 1` and does not clamp -
+      // the retail would read past its four-entry rodata table. The volley is armed at four
+      // (SpreadShot fn_15_4D18 stores 0xcfc = 4, ProjectileAttack fires only while 0xcf8 < 0xcfc),
+      // so 0..3 is unchanged behaviour and the clamp only keeps the port's own array in range.
       const int shot = mRocketsFired < 1 ? 0 : mRocketsFired - 1;
       const int index = shot > 3 ? 3 : shot;
       CVector3f target = player->GetAimPosition(mgr, 0.f) + offsets[index];
@@ -1054,7 +1054,13 @@ void CElitePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   }
 }
 
+// @ fn_15_2E04
 // Part of fn_15_7BFC (events 17/18): both arms' colliders grow or lose their touch margin.
+// The retail's fn_15_2E04 walks one collider list - the count at +0 and the u16 ids after it
+// (0x2E50 lhz, 0x2E60 ObjectById, 0x2E64 the CCollisionActor cast) - and writes the three bounds
+// floats to the actor's 0x35c/0x360/0x364 (0x2E70, 0x2E74, 0x2E78; the host's
+// mExtendedTouchBounds, see CCollisionActor.hpp). The retail calls it with this+0x9fc (the right
+// arm) and this+0xa10 (the left); the port does both lists in one call.
 void CElitePirate::SetArmTouchBounds(CStateManager& mgr, const CVector3f& bounds) {
   for (int i = 0; i < mRightArmColliders.size(); ++i) {
     if (CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(mRightArmColliders[i]))) {
