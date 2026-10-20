@@ -986,3 +986,6 @@ flags, modes, timers and ids forced, the hooks and their once-logs reverted afte
   plane (fn_16_1C5C, 0x5484) and the mask (fn_16_1CF4, 0x54C4) of each of the eight tentacle
   passes before RenderModelMultipleTimesWithFlags (0x54E4), exactly as the retail does. An entry
   once-log proved both run in area 11.
+* fn_16_4E44 (the effect's particle system, called from fn_16_4C0C) and fn_16_3AA8 (the
+  tentacle's collision actor) run in area 11: the first probe's once-log had sat after the
+  return statement, and with it before the return both logged.
