@@ -996,6 +996,7 @@ void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, floa
 // puddle mode, drop the target/orbit materials, explode with the death effect and play the death
 // sound; the corporeal form and the form changes burn away through CPatterned::Dead (this module
 // has no burning-flag skip and no hit-cooldown store, unlike the Ing REL's fn_29_5CB0).
+// @ fn_30_7390
 void CIngBoostBallGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Dead");

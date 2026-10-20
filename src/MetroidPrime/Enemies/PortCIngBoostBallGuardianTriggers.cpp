@@ -223,6 +223,7 @@ void CIngBoostBallGuardian::SetBoostPuddleMode(bool enter) {
 // fn_30_47E8 (this module).
 // Ing body fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
 // and the contact damage is off cooldown, the player takes the Ing's contact damage.
+// @ fn_30_47E8
 void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
   const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.ObjectById(sender));
   if (actor == nullptr) {
