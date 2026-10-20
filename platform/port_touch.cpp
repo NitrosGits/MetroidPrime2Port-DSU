@@ -538,9 +538,18 @@ void AddAim(float dxDp, float dyDp) {
 
 void SetAimDown(bool down) { PortMouse::SetTouchAimDown(down); }
 
+// MP1's TouchSpringSwipe: the swipe both finishes the aim flick and asks CMorphBall for a Spring
+// Ball, which it does only on the ground in the ball with Spring Ball on, so elsewhere it expires.
+std::atomic< uint64_t > sSpringRequestUntilNs{0};
+constexpr uint64_t kSpringRequestNs = 120'000'000;
+
 void SpringSwipe() {
-  if (SpringSwipeEnabled()) PortMouse::SpringSwipe();
+  if (!SpringSwipeEnabled()) return;
+  PortMouse::SpringSwipe();
+  sSpringRequestUntilNs.store(SDL_GetTicksNS() + kSpringRequestNs);
 }
+
+bool SpringBallRequested() { return SDL_GetTicksNS() < sSpringRequestUntilNs.load(); }
 
 bool AimEnabled() { return Read(&Settings::aim); }
 
