@@ -29,7 +29,7 @@ void PortSandBossStandIn(const char* what);
 CSandBoss* CastSandBoss(CEntity* entity);
 const CSandBoss* CastSandBoss(const CEntity* entity);
 
-// fn_55_107B0 (ported, not exercised yet)
+// @ fn_55_107B0
 // The charge beam: a light plasma projectile with a zeroed damage info (fn_55_2750 applies the
 // double/triple-charge damage itself), no weapon assets, a 1-second damage duration and the plane
 // its own ray check clips to (fn_55_1027C).
@@ -46,7 +46,7 @@ SandBossChargeBeam::SandBossChargeBeam(const TToken< CWeaponDescription >& descr
 
 SandBossChargeBeam::~SandBossChargeBeam() {} // fn_55_108E4 / fn_55_10C18
 
-// fn_55_1027C (ported, not exercised yet)
+// @ fn_55_1027C
 // The beam does not raycast the world: it clips its segment against the plane stored at 0x6A8 and
 // then against the player (CGameProjectile::CanCollideWith), keeping whichever hit is nearer. A
 // player hit touches the player and records the actor id in idOut and in the projectile's
@@ -184,7 +184,7 @@ void CSandBoss::RotateHelper25D0(CStateManager&, float) { // fn_55_25D0
   PortSandBossStandIn("CSandBoss::RotateHelper25D0 (fn_55_25D0)");
 }
 
-// fn_55_26C0 (ported, not exercised yet)
+// @ fn_55_26C0
 // How many of the listed charge beams are still live (retail: the object still exists, its plasma
 // projectile has not been reset and it is not releasing). DoubleCharge starts a second volley while
 // fewer than two are live, TripleCharge a third while fewer than three are.
@@ -281,7 +281,7 @@ void CSandBoss::UpdateChargeBeams(CStateManager& mgr, float dt) {
   }
 }
 
-// fn_55_2CA4 (ported, not exercised yet)
+// @ fn_55_2CA4
 // Releases every listed beam: each plasma projectile stops expanding and fades out (ResetBeam with
 // fullReset false, so the actor stays until the effect finishes).
 void CSandBoss::ResetChargeBeams(CStateManager& mgr) {
@@ -293,7 +293,7 @@ void CSandBoss::ResetChargeBeams(CStateManager& mgr) {
   }
 }
 
-// fn_55_2D40 (ported, not exercised yet)
+// @ fn_55_2D40
 // Fires one charge beam along start..end: beam info from the loader's chargeBeamInfo, identity then
 // a LookAt transform, a looping emitter on the beam, and {beam, start, end, sfx} appended to the
 // list (three at most).
@@ -321,7 +321,7 @@ void CSandBoss::CreateChargeBeam(CStateManager& mgr, const CVector3f& start, con
   mChargeBeams.push_back(entry); // 0xE94
 }
 
-// fn_55_311C (ported, not exercised yet)
+// @ fn_55_311C
 // Starts a charge-beam volley: the script effect moves to the volley's centre, receives Activate,
 // and the beam grows from nothing over 0.6 s.
 void CSandBoss::StartChargeBeamGrow(CStateManager& mgr, const CVector3f& position) {
@@ -335,7 +335,7 @@ void CSandBoss::StartChargeBeamGrow(CStateManager& mgr, const CVector3f& positio
   mChargeBeamPhaseTimer = 0.6f; // 0xF14
 }
 
-// fn_55_31E8 (ported, not exercised yet)
+// @ fn_55_31E8
 // Ends a charge volley: every attached sibling is told to leave its loop attack (ExitState, its
 // animation state marked over), the beams are released, and a running grow/hold phase turns into the
 // shrink phase over the beam's shutdown time.
@@ -354,7 +354,7 @@ void CSandBoss::EndChargeBeamVolley(CStateManager& mgr) {
   }
 }
 
-// fn_55_3324 (ported, not exercised yet)
+// @ fn_55_3324
 // Retargets a running volley: once the retarget timer runs out, either wait out the rest of the
 // state (interval + variance left) or flip the sweep direction with the loader's chance and wait a
 // new interval plus a random variance. The timer only runs while beams exist.
@@ -379,7 +379,7 @@ void CSandBoss::UpdateChargeBeamRetarget(CStateManager& mgr, float dt,
       data.changeDirectionInterval + mgr.Random()->Range(0.f, data.changeDirectionVariance);
 }
 
-// fn_55_3434 (ported, not exercised yet)
+// @ fn_55_3434
 // Moves the three triple-charge beam ends: the sweep angle advances, the radius oscillates between
 // the triple charge's inner and outer radius, and each beam points along the bisector of two worms'
 // facing axes (their transform's local Y column).
@@ -415,7 +415,7 @@ void CSandBoss::UpdateTripleChargeSweep(CStateManager& mgr, float dt) {
   }
 }
 
-// fn_55_37F4 (ported, not exercised yet)
+// @ fn_55_37F4
 // The double charge's version: the sweep angle uses the double charge's rate and radii, and the two
 // beams point along the sum of the two worms' facing axes and its horizontal mirror.
 void CSandBoss::UpdateDoubleChargeSweep(CStateManager& mgr, float dt) {
@@ -452,7 +452,7 @@ void CSandBoss::UpdateDoubleChargeSweep(CStateManager& mgr, float dt) {
   mChargeBeams[1].mEnd = bossPos + radius * dir1; // 0xEC8
 }
 
-// fn_55_58B4 (ported, not exercised yet)
+// @ fn_55_58B4
 // The siblings currently attached to the sphere, in list order; the charge volleys need exactly
 // three (triple) or two (double) of them.
 int CSandBoss::CollectAttachedSiblings(CStateManager& mgr, rstl::vector< TUniqueId >& ids) const {
@@ -466,7 +466,7 @@ int CSandBoss::CollectAttachedSiblings(CStateManager& mgr, rstl::vector< TUnique
   return ids.size();
 }
 
-// fn_55_3ACC (ported, not exercised yet)
+// @ fn_55_3ACC
 // Triple charge volley: every listed charge beam is released first; then, only with all three worms
 // attached to the sphere, three beams start at the centroid of the worms' mouth locators and end
 // innerRadius from this worm along the bisectors of each neighbouring pair of worms' facings (the
@@ -504,7 +504,7 @@ void CSandBoss::StartTripleChargeBeam(CStateManager& mgr, const rstl::string& lo
   }
 }
 
-// fn_55_3F44 (ported, not exercised yet)
+// @ fn_55_3F44
 // Double charge volley: same shape with two worms -- two beams from the midpoint of the two mouths,
 // ending innerRadius from this worm along the worms' summed facing and its horizontal mirror, with
 // the double charge's beam sound.
@@ -541,7 +541,7 @@ void CSandBoss::StartDoubleChargeBeam(CStateManager& mgr, const rstl::string& lo
   }
 }
 
-// fn_55_42A8 (ported, not exercised yet)
+// @ fn_55_42A8
 // Picks the worm that should fire the dark beam and returns its uid (kInvalidUniqueId for none).
 // With two attached siblings the pick only happens once this worm's doubleCharge cooldown field
 // matches mChargeBeamCooldown (0x898 vs 0xF44), with three it is tripleCharge's (0x8E0); any other

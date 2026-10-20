@@ -723,7 +723,7 @@ bool CSandBoss::ProbeDarkBeam(CStateManager& mgr) {
   return mDarkBeamResult;
 }
 
-// fn_55_8D24 (ported, not exercised yet)
+// @ fn_55_8D24
 bool CSandBoss::ProbeTripleCharge(CStateManager& mgr) {
   mProbingTripleCharge = true;
   mStateMachine->Update(mgr, *this, 0.f);
@@ -731,7 +731,7 @@ bool CSandBoss::ProbeTripleCharge(CStateManager& mgr) {
   return mTripleChargeResult;
 }
 
-// fn_55_8D94 (ported, not exercised yet)
+// @ fn_55_8D94
 bool CSandBoss::ProbeDoubleCharge(CStateManager& mgr) {
   if (mSyncAttacksAllowed) {
     mProbingDoubleCharge = true;

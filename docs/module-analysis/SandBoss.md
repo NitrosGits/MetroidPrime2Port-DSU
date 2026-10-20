@@ -88,7 +88,10 @@ GetSortingBounds CF8C, DoUserAnimEvent D384, GetScannableObjectInfo CDB0, TakeDa
 IsListening 8, Listen B4, GetOrigin BC, RenderSystemsToBeDrawnLast D304, GetModelAlphau8 5C,
 ProjectileInfo CDF0, GetSearchPath 64, GetPointSearchPath 6C, SetupStateMachine CAA4, GetRagDoll 74,
 GetAttackTarget 7C, IsOnGround 8C, GetGravityConstant 98, IsScanVisorSelfRender 0,
-GetScanVisorRenderBounds CC84, ScanVisorRender CB30, GetDeathExplosionParticle A4.
+GetScanVisorRenderBounds CC84, ScanVisorRender CB30, GetDeathExplosionParticle 0x124. Slot numbers
+now come from `lbl_55_data_760` itself (rel.data 0x81012AE8, 82 words): **0xa4 is `TakeDamage` (4C)**,
+whose body only sets the 0x448 hit-flash timer, and 7E60/8008 call it with unused arguments;
+0x124 is the `GetDeathExplosionParticle` getter (`return this + 0x754`).
 
 Strings [proven]: locators `Head_1`, `Spine_6`..`Spine_1`, `Skeleton_Root` (`lbl_55_rodata_48`, eight
 entries). Effect names `StampedeSandFountainFx`, `StampedeArmorExplosionFx`, `ArmorExplosionFx`. Boss
@@ -238,25 +241,25 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 2498 | CSandBoss::RotateHelper2498 | [stand-in] log-once |
 | 254C | CSandBoss::RotateHelper254C | [stand-in] log-once |
 | 25D0 | CSandBoss::RotateHelper25D0 | [stand-in] log-once |
-| 26C0 | CSandBoss::CountActiveChargeBeams (returns the count) | [ported] host body, not exercised yet |
-| 2750 | CSandBoss::UpdateChargeBeams | [ported] run-exercised (empty list) |
-| 2CA4 | CSandBoss::ResetChargeBeams | [ported] host body, not exercised yet |
-| 2D40 | CSandBoss::CreateChargeBeam (start, end, sfx, charged) | [ported] host body, not exercised yet |
-| 311C | CSandBoss::StartChargeBeamGrow | [ported] host body, not exercised yet |
-| 31E8 | CSandBoss::EndChargeBeamVolley | [ported] host body, not exercised yet |
-| 3324 | CSandBoss::UpdateChargeBeamRetarget | [ported] host body, not exercised yet |
-| 3434 | CSandBoss::UpdateTripleChargeSweep | [ported] host body, not exercised yet |
-| 37F4 | CSandBoss::UpdateDoubleChargeSweep | [ported] host body, not exercised yet |
-| 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
-| 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [ported] host body, not exercised yet |
-| 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [ported] host body, not exercised yet |
+| 26C0 | CSandBoss::CountActiveChargeBeams (returns the count) | [proven] host body |
+| 2750 | CSandBoss::UpdateChargeBeams | [proven] host body (volleys) |
+| 2CA4 | CSandBoss::ResetChargeBeams | [proven] host body |
+| 2D40 | CSandBoss::CreateChargeBeam (start, end, sfx, charged) | [proven] host body |
+| 311C | CSandBoss::StartChargeBeamGrow | [proven] host body |
+| 31E8 | CSandBoss::EndChargeBeamVolley | [proven] host body |
+| 3324 | CSandBoss::UpdateChargeBeamRetarget | [proven] host body |
+| 3434 | CSandBoss::UpdateTripleChargeSweep | [proven] host body |
+| 37F4 | CSandBoss::UpdateDoubleChargeSweep | [proven] host body |
+| 3ACC | CSandBoss::StartTripleChargeBeam (mgr, locator) | [proven] host body |
+| 3F44 | CSandBoss::StartDoubleChargeBeam (mgr, locator) | [proven] host body |
+| 42A8 | CSandBoss::ShouldDarkBeamAttackCheck (returns the picked uid) | [proven] host body |
 | 44CC | CSandBoss::FireDarkBeam (mgr, dt) | [proven] host body |
 | 4C60 | CSandBoss::HandleScreenShake | [stand-in] log-once |
 | 51BC | CSandBoss::DestroySphereHelper | [ported] host body, not exercised yet |
 | 528C | CSandBoss::HandleGroundImpact | [stand-in] log-once |
 | 560C | CSandBoss::CrackSphere | [ported] host body, not exercised yet |
 | 595C | CSandBoss::CountAttachedSiblings | [proven] host body |
-| 58B4 | CSandBoss::CollectAttachedSiblings (attached ids) | [ported] host body, not exercised yet |
+| 58B4 | CSandBoss::CollectAttachedSiblings (attached ids) | [proven] host body |
 | 59E4 | CSandBoss::NoSiblingHasSphereLocked | [proven] host body |
 | 5A84 | CSandBoss::IsAttachedLeader | [proven] host body |
 | 5B38 | CSandBoss::IsBallInRange (const CPlayer&) | [ported] host body, not exercised yet |
@@ -289,7 +292,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 88D0 | CSandBoss::RenderSphere | [proven] host body |
 | 89E8 | CSandBoss::RenderWithArmor | [proven] host body |
 | 8A8C | CSandBoss::RenderArmor | [proven] host body |
-| 8C88 | CSandBoss::CheckBodyStateForDarkBeam | [ported] host body, not exercised yet |
+| 8C88 | CSandBoss::CheckBodyStateForDarkBeam | [proven] host body |
 | 8CB4 | CSandBoss::ProbeDarkBeam | [proven] host body |
 | 8D24 | CSandBoss::ProbeTripleCharge | [proven] host body |
 | 8D94 | CSandBoss::ProbeDoubleCharge | [proven] host body |
@@ -316,14 +319,14 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 9600 | CSandBoss::SetSuckAirArmor | [ported] host body, not exercised yet |
 | 96B0 | CSandBoss::SetAttachedArmor | [proven] host body |
 | 974C | CSandBoss::SetStampedeArmor | [proven] host body |
-| 97DC | CSandBoss::SetDoubleChargeArmor | [ported] host body, not exercised yet |
-| 986C | CSandBoss::SetTripleChargeArmor | [ported] host body, not exercised yet |
+| 97DC | CSandBoss::SetDoubleChargeArmor | [proven] host body |
+| 986C | CSandBoss::SetTripleChargeArmor | [proven] host body |
 | 98FC | CSandBoss::Stampede | [proven] host body |
 | 9BB8 | CSandBoss::SeekStampedePoint | [proven] host body |
 | 9E3C | CSandBoss::SelectStampedePoint | [proven] host body |
 | A170 | CSandBoss::SnapJaws | [proven] host body |
-| A360 | CSandBoss::TripleCharge | [ported] host body, not exercised yet |
-| A6CC | CSandBoss::DoubleCharge | [ported] host body, not exercised yet |
+| A360 | CSandBoss::TripleCharge | [proven] host body |
+| A6CC | CSandBoss::DoubleCharge | [proven] host body |
 | A9DC | CSandBoss::RepeaterAttack | [proven] host body |
 | AC68 | CSandBoss::DarkBeamAttack | [proven] host body |
 | AED8 | CSandBoss::SpitOutBall | [ported] host body, not exercised yet |
@@ -378,8 +381,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | D8BC | CSandBoss::AcceptScriptMsg | [proven] host body |
 | DB60 | CSandBoss::~CSandBoss | [proven] host body |
 | E170 | CSandBoss::CSandBoss | [proven] host body |
-| 1027C | SandBossChargeBeam::RayCollisionCheckWithWorld (plane + player clip) | [ported] host body, not exercised yet |
-| 107B0 | SandBossChargeBeam::SandBossChargeBeam | [ported] host body, not exercised yet |
+| 1027C | SandBossChargeBeam::RayCollisionCheckWithWorld (plane + player clip) | [proven] host body |
+| 107B0 | SandBossChargeBeam::SandBossChargeBeam | [proven] host body |
 | 108E4 / 10C18 | SandBossChargeBeam::~SandBossChargeBeam | [stand-in] empty, base dtor |
 | 10CB4 | CSandBoss::SortStampedePoints | [proven] host body |
 | 11184 | static initialiser of the FSM tables | [proven] host static tables (PortCSandBoss.cpp) |
@@ -538,6 +541,37 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   never reach their 2/3-sibling conditions. Next: add the per-worm `mData.commandIndex`, `mAttachedToSphere`
   and `mWaitMode` to that tick to see why the other two worms never finish the stampede cycle, then a probe
   that attaches all three to exercise the charge volleys (A360 A6CC 3ACC 3F44 3434 37F4 3324 31E8 26C0).
+- Slice 12 (2026-10-20, run sbY, `MP2_SB_DUMP=1 MP2_SB_HP=1 MP2_SB_TRIG=1 MP2_SB_ROUND=2`, FRAMES 6000,
+  exit 0, 0 caught, 0 reach-stub): **why only one worm ever attaches.** The new per-worm `[sbdump]` tick
+  (uid, `mData.commandIndex`, `mAttachedToSphere`, `mSphereLocked`, `mWaitMode`, `mRound`,
+  `mUnderGround`, `mStampedeHP`, state) shows the three worms as cmd 0/1/2 (uids 0183/01da/0169) and
+  only cmd 0 leaves `UnderGround`: `CanStartNewRound` (CA1C, `commandIndex <= mRound`) gates the top
+  machine and `mRound` only moves when a sphere is destroyed. Forcing `mRound` to the knob's value
+  while fewer than three are attached lets all three run the stampede cycle, and with
+  `MP2_SB_ROUND=2` all three attach (`sib=3`). The triple-charge volley then runs end to end:
+  `TripleCharge` (A360) -> `StartTripleChargeBeam` (3ACC) -> `CreateChargeBeam` (2D40, SandBossChargeBeam
+  107B0) -> `UpdateTripleChargeSweep` (3434) / `UpdateChargeBeamRetarget` (3324) -> `EndChargeBeamVolley`
+  (31E8) with `26C0`/`2CA4`/`311C`; `SetTripleChargeArmor` (986C) runs on the way in and the charge
+  beam's own `RayCollisionCheckWithWorld` (1027C) runs while the beams sweep.
+- Slice 13 (2026-10-20, run sbAd, `MP2_SB_ROUND=1 MP2_SB_FAR=2 MP2_SB_DBL=1`, FRAMES 4000, exit 0,
+  0 caught, 0 reach-stub): with `MP2_SB_ROUND=1` only cmd 0/1 start, so exactly two worms attach and
+  the double charge fires: `DoubleCharge` (A6CC) -> `StartDoubleChargeBeam` (3F44) ->
+  `UpdateDoubleChargeSweep` (37F4) -> ... -> 31E8, with `SetDoubleChargeArmor` (97DC). The `[sbdbl]`
+  log inside `ShouldDoubleCharge` on the leader prints every gate: `count=2 lead=1 timer<0 sync=1 cd=0
+  dotSelf=39.5 dotSib=39.5`. `MP2_SB_FAR=1` (player in front of the leader only) leaves `dotSib` at
+  -39.5, so the trigger needs **both** attached worms to face the player; `MP2_SB_FAR=2` parks the
+  player along the sum of the attached worms' `kDY` at `2*mMaxAttackRange + 5` (outside the SnapJaws
+  band, so it does not hijack the transition order). After a volley `mChargeBeamCooldown` is 1 (the
+  loader's `unknown_0x8d4f3b88`). Newly `// @` over slices 12/13 (21): 26C0 2CA4 2D40 311C 31E8 3324
+  3434 37F4 3ACC 3F44 42A8 58B4 8C88 8D24 8D94 97DC 986C 1027C 107B0 A360 A6CC.
+- Probe scripts (local only): `/tmp/opencode/sb4_run.sh` adds `MP2_SB_DUMP` (per-worm tick),
+  `MP2_SB_ROUND=<0..2>` (forces `mRound`, so more worms pass `CanStartNewRound`), `MP2_SB_FAR=1|2`
+  (parks the player in front of the leader / along the worms' summed `kDY`); `/tmp/opencode/sb5_run.sh`
+  adds `MP2_SB_DBL` (`[sbdbl]` gate log in `ShouldDoubleCharge`).
+- The attack submachine is now fully exercised except the Damaged branch: `SnapJaws` (A170), `RepeaterAttack`
+  (A9DC), `DarkBeamAttack` (AC68), `TripleCharge` (A360) and `DoubleCharge` (A6CC) have all run; only
+  `SuckAir`/`SuckBall`/`BallInMouth` (B718/B658/B544) need `HeadArmorDestroyed` (`mHeadArmorHP <= 0`,
+  0xF2C) while attached, which a probe can force the way `MP2_SB_HP` forces 0xF24.
 - `GetName()` on the FSM2 machine is useless as a state tick: the three top-level states are all literally
   named `UnderGround`. Read the `[sbtrace]` order instead.
 

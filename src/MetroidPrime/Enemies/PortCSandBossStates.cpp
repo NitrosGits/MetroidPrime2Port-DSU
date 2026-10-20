@@ -633,7 +633,7 @@ void CSandBoss::RepeaterAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_A6CC (ported, not exercised yet)
+// @ fn_55_A6CC
 // Double charge state: start opens the mouth loop attack, flags the probe result, seeds the sweep and
 // retarget timers and the turn speed; update keeps the loop attack commanded and, once the body is
 // in it and this worm leads, either ends the volley (state time over duration, or fewer than two
@@ -680,7 +680,7 @@ void CSandBoss::DoubleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_A360 (ported, not exercised yet)
+// @ fn_55_A360
 // Triple charge state: the same shape with the triple charge's durations, radii, turn speed and
 // loader data; three beams is the full set, so the volley ends as soon as fewer than three live.
 void CSandBoss::TripleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -876,7 +876,7 @@ void CSandBoss::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // The armour setters swap the collision actors' damage vulnerability, the per-locator armour state
 // (1 stampede set, 2 attached set) and the response types, then reset the hit colour.
-// fn_55_986C (ported, not exercised yet)
+// @ fn_55_986C
 void CSandBoss::SetTripleChargeArmor(CStateManager& mgr, float) {
   for (int i = 0; i < 8; ++i) {
     mArmorState[i] = 2; // 0x1458..0x1474
@@ -887,7 +887,7 @@ void CSandBoss::SetTripleChargeArmor(CStateManager& mgr, float) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-// fn_55_97DC (ported, not exercised yet)
+// @ fn_55_97DC
 void CSandBoss::SetDoubleChargeArmor(CStateManager& mgr, float) {
   for (int i = 0; i < 8; ++i) {
     mArmorState[i] = 2; // 0x1458..0x1474
@@ -1101,7 +1101,7 @@ void CSandBoss::SnapJawsCollisionSetup(CStateManager& mgr, const CVector3f& boun
   }
 }
 
-// fn_55_8C88 (ported, not exercised yet)
+// @ fn_55_8C88
 // A worm may be picked for the dark beam only while it has no dark-beam answer yet and its body is
 // walking (retail's body state id 5 = pas::kAS_Locomotion); fn_55_42A8 asks this when it scores the
 // attached siblings.
