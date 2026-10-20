@@ -45,6 +45,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CIngExitHostEffect.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
@@ -86,35 +87,103 @@ void CIngBoostBallGuardian::WaitForFSMTransition(CStateManager&, EStateMsg msg, 
   }
 }
 
-// fn_30_B478 (this module).
-// The Ing's fn_29_9D68. The exit host: the Ing it leaves behind is a swarm. Its Activate swaps the
-// possessed-mold billboard for the exit-host effect (one rs_new of 0x5e8, the class's only
-// allocation), Update rides that effect until it reports it has arrived, and Deactivate drops the
-// Ing back onto the mesh as an ing spot wherever SetExitHostDest pointed. Retail's Activate adds
-// kMT_Target (0x28), Deactivate adds back 0x21/0x3b/0x29.
-//
-// NOT PORTED YET: this module's own copy of the exit-host body (the module's own equivalent of the
-// Ing's fn_29_9D68) and the exit-host class are not part of this branch - the module's exit host is
-// a later slice. The Ing body's behaviour is in the Ing branch
-// (wt-mp2-ing/src/MetroidPrime/Enemies/PortCIng.cpp), so this body only logs the state.
-void CIngBoostBallGuardian::ExitHost(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// @ fn_30_B478 (the Ing's fn_29_9D68). The exit host: the Ing it leaves behind is a swarm. Its
+// Activate swaps the possessed-mold billboard (0xFDA) and any earlier swarm (0x1092) for the
+// exit-host effect (one rs_new of 0x5e8, the Ing REL's fn_29_1105C), Update rides that effect until
+// it reports it has arrived (its byte 0x5e2 bit 7), and Deactivate drops the Ing back onto the mesh
+// as an ing spot wherever SetExitHostDest pointed (0x10F8). Unlike the Ing's, this module's
+// Deactivate arms no grapple cooldown (the module has no grapple block).
+void CIngBoostBallGuardian::ExitHost(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("ExitHost");
+    AddMaterial(kMT_Target, mgr);  // 0x28
+    mForm = kForm_ControllingHost; // 0xAE4 = 1
+    if (mPossessedEffectId != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mPossessedEffectId); // 0xFDA
+    }
+    if (mD76Id != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mD76Id); // 0x1092
+    }
+    // Retail allocates the new id before the rs_new, so a failed build still consumes one.
+    mD76Id = mgr.AllocateUniqueId(); // 0x1092
+    // The swarm block's words: 0x804 sRSC, 0x808 pART 3DA2, 0x80C/0x814/0x818/0x81C the four
+    // floats, 0x820 the swarm-move sound; the destination is 0x10F8, the target 0x1088.
+    CIngExitHostEffect* effect = rs_new CIngExitHostEffect(
+        mD76Id,
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        GetTransform(), mTargetPos, GetModelData()->GetScale(), mData.mSwarm.mSRSC,
+        mData.mSwarm.mPART3DA2, mData.mSwarm.mUnknown2327, mData.mSwarm.mUnknownCB39, mTargetId,
+        mData.mSwarm.mUnknown587C, mData.mSwarm.mUnknown0BD7, mData.mSwarm.mSoundSwarmMove);
+    if (effect == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    } else {
+      mgr.AddObject(*effect);
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    }
+    // One emitter, chosen by TargetInSafeZone (fn_30_C14C, given a zeroed CTriggerData): 0x82C
+    // in a safe zone, else 0x828.
+    const ushort sound = TargetInSafeZone(mgr, CTriggerData(0.f))
+                             ? mData.mSwarm.mSoundExitHostSafeZone
+                             : mData.mSwarm.mSoundExitHost;
+    CSfxManager::AddEmitter(sound, GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
+                            CSfxManager::kMedPriority);
+    if (DebugBg()) {
+      fprintf(stderr, "[ibbg] %04x exit host: swarm %04x, sound %04x\n", GetUniqueId().Value(),
+              mD76Id.Value(), sound);
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    // Retail looks the object up by id and reads its byte 0x5e2 with no type test; the cast is
+    // only to reach IsDone().
+    const CIngExitHostEffect* effect =
+        static_cast< const CIngExitHostEffect* >(mgr.GetObjectById(mD76Id));
+    if (effect == nullptr || effect->IsDone()) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    } else {
+      SetTranslation(effect->GetTranslation());
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    SetTranslation(mTargetPos); // 0x10F8
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, mTargetPos, 1.f); // rodata_64
+    AddMaterial(kMT_Character, kMT_Solid, kMT_Orbit, mgr);            // 0x21/0x3b/0x29
+    SpawnExitHostSmoke(mgr);                                          // fn_30_38E0
+    mForm = kForm_IngSpot;                                            // 0xAE4 = 3
+    if (DebugBg()) {
+      fprintf(stderr, "[ibbg] %04x exit host: left at (%.1f, %.1f, %.1f)\n", GetUniqueId().Value(),
+              mTargetPos.GetX(), mTargetPos.GetY(), mTargetPos.GetZ());
+    }
+    break;
+  default:
+    break;
   }
 }
 
-// The Ing's fn_29_1F1C (the 2026-10-20 run, /tmp/opencode/ing_run5.log: "state ExitHost" -> "exit
-// host: smoke explosion" -> "left at (78.0, 368.0, 4.9)" once the exit-host effect's Think set
-// the arrival flag): the exit host's smoke, spawned where the Ing lands. It only fires when the
-// swarm block's second GEN token is loaded (retail's engaged byte at 0xcfc); then one CExplosion
-// "IngExitHostSmokeFx" on the Ing's own transform at the model's scale (flags 0, white, player -1)
-// and the swarm block's own sound (0x9cc = CIngData swarm +0x28).
-//
-// NOT PORTED YET, for the same reason as ExitHost: the exit-host class and the module's own
-// exit-host body do not exist in this branch, so there is no smoke to spawn. The body only logs.
-void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager&) {
+// @ fn_30_38E0 (the Ing's fn_29_1F1C): the exit host's smoke, spawned where the Ing lands. It only
+// fires when the swarm block's second GEN token is loaded (the engaged byte at 0xFF8); then one
+// CExplosion "IngExitHostSmokeFx" (rodata_12C + 0x558) of the token at 0xFEC on the Ing's own
+// transform at the model's scale (flags 0, white, -1), and the swarm block's own sound (0x830).
+void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager& mgr) {
+  const bool smokeLoaded = static_cast< bool >(mSwarmEffect2); // 0xFF8
   if (DebugBg()) {
-    fprintf(stderr, "[ibbg] %04x exit host: the exit-host body is a later slice\n", GetUniqueId().Value());
+    fprintf(stderr, "[ibbg] %04x exit host: smoke %s\n", GetUniqueId().Value(),
+            smokeLoaded ? "explosion" : "token not loaded");
+  }
+  if (!smokeLoaded) {
+    return;
+  }
+  CExplosion* smoke = rs_new CExplosion(
+      *mSwarmEffect2, mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+      rstl::string_l("IngExitHostSmokeFx"), GetTransform(), 0, GetModelData()->GetScale(),
+      CColor::White(), -1);
+  if (smoke != nullptr) {
+    mgr.AddObject(*smoke);
+    CSfxManager::AddEmitter(mData.mSwarm.mSound, GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   }
 }
 
