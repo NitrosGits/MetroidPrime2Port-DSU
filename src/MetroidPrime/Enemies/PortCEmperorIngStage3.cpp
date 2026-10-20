@@ -2508,8 +2508,30 @@ void CEmperorIngStage3::GroundPound(CStateManager& mgr, EStateMsg msg, float dt)
   StandInFn("fn_18_6390");
 }
 
+// @ fn_18_6258
+// fn_18_6258 (0x138): the "GenerateDarkFliers" state. Activate (0x6290) readies the animation
+// state; Update (0x629C) issues the projectile attack (severity 1, a zero target, no blend) while
+// the body can take one (state 0x12); Deactivate (0x6364) clears the dark-flier timer (guest
+// 0x7D8) and the light-swarm time (0x7DC, both rodata 0x258) and un-readies the animation state.
 void CEmperorIngStage3::GenerateDarkFliers(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6258");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6294, the value one
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_One, CVector3f::Zero(), false)); // 0x6314
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mX7d8_ = 0.f;                                             // 0x6370
+    mX7dc_ = 0.f;                                             // 0x6374
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6378, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_18_60AC
