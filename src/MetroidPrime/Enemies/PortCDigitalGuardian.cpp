@@ -426,7 +426,7 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
 // at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
-// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helpers fn_14_3F14, fn_14_5644 and
+// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helpers fn_14_5644 and
 // fn_14_4F2C the cases call are not ported yet.
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
@@ -492,7 +492,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
       CSfxManager::RemoveEmitter(x1240_);
       x1240_ = CSfxHandle();
     }
-    StandInFn("fn_14_3F14 (the XDEL case's helper)");
+    x3F14_(mgr); // fn_14_3F14
     break;
   case 0x58415544: // "XAUD"
     if (xE60_ != nullptr) { // the retail's test at 0xA9AC
@@ -515,7 +515,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     StandInFn("fn_14_4F2C (the XHIT case's helper)");
     break;
   case 0x494D3030: // "IM00"
-    StandInFn("fn_14_3F14 (the IM00 message's helper)");
+    x3F14_(mgr); // fn_14_3F14
     break;
   case 0x494D3031: // "IM01"
     x1010_ = 1;
@@ -1573,6 +1573,20 @@ void CDigitalGuardian::x3D2C_(CStateManager& mgr, bool set) {
   } else {
     x128C_ &= ~0x20;
     SendScriptMsgs(kSS_InternalState11, mgr, GetUniqueId(), kSM_None);
+  }
+}
+
+// @ fn_14_3F14
+// The knee armours are deleted; 0x1284 is left at the last one's index (the store at 0x3F4C).
+void CDigitalGuardian::x3F14_(CStateManager& mgr) {
+  u16* const ids[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
+  for (int i = 0; i < 4; ++i) {
+    if (*ids[i] == kInvalidUniqueId.value) {
+      continue;
+    }
+    x1284_ = i;
+    mgr.DeleteObjectRequest(TUniqueId(*ids[i]));
+    *ids[i] = kInvalidUniqueId.value;
   }
 }
 

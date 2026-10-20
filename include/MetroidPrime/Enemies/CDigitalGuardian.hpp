@@ -384,6 +384,8 @@ private:
   void x1A68_(CStateManager& mgr, int leg, int state);
   // fn_14_3D2C (0x7C bytes): bit 5 of 0x128C, and IS10 when it is set, else IS11.
   void x3D2C_(CStateManager& mgr, bool set);
+  // fn_14_3F14 (0x7C bytes): the knee armours are deleted (the XDEL and IM00 messages).
+  void x3F14_(CStateManager& mgr);
   // fn_14_5910 (0xAC bytes): the "XALC" case - the connected objects at 0x11C0, 0x10CE, 0x116A.
   void x5910_(CStateManager& mgr);
   // fn_14_14F8 (0x74 bytes): the speed for the number of knee armours left.
