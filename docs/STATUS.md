@@ -17,7 +17,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | lane | session | branch / base | task |
 |---|---|---|---|
 | Ing (worker) | `ses_ea67c8a48ffeGHDnEm7Su7uOCv` (subagent) | decomp/ing @ `618c7e8f5` (rework accepted) | reached stand-ins <=0x100 |
-| CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `c8b8c5851` | PathFind state 9AAC + TooClose B76C |
+| CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `b53f44229` | fn_9_19D8 + combat triggers <=0x100; why the search gives kR_NoPath |
 | EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
 | EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `528919371` | EyeShut path fn_18_5264 +; fn_18_3BB0 (0x450, heart holder creator) parked for Opus |
 | DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `e4b13e532` | AddToRenderer's model renders fn_14_1994/18B4/17DC/1700 |
@@ -28,7 +28,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | Agon black render (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | investigation; fix branch `fix/agon-black` if small | 08_sand_casualpirates normal view renders black |
 
 Accepted, not yet merged (next batch: merge, build, smoke): ing `618c7e8f5`, playerturret `614a8ed72`, emperoring `87f405931`, commandopirate
-up to `da52cac22`, spacepirate `a9ba3f157` (Render/ScanVisorRender done), emperoring3 `528919371`, swampboss `59637cee5`;
+up to `b53f44229`, spacepirate `a9ba3f157` (Render/ScanVisorRender done), emperoring3 `528919371`, swampboss `59637cee5`;
 digitalguardian `e4b13e532` (model draws again).
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
 reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress; a raw script-message constant must be re-read from the lis/addi pair (0x41544348 kSM_Attach was misread).
