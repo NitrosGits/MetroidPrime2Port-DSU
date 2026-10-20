@@ -777,7 +777,7 @@ set(MP_MODULE_WallCrawler_SOURCES
     src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 )
 set(MP_MODULE_CommandoPirate_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
 )
 set(MP_MODULE_DarkSamus_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
