@@ -701,6 +701,56 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   (`RenderSphere`) needs the same plus `MP2_SB_ROUND=2 MP2_SB_HEAD=1 MP2_SB_BALL=1`.
   Newly `// @`: none. The §4 rows for `8740`/`88D0`/`89E8` said `[proven]` while their source
   markers said ported; they now follow the markers.
+- Slice 21 (2026-10-20, runs sbReal1/sbReal2, same area/layer, `MP2_SB_PROBE=1` only — every other
+  knob off, so no state is forced): **the plain-fight sanity pass.** sbReal1 (`TOKENS=
+  'LAYER5@400,A@620+3000'`, FRAMES 4500, SECS 450) and sbReal2 (the same plus the diagnostics-only
+  `MP2_SB_FSM MP2_SB_DUMP MP2_SB_HPW`, FRAMES 4500, SECS 360) both exit 0 with 0 caught, 0
+  reach-stub and no stand-in. Nothing diverges from the knob runs except what the knobs exist to
+  supply: `[sbhp]` logs one change (`-1.00 -> 150.00`, the `UnderGround` activate) and never moves
+  again, `[sbso]` answers false once, and all three worms stay `cmd=0/1/2, round=0, att=0` — cmd 0
+  cycles `Stampede` -> `SeekStampedePoint` -> `Stampede` while the other two sit in `UnderGround`.
+  A held fire button lands no shot on an armour collider headless (slice 14), so the armour never
+  drains and the fight cannot progress; that is retail's own gate (7E60 drains `mStampedeHP` only
+  from a hit), not a port defect. The trace is the slice-3 set.
+- Slice 22 (2026-10-20, runs sbScan1, sbSb1..4, sbOrb1..7, same area/layer, `MP2_SB_HP=1` plus
+  `MP2_SB_AIM=1`/`MP2_SB_ROUND=1` and the console's `visor scan`, FRAMES 1600-3200, SECS 240-340):
+  **the scan path re-diagnosed — the worm does become the scan target, the orbit lock is what
+  fails, and that is an engine (Aurora EFB read-back) problem, not module 55.** New engine probes
+  (local only, `/tmp/opencode/sbscan_patch.py` + `sbscan_run.sh`, reverted with `git checkout`):
+  `[sbscan]` (every gate `CPlayerTargeting::UpdateScanObjects` applies to a self-render patterned),
+  `[sbid]` (the id histogram `CPlayer::FindScanTargetId` builds, with the uid each palette index
+  resolves to), `[sbdraw]` (the destination alpha `CPatterned::Render` draws a self-render body
+  with) and `[sborbitedge]`/`[sborbitstate]`/`[sborbitpress]` (`CPlayer::UpdateOrbitInput`'s
+  gates, the orbit state changes, the press branch). `sb7_run.sh` gained `[sbmap]` (the disc's
+  control mapping for `kC_ScanItem`) and `[sbscanst]` (player scan state, orbit target, visor).
+  (a) Slice 20's blocker was a probe artefact: with `MP2_SB_AIM=1` the worm is a **scan target**.
+  `[sbscan]` shows it passes every gate (`mat=1 act=1 visarea=1 occ=1 area=36 par=36 model=1
+  null=0 mem=1 frustum=1`, palette `size=20` of 62), `[sbdraw] uid=0183 alpha=80` shows it drawn
+  with palette index 20 << 2, and the read-back selects it: `[sbid] pixels 20=2048/u0183` and
+  `[scan] palette 20 selected object 00000183 (2048 id pixels, 2048 non-zero)`.
+  (b) The scan button is the **L trigger**, not A: `[sbmap] scanItem=9 fireOrBomb=15 jump=16
+  orbitObject=20` — `kFL_LeftTrigger` for `kC_ScanItem` and `kFL_LeftTriggerPress` for
+  `kC_OrbitObject`, so a run holds/presses `L`, and holding it does register
+  (`[sborbitedge] dl=1 pl=1 plbtn=1 pressIn=1`, i.e. `CFinalInput::DL()`, `PLTrigger()`, `PL()`
+  and `CControlMapper::GetPressInput(kC_OrbitObject)` are all true).
+  (c) **Why no scan runs:** `CPlayer::UpdateOrbitInput`'s `kOS_NoOrbit` case needs the press and a
+  valid `mOrbitNextTargetId`. `[sborbitpress] after tgt=03ff valid=0` (note `TUniqueId::Value()`
+  masks to 10 bits, so `kInvalidUniqueId` prints as `03ff`) — the next target is invalid on ~98%
+  of frames (36 of 1667 samples valid; all 51 presses of sbOrb7 landed on invalid frames), so
+  `SetOrbitState(kOS_OrbitObject)` never runs (`[sborbitstate] -> 0` is the only change), and
+  `CPlayer::ValidateScanning`'s `mOrbitState == kOS_OrbitObject` gate blocks the download.
+  Without a download `CScanDisplay::RequestScanDisplay` is never called, the game never enters
+  `kGS_SoftPaused` and `PrepareScanDisplay` never reaches `GetScanVisorRenderBounds` (CC84) /
+  `ScanVisorRender` (CB30). All five stay ported.
+  (d) **Why the next target is invalid**: in the scan visor `UpdateOrbitableObjects` sets it from
+  `FindScanTargetId`, the histogram of the 32x64 alpha read-back. That read-back completes only
+  about **once per 50 game frames** (Aurora logs one `EFB alpha peek N` line per 32 peeks) and
+  ~95% of the completed peeks log `all 32x64 pixels are zero` *on frames where `[sbdraw]` proves
+  the boss was drawn with destination alpha 80*; the few non-zero peeks hold a small object
+  (86-88 pixels of one id). So the histogram is empty nearly every frame. That is the next thing
+  to fix, in `extern/aurora` (`GXSetDstAlpha`/`alphaUpdate` -> pipeline, and what the peek's copy
+  reads), not in this module.
+  Newly `// @`: none.
 - **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
   here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
   `mData.stampedeProperties.breakStampedeHP` and reading it back as 150 (three worms, offset 4204 in
@@ -730,7 +780,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   3000 of 6000 frames (exit 124).
 - Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
   so only a direct call could run it), the scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8`
-  behind them (slice 20: the worms are scannable, but the scan never locks the boss), and the
+  behind them (slice 22: the worm does become the scan target and is drawn with its palette index,
+  but the read-back the scan target comes from is empty on ~95% of frames, so the orbit never
+  locks and no scan ever completes — an Aurora EFB read-back problem, see slice 22), and the
   getter/render slots no probe calls (64 6C 74 7C 8C 98 A4 AC BC).
 
 ## 6. FSM2 graph (dumped from the loaded asset)
