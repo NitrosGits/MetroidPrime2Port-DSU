@@ -15,6 +15,7 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "Kyoto/Animation/CAnimTreeNode.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -626,10 +627,33 @@ rstl::optional_object< CAABox > CEmperorIngStage3::GetTouchBounds() const {
   return GetBoundingBox();
 }
 
-// vtable slot 21 = fn_18_8E84: retail's aim position.
+// @ fn_18_8E84
+// fn_18_8E84 (vtable slot 21, 0x1C0): the active heart's pivot joint - the second heart's when its
+// collision actor (fn_18_3A84) is active (the byte at +0x20, bit 7), else the first's (the
+// description's CSegId at +0x8, fn_18_3B14) - at the current animation's elapsed time (the tree's
+// steady-state duration, vtable slot 0x18, less its time remaining, slot 0x14), through the
+// unscaled CAnimData locator and the actor's transform. With neither heart active it is the zero
+// vector (the CSegId 0xFF test at 0x8F4C).
 CVector3f CEmperorIngStage3::GetAimPosition(const CStateManager& mgr, float param) const {
-  StandIn("CEmperorIngStage3::GetAimPosition (vtable slot 21, fn_18_8E84)");
-  return CPatterned::GetAimPosition(mgr, param);
+  if (x7c0_ == nullptr) {
+    return CVector3f::Zero(); // port guard: no collision actors before kSM_AreaLoaded
+  }
+  const CEntity* first = mgr.GetObjectById(HeartRecord(0)->GetCollisionActorId());  // fn_18_3A84
+  const CEntity* second = mgr.GetObjectById(HeartRecord(1)->GetCollisionActorId()); // fn_18_3A84
+  CSegId pivot(static_cast< uchar >(0xFF));
+  if (second->GetActive()) {
+    pivot = HeartRecord(1)->GetPivotId(); // 0x8F18
+  } else if (first->GetActive()) {
+    pivot = HeartRecord(0)->GetPivotId(); // 0x8F3C
+  }
+  if (pivot == CSegId(static_cast< uchar >(0xFF))) {
+    return CVector3f::Zero();
+  }
+  const CAnimData* animData = GetModelData()->GetAnimationData();
+  const rstl::ncrc_ptr< CAnimTreeNode >& tree = animData->GetAnimationTree();
+  const CCharAnimTime elapsed(tree->VGetSteadyStateAnimInfo().GetDuration().GetSeconds() -
+                              tree->VGetTimeRemaining().GetSeconds());
+  return (GetTransform() * animData->GetLocatorTransform(pivot, &elapsed)).GetTranslation();
 }
 
 // @ fn_18_45B4
