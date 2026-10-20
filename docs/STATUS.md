@@ -19,7 +19,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | Ing (worker) | `ses_ea67c8a48ffeGHDnEm7Su7uOCv` (subagent) | decomp/ing @ `618c7e8f5` (rework accepted) | reached stand-ins <=0x100 |
 | CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `b53f44229` | fn_9_19D8 + combat triggers <=0x100; why the search gives kR_NoPath |
 | EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
-| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `a3a7ac3e0` | AcceptScriptMsg 7B14 case bodies; Opus-reserved: 3BB0 + body-command classes (data_744/750/78C, state update paths) |
+| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `13ca4be9b` (rework) | OffGround: 0x158/0x1C0 are mMass/mConstantForce, sweep base-member shadows; Damage 36BC, HitObject 2D50; Opus-reserved: 3BB0 + body-command classes (data_744/750/78C, state update paths) |
 | DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `344f8e7d0` | fn_14_6864 model build, ctor locator ids, renderer slot 0x44 |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` (subagent) | decomp/darksamus on `232823309` | milestone 1 (old lane did nothing) |
 | ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `1402494b4` | XCRT/XDMG/STOP cases, ProcessInput 1134; Think 23C0 (0x968) parked for Opus |
