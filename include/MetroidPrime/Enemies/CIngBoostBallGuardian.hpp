@@ -539,7 +539,7 @@ private:
   bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
   // Guest 0x11EF bit 4 (0x10), ctor 1: while set a body hit may kill (fn_30_4078). Retail's
-  // DoUserAnimEvent (fn_30_D4F8) toggles it; the host runs the Ing's, so it stays set.
+  // DoUserAnimEvent (fn_30_D4F8) clears it on kUE_Unknown37 and sets it on kUE_Unknown38.
   bool mBodyHitsLethal : 1;
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
   TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect

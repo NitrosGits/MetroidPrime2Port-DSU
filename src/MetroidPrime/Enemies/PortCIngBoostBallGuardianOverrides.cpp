@@ -453,6 +453,14 @@ void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
     }
     handled = true;
     break;
+  case kUE_Unknown37: // [this module] fn_30_D4F8 @0xD548: body hits stop being lethal
+    mBodyHitsLethal = false; // 0x11EF 0x10 = 0
+    handled = true;
+    break;
+  case kUE_Unknown38: // [this module] fn_30_D4F8 @0xD560
+    mBodyHitsLethal = true; // 0x11EF 0x10 = 1
+    handled = true;
+    break;
   default:
     break;
   }
