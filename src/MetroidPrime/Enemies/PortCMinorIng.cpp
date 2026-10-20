@@ -2077,12 +2077,18 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
 
 static SMinorIng_FuncPtrs REL_loader_MinorIng;
 
-// Retail's RELMain stores the loader into the module's table and registers it with the DOL's
-// SetSMinorIng_FuncPtrs (through the registration helper below). The proxy in
-// SMinorIng_FuncPtrs.cpp calls through it.
-void RELMain() {
+// @ fn_44_E0
+// The retail module writes its loader into the module's own function table (lbl_44_bss_84,
+// asm 0xF8) and hands that table to the DOL's SetSMinorIng_FuncPtrs (asm 0xFC). The host's
+// SMinorIng_FuncPtrs holds the loader alone, so the table is the static below.
+static void RegisterMinorIngModule() {
   REL_loader_MinorIng.mLoader = PortLoadMinorIng;
   SetSMinorIng_FuncPtrs(&REL_loader_MinorIng);
+}
+
+// The retail RELMain (the module's entry at 0xC0) does nothing but call the registration helper.
+void RELMain() {
+  RegisterMinorIngModule();
 }
 
 void RELExit() { SetSMinorIng_FuncPtrs(nullptr); }
