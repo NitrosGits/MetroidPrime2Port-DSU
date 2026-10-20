@@ -239,7 +239,8 @@ CBouncyGrenadeData BuildGrenadeData(const SLdrUnknownStruct34& sldr) {
 // The retail copies that struct into the data's 0xd0 (asm 0xC44-0xD00): the two floats at
 // +0x00/+0x04, the damage info at +0x08..+0x23, the bounce count at +0x24, the ids at
 // +0x28..+0x34, the sounds at +0x38/+0x3a, the four floats at +0x3c..+0x48 and the flag byte at
-// +0x4c. The host's CBouncyGrenadeData has the retail's layout, so the copy is an assignment.
+// +0x4c. The host's CBouncyGrenadeData has the retail's layout, so the copy moves the whole
+// struct.
 CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; }
 
 } // namespace
@@ -2168,7 +2169,11 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
       static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
       static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
       static_cast< ushort >(sldrThis.ingSpot.sound_Death),
-      LdrToHealthInfo(sldrThis.unknown_0x3da35851.health), grenadeData);
+      LdrToHealthInfo(sldrThis.unknown_0x3da35851.health), grenadeData,
+      sldrThis.unknown_0x3da35851.minLaunchSpeed, sldrThis.unknown_0x3da35851.maxLaunchSpeed,
+      sldrThis.unknown_0x3da35851.minGeneration, sldrThis.unknown_0x3da35851.maxGeneration,
+      sldrThis.unknown_0x3da35851.maxTurnAngle, sldrThis.unknown_0x3da35851.unknown_0xfbf8ea0a,
+      sldrThis.unknown_0x3da35851.unknown_0x47f99fbc);
 
   return rs_new CMinorIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                           LdrToEntityInfo(info, sldrThis.editorProperties),

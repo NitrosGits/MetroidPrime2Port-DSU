@@ -31,8 +31,9 @@ class CPFArea;
 // Host copy of the properties the MinorIng loader reads (retail: CMinorIngData, 0x158 bytes at
 // 0x7c0, built by fn_44_9B4; the REL is module 44, `docs/module-analysis/IngFamily.md` section B).
 // The guest offsets in the comments are the REL's own stores; the host layout is its own and does
-// not need to match. The inglet's own data is modelled: its health at guest 0xb0 and its grenade
-// data at guest 0xd0 (fn_44_C44 copies the struct fn_44_FE8 builds).
+// not need to match. The inglet's own data is modelled: its health at guest 0xb0, its grenade
+// data at guest 0xd0 (fn_44_C44 copies the struct fn_44_FE8 builds) and the seven spawn values
+// at guest 0x120..0x138.
 struct CMinorIngData {
   CMinorIngData(CAssetId projectile, const CDamageInfo& projectileDamage,
                 const CDamageInfo& ingSpotDamage, const CIngSpotData& ingSpot,
@@ -44,7 +45,10 @@ struct CMinorIngData {
                 float ingSpotBallPursuitSpeed, const CDamageVulnerability& ingSpotVulnerability,
                 ushort ingSpotIdleSound, ushort ingSpotMoveSound, ushort ingSpotHitNormalSound,
                 ushort ingSpotHitHeavySound, ushort ingSpotDeathSound,
-                const CHealthInfo& ingletHealth, const CBouncyGrenadeData& grenadeData)
+                const CHealthInfo& ingletHealth, const CBouncyGrenadeData& grenadeData,
+                float ingletMinLaunchSpeed, float ingletMaxLaunchSpeed, int ingletMinCount,
+                int ingletMaxCount, float ingletMaxTurnAngle, float ingletSpawnDistance,
+                float ingletExplodeDistance)
   : mProjectile(projectile)
   , mProjectileDamage(projectileDamage)
   , mUnknownA03E450C(unknownA03E450C)
@@ -73,7 +77,14 @@ struct CMinorIngData {
   , mIngSpotHitHeavySound(ingSpotHitHeavySound)
   , mIngSpotDeathSound(ingSpotDeathSound)
   , mIngletHealth(ingletHealth)
-  , mGrenadeData(grenadeData) {}
+  , mGrenadeData(grenadeData)
+  , mIngletMinLaunchSpeed(ingletMinLaunchSpeed)
+  , mIngletMaxLaunchSpeed(ingletMaxLaunchSpeed)
+  , mIngletMinCount(ingletMinCount)
+  , mIngletMaxCount(ingletMaxCount)
+  , mIngletMaxTurnAngle(ingletMaxTurnAngle)
+  , mIngletSpawnDistance(ingletSpawnDistance)
+  , mIngletExplodeDistance(ingletExplodeDistance) {}
 
   CAssetId mProjectile;      // +0x00: the pair the actor's CProjectileInfo is built from
   CDamageInfo mProjectileDamage; // +0x04 (0x1c) from SLdrMinorIng.projectileDamage
@@ -116,6 +127,21 @@ struct CMinorIngData {
   // bouncing-projectile struct out of the unknown_0x3da35851 block and fn_44_C44 copies it here.
   // The inglet the massive death spawns is a CBouncyGrenade, which takes this struct.
   CBouncyGrenadeData mGrenadeData;            // guest 0xd0
+  // The inglet's spawn values (the retail's data 0x120..0x138, fn_44_9B4's stores), all out of
+  // the unknown_0x3da35851 block:
+  // - the launch speed range (fn_44_7058 picks the inglet's velocity out of it),
+  // - the number of inglets the massive death spawns (the minimum and the maximum),
+  // - the angle the inglet may turn in,
+  // - the distance at which the inglet count falls to zero (the retail divides the player's
+  //   distance by it),
+  // - the distance at which the inglet explodes around the player.
+  float mIngletMinLaunchSpeed;                // guest 0x120 (the block's minLaunchSpeed)
+  float mIngletMaxLaunchSpeed;                // guest 0x124 (the block's maxLaunchSpeed)
+  int mIngletMinCount;                        // guest 0x128 (the block's minGeneration)
+  int mIngletMaxCount;                        // guest 0x12c (the block's maxGeneration)
+  float mIngletMaxTurnAngle;                  // guest 0x130 (the block's maxTurnAngle)
+  float mIngletSpawnDistance;                 // guest 0x134 (the block's unknown_0xfbf8ea0a)
+  float mIngletExplodeDistance;               // guest 0x138 (the block's unknown_0x47f99fbc)
 };
 #endif
 

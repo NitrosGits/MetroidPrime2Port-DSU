@@ -7,10 +7,11 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-20)
 
-- 109/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
+- 111/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
   registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
   copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the ray the snap to the floor
-  uses) and `fn_44_3614` (the copy of the ray result).
+  uses), `fn_44_3614` (the copy of the ray result), `fn_44_FE8` (the grenade data
+  the loader builds) and `fn_44_C44` (the copy of it into the data).
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
@@ -27,37 +28,48 @@ port names it once per run, so the log says which body is missing. The names are
 |---|---|---|
 | `fn_44_9D58` | 0x878 | the retail constructor: the host builds `CMinorIng` with its own ctor and the loader fills `CMinorIngData` through the generated `SLdrMinorIng` reader |
 | `fn_44_110` | 0x844 | the retail loader reads the REL's own binary format; the host reads the generated `SLdrMinorIng` |
-| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are not read by the host's loader. The grenade fields themselves are in `SLdrUnknownStruct34` (`SLdrMinorIng.hpp`), which is the `unknown_0x3da35851` block the retail's fn_44_1CE0 reads, and the host has `CBouncyGrenadeData` and `CBouncyGrenade` (the Wall Walker's inglet in `CWallWalker.cpp` shows the shape) |
+| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are read by the host's loader now, but the spawn itself is not ported |
 
 `fn_44_97E4` (the destructor) and `fn_44_34B0` (the ray) were stand-ins and are
 ported now: the destructor is the host's member destruction (the retail's body is
 the members' own teardown) and the ray is `CMinorIng::RayDown`.
 
-## The inglet's data (modelled, half way)
+## The inglet's data (modelled)
 
 The retail's loader reads the inglet's own data into the `CMinorIngData`: its health
-at the data's 0xb0 (`fn_44_9B4` copies it there with `fn_44_D00`) and its grenade
-data at 0xd0 (`fn_44_C44` converts the "bouncing projectile" struct that
-`fn_44_FE8` builds at the loader's sp+0x1f8). The health is now a host member,
-`mIngletHealth`, taken from the `unknown_0x3da35851` block the loader already reads
-(`fn_44_1CE0` reads its health first); a run logs 4.0 HP and 1.0 knock-back
-resistance for the inglets of this area, so the read is sane.
+at the data's 0xb0 (`fn_44_9B4` copies it there with `fn_44_D00`), its grenade data
+at 0xd0 (`fn_44_C44` copies the "bouncing projectile" struct that `fn_44_FE8` builds
+at the loader's sp+0x1f8) and seven spawn values at 0x120..0x138. All three are host
+members now:
 
-Still to model, with the offsets found in the loader's disassembly:
+- `mIngletHealth` (guest 0xb0) is the health of the `unknown_0x3da35851` block
+  (`fn_44_1CE0` reads it first); a run logs 4.0 HP and 1.0 knock-back resistance
+  for the inglets of that area, so the read is sane.
+- `mGrenadeData` (guest 0xd0) is the `CBouncyGrenadeData` the inglet spawn hands to
+  the grenade. The retail's `fn_44_FE8` fills it from the same block: the mass
+  (+0x00) and the speed (+0x04) are the block's `mass` and `bounciness`, the damage
+  info (+0x08..+0x23) is the block's `damage`, the bounce count (+0x24) is
+  `numBounces`, the four ids (+0x28..+0x34) are the block's `explosion` (twice),
+  `trail` and `effect`, the sounds (+0x38/+0x3a) are `sound_Bounce` and
+  `sound_Explode`, and the four floats (+0x3c..+0x48) are the rodata constants 0.1
+  and 150 (rodata 0x28 and 0x2c). The flag byte at +0x4c keeps its bit clear: the
+  callee reads the caller's stack byte at +0xf (asm 0x103C), which the caller
+  leaves zero (asm 0x7D4 stores the word 1 in its low byte). A run of area 13 logs
+  4.0 mass, 0.5 speed, 5 bounces, 5.0 damage, the sounds 8717 and 8716 and the ids
+  0x04213c3c (twice), 0x36f5ce3e and 0x56330f8c; all four resolve in the resource
+  pool, so the read is sane.
+- The seven spawn values (guest 0x120..0x138, `fn_44_9B4`'s stores) are the block's
+  `minLaunchSpeed` (0x120), `maxLaunchSpeed` (0x124), `minGeneration` (0x128),
+  `maxGeneration` (0x12c), `maxTurnAngle` (0x130), `unknown_0xfbf8ea0a` (0x134) and
+  `unknown_0x47f99fbc` (0x138). A run of area 13 logs 10.0/15.0, 0/0, 40.0, 40.0 and
+  2.0: the launch speed range, no inglets in this area, the turn angle, the distance
+  the inglet count falls off at and the inglet's explode distance.
 
-- the grenade data at the data's 0xd0: `fn_44_FE8` builds the bouncing-projectile
-  struct (five floats, a word, three ushorts, the damage info and five words) from
-  the block, and `fn_44_C44` copies it into the data (the ids at +0x24..+0x34, the
-  sounds at +0x38, four floats at +0x3c..+0x48). The host has `CBouncyGrenadeData`
-  and `CBouncyGrenade` (the Wall Walker's inglet in `CWallWalker.cpp` shows the
-  shape);
-- the spawn fields at the data's 0x120..0x138 (`fn_44_9B4` stores seven values
-  there: two floats, two words and three floats; the loader passes them from its
-  stack, which `fn_44_194C` fills).
+Still to model: the inglet spawn itself (`fn_44_7058`).
 
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 108 of the module's 217 functions as unmarked.
+`tools/port_progress.py` counts 106 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
@@ -74,14 +86,12 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_2F24` | 0x8C | fn_44_2EF4 |
 | `fn_44_51D8` | 0x8C | - |
 | `fn_44_A840` | 0x8C | - |
-| `fn_44_FE8` | 0x94 | fn_44_110 |
 | `fn_44_9B24` | 0x94 | fn_44_9940 |
 | `fn_44_9CC0` | 0x98 | fn_44_9C68 |
 | `fn_44_4DDC` | 0xA8 | fn_44_4E84 |
 | `fn_44_D54` | 0xB4 | fn_44_9B4, fn_44_A9DC |
 | `fn_44_5A04` | 0xB4 | - |
 | `fn_44_660C` | 0xB4 | fn_44_65C4 |
-| `fn_44_C44` | 0xBC | fn_44_9B4, fn_44_A9DC |
 | `fn_44_141C` | 0xBC | - |
 | `_unresolved` | 0xC4 | - |
 | `fn_44_16C4` | 0x108 | fn_44_14D8 |
