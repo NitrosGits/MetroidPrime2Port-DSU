@@ -2504,8 +2504,47 @@ void CEmperorIngStage3::LightSwarmAttack(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
+// @ fn_18_6390
+// fn_18_6390 (0x2AC): the "GroundPound" state. Activate (0x63D0) readies the animation state.
+// Update (0x63DC) issues the melee attack (severity 2) while the body can take one (state 7);
+// otherwise, once the pound's animation event has set 0x10 of 0x824 (extrwi 1,27) and the player
+// has touch bounds (vtable slot 0x48), a box ten units (rodata 0x294) around the actor's
+// translation that overlaps them deals the ground-pound damage (guest 0xA44, a solid-only
+// filter) and clears the flag. Deactivate (0x6610) clears the flag and un-readies the state.
 void CEmperorIngStage3::GroundPound(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6390");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x63D4, the value one
+    break;
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_Two)); // 0x6454
+      break;
+    }
+    CPlayer& player = *mgr.Player(0);
+    const rstl::optional_object< CAABox > touch = player.GetTouchBounds(); // vtable slot 0x48
+    if ((x824_ & 0x10) == 0 || !touch) {                                   // 0x64FC, 0x6508
+      break;
+    }
+    const CVector3f& pos = GetTranslation();
+    const CAABox box(CVector3f(pos.GetX() - 10.f, pos.GetY() - 10.f, pos.GetZ() - 10.f),
+                     CVector3f(pos.GetX() + 10.f, pos.GetY() + 10.f, pos.GetZ() + 10.f));
+    if (box.DoBoundsOverlap(*touch)) { // 0x6570
+      mgr.ApplyDamage(GetUniqueId(), player.GetUniqueId(), GetUniqueId(), mGroundPoundDamage,
+                      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                                          CMaterialList()),
+                      CVector3f::Zero()); // fn_8003E25C
+      x824_ &= ~0x10;                     // 0x6604
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    x824_ &= ~0x10;                                           // 0x6618
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6620, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_18_6258
