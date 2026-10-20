@@ -656,6 +656,7 @@ void CEmperorIngStage1::UpdateHeartHealth(CStateManager& mgr) {
 //     as up (LookAt, 0x5110).
 //   0x5120: the body itself goes to the 'PLAY' actor's segment 1, offset by 1.5f (rodata_394)
 //     along the 'PLAY' actor's X column.
+// @ fn_16_4EB8
 void CEmperorIngStage1::UpdateTentacleAnchor(float dt, CStateManager& mgr) {
   CActor* heart = GetTargetActor(mgr);   // fn_16_302C, 0x4EE8
   CActor* body = GetPlayActor(mgr);      // fn_16_3060, 0x4EF8
@@ -877,6 +878,7 @@ void CEmperorIngStage1::UpdateTentacleHits(float dt, CStateManager& mgr) {
 // melee damage (guest 0xB8C) - this actor the damager and the owner, the filter including
 // kMT_Solid (lbl_16_data_0, 0x3B; type 3) and the zero direction (ApplyDamage at 0x7E0) - and the
 // cooldown becomes 0.2f (lbl_16_rodata_388, 0x7EC).
+// @ fn_16_4C8
 void CEmperorIngStage1::UpdateMeleeHits(float dt, CStateManager& mgr) {
   if ((xa74_ & 0x80) == 0) { // 0x4F0
     return;
@@ -1519,6 +1521,7 @@ void CEmperorIngStage1::PreRender(CStateManager& mgr) { CPatterned::PreRender(mg
 // draw flags get the extra 0x80 bit when it is set (the ori at 0x1D94). The blend mode is opaque
 // (0), the shader set 0, the depth flags 0x03 (the depth compare and the depth update) and the
 // colour white (the CColor at 0x1D88).
+// @ fn_16_1D38
 CModelFlags CEmperorIngStage1::BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const {
   uint flags = CModelFlags::kF_DepthCompare | CModelFlags::kF_DepthUpdate;
   if ((joint.mFlags & 0x08) != 0) {
@@ -1577,6 +1580,7 @@ u64 CEmperorIngStage1::GetJointDrawMask(const CEmperorIngStage1Joint& joint) con
 // drawn eight times, once per tentacle, each pass with that tentacle's draw flags, colour, plane
 // and mask; the mask picks the model's surfaces (the material mask), so every surface is drawn
 // once, by the pass that owns it.
+// @ fn_16_531C
 void CEmperorIngStage1::Render(const CStateManager& mgr) const {
   // 0x5340: the particle POI mask and target - the flag byte at the guest 0x421's bit 0 (the
   // host's mDrawParticles, as the host's CPatterned::Render asks for the same pair).
@@ -1770,6 +1774,7 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
 //     0x68F), the entity info (the area, no connections, active and no editor id), the identity
 //     transform, the one vector as the scale, the effect asset, the timers and the rates, the
 //     three visor flags, the light parameters and the spline.
+// @ fn_16_9BE8
 TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId,
                                                      TAreaId area) {
   const TUniqueId id = mgr.AllocateUniqueId();  // 0x9C08
@@ -1799,6 +1804,7 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
 // created when the joint has none (fn_16_9BE8, 0x1AD0). The effect looks along the up vector
 // from the joint's position (the fadds at 0x1B34..0x1B4C and the LookAt at 0x1B60) and it hears
 // "ACTV" (kSM_Activate, 0x41435456, 0x1B84).
+// @ fn_16_1A50
 void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up,
                                             CStateManager& mgr) {
   CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
@@ -1853,6 +1859,7 @@ static const char* const skWarpPortalStabLocators[7] = {
 //   The module's own fields (0x185C..0x18D0): the timer 0.0f (the guest 0x2D0), the invalid
 //     effect id (0x2D4), the hit flag 0 (0x2D6), the portal's effect asset (0x2D8), the stab
 //     damage (0x2DC..0x2F6) and the two warp sounds (0x2F8 and 0x2FA).
+// @ fn_16_1720
 CEmperorIngStage1WarpPortal::CEmperorIngStage1WarpPortal(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CActorParameters& actParms, CAssetId portalEffect,
@@ -1891,6 +1898,7 @@ CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;
 //   0x1360: the portal hits the player once: the player's touch bounds against the boxes around
 //     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
 //     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
+// @ fn_16_1150
 void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);  // 0x11B0
   mTimer += dt;             // 0x11B4
@@ -1951,6 +1959,7 @@ void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
 //     sound (the guest 0x2F8) is put at the effect's place (0x1678). The actor's colour
 //     (0x16A0) is set to white with the alpha 0x80.
 //   kSM_Delete (0x5844454C, 0x157C): the effect is deleted (0x1700).
+// @ fn_16_1574
 void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
     case kSM_Create: {
@@ -2321,6 +2330,7 @@ void CEmperorIngStage1::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 //   Deactivate: the body gets ExitState (0x7110), the animation state is not ready (0x7130), the
 //     attack timer is re-rolled (fn_16_8E4, 0x7138), the melee flag is cleared (0x7144) and the
 //     turn speed is the normal one (guest 0xBF0, 0x7150).
+// @ fn_16_6F28
 void CEmperorIngStage1::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate:
@@ -2546,6 +2556,7 @@ static const SEmperorIngStage1CmdRecord skExitStateCmd = {0, kBSC_ExitState, 0};
 //   Deactivate (0x6720): the body gets the exit state command (the id 10, 0x6740), the flag
 //     byte's bit 5 (0x20) is cleared (0x6760, the bit 26), the tentacles get their materials back
 //     (fn_16_2E1C with 1, 0x6774) and the animation state is not ready (0x677C).
+// @ fn_16_601C
 void CEmperorIngStage1::WarpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   if (sWarpPortalCountInitialized == false) {  // 0x6084..0x60B0: the static's guard.
     sWarpPortalCountInitialized = true;
@@ -2690,6 +2701,7 @@ void CEmperorIngStage1::CreateWarpPortalActor(CStateManager& mgr, const CModelDa
 //     10, 0x5FA8).
 //   Deactivate: the body gets the abort scripted command (the id 13, 0x5FDC) and the animation
 //     state is not ready (0x5FF8).
+// @ fn_16_5DBC
 void CEmperorIngStage1::TauntAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate:
