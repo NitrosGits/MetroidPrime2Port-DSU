@@ -146,16 +146,14 @@ What the retail's constructor fills, in its order (the host does the same):
 The retail's massive death (fn_44_7058, 0x654) spawns the inglets, and the host's
 `CMinorIng::MassiveDeath` does the same now:
 
-- the guards (asm 0x70CC-0x70F0): the health info's weapon mode (the halfword at +0x0e) must not be
-  2 or 0x12, and an Ing in the puddle form (1) only spawns inglets when the data's byte 0x155 is
-  set. The host's `CHealthInfo` does not expose the halfword at +0x0e (its weapon modes are four
-  bytes wide), so it uses the cause-of-death weapon instead; the puddle guard is the data's
-  `mFlags155` (the property 0x9207f51).
-- the count (asm 0x71D8-0x7238): the distance to the target less the actor's own health (the
-  health info's float at +0x04), clamped to 0..the inglet's spawn distance (the data's 0x134),
-  gives the fraction of the maximum count (the data's 0x12c) that is spawned, rounded up and never
-  below the minimum count (the data's 0x128). The retail reads the base class's distance at 0x408,
-  which the host does not model, so the host uses the distance to the target.
+- the guards (asm 0x70CC-0x70F0): the health info's cause-of-death weapon mode (the CWeaponMode at
+  +0x0c) keeps its flags in the byte at +0x0e, and that byte must not be 2 or 0x12 (the host's
+  CWeaponMode has three flags, so it can never read 0x12); and an Ing in the puddle form (1) only
+  spawns inglets when the data's byte 0x155 is set (the property 0x9207f51, the host's `mFlags155`).
+- the count (asm 0x71D8-0x7238): the damage the Ing took (the base class's `mLastHP`, the health at
+  the end of the last frame, less the health info's HP) clamped to 0..the inglet's spawn distance
+  (the data's 0x134) gives the fraction of the maximum count (the data's 0x12c) that is spawned,
+  rounded up and never below the minimum count (the data's 0x128).
 - the materials (asm 0x7140-0x71D8): the inglet collides with the seeker-target material and, when
   the ing spot allows lock-on (the data's byte 0x154's bit 7), with the target and orbit materials
   too.
@@ -172,7 +170,10 @@ The retail's massive death (fn_44_7058, 0x654) spawns the inglets, and the host'
   bounds the inglet gets are the constant inverted box, so the host leaves it out.
 
 The loader logs the inglets' count once per spawn (`[minoring] inglets <min>..<max> spawn distance
-<d>`), so a run shows which placement has any. The area the run reaches (13 of 63) has 0..0.
+<d>`), so a run shows which placement has any. The Agon Wastes' `0a_sand_hall_dark` (the sand
+world, area 13) has a placement with 0..3; the run that reached it (0 `[port] caught`, 0
+`[reach-stub]`) confirmed the spawn: the Ing killed there left two inglets, the count the formula
+gives for the damage it took (2 = ceil((1 - 20/40) * 3)).
 
 
 ## The functions that are still not ported
