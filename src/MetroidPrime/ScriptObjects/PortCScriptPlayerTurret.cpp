@@ -20,6 +20,7 @@
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Input/CFinalInput.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "MetroidPrime/CControlMapper.hpp"
@@ -427,10 +428,50 @@ void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   mTopActorId = FindConnectedObject(mgr, kSS_AttachedCollisionObject, kSM_Attach);
 }
 
-// vtable slot 9 = fn_63_2D68 (0x2CC): the turret's light colour on the hull.
+// vtable slot 9 = fn_63_2D68 (0x2CC): the base actor's light colour.
+//
+// The guest's model flags are 12 bytes: a word, the blend mode byte, the material set byte, the
+// flags half and the packed colour; the host's CModelFlags holds the same five fields.
 void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
-  StandIn("fn_63_2D68 (CScriptPlayerTurret::PreRender)");
-  CActor::PreRender(mgr);
+  // 0x2D88: the base actor (0x198).
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (base == nullptr) {
+    return;
+  }
+  // 0x2DAC: the base actor's own model flags are the starting point.
+  CModelFlags flags = base->GetModelFlags();
+  // 0x2DB4: the player in the turret (0x188).
+  if (mPlayerId != kInvalidUniqueId) {
+    // 0x2DE4: the player; 0x2DF4: its index has to be the game's player count - the player has
+    // to be in this game - and 0x2E24: its turret state (the guest's player + 0x12F8) must not be
+    // 2 (kTS_Exiting).
+    const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mPlayerId));
+    if (player != nullptr && mgr.GetNumPlayers() == mgr.MaskUIdNumPlayers(mPlayerId) &&
+        player->GetTurretState() != CPlayer::kTS_Exiting) {
+      // 0x2E30: white with the alpha 0.25 (lbl_63_rodata_54) and the blend mode 5 (kT_Blend).
+      flags.SetTrans(CModelFlags::kT_Blend);
+      flags.SetMatSetIdx(0);
+      flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+      flags.SetColor(CColor(1.f, 1.f, 1.f, 0.25f));
+    }
+  }
+  // 0x2E9C: while the damage flash timer (0x20C) runs the colour goes from black to red.
+  if (mUnknown20C > 0.f) {
+    // 0x2F20: the factor is the timer over 0.33 (lbl_63_rodata_58), clamped to 0..1.
+    float factor = mUnknown20C / 0.33f;
+    if (factor < 0.f) {
+      factor = 0.f;
+    } else if (factor > 1.f) {
+      factor = 1.f;
+    }
+    // 0x2F48: Lerp(black, red, factor) with the blend mode 2 (kT_Two).
+    flags.SetTrans(CModelFlags::kT_Two);
+    flags.SetMatSetIdx(0);
+    flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+    flags.SetColor(CColor::Lerp(CColor::Black(), CColor::Red(), factor));
+  }
+  // 0x2F8C: the flags go back into the base actor.
+  base->SetModelFlags(flags);
 }
 
 // vtable slot 18 = fn_63_3034 (0x3C): the touch bounds are the turret's own box.

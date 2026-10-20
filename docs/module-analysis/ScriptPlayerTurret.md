@@ -1,6 +1,6 @@
 # ScriptPlayerTurret REL (module 63): analysis for a host body
 
-Analysis + host body, milestones 1-4 (2026-10-20). Sources: the archive build's disassembly
+Analysis + host body, milestones 1-5 (2026-10-20). Sources: the archive build's disassembly
 `../MetroidPrime2Port/build/G2ME01/ScriptPlayerTurret/asm/` (`auto_00_00000050_text.s` is the whole
 `.text`, `auto_03/04/05_*` are rodata/data/bss, `MetroidPrime/ScriptObjects/CScriptPlayerTurretRel.s`
 is the REL's own file), the m2c pseudo-C in `/tmp/opencode/pseudo/ScriptPlayerTurret/`, the
@@ -287,7 +287,31 @@ after it - **the projectile spawns** at the turret's position. 2400 game updates
 `[port] caught` and no `reach-stub` (both counts 0). The turret still does not aim (Think is
 parked), so the shot flies straight ahead and does not reach the gallery's targets.
 
-**Milestone 5 (next).** `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
+## 11. Milestone 5 (PreRender) - the guest's model flags
+
+`fn_63_2D68` (0x2CC) writes the base actor's **model flags**: 12 bytes at the guest's actor
+offset 0xFC - a word, the blend mode byte (0x100), the material set byte (0x101), the flags half
+(0x102) and the packed colour (0x104). The blend modes it writes are 5 (`kT_Blend`) for the white
+light and 2 (`kT_Two`) for the damage flash, the flags 3 (`kF_DepthCompare|kF_DepthUpdate`) and
+the material set 0 - the same values the host's `CModelFlags` holds, whose members are private, so
+`include/Kyoto/Graphics/CModelFlags.hpp` gets three TARGET_PC-guarded setters
+(`SetTrans`, `SetMatSetIdx`, `SetFlags`).
+
+The case: the base actor (0x198) is looked up (0x2D88); with a player in the turret (0x188) that
+belongs to this game (0x2DF4) and is not leaving (the guest's player + 0x12F8 != 2, 0x2E24) the
+flags become white with the alpha 0.25 (lbl_63_rodata_54); while the flash timer (0x20C) runs the
+colour is `Lerp(black, red, timer / 0.33)` (lbl_63_rodata_58) with the blend mode 2; the flags
+go back into the base actor (0x2F8C). The guest also raises a bit on the base actor's
+`CScriptActor` (0x396, bit 1) when the colour changed - the host has no such flag, so that store
+is not ported.
+
+**Runtime check (2026-10-20).** The same run: the player gets on the turret, the turret's own
+model is drawn from inside (screenshot `/tmp/opencode/turret_render.png`, the "Turret" HUD and
+the lit hull in the foreground), 2400 game updates, `exit=0`, no `[port] caught` and no
+`reach-stub` (both counts 0).
+
+**Milestone 6 (next).** Only `fn_63_23C0` (Think, 0x968) is left, and it is parked for an Opus
+lane. `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
 turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC), the rest of `fn_63_15B0`
 (the five animation ids - its own helper `fn_63_19B0`, 0x184, is over the 0x80 callee cap, so it
 stays a named stand-in too).
