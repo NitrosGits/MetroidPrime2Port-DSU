@@ -17,6 +17,7 @@
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -394,7 +395,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   }
   StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
   StandInFn("fn_9_6390 (0x29c bytes)");        // 0x0000CA08
-  StandInFn("fn_9_4D84 (0x228 bytes)");        // 0x0000CA18
+  x4D84_UpdateAim(mgr);                     // 0x0000CA18
   x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
   StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
   StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
@@ -423,6 +424,67 @@ void CCommandoPirate::x4BC0_UpdateEmitters() {
     CSfxManager::UpdateEmitter(xc38_, GetTranslation(), GetTransform().GetForward(),
                                0x7f);                            // 0x00004C8C
   }
+}
+
+// @ fn_9_4D84
+// fn_9_4D84 (0x228 bytes): the module's aim helper, one of the Think's own (the call at
+// 0x0000CA18). While the actor is alive (the byte at guest this+0x420's 0x40 bit, the extrwi at
+// 0x00004DA4 - the host's GetAlive()), the module's own helper fn_9_4CA4 (0xd8 bytes, over the
+// 0x80 limit - a named stand-in that answers false) has to agree; then the target's aim position
+// (the module's helper fn_9_3CBC, the call at 0x00004DFC) is delivered as an additive aim
+// command (the guest's command id 0x1b = 27 = kBSC_AdditiveAim, with the 0x02 bit of the
+// flag byte at guest this+0xC65 as the command's third field - the DeliverCmd call at
+// 0x00004E50), and the direction from the gun locator (guest this+0xC5E, the GetLctrTransform
+// call at 0x00004E94) to that position is put into the actor's own frame (the TransposeRotate
+// call at 0x00004EE0) and given to the body controller's additive target vector (the body
+// controller's +0x40, the command manager's sixth CVector3f - the stores at
+// 0x00004F18..0x00004F20). The 0x02 bit of the flag byte negates the local x and y (the fnegs at
+// 0x00004EFC..0x00004F00), and a local y that is not above zero gets the forward vector instead
+// (the sForwardVector stores at 0x00004F34..0x00004F44).
+//
+// Without the actor (the flag byte at guest this+0xC64 has its 0x10 bit clear) and with the
+// block's flag byte at guest this+0x91C without its 0x10 bit (the extrwi at 0x00004F50 and
+// 0x00004F5C), the module delivers an additive idle command instead (the guest's command id
+// 0x1a = 26 = kBSC_AdditiveIdle, the DeliverCmd call at 0x00004F84).
+void CCommandoPirate::x4D84_UpdateAim(CStateManager& mgr) {
+  if (GetAlive()) {                                     // 0x00004DA0..0x00004DA8
+    if (!x4CA4_CanAim()) {                             // 0x00004DB8..0x00004DC0
+      return;
+    }
+    CVector3f aim;
+    if (!x3CBC_(mgr, aim, 0.f)) {                       // 0x00004DFC..0x00004E04
+      return;
+    }
+    CBCAdditiveAimCmd cmd;                              // 0x00004E50
+    cmd.SetAimType((xc65_ & 0x02) != 0 ? 1 : 0);        // the command's third field (0x00004E18)
+    BodyController()->CommandMgr().DeliverCmd(cmd);
+    const CVector3f locator = GetLctrTransform(mLocatorGun).GetTranslation();  // 0x00004E94
+    CVector3f dir = GetTransform().TransposeRotate(aim - locator);  // 0x00004EE0
+    if ((xc65_ & 0x02) != 0) {                          // 0x00004EEC..0x00004F00
+      dir.SetX(-dir.GetX());
+      dir.SetY(-dir.GetY());
+    }
+    if (dir.GetY() > 0.f) {                             // 0x00004F0C..0x00004F10
+      BodyController()->CommandMgr().DeliverAdditiveTargetVector(dir);  // 0x00004F18..0x00004F20
+    } else {
+      BodyController()->CommandMgr().DeliverAdditiveTargetVector(CVector3f::Forward());  // 0x00004F34
+    }
+  } else {
+    if ((xc64_ & 0x10) == 0) {                          // 0x00004F4C..0x00004F54
+      return;
+    }
+    if ((mData.mFlags0 & 0x10) != 0) {                  // the block's flag byte at guest this+0x91C
+      return;                                           // 0x00004F58..0x00004F60
+    }
+    BodyController()->CommandMgr().DeliverCmd(kBSC_AdditiveIdle);  // 0x00004F84
+  }
+}
+
+// fn_9_4CA4 (0xd8 bytes): the module's own helper, over the 0x80 limit - a named stand-in that
+// answers false, so the aim code above does not run in the port.
+bool CCommandoPirate::x4CA4_CanAim() {
+  StandInFn("fn_9_4CA4 (0xd8 bytes)");
+  return false;
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the

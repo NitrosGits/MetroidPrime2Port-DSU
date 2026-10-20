@@ -336,6 +336,12 @@ private:
   // and this+0xC38 follow the actor.
   void x4BC0_UpdateEmitters();
 
+  // fn_9_4D84: the module's aim helper - the additive aim command and the aim direction.
+  void x4D84_UpdateAim(CStateManager& mgr);
+
+  // fn_9_4CA4: the module's helper the aim helper asks first - over the 0x80 limit.
+  bool x4CA4_CanAim();
+
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
   // listening AIs of the same area.
