@@ -1065,7 +1065,7 @@ void CDigitalGuardian::x28D0_(CStateManager& mgr) {
 // (0x126C) fades and tints the beacon model (0x1270), and the effect's external parameter 0 is
 // set; the effect always updates. The head part (the TCastToPtr<CDigitalGuardianHead> of 0x1084
 // at 0x2B04: the effect is aimed from the neck locator at the head, 0x2B10..0x2C6C, and the
-// parameter is dt times that distance) cannot run: the head class is WP3 and not ported, so the
+// parameter is dt times that distance) cannot run: the head class is not ported, so the
 // parameter is the 1.0 the retail loads at 0x2AF4 for a missing head.
 void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
   if (x123C_ == nullptr || !x11EC_.valid()) { // the tests at 0x2A60 and 0x2A6C
