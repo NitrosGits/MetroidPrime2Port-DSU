@@ -574,19 +574,19 @@ float CEmperorIngStage3::SnapAngleTo45(float angle) const {
 void CEmperorIngStage3::OnDamage(CStateManager& mgr, u16 sourceId) {
   const CCollisionActor* first = HeartCollisionActor(mgr, 0);
   if (first != nullptr && first->GetUniqueId().Value() == sourceId) {
-    x824_ |= 0x01; // 0x3718
+    x824_ |= 0x80; // 0x3718, the bit 24
     return;
   }
   const CCollisionActor* second = HeartCollisionActor(mgr, 1);
   if (second != nullptr && second->GetUniqueId().Value() == sourceId) {
-    x824_ |= 0x01; // 0x3718
+    x824_ |= 0x80; // 0x3718, the bit 24
   }
 }
 
 // fn_18_2D50 (0xB4): the hit object's id is looked up in the heart holder and the collision
 // actor's flag byte (guest 0x20, the DOL's fn_80137718 - a stand-in) and the player are read.
 void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
-  if ((x824_ & 0x02) != 0 || (x824_ & 0x04) != 0 || (x825_ & 0x08) == 0) {
+  if ((x824_ & 0x40) != 0 || (x824_ & 0x20) != 0 || (x825_ & 0x10) == 0) {
     return; // 0x2D7C..0x2D98
   }
   const CCollisionActor* heart = HeartCollisionActorById(mgr, sourceId); // 0x2DA4

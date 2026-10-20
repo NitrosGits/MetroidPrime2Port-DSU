@@ -70,6 +70,8 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | 0x86C | the hearts' vulnerability | the constructor copies the immune vulnerability into it (0x9CB8..0x9CC4); `fn_18_1BD8` gives it to both hearts |
 | 0x830 / 0x840 / 0x850 | the module's three lists | the count at +0x4, the entries at +0xC, each entry 0xC bytes (a weight at +0x0, a threshold at +0x4, a timer at +0x8). The first is the attack list (`fn_18_2BF0` fills it), the second is the one the taunt average reads and the third the one the flag check reads |
 | 0x8C0 | the id of the object the module watches | `fn_18_125C` clears it when the object is gone (0x12AC) |
+| 0x158 | `CPhysicsActor::mMass` | the host's `GetMass()`: the off-ground force is the gravity constant times it, negated (0x7FA4..0x7FC0) |
+| 0x1C0 | `CPhysicsActor::mConstantForce` | the host's `SetConstantForceWR()`: the message handler's `kSM_OffGround` writes it (0x7FB0..0x7FC0) |
 | 0x158 | a CPatterned field the module reads | the off-ground speed: the off-ground direction is the gravity constant times it, negated (0x7FA4..0x7FC0) |
 | 0x1C0 | the off-ground direction | the message handler's `kSM_OffGround` writes it (0x7FB0..0x7FC0) |
 | 0x8EC | the eye-shut time | the EyeShut state's activate reads it (0x52BC) and clears it |
@@ -338,3 +340,12 @@ With the lists ported the walk goes on: the FSM leaves Idle for the GainDistance
 state (`fn_18_4EB4`, a stand-in). The ing itself does not move: the GainDistance state's update
 path - the steering - is still a stand-in. The run ends on the frame limit with
 `grep -c '[port] caught\|reach-stub'` = 0.
+
+### The base-class members (the sweep)
+
+The port's members whose guest offset is below the module's first own field (the ctor's first
+store past CPatterned's size, 0x7C0) are base-class members: 0x158 -> `CPhysicsActor::mMass`
+(the host's `GetMass()`), 0x1C0 -> `CPhysicsActor::mConstantForce` (the host's
+`SetConstantForceWR()`), and 0x6B4 - the eye-shut flag - which the host's CPatterned has no
+member with that role for, so the port keeps its own copy. The retail's CActor is 0x158 bytes
+and the host's 0x1B8, so the host's named members are used and never a raw offset.
