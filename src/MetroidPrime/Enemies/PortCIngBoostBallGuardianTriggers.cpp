@@ -467,7 +467,9 @@ void CIngBoostBallGuardian::JoinTeam(CStateManager& mgr) {
 
 // fn_30_53D0 (this module).
 // The DOL's surface move shared with MinorIng (fn_44_5384): drop the part of the move along the
-// surface normal, step, and keep the step on the path mesh unless following a point path.
+// surface normal when it is under 0.6 of the move (0x00005478: rodata_D8), step speed * dt along
+// the normalised move and keep that direction (0x1110), else zero it; then Stop().
+// @ fn_30_53D0
 void CIngBoostBallGuardian::MoveOnSurface(const CVector3f& moveIn, float speed, float dt) {
   const CVector3f pos = GetTranslation();
   const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();

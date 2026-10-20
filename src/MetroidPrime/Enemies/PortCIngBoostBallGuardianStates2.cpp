@@ -278,11 +278,13 @@ void CIngBoostBallGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) 
 }
 
 // fn_30_99D4 (this module).
-// fn_29_82D4 (not yet exercised in a run)
+// fn_29_82D4.
+// @ fn_30_99D4
 void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
-  // 0x00008310: in the ing-spot form the Ing walks the waypoint's own speed (0x158) over the ing
-  // spot's maximum speed (0x87c), on every message - the waypoint is the navigation's destination
+  // 0x00009A10: in the ing-spot form the Ing walks the phase's speed scale (0x00009A64:
+  // *(0x11D0)+0x34) times the waypoint's own speed (0x158) times the ing spot's maximum speed
+  // (0x00009A84: 0x7c8, data 0x08), on every message - the waypoint is the navigation's destination
   // (0x6c0) and a missing one leaves the speed at 1.0 (rodata_64).
   if (mForm == kForm_IngSpot) {
     const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
@@ -290,7 +292,8 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
     const CScriptAIWaypoint* waypoint =
         TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(mWaypointNavigation.GetDestination()));
     const float speed = waypoint != nullptr ? waypoint->GetSpeed() : 1.f;
-    MoveOnSurface(move, speed * mData.mIngSpot.GetMaxSpeed(), dt);
+    MoveOnSurface(move, CurrentPhase().mIngSpotSpeedScale * speed * mData.mIngSpot.GetMaxSpeed(),
+                  dt); // 0x00009A90: fn_30_53D0
   }
   if (msg == kStateMsg_Activate) {
     LogState("FollowAttackPattern");
@@ -313,7 +316,7 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
         mDesiredForm = kForm_IngSpot;
       } else if ((waypoint->GetFlags() & 0x100) != 0) {
         mDesiredForm = kForm_Corporeal;
-      }
+      } // area 28 has no waypoint with neither flag, so the fall-through never runs there
     }
   } else if (msg == kStateMsg_Deactivate) {
     mFollowingAttackPath = false; // 0x00008468: 0xe5d bit 3
