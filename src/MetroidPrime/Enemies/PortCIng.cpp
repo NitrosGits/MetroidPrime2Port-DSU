@@ -350,6 +350,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mLeftWristSegId(PortArmSegId(modelData, "L_wrist_end"))    // 0xd83
 , mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
 , mTargetPos(CVector3f::Zero())
+, mSurfaceNormal(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
 , mPortalPlaneNormal(CVector3f::Zero())
 , mPortalPlaneConstant(0.f)
@@ -746,6 +747,53 @@ void CIng::StopSfx() {
       mLoopSfx[i] = CSfxHandle();
     }
   }
+}
+
+// fn_29_4604 (CIng::Think's call at asm 0x0000C794): the blob the Ing owns (mBlobId, 0xd5c)
+// follows the surface the Ing stands on. Retail looks the blob up, works out an "align" flag from
+// the form and the flags, and when it is set turns the blob to the surface normal, writes the
+// blob's model scale and colour (0xfc/0x100..0x104), calls GeomBlobV2's fn_25_256C and sets the
+// blob's byte 0x154 bit 5.
+//
+// The Ing never spawns the blob (mBlobId stays invalid - the member map in IngFamily.md A.3), so
+// retail's whole body is unreachable in every run so far and the port stops where retail does:
+// at the lookup. The blob's class has no host counterpart either (the model's stores, GeomBlobV2's
+// fn_25_256C and the byte 0x154), so those three steps have no host equivalent.
+void CIng::AlignBlobToSurface(CStateManager& mgr) {
+  CEntity* blobEntity = mgr.ObjectById(mBlobId); // asm 0x00004634: the blob id (0xd5c)
+  if (blobEntity == nullptr) {
+    return;                                     // asm 0x0000463C: no blob, nothing to do
+  }
+  CActor* blob = static_cast< CActor* >(blobEntity);
+  // asm 0x00004648-0x000046C8: the align flag. The ing-spot form always aligns; the corporeal
+  // form only while it is dead (CPatterned 0x420 bit 6 = mAlive is clear) and it started as an
+  // ing spot (0xe5d bit 5); the four form-change forms (6..9) only when it started as an ing
+  // spot. Every other form does not align.
+  float align = 0.f; // asm 0x00004648 (rodata_6C)
+  if (mForm == kForm_IngSpot) {
+    align = 1.f;     // asm 0x0000467C (rodata_64)
+  } else if (mForm == kForm_Corporeal) {
+    if (!mAlive && mStartAsIngSpot) {
+      align = 1.f;   // asm 0x0000469C-0x000046B8
+    }
+  } else if (mForm >= kForm_BecomingCorporeal && mForm < 10) {
+    if (mStartAsIngSpot) {
+      align = 1.f;   // asm 0x00004684-0x00004694
+    }
+  }
+  if (align > 0.f) { // asm 0x000046C4: fcmpo align, 0.0f (rodata_6C)
+    const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal(); // asm 0x000046D4
+    // asm 0x000046E8-0x00004758: the normal's z against 0.95f (rodata_D8). The compare is folded
+    // into a double (2^52 or 2^52+1) and the difference against rodata_E0 (2^52) picks the up
+    // vector: the Right one when the normal points up (z >= 0.95), the Up one otherwise.
+    const CVector3f up = normal.GetZ() < 0.95f ? CVector3f::Up() : CVector3f::Right();
+    const CVector3f pos = GetTranslation(); // asm 0x000046D8/0x000046EC/0x00004700: 0x54/0x58/0x5c
+    const CVector3f look = pos + normal;    // asm 0x00004770-0x00004788
+    blob->SetTransform(CTransform4f::LookAt(pos, look, up)); // asm 0x0000478C/0x00004798
+  }
+  // asm 0x000047EC: GeomBlobV2's fn_25_256C(blob, align) - no host counterpart.
+  // asm 0x000047FC-0x0000480C: mDamageCooldownTimer (0x448) > 0 sets the blob's byte 0x154 bit 5
+  // (0x20) - no host counterpart.
 }
 
 // ---- triggers -------------------------------------------------------------------------------
@@ -2806,10 +2854,9 @@ void CIng::SplatOntoMesh(CStateManager& mgr, float) {
   LogState("SplatOntoMesh");
   mForm = kForm_IngSpot; // 0x9d4 = 3
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // id word 13
-  // The asm builds the normal from 0xdd4/0xdd8/0xddc, which nothing in the module ever writes (the
-  // ctor zeroes 0xdc8..0xde8), so it is zero at runtime and ShortestRotationArc reads that as
-  // NoRotation: the alignment is a no-op, kept for the call's shape. rodata_64 is 1.0f.
-  mSurfaceAlignment.OrientToSurfaceNormal(*this, CVector3f::Zero(), 1.f);
+  // The normal comes from the surface the body projectile hit (0xdd4/0xdd8/0xddc, written by
+  // fn_29_B534's CollidedWith); it is zero until then. rodata_64 is 1.0f.
+  mSurfaceAlignment.OrientToSurfaceNormal(*this, mSurfaceNormal, 1.f);
   // 0x852: the body projectile's splat-wall sound. Retail stores no handle, so neither do we.
   CSfxManager::AddEmitter(mData.mBodyProjectile.mSoundSplatWall, GetTranslation(), 0x7f,
                           GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
@@ -2901,6 +2948,7 @@ void CIng::Think(float dt, CStateManager& mgr) {
   mLineOfSight.Update(dt, mgr);
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
+  AlignBlobToSurface(mgr); // fn_29_4604, asm 0x0000C794
   UpdateValidTarget(mgr);
   UpdateLoopSfx();
   UpdateTouchBox();      // fn_29_3C58, asm 0x0000C7B0
@@ -3093,6 +3141,38 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
     mCurDamageRemTime = mDamageWaitTime;
   }
   CPatterned::Touch(actor, mgr);
+}
+
+// fn_29_B534: CIng's CollidedWith - CPhysicsActor's vtable slot 0x80 (the REL's own override).
+// The flying body projectile (form 4) remembers the surface it hit: the first collision whose
+// material list holds one of the six splat surfaces gives the normal (0xdd4/0xdd8/0xddc) and
+// sets the splat flag (0xe5e bit 6).
+void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
+  CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
+  if (mForm != kForm_BodyProjectile) {
+    return; // asm 0x0000B558: cmpwi mForm (0x9d4), 4
+  }
+  if (mBodyProjectileTime < 0.5f) {
+    return; // asm 0x0000B56C: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4)
+  }
+  // The mask retail builds once into lbl_29_bss_8 (asm 0x0000B588-0x0000B6F0) from the six bit
+  // indices in lbl_29_data_9DC..0x9F0 (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a): Ceiling, Wall, Floor,
+  // Solid, Immovable and Occluder. Retail ANDs the mask's low word with the collision's material
+  // list low word (0x30) and its high word with the high word (0x34), which is the same test as
+  // the whole 64-bit mask against the list's value.
+  const u64 kSplatSurfaces = (u64(1) << kMT_Ceiling) | (u64(1) << kMT_Wall) |
+                             (u64(1) << kMT_Floor) | (u64(1) << kMT_Solid) |
+                             (u64(1) << kMT_Immovable) | (u64(1) << kMT_Occluder);
+  const int count = list.GetCount(); // asm 0x0000B6FC: the list's count
+  for (int i = 0; i < count; ++i) {
+    const CCollisionInfo& info = list[i]; // asm 0x0000B718: the entries are 0x60 apart
+    if ((info.GetMaterialLeft().GetValue() & kSplatSurfaces) == 0) {
+      continue; // asm 0x0000B720-0x0000B734: the masks do not meet
+    }
+    mSurfaceNormal = info.GetNormalLeft(); // asm 0x0000B738-0x0000B750: 0x40/0x44/0x48 -> 0xdd4/0xdd8/0xddc
+    mSplat = true;                          // asm 0x0000B758: rlwimi, the word's bit 25 = the byte's bit 6 (0x40)
+    break;                                  // asm 0x0000B760: the first hit wins
+  }
 }
 
 // @ fn_29_C228. The base class's handler runs only for the events this function does not handle

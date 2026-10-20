@@ -251,6 +251,11 @@ public:
                        float dt) override;
   void SetupStateMachine(CStateManager& mgr) override;
 
+  // CPhysicsActor, vtable slot 0x80 (the REL's fn_29_B534): the flying body projectile remembers
+  // the surface it hit, so the splat can be oriented to it.
+  void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
+                    CStateManager& mgr) override;
+
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
@@ -365,6 +370,9 @@ private:
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
+  // fn_29_4604 (CIng::Think's call at asm 0x0000C794): the blob (mBlobId, 0xd5c) follows the
+  // surface the Ing stands on.
+  void AlignBlobToSurface(CStateManager& mgr);
   void StopSfx();
   // fn_29_1A80: turn horizontally to the lure safe zone when one is set, else to the target.
   void FaceLureOrTarget(CStateManager& mgr);
@@ -449,6 +457,8 @@ private:
   CSegId mLeftWristSegId;                    // 0xd83
   CLineOfSightTracker mLineOfSight;          // 0xd88 (its segment is the byte at 0xd8a)
   CVector3f mTargetPos;                      // 0xdc8
+  CVector3f mSurfaceNormal;                  // 0xdd4: the surface the body projectile hit
+                                           // (fn_29_B534 writes it), the splat's orientation
   CVector3f mSurfaceMoveDir;                 // 0xde0
   CVector3f mPortalPlaneNormal;              // 0xdf0: the portal plane's normal, Up() = (0,0,1)
   float mPortalPlaneConstant;                // 0xdfc: dot(translation, normal) = translation.z
