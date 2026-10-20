@@ -358,10 +358,24 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
                                                    0.f);
   }
 
-  // The ing's sound (0x4A70..0x4BB8): the emitter (the handle at guest 0x908, playing per
-  // CSfxManager::IsPlaying, and the object at guest 0x90C) follows that object. A stand-in;
-  // DoUserAnimEvent's event 39 (fn_18_9048) writes both members.
-  StandInFn("fn_18_47D4 sound");
+  // The shock wave's sound (0x4A70..0x4B78): while its emitter (guest 0x908) plays and the
+  // wave (guest 0x90C) exists, the sound sits on the wave's ring on the player's side: the flat
+  // (z zeroed, rodata 0x258) direction from the wave to the player, scaled by the wave's radius
+  // (wave+0x1C0), at full volume (0xFF). Retail reads the object without a cast.
+  if (mShockWaveSfx && mShockWaveId != kInvalidUniqueId.Value() &&
+      CSfxManager::IsPlaying(mShockWaveSfx)) {
+    const CShockWave* wave =
+        static_cast< const CShockWave* >(mgr.GetObjectById(TUniqueId(mShockWaveId)));
+    if (wave != nullptr) {
+      CVector3f dir = mgr.Player(0)->GetTranslation() - wave->GetTranslation();
+      dir = CVector3f(dir.GetX(), dir.GetY(), 0.f);
+      if (dir.CanBeNormalized()) {
+        dir.Normalize();
+        const CVector3f pos = wave->GetTranslation() + dir * wave->GetRadius();
+        CSfxManager::UpdateEmitter(mShockWaveSfx, pos, dir, 0xff);
+      }
+    }
+  }
 }
 
 // fn_18_125C (0x68): the module watches the object its id at guest 0x8C0 names; when the
