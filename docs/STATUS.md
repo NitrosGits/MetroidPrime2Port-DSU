@@ -18,14 +18,14 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 |---|---|---|---|
 | Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C `mData.mFlags210`, locomotion 0/1 = Crouch/Relaxed |
 | CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate @ `6803f32e0` | rework Alert's Update: CBCTauntCmd kTT_Two/kTT_Four on bc+0x580 |
-| EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring @ `d83b04c5a` | AcceptScriptMsg fn_16_7CE8 (+ report spawn callee sizes) |
+| EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring @ `545f3db63` | anim-parm builders fn_16_30C8 + fn_16_36E8; fn_16_3EAC (0x794, collision managers) reserved for Opus |
 | EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `a8787e7f4` | milestone 2: FSM tables + triggers <=0x40 |
 | DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian @ `262078f10` | rework Render A3D4 (retail calls slot 47, never CPatterned::Render); stop if the model vanishes |
 | DarkSamus (worker) | `ses_ea70a143bffe4SLdq4LIY5V8bC` | decomp/darksamus on `232823309` | milestone 1 (`/tmp/opencode/briefs/m1.md`) |
 | ScriptPlayerTurret (worker) | `ses_ea70a1437ffeyp5d7K55HX0N2H` | decomp/playerturret on `232823309` | milestone 1 |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 
-Accepted, not yet merged (next batch: merge, build, smoke): emperoring `d83b04c5a`, commandopirate
+Accepted, not yet merged (next batch: merge, build, smoke): emperoring `545f3db63`, commandopirate
 up to `d2baea05b`, spacepirate `0d38c3c08` (Render/ScanVisorRender parked for an Opus lane:
 fn_72_36CC + unidentified member), emperoring3 `a8787e7f4`, swampboss `59637cee5`;
 digitalguardian `121b1c99a` only together with the Render rework (draw-last gate).
