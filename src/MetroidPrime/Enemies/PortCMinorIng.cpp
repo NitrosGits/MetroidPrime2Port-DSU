@@ -190,6 +190,12 @@ void DumpFsm2(const CGenericFSM2& machine) {
   }
 }
 
+// @ fn_44_D00
+// The retail copy moves a whole CHealthInfo from the source to the destination: the three floats
+// at +0x00..+0x08, the two weapon modes at +0x0c and +0x14, the four ids at +0x10..+0x1a and the
+// two flag bits at +0x1c (asm 0xD00-0xD4C). The host's CHealthInfo has that layout.
+void CopyHealthInfo(CHealthInfo& dest, const CHealthInfo& src) { dest = src; }
+
 } // namespace
 
 // fn_44_9D58 locks the ing-spot hit effects (0x940/0x950) only when the asset is set.
@@ -1520,8 +1526,8 @@ void CMinorIng::CreateCollisionActor(CStateManager& mgr) {
   if (colAct != nullptr) {
     mCollisionActorId = uid;
     mgr.AddObject(colAct);
-    // fn_44_D00 copies the Ing's CHealthInfo whole.
-    *colAct->HealthInfo() = *GetHealthInfo();
+    // fn_44_319C copies the Ing's CHealthInfo whole into the collision actor's (asm 0x32F4).
+    CopyHealthInfo(*colAct->HealthInfo(), *GetHealthInfo());
     colAct->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
     colAct->SetCallTouch(true);
   }
