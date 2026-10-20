@@ -278,7 +278,8 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   "IngBlobEffect" trackers (`648C`, 0x1074 ingSpot / 0x1076 boost blob effect) and the "Ing Light"
   (`67B4`, 0x1084); ACTV turns the light on and sets the boss params ("BossBoostBallGuardian"), DCTV
   runs `510C` (LeaveTeam), turns the light off and zeroes both trackers' emission; Delete deletes
-  all three. Their per-frame drivers `6108`/`65C8` are still stand-ins. The host's ACTV `JoinTeam`
+  all three. Their per-frame drivers are ported: `65C8` fades the light
+  (0x11C4) on the head locator; `6108` drives one tracker on the surface under the guardian. The host's ACTV `JoinTeam`
   is the Ing's; Delete runs `6064` (the cover hint at 0x108E). Damage is retail's: XDMG runs `479C` (ing-spot form: `44A4`, the
   puddle collider or a hit the boost ball relays; else `4078`, a body collider) and sets the
   player-projectile bit; XRDG runs `4324` in the ing-spot form only. Both count only a CWeapon as
@@ -468,8 +469,7 @@ offsets are in section e; the module's own addresses for the state machine's nod
   half's copies, and the module's own ones may carry boost-specific code. Compare their sizes
   before trusting the Ing half's behaviour. `fn_30_D94C` Think is ported (2026-10-20) with
   `fn_30_5D90` timers, `fn_30_55D8` ing-spot think and `fn_30_56E0` touch box; its callees
-  `fn_30_6108` (puddle effects, 0x384) and `fn_30_65C8` (hit light, 0x148) are once-logging
-  stand-ins, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
+  `fn_30_6108` (tracker drivers) and `fn_30_65C8` (hit light) are ported, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
 - live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
   `BoostAttack`, which spawns the boost ball (`CBoostBallGuardianBall` in `objs`, at the ground
   under the guardian); with the ball's Think still a stand-in the state waits there (section f).

@@ -191,11 +191,76 @@ void CIngBoostBallGuardian::UpdateTouchBox() {
   mTouchBox = CAABox(min, max);
 }
 
-// fn_30_6108 (0x384): the puddle effects. It looks up the two effect actors at 0x1074 and 0x1076,
-// checks their live particle counts, and places the boost child (TCastToPtr<CBoostBallGuardian>)
-// - the second class is not in the port, so this is a stand-in.
-void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager&) {
-  BgStandIn("CIngBoostBallGuardian::UpdatePuddleEffects (fn_30_6108, 0x384)");
+static bool BgTrackerEmitting(CCollisionTracker* tracker) {
+  return tracker != nullptr && tracker->GetParticleSystem() != nullptr &&
+         tracker->GetParticleSystem()->GetParticleCount() > 0;
+}
+
+// @ fn_30_6108
+// The two blob trackers (ing 0x1074, boost 0x1076): one is driven on the surface under the guardian
+// and the other is turned off. The driven one is the ing tracker in the boost puddle form while it
+// still emits, else the ing tracker unless the boost tracker still emits.
+void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager& mgr) {
+  CCollisionTracker* ing = static_cast< CCollisionTracker* >(mgr.ObjectById(mIngBlobTrackerId));
+  const bool ingEmitting = BgTrackerEmitting(ing);
+  CCollisionTracker* boost =
+      static_cast< CCollisionTracker* >(mgr.ObjectById(mBoostBlobTrackerId));
+  const bool boostEmitting = BgTrackerEmitting(boost);
+  const bool useIng = mCurrentlyInBoostPuddleForm ? ingEmitting : !boostEmitting; // 0x11EF 0x80
+  CCollisionTracker* driven = useIng ? ing : boost;
+  CCollisionTracker* other = useIng ? boost : ing;
+  if (driven != nullptr) {
+    float rate = 0.f;
+    switch (mForm) {
+    case kForm_IngSpot: // 0x00006274
+      rate = 1.f;
+      if (CBoostBallGuardianBall* ball =
+              TCastToPtr< CBoostBallGuardianBall >(mgr.ObjectById(mBoostChildId))) {
+        switch (ball->GetState()) { // ball 0x2D4
+        case 0:
+          rate *= ball->GetShrink(); // ball 0x530
+          break;
+        case 1:
+          rate = 0.f;
+          break;
+        case 2:
+          rate = 1.f;
+          break;
+        default:
+          break;
+        }
+      }
+      break;
+    case kForm_BecomingCorporeal:
+    case kForm_BecomingIngSpot:
+    case kForm_BecomingBodyProjectile:
+    case kForm_BecomingWallProjectile: // 0x000062EC
+      if (mStartAsIngSpot) {           // 0x11ED 0x40
+        rate = 1.f;
+      }
+      break;
+    case kForm_Corporeal: // 0x00006304
+      if (!GetAlive() && mStartAsIngSpot) {
+        rate = 1.f;
+      }
+      break;
+    default:
+      break;
+    }
+    if (rate > 0.f) {
+      const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal(); // 0xD68
+      const CVector3f pos = GetTranslation();
+      const CVector3f& up = normal.GetZ() < 0.95f ? CVector3f::Up() : CVector3f::Right();
+      driven->SetTransform(CTransform4f::LookAt(pos, pos + normal, up));
+      driven->SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0, CModelFlags::EFlags(3),
+                                        CColor(mColor.GetRedu8(), mColor.GetGreenu8(),
+                                               mColor.GetBlueu8(), 0xff)));
+    }
+    driven->SetParticleEmissionRateScalar(rate);
+  }
+  if (other != nullptr) {
+    other->SetParticleEmissionRateScalar(0.f);
+  }
 }
 
 // @ fn_30_65C8

@@ -68,6 +68,8 @@ public:
   // fn_30_13B98: the shrink is over (guest 0x5D8 bit 0x04); BoostAttack's Update turns it into
   // the guardian's IsBoostOver.
   bool IsDone() const { return mDone; }
+  int GetState() const { return mState; }    // 0x2D4, read by fn_30_6108
+  float GetShrink() const { return mShrink; } // 0x530, read by fn_30_6108
   // BoostAttack's Deactivate sets guest 0x5D8 bit 0x01 (0x00007AC4).
   void SetHalted(bool halted) { mHalted = halted; }
 
