@@ -358,8 +358,10 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   if (GetDetectionRange() <= 0.f) {
     return;
   }
-  // 0x1228-0x1244: a fresh id is allocated and kept at 0xF68.
-  mBeamEffectId = mgr.AllocateUniqueId();
+  // port limit: the retail allocates a fresh id here (0x1230) and keeps it at 0xF68 (0x1244)
+  // before it creates the actor. The host has no class for that actor, so the port allocates no
+  // id: an id with no object behind it would be allocated again every frame and would eat the
+  // manager's object ids.
   // 0x1248-0x13B4: the beam effect actor (0x1A0 bytes) is created with the CEntityInfo the
   // retail builds at 0x12A0 (the area id, NullConnectionList, true and kInvalidEditorId), the
   // name (0x12B8, the rodata string at 0xA0 + 0x230) and the rotation (0x12C4-0x1334: the
