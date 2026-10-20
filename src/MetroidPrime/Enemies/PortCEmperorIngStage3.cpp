@@ -743,12 +743,12 @@ bool CEmperorIngStage3::Listen(CStateManager& mgr, const CVector3f& position,
   return true;
 }
 
-// vtable slot 45 = fn_18_98: retail returns a vector the manager holds at +0x54; the base class's
-// origin (the actor's own translation) is close enough for this milestone.
+// @ fn_18_98
+// fn_18_98 (vtable slot 45, 0x1C): the actor's own translation (this+0x54..0x5C, r4 is `this`
+// after the return slot).
 CVector3f CEmperorIngStage3::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                        const CVector3f& aimPos) const {
-  StandIn("CEmperorIngStage3::GetOrigin (vtable slot 45, fn_18_98)");
-  return CPatterned::GetOrigin(mgr, role, aimPos);
+  return GetTranslation();
 }
 
 // vtable slot 50 = fn_18_44: the model alpha byte at guest 0x44F, CPatterned::mColor's alpha
