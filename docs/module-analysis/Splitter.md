@@ -538,3 +538,22 @@ own 0xCC0 and 0x420 semantics, so it is not a quick body):
 - 0x3298: the id 0xEFC (0x32A4) is looked up and cast (0x32B4-0x32B8); if the chassis's byte at
   0x420 has the word's bit 25 set (0x32C4-0x32CC) the function ends, else 0xEFC is set to the
   invalid id (0x32D0-0x32D8).
+
+Resolved since (2026-10-20, for the next slice):
+
+- the byte at 0x420, the word's bit 25 (= the byte's 0x40), is the CPatterned `mAlive` bit the
+  Ing port already maps (`grep 0x420 src/MetroidPrime/Enemies/PortCIng.cpp`: "CPatterned 0x420
+  bit 6"); the host's accessor is `CPatterned::GetAlive()`.
+- the chassis's 0xCC0 is a u16 id written at 0xBE54 and at 0xF764 (the constructor) and read at
+  0x320C, 0x9540, 0xB058, 0xB218, 0xB350, 0xB5A0 and 0xB730; what it names is still not
+  established, so the port would keep it as an id member with the offset in a comment.
+- the compare at 0x3200 is against **this+0x8** (0x31FC `lhz r0, 0x8(r31)`, not the stack copy at
+  0x31E4) - a u16 id in the base class, the command module's own id. The port has no host member
+  for the retail's CEntity+0x8 yet, and that is the one thing the body needs before it can be
+  written.
+- the two module calls are `fn_75_1578` (0x218) and `fn_75_2280` (0x170): both over 0x80, so
+  both stay named once-logging shells.
+- the command module's own fields the body touches: 0xEFA (the id it looks up), 0xEFE (the copy
+  of the chassis's 0xCC0), 0xEFC (the second id it checks), 0xF14 (the timer, set to 3.0f) and
+  0x12A (a base-class id, cleared together with 0xEFA at 0x3240-0x324C); the data's flag byte at
+  0x7C0 bit 0x8 (0x3258 `rlwinm` 28-28) is the port's `mData.mUnknownBD80FD94 & 0x8`.
