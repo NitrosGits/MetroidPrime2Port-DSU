@@ -628,6 +628,7 @@ rstl::optional_object< CAABox > CEmperorIngStage3::GetTouchBounds() const {
   return GetBoundingBox();
 }
 
+// @ fn_18_8E84
 // fn_18_8E84 (vtable slot 21, 0x1C0): the active heart's pivot joint - the second heart's when its
 // collision actor (fn_18_3A84) is active (the byte at +0x20, bit 7), else the first's (the
 // description's CSegId at +0x8, fn_18_3B14) - at the current animation's elapsed time (the tree's
@@ -783,6 +784,7 @@ bool CEmperorIngStage3::Listen(CStateManager& mgr, const CVector3f& position,
   return true;
 }
 
+// @ fn_18_98
 // fn_18_98 (vtable slot 45, 0x1C): the actor's own translation (this+0x54..0x5C, r4 is `this`
 // after the return slot).
 CVector3f CEmperorIngStage3::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
