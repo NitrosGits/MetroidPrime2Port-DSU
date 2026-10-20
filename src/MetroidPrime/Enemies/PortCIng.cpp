@@ -2996,12 +2996,13 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_XENZ:
     ++mSafeZoneCount;
+    if (mForm == kForm_IngSpot) {
+      mSafeZoneIngSpot = true; // asm 0x0000CE2C: 0x9d4 == 3 -> 0xe5e |= 0x20
+    }
     mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr);
     break;
   case kSM_XEXZ:
-    if (mSafeZoneCount > 0) {
-      --mSafeZoneCount;
-    }
+    --mSafeZoneCount; // asm 0x0000CE74: unconditional
     mHurtfulZone = mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*this, mgr);
     break;
   default:
