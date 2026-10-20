@@ -3,13 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-20 (twenty-ninth session): SwampBoss Stage 1 walked to Dead, and the beam does not hit joints
+## 2026-10-20 (twenty-ninth session): SwampBoss walked - Stage 1 to Dead, Stage 2 through Swoop/Level/Circle
 
 - **`decomp/swampboss` (worktree `wt-mp2-swampboss`).** The console gained `aim <yaw> <pitch>`
   (`PortMouse::SetAimAngles`), cherry-picked from `decomp/ing` `6ad804a12` and committed here as
   `4d1864f8e` so the two branches merge once, not twice. It places the view outright because retail
   free look wants the look button held and `PortInput::Hold` replaces the held state, so `press`
   cancelled every `cstick`.
+- **Stage 2 (Chykka) followed:** `74/243` marked. The FSM2 edge lists came out of the probe once
+  its trigger dump printed transition *targets*: `Lurk` tests `PlayerInWater` **first** and that
+  edge goes to `Taunt`, which is why every earlier run went Lurk -> Taunt (the harness had the
+  player in the water). Dry, the chain runs `Lurk -> Level -> Swoop -> Circle -> Lurk -> Taunt`,
+  all reached and marked, plus `0xc76` bit 5 = `mCircleCounting` (a TODO resolved). Blow and Flinch
+  still need a growth to die, and a growth death needs a weapon hit.
 - **Stage 1 (Chykka Larva) is walked through its whole FSM.** `912ff29d9`: 52 more `// @ fn_78_*`
   markers, 105 of 251. Phase 0 only asks for the splash cycle; below ~600 HP (`damage` is capped at
   580 per call) the beach/tongue/vomit attacks are what the disc picks, and `PlatformReady ->
@@ -18,13 +24,16 @@ appended, dated as in the heading there.
   PlatformReady, TongueLoop, TonguePull, Vomit, StopBeaching, Null, ResetPlatform, Dead. Not
   reached: ExposeBelly, the two hit reacts, SlideIntoWater and the Heavy/Light hit triggers - all
   need a real hit to land.
-- **Found: the player's beam cannot damage a joint.** With `aim` the shot direction is exact
-  (sampled beam positions match the requested yaw/pitch to under a degree), yet 9 of 588 aimed
-  shots from 4 units hit, each 1.00 damage. `CBeamProjectile`'s `RayCollisionCheckWithWorld` runs
-  50+ units through the boss and its collision spheres without a hit, so damage only arrives via
-  the beam's touch box. This is a port bug, not a boss bug: it applies to every beam in the game,
-  and until it is fixed no boss can be killed retail-style in a harness. Numerals for the next
-  session: power beam 2/50, dark 15/50, light 20/10, annihilator 12/80, missile 30.
+- **Correction to an earlier finding in this same session: the beam is not broken.** A hit does
+  full damage (`[sb1dmg] ... dmg=25.00`, a charged power beam against the boss's 0.5 multiplier).
+  What looked like a port gap was two harness errors and one arena fact: `aim <yaw> <pitch>` sets
+  the **camera's** pitch while `status`'s `position` is the player at its **feet** (~1.5 units
+  lower), so aiming from the feet threw every shot 2-4 units low; `CBeamProjectile`'s ray path is
+  healthy (near lists hold 56-141 actors, the projectile's query returns candidates, the world ray
+  hits); and a shot that crosses the arena's water surface is consumed before it reaches a joint.
+  Still open: even at 4.6 units inside the water only ~1 shot in 100 lands, which the moving
+  target's 2-3 frame aim lag does not explain - next measurement is the ray probe on a shot that
+  starts inside a joint sphere. Detail: SwampBoss.md.
 - Gates on the marked runs: 0 `[port] caught`, 0 `[reach-stub]`, `exit=0`; `gen_files_cmake.py
   --check` rc 0; the changes are `platform/` and one port-only `Port*.cpp`, so the matching build is
   untouched by construction.

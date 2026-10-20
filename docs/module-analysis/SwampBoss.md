@@ -146,14 +146,25 @@ per-function trace/state probe (never committed), the player driven through the 
   needs the player inside the arena `CScriptAIHint` (type 21). The only hint (u05b4) sits 1.7 units
   from the boss centre; parking the player there with `tp` every iteration (`PlayerInsideHint` →
   true) is what made the whole chain fire — the first pass never stayed inside it.
-- **Shooting: the beam does not reach the joints.** `aim` puts the view where asked (sampled beam
-  positions match the requested yaw/pitch to under a degree) but only 9 of 588 aimed shots from 4
-  units delivered a joint hit, each 1.00 damage. `CBeamProjectile`'s per-frame
-  `RayCollisionCheckWithWorld` runs 50+ units through the boss and its joint spheres without a hit,
-  so damage only comes through the beam's touch box. Until that ray path is fixed a retail kill is
-  out of reach, and the death runs use the console's `damage` verb (the same knob the Stage 2 and
-  SandBoss runs used). Disc damage figures from `gpTweakPlayerGun`: power 2/50, dark 15/50, light
-  20/10, annihilator 12/80 (normal/charged), missile 30.
+- **Shooting (corrected 2026-10-20, late):** the beam is not broken. A hit does full damage:
+  `[sb1dmg] state=7 weak=0 dmg=25.00` is a charged power beam (50) against the boss's 0.5
+  multiplier. What the first pass read as "the beam cannot reach the joints" was two harness
+  errors plus one arena fact:
+  - `aim <yaw> <pitch>` sets the **camera's** pitch, while `status`'s `position` is the player's
+    origin at its **feet**, ~1.5 units lower. Aiming from the feet threw every shot 2-4 units low;
+    the sampler showed the projectile at z 82 against a joint at z 86. Aim from `status`'s
+    `camera ... at (x, y, z)` instead: the camera pitch then reads back exactly (`camera pitch`
+    matches the request to 0.1 deg) and the projectile's launch direction matches it (ray probe:
+    `dir` z 0.99 for an 83.5 deg request).
+  - `CBeamProjectile`'s ray path is fine: `CSortedListManager` holds 56-141 actors, the
+    projectile's 2-unit box returns candidates whenever it overlaps one, and the world ray hits
+    geometry when the segment crosses it.
+  - The arena is water: a shot that crosses the water surface is consumed before it reaches a
+    joint, so the stand-off has to be inside the water beside the boss, not on the ring.
+  - **Still open:** even at 4.6 units inside the water, only about one shot in a hundred lands
+    (1 hit in ~250 s of firing). The joints are 1.5-5.5 unit spheres and the aim is 2-3 frames
+    stale against a moving target, which does not account for it; the next measurement is the
+    ray probe on a shot that starts inside a joint sphere, to see what rejects it.
 - **`damage` is capped per call:** 1160 applied as 580, so the harness steps it in a loop.
 - **Not reached:** ExposeBelly, HeavyHitReact, LightHitReact, SlideIntoWater, and the HeavyHit /
   LightHit triggers — all of them need a real hit to land. `ShouldExposeBelly` is evaluated but the
