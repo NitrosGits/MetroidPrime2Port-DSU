@@ -7,13 +7,8 @@ void SetSDarkSamus_FuncPtrs(SDarkSamus_FuncPtrs* callbacks) { gLoader_DarkSamus 
 // Guessed loader name.
 CEntity* RelProxy_LoadDarkSamus(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
 #ifdef TARGET_PC
-  // The module has no host body in the port, so its loader table was never
-  // registered. Skip the object - the script loader helper tolerates a null entity
-  // and skips the rest of its bytes - instead of dereferencing the empty table.
-  // Port stand-in; see src/MetroidPrime/PortModuleStubs.cpp.
-  if (gLoader_DarkSamus == nullptr) {
-    return nullptr;
-  }
+  // The module has a host body (src/MetroidPrime/Enemies/PortCDarkSamus.cpp), whose RELMain
+  // registers the table at port entry, so the null guard the stub needed is gone.
 #endif
   return gLoader_DarkSamus->mLoader(mgr, input, info);
 }

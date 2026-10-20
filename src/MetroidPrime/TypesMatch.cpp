@@ -22,6 +22,11 @@
 #include "MetroidPrime/Enemies/CBabyMetroid.hpp"
 #include "MetroidPrime/Enemies/CBacteriaSwarm.hpp"
 #include "MetroidPrime/Enemies/CBouncyGrenade.hpp"
+#ifdef TARGET_PC
+// Guarded (like the ElitePirate include below) so the non-PC path of this upstream file stays
+// byte-identical: the class is only used by the guarded TYPES_MATCH_IMPL below.
+#include "MetroidPrime/Enemies/CDarkSamus.hpp" // REL module 10's host body (PortCDarkSamus.cpp)
+#endif
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CFlyerSwarm.hpp"
 #include "MetroidPrime/Enemies/CGlowbug.hpp"
@@ -326,6 +331,9 @@ TYPES_MATCH_IMPL(CPlantScarabSwarm, CSwarmBasics, kET_PlantScarabSwarm)
 TYPES_MATCH_IMPL(CBeamProjectile, CGameProjectile, kET_BeamProjectile)
 TYPES_MATCH_IMPL(CPlasmaProjectile, CBeamProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CDarkSamus, CPatterned, kET_DarkSamus) // REL module 10's host body
+#endif
 // 112: class not declared yet (DigitalGuardian REL); parent CPatterned
 // 113: class not declared yet (DigitalGuardian REL); parent CPatterned
 #ifdef TARGET_PC
@@ -599,6 +607,10 @@ CAST_TO_PTR_IMPL(CPlasmaProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL)
 // 112: class not declared yet (DigitalGuardian REL)
 // 113: class not declared yet (DigitalGuardian REL)
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CDarkSamus, kET_DarkSamus)
+CAST_TO_PTR_IMPL(CDarkSamus, kET_DarkSamus)
+#endif
 #ifdef TARGET_PC
 CAST_TO_REF_IMPL(CElitePirate, kET_ElitePirate)
 CAST_TO_PTR_IMPL(CElitePirate, kET_ElitePirate)
