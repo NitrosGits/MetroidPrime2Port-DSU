@@ -284,6 +284,15 @@ public:
   bool IsOverrideRadarRadius() const { return mOverrideRadarRadius; }
   float GetRadarXYRadiusOverride() const { return mRadarXYRadiusOverride; }
   float GetRadarZRadiusOverride() const { return mRadarZRadiusOverride; }
+#ifdef TARGET_PC
+  // Inlined in retail (SwampBossStage2 fn_79_9F4C writes the three fields directly).
+  void SetRadarRadiusOverride(float xy, float z) {
+    mOverrideRadarRadius = true;
+    mRadarXYRadiusOverride = xy;
+    mRadarZRadiusOverride = z;
+  }
+  void ClearRadarRadiusOverride() { mOverrideRadarRadius = false; }
+#endif
   float GetEchoPulsePhase() const { return mEchoPulsePhase; }    // Guessed name
   uint GetEchoPulseCounter() const { return mEchoPulseCounter; } // Guessed name
   EPlayerCameraState GetCameraState() const { return mCameraState; }
