@@ -292,6 +292,10 @@ private:
   void PortCopyTimers();
   // guest 0xC6E: the second link, which fn_75_E6E4 clears when it takes a head.
   TUniqueId mSecondLinkId = kInvalidUniqueId;
+  // guest 0xCBC: the id of the CIngSnatchingSwarm that is snatching this chassis. The retail's
+  // fn_75_E810 keeps it there when the attack target is one; the port's SetAttackTarget is
+  // still a shell, so it stays invalid.
+  TUniqueId mSnatcherId = kInvalidUniqueId;
   // guest 0xD10-0xD1C: the four timers fn_75_8EA4 copies.
   float mLegStabTimer = 0.f;     // 0xD10 (the data's leg stab interval, 0x82C)
   float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)

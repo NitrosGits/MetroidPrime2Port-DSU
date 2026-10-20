@@ -211,8 +211,9 @@ private:
   void PortAutoDestruct(float time);
   void PortAutoDestructTimer(float dt);
 
-  // guest 0xF6A: the auto-destruct flag byte; the retail's fn_75_21FC tests its 0x01 (the
-  // word's bit 31) and clears it.
+  // guest 0xF6A: the flag byte; the retail's fn_75_21FC tests its 0x01 (the
+  // word's bit 31) and clears it, and the retail's RaiseShields code (fn_75_3B20) sets its
+  // 0x08 (the word's bit 28).
   uchar mAutoDestructFlags = 0;
   // guest 0xEF4: the auto-destruct timer the same function advances.
   float mAutoDestructTimer = 0.f;

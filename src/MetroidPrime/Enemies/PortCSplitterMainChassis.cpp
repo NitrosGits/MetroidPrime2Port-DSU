@@ -57,14 +57,18 @@ void StandIn(const char* what) {
   { #name, static_cast< CPatterned::StateMachine::StateFunc >(&CSplitterMainChassis::name) }
 #define SPLITTER_CODE(name) \
   { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterMainChassis::name) }
+#define SPLITTER_TRIGGER_PORTED(name) \
+  { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterMainChassis::name) }
+#define SPLITTER_STATE_PORTED(name) \
+  { #name, static_cast< CPatterned::StateMachine::StateFunc >(&CSplitterMainChassis::name) }
 
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(StateOver),
     SPLITTER_TRIGGER(IsIntact),
-    SPLITTER_TRIGGER(IsDisabled),
-    SPLITTER_TRIGGER(ShouldWaitForSnatch),
-    SPLITTER_TRIGGER(ShotAt),
-    SPLITTER_TRIGGER(LostHead),
+    SPLITTER_TRIGGER_PORTED(IsDisabled),
+    SPLITTER_TRIGGER_PORTED(ShouldWaitForSnatch),
+    SPLITTER_TRIGGER_PORTED(ShotAt),
+    SPLITTER_TRIGGER_PORTED(LostHead),
     SPLITTER_TRIGGER(HasHead),
     SPLITTER_TRIGGER(HasRetreatPoint),
     SPLITTER_TRIGGER(HasTarget),
@@ -72,7 +76,7 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(HasLineOfSight),
     SPLITTER_TRIGGER(PathShagged),
     SPLITTER_TRIGGER(PathOver),
-    SPLITTER_TRIGGER(PatrolPathOver),
+    SPLITTER_TRIGGER_PORTED(PatrolPathOver),
     SPLITTER_TRIGGER(ShouldLegStab),
     SPLITTER_TRIGGER(ShouldMorphballStab),
     SPLITTER_TRIGGER(ShouldSpinAttack),
@@ -83,14 +87,14 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(SpunIntoGeometry),
     SPLITTER_TRIGGER(BreakOutOfSpin),
     SPLITTER_TRIGGER(TooManyBounces),
-    SPLITTER_TRIGGER(DeployFromHoldingTube),
+    SPLITTER_TRIGGER_PORTED(DeployFromHoldingTube),
     SPLITTER_TRIGGER(ShouldDeploy),
     SPLITTER_TRIGGER(DeployPathOver),
-    SPLITTER_TRIGGER(PrepareForDocking),
+    SPLITTER_TRIGGER_PORTED(PrepareForDocking),
 };
 
 CPatterned::StateMachine::SStateFunction skStates[] = {
-    SPLITTER_STATE(Start),
+    SPLITTER_STATE_PORTED(Start),
     SPLITTER_STATE(Idle),
     SPLITTER_STATE(Inactive),
     SPLITTER_STATE(Activate),
@@ -131,6 +135,8 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 #undef SPLITTER_TRIGGER
 #undef SPLITTER_STATE
 #undef SPLITTER_CODE
+#undef SPLITTER_TRIGGER_PORTED
+#undef SPLITTER_STATE_PORTED
 
 
 // The module's own calls in the main chassis's Think and the DOL's two helpers it makes, as
@@ -166,10 +172,6 @@ void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
   }
 SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_E64C)
 SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
-SPLITTER_TRIGGER_STANDIN(IsDisabled, fn_75_E620)
-SPLITTER_TRIGGER_STANDIN(ShouldWaitForSnatch, fn_75_E5D0)
-SPLITTER_TRIGGER_STANDIN(ShotAt, fn_75_E5B8)
-SPLITTER_TRIGGER_STANDIN(LostHead, fn_75_E5AC)
 SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
 SPLITTER_TRIGGER_STANDIN(HasRetreatPoint, fn_75_E56C)
 SPLITTER_TRIGGER_STANDIN(HasTarget, fn_75_E54C)
@@ -177,7 +179,6 @@ SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
 SPLITTER_TRIGGER_STANDIN(HasLineOfSight, fn_75_E524)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
-SPLITTER_TRIGGER_STANDIN(PatrolPathOver, fn_75_E478)
 SPLITTER_TRIGGER_STANDIN(ShouldLegStab, fn_75_E3A4)
 SPLITTER_TRIGGER_STANDIN(ShouldMorphballStab, fn_75_E2F0)
 SPLITTER_TRIGGER_STANDIN(ShouldSpinAttack, fn_75_E1D0)
@@ -188,11 +189,8 @@ SPLITTER_TRIGGER_STANDIN(SpunIntoPlayer, fn_75_E078)
 SPLITTER_TRIGGER_STANDIN(SpunIntoGeometry, fn_75_E06C)
 SPLITTER_TRIGGER_STANDIN(BreakOutOfSpin, fn_75_E060)
 SPLITTER_TRIGGER_STANDIN(TooManyBounces, fn_75_E040)
-SPLITTER_TRIGGER_STANDIN(DeployFromHoldingTube, fn_75_E034)
 SPLITTER_TRIGGER_STANDIN(ShouldDeploy, fn_75_E028)
 SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
-SPLITTER_TRIGGER_STANDIN(PrepareForDocking, fn_75_DFEC)
-SPLITTER_STATE_STANDIN(Start, fn_75_DFE8)
 SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
 SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
@@ -228,6 +226,63 @@ SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 #undef SPLITTER_TRIGGER_STANDIN
 #undef SPLITTER_STATE_STANDIN
 #undef SPLITTER_CODE_STANDIN
+
+// The state machine entries the area-4 run reaches, whose retail body is ported here.
+
+// fn_75_DFE8 (the chassis's Start state, 0x4 bytes): the body is a single return, so the state
+// does nothing.
+void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
+
+// fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its
+// 0x40 bit tested (0xE624 extrwi with the word's bit 25 - the byte's 0x40).
+bool CSplitterMainChassis::IsDisabled(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD40 & 0x40) != 0;
+}
+
+// fn_75_E034 (the chassis's DeployFromHoldingTube trigger, 0xE034-0xE040): the data's flag word
+// at 0x828 (the loader's unknown_0xcef5c2fe) is read (0xE034 lwz) and its second bit is kept
+// (0xE038 extrwi with the word's bit 30 - the byte's 0x02); that bit is the answer.
+bool CSplitterMainChassis::DeployFromHoldingTube(CStateManager&, const CTriggerData&) const {
+  return (mData.mUnknownCEF5C2FE & 0x2) != 0;
+}
+
+// fn_75_E5B8 (the chassis's ShotAt trigger, 0xE5B8-0xE5D0): the base's flag byte at 0x420 gets
+// its 0x80 bit tested (0xE5BC extrwi with the word's bit 24 - the byte's 0x80, the host's
+// GetHitByPlayerProjectile) and the result is made a 0/1 value (0xE5C0 neg, 0xE5C4 or, 0xE5C8
+// srwi).
+bool CSplitterMainChassis::ShotAt(CStateManager&, const CTriggerData&) const {
+  return GetHitByPlayerProjectile();
+}
+
+// fn_75_E478 (the chassis's PatrolPathOver trigger, 0xE478-0xE494): the id at 0x6C0 (the base's
+// waypoint navigation destination) is compared with kInvalidUniqueId (0xE47C lhz, 0xE480 lhz,
+// 0xE484 subf, 0xE488 cntlzw, 0xE48C srwi by 5): the trigger is true when the destination is
+// invalid, that is when the patrol path is over.
+bool CSplitterMainChassis::PatrolPathOver(CStateManager&, const CTriggerData&) const {
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
+}
+
+// fn_75_E5AC (the chassis's LostHead trigger, 0xE5AC-0xE5B8): the flag byte at 0xD41 gets its
+// second bit tested (0xE5B0 extrwi with the word's bit 30 - the byte's 0x02).
+bool CSplitterMainChassis::LostHead(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD41 & 0x2) != 0;
+}
+
+// fn_75_E5D0 (the chassis's ShouldWaitForSnatch trigger, 0xE5D0-0xE620): the id at 0xCBC (the
+// snatching swarm's id, which the retail's fn_75_E810 keeps) is compared with kInvalidUniqueId
+// (0xE5E8 lhz, 0xE5F0 cmplw) and, when it is invalid, the base's IsBeingSnatched (0xE5F8) decides
+// (0xE5FC clrlwi with the word's bit 24 - the byte's 0xFF): the trigger is true when either of
+// the two says so.
+bool CSplitterMainChassis::ShouldWaitForSnatch(CStateManager&, const CTriggerData&) const {
+  return mSnatcherId != kInvalidUniqueId || IsBeingSnatched();
+}
+
+// fn_75_DFEC (the chassis's PrepareForDocking trigger, 0xDFEC-0xE00C): the id at 0xC6E (the
+// second link) is compared with kInvalidUniqueId (0xDFF0 lhz, 0xDFF4 lhz, 0xDFF8 subf, 0xDFFC
+// subf, 0xE000 or, 0xE004 srwi): the trigger is true when the id is valid.
+bool CSplitterMainChassis::PrepareForDocking(CStateManager&, const CTriggerData&) const {
+  return mSecondLinkId != kInvalidUniqueId;
+}
 
 
 // The command module's loader lives in PortCSplitterCommandModule.cpp (the two files are the one
@@ -348,7 +403,8 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   PortUpdateFade(dt);
 }
 
-// @ fn_75_AFE8
+// fn_75_AFE8 (not marked: the area-4 run never reached the death branch, and the D3C-up
+// branch needs the sync id at 0xCC0 and the counter at 0xC48 - see the module note)
 // The chassis's timers (0xAFE8-0xB104), the Think's call at 0x0000F164 (the manager, the frame
 // time in f1 and the state manager in r4). The four timers the chassis copies from its data
 // (fn_75_8EA4) are counted down (0x0000AFF8 0xD10, 0x0000B004 0xD14, 0x0000B010 0xD18,
@@ -385,7 +441,8 @@ void CSplitterMainChassis::PortUpdateTimers(CStateManager& mgr, float dt) {
   }
 }
 
-// @ fn_75_9520
+// fn_75_9520 (not marked: the area-4 run never reached the fade-down branch, which needs the
+// scan timer at 0xD28 above zero - see the module note)
 // The chassis's fade (0x9520-0x963C), the Think's call at 0x0000F180. The id at 0xCC0
 // (0x00009540 lhz) picks the rate: a valid id gives lbl_75_rodata_39C (0.25f) (0x00009558) and
 // the invalid one lbl_75_rodata_364 (1.0f) (0x00009564), and the step is the frame time divided

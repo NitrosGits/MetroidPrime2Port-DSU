@@ -63,6 +63,10 @@ void StandIn(const char* what) {
   { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterCommandModule::name) }
 #define SPLITTER_TRIGGER_PORTED(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
+#define SPLITTER_STATE_PORTED(name) \
+  { #name, static_cast< CPatterned::StateMachine::StateFunc >(&CSplitterCommandModule::name) }
+#define SPLITTER_TRIGGER_PORTED(name) \
+  { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
 #define SPLITTER_CODE_PORTED(name) \
   { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterCommandModule::name) }
 
@@ -71,12 +75,12 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(StateOver),
     SPLITTER_TRIGGER(InDetectionRange),
     SPLITTER_TRIGGER_PORTED(IsScanning),
-    SPLITTER_TRIGGER(IsInitiallyDocked),
+    SPLITTER_TRIGGER_PORTED(IsInitiallyDocked),
     SPLITTER_TRIGGER(IsDocked),
     SPLITTER_TRIGGER(HasDockingPath),
-    SPLITTER_TRIGGER(HasDockingTarget),
+    SPLITTER_TRIGGER_PORTED(HasDockingTarget),
     SPLITTER_TRIGGER(DockingPathOver),
-    SPLITTER_TRIGGER(HasTarget),
+    SPLITTER_TRIGGER_PORTED(HasTarget),
     SPLITTER_TRIGGER(InHoverRange),
     SPLITTER_TRIGGER(InLaserPulseRange),
     SPLITTER_TRIGGER(ShouldDodge),
@@ -88,7 +92,7 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
 };
 
 CPatterned::StateMachine::SStateFunction skStates[] = {
-    SPLITTER_STATE(Start),
+    SPLITTER_STATE_PORTED(Start),
     SPLITTER_STATE(Idle),
     SPLITTER_STATE(SpawnIdle),
     SPLITTER_STATE(Dead),
@@ -110,13 +114,15 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
     SPLITTER_CODE(SetTargetDest),
     SPLITTER_CODE(SetDockingDest),
     SPLITTER_CODE(FindBestDodgeDirection),
-    SPLITTER_CODE(RaiseShields),
+    SPLITTER_CODE_PORTED(RaiseShields),
     SPLITTER_CODE(ResetAttackTimes),
 };
 
 #undef SPLITTER_TRIGGER
 #undef SPLITTER_STATE
 #undef SPLITTER_CODE
+#undef SPLITTER_TRIGGER_PORTED
+#undef SPLITTER_STATE_PORTED
 #undef SPLITTER_TRIGGER_PORTED
 #undef SPLITTER_CODE_PORTED
 
@@ -168,12 +174,9 @@ void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float
   }
 SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_5A40)
 SPLITTER_TRIGGER_STANDIN(InDetectionRange, fn_75_5944)
-SPLITTER_TRIGGER_STANDIN(IsInitiallyDocked, fn_75_58DC)
 SPLITTER_TRIGGER_STANDIN(IsDocked, fn_75_58BC)
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
-SPLITTER_TRIGGER_STANDIN(HasDockingTarget, fn_75_57F0)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
-SPLITTER_TRIGGER_STANDIN(HasTarget, fn_75_57B4)
 SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
 SPLITTER_TRIGGER_STANDIN(InLaserPulseRange, fn_75_565C)
 SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
@@ -182,7 +185,6 @@ SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
 SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_55F8)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
-SPLITTER_STATE_STANDIN(Start, fn_75_5564)
 SPLITTER_STATE_STANDIN(Idle, fn_75_5538)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
 SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
@@ -200,11 +202,58 @@ SPLITTER_CODE_STANDIN(SelectTarget, fn_75_3E60)
 SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_3D20)
 SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
 SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_3B34)
-SPLITTER_CODE_STANDIN(RaiseShields, fn_75_3B20)
 SPLITTER_CODE_STANDIN(ResetAttackTimes, fn_75_3ADC)
 #undef SPLITTER_TRIGGER_STANDIN
 #undef SPLITTER_STATE_STANDIN
 #undef SPLITTER_CODE_STANDIN
+
+// The state machine entries the area-4 run reaches, whose retail body is ported here.
+
+// fn_75_5564 (the head's Start state, 0x4 bytes): the body is a single return, so the state
+// does nothing.
+void CSplitterCommandModule::Start(CStateManager&, EStateMsg, float) {}
+
+// fn_75_58DC (the head's IsInitiallyDocked trigger, 0x58DC-0x58E8): the SPLU parameter block's
+// first word (0x7C0, the loader's unknown_0xbd80fd94) is read (0x58DC lwz) and its low bit is
+// kept (0x58E0 clrlwi with the word's bit 31 - the byte's 0x01); that bit is the answer.
+bool CSplitterCommandModule::IsInitiallyDocked(CStateManager&, const CTriggerData&) const {
+  return (mData.mUnknownBD80FD94 & 0x1) != 0;
+}
+
+// fn_75_3B20 (the head's RaiseShields code, 0x3B20-0x3B34): the flag byte at 0xF6A gets its
+// 0x08 bit set (0x3B28 rlwimi with the word's bit 28 - the byte's 0x08) and the body ends.
+void CSplitterCommandModule::RaiseShields(CStateManager&, float) {
+  mAutoDestructFlags |= 0x8;
+}
+
+// fn_75_57B4 (the head's HasTarget trigger, 0x57B4-0x57D4): the id at 0xEFE (the copy of the
+// chassis's 0xCC0) is compared with kInvalidUniqueId (0x57B8 lhz, 0x57BC lhz, 0x57C0 subf,
+// 0x57C4 subf, 0x57C8 or, 0x57CC srwi): the trigger is true when the id is valid.
+bool CSplitterCommandModule::HasTarget(CStateManager&, const CTriggerData&) const {
+  return mSyncedId != kInvalidUniqueId;
+}
+
+// fn_75_57F0 (the head's HasDockingTarget trigger, 0x57F0-0x5864): the id at 0xEFC (the second
+// chassis the head checks) is looked up (0x580C GetObjectById) and cast to the main chassis
+// (0x5810); a null cast (0x5814, 0x581C) gives false, and so do a chassis that is not alive
+// (0x5820 lbz, 0x5824 extrwi with the word's bit 25 - the byte's 0x40, the host's GetAlive) and
+// one that is not active (0x582C lbz, 0x5830 extrwi with the word's bit 24 - the byte's 0x80,
+// the host's GetActive). What is left is the chassis's own command module id (0xC6C, 0x583C lhz):
+// the trigger is true when the chassis has no command module yet (0x5848 bne).
+bool CSplitterCommandModule::HasDockingTarget(CStateManager& mgr, const CTriggerData&) const {
+  const CSplitterMainChassis* chassis =
+      TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mCheckedChassisId));
+  if (chassis == nullptr) {
+    return false;
+  }
+  if (!chassis->GetAlive()) {
+    return false;
+  }
+  if (!chassis->GetActive()) {
+    return false;
+  }
+  return chassis->GetCommandModuleId() == kInvalidUniqueId;
+}
 
 
 // The two state machine entries whose retail body is ported: the IsScanning trigger
