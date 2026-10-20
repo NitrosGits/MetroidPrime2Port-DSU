@@ -1048,7 +1048,7 @@ void CSandBoss::StampedeHelper(CStateManager& mgr, float dt) {
   }
 }
 
-// fn_55_7E60 (ported, not exercised yet)
+// @ fn_55_7E60
 // A stampede worm took a hit: flash, and wear down the stampede armour. While it holds, play the
 // armour impact sound at the hit position; once it breaks, play the additive reaction instead.
 void CSandBoss::Helper7E60(float dt, CStateManager& mgr, const CVector3f& pos,
@@ -1071,7 +1071,7 @@ void CSandBoss::Helper7E60(float dt, CStateManager& mgr, const CVector3f& pos,
   }
 }
 
-// fn_55_8008 (ported, not exercised yet)
+// @ fn_55_8008
 // The head collider of the worm holding the player took a hit. If the player is held by this worm
 // the hit costs the boss bar one point (once, when the armour is not already gone) and marks the
 // armour destroyed; otherwise it wears down the head armour.
@@ -1106,7 +1106,7 @@ void CSandBoss::Helper8008(float dt, CStateManager& mgr, const CVector3f& pos,
   }
 }
 
-// fn_55_8258 (ported, not exercised yet)
+// @ fn_55_8258
 // Damage message from one of the worm's collision actors: find the weapon that touched it and
 // route the hit to the head handler (player held, head collider) or the stampede handler. The
 // HP delta handed on is the worm's HP now minus what it was at the previous hit.

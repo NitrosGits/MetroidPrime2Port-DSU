@@ -216,7 +216,7 @@ bool CSandBoss::IsListening() const { return true; }
 // @ fn_55_10
 rstl::optional_object< CAABox > CSandBoss::GetTouchBounds() const { return GetBoundingBox(); }
 
-// fn_55_4C (ported, not exercised yet)
+// @ fn_55_4C
 void CSandBoss::TakeDamage(const CVector3f&, float) { mDamageCooldownTimer = skDamageHitTime; }
 
 // @ fn_55_5C

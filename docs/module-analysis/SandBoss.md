@@ -282,9 +282,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 79B0 | CSandBoss::HandleHitObject | [proven] host body |
 | 7BB0 | CSandBoss::UpdateFlashColor | [proven] host body |
 | 7C68 | CSandBoss::StampedeHelper | [proven] host body |
-| 7E60 | CSandBoss::Helper7E60 | [stand-in] log-once |
-| 8008 | CSandBoss::Helper8008 | [stand-in] log-once |
-| 8258 | CSandBoss::HandleDamage | [stand-in] log-once |
+| 7E60 | CSandBoss::Helper7E60 | [proven] host body (sbAq) |
+| 8008 | CSandBoss::Helper8008 | [proven] host body (sbAs) |
+| 8258 | CSandBoss::HandleDamage | [proven] host body (sbAq/sbAs) |
 | 83AC | CSandBoss::RotateToPlayerHelper | [proven] host body |
 | 84A8 | CSandBoss::UpdateGroupCinematicState | [proven] host body |
 | 86D0 | CSandBoss::UpdateTimers | [proven] host body |
@@ -591,15 +591,38 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   `SetCinematicStateStunned`/`Choking` (8E30/8E24) and `ArmorDestroyed` (C148). Newly `// @` (21):
   5B38 5C6C 5E5C 5FEC 6250 62E4 8E24 8E30 9438 952C 9600 AED8 B544 B658 B718 BF64 C148 C188 CA70
   CDF0 D384.
-- **Open — `mStampedeHP` reads 0 while `breakStampedeHP` is 150.** `[sbbea]` shows `UnderGround`'s
-  activate assigning `mData.stampedeProperties.breakStampedeHP` and reading it straight back as 150
-  (three worms, offset 4204 in both translation units, so not an ODR/layout split), yet the `[sbhp]`
-  change detector — which samples at the top of `Think`, before the FSM update — never sees anything
-  but 0, from the first frame, and no function in the module writes 0xF24 except 7E60, which the trace
-  shows is never called. `StampedeOver` (C9B8) is therefore true from the first stampede frame and the
-  stampede phase ends at once. This also corrects slice 6: the HP really never drained, but it did not
-  have to — the value was already 0, so `MP2_SB_HP` was masking this rather than causing the exit. The
-  next run should chase the writer (a `mStampedeHP` watchpoint, or printing in `UnderGround`'s Update).
+- Slice 17 (2026-10-20, runs sbAo/sbAp/sbAq/sbAr/sbAs, same area/layer, `FRAMES=3000 SECS=300`, all
+  exit 0, 0 caught, 0 reach-stub): **a real weapon hit on the armour, and the stampede-HP question.**
+  (a) sbAo (`MP2_SB_FSM=1 MP2_SB_HPW=1 MP2_SB_BEA=1 MP2_SB_DUMP=1`, no `MP2_SB_HP`) settles the "Open"
+  bullet: `[sbhp] hp -1.00 -> 150.00`, `[sbbea]` 150 on all three worms (off=4204), `[sbso] uid=0183
+  hp=150.00` once, false. The 0s were the empty-knob `getenv` trap; the probe scripts now export a
+  knob only when it is non-empty. (b) A shot leaves along the **first-person camera's** forward axis,
+  not the player's facing (`CPlayer::UpdateGunTransform`; the pointer is idle headless), so
+  `MP2_SB_AIM` parks the player so that the armour collision actor sits at `eye + fwd*2.5` (sbAq,
+  `TOKENS='LAYER5@400,A@620+1500' MP2_SB_AIM=1 MP2_SB_HIT=1`): `[sbaim] col=0184 ...` then
+  `[sbhit] col=0184 touched=02a4 weapon=1` while the worm is in `Stampede`, and the trace runs
+  `8258 -> 7E60 -> 4C`. (c) sbAs (`TOKENS='LAYER5@400,A@900+2500' MP2_SB_ROUND=2 MP2_SB_HEAD=1
+  MP2_SB_BALL=1 MP2_SB_BOMB=1 MP2_SB_HP=1 MP2_SB_HIT=1`, `DropBomb` called from `Think` every 90
+  frames): a bomb (weapon=1) touches the head collider `016a` of worm 0169 while `att=1 sm=SuckAir`,
+  so `8258 -> 8008` runs, i.e. the head branch (`mAttachedToSphere && mHeadCollider == sender`).
+  Newly `// @`: 4C 7E60 8008 8258. (d) `MP2_SB_HP` is still needed: sbAr (`MP2_SB_ROUND=2
+  MP2_SB_HEAD=1 MP2_SB_BOMB=1`, no HP knob) never reaches `BAAC`/`B718` — the FSM sits in the
+  stampede because a hit hands 7E60 `hp - mLastDamageHP` from the **worm's** health info, which
+  `TakeDamage` (4C) never lowers (`[sbdump]` hp=150.0 either side of the sbAq hit). Retail keeps that
+  previous HP in the collision actor's health info (8258's comment), so the delta is more likely the
+  damage the collider took — follow-up on 8258, not changed here.
+- **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
+  here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
+  `mData.stampedeProperties.breakStampedeHP` and reading it back as 150 (three worms, offset 4204 in
+  both translation units, so not an ODR/layout split) and the `[sbhp]` change detector sees
+  `-1.00 -> 150.00`, never 0; `[sbso]` (`StampedeOver`, C9B8) reports `hp=150.00`, false, once and
+  never again. No function in the module writes 0xF24 except 7E60 (`-= dt`) and that activate, so the
+  stampede only ends when the player damages the armour. Every earlier reading of 0 was the harness
+  exporting empty knobs: `MP2_SB_HP=${MP2_SB_HP:-}` passes `""`, and the injected
+  `getenv("MP2_SB_HP") != nullptr` reads `""` as on, so `Think` zeroed the HP every frame (the same
+  made `MP2_SB_BALL` unconditional). The probe scripts now export a knob only when it is non-empty.
+  In the port a real hit still hands 7E60 a delta of 0 (see slice 17), so `MP2_SB_HP` remains the way
+  past the stampede.
 - The attack submachine is now fully exercised except the Damaged branch: `SnapJaws` (A170), `RepeaterAttack`
   (A9DC), `DarkBeamAttack` (AC68), `TripleCharge` (A360) and `DoubleCharge` (A6CC) have all run; only
   `SuckAir`/`SuckBall`/`BallInMouth` (B718/B658/B544) need `HeadArmorDestroyed` (`mHeadArmorHP <= 0`,
@@ -614,7 +637,7 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   reached are `HandleScreenShake` (4C60) and 528C; the FSM never evaluates an attack trigger, so the
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
-- Not tested: ASAN, the intro cinema path, a weapon hit on the armour (8258/7E60/8008), the sphere-destroy/round chain (B2D8 B06C 560C 51BC BD30 BDAC), `1D74`.
+- Not tested: ASAN, the intro cinema path, the sphere-destroy/round chain (B2D8 B06C 560C 51BC BD30 BDAC), `1D74`.
 
 ## 6. FSM2 graph (dumped from the loaded asset)
 
