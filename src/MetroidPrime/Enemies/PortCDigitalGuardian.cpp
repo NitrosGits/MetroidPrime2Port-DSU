@@ -166,6 +166,10 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
 , x1080_(0)
 , x1082_(0)
+, x1010_(0)
+, x1011_(0)
+, x1012_(0)
+, x1013_(0)
 , x1168_(TUniqueId(0))
 , x11B8_(0)
 , x11E0_(0.f)
@@ -280,18 +284,141 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 }
 
 // vtable slot 6 = fn_14_A6A8 (0x4F0), the biggest body function: it switches on the script
-// message's four-character code. Two of its cases are ported: "ACTV" (0x41435456) and "DCTV"
-// (0x44435456), which wake the knee colliders and put them back to sleep (fn_14_3E88); the
-// rest of the function is still a stand-in.
+// message's four-character code (the message is a big-endian u32 of the four characters, the
+// compare at 0xA6E0 and the ones after it). The ported cases are "ACTV" (0x41435456, the case
+// at 0xA8DC), "DCTV" (0x44435456, the case at 0xA94C), the "IM00".."IM08" family
+// (0x494D3030..0x494D3038, the cases at 0xAAB8, 0xAAC8, 0xAAE0, 0xAAF8, 0xAB10, 0xAB28,
+// 0xAB40, 0xAB58 and 0xAB70), "OPEN" (0x4F50454E, the case at 0xAA3C), "CLOS" (0x434C4F53,
+// the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
+// at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
+// 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
+// 0xAA1C). The "XCRT" case (0x58435254, the case at 0xA81C) is still a stand-in, and the
+// helpers the cases call (fn_14_3A44, fn_14_3F14, fn_14_5910, fn_14_5838, fn_14_5644 and
+// fn_14_4F2C) are not ported yet.
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
+  // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
+  // bit 7, read at 0xA6C4) and the "ACTV" and "DCTV" cases test that value.
+  const bool active = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
   switch (static_cast< uint >(msg.GetMessage())) {
   case 0x41435456: // "ACTV"
-    x3E88_(mgr, true);
+    if (!active) {
+      if (xE60_ != nullptr) {
+        xE60_->SetActive(mgr, true);
+      }
+      // The second manager is only woken when the flag byte's bit 6 is set (the extrwi at
+      // 0xA90C, the byte's bit 6 = 0x40).
+      if (xE64_ != nullptr && (x128C_ & 0x40) != 0) {
+        xE64_->SetActive(mgr, true);
+      }
+      x3E88_(mgr, true);
+      // The retail's call at 0xA944 passes the float at .rodata 0x264 (0.0f) as its last
+      // argument and a pointer to that word as its state message; the code function ignores
+      // both.
+      ResetAttackTimes(mgr, 0.f);
+    }
     break;
   case 0x44435456: // "DCTV"
-    x3E88_(mgr, false);
+    if (active) {
+      if (xE60_ != nullptr) {
+        xE60_->SetActive(mgr, false);
+      }
+      if (xE64_ != nullptr) {
+        xE64_->SetActive(mgr, false);
+      }
+      x3E88_(mgr, false);
+    }
+    break;
+  case 0x4F50454E: // "OPEN"
+    // The flag byte's bit 3 must be clear (the extrwi at 0xAA40, the byte's bit 3 = 0x08) and
+    // the beacon's state word must not be 1 (the cmpwi at 0xAA4C).
+    if ((x128C_ & 0x08) == 0 && x1268_ != 1) {
+      x1268_ = 2;
+      // The sound (the call at 0xAA78): the position is the actor's translation (guest 0x54),
+      // the direction is the up vector and the parms are the data block's +0x1C0
+      // (sound_BeaconExtract).
+      PlayCustomSound(GetTranslation(), CVector3f::Up(), mData.mSoundBeaconExtract, false);
+    }
+    break;
+  case 0x434C4F53: // "CLOS"
+    // The flag byte's bit 3 and bit 4 (the rlwimi at 0xAA88 and 0xAA9C) and the object
+    // request for the actor's own id (the halfword load at 0xAAA4).
+    x128C_ |= 0x08;
+    x128C_ |= 0x10;
+    mgr.DeleteObjectRequest(GetUniqueId());
+    break;
+  case 0x5844454C: // "XDEL"
+    if (xE60_ != nullptr) {
+      xE60_->Destroy(mgr);
+    }
+    if (xE64_ != nullptr) {
+      xE64_->Destroy(mgr);
+    }
+    if (x1240_ != CSfxHandle()) {
+      CSfxManager::RemoveEmitter(x1240_);
+      x1240_ = CSfxHandle();
+    }
+    StandInFn("fn_14_3F14 (the XDEL case's helper)");
+    break;
+  case 0x58415544: // "XAUD"
+    if (xE60_ != nullptr) {
+      xE60_->SetPhysicsActive(mgr, false);
+    }
+    if (xE64_ != nullptr) {
+      xE64_->SetPhysicsActive(mgr, false);
+    }
+    break;
+  case 0x58414C44: // "XALC"
+    StandInFn("fn_14_5910 (the XALC case's helper)");
+    break;
+  case 0x58444D47: // "XDMG"
+    // The retail passes the message's first halfword (its CScriptMsg's +0) to the helper.
+    StandInFn("fn_14_5838 (the XDMG case's helper)");
+    break;
+  case 0x58524447: // "XRDG"
+    StandInFn("fn_14_5644 (the XRDG case's helper)");
+    break;
+  case 0x58484954: // "XHIT"
+    StandInFn("fn_14_4F2C (the XHIT case's helper)");
+    break;
+  case 0x494D3030: // "IM00"
+    StandInFn("fn_14_3F14 (the IM00 message's helper)");
+    break;
+  case 0x494D3031: // "IM01"
+    x1010_ = 1;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3032: // "IM02"
+    x1010_ = 0;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3033: // "IM03"
+    x1012_ = 1;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3034: // "IM04"
+    x1012_ = 0;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3035: // "IM05"
+    x1013_ = 1;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3036: // "IM06"
+    x1013_ = 0;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3037: // "IM07"
+    x1011_ = 1;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x494D3038: // "IM08"
+    x1011_ = 0;
+    StandInFn("fn_14_3A44 (the IM0x messages' helper)");
+    break;
+  case 0x58435254: // "XCRT"
+    StandInFn("fn_14_A6A8: the XCRT case (the body controller, the knee armour and the visor)");
     break;
   default:
     break;

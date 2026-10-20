@@ -1077,6 +1077,53 @@ activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frame
 clean, the guardian u054d is alive, and the log shows the three builder stand-ins once each -
 so the Think's manager branch runs. No "[port] caught" and no reach-stub in the log.
 
+**WP2 part 2n done (2026-10-20): the module's AcceptScriptMsg cases.** `fn_14_A6A8` (0x4F0)
+switches on the message's four-character code - a big-endian u32 of the four characters, each
+compare an `lis`/`addi` pair. The dispatch runs from 0xA6BC (the message load) to 0xA818, and
+the cases are:
+
+| message | FourCC | case | body |
+|---|---|---|---|
+| "IM01" | 0x494D3031 | 0xAAC8 | the byte at 0x1010 = 1, then fn_14_3A44 |
+| "IM02" | 0x494D3032 | 0xAAE0 | the byte at 0x1010 = 0, then fn_14_3A44 |
+| "IM03" | 0x494D3033 | 0xAAF8 | the byte at 0x1012 = 1, then fn_14_3A44 |
+| "IM04" | 0x494D3034 | 0xAB10 | the byte at 0x1012 = 0, then fn_14_3A44 |
+| "IM05" | 0x494D3035 | 0xAB28 | the byte at 0x1013 = 1, then fn_14_3A44 |
+| "IM06" | 0x494D3036 | 0xAB40 | the byte at 0x1013 = 0, then fn_14_3A44 |
+| "IM07" | 0x494D3037 | 0xAB58 | the byte at 0x1011 = 1, then fn_14_3A44 |
+| "IM08" | 0x494D3038 | 0xAB70 | the byte at 0x1011 = 0, then fn_14_3A44 |
+| "IM00" | 0x494D3030 | 0xAAB8 | fn_14_3F14 |
+| "XALC" | 0x58414C44 | 0xA998 | fn_14_5910 |
+| "XAUD" | 0x58415544 | 0xA9A8 | the two managers' `SetPhysicsActive(mgr, false)` |
+| "XDMG" | 0x58444D47 | 0xA9DC | fn_14_5838 with the message's first halfword |
+| "XRDG" | 0x58524447 | 0xA9FC | fn_14_5644 with the message's first halfword |
+| "XHIT" | 0x58484954 | 0xAA1C | fn_14_4F2C with the message's first halfword |
+| "ACTV" | 0x41435456 | 0xA8DC | the managers' `SetActive(mgr, true)`, fn_14_3E88, fn_14_7B24 |
+| "DCTV" | 0x44435456 | 0xA94C | the managers' `SetActive(mgr, false)`, fn_14_3E88 |
+| "OPEN" | 0x4F50454E | 0xAA3C | the state word at 0x1268 = 2 and the beacon's sound |
+| "CLOS" | 0x434C4F53 | 0xAA80 | the flag byte's bits 3 and 4, then the delete request |
+| "XDEL" | 0x5844454C | 0xA880 | the managers' `Destroy`, the sound emitter, fn_14_3F14 |
+| **"XCRT"** | 0x58435254 | 0xA81C | **left as a stand-in** |
+
+The port now has all but the "XCRT" case. The "XCRT" case (the body's controller activation,
+the knee armour actor fn_14_4080, fn_14_24E4, the two `SetVisorOrbitableFlags` calls,
+`RemoveMaterial(0x3F)` and fn_14_14F8) is the largest and stays a named stand-in. The helpers
+the ported cases call - fn_14_3A44, fn_14_3F14, fn_14_5910, fn_14_5838, fn_14_5644 and
+fn_14_4F2C - are not ported either, so each case logs them once.
+
+The "ACTV" and "DCTV" cases only run when the actor's active bit is clear resp. set (the retail
+reads the byte at guest 0x20, bit 7, at 0xA6C4, before it calls the base), and the "ACTV"
+case only wakes the second manager when the flag byte's bit 6 is set (the `extrwi` at 0xA90C).
+The "OPEN" case needs the flag byte's bit 3 clear (the `extrwi` at 0xAA40) and the state word
+at 0x1268 different from 1 (the `cmpwi` at 0xAA4C); it plays the data block's +0x1C0 parms
+(sound_BeaconExtract) at the actor's translation. The "CLOS" case sets the flag byte's bits 3
+and 4 (the two `rlwimi` at 0xAA88 and 0xAA9C) and asks for the actor's own object to be
+deleted (the halfword at guest 0x8, the actor's id).
+
+Runtime (the same area-53 run): the run is clean, the guardian is alive, and the log shows the
+new case stand-ins ("XCRT", "XALC", "XRDG" and the "XDEL" case's helper) - the area's scripts
+do send those messages. No "[port] caught" and no reach-stub in the log.
+
 
 ### WP3 — the head module
 
