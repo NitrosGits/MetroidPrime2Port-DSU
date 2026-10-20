@@ -297,8 +297,16 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     area 25) does place the Jump Guardian (`u051f`, editor `001900e9`, layer 2, inactive,
     hp 1100/1100). `send Activate` works (`obj` then reports it active) but two runs that teleported
     the player next to it and held fire for 120 s did **not** damage it (hp unchanged, screenshots
-    black), so no portal ever spawned. Not diagnosed yet: `// @` for the mini-portal classes waits
-    on a fight that actually lands hits.
+    black), so no portal ever spawned.
+  - Damage attempts, unresolved (2026-10-20): three runs fired at an active Ing in area 57
+    (`u0418`/`u0422`, hp 300/300 never moved), with the player teleported 8 units away, `face`d at
+    it and both pitch directions held, on the power beam and on a `give lightBeam` + `beam light`
+    light beam; the Ings' FSM logged `HeardShot`/`UnderFire`, so the gun does fire and `Listen`
+    works, but nothing lands. Both Ings were in form 3 (ing spot), whose collision actors the port
+    only activates in corporeal form (`PortCIng.cpp:2047`), and the guardian case is unexplained.
+    Two candidates before blaming the port: aiming (nothing sets pitch precisely) and a missing
+    beam target on the puddle form. Marker work for `fn_29_2B70/2E8C/2684/2414` and the
+    mini-portal classes waits on this.
 
 ---
 
