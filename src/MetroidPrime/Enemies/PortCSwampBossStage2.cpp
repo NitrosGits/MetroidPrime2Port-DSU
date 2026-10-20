@@ -25,6 +25,7 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
@@ -1098,8 +1099,11 @@ void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
   patrol->SetTranslation(from);
 }
 
+// fn_79_4F88 SendDecrement (sends kSM_Decrement to mLightChain) is left out: nothing in the module
+// calls it (no state, trigger, code function or vtable slot references it), so it cannot be
+// exercised, and the port does not invent a caller.
 void CSwampBossStage2::SendDecrement(CStateManager& mgr) {
-  // TODO(uncertain): not decoded.
+  (void)mgr;
 }
 
 // fn_79_3390: total damage still inside the memory window.
@@ -1133,9 +1137,16 @@ void CSwampBossStage2::AddDamageMemory(float damage) {
   mDamageMemory.push_back(entry);
 }
 
+// @ fn_79_3354: the player's orbit target is a grapple point. Retail tests the player's uid at
+// +0x3b0 (CPlayer::mOrbitTargetId) and returns whether it casts to CScriptGrapplePoint; Think
+// calls it every frame to accrue mGrappleTime.
 bool CSwampBossStage2::PlayerOnGrapplePoint(const CStateManager& mgr) const {
-  // TODO(uncertain): not decoded.
-  return false;
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    return false;
+  }
+  return TCastToConstPtr< CScriptGrapplePoint >(
+             mgr.GetObjectById(player->GetOrbitTargetId())) != nullptr;
 }
 
 // @ fn_79_61C4: collision-actor damage. Every joint is held at 500 HP, so the damage of a hit is the

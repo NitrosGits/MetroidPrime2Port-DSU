@@ -131,9 +131,11 @@ B4 GetOrigin, D0 GetHealthInfo.
 
 ## 6. Runtime status (2026-10-20)
 
-- **Ported:** every state and helper in sections 1 and 3 except 4F88 SendDecrement, 3354
-  PlayerOnGrapplePoint (both stubs, `TODO(uncertain)`) and 1B38 (an additive flinch with no
-  caller found).
+- **Ported:** every state and helper in sections 1 and 3 except 4F88 SendDecrement (no caller
+  anywhere in the module: no state, trigger, code function or vtable slot references it, so it
+  stays a documented no-op) and 1B38 (an additive flinch with no caller found). 3354
+  PlayerOnGrapplePoint is ported (the player's orbit target casts to CScriptGrapplePoint) and runs
+  from Think every frame.
 - **Verified in `04_swamp_temple_dark` with LAYER6 forced:** 0 `[port] caught`, 0 `reach-stub`.
   - Without lock-on, player shots can't reach the growths, so the full fight was driven by
     console `damage` with a test-only bypass of the weapon/same-toucher checks.
