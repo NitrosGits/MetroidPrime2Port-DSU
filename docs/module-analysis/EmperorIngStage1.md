@@ -46,6 +46,13 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_4E44` | 0x24 | takes the particle effect's reference | [probable] |
 | `fn_16_BDD0` | 0x64 | releases that reference | [probable] |
 | `fn_16_6D10` | 0x84 | the particle effect's own update | [probable] |
+| `fn_16_3094` | 0x34 | the actor connected on CONNECT/'PLAY' | [proven] |
+| `fn_16_30C8` | 0x278 | the three tentacle animation ids | [proven] |
+| `fn_16_36E8` | 0x29C | the tentacle joint descriptions (eight slots) | [proven] |
+| `fn_16_337C` | 0x184 | fills a CPASAnimParmData's parm list - the port's own constructor does this | [probable] |
+| `fn_16_2B68` | 0xD4 | builds the joint description from the three animation ids | [?] |
+| `fn_16_1E6C` | 0xC8 | the joint's own work | [?] |
+| `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [?] |
 | `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
 | `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
 | `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
@@ -159,7 +166,8 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0xA74 | byte | five bits cleared |
 | 0xA78 | float | 0 |
 | 0xA80-0xA8C | four ints | 0 (0xA8C the sound emitter's handle) |
-| 0xA18, 0xA1A, 0xA1C | u16 | `kInvalidUniqueId` (the three connected actors: IS3/ACTIVATE, CONNECT/0x41574348 and CONNECT/ACTIVATE) |
+| 0xA18, 0xA1A, 0xA1C, 0xA1E | u16 | `kInvalidUniqueId` (the four connected actors: IS3/ACTIVATE, CONNECT/0x41574348, CONNECT/ACTIVATE and CONNECT/'PLAY') |
+| 0xA20, 0xA24, 0xA28 | ints | -1 (the three tentacle animation ids) |
 | 0xA58, 0xA5C | floats | 0 (the "Damage" and "Telegraph" effect timers) |
 | 0xA90, 0xA98 | u16 | `kInvalidUniqueId` (0xA90 the emitter's target) |
 | 0xA94, 0xA9C | ints | 0 |
@@ -341,6 +349,31 @@ not have - and fn_16_51D4 (0x128) for the sound update, which reads a float at t
 vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
 (upstream's layout), so the port has no float there and the value's meaning is not established.
 
+### The animation builders (fn_16_30C8 and fn_16_36E8)
+
+**fn_16_30C8** (0x30C8..0x3340) finds the three tentacle animation ids:
+
+- the tracked actor is the one connected on CONNECT/'PLAY' (the message 0x504C4159, looked up at
+  0x3100 and stored at guest 0xA1E at 0x3110);
+- fn_16_3094 (0x3094..0x30C8) looks that actor up in the state manager and casts it to an actor;
+- the database is that actor's model's animation data at +0x3C (0x3118..0x3124);
+- three parameter sets are searched for the best animation (`FindBestAnimation`, -1): the first
+  with six NoParameter and FromEnum(0), FromEnum(0) (0x3128..0x319C), the second with FromEnum(0),
+  FromEnum(7) (0x31D0..0x3258) and the third with FromEnum(0), FromEnum(6) (0x3280..0x3308). An id
+  is only taken when the search found a time above 1.1920929e-07f (lbl_16_rodata_3A8): 0xA20 at
+  0x31CC, 0xA24 at 0x3278 and 0xA28 at 0x3324.
+
+**fn_16_36E8** (0x36E8..0x3984) builds the joint descriptions: for each of the eight tentacle slots
+(the loop at 0x395C..0x3964) three sets are searched - FromEnum(0) with FromInt32(the index),
+FromEnum(2) with FromInt32(2) and FromEnum(1) with FromInt32(the index) - and when the first two
+found an animation (the tests at 0x3918 and 0x3920) the joint is built and added to the vector at
+guest 0x7D4 (0x3928..0x3958).
+
+fn_16_337C (0x184) fills the parm list of a CPASAnimParmData, which the port's own
+`CPASAnimParmData` constructor does, so it is not a separate function here. The three functions
+that build and add the joint are too big and stay stand-ins: fn_16_2B68 (0xD4), fn_16_1E6C (0xC8)
+and fn_16_3984 (0x90).
+
 ### The message switch (fn_16_7CE8, vtable slot 4)
 
 The base's own handler runs first (the call at 0x7D14), then the message decides:
@@ -415,6 +448,13 @@ actors, the five attacks, the heart stage, the shock wave, the projectile and th
 `TypesMatch__10CPatternedCFi`), so the actor keeps the base class's type (`kET_Patterned`) and
 `CEntityInfo.hpp` gets no new value.
 
+**Finding the actor's id**: the actor's unique id is not fixed - the area-11 run answers to
+`u0687` here, while a smoke run found `u04e3`. Look it up instead of hard-coding it: the port
+console's `objs` command lists the world's objects with their class, and
+`objs emperoringstage1` prints the one line for this actor, e.g.
+`u0687 000b0003  CEmperorIngStage1  a11 (1.7, -43.5, 105.0)  inactive`. The first column is the
+id the console's `send <id> <message>` wants (`send u0687 Activate`).
+
 **Runtime**: Great Temple world `863fcd72`, area 11 (`07_temple_mothlordsanctuary_dark`). The
 actor's script leaves it inactive until the fight, so the FSM is reached only after the console
 activates it: `objs emperoringstage1` gives the uid (u0687) and `send <uid> Activate` (the port
@@ -431,6 +471,11 @@ triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM doe
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
 CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+
+With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
+fills the three animation ids (guest 0xA20, 0xA24 and 0xA28) and the eight joint slots, and the
+run reaches the joint stand-ins fn_16_2B68, fn_16_1E6C and fn_16_3984 - so the searches did find
+animations. The collision managers (fn_16_3EAC) stay a stand-in.
 
 With `AcceptScriptMsg` ported (fn_16_7CE8) the `kSM_AreaLoaded` message runs the three tentacle
 stand-ins (fn_16_30C8, fn_16_3EAC, fn_16_36E8) and the `kSM_Activate` message (the console's

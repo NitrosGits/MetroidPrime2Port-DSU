@@ -129,15 +129,20 @@ private:
   void SetTentacleEffectState(int index, const rstl::string& name);
   // fn_16_3B70: the three collision actor managers are destroyed.
   void DestroyCollisionActors(CStateManager& mgr);
-  // fn_16_30C8: builds the tentacle animation parameter sets. Too big for the slice's rule, so it
-  // stays a stand-in.
+  // fn_16_30C8: the tentacle animation ids.
   void SetupTentacleAnimations(CStateManager& mgr);
+  // fn_16_3094: the actor connected on CONNECT/'PLAY'.
+  CActor* GetPlayActor(CStateManager& mgr) const;
   // fn_16_3EAC: creates the three collision actor managers and their tentacle actors. Too big for
   // the slice's rule, so it stays a stand-in.
   void SetupTentacleCollisions(CStateManager& mgr);
-  // fn_16_36E8: builds the tentacle joint collision descriptions. Too big for the slice's rule, so it
-  // stays a stand-in.
+  // fn_16_36E8: the tentacle joint collision descriptions.
   void SetupTentacleJoints(CStateManager& mgr);
+  // fn_16_2B68 / fn_16_1E6C / fn_16_3984: the joint description and the joint vector at guest
+  // 0x7D4. Too big for the slice's rule, so they stay stand-ins.
+  void BuildTentacleJoint(int index, int animId1, int animId2, int animId3);
+  void AddTentacleJoint(CStateManager& mgr);
+  void AddTentacleJointToVector();
   // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
   CActor* GetTargetActor(CStateManager& mgr) const;
   // fn_16_2FA8: the collision actor of the second tentacle's collision actor manager.
@@ -198,6 +203,10 @@ private:
   TUniqueId xa18_;                    // guest 0xA18: the actor connected on IS3/ACTIVATE
   TUniqueId xa1a_;                    // guest 0xA1A: the tracked actor's id (fn_16_302C)
   TUniqueId xa1c_;                    // guest 0xA1C: the actor connected on CONNECT/ACTIVATE
+  TUniqueId xa1e_;                    // guest 0xA1E: the actor connected on CONNECT/'PLAY'
+  int xa20_;                          // guest 0xA20, -1: the first tentacle animation id
+  int xa24_;                          // guest 0xA24, -1: the second one's
+  int xa28_;                          // guest 0xA28, -1: the third one's
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)

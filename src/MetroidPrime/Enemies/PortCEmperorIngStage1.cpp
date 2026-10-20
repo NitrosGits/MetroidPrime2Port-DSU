@@ -21,6 +21,10 @@
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
 
+#include "Kyoto/Animation/CPASAnimParm.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
+
 #include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -162,6 +166,10 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa18_(kInvalidUniqueId)                                         // guest 0xA18, fn_16_900C clears it
 , xa1a_(kInvalidUniqueId)                                         // guest 0xA1A, fn_16_900C clears it
 , xa1c_(kInvalidUniqueId)                                         // guest 0xA1C, fn_16_900C clears it
+, xa1e_(kInvalidUniqueId)                                         // guest 0xA1E, fn_16_900C clears it
+, xa20_(-1)                                                   // guest 0xA20, fn_16_900C clears it
+, xa24_(-1)                                                   // guest 0xA24, fn_16_900C clears it
+, xa28_(-1)                                                   // guest 0xA28, fn_16_900C clears it
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
@@ -459,11 +467,61 @@ void CEmperorIngStage1::DestroyCollisionActors(CStateManager& mgr) {
   }
 }
 
-// fn_16_30C8 (0x278): builds the tentacle animation parameter sets - three sets of five
-// CPASAnimParm taken from the tracked actor's animation data (fn_16_3094 -> the model's animation
-// data at +0x3C). Too big for the slice's rule, so it stays a stand-in.
+// fn_16_30C8 (0x30C8..0x3340): the tentacle animation ids. The tracked actor is the one
+// connected on CONNECT/'PLAY' (0x504C4159, looked up at 0x3100 and stored at guest 0xA1E at
+// 0x3110); its animation database is the model's animation data at +0x3C (0x3118..0x3124). Three
+// parameter sets are searched for the best animation and the ids land at guest 0xA20 (0x31CC, the
+// set with FromEnum(0) and FromEnum(0)), 0xA24 (0x3278, FromEnum(0) and FromEnum(7)) and 0xA28
+// (0x3324, FromEnum(0) and FromEnum(6)). An id is only taken when the search found a time above
+// 1.1920929e-07f (lbl_16_rodata_3A8).
 void CEmperorIngStage1::SetupTentacleAnimations(CStateManager& mgr) {
-  StandInFn("fn_16_30C8");
+  // The port's EScriptObjectMessage has no name for the retail's 0x504C4159, so the raw value is
+  // used.
+  xa1e_ = FindConnectedObject(mgr, kSS_Connect,
+                              static_cast< EScriptObjectMessage >(0x504C4159u));
+  // fn_16_3094 (0x3094..0x30C8): that actor. The retail has no test here - the actor connected
+  // on CONNECT/'PLAY' exists by the time the area is loaded - but on the host the connection may
+  // not be there yet.
+  const CActor* actor = GetPlayActor(mgr);
+  if (actor == nullptr) {
+    return;
+  }
+  const CPASDatabase& db = actor->GetModelData()->GetAnimationData()->GetPASDatabase();
+  // The first set (0x3128..0x319C): six NoParameter, then FromEnum(0) and FromEnum(0).
+  const CPASAnimParmData first(pas::EAnimationState(5), CPASAnimParm::FromEnum(0),
+                               CPASAnimParm::FromEnum(0), CPASAnimParm::NoParameter(),
+                               CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                               CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                               CPASAnimParm::NoParameter());
+  const rstl::pair< float, int > found = db.FindBestAnimation(first, -1);
+  if (found.first > 1.1920929e-07f) {
+    xa20_ = found.second;
+  }
+  // The second set (0x31D0..0x3258): six NoParameter, then FromEnum(0) and FromEnum(7).
+  const CPASAnimParmData second(pas::EAnimationState(5), CPASAnimParm::FromEnum(7),
+                                CPASAnimParm::FromEnum(0), CPASAnimParm::NoParameter(),
+                                CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                CPASAnimParm::NoParameter());
+  const rstl::pair< float, int > found2 = db.FindBestAnimation(second, -1);
+  if (found2.first > 1.1920929e-07f) {
+    xa24_ = found2.second;
+  }
+  // The third set (0x3280..0x3308): six NoParameter, then FromEnum(0) and FromEnum(6).
+  const CPASAnimParmData third(pas::EAnimationState(5), CPASAnimParm::FromEnum(6),
+                               CPASAnimParm::FromEnum(0), CPASAnimParm::NoParameter(),
+                               CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                               CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                               CPASAnimParm::NoParameter());
+  const rstl::pair< float, int > found3 = db.FindBestAnimation(third, -1);
+  if (found3.first > 1.1920929e-07f) {
+    xa28_ = found3.second;
+  }
+}
+
+// fn_16_3094 (0x3094..0x30C8): the actor connected on CONNECT/'PLAY' (the id at guest 0xA1E).
+CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {
+  return TCastToPtr< CActor >(mgr.ObjectById(xa1e_));
 }
 
 // fn_16_3EAC (0x794): creates the three CCollisionActorManagers (rs_new + the manager's
@@ -473,12 +531,58 @@ void CEmperorIngStage1::SetupTentacleCollisions(CStateManager& mgr) {
   StandInFn("fn_16_3EAC");
 }
 
-// fn_16_36E8 (0x29C): builds the tentacle joint collision descriptions - three sets of 27
-// CPASAnimParm - and fills the joint vector at guest 0x7D4. Too big for the slice's rule, so it
-// stays a stand-in.
+// fn_16_36E8 (0x36E8..0x3984): the tentacle joint collision descriptions. For each of the eight
+// tentacle slots (the loop at 0x395C..0x3964) three parameter sets are searched for the best
+// animation - the first with FromEnum(0) and FromInt32(the index), the second with FromEnum(2)
+// and FromInt32(2), the third with FromEnum(1) and FromInt32(the index) - and when the first two
+// found an animation (the tests at 0x3918 and 0x3920) the joint is built and added to the vector at
+// guest 0x7D4 (0x3928..0x3958).
 void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
-  StandInFn("fn_16_36E8");
+  // The database is this actor's own model's animation data at +0x3C (0x3708..0x3728).
+  const CPASDatabase& db = GetModelData()->GetAnimationData()->GetPASDatabase();
+  for (int index = 0; index < 8; ++index) {
+    const CPASAnimParmData first(pas::EAnimationState(27), CPASAnimParm::FromEnum(0),
+                                 CPASAnimParm::FromInt32(index), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter());
+    const rstl::pair< float, int > found = db.FindBestAnimation(first, -1);
+    int animId1 = found.first > 1.1920929e-07f ? found.second : -1;
+    const CPASAnimParmData second(pas::EAnimationState(27), CPASAnimParm::FromEnum(2),
+                                 CPASAnimParm::FromInt32(2), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter());
+    const rstl::pair< float, int > found2 = db.FindBestAnimation(second, -1);
+    int animId2 = found2.first > 1.1920929e-07f ? found2.second : -1;
+    const CPASAnimParmData third(pas::EAnimationState(27), CPASAnimParm::FromEnum(1),
+                                 CPASAnimParm::FromInt32(index), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                 CPASAnimParm::NoParameter());
+    const rstl::pair< float, int > found3 = db.FindBestAnimation(third, -1);
+    int animId3 = found3.first > 1.1920929e-07f ? found3.second : -1;
+    if (animId1 != -1 && animId2 != -1) {
+      BuildTentacleJoint(index, animId1, animId2, animId3);
+      AddTentacleJoint(mgr);
+      AddTentacleJointToVector();
+    }
+  }
 }
+
+// fn_16_2B68 (0x2B68..0x2C3C): builds the joint description from the three animation ids. Too
+// big for the slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::BuildTentacleJoint(int index, int animId1, int animId2, int animId3) {
+  StandInFn("fn_16_2B68");
+}
+
+// fn_16_1E6C (0x1E6C..0x1F34): the joint's own work. Too big for the slice's rule, so it stays a
+// stand-in.
+void CEmperorIngStage1::AddTentacleJoint(CStateManager& mgr) { StandInFn("fn_16_1E6C"); }
+
+// fn_16_3984 (0x3984..0x3A14): adds the joint to the vector at guest 0x7D4. Too big for the
+// slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::AddTentacleJointToVector() { StandInFn("fn_16_3984"); }
 
 // vtable slot 7 = fn_16_52FC (0x20): the retail override is the base class's own PreRender.
 void CEmperorIngStage1::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
