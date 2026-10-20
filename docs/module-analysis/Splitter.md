@@ -778,3 +778,37 @@ gate is false and the log shows the gate-false path (the DOL's `CSfxManager::Rem
 returns at 0x2D88. The three states cannot run in the port yet: the state at 0xEE0 only
 advances when the flag byte 0xF6A's 0x08 is set (the retail's "RaiseShields" code sets it),
 and the port's FSM is names-only.
+
+#### Who sets the head's chassis id at 0xEFA (read 2026-10-20)
+
+The only store of a *valid* id at 0xEFA is **fn_75_3EEC** (0x3EEC, 0xF4) - the head's "dock to
+the chassis". The other two stores are the invalid id (the ctor at 0x6C44 and the clear in
+fn_75_31A8 at 0x3240). fn_75_3EEC takes the id at **0xEFC** (the connected object the XAND
+message found), looks it up as a main chassis (0x3F18) and asks it to accept this head
+(0x3F3C **fn_75_E6E4**, 0x84: with the chassis's own command module id (0xC6C) still the invalid
+one the head's id goes there, 0xC6E is cleared, the flag byte 0xD40's 0x40 bit is cleared, the
+materials 0x28 and 0x29 are removed and **fn_75_8EA4** copies four of the chassis's data
+timers into 0xD10-0xD1C). When the chassis accepts, the id moves to 0xEFA (0x3F50), 0xEFC is
+cleared and the id goes to 0x12A; the docking sound (the id at 0x88C) is added when the flag
+byte 0xF6A's 0x02 bit and the data's flag word 0x7C0's 0x80 bit are both clear.
+
+**fn_75_3EEC is called from nowhere in the module** (the FSM's tables hold names only), so the
+port calls it from the head's Think.
+
+**The gate still fails in the area-4 fight**: the head has **no "Connect/Attach" connection**
+there - its connection list is only Dead/SetToZero, Patrol/Follow and DeathRattle/Decrement
+(the *chassis* has the Connect/Attach one, to the player hint) - so fn_75_3A8C leaves 0xEFC
+invalid, fn_75_3EEC finds no chassis and 0xEFA stays invalid. The area's placement does not
+wire the head to its chassis; the fight that does is elsewhere.
+
+#### The shells the run logs (2026-10-20, after the fn_75_2BE0/fn_75_10D0 port)
+
+Ported: **fn_75_2BE0** (the shield's particle effect: the state at 0xEE0 picks "LightShield" or
+"DarkShield", the animation data's first particle effect with that name is the result; the
+state 0 gives nothing) and **fn_75_10D0** (the module's own transform: the actor's own
+transform with the "Beam_LCTR" locator's translation moved through it - it runs every frame
+from the beam-effect spawner, so it is marked).
+
+Still shells in that run: the DOL's `CSfxManager::UpdateEmitter` and `RemoveEmitter` (the head's
+collision update and the beam spawner), and the chassis's **fn_75_A4E4** (0x418), **fn_75_AFE8**
+(0x11C), **fn_75_ACEC** (0x2FC) and **fn_75_9520** (0x11C) - the chassis's Think.
