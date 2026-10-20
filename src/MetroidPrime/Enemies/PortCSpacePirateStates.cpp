@@ -22,8 +22,14 @@
 
 void PortSpacePirateStandIn(const char* what);
 
+// Retail fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
+// unnamed Echoes locomotion) when 0x8f4 bit 0x40 is set, otherwise 0 = kLT_Crouch. Every other
+// message returns.
 void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Ambushing state (fn_72_7630)");
+  if (msg == kStateMsg_Activate) {
+    BodyController()->SetLocomotionType(
+        x8f4_30_ ? pas::kLT_Internal6 : pas::kLT_Crouch);
+  }
 }
 
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -34,8 +40,20 @@ void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::WarpOut state (fn_72_6E6C)");
 }
 
+// Retail fn_72_6DA4 (0xC8): Activate only. Unless 0x8fa bit 0x20 is set it posts kSM_Deactivate to
+// itself (CScriptMsg sender = id = own unique id, originator invalid, state -1), then always resets
+// the warp point to -1 and, when 0x8fa bit 0x10 is set, asks the state manager to delete the actor.
 void CSpacePirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::PostWarpOut state (fn_72_6DA4)");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  if (!x8fa_26_) {
+    mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), GetUniqueId(), kSM_Deactivate));
+  }
+  xc04_warpPoint = -1;
+  if (x8fa_27_) {
+    mgr.DeleteObjectRequest(GetUniqueId());
+  }
 }
 
 // Retail fn_72_9F1C is MP1's CSpacePirate::Attack with Echoes' own members. Activate stores
@@ -1265,8 +1283,12 @@ void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::PathFindEx state (fn_72_5EA4)");
 }
 
+// Retail fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
+// (type 0xA, no payload) to the body, as MP1's Enraged does.
 void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Enraged state (fn_72_A2B8)");
+  if (msg == kStateMsg_Activate) {
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+  }
 }
 
 // Retail fn_72_5310: Activate arms the animation state and zeroes the leash timer. Update delivers
@@ -1294,8 +1316,13 @@ void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_5BF4 is 7 instructions with no switch: any message but Activate returns immediately,
+// and Activate only sets CPatterned's pending-death bit (this+0x421 bit 0x10, the same bit the GetUp
+// state sets when the pirate is left without a path).
 void CSpacePirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Deactivate state (fn_72_5BF4)");
+  if (msg == kStateMsg_Activate) {
+    SetPendingDeath(true);
+  }
 }
 
 void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1306,6 +1333,11 @@ void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Captured state (fn_72_5610)");
 }
 
+// Retail fn_72_5B88: Activate only. It clears the actor's active flag through vtable slot 0x1C
+// (CActor::SetActive(false)) and then asks the state manager to delete this unique id.
 void CSpacePirate::RemoveFromWorld(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::RemoveFromWorld state (fn_72_5B88)");
+  if (msg == kStateMsg_Activate) {
+    SetActive(false);
+    mgr.DeleteObjectRequest(GetUniqueId());
+  }
 }
