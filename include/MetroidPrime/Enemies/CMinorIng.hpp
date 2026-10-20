@@ -224,6 +224,7 @@ private:
   bool IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool checkStatic) const;
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
+  void ClaimCoverHint(CScriptAIHint* hint, TUniqueId& id);
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id, bool keepTimer);
   void ResetAttackTimer(CStateManager& mgr);
   void PlaySfx(int idx, bool start);

@@ -397,6 +397,14 @@ CScriptAIHint* CMinorIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   return TCastToPtr< CScriptAIHint >(mgr.ObjectById(id));
 }
 
+// @ fn_44_2550
+// The retail helper puts the hint into use (the DOL call at asm 0x2574) and writes the hint's own
+// id through the out parameter (asm 0x2578-0x257C); the caller passes its cover-hint slot.
+void CMinorIng::ClaimCoverHint(CScriptAIHint* hint, TUniqueId& id) {
+  hint->SetInUse(true);
+  id = hint->GetUniqueId();
+}
+
 // @ fn_44_24D4
 void CMinorIng::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id, bool keepTimer) {
   if (CScriptAIHint* hint = GetCoverHint(mgr, id)) {
@@ -1418,8 +1426,7 @@ void CMinorIng::FindCoverPoint(CStateManager& mgr, float) {
   }
   if (count != 0) {
     if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(best[0].id))) {
-      hint->SetInUse(true); // fn_44_2550
-      mCoverHintId = hint->GetUniqueId();
+      ClaimCoverHint(hint, mCoverHintId);
       mLastCoverId = mCoverHintId;
     }
   }
