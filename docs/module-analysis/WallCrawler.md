@@ -149,3 +149,23 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   ramped and the kART_Six bend started (`x860_29_` = 1, w = 0.07).
 - Not exercised: the kART_Five bend, the boost-ball and contact damage (no player input in these
   runs).
+- **2026-07-20, branch `decomp/wallcrawler2`:** the module has **no stand-in left** in the port - the
+  old stand-in's null `LoadWallWalker` and its guessed bodies went with the behaviour port, and
+  every function the port implements already carries a `// @ fn_83_<off>` marker (22 of them). The
+  remaining module functions are the base class's weak inline copies (`0`, `10`, `18`, `20`, `28`,
+  `30`, `38`, `48`, `54`, `60`, `68`, `70`, `78`, `80`, `9C` - 8 bytes each), the optional members'
+  destructors (`48C`, `DA8`, `DE4`, `E40`, `E9C`, `2684`, `1A24`, `1A7C`, `1ACC`, `22E0`), the
+  `~CPatterned` chain (`20FC`, 0x1E4) and `GetConstraint` (`140`, 0x8, an accessor nothing in the
+  module calls). The **marking pass** added the three copy constructors the host's C++ performs
+  implicitly: `129C` (0x6C, the CMotionState copy before `AddMotionState`), `19C8` (0x5C, the
+  CCollisionSurface copy in AlignToFloor) and `26CC` (0x54, the CCollisionSurface's constructor in
+  the module's ctor) - 25 marked in all. A Temple Grounds run (3bfa3eff, TELEPORT=10, 6000 frames,
+  GODMODE) is clean: 0 `[port] caught` and no `[reach-stub]`.
+- **Found by asmcheck, not yet ported:** the retail's `fn_83_1310` (AlignToFloor) also runs a
+  **player-obstruction scan** the port does not have (asm 0x15C8-0x179C): it walks the collision
+  cache's leaves and their triangles, keeps the surface that faces the player (the plane test at
+  0x1610-0x1630), measures the player-to-surface distance (0x16C0-0x16E4), compares it with
+  `rodata_24` and, when the point is on that surface (0x16F8-0x1700), stores the surface into the
+  module's own copy (0x7c0) and sets `mPlayerObstructed` (the byte 0x860's bit 6, asm 0x179C-0x17A4).
+  The port's `mPlayerObstructed` is therefore never set, so `PreThink`'s guard never blocks - the
+  next slice's target.
