@@ -59,6 +59,9 @@ CEmperorIngLightSwarm::CEmperorIngLightSwarm(TUniqueId uid, const CEntityInfo& i
   if (particleId != kInvalidAssetId) {                                  // 0xBEE0
     mEffectDesc = rstl::optional_object< TLockedToken< CGenDescription > >(
         TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', particleId))));
+    // CParticleGen's own vtable lbl_18_data_860 and its inlines are emitted weakly here: fn_18_E02C
+    // ~CParticleGen, fn_18_E090/E094 SetGeneratorRate/SetDrawFlags, fn_18_E09C GetGeneratorRate,
+    // fn_18_E0A8 GetDrawFlags, fn_18_E0B0 ShouldDraw, fn_18_E10C rstl::list< CWarp* > dtor.
     mEffect = rs_new CElementGen(*mEffectDesc); // kMOT_Normal, kOSF_One (0xC048)
     mEffect->SetParticleEmission(false);        // 0xC0A4
   }
