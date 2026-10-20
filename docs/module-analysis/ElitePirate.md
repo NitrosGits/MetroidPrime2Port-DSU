@@ -410,8 +410,26 @@ is resolved. What is left unmarked, and what to do about it:
   tiny virtuals `0 8 10 4C 5C 64 6C 74 84 90 9C A4 AC B4 BC D8 104 128` and `A9D8`'s copy helpers
   `AAA0..B318`. Claim one only after a runtime gap shows the port is missing its effect; a lane
   brief must name the offset and the observed symptom.
-- Open runtime gaps worth a run: Dead while the shield is up (which state `7B00` takes), and the dark
-  Ingsmasher against the same shield burst.
+- Dead while the shield is up (2026-10-20, area 4 L3, u04ff): ShieldUp -> Shielding
+  (`ReadyToCharge`, 2.1 s) and then, after 10 x `damage u04ff 60` from 10.5 m (60-point chunks keep
+  every per-frame delta under `mXDamageThreshold`, so `CPatterned::Death` takes the ordinary branch
+  and sets the FSM's Dead), **Shielding -> Dead with nothing in between**. `Shielding`'s Deactivate
+  tore the shield down: the collision-actor list went 47 total / 41 active -> 47 / 40 at the kill
+  (the shield collider becomes inactive; the body colliders stay until `Delete`, 26 total / 20
+  active in the area afterwards), and `mShieldPopPending` popped exactly one `CExplosion` (0 -> 1 at
+  the kill, gone 1 s later). Dead then deleted the launcher u0515 and the actor (u04ff unresolvable
+  at +10 s, `send` says "no object"), and it stayed Dead: no PowerUp/PowerDown after Activate/Alert.
+  A kill 0.2 s into `ShieldUp` instead also goes straight to Dead, and that kill left the count at
+  47 / 41: `ShieldUp` has no Deactivate branch (retail `fn_15_44A8` has Activate and Update only),
+  so on that path the shield collider stays active until `Delete` - retail behaviour, not a port
+  bug. Sfx and `mShieldAlpha` are not observable from the console. Log
+  `/tmp/opencode/ep/gap/a2.out` (kill in ShieldUp: `a.out`), driver `a2.py`, run `a2_run.sh`.
+- Dark Ingsmasher against the same shield burst (2026-10-20, `0m_cliff_hall_dark` L4/5, u04fa,
+  hp 800): PowerUp -> Turn -> ShieldUp 3.1 s after the driver's Activate/Alert, and one charged
+  annihilator released on `ShieldUp` (then the step to 12 m) gave **ShieldUp -> Stunned at 5.0 s**,
+  the first window, hp unchanged. A charged hit is 80, over the polarity-1 limit 55 and under
+  polarity 0's 110, so that shield was polarity 1 [inference: the console has no polarity readout].
+  Log `/tmp/opencode/ep/gap/b.out`, driver `b.py`, run `b_run.sh`.
 Harnesses: `/tmp/opencode/ep/trace/run3.sh` (area 4), `/tmp/opencode/ep/stun/stun_run9.sh`
 (Stunned), `/tmp/opencode/ep/dark/stun_run.sh` (dark), `/tmp/opencode/ep/intro/run3.sh` (the area's
 own intro path: trigger -> pod 1 -> u04ff's death -> u051b's pod).
