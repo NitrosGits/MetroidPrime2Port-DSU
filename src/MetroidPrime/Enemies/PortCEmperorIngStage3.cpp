@@ -18,6 +18,7 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CGameArea.hpp"
+#include "MetroidPrime/CParticleGenInfoGeneric.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -35,6 +36,7 @@
 #include "Collision/CRayCastResult.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
@@ -186,6 +188,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mGroundPoundDamage(LdrToDamageInfo(data.groundPoundDamage)) // guest 0xA44
 , x824_(0)                                                 // guest 0x824
 , x825_(0)                                                 // guest 0x825
+, x826_(0)                                                 // guest 0x826 (the word at 0x824)
 , x7c0_(nullptr)                                           // guest 0x7C0
 , mVulnerabilityState(0)                                  // guest 0x7C4
 , mX7c8_(0.f)                                             // guest 0x7C8
@@ -216,9 +219,12 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , x8a8_(-1)                                               // guest 0x8A8 (0x9CF8)
 , mX8e0_(0)                                               // guest 0x8E0 (0x9D58)
 , mX8e4_(0)                                               // guest 0x8E4 (0x9D5C)
+, mX82c_(0.f)                                             // guest 0x82C (0x9C80)
+, mX860_(0.f)                                             // guest 0x860 (0x9CAC)
 , mX8f8_(0.f)                                             // guest 0x8F8 (0x9D70)
 , mX8fc_(CVector3f::Zero())                               // guest 0x8FC (0x9D78..0x9D88)
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
+, mVulnerableDamageThresholdReset(data.vulnerableDamageThreshold) // guest 0xB50
 , mBaseTurnSpeed(mTurnSpeed)                              // guest 0xE5C (0xA258)
 
 {
@@ -310,7 +316,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   } else {
     StandIn("Think before kSM_AreaLoaded (no collision actors yet)");
   }
-  StandInFn("fn_18_3448"); // 0x1AC
+  UpdateHearts(mgr, dt);  // fn_18_3448 (0x1AC)
   MeleeContact(mgr);      // fn_18_27DC (0x38C)
   StandInFn("fn_18_22E0"); // 0x4C0
   CheckList(mgr);         // fn_18_1978 (0xDC)
@@ -433,10 +439,8 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     OnDamage(mgr, msg.GetSenderId().Value());
     break;
   case kSM_HitObject: // 0x7F6C, 0x20
-    // fn_18_2D50 (0xB4): the hit object's id is looked up in the heart holder (0x2DA4), the
-    // collision actor's flag byte (guest 0x20) and the player are read, and the module's own
-    // vector (the table at lbl_18_data_4EC) is set when the member at guest 0x440 is not above
-    // zero (0x2E10..0x2E1C).
+    // fn_18_2D50 (0x1B4): the contact damage to the player the hit collision actor last
+    // touched.
     OnHitObject(mgr, msg.GetSenderId().Value());
     break;
   case kSM_OffGround: // 0x7F8C, 0x38
@@ -753,21 +757,165 @@ void CEmperorIngStage3::OnDamage(CStateManager& mgr, u16 sourceId) {
   }
 }
 
-// fn_18_2D50 (0xB4): the hit object's id is looked up in the collision actor manager and the
-// collision actor's flag byte (guest 0x20, the DOL's fn_80137718 - a stand-in) and the player
-// are read.
+// @ fn_18_3164
+// fn_18_3164 (0x288): one heart's reaction. The heart's collision actor (fn_18_3ACC) has to be
+// active (CEntity's flag byte at guest 0x20, the mask 0x80); its health (vtable slot 0x38) at or
+// under zero (rodata 0x258) is the answer. With the hit flag (0x80 at guest 0x824, OnDamage) set
+// or the heart dead: while invulnerable (state 0) the ing flinches (body command 0x1C,
+// CBCAdditiveFlinchCmd at weight 1.0, rodata 0x264), the hit timer (guest 0x860) restarts at
+// CPatterned::skDamageHitTime and the attack list gets kind 2 (fn_18_2BF0); while vulnerable
+// (state 2) the base's damage cooldown (guest 0x448) restarts at skDamageHitTime, the ing
+// flinches, and the ing's health past the heart's - at most the vulnerable damage threshold
+// left (guest 0x814) - comes off the threshold and the ing's health and adds to guest 0x8EC.
+// Either way the heart-reacted flag (0x80 at guest 0x826) is set.
+bool CEmperorIngStage3::HeartDamageReaction(CStateManager& mgr, int heart) {
+  CCollisionActor* actor = HeartCollisionActor(mgr, heart); // fn_18_3ACC
+  if (actor == nullptr) {
+    return false; // port guard: retail reads the actor without a test
+  }
+  if (!actor->GetActive()) { // 0x319C: extrwi 1,24 is the byte's 0x80
+    return false;
+  }
+  const float heartHP = actor->HealthInfo()->GetHP();
+  const bool dead = heartHP <= 0.f;
+  if ((x824_ & 0x80) == 0 && !dead) { // 0x31D4: extrwi 1,24
+    return dead;
+  }
+  switch (mVulnerabilityState) {
+  case 0:
+    BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f)); // 0x3248
+    mX860_ = skDamageHitTime;                                              // 0x3290
+    AddListEntry(2);                                                       // fn_18_2BF0
+    x826_ |= 0x80;                                                         // 0x32A0
+    break;
+  case 2: {
+    mDamageCooldownTimer = skDamageHitTime;                                // 0x32CC
+    BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f)); // 0x3300
+    float damage = HealthInfo()->GetHP() - heartHP;                       // 0x3350
+    if (damage >= mVulnerableDamageThreshold) {
+      damage = mVulnerableDamageThreshold;
+    }
+    mVulnerableDamageThreshold -= damage; // 0x336C
+    mX8ec_ += damage;                     // 0x3378
+    const float hp = HealthInfo()->GetHP();
+    HealthInfo()->SetHP(hp - damage); // 0x33AC
+    x826_ |= 0x80;                    // 0x33B4
+    break;
+  }
+  default:
+    break;
+  }
+  return dead;
+}
+
+// @ fn_18_2F04
+// fn_18_2F04 (0x1E0): the hit timer (guest 0x860) runs down by the frame time to zero, then both
+// hearts react (fn_18_3164, the second only when the first is alive) and the hit flag (0x80 at
+// guest 0x824) clears. A dead heart moves the invulnerable state 0 to 1 - with a knock-back
+// (body command 4: no direction, kS_Two, no animation, no restart) when the base's knock-back
+// manager (guest 0x620) enables the knock-back reaction (2) - and the vulnerable state 2 to the
+// base's pending death (0x10 at guest 0x421, mPendingDeath).
+void CEmperorIngStage3::UpdateHeartDamage(CStateManager& mgr, float dt) {
+  float timer = mX860_ - dt;
+  if (0.f >= timer) {
+    timer = 0.f;
+  }
+  mX860_ = timer;
+  bool dead = false;
+  if (HeartDamageReaction(mgr, 0) || HeartDamageReaction(mgr, 1)) {
+    dead = true;
+  }
+  x824_ &= ~0x80; // 0x2F88 (rlwimi 7,24,24)
+  if (!dead) {
+    return;
+  }
+  switch (mVulnerabilityState) {
+  case 0:
+    mVulnerabilityState = 1; // 0x2FC0
+    if (GetKnockBackController().IsAnimReactionEnabled(CKnockBackMgr::kAR_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(CVector3f::Zero(), pas::kS_Two, -1, false)); // 0x303C
+    }
+    break;
+  case 2:
+    mPendingDeath = true; // 0x309C (rlwimi 4,27,27 on guest 0x421)
+    break;
+  default:
+    break;
+  }
+}
+
+// @ fn_18_4BB8
+// fn_18_4BB8 (0x84): sets an external param on an element generator and, recursively, on every
+// system it spawned.
+static void SetExternalParamTree(CElementGen* gen, uint index, float value) {
+  if (gen == nullptr) {
+    return;
+  }
+  gen->SetExternalParam(index, value);
+  for (int i = 0; i < gen->GetNumSpawnedParticleSystems(); ++i) {
+    SetExternalParamTree(static_cast< CElementGen* >(gen->SpawnedParticleSystem(i)), index, value);
+  }
+}
+
+// @ fn_18_3448
+// fn_18_3448 (0x1AC): the heart damage update (fn_18_2F04), then the heart effect of the heart
+// that is on (guest 0x868: 0 "EnragedHeart", 1 "DarkHeart", 2 "LightHeart"; none past two) gets
+// the growth (guest 0x82C) as param 0, and params 2 and 3 at one past 0.49 / 0.74 (rodata
+// 0x2C0, 0x2C4), else zero. The generator is the effect's system (fn_18_3648 copies its
+// reference at +0x78).
+void CEmperorIngStage3::UpdateHearts(CStateManager& mgr, float dt) {
+  UpdateHeartDamage(mgr, dt); // fn_18_2F04
+  rstl::string name;
+  switch (mX868_) {
+  case 0:
+    name = rstl::string_l("EnragedHeart");
+    break;
+  case 1:
+    name = rstl::string_l("DarkHeart");
+    break;
+  case 2:
+    name = rstl::string_l("LightHeart");
+    break;
+  default:
+    break;
+  }
+  CParticleGenInfo* info = ModelData()->AnimationData()->GetFirstParticleEffect(name);
+  if (info == nullptr) {
+    return;
+  }
+  CElementGen* gen = static_cast< CElementGen* >(
+      static_cast< CParticleGenInfoGeneric* >(info)->GetParticleSystem().GetPtr());
+  SetExternalParamTree(gen, 0, mX82c_);
+  SetExternalParamTree(gen, 2, mX82c_ > 0.49f ? 1.f : 0.f);
+  SetExternalParamTree(gen, 3, mX82c_ > 0.74f ? 1.f : 0.f);
+}
+
+// @ fn_18_2D50
+// fn_18_2D50 (0x1B4): the contact damage. Not while either flag 0x40/0x20 of guest 0x824 or 0x10
+// of guest 0x825 is set (0x2D7C..0x2D98). The hit object's collision actor (the walk below) is
+// asked for the object it last touched (the DOL's fn_80137718 is
+// CCollisionActor::GetLastTouchedObject); when that is the player and the base's damage time
+// (guest 0x440) is not above zero (rodata 0x258), the contact damage (the vtable slot 0xE8)
+// goes from the ing to the player with a solid-only filter (lbl_18_data_4EC = 59, kMT_Solid)
+// and the ing's translation, and the damage time restarts at the base's wait (guest 0x444).
 void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
-  if ((x824_ & 0x40) != 0 || (x824_ & 0x20) != 0 || (x825_ & 0x10) == 0) {
+  if ((x824_ & 0x40) != 0 || (x824_ & 0x20) != 0 || (x825_ & 0x10) != 0) {
     return; // 0x2D7C..0x2D98
   }
   const CCollisionActor* heart = HeartCollisionActorById(mgr, sourceId); // 0x2DA4
   if (heart == nullptr) {
     return;
   }
-  StandInFn("fn_80137718"); // the collision actor's flag byte at guest 0x20
-  // The member at guest 0x440 and the table at lbl_18_data_4EC: the module's own vector. A
-  // stand-in.
-  StandInFn("fn_18_2D50 tail");
+  const TUniqueId touched = heart->GetLastTouchedObject(); // fn_80137718
+  const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(touched));
+  if (player == nullptr || mCurDamageRemTime > 0.f) {
+    return;
+  }
+  mgr.ApplyDamage(GetUniqueId(), touched, GetUniqueId(), GetContactDamage(),
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                  GetTranslation()); // fn_8003E25C
+  mCurDamageRemTime = mDamageWaitTime; // 0x2EC8
 }
 
 // fn_18_2D50's walk (0x2D9C..0x2DE0): every description of the manager at guest 0x7C0 whose
@@ -1769,8 +1917,42 @@ void CEmperorIngStage3::ChangeVulnerability(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// @ fn_18_6B80
+// fn_18_6B80 (0x204): the "EyeShutResetVulnerability" state. Activate (0x6BC0) sets the animation
+// state to `kAS_Ready`, clears the action history (guest 0x7EC) and makes the hearts immune
+// (fn_18_1C34). Update (0x6C2C) issues loop attack type 0 while the body can take one (state 9);
+// otherwise, past 2 seconds in the state (rodata 0x274) it exits the body state and, from the
+// vulnerability states 2 and 3, goes back to 0 with the enraged heart (fn_18_1DF4, heart 0, the
+// flag set). Deactivate (0x6D60) switches the heart that is on (fn_18_1BB0) and clears the
+// animation state.
 void CEmperorIngStage3::EyeShutResetVulnerability(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6B80");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6BC8, the value one
+    mActionHistory.clear();                               // 0x6C1C
+    SetHeartsImmune(mgr);                                 // fn_18_1C34
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLoopAttackCmd(static_cast< pas::ELoopAttackType >(0), false)); // 0x6C8C
+      break;
+    }
+    if (mStateMachine->GetTime() > 2.f) { // rodata 0x274
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x6D10
+      if (mVulnerabilityState >= 2 && mVulnerabilityState < 4) {
+        mVulnerabilityState = 0;      // 0x6D48
+        SetHeartState(mgr, 0, true); // fn_18_1DF4
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    SetCurrentHeart(mgr);                                    // fn_18_1BB0
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6D68, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1824,8 +2006,70 @@ void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float
   StandInFn("fn_18_5844");
 }
 
+// @ fn_18_A00
+// fn_18_A00 (0x94): the share of the ing's health lost: one less the health over the initial
+// health (the vtable slot 0x3C), clamped to 0..1 (rodata 0x258, 0x264).
+static float HealthLost(const CHealthInfo& health) {
+  float ratio = health.GetHP() / health.GetInitialHP();
+  if (ratio >= 1.f) {
+    ratio = 1.f;
+  }
+  if (0.f > ratio) {
+    ratio = 0.f;
+  }
+  return 1.f - ratio;
+}
+
+// @ fn_18_5614
+// fn_18_5614 (0x230): the "GrowHeart" state; the health lost (fn_18_A00) is the heart effect's
+// target growth. Activate (0x5678) sets the animation state to `kAS_Ready`, switches off every
+// knock-back reaction (guest 0x620), makes the hearts immune (fn_18_1C34) and clears guest
+// 0x825's 0x02. Update (0x56AC) issues a knock-back (body command 4: no direction, kS_Zero, no
+// animation, no restart) after the locomotion type goes to 0 while the body can take one
+// (state 6); otherwise, with 0x02 of guest 0x825 set, the vulnerability goes back to 0 with the
+// enraged heart (fn_18_1DF4) and the growth (guest 0x82C) rises by the frame time up to the
+// target. Deactivate (0x57DC) sets the growth to the target, switches the knock-back reactions
+// back on, restores the vulnerable damage threshold (guest 0x814 from 0xB50), goes back to the
+// vulnerability state 0 with the enraged heart and clears the animation state.
 void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_5614");
+  const float target = HealthLost(*HealthInfo()); // fn_18_A00
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x5680, the value one
+    mKnockBackController.EnableAllAnimReactions(false);
+    SetHeartsImmune(mgr); // fn_18_1C34
+    x825_ &= ~0x02;       // 0x56A0 (rlwimi 1,30,30)
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->SetLocomotionType(static_cast< pas::ELocomotionType >(0));
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(CVector3f::Zero(), pas::kS_Zero, -1, false)); // 0x5730
+      break;
+    }
+    if ((x825_ & 0x02) != 0) {
+      mVulnerabilityState = 0;      // 0x579C
+      SetHeartState(mgr, 0, true); // fn_18_1DF4
+    }
+    if ((x825_ & 0x02) != 0) {
+      if (mX82c_ < target) {
+        mX82c_ += dt; // 0x57C8
+      } else {
+        mX82c_ = target;
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mX82c_ = target; // 0x57DC
+    mKnockBackController.EnableAllAnimReactions(true);
+    mVulnerableDamageThreshold = mVulnerableDamageThresholdReset; // 0x57EC
+    mVulnerabilityState = 0;                                      // 0x57FC
+    SetHeartState(mgr, 0, true);                                  // fn_18_1DF4
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);      // 0x5814, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_18_4EB4 (0x23C): the "JumpAttack" state. Its activate path (0x4F0C) sets the flag at guest

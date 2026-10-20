@@ -228,6 +228,12 @@ private:
   void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
   // fn_18_36BC: the damage's source id against the two hearts' ids.
   void OnDamage(CStateManager& mgr, u16 sourceId);
+  // fn_18_3448: the heart damage update (fn_18_2F04) and the heart effect's external params.
+  void UpdateHearts(CStateManager& mgr, float dt);
+  // fn_18_2F04: the heart hit timer, both hearts' reactions and the vulnerability step.
+  void UpdateHeartDamage(CStateManager& mgr, float dt);
+  // fn_18_3164: one heart's damage reaction; answers whether the heart is dead.
+  bool HeartDamageReaction(CStateManager& mgr, int heart);
   // fn_18_2D50: the hit object's id looked up in the heart holder.
   void OnHitObject(CStateManager& mgr, u16 sourceId);
   // The holder's record with the id that is looked for.
@@ -258,6 +264,8 @@ private:
                                         // jump-attack and dodge flags
   uchar x825_;                           // guest 0x825, 0: 0x01 the stampede-react flag, 0x04 the
                                         // aborted-jump-slide flag
+  uchar x826_;                           // guest 0x826, 0: 0x80 the heart-reacted flag
+                                        // (fn_18_3164 sets it)
   CCollisionActorManager* x7c0_;        // guest 0x7C0, 0: the collision actors (fn_18_3BB0
                                         // makes them, fn_18_3B14 reads the hearts)
   int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
@@ -296,9 +304,13 @@ private:
   int x8a8_;                             // guest 0x8A8, -1: the taunt type
   int mX8e0_;                            // guest 0x8E0, 0: the portal attack's count (fn_18_508)
   int mX8e4_;                            // guest 0x8E4, 0: the portal attack's portal, 0..3
+  float mX82c_;                          // guest 0x82C, 0.0f: the heart effect's growth
+  float mX860_;                          // guest 0x860, 0.0f: the heart hit timer
   float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
   CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
   float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime
+  float mVulnerableDamageThresholdReset; // guest 0xB50, the data's vulnerableDamageThreshold
+                                        // (GrowHeart restores guest 0x814 from it)
   SLdrEmperorIngStage3Stage mStages[4];  // guest 0xB54, 0xBC0, 0xC2C, 0xC98: the data's stage1..4
   float mBaseTurnSpeed;                  // guest 0xE5C, the patterned info's turn speed
 };

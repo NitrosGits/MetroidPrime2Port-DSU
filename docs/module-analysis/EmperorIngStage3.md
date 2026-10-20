@@ -217,8 +217,8 @@ The base class's Think runs first (0x4818). Then:
   the module watches the object its id at guest 0x8C0 names and clears the id when the object
   is gone) and `fn_18_E40` (0x41C). `fn_18_125C` and `fn_18_27DC` (the melee contact: the
   three leg locator boxes grown by 2.5 against the player's touch bounds, the melee damage,
-  kMS_ApplyJump and the knock-back start) are ported; `3448`, `22E0`, `1370`, `E40` are
-  stand-ins, so nothing advances the dark-flier timer (0x7D8) and `CanDarkFlier` stays false.
+  kMS_ApplyJump and the knock-back start) and `fn_18_3448` (the hearts) are ported; `22E0`,
+  `1370`, `E40` are stand-ins, so nothing advances the dark-flier timer (0x7D8) and `CanDarkFlier` stays false.
 - The player knock-back (0x4A24..0x4A6C): while the timer at 0x8F8 is above zero it runs down
   and the DOL's `fn_801BF3DC` - `CPlayerKnockBackMgr::ApplyPlayerKnockBackForce` - pushes the
   player along 0x8FC normalised, power 100, 0. Ported.
@@ -277,8 +277,9 @@ vulnerability (0x960 red, 0x9C0 dark, 0x990 light).
 
 The retail keeps a 32-bit word at guest 0x824, but every test the module makes is a single byte's
 bit, so the host keeps the two bytes: `x824_` (0x824: the listen flag 0x02, the jump-attack flag
-0x04, the dodge flag 0x08) and `x825_` (0x825: the stampede-react flag 0x01, the aborted
-jump-slide flag 0x04). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
+0x04, the dodge flag 0x08, the heart-hit flag 0x80), `x825_` (0x825: the stampede-react flag
+0x01, the grow-heart flag 0x02, the aborted jump-slide flag 0x04, the no-contact-damage flag 0x10)
+and `x826_` (0x826: the heart-reacted flag 0x80). The masks are the asm's: `extrwi` with the bit 28 or 29 is the mask 0x08 or
 0x04 (PowerPC bit N is 1u << (31-N)), and the bit 0 is the mask 0x01.
 
 ## 5. Runtime
@@ -348,11 +349,23 @@ reach-stub lines; the FSM cycles EyeShut, JumpAttack, PortalAttack, Idle, Dodge 
 mainHeart_SDK goes 100 -> 60 on the first hit and stays there (EyeShut makes the hearts immune);
 ChangeVulnerability and Stampede are not reached and the stage does not end.
 
-Next slice: the hearts' vulnerability route. Think's `fn_18_3448` (0x1AC, the heart effects)
-calls `fn_18_2F04` (0x1E0, the only writer of vulnerability state 1, via `CKnockBackMgr` at
-0x620) and `fn_18_3164` (the heart damage reaction): unclear host mappings are the collision
-actor flag byte (`fn_80137718`), the fields 0x421/0x448/0x826/0x860 and body command 0x1C.
-Reached stand-ins left: Think's `1370`/`22E0`/`3448`/`E40` and the sound.
+Slice 3 ports the hearts' vulnerability route: `3448` (the heart effects' external params via
+`4BB8`), `2F04` (the hit timer at 0x860; a dead heart moves state 0 to 1 with a `kS_Two`
+knock-back when the base's `CKnockBackMgr` at 0x620 enables it, and state 2 to the base's
+`mPendingDeath`, 0x10 of 0x421), `3164` (`CBCAdditiveFlinchCmd` = body command 0x1C; state 2
+moves the heart's damage past the ing's health, capped by 0x814, onto the ing and 0x8EC; 0x448
+is `mDamageCooldownTimer`), EyeShutResetVulnerability `6B80`, GrowHeart `5614` (with `A00`, the
+health lost; 0xB50 is the threshold's reset copy) and the contact damage `2D50` (the DOL's
+`fn_80137718` is `CCollisionActor::GetLastTouchedObject`; 0x440/0x444 are
+`mCurDamageRemTime`/`mDamageWaitTime`; the old port inverted the 0x825 0x10 test). The vulnerable
+hearts take only the heart's beam (`SetHeartState`), so the run used a local, uncommitted console
+`damage ... dark|light` option: `damage u0597/u0598 150 power|dark|light` every 6 s, 220 s.
+0 caught / reach-stub lines. The FSM walks EyeShut -> GrowHeart -> Stampede -> EyeShut ->
+Stampede -> GrowHeart -> Dodge -> JumpSlideAttack; the ing goes 1000 -> 850 -> 750 -> 600 -> 500
+over two vulnerable windows (the boss bar at half), the hearts reset to the yellow 100 and die at
+84 s, then the FSM stays in JumpSlideAttack (`5844`, a stand-in) and the stage does not end.
+ChangeVulnerability is not seen in the 3 s samples (it is a one-frame step).
+Reached stand-ins left: JumpSlideAttack `5844`, `8600`, Think's `1370`/`22E0`/`E40` and the sound.
 
 ### The base-class members (the sweep)
 
