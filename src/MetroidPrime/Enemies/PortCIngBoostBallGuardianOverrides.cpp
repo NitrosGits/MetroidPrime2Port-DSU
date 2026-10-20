@@ -308,8 +308,6 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   }
   switch (msg.GetMessage()) {
   case kSM_Create:
-    // fn_29_4C88
-    EnsureBodyActive(mgr);
     // fn_30_68F0 tests the data byte's kFlag_StartAsIngSpot (0x0000690C/0x00006914 for the form,
     // 0x00006924/0x00006928 for the locomotion), not the guest bit 0x11ED 0x40.
     mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
@@ -319,6 +317,9 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     } else {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
     }
+    // 0x0000DF0C: the body is activated after the form picks its locomotion (kAS_Invalid). The
+    // [port] guard skips it when a think already activated the body (see EnsureBodyActive).
+    EnsureBodyActive(mgr);
     CreateCollisionActorManager(mgr); // 0x0000DF18: fn_30_4E90
     CreateIngSpotManager(mgr);        // 0x0000DF24: fn_30_4A38
     mIngBlobTrackerId = CreateBlobTracker( // 0x0000DF90: fn_30_648C
