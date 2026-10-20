@@ -285,6 +285,8 @@ private:
   TUniqueId x116A_; // 0x116A: the IS05/Follow object (fn_14_5910)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
   TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910)
+  float x11C8_;     // 0x11C8: the vortex's health (data +0x100, the store at 0xB674; fn_14_5384
+                    // takes damage from it, fn_14_9638 reads it)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
@@ -388,6 +390,13 @@ private:
   bool x4464_(const rstl::string& name, TUniqueId id);
   bool x4408_(TUniqueId id) const;
   bool x43AC_(TUniqueId id) const;
+  // fn_14_4350 (0x5C bytes): which toe target (0x1078 + 2i) an id is, or -1.
+  int x4350_(TUniqueId id) const;
+  // fn_14_5140 (0x134 bytes): a toe target hit: its health (0x1144) drops; at zero it is
+  // destroyed (IS08 at the IS06/Follow waypoint), else it flinches.
+  void x5140_(CStateManager& mgr, TUniqueId sender, float damage);
+  // fn_14_5384 (0xEC bytes): a toe target or the root collider hit (from fn_14_5838).
+  void x5384_(CStateManager& mgr, TUniqueId sender);
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
   // named by their retail offset.

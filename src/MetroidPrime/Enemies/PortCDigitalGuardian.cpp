@@ -264,6 +264,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x116A_(kInvalidUniqueId) // the store at 0xB5C0
 , x11B8_(0)
 , x11C0_(kInvalidUniqueId) // the store at 0xB668
+, x11C8_(data.mUnknown4F5D725C) // the store at 0xB674
 , x11E0_(0.f)
 , x11E4_(0.f)
 , x11E8_(1) // the store at 0xB6A0
@@ -1363,7 +1364,7 @@ bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& 
   if (x11B8_ != 1) {
     return false;
   }
-  return mData.mUnknown4F5D725C <= 0.0f;
+  return x11C8_ <= 0.0f;
 }
 
 // @ fn_14_3A44
@@ -1432,7 +1433,68 @@ void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
   if (knee != -1) {
     x5470_(mgr, sender, knee); // fn_14_5470
   } else if (x43AC_(sender) || sender.value == x1080_) {
-    StandInFn("fn_14_5384 (the toe target / root collider's damage)");
+    x5384_(mgr, sender); // fn_14_5384
+  }
+}
+
+// @ fn_14_4350
+int CDigitalGuardian::x4350_(TUniqueId id) const {
+  if (x1078_[0] == id.value) {
+    return 0;
+  }
+  if (x1078_[1] == id.value) {
+    return 1;
+  }
+  if (x1078_[2] == id.value) {
+    return 2;
+  }
+  if (x1078_[3] == id.value) {
+    return 3;
+  }
+  return -1;
+}
+
+// @ fn_14_5140
+void CDigitalGuardian::x5140_(CStateManager& mgr, TUniqueId sender, float damage) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x5180
+    return;
+  }
+  const int toe = x4350_(sender); // fn_14_4350
+  if (toe == -1 || x10DC_[toe] == 3) { // 3: already destroyed
+    return;
+  }
+  x1144_[toe] -= damage;
+  x1158_[toe] = mDamageWaitTime; // CPatterned 0x444
+  if (x1144_[toe] <= 0.f) { // .rodata 0x264
+    x1A68_(mgr, toe, 3); // fn_14_1A68: destroyed
+    x143C_(mgr, collider->GetTranslation(), kSS_InternalState8); // fn_14_143C
+  } else {
+    PlayCustomSound(collider->GetTranslation(), CVector3f::Up(), mData.mSoundToeTargetHit, false);
+    if (x10DC_[toe] == 1) {
+      x1A68_(mgr, toe, 2); // fn_14_1A68: the flinch
+    }
+  }
+}
+
+// @ fn_14_5384
+void CDigitalGuardian::x5384_(CStateManager& mgr, TUniqueId sender) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x53C4
+    return;
+  }
+  // The collider's damage is what it lost; its health goes back to full (0x53DC..0x53E8).
+  CHealthInfo* health = collider->HealthInfo();
+  const float initial = health->GetInitialHP();
+  const float damage = initial - health->GetHP();
+  health->SetHP(initial);
+  if (x11B8_ == 1) {
+    // In the vortex (0x11B8 == 1) the hit goes to the vortex's health.
+    x11C8_ -= damage;
+    mDamageCooldownTimer = skDamageHitTime; // CPatterned 0x448
+    PlayCustomSound(collider->GetTranslation(), CVector3f::Up(), mData.mSoundVortexFlash, false);
+  } else {
+    x5140_(mgr, sender, damage); // fn_14_5140
   }
 }
 
