@@ -165,6 +165,9 @@ public:
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
   void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override;
+  const CHealthInfo* GetHealthInfo() const override;
   void Render(const CStateManager& mgr) const override;
   void Touch(CActor& actor, CStateManager& mgr) override;
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;

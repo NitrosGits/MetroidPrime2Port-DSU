@@ -2033,7 +2033,26 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_44_8E10
+// The retail's PreRender is the base's (asm 0x8E10-0x8E2C); the check finds no difference.
 void CMinorIng::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
+
+// @ fn_44_8DF0
+// The retail's AddToRenderer is the base's (asm 0x8DF0-0x8E0C); the check finds no difference.
+void CMinorIng::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
+
+// @ fn_44_6FA0
+// The retail's GetAimPosition is the base's (asm 0x6FA0-0x6FC8); the check finds no difference.
+CVector3f CMinorIng::GetAimPosition(const CStateManager& mgr, float dt) const {
+  return CPatterned::GetAimPosition(mgr, dt);
+}
+
+// @ fn_44_70
+// The retail's GetHealthInfo calls the base's HealthInfo virtual (asm 0x70-0x98); the check finds
+// no difference.
+const CHealthInfo* CMinorIng::GetHealthInfo() const {
+  return const_cast< CMinorIng* >(this)->HealthInfo();
+}
 
 // @ fn_44_8E30
 void CMinorIng::Render(const CStateManager& mgr) const {

@@ -359,10 +359,12 @@ fn_44_28D8 the host's `CEntityInfo` destructor, fn_44_9BB8 a member's own destru
 the host's `CIngSpotData` copy and fn_44_9940 the host's `CPatterned` destructor), and the rest
 unported chains the module calls but the live cycle never reaches.
 
-The four vtable slots the host's `CMinorIng` overrides itself are marked now: fn_44_0 (the path
-find search), fn_44_8 (the point path find search), fn_44_5AB8 (the projectile info) and
-fn_44_10 (the listening flag). The check finds no difference in any of them, and a run (the
-Temple Grounds' area 13) showed all four running. The loader (fn_44_110) and the destructor
+The eight vtable slots the host's `CMinorIng` overrides itself are marked now: fn_44_0 (the path
+find search), fn_44_8 (the point path find search), fn_44_5AB8 (the projectile info), fn_44_10 (the
+listening flag), fn_44_8E10 (PreRender), fn_44_8DF0 (AddToRenderer), fn_44_6FA0 (GetAimPosition)
+and fn_44_70 (GetHealthInfo, which forwards to the virtual `HealthInfo()` the retail calls). The
+check finds no difference in any of them, and a run (the Temple Grounds' area 13) showed all of
+them running. The loader (fn_44_110) and the destructor
 (fn_44_97E4) are marked too: the check finds the retail's property loop and the members' own
 teardown against the host's generated reader and empty body, which is a tool limit - the property
 ids and their order and the teardown order were checked by hand.
