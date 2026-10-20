@@ -483,7 +483,7 @@ void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_BCB0. Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
+// @ fn_72_BCB0 (0x31C). Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
 // takes the kSS_Attack/kSM_Follow connected waypoint as the nav destination and, when the dot of the
 // forward axis with (waypoint - translation) is exactly zero (asm 0xBD90: fcmpo/cror/bne), marks the
 // nav in-position; Update
