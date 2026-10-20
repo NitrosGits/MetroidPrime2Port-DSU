@@ -349,7 +349,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`), builds and runs but no run enters the state: it needs the player in morph ball inside `mPursuitRange`. Next run for it: `press b` to morph, then walk into the Ing |
 | ~~arm swipe~~ done | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | ported + `// @` 2026-10-20 (`1b058f9a4`); see A.7 |
 | ~~suck~~ done | `fn_29_76B8` SuckEnergy (0x778) | ported 2026-10-20, `// @`; see A.8. It also exposed a field-name shift in `CIngBodyProjectileData` (A.3) |
-| splat | `fn_29_4F14` SplatOntoMesh (0x238) | one of the twelve code functions |
+| ~~splat~~ done | `fn_29_4F14` SplatOntoMesh (0x238) | ported 2026-10-20, `// @` (probe-driven); see A.8 |
 | exit host | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10F58`; `lbl_29_data_C60`) | biggest; the class identity is still only **[probable]** |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
@@ -452,6 +452,22 @@ The field-name shift this slice found: `CIngBodyProjectileData`'s six floats wer
 early, so `ShouldBodyProjectile` compared against (maxAttackDist, suckTime) and `BodyProjectileFlight`
 read `minAttackDist` as the drop time and `speed` as the suck time. Renaming them to the retail slot
 order (A.3) fixed all three call sites with no edit to them.
+
+`fn_29_4F14` SplatOntoMesh (0x238) is ported in the same file: form 3 (ing spot), `kBSC_AbortScripted`,
+`CSurfaceAlignmentHelper::OrientToSurfaceNormal(*this, normal, 1.f)` (the normal is `{0xdd4,0xdd8,0xddc}`,
+which nothing in the module ever writes — the ctor zeroes 0xdc8..0xde8 — so the call is a no-op), the
+splat-wall sound (`CIngData+0x92`) with its handle discarded, and, when the body projectile's splat
+token at 0xd48 is engaged (`0xd54`, from `CIngData+0x8c`), a `CExplosion` "Ing Splat Wall Fx" on the
+Ing's transform at `GetModelData()->GetScale()` (retail reads the model data's first three words, and
+`CModelData`'s first member is its `CVector3f mScale`), flags 0, `CColor::White()`, player -1.
+
+The FSM in area 57 does **not** ask for it: three runs went `BodyProjectileFlight` -> `SuckEnergy`
+without it, so the trace came from a local probe (`getenv("MP2_ING_PROBE_SPLAT")` calling
+`SplatOntoMesh` once from the flight state's Activate; the patch is not committed). Trace
+(`ing_splat.log`): `state BodyProjectileFlight form 8`, `state SplatOntoMesh form 8`,
+`splat: splat fx explosion`, then `state Start form 3` — the explosion spawned and the form change
+reached the machine; 0 `[port] caught`, 0 `[reach-stub]`, exit 0. The `MP2_ING_PROBE_SPLAT` hook is
+not in the tree; re-add it locally to re-trace.
 
 ---
 

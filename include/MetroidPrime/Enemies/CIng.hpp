@@ -419,6 +419,8 @@ private:
   // 0xd38: CIngData+0x178 (the mini-portal effect). Retail's engaged byte is 0xd44, which the ctor
   // writes and fn_29_C228 reads; the optional's own engaged flag stands in for it.
   rstl::optional_object< TLockedToken< CGenDescription > > mMiniPortalEffect;
+  // 0xd48: the body projectile's splat effect (CIngData+0x8c); retail's engaged byte is 0xd54.
+  rstl::optional_object< TLockedToken< CGenDescription > > mSplatEffect;
   CSfxHandle mBodyProjectileSfx;             // 0xd58: the body projectile's looping flight sound
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
   CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
