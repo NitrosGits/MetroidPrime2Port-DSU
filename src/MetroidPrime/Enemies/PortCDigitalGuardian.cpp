@@ -141,6 +141,90 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef DG_STATE
 #undef DG_CODE
 
+// The joint colliders fn_14_61DC builds. The spheres are .rodata 0x60 (11 entries of
+// {locator, radius}); the boxes are .rodata 0xB8 (24 entries of {from, to, size}). fn_14_5C30's
+// four knee-to-ankle boxes are .rodata 0x1D8. Every collider's mass is .rodata 0x2C0 (1000).
+struct SSphereJoint {
+  const char* name;
+  float radius;
+};
+
+struct SBoxJoint {
+  const char* from;
+  const char* to;
+  float size;
+};
+
+const SSphereJoint skSphereJoints[11] = {
+    {"Head_1", 4.f},          {"Skeleton_Root", 5.f},   {"L_front_knee_2", 5.f},
+    {"L_back_knee_2", 5.f},   {"R_front_knee_2", 5.f},  {"R_back_knee_2", 5.f},
+    {"L_front_col_LCTR", 3.f}, {"L_back_col_LCTR", 3.f}, {"R_front_col_LCTR", 3.f},
+    {"R_back_col_LCTR", 3.f}, {"root", 5.f},
+};
+
+const SBoxJoint skBoxJoints[24] = {
+    {"L_front_hip", "L_front_knee", 3.f},
+    {"L_back_hip", "L_back_knee", 3.f},
+    {"R_front_hip", "R_front_knee", 3.f},
+    {"R_back_hip", "R_back_knee", 3.f},
+    {"L_front_knee", "L_front_knee_2", 3.f},
+    {"L_back_knee", "L_back_knee_2", 3.f},
+    {"R_front_knee", "R_front_knee_2", 3.f},
+    {"R_back_knee", "R_back_knee_2", 3.f},
+    {"L_front_knee_2", "L_front_ankle", 4.f},
+    {"L_back_knee_2", "L_back_ankle", 4.f},
+    {"R_front_knee_2", "R_front_ankle", 4.f},
+    {"R_back_knee_2", "R_back_ankle", 4.f},
+    {"L_front_B_toe", "L_front_B_toe_end", 1.25f},
+    {"L_front_L_toe", "L_front_L_toe_end", 1.25f},
+    {"L_front_R_toe", "L_front_R_toe_end", 1.25f},
+    {"L_back_B_toe", "L_back_B_toe_end", 1.25f},
+    {"L_back_L_toe", "L_back_L_toe_end", 1.25f},
+    {"L_back_R_toe", "L_back_R_toe_end", 1.25f},
+    {"R_front_B_toe", "R_front_B_toe_end", 1.25f},
+    {"R_front_L_toe", "R_front_L_toe_end", 1.25f},
+    {"R_front_R_toe", "R_front_R_toe_end", 1.25f},
+    {"R_back_B_toe", "R_back_B_toe_end", 1.25f},
+    {"R_back_L_toe", "R_back_L_toe_end", 1.25f},
+    {"R_back_R_toe", "R_back_R_toe_end", 1.25f},
+};
+
+const SBoxJoint skShinJoints[4] = {
+    {"L_front_knee_2", "L_front_ankle", 6.f},
+    {"L_back_knee_2", "L_back_ankle", 6.f},
+    {"R_front_knee_2", "R_front_ankle", 6.f},
+    {"R_back_knee_2", "R_back_ankle", 6.f},
+};
+
+const float kJointMass = 1000.f; // .rodata 0x2C0
+
+// The four knee locators (.rodata 0x0, fn_14_44F8) and toe target locators (.rodata 0x10,
+// fn_14_4464).
+const char* const skKneeLocators[4] = {"L_front_knee_2", "L_back_knee_2", "R_front_knee_2",
+                                       "R_back_knee_2"};
+const char* const skToeLocators[4] = {"L_front_col_LCTR", "L_back_col_LCTR", "R_front_col_LCTR",
+                                      "R_back_col_LCTR"};
+
+// lbl_14_bss_24: the toe colliders' extended touch bounds before the model scale, (0, 0, 2)
+// (the static initialiser fn_14_D904 stores .rodata 0x264 = 0 twice and 0x26C = 2 at 0xDEEC).
+const CVector3f skToeTouchBounds(0.f, 0.f, 2.f);
+
+// The two strings joined (a copy of the first with the second appended): the box colliders'
+// names are "<from>-><to>".
+// @ fn_14_42F4
+rstl::string Concat(const rstl::string& a, const rstl::string& b) {
+  rstl::string out(a);
+  out.append(b);
+  return rstl::string(out);
+}
+
+// The box collider name: (from + "->") + to, the two fn_14_42F4 calls at 0x63AC and 0x63C8 with
+// the "->" string at .rodata 0x905.
+rstl::string BoxJointName(const SBoxJoint& joint) {
+  return Concat(Concat(rstl::string_l(joint.from), rstl::string("->")),
+                rstl::string_l(joint.to));
+}
+
 
 
 
@@ -164,7 +248,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , xFB6_(kInvalidUniqueId.value)
 , x10C4_(4)
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
-, x1080_(0)
+, x1080_(kInvalidUniqueId.value)
 , x1082_(0)
 , x1010_(0)
 , x1011_(0)
@@ -178,7 +262,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
 , x128C_(0)
-, xE60_(nullptr) // 0xE60: the first collision actor manager (x61DC_ would build it)
+, xE60_(nullptr) // 0xE60: the first collision actor manager (x61DC_ builds it)
 , xE64_(nullptr) // 0xE64: the second collision actor manager (x5C30_ would build it)
 , xE6C_() // 0xE6C: the leg model (x6864_ fills it in)
 , xEBC_() // 0xEBC: the shin model (x6864_ fills it in)
@@ -200,6 +284,13 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1264_(0.f)
 , x1268_(0)
 , x1270_(0)
+, xFBC_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
+        kInvalidUniqueId.value}
+, x1078_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
+         kInvalidUniqueId.value}
+, x1044_(CDamageVulnerability::ReflectVulnerabilty()) // ImmuneRicochetVulnerability, 0xB258
+, x1110_(LdrToDamageVulnerability(data.mToeTargetVulnerability))
+, x1188_(LdrToDamageVulnerability(data.mVortexVulnerability))
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
   // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
@@ -230,6 +321,12 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   x10C8_[1] = anim->GetLocatorSegId(rstl::string_l("L_back_col_LCTR"));
   x10C8_[2] = anim->GetLocatorSegId(rstl::string_l("R_front_col_LCTR"));
   x10C8_[3] = anim->GetLocatorSegId(rstl::string_l("R_back_col_LCTR"));
+
+  // The AI weapon type passes through the immune-ricochet vulnerability (the SetVulnerability
+  // call at 0xBEF4: weapon type 0xB, multiplier .rodata 0x264 = 0, effect 2, no ignore radius).
+  x1044_.SetVulnerability(kWT_AI,
+                          CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_PassThrough,
+                                                   false));
 
   // fn_14_6864 (the call at 0xBD78): the module's five models.
   x6864_();
@@ -458,12 +555,113 @@ void CDigitalGuardian::x3974_(CStateManager& mgr, bool active) {
   }
 }
 
-// fn_14_61DC (0x590 bytes), fn_14_5C30 (0x2F4 bytes) and fn_14_59BC (0x274 bytes): the
-// collision actor managers' builders. They are over this slice's callee limit, so they are
-// named stand-ins: the managers at guest 0xE60 and 0xE64 stay null and the knee ids at
-// 0xFB0..0xFB6 keep their invalid value.
+// @ fn_14_44F8
+bool CDigitalGuardian::x44F8_(const rstl::string& name, TUniqueId id) {
+  for (int i = 0; i < 4; ++i) {
+    if (name == rstl::string_l(skKneeLocators[i])) {
+      xFBC_[i] = id.value;
+      return true;
+    }
+  }
+  return false;
+}
+
+// @ fn_14_4464
+bool CDigitalGuardian::x4464_(const rstl::string& name, TUniqueId id) {
+  for (int i = 0; i < 4; ++i) {
+    if (name == rstl::string_l(skToeLocators[i])) {
+      x1078_[i] = id.value;
+      return true;
+    }
+  }
+  return false;
+}
+
+// @ fn_14_4408
+bool CDigitalGuardian::x4408_(TUniqueId id) const {
+  return xFBC_[0] == id.value || xFBC_[1] == id.value || xFBC_[2] == id.value ||
+         xFBC_[3] == id.value;
+}
+
+// @ fn_14_43AC
+bool CDigitalGuardian::x43AC_(TUniqueId id) const {
+  return x1078_[0] == id.value || x1078_[1] == id.value || x1078_[2] == id.value ||
+         x1078_[3] == id.value;
+}
+
+// @ fn_14_61DC
+// The first collision actor manager (guest 0xE60): 11 spheres and 24 boxes (the two loops at
+// 0x6254 and 0x6324, room for 0x23 reserved at 0x6224), built active (li r8, 1 at 0x64B0); then
+// every collider gets its vulnerability by name (the loop at 0x64FC).
 void CDigitalGuardian::x61DC_(CStateManager& mgr) {
-  StandInFn("fn_14_61DC (the first collision actor manager builder, 0x590 bytes)");
+  // The vector's helpers are the module's own copies of rstl's.
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(35); // fn_14_D7DC
+  const CAnimData* anim = GetModelData()->GetAnimationData();
+  for (uint i = 0; i < 11; ++i) {
+    const SSphereJoint& joint = skSphereJoints[i];
+    const CSegId seg = anim->GetLocatorSegId(rstl::string_l(joint.name));
+    // fn_14_5FA4 (the description's copy)
+    // fn_14_5F24 (push_back)
+    joints.push_back(CJointCollisionDescription::SphereCollision(
+        seg, CVector3f::Zero(), joint.radius, rstl::string_l(joint.name), kJointMass));
+  }
+  for (uint i = 0; i < 24; ++i) {
+    const SBoxJoint& joint = skBoxJoints[i];
+    const float size = joint.size;
+    const CSegId from = anim->GetLocatorSegId(rstl::string_l(joint.from));
+    const CSegId to = anim->GetLocatorSegId(rstl::string_l(joint.to));
+    joints.push_back(CJointCollisionDescription::OBBAutoSizeCollision(
+        from, to, CVector3f(size, size, size), CJointCollisionDescription::kOT_BetweenJoints,
+        BoxJointName(joint), kJointMass));
+  }
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, true);
+  delete xE60_;
+  xE60_ = manager;
+
+  const CVector3f scale = GetModelData()->GetScale();
+  for (uint i = 0; i < xE60_->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = xE60_->GetCollisionDescFromIndex(i);
+    const TUniqueId id = desc.GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {
+      continue;
+    }
+    if (x44F8_(desc.GetName(), id)) {
+      // A knee joint (0x6550).
+      actor->SetDamageVulnerability(x1044_);
+    } else if (desc.GetName() == rstl::string_l("Head_1")) { // fn_14_21A0 (operator==)
+      // The guard (0x6594): asleep until the beacon arrives (fn_14_28D0), the body's own
+      // vulnerability (the non-virtual CPatterned call at 0x65B8).
+      x10CC_ = id;
+      actor->SetActive(false);
+      actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
+    } else if (x4464_(desc.GetName(), id)) {
+      // A toe target (0x65EC): its touch bounds reach (0, 0, 2) times the model scale further.
+      actor->SetDamageVulnerability(x1110_);
+      actor->SetExtendedTouchBounds(CVector3f(skToeTouchBounds.GetX() * scale.GetX(),
+                                              skToeTouchBounds.GetY() * scale.GetY(),
+                                              skToeTouchBounds.GetZ() * scale.GetZ()));
+    } else if (desc.GetName() == rstl::string_l("root")) {
+      // The root (0x6658): the vortex's vulnerability, and platforms are excluded (the exclude
+      // list's high word | 0x20000 at 0x6694, material 49).
+      x1080_ = id.value;
+      actor->SetDamageVulnerability(x1188_);
+      CMaterialFilter filter = actor->GetMaterialFilter();
+      filter.ExcludeList().Add(kMT_Platform);
+      actor->SetMaterialFilter(filter);
+    } else {
+      actor->SetDamageVulnerability(x1044_);
+    }
+    // Every collider (0x66C8): the include list's high word | 0x4000000 (material 58) and the
+    // exclude list's high word | 0x800 (material 43).
+    CMaterialFilter filter = actor->GetMaterialFilter();
+    filter.IncludeList().Add(kMT_NoPlayerCollision);
+    filter.ExcludeList().Add(kMT_Immovable);
+    actor->SetMaterialFilter(filter);
+  }
+  // fn_14_60C0 (the vector's destructor, 0x673C)
 }
 
 void CDigitalGuardian::x5C30_(CStateManager& mgr) {

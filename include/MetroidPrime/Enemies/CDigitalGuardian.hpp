@@ -14,6 +14,7 @@ class CParticleGen;
 #ifdef TARGET_PC
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageInfo.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageVulnerability.hpp"
@@ -272,7 +273,7 @@ private:
   u16 xFB6_;        // 0xFB6: a knee id, kInvalidUniqueId (fn_14_705C counts these)
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
-  u16 x1080_;       // 0x1080: the object id fn_14_3974 looks the object up with
+  u16 x1080_;       // 0x1080: the root collider's id (fn_14_61DC sets it, fn_14_3974 reads it)
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
   uchar x1010_;     // 0x1010: the flag byte the "IM01"/"IM02" messages set (fn_14_A6A8)
   uchar x1011_;     // 0x1011: the flag byte the "IM07"/"IM08" messages set (fn_14_A6A8)
@@ -325,6 +326,19 @@ private:
   float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
   int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
+  u16 xFBC_[4];      // 0xFBC: the four knee joint colliders ("*_knee_2" spheres; fn_14_44F8)
+  u16 x1078_[4];     // 0x1078: the four toe target colliders ("*_col_LCTR" spheres; fn_14_4464)
+  // 0x1044: immune-ricochet with the AI weapon type passed through (the ctor's 0xB258/0xBEF4).
+  CDamageVulnerability x1044_;
+  CDamageVulnerability x1110_; // 0x1110: the toe targets' (toeTargetVulnerability, 0xB534)
+  CDamageVulnerability x1188_; // 0x1188: the root collider's (vortexVulnerability, 0xB618)
+
+  // fn_14_44F8 / fn_14_4464: record id in xFBC_ resp. x1078_ when name is one of the four knee
+  // resp. toe target locators. fn_14_4408 / fn_14_43AC: whether id is one of them.
+  bool x44F8_(const rstl::string& name, TUniqueId id);
+  bool x4464_(const rstl::string& name, TUniqueId id);
+  bool x4408_(TUniqueId id) const;
+  bool x43AC_(TUniqueId id) const;
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
   // named by their retail offset.
@@ -349,8 +363,8 @@ private:
   void x3974_(CStateManager& mgr, bool active);
 
   // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
-  // calls - fn_14_61DC (0x590 bytes), fn_14_5C30 (0x2F4 bytes) and fn_14_59BC (0x274 bytes) -
-  // which are over the callee limit and stay stand-ins.
+  // calls: fn_14_61DC (0x590 bytes, the manager at 0xE60), fn_14_5C30 (0x2F4 bytes, the manager
+  // at 0xE64) and fn_14_59BC (0x274 bytes, the colliders' health).
   void x676C_(CStateManager& mgr);
   void x61DC_(CStateManager& mgr);
   void x5C30_(CStateManager& mgr);

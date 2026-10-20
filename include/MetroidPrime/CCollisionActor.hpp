@@ -63,6 +63,9 @@ public:
   void SetResponseType(EWeaponCollisionResponseTypes type) { mResponseType = type; } // Guessed name
   TUniqueId GetOwnerId() const { return mOwner; }
   float GetSphereRadius() const;
+#ifdef TARGET_PC
+  void SetExtendedTouchBounds(const CVector3f& bounds) { mExtendedTouchBounds = bounds; }
+#endif
   void SetSphereRadius(float radius);
 
 private:
