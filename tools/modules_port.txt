@@ -22,6 +22,6 @@ SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirate.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateStates.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateTriggers.cpp
 Splitter;src/MetroidPrime/PortModuleStubs.cpp
-SwampBossStage1;src/MetroidPrime/PortModuleStubs.cpp
+SwampBossStage1;src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp
 SwampBossStage2;src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp
 WallCrawlerSwarm;src/MetroidPrime/PortModuleStubs.cpp

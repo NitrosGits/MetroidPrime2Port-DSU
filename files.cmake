@@ -827,7 +827,7 @@ set(MP_MODULE_Splitter_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp
 )
 set(MP_MODULE_SwampBossStage1_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp
 )
 set(MP_MODULE_SwampBossStage2_SOURCES
     src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp
