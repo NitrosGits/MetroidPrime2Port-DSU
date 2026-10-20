@@ -933,12 +933,12 @@ void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, f
         CMaterialList(kMT_Solid),
         CMaterialList(kMT_Character, kMT_Player, kMT_CollisionActor, kMT_ProjectilePassthrough));
     for (int i = 0; i < 2; ++i) {
-      // Retail takes the pair's angle without re-testing the bound, so its last pair reads one
-      // float past the table when the index is already 8 (the bss guard is tested once, above).
-      if (sBgMiniPortalAngleIndex >= 8) {
-        break;
-      }
-      const float angle = skBgMiniPortalAngles[sBgMiniPortalAngleIndex++] * 0.017453292f;
+      // 0x00007FB4..0x00007FC0: the pair re-tests no bound (the bss guard is tested once, at
+      // 0x00007E64), so with the index at 7 the second ray reads rodata_44[8], the float after the
+      // table: rodata_64 = 1.0f. The host spells that read out instead of indexing past the array.
+      const int index = sBgMiniPortalAngleIndex++;
+      const float degrees = index < 8 ? skBgMiniPortalAngles[index] : 1.f;
+      const float angle = degrees * 0.017453292f; // rodata_100
       const float c = CMath::FastCosR(angle);
       const float s = CMath::FastSinR(angle);
       const CVector3f offset =
