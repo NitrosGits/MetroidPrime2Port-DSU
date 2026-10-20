@@ -13,9 +13,12 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Cameras/CCameraShakerManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCameraShaker.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -762,8 +765,19 @@ void CSandBoss::FireDarkBeam(CStateManager& mgr, float dt) {
   mF34 = 0.f; // 0xF34
 }
 
-void CSandBoss::HandleScreenShake(CStateManager&, const rstl::string&) { // fn_55_4C60
-  PortSandBossStandIn("CSandBoss::HandleScreenShake (fn_55_4C60)");
+// fn_55_4C60 (ported, not exercised yet)
+// Screen shake for a state: the shaker is the script object on this worm's PLAY/ATCH connection
+// (retail's 0x504c4159 / 0x41544348); its shake data is copied, moved to the locator's position and
+// handed to the camera-shaker manager without the sound or the cinematic block.
+void CSandBoss::HandleScreenShake(CStateManager& mgr, const rstl::string& locator) {
+  const TUniqueId shakerId = FindConnectedObject(mgr, kSS_Play, kSM_Attach);
+  if (const CScriptCameraShaker* shaker =
+          TCastToConstPtr< CScriptCameraShaker >(mgr.ObjectById(shakerId))) {
+    CCameraShakerData data = shaker->GetShakeData(); // shaker + 0x24 (retail copies it there)
+    data.SetPosition(GetLctrTransform(locator).GetTranslation()); // +0xC of the shake data
+    mgr.CameraManager(0)->CameraShakerManager()->AddCameraShaker(data, mgr, false, false);
+    // The host's data is a by-value local, so its destruction is the retail tail dtor (fn_55_4D78).
+  }
 }
 
 // fn_55_51BC (ported, not exercised yet)
@@ -783,8 +797,40 @@ void CSandBoss::DestroySphereHelper(CStateManager& mgr) {
   }
 }
 
-void CSandBoss::HandleGroundImpact(CStateManager&, const rstl::string&) { // fn_55_528C
-  PortSandBossStandIn("CSandBoss::HandleGroundImpact (fn_55_528C)");
+// fn_55_528C (ported, not exercised yet)
+// The worm's body slams down: the player takes the stampede damage when he is closer to the locator
+// than that damage's radius, and the stampede sand fountain erupts at the head locator, on the
+// stampede waypoint's Z, three times this worm's scale.
+void CSandBoss::HandleGroundImpact(CStateManager& mgr, const rstl::string& locator) {
+  const CVector3f locatorPos = GetLctrTransform(locator).GetTranslation();
+  const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
+  if (player != nullptr) { // [inferred: retail dereferences this without a test]
+    const CVector3f delta = player->GetTranslation() - locatorPos; // player 0x54..0x5C
+    const float radius = mStampedeDamage.GetRadius();              // 0x1524 (0x1518 + 0xC)
+    if (delta.MagSquared() < radius * radius) {
+      // Retail's filter is six words {0, 1, 0, 0, 0, 3}: the include list is 1 << 0x3B (kMT_Solid,
+      // lbl_55_data_0), the exclude list is empty and the type word 3 is kFT_IncludeExclude.
+      const CMaterialFilter filter =
+          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
+      // damager = this worm, damagee = the player, owner = this worm (retail's three uid stores).
+      mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mStampedeDamage, filter,
+                      CVector3f::Zero()); // 0x1518
+    }
+  }
+  if (mStampedeSandFountain.valid()) { // 0xE70
+    const CVector3f head = GetLctrTransform(mHeadLocator).GetTranslation(); // 0xF08
+    // The fountain keeps the head's X/Y but takes the stampede waypoint's Z (0xF28), so the effect
+    // stands on the ground the worm is stampeding over.
+    const CTransform4f xf = CTransform4f::Translate(CVector3f(head.GetX(), head.GetY(), mF28));
+    CExplosion* explosion = rs_new CExplosion(
+        *mStampedeSandFountain, mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+        rstl::string_l("StampedeSandFountainFx"), xf, 0, GetModelData()->GetScale() * 3.f,
+        CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+    }
+  }
 }
 
 // fn_55_560C (ported, not exercised yet)
