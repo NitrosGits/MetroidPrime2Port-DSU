@@ -1032,13 +1032,16 @@ bool CIngBoostBallGuardian::HasAttackPattern(CStateManager& mgr, const CTriggerD
 // fn_30_B908 (this module): over once the attack path is being followed (0x0000B910: 0x11ED
 // 0x10) and the waypoint navigation has no destination left (0x0000B924: this+0x6c0 against
 // kInvalidUniqueId). Unlike the Ing half's copy it stores nothing.
+// @ fn_30_B908
 bool CIngBoostBallGuardian::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
-// fn_30_B8A0 (this module).
+// fn_30_B8A0 (this module). Area 28's FSM2 asset never evaluates this trigger; its arms were
+// forced from a hook.
 // Ing body fn_29_A2D8: the target is a ball that was not spawned as one - asm 0x0000A2E0 tests
 // 0x390 (spawned state) first and only reads 0x38c (transition state) when it is 0.
+// @ fn_30_B8A0
 bool CIngBoostBallGuardian::TargetIsBall(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
   const bool isBall = player != nullptr &&
@@ -1067,6 +1070,7 @@ bool CIngBoostBallGuardian::HasPathToTarget(CStateManager& mgr, const CTriggerDa
 
 // fn_30_B7E0: a target player with nothing attached to it (0x0000B818 compares the player's
 // 0x2e4 with kInvalidUniqueId). Unlike the Ing's fn_29_A098 it reads no data flag.
+// @ fn_30_B7E0
 bool CIngBoostBallGuardian::CanGrappleTarget(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
   return player != nullptr && player->GetAttachedActorId() == kInvalidUniqueId;
