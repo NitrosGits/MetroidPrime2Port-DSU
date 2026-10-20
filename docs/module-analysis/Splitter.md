@@ -569,3 +569,13 @@ virtual at 0x38 (0x30F8) and its 0x4 field (0x3104-0x3110), the state 0xEE0 clea
 timer 0xF10 set to a constant (0x312C), another module call (0x3130) and the flag's 0x08 again
 (0x313C). Several of those are DOL functions or virtuals the port has no name for yet, so the
 body needs a slice that can identify them.
+
+#### fn_75_1188 (0x344) - the command module's spawn (not ported yet)
+
+Read on 2026-10-20, left for a slice with room. It is the biggest of the six callees: an object is
+looked up (0x11B0 ObjectById), a transform is built (0x11CC) and set (0x11E0), a module call
+(fn_75_10D0 = .text:0x000010D0; // type:function size:0xB8 fn_75_58E8 = .text:0x000058E8; // type:function size:0x5C fn_75_11884 = .text:0x00011884; // type:function size:0x208 ) decides whether the body runs (0x1200-0x1208), the timer at 0x3D0 is compared with zero
+(0x121C-0x1224), a unique id is allocated (0x1230) and kept at 0xF68 (0x1244), an actor is created
+(0x1258 the new, 0x12A0 the CEntityInfo, 0x12B8 the name), the rotation uses one degree in
+radians (0.017453292f, 0x12C4) and the body is driven by fn_75_11884 (0x1380). The port needs the
+host's actor creation path for the middle of it, so it is a slice of its own.
