@@ -119,6 +119,15 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
                                    const CDigitalGuardianData& data)
 : CPatterned(static_cast< EPatternedAI >(9), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
+, xFB0_(kInvalidUniqueId.value)
+, xFB2_(kInvalidUniqueId.value)
+, xFB4_(kInvalidUniqueId.value)
+, xFB6_(kInvalidUniqueId.value)
+, x1082_(0)
+, x1274_(0.f)
+, x1278_(CVector3f::Zero())
+, x1284_(-1)
+, x128C_(0)
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
   // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
@@ -270,34 +279,59 @@ void CDigitalGuardian::SetupStateMachine(CStateManager& mgr) {
 // the neutral value (false for a trigger, nothing for a state or a code).
 //
 // The 12 triggers of lbl_14_data_9C (.data 0x9C; fn_14_D904's stores at 0xDB50..0xDCC8).
+
+// fn_14_9AA8: the base's animation state id (guest this+0x6B4) with 3. The asm tests it with
+// "subfic r0, r0, 3; cntlzw r0, r0; srwi r3, r0, 5" (0x9AAC..0x9AB4), i.e. the answer is true
+// when the id is 3 - the host enum's kAS_Over (the ctor's state id 0 is "not ready").
 bool CDigitalGuardian::StateOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9AA8");
-  return false;
+  return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
 
+// fn_14_9A9C: bit 7 of the flag byte at guest this+0x128C. The asm loads the byte (0x9A9C) and
+// extracts it with "rlwinm r3, r0, 25, 31, 31" (0x9AA0), which keeps the byte's bit 7 (the
+// mask 1u << (31 - 24) = 0x80).
 bool CDigitalGuardian::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9A9C");
-  return false;
+  return (x128C_ & 0x80) != 0;
 }
 
+// fn_14_9A60: the three floats at guest this+0x1278, 0x127C and 0x1280 against 0.0f
+// (lbl_14_rodata_264, loaded at 0x9A68 and 0x9A9C); the answer is true when any of them is
+// not zero (the three fcmpu/bne pairs at 0x9A70..0x9A8C).
 bool CDigitalGuardian::HasFaceTarget(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9A60");
-  return false;
+  return x1278_.GetX() != 0.f || x1278_.GetY() != 0.f || x1278_.GetZ() != 0.f;
 }
 
+// fn_14_9A48: the word at guest this+0x1284 (0x9A48). The asm computes
+// "~value | (value + 1)" ("subfic r3, r4, -1; addi r0, r4, 1; or r0, r3, r0" at 0x9A4C..0x9A54)
+// and keeps its top bit ("srwi r3, r0, 31" at 0x9A58). That bit is clear only when the value
+// is -1 (0xFFFFFFFF): ~(-1) is 0 and (-1) + 1 is 0, and for every other value one of the two
+// terms has its top bit set. So the answer is "the knee index is set".
 bool CDigitalGuardian::KneeDestroyed(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9A48");
-  return false;
+  return x1284_ != -1;
 }
 
+// fn_14_9A0C: the word at guest this+0x1284 with -1 (the cmpwi at 0x9A1C); when it is -1 the
+// answer is false (the li at 0x9A34), otherwise it is "fn_14_705C() == 0" (the call at
+// 0x9A24 and the cntlzw/srwi pair at 0x9A28..0x9A2C).
 bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9A0C");
-  return false;
+  if (x1284_ == -1) {
+    return false;
+  }
+  return x705C_() == 0;
 }
 
+// fn_14_9994: the head module's uid (guest this+0x1082, the lhz at 0x99A8) is looked up in the
+// state manager (the calls at 0x99B8 and 0x99BC); if the head exists and its flag byte
+// (head+0x10F4) has bit 5 set (the rlwinm. at 0x99CC keeps the byte's bit 5, the mask
+// 1u << (31 - 26) = 0x20, and the bne at 0x99D0 takes the "no" branch), the answer is false.
+// Otherwise the answer is whether the float at guest this+0x1274 is at most zero (the fcmpo
+// cr0 at 0x99E0, the "cror eq, lt, eq" at 0x99E4 and the mfcr/extrwi pair at 0x99E8..0x99EC:
+// the mfcr puts CR0 in the top four bits of r0, so the extracted bit 29 is CR0's eq, which the
+// cror has just made "f1 <= f0").
+// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
+// retail's head branch cannot be taken: the answer is the float test.
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9994");
-  return false;
+  return x1274_ <= 0.0f;
 }
 
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
@@ -328,6 +362,25 @@ bool CDigitalGuardian::VortexStruckPlayer(CStateManager& mgr, const CTriggerData
 bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& data) const {
   StandInFn("fn_14_9638");
   return false;
+}
+
+// fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are not
+// kInvalidUniqueId (the four lhz/cmplw pairs at 0x7060..0x709C).
+int CDigitalGuardian::x705C_() const {
+  int count = 0;
+  if (xFB0_ != kInvalidUniqueId.value) {
+    ++count;
+  }
+  if (xFB2_ != kInvalidUniqueId.value) {
+    ++count;
+  }
+  if (xFB4_ != kInvalidUniqueId.value) {
+    ++count;
+  }
+  if (xFB6_ != kInvalidUniqueId.value) {
+    ++count;
+  }
+  return count;
 }
 
 // The 14 states of lbl_14_data_204 (.data 0x204; fn_14_D904's stores at 0xDCD0..0xDEB8).

@@ -615,6 +615,44 @@ the triggers `fn_14_9A48` (KneeDestroyed), `fn_14_97F0` (ShouldMeleeAttack), `fn
 codes are one-liners); the tables' names and the state machine asset's transitions tell which
 state follows which.
 
+**WP2 part 2a done (2026-10-20): six triggers.** The bodies of `StateOver`, `IsIdle`,
+`HasFaceTarget`, `KneeDestroyed`, `AllKneesDestroyed` and `ShouldProtectKnees` are ported
+(`src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp`); the other six triggers and the 14 states
+are still stand-ins. The bodies, with the asm they come from:
+
+| trigger | fn | what it answers | asm |
+|---|---|---|---|
+| StateOver | `fn_14_9AA8` | the base's animation state id (guest `this+0x6B4`) is 3 - the host's `CAnimationState::kAS_Over` | `subfic r0, r0, 3; cntlzw; srwi r3, r0, 5` (0x9AAC-0x9AB4) |
+| IsIdle | `fn_14_9A9C` | bit 7 (mask 0x80) of the flag byte at `this+0x128C` | `lbz r0, 0x128c(r3); rlwinm r3, r0, 25, 31, 31` (0x9A9C-0x9AA0) |
+| HasFaceTarget | `fn_14_9A60` | any of the three floats at `this+0x1278/0x127C/0x1280` is not 0.0f | three `fcmpu`/`bne` pairs (0x9A70-0x9A8C) against `lbl_14_rodata_264` (0.0f) |
+| KneeDestroyed | `fn_14_9A48` | the word at `this+0x1284` is not -1 | `~value \| (value + 1)`, top bit (0x9A4C-0x9A58) |
+| AllKneesDestroyed | `fn_14_9A0C` | the word at `this+0x1284` is not -1 **and** `fn_14_705C() == 0` | `cmpwi r0, -1; beq` (0x9A1C), `bl fn_14_705C; cntlzw; srwi` (0x9A24-0x9A2C) |
+| ShouldProtectKnees | `fn_14_9994` | the float at `this+0x1274` is at most 0.0f | `fcmpo cr0; cror eq, lt, eq; mfcr; extrwi` (0x99E0-0x99EC) |
+
+`fn_14_705C` (the helper `AllKneesDestroyed` calls) counts how many of the four knee ids
+(`this+0xFB0`, `0xFB2`, `0xFB4`, `0xFB6`) are not `kInvalidUniqueId`; it is ported as
+`CDigitalGuardian::x705C_()`. The guest members the six triggers read have no host counterpart
+yet, so the host class grew one member per guest offset (`xFB0_`, `xFB2_`, `xFB4_`, `xFB6_`,
+`x1082_`, `x1274_`, `x1278_`, `x1284_`, `x128C_`), each initialised with the value the retail
+constructor (fn_14_B100) stores.
+
+Three asm facts the port needed, all re-derived from the module's own code (the disassembly in
+`build/G2ME01/DigitalGuardian/asm/` prints the X-form's operands in the ISA's `rA, rS` order, and
+m2c reads the same bytes the same way):
+
+- `subfic rD, rA, SI` computes `SI - rA` (not `~rA + SI`): the head's triggers (`subfic r0, r0,
+  1` = "value == 1", m2c's `fn_14_17338.c`) are the calibration.
+- `rlwinm`'s mask bits (`MB`, `ME`) are numbered from the MSB, so `rlwinm rD, rS, 25, 31, 31`
+  keeps the byte's bit 7 (`(rS >> 7) & 1`, the `IsIdle` test) and `rlwinm rD, rS, 3, 31, 31`
+  keeps bit 29; the dump's `extrwi rD, rS, 1, b` means the same bit as `1u << (31 - b)`.
+- `mfcr` puts CR0 in the **top** four bits of the GPR (CR0's eq is bit 29, lt is bit 31), which
+  is what `fn_14_9994`'s `cror eq, lt, eq` + `mfcr` + `extrwi` pair reads.
+
+`ShouldProtectKnees` also looks the head module up by the uid at `this+0x1082` and, if the head
+exists and its flag byte (`head+0x10F4`, bit 5) is set, answers false. The head module is WP3
+and its loader is a stand-in, so no head can exist in the port and that branch cannot be taken:
+the port answers the float test only, and WP3 has to add the head's flag byte.
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct

@@ -256,6 +256,23 @@ private:
 #ifdef TARGET_PC
   void EnsureBodyActive(CStateManager& mgr);
 
+  // The guest members the body's state machine reads (docs/module-analysis/DigitalGuardian.md
+  // section e). The host class has its own layout, so the guest offsets are in the names and
+  // the values are the ones the retail constructor (fn_14_B100) stores.
+  u16 xFB0_;        // 0xFB0: a knee id, kInvalidUniqueId (fn_14_705C counts these)
+  u16 xFB2_;        // 0xFB2: a knee id, kInvalidUniqueId (fn_14_705C counts these)
+  u16 xFB4_;        // 0xFB4: a knee id, kInvalidUniqueId (fn_14_705C counts these)
+  u16 xFB6_;        // 0xFB6: a knee id, kInvalidUniqueId (fn_14_705C counts these)
+  u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
+  CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
+  int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
+  uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
+
+  // fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are
+  // not kInvalidUniqueId.
+  int x705C_() const;
+
   // Host layout (retail's object is 0x1290, CPatterned is 0x7c0). The guest offsets are the
   // REL's and are in docs/module-analysis/DigitalGuardian.md section e; the host class has its
   // own layout and only keeps what this milestone needs.
