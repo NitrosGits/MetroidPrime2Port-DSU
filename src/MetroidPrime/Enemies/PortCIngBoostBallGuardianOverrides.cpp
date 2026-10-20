@@ -420,20 +420,66 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   (void)sender;
 }
 
-// The Ing's PreRender (the Ing REL's fn_29_C010).
+namespace {
+// The form gate PreRender and AddToRenderer share (0x0000D2F4..0x0000D324 and
+// 0x0000D25C..0x0000D28C): forms 2, 4 and 6..9 always, 3 and 5 while the body-state-5 time
+// (0x11BC) is under rodata_E0 (2.5), 0, 1 and 10 and up never.
+bool BgFormDraws(int form, float bodyState5Time) {
+  if (form == kForm_Corporeal || form == kForm_BodyProjectile ||
+      (form >= kForm_BecomingCorporeal && form <= kForm_BecomingWallProjectile)) {
+    return true;
+  }
+  if (form == kForm_IngSpot || form == kForm_Evaporate) {
+    return bodyState5Time < 2.5f;
+  }
+  return false;
+}
+} // namespace
+
+// @ fn_30_D2E0
 void CIngBoostBallGuardian::PreRender(CStateManager& mgr) {
-  CPatterned::PreRender(mgr);
+  if (BgFormDraws(mForm, mBodyState5Time)) {
+    CPatterned::PreRender(mgr); // 0x0000D32C / 0x0000D34C
+  }
+  // 0x0000D350: 0x11ED 0x80 ORs 0x80 into the draw flags (0x102). Retail also stores an
+  // uninitialised stack word into the flags' first word (0xFC); nothing reads it.
+  if (mPortalPlane) {
+    const CModelFlags flags = GetModelFlags();
+    SetModelFlags(CModelFlags(flags, flags.GetOtherFlags() | 0x80));
+  }
 }
 
-// The Ing's Render (the Ing REL's fn_29_C0B4): the ing-spot and evaporating forms are drawn only
-// for the first two and a half seconds of the body state.
-void CIngBoostBallGuardian::Render(const CStateManager& mgr) const {
-  if (!mRenderModel) {
-    return;
+// @ fn_30_D250
+void CIngBoostBallGuardian::AddToRenderer(const CStateManager& mgr) const {
+  if (BgFormDraws(mForm, mBodyState5Time)) {
+    CPatterned::AddToRenderer(mgr); // 0x0000D290 / 0x0000D2AC
   }
-  if (mForm == kForm_IngSpot || mForm == kForm_Evaporate) {
-    if (mBodyState5Time < 2.5f) {
+}
+
+// The ing-spot and evaporating forms draw no model, only the particle systems of the model's
+// particle database (the visible puddle is the blob tracker, fn_30_648C).
+// @ fn_30_D384
+void CIngBoostBallGuardian::Render(const CStateManager& mgr) const {
+  if (mPortalPlane) { // 0x0000D3A0: 0x11ED 0x80; the plane is 0x1120 / 0x112C
+    GetModelData()->SetupWorldSpacePortalPlane(
+        GetTransform(), CPlane(mPortalPlaneConstant, CUnitVector3f(mPortalPlaneNormal)));
+  }
+  const int form = mForm;
+  if (form == kForm_Corporeal || form == kForm_BodyProjectile ||
+      (form >= kForm_BecomingCorporeal && form <= kForm_BecomingWallProjectile)) {
+    if (form == kForm_BecomingWallProjectile && !mForm9Render) { // 0x0000D3F0: 0x11ED 0x20
+      return;
+    }
+    if (mRenderModel) { // 0x0000D404: 0x11EC 0x01
       CPatterned::Render(mgr);
+      return;
+    }
+    if (mDrawParticles) { // 0x0000D420: 0x421 0x01
+      uint mask = 0;
+      uint target = 0;
+      mgr.GetCharacterRenderMaskAndTarget(mask, target); // 0x0000D444
+      CPatterned::RenderSystemsToBeDrawnFirst(mgr, mask, target);
+      CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
     }
     return;
   }

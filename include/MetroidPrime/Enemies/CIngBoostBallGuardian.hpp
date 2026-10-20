@@ -277,6 +277,9 @@ public:
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
   void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  // @ fn_30_D2C0
+  void PreRenderAllViewports(CStateManager& mgr) override { CPatterned::PreRenderAllViewports(mgr); }
   void Render(const CStateManager& mgr) const override;
   void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                     CStateManager& mgr) override;
