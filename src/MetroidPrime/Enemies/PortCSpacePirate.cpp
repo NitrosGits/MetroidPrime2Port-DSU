@@ -1201,7 +1201,7 @@ void CSpacePirate::PreRender(CStateManager& mgr) {
   // set in the port and the retail's word is undefined, so that stays a comment.
 }
 
-// Retail fn_72_4F28: an equipped weapon of type 1 with a valid launcher model gives the pirate the
+// @ fn_72_4F28 (0x9C): an equipped weapon of type 1 with a valid launcher model gives the pirate the
 // launcher's static model at the body model's scale.
 void CSpacePirate::InitLauncherModel(const CSpacePirateData& data) {
   TraceCall(*this, "InitLauncherModel (fn_72_4F28) weapon", data.mEquippedWeapon);
