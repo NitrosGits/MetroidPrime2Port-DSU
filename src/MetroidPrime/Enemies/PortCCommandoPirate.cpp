@@ -1246,10 +1246,9 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
 //
 // Update (the guest's message 1, the test at 0x0000893C): the animation state is asked whether
 // the dodge command may be issued (the guest's command id 3 - the call at 0x000089A0). When it
-// may, the dodge command is delivered (the DeliverCmd call at 0x00008A10 - the direction 1, the
-// dodge id at guest this+0xBDC, the type 2 and a zero target position), and the command's fields
-// are copied into the base's own record at guest this+0x11C..0x134 (the stores at
-// 0x00008A24..0x00008A5C; the host's body controller has no such record). When the command may
+// may, the dodge command is delivered (the DeliverCmd call at 0x00008A10): the command's fields
+// are the direction - the dodge id at guest this+0xBDC (the load at 0x000089BC) - and the type 2
+// (kStep_BreakDodge), with a zero target position. When the command may
 // not be issued, and the body controller's body state is 3 (the load at 0x00008A6C, the compare
 // at 0x00008A70), the module's helper fn_9_3CBC (the call at 0x00008A90) gives the target's aim
 // position and the direction to it (the module's fields at guest this+0xB94..0xB9C) goes into
@@ -1272,7 +1271,7 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   case kStateMsg_Update: {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {  // 0x000089A0
       BodyController()->CommandMgr().DeliverCmd(
-          CBCStepCmd(pas::kSD_Backward, pas::kStep_BreakDodge));  // 0x00008A10
+          CBCStepCmd(static_cast< pas::EStepDirection >(xbdc_), pas::kStep_BreakDodge));  // 0x00008A10
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Step) {  // 0x00008A6C
       CVector3f aim;
       if (x3CBC_(mgr, aim, 0.f)) {                     // 0x00008A90

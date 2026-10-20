@@ -538,6 +538,20 @@ since 2026-10-20.
   state, the dodge id, the flag byte at +0xC63's 0x04 bit and the timer at +0xB68. With the
   player teleported next to the commando the state runs all three parts (two activates, two
   updates, two deactivates in the run).
+- The step command the Dodge state delivers (0x00008A10) carries the direction from the module's
+  own dodge id at guest this+0xBDC (the load at 0x000089BC) and the type 2 (`kStep_BreakDodge`);
+  the host's `CBCStepCmd` takes them in that order (the base, the direction, the type).
+- `fn_9_3678` (0x288 bytes) is the Dodge state's picker - it is the only thing that sets the
+  dodge id, and it is not ported yet, so the dodge id stays -1 and the animation state is never
+  readied (no dodge). What it does: it walks the listening-AI object list (the state manager's
+  +0x830, the first index at +0x2008) and looks for another actor that is not this one and is in
+  the same area (the +0x4 area id, the compare at 0x00003718), that is nearer than the module's
+  own float at guest this+0xBE4 (the squared compare at 0x00003758), that is in front of the
+  actor (the delta dotted with the transform's basis columns at +0x24/+0x34/+0x44, the compare at
+  0x00003780) and within 60 degrees of it (rodata_4A4 = 1.0471976, the GetAngleDiff calls at
+  0x0000379C and 0x000037E0); it then rolls the random (0x00003894) and asks the jump-back helper
+  `fn_9_3338` (0x148 bytes, over the 0x80 limit) twice, and returns the chosen step direction or
+  -1 (the result register starts at -1, 0x000036D4).
 - The stand-ins the walking commando reaches are `fn_9_8934` (the Dodge state, 0x1e0),
   `fn_9_9F24` (the JumpPointFind state, 0x1ec), `fn_9_B958` (the IsOffPath trigger, 0x38),
   `fn_9_B250` (the ShouldShieldCharge trigger, 0x410) and, with the player close,
