@@ -116,6 +116,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -456,9 +457,24 @@ bool CCommandoPirate::AttackPatternOver(CStateManager& mgr, const CTriggerData& 
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// fn_9_B76C: the target is closer than the actor's minimum attack range. The guest looks the
+// target up by the id at guest this+0xBCA (the GetObjectById call at 0x0000B790) and, when it is
+// there, compares the squared distance between the two positions (the loads at
+// 0x0000B79C..0x0000B7D0) with the squared radius at guest this+0x3DC (the load at
+// 0x0000B7A4). That radius is the base's minimum attack range - the host's own
+// CPatterned::TooClose compares against mMinAttackRange (src/MetroidPrime/Enemies/
+// CPatternedAiFunctions.cpp:107).
 bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B76C");
-  return false;
+  const CEntity* target = mgr.GetObjectById(xbca_);
+  if (target == nullptr) {
+    return false;
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  return (actor->GetTranslation() - GetTranslation()).MagSquared() <
+         mMinAttackRange * mMinAttackRange;
 }
 
 bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
@@ -752,8 +768,36 @@ void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_9BB4");
 }
 
+// fn_9_9AAC: the state path-finds. On activate (the guest's message 0, 0x00009AEC) the body
+// controller's own field at +0x4C is set to 1 (the store at 0x0000B010), the steering speed range
+// is set to 1.0f twice (the SetSteeringSpeedRange call at 0x0000B120, lbl_9_rodata_43C is 1.f) and
+// the 0x80 bit of the module's flag byte at guest this+0xC63 is cleared (the rlwimi at
+// 0x0000B2C keeps the bit at position 24, the mask 1u << (31 - 24) = 0x80). On deactivate (the
+// guest's message 2, 0x00009AF4) that field is set to 0 (0x0000B044) and the 0x80 bit of the byte
+// at +0xC65 is set (the rlwimi at 0x0000B4C). The host's body controller has no field at +0x4C,
+// so that store is left out.
+// Then, while the block's flag byte at +0x15C does not have its 0x08 bit (extrwi. r0, r0, 1, 28 at
+// 0x00009B58) and the byte at +0xC65 has its 0x80 bit (extrwi. r0, r0, 1, 24 at 0x00009B64), the
+// path find navigation runs (the call at 0x00009B80) and the module's own helper follows.
 void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9AAC");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);  // 0x0000B120
+    xc63_ &= ~0x80;                                    // 0x0000B2C
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    xc65_ |= 0x80;                                     // 0x0000B4C
+    break;
+  }
+  default:
+    break;
+  }
+  if ((mData.mFlags0 & 0x08) == 0 && (xc65_ & 0x80) != 0) {
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);  // 0x00009B80
+    // 0x00009B8C: the module's own helper, fn_9_1A9C - 0x170 bytes, over the 0x80 limit.
+    StandInFn("fn_9_1A9C (0x170 bytes)");
+  }
 }
 
 // fn_9_996C: the message picks the locomotion the patrol uses and the waypoint navigation then

@@ -156,7 +156,8 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 
 | # | state | fn | .rodata |
 |---|---|---|---|
-| 0 | Lurk | `fn_9_ADD4` | 0x6D2 |
+| 0 | PathFind | `fn_9_9AAC` | 0x783 | activate: the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes, over the 0x80 limit) is a named stand-in |
+| Lurk | `fn_9_ADD4` | 0x6D2 |
 | 1 | Ambush | `fn_9_ADA0` | 0x6D7 |
 | 2 | Alert | `fn_9_AE04` | 0x6DE |
 | 3 | FaceTarget | `fn_9_ABDC` | 0x6E4 |
@@ -171,7 +172,8 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 12 | JumpPointFind | `fn_9_9F24` | 0x763 |
 | 13 | JetBoost | `fn_9_9BB4` | 0x771 |
 | 14 | PathFind | `fn_9_9AAC` | 0x77A |
-| 15 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
+| 15 | PathFind | `fn_9_9AAC` | 0x783 | activate: the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes, over the 0x80 limit) is a named stand-in |
+| Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
 | Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the commando taunts - the relaxed taunt (`pas::kTT_Two`) while the body controller's locomotion type is relaxed, `pas::kTT_Four` otherwise; deactivate: the animation state back to "not ready" | the guest's command id 0x15 is the body state command `kBSC_Taunt`; the host's `CBCTauntCmd` |
 | Patrol | `fn_9_996C` | 0x783 |
 | 16 | FollowAttackPattern | `fn_9_961C` | 0x78A |
@@ -225,6 +227,7 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
 | ShouldArmShield | `fn_9_B660` | 0x626 | the flag byte at guest this+0xC64 has its 0x80 bit set and its 0x01 bit clear, and the block's flag byte at +0x15D does not have its 0x20 bit | `xc64_` (0) |
 | PathShagged | `fn_9_B9D8` | 0x5B0 | the flag byte at guest this+0xC63 has its 0x80 bit set, or the base's own `PathShagged` says so | `xc63_` (0) |
 | PathOver | `fn_9_B990` | 0x5BC | the flag byte at guest this+0xC65 does not have its 0x80 bit set, or the base's own `PathOver` says so | `xc65_` (0x80) |
+| TooClose | `fn_9_B76C` | 0x60A | the target is closer than the actor's minimum attack range: the squared distance against the squared radius at guest this+0x3DC | the base's minimum attack range (`mMinAttackRange`) |
 
 - `StateOver` reads guest +0x6B4, which is the base `CPatterned`'s animation state - the host
   already has it, as the DigitalGuardian's own `StateOver` (fn_14_9AA8) does. The guest's test is
@@ -271,6 +274,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 
 | state | fn | .rodata | body | notes |
 |---|---|---|---|---|
+| PathFind | `fn_9_9AAC` | 0x783 | activate: the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes, over the 0x80 limit) is a named stand-in |
 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
 | Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the commando taunts - the relaxed taunt (`pas::kTT_Two`) while the body controller's locomotion type is relaxed, `pas::kTT_Four` otherwise; deactivate: the animation state back to "not ready" | the guest's command id 0x15 is the body state command `kBSC_Taunt`; the host's `CBCTauntCmd` |
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
@@ -296,7 +300,8 @@ into the field at guest this+0xBCC (the store at 0x0000AE44), which is what `Has
 compares with the target id, so that trigger is false again after Alert, exactly as in retail.
 `HasTarget` and `HasNewTarget` are the first triggers of the module that return true in the port
 - the commando's target is in the world. In `Lurk` the combat triggers are evaluated for the first
-time: `ShouldRetreat` and `ShouldArmShield` answer false, and `PathShagged` answers true. FaceTarget ticks every frame; the angle test answers
+time: `ShouldRetreat` and `ShouldArmShield` answer false, and `PathShagged` answers true - which is
+what takes the commando on to the `PathFind` state, where the path find navigation runs. FaceTarget ticks every frame; the angle test answers
 "ready" (the target is not yet in front) and the animation state is otherwise the base's own.
 Alert's taunt is delivered once (`pas::kTT_Four`, the actor is not relaxed by then), the
 animation state goes "over" and the walk leaves Alert for `Lurk`, where the combat triggers
@@ -415,13 +420,12 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 44 bodies: the two tables (34 triggers, 36 states) are registered,
-  twenty-two of the triggers and five of the states are host code (the sections above), but every
+- The state machine's other 42 bodies: the two tables (34 triggers, 36 states) are registered,
+  twenty-three of the triggers and six of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
   returns the neutral value. The combat triggers that are still stands in are `ShouldMeleeAttack`
-  (fn_9_BCB8, 0xE0), `ShouldDodge` (fn_9_B690, 0xDC), `ShouldShieldCharge` (fn_9_B250, 0x410),
-  `ShouldFireEGrenade` (fn_9_BBC8, 0xF0) and `TooClose` (fn_9_B76C, 0x90) - all over the 0x80 limit
-  for this slice - and the `PathFind` state (fn_9_9AAC, 0x108).
+  (fn_9_BCB8, 0xE0), `ShouldDodge` (fn_9_B690, 0xDC), `ShouldShieldCharge` (fn_9_B250, 0x410)
+  and `ShouldFireEGrenade` (fn_9_BBC8, 0xF0) - all over the 0x80 limit for this slice.
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
