@@ -28,6 +28,10 @@
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "rstl/StringExtras.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "MetroidPrime/Enemies/CDigitalGuardianKneeArmor.hpp"
+#include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -291,12 +295,25 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1044_(CDamageVulnerability::ReflectVulnerabilty()) // ImmuneRicochetVulnerability, 0xB258
 , x1110_(LdrToDamageVulnerability(data.mToeTargetVulnerability))
 , x1188_(LdrToDamageVulnerability(data.mVortexVulnerability))
+, xE00_(actParms) // fn_14_C57C (0xB188)
+, x1100_()
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
-  // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
-  // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188 and the 'PART' token at
-  // 0x1100. They belong to the state machine and the render paths this milestone does not enter,
-  // so the port keeps the parameter block only.
+  // The toe target's state (the stores at 0xB388..0xB3A4 and 0xB574..0xB5A0): no sound, the
+  // full toeTargetHP (data +0x20) and a zero timer (.data 0x458).
+  for (int i = 0; i < 4; ++i) {
+    x10F0_[i] = CSfxHandle();
+    x1144_[i] = mData.mToeTargetHP;
+    x1158_[i] = 0.f;
+  }
+  // The explosion token (0xB3B0..0xB4A8): locked when toeTargetExplosion (data +0x28) is set.
+  if (mData.mToeTargetExplosion != kInvalidAssetId) {
+    x1100_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.mToeTargetExplosion)));
+  }
+
+  // The retail constructor also builds the vulnerability at 0x1014; the port does not keep it
+  // yet (fn_14_3A44, which reads it, is not ported).
 
   // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAF0
   // on): 0x10B9 is "neck_SDK" (the store at 0xBAFC), 0x10C0..0x10C3 the four knee locators
@@ -514,14 +531,17 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     x1011_ = 0;
     StandInFn("fn_14_3A44 (the IM0x messages' helper)");
     break;
-  case 0x58435254: // "XCRT"
-    StandInFn("fn_14_A6A8: the XCRT case (the body controller, the knee armour and the visor)");
+  case 0x58435254: // "XCRT", the case at 0xA81C
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
+    x4080_(mgr); // fn_14_4080
+    x24E4_(mgr); // fn_14_24E4
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
+    RemoveMaterial(kMT_SeekerTarget, mgr);
+    x14F8_(); // fn_14_14F8
     break;
   default:
     break;
-  }
-  if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
   }
 }
 
@@ -1340,6 +1360,143 @@ bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& 
     return false;
   }
   return mData.mUnknown4F5D725C <= 0.0f;
+}
+
+// fn_14_4080 (0x274 bytes): the four knee armours. Only with the knee model (the optional at
+// 0xF0C, its flag at 0xF58, the test at 0x4098): for each knee locator (0x10C0..0x10C3) a new
+// id, the locator's transform, and a CDigitalGuardianKneeArmor named "Knee Armor <i>" (.rodata
+// 0x8EE) with the guardian as owner, armoured, the actor parameters (0xE00), kneeEchoParameters
+// (data +0x15C) and sound_KneeVulnerable (data +0x140); its id goes to 0xFB0 + 2i (0x42C8).
+void CDigitalGuardian::x4080_(CStateManager& mgr) {
+  if (!xF0C_.valid()) {
+    return;
+  }
+  const uchar ids[4] = {x10C0_, x10C1_, x10C2_, x10C3_};
+  u16* const armor[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
+  for (int i = 0; i < 4; ++i) {
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    const CTransform4f xf = GetLctrTransform(CSegId(static_cast< uint >(ids[i])));
+    // The material list: kMT_Solid (.data 0x47C, 0x3B) and kMT_Orbit (.data 0x480, 0x29).
+    const CMaterialList list(kMT_Solid, kMT_Orbit);
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, GetActive(),
+                           kInvalidEditorId);
+    const rstl::string index = CStringExtras::CreateFromInteger(i);
+    const rstl::string name = rstl::string_l("Knee Armor ") + index; // fn_14_42F4
+    const SEchoParameters echo = LdrToEchoParameters(mData.mKneeEchoParameters);
+    CDigitalGuardianKneeArmor* knee = rs_new CDigitalGuardianKneeArmor(
+        uid, name, info, 0, xf, xF0C_.data(), list, GetUniqueId(), false, xE00_, echo,
+        mData.mSoundKneeVulnerable);
+    if (knee != nullptr) {
+      mgr.AddObject(*knee);
+      *armor[i] = uid.value;
+    }
+  }
+}
+
+// fn_14_24E4 (0x94 bytes): each toe target gets the full toeTargetHP (data +0x20, the lfs at
+// 0x2520), no state (-1) and a zero timer (.rodata 0x264), then state 1 (fn_14_1A68, 0x2540).
+void CDigitalGuardian::x24E4_(CStateManager& mgr) {
+  for (int i = 0; i < 4; ++i) {
+    x1144_[i] = mData.mToeTargetHP;
+    x10DC_[i] = -1;
+    x1158_[i] = 0.f;
+    x1A68_(mgr, i, 1);
+  }
+}
+
+// fn_14_1A68 (0x580 bytes): a toe target's state. Nothing for a leg outside 0..3, the state it
+// already has, or a destroyed target (3). Otherwise the old sound stops (0x1ACC), and at the
+// ankle locator (0x10D4 + leg; its transform is the locator's times the segment's rest
+// rotation, 0x1B00..0x1B20) the three effects are set from the .rodata tables 0x30
+// ("ToeTargetXX"), 0x50 ("ToeFlinchXX") and 0x40 ("SWBuildUpXX"), in that order, and a sound
+// starts.
+void CDigitalGuardian::x1A68_(CStateManager& mgr, int leg, int state) {
+  static const char* const kToeTarget[4] = {"ToeTargetFL", "ToeTargetBL", "ToeTargetFR",
+                                            "ToeTargetBR"}; // .rodata 0x30
+  static const char* const kSWBuildUp[4] = {"SWBuildUpFL", "SWBuildUpBL", "SWBuildUpFR",
+                                            "SWBuildUpBR"}; // .rodata 0x40
+  static const char* const kToeFlinch[4] = {"ToeFlinchFL", "ToeFlinchBL", "ToeFlinchFR",
+                                            "ToeFlinchBR"}; // .rodata 0x50
+  if (leg < 0 || leg > 3) {
+    return;
+  }
+  if (state == x10DC_[leg] || x10DC_[leg] == 3) {
+    return;
+  }
+  x10DC_[leg] = state;
+  if (x10F0_[leg] != CSfxHandle()) {
+    CSfxManager::RemoveEmitter(x10F0_[leg]);
+    x10F0_[leg] = CSfxHandle();
+  }
+
+  CAnimData* const anim = AnimationData();
+  const uchar ids[4] = {x10D4_, x10D5_, x10D6_, x10D7_};
+  const CSegId seg(static_cast< uint >(ids[leg]));
+  const CTransform4f rot = SegmentRotation_(seg);
+  const CTransform4f xf = GetLctrTransform(seg) * rot;
+
+  switch (state) {
+  case 1: // 0x1B58: the target shows; sound_ToeTarget (data +0x2C), looped
+    anim->SetEffectState(rstl::string_l(kToeTarget[leg]), true, mgr);
+    anim->SetEffectState(rstl::string_l(kToeFlinch[leg]), false, mgr);
+    anim->SetEffectState(rstl::string_l(kSWBuildUp[leg]), false, mgr);
+    x10F0_[leg] = PlayCustomSound(xf.GetTranslation(), CVector3f::Up(), mData.mSoundToeTarget, true);
+    break;
+  case 0: // 0x1C30: the attack build-up; sound_ToeTargetAttack (data +0x44), looped
+    anim->SetEffectState(rstl::string_l(kToeTarget[leg]), false, mgr);
+    anim->SetEffectState(rstl::string_l(kToeFlinch[leg]), false, mgr);
+    anim->SetEffectState(rstl::string_l(kSWBuildUp[leg]), true, mgr);
+    x10F0_[leg] =
+        PlayCustomSound(xf.GetTranslation(), CVector3f::Up(), mData.mSoundToeTargetAttack, true);
+    break;
+  case 2: // 0x1D08: the flinch; sound_ToeTarget (data +0x2C), looped
+    anim->SetEffectState(rstl::string_l(kToeTarget[leg]), false, mgr);
+    anim->SetEffectState(rstl::string_l(kToeFlinch[leg]), true, mgr);
+    anim->SetEffectState(rstl::string_l(kSWBuildUp[leg]), false, mgr);
+    x10F0_[leg] = PlayCustomSound(xf.GetTranslation(), CVector3f::Up(), mData.mSoundToeTarget, true);
+    break;
+  case 3: { // 0x1DE0: destroyed; the explosion, then sound_ToeTargetExplosion (data +0x5C) once
+    anim->SetEffectState(rstl::string_l(kToeTarget[leg]), false, mgr);
+    anim->SetEffectState(rstl::string_l(kToeFlinch[leg]), false, mgr);
+    anim->SetEffectState(rstl::string_l(kSWBuildUp[leg]), false, mgr);
+    if (x1100_.valid()) {
+      // "Toe Target Explosion Fx" (.rodata 0x8B4) at the ankle, the model's scale, white.
+      const CVector3f scale = GetModelData()->GetScale();
+      const rstl::string name = rstl::string_l("Toe Target Explosion Fx");
+      const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                             kInvalidEditorId);
+      const TUniqueId uid = mgr.AllocateUniqueId();
+      CExplosion* explosion = rs_new CExplosion(x1100_.data(), uid, info, name, xf, 0, scale,
+                                                CColor::White(), -1);
+      if (explosion != nullptr) {
+        mgr.AddObject(explosion);
+      }
+    }
+    PlayCustomSound(xf.GetTranslation(), CVector3f::Up(), mData.mSoundToeTargetExplosion, false);
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+// fn_14_14F8 (0x74 bytes): CPatterned's speed (guest 0x3C8) for the number of knee armours left
+// (fn_14_705C, 0x150C): 4 -> data +0x17C, 3 -> +0x180, 2 -> +0x184, otherwise +0x188.
+void CDigitalGuardian::x14F8_() {
+  switch (x705C_()) {
+  case 4:
+    mSpeed = mData.mUnknown8106CDA9;
+    break;
+  case 3:
+    mSpeed = mData.mUnknown9E1B8105;
+    break;
+  case 2:
+    mSpeed = mData.mUnknownA08FCC70;
+    break;
+  default:
+    mSpeed = mData.mUnknown3254A16B;
+    break;
+  }
 }
 
 // fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are not

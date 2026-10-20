@@ -10,8 +10,10 @@
 class CCollisionActorManager;
 class CElementGen;
 class CParticleGen;
+class CGenDescription;
 
 #ifdef TARGET_PC
+#include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
@@ -332,6 +334,25 @@ private:
   CDamageVulnerability x1044_;
   CDamageVulnerability x1110_; // 0x1110: the toe targets' (toeTargetVulnerability, 0xB534)
   CDamageVulnerability x1188_; // 0x1188: the root collider's (vortexVulnerability, 0xB618)
+  // 0xE00 (0x60): the actor parameters, a copy of the constructor's (fn_14_C57C at 0xB188); the
+  // knee armour is built with them (fn_14_4080).
+  CActorParameters xE00_;
+  // 0x1100 (present flag 0x110C): the toe target's explosion ('PART' toeTargetExplosion, locked by
+  // the constructor at 0xB3D0..0xB4A8).
+  rstl::optional_object< TLockedToken< CGenDescription > > x1100_;
+  CSfxHandle x10F0_[4]; // 0x10F0: the toe targets' sound emitters (fn_14_1A68)
+  float x1144_[4];      // 0x1144: the toe targets' health (toeTargetHP; fn_14_24E4, fn_14_5644)
+  float x1158_[4];      // 0x1158: the toe targets' hit timers (0; fn_14_24E4, fn_14_5644)
+
+  // fn_14_4080 (0x274 bytes): the four knee armours, one at each knee locator.
+  void x4080_(CStateManager& mgr);
+  // fn_14_24E4 (0x94 bytes): the toe targets' reset (health, state, timer), then state 1 each.
+  void x24E4_(CStateManager& mgr);
+  // fn_14_1A68 (0x580 bytes): a toe target's state (0 attack, 1 target, 2 flinch, 3 destroyed):
+  // its effects, its sound and, for 3, the explosion.
+  void x1A68_(CStateManager& mgr, int leg, int state);
+  // fn_14_14F8 (0x74 bytes): the speed for the number of knee armours left.
+  void x14F8_();
 
   // fn_14_44F8 / fn_14_4464: record id in xFBC_ resp. x1078_ when name is one of the four knee
   // resp. toe target locators. fn_14_4408 / fn_14_43AC: whether id is one of them.
