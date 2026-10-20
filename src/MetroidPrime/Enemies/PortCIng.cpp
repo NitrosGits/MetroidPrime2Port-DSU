@@ -2674,12 +2674,18 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// fn_29_5714 (not yet exercised in a run)
+// fn_29_5714 (not yet exercised in a run): the point-graph route to the cover hint. Two closest-point
+// queries - the Ing's own position with filter (20, 0, -1) (asm 0x00005758-0x00005768), then the
+// hint's position with filter (20, 0, from) (asm 0x00005778-0x000057A0) - and a point-graph search
+// between the two results (asm 0x000057CC-0x000057EC). It sets no destination: mFoundMovementPos is
+// what IngSpotPathFind reads.
 void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   LogState("SetWallPointCoverDest");
   mFoundMovementPos = false;
-  mPointPathFindSearch.ClearWaypoints();
-  const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
+  mPointPathFindSearch.ClearWaypoints(); // 0xacc = 0, asm 0x0000573C
+  const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId); // fn_29_45BC, id at 0xd72
+  // Retail tests the hint only (fn_29_45BC returns null when the id is not a CScriptAIHint); the
+  // host can run without a path area, so the point queries are skipped when mPathArea is null.
   if (hint == nullptr || mPathArea == nullptr) {
     return;
   }
@@ -2690,8 +2696,10 @@ void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
     return;
   }
   int to = -1;
+  // asm 0x00005778: the second filter's connected point is the index the first query found, so only
+  // points the graph connects to the Ing's own point are candidates.
   mPointPathFindSearch.FindClosestPhysicalPoint(hint->GetTranslation(), to,
-                                                CPathFindPointSearchFilter(20.f, 0, -1));
+                                                CPathFindPointSearchFilter(20.f, 0, from));
   if (to != -1 && PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
     mFoundMovementPos = true;
   }
@@ -2732,32 +2740,42 @@ void CIng::SetExitHostDest(CStateManager& mgr, float) {
   mTargetPos = bestPos; // 0xdc8
 }
 
-// fn_29_53E0 (not yet exercised in a run)
+// fn_29_53E0 (not yet exercised in a run): the lure point is the nav-mesh point below the lure safe
+// zone (fn_29_1C98, the shared PortIngLuredDest does it); the path search's flags go to 1 for the
+// mesh-path query and back to 0x301 after it (asm 0x00005458-0x000054B8). Only when that path
+// exists does the lure point become the destination and mFoundMovementPos get set (0xe5c bit 3);
+// otherwise the destination stays the Ing's own position (asm 0x00005414-0x000054C4).
 void CIng::SetLuredDest(CStateManager& mgr, float) {
   LogState("SetLuredDest");
   CVector3f dest;
   mFoundMovementPos =
       PortIngLuredDest(mgr, mPathFindSearch, mLureSafeZoneId, GetTranslation(), dest);
   mPathFindNavigation.SetDestination(dest);
-  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId); // 0x718, asm 0x000054C8
 }
 
-// fn_29_51D0 (not yet exercised in a run)
+// fn_29_51D0 (not yet exercised in a run): the point-graph route to the lure point - the flag-1
+// point nearest the Ing that the graph connects to the Ing's own point and that has a mesh path to
+// the lure point (asm 0x000052BC-0x0000531C), then the point search between the two (asm
+// 0x00005350-0x0000536C). The shared PortIngLuredPointDest is the same routine as the MinorIng's
+// copy (fn_44_22B0), whose asm matches this one field for field.
 void CIng::SetLuredPointDest(CStateManager& mgr, float) {
   LogState("SetLuredPointDest");
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
                                             mLureSafeZoneId, GetTranslation());
 }
 
-// fn_29_5190 (not yet exercised in a run)
+// fn_29_5190 (not yet exercised in a run): the Ing starts a projectile attack on its own team: the
+// attack type 1 (kAT_Projectile), the team id at 0xd6a and the Ing's own id (asm 0x000051A4-0x000051B8).
 void CIng::StartRangedAttack(CStateManager& mgr, float) {
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
-// fn_29_514C (not yet exercised in a run)
+// fn_29_514C (not yet exercised in a run): the team attack ends, but the Ing keeps its team role:
+// retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear.
 void CIng::EndRangedAttack(CStateManager& mgr, float) {
   CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
-                              true);
+                              false);
 }
 
 // @ fn_29_4F14: the body projectile hit the mesh, so the Ing splats back
