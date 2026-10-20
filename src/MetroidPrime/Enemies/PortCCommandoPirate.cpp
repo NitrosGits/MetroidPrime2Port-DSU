@@ -14,8 +14,12 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -105,6 +109,16 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 #undef CMDO_TRIGGER
 #undef CMDO_STATE
 
+
+
+
+
+
+
+
+
+
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -129,7 +143,18 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , mShieldVulnerability(data.mShield.mChargeVulnerability) // 0xa44, fn_9_D904 @0x0000D9D4
 , mBoneTracking(*AnimationData(), rstl::string_l("Head_1"), 1.2217305f, 3.1415927f,
                 kBTF_None)                        // 0xa74, fn_9_D904 @0x0000DA08
+, xae8_(0)                                        // 0xae8, the module's byte
+, xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
+, xb60_(1.5f)                                     // 0xb60, lbl_9_rodata_47C, fn_9_D904 @0x0000DACC
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
+, xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
+, xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
+, xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
+, xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
+, xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
+, xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
+, xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
+, xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -182,11 +207,15 @@ void CCommandoPirate::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 0x10 = fn_9_CAC8 (0x78).
+// vtable slot 0x10 = fn_9_CAC8 (0x78): the bone tracking's own PreThink and then the base's.
+// The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
+// (0x0000DC18) - so the guest's tests (the rag doll is there at 0x0000CAF0, its byte at +0x70
+// has its 0x40 bit, the primed flag, at 0x0000CAFC) always take the bone tracking's branch (the
+// call at 0x0000CB10); the base's PreThink follows (0x0000CB20).
 void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CCommandoPirate::PreThink (vtable slot 0x10, fn_9_CAC8)");
   EnsureBodyActive(mgr);
-  CPatterned::PreThink(dt, mgr);
+  mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
+  CPatterned::PreThink(dt, mgr);             // 0x0000CB20
 }
 
 // vtable slot 0x14 = fn_9_C944 (0x184).
@@ -206,13 +235,28 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);
+  } else if (msg.GetMessage() == kSM_AreaLoaded) {
+    // 0x0000CEC8..0x0000CEF0: the guest's area-loaded case sets the path find search's area
+    // pointer (guest this+0x928) to the area's path area: the world's area at the actor's area id
+    // (this+0x04, the load at 0x0000CEC8), its post-constructed data (+0x104, the load at
+    // 0x0000CEE8) and that data's path area (+0xEC, the load at 0x0000CEEC). Without it the
+    // search has no area and every path find fails.
+    mPathFindSearch.SetArea(
+        mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
   }
 }
 
-// vtable slot 0x24 = fn_9_C6D4 (0xc4).
+// vtable slot 0x24 = fn_9_C6D4 (0xc4): the base's PreRender and then the bone tracking's own.
+// The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
+// (0x0000DC18) - so the guest's rag-doll call (the vtable slot 0x10 call at 0x0000C718) is dead
+// here and only the base's PreRender runs (0x0000C728). The bone tracking's own PreRender (the
+// call at 0x0000C77C) follows with the model's scale (the three floats at the model data's +0,
+// loaded at 0x0000C754..0x0000C770), the actor's transform (guest this+0x24) and the body
+// controller (guest this+0x48c).
 void CCommandoPirate::PreRender(CStateManager& mgr) {
-  StandIn("CCommandoPirate::PreRender (vtable slot 0x24, fn_9_C6D4)");
-  CPatterned::PreRender(mgr);
+  CPatterned::PreRender(mgr);  // 0x0000C728
+  mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
+                          *BodyController());  // 0x0000C77C
 }
 
 // vtable slot 0x28 = fn_9_C4FC (0x20): a straight call to CPatterned::AddToRenderer, so the base's
@@ -227,10 +271,12 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
-// vtable slot 0x34 = fn_9_C51C (0x7c).
+// vtable slot 0x34 = fn_9_C51C (0x7c): the base's own. The guest's rag doll (guest this+0xBFC)
+// is always null - the constructor stores 0 there (0x0000DC18) - so the guest's rag-doll branch
+// (the CRagDoll::PreRenderAllViewports call at 0x0000C560 with lbl_9_rodata_458 = 0.2f, then the
+// portal system state) is dead here and the base's PreRenderAllViewports runs (0x0000C57C).
 void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
-  StandIn("CCommandoPirate::PreRenderAllViewports (vtable slot 0x34, fn_9_C51C)");
-  CPatterned::PreRenderAllViewports(mgr);
+  CPatterned::PreRenderAllViewports(mgr);  // 0x0000C57C
 }
 
 // vtable slot 0x40 = fn_9_C2CC (0x34): the shield's damage vulnerability while the flag byte at
@@ -326,9 +372,14 @@ bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData&
   return false;
 }
 
+// fn_9_BB7C: the commando retreats when its flag byte at guest this+0xC63 has its 0x40 bit set
+// (extrwi. r0, r0, 1, 25 at 0x0000BB80), the block's flag byte at +0x15D does not have its 0x80
+// bit (extrwi. r0, r0, 1, 24 at 0x0000BB8C), the block's flag byte at +0x15C does not have its
+// 0x08 bit (extrwi. r0, r0, 1, 28 at 0x0000BB98) and the id at guest this+0xBCE is not
+// kInvalidUniqueId (the compare at 0x0000BBA0..0x0000BBB8).
 bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BB7C");
-  return false;
+  return (xc63_ & 0x40) != 0 && (mData.mFlags1 & 0x80) == 0 &&
+         (mData.mFlags0 & 0x08) == 0 && xbce_ != kInvalidUniqueId;
 }
 
 bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
@@ -344,14 +395,18 @@ bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data)
   return (mData.mFlags0 & 0x80) != 0;
 }
 
+// fn_9_BAF8: the block's flag byte at +0x15C (guest this+0x91C) has its 0x40 bit set (extrwi
+// r3, r0, 1, 25 at 0x0000BAFC). That byte is the loader's mFlags0 - the "sound" property's bits
+// 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
+// - so the flag is script-supplied.
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAF8");
-  return false;
+  return (mData.mFlags0 & 0x40) != 0;
 }
 
+// fn_9_BAEC: the module's byte at guest this+0xAE8 has its 0x80 bit set (extrwi r3, r0, 1, 24
+// at 0x0000BAF0). Nothing in the module writes that byte, so the bit is clear.
 bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAEC");
-  return false;
+  return (xae8_ & 0x80) != 0;
 }
 
 // fn_9_BAD0: the actor is under fire while the float at guest +0xB64 is below 0.75f
@@ -362,29 +417,40 @@ bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) co
   return xb64_ < 0.75f;
 }
 
+// fn_9_BAB4: the float at guest this+0xB60 is below 1.5f (lbl_9_rodata_47C, loaded at
+// 0x0000BAB8). The compare is fcmpo cr0, f1, f0 (0x0000BAC0) and the return takes cr0.LT
+// (mfcr r0 at 0x0000BAC4, srwi r3, r0, 31 at 0x0000BAC8). The constructor sets that float to
+// 1.5f (0x0000DACC), the same constant, so the test is false until something lowers it.
 bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAB4");
-  return false;
+  return xb60_ < 1.5f;
 }
 
+// fn_9_BA78: the target the commando holds (the id at guest this+0xBCA) is still in the world.
+// The guest looks it up (the GetObjectById call at 0x0000BA94) and answers whether the lookup
+// found something (the neg/or/srwi pair at 0x0000BA98..0x0000BAA0).
 bool CCommandoPirate::HasTarget(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BA78");
-  return false;
+  return mgr.GetObjectById(xbca_) != nullptr;
 }
 
+// fn_9_BA20: there is a target and it is a new one. The guest asks its own HasTarget trigger
+// first (the call at 0x0000BA3C, fn_9_BA78) and then compares the id at guest this+0xBCC with
+// the target id at +0xBCA (0x0000BA48..0x0000BA54).
 bool CCommandoPirate::HasNewTarget(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BA20");
-  return false;
+  return HasTarget(mgr, data) && xbcc_ != xbca_;
 }
 
+// fn_9_B9D8: the commando's own flag byte at guest this+0xC63 has its 0x80 bit set (extrwi.
+// r0, r0, 1, 24 at 0x0000B9F0), or the base's own answer says the path is shagged (the call at
+// 0x0000B9F8).
 bool CCommandoPirate::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B9D8");
-  return false;
+  return (xc63_ & 0x80) != 0 || CPatterned::PathShagged(mgr, data);
 }
 
+// fn_9_B990: the commando's own flag byte at guest this+0xC65 does not have its 0x80 bit set
+// (extrwi. r0, r0, 1, 24 at 0x0000B9A8 - the beq at 0x0000B9AC takes the "true" branch), or the
+// base's own answer says the path is over (the call at 0x0000B9B0).
 bool CCommandoPirate::PathOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B990");
-  return false;
+  return (xc65_ & 0x80) == 0 || CPatterned::PathOver(mgr, data);
 }
 
 bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) const {
@@ -405,14 +471,33 @@ bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// fn_9_B7FC: the base's waypoint navigation destination (guest this+0x6C0, the u16 loaded at
+// 0x0000B800) is kInvalidUniqueId. The guest's test is the cntlzw idiom - subf r0, r5, r0
+// (0x0000B808), cntlzw (0x0000B80C) and srwi r3, r0, 5 (0x0000B810) - one iff the id is 0xFFFF.
+// The host's base carries the same role in its waypoint navigation, as the Grenchler's own
+// AttackPatternOver does.
 bool CCommandoPirate::AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B7FC");
-  return false;
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// fn_9_B76C: the target is closer than the actor's minimum attack range. The guest looks the
+// target up by the id at guest this+0xBCA (the GetObjectById call at 0x0000B790) and, when it is
+// there, compares the squared distance between the two positions (the loads at
+// 0x0000B79C..0x0000B7D0) with the squared radius at guest this+0x3DC (the load at
+// 0x0000B7A4). That radius is the base's minimum attack range - the host's own
+// CPatterned::TooClose compares against mMinAttackRange (src/MetroidPrime/Enemies/
+// CPatternedAiFunctions.cpp:107).
 bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B76C");
-  return false;
+  const CEntity* target = mgr.GetObjectById(xbca_);
+  if (target == nullptr) {
+    return false;
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  return (actor->GetTranslation() - GetTranslation()).MagSquared() <
+         mMinAttackRange * mMinAttackRange;
 }
 
 bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
@@ -420,9 +505,12 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
   return false;
 }
 
+// fn_9_B660: the commando arms its shield when its flag byte at guest this+0xC64 has its 0x80
+// bit set (extrwi. r0, r4, 1, 24 at 0x0000B668), the block's flag byte at +0x15D does not have
+// its 0x20 bit (extrwi. r0, r0, 1, 26 at 0x0000B674) and that same byte's 0x01 bit is clear
+// (clrlwi. r0, r4, 31 at 0x0000B67C).
 bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B660");
-  return false;
+  return (xc64_ & 0x80) != 0 && (mData.mFlags1 & 0x20) == 0 && (xc64_ & 0x01) == 0;
 }
 
 bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
@@ -435,19 +523,25 @@ bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) 
   return false;
 }
 
+// fn_9_B1D4: the module's flag byte at guest this+0xC64 has its 0x04 bit set (extrwi r3, r0,
+// 1, 29 at 0x0000B1D8). The constructor clears that byte (0x0000E150); the module's states set
+// its bits.
 bool CCommandoPirate::AbortShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1D4");
-  return false;
+  return (xc64_ & 0x04) != 0;
 }
 
+// fn_9_B1C8: the module's flag byte at guest this+0xC64 has its 0x40 bit set (extrwi r3, r0,
+// 1, 25 at 0x0000B1CC).
 bool CCommandoPirate::IsAggressive(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1C8");
-  return false;
+  return (xc64_ & 0x40) != 0;
 }
 
+// fn_9_B1A8: the module's jump point id at guest this+0xBD0 (the u16 loaded at 0x0000B1AC) is
+// not kInvalidUniqueId. The guest's test is "subf r3, r5, r0; subf r0, r0, r5; or r0, r3, r0"
+// (0x0000B1B4..0x0000B1BC) and keeps the top bit (srwi r3, r0, 31 at 0x0000B1C0): one iff the
+// two differ. The constructor leaves the id kInvalidUniqueId (0x0000DBC0).
 bool CCommandoPirate::FoundJumpPoint(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1A8");
-  return false;
+  return xbd0_ != kInvalidUniqueId;
 }
 
 bool CCommandoPirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
@@ -460,19 +554,26 @@ bool CCommandoPirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// fn_9_B0F4: the block's flag byte at +0x15C (guest this+0x91C) must have its 0x08 bit clear
+// (extrwi. r0, r0, 1, 28 at 0x0000B0F8, and the beq at 0x0000B0FC takes the "clear" branch) and
+// the module's flag byte at this+0xC63 must have its 0x01 bit set (clrlwi r3, r0, 31 at
+// 0x0000B10C keeps only that bit).
 bool CCommandoPirate::ShouldCover(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B0F4");
-  return false;
+  return (mData.mFlags0 & 0x08) == 0 && (xc63_ & 0x01) != 0;
 }
 
+// fn_9_B0D4: the module's cover point id at guest this+0xBD2 (the u16 loaded at 0x0000B0DC)
+// is not kInvalidUniqueId - the same "the two differ" idiom as FoundJumpPoint (0x0000B0E0..).
+// The constructor leaves the id kInvalidUniqueId (0x0000DBC8).
 bool CCommandoPirate::FoundCover(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B0D4");
-  return false;
+  return xbd2_ != kInvalidUniqueId;
 }
 
+// fn_9_B0B4: the float at guest this+0xB5C is at most 0.f (lbl_9_rodata_494, loaded at
+// 0x0000B0BC). The compare is fcmpo cr0, f1, f0 (0x0000B0C0) and the cror at 0x0000B0C4 makes
+// cr0's eq bit "lt or eq", so the answer is "the first is at most the second".
 bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B0B4");
-  return false;
+  return xb5c_ <= 0.f;
 }
 
 bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
@@ -480,34 +581,212 @@ bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) c
   return false;
 }
 
+// fn_9_AFB8: the float at guest this+0xB8C against the float at this+0xB90 (both loaded at
+// 0x0000AFB8 and 0x0000AFBC). The compare is fcmpo cr0, f1, f0 (0x0000AFC0) and the cror at
+// 0x0000AFC4 makes cr0's eq bit "gt or eq", so the answer is "the first is at least the second".
 bool CCommandoPirate::AbortSeekCover(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_AFB8");
-  return false;
+  return xb8c_ >= xb90_;
 }
 
 // The 36 states of lbl_9_data_568 (.data 0x568; fn_9_F9F8's stores at 0x0000FF34..0x000103C4).
+
+// fn_9_ADD4: the lurk state only does something on activate (the guest's test of the message
+// against 0 at 0x0000ADD4): when the commando has a target (the id at guest this+0xBCA is not
+// kInvalidUniqueId, 0x0000ADE0..0x0000ADEC) it sets the 0x10 bit of the flag byte at +0xC64
+// (the rlwimi at 0x0000ADF8 keeps the bit at position 27, the mask 1u << (31 - 27) = 0x10).
 void CCommandoPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_ADD4");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  if (xbca_ == kInvalidUniqueId) {
+    return;
+  }
+  xc64_ |= 0x10;
 }
 
 void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_ADA0");
 }
 
+// fn_9_AE04: the alert state. On activate (the guest's message 0, 0x0000AE24) it remembers the
+// target id in the field at guest this+0xBCC (the store at 0x0000AE44) and marks the animation
+// state "ready" (the store at 0x0000AE48). On update (the guest's message 1, 0x0000AE0C) it asks
+// the animation state whether the alert command may be issued - the guest's ShouldRetry with the
+// command id 0x10 (0x0000AE58), which is the host's pas::kAS_Taunt - and, when it may, makes the
+// commando taunt (the DeliverCmd calls at 0x0000AEAC and 0x0000AF10). On deactivate (the guest's
+// message 2, 0x0000AF40) the animation state goes back to "not ready".
 void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_AE04");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xbcc_ = xbca_;                                        // 0x0000AE44
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x0000AE48
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      // 0x0000AE68..0x0000AE74: the body controller's field at +0x580 picks the taunt: the
+      // relaxed taunt (kTT_Two, the li r0, 2 at 0x0000AE90) while the actor is relaxed, the
+      // other one (kTT_Four, the li r0, 4 at 0x0000AEF4) otherwise. That field is the body
+      // controller's locomotion type: the DOL's SetLocomotionType (fn_800F73EC) is the single
+      // "stw r4, 0x580(r3)" that writes it, and 1 is the relaxed locomotion.
+      const pas::ETauntType type = BodyController()->GetLocomotionType() == pas::kLT_Relaxed
+                                       ? pas::kTT_Two
+                                       : pas::kTT_Four;
+      // 0x0000AEAC / 0x0000AF10: the taunt command itself; the guest's stores at the command
+      // manager's +0x2B0 and +0x2B4 (0x0000AEC0 and 0x0000AED0) are the command id and the
+      // taunt type, which is what the host's DeliverCmd does with the command.
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(type));
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x0000AF40
+    break;
+  }
+  default:
+    break;
+  }
 }
 
+// fn_9_3CBC: the target's aim position. The guest looks the target up by the id at this+0xBCA
+// (the load at 0x00003CD8) and, when it exists, asks it for its aim position - the vtable call
+// at 0x00003D1C, CActor's slot 0x54, GetAimPosition - with the state manager and the dt, and
+// copies the answer into the out vector (0x00003D28..0x00003D38). It returns false when the
+// target is gone (0x00003D40).
+bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) {
+  const CEntity* target = mgr.GetObjectById(xbca_);
+  if (target == nullptr) {
+    return false;
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  out = actor->GetAimPosition(mgr, dt);
+  return true;
+}
+
+// fn_9_ABDC: the state faces the target. On activate (the guest's message 0, 0x0000ABFC) the
+// module's own helper x3CBC_ (fn_9_3CBC) asks the target for its aim position and stores it at
+// guest this+0xB94; the state then measures the angle between the actor's facing and the
+// direction to the target (the GetAngleDiff call at 0x0000AC84) against 20 degrees
+// (lbl_9_rodata_4B4 is 0.34906584): over when the target is in front (0x0000ACA4) and ready when
+// it is not (0x0000AC98).
+// On update (the guest's message 1, 0x0000ABE4) the guest retries its own try command - that
+// word is the base's animation state, so the port asks the animation state whether the command
+// may be issued - and, when it succeeds, checks the distance to the target (IsMagnitudeSafe at
+// 0x0000AD08) and delivers the locomotion command that walks there (the CBCLocomotionCmd at
+// 0x0000AD70).
+// On deactivate (the guest's message 2, 0x0000AD84) the animation state goes back to "not ready".
 void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_ABDC");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    // 0x0000AC1C: the guest's own helper asks the target for its aim position (fn_9_3CBC) with
+    // 0.5f (lbl_9_rodata_440) and stores it at guest this+0xB94.
+    if (x3CBC_(mgr, xb94_, 0.5f)) {
+      // 0x0000AC2C..0x0000AC84: the direction to the target and the angle between it and the
+      // actor's facing (the guest's three-argument GetAngleDiff has no host counterpart; the
+      // host's takes the facing and the direction).
+      const CVector3f delta = xb94_ - GetTranslation();
+      // 0x0000AC6C..0x0000AC80: the actor's facing is the transform's forward column
+      // (GetTransform().GetForward()); the guest's three loads are its 0x28, 0x38 and 0x48.
+      const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), delta);
+      mAnimationState.SetState(angle > 0.34906584f ? CAnimationState::kAS_Ready
+                                                   : CAnimationState::kAS_Over);
+    } else {
+      // 0x0000ACB0: no target, so the animation is over.
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    // 0x0000ACC8: the guest asks its own try command (guest this+0x6B4) whether the turn command
+    // may be issued; that word is the base's animation state, so the host's animation state
+    // answers it (CAnimationState::CanIssueCommand), with the guest's command id 8
+    // (pas::kAS_Turn).
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+      // 0x0000ACD4..0x0000AD08: the direction to the target and its magnitude test.
+      const CVector3f delta = xb94_ - GetTranslation();
+      if (delta.IsMagnitudeSafe()) {
+        // 0x0000AD1C..0x0000AD70: the normalized direction, delivered as a locomotion command
+        // with the move vector zero and the weight 1.
+        const CBCLocomotionCmd cmd(CVector3f::Zero(), delta.AsNormalized(), 1.f);
+        BodyController()->CommandMgr().DeliverCmd(cmd);
+      } else {
+        // 0x0000AD78: too far, so the animation is over.
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    // 0x0000AD84: the animation state back to "not ready".
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
+  default:
+    break;
+  }
 }
 
+// fn_9_AB08: on the activate message (the guest's test of 0 at 0x0000AB10) the commando takes the
+// player as its target - but only when the target it had is gone (the object lookup at
+// 0x0000AB40..0x0000AB48). It then points the bone tracking at that target (0x0000AB74 and
+// 0x0000AB88), tells the script that the attack connection changed (0x0000ABB4, the message is
+// the host's kSM_None, the guest's -1) and switches to the combat locomotion (0x0000ABC0).
 void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_AB08");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  if (mgr.GetObjectById(xbca_) != nullptr) {
+    return;
+  }
+  // 0x0000AB4C: the guest takes the id the state manager holds for the player (its +0x14FC, the
+  // id at +8 of it); the host's state manager has no member at that offset, so the port uses the
+  // player actor's id, which is what the bone tracking and the script message want.
+  const TUniqueId target = mgr.GetPlayer(0)->GetUniqueId(); // mgr+0x14FC, +0x8 at 0x0000AB50
+  xbca_ = target;                                    // 0x0000AB5C
+  // 0x0000AB68: the guest tells its visual knowledge the new target (guest this+0xAB0). The host
+  // has no CVisualKnowledge class yet, so the call is a stand-in.
+  StandInFn("CVisualKnowledge::SetVisualTarget (guest this+0xab0)");
+  mBoneTracking.SetActive(true);                     // 0x0000AB74
+  mBoneTracking.SetTarget(target);                   // 0x0000AB88
+  SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x0000ABB4
+  BodyController()->SetLocomotionType(pas::kLT_Combat);   // 0x0000ABC0
 }
 
+// fn_9_AA20: the state sets the path find destination to the target. Only the activate message
+// (the guest's test of 0 at 0x0000AA28) does anything: the destination starts as the actor's own
+// position (guest this+0x54, the three loads at 0x0000AA44..0x0000AA64), the 0x80 bit of the
+// module's flag byte at guest this+0xC65 is cleared (the rlwimi at 0x0000AA6C) and the target is
+// looked up (the id at guest this+0xBCA, the load at 0x0000AA74, the GetObjectById call at
+// 0x0000AA7C). When the target is there and either the module's flag byte at +0xC64 has its 0x40
+// bit (extrwi at 0x0000AA8C) or the module's byte at +0xAE8 does not have its 0x80 bit (extrwi at
+// 0x0000AA98), the destination becomes the target's position (the loads at
+// 0x0000AAA0..0x0000AAB8) and the 0x80 bit of +0xC65 is set (the rlwimi at 0x0000AAC0).
+// Then the path find navigation's destination is set (the SetDestination call at 0x0000AAD0) and
+// its face target id (guest this+0x718 - the navigation's own member at +0x24) is cleared (the
+// store at 0x0000AAE8). The module's own helper fn_9_19D8 (0xc4 bytes, over the 0x80 limit) is
+// called last (0x0000AAEC) and stands in for now.
+//
+// The guest reads the target's position at the actor's +0x54 without a cast; the host's CEntity
+// has no position, so the port casts to CActor and keeps a null test of its own (the guest's
+// only null test is the lookup's, at 0x0000AA80).
 void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_AA20");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  CVector3f destination = GetTranslation();  // 0x0000AA44..0x0000AA64
+  xc65_ &= ~0x80;                            // 0x0000AA6C
+  const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000AA7C
+  const CActor* actor = target != nullptr ? TCastToConstPtr< CActor >(target) : nullptr;
+  if (actor != nullptr && ((xc64_ & 0x40) != 0 || (xae8_ & 0x80) == 0)) {  // 0x0000AA88..0x0000AA9C
+    destination = actor->GetTranslation();  // 0x0000AAA0..0x0000AAB8
+    xc65_ |= 0x80;                          // 0x0000AAC0
+  }
+  mPathFindNavigation.SetDestination(destination);         // 0x0000AAD0
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000AAE8
+  StandInFn("fn_9_19D8 (0xc4 bytes)");       // 0x0000AAEC
 }
 
 void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -542,12 +821,112 @@ void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_9BB4");
 }
 
+// fn_9_9AAC: the state path-finds. On activate (the guest's message 0, 0x00009AEC) the body
+// controller's field at +0x4C is set to 1 (the store at 0x00009BE4) - that field is the command
+// manager's steering blend mode (the cmd mgr sits at body controller + 4 and its six CVector3f
+// put mSteeringMode at +0x48) - the steering speed range is set to 1.0f twice (the
+// SetSteeringSpeedRange call at 0x00009BF4, lbl_9_rodata_43C is 1.f) and the 0x80 bit of the
+// module's flag byte at guest this+0xC63 is cleared (the rlwimi at 0x00009C00 keeps the bit at
+// position 24, the mask 1u << (31 - 24) = 0x80). On deactivate (the guest's message 2,
+// 0x00009AF4) that field is set to 0 (0x00009C18) and the 0x80 bit of the byte at +0xC65 is set
+// (the rlwimi at 0x00009C20).
+// Then, while the block's flag byte at +0x15C does not have its 0x08 bit (extrwi. r0, r0, 1, 28 at
+// 0x00009B58) and the byte at +0xC65 has its 0x80 bit (extrwi. r0, r0, 1, 24 at 0x00009B64), the
+// path find navigation runs (the call at 0x00009B80) and the module's own helper follows.
 void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9AAC");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    // 0x00009BE4: the guest writes 1 into the body controller's field at +0x4C. The host's
+    // enumerator with the value 1 is kSBM_FullSpeed.
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009BE4
+    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);        // 0x00009BF4
+    xc63_ &= ~0x80;                                    // 0x00009C00
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    // 0x00009C18: the same field, cleared - the host's enumerator with the value 0 is
+    // kSBM_Normal.
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009C18
+    xc65_ |= 0x80;                                     // 0x00009C20
+    break;
+  }
+  default:
+    break;
+  }
+  if ((mData.mFlags0 & 0x08) == 0 && (xc65_ & 0x80) != 0) {
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);  // 0x00009B80
+    // 0x00009B8C: the module's own helper, fn_9_1A9C.
+    x1A9C_AvoidActors(mgr);                             // 0x00009B8C
+  }
 }
 
+// fn_9_1A9C (0x170 bytes): the module's own helper, called by the PathFind state after the path
+// find navigation has run. It walks the listening-AI object list (the state manager's +0x830, the
+// load at 0x00001ABC; the list's first index is the word at +0x2008, the load at 0x00001AC8) and
+// for every other CPatterned of the same area (the entities' +0x4 area id, compared at
+// 0x00001AF0..0x00001AFC; the null and the self tests are at 0x00001AE0 and 0x00001AE8) asks the
+// steering behaviors for the separation from that actor (the behaviors at this+0x61c, the other
+// actor's position at its +0x54; the call at 0x00001B3C). The distance is 5.0f times the model's
+// X scale - the model data sits at this+0x60 (the load at 0x00001B00) and its scale's first
+// float is the x, so the multiply is 5.f (lbl_9_rodata_468) times it (the fmuls at 0x00001B2C).
+// A separation that is magnitude-safe (the test at 0x00001B5C) becomes a locomotion command: the
+// normalized separation as the move vector, a zero look direction and the weight 0.5f
+// (lbl_9_rodata_440) - the command's fields are laid out at 0x00001BA0..0x00001BB8 and delivered
+// at 0x00001BC4.
+void CCommandoPirate::x1A9C_AvoidActors(CStateManager& mgr) {
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);  // 0x00001ABC
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CPatterned* other = TCastToPtr< CPatterned >(list[i]);  // 0x00001AD0..0x00001ADC
+    if (other == nullptr || other == this ||
+        other->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x00001AE0..0x00001AFC
+      continue;
+    }
+    const float separationDistance =
+        5.f * GetModelData()->GetScale().GetX();  // 0x00001B00..0x00001B2C
+    const CVector3f separation =
+        mSteeringBehaviors.Separation(*this, other->GetTranslation(), separationDistance);
+    if (!separation.IsMagnitudeSafe()) {  // 0x00001B5C
+      continue;
+    }
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCLocomotionCmd(separation.AsNormalized(), CVector3f::Zero(), 0.5f));  // 0x00001BC4
+  }
+}
+
+// fn_9_996C: the message picks the locomotion the patrol uses and the waypoint navigation then
+// patrols (the call at 0x00009A78). The guest's own enum has more messages than the host's, so
+// the two the body tests are the host's kStateMsg_Activate (0) and kStateMsg_Deactivate (2);
+// every other message skips the setup (0x00009A9C0..0x00009A9C8 and 0x00009A9BC).
 void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_996C");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    // 0x000099D4: the relaxed locomotion; 0x000099EC: half the turn speed (lbl_9_rodata_440 is
+    // 0.5f); 0x00009A10: the ratio of the two locomotion speeds (the walk's over the run's);
+    // 0x00009A2C: the steering speed range, that ratio twice.
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetTurnSpeed(0.5f * BodyController()->GetTurnSpeed());
+    const float ratio = BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Walk) /
+                         BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Run);
+    // 0x00009A1C: the guest's body controller takes a flag at +0x4C, one here and zero in the
+    // other branch (0x00009B60). That field is the command manager's steering blend mode (the
+    // cmd mgr sits at body controller + 4 and its six CVector3f put mSteeringMode at +0x48), so
+    // the host's enumerator with the value 1 is kSBM_FullSpeed.
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009A1C
+    BodyController()->CommandMgr().SetSteeringSpeedRange(ratio, ratio);
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    // 0x00009A3C: the combat locomotion; 0x00009A50: twice the turn speed (lbl_9_rodata_44C is
+    // 2.f); 0x00009B60: the same flag at +0x4C, cleared - the host's value 0 is kSBM_Normal.
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    BodyController()->SetTurnSpeed(2.f * BodyController()->GetTurnSpeed());
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009B60
+    break;
+  }
+  default:
+    break;
+  }
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
 void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {

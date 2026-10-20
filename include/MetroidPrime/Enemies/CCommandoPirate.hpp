@@ -316,6 +316,14 @@ public:
 private:
   void EnsureBodyActive(CStateManager& mgr);
 
+  // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
+  bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt);
+
+  // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
+  // navigation runs. It walks the listening-AI object list and steers away from the other
+  // listening AIs of the same area.
+  void x1A9C_AvoidActors(CStateManager& mgr);
+
   // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
   // match (host objects outgrow retail). A raw member is named after the offset it stands for
   // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest
@@ -330,7 +338,18 @@ private:
   int xa40_;                              // 0xa40, 0 (fn_9_D904 @0x0000D9D8)
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
+  uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
+  float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
+  float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
+  float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
+  float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
+  CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
+  TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
+  TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
+  TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
+  TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
   CSegId mLocatorMidLaunch;               // 0xc5d, "Mid_Launch_LCTRL" (fn_9_D904 @0x0000E2D0)
   CSegId mLocatorGun;                     // 0xc5e, "gun_LCTR" (fn_9_D904 @0x0000E304)
