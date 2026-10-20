@@ -336,6 +336,7 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
+// fn_30_5F6C (this module).
 // The Ing's fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, with
 // the caller's prediction time in f1). False when the target id is empty; the caller then keeps
 // whatever it had. Every caller passes rodata_6C (0.0f) except the body projectile's flight, which

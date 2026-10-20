@@ -457,6 +457,7 @@ void CIngBoostBallGuardian::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// fn_30_53D0 (this module).
 // The DOL's surface move shared with MinorIng (fn_44_5384): drop the part of the move along the
 // surface normal, step, and keep the step on the path mesh unless following a point path.
 void CIngBoostBallGuardian::MoveOnSurface(const CVector3f& moveIn, float speed, float dt) {
@@ -505,6 +506,8 @@ float CIngBoostBallGuardian::DistSqToTarget(const CStateManager& mgr) const {
   return (target->GetTranslation() - GetTranslation()).MagSquared();
 }
 
+// fn_30_60C0 (this module). Retail reads the cover hint id (0x108E) itself; the host takes the id
+// so ReleaseCoverHint can share it.
 CScriptAIHint* CIngBoostBallGuardian::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   if (id == kInvalidUniqueId) {
     return nullptr;

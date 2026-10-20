@@ -545,7 +545,7 @@ private:
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
   // Guest 0x11EF bit 4 (0x10), ctor 1: while set a body hit may kill (fn_30_4078). Retail's
   // DoUserAnimEvent (fn_30_D4F8) clears it on kUE_Unknown37 and sets it on kUE_Unknown38.
-  bool mBodyHitsLethal : 1;
+  bool mBodyHitsLethal : 1; // IngBoostBallGuardian 0x11EF bit 4
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
   TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect
   TUniqueId mBoostBlobTrackerId;                         // guest 0x1076: boostIngSpotBlobEffect
@@ -567,27 +567,28 @@ private:
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
   int mPhaseIndex;                                       // guest 0x11CC: the current phase
-  bool mAggressive : 1;                                  // CIng: 0xE5C bit 4
-  bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag)
-  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3
-  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2
-  bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0
+  bool mAggressive : 1;                                  // CIng: 0xE5C bit 4; IngBoostBallGuardian 0x11EC bit 5
+  bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag); IngBoostBallGuardian 0x11EC bit 2
+  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3; IngBoostBallGuardian 0x11EC bit 4
+  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2; IngBoostBallGuardian 0x11EC bit 3
+  bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0; IngBoostBallGuardian 0x11EC bit 1
   // guest 0x11ED 0x40 (CIng: 0xE5D bit 5, there mStartAsIngSpot): ctor from the start-as-ing-spot
   // flag, set by BecomeIngSpot and kUE_Activate, cleared by BecomeCorporeal, the death fade and
   // kUE_Deactivate. Its only reader, fn_30_6108, keeps the blob tracker emitting while it is set.
-  bool mIngSpotBlobVisible : 1;
-  bool mMoving : 1;                                      // CIng: 0xE5D bit 1
-  bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
-  bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7
+  bool mIngSpotBlobVisible : 1;                          // IngBoostBallGuardian 0x11ED bit 6
+  bool mMoving : 1;                                      // CIng: 0xE5D bit 1; IngBoostBallGuardian 0x11ED bit 2
+  // CIng: 0xE5D bit 0. This module has no grapple and no guest bit for it: nothing writes it.
+  bool mGrappled : 1;
+  bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7; IngBoostBallGuardian 0x11ED bit 1
   bool mSplat : 1; // guest 0x11ED bit 0 (CIng: 0xE5E bit 6): set by CollidedWith (fn_30_C850)
-  bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4
-  bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6
-  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7
-  bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4
-  bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3
-  bool mAlert : 1;                                       // CIng: 0xE5D bit 2
-  bool mTaunt : 1;                                       // CIng: 0xE5C bit 6
-  bool mBodyProjectileAllowed : 1;                       // CIng: 0xE5C bit 5
+  bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4; IngBoostBallGuardian 0x11EE bit 6
+  bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6; IngBoostBallGuardian 0x11ED bit 7
+  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7; IngBoostBallGuardian 0x11EC bit 0
+  bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4; IngBoostBallGuardian 0x11ED bit 5
+  bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3; IngBoostBallGuardian 0x11ED bit 4
+  bool mAlert : 1;                                       // CIng: 0xE5D bit 2; IngBoostBallGuardian 0x11ED bit 3
+  bool mTaunt : 1;                                       // CIng: 0xE5C bit 6; IngBoostBallGuardian 0x11EC bit 7
+  bool mBodyProjectileAllowed : 1;                       // CIng: 0xE5C bit 5; IngBoostBallGuardian 0x11EC bit 6
   // Host-only bookkeeping.
   const char* mLastLoggedState;                          // host: the last state logged
   float mStateTime;                                      // host: time in the current state
