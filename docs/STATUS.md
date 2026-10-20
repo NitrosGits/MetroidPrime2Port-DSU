@@ -17,16 +17,16 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | lane | session | branch / base | task |
 |---|---|---|---|
 | Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C `mData.mFlags210`, locomotion 0/1 = Crouch/Relaxed |
-| CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate @ `898b6fecf` | Lurk's combat triggers <=0x80 (walk now Patrol->SelectTarget->FaceTarget->Alert->Lurk) |
+| CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate @ `c8b8c5851` | PathFind state 9AAC + TooClose B76C |
 | EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
-| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `a8787e7f4` | milestone 2: FSM tables + triggers <=0x40 |
+| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `8af1f92ec` | rework: flag bytes 0x824/0x825 as two uchar members (8500 is 0x825 & 0x01); then Start/Idle + 7 triggers |
 | DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian @ `b6096bdaa` | AddToRenderer fn_14_A004 (draws the model; retail Render no longer does, so the model is missing until this lands) |
 | DarkSamus (worker) | `ses_ea70a143bffe4SLdq4LIY5V8bC` | decomp/darksamus on `232823309` | milestone 1 (`/tmp/opencode/briefs/m1.md`) |
 | ScriptPlayerTurret (worker) | `ses_ea70a1437ffeyp5d7K55HX0N2H` | decomp/playerturret on `232823309` | milestone 1 |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 
 Accepted, not yet merged (next batch: merge, build, smoke): emperoring `e1f34df29`, commandopirate
-up to `898b6fecf`, spacepirate `0d38c3c08` (Render/ScanVisorRender parked for an Opus lane:
+up to `c8b8c5851`, spacepirate `0d38c3c08` (Render/ScanVisorRender parked for an Opus lane:
 fn_72_36CC + unidentified member), emperoring3 `a8787e7f4`, swampboss `59637cee5`;
 digitalguardian `b6096bdaa` only once AddToRenderer draws the model again.
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
