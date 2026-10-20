@@ -1183,9 +1183,9 @@ void CIng::ExitHost(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_1F1C (not yet exercised in a run: ExitHost's Deactivate is unreachable until
-// CIngExitHostEffect's Think (fn_29_10F58, lane 3) sets retail's 0x5e2 bit 7, which is what ends the
-// state): the exit host's smoke, spawned where the Ing lands. It
+// @ fn_29_1F1C (the 2026-10-20 run, /tmp/opencode/ing_run5.log: "state ExitHost" -> "exit host:
+// smoke explosion" -> "left at (78.0, 368.0, 4.9)" once CIngExitHostEffect's Think set the
+// arrival flag): the exit host's smoke, spawned where the Ing lands. It
 // only fires when the swarm block's second GEN token is loaded (retail's engaged byte at 0xcfc);
 // then one CExplosion "IngExitHostSmokeFx" on the Ing's own transform at the model's scale (flags
 // 0, white, player -1) and the swarm block's own sound (0x9cc = CIngData swarm +0x28).

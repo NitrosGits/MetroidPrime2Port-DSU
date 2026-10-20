@@ -16,9 +16,10 @@ class CParticleGen;
 // (docs/module-analysis/IngFamily.md section A.9). Retail's is 0x5e8 bytes (the CActor base is
 // 0x158). The REL's own vtable is lbl_29_data_C60; its overrides are Think (retail slot 0x14,
 // fn_29_10F58), AcceptScriptMsg (0x18, fn_29_10EB4), AddToRenderer (0x28, fn_29_10DEC), Render
-// (0x2C, fn_29_10E64) and the dtor, none of which are ported here yet. The offsets in the comments
-// are the REL's, from fn_29_1105C. The host members are wider (a CPathFindSearch and a CToken carry
-// pointers), so the host class is larger than 0x5e8 - nothing outside the REL reads it by offset.
+// (0x2C, fn_29_10E64) and the dtor, all ported in PortCIngExitHostEffect.cpp. The offsets in the
+// comments are the REL's, from fn_29_1105C. The host members are wider (a CPathFindSearch and a
+// CToken carry pointers), so the host class is larger than 0x5e8 - nothing outside the REL reads it
+// by offset.
 //
 // Retail's two "created" bytes at 0x2ac/0x2bc are only `mEffectA/mEffectB != nullptr` (the asm's
 // neg/or/srwi-31 idiom) and gate the dtor's delete, so the host has no member for them. Retail's
@@ -36,7 +37,22 @@ public:
   // watches to end the state (fn_29_9D68 reads the byte and branches on its sign).
   bool IsDone() const { return (mFlags & 0x80) != 0; }
 
+  // The REL's four overrides (vtable slots 0x14, 0x18, 0x28 and 0x2C). Retail's Think does not
+  // chain to CActor's: this actor has no model or animation to advance.
+  void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&) override;
+  void AddToRenderer(const CStateManager&) const override;
+  void Render(const CStateManager&) const override;
+
 private:
+  void Fly(float dt, CStateManager& mgr);             // fn_29_1077C
+  void BuildBezier(CStateManager& mgr);               // fn_29_10154
+  CVector3f RandomOffset(CStateManager& mgr) const;   // fn_29_1065C
+  float BezierLength() const;                         // fn_29_1046C
+  void UpdateParticles(float dt, CStateManager& mgr); // fn_29_10944
+  void StartSwarmSfx();                               // fn_29_100B8
+  void StopSwarmSfx();                                // fn_29_1006C
+
   // The host layout (retail offsets in the comments, from fn_29_1105C).
   // 0x158: retail's own copy of the ctor's transform, not CActor's at 0x54.
   CTransform4f mXf;
