@@ -153,8 +153,10 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDB0_(0.f)
 , xDB8_(0)
 , xF04_()
+, xF14_()
 , xF34_(3, kInvalidUniqueId) // 0x188A8..0x188C8
 , xF40_{CTransform4f::Identity(), CTransform4f::Identity(), CTransform4f::Identity()} // 0x188CC
+, xFD0_()
 , xFE0_(3)
 , xFE8_(1)
 , xFEC_(CVector3f::Zero())
@@ -187,6 +189,20 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   if (mData.pART != kInvalidAssetId) {
     xF04_ = TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', mData.pART)));
   }
+  // The bomb-slot-destroyed effect (data +0x138, 0x18708) and the echo-target-destroyed one
+  // (data +0xA4, 0x18900), each locked when set.
+  if (mData.bombSlotDestroyedFx != kInvalidAssetId) {
+    xF14_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.bombSlotDestroyedFx)));
+  }
+  if (mData.echoTargetDestroyedFx != kInvalidAssetId) {
+    xFD0_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.echoTargetDestroyedFx)));
+  }
+  // 0x18D28 / 0x18D5C: the balls' locators (.rodata 0x954's names) at 0xDCC / 0xDCD.
+  const CAnimData* anim = GetModelData()->GetAnimationData();
+  xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
+  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
 }
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}
@@ -355,7 +371,7 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     x13830_(mgr);
     break;
   case kSM_Damage: // "XDMG", 0x17F10
-    StandInFn("fn_14_1303C (head XDMG)");
+    x1303C_(mgr, msg.GetSenderId());
     break;
   case kSM_ResistedDamage: // "XRDG", 0x17F2C
     StandInFn("fn_14_12D98 (head XRDG)");
@@ -1154,4 +1170,142 @@ CEntity* PortLoadDigitalGuardianHead(CStateManager& mgr, CInputStream& input, CE
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
       *modelData, LdrToActorParameters(sldrThis.actorInformation),
       LdrToPatternedInfo(sldrThis.patterned, nullptr), sldrThis.digitalGuardianHeadProperties);
+}
+
+// fn_14_1303C: with the armour gone (0x10F4 bit 0x10, extrwi 1,27) a ball collider at no health
+// (the cror at 0x13084: HP <= .rodata 0x960) hurts the head along its column 1 by the collider's
+// full health (vtable 0xA4), becomes the destroyed bomb pit (0x103A), costs a life (0x10E4), moves
+// the waypoint to it with IS08 and destroys its bomb slot, then is deactivated (vtable 0x1C).
+// Before, an echo target in state 4 moves the waypoint to its aim position with IS09, is
+// destroyed (fn_14_11FEC) and deleted, and sets bit 0x02 (EchoTargetDestroyed).
+// @ fn_14_1303C
+void CDigitalGuardianHead::x1303C_(CStateManager& mgr, TUniqueId sender) {
+  if ((x10F4_ & 0x10) != 0) {
+    CCollisionActor* col = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+    if (col != nullptr && col->GetHealthInfo()->GetHP() <= 0.f) {
+      TakeDamage(GetTransform().GetColumn(kDY), col->GetHealthInfo()->GetInitialHP());
+      x103A_ = col->GetUniqueId();
+      --x10E4_;
+      xF2B8_(mgr, col->GetTranslation(), kSS_InternalState8);
+      x12B04_(mgr, x13248_(sender));
+      col->SetActive(false);
+    }
+  } else if (x11F30_(sender)) {
+    CDigitalGuardianEchoTarget* target =
+        static_cast< CDigitalGuardianEchoTarget* >(mgr.ObjectById(sender));
+    if (target != nullptr && target->GetState() == CDigitalGuardianEchoTarget::kS_Destroyed) {
+      xF2B8_(mgr, target->GetAimPosition(mgr, 0.f), kSS_InternalState9);
+      x11FEC_(mgr, target->GetTransform());
+      mgr.DeleteObjectRequest(target->GetUniqueId());
+      x10F4_ |= 0x02;
+    }
+  }
+}
+
+// fn_14_F2B8: the IS07/FOLW object (0xF2C0..0xF2D8), if a waypoint, goes to pos; then state is
+// sent with no message (-1).
+// @ fn_14_F2B8
+void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
+                                  EScriptObjectState state) {
+  const TUniqueId wpId = CheckConnectedObject(mgr, kSS_InternalState7, kSM_Follow);
+  if (CScriptWaypoint* wp = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(wpId))) {
+    wp->SetTranslation(pos);
+    SendScriptMsgs(state, mgr, GetUniqueId(), kSM_None);
+  }
+}
+
+// fn_14_13248: the index of id among the ball colliders (count 0xDC0, 2), or -1.
+// @ fn_14_13248
+int CDigitalGuardianHead::x13248_(TUniqueId id) const {
+  for (int i = 0; i < 2; ++i) {
+    if (xDC4_[i] == id) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// fn_14_11F30: a valid id among the echo targets (0xF30 count, 0xF34 ids).
+// @ fn_14_11F30
+bool CDigitalGuardianHead::x11F30_(TUniqueId id) const {
+  if (id != kInvalidUniqueId) {
+    for (int i = 0; i < xF34_.size(); ++i) {
+      if (id == xF34_[i]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// fn_14_11FEC: the echo-target-destroyed effect ("EchoTargetExplosion", .rodata 0xF1A) at xf at
+// this head's scale, the IS04/ACTV object (0x103E) loses one health (.rodata 0x96C), one echo
+// target fewer (0xFE0); at none the armour is gone (bit 0x10) and IS00 is sent. The survivors
+// then ignore damage (0x78C bit 0x80).
+// @ fn_14_11FEC
+void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
+  if (xFD0_.valid()) {
+    const CVector3f scale = GetModelData()->GetScale();
+    const rstl::string name = rstl::string_l("EchoTargetExplosion");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    CExplosion* explosion = rs_new CExplosion(xFD0_.data(), uid, info, name, xf, 0, scale,
+                                              CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+    }
+  }
+  // Retail calls the object's HealthInfo slots (vtable 0x3C, 0x38) unchecked; the host casts.
+  if (CActor* act = TCastToPtr< CActor >(mgr.ObjectById(x103E_))) {
+    act->HealthInfo()->SetHP(act->GetHealthInfo()->GetHP() - 1.f);
+  }
+  if (--xFE0_ <= 0) {
+    x10F4_ |= 0x10;
+    SendScriptMsgs(kSS_InternalState0, mgr, GetUniqueId(), kSM_None);
+  }
+  for (int i = 0; i < xF34_.size(); ++i) {
+    CDigitalGuardianEchoTarget* target =
+        static_cast< CDigitalGuardianEchoTarget* >(mgr.ObjectById(xF34_[i]));
+    if (target != nullptr) {
+      target->SetDamageIgnored(true);
+    }
+  }
+}
+
+// fn_14_12B04: at ball idx's locator (0xDCC) the bomb-pit effect ("BombPitExplosionFx", .rodata
+// 0xF39) when set, the explosion sound (data +0x13C), the slot's destroyed effect state (.data
+// 0xE50) and, once, its looping sound (data +0x154) at 0xF28; the IS04/ACTV object loses one
+// health.
+// @ fn_14_12B04
+void CDigitalGuardianHead::x12B04_(CStateManager& mgr, int idx) {
+  if (idx == -1) {
+    return;
+  }
+  const CTransform4f xf = GetLctrTransform(xDCC_[idx]);
+  const CVector3f pos = xf.GetTranslation();
+  if (xF14_.valid()) {
+    const CVector3f scale = GetModelData()->GetScale();
+    const rstl::string name = rstl::string_l("BombPitExplosionFx");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    CExplosion* explosion = rs_new CExplosion(xF14_.data(), uid, info, name, xf, 0, scale,
+                                              CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+    }
+  }
+  PlayCustomSound(pos, CVector3f::Up(), mData.sound_BombSlotExplosion, false);
+  static const char* const skSlotDestroyed[2] = {"LeftBombSlotDestroyed",
+                                                  "RightBombSlotDestroyed"};
+  ModelData()->AnimationData()->SetEffectState(rstl::string_l(skSlotDestroyed[idx]), true,
+                                               mgr);
+  if (!xF28_[idx]) {
+    xF28_[idx] = PlayCustomSound(pos, CVector3f::Up(), mData.sound_BombSlotDestroyed, true);
+  }
+  // Retail calls the object's HealthInfo slots (vtable 0x3C, 0x38) unchecked; the host casts.
+  if (CActor* act = TCastToPtr< CActor >(mgr.ObjectById(x103E_))) {
+    act->HealthInfo()->SetHP(act->GetHealthInfo()->GetHP() - 1.f);
+  }
 }

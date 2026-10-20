@@ -11,6 +11,8 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.hpp"
 
@@ -178,10 +180,24 @@ private:
   void x12314_(CStateManager& mgr);
   // fn_14_1223C (0xD8 bytes): the echo targets follow locator 1 while the armour stands.
   void x1223C_(CStateManager& mgr);
+  // fn_14_1303C (0x20C bytes): "XDMG". With the armour gone a dead ball collider costs a life;
+  // before, a destroyed echo target (state 4) is removed.
+  void x1303C_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_F2B8 (0xC4 bytes): move the IS07/FOLW waypoint to pos and send state.
+  void xF2B8_(CStateManager& mgr, const CVector3f& pos, EScriptObjectState state);
+  // fn_14_13248 (0x3C bytes): a ball collider's index (0xDC4), or -1.
+  int x13248_(TUniqueId id) const;
+  // fn_14_11F30 (0x5C bytes): whether id is one of the echo targets (0xF34).
+  bool x11F30_(TUniqueId id) const;
+  // fn_14_11FEC (0x1D4 bytes): an echo target was destroyed at xf.
+  void x11FEC_(CStateManager& mgr, const CTransform4f& xf);
+  // fn_14_12B04 (0x234 bytes): ball idx's bomb slot was destroyed.
+  void x12B04_(CStateManager& mgr, int idx);
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
-  TUniqueId xDC4_[2]; // 0xDC4: the ball colliders' ids (fn_14_13284)
+  TUniqueId xDC4_[2]; // 0xDC4: the ball colliders' ids (fn_14_13284; count 2 at 0xDC0)
+  CSegId xDCC_[2];    // 0xDCC: the balls' locators ("L_ball_LCTR", "R_ball_LCTR")
   TUniqueId xE00_;    // 0xE00: the root collider's id (fn_14_13318)
   // 0xDA0 / 0xDB0 / 0xDB8: the visual knowledge's target id, its sight time and its flag byte
   // (CVisualKnowledge at 0xD80; HasLineOfSight reads them). The class is not ported, so they keep
@@ -191,9 +207,14 @@ private:
   uchar xDB8_;
   // 0xF04: the 'PART' token (data +0x94), its valid flag at 0xF10.
   rstl::optional_object< TLockedToken< CGenDescription > > xF04_;
+  // 0xF14: the bomb-slot-destroyed effect (data +0x138), its valid flag at 0xF20.
+  rstl::optional_object< TLockedToken< CGenDescription > > xF14_;
+  CSfxHandle xF28_[2]; // 0xF28: the destroyed bomb slots' looping sounds
   // 0xF30 / 0xF34: the echo targets' ids (count 3, then the ids); fn_14_12314 fills them.
   rstl::reserved_vector< TUniqueId, 3 > xF34_;
   CTransform4f xF40_[3]; // 0xF40: the echo targets' offsets from locator 1 (fn_14_12314)
+  // 0xFD0: the echo-target-destroyed effect (data +0xA4), its valid flag at 0xFDC.
+  rstl::optional_object< TLockedToken< CGenDescription > > xFD0_;
   int xFE0_;        // 0xFE0: the echo targets left (3)
   int xFE8_;        // 0xFE8: the attack mode (1 in the ctor; fn_14_13B30)
   CVector3f xFEC_;  // 0xFEC: the attack position (SetInitialAttackPosition, SeekAttackPosition)
