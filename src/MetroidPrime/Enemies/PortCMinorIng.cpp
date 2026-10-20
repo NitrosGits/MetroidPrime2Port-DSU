@@ -2129,7 +2129,9 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
 }
 
 // Retail fn_44_110. The property ids and their order are the generated SLdrMinorIng reader's,
-// which the analysis checked against the REL id by id: it reads all 20.
+// which the analysis checked against the REL id by id: it reads all 20. The retail's own loop
+// reads the same properties into the same places (fn_44_9B4's packing gives each bool its bit),
+// so the loader holds no stand-in.
 // @ fn_44_D54
 // The retail copy moves a whole CIngSpotData from the source to the destination: the blob
 // effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds
@@ -2143,7 +2145,8 @@ CIngSpotData CopyIngSpotData(const CIngSpotData& src) { return src; }
 // inglet's spawn values. The host's block is its own shape (CMinorIngData), so the body is the
 // constructor call and not a field-by-field copy of the retail's offsets.
 static CMinorIngData BuildMinorIngData(const SLdrMinorIng& sldrThis, const CIngSpotData& ingSpotIn,
-                                       const CBouncyGrenadeData& grenadeDataIn, uchar flags156) {
+                                       const CBouncyGrenadeData& grenadeDataIn, uchar flags155,
+                                       uchar flags156) {
   // The retail's fn_44_9B4 copies the three blocks the loader read into the data: the ing spot
   // (fn_44_D54), the inglet's health (fn_44_D00) and the grenade data (fn_44_C44).
   const CIngSpotData ingSpot = CopyIngSpotData(ingSpotIn);
@@ -2159,7 +2162,7 @@ static CMinorIngData BuildMinorIngData(const SLdrMinorIng& sldrThis, const CIngS
       sldrThis.attackAngleLimit, sldrThis.lineOfSightHeightOffset, sldrThis.unknown_0xd6c8eac2,
       sldrThis.unknown_0x2a5449ba, sldrThis.hearingRadius, sldrThis.ingSpot.speedModifier,
       sldrThis.unknown_0x3da35851.allowLockOn,
-      static_cast< uchar >(sldrThis.unknown_0x09207f51), flags156, sldrThis.ingSpot.maxSpeed,
+      static_cast< uchar >(flags155), flags156, sldrThis.ingSpot.maxSpeed,
       sldrThis.ingSpot.maxWallSpeed, sldrThis.ingSpot.ballPursuitSpeed,
       LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
       static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
@@ -2175,7 +2178,6 @@ static CMinorIngData BuildMinorIngData(const SLdrMinorIng& sldrThis, const CIngS
 }
 
 static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
-  PortMinorIngStandIn("fn_44_110 (0x844 bytes)");
   SLdrMinorIng sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMinorIng.inc"
 
@@ -2198,34 +2200,38 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
                                   static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
                                   static_cast< ushort >(sldrThis.ingSpot.sound_Death));
 
-  // The three flag bytes: the REL's constructor takes them in an order that does not follow the
-  // properties' declaration order, and the analysis does not pair the two, so the bits here follow
-  // SLdrMinorIng's own field order. Nothing reads them in this milestone.
+  // The retail's loader (fn_44_110) reads seven bool properties and fn_44_9B4 packs them into
+  // three bytes of the data (asm 0xA5AC-0xA5C4): the byte at 0x154's bit 7 is the inglet block's
+  // allow-lock-on, the byte at 0x155 is the property 0x9207f51 on its own and the byte at 0x156
+  // holds the other six, most significant bit first. The property ids are the ones the generated
+  // SLdrMinorIng reader uses, so each bool lands in the bit fn_44_9B4 gives it.
+  const uchar flags155 = static_cast< uchar >(sldrThis.unknown_0x09207f51);
   uchar flags156 = 0;
   if (sldrThis.allowProjectileDuringAttackPattern) {
-    flags156 |= 0x80;
+    flags156 |= 0x80; // 0x399d1eaa
   }
   if (sldrThis.unknown_0xbce16644) {
-    flags156 |= 0x40;
+    flags156 |= 0x40; // 0xbfd0e644
   }
   if (sldrThis.unknown_0x142433d3) {
-    flags156 |= 0x20;
+    flags156 |= 0x20; // 0x142433d3
   }
   if (sldrThis.stayOnPointPathFinding) {
-    flags156 |= 0x10;
+    flags156 |= 0x10; // 0xb6cc0063
   }
   if (sldrThis.allowProjectileDuringStayOnPointPathFinding) {
-    flags156 |= 0x08;
+    flags156 |= 0x08; // 0xe601f7bd
   }
   if (sldrThis.allowPuddleLockOn) {
-    flags156 |= 0x04;
+    flags156 |= 0x04; // 0x2107e4fb
   }
 
   // The retail's loader reads the ing spot (fn_44_194C) and builds the bouncing-projectile
   // struct out of the inglet's block (fn_44_FE8); the data build copies both into the data.
   const CBouncyGrenadeData grenadeData = BuildGrenadeData(sldrThis.unknown_0x3da35851);
 
-  const CMinorIngData data = BuildMinorIngData(sldrThis, ingSpotBuilt, grenadeData, flags156);
+  const CMinorIngData data =
+      BuildMinorIngData(sldrThis, ingSpotBuilt, grenadeData, flags155, flags156);
 
   return rs_new CMinorIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                           LdrToEntityInfo(info, sldrThis.editorProperties),

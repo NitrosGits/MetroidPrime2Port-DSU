@@ -28,13 +28,13 @@ port names it once per run, so the log says which body is missing. The names are
 
 | retail function | size | why the host does not have it |
 |---|---|---|
-| `fn_44_110` | 0x844 | the retail loader reads the REL's own binary format; the host reads the generated `SLdrMinorIng` |
 | `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are read by the host's loader now, but the spawn itself is not ported |
 
-`fn_44_97E4` (the destructor), `fn_44_34B0` (the ray) and `fn_44_9D58` (the constructor) were
-stand-ins and are ported now: the destructor is the host's member destruction (the retail's body is
-the members' own teardown), the ray is `CMinorIng::RayDown` and the constructor fills the members
-in the retail's order, so the stored state matches.
+`fn_44_97E4` (the destructor), `fn_44_34B0` (the ray), `fn_44_9D58` (the constructor) and
+`fn_44_110` (the loader) were stand-ins and are ported now: the destructor is the host's member
+destruction (the retail's body is the members' own teardown), the ray is `CMinorIng::RayDown`, the
+constructor fills the members in the retail's order and the loader reads the same properties into
+the same members.
 
 ## The inglet's data (modelled)
 
@@ -91,6 +91,24 @@ body does the same with the marked copies `fn_44_D54` (the ing spot), `fn_44_D00
 (the inglet's health) and `fn_44_C44` (the grenade data). The retail's ing spot copy
 runs in three steps (`fn_44_D54` calls `fn_44_E08`, which calls `fn_44_EB8`); the
 host's `CIngSpotData` copy is the class's own, so those two take no marker.
+
+#### The seven bool properties (the loader's flags)
+
+The retail's loader reads seven bool properties and `fn_44_9B4` packs them into three bytes of
+the data (asm 0xA5AC-0xA5C4), so each property id has one bit:
+
+| data byte | bit | property id | the host's field |
+|---|---|---|---|
+| 0x154 | 0x80 | (the inglet block's allow-lock-on) | `mIngSpotAllowLockOn` |
+| 0x155 | the whole byte | 0x9207f51 | `mFlags155` (`unknown_0x09207f51`) |
+| 0x156 | 0x80 | 0x399d1eaa | `allowProjectileDuringAttackPattern` |
+| 0x156 | 0x40 | 0xbfd0e644 | `unknown_0xbce16644` |
+| 0x156 | 0x20 | 0x142433d3 | `unknown_0x142433d3` |
+| 0x156 | 0x10 | 0xb6cc0063 | `stayOnPointPathFinding` |
+| 0x156 | 0x08 | 0xe601f7bd | `allowProjectileDuringStayOnPointPathFinding` |
+| 0x156 | 0x04 | 0x2107e4fb | `allowPuddleLockOn` |
+
+The loader's `flags155`/`flags156` locals build these bytes the same way.
 
 ### The constructor's parts (fn_44_9D58)
 
