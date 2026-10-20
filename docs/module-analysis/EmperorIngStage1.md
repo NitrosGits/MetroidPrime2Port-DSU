@@ -989,3 +989,8 @@ flags, modes, timers and ids forced, the hooks and their once-logs reverted afte
 * fn_16_4E44 (the effect's particle system, called from fn_16_4C0C) and fn_16_3AA8 (the
   tentacle's collision actor) run in area 11: the first probe's once-log had sat after the
   return statement, and with it before the return both logged.
+* fn_16_7F8C dispatches every event type: the hook forced the types 0..28 in turn and the log
+  shows all 29. The retail's jump table (jumptable_16_data_314) has six case bodies - the types
+  0 (fn_16_7F8C+0x98), 7 (+0x404), 17 (+0x418), 23 (+0x3C), 27 (+0x26C) and 28 (+0x360) - and
+  the other 23 point at the default (+0x58C), the base's own DoUserAnimEvent, which is what the
+  port's default case does.
