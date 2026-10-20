@@ -297,6 +297,24 @@ private:
   float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)
   float mLaserSweepTimer = 0.f;   // 0xD18 (the data's laser sweep interval, 0x858)
   float mDodgeTimer = 0.f;        // 0xD1C (the data's min dodge interval, 0x848)
+  // The retail's fn_75_AFE8 (the chassis's timers) and fn_75_9520 (its fade), the Think's
+  // calls at 0x0000F164 and 0x0000F180.
+  void PortUpdateTimers(CStateManager& mgr, float dt);
+  void PortUpdateFade(float dt);
+  // guest 0xD20: the timer fn_75_AFE8 counts down; at zero or below the chassis dies.
+  float mTimerD20 = 0.f;
+  // guest 0xD30 / 0xD34: two timers fn_75_AFE8 counts up.
+  float mTimerD30 = 0.f;
+  float mTimerD34 = 0.f;
+  // guest 0xD3C: the timer fn_75_AFE8 counts up while the id at 0xCC0 is valid and the counter
+  // at 0xC48 is not zero, and clears otherwise.
+  float mTimerD3C = 0.f;
+  // guest 0xC48: the counter fn_75_AFE8 tests. What it counts is not established.
+  int mIntC48 = 0;
+  // guest 0xCB4: the additive animation's id (fn_75_9520 adds and deletes it).
+  uint mAdditiveAnimId = 0;
+  // guest 0xCB8: the fade weight (fn_75_9520 counts it up and down).
+  float mFadeWeight = 0.f;
 #endif
 };
 #else

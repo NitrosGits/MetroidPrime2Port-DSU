@@ -449,6 +449,13 @@ trigger `fn_75_58E8` and its `NotifyDocking` code `fn_75_3EEC`) and 97 once-logg
 each naming the retail function it stands in for. The head's `NotifyDocking` code is where the
 retail runs `fn_75_3EEC`, so the port does not call it from the Think any more.
 
+**The run (2026-10-20) enters**: the head's **Start** state and the chassis's **Start** and
+**Patrol** states. The triggers it asks are the head's `IsInitiallyDocked`, `HasDockingTarget`
+and `HasTarget` and the chassis's `IsDisabled`, `DeployFromHoldingTube`, `ShotAt`,
+`PatrolPathOver`, `LostHead`, `ShouldWaitForSnatch` and `PrepareForDocking`; the codes are the
+head's `RaiseShields` and `SelectTarget`. Every one of them is a stand-in except the head's
+`IsScanning` (the ported `fn_75_58E8`), which the run does not reach.
+
 **WP3 — the command module and the split-off halves.** Port `CSplitterCommandModule` (the head:
 scanning, laser pulse/sweep, shields, docking), the beam-effect actor (0x1A0, `fn_75_1188` +
 `fn_75_11804`/`fn_75_11884`) and the link between the two actors (`TUniqueId` at 0xEFA/0xEFC). The
@@ -897,3 +904,56 @@ from the beam-effect spawner, so it is marked).
 Still shells in that run: the DOL's `CSfxManager::UpdateEmitter` and `RemoveEmitter` (the head's
 collision update and the beam spawner), and the chassis's **fn_75_A4E4** (0x418), **fn_75_AFE8**
 (0x11C), **fn_75_ACEC** (0x2FC) and **fn_75_9520** (0x11C) - the chassis's Think.
+
+#### The chassis's Think helpers (fn_75_AFE8, fn_75_9520) - ported 2026-10-20
+
+The chassis's Think (fn_75_F0E8, 0xF0E8) calls four module functions with the frame time in f1
+and the state manager in r4: **fn_75_A4E4** (0x418, the collision actor manager, 0xF130),
+**fn_75_AFE8** (0x11C, 0xF164), **fn_75_ACEC** (0x2FC, 0xF174) and **fn_75_9520** (0x11C,
+0xF180).
+
+**fn_75_AFE8 (0x11C)** - the chassis's timers. The four timers the chassis copies from its data
+(fn_75_8EA4) are counted down and the scan timer at 0xD28 too; three timers are counted up:
+
+| field | direction | asm |
+|---|---|---|
+| 0xD10 / 0xD14 / 0xD18 / 0xD1C | down | 0x0000AFF8, 0x0000B004, 0x0000B010, 0x0000B01C |
+| 0xD28 | down | 0x0000B028 |
+| 0xD34 / 0xD30 / 0xD2C | up | 0x0000B034, 0x0000B040, 0x0000B04C |
+
+The timer at **0xD3C** is counted up only while the id at **0xCC0** is valid (0x0000B058 `lhz`
+against kInvalidUniqueId) and the counter at **0xC48** is not zero (0x0000B068); otherwise it is
+cleared (0x0000B084, `lbl_75_rodata_390`, 0.0f). The flag byte at **0xD41**'s 0x01 bit (0x0000B094
+`clrlwi` with the word's bit 31 - the byte's 0x01) and the alive bit of the byte at **0x420**
+(0x0000B0A0 `extrwi` with the word's bit 25 - the byte's 0x40, the host's `GetAlive()`) gate the
+death: the timer at **0xD20** is counted down and, at zero or below (0x0000B0C0 `fcmpo` with the
+`cror eq, lt, eq` - the <= sense), the chassis dies with the transform's Y column (the vector at
+0x28, 0x38 and 0x48) and the state 'RATL' (0x0000B0E0). The retail calls the base class's
+`Death`, not the module's override.
+
+**fn_75_9520 (0x11C)** - the chassis's fade. The id at 0xCC0 picks the rate: a valid id gives
+`lbl_75_rodata_39C` (0.25f) and the invalid one `lbl_75_rodata_364` (1.0f), and the step is the
+frame time divided by it (0x0000956C `fdivs`). While the scan timer at 0xD28 is above zero or the
+id is valid, the weight at **0xCB8** is counted down and clamped at zero; otherwise it is counted
+up and clamped at one (0x000095C4, the >= sense). The weight above zero adds the additive
+animation with the id at **0xCB4** (0x000095FC, the two flags clear); at zero or below the
+animation is deleted when it is active (0x00009610 `clrlwi` with the word's bit 24 - the byte's
+0xFF).
+
+Both are ported as `CSplitterMainChassis::PortUpdateTimers` and
+`CSplitterMainChassis::PortUpdateFade`; the new fields are 0xC48, 0xCB4, 0xCB8, 0xD20, 0xD30,
+0xD34 and 0xD3C.
+
+**fn_75_ACEC (0x2FC)** and **fn_75_A4E4** (0x418) are still shells. fn_75_ACEC is the head's
+placement: with the command module's id at **0xC6C** valid (0x0000AD18 `lhz`) it looks the head
+up (0x0000AD40 `ObjectById`, 0x0000AD44 the `CSplitterCommandModule` cast) and builds the head's
+transform from the locator's transform (0x0000AD5C `GetLctrTransform`); with the flag byte at
+**0xD41**'s 0x80 (0x0000AD88 `extrwi` with the word's bit 24 - the byte's 0x80) and 0x08 bits
+(0x0000AD90, the word's bit 28 - the byte's 0x08) clear and the counter at **0xD00** equal to 5
+(0x0000AD98) it looks the head at the target (0x0000AEC0, the offset at 0xF24-0xF2C), otherwise
+it slerps the head's facing toward the chassis's (0x0000AE30 `GetAngleDiff`, 0x0000AE60
+`Slerp`, the turn rate 12.566371 rad/s) and sets the transform (0x0000AE44, 0x0000AED4,
+0x0000AF4C). With no head at 0xC6C the id is cleared (0x0000AF74), the materials 0x28 and 0x29
+are added (0x0000AF84) and the flag byte at 0xD41's 0x02 bit is set; the id at **0xC6E** is
+cleared when it names no head (0x0000AF8C-0x0000AFC0). fn_75_A4E4 (0x418) builds the collision
+actor manager.

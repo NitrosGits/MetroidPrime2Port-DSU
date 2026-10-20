@@ -12,6 +12,7 @@
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -137,9 +138,7 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
 // tracker and the derived state.
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
-void StandInFn_75_AFE8() { StandIn("fn_75_AFE8 (0x11C)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
-void StandInFn_75_9520() { StandIn("fn_75_9520 (0x11C)"); }
 
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
@@ -322,9 +321,9 @@ bool CSplitterMainChassis::PortAcceptHead(CStateManager& mgr, TUniqueId headId) 
 // (0xF118), the docking link (the partner id at 0xC68, 0xF11C lwz and 0xF120 cmplwi 0: with no
 // partner the retail looks for one, 0xF130 fn_75_A4E4, otherwise it updates the dock, 0xF144
 // fn_80135D84), the line-of-sight tracker (the tracker at 0xC70, 0xF154 fn_801F55F0) and the
-// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520). Every one
-// of them is over 0x80 or belongs to the DOL, so each is a once-logging shell here and the
-// function carries no port marker yet.
+// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520). The first
+// and the last are ported (PortUpdateTimers, PortUpdateFade); the middle one is over 0x80 and
+// stays a once-logging shell, so the function carries no port marker yet.
 // vtable slot 0x14.
 void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
@@ -344,9 +343,79 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
   mVisualKnowledge.Update(dt, mgr);
-  StandInFn_75_AFE8();
+  PortUpdateTimers(mgr, dt);
   StandInFn_75_ACEC();
-  StandInFn_75_9520();
+  PortUpdateFade(dt);
+}
+
+// @ fn_75_AFE8
+// The chassis's timers (0xAFE8-0xB104), the Think's call at 0x0000F164 (the manager, the frame
+// time in f1 and the state manager in r4). The four timers the chassis copies from its data
+// (fn_75_8EA4) are counted down (0x0000AFF8 0xD10, 0x0000B004 0xD14, 0x0000B010 0xD18,
+// 0x0000B01C 0xD1C), the scan timer at 0xD28 too (0x0000B028), and three timers are counted up
+// (0x0000B034 0xD34, 0x0000B040 0xD30, 0x0000B04C 0xD2C). The timer at 0xD3C is counted up
+// only while the id at 0xCC0 is valid (0x0000B058 lhz against kInvalidUniqueId) and the counter
+// at 0xC48 is not zero (0x0000B068 lwz, 0x0000B06C cmpwi); otherwise it is cleared (0x0000B084,
+// lbl_75_rodata_390, 0.0f). The flag byte at 0xD41's 0x01 bit (0x0000B094 clrlwi with the word's
+// bit 31 - the byte's 0x01) and the alive bit of the byte at 0x420 (0x0000B0A0 extrwi with the
+// word's bit 25 - the byte's 0x40) gate the death: the timer at 0xD20 is counted down
+// (0x0000B0B0) and, at zero or below (0x0000B0C0 fcmpo with the cror eq, lt, eq - the <= sense),
+// the chassis dies with the transform's Y column (the vector at 0x28, 0x38 and 0x48) and the
+// state 'RATL' (0x0000B0E0).
+void CSplitterMainChassis::PortUpdateTimers(CStateManager& mgr, float dt) {
+  mLegStabTimer -= dt;     // 0xD10 (0x0000AFF8)
+  mSpinPenaltyTimer -= dt; // 0xD14 (0x0000B004)
+  mLaserSweepTimer -= dt;  // 0xD18 (0x0000B010)
+  mDodgeTimer -= dt;       // 0xD1C (0x0000B01C)
+  mScanTimer -= dt;        // 0xD28 (0x0000B028)
+  mTimerD34 += dt;         // 0xD34 (0x0000B034)
+  mTimerD30 += dt;         // 0xD30 (0x0000B040)
+  mSpinTimer += dt;        // 0xD2C (0x0000B04C)
+  if (mSyncId != kInvalidUniqueId && mIntC48 != 0) { // 0xCC0 (0x0000B058), 0xC48 (0x0000B068)
+    mTimerD3C += dt;                                   // 0xD3C (0x0000B074)
+  } else {
+    mTimerD3C = 0.f;                                   // 0xD3C (0x0000B084, lbl_75_rodata_390)
+  }
+  if ((mFlagsD41 & 0x1) != 0 && GetAlive()) {          // 0xD41 (0x0000B094), 0x420 (0x0000B0A0)
+    mTimerD20 -= dt;                                   // 0xD20 (0x0000B0B0)
+    if (mTimerD20 <= 0.f) {                            // 0x0000B0C0 (the <= sense)
+      // 0x0000B0F0: the retail calls the base class's Death (not the module's override).
+      CPatterned::Death(mgr, GetTransform().GetColumn(kDY), kSS_DeathRattle);
+    }
+  }
+}
+
+// @ fn_75_9520
+// The chassis's fade (0x9520-0x963C), the Think's call at 0x0000F180. The id at 0xCC0
+// (0x00009540 lhz) picks the rate: a valid id gives lbl_75_rodata_39C (0.25f) (0x00009558) and
+// the invalid one lbl_75_rodata_364 (1.0f) (0x00009564), and the step is the frame time divided
+// by it (0x0000956C fdivs). While the scan timer at 0xD28 is above zero (0x0000957C fcmpo, the
+// greater-than branch) or the id is valid, the weight at 0xCB8 is counted down and clamped at
+// zero (0x0000958C-0x000095AC); otherwise it is counted up and clamped at one
+// (0x000095B4-0x000095D4). The weight above zero adds the additive animation with the id at
+// 0xCB4 (0x000095EC, 0x000095FC with the two flags clear); at zero or below the animation is
+// deleted when it is active (0x00009604, 0x0000960C, 0x00009610 clrlwi with the word's bit 24 -
+// the byte's 0xFF).
+void CSplitterMainChassis::PortUpdateFade(float dt) {
+  const float step = dt / (mSyncId != kInvalidUniqueId ? 0.25f : 1.f); // 0x00009558-0x0000956C
+  if (mScanTimer > 0.f || mSyncId != kInvalidUniqueId) { // 0x0000957C, 0x00009584
+    mFadeWeight -= step;                                 // 0xCB8 (0x0000958C)
+    if (mFadeWeight <= 0.f) {                            // 0x0000959C (the <= sense)
+      mFadeWeight = 0.f;                                 // 0x000095A8
+    }
+  } else {
+    mFadeWeight += step;                                 // 0xCB8 (0x000095B4)
+    if (mFadeWeight >= 1.f) {                            // 0x000095C4 (the >= sense)
+      mFadeWeight = 1.f;                                 // 0x000095D0
+    }
+  }
+  if (mFadeWeight > 0.f) {                               // 0x000095E4 (the greater-than sense)
+    AnimationData()->AddAdditiveAnimation(mAdditiveAnimId, mFadeWeight, false, false);
+    return;                                              // 0x00009600
+  }
+  if (AnimationData()->IsAdditiveAnimationActive(mAdditiveAnimId)) { // 0x0000960C, 0x00009610
+    AnimationData()->DelAdditiveAnimation(mAdditiveAnimId);          // 0x00009618
+  }
 }
 
 // @ fn_75_AC68
