@@ -8,6 +8,7 @@ asm: module offset; MP3 DOL asm: absolute address).
 
   asmcheck.py annotate <asm> <fn> [--header H.hpp --class C] [--all-ins]
   asmcheck.py check <asm> <file.cpp> [fn ...] [--all] [--quiet] [--root DIR] [-I DIR] [--only TAGS]
+                    [--module NAME]
 
 <asm>  a .s file, a directory searched recursively for .s, or a module name looked up as
        $ASMCHECK_ASM_ROOT/<name>/asm (default root below). Rodata is read from the asm dir.
@@ -23,12 +24,18 @@ word is 1u << (31 - N)). Bases other than the function's r3 are spelled `a1->x24
 each bit: its position comes from the member comment (`// 0xc10 0x80`, `// 0xe5e bit 5` (LSB
 numbering), `// 0x8f7_25`), else its name (`x8f4_25_foo` = byte 0x8f4 mask 0x40, `xc10_10_` =
 mask 0x10), else the MWCC big-endian MSB-first layout of its bitfield run anchored on a
-positioned member. `HDR?` marks a member whose layout position disagrees with its stated one,
+positioned member. A comment may give one position per module, `;`-separated segments labelled
+with a module (`CIng: 0x9D4; IngBoostBallGuardian: 0xAE4`, a leading `C` is optional): the
+segment of the module being checked (`--module`, default the `<Module>/asm` of <asm>) applies,
+an unlabelled segment applies to any module, and labelled-only comments naming other modules
+give no position. `HDR?` marks a member whose layout position disagrees with its stated one,
 or a bit the layout and the stated positions assign to different members. Never trusted.
 
 check: per function, the C++ body (defs marked `// @ fn_X` or whose comment block above cites
-fn_X first) against the asm. Members resolve through the method's class (and bases) found via
-the cpp's #include closure. Port helpers called from the body (defs citing no fn) are merged in,
+fn_X first; a fn id in a comment on the signature lines only maps fn -> def for CALL) against
+the asm. Members resolve through the method's class (and bases) found via the cpp's #include
+closure, member-of-member chains (`mInfo.mX8`) through the member's type, and a trivial getter
+(`GetX() { return mX; }`) reads its member. Port helpers called from the body (defs citing no fn) are merged in,
 two levels deep, but only to cover asm ops: a helper may be its own asm function, so correctness
 tags come from the body alone. Output: `<TAG> <fn> 0x<asm off>: text [file:line]`.
 
@@ -53,17 +60,38 @@ tags come from the body alone. Output: `<TAG> <fn> 0x<asm off>: text [file:line]
   BRANCH asm conditions (cond branches + mfcr/cntlzw extracts, bdnz excluded) >= 2*C++ + 4
          (missing blocks), or C++ (if/?:/&&/||/case/while/for) >= 2*asm + 4 (extra logic)
   CALLS  asm calls (bl/bctrl, runtime helpers excluded) >= 2*C++ call tokens + 3
+  info tag, never in the exit code:
+  NOPOS  a bitfield the C++ uses has no stated position for this module (comment/name); its bits
+         are not checked for correctness (completeness BIT still credits its layout position)
+Inlined callees: a local `fn_X` the asm calls is folded into the caller (one level): its `this`
+loads/stores/compares/bit ops, with r3..r10 mapped from the call (`this`, `&this->m`, a field by
+value, a stack copy of a field), count as the caller's for XSTORE/XCMP/MASK/XBIT, and the call
+needs no C++ call when a `// fn_X` comment cites it or the C++ uses a folded field.
 Tolerances: an integer relational asm compare where the C++ only has ==/!= on that field is
 skipped (MWCC lowers switches and == chains to bge/blt trees); integer CROP compares only the
 direction (`< 1` == `<= 0`); a ctor's zero/false/nullptr/kInvalidUniqueId init of a field the
 retail ctor leaves to the zeroed heap is not XSTORE/XBIT; `== / != nullptr` guards are not XCMP;
-a field whose address the asm passes to a call is not XCMP; a whole-line `// fn_X` comment in a
-body marks the block below it (to the next case/dedent) as another function, left out; a def
+a field whose address the asm passes to a call (incl. `addic. rX, this, off` placement new) is
+not XCMP/XSTORE; a whole-line `// fn_X` comment in a body marks the block below it (to the next
+case/dedent) as another function, left out, but on (or right above) a call statement it names
+that call; compares inside `return` count; a compare of a computed value the asm then stores to
+a field (`x += d; if (x > 1) x = 1;`, through the join of both values) is a compare of that
+field, and `x = Max(0.f, x - dt)` (Max/Min/Clamp) tests x; branchless bool idioms (`subfic`,
+neg/or/andc ... `srwi 31`, cntlzw of a field-derived value) are compares of the field; debug-only
+statements (`if (Debug...())`, logging-only if bodies, debug `#if`) don't count for BRANCH; copy
+ctors are no CALL; a def
 citing several fns judges absence over all of them; `x & ~M` reads none of M; extracts wider
 than 8 bits (index scaling) are not bit tests. Bits are compared per bit within a byte, so a C++
 bit read MWCC merged into a byte test still matches; loads/stores only count with `this` as root
 (r3, or r4 when the def returns a class by value: `--sret` for annotate), through `addi` pointers
-and saved-register copies. Exit 1 when anything is reported, 0 when clean, 2 on errors.
+and saved-register copies; a def whose r3 is unused while r4 is read is analysed as sret too.
+Exit 1 when anything but NOPOS/NOTE is reported, 0 when clean, 2 on errors.
+Known limits: folding is one level deep; a duplicate C++ write next to a port of a folded fn_X is
+hidden; a retail fn whose signature differs (id taken by pointer, port takes it by value) still
+XCMP/XSTOREs (EP fn_15_2394); mfcr extracts stay exact (`==` vs `<= 0` on a value known >= 0 is
+reported); a C++ helper's conditions don't count for its caller's BRANCH (a wrapper delegating
+to a shared helper flags); when several unmarked defs cite one fn first, the last one is checked
+(MinorIng's RELMain comment naming fn_44_110 captures the loader's id; mark the loader `// @`).
 """
 import argparse
 import os
@@ -390,6 +418,9 @@ class Cmp:
         s.idx, s.lhs, s.rhs, s.kind = idx, lhs, rhs, kind
 
 
+TAINT_OPS = {'neg', 'or', 'nor', 'and', 'andc', 'orc', 'subf', 'subfc', 'subfe', 'subfic', 'subfze', 'subfme',
+             'add', 'addc', 'adde', 'addze', 'addme', 'addi', 'addic', 'subi', 'xor', 'xori', 'cntlzw', 'srawi',
+             'sraw', 'extsb', 'extsh'}
 WIDTH = {'b': 1, 'h': 2, 'w': 4, 'f': 4, 'd': 8, 'q': 8, 'x': 4}
 LOADS = {'lbz': 'b', 'lbzu': 'b', 'lhz': 'h', 'lha': 'h', 'lhzu': 'h', 'lhau': 'h', 'lwz': 'w', 'lwzu': 'w',
          'lfs': 'f', 'lfsu': 'f', 'lfd': 'd', 'lfdu': 'd', 'psq_l': 'q', 'psq_lu': 'q'}
@@ -594,7 +625,15 @@ class Analysis:
         s.loops = 0
         s.switches = 0
         s.addr_args = []     # (call idx, root, off) pointers passed to calls
+        s.call_args = []     # (call idx, target, {r3..r10: value}, {sp off: value stored there})
+        s.spslots = {}       # sp offset -> last value stored there
+        s.stored_vals = {}   # id(value) -> (value, {this offsets it was stored to})
+        s.taint = {}         # id(value) -> (value, {this offsets}) for arithmetic on field loads
+        s.idiom_fields = {}  # this offset -> idx: field in a branchless bool (neg/or/andc/subf; srwi 31)
+        s.ret_conds = set()  # cntlzw-idiom conds whose bool is returned as is
         s.run()
+        # a cntlzw `x == y` bool is exact only when returned; otherwise its use may negate it
+        s.conds = [(a, b, c, (k in s.ret_conds) if d == 'clz' else d) for k, (a, b, c, d) in enumerate(s.conds)]
 
     # state: (regs, crf, crx)
     def run(s):
@@ -646,6 +685,9 @@ class Analysis:
                 regs[r] = v
             elif saved:
                 regs[r] = v if all(p[0].get(r) is v for p in preds) else V('x', r)
+            elif not back and all(r in p[0] for p in preds):
+                # a forward join of different values (`x = c > x ? x : c`): keep the incoming ones
+                regs[r] = V('x', r, d=('phi', tuple(p[0][r] for p in preds)))
         crf = {} if back else {k: v for k, v in first[1].items() if all(p[1].get(k) is v for p in preds)}
         crx = {} if back else {k: v for k, v in first[2].items() if all(p[2].get(k) is v for p in preds)}
         return (regs, crf, crx)
@@ -708,6 +750,9 @@ class Analysis:
         if op in ('blr', 'bctr', 'rfi'):
             if op == 'bctr':
                 s.switches += 1
+            r3 = regs.get('r3')
+            if op == 'blr' and isinstance(r3, V) and r3.k == 'crb' and r3.c is not None:
+                s.ret_conds.add(r3.c)
             return
         if op in ('bdnz', 'bdz', 'bdnzt', 'bdnzf', 'bdzt', 'bdzf'):
             s.loops += 1
@@ -833,7 +878,17 @@ class Analysis:
             v = regs.get(a[0])
             s.stores.append((i.idx, root, off, w, v))
             if root == 'sp':
+                s.spslots[off] = v
                 return
+            if root == 'this' and isinstance(v, V) and v.k == 'x':
+                todo, seen = [v], 0
+                while todo and seen < 8:
+                    u = todo.pop()
+                    seen += 1
+                    if isinstance(u, V) and u.k == 'x':
+                        s.stored_vals.setdefault(id(u), (u, set()))[1].add(off)
+                        if u.d and u.d[0] == 'phi':
+                            todo += list(u.d[1])
             if isinstance(v, Bits) and v.sh == 0 and (v.mods or v.src is not None):
                 src = v.src
                 same = (src is not None and isinstance(src, V) and src.k == 'ld' and src.a == root and
@@ -874,6 +929,7 @@ class Analysis:
         # ---- value ops
         dst = a[0] if a else None
         val = None
+        pre = [regs.get(x) for x in a[1:] if re.fullmatch(r'r\d+', x)] if base in TAINT_OPS else []
         if base == 'li':
             v = num(a[1])
             val = V('c', v) if v is not None else V('x', a[1])
@@ -898,7 +954,9 @@ class Analysis:
                     ro = root_of(src)
                     val = V('ptr', ro[0], ro[1] + imm) if ro and base == 'addi' or ro and base == 'subi' else \
                         V('x', '%s + %s' % (desc(src), hx(imm)))
-                    if base in ('subi', 'addic') or (isinstance(src, V) and src.k in ('ld', 'ret', 'x')):
+                    if base == 'addic' and ro and ro[0] in ('this', 'sp') and imm > 0:
+                        val = V('ptr', ro[0], ro[1] + imm)  # `addic. rX, this, off`: placement new of a member
+                    elif base in ('subi', 'addic') or (isinstance(src, V) and src.k in ('ld', 'ret', 'x')):
                         val = V('x', '%s %s %s' % (desc(src), '-' if imm < 0 else '+', hx(abs(imm))))
                         val.d = ('add', src, imm)
         elif base in ('addis',):
@@ -907,6 +965,8 @@ class Analysis:
             val = regs.get(a[1], V('x', a[1]))
         elif base == 'subf':
             val = V('diff', regs.get(a[2]), regs.get(a[1]), '-')
+        elif base == 'subfic':
+            val = V('diff', V('c', num(a[2]) or 0), regs.get(a[1]), '-')
         elif base == 'xor':
             val = V('diff', regs.get(a[1]), regs.get(a[2]), '^')
         elif base == 'cntlzw':
@@ -973,10 +1033,35 @@ class Analysis:
                 val = V('x', '%s(%s)' % (base, ', '.join(a[1:])))
         if dst and re.fullmatch(r'[rf]\d+', dst):
             regs[dst] = val if val is not None else V('x', base)
+            if pre:
+                offs = set()
+                for v in pre:
+                    offs |= s.taint_of(v)
+                if offs:
+                    s.taint[id(regs[dst])] = (regs[dst], offs)
             if rec:
                 cmp = Cmp(i.idx, regs[dst], V('c', 0), 'rec')
                 s.cmps.append(cmp)
                 s.set_cr(st, 0, cmp)
+
+    def taint_of(s, v, depth=0):
+        """this offsets a value is computed from (field loads through arithmetic)."""
+        if depth > 4 or v is None:
+            return set()
+        if isinstance(v, Bits):
+            return s.taint_of(v.src, depth + 1) if v.src is not None else set()
+        if v.k == 'ld' and v.a == 'this':
+            return {v.b}
+        t = s.taint.get(id(v))
+        if t and t[0] is v:
+            return set(t[1])
+        if v.k == 'diff':
+            return s.taint_of(v.a, depth + 1) | s.taint_of(v.b, depth + 1)
+        if v.k == 'x' and v.d and v.d[0] == 'add':
+            return s.taint_of(v.d[1], depth + 1)
+        if v.k == 'clz':
+            return s.taint_of(v.a, depth + 1)
+        return set()
 
     def key_note(s, b):
         if not isinstance(b, Bits) or b.src is None or not isinstance(b.src, V) or b.src.k != 'ld':
@@ -992,6 +1077,10 @@ class Analysis:
         src = regs.get(srcr)
         M = mask32(mb, me)
         if not insert:
+            if M == 1 and sh == 1 and not (isinstance(src, V) and src.k == 'ld'):
+                # srwi 31 of arithmetic on a field: a branchless compare (x != 0, x > 0, x != y)
+                for off in s.taint_of(src):
+                    s.idiom_fields.setdefault(off, i.idx)
             if isinstance(src, V) and src.k == 'crs':
                 if M == 1:
                     bit = (sh - 1) % 32
@@ -1010,9 +1099,11 @@ class Analysis:
                 else:
                     cmp = Cmp(i.idx, x, V('c', 0), 's')
                 s.cmps.append(cmp)
-                s.conds.append((i.idx, cmp, frozenset(['eq']), True))
+                s.conds.append((i.idx, cmp, frozenset(['eq']), 'clz'))
+                for off in s.taint_of(x):
+                    s.idiom_fields.setdefault(off, i.idx)
                 s.note(i, 'cntlzw idiom -> %s' % cmp_text(cmp, frozenset(['eq'])))
-                return V('crb', (cmp, frozenset(['eq'])), True)
+                return V('crb', (cmp, frozenset(['eq'])), True, len(s.conds) - 1)
             if isinstance(src, V) and src.k == 'crb' and M == 1 and sh == 0:
                 return src
             b = as_bits(src)
@@ -1062,6 +1153,8 @@ class Analysis:
 
     def call(s, i, st, target):
         regs = st[0]
+        s.call_args.append((i.idx, target, {r: regs.get(r) for r in ('r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10')},
+                            dict(s.spslots)))
         for r in ('r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10'):
             ro = root_of(regs.get(r))
             v = regs.get(r)
@@ -1106,8 +1199,38 @@ class Member:
         return s.loff, s.lmask
 
 
+MODULE = None       # module being checked: picks the per-module position in a member comment
+
+
+def module_label(label):
+    """A comment label naming a module (`CIng`, `IngBoostBallGuardian`) -> module name, else None."""
+    for cand in (label, label[1:] if label.startswith('C') else None):
+        if cand and (cand == MODULE or os.path.isdir(os.path.join(ASM_ROOT, cand))):
+            return cand
+    return None
+
+
+def module_comment(c):
+    """The part of a member comment that holds this module's position. `;`-separated segments
+    may start with a module label (`0xe5e bit 6; IngBoostBallGuardian 0x11ee bit 2`, `CIng: 0xE5C
+    bit 3`): the segment labelled with MODULE wins, else the unlabelled segments."""
+    if not c or ';' not in c and not re.match(r'^\s*C?[A-Z]\w+\s*:?\s+0x', c):
+        return c
+    plain, own = [], None
+    for seg in c.split(';'):
+        m = re.match(r'^\s*(C?[A-Z][A-Za-z0-9]+)\s*:?\s+(?=0x)', seg)
+        lab = module_label(m.group(1)) if m else None
+        if lab is None:
+            plain.append(seg)
+        elif lab == MODULE:
+            own = seg[m.end():]
+    if own is not None:
+        return own
+    return ';'.join(plain)
+
+
 def stated_position(name, comment, is_bit):
-    c = comment or ''
+    c = module_comment(comment or '')
     m = re.search(r'0x([0-9a-fA-F]+)[ _](2[4-9]|3[01])\b', c)
     if m and is_bit:
         return int(m.group(1), 16), 1 << (31 - int(m.group(2))), 'comment'
@@ -1170,6 +1293,7 @@ class HeaderIndex:
         s.files = {}
         s.classes = {}
         s.parsed = {}
+        s.getters = {}
 
     def add_closure(s, path, limit=4000):
         todo = [os.path.abspath(path)]
@@ -1213,6 +1337,63 @@ class HeaderIndex:
             break
         s.parsed[cls] = out
         return out
+
+    def accessors(s, cls, depth=0):
+        """getter name -> member name: trivial inline `T Get() const { return mX; }` in the class
+        or its bases (derived wins)."""
+        if cls in s.getters:
+            return s.getters[cls]
+        s.getters[cls] = {}
+        out = {}
+        mem = s.members(cls)
+        for p, pos, m in s.classes.get(cls, []):
+            mems, bases = parse_class(s.files[p], m, cls)
+            if not mems and not bases:
+                continue
+            if depth < 8:
+                for b in bases:
+                    out.update(s.accessors(b, depth + 1))
+            code = strip_comments_keep(s.files[p])
+            body = code[m.end():class_end(code, m.end())]
+            for g in re.finditer(r'\b(\w+)\s*\(\s*\)\s*(?:const\s*)?\{\s*return\s+(?:this\s*->\s*)?(\w+)\s*;\s*\}', body):
+                if g.group(2) in mem:
+                    out[g.group(1)] = g.group(2)
+            break
+        s.getters[cls] = out
+        return out
+
+    def expanded(s, cls):
+        """members(cls) plus `m.sub` for each member of a header class type with a stated offset:
+        the sub-member's stated offset is added to the member's (mData.mFlags210 = 0x7c0 + 0x210)."""
+        key = ('expanded', cls)
+        if key in s.parsed:
+            return s.parsed[key]
+        out = dict(s.members(cls))
+        for name, mb in list(out.items()):
+            if mb.off is None or mb.bits is not None or mb.type.rstrip().endswith(('*', '&')):
+                continue
+            t = re.sub(r'<.*', '', mb.type.replace('const ', '')).strip().split('::')[-1]
+            if t == cls or t not in s.classes:
+                continue
+            for sn, sm in s.members(t).items():
+                if sm.off is None or '.' in sn:
+                    continue
+                c = Member(name + '.' + sn, sm.type, sm.bits, sm.comment, sm.line, sm.cls)
+                c.off, c.mask, c.src, c.size = mb.off + sm.off, sm.mask, sm.src, sm.size
+                out[c.name] = c
+        s.parsed[key] = out
+        return out
+
+
+def class_end(code, start):
+    depth, i = 1, start
+    while i < len(code) and depth:
+        if code[i] == '{':
+            depth += 1
+        elif code[i] == '}':
+            depth -= 1
+        i += 1
+    return i - 1
 
 
 def parse_class(text, m, cls):
@@ -1323,6 +1504,8 @@ def hdr_note(key, stated, layout):
 # annotate
 
 def cmd_annotate(args):
+    global MODULE
+    MODULE = module_name(args.asm)
     mod = load_module(args.asm)
     f = mod.find(args.fn)
     if not f:
@@ -1465,11 +1648,40 @@ class CppFunc:
         s.code = ''
         s.code_line0 = 0
         s.init_end = 0         # token index where body '{' starts
+        s.sig_ids = []         # fn ids in a trailing comment on the signature (fn -> def map only)
+        s.call_ids = set()     # fn ids a body comment names as called (`// fn_X` on/above a call)
+        s.debug_lines = set()  # lines inside a debug/logging #if
+
+
+FNID_RE = re.compile(r'\bfn_[0-9A-Za-z]+_[0-9A-Fa-f]+\b')
+DEBUG_PP_RE = re.compile(r'(?i)debug|verbose|trace|logging|\blog')
+
+
+def debug_pp_lines(lines):
+    """Line numbers inside a debug/logging-only #if/#ifdef (TARGET_PC blocks are port code, kept)."""
+    out, stack = set(), []      # stack of [this branch is debug, the #if names a debug macro, negated]
+    for ln, t in enumerate(lines, 1):
+        m = re.match(r'^\s*#\s*(ifdef|ifndef|if|elif|else|endif)\b(.*)$', t)
+        if m:
+            d, expr = m.group(1), m.group(2)
+            if d in ('if', 'ifdef', 'ifndef'):
+                dbg = bool(DEBUG_PP_RE.search(expr)) and 'TARGET_PC' not in expr
+                neg = d == 'ifndef' or (d == 'if' and re.match(r'\s*!', expr) is not None)
+                stack.append([dbg and not neg, dbg, neg])
+            elif d in ('else', 'elif') and stack:
+                stack[-1][0] = stack[-1][1] and stack[-1][2]
+            elif d == 'endif' and stack:
+                stack.pop()
+            continue
+        if any(e[0] for e in stack):
+            out.add(ln)
+    return out
 
 
 def parse_cpp(path):
     text = open(path, errors='replace').read()
     code = strip_comments_keep(text)
+    dbg_lines = debug_pp_lines(text.split('\n'))
     # blank preprocessor lines (same length) so `#include` / `#if` never join a definition head
     code = re.sub(r'(?m)^[ \t]*#.*$', lambda m: ' ' * len(m.group(0)), code)
     lines = text.split('\n')
@@ -1547,20 +1759,41 @@ def parse_cpp(path):
                         if ids:
                             f.ids = [ids[0]]
                             break
+                brace_line = text.count('\n', 0, i) + 1
                 body_comments = []
                 for ln in range(f.line, f.end_line + 1):
                     t = lines[ln - 1]
                     cp = code_comment_start(code, text, starts, ln)
                     if cp is not None:
                         body_comments.append((ln, t[cp:]))
+                        if ln <= brace_line and not f.ids:
+                            f.sig_ids += [x for x in FNID_RE.findall(t[cp:]) if x not in f.sig_ids]
                 f.comment_lines = [(ln, t) for ln, t in block] + body_comments
+                f.debug_lines = {ln for ln in range(f.line, f.end_line + 1) if ln in dbg_lines}
                 # a whole-line `// fn_X` comment inside the body says the block below it is retail
-                # fn_X (another asm function): its lines are left out of this function's facts
+                # fn_X (another asm function): its lines are left out of this function's facts.
+                # On (or right above) a plain call statement it names the call instead.
                 f.foreign = set()
+                own = {x.lower() for x in f.ids}
                 for ln, t in body_comments:
+                    if ln <= brace_line:
+                        continue
                     full = lines[ln - 1]
                     mf = re.match(r'^(\s*)//\s*(?:retail\s+)?(fn_[0-9A-Za-z]+_[0-9A-Fa-f]+)\b', full, re.I)
-                    if not mf or mf.group(2).lower() in {x.lower() for x in f.ids}:
+                    if not mf:
+                        cpos = len(full) - len(t)
+                        if re.search(r'\b\w+\s*\(', code[starts[ln - 1]:starts[ln - 1] + cpos]):
+                            f.call_ids.update(x.lower() for x in FNID_RE.findall(t))
+                        continue
+                    if mf.group(2).lower() in own:
+                        continue
+                    f.call_ids.add(mf.group(2).lower())
+                    nxt = ln + 1
+                    while nxt < f.end_line and (not lines[nxt - 1].strip() or lines[nxt - 1].strip().startswith('//')):
+                        nxt += 1
+                    st = code[starts[nxt - 1]:starts[nxt] - 1 if nxt < len(starts) else len(code)].strip()
+                    if re.search(r'\b\w+\s*\(', st) and not re.match(
+                            r'^(if|for|while|switch|case|default|do|else|return\b.*\?|\{|\})\b', st):
                         continue
                     ind = len(mf.group(1))
                     for l2 in range(ln + 1, f.end_line):
@@ -1621,12 +1854,18 @@ class CppFacts:
 ARITH = ('*', '/', '+', '-', '%', '<<', '>>')
 
 
+def is_word(t):
+    return re.match(r'^[A-Za-z_]\w*$', t) is not None or num_literal(t) is not None
+
+
 def operand_left(toks, i):
     """Describe the postfix expression ending just before toks[i]."""
     j = i - 1
     chain = []
     while j >= 0:
         t = toks[j][0]
+        if chain and is_word(t) and is_word(chain[-1]):
+            break       # `return x`, `case X`: two words never sit side by side in one operand
         if t in (')', ']'):
             close, opn, d = t, '(' if t == ')' else '[', 0
             while j >= 0:
@@ -1673,6 +1912,8 @@ def operand_right(toks, i):
         return describe_chain(chain)
     while j < len(toks):
         t = toks[j][0]
+        if chain and is_word(t) and is_word(chain[-1]):
+            break
         if re.match(r'^[A-Za-z_]\w*$', t) or t in ('.', '->', '::') or num_literal(t) is not None:
             chain.append(t)
             j += 1
@@ -1709,16 +1950,88 @@ def describe_chain(chain):
     if c[-1] == ')':
         names = [t for t in c if re.match(r'^[A-Za-z_]\w*$', t)]
         return ('call', names[-1] if names else '?', c[0])
+    if len(c) == 3 and c[1] == '.' and re.match(r'^[A-Za-z_]\w*$', c[0]) and re.match(r'^[A-Za-z_]\w*$', c[2]):
+        return ('id', c[0] + '.' + c[2], True)      # member of a member (expanded members)
     if re.match(r'^[A-Za-z_]\w*$', c[0]):
         return ('id', c[0], len(c) == 1)
     return None
 
 
-def cpp_facts(f, members):
+DEBUG_ID_RE = re.compile(r'Debug|DEBUG|^debug|Verbose|VERBOSE')
+LOG_FN_RE = re.compile(r'^(?:fprintf|printf|puts|OSReport|\w*Log\w*|Debug\w*)$')
+
+
+def tok_match(toks, k, opn, close):
+    d = 0
+    for j in range(k, len(toks)):
+        if toks[j][0] == opn:
+            d += 1
+        elif toks[j][0] == close:
+            d -= 1
+            if d == 0:
+                return j
+    return len(toks) - 1
+
+
+def stmt_end(toks, k):
+    d = 0
+    for j in range(k, len(toks)):
+        t = toks[j][0]
+        if t in ('(', '[', '{'):
+            d += 1
+        elif t in (')', ']', '}'):
+            d -= 1
+        elif t == ';' and d == 0:
+            return j
+    return len(toks) - 1
+
+
+def log_only(body):
+    """Every statement of the block is a logging call (fprintf/OSReport/Log*)."""
+    toks = [t for t, _ in body]
+    if toks and toks[0] == '{':
+        toks = toks[1:-1]
+    if not toks:
+        return False
+    k = 0
+    while k < len(toks):
+        if not (LOG_FN_RE.match(toks[k]) and k + 1 < len(toks) and toks[k + 1] == '('):
+            return False
+        d = 0
+        while k < len(toks) and not (toks[k] == ';' and d == 0):
+            d += toks[k] in '([{' and len(toks[k]) == 1
+            d -= toks[k] in ')]}' and len(toks[k]) == 1
+            k += 1
+        k += 1
+    return True
+
+
+def drop_debug_blocks(toks):
+    """Drop `if (<debug flag>) ...` and `if (...) { <logging calls only> }` statements."""
+    drop, k, n = set(), 0, len(toks)
+    while k < n:
+        if toks[k][0] == 'if' and k + 1 < n and toks[k + 1][0] == '(':
+            p = tok_match(toks, k + 1, '(', ')')
+            if p + 1 < n:
+                q = tok_match(toks, p + 1, '{', '}') if toks[p + 1][0] == '{' else stmt_end(toks, p + 1)
+                cond = [t for t, _ in toks[k + 2:p]]
+                dbg = '||' not in cond and any(re.match(r'^[A-Za-z_]', c) and DEBUG_ID_RE.search(c) for c in cond)
+                if dbg or log_only(toks[p + 1:q + 1]):
+                    drop.update(range(k, q + 1))
+                    k = q + 1
+                    continue
+        k += 1
+    return [t for i, t in enumerate(toks) if i not in drop] if drop else toks
+
+
+def cpp_facts(f, members, getters=None):
+    getters = getters or {}
     toks = drop_templates(lex(f.code, f.code_line0))
-    if getattr(f, 'foreign', None):
-        toks = [t for t in toks if t[1] not in f.foreign]
+    if getattr(f, 'foreign', None) or getattr(f, 'debug_lines', None):
+        toks = [t for t in toks if t[1] not in f.foreign and t[1] not in f.debug_lines]
+    toks = drop_debug_blocks(toks)
     F = CppFacts()
+    F.cited_calls = set(getattr(f, 'call_ids', ()))
     n = len(toks)
     body_start = None
     # find the body '{' token: first '{' at paren depth 0 after the parameter list
@@ -1759,14 +2072,26 @@ def cpp_facts(f, members):
                     F.call_tokens += 1
                     if prev in ('.', '->') and not (prev == '->' and k >= 2 and toks[k - 2][0] == 'this'):
                         F.qcalls.add(t)
-            if t in members and (prev not in ('.', '->', '::') or (prev == '->' and k >= 2 and toks[k - 2][0] == 'this')):
+            unq = prev not in ('.', '->', '::') or (prev == '->' and k >= 2 and toks[k - 2][0] == 'this')
+            if t in getters and unq and nxt == '(' and k + 2 < n and toks[k + 2][0] == ')' and k >= body_start:
+                # a trivial inline getter reads its member
+                g = getters[t]
+                F.reads[g].append(ln)
+                n3 = toks[k + 3][0] if k + 3 < n else ''
+                if in_cond or prev in ('!', '&&', '||', '?') or n3 in ('&&', '||', '?'):
+                    F.tested[g].append(ln)
+            if t in members and unq:
+                kk = k
+                if nxt == '.' and k + 2 < n and t + '.' + toks[k + 2][0] in members:
+                    t, kk = t + '.' + toks[k + 2][0], k + 2       # member of a member
+                    nxt = toks[kk + 1][0] if kk + 1 < n else ''
                 if k < body_start:
                     if nxt in ('(', '{') and prev in (':', ','):
-                        val = toks[k + 2][0] if k + 2 < n else ''
+                        val = toks[kk + 2][0] if kk + 2 < n else ''
                         F.writes[t].append((ln, val))
                     continue
                 if nxt in ASSIGN or nxt in ('++', '--') or prev in ('++', '--'):
-                    val = toks[k + 2][0] if nxt in ASSIGN and k + 2 < n else nxt
+                    val = toks[kk + 2][0] if nxt in ASSIGN and kk + 2 < n else nxt
                     F.writes[t].append((ln, val if nxt == '=' else nxt))
                     if nxt in ('|=', '&=', '^=', '+=', '-=', '++', '--') or prev in ('++', '--'):
                         F.reads[t].append(ln)
@@ -1774,7 +2099,7 @@ def cpp_facts(f, members):
                     F.touch[t].append(ln)
                 elif nxt in ('.', '->', '['):
                     # sub-field write or method call on the member
-                    j = k + 1
+                    j = kk + 1
                     while j < n and toks[j][0] in ('.', '->', '[', ']') or (j < n and re.match(r'^\w+$', toks[j][0])):
                         if toks[j][0] == '[':
                             dd = 0
@@ -1832,6 +2157,18 @@ def cpp_facts(f, members):
 INCL = {'<': '<=', '>': '>=', '<=': '<', '>=': '>'}
 COMPLETENESS = {'BIT', 'CMP', 'STORE', 'CALL', 'XCALL', 'BRANCH', 'CALLS'}
 CORRECTNESS = {'MASK', 'XBIT', 'CROP', 'XCMP', 'XSTORE', 'OFFS'}
+INFO = {'NOPOS'}
+
+
+def is_copy_ctor(target):
+    """`__ct__12CTransform4fFRC12CTransform4f`: a struct copy (C++ `a = b`, init, return)."""
+    t = target.strip('"')
+    m = re.match(r'__ct__(\d+)', t)
+    if not m:
+        return False
+    n = int(m.group(1))
+    cls = t[m.end():m.end() + n]
+    return len(cls) == n and t[m.end() + n:] == 'FRC%d%s' % (n, cls)
 
 
 def operand_key(v):
@@ -1898,7 +2235,7 @@ class Checker:
             except (OSError, UnicodeError):
                 continue
             for f in fl:
-                for fid in f.ids:
+                for fid in f.ids + f.sig_ids:
                     s.fn_names[fid.lower()].add(f.short)
             try:
                 for m in re.finditer(r'\bfn_[0-9A-Za-z]+_[0-9A-Fa-f]+\b', open(p, errors='replace').read()):
@@ -1907,9 +2244,16 @@ class Checker:
                 pass
         s.helpers = defaultdict(list)
         for f in s.funcs:
-            if not f.ids:
+            if not f.ids and not f.sig_ids:
                 s.helpers[f.short].append(f)
         s.findings = []
+        s.analyses = {}
+        s.nopos = set()
+
+    def analysis(s, af):
+        if af.name not in s.analyses:
+            s.analyses[af.name] = Analysis(af, s.mod, False)
+        return s.analyses[af.name]
 
     def emit(s, tag, fn, off, text, line=None, marked=True):
         s.findings.append((tag, fn, off, text, line, marked))
@@ -1932,8 +2276,8 @@ class Checker:
             s.check(f, af)
         return todo
 
-    def facts_with_helpers(s, f, members, depth=0, seen=None):
-        F = cpp_facts(f, members)
+    def facts_with_helpers(s, f, members, getters=None, depth=0, seen=None):
+        F = cpp_facts(f, members, getters)
         seen = seen or {id(f)}
         if depth >= 2:
             return F
@@ -1942,7 +2286,8 @@ class Checker:
                 if id(h) in seen:
                     continue
                 seen.add(id(h))
-                H = s.facts_with_helpers(h, members, depth + 1, seen)
+                H = s.facts_with_helpers(h, members, getters, depth + 1, seen)
+                F.cited_calls |= H.cited_calls
                 for k, v in H.calls.items():
                     F.calls[k] += v
                 F.call_tokens += H.call_tokens
@@ -1966,11 +2311,18 @@ class Checker:
         fn = af.name
         mark = f.marked
         an = Analysis(af, s.mod, f.sret)
-        members = s.hi.members(f.cls) if f.cls else {}
+        if not f.sret and not any(r == 'this' for _, r, _, _ in an.loads) and \
+                not any(r == 'this' for _, r, _, _, _ in an.stores):
+            # the port returns a reference/void where retail returns a class by value (r4 = this)
+            a2 = Analysis(af, s.mod, True)
+            if any(r == 'this' for _, r, _, _ in a2.loads):
+                an = a2
+        members = s.hi.expanded(f.cls) if f.cls else {}
+        getters = s.hi.accessors(f.cls) if f.cls else {}
         # F (body + merged helpers) decides what the C++ covers; Fo (body only) is what it claims.
         # A helper may be its own asm function, so it never produces a correctness finding here.
-        F = s.facts_with_helpers(f, members)
-        Fo = cpp_facts(f, members)
+        F = s.facts_with_helpers(f, members, getters)
+        Fo = cpp_facts(f, members, getters)
         loc = lambda ln: '%s:%d' % (os.path.basename(f.file), ln)
         offs = lambda idx: af.ins[idx].off
         stated, layout = bit_members(members)
@@ -2037,12 +2389,110 @@ class Checker:
             for i2, (r2, keys2, e2) in ao.reads.items():
                 if r2 == 'this':
                     other_fields.update(keys2)
-        def c_bits(FF):
+        # inlined callees: a local fn_X the asm calls and the C++ body never calls by name (or that
+        # the def cites) is folded in: its this-relative loads/stores/compares/bit reads, mapped
+        # through the call's argument registers (r3 = this or &this->member, by-value fields,
+        # pointers to stack copies of fields), count as the caller's for XBIT/XCMP/XSTORE absence.
+        fold_fields = defaultdict(set)
+        fold_r, fold_w = defaultdict(int), defaultdict(int)     # byte -> folded bit reads / writes
+        for idx, t, argv, slots in an.call_args:
+            nm = base_name(t)
+            if not re.fullmatch(r'fn_[0-9A-Za-z]+_[0-9A-Fa-f]+', nm):
+                continue
+            callee = s.mod.find(nm)
+            if callee is None or callee is af:
+                continue
+            ca = s.analysis(callee)
+
+            def tr(root, off, argv=argv):
+                reg = 'r3' if root == 'this' else 'r%d' % (3 + int(root[1:])) if re.fullmatch(r'a[1-7]', root) else None
+                v = argv.get(reg)
+                if isinstance(v, V) and v.k == 'in' and v.a == 'this':
+                    return off
+                if isinstance(v, V) and v.k == 'ptr' and v.a == 'this':
+                    return v.b + off
+                return None
+
+            def tr_val(v, argv=argv, slots=slots):
+                if isinstance(v, Bits):
+                    v = v.src
+                if not isinstance(v, V):
+                    return None
+                if v.k == 'ld':
+                    x = tr(v.a, v.b)
+                    if x is not None:
+                        return x
+                    reg = 'r%d' % (3 + int(v.a[1:])) if re.fullmatch(r'a[1-7]', v.a) else 'r3' if v.a == 'this' else None
+                    p = argv.get(reg)
+                    if isinstance(p, V) and p.k == 'ptr' and p.a == 'sp':
+                        v = slots.get(p.b + v.b)       # a field copied to the stack, passed by pointer
+                    else:
+                        return None
+                elif v.k == 'in' and re.fullmatch(r'a[1-7]', v.a):
+                    v = argv.get('r%d' % (3 + int(v.a[1:])))     # a field passed by value
+                else:
+                    return None
+                if isinstance(v, Bits):
+                    v = v.src
+                return v.b if isinstance(v, V) and v.k == 'ld' and v.a == 'this' else None
+
+            got = fold_fields[nm]
+            for i2, r2, o2, w2 in ca.loads:
+                x = tr(r2, o2)
+                if x is not None:
+                    touched.update(range(x, x + w2))
+                    got.update(range(x, x + w2))
+            for i2, r2, o2, w2, v2 in ca.stores:
+                x = tr(r2, o2)
+                if x is not None:
+                    stored.update(range(x, x + w2))
+                    got.update(range(x, x + w2))
+            for i2, r2, o2 in ca.addr_args:
+                x = tr(r2, o2)
+                if x is not None:
+                    stored.update(range(x, x + 4))
+                    addr_offs.add(x)
+                    got.add(x)
+            for c2 in ca.cmps:
+                for v2 in (c2.lhs, c2.rhs):
+                    x = tr_val(v2)
+                    if x is not None:
+                        other_fields.add(x)
+                        got.add(x)
+            for i2, (r2, keys2, e2) in ca.reads.items():
+                for b2, m2 in keys2.items():
+                    x = tr(r2, b2)
+                    if x is not None:
+                        other_fields.add(x)
+                        touched.add(x)
+                        got.add(x)
+                        fold_r[x] |= m2
+            for (i2, r2, b2, m2, how2, vd2, si2) in ca.writes:
+                x = tr(r2, b2)
+                if x is not None:
+                    fold_w[x] |= m2
+            for x in ca.idiom_fields:
+                x = tr('this', x)
+                if x is not None:
+                    other_fields.add(x)
+        cpp_offs = set()
+        for name in set(Fo.reads) | set(Fo.writes) | set(Fo.touch):
+            mb = members.get(name)
+            if mb is not None and mb.off is not None:
+                cpp_offs.update(range(mb.off, mb.off + (1 if mb.bits is not None else mb.size or 4)))
+        for ln, op, lhs, rhs, in_for in Fo.cmps:
+            for o in (lhs, rhs):
+                if o and o[0] == 'id' and o[1] in members and members[o[1]].off is not None:
+                    cpp_offs.add(members[o[1]].off)
+
+        def c_bits(FF, lay=False):
+            # correctness uses stated positions only (no host-layout guesses: NOPOS); completeness
+            # (lay) also credits a bit the layout places, so an unpositioned read is no BIT miss
             C_r, C_w = defaultdict(dict), defaultdict(dict)    # byte -> mask -> (line, name, value)
             for name, lines in FF.reads.items():
                 mb = members.get(name)
                 if mb and mb.bits is not None:
-                    off, mask = mb.pos()
+                    off, mask = mb.pos() if lay else (mb.off, mb.mask)
                     if off is not None and mask:
                         for k in range(8):
                             if mask >> k & 1:
@@ -2050,7 +2500,7 @@ class Checker:
             for name, lst in FF.writes.items():
                 mb = members.get(name)
                 if mb and mb.bits is not None:
-                    off, mask = mb.pos()
+                    off, mask = mb.pos() if lay else (mb.off, mb.mask)
                     if off is not None and mask:
                         for k in range(8):
                             if mask >> k & 1:
@@ -2069,8 +2519,23 @@ class Checker:
                         tgt[byte].setdefault(1 << (p % 8), (ln, '%s & 0x%x' % (mem, val),
                                                             ['true' if kind == 'set' else 'false' if kind == 'clr' else '?']))
             return C_r, C_w
-        C_r, C_w = c_bits(F)
+        C_r, C_w = c_bits(F, True)
         Co_r, Co_w = c_bits(Fo)
+        # C++ bit uses an inlined callee (fold) explains are no MASK/XBIT
+        for byte, fm in fold_r.items():
+            for m in [m for m in Co_r.get(byte, {}) if m & fm]:
+                del Co_r[byte][m]
+        for byte, fm in fold_w.items():
+            for m in [m for m in Co_w.get(byte, {}) if m & fm]:
+                del Co_w[byte][m]
+        for name in sorted(set(Fo.reads) | set(Fo.writes)):
+            mb = members.get(name)
+            if mb is not None and mb.bits is not None and (mb.off is None or not mb.mask) and \
+                    (f.cls, name) not in s.nopos:
+                s.nopos.add((f.cls, name))
+                ln = (Fo.reads.get(name) or [w[0] for w in Fo.writes.get(name, [])] or [f.line])[0]
+                s.emit('NOPOS', fn, af.start, 'bitfield %s has no stated bit position%s; unchecked' % (
+                    name, ' for ' + MODULE if MODULE else ''), loc(ln), mark)
         for byte in sorted(set(A_r) | set(C_r)):
             ua = {m: i for m, i in A_r.get(byte, {}).items() if m not in C_r.get(byte, {})}
             uc = {m: v for m, v in Co_r.get(byte, {}).items() if m not in A_r.get(byte, {})}
@@ -2133,10 +2598,21 @@ class Checker:
                     asm_fields[k[1]].append(cmp.idx)
         for b in A_r:
             asm_fields.setdefault(b, []).extend(A_r[b].values())
+        for off, idx in an.idiom_fields.items():
+            asm_fields[off].append(idx)
+        # MWCC compares a computed value it then stores (`x += d; if (x > 1) x = 1;`): the field counts
+        for cmp in an.cmps:
+            for v in (cmp.lhs, cmp.rhs):
+                sv = an.stored_vals.get(id(v))
+                if sv and sv[0] is v:
+                    for off in sv[1]:
+                        asm_fields[off].append(cmp.idx)
 
         def member_key(op):
             if not op:
                 return None
+            if op[0] == 'call' and op[1] == op[2] and op[1] in getters:
+                op = ('id', getters[op[1]], True)
             if op[0] == 'id' and op[1] in members and op[2]:
                 mb = members[op[1]]
                 if mb.off is not None and mb.bits is None:
@@ -2214,6 +2690,11 @@ class Checker:
             mb = members.get(m.group(1))
             if mb and mb.off is not None:
                 cpp_tested_offs.add(mb.off)
+        # `x = Max(0.f, x - dt)`: the clamp's compare is inside the helper (asm inlines it)
+        for m in re.finditer(r'\b(\w+)\s*=\s*(?:\w+\s*::\s*)*(?:Max|Min|Clamp|max|min|clamp|Limit)\s*[<(]', f.code):
+            mb = members.get(m.group(1))
+            if mb and mb.off is not None:
+                cpp_tested_offs.add(mb.off)
         for off, idxs in sorted(asm_fields.items()):
             if off in A_r:
                 continue
@@ -2267,16 +2748,19 @@ class Checker:
             if t.startswith(('vcall', 'indirect', 'cond-call')):
                 nv += 1
                 continue
-            if is_runtime(t):
+            if is_runtime(t) or is_copy_ctor(t):
                 continue
             nm = base_name(t)
             asm_names.setdefault(nm, (idx, t))
-        n_asm_calls = sum(1 for _, t in an.calls if not is_runtime(t))
+        n_asm_calls = sum(1 for _, t in an.calls if not is_runtime(t) and not is_copy_ctor(t))
         for nm, (idx, t) in sorted(asm_names.items(), key=lambda x: x[1][0]):
             if re.fullmatch(r'(fn|func|lbl)_[0-9A-Fa-f]{8}', nm):
                 continue
             if re.fullmatch(r'fn_[0-9A-Za-z]+_[0-9A-Fa-f]+', nm):
                 cands = s.fn_names.get(nm.lower(), set())
+                # named by a `// fn_X` comment on/above a call, or inlined (folded fields the C++ uses)
+                if nm.lower() in F.cited_calls or fold_fields.get(nm, set()) & cpp_offs:
+                    continue
                 if not cands:
                     s.emit('CALL', fn, offs(idx), 'asm calls %s; no C++ definition cites it (unported)' % nm, None, mark)
                 elif not (cands & F.idents):
@@ -2365,7 +2849,7 @@ class Checker:
                 suppressed[fn] += 1
                 continue
             per[fn][tag] += 1
-            shown += 1
+            shown += tag not in INFO
             if not quiet:
                 print('%s %s 0x%X: %s%s' % (tag, fn, off, text, ' [%s]' % line if line else ''))
         for fn, n in sorted(suppressed.items()):
@@ -2374,7 +2858,18 @@ class Checker:
         return shown, per, suppressed
 
 
+def module_name(arg):
+    if not os.path.exists(arg):
+        return os.path.basename(arg.rstrip('/'))
+    parts = os.path.abspath(arg).split(os.sep)
+    if 'asm' in parts[1:]:
+        return parts[len(parts) - 1 - parts[::-1].index('asm') - 1]  # the last `<Module>/asm`
+    return os.path.basename(arg.rstrip('/'))
+
+
 def cmd_check(args):
+    global MODULE
+    MODULE = args.module or module_name(args.asm)
     mod = load_module(args.asm)
     ck = Checker(mod, args.cpp, args)
     todo = ck.run(args.fns)
@@ -2419,6 +2914,7 @@ def main():
     c.add_argument('-I', action='append', help='extra include root')
     c.add_argument('--header', action='append', help='extra header to index')
     c.add_argument('--src', action='append', help='extra .cpp to index for fn_X -> name')
+    c.add_argument('--module', help='module whose per-module member positions apply (default: from <asm>)')
     args = ap.parse_args()
     try:
         sys.exit(cmd_annotate(args) if args.cmd == 'annotate' else cmd_check(args))
