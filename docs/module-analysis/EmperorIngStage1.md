@@ -38,14 +38,14 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_51D4` | 0x128 | the module's own sound update (it reads a float at the damage vulnerability's +4) | [probable] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
 | `fn_16_24AC` | 0x78 | the tentacle's dark and light vulnerability effect states | [proven] |
-| `fn_16_2070` | 0x194 | the effect state a tentacle carries | [probable] |
-| `fn_16_26B8` | 0x3B0 | the tentacle's own update | [?] |
-| `fn_16_2524` | 0x194 | the tentacle's motion update | [?] |
+| `fn_16_2070` | 0x12C | the effect state a tentacle carries - ported `SetTentacleEffectState` | [probable] |
+| `fn_16_26B8` | 0x3B0 | the tentacle's own update (state 0..3, hits, retract timer) - ported `UpdateTentacleCore` | [probable] |
+| `fn_16_2524` | 0x194 | the tentacle's motion update - ported `UpdateTentacleMotion` | [probable] |
 | `fn_16_302C` | 0x34 | the actor the module tracks (the id at guest 0xA1A) | [proven] |
 | `fn_16_2FA8` | 0x50 | the collision actor of the second tentacle's collision actor manager | [proven] |
-| `fn_16_4E44` | 0x24 | takes the particle effect's reference | [probable] |
-| `fn_16_BDD0` | 0x64 | releases that reference | [probable] |
-| `fn_16_6D10` | 0x84 | the particle effect's own update | [probable] |
+| `fn_16_4E44` | 0x24 | takes the effect's particle-system reference - folded into `GetEffectSystem` | [probable] |
+| `fn_16_BDD0` | 0x64 | releases that reference - folded into `GetEffectSystem` | [probable] |
+| `fn_16_6D10` | 0x84 | external parameter on a system and its spawned systems - `SetSystemParam` | [probable] |
 | `fn_16_3094` | 0x34 | the actor connected on CONNECT/'PLAY' | [proven] |
 | `fn_16_30C8` | 0x278 | the three tentacle animation ids | [proven] |
 | `fn_16_36E8` | 0x29C | the tentacle joint descriptions (eight slots) | [proven] |
@@ -66,7 +66,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
 | `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) | [proven] |
-| `fn_16_7F8C` | 0x2C4 | `DoUserAnimEvent` (vtable slot 26) | [proven] |
+| `fn_16_7F8C` | 0x5B0 | `DoUserAnimEvent` (vtable slot 26); case 0 (charged projectile) ported, 7/17/22/27/28 stand-in | [proven] |
 | `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) | [proven] |
 | `fn_16_B958` | 0x30 | `GetTouchBounds` (vtable slot 16): the actor's bounding box | [proven] |
 | `fn_16_BA30` | 0x30 | builds the `optional<CAABox>` from the bounding box | [proven] |
@@ -86,7 +86,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_2C3C` | 0x60 | fn_16_2C9C with the 'PLAY' actor's own Y column - ported, `ResetTurnAngle` | [proven] |
 | `fn_16_3060` | 0x34 | same body as fn_16_3094 (id 0xA1E) - the port uses `GetPlayActor` | [proven] |
 | `fn_16_2FF8` | 0x34 | the CONNECT/ACTIVATE actor (id 0xA1C) - ported, `GetActivateActor` | [proven] |
-| `fn_16_CD0` | 0x324 | creates the heart stage's beam (rs_new 0x6A8, guest 0xA98) - stand-in `FireBeam`, returns false | [probable] |
+| `fn_16_CD0` | 0x324 | creates the heart stage's beam (rs_new 0x6A8, guest 0xA98) - ported `FireBeam` | [probable] |
 | `fn_16_A64` | 0x26C | aims and updates the beam (CBeamProjectile slots 35 Fire, 33 UpdateFx; emitter 0xA9C) - ported, `UpdateBeam` | [probable] |
 | `fn_16_9C0` | 0xA4 | resets (slot 34 ResetBeam) and deletes the beam - ported, `StopBeam` | [probable] |
 | `fn_16_1DFC` | 0x24 | resets one tentacle slot (the timer, the state) | [proven] |
@@ -356,11 +356,10 @@ Ported: fn_16_2B0C (0x50, the per-tentacle update), fn_16_24AC (0x78, the tentac
 vulnerability effect states), fn_16_302C (0x34, the tracked actor) and fn_16_2FA8 (0x50, the
 second tentacle's collision actor).
 
-Stand-ins, each a named private method that logs once: fn_16_26B8 (0x3B0), fn_16_2524 (0x194)
-and fn_16_2070 (0x194) for the tentacle's work, fn_16_4E44 (0x24), fn_16_BDD0 (0x64) and
-fn_16_6D10 (0x84) for the particle effect's reference and update - the reference counter the
-retail takes at the effect's +0x78/+0x7C lives in the retail particle effect, which the port does
-not have - and fn_16_51D4 (0x128) for the sound update, which reads a float at the damage
+Ported in slice 3: fn_16_26B8, fn_16_2524, fn_16_2070 (the tentacle's work) and fn_16_4E44 /
+fn_16_BDD0 / fn_16_6D10 (the +0x78/+0x7C counted reference is CParticleGenInfoGeneric's
+`ncrc_ptr<CParticleGen>`, so they become `GetEffectSystem` + `SetSystemParam`). Still a stand-in:
+fn_16_51D4 (0x128) for the sound update, which reads a float at the damage
 vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
 (upstream's layout), so the port has no float there and the value's meaning is not established.
 
@@ -459,12 +458,47 @@ when "Whole Body" ends; deactivate hides the 'PLAY' actor and the body sphere), 
 (fn_16_774C: heartExposedTime, beam delay 3.0, firing time 3.75, refire delay 0.5, locomotion 9 then
 1) and Attack (fn_16_6D94: per-mode attack lists rodata_34C/358/368 = {0,0,3}, {1,0,3,0},
 {2,3,1,0}; 0 ProjectileAttack, 1 WarpAttack, 2 TauntAttack, 3 JumpRope; index guest 0xA70).
-Still stand-ins on the walk: ProjectileAttack fn_16_68F4 (0x41C), WarpAttack fn_16_601C (0x7D0),
-TauntAttack fn_16_5DBC (0x260), JumpRope fn_16_5928 (0x280), EndHeartStage fn_16_71BC (0x534),
-the beam's fn_16_CD0 (0x324), and the tentacle motion fn_16_26B8/2524/2070.
+(Slice 3 below ports the rest of this walk up to EndHeartStage.)
 
 The retail CPatterned word at guest 0x6B4 is the host's `mAnimationState` (0 not ready, 1 ready,
 3 over). The beam (guest 0xA98) is a `CBeamProjectile`; its +0x444 is `mCollisionPoint`.
+
+### Slice 3: tentacle motion, ProjectileAttack, FireBeam, Taunt, JumpRope
+
+Ported: fn_16_26B8 `UpdateTentacleCore`, fn_16_2524 `UpdateTentacleMotion`, fn_16_2070
+`SetTentacleEffectState`, fn_16_1FC0 `RestoreTentacleHealth`, fn_16_3C58 `GetTentacleIndex`,
+fn_16_3BC4 `SendTentacleDestroyed`, fn_16_68F4 `ProjectileAttack`, fn_16_2E7C
+`RetractedTentacleCount`, fn_16_CD0 `FireBeam`, fn_16_5C4C `Taunt`, fn_16_5928 `JumpRope`,
+fn_16_2E1C `SetTentacleMaterials`, and case 0 of fn_16_7F8C `DoUserAnimEvent` (the charged
+projectile; without it the loop attack's projectile event fell through to CPatterned and crashed
+in LaunchProjectile).
+
+Joint fields: +0x0C out animation, +0x10 back animation, +0x14 retracted idle, +0x1C hit time,
++0x20 last health. Joint flags: 0x04 forces state 2, 0x10 shootable, 0x20 collision on, 0x40
+collision wanted, 0x80 fn_16_2EE0's flag. States: 0 retracted, 1 coming out, 2 out, 3 going back.
+Guest 0xA74 flags: 0x08 projectile charged, 0x40 jump rope. Retail `CTryCommand::ShouldRetry(0x6B4,
+bc, n)` is host `mAnimationState.CanIssueCommand(bc, n)`; the +0x350 vtable 0x30 call is
+`StateMachineState().GetTime()`.
+
+Member fixes: guest 0xBB8/0xBC4 are `projectile.projectile` + `projectile.projectileDamage`
+(data+0x594), now `mProjectile` (the old `mBeamDamage` read beamAttack.damage); 0xBE0 is
+`projectile.projectileVisorEffect`; 0xC80 is the beam's CProjectileInfo (beamInfo.weaponSystem +
+beamAttack.damage at data+0x65C), 0xCA8 the SLdrPlasmaBeamInfo, 0xCF0 beamAttack.sound; 0xBF8 is
+`unknown_0xe5a7c358`, the jump rope's turn speed in degrees; 0xA34 the current turn speed, 0xA38
+the jump rope duration (3.5/5.0/6.5 by mode 0x7C0).
+
+Runtime (area 11, `send <uid> Activate`, console `damage` on the tentacle boxes): the walk cycles
+TrackPlayer -> Attack (ProjectileAttack charges and sets 0x08; JumpRope) -> TrackPlayer -> Taunt;
+damaged tentacles go 3 -> 0 and BeginHeartStage follows. The 'PLAY' actor stays inactive when the
+boss is activated from the console (the script that wakes it is skipped), so BeginHeartStage
+waits until it is sent Activate too; then HeartStage fires the beam three times (guest 0xA98 takes
+new ids) and the heart-exposed time runs out into EndHeartStage (fn_16_71BC, 0x534, a stand-in that
+never ends). 0 caught/reach-stub.
+
+Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
+EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
+reach the boss), fn_16_4C8 (0x368, facing), fn_16_4EB8 (0x31C, turning), fn_16_51D4 (0x128),
+fn_16_7F8C cases 7/17/22/27/28, Render fn_16_531C and ProcessSoundEvent fn_16_7EA8.
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
