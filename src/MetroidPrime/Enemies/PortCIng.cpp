@@ -2607,8 +2607,11 @@ void CIng::SetCoverDest(CStateManager& mgr, float) {
 }
 
 // @ fn_29_59D0: two closest-point queries from the Ing's own position - filter (20, 0, -1) then
-// (20, 1, -1), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
-// (0x00005A94). It sets no destination: mFoundMovementPos is what IngSpotPathFind reads.
+// (20, 1, from), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
+// (0x00005A94). The second filter's connected point is the *first* query's index (the asm keeps it
+// in r5 from 0x00005A2C), so the second point is one the graph connects to the first - without
+// that the pair is unrelated and the search below fails. It sets no destination:
+// mFoundMovementPos is what IngSpotPathFind reads.
 void CIng::SetRecoverDest(CStateManager&, float) {
   LogState("SetRecoverDest");
   mFoundMovementPos = false;
@@ -2622,7 +2625,7 @@ void CIng::SetRecoverDest(CStateManager&, float) {
   }
   int to = -1;
   if (mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), to,
-                                                    CPathFindPointSearchFilter(20.f, 1, -1)) !=
+                                                    CPathFindPointSearchFilter(20.f, 1, from)) !=
           CPathFindPointSearch::kCPR_Success ||
       to == -1) {
     return;
