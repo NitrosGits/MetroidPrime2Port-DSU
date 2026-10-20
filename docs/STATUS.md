@@ -17,10 +17,10 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | lane | session | branch / base | task |
 |---|---|---|---|
 | Ing (worker) | `ses_ea71d511dffeoJW9spcVut44fW` | decomp/ing on `080c07d21` | rework: fn_29_426C `mData.mFlags210`, locomotion 0/1 = Crouch/Relaxed |
-| CommandoPirate (worker) | `ses_ea70a1439ffesymnKEZJThriyo` | decomp/commandopirate @ `c8b8c5851` | PathFind state 9AAC + TooClose B76C |
-| EmperorIngStage1 (worker) | `ses_ea70a143affeyGK5JPyOTusDlg` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
-| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea70a138dffeZbLq3e1CuIEaAw` | decomp/emperoring3 @ `509ee62f4` | next (brief pending, openchamber tool down): fn_18_F8 random check, fn_18_1DF4, Idle 788C |
-| DigitalGuardian (worker) | `ses_ea71d511effe3c2kWYE7Aflfrm` | decomp/digitalguardian @ `e4b13e532` | AddToRenderer's model renders fn_14_1994/18B4/17DC/1700 |
+| CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `c8b8c5851` | PathFind state 9AAC + TooClose B76C |
+| EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
+| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `509ee62f4` | next (brief pending, openchamber tool down): fn_18_F8 random check, fn_18_1DF4, Idle 788C |
+| DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `e4b13e532` | AddToRenderer's model renders fn_14_1994/18B4/17DC/1700 |
 | DarkSamus (worker) | `ses_ea70a143bffe4SLdq4LIY5V8bC` | decomp/darksamus on `232823309` | milestone 1 (`/tmp/opencode/briefs/m1.md`) |
 | ScriptPlayerTurret (worker) | `ses_ea70a1437ffeyp5d7K55HX0N2H` | decomp/playerturret on `232823309` | milestone 1 |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
