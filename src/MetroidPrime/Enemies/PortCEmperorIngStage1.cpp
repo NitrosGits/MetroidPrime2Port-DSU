@@ -179,6 +179,7 @@ const char* const skPortalNames[8] = {"portal1_LCTR_SDK", "portal2_LCTR_SDK", "p
 // plasma beam info, 0x958C) - the host's LdrToHealthInfo and LdrToDamageVulnerability and the
 // verbatim copies do them. The token it locks (0x9444) is the host's TLockedToken's own
 // constructor and the projectile info (0x9580) the host's CProjectileInfo.
+// @ fn_16_900C
 CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CTransform4f& xf,
                                      const CModelData& modelData,
@@ -296,6 +297,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 // vulnerabilities and the vector) are destroyed after it and the base after them, where retail
 // destroys the managers last; the two orders differ only in members that do not use each
 // other.
+// @ fn_16_8B80
 CEmperorIngStage1::~CEmperorIngStage1() {
   delete x7d0_;
   delete x7cc_;
@@ -975,6 +977,7 @@ void CEmperorIngStage1::UpdateMeleeHits(float dt, CStateManager& mgr) {
 //   kSM_AreaLoaded (0x58414C44, at 0x7D3C) looks the three connected objects up and sets the
 //     tentacle work up (0x7DAC..0x7E28);
 //   kSM_Activate (0x41435456, at 0x7D50) hands the boss bar its id, health and name (0x7E80).
+// @ fn_16_7CE8
 void CEmperorIngStage1::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
