@@ -1004,3 +1004,13 @@ flags, modes, timers and ids forced, the hooks and their once-logs reverted afte
   (temporary, reverted) showed fn_16_1DFC, fn_16_52FC, fn_16_56D8, fn_16_7CE8, fn_16_8AF4,
   fn_16_8B80, fn_16_900C and fn_16_BA04; fn_16_0 (the warp portal's destructor) and fn_16_B9FC
   (CanBeShot) do not - the portal actor is never created there and nothing shoots the boss.
+* The bodies area 11 never reaches were driven with temporary hooks (reverted): the follow-target
+  emitter (fn_16_56D8) took the handle from the shock wave's travel sound (the kUE_BeginAction
+  case, 0x84E8) and the boss as its target; the warp portal actor was spawned the way retail's
+  WarpAttack does (0x6660), made active and sent its kSM_Create, so it thought (fn_16_1150),
+  drew (fn_16_1088), was deleted (fn_16_0) and created the effect (fn_16_9BE8); the tentacle's
+  portal started and stopped (fn_16_1A50, fn_16_1950); the FSM was forced into the heart stage
+  (fn_16_774C) and the end of it (fn_16_71BC), which fired the beam (fn_16_CD0), updated it
+  (fn_16_A64) and stopped it (fn_16_9C0) and evaluated the two triggers (fn_16_4BB4,
+  fn_16_4B6C); and CanBeShot (fn_16_B9FC) was called. Only fn_16_4954 (the host's FSM1 dispatches
+  no code nodes) and fn_16_7EA8 (no sound event comes from a tentacle's locator) stay unreachable.
