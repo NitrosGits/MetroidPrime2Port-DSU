@@ -37,6 +37,7 @@ CTransform4f EmperorIngSwarmLocator(const CActor& owner) {
 // @ fn_18_BD84
 // @ fn_18_C1FC
 // @ fn_18_C290
+// Cited: fn_18_C0C8 is rstl::optional_object< TLockedToken< CGenDescription > >::operator=.
 CEmperorIngLightSwarm::CEmperorIngLightSwarm(TUniqueId uid, const CEntityInfo& info,
                                              const CActorParameters& params,
                                              const CBasicSwarmData& data, CAssetId particleId,

@@ -193,6 +193,8 @@ static rstl::optional_object< TLockedToken< CGenDescription > > PortalPart(CAsse
 // fn_18_9A8C. The base call is the retail one: EPatternedAI 0x0F (`li r4, 0xf` at 0x9AF0),
 // flavor 0 (`li r7, 0x0` at 0x9AC8), movement 0 / collider 1 / body 1 (the constants stored
 // to the stack arguments at 0x9AD8..0x9AE8 - kMT_Ground, kCT_One and kBT_BiPedal).
+// Cited rstl copies: the lists' reserve fn_18_ADF8/DE2C/DEE4; fn_18_A988 the vector copy inside
+// CDamageVulnerability's copy (fn_18_A8D8).
 CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CTransform4f& xf,
                                      const CModelData& modelData,
@@ -311,6 +313,14 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 // knock-back member at guest 0x620 is fn_18_98CC), fn_18_9960/fn_18_99B4 the three lists'
 // rstl::vector< SEmperorIngListEntry > destructor and fn_18_9A38 the portal list's
 // rstl::vector< SEmperorIngPortal > destructor.
+// The module's other weak destructors are cited, not marked: the body-command classes' (fn_18_311C
+// CBodyStateCmd itself, lbl_18_data_78C; fn_18_30C0/33EC/4E58/518C/555C/55B8/61FC/663C/717C, the
+// vtables lbl_18_data_780..720), empty classes' deleting forms (fn_18_27A0/5E74/6034/6070/846C),
+// an rstl::string holder (fn_18_890), rstl::vector (fn_18_A934), rstl::reserved_vector
+// (fn_18_AAB8), tokens and optional tokens (fn_18_A5A0/A5F4/A660/A828/C860/C8CC), owning pointers
+// (fn_18_AB44/C190/C920), rstl::optional_object< CModelData > (fn_18_C984), a beam attack record
+// (fn_18_98C) and a vulnerability holder (fn_18_A548); fn_18_4314 is an unreferenced weak inline
+// returning true.
 CEmperorIngStage3::~CEmperorIngStage3() { delete x7c0_; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
@@ -491,6 +501,7 @@ void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
 // 0x7BAC), 0x58484954 (kSM_HitObject, 0x7BC0) and 0x584F4646 (kSM_OffGround, 0x7BD4). Each
 // case says whether it is ported; the bodies are the module's own work (the collision actor
 // list, the id lists, the boss parameters, the launch jump).
+// Cited: fn_18_DF28 is rstl::vector< SEmperorIngPortal >::reserve (weak copy).
 void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg); // 0x7B50
   switch (msg.GetMessage()) {
@@ -651,6 +662,7 @@ const CHealthInfo* CEmperorIngStage3::GetHealthInfo() const {
 
 // @ fn_18_8
 // vtable slot 18 = fn_18_8: the actor's own bounding box, in an optional.
+// Cited: fn_18_DAEC is rstl::optional_object< CAABox >'s copy.
 rstl::optional_object< CAABox > CEmperorIngStage3::GetTouchBounds() const {
   return GetBoundingBox();
 }
@@ -1232,6 +1244,8 @@ static void SetExternalParamTree(CElementGen* gen, uint index, float value) {
 // the growth (guest 0x82C) as param 0, and params 2 and 3 at one past 0.49 / 0.74 (rodata
 // 0x2C0, 0x2C4), else zero. The generator is the effect's system (fn_18_3648 copies its
 // reference at +0x78).
+// Cited, not marked: fn_18_DFC8 is rstl::ncrc_ptr< CParticleGen >'s weak destructor (fn_18_35F4
+// and fn_18_366C its deleting forms).
 void CEmperorIngStage3::UpdateHearts(CStateManager& mgr, float dt) {
   UpdateHeartDamage(mgr, dt); // fn_18_2F04
   rstl::string name;
@@ -1369,6 +1383,9 @@ const SEmperorIng3Sphere skSpheres[3] = {
 // fn_80137460: the locator's segment, no offset, the radius, the locator's name, mass 10.0). The
 // manager (fn_80136434, 0x3E9C) belongs to this actor, in its area, active as the actor is (the
 // byte at +0x20, extrwi bit 24, 0x3E70); the old one is deleted first (fn_801362C4, 0x3EAC).
+// Cited rstl copies: rstl::vector< CJointCollisionDescription > push_back fn_18_4000/4038/4058,
+// reserve fn_18_DD04/DDC4, destructor fn_18_41F8/427C/42B4; fn_18_4140 the description's deleting
+// destructor; fn_18_419C rstl::string's operator+.
 void CEmperorIngStage3::SetupCollisionActors(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > descs;
   descs.reserve(0xD);
@@ -1672,6 +1689,8 @@ void CEmperorIngStage3::EggLayEvent(CStateManager& mgr, float dt) {
 // Ing (its next draw node, 0xD84). Its only connection is a copy of the Ing's first
 // INTERNAL_STATE_03 connection with the state changed to DEAD (0xC28..0xC9C), so the swarm's
 // death sends the Ing's IS03 message.
+// Cited: fn_18_DB5C/DBF4 rstl::vector< SConnection >::reserve; fn_18_8E0 ~CEntityInfo and fn_18_938
+// ~rstl::vector< SConnection > (weak; also in fn_18_4D0 and fn_18_9048).
 void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) {
   if (mX8c0_ != kInvalidUniqueId.value) {
     return;
@@ -1770,6 +1789,8 @@ void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
 // fn_18_1C34 (0x98): the first heart's vulnerability is saved at guest 0x86C (fn_18_1CCC, the
 // CDamageVulnerability copy) and both hearts turn immune (fn_800DBB60). Retail has no tests;
 // the port's match fn_18_1BD8's (no collision actors before kSM_AreaLoaded).
+// Cited: fn_18_1D28/1DE8/DC30/DCC8, the vector assignment inside CDamageVulnerability's operator=
+// (fn_18_1CCC).
 void CEmperorIngStage3::SetHeartsImmune(CStateManager& mgr) {
   CCollisionActor* first = HeartCollisionActor(mgr, 0); // fn_18_3ACC
   if (first != nullptr) {
@@ -3190,6 +3211,12 @@ void CEmperorIngStage3::ChoseAction(CStateManager& mgr, float dt) {
 // SLdr ctor's extra defaults are in SLdrEmperorIngStage3.hpp. The data block's loader, ctor and
 // dtor (CA60 / CFAC / CE70) and their typedef copies (stage D58C/D840/D794, action
 // D8C0/D9F8/D9BC, beam D09C/D490/D1B8, portal D33C/D21C/D42C) are the generated SLdr inlines.
+// Cited REL runtime: RELMain fn_18_C330 calls fn_18_C350, which registers this loader
+// (fn_8022EBC8 with bss 0x30); RELExit fn_18_C30C unregisters it; _prolog fn_18_E8EC runs .ctors
+// (fn_18_E95C, the static initialiser fn_18_E180) and _epilog fn_18_E8C8 runs .dtors (fn_18_E910);
+// fn_18_E804 is _unresolved. The port's module registry does all of it. fn_18_C9E4 is
+// SLdrEmperorIngStage3's weak deleting destructor and fn_18_C69C/C6DC/C6FC/C724 the rstl copies of
+// its token (fn_18_C724 TLockedToken's copy).
 static CEntity* PortLoadEmperorIngStage3(CStateManager& mgr, CInputStream& input,
                                           CEntityInfo& info) {
   SLdrEmperorIngStage3 sldrThis;
