@@ -286,11 +286,14 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 - Triggers done: 7C28, 82D0, 960C marked (the run evaluates them, always false here); 7BD4 and A71C
   ported but nothing in the cycle lists them; `GetStrafeDir` CE30 ported but its caller's branch
   never opens in this area.
-- Movement extras: `Skid 94D0`, `GetUp B3D4`, `Jump 5310` + leash `5280`, `WallHang 69AC` + `WallDetach 68E4`
-  are ported (unmarked, section 6). Next slice, one `worker` lane: `DoubleSnap 99F0` (0x418) + `JumpBack 63C8`
-  (0x448). Then the Echoes-only tail (`WarpIn/WarpOut/PostWarpOut`, `Bounce`,
-  `PathFindEx`, `Enraged`, `LaunchGrenade`, `Captured`, `Deactivate`, `RemoveFromWorld`, `Ambushing`,
-  `Generate`, `WallDetach`). The four attack triggers `StartAttack 6334`, `BreakAttack 6328`,
+- Movement extras are done: `Skid 94D0`, `GetUp B3D4`, `Jump 5310` + leash `5280`, `WallHang 69AC`,
+  `WallDetach 68E4`, `DoubleSnap 99F0`, `JumpBack 63C8` + `CantJumpBack D2A0` are ported (unmarked, section 6).
+  Only the Echoes-only tail is left, 12 stubs, all in PortCSpacePirateStates.cpp: `Ambushing 7630`,
+  `WarpIn 7078`, `WarpOut 6E6C`, `PostWarpOut 6DA4`, `Generate C1A4`, `Bounce 5D0C`, `PathFindEx 5EA4`,
+  `Enraged A2B8`, `Deactivate 5BF4`, `LaunchGrenade 58D8` (needs `4174`), `Captured 5610`, `RemoveFromWorld 5B88`.
+  Suggested order: `Enraged` + `Deactivate` + `RemoveFromWorld` first (small, no new helpers), then `WarpOut`/
+  `PostWarpOut`/`WarpIn` (the `51C8` trooper-warp helper is already ported), then `Bounce`/`PathFindEx`/
+  `Ambushing`/`Generate`, then `LaunchGrenade` with its `4174` bouncy-grenade spawn. The four attack triggers `StartAttack 6334`, `BreakAttack 6328`,
   `LostInterest 635C`, `ShouldSpecialAttack 638C` are **already ported** (PortCSpacePirateTriggers.cpp
   ~391-409) and asm-verified: `StartAttack` = `x8f8_31_mayStartAttack` consume-once, `BreakAttack` =
   `x8f5_25_breakAttack` (asm bit 0x20 of 0x8f5), `LostInterest` = `x8f4_29_onlyAttackInRange` &&
