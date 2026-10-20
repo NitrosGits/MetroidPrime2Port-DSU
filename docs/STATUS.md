@@ -38,7 +38,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | Splitter (worker) | `ses_ea456296affeAdkCwq7sVdpywE` | splitter @ `2cf00edf3` (IsDocked, Scanning, SelectTarget, Patrol, Hover) | head Idle 5538, shells 1578/2154/986C, ACEC, A4E4, AFE8/9520 re-check |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `c626d9ca3` (72/241) | survey of 169 unmarked → emp1_unmarked.tsv, hook pass |
-| MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `355d342b6` (grenade + spawn data, loader/ctor split, ~114/217) | ctor 9D58 + loader 110 match retail, inglet spawn 7058 in an area with inglets |
+| MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `6d8c43d38` (116; 7058 + 9D58 marked, inglets confirmed in 0a_sand_hall_dark) | reclassify 75 "unreachable" (vtable slots), stand-ins 1114/28D8/9BB8/E08/9940, loader 110 + dtor |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
 | DarkSamus (worker) | `ses_ea45f2e94ffeKmhWWsgGrXCplQ` | darksamus2 @ `fdce516da` (FE18 anim state fixed + marked; 12/20 cover triggers) | ShouldReact, TooMuchDamage, WallCollision, DOL-body and battle-stage triggers; TravelToCoverPoints 1DF74 + helpers |
 
