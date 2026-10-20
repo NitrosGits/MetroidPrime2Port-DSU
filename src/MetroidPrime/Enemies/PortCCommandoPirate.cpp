@@ -105,6 +105,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 #undef CMDO_TRIGGER
 #undef CMDO_STATE
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -129,7 +130,14 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , mShieldVulnerability(data.mShield.mChargeVulnerability) // 0xa44, fn_9_D904 @0x0000D9D4
 , mBoneTracking(*AnimationData(), rstl::string_l("Head_1"), 1.2217305f, 3.1415927f,
                 kBTF_None)                        // 0xa74, fn_9_D904 @0x0000DA08
+, xae8_(0)                                        // 0xae8, the module's byte
+, xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
+, xb60_(1.5f)                                     // 0xb60, lbl_9_rodata_47C, fn_9_D904 @0x0000DACC
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
+, xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
+, xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
+, xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
+, xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -344,14 +352,18 @@ bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data)
   return (mData.mFlags0 & 0x80) != 0;
 }
 
+// fn_9_BAF8: the block's flag byte at +0x15C (guest this+0x91C) has its 0x40 bit set (extrwi
+// r3, r0, 1, 25 at 0x0000BAFC). That byte is the loader's mFlags0 - the "sound" property's bits
+// 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
+// - so the flag is script-supplied.
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAF8");
-  return false;
+  return (mData.mFlags0 & 0x40) != 0;
 }
 
+// fn_9_BAEC: the module's byte at guest this+0xAE8 has its 0x80 bit set (extrwi r3, r0, 1, 24
+// at 0x0000BAF0). Nothing in the module writes that byte, so the bit is clear.
 bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAEC");
-  return false;
+  return (xae8_ & 0x80) != 0;
 }
 
 // fn_9_BAD0: the actor is under fire while the float at guest +0xB64 is below 0.75f
@@ -362,9 +374,12 @@ bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) co
   return xb64_ < 0.75f;
 }
 
+// fn_9_BAB4: the float at guest this+0xB60 is below 1.5f (lbl_9_rodata_47C, loaded at
+// 0x0000BAB8). The compare is fcmpo cr0, f1, f0 (0x0000BAC0) and the return takes cr0.LT
+// (mfcr r0 at 0x0000BAC4, srwi r3, r0, 31 at 0x0000BAC8). The constructor sets that float to
+// 1.5f (0x0000DACC), the same constant, so the test is false until something lowers it.
 bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BAB4");
-  return false;
+  return xb60_ < 1.5f;
 }
 
 bool CCommandoPirate::HasTarget(CStateManager& mgr, const CTriggerData& data) const {
@@ -405,9 +420,13 @@ bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// fn_9_B7FC: the base's waypoint navigation destination (guest this+0x6C0, the u16 loaded at
+// 0x0000B800) is kInvalidUniqueId. The guest's test is the cntlzw idiom - subf r0, r5, r0
+// (0x0000B808), cntlzw (0x0000B80C) and srwi r3, r0, 5 (0x0000B810) - one iff the id is 0xFFFF.
+// The host's base carries the same role in its waypoint navigation, as the Grenchler's own
+// AttackPatternOver does.
 bool CCommandoPirate::AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B7FC");
-  return false;
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) const {
@@ -435,19 +454,25 @@ bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) 
   return false;
 }
 
+// fn_9_B1D4: the module's flag byte at guest this+0xC64 has its 0x04 bit set (extrwi r3, r0,
+// 1, 29 at 0x0000B1D8). The constructor clears that byte (0x0000E150); the module's states set
+// its bits.
 bool CCommandoPirate::AbortShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1D4");
-  return false;
+  return (xc64_ & 0x04) != 0;
 }
 
+// fn_9_B1C8: the module's flag byte at guest this+0xC64 has its 0x40 bit set (extrwi r3, r0,
+// 1, 25 at 0x0000B1CC).
 bool CCommandoPirate::IsAggressive(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1C8");
-  return false;
+  return (xc64_ & 0x40) != 0;
 }
 
+// fn_9_B1A8: the module's jump point id at guest this+0xBD0 (the u16 loaded at 0x0000B1AC) is
+// not kInvalidUniqueId. The guest's test is "subf r3, r5, r0; subf r0, r0, r5; or r0, r3, r0"
+// (0x0000B1B4..0x0000B1BC) and keeps the top bit (srwi r3, r0, 31 at 0x0000B1C0): one iff the
+// two differ. The constructor leaves the id kInvalidUniqueId (0x0000DBC0).
 bool CCommandoPirate::FoundJumpPoint(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1A8");
-  return false;
+  return xbd0_ != kInvalidUniqueId;
 }
 
 bool CCommandoPirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
@@ -460,19 +485,26 @@ bool CCommandoPirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// fn_9_B0F4: the block's flag byte at +0x15C (guest this+0x91C) must have its 0x08 bit clear
+// (extrwi. r0, r0, 1, 28 at 0x0000B0F8, and the beq at 0x0000B0FC takes the "clear" branch) and
+// the module's flag byte at this+0xC63 must have its 0x01 bit set (clrlwi r3, r0, 31 at
+// 0x0000B10C keeps only that bit).
 bool CCommandoPirate::ShouldCover(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B0F4");
-  return false;
+  return (mData.mFlags0 & 0x08) == 0 && (xc63_ & 0x01) != 0;
 }
 
+// fn_9_B0D4: the module's cover point id at guest this+0xBD2 (the u16 loaded at 0x0000B0DC)
+// is not kInvalidUniqueId - the same "the two differ" idiom as FoundJumpPoint (0x0000B0E0..).
+// The constructor leaves the id kInvalidUniqueId (0x0000DBC8).
 bool CCommandoPirate::FoundCover(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B0D4");
-  return false;
+  return xbd2_ != kInvalidUniqueId;
 }
 
+// fn_9_B0B4: the float at guest this+0xB5C is at most 0.f (lbl_9_rodata_494, loaded at
+// 0x0000B0BC). The compare is fcmpo cr0, f1, f0 (0x0000B0C0) and the cror at 0x0000B0C4 makes
+// cr0's eq bit "lt or eq", so the answer is "the first is at most the second".
 bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B0B4");
-  return false;
+  return xb5c_ <= 0.f;
 }
 
 bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
@@ -480,9 +512,11 @@ bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) c
   return false;
 }
 
+// fn_9_AFB8: the float at guest this+0xB8C against the float at this+0xB90 (both loaded at
+// 0x0000AFB8 and 0x0000AFBC). The compare is fcmpo cr0, f1, f0 (0x0000AFC0) and the cror at
+// 0x0000AFC4 makes cr0's eq bit "gt or eq", so the answer is "the first is at least the second".
 bool CCommandoPirate::AbortSeekCover(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_AFB8");
-  return false;
+  return xb8c_ >= xb90_;
 }
 
 // The 36 states of lbl_9_data_568 (.data 0x568; fn_9_F9F8's stores at 0x0000FF34..0x000103C4).

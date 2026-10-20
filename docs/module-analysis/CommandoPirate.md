@@ -204,8 +204,19 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
 | StateOver | `fn_9_BDCC` | 0x504 | `mAnimationState.GetState() == CAnimationState::kAS_Over` | the base's animation state (guest +0x6B4) |
 | ShouldWarpIn | `fn_9_BD98` | 0x50E | `x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0` | the block's +0x15D, `x920_`, `xc63_` |
 | ShouldAmbush | `fn_9_BB04` | 0x55D | `(mData.mFlags0 & 0x80) != 0` | the block's +0x15C |
-| UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (0.75f, `lbl_9_rodata_4E0`) |
+| BreakAmbush | `fn_9_BAF8` | 0x56A | `(mData.mFlags0 & 0x40) != 0` | the block's +0x15C |
+| HasLineOfSight | `fn_9_BAEC` | 0x576 | `(xae8_ & 0x80) != 0` | `xae8_` (new, 0) |
+| HeardShot | `fn_9_BAB4` | 0x58F | `xb60_ < 1.5f` | `xb60_` (new, 1.5f, `lbl_9_rodata_47C`) |
 | HasAttackPattern | `fn_9_B900` | 0x5CF | `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId` | the base's |
+| AttackPatternOver | `fn_9_B7FC` | 0x5EF | `mWaypointNavigation.GetDestination() == kInvalidUniqueId` | the base's waypoint navigation (guest +0x6C0) |
+| AbortShieldCharge | `fn_9_B1D4` | 0x645 | `(xc64_ & 0x04) != 0` | `xc64_` (0) |
+| IsAggressive | `fn_9_B1C8` | 0x657 | `(xc64_ & 0x40) != 0` | `xc64_` (0) |
+| FoundJumpPoint | `fn_9_B1A8` | 0x664 | `xbd0_ != kInvalidUniqueId` | `xbd0_` (new, kInvalidUniqueId) |
+| ShouldCover | `fn_9_B0F4` | 0x68F | `(mData.mFlags0 & 0x08) == 0 && (xc63_ & 0x01) != 0` | the block's +0x15C, `xc63_` (0) |
+| FoundCover | `fn_9_B0D4` | 0x69B | `xbd2_ != kInvalidUniqueId` | `xbd2_` (new, kInvalidUniqueId) |
+| ShouldCoverAttack | `fn_9_B0B4` | 0x6A6 | `xb5c_ <= 0.f` | `xb5c_` (new, 0.f) |
+| AbortSeekCover | `fn_9_AFB8` | 0x6C3 | `xb8c_ >= xb90_` | `xb8c_`, `xb90_` (new, 0.f) |
+| UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (0.75f, `lbl_9_rodata_4E0`) |
 
 - `StateOver` reads guest +0x6B4, which is the base `CPatterned`'s animation state - the host
   already has it, as the DigitalGuardian's own `StateOver` (fn_14_9AA8) does. The guest's test is
@@ -229,9 +240,24 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
   `src/MetroidPrime/Enemies/CPatternedAiFunctions.cpp`); the two FourCCs the guest builds inline
   are `kSS_Attack` and `kSM_Follow`.
 
-In area 59 (Temple Grounds/05_temple_federationsite_dark) the five are called but none of them
-returns true: the script leaves the `sound` property at 0, so both flag bytes are clear, and the
-actor keeps the state machine in `Patrol`.
+- The new members and where their values come from: `xae8_` is the module's byte at +0xAE8
+  (nothing in the module writes it, so it stays 0); `xb5c_` is the float at +0xB5C (the
+  constructor stores 0.f there at 0x0000DABC); `xb60_` is the float at +0xB60 (the constructor
+  stores 1.5f, `lbl_9_rodata_47C`, at 0x0000DACC; the `Listen` override rewrites it at 0x0000BF38);
+  `xb8c_` and `xb90_` are the floats at +0xB8C and +0xB90 (both 0.f from the constructor, 0x0000DB08
+  and 0x0000DB0C; the constructor's later locomotion term, 4.f * (this+0x814 / the locomotion speed)
+  at 0x0000E668..0x0000E67C, is not ported, so +0xB90 can stay lower than retail's); `xbd0_` and
+  `xbd2_` are the jump point and cover point ids at +0xBD0 and +0xBD2 (the constructor stores
+  kInvalidUniqueId at 0x0000DBC0 and 0x0000DBC8).
+- `AttackPatternOver` reads guest +0x6C0, the base's waypoint navigation destination - the same
+  member the Grenchler's own `AttackPatternOver` reads - so the port uses the base's navigation
+  rather than a member of its own.
+
+In area 59 (Temple Grounds/05_temple_federationsite_dark) the actor keeps the state machine in
+`Patrol`/`SelectTarget`/`FaceTarget`, so only the triggers those states own are evaluated:
+`StateOver`, `ShouldWarpIn`, `ShouldAmbush`, `UnderFire` and `HasAttackPattern` run, and none of
+them returns true (the script leaves the `sound` property at 0, so both flag bytes are clear).
+The eleven triggers of the cover, shield, grenade, melee and jump states do not run there.
 
 ## 2. The loader (fn_9_168)
 
@@ -344,9 +370,10 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 65 bodies: the two tables (34 triggers, 36 states) are registered
-  and five of the triggers are host code (the section above), but every other function they point
-  at is a stand-in that logs the retail function it stands in for and returns the neutral value.
+- The state machine's other 54 bodies: the two tables (34 triggers, 36 states) are registered
+  and sixteen of the triggers are host code (the section above), but every other function they
+  point at is a stand-in that logs the retail function it stands in for and returns the neutral
+  value.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
