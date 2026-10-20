@@ -451,7 +451,9 @@ void CIngBoostBallGuardian::LogState(const char* name) {
   }
 }
 
-// fn_30_51B4 (this module).
+// Area 28 has no CScriptTeamAiMgr: GetAssociatedTeamId stays invalid there, so the JoinTeam call
+// (0x00005244) never runs; a preset id that is no team leaves at the cast (0x00005230).
+// @ fn_30_51B4
 void CIngBoostBallGuardian::JoinTeam(CStateManager& mgr) {
   if (mTeamId == kInvalidUniqueId) {
     mTeamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);

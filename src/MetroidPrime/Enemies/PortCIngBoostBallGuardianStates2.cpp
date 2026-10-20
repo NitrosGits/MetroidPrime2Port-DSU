@@ -74,7 +74,9 @@ namespace {
 // shared header is not part of this module. The solid filter itself is shared with the other
 // files of this module: PortBoostGuardianShared.hpp has SolidFilter().
 
-// fn_30_57E0 (the Ing's fn_29_3D74): the box between two points, three units taller at each end (retail's double 3.0).
+// The Ing's fn_29_3D74: the box between two points, three units taller at each end (retail's
+// double 3.0, passed in f1; fn_30_57E0 itself takes the pad as an argument).
+// @ fn_30_57E0
 CAABox BgSegmentBox(const CVector3f& a, const CVector3f& b) {
   return CAABox(
       CVector3f(CMath::Min(a.GetX(), b.GetX()), CMath::Min(a.GetY(), b.GetY()),
@@ -114,8 +116,8 @@ void CIngBoostBallGuardian::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_30_A21C (this module).
-// fn_29_8BAC (not yet exercised in a run)
+// fn_29_8BAC
+// @ fn_30_A21C
 void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Taunt");
