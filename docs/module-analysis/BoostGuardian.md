@@ -132,7 +132,7 @@ The boost half's own bodies (the only ones this module does not share with the I
 | `IsBoostPuddleForm` | `fn_30_B7AC` | bit 3 of 0x11EE and not bit 1 of 0x11ED |
 | `IsBoostOver` | `fn_30_B7D4` | bit 5 of 0x11EE |
 | `BoostModeRetreatOver` | `fn_30_B76C` | the u16 at guest 0x1096 is kInvalidUniqueId |
-| state `BoostAttack` | `fn_30_79C0` | Activate spawns the second class (`fn_30_3478`) and deactivates the collision manager at 0xD64; Update copies the child's translation (+0x54/+0x58/+0x5C, z from 0x1174) onto the actor and sets bit 5 of 0x11EE when `fn_30_13B98()` is not zero; Deactivate stops the child (its byte 0x5D8 bit 0), sends the script state `EXIT` (0x45584954), randomises the float at 0x11E8 from the array element at 0x11D0 (+0x10, +0x14), clears bit 0 of 0x11EE and zeroes the float at 0x11DC, activates the collision manager at 0xD64 and deletes the child (the id at 0x1094) |
+| state `BoostAttack` | `fn_30_79C0` | Activate spawns the second class (`fn_30_3478`) and deactivates the collision manager at 0xD64; Update copies the child's translation (+0x54/+0x58/+0x5C, z from 0x1174) onto the actor and sets bit 5 of 0x11EE when `fn_30_13B98()` is not zero; Deactivate stops the child (its byte 0x5D8 bit 0), sends the script state `EXIT` (0x45584954), randomises the float at 0x11E8 from the array element at 0x11D0 (+0x10, +0x14), and, only when bit 0 of 0x11EE (HasCollidedWithCrystal) is set, clears it and zeroes the float at 0x11DC (0x7B40); activates the collision manager at 0xD64 and deletes the child (the id at 0x1094) |
 | state `BoostModeRetreat` | `fn_30_7728` | Activate clears bit 4 of 0x11EC, sets bit 7 of 0x11EE and finds two nav points (`fn_30_2F9C` with 0xE and 0xF), storing their ids at 0x1096 and 0x1098, sets the navigation's destination and the navigation's face target to kInvalidUniqueId; Update clears 0x1096 when the actor is within 1.0 of the first point; Deactivate looks at the second point, clears bit 7 of 0x11EE, sends the script state `CTIM` (0x4354494D) and tail-calls this module's IngSpotPathFind (`fn_30_9DA0`) |
 
 ## c. Parameters (from `SLdrIngBoostBallGuardian.hpp`, upstream)
@@ -211,8 +211,9 @@ it with a rodata string at `lbl_30_rodata_12C + 0x53F`, adds it to the state man
 (`AddObject`) and strips material 0x23 from it; the parent keeps its id at +0x1094 and clears
 bit 0x20 at +0x11EE. Its vtable's 14 local overrides are `fn_30_11CD8`, `1548C`, `1466C`,
 `13E68`, `141B8`, `13ECC`, `13C5C`, `13C40`, `13B90`, `13B88`, `13BA4`, `1464C`, `11E44`,
-`142BC`. What actor it is (`CIngBoostBallGuardianCrystal`?) is still open: the name string and the
-class's own behaviour are the next thing to read (`fn_30_1466C`, `fn_30_13E68`).
+`142BC`. It is the boost ball: named "BoostBallGuardian", DOL type tag 148 (parent
+`CPhysicsActor`; BoostAttack casts the child with `fn_800979F0` = `TryCast(entity, 0x94)`). Host:
+`CBoostBallGuardianBall`, `src/MetroidPrime/Enemies/PortCBoostBallGuardianBall.cpp`.
 
 Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (46 functions,
 0x11CD8..0x164D0, about 17.5 KB; the older single-file dump misses the small ones). Read so far:
@@ -226,11 +227,13 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
 - *Ctor (`fn_30_15924`, 0x6A0)* arguments: uid, name, info, xf, pos (0x116C), model, actor params,
   then on the stack the owner id, the boost data (0xDEC), the phase index (0x11CC -> 0x2D0), the
   boost vulnerability (0xEFC -> 0x570 via `fn_30_AD4`), a block at 0x109C (-> 0x4FC via
-  `fn_30_160D0`), the material list, the health info (-> optional at 0x5A0, flag 0x5C0).
+  `fn_30_160D0`; 0x109C is the guardian's `FindConnectedObjects(kSS_Modify, kSM_Activate)` from
+  kSM_Create, 0xE06C - platform `001c0078` in area 28), the material list, the health info (-> optional at 0x5A0, flag 0x5C0).
   `CPhysicsActor(..., SMoverData(mass data+0x0C), skDefaultStepData)`; boost data copied to
   0x2E4 (`fn_30_10250`); `CCollidableSphere` at 0x4D0 (radius 1.0 without a model, else half the
   bounds height); three particle generators 0x564/0x568/0x56C from data +0xA8/+0xAC/+0xB0
-  (`fn_30_16238`, 'PART'); spline end time from the speed spline's knots (0x528); coefficient of
+  (`fn_30_16238`: the trail at +0xA8 is 'SPSC', a `CParticleSpawnSystem`; shield +0xAC and
+  charge-up +0xB0 are 'PART'); spline end time from the speed spline's knots (0x528); coefficient of
   restitution 1.0; material filter adds `lbl_30_data_C0C`.
 - *Vtable:* dtor `11CD8`, Think `1548C` (0x498), AcceptScriptMsg `1466C` (0x270), AddToRenderer
   `13E68`, Render `141B8` (0x104), PreRenderAllViewports `13ECC` (0x2EC), HealthInfo/GetHealthInfo
@@ -243,9 +246,16 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   BoostAttack's Update turns into 0x11EE 0x20); then every 0.2 s it applies the data+0x14
   (morph ball) or +0x30 (first person) damage to the touched id at 0x4F8, knocked 60 degrees off
   the velocity, and runs the rolling sfx (`1282C`).
-- *Host gap:* `CBoostBallGuardianData` lacks the `boostBallSpeed` spline (guest data +0x4C, read by
-  the ctor and Think) and the 1000/1.0 pair at +0xC0; add both before porting the class.
-- *Next slices:* (a) the spline + ctor/dtor/small overrides + `3478` + BoostAttack `79C0`; (b)
+- *Data:* `CBoostBallGuardianData::mSpeed` is the `boostBallSpeed` spline (guest data +0x4C); the
+  pair at +0xC0/+0xC4 are the loader's constants 1000.0/1.0 (`fn_30_748` 0x8E8/0x8EC), the
+  rolling sfx's `C3DEmitterParmData(maxDist, distComp)` (0x129C8): `mSoundMaxDistance`/
+  `mSoundDistanceComp`.
+- *Ported (slice a):* ctor, dtor, the small overrides, `fn_30_16238`, spawn `3478` with `340C`/
+  `324C`, BoostAttack `79C0`. Think is a named stand-in, so the ball sits at its spawn point and
+  BoostAttack waits: it ends on IsBoostOver (the ball's shrink, slice b) or HasCollidedWithCrystal
+  (nothing on the host sets it yet; slice c). The 0xD64 manager is never built on the host, so
+  BoostAttack's `SetActive` calls on it are null-guarded.
+- *Next slices:* (b)
   Think with `137C0`/`13C78`/`152D4`/`13760`/`1282C`; (c) `12AB0`, CollidedWith,
   AcceptScriptMsg, the three render overrides.
 
@@ -424,8 +434,8 @@ offsets are in section e; the module's own addresses for the state machine's nod
   `fn_30_6108` (puddle effects, 0x384) and `fn_30_65C8` (hit light, 0x148) are once-logging
   stand-ins, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
 - live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
-  `BoostAttack`; `BoostAttack` (`fn_30_3478`, the second class) is the next stand-in, so the boost
-  itself never happens and the FSM falls back to `IngSpotPathFind`.
+  `BoostAttack`, which spawns the boost ball (`CBoostBallGuardianBall` in `objs`, at the ground
+  under the guardian); with the ball's Think still a stand-in the state waits there (section f).
 
 ## k. What the loader and the constructor actually pass
 

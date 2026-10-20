@@ -8,6 +8,7 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/Math/CMayaSpline.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -123,10 +124,11 @@ struct CIngBoostBallGuardianPhase {
 // phases.
 struct CBoostBallGuardianData {
   CBoostBallGuardianData(const CVector3f& scale, float mass, float unknownBEA9,
-                         float minDamageSpeed, float unknown7B21, CAssetId model,
+                         const CMayaSpline& speed, float minDamageSpeed, float unknown7B21, CAssetId model,
                          CAssetId chargeUpEffect, CAssetId shieldEffect, CAssetId trailEffect,
                          ushort soundBounce, ushort soundIntoBall, ushort soundOutOfBall,
                          ushort soundLoop, ushort soundBoost, ushort soundRolling,
+                         float soundMaxDistance, float soundDistanceComp,
                          const CDamageVulnerability& vulnerability, int unknownEE69,
                          int unknown4B2D, float searchConeAngle, float unknownB0E8,
                          const CDamageInfo& damageToMorphBall,
@@ -140,6 +142,7 @@ struct CBoostBallGuardianData {
   : mScale(scale)
   , mMass(mass)
   , mUnknownBEA9(unknownBEA9)
+  , mSpeed(speed)
   , mMinDamageSpeed(minDamageSpeed)
   , mUnknown7B21(unknown7B21)
   , mModel(model)
@@ -152,6 +155,8 @@ struct CBoostBallGuardianData {
   , mSoundLoop(soundLoop)
   , mSoundBoost(soundBoost)
   , mSoundRolling(soundRolling)
+  , mSoundMaxDistance(soundMaxDistance)
+  , mSoundDistanceComp(soundDistanceComp)
   , mVulnerability(vulnerability)
   , mUnknownEE69(unknownEE69)
   , mUnknown4B2D(unknown4B2D)
@@ -171,6 +176,7 @@ struct CBoostBallGuardianData {
   CVector3f mScale;                     // boostBallScale
   float mMass;                          // boostBallMass
   float mUnknownBEA9;                   // unknown_0xbea96fb7
+  CMayaSpline mSpeed;                   // boostBallSpeed (guest data +0x4C)
   float mMinDamageSpeed;                // boostBallMinDamageSpeed
   float mUnknown7B21;                   // unknown_0x7b21e31a
   CAssetId mModel;                      // boostBallModel
@@ -183,6 +189,11 @@ struct CBoostBallGuardianData {
   ushort mSoundLoop;                    // sound (0x9f7372b3)
   ushort mSoundBoost;                   // sound_Boost
   ushort mSoundRolling;                 // sound_Rolling
+  // Guest data +0xC0/+0xC4: not properties but the loader's constants 1000.0 and 1.0
+  // (fn_30_748, 0x000008E8/0x000008EC); the ball's rolling sfx builds its
+  // C3DEmitterParmData(maxDist, distComp) from them (0x000129C8).
+  float mSoundMaxDistance;              // 1000.0
+  float mSoundDistanceComp;             // 1.0
   CDamageVulnerability mVulnerability;  // boostBallVulnerability
   int mUnknownEE69;                     // unknown_0xee69b993
   int mUnknown4B2D;                     // unknown_0x4b2de673
@@ -371,6 +382,11 @@ private:
   float DistSqToTarget(const CStateManager& mgr) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
   CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, int hintType) const; // fn_30_2F9C
+  // fn_30_3478: spawns the boost ball (PortCBoostBallGuardianBall.hpp); fn_30_340C stores the
+  // player's aim position, fn_30_324C finds the ground under the actor.
+  void SpawnBoostBall(CStateManager& mgr);
+  void UpdateBoostAimPos(CStateManager& mgr);
+  CVector3f FindBoostSpawnPos(CStateManager& mgr) const;
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
@@ -504,6 +520,11 @@ private:
   bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
+  // Guest 0x109C: the ids connected with (kSS_Modify, kSM_Activate), gathered on kSM_Create
+  // (0x0000E06C) and handed to the boost ball.
+  rstl::vector< TUniqueId > mModifyTargets;
+  CVector3f mBoostAimPos;                                // guest 0x1160 (fn_30_340C)
+  CVector3f mBoostSpawnPos;                              // guest 0x116C (fn_30_324C)
   TUniqueId mBoostNavPointId;                            // guest 0x1096: the retreat's first point
   TUniqueId mBoostNavPointId2;                           // guest 0x1098: the retreat's second point
   float mBoostTimer;                                     // guest 0x11DC
