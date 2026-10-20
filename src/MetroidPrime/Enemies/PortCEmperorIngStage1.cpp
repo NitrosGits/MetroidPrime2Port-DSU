@@ -1822,6 +1822,9 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
                                      false, 0, true);  // 0x9D74
   CMayaSpline mayaSpline;  // 0x9D7C
   const CGameSplineDesc spline(mayaSpline, CMotionSpline::kST_Bezier, 1.f, false);  // 0x9D9C  // fn_16_9E9C, fn_16_9F04 and fn_16_A004: the game spline description is built
+  // fn_16_A1D4 (0xA1D4..0xA22C) destroys the CMayaSpline (0x9D6C) and calls fn_16_9FB0
+  // (0x9FB0..0xA004) for its member; fn_16_9E48 (0x9E48..0x9E9C) destroys the CGameSplineDesc
+  // (0x9EEC). The host's CMayaSpline and CGameSplineDesc have their own destructors.
   CScriptEffect* effect = rs_new CScriptEffect(
       id, rstl::string_l("WarpPortalEffect"),  // 0x9DD4
       CEntityInfo(area, CEntity::NullConnectionList, true), CTransform4f::Identity(),  // fn_16_67EC and fn_16_6844: the entity info's and the connection list's destructors
