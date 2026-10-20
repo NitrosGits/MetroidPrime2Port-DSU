@@ -43,6 +43,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/Enemies/CMinorIng.hpp" // REL module 44's host body (PortCMinorIng.cpp)
 #include "MetroidPrime/Enemies/CIng.hpp"      // REL module 29's host body (PortCIng.cpp)
+#include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp" // module 30 (PortCIngBoostBallGuardian.cpp)
 #endif
 #include "MetroidPrime/Enemies/COctapedeSegment.hpp"
 #include "MetroidPrime/Enemies/CParasite.hpp"
@@ -335,7 +336,9 @@ TYPES_MATCH_IMPL(CGrenchler, CPatterned, kET_Grenchler)
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CIng, CPatterned, kET_Ing) // REL module 29's host body (PortCIng.cpp)
 #endif
-// 117: class not declared yet (IngBoostBallGuardian REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CIngBoostBallGuardian, CPatterned, kET_IngBoostBallGuardian) // module 30
+#endif
 TYPES_MATCH_IMPL(CIngSpaceJumpGuardian, CPatterned, kET_IngSpaceJumpGuardian)
 TYPES_MATCH_IMPL(CIngSpiderballGuardian, CPatterned, kET_IngSpiderballGuardian)
 TYPES_MATCH_IMPL(CLumite, CPatterned, kET_Lumite)

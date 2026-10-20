@@ -802,7 +802,13 @@ set(MP_MODULE_Ing_SOURCES
     src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp
 )
 set(MP_MODULE_IngBoostBallGuardian_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardian.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardianBoost.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardianFsm.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardianOverrides.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardianStates1.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardianStates2.cpp
+    src/MetroidPrime/Enemies/PortCIngBoostBallGuardianTriggers.cpp
 )
 set(MP_MODULE_IngSwarm_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp

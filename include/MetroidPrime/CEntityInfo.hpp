@@ -121,6 +121,7 @@ enum EEntityType {
   kET_ElitePirate = 114,               // Native REL TypesMatch tag; parent is CPatterned.
   kET_Grenchler = 115,                 // Target-derived class tag.
   kET_Ing = 116,                       // Native REL TypesMatch tag; parent is CPatterned.
+  kET_IngBoostBallGuardian = 117,      // Native REL TypesMatch tag; parent is CPatterned.
   kET_IngSpaceJumpGuardian = 118,      // Target-derived class tag.
   kET_IngSpiderballGuardian = 119,     // Target-derived class tag.
   kET_Lumite = 120,                    // Target-derived class tag.
