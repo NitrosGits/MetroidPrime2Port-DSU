@@ -118,6 +118,10 @@ enum EEntityType {
   kET_BeamProjectile = 109,
   kET_PlasmaProjectile = 110,
   kET_DarkSamus = 111,
+#ifdef TARGET_PC
+  kET_DigitalGuardian = 112,     // Native REL TypesMatch tag; parent is CPatterned.
+  kET_DigitalGuardianHead = 113, // Native REL TypesMatch tag; parent is CPatterned.
+#endif
   kET_ElitePirate = 114,               // Native REL TypesMatch tag; parent is CPatterned.
   kET_Grenchler = 115,                 // Target-derived class tag.
   kET_Ing = 116,                       // Native REL TypesMatch tag; parent is CPatterned.

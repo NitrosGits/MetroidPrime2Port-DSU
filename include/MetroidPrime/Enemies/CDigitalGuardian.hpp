@@ -1,0 +1,215 @@
+#ifndef _CDIGITALGUARDIAN
+#define _CDIGITALGUARDIAN
+
+#include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "REL/REL_Setup.h"
+
+#ifdef TARGET_PC
+#include "MetroidPrime/CActorParameters.hpp"
+#include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
+#include "MetroidPrime/ScriptLoader/Structs/SLdrDamageInfo.hpp"
+#include "MetroidPrime/ScriptLoader/Structs/SLdrDamageVulnerability.hpp"
+#include "MetroidPrime/ScriptLoader/Structs/SLdrEchoParameters.hpp"
+#include "MetroidPrime/ScriptLoader/Structs/SLdrShockWaveInfo.hpp"
+
+// Host copy of the module's parameter block (SLdrDigitalGuardianData). Retail reads it into a
+// stack struct and copies it into the object verbatim (fn_14_C68C, guest 0x7C0, 0x640 bytes), so
+// the host keeps the loader's own types: one member per row of
+// docs/module-analysis/DigitalGuardian.md section c.2, named after the SLdr property it holds.
+// Nothing in this milestone reads the values - the class keeps them for the state machine the
+// later milestones add - so the fields are only a faithful copy of what the loader read.
+class CDigitalGuardianData {
+public:
+  CDigitalGuardianData()
+  : mScannableInfoCrippled(kInvalidAssetId)
+  , mNearLegStabRange(0.f)
+  , mFarLegStabRange(0.f)
+  , mMinLegStabAttackTime(0.f)
+  , mLegStabDamage()
+  , mToeTargetHP(0.f)
+  , mToeTargetModel(kInvalidAssetId)
+  , mToeTargetExplosion(kInvalidAssetId)
+  , mSoundToeTarget()
+  , mSoundToeTargetAttack()
+  , mSoundToeTargetExplosion()
+  , mSoundToeTargetHit()
+  , mSoundShockWave()
+  , mShockWaveInfo()
+  , mVortexAttackDuration(0.f)
+  , mVortexAttractionForce(0.f)
+  , mMaxVortexAttractionDistance(0.f)
+  , mVortexLinearVelocity(0.f)
+  , mVortexLinearAcceleration(0.f)
+  , mVortexDamage()
+  , mUnknownFB5263E8(0)
+  , mUnknown6AAF33E3(0)
+  , mUnknown4F5D725C(0.f)
+  , mSoundVortexFlash()
+  , mLegModel(kInvalidAssetId)
+  , mShinArmor(kInvalidAssetId)
+  , mKneeArmorHP(0.f)
+  , mSoundKneeArmorHit()
+  , mSoundKneeVulnerable()
+  , mKneeArmor(kInvalidAssetId)
+  , mKneeEchoParameters()
+  , mUnknownA324E26C(0.f)
+  , mUnknown6A754EBD(0.f)
+  , mJumpTimer(0.f)
+  , mUnknown8106CDA9(0.f)
+  , mUnknown9E1B8105(0.f)
+  , mUnknownA08FCC70(0.f)
+  , mUnknown3254A16B(0.f)
+  , mTransmissionBeacon(kInvalidAssetId)
+  , mTransmissionBeaconFx(kInvalidAssetId)
+  , mTransmissionBeaconEchoParameters()
+  , mSoundTransmissionBeacon()
+  , mSoundBeaconExtract()
+  , mSoundBeaconRetract()
+  , mTransmissionBeaconHP(0.f)
+  , mTransmissionBeaconExplosion(kInvalidAssetId)
+  , mTransmissionBeaconEchoHit(kInvalidAssetId)
+  , mSoundBeaconExplode()
+  , mSoundBeaconHit()
+  , mKneeVulnerability()
+  , mVortexVulnerability()
+  , mToeTargetVulnerability() {}
+
+  CAssetId mScannableInfoCrippled;       // 0x00 scannableInfoCrippled
+  float mNearLegStabRange;               // 0x04 nearLegStabRange
+  float mFarLegStabRange;                // 0x08 farLegStabRange
+  float mMinLegStabAttackTime;           // 0x0C minLegStabAttackTime
+  SLdrDamageInfo mLegStabDamage;         // 0x10 legStabDamage
+  float mToeTargetHP;                    // 0x20 toeTargetHP
+  CAssetId mToeTargetModel;              // 0x24 toeTargetModel
+  CAssetId mToeTargetExplosion;          // 0x28 toeTargetExplosion
+  SLdrAudioPlaybackParms mSoundToeTarget;         // 0x2C sound_ToeTarget
+  SLdrAudioPlaybackParms mSoundToeTargetAttack;   // 0x44 sound_ToeTargetAttack
+  SLdrAudioPlaybackParms mSoundToeTargetExplosion; // 0x5C sound_ToeTargetExplosion
+  SLdrAudioPlaybackParms mSoundToeTargetHit;      // 0x74 sound_ToeTargetHit
+  SLdrAudioPlaybackParms mSoundShockWave;         // 0x8C sound_ShockWave
+  SLdrShockWaveInfo mShockWaveInfo;               // 0xA4 shockWaveInfo
+  float mVortexAttackDuration;           // 0xD4 vortexAttackDuration
+  float mVortexAttractionForce;          // 0xD8 vortexAttractionForce
+  float mMaxVortexAttractionDistance;    // 0xDC maxVortexAttractionDistance
+  float mVortexLinearVelocity;           // 0xE0 vortexLinearVelocity
+  float mVortexLinearAcceleration;       // 0xE4 vortexLinearAcceleration
+  SLdrDamageInfo mVortexDamage;          // 0xE8 vortexDamage
+  int mUnknownFB5263E8;                  // 0xF8 unknown_0xfb5263e8
+  int mUnknown6AAF33E3;                  // 0xFC unknown_0x6aaf33e3
+  float mUnknown4F5D725C;                // 0x100 unknown_0x4f5d725c
+  SLdrAudioPlaybackParms mSoundVortexFlash;      // 0x104 sound_VortexFlash
+  CAssetId mLegModel;                    // 0x11C legModel
+  CAssetId mShinArmor;                   // 0x120 shinArmor
+  float mKneeArmorHP;                    // 0x124 kneeArmorHP
+  SLdrAudioPlaybackParms mSoundKneeArmorHit;     // 0x128 sound_KneeArmorHit
+  SLdrAudioPlaybackParms mSoundKneeVulnerable;   // 0x140 sound_KneeVulnerable
+  CAssetId mKneeArmor;                   // 0x158 kneeArmor
+  SLdrEchoParameters mKneeEchoParameters;         // 0x15C kneeEchoParameters
+  float mUnknownA324E26C;                // 0x170 unknown_0xa324e26c
+  float mUnknown6A754EBD;                // 0x174 unknown_0x6a754ebd
+  float mJumpTimer;                      // 0x178 jumpTimer
+  float mUnknown8106CDA9;                // 0x17C unknown_0x8106cda9
+  float mUnknown9E1B8105;                // 0x180 unknown_0x9e1b8105
+  float mUnknownA08FCC70;                // 0x184 unknown_0xa08fcc70
+  float mUnknown3254A16B;                // 0x188 unknown_0x3254a16b
+  CAssetId mTransmissionBeacon;          // 0x18C transmissionBeacon
+  CAssetId mTransmissionBeaconFx;        // 0x190 transmissionBeaconFx
+  SLdrEchoParameters mTransmissionBeaconEchoParameters; // 0x194 transmissionBeaconEchoParameters
+  SLdrAudioPlaybackParms mSoundTransmissionBeacon;  // 0x1A8 sound_TransmissionBeacon
+  SLdrAudioPlaybackParms mSoundBeaconExtract;       // 0x1C0 sound_BeaconExtract
+  SLdrAudioPlaybackParms mSoundBeaconRetract;       // 0x1D8 sound_BeaconRetract
+  float mTransmissionBeaconHP;           // 0x1F0 transmissionBeaconHP
+  CAssetId mTransmissionBeaconExplosion; // 0x1F4 transmissionBeaconExplosion
+  CAssetId mTransmissionBeaconEchoHit;   // 0x1F8 transmissionBeaconEchoHit
+  SLdrAudioPlaybackParms mSoundBeaconExplode;       // 0x1FC sound_BeaconExplode
+  SLdrAudioPlaybackParms mSoundBeaconHit;           // 0x214 sound_BeaconHit
+  SLdrDamageVulnerability mKneeVulnerability;    // 0x22C kneeVulnerability
+  SLdrDamageVulnerability mVortexVulnerability;  // 0x388 vortexVulnerability
+  SLdrDamageVulnerability mToeTargetVulnerability; // 0x4E4 toeTargetVulnerability
+};
+#endif
+
+// The REL's CDigitalGuardian (module 14): the Sanctuary Fortress Guardian boss body, script type
+// DGRD ("Mechanism: Quadraxis"). 0x1290 bytes on the GameCube (the loader's __nw__ at
+// 0x000003F0), built by fn_14_B100; its vtable lbl_14_data_484 (82 words, 33 local overrides)
+// and the analysis are docs/module-analysis/DigitalGuardian.md.
+//
+// Milestone 1 (this file's first slice) is load-and-think: the loader, the constructor and the
+// vtable's accessors, so the actor registers and thinks. The state machine (fn_14_9DFC installs
+// the 12 triggers, 14 states and 13 codes), the vortex, the knee armour, the transmission
+// beacon, the toe targets and the head module (CDigitalGuardianHead, guest 0x10F8) are later
+// milestones, and every override that belongs to them forwards to CPatterned behind a once-only
+// StandIn log.
+class REL_EXPORT CDigitalGuardian : public CPatterned {
+public:
+#ifdef TARGET_PC
+  // Argument order is the port's own (the REL loader's call at 0x00000468 is
+  // (uid, editor properties, entity info, transform, model, actor parameters, patterned info)
+  // plus the parameter block on the stack).
+  CDigitalGuardian(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                   const CTransform4f& xf, const CModelData& modelData,
+                   const CActorParameters& actParms, const CPatternedInfo& pInfo,
+                   const CDigitalGuardianData& data);
+  ~CDigitalGuardian() override;
+
+  // CEntity / CActor
+  void PreThink(float dt, CStateManager& mgr) override;
+  void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
+  void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  void Render(const CStateManager& mgr) const override;
+  void PreRenderAllViewports(CStateManager& mgr) override;
+  const CHealthInfo* GetHealthInfo() const override;
+  const CDamageVulnerability* GetDamageVulnerability() const override;
+  rstl::optional_object< CAABox > GetTouchBounds() const override;
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override;
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  CScannableObjectInfo* GetScannableObjectInfo() const override;
+
+  // CAi
+  void TakeDamage(const CVector3f& direction, float magnitude) override;
+  bool CanBeShot(const CStateManager&, int) override { return true; }
+  bool IsListening() const override { return true; }
+  bool Listen(CStateManager&, const CVector3f&, EListenNoiseType) override { return false; }
+  CVector3f GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const override;
+
+  // CPatterned. The accessors below are the REL's own one-line bodies (the module's .text starts
+  // with them), so they are real, not stand-ins.
+  void RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask, uint target) const override;
+  uchar GetModelAlphau8(const CStateManager&) const override { return mColor.GetAlphau8(); }
+  CProjectileInfo* ProjectileInfo() override { return nullptr; }
+  using CPatterned::GetSearchPath;
+  CPathFindSearch* GetSearchPath() override { return nullptr; }
+  using CPatterned::GetPointSearchPath;
+  CPathFindPointSearch* GetPointSearchPath() override { return nullptr; }
+  void SetupStateMachine(CStateManager& mgr) override;
+  CRagDoll* GetRagDoll() const override { return nullptr; }
+  TUniqueId GetAttackTarget() const override { return kInvalidUniqueId; }
+  bool IsOnGround() const override { return CPatterned::IsOnGround(); }
+  float GetGravityConstant() const override { return kDefaultGravityAccel; }
+  bool IsScanVisorSelfRender() const override { return true; }
+  CAABox GetScanVisorRenderBounds(const CStateManager&) const override;
+  void ScanVisorRender(const CStateManager&, const CTransform4f&, const CModelFlags&) const override;
+  const rstl::optional_object< TCachedToken< CGenDescription > >&
+  GetDeathExplosionParticle() const override;
+#endif
+  // CEntity
+  CEntity* TypesMatch(int typeId) const override;
+
+private:
+#ifdef TARGET_PC
+  void EnsureBodyActive(CStateManager& mgr);
+
+  // Host layout (retail's object is 0x1290, CPatterned is 0x7c0). The guest offsets are the
+  // REL's and are in docs/module-analysis/DigitalGuardian.md section e; the host class has its
+  // own layout and only keeps what this milestone needs.
+  CDigitalGuardianData mData; // guest 0x7C0 (0x640), the block fn_14_C68C copies in
+#else
+  uchar x7c0_[0x1290 - 0x7c0]; // CDigitalGuardianData and everything above it in retail
+#endif
+};
+
+#endif
