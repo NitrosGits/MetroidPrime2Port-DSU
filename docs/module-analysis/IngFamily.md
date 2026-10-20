@@ -536,9 +536,10 @@ base's own symbol, including 0x0C `CActor::TypesMatch` and 0x10 `CEntity::PreThi
 **Ctor member map [proven from `fn_29_1105C`]**: CActor 0x158; 0x158 `CTransform4f` (copy of the
 ctor's transform); 0x188 `CPathFindSearch` (0xec); 0x274 `CVector3f` (the state's 0xdc8), 0x280
 `CVector3f` (the model scale), 0x28c int 0, 0x290 f2, 0x294 target `TUniqueId`, 0x298/0x29c f3, 0x2a0 f4,
-0x2a4 `CToken` (asset A) + 0x2ac byte "failed" + 0x2b0 `CParticleGen*` (the `fn_29_10D50` result),
-0x2b4 `CToken` (asset B) + 0x2bc byte + 0x2c0 `CParticleGen*`, 0x2c4 f1, 0x2c8 0, 0x2fc 0, 0x300 1.0f,
-0x304 a container filled by `fn_29_11438` from ten copies of six positions (0x48 each), 0x5d8/0x5dc 0,
+0x2a4 `CToken` (asset A) + 0x2ac byte "the effect was built" (`ptr != nullptr`) + 0x2b0
+`CParticleGen*` (the `fn_29_10D50` result), 0x2b4 `CToken` (asset B) + 0x2bc the same byte + 0x2c0
+`CParticleGen*`, 0x2c4 f1, 0x2c8 0, 0x2fc 0, 0x300 1.0f, 0x304 the trail container's size (60, written
+only by the copy `fn_29_11438` and never read: 0x308 holds 60 copies of the actor's translation), 0x5d8/0x5dc 0,
 0x5e0 u16 sound, 0x5e2 bit 7 cleared. `fn_29_10D50(this, vecB, translation, token)` returns the
 `CParticleGen*` stored at 0x2b0/0x2c0 and its sign is the byte at 0x2ac/0x2bc.
 
