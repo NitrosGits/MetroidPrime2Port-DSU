@@ -6,6 +6,7 @@
 
 #ifdef TARGET_PC
 #include "Kyoto/Audio/CSfxHandle.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
@@ -250,6 +251,8 @@ private:
   // position are cleared and the script hears "ACTV". It is over the slice's 0x80 line, so it
   // stays a stand-in.
   void StopTentaclePortal(int index);
+  // fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass.
+  CModelFlags BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const;
 
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;

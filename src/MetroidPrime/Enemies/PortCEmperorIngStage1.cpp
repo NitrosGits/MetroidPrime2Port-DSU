@@ -56,6 +56,7 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
 #include <stdio.h>
+#include <string.h>
 
 namespace {
 
@@ -1489,6 +1490,26 @@ CCollisionActor* CEmperorIngStage1::GetTentacleActor(CStateManager& mgr, int ind
 
 // vtable slot 7 = fn_16_52FC (0x20): the retail override is the base class's own PreRender.
 void CEmperorIngStage1::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
+
+// fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass. The
+// joint's flag byte (the joint's +0x24) has its bit 3 (0x08) tested - the extrwi at 0x1D50 takes
+// one bit at the bit 28, the bit 3 of the byte, so the mask is 1u << (31 - 28) = 0x08 - and the
+// draw flags get the extra 0x80 bit when it is set (the ori at 0x1D94). The blend mode is opaque
+// (0), the shader set 0, the depth flags 0x03 (the depth compare and the depth update) and the
+// colour white (the CColor at 0x1D88).
+CModelFlags CEmperorIngStage1::BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const {
+  uint flags = CModelFlags::kF_DepthCompare | CModelFlags::kF_DepthUpdate;
+  if ((joint.mFlags & 0x08) != 0) {
+    flags |= CModelFlags::kF_Unknown80; // 0x1D94: the ori with 0x80
+  }
+  CModelFlags modelFlags(CModelFlags::kT_Opaque, 0, static_cast< CModelFlags::EFlags >(flags),
+                         CColor::White());
+  // The retail leaves the flags' first word alone (fn_16_1D38 writes +0x04, +0x05, +0x06 and
+  // +0x08 only); the host keeps that word in x0_, which nothing reads, so the port zeroes it
+  // instead of leaving the stack's garbage in it.
+  memset(&modelFlags, 0, sizeof(uint));
+  return modelFlags;
+}
 
 // vtable slot 9 = fn_16_531C (0x2B8): retail's render path, which sets up the actor's own
 // model state before the base draws it.
