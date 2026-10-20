@@ -10,9 +10,13 @@
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "Kyoto/TToken.hpp"
 
 class CCollisionActor;
 class CCollisionActorManager;
+class CGenDescription;
+class CParticleGen;
 class CParticleGenInfo;
 #endif
 
@@ -21,12 +25,10 @@ class CParticleGenInfo;
 // built by fn_16_900C, its vtable lbl_16_data_3C8 (80 entries, 22 of them local) and the analysis
 // is docs/module-analysis/EmperorIngStage1.md.
 //
-// Milestone 1 (this file's first slice) is load-and-stand: the loader, the constructor and the
-// accessors the vtable gives one-line bodies to. The state machine's tables are registered
-// (fn_16_8AF4 installs the 6 triggers, 12 states and 3 code functions fn_16_BF88 builds), but the
-// 21 functions they point at are stand-ins that log the retail function they stand in for. The
-// tentacles, the five attacks (melee, projectile, warp, beam, taunt) and the heart stage are
-// milestone 2 and forward to CPatterned behind a once-only StandIn log.
+// The state machine's tables are registered (fn_16_8AF4 installs the 6 triggers, 12 states and 3
+// code functions fn_16_BF88 builds). The tentacles, the states the run reaches up to HeartStage
+// and the beam are ported; what is not (WarpAttack, TauntAttack, EndHeartStage, the hit test and
+// the facing updates) logs once as a stand-in naming the retail function.
 //
 // The host layout is its own: the retail object is 0xD18 bytes, CPatterned is 0x7C0, and the
 // guest offsets of every member the constructor touches are in the comment above each one. Host
@@ -116,8 +118,8 @@ public:
   // then registers the three tables fn_16_BF88 builds: 6 triggers (lbl_16_data_19C), 12 states
   // (lbl_16_data_94) and 3 codes (lbl_16_data_220). The names are retail's - the state machine
   // asset's nodes are matched by name - and each comment is the retail function the entry points
-  // at. The bodies of the four triggers and the two codes that the run reaches are ported; the
-  // rest are stand-ins that log the retail function they stand in for.
+  // at. The entries the run reaches are ported; the rest are stand-ins that log the retail
+  // function they stand in for.
   //
   // Triggers (lbl_16_data_19C, 6 entries).
   bool AllTentaclesRetracted(CStateManager& mgr, const CTriggerData& data) const;  // fn_16_4BD4
@@ -154,13 +156,19 @@ private:
   void UpdateTentacles(float dt, CStateManager& mgr);
   // fn_16_2B0C: the per-tentacle update.
   void UpdateTentacle(int index, float dt, CStateManager& mgr);
-  // fn_16_26B8: the tentacle's own update - too big for the slice's rule, so a stand-in.
-  void UpdateTentacleCore(int index);
-  // fn_16_2524: the tentacle's motion update - too big for the slice's rule, so a stand-in.
+  // fn_16_26B8: the tentacle's additive animations by state, and its collision actors.
+  void UpdateTentacleCore(int index, float dt, CStateManager& mgr);
+  // fn_16_2524: the tentacle's damage - its hurt sound, and its death at 0 health.
   void UpdateTentacleMotion(int index, float dt, CStateManager& mgr);
+  // fn_16_1FC0: the tentacle becomes shootable at full health.
+  void RestoreTentacleHealth(CEmperorIngStage1Joint& joint, CStateManager& mgr);
+  // fn_16_3C58: the tentacle a segment belongs to (its spine locators), or -1.
+  int GetTentacleIndex(const CSegId& seg);
+  // fn_16_3BC4: the IS3/ACTIVATE actor moves to a dead tentacle and the script hears IS03.
+  void SendTentacleDestroyed(CStateManager& mgr, const CVector3f& pos);
   // fn_16_24AC: the tentacle's dark and light vulnerability effect states.
   void SetVulnerabilityEffects(int index);
-  // fn_16_2070: the effect state a tentacle carries - too big for the slice's rule, so a stand-in.
+  // fn_16_2070: the tentacle's particle parameters for one effect state.
   void SetTentacleEffectState(int index, const rstl::string& name);
   // fn_16_3B70: the three collision actor managers are destroyed.
   void DestroyCollisionActors(CStateManager& mgr);
@@ -191,7 +199,7 @@ private:
   CActor* GetActivateActor(CStateManager& mgr) const;
   // fn_16_920: the tracked actor's "brainSpine_scale" locator position.
   CVector3f GetBrainSpinePosition(CStateManager& mgr) const;
-  // fn_16_CD0: creates the heart stage's beam - too big for the slice's rule, so a stand-in.
+  // fn_16_CD0: creates the heart stage's beam unless one is out; true when it did.
   bool FireBeam(CStateManager& mgr, float dt);
   // fn_16_A64: aims the beam at the player and updates it.
   void UpdateBeam(float dt, CStateManager& mgr);
@@ -204,7 +212,9 @@ private:
   // fn_16_1E6C: the tentacle actor gets the module's health info and its materials.
   void AddTentacleJoint(CStateManager& mgr);
   // fn_16_1F34: the tentacle actor's materials.
-  void UpdateTentacleMaterials(CStateManager& mgr, uint flag);
+  void UpdateTentacleMaterials(const CEmperorIngStage1Joint& joint, CStateManager& mgr, uint flag);
+  // fn_16_2E1C: fn_16_1F34 over every live tentacle.
+  void SetTentacleMaterials(CStateManager& mgr, uint flag);
   // fn_16_3984: the joint is added to the vector at guest 0x7D4.
   void AddTentacleJointToVector();
   // fn_16_39CC: the vector's growth. Too big for the slice's rule, so it stays a stand-in.
@@ -215,13 +225,12 @@ private:
   CActor* GetTargetActor(CStateManager& mgr) const;
   // fn_16_2FA8: the collision actor of the second tentacle's collision actor manager.
   CCollisionActor* GetCollisionActor(CStateManager& mgr) const;
-  // fn_16_4E44 / fn_16_BDD0: the particle effect's reference and its release. The reference
-  // counter lives in the retail particle effect, which the port does not have, so these stay
-  // stand-ins.
-  void AcquireParticleEffect(CParticleGenInfo* effect);
-  void ReleaseParticleEffect(CParticleGenInfo* effect);
-  // fn_16_6D10: the effect's own update.
-  void UpdateParticleEffect(CParticleGenInfo* effect, float scale);
+  // fn_16_4E44 / fn_16_BDD0: the effect's particle system (a counted reference, taken and dropped).
+  static CParticleGen* GetEffectSystem(CParticleGenInfo* effect);
+  // fn_16_6D10: a particle external parameter on a system and every system it spawned.
+  static void SetSystemParam(CParticleGen* system, uint index, float value);
+  // fn_16_2E7C: how many of the used tentacle slots are retracted (state 0).
+  int RetractedTentacleCount() const;
   // fn_16_51D4: the module's own sound update.
   void UpdateVoice(float dt, CStateManager& mgr);
   // fn_16_4EB8: moves the actor onto the target's locator.
@@ -248,13 +257,19 @@ private:
   CDamageVulnerability mMeleeVulnerability;       // guest 0xB2C, fn_16_98D0
   CDamageVulnerability mProjectileVulnerability;  // guest 0xB5C, fn_16_98D0
   CDamageInfo mMeleeDamage;                      // guest 0xB8C
-  CDamageInfo mBeamDamage;                       // guest 0xBC4
+  CProjectileInfo mProjectile;                   // guest 0xBB8 token, 0xBC4 damage
+  TLockedToken< CGenDescription > mProjectileVisorEffect; // guest 0xBE0
   CDamageInfo mWarpStabDamage;                   // guest 0xC10
+  CProjectileInfo mBeamProjectile;               // guest 0xC80: the beam's weapon and damage
+  SLdrPlasmaBeamInfo mBeamInfo;                  // guest 0xCA8: copied verbatim (fn_16_9610)
+  ushort mBeamSound;                             // guest 0xCF0
   float mHeartExposedTime;                       // guest 0xBA8
   float mStayRetractedTime;                      // guest 0xBB4
   float mMaxTurnSpeedNormal;                     // guest 0xBF0
   float mMaxTurnSpeedMelee;                      // guest 0xBF4
+  float mJumpRopeTurnSpeed;                      // guest 0xBF8, degrees per second (fn_16_5928)
   float mTurnSpeedAccel;                         // guest 0xBFC
+  ushort mTentacleDamagedSound;                  // guest 0xC2C
   float mTauntFrequency;                         // guest 0xC34
   float mAttackIntervalMin;                      // guest 0xCF4
   float mAttackIntervalMax;                      // guest 0xCF8
@@ -275,6 +290,8 @@ private:
   int xa24_;                          // guest 0xA24, -1: the second one's
   int xa28_;                          // guest 0xA28, -1: the third one's
   float xa2c_;                        // guest 0xA2C, 0.0f: the turn angle (fn_16_2C9C)
+  float xa34_;                        // guest 0xA34, maxTurnSpeedNormal: the current turn speed
+  float xa38_;                        // guest 0xA38, 0.0f: the jump rope's duration (fn_16_5928)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
@@ -283,11 +300,15 @@ private:
   float xa60_;                        // guest 0xA60, 0.0f: the beam's refire timer (fn_16_A64)
   float xa64_;                        // guest 0xA64, 0.0f: the heart stage's beam delay (fn_16_774C)
   float xa68_;                        // guest 0xA68, 0.0f: the beam's firing time (fn_16_774C)
+  float xa6c_;                        // guest 0xA6C, 0.0f: the retracted share (fn_16_68F4)
   int xa70_;                          // guest 0xA70, 0: the next attack in the mode's list (fn_16_6D94)
+  uchar xa74_;                        // guest 0xA74, 0: flags; 0x08 the projectile is charged
   float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
+  rstl::vector< CSegId > xa7c_;       // guest 0xA7C, empty: the spine locators' segments (fn_16_3C58)
   CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)
   CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
   TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target
+  CSfxHandle xa94_;                   // guest 0xA94, 0: the projectile charge's emitter
   TUniqueId xa98_;                    // guest 0xA98, kInvalidUniqueId: the heart stage's beam
   CSfxHandle xa9c_;                   // guest 0xA9C, 0: the beam's emitter
   CVector3f xaa0_;                    // guest 0xAA0, the zero vector: the beam's aim point
