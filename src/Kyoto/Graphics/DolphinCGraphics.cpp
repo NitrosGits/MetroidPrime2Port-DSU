@@ -33,6 +33,24 @@ void AuroraFrameEnd() {
 // Retail's EndScene waits for the GP breakpoint and the next retrace, which holds the game to
 // the video rate: each loop iteration ticks a fixed 1/60 s. Without that wait the loop ran ~8x
 // real time (the 61 s health warning passed in 7 s), so sleep to a 60/50 Hz deadline instead.
+// The size of one texel of a copy destination, for `PortEfbCopy::Fill`: a copy is identified by
+// `dest`, its size and this, because the game copies several different formats into the same spare
+// buffer in one frame (A8 palette indices for the scan visor, RGB565 for the scan window's pane).
+// Formats no copy destination uses return 0, which matches no staging slot.
+int CopyTexelBytes(GXTexFmt fmt) {
+  switch (fmt) {
+  case GX_TF_I8:
+    return 1;
+  case GX_TF_IA8:
+  case GX_TF_RGB565:
+    return 2;
+  case GX_TF_RGBA8:
+    return 4;
+  default:
+    return 0;
+  }
+}
+
 void PaceFrame(bool is50Hz) {
   using clock = std::chrono::steady_clock;
   static clock::time_point sDeadline = clock::now();
@@ -1687,7 +1705,7 @@ void CGraphics::LoadDolphinSpareTexture(int width, int height, GXTexFmt fmt, voi
   // Aurora resolves a GXCopyTex into a texture, so the game's main-memory copy destination is only
   // filled by the port's read-back (PortEfbCopy); land the latest one before it is uploaded.
   void* texData = data != nullptr ? data : mpSpareBuffer;
-  PortEfbCopy::Fill(texData, width, height);
+  PortEfbCopy::Fill(texData, width, height, CopyTexelBytes(fmt));
   GXInitTexObj(&texObj, texData, width, height, fmt, GX_CLAMP, GX_CLAMP, GX_DISABLE);
 #else
   GXInitTexObj(&texObj, data != nullptr ? data : mpSpareBuffer, width, height, fmt, GX_CLAMP,
@@ -1706,9 +1724,10 @@ void CGraphics::LoadDolphinSpareTexture(int width, int height, GXCITexFmt fmt, G
   GXTexObj texObj;
 #ifdef TARGET_PC
   // The scan visor samples these bytes as palette indices, and this is where they are consumed:
-  // land the latest completed EFB copy before the texture is uploaded.
+  // land the latest completed EFB copy before the texture is uploaded. The copy that fills this
+  // texture is an A8 one, so its identity is one byte per texel.
   void* texData = data != nullptr ? data : mpSpareBuffer;
-  PortEfbCopy::Fill(texData, width, height);
+  PortEfbCopy::Fill(texData, width, height, 1);
   GXInitTexObjCI(&texObj, texData, width, height, fmt, GX_CLAMP, GX_CLAMP, GX_DISABLE, tlut);
 #else
   GXInitTexObjCI(&texObj, data != nullptr ? data : mpSpareBuffer, width, height, fmt, GX_CLAMP,

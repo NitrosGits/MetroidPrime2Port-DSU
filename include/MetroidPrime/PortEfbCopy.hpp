@@ -21,17 +21,35 @@
 // Call `Request` immediately before the `GXCopyTex` it mirrors - the read-back takes the copy's
 // source and destination geometry from the GX copy state that is current at that point - and
 // `Fill` immediately before the texture upload of the same buffer.
+//
+// **A copy is identified by `dest`, its size and its texel size, and each identity owns its own
+// staging buffer.** The game's copies all land in the same spare buffer, and the scan visor and the
+// scan window copy *different* sizes into it in the same frame (796x448 A8 for the visor's palette
+// indices, 208x92 RGB565 for the window's pane). Keying a staging slot by `dest` alone - which is
+// what this did - let one consumer's `Fill` consume the other's completed read-back, so the
+// visor's palette indices were the pane's bytes on some frames and stale on others: the highlight
+// colours on scannables flashed, and the pane showed noise. Two read-backs land per frame, so the
+// alternation is per-frame, which is exactly how it looked.
 
 namespace PortEfbCopy {
 
+// The destination a copy should use instead of the game's shared buffer: one stable buffer per copy
+// identity (the shared pointer, the size, the texel size), so a consumer's `GXCopyTex`, its
+// `Request`/`Fill` and its texture object all name memory no other consumer writes, and Aurora -
+// which resolves a copy into a texture keyed by that destination pointer - resolves this copy and
+// not whichever copy into the shared buffer came last. Call it once per copy, then use the returned
+// pointer everywhere the console used the shared buffer. Falls back to `shared` when no port
+// buffer is free.
+void* Destination(void* shared, int width, int height, int texelBytes);
+
 // Asks for the CPU half of the `GXCopyTex` the game is about to issue: the next copy into `dest`
-// will also be read back into the port's staging buffer, `width` x `height` pixels in the copy's
-// own texel format. `texelBytes` is that format's size in bytes (1 for A8/R8/I8, 2 for RGB565).
+// (a pointer `Destination` returned) will also be read back into the port's staging buffer,
+// `width` x `height` pixels at `texelBytes` per texel (1 for A8/R8/I8, 2 for RGB565).
 void Request(void* dest, int width, int height, int texelBytes);
 
-// Copies the most recent completed read-back for `dest` into it, if one is there and newer than
-// the last one consumed. `width`/`height` must be the ones `Request` was given.
-void Fill(void* dest, int width, int height);
+// Copies the most recent completed read-back into `dest` (a pointer `Destination` returned), if one
+// is there and newer than the last one consumed.
+void Fill(void* dest, int width, int height, int texelBytes);
 
 } // namespace PortEfbCopy
 

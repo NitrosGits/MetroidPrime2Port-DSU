@@ -11,6 +11,7 @@
 #include "Kyoto/Graphics/PortDrawDebug.hpp"
 #include "MetroidPrime/PortEfbCopy.hpp"
 #include "MetroidPrime/Tweaks/CTweakGui.hpp"
+#include "MetroidPrime/Tweaks/CTweakGuiColors.hpp"
 #include <cstdio>
 #include <cstdlib>
 #endif
@@ -3373,7 +3374,6 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   const rstl::pair< CVector2f, CVector2f > screen = SetViewportOrtho(true, -4096.f, 4096.f);
   CGX::SetChanCtrl(CGX::Channel0, false, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE,
                    GX_AF_NONE);
-  void* const spare = CGraphics::GetDolphinSpareBuffer();
   const CViewport& viewport = CGraphics::GetViewport();
   const int vpWidth = viewport.mWidth;
   const int vpHeight = viewport.mHeight;
@@ -3381,8 +3381,15 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   GXSetTexCopyDst(vpWidth, vpHeight, GX_CTF_A8, false);
 #ifdef TARGET_PC
   // The overlay samples these bytes as palette indices: the console's copy filled the spare buffer,
-  // and Aurora only resolves the copy into a texture, so ask for the CPU half as well.
+  // and Aurora only resolves the copy into a texture, so ask for the CPU half as well. The copy
+  // needs its own destination: the scan window's pane copies RGB565 into the same spare buffer in
+  // the same frame, and Aurora resolves a copy into a texture keyed by the destination pointer, so
+  // a shared one would give this overlay whichever of the two was recorded last - which is what
+  // made the highlight colours flash.
+  void* const spare = PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), vpWidth, vpHeight, 1);
   PortEfbCopy::Request(spare, vpWidth, vpHeight, 1);
+#else
+  void* const spare = CGraphics::GetDolphinSpareBuffer();
 #endif
   GXCopyTex(spare, false);
   CGraphicsPalette scanPalette(kPF_RGB565, paletteSize * 4);
@@ -3435,7 +3442,71 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
 #endif
   scanPalette.UnLock();
   scanPalette.Load();
+#ifdef TARGET_PC
+  CGraphics::LoadDolphinSpareTexture(vpWidth, vpHeight, GX_TF_C8, GX_TLUT0, spare, GX_TEXMAP0);
+#else
   CGraphics::LoadDolphinSpareTexture(vpWidth, vpHeight, GX_TF_C8, GX_TLUT0, nullptr, GX_TEXMAP0);
+#endif
+#ifdef TARGET_PC
+  // MP2_DEBUG_SCAN_PALETTE=1: what the colour path is actually handed - the three tweak colours,
+  // the palette as uploaded, and the indices the copy landed. Every populated index is a multiple
+  // of four (the game writes paletteIndex << 2 into the EFB's alpha), so an index that is not one
+  // is a copy or a destination-alpha problem, and a populated index >= paletteSize * 4 samples a
+  // TLUT entry this loop never wrote.
+  static const bool sDebugScanPaletteIdx = std::getenv("MP2_DEBUG_SCAN_PALETTE") != nullptr;
+  static int sScanPaletteCalls = 0;
+  const int sScanPaletteCall = sScanPaletteCalls++;
+  if (sDebugScanPaletteIdx && (sScanPaletteCall < 3 || (sScanPaletteCall % 60) == 0)) {
+    std::fprintf(stderr,
+                 "[scanpal] %dx%d paletteSize=%d color=%08x scan=%08x mask=%08x ramp=%dx%d\n", vpWidth,
+                 vpHeight, paletteSize, color.GetColor_GX(), scanColor.GetColor_GX(),
+                 maskColor.GetColor_GX(), mScanRamp.GetWidth(), mScanRamp.GetHeight());
+    if (sScanPaletteCall == 0) {
+      const CTweakGuiColors& colors = *gpTweakGuiColors;
+      std::fprintf(stderr,
+                   "[scanpal]   dim=%08x hudlight=%08x inactive=%08x inactiveExt=%08x "
+                   "windowTint=%08x\n",
+                   colors.GetScanVisorScreenDimColor().GetColor_GX(),
+                   colors.GetScanVisorHUDLightMultiply().GetColor_GX(),
+                   gpTweakGui->GetScanVisorInactiveColor().GetColor_GX(),
+                   gpTweakGui->GetScanVisorInactiveExternalColor().GetColor_GX(),
+                   colors.GetScanWindowTintColor().GetColor_GX());
+    }
+    const uchar* const indices = static_cast< const uchar* >(spare);
+    static int counts[256];
+    CBasics::ZeroMemory(counts, sizeof(counts));
+    int bad = 0;
+    for (int i = 0; i < vpWidth * vpHeight; ++i) {
+      ++counts[indices[i]];
+      if ((indices[i] & 3) != 0) {
+        ++bad;
+      }
+    }
+    std::fprintf(stderr, "[scanpal] bad=%d/%d (indices not a multiple of four)\n", bad,
+                 vpWidth * vpHeight);
+    std::fprintf(stderr, "[scanpal]   scanTime=%.3f\n", scanTime);
+    for (int top = 0; top < 4; ++top) {
+      int best = 0;
+      for (int v = 1; v < 256; ++v) {
+        if (counts[v] > counts[best]) {
+          best = v;
+        }
+      }
+      if (counts[best] == 0) {
+        break;
+      }
+      const uint entry = static_cast< uint >(best) >> 2;
+      std::fprintf(stderr, "[scanpal]   index %3d x %6d -> entry %2d %s palette=%02x%02x%02x%02x %04x\n",
+                   best, counts[best], entry, entry < static_cast< uint >(paletteSize) ? "in " : "OUT",
+                   entry < static_cast< uint >(paletteSize) ? palette[entry].GetRedu8() : 0,
+                   entry < static_cast< uint >(paletteSize) ? palette[entry].GetGreenu8() : 0,
+                   entry < static_cast< uint >(paletteSize) ? palette[entry].GetBlueu8() : 0,
+                   entry < static_cast< uint >(paletteSize) ? palette[entry].GetAlphau8() : 0,
+                   entry < static_cast< uint >(paletteSize) ? palette[entry].ToRGB565() : 0);
+      counts[best] = 0;
+    }
+  }
+#endif
   mScanRamp.Load(GX_TEXMAP1, CTexture::kCM_Repeat);
   CGX::SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXA, GX_CC_TEXC, GX_CC_ZERO);
   CGX::SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_TEXA, GX_CA_ZERO, GX_CA_TEXA, GX_CA_ZERO);

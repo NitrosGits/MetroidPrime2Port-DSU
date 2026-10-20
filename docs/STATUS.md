@@ -3,6 +3,47 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
+
+The report: "the scan visor overlay colours still are not perfectly right"; asked which part, "highlights
+on scannables"; asked how, "they flash".
+
+- **What flashed.** The visor's palette-index map (an A8 viewport copy sampled as a C8 texture through
+  the scan palette) alternated between the real indices and the *scan window pane's* RGB565 bytes, so
+  the highlight tint on scannables changed from frame to frame. Measured with a new
+  `MP2_DEBUG_SCAN_PALETTE=1` check - every populated index is `paletteIndex << 2`, so any index that is
+  not a multiple of four is foreign data: **~34,500 of 356,608 bytes on roughly half the frames** while
+  the visor was up; 0 on the others.
+- **Three causes, each fixed:**
+  1. `PortEfbCopy`'s staging slots were keyed by the destination pointer alone and had their geometry
+     overwritten by every `Request`, so the visor's `Fill` could consume the pane's completed read-back
+     (two copies into the same buffer per frame: `796x448 tx=1` and `208x92 tx=2`, both logged).
+     A slot is now the whole copy identity - shared pointer, size, texel size - with its own staging
+     buffer, and `Fill` takes the texel size too (from the destination format in
+     `LoadDolphinSpareTexture`).
+  2. **Aurora resolves a copy into a texture keyed by the destination pointer.** Both consumers copied
+     into `CGraphics::GetDolphinSpareBuffer()`, so whichever copy was recorded last owned the resolved
+     texture for both - the reason the pane showed the visor's indices as noise and vice versa.
+     `PortEfbCopy::Destination(shared, w, h, texelBytes)` now hands each consumer a stable private
+     destination: the scan visor's A8 viewport copy (`CCubeRenderer::DrawScanVisor`) and the window
+     pane's RGB565 copy (`CPlayerVisor::DrawScanEffect`) `GXCopyTex` into it, `Request`/`Fill` it, and
+     bind their texture from it.
+  3. A first attempt bound the texture to a *shadow copy* while the copy still landed in the shared
+     buffer; Aurora then read the linear guest bytes as tiled C8 and the overlay became diagonal
+     stripes (`/tmp/opencode/final_22.png`). That is why the fix is a per-copy *destination*, not a
+     shadow of the bytes.
+- **Verified on the desktop** (`Xvfb :86`, `tools/run_gameplay.sh`, `MP2_INPUT=LEFT@600+4`, plus a
+  turning-camera and a holding-`L` run): `bad=0` on every logged frame, no dropped slots, no torn
+  reads; screenshots show the pane's magnified scene clean (`/tmp/opencode/vf_30.png` - it had white
+  streaks before) and the highlight stripes steady in colour. Gates: `python3 tools/gen_files_cmake.py
+  --check` rc=0, and the upstream matching build after the three upstream-file edits -
+  `main.dol` sha1 `6ef9b491d0cc08bc81a124fdedb8bfaec34d0010`, Game Code 94.14% fuzzy / 63.29% matched
+  (unchanged), every edit inside `#ifdef TARGET_PC` with the non-PC statements preserved verbatim.
+- **Still open, same class:** the camera filters, `CPlayerGun` and the particles also copy into the
+  shared spare buffer without a `Destination`, so they can still take each other's resolved texture
+  (unchanged by this session, and no longer able to reach the visor's or the pane's copies). Fold them
+  into `Destination` the same way when one of them shows the symptom.
+
 ## 2026-10-20 (twenty-ninth session): the F1 Teleport and items pages, Prime 1's shape
 
 - **This commit:** the F1 overlay gets MP1's two debug pages, in this game's terms.

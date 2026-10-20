@@ -138,4 +138,13 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   own controller/keyboard read for the port but still merges the virtual pad (console, `MP2_INPUT`,
   touch) on top. A re-vendor of Aurora must keep the hook, or pad 0 silently loses the keyboard.
   Keyboard bindings live in `<user>/controls.toml`; `keybinds.cfg` is no longer read.
-
+- **The game's EFB copies all land in one spare buffer, and Aurora resolves each copy into a texture
+  keyed by the destination pointer** - so two consumers copying into that buffer in the same frame end
+  up sharing one resolved texture, whichever copy was recorded last. The scan visor's A8 palette-index
+  copy and the scan window's RGB565 pane copy were exactly that pair: the highlight colours on
+  scannables flashed between the two. Give a copy its own destination with
+  `PortEfbCopy::Destination(shared, w, h, texelBytes)` and use that pointer for the `GXCopyTex`, the
+  `Request`/`Fill` and the texture object. Do **not** instead bind the texture to a copy of the bytes:
+  Aurora then samples the guest buffer as tiled C8/RGB565 and the overlay turns into diagonal stripes.
+  `MP2_DEBUG_SCAN_PALETTE=1` reports the palette-index map's foreign bytes (`bad=`), which is how this
+  was measured (~34,500 of 356,608 on half the frames before, 0 after).

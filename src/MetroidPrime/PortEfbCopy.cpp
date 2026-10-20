@@ -15,15 +15,25 @@
 namespace PortEfbCopy {
 namespace {
 
-// One staging buffer per copy destination. The port's copies all land in the same spare buffer and
-// their size changes as the scan window animates, so a slot is keyed by `dest` alone and its
-// staging buffer is allocated once at a fixed capacity: reallocating it while the render thread may
-// still be writing a read-back into it would be a use-after-free.
-constexpr int kSlotCount = 4;
-constexpr size_t kStagingCapacity = 1u << 20; // 1 MiB: covers 800x600 of 16-bit copy texels
+// One staging buffer and one destination buffer per copy identity: the game's shared buffer, the
+// copy's size and its texel size. The game's copies all land in the same spare buffer and the scan
+// visor copies the whole viewport as A8 while the scan window copies its pane as RGB565 in the same
+// frame, so with the identity reduced to that shared pointer - which is what this did - one
+// consumer's `Fill` consumed the other's read-back, and, worse, Aurora keys the texture it resolves
+// a copy into by the destination pointer, so both consumers sampled whichever copy was recorded
+// last. The visor's palette indices were the pane's bytes on some frames: the highlight colours on
+// scannables flashed, and the pane showed noise.
+//
+// `Destination` is what makes the identity real: a consumer asks it for a per-copy buffer, issues
+// its `GXCopyTex` into that buffer and binds its texture from it, so Aurora's resolved copy texture
+// is keyed per consumer and the read-back lands somewhere only that consumer reads. The buffers
+// keep their capacity for the life of the slot, so nothing is reallocated while the render thread
+// may still be writing a read-back into it.
+constexpr int kSlotCount = 8;
 
 struct Slot {
-  void* dest = nullptr;
+  void* shared = nullptr; // the game's own buffer the consumer passed
+  void* dest = nullptr;   // this copy's private destination, the pointer GXCopyTex and the texture use
   int width = 0;
   int height = 0;
   int texelBytes = 0;
@@ -32,19 +42,37 @@ struct Slot {
   // a whole copy is there. It must never be read or written except through std::atomic_ref.
   uint32_t sequence = 0;
   uint32_t consumedSequence = 0;
+  uint32_t lastUsed = 0;
+  bool ownsDestination = false; // false: the copy still lands in the game's shared buffer
   std::vector< unsigned char > staging;
+  std::vector< unsigned char > destination;
+
+  bool used() const { return !staging.empty(); }
 
   size_t bytes() const {
     return static_cast< size_t >(width) * static_cast< size_t >(height) *
            static_cast< size_t >(texelBytes);
   }
+
+  bool matchesShared(void* s, int w, int h, int texels) const {
+    return used() && shared == s && width == w && height == h && texelBytes == texels;
+  }
+
+  bool matchesDestination(void* d) const { return used() && dest == d; }
+
+  uint32_t sequenceValue() const {
+    return std::atomic_ref< uint32_t >(const_cast< uint32_t& >(sequence))
+        .load(std::memory_order_acquire);
+  }
 };
 
 Slot sSlots[kSlotCount];
+uint32_t sUseCounter = 0;
 uint32_t sRequests = 0;
 uint32_t sFills = 0;
 uint32_t sTornReads = 0;
 uint32_t sDropped = 0;
+uint32_t sRecycled = 0;
 bool sLoggedFirstFill = false;
 
 bool DebugEfbCopy() {
@@ -52,52 +80,91 @@ bool DebugEfbCopy() {
   return enabled;
 }
 
-Slot* FindSlot(void* dest, int width, int height) {
+Slot* FindByShared(void* shared, int width, int height, int texelBytes) {
   for (Slot& slot : sSlots) {
-    if (slot.dest == dest && slot.width == width && slot.height == height && !slot.staging.empty()) {
+    if (slot.matchesShared(shared, width, height, texelBytes)) {
       return &slot;
     }
   }
   return nullptr;
 }
 
-// The slot for one copy destination, allocated on first use. Its staging buffer keeps its capacity
-// for the lifetime of the slot, so a size change never reallocates memory the render thread may be
-// writing into.
-Slot* AcquireSlot(void* dest, int width, int height, int texelBytes) {
-  if (width <= 0 || height <= 0 || texelBytes <= 0) {
-    return nullptr;
-  }
-  const size_t needed = static_cast< size_t >(width) * height * texelBytes;
-  if (needed > kStagingCapacity) {
-    return nullptr;
-  }
+Slot* FindByDestination(void* dest) {
   for (Slot& slot : sSlots) {
-    if (slot.dest != dest || slot.staging.empty()) {
-      continue;
+    if (slot.matchesDestination(dest)) {
+      return &slot;
     }
-    slot.width = width;
-    slot.height = height;
-    slot.texelBytes = texelBytes;
-    return &slot;
-  }
-  for (Slot& slot : sSlots) {
-    if (!slot.staging.empty()) {
-      continue;
-    }
-    slot.dest = dest;
-    slot.width = width;
-    slot.height = height;
-    slot.texelBytes = texelBytes;
-    slot.sequence = 0;
-    slot.consumedSequence = 0;
-    slot.staging.assign(kStagingCapacity, 0);
-    return &slot;
   }
   return nullptr;
 }
 
+// The slot for one copy identity, claiming a free pair of buffers or recycling the least recently
+// used one. A slot the render thread is writing into is never recycled: its sequence is odd while
+// the bytes are in flight.
+Slot* AcquireSlot(void* shared, int width, int height, int texelBytes, bool privateDestination) {
+  if (width <= 0 || height <= 0 || texelBytes <= 0) {
+    return nullptr;
+  }
+  const size_t needed = static_cast< size_t >(width) * height * texelBytes;
+  if (Slot* existing = FindByShared(shared, width, height, texelBytes)) {
+    existing->lastUsed = ++sUseCounter;
+    return existing;
+  }
+  Slot* freeSlot = nullptr;
+  for (Slot& slot : sSlots) {
+    if (!slot.used()) {
+      freeSlot = &slot;
+      slot.staging.assign(needed, 0);
+      break;
+    }
+  }
+  if (freeSlot == nullptr) {
+    for (Slot& slot : sSlots) {
+      if ((slot.sequenceValue() & 1u) != 0) {
+        continue; // a read-back is being written into it
+      }
+      if (freeSlot == nullptr || slot.lastUsed < freeSlot->lastUsed) {
+        freeSlot = &slot;
+      }
+    }
+    if (freeSlot != nullptr) {
+      ++sRecycled;
+    }
+  }
+  if (freeSlot == nullptr) {
+    return nullptr;
+  }
+  // Exact sizes, and an identity's buffers never change size once it exists, so nothing is
+  // reallocated while the render thread may still be writing a read-back into it.
+  freeSlot->staging.assign(needed, 0);
+  freeSlot->ownsDestination = privateDestination;
+  if (privateDestination) {
+    freeSlot->destination.assign(needed, 0);
+    freeSlot->dest = freeSlot->destination.data();
+  } else {
+    // A copy whose call site has not been given a private destination (the camera filters, the gun,
+    // the particles). It keeps the console's behaviour - the bytes land in the game's own buffer -
+    // and is keyed by that buffer plus its size, which is still one slot per copy rather than one
+    // per buffer.
+    freeSlot->destination.clear();
+    freeSlot->dest = shared;
+  }
+  freeSlot->shared = shared;
+  freeSlot->width = width;
+  freeSlot->height = height;
+  freeSlot->texelBytes = texelBytes;
+  freeSlot->sequence = 0;
+  freeSlot->consumedSequence = 0;
+  freeSlot->lastUsed = ++sUseCounter;
+  return freeSlot;
+}
+
 } // namespace
+
+void* Destination(void* shared, int width, int height, int texelBytes) {
+  Slot* slot = AcquireSlot(shared, width, height, texelBytes, true);
+  return slot != nullptr ? slot->dest : shared;
+}
 
 void Request(void* dest, int width, int height, int texelBytes) {
   // MP2_EFB_COPY=0 turns the read-back off, which is the A/B for anything inside it.
@@ -106,10 +173,13 @@ void Request(void* dest, int width, int height, int texelBytes) {
   if (!enabled || dest == nullptr) {
     return;
   }
-  Slot* slot = AcquireSlot(dest, width, height, texelBytes);
+  Slot* slot = FindByDestination(dest);
+  if (slot == nullptr) {
+    slot = AcquireSlot(dest, width, height, texelBytes, false);
+  }
   if (slot == nullptr) {
     if (sDropped++ % 120 == 0) {
-      std::fprintf(stderr, "[efb-copy] no staging slot free for %dx%d into %p (%u dropped)\n", width,
+      std::fprintf(stderr, "[efb-copy] no staging slot for %dx%d at %p (%u dropped)\n", width,
                    height, dest, sDropped);
     }
     return;
@@ -119,8 +189,11 @@ void Request(void* dest, int width, int height, int texelBytes) {
                       static_cast< uint32_t >(slot->staging.size()));
 }
 
-void Fill(void* dest, int width, int height) {
-  Slot* slot = FindSlot(dest, width, height);
+void Fill(void* dest, int width, int height, int texelBytes) {
+  (void)width;
+  (void)height;
+  (void)texelBytes;
+  Slot* slot = FindByDestination(dest);
   if (slot == nullptr) {
     return;
   }
@@ -129,7 +202,8 @@ void Fill(void* dest, int width, int height) {
   const uint32_t before = sequence.load(std::memory_order_acquire);
   if ((before & 1u) != 0 || before == 0 || before == slot->consumedSequence) {
     // Either the render thread is mid-write, no copy has landed yet, or this snapshot is the one
-    // already in the buffer.
+    // already in the buffer. The destination holds this copy's own last bytes either way, so there
+    // is nothing to do: nothing else writes it.
     return;
   }
 
@@ -154,8 +228,9 @@ void Fill(void* dest, int width, int height) {
                  width, height, bytes, before);
   }
   if (DebugEfbCopy() && sFills % 120 == 0) {
-    std::fprintf(stderr, "[efb-copy] %u fills from %u requests (%dx%d into %p)\n", sFills, sRequests,
-                 width, height, dest);
+    std::fprintf(stderr,
+                 "[efb-copy] %u fills from %u requests (%dx%d tx=%d into %p), %u recycled slots\n",
+                 sFills, sRequests, width, height, texelBytes, dest, sRecycled);
   }
 }
 

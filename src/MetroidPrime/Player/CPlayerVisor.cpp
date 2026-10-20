@@ -357,12 +357,18 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
   const int height = CMath::Clamp(skPixelsPerTileDimension16Bit,
                                   round_up_to_tile(layoutScale * (vpH / divisor)), vpHeight);
   GXSetTexCopySrc(vpLeft + (vpWidth - width) / 2, vpTop + (vpHeight - height) / 2, width, height);
-  void* const buffer = CGraphics::GetDolphinSpareBuffer();
-  GXSetTexCopyDst(width, height, GX_TF_RGB565, GX_FALSE);
 #ifdef TARGET_PC
   // The scan window's pane samples these bytes as a texture, so the console's copy wrote them to
-  // main memory too. Ask for the CPU half, exactly as the visor overlay's viewport copy does.
+  // main memory too - and this copy shares the spare buffer with the visor overlay's viewport copy
+  // (an A8 one) issued in the same frame. Take this copy's own destination, so Aurora resolves this
+  // copy into the pane's texture rather than into whichever copy into the spare buffer came last.
+  // Ask for the CPU half as well, exactly as the overlay's copy does.
+  void* const buffer = PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), width, height, 2);
+  GXSetTexCopyDst(width, height, GX_TF_RGB565, GX_FALSE);
   PortEfbCopy::Request(buffer, width, height, 2);
+#else
+  void* const buffer = CGraphics::GetDolphinSpareBuffer();
+  GXSetTexCopyDst(width, height, GX_TF_RGB565, GX_FALSE);
 #endif
   GXCopyTex(buffer, GX_FALSE);
   GXPixModeSync();
