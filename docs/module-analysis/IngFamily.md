@@ -285,6 +285,13 @@ marks only the 45 functions a run actually called (an instrumented build, run be
   `SetNoImmunity(true)`, floats 1 / 2 / 150 / 1). The helper `fn_29_4468` is `TargetAimPosition`
   (already there). The spawn name (`lbl_29_rodata_120 + 0x573`) does not resolve in the rodata dump;
   the guardian's "Ing Mini Portal Attack" stands in **[?]**. Still no `// @`.
+- **Grapple** (`PortCIng.cpp`, 2026-10-20): `GrappleBall fn_29_6578` and `ExpelGrappledBall
+  fn_29_4D18` are ported (state time = `StateMachineState().GetTime()`, the morph-ball test is
+  `GetSpawnedMorphballState() == kMS_Unmorphed && GetMorphballTransitionState() == kMS_Morphed`,
+  damage = `dt * mUnknown67F6` with `kWT_AI` and no immunity, spit = `mass * mSpitForce` up the
+  `Up()->forward` slerp of 20 deg, `mCurDamageRemTime = mDamageWaitTime`). `CSfxHandle mGrappleSfx`
+  is 0xd04. **[?]** in it: the morph half of the 0x1144 flag pair has no CPlayer setter, and the
+  damage word's two flag bits come from an uninitialised stack slot in the pseudo-C. No `// @`.
 - **Verified at runtime** (Sanctuary 0i_cliff_hall_dark, MLVL `1baa96c2` MREA `2735236b`, layer 0):
   - The area places two INGS objects (`00390081`, `00390089`). They load **inactive** with
     detection range 0, so a run must `send <uid> Activate` over `MP2_CONSOLE`, and the beam
@@ -298,15 +305,30 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     hp 1100/1100). `send Activate` works (`obj` then reports it active) but two runs that teleported
     the player next to it and held fire for 120 s did **not** damage it (hp unchanged, screenshots
     black), so no portal ever spawned.
-  - Damage attempts, unresolved (2026-10-20): three runs fired at an active Ing in area 57
-    (`u0418`/`u0422`, hp 300/300 never moved), with the player teleported 8 units away, `face`d at
-    it and both pitch directions held, on the power beam and on a `give lightBeam` + `beam light`
-    light beam; the Ings' FSM logged `HeardShot`/`UnderFire`, so the gun does fire and `Listen`
-    works, but nothing lands. Both Ings were in form 3 (ing spot), whose collision actors the port
-    only activates in corporeal form (`PortCIng.cpp:2047`), and the guardian case is unexplained.
-    Two candidates before blaming the port: aiming (nothing sets pitch precisely) and a missing
-    beam target on the puddle form. Marker work for `fn_29_2B70/2E8C/2684/2414` and the
-    mini-portal classes waits on this.
+  - Damage, resolved (2026-10-20, `ing_light6.sh`): a light-beam shot **does** damage a corporeal
+    Ing - hp 300 -> 180 over six shots at 6 units - and the relay is visible in the log (XHIT from
+    each collision actor, XDMG = `kSM_Damage` when one is damaged). The three earlier runs failed
+    for two independent reasons, neither of them aiming alone:
+    1. `fn_29_3014` calls `GetDamageVulnerability__10CPatternedCFv` **directly**, not through the
+       vtable, so retail's collision actors get CAi's own table. The port copied the virtual
+       override, which in corporeal form is `mTriggerVulnerability` - pass-through for every beam -
+       so `CGameProjectile::CanCollideWith` dropped the Ing before any geometry test. Fixed in
+       `PortCIng.cpp` (`SetupCollisionActors`); this was the whole "nothing ever lands" bug.
+    2. The **power beam cannot hurt an Ing at all** (retail): the Ing reports
+       `CWeaponTypeVulnerability::kE_PassThrough`, and the shot flies through to the wall behind.
+       Use the light beam, and `give lightBeam` alone is not enough - the light beam consumes light
+       ammo, so `give lightAmmo 50` is required or the gun fires nothing (0 projectiles vs 3/3 on
+       the power beam in the same run).
+    3. Aiming is still unsolved for low targets: the C-stick does not turn the view in a console
+       run (retail's free look needs the look button held, and `PortInput::Hold` replaces the whole
+       held state, so a `press` cancels a `cstick`), so every shot so far is level
+       (`dir (0.0, 1.0, -0.008)` in the new `[proj]` log). Level shots pass over a puddle, so the
+       ing-spot form is still unhit; the `damage <id> <n>` console command does work on it
+       (300 -> 295), which proves the `kSM_Damage` branch itself.
+  - `MP2_DEBUG_BEAM=1` (2026-10-20) logs each projectile's ray test and every near-list verdict
+    (`CGameProjectile::RayCollisionCheckWithWorld`), plus `MP2_DEBUG_ING=1` logs the damage
+    messages that reach the Ing. The player's beams are `CEnergyProjectile` (`CGunWeapon.cpp:403`),
+    not `CBeamProjectile`.
 
 ### A.6 Next slices (handoff, 2026-10-20)
 
@@ -322,18 +344,34 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 
 | slice | functions | note |
 |---|---|---|
-| grapple | `fn_29_6578` GrappleBall (0x428) + `fn_29_4D18` ExpelGrappledBall (0x1FC) | reads the grapple block (`CIngData` +0x10c) and the player's ball form; `0xe4c` (`mHitReactionTime`) < 0 ends it |
+| ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`), builds and runs but no run enters the state: it needs the player in morph ball inside `mPursuitRange`. Next run for it: `press b` to morph, then walk into the Ing |
 | arm swipe | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | needs `CScriptTeamAiMgr::StartAttack/EndAttack`, `CBCMeleeAttackCmd`, `pas::kAS_MeleeAttack`; owns `0xe5c` bit 1 |
 | suck | `fn_29_76B8` SuckEnergy (0x778) | allocates a 0x180 `CHUDBillboardEffect` |
 | splat | `fn_29_4F14` SplatOntoMesh (0x238) | one of the twelve code functions |
 | exit host | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10F58`; `lbl_29_data_C60`) | biggest; the class identity is still only **[probable]** |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
+Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
+`@ fn_29_2684` (`CollisionActorDamage`) and `@ fn_29_2ED8` (`CollisionActorHitPlayer` - XHIT arrives
+from every collider the shot touches). `fn_29_2B70` (ing-spot hit) and `fn_29_2414` (its effect)
+still wait for a hit on a puddle.
+
+**Blocker for the puddle:** nothing aims at a low target. Retail free look needs the look button
+held and `PortInput::Hold` replaces the whole held state, so a console `press` cancels a `cstick`.
+Fix it in the platform layer, which is not this session's file: add `PortMouse::SetAimAngles(yaw,
+pitch)` (the aim state already carries both, `Synchronize` sets them from a direction) plus a
+console command `aim <yaw_deg> <pitch_deg>`, enabled with twin-stick (`PortMouse::SetStickEnabled`)
+so `CPlayer::UpdateMouseAim` is the one that turns the body. Then a run can aim down at a puddle and
+earn the last two markers.
+
 Handles/scripts that work today: `/tmp/opencode/ing_run2.sh` + `ing_con.py` (area 57, activates
-both Ings, `tp 58.4 356 9`, holds fire), `ing_aim.sh`/`ing_aim_con.py` (teleport + `face` + `beam
-light` + `cstick` pitch, prints each actor's `obj` hp), `sjg_run.sh`/`sjg_con.py` (Jump Guardian in
+both Ings, `tp 58.4 356 9`, holds fire), `ing_light6.sh`/`ing_light6_con.py` (the damage run: gives
+`lightBeam` + `lightAmmo`, activates both, six light-beam shots at 6 units, then a `damage` control;
+prints hp after each shot and the projectile count), `sjg_run.sh`/`sjg_con.py` (Jump Guardian in
 Agon `02_sand_sandfalls_dark`), `sjg_diag.sh` (the same with screenshots). Each uses its own Xvfb
-display and `MP2_CONSOLE` port; see the file header.
+display and `MP2_CONSOLE` port; see the file header. **Always kill a run by pid** - a
+`pkill -f metroid_prime2_port` also matches your own shell, and other sessions run the same binary
+from their own worktree.
 
 ---
 

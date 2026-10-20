@@ -392,7 +392,7 @@ void CIng::SetupCollisionActors(CStateManager& mgr) {
   }
 }
 
-// fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
+// @ fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
 // and the contact damage is off cooldown, the player takes the Ing's contact damage.
 void CIng::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
   const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.ObjectById(sender));
@@ -448,7 +448,7 @@ void CIng::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
   }
 }
 
-// fn_29_2684 (not yet exercised in a run): a weapon (or the player) hit a collision actor. The actor carries a copy of the Ing's
+// @ fn_29_2684: a weapon (or the player) hit a collision actor. The actor carries a copy of the Ing's
 // initial health, so what it lost is the hit: the Ing's health drops by that much, it takes the hit
 // (fn_29_B890 only records the hit time), dies below zero, and is knocked back along the shot. The
 // actor's health is then re-armed.
@@ -2237,7 +2237,7 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     CollisionActorHitPlayer(mgr, sender); // fn_29_2ED8
     break;
   case kSM_Damage:
-    // fn_29_2E8C (not yet exercised in a run): the ing-spot form reacts to the hit itself, every
+    // @ fn_29_2E8C: the ing-spot form reacts to the hit itself, every
     // other form relays it.
     if (mForm == kForm_IngSpot) {
       IngSpotDamage(mgr, sender); // fn_29_2B70
