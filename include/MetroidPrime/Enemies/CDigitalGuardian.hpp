@@ -331,6 +331,11 @@ private:
                          // CElementGen in retail); fn_14_D664 creates it
   TUniqueId x10CC_;      // 0x10CC: the guard's collision actor (fn_14_28D0 wakes it)
   CSfxHandle x1240_;   // 0x1240: the beacon's sound emitter handle (fn_14_28D0 sets it)
+  // 0x1244 (present byte 0x1250): transmissionBeaconExplosion (data +0x1F4), fn_14_266C's.
+  rstl::optional_object< TLockedToken< CGenDescription > > x1244_;
+  // 0x1254 (present byte 0x1260): transmissionBeaconEchoHit (data +0x1F8), fn_14_2E60's.
+  rstl::optional_object< TLockedToken< CGenDescription > > x1254_;
+  float x126C_;        // 0x126C: the echo flash time (0.0f, the store at 0xB9C4; fn_14_5274)
   float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
   int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
@@ -397,6 +402,12 @@ private:
   void x5140_(CStateManager& mgr, TUniqueId sender, float damage);
   // fn_14_5384 (0xEC bytes): a toe target or the root collider hit (from fn_14_5838).
   void x5384_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_5274 (0x100 bytes): the head collider (the beacon) hit (from fn_14_5838).
+  void x5274_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_266C (0x264 bytes): the beacon is destroyed.
+  void x266C_(CStateManager& mgr);
+  // fn_14_2E60 (0x234 bytes): the beacon is hit and survives.
+  void x2E60_(CStateManager& mgr);
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
   // named by their retail offset.

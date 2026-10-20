@@ -33,6 +33,7 @@
 #include "rstl/StringExtras.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardianKneeArmor.hpp"
+#include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -291,7 +292,10 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x123C_(nullptr)
 , x10CC_(kInvalidUniqueId)
 , x1240_(CSfxHandle())
+, x1244_()
+, x1254_()
 , x1264_(0.f)
+, x126C_(0.f) // the store at 0xB9C4
 , x1268_(0)
 , x1270_(0)
 , xFBC_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
@@ -318,6 +322,16 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   if (mData.mToeTargetExplosion != kInvalidAssetId) {
     x1100_ = TLockedToken< CGenDescription >(
         gpSimplePool->GetObj(SObjectTag('PART', mData.mToeTargetExplosion)));
+  }
+  // The beacon's explosion and echo-hit tokens (0xB6CC..0xB7B0 and 0xB834..0xB914), each
+  // locked when its id is set.
+  if (mData.mTransmissionBeaconExplosion != kInvalidAssetId) {
+    x1244_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.mTransmissionBeaconExplosion)));
+  }
+  if (mData.mTransmissionBeaconEchoHit != kInvalidAssetId) {
+    x1254_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.mTransmissionBeaconEchoHit)));
   }
 
 
@@ -1424,9 +1438,10 @@ void CDigitalGuardian::x143C_(CStateManager& mgr, const CVector3f& pos,
 
 // fn_14_5838: the head collider (0x10CC) goes to fn_14_5274, a knee collider (fn_14_3E2C) to
 // fn_14_5470, a toe target (fn_14_43AC) or the root collider (0x1080) to fn_14_5384.
+// @ fn_14_5838
 void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
   if (sender == x10CC_) {
-    StandInFn("fn_14_5274 (the head collider's damage)");
+    x5274_(mgr, sender); // fn_14_5274
     return;
   }
   const int knee = x3E2C_(sender); // fn_14_3E2C
@@ -1434,6 +1449,26 @@ void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
     x5470_(mgr, sender, knee); // fn_14_5470
   } else if (x43AC_(sender) || sender.value == x1080_) {
     x5384_(mgr, sender); // fn_14_5384
+  }
+}
+
+// @ fn_14_5274
+void CDigitalGuardian::x5274_(CStateManager& mgr, TUniqueId sender) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x52C0
+    return;
+  }
+  x126C_ = 1.f; // .rodata 0x270
+  const float hp = collider->GetHealthInfo()->GetHP();
+  const float initial = collider->GetHealthInfo()->GetInitialHP();
+  if (hp <= 0.f) { // .rodata 0x264
+    collider->HealthInfo()->SetHP(initial);
+    x266C_(mgr); // fn_14_266C: destroyed
+  } else {
+    x2E60_(mgr); // fn_14_2E60: hit
+  }
+  if (EchoEmitter() != nullptr) { // the test at 0x5348
+    EchoEmitter()->SetAutoReducingDamage(x126C_);
   }
 }
 
@@ -1673,6 +1708,70 @@ void CDigitalGuardian::x1A68_(CStateManager& mgr, int leg, int state) {
   }
   default:
     break;
+  }
+}
+
+// fn_14_266C: not run yet (the beacon never opens in the area-53 run).
+void CDigitalGuardian::x266C_(CStateManager& mgr) {
+  if (x1268_ == 0) {
+    return;
+  }
+  x1268_ = 3;
+  const CTransform4f xf = CTransform4f::Translate(GetAimPosition(mgr, 0.f)); // vtable 0x54
+  if (x1244_.valid()) {
+    // "Beacon Explosion Fx" (.rodata 0x8CC) at the aim position, the model's scale, white.
+    const CVector3f scale = GetModelData()->GetScale();
+    const rstl::string name = rstl::string_l("Beacon Explosion Fx");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    CExplosion* explosion = rs_new CExplosion(x1244_.data(), uid, info, name, xf, 0, scale,
+                                              CColor::White(), -1);
+    if (explosion != nullptr) { // the retail's test at 0x27E4
+      mgr.AddObject(explosion);
+    }
+  }
+  PlayCustomSound(GetTranslation(), CVector3f::Up(), mData.mSoundBeaconExplode, false);
+  CCollisionActor* head = TCastToPtr< CCollisionActor >(mgr.ObjectById(x10CC_));
+  if (head != nullptr && head->GetActive()) { // the tests at 0x2830 and 0x283C
+    head->SetActive(false);
+  }
+  if (x123C_ != nullptr) {
+    x123C_->SetParticleEmission(false); // vtable 0x2C
+  }
+  if (x1240_ != CSfxHandle()) {
+    CSfxManager::RemoveEmitter(x1240_);
+    x1240_ = CSfxHandle();
+  }
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
+}
+
+// fn_14_2E60: the area-53 run only reaches the early return (the head collider asleep).
+void CDigitalGuardian::x2E60_(CStateManager& mgr) {
+  if ((x128C_ & 0x08) != 0) { // the extrwi at 0x2E7C
+    return;
+  }
+  const CCollisionActor* head = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(x10CC_));
+  if (head == nullptr || !head->GetActive()) { // the tests at 0x2E9C and 0x2EA8
+    return;
+  }
+  // Above the head collider by 4 (.rodata 0x2A8) times the model's z scale.
+  const CVector3f scale = GetModelData()->GetScale();
+  const CVector3f pos = head->GetTranslation() + CVector3f::Up() * (4.f * scale.GetZ());
+  // "Beacon Hit Fx" (.rodata 0x8E0); the retail does not test the token (0x1260) first.
+  const rstl::string name = rstl::string_l("Beacon Hit Fx");
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                         kInvalidEditorId);
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CExplosion* explosion = rs_new CExplosion(x1254_.data(), uid, info, name,
+                                            CTransform4f::Translate(pos), 0, scale,
+                                            CColor::White(), -1);
+  if (explosion != nullptr) { // the retail's test at 0x3038
+    mgr.AddObject(explosion);
+  }
+  if (x1254_.valid()) { // the present byte at 0x304C
+    PlayCustomSound(pos, CVector3f::Up(), mData.mSoundBeaconHit, false);
   }
 }
 
