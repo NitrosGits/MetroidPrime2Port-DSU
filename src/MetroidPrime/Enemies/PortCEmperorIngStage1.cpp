@@ -273,6 +273,13 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 // fn_16_8B80 (vtable slot 0): only the member destruction the collision managers need is here -
 // the three rstl::single_ptr members are deleted in reverse order, 0x7D0 (0x8CDC), 0x7CC
 // (0x8CF0) and 0x7C8 (0x8D04).
+// The rest of the retail's destructor is the base class's own: fn_16_8D40 (0x8D40..0x8F24, the
+// call at 0x8D10) is CPatterned's destructor - it destroys the tokens, the knock-back manager
+// (fn_16_8F24, 0x8F24..0x8FB8, which puts the DOL's CAiKnockBackMgr vtable back and unlocks the
+// token), the possession data, the body state info and manager, the damage vulnerability and the
+// base; fn_16_8FB8 (0x8FB8..0x900C, the call at 0x8D38) is the deleting destructor of the
+// rstl::vector<CSegId> at guest 0xA7C. The host's CPatterned, CAi and rstl::vector own those
+// members and destroy them themselves, so the functions are cited and not ported.
 CEmperorIngStage1::~CEmperorIngStage1() {
   delete x7d0_;
   delete x7cc_;
