@@ -242,6 +242,19 @@ CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; 
 
 } // namespace
 
+// The retail's vtable slots that are the base class's own inline functions, which the REL
+// carries its own copies of (the host's CPatterned and CActor have the same base functions, so
+// the host inherits them; no marker): fn_44_18 (it stores the rodata constant lbl_8041AAB8 in the
+// base's field at 0x448), fn_44_28 (the base's flag byte at 0x44f), fn_44_30 (it returns false),
+// fn_44_38 (it writes the invalid id), fn_44_48 (the base's flag at 0x34c, the byte's 0x10),
+// fn_44_54 (it returns the rodata constant lbl_8041B758), fn_44_60 (the base's member at 0x754),
+// fn_44_68 (it returns true) and fn_44_59E8 (it copies a CVector3f).
+//
+// The retail's FSM2 node destructors: fn_44_87E0 (the most derived node), fn_44_8404 and
+// fn_44_78BC (the nodes derived from it) put the node's vtable back and free it, and fn_44_7918
+// is the base node's destructor. The host's CState2 node classes own their destructors, so the
+// host has them; no marker.
+
 // @ fn_44_0
 // The retail returns its path find search (this+0x960) and the check finds no difference.
 CPathFindSearch* CMinorIng::GetSearchPath() { return &mPathFindSearch; }

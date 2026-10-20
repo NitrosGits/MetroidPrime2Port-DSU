@@ -357,7 +357,17 @@ data, the vector resize), 5 retail bodies the host does not model but that the l
 (the host's own classes cover them: fn_44_1114 is the host's generated `LdrToPatternedInfo`,
 fn_44_28D8 the host's `CEntityInfo` destructor, fn_44_9BB8 a member's own destructor, fn_44_E08
 the host's `CIngSpotData` copy and fn_44_9940 the host's `CPatterned` destructor), and the rest
-unported chains the module calls but the live cycle never reaches.
+unported chains the module calls but the live cycle never reaches. The chain that matters is the
+projectile's spawn parameters (fn_44_65C4 -> fn_44_660C -> fn_44_66C0 -> fn_44_6700 -> fn_44_6720
+-> fn_44_6748, with fn_44_64AC -> fn_44_6500 -> fn_44_655C -> fn_44_657C beside it): the retail's
+DoUserAnimEvent (fn_44_6384) spawns the projectile through it, while the host's uses the base's
+LaunchProjectile, so porting that chain is the next slice.
+
+The thirteen vtable slots break down as: eight the host's `CMinorIng` overrides itself (marked
+below), nine that are the base class's own inline functions (the REL carries its own copies of
+them, the host's `CPatterned` and `CActor` have the same base functions) and four that are the
+FSM2 node destructors (the host's `CState2` node classes own theirs). The latter two groups are
+cited in the code instead of marked.
 
 The eight vtable slots the host's `CMinorIng` overrides itself are marked now: fn_44_0 (the path
 find search), fn_44_8 (the point path find search), fn_44_5AB8 (the projectile info), fn_44_10 (the
