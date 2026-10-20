@@ -86,7 +86,7 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
                            float f2, float f3, float f4, float f5, float f6)
 : CPatterned(character, uid, name, flavor, info, xf, mData, pInfo, moveType, colType, bodyType,
              actParms)
-, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff)
+, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff) // @ fn_83_26CC (0x54): the CCollisionSurface ctor (asm 0x24A0)
 , mColSphere(CSphere(CVector3f::Zero(), sphereRadius), GetMaterialList())
 , mCollisionCloseMargin(collisionCloseMargin)
 , mAlignAngVel(alignAngVel)
@@ -131,6 +131,8 @@ void CWallCrawler::PreThink(float dt, CStateManager& mgr) {
     if (!mAlignToFloor) {
       return;
     }
+    // @ fn_83_129C (0x6C): the CMotionState copy the retail makes before AddMotionState
+    // (asm 0x1148-0x115C) - the C++ copy of the predicted state is the same value.
     AddMotionState(PredictMotion(dt));
     ClearForcesAndTorques();
     if (mHasAlignSurface) {
@@ -369,6 +371,7 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
           }
           if (dist < best && PointOnSurface(surface, newPos)) {
             best = dist;
+            // @ fn_83_19C8 (0x5C): the CCollisionSurface copy (asm 0x14BC and 0x160C).
             mAlignSurface = surface;
             found = true;
           }
