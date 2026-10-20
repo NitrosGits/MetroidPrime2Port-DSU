@@ -1131,7 +1131,7 @@ void CIngBoostBallGuardian::EndRangedAttack(CStateManager& mgr, float) {
                               false);
 }
 
-// Ing body fn_29_4F14: the body projectile hit the mesh, so the Ing splats back
+// @ fn_30_6980 (the Ing's fn_29_4F14): the body projectile hit the mesh, so the Ing splats back
 // into its ing-spot form: form 3, the scripted body state aborted, the splat-wall sound once at the
 // Ing's own position (its handle is discarded), then - when the splat token at 0xd48 is engaged - an
 // explosion on the Ing's transform at the model's scale ("Ing Splat Wall Fx").
@@ -1139,16 +1139,15 @@ void CIngBoostBallGuardian::SplatOntoMesh(CStateManager& mgr, float) {
   LogState("SplatOntoMesh");
   mForm = kForm_IngSpot; // 0x9d4 = 3
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // id word 13
-  // The asm builds the normal from 0xdd4/0xdd8/0xddc, which nothing in the module ever writes (the
-  // ctor zeroes 0xdc8..0xde8), so it is zero at runtime and ShortestRotationArc reads that as
-  // NoRotation: the alignment is a no-op, kept for the call's shape. rodata_64 is 1.0f.
-  mSurfaceAlignment.OrientToSurfaceNormal(*this, CVector3f::Zero(), 1.f);
+  // 0x000069D8: the contact normal CollidedWith kept (0x1104); rodata_64 is 1.0f.
+  mSurfaceAlignment.OrientToSurfaceNormal(*this, mSplatNormal, 1.f);
   // 0x852: the body projectile's splat-wall sound. Retail stores no handle, so neither do we.
   CSfxManager::AddEmitter(mData.mBodyProjectile.mSoundSplatWall, GetTranslation(), 0x7f,
                           GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   const bool splatFx = static_cast< bool >(mSplatEffect); // 0xd54, the token's engaged byte
   if (DebugBg()) {
-    fprintf(stderr, "[ibbg] %04x splat: splat fx %s\n", GetUniqueId().Value(),
+    fprintf(stderr, "[ibbg] %04x splat: normal (%.2f, %.2f, %.2f), splat fx %s\n",
+            GetUniqueId().Value(), mSplatNormal.GetX(), mSplatNormal.GetY(), mSplatNormal.GetZ(),
             splatFx ? "explosion" : "token not loaded");
   }
   if (splatFx) {
