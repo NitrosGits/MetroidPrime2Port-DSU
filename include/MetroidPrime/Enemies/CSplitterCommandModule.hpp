@@ -173,6 +173,14 @@ private:
   CSegId mLookAtSegment;                         // guest 0xEF8 (the locator)
   CVector3f mLookAtOffset;                       // guest 0xF50, 0xF54, 0xF58
   int mLookAtSfxHandle = 0;                      // guest 0xF5C (the sound handle)
+
+  // The fields the retail's fn_75_31A8 touches.
+  void PortUpdateChassis(CStateManager& mgr);
+  TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
+  TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
+  TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
+  TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
+  float mChassisTimer = 0.f;                     // guest 0xF14 (set to 3.0f at 0x3230)
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

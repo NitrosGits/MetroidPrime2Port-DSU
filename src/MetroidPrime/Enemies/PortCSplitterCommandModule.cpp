@@ -9,6 +9,8 @@
 // the shields and the docking forward to CPatterned behind a once-only StandIn log, and the retail
 // function each stands in for is named on it.
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
+#include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 #include "MetroidPrime/CCollisionActorManager.hpp"
 
@@ -42,7 +44,6 @@ void StandIn(const char* what) {
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
 // function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
 // (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
-void StandInFn_75_31A8() { StandIn("fn_75_31A8 (0x14C)"); }
 void StandInFn_75_32F4() { StandIn("fn_75_32F4 (0x16C)"); }
 void StandInFn_75_3004() { StandIn("fn_75_3004 (0x1A4)"); }
 void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
@@ -93,6 +94,53 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
 // section j), so it logs once and does nothing else.
 void CSplitterCommandModule::PortAutoDestruct(float time) {
   StandIn("fn_75_5A54 (the module's auto-destruct)");
+}
+
+// The module's own calls in the command module's chassis check: both are over 0x80, so each
+// stays a named once-logging shell.
+void StandInFn_75_1578() { StandIn("fn_75_1578 (0x218)"); }
+void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
+
+// @ fn_75_31A8
+// The command module's chassis check (0x31A8-0x32F4): the id at 0xEFA (0x31D8 lhz) is looked up
+// (0x31E8 GetObjectById) and cast to the main chassis (0x31EC); a null cast or a chassis whose
+// command module id (0xC6C) is not this actor (0x31F8-0x3204, the retail's compare is against
+// this+0x8 - the entity's own id) goes to 0x3238, which clears the id at 0xEFA and the id at
+// 0x12A (0x3240-0x324C) and ends. Ours: the copy at 0xEFE takes the chassis's 0xCC0 when the two
+// differ (0x3208-0x3218), fn_75_1578 runs (0x3224) and the timer 0xF14 is set to 3.0f
+// (0x322C-0x3230). With no chassis id, the data's flag bit 0x8 (0x3258 rlwinm 28-28), the timer
+// <= 0.0f (0x326C-0x3274) and the id 0xEFC being invalid (0x327C-0x3280) gate fn_75_2280
+// (0x3284) and the timer is set to 3.0f again (0x328C-0x3290). Then the id 0xEFC (0x32A4) is
+// looked up and cast (0x32B4-0x32B8): a dead chassis (the byte at 0x420, the word's bit 25 = the
+// byte's 0x40 - the host's GetAlive) clears it (0x32D0-0x32D8).
+void CSplitterCommandModule::PortUpdateChassis(CStateManager& mgr) {
+  if (mChassisId != kInvalidUniqueId) {
+    const CSplitterMainChassis* chassis =
+        TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId));
+    if (chassis == nullptr || chassis->GetCommandModuleId() != GetUniqueId()) {
+      mChassisId = kInvalidUniqueId;
+      mClearedId = kInvalidUniqueId;
+      return;
+    }
+    if (mSyncedId != chassis->GetSyncId()) {
+      mSyncedId = chassis->GetSyncId();
+      StandInFn_75_1578();
+    }
+    mChassisTimer = 3.f;
+    return;
+  }
+  if ((mData.mUnknownBD80FD94 & 0x8) != 0 && mChassisTimer <= 0.f &&
+      mCheckedChassisId == kInvalidUniqueId) {
+    StandInFn_75_2280();
+    mChassisTimer = 3.f;
+  }
+  if (mCheckedChassisId != kInvalidUniqueId) {
+    const CSplitterMainChassis* chassis =
+        TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mCheckedChassisId));
+    if (chassis == nullptr || !chassis->GetAlive()) {
+      mCheckedChassisId = kInvalidUniqueId;
+    }
+  }
 }
 
 // @ fn_75_21FC
@@ -167,7 +215,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
         mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(), true);
   }
   mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  StandInFn_75_31A8();
+  PortUpdateChassis(mgr);
   StandInFn_75_32F4();
   StandInFn_75_3004();
   PortLookAtTarget(mgr, dt);
