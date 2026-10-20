@@ -2015,6 +2015,7 @@ void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
 // vector the up vector (0x1990..0x19C0), and the portal's effect (the joint's id, 0x19C4) hears
 // "DCTV" (kSM_Deactivate, 0x44435456, 0x19F8) - the message's sender is this actor (0x19EC) and
 // its id the joint's (0x19F4).
+// @ fn_16_1950
 void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
   CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
   joint.mFlags &= ~0x08; // 0x1980
