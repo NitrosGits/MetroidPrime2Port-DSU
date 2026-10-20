@@ -244,6 +244,25 @@ update path (0x75B4) is a stand-in: it needs the module's own body-command class
 `fn_801B73E4` and the body controller's steering fields. The deactivate path (0x76B4) clears the
 flag.
 
+### `fn_18_4EB4` (0x23C), the JumpAttack state
+
+The activate path (0x4F0C) sets the flag at guest 0x6B4 and picks the jump target (guests
+0x910..0x918): the player's position, or - when the player is over fifty units away (rodata
+0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the direction to the
+player, starting at the actor's own position. The update path (0x500C) is a stand-in: it needs
+the DOL's `fn_801B73E4`, the module's `fn_18_51E8` and `fn_18_50F0` and the body controller's
+steering fields. The deactivate path (0x50A0) clears the flag, the jump-attack timer (guest
+0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
+
+### `fn_18_7B14` (0x668), the message handler
+
+The base class's handler runs first (0x7B50), then the module's own cases, one per message: the
+constants are 0x58444D47 (`kSM_Damage`, 0x7B60), 0x58435254 (`kSM_Create`, 0x7B74), 0x58414C44
+(`kSM_AreaLoaded`, 0x7B88), 0x5844454C (`kSM_Delete`, 0x7B98), 0x584C4155 (`kSM_Launching`,
+0x7BAC), 0x58484954 (`kSM_HitObject`, 0x7BC0) and 0x584F4646 (`kSM_OffGround`, 0x7BD4). The
+port has the switch with every case a stand-in; the bodies are the module's own work (the
+collision actor list, the id lists, the boss parameters).
+
 ### `fn_18_1DF4` (0x4A0), the heart switch
 
 The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`

@@ -192,6 +192,7 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
+, mX910_(CVector3f::Zero())                               // guest 0x910
 , mX818_(CVector3f::Zero())                               // guest 0x818
 , mX864_(0.f)                                             // guest 0x864
 , mX868_(0)                                               // guest 0x868
@@ -296,12 +297,41 @@ void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
   }
 }
 
-// vtable slot 4 = fn_18_7B14: retail's message switch (the forms and the attacks).
+// vtable slot 4 = fn_18_7B14 (0x668): retail's message switch. The base class's message
+// handler runs first (0x7B50) and then the module's own cases, one per message: the constants
+// are 0x58444D47 (kSM_Damage, 0x7B60), 0x58435254 (kSM_Create, 0x7B74), 0x58414C44
+// (kSM_AreaLoaded, 0x7B88), 0x5844454C (kSM_Delete, 0x7B98), 0x584C4155 (kSM_Launching,
+// 0x7BAC), 0x58484954 (kSM_HitObject, 0x7BC0) and 0x584F4646 (kSM_OffGround, 0x7BD4). Every
+// case is a stand-in for now: the bodies are the module's own work (the collision actor list,
+// the id lists, the boss parameters) and the ones over about 0x100 bytes are the Opus lane's.
 void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CEmperorIngStage3::AcceptScriptMsg (vtable slot 4, fn_18_7B14)");
   CPatterned::AcceptScriptMsg(mgr, msg);
-  if (msg.GetMessage() == kSM_Create) {
+  switch (msg.GetMessage()) {
+  case kSM_Damage:
+    StandInFn("fn_18_7B14 kSM_Damage");
+    break;
+  case kSM_Create:
+    StandInFn("fn_18_7B14 kSM_Create");
     EnsureBodyActive(mgr);
+    break;
+  case kSM_AreaLoaded:
+    StandInFn("fn_18_7B14 kSM_AreaLoaded");
+    break;
+  case kSM_Delete:
+    StandInFn("fn_18_7B14 kSM_Delete");
+    break;
+  case kSM_Launching:
+    StandInFn("fn_18_7B14 kSM_Launching");
+    break;
+  case kSM_HitObject:
+    StandInFn("fn_18_7B14 kSM_HitObject");
+    break;
+  case kSM_OffGround:
+    StandInFn("fn_18_7B14 kSM_OffGround");
+    break;
+  default:
+    break;
   }
 }
 
@@ -1107,8 +1137,45 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_18_5614");
 }
 
+// fn_18_4EB4 (0x23C): the "JumpAttack" state. Its activate path (0x4F0C) sets the flag at guest
+// 0x6B4 and picks the jump target: the player's position, or - when the player is over fifty
+// units away (rodata 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the
+// direction to the player, starting at the actor's own position. The update path (0x500C) is a
+// stand-in: it needs the DOL's fn_801B73E4, the module's fn_18_51E8 and fn_18_50F0 and the body
+// controller's steering fields. The deactivate path (0x50A0) clears the flag, the jump-attack
+// timer (guest 0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
 void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_4EB4");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mX6b4_ = 1;
+    const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+    const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
+    const float distance = toPlayer.Magnitude();
+    if (distance <= 0.f) { // rodata 0x258
+      return;
+    }
+    if (distance > 50.f) { // rodata 0x290
+      const float scale = 0.35f; // rodata 0x2F0
+      const CVector3f& mine = GetTranslation();
+      mX910_ = CVector3f(mine.GetX() + distance * (toPlayer.GetX() * scale),
+                         mine.GetY() + distance * (toPlayer.GetY() * scale),
+                         mine.GetZ() + distance * (toPlayer.GetZ() * scale));
+    } else {
+      mX910_ = theirs;
+    }
+    break;
+  }
+  case kStateMsg_Update:
+    StandInFn("fn_18_4EB4 update");
+    break;
+  case kStateMsg_Deactivate:
+    mX6b4_ = 0;
+    mX7e0_ = 0.f;
+    x824_ &= ~0x04; // the bit 29 (the mask 0x04) is cleared
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::StampedeReact(CStateManager& mgr, EStateMsg msg, float dt) {

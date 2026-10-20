@@ -240,6 +240,7 @@ private:
   float mX8ec_;                          // guest 0x8EC, 0.0f: the eye-shut time
   float mX8f0_;                          // guest 0x8F0, 0.0f: the eye-shut duration
   float mX8f4_;                          // guest 0x8F4, 0.0f: the eye-shut random time
+  CVector3f mX910_;                      // guest 0x910, 0: the jump attack's target
   CVector3f mX818_;                      // guest 0x818, 0: the facing the idle state turns
                                         // towards the player (fn_18_3804 writes it)
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
