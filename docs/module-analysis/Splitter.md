@@ -669,3 +669,29 @@ XAND runs fn_75_3A8C and XCMG runs fn_75_2CC0.
 **fn_75_3A8C (0x50)** and **fn_75_2CC0 (0x20)** are ported with it: the first looks the object
 that is connected with the state "CONN" and the message "ATCH" up and keeps its id at 0xEFC; the
 second sets the flash weight at 0xF08 to 1.0f when the message's sender id is the id at 0xF00.
+
+#### fn_75_1790, fn_75_AC68, fn_75_8D50, fn_75_AAC4 (ported 2026-10-20, one commit each)
+
+The four module calls the area-4 layer-3 fight reaches besides `fn_75_3460`:
+
+| fn | size | what it does | the port |
+|---|---|---|---|
+| `fn_75_1790` | 0xBC | the head's laser-pulse projectile despawn: the id at 0xF02, the DOL's CEntity virtual at the vtable word 0x24, the emitter at 0xF5C, the base's flag byte at 0x420 | ported; the DOL's virtual and its RemoveEmitter stay shells |
+| `fn_75_AC68` | 0x84 | the chassis's connected-object lookups: the ids at 0xCC4 ("CONN"/"ATCH") and 0xCC6 ("RTRT"/"FOLW") | ported |
+| `fn_75_8D50` | 0xA8 | the chassis's team exit: the team id at 0xCBE | ported |
+| `fn_75_AAC4` | 0xC8 | the chassis's player-hint release: the hint's id at 0xCC4, the hint's actor id at 0x1AC, a "DECR" message | ported; `CScriptPlayerHint` grows a TARGET_PC setter for the actor id |
+
+`fn_75_3460` (0x218, the head's XCRT case) is still a shell: it builds the head's collision actor
+manager with the joint collision descriptions of the "Beam_LCTR" locator and walks the collision
+actors for the `CCollisionActor` whose id goes to 0xF00.
+
+**Why the head's Think never runs in the area-4 fight (2026-10-20).** The head is **inactive**:
+the host's `CStateManager` ticks every patterned actor (`ShouldUpdatePatterned` does not look at
+the active flag), but the port's `CSplitterCommandModule::Think` returns at its
+`if (!GetActive()) return;` gate, which is the retail's own gate (the byte at 0x20's 0x80).
+Nothing in the port activates either Splitter actor: the `CEntityInfo`'s active flag comes from
+the script's editor properties (`LdrToEntityInfo`), the host's generic FSM "Start" state is
+empty (`CPatternedAiFunctions.cpp:19`), the module's own FSMs (`fn_75_5E8C`, `fn_75_E9E4`) are
+not ported, and the fight's script sends the head no `kSM_Activate`. The chassis is in the same
+state (its Think shells `fn_75_AFE8`/`ACEC`/`9520` never log either). This is the port's FSM
+gap, not a bug in a ported body, so nothing was changed for it.
