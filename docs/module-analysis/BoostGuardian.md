@@ -287,8 +287,8 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   moves no guardian HP, in retail too; real shots do. The puddle never kills (1 HP, puddle mode off
   for good); `4030` turns puddle mode on with damage. `D4F8`'s events 37/38 clear/set 0x11EF 0x10
   (`mBodyHitsLethal`) in the host's (Ing-derived) DoUserAnimEvent. `CA18` (UpdateHitDamageTime) tints
-  with 0x1080 and the XENZ/XEXZ count 0x115C; that count's other readers (`A07C`, `C05C`, `C1B0`)
-  are not checked.
+  with 0x1080 and the XENZ/XEXZ count 0x115C; its other readers are ported too: `C1B0`
+  IsAggressive, `C05C` ShouldFleeSafeZone and PathFind's update (`A07C`).
 - *0xD60 manager:* `CreateCollisionActorManager` is now `4E90` (kSM_Create 0xDF18): the seven
   `lbl_30_rodata_0` spheres (same table as the Ing's), `SetupManagerActors` (`4924`), `AddMaterial`
   Unknown54 + ProjectilePassthrough, filter Solid / CollisionActor, AIPassthrough, Player,

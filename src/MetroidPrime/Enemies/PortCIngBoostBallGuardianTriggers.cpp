@@ -705,12 +705,10 @@ bool CIngBoostBallGuardian::IsFrustrated(CStateManager&, const CTriggerData&) co
   return mData.mFrustrationTime < mFrustrationTimer;
 }
 
-// Ing body fn_29_ACEC
+// @ fn_30_C1B0 (the Ing's fn_29_ACEC)
 bool CIngBoostBallGuardian::IsAggressive(CStateManager&, const CTriggerData&) const {
-  // The Ing returns mAggressive || mSafeZoneCount > 0. This module has no lure safe zone and does
-  // not track a safe-zone count (the Ing port never sets it either), so that second term is always
-  // false here as well.
-  return mAggressive;
+  // 0x11EC 0x20, or the XENZ/XEXZ count at 0x115C.
+  return mAggressive || mSafeZoneCount > 0;
 }
 
 // Ing body fn_29_ACE0
@@ -750,11 +748,9 @@ bool CIngBoostBallGuardian::CanChangeForm(CStateManager&, const CTriggerData&) c
   }
 }
 
-// fn_29_AA94 (not yet exercised in a run)
+// @ fn_30_C05C (the Ing's fn_29_AA94)
 bool CIngBoostBallGuardian::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
-  // The Ing returns mSafeZoneCount > 0. This module has no lure safe zone and does not track a
-  // safe-zone count, so there is nothing to flee from; the module's own body is the authority.
-  return false;
+  return mSafeZoneCount > 0; // fn_30_C05C: 0x115C
 }
 
 // fn_29_AA4C (not yet exercised in a run)

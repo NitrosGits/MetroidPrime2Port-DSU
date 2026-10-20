@@ -174,10 +174,9 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
     mRecalcPath = false; // 0x0000A034: 0x11EC 0x08 = 0
   } else if (msg == kStateMsg_Update) {
     if (canPathFind) { // 0x0000A044: data 0x04; 0x0000A050: 0x11EC 0x10
-      // 0x0000A058: 0x11EC 0x20, 0x0000A070: HasLineOfSight (fn_30_C4E0), 0x0000A080: retail
-      // also paths while its count at 0x115c is > 0 (the Ing's safe-zone count; this module's
-      // host has no such field, so that term is dropped).
-      const bool hold = !mAggressive && mLineOfSight.HasLineOfSight();
+      // 0x0000A058: 0x11EC 0x20, 0x0000A070: HasLineOfSight (fn_30_C4E0), 0x0000A07C: it also
+      // paths while the safe-zone count (0x115C) is > 0.
+      const bool hold = !mAggressive && mLineOfSight.HasLineOfSight() && mSafeZoneCount <= 0;
       if (!hold) {
         mPathFindNavigation.PathFind(mgr, msg, dt, *this);
         moved = true; // 0x0000A0A0
