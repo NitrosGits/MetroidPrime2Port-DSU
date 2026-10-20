@@ -613,6 +613,7 @@ CCollisionActor* CEmperorIngStage1::GetCollisionActor(CStateManager& mgr) const 
 // fn_16_4E44 (0x4E44..0x4E68) and fn_16_BDD0 (0xBDD0..0xBE34): the caller copies the effect's
 // counted particle system reference (CParticleGenInfoGeneric +0x78/+0x7C) and drops it again,
 // keeping the raw pointer; the effect still holds the system.
+// @ fn_16_4E44
 CParticleGen* CEmperorIngStage1::GetEffectSystem(CParticleGenInfo* effect) {
   return static_cast< CParticleGenInfoGeneric* >(effect)->GetParticleSystem().GetPtr();  // fn_16_88BC, fn_16_8918, fn_16_8938, fn_16_8AA0 and fn_16_8A28: the effect's counted // reference is released - the host's reference does it when the copy dies
 
@@ -1572,6 +1573,7 @@ void CEmperorIngStage1::AddTentacleJointToVector() {
 // 0x1E74, 0x1F58, 0x1FE0, 0x2560 and 0x7FDC), so the tentacle's own description is the last of
 // its five. The description's collision actor id (at +0x3C) is looked up in the state manager
 // (0x3AE0) and cast to a collision actor (0x3AE4).
+// @ fn_16_3AA8
 CCollisionActor* CEmperorIngStage1::GetTentacleActor(CStateManager& mgr, int index) {
   const uint descIndex = 4 + index * 5; // 0x3AB4, 0x3AC0
   const TUniqueId id = x7c8_->GetCollisionDescFromIndex(descIndex).GetCollisionActorId(); // 0x3AC8
@@ -1608,6 +1610,7 @@ CModelFlags CEmperorIngStage1::BuildJointModelFlags(const CEmperorIngStage1Joint
 // tentacle that was never hit is black.
 // fn_16_1C94 is called in the port's render path (the colour of the tentacle's pass, 0x545C):
 // an entry once-log proved it runs in area 11.
+// @ fn_16_1C94
 CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& joint) const {
   const float t = joint.mDamageHitTime / CPatterned::skDamageHitTime; // 0x1CC0, 0x1CD4
   return CColor::Lerp(CPatterned::skDamageColor, CColor::Black(), t); // 0x1CD8
@@ -1617,6 +1620,7 @@ CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& join
 // and the constant is the position's dot with it (the fmadds at 0x1C78 and 0x1C84).
 // fn_16_1C5C is called in the port's render path (the plane of the tentacle's pass, 0x5484): an
 // entry once-log proved it runs in area 11.
+// @ fn_16_1C5C
 CPlane CEmperorIngStage1::GetJointPlane(const CEmperorIngStage1Joint& joint) const {
   const CVector3f up = joint.mUp; // 0x1C6C, 0x1C74, 0x1C7C
   return CPlane(CVector3f::Dot(joint.mPosition, up), // 0x1C68, 0x1C78, 0x1C84
@@ -1707,6 +1711,7 @@ void CEmperorIngStage1::Render(const CStateManager& mgr) const {
 // event type is the index); the default entry (fn_16_7F8C+0x58C) and every type above 28 (the
 // bgt at 0x7FAC) call the base's own DoUserAnimEvent (the call at 0x8524).
 // Area 11 reaches only the event cases 0, 7, 17, 22, 27 and 28; the rest fall through to the base's own handling.
+// @ fn_16_7F8C
 void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                         EUserEventType type, float dt) {
   switch (type) {
