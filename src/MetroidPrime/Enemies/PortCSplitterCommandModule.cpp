@@ -23,6 +23,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -56,7 +57,7 @@ void StandIn(const char* what) {
 // trigger (fn_75_58E8), the IsInitiallyDocked (fn_75_58DC), the IsDocked (fn_75_58BC), the
 // HasDockingTarget (fn_75_57F0) and the HasTarget (fn_75_57B4) triggers, the Start state
 // (fn_75_5564), the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
-// the rest are once-logging stand-ins for the retail function they name.
+// the rest are once-logging shells for the retail function they name.
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
 #define SPLITTER_STATE(name) \
@@ -112,7 +113,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
     SPLITTER_CODE_PORTED(NotifyDocking),
-    SPLITTER_CODE(SelectTarget),
+    SPLITTER_CODE_PORTED(SelectTarget),
     SPLITTER_CODE(SetTargetDest),
     SPLITTER_CODE(SetDockingDest),
     SPLITTER_CODE(FindBestDodgeDirection),
@@ -199,7 +200,6 @@ SPLITTER_STATE_STANDIN(LaserSweep, fn_75_44DC)
 SPLITTER_STATE_STANDIN(LostChassisReaction, fn_75_42F8)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
-SPLITTER_CODE_STANDIN(SelectTarget, fn_75_3E60)
 SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_3D20)
 SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
 SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_3B34)
@@ -273,6 +273,33 @@ bool CSplitterCommandModule::IsScanning(CStateManager& mgr, const CTriggerData&)
 
 void CSplitterCommandModule::NotifyDocking(CStateManager& mgr, float) {
   PortDockToChassis(mgr);
+}
+
+// The head's own effect-state update (fn_75_1578, 0x218); its body is below, with the module's
+// own calls.
+void StandInFn_75_1578();
+
+// fn_75_3E60 (the head's SelectTarget code, 0x3E60-0x3EEC): with the head's synced id at 0xEFE
+// invalid (0x3E84 lhz, 0x3E8C cmplw, 0x3E90 bne) the id of the actor the state manager holds at
+// 0x14FC (0x3E94 lwz - the player, the actor the head aims at) is taken (0x3E98 lhz of that
+// actor's own id at 0x8) and kept at 0xEFE (0x3E9C sth); then fn_75_1578 runs (0x3EA8) and the
+// head sends the state 'ATTK' to its connections (0x3EB0 lis 0x4154, 0x3EC0 addi 0x544b,
+// 0x3ED0 bl SendScriptMsgs).
+//
+// The retail's call is SendScriptMsgs(this, 0x4154544B, mgr, id, -1): the state, the state
+// manager, the head's own unique id (0x3EAC lhz 0x8(r30) - the entity's own id - copied to the
+// stack at 0x3ECC sth) and the message 0xFFFFFFFF (0x3EC8 li r7, -1). The retail hands that id
+// over by address (0x3EC4 addi r6, sp+0xc), because its TUniqueId is a 16-bit class; the host's
+// CEntity::SendScriptMsgs takes it by value, so the port passes the id itself. The host's names
+// for the two constants: kSS_Attack (0x4154544B) and kSM_None (0xFFFFFFFF). The message
+// argument is the one a connection's own message must differ from, so "none" reaches every
+// connection but the ones that ask for no message.
+void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
+  if (mSyncedId == kInvalidUniqueId) {
+    mSyncedId = mgr.GetPlayer(0)->GetUniqueId();
+  }
+  StandInFn_75_1578();
+  SendScriptMsgs(kSS_Attack, mgr, GetUniqueId(), kSM_None);
 }
 
 

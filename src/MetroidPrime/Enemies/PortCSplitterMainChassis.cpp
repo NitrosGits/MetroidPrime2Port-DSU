@@ -53,8 +53,7 @@ void StandIn(const char* what) {
 // (fn_75_DFE8), the Scanning state (fn_75_DCF8) and the IsDisabled (fn_75_E620),
 // DeployFromHoldingTube (fn_75_E034), ShotAt (fn_75_E5B8), PatrolPathOver (fn_75_E478),
 // LostHead (fn_75_E5AC), ShouldWaitForSnatch (fn_75_E5D0) and PrepareForDocking (fn_75_DFEC)
-// triggers; each other entry below is a once-logging stand-in for the retail function it
-// names.
+// triggers; each other entry below is a once-logging shell for the retail function it names.
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterMainChassis::name) }
 #define SPLITTER_STATE(name) \

@@ -982,7 +982,7 @@ now, so the log no longer shows it:
 | 14 | the chassis's LostHead trigger | `fn_75_E5AC` | `LostHead` (the flag byte 0xD41's 0x02) |
 | 15 | the chassis's ShouldWaitForSnatch trigger | `fn_75_E5D0` | `ShouldWaitForSnatch` (the id at 0xCBC or `IsBeingSnatched`) |
 | 16 | the chassis's PrepareForDocking trigger | `fn_75_DFEC` | `PrepareForDocking` (the second link at 0xC6E) |
-| 17 | the head's SelectTarget code | `fn_75_3E60` | still a shell |
+| 17 | the head's SelectTarget code | `fn_75_3E60` | `SelectTarget` (the player id at 0xEFE, then the 'ATTK' state to the connections) |
 | 18 | the head's HasTarget trigger | `fn_75_57B4` | `HasTarget` (the synced id at 0xEFE) |
 
 The chassis's `fn_75_3B20` is the head's code, so it is the head's RaiseShields; the order above is
