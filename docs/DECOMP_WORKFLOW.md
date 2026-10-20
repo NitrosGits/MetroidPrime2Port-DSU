@@ -49,6 +49,23 @@ area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skippe
 `STATUS: INCOMPLETE - <what>`; markers (`// @ fn_<id>_<off>`) go only on functions the run
 exercised.
 
+## Review every lane patch
+
+MiniMax lanes pass the gate first time but slip in the same places. Before committing a lane's
+patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
+
+- **NULL** - null guards retail doesn't have. Keep one only if the asm has the test or a named
+  port limit requires it (say which in the comment); otherwise delete it.
+- **MASK** - re-derive each bit test from the asm `rlwinm`/`andi.` yourself (`rlwinm rD,rS,0,21,21`
+  is `& 0x400`, not `& 0x20`). A selftest written from the same reading proves nothing.
+- **ADDR / STUB** - no thunk that compares against a retail address and otherwise calls a stub;
+  no stand-in left behind a `// @`.
+- **MARK** - a marker means the body is retail's and ran. A function that mostly calls unported
+  functions is not ported: unmark it or port the callees. A body another lane already ported is
+  called, not copied (`grep -rn 'fn_<id>_<off>' src/`).
+- Lanes never run `git reset --hard`, `git clean`, `git stash`, `git checkout -- <path>` or `rm -rf`
+  on a path held in a variable; reject a patch made that way and re-brief.
+
 ## Context
 
 - Sessions hand off (AGENTS.md "Session length and handoffs") at a committed slice rather than
