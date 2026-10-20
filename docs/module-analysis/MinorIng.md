@@ -349,13 +349,23 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 
 ## The functions that are not marked
 
-`/tmp/opencode/mi_unmarked.tsv` lists every unmarked function of the module with its retail size
-and what the host does with it: 3 are ported but unmarked (the constructor, the loader and the
-destructor), 10 are the host's own inline or generated code (the SLdr readers and constructors, the
-model data, the vector resize), 5 are retail bodies the host does not model and that the live
-cycle reaches, and 75 are unreachable. The loader and the destructor cannot be marked: the
-check finds the generated property loop (37 calls, 43 conditions) and the members' own teardown
-(3 calls, 20 conditions) where the host has none. The constructor is marked.
+`/tmp/opencode/mi_unmarked.tsv` lists every unmarked function of the module with its retail size,
+its class and the host's part. The classes are: 13 vtable slots (the module's own overrides of
+the CPatterned's virtuals, with the slot they fill), 4 slots of the state machine's function
+tables, 10 the host's own inline or generated code (the SLdr readers and constructors, the model
+data, the vector resize), 5 retail bodies the host does not model but that the live cycle reaches
+(the host's own classes cover them: fn_44_1114 is the host's generated `LdrToPatternedInfo`,
+fn_44_28D8 the host's `CEntityInfo` destructor, fn_44_9BB8 a member's own destructor, fn_44_E08
+the host's `CIngSpotData` copy and fn_44_9940 the host's `CPatterned` destructor), and the rest
+unported chains the module calls but the live cycle never reaches.
+
+The four vtable slots the host's `CMinorIng` overrides itself are marked now: fn_44_0 (the path
+find search), fn_44_8 (the point path find search), fn_44_5AB8 (the projectile info) and
+fn_44_10 (the listening flag). The check finds no difference in any of them, and a run (the
+Temple Grounds' area 13) showed all four running. The loader (fn_44_110) and the destructor
+(fn_44_97E4) are marked too: the check finds the retail's property loop and the members' own
+teardown against the host's generated reader and empty body, which is a tool limit - the property
+ids and their order and the teardown order were checked by hand.
 
 ## Gotchas
 

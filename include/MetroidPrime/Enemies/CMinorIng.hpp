@@ -157,9 +157,9 @@ public:
 
   // CPatterned
   using CPatterned::GetSearchPath;
-  CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
-  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
-  CPathFindPointSearch* GetPointSearchPath() override { return &mPointPathFindSearch; }
+  CProjectileInfo* ProjectileInfo() override;
+  CPathFindSearch* GetSearchPath() override;
+  CPathFindPointSearch* GetPointSearchPath() override;
 
   void PreThink(float dt, CStateManager& mgr) override;
   void Think(float dt, CStateManager& mgr) override;
@@ -179,7 +179,7 @@ public:
   CTransform4f GetPrimitiveTransform() const override;
 
   // CAi
-  bool IsListening() const override { return true; }
+  bool IsListening() const override;
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
 
   // CEntity

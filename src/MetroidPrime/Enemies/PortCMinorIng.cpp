@@ -242,6 +242,22 @@ CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; 
 
 } // namespace
 
+// @ fn_44_0
+// The retail returns its path find search (this+0x960) and the check finds no difference.
+CPathFindSearch* CMinorIng::GetSearchPath() { return &mPathFindSearch; }
+
+// @ fn_44_8
+// The retail returns its point path find search (this+0xa4c); the check finds no difference.
+CPathFindPointSearch* CMinorIng::GetPointSearchPath() { return &mPointPathFindSearch; }
+
+// @ fn_44_5AB8
+// The retail returns its projectile info (this+0x918); the check finds no difference.
+CProjectileInfo* CMinorIng::ProjectileInfo() { return &mProjectileInfo; }
+
+// @ fn_44_10
+// The retail returns true; the check finds no difference.
+bool CMinorIng::IsListening() const { return true; }
+
 // The retail constructor (the module's 0x9D58) locks the ing-spot hit effects (0x940/0x950)
 // only when the asset is set.
 static rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAssetId id) {
@@ -369,13 +385,19 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
 }
 
+// @ fn_44_97E4
 // The retail destructor (fn_44_97E4, asm 0x97E4) puts the module's vtable back, tears the members
 // down - the two-entry container at guest 0xce0, the surface helper at 0xbd8 (asm 0x986C), the
 // two locked hit effects at 0x940/0x950 (asm 0x9898/0x98C4), the projectile's token at 0x918
 // (asm 0x98E8) and the ing-spot vulnerability at 0x834 (asm 0x9904) - runs the base destructor
 // (asm 0x9910) and frees the object (asm 0x9920). On the host every member owns its destruction
-// and the base destructor follows them, so the body is empty. The container at 0xce0 holds two
-// zero ints that nothing reads (fn_44_A5D0 only fills them in the constructor).
+// and the base destructor follows them, so the body is empty. The teardown order (the container
+// at 0xce0, the surface helper at 0xbd8, the two hit effects at 0x950/0x940, the projectile's
+// token at 0x918, the data's vulnerability at 0x834, then the base) is the reverse of the member
+// order, which is what the host's C++ destruction does. The check finds the members' own
+// teardown (3 calls, 20 conditions) against the host's empty body: a tool limit, not a mismatch.
+// The container at 0xce0 holds two zero ints that nothing reads (fn_44_A5D0 only fills them in the
+// constructor).
 CMinorIng::~CMinorIng() {}
 
 void CMinorIng::LogState(const char* name) {
@@ -2186,10 +2208,12 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
   }
 }
 
-// Retail fn_44_110. The property ids and their order are the generated SLdrMinorIng reader's,
-// which the analysis checked against the REL id by id: it reads all 20. The retail's own loop
-// reads the same properties into the same places (fn_44_9B4's packing gives each bool its bit),
-// so the loader models the retail's reads.
+// @ fn_44_110
+// The retail's loader is the property loop over the REL's own format; the host reads the same
+// properties with the generated SLdrMinorIng reader, whose ids and their order the analysis
+// checked against the REL id by id: it reads all 20 and fn_44_9B4's packing gives each bool its
+// bit. The check finds the retail's loop (37 calls, 43 conditions) against the generated reader:
+// a tool limit, not a mismatch (the ids and their order were checked by hand).
 // @ fn_44_D54
 // The retail copy moves a whole CIngSpotData from the source to the destination: the blob
 // effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds
