@@ -214,9 +214,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mSurfaceAlignment()                    // 0x0000ED44
 , mIngSpotPathFindNavigation()           // 0x0000ED4C
 , mBoost(boost)                          // guest 0xDEC, copied by fn_30_10250
-, mVulnerability(mBoost.mVulnerability)  // 0x0000FD48 builds a CWeaponTypeVulnerability-derived
-                                         // CDamageVulnerability; its source is still open, this
-                                         // uses the boost ball's until the asm says otherwise
+, mVulnerability(CWeaponTypeVulnerability(100.f, CWeaponTypeVulnerability::kE_Immune,
+                                          false)) // 0x0000FCC0-0x0000FD48: rodata_CC, 3, 0
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)
 , mSwarmEffect(BgOptionalPart(data.mSwarm.mPART))

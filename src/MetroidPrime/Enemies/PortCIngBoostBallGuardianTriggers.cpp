@@ -376,8 +376,13 @@ void CIngBoostBallGuardian::PuddleColliderDamage(CStateManager& mgr, TUniqueId s
     if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
       const float damage = initial - actorHealth->GetHP();
       if (DebugBg()) { // host trace
-        fprintf(stderr, "[ibbg] %04x puddle damage %.1f (weapon type %d), hp %.1f\n",
-                GetUniqueId().Value(), damage, int(weapon->GetType()), health->GetHP());
+        const CWeaponTypeVulnerability rate =
+            actor->GetDamageVulnerability()->GetVulnerability(weapon->GetCurrentDamageInfo().GetWeaponMode());
+        fprintf(stderr,
+                "[ibbg] %04x puddle damage %.1f (weapon type %d, x%.2f effect %d), hp %.1f, boost "
+                "puddle form %d\n",
+                GetUniqueId().Value(), damage, int(weapon->GetType()), rate.mDamageMultiplier,
+                int(rate.mEffect), health->GetHP(), int(mCurrentlyInBoostPuddleForm));
       }
       const float hp = health->GetHP();
       AccumulatePuddleDamage(mgr, GetHealthInfo()->GetHP(), damage);

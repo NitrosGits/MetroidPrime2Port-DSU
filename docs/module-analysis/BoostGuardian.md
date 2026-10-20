@@ -284,7 +284,9 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   puddle collider or a hit the boost ball relays; else `4078`, a body collider) and sets the
   player-projectile bit; XRDG runs `4324` in the ing-spot form only. Both count only a CWeapon as
   the collider's last-touched object, so the console's `damage <collider>` (the player as attacker)
-  moves no guardian HP, in retail too; real shots do. The puddle never kills (1 HP, puddle mode off
+  moves no guardian HP, in retail too; real shots do. In the boost puddle form its colliders take 0x1178, a
+  resist-everything vulnerability (ctor: 100.0, effect 3), so bombs arrive as XRDG at `4324` and
+  feed 0x11D8. The puddle never kills (1 HP, puddle mode off
   for good); `4030` turns puddle mode on with damage. `D4F8`'s events 37/38 clear/set 0x11EF 0x10
   (`mBodyHitsLethal`) in the host's (Ing-derived) DoUserAnimEvent. `CA18` (UpdateHitDamageTime) tints
   with 0x1080 and the XENZ/XEXZ count 0x115C; its other readers are ported too: `C1B0`

@@ -469,7 +469,9 @@ private:
   CSurfaceAlignmentHelper mSurfaceAlignment;             // guest 0xD68
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // guest 0xDC0
   CBoostBallGuardianData mBoost;                         // guest 0xDEC (0x110)
-  CDamageVulnerability mVulnerability;                   // guest 0x1178
+  // guest 0x1178: every weapon resisted; the boost puddle's colliders take it (fn_30_30E4), so
+  // their hits arrive as kSM_ResistedDamage (fn_30_4324).
+  CDamageVulnerability mVulnerability;
   // The Ing half's members, under the Ing REL's names (the guest offsets are in
   // docs/module-analysis/BoostGuardian.md section e; the host layout is its own).
   rstl::optional_object< CAABox > mTouchBox;            // CIng: 0xCC0
