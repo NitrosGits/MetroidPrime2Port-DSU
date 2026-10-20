@@ -218,10 +218,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX810_(0.f)                                             // guest 0x810
 , mX86c_(CDamageVulnerability::ImmuneVulnerabilty())     // guest 0x86C
 , mX8c0_(0xffff)                                          // guest 0x8C0
-, x8c2_(kInvalidUniqueId.Value())                          // guest 0x8C2
-, x8c4_(kInvalidUniqueId.Value())                          // guest 0x8C4
-, x8c6_(kInvalidUniqueId.Value())                          // guest 0x8C6
-, x8c8_(kInvalidUniqueId.Value())                          // guest 0x8C8
+, x8c2_(kInvalidUniqueId.value)                            // guest 0x8C2
+, x8c4_(kInvalidUniqueId.value)                            // guest 0x8C4
+, x8c6_(kInvalidUniqueId.value)                            // guest 0x8C6
+, x8c8_(kInvalidUniqueId.value)                            // guest 0x8C8
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
@@ -241,10 +241,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX860_(0.f)                                             // guest 0x860 (0x9CAC)
 , mX8e8_(0.f)                                             // guest 0x8E8
 , mX8dc_(0.f)                                             // guest 0x8DC
-, mBeamId(kInvalidUniqueId.Value())                       // guest 0x8AC
+, mBeamId(kInvalidUniqueId.value)                          // guest 0x8AC
 , mBeamSfx()                                              // guest 0x8B0
 , mX8b4_(CVector3f::Zero())                               // guest 0x8B4 (0x9D0C)
-, mShockWaveId(kInvalidUniqueId.Value())                  // guest 0x90C
+, mShockWaveId(kInvalidUniqueId.value)                     // guest 0x90C
 , mShockWaveSfx()                                         // guest 0x908
 , mJumpAttackShockWave(data.jumpAttackShockWaveInfo)      // guest 0xE90 (fn_18_A2EC)
 , mJumpAttackSound(static_cast< u16 >(data.sound))        // guest 0xECC
@@ -377,7 +377,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   // wave (guest 0x90C) exists, the sound sits on the wave's ring on the player's side: the flat
   // (z zeroed, rodata 0x258) direction from the wave to the player, scaled by the wave's radius
   // (wave+0x1C0), at full volume (0xFF). Retail reads the object without a cast.
-  if (mShockWaveSfx && mShockWaveId != kInvalidUniqueId.Value() &&
+  if (mShockWaveSfx && mShockWaveId != kInvalidUniqueId.value &&
       CSfxManager::IsPlaying(mShockWaveSfx)) {
     const CShockWave* wave =
         static_cast< const CShockWave* >(mgr.GetObjectById(TUniqueId(mShockWaveId)));
@@ -430,7 +430,7 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     break;
   case kSM_AreaLoaded: { // 0x7C18..0x7F48 (0x330)
     // The INTERNAL_STATE_00 connection, any message (`li r7, -0x1`, 0x7C2C).
-    x8c2_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_None).Value();
+    x8c2_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_None).value;
     const rstl::vector< SConnection >& conns = GetConnectionList();
     // INTERNAL_STATE_01: the first id of the connection's list - PLAY to guest 0x8C4, ACTIVATE
     // to guest 0x8C6.
@@ -444,10 +444,10 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
       }
       switch (it->msg) {
       case kSM_Activate:
-        x8c6_ = ids.first->second.Value();
+        x8c6_ = ids.first->second.value;
         break;
       case kSM_Play:
-        x8c4_ = ids.first->second.Value();
+        x8c4_ = ids.first->second.value;
         break;
       default:
         break;
@@ -472,7 +472,7 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
           x8cc_.push_back(SEmperorIngPortal(id, areaXf.GetInverse() * actor->GetTransform()));
         }
       } else if (it->msg == kSM_Deactivate) {
-        x8c8_ = ids.first->second.Value();
+        x8c8_ = ids.first->second.value;
       }
     }
     SetupCollisionActors(mgr); // fn_18_3BB0
@@ -489,12 +489,12 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     // fn_18_36BC (0x88): the damage's source id is compared with the id each heart's collision
     // actor carries (0x36E8 and 0x3708) and a match sets the flag byte 0x824's bit 0 (the mask
     // 0x01, 0x3718).
-    OnDamage(mgr, msg.GetSenderId().Value());
+    OnDamage(mgr, msg.GetSenderId().value);
     break;
   case kSM_HitObject: // 0x7F6C, 0x20
     // fn_18_2D50 (0x1B4): the contact damage to the player the hit collision actor last
     // touched.
-    OnHitObject(mgr, msg.GetSenderId().Value());
+    OnHitObject(mgr, msg.GetSenderId().value);
     break;
   case kSM_OffGround: // 0x7F8C, 0x38
     // The off-ground force: the actor's gravity constant (the vtable slot 0x114) times the
@@ -648,7 +648,7 @@ void CEmperorIngStage3::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
     SetHeartsImmune(mgr); // fn_18_1C34
     break;
   case kUE_Unknown39: {
-    mShockWaveId = mgr.AllocateUniqueId().Value(); // 0x9288
+    mShockWaveId = mgr.AllocateUniqueId().value; // 0x9288
     mgr.AddObject(rs_new CShockWave(TUniqueId(mShockWaveId), rstl::string_l("Shockwave"),
                                     CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
                                     GetTransform(), GetUniqueId(), mJumpAttackShockWave,
@@ -960,12 +960,12 @@ float CEmperorIngStage3::SnapAngleTo45(float angle) const {
 // match sets the flag byte 0x824's bit 0 (the mask 0x01).
 void CEmperorIngStage3::OnDamage(CStateManager& mgr, u16 sourceId) {
   const CCollisionActor* first = HeartCollisionActor(mgr, 0);
-  if (first != nullptr && first->GetUniqueId().Value() == sourceId) {
+  if (first != nullptr && first->GetUniqueId().value == sourceId) {
     x824_ |= 0x80; // 0x3718, the bit 24
     return;
   }
   const CCollisionActor* second = HeartCollisionActor(mgr, 1);
-  if (second != nullptr && second->GetUniqueId().Value() == sourceId) {
+  if (second != nullptr && second->GetUniqueId().value == sourceId) {
     x824_ |= 0x80; // 0x3718, the bit 24
   }
 }
@@ -1408,7 +1408,7 @@ void CEmperorIngStage3::StopBeam(CStateManager& mgr) {
   }
   beam->ResetBeam(mgr, false);
   mgr.DeleteObjectRequest(TUniqueId(mBeamId));
-  mBeamId = kInvalidUniqueId.Value();
+  mBeamId = kInvalidUniqueId.value;
   if (mBeamSfx) {
     CSfxManager::RemoveEmitter(mBeamSfx);
     mBeamSfx = CSfxHandle();
@@ -1545,7 +1545,7 @@ void CEmperorIngStage3::StartBeam(CStateManager& mgr) {
   parms.mSfxId = light ? mLightBeamSound : mDarkBeamSound;
   mBeamSfx = CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true,
                                      CSfxManager::kMedPriority);
-  mBeamId = uid.Value();
+  mBeamId = uid.value;
 }
 
 // fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
@@ -2724,14 +2724,14 @@ bool CEmperorIngStage3::CanPortalAttack(CStateManager& mgr) const {
 // fn_18_4468 (0x5C): the light swarm needs heart 2 (guest 0x868), no watched object (guest
 // 0x8C0) and the look check at 90 degrees (rodata 0x2CC).
 bool CEmperorIngStage3::CanLightSwarm(CStateManager& mgr) const {
-  return mX868_ == 2 && mX8c0_ == kInvalidUniqueId.Value() && RandomCheck(mgr, 90.f);
+  return mX868_ == 2 && mX8c0_ == kInvalidUniqueId.value && RandomCheck(mgr, 90.f);
 }
 
 // @ fn_18_44C4
 // fn_18_44C4 (0x64): the light beam needs no watched object, heart 2 and the look check at 40
 // degrees (rodata 0x2E0).
 bool CEmperorIngStage3::CanLightBeam(CStateManager& mgr) const {
-  if (mX8c0_ != kInvalidUniqueId.Value()) {
+  if (mX8c0_ != kInvalidUniqueId.value) {
     return false;
   }
   return mX868_ == 2 && RandomCheck(mgr, 40.f);
@@ -2741,7 +2741,7 @@ bool CEmperorIngStage3::CanLightBeam(CStateManager& mgr) const {
 // fn_18_4528 (0x64): the dark beam needs no watched object, heart 1 and the look check at 40
 // degrees (rodata 0x2E0).
 bool CEmperorIngStage3::CanDarkBeam(CStateManager& mgr) const {
-  if (mX8c0_ != kInvalidUniqueId.Value()) {
+  if (mX8c0_ != kInvalidUniqueId.value) {
     return false;
   }
   return mX868_ == 1 && RandomCheck(mgr, 40.f);
