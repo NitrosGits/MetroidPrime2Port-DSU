@@ -444,14 +444,15 @@ void CIngBoostBallGuardian::LogState(const char* name) {
   }
 }
 
+// fn_30_51B4 (this module).
 void CIngBoostBallGuardian::JoinTeam(CStateManager& mgr) {
   if (mTeamId == kInvalidUniqueId) {
     mTeamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
   }
   if (mTeamId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      // [?] the roles are MinorIng's (fn_44_593C).
-      team->JoinTeam(*this, CTeamAiRole::kTAR_Projectile, CTeamAiRole::kTAR_Melee,
+      // 0x00005238: r5 = 1, r6 = 2, r7 = -1.
+      team->JoinTeam(*this, CTeamAiRole::kTAR_Melee, CTeamAiRole::kTAR_Projectile,
                      CTeamAiRole::kTAR_Invalid);
     }
   }
