@@ -19,18 +19,17 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | Ing (worker) | `ses_ea67c8a48ffeGHDnEm7Su7uOCv` (subagent) | decomp/ing @ `618c7e8f5` (rework accepted) | reached stand-ins <=0x100 |
 | CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `b53f44229` | fn_9_19D8 + combat triggers <=0x100; why the search gives kR_NoPath |
 | EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
-| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `13ca4be9b` `aa9c8ddb5` (rework) | 0x6B4 = CPatterned::mAnimationState (0/1/3), not a module flag; Opus-reserved: 3BB0 + body-command classes (data_744/750/78C, state update paths) |
+| EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `13ca4be9b` `aa9c8ddb5` (`ca6b8278a` | next slice; Opus-reserved: 3BB0 + body-command classes (data_744/750/78C, state update paths) |
 | DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `344f8e7d0` | fn_14_6864 model build, ctor locator ids, renderer slot 0x44 |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` (subagent) | decomp/darksamus on `232823309` | milestone 1 (old lane did nothing) |
 | ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `1402494b4` | XCRT/XDMG/STOP cases, ProcessInput 1134; Think 23C0 (0x968) parked for Opus |
-| asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 | EmperorIngStage1 (Opus) | `ses_ea6700b83ffeiYYMVx9wazyiAs` | decomp/emperoring @ `046b710dc` (TrackPlayer/Attack/heart states in; walk ends at ProjectileAttack stand-in) | tentacle motion 26B8/2524/2070, ProjectileAttack 68F4, FireBeam CD0, onward to the heart |
 | IngBoostBallGuardian (Opus, ex-Agon lane) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | decomp/boostguardian @ `9787cc26a` (Think/timers in; fight cycles, takes damage, phases) | data +0x08/+0x14 layout + IngSpotPathFind, 0x5E0 class + fn_30_3478 (BoostAttack), retreat 2F9C |
 
 Merged into port 2026-10-20 (`171940cc5`, host+link+upstream green, smoke clean 15 runs `/tmp/opencode/smoke2/`, 954 markers `2015f13d5`; Ing now takes 300->260 from a beam shot in form 3 vs 300->180 before - check when Ing's lane reports): ing `618c7e8f5`, playerturret `1402494b4`,
 emperoring `87f405931`, commandopirate `b53f44229`, spacepirate `a9ba3f157`, emperoring3 `528919371`, swampboss `59637cee5`,
 digitalguardian `344f8e7d0`, fix/agon-black `3e6ac419c` (Aurora partial copy-clear, upstream aurora 9c0bf66f1e; keep on re-vendor).
-Accepted, not yet merged: emperoring3 `a3a7ac3e0`, emperoring `046b710dc`, boostguardian `9787cc26a`.
+Accepted, not yet merged: emperoring3 `ca6b8278a`, emperoring `046b710dc`, boostguardian `9787cc26a`.
 Merge by accepted hash, not branch tip: `/tmp/opencode/merge/merge_hash.sh <hash>...`.
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
 reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress; a raw script-message constant must be re-read from the lis/addi pair (0x41544348 kSM_Attach was misread); `FastCosR(const)` then `fcmpo dot, f1` means dot > cos(const), not cos(dot) > const; guest 0x6B4 (stores of 0/1/3) is CPatterned::mAnimationState, 0x158 mMass, 0x1C0 mConstantForce.
