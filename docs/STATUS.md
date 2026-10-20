@@ -35,12 +35,12 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | BoostGuardian (Opus) | `ses_ea492038affef2FH1jFtAjXcSl` | boostguardian @ `e796169e0` (119 markers; 8CC0 phase-scale fix) | unmarked-function survey (bg_unmarked.tsv), mark ported ones biggest first |
 | EmperorIng3 (Opus) | `ses_ea487f10dffeLrw3xoeRauFbPj` | emperoring3 @ `51e900049` (138/270; ctor timers + 8DA4 fixes) | the 58 helpers, second-class vtable (798/860), cite rest; inline-helper copies marked on marked hosts |
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `d99bc2718` (echo targets, XDMG → lives 0x10E4 drop, ExtractAntenna) | 12818/126C8, the cycle stall, Dead 1561C, XRDG 12D98; hook-free fight end |
-| Splitter (worker) | `ses_ea4ac593affeqIrcm13v3q46NW` | splitter @ `a2005419c` (FSM tables wired, 99 entries; AFE8/9520) | reached FSM states/triggers/codes, ACEC/A4E4 |
+| Splitter (worker) | `ses_ea48561b5ffeRbtHcJxoGyecRD` | splitter @ `09665ac78` (squashed; 13 reached FSM entries ported; AFE8/9520 unmarked) | IsDocked 58BC, Scanning DCF8, SelectTarget 3E60, Hover 4D04, Patrol DCFC, ACEC |
 | CommandoPirate (worker) | `ses_ea4eed526ffeekPqrklrV6SXKb` | commandopirate @ `973a576ad` (4CA4 aim gate, 6390 burst fire) | 57A0 shot, 3090 death, matching build |
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `eb70c09ff` (67/241) | wire 1C94/1C5C from 531C, partials 4E44/3AA8/7F8C |
 | MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `355d342b6` (grenade + spawn data, loader/ctor split, ~114/217) | ctor 9D58 + loader 110 match retail, inglet spawn 7058 in an area with inglets |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (worker) | `ses_ea4cb43f2ffeaXkuPmYP1pHWd9` | darksamus2 @ `dde11c95f` (XCRT activation, FSM tables 49 triggers + 43 states as stand-ins) | MP2_DS_FSM dump, port reached states (Start, StartsInTheAir, TurnToFacePlayer, DoneTurning, onward) |
+| DarkSamus (worker) | `ses_ea4cb43f2ffeaXkuPmYP1pHWd9` | darksamus2 @ `02effdf2a` (MP2_DS_FSM probe; F920/F924/F864 marked) | FE18 branches, TravelToCoverPoints 1DF74 + its triggers |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
