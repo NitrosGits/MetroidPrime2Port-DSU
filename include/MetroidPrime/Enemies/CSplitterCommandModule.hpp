@@ -152,6 +152,18 @@ private:
   // at 0x64C8). It holds the head's joint collision descriptions, which belong to the state
   // machine, so the port starts it empty.
   CCollisionActorManager* mCollisionActorManager = nullptr;
+
+  // The module's auto-destruct (fn_75_5A54) and the retail's fn_75_21FC, which runs it when
+  // the timer reaches 5.0f. The auto-destruct's own body is still unknown (the module note's
+  // section j), so it is the same once-logging shell the main chassis has.
+  void PortAutoDestruct(float time);
+  void PortAutoDestructTimer(float dt);
+
+  // guest 0xF6A: the auto-destruct flag byte; the retail's fn_75_21FC tests its 0x01 (the
+  // word's bit 31) and clears it.
+  uchar mAutoDestructFlags = 0;
+  // guest 0xEF4: the auto-destruct timer the same function advances.
+  float mAutoDestructTimer = 0.f;
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

@@ -47,7 +47,6 @@ void StandInFn_75_32F4() { StandIn("fn_75_32F4 (0x16C)"); }
 void StandInFn_75_3004() { StandIn("fn_75_3004 (0x1A4)"); }
 void StandInFn_75_184C() { StandIn("fn_75_184C (0x128)"); }
 void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
-void StandInFn_75_21FC() { StandIn("fn_75_21FC (0x84)"); }
 
 } // namespace
 
@@ -88,6 +87,31 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
+// The module's auto-destruct (fn_75_5A54). Its body is not understood yet (the module note's
+// section j), so it logs once and does nothing else.
+void CSplitterCommandModule::PortAutoDestruct(float time) {
+  StandIn("fn_75_5A54 (the module's auto-destruct)");
+}
+
+// @ fn_75_21FC
+// The auto-destruct timer (0x21FC-0x2280): the flag byte at 0xF6A (0x2210 lbz, 0x2214 clrlwi with
+// the word's bit 31 - the byte's 0x01) gates it. With the flag set the timer at 0xEF4 (0x221C lfs)
+// is advanced by dt (0x2224 fadds, 0x222C stfs) and when it reaches 5.0f (0x2228 lbl_75_rodata_58,
+// 0x2234 fcmpo and 0x2238 cror eq,gt,eq - the >= sense) the module's auto-destruct runs with 0.0f
+// (0x2240/0x2244 lbl_75_rodata_40, 0x2248 the call); the flag is cleared either way (0x224C-0x2258).
+// With the flag clear the timer is reset to 0.0f (0x2260-0x2268).
+void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
+  if (mAutoDestructFlags & 0x1) {
+    mAutoDestructTimer += dt;
+    if (mAutoDestructTimer >= 5.f) {
+      PortAutoDestruct(0.f);
+    }
+    mAutoDestructFlags &= ~static_cast< uchar >(0x1);
+  } else {
+    mAutoDestructTimer = 0.f;
+  }
+}
+
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
 // active gate, the base's Think, the collision actor manager's update and the module's
 // own six calls in order (their sizes are in the table in
@@ -118,7 +142,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   StandInFn_75_3004();
   StandInFn_75_184C();
   StandInFn_75_1188();
-  StandInFn_75_21FC();
+  PortAutoDestructTimer(dt);
 }
 
 // vtable slot 0x18 = fn_75_654C (0x24C): it calls the base class's AcceptScriptMsg and then

@@ -500,3 +500,8 @@ The first is the host's `CCollisionActorManager::Update` on the manager at 0xC68
 0 = `kUO_ObjectSpace`); the second is the host's `CLineOfSightTracker::Update` on the visual
 knowledge at 0xC70 (the host's `CLineOfSightTracker` is the same thing - see
 `CMinorIng.hpp`'s `mLineOfSight`).
+
+**Condition for later**: the retail leaves the collision actor manager at 0xC68 null (the ctor
+writes 0 at 0x0000F6BC) until `fn_75_A4E4` (0x418) builds it. The port makes an empty manager
+instead, so that stand-in must go - and the port's manager must go back to null - when
+`fn_75_A4E4` is ported.
