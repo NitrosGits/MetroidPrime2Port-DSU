@@ -348,8 +348,9 @@ private:
                                    // only clears them, so they start at 0
   uchar mTurnDone;                 // guest 0xD4C, the "done turning" flag: fn_10_FE18 sets it and
                                    // fn_10_F864 (the DoneTurning trigger) reads it
-  uchar mTauntPending;             // guest 0x6B4, the pending flag of the taunt command that
-                                   // fn_10_8698 (the TurnToFacePlayer state) delivers
+  // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
+  // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
+  // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

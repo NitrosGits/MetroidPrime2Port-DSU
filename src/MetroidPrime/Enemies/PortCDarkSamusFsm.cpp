@@ -856,7 +856,13 @@ void CDarkSamus::TravelToPissedOff(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("TravelToPissedOff", msg);
 }
 
-// fn_10_FE18: the TurnToFacePlayer state.
+// fn_10_FE18: the TurnToFacePlayer state. The activate half (0x0000FE40) sets the flag byte's
+// bit 7 and clears the turn flag, and the turn ends at once when the player is within 90 degrees
+// of the actor's facing axis (fn_10_142F4, the call at 0x0000FE60); otherwise the taunt command
+// (fn_10_8698, the call at 0x0000FEBC) runs for every message until the base's AnimOver (the
+// call at 0x0000FEEC) answers true - the animation state the command advances is the byte the
+// base's GetAnimOver reads, so the taunt ends the turn when it is over.
+// @ fn_10_FE18
 void CDarkSamus::TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("TurnToFacePlayer", msg);
   if (msg == kStateMsg_Activate) {
@@ -871,11 +877,16 @@ void CDarkSamus::TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
     }
   }
   if (mTurnDone == 0) {
-    // fn_10_8698: the taunt command. The guest's byte at 0x6B4 is the pending flag and 0x10 the
-    // animation state the retry asks the body controller for (kAS_Taunt).
+    // fn_10_8698: the taunt command, which the state runs for every message while the turn is
+    // not done. The guest's byte at 0x6B4 is the base's animation state - the byte fn_10_8698
+    // stores 1 to on Activate (0x000087E0) and 0 to on Deactivate (0x00008820), and the DOL's
+    // ShouldRetry (the call at 0x00008710, with 0x10 = pas::kAS_Taunt) advances it to kAS_Repeat
+    // and then to kAS_Over. It is the member the base's AnimOver reads
+    // (CPatterned::GetAnimOver = mAnimationState.IsOver()), so the host drives it the way the
+    // other ported actors do (CDarkCommando::Lurk).
     switch (msg) {
     case kStateMsg_Activate:
-      mTauntPending = 1;
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
       BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Six));
       break;
     case kStateMsg_Update:
@@ -884,7 +895,7 @@ void CDarkSamus::TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
       }
       break;
     case kStateMsg_Deactivate:
-      mTauntPending = 0;
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);
       break;
     }
     // 0x0000FEEC: fn_801519A4, the base's AnimOver - the animation over ends the turn.
