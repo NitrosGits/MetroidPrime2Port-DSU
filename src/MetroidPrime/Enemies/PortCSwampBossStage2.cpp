@@ -1851,7 +1851,7 @@ void CSwampBossStage2::Recover(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_755C
+// @ fn_79_755C
 void CSwampBossStage2::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
@@ -2264,7 +2264,7 @@ void CSwampBossStage2::Render(const CStateManager& mgr) const {
   mRepeller.Render(mgr, *this);
 }
 
-// fn_79_5E3C: down, tilted along the body's right axis by 0xc84 as the snatch blend falls.
+// @ fn_79_5E3C: down, tilted along the body's right axis by 0xc84 as the snatch blend falls.
 CVector3f CSwampBossStage2::GetIngSnatchingNormal(float t) const {
   const CTransform4f& xf = GetTransform();
   const float tilt = (1.f - t) * mAdditiveJitterX;
