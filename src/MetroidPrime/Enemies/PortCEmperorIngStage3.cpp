@@ -2461,8 +2461,14 @@ void CEmperorIngStage3::StampedeReact(CStateManager& mgr, EStateMsg msg, float d
   StandInFn("fn_18_4CC8");
 }
 
+// @ fn_18_4C3C
+// fn_18_4C3C (0x8C): the "Dead" state. Activate sends DEAD with no message; every message then
+// goes to the base's Dead.
 void CEmperorIngStage3::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_4C3C");
+  if (msg == kStateMsg_Activate) {
+    SendScriptMsgs(kSS_Dead, mgr, kInvalidUniqueId, kSM_None); // 0x4C90
+  }
+  CPatterned::Dead(mgr, msg, dt);
 }
 
 // @ fn_18_B04
