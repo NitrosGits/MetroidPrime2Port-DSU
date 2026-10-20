@@ -345,7 +345,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | slice | functions | note |
 |---|---|---|
 | ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`), builds and runs but no run enters the state: it needs the player in morph ball inside `mPursuitRange`. Next run for it: `press b` to morph, then walk into the Ing |
-| arm swipe | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | needs `CScriptTeamAiMgr::StartAttack/EndAttack`, `CBCMeleeAttackCmd`, `pas::kAS_MeleeAttack`; owns `0xe5c` bit 1 |
+| ~~arm swipe~~ done | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | ported + `// @` 2026-10-20 (`1b058f9a4`); see A.7 |
 | suck | `fn_29_76B8` SuckEnergy (0x778) | allocates a 0x180 `CHUDBillboardEffect` |
 | splat | `fn_29_4F14` SplatOntoMesh (0x238) | one of the twelve code functions |
 | exit host | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10F58`; `lbl_29_data_C60`) | biggest; the class identity is still only **[probable]** |
@@ -353,25 +353,67 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 
 Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
 `@ fn_29_2684` (`CollisionActorDamage`) and `@ fn_29_2ED8` (`CollisionActorHitPlayer` - XHIT arrives
-from every collider the shot touches). `fn_29_2B70` (ing-spot hit) and `fn_29_2414` (its effect)
-still wait for a hit on a puddle.
+from every collider the shot touches). `@ fn_29_2B70` (ing-spot hit) and `@ fn_29_2414` (its effect)
+came from `ing_aim5.sh` the same day (below).
 
-**Blocker for the puddle:** nothing aims at a low target. Retail free look needs the look button
-held and `PortInput::Hold` replaces the whole held state, so a console `press` cancels a `cstick`.
-Fix it in the platform layer, which is not this session's file: add `PortMouse::SetAimAngles(yaw,
-pitch)` (the aim state already carries both, `Synchronize` sets them from a direction) plus a
-console command `aim <yaw_deg> <pitch_deg>`, enabled with twin-stick (`PortMouse::SetStickEnabled`)
-so `CPlayer::UpdateMouseAim` is the one that turns the body. Then a run can aim down at a puddle and
-earn the last two markers.
+**Aiming at a low target (resolved 2026-10-20):** nothing could aim a shot down at a puddle - retail
+free look wants the look button held and `PortInput::Hold` replaces the whole held state, so a
+console `press` cancels a `cstick`, and every shot was level (`dir (0.0, 1.0, -0.008)`). The platform
+layer now has `PortMouse::SetAimAngles(yawDeg, pitchDeg)`, reached by the console verb
+`aim <yaw> <pitch>`: yaw reads as `face` does (0 = +y, 90 = +x) and a negative pitch looks down. It
+places the aim outright (`sAim.yaw/pitch`, `initialized`) and arms mouse aim
+(`PortMouse::SetEnabled(true)`), because that is the source `CFirstPersonCamera` takes the pitch
+from - twin-stick alone only turns the body - and `CPlayer::UpdateMouseAim` then turns the body to
+the same yaw. It sticks until something else owns the view (a lock-on, the morph ball, a cinematic),
+which resynchronises the aim from the camera; re-issue it after such a gap.
+
+**The puddle recipe** (`/tmp/opencode/ing_aim5.sh` + `ing_aim5_con.py`, area 57, display `:92`,
+console 47306): `give lightBeam 1`, `give lightAmmo 50`, `beam light`, activate both Ings (they load
+with detection range 0, so the AI only wakes on a heard shot: teleport 5 units off, `aim 0 -5`, fire
+three), then wait - the ing-spot form is the end of the attack-pattern cycle and took 3-6 minutes in
+every run so far. When `[ing] <tag> state … form 3` appears, map the log tag to the console id
+(`0x400 | tag`, e.g. `0022` -> `u0422`), `tp` onto it, check the teleport with `status` (a `tp` into
+a moving puddle silently leaves the player behind: re-`tp` until the `status` position is within
+~2 units), `aim <yaw> -80` and fire. The muzzle starts inside the puddle's box, so the shot lands on
+the first frame. Result: `[ing] 0022 spot hit heavy 1` + `[ing] 0022 hit fx: heavy explosion`, the
+projectile log showing `actor 0022 at t 0.21`.
 
 Handles/scripts that work today: `/tmp/opencode/ing_run2.sh` + `ing_con.py` (area 57, activates
 both Ings, `tp 58.4 356 9`, holds fire), `ing_light6.sh`/`ing_light6_con.py` (the damage run: gives
 `lightBeam` + `lightAmmo`, activates both, six light-beam shots at 6 units, then a `damage` control;
-prints hp after each shot and the projectile count), `sjg_run.sh`/`sjg_con.py` (Jump Guardian in
-Agon `02_sand_sandfalls_dark`), `sjg_diag.sh` (the same with screenshots). Each uses its own Xvfb
-display and `MP2_CONSOLE` port; see the file header. **Always kill a run by pid** - a
-`pkill -f metroid_prime2_port` also matches your own shell, and other sessions run the same binary
-from their own worktree.
+prints hp after each shot and the projectile count), `ing_aim5.sh`/`ing_aim5_con.py` (the puddle
+run above), `sjg_run.sh`/`sjg_con.py` (Jump Guardian in Agon `02_sand_sandfalls_dark`), `sjg_diag.sh`
+(the same with screenshots). Each uses its own Xvfb display and `MP2_CONSOLE` port; see the file
+header. **Always kill a run by pid** - a `pkill -f metroid_prime2_port` also matches your own shell,
+and other sessions run the same binary from their own worktree.
+
+### A.7 The arm swipe (ported 2026-10-20)
+
+`fn_29_6A88` `ArmSwipe`, `fn_29_3E1C` `ArmSwipeSegment` (one arm), `fn_29_421C` (the arm pick) and
+`fn_29_3D74` (the box helper) are in `PortCIng.cpp` and marked; the first run that entered the state
+(`ing_arm.sh`, area 57, `:98`, 18000 frames / 305 s) logged `[ing] 0022 state ArmSwipe form 2` and
+`[ing] 0022 arm swipe hit: arm 1 (05..1a), target 0000, damage 20.0`, 0 `[port] caught`.
+
+Facts read off the REL (the pseudo-C was wrong on two of them):
+
+| item | value |
+|---|---|
+| anim locators, ctor `fn_29_D540` | `0xd7b` head, `0xd7a` `Collar_SDK` (nothing reads it), `0xd7c..0xd7f` `R_shoulder`/`R_elbow`/`R_forearm`/`R_wrist_end`, `0xd80..0xd83` the `L_` set. The pseudo stores the shoulders at CPatterned `0x35f`/`0x360`; the asm does not |
+| `rodata_38` | `{1, 2}` = `pas::kS_One`/`kS_Two`, the `CBCMeleeAttackCmd` severity indexed by the arm |
+| the `ApplyDamage` filter | include `kMT_Solid`, exclude empty, type 3 (`kFT_IncludeExclude`); `data_A10` = 0x3B is the material's bit number, not a mask |
+| knock-back | `-GetRight()` for the right arm, `+GetRight()` for the left (the pseudo reads the transform's `m00/m10/m20`) |
+| the four boxes | shoulder-elbow, elbow-forearm, forearm-wrist, then wrist extended 6 units along (wrist-forearm) normalised; `fn_29_3D74` pads z by ±3 and nothing else; ANY overlap deals damage |
+| the arm pick | `mgr.Random()->Range(0, 100) >= 50` - the state manager's RNG at `+0x16e4`, not the actor's |
+
+**A gate bug this fixed:** `fn_29_A8CC` (`ShouldArmSwipe`) asks `CScriptTeamAiMgr::CanStartAttack`
+only when `mTeamId` is not `kInvalidUniqueId` (asm at `0x0000A924`). The port had the gate
+unconditional, so no Ing outside a team could ever swipe - which is why the state never ran. The
+same shape is in `ShouldBodyProjectile fn_29_A780` and is **not** checked yet; expect it to block
+that state the same way.
+
+Still open in the slice: the run was `GODMODE=1`, so the damage reaching the player was not
+observed (only the segment test and the `ApplyDamage` call); and `mSwipeArm` is exercised as 1
+(both arms' tests run) but a `0` swing has not been logged.
 
 ---
 

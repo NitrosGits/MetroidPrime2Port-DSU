@@ -443,7 +443,7 @@ void CIng::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
   mCurDamageRemTime = mDamageWaitTime;
 }
 
-// fn_29_2414 (not yet exercised in a run): the ing-spot hit effect explosion, from the heavy token
+// @ fn_29_2414: the ing-spot hit effect explosion, from the heavy token
 // when it is loaded and asked for, else the normal one. The caller adds it to the state manager.
 CEntity* CIng::SpawnHitEffect(CStateManager& mgr, bool heavy) {
   const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
@@ -466,7 +466,7 @@ CEntity* CIng::SpawnHitEffect(CStateManager& mgr, bool heavy) {
                            GetModelData()->GetScale(), CColor::White(), -1);
 }
 
-// fn_29_2B70 (not yet exercised in a run): a shot on the ing-spot form. The hit resets the reaction timer and flags the spot,
+// @ fn_29_2B70: a shot on the ing-spot form. The hit resets the reaction timer and flags the spot,
 // then the weapon picks the light or heavy effect (25 damage on the ing-spot vulnerability) and
 // plays that hit's sound.
 void CIng::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
