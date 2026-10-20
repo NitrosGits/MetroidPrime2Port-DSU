@@ -16,6 +16,7 @@
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterMainChassis.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -44,6 +45,7 @@ void StandIn(const char* what) {
 // named once-logging shells: the name is the retail function and its size (the DOL's functions
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
 // tracker and the derived state.
+void StandInFn_75_8D50() { StandIn("fn_75_8D50 (0xA8)"); }
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
 void StandInFn_75_AFE8() { StandIn("fn_75_AFE8 (0x11C)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
@@ -52,11 +54,9 @@ void StandInFn_75_9520() { StandIn("fn_75_9520 (0x11C)"); }
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
 void StandInFn_75_AAC4() { StandIn("fn_75_AAC4 (0xC8)"); }
-void StandInFn_75_8D50() { StandIn("fn_75_8D50 (0xA8)"); }
 void StandInFn_75_A0A0() { StandIn("fn_75_A0A0 (0x2DC)"); }
 void StandInFn_75_9FA8() { StandIn("fn_75_9FA8 (0xF8)"); }
 void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
-void StandInFn_75_AC68() { StandIn("fn_75_AC68 (0x84)"); }
 
 } // namespace
 
@@ -146,6 +146,17 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   StandInFn_75_AFE8();
   StandInFn_75_ACEC();
   StandInFn_75_9520();
+}
+
+// @ fn_75_AC68
+// The chassis's connected-object lookups (0xAC68-0xADEC): the object connected with the state
+// "CONN" (0xAC7C) and the message "ATCH" (0xAC80) is checked (0xACA0 CheckConnectedObject) and
+// its id is kept at 0xCC4 (0xACB4); then the object connected with the state "RTRT"
+// (kSS_Retreat, 0xACC0) and the message "FOLW" (kSM_Follow, 0xACC4) is fetched (0xACC8
+// GetConnectedObject) and its id is kept at 0xCC6 (0xACD0).
+void CSplitterMainChassis::PortUpdateConnectedObjects(CStateManager& mgr) {
+  mConnectedObjectId = CheckConnectedObject(mgr, kSS_Connect, kSM_Attach);
+  mFollowObjectId = GetConnectedObject(mgr, kSS_Retreat, kSM_Follow);
 }
 
 // @ fn_75_AA68
@@ -241,7 +252,7 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     // 0x0000F434-0x0000F468: the value the retail reads out of the manager's area list is
     // written to 0xB7C and the module's own call runs (0x0000F468 fn_75_AC68). The port has no
     // name for that list, so the write stays out.
-    StandInFn_75_AC68();
+    PortUpdateConnectedObjects(mgr);
     break;
   }
   case kSM_Damage: { // "XCMG" (0x0000F2DC)
