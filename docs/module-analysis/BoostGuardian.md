@@ -151,9 +151,59 @@ callees: regenerate with the `.fn` walk used for `docs/module-analysis/Sandworm_
 0xEC6C ctor; 0x110C4 the `.ctors` FSM name-table copy; 0x11CD8.. the second class and the big
 state bodies. The vtable word lists for both classes: `/tmp/opencode/ibbg_vtable.md`.
 
-## h. Open
+## i. Port plan
+
+- **WP1 (this session):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)
+  and the `RELMain`/`RELExit` registration, so the actor loads and stands. Model of the shape:
+  `PortCIng.cpp`'s milestone 1 (StandIn log per override, forward to `CPatterned`).
+- **WP2:** the FSM. Dump it with an `MP2_BG_FSM` probe (the `MP2_SB_FSM` recipe), then port the
+  Ing half (42 triggers, 24 states) from `PortCIng.cpp`/`IngFamily.md` and the seven boost
+  triggers plus `BoostAttack`/`BoostModeRetreat` from this module's own bodies.
+- **WP3:** the boost ball — the rolling state, the crystal collision, the puddle form, the three
+  phase structs and their damage thresholds.
+- **WP4:** mini portals (`fn_30_D4F8` builds `CIngMiniPortalAttack`), the swarm/exit-host half,
+  the second class and the render paths.
+
+## j. Open
 
 - transitions of the FSM (needs a running class; `MP2_SB_FSM`-style probe).
 - what the second class is (§f).
 - the "PuddleCollisionActor" named child and the crystal behind `HasCollidedWithCrystal`.
+
+## k. What the loader and the constructor actually pass
+
+`fn_30_EC6C` takes nine arguments, all read (full derivation: `/tmp/opencode/ibbg_ctor_args.md`):
+
+| # | argument | evidence |
+|---|---|---|
+| 1 | `TUniqueId` (arrives as a pointer in r4; the body copies the u16 and hands the *copy* to `CPatterned`) | [0x0000EC84], [0x0000ECB0] |
+| 2 | `const rstl::string&` name — the loader passes `&editorProperties`, whose first member is the name | [0x0000EC80] |
+| 3 | `const CEntityInfo&` | [0x0000EC74] |
+| 4 | `const CTransform4f&` (the loader builds it at sp+0xC0, which is why reading the loader naively looks like a model) | [0x0000EC78], [0x000004D4] |
+| 5 | `const CModelData&` — **one** model, built at sp+0x2D0 and copied to sp+0x320 | [0x0000EC94], [0x00000488] |
+| 6 | `const CActorParameters&` | [0x0000ECCC] |
+| 7 | `const CPatternedInfo&` (its +0xEC is the pathfinding index) | [0x0000EC90], [0x0000ED0C] |
+| 8 | the 0x320-byte guardian block, by reference | [0x0000EC98] |
+| 9 | the 0x110-byte boost block, by reference | [0x0000EC9C] |
+
+The base call is `CPatterned(` `character 0x19`, uid, name, `kFT_Zero`, info, xf, model, pInfo,
+`kMT_Ground`, `kCT_One`, `kBT_BiPedal`, actParms `)` - [0x0000ECD4] with the constants at
+0x0000ECAC/0x0000ECBC/0x0000ECC4/0x0000ECC8. 0x19 is the one free value in the DOL type list, which
+is why `kET_IngBoostBallGuardian = 117` is the tag to use.
+
+**The two blocks** (`/tmp/opencode/ibbg_datablock.md`, 69 + 31 rows, every field traced):
+
+- guardian, `obj+0x07C0`: the first **0x29C bytes are a verbatim copy of
+  `SLdrIngBoostBallGuardianData`** itself (three copiers walk it: `fn_30_10694`, `fn_30_10B90`,
+  `fn_30_108D4`), and the last 0x84 are the converted tail - `ingSpotVulnerability` plus three
+  `CDamageInfo`s and a flag byte. `SLdrIngBoostBallGuardianData` is 0x29C bytes and
+  `SLdrBoostBallGuardianData` 0x2E8, and the loader's two temps sit 0x29C apart.
+- boost, `obj+0x0DEC`: 0x110 bytes inline at +0x000..+0x04C and +0x090..+0x10F, with the spline at
+  +0x04C..+0x090 converted by `fn_30_CB4`; `boostBallVulnerability` sits just past it and the three
+  phase structs are a separate 3-entry vector at **0xF2C** (count) / 0xF30, 0xF68, 0xFA0 (0x38
+  stride) - which is what the constructor's 0x11CC/0x11D0 pair points into.
+
+The port does not reproduce those two conversions: its host structs hold the same properties in its
+own layout (`CIngBoostBallGuardianData`, `CBoostBallGuardianData` in the header) and the loader fills
+them straight from the `SLdr` fields, which is what later slices will read.
 

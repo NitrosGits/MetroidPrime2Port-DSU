@@ -3,6 +3,48 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-20 (thirty-first session): the Boost Guardian module starts - it loads, stands and thinks
+
+Sandworm is closed (20 bodies left, each with its reason in the source and in
+`docs/module-analysis/Sandworm.md`), so this session opened the next boss: `IngBoostBallGuardian`
+(REL module 30, `IBBG`, Torvus Bog `06_swamp_boostballguardian_dark` layer 5). New worktree
+`wt-mp2-boostguardian`, branch `decomp/boostguardian`, based on `port` at `c5e1e2042` plus the
+console `aim <yaw> <pitch>` verb cherry-picked from `decomp/swampboss` (`4d1864f8e`), because a
+boss fight needs to point the view at a low target. Its host build is `build-port-link` in the
+worktree (the `DefaultFont*.inc` blobs have to be copied in from another worktree's
+`build/G2ME01/include` before the first link).
+
+- **What the module is.** 309 functions, `.text` 0x110C4 + a second section from 0x11CD8, two
+  classes: `CIngBoostBallGuardian` (0x11F0, `CPatterned` with character 0x19, vtable
+  `lbl_30_data_9C0` 82 words / 34 local overrides) and a 0x5E0 `CPhysicsActor` whose name string
+  is still unidentified. The loader struct is generated upstream already
+  (`SLdrIngBoostBallGuardian.hpp`): an Ing block with no grapple/face-plate properties and a boost
+  block with three phase structs, so the whole parameter surface was known before any code.
+- **The FSM is code-built.** `fn_30_110C4` is a `.ctors` initialiser that copies three name tables
+  into `.bss`: 49 triggers, 28 states, 9 codes - the Ing FSM plus `TargetIsBall`, `IsBoostPuddleForm`,
+  `IsCurrentlyInBoostPuddleForm`, `IsBoostOver`, `ShouldBoost`, `HasCollidedWithCrystal`,
+  `BoostModeRetreatOver` and the states `BoostAttack`/`BoostModeRetreat`. `fn_30_C6CC` installs
+  them. The transitions are not in `.data`, so they come from the `'FSM2'` asset and need a
+  running actor - the `MP2_SB_FSM` probe recipe is the way in.
+- **Milestone 1 (`1e753b70e`).** `PortCIngBoostBallGuardian.cpp` holds the loader `fn_30_130`'s
+  copy, the constructor `fn_30_EC6C`, the one-line accessors the vtable pins down, and a
+  once-only stand-in log for every AI override. `kET_IngBoostBallGuardian = 117` was the only free
+  tag in the DOL list, which confirms the parent is `CPatterned`. In area 28 the actor registers
+  (`init compiled module IngBoostBallGuardian`), takes `kSM_Create` and runs PreThink/Think every
+  frame; `[port] caught|reach-stub` count 0, and the room renders (screenshot at 55 s).
+- **Harness.** `/tmp/opencode/bg_run.sh <tag> <cmd-file> [secs]` builds that worktree's binary,
+  boots the area, forces `layer 5` and drives the console on 47131 through the shared
+  `/tmp/opencode/sb2_console.py`; `/tmp/opencode/bgtrace.py` is the `fn_30_` trace injector
+  (the `// @` markers are not in the source yet - no body is marked until a traced run).
+- **Lessons.** The retail constructor takes `const rstl::string&` name and receives
+  `&editorProperties` (the name is at +0 of that struct) and a *pointer* to the uid; the loader
+  builds one `CModelData`, not two. m2c prints `"StateOver" + 0x53F` for what is really
+  `lbl_30_rodata_12C + 0x53F`, i.e. the rodata label plus an offset, so resolve strings from the
+  asm, never from the pseudo-C.
+- **Next.** The FSM probe, then the Ing half of the states from `PortCIng.cpp`/`IngFamily.md`;
+  then the boost ball (crystal collision, puddle form, the three phases), the mini portals
+  (`fn_30_D4F8` builds a `CIngMiniPortalAttack`) and the second class.
+
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
 The report: "the scan visor overlay colours still are not perfectly right"; asked which part, "highlights
