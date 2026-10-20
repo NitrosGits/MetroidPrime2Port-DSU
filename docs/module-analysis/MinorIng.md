@@ -33,6 +33,28 @@ port names it once per run, so the log says which body is missing. The names are
 ported now: the destructor is the host's member destruction (the retail's body is
 the members' own teardown) and the ray is `CMinorIng::RayDown`.
 
+## The inglet's data (modelled, half way)
+
+The retail's loader reads the inglet's own data into the `CMinorIngData`: its health
+at the data's 0xb0 (`fn_44_9B4` copies it there with `fn_44_D00`) and its grenade
+data at 0xd0 (`fn_44_C44` converts the "bouncing projectile" struct that
+`fn_44_FE8` builds at the loader's sp+0x1f8). The health is now a host member,
+`mIngletHealth`, taken from the `unknown_0x3da35851` block the loader already reads
+(`fn_44_1CE0` reads its health first); a run logs 4.0 HP and 1.0 knock-back
+resistance for the inglets of this area, so the read is sane.
+
+Still to model, with the offsets found in the loader's disassembly:
+
+- the grenade data at the data's 0xd0: `fn_44_FE8` builds the bouncing-projectile
+  struct (five floats, a word, three ushorts, the damage info and five words) from
+  the block, and `fn_44_C44` copies it into the data (the ids at +0x24..+0x34, the
+  sounds at +0x38, four floats at +0x3c..+0x48). The host has `CBouncyGrenadeData`
+  and `CBouncyGrenade` (the Wall Walker's inglet in `CWallWalker.cpp` shows the
+  shape);
+- the spawn fields at the data's 0x120..0x138 (`fn_44_9B4` stores seven values
+  there: two floats, two words and three floats; the loader passes them from its
+  stack, which `fn_44_194C` fills).
+
 ## The functions that are still not ported
 
 `tools/port_progress.py` counts 108 of the module's 217 functions as unmarked.

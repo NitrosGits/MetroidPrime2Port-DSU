@@ -2138,7 +2138,8 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
       static_cast< ushort >(sldrThis.ingSpot.sound_Move),
       static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
       static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Death));
+      static_cast< ushort >(sldrThis.ingSpot.sound_Death),
+      LdrToHealthInfo(sldrThis.unknown_0x3da35851.health));
 
   return rs_new CMinorIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                           LdrToEntityInfo(info, sldrThis.editorProperties),

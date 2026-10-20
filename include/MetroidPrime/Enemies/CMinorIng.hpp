@@ -7,6 +7,7 @@
 #ifdef TARGET_PC
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CSurfaceAlignmentHelper.hpp"
 #include "MetroidPrime/Enemies/CAiKnockBackMgr.hpp"
 #include "MetroidPrime/Enemies/CIngSpotData.hpp"
@@ -43,7 +44,8 @@ struct CMinorIngData {
                 uchar flags156, float ingSpotMaxSpeed, float ingSpotMaxWallSpeed,
                 float ingSpotBallPursuitSpeed, const CDamageVulnerability& ingSpotVulnerability,
                 ushort ingSpotIdleSound, ushort ingSpotMoveSound, ushort ingSpotHitNormalSound,
-                ushort ingSpotHitHeavySound, ushort ingSpotDeathSound)
+                ushort ingSpotHitHeavySound, ushort ingSpotDeathSound,
+                const CHealthInfo& ingletHealth)
   : mProjectile(projectile)
   , mProjectileDamage(projectileDamage)
   , mUnknownA03E450C(unknownA03E450C)
@@ -70,7 +72,8 @@ struct CMinorIngData {
   , mIngSpotMoveSound(ingSpotMoveSound)
   , mIngSpotHitNormalSound(ingSpotHitNormalSound)
   , mIngSpotHitHeavySound(ingSpotHitHeavySound)
-  , mIngSpotDeathSound(ingSpotDeathSound) {}
+  , mIngSpotDeathSound(ingSpotDeathSound)
+  , mIngletHealth(ingletHealth) {}
 
   CAssetId mProjectile;      // +0x00: the pair the actor's CProjectileInfo is built from
   CDamageInfo mProjectileDamage; // +0x04 (0x1c) from SLdrMinorIng.projectileDamage
@@ -105,6 +108,10 @@ struct CMinorIngData {
   ushort mIngSpotHitNormalSound;             // guest 0x868
   ushort mIngSpotHitHeavySound;              // guest 0x86a
   ushort mIngSpotDeathSound;                 // guest 0x86c
+  // The inglet's own health (the retail's data 0xb0, fn_44_9B4 copies it there with fn_44_D00).
+  // It is the health of the unknown_0x3da35851 block (fn_44_1CE0 reads it first); the inglet the
+  // massive death spawns takes it.
+  CHealthInfo mIngletHealth;                  // guest 0xb0
 };
 #endif
 
