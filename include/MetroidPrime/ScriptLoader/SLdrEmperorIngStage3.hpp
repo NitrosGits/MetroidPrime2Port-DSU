@@ -467,7 +467,20 @@ struct SLdrEmperorIngStage3 {
 
 inline SLdrEmperorIngStage3::SLdrEmperorIngStage3()
 : editorProperties(), patterned(), actorInformation(), data() {
+#ifdef TARGET_PC
+  // fn_18_C380 (0xC3C0..0xC418): the REL's loader also stores these defaults after the member
+  // ctors: 3 at sp+0x438 (editor +0x38), 2.0 (rodata 0x274) at +0x488 (patterned +0x4C),
+  // creatureSize 2 at +0x668, 1 at +0x66C (patterned +0x230), CColor(1.0 x4, rodata 0x264) at
+  // +0x694 (actor +0x14) and 0xF at +0x6E4 (actor +0x64), as SLdrEmperorIngStage2Tentacle's.
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 2;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#else
+  patterned.creatureSize = 2;
+#endif
 }
 
 inline SLdrEmperorIngStage3::~SLdrEmperorIngStage3() {}

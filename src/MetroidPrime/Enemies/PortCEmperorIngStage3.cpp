@@ -3159,6 +3159,27 @@ void CEmperorIngStage3::ChoseAction(CStateManager& mgr, float dt) {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_18_C380) and entry points.
 
+// @ fn_18_C380
+// @ fn_18_CA60
+// @ fn_18_CE70
+// @ fn_18_CFAC
+// @ fn_18_D09C
+// @ fn_18_D1B8
+// @ fn_18_D21C
+// @ fn_18_D33C
+// @ fn_18_D42C
+// @ fn_18_D490
+// @ fn_18_D58C
+// @ fn_18_D794
+// @ fn_18_D840
+// @ fn_18_D8C0
+// @ fn_18_D9BC
+// @ fn_18_D9F8
+// fn_18_C380: the property switch reads the four ids 0x255A4580 / 0xB3774750 / 0x7E397FED /
+// 0x30DE1A5B (0xC41C..0xC498) and skips the rest with ReadBytes(nullptr, size) (0xC4E4); the
+// SLdr ctor's extra defaults are in SLdrEmperorIngStage3.hpp. The data block's loader, ctor and
+// dtor (CA60 / CFAC / CE70) and their typedef copies (stage D58C/D840/D794, action
+// D8C0/D9F8/D9BC, beam D09C/D490/D1B8, portal D33C/D21C/D42C) are the generated SLdr inlines.
 static CEntity* PortLoadEmperorIngStage3(CStateManager& mgr, CInputStream& input,
                                           CEntityInfo& info) {
   SLdrEmperorIngStage3 sldrThis;
