@@ -41,6 +41,9 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_830` | 0x2C | sends a state message (`IS0`/`IS1`/`IS2` tags) to the actor | [?] |
 | `fn_16_920` | 0xB0 | reads the "brainSpine_scale" locator of the model | [?] |
 | `fn_16_8E4` | 0x10 | picks a random tentacle retraction time | [?] |
+| `fn_16_1DFC` | 0x24 | resets one tentacle slot (the timer, the state) | [proven] |
+| `fn_16_2F70` | 0x38 | the number of tentacle slots the sub-stage uses (4, 6 or 8) | [proven] |
+| `fn_16_2EE0` | 0x90 | sets the 0x80 flag of the live tentacles' slots | [proven] |
 
 ### The accessors (EmperorIngStage1Accessors.s, one-line bodies)
 
@@ -240,6 +243,32 @@ codes.
 | 1 | ResetTentacles (0x505) | fn_16_4A04 | .data 0x208 |
 | 2 | ChooseRandomTentacleCount (0x514) | fn_16_4954 | .data 0x214 |
 
+### The ported bodies (slice 3)
+
+| fn | what it does | the data it reads |
+|---|---|---|
+| fn_16_4BD4 (AllTentaclesRetracted) | true while every live tentacle's state is 0 | the count at guest 0x7D4, the elements' int at +0x28 |
+| fn_16_4B20 (ShouldMeleeAttack) | the squared horizontal distance to the player against 900 (30 units) | the player is the state manager's first player actor (retail CStateManager+0x14FC, `mPlayers[0]`); the position is `CActor::mPosition` at +0x54, so the two floats are X and Y |
+| fn_16_4B04 (ShouldAttack) | the attack timer has run below zero | the float at guest 0xA4C (4.0f in the constructor) |
+| fn_16_4AEC (ShouldTaunt) | the taunt timer is past the taunt frequency | the float at guest 0xA50 (0.0f in the constructor) against the float at 0xC34 |
+| fn_16_4AE8 (BeginSubStage) | retail's body is a single `blr` | - |
+| fn_16_4A04 (ResetTentacles) | resets the current sub-stage's tentacle slots and tells the script which sub-stage this is | fn_16_1DFC (the slot reset), fn_16_2EE0 (the flags), the mode at guest 0x7C0 (2 -> the message IS7, 1 -> IS6) |
+
+Their callees, all small enough to port with them:
+
+| fn | size | what it does |
+|---|---|---|
+| fn_16_1DFC | 0x24 | the slot's timer is cleared and its state becomes 1, unless it is already 2 |
+| fn_16_2F70 | 0x38 | how many tentacle slots the sub-stage uses: 0 -> 4, 1 -> 6, else 8 (the sub-stage is the int at guest 0x7C4) |
+| fn_16_2EE0 | 0x90 | every live tentacle's flag byte (+0x24) gets its 0x80 bit set when the argument is non-zero and the tentacle is one of the sub-stage's slots |
+
+The tentacle element is 0x48 bytes in retail and starts with the tentacle actor's pointer (+0x00)
+and its id (+0x08), which the FSM's tentacle code (fn_16_1F34) uses; the tentacles themselves are
+separate actors the state machine spawns, so the port models only the four fields the ported
+functions read: the timer (+0x04), the retraction timer (+0x18), the flag byte (+0x24) and the
+state (+0x28). The eight slots are the array at guest 0x7D8 and the constructor leaves them
+empty (the live count at 0x7D4 is 0), so the ported triggers see no tentacles yet.
+
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
 "LightVulnerability", "brainSpine_scale") - the tentacle and attack work, milestone 2.
@@ -253,10 +282,10 @@ the six non-trivial vtable overrides (`Think`, `AcceptScriptMsg`, `Render`, `DoU
 log. The accessors that the vtable gives one-line bodies are real.
 
 `SetupStateMachine` (fn_16_8AF4) is ported: the base's setup first, then the module's three
-tables on the state machine (6 triggers, 12 states, 3 codes) with retail's name strings. The 21
-functions the tables point at are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and
-returns the neutral value (false for a trigger). No `// @` marker - none of them is retail's body
-yet.
+tables on the state machine (6 triggers, 12 states, 3 codes) with retail's name strings. The bodies
+of the four triggers and the two codes the run reaches are retail's bodies (section 4); the other
+15 are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and returns the neutral value (false
+for a trigger). No `// @` marker - only the ported bodies are retail's.
 
 Not ported yet (milestone 2): the state functions' bodies, the tentacles and their collision
 actors, the five attacks, the heart stage, the shock wave, the projectile and the two tokens.
@@ -267,5 +296,9 @@ actors, the five attacks, the heart stage, the shock wave, the projectile and th
 
 **Runtime**: Great Temple world `863fcd72`, area 11 (`07_temple_mothlordsanctuary_dark`). The
 actor's script leaves it inactive until the fight, so the FSM is reached only after the console
-activates it: `objs emperoringstage1` gives the uid and `send <uid> Activate` (the port console,
-`MP2_CONSOLE=<port>`) wakes it.
+activates it: `objs emperoringstage1` gives the uid (u0687) and `send <uid> Activate` (the port
+console, `MP2_CONSOLE=<port>`) wakes it. With the ported bodies the run answers:
+**AllTentaclesRetracted true** (no tentacles are out yet), ShouldMeleeAttack false (the player
+spawns 56 units away, the range is 30), ShouldAttack false (the timer is 4.0f) and ShouldTaunt
+false (the timer is 0.0f). The two timers are only updated by the module's Think (fn_16_56D8),
+which is still a stand-in, so those two triggers stay false until it is ported.

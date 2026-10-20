@@ -18,6 +18,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -142,6 +143,12 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mTauntFrequency(data.tauntFrequency)                            // guest 0xC34
 , mAttackIntervalMin(data.attackIntervalMin)                      // guest 0xCF4
 , mAttackIntervalMax(data.attackIntervalMax)                      // guest 0xCF8
+, x7c0_(0)                                                        // guest 0x7C0, fn_16_900C clears it
+, x7c4_(0)                                                        // guest 0x7C4, cleared
+, x7d4_(0)                                                        // guest 0x7D4, cleared
+, x7d8_()                                                         // guest 0x7D8, the tentacle slots
+, xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
+, xa50_(0.f)                                                      // guest 0xA50, rodata_380
 {
   // The retail constructor stops the actor drawing a shadow (SetDrawShadow(this, 0) at
   // 0x000095E0) and calls the DOL's EnableAllAnimReactions(&this->0x620, 0) at 0x000095EC; the
@@ -240,14 +247,20 @@ void CEmperorIngStage1::SetupStateMachine(CStateManager& mgr) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The body's FSM functions. Retail's entries are the module's own functions; their bodies are not
-// ported in this slice, so each one logs the retail function it stands in for and returns the
+// The body's FSM functions. The four triggers and the two codes the run reaches are retail's
+// bodies; the rest are stand-ins that log the retail function they stand in for and return the
 // neutral value (false for a trigger, nothing for a state or a code).
-//
-// The 6 triggers of lbl_16_data_19C (.data 0x19C; fn_16_BF88's stores at 0x0000C234..0x0000C284).
+
+// fn_16_4BD4 (the trigger "AllTentaclesRetracted", lbl_16_data_19C entry 0): true while every
+// live tentacle's state is 0, i.e. while they are all retracted. The loop runs over the live
+// tentacles (the count at guest 0x7D4) and the state is the element's int at +0x28.
 bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_16_4BD4");
-  return false;
+  for (int i = 0; i < x7d4_; ++i) {
+    if (x7d8_[i].x28_ != 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
@@ -260,19 +273,28 @@ bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) con
   return false;
 }
 
+// fn_16_4B20 (the trigger "ShouldMeleeAttack", lbl_16_data_19C entry 3): the squared
+// horizontal distance to the player against 900 (30 units). The player is the state manager's
+// first player actor (retail CStateManager+0x14FC, mPlayers[0]) and the position is the
+// actor's own (CActor::mPosition at +0x54, so the two floats are X and Y).
 bool CEmperorIngStage1::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_16_4B20");
-  return false;
+  const CVector3f& mine = GetTranslation();
+  const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+  const float dx = mine.GetX() - theirs.GetX();
+  const float dy = mine.GetY() - theirs.GetY();
+  return dx * dx + dy * dy < 900.f;
 }
 
+// fn_16_4B04 (the trigger "ShouldAttack", lbl_16_data_19C entry 4): the attack timer (guest
+// 0xA4C, 4.0f in the constructor) has run below zero.
 bool CEmperorIngStage1::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_16_4B04");
-  return false;
+  return xa4c_ < 0.f;
 }
 
+// fn_16_4AEC (the trigger "ShouldTaunt", lbl_16_data_19C entry 5): the taunt timer (guest
+// 0xA50, 0.0f in the constructor) is past the taunt frequency (guest 0xC34).
 bool CEmperorIngStage1::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_16_4AEC");
-  return false;
+  return xa50_ > mTauntFrequency;
 }
 
 // The 12 states of lbl_16_data_94 (.data 0x94; fn_16_BF88's stores at 0x0000C0C0..0x0000C124 and
@@ -325,13 +347,68 @@ void CEmperorIngStage1::JumpRope(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_16_5928");
 }
 
-// The 3 codes of lbl_16_data_220 (.data 0x220; fn_16_BF88's stores at 0x0000C284..0x0000C294).
-void CEmperorIngStage1::BeginSubStage(CStateManager& mgr, float dt) { StandInFn("fn_16_4AE8"); }
+// fn_16_4AE8 (the code "BeginSubStage", lbl_16_data_220 entry 0): retail's body is a single
+// `blr` - the sub-stage itself is the state machine's business.
+void CEmperorIngStage1::BeginSubStage(CStateManager& mgr, float dt) {}
 
-void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) { StandInFn("fn_16_4A04"); }
+// fn_16_1DFC: the tentacle's timer is cleared and its state becomes 1, unless it is already 2.
+static void ResetTentacle(CEmperorIngStage1Tentacle& tentacle) {
+  tentacle.x4_ = 0.f;
+  if (tentacle.x28_ != 2) {
+    tentacle.x28_ = 1;
+  }
+}
+
+// fn_16_4A04 (the code "ResetTentacles", lbl_16_data_220 entry 1): every tentacle slot of the
+// current sub-stage is reset (fn_16_1DFC clears its timer and sets its state to 1 unless it is
+// already 2) and gets the retraction timer, then the live tentacles' flags are set (fn_16_2EE0)
+// and the script is told which sub-stage this is.
+void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
+  const int count = TentacleCount();
+  for (int i = 0; i < count; ++i) {
+    ResetTentacle(x7d8_[i]);
+    x7d8_[i].x18_ = mStayRetractedTime;
+  }
+  SetTentacleFlags(1);
+  if (x7c0_ == 2) {
+    SendScriptMsgs(kSS_InternalState7, mgr, kInvalidUniqueId, kSM_None);
+  } else if (x7c0_ >= 1) {
+    SendScriptMsgs(kSS_InternalState6, mgr, kInvalidUniqueId, kSM_None);
+  }
+}
 
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   StandInFn("fn_16_4954");
+}
+
+// fn_16_2F70: how many tentacle slots the current sub-stage uses - four, six or eight. The
+// sub-stage is the int at guest 0x7C4.
+int CEmperorIngStage1::TentacleCount() const {
+  if (x7c4_ == 1) {
+    return 6;
+  }
+  if (x7c4_ >= 1) {
+    return 8;
+  }
+  if (x7c4_ >= 0) {
+    return 4;
+  }
+  return 8;
+}
+
+// fn_16_2EE0: every live tentacle's flag byte (guest +0x24) gets its 0x80 bit set when the
+// argument is non-zero and the tentacle is one of the current sub-stage's slots; the others get
+// it cleared.
+void CEmperorIngStage1::SetTentacleFlags(uint flag) {
+  const bool set = (flag & 0xff) != 0;
+  const int count = TentacleCount();
+  for (int i = 0; i < x7d4_; ++i) {
+    if (set && i < count) {
+      x7d8_[i].x24_ |= 0x80;
+    } else {
+      x7d8_[i].x24_ &= ~0x80;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

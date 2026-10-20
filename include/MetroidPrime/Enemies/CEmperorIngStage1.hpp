@@ -27,6 +27,17 @@
 // guest offsets of every member the constructor touches are in the comment above each one. Host
 // objects outgrow retail, so the class is allocated with sizeof, not with 0xD18.
 #ifdef TARGET_PC
+// One tentacle slot. The retail element is 0x48 bytes and starts with the tentacle actor's
+// pointer (+0x00) and its id (+0x08), which the FSM's tentacle code (fn_16_1F34) uses; the
+// tentacles themselves are separate actors the state machine spawns, so only the fields the
+// ported functions read are modelled here, named from their retail offsets.
+struct CEmperorIngStage1Tentacle {
+  float x4_;  // guest +0x04: the tentacle's timer, cleared by fn_16_1DFC
+  float x18_; // guest +0x18: the retraction timer, set to stayRetractedTime by fn_16_4A04
+  uchar x24_; // guest +0x24: the flags; bit 0x80 is the one fn_16_2EE0 sets
+  int x28_;   // guest +0x28: 0 = retracted, 1 or 2 = out (fn_16_1DFC, fn_16_4BD4)
+};
+
 class REL_EXPORT CEmperorIngStage1 : public CPatterned {
 public:
   // Argument order is the REL loader's call at 0x0000A51C (fn_16_A2A0 -> fn_16_900C): uid,
@@ -65,7 +76,8 @@ public:
   // then registers the three tables fn_16_BF88 builds: 6 triggers (lbl_16_data_19C), 12 states
   // (lbl_16_data_94) and 3 codes (lbl_16_data_220). The names are retail's - the state machine
   // asset's nodes are matched by name - and each comment is the retail function the entry points
-  // at. The bodies are stand-ins in this slice; a later one ports them.
+  // at. The bodies of the four triggers and the two codes that the run reaches are ported; the
+  // rest are stand-ins that log the retail function they stand in for.
   //
   // Triggers (lbl_16_data_19C, 6 entries).
   bool AllTentaclesRetracted(CStateManager& mgr, const CTriggerData& data) const;  // fn_16_4BD4
@@ -98,6 +110,11 @@ public:
 private:
   void EnsureBodyActive(CStateManager& mgr);
 
+  // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
+  int TentacleCount() const;
+  // fn_16_2EE0: set (or clear) the 0x80 flag of every live tentacle.
+  void SetTentacleFlags(uint flag);
+
   // Host layout. The guest offsets are the REL's (fn_16_900C); the full member map, including
   // the parts this milestone does not build, is in docs/module-analysis/EmperorIngStage1.md.
   CHealthInfo mHealthInfo;                        // guest 0xAAC, fn_16_9AB0
@@ -116,6 +133,15 @@ private:
   float mTauntFrequency;                         // guest 0xC34
   float mAttackIntervalMin;                      // guest 0xCF4
   float mAttackIntervalMax;                      // guest 0xCF8
+
+  // The module's own state, named from the retail offsets; the constructor's values are
+  // fn_16_900C's.
+  int x7c0_;                          // guest 0x7C0, 0: the mode fn_16_4A04 turns into IS6/IS7
+  int x7c4_;                          // guest 0x7C4, 0: the sub-stage fn_16_2F70 reads
+  int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
+  CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
+  float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
+  float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
 };
 #endif
 
