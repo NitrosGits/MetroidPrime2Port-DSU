@@ -43,6 +43,79 @@ void StandIn(const char* what) {
   fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterMainChassis.cpp)\n", what);
 }
 
+// The chassis's FSM names: the REL's lbl_75_data_720 (the 28 triggers), lbl_75_data_9E8
+// (the 22 states) and lbl_75_data_BCC (the 11 codes). The retail's tables hold the names
+// only - the transitions live in the area script - so the function pointers are null.
+CPatterned::StateMachine::STriggerFunction skTriggers[] = {
+    {"StateOver", nullptr},
+    {"IsIntact", nullptr},
+    {"IsDisabled", nullptr},
+    {"ShouldWaitForSnatch", nullptr},
+    {"ShotAt", nullptr},
+    {"LostHead", nullptr},
+    {"HasHead", nullptr},
+    {"HasRetreatPoint", nullptr},
+    {"HasTarget", nullptr},
+    {"CanReachTarget", nullptr},
+    {"HasLineOfSight", nullptr},
+    {"PathShagged", nullptr},
+    {"PathOver", nullptr},
+    {"PatrolPathOver", nullptr},
+    {"ShouldLegStab", nullptr},
+    {"ShouldMorphballStab", nullptr},
+    {"ShouldSpinAttack", nullptr},
+    {"ShouldLaserSweep", nullptr},
+    {"ShouldDodge", nullptr},
+    {"IsSpinAttackOver", nullptr},
+    {"SpunIntoPlayer", nullptr},
+    {"SpunIntoGeometry", nullptr},
+    {"BreakOutOfSpin", nullptr},
+    {"TooManyBounces", nullptr},
+    {"DeployFromHoldingTube", nullptr},
+    {"ShouldDeploy", nullptr},
+    {"DeployPathOver", nullptr},
+    {"PrepareForDocking", nullptr},
+};
+
+CPatterned::StateMachine::SStateFunction skStates[] = {
+    {"Start", nullptr},
+    {"Idle", nullptr},
+    {"Inactive", nullptr},
+    {"Activate", nullptr},
+    {"Patrol", nullptr},
+    {"Scanning", nullptr},
+    {"PathFind", nullptr},
+    {"LegStabAttack", nullptr},
+    {"SpinAttack", nullptr},
+    {"Dodge", nullptr},
+    {"LaserSweepAttack", nullptr},
+    {"SpinCollisionReaction", nullptr},
+    {"SpinBounce", nullptr},
+    {"SpinTelegraph", nullptr},
+    {"SpinToIdle", nullptr},
+    {"SpawnDrop", nullptr},
+    {"HoldingTube", nullptr},
+    {"WaitForDocking", nullptr},
+    {"WaitForSnatch", nullptr},
+    {"FollowDeployPath", nullptr},
+    {"DeploymentLanding", nullptr},
+    {"HeadExplosion", nullptr},
+};
+
+CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
+    {"SelectTarget", nullptr},
+    {"SetTargetDest", nullptr},
+    {"SetRetreatDest", nullptr},
+    {"SetupSpinAttack", nullptr},
+    {"EndSpinAttack", nullptr},
+    {"SetupLaserSweep", nullptr},
+    {"SetMorphballStabLeg", nullptr},
+    {"FindBestStabLeg", nullptr},
+    {"FindBestDodgeDirection", nullptr},
+    {"BounceOffPlayer", nullptr},
+    {"BounceOffGeometry", nullptr},
+};
+
 // The module's own calls in the main chassis's Think and the DOL's two helpers it makes, as
 // named once-logging shells: the name is the retail function and its size (the DOL's functions
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
@@ -398,9 +471,15 @@ bool CSplitterMainChassis::Listen(CStateManager& mgr, const CVector3f& position,
 
 // vtable slot 0xF0 = fn_75_E9E4: it registers the module's three tables (28 triggers, 22 states
 // and 11 codes) on the state machine. That is milestone 2, so only the base setup runs here.
+// @ fn_75_E9E4
+// The chassis's state machine (0xE9E4-0xEA70): the base's setup (0xE9F8) and then the module's
+// own tables - the 28 triggers (lbl_75_data_720, 0xEA0C), the 22 states (lbl_75_data_9E8, 0xEA2C)
+// and the 11 codes (lbl_75_data_BCC, 0xEA4C).
 void CSplitterMainChassis::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::SetupStateMachine (vtable slot 0xF0, fn_75_E9E4)");
   CPatterned::SetupStateMachine(mgr);
+  mStateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
+  mStateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
+  mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
 // vtable slot 0xF8 = fn_75_E99C: the Ing-possession gate, which reads the object's own flag bytes.
