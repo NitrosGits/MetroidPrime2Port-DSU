@@ -496,10 +496,9 @@ waits until it is sent Activate too; then HeartStage fires the beam three times 
 new ids) and the heart-exposed time runs out into EndHeartStage (fn_16_71BC, 0x534, a stand-in that
 never ends). 0 caught/reach-stub.
 
-Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
-EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
-reach the boss), fn_16_51D4 (0x128), fn_16_1A50 (0x20C) and fn_16_1950 (0xC4) (the tentacle's
-portal start and stop).
+Still stand-ins: WarpAttack fn_16_601C (0x7D0), EndHeartStage fn_16_71BC (0x534), fn_16_8C
+(0x3B0, tentacle/heart hit test - heart damage does not reach the boss), fn_16_51D4 (0x128) and
+fn_16_9BE8 (the portal effect's creation).
 
 fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
 0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f
@@ -661,6 +660,40 @@ retail's values are 0x0000000020000005, 0x0000000020000009, 0x0000000020000011,
 the fourth, the sixth, the seventh, the second, the zeroth, the first and the third). So the port
 passes the byte-swapped entries, and the host's masked draw (the material mask AND the pass's
 mask) keeps each surface in exactly one pass.
+
+### Slice 6: the taunt attack and the tentacle's portal
+
+**fn_16_5DBC (TauntAttack, 0x5DBC..0x601C, 0x260)** - ported. Two function-local statics with
+their own "initialized" guard bytes (lbl_16_bss_C with lbl_16_bss_10 and lbl_16_bss_14 with
+lbl_16_bss_18; both start at 0, and the second one takes the retracted tentacle count at the
+activate, 0x5EB4). Activate: the script hears IS00 (fn_16_830, 0x5E60), the tentacles get the mode
+1 vulnerability (fn_16_353C, 0x5E7C) and the state's own timer (the guest 0xA54) is 0.0f
+(0x5EA8). Update: the actor looks at the player (fn_16_7B40, 0x5EC4), the timer counts up (0x5ED4)
+and the animation state is asked for the loop attack (ShouldRetry, pas 9 = kAS_LoopAttack,
+0x5EE0); if it may, the body gets the loop attack command (the command id 7 with the type 2,
+0x5EEC), otherwise the timer over the taunt's loop duration (the guest 0xC38, 0x5F78) gives the
+exit state command (the id 10, 0x5FA8). Deactivate: the body gets the abort scripted command
+(the id 13, 0x5FDC) and the animation state is not ready (0x5FF8).
+
+**fn_16_1A50 (0x1A50..0x1C5C, 0x20C) and fn_16_1950 (0x1950..0x1A14, 0xC4)** - the tentacle's
+portal, ported. The portal's event (case 27) sets the joint's flag 0x08 (the rlwimi at 0x1A84),
+writes the position and the up vector into the joint (0x1A88..0x1ABC) and turns the portal's effect
+(the joint's id, the joint's +0x2C) along the up vector (the fadds at 0x1B34..0x1B4C and the LookAt
+at 0x1B60); the effect hears "ACTV" (kSM_Activate, 0x41435456, 0x1B84). The stop (case 28) clears
+the flag (0x1980), the position and the up vector (0x1990..0x19C0) and the effect hears "DCTV"
+(kSM_Deactivate, 0x44435456, 0x19F8). The effect's creation (fn_16_9BE8, 0x9BE8, over the slice's
+0x80 line) stays a stand-in, so the joint's id stays invalid and the effect is never found.
+
+**fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** is still a stand-in: it is 2000 bytes of asm
+with its own statics (lbl_16_bss_4 with the guard lbl_16_bss_8) and its own body command tables.
+
+Runtime (area 11, 2026-10-20, a temporary hook that forces the mode to 2 in the heart's health
+update, reverted before the commit): the FSM's Attack state uses the mode 2 list {2, 3, 1, 0} -
+the taunt attack (2), the jump rope (3), the warp attack (1) and the projectile attack (0) - and
+the run shows the taunt attack's activate, update and deactivate and, with a longer run, the
+warp attack's stand-in as well. **No user event fires in area 11 at all** (not the portal's 27 and
+28 and not any other type), so the two portal functions are not exercised by this scenario. 0
+caught/reach-stub.
 
 ## 5. The port (milestone 1)
 
