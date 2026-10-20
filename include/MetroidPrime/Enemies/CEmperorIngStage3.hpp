@@ -157,6 +157,16 @@ private:
   void FaceTarget(const CVector3f& target);
   // fn_18_3744: the angle snapped to the nearest 45 degrees.
   float SnapAngleTo45(float angle) const;
+  // fn_18_22BC: the module's average over its bone list at guest 0x830. A stand-in.
+  void BoneAverage() const;
+  // fn_18_2D1C: the vector from the actor to the first player, flattened to the XY plane.
+  CVector3f PlayerDirection(CStateManager& mgr) const;
+  // fn_18_2C98: the actor's facing, flattened to the XY plane.
+  CVector3f FlatFacing() const;
+  // fn_18_1BD8: both hearts get the module's vulnerability at guest 0x86C.
+  void SetHeartVulnerability(CStateManager& mgr) const;
+  // fn_18_1BB0: the heart switch with the heart that is on and no vulnerability change.
+  void SetCurrentHeart(CStateManager& mgr);
   // fn_18_1DF4: the heart switch (0 the enraged heart, 1 the dark heart, 2 the light heart).
   void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
   // fn_18_3B14: the module's heart record (0 the first heart, 1 the second).
@@ -192,14 +202,21 @@ private:
   float mX7c8_;                          // guest 0x7C8, 0.0f: the taunt timer
   float mX7cc_;                          // guest 0x7CC, 0.0f: the eye-shut timer
   float mX7d4_;                          // guest 0x7D4, 0.0f: the too-close distance
+  float mX7d0_;                          // guest 0x7D0, 0.0f: the time since the last attack
   float mX7e0_;                          // guest 0x7E0, 10000.0f: the jump-attack timer
   float mAttackTimer;                    // guest 0x7E4, 4.0f in the constructor
   int mAction;                           // guest 0x7E8, -1 in the constructor
   float mX810_;                          // guest 0x810, 0.0f: the damage taken while vulnerable
+  CDamageVulnerability mX86c_;           // guest 0x86C: the hearts' vulnerability
+  float mX8ec_;                          // guest 0x8EC, 0.0f: the eye-shut time
+  float mX8f0_;                          // guest 0x8F0, 0.0f: the eye-shut duration
+  float mX8f4_;                          // guest 0x8F4, 0.0f: the eye-shut random time
   CVector3f mX818_;                      // guest 0x818, 0: the facing the idle state turns
                                         // towards the player (fn_18_3804 writes it)
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
   int mX868_;                            // guest 0x868, 0: the heart that is on
+  int mX6b4_;                            // guest 0x6B4, 0: a CPatterned field the module's
+                                        // states use as a flag (the eye-shut flag)
 };
 #endif
 

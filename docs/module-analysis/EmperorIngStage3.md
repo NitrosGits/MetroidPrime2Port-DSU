@@ -59,12 +59,18 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | offset | member | proof |
 |---|---|---|
 | 0x44F | the model alpha byte | `fn_18_44` reads it; the constructor does not write it, so it starts 0 |
+| 0x6B4 | the eye-shut flag | a CPatterned field the module's states use as a flag: the EyeShut state sets it (0x5368) and clears it (0x5538), the other states use it too (0x4D0C, 0x4E3C, 0x4F14, 0x50A8) |
 | 0x7C0 | the pointer to the module's heart holder | `fn_18_3B14` reads it and `fn_80135AD4` indexes the array of 0x68-byte records it points at (0xA the first heart, 0xB the second); the constructor clears it |
+| 0x7D0 | the time since the last attack | the module's Think grows it every frame (0x494C); the melee and ground-pound triggers want it at least 2.0 |
 | 0x814 | the vulnerable damage threshold | the constructor copies the data's `vulnerableDamageThreshold` (the data's +0x18) |
 | 0x818 | the facing the idle state turns towards the player | `fn_18_3804` writes it; the constructor zeroes it (0x9B80) |
 | 0x824 | the noise flag byte | `fn_18_8E50` sets its bit 30 (the mask 0x02) when the actor hears the player fire; the constructor clears the word's high bits |
 | 0x864 | the idle state's timer | `fn_18_788C` sets it to FLT_MAX on enter, clears it when the player is over fifty units away and grows it by the frame time |
 | 0x868 | the heart that is on | `fn_18_1DF4` writes it; the constructor clears it (0x9CB4) |
+| 0x86C | the hearts' vulnerability | the constructor copies the immune vulnerability into it (0x9CB8..0x9CC4); `fn_18_1BD8` gives it to both hearts |
+| 0x8EC | the eye-shut time | the EyeShut state's activate reads it (0x52BC) and clears it |
+| 0x8F0 | the eye-shut duration | the EyeShut state's activate computes it (0x52F4) and the update counts it down |
+| 0x8F4 | the eye-shut random time | the EyeShut state's activate rolls it (0x5338) and the update counts it down |
 | 0x91C | the taunt frequency | the constructor copies the data's `tauntFrequency` |
 | 0x920 | the yellow health | `LdrToHealthInfo` of the data's `yellowHealth` |
 | 0x940 | the health | `LdrToHealthInfo` of the data's `health` |
@@ -124,9 +130,27 @@ The other thirty-three FSM functions are stand-ins that log the retail function 
 | `898C` ShouldChangeVulnerabilityToInvulnerable | 0x94 | the look check with 90.0 (rodata 0x2CC); the vulnerable state (3) is true, the invulnerable state (2) needs the damage taken while vulnerable (0x810) below zero (rodata 0x258) or the vulnerable damage threshold (0x814) below rodata 0x310 (1.1920929e-07f) |
 | `85A4` ShouldEyeShut | 0x5C | the look check with 90.0 (rodata 0x2CC) and the eye-shut timer (0x7CC) below 8.0 (rodata 0x2A8) |
 | `8518` ShouldJumpAttack | 0x74 | the look check with 35.0 (rodata 0x30C), the jump-attack timer (0x7E0) at least 2.5 (rodata 0x298) and the flag byte 0x824's bit 29 (the mask 0x04) |
+| `8C4C` ShouldMeleeAttack | 0x13C | the time since the last attack (0x7D0) at least 2.0 (rodata 0x274), the module's average over the bone list (`fn_18_22BC`, 0x24, a stand-in: its own callee `fn_18_AB9C` walks the list at guest 0x830, which the port does not model) and the time at least 10.0 (rodata 0x294); the vector to the player (`fn_18_2D1C`) has to be normalisable and shorter than 30.0 (rodata 0x2FC), and the player has to be in front of the actor: the cosine of the angle between the actor's flattened facing (`fn_18_2C98`) and the direction to the player above 1.3089969 (rodata 0x318) |
+| `8ACC` ShouldGroundPound | 0x180 | the time since the last attack (0x7D0) at least 2.0 (rodata 0x274); the vector from the ing's "head" locator (rodata 0x704) to the player has to be normalisable, and the player has to be below the ing: the cosine of the angle between the direction to the player and the ing's down axis (the negated Z column of the transform) above 0.7853982 (rodata 0x314) |
 
-The two the run reaches that are too big for this slice stay stand-ins: `8C4C` ShouldMeleeAttack
-(0x13C) and `8ACC` ShouldGroundPound (0x180).
+Both triggers the run reaches are ported now; the only stand-in left among them is
+`fn_18_8A4C`'s bone average (`fn_18_2298`, the list at guest 0x840).
+
+### `fn_18_5264` (0x2F8), the EyeShut state
+
+- Activate (0x52B0): the eye-shut time. The module's time (0x8EC) times two percent (rodata
+  0x274) over a hundred (rodata 0x27C), at most 2.5 (rodata 0x298), goes to 0x8F0 and the
+  module's time is cleared; a random time between one (rodata 0x264) and 1.2 (rodata 0x2EC) times
+  that, at most 5.0 (rodata 0x2BC), goes to 0x8F4; the eye-shut time then is at least 2.5
+  (rodata 0x298) plus that random time; the flag at 0x6B4 is set.
+- Update (0x5370): the body's eye-shut commands - the three commands the module's own command
+  classes (the vtables at `lbl_18_data_744`, `_750` and `_78C`) carry, the flag's state machine
+  (`fn_801B73E4`, which watches the body's animation) and the base member at guest 0x350. A
+  stand-in.
+- Deactivate (0x5518): the eye-shut timer (0x7CC) is cleared, both hearts get the module's
+  vulnerability at 0x86C (`fn_18_1BD8`, 0x5C) and the heart switch runs with the heart that is on
+  (`fn_18_1BB0`, 0x28, which is `fn_18_1DF4` with the heart at 0x868 and no vulnerability
+  change); the flag at 0x6B4 is cleared.
 
 ### The look check `fn_18_F8` (0x11C)
 
@@ -218,8 +242,13 @@ still ends on the frame limit (2400 updates) with `grep -c '[port] caught\|reach
 
 With the look and the turn ported as well, the idle state measures the ing's angle to the player
 (15 degrees in the run) and the 45 degree snap makes that turn a no-op, so the facing at guest
-0x818 stays zero - the ing already faces the player - and the FSM walks from Idle into EyeShut
-(`fn_18_5264`, still a stand-in, so the walk after EyeShut does not happen yet). The heart
-lookup still finds no actor, because the holder at guest 0x7C0 is the product of the module's
-`fn_18_3BB0`, which is still a stand-in; the run ends on the frame limit with
-`grep -c '[port] caught\|reach-stub'` = 0.
+0x818 stays zero - the ing already faces the player - and the FSM walks from Idle into EyeShut.
+The heart lookup still finds no actor, because the holder at guest 0x7C0 is the product of the
+module's `fn_18_3BB0`, which is still a stand-in.
+
+With the two triggers and the EyeShut path ported, the run's log no longer names
+`fn_18_8C4C` or `fn_18_8ACC` (they are retail's now) and names `fn_18_5264 update` instead of
+the whole state. The FSM still stays in EyeShut: the state's exit trigger reads the eye-shut
+timer (guest 0x7CC) and the melee and ground-pound triggers read the time since the last attack
+(guest 0x7D0), and only the module's Think (`fn_18_47D4`, 0x3E4, still a stand-in) grows those
+timers. The run ends on the frame limit with `grep -c '[port] caught\|reach-stub'` = 0.

@@ -182,13 +182,19 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX7c8_(0.f)                                             // guest 0x7C8
 , mX7cc_(0.f)                                             // guest 0x7CC
 , mX7d4_(0.f)                                             // guest 0x7D4
+, mX7d0_(0.f)                                             // guest 0x7D0
 , mX7e0_(10000.f)                                         // guest 0x7E0
 , mAttackTimer(4.f)                                       // guest 0x7E4
 , mAction(-1)                                             // guest 0x7E8
 , mX810_(0.f)                                             // guest 0x810
+, mX86c_(CDamageVulnerability::ImmuneVulnerabilty())     // guest 0x86C
+, mX8ec_(0.f)                                             // guest 0x8EC
+, mX8f0_(0.f)                                             // guest 0x8F0
+, mX8f4_(0.f)                                             // guest 0x8F4
 , mX818_(CVector3f::Zero())                               // guest 0x818
 , mX864_(0.f)                                             // guest 0x864
 , mX868_(0)                                               // guest 0x868
+, mX6b4_(0)                                               // guest 0x6B4
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
@@ -478,6 +484,140 @@ CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int 
   return static_cast< CCollisionActor* >(mgr.ObjectById(TUniqueId(record->mUniqueId)));
 }
 
+// fn_18_22BC (0x24): the module's average over its bone list at guest 0x830. Its own callee
+// fn_18_AB9C (0x64) walks the list, which the port does not model, so this stays a stand-in.
+void CEmperorIngStage3::BoneAverage() const { StandInFn("fn_18_22BC"); }
+
+// fn_18_2D1C (0x34): the vector from the actor to the first player, flattened to the XY plane
+// (the zero at rodata 0x258).
+CVector3f CEmperorIngStage3::PlayerDirection(CStateManager& mgr) const {
+  const CVector3f& mine = GetTranslation();
+  const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+  return CVector3f(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(), 0.f);
+}
+
+// fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
+CVector3f CEmperorIngStage3::FlatFacing() const {
+  const CVector3f facing = GetTransform().GetColumn(kDY);
+  return CVector3f(facing.GetX(), facing.GetY(), 0.f);
+}
+
+// fn_18_1BD8 (0x5C): both hearts get the module's vulnerability (guest 0x86C). The two tests are
+// a port limit: retail has the hearts (its holder is made in fn_18_3BB0), the port has no
+// holder, so the lookup can find no actor.
+void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
+  CCollisionActor* first = HeartCollisionActor(mgr, 0); // fn_18_3ACC
+  if (first != nullptr) {
+    first->SetDamageVulnerability(mX86c_); // 0x1C00
+  }
+  CCollisionActor* second = HeartCollisionActor(mgr, 1); // fn_18_3ACC
+  if (second != nullptr) {
+    second->SetDamageVulnerability(mX86c_); // 0x1C18
+  }
+}
+
+// fn_18_1BB0 (0x28): the heart switch with the heart that is on (guest 0x868) and no
+// vulnerability change.
+void CEmperorIngStage3::SetCurrentHeart(CStateManager& mgr) { SetHeartState(mgr, mX868_, false); }
+
+// fn_18_8C4C (0x13C): "ShouldMeleeAttack". The module's time since the last attack (guest
+// 0x7D0) has to be at least 2.0 (rodata 0x274), the module's average over the bone list runs
+// (fn_18_22BC) and the time has to be at least 10.0 (rodata 0x294). The vector to the player
+// (fn_18_2D1C) has to be normalisable and shorter than 30.0 (rodata 0x2FC), and the player has
+// to be in front of the actor: the cosine of the angle between the actor's flattened facing
+// (fn_18_2C98) and the direction to the player has to be above 1.3089969 (rodata 0x318).
+bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  if (mX7d0_ < 2.f) { // rodata 0x274
+    return false;
+  }
+  BoneAverage(); // fn_18_22BC
+  if (mX7d0_ < 10.f) { // rodata 0x294
+    return false;
+  }
+  const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
+  if (!toPlayer.CanBeNormalized()) {
+    return false;
+  }
+  if (toPlayer.Magnitude() >= 30.f) { // rodata 0x2FC
+    return false;
+  }
+  const CVector3f facing = FlatFacing(); // fn_18_2C98
+  const float cosine = CMath::FastCosR(CVector3f::Dot(facing, toPlayer));
+  return cosine > 1.3089969f; // rodata 0x318
+}
+
+// fn_18_8ACC (0x180): "ShouldGroundPound". The module's time since the last attack (guest
+// 0x7D0) has to be at least 2.0 (rodata 0x274). The vector from the ing's "head" locator
+// (rodata 0x704) to the player has to be normalisable, and the player has to be below the ing:
+// the cosine of the angle between the direction to the player and the ing's down axis (the
+// negated Z column of the transform) has to be above 0.7853982 (rodata 0x314).
+bool CEmperorIngStage3::ShouldGroundPound(CStateManager& mgr, const CTriggerData& data) const {
+  if (mX7d0_ < 2.f) { // rodata 0x274
+    return false;
+  }
+  const CVector3f head =
+      (GetTransform() * GetScaledLocatorTransform(rstl::string_l("head"))).GetTranslation();
+  const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
+  CVector3f toPlayer(theirs.GetX() - head.GetX(), theirs.GetY() - head.GetY(),
+                     theirs.GetZ() - head.GetZ());
+  if (!toPlayer.CanBeNormalized()) {
+    return false;
+  }
+  toPlayer = toPlayer.AsNormalized();
+  const CVector3f down = GetTransform().GetColumn(kDZ);
+  const float cosine = CMath::FastCosR(-down.GetZ() * toPlayer.GetZ() +
+                                       (-down.GetX() * toPlayer.GetX() +
+                                        -down.GetY() * toPlayer.GetY()));
+  return cosine > 0.7853982f; // rodata 0x314
+}
+
+// fn_18_5264 (0x2F8): the "EyeShut" state.
+//  - Activate (0x52B0): the eye-shut time. The module's time (guest 0x8EC) times two percent
+//    (rodata 0x274) over a hundred (rodata 0x27C), at most 2.5 (rodata 0x298), goes to guest
+//    0x8F0 and the module's time is cleared; a random time between one (rodata 0x264) and 1.2
+//    (rodata 0x2EC) times that, at most 5.0 (rodata 0x2BC), goes to guest 0x8F4; the eye-shut
+//    time then is at least 2.5 (rodata 0x298) plus that random time; the flag at guest 0x6B4 is
+//    set.
+//  - Update (0x5370): the body's eye-shut commands. A stand-in: the body needs the module's own
+//    command classes (the vtables at lbl_18_data_744, _750 and _78C) and the base member at
+//    guest 0x350, which the port does not model.
+//  - Deactivate (0x5518): the eye-shut timer (guest 0x7CC) is cleared, both hearts get the
+//    module's vulnerability (fn_18_1BD8) and the heart switch runs with the heart that is on
+//    (fn_18_1BB0); the flag at guest 0x6B4 is cleared.
+void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate: {
+    float time = mX8ec_ * 2.f / 100.f; // rodata 0x274, 0x27C
+    if (time > 2.5f) {               // rodata 0x298
+      time = 2.5f;
+    }
+    mX8f0_ = time;
+    mX8ec_ = 0.f;
+    float range = 1.2f * mX8f0_; // rodata 0x2EC
+    if (range > 5.f) {            // rodata 0x2BC
+      range = 5.f;
+    }
+    mX8f4_ = mgr.Random()->Range(1.f, range); // rodata 0x264
+    if (mX8f0_ < 2.5f + mX8f4_) { // rodata 0x298
+      mX8f0_ = 2.5f + mX8f4_;
+    }
+    mX6b4_ = 1;
+    break;
+  }
+  case kStateMsg_Update:
+    StandInFn("fn_18_5264 update");
+    break;
+  case kStateMsg_Deactivate:
+    mX7cc_ = 0.f;
+    SetHeartVulnerability(mgr); // fn_18_1BD8
+    SetCurrentHeart(mgr);      // fn_18_1BB0
+    mX6b4_ = 0;
+    break;
+  default:
+    break;
+  }
+}
+
 // fn_18_1DF4 (0x4A0): the heart switch. Heart 0 is the enraged heart: the two hearts get the
 // yellow health (guest 0x920, 0x1E8C) and the "EnragedHeart" effect; heart 1 the dark
 // heart: the actor's own health (the vtable slot 0x3C, 0x1F80) and the "DarkHeart" effect;
@@ -558,9 +698,7 @@ bool CEmperorIngStage3::TooClose(CStateManager& mgr, const CTriggerData& data) c
   if (mX7d4_ < 2.f) { // rodata 0x274
     return false;
   }
-  const CVector3f& mine = GetTranslation();
-  const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
-  const CVector3f toPlayer(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(), 0.f);
+  const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
   if (!toPlayer.CanBeNormalized()) {
     return true;
   }
@@ -570,11 +708,6 @@ bool CEmperorIngStage3::TooClose(CStateManager& mgr, const CTriggerData& data) c
 // fn_18_8D88 (0x8D88): the attack timer (guest 0x7E4) against zero (rodata 0x258).
 bool CEmperorIngStage3::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAttackTimer < 0.f;
-}
-
-bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_8C4C");
-  return false;
 }
 
 // fn_18_8A4C (0x8A4C): "ShouldTaunt". The look check has to pass (rodata 0x2E4 = 60.0f),
@@ -638,11 +771,6 @@ bool CEmperorIngStage3::ShouldLightBeamAttack(CStateManager& mgr, const CTrigger
 
 bool CEmperorIngStage3::ShouldLightSwarmAttack(CStateManager& mgr, const CTriggerData& data) const {
   StandInFn("fn_18_87F0");
-  return false;
-}
-
-bool CEmperorIngStage3::ShouldGroundPound(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_18_8ACC");
   return false;
 }
 
@@ -823,10 +951,6 @@ void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float
 
 void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_18_5614");
-}
-
-void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_5264");
 }
 
 void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
