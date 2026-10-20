@@ -321,19 +321,16 @@ private:
   // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest
   // offset. The guest member map is in the analysis note.
 #ifdef TARGET_PC
-  int x6b4_;                              // 0x6b4, the guest's CTryCommand state word
-  CCommandoPirateData mData;             // 0x7c0 (0x15e)
-  int x920_;                              // 0x920, -1 (fn_9_D904 @0x0000D994)
+  CCommandoPirateData mData;             // 0x7c0 (0x15e), the loader's parameter block
+  int x920_;                              // 0x920, -1 from the ctor; the module's states rewrite it
   int x924_;                              // 0x924, -1 (fn_9_D904 @0x0000D9A4)
   CPathFindSearch mPathFindSearch;        // 0x928 (fn_9_D904 @0x0000D990)
-  uchar x91c_;                            // 0x91c, the guest's flag byte; bit 0x80 is "ambush"
-  uchar x91d_;                            // 0x91d, the guest's flag byte; bit 0x80 is "warped in"
   CProjectileInfo mProjectileInfo;        // 0xa14 (fn_9_D904 @0x0000D9B8)
   int xa3c_;                              // 0xa3c, 0 (fn_9_D904 @0x0000D9D0)
   int xa40_;                              // 0xa40, 0 (fn_9_D904 @0x0000D9D8)
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
-  float xb64_;                            // 0xb64, 0.75f (lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8)
+  float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
   CSegId mLocatorMidLaunch;               // 0xc5d, "Mid_Launch_LCTRL" (fn_9_D904 @0x0000E2D0)
   CSegId mLocatorGun;                     // 0xc5e, "gun_LCTR" (fn_9_D904 @0x0000E304)
@@ -341,7 +338,7 @@ private:
   CSegId mLocatorRWrist;                  // 0xc60, "R_wrist" (fn_9_D904 @0x0000E36C)
   CSegId mLocatorRElbow;                  // 0xc61, "R_elbow" (fn_9_D904 @0x0000E3A0)
   CSegId mLocatorLWrist;                  // 0xc62, "L_wrist" (fn_9_D904 @0x0000E3D4)
-  uchar xc63_;                            // 0xc63, cleared (fn_9_D904 @0x0000E0F0)
+  uchar xc63_;                            // 0xc63, cleared by the ctor; the states set its bits
   uchar xc64_;                            // 0xc64, cleared (fn_9_D904 @0x0000E150)
   uchar xc65_;                            // 0xc65, 0x80 (fn_9_D904 @0x0000E1B0)
   uchar xc66_;                            // 0xc66, cleared (fn_9_D904 @0x0000E1E8)

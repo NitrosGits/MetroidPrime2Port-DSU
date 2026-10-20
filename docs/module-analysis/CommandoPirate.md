@@ -199,28 +199,39 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 Five of the 34 triggers are host code; the other 29 are still stand-ins. Each body is read off
 the asm with `tools/asmcheck.py annotate` and carries the guest offset it came from.
 
-| trigger | fn | .rodata | body | host members |
+| trigger | fn | .rodata | body | reads |
 |---|---|---|---|---|
-| StateOver | `fn_9_BDCC` | 0x504 | `x6b4_ == 3` | `x6b4_` (new, 0) |
-| ShouldWarpIn | `fn_9_BD98` | 0x50E | `x920_ == -1 && (x91d_ & 0x80) != 0 && (xc63_ & 0x20) != 0` | `x920_` (-1), `x91d_` (new, 0), `xc63_` (0) |
-| ShouldAmbush | `fn_9_BB04` | 0x55D | `(x91c_ & 0x80) != 0` | `x91c_` (new, 0) |
-| UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (new, 0.75f, `lbl_9_rodata_4E0`) |
+| StateOver | `fn_9_BDCC` | 0x504 | `mAnimationState.GetState() == CAnimationState::kAS_Over` | the base's animation state (guest +0x6B4) |
+| ShouldWarpIn | `fn_9_BD98` | 0x50E | `x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0` | the block's +0x15D, `x920_`, `xc63_` |
+| ShouldAmbush | `fn_9_BB04` | 0x55D | `(mData.mFlags0 & 0x80) != 0` | the block's +0x15C |
+| UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (0.75f, `lbl_9_rodata_4E0`) |
 | HasAttackPattern | `fn_9_B900` | 0x5CF | `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId` | the base's |
 
-- `x6b4_` is the guest's `CTryCommand` at +0x6B4 - a base-class member the host has no class for,
-  so the port keeps its first word (the state the try command is in) in a member of its own. The
-  guest's test is the cntlzw idiom (`subfic r0, r0, 0x3` at 0x0000BDD0, `cntlzw` at 0x0000BDD4,
-  `srwi r3, r0, 5` at 0x0000BDD8): one iff the word is 3.
-- `x91c_` and `x91d_` are the guest's flag bytes at +0x91C and +0x91D. Nothing in the module
-  writes either, so the bits the two triggers read are clear until the base writes them.
-- `xb64_` is the float at +0xB64; the constructor sets it to 0.75f (`lbl_9_rodata_4E0`), the same
-  constant the trigger compares against, so `UnderFire` is false until something lowers it.
+- `StateOver` reads guest +0x6B4, which is the base `CPatterned`'s animation state - the host
+  already has it, as the DigitalGuardian's own `StateOver` (fn_14_9AA8) does. The guest's test is
+  the cntlzw idiom (`subfic r0, r0, 0x3` at 0x0000BDD0, `cntlzw` at 0x0000BDD4, `srwi r3, r0, 5` at
+  0x0000BDD8): one iff the id is 3, the host enum's `kAS_Over`.
+- `ShouldAmbush` and `ShouldWarpIn` read guest +0x91C and +0x91D, which are inside the loader's
+  parameter block (the block runs from +0x7C0 to +0x91E): they are its last two bytes, the flags
+  the data ctor `fn_9_EDC0` packs from the `sound` property (0x7abed4ce) - `mFlags0` gets its
+  bits 14, 11, 8, 5, 2, 31, 28 and 25, `mFlags1` its bits 6, 3, 0 and 29 (the packing is at
+  0x0000EED4..0x0000EF60). They are script-supplied, so the port reads them from the data member
+  (`mData.mFlags0` / `mData.mFlags1`), not from members of its own.
+- `x920_` is the object's own word: the constructor sets it to -1 (fn_9_D904 @0x0000D994) and the
+  module's states rewrite it (0x8DB0, 0x90EC, 0x9358, 0x9554). It is not loader-supplied.
+- `xc63_` is the object's own flag byte: the constructor clears it (0x0000E0F0) and the module's
+  states and the `Listen` override set and clear its bits (0x6744, 0x67C0, 0x6858, 0x70E0, 0x70F4,
+  0x9560, 0xBEC0). It is not loader-supplied.
+- `xb64_` is the float at +0xB64: the constructor sets it to 0.75f (`lbl_9_rodata_4E0`, 0x0000DAD8)
+  - the same constant the trigger compares against - and the `Dead` state rewrites it (0x6980,
+  0x699C), so `UnderFire` is false until something lowers it.
 - `HasAttackPattern` calls the base's `GetConnectedObject` (already ported, in
   `src/MetroidPrime/Enemies/CPatternedAiFunctions.cpp`); the two FourCCs the guest builds inline
   are `kSS_Attack` and `kSM_Follow`.
 
 In area 59 (Temple Grounds/05_temple_federationsite_dark) the five are called but none of them
-returns true: the actor keeps the state machine in `Patrol`.
+returns true: the script leaves the `sound` property at 0, so both flag bytes are clear, and the
+actor keeps the state machine in `Patrol`.
 
 ## 2. The loader (fn_9_168)
 

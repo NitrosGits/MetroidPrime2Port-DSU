@@ -118,14 +118,11 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
                                  const CCommandoPirateData& data)
 : CPatterned(static_cast< EPatternedAI >(0x5), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
-, x6b4_(0)                                  // 0x6b4, the guest's CTryCommand state word
 , mData(data)                                     // 0x7c0, copied by fn_9_EA24 @0x0000D980
 , x920_(-1)                                       // 0x920, fn_9_D904 @0x0000D994
 , x924_(-1)                                       // 0x924, fn_9_D904 @0x0000D9A4
 , mPathFindSearch(nullptr, 1, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
                   CPFRegion::kRP_Center)           // 0x928, fn_9_D904 @0x0000D990
-, x91c_(0)                                        // 0x91c, the guest's flag byte
-, x91d_(0)                                        // 0x91d, the guest's flag byte
 , mProjectileInfo(data.mProjectile, data.mProjectileDamage) // 0xa14, fn_9_D904 @0x0000D9B8
 , xa3c_(0)                                        // 0xa3c, fn_9_D904 @0x0000D9D0
 , xa40_(0)                                        // 0xa40, fn_9_D904 @0x0000D9D8
@@ -302,20 +299,21 @@ CDamageInfo CCommandoPirate::GetContactDamage() const {
 //
 // The 34 triggers of lbl_9_data_198 (.data 0x198; fn_9_F9F8's stores at 0x0000FAD4..0x0000FF24).
 
-// fn_9_BDCC: the guest's try command's state word (guest +0x6B4, in the base's region - the host
-// has no CTryCommand, so the port keeps the word in its own member) is 3 when the state is over.
-// The guest's test is the cntlzw idiom: subfic r0, r0, 0x3 (0x0000BDD0), cntlzw (0x0000BDD4) and
-// srwi r3, r0, 5 (0x0000BDD8) - one iff the word is 3.
+// fn_9_BDCC: the base's animation state id (guest this+0x6B4) with 3. The asm tests it with
+// "subfic r0, r0, 3; cntlzw r0, r0; srwi r3, r0, 5" (0x0000BDD0..0x0000BDD8), i.e. the answer is
+// true when the id is 3 - the host enum's kAS_Over (the ctor's state id 0 is "not ready").
 bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) const {
-  return x6b4_ == 3;
+  return mAnimationState.GetState() == CAnimationState::kAS_Over;;
 }
 
 // fn_9_BD98: the actor is warped in when the state machine's owner is unset (the word at guest
-// +0x920 is -1, cmpwi r0, -0x1 at 0x0000BDA0), the guest's flag byte at +0x91D has its 0x80 bit
-// set (extrwi. r0, r0, 1, 24 at 0x0000BDAC) and the module's flag byte at +0xC63 has its 0x20 bit
-// set (extrwi. r0, r0, 1, 26 at 0x0000BDB8).
+// +0x920 is -1, cmpwi r0, -0x1 at 0x0000BDA0), the block's flag byte at +0x15D (guest this+0x91D)
+// has its 0x80 bit set (extrwi. r0, r0, 1, 24 at 0x0000BDAC) and the module's flag byte at +0xC63
+// has its 0x20 bit set (extrwi. r0, r0, 1, 26 at 0x0000BDB8).
+// The block's +0x15D is the loader's mFlags1 - the "sound" property's bits 6, 3, 0 and 29 (the
+// data ctor fn_9_EDC0 packs them at 0x0000EF34..0x0000EF60) - so the flag is script-supplied.
 bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
-  return x920_ == -1 && (x91d_ & 0x80) != 0 && (xc63_ & 0x20) != 0;
+  return x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0;;
 }
 
 bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
@@ -338,10 +336,12 @@ bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
-// fn_9_BB04: the guest's flag byte at +0x91C has its 0x80 bit set (extrwi r3, r0, 1, 24 at
-// 0x0000BB08). Nothing in the module writes that byte, so the bit is clear until the base does.
+// fn_9_BB04: the block's flag byte at +0x15C (guest this+0x91C) has its 0x80 bit set (extrwi
+// r3, r0, 1, 24 at 0x0000BB08). That byte is the loader's mFlags0 - the "sound" property's bits
+// 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
+// - so the flag is script-supplied.
 bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
-  return (x91c_ & 0x80) != 0;
+  return (mData.mFlags0 & 0x80) != 0;;
 }
 
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
@@ -359,7 +359,7 @@ bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& dat
 // return takes cr0.LT (mfcr r0 at 0x0000BAE0, srwi r3, r0, 31 at 0x0000BAE4). The constructor
 // sets that member to 0.75f, so the test is false until something lowers it.
 bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) const {
-  return xb64_ < 0.75f;
+  return xb64_ < 0.75f;;
 }
 
 bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
@@ -397,7 +397,7 @@ bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) co
 // built at 0x0000B908..0x0000B924) - and the actor's compare against kInvalidUniqueId
 // (0x0000B930..0x0000B944) is the != test.
 bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
-  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
+  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;;
 }
 
 bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {
