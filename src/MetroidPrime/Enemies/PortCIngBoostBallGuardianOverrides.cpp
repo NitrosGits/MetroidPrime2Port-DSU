@@ -44,6 +44,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CIngMiniPortalAttack.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
@@ -507,19 +508,27 @@ void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
   bool handled = false;
   switch (type) {
   case kUE_Projectile: // 0
-    // fn_29_C228 @0xC368: one mini portal per event, as long as the effect is loaded (retail
-    // 0xd44) and FindMiniPortals queued a point still unused (0xe28 < 0xe00). The damage is the
-    // mini-portal block's (0x940 = CIngData 0x7c0 + 0x170 + 0x10) scaled by dt and made
-    // immunity-proof (retail sets bit 7 of damage+0x1a). The spawn's name is the rodata pointer
-    // lbl_29_rodata_120 + 0x573, which the dump does not resolve, so the guardian's identical
-    // spawn text stands in [?]. Handled all the same, so the base class does not fire a generic
-    // projectile.
+    // [this module] fn_30_D4F8 @0xD65C: one mini portal per event, as long as the effect is loaded
+    // (0x1050, engaged flag 0x105C) and FindMiniPortals queued a point still unused (0x1158 <
+    // 0x1130, points at 0x1134 + 12 * index). The damage is the mini-portal block's (0xA8C) scaled
+    // by dt and made immunity-proof (bit 7 of damage+0x1a); sound 0x89C, beam info 0x8B0, the
+    // target 0x1088. The spawn's name is rodata_12C + 0x608, "Ing Mini Portal Attack". Handled
+    // all the same, so the base class does not fire a generic projectile.
     if (mMiniPortalEffect && mMiniPortalIndex >= 0 && mMiniPortalIndex < mMiniPortalCount) {
-      const int index = mMiniPortalIndex++; // 0xe28
-      // [this module] the mini portal attack itself (the Ing REL's CIngMiniPortalAttack, built
-      // from mData.mMiniPortal's damage, sound and beam info) is not written yet - the module's
-      // own body is a later slice. The queue's index still advances, as in the Ing.
-      (void)index;
+      CTransform4f xf = GetTransform();
+      xf.SetTranslation(mMiniPortalPositions[mMiniPortalIndex++]);
+      CDamageInfo damage(mData.mMiniPortal.mDamage);
+      damage.MultiplyDamage(dt);
+      damage.SetNoImmunity(true);
+      // rodata_64 1.0, rodata_78 2.0, rodata_74 150.0, then 1.0 again.
+      const CIngMiniPortalInfo portalInfo(mTargetId, 1.f, 2.f, *mMiniPortalEffect,
+                                          mData.mMiniPortal.mSound, 150.f, 1.f, damage,
+                                          mData.mMiniPortal.mBeamInfo);
+      CIngMiniPortalAttack* portal = rs_new CIngMiniPortalAttack(
+          mgr.AllocateUniqueId(), rstl::string_l("Ing Mini Portal Attack"),
+          CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true), xf, GetUniqueId(),
+          GetModelData()->GetScale(), portalInfo);
+      mgr.AddObject(portal);
     }
     handled = true;
     break;
