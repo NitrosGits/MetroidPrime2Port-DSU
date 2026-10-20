@@ -111,6 +111,8 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 
 
+
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -143,6 +145,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
+, xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -389,14 +392,18 @@ bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) co
   return xb60_ < 1.5f;
 }
 
+// fn_9_BA78: the target the commando holds (the id at guest this+0xBCA) is still in the world.
+// The guest looks it up (the GetObjectById call at 0x0000BA94) and answers whether the lookup
+// found something (the neg/or/srwi pair at 0x0000BA98..0x0000BAA0).
 bool CCommandoPirate::HasTarget(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BA78");
-  return false;
+  return mgr.GetObjectById(xbca_) != nullptr;
 }
 
+// fn_9_BA20: there is a target and it is a new one. The guest asks its own HasTarget trigger
+// first (the call at 0x0000BA3C, fn_9_BA78) and then compares the id at guest this+0xBCC with
+// the target id at +0xBCA (0x0000BA48..0x0000BA54).
 bool CCommandoPirate::HasNewTarget(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BA20");
-  return false;
+  return HasTarget(mgr, data) && xbcc_ != xbca_;
 }
 
 bool CCommandoPirate::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
@@ -527,8 +534,19 @@ bool CCommandoPirate::AbortSeekCover(CStateManager& mgr, const CTriggerData& dat
 }
 
 // The 36 states of lbl_9_data_568 (.data 0x568; fn_9_F9F8's stores at 0x0000FF34..0x000103C4).
+
+// fn_9_ADD4: the lurk state only does something on activate (the guest's test of the message
+// against 0 at 0x0000ADD4): when the commando has a target (the id at guest this+0xBCA is not
+// kInvalidUniqueId, 0x0000ADE0..0x0000ADEC) it sets the 0x10 bit of the flag byte at +0xC64
+// (the rlwimi at 0x0000ADF8 keeps the bit at position 27, the mask 1u << (31 - 27) = 0x10).
 void CCommandoPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_ADD4");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  if (xbca_ == kInvalidUniqueId) {
+    return;
+  }
+  xc64_ |= 0x10;
 }
 
 void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {

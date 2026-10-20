@@ -171,7 +171,8 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 12 | JumpPointFind | `fn_9_9F24` | 0x763 |
 | 13 | JetBoost | `fn_9_9BB4` | 0x771 |
 | 14 | PathFind | `fn_9_9AAC` | 0x77A |
-| 15 | Patrol | `fn_9_996C` | 0x783 |
+| 15 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
+| Patrol | `fn_9_996C` | 0x783 |
 | 16 | FollowAttackPattern | `fn_9_961C` | 0x78A |
 | 17 | WarpIn | `fn_9_9064` | 0x79E |
 | 18 | WarpOut | `fn_9_8DF0` | 0x7A5 |
@@ -217,6 +218,8 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
 | ShouldCoverAttack | `fn_9_B0B4` | 0x6A6 | `xb5c_ <= 0.f` | `xb5c_` (new, 0.f) |
 | AbortSeekCover | `fn_9_AFB8` | 0x6C3 | `xb8c_ >= xb90_` | `xb8c_`, `xb90_` (new, 0.f) |
 | UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (0.75f, `lbl_9_rodata_4E0`) |
+| HasTarget | `fn_9_BA78` | 0x599 | the target the commando holds (guest this+0xBCA) is still in the world | the base's `GetObjectById` |
+| HasNewTarget | `fn_9_BA20` | 0x5A3 | there is a target and it is a new one: `HasTarget(...)` and the id at guest this+0xBCC differs from the target id | `xbcc_` (new, kInvalidUniqueId) |
 
 - `StateOver` reads guest +0x6B4, which is the base `CPatterned`'s animation state - the host
   already has it, as the DigitalGuardian's own `StateOver` (fn_14_9AA8) does. The guest's test is
@@ -263,6 +266,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 
 | state | fn | .rodata | body | notes |
 |---|---|---|---|---|
+| Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
@@ -281,10 +285,11 @@ member at that offset in the host's state manager, so the port uses the player a
   base's face vector: the guest's three loads are its 0x28, 0x38 and 0x48.
 
 In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine walks the states the
-actor reaches: Patrol, FaceTarget, then HasNewTarget, HasTarget and Lurk (the last three are
-still stand-ins). FaceTarget ticks every frame; the angle test answers "ready" (the target is
-not yet in front) and the animation state is otherwise the base's own, so `StateOver` stays
-false.
+actor reaches: Patrol, SelectTarget, FaceTarget, then Lurk (the `Alert` state, fn_9_AE04, is the
+next stand-in). `HasTarget` and `HasNewTarget` are the first triggers of the module that return
+true in the port - the commando's target is in the world - and they are what moves it on to
+`Lurk`. FaceTarget ticks every frame; the angle test answers "ready" (the target is not yet in
+front) and the animation state is otherwise the base's own, so `StateOver` stays false.
 
 ## 2. The loader (fn_9_168)
 
@@ -397,8 +402,8 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 52 bodies: the two tables (34 triggers, 36 states) are registered,
-  sixteen of the triggers and three of the states are host code (the sections above), but every
+- The state machine's other 49 bodies: the two tables (34 triggers, 36 states) are registered,
+  eighteen of the triggers and four of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
   returns the neutral value.
 - The guest's `CVisualKnowledge` (this+0xAB0) and the `CTryCommand` the base keeps at +0x6B4:
