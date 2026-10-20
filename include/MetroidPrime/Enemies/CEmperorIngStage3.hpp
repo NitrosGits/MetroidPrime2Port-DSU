@@ -10,6 +10,7 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "Kyoto/Audio/CSfxHandle.hpp"
 
 #include "Kyoto/Math/CTransform4f.hpp"
@@ -332,6 +333,12 @@ private:
   CSfxHandle mShockWaveSfx;              // guest 0x908, 0: the shock wave's sound
   CShockWaveInfo mJumpAttackShockWave;   // guest 0xE90, the data's jumpAttackShockWaveInfo
   u16 mJumpAttackSound;                  // guest 0xECC, the data's sound
+  CProjectileInfo mDarkBeamProjectile;   // guest 0xA60: darkBeamAttack's weapon and damage
+  SLdrPlasmaBeamInfo mDarkBeamInfo;      // guest 0xA88: darkBeamAttack's beam info (fn_18_A794)
+  u16 mDarkBeamSound;                    // guest 0xAD0: darkBeamAttack's beamSound
+  CProjectileInfo mLightBeamProjectile;  // guest 0xAD4: lightBeamAttack's weapon and damage
+  SLdrPlasmaBeamInfo mLightBeamInfo;     // guest 0xAFC: lightBeamAttack's beam info
+  u16 mLightBeamSound;                   // guest 0xB44: lightBeamAttack's beamSound
   float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
   CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
   float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime

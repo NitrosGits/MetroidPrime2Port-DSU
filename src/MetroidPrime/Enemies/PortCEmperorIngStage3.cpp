@@ -41,6 +41,8 @@
 #include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
+#include "MetroidPrime/Weapons/CBeamInfo.hpp"
+#include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
@@ -235,6 +237,14 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mShockWaveSfx()                                         // guest 0x908
 , mJumpAttackShockWave(data.jumpAttackShockWaveInfo)      // guest 0xE90 (fn_18_A2EC)
 , mJumpAttackSound(static_cast< u16 >(data.sound))        // guest 0xECC
+, mDarkBeamProjectile(data.darkBeamAttack.beamInfo.weaponSystem,
+                      LdrToDamageInfo(data.darkBeamAttack.damage)) // guest 0xA60
+, mDarkBeamInfo(data.darkBeamAttack.beamInfo)             // guest 0xA88
+, mDarkBeamSound(static_cast< u16 >(data.darkBeamAttack.beamSound)) // guest 0xAD0
+, mLightBeamProjectile(data.lightBeamAttack.beamInfo.weaponSystem,
+                       LdrToDamageInfo(data.lightBeamAttack.damage)) // guest 0xAD4
+, mLightBeamInfo(data.lightBeamAttack.beamInfo)           // guest 0xAFC
+, mLightBeamSound(static_cast< u16 >(data.lightBeamAttack.beamSound)) // guest 0xB44
 , mX8f8_(0.f)                                             // guest 0x8F8 (0x9D70)
 , mX8fc_(CVector3f::Zero())                               // guest 0x8FC (0x9D78..0x9D88)
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
@@ -1415,9 +1425,49 @@ void CEmperorIngStage3::EggLayEvent(CStateManager& mgr) { StandInFn("fn_18_4D0")
 // fn_18_BB8 (0x204): spawns a module object (fn_18_817C/fn_18_BD84); not read yet.
 void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) { StandInFn("fn_18_BB8"); }
 
-// fn_18_1530 (0x3B4): makes the beam ("EmperorIngStage3Beam", a CPlasmaProjectile, guest 0x8AC)
-// and its looped sound (guest 0x8B0); not ported yet.
-void CEmperorIngStage3::StartBeam(CStateManager& mgr) { StandInFn("fn_18_1530"); }
+// @ fn_18_1530
+// fn_18_1530 (0x3B4): the beam start. The light beam with 0x80 of guest 0x825, else the dark one:
+// its beam info (guest 0xAFC / 0xA88, TLdrToBeamInfo with 0x301 and the copy fn_18_18E4) and its
+// projectile info's damage (0xAE0 / 0xA6C) with the amount zeroed - the amount becomes the beam's
+// initial damage - make the 0x6A8-byte "EmperorIngStage3Beam" CPlasmaProjectile: the projectile
+// info's weapon (0xAD4 / 0xA60), the light or dark weapon type (2 / 1), the identity transform,
+// kMT_ProjectilePassthrough (0x14), a fresh id, the default asset info and the attributes 0xA0000
+// / 0x21000. The aim point (guest 0x8B4) starts 20 units (rodata 0x270) along the facing from the
+// actor; the beam's damage duration is 3 (rodata 0x284: 0x158 |= 0x1000, 0x1C0) and it fires
+// (the vtable slot 0x94) along the look-at from the DarkBeam locator (fn_18_DBC) before it is
+// added. Its looped sound (0xB44 / 0xAD0, emitter 150/0.1, rodata 0x288/0x28C) starts at the
+// locator; the handle goes to guest 0x8B0 and the id to 0x8AC.
+void CEmperorIngStage3::StartBeam(CStateManager& mgr) {
+  const bool light = (x825_ & 0x80) != 0; // 0x1554: extrwi 1,24
+  const CBeamInfo beamInfo =
+      TLdrToBeamInfo(light ? mLightBeamInfo : mDarkBeamInfo, 0x301); // fn_80239B64, fn_18_18E4
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CProjectileInfo& projectile = light ? mLightBeamProjectile : mDarkBeamProjectile;
+  CDamageInfo damage = projectile.GetDamage();
+  const float initialDamage = damage.GetDamage();
+  damage.SetDamage(0.f); // rodata 0x258
+  CPlasmaProjectile* beam = rs_new CPlasmaProjectile(
+      projectile.Token(), rstl::string_l("EmperorIngStage3Beam"), light ? kWT_Light : kWT_Dark,
+      beamInfo, CTransform4f::Identity(), kMT_ProjectilePassthrough, damage, uid,
+      GetCurrentAreaId(), GetUniqueId(), CWeaponAssetInfo(), false, light ? 0xA0000 : 0x21000);
+  if (beam == nullptr) {
+    return;
+  }
+  beam->SetInitialDamage(initialDamage);
+  const CVector3f origin = DarkBeamLocatorPosition(); // fn_18_DBC
+  mX8b4_ = GetTranslation() + GetTransform().GetColumn(kDY) * 20.f; // rodata 0x270
+  const CTransform4f xf = CTransform4f::LookAt(origin, mX8b4_, CVector3f::Up());
+  beam->SetDamageDuration(3.f); // rodata 0x284
+  beam->Fire(xf, mgr, false);   // vtable slot 0x94
+  mgr.AddObject(*beam);         // fn_80041E60
+  CAudioSys::C3DEmitterParmData parms(150.f, 0.1f, 1, 0x7f, 0x14); // rodata 0x288, 0x28C
+  parms.mPos = origin;
+  parms.mDir = CVector3f::Up();
+  parms.mSfxId = light ? mLightBeamSound : mDarkBeamSound;
+  mBeamSfx = CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true,
+                                     CSfxManager::kMedPriority);
+  mBeamId = uid.Value();
+}
 
 // fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
 CVector3f CEmperorIngStage3::FlatFacing() const {
