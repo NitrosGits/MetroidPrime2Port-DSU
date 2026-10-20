@@ -3,9 +3,10 @@
 // the tentacles' build, motion, effects, hits-to-retraction bookkeeping and contact damage; the
 // states TrackPlayer, Attack, ProjectileAttack, Taunt, JumpRope, BeginHeartStage, HeartStage and
 // EndHeartStage; the heart stage's beam (FireBeam), the heart's damage reaching the boss
-// (fn_16_51D4) and the charged projectile of DoUserAnimEvent. What remains a stand-in logs once
+// (fn_16_51D4), the charged projectile of DoUserAnimEvent and the boss's own ProcessSoundEvent
+// (fn_16_7EA8). What remains a stand-in logs once
 // and names the REL function it stands in for (WarpAttack, TauntAttack, the
-// Render, ProcessSoundEvent and DoUserAnimEvent's
+// Render and DoUserAnimEvent's
 // other cases) - docs/module-analysis/EmperorIngStage1.md has the map.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
@@ -1529,14 +1530,22 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
   }
 }
 
-// vtable slot 28 = fn_16_7EA8 (0xC4): retail's own sound handling for the boss.
+// vtable slot 28 = fn_16_7EA8 (0x7EA8..0x7F8C, 0xC4): retail's own sound handling for the boss.
+// The sound is swallowed while the locator belongs to a tentacle that cannot be shot: the tentacle
+// the segment belongs to (fn_16_3C58, 0x7F08) is -1 or its flag byte (the joint's +0x24, guest
+// 0x7D8 + index * 0x48 + 0x24 = 0x7FC, read at 0x7F1C) has its 0x10 bit clear (the extrwi at
+// 0x7F20 takes the bit 27, the bit 4 of the byte). Only then does the base's own handling run
+// (the call at 0x7F6C).
 void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, float fallOff,
                                           float maxDist, const CSegId& locator, ushort pitchStart,
                                           ushort pitchEnd, float pitchDuration, uchar minVol,
                                           uchar maxVol, float distanceSquared,
                                           const CVector3f& position, int aid, CStateManager& mgr,
                                           bool translateId) {
-  StandIn("CEmperorIngStage1::ProcessSoundEvent (vtable slot 28, fn_16_7EA8)");
+  const int index = GetTentacleIndex(locator); // 0x7F08
+  if (index != -1 && (mJoints.mJoints[index].mFlags & 0x10) == 0) {
+    return; // 0x7F20, 0x7F24
+  }
   CPatterned::ProcessSoundEvent(sfxId, weight, flags, fallOff, maxDist, locator, pitchStart,
                                 pitchEnd, pitchDuration, minVol, maxVol, distanceSquared, position,
                                 aid, mgr, translateId);
