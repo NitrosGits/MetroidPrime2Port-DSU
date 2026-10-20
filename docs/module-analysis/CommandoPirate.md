@@ -60,13 +60,13 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | slot | method | fn | port state |
 |---|---|---|---|
 | 0x08 | dtor | `fn_9_D47C` | host |
-| 0x10 | `PreThink` | `fn_9_CAC8` (0x78) | stand-in |
+| 0x10 | `PreThink` | `fn_9_CAC8` (0x78) | host (the bone tracking's own PreThink, then the base's) |
 | 0x14 | `Think` | `fn_9_C944` (0x184) | stand-in |
 | 0x18 | `AcceptScriptMsg` | `fn_9_CB40` (0x754) | stand-in |
-| 0x24 | `PreRender` | `fn_9_C6D4` (0xc4) | stand-in |
+| 0x24 | `PreRender` | `fn_9_C6D4` (0xc4) | host (the base's, then the bone tracking's own) |
 | 0x28 | `AddToRenderer` | `fn_9_C4FC` (0x20) | host (a straight base call) |
 | 0x2C | `Render` | `fn_9_C598` (0x13c) | stand-in |
-| 0x34 | `PreRenderAllViewports` | `fn_9_C51C` (0x7c) | stand-in |
+| 0x34 | `PreRenderAllViewports` | `fn_9_C51C` (0x7c) | host (the base's; the guest's rag-doll branch is dead) |
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
 | 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | stand-in |
 | 0x84 | `CollidedWith` | `fn_9_BF44` (0x2b0) | stand-in |
@@ -162,7 +162,7 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 2 | Alert | `fn_9_AE04` | 0x6DE |
 | 3 | FaceTarget | `fn_9_ABDC` | 0x6E4 |
 | 4 | SelectTarget | `fn_9_AB08` | 0x6EF |
-| 5 | SetTargetDest | `fn_9_AA20` | 0x6FC |
+| 5 | SetTargetDest | `fn_9_AA20` | 0x6FC | activate: the path find destination becomes the target's position, the path find navigation's face target id is cleared and the module's helper `fn_9_19D8` (0xc4 bytes) is called |
 | 6 | SetRetreatDest | `fn_9_A97C` | 0x70A |
 | 7 | SetJumpDest | `fn_9_A8E8` | 0x719 |
 | 8 | SetPathMeshDest | `fn_9_A838` | 0x725 |
@@ -280,6 +280,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009B60) is the command manager's steering blend mode: full speed on activate, normal on deactivate |
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
+| SetTargetDest | `fn_9_AA20` | 0x6FC | on activate only: the destination starts as the actor's own position (guest this+0x54) and the 0x80 bit of the flag byte at guest this+0xC65 is cleared; the target (the id at guest this+0xBCA) is looked up and, when it is there and either the flag byte at +0xC64 has its 0x40 bit or the byte at +0xAE8 does not have its 0x80 bit, the destination becomes the target's position and the 0x80 bit of +0xC65 is set; then the path find navigation's destination is set, its face target id (guest this+0x718, the navigation's own member at +0x24) is cleared and the module's helper `fn_9_19D8` is called | `fn_9_19D8` is 0xc4 bytes, over the 0x80 limit, so it is a named stand-in; the guest reads the target's position without a cast, so the port casts to CActor (the host's CEntity has no position) |
 
 The player id the guest takes (its state manager's +0x14FC, the id at +8 of it, 0x0000AB4C) has no
 member at that offset in the host's state manager, so the port uses the player actor's id.
@@ -304,6 +305,21 @@ member at that offset in the host's state manager, so the port uses the player a
   running on every PathFind tick and finding seven other listening AIs of the area, but the
   nearest one is 10.2 units away while the separation radius is 5.0f * 1.5 = 7.5, so every
   separation is zero and no locomotion command is delivered there.
+- `fn_9_19D8` (0xc4 bytes) is the module's team helper, called by `fn_9_AA20` (and by the
+  other destination states): it reads the team id at guest this+0xBC4, takes the associated team
+  id from the team AI manager and joins it. It is over the 0x80 limit, so it is a named
+  stand-in for now.
+- The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
+  (0x0000DC18) and the module's `GetRagDoll` returns null (fn_9_78) - so the rag-doll branches of
+  `fn_9_CAC8` (PreThink), `fn_9_C6D4` (PreRender) and `fn_9_C51C` (PreRenderAllViewports) are dead
+  here. What is left is the bone tracking's own PreThink and PreRender (the calls at
+  0x0000CB10 and 0x0000C77C, with the model's scale, the actor's transform and the body
+  controller) and the base's own calls - the same three bodies the Dark Commando has.
+- The path find search needs its area: the guest's `kSM_AreaLoaded` case (fn_9_CB40) sets the
+  search's area pointer (guest this+0x928) to the area's path area - the world's area at the
+  actor's area id (this+0x04), its post-constructed data (+0x104) and that data's path area
+  (+0xEC); the store is at 0x0000CEF0. The port does the same in its `AcceptScriptMsg`
+  (`mPathFindSearch.SetArea(...)`), as the Space Pirate's port does.
 - The guest's `CTryCommand::ShouldRetry` (guest this+0x6B4) is the base's animation state, so
   the port asks the animation state whether the command may be issued
   (`mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)`, the guest's command id 8).
@@ -437,13 +453,26 @@ the run log is 0.
 The same run with the PathFind state and its helper ported (2026-10-20) shows the path find
 navigation running on every tick of the PathFind state (activate, update, deactivate), but the
 commando stands still (its position is the same on every tick): the state that sets the path
-destination (`fn_9_AA20`, SetTargetDest) is still a stand-in, so the path find search has no
-destination. `grep -c '[port] caught\|reach-stub'` on that log is still 0.
+destination (`fn_9_AA20`, SetTargetDest) was still a stand-in then, so the path find search had
+no destination. `grep -c '[port] caught\|reach-stub'` on that log is still 0.
+
+With `fn_9_AA20` ported (2026-10-20) the commando gets a destination: the path find
+navigation's destination is the target's position (the player at 83.5, 290.4, -43.6 while the
+commando stands at 72.3, 401.4, -47.1) and the state runs on every tick. The commando still does
+not walk there: the path search returns `kR_NoPath` for that destination (the same search
+succeeds for a point five units away, so the port's path data and the area's path area - set
+from the guest's `kSM_AreaLoaded` case - are fine; the player's spot is simply not connected to
+the commando's region by the area's ground connections). With a near destination in a probe run
+the commando walked 44 units, so the destination, the navigation and the locomotion command all
+work. The stand-ins that fired in this run are `AcceptScriptMsg`, `Think`, `DoUserAnimEvent`,
+`CollidedWith`, the five remaining trigger stand-ins (`fn_9_B690`, `fn_9_B818`, `fn_9_B250`,
+`fn_9_BCB8`, `fn_9_BBC8`, all 0xd4 bytes) and the module's team helper `fn_9_19D8` (0xc4 bytes);
+`grep -c '[port] caught\|reach-stub'` is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
 - The state machine's other 42 bodies: the two tables (34 triggers, 36 states) are registered,
-  twenty-three of the triggers and six of the states are host code (the sections above), but every
+  twenty-three of the triggers and seven of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
   returns the neutral value. The combat triggers that are still stands in are `ShouldMeleeAttack`
   (fn_9_BCB8, 0xE0), `ShouldDodge` (fn_9_B690, 0xDC), `ShouldShieldCharge` (fn_9_B250, 0x410)

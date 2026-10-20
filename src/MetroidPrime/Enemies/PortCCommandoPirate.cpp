@@ -14,7 +14,9 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -205,11 +207,15 @@ void CCommandoPirate::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 0x10 = fn_9_CAC8 (0x78).
+// vtable slot 0x10 = fn_9_CAC8 (0x78): the bone tracking's own PreThink and then the base's.
+// The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
+// (0x0000DC18) - so the guest's tests (the rag doll is there at 0x0000CAF0, its byte at +0x70
+// has its 0x40 bit, the primed flag, at 0x0000CAFC) always take the bone tracking's branch (the
+// call at 0x0000CB10); the base's PreThink follows (0x0000CB20).
 void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CCommandoPirate::PreThink (vtable slot 0x10, fn_9_CAC8)");
   EnsureBodyActive(mgr);
-  CPatterned::PreThink(dt, mgr);
+  mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
+  CPatterned::PreThink(dt, mgr);             // 0x0000CB20
 }
 
 // vtable slot 0x14 = fn_9_C944 (0x184).
@@ -229,13 +235,28 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);
+  } else if (msg.GetMessage() == kSM_AreaLoaded) {
+    // 0x0000CEC8..0x0000CEF0: the guest's area-loaded case sets the path find search's area
+    // pointer (guest this+0x928) to the area's path area: the world's area at the actor's area id
+    // (this+0x04, the load at 0x0000CEC8), its post-constructed data (+0x104, the load at
+    // 0x0000CEE8) and that data's path area (+0xEC, the load at 0x0000CEEC). Without it the
+    // search has no area and every path find fails.
+    mPathFindSearch.SetArea(
+        mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
   }
 }
 
-// vtable slot 0x24 = fn_9_C6D4 (0xc4).
+// vtable slot 0x24 = fn_9_C6D4 (0xc4): the base's PreRender and then the bone tracking's own.
+// The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
+// (0x0000DC18) - so the guest's rag-doll call (the vtable slot 0x10 call at 0x0000C718) is dead
+// here and only the base's PreRender runs (0x0000C728). The bone tracking's own PreRender (the
+// call at 0x0000C77C) follows with the model's scale (the three floats at the model data's +0,
+// loaded at 0x0000C754..0x0000C770), the actor's transform (guest this+0x24) and the body
+// controller (guest this+0x48c).
 void CCommandoPirate::PreRender(CStateManager& mgr) {
-  StandIn("CCommandoPirate::PreRender (vtable slot 0x24, fn_9_C6D4)");
-  CPatterned::PreRender(mgr);
+  CPatterned::PreRender(mgr);  // 0x0000C728
+  mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
+                          *BodyController());  // 0x0000C77C
 }
 
 // vtable slot 0x28 = fn_9_C4FC (0x20): a straight call to CPatterned::AddToRenderer, so the base's
@@ -250,10 +271,12 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
-// vtable slot 0x34 = fn_9_C51C (0x7c).
+// vtable slot 0x34 = fn_9_C51C (0x7c): the base's own. The guest's rag doll (guest this+0xBFC)
+// is always null - the constructor stores 0 there (0x0000DC18) - so the guest's rag-doll branch
+// (the CRagDoll::PreRenderAllViewports call at 0x0000C560 with lbl_9_rodata_458 = 0.2f, then the
+// portal system state) is dead here and the base's PreRenderAllViewports runs (0x0000C57C).
 void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
-  StandIn("CCommandoPirate::PreRenderAllViewports (vtable slot 0x34, fn_9_C51C)");
-  CPatterned::PreRenderAllViewports(mgr);
+  CPatterned::PreRenderAllViewports(mgr);  // 0x0000C57C
 }
 
 // vtable slot 0x40 = fn_9_C2CC (0x34): the shield's damage vulnerability while the flag byte at
@@ -732,8 +755,38 @@ void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) 
   BodyController()->SetLocomotionType(pas::kLT_Combat);   // 0x0000ABC0
 }
 
+// fn_9_AA20: the state sets the path find destination to the target. Only the activate message
+// (the guest's test of 0 at 0x0000AA28) does anything: the destination starts as the actor's own
+// position (guest this+0x54, the three loads at 0x0000AA44..0x0000AA64), the 0x80 bit of the
+// module's flag byte at guest this+0xC65 is cleared (the rlwimi at 0x0000AA6C) and the target is
+// looked up (the id at guest this+0xBCA, the load at 0x0000AA74, the GetObjectById call at
+// 0x0000AA7C). When the target is there and either the module's flag byte at +0xC64 has its 0x40
+// bit (extrwi at 0x0000AA8C) or the module's byte at +0xAE8 does not have its 0x80 bit (extrwi at
+// 0x0000AA98), the destination becomes the target's position (the loads at
+// 0x0000AAA0..0x0000AAB8) and the 0x80 bit of +0xC65 is set (the rlwimi at 0x0000AAC0).
+// Then the path find navigation's destination is set (the SetDestination call at 0x0000AAD0) and
+// its face target id (guest this+0x718 - the navigation's own member at +0x24) is cleared (the
+// store at 0x0000AAE8). The module's own helper fn_9_19D8 (0xc4 bytes, over the 0x80 limit) is
+// called last (0x0000AAEC) and stands in for now.
+//
+// The guest reads the target's position at the actor's +0x54 without a cast; the host's CEntity
+// has no position, so the port casts to CActor and keeps a null test of its own (the guest's
+// only null test is the lookup's, at 0x0000AA80).
 void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_AA20");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  CVector3f destination = GetTranslation();  // 0x0000AA44..0x0000AA64
+  xc65_ &= ~0x80;                            // 0x0000AA6C
+  const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000AA7C
+  const CActor* actor = target != nullptr ? TCastToConstPtr< CActor >(target) : nullptr;
+  if (actor != nullptr && ((xc64_ & 0x40) != 0 || (xae8_ & 0x80) == 0)) {  // 0x0000AA88..0x0000AA9C
+    destination = actor->GetTranslation();  // 0x0000AAA0..0x0000AAB8
+    xc65_ |= 0x80;                          // 0x0000AAC0
+  }
+  mPathFindNavigation.SetDestination(destination);         // 0x0000AAD0
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000AAE8
+  StandInFn("fn_9_19D8 (0xc4 bytes)");       // 0x0000AAEC
 }
 
 void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt) {
