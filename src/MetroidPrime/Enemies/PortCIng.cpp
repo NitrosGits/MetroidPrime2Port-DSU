@@ -387,7 +387,7 @@ void CIng::SetupCollisionActors(CStateManager& mgr) {
     if (actor == nullptr) {
       continue;
     }
-    actor->SetDamageVulnerability(*GetDamageVulnerability());
+    actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
     *actor->HealthInfo() = *HealthInfo();
   }
 }
@@ -2166,6 +2166,20 @@ void CIng::Think(float dt, CStateManager& mgr) {
 void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
   const TUniqueId sender = msg.GetSenderId();
+  if (DebugIng()) {
+    // Which damage messages reach the Ing, and from whom: the collider relay is the only route a
+    // projectile has to a corporeal Ing (pool this with MP2_DEBUG_ING=1).
+    switch (msg.GetMessage()) {
+    case kSM_Damage:          // XDMG in retail's naming
+    case kSM_HitObject:
+    case kSM_ResistedDamage:  // XRDG
+      fprintf(stderr, "[ing] %04x msg %d from %04x\n", GetUniqueId().Value(),
+              static_cast< int >(msg.GetMessage()), sender.Value());
+      break;
+    default:
+      break;
+    }
+  }
   switch (msg.GetMessage()) {
   case kSM_Create:
     // fn_29_4C88
