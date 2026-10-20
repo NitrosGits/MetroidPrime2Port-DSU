@@ -732,7 +732,11 @@ int CMain::RsMain(int argc, const char* const* argv) {
 
     while (!mFinished) {
 #ifdef TARGET_PC
-      PortPaceFrame();
+      // Max speed (a cinematic skip's fast-forward) draws about once a second and runs its ticks
+      // back to back, as retail's loop does; the 60 FPS cap would hold it to real time.
+      if (!IsMaxSpeed()) {
+        PortPaceFrame();
+      }
       if (PortPumpEvents()) {
         mFinished = true;
         break;

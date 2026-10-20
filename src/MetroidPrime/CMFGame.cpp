@@ -56,6 +56,8 @@ bool sPortUserCinematicSkip = false;
 // How long a cinematic camera has been current in kFS_InGame; A only skips past kPortSkipAGuard.
 float sPortCinematicTime = 0.f;
 const float kPortSkipAGuard = 0.5f;
+// When the current skip started (PortHarness::Seconds), for the "[skip] done" line.
+double sPortSkipStart = 0.0;
 } // namespace
 #endif
 
@@ -106,6 +108,8 @@ void CMFGame::SetFlowState(EFlowState state) {
     mSkippedCineCam = kInvalidUniqueId;
     CSfxManager::SetMuted(false);
 #ifdef TARGET_PC
+    std::fprintf(stderr, "[skip] done: %.1f s of game time in %.2f s\n", mFlowTime,
+                 PortHarness::Seconds() - sPortSkipStart);
     sPortUserCinematicSkip = false;
     sPortCinematicTime = 0.f;
 #endif
@@ -122,6 +126,9 @@ void CMFGame::SetFlowState(EFlowState state) {
   switch (state) {
   case kFS_CinematicSkip:
     CSfxManager::SetMuted(true);
+#ifdef TARGET_PC
+    sPortSkipStart = PortHarness::Seconds();
+#endif
     break;
   case kFS_PortalTransition:
     mStateManager->DeferStateTransition(kSMT_InGame);
@@ -723,6 +730,21 @@ void CMFGame::Draw() const {
     CGraphics::SetUseStreamVertexDelay(false);
     return;
   case kFS_CinematicSkip: {
+#ifdef TARGET_PC
+    // Port: the port's skips (see the timer tick) fade out in a quarter second instead of retail's
+    // second before the fast-forward: with the 60 FPS cap lifted at max speed the rest of the
+    // sequence then runs in a fraction of a second, so the fade is most of the skip.
+    const float fadeTime =
+        PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip ? 0.25f
+                                                                                         : 1.f;
+    if (mFlowTime >= fadeTime) {
+      gpMain->SetMaxSpeed(true);
+      return;
+    }
+    DrawWorld(singleViewport);
+    DrawGui(singleViewport);
+    const float intensity = CMath::Clamp(0.f, 1.f - mFlowTime / fadeTime, 1.f);
+#else
     if (mFlowTime >= 1.f) {
       gpMain->SetMaxSpeed(true);
       return;
@@ -730,6 +752,7 @@ void CMFGame::Draw() const {
     DrawWorld(singleViewport);
     DrawGui(singleViewport);
     const float intensity = CMath::Clamp(0.f, 1.f - mFlowTime, 1.f);
+#endif
     CCameraFilterPass::DrawFilter(CCameraFilterPass::kFT_Multiply,
                                   CCameraFilterPass::kFS_Fullscreen,
                                   CColor(intensity, intensity, intensity, 1.f), nullptr, 1.f);
