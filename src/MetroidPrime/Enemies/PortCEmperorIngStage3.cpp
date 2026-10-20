@@ -183,6 +183,7 @@ static rstl::optional_object< TLockedToken< CGenDescription > > PortalPart(CAsse
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
 }
 
+// @ fn_18_9A8C
 // fn_18_9A8C. The base call is the retail one: EPatternedAI 0x0F (`li r4, 0xf` at 0x9AF0),
 // flavor 0 (`li r7, 0x0` at 0x9AC8), movement 0 / collider 1 / body 1 (the constants stored
 // to the stack arguments at 0x9AD8..0x9AE8 - kMT_Ground, kCT_One and kBT_BiPedal).
@@ -235,8 +236,8 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX864_(0.f)                                             // guest 0x864
 , mX868_(-1)                                              // guest 0x868 (0x9CB4)
 , x8a4_(-1)                                               // guest 0x8A4
-, mX7d8_(0.f)                                             // guest 0x7D8 (0x9B58)
-, mX7dc_(0.f)                                             // guest 0x7DC (0x9B5C)
+, mX7d8_(100000.f)                                        // guest 0x7D8 (0x9B58, rodata 0x324)
+, mX7dc_(100000.f)                                        // guest 0x7DC (0x9B5C, rodata 0x324)
 , mX89c_(0)                                               // guest 0x89C (0x9CD0)
 , mX8a0_(0)                                               // guest 0x8A0 (0x9CE0)
 , x8a8_(-1)                                               // guest 0x8A8 (0x9CF8)
@@ -277,15 +278,18 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mLightSwarmExpireSound(data.audioPlaybackParms)         // guest 0xE78 (0xA284..0xA2B0)
 
 {
-  // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
-  // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
-  // (0xB54, 0xBC0, 0xC2C, 0xC98), the light swarm (0xD34) and the portal data (0xE90). The
-  // constructor ends with SetDrawShadow(this, 0) (0xA2D0).
+  // Every retail call has its member above: the bits 0..17 of the word at 0x824 cleared one by one
+  // (0x9B94..0x9C78), fn_18_A8D8 the vulnerability copy (0x86C, 0x960..0x9C0), fn_18_A884 the
+  // health copy, fn_18_A794 the beam info copy (0xA88, 0xAFC, 0xD34), fn_18_A3B8 the swarm data
+  // copy (0xD7C), fn_18_A2EC the shock wave copy (0xE90); the portal token branches are
+  // PortalPart. The word at 0x7EC is mActionHistory's count, 0x8D0..0x8D8 the portal vector.
+  // The constructor ends with SetDrawShadow(this, 0) (0xA2D0).
   // The three lists reserve sixteen entries each (fn_18_ADF8 with 0x10, 0x9C84..0x9C9C).
   mX830_.reserve(0x10);
   mX840_.reserve(0x10);
   mX850_.reserve(0x10);
-  // The four stage records (0xB54, 0xBC0, 0xC2C, 0xC98) are copies of the data's stage1..4.
+  // The four stage records (0xB54, 0xBC0, 0xC2C, 0xC98) are copies of the data's stage1..4
+  // (fn_18_A6B8, 0xA01C..0xA040; retail copies them before the portal token, no side effects).
   mStages[0] = data.stage1;
   mStages[1] = data.stage2;
   mStages[2] = data.stage3;

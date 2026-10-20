@@ -318,8 +318,8 @@ private:
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
   int mX868_;                            // guest 0x868, -1: the heart that is on
   int x8a4_;                             // guest 0x8A4, -1: the dodge's step direction
-  float mX7d8_;                          // guest 0x7D8, 0.0f: the dark-flier timer (fn_18_E40)
-  float mX7dc_;                          // guest 0x7DC, 0.0f (0x9B5C): the time since the light
+  float mX7d8_;                          // guest 0x7D8, 100000.0f: the dark-flier timer (fn_18_E40)
+  float mX7dc_;                          // guest 0x7DC, 100000.0f (0x9B5C): the time since the light
                                         // swarm went (fn_18_E40)
   rstl::reserved_vector< int, 8 > mActionHistory; // guest 0x7EC: the last actions ChoseAction picked
   int mX89c_;                            // guest 0x89C, 0: the light-heart count (fn_18_408)
