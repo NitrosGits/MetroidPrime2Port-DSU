@@ -61,6 +61,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mTurnDone(0)
 , mPissedOff(0)
 , mFadeOut(0)
+, mBattleStageUid(kInvalidUniqueId)
 , mPickedAttack(0) {
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,

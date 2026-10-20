@@ -359,13 +359,22 @@ port's sources, so the port implements the bodies itself against the host's memb
 **Next**: the rest of the `TravelToCoverPoints` triggers. `ShouldReact` (`fn_10_11158`, 0x154
 bytes) and `TooMuchDamage` (`fn_10_10698`: the word at 0x980 - a TUniqueId - the count at 0x994
 and the array at 0x998, and the two floats at 0xCC0/0xCC8) are the module's own fields.
-`ShouldFadeOut` (`fn_10_BBE4`) and `CanMissileDeflect` (`fn_10_14284`) need the fight's script
-object: the helper `fn_10_17E14` gets it from the TUniqueId at 0x974 (`fn_10_17DE0` looks it up
-and casts it to `CScriptDarkSamusBattleStage`) and module 11's own accessor `fn_11_B70` then
-points at +0x24 of it - so the byte at +0x31 and the float at +0x24 live in the *battle stage*
-REL's object, which the host's `CDarkSamusBattleStage` (upstream's body) does not carry: those two
-triggers need module 11's data first. `WallCollision` (`fn_10_F800`) needs the three floats at
-0x964, 0xC44 and 0x8B0.
+`WallCollision` (`fn_10_F800`) needs the three floats at 0x964, 0xC44 and 0x8B0.
+
+**The fight script's object** (2026-10-21): the helper `fn_10_17E14` gets it from the uid at
+0x974 (`fn_10_17DE0`: the lhz at 0x00017DEC, `GetObjectById` at 0x00017DFC and the cast to
+`CScriptDarkSamusBattleStage` at 0x00017E00) and module 11's accessor `fn_11_B70` returns the
+object's 0x24. The guest's object holds the stage info there in the loader's
+`SLdrDSStageInfo` layout (the guest's ctor `fn_11_90C` stores the nine floats at 0x00..0x20, the
+missiles at 0x24, the six bools at 0x30..0x35, the floats at 0x38/0x3C, the byte at 0x40, the
+floats at 0x44..0x54, the bytes at 0x58/0x59 and the floats from 0x5C - the host's struct's own
+layout), so the two triggers read the host's `CDarkSamusBattleStage`'s stage info: `ShouldFadeOut`
+(`fn_10_BBE4`) the second bool (`unknown_0x49b9936d`, the guest's +0x31) and `CanMissileDeflect`
+(`fn_10_14284`) the first missile float (`missiles.unknown_0x7ee77018`, the guest's +0x24, read
+against zero). The host keeps the uid at 0x974 in `mBattleStageUid`, but nothing sets it yet: the
+retail code that does (the ray cast `fn_10_193A0`, which stores the uid at 0x00019410) is not
+ported, so the lookup finds nothing and both triggers answer false - as they do in retail before
+the actor has its stage.
 
 `fn_10_1DF74` is not a small body: it calls ten module helpers of its own (`fn_10_1D860`,
 `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`, `fn_10_1E26C`, `fn_10_1C778`,

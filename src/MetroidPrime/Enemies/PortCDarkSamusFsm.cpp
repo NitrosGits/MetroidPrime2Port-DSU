@@ -22,9 +22,11 @@
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -383,6 +385,18 @@ bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
   return CVector3f::GetAngleDiff(flatForward, flatToPlayer) < angle;
 }
 
+// fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
+// module 11's accessor on it (fn_11_B70, which returns the object's 0x24, the stage info).
+// fn_10_17DE0 looks the uid up in the state manager (GetObjectById at 0x00017DFC) and casts the
+// result to CScriptDarkSamusBattleStage (the cast at 0x00017E00); a null object (no script) ends
+// the helper with a null (the cmplwi at 0x00017E24). The uid itself is not set yet in the port:
+// the retail code that writes it (fn_10_193A0, the ray cast that finds the stage) is not ported,
+// so the lookup finds nothing and the two triggers below answer false, as they do in retail
+// before the actor has its stage.
+const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) const {
+  return TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mBattleStageUid));
+}
+
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
@@ -440,9 +454,17 @@ bool CDarkSamus::CanMeleeAttack(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::CanMissileDeflect(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_14284", "trigger CanMissileDeflect");
-  return false;
+// fn_10_14284 (0x00014284): the fight script's object (fn_10_17E14) - without one the trigger
+// answers false (the cmplwi at 0x00014294) - and the float at the stage info's +0x24 (the lfs at
+// 0x000142A8) against zero (lbl_10_rodata_3FC): the trigger answers when the float is below
+// zero (the fcmpo at 0x000142B0 and the extrwi at 0x000142B8, which keeps the compare's "less
+// than" bit).
+bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) const {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr) {
+    return false;
+  }
+  return stage->GetMissileDeflectTime() < 0.f;
 }
 
 bool CDarkSamus::DiveAfterBoost(CStateManager&, const CTriggerData&) const {
@@ -632,9 +654,16 @@ bool CDarkSamus::ShouldFadeIn(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::ShouldFadeOut(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_BBE4", "trigger ShouldFadeOut");
-  return false;
+// fn_10_BBE4 (0x0000BBE4): the fight script's object (fn_10_17E14) - without one the trigger
+// answers false (the cmplwi at 0x0000BC04) - its byte at the stage info's +0x31 (the lbz at
+// 0x0000BC18), which must be 1 (the cmplwi at 0x0000BC1C), and then the actor's own fade flag
+// (the guest's 0xDEC, the lbz at 0x0000BC24), which must be 0.
+bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr || !stage->GetFadeOutFlag()) {
+    return false;
+  }
+  return mFadeOut == 0;
 }
 
 // fn_10_FD30 (0x0000FD30): the byte at 0x420's bit 6 (0x40 - the extrwi at 0x0000FD34 keeps

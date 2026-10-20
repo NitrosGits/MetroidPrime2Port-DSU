@@ -11,6 +11,10 @@
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
 
+// The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
+// ShouldFadeOut and CanMissileDeflect triggers read.
+class CDarkSamusBattleStage;
+
 // Host copy of the properties the DarkSamus loader reads (fn_10_CF44 reads the module's 63
 // property ids, which are exactly the ids of the generated SLdrDarkSamus reader). Retail keeps no
 // single block of them: the loader hands them to the constructor (fn_10_1FA14) as eight floats
@@ -335,6 +339,10 @@ private:
   // normalized and compared (the fcmpo at 0x00014384).
   bool IsPlayerInFront(CStateManager& mgr, float angle) const;
 
+  // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
+  // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
+  const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -353,6 +361,10 @@ private:
                                    // reads it
   uchar mFadeOut;                  // guest 0xDEC, the fade flag: fn_10_117A0 (PickedNormalMissile)
                                    // and fn_10_BBE4 (ShouldFadeOut) read it
+  TUniqueId mBattleStageUid;        // guest 0x974, the uid of the fight script's object: the
+                                   // helper fn_10_17DE0 looks it up in the state manager and
+                                   // casts it to CScriptDarkSamusBattleStage. The constructor
+                                   // writes kInvalidUniqueId to it (the lhz/sth at 0x0001FCC0)
   int mPickedAttack;               // guest 0x984, the word the fight script writes and the
                                    // Picked* triggers compare: the picked attack's id (1 melee,
                                    // 4 melee dash, 8 scatter shot, 0x10 moving scatter shot,
