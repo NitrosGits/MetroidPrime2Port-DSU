@@ -148,7 +148,7 @@ Also in the ctor: `SetDrawShadow(false)`.
 | 0x18 / 0x1c | lightColor / lightAttenuation |
 | 0x20 | armSwipe CDamageInfo (inline, to 0x3b) |
 | 0x3c | triggerVuln CDamageVulnerability |
-| 0x6c | body-projectile data (0x40): +0 CDamageInfo, +0x1c f, +0x20 splat asset, +0x24/+0x26 sounds (u16), +0x28..0x3c floats |
+| 0x6c | body-projectile data (0x40): +0 CDamageInfo, +0x1c f (0xa0d63374, the suck drain a second), +0x20 splat asset, +0x24/+0x26 sounds (u16), then +0x28 **speed**, +0x2c **dropTime**, +0x30 **minAttackDist**, +0x34 **maxAttackDist**, +0x38 **suckTime**, +0x3c **odds** [proven 2026-10-20: the loader's parse switch sends 0xce980820->sp+0xc70, 0xb752c177->0xc74, 0xe6ddb662->0xc78, 0xb57bae86->0xc7c, 0xdfea60a2->0xc68, 0xdc741fbd->0xc88, and `fn_29_F12C` stores f3->+0x28, f4->+0x2c, f5->+0x30, f6->+0x34, f2->+0x38, f7->+0x3c] |
 | 0xac | CIngSpotData (0x60) |
 | 0x10c | grapple data: +0 f, +4 CDamageInfo, +0x20 f, +0x24/+0x26 sounds, +0x28..0x30 floats, +0x34 vuln |
 | 0x170 | mini-portal data: +0 min, +4 max, +8 effect, +0xc sound, +0x10 CDamageInfo, +0x2c SLdrPlasmaBeamInfo |
@@ -348,7 +348,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 |---|---|---|
 | ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported 2026-10-20 (`d56f9f94b`), builds and runs but no run enters the state: it needs the player in morph ball inside `mPursuitRange`. Next run for it: `press b` to morph, then walk into the Ing |
 | ~~arm swipe~~ done | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | ported + `// @` 2026-10-20 (`1b058f9a4`); see A.7 |
-| suck | `fn_29_76B8` SuckEnergy (0x778) | allocates a 0x180 `CHUDBillboardEffect` |
+| ~~suck~~ done | `fn_29_76B8` SuckEnergy (0x778) | ported 2026-10-20, `// @`; see A.8. It also exposed a field-name shift in `CIngBodyProjectileData` (A.3) |
 | splat | `fn_29_4F14` SplatOntoMesh (0x238) | one of the twelve code functions |
 | exit host | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10F58`; `lbl_29_data_C60`) | biggest; the class identity is still only **[probable]** |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
@@ -423,6 +423,35 @@ That is what unblocked the mini portal: after the gate fix a run entered `FindMi
 Still open in the slice: the run was `GODMODE=1`, so the damage reaching the player was not
 observed (only the segment test and the `ApplyDamage` call); and `mSwipeArm` is exercised as 1
 (both arms' tests run) but a `0` swing has not been logged.
+
+### A.8 SuckEnergy (ported 2026-10-20)
+
+`fn_29_76B8` (0x778), asm `auto_00_00000000_text.s:8447-8870`. The state possesses the *player*: the
+Ing sets form 0 and rides the host, so it is the only state whose `mHostId` is a `CPlayer`.
+
+| branch | retail behaviour |
+|---|---|
+| Activate (msg 0) | `mForm = 0`; `AnimationData()->GetParticleDB()`: `DestroyAllActiveParticles` + `ClearAllNonPersistentEffects`; `DeliverCmd(CBodyStateCmd(13))` = `kBSC_AbortScripted`; `RemoveMaterial` 0x21/0x25/0x3b/0x28/0x29; `mHostId = mTargetId` (0xcdc <- 0xd6c); if the swarm GEN token at 0xce0 is engaged (0xcec) allocate 0xcde and add a `CHUDBillboardEffect(*token, null, uid, true, "Ing Possessed Mold", GetNearClipDistance, GetScaleForPOV, 0, White, One, Zero, true)`; `AddEmitter(0x852, translation, 0x7f, area, true, false, med)` stored to 0xd00; `ApplyDamage(self, host, self, mData+0x6c contact damage, CMaterialFilter() default, GetForward())`; if the host is a `CPlayer`: `EnableLeaveMorphBall(false)`, `AttachActorToPlayer(self, false)`, and (when `IngAttachedWarningCount` is below its maximum) increment it and `DisplayHudMemo("IngAttachedWarning", CHUDMemoParms(5, 1, 0, 0, 1<<player, 1))`; finally `SfxStart(0x9ca, kMaxVolume, 0x40, area, true, false, med)` to 0xd00, overwriting the emitter handle (retail's dead store) |
+| Update (msg 1) | if `StateMachineState().GetTime() > mData+0xa4` (body-projectile +0x38 = `suckTime`) drop `mHostId`; else look the host up, `SetTransform(host->GetTransform())`, `SetTranslation(host->GetAimPosition(mgr, 0))`, then `ApplyDamage(self, host, self, CDamageInfo(kWT_AI, dt * mData+0x88, 0, 0, noImmunity), MakeIncludeExclude(kMT_Solid, {}), GetForward())` — the include comes from `1 << lbl_29_data_0`, and `lbl_29_data_0` = 0x3B |
+| Deactivate (msg 2) | `EnableLeaveMorphBall(true)`; detach when the attached actor is this Ing; `RemoveEmitter(0xd00)`, 0xd00 = 0, `mHostId` invalid. `mAnimationState` is never touched (§A.7's note about the FSM is why) |
+
+Facts the asm settled, against the pseudo-C: the knock-back is the transform's **forward** column
+(+0x04/+0x14/+0x24 of the matrix at 0x24 reads `m01/m11/m21`), not up; Activate *clears* CPlayer
+0x1144 bits 7/6 (i.e. `EnableLeaveMorphBall(false)`, same as GrappleBall's Activate) and Deactivate
+sets them; the HUD memo sits inside the `host is a player` branch; retail's damage weapon-mode word is
+uninitialised stack with bits 0..18 cleared (m2c prints `& 0x1fff | 0xb0000`), so the port uses
+`kWT_AI` like GrappleBall and says so.
+
+Trace (`ing_suck.log`, area 57, `/tmp/opencode/ing_run2.sh`, 4500 frames / 80 s): the Ing enters the
+state after the body projectile (`state SuckEnergy form 4`), and logs
+`suck: host 0000 attached (mold 0216), 5.0s, 3.0 dmg/s` + `suck tick: riding host 0000 (mold 0216),
+0.05 dmg/frame, host hp 99`; 0 `[port] caught`, 0 `[reach-stub]`, exit 0. **Not traced**: Deactivate
+(the 5 s suck outlived the run) and the billboard/memo visuals.
+
+The field-name shift this slice found: `CIngBodyProjectileData`'s six floats were named one property
+early, so `ShouldBodyProjectile` compared against (maxAttackDist, suckTime) and `BodyProjectileFlight`
+read `minAttackDist` as the drop time and `speed` as the suck time. Renaming them to the retail slot
+order (A.3) fixed all three call sites with no edit to them.
 
 ---
 

@@ -42,26 +42,27 @@ struct CIngBodyProjectileData {
   , mSplatEffect(splatEffect)
   , mSoundProjectile(soundProjectile)
   , mSoundSplatWall(soundSplatWall)
-  , mSuckTime(suckTime)
   , mSpeed(speed)
   , mDropTime(dropTime)
   , mMinAttackDist(minAttackDist)
   , mMaxAttackDist(maxAttackDist)
+  , mSuckTime(suckTime)
   , mOdds(odds) {}
 
-  CDamageInfo mContactDamage; // +0x00 (0x1c) SLdrIng.bodyProjectileContactDamage
-  float mUnknownA0D6;         // +0x1c SLdrIng.unknown_0xa0d63374
-  CAssetId mSplatEffect;      // +0x20 SLdrIng.bodyProjectileSplatEffect
-  ushort mSoundProjectile;    // +0x24 SLdrIng.sound_BodyProjectile
-  ushort mSoundSplatWall;     // +0x26 SLdrIng.sound_BodyProjectileSplatWall
-  // +0x28..0x3c: six floats. The builder's argument order is not the struct's store order, so
-  // which slot holds which property is not established; the fields are named by property.
-  float mSuckTime;     // SLdrIng.bodyProjectileSuckTime
-  float mSpeed;        // SLdrIng.bodyProjectileSpeed
-  float mDropTime;     // SLdrIng.bodyProjectileDropTime
-  float mMinAttackDist; // SLdrIng.bodyProjectileMinAttackDist
-  float mMaxAttackDist; // SLdrIng.bodyProjectileMaxAttackDist
-  float mOdds;          // SLdrIng.bodyProjectileOdds
+  // Every slot below is proven twice: the loader's property parse switch (fn_29_130, each property's
+  // id word -> the stack slot it reads) and the builder fn_29_F12C, which stores its float arguments
+  // in the order f3->+0x28, f4->+0x2c, f5->+0x30, f6->+0x34, f2->+0x38, f7->+0x3c.
+  CDamageInfo mContactDamage; // +0x00 (0x1c) SLdrIng.bodyProjectileContactDamage (0xab258f6b)
+  float mUnknownA0D6;         // +0x1c SLdrIng.unknown_0xa0d63374 (0xa0d63374), builder's f1
+  CAssetId mSplatEffect;      // +0x20 SLdrIng.bodyProjectileSplatEffect (0x601cc5b4)
+  ushort mSoundProjectile;    // +0x24 SLdrIng.sound_BodyProjectile (0x2025858b)
+  ushort mSoundSplatWall;     // +0x26 SLdrIng.sound_BodyProjectileSplatWall (0x19f8fee6)
+  float mSpeed;               // +0x28 SLdrIng.bodyProjectileSpeed (0xce980820), builder's f3
+  float mDropTime;            // +0x2c SLdrIng.bodyProjectileDropTime (0xb752c177), builder's f4
+  float mMinAttackDist;       // +0x30 SLdrIng.bodyProjectileMinAttackDist (0xe6ddb662), builder's f5
+  float mMaxAttackDist;       // +0x34 SLdrIng.bodyProjectileMaxAttackDist (0xb57bae86), f6
+  float mSuckTime;            // +0x38 SLdrIng.bodyProjectileSuckTime (0xdfea60a2), builder's f2
+  float mOdds;                // +0x3c SLdrIng.bodyProjectileOdds (0xdc741fbd), builder's f7
 };
 
 // Retail shape from fn_29_F090: +0 f, +4 CDamageInfo (0x1c), +0x20 f, +0x24/+0x26 sounds,
@@ -396,6 +397,11 @@ private:
   int mDesiredForm;                          // 0x9d8 (-1)
   rstl::optional_object< CAABox > mTouchBox; // 0xcc0 (0xcd8 = engaged)
   TUniqueId mHostId;                         // 0xcdc
+  TUniqueId mPossessedEffectId;              // 0xcde: the "Ing Possessed Mold" billboard
+  // 0xce0: the swarm GEN token (from CIngData+0x1e4). Retail's own engaged byte is 0xcec (the
+  // token's +0xc) and SuckEnergy reads it, so the optional's engaged flag stands in for it, as with
+  // mMiniPortalEffect below.
+  rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect;
   TUniqueId mBlobId;                         // 0xd5c [?] never spawned yet
   TUniqueId mTeamId;                         // 0xd6a
   TUniqueId mTargetId;                       // 0xd6c
@@ -405,7 +411,7 @@ private:
   TUniqueId mLastCoverHintId;                // 0xd74
   TUniqueId mD76Id;                          // 0xd76, cleared once its object is gone
   TUniqueId mLureSafeZoneId;                 // 0xd78
-  // 0xd00 [?] is a second 4-byte slot the ctor zeroes and nothing here writes yet.
+  CSfxHandle mSuckSfx;                       // 0xd00: SuckEnergy's looping voice
   CSfxHandle mGrappleSfx;                    // 0xd04: the grapple's looping voice, fn_29_6578/4D18
   rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // 0xd08 ing-spot hit fx
   rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // 0xd18 ing-spot heavy hit fx
@@ -472,8 +478,9 @@ private:
   bool mHurtfulZone : 1;                     // 0xe5e bit 4
   const char* mLastLoggedState;              // host: MP2_DEBUG_ING
   float mStateTime;                          // host: time in the current state [?] retail's source
+  bool mSuckTickLogged;                      // host: SuckEnergy's first-frame trace
   CPFArea* mPathArea;                        // host: the area both searches were given on XALD
-  // Not held: the other optional PART/GEN tokens at 0xce0..0xd58, the nine CSegId locators at
+  // Not held: the other optional PART/GEN tokens at 0xcf0..0xd58, the nine CSegId locators at
   // 0xd7a/0xd7c..0xd83 ("Collar_SDK", the shoulders/forearms/wrists/elbows) and the light at 0xd68.
 #else
   uchar x7c0_[0x6a0]; // CIngData, the path searches, the seg ids, the tokens and the flags

@@ -13,6 +13,7 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 #include "MetroidPrime/CAnimData.hpp"
@@ -32,12 +33,17 @@
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/PortIngShared.hpp"
+#include "MetroidPrime/HUD/CHUDMemoParms.hpp"
+#include "MetroidPrime/HUD/CSamusHud.hpp"
 #include "MetroidPrime/PathFinding/CPathFindArea.hpp"
+#include "MetroidPrime/Player/CEnvironmentVariable.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrIng.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/ScriptObjects/CHUDBillboardEffect.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
@@ -129,9 +135,11 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 namespace {
 
-// The forms (mForm, retail 0x9d4). 0/1 are the host forms [?] (no body), 2 corporeal, 3 ing spot,
-// 4 the flying body projectile, 5 evaporating; 6/7/8/9 are the four form changes' own forms.
+// The forms (mForm, retail 0x9d4). 0 is the host form SuckEnergy sets (the Ing possesses the player
+// and has no body of its own), 1 is the other host form [?], 2 corporeal, 3 ing spot, 4 the flying
+// body projectile, 5 evaporating; 6/7/8/9 are the four form changes' own forms.
 enum {
+  kForm_Host = 0,
   kForm_Corporeal = 2,
   kForm_IngSpot = 3,
   kForm_BodyProjectile = 4,
@@ -292,6 +300,8 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mDesiredForm(-1)
 , mTouchBox()
 , mHostId(kInvalidUniqueId)
+, mPossessedEffectId(kInvalidUniqueId)                            // 0xcde
+, mSwarmEffect(OptionalPart(data.mSwarm.mPART))                   // 0xce0, CIngData+0x1e4
 , mBlobId(kInvalidUniqueId)
 , mTeamId(kInvalidUniqueId)
 , mTargetId(kInvalidUniqueId)
@@ -929,8 +939,8 @@ bool CIng::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
   }
   const CVector3f delta = target->GetTranslation() - GetTranslation();
   const float distSq = delta.MagSquared();
-  const float minDist = mData.mBodyProjectile.mMinAttackDist;
-  const float maxDist = mData.mBodyProjectile.mMaxAttackDist;
+  const float minDist = mData.mBodyProjectile.mMinAttackDist; // 0x85c
+  const float maxDist = mData.mBodyProjectile.mMaxAttackDist; // 0x860
   return minDist * minDist <= distSq && distSq <= maxDist * maxDist && -15.f <= delta.GetZ() &&
          delta.GetZ() <= 3.f;
 }
@@ -1616,11 +1626,116 @@ void CIng::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// [?] fn_29_76B8: not ported.
-void CIng::SuckEnergy(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// @ fn_29_76B8: the Ing possesses the player. Activate drops the body (form 0), clears its
+// particles, aborts the scripted body state, strips its materials, remembers the target as the host,
+// spawns the possessed-mold billboard and the drape voice, deals the body projectile's contact
+// damage and attaches to the player (with the HUD warning); Update rides on the host's transform and
+// aim point, draining mUnknownA0D6 a second through a solid-only filter, until the body projectile's
+// suck time runs out; Exit releases the player and the voice.
+void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("SuckEnergy");
-    mAnimationState.SetState(CAnimationState::kAS_Over);
+    mSuckTickLogged = false;
+    mForm = kForm_Host; // 0x9d4 = 0
+    AnimationData()->GetParticleDB().DestroyAllActiveParticles();
+    AnimationData()->GetParticleDB().ClearAllNonPersistentEffects(&mgr);
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // id word 13
+    // Immediate values 0x21/0x25/0x3b/0x28/0x29.
+    RemoveMaterial(kMT_Character, kMT_GroundCollider, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+    mHostId = mTargetId; // 0xcdc <- 0xd6c
+    if (mSwarmEffect) {  // 0xcec, the swarm GEN token's engaged byte
+      mPossessedEffectId = mgr.AllocateUniqueId(); // 0xcde
+      mgr.AddObject(rs_new CHUDBillboardEffect(
+          rstl::optional_object< TToken< CGenDescription > >(*mSwarmEffect),
+          rstl::optional_object_null(), mPossessedEffectId, true,
+          rstl::string_l("Ing Possessed Mold"), CHUDBillboardEffect::GetNearClipDistance(mgr, 0),
+          CHUDBillboardEffect::GetScaleForPOV(mgr), 0, CColor::White(), CVector3f::One(),
+          CVector3f::Zero(), true)); // adjustDepthRange, unlike the Grenchler's visor effects
+    }
+    // 0x852: the body projectile's splat-wall sound, one shot at the Ing's own position.
+    mSuckSfx = CSfxManager::AddEmitter(mData.mBodyProjectile.mSoundSplatWall, GetTranslation(), 0x7f,
+                                       GetCurrentAreaId().Value(), true, false,
+                                       CSfxManager::kMedPriority); // 0xd00
+    // 0x82c (the body projectile's contact damage) with the default filter (kFT_Always) and the
+    // actor transform's column 1 as the knock-back.
+    mgr.ApplyDamage(GetUniqueId(), mHostId, GetUniqueId(), mData.mBodyProjectile.mContactDamage,
+                    CMaterialFilter(), GetTransform().GetForward());
+    if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mHostId))) {
+      // 0x1144 bits 7/6 cleared: no morph transition while the Ing rides the player.
+      player->EnableLeaveMorphBall(false);
+      player->AttachActorToPlayer(GetUniqueId(), false);
+      CEnvironmentVariable* var =
+          gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable("IngAttachedWarningCount");
+      if (var != nullptr && var->GetValue() != var->GetMaximum()) {
+        var->Set(var->GetValue() + 1);
+        CSamusHud::DisplayHudMemo(rstl::wstring_l(gpStringTable->GetString("IngAttachedWarning")),
+                                  CHUDMemoParms(5.f, true, false, false,
+                                                1 << player->GetPlayerIndex(), true));
+      }
+      if (DebugIng()) {
+        fprintf(stderr, "[ing] %04x suck: host %04x attached (mold %04x), %.1fs, %.1f dmg/s\n",
+                GetUniqueId().Value(), mHostId.Value(), mPossessedEffectId.Value(),
+                mData.mBodyProjectile.mSuckTime, mData.mBodyProjectile.mUnknownA0D6);
+      }
+    } else if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x suck: host %04x is not a player\n", GetUniqueId().Value(),
+              mHostId.Value());
+    }
+    // 0x9ca (the swarm block's mSoundInsideHost) at kMaxVolume, pan 0x40; the handle replaces the
+    // one-shot above, exactly as retail's dead store to 0xd00 does.
+    mSuckSfx = CSfxManager::SfxStart(mData.mSwarm.mSoundInsideHost, CAudioSys::kMaxVolume, 0x40,
+                                     GetCurrentAreaId().Value(), true, false,
+                                     CSfxManager::kMedPriority); // 0xd00
+    break;
+  }
+  case kStateMsg_Update: {
+    if (StateMachineState().GetTime() > mData.mBodyProjectile.mSuckTime) { // 0x864
+      mHostId = kInvalidUniqueId; // 0xcdc
+      break;
+    }
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mHostId));
+    if (player == nullptr) {
+      mHostId = kInvalidUniqueId;
+      break;
+    }
+    SetTransform(player->GetTransform());             // 0x7b30
+    SetTranslation(player->GetAimPosition(mgr, 0.f)); // vtable 0x54, rodata_6C = 0.0f
+    if (DebugIng() && !mSuckTickLogged) {
+      mSuckTickLogged = true;
+      const CHealthInfo* hp = player->GetHealthInfo();
+      fprintf(stderr, "[ing] %04x suck tick: riding host %04x (mold %04x), %.2f dmg/frame, host hp %.0f\n",
+              GetUniqueId().Value(), mHostId.Value(), mPossessedEffectId.Value(),
+              dt * mData.mBodyProjectile.mUnknownA0D6, hp != nullptr ? hp->GetHP() : -1.f);
+    }
+    // 0x848: mUnknownA0D6 a second, no immunity. Retail's weapon-mode word comes from uninitialised
+    // stack with its low bits cleared; kWT_AI is the 0xb<<16 half it does set.
+    const CDamageInfo damage(CWeaponMode(kWT_AI), dt * mData.mBodyProjectile.mUnknownA0D6, 0.f, 0.f,
+                             true, false);
+    // The asm builds one included material, 1 << 0x3b (kMT_Solid), type 3 = kFT_IncludeExclude.
+    mgr.ApplyDamage(GetUniqueId(), mHostId, GetUniqueId(), damage, SolidFilter(),
+                    GetTransform().GetForward());
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x suck end: releasing %04x\n", GetUniqueId().Value(),
+              mTargetId.Value());
+    }
+    if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId))) {
+      // 0x1144 bits 7/6 set again: the player may morph once the Ing lets go.
+      player->EnableLeaveMorphBall(true);
+      if (player->GetAttachedActorId() == GetUniqueId()) { // 0x2e4
+        player->DetachActorFromPlayer();
+      }
+    }
+    CSfxManager::RemoveEmitter(mSuckSfx); // 0xd00
+    mSuckSfx = CSfxHandle();
+    mHostId = kInvalidUniqueId; // 0xcdc
+    break;
+  }
+  default:
+    break;
   }
 }
 
