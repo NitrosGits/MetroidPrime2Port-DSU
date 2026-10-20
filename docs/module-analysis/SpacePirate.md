@@ -390,8 +390,8 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId`.
 - **The 12 trigger stand-ins are gone (2026-10-20, this session):** `PortCSpacePirateTriggers.cpp`
   has no stand-in left - every one of the 39 triggers is now retail's (section 6 has the facts).
-  (`PortCSpacePirateStates.cpp` had none either; `PortCSpacePirate.cpp` still has 14 vtable-override
-  stand-ins.)
+  (`PortCSpacePirateStates.cpp` had none either; the 14 vtable overrides in
+  `PortCSpacePirate.cpp` were ported the same day - the next bullet.)
   Three of them carry a `// @` marker because the 208 cycle evaluates them (always false there):
   `ADC0` (AggressionCheck), `7970` (HasTargetingPoint), `55B8` (OffLine). The other nine are never
   evaluated, so they stay unmarked. `PortSpacePirateStandIn` is now called from nowhere but
@@ -400,6 +400,21 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `33a4f2ae1`, `e2194e6b5`. The module is at 27/262 marked functions
   (`tools/port_progress.py`): every state and every trigger is ported, but only the states the
   208 cycle reaches are marked.
+- **The 14 vtable overrides are all ported and now marked (2026-07-20, this session, branch
+  `decomp/spacepirate-vt` off `port`).** The doc's old line that `PortCSpacePirate.cpp` "still has
+  14 vtable-override stand-ins" was stale: the bodies went in with the states, but six of them were
+  left unmarked. Each was re-read against the REL's asm and marked now:
+  `3A88` (0x2C, the vtable tail call through the slot 0x40), `3A0C` (0x7C, PreRenderAllViewports),
+  `17C8` (0x8C, GetTouchBounds), `339C` (0xA0, ScanVisorRender), `37C4` (0x120, Render) and
+  `38E4` (0x128, PreRender). The other eight were already marked: `E0D8` (0x48), `E0AC` (0x2C),
+  `3AB4` (0x34), `35CC` (0x100), `343C` (0x190), `E120` (0x48), `E090` (0x1C) and `18BC` (0x74) - the
+  last two are never exercised by the area run, so they keep their "Retail fn_72_..." comment.
+  asmcheck's findings on the six are the known false positives: the skipped ragdoll branches
+  (`xb30_` is never set), the vtable tail call in `3A88`, the string's destructor in `18BC` and the
+  uninitialised draw-flags word in `38E4`'s portal-plane tail (the plane is never set).
+  The area run (08_sand_casualpirates) is clean: 0 `[port] caught` / `[reach-stub]`, the 208 cycle
+  `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` repeats, and the pirate draws
+  (screenshot `/tmp/opencode/sp_vt_shot.png`).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 
