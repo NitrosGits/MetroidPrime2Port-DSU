@@ -223,6 +223,13 @@ retail's order (activate, then forward to CPatterned) and the port's `Think` act
 (retail has none), and the state machine's two tables and their 92 handlers are installed (section
 7). The 92 bodies are still stand-ins: they log once and do nothing else.
 
+**Milestone 2, slice 2** (2026-10-21) is in: the `MP2_DS_FSM` probe dumps the actor's FSM2 machine
+(every state, its transitions, the trigger, the parameter and the target state) and logs the state
+changes, and the four handlers the walk reaches - `Start` (`fn_10_F920`), `StartsInTheAir`
+(`fn_10_F924`), `TurnToFacePlayer` (`fn_10_FE18`) and `DoneTurning` (`fn_10_F864`) - are ported
+(section 7). The walk is now `Start` -> `TurnToFacePlayer` -> `TravelToCoverPoints`; the next
+state and its triggers are the next slice.
+
 What is **not** established:
 
 1. ~~The state machine: which of the 92 function pointers after the vtable are triggers, states and
@@ -268,14 +275,42 @@ the two tables under the REL's own names; the machine finds a node's handler by 
 FSM2 asset's node names are the REL's names. The 92 bodies are stand-ins (they log once and do
 nothing else): `src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp`.
 
-**What the area run enters** (Agon Wastes/10_sand_alamostorage, layer 6, the actor woken with the
-console's `send u0732 Activate`): the machine is set up and the actor enters **`Start`**
-(`fn_10_F920`), evaluates the trigger **`StartsInTheAir`** (`fn_10_F924`), enters
-**`TurnToFacePlayer`** (`fn_10_FE18`) and evaluates the trigger **`DoneTurning`** (`fn_10_F864`).
-No other state is entered in 6000 frames (the run with two `damage u0732 100` hits changes
-nothing): the other 90 handlers are never called, because the stand-in triggers answer false.
-The state machine's transitions live in the FSM2 asset, so the next slice needs that asset's
-transitions (the Boost Guardian's probe, `MP2_BG_FSM`, is the shape of it).
+**The probe** (`MP2_DS_FSM`, `src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp`): the transitions are
+not in the REL's .data - they come from the actor's 'FSM2' asset - so the probe dumps the machine:
+every state with the trigger of each of its transitions, the parameter that trigger carries and the
+state it leads to, plus the trigger list; the state changes are logged as they happen (the state
+body's `Activate` message). It has the shape of the Boost Guardian's `MP2_BG_FSM` probe. The
+machine is **59 states, 92 triggers, no codes and no sub-machines**; the 43 state names of the
+REL's table are the distinct names in it (several machine states share a name, e.g. `Interrupt`
+and `MissileDeflect`).
+
+**The walk** (Agon Wastes/10_sand_alamostorage, layer 6, the actor woken with the console's
+`send u0732 Activate`): the machine is set up and the actor enters **`Start`** (`fn_10_F920`),
+evaluates the trigger **`StartsInTheAir`** (`fn_10_F924`), enters **`TurnToFacePlayer`**
+(`fn_10_FE18`), evaluates **`DoneTurning`** (`fn_10_F864`) and enters **`TravelToCoverPoints`**
+(`fn_10_1DF74`), which then evaluates its 21 triggers. The last two steps need the ported
+handlers: with the stand-in triggers answering false the walk stopped at `TurnToFacePlayer`.
+
+**The ported handlers** (2026-10-21): `fn_10_F920` (the state body is a single `blr`),
+`fn_10_F924` (the flag byte at 0x90C's bit 6, the `extrwi` at 0x0000F928), `fn_10_F864` (the byte
+at 0xD4C) and `fn_10_FE18` (the flag byte's bit 7 and the turn flag cleared on `Activate`; the
+turn ends at once when `fn_10_142F4` finds the player within 90 degrees of the actor's facing
+axis - the guest's 0x28/0x38/0x48 = the transform's forward column, as in the SpacePirate's
+note - and otherwise the taunt command `fn_10_8698` runs, `kBSC_Taunt` with the type 6 =
+`pas::kTT_Six`, and the base's `AnimOver` ends the turn). The three branch-free bodies are marked;
+`fn_10_FE18` is not, because in the run the player is already in front of the actor (the probe
+read `inFront=1`), so the taunt command and the `AnimOver` branch never ran.
+
+**The guest's flag bytes** the port keeps: 0x90C (bit 6 = "starts in the air", bit 7 = "alerted";
+the constructor's `rlwimi` chain at 0x0001FBF8.. only clears them, so they start at 0), 0xD4C (the
+"done turning" flag) and 0x6B4 (the pending flag of the taunt command).
+
+**Next**: `TravelToCoverPoints` (`fn_10_1DF74`, 0x204 bytes - the cover-point choice and the move)
+and the triggers of that state that can lead out of it: `ShouldGetPissedOff` (`fn_10_FD30`, the
+flag byte at 0x420's bit 6 and the byte at 0xD58), `ShouldReact` (`fn_10_11158`),
+`ShouldFadeOut` (`fn_10_BBE4`), `TooMuchDamage` (`fn_10_10698`) and `CanMissileDeflect`
+(`fn_10_14284`, the helper `fn_10_17E14` and the float at +0x24). The fight script's own
+`Picked*` triggers need the fight's script object, not the area run.
 
 The three state names the base class also has - `Start` (`fn_10_F920`), `Dead` (`fn_10_143A8`) and
 `Patrol` (`fn_10_1142C`) - forward to `CPatterned`'s body after the log, the way the port's other
