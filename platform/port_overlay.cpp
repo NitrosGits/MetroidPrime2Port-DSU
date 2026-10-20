@@ -26,7 +26,9 @@
 #include "port_ui_common.h"
 #include "port_warp.h"
 
+#include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -167,12 +169,24 @@ int sAreaId = -1;
 // The room list, taken from the live world at SetGameState time (on the game thread, while the
 // world is alive) and never a pointer kept across frames: a world teleport frees the outgoing
 // world, and the overlay still draws the frames before the restart replaces it.
+// `name` starts as the MLVL's internal label and becomes the area's English name (string 0 of its
+// name STRG, what the map screen shows) once that table has loaded; `label` keeps the internal one
+// so the filter still finds a room by it.
 struct SRoomEntry {
   std::string name;
+  std::string label;
   bool real;
+  TToken< CStringTable >* nameTable; // pending name load, freed once read
 };
 std::vector< SRoomEntry > sRooms;
 uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
+
+void ClearRooms() {
+  for (SRoomEntry& room : sRooms) {
+    delete room.nameTable;
+  }
+  sRooms.clear();
+}
 
 // Frames per second, averaged over a second, from the presented-frame clock.
 float sFps = 0.f;
@@ -1026,13 +1040,15 @@ void DrawCheatsSection() {
           continue;
         }
         const std::string label = roomLabel(i);
-        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr) {
+        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr &&
+            SDL_strcasestr(sRooms[i].label.c_str(), sRoomFilter) == nullptr) {
           continue;
         }
         ImGui::PushID(i);
         if (ImGui::Selectable(label.c_str(), i == current)) {
           goToRoom(i);
         }
+        ImGui::SetItemTooltip("%s", sRooms[i].label.c_str());
         ImGui::PopID();
       }
       ImGui::EndCombo();
@@ -1726,7 +1742,7 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
   sWorldId = worldId;
   sAreaId = areaId;
   if (world == nullptr) {
-    sRooms.clear();
+    ClearRooms();
     sRoomsWorld = 0;
     return;
   }
@@ -1735,10 +1751,28 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
   // keying on the state's id would cache the outgoing rooms under the new world's name.
   const uint32_t roomWorld = static_cast< uint32_t >(world->IGetWorldAssetId());
   if (roomWorld == sRoomsWorld && !sRooms.empty()) {
-    return; // the same world: its area table cannot have changed under it
+    // The same world: its area table cannot have changed under it, only name loads finish.
+    for (int i = 0; i < static_cast< int >(sRooms.size()); ++i) {
+      SRoomEntry& room = sRooms[i];
+      if (room.nameTable == nullptr || !room.nameTable->IsLoaded()) {
+        continue;
+      }
+      const CStringTable* table = **room.nameTable;
+      const std::string name = table != nullptr && table->GetStringCount() > 0
+                                   ? PlainWorldName(table->GetString(0))
+                                   : std::string();
+      if (!name.empty()) {
+        char text[160];
+        std::snprintf(text, sizeof(text), "%d  %s", i, name.c_str());
+        room.name = text;
+      }
+      delete room.nameTable;
+      room.nameTable = nullptr;
+    }
+    return;
   }
   sRoomsWorld = roomWorld;
-  sRooms.clear();
+  ClearRooms();
   const int count = world->IGetAreaCount();
   sRooms.reserve(count);
   for (int i = 0; i < count; ++i) {
@@ -1752,7 +1786,16 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
     }
     // A slot with no MREA is not a room the game can travel to; the list hides it instead of
     // offering a warp that would print "does not exist" and do nothing.
-    sRooms.push_back(SRoomEntry{label, area != nullptr && area->IGetAreaAssetId() != kInvalidAssetId});
+    const bool real = area != nullptr && area->IGetAreaAssetId() != kInvalidAssetId;
+    // The name tables load asynchronously and are read on later calls; a token kept locked until
+    // then, since one that dies cancels its load.
+    TToken< CStringTable >* nameTable = nullptr;
+    const CAssetId strg = area != nullptr ? area->IGetStringTableAssetId() : kInvalidAssetId;
+    if (real && strg != kInvalidAssetId && gpSimplePool != nullptr) {
+      nameTable = rs_new TToken< CStringTable >(gpSimplePool->GetObj(SObjectTag('STRG', strg)));
+      nameTable->Lock();
+    }
+    sRooms.push_back(SRoomEntry{label, label, real, nameTable});
   }
 }
 
