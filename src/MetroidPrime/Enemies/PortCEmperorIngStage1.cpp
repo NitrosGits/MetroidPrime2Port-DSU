@@ -557,6 +557,9 @@ void CEmperorIngStage1::SetVulnerabilityEffects(int index) {
 // segment is on this tentacle's spine (fn_16_3C58, 0x20D8) gets the particle external parameters
 // 0..5 (CAnimData+0x178's SetParticleExternalParam, 0x20F0..0x2178) - the joint's +0x30, +0x34,
 // +0x38, then -(+0x3C), -(+0x40), -(+0x44).
+// The lookup compares the names with the retail's string comparison (fn_16_219C -> fn_16_2204 ->
+// fn_16_22B0 -> fn_16_22D0 -> fn_16_22F8 -> fn_16_231C, which calls fn_16_2398); the host's
+// rstl::find_by_key does it.
 void CEmperorIngStage1::SetTentacleEffectState(int index, const rstl::string& name) {
   const CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
   CAnimData* animData = joint.mOwner->AnimationData();
