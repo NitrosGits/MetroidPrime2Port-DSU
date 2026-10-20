@@ -1855,17 +1855,20 @@ void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
-// fn_14_7CB4 (0xD8 bytes): the Crippled state. The message is the retail's (the cmpwi at
-// 0x7CBC against 1 and the cmpwi at 0x7CE0 against 0): on Activate the knee joint colliders
-// are woken and every other collision actor is put to sleep, and on Update the beacon's update
-// runs (fn_14_2CC4, the call at 0x7D6C).
+// @ fn_14_7CB4
+// The Crippled state: on Activate the second manager (0xE64) wakes and every collider of the
+// first (0xE60) but the guard's (0x10CC) sleeps; on Update the beacon's update runs.
 void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    // The activate path (the SetActive call at 0x7CF4 and the loop at 0x7D00-0x7D64, which
-    // puts every collision actor but the guard's to sleep) needs the collision actor managers
-    // at 0xE60 and 0xE64, which the constructor does not build yet.
-    StandInFn("fn_14_7CB4: the Crippled state's activate path (the collision actor managers)");
+    xE64_->SetActive(mgr, true); // 0x7CF4, no null test
+    for (uint i = 0; i < xE60_->GetNumCollisionActors(); ++i) {
+      const TUniqueId id = xE60_->GetCollisionDescFromIndex(i).GetCollisionActorId();
+      CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+      if (actor != nullptr && id != x10CC_) { // the tests at 0x7D28 and 0x7D38
+        actor->SetActive(false);
+      }
+    }
     break;
   case kStateMsg_Update:
     x2CC4_(mgr, dt);
