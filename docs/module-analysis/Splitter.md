@@ -408,10 +408,14 @@ other Splitter shell. In the order the log prints them, with the retail sizes fr
 | `CSplitterCommandModule::Think` (slot 0x14) | `fn_75_6490` | 0xBC |
 | `CSplitterMainChassis::Think` (slot 0x14) | `fn_75_F0E8` | 0xB8 |
 
-The run of 2026-10-20 after `fn_75_1188` was ported logs only the two `AcceptScriptMsg` shells
-(the other three have been ported since) and no `[port] caught` line. The **head's Think does not
-run in that fight** - the beam-effect spawner's own shell (`fn_75_10D0`) would have logged - so
-`fn_75_1188` is not exercised by the area-4 layer-3 smoke.
+The run of 2026-10-20 after `fn_75_F1C0` and `fn_75_654C` were ported no longer logs the two
+`AcceptScriptMsg` shells - they are ported - and no `[port] caught` line. It logs the five
+module-callee shells the two handlers make instead: `fn_75_3460` (0x218, the head's XCRT case),
+`fn_75_AC68` (0x84, the chassis's XAND case), `fn_75_AAC4` (0xC8) and `fn_75_8D50` (0xA8, the
+chassis's XDEL case) and `fn_75_1790` (0xBC, the head's XDEL case).
+
+The **head's Think does not run in that fight** - the beam-effect spawner's own shell
+(`fn_75_10D0`) would have logged - so `fn_75_1188` is not exercised by the area-4 layer-3 smoke.
 
 `fn_75_F1C0` (0x3A0) and `fn_75_654C` (0x24C) are over the 0x200 a slice covers, so they stay
 once-logging stand-ins for now. The other three are the size a slice can take, but each of them
@@ -612,7 +616,10 @@ at **0xD28** (0x5918): that is the chassis's scan timer, which its script-messag
 (fn_75_F1C0, 0x0000F40C-0x0000F42C: the scan duration when that is above zero, FLT_MAX
 otherwise); the port does not run that handler, so the timer stays zero. With the gate false
 the port clears the id at 0xF68 and removes the sound emitter (0x14A0-0x14AC); with it true and
-no beam effect yet it tests 0x3D0, allocates the id (0x1230) and keeps it at 0xF68 (0x1244).
+no beam effect yet it tests 0x3D0 and then, **port limit**, allocates no id: the retail
+allocates one (0x1230) and keeps it at 0xF68 (0x1244) before it creates the actor, and an id
+with no object behind it would be allocated again every frame and would eat the manager's
+object ids.
 
 The **creation of the 0x1A0-byte actor and the manager's add stay a once-logging shell**: the
 host has no class for the beam effect actor, so `fn_75_11884` (its constructor) and
@@ -620,3 +627,45 @@ host has no class for the beam effect actor, so `fn_75_11884` (its constructor) 
 builds for them - the `CEntityInfo` (the area id, `NullConnectionList`, `true` and
 `kInvalidEditorId`), the name and the rotation (the data's angle at 0x864 times one degree in
 radians) - and hands them to the shell.
+
+#### fn_75_F1C0 (0x3A0) - the main chassis's script-message handler (ported 2026-10-20)
+
+The chassis's `AcceptScriptMsg` (vtable slot 0x18): the base's call (0x0000F1F4) and a switch on
+the message's four-character code (0x0000F1F8-0x0000F33C).
+
+| message | code | what the retail does | the port |
+|---|---|---|---|
+| XCRT | 0x58435254 | the locomotion type (fn_75_AA68) and the body controller's activation | ported |
+| XDEL | 0x5844454C | the collision actor manager's destruction and two module calls | ported + 2 shells |
+| ACTV | 0x41435456 | the manager's activation, only when the actor is inactive | ported |
+| DCVT | 0x44435456 | the manager's deactivation, only when the actor is active | ported |
+| AUDT | 0x58415544 | the manager's physics off | ported |
+| ALRT | 0x414C5254 | the base's flag byte at 0x420 gets its 0x80 bit | ported |
+| STRT | 0x53545254 | the flag byte at 0xD41 gets its 0x04 bit | ported |
+| ACTN | 0x4143544E | the scan timer at 0xD28 (the data's scan duration, FLT_MAX when it is zero) | ported |
+| XAND | 0x58414C44 | the manager's area list's value to 0xB7C and fn_75_AC68 | the write stays out, the call is a shell |
+| XCMG | 0x58434D47 | fn_75_A0A0 and the base's flag byte | the call is a shell, the flag is ported |
+| XRDG / XXDG | 0x58524447 / 0x58584447 | fn_75_9FA8 and the base's flag byte | the call is a shell, the flag is ported |
+| XHIT | 0x58484954 | fn_75_9B9C | shell |
+| XLND | 0x584C4E44 | the counter at 0xD00 is set to 5 | ported |
+| IM00 | 0x494D3030 | the flag byte at 0xD40 is cleared and, with 0xD41's 0x80 bit set, the timer at 0xD2C and the counter at 0xCFC advance | ported |
+| IM01 | 0x494D3031 | the flag byte at 0xD40 is set | ported |
+
+The module's own calls in it (fn_75_AAC4 0xC8, fn_75_8D50 0xA8, fn_75_A0A0 0x2DC, fn_75_9FA8 0xF8,
+fn_75_9B9C 0x40C, fn_75_AC68 0x84) are all over 0x80 and stay once-logging shells. **fn_75_AA68
+(0x5C)** is ported with it: the data's flag word at 0x828 gives the locomotion type (the word's
+bit 30 gives kLT_Lurk, bit 31 kLT_Crouch, anything else kLT_Relaxed).
+
+#### fn_75_654C (0x24C) - the command module's script-message handler (ported 2026-10-20)
+
+The head's `AcceptScriptMsg` (vtable slot 0x18): the base's call (0x6578) and a switch on the
+message's code (0x657C-0x660C). XCRT activates the body controller, runs fn_75_3460 (0x218, a
+shell) and rolls the manager's random (0.0f to 100.0f) to set the state at 0xEE4 to 2 when the
+roll is 50.0f or more and to 1 otherwise (0x6668); XDEL destroys the collision actor manager,
+deletes the beam effect at 0xF68 and runs fn_75_1790 (0xBC, a shell); ACTV and DCVT activate and
+deactivate the manager; AUDT switches its physics off; ALRT sets the base's flag byte at 0x420;
+XAND runs fn_75_3A8C and XCMG runs fn_75_2CC0.
+
+**fn_75_3A8C (0x50)** and **fn_75_2CC0 (0x20)** are ported with it: the first looks the object
+that is connected with the state "CONN" and the message "ATCH" up and keeps its id at 0xEFC; the
+second sets the flash weight at 0xF08 to 1.0f when the message's sender id is the id at 0xF00.
