@@ -3221,8 +3221,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Create:
     // fn_29_4C88
     EnsureBodyActive(mgr);
-    mForm = mStartAsIngSpot ? kForm_IngSpot : kForm_Corporeal;
-    if (mForm == kForm_IngSpot) {
+    // 0x00004CA4: the data flag byte 0x9d0 bit 0x80, not the guest copy at 0xe5d bit 5 (the ctor
+    // seeds that from the same flag, 0x0000E368, but the states rewrite it).
+    mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
+    if ((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) { // 0x00004CBC re-reads the flag
       BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00004CD0: li r4, 0
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
     } else {
