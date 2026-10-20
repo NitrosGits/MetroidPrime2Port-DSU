@@ -33,11 +33,11 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | lane | session | branch @ base | task |
 |---|---|---|---|
 | BoostGuardian (Opus) | `ses_ea492038affef2FH1jFtAjXcSl` | boostguardian @ `e796169e0` (119 markers; 8CC0 phase-scale fix) | unmarked-function survey (bg_unmarked.tsv), mark ported ones biggest first |
-| EmperorIng3 (Opus) | `ses_ea487f10dffeLrw3xoeRauFbPj` | emperoring3 @ `51e900049` (138/270; ctor timers + 8DA4 fixes) | the 58 helpers, second-class vtable (798/860), cite rest; inline-helper copies marked on marked hosts |
+| EmperorIng3 (Opus) | `ses_ea474925dffexFGtu2Mf3Aiz13` | emperoring3 @ `6338fdf35` (146; SLdr defaults fix 7b7574125 in upstream header — matching build owed) | loader C380 audit + 16 helpers, LightSwarm 19 fns, data_860 class, todo |
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `d99bc2718` (echo targets, XDMG → lives 0x10E4 drop, ExtractAntenna) | 12818/126C8, the cycle stall, Dead 1561C, XRDG 12D98; hook-free fight end |
 | Splitter (worker) | `ses_ea48561b5ffeRbtHcJxoGyecRD` | splitter @ `09665ac78` (squashed; 13 reached FSM entries ported; AFE8/9520 unmarked) | IsDocked 58BC, Scanning DCF8, SelectTarget 3E60, Hover 4D04, Patrol DCFC, ACEC |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
-| EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `eb70c09ff` (67/241) | wire 1C94/1C5C from 531C, partials 4E44/3AA8/7F8C |
+| EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `c626d9ca3` (72/241) | survey of 169 unmarked → emp1_unmarked.tsv, hook pass |
 | MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `355d342b6` (grenade + spawn data, loader/ctor split, ~114/217) | ctor 9D58 + loader 110 match retail, inglet spawn 7058 in an area with inglets |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
 | DarkSamus (worker) | `ses_ea47840e3ffekauUt17vDT7mEh` | darksamus2 @ `c178d78be` (probe; F920/F924/F864 marked; FE18 taunt path stalls on AnimOver) | FE18 anim state, TravelToCoverPoints triggers (FD30, BBE4, 11158, 10698, 14284, …) |
