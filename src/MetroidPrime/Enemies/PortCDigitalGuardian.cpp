@@ -32,6 +32,7 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "rstl/StringExtras.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardianKneeArmor.hpp"
 #include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CExplosion.hpp"
@@ -256,7 +257,9 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10C4_(4)
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
 , x1080_(kInvalidUniqueId.value)
-, x1082_(0)
+, x1082_(kInvalidUniqueId) // the stores at 0xB2B0..0xB2BC
+, x1084_(kInvalidUniqueId)
+, x1086_(kInvalidUniqueId)
 , x1010_(0)
 , x1011_(0)
 , x1012_(0)
@@ -1269,11 +1272,10 @@ bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData&
 // cr0 at 0x99E0, the "cror eq, lt, eq" at 0x99E4 and the mfcr/extrwi pair at 0x99E8..0x99EC:
 // the mfcr puts CR0 in the top four bits of r0, so the extracted bit 29 is CR0's eq, which the
 // cror has just made "f1 <= f0").
-// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
-// retail's head branch cannot be taken: the answer is the float test.
-// Retail tests the head's flag byte first (head+0x10F4 bit 0x20, asm 0x99CC): with no head the
-// TCastToPtr<CDigitalGuardianHead> is null and the branch falls through to the x1274 test.
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
+  if (HeadFlag20_(mgr)) {
+    return false;
+  }
   return x1274_ <= 0.0f;
 }
 
@@ -1282,14 +1284,15 @@ bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData
 // byte's bit 5, the mask 1u << (31 - 26) = 0x20), the answer is false (the bne at 0x996C and
 // the li at 0x997C). Otherwise the answer is bit 0 (the mask 1u << (31 - 30) = 0x1) of the flag
 // byte at guest this+0x128C (the clrlwi at 0x9974).
-// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
-// retail's head branch cannot be taken.
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
+  if (HeadFlag20_(mgr)) {
+    return false;
+  }
   return (x128C_ & 0x1) != 0;
 }
 
 // fn_14_97F0: the head's flag byte (head+0x10F4, bit 5) is tested first (the extrwi. at
-// 0x9854); with no head (WP3) that branch cannot be taken. Then the float at guest this+0x11E0
+// 0x9854); when it is set the answer is false. Then the float at guest this+0x11E0
 // must be at most zero (the fcmpo cr0 at 0x9868, the cror eq, lt, eq at 0x986C and the bne at
 // 0x9870). Then the four locator ids at guest this+0x10C8 (the count at 0x10C4) are walked
 // (the loop at 0x98E0..0x98EC): each locator's world position comes from GetLctrTransform
@@ -1298,6 +1301,9 @@ bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData
 // 0x98B0..0x98C8) must be below the far leg stab range squared (guest this+0x7C8 = the data
 // block's +0x08, the fmuls at 0x9884).
 bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  if (HeadFlag20_(mgr)) {
+    return false;
+  }
   if (x11E0_ > 0.0f) {
     return false;
   }
@@ -1318,10 +1324,16 @@ bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&
 // fn_14_97A4: the head's flag byte (head+0x10F4, bit 5) is the whole answer (the extrwi at
 // 0x97D4 keeps the byte's bit 5, the mask 1u << (31 - 26) = 0x20), but only when the head
 // exists (the cmplwi at 0x97C8 and the beq at 0x97CC answer false without it).
-// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
-// retail's head branch cannot be taken: the answer is always false.
 bool CDigitalGuardian::ShouldProjectileAttack(CStateManager& mgr, const CTriggerData& data) const {
-  return false;
+  return HeadFlag20_(mgr);
+}
+
+// The head test fn_14_9994, fn_14_9930, fn_14_97F0 and fn_14_97A4 share: the head (0x1082) exists
+// and bit 0x20 of its flag byte (head+0x10F4) is set.
+bool CDigitalGuardian::HeadFlag20_(CStateManager& mgr) const {
+  const CDigitalGuardianHead* head =
+      TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_));
+  return head != nullptr && (head->x10F4_ & 0x20) != 0;
 }
 
 // fn_14_308C: the objects connected with the state kSS_InternalState2 (0x49533032) and the
@@ -2027,12 +2039,38 @@ void CDigitalGuardian::ResetJumpTime(CStateManager& mgr, float dt) {
 // block's +0x0C, mMinLegStabAttackTime, the load at 0x7B3C) goes into the member at guest
 // this+0x11E0 (the store at 0x7B40) and the jump timer (guest this+0x938) into the member at
 // guest this+0x11E4 (the load at 0x7B44 and the store at 0x7B48). Then the head module is
-// asked to reset its attack times (the head's fn_14_13B08, the call at 0x7B6C): the head class
-// is WP3 and its loader is a stand-in, so no head can exist in the port and that call cannot
-// be made.
+// asked to reset its attack times (the head's fn_14_13B08, the call at 0x7B6C).
+// @ fn_14_7B24
 void CDigitalGuardian::ResetAttackTimes(CStateManager& mgr, float dt) {
   x11E0_ = mData.mMinLegStabAttackTime;
   x11E4_ = mData.mJumpTimer;
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->x13B08_(mgr);
+  }
+}
+
+// fn_14_7168: the head's id goes to 0x1084, then 0x1082 = 0x1084 (0x7194..0x71A0), and 0x1086 is
+// cleared (0x71A8). The body stops being a target (li r4, 0x28 = kMT_Target, 0x71AC), its attack
+// times reset (fn_14_7B24 with .rodata 0x264, 0), and the head's attack mode becomes 0
+// (fn_14_13B30 at 0x71EC).
+// @ fn_14_7168
+void CDigitalGuardian::x7168_(CStateManager& mgr, TUniqueId head) {
+  x1084_ = head;
+  x1082_ = x1084_;
+  x1086_ = kInvalidUniqueId;
+  RemoveMaterial(kMT_Target, mgr);
+  ResetAttackTimes(mgr, 0.f);
+  if (CDigitalGuardianHead* linked = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    linked->SetAttackMode(0);
+  }
+}
+
+// fn_14_70B4: bit 0x08 of 0x128C (extrwi. 1, 28) clear and the beacon's state 2 or 1.
+bool CDigitalGuardian::x70B4_() const {
+  if ((x128C_ & 0x08) != 0) {
+    return false;
+  }
+  return x1268_ == 2 || x1268_ == 1;
 }
 
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
@@ -2052,15 +2090,21 @@ void CDigitalGuardian::SetNormalAttackMode(CStateManager& mgr, float dt) {
 
 // fn_14_768C: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7698)
 // and, if it exists, asked to disable its attacks with the argument 3 (the li r4, 3 at 0x76B8
-// and the call at 0x76BC). The head class is WP3 and its loader is a stand-in, so no head can
-// exist in the port and that call cannot be made.
-void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {}
+// and the call at 0x76BC, fn_14_13B30).
+void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(3);
+  }
+}
 
 // fn_14_7648: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7654)
 // and, if it exists, asked to reset its attacks with the argument 4 (the li r4, 4 at 0x7674 and
-// the call at 0x7678). The head class is WP3 and its loader is a stand-in, so no head can
-// exist in the port and that call cannot be made.
-void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {}
+// the call at 0x7678, fn_14_13B30).
+void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(4);
+  }
+}
 
 // fn_14_7600: the closest active waypoint to the player (the state manager's player at
 // +0x14FC, the lwz at 0x761C, and its position at +0x54, the addi at 0x7624) is picked by
@@ -2188,17 +2232,8 @@ static CEntity* PortLoadDigitalGuardian(CStateManager& mgr, CInputStream& input,
                                   LdrToPatternedInfo(sldrThis.patterned, nullptr), data);
 }
 
-// The head module (CDigitalGuardianHead, guest 0x10F8, script type DGHD) is not ported yet: its
-// own class, its 0x5B0-byte parameter block and its 31 vtable overrides are the WP3 work
-// (docs/module-analysis/DigitalGuardian.md section i). The loader slot is filled so the module's
-// table is complete, and it logs once and returns null, which the script loader helper reads as
-// "skip this object" (src/MetroidPrime/CScriptObjectLoaderHelper.cpp skips the rest of the
-// object's bytes).
-static CEntity* PortLoadDigitalGuardianHead(CStateManager& mgr, CInputStream& input,
-                                             CEntityInfo& info) {
-  StandIn("CDigitalGuardianHead loader (module 14's DGHD actor is not ported yet)");
-  return nullptr;
-}
+// The head module's loader (fn_14_DF7C) is PortLoadDigitalGuardianHead in
+// PortCDigitalGuardianHead.cpp.
 
 static SDigitalGuardian_FuncPtrs REL_loader_DigitalGuardian;
 

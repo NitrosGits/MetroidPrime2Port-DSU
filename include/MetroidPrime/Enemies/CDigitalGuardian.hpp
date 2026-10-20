@@ -258,13 +258,27 @@ public:
   void SelectBestMeleeAttackLeg(CStateManager& mgr, float dt);                // fn_14_7504
   void SelectMeleeAttackRange(CStateManager& mgr, float dt);                  // fn_14_73D4
   void SetJumpFaceTarget(CStateManager& mgr, float dt);                        // fn_14_7208
+
+  // fn_14_7168 (0x9C bytes): the head links itself ("XALD", the head's fn_14_13830): its id goes
+  // to 0x1084 and 0x1082, 0x1086 is cleared, the body stops being a target and its attack times
+  // reset, and the head's attack mode becomes 0 (fn_14_13B30).
+  void x7168_(CStateManager& mgr, TUniqueId head);
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
 private:
 #ifdef TARGET_PC
+  // The head module reads the body's flag byte and calls fn_14_70B4 (its triggers
+  // MainBodyDestroyed and IsAntennaTransmitting).
+  friend class CDigitalGuardianHead;
+
   void EnsureBodyActive(CStateManager& mgr);
+
+  // fn_14_70B4 (0x30 bytes): bit 0x08 of 0x128C clear and the beacon's state (0x1268) 1 or 2.
+  bool x70B4_() const;
+  // The head test four of the body's triggers share (head+0x10F4 bit 0x20).
+  bool HeadFlag20_(CStateManager& mgr) const;
 
   // The guest members the body's state machine reads (docs/module-analysis/DigitalGuardian.md
   // section e). The host class has its own layout, so the guest offsets are in the names and
@@ -276,7 +290,9 @@ private:
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
   u16 x1080_;       // 0x1080: the root collider's id (fn_14_61DC sets it, fn_14_3974 reads it)
-  u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  TUniqueId x1082_; // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  TUniqueId x1084_; // 0x1084: the linked head (fn_14_7168; fn_14_2A28 aims the beacon at it)
+  TUniqueId x1086_; // 0x1086: cleared by fn_14_7168 and the detach fn_14_70E4
   uchar x1010_;     // 0x1010: the flag byte the "IM01"/"IM02" messages set (fn_14_A6A8)
   uchar x1011_;     // 0x1011: the flag byte the "IM07"/"IM08" messages set (fn_14_A6A8)
   uchar x1012_;     // 0x1012: the flag byte the "IM03"/"IM04" messages set (fn_14_A6A8)
