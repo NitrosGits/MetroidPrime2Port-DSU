@@ -277,7 +277,8 @@ private:
   TUniqueId mLastCoverId;                     // 0xcd2
   TUniqueId mAttackPathLastId;                // 0xcd4 (FollowAttackPattern: the waypoint nav's last)
   TUniqueId mAttackPathId;                    // 0xcd6 (FollowAttackPattern: where to resume)
-  TUniqueId mSafeZoneId;                      // 0xcda
+  TUniqueId mSafeZoneEnterId;                 // 0xcd8 (fn_44_9150: the zone the XENZ message names)
+  TUniqueId mSafeZoneId;                      // 0xcda (fn_44_36FC/fn_44_3780: the zone that lured it)
   TUniqueId mBlobEffectId;                    // 0xcdc CCollisionTracker (fn_44_48F0)
   TUniqueId mCollisionActorId;                // 0xcde CCollisionActor (fn_44_319C)
   CSfxHandle mLoopSfx[2];                     // 0xce4/0xce8: idle, move

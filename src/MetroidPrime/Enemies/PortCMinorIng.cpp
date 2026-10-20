@@ -225,6 +225,7 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mLastCoverId(kInvalidUniqueId)
 , mAttackPathLastId(kInvalidUniqueId)
 , mAttackPathId(kInvalidUniqueId)
+, mSafeZoneEnterId(kInvalidUniqueId)
 , mSafeZoneId(kInvalidUniqueId)
 , mBlobEffectId(kInvalidUniqueId)
 , mCollisionActorId(kInvalidUniqueId)
@@ -1844,17 +1845,21 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   }
   case kSM_XENZ:
+    // fn_44_9150 (asm 0x9610): the timer the safe-zone entry waits for is the one at guest 0xd1c,
+    // not the move-away timer at 0xd20 - the retail compares 0xd1c against zero (asm 0x9618-0x9620).
     if (TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(sender)) != nullptr &&
-        mMoveAwayTimer <= 0.f) {
+        mTimerD1C <= 0.f) {
       ++mSafeZoneEnterCount;
-      mSafeZoneId = sender;
+      // fn_44_9150 (asm 0x9638): the zone the message names lands in the word at guest 0xcd8; the
+      // zone that lured the actor is the separate word at 0xcda (fn_44_36FC/fn_44_3780).
+      mSafeZoneEnterId = sender;
       mInsideSafeZone = true;
     }
     break;
   case kSM_XEXZ:
     if (TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(sender)) != nullptr &&
         --mSafeZoneEnterCount == 0) {
-      mSafeZoneId = kInvalidUniqueId;
+      mSafeZoneEnterId = kInvalidUniqueId;
       mInsideSafeZone = false;
     }
     break;
