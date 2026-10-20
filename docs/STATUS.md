@@ -32,7 +32,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 
 | lane | session | branch @ base | task |
 |---|---|---|---|
-| BoostGuardian (Opus) | `ses_ea4b20124ffeZUWwxeWcHUJMNE` | boostguardian @ `b6852158a` (~140 markers; 953C/A95C/99D4/53D0, 99D4 phase-scale fix) | 6F88, BAB4, BD48, BE94, BC2C, 8CC0, 6E7C, next largest |
+| BoostGuardian (Opus) | `ses_ea492038affef2FH1jFtAjXcSl` | boostguardian @ `e796169e0` (119 markers; 8CC0 phase-scale fix) | unmarked-function survey (bg_unmarked.tsv), mark ported ones biggest first |
 | EmperorIng3 (Opus) | `ses_ea4d6e0efffeSmmbyqhzttKvlD` | emperoring3 @ `4ea8781b5` (6258/6390/4CC8, CPlayer freeze fix fe0780e19, 5 overrides) | confirm 5 override marks, Think 47D4, AcceptScriptMsg 7B14 |
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `d99bc2718` (echo targets, XDMG → lives 0x10E4 drop, ExtractAntenna) | 12818/126C8, the cycle stall, Dead 1561C, XRDG 12D98; hook-free fight end |
 | Splitter (worker) | `ses_ea4ac593affeqIrcm13v3q46NW` | splitter @ `a2005419c` (FSM tables wired, 99 entries; AFE8/9520) | reached FSM states/triggers/codes, ACEC/A4E4 |
