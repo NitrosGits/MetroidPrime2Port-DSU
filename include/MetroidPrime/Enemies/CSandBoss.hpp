@@ -278,8 +278,10 @@ private:
   void SphereStateHelper6434(float dt);                                    // fn_55_6434
   void Helper64E4(CStateManager& mgr, const CTransform4f& locatorXf);       // fn_55_64E4
   void StampedeHelper(CStateManager& mgr, float dt);                       // fn_55_7C68
-  void Helper7E60(CStateManager& mgr);                                     // fn_55_7E60
-  void Helper8008(CStateManager& mgr);                                     // fn_55_8008
+  void Helper7E60(float dt, CStateManager& mgr, const CVector3f& pos,
+                  const CVector3f& dir); // fn_55_7E60
+  void Helper8008(float dt, CStateManager& mgr, const CVector3f& pos,
+                  const CVector3f& dir); // fn_55_8008
   void HandleDamage(CStateManager& mgr, TUniqueId sender);                 // fn_55_8258
   void RotateToPlayerHelper(const CVector3f& target);                      // fn_55_83AC
   void SortStampedePoints();                                               // fn_55_10CB4
@@ -325,6 +327,7 @@ private:
   float mStampedeHP;          // 0xF24
   float mF28;                 // 0xF28 (stampede waypoint z)
   float mHeadArmorHP;         // 0xF2C
+  float mLastDamageHP = 0.f;  // HandleDamage scratch [inferred: per-piece in retail, one here]
   float mF30;                 // 0xF30 (stampede piece timer, 0.2 s gate in fn_55_7C68)
   float mF34;                 // 0xF34 (counts up in fn_55_86D0)
   float mChargeBeamSweepPhase; // 0xF38 (sweep angle in radians, seeded to -pi/2)

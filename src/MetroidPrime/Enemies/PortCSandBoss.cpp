@@ -563,6 +563,7 @@ void CSandBoss::SyncCollisionHealth(CStateManager& mgr) {
       const CHealthInfo health = *GetHealthInfo();
       colAct->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
       *colAct->HealthInfo() = health;
+      mLastDamageHP = health.GetHP(); // seeds HandleDamage's previous-HP scratch
     }
   }
 }

@@ -12,6 +12,7 @@
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -22,6 +23,7 @@
 #include "MetroidPrime/Weapons/CBeamInfo.hpp"
 #include "MetroidPrime/Weapons/CBomb.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -1001,16 +1003,87 @@ void CSandBoss::StampedeHelper(CStateManager& mgr, float dt) {
   }
 }
 
-void CSandBoss::Helper7E60(CStateManager&) { // fn_55_7E60
-  PortSandBossStandIn("CSandBoss::Helper7E60 (fn_55_7E60)");
+// fn_55_7E60 (ported, not exercised yet)
+// A stampede worm took a hit: flash, and wear down the stampede armour. While it holds, play the
+// armour impact sound at the hit position; once it breaks, play the additive reaction instead.
+void CSandBoss::Helper7E60(float dt, CStateManager& mgr, const CVector3f& pos,
+                           const CVector3f& dir) { // fn_55_7E60
+  TakeDamage(dir, 0.f); // vtable 0xa4; the extra argument is unused by fn_55_4C
+  mFlashTime = 0.33f;   // 0xF10
+  if (mStampedeHP > 0.f) { // 0xF24
+    mStampedeHP -= dt;
+    if (mStampedeHP > 0.f) {
+      // 0x978 = mData + 0x1B8 = stampedeArmor.sound_ArmorImpact (attachedArmor is 0x24 bytes
+      // before it, at 0x194 = 0x954)
+      CSfxManager::AddEmitter(static_cast< ushort >(mData.stampedeArmor.sound_ArmorImpact), pos,
+                              0x7f, GetCurrentAreaId().Value(), true, false,
+                              CSfxManager::kMedPriority);
+    } else {
+      // command word 0x1d with 1.0f / 5 / 0
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCAdditiveReactionCmd(pas::kART_Five, 1.f, false));
+    }
+  }
 }
 
-void CSandBoss::Helper8008(CStateManager&) { // fn_55_8008
-  PortSandBossStandIn("CSandBoss::Helper8008 (fn_55_8008)");
+// fn_55_8008 (ported, not exercised yet)
+// The head collider of the worm holding the player took a hit. If the player is held by this worm
+// the hit costs the boss bar one point (once, when the armour is not already gone) and marks the
+// armour destroyed; otherwise it wears down the head armour.
+void CSandBoss::Helper8008(float dt, CStateManager& mgr, const CVector3f& pos,
+                           const CVector3f& dir) { // fn_55_8008
+  if (mgr.GetPlayer(0)->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4, this 0x8
+    if (!m165E_b3) { // 0x165E b3
+      TakeDamage(dir, 0.f); // vtable 0xa4
+      if (!mArmorDestroyed) { // 0x165D b6
+        // Retail reads the HP of the MDFY/ACTV object (the one SetBossParams was seeded from)
+        // and writes it back one lower.
+        if (CActor* source = TCastToPtr< CActor >(mgr.ObjectById(mBossInfoSource))) { // 0xE86
+          source->HealthInfo()->SetHP(source->GetHealthInfo()->GetHP() - 1.f);
+        }
+      }
+      mArmorDestroyed = true;
+    }
+  } else if (!mNotRecovered && mHeadArmorHP > 0.f) { // 0x165D b5, 0xF2C
+    mFlashTime = 0.33f;
+    mHeadArmorHP -= dt;
+    if (mHeadArmorHP > 0.f) {
+      // command word 0x1c with 1.0f / -1
+      BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
+    } else {
+      // [inferred: retail passes only 0 for fn_55_8F94's second argument; mgr is not forwarded
+      // in the pseudo-C]
+      PlayHeadArmorExplosion(mgr, 0.f);
+    }
+    // 0x954 = mData + 0x194 = attachedArmor.sound_ArmorImpact
+    CSfxManager::AddEmitter(static_cast< ushort >(mData.attachedArmor.sound_ArmorImpact), pos, 0x7f,
+                            GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
+  }
 }
 
-void CSandBoss::HandleDamage(CStateManager&, TUniqueId) { // fn_55_8258
-  PortSandBossStandIn("CSandBoss::HandleDamage (fn_55_8258)");
+// fn_55_8258 (ported, not exercised yet)
+// Damage message from one of the worm's collision actors: find the weapon that touched it and
+// route the hit to the head handler (player held, head collider) or the stampede handler. The
+// HP delta handed on is the worm's HP now minus what it was at the previous hit.
+void CSandBoss::HandleDamage(CStateManager& mgr, TUniqueId sender) { // fn_55_8258
+  CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (colAct == nullptr) {
+    return;
+  }
+  const TUniqueId toucherId = colAct->GetLastTouchedObject();
+  const float hp = GetHealthInfo()->GetHP();
+  // [inferred: per-piece scratch in retail, one member in the host] Retail keeps the previous HP in
+  // the collision actor's own health info (+4) and overwrites it at the end of every call.
+  if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(toucherId))) {
+    const CVector3f dir = weapon->GetTransform().GetColumn(kDY); // 0x28/0x38/0x48
+    const CVector3f pos = weapon->GetTranslation();              // 0x54
+    if (mAttachedToSphere && mHeadCollider == sender) { // 0x165D b7, 0xE8C
+      Helper8008(hp - mLastDamageHP, mgr, pos, dir);
+    } else if (mStampedeActive) { // 0x165C b4
+      Helper7E60(hp - mLastDamageHP, mgr, pos, dir);
+    }
+  }
+  mLastDamageHP = hp;
 }
 
 // @ fn_55_83AC
