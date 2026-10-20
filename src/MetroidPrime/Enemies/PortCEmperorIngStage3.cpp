@@ -307,17 +307,15 @@ void CEmperorIngStage3::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
+// @ fn_18_47D4
 // vtable slot 3 = fn_18_47D4 (0x3E4): retail's Think. The base class's Think runs first
-// (0x4818), then the module's own work: the stampede-react check (0x481C..0x4928), the timers
-// (0x492C..0x4984), the module's per-frame calls (0x4988..0x4A20) and the ing's sound
-// (0x4A28..0x4BB8, a stand-in).
+// (0x4818), then the module's own work with no active test: the stampede-react check
+// (0x481C..0x4928), the timers (0x492C..0x4984), the module's per-frame calls (0x4988..0x4A20),
+// the player knock-back (0x4A24..0x4A6C) and the shock wave's sound (0x4A70..0x4B78).
 void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
-  StandIn("CEmperorIngStage3::Think (vtable slot 3, fn_18_47D4)");
-  if (!GetActive()) {
-    return;
-  }
+  // Port guard, not retail: kSM_Create activates the body (0x7BE8); this covers a Think first.
   EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);
+  CPatterned::Think(dt, mgr); // 0x4818
 
   // The stampede-react check (0x481C): only while the flag at guest 0x825 is clear, and only
   // when the player is below the ing's head: the vector from the ing's "head" locator (rodata

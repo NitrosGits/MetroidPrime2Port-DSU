@@ -26,7 +26,7 @@ patterned AI typedef, the actor parameters and the module's own data block. The 
 | slot | method | fn | milestone 1 |
 |---|---|---|---|
 | 0x08 | the deleting destructor | `fn_18_94C8` | the host destructor |
-| 0x14 | Think | `fn_18_47D4` | ported (the base's Think, the stampede-react check, the timers, the melee contact and the knock-back; four per-frame calls and the sound are stand-ins) |
+| 0x14 | Think | `fn_18_47D4` | ported, marked (no active test in retail; run e3chk reached all but the knock-back branch) |
 | 0x18 | AcceptScriptMsg | `fn_18_7B14` | partly ported (see section 4) |
 | 0x24 | PreRender | `fn_18_4650` | stand-in (the base's pre-render plus the damage flash) |
 | 0x2C | Render | `fn_18_47B4` | stand-in, forwards to CPatterned |
@@ -223,7 +223,7 @@ The base class's Think runs first (0x4818). Then:
   and the DOL's `fn_801BF3DC` - `CPlayerKnockBackMgr::ApplyPlayerKnockBackForce` - pushes the
   player along 0x8FC normalised, power 100, 0. Ported.
 - The ing's sound (0x4A70..0x4BB8): the emitter (the handle at 0x908 and the object at 0x90C)
-  follows that object. A stand-in; DoUserAnimEvent's event 39 (`fn_18_9048`) writes them.
+  follows that object. Ported; DoUserAnimEvent's event 39 (`fn_18_9048`) writes them.
 
 ### The lists and the Think's per-frame calls
 
