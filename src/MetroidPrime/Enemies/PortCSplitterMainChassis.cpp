@@ -45,7 +45,6 @@ void StandIn(const char* what) {
 // named once-logging shells: the name is the retail function and its size (the DOL's functions
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
 // tracker and the derived state.
-void StandInFn_75_8D50() { StandIn("fn_75_8D50 (0xA8)"); }
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
 void StandInFn_75_AFE8() { StandIn("fn_75_AFE8 (0x11C)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
@@ -159,6 +158,23 @@ void CSplitterMainChassis::PortUpdateConnectedObjects(CStateManager& mgr) {
   mFollowObjectId = GetConnectedObject(mgr, kSS_Retreat, kSM_Follow);
 }
 
+// @ fn_75_8D50
+// The chassis's team exit (0x8D50-0x8DF8): the team id at 0xCBE is looked up (0x8D90
+// ObjectById) and cast to a CScriptTeamAiMgr (0x8D94); when the cast fails (0x8D9C) or the
+// actor is not in that team (0x8DB0 IsPartOfTeam, 0x8DB4) nothing happens, else the actor
+// leaves the team (0x8DD0 QuitTeam) and the id is cleared (0x8DDC).
+void CSplitterMainChassis::PortLeaveTeam(CStateManager& mgr) {
+  if (mTeamId == kInvalidUniqueId) {
+    return;
+  }
+  CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId));
+  if (team == nullptr || !team->IsPartOfTeam(GetUniqueId())) {
+    return;
+  }
+  team->QuitTeam(GetUniqueId());
+  mTeamId = kInvalidUniqueId;
+}
+
 // @ fn_75_AA68
 // The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. The
 // word's bit 30 (the byte's 0x40, 0x0000AA78 rlwinm) gives kLT_Lurk (2, 0x0000AA88), the word's
@@ -202,7 +218,7 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
       mCollisionActorManager->Destroy(mgr);
     }
     StandInFn_75_AAC4();
-    StandInFn_75_8D50();
+    PortLeaveTeam(mgr);
     break;
   }
   case kSM_Activate: { // "ACTV" (0x0000F220)
@@ -220,7 +236,7 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     if (active && mCollisionActorManager != nullptr) {
       mCollisionActorManager->SetActive(mgr, false);
     }
-    StandInFn_75_8D50();
+    PortLeaveTeam(mgr);
     break;
   }
   case kSM_AIUpdateDisabled: { // "AUDT" (0x0000F1F8)
