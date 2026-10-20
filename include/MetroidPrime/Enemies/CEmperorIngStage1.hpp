@@ -11,6 +11,7 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "MetroidPrime/Weapons/CShockWave.hpp"
 #include "Kyoto/TToken.hpp"
 
 class CCollisionActor;
@@ -241,6 +242,14 @@ private:
   void UpdateMeleeHits(float dt, CStateManager& mgr);
   // fn_16_8C: the sweeping tentacles' contact damage to the player.
   void UpdateTentacleHits(float dt, CStateManager& mgr);
+  // fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint takes the
+  // position and the up vector, the portal's effect is turned towards the player and the script
+  // hears "ACTV". It is over the slice's 0x80 line, so it stays a stand-in.
+  void StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up);
+  // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flags and its
+  // position are cleared and the script hears "ACTV". It is over the slice's 0x80 line, so it
+  // stays a stand-in.
+  void StopTentaclePortal(int index);
 
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;
@@ -276,6 +285,8 @@ private:
   float mModeOneHealth;                          // guest 0xBAC: below it the mode becomes 1 (fn_16_51D4)
   float mModeTwoHealth;                          // guest 0xBB0: below it the mode becomes 2
   SLdrAudioPlaybackParms mHeartDamageSound;      // guest 0xCFC
+  CShockWaveInfo mShockWaveInfo;                 // guest 0xC40: the taunt's shock wave
+  ushort mShockWaveTravelSound;                  // guest 0xC7C: the shock wave's travel sound
 
   // The module's own state, named from the retail offsets; the constructor's values are
   // fn_16_900C's.
@@ -316,6 +327,7 @@ private:
   CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)
   CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
   TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target
+                                      // (the shock wave's id after DoUserAnimEvent's case 17)
   CSfxHandle xa94_;                   // guest 0xA94, 0: the projectile charge's emitter
   TUniqueId xa98_;                    // guest 0xA98, kInvalidUniqueId: the heart stage's beam
   CSfxHandle xa9c_;                   // guest 0xA9C, 0: the beam's emitter

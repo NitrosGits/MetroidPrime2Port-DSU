@@ -3,11 +3,10 @@
 // the tentacles' build, motion, effects, hits-to-retraction bookkeeping and contact damage; the
 // states TrackPlayer, Attack, ProjectileAttack, Taunt, JumpRope, BeginHeartStage, HeartStage and
 // EndHeartStage; the heart stage's beam (FireBeam), the heart's damage reaching the boss
-// (fn_16_51D4), the charged projectile of DoUserAnimEvent and the boss's own ProcessSoundEvent
-// (fn_16_7EA8). What remains a stand-in logs once
-// and names the REL function it stands in for (WarpAttack, TauntAttack, the
-// Render and DoUserAnimEvent's
-// other cases) - docs/module-analysis/EmperorIngStage1.md has the map.
+// (fn_16_51D4), the charged projectile of DoUserAnimEvent, the boss's own sound handling
+// (fn_16_7EA8) and DoUserAnimEvent's cases 7, 17, 22, 27 and 28. What is left over logs once
+// and names the REL function behind it (WarpAttack, TauntAttack, the Render) -
+// docs/module-analysis/EmperorIngStage1.md has the map.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
 // address, and the slots line up with CPatterned's declaration order (the inherited entries are
@@ -49,6 +48,8 @@
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CParticleDatabase.hpp"
+#include "MetroidPrime/Weapons/CShockWave.hpp"
+#include "rstl/StringExtras.hpp"
 #include "rstl/algorithm.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
@@ -141,6 +142,13 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef EMP1_STATE
 #undef EMP1_CODE
 
+// The eight portal locators, lbl_16_rodata_1E0 (.rodata 0x1E0): the tentacle's portal that the
+// animation's EventStart/EventStop events name. The list is the retail's order (the seventh
+// portal comes before the sixth, like the tentacle order in fn_16_36E8).
+const char* const skPortalNames[8] = {"portal1_LCTR_SDK", "portal2_LCTR_SDK", "portal3_LCTR_SDK",
+                                      "portal4_LCTR_SDK", "portal5_LCTR_SDK", "portal7_LCTR_SDK",
+                                      "portal6_LCTR_SDK", "portal8_LCTR_SDK"};
+
 } // namespace
 
 // fn_16_900C. The base call is the retail one: EPatternedAI 0x0D (`li r4, 0xd` at 0x00009068),
@@ -186,6 +194,8 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mModeOneHealth(data.unknown_0x905938b8)                         // guest 0xBAC, data+0x674
 , mModeTwoHealth(data.unknown_0xb826317a)                         // guest 0xBB0, data+0x678
 , mHeartDamageSound(data.heartDamageSound)                        // guest 0xCFC, data+0x67C
+, mShockWaveInfo(data.tauntAttack.shockWaveInfo)                    // guest 0xC40, data+0x5E0
+, mShockWaveTravelSound(data.tauntAttack.shockWaveTravelSound)      // guest 0xC7C, data+0x610
 , x7c0_(0)                                                        // guest 0x7C0, fn_16_900C clears it
 , x7c4_(0)                                                        // guest 0x7C4, cleared
 , x7c8_(nullptr)                                                  // guest 0x7C8, cleared
@@ -1487,8 +1497,10 @@ void CEmperorIngStage1::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
-// vtable slot 26 = fn_16_7F8C (0x2C4): retail's user-event switch, which drives the tentacles
-// and the heart.
+// vtable slot 26 = fn_16_7F8C (0x7F8C..0x853C, 0x5B0): retail's user-event switch, which drives
+// the tentacles and the heart. The switch is the jump table at lbl_16_data_314 (29 entries; the
+// event type is the index); the default entry (fn_16_7F8C+0x58C) and every type above 28 (the
+// bgt at 0x7FAC) call the base's own DoUserAnimEvent (the call at 0x8524).
 void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                         EUserEventType type, float dt) {
   switch (type) {
@@ -1521,21 +1533,121 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
         }
       }
       return;
+    case kUE_GenerateEnd:
+      // 0x8390: the flag byte at guest 0xA74 gets its bit 4 (0x10) set - the rlwimi at 0x8398
+      // rotates 1 left by 4 (0x10) into the bit 27, the bit 4 of the byte (1u << (31 - 27)).
+      xa74_ |= 0x10; // 0x8398, 0x839C
+      return;
+    case kUE_BeginAction: {
+      // 0x83A4: the shock wave. The id comes from the state manager (0x83A8) and is kept at
+      // guest 0xA90 (0x83B8); the CShockWave is built with it (0x8464).
+      const TUniqueId id = mgr.AllocateUniqueId(); // 0x83A8
+      xa90_ = id; // 0x83B8
+      // 0x83BC: the tracked actor's transform (the retail's +0x24) is the shock wave's.
+      const CTransform4f xf = GetTargetActor(mgr)->GetTransform(); // fn_16_302C
+      // 0x83E0: the CShockWave (0x9F8 bytes) - the name is the string at lbl_16_rodata_41C's
+      // 0x685 ("Shockwave", 0x845C), the entity info is the area (the guest +0x04, 0x8438), no
+      // connections, active and no editor id (0x841C, 0x8404), the parent is this actor's id
+      // (the guest +0x08, 0x8400), the shock wave info is the one at guest 0xC40 (0x8494), and
+      // the two floats are 4.0f (lbl_16_rodata_38C) and 0.4f (lbl_16_rodata_40C).
+      CShockWave* wave =
+          rs_new CShockWave(id, rstl::string_l("Shockwave"),
+                             CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true), xf,
+                             GetUniqueId(), mShockWaveInfo, 4.f, 0.4f);
+      if (wave != nullptr) { // 0x83F8
+        mgr.AddObject(wave); // 0x84AC
+      }
+      // 0x84E8: the emitter for the shock wave's travel sound (the guest 0xC7C) on this actor's
+      // position (the guest 0x54); the handle is kept at guest 0xA8C (0x8510).
+      xa8c_ = CSfxManager::AddEmitter(mShockWaveTravelSound, GetTranslation(),
+                                     GetCurrentAreaId().Value(), true, false,
+                                     CSfxManager::kMedPriority);
+      return;
+    }
+    case kUE_BreakLockOn:
+      // 0x7FC8: every tentacle's collision actor becomes the player's orbit target, so the
+      // camera orbits the tentacle. The loop runs over the sub-stage's tentacle count
+      // (fn_16_2F70, 0x8014) and the request is the player's 8 (0x7FF8).
+      for (int i = 0; i < TentacleCount(); ++i) { // 0x8008, 0x8014, 0x801C
+        CCollisionActor* actor = GetTentacleActor(mgr, i); // fn_16_3AA8, 0x7FE0
+        if (actor != nullptr) {                            // 0x7FE4
+          mgr.GetPlayer(0)->SetOrbitRequestForTarget(actor->GetUniqueId(), // 0x8008
+                                                      CPlayer::kOR_ActivateOrbitSource, mgr);
+        }
+      }
+      return;
+    case kUE_EventStart: {
+      // 0x81F8: the tentacle's portal starts, but only while the flag byte's bit 5 (0x20) is
+      // set - the extrwi at 0x81FC takes one bit at the bit 26, the bit 5 of the byte, so the
+      // mask is 1u << (31 - 26) = 0x20.
+      if ((xa74_ & 0x20) == 0) {
+        return; // 0x8200
+      }
+      // 0x8204: the locator's transform in world space; 0x8230: its position (the fourth
+      // column) and 0x8294: its Y column (the second basis vector), negated for the effect
+      // (the fnegs at 0x82A8).
+      const CTransform4f xf = GetTransform() * GetScaledLocatorTransform(node.GetLocatorName());
+      const CVector3f pos = xf.GetTranslation();
+      const CVector3f up = -xf.GetColumn(kDY);
+      // 0x8254: the locator's name is one of the eight portals (lbl_16_rodata_1E0); the
+      // tentacle's index is the name's place in the list (0x8298).
+      for (int i = 0; i < 8; ++i) {
+        if (CStringExtras::CompareCaseInsensitive(rstl::string_l(skPortalNames[i]),
+                                                  node.GetLocatorName()) == 0) {
+          if (i >= TentacleCount()) { // 0x8284, 0x8290
+            break;
+          }
+          // 0x82D0: the module's own function (fn_16_1A50) starts the portal's effect.
+          StartTentaclePortal(i, pos, up);
+          break;
+        }
+      }
+      return;
+    }
+    case kUE_EventStop:
+      // 0x82EC: the tentacle's portal stops. The retail builds the locator's world transform
+      // here (0x82F0..0x8314) but never reads it.
+      // 0x8324: the locator's name is one of the eight portals; the tentacle's index is the
+      // name's place in the list (0x8364).
+      for (int i = 0; i < 8; ++i) {
+        if (CStringExtras::CompareCaseInsensitive(rstl::string_l(skPortalNames[i]),
+                                                  node.GetLocatorName()) == 0) {
+          if (i >= TentacleCount()) { // 0x8354, 0x8360
+            break;
+          }
+          // 0x8374: the module's own function (fn_16_1950) stops the portal's effect.
+          StopTentaclePortal(i);
+          break;
+        }
+      }
+      return;
     default:
-      // The other retail cases (GenerateEnd 7, BeginAction 17's shock wave, BreakLockOn 22's
-      // orbit requests, EventStart/EventStop 27/28's tentacle effects) are not ported yet.
-      StandIn("CEmperorIngStage1::DoUserAnimEvent (vtable slot 26, fn_16_7F8C) cases 7/17/22/27/28");
       CPatterned::DoUserAnimEvent(mgr, node, type, dt);
       return;
   }
 }
 
+// fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint's flag byte gets
+// its bit 3 (0x08) set (the rlwimi at 0x1A84), the joint takes the position and the up vector
+// (0x1B88..0x1BBC), the portal's effect is found and turned towards the player (0x1BFC) and the
+// script hears "ACTV" (0x1BC8). It is over the slice's 0x80 line, so it stays a stand-in; the
+// arguments are the tentacle's index, the position and the up vector.
+void CEmperorIngStage1::StartTentaclePortal(int, const CVector3f&, const CVector3f&) {
+  StandInFn("fn_16_1A50");
+}
+
+// fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag byte gets its
+// bit 3 (0x08) cleared (the rlwimi at 0x1980), the joint's position is the zero vector and its up
+// vector the up vector (0x1990..0x19C0) and the script hears "ACTV" (0x1A18). It is over the
+// slice's 0x80 line, so it stays a stand-in; the argument is the tentacle's index.
+void CEmperorIngStage1::StopTentaclePortal(int) { StandInFn("fn_16_1950"); }
+
 // vtable slot 28 = fn_16_7EA8 (0x7EA8..0x7F8C, 0xC4): retail's own sound handling for the boss.
 // The sound is swallowed while the locator belongs to a tentacle that cannot be shot: the tentacle
 // the segment belongs to (fn_16_3C58, 0x7F08) is -1 or its flag byte (the joint's +0x24, guest
-// 0x7D8 + index * 0x48 + 0x24 = 0x7FC, read at 0x7F1C) has its 0x10 bit clear (the extrwi at
-// 0x7F20 takes the bit 27, the bit 4 of the byte). Only then does the base's own handling run
-// (the call at 0x7F6C).
+// 0x7D8 + index * 0x48 + 0x24 = 0x7FC, read at 0x7F1C) has its bit 27 clear - the extrwi at 0x7F20
+// takes one bit at the bit 27, the bit 4 of the byte, so the mask is 1u << (31 - 27) = 0x10. Only
+// then does the base's own handling run (the call at 0x7F6C).
 void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, float fallOff,
                                           float maxDist, const CSegId& locator, ushort pitchStart,
                                           ushort pitchEnd, float pitchDuration, uchar minVol,
