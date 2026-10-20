@@ -12,6 +12,7 @@
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "Kyoto/Math/CPlane.hpp"
+#include "rstl/list.hpp"
 #include "rstl/optional_object.hpp"
 
 // Host copy of the properties the SpacePirate loader reads (retail: CSpacePirateData, 0x134 bytes
@@ -232,6 +233,7 @@ private:
   TUniqueId ChooseTeamTarget(CStateManager& mgr);        // EFD4
   void UpdateTeamTarget(CStateManager& mgr);             // DE5C
   bool CheckTargetable(CStateManager& mgr);              // E2DC
+  static rstl::list< TUniqueId > mChargePlayerList; // bss_40, shared by every pirate
   // Host layout (retail's is 0xc70 bytes, CHECK_SIZEOF below). Guest offsets kept as comments.
   // Members up to 0xa94 sit at MP1 offset + 0x2c8..0x2d0, so MP1's names carry over. Bit names
   // are xOFF_BB_name for retail's flag byte and bit (24 = the byte's top bit, as in MP1).

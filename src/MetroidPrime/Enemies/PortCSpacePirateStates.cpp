@@ -1150,8 +1150,68 @@ void CSpacePirate::Skid(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_99F0: Activate reads the target position into xbc4_, steers at nothing, arms the
+// melee flags (severity one) and drops the pirate from the module's charge list; Update delivers
+// a kBSC_MeleeAttack while the animation state allows one and, once the first hit is over, repeats
+// it as severity two when the target is still inside the melee range and in front (-0.123 of the
+// forward axis); the shadow variant ramps its cloak. Deactivate clears the flags.
 void CSpacePirate::DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::DoubleSnap state (fn_72_99F0)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (!x8f5_24_noMeleeAttack) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // x6b4 = 1
+    }
+    xbc4_ = GetTargetPos(mgr);
+    x908_targetDelta = xbc4_ - GetTranslation();
+    x904_steeringSpeed = 0.f; // rodata B9C
+    x8f6_26_enableMeleeAttack = true;
+    xb10_meleeSeverity = pas::kS_One;
+    x8f8_25_appliedBladeDamage = false;
+    x8f6_31_inAttackState = true;
+    x8f9_30_closeMelee = false;
+    mChargePlayerList.remove(GetUniqueId()); // fn_72_9E64 on the module's bss_40 list
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCMeleeAttackCmd(static_cast< pas::ESeverity >(xb10_meleeSeverity)));
+    }
+    // Second hit: only while the first is over and the target is still inside the melee range and
+    // not behind the pirate (rodata C08 = -0.123).
+    if (xb10_meleeSeverity == pas::kS_One &&
+        mAnimationState.GetState() == CAnimationState::kAS_Over) {
+      const CVector3f delta = GetTargetPos(mgr) - GetTranslation();
+      if (delta.MagSquared() < mMinAttackRange * mMinAttackRange &&
+          CVector3f::Dot(delta.AsNormalized(), GetTransform().GetForward()) > -0.123f) {
+        mAnimationState.SetState(CAnimationState::kAS_Ready);
+        xb10_meleeSeverity = pas::kS_Two;
+        x8f8_25_appliedBladeDamage = false;
+        x908_targetDelta = delta;
+        x8f9_30_closeMelee = true;
+      }
+    }
+    if (x8f9_30_closeMelee) {
+      x908_targetDelta = GetTargetPos(mgr) - GetTranslation();
+    }
+    BodyController()->CommandMgr().SetTargetVector(x908_targetDelta);
+    if (x8f5_27_shadowPirate) {
+      if (mAnimationState.GetState() == CAnimationState::kAS_Over) {
+        mAlphaDelta = -0.4f; // rodata BB0
+      } else {
+        mAlphaDelta = 1.f;   // rodata B54
+        xb90_maxCloakAlpha = 0.75f; // rodata B84
+      }
+    }
+    UpdateGuardPosition(mgr, dt);  // D800
+    UpdateHeldPosition(mgr, dt);   // D720
+    CheckBlade(mgr);               // CC80
+    break;
+  case kStateMsg_Deactivate:
+    x8f6_26_enableMeleeAttack = false;
+    x8f6_31_inAttackState = false;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {

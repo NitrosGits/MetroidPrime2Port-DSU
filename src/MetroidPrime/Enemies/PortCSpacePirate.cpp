@@ -165,6 +165,10 @@ namespace {
 void StandIn(const char* what) { PortSpacePirateStandIn(what); }
 } // namespace
 
+// Retail keeps the pirates that are in a charge/melee attack in this module-level list (bss_40);
+// DoubleSnap's Activate drops the pirate from it.
+rstl::list< TUniqueId > CSpacePirate::mChargePlayerList;
+
 CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& modelData,
                            const CActorParameters& actParms, const CPatternedInfo& pInfo,
