@@ -314,6 +314,7 @@ void CEmperorIngStage3::EnsureBodyActive(CStateManager& mgr) {
 }
 
 // @ fn_18_47D4
+// @ fn_18_3B64
 // vtable slot 3 = fn_18_47D4 (0x3E4): retail's Think. The base class's Think runs first
 // (0x4818), then the module's own work with no active test: the stampede-react check
 // (0x481C..0x4928), the timers (0x492C..0x4984), the module's per-frame calls (0x4988..0x4A20),
@@ -468,6 +469,7 @@ void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
 }
 
 // @ fn_18_7B14
+// @ fn_18_3B8C
 // vtable slot 4 = fn_18_7B14 (0x668): retail's message switch. The base class's message
 // handler runs first (0x7B50) and then the module's own cases, one per message: the constants
 // are 0x58444D47 (kSM_Damage, 0x7B60), 0x58435254 (kSM_Create, 0x7B74), 0x58414C44
@@ -640,6 +642,7 @@ rstl::optional_object< CAABox > CEmperorIngStage3::GetTouchBounds() const {
 }
 
 // @ fn_18_8E84
+// @ fn_18_3A84
 // fn_18_8E84 (vtable slot 21, 0x1C0): the active heart's pivot joint - the second heart's when its
 // collision actor (fn_18_3A84) is active (the byte at +0x20, bit 7), else the first's (the
 // description's CSegId at +0x8, fn_18_3B14) - at the current animation's elapsed time (the tree's
@@ -2716,6 +2719,8 @@ void CEmperorIngStage3::PortalAttack(CStateManager& mgr, EStateMsg msg, float dt
 }
 
 // @ fn_18_5844
+// @ fn_18_E0
+// @ fn_18_5EB0
 // fn_18_5844 (0x630): the "JumpSlideAttack" state. Activate (0x5898) sets the animation state to
 // `kAS_Ready`, clears 0x10/0x40/0x01/0x04/0x08 of guest 0x825 and 0x80/0x40 of 0x826, and the
 // slide's end time (guest 0x828) to FLT_MAX (rodata 0x2C8). Update (0x5908): a set 0x10 of 0x825
@@ -2894,6 +2899,8 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // @ fn_18_4EB4
+// @ fn_18_51E8
+// @ fn_18_50F0
 // fn_18_4EB4 (0x23C): the "JumpAttack" state. Its activate path (0x4F0C) sets the flag at guest
 // 0x6B4 and picks the jump target: the player's position, or - when the player is over fifty
 // units away (rodata 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the
