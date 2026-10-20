@@ -17,7 +17,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | lane | session | branch / base | task |
 |---|---|---|---|
 | Ing (worker) | `ses_ea67c8a48ffeGHDnEm7Su7uOCv` (subagent) | decomp/ing @ `dfebc98f4` (render gate, damage-info init) | 15 logged stand-ins smallest first, 0xe40 timer, per-form damage check |
-| CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `42e96c9a6` (ShouldJumpBack in; grenade path analysed) | Dodge 8934 alone (narrow brief), then 3338; left: CoverFind 709C, JumpPointFind 9F24, EGrenadeAttack A2EC, creator 5410 |
+| CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `5f60b275d` (Dodge 8934 in; REWORK: step dir = xbdc_) | Dodge dir rework + picker 3678 (0x288), then 3338; left: CoverFind 709C, JumpPointFind 9F24, EGrenadeAttack A2EC, creator 5410 |
 | EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
 | EmperorIngStage3 (Opus) | `ses_ea61d5880ffejeb3NNt1B4Zpl5` | decomp/emperoring3 @ `e9fd2c134` (moves and fights: 3BB0, AreaLoaded, EyeShut/GainDistance/JumpAttack/Dodge/MeleeAttack) | ChoseAction 8200+, Think helpers, Launching, Stampede/Taunt/ChangeVulnerability; hearts u0597.. take damage |
 | Splitter (worker, ex-EmperorIng3 lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC` (subagent) | decomp/splitter @ `f1cd892ed` (triage: F1C0 0x3A0, E87C 0x90, 654C 0x24C, 6490 0xBC, F0E8 0xB8) | one fn per commit: E87C, then 6490, then F0E8 |
@@ -34,7 +34,7 @@ Merged into port 2026-10-20 (`5a26c2fef`, host+link+upstream green, smoke3 pendi
 Accepted, not yet merged: elitepirate `67277cc5f`, commandopirate `42e96c9a6`, ing `dfebc98f4`, boostguardian `5eea0d6aa`, splitter `f1cd892ed`.
 Merge by accepted hash, not branch tip: `/tmp/opencode/merge/merge_hash.sh <hash>...`.
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
-reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress; a raw script-message constant must be re-read from the lis/addi pair (0x41544348 kSM_Attach was misread); `FastCosR(const)` then `fcmpo dot, f1` means dot > cos(const), not cos(dot) > const; guest 0x6B4 (stores of 0/1/3) is CPatterned::mAnimationState, 0x158 mMass, 0x1C0 mConstantForce; a byte 0x4C past a CModelData is an optional_object's valid flag (DG 0xEB8, SP 0xC54); `lbz 0x420; extrwi 1,25` = byte mask 0x40 = CPatterned::mAlive (MWCC bitfields from the MSB); likewise `lbz 0x20; extrwi 1,24` on a CEntity = mActive.
+reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress; a raw script-message constant must be re-read from the lis/addi pair (0x41544348 kSM_Attach was misread); `FastCosR(const)` then `fcmpo dot, f1` means dot > cos(const), not cos(dot) > const; guest 0x6B4 (stores of 0/1/3) is CPatterned::mAnimationState, 0x158 mMass, 0x1C0 mConstantForce; a byte 0x4C past a CModelData is an optional_object's valid flag (DG 0xEB8, SP 0xC54); `lbz 0x420; extrwi 1,25` = byte mask 0x40 = CPatterned::mAlive (MWCC bitfields from the MSB); stores at BodyController+0x48C+4+off are the CBodyStateCmdMgr's command slots (retail's inline DeliverCmd); likewise `lbz 0x20; extrwi 1,24` on a CEntity = mActive.
 
 
 Later in the day (port orchestrator, Opus): the five MiniMax family orchestrators were stopped and the
