@@ -152,9 +152,11 @@ struct CIngSwarmData {
 
 // Host copy of the properties the Ing loader reads (retail: CIngData, 0x214 bytes at 0x7c0, built
 // by fn_29_EE68 - the constructor's stores and the loader's call fixed the argument order). The
-// +0x210 flags are eight bits of SLdrIng.ingFlagsIng (fn_29_EE68 stores ingFlags' low byte there
-// bit for bit). The triggers' tests give the bits their meaning (the kFlag_* enum in PortCIng.cpp; the
-// table is in IngFamily.md section A.5).
+// +0x210 flags are the word at the actor's 0x9d0: its most significant byte is the retail's flag
+// byte, which fn_29_EE68 fills with the ingFlags' low byte bit-reversed (eight rlwimi's, asm
+// 0x0000EF4C-0x0000EFA8: the ingFlags' bit 0 goes to the byte's bit 7). The host keeps that word,
+// so a byte mask m is the word mask (m << 24) - the kFlag_* enum in PortCIng.cpp. The triggers'
+// tests give the bits their meaning (the table is in IngFamily.md section A.5).
 class CIngData {
 public:
   CIngData(uint ingFlags, float hearingRadius, const CDamageInfo& armSwipeDamage,
@@ -179,7 +181,7 @@ public:
   , mGrapple(grapple)
   , mMiniPortal(miniPortal)
   , mSwarm(swarm)
-  , mFlags210(static_cast< uchar >(ingFlags)) {}
+  , mFlags210(IngFlagsWord(ingFlags)) {}
 
   float mHearingRadius;      // +0x00 SLdrIng.hearingRadius (fn_29_EE68's first float argument)
   float mUnknown5D0D;        // +0x04 SLdrIng.unknown_0x5d0d2c40
@@ -196,7 +198,22 @@ public:
   CIngGrappleData mGrapple;                   // +0x10c (0x64)
   CIngMiniPortalData mMiniPortal;             // +0x170 (0x74)
   CIngSwarmData mSwarm;                       // +0x1e4 (0x2c)
-  uchar mFlags210;                            // +0x210, eight bits of SLdrIng.ingFlagsIng
+  uint mFlags210;                             // +0x210: the retail's flag word (the ingFlags' low
+                                             // byte, bit-reversed, in the most significant byte)
+
+  // The retail's flag byte (the data block's +0x210 = the actor's 0x9d0, the most significant byte
+  // of the big-endian word) is the ingFlags' low byte bit-reversed: fn_29_EE68 inserts the
+  // ingFlags' bits 0..7 into the byte's bits 7..0 with eight rlwimi's (asm 0x0000EF4C-0x0000EFA8).
+  // The host keeps the word the retail has, so a byte mask m is the word mask (m << 24).
+  static uint IngFlagsWord(uint flags) {
+    uint byte = 0;
+    for (int i = 0; i < 8; ++i) {
+      if ((flags & (1u << i)) != 0) {
+        byte |= 1u << (7 - i);
+      }
+    }
+    return byte << 24;
+  }
 };
 #endif
 
@@ -411,8 +428,6 @@ private:
   CSurfaceAlignmentHelper mSurfaceAlignment; // 0xc58 (0x58)
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // 0xcb0 (0x10)
   int mForm;                                 // 0x9d4 (2): 2 corporeal, 3 ing spot, 4 flying body proj, 5 evaporating, 6..9 the form changes' own forms
-  uchar mTargetableFlags;                    // 0x9d0: retail never writes this byte (it stays 0);
-                                            // fn_29_426C reads its bit 0
   int mDesiredForm;                          // 0x9d8 (-1)
   rstl::optional_object< CAABox > mTouchBox; // 0xcc0 (0xcd8 = engaged)
   TUniqueId mHostId;                         // 0xcdc

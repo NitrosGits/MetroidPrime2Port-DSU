@@ -152,16 +152,19 @@ enum {
   kForm_BecomingWallProjectile = 9, // BecomeWallProjectile's Activate
 };
 
-// mData.mFlags210 (SLdrIng.ingFlagsIng).
+// mData.mFlags210 (SLdrIng.ingFlagsIng): the retail's flag word. The byte the REL reads at the
+// actor's 0x9d0 is the word's most significant byte, so the byte mask m is the word mask
+// (m << 24) - the retail's flag byte masks 0x01..0x80 (fn_29_EE68's eight rlwimi's at asm
+// 0x0000EF4C-0x0000EFA8 put the ingFlags' bits 0..7 into the byte's bits 7..0).
 enum {
-  kFlag_AlwaysTargetable = 0x01,
-  kFlag_NoPathFind = 0x02,
-  kFlag_NoFormChange = 0x04,
-  kFlag_NoGrapple = 0x08,
-  kFlag_NoMiniPortal = 0x10,
-  kFlag_NoBodyProjectile = 0x20,
-  kFlag_NoArmSwipe = 0x40,
-  kFlag_StartAsIngSpot = 0x80,
+  kFlag_AlwaysTargetable = 0x01000000,
+  kFlag_NoPathFind = 0x02000000,
+  kFlag_NoFormChange = 0x04000000,
+  kFlag_NoGrapple = 0x08000000,
+  kFlag_NoMiniPortal = 0x10000000,
+  kFlag_NoBodyProjectile = 0x20000000,
+  kFlag_NoArmSwipe = 0x40000000,
+  kFlag_StartAsIngSpot = 0x80000000,
 };
 
 const float kFacingAngle = 0.349f; // rodata: 20 degrees
@@ -315,7 +318,6 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mSurfaceAlignment()           // fn_29_D540 @0x0000D610, the DOL's fn_801F7CA0
 , mIngSpotPathFindNavigation()  // fn_29_D540 @0x0000D618, the DOL's fn_801F8258
 , mForm(kForm_Corporeal)
-, mTargetableFlags(0) // 0x9d0: retail never writes this byte
 , mDesiredForm(-1)
 , mTouchBox()
 , mHostId(kInvalidUniqueId)
@@ -720,11 +722,14 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
   case kForm_Evaporate: // 5
     // asm 0x000042CC-0x000042EC: the Dark visor (3) forces the flag on - the compare's cntlzw
     // only leaves a non-zero byte for the visor 3 - otherwise the actor's own byte 0x9d0 bit 0
-    // decides (asm 0x000042F0-0x00004300). Retail never writes 0x9d0, so it is 0.
+    // decides (asm 0x000042F0-0x00004300). That byte is the loader's data: the data block's
+    // +0x210 (CIngData at 0x7c0), the most significant byte of the flag word mData.mFlags210, so
+    // the byte mask 0x01 is the word mask 0x01000000 (kFlag_AlwaysTargetable) - the ingFlags'
+    // bit 7, since fn_29_EE68 reverses the eight bits into that byte.
     if (mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
       SetValidTarget(0, true);
     } else {
-      SetValidTarget(0, (mTargetableFlags & 0x1) != 0);
+      SetValidTarget(0, (mData.mFlags210 & kFlag_AlwaysTargetable) != 0);
     }
     break;
   default:
@@ -738,7 +743,9 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
 // predict their motion first, and the collar locator (0xd7a) then decides between the locator's
 // aim and the base class's. The ctor writes 0xff (invalid) to 0xd7a and nothing else in the
 // module ever writes it (asm 0x0000E170/0x0000E448), so retail's locator path is dead and the
-// aim is always the base class's - the port keeps the structure anyway.
+// aim is always the base class's - the port keeps the structure anyway. (Grepped over the whole
+// module: only the ctor's two stores at asm 0x0000E170/0x0000E448 write 0xd7a, and it is outside
+// the loader's data block - CIngData covers 0x7c0..0x9d3.)
 CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f aim = CVector3f::Zero(); // asm 0x0000BCFC: sZeroVector
   // asm 0x0000BD04-0x0000BD40: the corporeal form and the forms 6..8 predict; the prediction
@@ -1430,7 +1437,7 @@ void CIng::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
       BodyController()->CommandMgr().DeliverCmd(
           CBCGenerateCmd(pas::kGType_Zero, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00009C9C: li r4, 1
     }
     Stop();
     break;
@@ -1440,7 +1447,7 @@ void CIng::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
     mStartAsIngSpot = false;                                 // 0xe5d bit 5
     mVerticalMovement = false;                               // CPatterned 0x34c bit 6
     AddMaterial(kMT_GroundCollider, mgr);                    // 0x25
-    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00009CEC: li r4, 1
     mForm = kForm_Corporeal;
     mDesiredForm = -1;
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_None); // 0xca4 = 0
@@ -1478,12 +1485,12 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
       BodyController()->CommandMgr().DeliverCmd(
           CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009948: li r4, 0
     }
     break;
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009960: li r4, 0
     mForm = kForm_IngSpot;
     mDesiredForm = -1;
     mLineOfSight.SetSegment(CSegId::Null()); // 0xd8a = 99
@@ -1538,7 +1545,7 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
       RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
-      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009628: SetLocomotionType(0)
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009628: li r4, 0
       if (!mTakeOff && mForm != kForm_BodyProjectile) {
         // Aim at the target's aim position, flattened to the actor's own height (0xdd0 = 0x5c).
         if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468
@@ -1560,7 +1567,7 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, false); // 0xc50
     }
-    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000096F8: SetLocomotionType(0)
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000096FC: li r4, 0
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
     }
@@ -1604,7 +1611,7 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_One));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
-      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x0000928C: SetLocomotionType(0)
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x0000928C: li r4, 0
       mForm9Render = true; // 0xe5d bit 4
       if (mTakeOff || mForm == kForm_BodyProjectile) {
         mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
@@ -1624,7 +1631,7 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   case kStateMsg_Deactivate:
     mPortalPlane = false;    // 0xe5d bit 6
     mStartAsIngSpot = false; // 0xe5d bit 5
-    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000093C4: SetLocomotionType(0)
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000093DC: li r4, 0 (li at 0x000093C4)
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
@@ -3042,10 +3049,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     EnsureBodyActive(mgr);
     mForm = mStartAsIngSpot ? kForm_IngSpot : kForm_Corporeal;
     if (mForm == kForm_IngSpot) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00004CD0: li r4, 0
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
     } else {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00004CFC: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
     break;
