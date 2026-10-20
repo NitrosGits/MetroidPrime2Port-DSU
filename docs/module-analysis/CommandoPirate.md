@@ -603,6 +603,19 @@ point (the id at guest this+0xBD2, copied to +0xBD4, a new member `xbd4_`). The 
 uses the host's own size, and the header's `CHECK_SIZEOF` (a no-op outside the retail build)
 still names the retail's 0xC68.
 
+`fn_9_4D84` (0x228, one of the module's Think helpers) is read as far as the host's API allows:
+the byte at guest this+0x420 is `CPatterned`'s flag byte and its 0x40 bit is the actor's alive
+bit (the host's `GetAlive()`), the body commands are the guest's command id 0x1b = 27 =
+`pas::kBSC_AdditiveAim` and 0x1a = 26 = `pas::kBSC_AdditiveIdle` (the host's EBodyStateCmd
+matches the DOL's order), the helper it calls first (`fn_9_4CA4`, 0xd8 bytes) is over the 0x80
+limit and would be a named stand-in, and the last step writes the aim direction into the body
+controller's own vector at +0x40 (the command manager's sixth CVector3f, the command manager
+sits at body + 4 and its six vectors run from +0x00 to +0x48). What is missing is the retail's
+command payload (the static data objects `lbl_9_data_A78` and `lbl_9_data_AA0` the commands
+carry) and the aim flag (the 0x02 bit of the flag byte at guest this+0xC65, the command's third
+field): the host's `CBCAdditiveAimCmd` has an `mAimType` with a getter but no setter, so the
+flag cannot be expressed without a change to the shared body-command header.
+
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
 as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a8), `fn_9_1C0C`
