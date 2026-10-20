@@ -14,6 +14,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "rstl/algorithm.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,33 +67,155 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   return delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
 }
 
+// @ fn_72_ADC0
+// The 208 cycle does evaluate this trigger (2851 calls in the 2026-10-20 run), but it is always
+// false there, so only the first branch is proven by the run.
+// Retail: a pirate with the non-aggressive bit (0x8f4 mask 0x20) never charges. Otherwise it
+// charges when it is always aggressive (0x8f8 mask 0x20), or when no pirate is charging yet (the
+// module's static charge list at bss_40 is empty) and the player has been out of sight for more
+// than 10 s (rodata B58). A charging pirate that is not in that list yet adds its id to it: the
+// asm walk ends at the list's tail sentinel, so "reached the tail" means "not in the list" and
+// pushes (fn_72_AEB8 -> fn_72_AEE0 is a push_back), while a match stops the walk and does not.
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::AggressionCheck trigger (fn_72_ADC0)");
-  return false;
+  bool result = false;
+  if (!x8f4_26_nonAggressive) {
+    if (x8f8_26_alwaysAggressive) {
+      result = true;
+    } else if (mChargePlayerList.empty() && xa7c_timeNoPlayerLos > 10.f) {
+      result = true;
+    }
+    if (result) {
+      if (rstl::find(mChargePlayerList.begin(), mChargePlayerList.end(), GetUniqueId()) ==
+          mChargePlayerList.end()) {
+        mChargePlayerList.push_back(GetUniqueId());
+      }
+    }
+  }
+  TraceCall(*this, "AggressionCheck trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) const {
   return x8f8_27_coverCheck;
 }
 
+// fn_72_ABC0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the AiWaypoint object list (mgr+0x838) is scanned for the cover points this pirate
+// could take - active (0x20 bit 7), not a land-hang point (fn_800EC6A8), not reserved by this
+// pirate (fn_800EC550 with this pirate's id), in this area, not the cover point it used last
+// time (0x902) and closer than mData.mSearchRadius (0x7c8) squared. The closest one that is
+// not blown by the target position (fn_72_CB30, not the player) wins. Then the old cover point
+// is released (retainCooldown 1), the new one taken, 0x902 remembers it and 0x914 becomes
+// -cover forward. The target is fetched again through the object list, so a point that vanished
+// leaves the trigger false.
 bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoverFind trigger (fn_72_ABC0)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = false;
+  float minDistSq = mData.mSearchRadius * mData.mSearchRadius;
+  const CScriptCoverPoint* closest = nullptr;
+  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptCoverPoint* point = TCastToConstPtr< CScriptCoverPoint >(list[i]);
+    if (point == nullptr) {
+      continue;
+    }
+    if (!point->GetActive() || point->ShouldLandHere() || point->GetInUse(GetUniqueId()) ||
+        point->GetCurrentAreaId() != GetCurrentAreaId() ||
+        point->GetUniqueId() == self->x902_previousCoverPoint) {
+      continue;
+    }
+    const float distSq = (GetTranslation() - point->GetTranslation()).MagSquared();
+    if (distSq >= minDistSq) {
+      continue;
+    }
+    if (point->Blown(self->GetTargetPos(mgr))) {
+      continue;
+    }
+    minDistSq = distSq;
+    closest = point;
+  }
+  if (closest != nullptr) {
+    self->ReleaseCoverPoint(mgr, self->x900_coverPoint, true);
+    CScriptCoverPoint* point = TCastToPtr< CScriptCoverPoint >(mgr.ObjectById(closest->GetUniqueId()));
+    if (point != nullptr) {
+      self->SetCoverPoint(point, self->x900_coverPoint);
+      result = true;
+      self->x902_previousCoverPoint = self->x900_coverPoint;
+      self->x914_coverPointRearDir = -closest->GetTransform().GetForward();
+    }
+  }
+  TraceCall(*this, "CoverFind trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_AA64. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the point that is tested is the pirate's own target position (fn_72_CB30), not the
+// player. Inside the minimum attack range (0x3dc) the cover is not blown yet, so the trigger is
+// true. Outside it the cover point reports whether that target is inside its safe angle
+// (fn_800EC5A0). A cover that is not blown but more than 3 * scaleY away from the pirate (the
+// model's Y scale, 0x60) also counts as blown - the asm compares the squared distance with
+// 3.0 * scaleY, it does not square the radius.
 bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoverBlown trigger (fn_72_AA64)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = true;
+  const CVector3f target = self->GetTargetPos(mgr);
+  const CVector3f toTarget = target - GetTranslation();
+  if (toTarget.MagSquared() > mMinAttackRange * mMinAttackRange) {
+    const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
+    if (point != nullptr) {
+      result = point->Blown(target);
+      if (!result && x904_steeringSpeed == 0.f &&
+          GetBodyController()->GetCurrentStateId() != pas::kAS_Step) {
+        const CVector3f toCover = point->GetTranslation() - GetTranslation();
+        if (toCover.MagSquared() > 3.f * GetModelData()->GetScale().GetY()) {
+          result = true;
+        }
+      }
+    }
+  }
+  TraceCall(*this, "CoverBlown trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_A988. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: with no cover point the trigger is true. With one it asks whether the cover is blown
+// by the attack target's position plus its velocity (1.0 * velocity, so the raw velocity is
+// added). The target is the pirate's attack target cast to CPlayer - not mgr.GetPlayer() - so a
+// missing or non-player target leaves the trigger false.
 bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoverNearlyBlown trigger (fn_72_A988)");
-  return false;
+  bool result = true;
+  const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
+  if (point != nullptr) {
+    result = false;
+    const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+    if (player != nullptr) {
+      const CVector3f pos = player->GetTranslation() + player->GetVelocityWR();
+      result = point->Blown(pos);
+    }
+  }
+  TraceCall(*this, "CoverNearlyBlown trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_A8D0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the listening-AI object list (mgr+0x830) is scanned for other pirates; one of them
+// that has its in-attack-state bit (0x8f6 mask 0x01) set and is in this area means this pirate
+// is covering that one's fire. The scan does not stop at the first hit.
 bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoveringFire trigger (fn_72_A8D0)");
-  return false;
+  bool result = false;
+  const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CSpacePirate* pirate = TCastToConstPtr< CSpacePirate >(list[i]);
+    if (pirate == nullptr || pirate == this) {
+      continue;
+    }
+    if (!pirate->x8f6_31_inAttackState || pirate->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    result = true;
+  }
+  TraceCall(*this, "CoveringFire trigger", result ? 1 : 0);
+  return result;
 }
 
 // fn_72_A71C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
