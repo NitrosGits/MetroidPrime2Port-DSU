@@ -127,6 +127,17 @@ private:
   void SetVulnerabilityEffects(int index);
   // fn_16_2070: the effect state a tentacle carries - too big for the slice's rule, so a stand-in.
   void SetTentacleEffectState(int index, const rstl::string& name);
+  // fn_16_3B70: the three collision actor managers are destroyed.
+  void DestroyCollisionActors(CStateManager& mgr);
+  // fn_16_30C8: builds the tentacle animation parameter sets. Too big for the slice's rule, so it
+  // stays a stand-in.
+  void SetupTentacleAnimations(CStateManager& mgr);
+  // fn_16_3EAC: creates the three collision actor managers and their tentacle actors. Too big for
+  // the slice's rule, so it stays a stand-in.
+  void SetupTentacleCollisions(CStateManager& mgr);
+  // fn_16_36E8: builds the tentacle joint collision descriptions. Too big for the slice's rule, so it
+  // stays a stand-in.
+  void SetupTentacleJoints(CStateManager& mgr);
   // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
   CActor* GetTargetActor(CStateManager& mgr) const;
   // fn_16_2FA8: the collision actor of the second tentacle's collision actor manager.
@@ -184,7 +195,9 @@ private:
   CCollisionActorManager* x7d0_;      // guest 0x7D0, 0: the third one's
   int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
   CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
+  TUniqueId xa18_;                    // guest 0xA18: the actor connected on IS3/ACTIVATE
   TUniqueId xa1a_;                    // guest 0xA1A: the tracked actor's id (fn_16_302C)
+  TUniqueId xa1c_;                    // guest 0xA1C: the actor connected on CONNECT/ACTIVATE
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)

@@ -20,6 +20,8 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
+
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -157,7 +159,9 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , x7d0_(nullptr)                                                  // guest 0x7D0, cleared
 , x7d4_(0)                                                        // guest 0x7D4, cleared
 , x7d8_()                                                         // guest 0x7D8, the tentacle slots
+, xa18_(kInvalidUniqueId)                                         // guest 0xA18, fn_16_900C clears it
 , xa1a_(kInvalidUniqueId)                                         // guest 0xA1A, fn_16_900C clears it
+, xa1c_(kInvalidUniqueId)                                         // guest 0xA1C, fn_16_900C clears it
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
@@ -396,13 +400,84 @@ void CEmperorIngStage1::UpdateTentacleHits(float dt, CStateManager& mgr) {
   StandInFn("fn_16_8C");
 }
 
-// vtable slot 4 = fn_16_7CE8 (0xC4): retail's message switch (the tentacle and heart messages).
+// vtable slot 4 = fn_16_7CE8 (0x7CE8..0x7EA8): retail's message switch. The base's own handler
+// runs first (the call at 0x7D14) and then the message decides:
+//   kSM_Create (0x58435254, compared at 0x7D24) activates the body controller (0x7D78);
+//   kSM_Delete (0x5844454C, at 0x7D64) destroys the collision actors (0x7D88);
+//   kSM_AreaLoaded (0x58414C44, at 0x7D3C) looks the three connected objects up and sets the
+//     tentacle work up (0x7DAC..0x7E28);
+//   kSM_Activate (0x41435456, at 0x7D50) hands the boss bar its id, health and name (0x7E80).
 void CEmperorIngStage1::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CEmperorIngStage1::AcceptScriptMsg (vtable slot 4, fn_16_7CE8)");
   CPatterned::AcceptScriptMsg(mgr, msg);
-  if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
+  switch (msg.GetMessage()) {
+    case kSM_Create: {
+      // The body controller is the member at guest 0x48C.
+      BodyController()->Activate(mgr, pas::kAS_Invalid);
+      break;
+    }
+    case kSM_Delete: {
+      DestroyCollisionActors(mgr);
+      break;
+    }
+    case kSM_AreaLoaded: {
+      xa18_ = FindConnectedObject(mgr, kSS_InternalState3, kSM_Activate);
+      // The retail's second lookup asks for the message 0x41574348, which the port's
+      // EScriptObjectMessage has no name for (its kSM_Attach is 0x41544348), so the value is
+      // used as it is.
+      xa1a_ = FindConnectedObject(mgr, kSS_Connect,
+                                 static_cast< EScriptObjectMessage >(0x41574348u));
+      xa1c_ = FindConnectedObject(mgr, kSS_Connect, kSM_Activate);
+      SetupTentacleAnimations(mgr);
+      SetupTentacleCollisions(mgr);
+      SetupTentacleJoints(mgr);
+      break;
+    }
+    case kSM_Activate: {
+      // The boss bar: the health info's initial health (the vtable slot 13 call at 0x7E40 and the
+      // float at +0x00 of the result) and the string table index of the boss's name - the string
+      // lbl_16_rodata_41C+0x670 points at, "BossTempleBossStage1".
+      const float health = GetHealthInfo()->GetInitialHP();
+      const int index = gpStringTable->GetStringIndex("BossTempleBossStage1");
+      mgr.SetBossParams(GetUniqueId(), health, static_cast< uint >(index));
+      break;
+    }
   }
+}
+
+// fn_16_3B70 (0x3B70..0x3BC4): the three collision actor managers are destroyed. The retail has
+// no null test: the managers are set by the tentacle spawn code, which the port does not have
+// yet, so on the host they are still null.
+void CEmperorIngStage1::DestroyCollisionActors(CStateManager& mgr) {
+  if (x7c8_ != nullptr) {
+    x7c8_->Destroy(mgr);
+  }
+  if (x7cc_ != nullptr) {
+    x7cc_->Destroy(mgr);
+  }
+  if (x7d0_ != nullptr) {
+    x7d0_->Destroy(mgr);
+  }
+}
+
+// fn_16_30C8 (0x278): builds the tentacle animation parameter sets - three sets of five
+// CPASAnimParm taken from the tracked actor's animation data (fn_16_3094 -> the model's animation
+// data at +0x3C). Too big for the slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::SetupTentacleAnimations(CStateManager& mgr) {
+  StandInFn("fn_16_30C8");
+}
+
+// fn_16_3EAC (0x794): creates the three CCollisionActorManagers (rs_new + the manager's
+// constructor with a joint description vector), gives their collision actors the damage
+// vulnerability and adds the materials. Too big for the slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::SetupTentacleCollisions(CStateManager& mgr) {
+  StandInFn("fn_16_3EAC");
+}
+
+// fn_16_36E8 (0x29C): builds the tentacle joint collision descriptions - three sets of 27
+// CPASAnimParm - and fills the joint vector at guest 0x7D4. Too big for the slice's rule, so it
+// stays a stand-in.
+void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
+  StandInFn("fn_16_36E8");
 }
 
 // vtable slot 7 = fn_16_52FC (0x20): the retail override is the base class's own PreRender.

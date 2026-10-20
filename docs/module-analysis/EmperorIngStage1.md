@@ -46,6 +46,11 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_4E44` | 0x24 | takes the particle effect's reference | [probable] |
 | `fn_16_BDD0` | 0x64 | releases that reference | [probable] |
 | `fn_16_6D10` | 0x84 | the particle effect's own update | [probable] |
+| `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
+| `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
+| `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
+| `fn_16_3EAC` | 0x794 | creates the three collision actor managers and their tentacle actors | [probable] |
+| `fn_16_36E8` | 0x29C | builds the tentacle joint collision descriptions | [probable] |
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
@@ -154,7 +159,7 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0xA74 | byte | five bits cleared |
 | 0xA78 | float | 0 |
 | 0xA80-0xA8C | four ints | 0 (0xA8C the sound emitter's handle) |
-| 0xA1A | u16 | `kInvalidUniqueId` (the tracked actor's id) |
+| 0xA18, 0xA1A, 0xA1C | u16 | `kInvalidUniqueId` (the three connected actors: IS3/ACTIVATE, CONNECT/0x41574348 and CONNECT/ACTIVATE) |
 | 0xA58, 0xA5C | floats | 0 (the "Damage" and "Telegraph" effect timers) |
 | 0xA90, 0xA98 | u16 | `kInvalidUniqueId` (0xA90 the emitter's target) |
 | 0xA94, 0xA9C | ints | 0 |
@@ -336,6 +341,27 @@ not have - and fn_16_51D4 (0x128) for the sound update, which reads a float at t
 vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
 (upstream's layout), so the port has no float there and the value's meaning is not established.
 
+### The message switch (fn_16_7CE8, vtable slot 4)
+
+The base's own handler runs first (the call at 0x7D14), then the message decides:
+
+| message | compared at | what happens |
+|---|---|---|
+| `kSM_Create` (0x58435254) | 0x7D24 | the body controller (guest 0x48C) is activated with `kAS_Invalid` (0x7D78) |
+| `kSM_Delete` (0x5844454C) | 0x7D64 | fn_16_3B70: the three collision actor managers are destroyed (0x7D88) |
+| `kSM_AreaLoaded` (0x58414C44) | 0x7D3C | three connected objects are looked up - IS3/ACTIVATE into guest 0xA18 (0x7DAC), CONNECT/0x41574348 into 0xA1A (0x7DD4) and CONNECT/ACTIVATE into 0xA1C (0x7DFC) - and the tentacle work is set up: fn_16_30C8 (0x7E10), fn_16_3EAC (0x7E1C), fn_16_36E8 (0x7E28) |
+| `kSM_Activate` (0x41435456) | 0x7D50 | `SetBossParams`: the actor's id (guest +0x08), the health info's initial health (the vtable slot 13 call at 0x7E40, the float at +0x00 of the result) and the string table index of "BossTempleBossStage1" (lbl_16_rodata_41C+0x670) (0x7E6C, 0x7E80) |
+
+The retail's second lookup asks for the message 0x41574348, which the port's `EScriptObjectMessage`
+has no name for (its `kSM_Attach` is 0x41544348), so the port uses the raw value.
+
+fn_16_3B70 (0x54) is ported with it; the three tentacle functions are too big and stay stand-ins:
+fn_16_30C8 (0x278) builds three sets of five CPASAnimParm from the tracked actor's animation data
+(the model's animation data at +0x3C), fn_16_3EAC (0x794) creates the three CCollisionActorManagers
+(`rs_new` + the manager's constructor with a joint description vector), gives their collision
+actors the damage vulnerability and adds the materials, and fn_16_36E8 (0x29C) builds three sets of
+27 CPASAnimParm and fills the joint vector at guest 0x7D4. They are the spawn slice's work.
+
 ### The target's float at guest +0x1C0
 
 The Think's emitter tail (0x58A8) reads a float at the target's +0x1C0, and it is
@@ -405,6 +431,11 @@ triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM doe
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
 CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+
+With `AcceptScriptMsg` ported (fn_16_7CE8) the `kSM_AreaLoaded` message runs the three tentacle
+stand-ins (fn_16_30C8, fn_16_3EAC, fn_16_36E8) and the `kSM_Activate` message (the console's
+`send <uid> Activate`) hands the boss bar its parameters: id 0x0687, health 700 and the string
+table index 55 of "BossTempleBossStage1".
 
 With the Think's track-player update ported (fn_16_4C0C) the "Damage" and "Telegraph" effect
 states are turned on and their timers (guest 0xA58 and 0xA5C) count down; the particle effect's
