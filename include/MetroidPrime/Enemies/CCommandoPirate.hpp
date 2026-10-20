@@ -229,6 +229,90 @@ public:
   void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                     CStateManager& mgr) override;
 
+#ifdef TARGET_PC
+  // The body's state machine. Retail fn_9_BDE0 (vtable slot 60) calls the base's setup and
+  // then registers the module's two tables, which the module's .ctors builder (fn_9_F9F8)
+  // fills in: 34 triggers (lbl_9_data_198, .data 0x198) and 36 states (lbl_9_data_568,
+  // .data 0x568). The names are retail's - the state machine asset's nodes are matched by
+  // name - and each comment is the retail function the entry points at. The bodies are
+  // stand-ins in this slice; a later one ports them.
+  //
+  // Triggers (lbl_9_data_198, 34 entries; the .rodata offset is in the analysis note).
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BDCC
+  bool ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BD98
+  bool ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BCB8
+  bool ShouldFireEGrenade(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BBC8
+  bool ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BB7C
+  bool ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BB10
+  bool ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BB04
+  bool BreakAmbush(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAF8
+  bool HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAEC
+  bool UnderFire(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAD0
+  bool HeardShot(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAB4
+  bool HasTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BA78
+  bool HasNewTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BA20
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B9D8
+  bool PathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B990
+  bool IsOffPath(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B958
+  bool HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B900
+  bool IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B818
+  bool AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B7FC
+  bool TooClose(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B76C
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B690
+  bool ShouldArmShield(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B660
+  bool ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B250
+  bool ShouldBoost(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1E0
+  bool AbortShieldCharge(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1D4
+  bool IsAggressive(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1C8
+  bool FoundJumpPoint(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1A8
+  bool ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B168
+  bool ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B114
+  bool ShouldCover(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B0F4
+  bool FoundCover(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B0D4
+  bool ShouldCoverAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B0B4
+  bool CoverBlown(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_AFD4
+  bool AbortSeekCover(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_AFB8
+
+  // States (lbl_9_data_568, 36 entries). PathFind, Patrol and Dead hide CPatterned's own,
+  // which is what retail does too: the module's table replaces the base's entries.
+  void Lurk(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_ADD4
+  void Ambush(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_ADA0
+  void Alert(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_AE04
+  void FaceTarget(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_ABDC
+  void SelectTarget(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_AB08
+  void SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_AA20
+  void SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A97C
+  void SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A8E8
+  void SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A838
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A4BC
+  void EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A2EC
+  void PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A110
+  void JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9F24
+  void JetBoost(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9BB4
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9AAC
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_996C
+  void FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_961C
+  void WarpIn(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9064
+  void WarpOut(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8DF0
+  void PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8D28
+  void JumpBack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8B70
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8934
+  void ArmShield(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_86B4
+  void ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8028
+  void ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_7A98
+  void RestoreOrientation(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_786C
+  void Crouch(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_7724
+  void WallHang(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_7358
+  void WallDetach(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_728C
+  void CoverFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_709C
+  void SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A7A8
+  void Cover(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6DBC
+  void CoverAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6C68
+  void BreakCover(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6BCC
+  void GetUp(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6A40
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_69C8
+#endif
+
 private:
   void EnsureBodyActive(CStateManager& mgr);
 

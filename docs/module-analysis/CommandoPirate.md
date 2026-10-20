@@ -80,7 +80,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0xE0 | `GetSearchPath` | `fn_9_0` | host (this+0x928) |
 | 0xE4 | `GetPointSearchPath` | `fn_9_70` | host (null) |
 | 0xE8 | `GetContactDamage` | `fn_9_C1F4` (0xd8) | stand-in |
-| 0xF0 | `SetupStateMachine` | `fn_9_BDE0` (0x6c) | stand-in |
+| 0xF0 | `SetupStateMachine` | `fn_9_BDE0` (0x6c) | host (registers the module's two tables) |
 | 0xF4 | `GetRagDoll` | `fn_9_78` | host (null) |
 | 0x10C | `GetAttackTarget` | `fn_9_80` | host (kInvalidUniqueId) |
 | 0x114 | `GetGravityConstant` | `fn_9_10` | host (50.f) |
@@ -106,6 +106,93 @@ actor answers to the base's type tag.
 | +0x3F5 | `R_elbow` | locator this+0xC61 |
 | +0x3FD | `L_wrist` | locator this+0xC62 |
 | +0x405 | `CommandoPirate.rel` | the module's own file name |
+
+### The state machine's tables
+
+`fn_9_BDE0` (vtable slot 60) calls the base's setup and then registers two tables on the
+state manager: the triggers (`lbl_9_data_198`, .data 0x198, 34 = 0x22) through the slot at
++0x18 and the states (`lbl_9_data_568`, .data 0x568, 36 = 0x24) through +0x14. The module has
+no third table. Each entry is 16 bytes `{name, 0, 0xFFFFFFFF, fn}`; the function pointers come
+from the three-word records `{0, 0xFFFFFFFF, fn}` in .data 0x0..0x198 (the triggers,
+`fn_9_F9F8`'s stores at 0x0000FAD4..0x0000FF24) and .data 0x3B8..0x568 (the states, the stores
+at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
+
+| # | trigger | fn | .rodata |
+|---|---|---|---|
+| 0 | StateOver | `fn_9_BDCC` | 0x504 |
+| 1 | ShouldWarpIn | `fn_9_BD98` | 0x50E |
+| 2 | ShouldMeleeAttack | `fn_9_BCB8` | 0x51B |
+| 3 | ShouldFireEGrenade | `fn_9_BBC8` | 0x52D |
+| 4 | ShouldRetreat | `fn_9_BB7C` | 0x540 |
+| 5 | ShouldJumpBack | `fn_9_BB10` | 0x54E |
+| 6 | ShouldAmbush | `fn_9_BB04` | 0x55D |
+| 7 | BreakAmbush | `fn_9_BAF8` | 0x56A |
+| 8 | HasLineOfSight | `fn_9_BAEC` | 0x576 |
+| 9 | UnderFire | `fn_9_BAD0` | 0x585 |
+| 10 | HeardShot | `fn_9_BAB4` | 0x58F |
+| 11 | HasTarget | `fn_9_BA78` | 0x599 |
+| 12 | HasNewTarget | `fn_9_BA20` | 0x5A3 |
+| 13 | PathShagged | `fn_9_B9D8` | 0x5B0 |
+| 14 | PathOver | `fn_9_B990` | 0x5BC |
+| 15 | IsOffPath | `fn_9_B958` | 0x5C5 |
+| 16 | HasAttackPattern | `fn_9_B900` | 0x5CF |
+| 17 | IsFacingTarget | `fn_9_B818` | 0x5E0 |
+| 18 | AttackPatternOver | `fn_9_B7FC` | 0x5EF |
+| 19 | TooClose | `fn_9_B76C` | 0x601 |
+| 20 | ShouldDodge | `fn_9_B690` | 0x60A |
+| 21 | ShouldArmShield | `fn_9_B660` | 0x616 |
+| 22 | ShouldShieldCharge | `fn_9_B250` | 0x626 |
+| 23 | ShouldBoost | `fn_9_B1E0` | 0x639 |
+| 24 | AbortShieldCharge | `fn_9_B1D4` | 0x645 |
+| 25 | IsAggressive | `fn_9_B1C8` | 0x657 |
+| 26 | FoundJumpPoint | `fn_9_B1A8` | 0x664 |
+| 27 | ShouldCrouch | `fn_9_B168` | 0x673 |
+| 28 | ShouldWallHang | `fn_9_B114` | 0x680 |
+| 29 | ShouldCover | `fn_9_B0F4` | 0x68F |
+| 30 | FoundCover | `fn_9_B0D4` | 0x69B |
+| 31 | ShouldCoverAttack | `fn_9_B0B4` | 0x6A6 |
+| 32 | CoverBlown | `fn_9_AFD4` | 0x6B8 |
+| 33 | AbortSeekCover | `fn_9_AFB8` | 0x6C3 |
+
+| # | state | fn | .rodata |
+|---|---|---|---|
+| 0 | Lurk | `fn_9_ADD4` | 0x6D2 |
+| 1 | Ambush | `fn_9_ADA0` | 0x6D7 |
+| 2 | Alert | `fn_9_AE04` | 0x6DE |
+| 3 | FaceTarget | `fn_9_ABDC` | 0x6E4 |
+| 4 | SelectTarget | `fn_9_AB08` | 0x6EF |
+| 5 | SetTargetDest | `fn_9_AA20` | 0x6FC |
+| 6 | SetRetreatDest | `fn_9_A97C` | 0x70A |
+| 7 | SetJumpDest | `fn_9_A8E8` | 0x719 |
+| 8 | SetPathMeshDest | `fn_9_A838` | 0x725 |
+| 9 | MeleeAttack | `fn_9_A4BC` | 0x735 |
+| 10 | EGrenadeAttack | `fn_9_A2EC` | 0x741 |
+| 11 | PostEGrenadeAttack | `fn_9_A110` | 0x750 |
+| 12 | JumpPointFind | `fn_9_9F24` | 0x763 |
+| 13 | JetBoost | `fn_9_9BB4` | 0x771 |
+| 14 | PathFind | `fn_9_9AAC` | 0x77A |
+| 15 | Patrol | `fn_9_996C` | 0x783 |
+| 16 | FollowAttackPattern | `fn_9_961C` | 0x78A |
+| 17 | WarpIn | `fn_9_9064` | 0x79E |
+| 18 | WarpOut | `fn_9_8DF0` | 0x7A5 |
+| 19 | PostWarpOut | `fn_9_8D28` | 0x7AD |
+| 20 | JumpBack | `fn_9_8B70` | 0x7B9 |
+| 21 | Dodge | `fn_9_8934` | 0x7C2 |
+| 22 | ArmShield | `fn_9_86B4` | 0x7C8 |
+| 23 | ShieldCharge | `fn_9_8028` | 0x7D2 |
+| 24 | ScriptedShieldCharge | `fn_9_7A98` | 0x7DF |
+| 25 | RestoreOrientation | `fn_9_786C` | 0x7F4 |
+| 26 | Crouch | `fn_9_7724` | 0x807 |
+| 27 | WallHang | `fn_9_7358` | 0x80E |
+| 28 | WallDetach | `fn_9_728C` | 0x817 |
+| 29 | CoverFind | `fn_9_709C` | 0x822 |
+| 30 | SetCoverDest | `fn_9_A7A8` | 0x82C |
+| 31 | Cover | `fn_9_6DBC` | 0x839 |
+| 32 | CoverAttack | `fn_9_6C68` | 0x83F |
+| 33 | BreakCover | `fn_9_6BCC` | 0x84B |
+| 34 | GetUp | `fn_9_6A40` | 0x856 |
+| 35 | Dead | `fn_9_69C8` | 0x85C |
+
 
 ## 2. The loader (fn_9_168)
 
@@ -218,10 +305,9 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine: fn_9_BDE0 installs the module's own trigger, state and code tables. The
-  module's `.rodata` holds the names (`ShouldMeleeAttack`, `ShouldFireEGrenade`, `ShouldArmShield`,
-  `ShieldCharge`, `EGrenadeAttack`, `Ambush`, `JetBoost`, ...); the tables themselves are in the
-  module's `.data`.
+- The state machine's 70 bodies: the two tables (34 triggers, 36 states) are registered, but
+  every function they point at is a stand-in that logs the retail function it stands in for and
+  returns the neutral value.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two

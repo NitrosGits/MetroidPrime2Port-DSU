@@ -40,6 +40,71 @@ void StandIn(const char* what) {
   fprintf(stderr, "[cmdopirate] %s is a port stand-in (see PortCCommandoPirate.cpp)\n", what);
 }
 
+// The same, for the state machine's own functions: the message names the retail function
+// the entry stands in for, so the log says which of the module's 70 FSM functions the run
+// reached.
+void StandInFn(const char* fn) {
+  static const char* sSeen[80] = {};
+  static int sCount = 0;
+  for (int i = 0; i < sCount; ++i) {
+    if (sSeen[i] == fn) {
+      return;
+    }
+  }
+  if (sCount < 80) {
+    sSeen[sCount++] = fn;
+  }
+  fprintf(stderr, "[cmdopirate] stand-in %s\n", fn);
+}
+
+// The body's two FSM tables. Retail builds them in a static initialiser (fn_9_F9F8,
+// .ctors): the tables are lbl_9_data_198 (34 triggers, .data 0x198) and lbl_9_data_568
+// (36 states, .data 0x568), each entry 16 bytes {name, 0, 0xFFFFFFFF, fn}, and the
+// function pointers come from the three-word records {0, 0xFFFFFFFF, fn} in .data
+// 0x0..0x198 (the triggers, fn_9_F9F8's stores at 0x0000FAD4..0x0000FF24) and in .data
+// 0x3B8..0x568 (the states, the stores at 0x0000FF34..0x000103C4).
+//
+// On the host the table addresses are irrelevant: the state machine matches a node by its
+// name, so the name strings are retail's and the entry's function is the module's member
+// function. The members are cast the way the DigitalGuardian's port does it.
+#define CMDO_TRIGGER(name)                                                                         \
+  { #name, reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CCommandoPirate::name) }
+#define CMDO_STATE(name)                                                                           \
+  { #name, reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CCommandoPirate::name) }
+
+CPatterned::StateMachine::STriggerFunction skTriggers[] = {
+    CMDO_TRIGGER(StateOver), CMDO_TRIGGER(ShouldWarpIn), CMDO_TRIGGER(ShouldMeleeAttack),
+    CMDO_TRIGGER(ShouldFireEGrenade), CMDO_TRIGGER(ShouldRetreat), CMDO_TRIGGER(ShouldJumpBack),
+    CMDO_TRIGGER(ShouldAmbush), CMDO_TRIGGER(BreakAmbush), CMDO_TRIGGER(HasLineOfSight),
+    CMDO_TRIGGER(UnderFire), CMDO_TRIGGER(HeardShot), CMDO_TRIGGER(HasTarget),
+    CMDO_TRIGGER(HasNewTarget), CMDO_TRIGGER(PathShagged), CMDO_TRIGGER(PathOver),
+    CMDO_TRIGGER(IsOffPath), CMDO_TRIGGER(HasAttackPattern), CMDO_TRIGGER(IsFacingTarget),
+    CMDO_TRIGGER(AttackPatternOver), CMDO_TRIGGER(TooClose), CMDO_TRIGGER(ShouldDodge),
+    CMDO_TRIGGER(ShouldArmShield), CMDO_TRIGGER(ShouldShieldCharge), CMDO_TRIGGER(ShouldBoost),
+    CMDO_TRIGGER(AbortShieldCharge), CMDO_TRIGGER(IsAggressive), CMDO_TRIGGER(FoundJumpPoint),
+    CMDO_TRIGGER(ShouldCrouch), CMDO_TRIGGER(ShouldWallHang), CMDO_TRIGGER(ShouldCover),
+    CMDO_TRIGGER(FoundCover), CMDO_TRIGGER(ShouldCoverAttack), CMDO_TRIGGER(CoverBlown),
+    CMDO_TRIGGER(AbortSeekCover),
+};
+
+CPatterned::StateMachine::SStateFunction skStates[] = {
+    CMDO_STATE(Lurk), CMDO_STATE(Ambush), CMDO_STATE(Alert),
+    CMDO_STATE(FaceTarget), CMDO_STATE(SelectTarget), CMDO_STATE(SetTargetDest),
+    CMDO_STATE(SetRetreatDest), CMDO_STATE(SetJumpDest), CMDO_STATE(SetPathMeshDest),
+    CMDO_STATE(MeleeAttack), CMDO_STATE(EGrenadeAttack), CMDO_STATE(PostEGrenadeAttack),
+    CMDO_STATE(JumpPointFind), CMDO_STATE(JetBoost), CMDO_STATE(PathFind),
+    CMDO_STATE(Patrol), CMDO_STATE(FollowAttackPattern), CMDO_STATE(WarpIn),
+    CMDO_STATE(WarpOut), CMDO_STATE(PostWarpOut), CMDO_STATE(JumpBack),
+    CMDO_STATE(Dodge), CMDO_STATE(ArmShield), CMDO_STATE(ShieldCharge),
+    CMDO_STATE(ScriptedShieldCharge), CMDO_STATE(RestoreOrientation), CMDO_STATE(Crouch),
+    CMDO_STATE(WallHang), CMDO_STATE(WallDetach), CMDO_STATE(CoverFind),
+    CMDO_STATE(SetCoverDest), CMDO_STATE(Cover), CMDO_STATE(CoverAttack),
+    CMDO_STATE(BreakCover), CMDO_STATE(GetUp), CMDO_STATE(Dead),
+};
+
+#undef CMDO_TRIGGER
+#undef CMDO_STATE
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -226,11 +291,337 @@ CDamageInfo CCommandoPirate::GetContactDamage() const {
   return CPatterned::GetContactDamage();
 }
 
-// vtable slot 0xf0 = fn_9_BDE0 (0x6c): the module's own trigger, state and code tables are
-// installed here in retail; the base class's tables are what runs.
+// ---------------------------------------------------------------------------------------------
+// The body's FSM functions. Retail's entries are the module's own functions; their bodies are
+// not ported in this slice, so each one logs the retail function it stands in for and returns
+// the neutral value (false for a trigger, nothing for a state).
+//
+// The 34 triggers of lbl_9_data_198 (.data 0x198; fn_9_F9F8's stores at 0x0000FAD4..0x0000FF24).
+bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BDCC");
+  return false;
+}
+
+bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BD98");
+  return false;
+}
+
+bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BCB8");
+  return false;
+}
+
+bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BBC8");
+  return false;
+}
+
+bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BB7C");
+  return false;
+}
+
+bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BB10");
+  return false;
+}
+
+bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BB04");
+  return false;
+}
+
+bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BAF8");
+  return false;
+}
+
+bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BAEC");
+  return false;
+}
+
+bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BAD0");
+  return false;
+}
+
+bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BAB4");
+  return false;
+}
+
+bool CCommandoPirate::HasTarget(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BA78");
+  return false;
+}
+
+bool CCommandoPirate::HasNewTarget(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_BA20");
+  return false;
+}
+
+bool CCommandoPirate::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B9D8");
+  return false;
+}
+
+bool CCommandoPirate::PathOver(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B990");
+  return false;
+}
+
+bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B958");
+  return false;
+}
+
+bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B900");
+  return false;
+}
+
+bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B818");
+  return false;
+}
+
+bool CCommandoPirate::AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B7FC");
+  return false;
+}
+
+bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B76C");
+  return false;
+}
+
+bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B690");
+  return false;
+}
+
+bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B660");
+  return false;
+}
+
+bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B250");
+  return false;
+}
+
+bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B1E0");
+  return false;
+}
+
+bool CCommandoPirate::AbortShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B1D4");
+  return false;
+}
+
+bool CCommandoPirate::IsAggressive(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B1C8");
+  return false;
+}
+
+bool CCommandoPirate::FoundJumpPoint(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B1A8");
+  return false;
+}
+
+bool CCommandoPirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B168");
+  return false;
+}
+
+bool CCommandoPirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B114");
+  return false;
+}
+
+bool CCommandoPirate::ShouldCover(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B0F4");
+  return false;
+}
+
+bool CCommandoPirate::FoundCover(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B0D4");
+  return false;
+}
+
+bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_B0B4");
+  return false;
+}
+
+bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_AFD4");
+  return false;
+}
+
+bool CCommandoPirate::AbortSeekCover(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_9_AFB8");
+  return false;
+}
+
+// The 36 states of lbl_9_data_568 (.data 0x568; fn_9_F9F8's stores at 0x0000FF34..0x000103C4).
+void CCommandoPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_ADD4");
+}
+
+void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_ADA0");
+}
+
+void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_AE04");
+}
+
+void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_ABDC");
+}
+
+void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_AB08");
+}
+
+void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_AA20");
+}
+
+void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A97C");
+}
+
+void CCommandoPirate::SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A8E8");
+}
+
+void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A838");
+}
+
+void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A4BC");
+}
+
+void CCommandoPirate::EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A2EC");
+}
+
+void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A110");
+}
+
+void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_9F24");
+}
+
+void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_9BB4");
+}
+
+void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_9AAC");
+}
+
+void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_996C");
+}
+
+void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_961C");
+}
+
+void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_9064");
+}
+
+void CCommandoPirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_8DF0");
+}
+
+void CCommandoPirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_8D28");
+}
+
+void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_8B70");
+}
+
+void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_8934");
+}
+
+void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_86B4");
+}
+
+void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_8028");
+}
+
+void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_7A98");
+}
+
+void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_786C");
+}
+
+void CCommandoPirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_7724");
+}
+
+void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_7358");
+}
+
+void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_728C");
+}
+
+void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_709C");
+}
+
+void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_A7A8");
+}
+
+void CCommandoPirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_6DBC");
+}
+
+void CCommandoPirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_6C68");
+}
+
+void CCommandoPirate::BreakCover(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_6BCC");
+}
+
+void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_6A40");
+}
+
+void CCommandoPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_9_69C8");
+}
+
+// vtable slot 60 = fn_9_BDE0 (0xBDE0..0xBEB4): the base's setup first (the call at 0x0000BDF4),
+// then the module's two tables on the state manager - the triggers (lbl_9_data_198, 34 = 0x22)
+// through the vtable slot at +0x18 (the call at 0x0000BE14) and the states (lbl_9_data_568,
+// 36 = 0x24) through +0x14 (the call at 0x0000BE34). The module has no third table: the
+// records between the two tables' stores run out at the state's last entry.
 void CCommandoPirate::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CCommandoPirate::SetupStateMachine (vtable slot 0xf0, fn_9_BDE0)");
   CPatterned::SetupStateMachine(mgr);
+  StateMachine* stateMachine = mStateMachine.get();
+  stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
+  stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
 // vtable slot 0xf4 = fn_9_78 (0x8): `li r3, 0x0` - this actor has no rag doll.
@@ -294,10 +685,10 @@ static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
   // 8, 0x10 <- bit 5, 0x08 <- bit 2, 0x04 <- bit 31, 0x02 <- bit 28, 0x01 <- bit 25; the second
   // byte 0x80 <- bit 6, 0x40 <- bit 3, 0x20 <- bit 0, 0x10 <- bit 29.
   const uint sound = static_cast< uint >(sldrThis.sound);
-  const uchar flags0 = static_cast< uchar >((((sound >> 14) & 1) << 7) | (((sound >> 11) & 1) << 6) |
-                                             (((sound >> 8) & 1) << 5) | (((sound >> 5) & 1) << 4) |
-                                             (((sound >> 2) & 1) << 3) | (((sound >> 31) & 1) << 2) |
-                                             (((sound >> 28) & 1) << 1) | ((sound >> 25) & 1));
+  const uchar flags0 = static_cast< uchar >(
+      (((sound >> 14) & 1) << 7) | (((sound >> 11) & 1) << 6) | (((sound >> 8) & 1) << 5) |
+      (((sound >> 5) & 1) << 4) | (((sound >> 2) & 1) << 3) | (((sound >> 31) & 1) << 2) |
+      (((sound >> 28) & 1) << 1) | ((sound >> 25) & 1));
   const uchar flags1 = static_cast< uchar >((((sound >> 6) & 1) << 7) | (((sound >> 3) & 1) << 6) |
                                              ((sound & 1) << 5) | (((sound >> 29) & 1) << 4));
 
