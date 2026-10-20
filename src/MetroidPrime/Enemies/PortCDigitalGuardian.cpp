@@ -263,7 +263,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1284_(-1)
 , x128C_(0)
 , xE60_(nullptr) // 0xE60: the first collision actor manager (x61DC_ builds it)
-, xE64_(nullptr) // 0xE64: the second collision actor manager (x5C30_ would build it)
+, xE64_(nullptr) // 0xE64: the second collision actor manager (x5C30_ builds it)
 , xE6C_() // 0xE6C: the leg model (x6864_ fills it in)
 , xEBC_() // 0xEBC: the shin model (x6864_ fills it in)
 , xF0C_() // 0xF0C: the knee model (x6864_ fills it in)
@@ -664,8 +664,45 @@ void CDigitalGuardian::x61DC_(CStateManager& mgr) {
   // fn_14_60C0 (the vector's destructor, 0x673C)
 }
 
+// @ fn_14_5C30
+// The second collision actor manager (guest 0xE64): the four knee-to-ankle boxes (the loop at
+// 0x5C98, .rodata 0x1D8), built inactive (li r8, 0 at 0x5E24); every collider is immune-ricochet
+// and gets the same material bits as the first manager's (the loop at 0x5E58).
 void CDigitalGuardian::x5C30_(CStateManager& mgr) {
-  StandInFn("fn_14_5C30 (the second collision actor manager builder, 0x2F4 bytes)");
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(4); // fn_14_D7DC
+  const CAnimData* anim = GetModelData()->GetAnimationData();
+  for (uint i = 0; i < 4; ++i) {
+    const SBoxJoint& joint = skShinJoints[i];
+    const float size = joint.size;
+    const CSegId from = anim->GetLocatorSegId(rstl::string_l(joint.from));
+    const CSegId to = anim->GetLocatorSegId(rstl::string_l(joint.to));
+    // fn_14_5FA4 (the description's copy)
+    // fn_14_5F24 (push_back)
+    joints.push_back(CJointCollisionDescription::OBBAutoSizeCollision(
+        from, to, CVector3f(size, size, size), CJointCollisionDescription::kOT_BetweenJoints,
+        BoxJointName(joint), kJointMass));
+  }
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
+  delete xE64_;
+  xE64_ = manager;
+
+  for (uint i = 0; i < xE64_->GetNumCollisionActors(); ++i) {
+    const TUniqueId id = xE64_->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {
+      continue;
+    }
+    actor->SetDamageVulnerability(x1044_);
+    // The include list's high word | 0x4000000 (material 58) and the exclude list's high word
+    // | 0x800 (material 43), as at 0x5E98.
+    CMaterialFilter filter = actor->GetMaterialFilter();
+    filter.IncludeList().Add(kMT_NoPlayerCollision);
+    filter.ExcludeList().Add(kMT_Immovable);
+    actor->SetMaterialFilter(filter);
+  }
+  // fn_14_60C0 (the vector's destructor, 0x5F04)
 }
 
 void CDigitalGuardian::x59BC_(CStateManager& mgr) {
