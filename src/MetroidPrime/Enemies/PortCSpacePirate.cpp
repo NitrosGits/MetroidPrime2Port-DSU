@@ -5,7 +5,10 @@
 // on each. There is no combat AI yet - CPatterned's default state machine drives the pirate.
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
+#include "Kyoto/CTimeProvider.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Math/CVector2f.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -307,11 +310,10 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xbfc_ = false;
   xc00_ = 0;
   xc04_warpPoint = -1;
-  xc54_ = false;
   xc58_ = 0;
 
-  // TODO(fn_72_4F28): ctor-time init from the launcher block (data+0xc8): grenade launcher /
-  // bouncy-grenade setup; not ported with the grenade states.
+  // 0xFB30: the launcher block (data+0xc8) builds the grenade launcher's model.
+  InitLauncherModel(data);
   if (data.mProjectile != kInvalidAssetId) {
     mProjectileInfo = CProjectileInfo(data.mProjectile, data.mProjectileDamage);
   }
@@ -1199,16 +1201,66 @@ void CSpacePirate::PreRender(CStateManager& mgr) {
   // set in the port and the retail's word is undefined, so that stays a comment.
 }
 
-// Retail fn_72_37C4 (Render) still waits for two things the port does not have: the module helper
-// fn_72_36CC (0x38B4 - the same helper that blocks ScanVisorRender: it renders the scan-visor
-// model at this+0xc08, a member the port has no home for, and calls the retail's gpRender vtable
-// slots 0x128/0x12C), and the space-warp phase, the float the REL loads with the paired-single
-// load at 0x3814 (the printed displacement 0x44f is odd, so the member it reads is not identified
-// yet). 0x37E0 (the seconds mod 900 while the pirate is alive), 0x386C (the scoped CTimeProvider),
-// 0x3874 (the portal plane) and 0x38A0 (the patterned render) are the rest of it.
+// Retail fn_72_4F28: an equipped weapon of type 1 with a valid launcher model gives the pirate the
+// launcher's static model at the body model's scale.
+void CSpacePirate::InitLauncherModel(const CSpacePirateData& data) {
+  TraceCall(*this, "InitLauncherModel (fn_72_4F28) weapon", data.mEquippedWeapon);
+  // 0x4F40: only weapon type 1 (cmpwi 1, beq).
+  if (data.mEquippedWeapon == 1) {
+    // 0x4F54: the launcher's model id must be valid.
+    if (data.mGrenadeLauncher != kInvalidAssetId) {
+      // 0x4F60-0x4FAC: CModelData(CStaticRes(id, the model's scale)) assigned into 0xc08 (4FC4).
+      xc08_launcherModel = CModelData(CStaticRes(data.mGrenadeLauncher, GetModelData()->GetScale()));
+    }
+  }
+}
+
+// Retail fn_72_36CC: draws the launcher model at the R_wrist locator inside the actor's render
+// alpha buffer pass.
+void CSpacePirate::RenderLauncherModel(const CStateManager& mgr, const CTransform4f& xf,
+                                       const CModelFlags& flags) const {
+  // 0x36EC: the alpha buffer alpha; -1 means no destination-alpha pass.
+  const int alpha = GetRenderAlphaBufferAlpha(mgr);
+  if (alpha != -1) {
+    // 0x3710: gpRender vtable slot 0x128 = SetDestinationAlpha.
+    gpRender->SetDestinationAlpha(alpha);
+  }
+  // 0x3728: vtable slot 0xC8 = GetModelAlphau8; then the model's valid flag (0xc54).
+  if (GetModelAlphau8(mgr) != 0 && xc08_launcherModel.valid()) {
+    // 0x3754: the R_wrist locator (0xa88), 0x3764: xf * locator.
+    const CTransform4f locatorXf = xf * GetScaledLocatorTransform(xa88_wristSeg);
+    // 0x3788: the model renders with the actor lights (0xbc) and the caller's flags.
+    xc08_launcherModel.data().Render(mgr, locatorXf, GetActorLights(), flags);
+  }
+  if (alpha != -1) {
+    // 0x37A4: gpRender vtable slot 0x12C = DisableDestinationAlpha.
+    gpRender->DisableDestinationAlpha();
+  }
+}
+
+// Retail fn_72_37C4 (Render): the space warp while warping in, the scoped time provider, the
+// portal plane, the patterned render and the launcher model.
 void CSpacePirate::Render(const CStateManager& mgr) const {
-  StandIn("CSpacePirate::Render (fn_72_37C4)");
+  // 0x37E0: the seconds mod 900 while alive (0x420 bit 0x40), else 0 (rodata B9C).
+  const float time = mAlive ? CGraphics::GetSecondsMod900() : 0.f;
+  // 0x3808: warp state 1 (cmpwi 1).
+  if (xc04_warpPoint == 1) {
+    // 0x3814-0x3830: sin(pi (rodata BC4) * mColor's alpha (u8 at 0x44f * rodata BB4 1/255)).
+    const float warp = CMath::FastSinR(3.1415927f * mColor.GetAlpha());
+    // 0x3840-0x385C: at the bounding box's centre.
+    mgr.DrawSpaceWarp(GetBoundingBox().GetCenterPoint(), warp);
+  }
+  // 0x3868: the scoped time provider.
+  CTimeProvider timeProvider(time);
+  // 0x386C-0x3884: |the portal plane's d (0xc68)| > 0 (rodata B9C), fcmpo + ble.
+  if (CMath::AbsF(mPortalPlane.GetConstant()) > 0.f) {
+    // 0x3894: the model's world-space portal plane.
+    GetModelData()->SetupWorldSpacePortalPlane(GetTransform(), mPortalPlane);
+  }
+  // 0x38A0: the patterned render.
   CPatterned::Render(mgr);
+  // 0x38B4: the launcher model with the actor's transform (0x24) and draw flags (0xfc).
+  RenderLauncherModel(mgr, GetTransform(), GetModelFlags());
 }
 
 // Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
@@ -1529,13 +1581,17 @@ CAABox CSpacePirate::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return local.GetTransformedAABox(xf);
 }
 
-// Retail fn_72_339C (ScanVisorRender) still waits for the module helper fn_72_36CC, which is
-// outside the port: that helper renders the scan-visor model this+0xc08 (the port has no member
-// there) and calls the retail's gpRender vtable slots 0x128/0x12C. Port the helper first.
+// Retail fn_72_339C (ScanVisorRender): the body model with the scan flags and no lights, then the
+// launcher model.
 void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                    const CModelFlags& flags) const {
-  StandIn("CSpacePirate::ScanVisorRender (fn_72_339C)");
-  CPatterned::ScanVisorRender(mgr, xf, flags);
+  // 0x33CC-0x33F0: unless the model data is null (no anim data at +0x10, no normal model at +0x28).
+  if (!GetModelData()->IsNull()) {
+    // 0x3404: which model 0, no lights.
+    GetModelData()->Render(CModelData::kWM_Normal, xf, nullptr, flags);
+  }
+  // 0x3418: the launcher model.
+  RenderLauncherModel(mgr, xf, flags);
 }
 
 // Retail fn_72_18BC (TryToBeCaptured): the pirate switches to the "Captured" state and says so.
