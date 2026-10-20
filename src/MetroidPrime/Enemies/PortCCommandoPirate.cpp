@@ -596,8 +596,16 @@ bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data
          (mData.mFlags0 & 0x08) == 0 && xbce_ != kInvalidUniqueId;
 }
 
+// fn_9_BB10: the commando jumps back. The block's flag byte at +0x15C (guest this+0x91C) must not
+// have its 0x08 bit (extrwi at 0x0000BB20); then the module's own helper fn_9_3338 (0x148 bytes,
+// over the 0x80 limit) decides - the guest calls it with the actor's forward column negated (the
+// three loads at 0x0000BB28..0x0000BB54) and the module's float at guest this+0xBE0 (the load at
+// 0x0000BB58).
 bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BB10");
+  if ((mData.mFlags0 & 0x08) != 0) {
+    return false;                                   // 0x0000BB20
+  }
+  StandInFn("fn_9_3338 (0x148 bytes)");              // 0x0000BB60
   return false;
 }
 

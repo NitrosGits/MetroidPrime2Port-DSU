@@ -528,6 +528,21 @@ as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a
 the visual knowledge, which the port has no classes for. `fn_9_662C` (0x39c) is host code too
 since 2026-10-20.
 
+- The stand-ins the walking commando reaches are `fn_9_8934` (the Dodge state, 0x1e0),
+  `fn_9_9F24` (the JumpPointFind state, 0x1ec), `fn_9_B958` (the IsOffPath trigger, 0x38),
+  `fn_9_B250` (the ShouldShieldCharge trigger, 0x410) and, with the player close,
+  `fn_9_709C` (the CoverFind state, 0x1f0) and `fn_9_BB10` (the ShouldJumpBack trigger, 0x6c -
+  ported 2026-10-20; its helper `fn_9_3338` is 0x148 bytes, over the 0x80 limit, so it is a named
+  stand-in).
+- The grenade path: the bit 0x02 of the flag byte at guest +0xC63 is the "grenade pending" bit.
+  The module's timer helper `fn_9_662C` sets it (0x00006850, the mask 1u << (31 - 30) = 0x02) when
+  the grenade's attack chance (the data's +0xBC) wins the roll, and the E-grenade's own creator
+  `fn_9_5410` (0x370 bytes) clears it again once the grenade object exists (0x00005764). The
+  E-grenade fire state is `fn_9_A2EC` (0x174 bytes) - it asks the animation state for the grenade
+  command (the guest's command id 0x12, 0x0000A34C) and delivers the grenade command - and it is
+  not ported yet, so the E-grenade is never thrown. `ShouldFireEGrenade` also needs the target's
+  aim position inside the grenade's band (the data's +0x60 and +0x64).
+
 With the player teleported into the commando's own path region (the console's `tp x y z` over
 `MP2_CONSOLE`, the point 30 units in front of the commando at (75.9, 371.6, -47.1)) the commando
 walks: it leaves (72.3, 401.4, -47.1) and reaches (64.6, 368.9, -46.1), and `ShouldMeleeAttack`
@@ -535,8 +550,9 @@ answers true (the target 8.8-9.5 units away, inside the commando's attack band o
 `ShouldFireEGrenade` stays false: its flag bit at guest +0xC63 is set by the module's unported
 grenade state. Without that `tp` the player starts 111 units away, off the commando's region, and
 nothing walks. The run's stand-ins are the six above plus `AcceptScriptMsg`, `CollidedWith`,
-`DoUserAnimEvent`, `fn_9_9F24`, `fn_9_B250` and `fn_9_B958`; `grep -c '[port] caught\|reach-stub'`
-is 0.
+`DoUserAnimEvent`, `fn_9_9F24`, `fn_9_8934`, `fn_9_B250`, `fn_9_B958` and `fn_9_3338`;
+`grep -c '[port] caught\|reach-stub'` is 0. The E-grenade fire state (`fn_9_A2EC`) is never
+entered, so no grenade is thrown.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
