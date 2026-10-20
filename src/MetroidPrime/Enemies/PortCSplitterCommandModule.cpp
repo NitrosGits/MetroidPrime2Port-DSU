@@ -45,10 +45,28 @@ void StandIn(const char* what) {
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
 // function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
 // (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
-void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
+void StandInFn_75_10D0() { StandIn("fn_75_10D0 (0xB8, the module's own transform)"); }
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
+
+// The DOL's CSfxManager::RemoveEmitter (the beam effect's sound).
+void StandInSfxRemoveEmitter() { StandIn("the DOL's CSfxManager::RemoveEmitter"); }
+
+// The retail's beam effect actor (0x1A0 bytes, a CActor) has no host class yet, so its creation
+// (fn_75_11884) and the manager's add stay a once-logging shell. The values the retail would
+// build are passed in, so the log says what was skipped.
+void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float angle) {
+  static bool sLogged = false;
+  if (sLogged) {
+    return;
+  }
+  sLogged = true;
+  fprintf(stderr,
+          "[splitter] fn_75_11884 (0x208) would create the beam effect actor '%s' in area %d "
+          "with a %.4f rad rotation; the host has no class for it\n",
+          name.c_str(), info.GetAreaId().Value(), angle);
+}
 
 } // namespace
 
@@ -284,18 +302,89 @@ void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
   StandInSfxUpdateEmitter();
 }
 
+// @ fn_75_58E8
+// The gate the head's beam-effect spawner asks first (0x58E8-0x5944): the chassis id at 0xEFA
+// (0x58F4 lhz) is looked up (0x5904 GetObjectById) and cast to the main chassis (0x5908
+// TCastToPtr); a null cast gives false (0x5930 li r3, 0) and the chassis's scan timer at 0xD28
+// decides the rest (0x5918 lfs, 0x5920 fcmpo against zero and 0x5928 extrwi, which takes cr0's
+// greater-than bit).
+bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) {
+  const CSplitterMainChassis* chassis =
+      TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId));
+  if (chassis == nullptr) {
+    return false;
+  }
+  return chassis->GetScanTimer() > 0.f;
+}
+
+// @ fn_75_1188
+// The head's beam-effect spawner (0x1188-0x14CC). The beam effect's id (0xF68) is looked up
+// (0x11B0 ObjectById), the module's own transform (fn_75_10D0, 0x11C0) is built and copied
+// (0x11CC) and set on the beam effect (0x11E0 SetTransform), and the gate (fn_75_58E8, 0x1200)
+// decides whether the body runs at all (0x1204-0x1208). With a beam effect already there the
+// body goes to 0x13EC, which sets the beam's byte at 0x198 (0x13F8) and updates the sound
+// (0x142C UpdateEmitter). Otherwise the base's field at 0x3D0 must be above zero (0x1214-0x1224),
+// a fresh id is allocated (0x1230 AllocateUniqueId) and kept at 0xF68 (0x1244), and the
+// 0x1A0-byte beam effect actor is created (0x1258), built (0x12A0 the CEntityInfo, 0x12B8 the
+// name, 0x12C4-0x1334 the rotation) and added to the manager (0x13B4 AddObject).
+void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
+  // 0x11A4-0x11B4: the beam effect's id (0xF68) is looked up.
+  CEntity* beam = mgr.ObjectById(mBeamEffectId);
+  // 0x11B8-0x11E0: the module's own transform (fn_75_10D0) is built and copied and, when the
+  // beam effect is there, set on it. The transform's own body is a once-logging shell.
+  StandInFn_75_10D0();
+  // 0x1200-0x1208: the gate (fn_75_58E8) decides whether the body runs.
+  if (!PortChassisTimerRunning(mgr)) {
+    if (beam == nullptr) {
+      // 0x1494-0x14B4: with no beam effect there, the retail clears the id at 0xF68 (0x14A0),
+      // removes the sound emitter (0x14AC) and clears its handle at 0xF64 (0x14B4).
+      mBeamEffectId = kInvalidUniqueId;
+      StandInSfxRemoveEmitter();
+    }
+    // 0x143C-0x1490: with a beam effect there, the retail clears the beam's byte at 0x198
+    // (0x1440) and, when the beam's own float at 0x188 is zero, asks the manager to delete the
+    // object at 0xF68 (0x1480 DeleteObjectRequest). The port has no class for the beam effect
+    // actor, so it cannot read that float and the delete stays out.
+    return;
+  }
+  if (beam != nullptr) {
+    // 0x13EC-0x142C: the beam effect is already there: its byte at 0x198 is set (0x13F8) and
+    // the sound emitter is updated (0x142C).
+    StandInSfxUpdateEmitter();
+    return;
+  }
+  // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection range)
+  // must be above zero.
+  if (GetDetectionRange() <= 0.f) {
+    return;
+  }
+  // 0x1228-0x1244: a fresh id is allocated and kept at 0xF68.
+  mBeamEffectId = mgr.AllocateUniqueId();
+  // 0x1248-0x13B4: the beam effect actor (0x1A0 bytes) is created with the CEntityInfo the
+  // retail builds at 0x12A0 (the area id, NullConnectionList, true and kInvalidEditorId), the
+  // name (0x12B8, the rodata string at 0xA0 + 0x230) and the rotation (0x12C4-0x1334: the
+  // data's angle at 0x864 times one degree in radians), and it is added to the manager. The host
+  // has no class for that actor, so the creation and the add stay a once-logging shell.
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
+  const rstl::string name = rstl::string_l("Splitter Beam Effect");
+  const float angle = mData.mUnknown9EC51FE4.angle * 0.017453292f;
+  StandInFn_75_11884(info, name, angle);
+}
+
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
 // active gate, the base's Think, the collision actor manager's update and the module's
 // own six calls in order (their sizes are in the table in
-// docs/module-analysis/Splitter.md). The six are over 0x80 and each is a once-logging
-// shell here, so this function carries no port marker yet.
+// docs/module-analysis/Splitter.md). Five of the six are over 0x80 and each is a once-logging
+// shell here; fn_75_1188 (the beam-effect spawner) is ported, so this function carries no port
+// marker yet.
 // vtable slot 0x14 (0xBC). The active gate (the byte at 0x20, 0x64B4 lbz and 0x64B8 extrwi bit 24 -
 // the byte's 0x80), CPatterned::Think (0x64C0), the collision actor manager's update (the manager at
 // 0xE58, 0x64C8 lwz; the update options 0 at 0x64D0, which is kUO_ObjectSpace; 0x64D4 the update)
 // and then the module's own six per-frame calls in order: fn_75_31A8 (0x64E0, 0x14C), fn_75_32F4
 // (0x64F0, 0x16C), fn_75_3004 (0x64FC, 0x1A4), fn_75_184C (0x650C, 0x128), fn_75_1188 (0x651C, 0x344)
-// and fn_75_21FC (0x652C, 0x84). All six are over 0x80 and belong to the line-of-sight tracker and
-// the derived state, so they stay named once-logging stand-ins that return neutral values.
+// and fn_75_21FC (0x652C, 0x84). Five of them are over 0x80 and belong to the line-of-sight
+// tracker and the derived state, so they stay named once-logging shells that return neutral
+// values; fn_75_1188 is ported (PortSpawnBeamEffect).
 void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -313,7 +402,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortUpdateFlashAndDeath(mgr, dt);
   PortUpdateCollision(mgr);
   PortLookAtTarget(mgr, dt);
-  StandInFn_75_1188();
+  PortSpawnBeamEffect(mgr);
   PortAutoDestructTimer(dt);
 }
 

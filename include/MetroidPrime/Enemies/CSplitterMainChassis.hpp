@@ -106,6 +106,14 @@ public:
   TUniqueId GetCommandModuleId() const { return mCommandModuleId; }
   TUniqueId GetSyncId() const { return mSyncId; }
 
+  // guest 0xD28: the chassis's scan timer, which the command module's fn_75_58E8 tests (the
+  // chassis must have it above zero for the head to spawn its beam effect). The retail's
+  // constructor leaves it at zero (fn_75_F5F8 stores lbl_75_rodata_390, 0.0f) and its
+  // script-message handler sets it to the scan duration when that is above zero and to FLT_MAX
+  // otherwise (fn_75_F1C0, 0x0000F40C-0x0000F42C). The port does not run that handler yet, so
+  // the timer stays zero.
+  float GetScanTimer() const { return mScanTimer; }
+
   // CEntity / CActor
   void PreThink(float dt, CStateManager& mgr) override;
   void Think(float dt, CStateManager& mgr) override;
@@ -177,6 +185,8 @@ private:
   // guest 0xC70: the retail's CVisualKnowledge, whose Update the Think calls (the DOL's
   // fn_801F55F0). The host's CLineOfSightTracker is the same thing.
   CLineOfSightTracker mVisualKnowledge;
+  // guest 0xD28: the scan timer (see GetScanTimer).
+  float mScanTimer = 0.f;
 #endif
 };
 #else

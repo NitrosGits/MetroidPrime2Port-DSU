@@ -198,6 +198,14 @@ private:
   TUniqueId mSoundTargetId = kInvalidUniqueId;  // guest 0xF00 (the id it looks up, 0x3078)
   int mCollisionState = 0;                      // guest 0xEE0 (the state, 0x30C4)
   int mPreviousCollisionState = 0;              // guest 0xEE4 (the previous state, 0x315C)
+
+  // The retail's fn_75_1188 (the head's beam-effect spawner) and the gate it asks first
+  // (fn_75_58E8: the chassis must be there and its scan timer must run).
+  void PortSpawnBeamEffect(CStateManager& mgr);
+  bool PortChassisTimerRunning(CStateManager& mgr);
+  // guest 0xF68: the id of the spawned beam effect. The retail looks it up at the start of
+  // fn_75_1188 and keeps the id of the actor it creates in it.
+  TUniqueId mBeamEffectId = kInvalidUniqueId;
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

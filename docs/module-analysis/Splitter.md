@@ -408,6 +408,11 @@ other Splitter shell. In the order the log prints them, with the retail sizes fr
 | `CSplitterCommandModule::Think` (slot 0x14) | `fn_75_6490` | 0xBC |
 | `CSplitterMainChassis::Think` (slot 0x14) | `fn_75_F0E8` | 0xB8 |
 
+The run of 2026-10-20 after `fn_75_1188` was ported logs only the two `AcceptScriptMsg` shells
+(the other three have been ported since) and no `[port] caught` line. The **head's Think does not
+run in that fight** - the beam-effect spawner's own shell (`fn_75_10D0`) would have logged - so
+`fn_75_1188` is not exercised by the area-4 layer-3 smoke.
+
 `fn_75_F1C0` (0x3A0) and `fn_75_654C` (0x24C) are over the 0x200 a slice covers, so they stay
 once-logging stand-ins for now. The other three are the size a slice can take, but each of them
 reaches further into the module than its own body:
@@ -570,7 +575,7 @@ timer 0xF10 set to a constant (0x312C), another module call (0x3130) and the fla
 (0x313C). Several of those are DOL functions or virtuals the port has no name for yet, so the
 body needs a slice that can identify them.
 
-#### fn_75_1188 (0x344) - the command module's spawn (not ported yet)
+#### fn_75_1188 (0x344) - the command module's spawn (ported 2026-10-20)
 
 Read on 2026-10-20, left for a slice with room. It is the biggest of the six callees: an object is
 looked up (0x11B0 ObjectById), a transform is built (0x11CC) and set (0x11E0), a module call
@@ -589,3 +594,29 @@ name is `lbl_75_rodata_A0 + 0x230` (0x12B8), and the rotation is built from the 
 `fctiwz` (0x1308) and reduced by `fnmsubs` (0x1324) - the same pattern the other ports' spawn
 code uses. The class the `new` makes is the one whose size is 0x1A0 and whose name sits at
 `lbl_75_rodata_A0 + 0x229`; reading that string gives the host class to use.
+
+**Two corrections to the read above** (found while porting it, 2026-10-20):
+
+- The string at `lbl_75_rodata_A0 + 0x229` (rodata **0x2C9**) is **not** a class name: it is the
+  obfuscated `__FILE__` string the placement `new` takes (`"??(?)"`; the actor's *name* is the
+  next string, rodata **0x2D0** = `"Splitter Beam Effect"`). The beam effect actor's class name is
+  still **unknown** - the host has no class for it.
+- The field at **0x3D0** is **not a timer**: the decomp's matching `CPatterned` fills 0x3C8-0x3D4
+  from `CPatternedInfo` + 0x4..0x10, so 0x3D0 is that struct's **+0xC, the detection range**
+  (the host reads it by name, `CPatterned::GetDetectionRange()`).
+
+**Port (2026-10-20).** `CSplitterCommandModule::PortSpawnBeamEffect` (fn_75_1188) and
+`CSplitterCommandModule::PortChassisTimerRunning` (fn_75_58E8) are the port's bodies. The gate
+looks the chassis up (0x5904 GetObjectById), casts it (0x5908) and tests the chassis's own field
+at **0xD28** (0x5918): that is the chassis's scan timer, which its script-message handler sets
+(fn_75_F1C0, 0x0000F40C-0x0000F42C: the scan duration when that is above zero, FLT_MAX
+otherwise); the port does not run that handler, so the timer stays zero. With the gate false
+the port clears the id at 0xF68 and removes the sound emitter (0x14A0-0x14AC); with it true and
+no beam effect yet it tests 0x3D0, allocates the id (0x1230) and keeps it at 0xF68 (0x1244).
+
+The **creation of the 0x1A0-byte actor and the manager's add stay a once-logging shell**: the
+host has no class for the beam effect actor, so `fn_75_11884` (its constructor) and
+`fn_75_10D0` (the module's own transform) are shells too. The port still builds what the retail
+builds for them - the `CEntityInfo` (the area id, `NullConnectionList`, `true` and
+`kInvalidEditorId`), the name and the rotation (the data's angle at 0x864 times one degree in
+radians) - and hands them to the shell.

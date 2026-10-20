@@ -298,6 +298,13 @@ public:
 
   float GetSpeed() const { return mSpeed; }
 
+#ifdef TARGET_PC
+  // Host: the Splitter REL's fn_75_1188 tests the base's copy of the patterned info's detection
+  // range (the retail's CPatterned field at 0x3D0, which the retail's constructor fills from
+  // CPatternedInfo + 0xC). The retail reads that field by offset; the port reads it by name.
+  float GetDetectionRange() const { return mDetectionRange; }
+#endif
+
   // Guessed name
   bool HasBlockingCollision() const { return mBlockingCollision; }
 
