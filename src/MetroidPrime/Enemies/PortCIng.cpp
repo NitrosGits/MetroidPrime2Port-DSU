@@ -3011,12 +3011,12 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   (void)sender;
 }
 
-// @ fn_29_C010
+// fn_29_C010. Unmarked (audit 2026-10-20): incomplete - retail gates the base PreRender on mForm (2/4/6..9 always, 3/5 only while 0xe40 < rodata C8) and then sets 0x102 |= 0x80 when 0xe5d bit 0x40.
 void CIng::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
 }
 
-// @ fn_29_C0B4
+// fn_29_C0B4. Unmarked (audit 2026-10-20): incomplete - retail also gates on mPortalPlane (0xC0D4), on form 9 (0xC12C) and has a separate path through 0x421.
 void CIng::Render(const CStateManager& mgr) const {
   if (!mRenderModel) {
     return;
