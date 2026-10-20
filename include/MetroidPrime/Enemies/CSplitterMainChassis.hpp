@@ -308,6 +308,14 @@ private:
   // calls at 0x0000F164 and 0x0000F180.
   void PortUpdateTimers(CStateManager& mgr, float dt);
   void PortUpdateFade(float dt);
+  // guest 0xD0C: the steering speed range the Patrol state puts on the body controller's command
+  // manager (fn_75_DCFC, 0x0000DD50). The retail's constructor leaves 1.0f there
+  // (fn_75_F5F8, 0x0000F834) and then divides the walk speed by the run speed
+  // (0x0000F93C-0x0000F964).
+  float mSteeringSpeed = 1.f;
+  // guest 0x6E0, 0x6E4 and 0x6E8: the face vector the Patrol state copies out of the body
+  // controller's command manager (fn_75_DCFC, 0x0000DDC0-0x0000DDD8).
+  CVector3f mPatrolFacing;
   // guest 0xD20: the timer fn_75_AFE8 counts down; at zero or below the chassis dies.
   float mTimerD20 = 0.f;
   // guest 0xD30 / 0xD34: two timers fn_75_AFE8 counts up.

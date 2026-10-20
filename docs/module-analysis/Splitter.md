@@ -973,7 +973,7 @@ now, so the log no longer shows it:
 | 5 | the chassis's Start state | `fn_75_DFE8` | `CSplitterMainChassis::Start` (the body is one `blr`) |
 | 6 | the chassis's IsDisabled trigger | `fn_75_E620` | `IsDisabled` (the flag byte 0xD40's 0x40) |
 | 7 | the chassis's DeployFromHoldingTube trigger | `fn_75_E034` | `DeployFromHoldingTube` (the data's flags at 0x828, bit 1) |
-| 8 | the chassis's Patrol state | `fn_75_DCFC` | still a shell |
+| 8 | the chassis's Patrol state | `fn_75_DCFC` | `Patrol` (the base's waypoint navigation, the steering speed range, the two waypoint ids) |
 | 9 | the head's RaiseShields code | `fn_75_3B20` | `RaiseShields` (the flag byte 0xF6A's 0x08) |
 | 10 | the head's Hover state | `fn_75_4D04` | still a shell |
 | 11 | the chassis's Scanning state | `fn_75_DCF8` | `Scanning` (the body is one `blr`) |
@@ -987,6 +987,15 @@ now, so the log no longer shows it:
 
 The chassis's `fn_75_3B20` is the head's code, so it is the head's RaiseShields; the order above is
 the log's.
+
+#### The chassis's Patrol state, fn_75_DCFC (0xDCFC-0xDDF8) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the waypoint navigation's own patrol | the `CWaypointNavigation` at 0x6B8 (`fn_801B7C08`: the navigation, the state manager, the message, the frame time, the actor) | `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` - the base's member, whose destination is at 0x6C0 and last destination at 0x6C2 |
+| the activate message | the body controller's 0x4C gets the word 1 (0x0000DD4C - the command manager's 0x48) and the steering speed range (0x0000DD50 the chassis's 0xD0C, 0x0000DD60) | `SetSteeringBlendMode(kSBM_FullSpeed)` and `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
+| the update message | the two waypoint ids (0x0000DD68 the last destination, 0x0000DD84 the destination) are looked up and cast to a script waypoint (0x0000DD7C, 0x0000DD9C); with both there `fn_75_986C` runs (0x0000DDB8) and the command manager's face vector (the body controller's 0x10, 0x14, 0x18) is copied to the chassis's 0x6E0, 0x6E4, 0x6E8 (0x0000DDC0-0x0000DDD8) | the same lookups and cast, `fn_75_986C` stays a shell, and the face vector goes to the port's `mPatrolFacing` (the host's `CPatterned` has no member at the guest's 0x6E0) |
+| guest 0xD0C | the ctor leaves 1.0f and then divides the walk speed (anim 1) by the run speed (0x0000F93C-0x0000F964); the first call's anim register is not set in the dump | the port takes the walk speed over the host's `GetMaxSpeed()` in its constructor |
 
 **The port's own limits in these bodies**: the head's `HasDockingTarget` needs a chassis at 0xEFC
 (the head's second link), which the area-4 placement does not wire - so it is false in the run.
@@ -1014,3 +1023,9 @@ So the next port that would close the death gap is the chassis's `fn_75_ACEC` (t
 placement, which sets the flag byte 0xD41's 0x01). The fade-down gap needs the AFSM script to
 send the ACTN message that starts the scan timer at 0xD28: the chassis's Scanning state
 `fn_75_DCF8` is a single `blr` (ported 2026-10-21) and does not send it.
+
+**Re-checked 2026-10-21** (after the head's IsDocked and SelectTarget and the chassis's
+Scanning and Patrol states were ported): neither gap closed. The run's scan timer at 0xD28
+stays at zero - nothing in the module sends ACTN, the AFSM script does - so `fn_75_9520` keeps
+counting the fade up. The flag byte 0xD41's 0x01 bit is still unset, because only the shell
+`fn_75_ACEC` sets it, so `fn_75_AFE8` keeps the death timer idle. Both bodies stay unmarked.

@@ -12,6 +12,7 @@
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/BodyState/CBodyStateInfo.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -19,6 +20,7 @@
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlayerHint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterMainChassis.hpp"
@@ -101,7 +103,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE(Idle),
     SPLITTER_STATE(Inactive),
     SPLITTER_STATE(Activate),
-    SPLITTER_STATE(Patrol),
+    SPLITTER_STATE_PORTED(Patrol),
     SPLITTER_STATE_PORTED(Scanning),
     SPLITTER_STATE(PathFind),
     SPLITTER_STATE(LegStabAttack),
@@ -148,6 +150,9 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // tracker and the derived state.
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
+
+// The chassis's own path update, called by the Patrol state (fn_75_DCFC, 0x0000DDB8).
+void StandInFn_75_986C() { StandIn("fn_75_986C (0x28C)"); }
 
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
@@ -197,7 +202,6 @@ SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
 SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
 SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
-SPLITTER_STATE_STANDIN(Patrol, fn_75_DCFC)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_DC08)
 SPLITTER_STATE_STANDIN(LegStabAttack, fn_75_DA38)
 SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
@@ -239,6 +243,41 @@ void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
 // so the state does nothing. The scan timer at 0xD28 is not set here: the retail's ACTN script
 // message sets it in the chassis's script-message handler (fn_75_F1C0, 0x0000F40C-0x0000F42C).
 void CSplitterMainChassis::Scanning(CStateManager&, EStateMsg, float) {}
+
+// fn_75_DCFC (the chassis's Patrol state, 0xDCFC-0xDDF8): the base's waypoint navigation (the
+// CWaypointNavigation at 0x6B8 - its destination is at 0x6C0 and its last destination at 0x6C2)
+// runs its own patrol first (0xDD20-0xDD28: the navigation, the state manager, the message, the
+// frame time and the actor). With the activate message (0xDD2C cmpwi r31, 1 - 0xDD38 cmpwi
+// r31, 0) the body controller's command manager gets its blend mode (0xDD4C stw 1 at the body
+// controller's 0x4C - the command manager's 0x48) and the steering speed range (0xDD50 the
+// chassis's 0xD0C, 0xDD60 SetSteeringSpeedRange). With the update message (0xDD30 beq) the two
+// waypoint ids - the last destination at 0x6C2 (0xDD68 lhz) and the destination at 0x6C0
+// (0xDD84 lhz) - are looked up (0xDD7C and 0xDD9C GetObjectById) and cast to a script waypoint
+// (0xDD80, 0xDDA0); with both there (0xDDA4, 0xDDAC) the chassis's own path update runs
+// (0xDDB8 fn_75_986C) and the command manager's face vector (0xDDC0-0xDDD8: the body
+// controller's 0x10, 0x14 and 0x18 - the command manager's 0x0C, 0x10 and 0x14) is copied into
+// the chassis's 0x6E0, 0x6E4 and 0x6E8.
+void CSplitterMainChassis::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
+  if (msg == kStateMsg_Activate) {
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
+    BodyController()->CommandMgr().SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed);
+    return;
+  }
+  if (msg != kStateMsg_Update) {
+    return;
+  }
+  const CScriptWaypoint* last =
+      TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mWaypointNavigation.GetLastDestination()));
+  const CScriptWaypoint* dest =
+      TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mWaypointNavigation.GetDestination()));
+  // The asm's own null tests (0xDDA4 cmplwi r31, 0 and 0xDDAC cmplwi r3, 0) are this check.
+  if (last == nullptr || dest == nullptr) {
+    return;
+  }
+  StandInFn_75_986C();
+  mPatrolFacing = BodyController()->GetCommandMgr().GetFaceVector();
+}
 
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its
 // 0x40 bit tested (0xE624 extrwi with the word's bit 25 - the byte's 0x40).
@@ -322,6 +361,12 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
 // port: the retail's CVisualKnowledge at 0xC70 is built by the ctor; the host's equivalent is
 // CLineOfSightTracker, built here with the same arguments the other ports use.
 , mVisualKnowledge(uid, CSegId(), 0.1f, 0.05f) {
+  // fn_75_F5F8 @0x0000F93C-0x0000F964: guest 0xD0C is the walk speed (anim 1, 0x0000F948 li r4, 1)
+  // divided by the run speed. The first call's anim register is not set in the dump, so the run
+  // speed is the reading; the host's GetMaxSpeed() is that speed when the model has one and the
+  // largest locomotion speed otherwise.
+  const CBodyStateInfo& bodyInfo = BodyController()->GetBodyStateInfo();
+  mSteeringSpeed = bodyInfo.GetLocomotionSpeed(pas::kLA_Walk) / bodyInfo.GetMaxSpeed();
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not
