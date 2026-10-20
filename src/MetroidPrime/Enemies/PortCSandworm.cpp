@@ -138,7 +138,7 @@ SSandwormBombPhase::SSandwormBombPhase()
 , x20_(0.f)
 , x24_(-1000.f) {}
 
-// fn_56_149D4 (ported, not exercised yet)
+// @ fn_56_149D4
 SSandwormBombPhase::SSandwormBombPhase(float x18, float x10)
 : x0_(CVector3f::Zero())
 , xc_flags(0)
@@ -281,7 +281,7 @@ CSandworm::CSandworm(TUniqueId uid, const rstl::string& name, const CEntityInfo&
   FinishConstruction();
 }
 
-// fn_56_14010 (ported, not exercised yet)
+// @ fn_56_14010
 CSandworm::CSandworm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& pInfo, CAssetId stateMachine2, float pincerScale,
@@ -550,7 +550,7 @@ void CSandworm::Think(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_56_3990 (ported, not exercised yet)
+// @ fn_56_3990
 const SLdrSandwormStruct& CSandworm::GetPhaseParams() const {
   const float hp = GetHealthInfo()->GetHP();
   for (int i = 0; i < 4; ++i) {
@@ -657,7 +657,7 @@ void CSandworm::DetectIncomingProjectiles(CStateManager& mgr) {
   }
 }
 
-// fn_56_10F90 (ported, not exercised yet)
+// @ fn_56_10F90
 void CSandworm::UpdateBossParams(CStateManager& mgr) {
   if ((x8C0_flags & 0x08) == 0) {
     SpawnResidue(mgr, 0);
@@ -802,7 +802,7 @@ CPathFindPointSearch* CSandworm::GetPointSearchPath() { return nullptr; }
 // fn_56_14AEC (ported, not exercised yet)
 CRagDoll* CSandworm::GetRagDoll() const { return nullptr; }
 
-// fn_56_30F8 (ported, not exercised yet)
+// @ fn_56_30F8
 bool CSandworm::CanBeIngPossessed(CStateManager& mgr) const {
   if ((x8C0_flags & 0x10) == 0) {
     return false;
@@ -813,7 +813,7 @@ bool CSandworm::CanBeIngPossessed(CStateManager& mgr) const {
 // @ fn_56_30F0
 bool CSandworm::CanBeUnPossessed(CStateManager&) const { return false; }
 
-// fn_56_14AF4 (ported, not exercised yet)
+// @ fn_56_14AF4
 TUniqueId CSandworm::GetAttackTarget() const { return kInvalidUniqueId; }
 
 // @ fn_56_14B04
@@ -828,7 +828,7 @@ CSandworm::GetDeathExplosionParticle() const {
   return mDeathExplosionParticle;
 }
 
-// fn_56_3180 (ported, not exercised yet)
+// @ fn_56_3180
 CVector3f CSandworm::GetIngSnatchingNormal(float) const {
   const CVector3f delta = x1394_snatchStart - x13A0_snatchEnd;
   if (!delta.CanBeNormalized()) {
@@ -838,13 +838,13 @@ CVector3f CSandworm::GetIngSnatchingNormal(float) const {
   return delta.AsNormalized();
 }
 
-// fn_56_312C (ported, not exercised yet)
+// @ fn_56_312C
 CVector3f CSandworm::GetIngSnatchingPoint(float t) const {
   const float t3 = t * (t * t);
   return (1.f - t3) * x1394_snatchStart + t3 * x13A0_snatchEnd;
 }
 
-// fn_56_9860 (ported, not exercised yet)
+// @ fn_56_9860
 float CSandworm::GetIngSnatchingModelOverlapSize() const { return 6.f; }
 
 // @ fn_56_11CE8

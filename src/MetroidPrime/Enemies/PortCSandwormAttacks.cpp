@@ -164,7 +164,7 @@ bool CSandworm::AIHintHelper(CStateManager& mgr) const {
   return false;
 }
 
-// fn_56_3844 (ported, not exercised yet)
+// @ fn_56_3844
 int CSandworm::PickAttackType(CStateManager& mgr) {
   const SLdrSandwormStruct& params = GetPhaseParams();
   int kind;
@@ -524,6 +524,7 @@ bool CSandworm::GrabAttackFinished(CStateManager& mgr, const CTriggerData& data)
 }
 
 // fn_56_35EC (ported, not exercised yet)
+// Data-gated: the BG prefab never selects kind 4 (picked 7), so this cannot run; see Sandworm.md Port status.
 bool CSandworm::HitDuringWindUp(CStateManager& mgr, const CTriggerData& data) const {
   return (x19A8_bombPhase.xc_flags & 0x80) != 0;
 }

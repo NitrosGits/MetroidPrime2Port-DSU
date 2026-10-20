@@ -106,6 +106,11 @@ The ctor builds a null `CModelData` and a material list with bits `data_6D4`/`6D
 1. It reads every `SLdrSandworm` property. The hash → stack-slot table matches `SLdrSandworm.inc` exactly; the 5 structs go through the inlined `LoadTypedefSandwormStruct` (`fn_56_1704`).
 2. It builds `CModelData` (`LdrToModelData`). If no model is loaded, it returns null.
 3. **`canLinkTransfer` (0xb47dd18f) == 1** gives the Bomb Guardian: `new(0x1A28)` then `fn_56_14010`. It passes 4 `CDamageInfo` (projectile, morphball toss, pincer, ingBossBomb) and everything listed below.
+   - **Which prefab**: across Agon Wastes (every `Metroid3.pak` MLVL/MREA) only one worm sets it —
+     `03_sand_temple` layer 2 (mrea `75fc9aae`, editor id `001a009c`, hp 950 on the disc). The other
+     worm in that layer (`001a00e4`, hp 1000) and the `04_sand_mining` L3 one (`00080189`) are 0, i.e.
+     Sandigger forms; `docs/module_spawns.tsv` lists the layer the REL appears in, not the form. At
+     runtime the BG is `u048f` (flags `0x10`, spawned inactive) and the other is `u04e9`.
 4. Otherwise it builds the Sandigger/Alpha form: `fn_56_12D68` with 3 `CDamageInfo` and none of the bomb, phase or glow-2/3 inputs.
 5. Every sound id of -1 becomes `kInternalInvalidSfxId`.
 
@@ -362,13 +367,38 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   23 states' transitions printed) shows no state referencing either trigger, and `Deactivate`'s
   only transition is `DoneLurking` → `Rise`, so console `send Deactivate`/`Activate` never evaluates
   `Activated`; `InAttackRange` is likewise never asked (`Pursue` uses `CanAttack`, `InSpitRange`,
-  `MeleeAttackRange`). Both must belong to another prefab's AFSM (Bomb Guardian), so they stay open
-  for that run. Probe reverted.
-- Markers: 227 functions carry `// @`; 56 remain `(ported, not exercised yet)`, including
-  GetRagDoll, GetDeathExplosionParticle and RenderIngSnatchingTransition.
-  `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (21 done; `C350`/`C3D0` have no
-  AFSM transition in this prefab, `C828` still open), B 1, C 36 (Bomb Guardian/possession only),
-  D 12, E 6.
+  `MeleeAttackRange`). Both must belong to another prefab's AFSM, so they stayed open for the Bomb
+  Guardian run — which never evaluated them either (bucket C below), so they remain open. Probe
+  reverted.
+- Bomb Guardian form (`03_sand_temple` L2, area 26, mrea `75fc9aae`, 2026-10-20): the layer spawns
+  two worms — `u048f` (canLinkTransfer 1, hp 950, inactive until the player walks into the arena) and
+  `u04e9` (Sandigger form, hp 1000). Entering the arena wakes the BG; on the first boot it was then
+  possessed in place: hp reset 950 → 160/160 (`ingPossessedHealth`), `mIngPossessionTarget` 1.00 and
+  the blend ramping 0.15 → 0.98 in ~1 s with `IsBeingSnatched()` true, which ran 27 of the 36
+  bucket-C bodies in one go — the ctor trio `14010`/`149D4`/`1FD8`, `10F90`, `3990`, `3844`, `30F8`,
+  `14AF4`, the snatch-render four (`2994` `312C` `3180` `9860`), `566C`, `11CF8`, `986C`/`97FC` and the
+  spread/bomb-spawn bodies. That possession was not reproducible on later boots and area 26 contains
+  no `CIngSnatchingSwarm` (`objs` finds none; `30F8`/`14AF4` ran on that first boot only), so the
+  fight runs used a temporary `SetIngPossessed(true, mgr)` hook, reverted with the stderr probe.
+- Phases and the bomb attacks: the prefab's five `SLdrSandwormStruct`s have thresholds 120/80/40/0/0
+  and kinds 3/5/5, so `PickAttackType` only ever returns 5 (toss) or 6 (spread) — kind 3 alternates
+  them, the kinds at `x968_` 1/2 are 5 and fall into `default` → -1, which resets `x968_`. Stepping hp
+  down the bands (console `damage u048f`, 20-25 s dwell each, beam fire in between) ran
+  `BombSpreadAttack` (`BAB8`), `BombTossAttack` (`BC8C`) and the whole held-bomb chain (`9660` `9368`
+  `9590` `9440`), plus `EF8C`/`F328` and the spawn/sfx trio. Kind 4 never appears, so picked 7 is
+  unreachable: `B8B8` (`BombFountainAttack`), `8E90` (`SpawnBombToss`), `35EC` (`HitDuringWindUp`, the
+  picked-7 wind-up flag branch) and `95E0` (`DeleteHeldBomb`'s picked-7 branch) are **data-gated**, not
+  port gaps — annotated as such in the source, and they count as unreachable (bucket E) for this build.
+- That area also ran four bucket-D bodies: `321C` (`GetAimPosition`), `F710` (`Primed`), `F754`
+  (`Prime`) and `F77C` (`SpineHelperF77C`) — `Prime` runs there because this prefab's `Null`
+  path has the underground bit clear. `2C30`/`14AEC`/`14B24`/`14B3C` still need a projectile or team
+  AI to reach the worm actor itself.
+- Markers: 262 functions carry `// @`; 21 remain `(ported, not exercised yet)` — the four data-gated
+  bomb bodies, `C350`/`C3D0`/`C828`, GetRagDoll, GetDeathExplosionParticle and the other slot/projectile
+  bodies. `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (21 done; `C350`/`C3D0` are
+  never asked by either prefab), B 1 (`C828`), C 36 (32 done, 4 data-gated), D 12 (4 done), E 6.
+  The BG run's hit lists are `/tmp/opencode/sw3/hits_union.txt` (219 bodies) and
+  `cov3_hits_bg1.txt` / `cov3_hits_bg_fight3.txt`; driver `/tmp/opencode/sw3/bg.py`.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
   - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.
@@ -378,4 +408,7 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   - The "Sandworm.rel" token string at lbl_56_bss_C is a guess.
   - Render line 25 skips a missing model.
   - x1614 has no name; x199A_ is a byte.
-- Pseudo-C is in `/tmp/opencode/pseudo/Sandworm/fn_56_XXXX.c`. Runtime areas are Agon Wastes `01_sand_entrance` L0, `03_sand_temple` L2 and `04_sand_mining` L3 (docs/module_spawns.tsv). The bar is a fight the player can finish.
+- Pseudo-C is in `/tmp/opencode/pseudo/Sandworm/fn_56_XXXX.c`. Runtime areas are Agon Wastes
+  `01_sand_entrance` L0 (Sandigger/Alpha), `03_sand_temple` L2 (both forms; the Bomb Guardian is
+  `u048f` there) and `04_sand_mining` L3 (Sandigger form only, `canLinkTransfer` 0). The bar is a
+  fight the player can finish.

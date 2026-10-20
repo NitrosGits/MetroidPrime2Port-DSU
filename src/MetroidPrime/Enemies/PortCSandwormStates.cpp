@@ -573,7 +573,7 @@ void CSandworm::SetPathDestination(CStateManager& mgr, const CVector3f& dest, fl
   mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this);
 }
 
-// fn_56_97FC (ported, not exercised yet)
+// @ fn_56_97FC
 bool CSandworm::SnatchEnded(CStateManager& mgr, const CTriggerData& data) const {
   return IsPossessedBombGuardian();
 }
@@ -583,7 +583,7 @@ bool CSandworm::SnatchStarted(CStateManager& mgr, const CTriggerData& data) cons
   return IsBombGuardian(*this) && !IsPossessedBombGuardian();
 }
 
-// fn_56_986C (ported, not exercised yet)
+// @ fn_56_986C
 void CSandworm::Snatch(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mSpeed = 0.66f;

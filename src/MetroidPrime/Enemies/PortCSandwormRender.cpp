@@ -398,7 +398,7 @@ void CSandworm::UpdatePose() {
   }
 }
 
-// fn_56_2994 (ported, not exercised yet)
+// @ fn_56_2994
 // CPatterned::RenderIngSnatchingTransition, except the normal-model half is drawn directly at
 // 0.99 scale instead of through CPhysicsActor::Render.
 void CSandworm::RenderIngSnatchingTransition(const CStateManager& mgr) const {

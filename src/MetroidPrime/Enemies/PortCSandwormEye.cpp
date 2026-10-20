@@ -139,7 +139,7 @@ const CSandwormEye* CSandworm::GetHeadEye(const CStateManager& mgr) const {
 
 // Retail compares TCastToPtr<CCollisionActor>(ObjectById(desc id)) with a CCollisionActor*
 // argument; the header passes the actor's id instead, which gives the same answer.
-// fn_56_566C (ported, not exercised yet)
+// @ fn_56_566C
 bool CSandworm::HitIsOnHeadEye(CStateManager& mgr, TUniqueId collisionActor) const {
   const TUniqueId id = x998_collisionActors->GetCollisionDescFromIndex(0xE).GetCollisionActorId();
   CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
@@ -177,7 +177,7 @@ CVector3f CSandworm::GetOrbitPosition(const CStateManager& mgr) const {
   return CPatterned::GetOrbitPosition(mgr);
 }
 
-// fn_56_321C (ported, not exercised yet)
+// @ fn_56_321C
 CVector3f CSandworm::GetAimPosition(const CStateManager& mgr, float dt) const {
   if ((x8C0_flags & 0x10) != 0 && !IsPossessedBombGuardian()) {
     return (x8C0_flags & 0x02) != 0 ? x1394_snatchStart : GetTranslation();
@@ -457,7 +457,7 @@ void CSandworm::AddAdditiveFlinch(CStateManager&, int eye) {
 }
 
 // Angle between the weapon's forward column and the tail segment.
-// fn_56_11CF8 (ported, not exercised yet)
+// @ fn_56_11CF8
 float CSandworm::AngleBetween(const CTransform4f& xf) const {
   const CVector3f dir = xf.GetColumn(kDY);
   const CVector3f a = GetSegmentPosition(12);

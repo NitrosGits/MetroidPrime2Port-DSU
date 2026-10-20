@@ -68,7 +68,7 @@ CVector3f CSandworm::SpineHelper108BC(int idx) const {
   return GetLctrTransform(segId).GetTranslation();
 }
 
-// fn_56_F710 (ported, not exercised yet)
+// @ fn_56_F710
 bool CSandworm::Primed(CStateManager& mgr, const CTriggerData& data) const { return true; }
 
 // @ fn_56_5884
@@ -598,7 +598,7 @@ void CSandworm::SpineHelperFB24(CStateManager& mgr) {
 // Lays the spine path straight out along the body's facing, scaled by 2.0 (rodata_120, underground)
 // or 1.1 (rodata_1E4) reference stances, then switches the frame's "path rebuilt" bits and
 // re-runs fn_56_F5B0.
-// fn_56_F77C (ported, not exercised yet)
+// @ fn_56_F77C
 void CSandworm::SpineHelperF77C(CStateManager& mgr) {
   if (((x8C0_flags >> 7) & 1) == 1) {
     return;
@@ -735,7 +735,7 @@ void CSandworm::SpineHelperE764() {
 }
 
 // FSM state slot 0x218: activating the state rebuilds and straightens the spine path.
-// fn_56_F754 (ported, not exercised yet)
+// @ fn_56_F754
 void CSandworm::Prime(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     SpineHelperF77C(mgr);
