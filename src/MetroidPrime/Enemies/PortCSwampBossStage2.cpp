@@ -311,7 +311,7 @@ void CSwampBossStage2::RequestMove(const CVector3f& point) {
   mMoveRequested = true;
 }
 
-// fn_79_238C: the first chain node on the far side of the centre actor from the current target;
+// @ fn_79_238C: the first chain node on the far side of the centre actor from the current target;
 // the last node is taken unconditionally. Returns null for an empty or unresolved chain.
 CActor* CSwampBossStage2::NextChainNode(CStateManager& mgr) const {
   const int count = static_cast< int >(mPathNodes.size());
@@ -1252,6 +1252,7 @@ bool CSwampBossStage2::StateOver(CStateManager& mgr, const CTriggerData&) const 
   return mAnimationState.IsOver();
 }
 
+// @ fn_79_A438
 bool CSwampBossStage2::AllGrowthsDead(CStateManager& mgr, const CTriggerData&) const {
   for (int i = 0; i < mGrowthHealth.size(); ++i) {
     if (mGrowthHealth[i] > 0.f) {
@@ -1295,15 +1296,18 @@ bool CSwampBossStage2::ShouldSwoop(CStateManager& mgr, const CTriggerData&) cons
   return mAttackReady && mAttackType == 4;
 }
 
+// @ fn_79_A31C
 bool CSwampBossStage2::SwoopOver(CStateManager& mgr, const CTriggerData&) const {
-  // TODO(uncertain): retail reads bit 5 of 0xc76; mapped to mCircleCounting.
+  // Retail reads bit 5 of 0xc76, which is mCircleCounting.
   return mCircleCounting;
 }
 
+// @ fn_79_A310
 bool CSwampBossStage2::CircleDamage(CStateManager& mgr, const CTriggerData&) const {
   return mCircleDamaged;
 }
 
+// @ fn_79_A08C
 bool CSwampBossStage2::CircleOver(CStateManager& mgr, const CTriggerData&) const {
   return GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion || mCircleDone;
 }
@@ -1312,6 +1316,7 @@ bool CSwampBossStage2::ShouldBlow(CStateManager& mgr, const CTriggerData&) const
   return mAttackReady && mAttackType == 6;
 }
 
+// @ fn_79_A13C
 bool CSwampBossStage2::IsLevel(CStateManager& mgr, const CTriggerData&) const {
   if (GetBodyController()->GetCurrentStateId() != pas::kAS_Locomotion || mMoveSpeed >= 0.2f) {
     return false;
@@ -1606,7 +1611,7 @@ void CSwampBossStage2::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_8958
+// @ fn_79_8958
 void CSwampBossStage2::Level(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     const CVector3f toTarget = mLevelTarget - GetTranslation();
@@ -1621,7 +1626,7 @@ void CSwampBossStage2::Level(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_82B8
+// @ fn_79_82B8
 void CSwampBossStage2::Swoop(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
@@ -1761,7 +1766,7 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_7BE0
+// @ fn_79_7BE0
 void CSwampBossStage2::Circle(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     // Light phases only, and only while the circle is being counted: enough damage in one circuit
@@ -2192,6 +2197,7 @@ CVector3f CSwampBossStage2::GetAimPosition(const CStateManager& mgr, float dt) c
   return mTailPos * mHeadBlend + mHeadPos * (1.f - mHeadBlend);
 }
 
+// @ fn_79_2690
 CScannableObjectInfo* CSwampBossStage2::GetScannableObjectInfo() const {
   // TODO(uncertain): retail picks the light or dark scan by flyer form.
   const rstl::optional_object< TLockedToken< CScannableObjectInfo > >& scan =
