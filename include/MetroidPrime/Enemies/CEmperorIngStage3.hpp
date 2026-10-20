@@ -87,7 +87,6 @@ private:
   CDamageInfo mGroundPoundDamage;        // guest 0xA44, the data's groundPoundDamage
   // fn_18_44: GetModelAlphau8 reads the byte at guest 0x44F. It sits in CPatterned's own area in
   // the retail object, so the host keeps it here.
-  uchar mModelAlpha;                     // guest 0x44F, 0
   // fn_18_8E50: the Listen flag byte at guest 0x824; its bit 30 (the mask 0x02) is set when the
   // actor hears the player fire.
   uchar mNoiseFlags;                     // guest 0x824, 0

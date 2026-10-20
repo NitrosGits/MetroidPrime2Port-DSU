@@ -66,7 +66,6 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mStampedeDamage(LdrToDamageInfo(data.stampedeDamage))       // guest 0xA0C
 , mJumpSlideDamage(LdrToDamageInfo(data.jumpSlideDamage))     // guest 0xA28
 , mGroundPoundDamage(LdrToDamageInfo(data.groundPoundDamage)) // guest 0xA44
-, mModelAlpha(0)                                              // guest 0x44F
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
@@ -182,8 +181,9 @@ CVector3f CEmperorIngStage3::GetOrigin(const CStateManager& mgr, const CTeamAiRo
   return CPatterned::GetOrigin(mgr, role, aimPos);
 }
 
-// vtable slot 50 = fn_18_44: the model alpha byte at guest 0x44F.
-uchar CEmperorIngStage3::GetModelAlphau8(const CStateManager& mgr) const { return mModelAlpha; }
+// vtable slot 50 = fn_18_44: the model alpha byte at guest 0x44F, CPatterned::mColor's alpha
+// (CColor at 0x44C; the module never writes it).
+uchar CEmperorIngStage3::GetModelAlphau8(const CStateManager& mgr) const { return mColor.GetAlphau8(); }
 
 // vtable slot 55 = fn_18_4C: `li r3, 0x0` - the actor has no projectile info.
 CProjectileInfo* CEmperorIngStage3::ProjectileInfo() { return nullptr; }
