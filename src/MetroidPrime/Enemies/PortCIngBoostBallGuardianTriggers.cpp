@@ -107,7 +107,7 @@ void CIngBoostBallGuardian::SetupCollisionActors(CStateManager& mgr) {
   }
 }
 
-// @ fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
+// Ing body fn_29_2ED8 (kSM_HitObject): when a collision actor that last touched the player reports a hit
 // and the contact damage is off cooldown, the player takes the Ing's contact damage.
 void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
   const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.ObjectById(sender));
@@ -128,7 +128,7 @@ void CIngBoostBallGuardian::CollisionActorHitPlayer(CStateManager& mgr, TUniqueI
   mCurDamageRemTime = mDamageWaitTime;
 }
 
-// @ fn_29_2414: the ing-spot hit effect explosion, from the heavy token
+// Ing body fn_29_2414: the ing-spot hit effect explosion, from the heavy token
 // when it is loaded and asked for, else the normal one. The caller adds it to the state manager.
 CEntity* CIngBoostBallGuardian::SpawnHitEffect(CStateManager& mgr, bool heavy) {
   const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
@@ -151,7 +151,7 @@ CEntity* CIngBoostBallGuardian::SpawnHitEffect(CStateManager& mgr, bool heavy) {
                            GetModelData()->GetScale(), CColor::White(), -1);
 }
 
-// @ fn_29_2B70: a shot on the ing-spot form. The hit resets the reaction timer and flags the spot,
+// Ing body fn_29_2B70: a shot on the ing-spot form. The hit resets the reaction timer and flags the spot,
 // then the weapon picks the light or heavy effect (25 damage on the ing-spot vulnerability) and
 // plays that hit's sound.
 void CIngBoostBallGuardian::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
@@ -182,7 +182,7 @@ void CIngBoostBallGuardian::IngSpotDamage(CStateManager& mgr, TUniqueId sender) 
   }
 }
 
-// @ fn_29_2684: a weapon (or the player) hit a collision actor. The actor carries a copy of the Ing's
+// Ing body fn_29_2684: a weapon (or the player) hit a collision actor. The actor carries a copy of the Ing's
 // initial health, so what it lost is the hit: the Ing's health drops by that much, it takes the hit
 // (fn_29_B890 only records the hit time), dies below zero, and is knocked back along the shot. The
 // actor's health is then re-armed.
@@ -392,7 +392,7 @@ void CIngBoostBallGuardian::StopSfx() {
 
 // ---- triggers --------------------------------------------------------------------------------
 
-// @ fn_29_B1F4
+// Ing body fn_29_B1F4
 bool CIngBoostBallGuardian::StateOver(CStateManager&, const CTriggerData&) const {
   return mAnimationState.IsOver();
 }
@@ -408,7 +408,7 @@ bool CIngBoostBallGuardian::IsControllingHost(CStateManager&, const CTriggerData
   return mHostId != kInvalidUniqueId; // 0xcdc
 }
 
-// @ fn_29_B0E0
+// Ing body fn_29_B0E0
 bool CIngBoostBallGuardian::IsFacingTarget(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
@@ -419,27 +419,27 @@ bool CIngBoostBallGuardian::IsFacingTarget(CStateManager& mgr, const CTriggerDat
   return CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= kFacingAngle;
 }
 
-// @ fn_29_B0A4
+// Ing body fn_29_B0A4
 bool CIngBoostBallGuardian::HasTarget(CStateManager& mgr, const CTriggerData&) const {
   return mgr.GetObjectById(mTargetId) != nullptr;
 }
 
-// @ fn_29_B04C
+// Ing body fn_29_B04C
 bool CIngBoostBallGuardian::HasNewTarget(CStateManager& mgr, const CTriggerData& data) const {
   return HasTarget(mgr, data) && mPrevTargetId != mTargetId;
 }
 
-// @ fn_29_B01C
+// Ing body fn_29_B01C
 bool CIngBoostBallGuardian::HasLineOfSight(CStateManager&, const CTriggerData&) const {
   return mLineOfSight.HasLineOfSight() && mLineOfSight.GetClearTime() > 0.5f;
 }
 
-// @ fn_29_B000
+// Ing body fn_29_B000
 bool CIngBoostBallGuardian::UnderFire(CStateManager&, const CTriggerData&) const {
   return mUnderFireTime < 0.75f;
 }
 
-// @ fn_29_AFE4
+// Ing body fn_29_AFE4
 bool CIngBoostBallGuardian::HeardShot(CStateManager&, const CTriggerData&) const {
   return mHeardShotTime < 1.5f;
 }
@@ -455,19 +455,19 @@ bool CIngBoostBallGuardian::AreaClear(CStateManager& mgr, const CTriggerData&) c
   return nearList.empty();
 }
 
-// @ fn_29_ADE8
+// Ing body fn_29_ADE8
 bool CIngBoostBallGuardian::CoverLeash(CStateManager& mgr, const CTriggerData&) const {
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   return hint == nullptr || (hint->GetTranslation() - GetTranslation()).MagSquared() >
                                 mData.mUnknown5D0D * mData.mUnknown5D0D;
 }
 
-// @ fn_29_ADBC
+// Ing body fn_29_ADBC
 bool CIngBoostBallGuardian::HasCoverPoint(CStateManager& mgr, const CTriggerData&) const {
   return GetCoverHint(mgr, mCoverHintId) != nullptr;
 }
 
-// @ fn_29_AD7C
+// Ing body fn_29_AD7C
 bool CIngBoostBallGuardian::HasWallCoverPoint(CStateManager& mgr, const CTriggerData&) const {
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   return hint != nullptr && hint->GetHintType() == static_cast< CScriptAIHint::EHintType >(4);
@@ -478,17 +478,17 @@ bool CIngBoostBallGuardian::HasMiniPortals(CStateManager&, const CTriggerData&) 
   return mMiniPortalCount > 0;
 }
 
-// @ fn_29_AD54
+// Ing body fn_29_AD54
 bool CIngBoostBallGuardian::IsCorporeal(CStateManager&, const CTriggerData&) const {
   return mForm == kForm_Corporeal;
 }
 
-// @ fn_29_AD40
+// Ing body fn_29_AD40
 bool CIngBoostBallGuardian::IsIngSpot(CStateManager&, const CTriggerData&) const {
   return mForm == kForm_IngSpot;
 }
 
-// @ fn_29_AD2C
+// Ing body fn_29_AD2C
 bool CIngBoostBallGuardian::IsBodyProjectile(CStateManager&, const CTriggerData&) const {
   return mForm == kForm_BodyProjectile;
 }
@@ -498,7 +498,7 @@ bool CIngBoostBallGuardian::IsFrustrated(CStateManager&, const CTriggerData&) co
   return mData.mFrustrationTime < mFrustrationTimer;
 }
 
-// @ fn_29_ACEC
+// Ing body fn_29_ACEC
 bool CIngBoostBallGuardian::IsAggressive(CStateManager&, const CTriggerData&) const {
   // The Ing returns mAggressive || mSafeZoneCount > 0. This module has no lure safe zone and does
   // not track a safe-zone count (the Ing port never sets it either), so that second term is always
@@ -506,7 +506,7 @@ bool CIngBoostBallGuardian::IsAggressive(CStateManager&, const CTriggerData&) co
   return mAggressive;
 }
 
-// @ fn_29_ACE0
+// Ing body fn_29_ACE0
 bool CIngBoostBallGuardian::UseProjectileFSMEntry(CStateManager&, const CTriggerData&) const {
   return mProjectileFSMEntry;
 }
@@ -517,13 +517,13 @@ bool CIngBoostBallGuardian::TargetInSafeZone(CStateManager& mgr, const CTriggerD
   return target != nullptr && mgr.GetSafeZoneManager()->IsObjectInSafeZone(*target, mgr);
 }
 
-// @ fn_29_ABC8
+// Ing body fn_29_ABC8
 bool CIngBoostBallGuardian::TargetInLightSafeZone(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   return target != nullptr && mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*target, mgr);
 }
 
-// @ fn_29_AAF8
+// Ing body fn_29_AAF8
 bool CIngBoostBallGuardian::CanChangeForm(CStateManager&, const CTriggerData&) const {
   const bool locked = (mData.mFlags210 & kFlag_NoFormChange) != 0;
   switch (mForm) {
@@ -559,7 +559,7 @@ bool CIngBoostBallGuardian::ShouldBecomeIngSpot(CStateManager&, const CTriggerDa
   return mDesiredForm == kForm_IngSpot && mForm != kForm_IngSpot;
 }
 
-// @ fn_29_A8CC
+// Ing body fn_29_A8CC
 bool CIngBoostBallGuardian::ShouldArmSwipe(CStateManager& mgr, const CTriggerData&) const {
   if (mForm != kForm_Corporeal || (mData.mFlags210 & kFlag_NoArmSwipe) != 0 ||
       !(mArmSwipeTime > 1.f)) {
@@ -582,12 +582,12 @@ bool CIngBoostBallGuardian::ShouldArmSwipe(CStateManager& mgr, const CTriggerDat
          distSq <= mMaxAttackRange * mMaxAttackRange && fabsf(delta.GetZ()) < 3.f;
 }
 
-// @ fn_29_A8C0
+// Ing body fn_29_A8C0
 bool CIngBoostBallGuardian::ShouldTaunt(CStateManager&, const CTriggerData&) const {
   return mTaunt;
 }
 
-// @ fn_29_A780
+// Ing body fn_29_A780
 bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
   // The team gate only applies inside a team: retail compares mTeamId with kInvalidUniqueId
   // and skips CanStartAttack when they are equal (asm 0x0000A8A4, the branch that lands at
@@ -618,7 +618,7 @@ bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTrig
   return inRange;
 }
 
-// @ fn_29_A664
+// Ing body fn_29_A664
 bool CIngBoostBallGuardian::ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData&) const {
   // Same team gate as fn_29_A780/A8CC: retail asks CanStartAttack only when mTeamId is set
   // (asm 0x0000A788, the compare that skips to .L_0000A6E0).
@@ -662,12 +662,12 @@ bool CIngBoostBallGuardian::FoundMovementPos(CStateManager&, const CTriggerData&
   return mFoundMovementPos;
 }
 
-// @ fn_29_A498
+// Ing body fn_29_A498
 bool CIngBoostBallGuardian::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return mRecalcPath || CPatterned::PathShagged(mgr, data);
 }
 
-// @ fn_29_A450
+// Ing body fn_29_A450
 bool CIngBoostBallGuardian::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return !mFoundMovementPos || CPatterned::PathOver(mgr, data);
 }
@@ -682,12 +682,12 @@ bool CIngBoostBallGuardian::FoundPointPath(CStateManager&, const CTriggerData&) 
   return mIngSpotPathFindNavigation.HasPath(*this);
 }
 
-// @ fn_29_A3C8
+// Ing body fn_29_A3C8
 bool CIngBoostBallGuardian::IsOffPath(CStateManager&, const CTriggerData&) const {
   return mPathFindSearch.OnPath(GetTranslation()) != CPathFindSearch::kR_Success;
 }
 
-// @ fn_29_A370
+// Ing body fn_29_A370
 bool CIngBoostBallGuardian::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
   return const_cast< CIngBoostBallGuardian* >(this)->GetConnectedObject(mgr, kSS_Attack,
                                                                         kSM_Follow) !=
@@ -703,7 +703,7 @@ bool CIngBoostBallGuardian::AttackPatternOver(CStateManager&, const CTriggerData
   return !mFollowingAttackPath;
 }
 
-// @ fn_29_A2D8: the target is a ball that was not spawned as one - asm 0x0000A2E0 tests
+// Ing body fn_29_A2D8: the target is a ball that was not spawned as one - asm 0x0000A2E0 tests
 // 0x390 (spawned state) first and only reads 0x38c (transition state) when it is 0.
 bool CIngBoostBallGuardian::TargetIsBall(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
@@ -729,7 +729,7 @@ bool CIngBoostBallGuardian::HasPathToTarget(CStateManager& mgr, const CTriggerDa
              CPathFindSearch::kR_Success;
 }
 
-// @ fn_29_A098: the no-grapple flag (0x9d0 bit 3) and a target with nothing attached to it.
+// Ing body fn_29_A098: the no-grapple flag (0x9d0 bit 3) and a target with nothing attached to it.
 bool CIngBoostBallGuardian::CanGrappleTarget(CStateManager& mgr, const CTriggerData&) const {
   if ((mData.mFlags210 & kFlag_NoGrapple) != 0) {
     return false;
@@ -740,7 +740,7 @@ bool CIngBoostBallGuardian::CanGrappleTarget(CStateManager& mgr, const CTriggerD
 
 // ---- code functions (the FSM2 runs them: CGenericFSM2State::SetCodeFunctions) -------------------
 
-// @ fn_29_5B60
+// Ing body fn_29_5B60
 void CIngBoostBallGuardian::SetTargetDest(CStateManager& mgr, float) {
   LogState("SetTargetDest");
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
@@ -753,7 +753,7 @@ void CIngBoostBallGuardian::SetTargetDest(CStateManager& mgr, float) {
   JoinTeam(mgr);
 }
 
-// @ fn_29_5AC4: destination = the cover hint's translation when there is one, else the Ing's own
+// Ing body fn_29_5AC4: destination = the cover hint's translation when there is one, else the Ing's own
 // position; mFoundMovementPos only in the first case; then SetDestination and the face target at
 // kInvalidUniqueId (0x718), asm 0x00005B00-0x00005B48.
 void CIngBoostBallGuardian::SetCoverDest(CStateManager& mgr, float) {
@@ -768,7 +768,7 @@ void CIngBoostBallGuardian::SetCoverDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
-// @ fn_29_59D0: two closest-point queries from the Ing's own position - filter (20, 0, -1) then
+// Ing body fn_29_59D0: two closest-point queries from the Ing's own position - filter (20, 0, -1) then
 // (20, 1, -1), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
 // (0x00005A94). It sets no destination: mFoundMovementPos is what IngSpotPathFind reads.
 void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
@@ -794,7 +794,7 @@ void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
   }
 }
 
-// @ fn_29_5820: the point-graph route to the cover hint. Filter (20, 0, -1) from the Ing's own
+// Ing body fn_29_5820: the point-graph route to the cover hint. Filter (20, 0, -1) from the Ing's own
 // position, then the nearest flag-1 point that the graph connects to it, sits under 400
 // (rodata_F0) from the hint and has a mesh path to it (asm 0x00005844-0x00005998), then the point
 // search between the two.
@@ -859,7 +859,7 @@ void CIngBoostBallGuardian::SetWallPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// @ fn_29_54E8. Where the exit host lands: the AI hint that best matches
+// Ing body fn_29_54E8. Where the exit host lands: the AI hint that best matches
 // the way the player is facing. Retail starts from the player's own position (uid +8, transform
 // +0x24) and takes mgr+0x14fc as the player with no null test, which the port keeps as a guard.
 // The score is (GetAngleDiff(forward, hint - Ing) + 1) * |hint - Ing|^2, and the comparison pair
@@ -905,7 +905,7 @@ void CIngBoostBallGuardian::EndRangedAttack(CStateManager& mgr, float) {
                               true);
 }
 
-// @ fn_29_4F14: the body projectile hit the mesh, so the Ing splats back
+// Ing body fn_29_4F14: the body projectile hit the mesh, so the Ing splats back
 // into its ing-spot form: form 3, the scripted body state aborted, the splat-wall sound once at the
 // Ing's own position (its handle is discarded), then - when the splat token at 0xd48 is engaged - an
 // explosion on the Ing's transform at the model's scale ("Ing Splat Wall Fx").

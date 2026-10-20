@@ -39,6 +39,11 @@ in `wt-mp2-boostguardian`.
   exit-host class), the mini portal attack, the second class (the crystal the boost ball
   collides with) and the nav-point finder `fn_30_2F9C` that `BoostModeRetreat` needs are later
   slices; each is marked in the source with what it needs.
+- **One correction to the Ing port.** `FollowAttackPattern` picks the form from the waypoint's
+  flags: the asm (`fn_30_99D4` at 0x00009B44/0x00009B4C/0x00009B60, the same three `rlwinm`s as the
+  Ing's `fn_29_82D4` at 0x00008438) tests bits 25, 24 and 23, not 0x40/0x80/0x100. The Ing host body
+  read them as 0x40/0x80/0x100; this module's copy uses the bits the asm tests, and the Ing
+  session should make the same change there.
 
 ## 2026-10-20 (thirty-first session): the Boost Guardian module starts - it loads, stands and thinks
 

@@ -111,7 +111,7 @@ void CIngBoostBallGuardian::ExitHost(CStateManager&, EStateMsg msg, float) {
 // exit-host body do not exist in this branch, so there is no smoke to spawn. The body only logs.
 void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager&) {
   if (DebugBg()) {
-    fprintf(stderr, "[ibbg] %04x exit host: smoke is not ported yet\n", GetUniqueId().Value());
+    fprintf(stderr, "[ibbg] %04x exit host: the exit-host body is a later slice\n", GetUniqueId().Value());
   }
 }
 

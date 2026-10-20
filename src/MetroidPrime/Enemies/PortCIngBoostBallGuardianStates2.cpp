@@ -283,14 +283,16 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
     mWaypointNavigation.SetDestination(dest);
     mFollowingAttackPath = true; // 0x000083FC: 0xe5d bit 3
   } else if (msg == kStateMsg_Update) {
-    // 0x00008410: the waypoint's flags (0x164) pick the form: 0x40 or 0x80 the ing spot (form 3),
-    // 0x100 the corporeal one (form 2).
+    // The waypoint's flags (the guest's +0x164) pick the form. The asm tests them with rlwinm:
+    // bit 25 (0x00009B44) and bit 24 (0x00009B4C) give the ing spot (form 3), bit 23 (0x00009B60)
+    // the corporeal one (form 2).
     const CScriptAIWaypoint* waypoint =
         TCastToConstPtr< CScriptAIWaypoint >(mgr.ObjectById(mWaypointNavigation.GetDestination()));
     if (waypoint != nullptr) {
-      if ((waypoint->GetFlags() & (0x40 | 0x80)) != 0) {
+      const uint flags = waypoint->GetFlags();
+      if ((flags & ((1u << 25) | (1u << 24))) != 0) {
         mDesiredForm = kForm_IngSpot;
-      } else if ((waypoint->GetFlags() & 0x100) != 0) {
+      } else if ((flags & (1u << 23)) != 0) {
         mDesiredForm = kForm_Corporeal;
       }
     }

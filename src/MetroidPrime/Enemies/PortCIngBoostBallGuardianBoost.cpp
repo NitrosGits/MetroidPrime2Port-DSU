@@ -78,12 +78,13 @@ bool CIngBoostBallGuardian::BoostModeRetreatOver(CStateManager& mgr,
 //     and zeroes the float at 0x11DC (mBoostTimer), sets the collision manager at 0xD64 active
 //     and deletes the child by the id at 0x1094 (mBoostChildId).
 //
-// The second class is not ported yet, so the whole state is a later slice: this body only logs.
+// The second class is a later slice (the module note's WP4), so this body only logs: the
+// module's own fn_30_79C0 does the work once the class exists.
 void CIngBoostBallGuardian::BoostAttack(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("BoostAttack");
     if (DebugBg()) {
-      fprintf(stderr, "[ibbg] %04x boost attack: the second class (fn_30_3478) is not ported yet\n",
+      fprintf(stderr, "[ibbg] %04x boost attack: the second class (fn_30_3478) is a later slice\n",
               GetUniqueId().Value());
     }
   }
@@ -106,8 +107,8 @@ void CIngBoostBallGuardian::BoostAttack(CStateManager&, EStateMsg msg, float) {
 //
 // Every message falls into this module's own IngSpotPathFind (fn_30_9DA0) afterwards.
 //
-// NOT PORTED YET: fn_30_2F9C (the nav-point finder) is not ported, so the Activate case only
-// logs and the nav-point work is a later slice. The two flag bits retail writes here are written
+// NOT YET: fn_30_2F9C (the nav-point finder) is a later slice, so the Activate case only logs
+// and the nav-point work waits for it. The two flag bits retail writes here are written
 // anyway: bit 4 of 0x11EC (mBoostRetreatActive) is cleared and bit 7 of 0x11EE
 // (mBoostModeRetreatActive) is set - the latter is what this module's own IngSpotPathFind
 // (fn_30_9DA0) reads to pick one of two speeds.
@@ -119,7 +120,7 @@ void CIngBoostBallGuardian::BoostModeRetreat(CStateManager& mgr, EStateMsg msg, 
     mBoostModeRetreatActive = true;   // guest 0x11EE bit 7
     if (DebugBg()) {
       fprintf(stderr,
-              "[ibbg] %04x boost retreat: the nav points (fn_30_2F9C) are not ported yet\n",
+              "[ibbg] %04x boost retreat: the nav points (fn_30_2F9C) are a later slice\n",
               GetUniqueId().Value());
     }
     break;
