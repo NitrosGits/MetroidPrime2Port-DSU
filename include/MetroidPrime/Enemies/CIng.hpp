@@ -248,6 +248,9 @@ public:
   bool CanBeShot(const CStateManager&, int) override { return true; }   // slot 42, fn_29_6C
   bool IsListening() const override { return true; }                    // slot 43, fn_29_10
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+  // CPatterned, vtable slot 0xec (the REL's fn_29_B784, 0x10C): the module overrides it; the host
+  // runs the base class's body and logs the stand-in.
+  void UpdateHitDamageTime(float dt) override;
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void TakeDamage(const CVector3f& direction, float magnitude) override;
@@ -262,6 +265,7 @@ public:
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
   void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
   void Render(const CStateManager& mgr) const override;
   void Touch(CActor& actor, CStateManager& mgr) override;
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
