@@ -185,8 +185,8 @@ void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager& mgr) {
   }
 }
 
-// fn_30_B03C (this module).
 // The Ing's fn_29_9A74.
+// @ fn_30_B03C
 void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -252,8 +252,8 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
-// fn_30_ABC4 (this module).
 // The Ing's fn_29_9750.
+// @ fn_30_ABC4
 void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:

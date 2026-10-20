@@ -637,8 +637,8 @@ bool CIngBoostBallGuardian::IsControllingHost(CStateManager&, const CTriggerData
   return mHostId != kInvalidUniqueId; // 0xcdc
 }
 
-// fn_30_C5A4 (this module).
 // Ing body fn_29_B0E0
+// @ fn_30_C5A4
 bool CIngBoostBallGuardian::IsFacingTarget(CStateManager& mgr, const CTriggerData&) const {
   // 0x0000C5E8: the target's aim position (fn_30_5F6C, prediction rodata_70 = 0.0) into a zeroed
   // vector, not its translation; no target counts as facing it (0x0000C674).
@@ -663,8 +663,8 @@ bool CIngBoostBallGuardian::HasNewTarget(CStateManager& mgr, const CTriggerData&
   return HasTarget(mgr, data) && mPrevTargetId != mTargetId;
 }
 
-// fn_30_C4E0 (this module).
 // Ing body fn_29_B01C
+// @ fn_30_C4E0
 bool CIngBoostBallGuardian::HasLineOfSight(CStateManager&, const CTriggerData&) const {
   return mLineOfSight.HasLineOfSight() && mLineOfSight.GetClearTime() > 0.5f;
 }
@@ -692,22 +692,22 @@ bool CIngBoostBallGuardian::AreaClear(CStateManager& mgr, const CTriggerData&) c
   return nearList.empty();
 }
 
-// fn_30_C2AC (this module).
 // Ing body fn_29_ADE8
+// @ fn_30_C2AC
 bool CIngBoostBallGuardian::CoverLeash(CStateManager& mgr, const CTriggerData&) const {
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   return hint == nullptr || (hint->GetTranslation() - GetTranslation()).MagSquared() >
                                 mData.mUnknown5D0D * mData.mUnknown5D0D;
 }
 
-// fn_30_C280 (this module).
 // Ing body fn_29_ADBC
+// @ fn_30_C280
 bool CIngBoostBallGuardian::HasCoverPoint(CStateManager& mgr, const CTriggerData&) const {
   return GetCoverHint(mgr, mCoverHintId) != nullptr;
 }
 
-// fn_30_C240 (this module).
 // Ing body fn_29_AD7C
+// @ fn_30_C240
 bool CIngBoostBallGuardian::HasWallCoverPoint(CStateManager& mgr, const CTriggerData&) const {
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   return hint != nullptr && hint->GetHintType() == static_cast< CScriptAIHint::EHintType >(4);
@@ -769,8 +769,8 @@ bool CIngBoostBallGuardian::TargetInLightSafeZone(CStateManager& mgr, const CTri
   return target != nullptr && mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*target, mgr);
 }
 
-// fn_30_C070 (this module).
 // Ing body fn_29_AAF8
+// @ fn_30_C070
 bool CIngBoostBallGuardian::CanChangeForm(CStateManager&, const CTriggerData&) const {
   // 0x0000C0A8 (corporeal) / 0x0000C0D0 (ing spot): extrwi 1,28 = data 0x08.
   const bool locked = (mData.mFlags210 & kFlag_NoFormChange) != 0;
@@ -832,8 +832,8 @@ bool CIngBoostBallGuardian::ShouldArmSwipe(CStateManager& mgr, const CTriggerDat
          distSq <= mMaxAttackRange * mMaxAttackRange && fabsf(delta.GetZ()) < 3.f;
 }
 
-// fn_30_BE88 (this module).
 // Ing body fn_29_A8C0
+// @ fn_30_BE88
 bool CIngBoostBallGuardian::ShouldTaunt(CStateManager&, const CTriggerData&) const {
   return mTaunt;
 }
@@ -919,14 +919,14 @@ bool CIngBoostBallGuardian::FoundMovementPos(CStateManager&, const CTriggerData&
   return mFoundMovementPos;
 }
 
-// fn_30_BA60 (this module).
 // Ing body fn_29_A498
+// @ fn_30_BA60
 bool CIngBoostBallGuardian::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return mRecalcPath || CPatterned::PathShagged(mgr, data);
 }
 
-// fn_30_BA18 (this module).
 // Ing body fn_29_A450
+// @ fn_30_BA18
 bool CIngBoostBallGuardian::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return !mFoundMovementPos || CPatterned::PathOver(mgr, data);
 }
@@ -1004,8 +1004,8 @@ bool CIngBoostBallGuardian::CanGrappleTarget(CStateManager& mgr, const CTriggerD
 
 // ---- code functions (the FSM2 runs them: CGenericFSM2State::SetCodeFunctions) -------------------
 
-// fn_30_72C8 (this module).
 // Ing body fn_29_5B60
+// @ fn_30_72C8
 void CIngBoostBallGuardian::SetTargetDest(CStateManager& mgr, float) {
   LogState("SetTargetDest");
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
@@ -1018,10 +1018,10 @@ void CIngBoostBallGuardian::SetTargetDest(CStateManager& mgr, float) {
   JoinTeam(mgr);
 }
 
-// fn_30_722C (this module).
 // Ing body fn_29_5AC4: destination = the cover hint's translation when there is one, else the Ing's own
 // position; mFoundMovementPos only in the first case; then SetDestination and the face target at
 // kInvalidUniqueId (0x718), asm 0x00005B00-0x00005B48.
+// @ fn_30_722C
 void CIngBoostBallGuardian::SetCoverDest(CStateManager& mgr, float) {
   LogState("SetCoverDest");
   CVector3f dest = GetTranslation();
@@ -1034,13 +1034,13 @@ void CIngBoostBallGuardian::SetCoverDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
-// fn_30_7138 (this module).
 // Ing body fn_29_59D0: two closest-point queries from the Ing's own position - filter (20, 0, -1) then
 // (20, 1, from), asm 0x000059E0 and 0x00005A44 - and a point-graph search between the two results
 // (0x00005A94). The second filter's connected point is the *first* query's index (the asm keeps it
 // in r5 from 0x00005A2C), so the second point is one the graph connects to the first - without
 // that the pair is unrelated and the search below fails. It sets no destination:
 // mFoundMovementPos is what IngSpotPathFind reads.
+// @ fn_30_7138
 void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
   LogState("SetRecoverDest");
   mFoundMovementPos = false;

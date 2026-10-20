@@ -129,8 +129,8 @@ void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_30_A0D8 (this module).
 // fn_29_8A2C
+// @ fn_30_A0D8
 void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Lurk");
@@ -156,8 +156,8 @@ void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_30_9F50 (this module).
 // fn_29_8808
+// @ fn_30_9F50
 void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   const bool canPathFind = (mData.mFlags210 & kFlag_NoPathFind) == 0 && mFoundMovementPos;
   bool moved = false;
@@ -199,6 +199,7 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
 // spot's maximum, or the fast speed (data +0x14, unknown_0x50398a06) while retreating or in the
 // boost puddle form with a boost pending and a cover hint, times the phase's ingSpotSpeedScale; the
 // actor faces its move only while no retreat point is held.
+// @ fn_30_9DA0
 void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
@@ -228,10 +229,10 @@ void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
-// fn_30_9C7C (this module).
 // fn_29_8570: the point-graph variant, same two guards and the same Activate stores as
 // fn_29_8684 (asm 0x0000858C-0x000086A8); the speed blends from the safe-zone-or-maximum base to
 // the wall speed by the angle between the actor's up and world up (asm 0x00008600-0x00008740).
+// @ fn_30_9C7C
 void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPointPathFind");
@@ -547,8 +548,8 @@ void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
-// fn_30_8C18 (this module).
 // fn_29_7518
+// @ fn_30_8C18
 void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, float) {
   if (msg != kStateMsg_Activate) {
     return;
@@ -563,8 +564,8 @@ void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, floa
   SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x00008CA4: 'ATTK', -1
 }
 
-// fn_30_8998 (this module).
 // fn_29_7244
+// @ fn_30_8998
 void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -620,13 +621,14 @@ void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float)
   }
 }
 
-// fn_30_8520 (this module); the Ing's fn_29_6DA0.
+// The Ing's fn_29_6DA0.
 // Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_30_bss_40:
 // a count plus four {TUniqueId, float} entries), insertion-sorted ascending, then takes one entry
 // at random through the state manager's RNG. Unlike the Ing's copy, this module takes any hint
 // type but the boost nav points (14 and 15, asm 0x000086EC) and never tests the hint against the
 // safe zones; a wall hint (type 4) still needs the body projectile allowed by the properties (data
 // 0x20, 0x00008700) and the target outside every safe zone (TargetInSafeZone, 0x0000866C).
+// @ fn_30_8520
 void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
   if (msg != kStateMsg_Activate) { // asm 0x0000854C
     return;
