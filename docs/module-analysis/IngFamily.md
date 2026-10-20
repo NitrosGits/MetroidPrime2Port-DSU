@@ -927,11 +927,20 @@ one by one. Six are ported now, five are the host's own C++ and stay cited, five
 | `fn_29_37D8` | 0x170 | the separation steering | ported (`CIng::ApplySeparation`) |
 | `fn_29_4960` | 0x148 | the light's blend (0xe50) and the light object | ported (`CIng::UpdateLight`) |
 | `fn_29_4B4C` | 0x13C | the actor's own light (a `CGameLight`, 0x1b8 bytes) | ported (`CIng::CreateLight`) |
+| `fn_29_16AC` | 0x3D4 | the loader's data block (the SLdrIng default constructor) | ported (`PortLoadIng`) |
 | `fn_29_4830` | 0x130 | the ing spot's blob object (0xd5c) | stand-in: module 25's class builds it |
-| `fn_29_16AC` | 0x3D4 | the loader's data block | stand-in |
 
-Only two module functions the run reaches are still stand-ins: the blob (`fn_29_4830`, whose class
-belongs to module 25) and the loader's data block (`fn_29_16AC`).
+Only one module function the run reaches is still a stand-in: the blob (`fn_29_4830`, whose class
+belongs to module 25).
+
+**The loader's data block** (`fn_29_16AC`, 0x3D4) is the retail's default constructor for the
+`SLdrIng` block: it fills it with the game's defaults before the loader parses the properties over
+it (the sub-struct constructors at asm 0x16C0-0x1790, the -1 words at 0x16D4-0x1724 and
+0x1734-0x174C, the floats at 0x300-0x314, 0x348-0x358, 0x370-0x380 and 0x3a0-0x464). The host's
+generated `SLdrIng` carries the export's defaults, and they agree field for field - except for the
+fifteen sound ids, which the retail leaves invalid (-1, so the block's ushorts are 0xffff, the
+invalid sfx id) while the generated header leaves them 0. The loader now sets them to -1 before
+the parse, so an Ing whose level sets no sound id stays silent instead of playing sound 0.
 
 **The separation steering** (`fn_29_37D8`, asm 0x37D8-0x3924) walks the state's listening-AI list
 (the CStateManager's list at 0x830 - Prime 1's `kOL_ListeningAi` is the sixth list, so 0x808+5*8) and,

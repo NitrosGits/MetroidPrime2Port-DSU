@@ -3636,11 +3636,33 @@ void CIng::SetupStateMachine(CStateManager& mgr) {
 // parsed and then never read, here as in retail. The model data's move is the retail's fn_29_1294
 // (0x40, asm 0x1294) with fn_29_12D4 (0x20) and fn_29_12F4 (0x28); the host's LdrToModelData and
 // its optional are the same step.
+// @ fn_29_16AC
 static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
-  // fn_29_16AC (0x3D4): the retail's own data-block builder; over the size line, so the host keeps
-  // its own construction of the five sub-structs and logs the stand-in.
-  PortIngStandIn("fn_29_16AC data block (0x3D4)");
   SLdrIng sldrThis;
+  // fn_29_16AC (0x3D4) is the retail's default constructor for the loader's data block: it fills
+  // the block with the game's defaults before the loader parses the properties over it (the
+  // constructor calls at asm 0x16C0-0x1790 and the -1 words at 0x16D4-0x1724 and 0x1734-0x174C).
+  // The host's generated SLdrIng carries the export's defaults, which agree with the retail's
+  // field for field - the floats at 0x300/0x304/0x308/0x30c/0x310/0x314 (50, 15, 7, 25, 25, 360),
+  // the ones at 0x348/0x350/0x354/0x358 (0.35, 15, 1.5, 1.5), the ones at 0x370/0x374/0x378/0x37c/
+  // 0x380 (15, 1.5, 2, 25, 10) and the rest - except for the fifteen sound ids, which the retail
+  // leaves invalid (-1) and the generated header leaves 0. The retail's -1 becomes the invalid
+  // sfx id 0xffff in the ushort the data block keeps.
+  sldrThis.sound_IngSpotIdle = -1;
+  sldrThis.sound_IngSpotMove = -1;
+  sldrThis.sound_HitNormalDamage = -1;
+  sldrThis.sound_HitHeavyDamage = -1;
+  sldrThis.sound_IngSpotDeath = -1;
+  sldrThis.sound_SwarmMove = -1;
+  sldrThis.sound_InsideHost = -1;
+  sldrThis.sound_ExitHost = -1;
+  sldrThis.sound_ExitHostSafeZone = -1;
+  sldrThis.sound = -1;
+  sldrThis.sound_BodyProjectile = -1;
+  sldrThis.sound_BodyProjectileSplatWall = -1;
+  sldrThis.sound_MiniPortal = -1;
+  sldrThis.sound_Grapple = -1;
+  sldrThis.sound_ExitGrapple = -1;
 #include "MetroidPrime/ScriptLoader/SLdrIng.inc"
 
   rstl::optional_object< CModelData > modelData(
