@@ -263,7 +263,11 @@ private:
   u16 xFB2_;        // 0xFB2: a knee id, kInvalidUniqueId (fn_14_705C counts these)
   u16 xFB4_;        // 0xFB4: a knee id, kInvalidUniqueId (fn_14_705C counts these)
   u16 xFB6_;        // 0xFB6: a knee id, kInvalidUniqueId (fn_14_705C counts these)
+  int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
+  CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
+  float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)

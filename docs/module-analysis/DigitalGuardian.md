@@ -653,6 +653,43 @@ exists and its flag byte (`head+0x10F4`, bit 5) is set, answers false. The head 
 and its loader is a stand-in, so no head can exist in the port and that branch cannot be taken:
 the port answers the float test only, and WP3 has to add the head's flag byte.
 
+**WP2 part 2b done (2026-10-20): five more triggers.** `ShouldVortexAttack` (fn_14_9930),
+`ShouldMeleeAttack` (fn_14_97F0), `ShouldProjectileAttack` (fn_14_97A4), `VortexStruckPlayer`
+(fn_14_966C) and `BreakOutOfVortex` (fn_14_9638) are ported; `ShouldJumpAttack` (fn_14_9678) is
+**not** - it calls fn_14_308C (the call at 0x96D8), 0x120 bytes, which picks the target the
+trigger measures the player against, and that helper is too big for one slice.
+
+| trigger | fn | what it answers | asm |
+|---|---|---|---|
+| ShouldVortexAttack | `fn_14_9930` | bit 0 (mask 0x01) of the flag byte at `this+0x128C`, and false when the head's flag byte (`head+0x10F4`, bit 5) is set | `clrlwi r3, r0, 31` (0x9974); the head test at 0x9968 |
+| ShouldMeleeAttack | `fn_14_97F0` | the float at `this+0x11E0` is at most zero **and** the player is within the far leg stab range of one of the four locator ids at `this+0x10C8` | the float test at 0x9860-0x9870, the locator loop at 0x98E0-0x98EC, the distance at 0x98B0-0x98D0 |
+| ShouldProjectileAttack | `fn_14_97A4` | the head's flag byte (`head+0x10F4`, bit 5) - false when there is no head | `extrwi r3, r0, 1, 26` (0x97D4), the null test at 0x97C8 |
+| VortexStruckPlayer | `fn_14_966C` | bit 2 (mask 0x04) of the flag byte at `this+0x128C` | `extrwi r3, r0, 1, 29` (0x9670) |
+| BreakOutOfVortex | `fn_14_9638` | the word at `this+0x11B8` is 1 **and** the float at `this+0x11C8` (the data block's +0x100, `mUnknown4F5D725C`) is at most zero | `cmpwi r0, 1` (0x963C), the float test at 0x9650-0x965C |
+
+New host members, one per guest offset: `x10C4_` (the count of the locator ids, 4 in the ctor),
+`x10C8_` (the four locator segment ids, all invalid in the ctor), `x11B8_` (0 in the ctor) and
+`x11E0_` (0.0f in the ctor). The guest's `this+0x7C8` (the melee range) is the data block's
++0x08, i.e. `mFarLegStabRange`, and `this+0x11C8` is the data block's +0x100, i.e.
+`mUnknown4F5D725C` - both named already.
+
+Two more facts the port needed:
+
+- `mgr+0x14FC` is the player (its position is read at +0x54/+0x58/+0x5C); the port uses
+  `mgr.GetPlayer(0)->GetTranslation()`. The melee check compares the player's x and y with the
+  locator's (the transform's `m03` and `m13`, i.e. its translation's x and y) - the horizontal
+  plane, the game's z being up.
+- The locator ids at `this+0x10C8` are one byte each (the ctor stores four `0xFF` bytes and the
+  loop at 0x98E0 steps by one), and the retail's `CSegId` is a byte as well, so the host's
+  `CSegId` fits. With the ids still invalid the retail's locator transform is the identity, so
+  the melee range is measured from the guardian's own origin - the same as retail before the
+  legs are set up.
+
+The head module is WP3 and its loader is a stand-in, so the four triggers that look the head up
+(`fn_14_9930`, `fn_14_97A4`, `fn_14_97F0`, `fn_14_9994`) cannot take retail's head branch in
+the port; WP3 has to add the head's flag byte (`head+0x10F4`, bit 5) to all four.
+
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct

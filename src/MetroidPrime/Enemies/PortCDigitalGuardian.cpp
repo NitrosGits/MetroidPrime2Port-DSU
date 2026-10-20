@@ -16,9 +16,11 @@
 // stand-ins.
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
 
+#include "Kyoto/Animation/CSegId.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardian.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -108,6 +110,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef DG_STATE
 #undef DG_CODE
 
+
 } // namespace
 
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
@@ -123,7 +126,11 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , xFB2_(kInvalidUniqueId.value)
 , xFB4_(kInvalidUniqueId.value)
 , xFB6_(kInvalidUniqueId.value)
+, x10C4_(4)
+, x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
 , x1082_(0)
+, x11B8_(0)
+, x11E0_(0.f)
 , x1274_(0.f)
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
@@ -330,38 +337,82 @@ bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData&
 // cror has just made "f1 <= f0").
 // The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
 // retail's head branch cannot be taken: the answer is the float test.
+// Retail tests the head's flag byte first (head+0x10F4 bit 0x20, asm 0x99CC): with no head the
+// TCastToPtr<CDigitalGuardianHead> is null and the branch falls through to the x1274 test.
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
   return x1274_ <= 0.0f;
 }
 
+// fn_14_9930: the head module's uid (guest this+0x1082, the lhz at 0x9944) is looked up; if the
+// head exists and its flag byte (head+0x10F4) has bit 5 set (the extrwi. at 0x9968 keeps the
+// byte's bit 5, the mask 1u << (31 - 26) = 0x20), the answer is false (the bne at 0x996C and
+// the li at 0x997C). Otherwise the answer is bit 0 (the mask 1u << (31 - 30) = 0x1) of the flag
+// byte at guest this+0x128C (the clrlwi at 0x9974).
+// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
+// retail's head branch cannot be taken.
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9930");
-  return false;
+  return (x128C_ & 0x1) != 0;
 }
 
+// fn_14_97F0: the head's flag byte (head+0x10F4, bit 5) is tested first (the extrwi. at
+// 0x9854); with no head (WP3) that branch cannot be taken. Then the float at guest this+0x11E0
+// must be at most zero (the fcmpo cr0 at 0x9868, the cror eq, lt, eq at 0x986C and the bne at
+// 0x9870). Then the four locator ids at guest this+0x10C8 (the count at 0x10C4) are walked
+// (the loop at 0x98E0..0x98EC): each locator's world position comes from GetLctrTransform
+// (the call at 0x98A0) and the player's (state manager+0x14FC, the lwz at 0x987C) is compared
+// with it in the horizontal plane; the squared distance (the fsubs/fmuls/fmadds at
+// 0x98B0..0x98C8) must be below the far leg stab range squared (guest this+0x7C8 = the data
+// block's +0x08, the fmuls at 0x9884).
 bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_97F0");
+  if (x11E0_ > 0.0f) {
+    return false;
+  }
+  const float range = mData.mFarLegStabRange;
+  const float rangeSq = range * range;
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  for (int i = 0; i < x10C4_; ++i) {
+    const CVector3f locator = GetLctrTransform(x10C8_[i]).GetTranslation();
+    const float dx = player.GetX() - locator.GetX();
+    const float dy = player.GetY() - locator.GetY();
+    if (dx * dx + dy * dy < rangeSq) {
+      return true;
+    }
+  }
   return false;
 }
 
+// fn_14_97A4: the head's flag byte (head+0x10F4, bit 5) is the whole answer (the extrwi at
+// 0x97D4 keeps the byte's bit 5, the mask 1u << (31 - 26) = 0x20), but only when the head
+// exists (the cmplwi at 0x97C8 and the beq at 0x97CC answer false without it).
+// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
+// retail's head branch cannot be taken: the answer is always false.
 bool CDigitalGuardian::ShouldProjectileAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_97A4");
   return false;
 }
 
+// fn_14_9678 (ShouldJumpAttack) is not ported yet: it calls fn_14_308C (the call at 0x96D8,
+// 0x120 bytes), which picks the target the trigger measures the player against, and that
+// helper is too big for this slice. The trigger also needs the float at guest this+0x11E4.
 bool CDigitalGuardian::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
   StandInFn("fn_14_9678");
   return false;
 }
 
+// fn_14_966C: bit 2 (the mask 1u << (31 - 29) = 0x4) of the flag byte at guest this+0x128C (the
+// lbz at 0x966C and the extrwi at 0x9670).
 bool CDigitalGuardian::VortexStruckPlayer(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_966C");
-  return false;
+  return (x128C_ & 0x4) != 0;
 }
 
+// fn_14_9638: the word at guest this+0x11B8 must be 1 (the cmpwi at 0x963C and the bne at
+// 0x9640), and then the float at guest this+0x11C8 (the data block's +0x100, i.e.
+// mUnknown4F5D725C) must be at most zero (the fcmpo cr0 at 0x9650, the cror eq, lt, eq at
+// 0x9654 and the mfcr/extrwi pair at 0x9658..0x965C).
 bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9638");
-  return false;
+  if (x11B8_ != 1) {
+    return false;
+  }
+  return mData.mUnknown4F5D725C <= 0.0f;
 }
 
 // fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are not
