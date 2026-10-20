@@ -736,7 +736,7 @@ portal looks at the eye position. The ray path drops a ray of 50.0f (lbl_16_roda
 player's position plus the up vector and takes the hit point (the look at point stays the
 origin). The portal actor itself (fn_16_1720, 0x1C8: the module's own CPhysicsActor subclass
 with the portal's effect, the warp stab damage and the two warp sounds) is over the slice's 0x80
-line and stays a stand-in, so no portal actor is created.
+line here and stays a stand-in - slice 8 ports it.
 
 **fn_16_9BE8 (the portal's effect, 0x9BE8..0x9E48, 0x260)** - ported. The id comes from the state
 manager (0x9C08); the effect is a CScriptEffect (0x2D0 bytes) named "WarpPortalEffect" (the
@@ -757,6 +757,40 @@ reverted before the commit): the warp attack runs (its portal block logs the fn_
 stand-in), **four portal effects are created** (the ids 414, 416, 418 and 420 in area 11 - one
 per tentacle that gets the portal's "EventStart" event) and the run ends on the frame limit with
 0 caught/reach-stub.
+
+### Slice 8: the ray path's origin and the portal actor
+
+**CPlayer's vtable slot 21** (the word at 0x54 of `__vt__7CPlayer`, the DOL's
+`GetAimPosition__7CPlayerCFRC13CStateManagerf`) is `GetAimPosition` - the retail's warp attack
+asks the player for it (0x6470) with the state manager and 0.75f (lbl_16_rodata_3A4, 0x6474) and
+drops the ray from that point plus the up vector.
+
+**The portal actor (fn_16_1720, 0x1720..0x18E8)** - ported as the module's own CPhysicsActor
+subclass (`CEmperorIngStage1WarpPortal`, the retail's vtable lbl_16_data_27C). The retail's object
+is 0x300 bytes; its own fields are the timer (the guest 0x2D0), the effect id (0x2D4), the hit
+flag (0x2D6), the portal's effect asset (0x2D8), the stab damage (0x2DC) and the two warp sounds
+(0x2F8 and 0x2FA). The base call (0x1848) is CPhysicsActor with the flag 0, an empty material
+list, the bounding box (-2.0f..2.0f, 0x1800), the mover data (fn_16_18E8: the zero velocity, the
+identity angular velocity, the zero momentum, the identity and the mass 1.0f), the actor
+parameters and the default step data.
+
+Its overrides:
+
+| fn | what |
+|---|---|
+| fn_16_0 | the destructor (the vtable back and the base's own) |
+| fn_16_1150 (0x424) | the think: the timer counts up, past 0.75f the portal goes inactive, when the "Whole Body" animation is over the portal goes inactive and its effect gets the emitter for the second warp sound and the "ACTV" message, past 5.0f the portal asks to be deleted, the animation is updated, and once the player's touch bounds overlap one of the seven "eight_Spine_*" locator boxes (2.0f around the locator) the stab damage is applied |
+| fn_16_1574 (0x1AC) | the script messages: kSM_Create creates the portal's effect (fn_16_9BE8) and gives it the portal's transform and the "ACTV" message, kSM_Delete deletes the effect |
+| fn_16_1088 (0xC8) | the render: the transform's Y column is the plane's normal and the position's dot with it the constant |
+
+The retail's animation data flag byte (the guest CAnimData+0x2AC, 0x1194) has no member in the
+host's CAnimData, so that one line is not ported.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`, a temporary hook that forces the mode to 2 in the heart's health update,
+reverted before the commit): the warp attack runs and **the portal actor appears** (16 of them
+over the run, each created with the state manager's id and deleted again after 5.0f), the four
+portal effects are created and the run ends on the frame limit with 0 caught/reach-stub.
 
 ## 5. The port (milestone 1)
 
