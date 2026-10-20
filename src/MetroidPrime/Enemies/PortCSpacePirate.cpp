@@ -1182,7 +1182,7 @@ void CSpacePirate::SetVelocityForJump() {
   x8fa_29_ = true;
 }
 
-// Retail fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
+// @ fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
 // live; then the patterned pre-render, the bone tracking and the ik chain.
 void CSpacePirate::PreRender(CStateManager& mgr) {
   // 0x3900: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3918 calls the ragdoll's own
