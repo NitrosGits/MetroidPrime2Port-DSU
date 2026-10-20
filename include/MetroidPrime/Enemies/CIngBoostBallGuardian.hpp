@@ -524,7 +524,7 @@ private:
   float mFrustrationTimer;                               // CIng: 0xE44
   float mBallCooldown;                                   // CIng: 0xE48
   float mHitReactionTime;                                // CIng: 0xE4C
-  float mLightBlend;                                     // CIng: 0xE50
+  float mLightBlend;                                     // guest 0x11C4 (CIng: 0xE50)
   float mDeadFade;                                       // CIng: 0xE54
   float mBodyProjectileTime;                             // CIng: 0xE58
   // The boost half's members (this module's own; the guest offsets are in

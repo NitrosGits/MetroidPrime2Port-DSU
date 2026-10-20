@@ -30,6 +30,11 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CGameLight.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Graphics/CLight.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
+#include "MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp"
 #include "MetroidPrime/Enemies/CCollisionTracker.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
@@ -193,10 +198,21 @@ void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager&) {
   BgStandIn("CIngBoostBallGuardian::UpdatePuddleEffects (fn_30_6108, 0x384)");
 }
 
-// fn_30_65C8 (0x148): the hit light's fade (the game light at 0x1084, the fade at 0x11C4); a
-// stand-in, the light is not created.
-void CIngBoostBallGuardian::UpdateHitLight(float, CStateManager&) {
-  BgStandIn("CIngBoostBallGuardian::UpdateHitLight (fn_30_65C8, 0x148)");
+// @ fn_30_65C8
+// The "Ing Light" (0x1084) on the head locator (0x10AD): it fades in (0x11C4) while the guardian is
+// alive and corporeal and out otherwise.
+void CIngBoostBallGuardian::UpdateHitLight(float dt, CStateManager& mgr) {
+  if (GetAlive() && mForm == kForm_Corporeal) { // 0x420 0x40, 0xAE4
+    mLightBlend = CMath::Min(1.f, mLightBlend + dt);
+  } else {
+    mLightBlend = CMath::Max(0.f, mLightBlend - dt);
+  }
+  if (CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mHitLightId))) {
+    const CColor color = CColor::Lerp(CColor::Black(), mData.mLightColor, mLightBlend); // 0x8F8
+    CLight lightData = CLight::BuildPoint(GetLctrTransform(mEyeSegId).GetTranslation(), color);
+    lightData.SetAttenuation(1.f / mData.mLightAttenuation, 0.f, 0.f); // 0x8FC
+    light->SetLight(lightData);
+  }
 }
 
 
