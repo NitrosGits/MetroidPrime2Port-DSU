@@ -189,6 +189,36 @@ void CSplitterMainChassis::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
+// fn_75_8EA4 (not marked: the run never reached the copy)
+// The chassis copies four of its data's timers into its derived state (0x8EA4-0x8EC8): the leg
+// stab interval (0x82C) to 0xD10, the spin attack interval penalty (0x874) to 0xD14, the laser
+// sweep interval (0x858) to 0xD18 and the min dodge interval (0x848) to 0xD1C.
+void CSplitterMainChassis::PortCopyTimers() {
+  mLegStabTimer = mData.mLegStabAttackInterval;
+  mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+  mLaserSweepTimer = mData.mLaserSweepInterval;
+  mDodgeTimer = mData.mMinDodgeInterval;
+}
+
+// fn_75_E6E4 (not marked: the run never reached the accept)
+// The chassis accepts a head (0xE6E4-0xE768): with the chassis's own command module id (0xC6C)
+// still the invalid one (0xE700-0xE70C) the head's id goes there (0xE720), the id at 0xC6E is
+// cleared (0xE72C), the flag byte 0xD40's 0x40 bit is cleared (0xE730-0xE738, the word's bit 25),
+// the materials 0x28 and 0x29 (kMT_Target and kMT_Orbit) are removed (0xE73C) and the four
+// timers are copied (0xE744 fn_75_8EA4); the answer is true (0xE748). With a command module
+// already there the answer is false (0xE750).
+bool CSplitterMainChassis::PortAcceptHead(CStateManager& mgr, TUniqueId headId) {
+  if (mCommandModuleId != kInvalidUniqueId) {
+    return false;
+  }
+  mCommandModuleId = headId;
+  mSecondLinkId = kInvalidUniqueId;
+  mFlagsD40 &= ~static_cast< uchar >(0x40);
+  RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
+  PortCopyTimers();
+  return true;
+}
+
 // fn_75_F0E8 (0xB8) - the main chassis's Think. The body follows the retail's: the active gate
 // (the byte at 0x20, 0xF10C lbz and 0xF110 extrwi bit 24 - the byte's 0x80), the base's Think
 // (0xF118), the docking link (the partner id at 0xC68, 0xF11C lwz and 0xF120 cmplwi 0: with no

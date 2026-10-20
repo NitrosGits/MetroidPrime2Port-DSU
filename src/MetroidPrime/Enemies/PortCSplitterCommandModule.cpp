@@ -328,6 +328,40 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   }
 }
 
+// fn_75_3EEC (not marked: the run only reached the null chassis lookup)
+// The head's "dock to the chassis" (0x3EEC-0x3FE0): the id at 0xEFC (the connected object the
+// XAND message found) is looked up (0x3F18 ObjectById) and cast to a main chassis (0x3F1C); with
+// no chassis the body ends (0x3F24). The chassis is asked to accept this head (0x3F3C
+// fn_75_E6E4, with the head's own id at 0x8); when it does not (0x3F40, the low byte) the body
+// ends. Then the chassis's id goes to 0xEFA (0x3F50) - the id fn_75_31A8 and the beam-effect
+// gate fn_75_58E8 read - the id at 0xEFC is cleared (0x3F58) and the id goes to 0x12A (0x3F60).
+// The docking sound (the sound id at 0x88C) is added when the flag byte 0xF6A's 0x02 bit is clear
+// (0x3F6C extrwi, the word's bit 30) and the data's flag word at 0x7C0 has its 0x80 bit clear
+// (0x3F78 clrlwi, the word's bit 31); the flag byte's 0x02 bit is cleared either way (0x3FB4
+// rlwimi, the word's bit 30). The locomotion type becomes 1 (kLT_Relaxed, 0x3FC4
+// SetLocomotionType).
+void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
+  CSplitterMainChassis* chassis =
+      TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mCheckedChassisId));
+  if (chassis == nullptr) {
+    return;
+  }
+  if (!chassis->PortAcceptHead(mgr, GetUniqueId())) {
+    return;
+  }
+  mChassisId = mCheckedChassisId;
+  mCheckedChassisId = kInvalidUniqueId;
+  mClearedId = mChassisId;
+  if ((mAutoDestructFlags & 0x2) == 0 && (mData.mUnknownBD80FD94 & 0x80000000) == 0) {
+    // 0x3F80-0x3FA8: the docking sound; its handle is dropped (the retail writes it to a stack
+    // slot it never reads).
+    CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundDocking & 0xFFFF), GetTranslation(),
+                            0x7F, GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
+  }
+  mAutoDestructFlags &= ~static_cast< uchar >(0x2);
+  BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+}
+
 // @ fn_75_32F4
 // The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
 // 0x332C, 0xF0C at 0x333C and 0xF14 at 0x3344) and two counted up (0xF18 at 0x3354 and 0xF1C at
@@ -552,6 +586,10 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
         mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(), true);
   }
   mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  // The retail's state machine calls fn_75_3EEC (the docking) from one of its states; its
+  // tables hold names only, so the port calls it from the Think, before the chassis check
+  // (fn_75_31A8) that reads the id it sets.
+  PortDockToChassis(mgr);
   PortUpdateChassis(mgr);
   PortUpdateFlashAndDeath(mgr, dt);
   PortUpdateCollision(mgr);

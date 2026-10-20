@@ -106,6 +106,12 @@ public:
   TUniqueId GetCommandModuleId() const { return mCommandModuleId; }
   TUniqueId GetSyncId() const { return mSyncId; }
 
+#ifdef TARGET_PC
+  // The retail's fn_75_E6E4: the chassis accepts a head (the head's fn_75_3EEC asks). It is
+  // public because the command module calls it.
+  bool PortAcceptHead(CStateManager& mgr, TUniqueId headId);
+#endif
+
   // guest 0xD28: the scan timer, which the command module's fn_75_58E8 tests (the chassis must
   // have it above zero for the head to spawn its beam effect). The retail's constructor leaves
   // it at zero (fn_75_F5F8 stores lbl_75_rodata_390, 0.0f) and its script-message handler sets
@@ -210,6 +216,16 @@ private:
   uchar mFlagsD41 = 0;
   // The retail's fn_75_AA68: the locomotion type the data's flag word at 0x828 decides.
   void PortSetLocomotionType();
+  // The retail's fn_75_E6E4 (the chassis accepts a head) and fn_75_8EA4 (it copies four of its
+  // data's timers into its derived state).
+  void PortCopyTimers();
+  // guest 0xC6E: the second link, which fn_75_E6E4 clears when it takes a head.
+  TUniqueId mSecondLinkId = kInvalidUniqueId;
+  // guest 0xD10-0xD1C: the four timers fn_75_8EA4 copies.
+  float mLegStabTimer = 0.f;     // 0xD10 (the data's leg stab interval, 0x82C)
+  float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)
+  float mLaserSweepTimer = 0.f;   // 0xD18 (the data's laser sweep interval, 0x858)
+  float mDodgeTimer = 0.f;        // 0xD1C (the data's min dodge interval, 0x848)
 #endif
 };
 #else
