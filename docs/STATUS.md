@@ -24,14 +24,14 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` (subagent) | decomp/darksamus on `232823309` | milestone 1 (old lane did nothing) |
 | ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `614a8ed72` (m1 accepted) | reached stand-ins <=0x100 |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
-| EmperorIngStage1 tentacles (Opus) | `ses_ea6700b83ffeiYYMVx9wazyiAs` | decomp/emperoring @ `47eca2d5e` | fn_16_3EAC (0x794) collision managers; CDamageVulnerability 0x54 vs 0x38 by meaning |
+| EmperorIngStage1 (Opus) | `ses_ea6700b83ffeiYYMVx9wazyiAs` | decomp/emperoring @ `87f405931` (42 collision actors exist) | fn_16_3D64, TrackPlayer 7C28, BeginHeartStage 78AC, onward; fold x7d4_/mJoints |
 | Agon black render (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | investigation; fix branch `fix/agon-black` if small | 08_sand_casualpirates normal view renders black |
 
-Accepted, not yet merged (next batch: merge, build, smoke): ing `618c7e8f5`, playerturret `614a8ed72`, emperoring `47eca2d5e`, commandopirate
+Accepted, not yet merged (next batch: merge, build, smoke): ing `618c7e8f5`, playerturret `614a8ed72`, emperoring `87f405931`, commandopirate
 up to `da52cac22`, spacepirate `a9ba3f157` (Render/ScanVisorRender done), emperoring3 `528919371`, swampboss `59637cee5`;
 digitalguardian `e4b13e532` (model draws again).
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
-reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress.
+reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress; a raw script-message constant must be re-read from the lis/addi pair (0x41544348 kSM_Attach was misread).
 
 
 Later in the day (port orchestrator, Opus): the five MiniMax family orchestrators were stopped and the
