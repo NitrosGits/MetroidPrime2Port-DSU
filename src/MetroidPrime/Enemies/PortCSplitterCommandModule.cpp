@@ -9,6 +9,7 @@
 // the shields and the docking forward to CPatterned behind a once-only StandIn log, and the retail
 // function each stands in for is named on it.
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -44,7 +45,6 @@ void StandIn(const char* what) {
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
 // function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
 // (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
-void StandInFn_75_3004() { StandIn("fn_75_3004 (0x1A4)"); }
 void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
@@ -99,6 +99,68 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 // stays a named once-logging shell.
 void StandInFn_75_1578() { StandIn("fn_75_1578 (0x218)"); }
 void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
+
+// The module's own calls in the collision update: both are over 0x80, so each stays a named
+// once-logging shell. fn_75_2BE0 returns the neutral value (no object) and fn_75_2CE0 does
+// nothing.
+CEntity* PortFn_75_2BE0() {
+  StandIn("fn_75_2BE0 (0xE0)");
+  return nullptr;
+}
+void PortFn_75_2CE0(CStateManager& mgr, int mode, float value) {
+  StandIn("fn_75_2CE0 (0x324)");
+}
+// The vtable word 0x4C of the object fn_75_2BE0 returns, and the CCollisionActor's virtual at
+// the vtable word 0x38 (its 0x4 field is what the body reads). The port has no names for either
+// DOL virtual yet, so both stay shells; the second one answers the neutral 0.0f.
+void StandInVTable0x4C() { StandIn("the vtable word 0x4C of fn_75_2BE0's result"); }
+float StandInCollisionActorVirtual0x38() {
+  StandIn("the CCollisionActor virtual at the vtable word 0x38");
+  return 0.f;
+}
+
+// fn_75_3004 (0x1A4) - the command module's collision update. The body: the module's own call
+// fn_75_2BE0 (0x3024) gives an object whose vtable word 0x4C is called with the colour at 0xF04
+// (0x3030-0x3040); the DOL's CSfxManager::UpdateEmitter runs with the handle at 0xF60, the
+// position at 0x54 and the byte 0x7f (0x3044-0x3074); the id at 0xF00 is looked up (0x3088) and
+// cast to a CCollisionActor (0x308C); the manager at 0xE58, when there is one, is deactivated
+// when this actor has no chassis (0x3098-0x30C0 - the DOL's
+// CCollisionActorManager::SetActive, with the flag built by the cntlzw idiom at 0x30B4-0x30BC);
+// the state in 0xEE0 (0..2) with the flag byte 0xF6A's 0x08 set asks the collision actor for the
+// field at its 0x4 (0x30DC-0x3100) and, at zero or below, clears the state, sets the timer 0xF10
+// to the data's 0x40 and runs fn_75_2CE0 (0x3114-0x3130); a state out of range with the flag set
+// and the timer at zero or below advances the state to 1 or 2 (0x3138-0x3170) and runs
+// fn_75_2CE0 with it (0x3174-0x3188).
+void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
+  CEntity* sound = PortFn_75_2BE0();
+  if (sound != nullptr) {
+    StandInVTable0x4C();
+  }
+  StandInSfxUpdateEmitter();
+  const CEntity* actor = mgr.ObjectById(mSoundTargetId);
+  if (actor == nullptr) {
+    return;
+  }
+  if (TCastToConstPtr< CCollisionActor >(actor) == nullptr) {
+    return;
+  }
+  if (mCollisionActorManager != nullptr) {
+    mCollisionActorManager->SetActive(mgr, mChassisId == kInvalidUniqueId);
+  }
+  if (mCollisionState > 0 && mCollisionState < 3) {
+    if ((mAutoDestructFlags & 0x8) != 0) {
+      if (StandInCollisionActorVirtual0x38() <= 0.f) {
+        mCollisionState = 0;
+        mCountdownTimerA = mData.mResetShieldTime;
+        PortFn_75_2CE0(mgr, 0, mData.mResetShieldTime);
+      }
+    }
+  } else if ((mAutoDestructFlags & 0x8) != 0 && mCountdownTimerA <= 0.f) {
+    mCollisionState = mPreviousCollisionState == 1 ? 2 : 1;
+    mPreviousCollisionState = mCollisionState;
+    PortFn_75_2CE0(mgr, 1, static_cast< float >(mCollisionState));
+  }
+}
 
 // @ fn_75_32F4
 // The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
@@ -248,7 +310,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   PortUpdateChassis(mgr);
   PortUpdateFlashAndDeath(mgr, dt);
-  StandInFn_75_3004();
+  PortUpdateCollision(mgr);
   PortLookAtTarget(mgr, dt);
   StandInFn_75_1188();
   PortAutoDestructTimer(dt);

@@ -194,6 +194,15 @@ private:
   // The retail's CActor 0x28, 0x38 and 0x48 (the death direction); the host has no
   // accessor for it, so the port keeps its own.
   CVector3f mDeathDirection;
+
+  // The fields the retail's fn_75_3004 touches.
+  void PortUpdateCollision(CStateManager& mgr);
+  uint mSoundHandle = 0;                        // guest 0xF60 (the sound handle, 0x306C)
+  TUniqueId mSoundTargetId = kInvalidUniqueId;  // guest 0xF00 (the id it looks up, 0x3078)
+  // The retail's CActor 0x54 (the sound position); the host has no accessor for it.
+  CVector3f mSoundPosition;
+  int mCollisionState = 0;                      // guest 0xEE0 (the state, 0x30C4)
+  int mPreviousCollisionState = 0;              // guest 0xEE4 (the previous state, 0x315C)
 };
 
 #endif // _CSPLITTERCOMMANDMODULE
