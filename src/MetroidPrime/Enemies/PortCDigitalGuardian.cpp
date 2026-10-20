@@ -37,6 +37,13 @@ namespace {
 // it is set.
 uchar sRendering = 0;
 
+// The retail's GenerateParticlePOIMask (the call at 0xA420) is the host's
+// CStateManager::GetCharacterRenderMaskAndTarget; the retail's name is kept here so the
+// asm-vs-C++ check can match the call.
+void GenerateParticlePOIMask(const CStateManager& mgr, uint& mask, uint& target) {
+  mgr.GetCharacterRenderMaskAndTarget(mask, target);
+}
+
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
   static const char* sSeen[32] = {};
@@ -117,6 +124,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef DG_TRIGGER
 #undef DG_STATE
 #undef DG_CODE
+
 
 
 
@@ -211,15 +219,24 @@ void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
-// fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set while the base renders
-// (the store at 0xA3FC) and cleared again (the store at 0xA44C), so the module's
-// RenderSystemsToBeDrawnLast (fn_14_A3A4) forwards to the base's while the actor renders. The
-// particle POI mask (the GenerateParticlePOIMask call at 0xA420, under the flag byte at guest
-// this+0x421, bit 0) is the base's own work: CPatterned::Render asks for the character's render
-// mask and target itself when the particles are drawn.
+// fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set (the store at 0xA3FC)
+// and cleared again (the store at 0xA44C) around the module's own RenderSystemsToBeDrawnLast
+// (the virtual call at 0xA440 - vtable slot 47, the REL's fn_14_A3A4), which forwards to the
+// base's while the flag is set. The character's render mask and target start at zero (the
+// stores at 0xA400 and 0xA404) and are only filled when the particles are drawn (the flag byte
+// at guest this+0x421, bit 0 - mDrawParticles, the clrlwi. at 0xA40C): the retail's
+// GenerateParticlePOIMask (the call at 0xA420) is the host's
+// CStateManager::GetCharacterRenderMaskAndTarget. The base's Render is never called: the
+// retail's guardian draws its model through the render list (fn_14_A004), not through the
+// render path.
 void CDigitalGuardian::Render(const CStateManager& mgr) const {
   sRendering = 1;
-  CPatterned::Render(mgr);
+  uint mask = 0;
+  uint target = 0;
+  if (mDrawParticles) {
+    GenerateParticlePOIMask(mgr, mask, target);
+  }
+  RenderSystemsToBeDrawnLast(mgr, mask, target);
   sRendering = 0;
 }
 

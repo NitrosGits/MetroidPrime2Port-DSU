@@ -768,6 +768,17 @@ GenerateParticlePOIMask call at 0xA420, under the flag byte at guest `this+0x421
 host's `CPatterned::Render` does that itself when the particles are drawn, so the port leaves it
 to the base.
 
+**The guardian's model stops drawing in the port** (the area-53 run's screenshot shows the arena
+without it). That is retail's structure, not a port mistake: the retail's `Render` (fn_14_A3D4)
+never calls the base's render - it calls its own `RenderSystemsToBeDrawnLast` (vtable slot 47)
+with the character's render mask and target, and the base's `RenderSystemsToBeDrawnLast` only
+draws the particle systems to be drawn last (the host's
+`CPatterned::RenderSystemsToBeDrawnLast`: `if (mDrawParticles) ...
+RenderSystemsToBeDrawnLastPOICheck(mask, target)`). The model is drawn by the module's own
+`AddToRenderer` (fn_14_A004), which calls the base's `Render` directly (the call at 0xA04C) -
+that function is 0x134 bytes and is not ported yet, so the model is missing until it is. The
+orchestrator decides whether to take that slice next.
+
 `AddToRenderer` (fn_14_A004) is 0x134 bytes and `PreRenderAllViewports` (fn_14_A138) is 0x210
 bytes - both over the 0x100 limit of this slice, so they stay stand-ins. `AddToRenderer` also
 calls three module functions (fn_14_1994, fn_14_18B4 and fn_14_17DC) that are not ported yet.
