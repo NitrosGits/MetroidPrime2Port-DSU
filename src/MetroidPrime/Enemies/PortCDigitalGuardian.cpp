@@ -122,6 +122,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 
 
 
+
 } // namespace
 
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
@@ -210,10 +211,16 @@ void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
-// vtable slot 11 = fn_14_A3D4.
+// fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set while the base renders
+// (the store at 0xA3FC) and cleared again (the store at 0xA44C), so the module's
+// RenderSystemsToBeDrawnLast (fn_14_A3A4) forwards to the base's while the actor renders. The
+// particle POI mask (the GenerateParticlePOIMask call at 0xA420, under the flag byte at guest
+// this+0x421, bit 0) is the base's own work: CPatterned::Render asks for the character's render
+// mask and target itself when the particles are drawn.
 void CDigitalGuardian::Render(const CStateManager& mgr) const {
-  StandIn("CDigitalGuardian::Render (vtable slot 11, fn_14_A3D4)");
+  sRendering = 1;
   CPatterned::Render(mgr);
+  sRendering = 0;
 }
 
 // vtable slot 13 = fn_14_A138.

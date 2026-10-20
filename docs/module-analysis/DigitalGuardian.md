@@ -754,6 +754,25 @@ Two notes:
   `this+0xE68`; the port's constructor does not lock it yet, so only the base's answer is
   reachable.
 
+**WP2 part 2f done (2026-10-20): the module's render.** `Render` (fn_14_A3D4, 0x94 bytes) is
+ported, which closes the gap above: the module's render flag (`lbl_14_bss_0`) is set while the
+base renders (the store at 0xA3FC) and cleared again (the store at 0xA44C), so
+`RenderSystemsToBeDrawnLast` (fn_14_A3A4) does reach the base's call while the actor renders.
+
+| piece | fn | what it does | asm |
+|---|---|---|---|
+| Render | `fn_14_A3D4` | the module's render flag around the base's render | the flag set at 0xA3FC, the base's render (the virtual call at 0xA440), the flag cleared at 0xA44C |
+
+The retail also asks for the particle POI mask itself before the base's render (the
+GenerateParticlePOIMask call at 0xA420, under the flag byte at guest `this+0x421`, bit 0); the
+host's `CPatterned::Render` does that itself when the particles are drawn, so the port leaves it
+to the base.
+
+`AddToRenderer` (fn_14_A004) is 0x134 bytes and `PreRenderAllViewports` (fn_14_A138) is 0x210
+bytes - both over the 0x100 limit of this slice, so they stay stand-ins. `AddToRenderer` also
+calls three module functions (fn_14_1994, fn_14_18B4 and fn_14_17DC) that are not ported yet.
+
+
 
 
 
