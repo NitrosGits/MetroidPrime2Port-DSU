@@ -16,8 +16,13 @@
 // stand-ins.
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
 
+#include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Graphics/CColor.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -31,6 +36,22 @@
 #include <stdio.h>
 
 namespace {
+
+// The module's render flag (lbl_14_bss_0): the module's render (fn_14_A3D4) sets it while it
+// renders, and its RenderSystemsToBeDrawnLast (fn_14_A3A4) only forwards to the base's while
+// it is set.
+uchar sRendering = 0;
+
+// The module's GX register colour (lbl_14_bss_30): the static initialiser (fn_14_D904) sets
+// it to (0.25, 0.25, 0.25, 1).
+const CColor sGXRegister1Color(0.25f, 0.25f, 0.25f, 1.f);
+
+// The retail's GenerateParticlePOIMask (the call at 0xA420) is the host's
+// CStateManager::GetCharacterRenderMaskAndTarget; the retail's name is kept here so the
+// asm-vs-C++ check can match the call.
+void GenerateParticlePOIMask(const CStateManager& mgr, uint& mask, uint& target) {
+  mgr.GetCharacterRenderMaskAndTarget(mask, target);
+}
 
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
@@ -115,6 +136,10 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 
 
 
+
+
+
+
 } // namespace
 
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
@@ -133,6 +158,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10C4_(4)
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
 , x1082_(0)
+, x1168_(TUniqueId(0))
 , x11B8_(0)
 , x11E0_(0.f)
 , x11E4_(0.f)
@@ -140,12 +166,33 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
 , x128C_(0)
+, xE6C_() // 0xE6C: the leg model, built by fn_14_6864 (not ported yet)
+, xEBC_() // 0xEBC: the shin model, built by fn_14_6864 (not ported yet)
+, xF5C_() // 0xF5C: the toe target's model, built by fn_14_6864 (not ported yet)
+, x11EC_() // 0x11EC: the echo emitter's model, built by fn_14_6864 (not ported yet)
+, xEB8_(0)
+, xF08_(0)
+, x1238_(0)
+, x10C0_(0xFF)
+, x10C1_(0xFF)
+, x10C2_(0xFF)
+, x10C3_(0xFF)
+, x10D4_(0xFF)
+, x10D5_(0xFF)
+, x10D6_(0xFF)
+, x10D7_(0xFF)
+, x10DC_{-1, -1, -1, -1}
+, x123C_(nullptr)
+, x1264_(0.f)
+, x1270_(0)
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
   // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
   // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188, the five models at
   // 0xE6C.. (fn_14_6864) and the 'PART' token at 0x1100. They belong to the state machine and the
-  // render paths this milestone does not enter, so the port keeps the parameter block only.
+  // render paths this milestone does not enter, so the port keeps the parameter block only. The
+  // four model data members the render paths use (0xE6C, 0xEBC, 0xF5C and 0x11EC) are there, but
+  // empty: fn_14_6864, which fills them, is not ported yet.
 }
 
 CDigitalGuardian::~CDigitalGuardian() {}
@@ -162,9 +209,10 @@ void CDigitalGuardian::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 4 = fn_14_A688.
+// fn_14_A688 (vtable slot 4): the base's PreThink (the call at 0xA694) and nothing else. The
+// port keeps the body activation the base's PreThink does not do (CPatterned::PreThink only
+// forwards to CEntity::PreThink), so the guardian still thinks.
 void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
-  StandIn("CDigitalGuardian::PreThink (vtable slot 4, fn_14_A688)");
   EnsureBodyActive(mgr);
   CPatterned::PreThink(dt, mgr);
 }
@@ -190,22 +238,197 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
-// vtable slot 9 = fn_14_A384.
+// fn_14_A384 (vtable slot 9): the base's PreRender (the call at 0xA390) and nothing else.
 void CDigitalGuardian::PreRender(CStateManager& mgr) {
-  StandIn("CDigitalGuardian::PreRender (vtable slot 9, fn_14_A384)");
   CPatterned::PreRender(mgr);
 }
 
-// vtable slot 10 = fn_14_A004.
+// fn_14_A004 (vtable slot 10, AddToRenderer): the base's AddToRenderer (the call at 0xA01C),
+// the module's GX register colour (the call at 0xA020), the base's render (the direct call at
+// 0xA04C - this is where the guardian's model is drawn; the REL's own Render does not draw it),
+// the character's alpha buffer alpha (the call at 0xA058), which is pushed to the renderer when
+// it is not -1 (the call at 0xA068). Then the module's own models are drawn (the calls at 0xA0A0,
+// 0xA0B4, 0xA0E8 and 0xA0FC), the GX register colour goes back to black (the Black() call at
+// 0xA0B8 and the renderer call at 0xA0BC), and the alpha is pushed again (the call at 0xA108; the
+// cmpwi at 0xA100 skips it when the alpha is -1).
+//
+// The four module calls, by size and by what their pseudo-C does:
+//   fn_14_1994 (0xD4): if the flag byte at guest this+0xEB8 is set, every locator id in the
+//     array at this+0x10C0 is walked and the model at this+0xE6C is drawn at that locator's
+//     scaled transform.
+//   fn_14_18B4 (0xE0): the same walk, but when bit 4 of the flag byte at this+0x128C is clear
+//     and the byte at this+0xF08 is set, drawing the model at this+0xEBC.
+//   fn_14_17DC (0xD8): when bit 3 of the flag byte at this+0x128C is clear, the byte at
+//     this+0x1238 is set and the float at this+0x1264 is positive, the model at this+0x11EC is
+//     drawn at the transform fn_14_2578 builds; the echo emitter at this+0x123C is then drawn
+//     through the renderer.
+//   fn_14_1700 (0xDC): the locator ids at this+0x10D4 are walked and the model at this+0xF5C
+//     is drawn at each of their scaled transforms.
+//
+// The four calls get the actor's transform (guest this+0x24, the CActor's mTransform) and the
+// actor's draw flags (guest this+0xFC, the CActor's mDrawFlags) - the retail's r5 and r6.
 void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
-  StandIn("CDigitalGuardian::AddToRenderer (vtable slot 10, fn_14_A004)");
   CPatterned::AddToRenderer(mgr);
+  gpRender->SetGXRegister1Color(sGXRegister1Color);
+  CPatterned::Render(mgr);
+  const int alpha = GetRenderAlphaBufferAlpha(mgr);
+  if (alpha != -1) {
+    gpRender->SetDestinationAlpha(alpha);
+  }
+  // fn_14_1994 (0xA0A0): the module's leg model render.
+  x1994_(mgr, GetTransform(), GetModelFlags());
+  // fn_14_18B4 (0xA0B4): the module's second model render.
+  x18B4_(mgr, GetTransform(), GetModelFlags());
+  gpRender->SetGXRegister1Color(CColor::Black());
+  // fn_14_17DC (0xA0E8): the module's echo emitter render.
+  x17DC_(mgr, GetTransform());
+  // fn_14_1700 (0xA0FC): the module's toe model render.
+  x1700_(mgr, GetTransform(), GetModelFlags());
+  if (alpha != -1) {
+    gpRender->SetDestinationAlpha(alpha);
+  }
 }
 
-// vtable slot 11 = fn_14_A3D4.
+// The retail's per-segment rotation: the character's rest pose rotation for that segment. The
+// retail reads it from the actor's model data (guest this+0x60, the CActor's mModelData), the
+// anim data (that+0x10), the character layout (that+0x10C) and the layout's linear rotations
+// (that+0x68), indexed with the segment id - the chain
+// CScriptSpecialFunction::ThinkObjectFollowJoint walks as well.
+//
+// Port limit: the locator ids are still invalid in the port (the constructor does not resolve
+// them - the model data's builder is not ported yet), and the retail would index the rotation
+// array with 0xFF, so an invalid id has no rotation here.
+CTransform4f CDigitalGuardian::SegmentRotation_(const CSegId& seg) const {
+  if (seg == CSegId::Invalid()) {
+    return CTransform4f::Identity();
+  }
+  const CModelData& model = *GetModelData();
+  if (!model.HasAnimation()) {
+    return CTransform4f::Identity();
+  }
+  const CCharLayoutInfo& layout = *model.GetAnimationData()->GetCharLayoutInfo();
+  const rstl::vector< CQuaternion >& rotations = layout.GetLinearRotations();
+  return rotations[seg.val()].BuildTransform4f();
+}
+
+// fn_14_1994 (0xD4 bytes): the leg model. The flag byte at guest this+0xEB8 has to be set (the
+// test at 0x19B4); then each of the four locator ids at this+0x10C0 is walked (the loop at
+// 0x19D4-0x1A50): the segment's rotation (the BuildTransform4f call at 0x19EC), the locator's
+// scaled transform (the GetScaledLocatorTransform call at 0x19FC), the actor's transform times
+// the locator's (the __ml__ at 0x1A0C), times the segment's rotation (the __ml__ at 0x1A1C), and
+// the model at this+0xE6C is drawn there (the Render call at 0x1A40).
+void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
+                              const CModelFlags& flags) const {
+  if (xEB8_ == 0) {
+    return;
+  }
+  // The ids are the bytes the retail loads (the lbz at 0x19D4): the first one is the byte the
+  // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
+  const uchar ids[4] = {x10C0_ & 0xFF, x10C1_, x10C2_, x10C3_};
+  for (int i = 0; i < 4; ++i) {
+    const CSegId seg(ids[i]);
+    const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
+    xE6C_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+}
+
+// fn_14_18B4 (0xE0 bytes): the shin model. The same walk as fn_14_1994 (the ids at this+0x10C0,
+// the locator transform at 0x1928, the two __ml__ calls at 0x1938 and 0x1948), but the model at
+// this+0xEBC is drawn (the Render call at 0x196C) and only when bit 4 of the flag byte at
+// this+0x128C is clear (the extrwi at 0x19D8 - the byte's bit 4, the mask 1u << (31 - 27) =
+// 0x10) and the byte at this+0xF08 is set (the test at 0x19E4).
+void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
+                              const CModelFlags& flags) const {
+  if ((x128C_ & 0x10) != 0 || xF08_ == 0) {
+    return;
+  }
+  // The ids are the bytes the retail loads (the lbz at 0x1900): the first one is the byte the
+  // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
+  const uchar ids[4] = {x10C0_ & 0xFF, x10C1_, x10C2_, x10C3_};
+  for (int i = 0; i < 4; ++i) {
+    const CSegId seg(ids[i]);
+    const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
+    xEBC_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+}
+
+// fn_14_17DC (0xD8 bytes): the echo emitter's model. When bit 3 of the flag byte at this+0x128C
+// is clear (the extrwi at 0x17FC), the byte at this+0x1238 is set (the test at 0x1808) and the
+// float at this+0x1264 is positive (the fcmpo at 0x181C), the transform fn_14_2578 builds (the
+// call at 0x182C) is copied (0x1838) and the model at this+0x11EC is drawn there (the Render
+// call at 0x1870) with the flags the retail builds on the stack: the blend mode 2 (the stb at
+// 0x1848), the shader set 0 (the stb at 0x1854), the flags 3 (the sth at 0x1860) and the packed
+// colour at this+0x1270 (the stw at 0x1868).
+//
+// Then the echo emitter at this+0x123C, when it is there (the test at 0x1878), is drawn through
+// the renderer: the retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
+// bctrl at 0x1958). The slot is not identified, so the call is a stand-in.
+void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) const {
+  if ((x128C_ & 0x08) == 0 && x1238_ != 0 && x1264_ > 0.f) {
+    CTransform4f modelXf = CTransform4f::Identity();
+    x2578_(modelXf, xf);
+    const CModelFlags flags(
+        CModelFlags::kT_Two, 0,
+        static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                           CModelFlags::kF_DepthUpdate),
+        CColor(x1270_));
+    x11EC_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+  if (x123C_ != nullptr) {
+    StandInFn("fn_14_17DC: the renderer's echo emitter draw (the vtable call at 0x1958)");
+  }
+}
+
+// fn_14_1700 (0xDC bytes): the toe target's model. The four locator ids at this+0x10D4 are
+// walked (the loop at 0x1738-0x17C4) and each one is drawn (the Render call at 0x17B0) unless
+// the word at this+0x10DC is 3 (the cmpwi at 0x173C). The transform is the actor's, times the
+// locator's scaled transform (the GetScaledLocatorTransform call at 0x176C), times the segment's
+// rotation (the two __ml__ calls at 0x177C and 0x178C).
+void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
+                              const CModelFlags& flags) const {
+  // The ids are the bytes the retail loads (the lbz at 0x1744): the first one is the byte the
+  // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
+  const uchar ids[4] = {x10D4_ & 0xFF, x10D5_, x10D6_, x10D7_};
+  for (int i = 0; i < 4; ++i) {
+    if (x10DC_[i] == 3) {
+      continue;
+    }
+    const CSegId seg(ids[i]);
+    const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
+    xF5C_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+}
+
+// fn_14_2578 (0xF4 bytes): the echo emitter's transform. The retail walks the locator at guest
+// this+0x10B9 (the GetScaledLocatorTransform call at 0x26A4), multiplies the actor's transform
+// with it (the __ml__ at 0x26B4) and, when the byte at this+0x1238 is set, moves the result
+// along its own z axis by (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants
+// are .rodata 0x29C and 0x2A0 and the height comes from the model at this+0x11EC (the
+// GetBounds call at 0x269C). 0xF4 bytes is over this slice's limit, so it is a stand-in.
+void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
+  StandInFn("fn_14_2578 (the echo emitter's transform, 0xF4 bytes)");
+  out = CTransform4f::Identity();
+}
+
+// fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set (the store at 0xA3FC)
+// and cleared again (the store at 0xA44C) around the module's own RenderSystemsToBeDrawnLast
+// (the virtual call at 0xA440 - vtable slot 47, the REL's fn_14_A3A4), which forwards to the
+// base's while the flag is set. The character's render mask and target start at zero (the
+// stores at 0xA400 and 0xA404) and are only filled when the particles are drawn (the flag byte
+// at guest this+0x421, bit 0 - mDrawParticles, the clrlwi. at 0xA40C): the retail's
+// GenerateParticlePOIMask (the call at 0xA420) is the host's
+// CStateManager::GetCharacterRenderMaskAndTarget. The base's Render is never called: the
+// retail's guardian draws its model through the render list (fn_14_A004), not through the
+// render path.
 void CDigitalGuardian::Render(const CStateManager& mgr) const {
-  StandIn("CDigitalGuardian::Render (vtable slot 11, fn_14_A3D4)");
-  CPatterned::Render(mgr);
+  sRendering = 1;
+  uint mask = 0;
+  uint target = 0;
+  if (mDrawParticles) {
+    GenerateParticlePOIMask(mgr, mask, target);
+  }
+  RenderSystemsToBeDrawnLast(mgr, mask, target);
+  sRendering = 0;
 }
 
 // vtable slot 13 = fn_14_A138.
@@ -218,16 +441,16 @@ void CDigitalGuardian::PreRenderAllViewports(CStateManager& mgr) {
 // its result, which is what the base class's own accessor does.
 const CHealthInfo* CDigitalGuardian::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
-// vtable slot 16 = fn_14_9FE4.
+// fn_14_9FE4 (vtable slot 16): the "pass through" vulnerability (the call at 0x9FF0) is the
+// answer - the guardian is not hurt by anything, the shots pass through it.
 const CDamageVulnerability* CDigitalGuardian::GetDamageVulnerability() const {
-  StandIn("CDigitalGuardian::GetDamageVulnerability (vtable slot 16, fn_14_9FE4)");
-  return CPatterned::GetDamageVulnerability();
+  return &CDamageVulnerability::PassThroughVulnerabilty();
 }
 
-// vtable slot 18 = fn_14_10: it builds the box from CPhysicsActor::GetBoundingBox.
+// fn_14_10 (vtable slot 18): the actor's bounding box (the GetBoundingBox call at 0x28) is the
+// touch bounds, and the optional is always valid (the byte at 0x18 is set to 1 at 0x30).
 rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
-  StandIn("CDigitalGuardian::GetTouchBounds (vtable slot 18, fn_14_10)");
-  return CPatterned::GetTouchBounds();
+  return rstl::optional_object< CAABox >(GetBoundingBox());
 }
 
 // vtable slot 21 = fn_14_9E88.
@@ -244,9 +467,12 @@ void CDigitalGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
-// vtable slot 29 = fn_14_9DBC.
+// fn_14_9DBC (vtable slot 29): when bit 6 (the mask 0x40, the extrwi at 0x9DCC) of the flag byte
+// at guest this+0x128C is set and the scannable token (guest this+0xE68, the lwz at 0x9DD4) is
+// there, that token's object is the answer (the lwz at 0x9DE0); otherwise the base's scannable
+// info (the call at 0x9DE8). The token is locked in the constructor, which the port does not do
+// yet, so only the base's answer is reachable.
 CScannableObjectInfo* CDigitalGuardian::GetScannableObjectInfo() const {
-  StandIn("CDigitalGuardian::GetScannableObjectInfo (vtable slot 29, fn_14_9DBC)");
   return CPatterned::GetScannableObjectInfo();
 }
 
@@ -256,18 +482,21 @@ void CDigitalGuardian::TakeDamage(const CVector3f& direction, float magnitude) {
   CPatterned::TakeDamage(direction, magnitude);
 }
 
-// vtable slot 45 = fn_14_F0: it returns the base's origin vector (the three floats at 0x454).
+// fn_14_F0 (vtable slot 45): the actor's translation (guest this+0x54, the three loads at
+// 0xF0/0xF8/0x100) is the origin.
 CVector3f CDigitalGuardian::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                       const CVector3f& point) const {
-  StandIn("CDigitalGuardian::GetOrigin (vtable slot 45, fn_14_F0)");
-  return CPatterned::GetOrigin(mgr, role, point);
+  return GetTranslation();
 }
 
-// vtable slot 47 = fn_14_A3A4.
+// fn_14_A3A4 (vtable slot 47): the base's call, but only while the module's render flag is set
+// (the byte at lbl_14_bss_0, the lbz at 0xA3B4). The flag is set by the module's render
+// (fn_14_A3D4, the stores at 0xA3FC and 0xA44C), which is not ported yet, so it stays clear.
 void CDigitalGuardian::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask,
                                                   uint target) const {
-  StandIn("CDigitalGuardian::RenderSystemsToBeDrawnLast (vtable slot 47, fn_14_A3A4)");
-  CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
+  if (sRendering) {
+    CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
+  }
 }
 
 // vtable slot 60 = fn_14_9DFC (0x9DFC..0x9FE4): the base's setup first (the call at 0x9ED0), then
@@ -560,16 +789,31 @@ void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
   StandInFn("fn_14_7BD4");
 }
 
+// fn_14_7B90: the number of knees that are set (fn_14_705C, the call at 0x7BA4) picks the
+// float that is copied into the member at guest this+0x1274 (the store at 0x7BBC): the data
+// block's +0x174 (mUnknown6A754EBD) when all four knees are set (the cmpwi with 4 at 0x7BA8),
+// otherwise the block's +0x170 (mUnknownA324E26C) (the two loads at 0x7BB0/0x7BB8).
 void CDigitalGuardian::ResetProtectKneesTime(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7B90");
+  x1274_ = x705C_() >= 4 ? mData.mUnknown6A754EBD : mData.mUnknownA324E26C;
 }
 
+// fn_14_7B84: the jump timer (the float at guest this+0x938 = the data block's +0x178,
+// mJumpTimer, the load at 0x7B84) is copied into the member at guest this+0x11E4 (the store at
+// 0x7B88).
 void CDigitalGuardian::ResetJumpTime(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7B84");
+  x11E4_ = mData.mJumpTimer;
 }
 
+// fn_14_7B24: the minimum leg stab attack time (the float at guest this+0x7CC = the data
+// block's +0x0C, mMinLegStabAttackTime, the load at 0x7B3C) goes into the member at guest
+// this+0x11E0 (the store at 0x7B40) and the jump timer (guest this+0x938) into the member at
+// guest this+0x11E4 (the load at 0x7B44 and the store at 0x7B48). Then the head module is
+// asked to reset its attack times (the head's fn_14_13B08, the call at 0x7B6C): the head class
+// is WP3 and its loader is a stand-in, so no head can exist in the port and that call cannot
+// be made.
 void CDigitalGuardian::ResetAttackTimes(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7B24");
+  x11E0_ = mData.mMinLegStabAttackTime;
+  x11E4_ = mData.mJumpTimer;
 }
 
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
@@ -580,20 +824,32 @@ void CDigitalGuardian::SetVortexAttackMode(CStateManager& mgr, float dt) {
   StandInFn("fn_14_775C");
 }
 
+// fn_14_76D0 is not ported yet: it calls fn_14_3A44 (the call at 0x7718), 0x108 bytes, which
+// walks the four knees, resets their damage vulnerabilities (guest this+0x1014 and this+0x1044)
+// and calls fn_14_CE94 - too big for one slice.
 void CDigitalGuardian::SetNormalAttackMode(CStateManager& mgr, float dt) {
   StandInFn("fn_14_76D0");
 }
 
-void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_768C");
-}
+// fn_14_768C: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7698)
+// and, if it exists, asked to disable its attacks with the argument 3 (the li r4, 3 at 0x76B8
+// and the call at 0x76BC). The head class is WP3 and its loader is a stand-in, so no head can
+// exist in the port and that call cannot be made.
+void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {}
 
-void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7648");
-}
+// fn_14_7648: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7654)
+// and, if it exists, asked to reset its attacks with the argument 4 (the li r4, 4 at 0x7674 and
+// the call at 0x7678). The head class is WP3 and its loader is a stand-in, so no head can
+// exist in the port and that call cannot be made.
+void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {}
 
+// fn_14_7600: the closest active waypoint to the player (the state manager's player at
+// +0x14FC, the lwz at 0x761C, and its position at +0x54, the addi at 0x7624) is picked by
+// fn_14_308C (the call at 0x7628) and its id is stored in the member at guest this+0x1168 (the
+// store at 0x7630).
 void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7600");
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  x1168_ = x308C_(mgr, player);
 }
 
 void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {

@@ -345,7 +345,8 @@ All offsets are guest (32-bit GC) offsets.
 | 0xFC4 | count of the 12-byte "hit direction" table at 0xFC8 | ctor pushes 4 entries (-1,1,0), (1,-1,0), (1,1,0), (-1,-1,0) |
 | 0xFF8 | count of the angle table at 0xFFC | ctor pushes 0.7853982, 2.3561945, -0.7853982, -2.3561945 (`lbl_14_data_45C`..`468`) |
 | 0x1014 / 0x1044 / 0x1110 / 0x1188 | four `CDamageVulnerability` (one = immune ricochet) | `fn_14_3B4C(this+…, &ldr)` calls in the ctor |
-| 0x1088 / 0x11EC | `CTransform4f` (identity / the echo-emitter bounds) | ctor stores `sIdentity`; `GetBounds(model, &this+0x11EC)` in the ctor |
+| 0x1088 | `CTransform4f` (the identity) | ctor stores `sIdentity` |
+| 0x11EC | `CModelData` (the echo emitter's model) | `fn_14_2578` takes its bounds (the `GetBounds` call at 0x269C) and `fn_14_17DC` draws it |
 | 0x10B8, 0x10B9, 0x10C0…0x10C3, 0x10C8…0x10CB, 0x10D4…0x10D7 | locator-segment ids, all 0xFF | ctor: `GetLocatorSegId("Head_1"/"L_front_knee_2"/…)` |
 | 0x1100 | `CToken` (locked 'PART' token) | ctor; `arg0->unk110C` is its "present" flag |
 | 0x1144…0x1150 | four floats = the patterned info's turn speed | ctor: `arg0->unk1144 = arg_sp8->unk20` (×4) |
@@ -708,6 +709,150 @@ The flag byte at `this+0x128C` is now written by a state (the Idle state's bit 7
 three triggers (`fn_14_9930` bit 0, `fn_14_966C` bit 2, `fn_14_9A9C` bit 7), so the "is idle"
 trigger and the Idle state agree on the same byte, as in retail.
 
+**WP2 part 2d done (2026-10-20): six code functions.** The bodies of `ResetJumpTime`
+(fn_14_7B84), `ResetProtectKneesTime` (fn_14_7B90), `ResetHeadAttacks` (fn_14_7648),
+`DisableHeadAttacks` (fn_14_768C), `SelectExitVortexTarget` (fn_14_7600) and `ResetAttackTimes`
+(fn_14_7B24) are ported. `SetNormalAttackMode` (fn_14_76D0) is **not**: it calls fn_14_3A44
+(the call at 0x7718), 0x108 bytes, which walks the four knees, resets their damage
+vulnerabilities (guest `this+0x1014` and `this+0x1044`) and calls fn_14_CE94 - too big for one
+slice.
+
+| code | fn | what it does | asm |
+|---|---|---|---|
+| ResetJumpTime | `fn_14_7B84` | the jump timer (guest `this+0x938` = the data block's +0x178, `mJumpTimer`) into the member at `this+0x11E4` | the load at 0x7B84 and the store at 0x7B88 |
+| ResetProtectKneesTime | `fn_14_7B90` | the member at `this+0x1274` becomes the data block's +0x174 (`mUnknown6A754EBD`) when all four knees are set (fn_14_705C's count >= 4, the cmpwi at 0x7BA8), otherwise the block's +0x170 (`mUnknownA324E26C`) | the call at 0x7BA4, the loads at 0x7BB0/0x7BB8, the store at 0x7BBC |
+| ResetAttackTimes | `fn_14_7B24` | the member at `this+0x11E0` becomes the data block's +0x0C (`mMinLegStabAttackTime`) and the one at `this+0x11E4` the jump timer | the loads/stores at 0x7B3C-0x7B48 |
+| DisableHeadAttacks | `fn_14_768C` | the head module (looked up by the uid at `this+0x1082`) is asked to disable its attacks with the argument 3 | the lhz at 0x7698, the li r4, 3 at 0x76B8, the call at 0x76BC |
+| ResetHeadAttacks | `fn_14_7648` | the same lookup, the head is asked to reset its attacks with the argument 4 | the lhz at 0x7654, the li r4, 4 at 0x7674, the call at 0x7678 |
+| SelectExitVortexTarget | `fn_14_7600` | the closest active waypoint to the player (fn_14_308C) and its id into the member at `this+0x1168` | the lwz at 0x761C, the addi at 0x7624, the call at 0x7628, the store at 0x7630 |
+
+New host member: `x1168_` (0x1168, the exit vortex target's waypoint id; the ctor stores 0
+there, the sth at 0x0000B67C). `ResetHeadAttacks` and `DisableHeadAttacks` are empty in the
+port: the head class is WP3 and its loader is a stand-in, so no head can exist and the call
+cannot be made - WP3 has to add both.
+
+**WP2 part 2e done (2026-10-20): seven vtable overrides.** `GetTouchBounds` (fn_14_10),
+`RenderSystemsToBeDrawnLast` (fn_14_A3A4), `GetOrigin` (fn_14_F0), `GetDamageVulnerability`
+(fn_14_9FE4), `PreThink` (fn_14_A688), `PreRender` (fn_14_A384) and `GetScannableObjectInfo`
+(fn_14_9DBC) are ported; all seven are under 0x80 bytes.
+
+| override | fn | what it does | asm |
+|---|---|---|---|
+| GetTouchBounds | `fn_14_10` | the actor's bounding box, always valid | the GetBoundingBox call at 0x28, the valid byte at 0x30 |
+| RenderSystemsToBeDrawnLast | `fn_14_A3A4` | the base's call, but only while the module's render flag (`lbl_14_bss_0`) is set | the lbz at 0xA3B4, the call at 0xA3C0 |
+| GetOrigin | `fn_14_F0` | the actor's translation (guest `this+0x54`) | the three loads at 0xF0/0xF8/0x100 |
+| GetDamageVulnerability | `fn_14_9FE4` | the "pass through" vulnerability - the guardian is not hurt, the shots pass through it | the call at 0x9FF0 |
+| PreThink | `fn_14_A688` | the base's PreThink | the call at 0xA694 |
+| PreRender | `fn_14_A384` | the base's PreRender | the call at 0xA390 |
+| GetScannableObjectInfo | `fn_14_9DBC` | the scannable token's object when bit 6 (0x40) of the flag byte at `this+0x128C` is set and the token (guest `this+0xE68`) is there, otherwise the base's | the extrwi at 0x9DCC, the lwz at 0x9DD4/0x9DE0, the call at 0x9DE8 |
+
+Two notes:
+
+- The module's render flag (`lbl_14_bss_0`) is set by the module's render (fn_14_A3D4, the
+  stores at 0xA3FC and 0xA44C), which is 0x94 bytes and is not ported yet, so the flag stays
+  clear and `RenderSystemsToBeDrawnLast` does not forward to the base yet.
+- `GetScannableObjectInfo`'s branch needs the scannable token the constructor locks at guest
+  `this+0xE68`; the port's constructor does not lock it yet, so only the base's answer is
+  reachable.
+
+**WP2 part 2f done (2026-10-20): the module's render.** `Render` (fn_14_A3D4, 0x94 bytes) is
+ported, which closes the gap above: the module's render flag (`lbl_14_bss_0`) is set while the
+base renders (the store at 0xA3FC) and cleared again (the store at 0xA44C), so
+`RenderSystemsToBeDrawnLast` (fn_14_A3A4) does reach the base's call while the actor renders.
+
+| piece | fn | what it does | asm |
+|---|---|---|---|
+| Render | `fn_14_A3D4` | the module's render flag around the base's render | the flag set at 0xA3FC, the base's render (the virtual call at 0xA440), the flag cleared at 0xA44C |
+
+The retail also asks for the particle POI mask itself before the base's render (the
+GenerateParticlePOIMask call at 0xA420, under the flag byte at guest `this+0x421`, bit 0); the
+host's `CPatterned::Render` does that itself when the particles are drawn, so the port leaves it
+to the base.
+
+**The guardian's model stopped drawing when `Render` was ported** - that is retail's structure,
+not a port mistake: the retail's `Render` (fn_14_A3D4) never calls the base's render, it calls
+its own `RenderSystemsToBeDrawnLast` (vtable slot 47) with the character's render mask and
+target, and the base's `RenderSystemsToBeDrawnLast` only draws the particle systems to be
+drawn last (the host's `CPatterned::RenderSystemsToBeDrawnLast`: `if (mDrawParticles) ...
+RenderSystemsToBeDrawnLastPOICheck(mask, target)`). The model is drawn by the module's own
+`AddToRenderer` (fn_14_A004), which calls the base's `Render` directly (the call at 0xA04C).
+
+**WP2 part 2g done (2026-10-20): `AddToRenderer`.** fn_14_A004 (0x134 bytes) is ported, so the
+guardian's model draws again (the area-53 screenshot shows its four legs on the platform and its
+body hanging from the ceiling). The sequence, with the offsets: the base's `AddToRenderer`
+(0xA01C), the module's GX register colour (0xA020 - the global `lbl_14_bss_30`, the static
+initialiser's (0.25, 0.25, 0.25, 1)), the base's `Render` (0xA04C, the direct call that draws
+the model), the character's alpha buffer alpha (0xA058) pushed to the renderer when it is not
+-1 (0xA068), the module's own model renders (0xA0A0, 0xA0B4, 0xA0E8, 0xA0FC), the GX register
+colour back to black (0xA0B8/0xA0BC) and the alpha again (0xA108; the cmpwi at 0xA100 skips it
+when the alpha is -1).
+
+The four module calls are all over 0x80 bytes, so they are named once-logging stand-ins for now:
+
+| module call | size | what its pseudo-C does |
+|---|---|---|
+| fn_14_1994 | 0xD4 | if the flag byte at guest `this+0xEB8` is set, every locator id in the array at `this+0x10C0` is walked and the model at `this+0xE6C` is drawn at that locator's scaled transform |
+| fn_14_18B4 | 0xE0 | the same walk, but when bit 4 of the flag byte at `this+0x128C` is clear and the byte at `this+0xF08` is set, drawing the model at `this+0xEBC` |
+| fn_14_17DC | 0xD8 | when bit 3 of the flag byte at `this+0x128C` is clear, the byte at `this+0x1238` is set and the float at `this+0x1264` is positive, the model at `this+0x11EC` is drawn at the transform fn_14_2578 builds; the echo emitter at `this+0x123C` is then drawn through the renderer |
+| fn_14_1700 | 0xDC | the locator ids at `this+0x10D4` are walked and the model at `this+0xF5C` is drawn at each of their scaled transforms |
+
+`PreRenderAllViewports` (fn_14_A138) is 0x210 bytes - over the 0x100 limit of this slice, so it
+stays a stand-in.
+
+
+
+
+
+
+**WP2 part 2h done (2026-10-20): the four model renders.** `fn_14_1994` (0xD4), `fn_14_18B4`
+(0xE0), `fn_14_17DC` (0xD8) and `fn_14_1700` (0xDC) - the four calls `fn_14_A004` makes at
+0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC - are ported. The four model data blocks they draw are
+still empty (fn_14_6864, the constructor's tail, is not ported), so nothing new draws yet.
+
+| fn | what it does | the fields it reads | asm |
+|---|---|---|---|
+| fn_14_1994 | when the flag byte at 0xEB8 is set, the four locator ids at 0x10C0 are walked and the model at 0xE6C (the leg model) is drawn at each locator's scaled transform | 0xEB8, 0x10C0..0x10C3, 0xE6C | the test at 0x19B4, the loop at 0x19D4-0x1A50, the Render at 0x1A40 |
+| fn_14_18B4 | the same walk, but only when bit 4 of the flag byte at 0x128C is clear and the byte at 0xF08 is set; the model at 0xEBC (the shin model) is drawn | 0x128C bit 4, 0xF08, 0x10C0..0x10C3, 0xEBC | the extrwi at 0x19D8 (the byte's bit 4, the mask 0x10), the test at 0x19E4, the Render at 0x196C |
+| fn_14_17DC | when bit 3 of the flag byte at 0x128C is clear, the byte at 0x1238 is set and the float at 0x1264 is positive, the model at 0x11EC is drawn at the transform fn_14_2578 builds, with the blend mode 2 (0x1848), the shader set 0 (0x1854), the flags 3 (0x1860) and the packed colour at 0x1270 (0x1868); then the echo emitter at 0x123C, when it is there, is drawn through the renderer | 0x128C bit 3, 0x1238, 0x1264, 0x11EC, 0x1270, 0x123C | the extrwi at 0x17FC (the byte's bit 3, the mask 0x08), the fcmpo at 0x181C, the Render at 0x1870, the renderer's vtable call at 0x1958 |
+| fn_14_1700 | the four locator ids at 0x10D4 are walked and the model at 0xF5C (the toe target's model) is drawn at each of them, unless the word at 0x10DC is 3 | 0x10D4..0x10D7, 0x10DC..0x10E8, 0xF5C | the loop at 0x1738-0x17C4, the cmpwi at 0x173C, the Render at 0x17B0 |
+
+All four draw at the same transform: the actor's transform (guest this+0x24) times the
+locator's scaled transform (`GetScaledLocatorTransform`) times the segment's rotation. That
+rotation is the character's rest pose rotation for the segment: the retail reads it from the
+actor's model data (this+0x60), the anim data (that+0x10), the character layout (that+0x10C)
+and the layout's linear rotations (that+0x68), indexed with the segment id - the chain
+`CScriptSpecialFunction::ThinkObjectFollowJoint` walks as well. The port reads it from
+`GetModelData()->GetAnimationData()->GetCharLayoutInfo()->GetLinearRotations()`.
+
+The locator ids: 0x10C0..0x10C3 are the four knee locators ("L_front_knee_2",
+"L_back_knee_2", "R_front_knee_2", "R_back_knee_2") and 0x10D4..0x10D7 the four "*_col_LCTR"
+ones; the constructor resolves them with `GetLocatorSegId` (the calls from 0xBAF0 on), which
+is not ported yet, so they are invalid (0xFF) in the port and the locator transform is the
+identity. 0x10B9 is a locator id fn_14_2578 walks; its name is not decoded yet.
+
+`fn_14_2578` (0xF4 bytes) builds the echo emitter's transform and is over this slice's limit,
+so it is a named once-logging stand-in: it walks the locator at guest 0x10B9, multiplies the
+actor's transform with it and, when the byte at 0x1238 is set, moves the result along its own
+z axis by (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants are .rodata 0x29C
+and 0x2A0 and the height comes from the model at 0x11EC (the `GetBounds` call at 0x269C).
+The next slice can port it.
+
+The last call of fn_14_17DC is the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
+bctrl at 0x1958), with no argument; the slot is not identified, so the port has a named
+once-logging stand-in for it. The echo emitter at 0x123C is the 0x338 `CElementGen` that
+fn_14_D664 allocates (not ported), so that branch cannot be taken in the port.
+
+The host members this slice added (one per guest offset): the four model data blocks (0xE6C,
+0xEBC, 0xF5C, 0x11EC), the three flag bytes (0xEB8, 0xF08, 0x1238), the eight locator ids
+(0x10C0..0x10C3 and 0x10D4..0x10D7), the four per-leg words (0x10DC..0x10E8), the echo
+emitter pointer (0x123C), the float at 0x1264 and the packed colour at 0x1270. Their initial
+values are the ones the retail constructor stores: the flags 0, the ids 0xFF, the words -1
+(`lbl_14_data_454`), the float 0.0f and the colour word 0 (`lbl_14_rodata_264`).
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, 1800 frames): the
+guardian u054d is there (hp 150/150) and its model draws (the base's render through the
+module's AddToRenderer, `/tmp/opencode/dg_render_models.png`); the four module renders draw
+nothing yet, since their model data is empty. No "[port] caught" and no reach-stub in the log.
 
 
 ### WP3 — the head module

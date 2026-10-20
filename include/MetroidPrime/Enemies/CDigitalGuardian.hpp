@@ -266,6 +266,7 @@ private:
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
@@ -273,6 +274,45 @@ private:
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
   uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
+
+  // The four models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
+  // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
+  // host class has its own layout. The models themselves are built by the constructor's tail
+  // (fn_14_6864), which is not ported yet, so the model data is empty and the renders draw
+  // nothing until it lands.
+  CModelData xE6C_;  // 0xE6C: the leg model (fn_14_1994)
+  CModelData xEBC_;  // 0xEBC: the shin model (fn_14_18B4)
+  CModelData xF5C_;  // 0xF5C: the toe target's model (fn_14_1700)
+  CModelData x11EC_; // 0x11EC: the echo emitter's model (fn_14_17DC)
+  uchar xEB8_;       // 0xEB8: the leg model's flag byte (fn_14_1994)
+  uchar xF08_;       // 0xF08: the shin model's flag byte (fn_14_18B4)
+  uchar x1238_;      // 0x1238: the echo emitter model's flag byte (fn_14_17DC, fn_14_2578)
+  uchar x10C0_;      // 0x10C0: the first leg locator segment id (fn_14_1994, fn_14_18B4)
+  uchar x10C1_;      // 0x10C1: the second leg locator segment id
+  uchar x10C2_;      // 0x10C2: the third leg locator segment id
+  uchar x10C3_;      // 0x10C3: the fourth leg locator segment id
+  uchar x10D4_;      // 0x10D4: the first toe locator segment id (fn_14_1700)
+  uchar x10D5_;      // 0x10D5: the second toe locator segment id
+  uchar x10D6_;      // 0x10D6: the third toe locator segment id
+  uchar x10D7_;      // 0x10D7: the fourth toe locator segment id
+  int x10DC_[4];     // 0x10DC: the four per-leg words (0x10DC, 0x10E0, 0x10E4, 0x10E8); the
+                     // value 3 skips the leg (fn_14_1700)
+  void* x123C_;      // 0x123C: the echo emitter (a CElementGen in retail); null in the port
+  float x1264_;      // 0x1264: the echo emitter's height (fn_14_17DC, fn_14_2578)
+  uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
+
+  // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
+  // named by their retail offset.
+  void x1994_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
+  void x18B4_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
+  void x17DC_(const CStateManager& mgr, const CTransform4f& xf) const;
+  void x1700_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
+
+  // fn_14_2578 (0xF4 bytes): the echo emitter's transform. A stand-in in this slice.
+  void x2578_(CTransform4f& out, const CTransform4f& xf) const;
+
+  // The retail's per-segment rotation: the character's rest pose rotation for that segment.
+  CTransform4f SegmentRotation_(const CSegId& seg) const;
 
   // fn_14_308C: the id of the connected waypoint that is active and closest to the given
   // position (the helper fn_14_9678 measures against).
