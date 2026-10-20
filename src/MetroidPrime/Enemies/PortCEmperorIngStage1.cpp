@@ -1344,6 +1344,7 @@ CActor* CEmperorIngStage1::GetActivateActor(CStateManager& mgr) const {
 
 // fn_16_920 (0x920..0x9C0): the tracked actor's (fn_16_302C) "brainSpine_scale" locator
 // (lbl_16_rodata_378) in world space (0x968, 0x978); the result is its translation (0x99C).
+// Area 11 cannot reach fn_16_920's body: only the beam paths read the brain-spine position.
 CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
   CActor* target = GetTargetActor(mgr);
   const CTransform4f locator =
@@ -1363,6 +1364,7 @@ CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
 // C3DEmitterParmData(1000.0f, 0.1f, 1, 0x7F, 0x14) and the up direction (0xF84) into guest 0xA9C;
 // the "Telegraph" timer (0xA5C) takes 0.9833334f (lbl_16_rodata_3A0) and the refire timer (0xA60)
 // 1.5f (0xFB0).
+// Area 11 cannot reach fn_16_CD0's body: the beam fires in the heart stage, which the FSM does not reach there.
 bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
   if (xa98_ != kInvalidUniqueId) {
     return false;
@@ -1404,6 +1406,7 @@ bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
 // player at 10.0f (lbl_16_rodata_390) units a second on the horizontal (0xBE4..0xC44), the beam's
 // effect follows it (slot 33 UpdateFx at 0xC88) and its emitter (guest 0xA9C) sits on the beam's
 // collision point (the beam's +0x444, mCollisionPoint, 0xCA8; volume 0x7F).
+// Area 11 cannot reach fn_16_A64's body: the beam is only out in the heart stage.
 void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
   if (entity == nullptr) {
@@ -1431,6 +1434,7 @@ void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
 // fn_16_9C0 (0x9C0..0xA64): when the beam (guest 0xA98) exists it is reset (vtable slot 34
 // ResetBeam with false, 0xA0C), its emitter removed (0xA1C), the object deleted (0xA30), and the
 // id and the emitter cleared (0xA44, 0xA48).
+// Area 11 cannot reach fn_16_9C0's body: the beam is only out in the heart stage.
 void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
   if (entity == nullptr) {
@@ -1588,6 +1592,7 @@ CModelFlags CEmperorIngStage1::BuildJointModelFlags(const CEmperorIngStage1Joint
 // damage colour (CPatterned::skDamageColor) to black with the joint's damage hit time over
 // skDamageHitTime (the fdivs at 0x1CD4), so a tentacle that was just hit is dark red and a
 // tentacle that was never hit is black.
+// fn_16_1C94 is never called in the port: the joint draw path does not use the damage colour.
 CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& joint) const {
   const float t = joint.mDamageHitTime / CPatterned::skDamageHitTime; // 0x1CC0, 0x1CD4
   return CColor::Lerp(CPatterned::skDamageColor, CColor::Black(), t); // 0x1CD8
@@ -1595,6 +1600,7 @@ CColor CEmperorIngStage1::GetJointDamageColor(const CEmperorIngStage1Joint& join
 
 // fn_16_1C5C (0x1C5C..0x1C94, 0x38): the tentacle's plane - the joint's up vector is the normal
 // and the constant is the position's dot with it (the fmadds at 0x1C78 and 0x1C84).
+// fn_16_1C5C is never called in the port: the joint draw path does not use the tentacle's plane.
 CPlane CEmperorIngStage1::GetJointPlane(const CEmperorIngStage1Joint& joint) const {
   const CVector3f up = joint.mUp; // 0x1C6C, 0x1C74, 0x1C7C
   return CPlane(CVector3f::Dot(joint.mPosition, up), // 0x1C68, 0x1C78, 0x1C84
@@ -1684,6 +1690,7 @@ void CEmperorIngStage1::Render(const CStateManager& mgr) const {
 // the tentacles and the heart. The switch is the jump table at lbl_16_data_314 (29 entries; the
 // event type is the index); the default entry (fn_16_7F8C+0x58C) and every type above 28 (the
 // bgt at 0x7FAC) call the base's own DoUserAnimEvent (the call at 0x8524).
+// Area 11 reaches only the event cases 0, 7, 17, 22, 27 and 28; the rest fall through to the base's own handling.
 void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                         EUserEventType type, float dt) {
   switch (type) {
@@ -1830,6 +1837,7 @@ StartTentaclePortal(i, pos, up, mgr);
 //     0x68F), the entity info (the area, no connections, active and no editor id), the identity
 //     transform, the one vector as the scale, the effect asset, the timers and the rates, the
 //     three visor flags, the light parameters and the spline.
+// Area 11 cannot reach fn_16_9BE8's body: the portal's effect is only created for the warp portal actor and the tentacle's portal, and neither exists there.
 // @ fn_16_9BE8
 TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId,
                                                      TAreaId area) {
@@ -1863,6 +1871,7 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
 // created when the joint has none (fn_16_9BE8, 0x1AD0). The effect looks along the up vector
 // from the joint's position (the fadds at 0x1B34..0x1B4C and the LookAt at 0x1B60) and it hears
 // "ACTV" (kSM_Activate, 0x41435456, 0x1B84).
+// Area 11 cannot reach fn_16_1A50's body: the tentacle's portal starts on the animation's portal event, which the boss's tentacles do not send there.
 // @ fn_16_1A50
 void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up,
                                             CStateManager& mgr) {
@@ -1957,6 +1966,7 @@ CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16
 //   0x1360: the portal hits the player once: the player's touch bounds against the boxes around
 //     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
 //     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
+// Area 11 cannot reach fn_16_1150's body: the warp portal actor is never created there (the warp attack's portal needs the player's aim position).
 // @ fn_16_1150
 void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);  // 0x11B0
@@ -2053,6 +2063,7 @@ void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScr
 // constant (0x10C4..0x111C); the model data's world space portal plane takes it (0x1128) and
 // the base's own render follows (0x1134). The retail's first call (the renderer's vtable slot
 // 16 with the transform, 0x10A8) is the base's own work.
+// Area 11 cannot reach fn_16_1088's body: the warp portal actor is never created there.
 void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
   const CVector3f normal = GetTransform().GetColumn(kDY);  // 0x10C4
   const CPlane plane(GetTranslation(), CUnitVector3f(normal));  // 0x10E0
@@ -2065,6 +2076,7 @@ void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
 // vector the up vector (0x1990..0x19C0), and the portal's effect (the joint's id, 0x19C4) hears
 // "DCTV" (kSM_Deactivate, 0x44435456, 0x19F8) - the message's sender is this actor (0x19EC) and
 // its id the joint's (0x19F4).
+// Area 11 cannot reach fn_16_1950's body: the tentacle's portal stops on the same event.
 // @ fn_16_1950
 void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
   CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
@@ -2085,6 +2097,7 @@ void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
 // 0x7D8 + index * 0x48 + 0x24 = 0x7FC, read at 0x7F1C) has its bit 27 clear - the extrwi at 0x7F20
 // takes one bit at the bit 27, the bit 4 of the byte, so the mask is 1u << (31 - 27) = 0x10. Only
 // then does the base's own handling run (the call at 0x7F6C).
+// Area 11 cannot reach fn_16_7EA8's early return: no sound event comes from a tentacle's locator there.
 void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, float fallOff,
                                           float maxDist, const CSegId& locator, ushort pitchStart,
                                           ushort pitchEnd, float pitchDuration, uchar minVol,
@@ -2142,6 +2155,7 @@ bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTrigger
 // (guest 0xA3C, 0.0f in the constructor) has run out. The asm compares it with 0.0f
 // (lbl_16_rodata_380) and folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4),
 // so the test is "<= 0.0f".
+// Area 11 cannot reach fn_16_4BB4's true branch: the FSM only evaluates the trigger in the heart-stage state.
 bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
   return xa3c_ <= 0.f;
 }
@@ -2150,6 +2164,7 @@ bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& d
 // The asm calls the vtable slot at +0x3C (slot 13, GetHealthInfo) and reads the health info's
 // second float (CHealthInfo::mHealth at +0x04), then compares it with 0.0f the same way as
 // fn_16_4BB4 (cror eq,lt,eq at 0x4B98).
+// Area 11 cannot reach fn_16_4B6C's true branch: the FSM only evaluates the trigger in the heart-stage state.
 bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return GetHealthInfo()->GetHP() <= 0.f;
 }
@@ -2259,6 +2274,7 @@ void CEmperorIngStage1::BeginHeartStage(CStateManager& mgr, EStateMsg msg, float
 //     heart-stage timer runs down last (0x7858).
 //   Deactivate: the locomotion type 1 (0x7868), the heart's collision actor inactive (fn_16_3D64
 //     with 8, 0x787C) and the beam stopped (fn_16_9C0, 0x7888).
+// Area 11 cannot reach fn_16_774C's body: the FSM does not reach the heart stage there.
 void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate:
@@ -2308,6 +2324,7 @@ void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) 
 //     animation state is not ready (0x76A8), the tentacles' 0x80 flags are set (fn_16_2EE0 with
 //     1, 0x76B4), the attack timer re-rolls (fn_16_8E4, 0x76C0) and the tentacles take the normal
 //     vulnerability (fn_16_353C with 1, 0x76D0).
+// Area 11 cannot reach fn_16_71BC's body: the FSM does not reach the heart stage there.
 void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   CActor* body = GetPlayActor(mgr);
   CActor* activator = GetActivateActor(mgr);
@@ -2924,6 +2941,7 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 // CStateManager+0x16E4) asked for Range(0.0f, 100.0f) at 0x497C, with 0.0f from
 // lbl_16_rodata_380 and 100.0f from lbl_16_rodata_3D4 - against 50.0f (lbl_16_rodata_3BC): in
 // mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
+// Area 11 cannot reach fn_16_4954's body: the host's FSM1 does not dispatch code nodes.
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);
   if (x7c0_ == 1) {
