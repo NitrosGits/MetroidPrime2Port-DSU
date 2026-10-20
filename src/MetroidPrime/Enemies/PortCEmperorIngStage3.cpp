@@ -2587,6 +2587,7 @@ void CEmperorIngStage3::GroundPound(CStateManager& mgr, EStateMsg msg, float dt)
   }
 }
 
+// @ fn_18_6258
 // fn_18_6258 (0x138): the "GenerateDarkFliers" state. Activate (0x6290) readies the animation
 // state; Update (0x629C) issues the projectile attack (severity 1, a zero target, no blend) while
 // the body can take one (state 0x12); Deactivate (0x6364) clears the dark-flier timer (guest
