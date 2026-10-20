@@ -579,3 +579,13 @@ looked up (0x11B0 ObjectById), a transform is built (0x11CC) and set (0x11E0), a
 (0x1258 the new, 0x12A0 the CEntityInfo, 0x12B8 the name), the rotation uses one degree in
 radians (0.017453292f, 0x12C4) and the body is driven by fn_75_11884 (0x1380). The port needs the
 host's actor creation path for the middle of it, so it is a slice of its own.
+
+The rest of `fn_75_1188` (0x1330-0x14CC) reads as the rest of the actor creation: the placement
+`new` at 0x1258 takes the size **0x1A0** (`li r3, 0x1a0`) and the class name at
+`lbl_75_rodata_A0 + 0x229`, the `CEntityInfo` at 0x12A0 is built from this+0x4 (the area id, twice
+- 0x1294 and 0x1298), `NullConnectionList` (0x1278) and `kInvalidEditorId` (0x1268), the actor's
+name is `lbl_75_rodata_A0 + 0x230` (0x12B8), and the rotation is built from the angle at 0x864
+(0x12CC) times one degree in radians (0.017453292f, `lbl_75_rodata_74`, 0x12C4), rounded with
+`fctiwz` (0x1308) and reduced by `fnmsubs` (0x1324) - the same pattern the other ports' spawn
+code uses. The class the `new` makes is the one whose size is 0x1A0 and whose name sits at
+`lbl_75_rodata_A0 + 0x229`; reading that string gives the host class to use.
