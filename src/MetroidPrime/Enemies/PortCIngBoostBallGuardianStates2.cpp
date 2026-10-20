@@ -328,6 +328,7 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
 // (/tmp/opencode/ing_bp3.log): BecomeBodyProjectile -> BodyProjectileFlight form 8 (the drift
 // branch, two frames) -> form 4 once the anim's kUE_BeginAction lands (35 units a second along the
 // launch direction) -> SuckEnergy on the hit, with the emitter removed in Deactivate.
+// @ fn_30_953C
 void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
   static bool sInit = false;
   static CVector3f sLaunchPoint;
@@ -345,7 +346,7 @@ void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg m
     mProjectileFSMEntry = true; // 0xe5e bit 7
     sLaunchPoint = GetLctrTransform(mEyeSegId).GetTranslation(); // 0xd7b
     sFlightDir = CVector3f::Forward();
-    if (TargetAimPosition(mgr, mTargetPos, 0.5f)) { // fn_29_4468, 0xdc8; f1 = rodata_B4
+    if (TargetAimPosition(mgr, mTargetPos, 0.5f)) { // fn_29_4468, 0xdc8; f1 = rodata_80 (0.5)
       // The aim position is dropped by the model's height (scale.z, the REL's only non-zero scale
       // term); a shot that points upwards keeps Forward() as its direction.
       const CVector3f scale = GetModelData()->GetScale(); // 0x60, model data's first CVector3f

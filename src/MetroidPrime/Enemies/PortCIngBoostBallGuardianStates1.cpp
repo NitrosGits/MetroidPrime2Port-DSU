@@ -328,7 +328,8 @@ bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out
 }
 
 // fn_30_A95C (this module).
-// The Ing's fn_29_94E8 (not yet exercised in a run).
+// The Ing's fn_29_94E8.
+// @ fn_30_A95C
 void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
