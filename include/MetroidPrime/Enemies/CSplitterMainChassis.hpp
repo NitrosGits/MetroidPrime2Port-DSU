@@ -6,6 +6,8 @@
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/CLineOfSightTracker.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 
@@ -154,6 +156,19 @@ private:
   // only keeps what this milestone needs.
   CSplitterMainChassisData mData; // guest 0x7C0 (the parameter block fn_75_FB30 copies in)
   CPathFindSearch mPathFindSearch; // guest 0xB7C (fn_75_81F8 returns this+0xB7C)
+  // 0xC6C: the command module's id (the retail keeps a u16 here; the port's ids fit in 16
+  // bits, so a TUniqueId carries the same value). The retail's ctor writes kInvalidUniqueId
+  // here (fn_75_F5F8 @0x0000F6E4) and the state machine's own code (0x0000AF74,
+  // 0x0000E720, 0x0000EBD0) replaces it; those writers are missing from the port.
+  // guest 0xC68: the collision actor manager. The retail's Think reads it at 0xF11C and calls
+  // CCollisionActorManager::Update when it is there (0xF144, the DOL's fn_80135D84); when it is
+  // 0 the retail builds it instead (0xF130, fn_75_A4E4). The port's manager is empty: the
+  // joint collision descriptions belong to the state machine.
+  CCollisionActorManager* mCollisionActorManager = nullptr;
+  TUniqueId mCommandModuleId;
+  // guest 0xC70: the retail's CVisualKnowledge, whose Update the Think calls (the DOL's
+  // fn_801F55F0). The host's CLineOfSightTracker is the same thing.
+  CLineOfSightTracker mVisualKnowledge;
 #endif
 };
 #else

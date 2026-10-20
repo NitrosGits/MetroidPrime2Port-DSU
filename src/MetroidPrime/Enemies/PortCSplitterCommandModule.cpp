@@ -10,6 +10,8 @@
 // function each stands in for is named on it.
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 
+#include "MetroidPrime/CCollisionActorManager.hpp"
+
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -36,6 +38,16 @@ void StandIn(const char* what) {
   fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterCommandModule.cpp)\n",
           what);
 }
+
+// The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
+// function and its size. They are the line-of-sight tracker (fn_75_31A8) and the derived state
+// (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
+void StandInFn_75_31A8() { StandIn("fn_75_31A8 (0x14C)"); }
+void StandInFn_75_32F4() { StandIn("fn_75_32F4 (0x16C)"); }
+void StandInFn_75_3004() { StandIn("fn_75_3004 (0x1A4)"); }
+void StandInFn_75_184C() { StandIn("fn_75_184C (0x128)"); }
+void StandInFn_75_1188() { StandIn("fn_75_1188 (0x344)"); }
+void StandInFn_75_21FC() { StandIn("fn_75_21FC (0x84)"); }
 
 } // namespace
 
@@ -76,23 +88,43 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 0x14 = fn_75_6490. It tests the actor's active bit (the byte at 0x20, bit 0, read
-// at 0x000064B4) and returns when it is clear, then runs CPatterned::Think; the rest of the body
-// (the collision manager update, the docking link and the derived state) is the state machine's
-// work.
+// fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
+// active gate, the base's Think, the collision actor manager's update and the module's
+// own six calls in order (their sizes are in the table in
+// docs/module-analysis/Splitter.md). The six are over 0x80 and each is a once-logging
+// shell here, so this function carries no port marker yet.
+// vtable slot 0x14 (0xBC). The active gate (the byte at 0x20, 0x64B4 lbz and 0x64B8 extrwi bit 24 -
+// the byte's 0x80), CPatterned::Think (0x64C0), the collision actor manager's update (the manager at
+// 0xE58, 0x64C8 lwz; the update options 0 at 0x64D0, which is kUO_ObjectSpace; 0x64D4 the update)
+// and then the module's own six per-frame calls in order: fn_75_31A8 (0x64E0, 0x14C), fn_75_32F4
+// (0x64F0, 0x16C), fn_75_3004 (0x64FC, 0x1A4), fn_75_184C (0x650C, 0x128), fn_75_1188 (0x651C, 0x344)
+// and fn_75_21FC (0x652C, 0x84). All six are over 0x80 and belong to the line-of-sight tracker and
+// the derived state, so they stay named once-logging stand-ins that return neutral values.
 void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::Think (vtable slot 0x14, fn_75_6490)");
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+  // port limit: the retail builds the collision actor manager in its constructor, where it has
+  // no CStateManager to hand it, so the port creates it on the first Think instead.
+  if (mCollisionActorManager == nullptr) {
+    mCollisionActorManager = rs_new CCollisionActorManager(
+        mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(), true);
+  }
+  mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  StandInFn_75_31A8();
+  StandInFn_75_32F4();
+  StandInFn_75_3004();
+  StandInFn_75_184C();
+  StandInFn_75_1188();
+  StandInFn_75_21FC();
 }
 
 // vtable slot 0x18 = fn_75_654C (0x24C): it calls the base class's AcceptScriptMsg and then
 // switches on the script message's four-character code.
 void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CSplitterCommandModule::AcceptScriptMsg (vtable slot 0x18, fn_75_654C)");
+  StandIn("CSplitterCommandModule::AcceptScriptMsg (vtable slot 0x18, fn_75_654C, 0x24C bytes)");
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);

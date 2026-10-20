@@ -392,3 +392,111 @@ triggers (module 14) are the integration test.
 - `fn_75_1974` creates the laser-pulse `CPlasmaProjectile`; which `CAssetId` it uses comes from
   the command module's 0x7E0 slot (`laserPulseProjectile`), but the second `CProjectileInfo`
   (0xE84) source fields are **unknown**.
+
+### Stand-ins the area-4 layer-3 fight reaches (2026-10-20)
+
+The ElitePirate smoke in this area logs five Splitter stand-ins (the run: `/tmp/opencode/smoke/ep_run_ep.sh`,
+log `/tmp/opencode/smoke/ep2.log`); they are the only stand-in lines in it and the fight reaches no
+other Splitter shell. In the order the log prints them, with the retail sizes from
+`config/G2ME01/rels/Splitter/symbols.txt`:
+
+| stand-in | fn | size |
+|---|---|---|
+| `CSplitterMainChassis::AcceptScriptMsg` (slot 0x18) | `fn_75_F1C0` | 0x3A0 |
+| `CSplitterMainChassis::SetIngPossessed` (slot 0x104) | `fn_75_E87C` | 0x90 |
+| `CSplitterCommandModule::AcceptScriptMsg` (slot 0x18) | `fn_75_654C` | 0x24C |
+| `CSplitterCommandModule::Think` (slot 0x14) | `fn_75_6490` | 0xBC |
+| `CSplitterMainChassis::Think` (slot 0x14) | `fn_75_F0E8` | 0xB8 |
+
+`fn_75_F1C0` (0x3A0) and `fn_75_654C` (0x24C) are over the 0x200 a slice covers, so they stay
+once-logging stand-ins for now. The other three are the size a slice can take, but each of them
+reaches further into the module than its own body:
+
+- `fn_75_6490` (the command module's Think, 0xBC): the active bit (the byte at 0x20, 0x64B4/0x64B8
+  `extrwi` bit 24), then `CPatterned::Think` (0x64C0), the collision actor manager's update (the
+  manager at 0xE58, 0x64C8-0x64D4, the update options 0) and six module calls - `fn_75_31A8`
+  (0x64E0), `fn_75_32F4` (0x64F0), `fn_75_3004` (0x64FC), `fn_75_184C` (0x650C), `fn_75_1188` (0x651C)
+  and `fn_75_21FC` (0x652C). Those are the line-of-sight tracker and the derived state, so a
+  faithful port needs them read first.
+- `fn_75_E87C` (0x90): the base's `SetIngPossessed(bool, float, CStateManager&)` (0xE8A0), then a
+  test of the flag byte's 0x80 (0xE8A4 `clrlwi r0, r30, 24`), the command module's id (the u16 at
+  0xC6C, 0xE8AC `lhz`), `ObjectById` (0xE8BC) and the cast (0xE8C0), then the command module's
+  vtable slot 0x104 with (1, mgr, &lbl_75_rodata_390 (0.0f), 0.0f) (0xE8CC-0xE8EC).
+- `fn_75_F0E8` (0xB8): the main chassis's Think, the same shape as the command module's.
+
+So the Splitter porting is a per-function slice with its own module callees, not one body; the
+first one to take is `fn_75_E87C` (0x90, the fewest module callees).
+
+#### fn_75_E87C (0x90) read, ready to port - two open points
+
+The asm (0xE87C-0xE90C) is `SetIngPossessed(bool, float, CStateManager&)` on the main chassis:
+the base call `SetIngPossessed__10CPatternedFbfR13CStateManager` (0xE8A0), the flag test
+(0xE8A4 `clrlwi. r0, r30, 24` - `clrlwi` clears the left 24 bits and keeps the low byte,
+so this tests the flag argument (`r30`, the possession bool) for non-zero), the command module's id (the u16 at
+0xC6C, 0xE8AC `lhz`), `ObjectById` (0xE8BC) and the `CSplitterCommandModule` cast (0xE8C0), then the
+command module's vtable slot 0x104 with (1, mgr, &lbl_75_rodata_390 (0.0f), 0.0f) (0xE8CC-0x8EC).
+
+Open points before it can be written:
+
+1. Resolved: the test is the flag's low byte, so it is the possession bool (`if (possessed)`) -
+   the annotator's `mask 0xff` reading is right.
+2. Resolved: 0xC6C is above the base's fields, so it is the main chassis's own - the command
+   module's id. The port keeps it in `CSplitterMainChassis::mCommandModuleId`; the retail's ctor
+   writes kInvalidUniqueId into it (fn_75_F5F8 @0x0000F6E4, the value read at 0x0000F6CC) and
+   the state machine's own code replaces it later (0x0000AF74, 0x0000E720, 0x0000EBD0 - not
+   ported yet, so the port's id stays the invalid one).
+3. Resolved: the command module's vtable slot 0x104 is the DOL's
+   `SetIngPossessed(bool, float, CStateManager&)` (the command module does not override it), so
+   the call is the host's CPatterned virtual with (true, 0.0f, mgr) - the retail passes
+   lbl_75_rodata_390 (0.0f) as the duration.
+
+#### fn_75_6490 (0xBC) - the command module's Think
+
+The body: the active gate (the byte at 0x20, 0x64B4 `lbz` and 0x64B8 `extrwi` bit 24 - the byte's
+0x80), `CPatterned::Think` (0x64C0), the collision actor manager's update (the manager at 0xE58,
+0x64C8 `lwz`; the update options 0 at 0x64D0, which is `kUO_ObjectSpace`; 0x64D4 the update) and
+then the module's own six calls, in order:
+
+| call | fn | size |
+|---|---|---|
+| 0x64E0 | `fn_75_31A8` | 0x14C |
+| 0x64F0 | `fn_75_32F4` | 0x16C |
+| 0x64FC | `fn_75_3004` | 0x1A4 |
+| 0x650C | `fn_75_184C` | 0x128 |
+| 0x651C | `fn_75_1188` | 0x344 |
+| 0x652C | `fn_75_21FC` | 0x84 |
+
+All six are over 0x80, so none of them is ported in this slice: they are the retail's own per-frame
+updates (the line-of-sight tracker and the derived state the state machine reads), and the port
+keeps them as named once-logging stand-ins that return neutral values.
+
+#### fn_75_F0E8 (0xB8) - the main chassis's Think
+
+The body: the active gate (the byte at 0x20, 0xF10C `lbz` and 0xF110 `extrwi` bit 24 - the byte's
+0x80), `CPatterned::Think` (0xF118), the docking link (the partner id at 0xC68, 0xF11C `lwz` and
+0xF120 `cmplwi 0`: with no partner the retail looks for one - 0xF130 `fn_75_A4E4` - otherwise it
+updates the dock - 0xF144 `fn_80135D84`, the DOL's), the line-of-sight tracker (the tracker at
+0xC70, 0xF154 `fn_801F55F0`, the DOL's) and the module's own three calls:
+
+| call | fn | size |
+|---|---|---|
+| 0xF130 | `fn_75_A4E4` | 0x418 |
+| 0xF164 | `fn_75_AFE8` | 0x11C |
+| 0xF174 | `fn_75_ACEC` | 0x2FC |
+| 0xF180 | `fn_75_9520` | 0x11C |
+
+All four are over 0x80 and the DOL's two have no module size, so each stays a named once-logging
+shell in the port.
+
+The two DOL calls in `fn_75_F0E8` are host engine functions, not module ones (the DOL's symbol map,
+`config/G2ME01/symbols.txt`):
+
+| call | DOL symbol | name |
+|---|---|---|
+| 0xF144 | `fn_80135D84` | `CCollisionActorManager::Update(float, CStateManager&, EUpdateOptions)` (0x540) |
+| 0xF154 | `fn_801F55F0` | `CVisualKnowledge::Update(CStateManager&, float)` (0x26C) |
+
+The first is the host's `CCollisionActorManager::Update` on the manager at 0xC68 (the update options
+0 = `kUO_ObjectSpace`); the second is the host's `CLineOfSightTracker::Update` on the visual
+knowledge at 0xC70 (the host's `CLineOfSightTracker` is the same thing - see
+`CMinorIng.hpp`'s `mLineOfSight`).

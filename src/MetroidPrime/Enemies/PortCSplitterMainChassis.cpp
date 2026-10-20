@@ -13,10 +13,13 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterMainChassis.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 #include <stdio.h>
 
@@ -36,6 +39,15 @@ void StandIn(const char* what) {
   }
   fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterMainChassis.cpp)\n", what);
 }
+
+// The module's own calls in the main chassis's Think and the DOL's two helpers it makes, as
+// named once-logging shells: the name is the retail function and its size (the DOL's functions
+// are not in the module, so they carry none). They are the docking link, the line-of-sight
+// tracker and the derived state.
+void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
+void StandInFn_75_AFE8() { StandIn("fn_75_AFE8 (0x11C)"); }
+void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
+void StandInFn_75_9520() { StandIn("fn_75_9520 (0x11C)"); }
 
 } // namespace
 
@@ -59,7 +71,16 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
 // fn_75_F5F8 @0x0000F690: the CPathFindSearch (0xec) at 0xb7c, built with the null area, the
 // flags 1, the patterned info's pathfinding index and the two radii lbl_75_rodata_364 (1.0f);
 // fn_75_81F8 returns it.
-, mPathFindSearch(nullptr, 1, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center) {
+, mPathFindSearch(nullptr, 1, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center)
+// port: writer fn_75_F5F8 @0x0000F6E4 (sth r6, 0xc6c(r29) - the retail's ctor copies
+// kInvalidUniqueId, read at 0x0000F6CC, into the command module's id)
+// port: writer fn_75_F5F8 @0x0000F6BC (stw r0, 0xc68(r29) with r0 = 0 - the retail's ctor
+// leaves the collision actor manager empty)
+, mCollisionActorManager(nullptr)
+, mCommandModuleId(kInvalidUniqueId)
+// port: the retail's CVisualKnowledge at 0xC70 is built by the ctor; the host's equivalent is
+// CLineOfSightTracker, built here with the same arguments the other ports use.
+, mVisualKnowledge(uid, CSegId(), 0.1f, 0.05f) {
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not
@@ -86,22 +107,41 @@ void CSplitterMainChassis::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
-// vtable slot 0x14 = fn_75_F0E8. It tests the actor's active bit (the byte at 0x20, bit 0, read
-// at 0x0000F10C) and returns when it is clear, then runs CPatterned::Think; the rest of the body
-// (the collision manager update, the line-of-sight tracker and the derived state) is the state
-// machine's work.
+// fn_75_F0E8 (0xB8) - the main chassis's Think. The body follows the retail's: the active gate
+// (the byte at 0x20, 0xF10C lbz and 0xF110 extrwi bit 24 - the byte's 0x80), the base's Think
+// (0xF118), the docking link (the partner id at 0xC68, 0xF11C lwz and 0xF120 cmplwi 0: with no
+// partner the retail looks for one, 0xF130 fn_75_A4E4, otherwise it updates the dock, 0xF144
+// fn_80135D84), the line-of-sight tracker (the tracker at 0xC70, 0xF154 fn_801F55F0) and the
+// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520). Every one
+// of them is over 0x80 or belongs to the DOL, so each is a once-logging shell here and the
+// function carries no port marker yet.
+// vtable slot 0x14.
 void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::Think (vtable slot 0x14, fn_75_F0E8)");
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+  if (mCollisionActorManager == nullptr) {
+    // port limit: the retail builds the collision actor manager in fn_75_A4E4 (0x418), which
+    // is one of the module's own functions; the port makes an empty one instead,
+    // as the command module does.
+    StandInFn_75_A4E4();
+    mCollisionActorManager = rs_new CCollisionActorManager(
+        mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(),
+        true);
+  } else {
+    mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
+  mVisualKnowledge.Update(dt, mgr);
+  StandInFn_75_AFE8();
+  StandInFn_75_ACEC();
+  StandInFn_75_9520();
 }
 
 // vtable slot 0x18 = fn_75_F1C0 (0x3A0): it switches on the script message's four-character code.
 void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CSplitterMainChassis::AcceptScriptMsg (vtable slot 0x18, fn_75_F1C0)");
+  StandIn("CSplitterMainChassis::AcceptScriptMsg (vtable slot 0x18, fn_75_F1C0, 0x3A0 bytes)");
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);
@@ -187,10 +227,22 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
   CPatterned::SetIngPossessed(possessed, mgr);
 }
 
-// vtable slot 0x104 = fn_75_E87C.
+// @ fn_75_E87C
+// vtable slot 0x104 (0x90). The base call (0xE8A0) and then, when the possession flag is set
+// (0xE8A4 clrlwi. r0, r30, 24 - the flag's low byte), the command module's id (the u16 at
+// 0xC6C, 0xE8AC lhz) is looked up (0xE8BC ObjectById, 0xE8C0 the CSplitterCommandModule cast)
+// and told that it is possessed: the command module's vtable slot 0x104 is the DOL's
+// SetIngPossessed(bool, float, CStateManager&) (0xE8CC-0xE8EC: true, mgr,
+// &lbl_75_rodata_390 (0.0f), 0.0f). The id is still the invalid one - the state machine's
+// writers of 0xC6C are missing from the port - so the lookup finds nothing.
 void CSplitterMainChassis::SetIngPossessed(bool possessed, float duration, CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::SetIngPossessed (vtable slot 0x104, fn_75_E87C)");
   CPatterned::SetIngPossessed(possessed, duration, mgr);
+  if (possessed) {
+    CEntity* entity = mgr.ObjectById(mCommandModuleId);
+    if (CSplitterCommandModule* module = TCastToPtr< CSplitterCommandModule >(entity)) {
+      module->SetIngPossessed(true, 0.f, mgr);
+    }
+  }
 }
 
 // vtable slot 0x108 = fn_75_E810.

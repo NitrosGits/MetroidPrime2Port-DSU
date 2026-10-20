@@ -1,6 +1,8 @@
 #ifndef _CSPLITTERCOMMANDMODULE
 #define _CSPLITTERCOMMANDMODULE
 
+class CCollisionActorManager;
+
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
@@ -146,6 +148,10 @@ private:
   CSplitterCommandModuleData mData; // guest 0x7C0 (the parameter block fn_75_72BC copies in)
   CPathFindSearch mPathFindSearch;  // guest 0xD6C (fn_75_0 returns this+0xD6C)
   CProjectileInfo mProjectileInfo;  // guest 0xE5C (fn_75_8 returns this+0xE5C)
+  // guest 0xE58: the retail's collision actor manager (the command module's Think updates it
+  // at 0x64C8). It holds the head's joint collision descriptions, which belong to the state
+  // machine, so the port starts it empty.
+  CCollisionActorManager* mCollisionActorManager = nullptr;
 };
 
 #endif // _CSPLITTERCOMMANDMODULE
