@@ -190,6 +190,23 @@ void DumpFsm2(const CGenericFSM2& machine) {
   }
 }
 
+// A retail function of the module that the host does not model yet. It is named once, so a run's
+// log says which body is still missing; the name carries the retail size, the same way the note
+// in docs/module-analysis/MinorIng.md lists them.
+void PortMinorIngStandIn(const char* what) {
+  static const char* sSeen[16];
+  static int sCount = 0;
+  for (int i = 0; i < sCount; ++i) {
+    if (sSeen[i] == what) {
+      return;
+    }
+  }
+  if (sCount < 16) {
+    sSeen[sCount++] = what;
+  }
+  fprintf(stderr, "[minoring] stand-in %s\n", what);
+}
+
 // @ fn_44_D00
 // The retail copy moves a whole CHealthInfo from the source to the destination: the three floats
 // at +0x00..+0x08, the two weapon modes at +0x0c and +0x14, the four ids at +0x10..+0x1a and the
@@ -268,6 +285,7 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mShouldMoveUnderBall(false)
 , mInsideSafeZone(false)
 , mShouldEvaporate(false) {
+  PortMinorIngStandIn("fn_44_9D58 (0x878 bytes)");
   // fn_44_9D58 locks the projectile's WPSC token (0x918); without it LaunchProjectile's TryCache
   // never succeeds.
   mProjectileInfo.Token().Lock();
@@ -303,7 +321,9 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
 }
 
-CMinorIng::~CMinorIng() {}
+CMinorIng::~CMinorIng() {
+  PortMinorIngStandIn("fn_44_97E4 (0x15c bytes)");
+}
 
 void CMinorIng::LogState(const char* name) {
   if (DebugMinorIng() && mLastLoggedState != name) {
@@ -583,6 +603,7 @@ void CMinorIng::SetForm(CStateManager& mgr, int form, bool setLocomotion) {
 
 // @ fn_44_3670
 void CMinorIng::SnapToFloor(CStateManager& mgr) {
+  PortMinorIngStandIn("fn_44_34B0 (0x164 bytes)");
   // fn_44_34B0: a ray down the actor's up axis, from one unit above it, 10 units long, Solid.
   const CVector3f up = GetTransform().GetUp();
   const CRayCastResult result =
@@ -1968,6 +1989,7 @@ void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 
 // [?] fn_44_7058: retail also spawns the inglets (CBouncyGrenade, data at guest 0x8e0..0x8f8).
 void CMinorIng::MassiveDeath(CStateManager& mgr) {
+  PortMinorIngStandIn("fn_44_7058 (0x654 bytes)");
   PlaySfx(3, true);
   CPatterned::MassiveDeath(mgr);
 }
@@ -2033,6 +2055,7 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
 // Retail fn_44_110. The property ids and their order are the generated SLdrMinorIng reader's,
 // which the analysis checked against the REL id by id: it reads all 20.
 static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
+  PortMinorIngStandIn("fn_44_110 (0x844 bytes)");
   SLdrMinorIng sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMinorIng.inc"
 
