@@ -58,6 +58,13 @@ void StandInFn(const char* fn) {
   fprintf(stderr, "[cmdopirate] stand-in %s\n", fn);
 }
 
+// The same, for a callee the state calls: it logs once and hands back the neutral value
+// (false), the way the trigger stand-ins do.
+bool StandInFnBool(const char* fn) {
+  StandInFn(fn);
+  return false;
+}
+
 // The body's two FSM tables. Retail builds them in a static initialiser (fn_9_F9F8,
 // .ctors): the tables are lbl_9_data_198 (34 triggers, .data 0x198) and lbl_9_data_568
 // (36 states, .data 0x568), each entry 16 bytes {name, 0, 0xFFFFFFFF, fn}, and the
@@ -108,6 +115,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -138,6 +146,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
+, xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
@@ -535,8 +544,58 @@ void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_AE04");
 }
 
+// fn_9_ABDC: the state faces the target. On activate (the guest's message 0, 0x0000ABFC) the
+// module's own helper (fn_9_3CBC, 0xA8 bytes - over the 0x80 limit for this slice, so a named
+// stand-in) asks the target for its position and stores it at guest this+0xB94; the state then
+// measures the angle between the actor's facing and the direction to the target (the GetAngleDiff
+// call at 0x0000AC84) against 20 degrees (lbl_9_rodata_4B4 is 0.34906584): over when the target
+// is in front (0x0000ACA4) and ready when it is not (0x0000AC98).
+// On update (the guest's message 1, 0x0000ABE4) the guest retries its own try command - the host
+// has no CTryCommand class, so that call is a stand-in too - and, when it succeeds, checks the
+// distance to the target (IsMagnitudeSafe at 0x0000AD08) and delivers the locomotion command that
+// walks there (the CBCLocomotionCmd at 0x0000AD70).
+// On deactivate (the guest's message 2, 0x0000AD84) the animation state goes back to "not ready".
 void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_ABDC");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    if (StandInFnBool("fn_9_3CBC (the target's position, guest this+0xb94)")) {
+      // 0x0000AC2C..0x0000AC84: the direction to the target and the angle between it and the
+      // actor's facing (the guest's three-argument GetAngleDiff has no host counterpart; the
+      // host's takes the facing and the direction).
+      const CVector3f delta = xb94_ - GetTranslation();
+      const float angle = CVector3f::GetAngleDiff(mFaceVec, delta);
+      mAnimationState.SetState(angle > 0.34906584f ? CAnimationState::kAS_Ready
+                                                   : CAnimationState::kAS_Over);
+    } else {
+      // 0x0000ACB0: no target, so the animation is over.
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    if (StandInFnBool("CTryCommand::ShouldRetry (guest this+0x6b4)")) {
+      // 0x0000ACD4..0x0000AD08: the direction to the target and its magnitude test.
+      const CVector3f delta = xb94_ - GetTranslation();
+      if (delta.IsMagnitudeSafe()) {
+        // 0x0000AD1C..0x0000AD70: the normalized direction, delivered as a locomotion command
+        // with the move vector zero and the weight 1.
+        const CBCLocomotionCmd cmd(CVector3f::Zero(), delta.AsNormalized(), 1.f);
+        BodyController()->CommandMgr().DeliverCmd(cmd);
+      } else {
+        // 0x0000AD78: too far, so the animation is over.
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    // 0x0000AD84: the animation state back to "not ready".
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 // fn_9_AB08: on the activate message (the guest's test of 0 at 0x0000AB10) the commando takes the

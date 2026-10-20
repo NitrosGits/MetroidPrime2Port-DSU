@@ -336,6 +336,7 @@ private:
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
+  CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)

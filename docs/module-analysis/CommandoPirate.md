@@ -265,14 +265,16 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 |---|---|---|---|---|
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
-| FaceTarget | `fn_9_ABDC` | 0x6E4 | **not ported** - the body is 0x1C4 bytes, over the 0x150 limit for this slice | the stand-in still runs |
+| FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's helper asks the target for its position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` (this+0x6B4) and its own helper `fn_9_3CBC` (0xA8 bytes, over the 0x80 limit) are named stand-ins |
 
 The player id the guest takes (its state manager's +0x14FC, the id at +8 of it, 0x0000AB4C) has no
 member at that offset in the host's state manager, so the port uses the player actor's id.
 
-In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine now walks the three
-states it visited before (Patrol, SelectTarget, FaceTarget): each of the two ported states is
-entered, updated and left once, and FaceTarget is still the stand-in.
+In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine walks the states
+the actor reaches: Patrol, SelectTarget, FaceTarget, then HasNewTarget, HasTarget and Lurk (the
+last three are still stand-ins). FaceTarget is entered, updated and left once, and its "over"
+answer makes the `StateOver` trigger true on the next evaluation - the first trigger of the
+module that returns true in the port.
 
 ## 2. The loader (fn_9_168)
 
@@ -385,8 +387,8 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 53 bodies: the two tables (34 triggers, 36 states) are registered,
-  sixteen of the triggers and two of the states are host code (the sections above), but every
+- The state machine's other 52 bodies: the two tables (34 triggers, 36 states) are registered,
+  sixteen of the triggers and three of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
   returns the neutral value.
 - The guest's `CVisualKnowledge` (this+0xAB0) and the `CTryCommand` the base keeps at +0x6B4:
