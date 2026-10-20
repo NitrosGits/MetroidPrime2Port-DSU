@@ -212,6 +212,15 @@ void PortMinorIngStandIn(const char* what) {
 // at +0x00..+0x1c, the two words at +0x20 and +0x24 and the valid byte at +0x28 (asm 0x3614-0x366C).
 void CopyRayCastResult(CRayCastResult& dest, const CRayCastResult& src) { dest = src; }
 
+// @ fn_44_AB78
+// The retail finds the best animation for a parm and keeps it only when its score is above
+// FLT_EPSILON (asm 0xAB78-0xABCC): the score lands in the caller's stack slot and the id
+// beside it, and the id is -1 when the score is too small.
+int FindBestAnimationId(const CPASDatabase& pas, const CPASAnimParmData& parm) {
+  const rstl::pair< float, int > best = pas.FindBestAnimation(parm, -1);
+  return best.first > 1.1920929e-07f ? best.second : -1;
+}
+
 // @ fn_44_D00
 // The retail copy moves a whole CHealthInfo from the source to the destination: the three floats
 // at +0x00..+0x08, the two weapon modes at +0x0c and +0x14, the four ids at +0x10..+0x1a and the
@@ -341,13 +350,11 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
     mLineOfSight.SetSegment(animData->GetLocatorSegId(rstl::string_l("Eye_LCTR")));
     // fn_44_AB78 keeps an animation only when its score is above FLT_EPSILON.
     const CPASDatabase& pas = animData->GetPASDatabase();
-    rstl::pair< float, int > best = pas.FindBestAnimation(
-        CPASAnimParmData(pas::kAS_Generate, CPASAnimParm::FromEnum(0)), -1);
-    mIntoCorporealAnim = best.first > 1.1920929e-07f ? best.second : -1;
-    best = pas.FindBestAnimation(CPASAnimParmData(pas::kAS_LoopReaction, CPASAnimParm::FromEnum(3),
-                                                  CPASAnimParm::FromEnum(0)),
-                                 -1);
-    mIntoStunnedAnim = best.first > 1.1920929e-07f ? best.second : -1;
+    mIntoCorporealAnim =
+        FindBestAnimationId(pas, CPASAnimParmData(pas::kAS_Generate, CPASAnimParm::FromEnum(0)));
+    mIntoStunnedAnim = FindBestAnimationId(
+        pas, CPASAnimParmData(pas::kAS_LoopReaction, CPASAnimParm::FromEnum(3),
+                              CPASAnimParm::FromEnum(0)));
   }
   mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));

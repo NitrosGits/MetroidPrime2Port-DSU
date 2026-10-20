@@ -7,12 +7,13 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-20)
 
-- 113/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
+- 114/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
   registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
   copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the ray the snap to the floor
   uses), `fn_44_3614` (the copy of the ray result), `fn_44_FE8` (the grenade data
   the loader builds), `fn_44_C44` (the copy of it into the data), `fn_44_D54` (the
-  copy of the ing spot into the data) and `fn_44_9B4` (the data build).
+  copy of the ing spot into the data), `fn_44_9B4` (the data build) and `fn_44_AB78`
+  (the best animation for a parm).
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
@@ -91,9 +92,23 @@ body does the same with the marked copies `fn_44_D54` (the ing spot), `fn_44_D00
 runs in three steps (`fn_44_D54` calls `fn_44_E08`, which calls `fn_44_EB8`); the
 host's `CIngSpotData` copy is the class's own, so those two take no marker.
 
+### The constructor's parts (fn_44_9D58)
+
+The retail's constructor (fn_44_9D58, 0x878) builds the actor and calls four module
+functions. The host builds `CMinorIng` with its own constructor, so the body itself
+takes no marker (the check finds the flag bits the retail's constructor clears and the
+host's does not), but its parts are:
+
+| retail function | size | the host's part |
+|---|---|---|
+| `fn_44_AB78` | 0x54 | the best animation for a parm: the host's `FindBestAnimationId` (marked) |
+| `fn_44_A5D0` | 0x74 | a vector resize; the host's `rstl::vector` does it |
+| `fn_44_A680` | 0x184 | a vector of float pairs for the two animation states; the host's `CPatternedInfo` holds them |
+| `fn_44_A9DC` | 0x19C | the copy of the data block into the actor; the host's `CMinorIngData` is its own shape, so the copy is the member's own |
+
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 104 of the module's 217 functions as unmarked.
+`tools/port_progress.py` counts 103 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
@@ -192,7 +207,6 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_2FB0` | 0x54 | fn_44_2F24 |
 | `fn_44_64AC` | 0x54 | fn_44_6384 |
 | `fn_44_6834` | 0x54 | - |
-| `fn_44_AB78` | 0x54 | fn_44_9D58 |
 | `fn_44_107C` | 0x58 | - |
 | `fn_44_28D8` | 0x58 | fn_44_25E4, fn_44_7058 |
 | `fn_44_9700` | 0x58 | - |
