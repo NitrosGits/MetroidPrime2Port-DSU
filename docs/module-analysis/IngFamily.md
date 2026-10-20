@@ -308,6 +308,33 @@ marks only the 45 functions a run actually called (an instrumented build, run be
     beam target on the puddle form. Marker work for `fn_29_2B70/2E8C/2684/2414` and the
     mini-portal classes waits on this.
 
+### A.6 Next slices (handoff, 2026-10-20)
+
+Branch `decomp/ing`, no merge into `port`. Gates per slice: `ninja -C build-port-link
+metroid_prime2_port` -> `FAILED: 0`; `python3 tools/gen_files_cmake.py --check` rc 0; a run in area
+57 (`bash /tmp/opencode/ing_run2.sh`, 0 `[port] caught` / `[reach-stub]`). One `worker` lane at a
+time; it may only touch `src/MetroidPrime/Enemies/PortCIng.cpp`, `include/MetroidPrime/Enemies/
+CIng.hpp` (+ its own new `Port*.cpp`), the orchestrator updates this doc. No `// @` before a run
+exercises the code.
+
+Remaining `[?]` stubs in `PortCIng.cpp` (retail size, pseudo-C in `/tmp/opencode/pseudo/Ing/`,
+disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
+
+| slice | functions | note |
+|---|---|---|
+| grapple | `fn_29_6578` GrappleBall (0x428) + `fn_29_4D18` ExpelGrappledBall (0x1FC) | reads the grapple block (`CIngData` +0x10c) and the player's ball form; `0xe4c` (`mHitReactionTime`) < 0 ends it |
+| arm swipe | `fn_29_6A88` (0x318) + `fn_29_3E1C` (0x400, the two arm segment pairs `0xd7c..0xd7f` / `0xd80..0xd83`) + `fn_29_421C` (0x50, picks 0/1 and indexes `rodata_38`) | needs `CScriptTeamAiMgr::StartAttack/EndAttack`, `CBCMeleeAttackCmd`, `pas::kAS_MeleeAttack`; owns `0xe5c` bit 1 |
+| suck | `fn_29_76B8` SuckEnergy (0x778) | allocates a 0x180 `CHUDBillboardEffect` |
+| splat | `fn_29_4F14` SplatOntoMesh (0x238) | one of the twelve code functions |
+| exit host | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `10154`/`1046C`/`1065C`/`1077C`/`10944`/`10F58`; `lbl_29_data_C60`) | biggest; the class identity is still only **[probable]** |
+| MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
+
+Handles/scripts that work today: `/tmp/opencode/ing_run2.sh` + `ing_con.py` (area 57, activates
+both Ings, `tp 58.4 356 9`, holds fire), `ing_aim.sh`/`ing_aim_con.py` (teleport + `face` + `beam
+light` + `cstick` pitch, prints each actor's `obj` hp), `sjg_run.sh`/`sjg_con.py` (Jump Guardian in
+Agon `02_sand_sandfalls_dark`), `sjg_diag.sh` (the same with screenshots). Each uses its own Xvfb
+display and `MP2_CONSOLE` port; see the file header.
+
 ---
 
 ## B. MinorIng.rel (module 44)
