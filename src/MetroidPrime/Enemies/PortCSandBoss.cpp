@@ -801,7 +801,7 @@ void CSandBoss::RenderArmor(const CStateManager& mgr, const CTransform4f& xf,
   }
 }
 
-// fn_55_89E8 (ported, not exercised yet)
+// @ fn_55_89E8
 void CSandBoss::RenderWithArmor(const CStateManager& mgr, const CTransform4f& xf,
                                 const CModelFlags& flags) const {
   if (!GetModelData()->IsNull()) {
@@ -810,7 +810,7 @@ void CSandBoss::RenderWithArmor(const CStateManager& mgr, const CTransform4f& xf
   RenderArmor(mgr, xf, flags, flags);
 }
 
-// fn_55_88D0 (ported, not exercised yet)
+// @ fn_55_88D0
 void CSandBoss::RenderSphere(const CStateManager& mgr, const CTransform4f& xf,
                              const CModelFlags& flags) const {
   if (const CActor* sphere = TCastToConstPtr< CActor >(mgr.GetObjectById(mSphere))) {
@@ -821,14 +821,14 @@ void CSandBoss::RenderSphere(const CStateManager& mgr, const CTransform4f& xf,
   }
 }
 
-// fn_55_8740 (ported, not exercised yet)
+// @ fn_55_8740
 CAABox CSandBoss::GetArmoredBounds() const {
   return GetAnimationData()->CalcBoundingBoxFromModelVerts().GetTransformedAABox(
       CTransform4f::Translate(-GetTranslation()) * GetTransform() *
       CTransform4f::Scale(GetModelData()->GetScale()));
 }
 
-// fn_55_CB30 (ported, not exercised yet)
+// @ fn_55_CB30
 void CSandBoss::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                 const CModelFlags& flags) const {
   if (!mAttachedToSphere) {
@@ -847,7 +847,7 @@ void CSandBoss::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf
   }
 }
 
-// fn_55_CC84 (ported, not exercised yet)
+// @ fn_55_CC84
 CAABox CSandBoss::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   CAABox bounds = GetArmoredBounds();
   if (mAttachedToSphere) {

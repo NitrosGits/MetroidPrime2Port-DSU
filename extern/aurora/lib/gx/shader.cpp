@@ -1634,6 +1634,12 @@ std::string build_shader_source(const ShaderConfig& config) noexcept {
   if constexpr (EnableNormalVisualization) {
     fragmentFn += "\n    prev = vec4f(in.nrm, prev.a);";
   }
+  // GXSetDstAlpha forces the alpha written to the EFB; the console does not multiply it by the TEV
+  // alpha. The alpha blend below is {srcFactor Constant, dstFactor Zero}, so feeding it 1.0 makes
+  // the written alpha exactly dstAlpha/255 whatever the material's TEV alpha was.
+  fragmentFn +=
+      "\n    // Destination alpha (GXSetDstAlpha) replaces the TEV alpha"
+      "\n    prev.a = select(prev.a, 1.0, imm.force_dst_alpha != 0u);";
 
   const auto shaderSource = fmt::format(R"""(
 fn bswap32(v: u32, le: bool) -> u32 {{
@@ -1968,7 +1974,7 @@ struct Immediate {{
     vtx_start: u32,
     current_pnmtx: u32,
     fog_range_base: u32,
-    _pad: u32,
+    force_dst_alpha: u32,
     array_start0: vec4u,
     array_start1: vec4u,
     array_start2: vec4u,

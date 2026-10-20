@@ -288,9 +288,9 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 83AC | CSandBoss::RotateToPlayerHelper | [proven] host body |
 | 84A8 | CSandBoss::UpdateGroupCinematicState | [proven] host body |
 | 86D0 | CSandBoss::UpdateTimers | [proven] host body |
-| 8740 | CSandBoss::GetArmoredBounds | [ported] host body, not exercised yet (scan-visor path, `CC84`'s callee — slice 20) |
-| 88D0 | CSandBoss::RenderSphere | [ported] host body, not exercised yet (scan-visor path, `CB30`'s attached branch — slice 20) |
-| 89E8 | CSandBoss::RenderWithArmor | [ported] host body, not exercised yet (scan-visor path, `CB30` when unattached — slice 20) |
+| 8740 | CSandBoss::GetArmoredBounds | [proven] host body (sbOrbH, `CC84`'s callee — slice 23) |
+| 88D0 | CSandBoss::RenderSphere | [proven] host body (sbOrbN, `CB30`'s attached branch — slice 23) |
+| 89E8 | CSandBoss::RenderWithArmor | [proven] host body (sbOrbH, `CB30`'s unattached branch — slice 23) |
 | 8A8C | CSandBoss::RenderArmor | [proven] host body |
 | 8C88 | CSandBoss::CheckBodyStateForDarkBeam | [proven] host body |
 | 8CB4 | CSandBoss::ProbeDarkBeam | [proven] host body |
@@ -363,8 +363,8 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | CA84 | CSandBoss::IsUnderGround | [proven] host body |
 | CA90 | CSandBoss::StateOver | [proven] host body |
 | CAA4 | CSandBoss::SetupStateMachine | [proven] host body |
-| CB30 | CSandBoss::ScanVisorRender | [ported] host body, not exercised yet (slice 20: the scan never locks the boss, so `CScanDisplay::Draw` never reaches its `IsScanVisorSelfRender` branch) |
-| CC84 | CSandBoss::GetScanVisorRenderBounds | [ported] host body, not exercised yet (slice 20: same, `PrepareScanDisplay`'s self-render branch never taken) |
+| CB30 | CSandBoss::ScanVisorRender | [proven] host body (sbOrbH, scan display of uid 0169 — slice 23) |
+| CC84 | CSandBoss::GetScanVisorRenderBounds | [proven] host body (sbOrbH, `PrepareScanDisplay` — slice 23) |
 | CDB0 | CSandBoss::GetScannableObjectInfo | [proven] host body |
 | CDF0 | CSandBoss::ProjectileInfo | [proven] host body |
 | CDF8 | CSandBoss::GetAimPosition | [proven] host body |
@@ -761,6 +761,41 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   per-draw immediate that forces the fragment alpha to 1.0 when `dstAlpha != UINT32_MAX` — and
   needs its own verification across areas, because `GXSetDstAlpha` is engine-wide.
   Newly `// @`: none.
+- Slice 23 (2026-10-20, runs sbScanFix1, sbOrbA..N, same area/layer, `MP2_SB_HP=1 MP2_SB_AIM=1`
+  plus the console's `visor scan`, FRAMES 2400-3000, SECS 300-340): **the destination-alpha write is
+  fixed, the scan visor scans the boss, and the scan-visor render path runs.** This supersedes 22(d)
+  and 22(e): the diagnosis was right, the fix is the one (e) sketched. The written alpha was
+  `tevAlpha * dstAlpha/255` because `to_blend_state` uses `{srcFactor Constant, dstFactor Zero}` and
+  the blend constant is `dstAlpha/255`; a palette body whose TEV alpha is 0 wrote 0. Aurora now
+  feeds that blend 1.0 instead: a `forceDstAlpha` word in `DrawImmediateData`
+  (`extern/aurora/lib/gx/gx.hpp`, set from `g_gxState.dstAlpha` in `push_gx_draw`) and one line in
+  `build_shader_source` (`prev.a = select(prev.a, 1.0, imm.force_dst_alpha != 0u)`), so a
+  destination-alpha draw writes exactly `dstAlpha/255`, as the console forces it. Alpha only: the
+  constant feeds the alpha blend component, so no RGB path changes.
+  Evidence: `[gxpipe] dstAlpha=80 alphaUpdate=1 mask=15` (the palette draws carry the state and the
+  alpha channel is writable), and the read-back holds the id — `EFB alpha peek ...: 2048/2048 pixels
+  non-zero, 1 distinct values, most common 80` with `[scan] palette 20 selected object 00000183
+  (2048 id pixels, 2048 non-zero)`. When nothing scannable is on the reticle the same peek reports
+  `all 32x64 pixels are zero (rgb non-zero 2048)`, i.e. a drawn region with no ids, which is also
+  the console's answer; the region itself is right (`[peekenc] tex 1279x720 BGRA8Unorm src (613,308)
+  53x104 out 32x64`).
+  Two harness faults were hiding the last gate, not module faults. `MP2_SB_AIM` aimed the player at
+  the *armour collider* and every live worm ran that block, so the player was dragged between three
+  worms and the reticle held the boss only now and then; it now picks one owner (the attached
+  leader, else the lowest uid) and aims at its model-bounds centre 8 m out. And the scripted `L`
+  presses landed before the worm was the target. Since reticle and press still have to agree, the
+  orbit target is forced: `MP2_SB_ORBIT=1` sets `mOrbitNextTargetId` to a live `CSandBoss`
+  (`TypesMatch(129)`) in `CPlayer::UpdateOrbitableObjects`, `MP2_SB_TARGET=<hex uid>` names one, and
+  `[sbatt]` prints each worm's `att`/`leader` flags. The boss has scannable info (`[sbscan] ...
+  sci=1`), so the scan downloads: `[sbscanst] state=1 newscan=1 orbit=0169 ost=1`.
+  **Newly `// @`: all five — `CB30` `CC84` `89E8` `8740` `88D0`.** sbOrbH traces the unattached
+  chain in call order (`CC84`, `8740`, `CB30`, `89E8`): `PrepareScanDisplay` ->
+  `GetScanVisorRenderBounds` -> `GetArmoredBounds`, then `CScanDisplay::Draw` -> `ScanVisorRender`
+  -> `RenderWithArmor`. sbOrbN adds the attached branch: `MP2_SB_ATT=1` sets `mAttachedToSphere` on
+  the worm the player is scanning *while the download is still running* (`[sbatt] uid=0169 att=1`)
+  and the same display then traces `CB30` -> `88D0` (`RenderSphere`). A probe cannot set the flag
+  during the display itself: a soft-paused game runs no `Think`, which is why the earlier attempt
+  at `kGS_SoftPaused` never fired.
 - **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
   here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
   `mData.stampedeProperties.breakStampedeHP` and reading it back as 150 (three worms, offset 4204 in
@@ -789,11 +824,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
 - Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
-  so only a direct call could run it), the scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8`
-  behind them (slice 22: the worm does become the scan target and is drawn with its palette index,
-  but the read-back the scan target comes from is empty on ~95% of frames, so the orbit never
-  locks and no scan ever completes — an Aurora EFB read-back problem, see slice 22), and the
-  getter/render slots no probe calls (64 6C 74 7C 8C 98 A4 AC BC).
+  so only a direct call could run it), and the getter/render slots no probe calls
+  (64 6C 74 7C 8C 98 A4 AC BC). The scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8` behind
+  them used to be on this list; slice 23 runs all five through a real scan display.
 
 ## 6. FSM2 graph (dumped from the loaded asset)
 
