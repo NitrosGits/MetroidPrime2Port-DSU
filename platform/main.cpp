@@ -31,6 +31,8 @@
 #include <csignal>
 #if defined(__ANDROID__)
 #include <signal.h>
+#include <sys/ioctl.h>
+#include <time.h>
 #include <android/log.h>
 #else
 #include <execinfo.h>
@@ -667,6 +669,10 @@ static _Unwind_Reason_Code PortWalkFrame(_Unwind_Context* context, void* argumen
   return _URC_NO_REASON;
 }
 
+// The handlers ours replaced (debuggerd's), by signal number, to chain to after the backtrace.
+constexpr int kPortFaultSignalSlots = 32;
+struct sigaction gPortPreviousFault[kPortFaultSignalSlots] = {};
+
 static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
   const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
   const void* faultAddress = info != nullptr ? info->si_addr : nullptr;
@@ -677,13 +683,30 @@ static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
   PortWalk walk{0};
   _Unwind_Backtrace(PortWalkFrame, &walk);
   std::fflush(stderr);
-  __android_log_print(ANDROID_LOG_FATAL, "mp2port", "[port] caught %s (%d) at %p", name, sig,
-                      faultAddress);
-  // Re-raise with the default handler so the exit status still says "died on signal 11",
-  // which is what boot_probe.sh greps for. A handler that swallows it would make the probe
-  // report a clean exit, and a clean exit from a segfaulting boot is the one lie worth
-  // being unable to tell.
-  std::signal(sig, SIG_DFL);
+  // Everything above went into the stderr pipe, and only the pump thread turns it into logcat
+  // lines: give it up to half a second to empty the pipe, or the process dies with the backtrace
+  // and the breadcrumbs still in it (a save-state crash on the tablet left nothing but the exit).
+  for (int waited = 0; waited < 50 && gLogPipeRead >= 0; ++waited) {
+    int queued = 0;
+    if (::ioctl(gLogPipeRead, FIONREAD, &queued) != 0 || (queued == 0 && gLogPumpIdle.load())) {
+      break;
+    }
+    const timespec tick = {0, 10 * 1000 * 1000};
+    ::nanosleep(&tick, nullptr);
+  }
+  // The main log turns over within seconds on a busy device; the crash buffer keeps this line
+  // (and the tombstone below) for hours.
+  __android_log_buf_print(LOG_ID_CRASH, ANDROID_LOG_FATAL, "mp2port", "[port] caught %s (%d) at %p",
+                          name, sig, faultAddress);
+  // Hand the signal on to the handler that was there before ours (debuggerd's), which writes
+  // the tombstone and then dies on the signal, so the exit status still says "died on signal 11".
+  // SIG_DFL here skipped debuggerd: no tombstone, only a "SIGNALED" exit record. The signal is
+  // blocked while this handler runs, so the raise is delivered to that handler on return.
+  if (sig > 0 && sig < kPortFaultSignalSlots) {
+    sigaction(sig, &gPortPreviousFault[sig], nullptr);
+  } else {
+    std::signal(sig, SIG_DFL);
+  }
   std::raise(sig);
 }
 #else
@@ -717,10 +740,10 @@ int main(int argc, char** argv) {
   faultAction.sa_sigaction = PortFaultHandler;
   faultAction.sa_flags = SA_SIGINFO;
   sigemptyset(&faultAction.sa_mask);
-  sigaction(SIGSEGV, &faultAction, nullptr);
-  sigaction(SIGBUS, &faultAction, nullptr);
-  sigaction(SIGILL, &faultAction, nullptr);
-  sigaction(SIGFPE, &faultAction, nullptr);
+  sigaction(SIGSEGV, &faultAction, &gPortPreviousFault[SIGSEGV]);
+  sigaction(SIGBUS, &faultAction, &gPortPreviousFault[SIGBUS]);
+  sigaction(SIGILL, &faultAction, &gPortPreviousFault[SIGILL]);
+  sigaction(SIGFPE, &faultAction, &gPortPreviousFault[SIGFPE]);
 #else
   std::signal(SIGSEGV, PortFaultHandler);
   std::signal(SIGBUS, PortFaultHandler);
