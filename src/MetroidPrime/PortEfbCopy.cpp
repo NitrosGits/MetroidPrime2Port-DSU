@@ -29,7 +29,8 @@ namespace {
 // is keyed per consumer and the read-back lands somewhere only that consumer reads. The buffers
 // keep their capacity for the life of the slot, so nothing is reallocated while the render thread
 // may still be writing a read-back into it.
-constexpr int kSlotCount = 8;
+// Room for every visor flare's occlusion test (one small slot each) besides the visor and filters.
+constexpr int kSlotCount = 32;
 
 struct Slot {
   void* shared = nullptr; // the game's own buffer the consumer passed

@@ -14,6 +14,10 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "dolphin/os/OSCache.h"
 #include "rstl/math.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/PortEfbCopy.hpp"
+#include <string.h>
+#endif
 
 CVisorFlare::CFlareDef::CFlareDef(const TToken< CTexture >& tex, float pos, float scale, uint color)
 : mTex(tex), mPos(pos), mScale(scale), mColor(color) {
@@ -40,7 +44,15 @@ CVisorFlare::CVisorFlare(EBlendMode blendMode, bool distanceScaled, float fadeTi
 , mSavedFramebuffer(kTF_RGBA8, smallOcclusionTest ? short(8) : short(64),
                     smallOcclusionTest ? short(4) : short(64), 1)
 , mOcclusionTexture(kTF_I8, smallOcclusionTest ? short(8) : short(32),
-                    smallOcclusionTest ? short(4) : short(32), 1) {}
+                    smallOcclusionTest ? short(4) : short(32), 1) {
+#ifdef TARGET_PC
+  // The occlusion copy only reaches this buffer through the port's read-back, a frame or two after
+  // the first test; until then it holds whatever the host heap left, which read as "visible".
+  // Start fully occluded instead.
+  memset(mOcclusionTexture.Lock(), 0, mOcclusionTexture.GetWidth() * mOcclusionTexture.GetHeight());
+  mOcclusionTexture.UnLock();
+#endif
+}
 
 CVisorFlare::~CVisorFlare() {
   mSavedFramebuffer.ScheduleDeletion();
@@ -172,6 +184,12 @@ void CVisorFlare::UpdateOcclusion(const CVector3f& pos, const CStateManager& mgr
   } else {
     GXSetTexCopyDst(width / 2, height / 2, GX_CTF_R8, true);
   }
+#ifdef TARGET_PC
+  // Aurora resolves the copy into a texture and never writes this buffer, which the test below
+  // reads as data: without the read-back every flare counted as unoccluded and drew through walls.
+  PortEfbCopy::Request(mOcclusionTexture.GetBitMapData(0), mOcclusionTexture.GetWidth(),
+                       mOcclusionTexture.GetHeight(), 1);
+#endif
   GXCopyTex(mOcclusionTexture.Lock(), false);
   mOcclusionTexture.UnLock();
   GXPixModeSync();
@@ -184,6 +202,10 @@ void CVisorFlare::UpdateOcclusion(const CVector3f& pos, const CStateManager& mgr
 
   if (mOcclusionWarmupFrames == 0) {
     const void* pixels = mOcclusionTexture.Lock();
+#ifdef TARGET_PC
+    PortEfbCopy::Fill(const_cast< void* >(pixels), mOcclusionTexture.GetWidth(),
+                      mOcclusionTexture.GetHeight(), 1);
+#endif
     DCInvalidateRange(const_cast< void* >(pixels),
                       mOcclusionTexture.GetWidth() * mOcclusionTexture.GetHeight());
     int visibleSamples = 0;
@@ -205,9 +227,16 @@ void CVisorFlare::UpdateOcclusion(const CVector3f& pos, const CStateManager& mgr
     } else {
       const int blockCount = sampleCount >> 3;
       // The original tests each eight-byte block as a double against zero.
+#ifdef TARGET_PC
+      // As integers: on a little-endian host a block whose only set byte is the last one is -0.0.
+      const unsigned long long* sample = static_cast< const unsigned long long* >(pixels);
+      for (int i = 0; i < blockCount; ++i) {
+        if (sample[i] != 0) {
+#else
       const double* sample = static_cast< const double* >(pixels);
       for (int i = 0; i < blockCount; ++i) {
         if (sample[i] != 0.0) {
+#endif
           ++visibleSamples;
         }
       }
