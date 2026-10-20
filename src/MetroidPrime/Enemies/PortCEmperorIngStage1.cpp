@@ -19,7 +19,6 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
-#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
 
 #include "Kyoto/Animation/CPASAnimParm.hpp"
@@ -29,8 +28,10 @@
 #include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/Weapons/CBeamProjectile.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
@@ -162,8 +163,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , x7c8_(nullptr)                                                  // guest 0x7C8, cleared
 , x7cc_(nullptr)                                                  // guest 0x7CC, cleared
 , x7d0_(nullptr)                                                  // guest 0x7D0, cleared
-, x7d4_(0)                                                        // guest 0x7D4, cleared
-, x7d8_()                                                         // guest 0x7D8, the tentacle slots
+, mJoints()                                                       // guest 0x7D4, the count cleared
 , xa18_(kInvalidUniqueId)                                         // guest 0xA18, fn_16_900C clears it
 , xa1a_(kInvalidUniqueId)                                         // guest 0xA1A, fn_16_900C clears it
 , xa1c_(kInvalidUniqueId)                                         // guest 0xA1C, fn_16_900C clears it
@@ -171,14 +171,22 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa20_(-1)                                                   // guest 0xA20, fn_16_900C clears it
 , xa24_(-1)                                                   // guest 0xA24, fn_16_900C clears it
 , xa28_(-1)                                                   // guest 0xA28, fn_16_900C clears it
+, xa2c_(0.f)                                                      // guest 0xA2C, rodata_380
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
 , xa58_(0.f)                                                      // guest 0xA58, rodata_380
 , xa5c_(0.f)                                                      // guest 0xA5C, rodata_380
+, xa60_(0.f)                                                      // guest 0xA60, rodata_380
+, xa64_(0.f)                                                      // guest 0xA64, rodata_380
+, xa68_(0.f)                                                      // guest 0xA68, rodata_380
+, xa70_(0)                                                        // guest 0xA70, cleared
 , xa78_(0.f)                                                      // guest 0xA78, rodata_380
 , xa8c_(CSfxHandle::NullHandle())                                  // guest 0xA8C, cleared
 , xa90_(kInvalidUniqueId)                                         // guest 0xA90, fn_16_900C clears it
+, xa98_(kInvalidUniqueId)                                         // guest 0xA98, 0x91D8
+, xa9c_(CSfxHandle::NullHandle())                                  // guest 0xA9C, cleared
+, xaa0_(CVector3f::Zero())                                        // guest 0xAA0, the zero vector
 {
   // The retail constructor stops the actor drawing a shadow (SetDrawShadow(this, 0) at
   // 0x000095E0) and calls the DOL's EnableAllAnimReactions(&this->0x620, 0) at 0x000095EC; the
@@ -272,7 +280,7 @@ void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
 
 // fn_16_3668 (0x3668..0x36E8): every live tentacle gets its per-frame update.
 void CEmperorIngStage1::UpdateTentacles(float dt, CStateManager& mgr) {
-  for (int i = 0; i < x7d4_; ++i) {
+  for (int i = 0; i < mJoints.mCount; ++i) {
     UpdateTentacle(i, dt, mgr);
   }
 }
@@ -504,6 +512,7 @@ void CEmperorIngStage1::SetupTentacleAnimations(CStateManager& mgr) {
 }
 
 // fn_16_3094 (0x3094..0x30C8): the actor connected on CONNECT/'PLAY' (the id at guest 0xA1E).
+// fn_16_3060 (0x3060..0x3094) has the same body, so its callers use this one too.
 CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {
   return TCastToPtr< CActor >(mgr.ObjectById(xa1e_));
 }
@@ -686,11 +695,230 @@ void CEmperorIngStage1::SetupTentacleCollisions(CStateManager& mgr) {
   SetCollisionActorActive(mgr, 8, false);
 }
 
-// fn_16_3D64 (0x3D64..0x3EAC, 0x148): sets a group's collision actors active - a tentacle's five
-// (0..7) in the manager at guest 0x7C8, 8 the heart (0x7CC), 9 the body (0x7D0) - through the
-// actor's vtable slot 5 (SetActive). Too big for the slice's rule, so it stays a stand-in.
+// fn_16_3D64 (0x3D64..0x3EAC): sets a group's collision actors active - a tentacle's five (0..7,
+// the descriptions index * 5 .. index * 5 + 4 of the manager at guest 0x7C8, 0x3D90), 9 the
+// body's sphere (guest 0x7D0, 0x3E0C) and 8 the heart's (guest 0x7CC, 0x3E54) - through the
+// collision actor's vtable slot 5, SetActive (0x3DDC, 0x3E4C, 0x3E94). Any other index does
+// nothing.
 void CEmperorIngStage1::SetCollisionActorActive(CStateManager& mgr, int index, bool active) {
-  StandInFn("fn_16_3D64");
+  if (index >= 0 && index <= 7) {
+    uint descIndex = index * 5;
+    for (int i = 0; i < 5; ++i) {
+      const TUniqueId id = x7c8_->GetCollisionDescFromIndex(descIndex).GetCollisionActorId();
+      CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+      if (actor != nullptr) {
+        actor->SetActive(active);
+      }
+      ++descIndex;
+    }
+    return;
+  }
+  switch (index) {
+    case 9: {
+      const TUniqueId id = x7d0_->GetCollisionDescFromIndex(0).GetCollisionActorId();
+      CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+      if (actor != nullptr) {
+        actor->SetActive(active);
+      }
+      break;
+    }
+    case 8: {
+      const TUniqueId id = x7cc_->GetCollisionDescFromIndex(0).GetCollisionActorId();
+      CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+      if (actor != nullptr) {
+        actor->SetActive(active);
+      }
+      break;
+    }
+  }
+}
+
+// fn_16_830 (0x830..0x8E4): the script is told which stage this is - 1 sends IS01 (0x87C), 2
+// sends IS02 (0x8A8) and every other value IS00 (0x8D0).
+void CEmperorIngStage1::SendStageMessage(CStateManager& mgr, int stage) {
+  switch (stage) {
+    case 1:
+      SendScriptMsgs(kSS_InternalState1, mgr, kInvalidUniqueId, kSM_None);
+      break;
+    case 2:
+      SendScriptMsgs(kSS_InternalState2, mgr, kInvalidUniqueId, kSM_None);
+      break;
+    default:
+      SendScriptMsgs(kSS_InternalState0, mgr, kInvalidUniqueId, kSM_None);
+      break;
+  }
+}
+
+// fn_16_353C (0x353C..0x3668): the damage vulnerability every live tentacle gets, and this actor's
+// two vulnerability effect states. The mode picks the vulnerability: 0 the immune one (the DOL's
+// CDamageVulnerability::ImmuneVulnerability, 0x35AC), 2 the melee one (guest 0xB2C, 0x3584), 3 the
+// projectile one (guest 0xB5C, 0x358C) with "DarkVulnerability" on, 4 the warp one (guest 0xAFC,
+// 0x3598) with "LightVulnerability" on, every other mode the normal one (guest 0xACC, 0x35A4). The
+// effect names are the strings lbl_16_rodata_344 and lbl_16_rodata_348 point at (SetEffectState
+// at 0x35DC and 0x3610), and the tentacles' loop is 0x3630..0x3654 (fn_16_1E20 per slot).
+void CEmperorIngStage1::SetTentacleVulnerability(CStateManager& mgr, int mode) {
+  const CDamageVulnerability* vulnerability;
+  bool dark = false;
+  bool light = false;
+  switch (mode) {
+    case 2:
+      vulnerability = &mMeleeVulnerability;
+      break;
+    case 3:
+      vulnerability = &mProjectileVulnerability;
+      dark = true;
+      break;
+    case 4:
+      vulnerability = &mWarpVulnerability;
+      light = true;
+      break;
+    default:
+      vulnerability = &mNormalVulnerability;
+      break;
+    case 0:
+      vulnerability = &CDamageVulnerability::ImmuneVulnerabilty();
+      break;
+  }
+  AnimationData()->SetEffectState(rstl::string_l("DarkVulnerability"), dark, mgr);
+  AnimationData()->SetEffectState(rstl::string_l("LightVulnerability"), light, mgr);
+  if (vulnerability != nullptr) {
+    for (int i = 0; i < mJoints.mCount; ++i) {
+      SetJointVulnerability(mJoints.mJoints[i], mgr, *vulnerability);
+    }
+  }
+}
+
+// fn_16_1E20 (0x1E20..0x1E6C): the slot's tentacle collision actor (its owner's fn_16_3AA8 with
+// the slot's index, 0x1E44) gets the damage vulnerability (0x1E54).
+void CEmperorIngStage1::SetJointVulnerability(const CEmperorIngStage1Joint& joint,
+                                              CStateManager& mgr,
+                                              const CDamageVulnerability& vulnerability) {
+  CCollisionActor* actor = joint.mOwner->GetTentacleActor(mgr, joint.mIndex);
+  if (actor != nullptr) {
+    actor->SetDamageVulnerability(vulnerability);
+  }
+}
+
+// fn_16_7B40 (0x7B40..0x7C28): the tracked actor's (fn_16_302C) "sphere_base" locator
+// (lbl_16_rodata_37C) in world space (0x7B88, 0x7B98), the horizontal direction from it to the
+// player (CStateManager+0x14FC, 0x7BB0; the third component is 0.0f from lbl_16_rodata_380,
+// 0x7BF4), normalised (0x7BF8) and handed to fn_16_2C9C (0x7C08). Retail normalises without a
+// CanBeNormalized test.
+void CEmperorIngStage1::LookAtPlayer(CStateManager& mgr) {
+  CActor* target = GetTargetActor(mgr);
+  const CTransform4f locator =
+      target->GetTransform() *
+      target->GetModelData()->GetScaledLocatorTransform(rstl::string_l("sphere_base"));
+  const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+  CVector3f dir(playerPos.GetX() - locator.Get03(), playerPos.GetY() - locator.Get13(), 0.f);
+  dir.Normalize();
+  UpdateTurnAngle(mgr, dir);
+}
+
+// fn_16_2C9C (0x2C9C..0x2DDC): the angle (guest 0xA2C) between the 'PLAY' actor's facing and the
+// direction. Retail also builds the tracked actor's "sphere_base" world transform (0x2CFC..0x2D20)
+// and never reads it; the call has no side effect, so the port keeps it for the call order only.
+// The facing is the 'PLAY' actor's transform's Y column (the floats at +0x28, +0x38 and +0x48,
+// 0x2D28) flattened (0.0f, 0x2D4C) and normalised (0x2D50); the angle is
+// CVector3f::GetAngleDiff (0x2D5C) and it is negated when the cross product of the facing and the
+// direction (fn_16_2DDC, 0x2D70) points down (its dot with the up vector below 0.0f, 0x2DA8).
+void CEmperorIngStage1::UpdateTurnAngle(CStateManager& mgr, const CVector3f& dir) {
+  CActor* target = GetTargetActor(mgr);
+  CActor* body = GetPlayActor(mgr); // fn_16_3060, 0x2CD4
+  const CTransform4f unused =
+      target->GetTransform() *
+      target->GetModelData()->GetScaledLocatorTransform(rstl::string_l("sphere_base"));
+  (void)unused;
+  const CVector3f column = body->GetTransform().GetColumn(kDY);
+  CVector3f facing(column.GetX(), column.GetY(), 0.f);
+  facing.Normalize();
+  xa2c_ = CVector3f::GetAngleDiff(facing, dir);
+  if (CVector3f::Dot(CVector3f::Cross(facing, dir), CVector3f::Up()) < 0.f) {
+    xa2c_ = -xa2c_;
+  }
+}
+
+// fn_16_2C3C (0x2C3C..0x2C9C): the turn angle (fn_16_2C9C, 0x2C80) against the 'PLAY' actor's
+// (fn_16_3060, 0x2C58) own Y column (the floats at +0x28, +0x38 and +0x48), unflattened.
+void CEmperorIngStage1::ResetTurnAngle(CStateManager& mgr) {
+  UpdateTurnAngle(mgr, GetPlayActor(mgr)->GetTransform().GetColumn(kDY));
+}
+
+// fn_16_8E4 (0x8E4..0x920): the attack timer (guest 0xA4C) takes the state manager's random
+// (retail CStateManager+0x16E4) Range of attackIntervalMin and attackIntervalMax (guest 0xCF4 and
+// 0xCF8, 0x904).
+void CEmperorIngStage1::ResetAttackTimer(CStateManager& mgr) {
+  xa4c_ = mgr.Random()->Range(mAttackIntervalMin, mAttackIntervalMax);
+}
+
+// fn_16_2FF8 (0x2FF8..0x302C): the actor connected on CONNECT/ACTIVATE (the id at guest 0xA1C).
+CActor* CEmperorIngStage1::GetActivateActor(CStateManager& mgr) const {
+  return TCastToPtr< CActor >(mgr.ObjectById(xa1c_));
+}
+
+// fn_16_920 (0x920..0x9C0): the tracked actor's (fn_16_302C) "brainSpine_scale" locator
+// (lbl_16_rodata_378) in world space (0x968, 0x978); the result is its translation (0x99C).
+CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
+  CActor* target = GetTargetActor(mgr);
+  const CTransform4f locator =
+      target->GetTransform() *
+      target->GetModelData()->GetScaledLocatorTransform(rstl::string_l("brainSpine_scale"));
+  return locator.GetTranslation();
+}
+
+// fn_16_CD0 (0xCD0..0xFF4, 0x324): creates the heart stage's beam (rs_new 0x6A8 at 0xD7C, from the
+// beam info at guest 0xCA8) when none is out (guest 0xA98 invalid), and reports whether it did.
+// Over the slice's size rule, so it stays a stand-in that creates nothing.
+bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
+  StandInFn("fn_16_CD0");
+  return false;
+}
+
+// fn_16_A64 (0xA64..0xCD0): the beam (guest 0xA98, 0xAA0; retail does not test its type) is aimed
+// from the "brainSpine_scale" locator (fn_16_920). While it is inactive (CEntity::mActive, 0xABC)
+// and its refire timer (guest 0xA60) has run below 0.0f, the aim point (guest 0xAA0) is reset to
+// the player's position at the tracked actor's height (0xB08..0xB38) and the beam fires along
+// CTransform4f::LookAt (0xB44, vtable slot 35 Fire at 0xB70). Then the aim point walks towards the
+// player at 10.0f (lbl_16_rodata_390) units a second on the horizontal (0xBE4..0xC44), the beam's
+// effect follows it (slot 33 UpdateFx at 0xC88) and its emitter (guest 0xA9C) sits on the beam's
+// collision point (the beam's +0x444, mCollisionPoint, 0xCA8; volume 0x7F).
+void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
+  CEntity* entity = mgr.ObjectById(xa98_);
+  if (entity == nullptr) {
+    return;
+  }
+  CBeamProjectile* beam = static_cast< CBeamProjectile* >(entity);
+  xa60_ -= dt;
+  if (!beam->GetActive() && xa60_ < 0.f) {
+    const CVector3f origin = GetBrainSpinePosition(mgr);
+    xaa0_ = mgr.GetPlayer(0)->GetTranslation();
+    xaa0_.SetZ(GetTargetActor(mgr)->GetTranslation().GetZ());
+    beam->Fire(CTransform4f::LookAt(origin, xaa0_, CVector3f::Up()), mgr, false);
+  }
+  const CVector3f origin = GetBrainSpinePosition(mgr);
+  const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+  CVector3f dir(playerPos.GetX() - xaa0_.GetX(), playerPos.GetY() - xaa0_.GetY(), 0.f);
+  if (dir.CanBeNormalized()) {
+    dir.Normalize();
+    xaa0_ += (dir * 10.f) * dt;
+  }
+  beam->UpdateFx(CTransform4f::LookAt(origin, xaa0_, CVector3f::Up()), dt, mgr);
+  CSfxManager::UpdateEmitter(xa9c_, beam->GetCurrentPos(), CVector3f::Up(), 0x7F);
+}
+
+// fn_16_9C0 (0x9C0..0xA64): when the beam (guest 0xA98) exists it is reset (vtable slot 34
+// ResetBeam with false, 0xA0C), its emitter removed (0xA1C), the object deleted (0xA30), and the
+// id and the emitter cleared (0xA44, 0xA48).
+void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
+  CEntity* entity = mgr.ObjectById(xa98_);
+  if (entity == nullptr) {
+    return;
+  }
+  static_cast< CBeamProjectile* >(entity)->ResetBeam(mgr, false);
+  CSfxManager::RemoveEmitter(xa9c_);
+  mgr.DeleteObjectRequest(xa98_);
+  xa98_ = kInvalidUniqueId;
+  xa9c_ = CSfxHandle::NullHandle();
 }
 
 // fn_16_36E8 (0x36E8..0x3984): the tentacle joint collision descriptions. For each of the eight
@@ -739,7 +967,7 @@ void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
 // (0x2C04, kInvalidUniqueId) and the zero and up vectors (0x2C08..0x2C34).
 void CEmperorIngStage1::BuildTentacleJoint(int index, int animId1, int animId2, int animId3) {
   mJoint.mOwner = this;
-  mJoint.mRadius = 0.f;
+  mJoint.mTimer = 0.f;
   mJoint.mIndex = index;
   mJoint.mAnimId1 = animId1;
   mJoint.mAnimId2 = animId2;
@@ -869,8 +1097,8 @@ void CEmperorIngStage1::SetupStateMachine(CStateManager& mgr) {
 // live tentacle's state is 0, i.e. while they are all retracted. The loop runs over the live
 // tentacles (the count at guest 0x7D4) and the state is the element's int at +0x28.
 bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTriggerData& data) const {
-  for (int i = 0; i < x7d4_; ++i) {
-    if (x7d8_[i].x28_ != 0) {
+  for (int i = 0; i < mJoints.mCount; ++i) {
+    if (mJoints.mJoints[i].mState != 0) {
       return false;
     }
   }
@@ -920,21 +1148,111 @@ bool CEmperorIngStage1::ShouldTaunt(CStateManager& mgr, const CTriggerData& data
 // The 12 states of lbl_16_data_94 (.data 0x94; fn_16_BF88's stores at 0x0000C0C0..0x0000C124 and
 // 0x0000C214).
 
-// fn_16_7C28 (the state "TrackPlayer", lbl_16_data_94 entry 0): retail's body calls three
-// functions that are too big for this slice - fn_16_830 (0xB4, the IS0/IS1/IS2 message),
-// fn_16_353C (0x12C, the attack vulnerability and the tentacle effect states, which itself
-// calls fn_16_1E20 at 0x214) and fn_16_7B40 (0xE8, the look-at-the-player helper) - so it
-// stays a stand-in here.
+// fn_16_7C28 (the state "TrackPlayer", lbl_16_data_94 entry 0): on activate the script hears
+// IS01 (fn_16_830, 0x7C64) and the tentacles take the normal vulnerability (fn_16_353C with 1,
+// 0x7C74); on update the body stands still - a locomotion command with the zero vector for both
+// the move and the face and the weight 1.0f (lbl_16_rodata_3B4, 0x7CC0) - and the turn angle
+// towards the player is updated (fn_16_7B40, 0x7CCC). Deactivate does nothing.
 void CEmperorIngStage1::TrackPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_7C28");
+  switch (msg) {
+    case kStateMsg_Activate:
+      SendStageMessage(mgr, 1);
+      SetTentacleVulnerability(mgr, 1);
+      break;
+    case kStateMsg_Update:
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLocomotionCmd(CVector3f::Zero(), CVector3f::Zero(), 1.f));
+      LookAtPlayer(mgr);
+      break;
+    default:
+      break;
+  }
 }
 
+// fn_16_78AC (the state "BeginHeartStage", lbl_16_data_94 entry 1). The 'PLAY' actor (fn_16_3060,
+// 0x78D4) and the actor connected on CONNECT/ACTIVATE (fn_16_2FF8, 0x78E8) are looked up first;
+// retail tests neither.
+//   Activate: the script hears IS00 (fn_16_830, 0x7920), the tentacles go immune (fn_16_353C with
+//     0, 0x7930), the heart's collision actor goes active (fn_16_3D64 with 8, 0x7944), the
+//     animation state (CPatterned guest 0x6B4) becomes ready (0x7950), the 'PLAY' actor plays the
+//     second tentacle animation (guest 0xA24) with no blend, weight 1.0f (lbl_16_rodata_3B4) and
+//     animating (SetAnimation at 0x799C), the CONNECT/ACTIVATE actor is sent ACTIVATE from this
+//     actor (its vtable slot 4, AcceptScriptMsg, at 0x79FC), the tentacles' 0x80 flags are cleared
+//     (fn_16_2EE0 with 0, 0x7A08) and the script hears IS04 (0x7A34).
+//   Update: once the 'PLAY' actor's "Whole Body" animation (lbl_16_rodata_41C+0x627) has no time
+//     left (IsAnimTimeRemaining at 0x7A60) the animation state is over (3, 0x7A7C).
+//   Deactivate: the animation state is not ready (0, 0x7A8C), the 'PLAY' actor goes inactive (its
+//     vtable slot 5, SetActive, at 0x7AA0) and so does the body's sphere (fn_16_3D64 with 9,
+//     0x7AB4).
 void CEmperorIngStage1::BeginHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_78AC");
+  CActor* body = GetPlayActor(mgr);
+  CActor* activator = GetActivateActor(mgr);
+  switch (msg) {
+    case kStateMsg_Activate:
+      SendStageMessage(mgr, 0);
+      SetTentacleVulnerability(mgr, 0);
+      SetCollisionActorActive(mgr, 8, true);
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      body->AnimationData()->SetAnimation(CAnimPlaybackParms(xa24_, -1, 1.f, true), false);
+      activator->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), activator->GetUniqueId(),
+                                                 kSM_Activate, kInvalidUniqueId,
+                                                 kSS_InvalidState));
+      SetTentacleFlags(0);
+      SendScriptMsgs(kSS_InternalState4, mgr, kInvalidUniqueId, kSM_None);
+      break;
+    case kStateMsg_Update:
+      if (!body->AnimationData()->IsAnimTimeRemaining(dt, rstl::string_l("Whole Body"))) {
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+      break;
+    case kStateMsg_Deactivate:
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);
+      body->SetActive(false);
+      SetCollisionActorActive(mgr, 9, false);
+      break;
+    default:
+      break;
+  }
 }
 
+// fn_16_774C (the state "HeartStage", lbl_16_data_94 entry 2).
+//   Activate: the heart-stage timer (guest 0xA3C) takes heartExposedTime (guest 0xBA8, 0x7798),
+//     the beam delay (guest 0xA64) 3.0f (lbl_16_rodata_3C0) and the locomotion type 9 (0x77B4).
+//   Update: the beam delay runs down; once it is below 0.0f and fn_16_CD0 fired a beam (0x77DC)
+//     the firing time (guest 0xA68) becomes 3.75f (lbl_16_rodata_408, 0x77F0). The firing time
+//     runs down, the beam is updated (fn_16_A64, 0x780C), and a beam that is out past its firing
+//     time is stopped (fn_16_9C0, 0x7840) with the delay 0.5f (lbl_16_rodata_3F4, 0x784C). The
+//     heart-stage timer runs down last (0x7858).
+//   Deactivate: the locomotion type 1 (0x7868), the heart's collision actor inactive (fn_16_3D64
+//     with 8, 0x787C) and the beam stopped (fn_16_9C0, 0x7888).
 void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_774C");
+  switch (msg) {
+    case kStateMsg_Activate:
+      xa3c_ = mHeartExposedTime;
+      xa64_ = 3.f;
+      BodyController()->SetLocomotionType(pas::kLT_Internal9);
+      break;
+    case kStateMsg_Update:
+      xa64_ -= dt;
+      if (xa64_ < 0.f && FireBeam(mgr, dt)) {
+        xa68_ = 3.75f;
+      }
+      xa68_ -= dt;
+      UpdateBeam(dt, mgr);
+      if (xa98_ != kInvalidUniqueId && xa68_ < 0.f) {
+        StopBeam(mgr);
+        xa64_ = 0.5f;
+      }
+      xa3c_ -= dt;
+      break;
+    case kStateMsg_Deactivate:
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      SetCollisionActorActive(mgr, 8, false);
+      StopBeam(mgr);
+      break;
+    default:
+      break;
+  }
 }
 
 void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -954,8 +1272,62 @@ void CEmperorIngStage1::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt)
   StandInFn("fn_16_6F28");
 }
 
+// The attack lists of fn_16_6D94, one per mode (guest 0x7C0): 0 ProjectileAttack, 1 WarpAttack,
+// 2 TauntAttack, 3 JumpRope.
+static const int skAttacksMode0[3] = {0, 0, 3};    // lbl_16_rodata_34C
+static const int skAttacksMode1[4] = {1, 0, 3, 0}; // lbl_16_rodata_358
+static const int skAttacksMode2[4] = {2, 3, 1, 0}; // lbl_16_rodata_368
+
+// fn_16_6D94 (the state "Attack", lbl_16_data_94 entry 6): the mode (guest 0x7C0) picks the attack
+// list (0x6DE8, 0x6DFC, 0x6E10; any other mode has none and a count of 0). Every message first
+// resets the turn angle (fn_16_2C3C, 0x6E28); activate clears the tentacles' 0x80 flags
+// (fn_16_2EE0 with 0, 0x6E3C). The list index (guest 0xA70) wraps to 0 at the count (0x6E50) and
+// the message goes to that attack's state (0x6E98, 0x6EB0, 0x6EC8, 0x6EE0). On deactivate the
+// attack timer is re-rolled (fn_16_8E4, 0x6EF4), the index moves on (0x6F08) and the flags are set
+// (fn_16_2EE0 with 1, 0x6F0C).
 void CEmperorIngStage1::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_6D94");
+  const int* attacks = nullptr;
+  int count = 0;
+  switch (x7c0_) {
+    case 0:
+      attacks = skAttacksMode0;
+      count = 3;
+      break;
+    case 1:
+      attacks = skAttacksMode1;
+      count = 4;
+      break;
+    case 2:
+      attacks = skAttacksMode2;
+      count = 4;
+      break;
+  }
+  ResetTurnAngle(mgr);
+  if (msg == kStateMsg_Activate) {
+    SetTentacleFlags(0);
+  }
+  if (xa70_ >= count) {
+    xa70_ = 0;
+  }
+  switch (attacks[xa70_]) {
+    case 0:
+      ProjectileAttack(mgr, msg, dt);
+      break;
+    case 1:
+      WarpAttack(mgr, msg, dt);
+      break;
+    case 2:
+      TauntAttack(mgr, msg, dt);
+      break;
+    case 3:
+      JumpRope(mgr, msg, dt);
+      break;
+  }
+  if (msg == kStateMsg_Deactivate) {
+    ResetAttackTimer(mgr);
+    xa70_ += 1;
+    SetTentacleFlags(1);
+  }
 }
 
 void CEmperorIngStage1::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -983,10 +1355,10 @@ void CEmperorIngStage1::JumpRope(CStateManager& mgr, EStateMsg msg, float dt) {
 void CEmperorIngStage1::BeginSubStage(CStateManager& mgr, float dt) {}
 
 // fn_16_1DFC: the tentacle's timer is cleared and its state becomes 1, unless it is already 2.
-static void ResetTentacle(CEmperorIngStage1Tentacle& tentacle) {
-  tentacle.x4_ = 0.f;
-  if (tentacle.x28_ != 2) {
-    tentacle.x28_ = 1;
+static void ResetTentacle(CEmperorIngStage1Joint& tentacle) {
+  tentacle.mTimer = 0.f;
+  if (tentacle.mState != 2) {
+    tentacle.mState = 1;
   }
 }
 
@@ -997,8 +1369,8 @@ static void ResetTentacle(CEmperorIngStage1Tentacle& tentacle) {
 void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
   const int count = TentacleCount();
   for (int i = 0; i < count; ++i) {
-    ResetTentacle(x7d8_[i]);
-    x7d8_[i].x18_ = mStayRetractedTime;
+    ResetTentacle(mJoints.mJoints[i]);
+    mJoints.mJoints[i].mTime = mStayRetractedTime;
   }
   SetTentacleFlags(1);
   // The switch at 0x4A60..0x4A74: 2 sends IS07, 1 sends IS06, every other value sends nothing.
@@ -1049,11 +1421,11 @@ int CEmperorIngStage1::TentacleCount() const {
 void CEmperorIngStage1::SetTentacleFlags(uint flag) {
   const bool set = (flag & 0xff) != 0;
   const int count = TentacleCount();
-  for (int i = 0; i < x7d4_; ++i) {
+  for (int i = 0; i < mJoints.mCount; ++i) {
     if (set && i < count) {
-      x7d8_[i].x24_ |= 0x80;
+      mJoints.mJoints[i].mFlags |= 0x80;
     } else {
-      x7d8_[i].x24_ &= ~0x80;
+      mJoints.mJoints[i].mFlags &= ~0x80;
     }
   }
 }

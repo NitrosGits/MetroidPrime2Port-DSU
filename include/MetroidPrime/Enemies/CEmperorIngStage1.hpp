@@ -32,25 +32,14 @@ class CParticleGenInfo;
 // guest offsets of every member the constructor touches are in the comment above each one. Host
 // objects outgrow retail, so the class is allocated with sizeof, not with 0xD18.
 #ifdef TARGET_PC
-// One tentacle slot. The retail element is 0x48 bytes and starts with the tentacle actor's
-// pointer (+0x00) and its id (+0x08), which the FSM's tentacle code (fn_16_1F34) uses; the
-// tentacles themselves are separate actors the state machine spawns, so only the fields the
-// ported functions read are modelled here, named from their retail offsets.
-struct CEmperorIngStage1Tentacle {
-  float x4_;  // guest +0x04: the tentacle's timer, cleared by fn_16_1DFC
-  float x18_; // guest +0x18: the retraction timer, set to stayRetractedTime by fn_16_4A04
-  uchar x24_; // guest +0x24: the flags; bit 0x80 is the one fn_16_2EE0 sets
-  int x28_;   // guest +0x28: 0 = retracted, 1 or 2 = out (fn_16_1DFC, fn_16_4BD4)
-};
-
 class CEmperorIngStage1;
 
-// The module's own joint description (the retail element is 0x48 bytes; the member names are
-// guesses from what the code does with them).
+// One tentacle slot, the module's own joint description (the retail element is 0x48 bytes, eight
+// of them at guest 0x7D8; the member names are guesses from what the code does with them).
 struct CEmperorIngStage1Joint {
   CEmperorIngStage1Joint()
   : mOwner(nullptr)
-  , mRadius(0.f)
+  , mTimer(0.f)
   , mIndex(0)
   , mAnimId1(0)
   , mAnimId2(0)
@@ -65,23 +54,23 @@ struct CEmperorIngStage1Joint {
   , mUp(CVector3f::Up()) {}
 
   CEmperorIngStage1* mOwner;  // +0x00
-  float mRadius;              // +0x04
+  float mTimer;               // +0x04: cleared by fn_16_2B68 and fn_16_1DFC
   int mIndex;                 // +0x08
   int mAnimId1;               // +0x0C
   int mAnimId2;               // +0x10
   int mAnimId3;               // +0x14
-  float mTime;                // +0x18
+  float mTime;                // +0x18: the retraction timer, stayRetractedTime in fn_16_4A04
   float mDamageHitTime;       // +0x1C
   float mSpeed;               // +0x20
-  uchar mFlags;               // +0x24
-  int mState;                 // +0x28
+  uchar mFlags;               // +0x24: bit 0x80 is the one fn_16_2EE0 sets
+  int mState;                 // +0x28: 0 = retracted, 1 or 2 = out (fn_16_1DFC, fn_16_4BD4)
   TUniqueId mId;              // +0x2C
   CVector3f mPosition;        // +0x30
   CVector3f mUp;              // +0x3C
 };
 
-// The module's own joint vector (the retail one is a count at +0x00 and the elements at +0x04,
-// 0x48 bytes each). The port's holds the eight tentacle slots.
+// The module's own joint vector at guest 0x7D4: the count of live tentacles at +0x00 (guest 0x7D4)
+// and the elements at +0x04 (guest 0x7D8), 0x48 bytes each; eight of them end at guest 0xA18.
 struct CEmperorIngStage1JointVector {
   CEmperorIngStage1JointVector() : mCount(0) {}
 
@@ -177,13 +166,37 @@ private:
   void DestroyCollisionActors(CStateManager& mgr);
   // fn_16_30C8: the tentacle animation ids.
   void SetupTentacleAnimations(CStateManager& mgr);
-  // fn_16_3094: the actor connected on CONNECT/'PLAY'.
+  // fn_16_3094 (and fn_16_3060, the same body): the actor connected on CONNECT/'PLAY'.
   CActor* GetPlayActor(CStateManager& mgr) const;
   // fn_16_3EAC: creates the three collision actor managers (the tentacles, the heart, the body).
   void SetupTentacleCollisions(CStateManager& mgr);
-  // fn_16_3D64: a group's collision actors go active or inactive - too big for the slice's rule,
-  // so a stand-in.
+  // fn_16_3D64: a group's collision actors go active or inactive.
   void SetCollisionActorActive(CStateManager& mgr, int index, bool active);
+  // fn_16_830: the script is told which stage this is (IS00, IS01 or IS02).
+  void SendStageMessage(CStateManager& mgr, int stage);
+  // fn_16_353C: the tentacles' damage vulnerability and this actor's two vulnerability effects.
+  void SetTentacleVulnerability(CStateManager& mgr, int mode);
+  // fn_16_1E20: one tentacle's collision actor gets the damage vulnerability.
+  void SetJointVulnerability(const CEmperorIngStage1Joint& joint, CStateManager& mgr,
+                             const CDamageVulnerability& vulnerability);
+  // fn_16_7B40: the turn angle towards the player, from the tracked actor's "sphere_base".
+  void LookAtPlayer(CStateManager& mgr);
+  // fn_16_2C9C: the signed angle between the 'PLAY' actor's facing and the direction.
+  void UpdateTurnAngle(CStateManager& mgr, const CVector3f& dir);
+  // fn_16_2C3C: the turn angle against the 'PLAY' actor's own facing.
+  void ResetTurnAngle(CStateManager& mgr);
+  // fn_16_8E4: the attack timer takes a random time between the two attack intervals.
+  void ResetAttackTimer(CStateManager& mgr);
+  // fn_16_2FF8: the actor connected on CONNECT/ACTIVATE (the id at guest 0xA1C).
+  CActor* GetActivateActor(CStateManager& mgr) const;
+  // fn_16_920: the tracked actor's "brainSpine_scale" locator position.
+  CVector3f GetBrainSpinePosition(CStateManager& mgr) const;
+  // fn_16_CD0: creates the heart stage's beam - too big for the slice's rule, so a stand-in.
+  bool FireBeam(CStateManager& mgr, float dt);
+  // fn_16_A64: aims the beam at the player and updates it.
+  void UpdateBeam(float dt, CStateManager& mgr);
+  // fn_16_9C0: the beam is reset and deleted.
+  void StopBeam(CStateManager& mgr);
   // fn_16_36E8: the tentacle joint collision descriptions.
   void SetupTentacleJoints(CStateManager& mgr);
   // fn_16_2B68: the joint description is filled in.
@@ -253,8 +266,7 @@ private:
   CCollisionActorManager* x7c8_;      // guest 0x7C8, 0: the tentacles' collision actors (fn_16_3EAC)
   CCollisionActorManager* x7cc_;      // guest 0x7CC, 0: the heart's (on the tracked actor)
   CCollisionActorManager* x7d0_;      // guest 0x7D0, 0: the body sphere's (on the 'PLAY' actor)
-  int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
-  CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
+  CEmperorIngStage1JointVector mJoints; // guest 0x7D4: the live tentacles' count, then the slots
   TUniqueId xa18_;                    // guest 0xA18: the actor connected on IS3/ACTIVATE
   TUniqueId xa1a_;                    // guest 0xA1A: the tracked actor's id (fn_16_302C)
   TUniqueId xa1c_;                    // guest 0xA1C: the actor connected on CONNECT/ACTIVATE
@@ -262,16 +274,23 @@ private:
   int xa20_;                          // guest 0xA20, -1: the first tentacle animation id
   int xa24_;                          // guest 0xA24, -1: the second one's
   int xa28_;                          // guest 0xA28, -1: the third one's
+  float xa2c_;                        // guest 0xA2C, 0.0f: the turn angle (fn_16_2C9C)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
   float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
   float xa5c_;                        // guest 0xA5C, 0.0f: the "Telegraph" effect timer
+  float xa60_;                        // guest 0xA60, 0.0f: the beam's refire timer (fn_16_A64)
+  float xa64_;                        // guest 0xA64, 0.0f: the heart stage's beam delay (fn_16_774C)
+  float xa68_;                        // guest 0xA68, 0.0f: the beam's firing time (fn_16_774C)
+  int xa70_;                          // guest 0xA70, 0: the next attack in the mode's list (fn_16_6D94)
   float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
   CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)
-  CEmperorIngStage1JointVector mJoints; // the joint vector at guest 0x7D4 (fn_16_3984)
   CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
   TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target
+  TUniqueId xa98_;                    // guest 0xA98, kInvalidUniqueId: the heart stage's beam
+  CSfxHandle xa9c_;                   // guest 0xA9C, 0: the beam's emitter
+  CVector3f xaa0_;                    // guest 0xAA0, the zero vector: the beam's aim point
 };
 #endif
 

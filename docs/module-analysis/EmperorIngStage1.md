@@ -75,9 +75,20 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_9700` | 0xC4 | builds the shock-wave block at guest 0xC40 from the taunt attack's `SLdrShockWaveInfo` | [proven] |
 | `fn_16_9610` | 0x94 | copies the `SLdrPlasmaBeamInfo` (0x48 bytes) into guest 0xCA8 | [proven] |
 | `fn_16_8C` | 0x3B0 | tentacle hit/damage helper (accumulated bounds, `ApplyDamage`) | [?] |
-| `fn_16_830` | 0x2C | sends a state message (`IS0`/`IS1`/`IS2` tags) to the actor | [?] |
-| `fn_16_920` | 0xB0 | reads the "brainSpine_scale" locator of the model | [?] |
-| `fn_16_8E4` | 0x10 | picks a random tentacle retraction time | [?] |
+| `fn_16_830` | 0xB4 | sends IS01 (1), IS02 (2) or IS00 (anything else) to the script - ported, `SendStageMessage` | [proven] |
+| `fn_16_920` | 0xA0 | the tracked actor's "brainSpine_scale" locator position - ported, `GetBrainSpinePosition` | [proven] |
+| `fn_16_8E4` | 0x3C | the attack timer (guest 0xA4C) takes Random Range(attackIntervalMin, attackIntervalMax) - ported, `ResetAttackTimer` | [proven] |
+| `fn_16_353C` | 0x12C | tentacle vulnerability by mode (0 immune, 2 melee, 3 projectile + DarkVulnerability, 4 warp + LightVulnerability, else normal) - ported, `SetTentacleVulnerability` | [proven] |
+| `fn_16_1E20` | 0x4C | one slot's tentacle collision actor gets a damage vulnerability - ported, `SetJointVulnerability` | [proven] |
+| `fn_16_7B40` | 0xE8 | horizontal direction from the tracked actor's "sphere_base" to the player -> fn_16_2C9C - ported, `LookAtPlayer` | [proven] |
+| `fn_16_2C9C` | 0x140 | signed angle (guest 0xA2C) between the 'PLAY' actor's Y column and a direction - ported, `UpdateTurnAngle` | [proven] |
+| `fn_16_2DDC` | 0x40 | CVector3f cross product (inlined as `CVector3f::Cross`) | [proven] |
+| `fn_16_2C3C` | 0x60 | fn_16_2C9C with the 'PLAY' actor's own Y column - ported, `ResetTurnAngle` | [proven] |
+| `fn_16_3060` | 0x34 | same body as fn_16_3094 (id 0xA1E) - the port uses `GetPlayActor` | [proven] |
+| `fn_16_2FF8` | 0x34 | the CONNECT/ACTIVATE actor (id 0xA1C) - ported, `GetActivateActor` | [proven] |
+| `fn_16_CD0` | 0x324 | creates the heart stage's beam (rs_new 0x6A8, guest 0xA98) - stand-in `FireBeam`, returns false | [probable] |
+| `fn_16_A64` | 0x26C | aims and updates the beam (CBeamProjectile slots 35 Fire, 33 UpdateFx; emitter 0xA9C) - ported, `UpdateBeam` | [probable] |
+| `fn_16_9C0` | 0xA4 | resets (slot 34 ResetBeam) and deletes the beam - ported, `StopBeam` | [probable] |
 | `fn_16_1DFC` | 0x24 | resets one tentacle slot (the timer, the state) | [proven] |
 | `fn_16_2F70` | 0x38 | the number of tentacle slots the sub-stage uses (4, 6 or 8) | [proven] |
 | `fn_16_2EE0` | 0x90 | sets the 0x80 flag of the live tentacles' slots | [proven] |
@@ -439,14 +450,21 @@ The Think's emitter tail (0x58A8) reads a float at the target's +0x1C0, and it i
   +0x68 (the port's mMomentum is at 0x220 = 0x1B8 + 0x68);
 - 0x158 + 0x68 = 0x1C0, the same member in both.
 
-### Still a stand-in: fn_16_7C28 (the state "TrackPlayer")
+### Slice 2: the states TrackPlayer, BeginHeartStage, HeartStage and Attack
 
-Its body is three calls, all of them too big for the slice's rule: fn_16_830 (0xB4, the
-IS0/IS1/IS2 message), fn_16_353C (0x12C, the attack vulnerability and the tentacle effect states)
-and fn_16_7B40 (0xE8, the look-at-the-player helper). fn_16_353C itself calls fn_16_1E20 (0x214),
-which applies the damage vulnerability to a tentacle - a class the port does not have yet, so
-porting it would need an unported class. fn_16_7C28 therefore stays a stand-in, and the only
-ported state function is Dead (fn_16_716C).
+Ported: TrackPlayer (fn_16_7C28: IS01 + normal vulnerability; update stands still and turns to
+the player), BeginHeartStage (fn_16_78AC: IS00, immune tentacles, heart sphere on, the 'PLAY'
+actor plays animation xa24_, ACTIVATE to the CONNECT/ACTIVATE actor, IS04; animation state over
+when "Whole Body" ends; deactivate hides the 'PLAY' actor and the body sphere), HeartStage
+(fn_16_774C: heartExposedTime, beam delay 3.0, firing time 3.75, refire delay 0.5, locomotion 9 then
+1) and Attack (fn_16_6D94: per-mode attack lists rodata_34C/358/368 = {0,0,3}, {1,0,3,0},
+{2,3,1,0}; 0 ProjectileAttack, 1 WarpAttack, 2 TauntAttack, 3 JumpRope; index guest 0xA70).
+Still stand-ins on the walk: ProjectileAttack fn_16_68F4 (0x41C), WarpAttack fn_16_601C (0x7D0),
+TauntAttack fn_16_5DBC (0x260), JumpRope fn_16_5928 (0x280), EndHeartStage fn_16_71BC (0x534),
+the beam's fn_16_CD0 (0x324), and the tentacle motion fn_16_26B8/2524/2070.
+
+The retail CPatterned word at guest 0x6B4 is the host's `mAnimationState` (0 not ready, 1 ready,
+3 over). The beam (guest 0xA98) is a `CBeamProjectile`; its +0x444 is `mCollisionPoint`.
 
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
@@ -467,7 +485,7 @@ are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and returns the neutr
 for a trigger). No `// @` marker - only the ported bodies are retail's.
 
 The members the ported bodies need are named from their retail offsets and carry the
-constructor's values: x7c0_ (0), x7c4_ (0), x7d4_ (0), the eight tentacle slots x7d8_ (empty),
+constructor's values: x7c0_ (0), x7c4_ (0), `mJoints` (guest 0x7D4: the count, 0, then eight 0x48-byte slots at 0x7D8..0xA18),
 xa3c_ (0.0f), xa4c_ (4.0f) and xa50_ (0.0f). The loader's data block ends at guest 0x6B4, so
 none of them is a script value - they are the module's own state.
 
@@ -544,8 +562,8 @@ fn_16_8B80 deletes them at 0x8CDC/0x8CF0/0x8D04).
 
 Then this actor's filter (include Solid 0x3B; exclude CollisionActor, Character, AIPassthrough,
 Player; data_268..278), `RemoveMaterial(Target, Orbit, SeekerTarget)`, and fn_16_3D64 for 0..7
-(off), 9 (on), 8 (off). fn_16_3D64 (0x148) is a stand-in, so on the host every collision actor
-stays active.
+(off), 9 (on), 8 (off). fn_16_3D64 is ported (slice 2), so the tentacle boxes and the heart start
+inactive.
 
 **The damage vulnerability**: retail's is 0x54 bytes and the host's 0x38, but fn_16_3EAC copies
 none of it: it passes the actor's own `GetDamageVulnerability()` (vtable slot 14) to
@@ -555,5 +573,8 @@ none of it: it passes the actor's own `GetDamageVulnerability()` (vtable slot 14
 **Runtime** (2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
 `send <uid> Activate`): `objs collisionactor` lists 42 new collision actors in a11 (40 tentacle
 boxes along the spines, the heart and the body sphere), 0 `[port] caught`/reach-stub. The FSM
-goes TrackPlayer (fn_16_7C28) -> BeginHeartStage (fn_16_78AC) and stays there: both state bodies
-are stand-ins, so nothing drives BeginHeartStage's transitions yet.
+went TrackPlayer -> BeginHeartStage in slice 1 only because `AllTentaclesRetracted` read a separate
+count that was always 0. After the slice-2 fold (one `mJoints` at guest 0x7D4) ResetTentacles
+(code function, runs: mode 0, count 8) puts tentacles out, so the walk is TrackPlayer -> Attack ->
+ProjectileAttack (fn_16_68F4, a stand-in that never ends). BeginHeartStage/HeartStage are ported
+but not reached until the tentacles can be retracted (fn_16_26B8 and the attack states).
