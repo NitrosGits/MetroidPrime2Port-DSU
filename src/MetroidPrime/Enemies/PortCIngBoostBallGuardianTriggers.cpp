@@ -1105,9 +1105,11 @@ void CIngBoostBallGuardian::SetExitHostDest(CStateManager& mgr, float) {
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
     // Retail compares the object's own area word against the Ing's (there is no active/in-use test)
-    // and skips hint type 4, a type with no name in CScriptAIHint::EHintType.
-    if (hint == nullptr || hint->GetCurrentAreaId() != GetCurrentAreaId() ||
-        static_cast< int >(hint->GetHintType()) == 4) {
+    // and skips hint types 4, 14 and 15 (asm 0x00006D20..0x00006D30), types with no name in
+    // CScriptAIHint::EHintType.
+    const int hintType = hint != nullptr ? static_cast< int >(hint->GetHintType()) : 0;
+    if (hint == nullptr || hint->GetCurrentAreaId() != GetCurrentAreaId() || hintType == 4 ||
+        hintType == 14 || hintType == 15) {
       continue;
     }
     const CVector3f delta = hint->GetTranslation() - GetTranslation();
