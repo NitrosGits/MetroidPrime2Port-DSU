@@ -336,7 +336,6 @@ void CDigitalGuardianHead::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
-  // The host's FSM does not dispatch code nodes yet; this records the table retail registers.
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
@@ -523,7 +522,7 @@ DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
 DGHD_STATE_STANDIN(Dead, fn_14_1561C)
 #undef DGHD_STATE_STANDIN
 
-// Codes: registered only (the host FSM does not dispatch them), so each is a stand-in.
+// Codes not ported yet: once-logging stand-ins (the FSM2 state machine runs codes by name).
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
@@ -545,18 +544,18 @@ DGHD_CODE_STANDIN(EndSplitterDeployment, fn_14_14B60)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
 DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
 DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
-DGHD_CODE_STANDIN(EnableValidTarget, fn_14_145A4)
-DGHD_CODE_STANDIN(DisableValidTarget, fn_14_14470)
-DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_143D8)
-DGHD_CODE_STANDIN(SetInitialAttackPosition, fn_14_14254)
-DGHD_CODE_STANDIN(SetAttackPosition, fn_14_14248)
-DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14058)
-DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_13F70)
-DGHD_CODE_STANDIN(GrabPlayerHintControl, fn_14_13F0C)
-DGHD_CODE_STANDIN(SetVulnerableToDamage, fn_14_13EB8)
-DGHD_CODE_STANDIN(SetImmuneToDamage, fn_14_13C6C)
-DGHD_CODE_STANDIN(SelectRetreatPlatform, fn_14_13C1C)
-DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13B38)
+DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
+DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
+DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_14470)
+DGHD_CODE_STANDIN(SetInitialAttackPosition, fn_14_143D8)
+DGHD_CODE_STANDIN(SetAttackPosition, fn_14_14254)
+DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
+DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
+DGHD_CODE_STANDIN(GrabPlayerHintControl, fn_14_13F70)
+DGHD_CODE_STANDIN(SetVulnerableToDamage, fn_14_13F0C)
+DGHD_CODE_STANDIN(SetImmuneToDamage, fn_14_13EB8)
+DGHD_CODE_STANDIN(SelectRetreatPlatform, fn_14_13C6C)
+DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
 #undef DGHD_CODE_STANDIN
 
 // ---------------------------------------------------------------------------------------------

@@ -95,8 +95,7 @@ public:
   void FollowRetreatPath(CStateManager& mgr, EStateMsg msg, float dt);   // fn_14_1569C
   void Dead(CStateManager& mgr, EStateMsg msg, float dt);                // fn_14_1561C
 
-  // Codes (lbl_14_data_C80, 29 entries). The host FSM does not dispatch code nodes yet, so these
-  // are registered for the table only.
+  // Codes (lbl_14_data_C80, 29 entries); the head's FSM2 state machine runs them by name.
   void SetPlayerFaceTarget(CStateManager& mgr, float dt);        // fn_14_1560C
   void ResetProjectileAttackTimes(CStateManager& mgr, float dt); // fn_14_15598
   void SelectProjectileAttack(CStateManager& mgr, float dt);     // fn_14_15448
@@ -114,18 +113,18 @@ public:
   void Stage3Start(CStateManager& mgr, float dt);                // fn_14_149F8
   void EnableDynamicCollision(CStateManager& mgr, float dt);     // fn_14_14828
   void DisableDynamicCollision(CStateManager& mgr, float dt);    // fn_14_14664
-  void EnableValidTarget(CStateManager& mgr, float dt);          // fn_14_145A4
-  void DisableValidTarget(CStateManager& mgr, float dt);         // fn_14_14470
-  void SelectDeathHeadAttack(CStateManager& mgr, float dt);      // fn_14_143D8
-  void SetInitialAttackPosition(CStateManager& mgr, float dt);   // fn_14_14254
-  void SetAttackPosition(CStateManager& mgr, float dt);          // fn_14_14248
-  void ResetGravityRepulsorHP(CStateManager& mgr, float dt);     // fn_14_14058
-  void EjectPlayerFromBombPit(CStateManager& mgr, float dt);     // fn_14_13F70
-  void GrabPlayerHintControl(CStateManager& mgr, float dt);      // fn_14_13F0C
-  void SetVulnerableToDamage(CStateManager& mgr, float dt);      // fn_14_13EB8
-  void SetImmuneToDamage(CStateManager& mgr, float dt);          // fn_14_13C6C
-  void SelectRetreatPlatform(CStateManager& mgr, float dt);      // fn_14_13C1C
-  void StartVocalRecoverReaction(CStateManager& mgr, float dt);  // fn_14_13B38
+  void EnableValidTarget(CStateManager& mgr, float dt);          // fn_14_14604
+  void DisableValidTarget(CStateManager& mgr, float dt);         // fn_14_145A4
+  void SelectDeathHeadAttack(CStateManager& mgr, float dt);      // fn_14_14470
+  void SetInitialAttackPosition(CStateManager& mgr, float dt);   // fn_14_143D8
+  void SetAttackPosition(CStateManager& mgr, float dt);          // fn_14_14254
+  void ResetGravityRepulsorHP(CStateManager& mgr, float dt);     // fn_14_14248
+  void EjectPlayerFromBombPit(CStateManager& mgr, float dt);     // fn_14_14058
+  void GrabPlayerHintControl(CStateManager& mgr, float dt);      // fn_14_13F70
+  void SetVulnerableToDamage(CStateManager& mgr, float dt);      // fn_14_13F0C
+  void SetImmuneToDamage(CStateManager& mgr, float dt);          // fn_14_13EB8
+  void SelectRetreatPlatform(CStateManager& mgr, float dt);      // fn_14_13C6C
+  void StartVocalRecoverReaction(CStateManager& mgr, float dt);  // fn_14_13C1C
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;

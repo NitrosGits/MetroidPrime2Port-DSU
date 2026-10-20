@@ -188,18 +188,18 @@ The table is `.data 0x380..0x450` (13 entries); the records are in `.data 0x2E4.
 |---|---|---|---|---|---|
 | 0 | SetPlayerFaceTarget | `fn_14_1560C` | 15 | EnableDynamicCollision | `fn_14_14828` |
 | 1 | ResetProjectileAttackTimes | `fn_14_15598` | 16 | DisableDynamicCollision | `fn_14_14664` |
-| 2 | SelectProjectileAttack | `fn_14_15448` | 17 | EnableValidTarget | `fn_14_145A4` |
-| 3 | SetPlatformPosition | `fn_14_153D0` | 18 | DisableValidTarget | `fn_14_14470` |
-| 4 | SetStunnedPosition | `fn_14_15284` | 19 | SelectDeathHeadAttack | `fn_14_143D8` |
-| 5 | SeekLineOfSight | `fn_14_1524C` | 20 | SetInitialAttackPosition | `fn_14_14254` |
-| 6 | DropShields | `fn_14_15054` | 21 | SetAttackPosition | `fn_14_14248` |
-| 7 | RaiseShields | `fn_14_14F74` | 22 | ResetGravityRepulsorHP | `fn_14_14058` |
-| 8 | ExtractAntenna | `fn_14_14E78` | 23 | EjectPlayerFromBombPit | `fn_14_13F70` |
-| 9 | ExtractEchoTargets | `fn_14_14CF4` | 24 | GrabPlayerHintControl | `fn_14_13F0C` |
-| 10 | RetractEchoTargets | `fn_14_14DA0` | 25 | SetVulnerableToDamage | `fn_14_13EB8` |
-| 11 | DestroyActiveSplitters | `fn_14_14C24` | 26 | SetImmuneToDamage | `fn_14_13C6C` |
-| 12 | StartSplitterDeployment | `fn_14_14B98` | 27 | SelectRetreatPlatform | `fn_14_13C1C` |
-| 13 | EndSplitterDeployment | `fn_14_14B60` | 28 | StartVocalRecoverReaction | `fn_14_13B38` |
+| 2 | SelectProjectileAttack | `fn_14_15448` | 17 | EnableValidTarget | `fn_14_14604` |
+| 3 | SetPlatformPosition | `fn_14_153D0` | 18 | DisableValidTarget | `fn_14_145A4` |
+| 4 | SetStunnedPosition | `fn_14_15284` | 19 | SelectDeathHeadAttack | `fn_14_14470` |
+| 5 | SeekLineOfSight | `fn_14_1524C` | 20 | SetInitialAttackPosition | `fn_14_143D8` |
+| 6 | DropShields | `fn_14_15054` | 21 | SetAttackPosition | `fn_14_14254` |
+| 7 | RaiseShields | `fn_14_14F74` | 22 | ResetGravityRepulsorHP | `fn_14_14248` |
+| 8 | ExtractAntenna | `fn_14_14E78` | 23 | EjectPlayerFromBombPit | `fn_14_14058` |
+| 9 | ExtractEchoTargets | `fn_14_14CF4` | 24 | GrabPlayerHintControl | `fn_14_13F70` |
+| 10 | RetractEchoTargets | `fn_14_14DA0` | 25 | SetVulnerableToDamage | `fn_14_13F0C` |
+| 11 | DestroyActiveSplitters | `fn_14_14C24` | 26 | SetImmuneToDamage | `fn_14_13EB8` |
+| 12 | StartSplitterDeployment | `fn_14_14B98` | 27 | SelectRetreatPlatform | `fn_14_13C6C` |
+| 13 | EndSplitterDeployment | `fn_14_14B60` | 28 | StartVocalRecoverReaction | `fn_14_13C1C` |
 | 14 | Stage3Start | `fn_14_149F8` | | | |
 
 ## c. Parameters
@@ -485,7 +485,7 @@ the rest are the same base-class symbols as the body's inherited list.
 | 0x101E0-0x11FEC | head weapon spawners: `fn_14_101E0` (annihilator pulse), `fn_14_10A2C` (annihilator charge), `fn_14_10CA0` (the 0x568 `CEnergyProjectile`), `fn_14_111E0` (another 0x568 projectile), `fn_14_114C8`…`fn_14_11EA8` |
 | 0x11FEC-0x126C8 | `fn_14_11FEC` — the "EchoTargetExplosion" effect; **`fn_14_12314` — spawns the echo target** (0x790 `CActor`) |
 | 0x126C8-0x13B38 | head helpers (`fn_14_126C8`, `fn_14_12818`, `fn_14_1303C`, `fn_14_13318` — the 0x18 collision manager, `fn_14_13830`, `fn_14_139C4`) |
-| 0x13B38-0x17468 | **head codes**: `fn_14_13B38` StartVocalRecoverReaction … `fn_14_1560C` SetPlayerFaceTarget (the table order is reversed in address order) |
+| 0x13C1C-0x17468 | **head codes**: `fn_14_13C1C` StartVocalRecoverReaction … `fn_14_1560C` SetPlayerFaceTarget (the table order is reversed in address order) |
 | 0x1561C-0x17298 | **head states**: `fn_14_1561C` Dead … `fn_14_17180` Start |
 | 0x17298-0x17468 | **head triggers**: `fn_14_17298` AllSplittersDead … `fn_14_17454` StateOver |
 | 0x17468-0x174F4 | **`fn_14_17468` SetupStateMachine (head)** |
