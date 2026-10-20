@@ -103,6 +103,17 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// The state machine's setup (vtable slot 60 stays CPatterned::SetupStateMachine, so this is the
+// module's own hook). Retail's fn_10_18D78 - called from the first Think (fn_10_1B1FC, when the
+// machine has no state yet) - calls CPatterned's InitializeStateMachine and then hands the machine
+// its own two tables: lbl_10_data_450 with the 49 triggers and lbl_10_data_964 with the 43 states.
+// The host's machine asks for the tables through this virtual (CPatterned::InitializeStateMachine
+// calls it), so the module's tables go in here, after the base's own.
+void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
+  CPatterned::SetupStateMachine(mgr);
+  InstallStateMachineFunctions();
+}
+
 // vtable slot 9 = fn_10_18AB8 (0x2C0): the pre-render pass (the locator-driven effect setup).
 void CDarkSamus::PreRender(CStateManager& mgr) {
   StandIn("fn_10_18AB8", "vtable slot 9, PreRender");

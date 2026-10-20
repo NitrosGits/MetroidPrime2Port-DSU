@@ -6,6 +6,7 @@
 WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 CommandoPirate;src/MetroidPrime/PortModuleStubs.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamus.cpp
+DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
 DigitalGuardian;src/MetroidPrime/PortModuleStubs.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
 EmperorIngStage1;src/MetroidPrime/PortModuleStubs.cpp

@@ -21,6 +21,8 @@ implementation is `src/MetroidPrime/Enemies/PortCDarkSamus.cpp`,
 | `fn_10_1FA14` | 0xB98 | **CDarkSamus ctor** (section 2) | [proven]: called after `rs_new 0x1128` |
 | `fn_10_1EF38` | 0x300 | **destructor** (vtable slot 2; the sub-objects and the base) | [proven] vtable |
 | `fn_10_1B1FC` | 0x27C | **`Think`** (slot 5) | [proven] vtable + body |
+| `fn_10_18D78` | 0x58 | **the module's state-machine setup**: calls `InitializeStateMachine__10CPatterned` and then hands the machine two tables (section 7) | [proven] the two table calls |
+| `fn_10_221C0` | 0xD20 | the **`.ctors` initialiser**: copies the 92 12-byte records into the 92 table entries | [proven] the copies (section 7) |
 | `fn_10_1E89C` | 0x5B0 | **`AcceptScriptMsg`** (slot 6; the four-character codes `XCRT`, `ACTV`, `ALRT`, `DCTV`, `XALD`, `XDEL`, `XDMG`, `XLAU`, `XLND`, `XLSG`, `XOFF` - the `XCRT` arm also activates the body controller, 0x0001E9A4) | [proven] vtable + body |
 | `fn_10_18AB8` | 0x2C0 | **`PreRender`** (slot 9) | [proven] vtable |
 | `fn_10_17F04` | 0x2D8 | **`AddToRenderer`** (slot 10) | [proven] vtable |
@@ -76,7 +78,8 @@ The **32 local overrides** (slot → function) are the ones listed in the functi
 
 Slots **82..173** are not vtable entries: 92 further function pointers (`fn_10_F840`, `fn_10_1BB08`,
 `fn_10_62B4`, ... `fn_10_FE18`) sit inside the same label. They are the module's own state-machine
-tables. The count objects in front of the vtables are `lbl_10_data_0`..`lbl_10_data_3C` - 16 words
+handlers (section 7): the 49 triggers in the words 82..130 and the 43 states in the words 131..173.
+The count objects in front of the vtables are `lbl_10_data_0`..`lbl_10_data_3C` - 16 words
 holding 0x3B, 0x20, 0x32, 0x14, 0x2F, 0x21, 0x23, 0x14, 0x3B, 0x14, 0x20, 0x31, 0x3B, 0x14,
 0x3B, 0x14 - the trigger/state/code counts (`lbl_10_data_40` starts the CScattershotProjectile
 vtable) [probable: the 82-entry prefix matches the chain exactly, so the tail is the module's own
@@ -213,14 +216,18 @@ knock-back physics), the vtable overrides that matter (Think, AcceptScriptMsg, P
 AddToRenderer, Render, the accessors) and the port-only module registration. Everything else is a
 once-per-method `[darksamus] stand-in fn_10_XXXX` log. The body controller is activated on
 `kSM_Create` and in `Think`; retail activates it in `AcceptScriptMsg`'s **'XCRT'** arm
-(`CBodyController::Activate` at 0x0001E9A4), which is a message the port's milestone-1
-`AcceptScriptMsg` stand-in does not forward yet [proven: the arm, not its trigger].
+(`CBodyController::Activate` at 0x0001E9A4) and nowhere else [proven: the arm, not its trigger].
+
+**Milestone 2, slice 1** (2026-10-21) is in: the 'XCRT' arm activates the body controller in
+retail's order (activate, then forward to CPatterned) and the port's `Think` activation is gone
+(retail has none), and the state machine's two tables and their 92 handlers are installed (section
+7). The 92 bodies are still stand-ins: they log once and do nothing else.
 
 What is **not** established:
 
-1. The state machine: which of the 92 function pointers after the vtable are triggers, states and
-   codes, and what they are named. The vtable keeps `CPatterned::SetupStateMachine` (slot 60), so
-   the tables must be installed from `AcceptScriptMsg`'s `kSM_Create` arm or from `Think`.
+1. ~~The state machine: which of the 92 function pointers after the vtable are triggers, states and
+   codes, and what they are named.~~ **Answered in section 7**: 49 triggers (words 82..130 of
+   `lbl_10_data_CBC`) and 43 states (words 131..173), named by the module's own strings.
 2. The identities of the sixteen sub-objects the constructor builds (0x94C..0x1064) and which
    loader property each one holds. The ctor's ~50 stack arguments could not be mapped back to the
    loader's properties, so the host's `CDarkSamusData` names its fields after the properties
@@ -229,3 +236,43 @@ What is **not** established:
    which of the 0xCD0 sub-object's fields sets it.
 4. The boss's combat behaviour: the melee, dive, scatter-shot, missile, freeze-beam, sweep-beam
    and boost-ball attacks, the phazon enrage and the death sequence.
+
+## 7. The state machine
+
+`fn_10_18D78` is the module's own setup: it calls `InitializeStateMachine__10CPatterned` (the DOL's)
+and then hands the machine two tables through the state machine's vtable - the 49-entry table
+`lbl_10_data_450` (slot 0x18) and the 43-entry table `lbl_10_data_964` (slot 0x14) [proven: the
+`lis/addi` pairs at 0x00018D94 and 0x00018DB4 and the counts 0x31/0x2B]. The vtable keeps
+`CPatterned::SetupStateMachine` (slot 60), so the module installs its tables itself, from the first
+`Think` (`fn_10_1B1FC` calls `fn_10_18D78` when the machine has no state yet) [proven].
+
+Each table entry is 16 bytes: `{const char* name; u32 a; u32 b; u32 c}`; the names are the module's
+own strings in `.rodata` (`lbl_10_rodata_579` for the first trigger, `lbl_10_rodata_871` for the
+first state) [proven]. The entry's payload comes from a 12-byte record beside it - the 49 records
+at `lbl_10_data_204` and the 43 at `lbl_10_data_760` - and the `.ctors` initialiser `fn_10_221C0`
+copies each record into its entry (`entry+4 = record[0]`, `entry+8 = record[1]`,
+`entry+12 = record[2]`; the copies at 0x000222B8..) [proven].
+
+The record's second word is the **byte offset of the handler inside `lbl_10_data_CBC`** - the blob
+that holds the actor's vtable (the words 0..81) and then the 92 handlers (the words 82..173). The
+trigger table's records name the words 82..130 (0x148..0x208) and the state table's the words
+131..173 (0x20C..0x2B4), and the handlers split the same way: the first 49 return a bool and take
+`(mgr, float)` (`fn_10_F840` reads a flag byte and returns it: `lbz`/`extrwi` at 0x0000F840), the
+last 43 return nothing and take `(mgr, EStateMsg, float)` (`fn_10_B164` keeps r5 and compares it
+with 1 at 0x0000B1B4) [proven]. So the names, the tables and the name-to-function mapping are
+`docs/module-analysis/DarkSamus_fsm.tsv` (92 rows).
+
+**In the port**: `CDarkSamus::SetupStateMachine` (the host's hook for the tables) calls
+`CPatterned::SetupStateMachine` and then `InstallStateMachineFunctions()`, which hands the machine
+the two tables under the REL's own names; the machine finds a node's handler by name, so the
+FSM2 asset's node names are the REL's names. The 92 bodies are stand-ins (they log once and do
+nothing else): `src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp`.
+
+**What the area run enters** (Agon Wastes/10_sand_alamostorage, layer 6, the actor woken with the
+console's `send u0732 Activate`): the machine is set up and the actor enters **`Start`**
+(`fn_10_F920`), evaluates the trigger **`StartsInTheAir`** (`fn_10_F924`), enters
+**`TurnToFacePlayer`** (`fn_10_FE18`) and evaluates the trigger **`DoneTurning`** (`fn_10_F864`).
+No other state is entered in 6000 frames (the run with two `damage u0732 100` hits changes
+nothing): the other 90 handlers are never called, because the stand-in triggers answer false.
+The state machine's transitions live in the FSM2 asset, so the next slice needs that asset's
+transitions (the Boost Guardian's probe, `MP2_BG_FSM`, is the shape of it).
