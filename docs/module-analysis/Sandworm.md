@@ -329,12 +329,20 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
     `gdb -x cov2.py` (breakpoints on every `// @ fn_56_` and `(ported, not exercised yet)` body),
     then console `objs sandworm`, `tp`/`face` 10 m from the worm every 4 shots, `press l 0` to hold
     lock-on and `press l+a 2` / `press l 6` to fire. Both worms ended at 0 HP; 0 caught errors, 0
-    reach-stubs.
-- Markers: 204 functions carry `// @` — the previous 191 plus the 13 this weapon run exercised:
-  `14B58`, `56D4`, `F384`, `C468`, `2718`, `33A4`, `3484` (EyeKilledReaction), `4200` (Straighten),
-  `4384`, `58C0`, `5E5C`, `B320` (Descend), `C3F4` (LurkUnderground). 79 remain
+    reach-stubs. That run promoted 13 markers: `14B58` `56D4` `F384` `C468` `2718` `33A4` `3484`
+    `4200` `4384` `58C0` `5E5C` `B320` `C3F4`.
+- Charge group (`01_sand_entrance`, 2026-10-20): the Sandigger charges only when the player stands
+  inside `x14D8_charge` = 15..50 m (prefab properties; a probe on `CanCharge` printed the live range
+  and each gate). Standing still 22 m in front, in the worm's arc, all six gates read true
+  (`attack`, `range`, `onPath`, `ffc`, `reach`, `facing`) and the FSM ran ChargeWindUp → ChargePlayer →
+  charge damage, which exercises the whole group: `8190`, `6CC0`, `7EE4`, `6798`, `97F0`, `99A0` and
+  the two prerequisites `3D44` (PlayerReachable) and `6A50` (FacingPlayer). Closer than 15 m
+  `InChargeRange` is false (spit only); at 18 m the run's `tp` landed off the path mesh
+  (`onPath=0`), so placement matters, not distance alone.
+- Markers: 212 functions carry `// @` — the previous 204 plus the 8 charge bodies. 71 remain
   `(ported, not exercised yet)`, including GetRagDoll, GetDeathExplosionParticle and
-  RenderIngSnatchingTransition.
+  RenderIngSnatchingTransition; `/tmp/opencode/sw2/unexercised79.md` (local) buckets them:
+  A 24 (now 16 left), B 1, C 36 (Bomb Guardian/possession), D 12, E 6.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
   - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.

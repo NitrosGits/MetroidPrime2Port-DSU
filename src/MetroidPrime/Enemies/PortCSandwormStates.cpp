@@ -219,7 +219,7 @@ bool CSandworm::OneEyeKilled(CStateManager& mgr, const CTriggerData& data) const
   return dead == 1;
 }
 
-// fn_56_3D44 (ported, not exercised yet)
+// @ fn_56_3D44
 bool CSandworm::PlayerReachable(CStateManager& mgr, const CTriggerData& data) const {
   return PathReachable(mgr, PlayerPos(mgr));
 }
@@ -398,7 +398,7 @@ void CSandworm::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_56_6A50 (ported, not exercised yet)
+// @ fn_56_6A50
 bool CSandworm::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const {
   return AngleToTarget(PlayerPos(mgr), x1528_spit.x28_xf.GetColumn(kDY)) < 0.20943952f;
 }

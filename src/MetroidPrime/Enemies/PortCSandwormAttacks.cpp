@@ -56,7 +56,7 @@ float CSandworm::SpitAimAngle(const CVector3f& target) const {
 }
 
 // Steers a direction toward its perpendicular.
-// fn_56_6CC0 (ported, not exercised yet)
+// @ fn_56_6CC0
 CVector3f CSandworm::ChargeHelper(const CVector3f& dir) const {
   float period = x1510_cycleRate * 0.8f + 0.4f;
   if (x1514_ == 1) {
@@ -333,7 +333,7 @@ bool CSandworm::InMeleeRange(CStateManager& mgr) const {
   return (PlayerPos(mgr) - PlayerDirection(2.f)).MagSquared() < 16.f;
 }
 
-// fn_56_7EE4 (ported, not exercised yet)
+// @ fn_56_7EE4
 void CSandworm::ApplyChargeDamage(CStateManager& mgr) {
   if (x14D8_charge.x30_flags & 0x40) {
     return;
@@ -488,7 +488,7 @@ bool CSandworm::CanSpitAgain(CStateManager& mgr, const CTriggerData& data) const
   return !x1490_attacks.EndsWith(1, 3);
 }
 
-// fn_56_6798 (ported, not exercised yet)
+// @ fn_56_6798
 bool CSandworm::ChargeOver(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f& pos = GetTranslation();
   if (!IsBombGuardian(*this)) {
@@ -577,7 +577,7 @@ bool CSandworm::PlayerIsMorphball(CStateManager& mgr, const CTriggerData& data) 
   return state == 1;
 }
 
-// fn_56_97F0 (ported, not exercised yet)
+// @ fn_56_97F0
 bool CSandworm::ReadyToCharge(CStateManager& mgr, const CTriggerData& data) const {
   return (x14D8_charge.x30_flags & 0x80) != 0;
 }
@@ -594,7 +594,7 @@ bool CSandworm::SpitAngleOK(CStateManager& mgr, const CTriggerData& data) const 
 
 // States.
 
-// fn_56_8190 (ported, not exercised yet)
+// @ fn_56_8190
 void CSandworm::ChargePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   BeginAttack(4, msg);
   if (msg == kStateMsg_Activate) {
@@ -640,7 +640,7 @@ void CSandworm::ChargePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
       CBCLocomotionCmd(ChargeHelper(dir), CVector3f::Zero(), 1.f));
 }
 
-// fn_56_99A0 (ported, not exercised yet)
+// @ fn_56_99A0
 void CSandworm::ChargeWindUp(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     x14D8_charge.x30_flags &= ~0x80;
