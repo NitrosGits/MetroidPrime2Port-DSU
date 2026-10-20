@@ -432,11 +432,6 @@ bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
-bool CSpacePirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::HasAttackPattern trigger (fn_72_7810)");
-  return false;
-}
-
 bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) const {
   return x8f4_24_pendingAmbush;
 }
@@ -445,12 +440,36 @@ bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) co
   return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
 }
 
+// Retail fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -
+// and the attack timer has run out (rodata B9C = 0, compared with the `cror lt/eq` idiom, so `<= 0`).
 bool CSpacePirate::ShouldLaunchGrenade(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldLaunchGrenade trigger (fn_72_779C)");
-  return false;
+  return mData.mEquippedWeapon == 1 && mAttackRemTime <= 0.f;
 }
 
+// Retail fn_72_76D0 (0xD4): a switch on the same launcher word. Unarmed (0) is always in range,
+// anything but 0/1 never is, and the grenade launcher (1) wants a live attack target whose
+// squared 3-D distance to the pirate falls inside [minAttackDist, maxAttackDist] squared
+// (data +0x12c/+0x130, rodata-free: both bounds are inclusive `cror ge`/`cror le` tests).
 bool CSpacePirate::InProjectileRange(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::InProjectileRange trigger (fn_72_76D0)");
-  return false;
+  switch (mData.mEquippedWeapon) {
+  case 0:
+    return true;
+  case 1: {
+    const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget));
+    if (target == nullptr) {
+      return false;
+    }
+    const float distSq = (target->GetTranslation() - GetTranslation()).MagSquared();
+    return distSq >= mData.mGrenadeMinAttackDist * mData.mGrenadeMinAttackDist &&
+           distSq <= mData.mGrenadeMaxAttackDist * mData.mGrenadeMaxAttackDist;
+  }
+  default:
+    return false;
+  }
+}
+
+// Retail fn_72_7810 (0x54): the pirate has an attack pattern when its ATTK/FOLW connection
+// resolves to a live object (asm: GetConnectedObject, then the `id != kInvalidUniqueId` idiom).
+bool CSpacePirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
+  return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }

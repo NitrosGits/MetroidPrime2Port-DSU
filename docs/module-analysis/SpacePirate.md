@@ -362,6 +362,16 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `+0x64`/`+0x68` `grenadeMinAttackDist`/`MaxAttackDist` - **the old naming was right**, `fn_72_10C64`
   takes them from `weaponData.grenadeMin/MaxAttackDist`. The host struct now names all of it and
   `BuildGrenadeData()` reassembles the retail object; `mData+0x120` is no longer uninitialised.
+- **The grenade-launcher triggers went in right after it** (unmarked, same reason - no pirate in area 08
+  has the ATTK/FOLW connection that `HasAttackPattern` asks for): `ShouldLaunchGrenade 779C` is
+  `mData.mEquippedWeapon == 1 && mAttackRemTime <= 0` (asm reads the launcher block's +0x00, not a
+  distance); `InProjectileRange 76D0` switches on the same word - 0 (unarmed) is always in range, 1
+  (grenade launcher) wants a live `mAttackTarget` with its squared distance inside
+  `[mGrenadeMinAttackDist, mGrenadeMaxAttackDist]` squared (independent confirmation of that naming:
+  they are the block's +0x64/+0x68), anything else is out of range; `HasAttackPattern 7810` is
+  `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId`.
+  12 stand-ins are left in `PortCSpacePirateTriggers.cpp`, all cover/crouch/wallhang/bounce/leash:
+  `ADC0` `ABC0` `AA64` `A988` `A8D0` `99A4` `7970` `767C` `602C` `55B8` `558C` `52F8`.
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 
