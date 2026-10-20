@@ -95,12 +95,46 @@ void CSpacePirate::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_98D8 (0xCC): Activate drops the body into crouch locomotion (asm passes 0), turns the
+// held cover point's forward axis (cover +0x28/0x38/0x48, the transform's forward column) into the
+// target delta, zeroes the steering speed (rodata 0xB9C) and clears the cover direction to -1; Update
+// feeds that delta to the body and then runs D800 with r3 = this. Unlike MP1's Crouch there is no
+// TargetPlayer call (the asm has only SetLocomotionType and GetCoverPoint) and no Deactivate case:
+// anything below 1 or above 1 falls straight to the epilogue.
 void CSpacePirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Crouch state (fn_72_98D8)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);
+    if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+      x908_targetDelta = cover->GetTransform().GetForward();
+    }
+    x904_steeringSpeed = 0.f;
+    xa68_coverDir = -1;
+    break;
+  case kStateMsg_Update:
+    BodyController()->CommandMgr().SetTargetVector(x908_targetDelta);
+    UpdateGuardPosition(mgr, dt);
+    break;
+  }
 }
 
+// Retail fn_72_A310 (0xB0): Activate delivers a bare CBodyStateCmd of type 0xB = kBSC_LeanFromCover
+// (the asm builds {vtable, 0xB} on the stack and calls CBodyStateCmdMgr::DeliverCmd on body +0x4) and
+// marks the in-attack bit; Update is only D800 with r3 = this; Deactivate clears that bit. MP1's
+// CoverAttack differs only in calling UpdateCantSeePlayer by name.
 void CSpacePirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::CoverAttack state (fn_72_A310)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_LeanFromCover));
+    x8f6_31_inAttackState = true;
+    break;
+  case kStateMsg_Update:
+    UpdateGuardPosition(mgr, dt);
+    break;
+  case kStateMsg_Deactivate:
+    x8f6_31_inAttackState = false;
+    break;
+  }
 }
 
 // Retail fn_72_BBB0 is a bare `x904 = 0` (rodata 0xB9C): it is not a message handler at all, so
@@ -871,8 +905,20 @@ void CSpacePirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_78DC (0x94): Activate only, like TargetPlayer above (asm compares the message with 0
+// and bails on anything else). It aims the dest at the held cover point: the point's unique id and
+// its translation (cover +0x54), then unconditionally re-seeds the reflected dest from its own
+// translation and clears the in-position bit.
 void CSpacePirate::TargetCover(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::TargetCover state (fn_72_78DC)");
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
+    mDestObj = x900_coverPoint;
+    SetDestPos(cover->GetTranslation());
+  }
+  mReflectedDestPos = GetTranslation();
+  mInPosition = false; // asm: rlwimi clears 0x34C bit 0x80, the bit declared first
 }
 
 // @ fn_72_7868
