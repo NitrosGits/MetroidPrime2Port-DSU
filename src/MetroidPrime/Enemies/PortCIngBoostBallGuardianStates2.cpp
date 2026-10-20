@@ -533,8 +533,8 @@ void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
-// fn_30_8CC0 (this module).
-// fn_29_75C0 (not yet exercised in a run)
+// fn_29_75C0
+// fn_30_8CC0: Activate and Update both move (0x00008CE4: msg < 2).
 void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
@@ -543,15 +543,16 @@ void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, flo
   }
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   if (hint == nullptr) {
-    return; // 0x000075F8: a missing hint leaves mMoving as it was
+    return; // 0x00008D04: a missing hint leaves mMoving as it was
   }
   const CVector3f delta = hint->GetTranslation() - GetTranslation();
-  const float maxWall = mData.mIngSpot.GetMaxWallSpeed(); // 0x880
+  // 0x00008D4C: the phase's speed scale (*(0x11D0)+0x34) times ingSpotMaxWallSpeed (0x7cc).
+  const float maxWall = CurrentPhase().mIngSpotSpeedScale * mData.mIngSpot.GetMaxWallSpeed();
   if (!delta.IsMagnitudeSafe() || delta.Magnitude() <= dt * maxWall) {
-    mMoving = false; // 0x0000768C: 0xe5d bit 1
+    mMoving = false; // 0x00008DA8: 0x11ED 0x04
   } else {
-    MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00007674: the direction is normalised
-    mMoving = true; // 0x00007678: 0xe5d bit 1
+    MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00008D88: fn_30_53D0
+    mMoving = true; // 0x00008D94: 0x11ED 0x04
   }
 }
 

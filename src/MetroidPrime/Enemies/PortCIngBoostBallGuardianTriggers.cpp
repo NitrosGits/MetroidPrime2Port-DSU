@@ -894,8 +894,9 @@ bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTrig
   const CVector3f delta = target != nullptr ? target->GetTranslation() - GetTranslation()
                                             : CVector3f::Zero();
   const float distSq = delta.MagSquared();
-  const float minDist = mData.mBodyProjectile.mMinAttackDist; // 0x85c
-  const float maxDist = mData.mBodyProjectile.mMaxAttackDist; // 0x860
+  const float minDist = mData.mBodyProjectile.mMinAttackDist; // 0x0000BDE8: 0x87c
+  const float maxDist = mData.mBodyProjectile.mMaxAttackDist; // 0x0000BDFC: 0x880
+  // 0x0000BE44 rodata_110 (-15) <= dz, 0x0000BE58 dz <= rodata_A4 (3).
   const bool inRange = target != nullptr && minDist * minDist <= distSq &&
                        distSq <= maxDist * maxDist && -15.f <= delta.GetZ() &&
                        delta.GetZ() <= 3.f;
@@ -1103,11 +1104,10 @@ void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
   }
 }
 
-// fn_30_6F88 (this module).
-// Ing body fn_29_5820: the point-graph route to the cover hint. Filter (20, 0, -1) from the Ing's own
-// position, then the nearest flag-1 point that the graph connects to it, sits under 400
-// (rodata_F0) from the hint and has a mesh path to it (asm 0x00005844-0x00005998), then the point
-// search between the two.
+// fn_30_6F88 (Ing body fn_29_5820): the point-graph route to the cover hint. Filter (20, 0, -1)
+// from the Ing's own position (0x00006FFC), then the nearest point with flag bit 0 (0x00007048)
+// that PointConnectionsTest links to it (0x00007058), under 400 (rodata_F8, 0x00007094) from the
+// hint and with a mesh path to it (0x000070A8), then the point search between the two (0x000070F8).
 void CIngBoostBallGuardian::SetPointCoverDest(CStateManager& mgr, float) {
   LogState("SetPointCoverDest");
   mFoundMovementPos = false;
