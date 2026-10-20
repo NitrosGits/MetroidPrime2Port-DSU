@@ -305,12 +305,29 @@ read `inFront=1`), so the taunt command and the `AnimOver` branch never ran.
 the constructor's `rlwimi` chain at 0x0001FBF8.. only clears them, so they start at 0), 0xD4C (the
 "done turning" flag) and 0x6B4 (the pending flag of the taunt command).
 
+**The `fn_10_FE18` branches** (2026-10-21): a temporary hook (reverted) that put the player
+behind the actor drove the state past the 90-degree test, so the taunt command path ran: the
+`Activate` case delivers the taunt (`kBSC_Taunt`, `pas::kTT_Six`), the `Update` case asks
+`CanIssueCommand` (false) and the `AnimOver` check answers false. The two arms that need a *true*
+answer never ran, so `fn_10_FE18` stays unmarked: the host's `AnimOver` is the port's own
+animation-state tracking (`CPatterned::GetAnimOver` = `mAnimationState.IsOver()`) and the DarkSamus
+never drives `mAnimationState`, so the turn can never end that way - with the player behind the
+actor the boss stays in `TurnToFacePlayer`. The other ports drive it (e.g. `CDarkCommando::Lurk`
+sets `kAS_Ready` on `Activate` and `kAS_Over` when the animation ends); that is the port's
+convention to copy here.
+
 **Next**: `TravelToCoverPoints` (`fn_10_1DF74`, 0x204 bytes - the cover-point choice and the move)
 and the triggers of that state that can lead out of it: `ShouldGetPissedOff` (`fn_10_FD30`, the
-flag byte at 0x420's bit 6 and the byte at 0xD58), `ShouldReact` (`fn_10_11158`),
-`ShouldFadeOut` (`fn_10_BBE4`), `TooMuchDamage` (`fn_10_10698`) and `CanMissileDeflect`
+flag byte at 0x420's bit 6 and the byte at 0xD58, which the `PissedOff` state `fn_10_F930` sets),
+`ShouldReact` (`fn_10_11158`), `ShouldFadeOut` (`fn_10_BBE4`, the helper `fn_10_17E14` and the byte
+at 0xDEC), `TooMuchDamage` (`fn_10_10698`, the words at 0x980/0x994/0x998) and `CanMissileDeflect`
 (`fn_10_14284`, the helper `fn_10_17E14` and the float at +0x24). The fight script's own
-`Picked*` triggers need the fight's script object, not the area run.
+`Picked*` triggers need the fight's script object, not the area run, and the fight flag (the byte
+at 0x420's bit 6) is only set while the fight runs - so the area run cannot answer them.
+
+`fn_10_1DF74` is not a small body: it calls ten module helpers of its own (`fn_10_1D860`,
+`fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`, `fn_10_1E26C`, `fn_10_1C778`,
+`fn_10_1DD14`, `fn_10_1E178`, `fn_10_1D794`), so it is a chain of slices, not one body.
 
 The three state names the base class also has - `Start` (`fn_10_F920`), `Dead` (`fn_10_143A8`) and
 `Patrol` (`fn_10_1142C`) - forward to `CPatterned`'s body after the log, the way the port's other
