@@ -64,48 +64,30 @@ namespace {
 
 // ---- the collision actors --------------------------------------------------------------------
 
+// fn_30_4E90: the body manager (guest 0xD60), the seven joint spheres of lbl_30_rodata_0, built
+// in kSM_Create (0x0000DF18) before the ing-spot manager; the Ing REL's fn_29_3190 with two more
+// materials (0x00005018: kMT_Unknown54 and kMT_ProjectilePassthrough) and two more exclusions in
+// the filter (lbl_30_data_9A0..9B0: CollisionActor, AIPassthrough, Player, Projectile, Bomb).
+// @ fn_30_4E90
 void CIngBoostBallGuardian::CreateCollisionActorManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(7);
-  const CAnimData* anim = GetAnimationData();
+  const CAnimData* anim = GetModelData()->GetAnimationData();
   for (uint i = 0; i < 7; ++i) {
     const SIngJointSphere& sphere = skIngJointSpheres[i];
-    const rstl::string name = rstl::string_l(sphere.mLocator);
-    const CSegId seg = anim != nullptr ? anim->GetLocatorSegId(name) : CSegId();
+    const CSegId seg = anim->GetLocatorSegId(rstl::string_l(sphere.mLocator));
     joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
-        seg, CVector3f::Zero(), sphere.mRadius, name, kIngJointMass));
+        seg, CVector3f::Zero(), sphere.mRadius, rstl::string_l(sphere.mLocator), kIngJointMass));
   }
-  // The ctor's last argument is false (the new manager is inactive).
-  mCollisionActorManager =
+  CCollisionActorManager* manager =
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
-  SetupCollisionActors(mgr);       // fn_29_3014
-  AddMaterial(kMT_Unknown54, mgr); // 0x36
-  // data_A14 = Solid; data_A18|data_A1C|data_A20 = CollisionActor|AIPassthrough|Player.
+  delete mCollisionActorManager0;
+  mCollisionActorManager0 = manager;
+  SetupManagerActors(mgr, mCollisionActorManager0);
+  AddMaterial(kMT_Unknown54, kMT_ProjectilePassthrough, mgr);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Solid),
-      CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
-}
-
-// fn_29_3014: every collision actor takes the Ing's health info and CPatterned's own damage
-// vulnerability. Retail calls `GetDamageVulnerability__10CPatternedCFv` directly (not through the
-// vtable), so the colliders get the base table (CAi's normal one) rather than CIng's form-dependent
-// override - with the override the colliders inherit the trigger table, whose beams are
-// kE_PassThrough, and no projectile can reach a corporeal Ing at all.
-void CIngBoostBallGuardian::SetupCollisionActors(CStateManager& mgr) {
-  if (mCollisionActorManager.null()) {
-    return;
-  }
-  const uint count = mCollisionActorManager->GetNumCollisionActors();
-  for (uint i = 0; i < count; ++i) {
-    const TUniqueId id =
-        mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
-    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
-    if (actor == nullptr) {
-      continue;
-    }
-    actor->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
-    *actor->HealthInfo() = *HealthInfo();
-  }
+      CMaterialList(kMT_Solid), // lbl_30_data_99C
+      CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player, kMT_Projectile, kMT_Bomb)));
 }
 
 // fn_30_4A38: the ing-spot manager (guest 0xD64), built in kSM_Create after the body manager. The
@@ -125,8 +107,8 @@ void CIngBoostBallGuardian::CreateIngSpotManager(CStateManager& mgr) {
   SetupManagerActors(mgr, mCollisionActorManager1);
 }
 
-// fn_30_4924: like the Ing's fn_29_3014 (SetupCollisionActors), for a given manager; the
-// vulnerability call is the non-virtual CPatterned one.
+// fn_30_4924: the Ing REL's fn_29_3014 for a given manager; the vulnerability call is the
+// non-virtual CPatterned one.
 // @ fn_30_4924
 void CIngBoostBallGuardian::SetupManagerActors(CStateManager& mgr,
                                                CCollisionActorManager* const& manager) {
@@ -143,9 +125,6 @@ void CIngBoostBallGuardian::SetupManagerActors(CStateManager& mgr,
 // fn_30_30E4: every collision actor of the guest's second manager (0xD64) takes the boost-ball
 // vulnerability (0x1178) or the ing spot's (0xA5C) (0x0000310C).
 void CIngBoostBallGuardian::SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost) {
-  if (mCollisionActorManager1 == nullptr) {
-    return;
-  }
   const CDamageVulnerability& vuln = boost ? mVulnerability : mData.mIngSpotVulnerability;
   for (uint i = 0; i < mCollisionActorManager1->GetNumCollisionActors(); ++i) {
     const TUniqueId id =
@@ -157,18 +136,15 @@ void CIngBoostBallGuardian::SetIngSpotManagerVulnerability(CStateManager& mgr, b
 }
 
 // fn_30_3190: records the reflect flag, then every collision actor of the body manager (guest
-// 0xD60; the host's is mCollisionActorManager) takes the reflect vulnerability or CPatterned's own
+// 0xD60) takes the reflect vulnerability or CPatterned's own
 // (0x000031C8 / 0x000031D0, the non-virtual call).
 void CIngBoostBallGuardian::SetBodyManagerReflect(CStateManager& mgr, bool reflect) {
   mReflectVulnerability = reflect; // 0x000031BC: 0x11EE 0x02
-  if (mCollisionActorManager.null()) {
-    return;
-  }
   const CDamageVulnerability& vuln = reflect ? CDamageVulnerability::ReflectVulnerabilty()
                                              : *CPatterned::GetDamageVulnerability();
-  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+  for (uint i = 0; i < mCollisionActorManager0->GetNumCollisionActors(); ++i) {
     const TUniqueId id =
-        mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+        mCollisionActorManager0->GetCollisionDescFromIndex(i).GetCollisionActorId();
     if (CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id))) {
       actor->SetDamageVulnerability(vuln); // 0x00003214
     }

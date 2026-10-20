@@ -116,12 +116,8 @@ void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
     break;
   }
   // 0x0000DA58: both managers, guest 0xD60 and 0xD64.
-  if (!mCollisionActorManager.null()) {
-    mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
-  if (mCollisionActorManager1 != nullptr) {
-    mCollisionActorManager1->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
+  mCollisionActorManager0->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  mCollisionActorManager1->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   mLineOfSight.Update(dt, mgr);
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
@@ -239,19 +235,15 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     } else {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
     }
-    CreateCollisionActorManager(mgr); // fn_29_3190
+    CreateCollisionActorManager(mgr); // 0x0000DF18: fn_30_4E90
     CreateIngSpotManager(mgr);        // 0x0000DF24: fn_30_4A38
     // 0x0000E06C: the (kSS_Modify, kSM_Activate) connections, which the boost ball gets.
     mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate);
     break;
   case kSM_Delete:
     // Retail deletes the blob object first, then destroys the collision actor manager.
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->Destroy(mgr); // fn_29_C9A4's XDEL branch
-    }
-    if (mCollisionActorManager1 != nullptr) {
-      mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
-    }
+    mCollisionActorManager0->Destroy(mgr); // 0x0000E0C0
+    mCollisionActorManager1->Destroy(mgr); // 0x0000E0CC
     ReleaseCoverHint(mgr, mCoverHintId);
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
       team->QuitTeam(GetUniqueId());
@@ -272,29 +264,21 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     JoinTeam(mgr);
     // 0x0000E134: only when it was inactive; each manager is on for its own form.
     if (!wasActive) {
-      if (!mCollisionActorManager.null()) {
-        mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal); // 0x0000E150
-      }
-      if (mCollisionActorManager1 != nullptr) {
-        mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
-      }
+      mCollisionActorManager0->SetActive(mgr, mForm == kForm_Corporeal); // 0x0000E150
+      mCollisionActorManager1->SetActive(mgr, mForm == kForm_IngSpot); // 0x0000E16C
     }
     break;
   case kSM_Deactivate:
     // 0x0000E204: only when it was active.
     if (wasActive) {
-      if (!mCollisionActorManager.null()) {
-        mCollisionActorManager->SetActive(mgr, false); // 0x0000E214
-      }
-      if (mCollisionActorManager1 != nullptr) {
-        mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
-      }
+      mCollisionActorManager0->SetActive(mgr, false); // 0x0000E214
+      mCollisionActorManager1->SetActive(mgr, false); // 0x0000E224
       StopSfx(); // 0x0000E2B8: fn_30_3A60
     }
     break;
   case kSM_AIUpdateDisabled:
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetPhysicsActive(mgr, false);
+    if (mCollisionActorManager0 != nullptr) {
+      mCollisionActorManager0->SetPhysicsActive(mgr, false);
     }
     if (mCollisionActorManager1 != nullptr) {
       mCollisionActorManager1->SetPhysicsActive(mgr, false); // 0x0000E2EC

@@ -408,7 +408,7 @@ private:
   // module has no lure safe zone).
   void FaceLureOrTarget(CStateManager& mgr);
   // fn_30_30E4: the guest's second manager (0xD64) takes the boost-ball vulnerability or the ing
-  // spot's. fn_30_3190: the body manager (guest 0xD60, the host's mCollisionActorManager) takes the
+  // spot's. fn_30_3190: the body manager (guest 0xD60) takes the
   // reflect vulnerability or the base one. fn_30_3068: enter or leave the boost puddle mode.
   void SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost);
   void SetBodyManagerReflect(CStateManager& mgr, bool reflect);
@@ -425,9 +425,8 @@ private:
   void UpdateTouchBox();
   void UpdatePuddleEffects(float dt, CStateManager& mgr);
   void UpdateHitLight(float dt, CStateManager& mgr);
-  // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
+  // fn_30_4E90: the body manager (guest 0xD60), the seven joint spheres.
   void CreateCollisionActorManager(CStateManager& mgr);
-  void SetupCollisionActors(CStateManager& mgr);
   // fn_30_4A38: the guest's second manager (0xD64), one "PuddleCollisionActor" box at the "Root"
   // locator. fn_30_4924: a manager's collision actors take the health info and CPatterned's own
   // damage vulnerability.
@@ -460,9 +459,6 @@ private:
   CDamageVulnerability mVulnerability;                   // guest 0x1178
   // The Ing half's members, under the Ing REL's names (the guest offsets are in
   // docs/module-analysis/BoostGuardian.md section e; the host layout is its own).
-  // The manager of the seven joint spheres (the Ing's own at guest 0xC50; the guest's 0xD60/0xD64
-  // are this module's own two managers, which the boost half uses).
-  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager;
   rstl::optional_object< CAABox > mTouchBox;            // CIng: 0xCC0
   TUniqueId mHostId;                                     // CIng: 0xCDC
   TUniqueId mPossessedEffectId;                          // CIng: 0xCDE

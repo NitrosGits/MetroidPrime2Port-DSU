@@ -279,12 +279,13 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   DCTV's `510C` (QuitTeam), the light off and the 0x1074/0x1076 trackers' emission 0. The host's
   ACTV `JoinTeam` is the Ing's. `4324`/`44A4` (0xD64 index
   lookups) are in the unported boost half.
-- *0xD60 (not done):* `4E90` builds the body manager (spheres + `AddMaterial` + `SetMaterialFilter`,
-  like the Ing's `fn_29_3190`). Replacing the host's Ing-half `mCollisionActorManager` with it
-  touches `CreateCollisionActorManager`/`SetupCollisionActors`, `SetBodyManagerReflect` (`3190`),
-  `CollisionActorDamage`/`CollisionActorHitPlayer`/`IngSpotDamage` (they look up colliders in it),
-  every `SetActive` in AcceptScriptMsg and the Become* states, Think's Update (0xDA58), kSM_Delete
-  and the dtor; the `skIngJointSpheres` table would give way to `4E90`'s own joints.
+- *0xD60 manager:* `CreateCollisionActorManager` is now `4E90` (kSM_Create 0xDF18): the seven
+  `lbl_30_rodata_0` spheres (same table as the Ing's), `SetupManagerActors` (`4924`), `AddMaterial`
+  Unknown54 + ProjectilePassthrough, filter Solid / CollisionActor, AIPassthrough, Player,
+  Projectile, Bomb. It replaces the Ing-half `single_ptr` manager and `SetupCollisionActors`; both
+  managers are raw pointers deleted in the dtor (0xD64 then 0xD60). Retail calls them unchecked
+  everywhere but AIUpdateDisabled, and so does the host now. Area 28: a sphere hit relays to the
+  guardian; the puddle box takes the IngSpot form's turns.
 
 ## g. Function map
 

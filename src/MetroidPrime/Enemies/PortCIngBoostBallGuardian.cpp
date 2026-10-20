@@ -330,8 +330,11 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
   }
 }
 
-// The guest's dtor deletes both managers (0x0000E7E4 for 0xD64).
-CIngBoostBallGuardian::~CIngBoostBallGuardian() { delete mCollisionActorManager1; }
+// The guest's dtor deletes both managers (0x0000E7E4 for 0xD64, then 0xD60).
+CIngBoostBallGuardian::~CIngBoostBallGuardian() {
+  delete mCollisionActorManager1;
+  delete mCollisionActorManager0;
+}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
