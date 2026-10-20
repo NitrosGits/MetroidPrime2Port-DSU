@@ -1150,7 +1150,13 @@ void CMorphBall::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
 
   if (mBallState == kBS_ScrewAttack || mBallState == kBS_ScrewAttackWallJump) {
     const bool isWall = CMath::AbsF(CVector3f::Dot(mPlayer.GetMovementDirection(), normal)) < 0.9f;
+#ifdef TARGET_PC
+    // Port: retail tests bit 62 (the screw-attack wall surface), not kMT_Wall, and recoils on a
+    // glancing hit (|dot| < 0.9); the upstream test wall-jumped off every wall hit at an angle.
+    if (!allMats.HasMaterial(kMT_ScrewAttackWall) || isWall) {
+#else
     if (!allMats.HasMaterial(kMT_Wall) || !isWall) {
+#endif
       mBallState = kBS_ScrewAttackRecovery;
       mTouchingWall = false;
       if (!CGameCollision::IsFloor(CMaterialList(ScrewAttackWallFloorMaterial), normal)) {
