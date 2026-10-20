@@ -945,7 +945,8 @@ void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
 }
 
 // fn_18_1C34 (0x98): the first heart's vulnerability is saved at guest 0x86C (fn_18_1CCC, the
-// CDamageVulnerability copy) and both hearts turn immune (fn_800DBB60).
+// CDamageVulnerability copy) and both hearts turn immune (fn_800DBB60). Retail has no tests;
+// the port's match fn_18_1BD8's (no collision actors before kSM_AreaLoaded).
 void CEmperorIngStage3::SetHeartsImmune(CStateManager& mgr) {
   CCollisionActor* first = HeartCollisionActor(mgr, 0); // fn_18_3ACC
   if (first != nullptr) {
