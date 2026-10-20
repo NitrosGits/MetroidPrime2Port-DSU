@@ -65,7 +65,21 @@ CScriptConditionalRelay::CScriptConditionalRelay(
 : CEntity(uid, info, name, 0)
 , mPlayerMask(playerMask)
 , mConditions(conditions)
-, mSetToZeroOnAreaLoaded(setToZeroOnAreaLoaded) {}
+, mSetToZeroOnAreaLoaded(setToZeroOnAreaLoaded)
+#ifdef TARGET_PC
+, mPortChecksOnAreaLoad(setToZeroOnAreaLoaded)
+, mPortLastVerdict(false)
+, mPortCheatGeneration(0)
+#endif
+{}
+
+#ifdef TARGET_PC
+static volatile uint sPortCheatGeneration = 0;
+
+void CScriptConditionalRelay::PortNoteInventoryCheat() {
+  sPortCheatGeneration = sPortCheatGeneration + 1;
+}
+#endif
 
 void CScriptConditionalRelay::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId originator = msg.GetOriginator();
@@ -84,7 +98,24 @@ void CScriptConditionalRelay::Think(float dt, CStateManager& mgr) {
   if (mSetToZeroOnAreaLoaded) {
     OnSetToZero(mgr, kInvalidUniqueId);
     mSetToZeroOnAreaLoaded = false;
+#ifdef TARGET_PC
+    mPortLastVerdict = VerifyConditions(mgr, kInvalidUniqueId);
+    mPortCheatGeneration = sPortCheatGeneration;
+#endif
   }
+#ifdef TARGET_PC
+  // A cheat changed the inventory since the area-load check: check again, as if the area had
+  // loaded now, but send only when the verdict changed (an unchanged one would repeat its
+  // messages).
+  else if (mPortChecksOnAreaLoad && mPortCheatGeneration != sPortCheatGeneration) {
+    mPortCheatGeneration = sPortCheatGeneration;
+    const bool verdict = VerifyConditions(mgr, kInvalidUniqueId);
+    if (verdict != mPortLastVerdict) {
+      mPortLastVerdict = verdict;
+      OnSetToZero(mgr, kInvalidUniqueId);
+    }
+  }
+#endif
 }
 
 void CScriptConditionalRelay::OnSetToZero(CStateManager& mgr, TUniqueId originator) {

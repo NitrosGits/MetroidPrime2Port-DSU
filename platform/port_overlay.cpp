@@ -34,6 +34,7 @@
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
@@ -843,6 +844,8 @@ void GrantItem(CPlayerState& ps, CPlayerState::EItemType type, int capacity, int
   // capacity has room for it (which AddPowerUp alone would not do).
   ps.AddPowerUp(type, capacity - ps.GetItemCapacity(type));
   ps.SetItemAmount(type, amount);
+  // A translator gate reads the inventory once, when its area loads; this has it read again.
+  CScriptConditionalRelay::PortNoteInventoryCheat();
 }
 
 struct SItemCheck {

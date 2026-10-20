@@ -47,6 +47,7 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -1640,6 +1641,8 @@ void CmdGive(CStateManager& mgr, const Args& args, bool take, std::string& out) 
     state->AddPowerUp(type, amount);
     state->IncrPickUp(type, amount);
   }
+  // A translator gate reads the inventory once, when its area loads; this has it read again.
+  CScriptConditionalRelay::PortNoteInventoryCheat();
   const char* name = EnumName(kItemNames, kItemCount, static_cast< uint >(item));
   char line[128];
   std::snprintf(line, sizeof(line), "%s %s: %d/%d\n", take ? "took" : "gave",
