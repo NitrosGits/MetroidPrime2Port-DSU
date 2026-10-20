@@ -560,6 +560,7 @@ private:
   float mBoost11D8;                                      // guest 0x11D8
   float mBoost11E0;     // guest 0x11E0: bomb damage relayed by the ball (fn_30_44A4)
   float mBoostHitTimer; // guest 0x1080: skDamageHitTime on a resisted bomb hit; fn_30_CA18 reads it
+  CVector3f mSplatNormal; // guest 0x1104: set by CollidedWith (fn_30_C850), read by fn_30_6980
   int mSafeZoneCount;   // guest 0x115C: XENZ/XEXZ count; read by CA18, C05C, C1B0 and PathFind
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
@@ -576,7 +577,7 @@ private:
   bool mMoving : 1;                                      // CIng: 0xE5D bit 1
   bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
   bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7
-  bool mSplat : 1;                                       // CIng: 0xE5E bit 6
+  bool mSplat : 1; // guest 0x11ED bit 0 (CIng: 0xE5E bit 6): set by CollidedWith (fn_30_C850)
   bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4
   bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6
   bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7

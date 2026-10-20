@@ -12,6 +12,7 @@
 // four-to-twelve-instruction bodies, so they are real rather than stand-ins.
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
+#include "Collision/CCollisionInfoList.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -301,6 +302,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mGrappled(false)
 , mProjectileFSMEntry(false)
 , mSplat(false)
+, mSplatNormal(CVector3f::Zero()) // ctor 0x0000FC58: 0x1104
 , mHurtfulZone(false)
 , mPortalPlane(false)
 , mRenderModel(true) // ctor 0x0000FE3C: 0x11EC 0x01 = 1 (Render's 0x0000D408 test)
@@ -354,11 +356,24 @@ void CIngBoostBallGuardian::EnsureBodyActive(CStateManager& mgr) {
     BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
 }
-// vtable slot 31 = fn_30_C850 (0x1c8): what the boost ball hits.
+// @ fn_30_C850
+// The body projectile splats on the first contact whose left material is level geometry: the
+// contact's normal is kept (0x1104) for SplatOntoMesh and ProjectileSplat fires (0x11ED 0x01).
 void CIngBoostBallGuardian::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                          CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::CollidedWith (vtable slot 31, fn_30_C850)");
   CPatterned::CollidedWith(id, list, mgr);
+  if (mForm != kForm_BodyProjectile) { // 0xAE4
+    return;
+  }
+  static const CMaterialList kSplatMaterials(kMT_Ceiling, kMT_Wall, kMT_Floor, kMT_Solid);
+  for (int i = 0; i < list.GetCount(); ++i) {
+    const CCollisionInfo& info = list[i];
+    if (info.GetMaterialLeft().SharesMaterials(kSplatMaterials)) {
+      mSplatNormal = info.GetNormalLeft(); // 0x0000C9D8
+      mSplat = true;                       // 0x0000C9E8: 0x11ED 0x01
+      return;
+    }
+  }
 }
 
 // vtable slot 58 = fn_30_C6CC (0x8c): CPatterned's own setup, then the three name tables are
