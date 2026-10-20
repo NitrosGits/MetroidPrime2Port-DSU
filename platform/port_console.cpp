@@ -38,6 +38,7 @@
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
 #include "MetroidPrime/CEntityInfo.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
@@ -45,6 +46,8 @@
 #include "Collision/CMaterialFilter.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
 
@@ -470,8 +473,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
-      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile or\n"
-      "                            cannonball; kb = knockback power)\n"
+      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
+      "                            cannonball, dark or light; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -497,8 +500,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
-      "obj <id>                    one object (an id as `objs` prints it: u046e): health, messages\n"
+      "obj <id>                    one object (an id as `objs` prints it: u046e): health, fsm, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
+      "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
@@ -1293,6 +1297,33 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
                   health->GetInitialHP());
     out += line;
   }
+  // A patterned's FSM state, which is what `hurt` is usually driven against. Upstream has only the
+  // non-const accessor (CPatterned::StateMachineState), and it static_casts to TStateMachineState
+  // even when the object holds a CGenericFSM2State (GetType() 1) - a different member layout, so
+  // reading TStateMachineState's own mState through that cast reads a vector's guts as a CState*.
+  // The base subobject sits at the same address under both, so take it as the base interface and
+  // make only virtual calls; the state's own data is touched only on the AFSM type.
+  const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
+  if (patterned != nullptr) {
+    TStateMachineStateBase< CPatterned >* machine =
+        &const_cast< CPatterned* >(patterned)->StateMachineState();
+    const char* name = machine->HasState() ? machine->GetName() : nullptr;
+    if (name != nullptr && name[0] != '\0') {
+      out += "  fsm ";
+      out += name;
+      out += '\n';
+    } else if (!machine->HasState()) {
+      out += "  fsm (none)\n";
+    } else if (machine->GetType() == 0) {
+      const CState* state =
+          static_cast< TStateMachineState< CPatterned >* >(machine)->GetCurrentState();
+      char line[32];
+      std::snprintf(line, sizeof(line), "  fsm #%d\n", state != nullptr ? state->GetIndex() : -1);
+      out += line;
+    } else {
+      out += "  fsm (unnamed)\n";
+    }
+  }
   for (const SConnection& conn : ent->GetConnectionList()) {
     const CEntity* target = mgr.GetObjectById(mgr.GetIdForScript(conn.objId));
     char line[256];
@@ -1311,7 +1342,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
-    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball]");
+    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1327,10 +1358,14 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Missile;
     } else if (args[i] == "cannonball") {
       weapon = kWT_CannonBall;
+    } else if (args[i] == "dark") {
+      weapon = kWT_Dark;
+    } else if (args[i] == "light") {
+      weapon = kWT_Light;
     } else if (args[i] == "power") {
       weapon = kWT_Power;
     } else {
-      Fail("damage: weapon is power, missile or cannonball");
+      Fail("damage: weapon is power, missile, cannonball, dark or light");
       return;
     }
   }
@@ -1380,6 +1415,42 @@ void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
                 NameOrHex(kMessageNames, kMessageCount, static_cast< uint >(msg)).c_str(),
                 uid.value, editorId);
   out += line;
+}
+
+// hurt <id> <amount> [weaponType]: put a CDamageInfo on an object through the same path a shot takes,
+// so an enemy's FSM reacts to it (a state change, a flinch, a death). The weapon type is the raw
+// EWeaponType the vulnerability tables use; 0 is the power beam. No damager object, so the damage
+// takes the target's plain vulnerability and no directional bonus (CStateManager::ApplyDamage reads
+// the weapon mode only to reject kWT_None).
+void CmdHurt(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 3) {
+    Fail("usage: hurt <id> <amount> [weaponType]");
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  if (ent == nullptr) {
+    return;
+  }
+  const float amount = static_cast< float >(std::atof(Str(args[2]).c_str()));
+  if (!(amount > 0.f)) {
+    Fail("amount must be > 0");
+    return;
+  }
+  const int type = args.size() > 3 ? ArgToInt(args[3], 0) : 0;
+  const TUniqueId uid = ent->GetUniqueId();
+  mgr.ApplyDamage(kInvalidUniqueId, uid, kInvalidUniqueId,
+                  CDamageInfo(CWeaponMode(static_cast< EWeaponType >(type)), amount, 0.f, 0.f),
+                  CMaterialFilter::GetPassEverything(), CVector3f::Zero());
+  char line[128];
+  std::snprintf(line, sizeof(line), "hurt u%04x %.0f (weapon %d)\n", uid.value, amount, type);
+  out += line;
+  const CActor* actor = TCastToConstPtr< CActor >(ent);
+  const CHealthInfo* health = actor != nullptr ? actor->GetHealthInfo() : nullptr;
+  if (health != nullptr) {
+    std::snprintf(line, sizeof(line), "  hp %.0f/%.0f\n", health->GetHP(),
+                  health->GetInitialHP());
+    out += line;
+  }
 }
 
 void CmdVisor(CStateManager& mgr, const Args& args, std::string& out) {
@@ -1854,6 +1925,7 @@ constexpr SCommand kCommands[] = {
     {"objs", CmdObjs, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
+    {"hurt", CmdHurt, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},

@@ -1,8 +1,8 @@
 // The 39 triggers of the SpacePirate state machine (retail table fn_72_10E50 ->
-// lbl_72_data_1D8). The trivial retail bodies (under 0x100 bytes, read from
-// build/G2ME01/SpacePirate/m2c/fn_72_<off>.c) are translated; every other one returns false behind
-// a once-per-name StandIn that names the retail function. Triggers that read a flag bit use the
-// names in CSpacePirate.hpp (MP1's where the mask matches).
+// lbl_72_data_1D8). Every one of them is retail's: the bodies follow the REL's disassembly
+// (build/G2ME01/SpacePirate/asm/auto_00_00000000_text.s), and the m2c pseudo-C
+// (build/G2ME01/SpacePirate/m2c/fn_72_<off>.c) is only a reading aid. Triggers that read a flag
+// bit use the names in CSpacePirate.hpp (MP1's where the mask matches).
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -10,15 +10,17 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CMetroid.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTargetingPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "rstl/algorithm.hpp"
 
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-void PortSpacePirateStandIn(const char* what);
 
 // PortCSpacePirate.cpp's TraceCall sits in that file's anonymous namespace, so it has no external
 // linkage to declare here; this is the same MP2_DEBUG_SPACEPIRATE gate and line format, so a run
@@ -66,33 +68,156 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   return delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
 }
 
+// @ fn_72_ADC0
+// The 208 cycle does evaluate this trigger (2851 calls in the 2026-10-20 run), but it is always
+// false there, so only the first branch is proven by the run.
+// Retail: a pirate with the non-aggressive bit (0x8f4 mask 0x20) never charges. Otherwise it
+// charges when it is always aggressive (0x8f8 mask 0x20), or when no pirate is charging yet (the
+// module's static charge list at bss_40 is empty) and the player has been out of sight for more
+// than 10 s (rodata B58). A charging pirate that is not in that list yet adds its id to it: the
+// asm walk ends at the list's tail sentinel, so "reached the tail" means "not in the list" and
+// pushes (fn_72_AEB8 -> fn_72_AEE0 is a push_back), while a match stops the walk and does not.
+// @ fn_72_ADC0 (0xF8): the AggressionCheck trigger.
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::AggressionCheck trigger (fn_72_ADC0)");
-  return false;
+  bool result = false;
+  if (!x8f4_26_nonAggressive) {
+    if (x8f8_26_alwaysAggressive) {
+      result = true;
+    } else if (mChargePlayerList.empty() && xa7c_timeNoPlayerLos > 10.f) {
+      result = true;
+    }
+    if (result) {
+      if (rstl::find(mChargePlayerList.begin(), mChargePlayerList.end(), GetUniqueId()) ==
+          mChargePlayerList.end()) {
+        mChargePlayerList.push_back(GetUniqueId());
+      }
+    }
+  }
+  TraceCall(*this, "AggressionCheck trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) const {
   return x8f8_27_coverCheck;
 }
 
+// fn_72_ABC0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the AiWaypoint object list (mgr+0x838) is scanned for the cover points this pirate
+// could take - active (0x20 bit 7), not a land-hang point (fn_800EC6A8), not reserved by this
+// pirate (fn_800EC550 with this pirate's id), in this area, not the cover point it used last
+// time (0x902) and closer than mData.mSearchRadius (0x7c8) squared. The closest one that is
+// not blown by the target position (fn_72_CB30, not the player) wins. Then the old cover point
+// is released (retainCooldown 1), the new one taken, 0x902 remembers it and 0x914 becomes
+// -cover forward. The target is fetched again through the object list, so a point that vanished
+// leaves the trigger false.
 bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoverFind trigger (fn_72_ABC0)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = false;
+  float minDistSq = mData.mSearchRadius * mData.mSearchRadius;
+  const CScriptCoverPoint* closest = nullptr;
+  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptCoverPoint* point = TCastToConstPtr< CScriptCoverPoint >(list[i]);
+    if (point == nullptr) {
+      continue;
+    }
+    if (!point->GetActive() || point->ShouldLandHere() || point->GetInUse(GetUniqueId()) ||
+        point->GetCurrentAreaId() != GetCurrentAreaId() ||
+        point->GetUniqueId() == self->x902_previousCoverPoint) {
+      continue;
+    }
+    const float distSq = (GetTranslation() - point->GetTranslation()).MagSquared();
+    if (distSq >= minDistSq) {
+      continue;
+    }
+    if (point->Blown(self->GetTargetPos(mgr))) {
+      continue;
+    }
+    minDistSq = distSq;
+    closest = point;
+  }
+  if (closest != nullptr) {
+    self->ReleaseCoverPoint(mgr, self->x900_coverPoint, true);
+    CScriptCoverPoint* point = TCastToPtr< CScriptCoverPoint >(mgr.ObjectById(closest->GetUniqueId()));
+    if (point != nullptr) {
+      self->SetCoverPoint(point, self->x900_coverPoint);
+      result = true;
+      self->x902_previousCoverPoint = self->x900_coverPoint;
+      self->x914_coverPointRearDir = -closest->GetTransform().GetForward();
+    }
+  }
+  TraceCall(*this, "CoverFind trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_AA64. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the point that is tested is the pirate's own target position (fn_72_CB30), not the
+// player. Inside the minimum attack range (0x3dc) the cover is not blown yet, so the trigger is
+// true. Outside it the cover point reports whether that target is inside its safe angle
+// (fn_800EC5A0). A cover that is not blown but more than 3 * scaleY away from the pirate (the
+// model's Y scale, 0x60) also counts as blown - the asm compares the squared distance with
+// 3.0 * scaleY, it does not square the radius.
 bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoverBlown trigger (fn_72_AA64)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = true;
+  const CVector3f target = self->GetTargetPos(mgr);
+  const CVector3f toTarget = target - GetTranslation();
+  if (toTarget.MagSquared() > mMinAttackRange * mMinAttackRange) {
+    const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
+    if (point != nullptr) {
+      result = point->Blown(target);
+      if (!result && x904_steeringSpeed == 0.f &&
+          GetBodyController()->GetCurrentStateId() != pas::kAS_Step) {
+        const CVector3f toCover = point->GetTranslation() - GetTranslation();
+        if (toCover.MagSquared() > 3.f * GetModelData()->GetScale().GetY()) {
+          result = true;
+        }
+      }
+    }
+  }
+  TraceCall(*this, "CoverBlown trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_A988. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: with no cover point the trigger is true. With one it asks whether the cover is blown
+// by the attack target's position plus its velocity (1.0 * velocity, so the raw velocity is
+// added). The target is the pirate's attack target cast to CPlayer - not mgr.GetPlayer() - so a
+// missing or non-player target leaves the trigger false.
 bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoverNearlyBlown trigger (fn_72_A988)");
-  return false;
+  bool result = true;
+  const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
+  if (point != nullptr) {
+    result = false;
+    const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
+    if (player != nullptr) {
+      const CVector3f pos = player->GetTranslation() + player->GetVelocityWR();
+      result = point->Blown(pos);
+    }
+  }
+  TraceCall(*this, "CoverNearlyBlown trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_A8D0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the listening-AI object list (mgr+0x830) is scanned for other pirates; one of them
+// that has its in-attack-state bit (0x8f6 mask 0x01) set and is in this area means this pirate
+// is covering that one's fire. The scan does not stop at the first hit.
 bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::CoveringFire trigger (fn_72_A8D0)");
-  return false;
+  bool result = false;
+  const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CSpacePirate* pirate = TCastToConstPtr< CSpacePirate >(list[i]);
+    if (pirate == nullptr || pirate == this) {
+      continue;
+    }
+    if (!pirate->x8f6_31_inAttackState || pirate->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    result = true;
+  }
+  TraceCall(*this, "CoveringFire trigger", result ? 1 : 0);
+  return result;
 }
 
 // fn_72_A71C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
@@ -225,12 +350,21 @@ bool CSpacePirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
   return x8f9_27_inRange;
 }
 
+// @ fn_72_99A4. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the pirate's own cover point (0x900) is fetched; with no cover point the trigger is
+// false, with one it is whatever the cover point's crouch flag says (fn_800EC6CC, returned
+// unmasked).
 bool CSpacePirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldCrouch trigger (fn_72_99A4)");
-  return false;
+  bool result = false;
+  const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
+  if (point != nullptr) {
+    result = point->ShouldCrouch();
+  }
+  TraceCall(*this, "ShouldCrouch trigger", result ? 1 : 0);
+  return result;
 }
 
-// fn_72_7BD4. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_7BD4. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) const {
   const CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint);
   const bool result = cover != nullptr && !cover->ShouldStay();
@@ -251,14 +385,72 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
   return xb24_timeSinceHitByPlayer < window;
 }
 
+// @ fn_72_7970
+// The 208 cycle does evaluate this trigger (about 2850 calls in the 2026-10-20 run), but it is
+// always false there and the attack target is the player every time, so only the box/near-list
+// branch is proven by the run: the team-target branch and the active-non-player early return are
+// not.
+// Retail: the attack target (0xa94) is cast to CActor and then to CPlayer. An active non-player
+// target ends the trigger right there (true, nothing else runs). Otherwise the body runs: with
+// no player target the pirate picks a team target (fn_72_EFD4, which returns the id), tells the
+// squad (fn_72_DE5C) and points its bone tracking at that target. Then a CAABox around the
+// translation - the margin is mData.mSearchRadius (0x7c8) times the rodata constant 1.0 - is
+// searched for targeting points, with the filter built from the rodata word lbl_72_data_8A8
+// (0x3b = kMT_Solid) as an exclude list (include 0xffffffff, exclude 1 << 59, type 2). The first
+// targeting point that is active, in this area and not locked (fn_8012CB70) becomes the attack
+// target; the squad is told and the bone tracking follows. The asm breaks out of the loop on
+// that first hit (the m2c loop only looks like it does not advance).
+// @ fn_72_7970 (0x1FC): the HasTargetingPoint trigger.
 bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::HasTargetingPoint trigger (fn_72_7970)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = false;
+  const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget));
+  const CPlayer* player = TCastToConstPtr< CPlayer >(actor);
+  if (player == nullptr && actor != nullptr && actor->GetActive()) {
+    TraceCall(*this, "HasTargetingPoint trigger", 1);
+    return true;
+  }
+  if (player == nullptr) {
+    self->mAttackTarget = self->ChooseTeamTarget(mgr);
+    self->UpdateTeamTarget(mgr);
+    self->mBoneTracking.SetTarget(self->mAttackTarget);
+  }
+  const float margin = mData.mSearchRadius * 1.f;
+  const CVector3f center = GetTranslation();
+  const CAABox bounds(center - CVector3f(margin, margin, margin),
+                      center + CVector3f(margin, margin, margin));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeExclude(CMaterialList(kMT_Solid)),
+                     nullptr);
+  for (uint i = 0; i < nearList.size(); ++i) {
+    const CScriptTargetingPoint* point =
+        TCastToConstPtr< CScriptTargetingPoint >(mgr.GetObjectById(nearList[i]));
+    if (point == nullptr || !point->GetActive() ||
+        point->GetCurrentAreaId() != GetCurrentAreaId() || point->GetLocked()) {
+      continue;
+    }
+    result = true;
+    self->mAttackTarget = point->GetUniqueId();
+    self->UpdateTeamTarget(mgr);
+    self->mBoneTracking.SetTarget(self->mAttackTarget);
+    break;
+  }
+  TraceCall(*this, "HasTargetingPoint trigger", result ? 1 : 0);
+  return result;
 }
 
+// @ fn_72_767C. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the pirate's own cover point (0x900) is fetched; with no cover point the trigger is
+// false, with one it is the cover point's wall-hang flag (fn_800EC6B4, tested on the top byte
+// of the return value).
 bool CSpacePirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::ShouldWallHang trigger (fn_72_767C)");
-  return false;
+  bool result = false;
+  const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
+  if (point != nullptr) {
+    result = point->ShouldWallHang();
+  }
+  TraceCall(*this, "ShouldWallHang trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
@@ -408,28 +600,128 @@ bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) co
   return x8f4_29_onlyAttackInRange && mAttackRemTime < 1.5f;
 }
 
+// fn_72_602C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the AiWaypoint object list (mgr+0x838) is scanned for the jump point this pirate
+// should bounce off. A candidate has to be active (0x20 bit 7), free (fn_8014FFF0 with this
+// pirate's id), of type 0 (0x15c), have a next waypoint (0x182 != kInvalidUniqueId) and be in
+// this area (0x4 == the pirate's). It then has to be closer than the best candidate so far and
+// its forward (0x28/0x38/0x48 = the transform's forward) has to point along the way to it.
+// The score is the squared distance to the jump point plus the squared distance from the
+// pirate's destination (0x334) to the next waypoint, with the height part of that second
+// distance weighted 9 times (the asm adds 9*dz^2 on top of the plain dz^2 of the square).
+// The next waypoint's forward has to point along the way to the destination as well.
+// The path find search then has to connect the pirate to the jump point, and the next waypoint
+// to the destination; the latter failing costs 1000 but does not rule the candidate out. The
+// lowest score wins, and the scan stops as soon as a candidate that reaches the destination
+// beats the best score so far.
+// The winner's current waypoint (0x180) decides: only if it still resolves does the pirate get
+// the jump point's translation as its destination, its id (0xb14), its jump apex (0x158 ->
+// 0xaf8) and the current waypoint's translation (0xafc).
 bool CSpacePirate::BounceFind(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::BounceFind trigger (fn_72_602C)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = false;
+  float bestScore = FLT_MAX;
+  const CScriptAiJumpPoint* best = nullptr;
+  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptAiJumpPoint* jumpPoint = TCastToConstPtr< CScriptAiJumpPoint >(list[i]);
+    if (jumpPoint == nullptr || !jumpPoint->GetActive() || jumpPoint->GetInUse(GetUniqueId()) ||
+        jumpPoint->GetType() != 0 || jumpPoint->GetJumpTarget() == kInvalidUniqueId ||
+        jumpPoint->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f toJump = jumpPoint->GetTranslation() - GetTranslation();
+    const float distSq = toJump.MagSquared();
+    if (distSq >= bestScore) {
+      continue;
+    }
+    if (CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) <= 0.f) {
+      continue;
+    }
+    const CScriptWaypoint* waypoint =
+        TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(jumpPoint->GetJumpTarget()));
+    if (waypoint == nullptr) {
+      continue;
+    }
+    const CVector3f toDest = mDestPos - waypoint->GetTranslation();
+    float score = distSq + toDest.MagSquared() + 9.f * toDest.GetZ() * toDest.GetZ();
+    if (score >= bestScore) {
+      continue;
+    }
+    if (CVector3f::Dot(waypoint->GetTransform().GetForward(), toDest) <= 0.f) {
+      continue;
+    }
+    if (self->GetSearchPath()->PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
+        CPathFindSearch::kR_Success) {
+      continue;
+    }
+    bool reachesDest = false;
+    if (self->GetSearchPath()->PathExists(waypoint->GetTranslation(), mDestPos) !=
+        CPathFindSearch::kR_Success) {
+      score += 1000.f;
+    } else {
+      reachesDest = true;
+    }
+    if (score >= bestScore) {
+      continue;
+    }
+    bestScore = score;
+    best = jumpPoint;
+    if (reachesDest) {
+      break;
+    }
+  }
+  if (best != nullptr) {
+    const CScriptWaypoint* waypoint =
+        TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(best->GetJumpPoint()));
+    if (waypoint != nullptr) {
+      self->SetDestPos(best->GetTranslation());
+      result = true;
+      self->xb14_jumpPoint = best->GetUniqueId();
+      self->xaf8_jumpHeight = best->GetJumpApex();
+      self->xafc_patrolDestPos = waypoint->GetTranslation();
+    }
+  }
+  TraceCall(*this, "BounceFind trigger", result ? 1 : 0);
+  return result;
 }
 
+// @ fn_72_55B8
+// The 208 cycle does evaluate this trigger (2980 calls in the 2026-10-20 run), but it is always
+// false there (the pirates stand on the ground), so only the body-state test is proven.
+// Retail: false while the body is in the jump state (the body controller's state word at +0x37c
+// compared with 0xd = pas::kAS_Jump); otherwise the opposite of IsOnGround (the vtable slot
+// 0x110 call, whose result is tested on the top byte).
 bool CSpacePirate::OffLine(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::OffLine trigger (fn_72_55B8)");
-  return false;
+  bool result = false;
+  if (GetBodyController()->GetCurrentStateId() != pas::kAS_Jump && !IsOnGround()) {
+    result = true;
+  }
+  TraceCall(*this, "OffLine trigger", result ? 1 : 0);
+  return result;
 }
 
+// @ fn_72_558C. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the vtable slot 0x110 call (IsOnGround) and nothing else; its result is returned
+// unmasked.
 bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::Landed trigger (fn_72_558C)");
-  return false;
+  const bool result = IsOnGround();
+  TraceCall(*this, "Landed trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
 
+// @ fn_72_52F8. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the leash timer (0xbb0) against the trigger's float argument. `fcmpo cr0` + `mfcr` +
+// `extrwi r3, r0, 1, 1` takes CR bit 1, cr0's GT bit (LT is bit 0, EQ bit 2), so the trigger is
+// "timer > argument", as in MP1.
 bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::Leash trigger (fn_72_52F8)");
-  return false;
+  const bool result = xbb0_leashTimer > data.GetFloat();
+  TraceCall(*this, "Leash trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) const {
@@ -440,13 +732,13 @@ bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) co
   return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
 }
 
-// Retail fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -
+// @ fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -
 // and the attack timer has run out (rodata B9C = 0, compared with the `cror lt/eq` idiom, so `<= 0`).
 bool CSpacePirate::ShouldLaunchGrenade(CStateManager& mgr, const CTriggerData& data) const {
   return mData.mEquippedWeapon == 1 && mAttackRemTime <= 0.f;
 }
 
-// Retail fn_72_76D0 (0xD4): a switch on the same launcher word. Unarmed (0) is always in range,
+// @ fn_72_76D0 (0xD4): a switch on the same launcher word. Unarmed (0) is always in range,
 // anything but 0/1 never is, and the grenade launcher (1) wants a live attack target whose
 // squared 3-D distance to the pirate falls inside [minAttackDist, maxAttackDist] squared
 // (data +0x12c/+0x130, rodata-free: both bounds are inclusive `cror ge`/`cror le` tests).
@@ -468,7 +760,7 @@ bool CSpacePirate::InProjectileRange(CStateManager& mgr, const CTriggerData& dat
   }
 }
 
-// Retail fn_72_7810 (0x54): the pirate has an attack pattern when its ATTK/FOLW connection
+// @ fn_72_7810 (0x54): the pirate has an attack pattern when its ATTK/FOLW connection
 // resolves to a live object (asm: GetConnectedObject, then the `id != kInvalidUniqueId` idiom).
 bool CSpacePirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;

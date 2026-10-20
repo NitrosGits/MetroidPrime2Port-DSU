@@ -777,25 +777,30 @@ set(MP_MODULE_WallCrawler_SOURCES
     src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 )
 set(MP_MODULE_CommandoPirate_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
 )
 set(MP_MODULE_DarkSamus_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamus.cpp
 )
 set(MP_MODULE_DigitalGuardian_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
+    src/MetroidPrime/Enemies/PortCDigitalGuardianKneeArmor.cpp
 )
 set(MP_MODULE_ElitePirate_SOURCES
     src/MetroidPrime/Enemies/PortCElitePirate.cpp
+    src/MetroidPrime/Enemies/PortCElitePirateCombat.cpp
+    src/MetroidPrime/Enemies/PortCElitePirateMove.cpp
 )
 set(MP_MODULE_EmperorIngStage1_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp
 )
 set(MP_MODULE_EmperorIngStage3_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCEmperorIngStage3.cpp
 )
 set(MP_MODULE_Ing_SOURCES
     src/MetroidPrime/Enemies/PortCIng.cpp
+    src/MetroidPrime/Enemies/PortCIngExitHostEffect.cpp
+    src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp
 )
 set(MP_MODULE_IngBoostBallGuardian_SOURCES
     src/MetroidPrime/Enemies/PortCBoostBallGuardianBall.cpp
@@ -814,13 +819,21 @@ set(MP_MODULE_MinorIng_SOURCES
     src/MetroidPrime/Enemies/PortCMinorIng.cpp
 )
 set(MP_MODULE_SandBoss_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSandBoss.cpp
+    src/MetroidPrime/Enemies/PortCSandBossAttacks.cpp
+    src/MetroidPrime/Enemies/PortCSandBossStates.cpp
 )
 set(MP_MODULE_Sandworm_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSandworm.cpp
+    src/MetroidPrime/Enemies/PortCSandwormAttacks.cpp
+    src/MetroidPrime/Enemies/PortCSandwormBombs.cpp
+    src/MetroidPrime/Enemies/PortCSandwormEye.cpp
+    src/MetroidPrime/Enemies/PortCSandwormRender.cpp
+    src/MetroidPrime/Enemies/PortCSandwormSpine.cpp
+    src/MetroidPrime/Enemies/PortCSandwormStates.cpp
 )
 set(MP_MODULE_ScriptPlayerTurret_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp
 )
 set(MP_MODULE_SnakeWeedSwarm_SOURCES
     src/MetroidPrime/Enemies/PortCSnakeWeedSwarm.cpp
@@ -831,13 +844,14 @@ set(MP_MODULE_SpacePirate_SOURCES
     src/MetroidPrime/Enemies/PortCSpacePirateTriggers.cpp
 )
 set(MP_MODULE_Splitter_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSplitterCommandModule.cpp
+    src/MetroidPrime/Enemies/PortCSplitterMainChassis.cpp
 )
 set(MP_MODULE_SwampBossStage1_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp
 )
 set(MP_MODULE_SwampBossStage2_SOURCES
-    src/MetroidPrime/PortModuleStubs.cpp
+    src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp
 )
 set(MP_MODULE_WallCrawlerSwarm_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp

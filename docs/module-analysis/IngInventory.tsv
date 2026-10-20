@@ -1,0 +1,493 @@
+# Ing       265 fns: MARKED 100, BODY 68, INLINED 3, NONE 94
+# MinorIng  208 fns: MARKED 103, BODY 10, INLINED 0, NONE 95
+# bytes in NONE: Ing 15608 (0x3cf8), MinorIng 12224 (0x2fc0), total 27832 (0x6cb8)
+# 15 largest NONE:
+#   1. fn_29_F2C8   0xcc0   static init (the FSM tables)
+#   2. fn_29_16AC   0x3d4   ctor helper: SLdrEditorProperties
+#   3. fn_44_194C   0x394   loader helper (the ing spot property)
+#   4. fn_44_1CE0   0x358   loader helper (the unknown_0x3da35851 property)
+#   5. fn_44_9B4    0x290   CMinorIngData ctor (the loader's data block)
+#   6. fn_29_D128   0x1e4   dtor helper (vtable reset + CToken)
+#   7. fn_44_9940   0x1e4   dtor helper (vtable reset + CToken)
+#   8. fn_29_CF64   0x1c4   CIng dtor (vtable lbl_29_data_A24)
+#   9. fn_29_2270   0x1a4   sfx emitter
+#  10. fn_44_A9DC   0x19c   struct copy (8 words)
+#  11. fn_44_14D8   0x188   ctor helper: SLdrEditorProperties
+#  12. fn_44_A680   0x184   vector3f array builder (appends pairs)
+#  13. fn_29_37D8   0x170   entity pointer cast
+#  14. fn_44_204C   0x15c   vtable thunk (slot 0xe0)
+#  15. fn_44_97E4   0x15c   vtable reset + free helper
+module	fn	size	class	role
+Ing	fn_29_0	0x8	NONE	offset getter (+0x9dc)
+Ing	fn_29_8	0x8	NONE	offset getter (+0xac8)
+Ing	fn_29_10	0x8	NONE	constant: 1
+Ing	fn_29_18	0xc	NONE	constant: 1.0f
+Ing	fn_29_24	0x8	NONE	field getter (+0x44f)
+Ing	fn_29_2C	0x8	NONE	constant: 0
+Ing	fn_29_34	0x8	NONE	constant: 0
+Ing	fn_29_3C	0x10	NONE	constant: kInvalidUniqueId
+Ing	fn_29_4C	0xc	NONE	bit getter (bit 3)
+Ing	fn_29_58	0xc	NONE	constant (rodata)
+Ing	fn_29_64	0x8	NONE	offset getter (+0x754)
+Ing	fn_29_6C	0x8	NONE	constant: 1
+Ing	fn_29_74	0x1c	NONE	vector3f copy (from +0x54)
+Ing	fn_29_90	0x2c	NONE	vtable thunk (slot 0x38)
+Ing	fn_29_100	0x30	BODY	Retail's RELMain calls , which stores the loader into lbl 29 bss 6C (t
+Ing	fn_29_130	0xfc8	BODY	loader (LoadIng), see A.4
+Ing	fn_29_10F8	0x94	NONE	dtor helper: SLdrPlasmaBeamInfo
+Ing	fn_29_118C	0x58	NONE	dtor helper: SLdrPlasmaBeamInfo
+Ing	fn_29_11E4	0x58	NONE	dtor helper: CDamageVulnerability
+Ing	fn_29_123C	0x58	NONE	dtor helper: CDamageVulnerability
+Ing	fn_29_1294	0x40	NONE	doc: into optional<CModelData> (sp+0x3a8); returns null if empty (valid byt
+Ing	fn_29_12D4	0x20	NONE	wrapper -> fn_29_12F4
+Ing	fn_29_12F4	0x28	NONE	wrapper -> fn_29_131C
+Ing	fn_29_131C	0x13c	NONE	token lock/copy
+Ing	fn_29_1458	0x6c	NONE	dtor helper: CToken
+Ing	fn_29_14C4	0x54	NONE	dtor helper: CToken
+Ing	fn_29_1518	0x64	NONE	dtor helper: CAnimData
+Ing	fn_29_157C	0x60	NONE	dtor helper: CModelData
+Ing	fn_29_15DC	0xd0	NONE	dtor helper: SLdrDamageVulnerability
+Ing	fn_29_16AC	0x3d4	NONE	ctor helper: SLdrEditorProperties
+Ing	fn_29_1A80	0x1ac	BODY	: turn to the lure safe zone (0xd78) when one is set, else to the targ
+Ing	fn_29_1C2C	0x6c	BODY	: the lure zone is dropped unless it is an active safe zone of type 2 
+Ing	fn_29_1C98	0x15c	BODY	zone ( , the shared PortIngLuredDest does it); the path search's flags
+Ing	fn_29_1DF4	0x128	NONE	object lookup
+Ing	fn_29_1F1C	0x17c	MARKED	SpawnExitHostSmoke(mgr);
+Ing	fn_29_2098	0x58	NONE	wrapper -> fn_29_20F0
+Ing	fn_29_20F0	0x54	NONE	delete helper (frees the object)
+Ing	fn_29_2144	0x50	BODY	rstl::string("Grenchler.rel") there and registers as its destructor), 
+Ing	fn_29_2194	0xdc	BODY	StopSfx(); , asm 0x0000CBC8
+Ing	fn_29_2270	0x1a4	NONE	sfx emitter
+Ing	fn_29_2414	0x270	MARKED	@ : the ing-spot hit effect explosion, from the heavy token
+Ing	fn_29_2684	0x45c	MARKED	@ : a weapon (or the player) hit a collision actor. The actor carries 
+Ing	fn_29_2AE0	0x90	NONE	packed flags (0x1fff mask)
+Ing	fn_29_2B70	0x31c	MARKED	@ : a shot on the ing-spot form. The hit resets the reaction timer and
+Ing	fn_29_2E8C	0x4c	MARKED	@ : the ing-spot form reacts to the hit itself, every
+Ing	fn_29_2ED8	0x13c	MARKED	@ (kSM HitObject): when a collision actor that last touched the player
+Ing	fn_29_3014	0x128	BODY	Ing's own health and vulnerability ( ), the Unknown54 material and a S
+Ing	fn_29_313C	0x54	NONE	struct copy (4 words)
+Ing	fn_29_3190	0x23c	BODY	builds the 0x18 CCollisionActorManager
+Ing	fn_29_33CC	0x38	NONE	wrapper -> fn_29_3404
+Ing	fn_29_3404	0x20	NONE	wrapper -> fn_29_3424
+Ing	fn_29_3424	0x28	NONE	wrapper -> fn_29_344C
+Ing	fn_29_344C	0xc0	NONE	struct copy (9 words)
+Ing	fn_29_350C	0x5c	NONE	delete helper (frees the object)
+Ing	fn_29_3568	0x84	NONE	delete helper (frees the object)
+Ing	fn_29_35EC	0x38	NONE	struct copy (1 word)
+Ing	fn_29_3624	0x60	NONE	struct copy (1 word)
+Ing	fn_29_3684	0xa8	BODY	team->QuitTeam(GetUniqueId());
+Ing	fn_29_372C	0xac	BODY	(its only caller is SetTargetDest, )
+Ing	fn_29_37D8	0x170	NONE	entity pointer cast
+Ing	fn_29_3948	0x208	BODY	MoveOnSurface(delta.AsNormalized(), mData.mIngSpot.GetMaxWallSpeed(), 
+Ing	fn_29_3B50	0x108	NONE	patterned AI
+Ing	fn_29_3C58	0x11c	BODY	: the touch box is a fixed 5x5x1.5 box on the Ing's position, neither 
+Ing	fn_29_3D74	0xa8	MARKED	@ : the box between two points, three units taller at each end (retail
+Ing	fn_29_3E1C	0x400	MARKED	@ : the segment test of one arm. Four boxes along the arm (shoulder-el
+Ing	fn_29_421C	0x50	MARKED	@ : which arm swings; true is the left (0xd80..), false the right (0xd
+Ing	fn_29_426C	0xc0	BODY	(CIng::Think's call at asm 0x0000C7A0). The forms: the two host forms 
+Ing	fn_29_432C	0x13c	NONE	vector3f add (three members)
+Ing	fn_29_4468	0xa8	BODY	: the target's aim position (vtable slot 0x54, CActor::GetAimPosition,
+Ing	fn_29_4510	0x50	BODY	: the picked hint goes in use and becomes both the current and the las
+Ing	fn_29_4560	0x5c	BODY	(retail always passes 0xd72, mCoverHintId).
+Ing	fn_29_45BC	0x48	MARKED	@ : the REL's own is the cover-hint lookup (mCoverHintId at 0xd72, the
+Ing	fn_29_4604	0x22c	BODY	align actor to a surface normal (SetTransform)
+Ing	fn_29_4830	0x130	NONE	allocator
+Ing	fn_29_4960	0x148	NONE	object lookup
+Ing	fn_29_4AA8	0xa4	NONE	struct copy (10 words)
+Ing	fn_29_4B4C	0x13c	NONE	light
+Ing	fn_29_4C88	0x90	BODY	kSM Create ( ). Kept as a guard for the entry points that can run firs
+Ing	fn_29_4D18	0x1fc	MARKED	@ : the grapple's expiry, reached in the same run ( expel: hit reactio
+Ing	fn_29_4F14	0x1f0	MARKED	@ : the body projectile hit the mesh, so the Ing splats back
+Ing	fn_29_5104	0x48	NONE	vtable reset + free helper
+Ing	fn_29_514C	0x44	BODY	(not yet exercised in a run): the team attack ends, but the Ing keeps 
+Ing	fn_29_5190	0x40	BODY	(not yet exercised in a run): the Ing starts a projectile attack on it
+Ing	fn_29_51D0	0x210	BODY	(not yet exercised in a run): the point-graph route to the lure point 
+Ing	fn_29_53E0	0x108	BODY	(not yet exercised in a run): the lure point is the nav-mesh point bel
+Ing	fn_29_54E8	0x22c	MARKED	@ . Where the exit host lands: the AI hint that best matches
+Ing	fn_29_5714	0x10c	BODY	(not yet exercised in a run): the point-graph route to the cover hint.
+Ing	fn_29_5820	0x1b0	MARKED	@ : the point-graph route to the cover hint. Filter (20, 0, -1) from t
+Ing	fn_29_59D0	0xf4	MARKED	@ : two closest-point queries from the Ing's own position - filter (20
+Ing	fn_29_5AC4	0x9c	MARKED	@ : destination = the cover hint's translation when there is one, else
+Ing	fn_29_5B60	0xc8	MARKED	(its only caller is SetTargetDest, )
+Ing	fn_29_5C28	0x88	BODY	(not yet exercised in a run)
+Ing	fn_29_5CB0	0x358	MARKED	@ : the Ing dies. Exercised in Agon 01 sand entrance dark
+Ing	fn_29_6008	0x150	MARKED	@ : asks the body for one projectile attack; the animation's
+Ing	fn_29_6158	0x5c	NONE	vtable reset + free helper
+Ing	fn_29_61B4	0x3c4	MARKED	's search ring (rodata 44): eight angles in degrees, 180 first, taken 
+Ing	fn_29_6578	0x428	MARKED	@ : retail holds the morphed player for as long as the grapple lives. 
+Ing	fn_29_69A0	0xe8	MARKED	@ : the puddle is off the navmesh. Activate sets kAS Ready, teleports 
+Ing	fn_29_6A88	0x2bc	MARKED	xE5C 1 (0xe5c bit 1) suppresses the contact damage; owns that bit.
+Ing	fn_29_6D44	0x5c	NONE	vtable reset + free helper
+Ing	fn_29_6DA0	0x418	MARKED	object lookup
+Ing	fn_29_71B8	0x8c	NONE	delete helper (frees the object)
+Ing	fn_29_7244	0x2d4	MARKED	vector math
+Ing	fn_29_7518	0xa8	MARKED	object lookup
+Ing	fn_29_75C0	0xf8	BODY	(not yet exercised in a run)
+Ing	fn_29_76B8	0x658	MARKED	state SuckEnergy; also allocates a 0x180 CHUDBillboardEffect
+Ing	fn_29_7D10	0x50	NONE	delete helper (frees the object)
+Ing	fn_29_7D60	0x68	NONE	dtor helper: CToken
+Ing	fn_29_7DC8	0x68	NONE	dtor helper: CToken
+Ing	fn_29_7E30	0x4a4	MARKED	form 2" -> the loop-attack command -> the form 4 flight ( ).
+Ing	fn_29_82D4	0x1d0	BODY	(not yet exercised in a run)
+Ing	fn_29_84A4	0xcc	BODY	(not yet exercised in a run)
+Ing	fn_29_8570	0x114	MARKED	@ : the point-graph variant, same two guards and the same Activate sto
+Ing	fn_29_8684	0x184	MARKED	@ : the puddle's mesh path find, and the one the grapple runs through.
+Ing	fn_29_8808	0x224	MARKED	patterned AI
+Ing	fn_29_8A2C	0x180	MARKED	bit getter (bit 6)
+Ing	fn_29_8BAC	0xec	MARKED	@ : the Ing taunts the player. Exercised in Agon 01 sand entrance dark
+Ing	fn_29_8C98	0x5c	NONE	vtable reset + free helper
+Ing	fn_29_8CF4	0x1a0	BODY	(not yet exercised in a run)
+Ing	fn_29_8E94	0x5c	NONE	vtable reset + free helper
+Ing	fn_29_8EF0	0xf8	MARKED	cited in src (no description)
+Ing	fn_29_8FE8	0x464	BODY	(not yet exercised in a run)
+Ing	fn_29_944C	0x5c	NONE	vtable reset + free helper
+Ing	fn_29_94A8	0x40	BODY	const CVector3f side = CVector3f::Cross(normal, CVector3f::Up());
+Ing	fn_29_94E8	0x268	MARKED	@ : the Ing turns into a flying body projectile. Exercised in Agon
+Ing	fn_29_9750	0x2c8	MARKED	packed flags (0x1fff mask)
+Ing	fn_29_9A18	0x5c	NONE	vtable reset + free helper
+Ing	fn_29_9A74	0x2f4	MARKED	packed flags (0x1fff mask)
+Ing	fn_29_9D68	0x328	MARKED	@ . The exit host: the Ing it leaves behind is a swarm. Its
+Ing	fn_29_A090	0x4	MARKED	@ : retail's state body is empty - a bare blr (0x0000A090), so the sta
+Ing	fn_29_A094	0x4	MARKED	cited in src (no description)
+Ing	fn_29_A098	0x68	MARKED	object lookup
+Ing	fn_29_A100	0xc0	MARKED	@ : no-grapple flag, the same spawned-then-transition ball test as Tar
+Ing	fn_29_A1C0	0x64	MARKED	@ : the target id at 0xd6c is looked up and the path search at 0x9dc i
+Ing	fn_29_A224	0xb4	MARKED	@ : no-grapple flag (0x9d0 bit 3), ball cooldown at or below zero (0xe
+Ing	fn_29_A2D8	0x68	MARKED	@ : the target is a ball that was not spawned as one - asm 0x0000A2E0 
+Ing	fn_29_A340	0x30	BODY	(not yet exercised in a run)
+Ing	fn_29_A370	0x58	MARKED	patterned AI
+Ing	fn_29_A3C8	0x38	MARKED	path find
+Ing	fn_29_A400	0x28	MARKED	@ : the same navigation object's HasPath (the DOL's fn 801F8178) (0x00
+Ing	fn_29_A428	0x28	MARKED	@ : the ing-spot navigation at 0xcb0 is asked whether the path is over
+Ing	fn_29_A450	0x48	MARKED	patterned AI
+Ing	fn_29_A498	0x48	MARKED	patterned AI
+Ing	fn_29_A4E0	0xc	BODY	(not yet exercised in a run)
+Ing	fn_29_A4EC	0x16c	MARKED	@ : the hit box is the model scale (this+0x60) times 2.5 on each axis 
+Ing	fn_29_A658	0xc	MARKED	@ : the splat flag is bit 6 of the byte at 0xe5e; the asm's extrwi-25 
+Ing	fn_29_A664	0x11c	MARKED	object lookup
+Ing	fn_29_A780	0x140	MARKED	object lookup
+Ing	fn_29_A8C0	0xc	MARKED	bit getter (bit 6)
+Ing	fn_29_A8CC	0x138	MARKED	object lookup
+Ing	fn_29_AA04	0x48	BODY	(not yet exercised in a run): 0x9d8 == 3 and not (asm 0x0000AA24).
+Ing	fn_29_AA4C	0x48	BODY	(not yet exercised in a run): 0x9d8 == 2 and not (asm 0x0000AA6C).
+Ing	fn_29_AA94	0x14	BODY	(not yet exercised in a run)
+Ing	fn_29_AAA8	0x50	MARKED	cited in src (no description)
+Ing	fn_29_AAF8	0x84	MARKED	bit getter (bit 2)
+Ing	fn_29_AB7C	0x4c	MARKED	@ : the REL's own is the cover-hint lookup (mCoverHintId at 0xd72, the
+Ing	fn_29_ABC8	0x58	MARKED	object lookup
+Ing	fn_29_AC20	0x58	MARKED	@ : the target id at 0xd6c is looked up and the object is asked whethe
+Ing	fn_29_AC78	0x20	BODY	(not yet exercised in a run)
+Ing	fn_29_AC98	0x48	MARKED	cited in src (no description)
+Ing	fn_29_ACE0	0xc	MARKED	cited in src (no description)
+Ing	fn_29_ACEC	0x28	MARKED	bit getter (bit 4)
+Ing	fn_29_AD14	0x18	MARKED	@ : the frustration time (0x7cc = CIngData+0xc) below the frustration 
+Ing	fn_29_AD2C	0x14	MARKED	cited in src (no description)
+Ing	fn_29_AD40	0x14	MARKED	cited in src (no description)
+Ing	fn_29_AD54	0x14	MARKED	cited in src (no description)
+Ing	fn_29_AD68	0x14	MARKED	@ : the mini-portal count at 0xe00, tested with the neg/or/srwi-31 non
+Ing	fn_29_AD7C	0x40	MARKED	cited in src (no description)
+Ing	fn_29_ADBC	0x2c	MARKED	wrapper -> fn_29_45BC
+Ing	fn_29_ADE8	0x80	MARKED	cited in src (no description)
+Ing	fn_29_AE68	0x140	MARKED	@ : the near box is the model scale (this+0x60) times 10 on each axis 
+Ing	fn_29_AFA8	0x3c	NONE	delete helper (frees the object)
+Ing	fn_29_AFE4	0x1c	MARKED	cited in src (no description)
+Ing	fn_29_B000	0x1c	MARKED	cited in src (no description)
+Ing	fn_29_B01C	0x30	MARKED	cited in src (no description)
+Ing	fn_29_B04C	0x58	MARKED	cited in src (no description)
+Ing	fn_29_B0A4	0x3c	MARKED	object lookup
+Ing	fn_29_B0E0	0xe8	MARKED	vector math
+Ing	fn_29_B1C8	0x20	BODY	(not yet exercised in a run). The asm tests mHostId (0xcdc) against kI
+Ing	fn_29_B1E8	0xc	BODY	(not yet exercised in a run)
+Ing	fn_29_B1F4	0x14	MARKED	cited in src (no description)
+Ing	fn_29_B208	0x8c	MARKED	SetupStateMachine (registers the tables below)
+Ing	fn_29_B294	0x130	MARKED	bit getter (bit 6)
+Ing	fn_29_B3C4	0x170	BODY	Death(mgr, direction, kSS DeathRattle); 0x98 -> , 0x5241544C
+Ing	fn_29_B534	0x250	BODY	collision handler (CollidedWith)
+Ing	fn_29_B784	0x10c	NONE	color helper
+Ing	fn_29_B890	0x30	BODY	( only records the hit time), dies below zero, and is knocked back alo
+Ing	fn_29_B8C0	0xb0	BODY	(not yet exercised in a run)
+Ing	fn_29_B970	0xdc	MARKED	cited in src (no description)
+Ing	fn_29_BA4C	0x68	NONE	bounding box (physics actor bounds)
+Ing	fn_29_BAB4	0x9c	INLINED	is CAABox's copy constructor, inlined at the one place the particle bo
+Ing	fn_29_BB50	0x3c	NONE	delete helper (frees the object)
+Ing	fn_29_BB8C	0x128	BODY	(not yet exercised in a run)
+Ing	fn_29_BCB4	0x200	BODY	aim prediction (PredictMotion + GetAimPosition)
+Ing	fn_29_BEB4	0x6c	BODY	aim = PredictMotion(dt).GetTranslation(); asm 0x0000BD50/0x0000BD5C ( 
+Ing	fn_29_BF20	0x60	BODY	(not yet exercised in a run)
+Ing	fn_29_BF80	0x70	NONE	renderer add
+Ing	fn_29_BFF0	0x20	NONE	renderer add
+Ing	fn_29_C010	0xa4	BODY	. Unmarked (audit 2026-10-20): incomplete - retail gates the base PreR
+Ing	fn_29_C0B4	0x174	BODY	. Unmarked (audit 2026-10-20): incomplete - retail also gates on mPort
+Ing	fn_29_C228	0x3b8	MARKED	DoUserAnimEvent: jump table data_B6C, spawns CIngMiniPortalAttack
+Ing	fn_29_C5E0	0x74	NONE	dtor helper: SLdrPlasmaBeamInfo
+Ing	fn_29_C654	0x1c0	MARKED	object lookup
+Ing	fn_29_C814	0x190	MARKED	patterned AI
+Ing	fn_29_C9A4	0x514	MARKED	dtor helper: CToken
+Ing	fn_29_CEB8	0x58	NONE	dtor helper: CToken
+Ing	fn_29_CF10	0x54	NONE	dtor helper: CToken
+Ing	fn_29_CF64	0x1c4	NONE	CIng dtor (vtable lbl_29_data_A24)
+Ing	fn_29_D128	0x1e4	NONE	dtor helper (vtable reset + CToken)
+Ing	fn_29_D30C	0x94	NONE	vtable reset + free helper
+Ing	fn_29_D3A0	0x58	NONE	wrapper -> fn_29_D3F8
+Ing	fn_29_D3F8	0x58	NONE	wrapper -> fn_29_D450
+Ing	fn_29_D450	0x58	NONE	wrapper -> fn_29_D4A8
+Ing	fn_29_D4A8	0x98	NONE	delete helper (frees the object)
+Ing	fn_29_D540	0x1110	BODY	CIng ctor
+Ing	fn_29_E650	0x3c	NONE	delete helper (frees the object)
+Ing	fn_29_E68C	0x6c	NONE	dtor helper: CToken
+Ing	fn_29_E6F8	0x58	NONE	dtor helper: CCollisionActorManager
+Ing	fn_29_E750	0x3c	NONE	delete helper (frees the object)
+Ing	fn_29_E78C	0x3c	NONE	delete helper (frees the object)
+Ing	fn_29_E7C8	0x110	NONE	struct copy (10 words)
+Ing	fn_29_E8D8	0x6c	NONE	struct copy (7 words)
+Ing	fn_29_E944	0xa4	NONE	struct copy (7 words)
+Ing	fn_29_E9E8	0x94	BODY	two floats and the damage field by field, and finally the beam info as
+Ing	fn_29_EA7C	0xbc	NONE	struct copy (7 words)
+Ing	fn_29_EB38	0xb4	NONE	struct copy (8 words)
+Ing	fn_29_EBEC	0x9c	NONE	struct copy (7 words)
+Ing	fn_29_EC88	0x5c	NONE	block copy (0x15 bytes)
+Ing	fn_29_ECE4	0x54	NONE	delete helper (frees the object)
+Ing	fn_29_ED38	0x130	NONE	allocator
+Ing	fn_29_EE68	0x158	BODY	CIngData ctor
+Ing	fn_29_EFC0	0x40	BODY	(mini-portal) and (swarm / exit-host).
+Ing	fn_29_F000	0x90	BODY	body-projectile block), the CIngSpotData constructor, (grapple),
+Ing	fn_29_F090	0x9c	BODY	body-projectile block), the CIngSpotData constructor, (grapple),
+Ing	fn_29_F12C	0x74	BODY	The five sub-structs CIngData embeds, in the order builds them: (the
+Ing	fn_29_F1A0	0xc0	NONE	delete helper (frees the object)
+Ing	fn_29_F260	0x68	NONE	struct copy (1 word)
+Ing	fn_29_F2C8	0xcc0	NONE	static init (the FSM tables)
+Ing	fn_29_FF88	0xe4	MARKED	CIngExitHostEffect dtor
+Ing	fn_29_1006C	0x4c	MARKED	stop the swarm move emitter (CSfxManager::RemoveEmitter on 0x5dc)
+Ing	fn_29_100B8	0x9c	MARKED	the swarm move emitter: AddEmitter (0x5e0, volume 0x7f, looped), else 
+Ing	fn_29_10154	0x318	MARKED	build the next bezier leg: path search at 0x188, the four control poin
+Ing	fn_29_1046C	0x1f0	MARKED	bezier length as the four quarter chords
+Ing	fn_29_1065C	0x120	MARKED	the random offset Range(0,4) Up + Range( 2,2) Right
+Ing	fn_29_1077C	0x1c8	MARKED	the flight step: t = mX28c / (mX2fc/mX300 mX290), rebuild at t >= 1, a
+Ing	fn_29_10944	0x40c	MARKED	the two particle systems: aim blend while 0x29c runs down, the 60 slot
+Ing	fn_29_10D50	0x9c	BODY	is the child-particle-system builder both token members go through (on
+Ing	fn_29_10DEC	0x78	MARKED	AddToRenderer (gpRender >AddParticleGen B then A)
+Ing	fn_29_10E64	0x50	BODY	Render (B then A)
+Ing	fn_29_10EB4	0xa4	MARKED	AcceptScriptMsg (CEntity's handler): XDEL stops the emitter, XALD sets
+Ing	fn_29_10F58	0x104	MARKED	Think (vtable 0x14): returns unless the actor is active; Fly + particl
+Ing	fn_29_1105C	0x3dc	MARKED	CIngExitHostEffect ctor
+Ing	fn_29_11438	0x58	INLINED	is the copy-assignment of retail's inline [size][60 x CVector3f] trail
+Ing	fn_29_11490	0x20	INLINED	is a plain CModelData() , inlined below as the base class's model argu
+Ing	fn_29_114B0	0xc0	BODY	CIngMiniPortalAttack dtor
+Ing	fn_29_11570	0x2d0	BODY	CIngMiniPortalAttack aim helper: steers the aim point (0x214) at the t
+Ing	fn_29_11840	0x1a8	BODY	CIngMiniPortalAttack fire: aims ( ), TLdrToBeamInfo (DOL 0x80239B64, a
+Ing	fn_29_119E8	0x94	NONE	struct copy (10 words)
+Ing	fn_29_11A7C	0x198	BODY	is the normal path one frame after the spawn.
+Ing	fn_29_11C14	0x90	BODY	CIngMiniPortalAttack AcceptScriptMsg (vtable 0x18): XDEL deletes the p
+Ing	fn_29_11CA4	0x1e8	BODY	CIngMiniPortalAttack Think (vtable 0x14): ages 0x220, deletes the fire
+Ing	fn_29_11E8C	0x190	BODY	CIngMiniPortalAttack ctor
+Ing	fn_29_1201C	0xe4	BODY	portal's data (CIngMiniPortalInfo, and its copy ) and the actor a port
+Ing	fn_29_12100	0xf4	BODY	CIngMiniPortalInfo ctor
+Ing	fn_29_121F4	0x5c	BODY	module static init: lbl_29_bss_7C = string_l("Grenchler.rel"), registe
+MinorIng	fn_44_0	0x8	NONE	offset getter (+0x960)
+MinorIng	fn_44_8	0x8	NONE	offset getter (+0xa4c)
+MinorIng	fn_44_10	0x8	NONE	constant: 1
+MinorIng	fn_44_18	0x10	NONE	patterned AI
+MinorIng	fn_44_28	0x8	NONE	field getter (+0x44f)
+MinorIng	fn_44_30	0x8	NONE	constant: 0
+MinorIng	fn_44_38	0x10	NONE	constant: kInvalidUniqueId
+MinorIng	fn_44_48	0xc	NONE	bit getter (bit 3)
+MinorIng	fn_44_54	0xc	NONE	constant (rodata)
+MinorIng	fn_44_60	0x8	NONE	offset getter (+0x754)
+MinorIng	fn_44_68	0x8	NONE	constant: 1
+MinorIng	fn_44_70	0x2c	NONE	vtable thunk (slot 0x38)
+MinorIng	fn_44_E0	0x30	BODY	SetSMinorIng FuncPtrs (via ). The proxy in SMinorIng FuncPtrs.cpp call
+MinorIng	fn_44_110	0x844	BODY	Retail . The property ids and their order are the generated SLdrMinorI
+MinorIng	fn_44_954	0x60	NONE	dtor helper: CDamageVulnerability
+MinorIng	fn_44_9B4	0x290	NONE	CMinorIngData ctor (the loader's data block)
+MinorIng	fn_44_C44	0xbc	NONE	struct copy (8 words)
+MinorIng	fn_44_D00	0x54	BODY	copies the Ing's CHealthInfo whole.
+MinorIng	fn_44_D54	0xb4	NONE	struct copy (8 words)
+MinorIng	fn_44_E08	0x5c	NONE	block copy (0x15 bytes)
+MinorIng	fn_44_E64	0x54	NONE	delete helper (frees the object)
+MinorIng	fn_44_EB8	0x130	NONE	allocator
+MinorIng	fn_44_FE8	0x94	NONE	doc: ` builds the bouncing projectile struct (SLdrUnknownStruct34) at sp+0x
+MinorIng	fn_44_107C	0x58	NONE	dtor helper: CDamageVulnerability
+MinorIng	fn_44_10D4	0x40	NONE	struct copy (byte at 0x4c) + init
+MinorIng	fn_44_1114	0x20	NONE	wrapper -> fn_44_1134
+MinorIng	fn_44_1134	0x28	NONE	wrapper -> fn_44_115C
+MinorIng	fn_44_115C	0x13c	NONE	token lock/copy
+MinorIng	fn_44_1298	0x6c	NONE	dtor helper: CToken
+MinorIng	fn_44_1304	0x54	NONE	dtor helper: CToken
+MinorIng	fn_44_1358	0x64	NONE	dtor helper: CAnimData
+MinorIng	fn_44_13BC	0x60	NONE	dtor helper: CModelData
+MinorIng	fn_44_141C	0xbc	NONE	dtor helper: SLdrDamageInfo
+MinorIng	fn_44_14D8	0x188	NONE	ctor helper: SLdrEditorProperties
+MinorIng	fn_44_1660	0x64	NONE	dtor helper: SLdrDamageInfo
+MinorIng	fn_44_16C4	0x108	NONE	ctor helper: SLdrHealthInfo
+MinorIng	fn_44_17CC	0x64	NONE	dtor helper: SLdrDamageVulnerability
+MinorIng	fn_44_1830	0x11c	NONE	ctor helper: SLdrDamageInfo
+MinorIng	fn_44_194C	0x394	NONE	loader helper (the ing spot property)
+MinorIng	fn_44_1CE0	0x358	NONE	loader helper (the unknown_0x3da35851 property)
+MinorIng	fn_44_2038	0x14	MARKED	cited in src (no description)
+MinorIng	fn_44_204C	0x15c	NONE	vtable thunk (slot 0xe0)
+MinorIng	fn_44_21A8	0x108	MARKED	vtable thunk (slot 0xe0)
+MinorIng	fn_44_22B0	0x210	MARKED	vtable thunk (slot 0xe0)
+MinorIng	fn_44_24C0	0x14	NONE	flag byte write (0xd3e |= 2, mask 0xfd)
+MinorIng	fn_44_24D4	0x7c	MARKED	cited in src (no description)
+MinorIng	fn_44_2550	0x48	BODY	hint->SetInUse(true);
+MinorIng	fn_44_2598	0x4c	MARKED	object lookup
+MinorIng	fn_44_25E4	0x2f4	MARKED	MassiveDeath and the damage-effect particles ( / ).
+MinorIng	fn_44_28D8	0x58	NONE	wrapper -> fn_44_2930
+MinorIng	fn_44_2930	0x54	NONE	delete helper (frees the object)
+MinorIng	fn_44_2984	0x50	NONE	delete helper (frees the object)
+MinorIng	fn_44_29D4	0x2c8	MARKED	MassiveDeath and the damage-effect particles ( / ).
+MinorIng	fn_44_2C9C	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_2CD8	0x21c	MARKED	packed flags (0x1fff mask)
+MinorIng	fn_44_2EF4	0x30	NONE	wrapper -> fn_44_2F24
+MinorIng	fn_44_2F24	0x8c	NONE	struct copy (4 words)
+MinorIng	fn_44_2FB0	0x54	NONE	struct copy (4 words)
+MinorIng	fn_44_3004	0x58	MARKED	object lookup
+MinorIng	fn_44_305C	0x98	MARKED	object lookup
+MinorIng	fn_44_30F4	0xa8	MARKED	object lookup
+MinorIng	fn_44_319C	0x294	MARKED	kSM Create ( / ), the touch AABBs ( ), the inglet spawn in
+MinorIng	fn_44_3430	0xc	MARKED	bit getter (bit 4)
+MinorIng	fn_44_343C	0x74	MARKED	patterned AI
+MinorIng	fn_44_34B0	0x164	BODY	data 60C ( ) are material numbers shifted into masks: 0x3b Solid, 0x20
+MinorIng	fn_44_3614	0x5c	NONE	struct copy (9 words)
+MinorIng	fn_44_3670	0x8c	MARKED	[?] retail first calls (snap to the floor) from this const-looking che
+MinorIng	fn_44_36FC	0x84	MARKED	object lookup
+MinorIng	fn_44_3780	0x128	MARKED	object lookup
+MinorIng	fn_44_38A8	0xc4	MARKED	bit getter (bit 6)
+MinorIng	fn_44_396C	0x58	MARKED	wrapper -> fn_44_3B0C
+MinorIng	fn_44_39C4	0x148	MARKED	vector math
+MinorIng	fn_44_3B0C	0x1a8	MARKED	vector math
+MinorIng	fn_44_3CB4	0x5c	MARKED	vector3f add (three members)
+MinorIng	fn_44_3D10	0xd0	MARKED	path find
+MinorIng	fn_44_3DE0	0x20	MARKED	constant: 0
+MinorIng	fn_44_3E00	0x20	MARKED	cited in src (no description)
+MinorIng	fn_44_3E20	0x6c	MARKED	cited in src (no description)
+MinorIng	fn_44_3E8C	0x1c4	MARKED	kSM Create ( / ), the touch AABBs ( ), the inglet spawn in
+MinorIng	fn_44_4050	0x30	MARKED	wrapper -> fn_44_4080
+MinorIng	fn_44_4080	0x12c	MARKED	animation
+MinorIng	fn_44_41AC	0xa0	MARKED	cited in src (no description)
+MinorIng	fn_44_424C	0x1a8	MARKED	vtable thunk (slot 0xe8)
+MinorIng	fn_44_43F4	0x198	MARKED	world/area access
+MinorIng	fn_44_458C	0x364	MARKED	object lookup
+MinorIng	fn_44_48F0	0x150	MARKED	kSM Create ( / ), the touch AABBs ( ), the inglet spawn in
+MinorIng	fn_44_4A40	0x28	MARKED	cited in src (no description)
+MinorIng	fn_44_4A68	0xc	MARKED	bit getter (bit 5)
+MinorIng	fn_44_4A74	0x50	MARKED	cited in src (no description)
+MinorIng	fn_44_4AC4	0x1d8	MARKED	path find
+MinorIng	fn_44_4C9C	0xb0	MARKED	vector math
+MinorIng	fn_44_4D4C	0x38	MARKED	wrapper -> fn_44_2598
+MinorIng	fn_44_4D84	0x58	MARKED	object lookup
+MinorIng	fn_44_4DDC	0xa8	BODY	: the target's aim position (vtable 0x54, dt 0) into out .
+MinorIng	fn_44_4E84	0x354	MARKED	object lookup
+MinorIng	fn_44_51D8	0x8c	NONE	delete helper (frees the object)
+MinorIng	fn_44_5264	0x120	MARKED	vector math
+MinorIng	fn_44_5384	0x25c	MARKED	path find
+MinorIng	fn_44_55E0	0x1e4	MARKED	entity pointer cast
+MinorIng	fn_44_57C4	0x80	NONE	object lookup
+MinorIng	fn_44_5844	0x50	MARKED	world/area access
+MinorIng	fn_44_5894	0xa8	NONE	object lookup
+MinorIng	fn_44_593C	0xac	MARKED	object lookup
+MinorIng	fn_44_59E8	0x1c	NONE	vector3f copy (from +0x54)
+MinorIng	fn_44_5A04	0xb4	NONE	object lookup
+MinorIng	fn_44_5AB8	0x8	NONE	offset getter (+0x918)
+MinorIng	fn_44_5AC0	0x1ec	MARKED	object lookup
+MinorIng	fn_44_5CAC	0x44	MARKED	cited in src (no description)
+MinorIng	fn_44_5CF0	0xc	MARKED	bit getter (bit 3)
+MinorIng	fn_44_5CFC	0xc	MARKED	bit getter (bit 4)
+MinorIng	fn_44_5D08	0x20	MARKED	constant: 0
+MinorIng	fn_44_5D28	0xc	MARKED	bit getter (bit 1)
+MinorIng	fn_44_5D34	0xc	MARKED	bit getter (bit 3)
+MinorIng	fn_44_5D40	0x18	MARKED	cited in src (no description)
+MinorIng	fn_44_5D58	0xc	MARKED	bit getter (bit 6)
+MinorIng	fn_44_5D64	0xc	MARKED	cited in src (no description)
+MinorIng	fn_44_5D70	0x100	MARKED	object lookup
+MinorIng	fn_44_5E70	0x24	MARKED	wrapper -> fn_44_5D70
+MinorIng	fn_44_5E94	0xcc	MARKED	object lookup
+MinorIng	fn_44_5F60	0x164	MARKED	vector math
+MinorIng	fn_44_60C4	0x30	MARKED	cited in src (no description)
+MinorIng	fn_44_60F4	0x50	MARKED	patterned AI
+MinorIng	fn_44_6144	0x34	MARKED	cited in src (no description)
+MinorIng	fn_44_6178	0xc	MARKED	cited in src (no description)
+MinorIng	fn_44_6184	0x8c	MARKED	path find
+MinorIng	fn_44_6210	0xc	MARKED	bit getter (bit 1)
+MinorIng	fn_44_621C	0xc	MARKED	bit getter (bit 2)
+MinorIng	fn_44_6228	0xc	MARKED	bit getter (bit 3)
+MinorIng	fn_44_6234	0xc	MARKED	bit getter (bit 6)
+MinorIng	fn_44_6240	0x28	MARKED	cited in src (no description)
+MinorIng	fn_44_6268	0x40	MARKED	bit getter (bit 1)
+MinorIng	fn_44_62A8	0x58	MARKED	patterned AI
+MinorIng	fn_44_6300	0x84	MARKED	patterned AI
+MinorIng	fn_44_6384	0x128	MARKED	patterned AI
+MinorIng	fn_44_64AC	0x54	NONE	wrapper -> fn_44_6500
+MinorIng	fn_44_6500	0x5c	NONE	delete helper (frees the object)
+MinorIng	fn_44_655C	0x20	NONE	wrapper -> fn_44_657C
+MinorIng	fn_44_657C	0x48	NONE	dtor helper: CToken
+MinorIng	fn_44_65C4	0x48	NONE	wrapper: init + teardown (fn_44_660C/fn_44_6500)
+MinorIng	fn_44_660C	0xb4	NONE	struct copy (into +0x18) + init
+MinorIng	fn_44_66C0	0x40	NONE	struct copy (byte at 0x14) + init
+MinorIng	fn_44_6700	0x20	NONE	wrapper -> fn_44_6720
+MinorIng	fn_44_6720	0x28	NONE	wrapper -> fn_44_6748
+MinorIng	fn_44_6748	0x80	NONE	token lock/copy
+MinorIng	fn_44_67C8	0x6c	NONE	dtor helper: CToken
+MinorIng	fn_44_6834	0x54	NONE	dtor helper: CToken
+MinorIng	fn_44_6888	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_68C4	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_6900	0x13c	MARKED	vector math
+MinorIng	fn_44_6A3C	0x4	MARKED	cited in src (no description)
+MinorIng	fn_44_6A40	0x194	MARKED	object lookup
+MinorIng	fn_44_6BD4	0x2e4	MARKED	path find
+MinorIng	fn_44_6EB8	0xe0	MARKED	object lookup
+MinorIng	fn_44_6F98	0x8	NONE	field getter (+0x254)
+MinorIng	fn_44_6FA0	0x2c	NONE	aim prediction
+MinorIng	fn_44_6FCC	0x8c	MARKED	set valid target
+MinorIng	fn_44_7058	0x654	BODY	[?] : retail also spawns the inglets (CBouncyGrenade, data at guest 0x
+MinorIng	fn_44_76AC	0x20	NONE	ctor helper: CModelData
+MinorIng	fn_44_76CC	0x74	MARKED	wrapper -> fn_44_3004
+MinorIng	fn_44_7740	0x3c	MARKED	patterned AI
+MinorIng	fn_44_777C	0x140	MARKED	cited in src (no description)
+MinorIng	fn_44_78BC	0x5c	NONE	vtable reset + free helper
+MinorIng	fn_44_7918	0x48	NONE	vtable reset + free helper
+MinorIng	fn_44_7960	0x3c0	MARKED	path find
+MinorIng	fn_44_7D20	0x278	MARKED	vector math
+MinorIng	fn_44_7F98	0x190	MARKED	patterned AI
+MinorIng	fn_44_8128	0x178	MARKED	object lookup
+MinorIng	fn_44_82A0	0x164	MARKED	packed flags (0x1fff mask)
+MinorIng	fn_44_8404	0x5c	NONE	vtable reset + free helper
+MinorIng	fn_44_8460	0x17c	MARKED	packed flags (0x1fff mask)
+MinorIng	fn_44_85DC	0x204	MARKED	bit getter (bit 6)
+MinorIng	fn_44_87E0	0x5c	NONE	vtable reset + free helper
+MinorIng	fn_44_883C	0xa0	MARKED	object lookup
+MinorIng	fn_44_88DC	0x220	MARKED	Material filters from the REL's .data: data 0 (Touch), data 5F8/5FC ( 
+MinorIng	fn_44_8AFC	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_8B38	0xbc	MARKED	path find
+MinorIng	fn_44_8BF4	0x28	MARKED	cited in src (no description)
+MinorIng	fn_44_8C1C	0x110	MARKED	vector math
+MinorIng	fn_44_8D2C	0x90	MARKED	vtable thunk (slot 0x3c)
+MinorIng	fn_44_8DBC	0x34	MARKED	patterned AI
+MinorIng	fn_44_8DF0	0x20	NONE	renderer add
+MinorIng	fn_44_8E10	0x20	NONE	renderer add
+MinorIng	fn_44_8E30	0x2c	MARKED	patterned AI
+MinorIng	fn_44_8E5C	0x170	MARKED	patterned AI
+MinorIng	fn_44_8FCC	0x184	MARKED	patterned AI
+MinorIng	fn_44_9150	0x5b0	MARKED	Retail activates the body controller on kSM Create ( ). Kept as a guar
+MinorIng	fn_44_9700	0x58	NONE	dtor helper: CToken
+MinorIng	fn_44_9758	0x8c	MARKED	by ; the names are the REL's own strings.
+MinorIng	fn_44_97E4	0x15c	NONE	vtable reset + free helper
+MinorIng	fn_44_9940	0x1e4	NONE	dtor helper (vtable reset + CToken)
+MinorIng	fn_44_9B24	0x94	NONE	vtable reset + free helper
+MinorIng	fn_44_9BB8	0x58	NONE	wrapper -> fn_44_9C10
+MinorIng	fn_44_9C10	0x58	NONE	wrapper -> fn_44_9C68
+MinorIng	fn_44_9C68	0x58	NONE	wrapper -> fn_44_9CC0
+MinorIng	fn_44_9CC0	0x98	NONE	delete helper (frees the object)
+MinorIng	fn_44_9D58	0x878	BODY	locks the ing-spot hit effects (0x940/0x950) only when the asset is se
+MinorIng	fn_44_A5D0	0x74	NONE	doc: `) [?] , 0xd30 a pointer from ` `.
+MinorIng	fn_44_A644	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_A680	0x184	NONE	vector3f array builder (appends pairs)
+MinorIng	fn_44_A804	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_A840	0x8c	NONE	delete helper (frees the object)
+MinorIng	fn_44_A8CC	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_A908	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_A944	0x3c	NONE	delete helper (frees the object)
+MinorIng	fn_44_A980	0x5c	NONE	dtor helper: CToken
+MinorIng	fn_44_A9DC	0x19c	NONE	struct copy (8 words)
+MinorIng	fn_44_AB78	0x54	BODY	keeps an animation only when its score is above FLT EPSILON.
+MinorIng	fn_44_ABCC	0x8b8	BODY	Solid minus Player/CollisionActor (bss 0 / DAT 80900d10 in ).

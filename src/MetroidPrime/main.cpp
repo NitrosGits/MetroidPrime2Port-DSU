@@ -232,6 +232,9 @@ void CMain::InitializeSubsystems() {
 bool PortPumpEvents();
 // Port: MP1's 60 FPS cap, in platform/port_events.cpp: sleeps to the next 60 Hz deadline.
 void PortPaceFrame();
+// Port: runs the registered AI DMA callback until the host stream is topped up
+// (platform/ai_dma.cpp).
+extern "C" void AIPortPoll(void);
 
 #include "MetroidPrime/CCameraManager.hpp"
 #include "port_mouse.h"
@@ -729,7 +732,11 @@ int CMain::RsMain(int argc, const char* const* argv) {
 
     while (!mFinished) {
 #ifdef TARGET_PC
-      PortPaceFrame();
+      // Max speed (a cinematic skip's fast-forward) draws about once a second and runs its ticks
+      // back to back, as retail's loop does; the 60 FPS cap would hold it to real time.
+      if (!IsMaxSpeed()) {
+        PortPaceFrame();
+      }
       if (PortPumpEvents()) {
         mFinished = true;
         break;
@@ -824,6 +831,10 @@ int CMain::RsMain(int argc, const char* const* argv) {
       architecture->Update();
       CSfxManager::Update(1.f / 60.f);
       UpdateStreamedAudio();
+#ifdef TARGET_PC
+      // Port: there is no AI interrupt; run the AI DMA callbacks (movie audio) on the main thread.
+      AIPortPoll();
+#endif
       if (CheckTerminate()) {
         gpGameState->AudioGroups().clear();
         break;

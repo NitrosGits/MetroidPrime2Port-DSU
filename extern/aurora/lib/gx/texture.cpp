@@ -546,7 +546,8 @@ void sweep_object_caches() {
   for (auto cacheIt = s_tlutObjectCaches.begin(); cacheIt != s_tlutObjectCaches.end();) {
     auto& cache = cacheIt->second;
     for (auto it = cache.dynamicPaletteTextures.begin(); it != cache.dynamicPaletteTextures.end();) {
-      if (expired(it->second.lastUsedFrame)) {
+      const uint64_t lastUsed = it->second.lastUsedFrame;
+      if (s_frameCount > lastUsed && s_frameCount - lastUsed > texture::DynamicPaletteIdleFrames) {
         cache.dynamicPaletteTextures.erase(it++);
       } else {
         ++it;
@@ -879,6 +880,21 @@ void clear_copy_texture_cache() noexcept {
 }
 
 void clear_static_texture_cache() noexcept { s_pendingCacheClears.fetch_add(1, std::memory_order_release); }
+
+// Port: a dynamic palette texture is keyed by its source copy texture's address and is as large as
+// that copy at the render scale, so one left behind by an evicted copy is dead weight until the idle
+// sweep, and a new one is made for the next copy at that address.
+void evict_dynamic_palettes(const void* sourceIdentity) noexcept {
+  for (auto& [_, cache] : s_tlutObjectCaches) {
+    for (auto it = cache.dynamicPaletteTextures.begin(); it != cache.dynamicPaletteTextures.end();) {
+      if (it->first.sourceIdentity == sourceIdentity) {
+        cache.dynamicPaletteTextures.erase(it++);
+      } else {
+        ++it;
+      }
+    }
+  }
+}
 
 void evict_copy_texture(const void* dest) noexcept {
   absl::flat_hash_set<const void*> sourceIdentities;

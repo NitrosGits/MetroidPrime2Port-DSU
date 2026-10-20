@@ -16,9 +16,11 @@ pointer to this file plus their slice, not a restatement of it.
   - `tools/rel_pseudo/` - REL plf -> ET_EXEC for REA/Ghidra, split per function, `relsim.py`
     REL similarity. (Supersedes `tools/rel_plf2exec.py`; don't add another linker.)
   - m2c pseudo-C over the whole REL; REA `batch_decompile`.
-- Orchestrator sessions run on DeepSeek (`opencode-go/deepseek-v4.1-flash`); lanes run only on MiniMax
-  free (`worker` agent, `opencode-go/minimax-m3.1-flash-free`; no other lane model). Never Opus, `haiku`, `sonnet` or
-  `claude`, not even to escalate. A lane that fails twice gets a narrower brief, or the
+- One orchestrator (the port session) runs every family and reviews every lane patch; there are
+  no per-family orchestrator sessions. Lanes run only on MiniMax free
+  (`opencode-go/minimax-m3.1-flash-free`, passed explicitly). At most one `claude` (Opus) lane may
+  run at a time, for hard tasks (audits, subtle asm, cross-file work). Never DeepSeek, `haiku` or
+  `sonnet`. A lane that fails twice gets a narrower brief, or the
   orchestrator does the piece itself.
 - Each lane gets an exclusive list of functions (by `fn_<id>_<off>`) and files. Two lanes never
   hold the same file at once; run them in sequence, or split the file.
@@ -46,8 +48,42 @@ A lane reports `STATUS: DONE` only with all of these pasted (one line each):
 host build `0 FAILED`; `gen_files_cmake.py --check` rc 0; for upstream-file edits, the
 TARGET_PC strip-diff CLEAN and the matching build's `fuzzy/matched` percentages; the runtime
 area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skipped makes it
-`STATUS: INCOMPLETE - <what>`; markers (`// @ fn_<id>_<off>`) go only on functions the run
-exercised.
+`STATUS: INCOMPLETE - <what>`.
+
+Lanes never write `// @` markers. A marker needs a run that exercised the function and a pass of
+the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
+compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
+tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every
+changed `Port*.cpp` (`ASM` lines); any hit means an Opus audit before merge. Bit/compare reading
+for a brief: `asmcheck.py annotate <Module> fn_<id>_<off> [--header H --class C]`. Changing the
+tool: `tools/asmcheck_regress.sh` must stay all PASS.
+
+## Lane briefs
+
+- Every bit test, mask, flag set, compare and rodata constant a lane writes carries the asm offset
+  it came from (`// 0xCE2C`); copy the annotator's comment (`asmcheck.py annotate`) where there
+  is one. Code with no offset
+  is rejected.
+- Bit-heavy functions (message handlers, ctor flag unpacking, trigger tables, CR extractions) go
+  one or two per lane. Long briefs are where MiniMax guesses.
+- A `claude` (Opus) audit only for diffs the checks flag or that are bit-heavy, not per merge.
+
+## Review every lane patch
+
+MiniMax lanes pass the gate first time but slip in the same places. Before committing a lane's
+patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
+
+- **NULL** - null guards retail doesn't have. Keep one only if the asm has the test or a named
+  port limit requires it (say which in the comment); otherwise delete it.
+- **MASK** - re-derive each bit test from the asm `rlwinm`/`andi.` yourself (`rlwinm rD,rS,0,21,21`
+  is `& 0x400`, not `& 0x20`: PowerPC bit N is `1u << (31-N)`, never `1u << N`). A selftest written from the same reading proves nothing.
+- **ADDR / STUB** - no thunk that compares against a retail address and otherwise calls a stub;
+  no stand-in left behind a `// @`.
+- **MARK** - a marker means the body is retail's and ran. A function that mostly calls unported
+  functions is not ported: unmark it or port the callees. A body another lane already ported is
+  called, not copied (`grep -rn 'fn_<id>_<off>' src/`).
+- Lanes never run `git reset --hard`, `git clean`, `git stash`, `git checkout -- <path>` or `rm -rf`
+  on a path held in a variable; reject a patch made that way and re-brief.
 
 ## Context
 

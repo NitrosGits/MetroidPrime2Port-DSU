@@ -3,151 +3,36 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-20 (thirty-second session): the Boost Guardian's state machine - the tables, the probe and the Ing half
+## 2026-10-20 (port orchestrator): lanes in flight
 
-Milestone 1 of the `IngBoostBallGuardian` port (the loader, the constructor, the accessors) is
-done; this session is milestone 2, the state machine. The work is on branch `decomp/boostguardian`
-in `wt-mp2-boostguardian`.
+Read a lane's result with the openchamber tool (`session.messages`, `lastAssistant`), review with
+`tools/review_decomp_diff.sh <base>` from its worktree, accept, then send the same session its next slice.
+Worktrees: `~/.local/share/opencode/worktree/3e7f972e5f2a67a4bf166b19e99a591913d8d4a4/wt-mp2-*`.
 
-- **The probe.** `MP2_BG_FSM=1` makes the actor dump its `CGenericFSM2` machine: every state,
-  trigger, code function and sub-machine with each transition's *target* (the transition's own
-  `mName` is empty in this asset, so the target node is the information - the `MP2_SB_FSM`
-  recipe's shape). The dump lives in `PortCIngBoostBallGuardian.cpp`; the boss is an inactive
-  actor until the fight's script starts it (the console's `objs` lists it as `inactive`), so the
-  probe wakes it up the way the Sand Boss probe does.
-- **The tables.** `docs/module-analysis/BoostGuardian_fsm.tsv` (86 rows) gives every node's name
-  and the `fn_30_<hex>` that implements it, with the evidence. The mechanism: the three .data
-  tables (`lbl_30_data_250`, `_6B0`, `_8DC`) hold the name pointers, and the `.ctors` initialiser
-  `fn_30_110C4` copies the 86 12-byte records (`{0, 0xFFFFFFFF, fn}`) into the entries - the first
-  49 into the trigger table, the next 28 into the state table, the last 9 into the code table.
-  The boost half's own bodies are the six bit-test triggers at `fn_30_B788`..`fn_30_B7D4` and
-  the two states `fn_30_79C0` (BoostAttack) and `fn_30_7728` (BoostModeRetreat).
-- **The port.** The three tables are registered under the REL's own names
-  (`PortCIngBoostBallGuardianFsm.cpp`), so the machine finds the handler for a node. The Ing
-  half's bodies are ported from the Ing host body (branch `decomp/ing`), under the Ing REL's
-  member names, because this module is the Ing REL with the boost half added; the boost half
-  comes from this module's own bodies. The host layout is now the Ing's members plus the boost
-  members, so the host's own size differs from the guest's 0x11F0 (the `CHECK_SIZEOF` is the
-  guest's, and the non-host build keeps it) - the guest offsets stay in
-  `docs/module-analysis/BoostGuardian.md` section e.
-- **It runs.** With `MP2_BG_FSM=1 MP2_DEBUG_BG=1` the boss wakes up (the probe's own activation:
-  the console's `objs` lists it as an inactive actor until the fight's script starts it), the
-  state machine is set up and the actor walks its Ing states - `Start`, `WaitForFSMTransition`,
-  `BecomeCorporeal`, `Lurk`, `Alert`, `SelectTarget`, `FaceTarget`, `FindCoverPoint`,
-  `IngSpotPathFind`, `PathFind` - in area 28, with `[port] caught|reach-stub` at 0.
-- **Open.** The exit host (this module's own copy of the Ing's exit-host body and the
-  exit-host class), the mini portal attack, the second class (the crystal the boost ball
-  collides with) and the nav-point finder `fn_30_2F9C` that `BoostModeRetreat` needs are later
-  slices; each is marked in the source with what it needs.
-- **The Ing half matches `decomp/ing` at `1776bb60b`.** The Ing half's bodies were copied from
-  the Ing host body (branch `decomp/ing`) and then carried over that commit's `SetRecoverDest`
-  fix (the second point query's filter uses the first query's index `from` as its connected point,
-  asm 0x5A2C r5) and the ones it read against the asm after that (`AreaClear`,
-  `CollisionActorHitPlayer`, `HasMiniPortals`, `EndRangedAttack`, `ProjectileHitTarget`,
-  `SetWallPointCoverDest`): 96 of the 112 bodies the two share are now token-identical, the 16
-  that differ are this module's adaptations (no lure safe zone, no grapple block, no exit-host or
-  mini-portal class, the probe's activation in `Think`). When the Ing session commits a fix to a
-  body this module also carries, it has to be carried over here: the two files are `decomp/ing`'s
-  `src/MetroidPrime/Enemies/PortCIng.cpp` against this module's
-  `PortCIngBoostBallGuardian{Triggers,States1,States2,Overrides}.cpp`.
-- **The Ing half is the Ing port's code, and 17 nodes differ.** Comparing the two RELs' function
-  sizes for the 78 nodes they share, 61 are the same size and 17 are not, so for those the
-  module's own body is the authority: `CanGrappleTarget`, `ExitHost`, `BecomeCorporeal`,
-  `BecomeIngSpot`, `Lurk`, `PathFind`, `IngSpotPathFind`, `IngSpotPointPathFind`,
-  `FollowAttackPattern`, `BodyProjectileFlight`, `SuckEnergy`, `SeekWallPoint`, `FaceTarget`,
-  `FindCoverPoint`, `Dead`, `SetExitHostDest`, `SplatOntoMesh` - the table with both addresses and
-  sizes is in `docs/module-analysis/BoostGuardian.md` section b.3. `BecomeCorporeal` and
-  `BecomeIngSpot` are where the boost half changed the most.
+Batch 5 merged into port `3bb8177db` (via branch `batch5`, worktree `../wt-mp2-batch5`): playerturret
+`c377344ed`, ing `8855b1674`, spacepirate-vt `c42d82fce`, emperoring `542d6c9b8`, emperoring3 `f786b983e`,
+boostguardian `da45064c5`, digitalguardian `227e42fb1`, commandopirate `cf9eb1995`, splitter `b17910bb4`
+(+ `e4aead7b6` drops DG's duplicate `CCollisionActor::SetExtendedTouchBounds`). Host/link/matching
+green, smoke5 17/17 clean (`/tmp/opencode/smoke5/`), 1159 markers. Upstream build must run before the
+port build in a fresh worktree (writes `build/G2ME01/include/*.inc`; needs `extern/musyx` checked out).
 
-### Where this stops, and what is next
+Done on lane branches since, not yet merged (next batch: review, then merge these tips):
+spacepirate-vt `33291f63c` (8 combat marks); wallcrawler2 `036ca13db` (obstruction scan, 3 marks);
+emperoring `bd4c2c25a` (7EA8, 7F8C cases, 1D38, Render 531C); splitter `b1f682ff7` (1188/58E8, F1C0,
+654C, 1790, AC68, 8D50, AAC4); commandopirate `843ebf292` (4D84); boostguardian `999b51bdf` (D4F8 events,
+C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090, 7D8C, 5910, 5384,
+7CB4, 5274/266C/2E60, 5838 marked); emperoring3 `e3971fcd3` (6904/67C0 beams, full-TUniqueId fix).
 
-The session stops here: the port orchestrator runs the decomp families directly from now on.
-Everything below is committed on `decomp/boostguardian` (base `d6d1c6265`, four commits:
-`fa09810fd`, `62a01419a`, `828caa730`, `3bae3e479`), the worktree is clean, and no lane is
-running.
-
-- **Gates at the last commit.** The host build is clean, `python3 tools/gen_files_cmake.py
-  --check` is rc 0, and `tools/review_decomp_diff.sh d6d1c6265 HEAD` reports `== NULL 80` and
-  `== MASK 1`. The NULL hits are the accepted set: the Ing port's own target/hint/player guards
-  (kept for parity with `decomp/ing`), the host's own probe code, and the two the module's asm
-  tests. The one MASK hit is `flags & 0x100` in `FollowAttackPattern` - the Ing host body's value,
-  re-derived from the asm: PowerPC numbers the bits from the MSB, so `rlwinm. r0, r3, 0, N, N`
-  tests `1u << (31 - N)` (`fn_30_99D4` at 0x00009B44/0x00009B4C/0x00009B60 -> 0x40, 0x80, 0x100).
-- **The run.** Area 28 (`Torvus Bog/06_swamp_boostballguardian_dark`, layer 5) with
-  `MP2_BG_FSM=1 MP2_DEBUG_BG=1`: `Start` (form 2) -> `BecomeCorporeal` -> `Lurk` ->
-  `SelectTarget` -> `FaceTarget` -> `Alert` -> `SetTargetDest` -> `PathFind` -> `BecomeIngSpot` ->
-  `WaitForFSMTransition` (form 3) -> `Start` -> `Lurk` -> `FindCoverPoint` -> `SetCoverDest` ->
-  `IngSpotPathFind` -> `FaceTarget` -> `BecomeCorporeal` -> `WaitForFSMTransition` (form 2);
-  `[port] caught|reach-stub` 0, no crash.
-- **Next, in order.**
-  1. The module's own copies of the 17 nodes in `BoostGuardian.md` section b.3: read them
-     against this module's asm (the Ing port's body is a near neighbour there, not the
-     authority) and fix the port.
-  2. The exit host: this module's own copy of the Ing's exit-host body plus the exit-host class
-     (`ExitHost` and `SpawnExitHostSmoke` are stubs in
-     `PortCIngBoostBallGuardianStates1.cpp`).
-  3. The mini portal attack: this module's own copy of the Ing's `CIngMiniPortalAttack`
-     (`DoUserAnimEvent` in `PortCIngBoostBallGuardianOverrides.cpp` drops the spawn).
-  4. The second class - the crystal the boost ball collides with (`fn_30_3478`, a `CPhysicsActor`
-     of 0x5E0) - and then `BoostAttack` (`fn_30_79C0`), which is a stub until it exists.
-  5. The nav-point finder `fn_30_2F9C`, which `BoostModeRetreat`'s Activate needs
-     (`PortCIngBoostBallGuardianBoost.cpp`).
-  6. The boost ball itself: the rolling form, the puddle form and the three phase structs
-     (`CBoostBallGuardianData`'s phases, the thresholds in
-     `docs/module-analysis/BoostGuardian.md` section c).
-- **Carrying the Ing fixes over.** The Ing half matches `decomp/ing` at `1776bb60b`; when the Ing
-  session commits a fix to a body this module also carries, it has to be carried over here (the
-  file mapping and the list of this module's own adaptations are in
-  `docs/module-analysis/BoostGuardian.md` section b.3).
-- **Shared files this session touched** (the Ing session owns them; the additions are the same
-  ones `decomp/ing` made): `include/MetroidPrime/Enemies/CIngSpotData.hpp` (the accessors),
-  `include/MetroidPrime/PathFinding/CPathFindPointSearch.hpp` (`ClearWaypoints`),
-  `include/MetroidPrime/Player/CPlayer.hpp` (`EnableEnterMorphBall`).
-
-## 2026-10-20 (thirty-first session): the Boost Guardian module starts - it loads, stands and thinks
-
-Sandworm is closed (20 bodies left, each with its reason in the source and in
-`docs/module-analysis/Sandworm.md`), so this session opened the next boss: `IngBoostBallGuardian`
-(REL module 30, `IBBG`, Torvus Bog `06_swamp_boostballguardian_dark` layer 5). New worktree
-`wt-mp2-boostguardian`, branch `decomp/boostguardian`, based on `port` at `c5e1e2042` plus the
-console `aim <yaw> <pitch>` verb cherry-picked from `decomp/swampboss` (`4d1864f8e`), because a
-boss fight needs to point the view at a low target. Its host build is `build-port-link` in the
-worktree. A fresh worktree needs three things before it builds and runs: `git submodule update
---init extern/musyx`, the `orig/<game>/{files,sys}` symlinks to the archive tree (they are not
-tracked, so the upstream matching build stops at `dtk dol split` without them), and the
-`DefaultFont*.inc` blobs copied in from another worktree's `build/G2ME01/include` before the first
-host link.
-
-- **What the module is.** 309 functions, `.text` 0x110C4 + a second section from 0x11CD8, two
-  classes: `CIngBoostBallGuardian` (0x11F0, `CPatterned` with character 0x19, vtable
-  `lbl_30_data_9C0` 82 words / 34 local overrides) and a 0x5E0 `CPhysicsActor` whose name string
-  is still unidentified. The loader struct is generated upstream already
-  (`SLdrIngBoostBallGuardian.hpp`): an Ing block with no grapple/face-plate properties and a boost
-  block with three phase structs, so the whole parameter surface was known before any code.
-- **The FSM is code-built.** `fn_30_110C4` is a `.ctors` initialiser that copies three name tables
-  into `.bss`: 49 triggers, 28 states, 9 codes - the Ing FSM plus `TargetIsBall`, `IsBoostPuddleForm`,
-  `IsCurrentlyInBoostPuddleForm`, `IsBoostOver`, `ShouldBoost`, `HasCollidedWithCrystal`,
-  `BoostModeRetreatOver` and the states `BoostAttack`/`BoostModeRetreat`. `fn_30_C6CC` installs
-  them. The transitions are not in `.data`, so they come from the `'FSM2'` asset and need a
-  running actor - the `MP2_SB_FSM` probe recipe is the way in.
-- **Milestone 1 (`1e753b70e`).** `PortCIngBoostBallGuardian.cpp` holds the loader `fn_30_130`'s
-  copy, the constructor `fn_30_EC6C`, the one-line accessors the vtable pins down, and a
-  once-only stand-in log for every AI override. `kET_IngBoostBallGuardian = 117` was the only free
-  tag in the DOL list, which confirms the parent is `CPatterned`. In area 28 the actor registers
-  (`init compiled module IngBoostBallGuardian`), takes `kSM_Create` and runs PreThink/Think every
-  frame; `[port] caught|reach-stub` count 0, and the room renders (screenshot at 55 s).
-- **Harness.** `/tmp/opencode/bg_run.sh <tag> <cmd-file> [secs]` builds that worktree's binary,
-  boots the area, forces `layer 5` and drives the console on 47131 through the shared
-  `/tmp/opencode/sb2_console.py`; `/tmp/opencode/bgtrace.py` is the `fn_30_` trace injector
-  (the `// @` markers are not in the source yet - no body is marked until a traced run).
-- **Lessons.** The retail constructor takes `const rstl::string&` name and receives
-  `&editorProperties` (the name is at +0 of that struct) and a *pointer* to the uid; the loader
-  builds one `CModelData`, not two. m2c prints `"StateOver" + 0x53F` for what is really
-  `lbl_30_rodata_12C + 0x53F`, i.e. the rodata label plus an offset, so resolve strings from the
-  asm, never from the pseudo-C.
-- **Next.** The FSM probe, then the Ing half of the states from `PortCIng.cpp`/`IngFamily.md`;
-  then the boost ball (crystal collision, puddle form, the three phases), the mini portals
-  (`fn_30_D4F8` builds a `CIngMiniPortalAttack`) and the second class.
+| lane | session | branch @ base | task |
+|---|---|---|---|
+| BoostGuardian (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | boostguardian @ `999b51bdf` | 6980 splat, mini-portal + ExitHost, module-30 marking pass |
+| EmperorIng3 (Opus) | `ses_ea552cc99ffepxd6lIKfYVHqxe` | emperoring3 @ `e3971fcd3` | light swarm BD84 + vtable, BB8, E40, beam damage |
+| DigitalGuardian (Opus) | `ses_ea542bd35ffeRmTvcVUd6IIdU4` | digitalguardian @ `758e166ab` (0x150C fallback, 3F14, 2A28, 266C/2E60) | CDigitalGuardianHead class, head paths in 7D8C/2A28, 5644 |
+| Splitter (worker) | `ses_ea58db7b6ffe3wysciukole7Eq` | splitter @ `b1f682ff7` | 3460, Activate run, FSM 5E8C/E9E4 sizes |
+| CommandoPirate (worker) | `ses_ea569018cffeQjN5VdT4OQtoEr` | commandopirate @ `843ebf292` | 4CA4, 6390, 3090 |
+| EmperorIng1 (worker) | `ses_ea53f0487ffeLDTNqYcJmJxJeS` | emperoring @ `9559ffaff` (1A50/1950, Taunt 5DBC; markers owed by orchestrator) | Warp 601C, 9BE8, 1A50 emitter tail |
+| MinorIng (worker) | `ses_ea550f1b2ffeU2N84DMkU5YP5z` | minoring (new, wt-mp2-ing) | stand-ins + marking pass |
+| DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` | darksamus @ `dead28a30` | milestone 2 (status unknown) |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
@@ -354,3 +239,5 @@ on scannables"; asked how, "they flash".
 
 
 Older sessions: `docs/STATUS-history.md`.
+
+The openchamber tool rejects every non-string argument (2026-10-20), so lanes run as subagents now; old lane sessions can't be resumed from here.

@@ -449,10 +449,23 @@ static u32 calc_vtx_size(GXVtxFmt fmt) noexcept {
 
 static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange, gfx::Range idxRange,
                          u32 numIndices) noexcept {
+  // A frame begin_frame declined (Android surface lost or invalidated, e.g. mid scan-visor open)
+  // still runs the game's draws; with no render pass, building a pipeline would index the pass
+  // list with UINT32_MAX, so drop the draw like push_command drops the frame's other commands.
+  if (!gfx::has_render_pass())
+    UNLIKELY { return; }
   auto& state = g_gxState;
   auto& cache = sDrawCache;
 
-  DrawImmediateData immediates{.vtxStart = vertRange.offset, .currentPnMtx = state.currentPnMtx};
+  // The shader's forced alpha also reaches the colour blend, so force it only when that blend does
+  // not read the source alpha; an alpha-blended draw keeps its TEV alpha (and writes
+  // tevAlpha * dstAlpha/255, the old approximation) instead of turning opaque.
+  const auto readsSrcAlpha = [](GXBlendFactor f) { return f == GX_BL_SRCALPHA || f == GX_BL_INVSRCALPHA; };
+  const bool colorReadsSrcAlpha =
+      state.blendMode == GX_BM_BLEND && (readsSrcAlpha(state.blendFacSrc) || readsSrcAlpha(state.blendFacDst));
+  DrawImmediateData immediates{.vtxStart = vertRange.offset,
+                                .currentPnMtx = state.currentPnMtx,
+                                .forceDstAlpha = state.dstAlpha != UINT32_MAX && !colorReadsSrcAlpha ? 1u : 0u};
   for (int i = GX_VA_POS; i <= GX_VA_TEX7; ++i) {
     if (state.vtxDesc[i] != GX_INDEX8 && state.vtxDesc[i] != GX_INDEX16) {
       continue;

@@ -1,0 +1,402 @@
+#ifndef _CCOMMANDOPIRATE
+#define _CCOMMANDOPIRATE
+
+#include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "REL/REL_Setup.h"
+
+#ifdef TARGET_PC
+#include "Kyoto/Audio/CSfxHandle.hpp"
+#include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/SObjectTag.hpp"
+#include "MetroidPrime/CBoneTracking.hpp"
+#include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+
+// The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
+// is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
+// floats on top); the guest offsets are the REL's and the host layout is its own. The four
+// constants 0.1f/150.f/0.1f/150.f are the guest's (fn_9_98C stores them from its own arguments at
+// 0x0000098C..0x00000A0C) and the flag byte at guest +0x4C is the guest's zero.
+struct CCommandoPirateGrenadeData {
+  CCommandoPirateGrenadeData(float grenadeMass, float unknownED086CE0,
+                             const CDamageInfo& bladeDamage, int grenadeNumBounces,
+                             CAssetId grenadeExplosion, CAssetId grenadeExplosion2,
+                             CAssetId grenadeTrail, CAssetId grenadeEffect,
+                             ushort soundGrenadeBounce, float empDuration,
+                             float grenadeAttackChance, float grenadeMinAttackInterval,
+                             float grenadePostAttackPause, float grenadeMinAttackDist,
+                             float grenadeMaxAttackDist, float grenadeMinLaunchSpeed,
+                             float grenadeMaxLaunchSpeed)
+  : mGrenadeMass(grenadeMass)
+  , mUnknownED086CE0(unknownED086CE0)
+  , mBladeDamage(bladeDamage)
+  , mGrenadeNumBounces(grenadeNumBounces)
+  , mGrenadeExplosion(grenadeExplosion)
+  , mGrenadeExplosion2(grenadeExplosion2)
+  , mGrenadeTrail(grenadeTrail)
+  , mGrenadeEffect(grenadeEffect)
+  , mSoundGrenadeBounce(soundGrenadeBounce)
+  , mEMPDuration(empDuration)
+  , mGrenadeAttackChance(grenadeAttackChance)
+  , mGrenadeMinAttackInterval(grenadeMinAttackInterval)
+  , mGrenadePostAttackPause(grenadePostAttackPause)
+  , mGrenadeMinAttackDist(grenadeMinAttackDist)
+  , mGrenadeMaxAttackDist(grenadeMaxAttackDist)
+  , mGrenadeMinLaunchSpeed(grenadeMinLaunchSpeed)
+  , mGrenadeMaxLaunchSpeed(grenadeMaxLaunchSpeed) {}
+
+  float mGrenadeMass;              // guest +0x00, fn_9_98C @0x0000098C
+  float mUnknownED086CE0;          // guest +0x04, fn_9_98C @0x00000994
+  CDamageInfo mBladeDamage;        // guest +0x08 (0x1c), fn_9_98C @0x0000099C..0x000009D8
+  int mGrenadeNumBounces;          // guest +0x24, fn_9_98C @0x000009E4
+  CAssetId mGrenadeExplosion;      // guest +0x28, fn_9_98C @0x000009E8
+  CAssetId mGrenadeExplosion2;     // guest +0x2c, fn_9_98C @0x000009EC (the same asset again)
+  CAssetId mGrenadeTrail;          // guest +0x30, fn_9_98C @0x000009F0
+  CAssetId mGrenadeEffect;         // guest +0x34, fn_9_98C @0x000009F4
+  ushort mSoundGrenadeBounce;      // guest +0x38, fn_9_98C @0x000009F8
+  // guest +0x3a: the guest reads the high half of the word it stored at its own stack +0x8
+  // (fn_9_98C @0x000009D8 reads 0xa(r1)), so the guest stores zero here.
+  float mRadiusMin;                // guest +0x3c, fn_9_98C @0x00000A00 (the guest's 0.1f)
+  float mDamageMax;                // guest +0x40, fn_9_98C @0x00000A04 (the guest's 150.f)
+  float mRadiusMax;                // guest +0x44, fn_9_98C @0x00000A08 (the guest's 0.1f)
+  float mDamageMin;                // guest +0x48, fn_9_98C @0x00000A0C (the guest's 150.f)
+  uchar mFlags;                    // guest +0x4c, fn_9_98C @0x00000A14 (the guest's zero)
+  float mEMPDuration;              // guest +0x50, fn_9_F50C @0x00000A28
+  float mGrenadeAttackChance;      // guest +0x54, fn_9_F50C @0x00000A2C
+  float mGrenadeMinAttackInterval; // guest +0x58, fn_9_F50C @0x00000A30
+  float mGrenadePostAttackPause;   // guest +0x5c, fn_9_F50C @0x00000A34
+  float mGrenadeMinAttackDist;     // guest +0x60, fn_9_F50C @0x00000A38
+  float mGrenadeMaxAttackDist;     // guest +0x64, fn_9_F50C @0x00000A3C
+  float mGrenadeMinLaunchSpeed;    // guest +0x68, fn_9_F50C @0x00000A40
+  float mGrenadeMaxLaunchSpeed;    // guest +0x6c, fn_9_F50C @0x00000A44
+};
+
+// The shield half of the REL's parameter block (guest data+0xD8, 0x84 bytes), built by
+// fn_9_EF80 out of the shield property block (fn_9_1308) and copied by fn_9_EB84.
+struct CCommandoPirateShieldData {
+  CCommandoPirateShieldData(const CDamageInfo& chargeDamage,
+                             const CDamageVulnerability& chargeVulnerability,
+                             float chargeMinAttackDist, float chargeMaxAttackDist,
+                             float chargeSpeed, CAssetId explodeEffect, ushort soundExplode,
+                             float unknown6CB0DA5A, float unknownC3938663, float armChance,
+                             float armTime, float armTimeVariation, CAssetId armExplodeEffect,
+                             CAssetId chargeEffect, CAssetId armEffect, ushort soundTurnOn,
+                             ushort soundTurnOff)
+  : mChargeDamage(chargeDamage)
+  , mChargeVulnerability(chargeVulnerability)
+  , mChargeMinAttackDist(chargeMinAttackDist)
+  , mChargeMaxAttackDist(chargeMaxAttackDist)
+  , mChargeSpeed(chargeSpeed)
+  , mExplodeEffect(explodeEffect)
+  , mSoundExplode(soundExplode)
+  , mUnknown6CB0DA5A(unknown6CB0DA5A)
+  , mUnknownC3938663(unknownC3938663)
+  , mArmChance(armChance)
+  , mArmTime(armTime)
+  , mArmTimeVariation(armTimeVariation)
+  , mArmExplodeEffect(armExplodeEffect)
+  , mChargeEffect(chargeEffect)
+  , mArmEffect(armEffect)
+  , mSoundTurnOn(soundTurnOn)
+  , mSoundTurnOff(soundTurnOff) {}
+
+  CDamageInfo mChargeDamage;            // guest +0x00 (0x1c), fn_9_EF80 @0x0000EF80
+  CDamageVulnerability mChargeVulnerability; // guest +0x1c (0x30), fn_9_EF80 @0x0000EFA4
+  float mChargeMinAttackDist;           // guest +0x4c, fn_9_EF80 @0x0000EFB4
+  float mChargeMaxAttackDist;           // guest +0x50, fn_9_EF80 @0x0000EFB8
+  float mChargeSpeed;                   // guest +0x54, fn_9_EF80 @0x0000EFBC
+  CAssetId mExplodeEffect;              // guest +0x58, fn_9_EF80 @0x0000EFC0
+  ushort mSoundExplode;                 // guest +0x5c, fn_9_EF80 @0x0000EFC4
+  float mUnknown6CB0DA5A;                // guest +0x60, fn_9_EF80 @0x0000EFC8
+  float mUnknownC3938663;                // guest +0x64, fn_9_EF80 @0x0000EFCC
+  float mArmChance;                     // guest +0x68, fn_9_EF80 @0x0000EFD0
+  float mArmTime;                       // guest +0x6c, fn_9_EF80 @0x0000EFD4
+  float mArmTimeVariation;              // guest +0x70, fn_9_EF80 @0x0000EFD8
+  CAssetId mArmExplodeEffect;           // guest +0x74, fn_9_EF80 @0x0000EFDC
+  CAssetId mChargeEffect;               // guest +0x78, fn_9_EF80 @0x0000EFE0
+  CAssetId mArmEffect;                  // guest +0x7c, fn_9_EF80 @0x0000EFE4
+  ushort mSoundTurnOn;                  // guest +0x80, fn_9_EF80 @0x0000EFE8
+  ushort mSoundTurnOff;                 // guest +0x82, fn_9_EF80 @0x0000EFEC
+};
+
+// The REL's parameter block (guest 0x15e bytes at guest 0x7C0), built by fn_9_EDC0 and copied into
+// the object by fn_9_EA24. The guest offsets are the REL's; the host layout is its own.
+struct CCommandoPirateData {
+  CCommandoPirateData(ushort soundImpact, ushort soundHurled, ushort soundDeath, ushort alwaysFF,
+                      int alwaysFF2, const CDamageInfo& bladeDamage, CAssetId projectile,
+                      const CDamageInfo& projectileDamage, ushort soundProjectile,
+                      float aggressiveness, float coverCheck, float searchRadius, float dodgeCheck,
+                      float hearingRadius, float intraBurstShotTime, float intraBurstShotVariation,
+                      const CCommandoPirateGrenadeData& grenade,
+                      const CCommandoPirateShieldData& shield, uchar flags0, uchar flags1)
+  : mSoundImpact(soundImpact)
+  , mSoundHurled(soundHurled)
+  , mSoundDeath(soundDeath)
+  , mAlwaysFF(alwaysFF)
+  , mAlwaysFF2(alwaysFF2)
+  , mBladeDamage(bladeDamage)
+  , mProjectile(projectile)
+  , mProjectileDamage(projectileDamage)
+  , mSoundProjectile(soundProjectile)
+  , mAggressiveness(aggressiveness)
+  , mCoverCheck(coverCheck)
+  , mSearchRadius(searchRadius)
+  , mDodgeCheck(dodgeCheck)
+  , mHearingRadius(hearingRadius)
+  , mIntraBurstShotTime(intraBurstShotTime)
+  , mIntraBurstShotVariation(intraBurstShotVariation)
+  , mGrenade(grenade)
+  , mShield(shield)
+  , mFlags0(flags0)
+  , mFlags1(flags1) {}
+
+  ushort mSoundImpact;             // guest +0x00, fn_9_EDC0 @0x0000E83C
+  ushort mSoundHurled;             // guest +0x02, fn_9_EDC0 @0x0000E844
+  ushort mSoundDeath;              // guest +0x04, fn_9_EDC0 @0x0000E84C
+  ushort mAlwaysFF;                // guest +0x06, fn_9_EDC0 @0x0000E854
+  int mAlwaysFF2;                  // guest +0x08, fn_9_EDC0 @0x0000E85C
+  CDamageInfo mBladeDamage;        // guest +0x0c (0x1c), fn_9_EDC0 @0x0000E864..0x0000E8B4
+  CAssetId mProjectile;            // guest +0x28, fn_9_EDC0 @0x0000E8B8
+  CDamageInfo mProjectileDamage;   // guest +0x2c (0x1c), fn_9_EDC0 @0x0000E8BC..0x0000E90C
+  ushort mSoundProjectile;         // guest +0x48, fn_9_EDC0 @0x0000E910
+  float mAggressiveness;           // guest +0x4c, fn_9_EDC0 @0x0000E918
+  float mCoverCheck;               // guest +0x50, fn_9_EDC0 @0x0000E91C
+  float mSearchRadius;             // guest +0x54, fn_9_EDC0 @0x0000E920
+  float mDodgeCheck;               // guest +0x58, fn_9_EDC0 @0x0000E924
+  float mHearingRadius;            // guest +0x5c, fn_9_EDC0 @0x0000E928
+  float mIntraBurstShotTime;       // guest +0x60, fn_9_EDC0 @0x0000E92C
+  float mIntraBurstShotVariation;  // guest +0x64, fn_9_EDC0 @0x0000E930
+  CCommandoPirateGrenadeData mGrenade; // guest +0x68 (0x70), fn_9_EDC0 @0x0000E934
+  CCommandoPirateShieldData mShield;   // guest +0xD8 (0x84), fn_9_EDC0 @0x0000E938
+  // guest +0x15c / +0x15d: the guest packs eight and four bits of the "sound" property into these
+  // bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60); the bit map is in the analysis note.
+  uchar mFlags0;
+  uchar mFlags1;
+};
+#endif
+
+// The REL's CCommandoPirate (module 9): the Pirate Commando. The retail object is 0xC68 bytes on
+// the GameCube, built by fn_9_D904, and its vtable is lbl_9_data_828 (82 words, 34 local
+// overrides); the analysis is docs/module-analysis/CommandoPirate.md.
+//
+// Milestone 1 (this file's first slice) is load-and-stand: the loader, the constructor, the path
+// search, the projectile info, the bone tracking and the accessors the vtable gives one-line
+// bodies to are host code. The state machine (the module's trigger, state and code tables), the
+// melee, the E-grenade, the shield and the burst fire are milestone 2 and forward, and every
+// override that belongs to them forwards to CPatterned behind a once-only StandIn log.
+class REL_EXPORT CCommandoPirate : public CPatterned {
+public:
+#ifdef TARGET_PC
+  // Argument order is the REL loader's call at 0x00000964 (fn_9_168): uid, editor-property name,
+  // entity info, transform, model, actor parameters, patterned info, then the parameter block.
+  CCommandoPirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                  const CTransform4f& xf, const CModelData& modelData,
+                  const CActorParameters& actParms, const CPatternedInfo& pInfo,
+                  const CCommandoPirateData& data);
+#endif
+  ~CCommandoPirate() override;
+
+  // CEntity
+  void PreThink(float dt, CStateManager& mgr) override;
+  void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
+
+  // CActor
+  void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  void Render(const CStateManager& mgr) const override;
+  void PreRenderAllViewports(CStateManager& mgr) override;
+  const CDamageVulnerability* GetDamageVulnerability() const override;
+
+  // CAi
+  void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
+  bool CanBeShot(const CStateManager& mgr, int attributes) override;
+  bool IsListening() const override;
+  bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+
+  // CPatterned
+  CProjectileInfo* ProjectileInfo() override;
+  CPathFindSearch* GetSearchPath() override;
+  float GetGravityConstant() const override;
+  CPathFindPointSearch* GetPointSearchPath() override;
+  CDamageInfo GetContactDamage() const override;
+  CRagDoll* GetRagDoll() const override;
+  TUniqueId GetAttackTarget() const override;
+  void SetupStateMachine(CStateManager& mgr) override;
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
+                    CStateManager& mgr) override;
+
+#ifdef TARGET_PC
+  // The body's state machine. Retail fn_9_BDE0 (vtable slot 60) calls the base's setup and
+  // then registers the module's two tables, which the module's .ctors builder (fn_9_F9F8)
+  // fills in: 34 triggers (lbl_9_data_198, .data 0x198) and 36 states (lbl_9_data_568,
+  // .data 0x568). The names are retail's - the state machine asset's nodes are matched by
+  // name - and each comment is the retail function the entry points at. The bodies are
+  // stand-ins in this slice; a later one ports them.
+  //
+  // Triggers (lbl_9_data_198, 34 entries; the .rodata offset is in the analysis note).
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BDCC
+  bool ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BD98
+  bool ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BCB8
+  bool ShouldFireEGrenade(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BBC8
+  bool ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BB7C
+  bool ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BB10
+  bool ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BB04
+  bool BreakAmbush(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAF8
+  bool HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAEC
+  bool UnderFire(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAD0
+  bool HeardShot(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BAB4
+  bool HasTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BA78
+  bool HasNewTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_BA20
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B9D8
+  bool PathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B990
+  bool IsOffPath(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B958
+  bool HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B900
+  bool IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B818
+  bool AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B7FC
+  bool TooClose(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B76C
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B690
+  bool ShouldArmShield(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B660
+  bool ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B250
+  bool ShouldBoost(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1E0
+  bool AbortShieldCharge(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1D4
+  bool IsAggressive(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1C8
+  bool FoundJumpPoint(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B1A8
+  bool ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B168
+  bool ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B114
+  bool ShouldCover(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B0F4
+  bool FoundCover(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B0D4
+  bool ShouldCoverAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_B0B4
+  bool CoverBlown(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_AFD4
+  bool AbortSeekCover(CStateManager& mgr, const CTriggerData& data) const;  // fn_9_AFB8
+
+  // States (lbl_9_data_568, 36 entries). PathFind, Patrol and Dead hide CPatterned's own,
+  // which is what retail does too: the module's table replaces the base's entries.
+  void Lurk(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_ADD4
+  void Ambush(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_ADA0
+  void Alert(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_AE04
+  void FaceTarget(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_ABDC
+  void SelectTarget(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_AB08
+  void SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_AA20
+  void SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A97C
+  void SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A8E8
+  void SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A838
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A4BC
+  void EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A2EC
+  void PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A110
+  void JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9F24
+  void JetBoost(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9BB4
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9AAC
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_996C
+  void FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_961C
+  void WarpIn(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_9064
+  void WarpOut(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8DF0
+  void PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8D28
+  void JumpBack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8B70
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8934
+  void ArmShield(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_86B4
+  void ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_8028
+  void ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_7A98
+  void RestoreOrientation(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_786C
+  void Crouch(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_7724
+  void WallHang(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_7358
+  void WallDetach(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_728C
+  void CoverFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_709C
+  void SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_A7A8
+  void Cover(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6DBC
+  void CoverAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6C68
+  void BreakCover(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6BCC
+  void GetUp(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_6A40
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);  // fn_9_69C8
+#endif
+
+private:
+  void EnsureBodyActive(CStateManager& mgr);
+
+  // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
+  bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const;
+
+  // fn_9_19D8: the module's team helper - the commando joins the team of its area.
+  void x19D8_JoinTeam(CStateManager& mgr);
+
+  // fn_9_662C: the module's per-frame helper - it advances the module's timers and flag bits.
+  void x662C_UpdateTimers(CStateManager& mgr, float dt);
+
+  // fn_9_3338: the module's jump-back helper - is the point behind the actor clear?
+  bool x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir, float distance) const;
+
+  // fn_9_3678: the module's dodge picker - which side (left or right) can the commando dodge into?
+  int x3678_PickDodgeDirection(CStateManager& mgr) const;
+
+  // fn_9_4BC0: the module's sound emitters - the two handles the guest keeps at guest this+0xC04
+  // and this+0xC38 follow the actor.
+  void x4BC0_UpdateEmitters();
+
+  // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
+  // navigation runs. It walks the listening-AI object list and steers away from the other
+  // listening AIs of the same area.
+  void x1A9C_AvoidActors(CStateManager& mgr);
+
+  // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
+  // match (host objects outgrow retail). A raw member is named after the offset it stands for
+  // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest
+  // offset. The guest member map is in the analysis note.
+#ifdef TARGET_PC
+  CCommandoPirateData mData;             // 0x7c0 (0x15e), the loader's parameter block
+  int x920_;                              // 0x920, -1 from the ctor; the module's states rewrite it
+  int x924_;                              // 0x924, -1 (fn_9_D904 @0x0000D9A4)
+  CPathFindSearch mPathFindSearch;        // 0x928 (fn_9_D904 @0x0000D990)
+  CProjectileInfo mProjectileInfo;        // 0xa14 (fn_9_D904 @0x0000D9B8)
+  int xa3c_;                              // 0xa3c, 0 (fn_9_D904 @0x0000D9D0)
+  int xa40_;                              // 0xa40, 0 (fn_9_D904 @0x0000D9D8)
+  CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
+  CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
+  uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
+  float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
+  float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
+  float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
+  float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
+  float xb68_;                            // 0xb68, a timer; fn_9_662C advances it
+  float xb6c_;                            // 0xb6c, a timer; fn_9_662C advances it
+  float xb70_;                            // 0xb70, a timer; fn_9_662C advances it
+  float xb74_;                            // 0xb74, a timer; fn_9_662C advances it
+  float xb78_;                            // 0xb78, a timer; fn_9_662C advances it
+  float xb84_;                            // 0xb84, a timer; fn_9_662C advances it
+  float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
+  float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
+  CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
+  TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
+  TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
+  TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
+  TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
+  int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
+  float xbe0_;                           // 0xbe0, the jump-back distance; fn_9_D904 @0x0000E61C
+  float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
+  TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
+  TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
+  TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
+  CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
+  CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
+  CSegId mLocatorMidLaunch;               // 0xc5d, "Mid_Launch_LCTRL" (fn_9_D904 @0x0000E2D0)
+  CSegId mLocatorGun;                     // 0xc5e, "gun_LCTR" (fn_9_D904 @0x0000E304)
+  CSegId mLocatorGun2;                    // 0xc5f, "gun_LCTR" (fn_9_D904 @0x0000E338)
+  CSegId mLocatorRWrist;                  // 0xc60, "R_wrist" (fn_9_D904 @0x0000E36C)
+  CSegId mLocatorRElbow;                  // 0xc61, "R_elbow" (fn_9_D904 @0x0000E3A0)
+  CSegId mLocatorLWrist;                  // 0xc62, "L_wrist" (fn_9_D904 @0x0000E3D4)
+  uchar xc63_;                            // 0xc63, cleared by the ctor; the states set its bits
+  uchar xc64_;                            // 0xc64, cleared (fn_9_D904 @0x0000E150)
+  uchar xc65_;                            // 0xc65, 0x80 (fn_9_D904 @0x0000E1B0)
+  uchar xc66_;                            // 0xc66, cleared (fn_9_D904 @0x0000E1E8)
+#else
+  uchar x7c0_[0xc68 - 0x7c0];
+#endif
+};
+CHECK_SIZEOF(CCommandoPirate, 0xc68)
+
+#endif

@@ -391,6 +391,14 @@ replace a package signed with a different certificate, and `adb uninstall org.me
 deletes the app's data - `files/disc.iso` (the picked ISO), `files/user/USA` (the memory card),
 `files/touch.cfg` and `files/port_paths.txt` - so re-pick the ISO and copy the save back afterwards.
 Keep the key: losing it loses in-place updates of an installed copy.
+The user's phone (2026-10-20) runs a copy signed with the shared debug key
+(`~/.android/debug.keystore`), so an update there is the release APK re-signed with it:
+`zipalign -p 4` then `apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android
+--ks-key-alias androiddebugkey` (`-PmpDebugSigning=true` does not override a configured key).
+The phone is reachable over tailscale (`poco-f8-ultra`); wireless debugging shows up as an mDNS
+`adb-*._adb-tls-connect._tcp` device once it is switched on.
+The Lenovo tablet (TB710FU, LAN only, not on tailscale; `adb mdns services` gives its
+`192.168.68.x:<port>`) has the project's release key: install `app-release.apk` unchanged.
 
 **Reading a crash on the phone.** The port installs a fault handler that prints `[port] caught
 SIGSEGV (11)` and a backtrace to logcat (tag `mp2port`) before it re-raises, so `adb logcat -d |

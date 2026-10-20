@@ -565,7 +565,7 @@ void DrawGameSection() {
   ImGui::SeparatorText("Cutscenes");
   // The game reads this every frame in its cinematic flow state.
   Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
-               "ends every cinematic at once, seen or not; makes tests 3-5x faster"));
+               "START or A skips any cinematic, seen or not; off, START skips only seen ones"));
 }
 
 // The Prime 1 port's Video page (debug_ui/tabs.cpp's DrawVideoTab) with its four sub-tabs. Display

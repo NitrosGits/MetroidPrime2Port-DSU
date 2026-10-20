@@ -118,6 +118,10 @@ enum EEntityType {
   kET_BeamProjectile = 109,
   kET_PlasmaProjectile = 110,
   kET_DarkSamus = 111,
+#ifdef TARGET_PC
+  kET_DigitalGuardian = 112,     // Native REL TypesMatch tag; parent is CPatterned.
+  kET_DigitalGuardianHead = 113, // Native REL TypesMatch tag; parent is CPatterned.
+#endif
   kET_ElitePirate = 114,               // Native REL TypesMatch tag; parent is CPatterned.
   kET_Grenchler = 115,                 // Target-derived class tag.
   kET_Ing = 116,                       // Native REL TypesMatch tag; parent is CPatterned.
@@ -137,6 +141,10 @@ enum EEntityType {
   kET_SandwormEye = 131,               // Target-derived class tag.
   kET_SpacePirate = 132,               // Target-derived class tag.
   kET_SpankWeed = 133,                 // Target-derived class tag.
+#ifdef TARGET_PC
+  kET_SplitterMainChassis = 134,   // Native REL TypesMatch tag; parent is CPatterned.
+  kET_SplitterCommandModule = 135, // Native REL TypesMatch tag; parent is CPatterned.
+#endif
   kET_WispTentacle = 136,              // Target-derived class tag.
   kET_ScriptPlayerTurret = 138,        // Target-derived class tag; turret-HUD REL dispatch target.
   kET_GunTurretBase = 139,             // Target-derived class tag.

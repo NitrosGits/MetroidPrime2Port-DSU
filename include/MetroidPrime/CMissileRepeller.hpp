@@ -17,6 +17,10 @@ public:
 
   void Update(CStateManager& mgr, const CActor& actor, float dt);
   void Render(const CStateManager& mgr, const CActor& actor) const;
+#ifdef TARGET_PC
+  // Inlined in retail (SwampBossStage2 writes mActive directly).
+  void SetActive(bool active) { mActive = active; }
+#endif
 
 private:
   // Guessed member names.
