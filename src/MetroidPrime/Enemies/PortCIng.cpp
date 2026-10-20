@@ -1262,13 +1262,11 @@ bool CIng::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
          kInvalidUniqueId;
 }
 
-// fn_29_A340 (not yet exercised in a run)
+// fn_29_A340 (not yet exercised in a run): over once the attack path is being followed
+// (0x0000A348: 0xE5D 0x08) and the waypoint navigation has no destination left (0x0000A35C:
+// this+0x6c0 against kInvalidUniqueId). It stores nothing.
 bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
-  if (mFollowingAttackPath) {
-    const_cast< CIng* >(this)->mFollowingAttackPath =
-        mWaypointNavigation.GetDestination() != kInvalidUniqueId;
-  }
-  return !mFollowingAttackPath;
+  return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 // @ fn_29_A2D8: the target is a ball that was not spawned as one - asm 0x0000A2E0 tests
