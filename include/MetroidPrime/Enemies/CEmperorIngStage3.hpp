@@ -10,18 +10,30 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 
-class CCollisionActor;
+#include "Kyoto/Math/CTransform4f.hpp"
+#include "rstl/vector.hpp"
 
-// The module's heart holder at guest 0x7C0. The DOL's fn_80136434 (called from the module's
-// fn_18_3BB0) fills it: the count at +0x4, the records at +0xC, and each record is 0x68 bytes
-// with the collision actor's unique id at +0x3C. The host keeps the same shape, with only the
-// part the module's own lookup reads.
-struct SEmperorIngHeartRecord {
-  u16 mUniqueId; // guest +0x3C, the collision actor's unique id
+class CCollisionActor;
+class CCollisionActorManager;
+class CJointCollisionDescription;
+
+// The module's three lists (guests 0x830, 0x840 and 0x850): rstl vectors (the count at +0x4, the
+// capacity at +0x8, the entries at +0xC) the constructor reserves sixteen entries in (fn_18_ADF8
+// with 0x10, 0x9C84..0x9C9C); each entry is 0xC bytes - a weight at +0x0, a threshold at +0x4
+// and a timer at +0x8.
+struct SEmperorIngListEntry {
+  float mWeight;    // guest +0x0
+  float mThreshold; // guest +0x4
+  float mTimer;     // guest +0x8
 };
-struct SEmperorIngHeartHolder {
-  u32 mCount;                       // guest +0x4
-  SEmperorIngHeartRecord* mRecords; // guest +0xC
+typedef rstl::vector< SEmperorIngListEntry > SEmperorIngList;
+
+// The module's portal list at guest 0x8CC: 0x34-byte records, the id of an actor connected on
+// INTERNAL_STATE_02/ACTIVATE and that actor's transform relative to this actor's area.
+struct SEmperorIngPortal {
+  TUniqueId mId;     // guest +0x0
+  CTransform4f mXf;  // guest +0x4
+  SEmperorIngPortal(TUniqueId id, const CTransform4f& xf) : mId(id), mXf(xf) {}
 };
 #endif
 
@@ -157,10 +169,53 @@ private:
   void FaceTarget(const CVector3f& target);
   // fn_18_3744: the angle snapped to the nearest 45 degrees.
   float SnapAngleTo45(float angle) const;
+  // fn_18_22BC: the module's average over the list at guest 0x840.
+  float BoneAverage() const;
+  // fn_18_AC44: the list walk - every entry's timer grows and an entry past its threshold
+  // is erased.
+  static void UpdateList(SEmperorIngList& list, float dt);
+  // fn_18_AC00: an entry is added when the list has room.
+  static void PushListEntry(SEmperorIngList& list, float weight, float threshold);
+  // fn_18_2BF0: the module's entry kinds for the list at guest 0x830 (3 ages it by 5.0).
+  void AddListEntry(int kind);
+  // fn_18_3BB0: the leg boxes and the three spheres (two of them the hearts) in a collision
+  // actor manager, kept at guest 0x7C0.
+  void SetupCollisionActors(CStateManager& mgr);
+  // fn_18_39E0: the actor is a target while either heart is active.
+  void UpdateTargetMaterials(CStateManager& mgr);
+  // fn_18_214: a heart's collision actor is switched on or off.
+  void SetHeartActive(CStateManager& mgr, int heart, bool active);
+  // fn_18_AB9C: the weighted average over a list.
+  float ListAverage(const SEmperorIngList& list) const;
+  // fn_18_1978: the module's flag check over the list at guest 0x850.
+  void CheckList(CStateManager& mgr);
+  // fn_18_125C: the module watches the object its id at guest 0x8C0 names and clears the id
+  // when the object is gone.
+  void WatchObject(CStateManager& mgr);
+  // fn_18_2D1C: the vector from the actor to the first player, flattened to the XY plane.
+  CVector3f PlayerDirection(CStateManager& mgr) const;
+  // fn_18_2CB8: the distance from the actor to the player.
+  float PlayerDistance(CStateManager& mgr) const;
+  // fn_18_2C98: the actor's facing, flattened to the XY plane.
+  CVector3f FlatFacing() const;
+  // fn_18_1BD8: both hearts get the module's vulnerability at guest 0x86C.
+  void SetHeartVulnerability(CStateManager& mgr) const;
+  // fn_18_1C34: saves the first heart's vulnerability and makes both hearts immune.
+  void SetHeartsImmune(CStateManager& mgr);
+  // fn_18_2B68: the entry kinds for the list at guest 0x840.
+  void AddTauntEntry(int kind);
+  // fn_18_1BB0: the heart switch with the heart that is on and no vulnerability change.
+  void SetCurrentHeart(CStateManager& mgr);
   // fn_18_1DF4: the heart switch (0 the enraged heart, 1 the dark heart, 2 the light heart).
   void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
+  // fn_18_36BC: the damage's source id against the two hearts' ids.
+  void OnDamage(CStateManager& mgr, u16 sourceId);
+  // fn_18_2D50: the hit object's id looked up in the heart holder.
+  void OnHitObject(CStateManager& mgr, u16 sourceId);
+  // The holder's record with the id that is looked for.
+  const CCollisionActor* HeartCollisionActorById(CStateManager& mgr, u16 id) const;
   // fn_18_3B14: the module's heart record (0 the first heart, 1 the second).
-  const SEmperorIngHeartRecord* HeartRecord(int heart) const;
+  const CJointCollisionDescription* HeartRecord(int heart) const;
   // fn_18_3ACC: the collision actor of a heart.
   CCollisionActor* HeartCollisionActor(CStateManager& mgr, int heart) const;
 
@@ -185,21 +240,37 @@ private:
                                         // jump-attack and dodge flags
   uchar x825_;                           // guest 0x825, 0: 0x01 the stampede-react flag, 0x04 the
                                         // aborted-jump-slide flag
-  SEmperorIngHeartHolder* x7c0_;        // guest 0x7C0, 0: the pointer to the module's heart
-                                        // holder (fn_18_3B14 reads it); the port does not
-                                        // create the holder yet
+  CCollisionActorManager* x7c0_;        // guest 0x7C0, 0: the collision actors (fn_18_3BB0
+                                        // makes them, fn_18_3B14 reads the hearts)
   int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
   float mX7c8_;                          // guest 0x7C8, 0.0f: the taunt timer
   float mX7cc_;                          // guest 0x7CC, 0.0f: the eye-shut timer
   float mX7d4_;                          // guest 0x7D4, 0.0f: the too-close distance
+  float mX7d0_;                          // guest 0x7D0, 0.0f: the time since the last attack
   float mX7e0_;                          // guest 0x7E0, 10000.0f: the jump-attack timer
   float mAttackTimer;                    // guest 0x7E4, 4.0f in the constructor
   int mAction;                           // guest 0x7E8, -1 in the constructor
   float mX810_;                          // guest 0x810, 0.0f: the damage taken while vulnerable
+  CDamageVulnerability mX86c_;           // guest 0x86C: the hearts' vulnerability
+  u16 mX8c0_;                            // guest 0x8C0, 0xFFFF: the id of the object the
+                                        // module watches (fn_18_125C clears it)
+  u16 x8c2_;                             // guest 0x8C2: the INTERNAL_STATE_00 connection
+  u16 x8c4_;                             // guest 0x8C4: INTERNAL_STATE_01/PLAY
+  u16 x8c6_;                             // guest 0x8C6: INTERNAL_STATE_01/ACTIVATE
+  u16 x8c8_;                             // guest 0x8C8: INTERNAL_STATE_02/DEACTIVATE
+  rstl::vector< SEmperorIngPortal > x8cc_; // guest 0x8CC: INTERNAL_STATE_02/ACTIVATE actors
+  SEmperorIngList mX830_;                 // guest 0x830: the module's first list
+  SEmperorIngList mX840_;                 // guest 0x840: the list the taunt average reads
+  SEmperorIngList mX850_;                 // guest 0x850: the list the flag check reads
+  float mX8ec_;                          // guest 0x8EC, 0.0f: the eye-shut time
+  float mX8f0_;                          // guest 0x8F0, 0.0f: the eye-shut duration
+  float mX8f4_;                          // guest 0x8F4, 0.0f: the eye-shut random time
+  CVector3f mX910_;                      // guest 0x910, 0: the jump attack's target
   CVector3f mX818_;                      // guest 0x818, 0: the facing the idle state turns
                                         // towards the player (fn_18_3804 writes it)
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
-  int mX868_;                            // guest 0x868, 0: the heart that is on
+  int mX868_;                            // guest 0x868, -1: the heart that is on
+  int x8a4_;                             // guest 0x8A4, -1: the dodge's step direction
 };
 #endif
 
