@@ -319,6 +319,11 @@ private:
   // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
   bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt);
 
+  // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
+  // navigation runs. It walks the listening-AI object list and steers away from the other
+  // listening AIs of the same area.
+  void x1A9C_AvoidActors(CStateManager& mgr);
+
   // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
   // match (host objects outgrow retail). A raw member is named after the offset it stands for
   // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest

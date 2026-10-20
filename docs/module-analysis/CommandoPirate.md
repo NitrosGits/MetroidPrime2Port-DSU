@@ -156,7 +156,7 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 
 | # | state | fn | .rodata |
 |---|---|---|---|
-| 0 | PathFind | `fn_9_9AAC` | 0x783 | activate: the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes, over the 0x80 limit) is a named stand-in |
+| 0 | PathFind | `fn_9_9AAC` | 0x783 | activate: the body controller's steering blend mode (the guest's field at +0x4C, the command manager's `mSteeringMode`) becomes full speed, the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the blend mode goes back to normal and the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes) is ported: it walks the listening-AI list and steers away from the other AIs of the same area |
 | Lurk | `fn_9_ADD4` | 0x6D2 |
 | 1 | Ambush | `fn_9_ADA0` | 0x6D7 |
 | 2 | Alert | `fn_9_AE04` | 0x6DE |
@@ -172,7 +172,7 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 12 | JumpPointFind | `fn_9_9F24` | 0x763 |
 | 13 | JetBoost | `fn_9_9BB4` | 0x771 |
 | 14 | PathFind | `fn_9_9AAC` | 0x77A |
-| 15 | PathFind | `fn_9_9AAC` | 0x783 | activate: the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes, over the 0x80 limit) is a named stand-in |
+| 15 | PathFind | `fn_9_9AAC` | 0x783 | activate: the body controller's steering blend mode (the guest's field at +0x4C, the command manager's `mSteeringMode`) becomes full speed, the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the blend mode goes back to normal and the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes) is ported: it walks the listening-AI list and steers away from the other AIs of the same area |
 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
 | Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the commando taunts - the relaxed taunt (`pas::kTT_Two`) while the body controller's locomotion type is relaxed, `pas::kTT_Four` otherwise; deactivate: the animation state back to "not ready" | the guest's command id 0x15 is the body state command `kBSC_Taunt`; the host's `CBCTauntCmd` |
 | Patrol | `fn_9_996C` | 0x783 |
@@ -274,10 +274,10 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 
 | state | fn | .rodata | body | notes |
 |---|---|---|---|---|
-| PathFind | `fn_9_9AAC` | 0x783 | activate: the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes, over the 0x80 limit) is a named stand-in |
+| PathFind | `fn_9_9AAC` | 0x783 | activate: the body controller's steering blend mode (the guest's field at +0x4C, the command manager's `mSteeringMode`) becomes full speed, the steering speed range is set to 1.0f twice and the 0x80 bit of the flag byte at guest this+0xC63 is cleared; deactivate: the blend mode goes back to normal and the 0x80 bit of the byte at +0xC65 is set; then the path find navigation runs while the block's flag byte at +0x15C does not have its 0x08 bit and the byte at +0xC65 has its 0x80 bit | the module's helper `fn_9_1A9C` (0x170 bytes) is ported: it walks the listening-AI list and steers away from the other AIs of the same area |
 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
 | Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the commando taunts - the relaxed taunt (`pas::kTT_Two`) while the body controller's locomotion type is relaxed, `pas::kTT_Four` otherwise; deactivate: the animation state back to "not ready" | the guest's command id 0x15 is the body state command `kBSC_Taunt`; the host's `CBCTauntCmd` |
-| Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
+| Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009B60) is the command manager's steering blend mode: full speed on activate, normal on deactivate |
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
 
@@ -288,6 +288,22 @@ member at that offset in the host's state manager, so the port uses the player a
   target up by the id at this+0xBCA and, when it exists, asks it for its aim position (CActor's
   vtable slot 0x54, `GetAimPosition`) with the state manager and the dt, and copies the answer
   into the out vector. It is 0xA8 bytes but trivial, so it is ported rather than stood in for.
+- `fn_9_1A9C` (0x170 bytes) is the guest's own helper, ported as the private member
+  `x1A9C_AvoidActors` and called by the PathFind state right after the path find navigation
+  (0x00009B8C). It walks the listening-AI object list (the state manager's +0x830, the same list
+  the Space Pirate's `AvoidActors` walks) and, for every other `CPatterned` of the same area
+  (the entities' +0x4 area id), asks `CSteeringBehaviors::Separation` (the behaviors at
+  this+0x61c, the other actor's position at its +0x54) for the separation from it. The distance
+  is 5.0f (`lbl_9_rodata_468`) times the model's X scale - the model data sits at this+0x60 and
+  its scale is the first member, so the multiply uses the scale's first float (0x00001B2C). A
+  separation that is magnitude-safe becomes a locomotion command: the normalized separation as the
+  move vector, a zero look direction and the weight 0.5f (`lbl_9_rodata_440`). The guest's
+  `CObjectList::operator[]`, `TCastToPtr<CPatterned>` and the command manager's `DeliverCmd` are
+  the host's own.
+  The area 59 run (Temple Grounds/05_temple_federationsite_dark, 1200 frames) shows the helper
+  running on every PathFind tick and finding seven other listening AIs of the area, but the
+  nearest one is 10.2 units away while the separation radius is 5.0f * 1.5 = 7.5, so every
+  separation is zero and no locomotion command is delivered there.
 - The guest's `CTryCommand::ShouldRetry` (guest this+0x6B4) is the base's animation state, so
   the port asks the animation state whether the command may be issued
   (`mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)`, the guest's command id 8).
@@ -417,6 +433,12 @@ the frame limit at 26.0 s in area 59 of 63, and ended with exit=0. The stand-ins
 `AcceptScriptMsg` (the kSM_Create), `PreThink`, `Think`, `SetupStateMachine`, `DoUserAnimEvent`,
 `PreRender`, `PreRenderAllViewports` and `CollidedWith`. `grep -c '[port] caught\|reach-stub'` on
 the run log is 0.
+
+The same run with the PathFind state and its helper ported (2026-10-20) shows the path find
+navigation running on every tick of the PathFind state (activate, update, deactivate), but the
+commando stands still (its position is the same on every tick): the state that sets the path
+destination (`fn_9_AA20`, SetTargetDest) is still a stand-in, so the path find search has no
+destination. `grep -c '[port] caught\|reach-stub'` on that log is still 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 

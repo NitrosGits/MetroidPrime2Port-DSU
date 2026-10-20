@@ -769,25 +769,32 @@ void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_9_9AAC: the state path-finds. On activate (the guest's message 0, 0x00009AEC) the body
-// controller's own field at +0x4C is set to 1 (the store at 0x0000B010), the steering speed range
-// is set to 1.0f twice (the SetSteeringSpeedRange call at 0x0000B120, lbl_9_rodata_43C is 1.f) and
-// the 0x80 bit of the module's flag byte at guest this+0xC63 is cleared (the rlwimi at
-// 0x0000B2C keeps the bit at position 24, the mask 1u << (31 - 24) = 0x80). On deactivate (the
-// guest's message 2, 0x00009AF4) that field is set to 0 (0x0000B044) and the 0x80 bit of the byte
-// at +0xC65 is set (the rlwimi at 0x0000B4C). The host's body controller has no field at +0x4C,
-// so that store is left out.
+// controller's field at +0x4C is set to 1 (the store at 0x00009BE4) - that field is the command
+// manager's steering blend mode (the cmd mgr sits at body controller + 4 and its six CVector3f
+// put mSteeringMode at +0x48) - the steering speed range is set to 1.0f twice (the
+// SetSteeringSpeedRange call at 0x00009BF4, lbl_9_rodata_43C is 1.f) and the 0x80 bit of the
+// module's flag byte at guest this+0xC63 is cleared (the rlwimi at 0x00009C00 keeps the bit at
+// position 24, the mask 1u << (31 - 24) = 0x80). On deactivate (the guest's message 2,
+// 0x00009AF4) that field is set to 0 (0x00009C18) and the 0x80 bit of the byte at +0xC65 is set
+// (the rlwimi at 0x00009C20).
 // Then, while the block's flag byte at +0x15C does not have its 0x08 bit (extrwi. r0, r0, 1, 28 at
 // 0x00009B58) and the byte at +0xC65 has its 0x80 bit (extrwi. r0, r0, 1, 24 at 0x00009B64), the
 // path find navigation runs (the call at 0x00009B80) and the module's own helper follows.
 void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
-    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);  // 0x0000B120
-    xc63_ &= ~0x80;                                    // 0x0000B2C
+    // 0x00009BE4: the guest writes 1 into the body controller's field at +0x4C. The host's
+    // enumerator with the value 1 is kSBM_FullSpeed.
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009BE4
+    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);        // 0x00009BF4
+    xc63_ &= ~0x80;                                    // 0x00009C00
     break;
   }
   case kStateMsg_Deactivate: {
-    xc65_ |= 0x80;                                     // 0x0000B4C
+    // 0x00009C18: the same field, cleared - the host's enumerator with the value 0 is
+    // kSBM_Normal.
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009C18
+    xc65_ |= 0x80;                                     // 0x00009C20
     break;
   }
   default:
@@ -795,8 +802,41 @@ void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   if ((mData.mFlags0 & 0x08) == 0 && (xc65_ & 0x80) != 0) {
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);  // 0x00009B80
-    // 0x00009B8C: the module's own helper, fn_9_1A9C - 0x170 bytes, over the 0x80 limit.
-    StandInFn("fn_9_1A9C (0x170 bytes)");
+    // 0x00009B8C: the module's own helper, fn_9_1A9C.
+    x1A9C_AvoidActors(mgr);                             // 0x00009B8C
+  }
+}
+
+// fn_9_1A9C (0x170 bytes): the module's own helper, called by the PathFind state after the path
+// find navigation has run. It walks the listening-AI object list (the state manager's +0x830, the
+// load at 0x00001ABC; the list's first index is the word at +0x2008, the load at 0x00001AC8) and
+// for every other CPatterned of the same area (the entities' +0x4 area id, compared at
+// 0x00001AF0..0x00001AFC; the null and the self tests are at 0x00001AE0 and 0x00001AE8) asks the
+// steering behaviors for the separation from that actor (the behaviors at this+0x61c, the other
+// actor's position at its +0x54; the call at 0x00001B3C). The distance is 5.0f times the model's
+// X scale - the model data sits at this+0x60 (the load at 0x00001B00) and its scale's first
+// float is the x, so the multiply is 5.f (lbl_9_rodata_468) times it (the fmuls at 0x00001B2C).
+// A separation that is magnitude-safe (the test at 0x00001B5C) becomes a locomotion command: the
+// normalized separation as the move vector, a zero look direction and the weight 0.5f
+// (lbl_9_rodata_440) - the command's fields are laid out at 0x00001BA0..0x00001BB8 and delivered
+// at 0x00001BC4.
+void CCommandoPirate::x1A9C_AvoidActors(CStateManager& mgr) {
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);  // 0x00001ABC
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CPatterned* other = TCastToPtr< CPatterned >(list[i]);  // 0x00001AD0..0x00001ADC
+    if (other == nullptr || other == this ||
+        other->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x00001AE0..0x00001AFC
+      continue;
+    }
+    const float separationDistance =
+        5.f * GetModelData()->GetScale().GetX();  // 0x00001B00..0x00001B2C
+    const CVector3f separation =
+        mSteeringBehaviors.Separation(*this, other->GetTranslation(), separationDistance);
+    if (!separation.IsMagnitudeSafe()) {  // 0x00001B5C
+      continue;
+    }
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCLocomotionCmd(separation.AsNormalized(), CVector3f::Zero(), 0.5f));  // 0x00001BC4
   }
 }
 
@@ -814,16 +854,20 @@ void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->SetTurnSpeed(0.5f * BodyController()->GetTurnSpeed());
     const float ratio = BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Walk) /
                          BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Run);
-    BodyController()->CommandMgr().SetSteeringSpeedRange(ratio, ratio);
     // 0x00009A1C: the guest's body controller takes a flag at +0x4C, one here and zero in the
-    // other branch (0x00009A60); the host's body controller has no such member.
+    // other branch (0x00009B60). That field is the command manager's steering blend mode (the
+    // cmd mgr sits at body controller + 4 and its six CVector3f put mSteeringMode at +0x48), so
+    // the host's enumerator with the value 1 is kSBM_FullSpeed.
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009A1C
+    BodyController()->CommandMgr().SetSteeringSpeedRange(ratio, ratio);
     break;
   }
   case kStateMsg_Deactivate: {
     // 0x00009A3C: the combat locomotion; 0x00009A50: twice the turn speed (lbl_9_rodata_44C is
-    // 2.f); 0x00009A60: the same flag at +0x4C, cleared.
+    // 2.f); 0x00009B60: the same flag at +0x4C, cleared - the host's value 0 is kSBM_Normal.
     BodyController()->SetLocomotionType(pas::kLT_Combat);
     BodyController()->SetTurnSpeed(2.f * BodyController()->GetTurnSpeed());
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009B60
     break;
   }
   default:
