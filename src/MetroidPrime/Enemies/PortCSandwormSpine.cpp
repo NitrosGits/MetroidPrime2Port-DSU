@@ -257,6 +257,10 @@ CVector3f CSandworm::SpineHelperC994(CStateManager& mgr, const CVector3f& pt) co
 // joint steps 0.5 down (rodata_200; X/Z step rodata_150, i.e. 0) and is re-projected onto the
 // floor by fn_56_C994.
 // fn_56_C828 (ported, not exercised yet)
+// Blocked by the only prefab that could reach it: this runs only from SetUnderground, which only
+// Patrol/Null activate call, and u048f (03_sand_temple L2, the one worm whose x8C0 bit 7 is clear)
+// never leaves Start/Prime/Snatch in seven boots — the AC24 hits of earlier runs are the adjacent
+// u04e9, whose prefab sets the bit. See Sandworm.md Port status.
 void CSandworm::SpineHelperC828(CStateManager& mgr) {
   while (x99C_joints.size() < 180) { // 0xB4 capacity
     x99C_joints.push_back(CVector3f::Zero());

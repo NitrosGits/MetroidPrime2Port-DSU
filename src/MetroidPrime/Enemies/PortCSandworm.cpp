@@ -802,6 +802,11 @@ CPathFindSearch* CSandworm::GetSearchPath() { return &x7C4_search; }
 CPathFindPointSearch* CSandworm::GetPointSearchPath() { return nullptr; }
 
 // fn_56_14AEC (ported, not exercised yet)
+// Dead slot: its only caller is CGameProjectile::CanCollideWithGameObject (CGameProjectile.cpp:141)
+// and a projectile's near list never holds the worm itself. Traced with a probe at
+// CGameProjectile::CanCollideWith over beam bursts through both area-2 worms: 29 distinct uids, all
+// patterned=0 — the triggers (0488, 052c) and the worms' own collision actors — so the projectile
+// path never reaches the pattern.
 CRagDoll* CSandworm::GetRagDoll() const { return nullptr; }
 
 // @ fn_56_30F8
@@ -827,6 +832,10 @@ bool CSandworm::IsOnGround() const { return mOnGround; }
 float CSandworm::GetGravityConstant() const { return kDefaultGravityAccel; }
 
 // fn_56_14B1C (ported, not exercised yet)
+// Data-gated: only CPatterned::CreateXDamageParticles (CPatterned.cpp:467) reads it, and that runs
+// only on a kFU_ExplodeDeath follow-up. The worm's knock-back rules never select one: a probe at
+// CKnockBackMgr::KnockBack over six weapon modes (power, dark, light, missile, bomb, power bomb)
+// saw followups None, BurnPhase, BurnDeath and LaggedBurnDeath — never 7 (ExplodeDeath).
 const rstl::optional_object< TCachedToken< CGenDescription > >&
 CSandworm::GetDeathExplosionParticle() const {
   return mDeathExplosionParticle;
@@ -855,6 +864,9 @@ float CSandworm::GetIngSnatchingModelOverlapSize() const { return 6.f; }
 void CSandworm::TakeDamage(const CVector3f&, float) { mDamageCooldownTimer = skDamageHitTime; }
 
 // fn_56_14B24 (ported, not exercised yet)
+// Dead slot, same trace as GetRagDoll above: CGameProjectile::CanCollideWithGameObject (:161) is the
+// only caller and it never sees the worm. Morph-ball bombs are CWeapon, not CGameProjectile, so a
+// bomb does not reach it either.
 bool CSandworm::CanBeShot(const CStateManager&, int) { return true; }
 
 // @ fn_56_14B2C

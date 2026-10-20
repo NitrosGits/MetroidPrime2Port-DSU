@@ -393,8 +393,8 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   (`Prime`) and `F77C` (`SpineHelperF77C`) — `Prime` runs there because this prefab's `Null`
   path has the underground bit clear. `14AEC`/`14B24` still need a projectile to reach the worm
   actor itself; `14B3C` turned out to be a dead slot of its own (see below).
-- Dead slots annotated (2026-10-20): nine of the remaining bodies cannot run in this build and the
-  source now says why instead of leaving them open. `14AE4` (`GetPointSearchPath`: only
+- Dead slots annotated (2026-10-20): nine bodies with a static reason cannot run in this build and
+  the source now says why instead of leaving them open. `14AE4` (`GetPointSearchPath`: only
   `CIngSpotPathFindNavigation` reads it, and the worm navigates with `mWaypointNavigation`), `14B34`
   (`Listen`: `CStateManager::InformListeners` only walks `kOL_ListeningAi`, which admits a patterned
   only while `IsListening()` is true, and `14B2C` returns false), `14B3C` (`GetOrigin`: the only
@@ -412,7 +412,7 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
     did not reproduce in any boot (hp stayed 950). The prefab precondition does hold live:
     `x8C0_flags` reads `0x10` inert and `0x12` awake, bit 7 clear throughout. The `AC24`/`112E8` hits of
     the earlier BG runs therefore belonged to the adjacent u04e9, not to the Bomb Guardian.
-  - The mol morphology is a `CWeapon`, not a `CGameProjectile`: `CBomb` (`CPlayerGun::DropBomb`) and
+  - The morph ball's bomb is a `CWeapon`, not a `CGameProjectile`: `CBomb` (`CPlayerGun::DropBomb`) and
     `CBouncingBomb` (`SpawnBouncingBomb`) both derive from `CWeapon`, whose `Think` does its own
     box/sphere test and `Explode`, so neither ever reaches `CGameProjectile::CanCollideWith` and
     `GetRagDoll`/`CanBeShot` cannot be reached through a bomb. The only `CGameProjectile`s in the tree
@@ -424,19 +424,29 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   - `14B10` `GetGravityConstant` is a dead slot: probed in 03_sand_temple, `HasBodyState(kAS_Jump)` and
     `HasBodyState(kAS_Hurled)` are 0 on both worms at every sample, and those two body states are its
     only callers.
-- Five bodies are still open and all five are reachable in principle: `C828` (`SpineHelperC828`
-  needs `SetUnderground` on the one worm whose prefab has the underground bit clear, `u048f` in
-  03_sand_temple L2), `14AEC`/`14B24` (`GetRagDoll`/`CanBeShot`, reached from
-  `CGameProjectile::CanCollideWithGameObject` for any projectile whose near list contains the
-  worm), `14B1C` (`GetDeathExplosionParticle`, reached from `CPatterned::CreateXDamageParticles`,
-  which runs only on a `kFU_ExplodeDeath` follow-up, i.e. an explosive kill) and `14B10`
-  (`GetGravityConstant`, called only from `CBSJump`/`CBSHurled`).
-- Markers: 262 functions carry `// @`; 20 remain `(ported, not exercised yet)` — the four data-gated
-  bomb bodies, `C350`/`C3D0` (asked by neither prefab), the nine dead slots and the five open
-  bodies above. `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (21 done;
+  - The projectile bodies are dead slots. A probe at `CGameProjectile::CanCollideWith` with beam
+    bursts sweeping both area-2 worms logged 29 distinct uids, every one `patterned=0` — the triggers
+    (`0488`, `052c`) and the worms' own collision actors — so the worm pattern never enters a
+    projectile's near list and `CanCollideWithGameObject` (the only caller of `GetRagDoll` and
+    `CanBeShot`) never runs for it. The worm takes beam damage through its collision actors.
+  - `GetDeathExplosionParticle` (`14B1C`) is data-gated. Probing `CKnockBackMgr::KnockBack` while
+    killing worms with six weapon modes (power, dark, light, missile, bomb, power bomb) recorded
+    followups None (0), BurnPhase (5), BurnDeath (9) and LaggedBurnDeath (10) — never
+    `kFU_ExplodeDeath` (7), so `CPatterned::CreateXDamageParticles`, the only reader, never runs.
+- No body is left open. `C828` is blocked by its own prefab: it runs only from `SetUnderground`,
+  which only `Patrol`/`Null` activate call, and u048f never leaves `Start`/`Prime`/`Snatch`
+  (seven boots, above); the `AC24` hits of earlier runs belong to the adjacent u04e9, whose prefab
+  sets the bit. The rest are the four data-gated bomb bodies (`B8B8` `8E90` `35EC` `95E0`),
+  `C350`/`C3D0` (asked by neither prefab) and the dead slots below.
+- Markers: 262 functions carry `// @`; 20 remain `(ported, not exercised yet)` and every one of them
+  now carries the reason it cannot run: the four data-gated bomb bodies, `C350`/`C3D0` (asked by
+  neither prefab), `C828` (its prefab never leaves `Snatch`) and thirteen dead slots (`14AE4`,
+  `14B34`, `14B3C`, `14A6C`, `2210`, `10A20`, `534C`, `10A68`, `6324`, `14B10`, `14AEC`, `14B24`,
+  `14B1C`). `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (21 done;
   `C350`/`C3D0` are never asked by either prefab), B 1 (`C828`), C 36 (32 done, 4 data-gated),
-  D 12 (4 done), E 6. The BG run's hit lists are `/tmp/opencode/sw3/hits_union.txt` (219 bodies)
-  and `cov3_hits_bg1.txt` / `cov3_hits_bg_fight3.txt`; driver `/tmp/opencode/sw3/bg.py`.
+  D 12 (4 done), E 6. Hit lists: `/tmp/opencode/sw3/hits_union.txt` (219 bodies),
+  `cov3_hits_bg1.txt`/`cov3_hits_bg_fight3.txt` (Bomb Guardian), `cov3_hits_sw6a.txt` (projectile
+  trace); driver `/tmp/opencode/sw3/bg.py`.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
   - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.
