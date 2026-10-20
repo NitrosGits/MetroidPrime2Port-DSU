@@ -215,7 +215,8 @@ void CopyHealthInfo(CHealthInfo& dest, const CHealthInfo& src) { dest = src; }
 
 } // namespace
 
-// fn_44_9D58 locks the ing-spot hit effects (0x940/0x950) only when the asset is set.
+// The retail constructor (the module's 0x9D58) locks the ing-spot hit effects (0x940/0x950)
+// only when the asset is set.
 static rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAssetId id) {
   if (id == kInvalidAssetId) {
     return rstl::optional_object< TLockedToken< CGenDescription > >();

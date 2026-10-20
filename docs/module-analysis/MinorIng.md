@@ -187,6 +187,15 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
   names a `fn_44_` id steals that id from the body that implements it - the three
   comments in this port were fixed on 2026-10-20 (commit "the asmcheck mapping
   pointed at the wrong bodies").
+- A whole-line `// fn_44_XXXX` comment *inside* a body marks the block below it as
+  another function, and asmcheck leaves that block out. The `fn_44_9D58` cites in
+  the constructor's body and in `IsMoveClear` do that, so those blocks are not
+  covered by the check.
+- `fn_44_9D58` (the retail constructor) is not checked at all: the host's
+  constructor is the host's own, and it calls four module functions that are not
+  ported (`fn_44_AB78`, `fn_44_A5D0`, `fn_44_A680`, `fn_44_A9DC`), so it cannot
+  carry a marker. The same holds for `fn_44_110` (the loader) and `fn_44_7058`
+  (the massive death).
 - The retail `RELMain` (the module entry at 0xC0) cannot be marked: asmcheck
   looks a function up by its `fn_<id>_<offset>` name or by a bare offset, and the
   module's entry is a named symbol.
