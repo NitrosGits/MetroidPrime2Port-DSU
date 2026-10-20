@@ -689,6 +689,26 @@ The head module is WP3 and its loader is a stand-in, so the four triggers that l
 (`fn_14_9930`, `fn_14_97A4`, `fn_14_97F0`, `fn_14_9994`) cannot take retail's head branch in
 the port; WP3 has to add the head's flag byte (`head+0x10F4`, bit 5) to all four.
 
+**WP2 part 2c done (2026-10-20): the jump trigger and the first two states.** `ShouldJumpAttack`
+(fn_14_9678) and its helper fn_14_308C are ported, and so are the two states that ran in the
+area-53 run, `Start` (fn_14_9634) and `Idle` (fn_14_95B8).
+
+| piece | fn | what it does | asm |
+|---|---|---|---|
+| ShouldJumpAttack | `fn_14_9678` | the float at `this+0x11E4` is at most zero, and the closest active waypoint (fn_14_308C) is further than 100.0f (`lbl_14_rodata_290`) from the guardian while the player is closer to it than to the guardian | the float test at 0x96A0-0x96A8, the helper call at 0x96D8, the 100.0f test at 0x9728-0x9738, the two distance sums at 0x973C-0x9774 |
+| the helper | `fn_14_308C` | the objects connected with `kSS_InternalState2` (0x49533032) and `kSM_Follow` (0x464F4C57), and among the active waypoints the one closest to the given position; its id is the answer | the FindConnectedObjects call at 0x30CC, the active test at 0x3118 (the byte at +0x20, bit 7), the distance at 0x3130-0x3150 against `lbl_14_rodata_2AC` (3.4028235e+38f) |
+| Start | `fn_14_9634` | nothing (the body is a single `blr`, like `CPatterned::Start`) | 0x9634 |
+| Idle | `fn_14_95B8` | on Activate the locomotion type becomes `pas::kLT_Relaxed` (1) and bit 7 of the flag byte at `this+0x128C` is set; on Deactivate that bit is cleared; Update does nothing | the message chain at 0x95C0-0x95E8, the locomotion call at 0x95F8, the rlwimi pair at 0x9604/0x9618 |
+
+fn_14_308C's own two callees are the retail's hand-written vector copy and free (fn_14_31AC,
+0x100 bytes, and fn_14_32AC, 0x54); the host's `rstl::vector` is their equivalent, so nothing is
+ported for them. New host member: `x11E4_` (0x11E4, 0.0f in the ctor).
+
+The flag byte at `this+0x128C` is now written by a state (the Idle state's bit 7) and read by
+three triggers (`fn_14_9930` bit 0, `fn_14_966C` bit 2, `fn_14_9A9C` bit 7), so the "is idle"
+trigger and the Idle state agree on the same byte, as in retail.
+
+
 
 ### WP3 — the head module
 

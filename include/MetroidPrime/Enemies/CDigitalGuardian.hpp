@@ -268,10 +268,15 @@ private:
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
+  float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
   uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
+
+  // fn_14_308C: the id of the connected waypoint that is active and closest to the given
+  // position (the helper fn_14_9678 measures against).
+  TUniqueId x308C_(CStateManager& mgr, const CVector3f& position) const;
 
   // fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are
   // not kInvalidUniqueId.

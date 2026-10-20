@@ -20,11 +20,14 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardian.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+#include <float.h>
 #include <stdio.h>
 
 namespace {
@@ -111,6 +114,7 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef DG_CODE
 
 
+
 } // namespace
 
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
@@ -131,6 +135,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1082_(0)
 , x11B8_(0)
 , x11E0_(0.f)
+, x11E4_(0.f)
 , x1274_(0.f)
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
@@ -390,12 +395,56 @@ bool CDigitalGuardian::ShouldProjectileAttack(CStateManager& mgr, const CTrigger
   return false;
 }
 
-// fn_14_9678 (ShouldJumpAttack) is not ported yet: it calls fn_14_308C (the call at 0x96D8,
-// 0x120 bytes), which picks the target the trigger measures the player against, and that
-// helper is too big for this slice. The trigger also needs the float at guest this+0x11E4.
+// fn_14_308C: the objects connected with the state kSS_InternalState2 (0x49533032) and the
+// message kSM_Follow (0x464F4C57) are collected (the FindConnectedObjects call at 0x30CC; the
+// retail's own vector copy and free, fn_14_31AC and fn_14_32AC, are the host's rstl::vector),
+// and the closest active waypoint to the given position wins: each id is looked up (0x3108) and
+// cast to CScriptWaypoint (0x310C); a waypoint that is not active (the byte at +0x20, bit 7,
+// 0x3118) is skipped, and its squared distance to the position (the fsubs at 0x3130..0x3150)
+// has to be below the best so far (3.4028235e+38f, lbl_14_rodata_2AC, loaded at 0x30F0). The
+// winner's id (the u16 at +0x8, 0x3160) is the answer (the sth at 0x3180).
+TUniqueId CDigitalGuardian::x308C_(CStateManager& mgr, const CVector3f& position) const {
+  const rstl::vector< TUniqueId > objects =
+      FindConnectedObjects(mgr, kSS_InternalState2, kSM_Follow);
+  TUniqueId best = kInvalidUniqueId;
+  float bestSq = FLT_MAX;
+  for (uint i = 0; i < objects.size(); ++i) {
+    const CScriptWaypoint* waypoint = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(objects[i]));
+    if (waypoint == nullptr || !waypoint->GetActive()) {
+      continue;
+    }
+    const float sq = (waypoint->GetTranslation() - position).MagSquared();
+    if (sq < bestSq) {
+      bestSq = sq;
+      best = waypoint->GetUniqueId();
+    }
+  }
+  return best;
+}
+
+// fn_14_9678: the float at guest this+0x11E4 must be at most zero (the fcmpo cr0 at 0x96A0,
+// the cror eq, lt, eq at 0x96A4 and the bne at 0x96A8). Then the closest active waypoint
+// (fn_14_308C, the call at 0x96D8) is looked up (0x96F0); without it the answer is false
+// (the cmplwi at 0x96F4). The target must be further than 100.0f (lbl_14_rodata_290, the
+// fcmpo at 0x9734) from the guardian, and then the player must be closer to the target than to
+// the guardian (the two distance sums at 0x973C..0x9774, compared at 0x9778).
 bool CDigitalGuardian::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_14_9678");
-  return false;
+  if (x11E4_ > 0.0f) {
+    return false;
+  }
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  const TUniqueId targetId = x308C_(mgr, player);
+  const CEntity* target = mgr.GetObjectById(targetId);
+  if (target == nullptr) {
+    return false;
+  }
+  // The id comes from x308C_, which only ever returns waypoint ids, so the cast cannot fail.
+  const CVector3f targetPos = TCastToConstPtr< CActor >(target)->GetTranslation();
+  const CVector3f selfPos = GetTranslation();
+  if ((targetPos - selfPos).MagSquared() <= 100.0f) {
+    return false;
+  }
+  return (targetPos - player).MagSquared() < (selfPos - player).MagSquared();
 }
 
 // fn_14_966C: bit 2 (the mask 1u << (31 - 29) = 0x4) of the flag byte at guest this+0x128C (the
@@ -435,12 +484,27 @@ int CDigitalGuardian::x705C_() const {
 }
 
 // The 14 states of lbl_14_data_204 (.data 0x204; fn_14_D904's stores at 0xDCD0..0xDEB8).
-void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_9634");
-}
 
+// fn_14_9634: the body is empty (the single blr at 0x9634), like CPatterned::Start.
+void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
+
+// fn_14_95B8: the state message picks the work (the cmpwi chain at 0x95C0..0x95E8): on Activate
+// (0) the body controller's locomotion type becomes 1 (pas::kLT_Relaxed, the call at 0x95F8)
+// and bit 7 (the mask 0x80) of the flag byte at guest this+0x128C is set (the rlwimi at 0x9604);
+// on Deactivate (2) that bit is cleared (the rlwimi at 0x9618); Update (1) and every other
+// message do nothing.
 void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_95B8");
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    x128C_ |= 0x80;
+    break;
+  case kStateMsg_Deactivate:
+    x128C_ &= ~0x80;
+    break;
+  default:
+    break;
+  }
 }
 
 void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
