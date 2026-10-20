@@ -405,6 +405,7 @@ void CIngBoostBallGuardian::SetupStateMachine(CStateManager& mgr) {
 
 // vtable slot 67 = fn_30_3C: stores kInvalidUniqueId, i.e. the actor never reports an attack
 // target through this accessor.
+// @ fn_30_3C
 TUniqueId CIngBoostBallGuardian::GetAttackTarget() const { return kInvalidUniqueId; }
 
 CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {

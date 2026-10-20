@@ -240,10 +240,13 @@ public:
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }              // fn_30_0
   // @ fn_30_8
   CPathFindPointSearch* GetPointSearchPath() override { return &mPointPathFindSearch; } // fn_30_8
+  // @ fn_30_58
   float GetGravityConstant() const override { return kDefaultGravityAccel; }          // fn_30_58
   // @ fn_30_6C
   bool IsListening() const override { return true; }                                 // fn_30_6C
+  // @ fn_30_10
   bool CanBeShot(const CStateManager&, int) override { return true; }                // fn_30_10
+  // @ fn_30_34
   CRagDoll* GetRagDoll() const override { return nullptr; }                          // fn_30_34
   TUniqueId GetAttackTarget() const override;                                        // fn_30_3C
 
