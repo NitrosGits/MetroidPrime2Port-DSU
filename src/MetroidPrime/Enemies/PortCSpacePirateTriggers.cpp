@@ -101,7 +101,7 @@ bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) cons
   return x8f8_27_coverCheck;
 }
 
-// fn_72_ABC0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_ABC0 (0x1F4): the cover-point search - the fight run evaluates it 1822 times.
 // Retail: the AiWaypoint object list (mgr+0x838) is scanned for the cover points this pirate
 // could take - active (0x20 bit 7), not a land-hang point (fn_800EC6A8), not reserved by this
 // pirate (fn_800EC550 with this pirate's id), in this area, not the cover point it used last
