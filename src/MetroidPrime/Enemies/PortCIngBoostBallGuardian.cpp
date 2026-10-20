@@ -194,6 +194,7 @@ void BgStandIn(const char* what) { StandIn(what); }
 // the stack arguments at 0x0000ECBC..0x0000ECC8). The path searches are fn_30_EC6C's own calls:
 // CPFArea null, flags 0x301, the patterned info's pathfinding index (+0xEC), radii 1.0f (rodata_64)
 // and region 0 (0x0000ED14..0x0000ED24).
+// @ fn_30_EC6C
 CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& name,
                                              const CEntityInfo& info, const CTransform4f& xf,
                                              const CModelData& modelData,
@@ -203,7 +204,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
                                              const CBoostBallGuardianData& boost)
 : CPatterned(static_cast< EPatternedAI >(0x19), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
-, mData(data)      // guest 0x7C0, copied by fn_30_1056C
+, mData(data)      // guest 0x7C0, fn_30_1056C (0x0000ECEC): a memberwise copy, the host's implicit one
 , mForm(2)         // 0x0000ED00
 , mDesiredForm(-1) // 0x0000ED10
 , mPathFindSearch(nullptr, 0x301, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
@@ -213,7 +214,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mCollisionActorManager1(nullptr)       // 0x0000ED40
 , mSurfaceAlignment()                    // 0x0000ED44
 , mIngSpotPathFindNavigation()           // 0x0000ED4C
-, mBoost(boost)                          // guest 0xDEC, copied by fn_30_10250
+, mBoost(boost) // guest 0xDEC, fn_30_10250 (0x0000ED98): a memberwise copy, the host's implicit one
 , mVulnerability(CWeaponTypeVulnerability(100.f, CWeaponTypeVulnerability::kE_Immune,
                                           false)) // 0x0000FCC0-0x0000FD48: rodata_CC, 3, 0
 , mHostId(kInvalidUniqueId)
@@ -247,8 +248,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
 , mTargetPos(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
-, mPortalPlaneNormal(CVector3f::Zero())
-, mPortalPlaneConstant(0.f)
+, mPortalPlaneNormal(CVector3f::Zero()) // set in the body (0x0000FCA8)
+, mPortalPlaneConstant(0.f)               // set in the body (0x0000FCFC)
 , mSwipeArm(-1)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
@@ -276,6 +277,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mReflectVulnerability(false) // ctor 0x0000FEFC: 0x11EE 0x02 = 0
 , mBoostPuddleAllowed(true)    // ctor 0x0000FF2C: 0x11EF 0x20 = 1
 , mBodyHitsLethal(true)        // ctor 0x0000FF38: 0x11EF 0x10 = 1
+, mBoost11EF_40(false)         // ctor 0x0000FF20: 0x11EF 0x40 = 0
 , mBoostChildId(kInvalidUniqueId)
 , mIngBlobTrackerId(kInvalidUniqueId)
 , mBoostBlobTrackerId(kInvalidUniqueId)
@@ -294,6 +296,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoostRandomFloat(0.f)
 , mPhaseIndex(0)
 , mAggressive(false)
+, xE5C_1(false) // ctor 0x0000FE24: 0x11EC 0x04 = 0
 , mFoundMovementPos(true) // ctor 0x0000FE0C: 0x11EC 0x10 = 1
 , mRecalcPath(false)
 , mTakeOff(false)
@@ -317,6 +320,12 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mPathArea(nullptr)
 , mDebugPoll(0)
 {
+  // 0x1120 = Normalize(rodata_70 = 0, rodata_70, rodata_64 = 1) (0x0000FC3C/0x0000FC44, 0x0000FC94),
+  // 0x112C = Dot(translation (0x54), 0x1120) (0x0000FCD8..0x0000FCFC).
+  CVector3f planeNormal(0.f, 0.f, 1.f);
+  planeNormal.Normalize();
+  mPortalPlaneNormal = planeNormal;
+  mPortalPlaneConstant = CVector3f::Dot(GetTranslation(), mPortalPlaneNormal);
   // The retail constructor turns knock-back physics off on CPatterned's own manager
   // (@0x0000FF40) and leaves the shadow off; everything else it builds - the locator segment ids
   // at 0x10AC, the nine locked tokens at 0x0FDC and the line-of-sight tracker at 0x10B8 - belongs

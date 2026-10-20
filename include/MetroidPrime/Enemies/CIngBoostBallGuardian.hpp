@@ -546,6 +546,7 @@ private:
   // Guest 0x11EF bit 4 (0x10), ctor 1: while set a body hit may kill (fn_30_4078). Retail's
   // DoUserAnimEvent (fn_30_D4F8) clears it on kUE_Unknown37 and sets it on kUE_Unknown38.
   bool mBodyHitsLethal : 1; // IngBoostBallGuardian 0x11EF bit 4
+  bool mBoost11EF_40 : 1;   // IngBoostBallGuardian 0x11EF bit 6: only the ctor writes it (0x0000FF20)
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
   TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect
   TUniqueId mBoostBlobTrackerId;                         // guest 0x1076: boostIngSpotBlobEffect

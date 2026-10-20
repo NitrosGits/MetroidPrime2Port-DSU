@@ -188,7 +188,7 @@ address per row: `docs/module-analysis/BoostGuardian_layout.md`, 0x11F0 total, b
 | 0x10AC+? 0x10BA | byte copy of 0x10AD | [0x00010164] |
 | 0x10F8..0x111B | three `CVector3f` = zero | [0x0000FC34].. |
 | 0x111C | int -1 | [0x0000FC84] |
-| 0x1120 | `CVector3f` = `Normalize(1.0, 0.1, 0.05)`, then 0x112C = its dot with the base's 0x54/0x58/0x5C | [0x0000FCA8]..[0x0000FCFC] |
+| 0x1120 | `mPortalPlaneNormal` = `Normalize(0, 0, 1)`, then 0x112C = its dot with the translation (0x54) | [0x0000FCA8]..[0x0000FCFC] |
 | 0x1130 / 0x1158 / 0x115C | 0 / -1 / 0 | [0x0000FD00].. |
 | 0x1160..0x1177 | two `CVector3f` = zero | [0x0000FD10].. |
 | 0x1178 | `CDamageVulnerability` (0x30) | [0x0000FD48] |
