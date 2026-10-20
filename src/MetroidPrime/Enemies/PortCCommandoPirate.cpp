@@ -558,15 +558,16 @@ bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) {
 }
 
 // fn_9_ABDC: the state faces the target. On activate (the guest's message 0, 0x0000ABFC) the
-// module's own helper (fn_9_3CBC, 0xA8 bytes - over the 0x80 limit for this slice, so a named
-// stand-in) asks the target for its position and stores it at guest this+0xB94; the state then
-// measures the angle between the actor's facing and the direction to the target (the GetAngleDiff
-// call at 0x0000AC84) against 20 degrees (lbl_9_rodata_4B4 is 0.34906584): over when the target
-// is in front (0x0000ACA4) and ready when it is not (0x0000AC98).
-// On update (the guest's message 1, 0x0000ABE4) the guest retries its own try command - the host
-// has no CTryCommand class, so that call is a stand-in too - and, when it succeeds, checks the
-// distance to the target (IsMagnitudeSafe at 0x0000AD08) and delivers the locomotion command that
-// walks there (the CBCLocomotionCmd at 0x0000AD70).
+// module's own helper x3CBC_ (fn_9_3CBC) asks the target for its aim position and stores it at
+// guest this+0xB94; the state then measures the angle between the actor's facing and the
+// direction to the target (the GetAngleDiff call at 0x0000AC84) against 20 degrees
+// (lbl_9_rodata_4B4 is 0.34906584): over when the target is in front (0x0000ACA4) and ready when
+// it is not (0x0000AC98).
+// On update (the guest's message 1, 0x0000ABE4) the guest retries its own try command - that
+// word is the base's animation state, so the port asks the animation state whether the command
+// may be issued - and, when it succeeds, checks the distance to the target (IsMagnitudeSafe at
+// 0x0000AD08) and delivers the locomotion command that walks there (the CBCLocomotionCmd at
+// 0x0000AD70).
 // On deactivate (the guest's message 2, 0x0000AD84) the animation state goes back to "not ready".
 void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
