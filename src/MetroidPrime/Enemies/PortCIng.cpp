@@ -152,16 +152,19 @@ enum {
   kForm_BecomingWallProjectile = 9, // BecomeWallProjectile's Activate
 };
 
-// mData.mFlags210 (SLdrIng.ingFlagsIng).
+// mData.mFlags210 (SLdrIng.ingFlagsIng): the retail's flag word. The byte the REL reads at the
+// actor's 0x9d0 is the word's most significant byte, so the byte mask m is the word mask
+// (m << 24) - the retail's flag byte masks 0x01..0x80 (fn_29_EE68's eight rlwimi's at asm
+// 0x0000EF4C-0x0000EFA8 put the ingFlags' bits 0..7 into the byte's bits 7..0).
 enum {
-  kFlag_AlwaysTargetable = 0x01,
-  kFlag_NoPathFind = 0x02,
-  kFlag_NoFormChange = 0x04,
-  kFlag_NoGrapple = 0x08,
-  kFlag_NoMiniPortal = 0x10,
-  kFlag_NoBodyProjectile = 0x20,
-  kFlag_NoArmSwipe = 0x40,
-  kFlag_StartAsIngSpot = 0x80,
+  kFlag_AlwaysTargetable = 0x01000000,
+  kFlag_NoPathFind = 0x02000000,
+  kFlag_NoFormChange = 0x04000000,
+  kFlag_NoGrapple = 0x08000000,
+  kFlag_NoMiniPortal = 0x10000000,
+  kFlag_NoBodyProjectile = 0x20000000,
+  kFlag_NoArmSwipe = 0x40000000,
+  kFlag_StartAsIngSpot = 0x80000000,
 };
 
 const float kFacingAngle = 0.349f; // rodata: 20 degrees
@@ -338,6 +341,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
+, mCollarSegId(CSegId::Invalid()) // 0xd7a: the ctor writes 0xff and nothing else does
 // The ctor's arm locators: R_shoulder/R_elbow/R_forearm/R_wrist_end, then the L_ set. The pseudo-C
 // puts the shoulders at CPatterned's 0x35f/0x360; the asm stores them here (0x0000E47C/0x0000E54C).
 , mRightShoulderSegId(PortArmSegId(modelData, "R_shoulder")) // 0xd7c
@@ -350,6 +354,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mLeftWristSegId(PortArmSegId(modelData, "L_wrist_end"))    // 0xd83
 , mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
 , mTargetPos(CVector3f::Zero())
+, mSurfaceNormal(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
 , mPortalPlaneNormal(CVector3f::Zero())
 , mPortalPlaneConstant(0.f)
@@ -704,21 +709,76 @@ void CIng::UpdateTimers(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_29_426C (CIng::Think's call at asm 0x0000C7A0). The forms: the two host forms (0, 1) are
+// never valid targets, the ing-spot and evaporating forms (3, 5) follow the Dark visor and the
+// actor's own byte 0x9d0 bit 0, every other form is always a valid target.
 void CIng::UpdateValidTarget(CStateManager& mgr) {
   switch (mForm) {
-  case 0:
-  case 1:
-    SetValidTarget(0, false);
+  case kForm_Host:            // 0
+  case kForm_ControllingHost: // 1
+    SetValidTarget(0, false); // asm 0x000042BC: SetValidTarget(this, 0, 0)
     break;
-  case kForm_IngSpot:
-  case kForm_Evaporate:
-    SetValidTarget(0, mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark ||
-                          (mData.mFlags210 & kFlag_AlwaysTargetable) != 0);
+  case kForm_IngSpot:   // 3
+  case kForm_Evaporate: // 5
+    // asm 0x000042CC-0x000042EC: the Dark visor (3) forces the flag on - the compare's cntlzw
+    // only leaves a non-zero byte for the visor 3 - otherwise the actor's own byte 0x9d0 bit 0
+    // decides (asm 0x000042F0-0x00004300). That byte is the loader's data: the data block's
+    // +0x210 (CIngData at 0x7c0), the most significant byte of the flag word mData.mFlags210, so
+    // the byte mask 0x01 is the word mask 0x01000000 (kFlag_AlwaysTargetable) - the ingFlags'
+    // bit 7, since fn_29_EE68 reverses the eight bits into that byte.
+    if (mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
+      SetValidTarget(0, true);
+    } else {
+      SetValidTarget(0, (mData.mFlags210 & kFlag_AlwaysTargetable) != 0);
+    }
     break;
   default:
-    SetValidTarget(0, true);
+    SetValidTarget(0, true); // asm 0x00004308: SetValidTarget(this, 0, 1)
     break;
   }
+}
+
+// fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
+// aim position from the form: the corporeal form (2) and the three form-change forms (6..8)
+// predict their motion first, and the collar locator (0xd7a) then decides between the locator's
+// aim and the base class's. The ctor writes 0xff (invalid) to 0xd7a and nothing else in the
+// module ever writes it (asm 0x0000E170/0x0000E448), so retail's locator path is dead and the
+// aim is always the base class's - the port keeps the structure anyway. (Grepped over the whole
+// module: only the ctor's two stores at asm 0x0000E170/0x0000E448 write 0xd7a, and it is outside
+// the loader's data block - CIngData covers 0x7c0..0x9d3.)
+CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
+  CVector3f aim = CVector3f::Zero(); // asm 0x0000BCFC: sZeroVector
+  // asm 0x0000BD04-0x0000BD40: the corporeal form and the forms 6..8 predict; the prediction
+  // only runs when the argument is above zero (rodata_6C).
+  const bool predict = mForm == kForm_Corporeal ||
+                       (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile);
+  if (!predict) {
+    return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE4C
+  }
+  if (dt > 0.f) {
+    aim = PredictMotion(dt).GetTranslation(); // asm 0x0000BD50/0x0000BD5C (fn_29_BEB4 copies it)
+  }
+  // asm 0x0000BD6C: the collar locator (0xd7a); without it retail falls back to the base class.
+  if (mCollarSegId == CSegId::Invalid()) {
+    return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE38
+  }
+  // asm 0x0000BD90: the locator's transform, composed with the actor's own (0x24); the copy's
+  // 0xc/0x1c/0x2c are the translation's three floats.
+  const CTransform4f world =
+      GetTransform() * GetModelData()->GetLocatorTransform(mCollarSegId); // asm 0x0000BDA0
+  const CVector3f offset = world.GetTranslation();
+  // asm 0x0000BDCC-0x0000BDE8: the model's scale (the model data's first three floats) times
+  // the locator's world position.
+  const CVector3f scale = GetModelData()->GetScale();
+  aim += CVector3f(scale.GetX() * offset.GetX(), scale.GetY() * offset.GetY(),
+                   scale.GetZ() * offset.GetZ());
+  // asm 0x0000BDC0/0x0000BDF0: the forms 6 and 7 fall back to the base class when the aim is
+  // below the actor's own height (0x5c).
+  if ((mForm == kForm_BecomingCorporeal || mForm == kForm_BecomingIngSpot) &&
+      aim.GetZ() < GetTranslation().GetZ()) {
+    return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE14
+  }
+  return aim;
 }
 
 // [?] which loop plays in which form, and the emitter parameters: the idle loop in the ing-spot
@@ -746,6 +806,53 @@ void CIng::StopSfx() {
       mLoopSfx[i] = CSfxHandle();
     }
   }
+}
+
+// fn_29_4604 (CIng::Think's call at asm 0x0000C794): the blob the Ing owns (mBlobId, 0xd5c)
+// follows the surface the Ing stands on. Retail looks the blob up, works out an "align" flag from
+// the form and the flags, and when it is set turns the blob to the surface normal, writes the
+// blob's model scale and colour (0xfc/0x100..0x104), calls GeomBlobV2's fn_25_256C and sets the
+// blob's byte 0x154 bit 5.
+//
+// The Ing never spawns the blob (mBlobId stays invalid - the member map in IngFamily.md A.3), so
+// retail's whole body is unreachable in every run so far and the port stops where retail does:
+// at the lookup. The blob's class has no host counterpart either (the model's stores, GeomBlobV2's
+// fn_25_256C and the byte 0x154), so those three steps have no host equivalent.
+void CIng::AlignBlobToSurface(CStateManager& mgr) {
+  CEntity* blobEntity = mgr.ObjectById(mBlobId); // asm 0x00004634: the blob id (0xd5c)
+  if (blobEntity == nullptr) {
+    return;                                     // asm 0x0000463C: no blob, nothing to do
+  }
+  CActor* blob = static_cast< CActor* >(blobEntity);
+  // asm 0x00004648-0x000046C8: the align flag. The ing-spot form always aligns; the corporeal
+  // form only while it is dead (CPatterned 0x420 bit 6 = mAlive is clear) and it started as an
+  // ing spot (0xe5d bit 5); the four form-change forms (6..9) only when it started as an ing
+  // spot. Every other form does not align.
+  float align = 0.f; // asm 0x00004648 (rodata_6C)
+  if (mForm == kForm_IngSpot) {
+    align = 1.f;     // asm 0x0000467C (rodata_64)
+  } else if (mForm == kForm_Corporeal) {
+    if (!mAlive && mStartAsIngSpot) {
+      align = 1.f;   // asm 0x0000469C-0x000046B8
+    }
+  } else if (mForm >= kForm_BecomingCorporeal && mForm < 10) {
+    if (mStartAsIngSpot) {
+      align = 1.f;   // asm 0x00004684-0x00004694
+    }
+  }
+  if (align > 0.f) { // asm 0x000046C4: fcmpo align, 0.0f (rodata_6C)
+    const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal(); // asm 0x000046D4
+    // asm 0x000046E8-0x00004758: the normal's z against 0.95f (rodata_D8). The compare is folded
+    // into a double (2^52 or 2^52+1) and the difference against rodata_E0 (2^52) picks the up
+    // vector: the Right one when the normal points up (z >= 0.95), the Up one otherwise.
+    const CVector3f up = normal.GetZ() < 0.95f ? CVector3f::Up() : CVector3f::Right();
+    const CVector3f pos = GetTranslation(); // asm 0x000046D8/0x000046EC/0x00004700: 0x54/0x58/0x5c
+    const CVector3f look = pos + normal;    // asm 0x00004770-0x00004788
+    blob->SetTransform(CTransform4f::LookAt(pos, look, up)); // asm 0x0000478C/0x00004798
+  }
+  // asm 0x000047EC: GeomBlobV2's fn_25_256C(blob, align) - no host counterpart.
+  // asm 0x000047FC-0x0000480C: mDamageCooldownTimer (0x448) > 0 sets the blob's byte 0x154 bit 5
+  // (0x20) - no host counterpart.
 }
 
 // ---- triggers -------------------------------------------------------------------------------
@@ -1330,7 +1437,7 @@ void CIng::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
       BodyController()->CommandMgr().DeliverCmd(
           CBCGenerateCmd(pas::kGType_Zero, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00009C9C: li r4, 1
     }
     Stop();
     break;
@@ -1340,7 +1447,7 @@ void CIng::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
     mStartAsIngSpot = false;                                 // 0xe5d bit 5
     mVerticalMovement = false;                               // CPatterned 0x34c bit 6
     AddMaterial(kMT_GroundCollider, mgr);                    // 0x25
-    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00009CEC: li r4, 1
     mForm = kForm_Corporeal;
     mDesiredForm = -1;
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_None); // 0xca4 = 0
@@ -1378,12 +1485,12 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
       BodyController()->CommandMgr().DeliverCmd(
           CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009948: li r4, 0
     }
     break;
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009960: li r4, 0
     mForm = kForm_IngSpot;
     mDesiredForm = -1;
     mLineOfSight.SetSegment(CSegId::Null()); // 0xd8a = 99
@@ -1438,7 +1545,7 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
       RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
-      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009628: SetLocomotionType(0)
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009628: li r4, 0
       if (!mTakeOff && mForm != kForm_BodyProjectile) {
         // Aim at the target's aim position, flattened to the actor's own height (0xdd0 = 0x5c).
         if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468
@@ -1460,7 +1567,7 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, false); // 0xc50
     }
-    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000096F8: SetLocomotionType(0)
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000096FC: li r4, 0
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
     }
@@ -1504,7 +1611,7 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_One));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
-      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x0000928C: SetLocomotionType(0)
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x0000928C: li r4, 0
       mForm9Render = true; // 0xe5d bit 4
       if (mTakeOff || mForm == kForm_BodyProjectile) {
         mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
@@ -1524,7 +1631,7 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   case kStateMsg_Deactivate:
     mPortalPlane = false;    // 0xe5d bit 6
     mStartAsIngSpot = false; // 0xe5d bit 5
-    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000093C4: SetLocomotionType(0)
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000093DC: li r4, 0 (li at 0x000093C4)
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
@@ -2806,10 +2913,9 @@ void CIng::SplatOntoMesh(CStateManager& mgr, float) {
   LogState("SplatOntoMesh");
   mForm = kForm_IngSpot; // 0x9d4 = 3
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // id word 13
-  // The asm builds the normal from 0xdd4/0xdd8/0xddc, which nothing in the module ever writes (the
-  // ctor zeroes 0xdc8..0xde8), so it is zero at runtime and ShortestRotationArc reads that as
-  // NoRotation: the alignment is a no-op, kept for the call's shape. rodata_64 is 1.0f.
-  mSurfaceAlignment.OrientToSurfaceNormal(*this, CVector3f::Zero(), 1.f);
+  // The normal comes from the surface the body projectile hit (0xdd4/0xdd8/0xddc, written by
+  // fn_29_B534's CollidedWith); it is zero until then. rodata_64 is 1.0f.
+  mSurfaceAlignment.OrientToSurfaceNormal(*this, mSurfaceNormal, 1.f);
   // 0x852: the body projectile's splat-wall sound. Retail stores no handle, so neither do we.
   CSfxManager::AddEmitter(mData.mBodyProjectile.mSoundSplatWall, GetTranslation(), 0x7f,
                           GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
@@ -2901,6 +3007,7 @@ void CIng::Think(float dt, CStateManager& mgr) {
   mLineOfSight.Update(dt, mgr);
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
+  AlignBlobToSurface(mgr); // fn_29_4604, asm 0x0000C794
   UpdateValidTarget(mgr);
   UpdateLoopSfx();
   UpdateTouchBox();      // fn_29_3C58, asm 0x0000C7B0
@@ -2942,10 +3049,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     EnsureBodyActive(mgr);
     mForm = mStartAsIngSpot ? kForm_IngSpot : kForm_Corporeal;
     if (mForm == kForm_IngSpot) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00004CD0: li r4, 0
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
     } else {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00004CFC: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
     break;
@@ -3093,6 +3200,38 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
     mCurDamageRemTime = mDamageWaitTime;
   }
   CPatterned::Touch(actor, mgr);
+}
+
+// fn_29_B534: CIng's CollidedWith - CPhysicsActor's vtable slot 0x80 (the REL's own override).
+// The flying body projectile (form 4) remembers the surface it hit: the first collision whose
+// material list holds one of the six splat surfaces gives the normal (0xdd4/0xdd8/0xddc) and
+// sets the splat flag (0xe5e bit 6).
+void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
+  CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
+  if (mForm != kForm_BodyProjectile) {
+    return; // asm 0x0000B558: cmpwi mForm (0x9d4), 4
+  }
+  if (mBodyProjectileTime < 0.5f) {
+    return; // asm 0x0000B56C: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4)
+  }
+  // The mask retail builds once into lbl_29_bss_8 (asm 0x0000B588-0x0000B6F0) from the six bit
+  // indices in lbl_29_data_9DC..0x9F0 (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a): Ceiling, Wall, Floor,
+  // Solid, Immovable and Occluder. Retail ANDs the mask's low word with the collision's material
+  // list low word (0x30) and its high word with the high word (0x34), which is the same test as
+  // the whole 64-bit mask against the list's value.
+  const u64 kSplatSurfaces = (u64(1) << kMT_Ceiling) | (u64(1) << kMT_Wall) |
+                             (u64(1) << kMT_Floor) | (u64(1) << kMT_Solid) |
+                             (u64(1) << kMT_Immovable) | (u64(1) << kMT_Occluder);
+  const int count = list.GetCount(); // asm 0x0000B6FC: the list's count
+  for (int i = 0; i < count; ++i) {
+    const CCollisionInfo& info = list[i]; // asm 0x0000B718: the entries are 0x60 apart
+    if ((info.GetMaterialLeft().GetValue() & kSplatSurfaces) == 0) {
+      continue; // asm 0x0000B720-0x0000B734: the masks do not meet
+    }
+    mSurfaceNormal = info.GetNormalLeft(); // asm 0x0000B738-0x0000B750: 0x40/0x44/0x48 -> 0xdd4/0xdd8/0xddc
+    mSplat = true;                          // asm 0x0000B758: rlwimi, the word's bit 25 = the byte's bit 6 (0x40)
+    break;                                  // asm 0x0000B760: the first hit wins
+  }
 }
 
 // @ fn_29_C228. The base class's handler runs only for the events this function does not handle

@@ -119,6 +119,7 @@ into `lbl_29_bss_6C` (the 4-byte `SIng_FuncPtrs`) and calls `SetSIng_FuncPtrs` (
 | 0x000 | CPatterned base | `EPatternedAI 0x18`, flavor 0, movement 0, collider 1, body 1 |
 | 0x620 | (CPatterned's CAiKnockBackMgr) | `EnableKnockBackPhysics(false)` (DOL 0x801BD560) |
 | 0x7c0 | CIngData (0x214) | copy of the loader's data |
+| 0x9d0 | uint (CIngData+0x210) | the flag word: its most significant byte is the retail's flag byte, which fn_29_EE68 fills with the ingFlags' low byte bit-reversed (the eight rlwimi's at asm 0x0000EF4C-0x0000EFA8 put the ingFlags' bits 0..7 into the byte's bits 7..0), so a byte mask m is the word mask (m << 24) |
 | 0x9d4 / 0x9d8 | int / int | 2 / -1 |
 | 0x9dc | CPathFindSearch | `(null, 0x301, pInfo+0xec, 1.0, 1.0)`; its +0xd0/+0xd4 (0xaac/0xab0) = model scale x rodata_98 / rodata_D0 (radius / height) |
 | 0xac8 | CPathFindPointSearch | `(null)` |

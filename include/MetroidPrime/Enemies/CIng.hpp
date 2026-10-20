@@ -152,9 +152,11 @@ struct CIngSwarmData {
 
 // Host copy of the properties the Ing loader reads (retail: CIngData, 0x214 bytes at 0x7c0, built
 // by fn_29_EE68 - the constructor's stores and the loader's call fixed the argument order). The
-// +0x210 flags are eight bits of SLdrIng.ingFlagsIng (fn_29_EE68 stores ingFlags' low byte there
-// bit for bit). The triggers' tests give the bits their meaning (the kFlag_* enum in PortCIng.cpp; the
-// table is in IngFamily.md section A.5).
+// +0x210 flags are the word at the actor's 0x9d0: its most significant byte is the retail's flag
+// byte, which fn_29_EE68 fills with the ingFlags' low byte bit-reversed (eight rlwimi's, asm
+// 0x0000EF4C-0x0000EFA8: the ingFlags' bit 0 goes to the byte's bit 7). The host keeps that word,
+// so a byte mask m is the word mask (m << 24) - the kFlag_* enum in PortCIng.cpp. The triggers'
+// tests give the bits their meaning (the table is in IngFamily.md section A.5).
 class CIngData {
 public:
   CIngData(uint ingFlags, float hearingRadius, const CDamageInfo& armSwipeDamage,
@@ -179,7 +181,7 @@ public:
   , mGrapple(grapple)
   , mMiniPortal(miniPortal)
   , mSwarm(swarm)
-  , mFlags210(static_cast< uchar >(ingFlags)) {}
+  , mFlags210(IngFlagsWord(ingFlags)) {}
 
   float mHearingRadius;      // +0x00 SLdrIng.hearingRadius (fn_29_EE68's first float argument)
   float mUnknown5D0D;        // +0x04 SLdrIng.unknown_0x5d0d2c40
@@ -196,7 +198,22 @@ public:
   CIngGrappleData mGrapple;                   // +0x10c (0x64)
   CIngMiniPortalData mMiniPortal;             // +0x170 (0x74)
   CIngSwarmData mSwarm;                       // +0x1e4 (0x2c)
-  uchar mFlags210;                            // +0x210, eight bits of SLdrIng.ingFlagsIng
+  uint mFlags210;                             // +0x210: the retail's flag word (the ingFlags' low
+                                             // byte, bit-reversed, in the most significant byte)
+
+  // The retail's flag byte (the data block's +0x210 = the actor's 0x9d0, the most significant byte
+  // of the big-endian word) is the ingFlags' low byte bit-reversed: fn_29_EE68 inserts the
+  // ingFlags' bits 0..7 into the byte's bits 7..0 with eight rlwimi's (asm 0x0000EF4C-0x0000EFA8).
+  // The host keeps the word the retail has, so a byte mask m is the word mask (m << 24).
+  static uint IngFlagsWord(uint flags) {
+    uint byte = 0;
+    for (int i = 0; i < 8; ++i) {
+      if ((flags & (1u << i)) != 0) {
+        byte |= 1u << (7 - i);
+      }
+    }
+    return byte << 24;
+  }
 };
 #endif
 
@@ -250,6 +267,13 @@ public:
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
   void SetupStateMachine(CStateManager& mgr) override;
+
+  // CPhysicsActor, vtable slot 0x80 (the REL's fn_29_B534): the flying body projectile remembers
+  // the surface it hit, so the splat can be oriented to it.
+  void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
+                    CStateManager& mgr) override;
+  // CPhysicsActor, vtable slot 0x54 (the REL's fn_29_BCB4): the Ing's aim position.
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override;
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
@@ -365,6 +389,9 @@ private:
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
+  // fn_29_4604 (CIng::Think's call at asm 0x0000C794): the blob (mBlobId, 0xd5c) follows the
+  // surface the Ing stands on.
+  void AlignBlobToSurface(CStateManager& mgr);
   void StopSfx();
   // fn_29_1A80: turn horizontally to the lure safe zone when one is set, else to the target.
   void FaceLureOrTarget(CStateManager& mgr);
@@ -435,6 +462,9 @@ private:
   CSfxHandle mBodyProjectileSfx;             // 0xd58: the body projectile's looping flight sound
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
   CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
+  CSegId mCollarSegId;                       // 0xd7a: the collar locator; the ctor writes 0xff (invalid)
+                                            // and nothing else ever writes it, so fn_29_BCB4's
+                                            // locator path is dead in retail too
   // fn_29_6A88's arm locators, looked up by the ctor's GetLocatorSegId calls (the names are in
   // rodata 0x68E: "R_shoulder" at +0x632, "R_elbow" at +0x55c, "R_forearm" at +0x63d,
   // "R_wrist_end" at +0x647, "L_shoulder" at +0x653, "L_elbow" at +0x554, "L_forearm" at +0x65e,
@@ -449,6 +479,8 @@ private:
   CSegId mLeftWristSegId;                    // 0xd83
   CLineOfSightTracker mLineOfSight;          // 0xd88 (its segment is the byte at 0xd8a)
   CVector3f mTargetPos;                      // 0xdc8
+  CVector3f mSurfaceNormal;                  // 0xdd4: the surface the body projectile hit
+                                           // (fn_29_B534 writes it), the splat's orientation
   CVector3f mSurfaceMoveDir;                 // 0xde0
   CVector3f mPortalPlaneNormal;              // 0xdf0: the portal plane's normal, Up() = (0,0,1)
   float mPortalPlaneConstant;                // 0xdfc: dot(translation, normal) = translation.z
