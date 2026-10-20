@@ -603,7 +603,15 @@ point (the id at guest this+0xBD2, copied to +0xBD4, a new member `xbd4_`). The 
 uses the host's own size, and the header's `CHECK_SIZEOF` (a no-op outside the retail build)
 still names the retail's 0xC68.
 
-`fn_9_4D84` (0x228, one of the module's Think helpers) is read as far as the host's API allows:
+`fn_9_4D84` (0x228, one of the module's Think helpers) is host code since 2026-10-20 (the port's
+member `x4D84_UpdateAim`): the alive test is the host's `GetAlive()` (the byte at guest
+this+0x420's 0x40 bit), the aim command is the guest's id 0x1b = 27 = `kBSC_AdditiveAim` (with
+the 0x02 bit of the flag byte at guest this+0xC65 as the command's third field, which the host's
+`CBCAdditiveAimCmd` needed a setter for) and the idle command is 0x1a = 26 =
+`kBSC_AdditiveIdle`. Its helper `fn_9_4CA4` (0xd8 bytes, over the 0x80 limit) is a named stand-in
+that answers false, so the aim code does not run in the port.
+
+The read of `fn_9_4D84` that led to the port:
 the byte at guest this+0x420 is `CPatterned`'s flag byte and its 0x40 bit is the actor's alive
 bit (the host's `GetAlive()`), the body commands are the guest's command id 0x1b = 27 =
 `pas::kBSC_AdditiveAim` and 0x1a = 26 = `pas::kBSC_AdditiveIdle` (the host's EBodyStateCmd
