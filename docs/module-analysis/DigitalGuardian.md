@@ -875,15 +875,28 @@ An invalid asset id (the cmplwi at 0x689C) leaves the member empty.
 | 0xF5C, the toe target's model | 0x7E4 | `mToeTargetModel` (+0x24) |
 | 0x11EC, the transmission beacon's model | 0x94C | `mTransmissionBeacon` (+0x18C) |
 
-The guest's model data is 0x4C bytes and the next field starts 0x50 later: the bytes at 0xEB8,
-0xF08, 0xF58 and 0xFA8 are the four bytes that follow the models.
+**Each model is an `rstl::optional_object<CModelData>`**, not a bare `CModelData`: the guest's
+CModelData is 0x4C bytes and the byte right after it is the optional's valid flag - 0xE6C's at
+0xEB8, 0xEBC's at 0xF08, 0xF0C's at 0xF58, 0xF5C's at 0xFA8 and 0x11EC's at 0x1238. The
+constructor's stores of 0 at 0xEB8, 0xF08, 0xF58 and 0xFA8 are the empty optionals, not flags
+that gate the draws.
 
-**Those four bytes are the flags of three of the four renders, and the module never sets them:**
-the only writes to 0xEB8, 0xF08 and 0x1238 in the whole REL are the constructor's (0xB1B8,
-0xB1BC and 0xB6A4), and they store 0. So in the retail the leg model (fn_14_1994), the shin
-model (fn_14_18B4) and the echo emitter's model (fn_14_17DC) never draw; only the toe
-target's model (fn_14_1700, which has no flag) draws, at the four ankles. The port is the
-same.
+`fn_14_6A20` (0x30 bytes) is the **optional's assignment**, not the model's: `fn_14_6A50` reads
+the valid flag at +0x4C, and when the optional was empty it constructs the model in place
+(fn_14_528) and sets the flag (the `li r0, 1; stb r0, 0x4c(r31)` at 0x6B74), and when it was
+already valid it copies the model into it (fn_14_6A98). The host's `rstl::optional_object` does
+the same, so the port assigns into the optionals.
+
+The draws test the flag: fn_14_1994 tests the leg model's (the byte at 0xEB8, the test at
+0x19B4), fn_14_18B4 the shin model's (0xF08, the test at 0x19E4) and fn_14_17DC the beacon's
+(0x1238, the test at 0x1808). fn_14_1700 does **not** test the toe model's flag (0xFA8): the
+retail's optional default-constructs the model, so the draw is of an empty model; the host's
+optional leaves the data unconstructed while it is invalid, so the port skips the draw.
+
+The sixth `fn_14_6A20` call site is in `fn_14_137A8` (0x88 bytes), which the head module's
+constructor (`fn_14_18264`) calls: it builds the **head's** own `optional_object<CModelData>` at
+0xEA4 from the head's `mHeadArmor` (guest 0x7CC, the head data block's +0x0C) with the head's
+model scale. It is not a body member.
 
 The constructor's locator ids (the `GetLocatorSegId` calls from 0xBAF0 on):
 
@@ -907,11 +920,14 @@ it), so the branch is not reachable yet.
 
 Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
 activated with `send u054d Activate`, 1800 frames): the guardian u054d is active (hp 150/150)
-and its model draws with the toe target's model at the four ankles
-(`/tmp/opencode/dg_render_models.png`); the toe model's four draws land at the four ankle
-locators (the locators at (+-19, +-12, 7) around the guardian). No "[port] caught" and no
-reach-stub in the log. The guardian's render path only runs while the actor is active, so a
-run that does not activate it shows the arena but not the guardian.
+and draws with the leg model, the shin model (both at the four knee locators) and the toe
+target's model (at the four ankle locators) - the draw calls go from 324 to 356 and the
+vertices from 914044 to 1024628 (`/tmp/opencode/dg_render_models.png`); the toe model's four
+draws land at the four ankle locators (the locators at (+-19, +-12, 7) around the guardian).
+The transmission beacon's model does not draw: the retail's test at 0x1264 (> 0.0f) fails, the
+ctor leaves that float at 0.0f. No "[port] caught" and no reach-stub in the log. The
+guardian's render path only runs while the actor is active, so a run that does not activate it
+shows the arena but not the guardian.
 
 
 ### WP3 — the head module

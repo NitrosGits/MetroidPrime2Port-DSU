@@ -172,9 +172,6 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , xF0C_() // 0xF0C: the knee model (x6864_ fills it in)
 , xF5C_() // 0xF5C: the toe target's model (x6864_ fills it in)
 , x11EC_() // 0x11EC: the transmission beacon's model (x6864_ fills it in)
-, xEB8_(0)
-, xF08_(0)
-, x1238_(0)
 , x10C0_(0xFF)
 , x10C1_(0xFF)
 , x10C2_(0xFF)
@@ -340,7 +337,7 @@ CTransform4f CDigitalGuardian::SegmentRotation_(const CSegId& seg) const {
 // the model at this+0xE6C is drawn there (the Render call at 0x1A40).
 void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
-  if (xEB8_ == 0) {
+  if (!xE6C_.valid()) {
     return;
   }
   // The ids are the bytes the retail loads (the lbz at 0x19D4): the first one is the byte the
@@ -349,7 +346,7 @@ void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
   for (int i = 0; i < 4; ++i) {
     const CSegId seg(ids[i]);
     const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
-    xE6C_.Render(mgr, modelXf, GetActorLights(), flags);
+    xE6C_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
 }
 
@@ -360,7 +357,7 @@ void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
 // 0x10) and the byte at this+0xF08 is set (the test at 0x19E4).
 void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
-  if ((x128C_ & 0x10) != 0 || xF08_ == 0) {
+  if ((x128C_ & 0x10) != 0 || !xEBC_.valid()) {
     return;
   }
   // The ids are the bytes the retail loads (the lbz at 0x1900): the first one is the byte the
@@ -369,7 +366,7 @@ void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
   for (int i = 0; i < 4; ++i) {
     const CSegId seg(ids[i]);
     const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
-    xEBC_.Render(mgr, modelXf, GetActorLights(), flags);
+    xEBC_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
 }
 
@@ -385,7 +382,7 @@ void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
 // the renderer: the retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
 // bctrl at 0x1958). The slot is not identified, so the call is a stand-in.
 void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) const {
-  if ((x128C_ & 0x08) == 0 && x1238_ != 0 && x1264_ > 0.f) {
+  if ((x128C_ & 0x08) == 0 && x11EC_.valid() && x1264_ > 0.f) {
     CTransform4f modelXf = CTransform4f::Identity();
     x2578_(modelXf, xf);
     const CModelFlags flags(
@@ -393,7 +390,7 @@ void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) 
         static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
                                            CModelFlags::kF_DepthUpdate),
         CColor(x1270_));
-    x11EC_.Render(mgr, modelXf, GetActorLights(), flags);
+    x11EC_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
   if (x123C_ != nullptr) {
     // The retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the bctrl at
@@ -415,13 +412,19 @@ void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
   // The ids are the bytes the retail loads (the lbz at 0x1744): the first one is the byte the
   // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
   const uchar ids[4] = {x10D4_ & 0xFF, x10D5_, x10D6_, x10D7_};
+  // The retail draws the model without testing the optional's flag (0xFA8): its optional
+  // default-constructs the model, so the draw is of an empty model. The host's optional leaves
+  // the data unconstructed while it is invalid, so the draw is skipped instead.
+  if (!xF5C_.valid()) {
+    return;
+  }
   for (int i = 0; i < 4; ++i) {
     if (x10DC_[i] == 3) {
       continue;
     }
     const CSegId seg(ids[i]);
     const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
-    xF5C_.Render(mgr, modelXf, GetActorLights(), flags);
+    xF5C_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
 }
 
@@ -442,9 +445,11 @@ void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
 // model at 0x11EC (0x94C, mTransmissionBeacon) and the toe target's model at 0xF5C (0x7E4,
 // mToeTargetModel). Each one is built from a CStaticRes {the asset id, the actor's model scale}
 // - the scale comes from the actor's model data at 0x60 (the three lfs at 0x68A0, 0x68A4 and
-// 0x68A8) - and moved into the member (fn_14_6A20, the CModelData assignment at 0x68D4); the
-// temporary is destroyed right after (the __dt__ at 0x68E0). An invalid asset id (the cmplwi at
-// 0x689C) leaves the member empty.
+// 0x68A8) - and assigned into the member's optional (fn_14_6A20 at 0x68D4: the optional's
+// assignment - fn_14_6A50 reads the valid flag at +0x4C, constructs the model when the optional
+// was empty (fn_14_528) and copies it otherwise (fn_14_6A98); the host's optional_object does
+// the same). The temporary is destroyed right after (the __dt__ at 0x68E0). An invalid asset id
+// (the cmplwi at 0x689C) leaves the optional empty.
 void CDigitalGuardian::x6864_() {
   const CVector3f scale = GetModelData()->GetScale();
   if (mData.mLegModel != kInvalidAssetId) {

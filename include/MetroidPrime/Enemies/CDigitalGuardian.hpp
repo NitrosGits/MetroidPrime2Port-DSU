@@ -4,6 +4,8 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "REL/REL_Setup.h"
 
+#include "rstl/optional_object.hpp"
+
 class CParticleGen;
 
 #ifdef TARGET_PC
@@ -277,19 +279,24 @@ private:
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
   uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
 
-  // The four models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
+  // The five models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
   // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
-  // host class has its own layout. The models themselves are built by the constructor's tail
-  // (fn_14_6864), which is not ported yet, so the model data is empty and the renders draw
-  // nothing until it lands.
-  CModelData xE6C_;  // 0xE6C: the leg model (fn_14_1994)
-  CModelData xEBC_;  // 0xEBC: the shin model (fn_14_18B4)
-  CModelData xF0C_;  // 0xF0C: the knee model (fn_14_6864)
-  CModelData xF5C_;  // 0xF5C: the toe target's model (fn_14_1700)
-  CModelData x11EC_; // 0x11EC: the transmission beacon's model (fn_14_17DC draws it)
-  uchar xEB8_;       // 0xEB8: the leg model's flag byte (fn_14_1994)
-  uchar xF08_;       // 0xF08: the shin model's flag byte (fn_14_18B4)
-  uchar x1238_;      // 0x1238: the echo emitter model's flag byte (fn_14_17DC, fn_14_2578)
+  // host class has its own layout. Each one is an optional: the guest's CModelData is 0x4C
+  // bytes and the byte after it is the optional's valid flag, which the draws test.
+  // 0xE6C (0x4c, valid flag 0xEB8): the leg model, built by fn_14_6864 and drawn by
+  // fn_14_1994 at the four knee locators.
+  rstl::optional_object< CModelData > xE6C_;
+  // 0xEBC (0x4c, valid flag 0xF08): the shin model, built by fn_14_6864 and drawn by
+  // fn_14_18B4 at the four knee locators.
+  rstl::optional_object< CModelData > xEBC_;
+  // 0xF0C (0x4c, valid flag 0xF58): the knee model, built by fn_14_6864.
+  rstl::optional_object< CModelData > xF0C_;
+  // 0xF5C (0x4c, valid flag 0xFA8): the toe target's model, built by fn_14_6864 and drawn by
+  // fn_14_1700 at the four ankle locators.
+  rstl::optional_object< CModelData > xF5C_;
+  // 0x11EC (0x4c, valid flag 0x1238): the transmission beacon's model, built by fn_14_6864 and
+  // drawn by fn_14_17DC at the neck locator.
+  rstl::optional_object< CModelData > x11EC_;
   uchar x10B9_;      // 0x10B9: the neck locator segment id (fn_14_2578)
   uchar x10C0_;      // 0x10C0: the first leg locator segment id (fn_14_1994, fn_14_18B4)
   uchar x10C1_;      // 0x10C1: the second leg locator segment id
