@@ -316,6 +316,9 @@ public:
 private:
   void EnsureBodyActive(CStateManager& mgr);
 
+  // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
+  bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt);
+
   // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
   // match (host objects outgrow retail). A raw member is named after the offset it stands for
   // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest

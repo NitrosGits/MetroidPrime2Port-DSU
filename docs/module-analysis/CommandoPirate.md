@@ -265,16 +265,26 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 |---|---|---|---|---|
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
-| FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's helper asks the target for its position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` (this+0x6B4) and its own helper `fn_9_3CBC` (0xA8 bytes, over the 0x80 limit) are named stand-ins |
+| FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
 
 The player id the guest takes (its state manager's +0x14FC, the id at +8 of it, 0x0000AB4C) has no
 member at that offset in the host's state manager, so the port uses the player actor's id.
 
-In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine walks the states
-the actor reaches: Patrol, SelectTarget, FaceTarget, then HasNewTarget, HasTarget and Lurk (the
-last three are still stand-ins). FaceTarget is entered, updated and left once, and its "over"
-answer makes the `StateOver` trigger true on the next evaluation - the first trigger of the
-module that returns true in the port.
+- `fn_9_3CBC` is the guest's own helper, ported as the private member `x3CBC_`: it looks the
+  target up by the id at this+0xBCA and, when it exists, asks it for its aim position (CActor's
+  vtable slot 0x54, `GetAimPosition`) with the state manager and the dt, and copies the answer
+  into the out vector. It is 0xA8 bytes but trivial, so it is ported rather than stood in for.
+- The guest's `CTryCommand::ShouldRetry` (guest this+0x6B4) is the base's animation state, so
+  the port asks the animation state whether the command may be issued
+  (`mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)`, the guest's command id 8).
+- The actor's facing is the transform's forward column (`GetTransform().GetForward()`), not the
+  base's face vector: the guest's three loads are its 0x28, 0x38 and 0x48.
+
+In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine walks the states the
+actor reaches: Patrol, FaceTarget, then HasNewTarget, HasTarget and Lurk (the last three are
+still stand-ins). FaceTarget ticks every frame; the angle test answers "ready" (the target is
+not yet in front) and the animation state is otherwise the base's own, so `StateOver` stays
+false.
 
 ## 2. The loader (fn_9_168)
 

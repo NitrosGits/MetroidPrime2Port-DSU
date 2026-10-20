@@ -17,6 +17,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -56,13 +57,6 @@ void StandInFn(const char* fn) {
     sSeen[sCount++] = fn;
   }
   fprintf(stderr, "[cmdopirate] stand-in %s\n", fn);
-}
-
-// The same, for a callee the state calls: it logs once and hands back the neutral value
-// (false), the way the trigger stand-ins do.
-bool StandInFnBool(const char* fn) {
-  StandInFn(fn);
-  return false;
 }
 
 // The body's two FSM tables. Retail builds them in a static initialiser (fn_9_F9F8,
@@ -112,6 +106,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 #undef CMDO_TRIGGER
 #undef CMDO_STATE
+
 
 
 
@@ -544,6 +539,24 @@ void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_AE04");
 }
 
+// fn_9_3CBC: the target's aim position. The guest looks the target up by the id at this+0xBCA
+// (the load at 0x00003CD8) and, when it exists, asks it for its aim position - the vtable call
+// at 0x00003D1C, CActor's slot 0x54, GetAimPosition - with the state manager and the dt, and
+// copies the answer into the out vector (0x00003D28..0x00003D38). It returns false when the
+// target is gone (0x00003D40).
+bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) {
+  const CEntity* target = mgr.GetObjectById(xbca_);
+  if (target == nullptr) {
+    return false;
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  out = actor->GetAimPosition(mgr, dt);
+  return true;
+}
+
 // fn_9_ABDC: the state faces the target. On activate (the guest's message 0, 0x0000ABFC) the
 // module's own helper (fn_9_3CBC, 0xA8 bytes - over the 0x80 limit for this slice, so a named
 // stand-in) asks the target for its position and stores it at guest this+0xB94; the state then
@@ -558,12 +571,16 @@ void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
 void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
-    if (StandInFnBool("fn_9_3CBC (the target's position, guest this+0xb94)")) {
+    // 0x0000AC1C: the guest's own helper asks the target for its aim position (fn_9_3CBC) with
+    // 0.5f (lbl_9_rodata_440) and stores it at guest this+0xB94.
+    if (x3CBC_(mgr, xb94_, 0.5f)) {
       // 0x0000AC2C..0x0000AC84: the direction to the target and the angle between it and the
       // actor's facing (the guest's three-argument GetAngleDiff has no host counterpart; the
       // host's takes the facing and the direction).
       const CVector3f delta = xb94_ - GetTranslation();
-      const float angle = CVector3f::GetAngleDiff(mFaceVec, delta);
+      // 0x0000AC6C..0x0000AC80: the actor's facing is the transform's forward column
+      // (GetTransform().GetForward()); the guest's three loads are its 0x28, 0x38 and 0x48.
+      const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), delta);
       mAnimationState.SetState(angle > 0.34906584f ? CAnimationState::kAS_Ready
                                                    : CAnimationState::kAS_Over);
     } else {
@@ -573,7 +590,11 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Update: {
-    if (StandInFnBool("CTryCommand::ShouldRetry (guest this+0x6b4)")) {
+    // 0x0000ACC8: the guest asks its own try command (guest this+0x6B4) whether the turn command
+    // may be issued; that word is the base's animation state, so the host's animation state
+    // answers it (CAnimationState::CanIssueCommand), with the guest's command id 8
+    // (pas::kAS_Turn).
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
       // 0x0000ACD4..0x0000AD08: the direction to the target and its magnitude test.
       const CVector3f delta = xb94_ - GetTranslation();
       if (delta.IsMagnitudeSafe()) {
