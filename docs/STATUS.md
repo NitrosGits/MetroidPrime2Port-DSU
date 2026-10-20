@@ -30,7 +30,7 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `80b8edd2b` (head class + states, head colliders 13318) | echo-target class, 12314, XDMG 1303C → head lives 0x10E4 |
 | Splitter (worker) | `ses_ea4d1db0fffeNWn5f5JjkkYj8D` | splitter @ `e18e085bf` (2CE0, 3EEC/E6E4/8EA4, 2BE0, 10D0 marked) | FSM name tables wired to functions (drop Think→3EEC call), chassis AFE8/9520/ACEC/A4E4 |
 | CommandoPirate (worker) | `ses_ea4eed526ffeekPqrklrV6SXKb` | commandopirate @ `973a576ad` (4CA4 aim gate, 6390 burst fire) | 57A0 shot, 3090 death, matching build |
-| EmperorIng1 (worker) | `ses_ea53f0487ffeLDTNqYcJmJxJeS` | emperoring @ `2dae3c228` (601C, 9BE8, 1720 portal actor; 12 markers by orchestrator) | remaining reached stand-ins, 1950 proof |
+| EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `066b854ac` (43 markers by orchestrator from emp1_marks3.tsv) | vtable slot map + small overrides |
 | MinorIng (worker) | `ses_ea550f1b2ffeU2N84DMkU5YP5z` | minoring (new, wt-mp2-ing) | stand-ins + marking pass |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` | darksamus @ `dead28a30` | milestone 2 (status unknown) |
 
