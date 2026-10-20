@@ -928,10 +928,18 @@ one by one. Six are ported now, five are the host's own C++ and stay cited, five
 | `fn_29_4960` | 0x148 | the light's blend (0xe50) and the light object | ported (`CIng::UpdateLight`) |
 | `fn_29_4B4C` | 0x13C | the actor's own light (a `CGameLight`, 0x1b8 bytes) | ported (`CIng::CreateLight`) |
 | `fn_29_16AC` | 0x3D4 | the loader's data block (the SLdrIng default constructor) | ported (`PortLoadIng`) |
-| `fn_29_4830` | 0x130 | the ing spot's blob object (0xd5c) | stand-in: module 25's class builds it |
+| `fn_29_4830` | 0x130 | the ing spot's blob object (0xd5c) | ported (`CIng::CreateBlob`): module 25's GeomBlobV2, the host's `CCollisionTracker` (0x1e0) |
 
-Only one module function the run reaches is still a stand-in: the blob (`fn_29_4830`, whose class
-belongs to module 25).
+**No module function the run reaches is a stand-in any more.** The last one was the blob
+(`fn_29_4830`): module 25 is **GeomBlobV2**, and the host has it - `CCollisionTracker` (0x1e0 bytes,
+the retail's GeomBlobV2 size) in `src/MetroidPrime/Enemies/CCollisionTracker.cpp`, with the factory
+`LoadGeomBlobV2` and the module's function-pointer table in `SGeomBlobV2_FuncPtrs.cpp`. The blob is
+made in the create branch (asm 0xCB84) from the ing spot's blob effect (a 'PART' token, asm
+0xCB24-0xCB44), with the Ing's area id, the name "IngBlobEffect" (rodata_120+0x59b), a transform at
+the Ing's position, the Ing as the owner, the flags 0 and the track radius 10 (`lbl_25_rodata_40`).
+Its particle emission rate scalar (the member at 0x190 - the retail reads it at 0x2B60 and hands it
+to `CElementGen::SetGeneratorRate`) is then set to 0 (`fn_25_256C`), so the blob emits no
+particles.
 
 **The loader's data block** (`fn_29_16AC`, 0x3D4) is the retail's default constructor for the
 `SLdrIng` block: it fills it with the game's defaults before the loader parses the properties over
