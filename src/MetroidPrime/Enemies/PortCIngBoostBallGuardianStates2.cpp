@@ -562,41 +562,58 @@ void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, floa
 
 // fn_30_8998 (this module).
 // fn_29_7244
-void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (msg == kStateMsg_Activate) {
+void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("FaceTarget");
-    mAnimationState.SetState(target == nullptr || IsFacingTarget(mgr, CTriggerData(0.f))
-                                 ? CAnimationState::kAS_Over
-                                 : CAnimationState::kAS_Ready);
-    mMoving = false;
-  } else if (msg == kStateMsg_Update) {
-    if (target == nullptr) {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
-      return;
+    // 0x000089DC: the target's aim position into 0x10F8 (fn_30_5F6C, rodata_70 = 0.0), levelled
+    // to the Ing's own height (0x000089F4); more than 20 degrees off the forward axis
+    // (0x00008A50, rodata_104) leaves turning to do.
+    if (TargetAimPosition(mgr, mTargetPos)) {
+      mTargetPos.SetZ(GetTranslation().GetZ());
+      mAnimationState.SetState(CVector3f::GetAngleDiff(GetTransform().GetForward(),
+                                                       mTargetPos - GetTranslation()) > kFacingAngle
+                                   ? CAnimationState::kAS_Ready
+                                   : CAnimationState::kAS_Over);
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x00008A6C
     }
-    CVector3f delta = target->GetTranslation() - GetTranslation();
-    delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
-    if (mForm == kForm_IngSpot || (mForm >= 6 && mForm <= 9)) {
-      if (IsFacingTarget(mgr, CTriggerData(0.f)) || !delta.IsMagnitudeSafe()) {
-        mAnimationState.SetState(CAnimationState::kAS_Over);
-      } else {
-        BodyController()->FaceDirection(delta.AsNormalized(), dt);
-      }
-    } else if (mForm == kForm_Corporeal) {
+    mMoving = false; // 0x00008A7C: 0x11ED 0x04 = 0
+    break;
+  case kStateMsg_Update:
+    // Update turns toward the point Activate stored, not the live target.
+    switch (mForm) {
+    case kForm_Corporeal: // 0x00008AB8: a turn command once the body can take one
       if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+        const CVector3f delta = mTargetPos - GetTranslation();
         if (delta.IsMagnitudeSafe()) {
           BodyController()->CommandMgr().DeliverCmd(
-              CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f));
+              CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f)); // rodata_64
         } else {
-          mAnimationState.SetState(CAnimationState::kAS_Over);
+          mAnimationState.SetState(CAnimationState::kAS_Over); // 0x00008B74
         }
       }
-    } else {
+      break;
+    case kForm_IngSpot: // 0x00008B80: forms 3 and 6-9 snap to face the point (LookAt, world up)
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+      if ((mTargetPos - GetTranslation()).IsMagnitudeSafe()) {
+        SetTransform(CTransform4f::LookAt(GetTranslation(), mTargetPos, CVector3f::Up()));
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+      break;
+    default: // 0x00008BF0
       mAnimationState.SetState(CAnimationState::kAS_Over);
+      break;
     }
-  } else if (msg == kStateMsg_Deactivate) {
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008BFC
+    break;
+  default:
+    break;
   }
 }
 
