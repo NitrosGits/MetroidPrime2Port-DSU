@@ -155,6 +155,77 @@ public:
   void SetIngPossessed(bool possessed, CStateManager& mgr) override;
   void SetIngPossessed(bool possessed, float duration, CStateManager& mgr) override;
   void SetAttackTarget(CStateManager& mgr, TUniqueId target) override;
+
+  // The chassis's state machine names. The REL's table entry is 16 bytes
+  // {const char* name, 0, 0xFFFFFFFF, fn}: the module's static initialiser
+  // (fn_75_FED0, in the REL's .ctors) copies the three-word records of .data
+  // 0x5D0..0x714 into the three tables, so the retail function of each name is that
+  // record's third word (docs/module-analysis/Splitter.md section b). None of these
+  // bodies is ported yet, so each stands in for the retail function and logs it once
+  // when the state machine runs it.
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E64C
+  bool IsIntact(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E62C
+  bool IsDisabled(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E620
+  bool ShouldWaitForSnatch(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E5D0
+  bool ShotAt(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E5B8
+  bool LostHead(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E5AC
+  bool HasHead(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E58C
+  bool HasRetreatPoint(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E56C
+  bool HasTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E54C
+  bool CanReachTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E530
+  bool HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E524
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E4DC
+  bool PathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E494
+  bool PatrolPathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E478
+  bool ShouldLegStab(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E3A4
+  bool ShouldMorphballStab(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E2F0
+  bool ShouldSpinAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E1D0
+  bool ShouldLaserSweep(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E0B0
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E098
+  bool IsSpinAttackOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E084
+  bool SpunIntoPlayer(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E078
+  bool SpunIntoGeometry(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E06C
+  bool BreakOutOfSpin(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E060
+  bool TooManyBounces(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E040
+  bool DeployFromHoldingTube(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E034
+  bool ShouldDeploy(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E028
+  bool DeployPathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_E00C
+  bool PrepareForDocking(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_DFEC
+
+  void Start(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DFE8
+  void Idle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DFE4
+  void Inactive(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DF88
+  void Activate(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DDF8
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DCFC
+  void Scanning(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DCF8
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DC08
+  void LegStabAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_DA38
+  void SpinAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_D7D4
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_D61C
+  void LaserSweepAttack(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_D3E0
+  void SpinCollisionReaction(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_D2A0
+  void SpinBounce(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_D13C
+  void SpinTelegraph(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_D0A4
+  void SpinToIdle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_CF44
+  void SpawnDrop(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_CCF0
+  void HoldingTube(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_CC98
+  void WaitForDocking(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_C9E4
+  void WaitForSnatch(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_C8F4
+  void FollowDeployPath(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_C51C
+  void DeploymentLanding(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_C034
+  void HeadExplosion(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_BEEC
+
+  void SelectTarget(CStateManager& mgr, float dt);  // fn_75_BE28
+  void SetTargetDest(CStateManager& mgr, float dt);  // fn_75_BC70
+  void SetRetreatDest(CStateManager& mgr, float dt);  // fn_75_BBC0
+  void SetupSpinAttack(CStateManager& mgr, float dt);  // fn_75_BAA8
+  void EndSpinAttack(CStateManager& mgr, float dt);  // fn_75_B9B0
+  void SetupLaserSweep(CStateManager& mgr, float dt);  // fn_75_B678
+  void SetMorphballStabLeg(CStateManager& mgr, float dt);  // fn_75_B66C
+  void FindBestStabLeg(CStateManager& mgr, float dt);  // fn_75_B57C
+  void FindBestDodgeDirection(CStateManager& mgr, float dt);  // fn_75_B2A0
+  void BounceOffPlayer(CStateManager& mgr, float dt);  // fn_75_B1D8
+  void BounceOffGeometry(CStateManager& mgr, float dt);  // fn_75_B104
 #endif
   // The module's auto-destruct starter (retail fn_75_5A54). What that function does is not
   // understood yet (docs/module-analysis/Splitter.md section j), so the table's slot is filled

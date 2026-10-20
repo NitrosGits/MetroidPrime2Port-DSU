@@ -33,69 +33,93 @@ namespace {
 
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
-  static const char* sSeen[32] = {};
+  static const char* sSeen[256] = {};
   static int sCount = 0;
   for (int i = 0; i < sCount; ++i) {
     if (sSeen[i] == what) {
       return;
     }
   }
-  if (sCount < 32) {
+  if (sCount < 256) {
     sSeen[sCount++] = what;
   }
   fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterCommandModule.cpp)\n",
           what);
 }
 
-// The head's FSM names: the REL's lbl_75_data_CC (the 17 triggers), lbl_75_data_284 (the
-// 14 states) and lbl_75_data_3B8 (the 7 codes). The retail's tables hold the names only -
-// the transitions live in the area script - so the function pointers are null.
+// The head's FSM names: the REL's lbl_75_data_CC (the 17 triggers),
+// lbl_75_data_284 (the 14 states) and lbl_75_data_3B8 (the 7 codes). The tables'
+// entries are 16 bytes {const char* name, 0, 0xFFFFFFFF, fn} and the module's static
+// initialiser (fn_75_7C80, in the REL's .ctors) fills the function word from the
+// three-word records of .data 0x0..0x2D0, so the retail function of each name is
+// known (docs/module-analysis/Splitter.md section b). Two of them are ported - the
+// IsScanning trigger (fn_75_58E8) and the NotifyDocking code (fn_75_3EEC) - and the
+// rest are once-logging stand-ins for the retail function they name.
+#define SPLITTER_TRIGGER(name) \
+  { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
+#define SPLITTER_STATE(name) \
+  { #name, static_cast< CPatterned::StateMachine::StateFunc >(&CSplitterCommandModule::name) }
+#define SPLITTER_CODE(name) \
+  { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterCommandModule::name) }
+#define SPLITTER_TRIGGER_PORTED(name) \
+  { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
+#define SPLITTER_CODE_PORTED(name) \
+  { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterCommandModule::name) }
+
+
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
-    {"StateOver", nullptr},
-    {"InDetectionRange", nullptr},
-    {"IsScanning", nullptr},
-    {"IsInitiallyDocked", nullptr},
-    {"IsDocked", nullptr},
-    {"HasDockingPath", nullptr},
-    {"HasDockingTarget", nullptr},
-    {"DockingPathOver", nullptr},
-    {"HasTarget", nullptr},
-    {"InHoverRange", nullptr},
-    {"InLaserPulseRange", nullptr},
-    {"ShouldDodge", nullptr},
-    {"ShouldAttack", nullptr},
-    {"ShouldFireAgain", nullptr},
-    {"ShouldLaserSweep", nullptr},
-    {"PathOver", nullptr},
-    {"PathShagged", nullptr},
+    SPLITTER_TRIGGER(StateOver),
+    SPLITTER_TRIGGER(InDetectionRange),
+    SPLITTER_TRIGGER_PORTED(IsScanning),
+    SPLITTER_TRIGGER(IsInitiallyDocked),
+    SPLITTER_TRIGGER(IsDocked),
+    SPLITTER_TRIGGER(HasDockingPath),
+    SPLITTER_TRIGGER(HasDockingTarget),
+    SPLITTER_TRIGGER(DockingPathOver),
+    SPLITTER_TRIGGER(HasTarget),
+    SPLITTER_TRIGGER(InHoverRange),
+    SPLITTER_TRIGGER(InLaserPulseRange),
+    SPLITTER_TRIGGER(ShouldDodge),
+    SPLITTER_TRIGGER(ShouldAttack),
+    SPLITTER_TRIGGER(ShouldFireAgain),
+    SPLITTER_TRIGGER(ShouldLaserSweep),
+    SPLITTER_TRIGGER(PathOver),
+    SPLITTER_TRIGGER(PathShagged),
 };
 
 CPatterned::StateMachine::SStateFunction skStates[] = {
-    {"Start", nullptr},
-    {"Idle", nullptr},
-    {"SpawnIdle", nullptr},
-    {"Dead", nullptr},
-    {"Scanning", nullptr},
-    {"FaceTarget", nullptr},
-    {"PathFind", nullptr},
-    {"Hover", nullptr},
-    {"Dodge", nullptr},
-    {"LaserPulse", nullptr},
-    {"LaserSweep", nullptr},
-    {"LostChassisReaction", nullptr},
-    {"SeekMainChassis", nullptr},
-    {"FollowDockingPath", nullptr},
+    SPLITTER_STATE(Start),
+    SPLITTER_STATE(Idle),
+    SPLITTER_STATE(SpawnIdle),
+    SPLITTER_STATE(Dead),
+    SPLITTER_STATE(Scanning),
+    SPLITTER_STATE(FaceTarget),
+    SPLITTER_STATE(PathFind),
+    SPLITTER_STATE(Hover),
+    SPLITTER_STATE(Dodge),
+    SPLITTER_STATE(LaserPulse),
+    SPLITTER_STATE(LaserSweep),
+    SPLITTER_STATE(LostChassisReaction),
+    SPLITTER_STATE(SeekMainChassis),
+    SPLITTER_STATE(FollowDockingPath),
 };
 
 CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
-    {"NotifyDocking", nullptr},
-    {"SelectTarget", nullptr},
-    {"SetTargetDest", nullptr},
-    {"SetDockingDest", nullptr},
-    {"FindBestDodgeDirection", nullptr},
-    {"RaiseShields", nullptr},
-    {"ResetAttackTimes", nullptr},
+    SPLITTER_CODE_PORTED(NotifyDocking),
+    SPLITTER_CODE(SelectTarget),
+    SPLITTER_CODE(SetTargetDest),
+    SPLITTER_CODE(SetDockingDest),
+    SPLITTER_CODE(FindBestDodgeDirection),
+    SPLITTER_CODE(RaiseShields),
+    SPLITTER_CODE(ResetAttackTimes),
 };
+
+#undef SPLITTER_TRIGGER
+#undef SPLITTER_STATE
+#undef SPLITTER_CODE
+#undef SPLITTER_TRIGGER_PORTED
+#undef SPLITTER_CODE_PORTED
+
 
 // The module's own per-frame calls, as named once-logging stand-ins: the name is the retail
 // function and its size.
@@ -125,6 +149,75 @@ void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float
 }
 
 } // namespace
+
+// The state machine names that are not ported yet: each stands in for the retail
+// function the REL's initialiser puts in the table and logs it once, so the log
+// says which retail body the state machine asked for.
+#define SPLITTER_TRIGGER_STANDIN(name, fn)                                       \
+  bool CSplitterCommandModule::name(CStateManager&, const CTriggerData&) const {  \
+    StandIn(#fn " (the head's " #name " trigger)");                            \
+    return false;                                                                  \
+  }
+#define SPLITTER_STATE_STANDIN(name, fn)                                          \
+  void CSplitterCommandModule::name(CStateManager&, EStateMsg, float) {             \
+    StandIn(#fn " (the head's " #name " state)");                                \
+  }
+#define SPLITTER_CODE_STANDIN(name, fn)                                           \
+  void CSplitterCommandModule::name(CStateManager&, float) {                        \
+    StandIn(#fn " (the head's " #name " code)");                                 \
+  }
+SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_5A40)
+SPLITTER_TRIGGER_STANDIN(InDetectionRange, fn_75_5944)
+SPLITTER_TRIGGER_STANDIN(IsInitiallyDocked, fn_75_58DC)
+SPLITTER_TRIGGER_STANDIN(IsDocked, fn_75_58BC)
+SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
+SPLITTER_TRIGGER_STANDIN(HasDockingTarget, fn_75_57F0)
+SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
+SPLITTER_TRIGGER_STANDIN(HasTarget, fn_75_57B4)
+SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
+SPLITTER_TRIGGER_STANDIN(InLaserPulseRange, fn_75_565C)
+SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
+SPLITTER_TRIGGER_STANDIN(ShouldAttack, fn_75_5624)
+SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
+SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_55F8)
+SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
+SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
+SPLITTER_STATE_STANDIN(Start, fn_75_5564)
+SPLITTER_STATE_STANDIN(Idle, fn_75_5538)
+SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
+SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
+SPLITTER_STATE_STANDIN(Scanning, fn_75_523C)
+SPLITTER_STATE_STANDIN(FaceTarget, fn_75_50B0)
+SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
+SPLITTER_STATE_STANDIN(Hover, fn_75_4D04)
+SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
+SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
+SPLITTER_STATE_STANDIN(LaserSweep, fn_75_44DC)
+SPLITTER_STATE_STANDIN(LostChassisReaction, fn_75_42F8)
+SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
+SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
+SPLITTER_CODE_STANDIN(SelectTarget, fn_75_3E60)
+SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_3D20)
+SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
+SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_3B34)
+SPLITTER_CODE_STANDIN(RaiseShields, fn_75_3B20)
+SPLITTER_CODE_STANDIN(ResetAttackTimes, fn_75_3ADC)
+#undef SPLITTER_TRIGGER_STANDIN
+#undef SPLITTER_STATE_STANDIN
+#undef SPLITTER_CODE_STANDIN
+
+
+// The two state machine entries whose retail body is ported: the IsScanning trigger
+// (fn_75_58E8, the chassis's scan timer) and the NotifyDocking code (fn_75_3EEC, the head's
+// dock to the chassis). The retail runs them as state machine nodes, by name.
+bool CSplitterCommandModule::IsScanning(CStateManager& mgr, const CTriggerData&) const {
+  return PortChassisTimerRunning(mgr);
+}
+
+void CSplitterCommandModule::NotifyDocking(CStateManager& mgr, float) {
+  PortDockToChassis(mgr);
+}
+
 
 // fn_75_6B08. The base call is the retail one: EPatternedAI 0x39 (li r4, 0x39 at 0x00006B68),
 // flavor 0 (li r7, 0x0 at 0x00006B30), movement 1 / collider 1 / body 7 (the stack words at
@@ -513,7 +606,7 @@ void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
 // TCastToPtr); a null cast gives false (0x5930 li r3, 0) and the chassis's scan timer at 0xD28
 // decides the rest (0x5918 lfs, 0x5920 fcmpo against zero and 0x5928 extrwi, which takes cr0's
 // greater-than bit).
-bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) {
+bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
   const CSplitterMainChassis* chassis =
       TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId));
   if (chassis == nullptr) {
@@ -611,10 +704,8 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
         mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(), true);
   }
   mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  // The retail's state machine calls fn_75_3EEC (the docking) from one of its states; its
-  // tables hold names only, so the port calls it from the Think, before the chassis check
-  // (fn_75_31A8) that reads the id it sets.
-  PortDockToChassis(mgr);
+  // The retail's state machine calls fn_75_3EEC (the docking) as its NotifyDocking code, so
+  // the port runs it from there and not from the Think.
   PortUpdateChassis(mgr);
   PortUpdateFlashAndDeath(mgr, dt);
   PortUpdateCollision(mgr);

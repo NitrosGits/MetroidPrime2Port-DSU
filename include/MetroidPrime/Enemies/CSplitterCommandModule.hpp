@@ -139,6 +139,55 @@ public:
   void SetupStateMachine(CStateManager& mgr) override;
   bool CanBeIngPossessed(CStateManager& mgr) const override;
 
+  // The head's state machine names. The REL's table entry is 16 bytes
+  // {const char* name, 0, 0xFFFFFFFF, fn}: the module's static initialiser
+  // (fn_75_7C80, in the REL's .ctors) copies the three-word records of .data
+  // 0x0..0x2D0 into the three tables, so the retail function of each name is that
+  // record's third word (docs/module-analysis/Splitter.md section b). Two of them
+  // are ported (the IsScanning trigger fn_75_58E8 and the NotifyDocking code
+  // fn_75_3EEC); the rest stand in for the retail function and log it once when the
+  // state machine runs them.
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5A40
+  bool InDetectionRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5944
+  bool IsScanning(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58E8
+  bool IsInitiallyDocked(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58DC
+  bool IsDocked(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58BC
+  bool HasDockingPath(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5864
+  bool HasDockingTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_57F0
+  bool DockingPathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_57D4
+  bool HasTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_57B4
+  bool InHoverRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_570C
+  bool InLaserPulseRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_565C
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5644
+  bool ShouldAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5624
+  bool ShouldFireAgain(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5610
+  bool ShouldLaserSweep(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_55F8
+  bool PathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_55B0
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5568
+
+  void Start(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5564
+  void Idle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5538
+  void SpawnIdle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5498
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5448
+  void Scanning(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_523C
+  void FaceTarget(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_50B0
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4E90
+  void Hover(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4D04
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4AC0
+  void LaserPulse(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4864
+  void LaserSweep(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_44DC
+  void LostChassisReaction(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_42F8
+  void SeekMainChassis(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4138
+  void FollowDockingPath(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_3FE0
+
+  void NotifyDocking(CStateManager& mgr, float dt);  // fn_75_3EEC
+  void SelectTarget(CStateManager& mgr, float dt);  // fn_75_3E60
+  void SetTargetDest(CStateManager& mgr, float dt);  // fn_75_3D20
+  void SetDockingDest(CStateManager& mgr, float dt);  // fn_75_3BEC
+  void FindBestDodgeDirection(CStateManager& mgr, float dt);  // fn_75_3B34
+  void RaiseShields(CStateManager& mgr, float dt);  // fn_75_3B20
+  void ResetAttackTimes(CStateManager& mgr, float dt);  // fn_75_3ADC
+
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
@@ -224,7 +273,7 @@ private:
   // The retail's fn_75_1188 (the head's beam-effect spawner) and the gate it asks first
   // (fn_75_58E8: the chassis must be there and its scan timer must run).
   void PortSpawnBeamEffect(CStateManager& mgr);
-  bool PortChassisTimerRunning(CStateManager& mgr);
+  bool PortChassisTimerRunning(CStateManager& mgr) const;
   // guest 0xF68: the id of the spawned beam effect. The retail looks it up at the start of
   // fn_75_1188 and keeps the id of the actor it creates in it.
   TUniqueId mBeamEffectId = kInvalidUniqueId;

@@ -30,91 +30,107 @@ namespace {
 
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
-  static const char* sSeen[32] = {};
+  static const char* sSeen[256] = {};
   static int sCount = 0;
   for (int i = 0; i < sCount; ++i) {
     if (sSeen[i] == what) {
       return;
     }
   }
-  if (sCount < 32) {
+  if (sCount < 256) {
     sSeen[sCount++] = what;
   }
   fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterMainChassis.cpp)\n", what);
 }
 
-// The chassis's FSM names: the REL's lbl_75_data_720 (the 28 triggers), lbl_75_data_9E8
-// (the 22 states) and lbl_75_data_BCC (the 11 codes). The retail's tables hold the names
-// only - the transitions live in the area script - so the function pointers are null.
+// The chassis's FSM names: the REL's lbl_75_data_720 (the 28 triggers),
+// lbl_75_data_9E8 (the 22 states) and lbl_75_data_BCC (the 11 codes). The tables'
+// entries are 16 bytes {const char* name, 0, 0xFFFFFFFF, fn} and the module's static
+// initialiser (fn_75_FED0, in the REL's .ctors) fills the function word from the
+// three-word records of .data 0x5D0..0x714, so the retail function of each name is
+// known (docs/module-analysis/Splitter.md section b). None of them is ported yet:
+// each entry below is a once-logging stand-in for the retail function it names.
+#define SPLITTER_TRIGGER(name) \
+  { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterMainChassis::name) }
+#define SPLITTER_STATE(name) \
+  { #name, static_cast< CPatterned::StateMachine::StateFunc >(&CSplitterMainChassis::name) }
+#define SPLITTER_CODE(name) \
+  { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterMainChassis::name) }
+
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
-    {"StateOver", nullptr},
-    {"IsIntact", nullptr},
-    {"IsDisabled", nullptr},
-    {"ShouldWaitForSnatch", nullptr},
-    {"ShotAt", nullptr},
-    {"LostHead", nullptr},
-    {"HasHead", nullptr},
-    {"HasRetreatPoint", nullptr},
-    {"HasTarget", nullptr},
-    {"CanReachTarget", nullptr},
-    {"HasLineOfSight", nullptr},
-    {"PathShagged", nullptr},
-    {"PathOver", nullptr},
-    {"PatrolPathOver", nullptr},
-    {"ShouldLegStab", nullptr},
-    {"ShouldMorphballStab", nullptr},
-    {"ShouldSpinAttack", nullptr},
-    {"ShouldLaserSweep", nullptr},
-    {"ShouldDodge", nullptr},
-    {"IsSpinAttackOver", nullptr},
-    {"SpunIntoPlayer", nullptr},
-    {"SpunIntoGeometry", nullptr},
-    {"BreakOutOfSpin", nullptr},
-    {"TooManyBounces", nullptr},
-    {"DeployFromHoldingTube", nullptr},
-    {"ShouldDeploy", nullptr},
-    {"DeployPathOver", nullptr},
-    {"PrepareForDocking", nullptr},
+    SPLITTER_TRIGGER(StateOver),
+    SPLITTER_TRIGGER(IsIntact),
+    SPLITTER_TRIGGER(IsDisabled),
+    SPLITTER_TRIGGER(ShouldWaitForSnatch),
+    SPLITTER_TRIGGER(ShotAt),
+    SPLITTER_TRIGGER(LostHead),
+    SPLITTER_TRIGGER(HasHead),
+    SPLITTER_TRIGGER(HasRetreatPoint),
+    SPLITTER_TRIGGER(HasTarget),
+    SPLITTER_TRIGGER(CanReachTarget),
+    SPLITTER_TRIGGER(HasLineOfSight),
+    SPLITTER_TRIGGER(PathShagged),
+    SPLITTER_TRIGGER(PathOver),
+    SPLITTER_TRIGGER(PatrolPathOver),
+    SPLITTER_TRIGGER(ShouldLegStab),
+    SPLITTER_TRIGGER(ShouldMorphballStab),
+    SPLITTER_TRIGGER(ShouldSpinAttack),
+    SPLITTER_TRIGGER(ShouldLaserSweep),
+    SPLITTER_TRIGGER(ShouldDodge),
+    SPLITTER_TRIGGER(IsSpinAttackOver),
+    SPLITTER_TRIGGER(SpunIntoPlayer),
+    SPLITTER_TRIGGER(SpunIntoGeometry),
+    SPLITTER_TRIGGER(BreakOutOfSpin),
+    SPLITTER_TRIGGER(TooManyBounces),
+    SPLITTER_TRIGGER(DeployFromHoldingTube),
+    SPLITTER_TRIGGER(ShouldDeploy),
+    SPLITTER_TRIGGER(DeployPathOver),
+    SPLITTER_TRIGGER(PrepareForDocking),
 };
 
 CPatterned::StateMachine::SStateFunction skStates[] = {
-    {"Start", nullptr},
-    {"Idle", nullptr},
-    {"Inactive", nullptr},
-    {"Activate", nullptr},
-    {"Patrol", nullptr},
-    {"Scanning", nullptr},
-    {"PathFind", nullptr},
-    {"LegStabAttack", nullptr},
-    {"SpinAttack", nullptr},
-    {"Dodge", nullptr},
-    {"LaserSweepAttack", nullptr},
-    {"SpinCollisionReaction", nullptr},
-    {"SpinBounce", nullptr},
-    {"SpinTelegraph", nullptr},
-    {"SpinToIdle", nullptr},
-    {"SpawnDrop", nullptr},
-    {"HoldingTube", nullptr},
-    {"WaitForDocking", nullptr},
-    {"WaitForSnatch", nullptr},
-    {"FollowDeployPath", nullptr},
-    {"DeploymentLanding", nullptr},
-    {"HeadExplosion", nullptr},
+    SPLITTER_STATE(Start),
+    SPLITTER_STATE(Idle),
+    SPLITTER_STATE(Inactive),
+    SPLITTER_STATE(Activate),
+    SPLITTER_STATE(Patrol),
+    SPLITTER_STATE(Scanning),
+    SPLITTER_STATE(PathFind),
+    SPLITTER_STATE(LegStabAttack),
+    SPLITTER_STATE(SpinAttack),
+    SPLITTER_STATE(Dodge),
+    SPLITTER_STATE(LaserSweepAttack),
+    SPLITTER_STATE(SpinCollisionReaction),
+    SPLITTER_STATE(SpinBounce),
+    SPLITTER_STATE(SpinTelegraph),
+    SPLITTER_STATE(SpinToIdle),
+    SPLITTER_STATE(SpawnDrop),
+    SPLITTER_STATE(HoldingTube),
+    SPLITTER_STATE(WaitForDocking),
+    SPLITTER_STATE(WaitForSnatch),
+    SPLITTER_STATE(FollowDeployPath),
+    SPLITTER_STATE(DeploymentLanding),
+    SPLITTER_STATE(HeadExplosion),
 };
 
 CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
-    {"SelectTarget", nullptr},
-    {"SetTargetDest", nullptr},
-    {"SetRetreatDest", nullptr},
-    {"SetupSpinAttack", nullptr},
-    {"EndSpinAttack", nullptr},
-    {"SetupLaserSweep", nullptr},
-    {"SetMorphballStabLeg", nullptr},
-    {"FindBestStabLeg", nullptr},
-    {"FindBestDodgeDirection", nullptr},
-    {"BounceOffPlayer", nullptr},
-    {"BounceOffGeometry", nullptr},
+    SPLITTER_CODE(SelectTarget),
+    SPLITTER_CODE(SetTargetDest),
+    SPLITTER_CODE(SetRetreatDest),
+    SPLITTER_CODE(SetupSpinAttack),
+    SPLITTER_CODE(EndSpinAttack),
+    SPLITTER_CODE(SetupLaserSweep),
+    SPLITTER_CODE(SetMorphballStabLeg),
+    SPLITTER_CODE(FindBestStabLeg),
+    SPLITTER_CODE(FindBestDodgeDirection),
+    SPLITTER_CODE(BounceOffPlayer),
+    SPLITTER_CODE(BounceOffGeometry),
 };
+
+#undef SPLITTER_TRIGGER
+#undef SPLITTER_STATE
+#undef SPLITTER_CODE
+
 
 // The module's own calls in the main chassis's Think and the DOL's two helpers it makes, as
 // named once-logging shells: the name is the retail function and its size (the DOL's functions
@@ -132,6 +148,88 @@ void StandInFn_75_9FA8() { StandIn("fn_75_9FA8 (0xF8)"); }
 void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
 
 } // namespace
+
+// The state machine names that are not ported yet: each stands in for the retail
+// function the REL's initialiser puts in the table and logs it once, so the log
+// says which retail body the state machine asked for.
+#define SPLITTER_TRIGGER_STANDIN(name, fn)                                       \
+  bool CSplitterMainChassis::name(CStateManager&, const CTriggerData&) const {    \
+    StandIn(#fn " (the chassis's " #name " trigger)");                            \
+    return false;                                                                  \
+  }
+#define SPLITTER_STATE_STANDIN(name, fn)                                          \
+  void CSplitterMainChassis::name(CStateManager&, EStateMsg, float) {               \
+    StandIn(#fn " (the chassis's " #name " state)");                              \
+  }
+#define SPLITTER_CODE_STANDIN(name, fn)                                           \
+  void CSplitterMainChassis::name(CStateManager&, float) {                          \
+    StandIn(#fn " (the chassis's " #name " code)");                               \
+  }
+SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_E64C)
+SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
+SPLITTER_TRIGGER_STANDIN(IsDisabled, fn_75_E620)
+SPLITTER_TRIGGER_STANDIN(ShouldWaitForSnatch, fn_75_E5D0)
+SPLITTER_TRIGGER_STANDIN(ShotAt, fn_75_E5B8)
+SPLITTER_TRIGGER_STANDIN(LostHead, fn_75_E5AC)
+SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
+SPLITTER_TRIGGER_STANDIN(HasRetreatPoint, fn_75_E56C)
+SPLITTER_TRIGGER_STANDIN(HasTarget, fn_75_E54C)
+SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
+SPLITTER_TRIGGER_STANDIN(HasLineOfSight, fn_75_E524)
+SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
+SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
+SPLITTER_TRIGGER_STANDIN(PatrolPathOver, fn_75_E478)
+SPLITTER_TRIGGER_STANDIN(ShouldLegStab, fn_75_E3A4)
+SPLITTER_TRIGGER_STANDIN(ShouldMorphballStab, fn_75_E2F0)
+SPLITTER_TRIGGER_STANDIN(ShouldSpinAttack, fn_75_E1D0)
+SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_E0B0)
+SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_E098)
+SPLITTER_TRIGGER_STANDIN(IsSpinAttackOver, fn_75_E084)
+SPLITTER_TRIGGER_STANDIN(SpunIntoPlayer, fn_75_E078)
+SPLITTER_TRIGGER_STANDIN(SpunIntoGeometry, fn_75_E06C)
+SPLITTER_TRIGGER_STANDIN(BreakOutOfSpin, fn_75_E060)
+SPLITTER_TRIGGER_STANDIN(TooManyBounces, fn_75_E040)
+SPLITTER_TRIGGER_STANDIN(DeployFromHoldingTube, fn_75_E034)
+SPLITTER_TRIGGER_STANDIN(ShouldDeploy, fn_75_E028)
+SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
+SPLITTER_TRIGGER_STANDIN(PrepareForDocking, fn_75_DFEC)
+SPLITTER_STATE_STANDIN(Start, fn_75_DFE8)
+SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
+SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
+SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
+SPLITTER_STATE_STANDIN(Patrol, fn_75_DCFC)
+SPLITTER_STATE_STANDIN(Scanning, fn_75_DCF8)
+SPLITTER_STATE_STANDIN(PathFind, fn_75_DC08)
+SPLITTER_STATE_STANDIN(LegStabAttack, fn_75_DA38)
+SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
+SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
+SPLITTER_STATE_STANDIN(LaserSweepAttack, fn_75_D3E0)
+SPLITTER_STATE_STANDIN(SpinCollisionReaction, fn_75_D2A0)
+SPLITTER_STATE_STANDIN(SpinBounce, fn_75_D13C)
+SPLITTER_STATE_STANDIN(SpinTelegraph, fn_75_D0A4)
+SPLITTER_STATE_STANDIN(SpinToIdle, fn_75_CF44)
+SPLITTER_STATE_STANDIN(SpawnDrop, fn_75_CCF0)
+SPLITTER_STATE_STANDIN(HoldingTube, fn_75_CC98)
+SPLITTER_STATE_STANDIN(WaitForDocking, fn_75_C9E4)
+SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
+SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
+SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
+SPLITTER_STATE_STANDIN(HeadExplosion, fn_75_BEEC)
+SPLITTER_CODE_STANDIN(SelectTarget, fn_75_BE28)
+SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_BC70)
+SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
+SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
+SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
+SPLITTER_CODE_STANDIN(SetupLaserSweep, fn_75_B678)
+SPLITTER_CODE_STANDIN(SetMorphballStabLeg, fn_75_B66C)
+SPLITTER_CODE_STANDIN(FindBestStabLeg, fn_75_B57C)
+SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_B2A0)
+SPLITTER_CODE_STANDIN(BounceOffPlayer, fn_75_B1D8)
+SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
+#undef SPLITTER_TRIGGER_STANDIN
+#undef SPLITTER_STATE_STANDIN
+#undef SPLITTER_CODE_STANDIN
+
 
 // The command module's loader lives in PortCSplitterCommandModule.cpp (the two files are the one
 // REL's body).

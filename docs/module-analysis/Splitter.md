@@ -70,38 +70,113 @@ Evidence for the sizes (`li r3, N` immediately before `bl __nw__FUlPCcPCc`):
 | 0x6A8 | [0x000019D0] `li r3,0x6a8` → [0x000019D8] `bl __nw__` in `fn_75_1974` | `CPlasmaProjectile` (DOL class, laser pulse shot) |
 
 Other classes the module touches: the DOL's `CPlasmaProjectile` (0x6A8, allocated by the REL in
-`fn_75_1974` — the laser-pulse shot) and the `CMemory` vtables in `.data` (12-byte entries
-`{0, 0xFFFFFFFF, fn}` — small destructors, e.g. `.data:0x0` → `fn_75_5A40`, `.data:0xCAC` →
-`fn_75_5A54`).
+`fn_75_1974` — the laser-pulse shot). The 12-byte entries `{0, 0xFFFFFFFF, fn}` in `.data` are the
+**function records** of the FSM tables (§b), not destructor vtables: `.data:0x0` → `fn_75_5A40`
+(the head's `StateOver` trigger) and `.data:0xCAC` → `fn_75_5A54` (the module's auto-destruct,
+whose record the func-ptrs table of `fn_75_8254` copies).
 
 ## b. FSM
 
-Two independent state machines, one per class. Each registers **names only** — the tables are arrays
-of `{const char*, 0, 0, 0}` (16 bytes/entry) — so the transitions live in the area script
-([probable]; the REL has no transition data).
+Two independent state machines, one per class. A table entry is **16 bytes**:
+`{const char* name, 0, 0xFFFFFFFF, fn}` - the name pointer is in `.data`, the string in `.rodata`
+and the **function word is filled at load time** by the module's static initialisers, which the
+REL keeps in its `.ctors`: `fn_75_7C80` (the head) and `fn_75_FED0` (the chassis). Each copies the
+three-word records `{0, 0xFFFFFFFF, fn}` of `.data` into the tables, one record per entry, in
+order - so the retail function of every name is known. (The tables are **not** names only.)
 
-**FSM1 — command module** (initialiser `fn_75_5E8C`, vtable slot 0xF0 `SetupStateMachine`):
+**FSM1 - command module** (initialiser `fn_75_5E8C`, vtable slot 0xF0 `SetupStateMachine`):
 `(*mgr)->unk18(mgr, &lbl_75_data_CC, 0x11)` = 17 triggers, `unk14(mgr, &lbl_75_data_284, 0x0E)` =
-14 states, `unk1C(mgr, &lbl_75_data_3B8, 7)` = 7 codes.
+14 states, `unk1C(mgr, &lbl_75_data_3B8, 7)` = 7 codes. The records are `.data 0x0..0x2D0`
+(`fn_75_7C80`, the `.ctors` entry, fills them).
 
-| kind | index: name |
-|---|---|
-| trigger | 0 StateOver · 1 InDetectionRange · 2 IsScanning · 3 IsInitiallyDocked · 4 IsDocked · 5 HasDockingPath · 6 HasDockingTarget · 7 DockingPathOver · 8 HasTarget · 9 InHoverRange · 10 InLaserPulseRange · 11 ShouldDodge · 12 ShouldAttack · 13 ShouldFireAgain · 14 ShouldLaserSweep · 15 PathOver · 16 PathShagged |
-| state | 0 Start · 1 Idle · 2 SpawnIdle · 3 Dead · 4 Scanning · 5 FaceTarget · 6 PathFind · 7 Hover · 8 Dodge · 9 LaserPulse · 10 LaserSweep · 11 LostChassisReaction · 12 SeekMainChassis · 13 FollowDockingPath |
-| code | 0 NotifyDocking · 1 SelectTarget · 2 SetTargetDest · 3 SetDockingDest · 4 FindBestDodgeDirection · 5 RaiseShields · 6 ResetAttackTimes |
+| triggers | | states | | codes | |
+|---|---|---|---|---|---|
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | StateOver | `fn_75_5A40` | 9 | InHoverRange | `fn_75_570C` |
+| 1 | InDetectionRange | `fn_75_5944` | 10 | InLaserPulseRange | `fn_75_565C` |
+| 2 | IsScanning | `fn_75_58E8` | 11 | ShouldDodge | `fn_75_5644` |
+| 3 | IsInitiallyDocked | `fn_75_58DC` | 12 | ShouldAttack | `fn_75_5624` |
+| 4 | IsDocked | `fn_75_58BC` | 13 | ShouldFireAgain | `fn_75_5610` |
+| 5 | HasDockingPath | `fn_75_5864` | 14 | ShouldLaserSweep | `fn_75_55F8` |
+| 6 | HasDockingTarget | `fn_75_57F0` | 15 | PathOver | `fn_75_55B0` |
+| 7 | DockingPathOver | `fn_75_57D4` | 16 | PathShagged | `fn_75_5568` |
+| 8 | HasTarget | `fn_75_57B4` |  |  |  |
 
-**FSM2 — main chassis** (initialiser `fn_75_E9E4`, vtable slot 0xF0 `SetupStateMachine`):
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | Start | `fn_75_5564` | 7 | Hover | `fn_75_4D04` |
+| 1 | Idle | `fn_75_5538` | 8 | Dodge | `fn_75_4AC0` |
+| 2 | SpawnIdle | `fn_75_5498` | 9 | LaserPulse | `fn_75_4864` |
+| 3 | Dead | `fn_75_5448` | 10 | LaserSweep | `fn_75_44DC` |
+| 4 | Scanning | `fn_75_523C` | 11 | LostChassisReaction | `fn_75_42F8` |
+| 5 | FaceTarget | `fn_75_50B0` | 12 | SeekMainChassis | `fn_75_4138` |
+| 6 | PathFind | `fn_75_4E90` | 13 | FollowDockingPath | `fn_75_3FE0` |
+
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | NotifyDocking | `fn_75_3EEC` | 4 | FindBestDodgeDirection | `fn_75_3B34` |
+| 1 | SelectTarget | `fn_75_3E60` | 5 | RaiseShields | `fn_75_3B20` |
+| 2 | SetTargetDest | `fn_75_3D20` | 6 | ResetAttackTimes | `fn_75_3ADC` |
+| 3 | SetDockingDest | `fn_75_3BEC` |  |  |  |
+
+**FSM2 - main chassis** (initialiser `fn_75_E9E4`, vtable slot 0xF0 `SetupStateMachine`):
 `(*mgr)->unk18(mgr, &lbl_75_data_720, 0x1C)` = 28 triggers, `unk14(mgr, &lbl_75_data_9E8, 0x16)` =
-22 states, `unk1C(mgr, &lbl_75_data_BCC, 0x0B)` = 11 codes.
+22 states, `unk1C(mgr, &lbl_75_data_BCC, 0x0B)` = 11 codes. The records are `.data 0x5D0..0x714`
+(`fn_75_FED0` fills them).
 
-| kind | index: name |
-|---|---|
-| trigger | 0 StateOver · 1 IsIntact · 2 IsDisabled · 3 ShouldWaitForSnatch · 4 ShotAt · 5 LostHead · 6 HasHead · 7 HasRetreatPoint · 8 HasTarget · 9 CanReachTarget · 10 HasLineOfSight · 11 PathShagged · 12 PathOver · 13 PatrolPathOver · 14 ShouldLegStab · 15 ShouldMorphballStab · 16 ShouldSpinAttack · 17 ShouldLaserSweep · 18 ShouldDodge · 19 IsSpinAttackOver · 20 SpunIntoPlayer · 21 SpunIntoGeometry · 22 BreakOutOfSpin · 23 TooManyBounces · 24 DeployFromHoldingTube · 25 ShouldDeploy · 26 DeployPathOver · 27 PrepareForDocking |
-| state | 0 Start · 1 Idle · 2 Inactive · 3 Activate · 4 Patrol · 5 Scanning · 6 PathFind · 7 LegStabAttack · 8 SpinAttack · 9 Dodge · 10 LaserSweepAttack · 11 SpinCollisionReaction · 12 SpinBounce · 13 SpinTelegraph · 14 SpinToIdle · 15 SpawnDrop · 16 HoldingTube · 17 WaitForDocking · 18 WaitForSnatch · 19 FollowDeployPath · 20 DeploymentLanding · 21 HeadExplosion |
-| code | 0 SelectTarget · 1 SetTargetDest · 2 SetRetreatDest · 3 SetupSpinAttack · 4 EndSpinAttack · 5 SetupLaserSweep · 6 SetMorphballStabLeg · 7 FindBestStabLeg · 8 FindBestDodgeDirection · 9 BounceOffPlayer · 10 BounceOffGeometry |
+| triggers | | states | | codes | |
+|---|---|---|---|---|---|
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | StateOver | `fn_75_E64C` | 14 | ShouldLegStab | `fn_75_E3A4` |
+| 1 | IsIntact | `fn_75_E62C` | 15 | ShouldMorphballStab | `fn_75_E2F0` |
+| 2 | IsDisabled | `fn_75_E620` | 16 | ShouldSpinAttack | `fn_75_E1D0` |
+| 3 | ShouldWaitForSnatch | `fn_75_E5D0` | 17 | ShouldLaserSweep | `fn_75_E0B0` |
+| 4 | ShotAt | `fn_75_E5B8` | 18 | ShouldDodge | `fn_75_E098` |
+| 5 | LostHead | `fn_75_E5AC` | 19 | IsSpinAttackOver | `fn_75_E084` |
+| 6 | HasHead | `fn_75_E58C` | 20 | SpunIntoPlayer | `fn_75_E078` |
+| 7 | HasRetreatPoint | `fn_75_E56C` | 21 | SpunIntoGeometry | `fn_75_E06C` |
+| 8 | HasTarget | `fn_75_E54C` | 22 | BreakOutOfSpin | `fn_75_E060` |
+| 9 | CanReachTarget | `fn_75_E530` | 23 | TooManyBounces | `fn_75_E040` |
+| 10 | HasLineOfSight | `fn_75_E524` | 24 | DeployFromHoldingTube | `fn_75_E034` |
+| 11 | PathShagged | `fn_75_E4DC` | 25 | ShouldDeploy | `fn_75_E028` |
+| 12 | PathOver | `fn_75_E494` | 26 | DeployPathOver | `fn_75_E00C` |
+| 13 | PatrolPathOver | `fn_75_E478` | 27 | PrepareForDocking | `fn_75_DFEC` |
+
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | Start | `fn_75_DFE8` | 11 | SpinCollisionReaction | `fn_75_D2A0` |
+| 1 | Idle | `fn_75_DFE4` | 12 | SpinBounce | `fn_75_D13C` |
+| 2 | Inactive | `fn_75_DF88` | 13 | SpinTelegraph | `fn_75_D0A4` |
+| 3 | Activate | `fn_75_DDF8` | 14 | SpinToIdle | `fn_75_CF44` |
+| 4 | Patrol | `fn_75_DCFC` | 15 | SpawnDrop | `fn_75_CCF0` |
+| 5 | Scanning | `fn_75_DCF8` | 16 | HoldingTube | `fn_75_CC98` |
+| 6 | PathFind | `fn_75_DC08` | 17 | WaitForDocking | `fn_75_C9E4` |
+| 7 | LegStabAttack | `fn_75_DA38` | 18 | WaitForSnatch | `fn_75_C8F4` |
+| 8 | SpinAttack | `fn_75_D7D4` | 19 | FollowDeployPath | `fn_75_C51C` |
+| 9 | Dodge | `fn_75_D61C` | 20 | DeploymentLanding | `fn_75_C034` |
+| 10 | LaserSweepAttack | `fn_75_D3E0` | 21 | HeadExplosion | `fn_75_BEEC` |
+
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | SelectTarget | `fn_75_BE28` | 6 | SetMorphballStabLeg | `fn_75_B66C` |
+| 1 | SetTargetDest | `fn_75_BC70` | 7 | FindBestStabLeg | `fn_75_B57C` |
+| 2 | SetRetreatDest | `fn_75_BBC0` | 8 | FindBestDodgeDirection | `fn_75_B2A0` |
+| 3 | SetupSpinAttack | `fn_75_BAA8` | 9 | BounceOffPlayer | `fn_75_B1D8` |
+| 4 | EndSpinAttack | `fn_75_B9B0` | 10 | BounceOffGeometry | `fn_75_B104` |
+| 5 | SetupLaserSweep | `fn_75_B678` |  |  |  |
 
 Names are the rodata strings: FSM1 triggers at rodata 0xA0..0x17D, states 0x189..0x206, codes
-0x218..0x274; FSM2 triggers 0x3E4..0x55B, states 0x56D..0x663, codes 0x671..0x714.
+0x218..0x274; FSM2 triggers 0x3E4..0x55B, states 0x56D..0x663, codes 0x671..0x714. The
+**transitions** live in the AFSM resource (the state machine asset), the **state bodies** in the
+REL's tables above - the state machine runs a state or a code by name, and the table entry with
+that name gives the function.
+
+Two of the 99 bodies are ported: the head's `IsScanning` trigger (`fn_75_58E8`,
+`PortChassisTimerRunning`) and its `NotifyDocking` code (`fn_75_3EEC`, `PortDockToChassis`). The
+other 97 are once-logging stand-ins in the port (2026-10-20), each naming the retail function it
+stands in for.
 
 ## c. Parameters
 
@@ -368,6 +443,12 @@ Splitters') loads no robot, so the boss-stage actors come from the area script, 
 (`src/MetroidPrime/Enemies/CGenericFSM2.cpp`, cf. `CSplinter::SetupStateMachineHelper`), then port
 the state bodies in the order §g lists them.
 
+**WP2 part 1 done (2026-10-20): the tables are wired.** Both `SetupStateMachine`s register the
+tables with the function of every name (§b): the two ported bodies (the head's `IsScanning`
+trigger `fn_75_58E8` and its `NotifyDocking` code `fn_75_3EEC`) and 97 once-logging stand-ins,
+each naming the retail function it stands in for. The head's `NotifyDocking` code is where the
+retail runs `fn_75_3EEC`, so the port does not call it from the Think any more.
+
 **WP3 — the command module and the split-off halves.** Port `CSplitterCommandModule` (the head:
 scanning, laser pulse/sweep, shields, docking), the beam-effect actor (0x1A0, `fn_75_1188` +
 `fn_75_11804`/`fn_75_11884`) and the link between the two actors (`TUniqueId` at 0xEFA/0xEFC). The
@@ -383,10 +464,13 @@ triggers (module 14) are the integration test.
   is **unknown**.
 - `fn_75_5A54` is called from `fn_75_21FC` (the command module's Think helper) — so the auto-destruct
   is the head's, not the body's. The body has no auto-destruct in the REL.
-- `fn_75_7C80` (0x578, jump table) and `fn_75_FED0`/`fn_75_10778` (0x8A8/0x64C): roles **unknown**.
+- `fn_75_7C80` (0x578) and `fn_75_FED0` (0x8A8) are the module's **static initialisers** (the
+  REL's `.ctors`): they fill the function word of the FSM tables from the three-word records of
+  `.data` (§b). `fn_75_10778` (0x64C) is still **unknown**.
 - The derived blocks 0xA50-0xB7B (body) and 0xA7C-0xD6B (head) are **unmapped**.
-- Whether the area script (not the REL) owns the transitions is **probable, not proven**: the tables
-  hold names only.
+- The **transitions** live in the AFSM resource (the state machine asset the actor carries); the
+  REL's tables give the **bodies** by name (§b). The area script owns the placements and the
+  connections, not the transitions.
 - The beam actor's model name is "Splitter Beam Effect" (rodata 0x2D0); its class name is
   **unknown**.
 - `fn_75_1974` creates the laser-pulse `CPlasmaProjectile`; which `CAssetId` it uses comes from
@@ -792,8 +876,9 @@ timers into 0xD10-0xD1C). When the chassis accepts, the id moves to 0xEFA (0x3F5
 cleared and the id goes to 0x12A; the docking sound (the id at 0x88C) is added when the flag
 byte 0xF6A's 0x02 bit and the data's flag word 0x7C0's 0x80 bit are both clear.
 
-**fn_75_3EEC is called from nowhere in the module** (the FSM's tables hold names only), so the
-port calls it from the head's Think.
+**fn_75_3EEC is the head's `NotifyDocking` code** (§b): the module's static initialiser puts it
+in the head's code table, so the state machine runs it by name. The port binds that code to the
+ported body (`PortDockToChassis`) and does not call it from the Think any more.
 
 **The gate still fails in the area-4 fight**: the head has **no "Connect/Attach" connection**
 there - its connection list is only Dead/SetToZero, Patrol/Follow and DeathRattle/Decrement
