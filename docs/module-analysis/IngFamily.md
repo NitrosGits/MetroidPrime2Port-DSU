@@ -393,6 +393,8 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~exit host~~ done | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `1006C`/`100B8`/`10154`/`1046C`/`1065C`/`1077C`/`10944`/`10DEC`/`10EB4`/`10F58`; `lbl_29_data_C60`) | ported 2026-10-20 (`2382c8e15`), `// @` except `10E64` (Render, never queued - no model); class identity [proven]; see A.9 |
 | ~~body projectile~~ done | `fn_29_7E30` BodyProjectileFlight (0x2E8) | ported + `// @` 2026-10-20 (`ing_bp3.log`); the audit also fixed the aim prediction (0.5f), the unconditional emitter calls and the 0x1144 bit-6 pair; see A.10 |
 | ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall + the ball triggers `fn_29_A2D8`/`A224`/`A100` | ported + `// @` 2026-10-20; the run needs `layer 2`/`layer 3`, `press x` to morph and `tp` onto the puddle - see A.12 |
+| ~~fail-safe~~ measured | `fn_29_69A0` FailSafeMode + `fn_29_A3C8` IsOffPath | the teleport works (5.38 units, once) and the `0233` Ing then sits on a point-graph node the ground search does not accept; the loop is retail's, not a port bug - see A.14 |
+| ~~minimal states~~ done | `fn_29_94E8` BecomeBodyProjectile, `fn_29_8FE8` BecomeWallProjectile, `fn_29_8CF4` SafeZoneReaction, `fn_29_8BAC` Taunt, `fn_29_84A4` Patrol, `fn_29_82D4` FollowAttackPattern, `fn_29_75C0` SeekWallPoint, `fn_29_5CB0` Dead, `fn_29_5C28` Evaporate | read against the asm 2026-10-20: the locomotion type is 0 (`kLT_Crouch`), `SafeZoneReaction`'s emitter was missing its volume and priority, `Patrol`'s speed range is walk/run, `FollowAttackPattern`'s ing-spot block runs on every message, `SeekWallPoint` no longer clears `mMoving` without a hint, `Dead` calls `CPatterned::Dead` and honours the two burn flags |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
 Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
@@ -690,6 +692,143 @@ Verified after the change (`ing_gr11.log`, same area): the puddle still walks
 in `Lurk -> SetRecoverDest` without finding a connected point pair: it sits off the navmesh, and
 `FailSafeMode`'s teleport either does not move it or lands it off-mesh again - that is the next
 thing to measure (a position poll, not an asm question).
+
+### A.14 The fail-safe teleport does move the Ing (2026-10-20)
+
+A.13's open question - "does `FailSafeMode`'s teleport move it?" - is now measured with a position
+poll (the probe in `CIng::FailSafeMode` and `CIng::Think`, `MP2_DEBUG_ING=1`). The answer: **yes,
+once, and then the Ing stays where it was put**.
+
+From `/tmp/opencode/ing_fs1.log` (Agon `01_sand_entrance_dark`, 0 `[port] caught` /
+`[reach-stub]`, exit 0):
+
+| what | measurement |
+|---|---|
+| the first fail-safe | `failsafe: points 470 res 0 idx 329 at (-358.1, -51.3, -14.4)` -> `moved 5.38 to (-361.9, -47.5, -13.7)` |
+| every later cycle | `moved 0.00` - the Ing already stands on the point, and the search returns the same node 329 |
+| the once-a-second poll | `0233 pos (-361.9, -47.5, -13.7) form 3 state Lurk` for the rest of the run |
+| the other Ing | `023e` (u063e) never loops: it walks, becomes an ing spot and reaches `BodyProjectileFlight` |
+
+So the fail-safe is not broken: it puts the Ing on the closest point-graph node of the area (470
+nodes) and the Ing stays exactly there. The loop `Lurk -> SetRecoverDest -> FailSafeMode` is stable
+because the two navigations disagree about that spot: `IsOffPath` is the *ground* search
+(`CPathFindSearch::OnPath`, fn_29_A3C8, the search at 0x9dc) while `SetRecoverDest`'s two closest
+point queries are the *point* graph (the ing spot's navigation, 0xac8). The node the fail-safe
+picks is not on a walkable ground region, so `OnPath` keeps failing and the FSM goes round again.
+
+Both ends of that are retail's: fn_29_69A0 and fn_29_A3C8 were read against the REL (A.13), and
+`FindClosestPhysicalPoint` is the host's own (upstream decomp) implementation, unmodified. The
+`0233` Ing in this area therefore sits off the ground mesh in retail too - the loop is what the
+level asks for, not a port bug. What is left open is only why the Ing ends up off the mesh at all:
+it walked there as a corporeal Ing and became an ing spot on that spot.
+
+**The `SetRecoverDest` correction (2026-10-20, after the measurement).** The recover code's second
+point query builds its filter with the *first* query's index as the connected point (the asm keeps
+that index in `r5` from 0x00005A2C and passes it to the filter's constructor at 0x00005A50), so the
+two points are always graph-related. The port passed -1, so the pair could be unrelated and the
+graph search between them failed - the reason the off-mesh Ing never found a movement position.
+Fixed (the filter is now `(20, 1, from)`), and the run confirms the loop is *not* caused by it: the
+`0233` Ing's nearest point node (329) has no graph links at all, so the second query finds nothing
+even with the corrected filter, and the fail-safe still loops. The point graph of that corner of
+Agon has an isolated node, which is the level's data, not the port's.
+
+### A.15 Which triggers a run exercises (2026-10-20)
+
+The FSM dump (`[ing] fsm state X: ->T1 ->T2`, `[ing] fsm trigger T: ->targets`) in the log is
+enough to say which of the 51 trigger entries a run evaluated: a state evaluates its own outgoing
+triggers, and a trigger that fires leads to the next ones in its target list. `/tmp/opencode/
+ing_triggers.py` walks that closure from the states the log shows as entered
+(`[ing] <uid> state <Name> form <n>`).
+
+From `ing_fs1.log` (25 states and code nodes entered): **43 of the 51 triggers were evaluated**.
+The eight that were not, and so are still unexercised:
+
+| trigger | retail | why it never fired |
+|---|---|---|
+| `FoundMovementPos` | fn_29_A4E0 | no state's outgoing list asks for it (the ing-spot path states read the flag themselves) |
+| `AttackPatternOver` | fn_29_A340 | needs an attack pattern (kSS_Attack) on the Ing |
+| `IsControllingHost` | fn_29_B1C8 | the Ing was never inside a host |
+| `IsIngSpot` | fn_29_AD40 | the sub-machine's `Start` asks it, but the Ing left the sub-machine first |
+| `IsBodyProjectile` | fn_29_AD2C | the body projectile's own sub-machine entry |
+| `ShouldBecomeCorporeal` | fn_29_AA4C | the attack pattern never ran |
+| `ShouldBecomeIngSpot` | fn_29_AA04 | the attack pattern never ran |
+| `StillLuredBySafeZone` | fn_29_AC78 | no safe zone lured the Ing |
+
+The 43 that did run are the ones the 2026-10-20 marking pass covers (the other 43 include the 32
+already marked).
+
+### A.16 The remaining minimal bodies, read against the asm (2026-10-20)
+
+The last of the Ing's guessed bodies are gone. Three audit passes over the REL, each one reading
+the asm and fixing what the port had wrong (all in `src/MetroidPrime/Enemies/PortCIng.cpp`):
+
+| body | what the port had wrong |
+|---|---|
+| `BecomeBodyProjectile` `fn_29_94E8`, `BecomeWallProjectile` `fn_29_8FE8` | the locomotion type is **0** (`kLT_Crouch`, asm 0x9624/0x96F4/0x928C/0x93C4), not `kLT_Relaxed` |
+| `SafeZoneReaction` `fn_29_8CF4` | the emitter was missing the volume (0x7f) and the priority, and the retail has no invalid-sfx test (asm 0x8D58); the knock-back's direction is the actor's forward and its severity 1 (asm 0x8D90) |
+| `Taunt` `fn_29_8BAC` | already faithful (the taunt command 0x15, the flag bit 6 of 0xe5c) |
+| `Patrol` `fn_29_84A4` | the speed range is not 1.0/1.0: the retail divides the body's walk speed by its run speed (asm 0x84F4-0x8508, `GetLocomotionSpeed(1)/GetLocomotionSpeed(2)`) and sets the blend mode 1 |
+| `FollowAttackPattern` `fn_29_82D4` | the ing-spot move block runs on **every** message, not only on Update, and looks the waypoint up itself (asm 0x8310-0x8410) |
+| `SeekWallPoint` `fn_29_75C0` | a missing hint leaves `mMoving` alone (asm 0x75F8) and the direction is normalised (asm 0x7674) |
+| `Dead` `fn_29_5CB0` | the base class's death message was missing, the burn is skipped when either of the two burn flags is set (the byte at 0x421 bits 1 and 2 = the host's `mBurning`/`mLaggedBurnDeath`, asm 0x5EA0-0x5EAC), the damage cooldown (0x448) is set, the scale's z is clamped at zero and always written, and `mStartAsIngSpot` is cleared with it |
+| `Evaporate` `fn_29_5C28` | already faithful (the form 5 and the two seconds) |
+| `AreaClear` `fn_29_AE68` | the near box is the model scale times 10 **on each axis**, not the x scale three times (asm 0xAEB4-0xAEF4) |
+| `HasMiniPortals` `fn_29_AD68` | the retail tests the count for non-zero (the neg/or/srwi-31 idiom), not `> 0` |
+| `ProjectileHitTarget` `fn_29_A4EC` | the hit box is the model scale times 2.5 on each axis (asm 0xA5A0-0xA5F4) |
+| `IsFrustrated` `fn_29_AD14`, `TargetInSafeZone` `fn_29_AC20`, `EmergePtInSafeZone` `fn_29_AB7C`, `ProjectileSplat` `fn_29_A658`, `PointPathOver` `fn_29_A428`, `FoundPointPath` `fn_29_A400`, `HasPathToTarget` `fn_29_A1C0`, `WaitForFSMTransition` `fn_29_A090` | already faithful (the REL's `fn_29_45BC` is the port's `GetCoverHint`; the ing-spot navigation's `IsPathOver`/`HasPath` are the DOL's `fn_801F81C8`/`fn_801F8178`) |
+| `SetWallPointCoverDest` `fn_29_5714` | the second point query's filter takes the *first* query's index as its connected point (asm 0x5778) |
+| `EndRangedAttack` `fn_29_514C` | retail's last argument to `EndAttack` is 0, so the Ing keeps its team role (asm 0x5154) |
+| `StartRangedAttack` `fn_29_5190`, `SetLuredDest` `fn_29_53E0`, `SetLuredPointDest` `fn_29_51D0` | already faithful (the lure helper already does the search's flags 3 -> 1 -> 0x301 and keeps the Ing's own position when there is no mesh path) |
+| `SetRecoverDest` `fn_29_59D0` | the second point query's filter takes the first query's index as its connected point (asm 0x5A2C) - see A.14 |
+
+The eleven trigger/state bodies above are marked (`// @ fn_29_XXXX`) on the strength of the
+`ing_fs1.log` run, which evaluated them; the nine state bodies are marked only once a run has
+exercised them (see A.17).
+
+### A.17 The runs that marked the last states (2026-10-20)
+
+Three runs in Agon Wastes `01_sand_entrance_dark` (the Ing recipe of A.12) with the audited
+bodies, all with 0 `[port] caught` / `[reach-stub]` and a clean exit:
+
+| run | what it added |
+|---|---|
+| `ing_fs1.log` | the fail-safe measurement (A.14); 43 of the machine's 51 triggers evaluated (A.15) |
+| `ing_fs3.log` | `Taunt` (6) and `BecomeBodyProjectile` (1) -> `BodyProjectileFlight` (1) - both marked; `ArmSwipe` (12) |
+| `ing_fs5.log` | `Dead` (3) -> marked: the console's `damage <uid> 100` three times takes the Ing's 300 HP to zero |
+
+Two things the runs settled:
+
+- **The fail-safe's node is nowhere near the ground mesh.** The probe's mesh diagnostics on the
+  point the fail-safe picks read `onmesh 0 near1 0 near5 0 height 0.00`: `OnPath` finds no region
+  there, `NearlyOnPath` finds none within 5 units either, and there is no mesh height to speak
+  of. The point-graph node 329 is not a spot on the floor - it is an isolated node of the ing
+  spot's own graph, which is also why the corrected `SetRecoverDest` (A.14) still finds no second
+  point.
+- **Killing an Ing takes the normal death path only under the x-damage threshold.** A `damage` of
+  9999 (the first attempt) takes the HP to -9699 and `CPatterned::Death` reads that as a massive
+  death, so the `Dead` state never runs. Three hits of 100 (the Ing has 300 HP) kill it the
+  normal way, and the state runs.
+
+The `Dead` state's **corporeal** branch (the burn, form 2) is still unexercised: every Ing in that
+area is an ing spot by the time it can be killed. The same is true of `BecomeWallProjectile`,
+`SafeZoneReaction`, `Patrol`, `FollowAttackPattern` and `SeekWallPoint` - they need scenarios
+(the notes in A.15 and the "Next slices" below), not audits.
+
+**Next slices** (the biggest unported pieces left in the module, by size):
+
+1. `CIngMiniPortalAttack` - the mini-portal attack actor. Its ctor (`fn_29_11E8C`), dtor
+   (`fn_29_114B0`) and the info class (`fn_29_12100`/`121F4`) are ported; the actor's own methods
+   are not: `fn_29_11570` (the aim helper, 0x2D0), `fn_29_11840` (fire, 0x1A8), `fn_29_11CA4`
+   (Think, 0x1E8) and `fn_29_11A7C` (the effect, 0x198). The state is reachable: the Ing opens a
+   mini portal when `ShouldOpenMiniPortal` fires (aggressive and the target in a safe zone), and
+   `MiniPortalAttack` then asks the body for a projectile attack.
+2. `CIngExitHostEffect` - the exit host's effect actor. `fn_29_1105C` (the ctor, 0x3DC), the
+   bezier leg (`fn_29_10154`, `1046C`, `1065C`, `1077C`), the two particle systems (`fn_29_10944`,
+   0x40C, plus `10DEC`/`10E64`/`10EB4`), the Think (`fn_29_10F58`) and the swarm emitter
+   (`fn_29_1006C`/`100B8`). The state `ExitHost` is ported and marked; the effect actor is what it
+   spawns.
+3. The eight triggers no run has fired (A.15) - those need a scenario (a lure safe zone, an attack
+   pattern, a host), not an audit.
 
 ## B. MinorIng.rel (module 44)
 
