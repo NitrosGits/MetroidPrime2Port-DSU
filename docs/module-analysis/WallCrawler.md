@@ -161,6 +161,22 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   CCollisionSurface copy in AlignToFloor) and `26CC` (0x54, the CCollisionSurface's constructor in
   the module's ctor) - 25 marked in all. A Temple Grounds run (3bfa3eff, TELEPORT=10, 6000 frames,
   GODMODE) is clean: 0 `[port] caught` and no `[reach-stub]`.
+- **The player-obstruction scan is ported (2026-07-20, branch `decomp/wallcrawler2`):** the retail's
+  `fn_83_1310` (AlignToFloor) runs two things - the floor alignment and a **player-obstruction
+  scan**, and the port now has both, so `fn_83_1310` is marked again (the scan's details are in the
+  next bullet). A temporary once-log (removed before the commit) showed the flag going up in the
+  Agon Wastes `0b_sand_hall` run; the Temple Grounds run never raises it, because the scan only runs
+  when the constraint (0x834) is set (asm 0x1454-0x145C) and no crawler there has one.
+- **What the scan does (the retail's asm 0x1410-0x17A4):** the obstruction a standing crawler keeps
+  is re-tested every frame against the new position (PointOnSurface on the module's own copy at
+  0x7c0, asm 0x1420-0x1438); with a constraint set, the cache's triangles are scanned: a triangle
+  whose flags carry bit 12 (the mask 0x1000) is skipped, the triangle's plane gives the distance
+  (|dot(normal, position) - d| - the host's `plane.GetHeight(position)`), the agreement with the
+  constraint plane starts at 1.0 (`rodata_14`) and grows by the agreement while it is above 0.5
+  (`rodata_24`), and the score is that accumulated agreement times the distance. The best surface
+  the crawler stands on becomes the module's own copy and sets `mPlayerObstructed` (the byte 0x860's
+  bit 6 - `extrwi` 1, 25 of the word). The retail's remaining `fn_83_1310` difference is the
+  obstruction branch that re-searches the floor on every fourth think (asm 0x1448-0x1450).
 - **Found by asmcheck, not yet ported:** the retail's `fn_83_1310` (AlignToFloor) also runs a
   **player-obstruction scan** the port does not have (asm 0x15C8-0x179C): it walks the collision
   cache's leaves and their triangles, keeps the surface that faces the player (the plane test at
