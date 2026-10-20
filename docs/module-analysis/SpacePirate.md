@@ -275,15 +275,21 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 - Triggers done: 7C28, 82D0, 960C marked (the run evaluates them, always false here); 7BD4 and A71C
   ported but nothing in the cycle lists them; `GetStrafeDir` CE30 ported but its caller's branch
   never opens in this area.
-- Next slices, one `worker` lane each: the rest of the combat chain (`45F8` FireProjectile is
-  already ported and marked, so what is left is `StartAttack 6334`/`ShouldSpecialAttack 638C`,
-  `CoverAttack A310`, `Crouch 98D8`, `TargetCover 78DC`), then movement extras (`Cover A3C0`,
-  `WallHang 69AC`, `Jump 5310`/`GetUp B3D4`, `DoubleSnap 99F0`, `JumpBack 63C8`), then the
-  Echoes-only tail. Every state ported so far is reached nowhere in `08_sand_casualpirates`, so
-  they stay unmarked; a marker needs a traced run - the live cycle is only Patrol/Taunt/Lurk/
-  TargetPlayer/Run/PathFind, and no state it lists evaluates ShouldAttack. Done 2026-10-20, six
-  commits: Patrol (marked), Halt, Approach, TurnAround, Shuffle, Dodge, TargetPatrol, then Attack
-  + CheckBlade (all unmarked) - see section 6.
+- Next slice, one `worker` lane: `Crouch 98D8` + `CoverAttack A310` + `TargetCover 78DC` (0xCC/0xB0/0x94
+  bytes, asm at those offsets in `SpacePirate.plf`), then `Cover A3C0` (0x300, needs the cover-point
+  helpers), then movement extras (`WallHang 69AC`, `GetUp B3D4`, `DoubleSnap 99F0`, `JumpBack 63C8`,
+  `Jump 5310`, `Skid 94D0`), then the Echoes-only tail (`WarpIn/WarpOut/PostWarpOut`, `Bounce`,
+  `PathFindEx`, `Enraged`, `LaunchGrenade`, `Captured`, `Deactivate`, `RemoveFromWorld`, `Ambushing`,
+  `Generate`, `WallDetach`). The four attack triggers `StartAttack 6334`, `BreakAttack 6328`,
+  `LostInterest 635C`, `ShouldSpecialAttack 638C` are **already ported** (PortCSpacePirateTriggers.cpp
+  ~391-409) and asm-verified: `StartAttack` = `x8f8_31_mayStartAttack` consume-once, `BreakAttack` =
+  `x8f5_25_breakAttack` (asm bit 0x20 of 0x8f5), `LostInterest` = `x8f4_29_onlyAttackInRange` &&
+  `mAttackRemTime < 1.5` (rodata BEC), `ShouldSpecialAttack` = the same bit && `!mBurstFire.IsBurstSet()`
+  (`lwz 0xab0` = mBurstFire+0x18 = `mCurBursts`) && `mAttackRemTime > 2` (rodata B60) - do not redo them.
+  Every state ported so far is reached nowhere in `08_sand_casualpirates`, so they stay unmarked; a
+  marker needs a traced run - the live cycle is only Patrol/Taunt/Lurk/TargetPlayer/Run/PathFind, and no
+  state it lists evaluates ShouldAttack. Done 2026-10-20, six commits: Patrol (marked), Halt, Approach,
+  TurnAround, Shuffle, Dodge, TargetPatrol, then Attack + CheckBlade (all unmarked) - see section 6.
 - Lanes kill their game by pid only (other worktrees' games share the machine). The verify harness is
   `/tmp/opencode/sp_trig_verify.sh` (boots 08_sand_casualpirates, beams 208, greps transitions and
   every `... trigger` line; `FRAMES`/`LOG`/`DISP`/`PORT` overridable).
