@@ -2828,8 +2828,33 @@ void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// @ fn_18_4CC8
+// fn_18_4CC8 (0x190): the "StampedeReact" state. Activate (0x4D08) readies the animation state.
+// Update (0x4D14): for the state's first 1.2 seconds (the state machine's time, rodata 0x2EC) the
+// actor turns towards the player (fn_18_3804) and stands, facing guest 0x818 at weight one
+// (rodata 0x264); after that it taunts (type 3) while the body can take one (state 0x10).
+// Deactivate (0x4E38) un-readies the animation state.
 void CEmperorIngStage3::StampedeReact(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_4CC8");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x4D0C, the value one
+    break;
+  case kStateMsg_Update:
+    if (mStateMachine->GetTime() < 1.2f) { // rodata 0x2EC
+      const CVector3f theirs = mgr.GetPlayer(0)->GetTranslation();
+      FaceTarget(theirs); // fn_18_3804
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLocomotionCmd(CVector3f::Zero(), mX818_, 1.f)); // 0x4DB0
+    } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Three)); // 0x4E08
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x4E3C, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_18_4C3C
