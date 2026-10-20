@@ -263,6 +263,8 @@ public:
   // to 0x1084 and 0x1082, 0x1086 is cleared, the body stops being a target and its attack times
   // reset, and the head's attack mode becomes 0 (fn_14_13B30).
   void x7168_(CStateManager& mgr, TUniqueId head);
+  // fn_14_70E4 (0x84 bytes): the head detaches (its DetachFromBody state calls it).
+  void x70E4_(CStateManager& mgr);
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;

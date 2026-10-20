@@ -2065,6 +2065,18 @@ void CDigitalGuardian::x7168_(CStateManager& mgr, TUniqueId head) {
   }
 }
 
+// fn_14_70E4: the head's attack mode becomes 1 (fn_14_13B30 at 0x7124), 0x1082 and 0x1086 are
+// cleared, and the body is a target again (AddMaterial with 0x28 = kMT_Target, 0x7148).
+// @ fn_14_70E4
+void CDigitalGuardian::x70E4_(CStateManager& mgr) {
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(1);
+  }
+  x1082_ = kInvalidUniqueId;
+  x1086_ = kInvalidUniqueId;
+  AddMaterial(kMT_Target, mgr);
+}
+
 // fn_14_70B4: bit 0x08 of 0x128C (extrwi. 1, 28) clear and the beacon's state 2 or 1.
 bool CDigitalGuardian::x70B4_() const {
   if ((x128C_ & 0x08) != 0) {

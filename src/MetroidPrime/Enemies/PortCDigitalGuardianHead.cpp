@@ -580,6 +580,48 @@ void CDigitalGuardianHead::FaceTarget(CStateManager& mgr, EStateMsg msg, float d
   }
 }
 
+// fn_14_16160. Activate: the animation state becomes 1 (ready) and 0x1028 the horizontal facing
+// (fn_14_13B38). Update: while the body (0x1034) still holds this head (its 0x1082), the body lets
+// go (fn_14_70E4), bit 0x08 of 0x10F4 is cleared, the head moves to the IS05/FOLW waypoint and
+// the locomotion type becomes 3 (combat); then once the state's time reaches data +0x44 (the
+// field after sound_HeadModuleHit) the animation state is 3 (over). Deactivate: animation state 0,
+// locomotion 3, 0x1028 cleared, bit 0x08 cleared and the attack mode (0xFE8) 1.
+// @ fn_14_16160
+void CDigitalGuardianHead::DetachFromBody(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x1028_ = x13B38_();
+    break;
+  case kStateMsg_Update: {
+    CDigitalGuardian* body = TCastToPtr< CDigitalGuardian >(mgr.ObjectById(x1034_));
+    if (body != nullptr && body->x1082_ == GetUniqueId()) {
+      body->x70E4_(mgr);
+      x10F4_ &= ~0x08;
+      const TUniqueId id =
+          FindConnectedObject_if(mgr, kSS_InternalState5, kSM_Follow, CWaypointPredicate());
+      if (const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id))) {
+        SetTranslation(wp->GetTranslation());
+      }
+      BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    if (mStateMachine->GetTime() >= mData.unknown_0x1cc6d870) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    x1028_ = CVector3f::Zero();
+    x10F4_ &= ~0x08;
+    xFE8_ = 1;
+    break;
+  default:
+    break;
+  }
+}
+
 #define DGHD_STATE_STANDIN(name, fn)                                                               \
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
@@ -590,7 +632,6 @@ DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
 DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
 DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
-DGHD_STATE_STANDIN(DetachFromBody, fn_14_16160)
 DGHD_STATE_STANDIN(StunnedReaction, fn_14_15F3C)
 DGHD_STATE_STANDIN(DeploySplitters, fn_14_15E18)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
