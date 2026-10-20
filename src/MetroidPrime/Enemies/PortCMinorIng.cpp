@@ -2055,18 +2055,22 @@ void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // that leaves the Ing's top at the angle the ten-entry table gives.
 void CMinorIng::MassiveDeath(CStateManager& mgr) {
   const CHealthInfo& health = *GetHealthInfo();
-  // The retail's first guard (asm 0x70CC): the health info's weapon mode (the halfword at +0x0e)
-  // must not be 2 or 0x12.
-  const int mode = static_cast< int >(health.GetCauseOfDeathWeapon().GetType());
-  if (mode != 2 && mode != 0x12) {
+  // The retail's first guard (asm 0x70CC): the health info's cause-of-death weapon mode (the
+  // CWeaponMode at +0x0c) keeps its flags in the byte at +0x0e, and that byte must not be 2 or
+  // 0x12. The host's CWeaponMode has three flags (the charged, the comboed and the instant-kill
+  // bits), so its byte can never read 0x12.
+  const CWeaponMode& deathWeapon = health.GetCauseOfDeathWeapon();
+  const uint flags = (deathWeapon.IsCharged() ? 1u : 0u) | (deathWeapon.IsComboed() ? 2u : 0u) |
+                      (deathWeapon.IsInstantKill() ? 4u : 0u);
+  if (flags != 2 && flags != 0x12) {
     // The retail's second guard (asm 0x70DC): an Ing in the puddle form only spawns inglets when
     // the ing spot's flag byte at 0x155 is set.
     if (mForm != kF_Puddle || mData.mFlags155 != 0) {
-      // The distance (asm 0x710C-0x7140): the distance to the target minus the actor's own
-      // health (the health info's float at +0x04), clamped to 0..the inglet's spawn distance (the
-      // data's 0x134).
+      // The distance (asm 0x710C-0x7140): the damage the Ing took (the base class's mLastHP, the
+      // health at the end of the last frame, less the health info's HP) clamped to 0..the inglet's
+      // spawn distance (the data's 0x134).
       const float maxDist = mData.mIngletSpawnDistance;
-      const float raw = CMath::FastSqrtF((mTargetPos - GetTranslation()).MagSquared()) - health.GetHP();
+      const float raw = mLastHP - health.GetHP();
       float dist = 0.f;
       if (raw >= 0.f) {
         dist = raw < maxDist ? raw : maxDist;
