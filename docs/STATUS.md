@@ -28,7 +28,7 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 | BoostGuardian (Opus) | `ses_ea4ef042fffekfCkg15H4f8DGy` | boostguardian @ `41a0e180b` (ctor EC6C, 7D5C fix; 126 markers) | exercise+mark 8DD4/A45C/7D5C, Dead 7390, 47E8, CFC4, 8208/5888 |
 | EmperorIng3 (Opus) | `ses_ea4d6e0efffeSmmbyqhzttKvlD` | emperoring3 @ `4ea8781b5` (6258/6390/4CC8, CPlayer freeze fix fe0780e19, 5 overrides) | confirm 5 override marks, Think 47D4, AcceptScriptMsg 7B14 |
 | DigitalGuardian (Opus) | `ses_ea4e6807cffeYzf3HrrAeGmJJm` | digitalguardian @ `80b8edd2b` (head class + states, head colliders 13318) | echo-target class, 12314, XDMG 1303C → head lives 0x10E4 |
-| Splitter (worker) | `ses_ea52a89c1ffenVqZ3wYvnAkNCS` | splitter @ `206a2e084` (3460, FSMs 5E8C/E9E4) | 2CE0, Think run via a copy of the ElitePirate driver that sends Activate |
+| Splitter (worker) | `ses_ea4d1db0fffeNWn5f5JjkkYj8D` | splitter @ `e18e085bf` (2CE0, 3EEC/E6E4/8EA4, 2BE0, 10D0 marked) | FSM name tables wired to functions (drop Think→3EEC call), chassis AFE8/9520/ACEC/A4E4 |
 | CommandoPirate (worker) | `ses_ea4eed526ffeekPqrklrV6SXKb` | commandopirate @ `973a576ad` (4CA4 aim gate, 6390 burst fire) | 57A0 shot, 3090 death, matching build |
 | EmperorIng1 (worker) | `ses_ea53f0487ffeLDTNqYcJmJxJeS` | emperoring @ `2dae3c228` (601C, 9BE8, 1720 portal actor; 12 markers by orchestrator) | remaining reached stand-ins, 1950 proof |
 | MinorIng (worker) | `ses_ea550f1b2ffeU2N84DMkU5YP5z` | minoring (new, wt-mp2-ing) | stand-ins + marking pass |
