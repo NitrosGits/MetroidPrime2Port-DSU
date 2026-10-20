@@ -240,6 +240,7 @@ private:
   void UpdateSafeZone(CStateManager& mgr);
   void PickSafeZone(CStateManager& mgr, const CVector3f& pos);
   void JoinTeam(CStateManager& mgr);
+  void LeaveTeam(CStateManager& mgr);
   void EndAttack(CStateManager& mgr, bool projectile);
   void ApplySeparation(CStateManager& mgr);
   void MoveAlongPath(CStateManager& mgr, float dt);

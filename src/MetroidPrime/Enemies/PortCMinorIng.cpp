@@ -678,6 +678,22 @@ void CMinorIng::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_44_5894
+// The retail helper leaves the team the actor is in: it looks the team up (asm 0x58D4), asks
+// whether the actor is still one of its members (asm 0x58F4), leaves it (asm 0x5914) and clears
+// the team id (asm 0x5920).
+void CMinorIng::LeaveTeam(CStateManager& mgr) {
+  if (mTeamId == kInvalidUniqueId) {
+    return;
+  }
+  CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId));
+  if (team == nullptr || !team->IsPartOfTeam(GetUniqueId())) {
+    return;
+  }
+  team->QuitTeam(GetUniqueId());
+  mTeamId = kInvalidUniqueId;
+}
+
 // @ fn_44_5844
 void CMinorIng::EndAttack(CStateManager& mgr, bool projectile) {
   CScriptTeamAiMgr::EndAttack(projectile ? CScriptTeamAiMgr::kAT_Projectile
@@ -1886,9 +1902,7 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_Delete:
     ReleaseCoverHint(mgr, mCoverHintId, false);
-    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId());
-    }
+    LeaveTeam(mgr);
     StopSfx();
     mgr.DeleteObjectRequest(mBlobEffectId);
     mgr.DeleteObjectRequest(mCollisionActorId);
