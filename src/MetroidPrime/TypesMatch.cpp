@@ -63,6 +63,10 @@
 #include "MetroidPrime/Enemies/CElitePirate.hpp" // REL module 15's host body (PortCElitePirate.cpp)
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp" // REL module 14's host body
                                                             // (PortCDigitalGuardian.cpp)
+#include "MetroidPrime/Enemies/CSplitterCommandModule.hpp" // REL module 75's host body
+                                                            // (PortCSplitterCommandModule.cpp)
+#include "MetroidPrime/Enemies/CSplitterMainChassis.hpp" // REL module 75's host body
+                                                            // (PortCSplitterMainChassis.cpp)
 #endif
 #include "MetroidPrime/Enemies/CSpankWeed.hpp"
 #include "MetroidPrime/Enemies/CSporbBase.hpp"
@@ -356,8 +360,11 @@ TYPES_MATCH_IMPL(CSandworm, CPatterned, kET_Sandworm)
 TYPES_MATCH_IMPL(CSandwormEye, CActor, kET_SandwormEye)
 TYPES_MATCH_IMPL(CSpacePirate, CPatterned, kET_SpacePirate)
 TYPES_MATCH_IMPL(CSpankWeed, CPatterned, kET_SpankWeed)
-// 134: class not declared yet (Splitter REL); parent CPatterned
-// 135: class not declared yet (Splitter REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CSplitterMainChassis, CPatterned, kET_SplitterMainChassis) // REL module 75's body
+TYPES_MATCH_IMPL(CSplitterCommandModule, CPatterned,
+                 kET_SplitterCommandModule) // REL module 75's body
+#endif
 TYPES_MATCH_IMPL(CWispTentacle, CPatterned, kET_WispTentacle)
 // 137: class not declared yet (no vtable found); parent CActor
 TYPES_MATCH_IMPL(CScriptPlayerTurret, CActor, kET_ScriptPlayerTurret)
@@ -647,8 +654,12 @@ CAST_TO_REF_IMPL(CSpacePirate, kET_SpacePirate)
 CAST_TO_PTR_IMPL(CSpacePirate, kET_SpacePirate)
 CAST_TO_REF_IMPL(CSpankWeed, kET_SpankWeed)
 CAST_TO_PTR_IMPL(CSpankWeed, kET_SpankWeed)
-// 134: class not declared yet (Splitter REL)
-// 135: class not declared yet (Splitter REL)
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CSplitterMainChassis, kET_SplitterMainChassis)
+CAST_TO_PTR_IMPL(CSplitterMainChassis, kET_SplitterMainChassis)
+CAST_TO_REF_IMPL(CSplitterCommandModule, kET_SplitterCommandModule)
+CAST_TO_PTR_IMPL(CSplitterCommandModule, kET_SplitterCommandModule)
+#endif
 // 136: class not declared yet (WispTentacle REL)
 // 137: class not declared yet (no vtable found)
 CAST_TO_REF_IMPL(CScriptPlayerTurret, kET_ScriptPlayerTurret)

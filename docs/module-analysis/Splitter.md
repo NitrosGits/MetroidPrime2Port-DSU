@@ -345,6 +345,24 @@ local overrides are 0x08 `fn_75_11804` (dtor), 0x14 `fn_75_10DC4` (Think), 0x24 
   `src/MetroidPrime/PortModuleStubs.cpp`), `files.cmake` (regenerate with
   `tools/gen_files_cmake.py`), `docs/modules.tsv` (status `port-body`).
 
+**WP1 done (2026-10-20).** Both classes have a host body: `include/MetroidPrime/Enemies/CSplitterMainChassis.hpp`
+(the upstream pointer-only header, grown under `#ifdef TARGET_PC`), the new
+`include/MetroidPrime/Enemies/CSplitterCommandModule.hpp`, and the two files
+`src/MetroidPrime/Enemies/PortCSplitterMainChassis.cpp` (the chassis, its loader and the module's
+`RELMain`/`RELExit`) and `PortCSplitterCommandModule.cpp` (the head and its loader). The retail type
+ids are **134** (SPLL) and **135** (SPLU) (`kET_SplitterMainChassis`, `kET_SplitterCommandModule`).
+The base call is retail's: `EPatternedAI` **0x38** for the chassis (movement 0 / collider 1 / body 1)
+and **0x39** for the head (movement 1 / collider 1 / body 7 - it flies), both with flavor 0. The
+§f overrides that are retail's own bodies are real (`fn_75_18` touch bounds, `fn_75_64` alpha,
+`fn_75_AC` `CanBeShot`, `fn_75_10`/`fn_75_8200` `IsListening`, `fn_75_81F8`/`fn_75_0` search path,
+`fn_75_8` projectile info, `fn_75_EF24` the pass-through vulnerability, `fn_75_6174` the head's empty
+`KnockBack`); the rest forward to `CPatterned` behind the once-only `[splitter] ... is a port
+stand-in` log. The module's table is registered with {SPLL loader, SPLU loader, auto-destruct}; the
+auto-destruct is a **documented stand-in** - `fn_75_5A54`'s body is still unknown (§j). The run:
+`0q_cliff_hall` (layer 0, live on load) lists 8 objects - 5 `CSplitterMainChassis` and 3
+`CSplitterCommandModule` - and they think; `09_cliff_temple_dark`'s layer 10 ('Boss Stage 2
+Splitters') loads no robot, so the boss-stage actors come from the area script, not from the layer.
+
 **WP2 — the FSM.** Implement `SetupStateMachine` for both classes with the §b tables (17/14/7 and
 28/22/11 names) through the port's `CStateManager`/`SStateMachine2` path
 (`src/MetroidPrime/Enemies/CGenericFSM2.cpp`, cf. `CSplinter::SetupStateMachineHelper`), then port
