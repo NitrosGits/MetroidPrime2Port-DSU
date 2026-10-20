@@ -32,7 +32,7 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 | CommandoPirate (worker) | `ses_ea4eed526ffeekPqrklrV6SXKb` | commandopirate @ `973a576ad` (4CA4 aim gate, 6390 burst fire) | 57A0 shot, 3090 death, matching build |
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `066b854ac` (43 markers by orchestrator from emp1_marks3.tsv) | vtable slot map + small overrides |
 | MinorIng (worker) | `ses_ea550f1b2ffeU2N84DMkU5YP5z` | minoring (new, wt-mp2-ing) | stand-ins + marking pass |
-| DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` | darksamus @ `dead28a30` | milestone 2 (status unknown) |
+| DarkSamus (worker) | `ses_ea4cb43f2ffeaXkuPmYP1pHWd9` | darksamus2 @ `dead28a30` (new worktree wt-mp2-darksamus2; old lane ses_ea67ca29 spun 5 h without commits) | XCRT body activation, FSM table (92 ptrs) as stand-ins |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
