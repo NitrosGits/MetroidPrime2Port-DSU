@@ -21,6 +21,7 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
@@ -430,9 +431,9 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mStateTime(0.f)
 , mPathArea(nullptr)
 , mDebugPoll(0) {
-  // fn_29_E7C8 (0x110) builds the data block's sub-structs inside the constructor; over the size
-  // line, so the host takes the loader's finished block and logs the stand-in.
-  PortIngStandIn("fn_29_E7C8 data build (0x110)");
+  // fn_29_E7C8 (0x110) builds the data block's sub-structs inside the constructor: the host takes
+  // the loader's finished block (PortLoadIng below) and its own member constructors are that
+  // step.
   // The retail constructor turns knock-back physics off on CPatterned's own manager (@0x0000E3DC)
   // and stops the actor drawing a shadow (@0x0000E634).
   KnockBackController().EnableKnockBackPhysics(false);
@@ -445,11 +446,9 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
 }
 
-// fn_29_CF64 (0x1C4): the retail's destructor frees the data block (fn_29_10F8, 0x94, the host's
-// own member destructors) and the exit-host effect; over the size line, so it stays a stand-in.
-CIng::~CIng() {
-  PortIngStandIn("fn_29_CF64 dtor (0x1C4)");
-}
+// fn_29_CF64 (0x1C4): the retail's destructor frees the data block (fn_29_10F8, 0x94) and the
+// exit-host effect; the host's own member destructors are that step.
+CIng::~CIng() {}
 
 // fn_29_3190: the Ing's collision actors, one 1.5-radius sphere on each of seven joints, with the
 // Ing's own health and vulnerability (fn_29_3014), the Unknown54 material and a Solid filter that
@@ -458,12 +457,11 @@ CIng::~CIng() {
 // (0x38, asm 0x33CC: the count at +4 goes up before the element at data + count * 0x68 is built
 // by fn_29_3404 (0x20) and fn_29_3424 (0x28)); the host's vector push is the same step.
 void CIng::CreateCollisionActorManager(CStateManager& mgr) {
-  // fn_29_3190's own data helpers: fn_29_344C (0xC0) builds the joint descriptions, fn_29_3568
-  // (0x84) and fn_29_F1A0 (0xC0) copy and free them. All three are over the size line, so the
-  // host keeps its own construction and logs the stand-ins.
-  PortIngStandIn("fn_29_344C joint descriptions (0xC0)");
-  PortIngStandIn("fn_29_3568 joint copy (0x84)");
-  PortIngStandIn("fn_29_F1A0 joint vector (0xC0)");
+  // The joint vector is the retail's own: fn_29_33CC (0x38) pushes an element, fn_29_344C (0xC0)
+  // is the element's copy constructor (the two words, the two bytes, the eight floats, the locator
+  // string, the halfword, the float and the matrix), fn_29_F1A0 (0xC0) grows the array and
+  // fn_29_3568 (0x84) destroys it. The host's rstl::vector of CJointCollisionDescription is the
+  // same structure, so the push below is that step.
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(7);
   const CAnimData* anim = GetAnimationData();
@@ -843,19 +841,31 @@ CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   return aim;
 }
 
-// [?] which loop plays in which form, and the emitter parameters: the idle loop in the ing-spot
-// form while still, the move loop while moving on the surface.
+// Which loop plays in which form, and the emitter parameters: the idle loop in the ing-spot form
+// while still, the move loop while moving on the surface (fn_29_2270, read 2026-10-20).
 void CIng::UpdateLoopSfx() {
-  const bool spot = mForm == kForm_IngSpot && GetActive();
-  const bool moving = spot && mSurfaceMoveDir != CVector3f::Zero();
+  // fn_29_2270 (asm 0x2294-0x23F8): the ing spot's idle sound (0xd60) and move sound (0xd64). They
+  // are added at the Ing's position (0x54) with the volume 0x7f and then follow it: the retail
+  // updates each emitter with the position and the transform's first column (the right vector,
+  // asm 0x22F0-0x2320). Outside the ing-spot form both emitters are removed.
+  const bool spot = mForm == kForm_IngSpot;
+  // The retail's condition is the moving flag (the bit 1 of the byte at 0xe5d, asm 0x22A0-0x22A8:
+  // extrwi. r0, r0, 1, 30), not the move vector.
+  const bool moving = spot && mMoving;
   const ushort ids[2] = {mData.mIngSpot.GetIdleSound(), mData.mIngSpot.GetMoveSound()};
   const bool want[2] = {spot && !moving, moving};
   for (int i = 0; i < 2; ++i) {
-    if (want[i] && !mLoopSfx[i] && ids[i] != CSfxManager::kInternalInvalidSfxId) {
-      mLoopSfx[i] = CSfxManager::AddEmitter(ids[i], GetTranslation(), GetCurrentAreaId().Value(),
-                                            true, true);
-    } else if (!want[i] && mLoopSfx[i]) {
-      CSfxManager::SfxStop(mLoopSfx[i]);
+    if (want[i]) {
+      if (!mLoopSfx[i] && ids[i] != CSfxManager::kInternalInvalidSfxId) {
+        mLoopSfx[i] = CSfxManager::AddEmitter(ids[i], GetTranslation(), 0x7f,
+                                              GetCurrentAreaId().Value(), true, true,
+                                              CSfxManager::kMedPriority);
+      }
+      if (mLoopSfx[i]) {
+        CSfxManager::UpdateEmitter(mLoopSfx[i], GetTranslation(), GetTransform().GetRight(), 0x7f);
+      }
+    } else if (mLoopSfx[i]) {
+      CSfxManager::RemoveEmitter(mLoopSfx[i]);
       mLoopSfx[i] = CSfxHandle();
     }
   }
@@ -3065,25 +3075,39 @@ void CIng::Think(float dt, CStateManager& mgr) {
     return;
   }
   EnsureBodyActive(mgr);
+  // fn_29_3B50 (asm 0x3B7C-0x3BA8): 0xe40 is the time the body has spent in the locomotion state
+  // (the body controller's state id 5, read at 0x37c); it is cleared whenever the body is in any
+  // other state. The retail then only updates the body controller and the animation while the
+  // timer is below rodata_C8 (2.5f) - the host's CPatterned::Think does both unconditionally, so
+  // only the timer is ported here; the draw gate in PreRender and AddToRenderer reads it.
+  if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
+    mBodyState5Time += dt;
+  } else {
+    mBodyState5Time = 0.f;
+  }
   CPatterned::Think(dt, mgr);
-  // The retail's Think (fn_29_C654) calls four more module functions the host has no body for:
-  // fn_29_3B50 (0x108) before the state machine thinks (asm 0xC704), fn_29_432C (0x13C) after the
-  // line-of-sight update (asm 0xC770), fn_29_2270 (0x1A4) before the touch box (asm 0xC7A8) and
-  // fn_29_4960 (0x148) after it (asm 0xC7C0). All four are over the size line: stand-ins.
-  PortIngStandIn("fn_29_3B50 (0x108)");
+  // The retail's Think (fn_29_C654) calls three more module functions the host has no body for:
+  // fn_29_3B50 (0x108) before the state machine thinks (asm 0xC704), fn_29_2270 (0x1A4) before
+  // the touch box (asm 0xC7A8) and fn_29_4960 (0x148) after it (asm 0xC7C0). The first two are
+  // ported (the body-state-5 timer above, the looped sounds in UpdateLoopSfx); the third is the
+  // actor's light, which the host does not have.
   if (!mCollisionActorManager.null()) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
   mLineOfSight.Update(dt, mgr);
-  PortIngStandIn("fn_29_432C (0x13C)");
+  // The retail's Think (fn_29_C654) also calls fn_29_432C (0x13C, asm 0xC770), the module's own
+  // timers: the heard-shot and the arm-swipe and the form timers rise by dt (0xe30, 0xe38, 0xe3c),
+  // the body-projectile timer only rises in the form 4 (0xe58), the frustration timer only rises
+  // in the form 2 and only while the path is shagged (0xe44), the ball cooldown falls (0xe48), the
+  // ing-spot's damage cooldown falls in the form 3 (0x440) and the under-fire timer follows the
+  // hit flag (the bit 7 of the byte at 0x420). The host's UpdateTimers is that step.
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
   AlignBlobToSurface(mgr); // fn_29_4604, asm 0x0000C794
   UpdateValidTarget(mgr);
-  PortIngStandIn("fn_29_2270 (0x1A4)");
-  UpdateLoopSfx();
+  UpdateLoopSfx(); // fn_29_2270 (0x1A4): the ing spot's looped sounds
   UpdateTouchBox();      // fn_29_3C58, asm 0x0000C7B0
-  PortIngStandIn("fn_29_4960 (0x148)");
+  PortIngStandIn("fn_29_4960 light blend (0x148)");
   ValidateLureZone(mgr); // fn_29_1C2C, asm 0x0000C7CC
   if (mgr.GetObjectById(mD76Id) == nullptr) { // asm 0x0000C7E0: no kInvalidUniqueId guard
     mD76Id = kInvalidUniqueId;
@@ -3128,10 +3152,11 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00004CFC: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
-    // The retail also builds the actor's light from a token (fn_29_4830, asm 0xCB84) and finishes
-    // the create (fn_29_4B4C, asm 0xCBA8); both are over the size line, so they are stand-ins.
-    PortIngStandIn("fn_29_4830 light (0x130)");
-    PortIngStandIn("fn_29_4B4C create finish (0x13C)");
+    // The retail also spawns the ing spot's blob object (fn_29_4830, asm 0xCB84 - module 25's
+    // class, which the host does not have) and builds the actor's light (fn_29_4B4C, asm 0xCBA8 -
+    // a CActorLights the host's CIng has no room for). Both stay stand-ins.
+    PortIngStandIn("fn_29_4830 blob spawn (0x130)");
+    PortIngStandIn("fn_29_4B4C light (0x13C)");
     break;
   case kSM_Delete:
     // Retail deletes the blob object (0xd5c, never spawned on the host), stops the sounds,
@@ -3225,11 +3250,32 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   (void)sender;
 }
 
-// fn_29_B784 (0x10C): the module overrides CPatterned's hit-damage timer (vtable slot 0xec);
-// over the size line, so the host runs the base class's body and logs the stand-in.
+// @ fn_29_B784
 void CIng::UpdateHitDamageTime(float dt) {
-  PortIngStandIn("fn_29_B784 UpdateHitDamageTime (0x10C)");
-  CPatterned::UpdateHitDamageTime(dt);
+  // The retail's own hit-damage timer (asm 0xB7A4-0xB870): the timer at 0x448 (CPatterned's
+  // mDamageCooldownTimer) falls by dt and stops at zero, the damage colour is the black to
+  // skDamageColor lerp by the timer over skDamageHitTime, and the flag bit 5 of the byte at 0x154
+  // follows the timer.
+  float timer = mDamageCooldownTimer - dt;
+  if (timer <= 0.f) {
+    timer = 0.f;
+  }
+  mDamageCooldownTimer = timer;
+  CEchoEmitter* emitter = EchoEmitter();
+  if (timer > 0.f) {
+    const float t = timer / CPatterned::skDamageHitTime;
+    const CColor& color = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t);
+    mColor.Set(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), mColor.GetAlphau8());
+    SetDamageHighlight(true);
+    if (emitter) {
+      emitter->SetDamageExplicit(t);
+    }
+  } else {
+    SetDamageHighlight(false);
+    if (emitter) {
+      emitter->SetDamageExplicit(0.f);
+    }
+  }
 }
 
 // @ fn_29_C010
@@ -3263,20 +3309,49 @@ void CIng::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
-// fn_29_C0B4 (0x174): over the slice's size line, so it stays a stand-in; the host's body is the
-// audited minimal one (the form gate, the portal plane and the 0x421 path are still missing).
+// @ fn_29_C0B4
 void CIng::Render(const CStateManager& mgr) const {
-  PortIngStandIn("fn_29_C0B4 Render (0x174)");
-  if (!mRenderModel) {
-    return;
+  // The portal plane (0xe5d bit 6) sets the model's world-space portal plane (asm 0xC0D0-0xC0E8);
+  // the plane is the one at 0xdf0 (the normal) and 0xdfc (the constant).
+  if (mPortalPlane) {
+    GetModelData()->SetupWorldSpacePortalPlane(
+        GetTransform(), CPlane(mPortalPlaneConstant, CUnitVector3f(mPortalPlaneNormal)));
   }
-  if (mForm == kForm_IngSpot || mForm == kForm_Evaporate) {
-    if (mBodyState5Time < 2.5f) {
+  const int form = mForm;
+  if (form == kForm_Corporeal || form == kForm_BodyProjectile ||
+      (form >= kForm_BecomingCorporeal && form <= kForm_BecomingWallProjectile)) {
+    // The forms 2, 4 and 6..9 (asm 0xC0EC-0xC120).
+    if (form == kForm_BecomingWallProjectile && !mForm9Render) {
+      return; // asm 0xC120-0xC130: the form 9 needs the flag bit 4 of the byte at 0xe5d
+    }
+    if (mRenderModel) {
+      // asm 0xC134-0xC14C: the flag bit 7 of the byte at 0xe5d draws the model.
       CPatterned::Render(mgr);
+      return;
+    }
+    // asm 0xC150-0xC1A0: with the model's own draw off, only the particle systems the render
+    // mask picks are drawn - and only when the actor draws particles (the bit 0 of the byte at
+    // 0x421).
+    if (mDrawParticles) {
+      uint mask = 0;
+      uint target = 0;
+      mgr.GetCharacterRenderMaskAndTarget(mask, target);
+      CPatterned::RenderSystemsToBeDrawnFirst(mgr, mask, target);
+      CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
     }
     return;
   }
-  CPatterned::Render(mgr);
+  if (form == kForm_IngSpot || form == kForm_Evaporate) {
+    // The forms 3 and 5 (asm 0xC1A4-0xC210): the ing spot draws only while the body-state-5 timer
+    // (0xe40) is below rodata_C8 (2.5f) and the actor draws particles (the bit 0 of the byte at
+    // 0x421).
+    if (mBodyState5Time < 2.5f && mDrawParticles) {
+      // The retail draws no model in this form: the ing spot's visible body is the separate blob
+      // object (0xd5c) that module 25's class spawns (fn_29_4830), and the host has no blob, so
+      // the model's draw is kept here (with its own particles) to keep the ing spot visible.
+      CPatterned::Render(mgr);
+    }
+  }
 }
 
 // fn_29_BF20 (not yet exercised in a run)
@@ -3442,23 +3517,58 @@ void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   CPatterned::TakeDamage(direction, magnitude);
 }
 
-// @ fn_29_B294
-bool CIng::Listen(CStateManager&, const CVector3f& position, EListenNoiseType type) {
-  // fn_29_1DF4 (0x128): the retail's own distance and safe-zone test; over the size line, so the
-  // host keeps its minimal body and logs the stand-in.
-  PortIngStandIn("fn_29_1DF4 Listen helper (0x128)");
+// @ fn_29_B294 (with its helper fn_29_1DF4, 0x128)
+bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
+  // The retail's gate (asm 0xB2A8-0xB2B0): the Ing must be alive (the byte at 0x420, bit 6).
   if (!GetAlive() || !GetActive()) {
     return false;
   }
-  const float distSq = (position - GetTranslation()).MagSquared();
+  const CVector3f delta = position - GetTranslation();
+  const float distSq = delta.MagSquared();
   if (type == kLNT_PathObstruction) {
+    // asm 0xB2D8-0xB328: within rodata_110 (40 units, so 1600 squared) the path is shagged.
     if (distSq < 1600.f) {
-      mRecalcPath = true;
+      mRecalcPath = true; // 0xe5c bit 2
       return true;
     }
-  } else if (distSq < mData.mHearingRadius * mData.mHearingRadius) {
-    // [?] every other noise inside the hearing radius counts as a heard shot.
-    mHeardShotTime = 0.f;
+    return false;
+  }
+  if (type == kLNT_PlayerFire) {
+    // asm 0xB32C-0xB3A4: inside the hearing radius (CIngData+0x0, the actor's 0x7c0) and not too
+    // far above the Ing, the shot is heard.
+    if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
+      return false;
+    }
+    // The retail also rejects the noise when it is more than 0x3d4 squared above the Ing (asm
+    // 0xB378-0xB390); 0x3d4 is CPatterned's mCurPlayerLeashTime.
+    if (mCurPlayerLeashTime != 0.f &&
+        delta.GetZ() >= mCurPlayerLeashTime * mCurPlayerLeashTime) {
+      return false;
+    }
+    mHeardShotTime = 0.f; // 0xe30
+    return true;
+  }
+  if (type == kLNT_SafeZone) {
+    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone
+    // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
+    if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
+      return false;
+    }
+    const TUniqueId zoneId =
+        mgr.GetSafeZoneManager()->PointIsInWhichSafeZone(mgr, position);
+    if (mLureSafeZoneId == kInvalidUniqueId) {
+      mLureSafeZoneId = zoneId;
+      return false;
+    }
+    const CScriptSafeZone* zone =
+        TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mLureSafeZoneId));
+    if (zone) {
+      const float zoneDistSq = (zone->GetTranslation() - GetTranslation()).MagSquared();
+      if (distSq >= zoneDistSq) {
+        return false; // the Ing keeps the nearer zone
+      }
+    }
+    mLureSafeZoneId = zoneId;
   }
   return false;
 }
@@ -3563,7 +3673,8 @@ static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo
             "[ing] load: %s flags %02x hearing %.1f aggr %.1f taunt %.1f frust %.1f\n"
             "[ing] load: body proj dist [%.1f..%.1f] odds %.1f speed %.1f drop %.1f suck %.1f\n"
             "[ing] load: grapple pursuit %.1f hold %.1f postwait %.1f spit %.1f drain %.1f\n"
-            "[ing] load: mini portal dist [%.1f..%.1f]\n",
+            "[ing] load: mini portal dist [%.1f..%.1f]\n"
+            "[ing] load: light beam spot x%.2f trigger x%.2f base x%.2f\n",
             sldrThis.editorProperties.name.data(), int(data.mFlags210), data.mHearingRadius,
             data.mAggressiveness, data.mTauntChance, data.mFrustrationTime,
             data.mBodyProjectile.mMinAttackDist, data.mBodyProjectile.mMaxAttackDist,
@@ -3572,7 +3683,12 @@ static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo
             data.mGrapple.mPursuitRange, data.mGrapple.mMaxHoldTime,
             data.mGrapple.mPostWaitTime, data.mGrapple.mSpitForce,
             data.mGrapple.mUnknown67F6, data.mMiniPortal.mMinAttackDist,
-            data.mMiniPortal.mMaxAttackDist);
+            data.mMiniPortal.mMaxAttackDist,
+            data.mIngSpot.GetVulnerability().GetVulnerability(CWeaponMode(kWT_Light)).mDamageMultiplier,
+            data.mTriggerVulnerability.GetVulnerability(CWeaponMode(kWT_Light)).mDamageMultiplier,
+            CDamageVulnerability::NormalVulnerabilty()
+                .GetVulnerability(CWeaponMode(kWT_Light))
+                .mDamageMultiplier);
   }
   return rs_new CIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                      LdrToEntityInfo(info, sldrThis.editorProperties),

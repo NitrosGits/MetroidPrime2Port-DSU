@@ -289,10 +289,11 @@ run carry `// fn_29_<off> (not yet exercised in a run)`. (The exit host class is
 - **Other `[?]` values:**
   - Values borrowed from MinorIng (`fn_44_9D58`): the line-of-sight eye segment and times
     (0.1/0.05), the surface-alignment mode (1), the team roles and the touch box.
-  - Retail details not read: the loop-sfx choice and parameters, steering speed ranges, the
-    script messages `SelectTarget` sends, the burn effects in `Dead`, the contact damage in
-    `Touch`, `Listen`'s noise filter, the source of the state timer (`mStateTime`, host) and
-    `SetRecoverDest` (taken as the closest path point within 20).
+  - Retail details not read: steering speed ranges, the script messages `SelectTarget` sends, the
+    burn effects in `Dead`, the contact damage in `Touch`, the source of the state timer
+    (`mStateTime`, host) and `SetRecoverDest` (taken as the closest path point within 20). The
+    loop-sfx choice and parameters and `Listen`'s noise filter were read and ported on 2026-10-20
+    (A.19).
 - **Mini-portal classes** (`src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp`, 2026-10-20):
   `CIngMiniPortalInfo`'s ctor `fn_29_12100` and copy ctor `fn_29_1201C`, and
   `CIngMiniPortalAttack`'s ctor `fn_29_11E8C` (member maps in A.1/A.3). The dtor `fn_29_114B0` is
@@ -395,6 +396,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~body projectile~~ done | `fn_29_7E30` BodyProjectileFlight (0x2E8) | ported + `// @` 2026-10-20 (`ing_bp3.log`); the audit also fixed the aim prediction (0.5f), the unconditional emitter calls and the 0x1144 bit-6 pair; see A.10 |
 | ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall + the ball triggers `fn_29_A2D8`/`A224`/`A100` | ported + `// @` 2026-10-20; the run needs `layer 2`/`layer 3`, `press x` to morph and `tp` onto the puddle - see A.12 |
 | ~~fail-safe~~ measured | `fn_29_69A0` FailSafeMode + `fn_29_A3C8` IsOffPath | the teleport works (5.38 units, once) and the `0233` Ing then sits on a point-graph node the ground search does not accept; the loop is retail's, not a port bug - see A.14 |
+| ~~module fns~~ ported | `fn_29_3B50` (the 0xe40 body-state-5 timer), `fn_29_B784` (`UpdateHitDamageTime`), `fn_29_B294` + `fn_29_1DF4` (`Listen` and its safe-zone helper), `fn_29_2270` (the ing spot's looped sounds), `fn_29_C0B4` (`Render`) | ported 2026-10-20; the five that stay stand-ins and their sizes are in A.19 |
 | ~~minimal states~~ done | `fn_29_94E8` BecomeBodyProjectile, `fn_29_8FE8` BecomeWallProjectile, `fn_29_8CF4` SafeZoneReaction, `fn_29_8BAC` Taunt, `fn_29_84A4` Patrol, `fn_29_82D4` FollowAttackPattern, `fn_29_75C0` SeekWallPoint, `fn_29_5CB0` Dead, `fn_29_5C28` Evaporate | read against the asm 2026-10-20: the locomotion type is 0 (`kLT_Crouch`), `SafeZoneReaction`'s emitter was missing its volume and priority, `Patrol`'s speed range is walk/run, `FollowAttackPattern`'s ing-spot block runs on every message, `SeekWallPoint` no longer clears `mMoving` without a hint, `Dead` calls `CPatterned::Dead` and honours the two burn flags |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
@@ -781,6 +783,10 @@ the asm and fixing what the port had wrong (all in `src/MetroidPrime/Enemies/Por
 | `EndRangedAttack` `fn_29_514C` | retail's last argument to `EndAttack` is 0, so the Ing keeps its team role (asm 0x5154) |
 | `StartRangedAttack` `fn_29_5190`, `SetLuredDest` `fn_29_53E0`, `SetLuredPointDest` `fn_29_51D0` | already faithful (the lure helper already does the search's flags 3 -> 1 -> 0x301 and keeps the Ing's own position when there is no mesh path) |
 | `SetRecoverDest` `fn_29_59D0` | the second point query's filter takes the first query's index as its connected point (asm 0x5A2C) - see A.14 |
+| `Listen` `fn_29_B294` + `fn_29_1DF4` | the host's body counted every noise but the path obstruction as a heard shot; retail answers only the type 0 (`kLNT_PlayerFire`), and the type 6 (`kLNT_SafeZone`) sets the lure zone (0xd78) unless the Ing already has a nearer one - see A.19 |
+| `UpdateLoopSfx` `fn_29_2270` | the host's body added the two emitters but never moved them; retail updates each with the actor's position (0x54) and the transform's first column |
+| `UpdateHitDamageTime` `fn_29_B784` | the host ran the base class's body; retail's clears the damage colour and the echo's damage when the timer reaches zero |
+| `Render` `fn_29_C0B4` | the host's body lacked the portal plane, the form 9 flag and the particle-only paths - see A.19 |
 
 The eleven trigger/state bodies above are marked (`// @ fn_29_XXXX`) on the strength of the
 `ing_fs1.log` run, which evaluated them; the nine state bodies are marked only once a run has
@@ -900,6 +906,51 @@ asset ids, the two floats x2c4/x290, the target id, the two floats x298/x2a0, th
 matches as well: the REL's rodata_7C8 is "IngExitHostSwarmFx" (asm 0x1108C), the vtable's slot 0x08
 is `fn_29_FF88` (a dtor), and the class is the only `rs_new(0x5e8)` in the module. No other class in
 the module has that ctor shape, so the identification is closed.
+
+### A.19 The module's own functions: the stand-ins, the 0xe40 timer and the damage per form (2026-10-20)
+
+The 16 stand-ins the 2026-10-20 run logged (the module functions the host substitutes) were taken
+one by one. Six are ported now, five are the host's own C++ and stay cited, five stay stand-ins:
+
+| retail fn | size | what it is | the host |
+|---|---|---|---|
+| `fn_29_3B50` | 0x108 | the body-state-5 timer (0xe40), then the body/animation update and the state machine | the timer is ported (`CIng::Think`); the body/animation update is the base class's and is not gated |
+| `fn_29_B784` | 0x10C | `CPatterned::UpdateHitDamageTime` | ported (`CIng::UpdateHitDamageTime`) |
+| `fn_29_B294` + `fn_29_1DF4` | 0xDC + 0x128 | `Listen` and its safe-zone helper | ported (`CIng::Listen`) |
+| `fn_29_2270` | 0x1A4 | the ing spot's idle and move looped sounds | ported (`CIng::UpdateLoopSfx`) |
+| `fn_29_C0B4` | 0x174 | `Render` | ported (`CIng::Render`) |
+| `fn_29_344C`, `fn_29_3568`, `fn_29_F1A0` | 0xC0, 0x84, 0xC0 | the joint description's copy ctor and the joint vector's grow and dtor | the host's `rstl::vector< CJointCollisionDescription >` is the same structure |
+| `fn_29_432C` | 0x13C | the module's timers (0xe30, 0xe38, 0xe3c, 0xe44, 0xe48, 0xe58, 0x440) | the host's `UpdateTimers` is that step |
+| `fn_29_CF64` | 0x1C4 | the destructor (it frees the data block, `fn_29_10F8`) | the host's member destructors |
+| `fn_29_E7C8` | 0x110 | the data block's build in the constructor | the loader's finished block |
+| `fn_29_4830` | 0x130 | the ing spot's blob object (0xd5c) | stand-in: module 25's class builds it |
+| `fn_29_4B4C` | 0x13C | the actor's `CActorLights` | stand-in: the host's CIng has no room for one |
+| `fn_29_4960` | 0x148 | the light's blend (0xe50) and the light object | stand-in: it needs the light |
+| `fn_29_37D8` | 0x170 | the ing spot's path walk | stand-in |
+| `fn_29_16AC` | 0x3D4 | the loader's data block | stand-in |
+
+**What advances 0xe40** (the 2.5 s draw timer of the forms 3 and 5): `fn_29_3B50`, asm
+0x3B7C-0x3BA8. It reads the body controller's state id (0x37c) and, when that is 5
+(`pas::kAS_Locomotion`), adds dt to 0xe40; in any other state 0xe40 is cleared. The constructor
+(asm 0xE2C4) and `BecomeIngSpot` (fn_29_9750, asm 0x9834) clear it too. The retail then only
+updates the body controller and the animation while 0xe40 is below `rodata_C8` (2.5f) - the host's
+`CPatterned::Think` does both unconditionally, so only the timer is ported. The ing spot's body
+asks for the generate state (12, fn_29_9750's `ShouldRetry` at asm 0x9854), so its timer stays 0
+and the draw gate never trips for it.
+
+**The damage per form** (the question the 2026-10-20 smoke raised): the tables say why - the
+loader prints them (`[ing] load: light beam spot x2.00 trigger x0.00 base x1.00`):
+- the joint collision actors carry `CPatterned`'s own table (`fn_29_3014` calls
+  `GetDamageVulnerability__10CPatternedCFv` directly, not through the vtable), so a beam that hits
+  a collider does the base damage (the light beam x1.00);
+- `CIng::GetDamageVulnerability` (fn_29_BF20) gives the Ing its own table: the trigger table (the
+  light beam x0.00, so the body is immune to it) in the forms that are not 3 or 4, and the ing
+  spot's table (x2.00) in the form 3;
+- in the ing spot form a hit that reaches the Ing itself does not move the HP at all: fn_29_2B70
+  only resets the reaction timer, flags the spot and spawns the hit effect, because the spot has
+  no health of its own (measured: the `XDMG` messages arrive and the HP stays).
+So the 300->260 and the 300->180 of the smoke are the same base table with two and six beam ticks
+that landed, not two per-form vulnerabilities.
 
 ## B. MinorIng.rel (module 44)
 
