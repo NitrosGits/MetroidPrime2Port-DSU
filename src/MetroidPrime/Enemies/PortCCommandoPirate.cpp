@@ -39,6 +39,18 @@
 
 namespace {
 
+// The module's bursts: the REL's data table lbl_9_data_7A8 (.data 0x7A8) points at four SBurst
+// entries in the module's .rodata - 0x0, 0x134, 0x1E4 and 0x318 - and its fifth entry is null.
+// The entries are the retail's SBurst (the weight, the eight shot angles, the time to the next
+// shot and its variation); the angles are the 22.5 degree steps and the -1 ends the burst.
+static const SBurst sBursts[] = {
+    {15, {6, 5, 3, 2, 1, -1, 0, 0}, 0.1f, 0.05f},
+    {20, {16, 4, 8, -1, 0, 0, 0, 0}, 0.1f, 0.05f},
+    {26, {16, 5, 8, 11, 14, -1, 0, 0}, 0.1f, 0.05f},
+    {40, {7, 9, 13, -1, 0, 0, 0, 0}, 0.1f, 0.05f},
+};
+static const SBurst* sBurstTable[] = {&sBursts[0], &sBursts[1], &sBursts[2], &sBursts[3], nullptr};
+
 // The module's global at bss_38 counts the live "Commando E-Grenade" script objects: the module's
 // object constructor raises it (fn_9_F418 @0x0000F4E8) and its destructor lowers it (fn_9_F290
 // @0x0000F2D0). The port does not create those objects yet, so the count stays at zero.
@@ -159,8 +171,11 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , mBoneTracking(*AnimationData(), rstl::string_l("Head_1"), 1.2217305f, 3.1415927f,
                 kBTF_None)                        // 0xa74, fn_9_D904 @0x0000DA08
 , xae8_(0)                                        // 0xae8, the module's byte
+, mBurstFire(sBurstTable, 0)                      // 0xaf0, fn_9_D904 @0x0000DA78
 , xb7c_(0.f)                                      // 0xb7c, the melee cooldown; fn_9_662C advances it
 , xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
+, xb50_(0)                                        // 0xb50, fn_9_D904 @0x0000DA84
+, xb58_(0)                                        // 0xb58, fn_9_D904 @0x0000DAA4
 , xb60_(1.5f)                                     // 0xb60, lbl_9_rodata_47C, fn_9_D904 @0x0000DACC
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
 , xb68_(0.f)                                      // 0xb68, a timer; fn_9_662C advances it
@@ -203,6 +218,10 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
   // - belongs to the state machine and the render paths this milestone does not enter; the
   // analysis note lists them.
   KnockBackController().EnableKnockBackPhysics(true);
+
+  // The burst fire's own type starts at 0 (fn_9_D904 @0x0000E420), not at the -1 its constructor
+  // leaves: the module's burst-fire helper fn_9_6390 gives up when the type is -1 (0x00006468).
+  mBurstFire.SetBurstType(0);
 
   // The vulnerability at guest +0xA44 starts as the shield's charge vulnerability (fn_9_D904
   // @0x0000D9D4 copies the block's +0xF4) and ends as the actor's own vulnerability with the
@@ -395,7 +414,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
     mBoneTracking.Think(dt);                   // 0x0000C9E8
   }
   StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
-  StandInFn("fn_9_6390 (0x29c bytes)");        // 0x0000CA08
+  x6390_UpdateBurstFire(mgr, dt);                     // 0x0000CA08
   x4D84_UpdateAim(mgr);                     // 0x0000CA18
   x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
   StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
@@ -531,6 +550,93 @@ bool CCommandoPirate::x4CA4_CanAim() {
     return false;
   }
   return true;                                     // 0x00004D5C
+}
+
+// @ fn_9_6390
+// fn_9_6390 (0x29c bytes): the module's burst-fire helper, one of the Think's own (the call at
+// 0x0000CA08). It is the module's shot timer and its burst fire:
+//
+// 0x000063C0..0x000063E0: the module's timer at guest this+0xB5C (`xb5c_`) falls by the frame
+//   time while it is above zero.
+// 0x000063E4..0x000063EC: the flag byte at guest this+0xC64 must not have its 0x80 bit ("armed").
+// 0x000063F0..0x000063FC: the counter at guest this+0xB50 (`xb50_`) must be above the one at
+//   +0xB58 (`xb58_`) - the guest compares them unsigned.
+// 0x00006400..0x00006424: the block's shield arm chance (the block's +0x140 = guest this+0x900)
+//   is rolled against a random number in [0, 100] (rodata_4CC): when the chance is at least the
+//   roll the flag byte takes its 0x80 bit (0x00006428..0x00006434), else the counter at +0xB58
+//   takes the counter at +0xB50 plus one (0x0000643C..0x00006444).
+// 0x00006448..0x00006460: while the actor is alive the aim gate fn_9_4CA4 has to agree, else the
+//   helper ends.
+// 0x00006464..0x0000646C: the burst fire's own type (guest this+0xAF0) must not be -1.
+// 0x00006470..0x00006480: the target is looked up (the id at guest this+0xBCA).
+// 0x00006484..0x00006494: the actor must be alive and the target must be there.
+// 0x00006498..0x000064DC: the module's timer at +0xB5C must have run out (the cror at 0x000064D8).
+// 0x000064E0..0x000064FC: unless the flag byte at guest this+0xC65 has its 0x02 bit, the delta to
+//   the target dotted with the actor's own up column (guest this+0x28, +0x38 and +0x48) must be
+//   above zero - the target must be higher than the commando.
+// 0x00006500..0x00006548: the same delta the other way round, dotted with the target's own up
+//   column (the target's +0x28, +0x38 and +0x48), must be below zero; then the burst fire's type
+//   takes two more (0x0000654C..0x0000655C) when it is below two.
+// 0x00006560..0x00006594: the burst fire starts, the module's timer at +0xB5C takes the base's
+//   average attack time (GetAverageAttackTime) plus a random number times the base's attack time
+//   variation (guest this+0x3E8), and the counter at +0xB50 goes up by one.
+// 0x00006598..0x000065A4: the burst fire is updated with the frame time.
+// 0x000065A8..0x000065B0: when the burst fire wants to fire (its byte at guest this+0xB04's 0x80
+//   bit) the module's own helper fn_9_57A0 (0x370 bytes, over the 0x80 limit - a named
+//   stand-in) runs, and the burst fire's own timer (guest this+0xAF8) takes the block's
+//   intra-burst shot time (the block's +0x60) plus a random number times the block's
+//   intra-burst shot variation (the block's +0x64) around its middle (0x000065C4..0x000065F0),
+//   but only when that timer is above zero (0x000065E4..0x000065F4).
+void CCommandoPirate::x6390_UpdateBurstFire(CStateManager& mgr, float dt) {
+  if (xb5c_ > 0.f) {                                     // 0x000063D4..0x000063E0
+    xb5c_ -= dt;
+  }
+  if ((xc64_ & 0x80) == 0 && xb50_ > xb58_) {             // 0x000063E4..0x000063FC
+    if (mData.mShield.mArmChance >= mgr.Random()->Range(0.f, 100.f)) {  // 0x00006408..0x00006424
+      xc64_ |= 0x80;                                     // 0x00006428..0x00006434
+    } else {
+      xb58_ = xb50_ + 1;                                 // 0x0000643C..0x00006444
+    }
+  }
+  if (GetAlive() && !x4CA4_CanAim()) {                   // 0x00006448..0x00006460
+    return;
+  }
+  if (mBurstFire.GetBurstType() == -1) {                 // 0x00006464..0x0000646C
+    return;
+  }
+  const CEntity* target = mgr.GetObjectById(xbca_);      // 0x00006470..0x00006480
+  if (GetAlive()) {                                      // 0x00006484..0x0000648C
+    // The guest reads the target's position and its frame without a cast; the host's CEntity has
+    // neither, so the target is cast to an actor - a port limit the guest does not have, and the
+    // one the module's other ported helpers (x3CBC_ and the target triggers) guard the same way.
+    const CActor* actor = target != nullptr ? TCastToConstPtr< CActor >(target) : nullptr;
+    if (actor != nullptr && xb5c_ <= 0.f) {              // 0x00006490..0x000064DC
+      const CVector3f delta = actor->GetTranslation() - GetTranslation();
+      bool targetIsHigher = true;
+      if ((xc65_ & 0x02) == 0) {                         // 0x000064E0..0x000064E8
+        targetIsHigher = CVector3f::Dot(GetTransform().GetColumn(kDY), delta) > 0.f;  // 0x000064EC
+      }
+      if (targetIsHigher) {                              // 0x000064FC..0x00006500
+        const CVector3f targetUp = actor->GetTransform().GetColumn(kDY);
+        if (CVector3f::Dot(targetUp, GetTranslation() - actor->GetTranslation()) < 0.f &&
+            mBurstFire.GetBurstType() < 2) {             // 0x00006544..0x00006554
+          mBurstFire.SetBurstType(mBurstFire.GetBurstType() + 2);  // 0x00006558..0x0000655C
+        }
+        mBurstFire.Start(mgr);                           // 0x00006560..0x00006568
+        xb5c_ = GetAverageAttackTime() + mgr.Random()->Float() * mAttackTimeVariation;  // 0x0000656C
+        xb50_++;                                         // 0x0000658C..0x00006594
+      }
+    }
+  }
+  mBurstFire.Update(mgr, dt);                            // 0x00006598..0x000065A4
+  if (mBurstFire.ShouldFire()) {                         // 0x000065A8..0x000065B0 (guest +0xb04 bit 0x80)
+    StandInFn("fn_9_57A0 (0x370 bytes)");                // 0x000065C0
+    const float shotTime = (mgr.Random()->Float() - 0.5f) * mData.mIntraBurstShotVariation +
+                           mData.mIntraBurstShotTime;    // 0x000065C4..0x000065F0
+    if (mBurstFire.GetTimeToNextShot() > 0.f) {          // 0x000065E4..0x000065F4
+      mBurstFire.SetTimeToNextShot(shotTime);            // 0x000065F8
+    }
+  }
 }
 
 // vtable slot 0x18 = fn_9_CB40 (0x754): the message switch that activates the body and starts the

@@ -589,12 +589,13 @@ Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHa
 (PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
 `fn_9_786C`
 (RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
-`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_6390` (0x29c), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
+`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
 `fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
-`fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
+`fn_9_57A0` (0x370), `fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528),
+`fn_9_7A98`
 (ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
-reaches are `fn_9_6390`, `fn_9_3090`,
-`fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
+reaches are `fn_9_3090`,
+`fn_9_1C0C`, `fn_9_3E1C`, `fn_9_57A0` and `fn_9_B250`.
 
 `fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
 and `fn_9_709C` (the CoverFind state, 0x1f0) are host code since 2026-10-20: the emitters follow
@@ -646,6 +647,48 @@ path runs: the gate passes every frame (the body state is the locomotion state, 
 is true, the byte at guest this+0xC64 has its 0x10 bit, the byte at guest this+0xC65 is 0x80,
 the block's flag byte is 0, `xc4c_` is -1, the melee cooldown is above 1.0f and the body is
 neither frozen nor electrocuting), so `fn_9_4D84` now delivers the additive aim command.
+
+`fn_9_6390` (0x29c, one of the module's Think helpers) is host code since 2026-10-20 (the port's
+member `x6390_UpdateBurstFire`): the module's shot timer at guest this+0xB5C (`xb5c_`) falls by
+the frame time while it is above zero (0x000063C0..0x000063E0); the flag byte at guest this+0xC64
+must not have its 0x80 bit and the counter at guest this+0xB50 (`xb50_`, new) must be above the
+one at +0xB58 (`xb58_`, new) - the guest compares them unsigned (0x000063E4..0x000063FC) - and
+then the block's shield arm chance (the block's +0x140 = guest this+0x900, `mShield.mArmChance`)
+is rolled against a random number in [0, 100] (rodata_4CC): at least the roll sets the flag
+byte's 0x80 bit, else the counter at +0xB58 takes the counter at +0xB50 plus one
+(0x00006400..0x00006444). The two counters start at 0 (the constructor, 0x0000DA84 and
+0x0000DAA4). While the actor is alive the aim gate `fn_9_4CA4` has to agree (0x00006448..
+0x00006460) and the burst fire's own type (guest this+0xAF0) must not be -1 (0x00006464). The
+target (the id at guest this+0xBCA) is looked up (0x00006470) and, when the actor is alive and
+the target is there, the module's timer at +0xB5C must have run out (0x00006498..0x000064DC).
+Unless the flag byte at guest this+0xC65 has its 0x02 bit, the delta to the target dotted with
+the actor's own up column (guest this+0x28, +0x38 and +0x48 - the transform's Y column) must be
+above zero: the target must be higher than the commando (0x000064E0..0x000064FC). The same delta
+the other way round, dotted with the target's own up column (the target's +0x28, +0x38 and
++0x48), must be below zero, and then the burst fire's type takes two more when it is below two
+(0x00006500..0x0000655C). The burst fire starts, the module's timer at +0xB5C takes the base's
+average attack time (`GetAverageAttackTime`) plus a random number times the base's attack time
+variation (guest this+0x3E8, the base's `mAttackTimeVariation`), and the counter at +0xB50 goes
+up by one (0x00006560..0x00006594). Then the burst fire is updated with the frame time
+(0x00006598) and, when it wants to fire (its byte at guest this+0xB04's 0x80 bit - the burst
+fire's own `mShouldFire`), the module's helper `fn_9_57A0` (0x370 bytes, over the 0x80 limit, so
+a named stand-in) runs and the burst fire's own timer (guest this+0xAF8) takes the block's
+intra-burst shot time (the block's +0x60) plus a random number times the block's intra-burst
+shot variation (the block's +0x64) around its middle - but only when that timer is above zero
+(0x000065A8..0x000065F8).
+
+The module's burst fire (guest this+0xAF0) is the host's `CBurstFire`, built from the module's
+four `SBurst` entries: the REL's data table `lbl_9_data_7A8` (.data 0x7A8) points at the
+module's .rodata at 0x0, 0x134, 0x1E4 and 0x318 and its fifth entry is null - the weights are
+15, 20, 26 and 40, the shot angles are the 22.5 degree steps (6, 5, 3, 2, 1 / 16, 4, 8 / 16, 5,
+8, 11, 14 / 7, 9, 13) with the -1 that ends a burst, and every entry's time to the next shot is
+0.1f with a 0.05f variation. The constructor's own burst type is 0 (0x0000E420), not the -1 the
+`CBurstFire` constructor leaves, so the helper's burst path is live from the start.
+
+With the burst-fire helper ported the area 59 run (the note's run) still ends cleanly: gameplay
+at 10.1 s, exit=0 and `grep -c '[port] caught\|reach-stub'` = 0. The helper runs every frame and
+the burst fire asks to fire at least once (the stand-in log for `fn_9_57A0` is in the run), so
+the marker on the body is earned.
 
 The read of `fn_9_4D84` that led to the port:
 the byte at guest this+0x420 is `CPatterned`'s flag byte and its 0x40 bit is the actor's alive
