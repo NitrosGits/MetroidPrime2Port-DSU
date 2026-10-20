@@ -16,10 +16,13 @@
 // stand-ins.
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
 
+#include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -163,12 +166,33 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
 , x128C_(0)
+, xE6C_() // 0xE6C: the leg model, built by fn_14_6864 (not ported yet)
+, xEBC_() // 0xEBC: the shin model, built by fn_14_6864 (not ported yet)
+, xF5C_() // 0xF5C: the toe target's model, built by fn_14_6864 (not ported yet)
+, x11EC_() // 0x11EC: the echo emitter's model, built by fn_14_6864 (not ported yet)
+, xEB8_(0)
+, xF08_(0)
+, x1238_(0)
+, x10C0_(0xFF)
+, x10C1_(0xFF)
+, x10C2_(0xFF)
+, x10C3_(0xFF)
+, x10D4_(0xFF)
+, x10D5_(0xFF)
+, x10D6_(0xFF)
+, x10D7_(0xFF)
+, x10DC_{-1, -1, -1, -1}
+, x123C_(nullptr)
+, x1264_(0.f)
+, x1270_(0)
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
   // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
   // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188, the five models at
   // 0xE6C.. (fn_14_6864) and the 'PART' token at 0x1100. They belong to the state machine and the
-  // render paths this milestone does not enter, so the port keeps the parameter block only.
+  // render paths this milestone does not enter, so the port keeps the parameter block only. The
+  // four model data members the render paths use (0xE6C, 0xEBC, 0xF5C and 0x11EC) are there, but
+  // empty: fn_14_6864, which fills them, is not ported yet.
 }
 
 CDigitalGuardian::~CDigitalGuardian() {}
@@ -223,11 +247,10 @@ void CDigitalGuardian::PreRender(CStateManager& mgr) {
 // the module's GX register colour (the call at 0xA020), the base's render (the direct call at
 // 0xA04C - this is where the guardian's model is drawn; the REL's own Render does not draw it),
 // the character's alpha buffer alpha (the call at 0xA058), which is pushed to the renderer when
-// it is not -1 (the call at 0xA068). Then the module's own models are drawn (fn_14_1994,
-// fn_14_18B4, fn_14_17DC and fn_14_1700 - none of them is ported yet), the GX register colour
-// goes back to black (the Black() call at 0xA0B8 and the renderer call at 0xA0BC), and the
-// alpha is pushed again (the call at 0xA108; the cmpwi at 0xA100 skips it when the alpha is
-// -1).
+// it is not -1 (the call at 0xA068). Then the module's own models are drawn (the calls at 0xA0A0,
+// 0xA0B4, 0xA0E8 and 0xA0FC), the GX register colour goes back to black (the Black() call at
+// 0xA0B8 and the renderer call at 0xA0BC), and the alpha is pushed again (the call at 0xA108; the
+// cmpwi at 0xA100 skips it when the alpha is -1).
 //
 // The four module calls, by size and by what their pseudo-C does:
 //   fn_14_1994 (0xD4): if the flag byte at guest this+0xEB8 is set, every locator id in the
@@ -241,6 +264,9 @@ void CDigitalGuardian::PreRender(CStateManager& mgr) {
 //     through the renderer.
 //   fn_14_1700 (0xDC): the locator ids at this+0x10D4 are walked and the model at this+0xF5C
 //     is drawn at each of their scaled transforms.
+//
+// The four calls get the actor's transform (guest this+0x24, the CActor's mTransform) and the
+// actor's draw flags (guest this+0xFC, the CActor's mDrawFlags) - the retail's r5 and r6.
 void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
   gpRender->SetGXRegister1Color(sGXRegister1Color);
@@ -249,18 +275,139 @@ void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
   if (alpha != -1) {
     gpRender->SetDestinationAlpha(alpha);
   }
-  // fn_14_1994: the module's leg model render, 0xD4 bytes - not ported yet.
-  StandInFn("fn_14_1994 (the module's leg model render, 0xD4 bytes)");
-  // fn_14_18B4: the module's second model render, 0xE0 bytes - not ported yet.
-  StandInFn("fn_14_18B4 (the module's second model render, 0xE0 bytes)");
+  // fn_14_1994 (0xA0A0): the module's leg model render.
+  x1994_(mgr, GetTransform(), GetModelFlags());
+  // fn_14_18B4 (0xA0B4): the module's second model render.
+  x18B4_(mgr, GetTransform(), GetModelFlags());
   gpRender->SetGXRegister1Color(CColor::Black());
-  // fn_14_17DC: the module's echo emitter render, 0xD8 bytes - not ported yet.
-  StandInFn("fn_14_17DC (the module's echo emitter render, 0xD8 bytes)");
-  // fn_14_1700: the module's toe model render, 0xDC bytes - not ported yet.
-  StandInFn("fn_14_1700 (the module's toe model render, 0xDC bytes)");
+  // fn_14_17DC (0xA0E8): the module's echo emitter render.
+  x17DC_(mgr, GetTransform());
+  // fn_14_1700 (0xA0FC): the module's toe model render.
+  x1700_(mgr, GetTransform(), GetModelFlags());
   if (alpha != -1) {
     gpRender->SetDestinationAlpha(alpha);
   }
+}
+
+// The retail's per-segment rotation: the character's rest pose rotation for that segment. The
+// retail reads it from the actor's model data (guest this+0x60, the CActor's mModelData), the
+// anim data (that+0x10), the character layout (that+0x10C) and the layout's linear rotations
+// (that+0x68), indexed with the segment id - the chain
+// CScriptSpecialFunction::ThinkObjectFollowJoint walks as well.
+//
+// Port limit: the locator ids are still invalid in the port (the constructor does not resolve
+// them - the model data's builder is not ported yet), and the retail would index the rotation
+// array with 0xFF, so an invalid id has no rotation here.
+CTransform4f CDigitalGuardian::SegmentRotation_(const CSegId& seg) const {
+  if (seg == CSegId::Invalid()) {
+    return CTransform4f::Identity();
+  }
+  const CModelData& model = *GetModelData();
+  if (!model.HasAnimation()) {
+    return CTransform4f::Identity();
+  }
+  const CCharLayoutInfo& layout = *model.GetAnimationData()->GetCharLayoutInfo();
+  const rstl::vector< CQuaternion >& rotations = layout.GetLinearRotations();
+  return rotations[seg.val()].BuildTransform4f();
+}
+
+// fn_14_1994 (0xD4 bytes): the leg model. The flag byte at guest this+0xEB8 has to be set (the
+// test at 0x19B4); then each of the four locator ids at this+0x10C0 is walked (the loop at
+// 0x19D4-0x1A50): the segment's rotation (the BuildTransform4f call at 0x19EC), the locator's
+// scaled transform (the GetScaledLocatorTransform call at 0x19FC), the actor's transform times
+// the locator's (the __ml__ at 0x1A0C), times the segment's rotation (the __ml__ at 0x1A1C), and
+// the model at this+0xE6C is drawn there (the Render call at 0x1A40).
+void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
+                              const CModelFlags& flags) const {
+  if (xEB8_ == 0) {
+    return;
+  }
+  // The ids are the bytes the retail loads (the lbz at 0x19D4): the first one is the byte the
+  // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
+  const uchar ids[4] = {x10C0_ & 0xFF, x10C1_, x10C2_, x10C3_};
+  for (int i = 0; i < 4; ++i) {
+    const CSegId seg(ids[i]);
+    const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
+    xE6C_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+}
+
+// fn_14_18B4 (0xE0 bytes): the shin model. The same walk as fn_14_1994 (the ids at this+0x10C0,
+// the locator transform at 0x1928, the two __ml__ calls at 0x1938 and 0x1948), but the model at
+// this+0xEBC is drawn (the Render call at 0x196C) and only when bit 4 of the flag byte at
+// this+0x128C is clear (the extrwi at 0x19D8 - the byte's bit 4, the mask 1u << (31 - 27) =
+// 0x10) and the byte at this+0xF08 is set (the test at 0x19E4).
+void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
+                              const CModelFlags& flags) const {
+  if ((x128C_ & 0x10) != 0 || xF08_ == 0) {
+    return;
+  }
+  // The ids are the bytes the retail loads (the lbz at 0x1900): the first one is the byte the
+  // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
+  const uchar ids[4] = {x10C0_ & 0xFF, x10C1_, x10C2_, x10C3_};
+  for (int i = 0; i < 4; ++i) {
+    const CSegId seg(ids[i]);
+    const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
+    xEBC_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+}
+
+// fn_14_17DC (0xD8 bytes): the echo emitter's model. When bit 3 of the flag byte at this+0x128C
+// is clear (the extrwi at 0x17FC), the byte at this+0x1238 is set (the test at 0x1808) and the
+// float at this+0x1264 is positive (the fcmpo at 0x181C), the transform fn_14_2578 builds (the
+// call at 0x182C) is copied (0x1838) and the model at this+0x11EC is drawn there (the Render
+// call at 0x1870) with the flags the retail builds on the stack: the blend mode 2 (the stb at
+// 0x1848), the shader set 0 (the stb at 0x1854), the flags 3 (the sth at 0x1860) and the packed
+// colour at this+0x1270 (the stw at 0x1868).
+//
+// Then the echo emitter at this+0x123C, when it is there (the test at 0x1878), is drawn through
+// the renderer: the retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
+// bctrl at 0x1958). The slot is not identified, so the call is a stand-in.
+void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) const {
+  if ((x128C_ & 0x08) == 0 && x1238_ != 0 && x1264_ > 0.f) {
+    CTransform4f modelXf = CTransform4f::Identity();
+    x2578_(modelXf, xf);
+    const CModelFlags flags(
+        CModelFlags::kT_Two, 0,
+        static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                           CModelFlags::kF_DepthUpdate),
+        CColor(x1270_));
+    x11EC_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+  if (x123C_ != nullptr) {
+    StandInFn("fn_14_17DC: the renderer's echo emitter draw (the vtable call at 0x1958)");
+  }
+}
+
+// fn_14_1700 (0xDC bytes): the toe target's model. The four locator ids at this+0x10D4 are
+// walked (the loop at 0x1738-0x17C4) and each one is drawn (the Render call at 0x17B0) unless
+// the word at this+0x10DC is 3 (the cmpwi at 0x173C). The transform is the actor's, times the
+// locator's scaled transform (the GetScaledLocatorTransform call at 0x176C), times the segment's
+// rotation (the two __ml__ calls at 0x177C and 0x178C).
+void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
+                              const CModelFlags& flags) const {
+  // The ids are the bytes the retail loads (the lbz at 0x1744): the first one is the byte the
+  // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
+  const uchar ids[4] = {x10D4_ & 0xFF, x10D5_, x10D6_, x10D7_};
+  for (int i = 0; i < 4; ++i) {
+    if (x10DC_[i] == 3) {
+      continue;
+    }
+    const CSegId seg(ids[i]);
+    const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
+    xF5C_.Render(mgr, modelXf, GetActorLights(), flags);
+  }
+}
+
+// fn_14_2578 (0xF4 bytes): the echo emitter's transform. The retail walks the locator at guest
+// this+0x10B9 (the GetScaledLocatorTransform call at 0x26A4), multiplies the actor's transform
+// with it (the __ml__ at 0x26B4) and, when the byte at this+0x1238 is set, moves the result
+// along its own z axis by (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants
+// are .rodata 0x29C and 0x2A0 and the height comes from the model at this+0x11EC (the
+// GetBounds call at 0x269C). 0xF4 bytes is over this slice's limit, so it is a stand-in.
+void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
+  StandInFn("fn_14_2578 (the echo emitter's transform, 0xF4 bytes)");
+  out = CTransform4f::Identity();
 }
 
 // fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set (the store at 0xA3FC)

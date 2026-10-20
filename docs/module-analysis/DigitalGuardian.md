@@ -345,7 +345,8 @@ All offsets are guest (32-bit GC) offsets.
 | 0xFC4 | count of the 12-byte "hit direction" table at 0xFC8 | ctor pushes 4 entries (-1,1,0), (1,-1,0), (1,1,0), (-1,-1,0) |
 | 0xFF8 | count of the angle table at 0xFFC | ctor pushes 0.7853982, 2.3561945, -0.7853982, -2.3561945 (`lbl_14_data_45C`..`468`) |
 | 0x1014 / 0x1044 / 0x1110 / 0x1188 | four `CDamageVulnerability` (one = immune ricochet) | `fn_14_3B4C(this+…, &ldr)` calls in the ctor |
-| 0x1088 / 0x11EC | `CTransform4f` (identity / the echo-emitter bounds) | ctor stores `sIdentity`; `GetBounds(model, &this+0x11EC)` in the ctor |
+| 0x1088 | `CTransform4f` (the identity) | ctor stores `sIdentity` |
+| 0x11EC | `CModelData` (the echo emitter's model) | `fn_14_2578` takes its bounds (the `GetBounds` call at 0x269C) and `fn_14_17DC` draws it |
 | 0x10B8, 0x10B9, 0x10C0…0x10C3, 0x10C8…0x10CB, 0x10D4…0x10D7 | locator-segment ids, all 0xFF | ctor: `GetLocatorSegId("Head_1"/"L_front_knee_2"/…)` |
 | 0x1100 | `CToken` (locked 'PART' token) | ctor; `arg0->unk110C` is its "present" flag |
 | 0x1144…0x1150 | four floats = the patterned info's turn speed | ctor: `arg0->unk1144 = arg_sp8->unk20` (×4) |
@@ -801,6 +802,57 @@ stays a stand-in.
 
 
 
+
+
+**WP2 part 2h done (2026-10-20): the four model renders.** `fn_14_1994` (0xD4), `fn_14_18B4`
+(0xE0), `fn_14_17DC` (0xD8) and `fn_14_1700` (0xDC) - the four calls `fn_14_A004` makes at
+0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC - are ported. The four model data blocks they draw are
+still empty (fn_14_6864, the constructor's tail, is not ported), so nothing new draws yet.
+
+| fn | what it does | the fields it reads | asm |
+|---|---|---|---|
+| fn_14_1994 | when the flag byte at 0xEB8 is set, the four locator ids at 0x10C0 are walked and the model at 0xE6C (the leg model) is drawn at each locator's scaled transform | 0xEB8, 0x10C0..0x10C3, 0xE6C | the test at 0x19B4, the loop at 0x19D4-0x1A50, the Render at 0x1A40 |
+| fn_14_18B4 | the same walk, but only when bit 4 of the flag byte at 0x128C is clear and the byte at 0xF08 is set; the model at 0xEBC (the shin model) is drawn | 0x128C bit 4, 0xF08, 0x10C0..0x10C3, 0xEBC | the extrwi at 0x19D8 (the byte's bit 4, the mask 0x10), the test at 0x19E4, the Render at 0x196C |
+| fn_14_17DC | when bit 3 of the flag byte at 0x128C is clear, the byte at 0x1238 is set and the float at 0x1264 is positive, the model at 0x11EC is drawn at the transform fn_14_2578 builds, with the blend mode 2 (0x1848), the shader set 0 (0x1854), the flags 3 (0x1860) and the packed colour at 0x1270 (0x1868); then the echo emitter at 0x123C, when it is there, is drawn through the renderer | 0x128C bit 3, 0x1238, 0x1264, 0x11EC, 0x1270, 0x123C | the extrwi at 0x17FC (the byte's bit 3, the mask 0x08), the fcmpo at 0x181C, the Render at 0x1870, the renderer's vtable call at 0x1958 |
+| fn_14_1700 | the four locator ids at 0x10D4 are walked and the model at 0xF5C (the toe target's model) is drawn at each of them, unless the word at 0x10DC is 3 | 0x10D4..0x10D7, 0x10DC..0x10E8, 0xF5C | the loop at 0x1738-0x17C4, the cmpwi at 0x173C, the Render at 0x17B0 |
+
+All four draw at the same transform: the actor's transform (guest this+0x24) times the
+locator's scaled transform (`GetScaledLocatorTransform`) times the segment's rotation. That
+rotation is the character's rest pose rotation for the segment: the retail reads it from the
+actor's model data (this+0x60), the anim data (that+0x10), the character layout (that+0x10C)
+and the layout's linear rotations (that+0x68), indexed with the segment id - the chain
+`CScriptSpecialFunction::ThinkObjectFollowJoint` walks as well. The port reads it from
+`GetModelData()->GetAnimationData()->GetCharLayoutInfo()->GetLinearRotations()`.
+
+The locator ids: 0x10C0..0x10C3 are the four knee locators ("L_front_knee_2",
+"L_back_knee_2", "R_front_knee_2", "R_back_knee_2") and 0x10D4..0x10D7 the four "*_col_LCTR"
+ones; the constructor resolves them with `GetLocatorSegId` (the calls from 0xBAF0 on), which
+is not ported yet, so they are invalid (0xFF) in the port and the locator transform is the
+identity. 0x10B9 is a locator id fn_14_2578 walks; its name is not decoded yet.
+
+`fn_14_2578` (0xF4 bytes) builds the echo emitter's transform and is over this slice's limit,
+so it is a named once-logging stand-in: it walks the locator at guest 0x10B9, multiplies the
+actor's transform with it and, when the byte at 0x1238 is set, moves the result along its own
+z axis by (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants are .rodata 0x29C
+and 0x2A0 and the height comes from the model at 0x11EC (the `GetBounds` call at 0x269C).
+The next slice can port it.
+
+The last call of fn_14_17DC is the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
+bctrl at 0x1958), with no argument; the slot is not identified, so the port has a named
+once-logging stand-in for it. The echo emitter at 0x123C is the 0x338 `CElementGen` that
+fn_14_D664 allocates (not ported), so that branch cannot be taken in the port.
+
+The host members this slice added (one per guest offset): the four model data blocks (0xE6C,
+0xEBC, 0xF5C, 0x11EC), the three flag bytes (0xEB8, 0xF08, 0x1238), the eight locator ids
+(0x10C0..0x10C3 and 0x10D4..0x10D7), the four per-leg words (0x10DC..0x10E8), the echo
+emitter pointer (0x123C), the float at 0x1264 and the packed colour at 0x1270. Their initial
+values are the ones the retail constructor stores: the flags 0, the ids 0xFF, the words -1
+(`lbl_14_data_454`), the float 0.0f and the colour word 0 (`lbl_14_rodata_264`).
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, 1800 frames): the
+guardian u054d is there (hp 150/150) and its model draws (the base's render through the
+module's AddToRenderer, `/tmp/opencode/dg_render_models.png`); the four module renders draw
+nothing yet, since their model data is empty. No "[port] caught" and no reach-stub in the log.
 
 
 ### WP3 — the head module
