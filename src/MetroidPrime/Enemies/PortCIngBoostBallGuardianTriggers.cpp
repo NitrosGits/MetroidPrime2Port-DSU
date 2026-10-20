@@ -577,6 +577,9 @@ void CIngBoostBallGuardian::UpdateTimers(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_30_5CD0: forms 0/1 are never targets; the ing-spot and evaporate forms (3/5) only in the
+// dark visor or with the always-targetable data flag; every other form is.
+// @ fn_30_5CD0
 void CIngBoostBallGuardian::UpdateValidTarget(CStateManager& mgr) {
   switch (mForm) {
   case 0:
@@ -594,21 +597,43 @@ void CIngBoostBallGuardian::UpdateValidTarget(CStateManager& mgr) {
   }
 }
 
-// [?] which loop plays in which form, and the emitter parameters: the idle loop in the ing-spot
-// form while still, the move loop while moving on the surface.
+// fn_30_3AF8: the ing-spot loops. Only in the ing-spot form with the boost over (0x11EE bit 5):
+// the move loop (0x107c, data 0x7f0) while moving (0x11ED bit 2), else the idle loop (0x1078, data
+// 0x7ec). A loop is added at the actor's position (0x54) with the volume 0x7f, or, when it already
+// plays, follows the position and the transform's forward column (0x28/0x38/0x48). Every loop that
+// is not wanted this frame is removed (0x00003C3C/0x00003C68), the move loop first.
+// @ fn_30_3AF8
 void CIngBoostBallGuardian::UpdateLoopSfx() {
-  const bool spot = mForm == kForm_IngSpot && GetActive();
-  const bool moving = spot && mSurfaceMoveDir != CVector3f::Zero();
-  const ushort ids[2] = {mData.mIngSpot.GetIdleSound(), mData.mIngSpot.GetMoveSound()};
-  const bool want[2] = {spot && !moving, moving};
-  for (int i = 0; i < 2; ++i) {
-    if (want[i] && !mLoopSfx[i] && ids[i] != CSfxManager::kInternalInvalidSfxId) {
-      mLoopSfx[i] = CSfxManager::AddEmitter(ids[i], GetTranslation(), GetCurrentAreaId().Value(),
-                                            true, true);
-    } else if (!want[i] && mLoopSfx[i]) {
-      CSfxManager::SfxStop(mLoopSfx[i]);
-      mLoopSfx[i] = CSfxHandle();
+  bool removeMove = true;
+  bool removeIdle = true;
+  if (mForm == kForm_IngSpot && mBoostOver) {
+    if (mMoving) {
+      removeMove = false;
+      if (!mLoopSfx[1]) {
+        mLoopSfx[1] = CSfxManager::AddEmitter(mData.mIngSpot.GetMoveSound(), GetTranslation(), 0x7f,
+                                              GetCurrentAreaId().Value(), true, true,
+                                              CSfxManager::kMedPriority);
+      } else {
+        CSfxManager::UpdateEmitter(mLoopSfx[1], GetTranslation(), GetTransform().GetForward(), 0x7f);
+      }
+    } else {
+      removeIdle = false;
+      if (!mLoopSfx[0]) {
+        mLoopSfx[0] = CSfxManager::AddEmitter(mData.mIngSpot.GetIdleSound(), GetTranslation(), 0x7f,
+                                              GetCurrentAreaId().Value(), true, true,
+                                              CSfxManager::kMedPriority);
+      } else {
+        CSfxManager::UpdateEmitter(mLoopSfx[0], GetTranslation(), GetTransform().GetForward(), 0x7f);
+      }
     }
+  }
+  if (removeMove && mLoopSfx[1]) {
+    CSfxManager::RemoveEmitter(mLoopSfx[1]);
+    mLoopSfx[1] = CSfxHandle();
+  }
+  if (removeIdle && mLoopSfx[0]) {
+    CSfxManager::RemoveEmitter(mLoopSfx[0]);
+    mLoopSfx[0] = CSfxHandle();
   }
 }
 
