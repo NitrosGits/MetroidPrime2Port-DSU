@@ -486,9 +486,8 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   case 0x58414C44: // "XALC"
     StandInFn("fn_14_5910 (the XALC case's helper)");
     break;
-  case 0x58444D47: // "XDMG"
-    // The retail passes the message's first halfword (its CScriptMsg's +0) to the helper.
-    StandInFn("fn_14_5838 (the XDMG case's helper)");
+  case 0x58444D47: // "XDMG": the sender (the message's +0)
+    x5838_(mgr, msg.GetSenderId()); // fn_14_5838
     break;
   case 0x58524447: // "XRDG"
     StandInFn("fn_14_5644 (the XRDG case's helper)");
@@ -1389,6 +1388,23 @@ void CDigitalGuardian::x3A44_(CStateManager& mgr) {
   }
 }
 
+// @ fn_14_3E2C
+int CDigitalGuardian::x3E2C_(TUniqueId id) const {
+  if (xFBC_[0] == id.value) {
+    return 0;
+  }
+  if (xFBC_[1] == id.value) {
+    return 1;
+  }
+  if (xFBC_[2] == id.value) {
+    return 2;
+  }
+  if (xFBC_[3] == id.value) {
+    return 3;
+  }
+  return -1;
+}
+
 // @ fn_14_143C
 void CDigitalGuardian::x143C_(CStateManager& mgr, const CVector3f& pos,
                               EScriptObjectState state) {
@@ -1397,6 +1413,21 @@ void CDigitalGuardian::x143C_(CStateManager& mgr, const CVector3f& pos,
   if (waypoint != nullptr) { // the TCastToPtr test at 0x14A4
     waypoint->SetTranslation(pos);
     SendScriptMsgs(state, mgr, GetUniqueId(), kSM_None);
+  }
+}
+
+// fn_14_5838: the head collider (0x10CC) goes to fn_14_5274, a knee collider (fn_14_3E2C) to
+// fn_14_5470, a toe target (fn_14_43AC) or the root collider (0x1080) to fn_14_5384.
+void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
+  if (sender == x10CC_) {
+    StandInFn("fn_14_5274 (the head collider's damage)");
+    return;
+  }
+  const int knee = x3E2C_(sender); // fn_14_3E2C
+  if (knee != -1) {
+    x5470_(mgr, sender, knee); // fn_14_5470
+  } else if (x43AC_(sender) || sender.value == x1080_) {
+    StandInFn("fn_14_5384 (the toe target / root collider's damage)");
   }
 }
 

@@ -355,8 +355,12 @@ private:
   // (0x1010 + i) is set and bit 5 of 0x128C is clear, else the ricochet one (0x1044) - and its
   // armour's armoured flag (fn_14_CE94).
   void x3A44_(CStateManager& mgr);
+  // fn_14_3E2C (0x5C bytes): which knee collider (0xFBC + 2i) an id is, or -1.
+  int x3E2C_(TUniqueId id) const;
   // fn_14_143C (0xBC bytes): moves the IS06/Follow waypoint to a position, then sends a state.
   void x143C_(CStateManager& mgr, const CVector3f& pos, EScriptObjectState state);
+  // fn_14_5838 (0xD8 bytes): the "XDMG" case - which collider was hit.
+  void x5838_(CStateManager& mgr, TUniqueId sender);
   // fn_14_5470 (0x1D4 bytes): a knee collider hit: the armour flashes, or goes when the knee's
   // health is gone (KneeDestroyed: 0x1284 = the knee).
   void x5470_(CStateManager& mgr, TUniqueId sender, int knee);
