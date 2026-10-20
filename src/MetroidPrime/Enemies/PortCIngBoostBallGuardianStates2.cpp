@@ -245,13 +245,16 @@ void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg m
   mIngSpotPathFindNavigation.PathFind(mgr, msg, dt, *this);
   const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
-  // Dropped: the Ing's safe-zone ing-spot flag (mSafeZoneIngSpot), so the base is the ing spot's
-  // maximum speed.
-  const float baseSpeed = mData.mIngSpot.GetMaxSpeed();
-  const float speed = CVector3f::GetAngleDiff(CVector3f::Up(), GetTransform().GetUp()) /
-                          3.1415927f * (mData.mIngSpot.GetMaxWallSpeed() - baseSpeed) +
-                      baseSpeed;
-  MoveOnSurface(move, speed, dt);
+  // 0x00009D38: the boost retreat (0x11EE 0x80) takes data 0x14 over data 0x08 as the floor
+  // speed, blended toward the wall speed (data 0x0C) by the tilt off world up, then scaled by the
+  // phase (0x00009D64: *(0x11D0)+0x34) like IngSpotPathFind.
+  const float baseSpeed = mBoostModeRetreatActive ? mData.mIngSpot.GetSpeedModifier()
+                                                  : mData.mIngSpot.GetMaxSpeed();
+  const float speed = (CVector3f::GetAngleDiff(CVector3f::Up(), GetTransform().GetUp()) /
+                           3.1415927f * (mData.mIngSpot.GetMaxWallSpeed() - baseSpeed) +
+                       baseSpeed) *
+                      CurrentPhase().mIngSpotSpeedScale;
+  MoveOnSurface(move, speed, dt); // 0x00009D80: fn_30_53D0
 }
 
 // fn_30_9BB0 (this module).
