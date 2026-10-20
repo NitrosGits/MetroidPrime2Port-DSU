@@ -216,7 +216,10 @@ after the layer is loaded logs the module's own stand-ins `fn_18_3ACC` (the hear
 the EyeShut state `fn_18_5264` is entered, which means the look check answered true. The run
 still ends on the frame limit (2400 updates) with `grep -c '[port] caught\|reach-stub'` = 0.
 
-With the look and the turn ported as well, the idle state turns the ing towards the player (the
-facing at guest 0x818 is no longer zero, so the locomotion command carries a real face vector)
-and the heart lookup still finds no actor, because the holder at guest 0x7C0 is the product of
-the module's `fn_18_3BB0`, which is still a stand-in.
+With the look and the turn ported as well, the idle state measures the ing's angle to the player
+(15 degrees in the run) and the 45 degree snap makes that turn a no-op, so the facing at guest
+0x818 stays zero - the ing already faces the player - and the FSM walks from Idle into EyeShut
+(`fn_18_5264`, still a stand-in, so the walk after EyeShut does not happen yet). The heart
+lookup still finds no actor, because the holder at guest 0x7C0 is the product of the module's
+`fn_18_3BB0`, which is still a stand-in; the run ends on the frame limit with
+`grep -c '[port] caught\|reach-stub'` = 0.
