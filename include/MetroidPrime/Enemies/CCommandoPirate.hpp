@@ -317,7 +317,10 @@ private:
   void EnsureBodyActive(CStateManager& mgr);
 
   // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
-  bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt);
+  bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const;
+
+  // fn_9_19D8: the module's team helper - the commando joins the team of its area.
+  void x19D8_JoinTeam(CStateManager& mgr);
 
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
@@ -339,6 +342,7 @@ private:
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
   uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
+  float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
   float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
   float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
@@ -346,6 +350,7 @@ private:
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
+  TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)

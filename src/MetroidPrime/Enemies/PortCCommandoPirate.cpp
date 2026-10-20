@@ -17,8 +17,10 @@
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
@@ -28,6 +30,11 @@
 #include "rstl/string.hpp"
 
 namespace {
+
+// The module's global at bss_38 counts the live "Commando E-Grenade" script objects: the module's
+// object constructor raises it (fn_9_F418 @0x0000F4E8) and its destructor lowers it (fn_9_F290
+// @0x0000F2D0). The port does not create those objects yet, so the count stays at zero.
+static int sEgrenadeObjectCount = 0;
 
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
@@ -144,6 +151,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , mBoneTracking(*AnimationData(), rstl::string_l("Head_1"), 1.2217305f, 3.1415927f,
                 kBTF_None)                        // 0xa74, fn_9_D904 @0x0000DA08
 , xae8_(0)                                        // 0xae8, the module's byte
+, xb7c_(0.f)                                      // 0xb7c, the melee cooldown; fn_9_662C advances it
 , xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
 , xb60_(1.5f)                                     // 0xb60, lbl_9_rodata_47C, fn_9_D904 @0x0000DACC
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
@@ -151,6 +159,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
+, xbc4_teamId(kInvalidUniqueId)                    // 0xbc4, the team id; fn_9_19D8 sets it
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
 , xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
@@ -362,14 +371,76 @@ bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data)
   return x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0;
 }
 
+// fn_9_BCB8: the commando melees when the target is inside its attack band. The block's flag
+// byte at +0x15C (guest this+0x91C) must not have its 0x02 bit (extrwi at 0x0000BCCC), and the
+// module's own cooldown timer at guest this+0xB7C (the time since the last melee ended, which
+// the module's per-frame helper fn_9_662C advances at 0x000068E8 and fn_9_A60C clears at
+// 0x0000A700) must be above 1.0f (rodata_43C, the compare at 0x0000BCE4). Then the target (the id
+// at guest this+0xBCA, the lookup at 0x0000BCFC) must be inside the base's attack band: the
+// squared distance must not be below the minimum attack range (guest this+0x3DC, the compare at
+// 0x0000BD48) nor above the maximum attack range (guest this+0x3E0, the compare at
+// 0x0000BD54), and the height difference must be under 3.0f (rodata_448, the compare at
+// 0x0000BD70).
+//
+// The guest reads the target's position at the actor's +0x54 without a cast; the host's CEntity
+// has no position, so the port casts to CActor and keeps a null test of its own.
 bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BCB8");
-  return false;
+  if ((mData.mFlags0 & 0x02) != 0) {
+    return false;                                   // 0x0000BCCC
+  }
+  if (xb7c_ <= 1.f) {
+    return false;                                   // 0x0000BCE4
+  }
+  const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000BCFC
+  if (target == nullptr) {
+    return false;                                   // 0x0000BD00
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  const CVector3f delta = actor->GetTranslation() - GetTranslation();
+  const float distSq = delta.MagSquared();
+  if (distSq < mMinAttackRange * mMinAttackRange) {
+    return false;                                   // 0x0000BD48
+  }
+  if (distSq > mMaxAttackRange * mMaxAttackRange) {
+    return false;                                   // 0x0000BD54
+  }
+  return fabsf(delta.GetZ()) < 3.f;                  // 0x0000BD70
 }
 
+// fn_9_BBC8: the commando fires its E-grenade when the target is inside the grenade's band.
+// The module's flag byte at guest this+0xC63 must have its 0x02 bit (extrwi at 0x0000BBDC), no
+// E-grenade script object may be alive (the module's global at bss_38, the load at
+// 0x0000BBEC) and the block's flag byte at +0x15D (guest this+0x91D) must not have its 0x10 bit
+// (extrwi at 0x0000BBF8). Then the target's aim position (the module's helper fn_9_3CBC with the
+// dt 0.f, the call at 0x0000BC30) must be inside the grenade's band: the squared distance must
+// not be below the grenade's minimum attack distance (the block's +0x60, the compare at
+// 0x0000BC80) nor above its maximum (the block's +0x64, the compare at 0x0000BC8C).
 bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BBC8");
-  return false;
+  if ((xc63_ & 0x02) == 0) {
+    return false;                                   // 0x0000BBDC
+  }
+  if (sEgrenadeObjectCount != 0) {
+    return false;                                   // 0x0000BBEC
+  }
+  if ((mData.mFlags1 & 0x10) != 0) {
+    return false;                                   // 0x0000BBF8
+  }
+  CVector3f aim;
+  if (!x3CBC_(mgr, aim, 0.f)) {
+    return false;                                   // 0x0000BC30
+  }
+  const CVector3f delta = aim - GetTranslation();
+  const float distSq = delta.MagSquared();
+  if (distSq < mData.mGrenade.mGrenadeMinAttackDist * mData.mGrenade.mGrenadeMinAttackDist) {
+    return false;                                   // 0x0000BC80
+  }
+  if (distSq > mData.mGrenade.mGrenadeMaxAttackDist * mData.mGrenade.mGrenadeMaxAttackDist) {
+    return false;                                   // 0x0000BC8C
+  }
+  return true;
 }
 
 // fn_9_BB7C: the commando retreats when its flag byte at guest this+0xC63 has its 0x40 bit set
@@ -466,9 +537,19 @@ bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& d
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
+// fn_9_B818: the commando is facing the target when the angle between its forward and the
+// direction to the target's aim position (the module's helper fn_9_3CBC with the dt 0.f, the
+// call at 0x0000B85C) is at most 20 degrees (rodata_4B4 = 0.34906584, the compare at
+// 0x0000B8D4). The guest flattens the direction (the 0.f stored over the z difference at
+// 0x0000B8AC) and a target that is gone answers true (the test at 0x0000B860).
 bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B818");
-  return false;
+  CVector3f aim;
+  if (!x3CBC_(mgr, aim, 0.f)) {
+    return true;                                    // 0x0000B860
+  }
+  CVector3f delta = aim - GetTranslation();
+  delta.SetZ(0.f);                                  // 0x0000B8AC
+  return CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= 0.34906584f;  // 0x0000B8D4
 }
 
 // fn_9_B7FC: the base's waypoint navigation destination (guest this+0x6C0, the u16 loaded at
@@ -500,9 +581,35 @@ bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) con
          mMinAttackRange * mMinAttackRange;
 }
 
+// fn_9_B690: the commando dodges when the target is in front of it and it has just heard a
+// shot or is under fire. The block's flag byte at +0x15C (guest this+0x91C) must not have its
+// 0x20 bit (extrwi at 0x0000B6A4) and the module's flag byte at guest this+0xC63 must have its
+// 0x04 bit (extrwi at 0x0000B6B0). The target (the id at guest this+0xBCA, the lookup at
+// 0x0000B6CC) must be in front of the actor: the dot product of the direction to it with the
+// actor's forward column (guest this+0x28/0x38/0x48) must be above zero (the compare at
+// 0x0000B71C). Then either the under-fire distance at guest this+0xB64 is under 0.75f
+// (rodata_4E0, the compare at 0x0000B730) or the heard-shot distance at guest this+0xB60 is
+// under 1.5f (rodata_47C, the compare at 0x0000B744).
 bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B690");
-  return false;
+  if ((mData.mFlags0 & 0x20) != 0) {
+    return false;                                   // 0x0000B6A4
+  }
+  if ((xc63_ & 0x04) == 0) {
+    return false;                                   // 0x0000B6B0
+  }
+  const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000B6CC
+  if (target == nullptr) {
+    return false;                                   // 0x0000B6D0
+  }
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  const CVector3f delta = actor->GetTranslation() - GetTranslation();
+  if (CVector3f::Dot(delta, GetTransform().GetForward()) <= 0.f) {
+    return false;                                   // 0x0000B71C
+  }
+  return xb64_ < 0.75f || xb60_ < 1.5f;             // 0x0000B730, 0x0000B744
 }
 
 // fn_9_B660: the commando arms its shield when its flag byte at guest this+0xC64 has its 0x80
@@ -653,7 +760,7 @@ void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
 // at 0x00003D1C, CActor's slot 0x54, GetAimPosition - with the state manager and the dt, and
 // copies the answer into the out vector (0x00003D28..0x00003D38). It returns false when the
 // target is gone (0x00003D40).
-bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) {
+bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const {
   const CEntity* target = mgr.GetObjectById(xbca_);
   if (target == nullptr) {
     return false;
@@ -786,7 +893,7 @@ void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt)
   }
   mPathFindNavigation.SetDestination(destination);         // 0x0000AAD0
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000AAE8
-  StandInFn("fn_9_19D8 (0xc4 bytes)");       // 0x0000AAEC
+  x19D8_JoinTeam(mgr);                                      // 0x0000AAEC
 }
 
 void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -819,6 +926,34 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
 
 void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_9BB4");
+}
+
+// fn_9_19D8: the module's team helper, called by the destination states. The commando takes the
+// team of its area when it has none yet: the id at guest this+0xBC4 must be kInvalidUniqueId
+// (the compare at 0x00001A04), the block's flag byte at +0x15C (guest this+0x91C) must not have
+// its 0x02 bit (extrwi at 0x00001A10) and the one at +0x15D (guest this+0x91D) must not have its
+// 0x40 bit (extrwi at 0x00001A1C). The team id comes from the team AI manager (the call at
+// 0x00001A30) and is stored (0x00001A3C); then that manager is looked up (the ObjectById call at
+// 0x00001A60) and the commando joins it with the melee role (the JoinTeam call at 0x00001A80,
+// the roles 1, -1 and -1 - the host's kTAR_Melee, kTAR_Invalid and kTAR_Invalid).
+void CCommandoPirate::x19D8_JoinTeam(CStateManager& mgr) {
+  if (xbc4_teamId != kInvalidUniqueId) {
+    return;                                   // 0x00001A04
+  }
+  if ((mData.mFlags0 & 0x02) != 0) {
+    return;                                   // 0x00001A10
+  }
+  if ((mData.mFlags1 & 0x40) != 0) {
+    return;                                   // 0x00001A1C
+  }
+  xbc4_teamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);  // 0x00001A30, 0x00001A3C
+  if (xbc4_teamId == kInvalidUniqueId) {
+    return;                                   // 0x00001A48
+  }
+  if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xbc4_teamId))) {
+    team->JoinTeam(*this, CTeamAiRole::kTAR_Melee, CTeamAiRole::kTAR_Invalid,
+                    CTeamAiRole::kTAR_Invalid);  // 0x00001A80
+  }
 }
 
 // fn_9_9AAC: the state path-finds. On activate (the guest's message 0, 0x00009AEC) the body

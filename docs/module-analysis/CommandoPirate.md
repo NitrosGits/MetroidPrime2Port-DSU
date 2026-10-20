@@ -200,8 +200,8 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 
 ### The ported trigger bodies
 
-Five of the 34 triggers are host code; the other 29 are still stand-ins. Each body is read off
-the asm with `tools/asmcheck.py annotate` and carries the guest offset it came from.
+Twenty-seven of the 34 triggers are host code; the other 7 are still stand-ins. Each body is
+read off the asm with `tools/asmcheck.py annotate` and carries the guest offset it came from.
 
 | trigger | fn | .rodata | body | reads |
 |---|---|---|---|---|
@@ -228,6 +228,10 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
 | PathShagged | `fn_9_B9D8` | 0x5B0 | the flag byte at guest this+0xC63 has its 0x80 bit set, or the base's own `PathShagged` says so | `xc63_` (0) |
 | PathOver | `fn_9_B990` | 0x5BC | the flag byte at guest this+0xC65 does not have its 0x80 bit set, or the base's own `PathOver` says so | `xc65_` (0x80) |
 | TooClose | `fn_9_B76C` | 0x60A | the target is closer than the actor's minimum attack range: the squared distance against the squared radius at guest this+0x3DC | the base's minimum attack range (`mMinAttackRange`) |
+| ShouldMeleeAttack | `fn_9_BCB8` | 0x51B | the block's +0x15C must not have its 0x02 bit and the melee cooldown (guest +0xB7C) must be above 1.0f; then the target must be inside the base's attack band (the squared distance between the minimum attack range at guest +0x3DC and the maximum at +0x3E0) and the height difference under 3.0f | the base's minimum and maximum attack range, `xb7c_` |
+| ShouldDodge | `fn_9_B690` | 0x60A | the block's +0x15C must not have its 0x20 bit and the flag byte at guest +0xC63 must have its 0x04 bit; the target must be in front of the actor (the dot product with the forward column) and either the under-fire distance (`xb64_`) is under 0.75f or the heard-shot distance (`xb60_`) under 1.5f | the block's +0x15C, `xc63_`, `xb64_`, `xb60_` |
+| ShouldFireEGrenade | `fn_9_BBC8` | 0x52D | the flag byte at guest +0xC63 must have its 0x02 bit, no E-grenade script object may be alive and the block's +0x15D must not have its 0x10 bit; the target's aim position must be inside the grenade's band (the block's +0x60 and +0x64) | `xc63_`, the block's +0x15D, the grenade distances |
+| IsFacingTarget | `fn_9_B818` | 0x5E0 | the angle between the actor's forward and the (flattened) direction to the target's aim position is at most 20 degrees; a target that is gone answers true | the module's own helper `fn_9_3CBC` |
 
 - `StateOver` reads guest +0x6B4, which is the base `CPatterned`'s animation state - the host
   already has it, as the DigitalGuardian's own `StateOver` (fn_14_9AA8) does. The guest's test is
@@ -252,7 +256,11 @@ the asm with `tools/asmcheck.py annotate` and carries the guest offset it came f
   are `kSS_Attack` and `kSM_Follow`.
 
 - The new members and where their values come from: `xae8_` is the module's byte at +0xAE8
-  (nothing in the module writes it, so it stays 0); `xb5c_` is the float at +0xB5C (the
+  (nothing in the module writes it, so it stays 0); `xb7c_` is the float at +0xB7C, the cooldown
+  since the last melee attack: the module's per-frame helper `fn_9_662C` adds the frame time to
+  it (0x000068E8) and `fn_9_A60C` clears it when the melee ends (0x0000A700), so the port's
+  `ShouldMeleeAttack` (which needs it above 1.0f) stays false until that helper is ported;
+  `xb5c_` is the float at +0xB5C (the
   constructor stores 0.f there at 0x0000DABC); `xb60_` is the float at +0xB60 (the constructor
   stores 1.5f, `lbl_9_rodata_47C`, at 0x0000DACC; the `Listen` override rewrites it at 0x0000BF38);
   `xb8c_` and `xb90_` are the floats at +0xB8C and +0xB90 (both 0.f from the constructor, 0x0000DB08
@@ -305,10 +313,22 @@ member at that offset in the host's state manager, so the port uses the player a
   running on every PathFind tick and finding seven other listening AIs of the area, but the
   nearest one is 10.2 units away while the separation radius is 5.0f * 1.5 = 7.5, so every
   separation is zero and no locomotion command is delivered there.
+- The path find in area 59 finds no path to the player, and that is not a port mistake: the
+  search's parameters are retail's (the guest's constructor at 0x0000D990: the area null, the flags
+  1, the patterned info's pathfinding index, the radii 1.0f and the root position kRP_Center), the
+  path area comes from the guest's own kSM_AreaLoaded case (0x0000CEF0) and the area's path data
+  is retail's (the port's CPFArea loads the region connection matrix out of the pak,
+  src/MetroidPrime/PathFinding/CPathFindArea.cpp:123). A probe of the same search in the run: the
+  commando's own region links to its neighbours up to 30-60 units (the forward 10/30/60 and the
+  right 10/30 succeed), while the player's platform - 111 units away and 3.5 units higher - is not
+  linked to it by the area's ground connections (`kR_NoPath`), and the points off the mesh answer
+  `kR_NoDestPoint`. The commando therefore stands where it is, as the area's data says.
 - `fn_9_19D8` (0xc4 bytes) is the module's team helper, called by `fn_9_AA20` (and by the
   other destination states): it reads the team id at guest this+0xBC4, takes the associated team
-  id from the team AI manager and joins it. It is over the 0x80 limit, so it is a named
-  stand-in for now.
+  id from the team AI manager and joins it with the melee role (the guest's roles 1, -1, -1).
+  It is ported as the private member `x19D8_JoinTeam` (the same shape as the Dark Commando's own
+  `JoinTeam`, src/MetroidPrime/Enemies/CDarkCommando.cpp:1497); the team id is the new member
+  `xbc4_teamId` (guest +0xBC4).
 - The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
   (0x0000DC18) and the module's `GetRagDoll` returns null (fn_9_78) - so the rag-doll branches of
   `fn_9_CAC8` (PreThink), `fn_9_C6D4` (PreRender) and `fn_9_C51C` (PreRenderAllViewports) are dead
@@ -465,18 +485,28 @@ from the guest's `kSM_AreaLoaded` case - are fine; the player's spot is simply n
 the commando's region by the area's ground connections). With a near destination in a probe run
 the commando walked 44 units, so the destination, the navigation and the locomotion command all
 work. The stand-ins that fired in this run are `AcceptScriptMsg`, `Think`, `DoUserAnimEvent`,
-`CollidedWith`, the five remaining trigger stand-ins (`fn_9_B690`, `fn_9_B818`, `fn_9_B250`,
-`fn_9_BCB8`, `fn_9_BBC8`, all 0xd4 bytes) and the module's team helper `fn_9_19D8` (0xc4 bytes);
+`CollidedWith`, `fn_9_9F24` (JumpPointFind, 0x1ec), `fn_9_B958` (IsOffPath, 0x38) and
+`fn_9_B250` (ShouldShieldCharge, 0x410 - the size the earlier list had as 0xd4);
 `grep -c '[port] caught\|reach-stub'` is 0.
+
+With the four combat triggers ported (2026-10-20) only `IsFacingTarget` answers true in that
+run (the commando turns to the target and the state machine walks on to the jump point and the
+off-path states). `ShouldMeleeAttack` stays false because its cooldown timer (`xb7c_`) is only
+advanced by the module's per-frame helper `fn_9_662C` (0x39c bytes, not ported), `ShouldDodge`
+and `ShouldFireEGrenade` need the flag bits at guest +0xC63 that the module's unported states
+set. The commando still does not walk: the path search finds no path to the player (above).
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
 - The state machine's other 42 bodies: the two tables (34 triggers, 36 states) are registered,
   twenty-three of the triggers and seven of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value. The combat triggers that are still stands in are `ShouldMeleeAttack`
-  (fn_9_BCB8, 0xE0), `ShouldDodge` (fn_9_B690, 0xDC), `ShouldShieldCharge` (fn_9_B250, 0x410)
-  and `ShouldFireEGrenade` (fn_9_BBC8, 0xF0) - all over the 0x80 limit for this slice.
+  returns the neutral value. The seven triggers that are still stands in are `ShouldJumpBack`
+  (fn_9_8B70, 0x1b8), `IsOffPath` (fn_9_B958, 0x38), `ShouldShieldCharge` (fn_9_B250, 0x410),
+  `ShouldBoost` (fn_9_B1E0, 0x70), `ShouldCrouch` (fn_9_B168, 0x40), `ShouldWallHang`
+  (fn_9_B114, 0x54) and `CoverBlown` (fn_9_AFD4, 0xe0) - each over the 0x100 limit of this
+  slice, and the module's per-frame helper `fn_9_662C` (0x39c) that advances the timers the
+  triggers read.
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
