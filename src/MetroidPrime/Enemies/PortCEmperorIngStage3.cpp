@@ -616,10 +616,12 @@ CVector3f CEmperorIngStage3::GetAimPosition(const CStateManager& mgr, float para
   return CPatterned::GetAimPosition(mgr, param);
 }
 
-// vtable slot 27 = fn_18_45B4: retail's sorting bounds.
+// @ fn_18_45B4
+// fn_18_45B4 (vtable slot 27, 0x9C): a box one unit (sOneVector) either side of the centre of
+// CActor's sorting bounds (0x45CC).
 CAABox CEmperorIngStage3::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CEmperorIngStage3::GetSortingBounds (vtable slot 27, fn_18_45B4)");
-  return CPatterned::GetSortingBounds(mgr);
+  const CVector3f center = CActor::GetSortingBounds(mgr).GetCenterPoint();
+  return CAABox(center - CVector3f(1.f, 1.f, 1.f), center + CVector3f(1.f, 1.f, 1.f));
 }
 
 // @ fn_18_9048
