@@ -10,6 +10,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CMetroid.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTargetingPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -17,6 +18,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "rstl/algorithm.hpp"
 
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -598,9 +600,90 @@ bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) co
   return x8f4_29_onlyAttackInRange && mAttackRemTime < 1.5f;
 }
 
+// fn_72_602C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the AiWaypoint object list (mgr+0x838) is scanned for the jump point this pirate
+// should bounce off. A candidate has to be active (0x20 bit 7), free (fn_8014FFF0 with this
+// pirate's id), of type 0 (0x15c), have a next waypoint (0x182 != kInvalidUniqueId) and be in
+// this area (0x4 == the pirate's). It then has to be closer than the best candidate so far and
+// its forward (0x28/0x38/0x48 = the transform's forward) has to point along the way to it.
+// The score is the squared distance to the jump point plus the squared distance from the
+// pirate's destination (0x334) to the next waypoint, with the height part of that second
+// distance weighted 9 times (the asm adds 9*dz^2 on top of the plain dz^2 of the square).
+// The next waypoint's forward has to point along the way to the destination as well.
+// The path find search then has to connect the pirate to the jump point, and the next waypoint
+// to the destination; the latter failing costs 1000 but does not rule the candidate out. The
+// lowest score wins, and the scan stops as soon as a candidate that reaches the destination
+// beats the best score so far.
+// The winner's current waypoint (0x180) decides: only if it still resolves does the pirate get
+// the jump point's translation as its destination, its id (0xb14), its jump apex (0x158 ->
+// 0xaf8) and the current waypoint's translation (0xafc).
 bool CSpacePirate::BounceFind(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::BounceFind trigger (fn_72_602C)");
-  return false;
+  CSpacePirate* self = const_cast< CSpacePirate* >(this);
+  bool result = false;
+  float bestScore = FLT_MAX;
+  const CScriptAiJumpPoint* best = nullptr;
+  const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptAiJumpPoint* jumpPoint = TCastToConstPtr< CScriptAiJumpPoint >(list[i]);
+    if (jumpPoint == nullptr || !jumpPoint->GetActive() || jumpPoint->GetInUse(GetUniqueId()) ||
+        jumpPoint->GetType() != 0 || jumpPoint->GetJumpTarget() == kInvalidUniqueId ||
+        jumpPoint->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f toJump = jumpPoint->GetTranslation() - GetTranslation();
+    const float distSq = toJump.MagSquared();
+    if (distSq >= bestScore) {
+      continue;
+    }
+    if (CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) <= 0.f) {
+      continue;
+    }
+    const CScriptWaypoint* waypoint =
+        TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(jumpPoint->GetJumpTarget()));
+    if (waypoint == nullptr) {
+      continue;
+    }
+    const CVector3f toDest = mDestPos - waypoint->GetTranslation();
+    float score = distSq + toDest.MagSquared() + 9.f * toDest.GetZ() * toDest.GetZ();
+    if (score >= bestScore) {
+      continue;
+    }
+    if (CVector3f::Dot(waypoint->GetTransform().GetForward(), toDest) <= 0.f) {
+      continue;
+    }
+    if (self->GetSearchPath()->PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
+        CPathFindSearch::kR_Success) {
+      continue;
+    }
+    bool reachesDest = false;
+    if (self->GetSearchPath()->PathExists(waypoint->GetTranslation(), mDestPos) !=
+        CPathFindSearch::kR_Success) {
+      score += 1000.f;
+    } else {
+      reachesDest = true;
+    }
+    if (score >= bestScore) {
+      continue;
+    }
+    bestScore = score;
+    best = jumpPoint;
+    if (reachesDest) {
+      break;
+    }
+  }
+  if (best != nullptr) {
+    const CScriptWaypoint* waypoint =
+        TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(best->GetJumpPoint()));
+    if (waypoint != nullptr) {
+      self->SetDestPos(best->GetTranslation());
+      result = true;
+      self->xb14_jumpPoint = best->GetUniqueId();
+      self->xaf8_jumpHeight = best->GetJumpApex();
+      self->xafc_patrolDestPos = waypoint->GetTranslation();
+    }
+  }
+  TraceCall(*this, "BounceFind trigger", result ? 1 : 0);
+  return result;
 }
 
 // @ fn_72_55B8
