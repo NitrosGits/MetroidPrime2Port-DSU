@@ -1836,6 +1836,162 @@ void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, con
                           CSfxManager::kMedPriority);  // 0x1C3C
 }
 
+// The seven locators the portal actor looks for the player in (lbl_16_rodata_200): the eighth
+// tentacle's spines.
+static const char* const skWarpPortalStabLocators[7] = {
+    "eight_Spine_1", "eight_Spine_2", "eight_Spine_3", "eight_Spine_4",
+    "eight_Spine_5", "eight_Spine_6", "eight_Spine_7"};
+
+// fn_16_1720 (0x1720..0x18E8, 0x1C8): the "Attack Tip" warp portal's constructor.
+//   The base call (0x1848): CPhysicsActor with the uid, the name, the entity info, the flag 0,
+//     the transform, the model data, an empty material list (the retail's sp+0x20 and sp+0x24),
+//     the bounding box, the mover data, the actor parameters and the default step data.
+//   The bounding box (0x1800): the corners (-2.0f, -2.0f, -2.0f) (lbl_16_rodata_3B8) and
+//     (2.0f, 2.0f, 2.0f) (lbl_16_rodata_3B0).
+//   The mover data (0x17F8, fn_16_18E8): the zero velocity, the identity angular velocity, the
+//     zero momentum, the identity and the mass 1.0f.
+//   The module's own fields (0x185C..0x18D0): the timer 0.0f (the guest 0x2D0), the invalid
+//     effect id (0x2D4), the hit flag 0 (0x2D6), the portal's effect asset (0x2D8), the stab
+//     damage (0x2DC..0x2F6) and the two warp sounds (0x2F8 and 0x2FA).
+CEmperorIngStage1WarpPortal::CEmperorIngStage1WarpPortal(
+    TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
+    const CModelData& modelData, const CActorParameters& actParms, CAssetId portalEffect,
+    const CDamageInfo& stabDamage, ushort warpSound, ushort warpSound2)
+: CPhysicsActor(uid, name, info, 0, xf, modelData, CMaterialList(),
+                CAABox(CVector3f(-2.f, -2.f, -2.f), CVector3f(2.f, 2.f, 2.f)),
+                SMoverData(1.f, CVector3f::Zero(), CAxisAngle::Identity(), CVector3f::Zero(),
+                           CAxisAngle::Identity()),
+                actParms, CPhysicsActor::skDefaultStepData)
+, mTimer(0.f)                  // guest 0x2D0, 0x185C
+, mEffectId(kInvalidUniqueId)   // guest 0x2D4, 0x1878
+, mHit(0)                      // guest 0x2D6, 0x187C
+, mPortalEffect(portalEffect)  // guest 0x2D8, 0x1880
+, mStabDamage(stabDamage)      // guest 0x2DC, 0x1884
+, mWarpSound(warpSound)        // guest 0x2F8, 0x18CC
+, mWarpSound2(warpSound2)      // guest 0x2FA, 0x18D0
+{}
+
+// fn_16_0 (0x0..0x38): the portal's destructor - it puts the vtable back
+// (lbl_16_data_27C, 0x28) and calls the base's own (0x30); the host's default does both.
+CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;
+
+// fn_16_1150 (0x1150..0x1574, 0x424): the portal's think.
+//   0x1194: the model's animation data gets its flag byte's bit 24 (the byte's 0x80) set; the
+//     host's CAnimData has no member for that byte, so the port leaves it out.
+//   0x11B0: the base's own think.
+//   0x11B4: the portal's timer (the guest 0x2D0) counts up and past 0.75f (lbl_16_rodata_3A4,
+//     0x11CC) the portal goes inactive (0x11E0).
+//   0x1214: while the "Whole Body" animation is still running (IsAnimTimeRemaining with the
+//     tolerance dt - 0.00000011920929f, lbl_16_rodata_3A8) the portal does nothing more; when
+//     it is over the portal goes inactive (0x1258) and its effect (the guest 0x2D4) gets the
+//     emitter for the second warp sound (the guest 0x2FA, 0x135C) and the "ACTV" message
+//     (0x12C0) - but only while the effect is active (the byte at the effect's +0x20, 0x1290).
+//   0x131C: past 5.0f (lbl_16_rodata_3AC) the portal asks to be deleted.
+//   0x1348: the animation is updated.
+//   0x1360: the portal hits the player once: the player's touch bounds against the boxes around
+//     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
+//     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
+void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
+  CActor::Think(dt, mgr);  // 0x11B0
+  mTimer += dt;             // 0x11B4
+  if (mTimer > 0.75f) {     // 0x11CC, lbl_16_rodata_3A4
+    SetActive(false);        // 0x11E0
+  }
+  // 0x11EC: the model data and its animation data have to be there.
+  if (ModelData() != nullptr && ModelData()->AnimationData() != nullptr) {  // 0x11F4, 0x1200
+    // 0x1214: the "Whole Body" animation is over?
+    if (!AnimationData()->IsAnimTimeRemaining(dt - 0.00000011920929f,
+                                              rstl::string_l("Whole Body"))) {
+      SetActive(false);  // 0x1258
+      // 0x1270: the portal's effect (the guest 0x2D4).
+      CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(mEffectId));
+      if (effect != nullptr && effect->GetActive()) {  // 0x128C, 0x1290: the retail's own tests
+        // 0x135C: the emitter for the second warp sound at the effect's own place.
+        CSfxManager::AddEmitter(mWarpSound2, effect->GetTranslation(),
+                                effect->GetCurrentAreaId().Value(), true, false,
+                                CSfxManager::kMedPriority);
+        // 0x12C0: the effect gets the "ACTV" message.
+        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mEffectId, kSM_Activate));
+      }
+    }
+  }
+  if (mTimer > 5.f) {  // 0x131C, lbl_16_rodata_3AC
+    mgr.DeleteObjectRequest(GetUniqueId());  // 0x1344
+  }
+  UpdateAnimation(dt, mgr, true);  // 0x1348
+  // 0x1360: the portal hits the player only once.
+  if (mHit == 0) {
+    const rstl::optional_object< CAABox > bounds = mgr.GetPlayer(0)->GetTouchBounds();  // 0x136C
+    if (bounds) {
+      for (int i = 0; i < 7; ++i) {  // 0x13E4
+        const CVector3f pos = GetTransform() * GetLocatorTransform(
+                                                    rstl::string_l(skWarpPortalStabLocators[i]))
+                                                  .GetTranslation();  // 0x1408
+        const CAABox box(pos - CVector3f(2.f, 2.f, 2.f), pos + CVector3f(2.f, 2.f, 2.f));
+        if (box.DoBoundsOverlap(*bounds)) {  // 0x148C
+          mHit = 1;                           // 0x14A0
+          // 0x151C: the stab damage (the material filter is the retail's include mask
+          // 0x000000EC00000003 with the exclude empty and the type kFT_IncludeExclude).
+          mgr.ApplyDamage(GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), GetUniqueId(),
+                          mStabDamage,
+                          CMaterialFilter(CMaterialList(0x03000000EC000003ULL), CMaterialList(),
+                                          CMaterialFilter::kFT_IncludeExclude),
+                          CVector3f::Zero());
+          break;
+        }
+      }
+    }
+  }
+}
+
+// fn_16_1574 (0x1574..0x1720, 0x1AC): the portal's script messages.
+//   kSM_Create (0x58435254, 0x15AC): the portal's effect (the guest 0x2D8) is created in this
+//     actor's area (fn_16_9BE8, 0x15D8) and its id is kept (0x15E8); the effect takes this
+//     actor's transform (0x1608) and hears "ACTV" (0x1620), and the emitter for the first warp
+//     sound (the guest 0x2F8) is put at the effect's place (0x1678). The actor's colour
+//     (0x16A0) is set to white with the alpha 0x80.
+//   kSM_Delete (0x5844454C, 0x157C): the effect is deleted (0x1700).
+void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
+  switch (msg.GetMessage()) {
+    case kSM_Create: {
+      mEffectId = CEmperorIngStage1::CreateWarpPortalEffect(mgr, mPortalEffect,
+                                                             GetCurrentAreaId());  // 0x15D8
+      // 0x15E0: the effect is looked up.
+      CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(mEffectId));
+      if (effect != nullptr) {  // 0x1600: the retail's own test
+        effect->SetTransform(GetTransform());  // 0x1608
+        // 0x1620: the effect gets the "ACTV" message.
+        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mEffectId, kSM_Activate));
+        // 0x1668: the emitter for the first warp sound at the effect's own place.
+        CSfxManager::AddEmitter(mWarpSound, effect->GetTranslation(),
+                                effect->GetCurrentAreaId().Value(), true, false,
+                                CSfxManager::kMedPriority);
+      }
+      // 0x169C: the actor's colour (the guest 0xFC) is white with the alpha 0x80.
+      SetModelColor(CColor(1.f, 1.f, 1.f, 0.5f));
+      break;
+    }
+    case kSM_Delete:
+      // 0x16F0: the effect is deleted.
+      mgr.DeleteObjectRequest(mEffectId);
+      break;
+    default:
+      break;
+  }
+}
+
+// fn_16_1088 (0x1088..0x1150, 0xC8): the portal's render. The plane is the transform's Y
+// column (the guest 0x28/0x38/0x48) as the normal and the position's dot with it as the
+// constant (0x10C4..0x111C); the model data's world space portal plane takes it (0x1128) and
+// the base's own render follows (0x1134). The retail's first call (the renderer's vtable slot
+// 16 with the transform, 0x10A8) is the base's own work.
+void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
+  const CVector3f normal = GetTransform().GetColumn(kDY);  // 0x10C4
+  const CPlane plane(GetTranslation(), CUnitVector3f(normal));  // 0x10E0
+  GetModelData()->SetupWorldSpacePortalPlane(GetTransform(), plane);  // 0x1128
+  CPhysicsActor::Render(mgr);  // 0x1134
+}
+
 // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag byte gets its
 // bit 3 (0x08) cleared (the rlwimi at 0x1980), the joint's position is the zero vector and its up
 // vector the up vector (0x1990..0x19C0), and the portal's effect (the joint's id, 0x19C4) hears
@@ -2503,16 +2659,22 @@ void CEmperorIngStage1::GetWarpPortalPlacement(CStateManager& mgr, CVector3f& po
   lookAt = CVector3f::Zero();  // 0x6404
 }
 
-// fn_16_1720 (0x1720..0x18E8, 0x1C8): the module's own CPhysicsActor subclass - the "Attack
-// Tip" portal actor (its vtable lbl_16_data_27C, the portal's effect at the guest 0xC00, the
-// warp stab damage and the two warp sounds). It is over the slice's 0x80 line, so it stays a
-// stand-in: no portal actor is created and the state manager gets no new object (0x6670).
+// The module's own CPhysicsActor subclass - the "Attack Tip" portal actor (the retail's vtable
+// lbl_16_data_27C, the portal's effect at the guest 0xC00, the warp stab damage and the two warp
+// sounds). It is created with the id the state manager hands out (0x661C), the name "Attack
+// Tip" (the string at lbl_16_rodata_41C's 0x665), the entity info (this actor's area, no
+// connections, not active and no editor id), the transform, the model data, the actor
+// parameters, the portal's effect asset, the warp stab damage and the two warp sounds; the
+// state manager takes it (0x6670).
 void CEmperorIngStage1::CreateWarpPortalActor(CStateManager& mgr, const CModelData& modelData,
                                                const CTransform4f& xf) {
-  StandInFn("fn_16_1720");
-  (void)mgr;
-  (void)modelData;
-  (void)xf;
+  CEmperorIngStage1WarpPortal* portal = rs_new CEmperorIngStage1WarpPortal(
+      mgr.AllocateUniqueId(), rstl::string_l("Attack Tip"),  // 0x660C
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, false), xf,  // 0x65F4
+      modelData, CActorParameters(), mWarpPortalEffect, mWarpStabDamage, mWarpSound, mWarpSound2);
+  if (portal != nullptr) {  // 0x6668: the retail's own test
+    mgr.AddObject(portal);  // 0x6670
+  }
 }
 
 // fn_16_5DBC (0x5DBC..0x601C, 0x260): the state "TauntAttack" - the taunt's own timer (the

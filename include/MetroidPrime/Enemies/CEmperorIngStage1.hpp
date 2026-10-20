@@ -11,6 +11,7 @@
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
+#include "MetroidPrime/CPhysicsActor.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
@@ -38,6 +39,34 @@ class CParticleGenInfo;
 // objects outgrow retail, so the class is allocated with sizeof, not with 0xD18.
 #ifdef TARGET_PC
 class CEmperorIngStage1;
+
+// The module's own CPhysicsActor subclass (the retail's lbl_16_data_27C): the "Attack Tip"
+// warp portal actor that the boss's warp attack puts in the world (fn_16_1720). The retail's
+// object is 0x300 bytes; the members below carry the guest offsets of its own fields.
+class CEmperorIngStage1WarpPortal : public CPhysicsActor {
+public:
+  CEmperorIngStage1WarpPortal(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                              const CTransform4f& xf, const CModelData& modelData,
+                              const CActorParameters& actParms, CAssetId portalEffect,
+                              const CDamageInfo& stabDamage, ushort warpSound, ushort warpSound2);
+  ~CEmperorIngStage1WarpPortal() override;
+
+  // CEntity
+  void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
+
+  // CActor
+  void Render(const CStateManager& mgr) const override;
+
+private:
+  float mTimer;            // guest 0x2D0: the portal's timer
+  TUniqueId mEffectId;     // guest 0x2D4: the portal's effect
+  uchar mHit;              // guest 0x2D6: the portal has already hit the player
+  CAssetId mPortalEffect;  // guest 0x2D8: the effect's asset
+  CDamageInfo mStabDamage; // guest 0x2DC: the warp stab damage
+  ushort mWarpSound;       // guest 0x2F8: the portal's sound
+  ushort mWarpSound2;      // guest 0x2FA: the second portal's sound
+};
 
 // One tentacle slot, the module's own joint description (the retail element is 0x48 bytes, eight
 // of them at guest 0x7D8; the member names are guesses from what the code does with them).
@@ -147,6 +176,10 @@ public:
   void Taunt(CStateManager& mgr, EStateMsg msg, float dt);            // fn_16_5C4C
   void JumpRope(CStateManager& mgr, EStateMsg msg, float dt);         // fn_16_5928
 
+  // fn_16_9BE8 (0x9BE8..0x9E48, 0x260): the tentacle's portal effect is created; the id of the
+  // new effect is returned. The portal actor (fn_16_1574) creates one too.
+  static TUniqueId CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId, TAreaId area);
+
   // Codes (lbl_16_data_220, 3 entries).
   void BeginSubStage(CStateManager& mgr, float dt);             // fn_16_4AE8
   void ResetTentacles(CStateManager& mgr, float dt);            // fn_16_4A04
@@ -255,9 +288,6 @@ private:
   // 0x6364 / 0x6458: where the warp portal appears - the random point around the player's eye
   // position or the ground point under the player - and where it looks.
   void GetWarpPortalPlacement(CStateManager& mgr, CVector3f& pos, CVector3f& lookAt) const;
-  // fn_16_9BE8 (0x9BE8..0x9E48, 0x260): the tentacle's portal effect is created; the id of the
-  // new effect is returned.
-  TUniqueId CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId, TAreaId area);
   // fn_16_1720 (0x1720..0x18E8): the module's own CPhysicsActor subclass - the "Attack Tip"
   // portal actor. It is over the slice's 0x80 line, so it stays a stand-in.
   void CreateWarpPortalActor(CStateManager& mgr, const CModelData& modelData,
