@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `eb70c09ff` (67/241) | wire 1C94/1C5C from 531C, partials 4E44/3AA8/7F8C |
 | MinorIng (worker) | `ses_ea4b655d7ffemJG6HbGz0X0L4Y` | minoring @ `355d342b6` (grenade + spawn data, loader/ctor split, ~114/217) | ctor 9D58 + loader 110 match retail, inglet spawn 7058 in an area with inglets |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (worker) | `ses_ea4cb43f2ffeaXkuPmYP1pHWd9` | darksamus2 @ `02effdf2a` (MP2_DS_FSM probe; F920/F924/F864 marked) | FE18 branches, TravelToCoverPoints 1DF74 + its triggers |
+| DarkSamus (worker) | `ses_ea47840e3ffekauUt17vDT7mEh` | darksamus2 @ `c178d78be` (probe; F920/F924/F864 marked; FE18 taunt path stalls on AnimOver) | FE18 anim state, TravelToCoverPoints triggers (FD30, BBE4, 11158, 10698, 14284, …) |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
