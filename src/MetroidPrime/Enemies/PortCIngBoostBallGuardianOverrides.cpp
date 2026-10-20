@@ -474,6 +474,7 @@ CVector3f CIngBoostBallGuardian::GetAimPosition(const CStateManager& mgr, float 
     aim = PredictMotion(dt).GetTranslation(); // 0x0000D060, fn_30_D1C4 copies it
   }
   if (mCollarSegId == CSegId::Invalid()) { // 0x0000D080: cmplwi 0xff
+    // Unreachable here: the ctor always finds Collar_SDK in this module's model.
     return CPatterned::GetAimPosition(mgr, dt); // 0x0000D148
   }
   // 0x0000D0A0..0x0000D0BC: the locator's transform composed with the actor's (0x24); the model

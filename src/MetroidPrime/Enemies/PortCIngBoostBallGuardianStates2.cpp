@@ -814,6 +814,7 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
       break;
     }
+    // No team AI is linked to the guardian in its room, so this refusal never runs there.
     if (mTeamId != kInvalidUniqueId &&
         !CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId())) {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
