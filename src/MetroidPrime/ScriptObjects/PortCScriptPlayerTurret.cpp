@@ -16,16 +16,23 @@
 #include "MetroidPrime/ScriptObjects/CScriptPlayerTurret.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Input/CFinalInput.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CAnimPlaybackParms.hpp"
+#include "MetroidPrime/CControlMapper.hpp"
+#include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrPlayerTurret.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include <math.h>
 #include <stdio.h>
 
 namespace {
@@ -49,6 +56,16 @@ void StandIn(const char* what) {
 ushort TranslateSfx(int id) {
   return CSfxManager::TranslateSFXID(id == -1 ? CSfxManager::kInternalInvalidSfxId
                                              : static_cast< ushort >(id));
+}
+
+// The difference of two analog inputs is clamped to -1..1: the magnitude is compared with 1.0
+// (lbl_63_rodata_10) and the value keeps its sign (lbl_63_rodata_1C = -1). The turret's input
+// path uses it at 0x00001310 and 0x0000137C.
+float ClampAxis(float value) {
+  if (fabs(value) > 1.f) {
+    return value >= 0.f ? 1.f : -1.f;
+  }
+  return value;
 }
 
 } // namespace
@@ -96,16 +113,22 @@ CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name
 , mUnknown1A4(0)                                // guest 0x1A4
 , mUnknown1A8(0)                                // guest 0x1A8
 , mUnknown1AC(0)                                // guest 0x1AC
-, mHorizRotation(0.f)                           // guest 0x1B0
-, mVertRotation(0.f)                            // guest 0x1B4
+, mPitchTarget(0.f)                           // guest 0x1B0
+, mPitch(0.f)                            // guest 0x1B4
 , mUnknown1B8(0.f)                              // guest 0x1B8
 , mUnknown1BC(0.f)                              // guest 0x1BC
 , mUnknown1C0(0.f)                              // guest 0x1C0
 , mBaseForward(xf.GetForward())                 // guest 0x1C4
-, mUnknown1D0(0.f)                              // guest 0x1D0
-, mLightColor(CColor(1.f, 1.f, 1.f, 1.f))       // guest 0x1D4
+, mYawTarget(0.f)                              // guest 0x1D0
+// guest 0x1D4: the model flags the base actor had: the colour (1, 1, 1, 1) from the CColor
+// constructor at 0x00003348, the blend mode 0 and the material set 0 and the flags 3 from the
+// stack slots the constructor fills at 0x0000333C..0x00003344.
+, mModelFlags(CModelFlags(CModelFlags::kT_Opaque, CColor(1.f, 1.f, 1.f, 1.f)))
 , mWeaponEffect(weaponEffect)                   // guest 0x1E0
 , mWeaponEffectMulti(weaponEffectMultiPlayer)   // guest 0x1E4
+// guest 0x1E8: the empty token of fn_63_349C (0x00003384); the host's null pointer is the
+// same thing, an object reference with no object in it.
+, mToken(nullptr)
 , mWeaponDamage(weaponDamage)                   // guest 0x1F0
 , mUnknown20C(0.f)                              // guest 0x20C
 , mTargetPosition(xf.GetTranslation())          // guest 0x210
@@ -139,21 +162,29 @@ void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
 // vtable slot 6 = fn_63_1BE8 (0x784): the turret's script messages.
 //
 // Retail switches on the message's four-character code (the comparison tree at 0x1BE8..0x1C9C)
-// and every case ends in CActor::AcceptScriptMsg (0x2348). The three cases ported here are
-// retail's, in retail's order:
+// and every case ends in CActor::AcceptScriptMsg (0x2348). The cases ported here are retail's, in
+// retail's order:
 //
+//   kSM_Create     (0x58435254, asm 0x1C9C): the hull's model token.
 //   kSM_Activate   (0x41435456, asm 0x1DA4): the player enters the turret.
 //   kSM_Deactivate (0x44435456, asm 0x1F58): the player leaves it.
 //   kSM_Start      (0x53545254, asm 0x1FB0): the turret starts; its top actor becomes solid.
-//
-// The other four cases are still stand-ins and fall through to CActor::AcceptScriptMsg:
-// kSM_Create (0x58435254, asm 0x1C9C, 0x108 bytes: the hull's model token), kSM_Stop
-// (0x53544F50, asm 0x2008, 0x23C bytes: the player is ejected and killed), kSM_AreaLoaded
-// (0x58414C44, asm 0x2244: fn_63_15B0, 0x3C4 bytes, of which only the two connections are
-// ported) and kSM_Damage (0x58444D47, asm 0x224C, 0xFC bytes: the damage flash and the impact
-// sound).
+//   kSM_Stop       (0x53544F50, asm 0x2008): the player is ejected and killed.
+//   kSM_AreaLoaded (0x58414C44, asm 0x2244): the hull's actors (only the two connections of
+//                                               fn_63_15B0 are ported).
+//   kSM_Damage     (0x58444D47, asm 0x224C): the damage flash and the impact sound.
 void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
+  case kSM_Create: {
+    // 0x1CA0: the multi-player weapon effect (0x1E4) in multiplayer, the single-player one
+    // (0x1E0) otherwise.
+    const CAssetId effect = mgr.IsMultiplayer() ? mWeaponEffectMulti : mWeaponEffect;
+    // 0x1CC0: the resource type of that asset.
+    const FourCC type = gpResourceFactory->GetResourceTypeById(effect);
+    // 0x1CF0: its token becomes the turret's own token (0x1E8).
+    mToken = rs_new CToken(gpSimplePool->GetObj(SObjectTag(type, effect)));
+    break;
+  }
   case kSM_Activate: {
     // 0x1DA4: the message's originator (the guest's message + 0x2) is the player that entered
     // the trigger; the turret remembers it as its player.
@@ -168,8 +199,8 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
       mPlayerInTurret = true;
     }
     // 0x1E30: both rotations start at zero.
-    mVertRotation = 0.f;
-    mHorizRotation = 0.f;
+    mPitch = 0.f;
+    mPitchTarget = 0.f;
     // 0x1E38: the base actor (0x198) and the top actor (0x19A).
     CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
     CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
@@ -223,10 +254,100 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     AddMaterial(kMT_Orbit, mgr);
     break;
   }
+  case kSM_Stop: {
+    // 0x2008: only an active turret stops (the guest's byte 0x20 is CEntity's active flag).
+    if (!GetActive()) {
+      break;
+    }
+    // 0x201C: the turret loses the orbit material (0x29).
+    RemoveMaterial(kMT_Orbit, mgr);
+    // 0x2020: the base actor (0x198) gets the turret's saved model flags back (the guest's
+    // 0x1D4..0x1DC).
+    CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+    if (base != nullptr) {
+      // 0x2040
+      base->SetModelFlags(mModelFlags);
+    }
+    // 0x2068: the player that was in the turret.
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+    if (player == nullptr) {
+      // 0x2228: no player, so the turret is only deactivated.
+      SetActive(false);
+      break;
+    }
+    // 0x209C: the player is ejected from the turret.
+    player->EjectFromTurret(GetUniqueId(), mgr);
+    // 0x20C4: and killed by the hull: the hull actor id is 0x220.
+    mgr.KillPlayer(player->GetHealthInfo()->GetHP(), mPlayerId, mHullActorId);
+    // 0x20C8: the player is no longer in the turret.
+    mPlayerInTurret = false;
+    // 0x20EC: and the turret has no player any more.
+    mPlayerId = kInvalidUniqueId;
+    // 0x20F0: the base actor and the top actor (0x19A) again.
+    base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+    CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
+    if (base != nullptr) {
+      // 0x2124: both rotations start at zero.
+      mPitch = 0.f;
+      mPitchTarget = 0.f;
+      if (top != nullptr) {
+        // 0x213C: the base actor keeps its own position but takes the turret's rotation.
+        const CVector3f position = base->GetTranslation();
+        base->SetTransform(GetTransform());
+        base->SetTranslation(position);
+        // 0x216C: the base actor's animation data.
+        CAnimData* animData = base->AnimationData();
+        // 0x2178: the two additive animations (0x19C and 0x1A0) at weight zero.
+        animData->AddAdditiveAnimation(mAnimId1, 0.f, false, false);
+        animData->AddAdditiveAnimation(mAnimId2, 0.f, false, false);
+        // 0x21D4: the animation data's flag byte at 0x2AC loses bit 0x40 (the loop flag) and
+        // gains bit 0x80 (the animating flag) - the host's EnableLooping does both.
+        animData->EnableLooping(false);
+        // 0x21F0: the turret's own animation (0x1AC) plays: the id, -1, the weight 1.0 and
+        // "animating".
+        animData->SetAnimation(CAnimPlaybackParms(mUnknown1AC, -1, 1.f, true), true);
+      }
+    }
+    // 0x2228: the turret is deactivated.
+    SetActive(false);
+    break;
+  }
   case kSM_AreaLoaded: {
     // 0x2244: fn_63_15B0 (0x3C4 bytes) - the hull's base and top actors and its five animation
     // ids. Only its two connections are ported (see LoadHullActors).
     LoadHullActors(mgr);
+    break;
+  }
+  case kSM_Damage: {
+    // 0x2254: the damage flash timer (lbl_63_rodata_20 = 0.15).
+    mUnknown20C = 0.15f;
+    if (mgr.IsMultiplayer()) {
+      // 0x2268: the player in the turret.
+      CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+      if (player != nullptr) {
+        // 0x22BC: the multi-player impact sound (0x226) at the player's sound pan.
+        CSfxManager::SfxStart(mSfxMultiPlayerImpact, 0x7f,
+                              player->GetSoundPan(CPlayer::kMSP_Player), CSfxManager::kAllAreas,
+                              false, false, CSfxManager::kMedPriority);
+      }
+    } else {
+      // 0x22E4: the single-player impact sound (0x224) as an emitter at the turret's target
+      // position (0x210), in the turret's own area.
+      CSfxManager::AddEmitter(mSfxSinglePlayerImpact, mTargetPosition, GetCurrentAreaId().Value(),
+                              true, false, CSfxManager::kMedPriority);
+    }
+    // 0x22E8: the damaged actor - the message's sender - gives the hull actor id.
+    const CActor* damaged = TCastToConstPtr< CActor >(mgr.GetObjectById(msg.GetSenderId()));
+    if (damaged != nullptr) {
+      const CHealthInfo* health = damaged->GetHealthInfo();
+      if (health != nullptr) {
+        // 0x2338: the owner of the last damage (the guest's CHealthInfo + 0x18).
+        mHullActorId = health->GetLastDamageOwner();
+      } else {
+        // 0x2344: the message's originator.
+        mHullActorId = msg.GetOriginator();
+      }
+    }
     break;
   }
   default:
@@ -258,8 +379,18 @@ void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
 void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   // 0x15E4: the base actor is the turret's "AttachedAnimatedObject" connection.
   mBaseActorId = FindConnectedObject(mgr, kSS_AttachedAnimatedObject, kSM_Attach);
-  // The base actor's animation database gives the five animation ids (0x19C..0x1AC) and the
-  // light colour (0x1D4..0x1DC); that part of fn_63_15B0 is still a stand-in.
+  // 0x1608: the base actor itself.
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  // 0x161C: the base actor's animation data; the guest reads the model pointer without a test
+  // (a port limit: the host allows an actor without a model).
+  if (base != nullptr && base->GetModelData() != nullptr &&
+      base->GetModelData()->GetAnimationData() != nullptr) {
+    // 0x1918: the base actor's model flags (the guest's 0xFC..0x104) become the turret's saved
+    // copy (0x1D4..0x1DC), which the stop message hands back.
+    mModelFlags = base->GetModelFlags();
+  }
+  // The base actor's animation database gives the five animation ids (0x19C..0x1AC); that part of
+  // fn_63_15B0 is still a stand-in.
   StandIn("fn_63_15B0 (the hull's animation ids)");
   // 0x1930: the top actor is the turret's "AttachedCollisionObject" connection.
   mTopActorId = FindConnectedObject(mgr, kSS_AttachedCollisionObject, kSM_Attach);
@@ -326,7 +457,88 @@ void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
 
 // fn_63_1134 (0x32C): the player's aim while in the turret.
 void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
-  StandIn("fn_63_1134 (CScriptPlayerTurret::ProcessInput)");
+  // 0x1154: the player in the turret (0x188) and the base actor (0x198).
+  CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (player == nullptr || base == nullptr) {
+    return;
+  }
+  // 0x1198: the player's turret state (the guest's player + 0x12F8) has to be 3 (kTS_Active).
+  const CControlMapper& mapper = player->GetControlMapper();
+  if (player->GetTurretState() == CPlayer::kTS_Active) {
+    // 0x11AC: the reload timer (0x1B8) counts down.
+    if (mUnknown1B8 > 0.f) {
+      // 0x11BC: the guest's input + 0 is the frame time.
+      mUnknown1B8 -= input.DeltaTime();
+      // 0x11C4: the base actor's animation data; the guest reads the model pointer without a
+      // test (a port limit: the host allows an actor without a model).
+      CAnimData* animData =
+          base->GetModelData() != nullptr ? base->AnimationData() : nullptr;
+      if (animData != nullptr) {
+        // 0x11D4: the time left of the "Whole Body" animation (lbl_63_rodata_60 + 0x1B).
+        if (animData->GetAnimTimeRemaining("Whole Body") <= 0.f) {
+          // 0x1220: the animation data's flag byte at 0x2AC gains bit 0x40 (the loop flag) and
+          // bit 0x80 (the animating flag) - the host's EnableLooping does both.
+          animData->EnableLooping(true);
+          // 0x125C: the turret's animation (0x1A8) plays: the id, -1, the weight 1.0 and
+          // "animating".
+          animData->SetAnimation(CAnimPlaybackParms(mUnknown1A8, -1, 1.f, true), false);
+        }
+      }
+    }
+    // 0x1294: the beam is fired.
+    if (player->FireBeamPressed(input)) {
+      // 0x12A8: only when the reload timer is over.
+      if (mUnknown1B8 == 0.f) {
+        // 0x12C0: fn_63_84C fires the turret's shot.
+        FireTurretShot(mgr);
+        // 0x12CC: the reload timer is the fire rate (0x194).
+        mUnknown1B8 = mFireRate;
+      }
+    }
+    // 0x12D4: the turn axis: the guest's commands 4 and 3 (turn right and turn left).
+    float yaw = mapper.GetAnalogInput(CControlMapper::kC_TurnLeft, input,
+                                      CControlMapper::kFT_Filtered) -
+                mapper.GetAnalogInput(CControlMapper::kC_TurnRight, input,
+                                      CControlMapper::kFT_Filtered);
+    // 0x1300: the difference is clamped to -1..1.
+    yaw = ClampAxis(yaw);
+    // 0x1334: the yaw the input asks for.
+    mYawTarget = yaw;
+  }
+  // 0x1338: the pitch axis: the guest's commands 1 and 2 (forward and backward).
+  float pitch = mapper.GetAnalogInput(CControlMapper::kC_Backward, input,
+                                      CControlMapper::kFT_Filtered) -
+                mapper.GetAnalogInput(CControlMapper::kC_Forward, input,
+                                      CControlMapper::kFT_Filtered);
+  // 0x1364: the difference is clamped to -1..1.
+  pitch = ClampAxis(pitch);
+  // 0x1398: with the Y axis inverted (the guest's game state byte 0xA4, bit 0x40) the two
+  // commands swap.
+  if (gpGameState->GameOptions().GetInvertYAxis()) {
+    // 0x13B4
+    pitch = mapper.GetAnalogInput(CControlMapper::kC_Forward, input,
+                                  CControlMapper::kFT_Filtered) -
+            mapper.GetAnalogInput(CControlMapper::kC_Backward, input,
+                                  CControlMapper::kFT_Filtered);
+    // 0x13F0
+    pitch = ClampAxis(pitch);
+  }
+  // 0x1418: the pitch is scaled by the elevation limits: down for a negative input, up for a
+  // positive one.
+  if (pitch < 0.f) {
+    // 0x1428
+    mPitchTarget = pitch * mMaxVertElevationUp;
+  } else {
+    // 0x1438
+    mPitchTarget = pitch * mMaxVertElevationDown;
+  }
+}
+
+// fn_63_84C (0x184): the turret's shot. Too big for this slice: it stays a stand-in that logs
+// once.
+void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
+  StandIn("fn_63_84C (the turret's shot)");
 }
 
 // fn_63_840 (0xC): the actor the turret HUD reads the hull's health from.
