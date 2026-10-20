@@ -449,3 +449,23 @@ Open points before it can be written:
    `SetIngPossessed(bool, float, CStateManager&)` (the command module does not override it), so
    the call is the host's CPatterned virtual with (true, 0.0f, mgr) - the retail passes
    lbl_75_rodata_390 (0.0f) as the duration.
+
+#### fn_75_6490 (0xBC) - the command module's Think
+
+The body: the active gate (the byte at 0x20, 0x64B4 `lbz` and 0x64B8 `extrwi` bit 24 - the byte's
+0x80), `CPatterned::Think` (0x64C0), the collision actor manager's update (the manager at 0xE58,
+0x64C8 `lwz`; the update options 0 at 0x64D0, which is `kUO_ObjectSpace`; 0x64D4 the update) and
+then the module's own six calls, in order:
+
+| call | fn | size |
+|---|---|---|
+| 0x64E0 | `fn_75_31A8` | 0x14C |
+| 0x64F0 | `fn_75_32F4` | 0x16C |
+| 0x64FC | `fn_75_3004` | 0x1A4 |
+| 0x650C | `fn_75_184C` | 0x128 |
+| 0x651C | `fn_75_1188` | 0x344 |
+| 0x652C | `fn_75_21FC` | 0x84 |
+
+All six are over 0x80, so none of them is ported in this slice: they are the retail's own per-frame
+updates (the line-of-sight tracker and the derived state the state machine reads), and the port
+keeps them as named once-logging stand-ins that return neutral values.
