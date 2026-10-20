@@ -16,6 +16,8 @@
 // stand-ins.
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
 
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -27,6 +29,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -161,6 +164,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , xFB6_(kInvalidUniqueId.value)
 , x10C4_(4)
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
+, x1080_(0)
 , x1082_(0)
 , x1168_(TUniqueId(0))
 , x11B8_(0)
@@ -170,6 +174,8 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
 , x128C_(0)
+, xE60_(nullptr) // 0xE60: the first collision actor manager (x61DC_ would build it)
+, xE64_(nullptr) // 0xE64: the second collision actor manager (x5C30_ would build it)
 , xE6C_() // 0xE6C: the leg model (x6864_ fills it in)
 , xEBC_() // 0xEBC: the shin model (x6864_ fills it in)
 , xF0C_() // 0xF0C: the knee model (x6864_ fills it in)
@@ -260,6 +266,17 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+  // fn_14_A5BC (0xCC bytes) then looks at the first collision actor manager (the load of
+  // guest 0xE60 at 0xA5F0): the retail builds both managers with fn_14_676C (the call at
+  // 0xA604) when that one is null, and updates them instead when it is not (the two
+  // CCollisionActorManager::Update calls at 0xA610 and 0xA620, with the options word 0).
+  // The trigger is not an animation event: it is the manager at guest 0xE60 being null.
+  if (xE60_ == nullptr) {
+    x676C_(mgr);
+  } else {
+    xE60_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+    xE64_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
 }
 
 // vtable slot 6 = fn_14_A6A8 (0x4F0), the biggest body function: it switches on the script
@@ -301,6 +318,51 @@ void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
       actor->SetActive(active);
     }
   }
+}
+
+// fn_14_3974 (0x58 bytes): the object with the id at guest 0x1080 (the halfword load at
+// 0x3988) is looked up (the ObjectById call at 0x3998) and its active flag is set (the virtual
+// call at 0x39B4, the vtable slot 0x1C, which is CEntity::SetActive) to the flag the third
+// argument carries (the clrlwi at 0x39A8, its low byte).
+void CDigitalGuardian::x3974_(CStateManager& mgr, bool active) {
+  CEntity* actor = mgr.ObjectById(TUniqueId(x1080_));
+  if (actor != nullptr) {
+    actor->SetActive(active);
+  }
+}
+
+// fn_14_61DC (0x590 bytes), fn_14_5C30 (0x2F4 bytes) and fn_14_59BC (0x274 bytes): the
+// collision actor managers' builders. They are over this slice's callee limit, so they are
+// named stand-ins: the managers at guest 0xE60 and 0xE64 stay null and the knee ids at
+// 0xFB0..0xFB6 keep their invalid value.
+void CDigitalGuardian::x61DC_(CStateManager& mgr) {
+  StandInFn("fn_14_61DC (the first collision actor manager builder, 0x590 bytes)");
+}
+
+void CDigitalGuardian::x5C30_(CStateManager& mgr) {
+  StandInFn("fn_14_5C30 (the second collision actor manager builder, 0x2F4 bytes)");
+}
+
+void CDigitalGuardian::x59BC_(CStateManager& mgr) {
+  StandInFn("fn_14_59BC (0x274 bytes)");
+}
+
+// fn_14_676C (0xF8 bytes): the collision actor managers' builder, in retail order: fn_14_61DC
+// (the call at 0x678C), fn_14_5C30 (0x6798), fn_14_59BC (0x67A4), fn_14_3974 (0x67B4, with the
+// third argument 0) and the material filter (the SetMaterialFilter call at 0x6844).
+void CDigitalGuardian::x676C_(CStateManager& mgr) {
+  x61DC_(mgr);
+  x5C30_(mgr);
+  x59BC_(mgr);
+  x3974_(mgr, false);
+  // The material filter: the retail builds it from the four .rodata words 0x470 (0x2F), 0x474
+  // (0x1C), 0x478 (0x20) and 0x46C (0x3B) with the MWCC helper __shl2i (the DOL's runtime
+  // shift helper), which for the call shape (0, 1, word) returns 1 << (word & 31) in both halves
+  // of the 64-bit pair. The include list is the fourth word's shift (0x08000000 in both halves)
+  // and the exclude list is the or of the first three (0x10008001 in both halves); the type
+  // word is 3, kFT_IncludeExclude.
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(CMaterialList(0x0800000008000000ULL),
+                                                        CMaterialList(0x1000800110008001ULL)));
 }
 
 // fn_14_A384 (vtable slot 9): the base's PreRender (the call at 0xA390) and nothing else.

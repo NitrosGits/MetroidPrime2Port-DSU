@@ -7,6 +7,7 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "rstl/optional_object.hpp"
 
+class CCollisionActorManager;
 class CElementGen;
 class CParticleGen;
 
@@ -271,6 +272,7 @@ private:
   u16 xFB6_;        // 0xFB6: a knee id, kInvalidUniqueId (fn_14_705C counts these)
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
+  u16 x1080_;       // 0x1080: the object id fn_14_3974 looks the object up with
   u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
@@ -285,6 +287,8 @@ private:
   // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
   // host class has its own layout. Each one is an optional: the guest's CModelData is 0x4C
   // bytes and the byte after it is the optional's valid flag, which the draws test.
+  CCollisionActorManager* xE60_; // 0xE60: the first collision actor manager (fn_14_61DC builds it)
+  CCollisionActorManager* xE64_; // 0xE64: the second collision actor manager (fn_14_5C30 builds it)
   // 0xE6C (0x4c, valid flag 0xEB8): the leg model, built by fn_14_6864 and drawn by
   // fn_14_1994 at the four knee locators.
   rstl::optional_object< CModelData > xE6C_;
@@ -336,6 +340,17 @@ private:
 
   // fn_14_3E88 (0x88 bytes): the knee colliders' active flag.
   void x3E88_(CStateManager& mgr, bool active);
+
+  // fn_14_3974 (0x58 bytes): the object with the id at guest 0x1080 gets its active flag set.
+  void x3974_(CStateManager& mgr, bool active);
+
+  // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
+  // calls - fn_14_61DC (0x590 bytes), fn_14_5C30 (0x2F4 bytes) and fn_14_59BC (0x274 bytes) -
+  // which are over the callee limit and stay stand-ins.
+  void x676C_(CStateManager& mgr);
+  void x61DC_(CStateManager& mgr);
+  void x5C30_(CStateManager& mgr);
+  void x59BC_(CStateManager& mgr);
 
   // fn_14_28D0 (0x158 bytes) and fn_14_2A28 (0x29C bytes): the beacon's arrival and its
   // effect update. Both are over this slice's callee limit, so they are stand-ins.

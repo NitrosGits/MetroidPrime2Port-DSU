@@ -1018,11 +1018,12 @@ function is still a stand-in.
 **Where the knee collision actors come from** (the retail's chain, and why the port cannot reach
 Crippled yet): the managers at 0xE60 and 0xE64 are **not** built by the constructor or by the
 AcceptScriptMsg - `fn_14_676C` (0xF8) builds them, and it is called from the module's
-`DoUserAnimEvent` (fn_14_A468, the call at 0xA604) when the animation asks for them. It calls
-`fn_14_61DC` (0x550, the manager at 0xE60) and `fn_14_5C30` (0x590, the manager at 0xE64), which
-build the joint collision descriptions; both are over this slice's ~0x200 limit, so they would
-be stand-ins and the managers would stay empty - and the knee actors themselves belong to the
-knee armour sub-actor (fn_14_4080, not ported), so the knee ids at 0xFB0..0xFB6 stay invalid.
+`Think` (fn_14_A5BC, the call at 0xA604) - see WP2 part 2m, which corrects the call site this
+section guessed. It calls `fn_14_61DC` (0x590, the manager at 0xE60) and `fn_14_5C30` (0x2F4,
+the manager at 0xE64), which build the joint collision descriptions; both are over this
+slice's ~0x200 limit, so they would be stand-ins and the managers would stay empty - and the
+knee actors themselves belong to the knee armour sub-actor (fn_14_4080, not ported), so the
+knee ids at 0xFB0..0xFB6 stay invalid.
 With no knee actor the helper that writes the word at 0x1284 (the one that also asks for the
 knee's deletion) has nothing to delete, the word stays -1, the `KneeDestroyed` trigger
 (fn_14_9A48, ported) never fires and the state machine never enters Crippled. So 7CB4's
@@ -1033,6 +1034,48 @@ activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frame
 clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
 the leg, shin and toe models; there are no knee collision actors and the Crippled state is not
 entered, so the beacon does not draw. No "[port] caught" and no reach-stub in the log.
+
+**WP2 part 2m done (2026-10-20): the collision actor managers' builder.** `fn_14_676C` (0xF8)
+is ported, its three builder callees are named stand-ins, and it is wired in at its retail
+call site.
+
+**The call site is the Think, not an animation event.** The call at 0xA604 is in
+`fn_14_A5BC` (0xCC bytes), the module's `Think` (vtable slot 5) - not in `DoUserAnimEvent`
+(fn_14_A468), as WP2 part 2l guessed. The Think's body is: the active bit test (the byte at
+guest 0x20, bit 0, read at 0xA5E0), the base's `CPatterned::Think` (the call at 0xA5EC), then
+the manager at guest 0xE60 (the load at 0xA5F0): when it is null the retail calls
+`fn_14_676C` (0xA604) to build both managers, otherwise it updates them (the two
+`CCollisionActorManager::Update` calls at 0xA610 and 0xA620, the options word 0 =
+`kUO_ObjectSpace`). So the trigger is **the manager at guest 0xE60 being null** - there is no
+animation event type in it. The Think then calls `fn_14_6E04`, `fn_14_2358`, `fn_14_38BC` and
+`fn_14_3F90`, which the port does not have yet.
+
+**`fn_14_676C` (0xF8 bytes)**, in retail order: `fn_14_61DC` (the call at 0x678C, 0x590
+bytes - the manager at 0xE60), `fn_14_5C30` (0x6798, 0x2F4 bytes - the manager at 0xE64),
+`fn_14_59BC` (0x67A4, 0x274 bytes), `fn_14_3974` (0x67B4, with the third argument 0) and the
+material filter (the `SetMaterialFilter` call at 0x6844). The three builders are over the
+~0x200 callee limit, so they are named once-logging stand-ins: the managers at 0xE60 and 0xE64
+stay null and the knee ids at 0xFB0..0xFB6 keep their invalid value - Crippled is still
+unreachable, exactly as WP2 part 2l described.
+
+**`fn_14_3974` (0x58 bytes)** is ported: the object with the id at guest 0x1080 (the halfword
+load at 0x3988) is looked up (the `ObjectById` call at 0x3998) and its active flag is set
+(the virtual call at 0x39B4, the vtable slot 0x1C = `CEntity::SetActive`) to the flag the
+third argument carries (the `clrlwi` at 0x39A8, its low byte).
+
+**The material filter** (0x67B8..0x6844) is built from the four `.rodata` words 0x470 (0x2F),
+0x474 (0x1C), 0x478 (0x20) and 0x46C (0x3B) with the MWCC helper `__shl2i` (the DOL's
+0x80345A44, 0x24 bytes). The helper is a 64-bit shift of the pair (r3:r4) by r5 that returns
+its high word in r3 and its low word in r4; for the call shape `__shl2i(0, 1, word)` it
+computes `1 << (word & 31)` in **both** words. The include list is the fourth word's shift
+(0x08000000 in both halves, the material types 27 and 59) and the exclude list is the or of
+the first three (0x10008001 in both halves, the types 0, 15, 27, 28, 32, 35, 59 and 60); the
+type word is 3, `kFT_IncludeExclude`. The port sets exactly those two lists.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is alive, and the log shows the three builder stand-ins once each -
+so the Think's manager branch runs. No "[port] caught" and no reach-stub in the log.
 
 
 ### WP3 — the head module
