@@ -2967,6 +2967,9 @@ static CEntity* PortLoadEmperorIngStage1(CStateManager& mgr, CInputStream& input
   rstl::optional_object< CModelData > modelData(
       LdrToModelData(sldrThis.editorProperties.transform.scale, kInvalidAssetId,
                      sldrThis.patterned.animationInformation, true));
+  // fn_16_A5BC (0xA5BC..0xA5FC) copies the model's optional when it is valid and calls
+  // fn_16_A5FC -> fn_16_A61C -> fn_16_A644 (0xA644..0xA780), the CModelData copy constructor:
+  // the fields and the three tokens, each locked. The host's CModelData copy does it.
   if (!modelData) {
     // The REL reads the copy's valid byte (sp+0xF8 at 0x0000A440) and branches to its null
     // return at 0x0000A448 when the model is empty.
