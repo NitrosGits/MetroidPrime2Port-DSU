@@ -74,7 +74,7 @@ namespace {
 // shared header is not part of this module. The solid filter itself is shared with the other
 // files of this module: PortBoostGuardianShared.hpp has SolidFilter().
 
-// fn_29_3D74: the box between two points, three units taller at each end (retail's double 3.0).
+// fn_30_57E0 (the Ing's fn_29_3D74): the box between two points, three units taller at each end (retail's double 3.0).
 CAABox BgSegmentBox(const CVector3f& a, const CVector3f& b) {
   return CAABox(
       CVector3f(CMath::Min(a.GetX(), b.GetX()), CMath::Min(a.GetY(), b.GetY()),
@@ -83,7 +83,8 @@ CAABox BgSegmentBox(const CVector3f& a, const CVector3f& b) {
                 CMath::Max(a.GetZ(), b.GetZ()) + 3.f));
 }
 
-// fn_29_421C: which arm swings; true is the left (0xd80..), false the right (0xd7c..).
+// fn_30_5C80 (the Ing's fn_29_421C): which arm swings; true is the left (0xd80..), false the right (0xd7c..).
+// Range(rodata_70 = 0, rodata_CC = 100) >= rodata_B4 = 50 (0x00005CA4..0x00005CB4).
 bool BgPickSwipeArm(CStateManager& mgr) { return mgr.Random()->Range(0.f, 100.f) >= 50.f; }
 
 // fn_29_61B4's search ring (rodata_44): eight angles in degrees, 180 first, taken in order.
@@ -752,13 +753,14 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
   }
 }
 
-// fn_29_3E1C: the segment test of one arm. Four boxes along the arm (shoulder-elbow,
+// fn_30_5888 (the Ing's fn_29_3E1C): the segment test of one arm. Four boxes along the arm (shoulder-elbow,
 // elbow-forearm, forearm-wrist, then the wrist extended six units along the forearm) are tested
 // against the target's bounding box; retail's chained early-outs are one OR. A hit deals the arm
 // swipe damage with the given knock-back and clears the contact-damage pause.
 //
 // The live flag (0xe5c bit 1, xE5C_1) guards the test: only a swing that is live can hit, and a
 // hit clears the flag.
+// @ fn_30_5888
 void CIngBoostBallGuardian::ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b,
                                              const CSegId& c, const CSegId& d,
                                              const CVector3f& knockback) {
@@ -797,12 +799,13 @@ void CIngBoostBallGuardian::ArmSwipeSegment(CStateManager& mgr, const CSegId& a,
   mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), mData.mArmSwipeDamage,
                   CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
                   knockback);
-  mCurDamageRemTime = mDamageWaitTime; // 0x440 = 0x444
-  xE5C_1 = false;                      // 0xe5c bit 1
+  // Unlike the Ing's copy, this module does not restart the contact-damage cooldown (0x440) here.
+  xE5C_1 = false; // 0x00005C64: 0x11EC bit 2
 }
 
 // fn_30_8208 (this module).
 // fn_29_6A88
+// @ fn_30_8208
 void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -822,7 +825,7 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   case kStateMsg_Update:
     // CTryCommand::ShouldRetry(this+0x6b4, *BodyController(), 7); 7 is pas::kAS_MeleeAttack.
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
-      mSwipeArm = BgPickSwipeArm(mgr) ? 1 : 0; // fn_29_421C, 0xdec
+      mSwipeArm = BgPickSwipeArm(mgr) ? 1 : 0; // 0x000082F8: fn_30_5C80, 0x111C
       // rodata_38 = {1, 2}: the melee attack's severity, indexed by the arm.
       BodyController()->CommandMgr().DeliverCmd(
           CBCMeleeAttackCmd(mSwipeArm == 0 ? pas::kS_One : pas::kS_Two));

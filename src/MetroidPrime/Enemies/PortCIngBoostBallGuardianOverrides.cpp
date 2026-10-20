@@ -457,6 +457,42 @@ const CDamageVulnerability* CIngBoostBallGuardian::GetDamageVulnerability() cons
   return &mData.mIngSpotVulnerability;
 }
 
+// fn_30_CFC4: the module's GetAimPosition (CPhysicsActor's vtable slot 0x54), the Ing's
+// fn_29_BCB4 with one difference: here the ctor fills the collar locator (0x10AC, Collar_SDK at
+// 0x0000FFAC), so the locator path is live. The corporeal form and the form changes (6..8)
+// predict their motion; every other form takes the base class's aim.
+// @ fn_30_CFC4
+CVector3f CIngBoostBallGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
+  CVector3f aim = CVector3f::Zero(); // 0x0000D00C: sZeroVector
+  // 0x0000D014..0x0000D040: form 2 and forms 6..8 predict, the rest (0, 1, 3..5, 9 and up) don't.
+  const bool predict = mForm == kForm_Corporeal ||
+                       (mForm >= kForm_BecomingCorporeal && mForm < kForm_BecomingWallProjectile);
+  if (!predict) {
+    return CPatterned::GetAimPosition(mgr, dt); // 0x0000D16C
+  }
+  if (dt > 0.f) { // 0x0000D04C: rodata_70 = 0.0
+    aim = PredictMotion(dt).GetTranslation(); // 0x0000D060, fn_30_D1C4 copies it
+  }
+  if (mCollarSegId == CSegId::Invalid()) { // 0x0000D080: cmplwi 0xff
+    return CPatterned::GetAimPosition(mgr, dt); // 0x0000D148
+  }
+  // 0x0000D0A0..0x0000D0BC: the locator's transform composed with the actor's (0x24); the model
+  // scale (the model data's first three floats) times its translation is added to the prediction.
+  const CTransform4f world =
+      GetTransform() * GetModelData()->GetAnimationData()->GetLocatorTransform(mCollarSegId, nullptr);
+  const CVector3f offset = world.GetTranslation();
+  const CVector3f scale = GetModelData()->GetScale();
+  aim += CVector3f(scale.GetX() * offset.GetX(), scale.GetY() * offset.GetY(),
+                   scale.GetZ() * offset.GetZ());
+  // 0x0000D0D0..0x0000D110: forms 6 and 7 fall back to the base class when the aim is below the
+  // actor (0x5c).
+  if ((mForm == kForm_BecomingCorporeal || mForm == kForm_BecomingIngSpot) &&
+      aim.GetZ() < GetTranslation().GetZ()) {
+    return CPatterned::GetAimPosition(mgr, dt); // 0x0000D124
+  }
+  return aim;
+}
+
 // The Ing's GetTouchBounds (the Ing REL's fn_29_B970): the ing-spot and evaporating forms use the
 // puddle box, the two host forms have none, the rest use the patterned bounds.
 rstl::optional_object< CAABox > CIngBoostBallGuardian::GetTouchBounds() const {

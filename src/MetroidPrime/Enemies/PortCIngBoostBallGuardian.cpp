@@ -236,6 +236,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mSplatEffect(BgOptionalPart(data.mBodyProjectile.mSplatEffect))
 , mBoostNormalHitEffect(BgOptionalPart(boost.mHitNormalDamage))
 , mBoostHeavyHitEffect(BgOptionalPart(boost.mHitHeavyDamage))
+, mCollarSegId(BgArmSegId(modelData, "Collar_SDK")) // 0x0000FFAC: rodata_12C+0x635
 , mEyeSegId(BgHeadSegId(modelData))
 , mRightShoulderSegId(BgArmSegId(modelData, "R_shoulder"))
 , mRightElbowSegId(BgArmSegId(modelData, "R_elbow"))
@@ -327,8 +328,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
   mPortalPlaneNormal = planeNormal;
   mPortalPlaneConstant = CVector3f::Dot(GetTranslation(), mPortalPlaneNormal);
   // The retail constructor turns knock-back physics off on CPatterned's own manager
-  // (@0x0000FF40) and leaves the shadow off; everything else it builds - the locator segment ids
-  // at 0x10AC, the nine locked tokens at 0x0FDC and the line-of-sight tracker at 0x10B8 - belongs
+  // (@0x0000FF40) and leaves the shadow off; everything else it builds - the nine locked tokens at 0x0FDC and the line-of-sight tracker at 0x10B8 - belongs
   // to the state machine and the render paths this milestone does not enter.
   KnockBackController().EnableKnockBackPhysics(false);
   SetDrawShadow(false);

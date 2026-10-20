@@ -268,6 +268,7 @@ public:
   rstl::optional_object< CAABox > GetTouchBounds() const override;
   void TakeDamage(const CVector3f& direction, float magnitude) override;
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override; // fn_30_CFC4
 
   // ---------------------------------------------------------------------------------------------
   // The state machine. fn_30_C6CC installs three tables into the machine: the 49 triggers
@@ -498,6 +499,7 @@ private:
   rstl::optional_object< TLockedToken< CGenDescription > > mBoostHeavyHitEffect;
   CSfxHandle mBodyProjectileSfx;                         // CIng: 0xD58
   CSfxHandle mLoopSfx[2];                                // CIng: 0xD60/0xD64
+  CSegId mCollarSegId; // CIng: 0xD7A; IngBoostBallGuardian: 0x10AC (Collar_SDK, ctor 0x0000FFAC)
   CSegId mEyeSegId;                                      // CIng: 0xD7B
   CSegId mRightShoulderSegId;                            // CIng: 0xD7C
   CSegId mRightElbowSegId;                               // CIng: 0xD7D

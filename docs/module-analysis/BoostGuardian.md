@@ -475,6 +475,9 @@ offsets are in section e; the module's own addresses for the state machine's nod
 - live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
   `BoostAttack`, which spawns the boost ball (`CBoostBallGuardianBall` in `objs`, at the ground
   under the guardian); with the ball's Think still a stand-in the state waits there (section f).
+- 0x10AC is the `Collar_SDK` locator (ctor 0x0000FFAC), live here (the Ing's 0xd7a stays 0xff):
+  `GetAimPosition` `fn_30_CFC4` takes the collar path. `fn_30_5888` (arm segment test) does not
+  restart the 0x440 contact-damage cooldown, unlike the Ing's `fn_29_3E1C`; `fn_30_5C80` picks the arm.
 
 ## k. What the loader and the constructor actually pass
 
