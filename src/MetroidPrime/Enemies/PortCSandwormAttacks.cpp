@@ -242,7 +242,7 @@ void CSandworm::ResetAttackTimer(CStateManager& mgr) {
   }
 }
 
-// fn_56_5F5C (ported, not exercised yet)
+// @ fn_56_5F5C
 void CSandworm::ApplyMeleeDamage(CStateManager& mgr) {
   CVector3f dir = FlatXY(GetTransform().GetColumn(kDY));
   dir = dir.AsNormalized();
@@ -260,7 +260,7 @@ void CSandworm::ApplyMeleeDamage(CStateManager& mgr) {
                   CVector3f::Zero());
 }
 
-// fn_56_6144 (ported, not exercised yet)
+// @ fn_56_6144
 void CSandworm::ReleaseGrabbedPlayer(CStateManager& mgr) {
   CPlayer* player = mgr.Player(0);
   if (player->GetAttachedActorId() == GetUniqueId()) {
@@ -273,7 +273,7 @@ void CSandworm::ReleaseGrabbedPlayer(CStateManager& mgr) {
   x15AC_toss.x58_flags |= 0x40;
 }
 
-// fn_56_61EC (ported, not exercised yet)
+// @ fn_56_61EC
 void CSandworm::GrabPlayer(CStateManager& mgr) {
   CPlayer* player = mgr.Player(0);
   if ((player->GetTranslation() - PlayerDirection(0.f)).MagSquared() > 25.f) {
@@ -291,7 +291,7 @@ void CSandworm::GrabPlayer(CStateManager& mgr) {
   ball->SetBoostEnabled(false);
 }
 
-// fn_56_63B8 (ported, not exercised yet)
+// @ fn_56_63B8
 void CSandworm::SendGrabMsgs(CStateManager& mgr) {
   if (x15AC_toss.x58_flags & 0x20) {
     x15AC_toss.x58_flags &= ~0x20;
@@ -299,7 +299,7 @@ void CSandworm::SendGrabMsgs(CStateManager& mgr) {
   }
 }
 
-// fn_56_6410 (ported, not exercised yet)
+// @ fn_56_6410
 void CSandworm::SendAttackMsgs(CStateManager& mgr) {
   if (!(x15AC_toss.x58_flags & 0x20)) {
     x15AC_toss.x58_flags |= 0x20;
@@ -400,7 +400,7 @@ void CSandworm::FireSpit(CStateManager& mgr) {
   LaunchSpitProjectile(mgr, aim);
 }
 
-// fn_56_C0A4 (ported, not exercised yet)
+// @ fn_56_C0A4
 bool CSandworm::GrabHelper(CStateManager& mgr) {
   return PlayerMorphed(mgr) &&
          (PlayerPos(mgr) - PlayerDirection(0.f)).MagSquared() <= 6.25f;
@@ -449,7 +449,7 @@ bool CSandworm::CanCharge(CStateManager& mgr, const CTriggerData& data) const {
   return FacingPlayer(mgr, CTriggerData(0.f));
 }
 
-// fn_56_C168 (ported, not exercised yet)
+// @ fn_56_C168
 bool CSandworm::CanGrabMorphball(CStateManager& mgr, const CTriggerData& data) const {
   if (x15AC_toss.x58_flags & 0x40) {
     return false;
@@ -518,7 +518,7 @@ bool CSandworm::FacingPlayerForCharge(CStateManager& mgr, const CTriggerData& da
   return AngleToTarget(PlayerPos(mgr), dir.AsNormalized()) < 0.20943952f;
 }
 
-// fn_56_BF38 (ported, not exercised yet)
+// @ fn_56_BF38
 bool CSandworm::GrabAttackFinished(CStateManager& mgr, const CTriggerData& data) const {
   return (x15AC_toss.x58_flags & 0x40) != 0;
 }
@@ -650,7 +650,7 @@ void CSandworm::ChargeWindUp(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueTauntCmd(msg, pas::EAnimationState(16) /* kAS_Taunt */, CBCTauntCmd(pas::kTT_One));
 }
 
-// fn_56_BF44 (ported, not exercised yet)
+// @ fn_56_BF44
 void CSandworm::GrabAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   BeginAttack(3, msg);
   if (msg == kStateMsg_Activate) {
@@ -718,7 +718,7 @@ void CSandworm::SpitAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueMeleeAttackCmd(msg, pas::EAnimationState(7), CBCMeleeAttackCmd(pas::kS_Eleven));
 }
 
-// fn_56_BEA4 (ported, not exercised yet)
+// @ fn_56_BEA4
 void CSandworm::StopGrabAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);

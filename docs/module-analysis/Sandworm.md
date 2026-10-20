@@ -339,10 +339,17 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   the two prerequisites `3D44` (PlayerReachable) and `6A50` (FacingPlayer). Closer than 15 m
   `InChargeRange` is false (spit only); at 18 m the run's `tp` landed off the path mesh
   (`onPath=0`), so placement matters, not distance alone.
-- Markers: 212 functions carry `// @` — the previous 204 plus the 8 charge bodies. 71 remain
-  `(ported, not exercised yet)`, including GetRagDoll, GetDeathExplosionParticle and
-  RenderIngSnatchingTransition; `/tmp/opencode/sw2/unexercised79.md` (local) buckets them:
-  A 24 (now 16 left), B 1, C 36 (Bomb Guardian/possession), D 12, E 6.
+- Grab group (`01_sand_entrance`, 2026-10-20): morphing (`press x`, `status` shows `morph 1`) and
+  standing ~2 m from the worm makes the FSM take the grab branch — `CanGrabMorphball` →
+  `GrabHelper` → `GrabAttack` → `GrabPlayer` → `SendGrabMsgs`/`SendAttackMsgs` →
+  `TeleportGrabbedPlayer` per frame → `ReleaseGrabbedPlayer`/`ApplyMeleeDamage` →
+  `StopGrabAttack` → `GrabAttackFinished`, so all 11 bodies are marked. `2C30`
+  (CSandworm::GetOrbitPosition, eye-based) was hit in the same run. The worm has to be
+  re-`tp`ed onto every ~2.5 s because it keeps moving.
+- Markers: 224 functions carry `// @`; 59 remain `(ported, not exercised yet)`, including
+  GetRagDoll, GetDeathExplosionParticle and RenderIngSnatchingTransition.
+  `/tmp/opencode/sw2/unexercised79.md` (local) buckets them: A 24 (all but `C828`/`3E1C` now done),
+  B 1, C 36 (Bomb Guardian/possession only), D 12, E 6.
 - Open:
   - BeginAttackHelper/2 still operate on x1490_attacks rather than SSandwormAttackHistory.
   - DoUserAnimEvent event numbers vs jumptable data_790; the CBodyController+0x4C write in ChargePlayer.

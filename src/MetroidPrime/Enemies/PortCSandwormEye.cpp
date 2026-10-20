@@ -166,7 +166,7 @@ void CSandworm::SetEyeCollisionVulnerability(CStateManager& mgr, int eye, bool v
   }
 }
 
-// fn_56_2C30 (ported, not exercised yet)
+// @ fn_56_2C30
 CVector3f CSandworm::GetOrbitPosition(const CStateManager& mgr) const {
   if ((x1520_flags & 0x80) == 0 || (x8C1_flags & 0x40) != 0) {
     return x1608_residuePos;

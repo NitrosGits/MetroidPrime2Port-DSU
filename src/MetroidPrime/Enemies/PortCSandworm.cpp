@@ -703,7 +703,7 @@ void CSandworm::DecayX1350(float dt) {
   }
 }
 
-// fn_56_5E94 (ported, not exercised yet)
+// @ fn_56_5E94
 void CSandworm::TeleportGrabbedPlayer(CStateManager& mgr) {
   CPlayer* player = mgr.Player(0);
   const CVector3f pos =
