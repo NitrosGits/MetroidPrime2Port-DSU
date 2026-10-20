@@ -12,6 +12,9 @@
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
 
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -155,13 +158,23 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
 , xb60_(1.5f)                                     // 0xb60, lbl_9_rodata_47C, fn_9_D904 @0x0000DACC
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
+, xb68_(0.f)                                      // 0xb68, a timer; fn_9_662C advances it
+, xb6c_(0.f)                                      // 0xb6c, a timer; fn_9_662C advances it
+, xb70_(0.f)                                      // 0xb70, a timer; fn_9_662C advances it
+, xb74_(0.f)                                      // 0xb74, a timer; fn_9_662C advances it
+, xb78_(0.f)                                      // 0xb78, a timer; fn_9_662C advances it
+, xb84_(0.f)                                      // 0xb84, a timer; fn_9_662C advances it
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
+, xc50_(0.f)                                      // 0xc50, a counter; fn_9_662C lowers it
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
 , xbc4_teamId(kInvalidUniqueId)                    // 0xbc4, the team id; fn_9_19D8 sets it
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
 , xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
+, xbdc_(-1)                                    // 0xbdc, the dodge id; fn_9_8934 sets it
+, xbe0_(0.f)                                    // 0xbe0, the jump-back distance
+, xbe4_(0.f)                                    // 0xbe4, a distance
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -201,6 +214,17 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
     mLocatorRWrist = animData->GetLocatorSegId(rstl::string_l("R_wrist"));
     mLocatorRElbow = animData->GetLocatorSegId(rstl::string_l("R_elbow"));
     mLocatorLWrist = animData->GetLocatorSegId(rstl::string_l("L_wrist"));
+
+    // Two step distances (fn_9_5D74 is the module's inlined CPASAnimParmData ctor): the step
+    // with parms (3, 2) times the scale's X (0x0000E4DC..0x0000E56C) and the step with parms
+    // (1, 2) times the scale's Y (0x0000E570..0x0000E61C).
+    const CVector3f scale = GetModelData()->GetScale();
+    const CPASAnimParmData sideStep(pas::kAS_Step, CPASAnimParm::FromEnum(3),
+                                    CPASAnimParm::FromEnum(2));
+    xbe4_ = scale.GetX() * GetAnimationDistance(sideStep);
+    const CPASAnimParmData backStep(pas::kAS_Step, CPASAnimParm::FromEnum(1),
+                                    CPASAnimParm::FromEnum(2));
+    xbe0_ = scale.GetY() * GetAnimationDistance(backStep);
   }
 }
 
@@ -225,6 +249,119 @@ void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
   CPatterned::PreThink(dt, mgr);             // 0x0000CB20
+}
+
+// fn_9_662C (0x39c bytes): the module's per-frame helper. The module's Think is its only caller
+// (the call at 0x0000CA28) - no state calls it. It runs only while the actor is alive: the base's
+// flag word at guest this+0x420, the mask 0x40 (the bit 25, CPatterned::mAlive), the test at
+// 0x00006660. Then it advances the module's timers and sets its flag bits:
+//
+// 0x00006668: the timer at guest this+0xB70 grows by the frame time; once it reaches 5.0f
+//   (rodata_468, the compare at 0x00006680) the flag byte at +0xC64 takes the bit 0x40 (the
+//   rlwimi at 0x000066C0, the mask 1u << (31 - 25) = 0x40) when the block's aggressiveness (the
+//   data's +0x4C, the load at 0x0000669C) is at least a random number in [0, 100] (rodata_4CC, the
+//   Range call at 0x000066A4), and the timer is cleared (0x000066CC).
+// 0x000066D0: the timer at +0xB68 does the same with 2.0f (rodata_44C, the compare at
+//   0x000066E8), the block's cover check (the data's +0x50, the load at 0x00006710) and the flag
+//   byte at +0xC63's bit 0x04 (the rlwimi at 0x0000673C, the mask 1u << (31 - 29) = 0x04) - and
+//   only while the flag byte at +0xC64 does not have its 0x40 bit (the extrwi at 0x000066F8).
+// 0x0000674C: the timer at +0xB6C with 5.0f (rodata_468, the compare at 0x00006764), the block's
+//   search radius (the data's +0x54, the load at 0x0000678C) and the flag byte at +0xC63's bit
+//   0x01 (the rlwimi at 0x000067B8, the mask 1u << (31 - 31) = 0x01) - again only while the flag
+//   byte at +0xC64's 0x40 bit is clear (the extrwi at 0x00006774).
+// 0x000067C8: the timer at +0xB74 grows; while an E-grenade object is alive it is cleared (the
+//   module's global at bss_38, the load at 0x000067D8, the clear at 0x000067EC); otherwise it
+//   reaches the grenade's minimum attack interval (the data's +0xC0, the load at 0x000067F8) and
+//   then the grenade's attack chance (the data's +0xBC, the load at 0x00006824) takes the flag
+//   byte at +0xC63's bit 0x02 (the rlwimi at 0x00006850, the mask 1u << (31 - 30) = 0x02) and
+//   the timer is cleared (0x0000685C).
+// 0x00006860: while the flag byte at +0xC64 has its 0x02 bit (the extrwi at 0x00006864) the timer
+//   at +0xB84 grows (0x0000686C), that bit is cleared (the rlwimi at 0x00006888, the mask
+//   1u << (31 - 30) = 0x02) and, once the timer reaches 0.3f (rodata_454, the compare at
+//   0x00006898), the flag byte at +0xC64's bit 0x04 is set (the rlwimi at 0x000068A8, the mask
+//   1u << (31 - 29) = 0x04).
+// 0x000068B0: while the module's flag byte at +0xC66 has its 0x40 bit (the extrwi at 0x000068B4)
+//   the timer at +0xB8C grows (0x000068BC).
+// 0x000068C8: the timers at +0xB60, +0xB78 and +0xB7C grow - +0xB7C is the melee cooldown.
+// 0x000068F4: while the shield's second unknown float (the data's +0x13C) is above zero (the
+//   compare at 0x000068F8) the module's own float at +0xC50 falls by the frame time times the
+//   shield's first unknown float (the data's +0x138) over it (0x00006900..0x00006918) and is
+//   clamped at zero (0x00006920..0x00006930).
+// 0x00006934: while the flag byte at +0xC64 does not have its 0x80 bit (the extrwi at
+// 0x00006938) and the shield's first unknown float (the data's +0x138) is above zero (the
+//   compare at 0x0000694C), that bit takes the compare's "greater" bit when the module's float at
+//   +0xC50 is above it (the compare at 0x00006958, the rlwimi at 0x00006960, the mask
+//   1u << (31 - 24) = 0x80).
+// 0x00006968: while the base's flag word at guest this+0x420 has its 0x80 bit (the mask
+//   1u << (31 - 24) = 0x80, the extrwi at 0x0000696C) - the base's mHitByPlayerProjectile - the
+//   under-fire timer at +0xB64 is cleared and that bit is cleared (the rlwimi at 0x00006988); else
+//   the timer grows (0x0000699C).
+void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
+  if (!GetAlive()) {
+    return;                                    // 0x00006660
+  }
+  xb70_ += dt;                                 // 0x00006668
+  if (xb70_ >= 5.f) {                          // 0x00006680
+    const bool roll = mData.mAggressiveness >= mgr.Random()->Range(0.f, 100.f);  // 0x000066A4
+    xc64_ = (xc64_ & ~0x40) | (roll ? 0x40 : 0);  // 0x000066C0
+    xb70_ = 0.f;                               // 0x000066CC
+  }
+  xb68_ += dt;                                 // 0x000066D0
+  if (xb68_ >= 2.f) {                          // 0x000066E8
+    if ((xc64_ & 0x40) == 0) {                // 0x000066F8
+      const bool roll = mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006718
+      xc63_ = (xc63_ & ~0x04) | (roll ? 0x04 : 0);  // 0x0000673C
+    }
+    xb68_ = 0.f;                               // 0x00006748
+  }
+  xb6c_ += dt;                                 // 0x0000674C
+  if (xb6c_ >= 5.f) {                          // 0x00006764
+    if ((xc64_ & 0x40) == 0) {                // 0x00006774
+      const bool roll = mData.mSearchRadius >= mgr.Random()->Range(0.f, 100.f);  // 0x00006794
+      xc63_ = (xc63_ & ~0x01) | (roll ? 0x01 : 0);  // 0x000067B8
+    }
+    xb6c_ = 0.f;                               // 0x000067C4
+  }
+  xb74_ += dt;                                 // 0x000067C8
+  if (sEgrenadeObjectCount > 0) {              // 0x000067D8
+    xb74_ = 0.f;                               // 0x000067EC
+  } else if (xb74_ >= mData.mGrenade.mGrenadeMinAttackInterval) {  // 0x000067F8
+    if ((xc64_ & 0x40) == 0) {                // 0x0000680C
+      const bool roll = mData.mGrenade.mGrenadeAttackChance >=
+                        mgr.Random()->Range(0.f, 100.f);  // 0x0000682C
+      xc63_ = (xc63_ & ~0x02) | (roll ? 0x02 : 0);  // 0x00006850
+    }
+    xb74_ = 0.f;                               // 0x0000685C
+  }
+  if ((xc64_ & 0x02) != 0) {                   // 0x00006864
+    xb84_ += dt;                               // 0x0000686C
+    xc64_ &= ~0x02;                            // 0x00006888
+    if (xb84_ >= 0.3f) {                       // 0x00006898
+      xc64_ |= 0x04;                            // 0x000068A8
+    }
+  }
+  if ((xc66_ & 0x40) != 0) {                   // 0x000068B4
+    xb8c_ += dt;                               // 0x000068BC
+  }
+  xb60_ += dt;                                 // 0x000068C8
+  xb78_ += dt;                                 // 0x000068DC
+  xb7c_ += dt;                                 // 0x000068E8
+  if (mData.mShield.mUnknownC3938663 > 0.f) {   // 0x000068F4
+    xc50_ -= dt * mData.mShield.mUnknown6CB0DA5A / mData.mShield.mUnknownC3938663;  // 0x00006900
+    if (xc50_ < 0.f) {                         // 0x00006920
+      xc50_ = 0.f;                             // 0x0000692C
+    }
+  }
+  if ((xc64_ & 0x80) == 0 && mData.mShield.mUnknown6CB0DA5A > 0.f) {  // 0x00006938, 0x0000694C
+    if (xc50_ > mData.mShield.mUnknown6CB0DA5A) {  // 0x00006958
+      xc64_ |= 0x80;                            // 0x00006960
+    }
+  }
+  if (mHitByPlayerProjectile) {                // 0x0000696C
+    xb64_ = 0.f;                               // 0x00006980
+  } else {
+    xb64_ += dt;                               // 0x0000699C
+  }
 }
 
 // vtable slot 0x14 = fn_9_C944 (0x184): the actor's Think. The guest leaves everything out when
@@ -253,7 +390,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
   StandInFn("fn_9_6390 (0x29c bytes)");        // 0x0000CA08
   StandInFn("fn_9_4D84 (0x228 bytes)");        // 0x0000CA18
-  StandInFn("fn_9_662C (0x39c bytes)");        // 0x0000CA28
+  x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
   StandInFn("fn_9_3090 (0x2a8 bytes)");        // 0x0000CA34
   StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
   StandInFn("fn_9_4BC0 (0xe4 bytes)");         // 0x0000CA8C
@@ -476,9 +613,39 @@ bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data
          (mData.mFlags0 & 0x08) == 0 && xbce_ != kInvalidUniqueId;
 }
 
+// fn_9_BB10: the commando jumps back. The block's flag byte at +0x15C (guest this+0x91C) must not
+// have its 0x08 bit (extrwi at 0x0000BB20); then the module's own helper fn_9_3338 (0x148 bytes,
+// over the 0x80 limit) decides - the guest calls it with the actor's forward column negated (the
+// three loads at 0x0000BB28..0x0000BB54) and the module's float at guest this+0xBE0 (the load at
+// 0x0000BB58).
 bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_BB10");
-  return false;
+  if ((mData.mFlags0 & 0x08) != 0) {
+    return false;                                   // 0x0000BB20
+  }
+  // 0x0000BB28..0x0000BB54: the actor's forward column, negated, and the module's float at
+  // guest this+0xBE0 as the distance (the load at 0x0000BB58).
+  return x3338_IsJumpBackClear(mgr, -GetTransform().GetForward(), xbe0_);  // 0x0000BB60
+}
+
+// fn_9_3338 (0x148 bytes): the module's jump-back helper, which both the jump-back trigger
+// (fn_9_BB10) and the dodge picker (fn_9_3678) call. The ray starts at the actor's bounding
+// box centre (the GetBoundingBox call at 0x00003374 and the GetCenterPoint call at
+// 0x00003380) and ends at the point that distance along the given vector (the adds at
+// 0x000033B0..0x000033D8); the end point must not hit the world (the RayCollideWorld call at
+// 0x0000342C - the answer is false when it does) and must be on the path (the OnPath call at
+// 0x00003440 - the answer is true when it returns 0).
+bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir,
+                                           float distance) const {
+  const CVector3f center = GetBoundingBox().GetCenterPoint();  // 0x00003374, 0x00003380
+  const CVector3f end = center + distance * dir;                // 0x000033B0..0x000033D8
+  // The guest's material filter comes from the module's own static lists (the .data words at
+  // lbl_9_data_810 and lbl_9_data_80C, the two __shl2i calls at 0x000033DC and 0x000033F8);
+  // the port uses the solid material list, the filter a collision ray needs.
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  if (mgr.RayCollideWorld(center, end, filter, this)) {
+    return false;                                                // 0x00003430
+  }
+  return mPathFindSearch.OnPath(end) == CPathFindSearch::kR_Success;  // 0x00003440
 }
 
 // fn_9_BB04: the block's flag byte at +0x15C (guest this+0x91C) has its 0x80 bit set (extrwi
@@ -1107,8 +1274,61 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_8B70");
 }
 
+// fn_9_8934 (0x1e0 bytes): the Dodge state, in the guest's three parts.
+//
+// Activate (the guest's message 0, the test at 0x0000895C): the module's helper fn_9_3678
+// (0x288 bytes, over the 0x80 limit, so a named helper that returns the neutral value) picks
+// the dodge, the result goes into the module's field at guest this+0xBDC (the store at
+// 0x00008978) and, when it is not -1 (the compare at 0x00008980), the animation state takes the
+// command id 1 (the store at 0x0000898C).
+//
+// Update (the guest's message 1, the test at 0x0000893C): the animation state is asked whether
+// the dodge command may be issued (the guest's command id 3 - the call at 0x000089A0). When it
+// may, the dodge command is delivered (the DeliverCmd call at 0x00008A10): the command's fields
+// are the direction - the dodge id at guest this+0xBDC (the load at 0x000089BC) - and the type 2
+// (kStep_BreakDodge), with a zero target position. When the command may
+// not be issued, and the body controller's body state is 3 (the load at 0x00008A6C, the compare
+// at 0x00008A70), the module's helper fn_9_3CBC (the call at 0x00008A90) gives the target's aim
+// position and the direction to it (the module's fields at guest this+0xB94..0xB9C) goes into
+// the body controller's vector at +0x34..+0x3C (the stores at 0x00008AC4..0x00008ACC).
+//
+// Deactivate (the guest's message 2, the test at 0x00008968): the animation state goes back to 0
+// (the store at 0x00008ADC), the dodge id at guest this+0xBDC goes back to -1 (0x00008AE8), the
+// module's flag byte at +0xC63 loses its 0x04 bit (the rlwimi at 0x00008AF0, the mask
+// 1u << (31 - 29) = 0x04) and the timer at guest this+0xB68 is cleared (0x00008AF8).
 void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_8934");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    StandInFn("fn_9_3678 (0x288 bytes)");            // 0x00008974
+    xbdc_ = -1;                                       // 0x00008978 (the helper's neutral value)
+    if (xbdc_ != -1) {                               // 0x00008980
+      mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x0000898C
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {  // 0x000089A0
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCStepCmd(static_cast< pas::EStepDirection >(xbdc_), pas::kStep_BreakDodge));  // 0x00008A10
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Step) {  // 0x00008A6C
+      CVector3f aim;
+      if (x3CBC_(mgr, aim, 0.f)) {                     // 0x00008A90
+        const CVector3f delta = aim - GetTranslation();
+        BodyController()->CommandMgr().SetTargetVector(delta);  // 0x00008AC4..0x00008ACC
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x00008ADC
+    xbdc_ = -1;                                        // 0x00008AE8
+    xc63_ &= ~0x04;                                    // 0x00008AF0
+    xb68_ = 0.f;                                       // 0x00008AF8
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {

@@ -322,6 +322,12 @@ private:
   // fn_9_19D8: the module's team helper - the commando joins the team of its area.
   void x19D8_JoinTeam(CStateManager& mgr);
 
+  // fn_9_662C: the module's per-frame helper - it advances the module's timers and flag bits.
+  void x662C_UpdateTimers(CStateManager& mgr, float dt);
+
+  // fn_9_3338: the module's jump-back helper - is the point behind the actor clear?
+  bool x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir, float distance) const;
+
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
   // listening AIs of the same area.
@@ -346,13 +352,23 @@ private:
   float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
   float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
+  float xb68_;                            // 0xb68, a timer; fn_9_662C advances it
+  float xb6c_;                            // 0xb6c, a timer; fn_9_662C advances it
+  float xb70_;                            // 0xb70, a timer; fn_9_662C advances it
+  float xb74_;                            // 0xb74, a timer; fn_9_662C advances it
+  float xb78_;                            // 0xb78, a timer; fn_9_662C advances it
+  float xb84_;                            // 0xb84, a timer; fn_9_662C advances it
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
+  int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
+  float xbe0_;                           // 0xbe0, the jump-back distance; fn_9_D904 @0x0000E61C
+  float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)

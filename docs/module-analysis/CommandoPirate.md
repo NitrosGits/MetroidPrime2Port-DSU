@@ -61,7 +61,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 |---|---|---|---|
 | 0x08 | dtor | `fn_9_D47C` | host |
 | 0x10 | `PreThink` | `fn_9_CAC8` (0x78) | host (the bone tracking's own PreThink, then the base's) |
-| 0x14 | `Think` | `fn_9_C944` (0x184) | host (the base's Think, the bone tracking's, and the module's own helpers as named stand-ins) |
+| 0x14 | `Think` | `fn_9_C944` (0x184) | host (the base's Think, the bone tracking's, `fn_9_662C`'s timers and the module's other helpers as named stand-ins) |
 | 0x18 | `AcceptScriptMsg` | `fn_9_CB40` (0x754) | stand-in |
 | 0x24 | `PreRender` | `fn_9_C6D4` (0xc4) | host (the base's, then the bone tracking's own) |
 | 0x28 | `AddToRenderer` | `fn_9_C4FC` (0x20) | host (a straight base call) |
@@ -258,8 +258,11 @@ read off the asm with `tools/asmcheck.py annotate` and carries the guest offset 
 - The new members and where their values come from: `xae8_` is the module's byte at +0xAE8
   (nothing in the module writes it, so it stays 0); `xb7c_` is the float at +0xB7C, the cooldown
   since the last melee attack: the module's per-frame helper `fn_9_662C` adds the frame time to
-  it (0x000068E8) and `fn_9_A60C` clears it when the melee ends (0x0000A700), so the port's
-  `ShouldMeleeAttack` (which needs it above 1.0f) stays false until that helper is ported;
+  it (0x000068E8) and `fn_9_A60C` clears it when the melee ends (0x0000A700); the port's
+  `ShouldMeleeAttack` needs it above 1.0f, which the ported helper gives; the other timers
+  `fn_9_662C` advances are `xb68_` (+0xB68), `xb6c_` (+0xB6C), `xb70_` (+0xB70), `xb74_`
+  (+0xB74), `xb78_` (+0xB78) and `xb84_` (+0xB84), and the counter it lowers is `xc50_`
+  (+0xC50);
   `xb5c_` is the float at +0xB5C (the
   constructor stores 0.f there at 0x0000DABC); `xb60_` is the float at +0xB60 (the constructor
   stores 1.5f, `lbl_9_rodata_47C`, at 0x0000DACC; the `Listen` override rewrites it at 0x0000BF38);
@@ -324,16 +327,18 @@ member at that offset in the host's state manager, so the port uses the player a
   linked to it by the area's ground connections (`kR_NoPath`), and the points off the mesh answer
   `kR_NoDestPoint`. The commando therefore stands where it is, as the area's data says.
 - `fn_9_662C` (0x39c bytes) is the module's per-frame timer helper, and the only caller is the
-  module's own Think (`fn_9_C944`, the call at 0x0000CA28) - no state calls it. It advances the
-  module's timers (guest this+0xB60, +0xB68, +0xB6C, +0xB70, +0xB74, +0xB78, +0xB7C - the melee
-  cooldown - +0xB84 and +0xB8C) and sets the module's flag bits (at +0xC63 and +0xC64) when a
-  timer expires, with a random check against the block's floats (+0x4C, +0x50, +0x54, the grenade
-  half's +0x54 and +0x58). It is not ported yet: its whole body is behind the base's flag word at
-  guest this+0x420 (the mask 0x40, the test at 0x00006660) and the base's word at +0x420 has no
-  named accessor in the host's `CPatterned` for that bit (the upstream names only the bits 26 and
-  24 of that word), so a faithful port needs a named accessor in the shared header. Until it
-  lands, the melee trigger stays false (its cooldown never passes 1.0f) and the grenade trigger
-  stays false (its flag bit at +0xC63 is set by the module's unported states).
+  module's own Think (`fn_9_C944`, the call at 0x0000CA28) - no state calls it. It is ported as
+  the private member `x662C_UpdateTimers`: the body is behind the base's flag word at guest
+  this+0x420, whose bit 0x40 (the bit 25, `CPatterned::mAlive` - MWCC allocates the bitfields
+  from the MSB) is the gate (the test at 0x00006660) and whose bit 0x80 (the bit 24,
+  `mHitByPlayerProjectile`) clears the under-fire timer at +0xB64 (0x00006968). Then the helper
+  advances the module's timers (+0xB60, +0xB68, +0xB6C, +0xB70, +0xB74, +0xB78, +0xB7C - the
+  melee cooldown - +0xB84 and +0xB8C), sets the flag bits at +0xC63 (0x04, 0x01 and 0x02) and
+  +0xC64 (0x40, 0x02, 0x04 and 0x80) when a timer expires, and lowers the module's own float
+  at +0xC50 by the frame time times the shield's first unknown float (the data's +0x138) over its
+  second (the data's +0x13C). The random checks compare the block's aggressiveness (+0x4C), cover
+  check (+0x50) and search radius (+0x54) and the grenade's attack chance (+0xBC) and minimum
+  attack interval (+0xC0) against `Random()->Range(0, 100)` (rodata_4CC).
 - The area 59 run cannot put the player where the commando can path to it: the save's player
   position (83.5, 290.4, -43.6) is off the nav mesh (the probe's points 60-120 units around the
   commando answer `kR_NoDestPoint` in that direction) and the harness's input script can only move
@@ -518,11 +523,92 @@ set. The commando still does not walk: the path search finds no path to the play
 
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
-as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_662C` (0x39c), `fn_9_3090`
-(0x2a8), `fn_9_1C0C` (0x2ec), `fn_9_4BC0` (0xe4) and `fn_9_3E1C` (0x324) - plus the two collision
-actor managers and the visual knowledge, which the port has no classes for. The run's stand-ins
-are the same seven plus `AcceptScriptMsg`, `CollidedWith`, `DoUserAnimEvent`, `fn_9_9F24`,
-`fn_9_B250` and `fn_9_B958`; `grep -c '[port] caught\|reach-stub'` is 0.
+as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a8), `fn_9_1C0C`
+(0x2ec), `fn_9_4BC0` (0xe4) and `fn_9_3E1C` (0x324) - plus the two collision actor managers and
+the visual knowledge, which the port has no classes for. `fn_9_662C` (0x39c) is host code too
+since 2026-10-20.
+
+- The Dodge state `fn_9_8934` (0x1e0) is host code since 2026-10-20: the activate part asks
+  the module's helper `fn_9_3678` (0x288 bytes, over the 0x80 limit, so a named stand-in that
+  returns the neutral value - the dodge id at guest +0xBDC stays -1 and the animation state is
+  not armed), the update part asks the animation state for the guest's command id 3 and delivers
+  the step command (the direction 1 = `kSD_Backward`, the type 2 = `kStep_BreakDodge`) or, when
+  the command may not be issued and the body state is 3, writes the direction to the target's aim
+  position into the body controller's target vector, and the deactivate part clears the animation
+  state, the dodge id, the flag byte at +0xC63's 0x04 bit and the timer at +0xB68. With the
+  player teleported next to the commando the state runs all three parts (two activates, two
+  updates, two deactivates in the run).
+- The step command the Dodge state delivers (0x00008A10) carries the direction from the module's
+  own dodge id at guest this+0xBDC (the load at 0x000089BC) and the type 2 (`kStep_BreakDodge`);
+  the host's `CBCStepCmd` takes them in that order (the base, the direction, the type).
+- `fn_9_3338` (0x148 bytes) is the module's jump-back helper, ported as
+  `x3338_IsJumpBackClear`: the ray from the actor's bounding-box centre (0x00003374, 0x00003380)
+  to the point that distance along the given vector (0x000033B0..0x000033D8) must not hit the
+  world (the RayCollideWorld call at 0x0000342C) and must be on the path (the OnPath call at
+  0x00003440). `ShouldJumpBack` calls it with the forward column negated and the module's float
+  at guest this+0xBE0 (the new member `xbe0_`; the constructor stores the animation distance
+  times the model's scale there at 0x0000E61C, and the same for the float at +0xBE4 - `xbe4_` -
+  at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). So the jump-back
+  trigger runs but stays false: the jump-back distance is still zero, so the ray's end point is
+  the actor's own centre.
+- The two constructor stores the port still owes: `fn_9_D904` sets the float at guest this+0xBE0
+  (the jump-back distance) at 0x0000E61C and the one at +0xBE4 (the dodge picker's radius) at
+  0x0000E56C - each is an animation's travel distance times the model's scale X (the load at
+  0x0000E560 and the multiply at 0x0000E568; the same for the second at 0x0000E610 and 0x0000E618).
+  The distance comes from the retail `CPatterned::GetAnimationDistance` (the calls at 0x0000E55C
+  and 0x0000E60C) and the host has that query (include/MetroidPrime/Enemies/CPatterned.hpp:206,
+  used the same way by the Space Pirate's port, src/MetroidPrime/Enemies/PortCSpacePirate.cpp:334).
+  What the port does not have yet is the *animation* each store asks for: the guest builds the
+  `CPASAnimParmData` objects with the module's own helper `fn_9_5D74` (the call at 0x0000E54C,
+  which fills the parms at sp+0x310, sp+0xC8, sp+0xC0, sp+0xB8, sp+0xB0, sp+0xA8 and sp+0xA0
+  from the module's animation list), so the animation ids are still unknown - porting `fn_9_5D74`
+  (or reading the module's animation list out of its .rel) is the next step before the two
+  stores can be ported at their retail spot.
+- `fn_9_5D74` (0x184 bytes) is the module's helper that builds the `CPASAnimParmData` objects
+  the constructor asks the animation distances of: it fills nine of them, each eight bytes - the
+  state id at +0 and the parm at +4 (the stores at 0x00005DA4/0x00005DAC and the seven that
+  follow) - the constructor passes the nine destinations (the stack slot at sp+0x310 and the
+  pointers at sp+0xC8, sp+0xC0, sp+0xB8, sp+0xB0, sp+0xA8 and sp+0xA0, the call at
+  0x0000E54C). The two parms the ctor then measures are the one at sp+0x310 (the store at
+  0x0000E56C) and the one built at sp+0x140 (the store at 0x0000E61C); their state ids and parm
+  values are still to be read out of the module's data tables, so the two constructor stores are
+  still not ported.
+- `fn_9_3678` (0x288 bytes) is the Dodge state's picker - it is the only thing that sets the
+  dodge id, and it is not ported yet, so the dodge id stays -1 and the animation state is never
+  readied (no dodge). What it does: it walks the listening-AI object list (the state manager's
+  +0x830, the first index at +0x2008) and looks for another actor that is not this one and is in
+  the same area (the +0x4 area id, the compare at 0x00003718), that is nearer than the module's
+  own float at guest this+0xBE4 (the squared compare at 0x00003758), that is in front of the
+  actor (the delta dotted with the transform's basis columns at +0x24/+0x34/+0x44, the compare at
+  0x00003780) and within 60 degrees of it (rodata_4A4 = 1.0471976, the GetAngleDiff calls at
+  0x0000379C and 0x000037E0); it then rolls the random (0x00003894) and asks the jump-back helper
+  `fn_9_3338` (0x148 bytes, over the 0x80 limit) twice, and returns the chosen step direction or
+  -1 (the result register starts at -1, 0x000036D4).
+- The stand-ins the walking commando reaches are `fn_9_8934` (the Dodge state, 0x1e0),
+  `fn_9_9F24` (the JumpPointFind state, 0x1ec), `fn_9_B958` (the IsOffPath trigger, 0x38),
+  `fn_9_B250` (the ShouldShieldCharge trigger, 0x410) and, with the player close,
+  `fn_9_709C` (the CoverFind state, 0x1f0) and `fn_9_BB10` (the ShouldJumpBack trigger, 0x6c -
+  ported 2026-10-20; its helper `fn_9_3338` is 0x148 bytes, over the 0x80 limit, so it is a named
+  stand-in).
+- The grenade path: the bit 0x02 of the flag byte at guest +0xC63 is the "grenade pending" bit.
+  The module's timer helper `fn_9_662C` sets it (0x00006850, the mask 1u << (31 - 30) = 0x02) when
+  the grenade's attack chance (the data's +0xBC) wins the roll, and the E-grenade's own creator
+  `fn_9_5410` (0x370 bytes) clears it again once the grenade object exists (0x00005764). The
+  E-grenade fire state is `fn_9_A2EC` (0x174 bytes) - it asks the animation state for the grenade
+  command (the guest's command id 0x12, 0x0000A34C) and delivers the grenade command - and it is
+  not ported yet, so the E-grenade is never thrown. `ShouldFireEGrenade` also needs the target's
+  aim position inside the grenade's band (the data's +0x60 and +0x64).
+
+With the player teleported into the commando's own path region (the console's `tp x y z` over
+`MP2_CONSOLE`, the point 30 units in front of the commando at (75.9, 371.6, -47.1)) the commando
+walks: it leaves (72.3, 401.4, -47.1) and reaches (64.6, 368.9, -46.1), and `ShouldMeleeAttack`
+answers true (the target 8.8-9.5 units away, inside the commando's attack band of 3.0 to 10.0).
+`ShouldFireEGrenade` stays false: its flag bit at guest +0xC63 is set by the module's unported
+grenade state. Without that `tp` the player starts 111 units away, off the commando's region, and
+nothing walks. The run's stand-ins are the six above plus `AcceptScriptMsg`, `CollidedWith`,
+`DoUserAnimEvent`, `fn_9_9F24`, `fn_9_8934`, `fn_9_B250`, `fn_9_B958` and `fn_9_3338`;
+`grep -c '[port] caught\|reach-stub'` is 0. The E-grenade fire state (`fn_9_A2EC`) is never
+entered, so no grenade is thrown.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
