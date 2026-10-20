@@ -236,6 +236,21 @@ per-function trace/state probe (never committed), the player driven through the 
     `LockOrbitOnTongue`, `PullPlayer`, `ReleaseOrbitLock`, `KnockPlayer`, `LaunchTongue`,
     `ExtendTongue`, `FacePlatform`, `PickPlatform`, `PlayerInsideHint`) - the next session can
     turn that list into markers with `python3 /tmp/opencode/sb1_markers.py --apply <log>`.
+  - **ExposeBelly reached** (a later run of the same recipe, 2026-10-20): 17 shots, 22 joint hits,
+    6 of them charged (`orig` 40-50, `dmg` 20-25, e.g. `[sb1bdmg] state=5 weak=0 canHit=1
+    dmg=23.17 orig=46.34 ... joint=230`). The belly accumulator went 0 -> 1.0 -> 20.2 -> 36.9 ->
+    **53.1 -> 57.8**, the state became 3 and the `ExposeBelly` function ran; the `HeavyHit`
+    (`fn_78_65E8`) and `LightHit` (`fn_78_6590`) triggers were evaluated in that state, but
+    `LightHitReact` and `HeavyHitReact` did not run - the two shots that followed aimed at the belly
+    joint (`L_middle2_boob_LCTR`, radius 2.5) and missed by 18.7 and 56 units, and state 3 ended.
+    The three functions that ran are marked.
+  - **More of the firing mechanism, measured:** the beam leaves along the **player body's**
+    forward, which lags the mouse aim by 13-44 degrees with a 0.1 s gap, so the aim has to be set
+    at least 0.5 s before the shot. The charged shot is released by hand (`press a 0` holds A,
+    `stick 0 0 0` releases) so it leaves with a fresh aim; a `tp` *during* the charge cancels the
+    shot, 0.5 s before the release is fine. `MP2_RAPID_CHARGE=1` makes every press land 3 hits.
+    The beam flies ~60 units/s (0.9 s to a joint 55 units away) and the arena's water surface
+    (z ~ 45 from the floor) eats shots fired from the floor.
 - **`damage` is capped per call:** 1160 applied as 580, so the harness steps it in a loop.
 - **Not reached:** ExposeBelly, HeavyHitReact, LightHitReact, SlideIntoWater, and the HeavyHit /
   LightHit triggers — all of them need a real hit to land. `ShouldExposeBelly` is evaluated but the
