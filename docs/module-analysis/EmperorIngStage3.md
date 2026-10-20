@@ -34,7 +34,7 @@ patterned AI typedef, the actor parameters and the module's own data block. The 
 | 0x48 | GetTouchBounds | `fn_18_8` | real (the actor's bounding box in an optional) |
 | 0x54 | GetAimPosition | `fn_18_8E84` | stand-in, forwards to CPatterned |
 | 0x6C | GetSortingBounds | `fn_18_45B4` | stand-in, forwards to CPatterned |
-| 0x70 | DoUserAnimEvent | `fn_18_9048` | stand-in, forwards to CPatterned |
+| 0x70 | DoUserAnimEvent | `fn_18_9048` | ported (slice 5); `4D0`/`BB8`/`1530` stand-ins |
 | 0xA4 | TakeDamage | `fn_18_9044` | real (the retail body is a single `blr`) |
 | 0xA8 | CanBeShot | `fn_18_90` | real (`li r3, 0x1`) |
 | 0xAC | IsListening | `fn_18_0` | real (`li r3, 0x1`) |
@@ -223,7 +223,7 @@ The base class's Think runs first (0x4818). Then:
   and the DOL's `fn_801BF3DC` - `CPlayerKnockBackMgr::ApplyPlayerKnockBackForce` - pushes the
   player along 0x8FC normalised, power 100, 0. Ported.
 - The ing's sound (0x4A70..0x4BB8): the emitter (the handle at 0x908 and the object at 0x90C)
-  follows that object. A stand-in: only DoUserAnimEvent (`fn_18_9048`, a stand-in) writes them.
+  follows that object. A stand-in; DoUserAnimEvent's event 39 (`fn_18_9048`) writes them.
 
 ### The lists and the Think's per-frame calls
 
@@ -377,6 +377,14 @@ EyeShut, GrowHeart, Stampede, Taunt, Dodge and JumpSlideAttack three times; the 
 750 -> 500 -> 250 -> 0 at 105 s, the FSM enters Dead, the ing is deleted and the post-fight
 cinematic plays (`/tmp/opencode/emp3run/shot_stage_end.png`). 0 caught / reach-stub lines.
 Reached stand-ins left: `4C3C`, Think's `1370`/`22E0`/`E40` and the sound.
+
+Slice 5 ports DoUserAnimEvent `9048` (the 40-entry event table: the slide flags 0x08/0x10/0x20
+of 0x825, the INTERNAL_STATE_01 actors moved to the event locator, 'IS04' on kUE_ScreenShake,
+the heart switches, the jump attack's shock wave from the data's `jumpAttackShockWaveInfo`
+(guest 0xE90) with the data's `sound` (0xECC) at 0x908/0x90C), `12C4` (stop the beam, guest
+0x8AC is the CPlasmaProjectile `1530` makes, 0x8B0 its sound) and `1B88`. `4D0` (module 29's
+object), `BB8` and `1530` are logged stand-ins. Run: JumpAttack now cycles, the ing reaches 0 at
+111 s and the FSM enters Dead; 0 caught / reach-stub lines.
 
 ### The base-class members (the sweep)
 

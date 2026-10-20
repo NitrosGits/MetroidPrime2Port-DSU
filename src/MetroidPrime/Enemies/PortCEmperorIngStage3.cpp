@@ -38,6 +38,9 @@
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Animation/CInt32POINode.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
+#include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
@@ -224,6 +227,13 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX82c_(0.f)                                             // guest 0x82C (0x9C80)
 , mX860_(0.f)                                             // guest 0x860 (0x9CAC)
 , mX8e8_(0.f)                                             // guest 0x8E8
+, mX8dc_(0.f)                                             // guest 0x8DC
+, mBeamId(kInvalidUniqueId.Value())                       // guest 0x8AC
+, mBeamSfx()                                              // guest 0x8B0
+, mShockWaveId(kInvalidUniqueId.Value())                  // guest 0x90C
+, mShockWaveSfx()                                         // guest 0x908
+, mJumpAttackShockWave(data.jumpAttackShockWaveInfo)      // guest 0xE90 (fn_18_A2EC)
+, mJumpAttackSound(static_cast< u16 >(data.sound))        // guest 0xECC
 , mX8f8_(0.f)                                             // guest 0x8F8 (0x9D70)
 , mX8fc_(CVector3f::Zero())                               // guest 0x8FC (0x9D78..0x9D88)
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
@@ -338,8 +348,8 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   }
 
   // The ing's sound (0x4A70..0x4BB8): the emitter (the handle at guest 0x908, playing per
-  // CSfxManager::IsPlaying, and the object at guest 0x90C) follows that object. A stand-in:
-  // neither member is written outside DoUserAnimEvent (fn_18_9048), itself a stand-in.
+  // CSfxManager::IsPlaying, and the object at guest 0x90C) follows that object. A stand-in;
+  // DoUserAnimEvent's event 39 (fn_18_9048) writes both members.
   StandInFn("fn_18_47D4 sound");
 }
 
@@ -517,11 +527,101 @@ CAABox CEmperorIngStage3::GetSortingBounds(const CStateManager& mgr) const {
   return CPatterned::GetSortingBounds(mgr);
 }
 
-// vtable slot 28 = fn_18_9048: retail's user-event switch (the attacks and the forms).
+// @ fn_18_9048
+// fn_18_9048 (vtable slot 28, 0x3F0): the user events, a 40-entry jump table (lbl_18_data_670;
+// any other type, and the table's default entries, go to the base). kUE_EggLay runs fn_18_4D0;
+// kUE_ChangeMaterial sets the grow-heart flag (0x02 of 0x825); kUE_DamageOn sets 0x40 of 0x824
+// and kUE_TakeOff clears it and sets the no-contact-damage flag (0x10 of 0x825);
+// kUE_AlignTargetPosStart puts the INTERNAL_STATE_01 ACTIVATE then PLAY actors (guest 0x8C6,
+// 0x8C4) at the event locator's point, 3.22 (rodata 0x31C) above it; kUE_Landing sets the
+// room-check flag (0x08 of 0x825); kUE_ScreenShake sends INTERNAL_STATE_04 ('IS04') with no
+// message; kUE_BeginAction runs fn_18_BB8; kUE_ObjectDrop sets guest 0x8DC to 1.5 (rodata
+// 0x29C); kUE_EventStart starts the beam (fn_18_1530) with 0x01 of 0x824 or 0x80 of 0x825;
+// kUE_EventStop stops it (fn_18_12C4); kUE_Activate and kUE_Deactivate switch the hearts
+// (fn_18_1BB0, fn_18_1B88); kUE_EffectOn/Off set and clear the slide-steer flag (0x20 of 0x825);
+// event 37 sets 0x10 of 0x824, 38 makes the hearts immune (fn_18_1C34) and 39 spawns the jump
+// attack's shock wave (0x9274) with its looped sound.
 void CEmperorIngStage3::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                         EUserEventType type, float dt) {
-  StandIn("CEmperorIngStage3::DoUserAnimEvent (vtable slot 28, fn_18_9048)");
-  CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+  switch (type) {
+  case kUE_EggLay:
+    EggLayEvent(mgr); // fn_18_4D0
+    break;
+  case kUE_ChangeMaterial:
+    x825_ |= 0x02;
+    break;
+  case kUE_DamageOn:
+    x824_ |= 0x40;
+    break;
+  case kUE_TakeOff:
+    x824_ &= ~0x40;
+    x825_ |= 0x10;
+    break;
+  case kUE_AlignTargetPosStart: {
+    const CVector3f lift = CVector3f::Up() * 3.22f; // rodata 0x31C
+    const CVector3f pos =
+        GetTransform() * GetScaledLocatorTransform(node.GetLocatorName()).GetTranslation() + lift;
+    if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(TUniqueId(x8c6_)))) {
+      actor->SetTranslation(pos);
+    }
+    if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(TUniqueId(x8c4_)))) {
+      actor->SetTranslation(pos);
+    }
+    break;
+  }
+  case kUE_Landing:
+    x825_ |= 0x08;
+    break;
+  case kUE_ScreenShake:
+    SendScriptMsgs(kSS_InternalState4, mgr, kInvalidUniqueId, kSM_None); // 0x93D8
+    break;
+  case kUE_BeginAction:
+    BeginActionEvent(mgr); // fn_18_BB8
+    break;
+  case kUE_ObjectDrop:
+    mX8dc_ = 1.5f; // rodata 0x29C
+    break;
+  case kUE_EventStart:
+    if ((x824_ & 0x01) != 0 || (x825_ & 0x80) != 0) {
+      StartBeam(mgr); // fn_18_1530
+    }
+    break;
+  case kUE_EventStop:
+    StopBeam(mgr); // fn_18_12C4
+    break;
+  case kUE_Activate:
+    SetCurrentHeart(mgr); // fn_18_1BB0
+    break;
+  case kUE_Deactivate:
+    HeartsOff(mgr); // fn_18_1B88
+    break;
+  case kUE_EffectOn:
+    x825_ |= 0x20;
+    break;
+  case kUE_EffectOff:
+    x825_ &= ~0x20;
+    break;
+  case kUE_Unknown37:
+    x824_ |= 0x10;
+    break;
+  case kUE_Unknown38:
+    SetHeartsImmune(mgr); // fn_18_1C34
+    break;
+  case kUE_Unknown39: {
+    mShockWaveId = mgr.AllocateUniqueId().Value(); // 0x9288
+    mgr.AddObject(rs_new CShockWave(TUniqueId(mShockWaveId), rstl::string_l("Shockwave"),
+                                    CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+                                    GetTransform(), GetUniqueId(), mJumpAttackShockWave,
+                                    4.f, 0.4f)); // fn_80171970, rodata 0x2AC/0x320
+    mShockWaveSfx = CSfxManager::AddEmitter(mJumpAttackSound, GetTranslation(),
+                                            GetCurrentAreaId().Value(), true, false,
+                                            CSfxManager::kMedPriority);
+    break;
+  }
+  default:
+    CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+    break;
+  }
 }
 
 // vtable slot 41 = fn_18_9044: the retail body is a single `blr` - the boss takes its damage in
@@ -1186,6 +1286,39 @@ bool CEmperorIngStage3::ForwardClearance(CStateManager& mgr, float& distance) co
   distance = copy.GetTime();
   return true;
 }
+
+// @ fn_18_12C4
+// fn_18_12C4 (0xAC): the beam (guest 0x8AC, the CPlasmaProjectile fn_18_1530 makes) is reset
+// (the vtable slot 0x90, ResetBeam(mgr, false)) and deleted, its id cleared, and its looped
+// sound (guest 0x8B0) removed.
+void CEmperorIngStage3::StopBeam(CStateManager& mgr) {
+  CPlasmaProjectile* beam = static_cast< CPlasmaProjectile* >(mgr.ObjectById(TUniqueId(mBeamId)));
+  if (beam == nullptr) {
+    return;
+  }
+  beam->ResetBeam(mgr, false);
+  mgr.DeleteObjectRequest(TUniqueId(mBeamId));
+  mBeamId = kInvalidUniqueId.Value();
+  if (mBeamSfx) {
+    CSfxManager::RemoveEmitter(mBeamSfx);
+    mBeamSfx = CSfxHandle();
+  }
+}
+
+// @ fn_18_1B88
+// fn_18_1B88 (0x28): the heart switch (fn_18_1DF4) with heart 3, no heart, and no vulnerability.
+void CEmperorIngStage3::HeartsOff(CStateManager& mgr) { SetHeartState(mgr, 3, false); }
+
+// fn_18_4D0 (0x3C0): builds an object from module 29 (fn_29_11E8C) at a rotated offset; that
+// module's mapping is not read yet.
+void CEmperorIngStage3::EggLayEvent(CStateManager& mgr) { StandInFn("fn_18_4D0"); }
+
+// fn_18_BB8 (0x204): spawns a module object (fn_18_817C/fn_18_BD84); not read yet.
+void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) { StandInFn("fn_18_BB8"); }
+
+// fn_18_1530 (0x3B4): makes the beam ("EmperorIngStage3Beam", a CPlasmaProjectile, guest 0x8AC)
+// and its looped sound (guest 0x8B0); not ported yet.
+void CEmperorIngStage3::StartBeam(CStateManager& mgr) { StandInFn("fn_18_1530"); }
 
 // fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
 CVector3f CEmperorIngStage3::FlatFacing() const {

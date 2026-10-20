@@ -9,6 +9,8 @@
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
+#include "MetroidPrime/Weapons/CShockWave.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "rstl/reserved_vector.hpp"
@@ -228,6 +230,14 @@ private:
   void SetCurrentHeart(CStateManager& mgr);
   // fn_18_1DF4: the heart switch (0 the enraged heart, 1 the dark heart, 2 the light heart).
   void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
+  // fn_18_1B88: the heart switch with no heart (3).
+  void HeartsOff(CStateManager& mgr);
+  // fn_18_12C4: resets and deletes the beam (guest 0x8AC) and removes its sound.
+  void StopBeam(CStateManager& mgr);
+  // fn_18_1530 / fn_18_BB8 / fn_18_4D0: the beam start, kUE_BeginAction's and kUE_EggLay's spawns.
+  void StartBeam(CStateManager& mgr);
+  void BeginActionEvent(CStateManager& mgr);
+  void EggLayEvent(CStateManager& mgr);
   // fn_18_36BC: the damage's source id against the two hearts' ids.
   void OnDamage(CStateManager& mgr, u16 sourceId);
   // fn_18_3448: the heart damage update (fn_18_2F04) and the heart effect's external params.
@@ -310,6 +320,13 @@ private:
   float mX82c_;                          // guest 0x82C, 0.0f: the heart effect's growth
   float mX860_;                          // guest 0x860, 0.0f: the heart hit timer
   float mX8e8_;                          // guest 0x8E8, 0.0f: the jump slide's extra time
+  float mX8dc_;                          // guest 0x8DC, 0.0f: set to 1.5 by kUE_ObjectDrop
+  u16 mBeamId;                           // guest 0x8AC, 0xFFFF: the beam (fn_18_1530)
+  CSfxHandle mBeamSfx;                   // guest 0x8B0, 0: the beam's looped sound
+  u16 mShockWaveId;                      // guest 0x90C, 0xFFFF: the jump attack's shock wave
+  CSfxHandle mShockWaveSfx;              // guest 0x908, 0: the shock wave's sound
+  CShockWaveInfo mJumpAttackShockWave;   // guest 0xE90, the data's jumpAttackShockWaveInfo
+  u16 mJumpAttackSound;                  // guest 0xECC, the data's sound
   float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
   CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
   float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime
