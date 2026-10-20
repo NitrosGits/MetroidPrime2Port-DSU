@@ -798,6 +798,8 @@ set(MP_MODULE_EmperorIngStage3_SOURCES
 )
 set(MP_MODULE_Ing_SOURCES
     src/MetroidPrime/Enemies/PortCIng.cpp
+    src/MetroidPrime/Enemies/PortCIngExitHostEffect.cpp
+    src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp
 )
 set(MP_MODULE_IngBoostBallGuardian_SOURCES
     src/MetroidPrime/PortModuleStubs.cpp

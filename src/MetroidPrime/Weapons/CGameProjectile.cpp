@@ -33,6 +33,11 @@
 
 #include "rstl/math.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+#endif
+
 static CTransform4f clear_transform(const CTransform4f& xf) {
   CTransform4f result(xf);
   result.SetTranslation(CVector3f::Zero());
@@ -294,6 +299,20 @@ CGameProjectile::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& s
        it != nearList.end(); ++it) {
     if (CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it))) {
       const CProjectileTouchResult touch = CanCollideWith(*actor, mgr);
+#ifdef TARGET_PC
+      static int sDebugNear = -1;
+      if (sDebugNear < 0) {
+        const char* env = getenv("MP2_DEBUG_BEAM");
+        sDebugNear = env != nullptr && env[0] != '\0' && env[0] != '0' ? 1 : 0;
+      }
+      if (sDebugNear != 0) {
+        const CWeaponTypeVulnerability& v =
+            actor->GetDamageVulnerability()->GetVulnerability(mCurDamageInfo.GetWeaponMode());
+        std::fprintf(stderr, "[proj]   near %04x vulnEffect %d touch %04x\n",
+                     actor->GetUniqueId().Value(), static_cast< int >(v.mEffect),
+                     touch.GetActorId().Value());
+      }
+#endif
       if (touch.GetActorId() == kInvalidUniqueId) {
         continue;
       }
@@ -336,6 +355,36 @@ CGameProjectile::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& s
   if (mInWater && idOut == kInvalidUniqueId) {
     mInWater = false;
   }
+#ifdef TARGET_PC
+  // MP2_DEBUG_BEAM=1: every projectile's ray test, with the direction it was fired in (the first
+  // person camera's pitch, which a console-driven run otherwise cannot see) and what it met.
+  static int sDebugBeam = -1;
+  if (sDebugBeam < 0) {
+    const char* env = getenv("MP2_DEBUG_BEAM");
+    sDebugBeam = env != nullptr && env[0] != '\0' && env[0] != '0' ? 1 : 0;
+  }
+  if (sDebugBeam != 0) {
+    std::fprintf(stderr,
+                 "[proj] %04x from (%.2f, %.2f, %.2f) dir (%.3f, %.3f, %.3f) mag %.1f near %d",
+                 GetUniqueId().Value(), static_cast< double >(start.GetX()),
+                 static_cast< double >(start.GetY()), static_cast< double >(start.GetZ()),
+                 static_cast< double >(direction.GetX()), static_cast< double >(direction.GetY()),
+                 static_cast< double >(direction.GetZ()), static_cast< double >(magnitude),
+                 static_cast< int >(nearList.size()));
+    if (idOut != kInvalidUniqueId) {
+      std::fprintf(stderr, " -> actor %04x at t %.2f\n", idOut.Value(),
+                   static_cast< double >(result.GetTime()));
+    } else if (result.IsValid()) {
+      std::fprintf(stderr, " -> world at t %.2f (%.2f, %.2f, %.2f)\n",
+                   static_cast< double >(result.GetTime()),
+                   static_cast< double >(result.GetPoint().GetX()),
+                   static_cast< double >(result.GetPoint().GetY()),
+                   static_cast< double >(result.GetPoint().GetZ()));
+    } else {
+      std::fprintf(stderr, " -> nothing\n");
+    }
+  }
+#endif
   return result;
 }
 
