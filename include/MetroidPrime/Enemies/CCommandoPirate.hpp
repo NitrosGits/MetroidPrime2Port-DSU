@@ -328,6 +328,9 @@ private:
   // fn_9_3338: the module's jump-back helper - is the point behind the actor clear?
   bool x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir, float distance) const;
 
+  // fn_9_3678: the module's dodge picker - which side (left or right) can the commando dodge into?
+  int x3678_PickDodgeDirection(CStateManager& mgr) const;
+
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
   // listening AIs of the same area.

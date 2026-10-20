@@ -1274,11 +1274,101 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_8B70");
 }
 
+// @ fn_9_3678
+// fn_9_3678 (0x288 bytes): the module's dodge picker, called by the Dodge state's activate (the
+// call at 0x00008974). It answers the dodge direction: 2 (the host's pas::kSD_Left) or 3 (its
+// pas::kSD_Right), or -1 when neither side is free.
+//
+// The two candidates are the actor's right column and its negation. The guest's transform is a
+// CTransform4f at this+0x24 (the FromMatrix call's argument at 0x000024C4), so its kDX column -
+// the right one - is this+0x24, +0x34 and +0x44 (the three loads at 0x000036A8..0x000036E4).
+//
+// The listening-AI list (the state manager's +0x830, the load at 0x000036E8) is walked. Every
+// other AI of the same area (the area ids at +0x04, compared at 0x00003710..0x0000371C) that is
+// nearer than the module's float at guest this+0xBE4 (its square at 0x000036B8, the compare at
+// 0x00003758) blocks the side it stands on: the dot product with the right column (the fmadds
+// chain at 0x0000376C..0x0000377C) says which side, and the angle to it must be under 60 degrees
+// (lbl_9_rodata_4A4 = 1.0471976f, the load at 0x000037A4; the GetAngleDiff calls at 0x0000379C
+// and 0x000037E0, the right column and its negation).
+//
+// Each side that is still free is then checked by the module's own helper fn_9_3338 (the calls
+// at 0x00003834 and 0x00003878): the point that distance along the side has to be clear. When
+// both sides are free, the state manager's random (its CRandom16 at +0x16E4, the call at
+// 0x00003894) picks one: its bit 14 (the rlwinm at 0x00003898) keeps the right, the clear bit
+// keeps the left.
+int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
+  const float distance = xbe4_;                                   // 0x000036A8
+  const float distanceSq = distance * distance;                   // 0x000036B8
+  const CVector3f right = GetTransform().GetRight();              // 0x000036A8..0x000036E4
+  const CVector3f position = GetTranslation();                    // 0x000036B0..0x000036C0
+  bool rightFree = true;                                          // r29
+  bool leftFree = true;                                           // r30
+
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);        // 0x000036E8
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CEntity* entity = list[i];                                    // 0x000036FC
+    if (entity == nullptr) {                                      // 0x00003700..0x00003704
+      continue;
+    }
+    // The guest compares the object with itself (0x00003708) and then reads the area id at +0x04
+    // (the compare at 0x00003718); the host's cast can also fail, where the guest's raw read of
+    // the area id could not.
+    CPatterned* other = TCastToPtr< CPatterned >(entity);
+    if (other == nullptr || other == this) {                      // 0x00003708..0x0000370C
+      continue;
+    }
+    if (other->GetCurrentAreaId() != GetCurrentAreaId()) {        // 0x00003710..0x0000371C
+      continue;
+    }
+    const CVector3f delta = other->GetTranslation() - position;   // 0x00003720..0x00003734
+    if (delta.MagSquared() >= distanceSq) {                       // 0x00003738..0x0000375C
+      continue;
+    }
+    if (CVector3f::Dot(delta, right) >= 0.f) {                    // 0x0000376C..0x00003788
+      if (!rightFree) {                                           // 0x0000378C
+        continue;
+      }
+      if (CVector3f::GetAngleDiff(right, delta) >= 1.0471976f) {  // 0x0000379C..0x000037AC
+        continue;
+      }
+      rightFree = false;                                         // 0x000037B0
+    } else {
+      if (!leftFree) {                                            // 0x000037B8
+        continue;
+      }
+      if (CVector3f::GetAngleDiff(-right, delta) >= 1.0471976f) {  // 0x000037E0..0x000037F0
+        continue;
+      }
+      leftFree = false;                                          // 0x000037F4
+    }
+  }
+
+  if (rightFree) {                                                // 0x0000381C..0x00003824
+    rightFree = x3338_IsJumpBackClear(mgr, right, distance);      // 0x00003834
+  }
+  if (leftFree) {                                                 // 0x0000383C
+    leftFree = x3338_IsJumpBackClear(mgr, -right, distance);       // 0x00003878
+  }
+  if (rightFree && leftFree) {                                    // 0x00003880..0x0000388C
+    if ((mgr.Random()->Next() & 0x4000) != 0) {                   // 0x00003894..0x00003898
+      leftFree = false;                                           // 0x000038A0
+    } else {
+      rightFree = false;                                          // 0x000038A8
+    }
+  }
+  if (leftFree) {                                                 // 0x000038AC..0x000038B8
+    return pas::kSD_Left;                                         // 2
+  }
+  if (rightFree) {                                                // 0x000038BC..0x000038C4
+    return pas::kSD_Right;                                        // 3
+  }
+  return -1;                                                      // 0x000038C8
+}
+
 // fn_9_8934 (0x1e0 bytes): the Dodge state, in the guest's three parts.
 //
 // Activate (the guest's message 0, the test at 0x0000895C): the module's helper fn_9_3678
-// (0x288 bytes, over the 0x80 limit, so a named helper that returns the neutral value) picks
-// the dodge, the result goes into the module's field at guest this+0xBDC (the store at
+// picks the dodge, the result goes into the module's field at guest this+0xBDC (the store at
 // 0x00008978) and, when it is not -1 (the compare at 0x00008980), the animation state takes the
 // command id 1 (the store at 0x0000898C).
 //
@@ -1299,8 +1389,7 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
 void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
-    StandInFn("fn_9_3678 (0x288 bytes)");            // 0x00008974
-    xbdc_ = -1;                                       // 0x00008978 (the helper's neutral value)
+    xbdc_ = x3678_PickDodgeDirection(mgr);            // 0x00008974
     if (xbdc_ != -1) {                               // 0x00008980
       mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x0000898C
     }
