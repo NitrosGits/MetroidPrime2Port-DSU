@@ -221,6 +221,7 @@ read off the asm with `tools/asmcheck.py annotate` and carries the guest offset 
 | ShouldCoverAttack | `fn_9_B0B4` | 0x6A6 | `xb5c_ <= 0.f` | `xb5c_` (new, 0.f) |
 | AbortSeekCover | `fn_9_AFB8` | 0x6C3 | `xb8c_ >= xb90_` | `xb8c_`, `xb90_` (new, 0.f) |
 | UnderFire | `fn_9_BAD0` | 0x585 | `xb64_ < 0.75f` | `xb64_` (0.75f, `lbl_9_rodata_4E0`) |
+| IsOffPath | `fn_9_B958` | 0x5C5 | the actor's own position is not on the path search's path (the guest's call at 0x0000B970 and its != 0 idiom at 0x0000B974..0x0000B97C) | the path search at guest this+0x928 and the position at +0x54 |
 | HasTarget | `fn_9_BA78` | 0x599 | the target the commando holds (guest this+0xBCA) is still in the world | the base's `GetObjectById` |
 | HasNewTarget | `fn_9_BA20` | 0x5A3 | there is a target and it is a new one: `HasTarget(...)` and the id at guest this+0xBCC differs from the target id | `xbcc_` (new, kInvalidUniqueId) |
 | ShouldRetreat | `fn_9_BB7C` | 0x540 | the flag byte at guest this+0xC63 has its 0x40 bit set, the block's flag bytes at +0x15D and +0x15C do not have their 0x80 and 0x08 bits, and the id at guest this+0xBCE is not kInvalidUniqueId | `xbce_` (new, kInvalidUniqueId) |
@@ -292,6 +293,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
 | SetTargetDest | `fn_9_AA20` | 0x6FC | on activate only: the destination starts as the actor's own position (guest this+0x54) and the 0x80 bit of the flag byte at guest this+0xC65 is cleared; the target (the id at guest this+0xBCA) is looked up and, when it is there and either the flag byte at +0xC64 has its 0x40 bit or the byte at +0xAE8 does not have its 0x80 bit, the destination becomes the target's position and the 0x80 bit of +0xC65 is set; then the path find navigation's destination is set, its face target id (guest this+0x718, the navigation's own member at +0x24) is cleared and the module's helper `fn_9_19D8` is called | `fn_9_19D8` is 0xc4 bytes, over the 0x80 limit, so it is a named stand-in; the guest reads the target's position without a cast, so the port casts to CActor (the host's CEntity has no position) |
+| SetPathMeshDest | `fn_9_A838` | 0x725 | on activate: the 0x80 bit of the flag byte at guest this+0xC65 is cleared, the path find search (guest this+0x928) looks for the closest reachable point to the actor's own position (the out point starts as the zero vector) and the path find navigation (guest this+0x6F4) takes that point as its destination; when the search finds no point the navigation takes the actor's own position and the flag byte's 0x80 bit stays clear; the navigation's face target id (guest this+0x718) is cleared either way | the host's `CPathFindSearch::FindClosestReachablePoint` takes the same two arguments as the guest's (the source and the out point) |
 
 The player id the guest takes (its state manager's +0x14FC, the id at +8 of it, 0x0000AB4C) has no
 member at that offset in the host's state manager, so the port uses the player actor's id.
@@ -561,6 +563,31 @@ rays hit the world (the jump-back helper's ray from the bounding-box centre, 7.0
 sideways), so neither side is free, no dodge command is issued and the animation state never
 enters kAS_Step. The `ShouldJumpBack` trigger runs there too (three calls) and answers false.
 
+With the off-path trigger (`fn_9_B958`) and the SetPathMeshDest state (`fn_9_A838`) ported
+(2026-10-20) the same run still reaches gameplay at 10.1 s, runs to the frame limit at 46.2 s and
+ends with exit=0, with `grep -c '[port] caught\|reach-stub'` = 0. `IsOffPath` is now the guest's
+own test - the actor's position against the path search - and the state machine's walk changes
+with it: the commando reaches the SetPathMeshDest state (the stand-in log for `fn_9_A838` is
+gone) and the path find navigation takes the closest reachable point the search finds.
+
+The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_ADA0` (the
+Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHang, 0x54),
+`fn_9_B1E0` (ShouldBoost, 0x70), `fn_9_69C8` (the Dead state, 0x78), `fn_9_A7A8` (SetCoverDest,
+0x90), `fn_9_A8E8` (SetJumpDest, 0x94), `fn_9_6BCC` (BreakCover, 0x9c), `fn_9_A97C`
+(SetRetreatDest, 0xa4), `fn_9_8D28` (PostWarpOut, 0xc8), `fn_9_728C` (WallDetach, 0xcc),
+`fn_9_AFD4` (CoverBlown, 0xe0), `fn_9_4BC0` (the module's sound emitters, 0xe4), `fn_9_6A40`
+(GetUp, 0x130), `fn_9_7724` (Crouch, 0x148), `fn_9_6C68` (CoverAttack, 0x154), `fn_9_A2EC`
+(EGrenadeAttack, 0x174), `fn_9_8B70` (the JumpBack state, 0x1b8), `fn_9_A110`
+(PostEGrenadeAttack, 0x1dc), `fn_9_9F24` (JumpPointFind, 0x1ec), `fn_9_709C` (CoverFind, 0x1f0),
+`fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218), `fn_9_4D84` (0x228), `fn_9_786C`
+(RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
+`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_6390` (0x29c), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
+`fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
+`fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
+(ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
+reaches are `fn_9_4BC0`, `fn_9_9F24`, `fn_9_709C`, `fn_9_4D84`, `fn_9_6390`, `fn_9_3090`,
+`fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
+
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
 as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a8), `fn_9_1C0C`
@@ -652,14 +679,13 @@ entered, so no grenade is thrown.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 42 bodies: the two tables (34 triggers, 36 states) are registered,
-  twenty-three of the triggers and seven of the states are host code (the sections above), but every
+- The state machine's other bodies: the two tables (34 triggers, 36 states) are registered,
+  twenty-nine of the triggers and nine of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value. The triggers that are still stand-ins are `IsOffPath`
-  (fn_9_B958, 0x38), `ShouldShieldCharge` (fn_9_B250, 0x410), `ShouldBoost` (fn_9_B1E0, 0x70),
-  `ShouldCrouch` (fn_9_B168, 0x40), `ShouldWallHang` (fn_9_B114, 0x54) and `CoverBlown`
-  (fn_9_AFD4, 0xe0); the JumpBack state (fn_9_8B70, 0x1b8) is a stand-in too, and so is the
-  module's per-frame helper `fn_9_662C` (0x39c) that advances the timers the triggers read.
+  returns the neutral value. The triggers that are still stand-ins are `ShouldShieldCharge`
+  (fn_9_B250, 0x410), `ShouldBoost` (fn_9_B1E0, 0x70), `ShouldCrouch` (fn_9_B168, 0x40),
+  `ShouldWallHang` (fn_9_B114, 0x54) and `CoverBlown` (fn_9_AFD4, 0xe0); the JumpBack state
+  (fn_9_8B70, 0x1b8) is a stand-in too.
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
