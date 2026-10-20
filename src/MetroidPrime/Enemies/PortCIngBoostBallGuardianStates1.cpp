@@ -13,12 +13,10 @@
 // PortCIngBoostBallGuardianStates2.cpp.
 //
 // What this module does not have, and what was dropped because of it:
-//   - no lure safe zone (the Ing's mLureSafeZoneId, mSafeZoneCount and mEvaporate do not exist
-//     here), so FaceLureOrTarget only turns to the target;
+//   - no lure safe zone (the Ing's mLureSafeZoneId and mEvaporate do not exist here), and
+//     BecomeCorporeal does not turn to it or to the target (fn_30_B03C has no face step);
 //   - no safe-zone ing-spot flag (the Ing's mSafeZoneIngSpot does not exist here);
-//   - no grapple block (the Ing's mData.mGrapple does not exist here);
-//   - no exit-host class yet (CIngExitHostEffect belongs to the Ing branch and the module's own
-//     exit-host body is a later slice), so ExitHost and SpawnExitHostSmoke only log.
+//   - no grapple block (the Ing's mData.mGrapple does not exist here).
 
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
@@ -187,27 +185,6 @@ void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager& mgr) {
   }
 }
 
-// The Ing's fn_29_1A80: turn to the lure safe zone (0xd78) when one is set, else to the target
-// (0xd6c). The offset is taken horizontally (z of the delta is zeroed) and only applied when its
-// magnitude is safe; the actor's own z is kept. Called by BecomeCorporeal's Activate.
-//
-// This module has no lure safe zone (the Ing's mLureSafeZoneId does not exist here), so only the
-// "else turn to the target" half is ported.
-void CIngBoostBallGuardian::FaceLureOrTarget(CStateManager& mgr) {
-  const CVector3f pos = GetTranslation();
-  // Retail reads the object's +0x54 without a type test; the port asks for an actor (the target a
-  // CActor).
-  const CActor* other = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (other == nullptr) {
-    return;
-  }
-  CVector3f delta = other->GetTranslation() - pos;
-  delta.SetZ(0.f);
-  if (delta.IsMagnitudeSafe()) {
-    SetTransform(CTransform4f::LookAt(pos, pos + delta, CVector3f::Up()));
-  }
-}
-
 // fn_30_B03C (this module).
 // The Ing's fn_29_9A74.
 void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
@@ -233,7 +210,6 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     mCollisionActorManager1->SetActive(mgr, false); // fn_30_B03C 0x0000B144: guest 0xD64
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp); // 0xca4 = 2
     mLineOfSight.SetSegment(mEyeSegId);                            // 0xd8a = 0xd7b ("head")
-    FaceLureOrTarget(mgr);                                         // the Ing's fn_29_1A80
     mMoving = false;                                               // 0xe5d bit 1
     Stop();
     SetBodyManagerReflect(mgr, false); // 0x0000B17C: fn_30_3190

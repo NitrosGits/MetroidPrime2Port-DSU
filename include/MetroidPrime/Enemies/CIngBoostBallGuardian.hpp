@@ -409,7 +409,6 @@ private:
   void SpawnExitHostSmoke(CStateManager& mgr);
   // Turn horizontally to the target (the Ing turns to the lure safe zone when one is set; this
   // module has no lure safe zone).
-  void FaceLureOrTarget(CStateManager& mgr);
   // fn_30_30E4: the guest's second manager (0xD64) takes the boost-ball vulnerability or the ing
   // spot's. fn_30_3190: the body manager (guest 0xD60) takes the
   // reflect vulnerability or the base one. fn_30_3068: enter or leave the boost puddle mode.
