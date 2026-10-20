@@ -76,12 +76,13 @@ namespace {
 // @ fn_30_4E90
 void CIngBoostBallGuardian::CreateCollisionActorManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
-  joints.reserve(7);
+  joints.reserve(7); // 0x00004EC0: fn_30_10F9C, the vector's reserve
   const CAnimData* anim = GetModelData()->GetAnimationData();
   for (uint i = 0; i < 7; ++i) {
     const SIngJointSphere& sphere = skIngJointSpheres[i];
     const CSegId seg = anim->GetLocatorSegId(rstl::string_l(sphere.mLocator));
-    joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
+    // 0x00004F54/0x00004F78: the description's copy and push_back_unsafe
+    joints.push_back_unsafe(CJointCollisionDescription::SphereCollision( // fn_30_4C58, fn_30_4BD8
         seg, CVector3f::Zero(), sphere.mRadius, rstl::string_l(sphere.mLocator), kIngJointMass));
   }
   CCollisionActorManager* manager =
@@ -90,7 +91,8 @@ void CIngBoostBallGuardian::CreateCollisionActorManager(CStateManager& mgr) {
   mCollisionActorManager0 = manager;
   SetupManagerActors(mgr, mCollisionActorManager0);
   AddMaterial(kMT_Unknown54, kMT_ProjectilePassthrough, mgr);
-  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+  // 0x000050F4: the vector's destructor runs at scope end
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude( // fn_30_4D74
       CMaterialList(kMT_Solid), // lbl_30_data_99C
       CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player, kMT_Projectile, kMT_Bomb)));
 }
@@ -101,15 +103,17 @@ void CIngBoostBallGuardian::CreateCollisionActorManager(CStateManager& mgr) {
 // @ fn_30_4A38
 void CIngBoostBallGuardian::CreateIngSpotManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
-  joints.reserve(1);
+  joints.reserve(1); // 0x00004A70: fn_30_10F9C
   const CSegId root = GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("Root"));
-  joints.push_back_unsafe(CJointCollisionDescription::AABoxCollision(
+  // 0x00004B0C/0x00004B2C: the description's copy and push_back_unsafe
+  joints.push_back_unsafe(CJointCollisionDescription::AABoxCollision( // fn_30_4C58, fn_30_4BD8
       root, CVector3f(5.f, 5.f, 1.5f), rstl::string_l("PuddleCollisionActor"), 1000.f));
   CCollisionActorManager* manager =
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
   delete mCollisionActorManager1;
   mCollisionActorManager1 = manager;
-  SetupManagerActors(mgr, mCollisionActorManager1);
+  // 0x00004BB8: the vector's destructor runs at scope end
+  SetupManagerActors(mgr, mCollisionActorManager1); // fn_30_4D74
 }
 
 // fn_30_4924: the Ing REL's fn_29_3014 for a given manager; the vulnerability call is the
@@ -132,11 +136,12 @@ TUniqueId CIngBoostBallGuardian::CreateBlobTracker(CStateManager& mgr,
                                                    const TLockedToken< CGenDescription >& desc) {
   const TUniqueId id = mgr.AllocateUniqueId();
   if (id != kInvalidUniqueId) {
-    CCollisionTracker* tracker = rs_new CCollisionTracker(
+    // 0x00006568: GeomBlobV2's CCollisionTracker constructor
+    CCollisionTracker* tracker = rs_new CCollisionTracker( // fn_25_4290
         desc, id, GetCurrentAreaId(), true, rstl::string_l("IngBlobEffect"),
         CTransform4f::Translate(GetTranslation()), GetUniqueId(), 0,
         CCollisionTracker::skDefaultExtents);
-    tracker->SetParticleEmissionRateScalar(0.f);
+    tracker->SetParticleEmissionRateScalar(0.f); // 0x0000658C: fn_25_256C
     tracker->SetNextDrawNode(GetUniqueId()); // 0x000065A4: CActor 0x12A
     mgr.AddObject(tracker);
   }
