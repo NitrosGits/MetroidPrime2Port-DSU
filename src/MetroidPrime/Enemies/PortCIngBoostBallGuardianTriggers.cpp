@@ -845,8 +845,9 @@ bool CIngBoostBallGuardian::ShouldBecomeIngSpot(CStateManager&, const CTriggerDa
   return mDesiredForm == kForm_IngSpot && mForm != kForm_IngSpot;
 }
 
-// fn_30_BE94 (this module).
-// Ing body fn_29_A8CC
+// Ing body fn_29_A8CC. Area 28 has no team (0x1086 stays invalid), so CanStartAttack only runs
+// when the Ing is in one; mMinAttackRange is 0 there, so the near bound never refuses.
+// @ fn_30_BE94
 bool CIngBoostBallGuardian::ShouldArmSwipe(CStateManager& mgr, const CTriggerData&) const {
   // 0x0000BEB4 form == 2, 0x0000BEC0 data 0x40.
   if (mForm != kForm_Corporeal || (mData.mFlags210 & kFlag_NoArmSwipe) != 0 ||
@@ -876,8 +877,8 @@ bool CIngBoostBallGuardian::ShouldTaunt(CStateManager&, const CTriggerData&) con
   return mTaunt;
 }
 
-// fn_30_BD48 (this module).
-// Ing body fn_29_A780
+// Ing body fn_29_A780; area 28 has no team (the CanStartAttack call runs only inside one).
+// @ fn_30_BD48
 bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
   // The team gate only applies inside a team: retail compares mTeamId with kInvalidUniqueId
   // and skips CanStartAttack when they are equal (asm 0x0000A8A4, the branch that lands at
@@ -910,8 +911,8 @@ bool CIngBoostBallGuardian::ShouldBodyProjectile(CStateManager& mgr, const CTrig
   return inRange;
 }
 
-// fn_30_BC2C (this module).
-// Ing body fn_29_A664
+// Ing body fn_29_A664; area 28 has no team (the CanStartAttack call runs only inside one).
+// @ fn_30_BC2C
 bool CIngBoostBallGuardian::ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData&) const {
   // Same team gate as fn_29_A780/A8CC: retail asks CanStartAttack only when mTeamId is set
   // (asm 0x0000A788, the compare that skips to .L_0000A6E0).
@@ -933,8 +934,8 @@ bool CIngBoostBallGuardian::ProjectileSplat(CStateManager&, const CTriggerData&)
   return mSplat;
 }
 
-// fn_30_BAB4 (this module).
-// fn_29_A4EC (not yet exercised in a run)
+// fn_29_A4EC. The box is the model scale * 2.5 (rodata_E0, 0x0000BB50) around the Ing.
+// @ fn_30_BAB4
 bool CIngBoostBallGuardian::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
   const CEntity* entity = mgr.GetObjectById(mTargetId);
   const CPhysicsActor* target = TCastToConstPtr< CPhysicsActor >(entity);
@@ -1108,6 +1109,9 @@ void CIngBoostBallGuardian::SetRecoverDest(CStateManager&, float) {
 // from the Ing's own position (0x00006FFC), then the nearest point with flag bit 0 (0x00007048)
 // that PointConnectionsTest links to it (0x00007058), under 400 (rodata_F8, 0x00007094) from the
 // hint and with a mesh path to it (0x000070A8), then the point search between the two (0x000070F8).
+// Area 28's path area has 4 points, all with bit 0 set, all found from anywhere and searchable:
+// the flag-0 skip, no-closest-point, no-mesh-path and failed-search exits never run there.
+// @ fn_30_6F88
 void CIngBoostBallGuardian::SetPointCoverDest(CStateManager& mgr, float) {
   LogState("SetPointCoverDest");
   mFoundMovementPos = false;
@@ -1146,8 +1150,9 @@ void CIngBoostBallGuardian::SetPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// fn_30_6E7C (this module).
-// fn_29_5714 (not yet exercised in a run)
+// fn_29_5714. In area 28 (4 path points) both closest-point queries always find a point and the
+// search always succeeds, so only the no-hint and found exits run there.
+// @ fn_30_6E7C
 void CIngBoostBallGuardian::SetWallPointCoverDest(CStateManager& mgr, float) {
   LogState("SetWallPointCoverDest");
   mFoundMovementPos = false;

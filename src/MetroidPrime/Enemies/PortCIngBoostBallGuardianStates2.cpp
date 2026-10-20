@@ -534,7 +534,8 @@ void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float 
 }
 
 // fn_29_75C0
-// fn_30_8CC0: Activate and Update both move (0x00008CE4: msg < 2).
+// Activate and Update both move (0x00008CE4: msg < 2).
+// @ fn_30_8CC0
 void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
