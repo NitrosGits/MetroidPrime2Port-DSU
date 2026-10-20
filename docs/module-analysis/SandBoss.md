@@ -275,7 +275,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 70D0 | CSandBoss::SyncCollisionHealth | [proven] host body |
 | 724C | CSandBoss::SetupCollisionActors | [proven] host body |
 | 783C | CSandBoss::SetCollisionVulnerabilities | [proven] host body |
-| 78E0 | CSandBoss::SnapJawsCollisionSetup (mgr, bounds) | [ported] host body, not exercised yet (only caller: A170) |
+| 78E0 | CSandBoss::SnapJawsCollisionSetup (mgr, bounds) | [proven] host body (only caller: A170) |
 | 79B0 | CSandBoss::HandleHitObject | [proven] host body |
 | 7BB0 | CSandBoss::UpdateFlashColor | [proven] host body |
 | 7C68 | CSandBoss::StampedeHelper | [proven] host body |
@@ -321,7 +321,7 @@ to `CPlasmaProjectile`. Files: `PortCSandBoss.cpp` (core, collision/armour, tabl
 | 98FC | CSandBoss::Stampede | [proven] host body |
 | 9BB8 | CSandBoss::SeekStampedePoint | [proven] host body |
 | 9E3C | CSandBoss::SelectStampedePoint | [proven] host body |
-| A170 | CSandBoss::SnapJaws | [ported] host body, not exercised yet (ShouldSnapJaws (C2A0) answered false in run sbV) |
+| A170 | CSandBoss::SnapJaws | [proven] host body |
 | A360 | CSandBoss::TripleCharge | [ported] host body, not exercised yet |
 | A6CC | CSandBoss::DoubleCharge | [ported] host body, not exercised yet |
 | A9DC | CSandBoss::RepeaterAttack | [proven] host body |
@@ -527,6 +527,17 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   42A8 only runs once C894's cooldown gate opens (slice 8). The two signature changes C894/C750 needed —
   42A8 returns the picked worm's uid (C894 compares it to `GetUniqueId()` and otherwise makes that sibling run
   its dark-beam probe) and 1B94 returns the count of active safe zones — landed with their call sites in slice 8.
+- Slice 11 (2026-10-20, run sbW, `MP2_SB_FRONT=1 MP2_SB_TRIG=1`, FRAMES 4000, exit 0, 0 caught, 0
+  reach-stub): `/tmp/opencode/sb3_run.sh` adds two knobs. `MP2_SB_FRONT=1` parks the player at
+  `translation + kDY * (mMinAttackRange + mMaxAttackRange) / 2` each frame, which makes `ShouldSnapJaws`
+  (C2A0) answer true, so the `SnapJaws` state (A170) and `SnapJawsCollisionSetup` (78E0) run — both now
+  `// @`. `MP2_SB_TRIG=1` logs the `RotateToPlayer` gating fields every 180 `Think` calls: the charge gates
+  never fire because only one worm ever sets `mAttachedToSphere`. All 46 samples taken after `AttachToSphere`
+  (BAAC) report `sib=1 lead=0` (`CountAttachedSiblings` 1, `IsAttachedLeader` false), with
+  `mSyncAttacksAllowed` 0 and `mChargeBeamCooldown` 0, so `ShouldDoubleCharge`/`ShouldTripleCharge` can
+  never reach their 2/3-sibling conditions. Next: add the per-worm `mData.commandIndex`, `mAttachedToSphere`
+  and `mWaitMode` to that tick to see why the other two worms never finish the stampede cycle, then a probe
+  that attaches all three to exercise the charge volleys (A360 A6CC 3ACC 3F44 3434 37F4 3324 31E8 26C0).
 - `GetName()` on the FSM2 machine is useless as a state tick: the three top-level states are all literally
   named `UnderGround`. Read the `[sbtrace]` order instead.
 

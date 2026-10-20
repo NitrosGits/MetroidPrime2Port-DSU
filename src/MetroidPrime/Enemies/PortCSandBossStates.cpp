@@ -724,7 +724,7 @@ void CSandBoss::TripleCharge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_A170 (ported, not exercised yet)
+// @ fn_55_A170
 // SnapJaws: the bite is one melee-attack command. Start readies the animation, arms the snap-jaw
 // contact damage (0x165C b5, read by fn_55_79B0) and widens the collision actors' touch bounds
 // (fn_55_78E0) so the closed jaws reach; stop drops the contact bit, puts the touch bounds back and,
@@ -1087,7 +1087,7 @@ void CSandBoss::SetCinematicStateExitSphere(CStateManager&, float) { mCinematicS
 
 // Helpers
 
-// fn_55_78E0 (ported, not exercised yet)
+// @ fn_55_78E0
 // Sets the touch-bounds expansion (the member retail writes at actor+0x35C, folded into
 // CCollisionActor::GetTouchBounds) on every collision actor this worm owns: the snap jaws widen it
 // while they are closed and put it back to zero when they open.
