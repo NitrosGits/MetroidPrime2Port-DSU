@@ -603,23 +603,43 @@ bool CSpacePirate::BounceFind(CStateManager& mgr, const CTriggerData& data) cons
   return false;
 }
 
+// @ fn_72_55B8
+// The 208 cycle does evaluate this trigger (2980 calls in the 2026-10-20 run), but it is always
+// false there (the pirates stand on the ground), so only the body-state test is proven.
+// Retail: false while the body is in the jump state (the body controller's state word at +0x37c
+// compared with 0xd = pas::kAS_Jump); otherwise the opposite of IsOnGround (the vtable slot
+// 0x110 call, whose result is tested on the top byte).
 bool CSpacePirate::OffLine(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::OffLine trigger (fn_72_55B8)");
-  return false;
+  bool result = false;
+  if (GetBodyController()->GetCurrentStateId() != pas::kAS_Jump && !IsOnGround()) {
+    result = true;
+  }
+  TraceCall(*this, "OffLine trigger", result ? 1 : 0);
+  return result;
 }
 
+// fn_72_558C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the vtable slot 0x110 call (IsOnGround) and nothing else; its result is returned
+// unmasked.
 bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::Landed trigger (fn_72_558C)");
-  return false;
+  const bool result = IsOnGround();
+  TraceCall(*this, "Landed trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
 
+// fn_72_52F8. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// Retail: the leash timer (0xbb0) is compared with the trigger's float argument and the
+// comparison result is the answer - the asm takes CR0's equal bit (fcmpo + mfcr +
+// extrwi ..., 1, 1), so the trigger is true when the timer is exactly the argument. MP1 returns
+// "timer > argument" instead.
 bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
-  PortSpacePirateStandIn("CSpacePirate::Leash trigger (fn_72_52F8)");
-  return false;
+  const bool result = xbb0_leashTimer == data.GetFloat();
+  TraceCall(*this, "Leash trigger", result ? 1 : 0);
+  return result;
 }
 
 bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) const {
