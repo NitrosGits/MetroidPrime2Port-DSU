@@ -2477,8 +2477,28 @@ void CEmperorIngStage3::LightBeamAttack(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
+// fn_18_6698 (0x128): the "LightSwarmAttack" state, PortalAttack's shape with severity 11. The
+// attack animation's kUE_BeginAction event spawns the light swarm (BeginActionEvent, fn_18_BB8).
+// Activate (0x66D0) readies the animation state; Update (0x66DC) issues the projectile attack
+// (severity 11, a zero target, no blend) while the body can take one (state 0x12); Deactivate
+// (0x67A4) un-readies it.
 void CEmperorIngStage3::LightSwarmAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6698");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x66D4, the value one
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Eleven, CVector3f::Zero(), false)); // 0x6750
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x67A8, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::GroundPound(CStateManager& mgr, EStateMsg msg, float dt) {
