@@ -1,11 +1,12 @@
 // Host body for the EmperorIngStage1 REL (module 16). The state machine's tables are registered
 // (fn_16_8AF4 installs the 6 triggers, 12 states and 3 code functions fn_16_BF88 builds). Ported:
-// the tentacles' build, motion, effects and hits-to-retraction bookkeeping; the states
-// TrackPlayer, Attack, ProjectileAttack, Taunt, JumpRope, BeginHeartStage and HeartStage; the
-// heart stage's beam (FireBeam) and the charged projectile of DoUserAnimEvent. What remains a
-// stand-in logs once and names the REL function it stands in for (WarpAttack, TauntAttack,
-// EndHeartStage, the hit test fn_16_8C, the facing/turn updates, Render, ProcessSoundEvent and
-// DoUserAnimEvent's other cases) - docs/module-analysis/EmperorIngStage1.md has the map.
+// the tentacles' build, motion, effects, hits-to-retraction bookkeeping and contact damage; the
+// states TrackPlayer, Attack, ProjectileAttack, Taunt, JumpRope, BeginHeartStage, HeartStage and
+// EndHeartStage; the heart stage's beam (FireBeam), the heart's damage reaching the boss
+// (fn_16_51D4) and the charged projectile of DoUserAnimEvent. What remains a stand-in logs once
+// and names the REL function it stands in for (MeleeAttack, WarpAttack, TauntAttack, the
+// facing/anchor updates fn_16_4C8 and fn_16_4EB8, Render, ProcessSoundEvent and DoUserAnimEvent's
+// other cases) - docs/module-analysis/EmperorIngStage1.md has the map.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
 // address, and the slots line up with CPatterned's declaration order (the inherited entries are
@@ -180,6 +181,9 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mTauntFrequency(data.tauntFrequency)                            // guest 0xC34
 , mAttackIntervalMin(data.attackIntervalMin)                      // guest 0xCF4
 , mAttackIntervalMax(data.attackIntervalMax)                      // guest 0xCF8
+, mModeOneHealth(data.unknown_0x905938b8)                         // guest 0xBAC, data+0x674
+, mModeTwoHealth(data.unknown_0xb826317a)                         // guest 0xBB0, data+0x678
+, mHeartDamageSound(data.heartDamageSound)                        // guest 0xCFC, data+0x67C
 , x7c0_(0)                                                        // guest 0x7C0, fn_16_900C clears it
 , x7c4_(0)                                                        // guest 0x7C4, cleared
 , x7c8_(nullptr)                                                  // guest 0x7C8, cleared
@@ -197,6 +201,8 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa34_(data.maxTurnSpeedNormal)                                   // guest 0xA34, 0x91B8
 , xa38_(0.f)                                                      // guest 0xA38, 0x91BC
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
+, xa40_(GetHealthInfo()->GetInitialHP())                          // guest 0xA40, 0x9120
+, xa48_(0.f)                                                      // guest 0xA48, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
 , xa58_(0.f)                                                      // guest 0xA58, rodata_380
@@ -261,7 +267,7 @@ void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr); // 0x5720
   xa4c_ -= dt;                // 0x5734
   xa50_ += dt;                // 0x5740
-  UpdateVoice(dt, mgr);       // fn_16_51D4, 0x5748
+  UpdateHeartHealth(mgr);     // fn_16_51D4, 0x5748
   UpdateTentacleAnchor(dt, mgr); // fn_16_4EB8, 0x5758
   UpdateCollisionActors(dt, mgr); // fn_16_3AFC, 0x5768
   UpdateTrackPlayer(dt, mgr); // fn_16_4C0C, 0x5778
@@ -562,11 +568,44 @@ void CEmperorIngStage1::SetSystemParam(CParticleGen* system, uint index, float v
   }
 }
 
-// fn_16_51D4 (0x51D4..0x52FC): the module's own sound update. It reads a float at the damage
-// vulnerability's +4 (0x5214) - the retail's CDamageVulnerability is 0x54 bytes and the port's is
-// 0x38 (upstream's layout), so the port has no float there and the value's meaning is not
-// established. It stays a stand-in until that is.
-void CEmperorIngStage1::UpdateVoice(float dt, CStateManager& mgr) { StandInFn("fn_16_51D4"); }
+// fn_16_51D4 (0x51D4..0x52FC): the heart's damage reaches the boss. The heart's collision actor
+// (fn_16_2FA8, 0x51FC) has its own copy of this actor's health info (fn_16_3EAC), so the shots
+// land there; its health (the vtable slot 14 call, HealthInfo, at 0x5210 and the float at +0x04)
+// is the boss's. When it is below the last value seen (guest 0xA40, 0x521C) the value is kept,
+// the "Damage" effect timer takes 1/60 s (lbl_16_rodata_3E0, 0x5244) and the heart damage sound
+// (guest 0xCFC) plays at the heart (PlayCustomSound at 0x5250, the collision actor's position and
+// the zero vector). The mode (guest 0x7C0) moves on as the health drops: 0 becomes 1 below guest
+// 0xBAC (0x527C) and 1 becomes 2 below guest 0xBB0 (0x5294). Last the health is written back to
+// the heart's health info (0x52BC) and this actor's (0x52D4).
+// The null test on the heart is the port's: retail calls through it unchecked.
+void CEmperorIngStage1::UpdateHeartHealth(CStateManager& mgr) {
+  CCollisionActor* heart = GetCollisionActor(mgr);
+  if (heart == nullptr) {
+    return;
+  }
+  const float hp = heart->HealthInfo()->GetHP();
+  if (hp < xa40_) {
+    xa40_ = hp;
+    xa58_ = 0.016666668f;
+    PlayCustomSound(heart->GetTranslation(), CVector3f::Zero(), mHeartDamageSound, false);
+  }
+  switch (x7c0_) {
+    case 0:
+      if (hp < mModeOneHealth) {
+        x7c0_ = 1;
+      }
+      break;
+    case 1:
+      if (hp < mModeTwoHealth) {
+        x7c0_ = 2;
+      }
+      break;
+    default:
+      break;
+  }
+  heart->HealthInfo()->SetHP(hp);
+  HealthInfo()->SetHP(hp);
+}
 
 // fn_16_4EB8 (0x4EB8..0x51D4): moves the actor onto the target's locator. Too big for the
 // slice's rule, so it stays a stand-in.
@@ -612,10 +651,127 @@ void CEmperorIngStage1::UpdateTrackPlayer(float dt, CStateManager& mgr) {
 // stays a stand-in.
 void CEmperorIngStage1::UpdateFacing(float dt, CStateManager& mgr) { StandInFn("fn_16_4C8"); }
 
-// fn_16_8C (0x8C..0x1A50): the tentacles' hit test and damage. Too big for the slice's rule, so
-// it stays a stand-in.
+// The tentacles' joint pairs (lbl_16_rodata_0, 0x1E0 bytes): eight tentacles of five 12-byte
+// records {from locator, to locator, the box's extent}, the tentacle stride 0x3C (0x4498). The
+// order is retail's - "seven" comes before "six".
+struct SEmperorIngStage1JointPair {
+  const char* from; // +0x0
+  const char* to;   // +0x4
+  float extent;     // +0x8
+};
+static const SEmperorIngStage1JointPair skTentacleJointPairs[8][5] = {
+  {
+      {"one_Spine_1_SDK", "one_Spine_2_SDK", 2.f},         // rodata 0x0
+      {"one_Spine_2_SDK", "one_Spine_3_SDK", 1.5f},        // rodata 0xC
+      {"one_Spine_3_SDK", "one_Spine_4_SDK", 0.75f},       // rodata 0x18
+      {"one_Spine_4_SDK", "one_Spine_6_SDK", 0.75f},       // rodata 0x24
+      {"one_Spine_6_SDK", "one_Spine_7_SDK", 1.75f},       // rodata 0x30
+  },
+  {
+      {"two_Spine_1_SDK", "two_Spine_2_SDK", 2.f},         // rodata 0x3C
+      {"two_Spine_2_SDK", "two_Spine_3_SDK", 1.5f},        // rodata 0x48
+      {"two_Spine_3_SDK", "two_Spine_4_SDK", 0.75f},       // rodata 0x54
+      {"two_Spine_4_SDK", "two_Spine_6_SDK", 0.75f},       // rodata 0x60
+      {"two_Spine_6_SDK", "two_Spine_7_SDK", 1.75f},       // rodata 0x6C
+  },
+  {
+      {"three_Spine_1_SDK", "three_Spine_2_SDK", 2.f},     // rodata 0x78
+      {"three_Spine_2_SDK", "three_Spine_3_SDK", 1.5f},    // rodata 0x84
+      {"three_Spine_3_SDK", "three_Spine_4_SDK", 0.75f},   // rodata 0x90
+      {"three_Spine_4_SDK", "three_Spine_6_SDK", 0.75f},   // rodata 0x9C
+      {"three_Spine_6_SDK", "three_Spine_7_SDK", 1.75f},   // rodata 0xA8
+  },
+  {
+      {"four_Spine_1_SDK", "four_Spine_2_SDK", 2.f},       // rodata 0xB4
+      {"four_Spine_2_SDK", "four_Spine_3_SDK", 1.5f},      // rodata 0xC0
+      {"four_Spine_3_SDK", "four_Spine_4_SDK", 0.75f},     // rodata 0xCC
+      {"four_Spine_4_SDK", "four_Spine_6_SDK", 0.75f},     // rodata 0xD8
+      {"four_Spine_6_SDK", "four_Spine_7_SDK", 1.75f},     // rodata 0xE4
+  },
+  {
+      {"five_Spine_1_SDK", "five_Spine_2_SDK", 2.f},       // rodata 0xF0
+      {"five_Spine_2_SDK", "five_Spine_3_SDK", 1.5f},      // rodata 0xFC
+      {"five_Spine_3_SDK", "five_Spine_4_SDK", 0.75f},     // rodata 0x108
+      {"five_Spine_4_SDK", "five_Spine_6_SDK", 0.75f},     // rodata 0x114
+      {"five_Spine_6_SDK", "five_Spine_7_SDK", 1.75f},     // rodata 0x120
+  },
+  {
+      {"seven_Spine_1_SDK", "seven_Spine_2_SDK", 2.f},     // rodata 0x12C
+      {"seven_Spine_2_SDK", "seven_Spine_3_SDK", 1.5f},    // rodata 0x138
+      {"seven_Spine_3_SDK", "seven_Spine_4_SDK", 0.75f},   // rodata 0x144
+      {"seven_Spine_4_SDK", "seven_Spine_6_SDK", 0.75f},   // rodata 0x150
+      {"seven_Spine_6_SDK", "seven_Spine_7_SDK", 1.75f},   // rodata 0x15C
+  },
+  {
+      {"six_Spine_1_SDK", "six_Spine_2_SDK", 2.f},         // rodata 0x168
+      {"six_Spine_2_SDK", "six_Spine_3_SDK", 1.5f},        // rodata 0x174
+      {"six_Spine_3_SDK", "six_Spine_4_SDK", 0.75f},       // rodata 0x180
+      {"six_Spine_4_SDK", "six_Spine_6_SDK", 0.75f},       // rodata 0x18C
+      {"six_Spine_6_SDK", "six_Spine_7_SDK", 1.75f},       // rodata 0x198
+  },
+  {
+      {"eight_Spine_1_SDK", "eight_Spine_2_SDK", 2.f},     // rodata 0x1A4
+      {"eight_Spine_2_SDK", "eight_Spine_3_SDK", 1.5f},    // rodata 0x1B0
+      {"eight_Spine_3_SDK", "eight_Spine_4_SDK", 0.75f},   // rodata 0x1BC
+      {"eight_Spine_4_SDK", "eight_Spine_6_SDK", 0.75f},   // rodata 0x1C8
+      {"eight_Spine_6_SDK", "eight_Spine_7_SDK", 1.75f},   // rodata 0x1D4
+  },
+};
+
+// fn_16_8C (0x8C..0x43C, 0x3B0; fns.txt and the asm agree, fn_16_43C's prologue follows the blr
+// at 0x438): the tentacles' contact damage while they sweep (flag 0x40 of guest 0xA74, set by
+// JumpRope; the test at 0xB4). The player's touch bounds (its vtable slot 16, GetTouchBounds, at
+// 0xD0) must exist. The cooldown (guest 0xA48) runs down by dt and, once it is <= 0.0f
+// (lbl_16_rodata_380, cror at 0x140), the 8 * 5 joint pairs of skTentacleJointPairs (the loops at
+// 0x164 and 0x16C) each give a box: the two locators' scaled transforms (0x1D0, 0x220), their
+// translations through this actor's transform (0x1F8, 0x248), accumulated into an inverted box
+// (0x29C, 0x2A8). The tip pair (index 4, 0x2AC) also takes the point 8.0f (lbl_16_rodata_384)
+// past its end along the pair's horizontal direction (the third component is 0.0f at 0x2F4; the
+// point only when it normalises, 0x2F8). The first box the player's bounds overlap (0x364)
+// damages the player with the melee damage (guest 0xB8C) - this actor the damager and the owner,
+// the filter including kMT_Solid (lbl_16_data_0, 0x3B; type 3) and the zero direction
+// (ApplyDamage at 0x3EC) - and the cooldown becomes 0.2f (lbl_16_rodata_388, 0x3F8).
 void CEmperorIngStage1::UpdateTentacleHits(float dt, CStateManager& mgr) {
-  StandInFn("fn_16_8C");
+  if ((xa74_ & 0x40) == 0) {
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  const rstl::optional_object< CAABox > touch = player->GetTouchBounds();
+  if (!touch.valid()) {
+    return;
+  }
+  xa48_ -= dt;
+  if (!(xa48_ <= 0.f)) {
+    return;
+  }
+  const CAnimData* animData = GetModelData()->GetAnimationData();
+  for (int tentacle = 0; tentacle < 8; ++tentacle) {
+    for (int joint = 0; joint < 5; ++joint) {
+      const SEmperorIngStage1JointPair& pair = skTentacleJointPairs[tentacle][joint];
+      const CSegId from = animData->GetLocatorSegId(rstl::string_l(pair.from));
+      const CSegId to = animData->GetLocatorSegId(rstl::string_l(pair.to));
+      const CVector3f p1 = GetTransform() * GetScaledLocatorTransform(from).GetTranslation();
+      const CVector3f p2 = GetTransform() * GetScaledLocatorTransform(to).GetTranslation();
+      CAABox box = CAABox::MakeMaxInvertedBox();
+      box.AccumulateBounds(p1);
+      box.AccumulateBounds(p2);
+      if (joint == 4) {
+        CVector3f dir(p2.GetX() - p1.GetX(), p2.GetY() - p1.GetY(), 0.f);
+        if (dir.CanBeNormalized()) {
+          dir.Normalize();
+          box.AccumulateBounds(p2 + dir * 8.f);
+        }
+      }
+      if (touch.data().DoBoundsOverlap(box)) {
+        mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mMeleeDamage,
+                        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                                            CMaterialList()),
+                        CVector3f::Zero());
+        xa48_ = 0.2f;
+        return;
+      }
+    }
+  }
 }
 
 // vtable slot 4 = fn_16_7CE8 (0x7CE8..0x7EA8): retail's message switch. The base's own handler
@@ -724,72 +880,6 @@ CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {
   return TCastToPtr< CActor >(mgr.ObjectById(xa1e_));
 }
 
-// The tentacles' joint pairs (lbl_16_rodata_0, 0x1E0 bytes): eight tentacles of five 12-byte
-// records {from locator, to locator, the box's extent}, the tentacle stride 0x3C (0x4498). The
-// order is retail's - "seven" comes before "six".
-struct SEmperorIngStage1JointPair {
-  const char* from; // +0x0
-  const char* to;   // +0x4
-  float extent;     // +0x8
-};
-static const SEmperorIngStage1JointPair skTentacleJointPairs[8][5] = {
-  {
-      {"one_Spine_1_SDK", "one_Spine_2_SDK", 2.f},         // rodata 0x0
-      {"one_Spine_2_SDK", "one_Spine_3_SDK", 1.5f},        // rodata 0xC
-      {"one_Spine_3_SDK", "one_Spine_4_SDK", 0.75f},       // rodata 0x18
-      {"one_Spine_4_SDK", "one_Spine_6_SDK", 0.75f},       // rodata 0x24
-      {"one_Spine_6_SDK", "one_Spine_7_SDK", 1.75f},       // rodata 0x30
-  },
-  {
-      {"two_Spine_1_SDK", "two_Spine_2_SDK", 2.f},         // rodata 0x3C
-      {"two_Spine_2_SDK", "two_Spine_3_SDK", 1.5f},        // rodata 0x48
-      {"two_Spine_3_SDK", "two_Spine_4_SDK", 0.75f},       // rodata 0x54
-      {"two_Spine_4_SDK", "two_Spine_6_SDK", 0.75f},       // rodata 0x60
-      {"two_Spine_6_SDK", "two_Spine_7_SDK", 1.75f},       // rodata 0x6C
-  },
-  {
-      {"three_Spine_1_SDK", "three_Spine_2_SDK", 2.f},     // rodata 0x78
-      {"three_Spine_2_SDK", "three_Spine_3_SDK", 1.5f},    // rodata 0x84
-      {"three_Spine_3_SDK", "three_Spine_4_SDK", 0.75f},   // rodata 0x90
-      {"three_Spine_4_SDK", "three_Spine_6_SDK", 0.75f},   // rodata 0x9C
-      {"three_Spine_6_SDK", "three_Spine_7_SDK", 1.75f},   // rodata 0xA8
-  },
-  {
-      {"four_Spine_1_SDK", "four_Spine_2_SDK", 2.f},       // rodata 0xB4
-      {"four_Spine_2_SDK", "four_Spine_3_SDK", 1.5f},      // rodata 0xC0
-      {"four_Spine_3_SDK", "four_Spine_4_SDK", 0.75f},     // rodata 0xCC
-      {"four_Spine_4_SDK", "four_Spine_6_SDK", 0.75f},     // rodata 0xD8
-      {"four_Spine_6_SDK", "four_Spine_7_SDK", 1.75f},     // rodata 0xE4
-  },
-  {
-      {"five_Spine_1_SDK", "five_Spine_2_SDK", 2.f},       // rodata 0xF0
-      {"five_Spine_2_SDK", "five_Spine_3_SDK", 1.5f},      // rodata 0xFC
-      {"five_Spine_3_SDK", "five_Spine_4_SDK", 0.75f},     // rodata 0x108
-      {"five_Spine_4_SDK", "five_Spine_6_SDK", 0.75f},     // rodata 0x114
-      {"five_Spine_6_SDK", "five_Spine_7_SDK", 1.75f},     // rodata 0x120
-  },
-  {
-      {"seven_Spine_1_SDK", "seven_Spine_2_SDK", 2.f},     // rodata 0x12C
-      {"seven_Spine_2_SDK", "seven_Spine_3_SDK", 1.5f},    // rodata 0x138
-      {"seven_Spine_3_SDK", "seven_Spine_4_SDK", 0.75f},   // rodata 0x144
-      {"seven_Spine_4_SDK", "seven_Spine_6_SDK", 0.75f},   // rodata 0x150
-      {"seven_Spine_6_SDK", "seven_Spine_7_SDK", 1.75f},   // rodata 0x15C
-  },
-  {
-      {"six_Spine_1_SDK", "six_Spine_2_SDK", 2.f},         // rodata 0x168
-      {"six_Spine_2_SDK", "six_Spine_3_SDK", 1.5f},        // rodata 0x174
-      {"six_Spine_3_SDK", "six_Spine_4_SDK", 0.75f},       // rodata 0x180
-      {"six_Spine_4_SDK", "six_Spine_6_SDK", 0.75f},       // rodata 0x18C
-      {"six_Spine_6_SDK", "six_Spine_7_SDK", 1.75f},       // rodata 0x198
-  },
-  {
-      {"eight_Spine_1_SDK", "eight_Spine_2_SDK", 2.f},     // rodata 0x1A4
-      {"eight_Spine_2_SDK", "eight_Spine_3_SDK", 1.5f},    // rodata 0x1B0
-      {"eight_Spine_3_SDK", "eight_Spine_4_SDK", 0.75f},   // rodata 0x1BC
-      {"eight_Spine_4_SDK", "eight_Spine_6_SDK", 0.75f},   // rodata 0x1C8
-      {"eight_Spine_6_SDK", "eight_Spine_7_SDK", 1.75f},   // rodata 0x1D4
-  },
-};
 
 // fn_16_3EAC (0x3EAC..0x4640): creates the three collision actor managers. The managers are
 // retail's rstl::single_ptr members, so the old one is deleted before the new one is stored
@@ -1255,18 +1345,15 @@ void CEmperorIngStage1::UpdateTentacleMaterials(const CEmperorIngStage1Joint& jo
   }
 }
 
-// fn_16_3984 (0x3984..0x39CC): the joint is added to the vector at guest 0x7D4 - the element is
-// written (0x39A8) and the count is raised (0x39B4). The retail's vector grows (fn_16_39CC,
-// 0xDC); the port's holds the eight tentacle slots, so it never has to.
+// fn_16_3984 (0x3984..0x39CC): the joint is added to the vector at guest 0x7D4 - the element at
+// the count (0x399C, stride 0x48) is copy-constructed (fn_16_39CC, 0x39A8) and the count is
+// raised (0x39B4). fn_16_39CC (0x39CC..0x39EC, 0x20) only calls fn_16_39EC (0x39EC..0x3A14), the
+// placement new's null test around the element's copy constructor fn_16_3A14 (0x3A14..0x3AA8);
+// the vector has a fixed capacity and never grows, so the host assignment is all three.
 void CEmperorIngStage1::AddTentacleJointToVector() {
-  GrowTentacleJointVector();
   mJoints.mJoints[mJoints.mCount] = mJoint;
   mJoints.mCount += 1;
 }
-
-// fn_16_39CC (0x39CC..0x3AA8): the vector's growth. Too big for the slice's rule, so it stays a
-// stand-in - the port's vector holds the eight tentacle slots, so it never has to grow.
-void CEmperorIngStage1::GrowTentacleJointVector() { StandInFn("fn_16_39CC"); }
 
 // fn_16_3AA8 (0x3AA8..0x3AFC): the tentacle's collision actor - the owner's first collision actor
 // manager (guest 0x7C8) holds five joint descriptions per tentacle: the index is scaled by five
@@ -1534,8 +1621,83 @@ void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// fn_16_71BC (the state "EndHeartStage", lbl_16_data_94 entry 3). The 'PLAY' actor (fn_16_3060,
+// 0x71E4) and the CONNECT/ACTIVATE actor (fn_16_2FF8, 0x71F8) are looked up first; retail tests
+// neither, as in BeginHeartStage.
+//   Activate: the animation state becomes ready (0x722C), the body's sphere goes active
+//     (fn_16_3D64 with 9, 0x723C), so does the 'PLAY' actor (its vtable slot 5, SetActive, at
+//     0x7254), the CONNECT/ACTIVATE actor is sent DEACTIVATE (0x44435456) from this actor (its
+//     vtable slot 4, AcceptScriptMsg, at 0x72B4), the 'PLAY' actor plays the third tentacle
+//     animation (guest 0xA28) with no blend, weight 1.0f and animating (0x730C) and the script
+//     hears IS05 (0x7338).
+//   Update: while a generate command can be issued (the try-command test with state 12,
+//     kAS_Generate, at 0x734C) the sub-stage (guest 0x7C4) picks the generate type - 0 type 0,
+//     1 type 2, 2 type 1 (0x7380, 0x7454, 0x7528; the command id 0xF, the zero target, no anim
+//     override); once it cannot, every used tentacle slot's state becomes 2 (fn_16_7AD4, 0x7600).
+//     Either way the state is over once the 'PLAY' actor's "Whole Body" animation has no time
+//     left (0x7628, 0x7644).
+//   Deactivate: the 'PLAY' actor plays the first tentacle animation (guest 0xA20, 0x76A0), the
+//     animation state is not ready (0x76A8), the tentacles' 0x80 flags are set (fn_16_2EE0 with
+//     1, 0x76B4), the attack timer re-rolls (fn_16_8E4, 0x76C0) and the tentacles take the normal
+//     vulnerability (fn_16_353C with 1, 0x76D0).
 void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_16_71BC");
+  CActor* body = GetPlayActor(mgr);
+  CActor* activator = GetActivateActor(mgr);
+  switch (msg) {
+    case kStateMsg_Activate:
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      SetCollisionActorActive(mgr, 9, true);
+      body->SetActive(true);
+      activator->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), activator->GetUniqueId(),
+                                                 kSM_Deactivate, kInvalidUniqueId,
+                                                 kSS_InvalidState));
+      body->AnimationData()->SetAnimation(CAnimPlaybackParms(xa28_, -1, 1.f, true), false);
+      SendScriptMsgs(kSS_InternalState5, mgr, kInvalidUniqueId, kSM_None);
+      break;
+    case kStateMsg_Update:
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+        switch (x7c4_) {
+          case 0:
+            BodyController()->CommandMgr().DeliverCmd(
+                CBCGenerateCmd(pas::kGType_Zero, CVector3f::Zero()));
+            break;
+          case 1:
+            BodyController()->CommandMgr().DeliverCmd(
+                CBCGenerateCmd(pas::kGType_Two, CVector3f::Zero()));
+            break;
+          case 2:
+            BodyController()->CommandMgr().DeliverCmd(
+                CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
+            break;
+          default:
+            break;
+        }
+      } else {
+        RetractUsedTentacles();
+      }
+      if (!body->AnimationData()->IsAnimTimeRemaining(dt, rstl::string_l("Whole Body"))) {
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+      break;
+    case kStateMsg_Deactivate:
+      body->AnimationData()->SetAnimation(CAnimPlaybackParms(xa20_, -1, 1.f, true), false);
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);
+      SetTentacleFlags(1);
+      ResetAttackTimer(mgr);
+      SetTentacleVulnerability(mgr, 1);
+      break;
+    default:
+      break;
+  }
+}
+
+// fn_16_7AD4 (0x7AD4..0x7B40): every used tentacle slot (fn_16_2F70's count, 0x7B14) gets the
+// state 2 (the int at +0x28, stride 0x48, 0x7B04).
+void CEmperorIngStage1::RetractUsedTentacles() {
+  const int count = TentacleCount();
+  for (int i = 0; i < count; ++i) {
+    mJoints.mJoints[i].mState = 2;
+  }
 }
 
 // fn_16_716C (the state "Dead", lbl_16_data_94 entry 4): on the activate message - the asm's

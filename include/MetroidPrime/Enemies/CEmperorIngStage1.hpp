@@ -217,8 +217,6 @@ private:
   void SetTentacleMaterials(CStateManager& mgr, uint flag);
   // fn_16_3984: the joint is added to the vector at guest 0x7D4.
   void AddTentacleJointToVector();
-  // fn_16_39CC: the vector's growth. Too big for the slice's rule, so it stays a stand-in.
-  void GrowTentacleJointVector();
   // fn_16_3AA8: the tentacle's collision actor.
   CCollisionActor* GetTentacleActor(CStateManager& mgr, int index);
   // fn_16_302C: the actor the module tracks (the id at guest 0xA1A).
@@ -231,8 +229,8 @@ private:
   static void SetSystemParam(CParticleGen* system, uint index, float value);
   // fn_16_2E7C: how many of the used tentacle slots are retracted (state 0).
   int RetractedTentacleCount() const;
-  // fn_16_51D4: the module's own sound update.
-  void UpdateVoice(float dt, CStateManager& mgr);
+  // fn_16_51D4: the heart's health becomes the boss's; the mode follows it.
+  void UpdateHeartHealth(CStateManager& mgr);
   // fn_16_4EB8: moves the actor onto the target's locator.
   void UpdateTentacleAnchor(float dt, CStateManager& mgr);
   // fn_16_3AFC: the three collision actor managers get their update.
@@ -241,11 +239,13 @@ private:
   void UpdateTrackPlayer(float dt, CStateManager& mgr);
   // fn_16_4C8: aims the actor at the player.
   void UpdateFacing(float dt, CStateManager& mgr);
-  // fn_16_8C: the tentacles' hit test and damage.
+  // fn_16_8C: the sweeping tentacles' contact damage to the player.
   void UpdateTentacleHits(float dt, CStateManager& mgr);
 
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;
+  // fn_16_7AD4: every used tentacle slot's state becomes 2.
+  void RetractUsedTentacles();
   // fn_16_2EE0: set (or clear) the 0x80 flag of every live tentacle.
   void SetTentacleFlags(uint flag);
 
@@ -273,6 +273,9 @@ private:
   float mTauntFrequency;                         // guest 0xC34
   float mAttackIntervalMin;                      // guest 0xCF4
   float mAttackIntervalMax;                      // guest 0xCF8
+  float mModeOneHealth;                          // guest 0xBAC: below it the mode becomes 1 (fn_16_51D4)
+  float mModeTwoHealth;                          // guest 0xBB0: below it the mode becomes 2
+  SLdrAudioPlaybackParms mHeartDamageSound;      // guest 0xCFC
 
   // The module's own state, named from the retail offsets; the constructor's values are
   // fn_16_900C's.
@@ -293,6 +296,8 @@ private:
   float xa34_;                        // guest 0xA34, maxTurnSpeedNormal: the current turn speed
   float xa38_;                        // guest 0xA38, 0.0f: the jump rope's duration (fn_16_5928)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
+  float xa40_;                        // guest 0xA40, initial HP: the heart's last health (fn_16_51D4)
+  float xa48_;                        // guest 0xA48, 0.0f: the contact damage cooldown (fn_16_8C)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
   float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
