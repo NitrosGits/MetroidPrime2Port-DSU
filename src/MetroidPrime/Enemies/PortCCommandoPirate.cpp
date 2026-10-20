@@ -84,6 +84,12 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
   // analysis note lists them.
   KnockBackController().EnableKnockBackPhysics(true);
 
+  // The vulnerability at guest +0xA44 starts as the shield's charge vulnerability (fn_9_D904
+  // @0x0000D9D4 copies the block's +0xF4) and ends as the actor's own vulnerability with the
+  // ignore radius: fn_9_E6D0 (@0x0000E638) copies GetDamageVulnerability(this)->MakeIgnoreRadius()
+  // over it. That is the copy GetDamageVulnerability returns while the shield is up.
+  mShieldVulnerability = CPatterned::GetDamageVulnerability()->MakeIgnoreRadius();
+
   // The seven locator segment ids (fn_9_D904 @0x0000E26C..0x0000E3F0) are read from the model's
   // animation data. The names are the module's own rodata strings, at "StateOver" + 0x3cd and
   // friends: "Head_1", "Mid_Launch_LCTRL", "gun_LCTR" (twice), "R_wrist", "R_elbow", "L_wrist".

@@ -132,7 +132,7 @@ stored to the stack arguments at 0x0000DA50..0x0000DA5C). The guest's own member
 | 0x928 | `CPathFindSearch` | area null, flags 1, the patterned info's pathfinding index (+0xEC), radii 1.0f, no avoidance filter, root 0 (0x0000D990) |
 | 0xA14 | `CProjectileInfo` | the block's projectile (+0x28) and its damage (+0x2C) (0x0000D9B8) |
 | 0xA3C, 0xA40 | two ints | 0 |
-| 0xA44 | the shield's damage vulnerability | copied from the block's +0xF4 (0x0000D9D4) |
+| 0xA44 | a damage vulnerability | the shield's charge vulnerability is copied here first (the block's +0xF4, 0x0000D9D4), then the actor's own vulnerability with the ignore radius is copied over it (0x0000E638) |
 | 0xA74 | `CBoneTracking` | the model's animation data, "Head_1", 1.2217305f, 3.1415927f, 0 (0x0000DA08) |
 | 0xAB0 | `CVisualKnowledge` | the object's id, segment 0xFF, 0.1f, 0.05f |
 | 0xAF0 | `CBurstFire` | the module's five `SBurst` entries (lbl_9_data_7A8) |
@@ -157,8 +157,9 @@ stored to the stack arguments at 0x0000DA50..0x0000DA5C). The guest's own member
 | 0x681 | a base flag byte | `|= 0x10` |
 
 `GetDamageVulnerability` (fn_9_C2CC) reads the 0x04 bit of the byte at +0xC65: when it is set the
-actor returns the vulnerability at +0xA44, otherwise the base's. The constructor leaves that bit
-clear, so the base's vulnerability is what a live actor has.
+actor returns the vulnerability at +0xA44 (the actor's own, with the ignore radius), otherwise the
+base's. The constructor leaves that bit clear, so the base's vulnerability is what a live actor
+has; the shield's own branch is milestone 2.
 
 ### The parameter block (fn_9_EDC0, 0x15E bytes at this+0x7C0)
 
@@ -206,7 +207,14 @@ arm time, +0x70 the arm time variation, +0x74 the arm explode effect, +0x78 the 
 | Torvus Bog | 05_swamp_timber! | 2 |
 
 Milestone 1's run is in Temple Grounds/05_temple_federationsite_dark (layer 0, the layer the
-module is listed for), where the actor registers, takes kSM_Create and thinks.
+module is listed for): the actor registers, takes kSM_Create and thinks.
+
+The milestone 1 run (`tools/run_gameplay.sh`, `TELEPORT=05_temple_federationsite_dark`,
+`FRAMES=1200`, the card in `/tmp/opencode/atk_user`) reached gameplay at frame 242 (10.0 s), ran to
+the frame limit at 26.0 s in area 59 of 63, and ended with exit=0. The stand-ins that fired:
+`AcceptScriptMsg` (the kSM_Create), `PreThink`, `Think`, `SetupStateMachine`, `DoUserAnimEvent`,
+`PreRender`, `PreRenderAllViewports` and `CollidedWith`. `grep -c '[port] caught\|reach-stub'` on
+the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
