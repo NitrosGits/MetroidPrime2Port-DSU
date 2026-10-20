@@ -146,14 +146,7 @@ void CVisorFlare::UpdateOcclusion(const CVector3f& pos, const CStateManager& mgr
 
   GXSetTexCopySrc(left, framebufferHeight - top, width, height);
   GXSetTexCopyDst(mSavedFramebuffer.GetWidth(), mSavedFramebuffer.GetHeight(), GX_TF_RGBA8, false);
-#ifdef TARGET_PC
-  // GX clears only the copied rectangle; Aurora's copy clear wipes the whole EFB, which blacked
-  // out every view with a flare in it. Copy without the clear, then clear the rectangle by drawing
-  // it black (the quad below covers it exactly).
-  GXCopyTex(mSavedFramebuffer.Lock(), false);
-#else
   GXCopyTex(mSavedFramebuffer.Lock(), true);
-#endif
   mSavedFramebuffer.UnLock();
 
   GXFogType fogType;
@@ -162,19 +155,6 @@ void CVisorFlare::UpdateOcclusion(const CVector3f& pos, const CStateManager& mgr
   CGX::GetFog(&fogType, &fogStart, &fogEnd, &fogNear, &fogFar, &fogColor);
   CGX::SetFog(GX_FOG_NONE, 0.f, 1.f, 0.f, 1.f, fogColor);
   gpRender->SetModelMatrix(CTransform4f::Identity());
-#ifdef TARGET_PC
-  CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvPassthru);
-  CGraphics::SetBlendMode(::kBM_Blend, kBF_One, kBF_Zero, kLO_Clear);
-  gpRender->SetDepthReadWrite(false, false);
-  CGraphics::StreamBegin(kP_TriangleFan);
-  CGraphics::StreamColor(CColor::Black());
-  CGraphics::StreamVertex(corner);
-  CGraphics::StreamVertex(corner - worldHeight * up);
-  CGraphics::StreamVertex(corner - worldHeight * up + worldWidth * right);
-  CGraphics::StreamVertex(corner + worldWidth * right);
-  CGraphics::StreamEnd();
-  gpRender->SetDepthReadWrite(true, false);
-#endif
   CGraphics::SetBlendMode(::kBM_Blend, kBF_One, kBF_One, kLO_Clear);
   CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvPassthru);
   CGraphics::StreamBegin(kP_TriangleFan);
