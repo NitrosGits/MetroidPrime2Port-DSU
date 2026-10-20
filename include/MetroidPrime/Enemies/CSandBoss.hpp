@@ -327,7 +327,6 @@ private:
   float mStampedeHP;          // 0xF24
   float mF28;                 // 0xF28 (stampede waypoint z)
   float mHeadArmorHP;         // 0xF2C
-  float mLastDamageHP = 0.f;  // HandleDamage scratch [inferred: per-piece in retail, one here]
   float mF30;                 // 0xF30 (stampede piece timer, 0.2 s gate in fn_55_7C68)
   float mF34;                 // 0xF34 (counts up in fn_55_86D0)
   float mChargeBeamSweepPhase; // 0xF38 (sweep angle in radians, seeded to -pi/2)

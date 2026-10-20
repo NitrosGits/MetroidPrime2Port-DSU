@@ -605,12 +605,31 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   MP2_SB_BALL=1 MP2_SB_BOMB=1 MP2_SB_HP=1 MP2_SB_HIT=1`, `DropBomb` called from `Think` every 90
   frames): a bomb (weapon=1) touches the head collider `016a` of worm 0169 while `att=1 sm=SuckAir`,
   so `8258 -> 8008` runs, i.e. the head branch (`mAttachedToSphere && mHeadCollider == sender`).
-  Newly `// @`: 4C 7E60 8008 8258. (d) `MP2_SB_HP` is still needed: sbAr (`MP2_SB_ROUND=2
-  MP2_SB_HEAD=1 MP2_SB_BOMB=1`, no HP knob) never reaches `BAAC`/`B718` — the FSM sits in the
-  stampede because a hit hands 7E60 `hp - mLastDamageHP` from the **worm's** health info, which
-  `TakeDamage` (4C) never lowers (`[sbdump]` hp=150.0 either side of the sbAq hit). Retail keeps that
-  previous HP in the collision actor's health info (8258's comment), so the delta is more likely the
-  damage the collider took — follow-up on 8258, not changed here.
+  Newly `// @`: 4C 7E60 8008 8258. (d) `MP2_SB_HP` was then the only way past the stampede: sbAr
+  (`MP2_SB_ROUND=2 MP2_SB_HEAD=1 MP2_SB_BOMB=1`, no HP knob) never reaches `BAAC`/`B718` — the FSM
+  sat in the stampede because a hit handed 7E60 `hp - mLastDamageHP` from the **worm's** health info,
+  which `TakeDamage` (4C) never lowers (`[sbdump]` hp=150.0 either side of the sbAq hit). Retail
+  keeps the running HP in the collision actor's health info instead, so the delta is the damage the
+  collider took; fixed on 8258 in slice 18.
+- Slice 18 (2026-10-20, run sbAt, `TOKENS='LAYER5@400,A@620+3000' MP2_SB_AIM=1 MP2_SB_HIT=1
+  MP2_SB_HPW=1 MP2_SB_DUMP=1`, FRAMES 4500, SECS 420, **no `MP2_SB_HP`**, exit 0, 0 caught, 0
+  reach-stub): **8258 now hands 7E60 the hit's damage.** `HandleDamage` reads the touched collision
+  actor: `GetHealthInfo()->GetInitialHP()` (CHealthInfo +0) minus `colAct->HealthInfo()->GetHP()`
+  (+4), and always ends with `colAct->HealthInfo()->SetHP(base)` outside the weapon cast; the host's
+  `mLastDamageHP` member is gone (70D0 copies the whole CHealthInfo, which already seeds the
+  collider). `[sbhit]`, now printed in `HandleDamage`: `col=0184 delta=2.00 base=150.00 prev=148.00
+  att=0 sm=1` between the frame 300 and 600 ticks and `col=0184 delta=50.00 base=150.00
+  prev=100.00 att=0 sm=1` between the frame 3300 and 3600 ticks — a power-beam and a charged-beam
+  hit on the stampede armour, `prev` being the collider's HP after that hit, so `base - prev` is
+  the hit's damage. `[sbhp]` follows it: `150.00 -> 148.00`, then
+  `148.00 -> 98.00`, so the armour drains instead of sitting at 150. It still does not reach 0:
+  `mStampedeHP` stops at **98.00** after **2 hits**, `[sbso] uid=0183 hp=148.00` (false) is the only
+  flip, `StampedeOver` never returns true, the FSM stays in `Stampede`/`SeekStampedePoint`, and
+  `EndStampede` (917C), `WaitAttachToSphere` (91F4), `AttachToSphere` (BAAC) and the Attack
+  submachine stay unwalked without the HP knob. Only two shots ever land: sbAt2 (same knobs,
+  `A@620+8000`, FRAMES 9000, SECS 780, exit 0) lands the same two hits (the second between the
+  frame 8400 and 8700 ticks)
+  with an identical trace, so a longer hold adds no hits. Newly `// @`: none.
 - **`mStampedeHP` starts at 150 and never drains without a weapon hit** (the earlier "reads 0" claim
   here was wrong — it was the probe, slice 17). `[sbbea]` shows `UnderGround`'s activate assigning
   `mData.stampedeProperties.breakStampedeHP` and reading it back as 150 (three worms, offset 4204 in
@@ -621,8 +640,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   exporting empty knobs: `MP2_SB_HP=${MP2_SB_HP:-}` passes `""`, and the injected
   `getenv("MP2_SB_HP") != nullptr` reads `""` as on, so `Think` zeroed the HP every frame (the same
   made `MP2_SB_BALL` unconditional). The probe scripts now export a knob only when it is non-empty.
-  In the port a real hit still hands 7E60 a delta of 0 (see slice 17), so `MP2_SB_HP` remains the way
-  past the stampede.
+  Before slice 18 a real hit handed 7E60 a delta of 0, so `MP2_SB_HP` was the way past the stampede;
+  since the 8258 fix a hit drains it by the damage the collider took (slice 18: 150 -> 148 -> 98 in
+  two hits).
 - The attack submachine is now fully exercised except the Damaged branch: `SnapJaws` (A170), `RepeaterAttack`
   (A9DC), `DarkBeamAttack` (AC68), `TripleCharge` (A360) and `DoubleCharge` (A6CC) have all run; only
   `SuckAir`/`SuckBall`/`BallInMouth` (B718/B658/B544) need `HeadArmorDestroyed` (`mHeadArmorHP <= 0`,

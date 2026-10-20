@@ -1109,26 +1109,29 @@ void CSandBoss::Helper8008(float dt, CStateManager& mgr, const CVector3f& pos,
 // @ fn_55_8258
 // Damage message from one of the worm's collision actors: find the weapon that touched it and
 // route the hit to the head handler (player held, head collider) or the stampede handler. The
-// HP delta handed on is the worm's HP now minus what it was at the previous hit.
+// damage handed on is the worm's initial HP minus the collider's HP now: fn_55_70D0 copies the
+// worm's whole CHealthInfo into every collider, so the collider's own mHealth (+4) tracks the hit
+// and nothing in the module lowers the worm's.
 void CSandBoss::HandleDamage(CStateManager& mgr, TUniqueId sender) { // fn_55_8258
   CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
   if (colAct == nullptr) {
     return;
   }
+  CHealthInfo* colHealth = colAct->HealthInfo();
+  const float prevHP = colHealth->GetHP();             // CHealthInfo +4, after this hit's damage
+  const float base = GetHealthInfo()->GetInitialHP();  // CHealthInfo +0 (mInitialHealth)
   const TUniqueId toucherId = colAct->GetLastTouchedObject();
-  const float hp = GetHealthInfo()->GetHP();
-  // [inferred: per-piece scratch in retail, one member in the host] Retail keeps the previous HP in
-  // the collision actor's own health info (+4) and overwrites it at the end of every call.
   if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(toucherId))) {
     const CVector3f dir = weapon->GetTransform().GetColumn(kDY); // 0x28/0x38/0x48
     const CVector3f pos = weapon->GetTranslation();              // 0x54
     if (mAttachedToSphere && mHeadCollider == sender) { // 0x165D b7, 0xE8C
-      Helper8008(hp - mLastDamageHP, mgr, pos, dir);
+      Helper8008(base - prevHP, mgr, pos, dir);
     } else if (mStampedeActive) { // 0x165C b4
-      Helper7E60(hp - mLastDamageHP, mgr, pos, dir);
+      Helper7E60(base - prevHP, mgr, pos, dir);
     }
   }
-  mLastDamageHP = hp;
+  // Retail restores the collider outside the weapon cast, so a hit with no weapon still resets it.
+  colHealth->SetHP(base);
 }
 
 // @ fn_55_83AC
