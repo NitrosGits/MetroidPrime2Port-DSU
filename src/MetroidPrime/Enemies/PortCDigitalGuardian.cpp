@@ -18,8 +18,11 @@
 
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Particles/CParticleGen.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
@@ -166,13 +169,11 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
 , x128C_(0)
-, xE6C_() // 0xE6C: the leg model, built by fn_14_6864 (not ported yet)
-, xEBC_() // 0xEBC: the shin model, built by fn_14_6864 (not ported yet)
-, xF5C_() // 0xF5C: the toe target's model, built by fn_14_6864 (not ported yet)
-, x11EC_() // 0x11EC: the echo emitter's model, built by fn_14_6864 (not ported yet)
-, xEB8_(0)
-, xF08_(0)
-, x1238_(0)
+, xE6C_() // 0xE6C: the leg model (x6864_ fills it in)
+, xEBC_() // 0xEBC: the shin model (x6864_ fills it in)
+, xF0C_() // 0xF0C: the knee model (x6864_ fills it in)
+, xF5C_() // 0xF5C: the toe target's model (x6864_ fills it in)
+, x11EC_() // 0x11EC: the transmission beacon's model (x6864_ fills it in)
 , x10C0_(0xFF)
 , x10C1_(0xFF)
 , x10C2_(0xFF)
@@ -183,16 +184,47 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10D7_(0xFF)
 , x10DC_{-1, -1, -1, -1}
 , x123C_(nullptr)
+, x1240_(CSfxHandle())
 , x1264_(0.f)
+, x1268_(0)
 , x1270_(0)
 , mData(data) // guest 0x7C0: the 0x640-byte parameter block fn_14_C68C copies in
 {
   // The retail constructor also builds the secondary struct at 0xE00 from the patterned info
-  // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188, the five models at
-  // 0xE6C.. (fn_14_6864) and the 'PART' token at 0x1100. They belong to the state machine and the
-  // render paths this milestone does not enter, so the port keeps the parameter block only. The
-  // four model data members the render paths use (0xE6C, 0xEBC, 0xF5C and 0x11EC) are there, but
-  // empty: fn_14_6864, which fills them, is not ported yet.
+  // (fn_14_C57C), the four vulnerabilities at 0x1014/0x1044/0x1110/0x1188 and the 'PART' token at
+  // 0x1100. They belong to the state machine and the render paths this milestone does not enter,
+  // so the port keeps the parameter block only.
+
+  // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAF0
+  // on): 0x10B9 is "neck_SDK" (the store at 0xBAFC), 0x10C0..0x10C3 the four knee locators
+  // ("L_front_knee_2", "L_back_knee_2", "R_front_knee_2", "R_back_knee_2" - the stores at
+  // 0xBB30, 0xBB64, 0xBB98 and 0xBBCC) and 0x10D4..0x10D7 the four ankle locators
+  // ("L_front_ankle", "L_back_ankle", "R_front_ankle", "R_back_ankle" - the stores at 0xBCD0,
+  // 0xBD04, 0xBD38 and 0xBD6C). The ids at 0x10C8..0x10CB (the "*_col_LCTR" locators) belong
+  // to the melee trigger and are not resolved yet.
+  const CAnimData* anim = GetAnimationData();
+  x10B9_ = anim->GetLocatorSegId(rstl::string_l("neck_SDK")).val();
+  x10C0_ = anim->GetLocatorSegId(rstl::string_l("L_front_knee_2")).val();
+  x10C1_ = anim->GetLocatorSegId(rstl::string_l("L_back_knee_2")).val();
+  x10C2_ = anim->GetLocatorSegId(rstl::string_l("R_front_knee_2")).val();
+  x10C3_ = anim->GetLocatorSegId(rstl::string_l("R_back_knee_2")).val();
+  x10D4_ = anim->GetLocatorSegId(rstl::string_l("L_front_ankle")).val();
+  x10D5_ = anim->GetLocatorSegId(rstl::string_l("L_back_ankle")).val();
+  x10D6_ = anim->GetLocatorSegId(rstl::string_l("R_front_ankle")).val();
+  x10D7_ = anim->GetLocatorSegId(rstl::string_l("R_back_ankle")).val();
+  // The melee trigger's locators (the stores at 0xBC00, 0xBC34, 0xBC68 and 0xBC9C, the names
+  // from the pointer table at .rodata 0x10).
+  x10C8_[0] = anim->GetLocatorSegId(rstl::string_l("L_front_col_LCTR"));
+  x10C8_[1] = anim->GetLocatorSegId(rstl::string_l("L_back_col_LCTR"));
+  x10C8_[2] = anim->GetLocatorSegId(rstl::string_l("R_front_col_LCTR"));
+  x10C8_[3] = anim->GetLocatorSegId(rstl::string_l("R_back_col_LCTR"));
+
+  // fn_14_6864 (the call at 0xBD78): the module's five models.
+  x6864_();
+
+  // fn_14_D664 (the call at 0xB6AC): the beacon's particle generator, from the beacon's effect
+  // asset (guest 0x950, the data block's mTransmissionBeaconFx).
+  x123C_ = xD664_(mData.mTransmissionBeaconFx);
 }
 
 CDigitalGuardian::~CDigitalGuardian() {}
@@ -319,7 +351,7 @@ CTransform4f CDigitalGuardian::SegmentRotation_(const CSegId& seg) const {
 // the model at this+0xE6C is drawn there (the Render call at 0x1A40).
 void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
-  if (xEB8_ == 0) {
+  if (!xE6C_.valid()) {
     return;
   }
   // The ids are the bytes the retail loads (the lbz at 0x19D4): the first one is the byte the
@@ -328,7 +360,7 @@ void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
   for (int i = 0; i < 4; ++i) {
     const CSegId seg(ids[i]);
     const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
-    xE6C_.Render(mgr, modelXf, GetActorLights(), flags);
+    xE6C_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
 }
 
@@ -339,7 +371,7 @@ void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
 // 0x10) and the byte at this+0xF08 is set (the test at 0x19E4).
 void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
-  if ((x128C_ & 0x10) != 0 || xF08_ == 0) {
+  if ((x128C_ & 0x10) != 0 || !xEBC_.valid()) {
     return;
   }
   // The ids are the bytes the retail loads (the lbz at 0x1900): the first one is the byte the
@@ -348,7 +380,7 @@ void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
   for (int i = 0; i < 4; ++i) {
     const CSegId seg(ids[i]);
     const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
-    xEBC_.Render(mgr, modelXf, GetActorLights(), flags);
+    xEBC_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
 }
 
@@ -364,7 +396,7 @@ void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
 // the renderer: the retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
 // bctrl at 0x1958). The slot is not identified, so the call is a stand-in.
 void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) const {
-  if ((x128C_ & 0x08) == 0 && x1238_ != 0 && x1264_ > 0.f) {
+  if ((x128C_ & 0x08) == 0 && x11EC_.valid() && x1264_ > 0.f) {
     CTransform4f modelXf = CTransform4f::Identity();
     x2578_(modelXf, xf);
     const CModelFlags flags(
@@ -372,10 +404,15 @@ void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) 
         static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
                                            CModelFlags::kF_DepthUpdate),
         CColor(x1270_));
-    x11EC_.Render(mgr, modelXf, GetActorLights(), flags);
+    x11EC_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
   if (x123C_ != nullptr) {
-    StandInFn("fn_14_17DC: the renderer's echo emitter draw (the vtable call at 0x1958)");
+    // The retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the bctrl at
+    // 0x1958) with the echo emitter in r4 (the lwz at 0x1874). The DOL's __vt__13CCubeRenderer
+    // has CCubeRenderer::AddParticleGen(const CParticleGen&) in that slot (the entry at 0x44,
+    // the 18th - the counting the SpacePirate lane used for 0x128), and the echo emitter at
+    // 0x123C is a CElementGen - a CParticleGen.
+    gpRender->AddParticleGen(*x123C_);
   }
 }
 
@@ -389,25 +426,142 @@ void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
   // The ids are the bytes the retail loads (the lbz at 0x1744): the first one is the byte the
   // load reads (the mask is the whole byte), the retail steps the pointer for the other three.
   const uchar ids[4] = {x10D4_ & 0xFF, x10D5_, x10D6_, x10D7_};
+  // The retail draws the model without testing the optional's flag (0xFA8): its optional
+  // default-constructs the model, so the draw is of an empty model. The host's optional leaves
+  // the data unconstructed while it is invalid, so the draw is skipped instead.
+  if (!xF5C_.valid()) {
+    return;
+  }
   for (int i = 0; i < 4; ++i) {
     if (x10DC_[i] == 3) {
       continue;
     }
     const CSegId seg(ids[i]);
     const CTransform4f modelXf = xf * GetScaledLocatorTransform(seg) * SegmentRotation_(seg);
-    xF5C_.Render(mgr, modelXf, GetActorLights(), flags);
+    xF5C_.data().Render(mgr, modelXf, GetActorLights(), flags);
   }
 }
 
-// fn_14_2578 (0xF4 bytes): the echo emitter's transform. The retail walks the locator at guest
+// fn_14_2578 (0xF4 bytes): the beacon's transform. The retail walks the locator at guest
 // this+0x10B9 (the GetScaledLocatorTransform call at 0x26A4), multiplies the actor's transform
-// with it (the __ml__ at 0x26B4) and, when the byte at this+0x1238 is set, moves the result
-// along its own z axis by (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants
-// are .rodata 0x29C and 0x2A0 and the height comes from the model at this+0x11EC (the
-// GetBounds call at 0x269C). 0xF4 bytes is over this slice's limit, so it is a stand-in.
+// with it (the __ml__ at 0x26B4) and, when the beacon's model is there (the byte at this+0x1238,
+// the model's valid flag - the test at 0x26C4), moves the result along its own z axis by
+// (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants are .rodata 0x29C (0.5f)
+// and 0x2A0 (0.8f) and the height comes from the model's bounds (the GetBounds call at 0x269C:
+// the box's min z at 0x10(sp) and its max z at 0x1c(sp), the fsubs at 0x25F0).
 void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
-  StandInFn("fn_14_2578 (the echo emitter's transform, 0xF4 bytes)");
-  out = CTransform4f::Identity();
+  CTransform4f result = xf * GetScaledLocatorTransform(CSegId(x10B9_));
+  if (x11EC_.valid()) {
+    const CAABox bounds = x11EC_.data().GetBounds();
+    const float height = bounds.GetMaxPoint().GetZ() - bounds.GetMinPoint().GetZ();
+    const float scale = (x1264_ - 0.5f) * (0.8f * height);
+    // The transform's z axis (the retail's m02, m12 and m22, read at 0x2600, 0x2608 and 0x260C).
+    const CVector3f axis = result.GetUp();
+    result.SetTranslation(result.GetTranslation() + axis * scale);
+  }
+  out = result;
+}
+
+// fn_14_D664 (0x178 bytes): the beacon's particle generator. The asset id is the "PART" object
+// (the SObjectTag the retail builds at 0xD690: the type "PART" and the id) and the generator is a
+// CElementGen with the normal orientation and the kOSF_One flag (the li r5, 0 and the li r6, 1
+// at 0xD720). An invalid asset id (the cmplwi at 0xD674) gives no generator. The retail's
+// allocation also carries a memory-node name (a .rodata label); the host's rs_new has none.
+CElementGen* CDigitalGuardian::xD664_(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return nullptr;
+  }
+  const TToken< CGenDescription > token(gpSimplePool->GetObj(SObjectTag('PART', id)));
+  return rs_new CElementGen(token);
+}
+
+// fn_14_2CC4 (0x19C bytes): the beacon's update. It runs while bit 3 of the flag byte at guest
+// this+0x128C is clear (the extrwi at 0x2CF0 - the byte's bit 3, the mask 1u << (31 - 28) =
+// 0x08). The state word at 0x1268 drives the beacon's height (0x1264): in state 2 it rises by
+// the frame time and is clamped to 1.0 (the fcmpo at 0x2D28, the constant 1.0f at .rodata
+// 0x270), and when it reaches 1.0 (the fcmpo at 0x2D48 with the cror eq, gt, eq) the beacon's
+// arrival is handled (fn_14_28D0) and the state becomes 1 (the store at 0x2D64); in state 3 it
+// falls by twice the frame time (the constant 2.0f at .rodata 0x26C) and is clamped to 0.0 (the
+// fcmpo at 0x2D8C), and when it reaches 0.0 (the fcmpo at 0x2DA8 with the cror eq, lt, eq) the
+// state becomes 0 (the store at 0x2DB8).
+//
+// The sound emitter (the handle at 0x1240, set by fn_14_28D0) follows the neck locator: the
+// GetLctrTransform call at 0x2DD4, the position at 0x24(sp), 0x34(sp) and 0x44(sp) (the
+// transform's translation) and the volume is 0x7F while the echo visor is active (the
+// GetActiveVisor call at 0x2DF8 - the retail's visor 1) and the low byte of 0x974 otherwise
+// (the clrlwi at 0x2E10; the guest's 0x974 is the data block's +0x1B4, the transmission
+// beacon's sound parms' maxVolume).
+void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
+  if ((x128C_ & 0x08) != 0) {
+    return;
+  }
+  if (x1268_ == 2) {
+    x1264_ = rstl::min_val(1.f, x1264_ + dt);
+    if (x1264_ >= 1.f) {
+      x28D0_(mgr);
+      x1268_ = 1;
+    }
+  } else if (x1268_ == 3) {
+    x1264_ = rstl::max_val(0.f, x1264_ - 2.f * dt);
+    if (x1264_ <= 0.f) {
+      x1268_ = 0;
+    }
+  }
+  if (x1240_) {
+    const CVector3f position = GetLctrTransform(CSegId(x10B9_)).GetTranslation();
+    // The retail's visor 1 is the echo visor (the host's EPlayerVisor keeps the retail's
+    // order: combat, echo, scan, dark).
+    const uchar volume = mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Echo
+                             ? 0x7F
+                             : static_cast< uchar >(mData.mSoundTransmissionBeacon.maxVolume);
+    CSfxManager::UpdateEmitter(x1240_, position, CVector3f::Up(), volume);
+  }
+  x2A28_(mgr, dt);
+}
+
+// fn_14_28D0 (0x158 bytes): the beacon's arrival - it hands the collision actor at 0x10CC a
+// flag, starts the particle generator (the virtual at 0x2C), plays the arrival sound (which is
+// what sets the emitter handle at 0x1240) and lets the visor orbit the beacon. Over this
+// slice's callee limit, so it is a stand-in.
+void CDigitalGuardian::x28D0_(CStateManager& mgr) {
+  StandInFn("fn_14_28D0 (the beacon's arrival, 0x158 bytes)");
+}
+
+// fn_14_2A28 (0x29C bytes): the beacon's effect update - it aims the particle generator at the
+// player and drives its external parameter. Over this slice's callee limit, so it is a
+// stand-in.
+void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_2A28 (the beacon's effect update, 0x29C bytes)");
+}
+
+// fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models - the leg
+// model at 0xE6C (the asset id at 0x8DC, the data block's mLegModel), the shin model at 0xEBC
+// (0x8E0, mShinArmor), the knee model at 0xF0C (0x918, mKneeArmor), the transmission beacon's
+// model at 0x11EC (0x94C, mTransmissionBeacon) and the toe target's model at 0xF5C (0x7E4,
+// mToeTargetModel). Each one is built from a CStaticRes {the asset id, the actor's model scale}
+// - the scale comes from the actor's model data at 0x60 (the three lfs at 0x68A0, 0x68A4 and
+// 0x68A8) - and assigned into the member's optional (fn_14_6A20 at 0x68D4: the optional's
+// assignment - fn_14_6A50 reads the valid flag at +0x4C, constructs the model when the optional
+// was empty (fn_14_528) and copies it otherwise (fn_14_6A98); the host's optional_object does
+// the same). The temporary is destroyed right after (the __dt__ at 0x68E0). An invalid asset id
+// (the cmplwi at 0x689C) leaves the optional empty.
+void CDigitalGuardian::x6864_() {
+  const CVector3f scale = GetModelData()->GetScale();
+  if (mData.mLegModel != kInvalidAssetId) {
+    xE6C_ = CModelData(CStaticRes(mData.mLegModel, scale));
+  }
+  if (mData.mShinArmor != kInvalidAssetId) {
+    xEBC_ = CModelData(CStaticRes(mData.mShinArmor, scale));
+  }
+  if (mData.mKneeArmor != kInvalidAssetId) {
+    xF0C_ = CModelData(CStaticRes(mData.mKneeArmor, scale));
+  }
+  if (mData.mTransmissionBeacon != kInvalidAssetId) {
+    x11EC_ = CModelData(CStaticRes(mData.mTransmissionBeacon, scale));
+  }
+  if (mData.mToeTargetModel != kInvalidAssetId) {
+    xF5C_ = CModelData(CStaticRes(mData.mToeTargetModel, scale));
+  }
 }
 
 // fn_14_A3D4 (vtable slot 11, Render): the module's render flag is set (the store at 0xA3FC)

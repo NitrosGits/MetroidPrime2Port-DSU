@@ -4,6 +4,12 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "REL/REL_Setup.h"
 
+#include "Kyoto/Audio/CSfxHandle.hpp"
+#include "rstl/optional_object.hpp"
+
+class CElementGen;
+class CParticleGen;
+
 #ifdef TARGET_PC
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -275,18 +281,25 @@ private:
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
   uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
 
-  // The four models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
+  // The five models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
   // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
-  // host class has its own layout. The models themselves are built by the constructor's tail
-  // (fn_14_6864), which is not ported yet, so the model data is empty and the renders draw
-  // nothing until it lands.
-  CModelData xE6C_;  // 0xE6C: the leg model (fn_14_1994)
-  CModelData xEBC_;  // 0xEBC: the shin model (fn_14_18B4)
-  CModelData xF5C_;  // 0xF5C: the toe target's model (fn_14_1700)
-  CModelData x11EC_; // 0x11EC: the echo emitter's model (fn_14_17DC)
-  uchar xEB8_;       // 0xEB8: the leg model's flag byte (fn_14_1994)
-  uchar xF08_;       // 0xF08: the shin model's flag byte (fn_14_18B4)
-  uchar x1238_;      // 0x1238: the echo emitter model's flag byte (fn_14_17DC, fn_14_2578)
+  // host class has its own layout. Each one is an optional: the guest's CModelData is 0x4C
+  // bytes and the byte after it is the optional's valid flag, which the draws test.
+  // 0xE6C (0x4c, valid flag 0xEB8): the leg model, built by fn_14_6864 and drawn by
+  // fn_14_1994 at the four knee locators.
+  rstl::optional_object< CModelData > xE6C_;
+  // 0xEBC (0x4c, valid flag 0xF08): the shin model, built by fn_14_6864 and drawn by
+  // fn_14_18B4 at the four knee locators.
+  rstl::optional_object< CModelData > xEBC_;
+  // 0xF0C (0x4c, valid flag 0xF58): the knee model, built by fn_14_6864.
+  rstl::optional_object< CModelData > xF0C_;
+  // 0xF5C (0x4c, valid flag 0xFA8): the toe target's model, built by fn_14_6864 and drawn by
+  // fn_14_1700 at the four ankle locators.
+  rstl::optional_object< CModelData > xF5C_;
+  // 0x11EC (0x4c, valid flag 0x1238): the transmission beacon's model, built by fn_14_6864 and
+  // drawn by fn_14_17DC at the neck locator.
+  rstl::optional_object< CModelData > x11EC_;
+  uchar x10B9_;      // 0x10B9: the neck locator segment id (fn_14_2578)
   uchar x10C0_;      // 0x10C0: the first leg locator segment id (fn_14_1994, fn_14_18B4)
   uchar x10C1_;      // 0x10C1: the second leg locator segment id
   uchar x10C2_;      // 0x10C2: the third leg locator segment id
@@ -297,8 +310,11 @@ private:
   uchar x10D7_;      // 0x10D7: the fourth toe locator segment id
   int x10DC_[4];     // 0x10DC: the four per-leg words (0x10DC, 0x10E0, 0x10E4, 0x10E8); the
                      // value 3 skips the leg (fn_14_1700)
-  void* x123C_;      // 0x123C: the echo emitter (a CElementGen in retail); null in the port
-  float x1264_;      // 0x1264: the echo emitter's height (fn_14_17DC, fn_14_2578)
+  const CParticleGen* x123C_; // 0x123C: the particle generator the echo emitter's render
+                              // draws (a CElementGen in retail); fn_14_D664 creates it
+  CSfxHandle x1240_;   // 0x1240: the beacon's sound emitter handle (fn_14_28D0 sets it)
+  float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
+  int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
@@ -308,8 +324,22 @@ private:
   void x17DC_(const CStateManager& mgr, const CTransform4f& xf) const;
   void x1700_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
 
-  // fn_14_2578 (0xF4 bytes): the echo emitter's transform. A stand-in in this slice.
+  // fn_14_2578 (0xF4 bytes): the echo emitter's transform.
   void x2578_(CTransform4f& out, const CTransform4f& xf) const;
+
+  // fn_14_D664 (0x178 bytes): the beacon's particle generator.
+  CElementGen* xD664_(CAssetId id);
+
+  // fn_14_2CC4 (0x19C bytes): the beacon's update.
+  void x2CC4_(CStateManager& mgr, float dt);
+
+  // fn_14_28D0 (0x158 bytes) and fn_14_2A28 (0x29C bytes): the beacon's arrival and its
+  // effect update. Both are over this slice's callee limit, so they are stand-ins.
+  void x28D0_(CStateManager& mgr);
+  void x2A28_(CStateManager& mgr, float dt);
+
+  // fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models.
+  void x6864_();
 
   // The retail's per-segment rotation: the character's rest pose rotation for that segment.
   CTransform4f SegmentRotation_(const CSegId& seg) const;

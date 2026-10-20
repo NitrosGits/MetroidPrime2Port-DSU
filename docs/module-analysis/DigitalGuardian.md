@@ -855,6 +855,113 @@ module's AddToRenderer, `/tmp/opencode/dg_render_models.png`); the four module r
 nothing yet, since their model data is empty. No "[port] caught" and no reach-stub in the log.
 
 
+**WP2 part 2i done (2026-10-20): the models and the locator ids.** `fn_14_6864` (0x1BC, the
+constructor's tail) is ported, and so are the constructor's `GetLocatorSegId` calls for the ids
+the four renders read. The five models are real now and the ids resolve, so the toe target's
+model draws at the guardian's four ankles.
+
+`fn_14_6864` builds the module's five models, each from a `CStaticRes` {the asset id, the
+actor's model scale} (the scale comes from the actor's model data at 0x60 - the three lfs at
+0x68A0, 0x68A4 and 0x68A8) and moved into the member (fn_14_6A20, 0x30 bytes - the `CModelData` assignment at
+0x68D4; the host's implicit copy-assignment is the same thing, the auto_ptr's assignment
+transferring the anim data, and the temporary is destroyed right after, the __dt__ at 0x68E0).
+An invalid asset id (the cmplwi at 0x689C) leaves the member empty.
+
+| member | asset id (guest) | the data block's field |
+|---|---|---|
+| 0xE6C, the leg model | 0x8DC | `mLegModel` (the block's +0x11C) |
+| 0xEBC, the shin model | 0x8E0 | `mShinArmor` (+0x120) |
+| 0xF0C, the knee model | 0x918 | `mKneeArmor` (+0x158) |
+| 0xF5C, the toe target's model | 0x7E4 | `mToeTargetModel` (+0x24) |
+| 0x11EC, the transmission beacon's model | 0x94C | `mTransmissionBeacon` (+0x18C) |
+
+**Each model is an `rstl::optional_object<CModelData>`**, not a bare `CModelData`: the guest's
+CModelData is 0x4C bytes and the byte right after it is the optional's valid flag - 0xE6C's at
+0xEB8, 0xEBC's at 0xF08, 0xF0C's at 0xF58, 0xF5C's at 0xFA8 and 0x11EC's at 0x1238. The
+constructor's stores of 0 at 0xEB8, 0xF08, 0xF58 and 0xFA8 are the empty optionals, not flags
+that gate the draws.
+
+`fn_14_6A20` (0x30 bytes) is the **optional's assignment**, not the model's: `fn_14_6A50` reads
+the valid flag at +0x4C, and when the optional was empty it constructs the model in place
+(fn_14_528) and sets the flag (the `li r0, 1; stb r0, 0x4c(r31)` at 0x6B74), and when it was
+already valid it copies the model into it (fn_14_6A98). The host's `rstl::optional_object` does
+the same, so the port assigns into the optionals.
+
+The draws test the flag: fn_14_1994 tests the leg model's (the byte at 0xEB8, the test at
+0x19B4), fn_14_18B4 the shin model's (0xF08, the test at 0x19E4) and fn_14_17DC the beacon's
+(0x1238, the test at 0x1808). fn_14_1700 does **not** test the toe model's flag (0xFA8): the
+retail's optional default-constructs the model, so the draw is of an empty model; the host's
+optional leaves the data unconstructed while it is invalid, so the port skips the draw.
+
+The sixth `fn_14_6A20` call site is in `fn_14_137A8` (0x88 bytes), which the head module's
+constructor (`fn_14_18264`) calls: it builds the **head's** own `optional_object<CModelData>` at
+0xEA4 from the head's `mHeadArmor` (guest 0x7CC, the head data block's +0x0C) with the head's
+model scale. It is not a body member.
+
+The constructor's locator ids (the `GetLocatorSegId` calls from 0xBAF0 on):
+
+| member | the name | the store |
+|---|---|---|
+| 0x10B9 | "neck_SDK" (.rodata 0x91A) | 0xBAFC |
+| 0x10C0..0x10C3 | "L_front_knee_2", "L_back_knee_2", "R_front_knee_2", "R_back_knee_2" (.rodata 0x57D, 0x58C, 0x59A, 0x5A9) | 0xBB30, 0xBB64, 0xBB98, 0xBBCC |
+| 0x10D4..0x10D7 | "L_front_ankle", "L_back_ankle", "R_front_ankle", "R_back_ankle" (.rodata 0x5F9, 0x607, 0x614, 0x622, through the pointer table at 0x20) | 0xBCD0, 0xBD04, 0xBD38, 0xBD6C |
+
+The ids at 0x10C8..0x10CB (the four "*_col_LCTR" names, the pointer table at .rodata 0x10) are
+the melee trigger's and are still not resolved.
+
+**The renderer's vtable slot 0x44** (the lwz at 0x1954 and the bctrl at 0x1958) is
+`CCubeRenderer::AddParticleGen(const CParticleGen&)`: the DOL's `__vt__13CCubeRenderer` is at
+0x803B8C10 and its entry at 0x44 (the 18th) is that function - the counting the SpacePirate
+lane used for 0x128 (`SetDestinationAlpha`) ✓. The retail passes the echo emitter in r4 (the
+lwz at 0x1874), so the object at 0x123C is a particle generator (the host's `CElementGen`, a
+`CParticleGen`) and not an "echo emitter" as the note used to call it. The port now calls
+`gpRender->AddParticleGen(*x123C_)`; the object itself is still missing (fn_14_D664 allocates
+it), so the branch is not reachable yet.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate`, 1800 frames): the guardian u054d is active (hp 150/150)
+and draws with the leg model, the shin model (both at the four knee locators) and the toe
+target's model (at the four ankle locators) - the draw calls go from 324 to 356 and the
+vertices from 914044 to 1024628 (`/tmp/opencode/dg_render_models.png`); the toe model's four
+draws land at the four ankle locators (the locators at (+-19, +-12, 7) around the guardian).
+The transmission beacon's model does not draw: the retail's test at 0x1264 (> 0.0f) fails, the
+ctor leaves that float at 0.0f. No "[port] caught" and no reach-stub in the log. The
+guardian's render path only runs while the actor is active, so a run that does not activate it
+shows the arena but not the guardian.
+
+
+**WP2 part 2j done (2026-10-20): the beacon.** The three pieces the beacon needs are ported:
+`fn_14_2578` (0xF4, the beacon's transform), `fn_14_D664` (0x178, the particle generator) and
+`fn_14_2CC4` (0x19C, the beacon's update - the only writer of the height at 0x1264). The
+constructor also resolves the melee trigger's locators (0x10C8..0x10CB) now.
+
+| piece | what it does |
+|---|---|
+| fn_14_2578 | the beacon's transform: the locator at 0x10B9 scaled (the GetScaledLocatorTransform call at 0x26A4), times the actor's transform (the __ml__ at 0x26B4), and - when the beacon's model is there (the byte at 0x1238, the model's valid flag, the test at 0x26C4) - moved along the transform's z axis by (0x1264 - 0.5f) * (0.8f * the model's height): the constants are .rodata 0x29C (0.5f) and 0x2A0 (0.8f) and the height is the model's bounds (the GetBounds call at 0x269C, the box's min z at 0x10(sp) and max z at 0x1c(sp)) |
+| fn_14_D664 | the beacon's particle generator: the "PART" object (the SObjectTag the retail builds at 0xD690 - the type "PART" and the id) becomes a CElementGen with the normal orientation and the kOSF_One flag (the li r5, 0 and li r6, 1 at 0xD720). The constructor calls it with the beacon's effect asset (guest 0x950, the data block's mTransmissionBeaconFx, the call at 0xB6AC) and keeps the pointer at 0x123C. The retail never frees it (its destructor leaves 0x123C alone), so the port does not either |
+| fn_14_2CC4 | the beacon's update: it runs while bit 3 of the flag byte at 0x128C is clear (the extrwi at 0x2CF0 - the byte's bit 3, the mask 0x08). The state word at 0x1268 drives the height (0x1264): in state 2 it rises by the frame time, clamped to 1.0 (the fcmpo at 0x2D28, the constant 1.0f at .rodata 0x270), and when it reaches 1.0 (the fcmpo at 0x2D48 with the cror eq, gt, eq) fn_14_28D0 runs and the state becomes 1 (the store at 0x2D64); in state 3 it falls by twice the frame time (the constant 2.0f at .rodata 0x26C), clamped to 0.0 (the fcmpo at 0x2D8C), and when it reaches 0.0 (the fcmpo at 0x2DA8 with the cror eq, lt, eq) the state becomes 0 (the store at 0x2DB8). The sound emitter (the handle at 0x1240, set by fn_14_28D0) follows the neck locator (the GetLctrTransform call at 0x2DD4) and its volume is 0x7F while the echo visor is active (the GetActiveVisor call at 0x2DF8 - the retail's visor 1, which is the echo visor) and the low byte of the transmission beacon's sound parms' maxVolume otherwise (the clrlwi at 0x2E10; the guest's 0x974 is the data block's +0x1B4) |
+
+`fn_14_2CC4`'s callees are over this slice's callee limit and are named once-logging stand-ins:
+**fn_14_28D0** (0x158 - the beacon's arrival: it hands the collision actor at 0x10CC a flag, starts
+the particle generator, plays the arrival sound, which is what sets the emitter handle at 0x1240,
+and lets the visor orbit the beacon) and **fn_14_2A28** (0x29C - the beacon's effect update: it
+aims the particle generator at the player and drives its external parameter).
+
+fn_14_2CC4's caller is **fn_14_7CB4** (the Crippled state), which is still a stand-in, so the
+beacon's height stays at 0 in the port and **the beacon's model does not draw yet** - the
+beacon's particle generator exists and is handed to the renderer every frame (fn_14_17DC's
+AddParticleGen), but nothing drives it until the Crippled state is ported.
+
+The constructor's melee locators (0x10C8..0x10CB) are the four "*_col_LCTR" names, taken from
+the pointer table at .rodata 0x10 (the stores at 0xBC00, 0xBC34, 0xBC68 and 0xBC9C): "L_front_
+col_LCTR", "L_back_col_LCTR", "R_front_col_LCTR" and "R_back_col_LCTR".
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate`, 1800 frames): the guardian u054d is active (hp 150/150)
+and draws with the leg, shin and toe models; the beacon does not draw yet (its height is 0, see
+above). No "[port] caught" and no reach-stub in the log.
+
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct
