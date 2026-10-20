@@ -10,6 +10,7 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CSurfaceAlignmentHelper.hpp"
 #include "MetroidPrime/Enemies/CAiKnockBackMgr.hpp"
+#include "MetroidPrime/Enemies/CBouncyGrenade.hpp"
 #include "MetroidPrime/Enemies/CIngSpotData.hpp"
 #include "MetroidPrime/Enemies/CIngSpotPathFindNavigation.hpp"
 #include "MetroidPrime/PathFinding/CPathFindPointSearch.hpp"
@@ -30,10 +31,8 @@ class CPFArea;
 // Host copy of the properties the MinorIng loader reads (retail: CMinorIngData, 0x158 bytes at
 // 0x7c0, built by fn_44_9B4; the REL is module 44, `docs/module-analysis/IngFamily.md` section B).
 // The guest offsets in the comments are the REL's own stores; the host layout is its own and does
-// not need to match. Not modelled, because nothing in this milestone reads them: the 0x20 bytes at
-// guest 0xb0 (fn_44_D00 fills them from a loader temporary), the 0x50 at guest 0xd0 (fn_44_C44
-// copies the converted SLdrUnknownStruct34, i.e. `unknown_0x3da35851`) and the seven values at
-// guest 0x120..0x138 that come out of that same struct.
+// not need to match. The inglet's own data is modelled: its health at guest 0xb0 and its grenade
+// data at guest 0xd0 (fn_44_C44 copies the struct fn_44_FE8 builds).
 struct CMinorIngData {
   CMinorIngData(CAssetId projectile, const CDamageInfo& projectileDamage,
                 const CDamageInfo& ingSpotDamage, const CIngSpotData& ingSpot,
@@ -45,7 +44,7 @@ struct CMinorIngData {
                 float ingSpotBallPursuitSpeed, const CDamageVulnerability& ingSpotVulnerability,
                 ushort ingSpotIdleSound, ushort ingSpotMoveSound, ushort ingSpotHitNormalSound,
                 ushort ingSpotHitHeavySound, ushort ingSpotDeathSound,
-                const CHealthInfo& ingletHealth)
+                const CHealthInfo& ingletHealth, const CBouncyGrenadeData& grenadeData)
   : mProjectile(projectile)
   , mProjectileDamage(projectileDamage)
   , mUnknownA03E450C(unknownA03E450C)
@@ -73,7 +72,8 @@ struct CMinorIngData {
   , mIngSpotHitNormalSound(ingSpotHitNormalSound)
   , mIngSpotHitHeavySound(ingSpotHitHeavySound)
   , mIngSpotDeathSound(ingSpotDeathSound)
-  , mIngletHealth(ingletHealth) {}
+  , mIngletHealth(ingletHealth)
+  , mGrenadeData(grenadeData) {}
 
   CAssetId mProjectile;      // +0x00: the pair the actor's CProjectileInfo is built from
   CDamageInfo mProjectileDamage; // +0x04 (0x1c) from SLdrMinorIng.projectileDamage
@@ -112,6 +112,10 @@ struct CMinorIngData {
   // It is the health of the unknown_0x3da35851 block (fn_44_1CE0 reads it first); the inglet the
   // massive death spawns takes it.
   CHealthInfo mIngletHealth;                  // guest 0xb0
+  // The inglet's grenade data (the retail's data 0xd0, 0x50 bytes): fn_44_FE8 builds the
+  // bouncing-projectile struct out of the unknown_0x3da35851 block and fn_44_C44 copies it here.
+  // The inglet the massive death spawns is a CBouncyGrenade, which takes this struct.
+  CBouncyGrenadeData mGrenadeData;            // guest 0xd0
 };
 #endif
 

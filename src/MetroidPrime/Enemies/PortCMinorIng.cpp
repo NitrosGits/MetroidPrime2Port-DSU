@@ -218,6 +218,30 @@ void CopyRayCastResult(CRayCastResult& dest, const CRayCastResult& src) { dest =
 // two flag bits at +0x1c (asm 0xD00-0xD4C). The host's CHealthInfo has that layout.
 void CopyHealthInfo(CHealthInfo& dest, const CHealthInfo& src) { dest = src; }
 
+// @ fn_44_FE8
+// The retail reads the inglet's bouncing-projectile block into the grenade data (asm 0xFE8-0x107C):
+// the mass at +0x00 and the speed at +0x04 (asm 0xFE8/0xFF0), the damage info at +0x08..+0x23 (the
+// block's damage, converted by LdrToDamageInfo), the bounce count at +0x24 (asm 0x1040), the four
+// ids at +0x28..+0x34 (asm 0x1044-0x1050: the explosion twice, then the trail and the effect), the
+// two sounds at +0x38/+0x3a (asm 0x1054/0x1058) and the four floats at +0x3c..+0x48 (asm
+// 0x105C-0x1068: 0.1 from the rodata at 0x28 and 150 from the rodata at 0x2c, asm 0x6A4/0x698).
+// The flag byte at +0x4c keeps its bit clear: the callee reads the caller's stack byte at +0xf (asm
+// 0x103C), which the caller leaves zero (asm 0x7D4 stores the word 1 in its low byte).
+CBouncyGrenadeData BuildGrenadeData(const SLdrUnknownStruct34& sldr) {
+  return CBouncyGrenadeData(sldr.mass, sldr.bounciness, LdrToDamageInfo(sldr.damage),
+                             static_cast< uint >(sldr.numBounces), sldr.explosion, sldr.explosion,
+                             sldr.trail, sldr.effect, static_cast< ushort >(sldr.sound_Bounce),
+                             static_cast< ushort >(sldr.sound_Explode), 0.1f, 150.f, 0.1f, 150.f,
+                             false);
+}
+
+// @ fn_44_C44
+// The retail copies that struct into the data's 0xd0 (asm 0xC44-0xD00): the two floats at
+// +0x00/+0x04, the damage info at +0x08..+0x23, the bounce count at +0x24, the ids at
+// +0x28..+0x34, the sounds at +0x38/+0x3a, the four floats at +0x3c..+0x48 and the flag byte at
+// +0x4c. The host's CBouncyGrenadeData has the retail's layout, so the copy is an assignment.
+CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; }
+
 } // namespace
 
 // The retail constructor (the module's 0x9D58) locks the ing-spot hit effects (0x940/0x950)
@@ -2123,6 +2147,11 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
     flags156 |= 0x04;
   }
 
+  // The retail's loader builds the bouncing-projectile struct out of the inglet's block
+  // (fn_44_FE8) and copies it into the data's 0xd0 (fn_44_C44).
+  const CBouncyGrenadeData grenadeData =
+      CopyGrenadeData(BuildGrenadeData(sldrThis.unknown_0x3da35851));
+
   const CMinorIngData data(
       sldrThis.projectile, LdrToDamageInfo(sldrThis.projectileDamage),
       LdrToDamageInfo(sldrThis.ingSpot.damage), ingSpot, sldrThis.unknown_0xa03e450c,
@@ -2139,7 +2168,7 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
       static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
       static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
       static_cast< ushort >(sldrThis.ingSpot.sound_Death),
-      LdrToHealthInfo(sldrThis.unknown_0x3da35851.health));
+      LdrToHealthInfo(sldrThis.unknown_0x3da35851.health), grenadeData);
 
   return rs_new CMinorIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                           LdrToEntityInfo(info, sldrThis.editorProperties),
