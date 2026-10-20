@@ -1785,7 +1785,8 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
       CVector3f::One(), effectId, true, false, true, false, 1.f, 1.f, 0.f, 0.f, false, 1.f, 2.f,
       1.f, true, true, true, lightParams, false, spline, false, false, false,
       CScriptEffect::kRO_Normal);
-  if (effect != nullptr) {  // 0x9DDC
+  if (effect != nullptr) {  // 0x9DDC: the retail's own test (the new returns null when the
+                            // allocation fails)
     mgr.AddObject(effect);  // 0x9DE4
   }
   return id;
@@ -1823,6 +1824,16 @@ void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, con
   // 0x1B70: the message - the sender is this actor (0x1B80), the id the joint's (0x1B88) and the
   // state the invalid one (0x1B7C).
   effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), joint.mId, kSM_Activate)); // 0x1BB0
+  // 0x1BD0: the emitter for the warp sound (the guest 0xC2E) at the effect's own position: the
+  // max distance is 50.0f (lbl_16_rodata_3BC), the distance compensation 0.1f
+  // (lbl_16_rodata_39C), the flags 1, the max volume 0x7F and the min volume 0 (0x1BF4). The
+  // emitter's area is the effect's own (0x1C38) and the priority the medium one (0x1C10). The
+  // retail throws the handle away.
+  CAudioSys::C3DEmitterParmData parms(50.f, 0.1f, 1, 0x7F, 0);
+  parms.mPos = effect->GetTranslation();
+  parms.mSfxId = mWarpSound;
+  CSfxManager::AddEmitter(parms, effect->GetCurrentAreaId().Value(), true, false,
+                          CSfxManager::kMedPriority);  // 0x1C3C
 }
 
 // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag byte gets its
