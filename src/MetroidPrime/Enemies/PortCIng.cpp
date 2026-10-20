@@ -1407,7 +1407,9 @@ bool CIng::TargetAimPosition(CStateManager& mgr, CVector3f& out, float predictio
   return true;
 }
 
-// fn_29_94E8 (not yet exercised in a run)
+// @ fn_29_94E8: the Ing turns into a flying body projectile. Exercised in Agon
+// 01_sand_entrance_dark (/tmp/opencode/ing_fs3.log, 2026-10-20): "state BecomeBodyProjectile
+// form 2" -> the loop-attack command -> the form 4 flight (fn_29_7E30).
 void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1568,7 +1570,8 @@ void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8BAC (not yet exercised in a run)
+// @ fn_29_8BAC: the Ing taunts the player. Exercised in Agon 01_sand_entrance_dark
+// (/tmp/opencode/ing_fs3.log, 2026-10-20: six "state Taunt form" entries in the run).
 void CIng::Taunt(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Taunt");
@@ -2172,8 +2175,8 @@ void CIng::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
   }
   if (DebugIng()) {
     fprintf(stderr,
-            "[ing] %04x cover scan: candidates %d, pick %04x: inactive %d type %d inuse %d area %d "
-            "last %d safezone %d wallspot %d hurtful %d; types",
+            "[ing] %04x cover scan: candidates %d, pick %04x: inactive %d wrongtype %d inuse %d "
+            "area %d last %d safezone %d wallspot %d hurtful %d; types",
             GetUniqueId().Value(), scanned, picked.Value(), inactive, wrongType, inUse, wrongArea,
             lastUsed, safeZone, spotGated, hurtful);
     for (int t = 0; t < 32; ++t) {
@@ -2500,7 +2503,11 @@ void CIng::MiniPortalAttack(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_5CB0 (not yet exercised in a run)
+// @ fn_29_5CB0: the Ing dies. Exercised in Agon 01_sand_entrance_dark
+// (/tmp/opencode/ing_fs5.log, 2026-10-20): the console's `damage <uid> 100` three times took the
+// Ing's 300 HP to zero and the state ran (three "state Dead form 3" entries) - the ing-spot
+// branch, the one that drops the target and orbit materials, explodes the death effect and plays
+// the death sound. The corporeal branch (the burn) wants the Ing killed while it is still form 2.
 void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Dead");
@@ -2533,9 +2540,10 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   // 0x00005E8C: the corporeal form (2) and the form changes (6 and up) burn away; the base class
   // gets its own death message first.
   CPatterned::Dead(mgr, msg, dt);
-  // 0x00005EA4/0x00005EAC: two of CPatterned's flags (0x421's bits 13 and 14) skip the burn. They
-  // are the pair the Ing's own death handler tests at 0x0000B478 before it clears the vertical
-  // movement bit, which the host's CPatterned::Death gates on its burning flags.
+  // 0x00005EA4/0x00005EAC: two of CPatterned's flags skip the burn: the byte at 0x421's bits 1 and
+  // 2, which are the host's mBurning and mLaggedBurnDeath. The Ing's own death handler tests the
+  // same pair at 0x0000B478 before it clears the vertical movement bit, and so does the host's
+  // CPatterned death path (src/MetroidPrime/Enemies/CPatterned.cpp:433).
   if (mBurning || mLaggedBurnDeath) {
     return;
   }
