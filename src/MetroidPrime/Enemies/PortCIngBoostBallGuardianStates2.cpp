@@ -620,26 +620,22 @@ void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float)
   }
 }
 
-// fn_30_8520 (this module).
-// fn_29_6DA0
-// Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_29_bss_40:
+// fn_30_8520 (this module); the Ing's fn_29_6DA0.
+// Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_30_bss_40:
 // a count plus four {TUniqueId, float} entries), insertion-sorted ascending, then takes one entry
-// at random through the state manager's RNG. Cover hints are types 3 and 4 (asm 0x00006F2C:
-// cmpwi 0x3 then cmpwi 0x4) - the port had guessed 4 and 5, which matched nothing in the areas the
-// Ings actually live in; type 4 (wall, the kind HasWallCoverPoint tests) additionally needs the
-// body projectile to be allowed by the properties (0x9d0 bit 5) and the target outside a hurtful
-// safe zone.
+// at random through the state manager's RNG. Unlike the Ing's copy, this module takes any hint
+// type but the boost nav points (14 and 15, asm 0x000086EC) and never tests the hint against the
+// safe zones; a wall hint (type 4) still needs the body projectile allowed by the properties (data
+// 0x20, 0x00008700) and the target outside every safe zone (TargetInSafeZone, 0x0000866C).
 void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg != kStateMsg_Activate) { // asm 0x00006DCC
+  if (msg != kStateMsg_Activate) { // asm 0x0000854C
     return;
   }
   LogState("FindCoverPoint");
-  ReleaseCoverHint(mgr, mCoverHintId); // fn_29_4560
-  if (!TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8; f1 = rodata_6C (0.0)
+  ReleaseOwnCoverHint(mgr);                  // fn_30_6064, asm 0x00008554
+  if (!TargetAimPosition(mgr, mTargetPos)) { // fn_30_5F6C, 0x10F8; f1 = rodata_70 (0.0)
     return;
   }
-  // The candidate array lives in the REL's bss (lbl_29_bss_40), so it is shared by every Ing and
-  // cleared on each call (asm 0x00006E8C); function-local statics do the same here.
   struct SCandidate {
     SCandidate() : id(kInvalidUniqueId), score(0.f) {}
     TUniqueId id;
@@ -647,10 +643,10 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
   };
   static SCandidate sCandidates[4];
   static int sCandidateCount = 0;
-  sCandidateCount = 0;
-  // Near/far score bounds, each the max of two ranges, squared (asm 0x00006E98/0x00006EB0): f31
-  // from mMinAttackRange (0x3e0) vs body-projectile min (0x85c), f30 from body-projectile max
-  // (0x860) vs mini-portal max (0x934 = CIngData 0x7c0 + 0x174).
+  sCandidateCount = 0; // asm 0x00008614
+  // Near/far score bounds, each the max of two ranges, squared (asm 0x00008620/0x0000863C): near
+  // from mMinAttackRange (0x3E0) vs the body projectile's minimum (0x87C), far from its maximum
+  // (0x880) vs the mini portal's (0x894).
   const float nearBound = mMinAttackRange >= mData.mBodyProjectile.mMinAttackDist
                               ? mMinAttackRange
                               : mData.mBodyProjectile.mMinAttackDist;
@@ -659,78 +655,64 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
                              ? mData.mBodyProjectile.mMaxAttackDist
                              : mData.mMiniPortal.mMaxAttackDist;
   const float f30 = farBound * farBound;
-  // Evaluated once before the loop (asm 0x00006EE8, fn_29_ABC8): the target actor exists and sits
-  // in a hurtful safe zone.
-  const bool targetInHurtful = TargetInLightSafeZone(mgr, CTriggerData(0.f));
-  int scanned = 0;
-  // Debug: why the scan comes up empty (the puddle then never leaves FindCoverPoint, and the
-  // grapple behind IngSpotPathFind stays unreachable).
-  int inactive = 0, wrongType = 0, inUse = 0, wrongArea = 0, lastUsed = 0, safeZone = 0;
-  int spotGated = 0, hurtful = 0;
-  int typeHist[32] = {0};
+  // Evaluated once before the loop (fn_30_C14C with a zeroed CTriggerData).
+  const bool targetInSafeZone = TargetInSafeZone(mgr, CTriggerData(0.f));
+  // Debug: why the scan comes up empty.
+  int scanned = 0, inactive = 0, inUse = 0, wrongArea = 0, lastUsed = 0, boostNav = 0;
+  int spotGated = 0, safeZone = 0;
   const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint); // mgr+0x838
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(list[i]);
-    ++scanned;
-    if (hint != nullptr) {
-      const int type = static_cast< int >(hint->GetHintType());
-      if (type >= 0 && type < 32) {
-        ++typeHist[type];
-      }
-    }
     if (hint == nullptr) {
       continue;
     }
-    if (!hint->GetActive()) { // asm 0x00006F20: byte 0x20 bit 0
+    ++scanned;
+    if (!hint->GetActive()) { // asm 0x000086A0: byte 0x20 bit 7
       ++inactive;
       continue;
     }
-    const int type = static_cast< int >(hint->GetHintType());
-    if (type != 3 && type != 4) { // asm 0x00006F2C
-      ++wrongType;
-      continue;
-    }
-    if (hint->GetInUse(GetUniqueId())) { // asm 0x00006F50
+    if (hint->GetInUse(GetUniqueId())) { // asm 0x000086B8
       ++inUse;
       continue;
     }
-    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { // asm 0x00006F60, area word 0x4
+    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { // asm 0x000086CC, area word 0x4
       ++wrongArea;
       continue;
     }
-    if (hint->GetUniqueId() == mLastCoverHintId) { // asm 0x00006F74, 0xd74
+    if (hint->GetUniqueId() == mLastCoverHintId) { // asm 0x000086DC, 0x1090
       ++lastUsed;
       continue;
     }
-    if (mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) { // 0x00006F8C
-      ++safeZone;
+    const int type = static_cast< int >(hint->GetHintType()); // hint 0x158
+    if (type == 14 || type == 15) { // asm 0x000086EC: (type - 14) <= 1 unsigned
+      ++boostNav;
       continue;
     }
-    if (type == 4) { // asm 0x00007074: wall hints only
-      // fn_30_8520 0x00008700 reads the data byte's 0x20 (this+0xAE0), not a guest bitfield: a
-      // guardian whose properties forbid the body projectile never takes a wall point either.
+    if (type == 4) { // asm 0x000086F4: wall hints only
+      // 0x00008700 reads the data byte's 0x20 (this+0xAE0), not a guest bitfield: a guardian
+      // whose properties forbid the body projectile never takes a wall point either.
       if ((mData.mFlags210 & kFlag_NoBodyProjectile) != 0) {
         ++spotGated;
         continue;
       }
-      if (targetInHurtful) { // asm 0x0000708C
-        ++hurtful;
+      if (targetInSafeZone) { // asm 0x00008708
+        ++safeZone;
         continue;
       }
     }
-    const CVector3f delta = mTargetPos - hint->GetTranslation(); // 0xdc8 - hint+0x54
+    const CVector3f delta = mTargetPos - hint->GetTranslation(); // 0x10F8 - hint+0x54
     float score = delta.MagSquared();
-    const float up = CVector3f::Dot(CVector3f::Up(), delta); // == delta.GetZ(), asm 0x000070D0
-    if (type != 4 || up > 0.f) { // asm 0x000070E4: wall hints at/below the target skip the term
-      score += 4.f * up * up; // rodata_AC
+    const float up = CVector3f::Dot(CVector3f::Up(), delta);
+    if (type != 4 || up > 0.f) { // asm 0x00008760: wall hints at/below the target skip the term
+      score += 4.f * up * up;    // rodata_9C
     }
-    if (score < f31) { // asm 0x00007108
-      score += f30; // asm 0x00007110
+    if (score < f31) { // asm 0x00008784
+      score += f30;
     }
-    // Same insertion shape as CMinorIng's copy of this routine: store at the end (or over the
-    // worst entry when full), then bubble down to keep the array ascending (asm 0x00007040).
+    // Store at the end (or over the worst entry when full), then bubble down to keep the array
+    // ascending (asm 0x0000879C/0x0000882C).
     int slot;
-    if (sCandidateCount < 4) { // asm 0x00007040
+    if (sCandidateCount < 4) {
       slot = sCandidateCount++;
     } else if (score < sCandidates[3].score) {
       slot = 3;
@@ -746,27 +728,23 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
     }
   }
   TUniqueId picked = kInvalidUniqueId;
-  if (sCandidateCount != 0) { // asm 0x00007148
-    const int index = mgr.Random()->Range(0, sCandidateCount - 1); // asm 0x00007234, mgr+0x16e4
+  if (sCandidateCount != 0) { // asm 0x000088A4
+    const int index = mgr.Random()->Range(0, sCandidateCount - 1); // asm 0x000088B8, mgr+0x16e4
     picked = sCandidates[index].id;
-  }
-  if (CScriptAIHint* hint = GetCoverHint(mgr, picked)) {
-    hint->SetInUse(true); // fn_29_4510
-    mCoverHintId = picked; // 0xd72
-    mLastCoverHintId = picked; // 0xd74
+    // The id came off the hint list, so retail takes the object as a hint with no type test.
+    if (CScriptAIHint* hint = static_cast< CScriptAIHint* >(mgr.ObjectById(picked))) {
+      // fn_30_6014 (asm 0x000088E4): in use, then the cover hint (0x108E) and the last one (0x1090).
+      hint->SetInUse(true);
+      mCoverHintId = hint->GetUniqueId();
+      mLastCoverHintId = mCoverHintId;
+    }
   }
   if (DebugBg()) {
     fprintf(stderr,
-            "[ibbg] %04x cover scan: candidates %d, pick %04x: inactive %d type %d inuse %d area %d "
-            "last %d safezone %d wallspot %d hurtful %d; types",
-            GetUniqueId().Value(), scanned, picked.Value(), inactive, wrongType, inUse, wrongArea,
-            lastUsed, safeZone, spotGated, hurtful);
-    for (int t = 0; t < 32; ++t) {
-      if (typeHist[t] != 0) {
-        fprintf(stderr, " %d:%d", t, typeHist[t]);
-      }
-    }
-    fprintf(stderr, "\n");
+            "[ibbg] %04x cover scan: hints %d, candidates %d, pick %04x: inactive %d inuse %d "
+            "area %d last %d boostnav %d wallspot %d safezone %d\n",
+            GetUniqueId().Value(), scanned, sCandidateCount, picked.Value(), inactive, inUse,
+            wrongArea, lastUsed, boostNav, spotGated, safeZone);
   }
 }
 
