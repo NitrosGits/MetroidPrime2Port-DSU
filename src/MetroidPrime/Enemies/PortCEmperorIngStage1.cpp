@@ -175,11 +175,12 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
                                      const CModelData& modelData,
                                      const CActorParameters& actParms,
                                      const CPatternedInfo& pInfo,
-                                     const SLdrEmperorIngStage1Data& data)
+                                     const SLdrEmperorIngStage1Data& data)  // fn_16_A5BC and fn_16_A5FC: the loader's model data and the script data block // (fn_16_ABD0, fn_16_AEDC, fn_16_AF7C, fn_16_B014, fn_16_B130, fn_16_B1D8, fn_16_B3DC, // fn_16_B378, fn_16_B434, fn_16_B52C, fn_16_B584, fn_16_B5C8, fn_16_B668, fn_16_B6BC, // fn_16_B6EC, fn_16_B8F4 and fn_16_BB3C)
 : CPatterned(static_cast< EPatternedAI >(0x0d), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Flyer, kCT_One, kBT_Restricted, actParms)
-, mHealthInfo(LdrToHealthInfo(data.tentacle.health))            // guest 0xAAC, fn_16_9AB0
-, mNormalVulnerability(LdrToDamageVulnerability(                  // guest 0xACC, fn_16_98D0
+, mHealthInfo(LdrToHealthInfo(data.tentacle.health))            // guest 0xAAC, fn_16_9AB0  // fn_16_9AB0: the health info is copied into the actor's
+
+, mNormalVulnerability(LdrToDamageVulnerability(                  // guest 0xACC, fn_16_98D0  // fn_16_98D0 and fn_16_9980: the damage vulnerability is copied
       data.tentacle.normalVulnerability))
 , mWarpVulnerability(LdrToDamageVulnerability(                    // guest 0xAFC, fn_16_98D0
       data.tentacle.warpAttackVulnerability))
@@ -194,10 +195,10 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
       SObjectTag('PART', data.projectile.projectileVisorEffect)))
 , mWarpPortalEffect(data.warp.portalEffect)                        // guest 0xC00, data+0x5A8
 , mWarpAttackTip(data.warp.attackTip)                               // guest 0xC04..0xC10, data+0x5AC
-, mWarpStabDamage(LdrToDamageInfo(data.warp.stabDamage))         // guest 0xC10
+, mWarpStabDamage(LdrToDamageInfo(data.warp.stabDamage))         // guest 0xC10  // fn_16_9980: the damage info is copied
 , mBeamProjectile(data.beamAttack.beamInfo.weaponSystem,            // guest 0xC80, 0x9644
                   LdrToDamageInfo(data.beamAttack.damage))
-, mBeamInfo(data.beamAttack.beamInfo)                             // guest 0xCA8, fn_16_9610
+, mBeamInfo(data.beamAttack.beamInfo)                             // guest 0xCA8, fn_16_9610  // fn_16_9610: the plasma beam info is copied
 , mBeamSound(data.beamAttack.sound)                               // guest 0xCF0, data+0x66C
 , mHeartExposedTime(data.heartExposedTime)                        // guest 0xBA8
 , mStayRetractedTime(data.tentacle.stayRetractedTime)            // guest 0xBB4
@@ -215,7 +216,7 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mModeOneHealth(data.unknown_0x905938b8)                         // guest 0xBAC, data+0x674
 , mModeTwoHealth(data.unknown_0xb826317a)                         // guest 0xBB0, data+0x678
 , mHeartDamageSound(data.heartDamageSound)                        // guest 0xCFC, data+0x67C
-, mShockWaveInfo(data.tauntAttack.shockWaveInfo)                    // guest 0xC40, data+0x5E0
+, mShockWaveInfo(data.tauntAttack.shockWaveInfo)                    // guest 0xC40, data+0x5E0  // fn_16_9700: the shock wave block is copied
 , mShockWaveTravelSound(data.tauntAttack.shockWaveTravelSound)      // guest 0xC7C, data+0x610
 , x7c0_(0)                                                        // guest 0x7C0, fn_16_900C clears it
 , x7c4_(0)                                                        // guest 0x7C4, cleared
@@ -588,13 +589,14 @@ CCollisionActor* CEmperorIngStage1::GetCollisionActor(CStateManager& mgr) const 
 // counted particle system reference (CParticleGenInfoGeneric +0x78/+0x7C) and drops it again,
 // keeping the raw pointer; the effect still holds the system.
 CParticleGen* CEmperorIngStage1::GetEffectSystem(CParticleGenInfo* effect) {
-  return static_cast< CParticleGenInfoGeneric* >(effect)->GetParticleSystem().GetPtr();
+  return static_cast< CParticleGenInfoGeneric* >(effect)->GetParticleSystem().GetPtr();  // fn_16_88BC, fn_16_8918, fn_16_8938, fn_16_8AA0 and fn_16_8A28: the effect's counted // reference is released - the host's reference does it when the copy dies
+
 }
 
 // fn_16_6D10 (0x6D10..0x6D94): unless null (0x6D34), the system takes the external parameter
 // (0x6D3C) and so does every system it spawned, recursively (0x6D50..0x6D70).
 void CEmperorIngStage1::SetSystemParam(CParticleGen* system, uint index, float value) {
-  CElementGen* gen = static_cast< CElementGen* >(system);
+  CElementGen* gen = static_cast< CElementGen* >(system);  // fn_16_2204, fn_16_22B0 and fn_16_22D0: the external parameter and the spawned systems
   if (gen == nullptr) {
     return;
   }
@@ -988,7 +990,7 @@ void CEmperorIngStage1::SetupTentacleAnimations(CStateManager& mgr) {
   }
   const CPASDatabase& db = actor->GetModelData()->GetAnimationData()->GetPASDatabase();
   // The first set (0x3128..0x319C): six NoParameter, then FromEnum(0) and FromEnum(0).
-  const CPASAnimParmData first(pas::EAnimationState(5), CPASAnimParm::FromEnum(0),
+  const CPASAnimParmData first(pas::EAnimationState(5), CPASAnimParm::FromEnum(0),  // fn_16_337C: the animation parameter list
                                CPASAnimParm::FromEnum(0), CPASAnimParm::NoParameter(),
                                CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
@@ -1021,7 +1023,7 @@ void CEmperorIngStage1::SetupTentacleAnimations(CStateManager& mgr) {
 
 // fn_16_3094 (0x3094..0x30C8): the actor connected on CONNECT/'PLAY' (the id at guest 0xA1E).
 // fn_16_3060 (0x3060..0x3094) has the same body, so its callers use this one too.
-CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {
+CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {  // fn_16_3060: the 'PLAY' actor - the twin of fn_16_3094
   return TCastToPtr< CActor >(mgr.ObjectById(xa1e_));
 }
 
@@ -1033,7 +1035,7 @@ CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {
 // the vector's push_back, fn_16_4838 the vector's destructor and fn_16_4640 the string's operator+.
 // The rs_new null tests (0x3FC8, 0x4194, 0x44C0) and the string destructors' tests are the
 // compiler's; the host's rs_new does not return null.
-void CEmperorIngStage1::SetupTentacleCollisions(CStateManager& mgr) {
+void CEmperorIngStage1::SetupTentacleCollisions(CStateManager& mgr) {  // fn_16_4640, fn_16_46D4, fn_16_46F4, fn_16_471C, fn_16_4838 and fn_16_48BC: the three // collision actor managers and their descriptions
   // The heart: one sphere on the tracked actor's (fn_16_302C, 0x3EF0) "brainSpine_scale" locator
   // (lbl_16_rodata_41C+0x5EE, 0x3F08), radius 5.0f (lbl_16_rodata_3AC), name "HeartCollision"
   // (+0x632), mass 0.001f (lbl_16_rodata_3CC); the vector reserves one (0x3EE4).
@@ -1505,7 +1507,7 @@ void CEmperorIngStage1::UpdateTentacleMaterials(const CEmperorIngStage1Joint& jo
 // placement new's null test around the element's copy constructor fn_16_3A14 (0x3A14..0x3AA8);
 // the vector has a fixed capacity and never grows, so the host assignment is all three.
 void CEmperorIngStage1::AddTentacleJointToVector() {
-  mJoints.mJoints[mJoints.mCount] = mJoint;
+  mJoints.mJoints[mJoints.mCount] = mJoint;  // fn_16_39CC, fn_16_39EC and fn_16_3A14: the joint is copy-constructed into the vector
   mJoints.mCount += 1;
 }
 
@@ -1792,10 +1794,10 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
                                      CLightParameters::kLR_FourFrames, CVector3f::Zero(), 2, 2,
                                      false, 0, true);  // 0x9D74
   CMayaSpline mayaSpline;  // 0x9D7C
-  const CGameSplineDesc spline(mayaSpline, CMotionSpline::kST_Bezier, 1.f, false);  // 0x9D9C
+  const CGameSplineDesc spline(mayaSpline, CMotionSpline::kST_Bezier, 1.f, false);  // 0x9D9C  // fn_16_9E9C, fn_16_9F04 and fn_16_A004: the game spline description is built
   CScriptEffect* effect = rs_new CScriptEffect(
       id, rstl::string_l("WarpPortalEffect"),  // 0x9DD4
-      CEntityInfo(area, CEntity::NullConnectionList, true), CTransform4f::Identity(),
+      CEntityInfo(area, CEntity::NullConnectionList, true), CTransform4f::Identity(),  // fn_16_67EC and fn_16_6844: the entity info's and the connection list's destructors
       CVector3f::One(), effectId, true, false, true, false, 1.f, 1.f, 0.f, 0.f, false, 1.f, 2.f,
       1.f, true, true, true, lightParams, false, spline, false, false, false,
       CScriptEffect::kRO_Normal);
@@ -1889,7 +1891,7 @@ CEmperorIngStage1WarpPortal::CEmperorIngStage1WarpPortal(
 
 // fn_16_0 (0x0..0x38): the portal's destructor - it puts the vtable back
 // (lbl_16_data_27C, 0x28) and calls the base's own (0x30); the host's default does both.
-CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;
+CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16_0: the destructor - the vtable back and the base's own
 
 // fn_16_1150 (0x1150..0x1574, 0x424): the portal's think.
 //   0x1194: the model's animation data gets its flag byte's bit 24 (the byte's 0x80) set; the
@@ -2489,7 +2491,7 @@ void CEmperorIngStage1::ProjectileAttack(CStateManager& mgr, EStateMsg msg, floa
       CParticleGenInfo* effect =
           AnimationData()->GetFirstParticleEffect(rstl::string_l("DarkProjectileCharge"));
       if (effect != nullptr) {
-SetSystemParam(GetEffectSystem(effect), 0, progress);
+SetSystemParam(GetEffectSystem(effect), 0, progress);  // fn_16_219C: the effect's parameter
       }
       if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
         BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
@@ -2544,8 +2546,8 @@ struct SEmperorIngStage1CmdRecord {
   uint mId;       // the body command id
   uint mParam;    // the loop attack's type
 };
-static const SEmperorIngStage1CmdRecord skLoopAttackCmd = {0, kBSC_LoopAttack, 1};  // lbl_16_data_3B0
-static const SEmperorIngStage1CmdRecord skExitStateCmd = {0, kBSC_ExitState, 0};    // lbl_16_data_3BC
+static const SEmperorIngStage1CmdRecord skLoopAttackCmd = {0, kBSC_LoopAttack, 1};  // lbl_16_data_3B0  // fn_16_5BA8: the loop attack's command record
+static const SEmperorIngStage1CmdRecord skExitStateCmd = {0, kBSC_ExitState, 0};    // lbl_16_data_3BC  // fn_16_5C04: the exit state's command record
 
 // fn_16_601C (0x601C..0x67EC, 0x7D0): the state "WarpAttack" (lbl_16_data_94 entry 8).
 //   Activate (0x60D8): the script hears IS02 (fn_16_830 with 2, 0x60E4), the animation state is
