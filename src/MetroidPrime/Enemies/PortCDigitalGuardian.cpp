@@ -705,8 +705,26 @@ void CDigitalGuardian::x5C30_(CStateManager& mgr) {
   // fn_14_60C0 (the vector's destructor, 0x5F04)
 }
 
+// @ fn_14_59BC
+// The first manager's colliders get their health (the loop at 0x59DC): a knee joint the knee
+// armour's HP (guest 0x8E4), a toe target or the root the toe target's HP (0x7E0), the guard
+// ("Head_1") the beacon's HP (0x9B0); each with the knockback resistance .rodata 0x274 (10).
 void CDigitalGuardian::x59BC_(CStateManager& mgr) {
-  StandInFn("fn_14_59BC (0x274 bytes)");
+  for (uint i = 0; i < xE60_->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = xE60_->GetCollisionDescFromIndex(i);
+    const TUniqueId id = desc.GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {
+      continue;
+    }
+    if (x4408_(id)) {
+      *actor->HealthInfo() = CHealthInfo(mData.mKneeArmorHP, 10.f);
+    } else if (x43AC_(id) || id.value == x1080_) {
+      *actor->HealthInfo() = CHealthInfo(mData.mToeTargetHP, 10.f);
+    } else if (desc.GetName() == rstl::string_l("Head_1")) { // fn_14_21A0 (operator==)
+      *actor->HealthInfo() = CHealthInfo(mData.mTransmissionBeaconHP, 10.f);
+    }
+  }
 }
 
 // fn_14_676C (0xF8 bytes): the collision actor managers' builder, in retail order: fn_14_61DC
