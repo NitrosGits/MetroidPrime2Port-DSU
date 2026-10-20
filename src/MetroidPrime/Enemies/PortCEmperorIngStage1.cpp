@@ -59,6 +59,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
 
 #include <stdio.h>
 #include <string.h>
@@ -1711,7 +1712,7 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
             break;
           }
           // 0x82D0: the module's own function (fn_16_1A50) starts the portal's effect.
-          StartTentaclePortal(i, pos, up);
+          StartTentaclePortal(i, pos, up, mgr);
           break;
         }
       }
@@ -1729,7 +1730,7 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
             break;
           }
           // 0x8374: the module's own function (fn_16_1950) stops the portal's effect.
-          StopTentaclePortal(i);
+          StopTentaclePortal(i, mgr);
           break;
         }
       }
@@ -1740,20 +1741,58 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
   }
 }
 
-// fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint's flag byte gets
-// its bit 3 (0x08) set (the rlwimi at 0x1A84), the joint takes the position and the up vector
-// (0x1B88..0x1BBC), the portal's effect is found and turned towards the player (0x1BFC) and the
-// script hears "ACTV" (0x1BC8). It is over the slice's 0x80 line, so it stays a stand-in; the
-// arguments are the tentacle's index, the position and the up vector.
-void CEmperorIngStage1::StartTentaclePortal(int, const CVector3f&, const CVector3f&) {
-  StandInFn("fn_16_1A50");
+// fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint's state (the
+// joint's +0x28) decides whether anything happens (0x1A70, the compare with 0), the joint's flag
+// byte gets its bit 3 (0x08) set (the rlwimi at 0x1A84), the joint takes the position and the up
+// vector (0x1A88..0x1ABC), the portal's effect is the joint's id (the joint's +0x2C) and it is
+// created when the joint has none (fn_16_9BE8, 0x1AD0). The effect looks along the up vector
+// from the joint's position (the fadds at 0x1B34..0x1B4C and the LookAt at 0x1B60) and it hears
+// "ACTV" (kSM_Activate, 0x41435456, 0x1B84).
+void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up,
+                                            CStateManager& mgr) {
+  CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
+  if (joint.mState == 0) {
+    return; // 0x1A74, 0x1A78
+  }
+  joint.mFlags |= 0x08; // 0x1A84
+  joint.mPosition = pos; // 0x1A88..0x1AA8
+  joint.mUp = up; // 0x1AAC..0x1ABC
+  if (joint.mId == kInvalidUniqueId) {
+    // 0x1AD0: the portal's effect is created in this actor's area (the owner's +0x04) from the
+    // portal effect asset (the owner's +0xC00). fn_16_9BE8 is over the slice's 0x80 line, so it
+    // stays a stand-in and the joint keeps its invalid id.
+    StandInFn("fn_16_9BE8");
+  }
+  // 0x1AFC: the joint's id is the portal's effect.
+  CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(joint.mId));
+  if (effect == nullptr) {
+    return; // 0x1B14, 0x1B18
+  }
+  // 0x1B1C: the effect looks along the up vector from the joint's position.
+  effect->SetTransform(CTransform4f::LookAt(joint.mPosition, joint.mPosition + joint.mUp,
+                                            CVector3f::Up())); // 0x1B60, 0x1B6C
+  // 0x1B70: the message - the sender is this actor (0x1B80), the id the joint's (0x1B88) and the
+  // state the invalid one (0x1B7C).
+  effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), joint.mId, kSM_Activate)); // 0x1BB0
 }
 
 // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag byte gets its
 // bit 3 (0x08) cleared (the rlwimi at 0x1980), the joint's position is the zero vector and its up
-// vector the up vector (0x1990..0x19C0) and the script hears "ACTV" (0x1A18). It is over the
-// slice's 0x80 line, so it stays a stand-in; the argument is the tentacle's index.
-void CEmperorIngStage1::StopTentaclePortal(int) { StandInFn("fn_16_1950"); }
+// vector the up vector (0x1990..0x19C0), and the portal's effect (the joint's id, 0x19C4) hears
+// "DCTV" (kSM_Deactivate, 0x44435456, 0x19F8) - the message's sender is this actor (0x19EC) and
+// its id the joint's (0x19F4).
+void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
+  CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
+  joint.mFlags &= ~0x08; // 0x1980
+  joint.mPosition = CVector3f::Zero(); // 0x1990..0x19A8
+  joint.mUp = CVector3f::Up(); // 0x19AC..0x19C0
+  // 0x19C4: the joint's id is the portal's effect.
+  CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(joint.mId));
+  if (effect == nullptr) {
+    return; // 0x19D4, 0x19D8
+  }
+  effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), joint.mId, kSM_Deactivate)); // 0x1A34
+}
 
 // vtable slot 28 = fn_16_7EA8 (0x7EA8..0x7F8C, 0xC4): retail's own sound handling for the boss.
 // The sound is swallowed while the locator belongs to a tentacle that cannot be shot: the tentacle

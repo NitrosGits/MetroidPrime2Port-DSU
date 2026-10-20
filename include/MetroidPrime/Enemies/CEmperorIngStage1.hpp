@@ -245,13 +245,12 @@ private:
   // fn_16_8C: the sweeping tentacles' contact damage to the player.
   void UpdateTentacleHits(float dt, CStateManager& mgr);
   // fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint takes the
-  // position and the up vector, the portal's effect is turned towards the player and the script
-  // hears "ACTV". It is over the slice's 0x80 line, so it stays a stand-in.
-  void StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up);
-  // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flags and its
-  // position are cleared and the script hears "ACTV". It is over the slice's 0x80 line, so it
-  // stays a stand-in.
-  void StopTentaclePortal(int index);
+  // position and the up vector, the portal's effect is turned along the up vector and it hears
+  // "ACTV".
+  void StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up, CStateManager& mgr);
+  // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag and its
+  // position are cleared and the portal's effect hears "DCTV".
+  void StopTentaclePortal(int index, CStateManager& mgr);
   // fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass.
   CModelFlags BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const;
   // fn_16_1C94 (0x1C94..0x1CF4, 0x60): the tentacle's damage colour.
