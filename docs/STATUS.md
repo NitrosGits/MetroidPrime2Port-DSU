@@ -20,7 +20,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | CommandoPirate (worker) | `ses_ea68aa796ffeYgAi8HQZWbsMMM (subagent)` | decomp/commandopirate @ `b53f44229` | fn_9_19D8 + combat triggers <=0x100; why the search gives kR_NoPath |
 | EmperorIngStage1 (worker) | `ses_ea68aa795ffe7vd2PvE2JI3Mwo (subagent)` | decomp/emperoring @ `e1f34df29` | area-load stand-ins fn_16_2B68 / 1E6C / 3984; fn_16_3EAC (0x794, collision managers) reserved for Opus |
 | EmperorIngStage3 (worker, ex-SpacePirate lane) | `ses_ea68aa793ffdPJMI0HqWQM1mSC (subagent)` | decomp/emperoring3 @ `2c7c4ba38` | rework 8C4C/8ACC (dot > FastCosR(const); 22BC's return vs 10), then Think 47D4 |
-| DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `e4b13e532` | AddToRenderer's model renders fn_14_1994/18B4/17DC/1700 |
+| DigitalGuardian (worker) | `ses_ea68aa793ffeDxOmT3IprQYLiP (subagent)` | decomp/digitalguardian @ `344f8e7d0` | fn_14_6864 model build, ctor locator ids, renderer slot 0x44 |
 | DarkSamus (worker) | `ses_ea67ca29affeP6zi3urmpO5e6C` (subagent) | decomp/darksamus on `232823309` | milestone 1 (old lane did nothing) |
 | ScriptPlayerTurret (worker) | `ses_ea67c9e47ffeXetyJZpm95C0H6` (subagent) | decomp/playerturret @ `614a8ed72` (m1 accepted) | reached stand-ins <=0x100 |
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
@@ -29,7 +29,7 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 
 Accepted, not yet merged (next batch: merge, build, smoke): ing `618c7e8f5`, playerturret `614a8ed72`, emperoring `87f405931`, commandopirate
 up to `b53f44229`, spacepirate `a9ba3f157` (Render/ScanVisorRender done), emperoring3 `528919371`, swampboss `59637cee5`;
-digitalguardian `e4b13e532` (model draws again).
+digitalguardian `344f8e7d0` (model draws again).
 Lane-review lessons: bytes inside the loader data block are mData fields; a guest offset a module only
 reads, below its own fields, is a base-class member; a stand-in returning false fakes FSM progress; a raw script-message constant must be re-read from the lis/addi pair (0x41544348 kSM_Attach was misread); `FastCosR(const)` then `fcmpo dot, f1` means dot > cos(const), not cos(dot) > const.
 
