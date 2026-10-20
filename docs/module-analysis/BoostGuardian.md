@@ -315,8 +315,15 @@ values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02
   sets 0x11EE 0x10/0x08/0x04 and zeroes 0x11D4, else clears 0x11EE 0x08, zeroes 0x11D8/0x11DC and
   reloads 0x11E4 from the phase's `boostPuddleModeTime`. Callers: `BecomeIngSpot` 0xACC8-0xACE8
   (all true), `BecomeCorporeal` 0xB094 (`30E4(false)`) and 0xB17C (`3190(false)`); `3068` is also
-  called from `fn_30_4030`/`4078`/`4324`/`44A4`/`5D90`/`7390` (unported boost half). The current
-  phase (0x11D0) is element 0 on the host: the phase advance in `fn_30_D94C` (0xDBC0) is unported.
+  called from `fn_30_4030`/`4078`/`4324`/`44A4`/`7390` (unported boost half) and from
+  `fn_30_5D90` (ported). The current phase (0x11D0) is `mPhaseIndex` (0x11CC); `fn_30_D94C`'s
+  phase advance (0xDB18..0xDBE8) moves it with the damage taken and sets `mSpeed` (0x3C8).
+- *Open: the `IngSpotPathFind` speed fields.* The asm reads `this+0x7C8` / `this+0x7D4` (data
+  +0x08 / +0x14). In the Ing REL those offsets of the same-shaped block are `unknown_0xc620183a`
+  (a form time, `decomp/ing` `PortCIng.cpp` ~2364) and `aggressiveness`, and the Ing's own
+  ing-spot speeds are read from 0x880 (data +0xC0, inside `mIngSpot`). The port reads
+  `mIngSpot.GetMaxSpeed()` / `GetSpeedModifier()`. Which fields the guest block really holds at
+  +0x08/+0x14 needs the guardian block's own layout (loader / `fn_30_1056C`); not changed yet.
 
 `tools/asmcheck.py check IngBoostBallGuardian PortCIngBoostBallGuardian.cpp --only
 MASK,XBIT,CROP,XCMP,XSTORE,OFFS` leaves three XBIT hits on the ctor (`mFoundMovementPos`,
@@ -368,11 +375,17 @@ offsets are in section e; the module's own addresses for the state machine's nod
 - the mini portal attack: this module's own copy of the Ing's `CIngMiniPortalAttack`.
 - the nav-point finder `fn_30_2F9C`, which `BoostModeRetreat`'s Activate needs.
 - the "PuddleCollisionActor" named child and the crystal behind `HasCollidedWithCrystal`.
-- the module's own copies of the base-class overrides (`fn_30_DC10` PreThink, `fn_30_D94C` Think,
+- the module's own copies of the base-class overrides (`fn_30_DC10` PreThink,
   `fn_30_DDA0` AcceptScriptMsg, `fn_30_D2E0` PreRender, `fn_30_D384` Render, `fn_30_CE50` Touch,
   `fn_30_D4F8` DoUserAnimEvent, `fn_30_76F4` Death, `fn_30_CB84` KnockBack): the port uses the Ing
   half's copies, and the module's own ones may carry boost-specific code. Compare their sizes
-  (the module's Think is 0x2C4) before trusting the Ing half's behaviour.
+  before trusting the Ing half's behaviour. `fn_30_D94C` Think is ported (2026-10-20) with
+  `fn_30_5D90` timers, `fn_30_55D8` ing-spot think and `fn_30_56E0` touch box; its callees
+  `fn_30_6108` (puddle effects, 0x384) and `fn_30_65C8` (hit light, 0x148) are once-logging
+  stand-ins, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
+- live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
+  `BoostAttack`; `BoostAttack` (`fn_30_3478`, the second class) is the next stand-in, so the boost
+  itself never happens and the FSM falls back to `IngSpotPathFind`.
 
 ## k. What the loader and the constructor actually pass
 

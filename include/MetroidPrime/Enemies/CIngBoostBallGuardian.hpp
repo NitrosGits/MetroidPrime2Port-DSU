@@ -392,9 +392,18 @@ private:
   void SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost);
   void SetBodyManagerReflect(CStateManager& mgr, bool reflect);
   void SetBoostPuddleMode(bool enter);
-  // Guest 0x11D0: the current phase. The phase advance (fn_30_D94C, 0x0000DBC0) is not ported, so
-  // it stays element 0, as the constructor sets it (0x0000FDC0).
-  const CIngBoostBallGuardianPhase& CurrentPhase() const { return mBoost.mPhase0; }
+  // Guest 0x11D0: the current phase, element mPhaseIndex (guest 0x11CC) of the data's three; the
+  // phase advance in Think (fn_30_D94C, 0x0000DBC0) moves it with the damage taken.
+  const CIngBoostBallGuardianPhase& CurrentPhase() const {
+    return mPhaseIndex == 2 ? mBoost.mPhase2 : mPhaseIndex == 1 ? mBoost.mPhase1 : mBoost.mPhase0;
+  }
+  // fn_30_55D8: the ing-spot and evaporating forms' think (body, animation, state machine,
+  // waypoints). fn_30_56E0: the touch box. fn_30_6108 / fn_30_65C8: the puddle effects and the
+  // hit light (stand-ins).
+  void UpdateIngSpotBody(float dt, CStateManager& mgr);
+  void UpdateTouchBox();
+  void UpdatePuddleEffects(float dt, CStateManager& mgr);
+  void UpdateHitLight(float dt, CStateManager& mgr);
   // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
   void CreateCollisionActorManager(CStateManager& mgr);
   void SetupCollisionActors(CStateManager& mgr);
@@ -501,6 +510,7 @@ private:
   float mBoost11D8;                                      // guest 0x11D8
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
+  int mPhaseIndex;                                       // guest 0x11CC: the current phase
   bool mAggressive : 1;                                  // CIng: 0xE5C bit 4
   bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag)
   bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3

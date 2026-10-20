@@ -103,6 +103,9 @@ const SIngJointSphere skIngJointSpheres[] = {
 };
 const float kIngJointMass = 1000.f; // rodata_C4
 
+// Reports a stand-in the first time it runs (PortCIngBoostBallGuardian.cpp).
+void BgStandIn(const char* what);
+
 // MP2_DEBUG_BG turns on the state machine's trace.
 inline bool DebugBg() {
   static int sEnabled = -1;

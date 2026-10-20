@@ -186,6 +186,8 @@ void DumpBGFsmOnce(CIngBoostBallGuardian* guardian) {
 
 } // namespace
 
+void BgStandIn(const char* what) { StandIn(what); }
+
 // fn_30_EC6C. The base call is the retail one: EPatternedAI 0x19 (`li r4, 0x19` at 0x0000ECC0),
 // flavor 0 (`li r7, 0x0` at 0x0000ECAC), movement 0 / collider 1 / body 1 (the constants stored to
 // the stack arguments at 0x0000ECBC..0x0000ECC8). The path searches are fn_30_EC6C's own calls:
@@ -278,6 +280,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoost11D8(0.f)                                       // ctor 0x0000FDC8
 , mBoostPuddleModeTimer(mBoost.mPhase0.mBoostPuddleModeTime) // ctor 0x0000FDDC: *(0x11D0)+0
 , mBoostRandomFloat(0.f)
+, mPhaseIndex(0)
 , mAggressive(false)
 , mFoundMovementPos(true) // ctor 0x0000FE0C: 0x11EC 0x10 = 1
 , mRecalcPath(false)
