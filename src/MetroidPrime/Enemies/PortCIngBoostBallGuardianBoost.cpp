@@ -10,10 +10,8 @@
 // is its own: the flag bytes are one-bit members (include/MetroidPrime/Enemies/
 // CIngBoostBallGuardian.hpp), so a retail bit test reads the member that holds that bit.
 //
-// Two things this slice does not have:
-//   - the nav-point finder fn_30_2F9C (the retreat's Activate needs it) and the module's second
-//     class (a CPhysicsActor built by fn_30_3478, the boost attack's child), so the retreat's
-//     Activate and the whole of BoostAttack are a later slice.
+// Not here yet: the module's second class (a CPhysicsActor built by fn_30_3478, the boost
+// attack's child; BoostGuardian.md section f), so the whole of BoostAttack is a later slice.
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
 #include "Kyoto/Math/CQuaternion.hpp"
@@ -63,6 +61,22 @@ bool CIngBoostBallGuardian::BoostModeRetreatOver(CStateManager& mgr,
   return mBoostNavPointId == kInvalidUniqueId;
 }
 
+// fn_30_2F9C: the first AI hint of the waypoint list (mgr+0x838, 0x00002FC0) that is active
+// (byte 0x20 bit 0x80, 0x00002FE4), in this actor's area (+0x04, 0x00003000) and of the given
+// type (+0x158, 0x00003010); null when there is none (0x00003044).
+// @ fn_30_2F9C
+CScriptAIHint* CIngBoostBallGuardian::FindBoostNavPoint(CStateManager& mgr, int hintType) const {
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
+    if (hint != nullptr && hint->GetActive() && hint->GetCurrentAreaId() == GetCurrentAreaId() &&
+        static_cast< int >(hint->GetHintType()) == hintType) {
+      return hint;
+    }
+  }
+  return nullptr;
+}
+
 // ---- states ---------------------------------------------------------------------------------
 
 // fn_30_79C0: BoostAttack.
@@ -108,34 +122,28 @@ void CIngBoostBallGuardian::BoostAttack(CStateManager&, EStateMsg msg, float) {
 // 'CTIM' (0x4354494D) with kInvalidUniqueId.
 //
 // Every message falls into this module's own IngSpotPathFind (fn_30_9DA0) afterwards.
-//
-// NOT YET: fn_30_2F9C (the nav-point finder) is a later slice, so the Activate case only logs
-// and the nav-point work waits for it. The two flag bits retail writes here are written
-// anyway: bit 4 of 0x11EC (mFoundMovementPos) is cleared and bit 7 of 0x11EE
-// (mBoostModeRetreatActive) is set - the latter is what this module's own IngSpotPathFind
-// (fn_30_9DA0) reads to pick one of two speeds.
+// @ fn_30_7728
 void CIngBoostBallGuardian::BoostModeRetreat(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
-  case kStateMsg_Activate:
+  case kStateMsg_Activate: {
     LogState("BoostModeRetreat");
     mFoundMovementPos = false;        // 0x00007784: 0x11EC 0x10 = 0
     mBoostModeRetreatActive = true;   // 0x000077A0: 0x11EE 0x80 = 1
-    {
-      // NOT YET: fn_30_2F9C(mgr, this, 0xE) (0x000077A8); until it is ported there is no point.
-      const CScriptAIHint* point = nullptr;
-      if (point != nullptr) {        // 0x000077AC
-        mFoundMovementPos = true;    // 0x000077BC: 0x11EC 0x10 = 1
-        mBoostNavPointId = point->GetUniqueId(); // 0x000077D0: 0x1096
-        mPathFindNavigation.SetDestination(point->GetTranslation()); // 0x000077D4
-        mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);         // 0x000077E0: 0x718
-      }
+    if (const CScriptAIHint* point = FindBoostNavPoint(mgr, 0xE)) { // 0x000077A8
+      mFoundMovementPos = true;    // 0x000077BC: 0x11EC 0x10 = 1
+      mBoostNavPointId = point->GetUniqueId(); // 0x000077D0: 0x1096
+      mPathFindNavigation.SetDestination(point->GetTranslation()); // 0x000077D4
+      mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);         // 0x000077E0: 0x718
+    }
+    if (const CScriptAIHint* point = FindBoostNavPoint(mgr, 0xF)) { // 0x000077F0
+      mBoostNavPointId2 = point->GetUniqueId(); // 0x00007800: 0x1098
     }
     if (DebugBg()) {
-      fprintf(stderr,
-              "[ibbg] %04x boost retreat: the nav points (fn_30_2F9C) are a later slice\n",
-              GetUniqueId().Value());
+      fprintf(stderr, "[ibbg] %04x boost retreat: nav points %04x / %04x\n",
+              GetUniqueId().Value(), mBoostNavPointId.Value(), mBoostNavPointId2.Value());
     }
     break;
+  }
   case kStateMsg_Update: {
     const CScriptAIHint* hint =
         TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(mBoostNavPointId));

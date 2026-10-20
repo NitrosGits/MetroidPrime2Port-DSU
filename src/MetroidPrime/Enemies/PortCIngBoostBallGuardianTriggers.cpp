@@ -20,6 +20,7 @@
 #include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CAxisAngle.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CExplosion.hpp"
@@ -371,30 +372,42 @@ void CIngBoostBallGuardian::ReleaseCoverHint(CStateManager& mgr, TUniqueId& id) 
   id = kInvalidUniqueId;
 }
 
+// @ fn_30_5D90: the module's own timers. The Ing's ball cooldown and body-projectile time are not
+// in it; the boost countdowns are: in the boost puddle form (0x11EF 0x80, 0x11EE 0x08 and 0x20,
+// ing spot) 0x11E8 runs down to ShouldBoost; otherwise, outside the ing spot form, 0x11E4 runs down
+// (outside cinematics) to the boost puddle mode (fn_30_3068).
 void CIngBoostBallGuardian::UpdateTimers(float dt, CStateManager& mgr) {
   mHeardShotTime += dt;
-  if (GetHitByPlayerProjectile()) {
-    mUnderFireTime = 0.f;
-    SetHitByPlayerProjectile(false);
-  } else {
-    mUnderFireTime += dt;
-  }
   mArmSwipeTime += dt;
   mFormTime += dt;
-  mStateTime += dt;
+  mStateTime += dt; // [port] the host-only state clock
   if (mForm == kForm_Corporeal && PathShagged(mgr, CTriggerData(0.f))) {
     mFrustrationTimer += dt;
   } else {
     mFrustrationTimer = 0.f;
   }
-  mBallCooldown -= dt;
-  if (mForm == kForm_BodyProjectile) {
-    mBodyProjectileTime += dt;
-  } else {
-    mBodyProjectileTime = 0.f;
-  }
   if (mForm == kForm_IngSpot && mCurDamageRemTime > 0.f) {
     mCurDamageRemTime -= dt;
+  }
+  if (mHitByPlayerProjectile) {
+    mUnderFireTime = 0.f;
+    mHitByPlayerProjectile = false;
+  } else {
+    mUnderFireTime += dt;
+  }
+  if (mCurrentlyInBoostPuddleForm && mBoostPuddleForm && mBoostOver && mForm == kForm_IngSpot) {
+    if (mBoostRandomFloat > 0.f) {
+      mBoostRandomFloat -= dt;
+      if (mBoostRandomFloat <= 0.f) {
+        mShouldBoost = true;
+      }
+    }
+  } else if (!mBoostPuddleForm && mForm != kForm_IngSpot &&
+             !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
+    mBoostPuddleModeTimer -= dt;
+    if (mBoostPuddleModeTimer <= 0.f) {
+      SetBoostPuddleMode(true);
+    }
   }
 }
 

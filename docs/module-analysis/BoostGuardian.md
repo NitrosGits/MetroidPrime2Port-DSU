@@ -214,6 +214,41 @@ bit 0x20 at +0x11EE. Its vtable's 14 local overrides are `fn_30_11CD8`, `1548C`,
 `142BC`. What actor it is (`CIngBoostBallGuardianCrystal`?) is still open: the name string and the
 class's own behaviour are the next thing to read (`fn_30_1466C`, `fn_30_13E68`).
 
+Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (46 functions,
+0x11CD8..0x164D0, about 17.5 KB; the older single-file dump misses the small ones). Read so far:
+
+- *Spawn (`fn_30_3478`, 0x318).* `fn_30_340C` stores the player's aim position (vtable +0x54, z
+  replaced by the actor's) at 0x1160; `LookAt` from the actor to it, both z = 0 (0x34D4); sends
+  'ENTR' (0x350C); clears 0x11EE 0x10; `CStaticRes(model data+0xA4, scale data+0x00)` (0x3548);
+  `CHealthInfo` from the actor's `GetHealthInfo()` (vtable +0x3C, `fn_30_388C`, then hp copied to
+  +4); spawn position from `fn_30_324C` -> 0x116C; material list bits `lbl_30_data_9B4`/`9B8`;
+  name rodata_12C+0x546; `CEntityInfo(area, NullConnectionList, kInvalidEditorId)`, active.
+- *Ctor (`fn_30_15924`, 0x6A0)* arguments: uid, name, info, xf, pos (0x116C), model, actor params,
+  then on the stack the owner id, the boost data (0xDEC), the phase index (0x11CC -> 0x2D0), the
+  boost vulnerability (0xEFC -> 0x570 via `fn_30_AD4`), a block at 0x109C (-> 0x4FC via
+  `fn_30_160D0`), the material list, the health info (-> optional at 0x5A0, flag 0x5C0).
+  `CPhysicsActor(..., SMoverData(mass data+0x0C), skDefaultStepData)`; boost data copied to
+  0x2E4 (`fn_30_10250`); `CCollidableSphere` at 0x4D0 (radius 1.0 without a model, else half the
+  bounds height); three particle generators 0x564/0x568/0x56C from data +0xA8/+0xAC/+0xB0
+  (`fn_30_16238`, 'PART'); spline end time from the speed spline's knots (0x528); coefficient of
+  restitution 1.0; material filter adds `lbl_30_data_C0C`.
+- *Vtable:* dtor `11CD8`, Think `1548C` (0x498), AcceptScriptMsg `1466C` (0x270), AddToRenderer
+  `13E68`, Render `141B8` (0x104), PreRenderAllViewports `13ECC` (0x2EC), HealthInfo/GetHealthInfo
+  `13C5C`/`13C40` (0x5A0 if 0x5C0), GetDamageVulnerability x2 `13B90`/`13B88` (0x570),
+  GetTouchBounds `13BA4` (the sphere's AABB), Touch `1464C` (base call), GetCollisionPrimitive
+  `11E44` (0x4D0), CollidedWith `142BC` (0x390).
+- *Think* switches on 0x2D4: 0 = grow in (`137C0` 0x3BC, `13C78` effects mask 4, `152D4` scale),
+  1 = roll (spline time 0x51C, the speed vs data+0x90, trail fade, `13C78` mask 7, `12AB0` 0xC00
+  the roll itself), 2 = shrink (`13760`: 0.3 s, sets 0x5D8 0x04, which `fn_30_13B98` returns and
+  BoostAttack's Update turns into 0x11EE 0x20); then every 0.2 s it applies the data+0x14
+  (morph ball) or +0x30 (first person) damage to the touched id at 0x4F8, knocked 60 degrees off
+  the velocity, and runs the rolling sfx (`1282C`).
+- *Host gap:* `CBoostBallGuardianData` lacks the `boostBallSpeed` spline (guest data +0x4C, read by
+  the ctor and Think) and the 1000/1.0 pair at +0xC0; add both before porting the class.
+- *Next slices:* (a) the spline + ctor/dtor/small overrides + `3478` + BoostAttack `79C0`; (b)
+  Think with `137C0`/`13C78`/`152D4`/`13760`/`1282C`; (c) `12AB0`, CollidedWith,
+  AcceptScriptMsg, the three render overrides.
+
 ## g. Function map
 
 `fn_30_<hex>` names are offsets into the module's `.text`. Full inventory with sizes and DOL
@@ -315,8 +350,20 @@ values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02
   sets 0x11EE 0x10/0x08/0x04 and zeroes 0x11D4, else clears 0x11EE 0x08, zeroes 0x11D8/0x11DC and
   reloads 0x11E4 from the phase's `boostPuddleModeTime`. Callers: `BecomeIngSpot` 0xACC8-0xACE8
   (all true), `BecomeCorporeal` 0xB094 (`30E4(false)`) and 0xB17C (`3190(false)`); `3068` is also
-  called from `fn_30_4030`/`4078`/`4324`/`44A4`/`5D90`/`7390` (unported boost half). The current
-  phase (0x11D0) is element 0 on the host: the phase advance in `fn_30_D94C` (0xDBC0) is unported.
+  called from `fn_30_4030`/`4078`/`4324`/`44A4`/`7390` (unported boost half) and from
+  `fn_30_5D90` (ported). The current phase (0x11D0) is `mPhaseIndex` (0x11CC); `fn_30_D94C`'s
+  phase advance (0xDB18..0xDBE8) moves it with the damage taken and sets `mSpeed` (0x3C8).
+- *Settled: the `IngSpotPathFind` speed fields.* The asm reads `this+0x7C8` / `this+0x7D4` (data
+  +0x08 / +0x14). Unlike the Ing REL (whose block has `unknown_0xc620183a` / `aggressiveness`
+  there), this module's guardian block starts with the SLdr struct verbatim (`fn_30_1056C` ->
+  `fn_30_10694` [0x00010588] copies +0x00..+0xEF word by word), and the loader `fn_30_2344` stores
+  `ingSpotMaxSpeed` at SLdr+0x08 [0x00002808] and `unknown_0x50398a06` at +0x14 [0x00002838]
+  (BoostGuardian_datablocks.md section 1). The host passes those two as `CIngSpotData`'s
+  `maxSpeed` / `unknown1c` (`PortCIngBoostBallGuardian.cpp` ~403), so `GetMaxSpeed()` /
+  `GetSpeedModifier()` are the right fields; no change. Guest 0x3C8 (`fn_30_D94C`'s phase
+  advance) is `CPatterned::mSpeed` (counted from `mStateMachine` 0x350 and from the 0x420 flag word).
+- *`fn_30_2F9C`* (`FindBoostNavPoint`, Boost.cpp) is ported, and with it `BoostModeRetreat`'s
+  Activate: hint type 0xE is the destination (0x1096), 0xF the facing point (0x1098).
 
 `tools/asmcheck.py check IngBoostBallGuardian PortCIngBoostBallGuardian.cpp --only
 MASK,XBIT,CROP,XCMP,XSTORE,OFFS` leaves three XBIT hits on the ctor (`mFoundMovementPos`,
@@ -368,11 +415,17 @@ offsets are in section e; the module's own addresses for the state machine's nod
 - the mini portal attack: this module's own copy of the Ing's `CIngMiniPortalAttack`.
 - the nav-point finder `fn_30_2F9C`, which `BoostModeRetreat`'s Activate needs.
 - the "PuddleCollisionActor" named child and the crystal behind `HasCollidedWithCrystal`.
-- the module's own copies of the base-class overrides (`fn_30_DC10` PreThink, `fn_30_D94C` Think,
+- the module's own copies of the base-class overrides (`fn_30_DC10` PreThink,
   `fn_30_DDA0` AcceptScriptMsg, `fn_30_D2E0` PreRender, `fn_30_D384` Render, `fn_30_CE50` Touch,
   `fn_30_D4F8` DoUserAnimEvent, `fn_30_76F4` Death, `fn_30_CB84` KnockBack): the port uses the Ing
   half's copies, and the module's own ones may carry boost-specific code. Compare their sizes
-  (the module's Think is 0x2C4) before trusting the Ing half's behaviour.
+  before trusting the Ing half's behaviour. `fn_30_D94C` Think is ported (2026-10-20) with
+  `fn_30_5D90` timers, `fn_30_55D8` ing-spot think and `fn_30_56E0` touch box; its callees
+  `fn_30_6108` (puddle effects, 0x384) and `fn_30_65C8` (hit light, 0x148) are once-logging
+  stand-ins, and `fn_30_5CD0`/`fn_30_3AF8` run the Ing half's `UpdateValidTarget`/`UpdateLoopSfx`.
+- live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
+  `BoostAttack`; `BoostAttack` (`fn_30_3478`, the second class) is the next stand-in, so the boost
+  itself never happens and the FSM falls back to `IngSpotPathFind`.
 
 ## k. What the loader and the constructor actually pass
 

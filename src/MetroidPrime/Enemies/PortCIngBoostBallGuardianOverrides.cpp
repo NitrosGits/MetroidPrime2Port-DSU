@@ -75,9 +75,13 @@ void CIngBoostBallGuardian::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
-// The Ing's Think (the Ing REL's fn_29_C654): the base class's machine, then the surface
-// alignment, the collision actors, the line-of-sight tracker and the actor behind the attack
-// target.
+// The module's own Think. The form picks the base think (the host forms, the ing-spot forms'
+// fn_30_55D8, or CPatterned's), then the managers, the line of sight, the timers, the surface
+// alignment, the puddle effects, the target, the loop sound, the touch box, the hit light, the
+// actor behind 0x1092 and the phase advance (0x0000DB18): the damage taken (1 - hp / initial hp)
+// picks one of the three phases (the count at 0xF2C) in equal steps, and a new phase sets the
+// speed (0x3C8) to its locomotion speed scale (+0x30).
+// @ fn_30_D94C
 void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
   // The probe's own activation: the Boost Guardian is an inactive actor until the fight's script
   // starts it (the console's `objs` lists it as inactive), so the probe wakes it up the way the
@@ -89,24 +93,63 @@ void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
+  // [port] the host body is activated before the first think (see EnsureBodyActive).
   EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);
+  switch (mForm) {
+  case kForm_Host:
+  case kForm_ControllingHost:
+    // 0x0000D9B0: the host forms run only the actor and the state machine.
+    CActor::Think(dt, mgr);
+    mStateMachine->Update(mgr, *this, dt);
+    SetDrawShadow(false);
+    return;
+  case kForm_IngSpot:
+  case kForm_Evaporate:
+    CActor::Think(dt, mgr); // 0x0000D9F0
+    UpdateIngSpotBody(dt, mgr);
+    SetDrawShadow(false);
+    UpdateHitDamageTime(dt); // vtable +0xEC
+    break;
+  default:
+    CPatterned::Think(dt, mgr); // 0x0000DA38
+    SetDrawShadow(mAlive);
+    break;
+  }
+  // 0x0000DA58: both managers, guest 0xD60 and 0xD64; the host builds only the first.
   if (!mCollisionActorManager.null()) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
+  if (mCollisionActorManager1 != nullptr) {
+    mCollisionActorManager1->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
   mLineOfSight.Update(dt, mgr);
   UpdateTimers(dt, mgr);
   mSurfaceAlignment.Update(*this, mgr, dt);
+  UpdatePuddleEffects(dt, mgr);
   UpdateValidTarget(mgr);
   UpdateLoopSfx();
-  // [?] the touch box's shape: MinorIng's puddle box (fn_44_3E8C).
-  const float half = mModelScale.GetX() * 0.5625f;
-  mTouchBox = CAABox(CVector3f(-half, -half, 0.f), CVector3f(half, half, mModelScale.GetX()))
-                  .GetTransformedAABox(GetTransform());
-  // [this module] the Ing's lure safe zone check is dropped: this module has no lure safe zone
-  // (no mLureSafeZoneId), so there is nothing to invalidate here.
-  if (mD76Id != kInvalidUniqueId && mgr.GetObjectById(mD76Id) == nullptr) {
+  UpdateTouchBox();
+  UpdateHitLight(dt, mgr);
+  if (mgr.GetObjectById(mD76Id) == nullptr) { // 0x0000DB00: no kInvalidUniqueId guard
     mD76Id = kInvalidUniqueId;
+  }
+  const CHealthInfo* health = GetHealthInfo();
+  const float damage = 1.f - health->GetHP() / health->GetInitialHP();
+  const int count = 3;
+  const float step = 1.f / static_cast< float >(count);
+  for (int i = 0; i < count; ++i) {
+    const float lo = step * static_cast< float >(i);
+    if (damage >= lo && damage <= lo + step) {
+      if (mPhaseIndex != i) {
+        mPhaseIndex = i;
+        mSpeed = CurrentPhase().mLocomotionSpeedScale;
+        if (DebugBg()) {
+          fprintf(stderr, "[ibbg] %04x phase %d (damage %.2f) speed %.2f\n",
+                  GetUniqueId().Value(), i, damage, mSpeed);
+        }
+      }
+      break;
+    }
   }
   // Once-a-second position poll: the off-navmesh Ing repeats Lurk -> SetRecoverDest ->
   // FailSafeMode, and only a position trace says whether the fail-safe teleport moves it.
@@ -116,6 +159,49 @@ void CIngBoostBallGuardian::Think(float dt, CStateManager& mgr) {
             pos.GetX(), pos.GetY(), pos.GetZ(), mForm, mLastLoggedState ? mLastLoggedState : "?");
   }
 }
+
+// @ fn_30_55D8: the ing-spot forms' think. 0x11BC counts the time in the locomotion body state;
+// the body and the animation run only for its first 2.5 s (rodata_E0).
+void CIngBoostBallGuardian::UpdateIngSpotBody(float dt, CStateManager& mgr) {
+  if (mBodyController->GetCurrentStateId() != pas::kAS_Locomotion) {
+    mBodyState5Time = 0.f;
+  } else {
+    mBodyState5Time += dt;
+  }
+  if (mBodyState5Time < 2.5f) {
+    mBodyController->Update(dt, mgr);
+    UpdateAnimation(dt, mgr, true);
+  }
+  if (!mStateMachine->HasState()) {
+    InitializeStateMachine(mgr);
+  } else {
+    mStateMachine->Update(mgr, *this, dt);
+  }
+  mWaypointNavigation.Update(dt);
+}
+
+// @ fn_30_56E0: an axis-aligned box on the translation, 2.75 across (rodata_E4) and 1.0 up and
+// down (rodata_64).
+void CIngBoostBallGuardian::UpdateTouchBox() {
+  const CVector3f pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 2.75f, pos.GetY() + 2.75f, pos.GetZ() + 1.f);
+  const CVector3f min(pos.GetX() - 2.75f, pos.GetY() - 2.75f, pos.GetZ() - 1.f);
+  mTouchBox = CAABox(min, max);
+}
+
+// fn_30_6108 (0x384): the puddle effects. It looks up the two effect actors at 0x1074 and 0x1076,
+// checks their live particle counts, and places the boost child (TCastToPtr<CBoostBallGuardian>)
+// - the second class is not in the port, so this is a stand-in.
+void CIngBoostBallGuardian::UpdatePuddleEffects(float, CStateManager&) {
+  BgStandIn("CIngBoostBallGuardian::UpdatePuddleEffects (fn_30_6108, 0x384)");
+}
+
+// fn_30_65C8 (0x148): the hit light's fade (the game light at 0x1084, the fade at 0x11C4); a
+// stand-in, the light is not created.
+void CIngBoostBallGuardian::UpdateHitLight(float, CStateManager&) {
+  BgStandIn("CIngBoostBallGuardian::UpdateHitLight (fn_30_65C8, 0x148)");
+}
+
 
 // The Ing's AcceptScriptMsg (the Ing REL's fn_29_C9A4): the message switch that creates the body
 // and the collision actors, joins the team, relays the hits and cleans up on delete.
