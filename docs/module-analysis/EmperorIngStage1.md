@@ -65,7 +65,8 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
-| `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) | [proven] |
+| `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) - ported | [proven] |
+| `fn_16_1D38` | 0xC4 | the tentacle's draw flags for the model's draw pass - ported | [proven] |
 | `fn_16_7F8C` | 0x5B0 | `DoUserAnimEvent` (vtable slot 26); case 0 (charged projectile), 7, 17, 22, 27 and 28 ported | [proven] |
 | `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) - ported | [proven] |
 | `fn_16_B958` | 0x30 | `GetTouchBounds` (vtable slot 16): the actor's bounding box | [proven] |
@@ -498,7 +499,7 @@ never ends). 0 caught/reach-stub.
 Still stand-ins: WarpAttack fn_16_601C (0x7D0), TauntAttack fn_16_5DBC (0x260, not reached),
 EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test - heart damage does not
 reach the boss), fn_16_51D4 (0x128), fn_16_1A50 (0x20C) and fn_16_1950 (0xC4) (the tentacle's
-portal start and stop), and Render fn_16_531C.
+portal start and stop).
 
 fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
 0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f

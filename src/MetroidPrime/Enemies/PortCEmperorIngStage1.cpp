@@ -4,8 +4,9 @@
 // states TrackPlayer, Attack, ProjectileAttack, Taunt, JumpRope, BeginHeartStage, HeartStage and
 // EndHeartStage; the heart stage's beam (FireBeam), the heart's damage reaching the boss
 // (fn_16_51D4), the charged projectile of DoUserAnimEvent, the boss's own sound handling
-// (fn_16_7EA8) and DoUserAnimEvent's cases 7, 17, 22, 27 and 28. What is left over logs once
-// and names the REL function behind it (WarpAttack, TauntAttack, the Render) -
+// (fn_16_7EA8), DoUserAnimEvent's cases 7, 17, 22, 27 and 28 and the boss's own render path
+// (fn_16_531C, with fn_16_1D38's draw flags). What is left over logs once
+// and names the REL function behind it (WarpAttack, TauntAttack) -
 // docs/module-analysis/EmperorIngStage1.md has the map.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_16_data_3C8 lists them by
