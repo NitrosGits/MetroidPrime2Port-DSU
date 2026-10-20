@@ -13,6 +13,7 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
@@ -44,8 +45,6 @@ void StandIn(const char* what) {
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
 // tracker and the derived state.
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
-void StandInFn_80135D84() { StandIn("fn_80135D84 (the DOL's)"); }
-void StandInFn_801F55F0() { StandIn("fn_801F55F0 (the DOL's)"); }
 void StandInFn_75_AFE8() { StandIn("fn_75_AFE8 (0x11C)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
 void StandInFn_75_9520() { StandIn("fn_75_9520 (0x11C)"); }
@@ -76,9 +75,12 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
 // port: writer fn_75_F5F8 @0x0000F6E4 (sth r6, 0xc6c(r29) - the retail's ctor copies
 // kInvalidUniqueId, read at 0x0000F6CC, into the command module's id)
 // port: writer fn_75_F5F8 @0x0000F6BC (stw r0, 0xc68(r29) with r0 = 0 - the retail's ctor
-// leaves the docking partner's id at 0)
-, mDockingPartnerId(0u)
-, mCommandModuleId(kInvalidUniqueId) {
+// leaves the collision actor manager empty)
+, mCollisionActorManager(nullptr)
+, mCommandModuleId(kInvalidUniqueId)
+// port: the retail's CVisualKnowledge at 0xC70 is built by the ctor; the host's equivalent is
+// CLineOfSightTracker, built here with the same arguments the other ports use.
+, mVisualKnowledge(uid, CSegId(), 0.1f, 0.05f) {
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not
@@ -120,12 +122,18 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
-  if (mDockingPartnerId == 0) {
+  if (mCollisionActorManager == nullptr) {
+    // port limit: the retail builds the collision actor manager in fn_75_A4E4 (0x418), which
+    // is one of the module's own functions; the port makes an empty one instead,
+    // as the command module does.
     StandInFn_75_A4E4();
+    mCollisionActorManager = rs_new CCollisionActorManager(
+        mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(),
+        true);
   } else {
-    StandInFn_80135D84();
+    mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
-  StandInFn_801F55F0();
+  mVisualKnowledge.Update(dt, mgr);
   StandInFn_75_AFE8();
   StandInFn_75_ACEC();
   StandInFn_75_9520();

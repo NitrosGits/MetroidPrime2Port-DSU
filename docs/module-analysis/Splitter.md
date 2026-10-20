@@ -487,3 +487,16 @@ updates the dock - 0xF144 `fn_80135D84`, the DOL's), the line-of-sight tracker (
 
 All four are over 0x80 and the DOL's two have no module size, so each stays a named once-logging
 shell in the port.
+
+The two DOL calls in `fn_75_F0E8` are host engine functions, not module ones (the DOL's symbol map,
+`config/G2ME01/symbols.txt`):
+
+| call | DOL symbol | name |
+|---|---|---|
+| 0xF144 | `fn_80135D84` | `CCollisionActorManager::Update(float, CStateManager&, EUpdateOptions)` (0x540) |
+| 0xF154 | `fn_801F55F0` | `CVisualKnowledge::Update(CStateManager&, float)` (0x26C) |
+
+The first is the host's `CCollisionActorManager::Update` on the manager at 0xC68 (the update options
+0 = `kUO_ObjectSpace`); the second is the host's `CLineOfSightTracker::Update` on the visual
+knowledge at 0xC70 (the host's `CLineOfSightTracker` is the same thing - see
+`CMinorIng.hpp`'s `mLineOfSight`).
