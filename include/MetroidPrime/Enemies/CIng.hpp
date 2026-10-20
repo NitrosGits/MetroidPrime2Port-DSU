@@ -402,6 +402,8 @@ private:
   // fn_29_1F1C: ExitHost's Deactivate smoke, "IngExitHostSmokeFx" at the Ing's transform, plus the
   // swarm block's own sound (CIngData swarm +0x28); only when the second GEN token is loaded.
   void SpawnExitHostSmoke(CStateManager& mgr);
+  // fn_29_4B4C: the actor's own light (a CGameLight).
+  void CreateLight(CStateManager& mgr);
   // fn_29_4960: the actor's light (0xd68) follows the Ing's eye segment and its data colour.
   void UpdateLight(CStateManager& mgr, float dt);
   // fn_29_4468: the target's aim position (CActor's GetAimPosition, prediction in f1), false when

@@ -397,6 +397,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall + the ball triggers `fn_29_A2D8`/`A224`/`A100` | ported + `// @` 2026-10-20; the run needs `layer 2`/`layer 3`, `press x` to morph and `tp` onto the puddle - see A.12 |
 | ~~fail-safe~~ measured | `fn_29_69A0` FailSafeMode + `fn_29_A3C8` IsOffPath | the teleport works (5.38 units, once) and the `0233` Ing then sits on a point-graph node the ground search does not accept; the loop is retail's, not a port bug - see A.14 |
 | ~~module fns~~ ported | `fn_29_3B50` (the 0xe40 body-state-5 timer), `fn_29_B784` (`UpdateHitDamageTime`), `fn_29_B294` + `fn_29_1DF4` (`Listen` and its safe-zone helper), `fn_29_2270` (the ing spot's looped sounds), `fn_29_C0B4` (`Render`) | ported 2026-10-20; the five that stay stand-ins and their sizes are in A.19 |
+| ~~module fns 2~~ ported | `fn_29_37D8` (the separation steering), `fn_29_4960` (the light's blend and update), `fn_29_4B4C` (the actor's own light) | ported 2026-10-20, one commit each; only `fn_29_4830` (the blob) and `fn_29_16AC` (the loader's data block) stay stand-ins - A.19 |
 | ~~minimal states~~ done | `fn_29_94E8` BecomeBodyProjectile, `fn_29_8FE8` BecomeWallProjectile, `fn_29_8CF4` SafeZoneReaction, `fn_29_8BAC` Taunt, `fn_29_84A4` Patrol, `fn_29_82D4` FollowAttackPattern, `fn_29_75C0` SeekWallPoint, `fn_29_5CB0` Dead, `fn_29_5C28` Evaporate | read against the asm 2026-10-20: the locomotion type is 0 (`kLT_Crouch`), `SafeZoneReaction`'s emitter was missing its volume and priority, `Patrol`'s speed range is walk/run, `FollowAttackPattern`'s ing-spot block runs on every message, `SeekWallPoint` no longer clears `mMoving` without a hint, `Dead` calls `CPatterned::Dead` and honours the two burn flags |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
@@ -923,11 +924,31 @@ one by one. Six are ported now, five are the host's own C++ and stay cited, five
 | `fn_29_432C` | 0x13C | the module's timers (0xe30, 0xe38, 0xe3c, 0xe44, 0xe48, 0xe58, 0x440) | the host's `UpdateTimers` is that step |
 | `fn_29_CF64` | 0x1C4 | the destructor (it frees the data block, `fn_29_10F8`) | the host's member destructors |
 | `fn_29_E7C8` | 0x110 | the data block's build in the constructor | the loader's finished block |
+| `fn_29_37D8` | 0x170 | the separation steering | ported (`CIng::ApplySeparation`) |
+| `fn_29_4960` | 0x148 | the light's blend (0xe50) and the light object | ported (`CIng::UpdateLight`) |
+| `fn_29_4B4C` | 0x13C | the actor's own light (a `CGameLight`, 0x1b8 bytes) | ported (`CIng::CreateLight`) |
 | `fn_29_4830` | 0x130 | the ing spot's blob object (0xd5c) | stand-in: module 25's class builds it |
-| `fn_29_4B4C` | 0x13C | the actor's `CActorLights` | stand-in: the host's CIng has no room for one |
-| `fn_29_4960` | 0x148 | the light's blend (0xe50) and the light object | stand-in: it needs the light |
-| `fn_29_37D8` | 0x170 | the ing spot's path walk | stand-in |
 | `fn_29_16AC` | 0x3D4 | the loader's data block | stand-in |
+
+Only two module functions the run reaches are still stand-ins: the blob (`fn_29_4830`, whose class
+belongs to module 25) and the loader's data block (`fn_29_16AC`).
+
+**The separation steering** (`fn_29_37D8`, asm 0x37D8-0x3924) walks the state's listening-AI list
+(the CStateManager's list at 0x830 - Prime 1's `kOL_ListeningAi` is the sixth list, so 0x808+5*8) and,
+for every other `CPatterned` in the same area, asks the steering behaviours for the **3D**
+separation with the radius `rodata_7C` (15) times the model's x scale. A safe separation vector is
+delivered as a locomotion command in its **normalized** direction with the speed `rodata_B4` (0.5) -
+once per neighbour, so the last one wins. The host's body was a guess (the 2D separation, the
+vectors summed, one command); it is now the retail's own step.
+
+**The light** (`fn_29_4B4C` creates it, `fn_29_4960` updates it): the module makes a `CGameLight`
+(0x1b8 bytes, the same class the Jump Guardian makes) with the Ing's area id for persistence, the
+actor's active flag, the name "Ing Light" (`rodata_120`+0x5a9), the identity transform, the Ing's
+own id as the parent and a black point light at the origin; its id goes to 0xd68. `fn_29_4960` then
+runs the light's blend (0xe50): it rises by dt while the Ing is alive (the bit 6 of the byte at
+0x420) and corporeal, capped at `rodata_64` (1.0), and falls by dt otherwise, stopped at zero. The
+light takes the blend of the black and the data's light colour (0x7d8) at the eye segment's
+transform (0xd7b) with the attenuation 1/0x7dc (the data's 1.170, so 0.855).
 
 **What advances 0xe40** (the 2.5 s draw timer of the forms 3 and 5): `fn_29_3B50`, asm
 0x3B7C-0x3BA8. It reads the body controller's state id (0x37c) and, when that is 5

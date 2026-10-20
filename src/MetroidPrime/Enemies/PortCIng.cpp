@@ -1588,6 +1588,22 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_29_4B4C
+void CIng::CreateLight(CStateManager& mgr) {
+  // The retail's own light (asm 0x4B4C-0x4C84): a CGameLight (0x1b8 bytes) with the Ing's area id
+  // for persistence, the actor's active flag (the bit 7 of the byte at 0x20), the name "Ing Light"
+  // (rodata_120+0x5a9), the identity transform, the Ing's own id as the parent (the actor's id
+  // at 0x8), a black point light at the origin and no source, priority or life time. The light's
+  // id goes to 0xd68.
+  mLightId = mgr.AllocateUniqueId();
+  CGameLight* light = rs_new CGameLight(mLightId, GetAreaIdForPersistence(), GetActive(),
+                                        rstl::string_l("Ing Light"), CTransform4f::Identity(),
+                                        GetUniqueId(),
+                                        CLight::BuildPoint(CVector3f::Zero(), CColor::Black()), 0, 0,
+                                        0.f);
+  mgr.AddObject(light);
+}
+
 // @ fn_29_4960
 void CIng::UpdateLight(CStateManager& mgr, float dt) {
   // The retail's light update (asm 0x4960-0x4A90): the light's blend (0xe50) rises by dt while
@@ -3179,10 +3195,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
     // The retail also spawns the ing spot's blob object (fn_29_4830, asm 0xCB84 - module 25's
-    // class, which the host does not have) and builds the actor's light (fn_29_4B4C, asm 0xCBA8 -
-    // a CActorLights the host's CIng has no room for). Both stay stand-ins.
+    // class, which the host does not have) and then builds the actor's light (fn_29_4B4C,
+    // asm 0xCBA8).
     PortIngStandIn("fn_29_4830 blob spawn (0x130)");
-    PortIngStandIn("fn_29_4B4C light (0x13C)");
+    CreateLight(mgr); // fn_29_4B4C, asm 0xCBA8
     break;
   case kSM_Delete:
     // Retail deletes the blob object (0xd5c, never spawned on the host), stops the sounds,
@@ -3700,7 +3716,8 @@ static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo
             "[ing] load: body proj dist [%.1f..%.1f] odds %.1f speed %.1f drop %.1f suck %.1f\n"
             "[ing] load: grapple pursuit %.1f hold %.1f postwait %.1f spit %.1f drain %.1f\n"
             "[ing] load: mini portal dist [%.1f..%.1f]\n"
-            "[ing] load: light beam spot x%.2f trigger x%.2f base x%.2f\n",
+            "[ing] load: light beam spot x%.2f trigger x%.2f base x%.2f\n"
+            "[ing] load: light colour %.2f %.2f %.2f attenuation %.3f\n",
             sldrThis.editorProperties.name.data(), int(data.mFlags210), data.mHearingRadius,
             data.mAggressiveness, data.mTauntChance, data.mFrustrationTime,
             data.mBodyProjectile.mMinAttackDist, data.mBodyProjectile.mMaxAttackDist,
@@ -3714,7 +3731,9 @@ static CEntity* PortLoadIng(CStateManager& mgr, CInputStream& input, CEntityInfo
             data.mTriggerVulnerability.GetVulnerability(CWeaponMode(kWT_Light)).mDamageMultiplier,
             CDamageVulnerability::NormalVulnerabilty()
                 .GetVulnerability(CWeaponMode(kWT_Light))
-                .mDamageMultiplier);
+                .mDamageMultiplier,
+            data.mLightColor.GetRedu8() / 255.f, data.mLightColor.GetGreenu8() / 255.f,
+            data.mLightColor.GetBlueu8() / 255.f, data.mLightAttenuation);
   }
   return rs_new CIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                      LdrToEntityInfo(info, sldrThis.editorProperties),
