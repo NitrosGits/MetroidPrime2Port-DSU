@@ -60,13 +60,14 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 |---|---|---|
 | 0x44F | the model alpha byte | `fn_18_44` reads it; the constructor does not write it, so it starts 0 |
 | 0x6B4 | `CPatterned::mAnimationState` | the base class's animation state (`CAnimationState`): the module's states store 0 (`kAS_NotReady`), 1 (`kAS_Ready`) and 3 (`kAS_Over`) there (0x5368, 0x5538, 0x7564, 0x759C, 0x76B0, 0x4F14, 0x50A8) |
-| 0x7C0 | the pointer to the module's heart holder | `fn_18_3B14` reads it and `fn_80135AD4` indexes the array of 0x68-byte records it points at (0xA the first heart, 0xB the second); the constructor clears it |
+| 0x7C0 | the `CCollisionActorManager*` | `fn_18_3BB0` makes it on kSM_AreaLoaded (ten leg OBBs, then the spheres mainHeart_SDK, tentacle_6_1 and Skeleton_Root); `fn_18_3B14` reads its descriptions 0xA (the first heart) and 0xB (the second); kSM_Delete destroys it; the constructor clears it |
 | 0x7D0 | the time since the last attack | the module's Think grows it every frame (0x494C); the melee and ground-pound triggers want it at least 2.0 |
 | 0x814 | the vulnerable damage threshold | the constructor copies the data's `vulnerableDamageThreshold` (the data's +0x18) |
 | 0x818 | the facing the idle state turns towards the player | `fn_18_3804` writes it; the constructor zeroes it (0x9B80) |
 | 0x824 | the noise flag byte | `fn_18_8E50` sets its bit 30 (the mask 0x02) when the actor hears the player fire; the constructor clears the word's high bits |
 | 0x864 | the idle state's timer | `fn_18_788C` sets it to FLT_MAX on enter, clears it when the player is over fifty units away and grows it by the frame time |
-| 0x868 | the heart that is on | `fn_18_1DF4` writes it; the constructor clears it (0x9CB4) |
+| 0x868 | the heart that is on | `fn_18_1DF4` writes it; the constructor sets it to -1 (0x9CB4), so Start's heart switch sees a change and sets the hearts' health |
+| 0x8A4 | the dodge's step direction | `fn_18_6E80` picks `kSD_Left` 2, `kSD_Right` 3 or `kSD_Down` 5 (-1 none); the constructor sets -1 |
 | 0x86C | the hearts' vulnerability | the constructor copies the immune vulnerability into it (0x9CB8..0x9CC4); `fn_18_1BD8` gives it to both hearts |
 | 0x830 / 0x840 / 0x850 | the module's three lists | the count at +0x4, the entries at +0xC, each entry 0xC bytes (a weight at +0x0, a threshold at +0x4, a timer at +0x8). The first is the attack list (`fn_18_2BF0` fills it), the second is the one the taunt average reads and the third the one the flag check reads |
 | 0x8C0 | the id of the object the module watches | `fn_18_125C` clears it when the object is gone (0x12AC) |
@@ -234,50 +235,32 @@ its average is below one (rodata 0x264) a player more than fifty units away (rod
 random draw (0.0 to 100.0, rodata 0x258 and 0x27C) under ten (rodata 0x294) sets that bit and
 the bit 28 (the mask 0x08) otherwise.
 
-`fn_18_3B64` (0x28) calls the DOL's `fn_80135D84` on the heart holder and `fn_18_39E0` (0xA4)
-adds or removes the materials 0x28/0x29/0x3F on the two hearts depending on the flag byte at
-their guest 0x20; both stay stand-ins (the holder is not created and the host's collision actor
-has no such flag).
+`fn_18_3B64` (0x28) is the manager's `Update(kUO_ObjectSpace)` and `fn_18_39E0` (0xA4) adds or
+removes the target materials on the two hearts; both run in the Think.
 
-### `fn_18_7504` (0x1CC), the GainDistance state
+### The body-command states
 
-The activate path (0x7548) clears the module's too-close distance (guest 0x7D4), sets the flag
-the animation state at guest 0x6B4 and looks thirty units along the actor's facing (`fn_18_1A54`); when the look
-finds nothing the module's `fn_18_2BF0` (0xC4, a stand-in) runs and the flag becomes 3. The
-update path (0x75B4) is a stand-in: it needs the module's own body-command classes, the DOL's
-`fn_801B73E4` and the body controller's steering fields. The deactivate path (0x76B4) clears the
-flag.
-
-### `fn_18_4EB4` (0x23C), the JumpAttack state
-
-The activate path (0x4F0C) sets the animation state at guest 0x6B4 to `kAS_Ready` and picks the jump target (guests
-0x910..0x918): the player's position, or - when the player is over fifty units away (rodata
-0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the direction to the
-player, starting at the actor's own position. The update path (0x500C) is a stand-in: it needs
-the DOL's `fn_801B73E4`, the module's `fn_18_51E8` and `fn_18_50F0` and the body controller's
-steering fields. The deactivate path (0x50A0) clears the flag, the jump-attack timer (guest
-0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
+The module's vtables 0x78C/0x750/0x744/0x720/0x72C/0x75C are weak copies of the host's
+`CBodyStateCmd` classes, and the DOL's `fn_801B73E4` is `CAnimationState::CanIssueCommand`, so
+the states use the host classes and `DeliverCmd`. Ported: EyeShut `5264` (loop attack, additive
+reaction 4, exit past the shut time), GainDistance `7504` (a backward step, aimed at the player),
+JumpAttack `4EB4` (activate: 0.35 of the way to the player; update: a `kJT_Normal` jump to the
+player's translation), Dodge `6E80` (0x358: left/right looks of fifteen units, a step in the
+picked direction, the hearts immune while it runs via `fn_18_1C34`, restored by `fn_18_1BD8`),
+MeleeAttack `76D0` (0x1B8: a severity-zero melee attack, aimed during the first 0.9 s) and the
+list helpers `2BF0` (list 0x830) and `2B68` (list 0x840).
 
 ### `fn_18_7B14` (0x668), the message handler
 
-The base class's handler runs first (0x7B50), then the module's own cases, one per message: the
-constants are 0x58444D47 (`kSM_Damage`, 0x7B60), 0x58435254 (`kSM_Create`, 0x7B74), 0x58414C44
-(`kSM_AreaLoaded`, 0x7B88), 0x5844454C (`kSM_Delete`, 0x7B98), 0x584C4155 (`kSM_Launching`,
-0x7BAC), 0x58484954 (`kSM_HitObject`, 0x7BC0) and 0x584F4646 (`kSM_OffGround`, 0x7BD4). The
-port has the switch with every case a stand-in; the bodies are the module's own work (the
-collision actor list, the id lists, the boss parameters).
+The base class's handler runs first, then one case per message: kSM_Damage, kSM_Create,
+kSM_AreaLoaded (0x330: the INTERNAL_STATE_00/01/02 connections into 0x8C2..0x8C8 and the portal
+list 0x8CC, `fn_18_3BB0`, the boss health and `SetBossParams` with "BossTempleBossStage3"),
+kSM_Delete (the manager's `Destroy`), kSM_Launching (a stand-in), kSM_HitObject, kSM_OffGround.
 
 ### `fn_18_1DF4` (0x4A0), the heart switch
 
-The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`
-(0x4C) reads the module's holder at guest 0x7C0 - the list of the collision actors the module
-creates for the ing: the module's `fn_18_3BB0` hands the DOL's `fn_80136434` the ten leg bones
-of rodata 0x18 (F_hip, L_F_hip, R_F_hip, L_B_hip, R_B_hip with their knee and end bones) and
-gets the holder back - a count at +0x4, an array of 0x68-byte records at +0xC, each record
-holding its collision actor's unique id at +0x3C. The module reads the records 0xA (the first
-heart) and 0xB (the second) and looks their ids up in the state manager. The creator
-(`fn_18_3BB0`, 0x450) is still a stand-in, so the port's holder is null and the lookup finds
-no actor; retail returns early then (0x1E34), so the body below does not run on the host.
+The two heart collision actors come from `fn_18_3ACC` (0x48) through `fn_18_3B14`, the
+manager's collision descriptions 0xA and 0xB, looked up by id in the state manager.
 
 The body: heart 0 is the enraged heart (the hearts get the yellow health at guest 0x920 and the
 `EnragedHeart` effect), heart 1 the dark heart (the actor's own health, the `DarkHeart`
@@ -340,6 +323,15 @@ With the lists ported the walk goes on: the FSM leaves Idle for the GainDistance
 state (`fn_18_4EB4`, a stand-in). The ing itself does not move: the GainDistance state's update
 path - the steering - is still a stand-in. The run ends on the frame limit with
 `grep -c '[port] caught\|reach-stub'` = 0.
+
+With the collision actors, AreaLoaded and the body-command states ported (world `863fcd72`,
+area 11, layer 4, player at `tp 2 8 88`): the ing (u0582) jumps at the player, then the FSM
+cycles JumpAttack -> Idle -> Dodge -> Idle -> MeleeAttack in an 80 s run; thirteen collision
+actors exist (u058d..u0599; u0598, the second heart, inactive), 0 caught / reach-stub lines.
+`damage u0582 10` leaves the ing at 1000/1000: the module's TakeDamage is retail's `blr`, damage
+lands on the heart collision actors and reaches the ing as kSM_Damage (`fn_18_36BC`);
+`damage u0597 10` (mainHeart_SDK) takes it from 100 to 90. Reached stand-ins left: ChoseAction
+`8200`, `84A8`, `868C`, `87F0`, `2298`, Think's `1370`/`22E0`/`27DC`/`3448`/`E40` and the sound.
 
 ### The base-class members (the sweep)
 

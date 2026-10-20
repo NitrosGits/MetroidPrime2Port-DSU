@@ -16,7 +16,12 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
@@ -29,6 +34,7 @@
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 
 #include <float.h>
 #include <stdio.h>
@@ -189,23 +195,33 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX810_(0.f)                                             // guest 0x810
 , mX86c_(CDamageVulnerability::ImmuneVulnerabilty())     // guest 0x86C
 , mX8c0_(0xffff)                                          // guest 0x8C0
+, x8c2_(kInvalidUniqueId.Value())                          // guest 0x8C2
+, x8c4_(kInvalidUniqueId.Value())                          // guest 0x8C4
+, x8c6_(kInvalidUniqueId.Value())                          // guest 0x8C6
+, x8c8_(kInvalidUniqueId.Value())                          // guest 0x8C8
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
 , mX910_(CVector3f::Zero())                               // guest 0x910
 , mX818_(CVector3f::Zero())                               // guest 0x818
 , mX864_(0.f)                                             // guest 0x864
-, mX868_(0)                                               // guest 0x868
+, mX868_(-1)                                              // guest 0x868 (0x9CB4)
+, x8a4_(-1)                                               // guest 0x8A4
 
 {
   // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
   // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
   // (0xB54, 0xBC0, 0xC2C, 0xC98), the light swarm (0xD34) and the portal data (0xE90). The
   // constructor ends with SetDrawShadow(this, 0) (0xA2D0).
+  // The three lists reserve sixteen entries each (fn_18_ADF8 with 0x10, 0x9C84..0x9C9C).
+  mX830_.reserve(0x10);
+  mX840_.reserve(0x10);
+  mX850_.reserve(0x10);
   SetDrawShadow(false);
 }
 
-CEmperorIngStage3::~CEmperorIngStage3() {}
+// The collision actor manager at guest 0x7C0 is owned by the actor.
+CEmperorIngStage3::~CEmperorIngStage3() { delete x7c0_; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
@@ -263,13 +279,19 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   mAttackTimer -= dt;
   mX810_ -= dt;
 
-  // The module's per-frame calls (0x4988..0x4A20), in retail order. Only fn_18_125C (0x68) is
-  // small enough to port; the rest are stand-ins, with their retail sizes.
+  // The module's per-frame calls (0x4988..0x4A20), in retail order; the ones still stand-ins
+  // carry their retail sizes.
   UpdateList(mX830_, dt); // fn_18_AC44 (0xB4)
   UpdateList(mX840_, dt); // fn_18_AC44 (0xB4)
   UpdateList(mX850_, dt); // fn_18_AC44 (0xB4)
-  StandInFn("fn_18_3B64"); // 0x28
-  StandInFn("fn_18_39E0"); // 0xA4
+  // Retail has no test: its manager exists from kSM_AreaLoaded on. The port guard covers a Think
+  // before that message and logs once if it ever happens.
+  if (x7c0_ != nullptr) {
+    x7c0_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace); // fn_18_3B64 (0x28)
+    UpdateTargetMaterials(mgr);                                       // fn_18_39E0 (0xA4)
+  } else {
+    StandIn("Think before kSM_AreaLoaded (no collision actors yet)");
+  }
   StandInFn("fn_18_3448"); // 0x1AC
   StandInFn("fn_18_27DC"); // 0x38C
   StandInFn("fn_18_22E0"); // 0x4C0
@@ -313,16 +335,71 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     BodyController()->Activate(mgr, pas::kAS_Invalid);
     break;
   case kSM_Delete: // 0x7BF4, 0x24
-    // The heart holder is destroyed (fn_18_3B8C, 0x28 - a stand-in: it calls the DOL's
-    // fn_80135CF8 on the holder) and the object the module watches is deleted (0x7C00).
-    StandInFn("fn_18_3B8C");
+    // The collision actors are destroyed (fn_18_3B8C, 0x28: the manager's Destroy) and the
+    // object the module watches is deleted (0x7C00). The manager test is a port guard for an
+    // actor deleted before its area loaded; retail has none.
+    if (x7c0_ != nullptr) {
+      x7c0_->Destroy(mgr);
+    }
     mgr.DeleteObjectRequest(TUniqueId(mX8c0_));
     break;
-  case kSM_AreaLoaded: // 0x7C18, 0xC8
-    // The connected object (the fourcc 0x49533030), the id lists of the list's entries and the
-    // actor's bone math. A stand-in.
-    StandInFn("fn_18_7B14 kSM_AreaLoaded");
+  case kSM_AreaLoaded: { // 0x7C18..0x7F48 (0x330)
+    // The INTERNAL_STATE_00 connection, any message (`li r7, -0x1`, 0x7C2C).
+    x8c2_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_None).Value();
+    const rstl::vector< SConnection >& conns = GetConnectionList();
+    // INTERNAL_STATE_01: the first id of the connection's list - PLAY to guest 0x8C4, ACTIVATE
+    // to guest 0x8C6.
+    for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
+      if (it->state != kSS_InternalState1) {
+        continue;
+      }
+      const CStateManager::TIdListResult ids = mgr.GetIdListForScript(it->objId);
+      if (ids.first == ids.second) {
+        continue;
+      }
+      switch (it->msg) {
+      case kSM_Activate:
+        x8c6_ = ids.first->second.Value();
+        break;
+      case kSM_Play:
+        x8c4_ = ids.first->second.Value();
+        break;
+      default:
+        break;
+      }
+    }
+    // INTERNAL_STATE_02: ACTIVATE adds the actor and its transform relative to this actor's
+    // area (the area's inverse transform times the actor's, 0x7D84..0x7DBC) to the portal list
+    // at guest 0x8CC; DEACTIVATE goes to guest 0x8C8.
+    for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
+      if (it->state != kSS_InternalState2) {
+        continue;
+      }
+      const CStateManager::TIdListResult ids = mgr.GetIdListForScript(it->objId);
+      if (ids.first == ids.second) {
+        continue;
+      }
+      if (it->msg == kSM_Activate) {
+        const TUniqueId id = ids.first->second;
+        const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(id));
+        if (actor != nullptr) {
+          const CTransform4f& areaXf = mgr.World()->GetArea(GetCurrentAreaId())->GetTM();
+          x8cc_.push_back(SEmperorIngPortal(id, areaXf.GetInverse() * actor->GetTransform()));
+        }
+      } else if (it->msg == kSM_Deactivate) {
+        x8c8_ = ids.first->second.Value();
+      }
+    }
+    SetupCollisionActors(mgr); // fn_18_3BB0
+    // The actor's health becomes the data's health (guest 0x944, its current value) with no
+    // knockback resistance (0x7E80), and the boss bar gets the id, that health's initial value
+    // (the vtable slot 0x3C result's first float, 0x7F10) and the name "BossTempleBossStage3"
+    // (rodata 0x709).
+    *HealthInfo() = CHealthInfo(mHealth.GetHP(), 0.f);
+    mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetInitialHP(),
+                      static_cast< uint >(gpStringTable->GetStringIndex("BossTempleBossStage3")));
     break;
+  }
   case kSM_Damage: // 0x7F4C, 0x20
     // fn_18_36BC (0x88): the damage's source id is compared with the id each heart's collision
     // actor carries (0x36E8 and 0x3708) and a match sets the flag byte 0x824's bit 0 (the mask
@@ -583,8 +660,9 @@ void CEmperorIngStage3::OnDamage(CStateManager& mgr, u16 sourceId) {
   }
 }
 
-// fn_18_2D50 (0xB4): the hit object's id is looked up in the heart holder and the collision
-// actor's flag byte (guest 0x20, the DOL's fn_80137718 - a stand-in) and the player are read.
+// fn_18_2D50 (0xB4): the hit object's id is looked up in the collision actor manager and the
+// collision actor's flag byte (guest 0x20, the DOL's fn_80137718 - a stand-in) and the player
+// are read.
 void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
   if ((x824_ & 0x40) != 0 || (x824_ & 0x20) != 0 || (x825_ & 0x10) == 0) {
     return; // 0x2D7C..0x2D98
@@ -599,48 +677,143 @@ void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
   StandInFn("fn_18_2D50 tail");
 }
 
-// The holder's records: the one whose id matches (fn_18_2D50 walks the holder's records at
-// 0x2DA4 and looks the object up by that id).
+// fn_18_2D50's walk (0x2D9C..0x2DE0): every description of the manager at guest 0x7C0 whose
+// collision actor id is the hit object's, cast to a collision actor.
 const CCollisionActor* CEmperorIngStage3::HeartCollisionActorById(CStateManager& mgr,
                                                                 u16 id) const {
   if (x7c0_ == nullptr) {
-    return nullptr; // port limit: the holder is not created
+    return nullptr; // port guard: no collision actors before kSM_AreaLoaded
   }
-  for (u32 i = 0; i < x7c0_->mCount; ++i) {
-    if (x7c0_->mRecords[i].mUniqueId != id) {
+  for (uint i = 0; i < x7c0_->GetNumCollisionActors(); ++i) {
+    if (x7c0_->GetCollisionDescFromIndex(i).GetCollisionActorId() != TUniqueId(id)) {
       continue;
     }
-    return static_cast< const CCollisionActor* >(mgr.ObjectById(TUniqueId(id)));
+    return TCastToPtr< CCollisionActor >(mgr.ObjectById(TUniqueId(id)));
   }
   return nullptr;
 }
 
-// fn_18_3B14 (0x4C): the module's heart record: the holder's record 0xA (the first heart, the
-// index at 0x3B2C) or 0xB (the second, 0x3B44); any other heart is no heart (0x3B50). The
-// holder is null until the module creates it - the module's fn_18_3BB0 hands the DOL's
-// fn_80136434 the ten leg bones of rodata 0x18 and gets the holder with the collision actors
-// back - and that creator is still a stand-in, so the port finds no record.
-const SEmperorIngHeartRecord* CEmperorIngStage3::HeartRecord(int heart) const {
+// fn_18_3B14 (0x4C): the heart's description: the manager's description 0xA (the first heart,
+// "mainHeart_SDK", the index at 0x3B2C) or 0xB (the second, "tentacle_6_1", 0x3B44); any other
+// heart is no heart (0x3B50). Retail reads the manager without a test; the port's guard covers
+// a lookup before kSM_AreaLoaded made it.
+const CJointCollisionDescription* CEmperorIngStage3::HeartRecord(int heart) const {
   if (x7c0_ == nullptr) {
-    return nullptr; // port limit: the holder is not created yet
+    StandIn("heart lookup before kSM_AreaLoaded (no collision actors yet)");
+    return nullptr;
   }
   if (heart == 0) {
-    return &x7c0_->mRecords[0xA];
+    return &x7c0_->GetCollisionDescFromIndex(0xA);
   }
   if (heart == 1) {
-    return &x7c0_->mRecords[0xB];
+    return &x7c0_->GetCollisionDescFromIndex(0xB);
   }
   return nullptr; // 0x3B50: any other heart is no heart
 }
 
-// fn_18_3ACC (0x48): the heart's collision actor: the unique id of the record (guest +0x3C,
+// fn_18_3ACC (0x48): the heart's collision actor: the description's collision actor id (+0x3C,
 // read at 0x3AE8) looked up in the state manager (0x3AFC).
 CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int heart) const {
-  const SEmperorIngHeartRecord* record = HeartRecord(heart);
+  const CJointCollisionDescription* record = HeartRecord(heart);
   if (record == nullptr) {
-    return nullptr; // port limit: the holder is not created yet
+    return nullptr; // the port guard in HeartRecord
   }
-  return static_cast< CCollisionActor* >(mgr.ObjectById(TUniqueId(record->mUniqueId)));
+  return static_cast< CCollisionActor* >(mgr.ObjectById(record->GetCollisionActorId()));
+}
+
+namespace {
+
+// fn_18_3BB0's two tables. rodata 0x18: the ten leg boxes {from, to, extent} - each leg's hip to
+// knee at 1.5 and knee to end at 1.0. rodata 0x0: the three spheres {locator, radius}.
+struct SEmperorIng3Box {
+  const char* from;
+  const char* to;
+  float extent;
+};
+const SEmperorIng3Box skLegBoxes[10] = {
+    {"F_hip", "F_knee", 1.5f},     {"F_knee", "F_end", 1.f},
+    {"L_F_hip", "L_F_knee", 1.5f}, {"L_F_knee", "L_F_end", 1.f},
+    {"R_F_hip", "R_F_knee", 1.5f}, {"R_F_knee", "R_F_end", 1.f},
+    {"L_B_hip", "L_B_knee", 1.5f}, {"L_B_knee", "L_B_end", 1.f},
+    {"R_B_hip", "R_B_knee", 1.5f}, {"R_B_knee", "R_B_end", 1.f},
+};
+struct SEmperorIng3Sphere {
+  const char* locator;
+  float radius;
+};
+const SEmperorIng3Sphere skSpheres[3] = {
+    {"mainHeart_SDK", 2.f}, // description 0xA, the first heart
+    {"tentacle_6_1", 1.f},  // description 0xB, the second heart
+    {"Skeleton_Root", 3.9f},
+};
+
+} // namespace
+
+// fn_18_3BB0 (0x450): the collision actors. The vector reserves 0xD (0x3BDC); the ten leg boxes
+// (OBBAutoSizeCollision, fn_80137338: the two locators' segments on the actor's own animation
+// data, a cube of the extent, kOT_BetweenJoints (`li r7, 0x1`, 0x3CE8), the name from + "->"
+// (rodata 0x701) + to, mass 10.0 (rodata 0x294)) and then the three spheres (SphereCollision,
+// fn_80137460: the locator's segment, no offset, the radius, the locator's name, mass 10.0). The
+// manager (fn_80136434, 0x3E9C) belongs to this actor, in its area, active as the actor is (the
+// byte at +0x20, extrwi bit 24, 0x3E70); the old one is deleted first (fn_801362C4, 0x3EAC).
+void CEmperorIngStage3::SetupCollisionActors(CStateManager& mgr) {
+  rstl::vector< CJointCollisionDescription > descs;
+  descs.reserve(0xD);
+  const CAnimData* animData = GetModelData()->GetAnimationData();
+  for (int i = 0; i < 10; ++i) {
+    const SEmperorIng3Box& box = skLegBoxes[i];
+    const CSegId from = animData->GetLocatorSegId(rstl::string_l(box.from));
+    const CSegId to = animData->GetLocatorSegId(rstl::string_l(box.to));
+    descs.push_back(CJointCollisionDescription::OBBAutoSizeCollision(
+        from, to, CVector3f(box.extent, box.extent, box.extent),
+        CJointCollisionDescription::kOT_BetweenJoints,
+        rstl::string_l(box.from) + rstl::string("->") + rstl::string_l(box.to), 10.f));
+  }
+  for (int i = 0; i < 3; ++i) {
+    const SEmperorIng3Sphere& sphere = skSpheres[i];
+    const CSegId seg = animData->GetLocatorSegId(rstl::string_l(sphere.locator));
+    descs.push_back(CJointCollisionDescription::SphereCollision(
+        seg, CVector3f::Zero(), sphere.radius, rstl::string_l(sphere.locator), 10.f));
+  }
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), descs, GetActive());
+  delete x7c0_;
+  x7c0_ = manager;
+
+  // This actor's own filter (0x3EB4..0x3F78): include kMT_Solid (0x3B); exclude
+  // kMT_CollisionActor (0x2F), kMT_Character (0x21), kMT_AIPassthrough (0x1C), kMT_Player (0x20)
+  // and kMT_Projectile (0x23); type 3, kFT_IncludeExclude.
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_Character,
+                                              kMT_AIPassthrough, kMT_Player, kMT_Projectile)));
+  // Both hearts take the normal vulnerability (fn_80137724, 0x3F9C and 0x3FC0) and the second
+  // heart starts inactive (fn_18_214 with 1 and false, 0x3FCC).
+  HeartCollisionActor(mgr, 0)->SetDamageVulnerability(CDamageVulnerability::NormalVulnerabilty());
+  HeartCollisionActor(mgr, 1)->SetDamageVulnerability(CDamageVulnerability::NormalVulnerabilty());
+  SetHeartActive(mgr, 1, false);
+}
+
+// fn_18_214 (0x48): a heart's collision actor (fn_18_3ACC), when there is one, is switched on or
+// off through its vtable slot 0x1C (SetActive).
+// @ fn_18_214
+void CEmperorIngStage3::SetHeartActive(CStateManager& mgr, int heart, bool active) {
+  CCollisionActor* actor = HeartCollisionActor(mgr, heart);
+  if (actor != nullptr) {
+    actor->SetActive(active);
+  }
+}
+
+// fn_18_39E0 (0xA4): while either heart's collision actor (fn_18_3A84, the const lookup) is
+// active (the byte at +0x20, bit 7) the actor is a target - kMT_Target (0x28), kMT_Orbit (0x29)
+// and kMT_SeekerTarget (0x3F) are added; otherwise they are removed.
+void CEmperorIngStage3::UpdateTargetMaterials(CStateManager& mgr) {
+  const CEntity* first = mgr.GetObjectById(HeartRecord(0)->GetCollisionActorId());
+  const CEntity* second = mgr.GetObjectById(HeartRecord(1)->GetCollisionActorId());
+  if (first->GetActive() || second->GetActive()) {
+    AddMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
+    return;
+  }
+  RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
 }
 
 // fn_18_22BC (0x24): the module's average over the list at guest 0x840, which its own callee
@@ -651,8 +824,8 @@ float CEmperorIngStage3::BoneAverage() const { return ListAverage(mX840_); }
 // what is left of its threshold (one minus the timer over the threshold, capped at one).
 float CEmperorIngStage3::ListAverage(const SEmperorIngList& list) const {
   float total = 0.f; // rodata 0x258
-  for (u32 i = 0; i < list.mCount; ++i) {
-    const SEmperorIngListEntry& entry = list.mEntries[i];
+  for (int i = 0; i < list.size(); ++i) {
+    const SEmperorIngListEntry& entry = list[i];
     float ratio = entry.mTimer / entry.mThreshold;
     if (ratio >= 1.f) { // rodata 0x264
       ratio = 1.f;
@@ -662,16 +835,53 @@ float CEmperorIngStage3::ListAverage(const SEmperorIngList& list) const {
   return total;
 }
 
-// fn_18_AC44 (0xB4): the list walk: every entry's timer grows by the frame time, and an entry
-// whose timer is past its threshold is due - fn_18_ACF8 (0x4C) hands it to fn_18_AD44
-// (0xB4), which is a stand-in.
+// fn_18_AC44 (0xB4): the list walk: every entry's timer grows by the given time, and an entry
+// whose timer is past its threshold is erased (fn_18_ACF8 / fn_18_AD44, the vector's erase).
 void CEmperorIngStage3::UpdateList(SEmperorIngList& list, float dt) {
-  SEmperorIngListEntry* entry = list.mEntries;
-  for (u32 i = 0; i < list.mCount; ++i, ++entry) {
-    entry->mTimer += dt;
-    if (entry->mTimer > entry->mThreshold) {
-      StandInFn("fn_18_AD44");
+  SEmperorIngList::iterator it = list.begin();
+  while (it != list.end()) {
+    it->mTimer += dt;
+    if (it->mTimer > it->mThreshold) {
+      it = list.erase(it);
+    } else {
+      ++it;
     }
+  }
+}
+
+// fn_18_AC00 (0x44): an entry {weight, threshold, timer 0} is added only while the list is
+// under its capacity (the count at +0x4 against +0x8).
+// @ fn_18_AC00
+void CEmperorIngStage3::PushListEntry(SEmperorIngList& list, float weight, float threshold) {
+  if (list.size() < list.capacity()) {
+    SEmperorIngListEntry entry;
+    entry.mWeight = weight;
+    entry.mThreshold = threshold;
+    entry.mTimer = 0.f; // rodata 0x258
+    list.push_back(entry);
+  }
+}
+
+// fn_18_2BF0 (0xC4): the entry kinds for the list at guest 0x830 - 0 adds {75, 15} (rodata
+// 0x2B0, 0x2B4), 1 {200, 10} (0x2A4, 0x294), 2 {25, 5} (0x2B8, 0x2BC); 3 ages the list by 5.0
+// (0x2BC).
+// @ fn_18_2BF0
+void CEmperorIngStage3::AddListEntry(int kind) {
+  switch (kind) {
+  case 0:
+    PushListEntry(mX830_, 75.f, 15.f);
+    break;
+  case 1:
+    PushListEntry(mX830_, 200.f, 10.f);
+    break;
+  case 2:
+    PushListEntry(mX830_, 25.f, 5.f);
+    break;
+  case 3:
+    UpdateList(mX830_, 5.f);
+    break;
+  default:
+    break;
   }
 }
 
@@ -720,9 +930,9 @@ CVector3f CEmperorIngStage3::FlatFacing() const {
   return CVector3f(facing.GetX(), facing.GetY(), 0.f);
 }
 
-// fn_18_1BD8 (0x5C): both hearts get the module's vulnerability (guest 0x86C). The two tests are
-// a port limit: retail has the hearts (its holder is made in fn_18_3BB0), the port has no
-// holder, so the lookup can find no actor.
+// fn_18_1BD8 (0x5C): both hearts get the module's vulnerability (guest 0x86C). Retail has no
+// tests; the port's only cover the guard in HeartRecord (no collision actors before
+// kSM_AreaLoaded).
 void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
   CCollisionActor* first = HeartCollisionActor(mgr, 0); // fn_18_3ACC
   if (first != nullptr) {
@@ -731,6 +941,39 @@ void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
   CCollisionActor* second = HeartCollisionActor(mgr, 1); // fn_18_3ACC
   if (second != nullptr) {
     second->SetDamageVulnerability(mX86c_); // 0x1C18
+  }
+}
+
+// fn_18_1C34 (0x98): the first heart's vulnerability is saved at guest 0x86C (fn_18_1CCC, the
+// CDamageVulnerability copy) and both hearts turn immune (fn_800DBB60).
+void CEmperorIngStage3::SetHeartsImmune(CStateManager& mgr) {
+  CCollisionActor* first = HeartCollisionActor(mgr, 0); // fn_18_3ACC
+  if (first != nullptr) {
+    mX86c_ = *first->GetDamageVulnerability();
+    first->SetDamageVulnerability(CDamageVulnerability::ImmuneVulnerabilty());
+  }
+  CCollisionActor* second = HeartCollisionActor(mgr, 1); // fn_18_3ACC
+  if (second != nullptr) {
+    second->SetDamageVulnerability(CDamageVulnerability::ImmuneVulnerabilty());
+  }
+}
+
+// fn_18_2B68 (0x88): the entry kinds for the list at guest 0x840 - 0 adds {200, 8} (rodata
+// 0x2A4, 0x2A8), 1 {100, 4} (0x27C, 0x2AC); 2 ages the list by 10.0 (0x294).
+// @ fn_18_2B68
+void CEmperorIngStage3::AddTauntEntry(int kind) {
+  switch (kind) {
+  case 0:
+    PushListEntry(mX840_, 200.f, 8.f);
+    break;
+  case 1:
+    PushListEntry(mX840_, 100.f, 4.f);
+    break;
+  case 2:
+    UpdateList(mX840_, 10.f);
+    break;
+  default:
+    break;
   }
 }
 
@@ -793,21 +1036,23 @@ bool CEmperorIngStage3::ShouldGroundPound(CStateManager& mgr, const CTriggerData
 // fn_18_5264 (0x2F8): the "EyeShut" state.
 //  - Activate (0x52B0): the eye-shut time. The module's time (guest 0x8EC) times two percent
 //    (rodata 0x274) over a hundred (rodata 0x27C), at most 2.5 (rodata 0x298), goes to guest
-//    0x8F0 and the module's time is cleared; a random time between one (rodata 0x264) and 1.2
+//    0x8F0 (at least 2.5, rodata 0x298) and the module's time is cleared; a random time between one (rodata 0x264) and 1.2
 //    (rodata 0x2EC) times that, at most 5.0 (rodata 0x2BC), goes to guest 0x8F4; the eye-shut
 //    time then is at least 2.5 (rodata 0x298) plus that random time; the animation state at
 //    set.
-//  - Update (0x5370): the body's eye-shut commands. A stand-in: the body needs the module's own
-//    command classes (the vtables at lbl_18_data_744, _750 and _78C) and the base member at
-//    guest 0x350, which the port does not model.
+//  - Update (0x5370): the body's eye-shut commands. The module's command classes (the vtables
+//    at lbl_18_data_744, _750 and _78C) are weak copies of the host's CBCAdditiveReactionCmd,
+//    CBCLoopAttackCmd and CBodyStateCmd; the DOL's fn_801B73E4 is CAnimationState's
+//    CanIssueCommand.
 //  - Deactivate (0x5518): the eye-shut timer (guest 0x7CC) is cleared, both hearts get the
 //    module's vulnerability (fn_18_1BD8) and the heart switch runs with the heart that is on
 //    (fn_18_1BB0); the animation state at guest 0x6B4 is set to `kAS_NotReady` (0).
+// @ fn_18_5264
 void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
     float time = mX8ec_ * 2.f / 100.f; // rodata 0x274, 0x27C
-    if (time > 2.5f) {               // rodata 0x298
+    if (2.5f >= time) {              // rodata 0x298: at least 2.5 (fcmpo/bge, 0x52D8)
       time = 2.5f;
     }
     mX8f0_ = time;
@@ -824,7 +1069,23 @@ void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Update:
-    StandInFn("fn_18_5264 update");
+    // The loop attack while the body can take it (0x5370..0x540C); otherwise the random timer
+    // runs down and, once below zero (rodata 0x258), plays the additive reaction 4 at full
+    // weight (rodata 0x264) and is parked at FLT_MAX (rodata 0x2C8); the state then ends once
+    // the state machine's time is past the eye-shut time (0x54C4..0x5514).
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero, false));
+      break;
+    }
+    mX8f4_ -= dt;
+    if (mX8f4_ < 0.f) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCAdditiveReactionCmd(pas::kART_Four, 1.f, false));
+      mX8f4_ = FLT_MAX;
+    }
+    if (mStateMachine->GetTime() > mX8f0_) {
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    }
     break;
   case kStateMsg_Deactivate:
     mX7cc_ = 0.f;
@@ -1114,31 +1375,65 @@ void CEmperorIngStage3::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_18_76D0 (0x1B8): the "MeleeAttack" state. Its activate path (0x7710) sets the animation
+// state to `kAS_Ready`. The update path (0x771C) issues a severity-zero melee attack while the
+// body can take one, else aims the body at the player during the state's first 0.9 seconds
+// (rodata 0x300, the state machine's time). The deactivate path (0x7830) clears the animation
+// state, adds the entry 0 to the list at guest 0x840 (fn_18_2B68) unless the 0x40 flag at guest
+// 0x824 is set, ages the list at guest 0x830 (fn_18_2BF0 kind 3), clears the time since the
+// last attack (guest 0x7D0) and the 0x40 flag.
+// @ fn_18_76D0
 void CEmperorIngStage3::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_76D0");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x7714, the value one
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_Zero));
+    } else if (mStateMachine->GetTime() < 0.9f) { // rodata 0x300
+      BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x7834, the value zero
+    if ((x824_ & 0x40) == 0) {
+      AddTauntEntry(0); // fn_18_2B68
+    }
+    AddListEntry(3); // fn_18_2BF0
+    mX7d0_ = 0.f;    // rodata 0x258
+    x824_ &= ~0x40;
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_18_7504 (0x1CC): the "GainDistance" state. Its activate path (0x7548) clears the module's
 // too-close distance (guest 0x7D4), sets the animation state at guest 0x6B4 to `kAS_Ready` and
-// looks thirty units along
-// the actor's facing (fn_18_1A54); when the look finds nothing the module's fn_18_2BF0 (0xC4,
-// a stand-in) runs and the flag becomes 3. The update path (0x75B4) is a stand-in: it needs the
-// module's own body-command classes, the DOL's fn_801B73E4 and the body controller's steering
-// fields, none of which the host has. The deactivate path (0x76B4) clears the flag.
+// looks thirty units along the actor's facing (fn_18_1A54): a blocked look adds the list entry
+// 1 (fn_18_2BF0) and sets the animation state to 3, a clear one adds the entry 0. The update
+// path (0x75B4) steps backwards while the body can take a step (CanIssueCommand, the DOL's
+// fn_801B73E4) and aims the body at the player (the command manager's target vector). The
+// deactivate path (0x76B4) clears the animation state.
+// @ fn_18_7504
 void CEmperorIngStage3::GainDistance(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
     mX7d4_ = 0.f; // rodata 0x258
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x7564, the value one
     if (!LineOfSight(mgr, GetTransform().GetColumn(kDY), 30.f)) { // rodata 0x2FC
-      StandInFn("fn_18_2BF0"); // 0xC4
+      AddListEntry(1);                                              // fn_18_2BF0
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x759C, the value three
-      StandInFn("fn_18_2BF0"); // 0xC4
-      StandInFn("fn_801B73E4");
+    } else {
+      AddListEntry(0); // fn_18_2BF0
     }
     break;
   case kStateMsg_Update:
-    StandInFn("fn_18_7504 update");
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Backward, pas::kStep_Normal));
+      BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+    }
     break;
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x76B0, the value zero
@@ -1152,8 +1447,65 @@ void CEmperorIngStage3::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_18_71D8");
 }
 
+// fn_18_6E80 (0x358): the "Dodge" state. Its activate path (0x6EC0) clears the dodge flag
+// (0x08 at guest 0x824), sets the animation state to `kAS_Ready` and the step direction (guest
+// 0x8A4) to -1. When the player is within 60 degrees (fn_18_F8) it looks fifteen units to the
+// actor's left and right (fn_18_1A54): a clear left picks `kSD_Left`, a clear right picks
+// `kSD_Right` (over a picked left only on Float() > 0.5), and neither picks `kSD_Down`. No
+// direction sets the animation state to 3. A roll of Range(0, 100) over 45 adds {100, 5} to the
+// list at guest 0x850 (fn_18_AC00), and the hearts turn immune (fn_18_1C34). The update path
+// (0x7040) steps in the picked direction while the body can take a step, else faces the player
+// unless the step is down. The deactivate path (0x714C) clears the animation state, restores the
+// hearts' vulnerability (fn_18_1BD8) and adds the entry 1 to the list at guest 0x840
+// (fn_18_2B68).
+// @ fn_18_6E80
 void CEmperorIngStage3::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6E80");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    x824_ &= ~0x08;
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6EE0, the value one
+    x8a4_ = -1;
+    if (RandomCheck(mgr, 60.f)) { // rodata 0x2E4
+      const CVector3f right = GetTransform().GetColumn(kDX);
+      if (LineOfSight(mgr, -right, 15.f)) { // rodata 0x2B4
+        x8a4_ = pas::kSD_Left;
+      }
+      if (LineOfSight(mgr, right, 15.f)) {
+        if (x8a4_ == -1) {
+          x8a4_ = pas::kSD_Right;
+        } else if (mgr.Random()->Float() > 0.5f) { // rodata 0x2A0
+          x8a4_ = pas::kSD_Right;
+        }
+      }
+      if (x8a4_ == -1) {
+        x8a4_ = pas::kSD_Down;
+      }
+    }
+    if (x8a4_ == -1) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6FE4, the value three
+    }
+    if (mgr.Random()->Range(0.f, 100.f) > 45.f) { // rodata 0x258, 0x27C, 0x2D0
+      PushListEntry(mX850_, 100.f, 5.f);           // fn_18_AC00, rodata 0x27C, 0x2BC
+    }
+    SetHeartsImmune(mgr); // fn_18_1C34
+    break;
+  }
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCStepCmd(static_cast< pas::EStepDirection >(x8a4_), pas::kStep_Normal));
+    } else if (x8a4_ != pas::kSD_Down) {
+      BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x7150, the value zero
+    SetHeartVulnerability(mgr);                              // fn_18_1BD8
+    AddTauntEntry(1);                                        // fn_18_2B68
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1203,10 +1555,11 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
 // fn_18_4EB4 (0x23C): the "JumpAttack" state. Its activate path (0x4F0C) sets the flag at guest
 // 0x6B4 and picks the jump target: the player's position, or - when the player is over fifty
 // units away (rodata 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the
-// direction to the player, starting at the actor's own position. The update path (0x500C) is a
-// stand-in: it needs the DOL's fn_801B73E4, the module's fn_18_51E8 and fn_18_50F0 and the body
-// controller's steering fields. The deactivate path (0x50A0) clears the flag, the jump-attack
-// timer (guest 0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
+// direction to the player, starting at the actor's own position. The update path (0x500C) jumps
+// at the player while the body can take a jump (fn_18_51E8 builds the CBCJumpCmd: the player's
+// position, kJT_Normal, kJS_IntoJump, variant 0, facing flags 2; fn_18_50F0 delivers it) and
+// otherwise aims the body at the player. The deactivate path (0x50A0) clears the flag, the
+// jump-attack timer (guest 0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
 void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1218,18 +1571,26 @@ void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
       return;
     }
     if (distance > 50.f) { // rodata 0x290
-      const float scale = 0.35f; // rodata 0x2F0
+      // The direction is normalised first; the target is 35 percent (rodata 0x2F0) of the
+      // distance along it.
+      const CVector3f dir = toPlayer * (1.f / distance);
+      const float along = 0.35f * distance;
       const CVector3f& mine = GetTranslation();
-      mX910_ = CVector3f(mine.GetX() + distance * (toPlayer.GetX() * scale),
-                         mine.GetY() + distance * (toPlayer.GetY() * scale),
-                         mine.GetZ() + distance * (toPlayer.GetZ() * scale));
+      mX910_ = CVector3f(mine.GetX() + dir.GetX() * along, mine.GetY() + dir.GetY() * along,
+                         mine.GetZ() + dir.GetZ() * along);
     } else {
       mX910_ = theirs;
     }
     break;
   }
   case kStateMsg_Update:
-    StandInFn("fn_18_4EB4 update");
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCJumpCmd(mgr.GetPlayer(0)->GetTranslation(), pas::kJT_Normal, pas::kJS_IntoJump, 0,
+                     CBCJumpCmd::kFF_AmbushJump)); // fn_18_51E8, fn_18_50F0
+    } else {
+      BodyController()->CommandMgr().SetTargetVector(PlayerDirection(mgr)); // fn_18_2D1C
+    }
     break;
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x50A8, the value zero
