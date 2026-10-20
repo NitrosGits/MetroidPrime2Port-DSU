@@ -27,7 +27,7 @@ C1B0/C05C, C850, puddle vulnerability 0x1178); digitalguardian `8826277c0` (8090
 |---|---|---|---|
 | BoostGuardian (Opus) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | boostguardian @ `999b51bdf` | 6980 splat, mini-portal + ExitHost, module-30 marking pass |
 | EmperorIng3 (Opus) | `ses_ea552cc99ffepxd6lIKfYVHqxe` | emperoring3 @ `e3971fcd3` | light swarm BD84 + vtable, BB8, E40, beam damage |
-| DigitalGuardian (Opus) | `ses_ea5af5894ffe0GbgWDPPTYitqr` | digitalguardian @ `8826277c0` | GetPlayerState 0x150C null in Think, guardian HP, 2A28, 3F14 |
+| DigitalGuardian (Opus) | `ses_ea542bd35ffeRmTvcVUd6IIdU4` | digitalguardian @ `758e166ab` (0x150C fallback, 3F14, 2A28, 266C/2E60) | CDigitalGuardianHead class, head paths in 7D8C/2A28, 5644 |
 | Splitter (worker) | `ses_ea58db7b6ffe3wysciukole7Eq` | splitter @ `b1f682ff7` | 3460, Activate run, FSM 5E8C/E9E4 sizes |
 | CommandoPirate (worker) | `ses_ea569018cffeQjN5VdT4OQtoEr` | commandopirate @ `843ebf292` | 4CA4, 6390, 3090 |
 | EmperorIng1 (worker) | `ses_ea5861fb8ffeIc7BNgrKx0VOm9` | emperoring @ `bd4c2c25a` | 1950, 1A50, Taunt 5DBC, Warp 601C |
