@@ -400,7 +400,7 @@ private:
   void UpdateLoopSfx();
   void StopSfx();
   // The target's aim position (CActor's GetAimPosition, prediction in f1), false when it is gone.
-  bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f);
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f) const;
   // One arm's segment boxes against the target's bounds; on a hit, the arm swipe damage with the
   // given knock-back.
   void ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b, const CSegId& c,

@@ -639,12 +639,14 @@ bool CIngBoostBallGuardian::IsControllingHost(CStateManager&, const CTriggerData
 // fn_30_C5A4 (this module).
 // Ing body fn_29_B0E0
 bool CIngBoostBallGuardian::IsFacingTarget(CStateManager& mgr, const CTriggerData&) const {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
+  // 0x0000C5E8: the target's aim position (fn_30_5F6C, prediction rodata_70 = 0.0) into a zeroed
+  // vector, not its translation; no target counts as facing it (0x0000C674).
+  CVector3f aim = CVector3f::Zero();
+  if (!TargetAimPosition(mgr, aim)) {
     return true;
   }
-  CVector3f delta = target->GetTranslation() - GetTranslation();
-  delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
+  CVector3f delta = aim - GetTranslation();
+  delta = CVector3f(delta.GetX(), delta.GetY(), 0.f); // 0x0000C638: rodata_70
   return CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= kFacingAngle;
 }
 

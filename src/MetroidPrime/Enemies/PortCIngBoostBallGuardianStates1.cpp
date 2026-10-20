@@ -341,7 +341,8 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
 // the caller's prediction time in f1). False when the target id is empty; the caller then keeps
 // whatever it had. Every caller passes rodata_6C (0.0f) except the body projectile's flight, which
 // passes rodata_B4 (0.5f) - asm 0x00008054 loads it just before the call at 0x0000806C.
-bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction) {
+bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out,
+                                              float prediction) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
     return false;
