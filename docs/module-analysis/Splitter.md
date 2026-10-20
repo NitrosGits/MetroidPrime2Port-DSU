@@ -431,19 +431,21 @@ first one to take is `fn_75_E87C` (0x90, the fewest module callees).
 
 The asm (0xE87C-0xE90C) is `SetIngPossessed(bool, float, CStateManager&)` on the main chassis:
 the base call `SetIngPossessed__10CPatternedFbfR13CStateManager` (0xE8A0), the flag test
-(0xE8A4 `clrlwi. r0, r30, 24` - `clrlwi` keeps the *high* B bits, so this is the flag word's high
-byte, 0x80, and `r30` is the flag argument, not a member), the command module's id (the u16 at
+(0xE8A4 `clrlwi. r0, r30, 24` - `clrlwi` clears the left 24 bits and keeps the low byte,
+so this tests the flag argument (`r30`, the possession bool) for non-zero), the command module's id (the u16 at
 0xC6C, 0xE8AC `lhz`), `ObjectById` (0xE8BC) and the `CSplitterCommandModule` cast (0xE8C0), then the
 command module's vtable slot 0x104 with (1, mgr, &lbl_75_rodata_390 (0.0f), 0.0f) (0xE8CC-0x8EC).
 
 Open points before it can be written:
 
-1. The flag is a byte in the retail and the test is its 0x80 bit; the host's flag is a `bool`
-   (0/1), so the high bit is never set and the command-module call is dead in the port. The port
-   has to say which reading it takes (the annotator prints `mask 0xff: (a1)`, the ISA reading is
-   the high byte) and, if it keeps the notification live, it needs a byte flag the host does not
-   have.
-2. The id at 0xC6C is a CPatterned member (the pseudo's `unkC6C`); the host's CPatterned has no
-   such member (no `mIngPossessed*` id), so the port needs its own member and the retail's writer
-   for it. The command module's own vtable slot 0x104 (the function the call reaches) is still
-   to be read from the note's command-module table.
+1. Resolved: the test is the flag's low byte, so it is the possession bool (`if (possessed)`) -
+   the annotator's `mask 0xff` reading is right.
+2. Resolved: 0xC6C is above the base's fields, so it is the main chassis's own - the command
+   module's id. The port keeps it in `CSplitterMainChassis::mCommandModuleId`; the retail's ctor
+   writes kInvalidUniqueId into it (fn_75_F5F8 @0x0000F6E4, the value read at 0x0000F6CC) and
+   the state machine's own code replaces it later (0x0000AF74, 0x0000E720, 0x0000EBD0 - not
+   ported yet, so the port's id stays the invalid one).
+3. Resolved: the command module's vtable slot 0x104 is the DOL's
+   `SetIngPossessed(bool, float, CStateManager&)` (the command module does not override it), so
+   the call is the host's CPatterned virtual with (true, 0.0f, mgr) - the retail passes
+   lbl_75_rodata_390 (0.0f) as the duration.

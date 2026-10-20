@@ -14,9 +14,11 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterMainChassis.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 #include <stdio.h>
 
@@ -59,7 +61,10 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
 // fn_75_F5F8 @0x0000F690: the CPathFindSearch (0xec) at 0xb7c, built with the null area, the
 // flags 1, the patterned info's pathfinding index and the two radii lbl_75_rodata_364 (1.0f);
 // fn_75_81F8 returns it.
-, mPathFindSearch(nullptr, 1, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center) {
+, mPathFindSearch(nullptr, 1, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center)
+// port: writer fn_75_F5F8 @0x0000F6E4 (sth r6, 0xc6c(r29) - the retail's ctor copies
+// kInvalidUniqueId, read at 0x0000F6CC, into the command module's id)
+, mCommandModuleId(kInvalidUniqueId) {
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not
@@ -187,10 +192,22 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
   CPatterned::SetIngPossessed(possessed, mgr);
 }
 
-// vtable slot 0x104 = fn_75_E87C.
+// @ fn_75_E87C
+// vtable slot 0x104 (0x90). The base call (0xE8A0) and then, when the possession flag is set
+// (0xE8A4 clrlwi. r0, r30, 24 - the flag's low byte), the command module's id (the u16 at
+// 0xC6C, 0xE8AC lhz) is looked up (0xE8BC ObjectById, 0xE8C0 the CSplitterCommandModule cast)
+// and told that it is possessed: the command module's vtable slot 0x104 is the DOL's
+// SetIngPossessed(bool, float, CStateManager&) (0xE8CC-0xE8EC: true, mgr,
+// &lbl_75_rodata_390 (0.0f), 0.0f). The id is still the invalid one - the state machine's
+// writers of 0xC6C are missing from the port - so the lookup finds nothing.
 void CSplitterMainChassis::SetIngPossessed(bool possessed, float duration, CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::SetIngPossessed (vtable slot 0x104, fn_75_E87C, 0x90 bytes)");
   CPatterned::SetIngPossessed(possessed, duration, mgr);
+  if (possessed) {
+    CEntity* entity = mgr.ObjectById(mCommandModuleId);
+    if (CSplitterCommandModule* module = TCastToPtr< CSplitterCommandModule >(entity)) {
+      module->SetIngPossessed(true, 0.f, mgr);
+    }
+  }
 }
 
 // vtable slot 0x108 = fn_75_E810.

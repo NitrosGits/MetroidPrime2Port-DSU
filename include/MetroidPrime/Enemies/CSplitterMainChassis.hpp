@@ -154,6 +154,11 @@ private:
   // only keeps what this milestone needs.
   CSplitterMainChassisData mData; // guest 0x7C0 (the parameter block fn_75_FB30 copies in)
   CPathFindSearch mPathFindSearch; // guest 0xB7C (fn_75_81F8 returns this+0xB7C)
+  // 0xC6C: the command module's id (the retail keeps a u16 here; the port's ids fit in 16
+  // bits, so a TUniqueId carries the same value). The retail's ctor writes kInvalidUniqueId
+  // here (fn_75_F5F8 @0x0000F6E4) and the state machine's own code (0x0000AF74,
+  // 0x0000E720, 0x0000EBD0) replaces it; those writers are missing from the port.
+  TUniqueId mCommandModuleId;
 #endif
 };
 #else
