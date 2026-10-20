@@ -206,6 +206,9 @@ private:
   // guest 0xF68: the id of the spawned beam effect. The retail looks it up at the start of
   // fn_75_1188 and keeps the id of the actor it creates in it.
   TUniqueId mBeamEffectId = kInvalidUniqueId;
+  // The retail's fn_75_3A8C (the connected-object lookup) and fn_75_2CC0 (the flash start).
+  void PortUpdateConnectedObject(CStateManager& mgr);
+  void PortStartFlashIfTarget(const CScriptMsg& msg);
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

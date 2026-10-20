@@ -47,6 +47,11 @@ void StandIn(const char* what) {
 // (the other five) that the state machine reads, and all six are over the 0x80 a slice takes.
 void StandInFn_75_10D0() { StandIn("fn_75_10D0 (0xB8, the module's own transform)"); }
 
+// The module's own calls in the command module's script-message handler (fn_75_654C). Both are
+// over 0x80, so each stays a named once-logging shell.
+void StandInFn_75_3460() { StandIn("fn_75_3460 (0x218)"); }
+void StandInFn_75_1790() { StandIn("fn_75_1790 (0xBC)"); }
+
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
 
@@ -408,13 +413,101 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortAutoDestructTimer(dt);
 }
 
+// @ fn_75_3A8C
+// The command module's connected-object lookup (0x3A8C-0x3ADC): the object connected with the
+// state "CONN" (0x3AA4) and the message "ATCH" (0x3AA8) is looked up (0x3ABC FindConnectedObject)
+// and its id is kept at 0xEFC (0x3AC4 sth).
+void CSplitterCommandModule::PortUpdateConnectedObject(CStateManager& mgr) {
+  mCheckedChassisId = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
+}
+
+// @ fn_75_2CC0
+// The command module's flash start (0x2CC0-0x2CE0): when the message's sender id (the u16 at
+// the message's 0x0, 0x2CC0 lhz) is the id the module keeps at 0xF00 (0x2CC4 lhz), the flash
+// weight at 0xF08 is set to 1.0f (0x2CD8 stfs, lbl_75_rodata_34).
+void CSplitterCommandModule::PortStartFlashIfTarget(const CScriptMsg& msg) {
+  if (msg.GetSenderId() == mSoundTargetId) {
+    mFlashAlpha = 1.f;
+  }
+}
+
 // vtable slot 0x18 = fn_75_654C (0x24C): it calls the base class's AcceptScriptMsg and then
 // switches on the script message's four-character code.
+// @ fn_75_654C
+// The command module's script-message handler (0x654C-0x6798): the base's call (0x6578) and a
+// switch on the message's four-character code. The retail's cases: XCRT (the body controller's
+// activation, the module's own call and the random roll for the state at 0xEE4), XDEL (the
+// collision actor manager's destruction, the beam effect's deletion and the module's own call),
+// ACTV and DCVT (the collision actor manager's activation), AUDT (its physics), ALRT (the
+// base's flag byte), XAND (the connected-object lookup) and XCMG (the flash start).
 void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CSplitterCommandModule::AcceptScriptMsg (vtable slot 0x18, fn_75_654C, 0x24C bytes)");
   CPatterned::AcceptScriptMsg(mgr, msg);
-  if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
+  switch (msg.GetMessage()) {
+  case kSM_Create: { // "XCRT" (0x65F8)
+    // 0x6614-0x666C: the body controller's activation with the animation state -1 (0x6620), the
+    // module's own call (0x662C fn_75_3460) and the random roll (0x6644 Range over the
+    // manager's random, 0.0f to 100.0f): the state at 0xEE4 is 2 when the roll is 50.0f or more
+    // and 1 otherwise (0x6668 stw).
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
+    StandInFn_75_3460();
+    mPreviousCollisionState = mgr.Random()->Range(0.f, 100.f) >= 50.f ? 2 : 1;
+    break;
+  }
+  case kSM_Delete: { // "XDEL" (0x65DC)
+    // 0x6670-0x66B4: the collision actor manager is destroyed (0x6680 Destroy), the beam effect
+    // at 0xF68 is deleted (0x66A8 DeleteObjectRequest) and the module's own call runs (0x66B4
+    // fn_75_1790).
+    if (mCollisionActorManager != nullptr) {
+      mCollisionActorManager->Destroy(mgr);
+    }
+    if (mBeamEffectId != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mBeamEffectId);
+    }
+    StandInFn_75_1790();
+    break;
+  }
+  case kSM_Activate: { // "ACTV" (0x65B8)
+    // 0x66BC-0x66D0: the collision actor manager is activated (0x66D0 SetActive with true).
+    if (mCollisionActorManager != nullptr) {
+      mCollisionActorManager->SetActive(mgr, true);
+    }
+    break;
+  }
+  case kSM_Deactivate: { // "DCVT" (0x6590)
+    // 0x66D8-0x66EC: the collision actor manager is deactivated (0x66EC SetActive with false).
+    if (mCollisionActorManager != nullptr) {
+      mCollisionActorManager->SetActive(mgr, false);
+    }
+    break;
+  }
+  case kSM_AIUpdateDisabled: { // "AUDT" (0x657C)
+    // 0x66F4-0x6708: the collision actor manager's physics is switched off (0x6708
+    // SetPhysicsActive with false).
+    if (mCollisionActorManager != nullptr) {
+      mCollisionActorManager->SetPhysicsActive(mgr, false);
+    }
+    break;
+  }
+  case kSM_Alert: { // "ALRT" (0x65A4)
+    // 0x6710-0x671C: the base's flag byte at 0x420 gets its 0x80 bit (the word's bit 24) set.
+    SetHitByPlayerProjectile(true);
+    break;
+  }
+  case kSM_AreaLoaded: { // "XAND" (0x65CC)
+    // 0x6724-0x6758: the value the retail reads out of the manager's area list is written to
+    // 0xD6C (the port has no name for that list, so the write stays out) and the module's own
+    // call runs (0x6758 fn_75_3A8C, ported).
+    PortUpdateConnectedObject(mgr);
+    break;
+  }
+  case kSM_Damage: { // "XCMG" (0x6604)
+    // 0x6760-0x6774: the module's own call (0x6774 fn_75_2CC0, ported) with the message's
+    // sender id.
+    PortStartFlashIfTarget(msg);
+    break;
+  }
+  default:
+    break;
   }
 }
 
