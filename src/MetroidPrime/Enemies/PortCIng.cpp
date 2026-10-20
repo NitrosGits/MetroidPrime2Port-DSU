@@ -1414,7 +1414,7 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
       RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00009628: SetLocomotionType(0)
       if (!mTakeOff && mForm != kForm_BodyProjectile) {
         // Aim at the target's aim position, flattened to the actor's own height (0xdd0 = 0x5c).
         if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468
@@ -1436,7 +1436,7 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, false); // 0xc50
     }
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000096F8: SetLocomotionType(0)
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
     }
@@ -1466,8 +1466,8 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
     }
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_None); // 0xca4 = 0
     mPortalPlane = true;                                         // 0xe5d bit 6
-    // The portal plane sits the bounding box's Y extent below the actor along the normal; retail's
-    // scalarised dot pairs (y,nz)/(x,nx)/(z,ny), taken here as dot(translation - h*normal, normal).
+    // The portal plane sits the bounding box's Y extent below the actor along the normal; retail
+    // scalarises dot(translation - h*normal, normal) into (x,nx),(y,ny),(z,nz) (asm 0x00009194).
     const CAABox bounds = GetBoundingBox();
     const float height = bounds.GetMaxPoint().GetY() - bounds.GetMinPoint().GetY();
     mPortalPlaneNormal = normal;                                // 0xdf0
@@ -1480,7 +1480,7 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_One));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x0000928C: SetLocomotionType(0)
       mForm9Render = true; // 0xe5d bit 4
       if (mTakeOff || mForm == kForm_BodyProjectile) {
         mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
@@ -1500,7 +1500,7 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   case kStateMsg_Deactivate:
     mPortalPlane = false;    // 0xe5d bit 6
     mStartAsIngSpot = false; // 0xe5d bit 5
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000093C4: SetLocomotionType(0)
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
@@ -1533,18 +1533,20 @@ void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("SafeZoneReaction");
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-    const ushort sfx = mData.mSwarm.mSoundExitHostSafeZone;
-    if (sfx != CSfxManager::kInternalInvalidSfxId) {
-      // [?] emitter parameters.
-      CSfxManager::AddEmitter(sfx, GetTranslation(), GetCurrentAreaId().Value(), true, false);
-    }
+    // 0x00008D58: AddEmitter(sfx, position, 0x7f, area, true, false, kMedPriority). Retail has no
+    // invalid-id test; the host's AddEmitter drops 0xffff by itself.
+    CSfxManager::AddEmitter(mData.mSwarm.mSoundExitHostSafeZone, GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   } else if (msg == kStateMsg_Update) {
+    // 0x00008D60: a harmful zone or the evaporating form knocks the Ing back; otherwise the state
+    // ends after a second (the state time comes from the state machine at 0x350).
     if (!mHurtfulZone && !mEvaporate) {
-      if (mStateTime > 1.f) {
+      if (mStateTime > 1.f) { // rodata_64 = 1.0
         mAnimationState.SetState(CAnimationState::kAS_Over);
       }
     } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
-      // [?] the knock-back direction and severity.
+      // 0x00008D90: the knock-back direction is the actor's forward (0x28/0x38/0x48 = m01/m11/m21),
+      // the severity 1 and the animation id -1.
       BodyController()->CommandMgr().DeliverCmd(
           CBCKnockBackCmd(GetTransform().GetForward(), pas::kS_One));
     }
@@ -1557,14 +1559,14 @@ void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
 void CIng::Taunt(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Taunt");
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x00008BE4: 0x6b4 = 1
   } else if (msg == kStateMsg_Update) {
-    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
-      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Two));
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) { // 0x00008BF4: 0x10
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Two)); // 0x00008C40: 0x15
     }
   } else if (msg == kStateMsg_Deactivate) {
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    mTaunt = false;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008C70: 0x6b4 = 0
+    mTaunt = false; // 0x00008C78: 0xe5c bit 6
   }
 }
 
@@ -1688,9 +1690,14 @@ void CIng::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
 void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Patrol");
+    // 0x00008510: the steering blend mode 1 (kSBM_FullSpeed); the speed range is the locomotion's
+    // walk speed over its run speed (0x00008508 divides the two). The host's GetLocomotionSpeed
+    // returns 0.f when the locomotion state is missing, so the ratio is then inf, as in retail.
     BodyController()->CommandMgr().SetSteeringBlendMode(ESteeringBlendMode::kSBM_FullSpeed);
-    // [?] the speed range.
-    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);
+    const CBodyStateInfo& info = BodyController()->GetBodyStateInfo();
+    const float speed =
+        info.GetLocomotionSpeed(pas::kLA_Walk) / info.GetLocomotionSpeed(pas::kLA_Run);
+    BodyController()->CommandMgr().SetSteeringSpeedRange(speed, speed);
   }
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
@@ -1698,16 +1705,30 @@ void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 // fn_29_82D4 (not yet exercised in a run)
 void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
+  // 0x00008310: in the ing-spot form the Ing walks the waypoint's own speed (0x158) over the ing
+  // spot's maximum speed (0x87c), on every message - the waypoint is the navigation's destination
+  // (0x6c0) and a missing one leaves the speed at 1.0 (rodata_64).
+  if (mForm == kForm_IngSpot) {
+    const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
+    BodyController()->CommandMgr().ClearLocomotionCmds();
+    const CScriptAIWaypoint* waypoint =
+        TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(mWaypointNavigation.GetDestination()));
+    const float speed = waypoint != nullptr ? waypoint->GetSpeed() : 1.f;
+    MoveOnSurface(move, speed * mData.mIngSpot.GetMaxSpeed(), dt);
+  }
   if (msg == kStateMsg_Activate) {
     LogState("FollowAttackPattern");
+    // 0x000083AC: the resume id (0xd70) when it is set, else the "ATTK"/"FOLW" connection.
     const TUniqueId dest = mAttackPathResumeId != kInvalidUniqueId
                                ? mAttackPathResumeId
                                : GetConnectedObject(mgr, kSS_Attack, kSM_Follow);
     mWaypointNavigation.SetDestination(dest);
-    mFollowingAttackPath = true;
+    mFollowingAttackPath = true; // 0x000083FC: 0xe5d bit 3
   } else if (msg == kStateMsg_Update) {
+    // 0x00008410: the waypoint's flags (0x164) pick the form: 0x40 or 0x80 the ing spot (form 3),
+    // 0x100 the corporeal one (form 2).
     const CScriptAIWaypoint* waypoint =
-        TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(mWaypointNavigation.GetDestination()));
+        TCastToConstPtr< CScriptAIWaypoint >(mgr.ObjectById(mWaypointNavigation.GetDestination()));
     if (waypoint != nullptr) {
       if ((waypoint->GetFlags() & (0x40 | 0x80)) != 0) {
         mDesiredForm = kForm_IngSpot;
@@ -1715,15 +1736,9 @@ void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
         mDesiredForm = kForm_Corporeal;
       }
     }
-    if (mForm == kForm_IngSpot) {
-      const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
-      BodyController()->CommandMgr().ClearLocomotionCmds();
-      const float speed = waypoint != nullptr ? waypoint->GetSpeed() : 1.f;
-      MoveOnSurface(move, speed * mData.mIngSpot.GetMaxSpeed(), dt);
-    }
   } else if (msg == kStateMsg_Deactivate) {
-    mFollowingAttackPath = false;
-    mAttackPathResumeId = mWaypointNavigation.GetDestination();
+    mFollowingAttackPath = false; // 0x00008468: 0xe5d bit 3
+    mAttackPathResumeId = mWaypointNavigation.GetDestination(); // 0x00008478: 0xd70 = 0x6c0
   }
 }
 
@@ -1941,16 +1956,15 @@ void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   if (hint == nullptr) {
-    mMoving = false;
-    return;
+    return; // 0x000075F8: a missing hint leaves mMoving as it was
   }
   const CVector3f delta = hint->GetTranslation() - GetTranslation();
-  const float maxWall = mData.mIngSpot.GetMaxWallSpeed();
+  const float maxWall = mData.mIngSpot.GetMaxWallSpeed(); // 0x880
   if (!delta.IsMagnitudeSafe() || delta.Magnitude() <= dt * maxWall) {
-    mMoving = false;
+    mMoving = false; // 0x0000768C: 0xe5d bit 1
   } else {
-    MoveOnSurface(delta, maxWall, dt);
-    mMoving = true;
+    MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00007674: the direction is normalised
+    mMoving = true; // 0x00007678: 0xe5d bit 1
   }
 }
 
@@ -2484,43 +2498,54 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
     }
     return;
   }
+  // 0x00005CFC: the ing spot, the body projectile and the evaporating form die on the Activate
+  // message: the target and orbit materials go, the death effect explodes, the death sound plays.
   if (mForm == kForm_IngSpot || mForm == kForm_BodyProjectile || mForm == kForm_Evaporate) {
     if (msg != kStateMsg_Activate) {
       return;
     }
-    RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00005D18: 0x28/0x29
     if (mDeathEffect) {
       mgr.AddObject(rs_new CExplosion(
           *mDeathEffect, mgr.AllocateUniqueId(),
           CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
           rstl::string_l("Ing death Fx"), GetTransform(), 0, mModelScale, CColor::White(), -1));
     }
-    const ushort sfx = mData.mIngSpot.GetDeathSound();
-    if (sfx != CSfxManager::kInternalInvalidSfxId) {
-      CSfxManager::AddEmitter(sfx, GetTranslation(), GetCurrentAreaId().Value(), true, false);
-    }
+    // 0x00005E68: AddEmitter(sfx, position, 0x7f, area, true, false, kMedPriority)
+    CSfxManager::AddEmitter(mData.mIngSpot.GetDeathSound(), GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
     DeathDelete(mgr);
     return;
   }
-  // Corporeal: burn away. [?] the burn's effects; only the shrink and the fade are ported.
+  // 0x00005E8C: the corporeal form (2) and the form changes (6 and up) burn away; the base class
+  // gets its own death message first.
+  CPatterned::Dead(mgr, msg, dt);
+  // 0x00005EA4/0x00005EAC: two of CPatterned's flags (0x421's bits 13 and 14) skip the burn. They
+  // are the pair the Ing's own death handler tests at 0x0000B478 before it clears the vertical
+  // movement bit, which the host's CPatterned::Death gates on its burning flags.
+  if (mBurning || mLaggedBurnDeath) {
+    return;
+  }
   if (msg == kStateMsg_Activate) {
-    mDeadFade = 2.f;
-    RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
+    mDeadFade = 2.f; // 0x00005EE4: rodata_74
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00005EE8: 0x28/0x29
+    mDamageCooldownTimer = CPatterned::skDamageHitTime; // 0x00005EF4: 0x448
   } else if (msg == kStateMsg_Update) {
-    mAlphaDelta = 0.f;
-    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), dt);
-    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) {
-      CVector3f scale = GetModelData()->GetScale();
-      const float z = scale.GetZ() - dt / 0.75f;
-      if (z > 0.f) {
-        ModelData()->SetScale(CVector3f(scale.GetX(), scale.GetY(), z));
-      } else {
-        mDeadFade -= dt;
-        mRenderModel = false;
+    mAlphaDelta = 0.f; // 0x00005F14: 0x40c
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), dt); // 0x00005F1C
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) { // 0x00005F28
+      const CVector3f scale = GetModelData()->GetScale();
+      const float z = scale.GetZ() - dt / 0.75f; // rodata_F4
+      // The scale is always written, its z clamped at zero (0x00005F74).
+      ModelData()->SetScale(CVector3f(scale.GetX(), scale.GetY(), z > 0.f ? z : 0.f));
+      if (z <= 0.f) {
+        mDeadFade -= dt; // 0x00005FA0
+        mRenderModel = false; // 0x00005FAC: 0xe5d bit 7
+        mStartAsIngSpot = false; // 0x00005FB8: 0xe5d bit 5
       }
-    }
-    if (mDeadFade <= 0.f) {
-      DeathDelete(mgr);
+      if (mDeadFade <= 0.f) { // 0x00005FCC
+        DeathDelete(mgr);
+      }
     }
   }
 }
@@ -2529,8 +2554,9 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Evaporate");
-    mForm = kForm_Evaporate;
+    mForm = kForm_Evaporate; // 0x00005C5C: 0x9d4 = 5
   } else if (msg == kStateMsg_Update) {
+    // 0x00005C68: the state time (the state machine at 0x350) past two seconds (rodata_74).
     if (mStateTime > 2.f) {
       DeathDelete(mgr);
     }
