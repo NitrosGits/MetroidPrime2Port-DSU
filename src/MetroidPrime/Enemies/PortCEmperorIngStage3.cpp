@@ -184,6 +184,12 @@ static rstl::optional_object< TLockedToken< CGenDescription > > PortalPart(CAsse
 }
 
 // @ fn_18_9A8C
+// @ fn_18_A884
+// @ fn_18_A8D8
+// @ fn_18_A794
+// @ fn_18_A6B8
+// @ fn_18_A2EC
+// @ fn_18_A3B8
 // fn_18_9A8C. The base call is the retail one: EPatternedAI 0x0F (`li r4, 0xf` at 0x9AF0),
 // flavor 0 (`li r7, 0x0` at 0x9AC8), movement 0 / collider 1 / body 1 (the constants stored
 // to the stack arguments at 0x9AD8..0x9AE8 - kMT_Ground, kCT_One and kBT_BiPedal).
@@ -1683,6 +1689,7 @@ void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) {
 }
 
 // @ fn_18_1530
+// @ fn_18_18E4
 // fn_18_1530 (0x3B4): the beam start. The light beam with 0x80 of guest 0x825, else the dark one:
 // its beam info (guest 0xAFC / 0xA88, TLdrToBeamInfo with 0x301 and the copy fn_18_18E4) and its
 // projectile info's damage (0xAE0 / 0xA6C) with the amount zeroed - the amount becomes the beam's
@@ -1749,6 +1756,7 @@ void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
 }
 
 // @ fn_18_1C34
+// @ fn_18_1CCC
 // fn_18_1C34 (0x98): the first heart's vulnerability is saved at guest 0x86C (fn_18_1CCC, the
 // CDamageVulnerability copy) and both hearts turn immune (fn_800DBB60). Retail has no tests;
 // the port's match fn_18_1BD8's (no collision actors before kSM_AreaLoaded).
