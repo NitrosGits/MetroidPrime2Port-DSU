@@ -1772,8 +1772,8 @@ void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, con
   }
   // 0x1AFC: the joint's id is the portal's effect.
   CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(joint.mId));
-  if (effect == nullptr) {
-    return; // 0x1B14, 0x1B18
+  if (effect == nullptr) { // 0x1B14, 0x1B18: the retail's own test
+    return;
   }
   // 0x1B1C: the effect looks along the up vector from the joint's position.
   effect->SetTransform(CTransform4f::LookAt(joint.mPosition, joint.mPosition + joint.mUp,
@@ -1795,8 +1795,8 @@ void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
   joint.mUp = CVector3f::Up(); // 0x19AC..0x19C0
   // 0x19C4: the joint's id is the portal's effect.
   CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(joint.mId));
-  if (effect == nullptr) {
-    return; // 0x19D4, 0x19D8
+  if (effect == nullptr) { // 0x19D4, 0x19D8: the retail's own test
+    return;
   }
   effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), joint.mId, kSM_Deactivate)); // 0x1A34
 }
