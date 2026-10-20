@@ -392,3 +392,37 @@ triggers (module 14) are the integration test.
 - `fn_75_1974` creates the laser-pulse `CPlasmaProjectile`; which `CAssetId` it uses comes from
   the command module's 0x7E0 slot (`laserPulseProjectile`), but the second `CProjectileInfo`
   (0xE84) source fields are **unknown**.
+
+### Stand-ins the area-4 layer-3 fight reaches (2026-10-20)
+
+The ElitePirate smoke in this area logs five Splitter stand-ins (the run: `/tmp/opencode/smoke/ep_run_ep.sh`,
+log `/tmp/opencode/smoke/ep2.log`); they are the only stand-in lines in it and the fight reaches no
+other Splitter shell. In the order the log prints them, with the retail sizes from
+`config/G2ME01/rels/Splitter/symbols.txt`:
+
+| stand-in | fn | size |
+|---|---|---|
+| `CSplitterMainChassis::AcceptScriptMsg` (slot 0x18) | `fn_75_F1C0` | 0x3A0 |
+| `CSplitterMainChassis::SetIngPossessed` (slot 0x104) | `fn_75_E87C` | 0x90 |
+| `CSplitterCommandModule::AcceptScriptMsg` (slot 0x18) | `fn_75_654C` | 0x24C |
+| `CSplitterCommandModule::Think` (slot 0x14) | `fn_75_6490` | 0xBC |
+| `CSplitterMainChassis::Think` (slot 0x14) | `fn_75_F0E8` | 0xB8 |
+
+`fn_75_F1C0` (0x3A0) and `fn_75_654C` (0x24C) are over the 0x200 a slice covers, so they stay
+once-logging stand-ins for now. The other three are the size a slice can take, but each of them
+reaches further into the module than its own body:
+
+- `fn_75_6490` (the command module's Think, 0xBC): the active bit (the byte at 0x20, 0x64B4/0x64B8
+  `extrwi` bit 24), then `CPatterned::Think` (0x64C0), the collision actor manager's update (the
+  manager at 0xE58, 0x64C8-0x64D4, the update options 0) and six module calls - `fn_75_31A8`
+  (0x64E0), `fn_75_32F4` (0x64F0), `fn_75_3004` (0x64FC), `fn_75_184C` (0x650C), `fn_75_1188` (0x651C)
+  and `fn_75_21FC` (0x652C). Those are the line-of-sight tracker and the derived state, so a
+  faithful port needs them read first.
+- `fn_75_E87C` (0x90): the base's `SetIngPossessed(bool, float, CStateManager&)` (0xE8A0), then a
+  test of the flag byte's 0x80 (0xE8A4 `clrlwi r0, r30, 24`), the command module's id (the u16 at
+  0xC6C, 0xE8AC `lhz`), `ObjectById` (0xE8BC) and the cast (0xE8C0), then the command module's
+  vtable slot 0x104 with (1, mgr, &lbl_75_rodata_390 (0.0f), 0.0f) (0xE8CC-0xE8EC).
+- `fn_75_F0E8` (0xB8): the main chassis's Think, the same shape as the command module's.
+
+So the Splitter porting is a per-function slice with its own module callees, not one body; the
+first one to take is `fn_75_E87C` (0x90, the fewest module callees).

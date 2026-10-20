@@ -91,7 +91,7 @@ void CSplitterMainChassis::PreThink(float dt, CStateManager& mgr) {
 // (the collision manager update, the line-of-sight tracker and the derived state) is the state
 // machine's work.
 void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::Think (vtable slot 0x14, fn_75_F0E8)");
+  StandIn("CSplitterMainChassis::Think (vtable slot 0x14, fn_75_F0E8, 0xB8 bytes)");
   if (!GetActive()) {
     return;
   }
@@ -101,7 +101,7 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
 
 // vtable slot 0x18 = fn_75_F1C0 (0x3A0): it switches on the script message's four-character code.
 void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CSplitterMainChassis::AcceptScriptMsg (vtable slot 0x18, fn_75_F1C0)");
+  StandIn("CSplitterMainChassis::AcceptScriptMsg (vtable slot 0x18, fn_75_F1C0, 0x3A0 bytes)");
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);
@@ -189,7 +189,7 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
 
 // vtable slot 0x104 = fn_75_E87C.
 void CSplitterMainChassis::SetIngPossessed(bool possessed, float duration, CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::SetIngPossessed (vtable slot 0x104, fn_75_E87C)");
+  StandIn("CSplitterMainChassis::SetIngPossessed (vtable slot 0x104, fn_75_E87C, 0x90 bytes)");
   CPatterned::SetIngPossessed(possessed, duration, mgr);
 }
 

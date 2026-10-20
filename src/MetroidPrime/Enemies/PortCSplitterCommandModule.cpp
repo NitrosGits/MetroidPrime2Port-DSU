@@ -81,7 +81,7 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
 // (the collision manager update, the docking link and the derived state) is the state machine's
 // work.
 void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::Think (vtable slot 0x14, fn_75_6490)");
+  StandIn("CSplitterCommandModule::Think (vtable slot 0x14, fn_75_6490, 0xBC bytes)");
   if (!GetActive()) {
     return;
   }
@@ -92,7 +92,7 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
 // vtable slot 0x18 = fn_75_654C (0x24C): it calls the base class's AcceptScriptMsg and then
 // switches on the script message's four-character code.
 void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CSplitterCommandModule::AcceptScriptMsg (vtable slot 0x18, fn_75_654C)");
+  StandIn("CSplitterCommandModule::AcceptScriptMsg (vtable slot 0x18, fn_75_654C, 0x24C bytes)");
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
     EnsureBodyActive(mgr);
