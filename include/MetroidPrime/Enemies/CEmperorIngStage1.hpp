@@ -255,6 +255,9 @@ private:
   // 0x6364 / 0x6458: where the warp portal appears - the random point around the player's eye
   // position or the ground point under the player - and where it looks.
   void GetWarpPortalPlacement(CStateManager& mgr, CVector3f& pos, CVector3f& lookAt) const;
+  // fn_16_9BE8 (0x9BE8..0x9E48, 0x260): the tentacle's portal effect is created; the id of the
+  // new effect is returned.
+  TUniqueId CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId, TAreaId area);
   // fn_16_1720 (0x1720..0x18E8): the module's own CPhysicsActor subclass - the "Attack Tip"
   // portal actor. It is over the slice's 0x80 line, so it stays a stand-in.
   void CreateWarpPortalActor(CStateManager& mgr, const CModelData& modelData,

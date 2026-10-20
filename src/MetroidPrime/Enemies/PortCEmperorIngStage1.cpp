@@ -1757,6 +1757,40 @@ void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
   }
 }
 
+// fn_16_9BE8 (0x9BE8..0x9E48, 0x260): the tentacle's portal effect is created and added to the
+// state manager; its id is returned (the caller keeps it in the joint, 0x1AF4).
+//   The id comes from the state manager (0x9C08).
+//   The light parameters (0x9D74): CLightParameters(false, 1.0f, kST_Zero, 0.0f, 0.0f, Black,
+//     true, kLO_NoShadowCast (2), kLR_FourFrames (2), the zero vector, 2, 2, false, 0, true) -
+//     the retail's arguments in order (0x9C1C..0x9C74).
+//   The spline (0x9D7C..0x9D9C): a default maya spline and fn_16_9E9C, which fills the game
+//     spline description with the type 3 (kST_Bezier), the duration 1.0f and no closed loop (the
+//     rlwimi at 0x9EDC takes the bit 24); the maya spline is destroyed right after (0x9DA4).
+//   The effect (0x9DD4): the id, the name "WarpPortalEffect" (the string at lbl_16_rodata_41C's
+//     0x68F), the entity info (the area, no connections, active and no editor id), the identity
+//     transform, the one vector as the scale, the effect asset, the timers and the rates, the
+//     three visor flags, the light parameters and the spline.
+TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId,
+                                                     TAreaId area) {
+  const TUniqueId id = mgr.AllocateUniqueId();  // 0x9C08
+  const CLightParameters lightParams(false, 1.f, CLightParameters::kST_Zero, 0.f, 0.f,
+                                     CColor::Black(), true, CLightParameters::kLO_NoShadowCast,
+                                     CLightParameters::kLR_FourFrames, CVector3f::Zero(), 2, 2,
+                                     false, 0, true);  // 0x9D74
+  CMayaSpline mayaSpline;  // 0x9D7C
+  const CGameSplineDesc spline(mayaSpline, CMotionSpline::kST_Bezier, 1.f, false);  // 0x9D9C
+  CScriptEffect* effect = rs_new CScriptEffect(
+      id, rstl::string_l("WarpPortalEffect"),  // 0x9DD4
+      CEntityInfo(area, CEntity::NullConnectionList, true), CTransform4f::Identity(),
+      CVector3f::One(), effectId, true, false, true, false, 1.f, 1.f, 0.f, 0.f, false, 1.f, 2.f,
+      1.f, true, true, true, lightParams, false, spline, false, false, false,
+      CScriptEffect::kRO_Normal);
+  if (effect != nullptr) {  // 0x9DDC
+    mgr.AddObject(effect);  // 0x9DE4
+  }
+  return id;
+}
+
 // fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint's state (the
 // joint's +0x28) decides whether anything happens (0x1A70, the compare with 0), the joint's flag
 // byte gets its bit 3 (0x08) set (the rlwimi at 0x1A84), the joint takes the position and the up
@@ -1775,9 +1809,8 @@ void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, con
   joint.mUp = up; // 0x1AAC..0x1ABC
   if (joint.mId == kInvalidUniqueId) {
     // 0x1AD0: the portal's effect is created in this actor's area (the owner's +0x04) from the
-    // portal effect asset (the owner's +0xC00). fn_16_9BE8 is over the slice's 0x80 line, so it
-    // stays a stand-in and the joint keeps its invalid id.
-    StandInFn("fn_16_9BE8");
+    // portal effect asset (the owner's +0xC00) - fn_16_9BE8.
+    joint.mId = CreateWarpPortalEffect(mgr, mWarpPortalEffect, GetCurrentAreaId());
   }
   // 0x1AFC: the joint's id is the portal's effect.
   CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(joint.mId));
@@ -2347,7 +2380,7 @@ static const SEmperorIngStage1CmdRecord skExitStateCmd = {0, kBSC_ExitState, 0};
 //     byte's bit 5 (0x20) is cleared (0x6760, the bit 26), the tentacles get their materials back
 //     (fn_16_2E1C with 1, 0x6774) and the animation state is not ready (0x677C).
 void CEmperorIngStage1::WarpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  if (!sWarpPortalCountInitialized) {  // 0x6084..0x60B0: the static's guard.
+  if (sWarpPortalCountInitialized == false) {  // 0x6084..0x60B0: the static's guard.
     sWarpPortalCountInitialized = true;
     sWarpPortalCount = -1;
   }
