@@ -431,7 +431,8 @@ std::string SettingsText() {
 
 void LoadSettings() {
   std::lock_guard< std::recursive_mutex > lock(sMutex);
-  if (sLoaded) {
+  // Too early (PortSettings::Initialized): main.cpp loads it once the path is known.
+  if (sLoaded || !PortSettings::Initialized()) {
     return;
   }
   sLoaded = true;

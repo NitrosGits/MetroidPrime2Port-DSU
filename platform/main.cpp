@@ -73,6 +73,7 @@ extern void* gPortGameHeapHi;
 #include "port_logfile.h"
 #include "port_save.h"
 #include "port_overlay.h"
+#include "port_overlay_internal.h"
 #include "port_prompts.h"
 #include "port_textures.h"
 #include "port_touch.h"
@@ -805,6 +806,8 @@ int main(int argc, char** argv) {
   // overlay registers its settings (file, then the MP2_* environment on top). Written only when a
   // setting is changed.
   PortSettings::Initialize(touchUser != nullptr ? touchUser : std::string());
+  // Read now: an earlier request (the Android view's, on its own thread) found no path and left it.
+  PortOverlaySettings::LoadSettings();
 
   // The log file (platform/port_logfile.cpp) starts here, before aurora_initialize below, so
   // Aurora's own startup lines and anything that aborts during it land in the file too.
