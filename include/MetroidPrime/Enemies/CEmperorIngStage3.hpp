@@ -222,6 +222,8 @@ private:
   int PickHeart(CStateManager& mgr);
   // fn_18_27DC: the melee contact - the leg locators' box against the player's.
   void MeleeContact(CStateManager& mgr);
+  // fn_18_22E0: the stampede and jump-slide contact damage.
+  void ChargeContact(CStateManager& mgr);
   // fn_18_1C34: saves the first heart's vulnerability and makes both hearts immune.
   void SetHeartsImmune(CStateManager& mgr);
   // fn_18_2B68: the entry kinds for the list at guest 0x840.

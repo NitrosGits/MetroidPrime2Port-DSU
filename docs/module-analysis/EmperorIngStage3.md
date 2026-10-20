@@ -386,6 +386,12 @@ the heart switches, the jump attack's shock wave from the data's `jumpAttackShoc
 object), `BB8` and `1530` are logged stand-ins. Run: JumpAttack now cycles, the ing reaches 0 at
 111 s and the FSM enters Dead; 0 caught / reach-stub lines.
 
+Then `22E0` (the charge contact: the three leg boxes and their body box against the player's
+touch bounds, the jump-slide or stampede damage, 0x20 of 0x824 cleared) and the Dead state `4C3C`
+(DEAD, then the base's Dead). Run: the stampede and slide now hurt the player; the hearts' last
+hits kill the ing at 114-117 s and the post-fight cinematic plays
+(`/tmp/opencode/emp3run/shot_slice5.png`); 0 caught / reach-stub lines.
+
 ### The base-class members (the sweep)
 
 The port's members whose guest offset is below the module's first own field (the ctor's first

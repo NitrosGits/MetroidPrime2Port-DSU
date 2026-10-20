@@ -331,7 +331,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   }
   UpdateHearts(mgr, dt);  // fn_18_3448 (0x1AC)
   MeleeContact(mgr);      // fn_18_27DC (0x38C)
-  StandInFn("fn_18_22E0"); // 0x4C0
+  ChargeContact(mgr);     // fn_18_22E0 (0x4C0)
   CheckList(mgr);         // fn_18_1978 (0xDC)
   StandInFn("fn_18_1370"); // 0x1C0
   WatchObject(mgr);       // fn_18_125C (0x68)
@@ -778,6 +778,76 @@ void CEmperorIngStage3::MeleeContact(CStateManager& mgr) {
       return;
     }
   }
+}
+
+// @ fn_18_22E0
+// fn_18_22E0 (0x4C0): the charge contact. While the charge flag (0x20 at guest 0x824) is set and
+// the player has touch bounds, the three leg locator pairs (rodata 0x90, as in fn_18_27DC) each
+// make a box from both locators' world positions; the body box gathers every leg box, and each
+// leg box grown by 0.1 (rodata 0x28C) that meets the player's counts as a leg hit. The body box
+// grows by 3 (rodata 0x284). A morphed player (0x38C == 1) is hit by a leg hit, any other by the
+// body box. A hit deals the jump-slide damage (guest 0xA28) with the no-contact-damage flag
+// (0x10 of 0x825) set, the stampede damage (guest 0xA0C) without, with the solid-only filter
+// (data 0x0: 1 << 59, type 3) and no direction, and clears the charge flag.
+void CEmperorIngStage3::ChargeContact(CStateManager& mgr) {
+  if ((x824_ & 0x20) == 0) { // 0x2304: extrwi 1,26
+    return;
+  }
+  CPlayer& player = *mgr.Player(0);
+  const rstl::optional_object< CAABox > touch = player.GetTouchBounds(); // vtable slot 0x48
+  if (!touch) {
+    return;
+  }
+  static const char* const kLocators[6] = {"F_knee",   "F_end",   "L_F_knee",
+                                           "L_F_end",  "R_F_knee", "R_F_end"};
+  const CAnimData* animData = GetModelData()->GetAnimationData();
+  CAABox body = CAABox::MakeMaxInvertedBox();
+  bool legHit = false;
+  for (int i = 0; i < 3; ++i) {
+    const CSegId first = animData->GetLocatorSegId(rstl::string_l(kLocators[i * 2]));
+    const CSegId second = animData->GetLocatorSegId(rstl::string_l(kLocators[i * 2 + 1]));
+    CAABox box = CAABox::MakeMaxInvertedBox();
+    box.AccumulateBounds(GetTransform() * GetScaledLocatorTransform(first).GetTranslation());
+    box.AccumulateBounds(GetTransform() * GetScaledLocatorTransform(second).GetTranslation());
+    body.AccumulateBounds(box.GetMinPoint());
+    body.AccumulateBounds(box.GetMaxPoint());
+    const CVector3f grownMin(box.GetMinPoint().GetX() - 0.1f, box.GetMinPoint().GetY() - 0.1f,
+                             box.GetMinPoint().GetZ() - 0.1f);
+    const CVector3f grownMax(box.GetMaxPoint().GetX() + 0.1f, box.GetMaxPoint().GetY() + 0.1f,
+                             box.GetMaxPoint().GetZ() + 0.1f);
+    box.AccumulateBounds(grownMin);
+    box.AccumulateBounds(grownMax);
+    if (touch->DoBoundsOverlap(box)) {
+      legHit = true;
+    }
+  }
+  const CVector3f bodyMin(body.GetMinPoint().GetX() - 3.f, body.GetMinPoint().GetY() - 3.f,
+                          body.GetMinPoint().GetZ() - 3.f);
+  body.AccumulateBounds(bodyMin);
+  const CVector3f bodyMax(body.GetMaxPoint().GetX() + 3.f, body.GetMaxPoint().GetY() + 3.f,
+                          body.GetMaxPoint().GetZ() + 3.f);
+  body.AccumulateBounds(bodyMax);
+  bool hit = false;
+  if (player.GetMorphballTransitionState() == CPlayer::kMS_Morphed) { // 0x2628
+    if (legHit) {
+      hit = true;
+    }
+  } else if (touch->DoBoundsOverlap(body)) {
+    hit = true;
+  }
+  if (!hit) {
+    return;
+  }
+  if ((x825_ & 0x10) != 0) { // 0x2668: extrwi 1,27
+    mgr.ApplyDamage(GetUniqueId(), player.GetUniqueId(), GetUniqueId(), mJumpSlideDamage,
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                    CVector3f::Zero()); // fn_8003E25C
+  } else {
+    mgr.ApplyDamage(GetUniqueId(), player.GetUniqueId(), GetUniqueId(), mStampedeDamage,
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                    CVector3f::Zero()); // fn_8003E25C
+  }
+  x824_ &= ~0x20; // 0x277C
 }
 
 // fn_18_1A54 (0xE0): the look along the actor's facing. The ray starts at the furthest point of
