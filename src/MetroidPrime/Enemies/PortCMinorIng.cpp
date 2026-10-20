@@ -194,23 +194,6 @@ void DumpFsm2(const CGenericFSM2& machine) {
   }
 }
 
-// A retail function of the module that the host does not model yet. It is named once, so a run's
-// log says which body is still missing; the name carries the retail size, the same way the note
-// in docs/module-analysis/MinorIng.md lists them.
-void PortMinorIngStandIn(const char* what) {
-  static const char* sSeen[16];
-  static int sCount = 0;
-  for (int i = 0; i < sCount; ++i) {
-    if (sSeen[i] == what) {
-      return;
-    }
-  }
-  if (sCount < 16) {
-    sSeen[sCount++] = what;
-  }
-  fprintf(stderr, "[minoring] stand-in %s\n", what);
-}
-
 // @ fn_44_3614
 // The retail copy moves the whole ray result from the source to the destination: the eight floats
 // at +0x00..+0x1c, the two words at +0x20 and +0x24 and the valid byte at +0x28 (asm 0x3614-0x366C).
