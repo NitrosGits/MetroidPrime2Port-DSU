@@ -25,6 +25,15 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_900C` | 0x710 | **constructor** (section 2) | [proven] |
 | `fn_16_8B80` | 0x1C0 | **destructor** (vtable slot 0): destroys the tokens, the beam info, the audio parms, the animation set | [proven] |
 | `fn_16_8AF4` | 0xC4 | `SetupStateMachine` (vtable slot 58): installs the three FSM tables | [proven] |
+| `fn_16_56D8` | 0x250 | `Think` (vtable slot 3): the timers, the effect state and the emitter that follows the target | [proven] |
+| `fn_16_3668` | 0x80 | every live tentacle's per-frame update | [proven] |
+| `fn_16_2B0C` | 0x50 | the per-tentacle update (it calls three more module functions) | [proven] |
+| `fn_16_51D4` | 0x128 | the module's own sound update | [proven] |
+| `fn_16_4EB8` | 0x31C | moves the actor onto the target's locator | [probable] |
+| `fn_16_3AFC` | 0x74 | the three collision actor managers' update | [proven] |
+| `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
+| `fn_16_4C8` | 0x368 | aims the actor at the player | [probable] |
+| `fn_16_8C` | 0x11C4 | the tentacles' hit test and damage | [probable] |
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
@@ -122,18 +131,18 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 
 | off | member | value |
 |---|---|---|
-| 0x7C0-0x7D4 | six ints | 0 |
+| 0x7C0-0x7D4 | six ints | 0 (0x7C0 the mode, 0x7C4 the sub-stage, 0x7C8/0x7CC/0x7D0 the tentacle collision actor managers, 0x7D4 the live tentacle count) |
 | 0xA18-0xA1E | four u16 | `kInvalidUniqueId` |
 | 0xA20-0xA28 | three ints | -1 |
-| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 |
+| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA3C the heart-stage timer, 0xA50 the taunt timer) |
 | 0xA34 | float | maxTurnSpeedNormal |
 | 0xA40 | float | the initial health (from `GetHealthInfo()`) |
 | 0xA4C | float | 4.0f |
 | 0xA70 | int | 0 |
 | 0xA74 | byte | five bits cleared |
 | 0xA78 | float | 0 |
-| 0xA80-0xA8C | four ints | 0 |
-| 0xA90, 0xA98 | u16 | `kInvalidUniqueId` |
+| 0xA80-0xA8C | four ints | 0 (0xA8C the sound emitter's handle) |
+| 0xA90, 0xA98 | u16 | `kInvalidUniqueId` (0xA90 the emitter's target) |
 | 0xA94, 0xA9C | ints | 0 |
 | 0xAA0 | CVector3f | zero |
 | 0xAAC | CHealthInfo | the tentacle's health |
@@ -273,6 +282,32 @@ functions read: the timer (+0x04), the retraction timer (+0x18), the flag byte (
 state (+0x28). The eight slots are the array at guest 0x7D8 and the constructor leaves them
 empty (the live count at 0x7D4 is 0), so the ported triggers see no tentacles yet.
 
+### The Think (fn_16_56D8, 0x56D8..0x5928, vtable slot 3)
+
+The body only runs while the actor is active: the asm's gate is the byte at 0x20 with the mask
+0x80 (0x5708), which is `CEntity::mActive` (the first bit of the bitfield word at 0x20).
+
+| at | what |
+|---|---|
+| 0x5710 | fn_16_3668: every live tentacle's per-frame update (fn_16_2B0C each) |
+| 0x5720 | `CPatterned::Think` - the base's own Think |
+| 0x5734 / 0x5740 | the attack timer (guest 0xA4C) counts down, the taunt timer (guest 0xA50) counts up |
+| 0x5748 | fn_16_51D4: the module's own sound update |
+| 0x5758 | fn_16_4EB8: moves the actor onto the target's locator |
+| 0x5768 | fn_16_3AFC: the three collision actor managers (guest 0x7C8, 0x7CC, 0x7D0) get their update |
+| 0x5778 | fn_16_4C0C: the module's track-player update |
+| 0x578C | the effect-state timer (guest 0xA78) counts down |
+| 0x57CC | `SetEffectState("DarkProjectileCharge", timer > 0.0f)` - the name is the string lbl_16_rodata_340 points at |
+| 0x57E4 | fn_16_4C8: aims the actor at the player |
+| 0x57F4 | fn_16_8C: the tentacles' hit test and damage |
+| 0x57F8..0x5900 | the emitter that follows the target: the handle (guest 0xA8C) must be playing, the target id (guest 0xA90) must exist, and the emitter sits on the target's momentum (its X) in the horizontal direction of the player |
+
+Ported with it (both at or under the slice's 0x80 line): fn_16_3668 (0x80, the loop over the live
+tentacles) and fn_16_3AFC (0x74, the collision actor managers' update). The six calls that are
+bigger keep a named private stand-in that logs once: fn_16_2B0C (0x50 - it is small, but it calls
+three more module functions), fn_16_51D4 (0x128), fn_16_4EB8 (0x31C), fn_16_4C0C (0xBC), fn_16_4C8
+(0x368) and fn_16_8C (0x11C4).
+
 ### Still a stand-in: fn_16_7C28 (the state "TrackPlayer")
 
 Its body is three calls, all of them too big for the slice's rule: fn_16_830 (0xB4, the
@@ -328,3 +363,11 @@ triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM doe
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
 CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+
+With the Think ported (fn_16_56D8) its timers run every frame: the attack timer (guest 0xA4C)
+counts down from 4.0f and the taunt timer (guest 0xA50) counts up from 0.0f, so the conditions
+the ported triggers read (`xa4c_ < 0.0f` and `xa50_ > tauntFrequency`) are met a few seconds
+after the actor is activated. They do not flip in the run, because the host's FSM evaluates a
+state's triggers only while the FSM is in that state: the FSM leaves TrackPlayer in its first
+frame (AllTentaclesRetracted is true until the tentacles are spawned) and BeginHeartStage's
+transitions do not use those two triggers.

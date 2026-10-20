@@ -16,9 +16,14 @@
 #include "MetroidPrime/Enemies/CEmperorIngStage1.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/TCastTo.hpp"
+
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -145,11 +150,17 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , mAttackIntervalMax(data.attackIntervalMax)                      // guest 0xCF8
 , x7c0_(0)                                                        // guest 0x7C0, fn_16_900C clears it
 , x7c4_(0)                                                        // guest 0x7C4, cleared
+, x7c8_(nullptr)                                                  // guest 0x7C8, cleared
+, x7cc_(nullptr)                                                  // guest 0x7CC, cleared
+, x7d0_(nullptr)                                                  // guest 0x7D0, cleared
 , x7d4_(0)                                                        // guest 0x7D4, cleared
 , x7d8_()                                                         // guest 0x7D8, the tentacle slots
 , xa3c_(0.f)                                                      // guest 0xA3C, rodata_380
 , xa4c_(4.f)                                                      // guest 0xA4C, rodata_38C
 , xa50_(0.f)                                                      // guest 0xA50, rodata_380
+, xa78_(0.f)                                                      // guest 0xA78, rodata_380
+, xa8c_(CSfxHandle::NullHandle())                                  // guest 0xA8C, cleared
+, xa90_(kInvalidUniqueId)                                         // guest 0xA90, fn_16_900C clears it
 {
   // The retail constructor stops the actor drawing a shadow (SetDrawShadow(this, 0) at
   // 0x000095E0) and calls the DOL's EnableAllAnimReactions(&this->0x620, 0) at 0x000095EC; the
@@ -175,15 +186,112 @@ void CEmperorIngStage1::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// vtable slot 3 = fn_16_56D8 (0xC4): retail's Think. The state machine it drives (the heart
-// stage, the tentacles and the attack selection) is milestone 2, so the base class's Think runs.
+// vtable slot 3 = fn_16_56D8 (0x56D8..0x5928): retail's Think. The body only runs while the
+// actor is active - the asm's gate on the byte at 0x20 (CEntity::mActive) at 0x5708 - and it
+// counts the attack timer down (0x5734) and the taunt timer up (0x5740) around the base's own
+// Think (the call at 0x5720).
 void CEmperorIngStage1::Think(float dt, CStateManager& mgr) {
-  StandIn("CEmperorIngStage1::Think (vtable slot 3, fn_16_56D8)");
   if (!GetActive()) {
     return;
   }
+  UpdateTentacles(dt, mgr); // fn_16_3668, 0x5710
+  // The retail constructor does not activate the body controller; the port does it here, as the
+  // other patterned actors in this port do, because CPatterned::Think dereferences the body state.
   EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);
+  CPatterned::Think(dt, mgr); // 0x5720
+  xa4c_ -= dt;                // 0x5734
+  xa50_ += dt;                // 0x5740
+  UpdateVoice(dt, mgr);       // fn_16_51D4, 0x5748
+  UpdateTentacleAnchor(dt, mgr); // fn_16_4EB8, 0x5758
+  UpdateCollisionActors(dt, mgr); // fn_16_3AFC, 0x5768
+  UpdateTrackPlayer(dt, mgr); // fn_16_4C0C, 0x5778
+  xa78_ -= dt;                // 0x578C
+  // The effect state's name is the string lbl_16_rodata_340 points at (0x5780), and it is on
+  // while the timer is above zero (the compare at 0x57B0).
+  AnimationData()->SetEffectState(rstl::string_l("DarkProjectileCharge"), xa78_ > 0.f, mgr); // 0x57CC
+  UpdateFacing(dt, mgr);      // fn_16_4C8, 0x57E4
+  UpdateTentacleHits(dt, mgr); // fn_16_8C, 0x57F4
+  // The emitter that follows the target (0x57F8..0x5900): the handle must be playing, the
+  // target must exist, and the emitter sits on the target's momentum, pointing at the player.
+  if (xa8c_ && xa90_ != kInvalidUniqueId && CSfxManager::IsPlaying(xa8c_)) {
+    const CEntity* target = mgr.GetObjectById(xa90_);
+    if (target != nullptr) {
+      // The retail reads the target's position (CActor::mPosition) and its momentum
+      // (CPhysicsActor::mMomentum) straight out of the object; the port needs the cast, and a
+      // null here means the target is not a physics actor.
+      const CPhysicsActor* targetActor = TCastToConstPtr<CPhysicsActor>(target);
+      if (targetActor != nullptr) {
+        const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+        const CVector3f& targetPos = targetActor->GetTranslation();
+        // The direction is the horizontal one: the asm zeroes the third component at 0x5890.
+        CVector3f dir(playerPos.GetX() - targetPos.GetX(), playerPos.GetY() - targetPos.GetY(),
+                      0.f);
+        if (dir.CanBeNormalized()) {
+          dir.Normalize();
+          const float offset = targetActor->GetMomentumWR().GetX();
+          const CVector3f emitterPos(targetPos.GetX() + dir.GetX() * offset,
+                                     targetPos.GetY() + dir.GetY() * offset, targetPos.GetZ());
+          CSfxManager::UpdateEmitter(xa8c_, emitterPos, dir, 0xFF);
+        }
+      }
+    }
+  }
+}
+
+// fn_16_3668 (0x3668..0x36E8): every live tentacle gets its per-frame update.
+void CEmperorIngStage1::UpdateTentacles(float dt, CStateManager& mgr) {
+  for (int i = 0; i < x7d4_; ++i) {
+    UpdateTentacle(i, dt, mgr);
+  }
+}
+
+// fn_16_2B0C (0x2B0C..0x2B5C): the per-tentacle update. It calls three more module functions
+// (fn_16_26B8, fn_16_2524 and fn_16_24AC), all over the slice's size rule, so it stays a
+// stand-in here.
+void CEmperorIngStage1::UpdateTentacle(int index, float dt, CStateManager& mgr) {
+  StandInFn("fn_16_2B0C");
+}
+
+// fn_16_51D4 (0x51D4..0x52FC): the module's own sound update (it plays a custom sound and
+// reads the attack and taunt timers). Too big for the slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::UpdateVoice(float dt, CStateManager& mgr) { StandInFn("fn_16_51D4"); }
+
+// fn_16_4EB8 (0x4EB8..0x51D4): moves the actor onto the target's locator. Too big for the
+// slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::UpdateTentacleAnchor(float dt, CStateManager& mgr) {
+  StandInFn("fn_16_4EB8");
+}
+
+// fn_16_3AFC (0x3AFC..0x3B70): the three collision actor managers get their update (the calls
+// at 0x3B28, 0x3B3C and 0x3B50). The retail has no null test: the managers are set by the
+// tentacle spawn code, which the port does not have yet, so on the host they are still null and
+// the update is skipped.
+void CEmperorIngStage1::UpdateCollisionActors(float dt, CStateManager& mgr) {
+  if (x7c8_ != nullptr) {
+    x7c8_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
+  if (x7cc_ != nullptr) {
+    x7cc_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
+  if (x7d0_ != nullptr) {
+    x7d0_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  }
+}
+
+// fn_16_4C0C (0x4C0C..0x4DF0): the module's track-player update. Too big for the slice's rule,
+// so it stays a stand-in.
+void CEmperorIngStage1::UpdateTrackPlayer(float dt, CStateManager& mgr) {
+  StandInFn("fn_16_4C0C");
+}
+
+// fn_16_4C8 (0x4C8..0x830): aims the actor at the player. Too big for the slice's rule, so it
+// stays a stand-in.
+void CEmperorIngStage1::UpdateFacing(float dt, CStateManager& mgr) { StandInFn("fn_16_4C8"); }
+
+// fn_16_8C (0x8C..0x1A50): the tentacles' hit test and damage. Too big for the slice's rule, so
+// it stays a stand-in.
+void CEmperorIngStage1::UpdateTentacleHits(float dt, CStateManager& mgr) {
+  StandInFn("fn_16_8C");
 }
 
 // vtable slot 4 = fn_16_7CE8 (0xC4): retail's message switch (the tentacle and heart messages).

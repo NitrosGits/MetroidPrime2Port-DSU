@@ -5,10 +5,13 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
+
+class CCollisionActorManager;
 #endif
 
 // The REL's CEmperorIngStage1 (module 16): the Emperor Ing's first stage, the boss the player
@@ -110,6 +113,23 @@ public:
 private:
   void EnsureBodyActive(CStateManager& mgr);
 
+  // fn_16_3668: every live tentacle gets its per-frame update.
+  void UpdateTentacles(float dt, CStateManager& mgr);
+  // fn_16_2B0C: the per-tentacle update (it calls three more module functions).
+  void UpdateTentacle(int index, float dt, CStateManager& mgr);
+  // fn_16_51D4: the module's own sound update.
+  void UpdateVoice(float dt, CStateManager& mgr);
+  // fn_16_4EB8: moves the actor onto the target's locator.
+  void UpdateTentacleAnchor(float dt, CStateManager& mgr);
+  // fn_16_3AFC: the three collision actor managers get their update.
+  void UpdateCollisionActors(float dt, CStateManager& mgr);
+  // fn_16_4C0C: the module's track-player update.
+  void UpdateTrackPlayer(float dt, CStateManager& mgr);
+  // fn_16_4C8: aims the actor at the player.
+  void UpdateFacing(float dt, CStateManager& mgr);
+  // fn_16_8C: the tentacles' hit test and damage.
+  void UpdateTentacleHits(float dt, CStateManager& mgr);
+
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;
   // fn_16_2EE0: set (or clear) the 0x80 flag of every live tentacle.
@@ -138,11 +158,17 @@ private:
   // fn_16_900C's.
   int x7c0_;                          // guest 0x7C0, 0: the mode fn_16_4A04 turns into IS6/IS7
   int x7c4_;                          // guest 0x7C4, 0: the sub-stage fn_16_2F70 reads
+  CCollisionActorManager* x7c8_;      // guest 0x7C8, 0: the first tentacle's collision actors
+  CCollisionActorManager* x7cc_;      // guest 0x7CC, 0: the second one's
+  CCollisionActorManager* x7d0_;      // guest 0x7D0, 0: the third one's
   int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
   CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
+  float xa78_;                        // guest 0xA78, 0.0f: the effect-state timer (fn_16_56D8)
+  CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
+  TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target
 };
 #endif
 
