@@ -284,7 +284,9 @@ marks only the 45 functions a run actually called (an instrumented build, run be
   `mMiniPortalIndex < mMiniPortalCount`, damage = the block's copy scaled by dt with
   `SetNoImmunity(true)`, floats 1 / 2 / 150 / 1). The helper `fn_29_4468` is `TargetAimPosition`
   (already there). The spawn name (`lbl_29_rodata_120 + 0x573`) does not resolve in the rodata dump;
-  the guardian's "Ing Mini Portal Attack" stands in **[?]**. Still no `// @`.
+  the guardian's "Ing Mini Portal Attack" stands in **[?]**. `@ fn_29_61B4` (FindMiniPortals) and
+  `@ fn_29_6008` (MiniPortalAttack) are marked as of the 2026-10-20 gate fix in A.7, which is what
+  let the two states run at all; the portal spawn itself (`fn_29_C228`) still has no run.
 - **Grapple** (`PortCIng.cpp`, 2026-10-20): `GrappleBall fn_29_6578` and `ExpelGrappledBall
   fn_29_4D18` are ported (state time = `StateMachineState().GetTime()`, the morph-ball test is
   `GetSpawnedMorphballState() == kMS_Unmorphed && GetMorphballTransitionState() == kMS_Morphed`,
@@ -405,11 +407,18 @@ Facts read off the REL (the pseudo-C was wrong on two of them):
 | the four boxes | shoulder-elbow, elbow-forearm, forearm-wrist, then wrist extended 6 units along (wrist-forearm) normalised; `fn_29_3D74` pads z by ±3 and nothing else; ANY overlap deals damage |
 | the arm pick | `mgr.Random()->Range(0, 100) >= 50` - the state manager's RNG at `+0x16e4`, not the actor's |
 
-**A gate bug this fixed:** `fn_29_A8CC` (`ShouldArmSwipe`) asks `CScriptTeamAiMgr::CanStartAttack`
-only when `mTeamId` is not `kInvalidUniqueId` (asm at `0x0000A924`). The port had the gate
-unconditional, so no Ing outside a team could ever swipe - which is why the state never ran. The
-same shape is in `ShouldBodyProjectile fn_29_A780` and is **not** checked yet; expect it to block
-that state the same way.
+**A gate bug this found, in three triggers:** `fn_29_A8CC` (`ShouldArmSwipe`), `fn_29_A780`
+(`ShouldBodyProjectile`) and `fn_29_A664` (`ShouldOpenMiniPortal`) all ask
+`CScriptTeamAiMgr::CanStartAttack` only when `mTeamId` is not `kInvalidUniqueId` - the asm compares
+the two and branches past the call (A8CC `0x0000A920`, A780 `0x0000A8A4`, A664 `0x0000A788`). The
+port had all three gates unconditional, so an Ing the area places without a team could never enter
+any of the states. Fixed for all three (the A8CC one came with the arm swipe).
+
+That is what unblocked the mini portal: after the gate fix a run entered `FindMiniPortals` and then
+`MiniPortalAttack` (form 2, 12 units off) - `ing_bp.log`, where `ing_light6.log`, `ing_aim1.log`,
+`ing_aim5.log` and `ing_arm.log` (all before the fix) have neither state at all. `fn_29_61B4` and
+`fn_29_6008` are marked on that run. No portal projectile appeared in it, so `fn_29_C228`'s
+`kUE_Projectile` spawn still waits for a run that sees the animation event.
 
 Still open in the slice: the run was `GODMODE=1`, so the damage reaching the player was not
 observed (only the segment test and the `ApplyDamage` call); and `mSwipeArm` is exercised as 1

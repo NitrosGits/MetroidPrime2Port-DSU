@@ -913,10 +913,14 @@ bool CIng::ShouldTaunt(CStateManager&, const CTriggerData&) const { return mTaun
 
 // @ fn_29_A780
 bool CIng::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
+  // The team gate only applies inside a team: retail compares mTeamId with kInvalidUniqueId
+  // and skips CanStartAttack when they are equal (asm 0x0000A8A4, the branch that lands at
+  // .L_0000A7FC). An unconditional gate keeps the state off for every Ing placed without a team.
   if ((mData.mFlags210 & (kFlag_NoBodyProjectile | kFlag_NoFormChange)) != 0 ||
       !mBodyProjectileAllowed ||
-      !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
-                                        GetUniqueId())) {
+      (mTeamId != kInvalidUniqueId &&
+       !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
+                                         GetUniqueId()))) {
     return false;
   }
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
@@ -933,9 +937,12 @@ bool CIng::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
 
 // @ fn_29_A664
 bool CIng::ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData&) const {
+  // Same team gate as fn_29_A780/A8CC: retail asks CanStartAttack only when mTeamId is set
+  // (asm 0x0000A788, the compare that skips to .L_0000A6E0).
   if ((mData.mFlags210 & kFlag_NoMiniPortal) != 0 || mFormTime < mData.mUnknownC620 ||
-      !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
-                                        GetUniqueId())) {
+      (mTeamId != kInvalidUniqueId &&
+       !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
+                                         GetUniqueId()))) {
     return false;
   }
   const float distSq = DistSqToTarget(mgr);
@@ -1930,7 +1937,7 @@ void CIng::GrappleBall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_61B4 (not yet exercised in a run). Two rays a frame, out from the head locator to the
+// @ fn_29_61B4: two rays a frame, out from the head locator to the
 // target's aim point, until three hits are stored or the shared angle index runs out (the ring is
 // eight angles, so a FindMiniPortals entry never searches more than four frames). The filter and
 // the geometry are the Space Jump Guardian's (fn_29_1E6C's FindMiniPortals), which is verified.
@@ -1987,7 +1994,7 @@ void CIng::FindMiniPortals(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_6008 (not yet exercised in a run). Asks the body for one projectile attack; the animation's
+// @ fn_29_6008: asks the body for one projectile attack; the animation's
 // kUE_Projectile events then spawn the portals FindMiniPortals queued (fn_29_C228).
 void CIng::MiniPortalAttack(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
