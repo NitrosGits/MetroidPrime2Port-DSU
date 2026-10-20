@@ -25,6 +25,43 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_900C` | 0x710 | **constructor** (section 2) | [proven] |
 | `fn_16_8B80` | 0x1C0 | **destructor** (vtable slot 0): destroys the tokens, the beam info, the audio parms, the animation set | [proven] |
 | `fn_16_8AF4` | 0xC4 | `SetupStateMachine` (vtable slot 58): installs the three FSM tables | [proven] |
+| `fn_16_56D8` | 0x250 | `Think` (vtable slot 3): the timers, the effect state and the emitter that follows the target | [proven] |
+| `fn_16_3668` | 0x80 | every live tentacle's per-frame update | [proven] |
+| `fn_16_2B0C` | 0x50 | the per-tentacle update (it calls three more module functions) | [proven] |
+| `fn_16_51D4` | 0x128 | the module's own sound update | [proven] |
+| `fn_16_4EB8` | 0x31C | moves the actor onto the target's locator | [probable] |
+| `fn_16_3AFC` | 0x74 | the three collision actor managers' update | [proven] |
+| `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
+| `fn_16_4C8` | 0x368 | aims the actor at the player | [probable] |
+| `fn_16_8C` | 0x11C4 | the tentacles' hit test and damage | [probable] |
+| `fn_16_4C0C` | 0xBC | the track-player update: the "Damage" and "Telegraph" effect states | [probable] |
+| `fn_16_51D4` | 0x128 | the module's own sound update (it reads a float at the damage vulnerability's +4) | [probable] |
+| `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
+| `fn_16_24AC` | 0x78 | the tentacle's dark and light vulnerability effect states | [proven] |
+| `fn_16_2070` | 0x194 | the effect state a tentacle carries | [probable] |
+| `fn_16_26B8` | 0x3B0 | the tentacle's own update | [?] |
+| `fn_16_2524` | 0x194 | the tentacle's motion update | [?] |
+| `fn_16_302C` | 0x34 | the actor the module tracks (the id at guest 0xA1A) | [proven] |
+| `fn_16_2FA8` | 0x50 | the collision actor of the second tentacle's collision actor manager | [proven] |
+| `fn_16_4E44` | 0x24 | takes the particle effect's reference | [probable] |
+| `fn_16_BDD0` | 0x64 | releases that reference | [probable] |
+| `fn_16_6D10` | 0x84 | the particle effect's own update | [probable] |
+| `fn_16_3094` | 0x34 | the actor connected on CONNECT/'PLAY' | [proven] |
+| `fn_16_30C8` | 0x278 | the three tentacle animation ids | [proven] |
+| `fn_16_36E8` | 0x29C | the tentacle joint descriptions (eight slots) | [proven] |
+| `fn_16_337C` | 0x184 | fills a CPASAnimParmData's parm list - the port's own constructor does this | [probable] |
+| `fn_16_2B68` | 0xD4 | fills the joint description in | [proven] |
+| `fn_16_1E6C` | 0xC8 | gives the tentacle actor the module's health info, then its materials | [probable] |
+| `fn_16_1F34` | 0x20 | the tentacle actor's materials | [proven] |
+| `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [proven] |
+| `fn_16_3AA8` | 0x54 | the tentacle's collision actor (the owner's first manager, five descriptions per tentacle, the index 4 + index * 5) | [proven] |
+| `fn_16_39CC` | 0xDC | the joint vector's growth | [?] |
+| `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
+| `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
+| `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
+| `fn_16_3EAC` | 0x794 | creates the three collision actor managers (section "fn_16_3EAC") | [proven] |
+| `fn_16_3D64` | 0x148 | sets a group's collision actors active (0..7 a tentacle's five at 0x7C8, 8 the heart 0x7CC, 9 the body 0x7D0; CEntity vtable slot 5 SetActive) | [proven] |
+| `fn_16_36E8` | 0x29C | builds the tentacle joint collision descriptions | [probable] |
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
@@ -122,18 +159,21 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 
 | off | member | value |
 |---|---|---|
-| 0x7C0-0x7D4 | six ints | 0 |
+| 0x7C0-0x7D4 | six ints | 0 (0x7C0 the mode, 0x7C4 the sub-stage, 0x7C8/0x7CC/0x7D0 the tentacle collision actor managers, 0x7D4 the live tentacle count) |
 | 0xA18-0xA1E | four u16 | `kInvalidUniqueId` |
 | 0xA20-0xA28 | three ints | -1 |
-| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 |
+| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA3C the heart-stage timer, 0xA50 the taunt timer) |
 | 0xA34 | float | maxTurnSpeedNormal |
 | 0xA40 | float | the initial health (from `GetHealthInfo()`) |
 | 0xA4C | float | 4.0f |
 | 0xA70 | int | 0 |
 | 0xA74 | byte | five bits cleared |
 | 0xA78 | float | 0 |
-| 0xA80-0xA8C | four ints | 0 |
-| 0xA90, 0xA98 | u16 | `kInvalidUniqueId` |
+| 0xA80-0xA8C | four ints | 0 (0xA8C the sound emitter's handle) |
+| 0xA18, 0xA1A, 0xA1C, 0xA1E | u16 | `kInvalidUniqueId` (the four connected actors: IS3/ACTIVATE, CONNECT/ATTACH, CONNECT/ACTIVATE and CONNECT/'PLAY') |
+| 0xA20, 0xA24, 0xA28 | ints | -1 (the three tentacle animation ids) |
+| 0xA58, 0xA5C | floats | 0 (the "Damage" and "Telegraph" effect timers) |
+| 0xA90, 0xA98 | u16 | `kInvalidUniqueId` (0xA90 the emitter's target) |
 | 0xA94, 0xA9C | ints | 0 |
 | 0xAA0 | CVector3f | zero |
 | 0xAAC | CHealthInfo | the tentacle's health |
@@ -253,6 +293,10 @@ codes.
 | fn_16_4AEC (ShouldTaunt) | the taunt timer is past the taunt frequency | the float at guest 0xA50 (0.0f in the constructor) against the float at 0xC34 |
 | fn_16_4AE8 (BeginSubStage) | retail's body is a single `blr` | - |
 | fn_16_4A04 (ResetTentacles) | resets the current sub-stage's tentacle slots and tells the script which sub-stage this is | fn_16_1DFC (the slot reset), fn_16_2EE0 (the flags), the mode at guest 0x7C0 (2 -> the message IS7, 1 -> IS6) |
+| fn_16_4BB4 (HeartStageOver) | the heart-stage timer has run out | the float at guest 0xA3C (0.0f in the constructor) against 0.0f; the asm folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4), so the test is `<= 0.0f` |
+| fn_16_4B6C (IsDead) | the actor's health has run out | the health info from the vtable slot at +0x3C (slot 13, GetHealthInfo), its second float (CHealthInfo::mHealth at +0x04) against 0.0f (cror eq,lt,eq at 0x4B98) |
+| fn_16_716C (Dead) | on the activate message the script is told the actor died | the message is the state's second argument (`cmpwi r5, 0` at 0x7174); the state tag is 0x44454144 ('DEAD', 0x7198) |
+| fn_16_4954 (ChooseRandomTentacleCount) | the sub-stage is picked from a roll of 0..100 against 50 | the state manager's random (retail CStateManager+0x16E4) asked for Range(0.0f, 100.0f) at 0x497C (0.0f from lbl_16_rodata_380, 100.0f from lbl_16_rodata_3D4) against 50.0f (lbl_16_rodata_3BC); the mode at guest 0x7C0 picks the pair (0 -> 0/1, 1 -> 1/2, anything else 2) and the result is the sub-stage at guest 0x7C4 |
 
 Their callees, all small enough to port with them:
 
@@ -269,6 +313,141 @@ functions read: the timer (+0x04), the retraction timer (+0x18), the flag byte (
 state (+0x28). The eight slots are the array at guest 0x7D8 and the constructor leaves them
 empty (the live count at 0x7D4 is 0), so the ported triggers see no tentacles yet.
 
+### The Think (fn_16_56D8, 0x56D8..0x5928, vtable slot 3)
+
+The body only runs while the actor is active: the asm's gate is the byte at 0x20 with the mask
+0x80 (0x5708), which is `CEntity::mActive` (the first bit of the bitfield word at 0x20).
+
+| at | what |
+|---|---|
+| 0x5710 | fn_16_3668: every live tentacle's per-frame update (fn_16_2B0C each) |
+| 0x5720 | `CPatterned::Think` - the base's own Think |
+| 0x5734 / 0x5740 | the attack timer (guest 0xA4C) counts down, the taunt timer (guest 0xA50) counts up |
+| 0x5748 | fn_16_51D4: the module's own sound update |
+| 0x5758 | fn_16_4EB8: moves the actor onto the target's locator |
+| 0x5768 | fn_16_3AFC: the three collision actor managers (guest 0x7C8, 0x7CC, 0x7D0) get their update |
+| 0x5778 | fn_16_4C0C: the module's track-player update |
+| 0x578C | the effect-state timer (guest 0xA78) counts down |
+| 0x57CC | `SetEffectState("DarkProjectileCharge", timer > 0.0f)` - the name is the string lbl_16_rodata_340 points at |
+| 0x57E4 | fn_16_4C8: aims the actor at the player |
+| 0x57F4 | fn_16_8C: the tentacles' hit test and damage |
+| 0x57F8..0x5900 | the emitter that follows the target: the handle (guest 0xA8C) must be playing, the target id (guest 0xA90) must exist, and the emitter sits on the target's momentum (its X) in the horizontal direction of the player |
+
+Ported with it (both at or under the slice's 0x80 line): fn_16_3668 (0x80, the loop over the live
+tentacles) and fn_16_3AFC (0x74, the collision actor managers' update). The six calls that are
+bigger keep a named private stand-in that logs once: fn_16_2B0C (0x50 - it is small, but it calls
+three more module functions), fn_16_51D4 (0x128), fn_16_4EB8 (0x31C), fn_16_4C0C (0xBC), fn_16_4C8
+(0x368) and fn_16_8C (0x11C4).
+
+### The Think's callees
+
+Ported: fn_16_2B0C (0x50, the per-tentacle update), fn_16_24AC (0x78, the tentacle's two
+vulnerability effect states), fn_16_302C (0x34, the tracked actor) and fn_16_2FA8 (0x50, the
+second tentacle's collision actor).
+
+Stand-ins, each a named private method that logs once: fn_16_26B8 (0x3B0), fn_16_2524 (0x194)
+and fn_16_2070 (0x194) for the tentacle's work, fn_16_4E44 (0x24), fn_16_BDD0 (0x64) and
+fn_16_6D10 (0x84) for the particle effect's reference and update - the reference counter the
+retail takes at the effect's +0x78/+0x7C lives in the retail particle effect, which the port does
+not have - and fn_16_51D4 (0x128) for the sound update, which reads a float at the damage
+vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
+(upstream's layout), so the port has no float there and the value's meaning is not established.
+
+### The animation builders (fn_16_30C8 and fn_16_36E8)
+
+**fn_16_30C8** (0x30C8..0x3340) finds the three tentacle animation ids:
+
+- the tracked actor is the one connected on CONNECT/'PLAY' (the message 0x504C4159, looked up at
+  0x3100 and stored at guest 0xA1E at 0x3110);
+- fn_16_3094 (0x3094..0x30C8) looks that actor up in the state manager and casts it to an actor;
+- the database is that actor's model's animation data at +0x3C (0x3118..0x3124);
+- three parameter sets are searched for the best animation (`FindBestAnimation`, -1): the first
+  with six NoParameter and FromEnum(0), FromEnum(0) (0x3128..0x319C), the second with FromEnum(0),
+  FromEnum(7) (0x31D0..0x3258) and the third with FromEnum(0), FromEnum(6) (0x3280..0x3308). An id
+  is only taken when the search found a time above 1.1920929e-07f (lbl_16_rodata_3A8): 0xA20 at
+  0x31CC, 0xA24 at 0x3278 and 0xA28 at 0x3324.
+
+**fn_16_36E8** (0x36E8..0x3984) builds the joint descriptions: for each of the eight tentacle slots
+(the loop at 0x395C..0x3964) three sets are searched - FromEnum(0) with FromInt32(the index),
+FromEnum(2) with FromInt32(2) and FromEnum(1) with FromInt32(the index) - and when the first two
+found an animation (the tests at 0x3918 and 0x3920) the joint is built and added to the vector at
+guest 0x7D4 (0x3928..0x3958).
+
+fn_16_337C (0x184) fills the parm list of a CPASAnimParmData, which the port's own
+`CPASAnimParmData` constructor does, so it is not a separate function here. The three functions
+that build and add the joint are ported with the joint work (fn_16_2B68, fn_16_1E6C and
+fn_16_3984 below).
+
+### The joint work (fn_16_2B68, fn_16_1E6C, fn_16_3984)
+
+**fn_16_2B68** (0x2B68..0x2C3C) fills a joint description in (the retail element is 0x48 bytes
+and the module has its own type, so the port has its own struct): the owner (0x2B6C), the radius
+(0x2B88, 0.0f from lbl_16_rodata_380), the index and the three animation ids (0x2B98..0x2BA4),
+the time and the damage hit time (0x2BA8, 0x2BAC, the latter CPatterned::skDamageHitTime), the speed
+(0x2BB0), the flag byte with its six high bits cleared (0x2BB4..0x2BF8: 0x80, 0x40, 0x20, 0x10, 0x08
+and 0x04; the low two bits stay), the state (0x2BFC), the id (0x2C04, kInvalidUniqueId) and the
+zero and up vectors (0x2C08..0x2C34).
+
+**fn_16_1E6C** (0x1E6C..0x1F34) finds the tentacle's collision actor (fn_16_3AA8) and copies the
+module's health info into its (0x1EB8..0x1F04 take the module's guest 0xAAC..0xAC8), then calls
+fn_16_1F34 with the flag 1 (0x1F14).
+
+**fn_16_1F34** (0x1F34..0x1FC0) adds the materials kMT_Target (0x28), kMT_Orbit (0x29),
+kMT_SeekerTarget (0x3F) and kMT_ExcludeFromRadar (0x39) to the tentacle actor when the flag is
+set (0x1F74..0x1F8C) and removes them when it is not (0x1F90).
+
+**fn_16_3984** (0x3984..0x39CC) adds the joint to the vector at guest 0x7D4: the retail's vector
+grows first (fn_16_39CC, 0xDC - too big, so it stays a stand-in) and the count is raised
+(0x39B4); the port's vector holds the eight tentacle slots, so it never grows.
+
+**fn_16_3AA8** (0x3AA8..0x3AFC) finds the tentacle's collision actor: the owner's first collision
+actor manager (guest 0x7C8) holds five joint descriptions per tentacle - the index is scaled by
+five (0x3AB4) and the group starts four earlier (the callers pass 4 in r6: `li r6, 0x4` at
+0x1E2C, 0x1E74, 0x1F58, 0x1FE0, 0x2560 and 0x7FDC), so the tentacle's own description is the last
+of its five, at 4 + index * 5. The description's collision actor id (at +0x3C) is looked up in the
+state manager (0x3AE0) and cast to a collision actor (0x3AE4). It is 0x54 bytes, under the slice's
+0x80 line, so the port has it; the manager is fn_16_3EAC's.
+
+### The message switch (fn_16_7CE8, vtable slot 4)
+
+The base's own handler runs first (the call at 0x7D14), then the message decides:
+
+| message | compared at | what happens |
+|---|---|---|
+| `kSM_Create` (0x58435254) | 0x7D24 | the body controller (guest 0x48C) is activated with `kAS_Invalid` (0x7D78) |
+| `kSM_Delete` (0x5844454C) | 0x7D64 | fn_16_3B70: the three collision actor managers are destroyed (0x7D88) |
+| `kSM_AreaLoaded` (0x58414C44) | 0x7D3C | three connected objects are looked up - IS3/ACTIVATE into guest 0xA18 (0x7DAC), CONNECT/ATTACH into 0xA1A (0x7DD4) and CONNECT/ACTIVATE into 0xA1C (0x7DFC) - and the tentacle work is set up: fn_16_30C8 (0x7E10), fn_16_3EAC (0x7E1C), fn_16_36E8 (0x7E28) |
+| `kSM_Activate` (0x41435456) | 0x7D50 | `SetBossParams`: the actor's id (guest +0x08), the health info's initial health (the vtable slot 13 call at 0x7E40, the float at +0x00 of the result) and the string table index of "BossTempleBossStage1" (lbl_16_rodata_41C+0x670) (0x7E6C, 0x7E80) |
+
+The second lookup's message is `kSM_Attach` 0x41544348 (`lis r7, 0x4154` + `addi 0x4348`,
+0x7DB8/0x7DD0); an earlier reading of 0x41574348 left guest 0xA1A invalid.
+
+fn_16_3B70 (0x54) is ported with it, and so are the three tentacle functions: fn_16_30C8 and
+fn_16_36E8 (the animation builders below) and fn_16_3EAC (the collision managers, last section).
+
+### The target's float at guest +0x1C0
+
+The Think's emitter tail (0x58A8) reads a float at the target's +0x1C0, and it is
+**CPhysicsActor::mMomentum's X**:
+
+- the retail's CActor is 0x158 bytes (include/MetroidPrime/CActor.hpp's `CHECK_SIZEOF(CActor,
+  0x158)`), so the retail's CPhysicsActor starts at 0x158;
+- the port's CActor is 0x1B8 (the port's own presentation members), so the port's CPhysicsActor
+  starts 0x60 later - the port's mMass (its first member) is at 0x1B8;
+- CPhysicsActor's member order is upstream's (the port did not touch
+  include/MetroidPrime/CPhysicsActor.hpp), and mMomentum is the member at the CPhysicsActor's
+  +0x68 (the port's mMomentum is at 0x220 = 0x1B8 + 0x68);
+- 0x158 + 0x68 = 0x1C0, the same member in both.
+
+### Still a stand-in: fn_16_7C28 (the state "TrackPlayer")
+
+Its body is three calls, all of them too big for the slice's rule: fn_16_830 (0xB4, the
+IS0/IS1/IS2 message), fn_16_353C (0x12C, the attack vulnerability and the tentacle effect states)
+and fn_16_7B40 (0xE8, the look-at-the-player helper). fn_16_353C itself calls fn_16_1E20 (0x214),
+which applies the damage vulnerability to a tentacle - a class the port does not have yet, so
+porting it would need an unported class. fn_16_7C28 therefore stays a stand-in, and the only
+ported state function is Dead (fn_16_716C).
+
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
 "LightVulnerability", "brainSpine_scale") - the tentacle and attack work, milestone 2.
@@ -283,9 +462,14 @@ log. The accessors that the vtable gives one-line bodies are real.
 
 `SetupStateMachine` (fn_16_8AF4) is ported: the base's setup first, then the module's three
 tables on the state machine (6 triggers, 12 states, 3 codes) with retail's name strings. The bodies
-of the four triggers and the two codes the run reaches are retail's bodies (section 4); the other
-15 are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and returns the neutral value (false
+of the six triggers, the two codes and the Dead state are retail's bodies (section 4); the rest
+are stand-ins: each logs `[emp1] stand-in fn_16_XXXX` once and returns the neutral value (false
 for a trigger). No `// @` marker - only the ported bodies are retail's.
+
+The members the ported bodies need are named from their retail offsets and carry the
+constructor's values: x7c0_ (0), x7c4_ (0), x7d4_ (0), the eight tentacle slots x7d8_ (empty),
+xa3c_ (0.0f), xa4c_ (4.0f) and xa50_ (0.0f). The loader's data block ends at guest 0x6B4, so
+none of them is a script value - they are the module's own state.
 
 Not ported yet (milestone 2): the state functions' bodies, the tentacles and their collision
 actors, the five attacks, the heart stage, the shock wave, the projectile and the two tokens.
@@ -293,6 +477,13 @@ actors, the five attacks, the heart stage, the shock wave, the projectile and th
 **Entity type**: the REL does **not** override `TypesMatch` (vtable slot 1 is the DOL's
 `TypesMatch__10CPatternedCFi`), so the actor keeps the base class's type (`kET_Patterned`) and
 `CEntityInfo.hpp` gets no new value.
+
+**Finding the actor's id**: the actor's unique id is not fixed - the area-11 run answers to
+`u0687` here, while a smoke run found `u04e3`. Look it up instead of hard-coding it: the port
+console's `objs` command lists the world's objects with their class, and
+`objs emperoringstage1` prints the one line for this actor, e.g.
+`u0687 000b0003  CEmperorIngStage1  a11 (1.7, -43.5, 105.0)  inactive`. The first column is the
+id the console's `send <id> <message>` wants (`send u0687 Activate`).
 
 **Runtime**: Great Temple world `863fcd72`, area 11 (`07_temple_mothlordsanctuary_dark`). The
 actor's script leaves it inactive until the fight, so the FSM is reached only after the console
@@ -302,3 +493,67 @@ console, `MP2_CONSOLE=<port>`) wakes it. With the ported bodies the run answers:
 spawns 56 units away, the range is 30), ShouldAttack false (the timer is 4.0f) and ShouldTaunt
 false (the timer is 0.0f). The two timers are only updated by the module's Think (fn_16_56D8),
 which is still a stand-in, so those two triggers stay false until it is ported.
+
+With the ported bodies the FSM advances from TrackPlayer to BeginHeartStage (AllTentaclesRetracted
+is true, so the TrackPlayer state's transition fires at once) and evaluates that state's four
+triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM does not reach yet
+(their state body fn_16_76F0 is not ported), the Dead state is entered only on a normal death
+(the console's `damage` is an X-damage, which takes the massive-death path instead of
+CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
+the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+
+With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
+descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC), which stays a
+stand-in because the port's vector holds the eight tentacle slots, and the tentacle actor lookup
+(fn_16_3AA8), which finds the tentacle's collision actor in fn_16_3EAC's manager.
+
+With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
+fills the three animation ids (guest 0xA20, 0xA24 and 0xA28) and the eight joint slots, and the
+run reaches the joint stand-ins fn_16_2B68, fn_16_1E6C and fn_16_3984 - so the searches did find
+animations.
+
+With `AcceptScriptMsg` ported (fn_16_7CE8) the `kSM_AreaLoaded` message runs the three tentacle
+stand-ins (fn_16_30C8, fn_16_3EAC, fn_16_36E8) and the `kSM_Activate` message (the console's
+`send <uid> Activate`) hands the boss bar its parameters: id 0x0687, health 700 and the string
+table index 55 of "BossTempleBossStage1".
+
+With the Think's track-player update ported (fn_16_4C0C) the "Damage" and "Telegraph" effect
+states are turned on and their timers (guest 0xA58 and 0xA5C) count down; the particle effect's
+own update and the tentacle work stay stand-ins, and with no tentacle spawned the tentacle
+stand-ins do not even run.
+
+With the Think ported (fn_16_56D8) its timers run every frame: the attack timer (guest 0xA4C)
+counts down from 4.0f and the taunt timer (guest 0xA50) counts up from 0.0f, so the conditions
+the ported triggers read (`xa4c_ < 0.0f` and `xa50_ > tauntFrequency`) are met a few seconds
+after the actor is activated. They do not flip in the run, because the host's FSM evaluates a
+state's triggers only while the FSM is in that state: the FSM leaves TrackPlayer in its first
+frame (AllTentaclesRetracted is true until the tentacles are spawned) and BeginHeartStage's
+transitions do not use those two triggers.
+
+### fn_16_3EAC (0x3EAC..0x4640): the three collision actor managers
+
+Called from `kSM_AreaLoaded` (0x7E1C). Each manager is `rs_new(0x18)` + the manager's constructor
+(area = this actor's, active = 1) and replaces the old one (single_ptr members; the destructor
+fn_16_8B80 deletes them at 0x8CDC/0x8CF0/0x8D04).
+
+| member | owner | descriptions | then |
+|---|---|---|---|
+| 0x7CC (heart) | the tracked actor, guest 0xA1A (CONNECT/ATTACH) | one `SphereCollision` on that actor's "brainSpine_scale" locator, radius 5.0 (rodata_3AC), "HeartCollision", mass 0.001 (rodata_3CC) | its actor (fn_16_2FA8) gets this actor's health info (slot 13 -> slot 12 copy, 0x404C..0x4098), `SetDamageVulnerability(*GetDamageVulnerability())` (slot 14, 0x40B8) and Target/Orbit/SeekerTarget (0x40D0) |
+| 0x7D0 (body) | the 'PLAY' actor, guest 0xA1E | one `SphereCollision` on CSegId(1), radius 9.0 (rodata_3D0), "SphereCollision", mass 0.001 | its actor's filter: include Projectile(0x23)+Player(0x20), exclude Platform(0x31), CollisionActor(0x2F), NoStaticCollision(0x26), NoPlatformCollision(0x3C), type 3 (data_250..264) |
+| 0x7C8 (tentacles) | this actor | 8 x 5 `OBBAutoSizeCollision` from lbl_16_rodata_0 ({from, to, extent}, stride 0xC/0x3C; extents 2.0/1.5/0.75/0.75/1.75; order one,two,three,four,five,seven,six,eight), name from+"->"+to, orientation 1, mass 10.0 (rodata_390) | - |
+
+Then this actor's filter (include Solid 0x3B; exclude CollisionActor, Character, AIPassthrough,
+Player; data_268..278), `RemoveMaterial(Target, Orbit, SeekerTarget)`, and fn_16_3D64 for 0..7
+(off), 9 (on), 8 (off). fn_16_3D64 (0x148) is a stand-in, so on the host every collision actor
+stays active.
+
+**The damage vulnerability**: retail's is 0x54 bytes and the host's 0x38, but fn_16_3EAC copies
+none of it: it passes the actor's own `GetDamageVulnerability()` (vtable slot 14) to
+`CCollisionActor::SetDamageVulnerability`, both host types. The health info is likewise a host
+`CHealthInfo` assignment.
+
+**Runtime** (2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send <uid> Activate`): `objs collisionactor` lists 42 new collision actors in a11 (40 tentacle
+boxes along the spines, the heart and the body sphere), 0 `[port] caught`/reach-stub. The FSM
+goes TrackPlayer (fn_16_7C28) -> BeginHeartStage (fn_16_78AC) and stays there: both state bodies
+are stand-ins, so nothing drives BeginHeartStage's transitions yet.
