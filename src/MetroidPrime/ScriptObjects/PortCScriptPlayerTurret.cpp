@@ -40,6 +40,10 @@
 
 namespace {
 
+// lbl_63_rodata_60 + 0x26: the muzzle locator the module's static initializer fn_63_376C copies
+// into lbl_63_bss_C (0x00003788).
+const char* const kMuzzleLocator = "muzzleend_LCTR";
+
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
   static const char* sSeen[16] = {};
@@ -220,8 +224,8 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
       // 0x1EC4: the two additive animations (0x19C and 0x1A0) at weight zero.
       base->AnimationData()->AddAdditiveAnimation(mAnimId1, 0.f, false, false);
       base->AnimationData()->AddAdditiveAnimation(mAnimId2, 0.f, false, false);
-      // 0x1F00: the top actor goes onto the base actor's "upwardballsnapp_LCTR" locator.
-      const CTransform4f locator = model->GetLocatorTransform("upwardballsnapp_LCTR");
+      // 0x1F00: the top actor goes onto the base actor's "upwardballsnap_LCTR" locator.
+      const CTransform4f locator = model->GetLocatorTransform("upwardballsnap_LCTR");
       top->SetTransform(base->GetTransform() * locator);
     }
     // 0x1F48: the damage flash timer.
@@ -422,7 +426,7 @@ CTransform4f CScriptPlayerTurret::GetCameraTransform(CStateManager& mgr) {
                               CVector3f::Up());
 }
 
-// fn_63_F6C (0xB4). The turret sits on the base actor's "upwardballsnapp_LCTR" locator
+// fn_63_F6C (0xB4). The turret sits on the base actor's "upwardballsnap_LCTR" locator
 // (lbl_63_rodata_60 + 7); without a base actor the turret's own transform is used.
 CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
   const CActor* base = TCastToConstPtr< CActor >(mgr.ObjectById(mBaseActorId));
@@ -435,7 +439,7 @@ CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
     // host the base actor can be a script actor without a model.
     return GetTransform();
   }
-  const CTransform4f locator = model->GetLocatorTransform("upwardballsnapp_LCTR");
+  const CTransform4f locator = model->GetLocatorTransform("upwardballsnap_LCTR");
   return base->GetTransform() * locator;
 }
 
@@ -548,8 +552,9 @@ CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
   if (base == nullptr) {
     return turret;
   }
-  // 0x1558: the locator is lbl_63_bss_C - a zeroed BSS string, so the name is empty.
-  const CTransform4f locator = base->GetModelData()->GetScaledLocatorTransform("");
+  // 0x1558: the locator is lbl_63_bss_C, the static string the module's initializer fn_63_376C
+  // builds from lbl_63_rodata_60 + 0x26 (0x00003788): "muzzleend_LCTR".
+  const CTransform4f locator = base->GetModelData()->GetScaledLocatorTransform(kMuzzleLocator);
   // 0x1578: the locator in the base actor's frame, times the base actor's transform.
   return base->GetTransform() * locator;
 }

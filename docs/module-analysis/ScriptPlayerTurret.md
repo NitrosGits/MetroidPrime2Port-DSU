@@ -43,7 +43,7 @@ Module: id 63, 14868 text bytes, 59 functions, script type `PLRT`, entity type
 | `fn_63_14B4` | 0x54 | helper of the `0x53545254` message: the actor at 0x19A gains `kMT_Solid` | [proven] call at 0x00001FF0 |
 | `fn_63_15B0` | 0x3C4 | reads the two connections (`FindConnectedObject`) and stores the base actor at 0x198 and the top actor at 0x19A, then looks up five animation ids (0x19C..0x1AC) and the base actor's light colour (0x1D4..0x1DC); called from the `0x58414C44` message | [proven] the two stores at 0x00001818/0x00001860 |
 | `fn_63_374C` | 0x20 | `CModelData`'s default constructor (the turret's empty model) | [proven] call at 0x00003268 |
-| `fn_63_84C` | 0x184 | the turret's **shot**: the energy projectile, spawned at the muzzle (the `muzzleleen_LCTR` locator) | [proven] call at 0x000012C8 |
+| `fn_63_84C` | 0x184 | the turret's **shot**: the energy projectile, spawned at the muzzle (the `muzzleend_LCTR` locator) | [proven] call at 0x000012C8 |
 | `fn_63_349C` | 0x74 | `CToken(IObj* null)`: the turret's empty token at 0x1E8 | [proven] call at 0x00003384 |
 | `fn_63_674` | 0xB8 | `SLdrEditorProperties`' constructor (the loader's defaults) | [proven] call at 0x00000238 |
 | `fn_63_610` | 0x64 | `SLdrEditorProperties`' destructor | [proven] |
@@ -121,7 +121,7 @@ the SnakeWeedSwarm port drops as well.
 `CEntity`'s active flag, read with `extrwi. r0,r0,1,24` at 0x000023F0; the *player's* flag is the
 turret's own byte 0x22C) it counts down 0x20C, looks at the player (0x188) and the base actor
 (0x198), clamps the aim to the rotation limits (0x174..0x180), drives the two additive animations
-(0x19C, 0x1A0), moves the top actor (0x19A) onto the base actor's `"upwardballsnapp_LCTR"` locator,
+(0x19C, 0x1A0), moves the top actor (0x19A) onto the base actor's `"upwardballsnap_LCTR"` locator,
 and runs the turret's sound (0x222).
 
 `fn_63_1BE8` (**AcceptScriptMsg**, slot 6) switches on the message word:
@@ -138,9 +138,9 @@ the turret and black-to-red while 0x20C counts down.
 | off | string | used by |
 |---|---|---|
 | 0x00 | `??(??)` | the allocation's file tag (the `__nw__` source name) |
-| 0x07 | `upwardballsnapp_LCTR` | `fn_63_F6C`, `fn_63_23C0`, `fn_63_1BE8` - the base actor's locator |
+| 0x07 | `upwardballsnap_LCTR` | `fn_63_F6C`, `fn_63_23C0`, `fn_63_1BE8` - the base actor's locator |
 | 0x1B | `Whole Body` | `fn_63_1134` - the animation the input path watches |
-| 0x26 | `muzzleleen_LCTR` | unreferenced in this milestone |
+| 0x26 | `muzzleend_LCTR` | `fn_63_1508` reads it from `lbl_63_bss_C`, the static string the module's initializer `fn_63_376C` builds from it (0x00003788) |
 
 ## 6. Host body (milestone 1)
 
@@ -204,7 +204,7 @@ Facts the ported cases established:
   slot 15, 0x3C) and reads the float at + 4 of it - the guest's `CHealthInfo` starts with the
   *initial* health, so + 4 is the current one (0x1DD8..0x1E00).
 - The base actor (0x198) keeps its own position but takes the turret's rotation; the top actor
-  (0x19A) goes onto the base actor's `"upwardballsnapp_LCTR"` locator (0x1E88..0x1F3C).
+  (0x19A) goes onto the base actor's `"upwardballsnap_LCTR"` locator (0x1E88..0x1F3C).
 - `kSM_Start` needs the turret to be **active** (the guest's byte 0x20, `CEntity`'s active flag),
   sets the player's turret state to 3 (kTS_Active), gives the top actor `kMT_Solid` (0x3b,
   `fn_63_14B4`) and the turret itself `kMT_Orbit` (0x29).
@@ -271,8 +271,10 @@ the shot's sound (0x22A in multiplayer at the player's pan, 0x228 at the fixed p
 player). The guest's `fn_63_B18`/`fn_63_B60` build the projectile's visor effect; the host's
 `CImpactVisorEffect::None()` is the same empty effect (the retail's AI turret uses it too).
 
-The guest's muzzle locator is `lbl_63_bss_C` - a zeroed BSS string, so the locator name is
-**empty** and the muzzle transform is the base actor's own transform.
+The guest's muzzle locator is `lbl_63_bss_C`: a **static** `rstl::string` that the module's
+static initializer `fn_63_376C` fills with `lbl_63_rodata_60 + 0x26` = `muzzleend_LCTR`
+(0x00003788). A BSS string that the module only reads is not empty - `grep -n bss_X
+auto_fn_*_text.s` finds the initializer that fills it.
 
 **Runtime check (2026-10-20).** The same run as in section 9, with `press A 20`: the console's
 `objs projectile` lists nothing before the shot and
