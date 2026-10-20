@@ -787,13 +787,14 @@ bool CIng::UnderFire(CStateManager&, const CTriggerData&) const { return mUnderF
 // @ fn_29_AFE4
 bool CIng::HeardShot(CStateManager&, const CTriggerData&) const { return mHeardShotTime < 1.5f; }
 
-// fn_29_AE68 (not yet exercised in a run)
+// @ fn_29_AE68: the near box is the model scale (this+0x60) times 10 on each axis - rodata_90 is
+// 10.0f and the asm scales scale.x/y/z separately (0x0000AEB4..0x0000AEF4). The include filter is
+// the two data words 0x9F4/0x9F8 = 0x20/0x21 = kMT_Player/kMT_Character, type 1 = kFT_Include.
 bool CIng::AreaClear(CStateManager& mgr, const CTriggerData&) const {
-  const float half = mModelScale.GetX() * 10.f;
+  const CVector3f half = mModelScale * 10.f;
   const CVector3f pos = GetTranslation();
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
-  mgr.BuildNearList(nearList,
-                    CAABox(pos - CVector3f(half, half, half), pos + CVector3f(half, half, half)),
+  mgr.BuildNearList(nearList, CAABox(pos - half, pos + half),
                     CMaterialFilter::MakeInclude(CMaterialList(kMT_Player, kMT_Character)), this);
   return nearList.empty();
 }
@@ -816,9 +817,10 @@ bool CIng::HasWallCoverPoint(CStateManager& mgr, const CTriggerData&) const {
   return hint != nullptr && hint->GetHintType() == static_cast< CScriptAIHint::EHintType >(4);
 }
 
-// fn_29_AD68 (not yet exercised in a run)
+// @ fn_29_AD68: the mini-portal count at 0xe00, tested with the neg/or/srwi-31 nonzero idiom
+// (0x0000AD68), not a signed comparison.
 bool CIng::HasMiniPortals(CStateManager&, const CTriggerData&) const {
-  return mMiniPortalCount > 0;
+  return mMiniPortalCount != 0;
 }
 
 // @ fn_29_AD54
@@ -834,7 +836,8 @@ bool CIng::IsBodyProjectile(CStateManager&, const CTriggerData&) const {
   return mForm == kForm_BodyProjectile;
 }
 
-// fn_29_AD14 (not yet exercised in a run)
+// @ fn_29_AD14: the frustration time (0x7cc = CIngData+0xc) below the frustration timer (0xe44);
+// the asm's fcmpo/extrwi-1 takes the GT bit (0x0000AD14).
 bool CIng::IsFrustrated(CStateManager&, const CTriggerData&) const {
   return mData.mFrustrationTime < mFrustrationTimer;
 }
@@ -860,7 +863,8 @@ bool CIng::UseProjectileFSMEntry(CStateManager&, const CTriggerData&) const {
   return mProjectileFSMEntry;
 }
 
-// fn_29_AC20 (not yet exercised in a run)
+// @ fn_29_AC20: the target id at 0xd6c is looked up and the object is asked whether it sits in a
+// safe zone; a missing object is false (0x0000AC20).
 bool CIng::TargetInSafeZone(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   return target != nullptr && mgr.GetSafeZoneManager()->IsObjectInSafeZone(*target, mgr);
@@ -872,7 +876,9 @@ bool CIng::TargetInLightSafeZone(CStateManager& mgr, const CTriggerData&) const 
   return target != nullptr && mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*target, mgr);
 }
 
-// fn_29_AB7C (not yet exercised in a run)
+// @ fn_29_AB7C: the REL's own fn_29_45BC is the cover-hint lookup (mCoverHintId at 0xd72, then
+// ObjectById + the CScriptAIHint cast), so GetCoverHint is the same thing; the hint's position
+// (+0x54) is tested against the safe zone (0x0000AB7C).
 bool CIng::EmergePtInSafeZone(CStateManager& mgr, const CTriggerData&) const {
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   return hint != nullptr &&
@@ -992,25 +998,28 @@ bool CIng::ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData&) const {
   return minDist * minDist <= distSq && distSq <= maxDist * maxDist;
 }
 
-// fn_29_A658 (not yet exercised in a run)
+// @ fn_29_A658: the splat flag is bit 6 of the byte at 0xe5e; the asm's extrwi-25 pulls exactly
+// that bit out (0x0000A658).
 bool CIng::ProjectileSplat(CStateManager&, const CTriggerData&) const { return mSplat; }
 
-// fn_29_A4EC (not yet exercised in a run)
+// @ fn_29_A4EC: the hit box is the model scale (this+0x60) times 2.5 on each axis - rodata_C8 is
+// 2.5f and the asm scales scale.x/y/z separately (0x0000A5A0..0x0000A5F4). A player that is
+// morphed or morphing (0x38c is neither 0 nor 3) never counts as a hit (0x0000A524).
 bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
-  const CPhysicsActor* target = TCastToConstPtr< CPhysicsActor >(mgr.GetObjectById(mTargetId));
+  const CEntity* entity = mgr.GetObjectById(mTargetId);
+  const CPhysicsActor* target = TCastToConstPtr< CPhysicsActor >(entity);
   if (target == nullptr) {
     return false;
   }
-  if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId))) {
-    if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed ||
-        player->GetMorphballTransitionState() == CPlayer::kMS_Morphing) {
+  if (const CPlayer* player = TCastToConstPtr< CPlayer >(entity)) {
+    const CPlayer::EPlayerMorphBallState state = player->GetMorphballTransitionState();
+    if (state != CPlayer::kMS_Unmorphed && state != CPlayer::kMS_Unmorphing) {
       return false;
     }
   }
-  const float half = mModelScale.GetX() * 2.5f;
+  const CVector3f half = mModelScale * 2.5f;
   const CVector3f pos = GetTranslation();
-  return CAABox(pos - CVector3f(half, half, half), pos + CVector3f(half, half, half))
-      .DoBoundsOverlap(target->GetBoundingBox());
+  return CAABox(pos - half, pos + half).DoBoundsOverlap(target->GetBoundingBox());
 }
 
 // fn_29_A4E0 (not yet exercised in a run)
@@ -1028,12 +1037,13 @@ bool CIng::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return !mFoundMovementPos || CPatterned::PathOver(mgr, data);
 }
 
-// fn_29_A428 (not yet exercised in a run)
+// @ fn_29_A428: the ing-spot navigation at 0xcb0 is asked whether the path is over (the DOL's
+// fn_801F81C8) with this as the actor (0x0000A428).
 bool CIng::PointPathOver(CStateManager&, const CTriggerData&) const {
   return mIngSpotPathFindNavigation.IsPathOver(*this);
 }
 
-// fn_29_A400 (not yet exercised in a run)
+// @ fn_29_A400: the same navigation object's HasPath (the DOL's fn_801F8178) (0x0000A400).
 bool CIng::FoundPointPath(CStateManager&, const CTriggerData&) const {
   return mIngSpotPathFindNavigation.HasPath(*this);
 }
@@ -1090,7 +1100,9 @@ bool CIng::InBallPursuitRange(CStateManager& mgr, const CTriggerData&) const {
   return inRange;
 }
 
-// fn_29_A1C0 (not yet exercised in a run)
+// @ fn_29_A1C0: the target id at 0xd6c is looked up and the path search at 0x9dc is asked for a
+// path from this actor's position (0x54) to the target's (target+0x54); the retail's
+// cntlzw/srwi-5 turns a zero result (kR_Success) into true (0x0000A1C0).
 bool CIng::HasPathToTarget(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   return target != nullptr &&
@@ -1141,7 +1153,8 @@ void CIng::Start(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_A090 (not yet exercised in a run)
+// @ fn_29_A090: retail's state body is empty - a bare blr (0x0000A090), so the state just waits
+// for the FSM to move on.
 void CIng::WaitForFSMTransition(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("WaitForFSMTransition");
