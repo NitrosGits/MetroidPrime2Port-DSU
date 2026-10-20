@@ -217,6 +217,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoost(boost) // guest 0xDEC, fn_30_10250 (0x0000ED98): a memberwise copy, the host's implicit one
 , mVulnerability(CWeaponTypeVulnerability(100.f, CWeaponTypeVulnerability::kE_Immune,
                                           false)) // 0x0000FCC0-0x0000FD48: rodata_CC, 3, 0
+, mTouchBox(CAABox::MakeNullBox()) // 0x0000ED58..0x0000ED94: guest 0xDD0 = mskNullBox, 0xDE8 = 1
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)
 , mSwarmEffect(BgOptionalPart(data.mSwarm.mPART))
@@ -256,12 +257,12 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mMiniPortalCount(0)
 , mMiniPortalPositions()
 , mMiniPortalIndex(-1)
-, mHeardShotTime(0.f)
-, mUnderFireTime(0.f)
-, mArmSwipeTime(0.f)
-, mFormTime(0.f)
-, mBodyState5Time(0.f)
-, mFrustrationTimer(0.f)
+, mHeardShotTime(1.5f)    // 0x0000FD74: 0x11AC = rodata_98 (1.5)
+, mUnderFireTime(0.75f)   // 0x0000FD84: 0x11B0 = rodata_FC (0.75)
+, mArmSwipeTime(1.f)      // 0x0000FD94: 0x11B4 = rodata_64 (1.0)
+, mFormTime(0.f)          // 0x0000FD98: 0x11B8 = rodata_70
+, mBodyState5Time(0.f)    // 0x0000FD9C: 0x11BC
+, mFrustrationTimer(0.f)  // 0x0000FDA0: 0x11C0
 , mBallCooldown(0.f)
 , mHitReactionTime(0.f)
 , mInitialSpeed(mSpeed) // ctor 0x0000FD4C/0x0000FD64
