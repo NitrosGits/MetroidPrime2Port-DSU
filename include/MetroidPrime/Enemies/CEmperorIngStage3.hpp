@@ -23,6 +23,18 @@ struct SEmperorIngHeartHolder {
   u32 mCount;                       // guest +0x4
   SEmperorIngHeartRecord* mRecords; // guest +0xC
 };
+
+// The module's three lists (guests 0x830, 0x840 and 0x850): the count at +0x4, the entries at
+// +0xC, and each entry 0xC bytes - a weight at +0x0, a threshold at +0x4 and a timer at +0x8.
+struct SEmperorIngListEntry {
+  float mWeight;    // guest +0x0
+  float mThreshold; // guest +0x4
+  float mTimer;     // guest +0x8
+};
+struct SEmperorIngList {
+  u32 mCount;                     // guest +0x4
+  SEmperorIngListEntry* mEntries; // guest +0xC
+};
 #endif
 
 // The REL's CEmperorIngStage3 (module 18): the mutated Emperor Ing, the boss the player fights
@@ -157,14 +169,22 @@ private:
   void FaceTarget(const CVector3f& target);
   // fn_18_3744: the angle snapped to the nearest 45 degrees.
   float SnapAngleTo45(float angle) const;
-  // fn_18_22BC: the module's average over its bone list at guest 0x830. A stand-in that
-  // answers the neutral zero.
+  // fn_18_22BC: the module's average over the list at guest 0x840.
   float BoneAverage() const;
+  // fn_18_AC44: the list walk - every entry's timer grows and an entry past its threshold
+  // is due.
+  void UpdateList(SEmperorIngList& list, float dt);
+  // fn_18_AB9C: the weighted average over a list.
+  float ListAverage(const SEmperorIngList& list) const;
+  // fn_18_1978: the module's flag check over the list at guest 0x850.
+  void CheckList(CStateManager& mgr);
   // fn_18_125C: the module watches the object its id at guest 0x8C0 names and clears the id
   // when the object is gone.
   void WatchObject(CStateManager& mgr);
   // fn_18_2D1C: the vector from the actor to the first player, flattened to the XY plane.
   CVector3f PlayerDirection(CStateManager& mgr) const;
+  // fn_18_2CB8: the distance from the actor to the player.
+  float PlayerDistance(CStateManager& mgr) const;
   // fn_18_2C98: the actor's facing, flattened to the XY plane.
   CVector3f FlatFacing() const;
   // fn_18_1BD8: both hearts get the module's vulnerability at guest 0x86C.
@@ -214,6 +234,9 @@ private:
   CDamageVulnerability mX86c_;           // guest 0x86C: the hearts' vulnerability
   u16 mX8c0_;                            // guest 0x8C0, 0xFFFF: the id of the object the
                                         // module watches (fn_18_125C clears it)
+  SEmperorIngList mX830_;                 // guest 0x830: the module's first list
+  SEmperorIngList mX840_;                 // guest 0x840: the list the taunt average reads
+  SEmperorIngList mX850_;                 // guest 0x850: the list the flag check reads
   float mX8ec_;                          // guest 0x8EC, 0.0f: the eye-shut time
   float mX8f0_;                          // guest 0x8F0, 0.0f: the eye-shut duration
   float mX8f4_;                          // guest 0x8F4, 0.0f: the eye-shut random time

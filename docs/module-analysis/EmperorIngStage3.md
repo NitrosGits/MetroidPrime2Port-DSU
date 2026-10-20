@@ -68,6 +68,7 @@ Freeze, ThinkAboutMove, Burn, Shock, MassiveDeath, ...).
 | 0x864 | the idle state's timer | `fn_18_788C` sets it to FLT_MAX on enter, clears it when the player is over fifty units away and grows it by the frame time |
 | 0x868 | the heart that is on | `fn_18_1DF4` writes it; the constructor clears it (0x9CB4) |
 | 0x86C | the hearts' vulnerability | the constructor copies the immune vulnerability into it (0x9CB8..0x9CC4); `fn_18_1BD8` gives it to both hearts |
+| 0x830 / 0x840 / 0x850 | the module's three lists | the count at +0x4, the entries at +0xC, each entry 0xC bytes (a weight at +0x0, a threshold at +0x4, a timer at +0x8). The first is the attack list (`fn_18_2BF0` fills it), the second is the one the taunt average reads and the third the one the flag check reads |
 | 0x8C0 | the id of the object the module watches | `fn_18_125C` clears it when the object is gone (0x12AC) |
 | 0x8EC | the eye-shut time | the EyeShut state's activate reads it (0x52BC) and clears it |
 | 0x8F0 | the eye-shut duration | the EyeShut state's activate computes it (0x52F4) and the update counts it down |
@@ -215,6 +216,34 @@ The base class's Think runs first (0x4818). Then:
   follows the player. A stand-in: the DOL's call has no host equivalent and the emitter's
   position needs the object's scale (guest 0x1C0), which the host does not expose.
 
+### The lists and the Think's per-frame calls
+
+`fn_18_AC44` (0xB4) walks a list: every entry's timer grows by the frame time, and an entry
+whose timer is past its threshold is due - `fn_18_ACF8` (0x4C) hands it to `fn_18_AD44` (0xB4, a
+stand-in). `fn_18_AB9C` (0x64) is the weighted average over a list: every entry counts its
+weight times what is left of its threshold (one minus the timer over the threshold, capped at
+one). `fn_18_22BC` (0x24) is that average over the list at guest 0x840, so the melee trigger
+(`fn_18_8C4C`) sees a real number now - the list is empty on the host, so it is zero, and the
+trigger stays false. `fn_18_1978` (0xDC) is the flag check over the list at guest 0x850: while
+its average is below one (rodata 0x264) a player more than fifty units away (rodata 0x290,
+`fn_18_2CB8` is the distance) sets the flag byte 0x824's bit 29 (the mask 0x04), and otherwise a
+random draw (0.0 to 100.0, rodata 0x258 and 0x27C) under ten (rodata 0x294) sets that bit and
+the bit 28 (the mask 0x08) otherwise.
+
+`fn_18_3B64` (0x28) calls the DOL's `fn_80135D84` on the heart holder and `fn_18_39E0` (0xA4)
+adds or removes the materials 0x28/0x29/0x3F on the two hearts depending on the flag byte at
+their guest 0x20; both stay stand-ins (the holder is not created and the host's collision actor
+has no such flag).
+
+### `fn_18_7504` (0x1CC), the GainDistance state
+
+The activate path (0x7548) clears the module's too-close distance (guest 0x7D4), sets the flag
+at guest 0x6B4 and looks thirty units along the actor's facing (`fn_18_1A54`); when the look
+finds nothing the module's `fn_18_2BF0` (0xC4, a stand-in) runs and the flag becomes 3. The
+update path (0x75B4) is a stand-in: it needs the module's own body-command classes, the DOL's
+`fn_801B73E4` and the body controller's steering fields. The deactivate path (0x76B4) clears the
+flag.
+
 ### `fn_18_1DF4` (0x4A0), the heart switch
 
 The two heart collision actors come from `fn_18_3ACC` (0x48), whose own callee `fn_18_3B14`
@@ -281,4 +310,10 @@ state (`fn_18_7504`), and the log names the module's own per-frame calls (`fn_18
 rest), the `ChoseAction` code (`fn_18_8200`) and the `ResetAttackTimer` code (`fn_18_84A8`).
 The EyeShut state is not reached in that run: its trigger wants the eye-shut timer past eight
 seconds *and* the player within ninety degrees of the ing's facing, and the FSM had left Idle
-by then. The run ends on the frame limit with `grep -c '[port] caught\|reach-stub'` = 0.
+by then.
+
+With the lists ported the walk goes on: the FSM leaves Idle for the GainDistance state
+(`fn_18_7504`, whose activate and deactivate paths are ported) and then for the JumpAttack
+state (`fn_18_4EB4`, a stand-in). The ing itself does not move: the GainDistance state's update
+path - the steering - is still a stand-in. The run ends on the frame limit with
+`grep -c '[port] caught\|reach-stub'` = 0.

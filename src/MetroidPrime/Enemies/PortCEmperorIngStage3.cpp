@@ -264,15 +264,15 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
 
   // The module's per-frame calls (0x4988..0x4A20), in retail order. Only fn_18_125C (0x68) is
   // small enough to port; the rest are stand-ins, with their retail sizes.
-  StandInFn("fn_18_AC44"); // 0xB4
-  StandInFn("fn_18_AC44"); // 0xB4
-  StandInFn("fn_18_AC44"); // 0xB4
+  UpdateList(mX830_, dt); // fn_18_AC44 (0xB4)
+  UpdateList(mX840_, dt); // fn_18_AC44 (0xB4)
+  UpdateList(mX850_, dt); // fn_18_AC44 (0xB4)
   StandInFn("fn_18_3B64"); // 0x28
   StandInFn("fn_18_39E0"); // 0xA4
   StandInFn("fn_18_3448"); // 0x1AC
   StandInFn("fn_18_27DC"); // 0x38C
   StandInFn("fn_18_22E0"); // 0x4C0
-  StandInFn("fn_18_1978"); // 0xDC
+  CheckList(mgr);         // fn_18_1978 (0xDC)
   StandInFn("fn_18_1370"); // 0x1C0
   WatchObject(mgr);       // fn_18_125C (0x68)
   StandInFn("fn_18_E40");  // 0x41C
@@ -551,13 +551,61 @@ CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int 
   return static_cast< CCollisionActor* >(mgr.ObjectById(TUniqueId(record->mUniqueId)));
 }
 
-// fn_18_22BC (0x24): the module's average over its bone list at guest 0x830. Its own callee
-// fn_18_AB9C (0x64) walks the list, which the port does not model, so this stays a stand-in.
-// The answer is the neutral zero: the melee trigger wants the average above ten (rodata 0x294),
-// and zero keeps the trigger false instead of firing on a value the port made up.
-float CEmperorIngStage3::BoneAverage() const {
-  StandInFn("fn_18_22BC");
-  return 0.f;
+// fn_18_22BC (0x24): the module's average over the list at guest 0x840, which its own callee
+// fn_18_AB9C (0x64) computes.
+float CEmperorIngStage3::BoneAverage() const { return ListAverage(mX840_); }
+
+// fn_18_AB9C (0x64): the weighted average over a list: every entry counts its weight times
+// what is left of its threshold (one minus the timer over the threshold, capped at one).
+float CEmperorIngStage3::ListAverage(const SEmperorIngList& list) const {
+  float total = 0.f; // rodata 0x258
+  for (u32 i = 0; i < list.mCount; ++i) {
+    const SEmperorIngListEntry& entry = list.mEntries[i];
+    float ratio = entry.mTimer / entry.mThreshold;
+    if (ratio >= 1.f) { // rodata 0x264
+      ratio = 1.f;
+    }
+    total += entry.mWeight * (1.f - ratio);
+  }
+  return total;
+}
+
+// fn_18_AC44 (0xB4): the list walk: every entry's timer grows by the frame time, and an entry
+// whose timer is past its threshold is due - fn_18_ACF8 (0x4C) hands it to fn_18_AD44
+// (0xB4), which is a stand-in.
+void CEmperorIngStage3::UpdateList(SEmperorIngList& list, float dt) {
+  SEmperorIngListEntry* entry = list.mEntries;
+  for (u32 i = 0; i < list.mCount; ++i, ++entry) {
+    entry->mTimer += dt;
+    if (entry->mTimer > entry->mThreshold) {
+      StandInFn("fn_18_AD44");
+    }
+  }
+}
+
+// fn_18_1978 (0xDC): the module's flag check over the list at guest 0x850. While the list's
+// average is below one (rodata 0x264) the player far away (over fifty units, rodata 0x290)
+// sets the flag byte 0x824's bit 29 (the mask 0x04), and otherwise a random draw (0.0 to
+// 100.0, rodata 0x258 and 0x27C) under ten (rodata 0x294) sets that bit and the bit 28
+// (the mask 0x08) otherwise - unless one of the two bits is already set.
+void CEmperorIngStage3::CheckList(CStateManager& mgr) {
+  if (ListAverage(mX850_) >= 1.f) { // rodata 0x264
+    return;
+  }
+  if (PlayerDistance(mgr) > 50.f) { // fn_18_2CB8, rodata 0x290
+    x824_ |= 0x04;
+  }
+  if ((x824_ & 0x04) != 0) {
+    return;
+  }
+  if ((x824_ & 0x08) != 0) {
+    return;
+  }
+  if (mgr.Random()->Range(0.f, 100.f) < 10.f) { // rodata 0x258, 0x27C, 0x294
+    x824_ |= 0x04;
+  } else {
+    x824_ |= 0x08;
+  }
 }
 
 // fn_18_2D1C (0x34): the vector from the actor to the first player, flattened to the XY plane
@@ -566,6 +614,12 @@ CVector3f CEmperorIngStage3::PlayerDirection(CStateManager& mgr) const {
   const CVector3f& mine = GetTranslation();
   const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
   return CVector3f(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(), 0.f);
+}
+
+// fn_18_2CB8 (0x64): the distance from the actor to the player (the vector flattened to the
+// XY plane, the zero at rodata 0x258).
+float CEmperorIngStage3::PlayerDistance(CStateManager& mgr) const {
+  return PlayerDirection(mgr).Magnitude();
 }
 
 // fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
@@ -972,8 +1026,33 @@ void CEmperorIngStage3::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt)
   StandInFn("fn_18_76D0");
 }
 
+// fn_18_7504 (0x1CC): the "GainDistance" state. Its activate path (0x7548) clears the module's
+// too-close distance (guest 0x7D4), sets the flag at guest 0x6B4 and looks thirty units along
+// the actor's facing (fn_18_1A54); when the look finds nothing the module's fn_18_2BF0 (0xC4,
+// a stand-in) runs and the flag becomes 3. The update path (0x75B4) is a stand-in: it needs the
+// module's own body-command classes, the DOL's fn_801B73E4 and the body controller's steering
+// fields, none of which the host has. The deactivate path (0x76B4) clears the flag.
 void CEmperorIngStage3::GainDistance(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_7504");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mX7d4_ = 0.f; // rodata 0x258
+    mX6b4_ = 1;
+    if (!LineOfSight(mgr, GetTransform().GetColumn(kDY), 30.f)) { // rodata 0x2FC
+      StandInFn("fn_18_2BF0"); // 0xC4
+      mX6b4_ = 3;
+      StandInFn("fn_18_2BF0"); // 0xC4
+      StandInFn("fn_801B73E4");
+    }
+    break;
+  case kStateMsg_Update:
+    StandInFn("fn_18_7504 update");
+    break;
+  case kStateMsg_Deactivate:
+    mX6b4_ = 0;
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
