@@ -2368,8 +2368,29 @@ void CEmperorIngStage3::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
+// @ fn_18_67C0
+// fn_18_67C0 (0x144): the "LightBeamAttack" state, DarkBeamAttack with the
+// light-beam flag (0x80 of 0x825, rlwimi 7,24) and severity 3 (0x6850).
 void CEmperorIngStage3::LightBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_67C0");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // the value one
+    x825_ |= 0x80; // 0x6804: the light-beam flag, which StartBeam reads
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Three, CVector3f::Zero(), false)); // 0x6888
+    }
+    break;
+  case kStateMsg_Deactivate:
+    StopBeam(mgr); // fn_18_12C4
+    x825_ &= ~0x80; // 0x68E4
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 void CEmperorIngStage3::LightSwarmAttack(CStateManager& mgr, EStateMsg msg, float dt) {
