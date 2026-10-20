@@ -113,6 +113,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 
 
+
 } // namespace
 
 // fn_9_D904. The base call is the retail one: EPatternedAI 5 (`li r4, 0x5` at 0x0000DA54), flavor
@@ -553,8 +554,37 @@ void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_ADA0");
 }
 
+// fn_9_AE04: the alert state. On activate (the guest's message 0, 0x0000AE24) it remembers the
+// target id in the field at guest this+0xBCC (the store at 0x0000AE44) and marks the animation
+// state "ready" (the store at 0x0000AE48). On update (the guest's message 1, 0x0000AE0C) it asks
+// the animation state whether the alert command may be issued - the guest's ShouldRetry with the
+// command id 0x10 (0x0000AE58), which is the host's pas::kAS_Taunt - and, when it may, delivers
+// the attack pattern (the DeliverCmd calls at 0x0000AEAC and 0x0000AF10). On deactivate (the
+// guest's message 2, 0x0000AF40) the animation state goes back to "not ready".
 void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_AE04");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xbcc_ = xbca_;                                        // 0x0000AE44
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x0000AE48
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      // 0x0000AEAC / 0x0000AF10: the guest delivers the attack pattern command; the host's base
+      // has no attack pattern to deliver, so the call is a stand-in. The guest picks between two
+      // variants with the body controller's field at +0x580 (0x0000AE6C); without that field
+      // there is nothing to pick between.
+      StandInFn("CPatterned::DeliverAttackPattern (the guest's command 0x15)");
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x0000AF40
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 // fn_9_3CBC: the target's aim position. The guest looks the target up by the id at this+0xBCA

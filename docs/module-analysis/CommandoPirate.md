@@ -172,6 +172,7 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 13 | JetBoost | `fn_9_9BB4` | 0x771 |
 | 14 | PathFind | `fn_9_9AAC` | 0x77A |
 | 15 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
+| Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the attack pattern is delivered; deactivate: the animation state back to "not ready" | the host's base has no attack pattern to deliver, so `DeliverAttackPattern` is a named stand-in |
 | Patrol | `fn_9_996C` | 0x783 |
 | 16 | FollowAttackPattern | `fn_9_961C` | 0x78A |
 | 17 | WarpIn | `fn_9_9064` | 0x79E |
@@ -267,6 +268,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 | state | fn | .rodata | body | notes |
 |---|---|---|---|---|
 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
+| Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the attack pattern is delivered; deactivate: the animation state back to "not ready" | the host's base has no attack pattern to deliver, so `DeliverAttackPattern` is a named stand-in |
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009A60) has no host counterpart |
 | SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
@@ -285,11 +287,14 @@ member at that offset in the host's state manager, so the port uses the player a
   base's face vector: the guest's three loads are its 0x28, 0x38 and 0x48.
 
 In area 59 (Temple Grounds/05_temple_federationsite_dark) the state machine walks the states the
-actor reaches: Patrol, SelectTarget, FaceTarget, then Lurk (the `Alert` state, fn_9_AE04, is the
-next stand-in). `HasTarget` and `HasNewTarget` are the first triggers of the module that return
-true in the port - the commando's target is in the world - and they are what moves it on to
-`Lurk`. FaceTarget ticks every frame; the angle test answers "ready" (the target is not yet in
-front) and the animation state is otherwise the base's own, so `StateOver` stays false.
+actor reaches: Patrol, SelectTarget, FaceTarget, then Alert - and it stays there, because Alert
+puts the target id into the field at guest this+0xBCC (the store at 0x0000AE44), which is what
+`HasNewTarget` compares with the target id: after Alert the trigger is false again, exactly as in
+retail. `HasTarget` and `HasNewTarget` are the first triggers of the module that return true in
+the port - the commando's target is in the world. FaceTarget ticks every frame; the angle test
+answers "ready" (the target is not yet in front) and the animation state is otherwise the base's
+own, so `StateOver` stays false. No state stands in for the walk any more: every state the actor
+reaches is host code.
 
 ## 2. The loader (fn_9_168)
 
@@ -402,8 +407,8 @@ the run log is 0.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other 49 bodies: the two tables (34 triggers, 36 states) are registered,
-  eighteen of the triggers and four of the states are host code (the sections above), but every
+- The state machine's other 48 bodies: the two tables (34 triggers, 36 states) are registered,
+  eighteen of the triggers and five of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
   returns the neutral value.
 - The guest's `CVisualKnowledge` (this+0xAB0) and the `CTryCommand` the base keeps at +0x6B4:
