@@ -276,13 +276,13 @@ run carry `// fn_29_<off> (not yet exercised in a run)`. (The exit host class is
     `BodyProjectileFlight` -> IngCorporeal.
 - **Minimal/unexercised bodies** (the source still says `not yet exercised in a run`; the state ends
   or the function returns at once):
-  - States (15): WaitForFSMTransition, BecomeBodyProjectile, BecomeWallProjectile, SafeZoneReaction,
+  - States (13): WaitForFSMTransition, BecomeBodyProjectile, BecomeWallProjectile, SafeZoneReaction,
     Taunt, IngSpotPathFind, IngSpotPointPathFind, Patrol, FollowAttackPattern, SeekWallPoint,
-    FailSafeMode, GrappleBall, Dead, Evaporate. `BecomeBodyProjectile` and `BodyProjectileFlight`
-    left the list on 2026-10-20 (A.10).
-  - Code functions (8): SetCoverDest, SetPointCoverDest, SetWallPointCoverDest, SetLuredDest,
-    SetLuredPointDest, StartRangedAttack, EndRangedAttack, ExpelGrappledBall. `SetRecoverDest` carries
-    the `[?]` marker instead (closest path point within 20).
+    FailSafeMode, Dead, Evaporate. `BodyProjectileFlight` left the list on 2026-10-20 (A.10) and
+    `GrappleBall` on the same day (A.12).
+  - Code functions (7): SetCoverDest, SetPointCoverDest, SetWallPointCoverDest, SetLuredDest,
+    SetLuredPointDest, StartRangedAttack, EndRangedAttack (`ExpelGrappledBall` is marked, A.12).
+    `SetRecoverDest` carries the `[?]` marker instead (closest path point within 20).
   - Not on either list: the exit host (state `9D68`, code `54E8` and the `CIngExitHostEffect` class) is
     ported and marked (A.9).
 - **Other `[?]` values:**
@@ -392,7 +392,7 @@ disassembly `.../build/G2ME01/Ing/asm/auto_00_00000000_text.s`):
 | ~~splat~~ done | `fn_29_4F14` SplatOntoMesh (0x238) | ported 2026-10-20, `// @` (probe-driven); see A.8 |
 | ~~exit host~~ done | `fn_29_9D68` ExitHost (0x32C) + `fn_29_54E8` SetExitHostDest (0x22C) + the `CIngExitHostEffect` class (`fn_29_1105C` ctor 0x3DC, `fn_29_FF88` dtor, `1006C`/`100B8`/`10154`/`1046C`/`1065C`/`1077C`/`10944`/`10DEC`/`10EB4`/`10F58`; `lbl_29_data_C60`) | ported 2026-10-20 (`2382c8e15`), `// @` except `10E64` (Render, never queued - no model); class identity [proven]; see A.9 |
 | ~~body projectile~~ done | `fn_29_7E30` BodyProjectileFlight (0x2E8) | ported + `// @` 2026-10-20 (`ing_bp3.log`); the audit also fixed the aim prediction (0.5f), the unconditional emitter calls and the 0x1144 bit-6 pair; see A.10 |
-| ~~grapple~~ rear | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall | ported, still no `// @`: the puddle reaches `IngSpotPathFind` only through `SetCoverDest`, i.e. after `HasCoverPoint`; A.11 fixed the cover scan (wrong hint types) so it gets there now, and the ball half needs the player morphed - the `morphIntoBall` tweak is function-list 17, the **X** button (`press b` never morphed) |
+| ~~grapple~~ done | `fn_29_6578` GrappleBall + `fn_29_4D18` ExpelGrappledBall + the ball triggers `fn_29_A2D8`/`A224`/`A100` | ported + `// @` 2026-10-20; the run needs `layer 2`/`layer 3`, `press x` to morph and `tp` onto the puddle - see A.12 |
 | MinorIng | collision-actor damage path `fn_44_29D4` (never ran), inglet spawn in MassiveDeath `fn_44_7058`, post-`Dead` blob/delete | see §B.2 |
 
 Marked by the 2026-10-20 damage run (`ing_light6.sh`): `@ fn_29_2E8C` (the `kSM_Damage` branch),
@@ -614,6 +614,57 @@ patterned-info minimum attack range in, and the one whose meaning matches a "too
 nothing in the module reads it elsewhere to confirm.
 
 ---
+
+### A.12 The grapple (`fn_29_6578` + `fn_29_4D18`, marked 2026-10-20)
+
+The chain that finally reaches it, traced in Agon Wastes `01_sand_entrance_dark` (`ing_gr7.log`,
+`ing_gr8.log`; the script is `/tmp/opencode/ing_gr7.sh` + `ing_gr7_con.py`):
+
+1. `0018`-style arena scripts do not transfer: the Ings here are `u063e`/`u0633`/`u04fd`; layers 2
+   and 3 must be switched on with the console `layer 2` / `layer 3` before `objs Ing` lists them.
+2. Wake them with a heard shot, then **morph into the ball with `press x`** - the `morphIntoBall`
+   tweak is function-list 17, which is the X button (`Tweaks.inc`); `press b` never morphs, and the
+   earlier recipe that suggested it silently left the player standing.
+3. Sit **on** the puddle (`tp` to its own translation each few seconds). 1.2 units behind it is
+   still outside the touch box: `grapple range: touchbox 1 morph 1 normalZ 1.00 overlap 0`.
+4. Then `IngSpotPathFind` evaluates `CanGrappleTarget -> TargetIsBall -> InBallPursuitRange ->
+   HasPathToTarget -> !TargetInSafeZone -> SetTargetDest -> IngSpotPathFind` (the ball one) and
+   `InGrappleRange` flips to 1: `overlap 1 -> 1` -> `state GrappleBall form 3`.
+
+**`GrappleBall` `fn_29_6578`** in the run: Activate attaches the player, clears both 0x1144 bits and
+opens the `mSoundInsideHost` voice (0xd04); Update drags the Ing from 0.5 to 0.0 units off the ball
+(`MoveOnSurface`, `mIngSpot.maxWallSpeed`), deals `dt * 0x8cc` (5.0 a second here) with `kWT_AI`, no
+immunity, solid-only filter, and ramps `mHitReactionTime` by 0.30 a second to 1.00; at the property's
+5 s hold time the animation state goes Over; Deactivate restores both bits, detaches, removes the
+voice and sets `mBallCooldown` (0xe48) to `mPostWaitTime` (10 s).
+
+**`ExpelGrappledBall` `fn_29_4D18`** then runs as the machine's code node: with the reaction timer at
+1.00 it applies `mExitGrappleDamage` (0x8d0) once and resets `mCurDamageRemTime`, stops the ball,
+launches it up the surface normal slerped 20 degrees toward the Ing's forward with
+`mass * mSpitForce` = 6000.0 (30 x 200), `SetMoveState(kMS_ApplyJump)`, the exit voice, and clears
+the reaction timer and `mMoving`.
+
+Two trigger corrections came out of the same asm pass (`fn_29_A2D8` 0x0000A2E0, `fn_29_A100`
+0x0000A144): both the ball tests read the player's **spawned** morph state (0x390) first and only
+then the transition state (0x38c), so `TargetIsBall` and `InGrappleRange` now demand
+`kMS_Unmorphed` + `kMS_Morphed`; the port had only the transition half.
+
+```text
+023e grapple range: touchbox 1 player 0000 morph 1 normalZ 1.00 overlap 1 flags 01 -> 1
+023e state GrappleBall form 3
+023e grapple: held 1.02/5.00 s, reaction 0.30, 5.0 dmg/s, ball 0.0 away
+...
+023e grapple: held 4.02/5.00 s, reaction 1.00, 5.0 dmg/s, ball 0.0 away
+023e state ExpelGrappledBall form 3
+023e expel: hit reaction 1.00, impulse 6000.0, dir (0.11, -0.32, 0.94)
+```
+
+Still open around this slice: `IngSpotPathFind` `fn_29_8684`, `IngSpotPointPathFind` `fn_29_8570`,
+`FailSafeMode` `fn_29_69A0`, `SetCoverDest` `fn_29_5AC4` and `SetPointCoverDest` `fn_29_5820` all ran
+in these runs but none has been read against its asm yet, so they keep `not yet exercised` until
+that pass happens. The second Agon Ing (`0233`) still loops `Lurk -> SetRecoverDest -> FailSafeMode`
+- it is off the navmesh (`IsOffPath`), and `SetRecoverDest`'s "closest point within 20" is itself a
+`[?]`.
 
 ## B. MinorIng.rel (module 44)
 

@@ -1057,10 +1057,13 @@ bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return !mFollowingAttackPath;
 }
 
-// fn_29_A2D8 (not yet exercised in a run)
+// @ fn_29_A2D8: the target is a ball that was not spawned as one - asm 0x0000A2E0 tests
+// 0x390 (spawned state) first and only reads 0x38c (transition state) when it is 0.
 bool CIng::TargetIsBall(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
-  const bool isBall = player != nullptr && player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
+  const bool isBall = player != nullptr &&
+                      player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed &&
+                      player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
   static int sTick = 0;
   if (IngLogTick(sTick)) {
     fprintf(stderr, "[ing] %04x target is ball: target %04x player %d morph %d -> %d\n",
@@ -1071,7 +1074,8 @@ bool CIng::TargetIsBall(CStateManager& mgr, const CTriggerData&) const {
   return isBall;
 }
 
-// fn_29_A224 (not yet exercised in a run)
+// @ fn_29_A224: no-grapple flag (0x9d0 bit 3), ball cooldown at or below zero (0xe48) and the
+// target inside mData.mGrapple.mPursuitRange (0x8fc), compared squared.
 bool CIng::InBallPursuitRange(CStateManager& mgr, const CTriggerData&) const {
   const bool inRange = (mData.mFlags210 & kFlag_NoGrapple) == 0 && mBallCooldown <= 0.f &&
                        DistSqToTarget(mgr) <
@@ -1094,13 +1098,16 @@ bool CIng::HasPathToTarget(CStateManager& mgr, const CTriggerData&) const {
              CPathFindSearch::kR_Success;
 }
 
-// fn_29_A100 (not yet exercised in a run)
+// @ fn_29_A100: no-grapple flag, the same spawned-then-transition ball test as TargetIsBall
+// (asm 0x0000A144), the surface normal's z at or above rodata_108 (0.9) and the touch box (0xcc0)
+// overlapping the player's bounds.
 bool CIng::InGrappleRange(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
   const float normalZ = mSurfaceAlignment.GetSurface().GetNormal().GetZ();
   const bool overlap =
       player != nullptr && mTouchBox && mTouchBox->DoBoundsOverlap(player->GetBoundingBox());
   const bool inRange = (mData.mFlags210 & kFlag_NoGrapple) == 0 && mTouchBox && player != nullptr &&
+                       player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed &&
                        player->GetMorphballTransitionState() == CPlayer::kMS_Morphed &&
                        normalZ >= 0.9f && overlap;
   static int sTick = 0;
@@ -2251,8 +2258,11 @@ void CIng::FailSafeMode(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_6578 (not yet exercised in a run). Retail holds the morphed player for as long as the
-// grapple lives. Enter grabs the ball (attach, morph lock, looping voice), Update drags the Ing onto
+// @ fn_29_6578: retail holds the morphed player for as long as the grapple lives. Exercised in
+// Agon's 01_sand_entrance_dark (/tmp/opencode/ing_gr8.log): `grapple range ... overlap 1 -> 1` ->
+// `state GrappleBall form 3` -> the ball is dragged from 0.5 to 0.0 units away while 5 damage a
+// second lands and the hit reaction ramps 0.30 a second to 1.00 -> `state ExpelGrappledBall` at the
+// 5 s hold time. Enter grabs the ball (attach, morph lock, looping voice), Update drags the Ing onto
 // the ball at the ing-spot wall speed while draining mUnknown67F6 damage a second (no immunity,
 // solid filter) and returns kAS_Over once the hold time runs out or a hit reaction (mHitReactionTime
 // < 0) ends it, and Exit releases the ball, stops the voice and arms the grapple cooldown.
@@ -2304,6 +2314,13 @@ void CIng::GrappleBall(CStateManager& mgr, EStateMsg msg, float dt) {
                     CDamageInfo(CWeaponMode(kWT_AI), dt * mData.mGrapple.mUnknown67F6, 0.f, 0.f,
                                 true, false), // 0x8cc, no immunity
                     SolidFilter(), CVector3f::Zero());
+    static int sTick = 0;
+    if (IngLogTick(sTick)) {
+      fprintf(stderr,
+              "[ing] %04x grapple: held %.2f/%.2f s, reaction %.2f, %.1f dmg/s, ball %.1f away\n",
+              GetUniqueId().Value(), StateMachineState().GetTime(), mData.mGrapple.mMaxHoldTime,
+              mHitReactionTime, mData.mGrapple.mUnknown67F6, delta.Magnitude());
+    }
     const float drain = mHitReactionTime + 0.3f * dt; // reaction ramp, rodata_FC
     mHitReactionTime = drain > 1.f ? 1.f : drain;    // 0xe4c
     break;
@@ -2677,7 +2694,9 @@ void CIng::SplatOntoMesh(CStateManager& mgr, float) {
   }
 }
 
-// fn_29_4D18 (not yet exercised in a run). The grapple's expiry: one last mExitGrappleDamage on the
+// @ fn_29_4D18: the grapple's expiry, reached in the same run (`expel: hit reaction 1.00, impulse
+// 6000.0, dir (0.11, -0.32, 0.94)` - 30 spit force times the player's 200 mass, up the surface
+// normal slerped 20 degrees toward the Ing). The grapple's expiry: one last mExitGrappleDamage on the
 // held ball (unless a hit reaction already cancelled it), then the ball is spat away - up the
 // surface normal slerped 20 degrees (rodata_E8) toward the Ing's forward, times mass * mSpitForce
 // so its speed is the property's - and the reaction timer resets.
@@ -2700,6 +2719,11 @@ void CIng::ExpelGrappledBall(CStateManager& mgr, float) {
     CSfxManager::AddEmitter(mData.mGrapple.mSoundExitGrapple, GetTranslation(), 0x7f,
                             GetCurrentAreaId().Value(), true, false,
                             CSfxManager::kMedPriority); // 0x8f0
+    if (DebugIng()) {
+      fprintf(stderr, "[ing] %04x expel: hit reaction %.2f, impulse %.1f, dir (%.2f, %.2f, %.2f)\n",
+              GetUniqueId().Value(), mHitReactionTime, mData.mGrapple.mSpitForce * player->GetMass(),
+              dir.GetX(), dir.GetY(), dir.GetZ());
+    }
   }
   mHitReactionTime = 0.f; // 0xe4c
   mMoving = false;        // 0xe5d bit 1
