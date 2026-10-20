@@ -27,7 +27,7 @@ port names it once per run, so the log says which body is missing. The names are
 |---|---|---|
 | `fn_44_9D58` | 0x878 | the retail constructor: the host builds `CMinorIng` with its own ctor and the loader fills `CMinorIngData` through the generated `SLdrMinorIng` reader |
 | `fn_44_110` | 0x844 | the retail loader reads the REL's own binary format; the host reads the generated `SLdrMinorIng` |
-| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are not read by the host's loader |
+| `fn_44_7058` | 0x654 | the massive death spawns the inglets (`CBouncyGrenade`); the inglet's health (guest 0xb0), its grenade data (guest 0xd0) and its spawn data (guest 0x8e0..0x8f8) are not read by the host's loader. The grenade fields themselves are in `SLdrUnknownStruct34` (`SLdrMinorIng.hpp`), which is the `unknown_0x3da35851` block the retail's fn_44_1CE0 reads, and the host has `CBouncyGrenadeData` and `CBouncyGrenade` (the Wall Walker's inglet in `CWallWalker.cpp` shows the shape) |
 
 `fn_44_97E4` (the destructor) and `fn_44_34B0` (the ray) were stand-ins and are
 ported now: the destructor is the host's member destruction (the retail's body is
