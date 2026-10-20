@@ -1,10 +1,11 @@
 // Host body for the DigitalGuardian REL (module 14), milestone 1: the actor loads, registers and
 // thinks. Every vtable override that belongs to retail's AI forwards to CPatterned behind a
-// once-only StandIn log, and the REL function it stands in for is named on each. The state machine
-// (fn_14_9DFC installs the 12 triggers, 14 states and 13 codes), the vortex (fn_14_458C), the knee
-// armour, the transmission beacon, the toe targets and the head module (CDigitalGuardianHead,
-// guest 0x10F8) are not written yet - docs/module-analysis/DigitalGuardian.md section i has the
-// plan.
+// once-only StandIn log, and the REL function it stands in for is named on each. The state
+// machine's tables are registered (fn_14_9DFC installs the 12 triggers, 14 states and 13 codes),
+// but the 39 functions they point at are stand-ins that log the retail function they stand in
+// for and return the neutral value. The vortex (fn_14_458C), the knee armour, the transmission
+// beacon, the toe targets and the head module (CDigitalGuardianHead, guest 0x10F8) are not
+// written yet - docs/module-analysis/DigitalGuardian.md section i has the plan.
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_14_data_484 lists them by address
 // (/tmp/opencode/pseudo/DigitalGuardian and the module's asm dump) and the slots line up with
@@ -40,6 +41,72 @@ void StandIn(const char* what) {
   }
   fprintf(stderr, "[dgrd] %s is a port stand-in (see PortCDigitalGuardian.cpp)\n", what);
 }
+
+// The same, for the state machine's own functions: the message names the retail function the
+// entry stands in for, so the log says which of the module's 39 FSM functions the run reached.
+void StandInFn(const char* fn) {
+  static const char* sSeen[64] = {};
+  static int sCount = 0;
+  for (int i = 0; i < sCount; ++i) {
+    if (sSeen[i] == fn) {
+      return;
+    }
+  }
+  if (sCount < 64) {
+    sSeen[sCount++] = fn;
+  }
+  fprintf(stderr, "[dg] stand-in %s\n", fn);
+}
+
+// The body's three FSM tables. Retail builds them in a static initialiser (fn_14_D904, .ctors):
+// the tables are lbl_14_data_9C (12 triggers, .data 0x9C), lbl_14_data_204 (14 states, .data
+// 0x204) and lbl_14_data_380 (13 codes, .data 0x380), each entry 16 bytes
+// {name, 0, 0xFFFFFFFF, fn}, and the function pointers come from the three-word records
+// {0, 0xFFFFFFFF, fn} in .data 0xC..0x374 (fn_14_D904's stores at 0xDB50..0xDCC8 for the
+// triggers, 0xDCD0..0xDEB8 for the states and 0xDEBC..0xE00C for the codes).
+//
+// On the host the table addresses are irrelevant: the state machine matches a node by its name,
+// so the name strings are retail's and the entry's function is the module's member function.
+// The members are cast the way CAIMannedTurret and the SpacePirate port do it.
+#define DG_TRIGGER(name)                                                                           \
+  { #name, reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CDigitalGuardian::name) }
+#define DG_STATE(name)                                                                             \
+  { #name, reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CDigitalGuardian::name) }
+#define DG_CODE(name)                                                                              \
+  { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CDigitalGuardian::name) }
+
+CPatterned::StateMachine::STriggerFunction skTriggers[] = {
+    DG_TRIGGER(StateOver),           DG_TRIGGER(IsIdle),
+    DG_TRIGGER(HasFaceTarget),       DG_TRIGGER(KneeDestroyed),
+    DG_TRIGGER(AllKneesDestroyed),   DG_TRIGGER(ShouldProtectKnees),
+    DG_TRIGGER(ShouldVortexAttack),  DG_TRIGGER(ShouldMeleeAttack),
+    DG_TRIGGER(ShouldProjectileAttack), DG_TRIGGER(ShouldJumpAttack),
+    DG_TRIGGER(VortexStruckPlayer),  DG_TRIGGER(BreakOutOfVortex),
+};
+
+CPatterned::StateMachine::SStateFunction skStates[] = {
+    DG_STATE(Start),               DG_STATE(Idle),
+    DG_STATE(FaceTarget),          DG_STATE(VortexAttack),
+    DG_STATE(VortexEndAttack),     DG_STATE(VortexRetreat),
+    DG_STATE(ExitVortexAttack),    DG_STATE(MeleeAttackTelegraph),
+    DG_STATE(MeleeAttack),         DG_STATE(ProjectileAttack),
+    DG_STATE(JumpAttack),          DG_STATE(KneeDestroyedReaction),
+    DG_STATE(CrippledReaction),    DG_STATE(Crippled),
+};
+
+CPatterned::StateMachine::SCodeFunction skCodes[] = {
+    DG_CODE(SetupBossEnergyBar),      DG_CODE(ResetProtectKneesTime),
+    DG_CODE(ResetJumpTime),           DG_CODE(ResetAttackTimes),
+    DG_CODE(SetProtectKneesFaceTarget), DG_CODE(SetVortexAttackMode),
+    DG_CODE(SetNormalAttackMode),     DG_CODE(DisableHeadAttacks),
+    DG_CODE(ResetHeadAttacks),        DG_CODE(SelectExitVortexTarget),
+    DG_CODE(SelectBestMeleeAttackLeg), DG_CODE(SelectMeleeAttackRange),
+    DG_CODE(SetJumpFaceTarget),
+};
+
+#undef DG_TRIGGER
+#undef DG_STATE
+#undef DG_CODE
 
 } // namespace
 
@@ -182,11 +249,195 @@ void CDigitalGuardian::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint
   CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
 }
 
-// vtable slot 60 = fn_14_9DFC: it registers the module's three tables (12 triggers, 14 states and
-// 13 codes) on the state machine. That is milestone 2, so only the base setup runs here.
+// vtable slot 60 = fn_14_9DFC (0x9DFC..0x9FE4): the base's setup first (the call at 0x9ED0), then
+// the module's three tables on the state manager at this+0x350 - the triggers (lbl_14_data_9C,
+// 12 = 0xC) through the vtable slot at +0x18 (the call at 0x9EE8), the states (lbl_14_data_204,
+// 14 = 0xE) through +0x14 (0x9F10) and the codes (lbl_14_data_380, 13 = 0xD) through +0x1C
+// (0x9F30).
 void CDigitalGuardian::SetupStateMachine(CStateManager& mgr) {
-  StandIn("CDigitalGuardian::SetupStateMachine (vtable slot 60, fn_14_9DFC)");
   CPatterned::SetupStateMachine(mgr);
+  StateMachine* stateMachine = mStateMachine.get();
+  stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
+  stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
+  // The host's FSM1 does not dispatch code nodes yet (TStateMachineState::SetCodeFunctions is
+  // empty), so this only records the table retail registers.
+  stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
+}
+
+// ---------------------------------------------------------------------------------------------
+// The body's FSM functions. Retail's entries are the module's own functions; their bodies are
+// not ported in this slice, so each one logs the retail function it stands in for and returns
+// the neutral value (false for a trigger, nothing for a state or a code).
+//
+// The 12 triggers of lbl_14_data_9C (.data 0x9C; fn_14_D904's stores at 0xDB50..0xDCC8).
+bool CDigitalGuardian::StateOver(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9AA8");
+  return false;
+}
+
+bool CDigitalGuardian::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9A9C");
+  return false;
+}
+
+bool CDigitalGuardian::HasFaceTarget(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9A60");
+  return false;
+}
+
+bool CDigitalGuardian::KneeDestroyed(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9A48");
+  return false;
+}
+
+bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9A0C");
+  return false;
+}
+
+bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9994");
+  return false;
+}
+
+bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9930");
+  return false;
+}
+
+bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_97F0");
+  return false;
+}
+
+bool CDigitalGuardian::ShouldProjectileAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_97A4");
+  return false;
+}
+
+bool CDigitalGuardian::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9678");
+  return false;
+}
+
+bool CDigitalGuardian::VortexStruckPlayer(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_966C");
+  return false;
+}
+
+bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& data) const {
+  StandInFn("fn_14_9638");
+  return false;
+}
+
+// The 14 states of lbl_14_data_204 (.data 0x204; fn_14_D904's stores at 0xDCD0..0xDEB8).
+void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_9634");
+}
+
+void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_95B8");
+}
+
+void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_94BC");
+}
+
+void CDigitalGuardian::VortexAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_9260");
+}
+
+void CDigitalGuardian::VortexEndAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_9164");
+}
+
+void CDigitalGuardian::VortexRetreat(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_9070");
+}
+
+void CDigitalGuardian::ExitVortexAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_8E44");
+}
+
+void CDigitalGuardian::MeleeAttackTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_8CCC");
+}
+
+void CDigitalGuardian::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_89D4");
+}
+
+void CDigitalGuardian::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_8794");
+}
+
+void CDigitalGuardian::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_8580");
+}
+
+void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_8090");
+}
+
+void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_7D8C");
+}
+
+void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
+  StandInFn("fn_14_7CB4");
+}
+
+// The 13 codes of lbl_14_data_380 (.data 0x380; fn_14_D904's stores at 0xDEBC..0xE00C).
+void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7BD4");
+}
+
+void CDigitalGuardian::ResetProtectKneesTime(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7B90");
+}
+
+void CDigitalGuardian::ResetJumpTime(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7B84");
+}
+
+void CDigitalGuardian::ResetAttackTimes(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7B24");
+}
+
+void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_77EC");
+}
+
+void CDigitalGuardian::SetVortexAttackMode(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_775C");
+}
+
+void CDigitalGuardian::SetNormalAttackMode(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_76D0");
+}
+
+void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_768C");
+}
+
+void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7648");
+}
+
+void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7600");
+}
+
+void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7504");
+}
+
+void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_73D4");
+}
+
+void CDigitalGuardian::SetJumpFaceTarget(CStateManager& mgr, float dt) {
+  StandInFn("fn_14_7208");
 }
 
 // vtable slot 71 = fn_14_9CA4.

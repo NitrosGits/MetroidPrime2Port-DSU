@@ -107,41 +107,51 @@ reactions [0x00007F20]. Their role is **unknown** (they are not in any of the th
 
 ### b.2 Body triggers (`lbl_14_data_9C`)
 
-| # | name | fn | # | name | fn |
-|---|---|---|---|---|---|
-| 0 | StateOver | `fn_14_9AA8` | 6 | ShouldVortexAttack | `fn_14_9930` |
-| 1 | IsIdle | `fn_14_9A9C` | 7 | ShouldMeleeAttack | `fn_14_97F0` |
-| 2 | HasFaceTarget | `fn_14_9A60` | 8 | ShouldProjectileAttack | `fn_14_97A4` |
-| 3 | KneeDestroyed | `fn_14_9A48` | 9 | ShouldJumpAttack | `fn_14_9678` |
-| 4 | AllKneesDestroyed | `fn_14_9A0C` | 10 | VortexStruckPlayer | `fn_14_966C` |
-| 5 | ShouldProtectKnees | `fn_14_9994` | 11 | BreakOutOfVortex | `fn_14_9638` |
+The table is `.data 0x9C..0x15C` (12 entries of 16 bytes); the names are the `.rodata` strings
+below, the functions the three-word records in `.data 0xC..0x90` (fn_14_D904's stores at
+0xDB50..0xDCC8).
+
+| # | name | rodata | fn | # | name | rodata | fn |
+|---|---|---|---|---|---|---|---|
+| 0 | StateOver | 0x2F4 | `fn_14_9AA8` | 6 | ShouldVortexAttack | 0x346 | `fn_14_9930` |
+| 1 | IsIdle | 0x2FE | `fn_14_9A9C` | 7 | ShouldMeleeAttack | 0x359 | `fn_14_97F0` |
+| 2 | HasFaceTarget | 0x305 | `fn_14_9A60` | 8 | ShouldProjectileAttack | 0x36B | `fn_14_97A4` |
+| 3 | KneeDestroyed | 0x313 | `fn_14_9A48` | 9 | ShouldJumpAttack | 0x382 | `fn_14_9678` |
+| 4 | AllKneesDestroyed | 0x321 | `fn_14_9A0C` | 10 | VortexStruckPlayer | 0x393 | `fn_14_966C` |
+| 5 | ShouldProtectKnees | 0x333 | `fn_14_9994` | 11 | BreakOutOfVortex | 0x3A6 | `fn_14_9638` |
 
 `IsIdle` reads bit 7 of `this+0x128C` [fn_14_9A9C]; `StateOver` compares `this+0x6B4` with 3
 [fn_14_9AA8] (the base class's animation-state id).
 
 ### b.3 Body states (`lbl_14_data_204`)
 
-| # | name | fn | # | name | fn |
-|---|---|---|---|---|---|
-| 0 | Start | `fn_14_9634` (empty body) | 7 | MeleeAttackTelegraph | `fn_14_8CCC` |
-| 1 | Idle | `fn_14_95B8` | 8 | MeleeAttack | `fn_14_89D4` |
-| 2 | FaceTarget | `fn_14_94BC` | 9 | ProjectileAttack | `fn_14_8794` |
-| 3 | VortexAttack | `fn_14_9260` | 10 | JumpAttack | `fn_14_8580` |
-| 4 | VortexEndAttack | `fn_14_9164` | 11 | KneeDestroyedReaction | `fn_14_8090` |
-| 5 | VortexRetreat | `fn_14_9070` | 12 | CrippledReaction | `fn_14_7D8C` |
-| 6 | ExitVortexAttack | `fn_14_8E44` | 13 | Crippled | `fn_14_7CB4` |
+The table is `.data 0x204..0x2E4` (14 entries); the records are in `.data 0x15C..0x1F8`
+(fn_14_D904's stores at 0xDCD0..0xDEB8).
+
+| # | name | rodata | fn | # | name | rodata | fn |
+|---|---|---|---|---|---|---|---|
+| 0 | Start | 0x3B7 | `fn_14_9634` (empty body) | 7 | MeleeAttackTelegraph | 0x409 | `fn_14_8CCC` |
+| 1 | Idle | 0x3BD | `fn_14_95B8` | 8 | MeleeAttack | 0x41E | `fn_14_89D4` |
+| 2 | FaceTarget | 0x3C2 | `fn_14_94BC` | 9 | ProjectileAttack | 0x42A | `fn_14_8794` |
+| 3 | VortexAttack | 0x3CD | `fn_14_9260` | 10 | JumpAttack | 0x43B | `fn_14_8580` |
+| 4 | VortexEndAttack | 0x3DA | `fn_14_9164` | 11 | KneeDestroyedReaction | 0x446 | `fn_14_8090` |
+| 5 | VortexRetreat | 0x3EA | `fn_14_9070` | 12 | CrippledReaction | 0x45C | `fn_14_7D8C` |
+| 6 | ExitVortexAttack | 0x3F8 | `fn_14_8E44` | 13 | Crippled | 0x46D | `fn_14_7CB4` |
 
 ### b.4 Body codes (`lbl_14_data_380`)
 
-| # | name | fn | # | name | fn |
-|---|---|---|---|---|---|
-| 0 | SetupBossEnergyBar | `fn_14_7BD4` | 7 | DisableHeadAttacks | `fn_14_768C` |
-| 1 | ResetProtectKneesTime | `fn_14_7B90` | 8 | ResetHeadAttacks | `fn_14_7648` |
-| 2 | ResetJumpTime | `fn_14_7B84` | 9 | SelectExitVortexTarget | `fn_14_7600` |
-| 3 | ResetAttackTimes | `fn_14_7B24` | 10 | SelectBestMeleeAttackLeg | `fn_14_7504` |
-| 4 | SetProtectKneesFaceTarget | `fn_14_77EC` | 11 | SelectMeleeAttackRange | `fn_14_73D4` |
-| 5 | SetVortexAttackMode | `fn_14_775C` | 12 | SetJumpFaceTarget | `fn_14_7208` |
-| 6 | SetNormalAttackMode | `fn_14_76D0` | | | |
+The table is `.data 0x380..0x450` (13 entries); the records are in `.data 0x2E4..0x374`
+(fn_14_D904's stores at 0xDEBC..0xE00C).
+
+| # | name | rodata | fn | # | name | rodata | fn |
+|---|---|---|---|---|---|---|---|
+| 0 | SetupBossEnergyBar | 0x476 | `fn_14_7BD4` | 7 | DisableHeadAttacks | 0x500 | `fn_14_768C` |
+| 1 | ResetProtectKneesTime | 0x489 | `fn_14_7B90` | 8 | ResetHeadAttacks | 0x513 | `fn_14_7648` |
+| 2 | ResetJumpTime | 0x49F | `fn_14_7B84` | 9 | SelectExitVortexTarget | 0x524 | `fn_14_7600` |
+| 3 | ResetAttackTimes | 0x4AD | `fn_14_7B24` | 10 | SelectBestMeleeAttackLeg | 0x53B | `fn_14_7504` |
+| 4 | SetProtectKneesFaceTarget | 0x4BE | `fn_14_77EC` | 11 | SelectMeleeAttackRange | 0x554 | `fn_14_73D4` |
+| 5 | SetVortexAttackMode | 0x4D8 | `fn_14_775C` | 12 | SetJumpFaceTarget | 0x56B | `fn_14_7208` |
+| 6 | SetNormalAttackMode | 0x4EC | `fn_14_76D0` | | | | |
 
 ### b.5 Head triggers (`lbl_14_data_808`)
 
@@ -560,8 +570,9 @@ non-PC branch keeps the retail byte array (`uchar x7c0_[0xAD0]`).
 
 What did **not** land: the head module. `mLoadDigitalGuardianHead` is filled with a documented
 stand-in that logs once and returns null (the script loader helper skips the object), so the
-`DGHD` actor in layer 3 is not created - WP3 is where it comes. The FSM (WP2), the sub-actors
-(WP4) and the toe target / beacon (section j) are also still open. A run in
+`DGHD` actor in layer 3 is not created - WP3 is where it comes. The FSM's *bodies* (WP2 part 2),
+the sub-actors (WP4) and the toe target / beacon (section j) are also still open (WP2 part 1, the
+tables and the setup, landed later the same day). A run in
 `09_cliff_temple_dark` (area 53 of world 1baa96c2, layer 3 `CliffsideBoss` and layer 11
 `CliffsideBoss Body`) lists one `CDigitalGuardian` (`u054d`, area a53) that thinks without a
 crash, with no `[port] caught` and no `reach-stub` in the log.
@@ -572,6 +583,37 @@ Port `fn_14_9DFC` (SetupStateMachine) plus the body's 12 triggers, 14 states and
 table layout of section b. The static initialiser `fn_14_D904` becomes the host's table builder
 (one `TStateMachineFunctionTypes<CPatterned>` per entry); the table addresses themselves are
 irrelevant on the host.
+
+**WP2 part 1 done (2026-10-20): the tables and the setup.** `fn_14_9DFC` is ported as
+`CDigitalGuardian::SetupStateMachine`: the base's setup first (the call at 0x9ED0), then the
+module's three tables on the state manager at `this+0x350` - triggers (vtable slot +0x18, count
+0xC), states (+0x14, count 0xE), codes (+0x1C, count 0xD), the three calls at 0x9EE8 / 0x9F10 /
+0x9F30. On the host the tables are three `CPatterned::StateMachine::S{Trigger,State,Code}Function`
+arrays in `src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp`; the entries carry retail's name
+strings (the state machine asset's nodes are matched by name) and the module's own member
+functions, cast the way `CAIMannedTurret` and the SpacePirate port do it. The 39 bodies are
+**stand-ins in this slice**: each logs `[dg] stand-in fn_14_XXXX` once and returns the neutral
+value (false for a trigger). No `// @` marker: none of them is retail's body yet.
+
+The names, the counts and the function pointers were re-derived from the asm for this slice and
+agree with section b: `auto_04_00000000_data.s` gives the tables (0x9C/0x204/0x380) and the
+three-word records (0xC..0x374), `auto_03_00000000_rodata.s` the name strings, and
+`auto_fn_14_D904_text.s` the stores that put every record into its table (triggers 0xDB50..
+0xDCC8, states 0xDCD0..0xDEB8, codes 0xDEBC..0xE00C). The host's FSM1 does not dispatch code
+nodes yet (`TStateMachineState::SetCodeFunctions` is empty), so the code table is registered but
+never called.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11): the guardian
+`u054d` has to be activated by the console (`send u054d Activate`; the layer script does it in
+retail) before the FSM runs. Then the log shows `fn_14_9634` (Start), the codes `fn_14_7BD4`
+(SetupBossEnergyBar) and `fn_14_76D0` (SetNormalAttackMode), the state `fn_14_95B8` (Idle) and
+the triggers `fn_14_9A48` (KneeDestroyed), `fn_14_97F0` (ShouldMeleeAttack), `fn_14_9930`
+(ShouldVortexAttack), `fn_14_9678` (ShouldJumpAttack), `fn_14_9994` (ShouldProtectKnees) and
+`fn_14_97A4` (ShouldProjectileAttack). No `[port] caught` and no `reach-stub`.
+
+**WP2 part 2 (next): the bodies.** The 12 triggers and the 14 states are the next slice (the
+codes are one-liners); the tables' names and the state machine asset's transitions tell which
+state follows which.
 
 ### WP3 — the head module
 

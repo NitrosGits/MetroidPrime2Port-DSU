@@ -195,6 +195,59 @@ public:
   void ScanVisorRender(const CStateManager&, const CTransform4f&, const CModelFlags&) const override;
   const rstl::optional_object< TCachedToken< CGenDescription > >&
   GetDeathExplosionParticle() const override;
+
+  // The body's state machine. Retail fn_14_9DFC (vtable slot 60) calls the base's setup and
+  // then registers the three tables fn_14_D904 builds: 12 triggers (lbl_14_data_9C), 14 states
+  // (lbl_14_data_204) and 13 codes (lbl_14_data_380). The names are retail's - the state
+  // machine asset's nodes are matched by name - and each comment is the retail function the
+  // entry points at. The bodies are stand-ins in this slice; a later one ports them.
+  //
+  // Triggers (lbl_14_data_9C, 12 entries).
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;         // fn_14_9AA8
+  bool IsIdle(CStateManager& mgr, const CTriggerData& data) const;             // fn_14_9A9C
+  bool HasFaceTarget(CStateManager& mgr, const CTriggerData& data) const;      // fn_14_9A60
+  bool KneeDestroyed(CStateManager& mgr, const CTriggerData& data) const;      // fn_14_9A48
+  bool AllKneesDestroyed(CStateManager& mgr, const CTriggerData& data) const;  // fn_14_9A0C
+  bool ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const; // fn_14_9994
+  bool ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_14_9930
+  bool ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_14_97F0
+  bool ShouldProjectileAttack(CStateManager& mgr,
+                              const CTriggerData& data) const;                 // fn_14_97A4
+  bool ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_14_9678
+  bool VortexStruckPlayer(CStateManager& mgr, const CTriggerData& data) const; // fn_14_966C
+  bool BreakOutOfVortex(CStateManager& mgr, const CTriggerData& data) const;  // fn_14_9638
+
+  // States (lbl_14_data_204, 14 entries). Start hides CPatterned::Start, which is what retail
+  // does too: the module's table replaces the base's "Start" entry.
+  void Start(CStateManager& mgr, EStateMsg msg, float dt);                     // fn_14_9634
+  void Idle(CStateManager& mgr, EStateMsg msg, float dt);                      // fn_14_95B8
+  void FaceTarget(CStateManager& mgr, EStateMsg msg, float dt);                // fn_14_94BC
+  void VortexAttack(CStateManager& mgr, EStateMsg msg, float dt);              // fn_14_9260
+  void VortexEndAttack(CStateManager& mgr, EStateMsg msg, float dt);           // fn_14_9164
+  void VortexRetreat(CStateManager& mgr, EStateMsg msg, float dt);             // fn_14_9070
+  void ExitVortexAttack(CStateManager& mgr, EStateMsg msg, float dt);          // fn_14_8E44
+  void MeleeAttackTelegraph(CStateManager& mgr, EStateMsg msg, float dt);      // fn_14_8CCC
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt);               // fn_14_89D4
+  void ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt);          // fn_14_8794
+  void JumpAttack(CStateManager& mgr, EStateMsg msg, float dt);                // fn_14_8580
+  void KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, float dt);     // fn_14_8090
+  void CrippledReaction(CStateManager& mgr, EStateMsg msg, float dt);          // fn_14_7D8C
+  void Crippled(CStateManager& mgr, EStateMsg msg, float dt);                  // fn_14_7CB4
+
+  // Codes (lbl_14_data_380, 13 entries).
+  void SetupBossEnergyBar(CStateManager& mgr, float dt);                       // fn_14_7BD4
+  void ResetProtectKneesTime(CStateManager& mgr, float dt);                    // fn_14_7B90
+  void ResetJumpTime(CStateManager& mgr, float dt);                            // fn_14_7B84
+  void ResetAttackTimes(CStateManager& mgr, float dt);                         // fn_14_7B24
+  void SetProtectKneesFaceTarget(CStateManager& mgr, float dt);               // fn_14_77EC
+  void SetVortexAttackMode(CStateManager& mgr, float dt);                      // fn_14_775C
+  void SetNormalAttackMode(CStateManager& mgr, float dt);                      // fn_14_76D0
+  void DisableHeadAttacks(CStateManager& mgr, float dt);                       // fn_14_768C
+  void ResetHeadAttacks(CStateManager& mgr, float dt);                         // fn_14_7648
+  void SelectExitVortexTarget(CStateManager& mgr, float dt);                   // fn_14_7600
+  void SelectBestMeleeAttackLeg(CStateManager& mgr, float dt);                // fn_14_7504
+  void SelectMeleeAttackRange(CStateManager& mgr, float dt);                  // fn_14_73D4
+  void SetJumpFaceTarget(CStateManager& mgr, float dt);                        // fn_14_7208
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
