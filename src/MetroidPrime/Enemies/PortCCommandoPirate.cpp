@@ -24,7 +24,9 @@
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.hpp"
@@ -1161,8 +1163,63 @@ void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, floa
   StandInFn("fn_9_A110");
 }
 
+// @ fn_9_9F24
+// fn_9_9F24 (0x1ec bytes): the JumpPointFind state. Only the activate message (the guest's test
+// of 0 at 0x00009F44) does anything: the jump point id (guest this+0xBD0) is cleared (the store
+// at 0x00009F64), the timer at guest this+0xB78 has to be at least 2.0f (lbl_9_rodata_44C, the
+// compare at 0x00009F6C) and the module's own helper fn_9_3CBC has to answer with the target's
+// aim position (the call at 0x00009F84), which it stores at guest this+0xB94 (the argument at
+// 0x00009F7C). The timer is then cleared (the store at 0x00009FA0).
+//
+// The AiWaypoint list (the state manager's +0x838, the load at 0x00009FA4) is scanned for the
+// jump point to use: it has to be active (the byte at +0x20's 0x80 bit, the extrwi at
+// 0x00009FE4), free (GetInUse with this actor's id, the call at 0x00009FFC), of type 0 (the word
+// at +0x15C, the compare at 0x0000A00C), have no jump target (+0x182, the compare at
+// 0x0000A020) and be in this area (+0x04, the compare at 0x0000A030). Its current waypoint
+// (+0x180, the lookup at 0x0000A04C) has to resolve, and that waypoint has to be nearer to the
+// target's aim position than the best candidate so far (the squares at 0x0000A064..0x0000A090,
+// the limit lbl_9_rodata_4B8 = FLT_MAX). The path find search (the guest's GetSearchPath, the
+// vtable call at 0x0000A0A4) has to connect the actor to the jump point (the PathExists call at
+// 0x0000A0B0). The winner's id goes into guest this+0xBD0 (the store at 0x0000A0C4).
 void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9F24");
+  if (msg != kStateMsg_Activate) {
+    return;                                     // 0x00009F44..0x00009F50
+  }
+  xbd0_ = kInvalidUniqueId;                     // 0x00009F64
+  if (xb78_ < 2.f) {                            // 0x00009F6C..0x00009F74
+    return;
+  }
+  if (!x3CBC_(mgr, xb94_, 0.f)) {                // 0x00009F84..0x00009F8C
+    return;
+  }
+  xb78_ = 0.f;                                  // 0x00009FA0
+  float best = 3.4028235e+38f;                   // lbl_9_rodata_4B8, the load at 0x00009F9C
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);          // 0x00009FA4
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptAiJumpPoint* jumpPoint = TCastToPtr< CScriptAiJumpPoint >(list[i]);
+    if (jumpPoint == nullptr || !jumpPoint->GetActive() ||             // 0x00009FD8..0x00009FE8
+        jumpPoint->GetInUse(GetUniqueId()) ||                            // 0x00009FFC..0x0000A004
+        jumpPoint->GetType() != 0 ||                                    // 0x0000A008..0x0000A010
+        jumpPoint->GetJumpTarget() != kInvalidUniqueId ||               // 0x0000A014..0x0000A024
+        jumpPoint->GetCurrentAreaId() != GetCurrentAreaId()) {          // 0x0000A028..0x0000A034
+      continue;
+    }
+    const CScriptWaypoint* waypoint = TCastToConstPtr< CScriptWaypoint >(
+        mgr.GetObjectById(jumpPoint->GetJumpPoint()));  // 0x0000A038..0x0000A058
+    if (waypoint == nullptr) {
+      continue;
+    }
+    const float distSq = (waypoint->GetTranslation() - xb94_).MagSquared();  // 0x0000A05C..0x0000A088
+    if (distSq >= best) {                       // 0x0000A08C..0x0000A090
+      continue;
+    }
+    if (mPathFindSearch.PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
+        CPathFindSearch::kR_Success) {          // 0x0000A094..0x0000A0B8
+      continue;
+    }
+    best = distSq;                              // 0x0000A0C0
+    xbd0_ = jumpPoint->GetUniqueId();           // 0x0000A0BC..0x0000A0C4
+  }
 }
 
 void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
