@@ -182,7 +182,6 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX7c8_(0.f)                                             // guest 0x7C8
 , mX7cc_(0.f)                                             // guest 0x7CC
 , mX7d4_(0.f)                                             // guest 0x7D4
-, mX158_(0.f)                                             // guest 0x158
 , mX7d0_(0.f)                                             // guest 0x7D0
 , mX7e0_(10000.f)                                         // guest 0x7E0
 , mAttackTimer(4.f)                                       // guest 0x7E4
@@ -193,7 +192,6 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
-, mX1c0_(CVector3f::Zero())                               // guest 0x1C0
 , mX910_(CVector3f::Zero())                               // guest 0x910
 , mX818_(CVector3f::Zero())                               // guest 0x818
 , mX864_(0.f)                                             // guest 0x864
@@ -326,17 +324,23 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     StandInFn("fn_18_7B14 kSM_AreaLoaded");
     break;
   case kSM_Damage: // 0x7F4C, 0x20
-    // fn_18_36BC (0x88) takes the damage's source id. A stand-in.
-    StandInFn("fn_18_36BC");
+    // fn_18_36BC (0x88): the damage's source id is compared with the id each heart's collision
+    // actor carries (0x36E8 and 0x3708) and a match sets the flag byte 0x824's bit 0 (the mask
+    // 0x01, 0x3718).
+    OnDamage(mgr, msg.GetSenderId().Value());
     break;
   case kSM_HitObject: // 0x7F6C, 0x20
-    // fn_18_2D50 (0xB4) takes the hit object's id. A stand-in.
-    StandInFn("fn_18_2D50");
+    // fn_18_2D50 (0xB4): the hit object's id is looked up in the heart holder (0x2DA4), the
+    // collision actor's flag byte (guest 0x20) and the player are read, and the module's own
+    // vector (the table at lbl_18_data_4EC) is set when the member at guest 0x440 is not above
+    // zero (0x2E10..0x2E1C).
+    OnHitObject(mgr, msg.GetSenderId().Value());
     break;
   case kSM_OffGround: // 0x7F8C, 0x38
-    // The off-ground direction: the actor's gravity constant times the module's speed at guest
-    // 0x158, negated (0x7FA4..0x7FC0).
-    mX1c0_ = CVector3f(0.f, 0.f, -(GetGravityConstant() * mX158_));
+    // The off-ground force: the actor's gravity constant (the vtable slot 0x114) times the
+    // actor's mass (CPhysicsActor::mMass, guest 0x158), negated (0x7FA4..0x7FC0). The retail
+    // writes it to CPhysicsActor::mConstantForce (guest 0x1C0..0x1C8).
+    SetConstantForceWR(CVector3f(0.f, 0.f, -(GetGravityConstant() * GetMass())));
     break;
   case kSM_Launching: // 0x7FC4, 0x184
     // The module re-sends the message and computes the launch velocity. A stand-in.
@@ -563,6 +567,52 @@ float CEmperorIngStage3::SnapAngleTo45(float angle) const {
     }
   }
   return kAngles[index];
+}
+
+// fn_18_36BC (0x88): the damage's source id against the two hearts' collision actor ids; a
+// match sets the flag byte 0x824's bit 0 (the mask 0x01).
+void CEmperorIngStage3::OnDamage(CStateManager& mgr, u16 sourceId) {
+  const CCollisionActor* first = HeartCollisionActor(mgr, 0);
+  if (first != nullptr && first->GetUniqueId().Value() == sourceId) {
+    x824_ |= 0x01; // 0x3718
+    return;
+  }
+  const CCollisionActor* second = HeartCollisionActor(mgr, 1);
+  if (second != nullptr && second->GetUniqueId().Value() == sourceId) {
+    x824_ |= 0x01; // 0x3718
+  }
+}
+
+// fn_18_2D50 (0xB4): the hit object's id is looked up in the heart holder and the collision
+// actor's flag byte (guest 0x20, the DOL's fn_80137718 - a stand-in) and the player are read.
+void CEmperorIngStage3::OnHitObject(CStateManager& mgr, u16 sourceId) {
+  if ((x824_ & 0x02) != 0 || (x824_ & 0x04) != 0 || (x825_ & 0x08) == 0) {
+    return; // 0x2D7C..0x2D98
+  }
+  const CCollisionActor* heart = HeartCollisionActorById(mgr, sourceId); // 0x2DA4
+  if (heart == nullptr) {
+    return;
+  }
+  StandInFn("fn_80137718"); // the collision actor's flag byte at guest 0x20
+  // The member at guest 0x440 and the table at lbl_18_data_4EC: the module's own vector. A
+  // stand-in.
+  StandInFn("fn_18_2D50 tail");
+}
+
+// The holder's records: the one whose id matches (fn_18_2D50 walks the holder's records at
+// 0x2DA4 and looks the object up by that id).
+const CCollisionActor* CEmperorIngStage3::HeartCollisionActorById(CStateManager& mgr,
+                                                                u16 id) const {
+  if (x7c0_ == nullptr) {
+    return nullptr; // port limit: the holder is not created
+  }
+  for (u32 i = 0; i < x7c0_->mCount; ++i) {
+    if (x7c0_->mRecords[i].mUniqueId != id) {
+      continue;
+    }
+    return static_cast< const CCollisionActor* >(mgr.ObjectById(TUniqueId(id)));
+  }
+  return nullptr;
 }
 
 // fn_18_3B14 (0x4C): the module's heart record: the holder's record 0xA (the first heart, the
