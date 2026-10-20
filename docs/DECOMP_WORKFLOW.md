@@ -57,7 +57,7 @@ patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
 - **NULL** - null guards retail doesn't have. Keep one only if the asm has the test or a named
   port limit requires it (say which in the comment); otherwise delete it.
 - **MASK** - re-derive each bit test from the asm `rlwinm`/`andi.` yourself (`rlwinm rD,rS,0,21,21`
-  is `& 0x400`, not `& 0x20`). A selftest written from the same reading proves nothing.
+  is `& 0x400`, not `& 0x20`: PowerPC bit N is `1u << (31-N)`, never `1u << N`). A selftest written from the same reading proves nothing.
 - **ADDR / STUB** - no thunk that compares against a retail address and otherwise calls a stub;
   no stand-in left behind a `// @`.
 - **MARK** - a marker means the body is retail's and ran. A function that mostly calls unported
