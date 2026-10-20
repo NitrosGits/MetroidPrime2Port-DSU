@@ -191,10 +191,6 @@ private:
   float mFlashAlpha = 0.f;                     // guest 0xF08 (the Lerp's weight, 0x3368)
   CColor mFlashColor;                          // guest 0xF04 (the Lerp's result, 0x33C8)
   float mDeathTimer = 0.f;                     // guest 0xEF0 (counted down at 0x33EC)
-  // The retail's CActor 0x28, 0x38 and 0x48 - the three floats the death direction is
-  // built from. They are base-class fields (the module's first own field is 0x7C0) and the
-  // host has no accessor for them, so the port keeps its own copy.
-  CVector3f mDeathDirection;
 
   // The fields the retail's fn_75_3004 touches.
   void PortUpdateCollision(CStateManager& mgr);

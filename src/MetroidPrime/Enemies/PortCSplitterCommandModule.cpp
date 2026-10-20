@@ -171,7 +171,8 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
 // 0xF6A (the word's bit 29, the byte's 0x04, 0x33CC-0x33D4) and the alive bit of the byte at
 // 0x420 (the word's bit 25, the byte's 0x40, 0x33D8-0x33E0) gate the death timer 0xEF0, which is
 // counted down (0x33EC-0x33F4) and, at zero or below (0x33FC-0x3404), kills the actor with the
-// direction (0x28, 0x38 and 0x48) and the state 0x5241544C ('RATL', 0x340C-0x3434).
+// direction (the transform's Y column, the CActor's 0x28, 0x38 and 0x48) and the state
+// 0x5241544C ('RATL', 0x340C-0x3434).
 void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float dt) {
   mCountdownTimerA -= dt;
   mCountdownTimerB -= dt;
@@ -189,7 +190,7 @@ void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float d
   if ((mAutoDestructFlags & 0x4) != 0 && GetAlive()) {
     mDeathTimer -= dt;
     if (mDeathTimer <= 0.f) {
-      Death(mgr, mDeathDirection, kSS_DeathRattle);
+      Death(mgr, GetTransform().GetColumn(kDY), kSS_DeathRattle);
     }
   }
 }
