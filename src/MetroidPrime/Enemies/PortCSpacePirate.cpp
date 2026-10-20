@@ -1180,11 +1180,32 @@ void CSpacePirate::SetVelocityForJump() {
   x8fa_29_ = true;
 }
 
+// Retail fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
+// live; then the patterned pre-render, the bone tracking and the ik chain.
 void CSpacePirate::PreRender(CStateManager& mgr) {
-  StandIn("CSpacePirate::PreRender (fn_72_38E4)");
+  // 0x3900: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3918 calls the ragdoll's own
+  // pre-render (its vtable slot 0x10) with the actor's translation and the model data. The ragdoll
+  // is outside the port (xb30_ is never set), so that branch stays a comment.
+  // 0x3938: the patterned pre-render.
   CPatterned::PreRender(mgr);
+  // 0x393C-0x3950: the bone tracking and the ik chain run only while no ragdoll is live.
+  // 0x398C: the bone tracking: (mgr, the anim data, the transform, the model's scale, the body).
+  mBoneTracking.PreRender(mgr, *ModelData()->AnimationData(), GetTransform(),
+                          ModelData()->GetScale(), *BodyController());
+  // 0x39C0: the ik chain: (the anim data, the transform, the model's scale).
+  xb34_ikChain.PreRender(*ModelData()->AnimationData(), GetTransform(), ModelData()->GetScale());
+  // 0x39C4: while the portal plane is set (|its d| > 0), 0x39E8 writes an uninitialised word into
+  // the draw flags' first word and 0x39F0 sets bit 0x8000 in their high half. The plane is never
+  // set in the port and the retail's word is undefined, so that stays a comment.
 }
 
+// Retail fn_72_37C4 (Render) still waits for two things the port does not have: the module helper
+// fn_72_36CC (0x38B4 - the same helper that blocks ScanVisorRender: it renders the scan-visor
+// model at this+0xc08, a member the port has no home for, and calls the retail's gpRender vtable
+// slots 0x128/0x12C), and the space-warp phase, the float the REL loads with the paired-single
+// load at 0x3814 (the printed displacement 0x44f is odd, so the member it reads is not identified
+// yet). 0x37E0 (the seconds mod 900 while the pirate is alive), 0x386C (the scoped CTimeProvider),
+// 0x3874 (the portal plane) and 0x38A0 (the patterned render) are the rest of it.
 void CSpacePirate::Render(const CStateManager& mgr) const {
   StandIn("CSpacePirate::Render (fn_72_37C4)");
   CPatterned::Render(mgr);
