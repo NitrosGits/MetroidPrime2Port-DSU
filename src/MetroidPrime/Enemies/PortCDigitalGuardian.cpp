@@ -1737,7 +1737,7 @@ void CDigitalGuardian::x1A68_(CStateManager& mgr, int leg, int state) {
   }
 }
 
-// fn_14_266C: not run yet (the beacon never opens in the area-53 run).
+// @ fn_14_266C
 void CDigitalGuardian::x266C_(CStateManager& mgr) {
   if (x1268_ == 0) {
     return;
@@ -1773,7 +1773,7 @@ void CDigitalGuardian::x266C_(CStateManager& mgr) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
 }
 
-// fn_14_2E60: the area-53 run only reaches the early return (the head collider asleep).
+// @ fn_14_2E60
 void CDigitalGuardian::x2E60_(CStateManager& mgr) {
   if ((x128C_ & 0x08) != 0) { // the extrwi at 0x2E7C
     return;
