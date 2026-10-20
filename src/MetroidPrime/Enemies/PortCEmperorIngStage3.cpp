@@ -596,11 +596,9 @@ void CEmperorIngStage3::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
 }
 
-// vtable slot 9 = fn_18_47B4: retail's render path.
-void CEmperorIngStage3::Render(const CStateManager& mgr) const {
-  StandIn("CEmperorIngStage3::Render (vtable slot 9, fn_18_47B4)");
-  CPatterned::Render(mgr);
-}
+// @ fn_18_47B4
+// fn_18_47B4 (vtable slot 9, 0x20): the base's render and nothing else.
+void CEmperorIngStage3::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 // vtable slot 15 = fn_18_B4: a call through the vtable slot 0x38, i.e. CActor::HealthInfo().
 const CHealthInfo* CEmperorIngStage3::GetHealthInfo() const {
