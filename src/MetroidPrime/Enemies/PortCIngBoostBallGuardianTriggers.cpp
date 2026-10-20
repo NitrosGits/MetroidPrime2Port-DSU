@@ -687,8 +687,8 @@ bool CIngBoostBallGuardian::StateOver(CStateManager&, const CTriggerData&) const
   return mAnimationState.IsOver();
 }
 
-// fn_30_C6AC (this module).
-// fn_29_B1E8 (not yet exercised in a run)
+// fn_30_C6AC (the Ing's fn_29_B1E8): 0x11ED 0x08.
+// @ fn_30_C6AC
 bool CIngBoostBallGuardian::IsAlert(CStateManager&, const CTriggerData&) const { return mAlert; }
 
 // fn_30_C68C (this module).
@@ -862,14 +862,16 @@ bool CIngBoostBallGuardian::ShouldFleeSafeZone(CStateManager&, const CTriggerDat
   return mSafeZoneCount > 0; // fn_30_C05C: 0x115C
 }
 
-// fn_30_C014 (this module).
-// fn_29_AA4C (not yet exercised in a run)
+// fn_30_C014 (the Ing's fn_29_AA4C): the desired form (0xAE8) is 2 (0x0000C02C) and the form is
+// not corporeal yet (fn_30_C218, 0x0000C034).
+// @ fn_30_C014
 bool CIngBoostBallGuardian::ShouldBecomeCorporeal(CStateManager&, const CTriggerData&) const {
   return mDesiredForm == kForm_Corporeal && mForm != kForm_Corporeal;
 }
 
-// fn_30_BFCC (this module).
-// fn_29_AA04 (not yet exercised in a run)
+// fn_30_BFCC (the Ing's fn_29_AA04): the desired form (0xAE8) is 3 (0x0000BFE4) and the form is
+// not the ing spot yet (fn_30_C204, 0x0000BFEC).
+// @ fn_30_BFCC
 bool CIngBoostBallGuardian::ShouldBecomeIngSpot(CStateManager&, const CTriggerData&) const {
   return mDesiredForm == kForm_IngSpot && mForm != kForm_IngSpot;
 }
@@ -982,8 +984,9 @@ bool CIngBoostBallGuardian::ProjectileHitTarget(CStateManager& mgr, const CTrigg
   return CAABox(pos - half, pos + half).DoBoundsOverlap(target->GetBoundingBox());
 }
 
-// fn_30_BAA8 (this module).
-// fn_29_A4E0 (not yet exercised in a run)
+// fn_30_BAA8 (the Ing's fn_29_A4E0): 0x11EC 0x10. Area 28's FSM2 asset never evaluates this
+// trigger; both arms were forced from a hook.
+// @ fn_30_BAA8
 bool CIngBoostBallGuardian::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
