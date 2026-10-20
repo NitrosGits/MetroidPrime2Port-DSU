@@ -974,11 +974,22 @@ CPathFindSearch* CCommandoPirate::GetSearchPath() { return &mPathFindSearch; }
 // vtable slot 0xe4 = fn_9_70 (0x8): `li r3, 0x0` - this actor has no point-based path.
 CPathFindPointSearch* CCommandoPirate::GetPointSearchPath() { return nullptr; }
 
-// vtable slot 0xe8 = fn_9_C1F4 (0xd8): the contact damage, which the module's own blade damage
-// feeds in place of the patterned info's.
+// @ fn_9_C1F4
+// fn_9_C1F4 (0xd8 bytes): the contact damage (vtable slot 0xe8). The guest's flag byte at guest
+// this+0xC65 decides which damage the actor gives: its 0x04 bit (the extrwi at 0x0000C20C, the
+// mask 1u << (31 - 29) = 0x04) takes the shield's charge damage (the block's +0xD8 = guest
+// this+0x898), its 0x20 bit (the extrwi at 0x0000C260, the mask 1u << (31 - 26) = 0x20) takes the
+// blade damage (the block's +0x0C = guest this+0x7CC), and without either of them the base's own
+// contact damage stands (the call at 0x0000C2B4). The guest copies the damage into the base's
+// member and returns it; the port returns it directly (the host's base getter is a const one).
 CDamageInfo CCommandoPirate::GetContactDamage() const {
-  StandIn("CCommandoPirate::GetContactDamage (vtable slot 0xe8, fn_9_C1F4)");
-  return CPatterned::GetContactDamage();
+  if ((xc65_ & 0x04) != 0) {                            // 0x0000C20C..0x0000C210
+    return mData.mShield.mChargeDamage;                // the block's +0xD8, guest this+0x898
+  }
+  if ((xc65_ & 0x20) != 0) {                            // 0x0000C260..0x0000C264
+    return mData.mBladeDamage;                          // the block's +0x0C, guest this+0x7CC
+  }
+  return CPatterned::GetContactDamage();                // 0x0000C2B4
 }
 
 // ---------------------------------------------------------------------------------------------

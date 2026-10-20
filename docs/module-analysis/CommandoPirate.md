@@ -79,7 +79,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0xDC | `ProjectileInfo` | `fn_9_D474` (0x8) | host (this+0xA14) |
 | 0xE0 | `GetSearchPath` | `fn_9_0` | host (this+0x928) |
 | 0xE4 | `GetPointSearchPath` | `fn_9_70` | host (null) |
-| 0xE8 | `GetContactDamage` | `fn_9_C1F4` (0xd8) | stand-in |
+| 0xE8 | `GetContactDamage` | `fn_9_C1F4` (0xd8) | host (the module's charge or blade damage) |
 | 0xF0 | `SetupStateMachine` | `fn_9_BDE0` (0x6c) | host (registers the module's two tables) |
 | 0xF4 | `GetRagDoll` | `fn_9_78` | host (null) |
 | 0x10C | `GetAttackTarget` | `fn_9_80` | host (kInvalidUniqueId) |
@@ -742,6 +742,16 @@ helper was run with a forced fluid, a trigger standing in for the water and the 
 its bounds. Every statement of the body ran - the module's float, the health info, the death and
 the sound - and the explosion was skipped because the block's +0x08 particle is not in the pool,
 which is what the guest does with an unloaded token too.
+
+`fn_9_C1F4` (0xd8, the contact damage - the vtable slot 0xe8) is host code since 2026-10-21 (the
+port's `GetContactDamage`): the module's flag byte at guest this+0xC65 picks the damage - its 0x04
+bit (the extrwi at 0x0000C20C, the mask 1u << (31 - 29) = 0x04) gives the shield's charge damage
+(the block's +0xD8 = guest this+0x898), its 0x20 bit (the extrwi at 0x0000C260, the mask
+1u << (31 - 26) = 0x20) gives the blade damage (the block's +0x0C = guest this+0x7CC) and without
+either the base's own contact damage stands (the call at 0x0000C2B4). The guest copies the damage
+into the base's member and returns it; the port returns it directly (the host's base getter is a
+const one). All three branches ran: the area 59 run reaches the getter (the stand-in log is
+gone), and a temporary hook (reverted) set the flag byte to drive the 0x04 and the 0x20 branches.
 
 With the burst-fire helper ported the area 59 run (the note's run) still ends cleanly: gameplay
 at 10.1 s, exit=0 and `grep -c '[port] caught\|reach-stub'` = 0. The helper runs every frame and
