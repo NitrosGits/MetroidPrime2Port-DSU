@@ -276,6 +276,21 @@ cannot fire in this area (for retail as well). The decode is exact, not a mis-re
 generated reader and `fn_72_140` id for id, `ReadFloat`/`ReadInt32`/`ReadUint16` all byte-swap under
 TARGET_PC, and the properties after them (42-byte damage infos, 200-byte weapon data, 90-byte editor
 properties, per-actor flags 0x10000/0x829c/0x40000) line up.
+| `E0D8` `AttachActorToPirate` | ported 2026-10-20, unmarked. Refuses a second actor (0xa84 != invalid, 0xE0E4 -> false at 0xE118), sets the ragdoll's flag byte 0x118 bit 0x40 (PPC bit 25, 0xE100) and stores the id at 0xa84 (0xE108/0xE10C). The ragdoll is unported (0xb30 is never set), so the flag write stays a comment |
+| `E0AC` `DetachActorFromPirate` | ported 2026-10-20, unmarked. 0xa84 = kInvalidUniqueId (0xE0B4) and the ragdoll's flag byte 0x118 bit 0x40 cleared (0xE0CC) |
+| `3AB4` `GetDamageVulnerability()` | ported 2026-10-20, unmarked. 0xc04 != -1 (0x3AC0/0x3AC4) -> the DOL's pass-through vulnerability (0x3ACC `PassThroughVulnerabilty`), else `CPatterned::GetDamageVulnerability()` (0x3AD4); 0xc04 is the warp point |
+| `3A88` `GetDamageVulnerability(pos,dir,dmg)` | ported 2026-10-20, unmarked. A tail call through the vtable slot 0x40 (0x3A94-0x3AA0), which for CSpacePirate is the **no-argument** override `3AB4`; the three arguments are not read |
+| `17C8` `GetTouchBounds` | ported 2026-10-20, unmarked. With a ragdoll (0xb30) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the bounds are the ragdoll's (ragdoll+0x58..0x70); else the actor's own bounding box (0x183C `fn_72_1854` = `GetBoundingBox`). The ragdoll is unported, so that branch stays a comment |
+| `35CC` `GetSortingBounds` | ported 2026-10-20, unmarked. The model's bounds in the actor's transform (0x35F0 `GetBounds`), their centre (0x362C `GetCenterPoint`), then `CAABox(centre - 0.25*size, centre + 0.25*size)` (rodata BC0 = 0.25, 0x364C-0x3684, ctor at 0x36B4) |
+| `E090` `GetOrigin` | ported 2026-10-20, unmarked. The pirate's own translation (this+0x54/0x58/0x5c, 0xE090-0xE0A4) |
+| `E120` `SetAttackTarget` | ported 2026-10-20, unmarked. 0xa94 = the target (0xE138), `fn_72_DE5C` = UpdateTeamTarget (0xE13C), 0xa98 = 1 (the burst type, 0xE148) and 0xa90 = 0 (the attack time, 0xE150) |
+| `253C` `UpdateAimBodyState` | fixed 2026-10-20: the aim block runs while `xb98` **<= 0** (0x2614 `fcmpo` + 0x2618 `cror eq,lt,eq`), not only at 0 |
+| 2026-10-20 run #4 (08_sand_casualpirates, 3200 frames) | the new bodies ran: `3AB4` and `3A88` once each (the shot), `17C8` and `35CC` once each, `E090` and `E120` never (no team AI and no CMetroid in the area); 8 KnockBack reactions, 0 reach-stubs, frame limit at 58.4 s |
+| `3A0C` `PreRenderAllViewports` | ported 2026-10-20, unmarked. With a live ragdoll (xb30_'s byte 0x70 bit 0x40 set) the ragdoll renders (0x3A50, the rodata B6C float) and `UpdatePortalSystemState(mgr)` runs (0x3A5C); otherwise `CPatterned::PreRenderAllViewports(mgr)` (0x3A6C). The ragdoll is outside the port, so that branch stays a comment |
+| `18BC` `TryToBeCaptured` | ported 2026-10-20, unmarked. The state machine's virtual slot 0x20 (`SetState`) with the name "Captured" (rodata 0xF42) and the return is always true (0x1918) |
+| `343C` `GetScanVisorRenderBounds` | ported 2026-10-20, unmarked. The model's vertex bounds (`CalcBoundingBoxFromModelVerts`, 0x3498), the model's scale (0x34D4) and the negated translation (0x34F0) build the transform `Translate(-pos) * this->0x24 * Scale(modelScale)` (0x3514-0x3540); the box is transformed with it (0x3550) |
+| `339C` `ScanVisorRender` | **not ported**: it needs the module helper `fn_72_36CC` (0xD4 bytes), which renders the scan-visor model at this+0xc08 (the port has no member there) and calls the retail's gpRender vtable slots 0x128/0x12C. The shell stays until that helper is ported |
+| 2026-10-20 run #5 (08_sand_casualpirates, scan visor) | `visor scan`, then tp/face at u04d0, a short L press (lock-on) and a long L hold (scan item) starts the scan: the scan-target read-back picked 0x000000d0 (208) and `343C` and `339C` both ran; `3A0C` runs every frame; `18BC` never (no WispTentacle in the area) |
 
 ## 7. Port status / next (2026-10-20)
 
