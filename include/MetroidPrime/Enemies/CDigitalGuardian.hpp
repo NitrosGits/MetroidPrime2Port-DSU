@@ -334,6 +334,9 @@ private:
   // fn_14_2CC4 (0x19C bytes): the beacon's update.
   void x2CC4_(CStateManager& mgr, float dt);
 
+  // fn_14_3E88 (0x88 bytes): the knee colliders' active flag.
+  void x3E88_(CStateManager& mgr, bool active);
+
   // fn_14_28D0 (0x158 bytes) and fn_14_2A28 (0x29C bytes): the beacon's arrival and its
   // effect update. Both are over this slice's callee limit, so they are stand-ins.
   void x28D0_(CStateManager& mgr);

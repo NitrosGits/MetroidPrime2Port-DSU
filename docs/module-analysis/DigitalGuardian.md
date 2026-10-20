@@ -975,9 +975,9 @@ collision actor managers at 0xE60 and 0xE64, which the constructor does not buil
 a named once-logging stand-in.
 
 `fn_14_28D0` is the beacon's arrival: the guard's collision actor (the uid at 0x10CC) is woken -
-when its flag byte's bit 7 is clear (the extrwi at 0x2910 - the byte's bit 7, the mask 0x80 -
-the CEntity's update-during-cinematic-skip flag) the `CEntity::SetActive(true)` runs (the vtable
-slot 0x1C) - the particle generator starts (the CParticleGen's vtable slot 0x2C with the argument
+when its flag word's bit 24 is clear (the extrwi at 0x2910 - the byte's bit 7, the mask 0x80 -
+MWCC packs the bitfields from the MSB, so this is the CEntity's **first** bitfield, `mActive`,
+not `mUpdateDuringCinematicSkip`) the `CEntity::SetActive(true)` runs (the vtable slot 0x1C) - the particle generator starts (the CParticleGen's vtable slot 0x2C with the argument
 1, i.e. `SetGeneratorRate(1.f)`), the arrival sound plays (the PlayCustomSound call at 0x29E8: the
 position is the neck locator's translation, the direction the up vector and the parms are the
 transmission beacon's sound parms, the guest's 0x968..0x97F, with the maxVolume at 0x7F while the
@@ -1000,6 +1000,39 @@ activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frame
 clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
 the leg, shin and toe models; the Crippled state is never entered, so the beacon does not draw
 yet. No "[port] caught" and no reach-stub in the log.
+
+
+**WP2 part 2l done (2026-10-20): the knee colliders' wake path, and how Crippled is reached.**
+`fn_14_3E88` (0x88) is ported and the module's AcceptScriptMsg handles the two messages that
+call it; the `fn_14_28D0` flag test is fixed (the byte's bit 7 is the CEntity's `mActive`, the
+first bitfield MWCC packs from the MSB).
+
+`fn_14_3E88` (0x88 bytes) walks the four knee ids (0xFB0, 0xFB2, 0xFB4 and 0xFB6 - the loop at
+0x3EB0) and sets the active flag of every knee that exists (the compare with kInvalidUniqueId at
+0x3EB4, the ObjectById call at 0x3ED0 and the `CEntity::SetActive` through the vtable slot 0x1C
+at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low byte of the third
+argument). The module's AcceptScriptMsg (fn_14_A6A8) calls it for the messages "ACTV"
+(0x41435456) and "DCTV" (0x44435456); the port handles those two cases and the rest of that
+function is still a stand-in.
+
+**Where the knee collision actors come from** (the retail's chain, and why the port cannot reach
+Crippled yet): the managers at 0xE60 and 0xE64 are **not** built by the constructor or by the
+AcceptScriptMsg - `fn_14_676C` (0xF8) builds them, and it is called from the module's
+`DoUserAnimEvent` (fn_14_A468, the call at 0xA604) when the animation asks for them. It calls
+`fn_14_61DC` (0x550, the manager at 0xE60) and `fn_14_5C30` (0x590, the manager at 0xE64), which
+build the joint collision descriptions; both are over this slice's ~0x200 limit, so they would
+be stand-ins and the managers would stay empty - and the knee actors themselves belong to the
+knee armour sub-actor (fn_14_4080, not ported), so the knee ids at 0xFB0..0xFB6 stay invalid.
+With no knee actor the helper that writes the word at 0x1284 (the one that also asks for the
+knee's deletion) has nothing to delete, the word stays -1, the `KneeDestroyed` trigger
+(fn_14_9A48, ported) never fires and the state machine never enters Crippled. So 7CB4's
+activate path stays a stand-in and the beacon does not draw yet.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
+the leg, shin and toe models; there are no knee collision actors and the Crippled state is not
+entered, so the beacon does not draw. No "[port] caught" and no reach-stub in the log.
 
 
 ### WP3 — the head module
