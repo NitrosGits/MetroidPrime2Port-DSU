@@ -47,6 +47,7 @@ void CSandwormEye::SetDead() { x2F4_flags |= 0x40; }
 bool CSandwormEye::IsDead() const { return (x2F4_flags & 0x40) != 0; }
 
 // fn_56_2210 (ported, not exercised yet)
+// Dead slot: SetX2E8 has callers, GetX2E8 has none.
 CVector3f CSandwormEye::GetX2E8() const { return x2E8_pos; }
 
 // @ fn_56_222C

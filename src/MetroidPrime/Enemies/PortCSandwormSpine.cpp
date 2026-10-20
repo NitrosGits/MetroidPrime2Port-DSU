@@ -124,6 +124,7 @@ CVector3f CSandworm::GetLocatorPosition(int idx) const {
 // Retail returns only the translation (a CVector3f); the header's CTransform4f is kept and callers
 // take GetTranslation().
 // fn_56_10A20 (ported, not exercised yet)
+// Dead slot: no caller in the tree (the spine helpers call GetLctrTransform directly).
 CTransform4f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
   return GetLctrTransform(id);
 }

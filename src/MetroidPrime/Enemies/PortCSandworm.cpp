@@ -797,6 +797,8 @@ CProjectileInfo* CSandworm::ProjectileInfo() { return &x1528_spit.x0_info; }
 CPathFindSearch* CSandworm::GetSearchPath() { return &x7C4_search; }
 
 // fn_56_14AE4 (ported, not exercised yet)
+// Dead slot: CIngSpotPathFindNavigation is the only reader, and the sandworm navigates with
+// mWaypointNavigation, so nothing asks for a point search path.
 CPathFindPointSearch* CSandworm::GetPointSearchPath() { return nullptr; }
 
 // fn_56_14AEC (ported, not exercised yet)
@@ -857,14 +859,21 @@ bool CSandworm::CanBeShot(const CStateManager&, int) { return true; }
 bool CSandworm::IsListening() const { return false; }
 
 // fn_56_14B34 (ported, not exercised yet)
+// Dead slot: CStateManager::InformListeners only walks kOL_ListeningAi, which admits a patterned
+// only while IsListening() is true; fn_56_14B2C returns false, so Listen is never called.
 bool CSandworm::Listen(CStateManager&, const CVector3f&, EListenNoiseType) { return false; }
 
 // fn_56_14B3C (ported, not exercised yet)
+// Dead slot: the only caller is CScriptTeamAiMgr::PositionTeam (position mode 0), and an actor
+// joins a team only through an ACTV/PLAY connection to an MRLY. No area that spawns a CSandworm
+// has one: the WORM and MRLY connection lists of 01_sand_entrance, 03_sand_temple and
+// 04_sand_mining hold no PLAY link into a worm.
 CVector3f CSandworm::GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const {
   return GetTranslation();
 }
 
 // fn_56_14A6C (ported, not exercised yet)
+// Dead slot: not virtual and nothing in the tree calls it; the header keeps it for the REL layout.
 int CSandworm::Unknown23C() const { return 0; }
 
 // Loader and REL entry points.

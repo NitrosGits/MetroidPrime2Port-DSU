@@ -80,6 +80,7 @@ CVector3f CSandworm::PlayerDirection(float scale) const {
 
 // Unreferenced in retail: the id of the first CONN/FOLW connection's target.
 // fn_56_6324 (ported, not exercised yet)
+// Unreferenced in retail and in the tree: nothing calls it.
 TUniqueId CSandworm::Unreferenced6324(CStateManager& mgr) const {
   const rstl::vector< SConnection >& conns = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {

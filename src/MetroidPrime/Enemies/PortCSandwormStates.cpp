@@ -62,6 +62,7 @@ void CSandworm::StopMoveSfx() {
 
 // Unreferenced in retail: the number of 'GRNT'/'NEXT' connections that resolve to an actor.
 // fn_56_534C (ported, not exercised yet)
+// Unreferenced in retail and in the tree: nothing calls it.
 int CSandworm::CountScriptActors(CStateManager& mgr) const {
   int count = 0;
   const rstl::vector< SConnection >& conns = GetConnectionList();
@@ -172,6 +173,7 @@ CTransform4f CSandworm::MoveToScriptActor(CStateManager& mgr, int& index) const 
 
 // Unreferenced in retail: ramps the steering speed over 1.2 s after x134C.
 // fn_56_10A68 (ported, not exercised yet)
+// Unreferenced in retail and in the tree: nothing calls it.
 void CSandworm::SetSteeringSpeedRange() {
   const float t = x8B0_activeTime - x134C_;
   BodyController()->CommandMgr().SetSteeringSpeedRange(0.f, t > 1.2f ? 1.f : t / 1.2f);
