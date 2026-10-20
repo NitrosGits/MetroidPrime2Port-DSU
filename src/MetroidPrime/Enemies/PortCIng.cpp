@@ -204,7 +204,7 @@ enum {
   kFlag_StartAsIngSpot = 0x80000000,
 };
 
-const float kFacingAngle = 0.349f; // rodata: 20 degrees
+const float kFacingAngle = 0.34906584f; // lbl_29_rodata_E8: 20 degrees (fn_29_B0E0 0x0000B198)
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface normal.
 const float kWallLaunchAngle = 0.7853981f; // 45 degrees
 
