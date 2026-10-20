@@ -34,7 +34,7 @@ bool CSandBoss::StateOver(CStateManager&, const CTriggerData&) const {
 // @ fn_55_CA84
 bool CSandBoss::IsUnderGround(CStateManager&, const CTriggerData&) const { return mUnderGround; }
 
-// fn_55_CA70 (ported, not exercised yet)
+// @ fn_55_CA70
 bool CSandBoss::IsRecovered(CStateManager&, const CTriggerData&) const { return !mNotRecovered; }
 
 // @ fn_55_CA1C
@@ -234,7 +234,7 @@ bool CSandBoss::IsFacingPlayer(CStateManager& mgr, const CTriggerData&) const {
   return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), delta) <= 0.34906584f;
 }
 
-// fn_55_C188 (ported, not exercised yet)
+// @ fn_55_C188
 // The suck-air armour is on, the player is morphed, and the ball is within the mouth's range and
 // facing cone (fn_55_5B38).
 bool CSandBoss::IsBallInSuckRange(CStateManager& mgr, const CTriggerData&) const {
@@ -254,7 +254,7 @@ bool CSandBoss::HeadArmorDestroyed(CStateManager&, const CTriggerData&) const {
   return mHeadArmorHP <= 0.f;
 }
 
-// fn_55_C148 (ported, not exercised yet)
+// @ fn_55_C148
 bool CSandBoss::ArmorDestroyed(CStateManager&, const CTriggerData&) const { return mArmorDestroyed; }
 
 // The sync triggers hold until every sibling is waiting in the same mode (or not waiting at all).
@@ -282,7 +282,7 @@ bool CSandBoss::SyncAttachToSphere(CStateManager& mgr, const CTriggerData&) cons
 
 // States
 
-// fn_55_BF64 (ported, not exercised yet)
+// @ fn_55_BF64
 void CSandBoss::Recover(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
@@ -378,7 +378,7 @@ void CSandBoss::RotateToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_B718 (ported, not exercised yet)
+// @ fn_55_B718
 // SuckAir: once mData.suckAirTime has passed the animation is over; until then anything other than
 // Locomotion is aborted with an AbortScripted command, and an unmorphed player in front of the mouth
 // (fn_55_5B38) is pulled toward it at 150 units a second, with collision impulses, the minimal
@@ -419,7 +419,7 @@ void CSandBoss::SuckAir(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_B658 (ported, not exercised yet)
+// @ fn_55_B658
 // SuckBall: each update pulls the morphed ball to the mouth (fn_55_62E4) and ends the state once
 // it arrives. Start readies the animation, drops into locomotion 5 and takes the player's solid
 // material away; stop drops the animation back to not-ready.
@@ -440,7 +440,7 @@ void CSandBoss::SuckBall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_55_B544 (ported, not exercised yet)
+// @ fn_55_B544
 // BallInMouth: every update parks the ball on the mouth locator (fn_55_6250), runs the choke helper
 // (fn_55_5E5C) and spits the ball out once mData.spitMorphballTime has passed. Start readies the
 // animation, sends kSS_Entered for the player, drops into locomotion 6 and attaches the ball actor
@@ -537,7 +537,7 @@ void CSandBoss::JumpOffSphere(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_55_AED8 (ported, not exercised yet)
+// @ fn_55_AED8
 // SpitOutBall: while the player still holds on, each update re-parks the ball on the mouth
 // (fn_55_6250) and runs the choke helper (fn_55_5E5C), then asks for the generate command (type 9).
 // Start readies the animation and raises 0x165E b3 (which fn_55_5FEC reads to throw the held bombs
@@ -929,7 +929,7 @@ void CSandBoss::SetAttachedArmor(CStateManager& mgr, float) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
 }
 
-// fn_55_9600 (ported, not exercised yet)
+// @ fn_55_9600
 void CSandBoss::SetSuckAirArmor(CStateManager& mgr, float) {
   mArmorState[0] = 0; // 0x1458: the head loses its armour piece
   for (int i = 1; i < 8; ++i) {
@@ -943,7 +943,7 @@ void CSandBoss::SetSuckAirArmor(CStateManager& mgr, float) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
 }
 
-// fn_55_952C (ported, not exercised yet)
+// @ fn_55_952C
 // Excluding kMT_NoStepLogic from the boss's own filter copy stops the player being pushed by the
 // stampede's collision actors.
 void CSandBoss::RemovePlayerCollision(CStateManager& mgr, float) {
@@ -958,7 +958,7 @@ void CSandBoss::RemovePlayerCollision(CStateManager& mgr, float) {
   }
 }
 
-// fn_55_9438 (ported, not exercised yet)
+// @ fn_55_9438
 void CSandBoss::RestorePlayerCollision(CStateManager& mgr, float) {
   CMaterialFilter filter = GetMaterialFilter();
   filter.ExcludeList().Remove(kMT_NoStepLogic);
@@ -1018,7 +1018,7 @@ void CSandBoss::UnLockSphere(CStateManager&, float) { mSphereLocked = false; }
 // @ fn_55_91B8
 void CSandBoss::AllowSyncAttacks(CStateManager&, float) { mSyncAttacksAllowed = true; }
 
-// fn_55_91A4 (ported, not exercised yet)
+// @ fn_55_91A4
 void CSandBoss::PreventSyncAttacks(CStateManager&, float) { mSyncAttacksAllowed = false; }
 
 // @ fn_55_9190
@@ -1083,10 +1083,10 @@ void CSandBoss::SetCinematicStateStampede(CStateManager&, float) { mCinematicSta
 // @ fn_55_8E3C
 void CSandBoss::SetCinematicStateNormal(CStateManager&, float) { mCinematicState = 3; }
 
-// fn_55_8E30 (ported, not exercised yet)
+// @ fn_55_8E30
 void CSandBoss::SetCinematicStateStunned(CStateManager&, float) { mCinematicState = 4; }
 
-// fn_55_8E24 (ported, not exercised yet)
+// @ fn_55_8E24
 void CSandBoss::SetCinematicStateChoking(CStateManager&, float) { mCinematicState = 5; }
 
 // fn_55_8E18 (ported, not exercised yet)

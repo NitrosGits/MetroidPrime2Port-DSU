@@ -858,7 +858,7 @@ void CSandBoss::CrackSphere(CStateManager& mgr) {
   SendScriptMsgs(kSS_Zero, mgr, GetUniqueId(), kSM_None);
 }
 
-// fn_55_5B38 (ported, not exercised yet)
+// @ fn_55_5B38
 // The morph ball is in range when it is closer to the first armour locator than
 // mData.suckMorphballRange and within fifteen degrees of the boss' forward axis, flattened.
 bool CSandBoss::IsBallInRange(const CPlayer& player) const {
@@ -876,7 +876,7 @@ bool CSandBoss::IsBallInRange(const CPlayer& player) const {
 // AttachToSphere's delay: half a second per command index, so the three worms attach in turn.
 float CSandBoss::AttachToSphereHelper() { return static_cast< float >(mData.commandIndex) * 0.5f; }
 
-// fn_55_5C6C (ported, not exercised yet)
+// @ fn_55_5C6C
 // Same mouth box as fn_55_5E5C, but the bombs found in it are thrown along dir at 20 units a second
 // (the ball's bombs leave the mouth with it).
 void CSandBoss::Helper5C6C(CStateManager& mgr, const CVector3f& dir) {
@@ -895,7 +895,7 @@ void CSandBoss::Helper5C6C(CStateManager& mgr, const CVector3f& dir) {
   }
 }
 
-// fn_55_5E5C (ported, not exercised yet)
+// @ fn_55_5E5C
 // Choke helper: every bomb in the box around the mouth locator is parked on the mouth (the ball's
 // bombs follow it while the mouth works).
 void CSandBoss::Helper5E5C(CStateManager& mgr) {
@@ -914,7 +914,7 @@ void CSandBoss::Helper5E5C(CStateManager& mgr) {
   }
 }
 
-// fn_55_5FEC (ported, not exercised yet)
+// @ fn_55_5FEC
 // Object drop (Dead, and after a spit): if the player still holds on to this worm, put a morphed
 // player where the mouth is with the held ball's rotation, half a unit lower, launch him along the
 // mouth's facing, apply the spit-out damage unless the head armour is already gone, throw the held
@@ -951,7 +951,7 @@ void CSandBoss::HandleObjectDrop(CStateManager& mgr) {
   player->AddMaterial(kMT_Solid, mgr); // 0x3B
 }
 
-// fn_55_6250 (ported, not exercised yet)
+// @ fn_55_6250
 // The ball was caught: put the player on the mouth locator, stop him, and keep the player's
 // rotation in 0x14A0 (the held ball's orientation while BallInMouth re-parks it every frame).
 void CSandBoss::SphereStateHelper6250(CPlayer& player) {
@@ -961,7 +961,7 @@ void CSandBoss::SphereStateHelper6250(CPlayer& player) {
   m14A0 = player.GetTransform().GetRotation(); // 0x14A0
 }
 
-// fn_55_62E4 (ported, not exercised yet)
+// @ fn_55_62E4
 // While the player is morphed, pulls the ball toward the mouth locator at 60 units a second; the
 // return value says the ball arrived (and is parked in the mouth by fn_55_6250).
 bool CSandBoss::SphereStateHelper62E4(float dt, CPlayer& player) {

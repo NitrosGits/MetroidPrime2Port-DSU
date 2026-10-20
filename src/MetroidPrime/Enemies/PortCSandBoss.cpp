@@ -264,7 +264,7 @@ const CHealthInfo* CSandBoss::GetHealthInfo() const {
   return const_cast< CSandBoss* >(this)->HealthInfo();
 }
 
-// fn_55_CDF0 (ported, not exercised yet)
+// @ fn_55_CDF0
 CProjectileInfo* CSandBoss::ProjectileInfo() { return &mDarkBeamInfo; }
 
 // @ fn_55_CF6C
@@ -698,7 +698,7 @@ bool CSandBoss::IsAttachedLeader(const CStateManager& mgr) const {
   return true;
 }
 
-// fn_55_8CB4 (ported, not exercised yet)
+// @ fn_55_8CB4
 // The probes run one FSM update with a "probing" bit set; the attack triggers record their answer
 // in the result bit instead of acting.
 bool CSandBoss::ProbeDarkBeam(CStateManager& mgr) {
@@ -885,7 +885,7 @@ CVector3f CSandBoss::GetAimPosition(const CStateManager&, float dt) const {
   return aim;
 }
 
-// fn_55_D384 (ported, not exercised yet)
+// @ fn_55_D384
 void CSandBoss::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
   const rstl::string& locator = node.GetLocatorName();
