@@ -32,6 +32,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CCollisionTracker.hpp"
 #include "MetroidPrime/Enemies/CIngExitHostEffect.hpp"
 #include "MetroidPrime/Enemies/CIngMiniPortalAttack.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -1585,6 +1586,31 @@ void CIng::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
     break;
   default:
     break;
+  }
+}
+
+// @ fn_29_4830
+void CIng::CreateBlob(CStateManager& mgr) {
+  // The retail's blob (asm 0x4830-0x4930): a GeomBlobV2 (module 25's CCollisionTracker, 0x1e0
+  // bytes) built from the ing spot's blob effect - the token is a 'PART' one, built in fn_29_C9A4's
+  // create branch (asm 0xCB24-0xCB44) from the data's 0x86c - with a fresh id, the Ing's area id,
+  // the name "IngBlobEffect" (rodata_120+0x59b), a transform at the Ing's position (0x54), the Ing
+  // as the owner, the flags 0 and the track radius 10 (lbl_25_rodata_40). Its particle emission
+  // rate scalar (the member at 0x190) is then set to 0 (fn_25_256C), so the blob emits no
+  // particles.
+  const rstl::optional_object< TLockedToken< CGenDescription > > desc =
+      OptionalPart(mData.mIngSpot.GetBlobEffect());
+  if (desc) {
+    mBlobId = mgr.AllocateUniqueId();
+    CEffect* blob =
+        LoadGeomBlobV2(*desc, mBlobId, GetAreaIdForPersistence(), true,
+                       rstl::string_l("IngBlobEffect"), CTransform4f::Translate(GetTranslation()),
+                       GetUniqueId(), 0);
+    mgr.AddObject(blob);
+    // fn_25_256C: the member at 0x190 - the particle generator's rate (the retail's own code
+    // reads it at 0x2B60 and hands it to CElementGen::SetGeneratorRate) - set to 0, so the blob
+    // emits no particles.
+    static_cast< CCollisionTracker * >(blob)->SetParticleEmissionRateScalar(0.f);
   }
 }
 
@@ -3194,11 +3220,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00004CFC: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
-    // The retail also spawns the ing spot's blob object (fn_29_4830, asm 0xCB84 - module 25's
-    // class, which the host does not have) and then builds the actor's light (fn_29_4B4C,
-    // asm 0xCBA8).
-    PortIngStandIn("fn_29_4830 blob spawn (0x130)");
-    CreateLight(mgr); // fn_29_4B4C, asm 0xCBA8
+    // The retail also spawns the ing spot's blob object (fn_29_4830, asm 0xCB84) and then builds
+    // the actor's light (fn_29_4B4C, asm 0xCBA8).
+    CreateBlob(mgr);   // fn_29_4830, asm 0xCB84
+    CreateLight(mgr);  // fn_29_4B4C, asm 0xCBA8
     break;
   case kSM_Delete:
     // Retail deletes the blob object (0xd5c, never spawned on the host), stops the sounds,
