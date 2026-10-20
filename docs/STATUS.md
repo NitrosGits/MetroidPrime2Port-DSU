@@ -26,9 +26,8 @@ DG needs `send u054d Activate`; IBBG runs with `send u052b Activate`.
 | asmcheck FP (Opus) | `ses_ea6e8c3d6ffeYYJw68c5GE8TiD` | port tree, uncommitted `tools/asmcheck.py` | FP patterns + regress cases; orchestrator reviews and commits |
 | EmperorIngStage1 (Opus) | `ses_ea6700b83ffeiYYMVx9wazyiAs` | decomp/emperoring @ `046b710dc` (TrackPlayer/Attack/heart states in; walk ends at ProjectileAttack stand-in) | tentacle motion 26B8/2524/2070, ProjectileAttack 68F4, FireBeam CD0, onward to the heart |
 | IngBoostBallGuardian (Opus, ex-Agon lane) | `ses_ea66ff706ffemgWrJxsGl8iAxE` | decomp/boostguardian @ `9787cc26a` (Think/timers in; fight cycles, takes damage, phases) | data +0x08/+0x14 layout + IngSpotPathFind, 0x5E0 class + fn_30_3478 (BoostAttack), retreat 2F9C |
-| smoke (worker) | `ses_ea6488d4fffeuaJg5oNHZVhq3l` | port `171940cc5` | smoke the merged batch -> /tmp/opencode/smoke2/ |
 
-Merged into port 2026-10-20 (`171940cc5`, host+link+upstream green, smoke pending): ing `618c7e8f5`, playerturret `1402494b4`,
+Merged into port 2026-10-20 (`171940cc5`, host+link+upstream green, smoke clean 15 runs `/tmp/opencode/smoke2/`, 954 markers `2015f13d5`; Ing now takes 300->260 from a beam shot in form 3 vs 300->180 before - check when Ing's lane reports): ing `618c7e8f5`, playerturret `1402494b4`,
 emperoring `87f405931`, commandopirate `b53f44229`, spacepirate `a9ba3f157`, emperoring3 `528919371`, swampboss `59637cee5`,
 digitalguardian `344f8e7d0`, fix/agon-black `3e6ac419c` (Aurora partial copy-clear, upstream aurora 9c0bf66f1e; keep on re-vendor).
 Accepted, not yet merged: emperoring3 `a3a7ac3e0`, emperoring `046b710dc`, boostguardian `9787cc26a`.
