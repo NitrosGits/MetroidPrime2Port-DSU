@@ -573,17 +573,35 @@ rstl::optional_object< CAABox > CIngBoostBallGuardian::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
 }
 
-// The Ing's Touch (the Ing REL's fn_29_BB8C): the ing-spot form's contact damage.
+// The ing-spot form's contact damage: nothing at all (not even the base Touch) while a boost is
+// running (0x11EE 0x20 clear); the target takes the boost block's ing-spot damage, the morph-ball
+// one (0xEC4) when it is a morphed player, else the first-person one (0xEE0).
+// @ fn_30_CE50
 void CIngBoostBallGuardian::Touch(CActor& actor, CStateManager& mgr) {
-  EnsureBodyActive(mgr);
-  if (mForm == kForm_IngSpot && !mGrappled && actor.GetUniqueId() == mTargetId &&
-      mCurDamageRemTime <= 0.f) {
-    // [?] the damage: the patterned contact damage.
-    mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), GetContactDamage(), SolidFilter(),
-                    CVector3f::Zero());
-    mCurDamageRemTime = mDamageWaitTime;
+  EnsureBodyActive(mgr); // host guard, not in retail (see EnsureBodyActive)
+  if (!mBoostOver) { // 0x0000CE78
+    return;
   }
-  CPatterned::Touch(actor, mgr);
+  // 0x0000CE84: form 3; 0x0000CE98: the target (0x1088); 0x0000CEAC: 0x440 <= rodata_70 (0.0).
+  if (mForm == kForm_IngSpot && actor.GetUniqueId() == mTargetId && mCurDamageRemTime <= 0.f) {
+    bool firstPerson = true;
+    if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId))) {
+      // 0x0000CEDC..0x0000CEF8: the morph state (0x38C) counts only when 0x390 is 0.
+      const int state = player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+                            ? int(player->GetMorphballTransitionState())
+                            : 0;
+      if (state == CPlayer::kMS_Morphed) {
+        firstPerson = false;
+      }
+    }
+    const CDamageInfo& damage =
+        firstPerson ? mBoost.mIngSpotDamageToFirstPerson : mBoost.mIngSpotDamageToMorphBall;
+    // 0x0000CF14..0x0000CF88: include 1 << data_0 (0x3B, kMT_Solid), exclude none, type 3.
+    mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), damage, SolidFilter(),
+                    CVector3f::Zero());
+    mCurDamageRemTime = mDamageWaitTime; // 0x0000CF90: 0x444 -> 0x440
+  }
+  CPatterned::Touch(actor, mgr); // 0x0000CFA0
 }
 
 // @ fn_30_CA18
@@ -690,23 +708,36 @@ void CIngBoostBallGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
   }
 }
 
-// The Ing's Death (the Ing REL's fn_29_B3C4).
+// A death while becoming the ing spot dies corporeal.
+// @ fn_30_76F4
 void CIngBoostBallGuardian::Death(CStateManager& mgr, const CVector3f& direction,
                                   EScriptObjectState state) {
-  EnsureBodyActive(mgr);
-  StopSfx();
-  CPatterned::Death(mgr, direction, state);
+  EnsureBodyActive(mgr); // host guard, not in retail (see EnsureBodyActive)
+  if (mForm == kForm_BecomingIngSpot) { // 0x00007704
+    mForm = kForm_Corporeal;
+  }
+  CPatterned::Death(mgr, direction, state); // 0x00007714
 }
 
-// The Ing's KnockBack (the Ing REL's fn_29_B8C0).
+// Only the corporeal form outside the knock-back body state takes the knock-back reaction; a light
+// beam hit flinches with type 2, every other with type 1.
+// @ fn_30_CB84
 void CIngBoostBallGuardian::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  EnsureBodyActive(mgr);
-  CPatterned::KnockBack(mgr, info);
+  EnsureBodyActive(mgr); // host guard, not in retail (see EnsureBodyActive)
+  // 0x0000CBAC: form 2; 0x0000CBBC: body state (0x48C -> 0x37C) 6.
+  const bool react =
+      mForm == kForm_Corporeal && BodyController()->GetCurrentStateId() != pas::kAS_KnockBack;
+  KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, react); // 0x620
+  // 0x0000CBE8: the damage's weapon type (info + 0x10) 2 -> 0x688 = 2, else 1.
+  KnockBackController().SetFlinchType(
+      info.GetDamageInfo().GetWeaponMode().GetType() == kWT_Light ? 2 : 1);
+  CPatterned::KnockBack(mgr, info); // 0x0000CC14
 }
 
 // fn_30_CB54 (vtable slot 39; the Ing REL's fn_29_B890): the two host forms and the evaporating
 // form take no damage (0x0000CB5C: form 5; 0x0000CB6C: forms 0..1); CPatterned's body is the
-// cooldown store at 0x0000CB7C.
+// cooldown store at 0x0000CB7C (lbl_8041AAB8, CPatterned's skDamageHitTime, into 0x448).
+// @ fn_30_CB54
 void CIngBoostBallGuardian::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;
