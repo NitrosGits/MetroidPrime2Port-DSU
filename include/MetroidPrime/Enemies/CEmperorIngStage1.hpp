@@ -179,9 +179,11 @@ private:
   void SetupTentacleAnimations(CStateManager& mgr);
   // fn_16_3094: the actor connected on CONNECT/'PLAY'.
   CActor* GetPlayActor(CStateManager& mgr) const;
-  // fn_16_3EAC: creates the three collision actor managers and their tentacle actors. Too big for
-  // the slice's rule, so it stays a stand-in.
+  // fn_16_3EAC: creates the three collision actor managers (the tentacles, the heart, the body).
   void SetupTentacleCollisions(CStateManager& mgr);
+  // fn_16_3D64: a group's collision actors go active or inactive - too big for the slice's rule,
+  // so a stand-in.
+  void SetCollisionActorActive(CStateManager& mgr, int index, bool active);
   // fn_16_36E8: the tentacle joint collision descriptions.
   void SetupTentacleJoints(CStateManager& mgr);
   // fn_16_2B68: the joint description is filled in.
@@ -248,9 +250,9 @@ private:
   // fn_16_900C's.
   int x7c0_;                          // guest 0x7C0, 0: the mode fn_16_4A04 turns into IS6/IS7
   int x7c4_;                          // guest 0x7C4, 0: the sub-stage fn_16_2F70 reads
-  CCollisionActorManager* x7c8_;      // guest 0x7C8, 0: the first tentacle's collision actors
-  CCollisionActorManager* x7cc_;      // guest 0x7CC, 0: the second one's
-  CCollisionActorManager* x7d0_;      // guest 0x7D0, 0: the third one's
+  CCollisionActorManager* x7c8_;      // guest 0x7C8, 0: the tentacles' collision actors (fn_16_3EAC)
+  CCollisionActorManager* x7cc_;      // guest 0x7CC, 0: the heart's (on the tracked actor)
+  CCollisionActorManager* x7d0_;      // guest 0x7D0, 0: the body sphere's (on the 'PLAY' actor)
   int x7d4_;                          // guest 0x7D4, 0: the number of live tentacles
   CEmperorIngStage1Tentacle x7d8_[8]; // guest 0x7D8: the eight tentacle slots
   TUniqueId xa18_;                    // guest 0xA18: the actor connected on IS3/ACTIVATE

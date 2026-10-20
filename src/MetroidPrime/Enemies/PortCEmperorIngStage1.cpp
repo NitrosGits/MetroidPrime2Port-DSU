@@ -189,7 +189,14 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
   SetDrawShadow(false);
 }
 
-CEmperorIngStage1::~CEmperorIngStage1() {}
+// fn_16_8B80 (vtable slot 0): only the member destruction the collision managers need is here -
+// the three rstl::single_ptr members are deleted in reverse order, 0x7D0 (0x8CDC), 0x7CC
+// (0x8CF0) and 0x7C8 (0x8D04).
+CEmperorIngStage1::~CEmperorIngStage1() {
+  delete x7d0_;
+  delete x7cc_;
+  delete x7c8_;
+}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
@@ -312,11 +319,6 @@ CActor* CEmperorIngStage1::GetTargetActor(CStateManager& mgr) const {
 // manager (guest 0x7CC): its first joint description's collision actor id, looked up in the state
 // manager.
 CCollisionActor* CEmperorIngStage1::GetCollisionActor(CStateManager& mgr) const {
-  if (x7cc_ == nullptr) {
-    // The retail has no test here: the manager is set by the tentacle spawn code, which the port
-    // does not have yet.
-    return nullptr;
-  }
   const TUniqueId id = x7cc_->GetCollisionDescFromIndex(0).GetCollisionActorId();
   return TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
 }
@@ -354,19 +356,11 @@ void CEmperorIngStage1::UpdateTentacleAnchor(float dt, CStateManager& mgr) {
 }
 
 // fn_16_3AFC (0x3AFC..0x3B70): the three collision actor managers get their update (the calls
-// at 0x3B28, 0x3B3C and 0x3B50). The retail has no null test: the managers are set by the
-// tentacle spawn code, which the port does not have yet, so on the host they are still null and
-// the update is skipped.
+// at 0x3B28, 0x3B3C and 0x3B50). The managers are fn_16_3EAC's, built on kSM_AreaLoaded.
 void CEmperorIngStage1::UpdateCollisionActors(float dt, CStateManager& mgr) {
-  if (x7c8_ != nullptr) {
-    x7c8_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
-  if (x7cc_ != nullptr) {
-    x7cc_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
-  if (x7d0_ != nullptr) {
-    x7d0_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
+  x7c8_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  x7cc_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+  x7d0_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
 }
 
 // fn_16_4C0C (0x4C0C..0x4DF0): the module's track-player update. It looks the tracked actor up
@@ -430,11 +424,8 @@ void CEmperorIngStage1::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     }
     case kSM_AreaLoaded: {
       xa18_ = FindConnectedObject(mgr, kSS_InternalState3, kSM_Activate);
-      // The retail's second lookup asks for the message 0x41574348, which the port's
-      // EScriptObjectMessage has no name for (its kSM_Attach is 0x41544348), so the value is
-      // used as it is.
-      xa1a_ = FindConnectedObject(mgr, kSS_Connect,
-                                 static_cast< EScriptObjectMessage >(0x41574348u));
+      // The second lookup is CONNECT/ATTACH (`lis r7, 0x4154` + 0x4348 at 0x7DB8/0x7DD0).
+      xa1a_ = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
       xa1c_ = FindConnectedObject(mgr, kSS_Connect, kSM_Activate);
       SetupTentacleAnimations(mgr);
       SetupTentacleCollisions(mgr);
@@ -453,19 +444,11 @@ void CEmperorIngStage1::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   }
 }
 
-// fn_16_3B70 (0x3B70..0x3BC4): the three collision actor managers are destroyed. The retail has
-// no null test: the managers are set by the tentacle spawn code, which the port does not have
-// yet, so on the host they are still null.
+// fn_16_3B70 (0x3B70..0x3BC4): the three collision actor managers are destroyed.
 void CEmperorIngStage1::DestroyCollisionActors(CStateManager& mgr) {
-  if (x7c8_ != nullptr) {
-    x7c8_->Destroy(mgr);
-  }
-  if (x7cc_ != nullptr) {
-    x7cc_->Destroy(mgr);
-  }
-  if (x7d0_ != nullptr) {
-    x7d0_->Destroy(mgr);
-  }
+  x7c8_->Destroy(mgr);
+  x7cc_->Destroy(mgr);
+  x7d0_->Destroy(mgr);
 }
 
 // fn_16_30C8 (0x30C8..0x3340): the tentacle animation ids. The tracked actor is the one
@@ -525,11 +508,189 @@ CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {
   return TCastToPtr< CActor >(mgr.ObjectById(xa1e_));
 }
 
-// fn_16_3EAC (0x794): creates the three CCollisionActorManagers (rs_new + the manager's
-// constructor with a joint description vector), gives their collision actors the damage
-// vulnerability and adds the materials. Too big for the slice's rule, so it stays a stand-in.
+// The tentacles' joint pairs (lbl_16_rodata_0, 0x1E0 bytes): eight tentacles of five 12-byte
+// records {from locator, to locator, the box's extent}, the tentacle stride 0x3C (0x4498). The
+// order is retail's - "seven" comes before "six".
+struct SEmperorIngStage1JointPair {
+  const char* from; // +0x0
+  const char* to;   // +0x4
+  float extent;     // +0x8
+};
+static const SEmperorIngStage1JointPair skTentacleJointPairs[8][5] = {
+  {
+      {"one_Spine_1_SDK", "one_Spine_2_SDK", 2.f},         // rodata 0x0
+      {"one_Spine_2_SDK", "one_Spine_3_SDK", 1.5f},        // rodata 0xC
+      {"one_Spine_3_SDK", "one_Spine_4_SDK", 0.75f},       // rodata 0x18
+      {"one_Spine_4_SDK", "one_Spine_6_SDK", 0.75f},       // rodata 0x24
+      {"one_Spine_6_SDK", "one_Spine_7_SDK", 1.75f},       // rodata 0x30
+  },
+  {
+      {"two_Spine_1_SDK", "two_Spine_2_SDK", 2.f},         // rodata 0x3C
+      {"two_Spine_2_SDK", "two_Spine_3_SDK", 1.5f},        // rodata 0x48
+      {"two_Spine_3_SDK", "two_Spine_4_SDK", 0.75f},       // rodata 0x54
+      {"two_Spine_4_SDK", "two_Spine_6_SDK", 0.75f},       // rodata 0x60
+      {"two_Spine_6_SDK", "two_Spine_7_SDK", 1.75f},       // rodata 0x6C
+  },
+  {
+      {"three_Spine_1_SDK", "three_Spine_2_SDK", 2.f},     // rodata 0x78
+      {"three_Spine_2_SDK", "three_Spine_3_SDK", 1.5f},    // rodata 0x84
+      {"three_Spine_3_SDK", "three_Spine_4_SDK", 0.75f},   // rodata 0x90
+      {"three_Spine_4_SDK", "three_Spine_6_SDK", 0.75f},   // rodata 0x9C
+      {"three_Spine_6_SDK", "three_Spine_7_SDK", 1.75f},   // rodata 0xA8
+  },
+  {
+      {"four_Spine_1_SDK", "four_Spine_2_SDK", 2.f},       // rodata 0xB4
+      {"four_Spine_2_SDK", "four_Spine_3_SDK", 1.5f},      // rodata 0xC0
+      {"four_Spine_3_SDK", "four_Spine_4_SDK", 0.75f},     // rodata 0xCC
+      {"four_Spine_4_SDK", "four_Spine_6_SDK", 0.75f},     // rodata 0xD8
+      {"four_Spine_6_SDK", "four_Spine_7_SDK", 1.75f},     // rodata 0xE4
+  },
+  {
+      {"five_Spine_1_SDK", "five_Spine_2_SDK", 2.f},       // rodata 0xF0
+      {"five_Spine_2_SDK", "five_Spine_3_SDK", 1.5f},      // rodata 0xFC
+      {"five_Spine_3_SDK", "five_Spine_4_SDK", 0.75f},     // rodata 0x108
+      {"five_Spine_4_SDK", "five_Spine_6_SDK", 0.75f},     // rodata 0x114
+      {"five_Spine_6_SDK", "five_Spine_7_SDK", 1.75f},     // rodata 0x120
+  },
+  {
+      {"seven_Spine_1_SDK", "seven_Spine_2_SDK", 2.f},     // rodata 0x12C
+      {"seven_Spine_2_SDK", "seven_Spine_3_SDK", 1.5f},    // rodata 0x138
+      {"seven_Spine_3_SDK", "seven_Spine_4_SDK", 0.75f},   // rodata 0x144
+      {"seven_Spine_4_SDK", "seven_Spine_6_SDK", 0.75f},   // rodata 0x150
+      {"seven_Spine_6_SDK", "seven_Spine_7_SDK", 1.75f},   // rodata 0x15C
+  },
+  {
+      {"six_Spine_1_SDK", "six_Spine_2_SDK", 2.f},         // rodata 0x168
+      {"six_Spine_2_SDK", "six_Spine_3_SDK", 1.5f},        // rodata 0x174
+      {"six_Spine_3_SDK", "six_Spine_4_SDK", 0.75f},       // rodata 0x180
+      {"six_Spine_4_SDK", "six_Spine_6_SDK", 0.75f},       // rodata 0x18C
+      {"six_Spine_6_SDK", "six_Spine_7_SDK", 1.75f},       // rodata 0x198
+  },
+  {
+      {"eight_Spine_1_SDK", "eight_Spine_2_SDK", 2.f},     // rodata 0x1A4
+      {"eight_Spine_2_SDK", "eight_Spine_3_SDK", 1.5f},    // rodata 0x1B0
+      {"eight_Spine_3_SDK", "eight_Spine_4_SDK", 0.75f},   // rodata 0x1BC
+      {"eight_Spine_4_SDK", "eight_Spine_6_SDK", 0.75f},   // rodata 0x1C8
+      {"eight_Spine_6_SDK", "eight_Spine_7_SDK", 1.75f},   // rodata 0x1D4
+  },
+};
+
+// fn_16_3EAC (0x3EAC..0x4640): creates the three collision actor managers. The managers are
+// retail's rstl::single_ptr members, so the old one is deleted before the new one is stored
+// (0x4004, 0x41D0, 0x4500). The module's own helpers it calls are rstl template bodies the host's
+// rstl provides: fn_16_BC44 the vector's reserve, fn_16_471C the description's copy, push_back_unsafe
+// the vector's push_back, fn_16_4838 the vector's destructor and fn_16_4640 the string's operator+.
+// The rs_new null tests (0x3FC8, 0x4194, 0x44C0) and the string destructors' tests are the
+// compiler's; the host's rs_new does not return null.
 void CEmperorIngStage1::SetupTentacleCollisions(CStateManager& mgr) {
-  StandInFn("fn_16_3EAC");
+  // The heart: one sphere on the tracked actor's (fn_16_302C, 0x3EF0) "brainSpine_scale" locator
+  // (lbl_16_rodata_41C+0x5EE, 0x3F08), radius 5.0f (lbl_16_rodata_3AC), name "HeartCollision"
+  // (+0x632), mass 0.001f (lbl_16_rodata_3CC); the vector reserves one (0x3EE4).
+  {
+    rstl::vector< CJointCollisionDescription > descs;
+    descs.reserve(1);
+    const CAnimData* animData = GetTargetActor(mgr)->GetModelData()->GetAnimationData(); // 0x3EF4
+    const CSegId seg = animData->GetLocatorSegId(rstl::string_l("brainSpine_scale"));  // 0x3F1C
+    descs.push_back(CJointCollisionDescription::SphereCollision(
+        seg, CVector3f::Zero(), 5.f, rstl::string_l("HeartCollision"), 0.001f)); // 0x3F70, 0x3F9C
+    // The owner is the tracked actor (guest 0xA1A, 0x3FE8), the area this actor's (0x3FCC), the
+    // manager starts active (`li r8, 0x1`, 0x3FE4).
+    CCollisionActorManager* manager =
+        rs_new CCollisionActorManager(mgr, xa1a_, GetCurrentAreaId(), descs, true); // 0x3FF4
+    delete x7cc_;                                                                    // 0x4004
+    x7cc_ = manager;                                                                 // 0x4008
+  }
+  // Its collision actor (fn_16_2FA8, 0x4014) takes this actor's health info (the vtable slot 13
+  // result copied into the actor's slot 12 one, 0x402C..0x4098), this actor's damage
+  // vulnerability (slot 14, 0x40A4; SetDamageVulnerability at 0x40B8) and the materials kMT_Target
+  // (0x28), kMT_Orbit (0x29) and kMT_SeekerTarget (0x3F) (0x40C4..0x40D0). Both sides are host
+  // types, so the copies are host assignments: no retail bytes are moved.
+  CCollisionActor* heart = GetCollisionActor(mgr);
+  if (heart != nullptr) { // 0x401C
+    *heart->HealthInfo() = *GetHealthInfo();
+    heart->SetDamageVulnerability(*GetDamageVulnerability());
+    heart->AddMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
+  }
+
+  // The body: one sphere on segment 1 (`li r0, 0x1` at 0x4118), radius 9.0f (lbl_16_rodata_3D0),
+  // name "SphereCollision" (+0x641), mass 0.001f (lbl_16_rodata_3CC).
+  {
+    rstl::vector< CJointCollisionDescription > descs;
+    descs.reserve(1); // 0x40F8
+    descs.push_back(CJointCollisionDescription::SphereCollision(
+        CSegId(1), CVector3f::Zero(), 9.f, rstl::string_l("SphereCollision"),
+        0.001f)); // 0x4148, 0x4174
+    // The owner is the actor connected on CONNECT/'PLAY' (guest 0xA1E, 0x41B4).
+    CCollisionActorManager* manager =
+        rs_new CCollisionActorManager(mgr, xa1e_, GetCurrentAreaId(), descs, true); // 0x41C0
+    delete x7d0_;                                                                    // 0x41D0
+    x7d0_ = manager;                                                                 // 0x41D8
+    // Its collision actor's filter (0x41D4..0x42D4): include kMT_Projectile (lbl_16_data_250,
+    // 0x23) and kMT_Player (lbl_16_data_254, 0x20); exclude kMT_Platform (lbl_16_data_258, 0x31),
+    // kMT_CollisionActor (lbl_16_data_25C, 0x2F), kMT_NoStaticCollision (lbl_16_data_260, 0x26)
+    // and kMT_NoPlatformCollision (lbl_16_data_264, 0x3C); the type 3 (0x4280) is
+    // kFT_IncludeExclude.
+    const TUniqueId id = x7d0_->GetCollisionDescFromIndex(0).GetCollisionActorId(); // 0x42A8
+    CCollisionActor* body = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));       // 0x42C0
+    if (body != nullptr) {                                                            // 0x42C8
+      body->SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+          CMaterialList(kMT_Projectile, kMT_Player),
+          CMaterialList(kMT_Platform, kMT_CollisionActor, kMT_NoStaticCollision,
+                        kMT_NoPlatformCollision)));
+    }
+  }
+
+  // The tentacles: 8 * 5 boxes between the joint pairs of skTentacleJointPairs (the loops at
+  // 0x4338..0x44A0), on this actor's own animation data (+0x60 -> +0x10, 0x430C); the vector
+  // reserves 0x28 (0x4308).
+  {
+    rstl::vector< CJointCollisionDescription > descs;
+    descs.reserve(0x28);
+    const CAnimData* animData = GetModelData()->GetAnimationData();
+    for (int tentacle = 0; tentacle < 8; ++tentacle) {
+      for (int joint = 0; joint < 5; ++joint) {
+        const SEmperorIngStage1JointPair& pair = skTentacleJointPairs[tentacle][joint];
+        const float extent = pair.extent;                                            // 0x4340
+        const CSegId from = animData->GetLocatorSegId(rstl::string_l(pair.from));   // 0x435C
+        const CSegId to = animData->GetLocatorSegId(rstl::string_l(pair.to));       // 0x4388
+        // The name is from + "->" (+0x651) + to (fn_16_4640, 0x43C8 and 0x43E4); the
+        // orientation is 1 (0x4410, kOT_BetweenJoints) and the mass 10.0f (lbl_16_rodata_390).
+        descs.push_back(CJointCollisionDescription::OBBAutoSizeCollision(
+            from, to, CVector3f(extent, extent, extent),
+            CJointCollisionDescription::kOT_BetweenJoints,
+            rstl::string_l(pair.from) + rstl::string("->") + rstl::string_l(pair.to),
+            10.f)); // 0x4420, 0x4470
+      }
+    }
+    // The owner is this actor (guest +0x8, 0x44E0).
+    CCollisionActorManager* manager =
+        rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), descs, true); // 0x44F0
+    delete x7c8_;                                                                           // 0x4500
+    x7c8_ = manager;                                                                        // 0x4504
+  }
+
+  // This actor's own filter (0x4514..0x45BC): include kMT_Solid (lbl_16_data_268, 0x3B); exclude
+  // kMT_CollisionActor (lbl_16_data_26C, 0x2F), kMT_Character (lbl_16_data_270, 0x21),
+  // kMT_AIPassthrough (lbl_16_data_274, 0x1C) and kMT_Player (lbl_16_data_278, 0x20); type 3.
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_CollisionActor, kMT_Character, kMT_AIPassthrough, kMT_Player)));
+  RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr); // 0x45D4
+
+  // The tentacles' collision actors go inactive (0x45DC..0x45F8), the body's sphere active (index
+  // 9, 0x460C) and the heart's inactive (index 8, 0x4620).
+  for (int index = 0; index < 8; ++index) {
+    SetCollisionActorActive(mgr, index, false);
+  }
+  SetCollisionActorActive(mgr, 9, true);
+  SetCollisionActorActive(mgr, 8, false);
+}
+
+// fn_16_3D64 (0x3D64..0x3EAC, 0x148): sets a group's collision actors active - a tentacle's five
+// (0..7) in the manager at guest 0x7C8, 8 the heart (0x7CC), 9 the body (0x7D0) - through the
+// actor's vtable slot 5 (SetActive). Too big for the slice's rule, so it stays a stand-in.
+void CEmperorIngStage1::SetCollisionActorActive(CStateManager& mgr, int index, bool active) {
+  StandInFn("fn_16_3D64");
 }
 
 // fn_16_36E8 (0x36E8..0x3984): the tentacle joint collision descriptions. For each of the eight
@@ -642,11 +803,6 @@ void CEmperorIngStage1::GrowTentacleJointVector() { StandInFn("fn_16_39CC"); }
 // its five. The description's collision actor id (at +0x3C) is looked up in the state manager
 // (0x3AE0) and cast to a collision actor (0x3AE4).
 CCollisionActor* CEmperorIngStage1::GetTentacleActor(CStateManager& mgr, int index) {
-  if (x7c8_ == nullptr) {
-    // A port limit, not retail's: the manager at guest 0x7C8 is the one fn_16_3EAC creates, and
-    // fn_16_3EAC (the tentacle spawn code) is reserved, so on the host the pointer is still null.
-    return nullptr;
-  }
   const uint descIndex = 4 + index * 5; // 0x3AB4, 0x3AC0
   const TUniqueId id = x7c8_->GetCollisionDescFromIndex(descIndex).GetCollisionActorId(); // 0x3AC8
   return TCastToPtr< CCollisionActor >(mgr.ObjectById(id)); // 0x3AE0, 0x3AE4

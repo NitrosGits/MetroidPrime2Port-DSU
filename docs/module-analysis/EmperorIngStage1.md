@@ -59,7 +59,8 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
 | `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
 | `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
-| `fn_16_3EAC` | 0x794 | creates the three collision actor managers and their tentacle actors | [probable] |
+| `fn_16_3EAC` | 0x794 | creates the three collision actor managers (section "fn_16_3EAC") | [proven] |
+| `fn_16_3D64` | 0x148 | sets a group's collision actors active (0..7 a tentacle's five at 0x7C8, 8 the heart 0x7CC, 9 the body 0x7D0; CEntity vtable slot 5 SetActive) | [proven] |
 | `fn_16_36E8` | 0x29C | builds the tentacle joint collision descriptions | [probable] |
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
@@ -169,7 +170,7 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0xA74 | byte | five bits cleared |
 | 0xA78 | float | 0 |
 | 0xA80-0xA8C | four ints | 0 (0xA8C the sound emitter's handle) |
-| 0xA18, 0xA1A, 0xA1C, 0xA1E | u16 | `kInvalidUniqueId` (the four connected actors: IS3/ACTIVATE, CONNECT/0x41574348, CONNECT/ACTIVATE and CONNECT/'PLAY') |
+| 0xA18, 0xA1A, 0xA1C, 0xA1E | u16 | `kInvalidUniqueId` (the four connected actors: IS3/ACTIVATE, CONNECT/ATTACH, CONNECT/ACTIVATE and CONNECT/'PLAY') |
 | 0xA20, 0xA24, 0xA28 | ints | -1 (the three tentacle animation ids) |
 | 0xA58, 0xA5C | floats | 0 (the "Damage" and "Telegraph" effect timers) |
 | 0xA90, 0xA98 | u16 | `kInvalidUniqueId` (0xA90 the emitter's target) |
@@ -405,8 +406,7 @@ five (0x3AB4) and the group starts four earlier (the callers pass 4 in r6: `li r
 0x1E2C, 0x1E74, 0x1F58, 0x1FE0, 0x2560 and 0x7FDC), so the tentacle's own description is the last
 of its five, at 4 + index * 5. The description's collision actor id (at +0x3C) is looked up in the
 state manager (0x3AE0) and cast to a collision actor (0x3AE4). It is 0x54 bytes, under the slice's
-0x80 line, so the port has it; the manager itself comes from fn_16_3EAC, which is reserved, so on
-the host the pointer at guest 0x7C8 is still null and the port takes that null path.
+0x80 line, so the port has it; the manager is fn_16_3EAC's.
 
 ### The message switch (fn_16_7CE8, vtable slot 4)
 
@@ -416,18 +416,14 @@ The base's own handler runs first (the call at 0x7D14), then the message decides
 |---|---|---|
 | `kSM_Create` (0x58435254) | 0x7D24 | the body controller (guest 0x48C) is activated with `kAS_Invalid` (0x7D78) |
 | `kSM_Delete` (0x5844454C) | 0x7D64 | fn_16_3B70: the three collision actor managers are destroyed (0x7D88) |
-| `kSM_AreaLoaded` (0x58414C44) | 0x7D3C | three connected objects are looked up - IS3/ACTIVATE into guest 0xA18 (0x7DAC), CONNECT/0x41574348 into 0xA1A (0x7DD4) and CONNECT/ACTIVATE into 0xA1C (0x7DFC) - and the tentacle work is set up: fn_16_30C8 (0x7E10), fn_16_3EAC (0x7E1C), fn_16_36E8 (0x7E28) |
+| `kSM_AreaLoaded` (0x58414C44) | 0x7D3C | three connected objects are looked up - IS3/ACTIVATE into guest 0xA18 (0x7DAC), CONNECT/ATTACH into 0xA1A (0x7DD4) and CONNECT/ACTIVATE into 0xA1C (0x7DFC) - and the tentacle work is set up: fn_16_30C8 (0x7E10), fn_16_3EAC (0x7E1C), fn_16_36E8 (0x7E28) |
 | `kSM_Activate` (0x41435456) | 0x7D50 | `SetBossParams`: the actor's id (guest +0x08), the health info's initial health (the vtable slot 13 call at 0x7E40, the float at +0x00 of the result) and the string table index of "BossTempleBossStage1" (lbl_16_rodata_41C+0x670) (0x7E6C, 0x7E80) |
 
-The retail's second lookup asks for the message 0x41574348, which the port's `EScriptObjectMessage`
-has no name for (its `kSM_Attach` is 0x41544348), so the port uses the raw value.
+The second lookup's message is `kSM_Attach` 0x41544348 (`lis r7, 0x4154` + `addi 0x4348`,
+0x7DB8/0x7DD0); an earlier reading of 0x41574348 left guest 0xA1A invalid.
 
-fn_16_3B70 (0x54) is ported with it; the three tentacle functions are too big and stay stand-ins:
-fn_16_30C8 (0x278) builds three sets of five CPASAnimParm from the tracked actor's animation data
-(the model's animation data at +0x3C), fn_16_3EAC (0x794) creates the three CCollisionActorManagers
-(`rs_new` + the manager's constructor with a joint description vector), gives their collision
-actors the damage vulnerability and adds the materials, and fn_16_36E8 (0x29C) builds three sets of
-27 CPASAnimParm and fills the joint vector at guest 0x7D4. They are the spawn slice's work.
+fn_16_3B70 (0x54) is ported with it, and so are the three tentacle functions: fn_16_30C8 and
+fn_16_36E8 (the animation builders below) and fn_16_3EAC (the collision managers, last section).
 
 ### The target's float at guest +0x1C0
 
@@ -509,13 +505,12 @@ the FSM does not reach - so the four bodies ported in this slice did not run in 
 With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
 descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC), which stays a
 stand-in because the port's vector holds the eight tentacle slots, and the tentacle actor lookup
-(fn_16_3AA8), which is ported and takes its null path because the manager at guest 0x7C8 comes
-from fn_16_3EAC (reserved) - nothing faults.
+(fn_16_3AA8), which finds the tentacle's collision actor in fn_16_3EAC's manager.
 
 With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
 fills the three animation ids (guest 0xA20, 0xA24 and 0xA28) and the eight joint slots, and the
 run reaches the joint stand-ins fn_16_2B68, fn_16_1E6C and fn_16_3984 - so the searches did find
-animations. The collision managers (fn_16_3EAC) stay a stand-in.
+animations.
 
 With `AcceptScriptMsg` ported (fn_16_7CE8) the `kSM_AreaLoaded` message runs the three tentacle
 stand-ins (fn_16_30C8, fn_16_3EAC, fn_16_36E8) and the `kSM_Activate` message (the console's
@@ -534,3 +529,31 @@ after the actor is activated. They do not flip in the run, because the host's FS
 state's triggers only while the FSM is in that state: the FSM leaves TrackPlayer in its first
 frame (AllTentaclesRetracted is true until the tentacles are spawned) and BeginHeartStage's
 transitions do not use those two triggers.
+
+### fn_16_3EAC (0x3EAC..0x4640): the three collision actor managers
+
+Called from `kSM_AreaLoaded` (0x7E1C). Each manager is `rs_new(0x18)` + the manager's constructor
+(area = this actor's, active = 1) and replaces the old one (single_ptr members; the destructor
+fn_16_8B80 deletes them at 0x8CDC/0x8CF0/0x8D04).
+
+| member | owner | descriptions | then |
+|---|---|---|---|
+| 0x7CC (heart) | the tracked actor, guest 0xA1A (CONNECT/ATTACH) | one `SphereCollision` on that actor's "brainSpine_scale" locator, radius 5.0 (rodata_3AC), "HeartCollision", mass 0.001 (rodata_3CC) | its actor (fn_16_2FA8) gets this actor's health info (slot 13 -> slot 12 copy, 0x404C..0x4098), `SetDamageVulnerability(*GetDamageVulnerability())` (slot 14, 0x40B8) and Target/Orbit/SeekerTarget (0x40D0) |
+| 0x7D0 (body) | the 'PLAY' actor, guest 0xA1E | one `SphereCollision` on CSegId(1), radius 9.0 (rodata_3D0), "SphereCollision", mass 0.001 | its actor's filter: include Projectile(0x23)+Player(0x20), exclude Platform(0x31), CollisionActor(0x2F), NoStaticCollision(0x26), NoPlatformCollision(0x3C), type 3 (data_250..264) |
+| 0x7C8 (tentacles) | this actor | 8 x 5 `OBBAutoSizeCollision` from lbl_16_rodata_0 ({from, to, extent}, stride 0xC/0x3C; extents 2.0/1.5/0.75/0.75/1.75; order one,two,three,four,five,seven,six,eight), name from+"->"+to, orientation 1, mass 10.0 (rodata_390) | - |
+
+Then this actor's filter (include Solid 0x3B; exclude CollisionActor, Character, AIPassthrough,
+Player; data_268..278), `RemoveMaterial(Target, Orbit, SeekerTarget)`, and fn_16_3D64 for 0..7
+(off), 9 (on), 8 (off). fn_16_3D64 (0x148) is a stand-in, so on the host every collision actor
+stays active.
+
+**The damage vulnerability**: retail's is 0x54 bytes and the host's 0x38, but fn_16_3EAC copies
+none of it: it passes the actor's own `GetDamageVulnerability()` (vtable slot 14) to
+`CCollisionActor::SetDamageVulnerability`, both host types. The health info is likewise a host
+`CHealthInfo` assignment.
+
+**Runtime** (2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send <uid> Activate`): `objs collisionactor` lists 42 new collision actors in a11 (40 tentacle
+boxes along the spines, the heart and the body sphere), 0 `[port] caught`/reach-stub. The FSM
+goes TrackPlayer (fn_16_7C28) -> BeginHeartStage (fn_16_78AC) and stays there: both state bodies
+are stand-ins, so nothing drives BeginHeartStage's transitions yet.
