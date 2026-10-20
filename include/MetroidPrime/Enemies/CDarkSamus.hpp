@@ -224,8 +224,6 @@ public:
 
 private:
 #ifdef TARGET_PC
-  void EnsureBodyActive(CStateManager& mgr);
-
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.

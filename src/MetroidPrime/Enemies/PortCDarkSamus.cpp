@@ -74,16 +74,6 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 
 CDarkSamus::~CDarkSamus() {}
 
-// A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
-// ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
-// where retail activates it, so the port activates on kSM_Create and, as the other patterned
-// actors in this port do, again on demand in every entry point that can run first.
-void CDarkSamus::EnsureBodyActive(CStateManager& mgr) {
-  if (BodyController() != nullptr && !BodyController()->GetIsActive()) {
-    BodyController()->Activate(mgr, pas::kAS_Invalid);
-  }
-}
-
 // vtable slot 5 = fn_10_1B1FC (0x27C). Retail runs the state machine's own tick first (it asks
 // the machine for a state through the vtable slot 0x28), then aims at the player (the vector at
 // 0x6E0), then runs CPatterned::Think and afterwards the module's own AI.
@@ -92,7 +82,6 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
-  EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
 }
 
@@ -103,10 +92,15 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
 // (0x0001E98C) and 'XOFF' (0x0001E978).
 void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("fn_10_1E89C", "vtable slot 6, AcceptScriptMsg");
-  CPatterned::AcceptScriptMsg(mgr, msg);
+  // The 'XCRT' arm (0x58435254, the host's kSM_Create; the compare at 0x0001E91C) loads the body
+  // controller (this+0x48C at 0x0001E99C), passes -1 for the animation state (0x0001E9A0) and
+  // calls CBodyController::Activate (0x0001E9A4). Every arm then falls into the common tail,
+  // which forwards the message to CPatterned (the call at 0x0001EE2C), so the message is
+  // forwarded here too - after the activation, in retail's order.
   if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
+  CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
 // vtable slot 9 = fn_10_18AB8 (0x2C0): the pre-render pass (the locator-driven effect setup).
