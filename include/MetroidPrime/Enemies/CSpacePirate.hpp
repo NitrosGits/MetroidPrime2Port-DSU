@@ -208,6 +208,7 @@ private:
   void SquadJoin(CStateManager& mgr);                    // DFD4
   void UpdateHeldPosition(CStateManager& mgr, float dt); // D720
   void UpdateGuardPosition(CStateManager& mgr, float dt); // D800
+  void UpdateLeashTimer(float dt);                       // 5280
   void AvoidActors(CStateManager& mgr);                  // D40C
   void CheckBlade(CStateManager& mgr);                   // CC80
   void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8

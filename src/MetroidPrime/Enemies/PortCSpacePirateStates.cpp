@@ -594,6 +594,15 @@ void CSpacePirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_5280: the leash timer accumulates while the body is not fully frozen (rodata B54 = 1.0,
+// `fcmpu` + `beq` on GetPercentageFrozen) and not being electrocuted (body +0x5b8 > 0, i.e.
+// IsElectrocuting). MP1 spells the same test !IsFrozen() && !IsElectrocuting().
+void CSpacePirate::UpdateLeashTimer(float dt) {
+  if (BodyController()->GetPercentageFrozen() != 1.f && !BodyController()->IsElectrocuting()) {
+    xbb0_leashTimer += dt;
+  }
+}
+
 // Retail fn_72_D720: how long the target has stayed put; ShouldJumpBack reads the timer.
 void CSpacePirate::UpdateHeldPosition(CStateManager& mgr, float dt) {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
@@ -1001,16 +1010,58 @@ void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::WallDetach state (fn_72_68E4)");
 }
 
+// Retail fn_72_B3D4: Activate re-arms the animation state and the squad, zeroes the leash timer and
+// sets 0x8fa bit 0x40. While the body lies on the ground and the path finder has no source point at
+// its own translation the pirate is left to die; otherwise it gets up as soon as the animation state
+// allows a kAS_Getup command. Both paths feed the leash timer. Deactivate undoes the flags.
 void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::GetUp state (fn_72_B3D4)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    SquadReset(mgr); // fn_72_DEDC
+    xbb0_leashTimer = 0.f;
+    x8fa_25_ = true;
+    break;
+  case kStateMsg_Update:
+    if (BodyController()->GetCurrentStateId() == pas::kAS_LieOnGround &&
+        mPathFindSearch.Search(GetTranslation(), GetTranslation()) ==
+            CPathFindSearch::kR_NoSourcePoint) {
+      SetPendingDeath(true);
+    } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Getup)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCGetupCmd(pas::kGetup_Zero));
+    }
+    UpdateLeashTimer(dt); // 5280
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x8fa_25_ = false;
+    break;
+  }
 }
 
 void CSpacePirate::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Generate state (fn_72_C1A4)");
 }
 
+// Retail fn_72_94D0: Activate stores rodata B50 = 4.0 into the strafe delay and flags the attack
+// state; Update keeps a step going in xb08_skidDir (body 0x37c compared with 3 = kAS_Step);
+// Deactivate clears the flag. Only messages 0-2 are handled.
 void CSpacePirate::Skid(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Skid state (fn_72_94D0)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    xb0c_strafeDelayTimer = 4.f;
+    x8f6_31_inAttackState = true;
+    break;
+  case kStateMsg_Update:
+    if (BodyController()->GetCurrentStateId() != pas::kAS_Step) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCStepCmd(static_cast< pas::EStepDirection >(xb08_skidDir), pas::kStep_Normal));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    x8f6_31_inAttackState = false;
+    break;
+  }
 }
 
 void CSpacePirate::DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1033,8 +1084,29 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   PortSpacePirateStandIn("CSpacePirate::Enraged state (fn_72_A2B8)");
 }
 
+// Retail fn_72_5310: Activate arms the animation state and zeroes the leash timer. Update delivers
+// the loop jump towards mDestPos (as built by fn_72_5510: 0x11 kBSC_Jump, jump type 0, variant 0,
+// waypoint2 = zero vector, initial state 2 = kJS_Loop, facing flags 2 = kFF_AmbushJump, no wall
+// jump) once the animation allows kAS_Jump, sets 0x8f7 bit 0x02, and feeds the leash timer.
 void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::Jump state (fn_72_5310)");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    xbb0_leashTimer = 0.f;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+      x8f7_30_jumpVelSet = true;
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCJumpCmd(mDestPos, pas::kJT_Normal, pas::kJS_Loop, 0, CBCJumpCmd::kFF_AmbushJump));
+    }
+    UpdateLeashTimer(dt); // 5280
+    break;
+  case kStateMsg_Deactivate:
+    x8f7_30_jumpVelSet = false;
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
 }
 
 void CSpacePirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
