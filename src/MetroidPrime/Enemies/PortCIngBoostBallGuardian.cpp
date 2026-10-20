@@ -233,6 +233,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mDeathEffect(BgOptionalPart(data.mIngSpot.GetDeathEffect()))
 , mMiniPortalEffect(BgOptionalPart(data.mMiniPortal.mEffect))
 , mSplatEffect(BgOptionalPart(data.mBodyProjectile.mSplatEffect))
+, mBoostNormalHitEffect(BgOptionalPart(boost.mHitNormalDamage))
+, mBoostHeavyHitEffect(BgOptionalPart(boost.mHitHeavyDamage))
 , mEyeSegId(BgHeadSegId(modelData))
 , mRightShoulderSegId(BgArmSegId(modelData, "R_shoulder"))
 , mRightElbowSegId(BgArmSegId(modelData, "R_elbow"))
@@ -260,7 +262,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mFrustrationTimer(0.f)
 , mBallCooldown(0.f)
 , mHitReactionTime(0.f)
-, mLightBlend(0.f)
+, mLightBlend(1.f) // ctor 0x0000FDA4: 0x11C4
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
 , mCollidedWithCrystal(false)
@@ -272,7 +274,11 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoostPuddleGenerate(false) // ctor 0x0000FEF0: 0x11EE 0x04 = 0
 , mReflectVulnerability(false) // ctor 0x0000FEFC: 0x11EE 0x02 = 0
 , mBoostPuddleAllowed(true)    // ctor 0x0000FF2C: 0x11EF 0x20 = 1
+, mBodyHitsLethal(true)        // ctor 0x0000FF38: 0x11EF 0x10 = 1
 , mBoostChildId(kInvalidUniqueId)
+, mIngBlobTrackerId(kInvalidUniqueId)
+, mBoostBlobTrackerId(kInvalidUniqueId)
+, mHitLightId(kInvalidUniqueId)
 , mBoostAimPos(CVector3f::Zero())   // ctor 0x0000FD10
 , mBoostSpawnPos(CVector3f::Zero()) // ctor 0x0000FD28
 , mBoostNavPointId(kInvalidUniqueId)
@@ -280,6 +286,9 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoostTimer(0.f)
 , mBoost11D4(0.f)                                       // ctor 0x0000FDC4
 , mBoost11D8(0.f)                                       // ctor 0x0000FDC8
+, mBoost11E0(0.f)                                       // ctor 0x0000FDD0
+, mBoostHitTimer(0.f)                                   // ctor 0x0000FB70
+, mSafeZoneCount(0)                                     // ctor 0x0000FD08
 , mBoostPuddleModeTimer(mBoost.mPhase0.mBoostPuddleModeTime) // ctor 0x0000FDDC: *(0x11D0)+0
 , mBoostRandomFloat(0.f)
 , mPhaseIndex(0)
@@ -330,7 +339,11 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
   }
 }
 
-CIngBoostBallGuardian::~CIngBoostBallGuardian() {}
+// The guest's dtor deletes both managers (0x0000E7E4 for 0xD64, then 0xD60).
+CIngBoostBallGuardian::~CIngBoostBallGuardian() {
+  delete mCollisionActorManager1;
+  delete mCollisionActorManager0;
+}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say

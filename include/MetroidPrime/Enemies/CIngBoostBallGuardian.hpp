@@ -258,6 +258,7 @@ public:
                     CStateManager& mgr) override;
   void SetupStateMachine(CStateManager& mgr) override;
   void Touch(CActor& actor, CStateManager& mgr) override;
+  void UpdateHitDamageTime(float dt) override; // fn_30_CA18
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
 
@@ -392,6 +393,8 @@ private:
   void UpdateBoostAimPos(CStateManager& mgr);
   CVector3f FindBoostSpawnPos(CStateManager& mgr) const;
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
+  // fn_30_6064: release the cover hint (guest 0x108E); the id is cleared only if the hint exists.
+  void ReleaseOwnCoverHint(CStateManager& mgr);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
@@ -408,7 +411,7 @@ private:
   // module has no lure safe zone).
   void FaceLureOrTarget(CStateManager& mgr);
   // fn_30_30E4: the guest's second manager (0xD64) takes the boost-ball vulnerability or the ing
-  // spot's. fn_30_3190: the body manager (guest 0xD60, the host's mCollisionActorManager) takes the
+  // spot's. fn_30_3190: the body manager (guest 0xD60) takes the
   // reflect vulnerability or the base one. fn_30_3068: enter or leave the boost puddle mode.
   void SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost);
   void SetBodyManagerReflect(CStateManager& mgr, bool reflect);
@@ -425,16 +428,30 @@ private:
   void UpdateTouchBox();
   void UpdatePuddleEffects(float dt, CStateManager& mgr);
   void UpdateHitLight(float dt, CStateManager& mgr);
-  // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
+  // fn_30_4E90: the body manager (guest 0xD60), the seven joint spheres.
   void CreateCollisionActorManager(CStateManager& mgr);
-  void SetupCollisionActors(CStateManager& mgr);
+  // fn_30_4A38: the guest's second manager (0xD64), one "PuddleCollisionActor" box at the "Root"
+  // locator. fn_30_4924: a manager's collision actors take the health info and CPatterned's own
+  // damage vulnerability.
+  void CreateIngSpotManager(CStateManager& mgr);
+  void SetupManagerActors(CStateManager& mgr, CCollisionActorManager* const& manager);
+  // fn_30_648C: an "IngBlobEffect" collision tracker drawn after the guardian, emission 0.
+  // fn_30_67B4: the "Ing Light" game light (black point light). fn_30_510C: leave the team.
+  TUniqueId CreateBlobTracker(CStateManager& mgr, const TLockedToken< CGenDescription >& desc);
+  void CreateHitLight(CStateManager& mgr);
+  void LeaveTeam(CStateManager& mgr);
   // A collision actor that last touched the player deals contact damage.
   void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
-  // The hit reaction in the ing-spot form, and the weapon hit on a collision actor otherwise.
-  void IngSpotDamage(CStateManager& mgr, TUniqueId sender);
-  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
-  // The explosion of the hit effect token (heavy when asked and loaded).
-  CEntity* SpawnHitEffect(CStateManager& mgr, bool heavy);
+  // fn_30_479C: kSM_Damage. fn_30_4078: a weapon hit on a body (0xD60) collider. fn_30_44A4: a
+  // weapon hit on the puddle (0xD64) collider, or a hit the boost ball relays. fn_30_4324:
+  // kSM_ResistedDamage on the puddle collider. fn_30_4030: the damage that turns on puddle mode.
+  // fn_30_3CB0: the ing-spot hit effect and sound.
+  void ColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void BodyColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void PuddleColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void PuddleColliderResistedDamage(CStateManager& mgr, TUniqueId sender);
+  void AccumulatePuddleDamage(CStateManager& mgr, float hp, float damage);
+  void SpawnSpotHitEffect(CStateManager& mgr, float damage);
 
   // Host layout (retail's object is 0x11F0; CPatterned is 0x7C0). Guest offsets are the REL's,
   // from the constructor fn_30_EC6C - the full table is in the analysis note. The host layout is
@@ -455,9 +472,6 @@ private:
   CDamageVulnerability mVulnerability;                   // guest 0x1178
   // The Ing half's members, under the Ing REL's names (the guest offsets are in
   // docs/module-analysis/BoostGuardian.md section e; the host layout is its own).
-  // The manager of the seven joint spheres (the Ing's own at guest 0xC50; the guest's 0xD60/0xD64
-  // are this module's own two managers, which the boost half uses).
-  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager;
   rstl::optional_object< CAABox > mTouchBox;            // CIng: 0xCC0
   TUniqueId mHostId;                                     // CIng: 0xCDC
   TUniqueId mPossessedEffectId;                          // CIng: 0xCDE
@@ -477,6 +491,10 @@ private:
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect;    // CIng: 0xD28
   rstl::optional_object< TLockedToken< CGenDescription > > mMiniPortalEffect; // CIng: 0xD38
   rstl::optional_object< TLockedToken< CGenDescription > > mSplatEffect;   // CIng: 0xD48
+  // Guest 0x1020/0x1030: boostIngSpotHitNormalDamage / boostIngSpotHitHeavyDamage (ctor 0x0000F46C,
+  // 0x0000F5E8). mNormalHitEffect/mHeavyHitEffect are the guest's 0x1000/0x1010.
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostNormalHitEffect;
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostHeavyHitEffect;
   CSfxHandle mBodyProjectileSfx;                         // CIng: 0xD58
   CSfxHandle mLoopSfx[2];                                // CIng: 0xD60/0xD64
   CSegId mEyeSegId;                                      // CIng: 0xD7B
@@ -506,7 +524,7 @@ private:
   float mFrustrationTimer;                               // CIng: 0xE44
   float mBallCooldown;                                   // CIng: 0xE48
   float mHitReactionTime;                                // CIng: 0xE4C
-  float mLightBlend;                                     // CIng: 0xE50
+  float mLightBlend;                                     // guest 0x11C4 (CIng: 0xE50)
   float mDeadFade;                                       // CIng: 0xE54
   float mBodyProjectileTime;                             // CIng: 0xE58
   // The boost half's members (this module's own; the guest offsets are in
@@ -523,7 +541,13 @@ private:
   bool mBoostPuddleGenerate : 1;                        // guest 0x11EE bit 2
   bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
+  // Guest 0x11EF bit 4 (0x10), ctor 1: while set a body hit may kill (fn_30_4078). Retail's
+  // DoUserAnimEvent (fn_30_D4F8) clears it on kUE_Unknown37 and sets it on kUE_Unknown38.
+  bool mBodyHitsLethal : 1;
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
+  TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect
+  TUniqueId mBoostBlobTrackerId;                         // guest 0x1076: boostIngSpotBlobEffect
+  TUniqueId mHitLightId;                                 // guest 0x1084: "Ing Light"
   // Guest 0x109C: the ids connected with (kSS_Modify, kSM_Activate), gathered on kSM_Create
   // (0x0000E06C) and handed to the boost ball.
   rstl::vector< TUniqueId > mModifyTargets;
@@ -534,6 +558,9 @@ private:
   float mBoostTimer;                                     // guest 0x11DC
   float mBoost11D4;                                      // guest 0x11D4
   float mBoost11D8;                                      // guest 0x11D8
+  float mBoost11E0;     // guest 0x11E0: bomb damage relayed by the ball (fn_30_44A4)
+  float mBoostHitTimer; // guest 0x1080: skDamageHitTime on a resisted bomb hit; fn_30_CA18 reads it
+  int mSafeZoneCount;   // guest 0x115C: XENZ/XEXZ count; while > 0 fn_30_CA18 keeps the hit tint
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
   int mPhaseIndex;                                       // guest 0x11CC: the current phase

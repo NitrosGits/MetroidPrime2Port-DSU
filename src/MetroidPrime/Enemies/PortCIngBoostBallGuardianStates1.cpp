@@ -156,9 +156,8 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     } else {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
     }
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, true); // 0xc50
-    }
+    mCollisionActorManager0->SetActive(mgr, true); // guest 0xD60
+    mCollisionActorManager1->SetActive(mgr, false); // fn_30_B03C 0x0000B144: guest 0xD64
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp); // 0xca4 = 2
     mLineOfSight.SetSegment(mEyeSegId);                            // 0xd8a = 0xd7b ("head")
     FaceLureOrTarget(mgr);                                         // the Ing's fn_29_1A80
@@ -196,6 +195,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     }
     mBoostPuddleGenerate = false;           // 0x0000B42C: 0x11EE 0x04 = 0
     mProjectileFSMEntry = false;            // 0x0000B448: 0x11ED 0x02 = 0
+    mBoost11E0 = 0.f;                       // 0x0000B450
     mBoostNavPointId2 = kInvalidUniqueId;   // 0x0000B458: 0x1098
     break;
   default:
@@ -249,9 +249,8 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
     mLineOfSight.SetSegment(CSegId::Null()); // 0xd8a = 99
     mVerticalMovement = true;                // CPatterned 0x34c bit 6
     RemoveMaterial(kMT_GroundCollider, mgr); // 0x25
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, false); // 0xc50
-    }
+    mCollisionActorManager0->SetActive(mgr, false); // guest 0xD60
+    mCollisionActorManager1->SetActive(mgr, true); // fn_30_ABC4 0x0000AF70: guest 0xD64
     mPortalPlane = false;   // 0xe5d bit 6
     mStartAsIngSpot = true; // 0xe5d bit 5
     if (AnimationData() != nullptr) {
@@ -305,9 +304,7 @@ void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg m
           BodyController()->CommandMgr().SetTargetVector(mTargetPos - GetTranslation());
         }
       } else {
-        if (!mCollisionActorManager.null()) {
-          mCollisionActorManager->SetActive(mgr, false); // 0xc50
-        }
+        mCollisionActorManager0->SetActive(mgr, false); // guest 0xD60
         mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
       }
     }
@@ -316,9 +313,7 @@ void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg m
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     mVerticalMovement = true;                                // CPatterned 0x34c bit 6
     RemoveMaterial(kMT_GroundCollider, mgr);                 // 0x25
-    if (!mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, false); // 0xc50
-    }
+    mCollisionActorManager0->SetActive(mgr, false); // guest 0xD60
     // The Ing's asm 0x000096F8: SetLocomotionType(0), i.e. kLT_Crouch.
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
     if (AnimationData() != nullptr) {

@@ -147,10 +147,7 @@ void CIngBoostBallGuardian::BoostAttack(CStateManager& mgr, EStateMsg msg, float
   case kStateMsg_Activate:
     LogState("BoostAttack");
     SpawnBoostBall(mgr); // 0x00007A04
-    // 0x00007A14: retail calls the 0xD64 manager unchecked; the host does not build it yet.
-    if (mCollisionActorManager1 != nullptr) {
-      mCollisionActorManager1->SetActive(mgr, false);
-    }
+    mCollisionActorManager1->SetActive(mgr, false); // 0x00007A14
     break;
   case kStateMsg_Update:
     if (CBoostBallGuardianBall* ball =
@@ -181,9 +178,7 @@ void CIngBoostBallGuardian::BoostAttack(CStateManager& mgr, EStateMsg msg, float
       mBoostTimer = 0.f;
       mCollidedWithCrystal = false;
     }
-    if (mCollisionActorManager1 != nullptr) {
-      mCollisionActorManager1->SetActive(mgr, true); // 0x00007B70
-    }
+    mCollisionActorManager1->SetActive(mgr, true); // 0x00007B70
     mgr.DeleteObjectRequest(mBoostChildId); // 0x00007B84
     mBoostChildId = kInvalidUniqueId;
     break;
