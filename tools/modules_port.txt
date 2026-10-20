@@ -20,6 +20,7 @@ IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianStates1.c
 IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianStates2.cpp
 IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianOverrides.cpp
 IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCIngBoostBallGuardianBoost.cpp
+IngBoostBallGuardian;src/MetroidPrime/Enemies/PortCBoostBallGuardianBall.cpp
 IngSwarm;src/MetroidPrime/PortModuleStubs.cpp
 MinorIng;src/MetroidPrime/Enemies/PortCMinorIng.cpp
 SandBoss;src/MetroidPrime/Enemies/PortCSandBoss.cpp

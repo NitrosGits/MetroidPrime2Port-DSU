@@ -273,6 +273,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mReflectVulnerability(false) // ctor 0x0000FEFC: 0x11EE 0x02 = 0
 , mBoostPuddleAllowed(true)    // ctor 0x0000FF2C: 0x11EF 0x20 = 1
 , mBoostChildId(kInvalidUniqueId)
+, mBoostAimPos(CVector3f::Zero())   // ctor 0x0000FD10
+, mBoostSpawnPos(CVector3f::Zero()) // ctor 0x0000FD28
 , mBoostNavPointId(kInvalidUniqueId)
 , mBoostNavPointId2(kInvalidUniqueId)
 , mBoostTimer(0.f)
@@ -449,13 +451,14 @@ static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& i
 
   const CBoostBallGuardianData boost(
       boostSldr.boostBallScale, boostSldr.boostBallMass, boostSldr.unknown_0xbea96fb7,
-      boostSldr.boostBallMinDamageSpeed, boostSldr.unknown_0x7b21e31a, boostSldr.boostBallModel,
+      boostSldr.boostBallSpeed, boostSldr.boostBallMinDamageSpeed, boostSldr.unknown_0x7b21e31a, boostSldr.boostBallModel,
       boostSldr.boostBallChargeUpEffect, boostSldr.boostBallShieldEffect,
       boostSldr.boostBallTrailEffect, static_cast< ushort >(boostSldr.sound_Bounce),
       static_cast< ushort >(boostSldr.sound_IntoBall),
       static_cast< ushort >(boostSldr.sound_OutofBall),
       static_cast< ushort >(boostSldr.sound), static_cast< ushort >(boostSldr.sound_Boost),
       static_cast< ushort >(boostSldr.sound_Rolling),
+      1000.f, 1.f, // fn_30_748 0x000008E8/0x000008EC: lbl_30_rodata_68, lbl_30_rodata_64
       LdrToDamageVulnerability(boostSldr.boostBallVulnerability), boostSldr.unknown_0xee69b993,
       boostSldr.unknown_0x4b2de673, boostSldr.searchConeAngle, boostSldr.unknown_0xb0e85d53,
       LdrToDamageInfo(boostSldr.boostBallDamageToMorphBall),

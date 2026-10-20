@@ -236,6 +236,8 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
       BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
     }
     CreateCollisionActorManager(mgr); // fn_29_3190
+    // 0x0000E06C: the (kSS_Modify, kSM_Activate) connections, which the boost ball gets.
+    mModifyTargets = FindConnectedObjects(mgr, kSS_Modify, kSM_Activate);
     break;
   case kSM_Delete:
     // Retail deletes the blob object first, then destroys the collision actor manager.
