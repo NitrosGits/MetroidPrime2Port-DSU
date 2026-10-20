@@ -548,10 +548,10 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
-// fn_14_3E88 (0x88 bytes): the knee colliders' active flag. The four knee ids (0xFB0, 0xFB2,
+// fn_14_3E88 (0x88 bytes): the knee armours' active flag. The four armour ids (0xFB0, 0xFB2,
 // 0xFB4 and 0xFB6 - the loop at 0x3EB0, the ids two bytes apart) are walked; every knee that
 // exists (the compare with kInvalidUniqueId at 0x3EB4) is looked up (the ObjectById call at
-// 0x3ED0) and its collision actor's active flag is set (the CEntity::SetActive call through the
+// 0x3ED0) and its active flag is set (the CEntity::SetActive call through the
 // vtable slot 0x1C at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low
 // byte of the third argument).
 void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
@@ -560,9 +560,10 @@ void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
     if (ids[i] == kInvalidUniqueId.value) {
       continue;
     }
-    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(TUniqueId(ids[i])));
-    if (actor != nullptr) {
-      actor->SetActive(active);
+    // The armours (fn_14_4080) are not cast: a plain ObjectById and the virtual SetActive.
+    CEntity* armour = mgr.ObjectById(TUniqueId(ids[i]));
+    if (armour != nullptr) { // the retail's test at 0x3ED4
+      armour->SetActive(active);
     }
   }
 }
