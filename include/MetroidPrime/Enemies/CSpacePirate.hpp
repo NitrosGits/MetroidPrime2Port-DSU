@@ -211,6 +211,7 @@ private:
   void UpdateLeashTimer(float dt);                       // 5280
   void AvoidActors(CStateManager& mgr);                  // D40C
   void CheckBlade(CStateManager& mgr);                   // CC80
+  bool CantJumpBack(CStateManager& mgr, const CVector3f& dir, float dist); // D2A0
   void TrooperWarpOut(CStateManager& mgr, bool flag);    // 51C8
   void SetVelocityForJump();                             // E168
   // Think path (fn_72_1980); the comment on each is its retail function.

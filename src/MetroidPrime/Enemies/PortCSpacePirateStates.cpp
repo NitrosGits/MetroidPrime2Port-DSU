@@ -8,6 +8,8 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
+#include "Kyoto/Math/CMath.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -661,6 +663,21 @@ void CSpacePirate::UpdateGuardPosition(CStateManager& mgr, float dt) {
   x8f7_28_noPlayerLos = xa78_ < 0.5f;
 }
 
+// Retail fn_72_D2A0 - MP1's CantJumpBack with Echoes' cheaper test: the landing point must be on the
+// search path, and only when it is not does the swept ray from the bounding-box centre decide. Note
+// the asm returns the RAW RayDynamicLineOfSightTest result (1 = clear) on that second branch, i.e. the
+// polarity is retail's own and unproven here: no state in the verify area reaches it.
+bool CSpacePirate::CantJumpBack(CStateManager& mgr, const CVector3f& dir, float dist) {
+  const CVector3f center = GetBoundingBox().GetCenterPoint();
+  if (mPathFindSearch.OnPath(center + dist * dir) == CPathFindSearch::kR_Success) {
+    return false;
+  }
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, center, dir, dist, filter, this);
+  return CGameCollision::RayDynamicLineOfSightTest(mgr, center, dir, dist, filter, nearList, nullptr);
+}
+
 // @ fn_72_D40C
 // This is MP1's CSpacePirate::AvoidActors, confirmed offset by offset on the retail body: it walks
 // the listening-AI object list (state manager +0x830), and for every other CPatterned in the same
@@ -1138,7 +1155,46 @@ void CSpacePirate::DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
-  PortSpacePirateStandIn("CSpacePirate::JumpBack state (fn_72_63C8)");
+  if (!ShouldJumpBack(mgr, CTriggerData(0.f))) {
+    return;
+  }
+  switch (msg) {
+  case kStateMsg_Activate:
+    // Retail refuses the move when the pirate only attacks in range (0x8f4 bit 0x04) or when
+    // CantJumpBack says the space five units behind it is not somewhere to land (rodata B78 = 5.0).
+    if (!x8f4_29_onlyAttackInRange && !CantJumpBack(mgr, -GetTransform().GetForward(), 5.f)) {
+      const float height = GetSearchPath()->GetCharacterHeight();
+      GetSearchPath()->SetCharacterHeight(5.f + height);
+      const CVector3f dest = GetTranslation() + 10.f * GetTransform().GetForward(); // B58 = 10.0
+      if (GetSearchPath()->Search(GetTranslation(), dest) == CPathFindSearch::kR_Success &&
+          (GetSearchPath()->GetWaypoints().back() - dest).MagSquared() < 3.f) { // B5C = 3.0
+        if (CMath::AbsF(GetSearchPath()->RemainingPathDistance(GetTranslation()) - 10.f) < 4.f) {
+          xafc_patrolDestPos = GetSearchPath()->GetWaypoints().back();
+          xaf8_jumpHeight = 5.f; // B78
+          x8f9_25_useJumpBackJump = true;
+          mAnimationState.SetState(CAnimationState::kAS_Ready);
+        }
+      }
+      GetSearchPath()->SetCharacterHeight(height);
+    }
+    break;
+  case kStateMsg_Update:
+    if (!x8f9_25_useJumpBackJump) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Backward, pas::kStep_Normal));
+      BodyController()->CommandMgr().SetTargetVector(GetTargetPos(mgr) - GetTranslation());
+    } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCJumpCmd(mDestPos, pas::kJT_Normal, pas::kJS_IntoJump, 0, CBCJumpCmd::kFF_AmbushJump));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    if (x8f9_25_useJumpBackJump) {
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);
+      x8f9_25_useJumpBackJump = false;
+    }
+    xbac_holdPositionTime = 0.f;
+    break;
+  }
 }
 
 void CSpacePirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
