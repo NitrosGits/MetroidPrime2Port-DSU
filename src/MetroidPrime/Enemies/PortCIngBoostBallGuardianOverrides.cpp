@@ -40,6 +40,8 @@
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "Kyoto/Math/CPlane.hpp"
 #include "MetroidPrime/CSafeZoneManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -75,11 +77,29 @@ namespace {
 
 } // namespace
 
-// The Ing's PreThink (the Ing REL's fn_29_C814): the body state is installed first, then the base
-// class's own PreThink runs.
+// The ing-spot form pulls itself onto the aligned surface: unless its material list has
+// kMT_GroundCollider (0x0000DC50..0x0000DC74: the high word at 0x68 & 0x20, bit 37), a last
+// surface move (0x1110) that leaves the surface plane by more than rodata_E8 (0.95 of the normal)
+// eases the actor 0.6 * dt (rodata_120) of the way to 0.1 (rodata_124) above the plane; the move
+// is then cleared.
+// @ fn_30_DC10
 void CIngBoostBallGuardian::PreThink(float dt, CStateManager& mgr) {
-  EnsureBodyActive(mgr);
-  CPatterned::PreThink(dt, mgr);
+  EnsureBodyActive(mgr); // host guard, not in retail (see EnsureBodyActive)
+  // 0x0000DC3C: CEntity 0x20 0x80; 0x0000DC48: form 3.
+  if (GetActive() && mForm == kForm_IngSpot &&
+      !GetMaterialList().HasMaterial(kMT_GroundCollider)) {
+    const CPlane plane = mSurfaceAlignment.GetSurface().GetPlane(); // 0x0000DC80: 0xD68
+    const CVector3f normal = plane.GetNormal();
+    if (CVector3f::Dot(mSurfaceMoveDir, normal) < 0.95f) { // 0x0000DCBC
+      const float t = 0.6f * dt;                             // 0x0000DCE4
+      const CVector3f pos = GetTranslation();
+      const float dist = CVector3f::Dot(normal, pos) - plane.GetConstant() - 0.1f; // 0x0000DD10
+      const CVector3f onPlane = pos - normal * dist;
+      SetTranslation(pos * (1.f - t) + onPlane * t); // 0x0000DD50
+    }
+    mSurfaceMoveDir = CVector3f::Zero(); // 0x0000DD5C
+  }
+  CPatterned::PreThink(dt, mgr); // 0x0000DD7C
 }
 
 // The module's own Think. The form picks the base think (the host forms, the ing-spot forms'
@@ -539,8 +559,10 @@ CVector3f CIngBoostBallGuardian::GetAimPosition(const CStateManager& mgr, float 
   return aim;
 }
 
-// The Ing's GetTouchBounds (the Ing REL's fn_29_B970): the ing-spot and evaporating forms use the
-// puddle box, the two host forms have none, the rest use the patterned bounds.
+// The ing-spot and evaporating forms use the puddle box (0xDD0), the two host forms have none, the
+// rest the patterned bounds (fn_30_CD10, the REL's copy of CPatterned::GetTouchBounds).
+// @ fn_30_CC34
+// @ fn_30_CD10
 rstl::optional_object< CAABox > CIngBoostBallGuardian::GetTouchBounds() const {
   if (mForm == kForm_IngSpot || mForm == kForm_Evaporate) {
     return mTouchBox;
