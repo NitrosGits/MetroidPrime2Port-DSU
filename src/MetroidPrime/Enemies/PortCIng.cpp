@@ -315,6 +315,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mSurfaceAlignment()           // fn_29_D540 @0x0000D610, the DOL's fn_801F7CA0
 , mIngSpotPathFindNavigation()  // fn_29_D540 @0x0000D618, the DOL's fn_801F8258
 , mForm(kForm_Corporeal)
+, mTargetableFlags(0) // 0x9d0: retail never writes this byte
 , mDesiredForm(-1)
 , mTouchBox()
 , mHostId(kInvalidUniqueId)
@@ -338,6 +339,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
+, mCollarSegId(CSegId::Invalid()) // 0xd7a: the ctor writes 0xff and nothing else does
 // The ctor's arm locators: R_shoulder/R_elbow/R_forearm/R_wrist_end, then the L_ set. The pseudo-C
 // puts the shoulders at CPatterned's 0x35f/0x360; the asm stores them here (0x0000E47C/0x0000E54C).
 , mRightShoulderSegId(PortArmSegId(modelData, "R_shoulder")) // 0xd7c
@@ -705,21 +707,71 @@ void CIng::UpdateTimers(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_29_426C (CIng::Think's call at asm 0x0000C7A0). The forms: the two host forms (0, 1) are
+// never valid targets, the ing-spot and evaporating forms (3, 5) follow the Dark visor and the
+// actor's own byte 0x9d0 bit 0, every other form is always a valid target.
 void CIng::UpdateValidTarget(CStateManager& mgr) {
   switch (mForm) {
-  case 0:
-  case 1:
-    SetValidTarget(0, false);
+  case kForm_Host:            // 0
+  case kForm_ControllingHost: // 1
+    SetValidTarget(0, false); // asm 0x000042BC: SetValidTarget(this, 0, 0)
     break;
-  case kForm_IngSpot:
-  case kForm_Evaporate:
-    SetValidTarget(0, mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark ||
-                          (mData.mFlags210 & kFlag_AlwaysTargetable) != 0);
+  case kForm_IngSpot:   // 3
+  case kForm_Evaporate: // 5
+    // asm 0x000042CC-0x000042EC: the Dark visor (3) forces the flag on - the compare's cntlzw
+    // only leaves a non-zero byte for the visor 3 - otherwise the actor's own byte 0x9d0 bit 0
+    // decides (asm 0x000042F0-0x00004300). Retail never writes 0x9d0, so it is 0.
+    if (mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
+      SetValidTarget(0, true);
+    } else {
+      SetValidTarget(0, (mTargetableFlags & 0x1) != 0);
+    }
     break;
   default:
-    SetValidTarget(0, true);
+    SetValidTarget(0, true); // asm 0x00004308: SetValidTarget(this, 0, 1)
     break;
   }
+}
+
+// fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
+// aim position from the form: the corporeal form (2) and the three form-change forms (6..8)
+// predict their motion first, and the collar locator (0xd7a) then decides between the locator's
+// aim and the base class's. The ctor writes 0xff (invalid) to 0xd7a and nothing else in the
+// module ever writes it (asm 0x0000E170/0x0000E448), so retail's locator path is dead and the
+// aim is always the base class's - the port keeps the structure anyway.
+CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
+  CVector3f aim = CVector3f::Zero(); // asm 0x0000BCFC: sZeroVector
+  // asm 0x0000BD04-0x0000BD40: the corporeal form and the forms 6..8 predict; the prediction
+  // only runs when the argument is above zero (rodata_6C).
+  const bool predict = mForm == kForm_Corporeal ||
+                       (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile);
+  if (!predict) {
+    return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE4C
+  }
+  if (dt > 0.f) {
+    aim = PredictMotion(dt).GetTranslation(); // asm 0x0000BD50/0x0000BD5C (fn_29_BEB4 copies it)
+  }
+  // asm 0x0000BD6C: the collar locator (0xd7a); without it retail falls back to the base class.
+  if (mCollarSegId == CSegId::Invalid()) {
+    return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE38
+  }
+  // asm 0x0000BD90: the locator's transform, composed with the actor's own (0x24); the copy's
+  // 0xc/0x1c/0x2c are the translation's three floats.
+  const CTransform4f world =
+      GetTransform() * GetModelData()->GetLocatorTransform(mCollarSegId); // asm 0x0000BDA0
+  const CVector3f offset = world.GetTranslation();
+  // asm 0x0000BDCC-0x0000BDE8: the model's scale (the model data's first three floats) times
+  // the locator's world position.
+  const CVector3f scale = GetModelData()->GetScale();
+  aim += CVector3f(scale.GetX() * offset.GetX(), scale.GetY() * offset.GetY(),
+                   scale.GetZ() * offset.GetZ());
+  // asm 0x0000BDC0/0x0000BDF0: the forms 6 and 7 fall back to the base class when the aim is
+  // below the actor's own height (0x5c).
+  if ((mForm == kForm_BecomingCorporeal || mForm == kForm_BecomingIngSpot) &&
+      aim.GetZ() < GetTranslation().GetZ()) {
+    return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE14
+  }
+  return aim;
 }
 
 // [?] which loop plays in which form, and the emitter parameters: the idle loop in the ing-spot

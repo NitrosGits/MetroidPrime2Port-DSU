@@ -1,22 +1,22 @@
-# Ing       265 fns: MARKED 100, BODY 65, INLINED 3, NONE 97
+# Ing       265 fns: MARKED 100, BODY 68, INLINED 3, NONE 94
 # MinorIng  208 fns: MARKED 103, BODY 10, INLINED 0, NONE 95
-# bytes in NONE: Ing 16420 (0x4024), MinorIng 12224 (0x2fc0), total 28644 (0x6fe4)
+# bytes in NONE: Ing 15608 (0x3cf8), MinorIng 12224 (0x2fc0), total 27832 (0x6cb8)
 # 15 largest NONE:
 #   1. fn_29_F2C8   0xcc0   static init (the FSM tables)
 #   2. fn_29_16AC   0x3d4   ctor helper: SLdrEditorProperties
 #   3. fn_44_194C   0x394   loader helper (the ing spot property)
 #   4. fn_44_1CE0   0x358   loader helper (the unknown_0x3da35851 property)
 #   5. fn_44_9B4    0x290   CMinorIngData ctor (the loader's data block)
-#   6. fn_29_BCB4   0x200   aim prediction (PredictMotion + GetAimPosition)
-#   7. fn_29_D128   0x1e4   dtor helper (vtable reset + CToken)
-#   8. fn_44_9940   0x1e4   dtor helper (vtable reset + CToken)
-#   9. fn_29_CF64   0x1c4   CIng dtor (vtable lbl_29_data_A24)
-#  10. fn_29_2270   0x1a4   sfx emitter
-#  11. fn_44_A9DC   0x19c   struct copy (8 words)
-#  12. fn_44_14D8   0x188   ctor helper: SLdrEditorProperties
-#  13. fn_44_A680   0x184   vector3f array builder (appends pairs)
-#  14. fn_29_37D8   0x170   entity pointer cast
-#  15. fn_44_204C   0x15c   vtable thunk (slot 0xe0)
+#   6. fn_29_D128   0x1e4   dtor helper (vtable reset + CToken)
+#   7. fn_44_9940   0x1e4   dtor helper (vtable reset + CToken)
+#   8. fn_29_CF64   0x1c4   CIng dtor (vtable lbl_29_data_A24)
+#   9. fn_29_2270   0x1a4   sfx emitter
+#  10. fn_44_A9DC   0x19c   struct copy (8 words)
+#  11. fn_44_14D8   0x188   ctor helper: SLdrEditorProperties
+#  12. fn_44_A680   0x184   vector3f array builder (appends pairs)
+#  13. fn_29_37D8   0x170   entity pointer cast
+#  14. fn_44_204C   0x15c   vtable thunk (slot 0xe0)
+#  15. fn_44_97E4   0x15c   vtable reset + free helper
 module	fn	size	class	role
 Ing	fn_29_0	0x8	NONE	offset getter (+0x9dc)
 Ing	fn_29_8	0x8	NONE	offset getter (+0xac8)
@@ -84,7 +84,7 @@ Ing	fn_29_3C58	0x11c	BODY	: the touch box is a fixed 5x5x1.5 box on the Ing's po
 Ing	fn_29_3D74	0xa8	MARKED	@ : the box between two points, three units taller at each end (retail
 Ing	fn_29_3E1C	0x400	MARKED	@ : the segment test of one arm. Four boxes along the arm (shoulder-el
 Ing	fn_29_421C	0x50	MARKED	@ : which arm swings; true is the left (0xd80..), false the right (0xd
-Ing	fn_29_426C	0xc0	NONE	set valid target
+Ing	fn_29_426C	0xc0	BODY	(CIng::Think's call at asm 0x0000C7A0). The forms: the two host forms 
 Ing	fn_29_432C	0x13c	NONE	vector3f add (three members)
 Ing	fn_29_4468	0xa8	BODY	: the target's aim position (vtable slot 0x54, CActor::GetAimPosition,
 Ing	fn_29_4510	0x50	BODY	: the picked hint goes in use and becomes both the current and the las
@@ -211,8 +211,8 @@ Ing	fn_29_BA4C	0x68	NONE	bounding box (physics actor bounds)
 Ing	fn_29_BAB4	0x9c	INLINED	is CAABox's copy constructor, inlined at the one place the particle bo
 Ing	fn_29_BB50	0x3c	NONE	delete helper (frees the object)
 Ing	fn_29_BB8C	0x128	BODY	(not yet exercised in a run)
-Ing	fn_29_BCB4	0x200	NONE	aim prediction (PredictMotion + GetAimPosition)
-Ing	fn_29_BEB4	0x6c	NONE	struct copy (10 words)
+Ing	fn_29_BCB4	0x200	BODY	aim prediction (PredictMotion + GetAimPosition)
+Ing	fn_29_BEB4	0x6c	BODY	aim = PredictMotion(dt).GetTranslation(); asm 0x0000BD50/0x0000BD5C ( 
 Ing	fn_29_BF20	0x60	BODY	(not yet exercised in a run)
 Ing	fn_29_BF80	0x70	NONE	renderer add
 Ing	fn_29_BFF0	0x20	NONE	renderer add
