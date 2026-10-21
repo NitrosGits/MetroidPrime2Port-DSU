@@ -41,6 +41,7 @@
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
@@ -52,6 +53,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
@@ -528,6 +530,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
+      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -1650,6 +1654,127 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
+// statecall <id> <state> <msg> [dt]: run one state body of an FSM2 actor once with a message (0
+// Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
+// does not change. The body is looked up in the actor's whole state table, so a state the shipped
+// FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
+void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float msgArg = 0.f;
+  float dt = 1.f / 60.f;
+  if (args.size() < 4 || args.size() > 5 || !ParseFloat(args[3], msgArg) ||
+      (args.size() == 5 && !ParseFloat(args[4], dt))) {
+    Fail("usage: statecall <id> <state name> <msg 0..2> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const int msg = static_cast< int >(msgArg);
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::StateFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no state function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, static_cast< EStateMsg >(msg), dt);
+  out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
+}
+
+// trigcall <id> <trigger> [arg]: evaluate one trigger of an FSM2 actor once with its argument
+// (default 0) and print the answer, outside the machine, like `statecall` for the states.
+void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float arg = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], arg))) {
+    Fail("usage: trigcall <id> <trigger name> [arg]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::TriggerFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(
+          wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no trigger function '" + wanted + "'");
+    return;
+  }
+  const bool answer = (patterned->*fn)(mgr, CTriggerData(arg));
+  out += "trigcall " + wanted + " = " + (answer ? "true" : "false") + "\n";
+}
+
+// hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
+// setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
+// phazon waypoints) finds one the area lacks, or skips one of another area.
+void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = -1.f;
+  float area = -1.f;
+  bool ok = args.size() >= 2;
+  for (size_t i = 2; ok && i < args.size(); ++i) {
+    if (args[i] == "area" && i + 1 < args.size()) {
+      ok = ParseFloat(args[++i], area);
+    } else {
+      ok = ParseFloat(args[i], type);
+    }
+  }
+  if (!ok) {
+    Fail("usage: hint <id> [type] [area <n>]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CScriptAIHint* hint = ent != nullptr ? TCastToPtr< CScriptAIHint >(ent) : nullptr;
+  if (hint == nullptr) {
+    Fail("not an AI hint");
+    return;
+  }
+  if (type >= 0.f) {
+    hint->PortSetHintType(static_cast< CScriptAIHint::EHintType >(static_cast< int >(type)));
+  }
+  if (area >= 0.f) {
+    hint->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  }
+  out += "hint " + std::string(args[1]) + " type " +
+         std::to_string(static_cast< int >(hint->GetHintType())) + " area " +
+         std::to_string(hint->GetCurrentAreaId().Value()) + " active " +
+         std::to_string(hint->GetActive() ? 1 : 0) + " radius " + std::to_string(hint->GetRadius()) +
+         "\n";
+}
+
+// uevent <id> <type> [dt]: deliver a user anim event (EUserEventType, e.g. 27 EventStart, 28
+// EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node, for
+// the event arms an animation never fires on the host.
+void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = 0.f;
+  float dt = 0.f;
+  CEntity* ent = args.size() >= 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr || !ParseFloat(args[2], type) ||
+      (args.size() >= 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: uevent <id> <type> [dt]   (id must be an actor)");
+    return;
+  }
+  actor->DoUserAnimEvent(mgr, CInt32POINode(),
+                         static_cast< EUserEventType >(static_cast< int >(type)), dt);
+  out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
+}
+
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
 // away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
 // shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
@@ -2358,6 +2483,10 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"statecall", CmdStateCall, true},
+    {"trigcall", CmdTrigCall, true},
+    {"hint", CmdHint, true},
+    {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
     {"shoot", CmdShoot, true},

@@ -928,8 +928,8 @@ void CSandBoss::Helper5E5C(CStateManager& mgr) {
 // material back either way.
 void CSandBoss::HandleObjectDrop(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
-  // Retail also sets bit 7 of the player's byte at 0x1144. CPlayer.hpp does not name that byte (the
-  // two morph-transition bits it does name are elsewhere), so the store is left out.
+  // 0x1144 mask 0x80 (`rlwimi r0, r4, 7, 24, 24` at 0x6018, r4 = 1): the player may unmorph again.
+  player->EnableLeaveMorphBall(true);
   if (player->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4
     if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) { // player 0x38C == 1
       player->Stop();

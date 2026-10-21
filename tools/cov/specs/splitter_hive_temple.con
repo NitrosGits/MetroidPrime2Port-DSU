@@ -1,0 +1,6 @@
+# 09_cliff_temple (6c363cd4) layer 2: the swallowing-swarm spawn (GENR 82500e1 on TIMR 82500e4)
+# and the Splitter the swarm snatches.
+@f30 layer 2
+@f120 objs
+@f400 objs splitter
+@f900 objs

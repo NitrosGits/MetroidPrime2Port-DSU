@@ -125,6 +125,9 @@ CVector3f CCommandoPirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole
 // within the hearing radius (this+0x81C, squared, 0x0000BF04) and, unless the detection height
 // range (this+0x3D4) is 0.f (lbl_9_rodata_494, 0x0000BF1C), within that height (dz squared against
 // its square, 0x0000BF24); it clears the timer at this+0xB60 (0x0000BF38) and is heard.
+// @ fn_9_BE4C
+// The branch table with the coverage evidence (the natural arms and the two forced under gdb):
+// docs/module-analysis/CommandoPirate.md, section 6.1.
 bool CCommandoPirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
   bool heard = false;                                                  // 0x0000BE50
   if (!GetAlive()) {                                                   // 0x0000BE4C..0x0000BE58

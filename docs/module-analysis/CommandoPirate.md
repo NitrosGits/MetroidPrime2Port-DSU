@@ -1608,3 +1608,68 @@ renderables, so those two remain named stand-ins and the function is not marked.
 ran in the area 59 run (the stand-in log is gone); the two renderables and the warp's draw did not
 (the module's state word is not 0 or 1 in the run, and the actor's alpha is 1.0, which makes the
 sine 0).
+
+## 6. The stateless helpers (2026-10-21, the helpers lane)
+
+`CommandoPirate_functions.tsv` has one row per function of the REL (256 rows = the 256
+`type:function` symbols of `config/G2ME01/rels/CommandoPirate/symbols.txt`). Beside the class
+(H = host copy, T = data / vtable thunk, B = module behaviour) and the port's state, each row now
+carries the **callers** (the `bl` sites in the REL and the `.data` tables that point at the
+function - the vtable `lbl_9_data_828`, the FSM tables, the jump table) and the **owner**:
+`cpcore` for the states and overrides the core lane ported (Listen, CoverBlown, MeleeAttack,
+EGrenadeAttack, PostEGrenadeAttack, JetBoost, WarpIn, Crouch, Cover, CoverAttack, GetUp, the
+vtable overrides and the E-grenade chain), `commando-lane` for the other rows of the FSM2 tables
+(`lbl_9_data_198` and `lbl_9_data_568`, the 34 triggers and 34 states), `cphelpers` for the rest
+(the stateless helpers, the loader and the constructor).
+
+The stateless helpers live in the core lane's files (the states and the overrides it ported) and
+in the ones this lane adds. The port's own file may only call them where a stand-in call site was
+one line.
+
+Which of the 77 unmarked B functions are the helpers lane's: the module's loader and constructor
+cluster (`fn_9_168`, `fn_9_D904` and their helpers - the host's classes have them), the host
+glue the REL compiles itself (the collision manager's arrays, the memory blocks), and the
+stateless helpers. Of the latter, only the ones the port's own code reaches are portable now:
+the rest are called from the FSM states and triggers (the CommandoPirate lane's) or need the
+"Commando E-Grenade" script object, which the host has no class for.
+
+### 6.1 `fn_9_BE4C` - what the actor hears (vtable slot 0xb0): **marked**
+
+The port had it as a named stand-in that forwarded to the base's `Listen`; the module's own body
+is the core lane's now (`CCommandoPirate::Listen` in
+`src/MetroidPrime/Enemies/PortCCommandoPirateCore.cpp`, the same body this lane wrote in
+`PortCCommandoPirateHelpers.cpp` before the two branches merged - the marker is on that body).
+
+Retail's body (0x0000BE4C..0x0000BF3C):
+
+```
+0x0000BE4C  lbz r0, 0x420(r3)        ; the base's flag byte
+            extrwi. r0, r0, 1, 25    ; its 0x40 bit (the host's mAlive)
+            beq -> return 0          ; not alive: the actor hears nothing
+            cmpwi r6, 4 / 0          ; the noise type: a path noise (4) or a shot (0)
+0x0000BE7C  the squared distance against 1600.0f (rodata_4E4); inside it the 0x80 bit of the
+            module's byte at guest this+0xc63 is set (0x0000BEFC..0x0000BEC0)
+0x0000BEC8  the squared distance against the hearing radius (the data block's field at guest
+            this+0x81c), then the base's height range at guest this+0x3d4 against 0.0f
+            (rodata_494): the height range wins the tie, otherwise the noise's own height
+            distance decides (0x0000BF20..0x0000BF38)
+0x0000BF2C  the constant 0.0f is written to the module's float at guest this+0xb60
+```
+
+| branch | status | evidence |
+|---|---|---|
+| 0x0000BE4C (the actor is not alive) | (b) ran (forced) | forced under gdb: the alive flag (the base's byte at guest this+0x420, its 0x40 bit) is cleared at the body's entry (`tools/cov/specs/commandopirate_force.py`), so the early-out runs - in the game the flag's only writer is the module's area-load death case (the port's `kSM_AreaLoaded`, 0x0000CE40), which sets the HP to -1 as well (0x0000CE5C) and deletes the actor in the same update |
+| 0x0000BE7C (a path noise, too far) | (b) ran | coverage: the far path noise (the driver puts the commando 80 m from the player) returned 0 |
+| 0x0000BF0C (a path noise, heard) | (b) ran | coverage: 1 hit, the return value 1 |
+| 0x0000BEF4 (a shot, too far) | (b) ran | coverage: the far shot returned 0 |
+| 0x0000BF20 (the height range) | (b) ran (forced) | forced under gdb: the base's height range at guest this+0x3d4 is written to 0.05 at the body's entry and the driver raises the noise by 5 cm, so the noise's height distance is over the range and the arm runs - in the game area 59's commando has the range at 0, so the tie arm runs instead |
+| 0x0000BF34 (a shot, heard) | (b) ran | coverage: 3 hits, the return value 1 |
+| 0x0000BF3C (another noise type) | (b) ran | coverage: 3 hits (the noises 1, 2 and 3), the return value 0 |
+
+The runs: Temple Grounds 05_temple_federationsite_dark (area 59), the CommandoPirate lane's driver
+`tools/drivers/commandopirate_warpout.py` (it wakes the commando, puts the player five metres in
+front of it, makes the five noise types, raises one noise by 5 cm and then moves the commando 80 m
+away for two more), under `tools/cov/run.sh` with `tools/cov/specs/commandopirate.py` (the
+coverage run: the helper was called nine times, no probe, no rebuild) and under
+`tools/cov/force.sh` with `tools/cov/specs/commandopirate_force.py` (the two forced arms, one
+gdb write each). `grep -c '[port] caught|reach-stub'` on the run log is 0.

@@ -93,7 +93,6 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   return heard;
 }
 
-// @ fn_72_ADC0
 // The 208 cycle does evaluate this trigger (2851 calls in the 2026-10-20 run), but it is always
 // false there, so only the first branch is proven by the run.
 // Retail: a pirate with the non-aggressive bit (0x8f4 mask 0x20) never charges. Otherwise it
@@ -206,11 +205,13 @@ bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) cons
   return result;
 }
 
-// fn_72_A988. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// gcov 2026-10-21: ALL-ARMS. The no-player-target arm is forced once (spacepirate_force4.py: the
+// attack target set to the invalid id on one call, restored at the next CoverBlown).
 // Retail: with no cover point the trigger is true. With one it asks whether the cover is blown
 // by the attack target's position plus its velocity (1.0 * velocity, so the raw velocity is
 // added). The target is the pirate's attack target cast to CPlayer - not mgr.GetPlayer() - so a
 // missing or non-player target leaves the trigger false.
+// @ fn_72_A988
 bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const {
   bool result = true;
   const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
@@ -226,10 +227,12 @@ bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data
   return result;
 }
 
-// fn_72_A8D0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// gcov 2026-10-21: ALL-ARMS. The other-area arm is forced once (spacepirate_force4.py: this
+// pirate's area id = 99 on one call, restored at the next CoverBlown).
 // Retail: the listening-AI object list (mgr+0x830) is scanned for other pirates; one of them
 // that has its in-attack-state bit (0x8f6 mask 0x01) set and is in this area means this pirate
 // is covering that one's fire. The scan does not stop at the first hit.
+// @ fn_72_A8D0
 bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
@@ -436,7 +439,6 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
   return xb24_timeSinceHitByPlayer < window;
 }
 
-// @ fn_72_7970
 // The 208 cycle does evaluate this trigger (about 2850 calls in the 2026-10-20 run), but it is
 // always false there and the attack target is the player every time, so only the box/near-list
 // branch is proven by the run: the team-target branch and the active-non-player early return are
@@ -504,6 +506,11 @@ bool CSpacePirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// fn_72_689C (0x48): in a wall hang (the 0x8f7 byte's bit 29, asm 0x68AC) the animation is over
+// once the body has left kAS_WallHang (20; the body controller 0x48c, its state 0x37c, asm 0x68B4-0x68C8 is the branchless `state != 20`);
+// otherwise CPatterned::AnimOver (asm 0x68D0). Both arms ran (tools/cov, 08_sand_casualpirates L3 and
+// 07_sand_alamoportalobservation L3, 2026-10-21); the wall-hang arm only from a forced WallHang.
+// @ fn_72_689C
 bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   if (x8f7_29_inWallHang) {
     return GetBodyController()->GetCurrentStateId() != pas::kAS_WallHang;
@@ -643,6 +650,9 @@ bool CSpacePirate::StartAttack(CStateManager& mgr, const CTriggerData& data) con
   return false;
 }
 
+// @ fn_72_6328
+// Retail is `lbz 0x8f5; extrwi 1, 25` (x8f5_25_breakAttack, data flag 0x400). Ambushing's trigger list
+// evaluates it every frame (gcov 2026-10-21, a forced `fsm Ambushing`).
 bool CSpacePirate::BreakAttack(CStateManager& mgr, const CTriggerData& data) const {
   return x8f5_25_breakAttack;
 }
@@ -761,6 +771,13 @@ bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// fn_72_686C (0x30): true unless the 0x8f4 byte's bit 28 (mask 0x08, the data flag 0x10; asm
+// 0x6874 `extrwi.`) is set; with it set, true once the hold-position time (0xbac) is above 6
+// (rodata BE8 = 6.0, asm 0x6880-0x688C `fcmpo` + `ble`).
+// All three arms ran (tools/cov, 2026-10-21): bit clear (06_sand_alamofront L2, 400 hits), bit set
+// with the hold time <= 6 and > 6 (08_sand_casualpirates L3 0036013d/003600fa, console `fsm Attack`/
+// `fsm Lurk` and 12 s held, then `fsm JumpBack`: 246 hits with the time > 6).
+// @ fn_72_686C
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
@@ -783,12 +800,14 @@ bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) con
 }
 
 // Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24 (mask
-// 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag 0x04000000)
-// have to be set (asm 0x77D8-0x77F8). The trace's argument is the arm: 1 = the warp point is not
-// -1, 2 = not a trooper, 3 = the data flag 0x04000000 is missing, 4 = all three hold. The last
-// arm needs a placement with the data flag 0x04000000, which no shipped SpacePirate placement
-// carries (the scan of all 65 placements, tools/scan_pirt_props.py), so the other three arms are
-// all the run can reach.
+// 0x80, the data flag 0x40000 - the trooper) and the 0x8fa byte's bit 26 (mask 0x20) have to be set
+// (asm 0x77D8-0x77F8). Bit 26 is not a data flag: the kSM_Activate handler sets it at run time for a
+// trooper (fn_72_E498, asm 0xE38C). The trace's argument is the arm: 1 = the warp point is not -1,
+// 2 = not a trooper, 3 = the trooper has not been activated, 4 = all three hold.
+// All four arms ran (tools/cov, 2026-10-21): 1 in 07_sand_alamoportalobservation L3 (a trooper that
+// warped out, 0xc04 = 1), 2 for the non-troopers, 3 and 4 for the troopers before and after their
+// activation message.
+// @ fn_72_77D0
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
   const int arm = xc04_warpPoint != -1 ? 1 : (!x8f6_24_trooper ? 2 : (!x8fa_26_ ? 3 : 4));
   TraceCall(*this, "ShouldWarpIn trigger", arm);
