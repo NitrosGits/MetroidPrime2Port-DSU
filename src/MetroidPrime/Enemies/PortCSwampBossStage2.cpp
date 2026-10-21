@@ -1359,12 +1359,13 @@ bool CSwampBossStage2::OvipositorDead(CStateManager& mgr, const CTriggerData&) c
 
 // @ fn_79_A3D8: retail compares the phase (0xc94) with the field at 0x8cc - the loader's
 // unknown_0x96ce7897 (the loader struct sits at 0x7c0, so 0x8cc is its 0x10c) - as
-// "field < phase" (0xA3E0-0xA3F0: the doubling keeps the signed compare from overflowing).
-// The arm that fires was reached with the loader's field forced to 0 (gdb: `set var
-// this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes its true
-// side.
+// "2 * field <= phase": `slwi r0, r4, 1` doubles the field, then subfc/adde with the sign bits
+// (`extrwi` takes the doubled value's sign, `srawi` the phase's) is MWCC's signed `<=`
+// (0xA3E0-0xA3F0). The arm that fires was reached with the loader's field forced to 0 (gdb:
+// `set var this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes
+// its true side.
 bool CSwampBossStage2::ZeroHealth(CStateManager& mgr, const CTriggerData&) const {
-  return mData.unknown_0x96ce7897 < mPhase;
+  return mData.unknown_0x96ce7897 * 2 <= mPhase;
 }
 
 // @ fn_79_A3F8
