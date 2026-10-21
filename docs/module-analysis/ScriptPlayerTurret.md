@@ -991,7 +991,7 @@ Both bodies are branch-free, so both are ALL-ARMS.
 
 ## 21. The slice of 2026-10-21 (night): the audit's findings
 
-### 21.1 The fire test (fn_63_1134) - the marker is gone
+### 21.1 The fire test (fn_63_1134) - the marker is back
 
 The guest's fire test is the reload timer against zero: `lfs f1, 0x1b8` (0x12AC), `fcmpo cr0, f1,
 f0` (0x12B4) and `cror eq, lt, eq` (0x12B8) - *less than or equal*, not *equal*.  The port's `== 0.f`
@@ -999,28 +999,23 @@ never fired a second time, because the timer is decremented by the frame time (0
 input + 0) and therefore counts past zero.  Port's a19f25ae8 has the fix (`mUnknown1B8 <= 0.f`,
 the port line carries the address) and this branch took it.
 
-**The marker is removed.**  The rule (section 15) is that every live arm has to have run, and the
-arm *the reload timer is still positive* - the shot is skipped - is live in retail (a tap during the
-reload).  The re-run could not reach it: the driver presses A twice (3000 updates = 50 s of game
-time apart, far more than the fire rate) and the gdb coverage shows
+**The arm** - *the reload timer is still positive, the shot is skipped* - is live in retail (a tap
+during the reload), and the rule (section 15) is that every live arm has to have run.  It needs a
+**second press edge** while the timer runs, and the console's `press` *holds* the button, so a held
+button has no second press event: the driver releases it between the two presses
+(`stick 0 0 1` holds no button, which releases the A) and presses again straight away (`press A 1`,
+one update each, so the gap is a few updates - short enough to be inside the fire rate).
 
-    1134_fire_pressed   400 hits   (the press test's line, evaluated every update)
-    1134_reload_test      1 hits   (the reload test's line: the press branch was taken ONCE)
-    84C_sp_sound          1 hits   (the shot ran once)
+**The compiler coverage** (`-DMP_PORT_COVERAGE=ON`, `tools/cov/gcov_report.py <build> <gcov dir>
+--module ScriptPlayerTurret`) of that run shows the arm's two sides taken: in
+`CScriptPlayerTurret::ProcessInput` the press test (line 914) and the reload test (line 916) have
+**no untaken arc** - the condition was true once (the first press, the timer was 0, the shot ran:
+`FireTurretShot` 22/25 lines) and false once (the second press, the timer was still positive, the
+shot was skipped).  The function's other untaken arcs are the unreachable ones (the two null
+guards at 887, the "not in control" arm at 892, the animation block at 899-903 and the turn-axis
+clamps at 929-953), which retail cannot reach either.
 
-so the *second* console press did not produce a second press edge - the port's virtual pad (the
-console's `press` holds the button) and the player's control mapper, not the module's code, decide
-that.  The body is retail's and it ran; the arm is not covered, so the marker goes until a run can
-produce the second edge.
-
-**The second edge (section 21.3).**  The console's `press` *holds* the button, and a held button has
-no second press event, so the driver releases it between the two presses: `press A 1`, then
-`stick 0 0 1` (the console's `stick` holds no button, which releases the A), then `press A 1`
-again - and the second press comes while the reload timer is still positive, which is the arm the
-marker needs.  The gdb coverage of that run: the press test's line 13 hits (the press is seen), the
-reload test's line 1 hit and the shot's body 1 hit - the second press does not fire, so the guest's
-skip arm (0x12BC `bne`) is the one that ran.  The compiler coverage (`-DMP_PORT_COVERAGE=ON` and
-`tools/cov/gcov_report.py --module ScriptPlayerTurret`) is the tool that shows the arm's two sides.
+So the marker is back: `fn_63_1134` is marked again.
 
 ### 21.2 The audit's two unchecked LOWs
 
