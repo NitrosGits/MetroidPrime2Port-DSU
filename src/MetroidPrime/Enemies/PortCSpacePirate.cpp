@@ -1602,6 +1602,11 @@ bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListen
       x8f7_26_hearPlayerFire = true;
       xbb4_ = position;
     }
+    // The trace's argument is the arm: 0 = the pirate is dead, 1 = the noise is out of the
+    // hearing radius, 2 = the height range test failed, 3 = heard.
+    TraceCall(*this, "Listen", heard ? 3 : 1);
+  } else {
+    TraceCall(*this, "Listen", 0);
   }
   return heard;
 }

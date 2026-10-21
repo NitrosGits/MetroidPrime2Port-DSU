@@ -287,6 +287,12 @@ bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) con
 
 // The detection cone test, over every player: the first one whose offset lies inside
 // mDetectionAngle (cosine) of the transform's forward is spotted.
+// @ fn_72_938C (0xEC): for every player the trigger asks whether the player's direction is
+// inside the view cone - `dot(player - pirate, the pirate's forward) > |player - pirate| * the
+// radius at 0x3d8` (asm 0x9404-0x9438) - and returns true on the first that is. The module's FSM
+// data (the AFSM 0x5652a12f, read by tools/fsm_state_triggers.py) names it in the Patrol, Lurk
+// and PathFind states. The 2026-10-21 area run evaluated it 2710 times - 2601 true and 109
+// false - so both arms ran.
 bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) const {
   const uint count = mgr.GetNumPlayers();
   for (uint i = 0; i < count; ++i) {
@@ -297,9 +303,11 @@ bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) cons
     const CVector3f toPlayer = player->GetTranslation() - GetTranslation();
     if (CVector3f::Dot(toPlayer, GetTransform().GetForward()) >
         toPlayer.Magnitude() * mDetectionAngle) {
+      TraceCall(*this, "SpotPlayer trigger", 1);
       return true;
     }
   }
+  TraceCall(*this, "SpotPlayer trigger", 0);
   return false;
 }
 
@@ -403,7 +411,9 @@ bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) cons
 // pirate, or is in its path); the trigger's argument is the window, 0.5 s when it is 0.
 bool CSpacePirate::ShotAt(CStateManager& mgr, const CTriggerData& data) const {
   const float window = data.GetFloat() != 0.f ? data.GetFloat() : 0.5f;
-  return xb28_lowHealthFrenzyTimer < window;
+  const bool result = xb28_lowHealthFrenzyTimer < window;
+  TraceCall(*this, "ShotAt trigger", result ? 1 : 0);
+  return result;
 }
 
 // @ fn_72_7B6C
