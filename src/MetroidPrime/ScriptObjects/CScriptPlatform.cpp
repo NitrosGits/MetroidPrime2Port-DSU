@@ -7,6 +7,9 @@
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/Enemies/CPatterned.hpp"
+#endif
 #include "MetroidPrime/Cameras/CScriptCameraSpline.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -291,6 +294,11 @@ void CScriptPlatform::MoveRiders(CStateManager& mgr, float dt, bool active,
       player->GetMorphBall()->TransformSpiderBallState(rotDelta, dragDelta);
     }
     actor->SetTranslation(translation);
+#ifdef TARGET_PC
+    if (CPatterned* patterned = TCastToPtr< CPatterned >(*actor)) {
+      patterned->CarryPredictedTranslation(displacement);
+    }
+#endif
     if ((!player || player->GetOrbitState() == CPlayer::kOS_NoOrbit) && !mTreeGroup.null()) {
       actor->SetTransform((rotDelta * CQuaternion::FromMatrix(actor->GetTransform()))
                               .BuildTransform4f(actor->GetTranslation()));
