@@ -132,6 +132,7 @@ void StandInFn(const char* fn) {
 
 
 
+
 // The body's two FSM tables. Retail builds them in a static initialiser (fn_9_F9F8,
 // .ctors): the tables are lbl_9_data_198 (34 triggers, .data 0x198) and lbl_9_data_568
 // (36 states, .data 0x568), each entry 16 bytes {name, 0, 0xFFFFFFFF, fn}, and the
@@ -3095,8 +3096,28 @@ void CCommandoPirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_8DF0");
 }
 
+// fn_9_8D28 (0xc8 bytes): the PostWarpOut state. Only the activate message (the guest's test of 0
+// at 0x00008D30) does anything: when the byte at guest this+0xC63 has no 0x20 bit (the test at
+// 0x00008D54) the commando tells the world it leaves with the deactivate message (the delivery at
+// 0x00008DA8 - the sender is the actor's own id, 0x00008D60, and the message is kSM_Deactivate,
+// 0x44435456, 0x00008D70). Then the module's state word (guest this+0x920) goes back to -1
+// (0x00008DAC..0x00008DB0) and, when the byte at guest this+0xC63 has its 0x10 bit (the test at
+// 0x00008DB8), the actor asks to be deleted (0x00008DC0..0x00008DD4).
 void CCommandoPirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_8D28");
+  if (msg != kStateMsg_Activate) {  // 0x00008D30..0x00008D4C
+    return;
+  }
+  // the guest's extrwi. r0, r0, 1, 26 (0x00008D54) takes the bit 26 from the MSB, which is the
+  // LSB bit 5, so the mask is 0x20; the branch at 0x00008D58 skips the message when it is set.
+  if ((xc63_ & 0x20) == 0) {  // 0x00008D50..0x00008D58
+    mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), kInvalidUniqueId, kSM_Deactivate));  // 0x00008DA8
+  }
+  x920_ = -1;                    // 0x00008DAC..0x00008DB0
+  // the guest's extrwi. r0, r0, 1, 27 (0x00008DB8) takes the bit 27 from the MSB, which is the
+  // LSB bit 4, so the mask is 0x10; the branch at 0x00008DBC skips the delete when it is clear.
+  if ((xc63_ & 0x10) != 0) {     // 0x00008DB4..0x00008DBC
+    mgr.DeleteObjectRequest(GetUniqueId());  // 0x00008DC0..0x00008DD4
+  }
 }
 
 // fn_9_8B70 (0x1b8 bytes): the JumpBack state - the commando steps back away from its target.

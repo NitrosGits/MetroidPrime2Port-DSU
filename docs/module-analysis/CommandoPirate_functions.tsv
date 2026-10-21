@@ -110,15 +110,15 @@ offset	size	fn	kind	class	port	note
 0x6354	0x3C	fn_9_6354	host-copy	H	not-port	
 0x6390	0x29C	fn_9_6390	behaviour	B	marked	
 0x662C	0x39C	fn_9_662C	vtable-override	B	not-port	
-0x69C8	0x78	fn_9_69C8	fsm-trigger	B	stand-in	Dead
+0x69C8	0x78	fn_9_69C8	fsm-trigger	B	ported	Dead
 0x6A40	0x130	fn_9_6A40	fsm-trigger	B	stand-in	GetUp
 0x6B70	0x5C	fn_9_6B70	host-copy	H	not-port	
-0x6BCC	0x9C	fn_9_6BCC	fsm-trigger	B	stand-in	BreakCover
+0x6BCC	0x9C	fn_9_6BCC	fsm-trigger	B	marked	BreakCover
 0x6C68	0x154	fn_9_6C68	fsm-trigger	B	stand-in	CoverAttack
 0x6DBC	0x284	fn_9_6DBC	fsm-trigger	B	stand-in	Cover
 0x7040	0x5C	fn_9_7040	host-copy	H	not-port	
 0x709C	0x1F0	fn_9_709C	fsm-trigger	B	marked	CoverFind
-0x728C	0xCC	fn_9_728C	fsm-trigger	B	stand-in	WallDetach
+0x728C	0xCC	fn_9_728C	fsm-trigger	B	ported	WallDetach
 0x7358	0x310	fn_9_7358	fsm-trigger	B	stand-in	WallHang
 0x7668	0x5C	fn_9_7668	host-copy	H	not-port	
 0x76C4	0x60	fn_9_76C4	host-copy	H	not-port	
@@ -130,7 +130,7 @@ offset	size	fn	kind	class	port	note
 0x8934	0x1E0	fn_9_8934	fsm-trigger	B	ported	Dodge
 0x8B14	0x5C	fn_9_8B14	host-copy	H	not-port	
 0x8B70	0x1B8	fn_9_8B70	fsm-trigger	B	ported	JumpBack
-0x8D28	0xC8	fn_9_8D28	fsm-trigger	B	stand-in	PostWarpOut
+0x8D28	0xC8	fn_9_8D28	fsm-trigger	B	ported	PostWarpOut
 0x8DF0	0x218	fn_9_8DF0	fsm-trigger	B	stand-in	WarpOut
 0x9008	0x5C	fn_9_9008	host-copy	H	not-port	
 0x9064	0x528	fn_9_9064	fsm-trigger	B	stand-in	WarpIn
@@ -149,14 +149,14 @@ offset	size	fn	kind	class	port	note
 0xA460	0x5C	fn_9_A460	host-copy	H	not-port	
 0xA4BC	0x290	fn_9_A4BC	fsm-trigger	B	stand-in	MeleeAttack
 0xA74C	0x5C	fn_9_A74C	host-copy	H	not-port	
-0xA7A8	0x90	fn_9_A7A8	fsm-trigger	B	stand-in	SetCoverDest
+0xA7A8	0x90	fn_9_A7A8	fsm-trigger	B	ported	SetCoverDest
 0xA838	0xB0	fn_9_A838	fsm-trigger	B	marked	SetPathMeshDest
-0xA8E8	0x94	fn_9_A8E8	fsm-trigger	B	stand-in	SetJumpDest
-0xA97C	0xA4	fn_9_A97C	fsm-trigger	B	stand-in	SetRetreatDest
+0xA8E8	0x94	fn_9_A8E8	fsm-trigger	B	ported	SetJumpDest
+0xA97C	0xA4	fn_9_A97C	fsm-trigger	B	ported	SetRetreatDest
 0xAA20	0xE8	fn_9_AA20	fsm-state	B	ported	SetTargetDest
 0xAB08	0xD4	fn_9_AB08	fsm-trigger	B	ported	SelectTarget
 0xABDC	0x1C4	fn_9_ABDC	fsm-trigger	B	ported	FaceTarget
-0xADA0	0x34	fn_9_ADA0	fsm-trigger	B	stand-in	Ambush
+0xADA0	0x34	fn_9_ADA0	fsm-trigger	B	marked	Ambush
 0xADD4	0x30	fn_9_ADD4	data-thunk	T	not-port	
 0xAE04	0x158	fn_9_AE04	fsm-trigger	B	ported	Alert
 0xAF5C	0x5C	fn_9_AF5C	host-copy	H	not-port	
@@ -165,8 +165,8 @@ offset	size	fn	kind	class	port	note
 0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	ported	ShouldCoverAttack
 0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	ported	FoundCover
 0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	ported	ShouldCover
-0xB114	0x54	fn_9_B114	fsm-trigger	B	stand-in	ShouldWallHang
-0xB168	0x40	fn_9_B168	fsm-trigger	B	stand-in	ShouldCrouch
+0xB114	0x54	fn_9_B114	fsm-trigger	B	ported	ShouldWallHang
+0xB168	0x40	fn_9_B168	fsm-trigger	B	ported	ShouldCrouch
 0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	ported	FoundJumpPoint
 0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	ported	IsAggressive
 0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	ported	AbortShieldCharge
