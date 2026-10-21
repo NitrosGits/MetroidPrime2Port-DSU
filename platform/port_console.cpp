@@ -52,6 +52,7 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -524,6 +525,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "strg <id|name> [index]      a string table as the game loads it\n"
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
+      "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
@@ -1861,6 +1863,57 @@ void CmdPress(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// grapple <id> [dist]: the lock-on a grapple needs, set up in one go. A lock-on press takes
+// CPlayer's next orbit target, which comes from candidate lists rebuilt only every 20 updates, so a
+// press right after a teleport finds no target and a held L never presses again; and a player put
+// in the air falls out of the orbit zone in ~15 updates. This wakes the point (kSM_Activate, which
+// also restores kMT_Orbit), puts the player dist units away with the eye level with the point,
+// facing it (along the point's axis when it is axis-constrained), has the lists rebuilt on the next
+// update and holds L from the update after that (`press` or `stick` ends the hold).
+void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
+  const CEntity* ent = args.size() >= 2 ? ResolveObject(mgr, args[1]) : nullptr;
+  const CScriptGrapplePoint* point =
+      ent != nullptr ? TCastToConstPtr< CScriptGrapplePoint >(ent) : nullptr;
+  float dist = 8.f;
+  if (point == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 2.f)))) {
+    Fail("usage: grapple <grapple point id> [dist > 2]   (`objs grapple` lists them)");
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerState* state = mgr.PlayerState(0);
+  if (player == nullptr || state == nullptr) {
+    Fail("no player");
+    return;
+  }
+  const bool woken = !point->GetActive();
+  if (woken) {
+    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, point->GetUniqueId(), kSM_Activate));
+  }
+  const CVector3f target = point->GetTranslation();
+  CVector3f dir = player->GetTranslation() - target;
+  if (point->GetGrappleParameters().GetConstrainToAxis()) {
+    const CVector3f axis = point->GetTransform().GetForward();
+    dir = CVector3f::Dot(axis, dir) < 0.f ? -axis : axis;
+  }
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  const float eyeHeight = player->GetEyePosition().GetZ() - player->GetTranslation().GetZ();
+  CVector3f pos = target + dir * dist;
+  pos.SetZ(target.GetZ() - eyeHeight);
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortRefreshOrbitCandidates();
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0, 2);
+  char line[192];
+  std::snprintf(line, sizeof(line),
+                "grapple u%04x at (%.1f, %.1f, %.1f)%s: player at (%.1f, %.1f, %.1f), L held from "
+                "2 updates on%s\n",
+                point->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(),
+                woken ? " (woken)" : "", pos.GetX(), pos.GetY(), pos.GetZ(),
+                state->HasPowerUp(CPlayerState::kIT_GrappleBeam) ? ""
+                                                                 : "; no grapple beam (`give grappleBeam 1`)");
+  out += line;
+}
+
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
@@ -2109,6 +2162,7 @@ constexpr SCommand kCommands[] = {
     {"give", CmdGiveAdd, true},
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
+    {"grapple", CmdGrapple, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
