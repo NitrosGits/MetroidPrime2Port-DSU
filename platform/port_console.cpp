@@ -23,6 +23,9 @@
 #include "port_overlay_internal.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
+#ifdef MP_PORT_COVERAGE
+#include "port_coverage.h"
+#endif
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
@@ -528,8 +531,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
-      "obj <id>                    one object (an id as `objs` prints it: u046e): health, fsm, messages\n"
+      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
+      "covdump                     coverage build: write the gcov counters now (and zero them)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
@@ -1376,6 +1380,27 @@ void DescribeObject(const CEntity& ent, bool withPosition, std::string& out) {
 // TUniqueId::Value(), which drops the version bits ("[door] 006e got kSM_Open") - the one object
 // whose Value() matches, when exactly one does. `obj` and `send` both take their target from here.
 const CEntity* ResolveObject(CStateManager& mgr, std::string_view text) {
+  // e<hex>: the object with that editor id (as `objs` prints it: e00350060). Unique ids are
+  // reused as objects come and go, so a console script that runs across a layer load names the
+  // script object instead.
+  if (text.size() > 1 && (text[0] == 'e' || text[0] == 'E')) {
+    const std::string hex(text.substr(1));
+    char* end = nullptr;
+    const unsigned long editorId = std::strtoul(hex.c_str(), &end, 16);
+    if (end != nullptr && *end == '\0') {
+      const CObjectList& list = mgr.GetObjectListById(kOL_All);
+      for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+        const CEntity* ent = list[i];
+        if (ent != nullptr && ent->GetEditorId().Value() == editorId) {
+          return ent;
+        }
+      }
+      char why[48];
+      std::snprintf(why, sizeof(why), "no object with editor id %08lx", editorId);
+      Fail(why);
+      return nullptr;
+    }
+  }
   TUniqueId uid = kInvalidUniqueId;
   if (!ParseUid(text, uid)) {
     Fail("not an object id '" + Str(text) + "'");
@@ -2347,7 +2372,7 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
 // would move a fresh lock to the player's next orbit candidate. A completed scan soft-pauses the game and the scan display renders the
 // actor (CScanDisplay::PrepareScanDisplay and Draw: GetScanVisorRenderBounds / ScanVisorRender
 // for a self-rendering CPatterned). `scan` alone prints the orbit target, scanning time and the
-// game state (2 = soft-paused: the scan display is up).
+// game state (1 = soft-paused: the scan display is up).
 void CmdScan(CStateManager& mgr, const Args& args, std::string& out) {
   CPlayer* player = mgr.GetPlayer(0);
   CPlayerState* state = mgr.PlayerState(0);
@@ -2414,6 +2439,18 @@ void CmdScan(CStateManager& mgr, const Args& args, std::string& out) {
 }
 
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
+// covdump: a coverage build (MP_PORT_COVERAGE) writes its gcov counters now and zeroes them; the
+// next dump (another covdump, or the exit) adds to the .gcda files. A run that hangs in shutdown
+// and is killed keeps what was dumped. Other builds answer that there is nothing to write.
+void CmdCovdump(CStateManager&, const Args&, std::string& out) {
+#ifdef MP_PORT_COVERAGE
+  PortCoverageFlush();
+  out += "gcov counters written\n";
+#else
+  out += "not a coverage build\n";
+#endif
+}
+
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
   if (args.size() < 3) {
@@ -2700,6 +2737,7 @@ constexpr SCommand kCommands[] = {
     {"press", CmdPress, true},
     {"grapple", CmdGrapple, true},
     {"scan", CmdScan, true},
+    {"covdump", CmdCovdump, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
