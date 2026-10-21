@@ -2237,7 +2237,8 @@ void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 // (0) the body controller's locomotion type becomes 1 (pas::kLT_Relaxed, the call at 0x95F8)
 // and bit 7 (the mask 0x80) of the flag byte at guest this+0x128C is set (the rlwimi at 0x9604);
 // on Deactivate (2) that bit is cleared (the rlwimi at 0x9618); Update (1) and every other
-// message do nothing.
+// message do nothing. gcov (the helpers lane, area 53): 3/3 branches, ALL-ARMS.
+// @ fn_14_95B8
 void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
