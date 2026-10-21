@@ -50,6 +50,7 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/CGenericFSM2State.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
@@ -510,7 +511,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
-      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it)\n"
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -1459,13 +1460,33 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   }
   TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
   const std::string before = machine->HasState() && machine->GetName() != nullptr ? machine->GetName() : "?";
-  machine->SetState(mgr, *patterned, rstl::string_l(std::string(args[2]).c_str()));
+  // string_l borrows the characters: keep the std::string alive for every use of `name`.
+  const std::string wanted(args[2]);
+  const rstl::string name = rstl::string_l(wanted.c_str());
+  // An FSM2's SetState looks only at its own top-level states; a state inside one of its
+  // sub-machines is entered the way a transition into that sub-machine would enter it.
+  std::string where = "top machine";
+  if (machine->GetType() == 1) {
+    const char* path[8] = {};
+    const int depth = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
+        mgr, *patterned, name, path, 8);
+    if (depth > 0) {
+      where = "sub-machine ";
+      for (int i = 0; i < depth; ++i) {
+        where += (i != 0 ? "/" : "");
+        where += path[i] != nullptr ? path[i] : "?";
+      }
+    }
+  } else {
+    machine->SetState(mgr, *patterned, name);
+  }
   const char* after = machine->HasState() ? machine->GetName() : nullptr;
   // An unknown name leaves the machine where it was; say so rather than report a no-op. An FSM2
   // evaluates the new state's transitions inside SetState, so a state that was entered and left
   // at once reads as another, new name: report that as entered.
   if (after != nullptr && std::string_view(after) != args[2] && before != after) {
-    out += "fsm " + before + " -> " + Str(args[2]) + " (entered; now " + after + ")\n";
+    out += "fsm " + before + " -> " + Str(args[2]) + " [" + where + "] (entered; now " + after +
+           ")\n";
     return;
   }
   if (after == nullptr || std::string_view(after) != args[2]) {
@@ -1473,7 +1494,7 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
          (after != nullptr ? after : "?"));
     return;
   }
-  out += "fsm " + before + " -> " + after + '\n';
+  out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
