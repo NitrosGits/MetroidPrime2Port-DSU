@@ -53,7 +53,7 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 // kMT_Solid/kMT_Player/kMT_Character with DetectDynamicCollisionBoolean on its own collision
 // primitive: a clear box moves the point to 1 and puts Character/Solid/Target back (Orbit waits
 // for Deactivate). At 1 it
-// delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate and fades in
+// delivers CBCGenerateCmd(kGType_Zero) while the animation allows kAS_Generate and fades in
 // (alpha = max(0, 1 - remaining/cached) once 0x8fa bit 0x08 is armed). Deactivate re-adds the
 // materials, restores alpha 1, resets the warp point to -1 and clears 0x8fa bit 0x20. (The two
 // cases were once swapped, so every update reset the warp: a warped-in trooper stayed invisible,
@@ -118,7 +118,8 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
     }
     case 1:
       if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
-        BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_One, CVector3f::Zero()));
+        // The cmd's type word is 0 (asm 0x7410 stores r6 = 0 at 0x5c); WarpOut's is kGType_One.
+        BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_Zero, CVector3f::Zero()));
       } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
         if (!x8fa_28_) {
           x8fa_28_ = true;
