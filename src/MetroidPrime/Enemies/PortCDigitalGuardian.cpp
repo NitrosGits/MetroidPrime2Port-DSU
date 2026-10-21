@@ -42,6 +42,11 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCameraShaker.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "MetroidPrime/Cameras/CCameraShakerManager.hpp"
+#include "MetroidPrime/CAxisAngle.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
@@ -268,15 +273,20 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1168_(kInvalidUniqueId) // the store at 0xB5B8
 , x116A_(kInvalidUniqueId) // the store at 0xB5C0
 , x11B8_(0)
+, x11BC_(0.f) // the store at 0xB65C
 , x11C0_(kInvalidUniqueId) // the store at 0xB668
+, x11C4_(-1) // the store at 0xB66C
 , x11C8_(data.mUnknown4F5D725C) // the store at 0xB674
+, x11CC_(CVector3f::Zero()) // the stores at 0xB67C..0xB68C
 , x11E0_(0.f)
 , x11E4_(0.f)
 , x11E8_(1) // the store at 0xB6A0
 , x1274_(0.f)
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
-, x128C_(0)
+, x1288_(0.f) // set to the speed in the body (the store at 0xBA28)
+, x128C_(0x80) // bit 7 set (r6 = 1, the rlwimi at 0xBA30), bits 6..0 clear (0xBA3C..0xBA84)
+, x128D_(0) // bits 7 and 6 clear (the rlwimis at 0xBA90 and 0xBA9C)
 , xE60_(nullptr) // 0xE60: the first collision actor manager (x61DC_ builds it)
 , xE64_(nullptr) // 0xE64: the second collision actor manager (x5C30_ builds it)
 , xE6C_() // 0xE6C: the leg model (x6864_ fills it in)
@@ -338,6 +348,8 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
         gpSimplePool->GetObj(SObjectTag('PART', mData.mTransmissionBeaconEchoHit)));
   }
 
+  // The base speed: CPatterned's speed (guest 0x3C8) as the base left it (0xBA24..0xBA28).
+  x1288_ = mSpeed;
 
   // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAB4
   // on): 0x10B8 is "Head_1" (.rodata 0x6BF, the store at 0xBAC8), 0x10B9 "neck_SDK" (0xBAFC), 0x10C0..0x10C3 the four knee locators
@@ -607,6 +619,121 @@ void CDigitalGuardian::x3974_(CStateManager& mgr, bool active) {
   if (actor != nullptr) {
     actor->SetActive(active);
   }
+}
+
+// fn_14_39CC: the toe target colliders from 0x1078 up to the count at 0x1074 (the lwz at
+// 0x3A1C; 4 from the ctor's store at 0xB270), each looked up (0x3A04) and, when it exists
+// (0x3A08), given the vulnerability (SetDamageVulnerability, 0x3A14).
+void CDigitalGuardian::x39CC_(CStateManager& mgr, const CDamageVulnerability& vuln) {
+  for (int i = 0; i < 4; ++i) {
+    CCollisionActor* collider =
+        static_cast< CCollisionActor* >(mgr.ObjectById(TUniqueId(x1078_[i])));
+    if (collider != nullptr) {
+      collider->SetDamageVulnerability(vuln);
+    }
+  }
+}
+
+// fn_14_3DA8: the four knee armour ids from 0xFB0 (the loop's cmpwi 4 at 0x3E10); each id that is
+// not kInvalidUniqueId (0x3DD8) and whose object exists (0x3DF4) is made orbitable or not
+// (fn_14_CE1C, 0x3E04).
+void CDigitalGuardian::x3DA8_(CStateManager& mgr, bool orbitable) {
+  const u16* const armor[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
+  for (int i = 0; i < 4; ++i) {
+    if (*armor[i] == kInvalidUniqueId.value) {
+      continue;
+    }
+    CDigitalGuardianKneeArmor* knee =
+        static_cast< CDigitalGuardianKneeArmor* >(mgr.ObjectById(TUniqueId(*armor[i])));
+    if (knee != nullptr) {
+      knee->SetOrbitable(mgr, orbitable); // fn_14_CE1C
+    }
+  }
+}
+
+// fn_14_34E8: with the exit vortex waypoint (0x1168, looked up at 0x3534; none -> false), the
+// speed 0x11BC grows by the data's vortexLinearAcceleration (guest 0x8A4) times dt up to its
+// vortexLinearVelocity (0x8A0) (the fmadds at 0x354C and the fcmpo at 0x3550). The flat
+// distance (z is 0.0f, .rodata 0x264, 0x3580) is compared with minDist (0x359C): beyond it, the
+// body moves (MoveInOneFrameOR, 0x361C) along the flat direction - rotated into the body's frame
+// (TransposeRotate, 0x360C) and only when the magnitude is safe (0x35C4) - by speed * dt or the
+// distance, whichever is smaller (0x35AC), and the answer is whether speed * dt was smaller
+// (the fcmpo/mfcr at 0x3620); within it, the speed is zeroed (0x3638) and the answer is false.
+bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(x1168_));
+  if (target == nullptr) {
+    return false;
+  }
+  x11BC_ = rstl::min_val(mData.mVortexLinearVelocity,
+                         mData.mVortexLinearAcceleration * dt + x11BC_);
+  const CVector3f delta(target->GetTranslation().GetX() - GetTranslation().GetX(),
+                        target->GetTranslation().GetY() - GetTranslation().GetY(), 0.f);
+  const float dist = delta.Magnitude();
+  if (dist > minDist) {
+    const float step = x11BC_ * dt;
+    const float move = step < dist ? step : dist;
+    if (delta.IsMagnitudeSafe()) {
+      MoveInOneFrameOR(GetTransform().TransposeRotate(delta.AsNormalized() * move), dt);
+    }
+    return step < dist;
+  }
+  x11BC_ = 0.f;
+  return false;
+}
+
+// fn_14_3674: only with bit 6 of 0x128D (the mask 0x40, the extrwi. at 0x36A4) set, bit 2 of
+// 0x128C (the mask 0x04, the extrwi. at 0x36B0) clear and the data's vortexAttackDuration (guest
+// 0x894) above 0.0f (0x36C4). The player (0x14FC) is pulled when its distance to the body is
+// above 1.1920929e-7 (.rodata 0x2B0, 0x3710) and below maxVortexAttractionDistance (0x89C,
+// 0x371C): the impulse is the unit direction times vortexAttractionForce (0x898), the player's
+// mass (0x158) and dt (0x3734..0x3770), applied with no angular part (0x3790); then the player's
+// collision impulses (0x3798), its minimal acceleration timer at 2 * dt (.rodata 0x26C, 0x37AC)
+// and a static interference source from the body at 0.1 for 0.1 s (.rodata 0x2B4, 0x37D4).
+void CDigitalGuardian::x3674_(CStateManager& mgr, float dt) {
+  if ((x128D_ & 0x40) == 0 || (x128C_ & 0x04) != 0 || !(mData.mVortexAttackDuration > 0.f)) {
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  const CVector3f delta = GetTranslation() - player->GetTranslation();
+  const float dist = delta.Magnitude();
+  if (dist > 1.1920929e-7f && dist < mData.mMaxVortexAttractionDistance) {
+    const CVector3f dir = delta * (1.f / dist);
+    const CVector3f impulse = dir * mData.mVortexAttractionForce * player->GetMass() * dt;
+    player->ApplyImpulseWR(impulse, CAxisAngle::Identity());
+    player->UseCollisionImpulses();
+    player->SetMinimalAccelerationTimer(2.f * dt);
+    mgr.PlayerState(0)->StaticInterference().AddSource(GetUniqueId(), 0.1f, 0.1f);
+  }
+}
+
+// fn_14_4D54: the shake id (0x11C4) is reset to -1 (0x4D78); with the IS00/Attach object
+// (0x11C0) a camera shaker (the TCastToPtr at 0x4D8C), its shake data is copied (fn_14_4A2C),
+// moved to the body's translation (0x4DA4..0x4DC8) and added to player 0's camera shaker
+// manager (guest mgr+0x151C, +0x88) without sound flags (r6 = r7 = 0, 0x4DD4); the id it returns
+// is kept (0x4DD8).
+void CDigitalGuardian::x4D54_(CStateManager& mgr) {
+  x11C4_ = -1;
+  if (CScriptCameraShaker* shaker = TCastToPtr< CScriptCameraShaker >(mgr.ObjectById(x11C0_))) {
+    x11C4_ = mgr.CameraManager(0)->CameraShakerManager()->AddCameraShaker(
+        shaker->GetShakeData().NewTranslation(GetTranslation()), mgr, false, false);
+  }
+}
+
+// fn_14_4878: the same copy moved to the body's translation (0x48C0..0x48D8) updates the shake
+// 0x11C4 (UpdateCameraShaker, 0x48E8), when 0x11C0 is a camera shaker (0x48A8).
+void CDigitalGuardian::x4878_(CStateManager& mgr) {
+  if (CScriptCameraShaker* shaker = TCastToPtr< CScriptCameraShaker >(mgr.ObjectById(x11C0_))) {
+    mgr.CameraManager(0)->CameraShakerManager()->UpdateCameraShaker(
+        x11C4_, shaker->GetShakeData().NewTranslation(GetTranslation()));
+  }
+}
+
+// fn_14_4838: the shake 0x11C4 is removed (RemoveCameraShaker, 0x4858) and the id reset to -1
+// (0x4860).
+// @ fn_14_4838
+void CDigitalGuardian::x4838_(CStateManager& mgr) {
+  mgr.CameraManager(0)->CameraShakerManager()->RemoveCameraShaker(x11C4_);
+  x11C4_ = -1;
 }
 
 // @ fn_14_44F8
@@ -1202,9 +1329,9 @@ rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
 // (.rodata 0x2A8) times the scale's z along up; else, with 0x11B8 set, only z becomes the
 // translation's z plus 5 (.rodata 0x27C) times the scale's z. dt is unused.
 // Unmarked: area-53 runs 37-39 ran the active collision actor arm and, with the actor inactive
-// and 0x11B8 clear, the locator; the 0x11B8 arm never ran. Only the vortex states (fn_14_9260,
-// fn_14_9070, fn_14_8E44, fn_14_76D0) and the constructor write 0x11B8, and the vortex states are
-// still stand-ins, so the arm is unreachable until they are ported.
+// and 0x11B8 clear, the locator; the 0x11B8 arm never ran. The vortex states that set 0x11B8 are
+// ported now, but in runs 410-412 (forced `fsm <body> VortexAttack`) nothing asked for the aim
+// position while 0x11B8 was set (no lock-on during the vortex).
 CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
   const CVector3f locator = GetLctrTransform(CSegId(x10B8_)).GetTranslation();
   const float scaleZ = GetModelData()->GetScale().GetZ();
@@ -1936,20 +2063,172 @@ void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_14_94BC");
 }
 
+// fn_14_9260: the state message picks the work (the cmpwi chain at 0x9280..0x92A4).
+// Activate (0): ready (0x92B4), vortex mode 1 (0x11B8, 0x92C4), the drift velocity 0x11CC zeroed
+// (0x92CC..0x92DC), bits 7 and 6 of 0x128D cleared (0x92E4, 0x92F0), the vortex health 0x11C8
+// reset from the data's +0x100 (guest 0x8C0, 0x92FC), locomotion 3 (kLT_Combat, 0x9304), every
+// visor orbitable flag on (0xF, 0x9314), 0x11E8 cleared (0x9320), the camera shake started
+// (fn_14_4D54), the toe colliders given the vortex vulnerability (0x1188, fn_14_39CC), the root
+// collider activated (fn_14_3974) and the speed reset to the base speed (0x1288, 0x9350).
+// Update (1): while the state's time (the machine's vtable slot 0x30 at 0x9368) is below the
+// data's vortexAttackDuration (guest 0x894, the fcmpo at 0x9370): with bit 7 of 0x128D (the mask
+// 0x80, the extrwi. at 0x937C) and dt above 0.0f (.rodata 0x264, 0x938C) the body drifts by
+// 0x11CC * dt in its own frame (0x93C4, 0x93D4); the speed is the base speed plus the time
+// fraction (0x9408), the sound pitch bend 0x2000 plus the fraction times the data's int at +0xFC
+// (guest 0x8BC, converted at 0x9414..0x9420; __cvt_fp2unsigned at 0x9428); then the pull
+// (fn_14_3674) and the camera shake follows the body (fn_14_4878). At the duration: over (0x9460).
+// Deactivate (2): the shake removed (fn_14_4838), the toe colliders given the toe target
+// vulnerability (0x1110, fn_14_39CC), the root collider deactivated (fn_14_3974), not ready
+// (0x9494) and stopped (0x9498). Other messages do nothing.
 void CDigitalGuardian::VortexAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_9260");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11B8_ = 1;
+    x11CC_ = CVector3f::Zero();
+    x128D_ &= ~0x80;
+    x128D_ &= ~0x40;
+    x11C8_ = mData.mUnknown4F5D725C;
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);
+    x11E8_ = 0;
+    x4D54_(mgr);         // fn_14_4D54
+    x39CC_(mgr, x1188_); // fn_14_39CC
+    x3974_(mgr, true);   // fn_14_3974
+    mSpeed = x1288_;
+    break;
+  case kStateMsg_Update:
+    if (mStateMachine->GetTime() < mData.mVortexAttackDuration) {
+      if ((x128D_ & 0x80) != 0 && dt > 0.f) {
+        MoveInOneFrameOR(GetTransform().TransposeRotate(x11CC_ * dt), dt);
+      }
+      const float frac = mStateMachine->GetTime() / mData.mVortexAttackDuration;
+      mSpeed = x1288_ + frac;
+      SetSoundEventPitchBend(
+          static_cast< int >(static_cast< uint >(
+              frac * static_cast< float >(mData.mUnknown6AAF33E3))) + 0x2000);
+      x3674_(mgr, dt); // fn_14_3674
+      x4878_(mgr);     // fn_14_4878
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    x4838_(mgr);         // fn_14_4838
+    x39CC_(mgr, x1110_); // fn_14_39CC
+    x3974_(mgr, false);  // fn_14_3974
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    Stop();
+    break;
+  default:
+    break;
+  }
 }
 
+// fn_14_9164: the state message picks the work (the cmpwi chain at 0x916C..0x9194).
+// Activate (0): ready (0x91A0). Update (1): the speed falls by 2/3 (.rodata 0x2D8) of dt (the
+// fnmsubs at 0x91B8), no lower than the base speed 0x1288 (the fcmpo at 0x91BC); the sound pitch
+// bend is 0x2000 plus (speed - base) / base times the data's int at +0xFC (guest 0x8BC, 0x91E0..
+// 0x9218); at or below the base speed (the fcmpo/cror at 0x9224..0x9228), over (0x9234).
+// Deactivate (2): not ready (0x9240) and the base speed back (0x9248). Other messages do nothing.
+// @ fn_14_9164
 void CDigitalGuardian::VortexEndAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_9164");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  case kStateMsg_Update: {
+    const float speed = mSpeed - 0.6666667f * dt;
+    mSpeed = x1288_ >= speed ? x1288_ : speed;
+    SetSoundEventPitchBend(
+        static_cast< int >(static_cast< uint >(
+            (mSpeed - x1288_) / x1288_ * static_cast< float >(mData.mUnknown6AAF33E3))) +
+        0x2000);
+    if (mSpeed <= x1288_) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mSpeed = x1288_;
+    break;
+  default:
+    break;
+  }
 }
 
+// fn_14_9070: the state message picks the work (the cmpwi chain at 0x908C..0x90AC).
+// Activate (0): ready (0x90BC), vortex mode 2 (0x11B8, 0x90CC), the exit speed 0x11BC zeroed
+// (.rodata 0x264, 0x90D0), locomotion 2 (kLT_Lurk, 0x90D8), 0x11E8 set (0x90E4), the sound pitch
+// bend 0x2000 plus the data's int at +0xF8 (guest 0x8B8, 0x90F0) and the base speed (0x1288,
+// 0x90F8). Update (1): a step towards the exit target with no minimum distance (fn_14_34E8 with
+// 0.0f, 0x9108); when that is done (0x9110) and the animation's time left is at most dt (the
+// fcmpo/cror at 0x911C..0x9120), over (0x912C). Deactivate (2): not ready (0x9138), stopped
+// (0x913C) and the pitch bend cleared (0x9144). Other messages do nothing.
+// @ fn_14_9070
 void CDigitalGuardian::VortexRetreat(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_9070");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11B8_ = 2;
+    x11BC_ = 0.f;
+    BodyController()->SetLocomotionType(pas::kLT_Lurk);
+    x11E8_ = 1;
+    SetSoundEventPitchBend(mData.mUnknownFB5263E8 + 0x2000);
+    mSpeed = x1288_;
+    break;
+  case kStateMsg_Update:
+    if (!x34E8_(mgr, dt, 0.f) && BodyController()->GetAnimTimeRemaining() <= dt) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    Stop();
+    ClearSoundEventPitchBend();
+    break;
+  default:
+    break;
+  }
 }
 
+// fn_14_8E44: the state message picks the work (the cmpwi chain at 0x8E4C..0x8E7C).
+// Activate (0): ready (0x8E8C), vortex mode 0 (0x11B8, 0x8E98), 0x11E8 set (0x8E9C), every visor
+// orbitable flag off (0xF, 0x8EA0) and then the echo one (2) on (0x8EB0). Update (1): when a
+// generate can be issued (CanIssueCommand with 12 = kAS_Generate, 0x8EC4), a generate command
+// of type 1 (kGType_One, the li at 0x8F04), the zero target and no animation (-1, 0x8F0C) is
+// delivered (0x8F4C); otherwise, once the body state is the generate (0x37C == 12, 0x8FAC),
+// locomotion 1 (kLT_Relaxed, 0x8FB8). Deactivate (2): not ready (0x8FC8), locomotion 1 (0x8FD0),
+// bit 0 of 0x128C cleared (0x8FDC), the speed for the knees left (fn_14_14F8) and the knee
+// armours orbitable (fn_14_3DA8 with 1, 0x8FF8). Other messages do nothing.
+// @ fn_14_8E44
 void CDigitalGuardian::ExitVortexAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8E44");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11B8_ = 0;
+    x11E8_ = 1;
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_One, -1));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    x128C_ &= ~0x01;
+    x14F8_();              // fn_14_14F8
+    x3DA8_(mgr, true);     // fn_14_3DA8
+    break;
+  default:
+    break;
+  }
 }
 
 void CDigitalGuardian::MeleeAttackTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -2145,15 +2424,33 @@ void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
   StandInFn("fn_14_77EC");
 }
 
+// fn_14_775C: bit 5 of 0x128C set (fn_14_3D2C with 1, 0x777C), the knees' vulnerabilities
+// (fn_14_3A44, 0x7788), the knee armours not orbitable (fn_14_3DA8 with 0, 0x7798), bit 2 of
+// 0x128C cleared (the rlwimi at 0x77A4) and the head (uid 0x1082, 0x77B4), when there is one
+// (0x77C4), set to attack mode 2 (the li at 0x77CC, fn_14_13B30).
 void CDigitalGuardian::SetVortexAttackMode(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_775C");
+  x3D2C_(mgr, true);   // fn_14_3D2C
+  x3A44_(mgr);         // fn_14_3A44
+  x3DA8_(mgr, false);  // fn_14_3DA8
+  x128C_ &= ~0x04;
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(2);
+  }
 }
 
-// fn_14_76D0 is not ported yet: it calls fn_14_3A44 (the call at 0x7718), 0x108 bytes, which
-// walks the four knees, resets their damage vulnerabilities (guest this+0x1014 and this+0x1044)
-// and calls fn_14_CE94 - too big for one slice.
+// fn_14_76D0: locomotion 1 (kLT_Relaxed, 0x76F4), vortex mode 0 (0x11B8, 0x7700), bit 5 of
+// 0x128C cleared (fn_14_3D2C with 0, 0x770C), the knees' vulnerabilities (fn_14_3A44, 0x7718)
+// and the head (uid 0x1082, 0x771C), when there is one (0x7734), set to attack mode 0 (the li
+// at 0x773C, fn_14_13B30).
+// @ fn_14_76D0
 void CDigitalGuardian::SetNormalAttackMode(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_76D0");
+  BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+  x11B8_ = 0;
+  x3D2C_(mgr, false); // fn_14_3D2C
+  x3A44_(mgr);        // fn_14_3A44
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(0);
+  }
 }
 
 // fn_14_768C: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7698)
