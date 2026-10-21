@@ -45,10 +45,18 @@ The counts (all 307 symbols of `config/G2ME01/rels/Splitter/symbols.txt`):
 | B module behaviour | 87 |
 | **total** | **307** |
 
-Of the 87 B rows, 30 carry a marker today and 57 do not; section 2 lists the 57. This lane
-ports 8 of them (section 3) and marks the 4 whose every live arm ran.
+Of the 87 B rows, 31 carry a marker today and 56 do not; section 2 lists the 56. This lane
+ports the head's five (section 3) and marks the four whose every live arm ran, plus the
+chassis's `fn_75_8EA4` (section 3.3), whose copy ran in the shipped spawns.
 
 ## 2. The unmarked B rows
+
+The queue: the module's behaviour functions that carry no marker. The three the FSM lane
+ported in 1278a3447 (`fn_75_E99C`, `fn_75_E90C`, `fn_75_E810` - the chassis's
+CanBeIngPossessed, SetIngPossessed and SetAttackTarget) are **the FSM lane's**: they live in
+the class's own bodies in `PortCSplitterMainChassis.cpp` and the lane marked them after the
+Hive Temple and the contraption runs. This lane's copies of them are gone; the helpers file
+keeps the head's five.
 
 | id | size | the retail's callers | a table names it |
 |---|---|---|---|
@@ -112,27 +120,22 @@ ports 8 of them (section 3) and marks the 4 whose every live arm ran.
 
 ## 3. The helpers this lane ports
 
-All 8 bodies are in `src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp`; the declarations are
-in the append-only helpers blocks at the end of the two classes.
+All 5 bodies are in `src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp`; the declarations are
+in the append-only helpers block at the end of `CSplitterCommandModule.hpp`.
 
-| id | size | what | the class |
-|---|---|---|---|
-| `fn_75_6310` | 0x2C | the head's AddToRenderer: the base class's call only while the actor is alive | head |
-| `fn_75_633C` | 0x2C | the head's PreRender: the same alive gate | head |
-| `fn_75_6368` | 0x2C | the head's Render: the same alive gate | head |
-| `fn_75_5E50` | 0x3C | the head's CanBeIngPossessed: only while it is docked (the chassis's id at 0xEFA) | head |
-| `fn_75_5F18` | 0x74 | the head's Listen: alive, the noise type 4 and the distance (20 units) | head |
-| `fn_75_E99C` | 0x48 | the chassis's CanBeIngPossessed: three of the chassis's own flags end it | chassis |
-| `fn_75_E810` | 0x6C | the chassis's SetAttackTarget: it keeps a CIngSnatchingSwarm target's id | chassis |
-| `fn_75_E90C` | 0x90 | the chassis's SetIngPossessed: it passes the possession on to the head it holds | chassis |
+| id | size | what | the class | marked |
+|---|---|---|---|---|
+| `fn_75_6310` | 0x2C | the head's AddToRenderer: the base class's call only while the actor is alive | head | yes |
+| `fn_75_633C` | 0x2C | the head's PreRender: the same alive gate | head | yes |
+| `fn_75_6368` | 0x2C | the head's Render: the same alive gate | head | yes |
+| `fn_75_5E50` | 0x3C | the head's CanBeIngPossessed: only while it is docked (the chassis's id at 0xEFA) | head | no |
+| `fn_75_5F18` | 0x74 | the head's Listen: alive, the noise type 4 and the distance (20 units) | head | yes |
 
-Eight stand-in call sites now call them instead of logging: the head's `PreRender`,
-`AddToRenderer`, `Render`, `Listen` and `CanBeIngPossessed` (`PortCSplitterCommandModule.cpp`)
-and the chassis's `CanBeIngPossessed`, `SetIngPossessed` and `SetAttackTarget`
-(`PortCSplitterMainChassis.cpp`).
+Five stand-in call sites now call them instead of logging: the head's `PreRender`,
+`AddToRenderer`, `Render`, `Listen` and `CanBeIngPossessed` (`PortCSplitterCommandModule.cpp`).
 
 The port's stand-ins called the base class **unconditionally**, so the head drew and rendered
-itself while it was dead and the head was possessable while it was docked: four of the eight
+itself while it was dead and the head was possessable while it was docked: four of the five
 bodies are behaviour fixes, not just new code.
 
 ### 3.1 The run
@@ -140,9 +143,9 @@ bodies are behaviour fixes, not just new code.
 **04_cliff_contraption** (world 1baa96c2, area 914f1381), **layer 2** - the fight with the
 chassis u0532, its head u0531, the chassis u0521 and the head u0520. The coverage harness:
 
-    tools/cov/run.sh tools/cov/specs/splitter_helpers_head.py /tmp/opencode/sph_cov_h3 \
+    tools/cov/run.sh tools/cov/specs/splitter_helpers_head.py /tmp/opencode/sph_cov_h4 \
       1baa96c2,914f1381 --driver "MP2_CONSOLE={port} LAYER=2 PLAN=Z python3 \
-      tools/drivers/splitter_helpers_drv.py /tmp/opencode/sph_cov_h3/game.log 200 40" \
+      tools/drivers/splitter_helpers_drv.py /tmp/opencode/sph_cov_h4/game.log 200 40" \
       --fast --frames 20000
 
 The game exited with code 0 and the log has **0 `[port] caught` and 0 `reach-stub`** lines.
@@ -163,21 +166,73 @@ without asking the distance") and `forced.txt` lists it.
 | `fn_75_6310` (the head's AddToRenderer) | (a) the actor is alive: the base class's call runs, (b) it is not: nothing runs | **both** ran: 800 entries, the base class's `CPatterned::AddToRenderer` call 400 times (the `calls` key) and 400 entries without it. **Marked** |
 | `fn_75_633C` (the head's PreRender) | the same two | **both** ran: 800 entries, `CPatterned::PreRender` 400 times. **Marked** |
 | `fn_75_6368` (the head's Render) | the same two | **both** ran: 800 entries, `CPatterned::Render` 400 times. **Marked** |
-| `fn_75_5F18` (the head's Listen) | (a) the actor is not alive: false, (b) the noise type is not 4: false, (c) the noise type is 4 and the distance is 20 or more: false, (d) the noise type is 4 and the noise is inside the radius: the flag byte at 0xF6A gets its 0x40 bit and the body returns true | (b) ran (the `noise 3` call, 2 entries), (c) ran (the `noise 4` call from 60 units up, 6 entries), (d) ran (the `noise 4` call next to the head, 2 entries, the return value 1). (a) cannot run in play - a dead head is deleted, so the noise system never asks it - and was **forced**: the alive flag is written at the body's entry for one call (`tools/cov/force.sh` with `tools/cov/specs/splitter_helpers_force.py`, the `forced.log` in the run's directory). **Marked** |
+| `fn_75_5F18` (the head's Listen) | (a) the actor is not alive: false, (b) the noise type is not 4: false, (c) the noise type is 4 and the distance is 20 or more: false, (d) the noise type is 4 and the noise is inside the radius: the flag byte at 0xF6A gets its 0x40 bit and the body returns true | (b) ran (the `noise 3` call, 2 entries), (c) ran (the `noise 4` call from 60 units up, 7 entries), (d) ran (the `noise 4` call next to the head, 2 entries, the return value 1). (a) cannot run in play - a dead head is deleted, so the noise system never asks it - and was **forced**: the alive flag is written at the body's entry for one call (`tools/cov/force.sh` with `tools/cov/specs/splitter_helpers_force.py`, the `forced.log` in the run's directory). **Marked** |
 | `fn_75_5E50` (the head's CanBeIngPossessed) | (a) the head is docked: false, (b) it is not: the base class's answer | the body was never called in the run (the Ing possession system does not ask in this area): 0 entries. **Unmarked** |
-| `fn_75_E99C` (the chassis's CanBeIngPossessed) | (a) none of the three flags is set: the base class's answer, (b) the byte at 0xD41's 0x80 bit: false, (c) the byte at 0xD40's 0x01 bit: false, (d) the byte at 0xD41's 0x40 bit: false | the body was never called in the run: 0 entries. **Unmarked** |
-| `fn_75_E810` (the chassis's SetAttackTarget) | (a) the target is a CIngSnatchingSwarm: its id is kept at 0xCBC, (b) it is not: only the base class's flag byte changes | the body was never called in the run: 0 entries. **Unmarked** |
-| `fn_75_E90C` (the chassis's SetIngPossessed) | (a) the chassis is not possessed: only the base class's call, (b) it is: the head it holds is told too | the body was never called in the run: 0 entries. **Unmarked** |
 
-The four bodies that ran are marked; the other four have no caller in this area yet (the FSM
-lane's states are still stand-ins, so nothing asks the chassis to be possessed or to take an
-attack target), so they stay unmarked until a run calls them.
+The gdb counters are the evidence for the three alive gates: the `calls` key counts the
+hits at the base class's call site (400) and the entry key the hits of the body itself (800),
+so 400 entries took the gate and 400 did not. The coverage build's profile of the three
+shipped areas (section 3.3) shows only the alive arm: the not-alive arm needs a head that is
+not alive, and the shipped areas' heads are alive the whole time.
+
+### 3.3 The coverage build: what ran in the shipped spawns
+
+The gcov build (`-DMP_PORT_COVERAGE=ON`, its own `build-port-cov`) and the report tool
+(`tools/cov/gcov_report.py <build> <prefix> --module Splitter`) say which of the module's
+bodies the **shipped** spawns reach. The runs: **09_cliff_temple** (6c363cd4, layer 2 - the
+swallowing swarm's spawn, `GENR 82500e1` on `TIMR 82500e4`), **09_cliff_temple_dark** (a92f00b3,
+the Hive Temple, layer 10 - the generated `SPLL`/`SPLU` through the relays `SRLY
+28350006/11/28`) and **04_cliff_contraption** (914f1381, layer 2). The three profiles add up:
+
+    tools/cov/gcov_report.py build-port-cov /tmp/opencode/gcov_temple/gcov \
+      /tmp/opencode/gcov_hive/gcov /tmp/opencode/gcov_contr/gcov --module Splitter
+
+81 bodies ran. The queue rows among them and their arms:
+
+| id | the port's body | the profile | marked |
+|---|---|---|---|
+| `fn_75_8EA4` (the chassis copies its four timers) | `CSplitterMainChassis::PortCopyTimers` | 6/6 lines, no branch untaken | **yes** (this lane added the marker) |
+| `fn_75_10D0` (the module's own transform) | `CSplitterCommandModule::PortModuleTransform` | 6/6 lines, 2/2 branches, ALL-ARMS | the FSM lane's marker |
+| `fn_75_3A8C` (the connected-object lookup) | `CSplitterCommandModule::PortUpdateConnectedObject` | 3/3 lines | the FSM lane's marker |
+| `fn_75_2CE0` (the head's shield) | `CSplitterCommandModule::PortUpdateShield` | 5/34 lines, 3/18 branches | no |
+| `fn_75_2BE0` (the shield's effect) | `CSplitterCommandModule::PortGetShieldEffect` | 2/4 lines, 1/5 branches | no |
+| `fn_75_31A8` (the chassis check) | `CSplitterCommandModule::PortUpdateChassis` | 8/22 lines, 4/22 branches | no |
+| `fn_75_32F4` (the flash and the death) | `CSplitterCommandModule::PortUpdateFlashAndDeath` | 9/17 lines, 2/10 branches | no |
+| `fn_75_21FC` (the auto-destruct timer) | `CSplitterCommandModule::PortAutoDestructTimer` | 4/8 lines, 1/4 branches | no |
+| `fn_75_184C` (the look-at) | `CSplitterCommandModule::PortLookAtTarget` | 4/12 lines, 1/2 branches | no |
+| `fn_75_58E8` (the chassis's scan timer) | `CSplitterCommandModule::PortChassisTimerRunning` | 5/5 lines, 1/2 branches | no |
+| `fn_75_1188` (the beam-effect spawner) | `CSplitterCommandModule::PortSpawnBeamEffect` | 11/36 lines, 3/21 branches | no |
+| `fn_75_1790` (the laser's despawn) | `CSplitterCommandModule::PortDespawnProjectile` | 7/12 lines, 3/8 branches | no |
+| `fn_75_3460` (the head's collision actor manager) | `CSplitterCommandModule::PortCreateCollisionActorManager` | 18/20 lines, 21/24 branches | no |
+| `fn_75_654C` (the head's messages) | `CSplitterCommandModule::AcceptScriptMsg` | 23/36 lines, 10/21 branches | no |
+| `fn_75_ACEC` (the head's placement) | `CSplitterMainChassis::PortPlaceHead` | 18/34 lines, 19/32 branches | no |
+| `fn_75_A4E4` (the chassis's collision actor manager) | `CSplitterMainChassis::PortCreateCollisionActorManager` | 35/36 lines, 41/43 branches | no |
+| `fn_75_A37C` (the health info copy) | `CSplitterMainChassis::PortCopyHealthToCollisionActors` | 8/9 lines, 3/4 branches | no |
+| `fn_75_8EA4`, `fn_75_8D50` (the team exit) | `CSplitterMainChassis::PortLeaveTeam` | 2/7 lines, 1/6 branches | no |
+| `fn_75_AAC4` (the player hint) | `CSplitterMainChassis::PortReleasePlayerHint` | 3/8 lines, 2/10 branches | no |
+| `fn_75_9B9C` (the hit) | `CSplitterMainChassis::PortHitObject` | 9/28 lines, 5/26 branches | no |
+| `fn_75_AA68` (the locomotion type) | `CSplitterMainChassis::PortSetLocomotionType` | 6/8 lines, 2/4 branches | no |
+| `fn_75_E87C` (the possession with a duration) | `CSplitterMainChassis::SetIngPossessed` | 4/7 lines, 1/4 branches | the FSM lane's marker |
+| `fn_75_EFA4` (the chassis's sorting bounds) | `CSplitterMainChassis::GetSortingBounds` | 3/3 lines (the shell) | no |
+| `fn_75_ECA4` (the chassis's collision) | `CSplitterMainChassis::CollidedWith` | 4/21 lines, 1/26 branches | no |
+| `fn_75_2154` (the head's move) | `CSplitterCommandModule::PortMoveTo` | 0/2 lines | no |
+| `fn_75_2994` (the head turns upright) | `CSplitterCommandModule::PortTurnUpright` | 0/12 lines | no |
+| `fn_75_9AF8` (the collision vulnerability) | `CSplitterMainChassis::PortSetCollisionVulnerability` | 0/6 lines | no |
+| `fn_75_E788`, `fn_75_E768` (the dock reservation) | `CSplitterMainChassis::PortReserveDock`, `PortReleaseDock` | 0/16 and 0/2 lines | no |
+
+The bodies that ran but whose arms did not all run are the queue's next work: the profile
+names the exact lines and branches each one still misses, so the lane can take them one at a
+time (`gdb` forces what no run reaches).
 
 ## 4. What is left, and why
 
-- **53 B-class rows have no body.** They are the module's own helpers that the FSM lane's states
-  and codes call (the beam effect's actor, the laser-pulse shot, the shield's effect, the
-  collision actor managers) and the ones the two classes' constructors build. They are listed in
+- **The queue's rows with a body but no marker** are the ones the coverage build shows the
+  shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
+  misses. The next ones are `fn_75_2CE0` (the head's shield: 5/34 lines), `fn_75_8D50` (the
+  team exit: 2/7) and `fn_75_AAC4` (the player hint: 3/8) - the smallest gaps.
+- **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
+  states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
+  managers' joint helpers) and the ones the two classes' constructors build. They are listed in
   section 2 with their callers; the FSM lane can wire them one at a time.
 - **Four rows need a host type the port does not have yet:** the beam effect's own class (the
   port has a `CSplitterBeamEffect` shell), the laser-pulse shot's class and the collision actor
@@ -191,3 +246,8 @@ attack target), so they stay unmarked until a run calls them.
 
 `src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp` holds the bodies; it is listed in
 `tools/modules_port.txt` and `files.cmake` was regenerated with `python3 tools/gen_files_cmake.py`.
+
+The lane's own tools: `tools/drivers/minoring_scan.py`-style scans are not in this branch; the
+classification above was made with the same three scans the note's section 1 names (the direct
+calls, the table references and the port's state), and the coverage build's profile
+(`tools/cov/gcov_report.py`) says which bodies the shipped spawns reach.

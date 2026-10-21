@@ -1894,10 +1894,12 @@ void CSplitterMainChassis::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
-// fn_75_8EA4 (not marked: the run never reached the copy)
+// @ fn_75_8EA4
 // The chassis copies four of its data's timers into its derived state (0x8EA4-0x8EC8): the leg
 // stab interval (0x82C) to 0xD10, the spin attack interval (0x874) to 0xD14, the laser
 // sweep interval (0x858) to 0xD18 and the min dodge interval (0x848) to 0xD1C.
+// Arms: the copy ran in the shipped spawns (the coverage build's profile: 6/6 lines, no branch
+// left untaken), so the body is marked.
 void CSplitterMainChassis::PortCopyTimers() {
   mLegStabTimer = mData.mLegStabAttackInterval;
   mSpinPenaltyTimer = mData.mSpinAttackInterval;
