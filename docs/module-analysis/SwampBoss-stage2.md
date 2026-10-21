@@ -477,3 +477,49 @@ retail's `TCastToPtr<CWeapon>` on the joint's last-touched object:
   fn_79_24E0, i.e. on the opposite side from the boss's facing - the boss faces east in this
   area, so the player has to be west of it - and level with a growth. Once the growths are
   active their spheres sit on their joints, so the aim is the joint position logged above.
+
+### 7.8 The dark phase, driven (2026-10-21, fifth lane pass)
+
+The dark phase is reachable without a code hook: a driver script talks to the port's debug
+console (`MP2_CONSOLE=<port>`, `tools/mp2con.py`) and plays the fight. The driver is kept at
+`/tmp/opencode/sb2dark/drive.py` (with `run.sh`); it needs the boss's position, facing, the
+growth healths and the ten collision actors, which a temporary probe printed (removed again
+before the commit).
+
+- **The recipe.** Layer 6 of area 32 (`layer 6`), then a loop that reads the state, keeps the
+  player *behind* the boss and level with a growth (§7.7: the growths are only active while the
+  player is behind the boss), aims from the player's live position and fires. A beam hit takes
+  the growth from 60 HP (`mData.wingGrowthHealth`) down by 2, so 30 hits per growth, 120 in all.
+  The growths die, `AllGrowthsDead` fires and the boss becomes a dark flyer (`BecomeDarkFlyer`,
+  phase 1); the dark phase's attack slots (`5 3 6 3 8`) then give `DropFlyer` and, through
+  `Level`, `Blow`.
+- **The stun.** The boss is stunned by the `Stunned` trigger (`mHeadHealth <= 0`), and the head
+  health only drops outside the `Reel` (inside it the growths are vulnerable and the body branch
+  is skipped). Real beam hits on the body do 2 damage each, which is 50 hits per stun, so the
+  driver uses the console's `damage <body joint uid> 25` instead - 25 is 5% of the joint's
+  500 HP, and the joint's HP is the boss's own (the head health), so the boss is stunned and
+  never dies. `damage u06d9` (the boss itself) does *not* work: it is the *joint's* health that
+  the boss reads. The boss ignores a hit from the same object as the last one, so the beam hit
+  that follows has to land on another joint (the driver alternates two body joints).
+- **Facts the driver needed (all measured):**
+  - The player's beam is a `CEnergyProjectile`, not a `CBeamProjectile`, so `MP2_DEBUG_BEAM`
+    (the port's beam debug, in `CBeamProjectile::UpdateFx`) never prints for it.
+  - The gun fires from 2.15 units above the player's origin and the player falls about 22
+    units/s (and floats in the arena's water at z ~ 67), so the pitch has to aim at the growth
+    from the player's *live* position.
+  - `CPlayer::Teleport` calls `ForceGunOrientation`, which calls `mGun->Holster`: every `tp`
+    or `face` holsters the gun, and the next press draws it again, so the shot lands a few
+    frames after the teleport - which is also what makes a level shot hit the growth.
+  - The gun fires on the *press edge* only: a press in every frame holds the button down and
+    the gun never fires again (holding the button charges the beam instead), so the driver
+    presses every other iteration.
+  - `mData.stunTime` is 15 s (the `Reel`'s length), `mData.breakStunDamage` 30 and
+    `mData.stunnedFlinchSoundDamageThreshold` 4, so a 2-damage hit never breaks a growth.
+  - The light phase's vulnerability: power 1.0, dark 2.0, light 0.5, annihilator 1.0 (the dark
+    beam would do double damage, but the test save does not own it).
+- **Marked from this pass** (each body ran in a run that reached the dark phase):
+  `fn_79_1E40` (the bubble telegraph, the anim event 0x28), `fn_79_2A84` (the splash shock
+  wave, the anim event 0x23), `fn_79_3578` (the wind effect, the `Blow` state),
+  `fn_79_2E84` (`PickSwoopTarget`, the `DarkLurk` state; both the dive and the plain arm and
+  the "too close" skip ran) and `fn_79_33BC` (the damage memory; the entries reached zero and
+  were erased).
