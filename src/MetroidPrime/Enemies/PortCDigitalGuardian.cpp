@@ -2721,10 +2721,28 @@ void CDigitalGuardian::SetJumpFaceTarget(CStateManager& mgr, float dt) {
   StandInFn("fn_14_7208");
 }
 
-// vtable slot 71 = fn_14_9CA4.
+// fn_14_1570: the anim data's vertex bounds (0x15CC) through Translate(-translation) (the fnegs
+// at 0x1630..0x1638, 0x1654) * the transform (0x24, 0x1664) * Scale(the model's scale, 0x1648;
+// 0x1674), GetTransformedAABox at 0x1684. The translation cancels: the box is about the origin.
+CAABox CDigitalGuardian::x1570_() const {
+  const CAABox verts = GetModelData()->GetAnimationData()->CalcBoundingBoxFromModelVerts();
+  const CTransform4f xf = CTransform4f::Translate(-GetTranslation()) * GetTransform() *
+                          CTransform4f::Scale(GetModelData()->GetScale());
+  return verts.GetTransformedAABox(xf);
+}
+
+// vtable slot 71 = fn_14_9CA4: fn_14_1570's box, with the head (0x1082, TCastToPtr at 0x9CE0) the
+// head's own scan bounds (vtable 0x11C at 0x9D40) taken in (AccumulateBounds at 0x9D4C, 0x9D58).
 CAABox CDigitalGuardian::GetScanVisorRenderBounds(const CStateManager& mgr) const {
-  StandIn("CDigitalGuardian::GetScanVisorRenderBounds (vtable slot 71, fn_14_9CA4)");
-  return CPatterned::GetScanVisorRenderBounds(mgr);
+  if (const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_))) {
+    CAABox bounds = x1570_();                                   // 0x9CF4
+    const CAABox headBounds = head->GetScanVisorRenderBounds(mgr); // 0x9D40
+    bounds.AccumulateBounds(headBounds.GetMinPoint());          // 0x9D4C
+    bounds.AccumulateBounds(headBounds.GetMaxPoint());          // 0x9D58
+    return bounds;
+  }
+  return x1570_(); // 0x9D98
 }
 
 // vtable slot 72 = fn_14_9ABC.
