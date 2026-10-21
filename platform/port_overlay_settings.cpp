@@ -443,6 +443,14 @@ void LoadSettings() {
     ApplySettingsText(lines);
   }
   sBaseline = SettingsText();
+  // The settings in effect, in the log: on Android the file itself is in the app's private
+  // directory, so this is the only way to see from a device log what the run played with.
+  std::istringstream effective(sBaseline);
+  for (std::string line; std::getline(effective, line);) {
+    if (!line.empty() && line[0] != '#') {
+      std::fprintf(stderr, "port: setting %s\n", line.c_str());
+    }
+  }
 }
 
 // One log line per key whose value differs between the old and new settings text (MP1's
