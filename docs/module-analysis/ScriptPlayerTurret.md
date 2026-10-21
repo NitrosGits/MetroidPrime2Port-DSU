@@ -446,6 +446,11 @@ fn_63_840 fn_63_1134 fn_63_2D68`) reports no correctness tag; the six findings a
 ones: `TCastToPtr<6CActor>` (the port uses the const cast), the two `rstl` string calls (the port
 uses a literal) and the `x1d0` compare (the tool tracked the local difference back to
 `mYawTarget`; the guest compares the difference of the two analog inputs, which the port clamps).
+The PreRender's new comparison (the flags against the turret's saved ones, section 21.2) is reported
+as an `XCMP` too: the tool attributes `flags == mModelFlags` to the module's member `mModelFlags`
+(the guest's 0x1D4), and the guest never compares that word - it compares the four fields the
+host's `CModelFlags::operator==` compares too (0x1D8, 0x1D9, 0x1DA and 0x1DC), so the comparison
+is the guest's, one field deeper than the tool can see.
 
 ## 14. The remaining module functions (2026-10-21): the damage arm and the twelve functions
 
