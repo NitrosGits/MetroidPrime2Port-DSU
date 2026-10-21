@@ -157,3 +157,23 @@ Both were in `tools/cov/gdb_cov.py` (the fix is generic ✓).
 `tools/cov/force.sh` is generic now (the gdb side is `$COV_GDB_SCRIPT`, default
 `tools/cov/force.py`; the module's class and the forced members live in the spec), and
 `docs/LANE_BRIEF.md` ("Coverage without probes") says so.
+
+
+## 8. The arms re-measured with the fixed tool
+
+`tools/cov/specs/darksamus_helpers2_arms.py` (the fourteen open bodies plus fn_10_12F60, a big
+one, to check the call sites). With the fixed tool the row's hit count is the number of times the
+body ran and the arms are the keys under it.
+
+- **fn_10_16B1C** (IsOnPath): both arms now - 47 on the path, 21 off it (the earlier run had
+  lost the return records, so the marker had been dropped in the last slice; it stands again).
+- The others still miss an arm: 1DD14 (the "the contact time is fresh" arm, the strength and
+  the "not normalisable" arms), 16B8C (the "the point is at the actor's own x/y" arm), 1D860
+  (the "no additive animation" arm), 1E740 (the waypoint and the cover-point arms), EFC8 (the
+  "the safe position is set" arm), 1444C (the false outcome), 1E3C0 and 1C6C8 (the null
+  outcome), 1EE4C (the true outcome), 14D14 (the GetAnimOver arm), 19B64 (the mask bits
+  0x20/0x4/0x80), 154FC (most of its arms) and 1905C (every return but zero). Their arms depend
+  on locals, so the entry keys cannot show them: they need a 'loc:' breakpoint per arm line.
+- The call sites are the body's own now: fn_10_12F60's table lists only what its body calls
+  (GetScatterShotAimPoint, LookAt, ObjectById, the cast, UpdateCurrentAttack, TurnTowardPlayer,
+  the collision failsafe ...), checked against the asm.

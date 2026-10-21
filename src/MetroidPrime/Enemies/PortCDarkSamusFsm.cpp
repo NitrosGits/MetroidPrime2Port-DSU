@@ -3871,6 +3871,10 @@ CVector3f CDarkSamus::GetDodgeStepOffset(int slot) const {
 
 // fn_10_16B1C (0x00016B1C, 0x2C bytes): the point on the path (OnPath of 0x7C0 at 0x00016B2C
 // answers kR_Success).
+// Arms: the point is on the path and it is not. The coverage run (tools/cov/run.sh with
+// tools/cov/specs/darksamus_helpers2_arms.py, the rooftop fight) saw both: 47 on the path
+// and 21 off it.
+// @ fn_10_16B1C
 bool CDarkSamus::IsOnPath(const CVector3f& point) const {
   return mPathFindSearch.OnPath(point) == CPathFindSearch::kR_Success;
 }
