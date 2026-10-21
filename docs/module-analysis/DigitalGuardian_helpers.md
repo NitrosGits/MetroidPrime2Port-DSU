@@ -74,7 +74,7 @@ Every bit test, mask, compare and constant carries the retail asm offset it came
 | `fn_14_3F90` | 0xF0 | the four knee armours follow the knee locators | body | **yes** |
 | `fn_14_38BC` | 0xB8 | the leg-stab, jump and protect-the-knees timers | body | **yes** |
 | `fn_14_2358` | 0x18C | the toe targets' sound emitters and hit timers | body | **yes** |
-| `fn_14_5644` | 0x1F4 | the "XRDG" case: a toe target hit by the boost ball | body | no |
+| `fn_14_5644` | 0x1F4 | the "XRDG" case: a toe target hit by the boost ball | body | **yes** |
 | `fn_14_6C24` | 0x50 | is the head's turn direction unusable? | body | **yes** |
 | `fn_14_6CB0` | 0x154 | the aim: the forward and the up vector | body | **yes** |
 | `fn_14_6E04` | 0x258 | the body turns to the head module | body | no |
@@ -678,6 +678,53 @@ the plain run's. The forced arms are therefore proven by the gdb force run on `b
 (the keys and the call-site counts in section 3.2), and the gcov rows above show exactly which
 edges the plain run leaves out. The two bodies the gcov confirms outright (`fn_14_6CB0` and
 `fn_14_11F7C`) are ALL-ARMS.
+
+### 3.5 The coverage build's gdb breakpoints (still open)
+
+Two things went wrong in the coverage build, one of them mine:
+
+1. **My spec file did not parse.** The first force run on `build-port-cov` ended with
+   `Python Exception <class 'IndentationError'>: unexpected indent (digitalguardian_force.py,
+   line 116)`: a stray `]` had ended up on the same line as a comment, so gdb's script aborted
+   before any breakpoint was installed and the run looked like "no coverage at all". The spec
+   parses now (`python3 -c "compile(open(...).read(),'x','exec')"` is the check).
+2. **The coverage harness's counters stay 0 in a forcing run.** With the spec fixed, the force
+   run on the coverage build shows 0 hits for every one of the body's helper entries, while the
+   plain run on the *same binary* shows 400 (`tools/cov/run.sh` with the same spec's SPEC list).
+   The breakpoints are set at the right addresses: the force run's log has 30 `Breakpoint N at
+   0x...` lines, each with the right source line, and they match the `nm` rows of the coverage
+   build (for example `x2358_` at 0xbb3c30). The forcing side (`tools/cov/force.py`) and the
+   coverage side (`tools/cov/gdb_cov.py`) are installed by `tools/cov/cov_force.py` in one gdb
+   session; the forcing's breakpoints were visible ones (`gdb.Breakpoint(spec,
+   internal=False)`), which stop the game on every hit - the game then crawls, the console
+   times out and the run is killed by its timeout. They are internal now (the commit "tools/cov:
+   the forcing breakpoints must be internal"), which removes the visible stop, but the counters
+   still stay 0: the rest of the cause is still open.
+   The forcing runs that work are the ones on `build-port-link` (the eight runs of section 3.2
+   and the nine runs of section 3.6), and the orchestrator's ruling is that a gdb force run is
+   valid evidence.
+
+### 3.6 `fn_14_5644`: one force run per arm
+
+A member a force writes stays written, so the arms of `fn_14_5644` need one run each. The nine
+runs (`tools/cov/force.sh` with the specs `/tmp/opencode/dg5644_<arm>.py`, area 53, 3000 frames;
+the same SPEC list, one FORCE entry each) and the call sites each run reached:
+
+| run | the forced members | the calls after the lookup | the arm |
+|---|---|---|---|
+| (no force) | - | none | (a) the sender is not a collider |
+| `b_knee` | the sender is a knee collider | `x43AC_` | (b) a collider but not a toe target |
+| `c_skipped` | the sender is a toe target, its word is 3 | `x43AC_`, `x4350_` | (c) the toe target is skipped |
+| `d_timer` | the sender is a toe target, its timer is 5 | `x43AC_`, `x4350_` | (d) the hit timer is running |
+| `e_notmorphed` | the sender is a toe target | `x43AC_`, `x4350_` | (e) the player is not morphed |
+| `f_noshield` | the player is morphed | `+ CMorphBall::IsBoostShieldActive` | (f) morphed without a boost shield |
+| `g_boost` | the player is morphed with its boost shield | `+ CTweakBall::GetBoostBallDamage`, `CDamageInfo::GetVulnerableDamage`, `CActor::PlayCustomSound`, `x1A68_` | (h) the toe target survives: the sound and the flinch |
+| `h_dies` | the toe target has no health | `+ x1A68_`, `x143C_` | (g) the toe target dies: the explosion and the IS08 message |
+| `i_noflinch` | the toe target's word is 2 | `+ PlayCustomSound` (no `x1A68_`) | (i) the toe target survives without the flinch |
+
+Every arm ran, so `fn_14_5644` is **marked**. The retail's third early-out (the toe index is
+-1) is dead in the port as well: `fn_14_43AC` (the sender is one of the four toe target
+colliders) is false for every id `fn_14_4350` does not know.
 
 ## 7. The unmarked bodies that are one run away (for the FSM lane)
 

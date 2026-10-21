@@ -152,6 +152,17 @@ void CDigitalGuardian::x2358_(CStateManager& mgr, float dt) {
 // toe target is destroyed (fn_14_1A68 with 3) and the IS08 message goes to the waypoint
 // (fn_14_143C); otherwise the hit sound plays and a toe target in state 1 flinches
 // (fn_14_1A68 with 2).
+// The arms: (a) the sender is not a collider, (b) it is a collider but not a toe target, (c) the
+// toe target is skipped (the word at guest this+0x10DC is 3), (d) its hit timer is running, (e)
+// the player is not morphed, (f) the player is morphed without a boost shield, (g) the toe target
+// dies: the explosion and the IS08 message, (h) it survives: the hit sound and the flinch, (i)
+// it survives without the flinch.
+// The run: one force run per arm (a member a force writes stays written, so the arms need their
+// own runs), tools/cov/force.sh with the specs /tmp/opencode/dg5644_<arm>.py (the same list as
+// in section 3.6 of docs/module-analysis/DigitalGuardian_helpers.md), area 53 (Sanctuary
+// Fortress 09_cliff_temple_dark), 3000 frames; the call-site counts of each run are in that
+// section.
+// @ fn_14_5644
 void CDigitalGuardian::x5644_(CStateManager& mgr, TUniqueId sender) {
   CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
   if (actor == nullptr) { // the retail's test at 0x567C (mr. r31, r3 / beq)
