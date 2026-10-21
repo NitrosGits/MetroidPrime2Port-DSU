@@ -52,7 +52,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea312bc93ffecMAU928oeEeY7P` | darksamus2 @ `c391309aa` (34 markers; slice 9 accepted: Dash chain ported, marked 12C2C 12CE0 14C50 14E5C EB90 EDE0; 150DC/154FC/14A00/14D14/14FE0/16048 ported unmarked, need a >1.2 s stuck run) | null-test cites at Fsm 1302/2558/2746; 19B64 tree: 16418+164C0, 16600+166AC+16ADC, 12B38, then 19B64 |
+| DarkSamus (Opus) | `ses_ea312bc93ffecMAU928oeEeY7P` | darksamus2 @ `d9cef1cfe` (45 markers; slice 10 accepted: whole 19B64 tree ported, marked 164C0 16418 16984 16ADC 16600 12B38 141BC 13EE0 13E2C 16B1C 145E4; 19B64/166AC/1444C unmarked; null tests are retail's own) | justify probe-forced attack bits 0x1/0x4/0x20/0x100 with a shipped encounter or unmark; SideDash 153EC; stage advance 193A0/194AC |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
