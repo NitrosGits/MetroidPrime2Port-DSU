@@ -28,7 +28,7 @@ DR_SET = ('($dk == 1 ? ($this->mBoostBallUid.value = 0xffff) : '
 # invalidated), which is the arm the retail's own null check at 0x00010770 takes.
 FB_K = '($_isvoid($fk) ? ($fk = 0) : ($fk = $fk + 1))'
 FB_SET = ('($rdx == 1 ? ($fk == 1 ? ($this->mGuestAB0 = 1) : '
-          '($fk == 2 ? ($this->mGuestAB8 = $this->mGuestAB8 | 0x40) : 0)) : 0)')
+          '($fk == 2 ? ($this->mGuestAB0 = 0, $this->mGuestAB8 = $this->mGuestAB8 | 0x40) : 0)) : 0)')
 PAUSE_K = '($rdx == 0 ? ($_isvoid($pk) ? ($pk = 0) : ($pk = $pk + 1)) : 0)'
 PAUSE_SET = ('($pk == 1 ? ($this->mBattleStageUid.value = 0xffff) : 0)')
 SPEC = [
