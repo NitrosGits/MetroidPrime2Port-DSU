@@ -1499,8 +1499,15 @@ void CSplitterMainChassis::Activate(CStateManager&, EStateMsg msg, float) {
 // dodge direction at 0xD04 with type 1 (kStep_Dodge), no target position. Deactivate (0xD778):
 // kAS_NotReady (0), the dodge timer at 0xD1C is the data's min dodge interval (0x848), 0xD41's 0x10
 // bit is cleared and the head's shield is reset (0xD7B8 fn_75_5D50).
-// fn_75_D61C (not marked, the 19-run gcov of 2026-10-21: the headless dodge-direction-5 arm, the
-// failed head cast at 0xD690, never ran)
+// Arms: the three messages of the switch (asm 0xD624, 0xD644, 0xD650) and the message that
+// takes no case (asm 0xD654), the dodge direction at 0xD04 being 5 (asm 0xD674) with the head
+// at 0xC6C present (asm 0xD690) or missing, the update's step command (asm 0xD6A8) and the
+// deactivate's head reset (asm 0xD778).  The fight never enters the Dodge state, so it is
+// entered with the console (the driver's plan S: statecall u0532 Dodge 0/1/2) and the members
+// the arms read are written through $this at the state's entry
+// (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=D61C, D61CN, D61CX).  The coverage
+// build's merged profile of those runs says 21/21 lines and 14/14 branches, ALL-ARMS.
+// @ fn_75_D61C
 void CSplitterMainChassis::Dodge(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2662,8 +2669,13 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
   }
 }
 
-// fn_75_E87C (not marked, the 19-run gcov of 2026-10-21: the possessed-with-head arm never ran -
-// the forced calls found no docked head)
+// Arms: the possession flag set (asm 0xE8A4) and clear, the command module at the id in 0xC6C
+// present (asm 0xE8BC) and missing.  The fight never possesses the chassis and its command
+// module's id is not the head's, so the possession flag (the second argument, in esi on the host)
+// and the command module's id are written at the body's entry
+// (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=E87C).  The coverage build's merged
+// profile of that run says 7/7 lines and 4/4 branches, ALL-ARMS.
+// @ fn_75_E87C
 // vtable slot 0x104 (0x90). The base call (0xE8A0) and then, when the possession flag is set
 // (0xE8A4 clrlwi. r0, r30, 24 - the flag's low byte), the command module's id (the u16 at
 // 0xC6C, 0xE8AC lhz) is looked up (0xE8BC ObjectById, 0xE8C0 the CSplitterCommandModule cast)

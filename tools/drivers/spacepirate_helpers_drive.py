@@ -177,11 +177,16 @@ def main():
     ps = [p for p in ps if '%08x' % p[4] == want] or ps
     if ps and not os.environ.get('SP_NO_FORCE'):
         uid = ps[0][0]
+        # the player goes next to the forced pirate: the close checks (the shuffle's close spot,
+        # the strafe's range) need the player near it
+        c.cmd('tp %.2f %.2f %.2f' % (ps[0][1], ps[0][2] - 1.0, ps[0][3]))
+        yaw, pitch = aim_at(ps[0][1], ps[0][2] - 1.0, ps[0][3], ps[0][1], ps[0][2], ps[0][3] + 1.5)
+        c.cmd('aim %.1f %.1f' % (yaw, pitch))
         print('driver: forcing u%04x %08x' % (uid, ps[0][4]), flush=True)
         for st in FORCED:
             print('driver: forced %s -> %s' % (st, c.cmd('fsm u%04x %s' % (uid, st)).splitlines()[-1:]),
                   flush=True)
-            time.sleep(4)
+            time.sleep(float(os.environ.get('SP_FORCE_SLEEP', '4')))
     # SP_TEAM_PHASE=1: the squad helpers (ChooseTeamTarget EFD4, SquadJoin DFD4) need two team
     # members near each other and then far apart, so the pirates are put together and apart.
     # SP_SETZERO=<n>: send the kSM_SetToZero message n times to one pirate, so the helpers the

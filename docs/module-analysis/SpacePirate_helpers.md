@@ -139,8 +139,12 @@ and one call each, the command in brackets.
 | `EFD4` ChooseTeamTarget | no squad (0xba0 == 0xffff, asm 0xF010); a squad id that resolves to nothing (asm 0xF02C); a squad that is out of range (asm 0xF04C); a squad in range (asm 0xF060) | forced (the same spec's EFD4 entry, 07_sand_alamoportalobservation L3): the keys 0xffff (1 call), 0x7ffe (1 call) and the layer's team id 1427 (3 calls); the call counts: `ChoosePlayer` 4, `IsTeamMemberInRange` 3, `FindBestIndividualAttackTarget` 1 - the driver puts the layer's other pirates next to the actor and then far from it, so the range test takes both ways |
 | `DFD4` SquadJoin | the squad id is invalid -> the team is looked up (asm 0xE000); it is still invalid -> the body ends (asm 0xE02C); the id resolves to no team -> the body ends (asm 0xE04C); the 0x8f4 bit 27 (the melee role) -> kTAR_Melee (asm 0xE060) or kTAR_Projectile (asm 0xE05C) | forced (the same spec's DFD4 entry): the keys 0xffff,0 (3 calls), 0xffff,1 (1 call, the melee role) and 0x7ffe,0 (1 call); the call counts: `GetAssociatedTeamId` 4, `ObjectById` 3, `TCastToPtr<CScriptTeamAiMgr>` 3, `JoinTeam` 2 (the melee and the projectile role) |
 
-Marked: 11 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`, `51C8`, `EFD4`,
-`DFD4`) - the module goes 106 -> 117 of 262 marked (`tools/port_progress.py`).
+Marked by this lane: 9 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`, `51C8`).
+`EFD4` and `DFD4` carry the module session's own markers (their arm tables agree with this
+lane's forcing run), so this lane does not add a second marker there.
+The gcov profile (the coverage build, the natural run and the forced run merged) confirms
+`51C8` as ALL-ARMS.  With the module session's own markers the module is at 122 of 262 marked
+(`tools/port_progress.py`).
 
 Not marked, and why:
 
@@ -155,6 +159,27 @@ Not marked, and why:
 | `EDEC` ChooseTarget | the port's body is not retail's yet (section 5): the retail's "a team target was chosen" flag (asm 0xEF48) and its squad branch (asm 0xEF50-0xEFA4) are missing, so the body cannot be marked |
 | `E3D8` Touch | the ragdoll's push (asm 0xE3F8-0xE47C) needs a ragdoll, which the port never creates |
 | `E314` the empty function | a `blr` only; the port does not need the symbol |
+
+## 3b. The remaining unmarked stateless helpers (the gcov profile)
+
+The profile: a coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`), a natural run and the
+forced run, merged by `tools/cov/gcov_report.py build-port-cov <gcov dir> ... --module SpacePirate`
+(`lines` = the lines hit, `branches` = the branches taken, and the untaken edges). Fewest untaken
+edges first.
+
+| body | lines | branches | untaken edges | what it needs |
+|---|---|---|---|---|
+| `D608` ShuffleRandomVector | 0/8 | 0/2 | 2 | the Shuffle state's close branch (the 0x8f4 bit 28 clear - written at the Shuffle entry by the forcing spec - and the player inside the min attack range): the branch is still not taken, so the body never runs |
+| `EDEC` ChooseTarget | 13/20 | 9/16 | 7 | the port's body is not retail's (section 5) - reported, not marked |
+| `4030` GetGrenadeAimPoint | 0/8 | 0/8 | 8 | the grenade spawn: the body's entry is never reached |
+| `3220` ShouldFrenzy | 9/13 | 5/16 | 11 | the charge-player list arm (the body is not retail's, section 5) - reported, not marked |
+| `4174` SpawnGrenade | 0/28 | 0/12 | 12 | the grenade spawn (the body's entry is never reached) |
+| `3D7C` SolveGrenadeLaunch | 0/35 | 0/14 | 14 | the grenade spawn (the body's entry is never reached) |
+| `CE30` GetStrafeDir | 39/45 | 24/50 | 26 | other pirates in range, the path find mesh and the dynamic rays - the body needs a scene, not a member |
+| `10CE4` the waypoint predicate (this lane's) | no row (a class) | - | - | the host's `CheckConnectedObject` takes no predicate, so nothing calls it |
+| `17A0` GetRagDoll | no row (the header's inline) | - | - | the body is not retail's (section 5) - reported, not marked |
+| `E3D8` Touch | 4/4 | 0/0 | 0 | the body is not retail's (section 5) - reported, not marked |
+| `E314` the empty function | - | - | - | not ported (a `blr` only) |
 
 ## 4. The coverage runs
 
@@ -174,6 +199,7 @@ MP2_DEBUG_SPACEPIRATE=1`, 0 `[port] caught` and 0 `[reach-stub]` in every one.
 | forcing | 08_sand_casualpirates (gdb) | the rare arms: the four vtable helpers, TryToBeCaptured, the two collision helpers, the emitter's handle and the dead handle |
 | forcing 2 | 08_sand_casualpirates (tools/cov/force.sh) | `51C8` TrooperWarpOut: one call per arm, the kSM_SetToZero message (`SP_SETZERO=14`) |
 | forcing 3 | 07_sand_alamoportalobservation L3 (tools/cov/force.sh + cov_force.py) | `EFD4` ChooseTeamTarget and `DFD4` SquadJoin: the squad id and the melee role are written at the entry, the driver's team phase puts the layer's other pirates next to the actor and then far from it (`SP_TEAM_PHASE=1`) |
+| coverage | 08_sand_casualpirates and 07_sand_alamoportalobservation L3 (the coverage build) | the gcov profile of section 3b: the natural run and the forced run merged; `51C8` comes out ALL-ARMS |
 
 Runs 1, 2 and 3 (and the final run) ended with the game exiting normally; runs 4 and 5 were cut off
 by the harness' 900 s limit - the machine was busy and the `calls` entries slow the game down - but
@@ -201,3 +227,10 @@ so this lane only reports them:
   port lets the nearest-player swap at the end overwrite the team target) and the squad branch
   (asm 0xEF50-0xEFA4: a valid squad whose member is within 20 units returns the attack target).
   The port's body is therefore not retail's, which is why it carries no marker.
+- The retail's Touch (0xE3D8) adds a force-field trigger's push to the ragdoll's torso impulse
+  (asm 0xE3F8-0xE47C: the ragdoll's flag byte 0x70 bit 0x40, the other actor a CScriptTrigger with
+  the flag byte 0x20 bit 0x80 and the word 0x1a0 bit 0x10000, and its float 0x19c above zero). The
+  port's body is the base class's call only, so it carries no marker.
+- The retail's GetRagDoll (0x17A0) returns the ragdoll (0xb30) only while it is primed and not
+  over (the ragdoll's flag byte 0x70: asm 0x17A4 the null test, 0x17B4 bit 0x40 and 0x17BC bit
+  0x80). The port's inline returns null without the test, so it carries no marker.

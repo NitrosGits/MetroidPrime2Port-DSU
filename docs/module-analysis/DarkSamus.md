@@ -1290,3 +1290,43 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   `GetTranslation()` (`mPosition`), so it ran from (68, 412, 165) and hit the static floor at z 164
   (t 1, materials 0x81000005, hit id none). With the position moved too, the ray misses and every
   arm runs (`s9/a4`). It's left unmarked at the orchestrator's request.
+
+## Slice 10 (dsfsm2, 2026-10-21)
+
+- Merged port b4f3292a5 (3b54a85ce). DeliverCmd check: every derived command the module sends
+  (LoopAttack, Getup, Locomotion, Jump, MeleeAttack, Step, ProjectileAttack, Taunt) has its own
+  overload; none binds to `CBodyStateCmd&`.
+- CanReflectProjectile 1B9B0: fixed to call GetBattleStage once (0x0001BAA8) after the untyped
+  return (0x0001BA9C); marked.
+- Render chain ported, wired and marked: Render 18964, GetSilhouetteColor 181E0,
+  RenderSilhouetteModel 18238, RenderInvulnerableModel 183E8, DrawFlashQuad 1863C. PreRender 18AB8
+  ported, unmarked (fn_10_10864 and fn_10_12DD0 stand-ins). RenderFlash 1890C unmarked: its
+  no-texture return never ran. 13AB4 marked (s9/a4).
+- Header (TARGET_PC, appended): `mGuestDE8 = 1.f`, `mDarkVisorDED80` / `mEchoVisorDED40`,
+  `mInvulnerableSkinnedModel` (retail optional at 0xD6C, valid byte 0xD70; Render reads
+  `**(*opt)`), `mBoostBallElementGen` (0xE64; always null on the host).
+- Runs: `dsfsm2-runs/s10/u4,u9,u10` (on the Leo disk; /tmp hit its quota), darksamus_uevent.py with
+  `--frames 1340`. Forcing keys for the render arms:
+
+  | key | forces | arm |
+  |-----|--------|-----|
+  | 45..49 | null / own / exploded / other type / sent back | CanReflectProjectile rejects |
+  | 50 | 0xD14 = 1 | silhouette pass (combat), min side of 181E0 |
+  | 51 / 52 | 0xD24 = 0.5 / 1 | 183E8 wave under / over 1.0 |
+  | 53 | phazon phase bit | 183E8 alpha 1.0 |
+  | 54 | 0xDE8 = 0 | Render's dark/echo visor test, PreRender alpha |
+  | 55 | flash window (E04/E08/E0C) | GetFadeFactor > 0, RenderFlash |
+  | 56 | boost-ball uid invalid | Render's model arms |
+  | 57 | 0xFC0 = 0.5 | PreRender's colour lerp |
+  | 63 / 64 | stage +0x33 set / restored (only the actor's stage, by uid) | Render's flash-only arm |
+
+  Visors: `give DarkVisor 1; give EchoVisor 1`, then `visor combat/dark/echo` (the cov save owns
+  neither). Not run (dead or host-only): Render's 0xD14 > 0 with 0x90C bit 0x20 clear (PreRender sets
+  it first), the 0xE64 generator, the host GetActiveVisor null-camera branch; 18238's
+  optional_object exception edges.
+- Re-read against the asm (compares, strictness, load sources, return vs base call): 77B8, 13998,
+  1353C, 133D0, 9164, 1863C, 1890C, 5840, 50B8, 4C40, 1BEFC. No mismatches. 9164's sfx: retail
+  converts -1 to kInternalInvalidSfxId in the ctor (0x0002015C) and stores a halfword at 0xEE0; the
+  port converts at use, which gives the same value.
+- Open: RollReflectChance F298 (14/18 lines); DE8 fades in Think (1D5C4/1D6CC) unported; the
+  stage-cast breakpoint's pre-existing FLAG writes (keys 61/62) are not uid-guarded like key 63.
