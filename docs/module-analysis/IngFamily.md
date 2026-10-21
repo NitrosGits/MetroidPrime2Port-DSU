@@ -1038,11 +1038,14 @@ the finding (2) below.
 **The run** (`/tmp/opencode/ing_lane/ing_run.sh` + `ing_con.py`, rebuilt from A.5/A.6 after the
 old scripts were lost): Temple Grounds world 1baa96c2, area 57 (`0i_cliff_hall_dark`, MREA
 2735236b), the two Ings activated over the console, the light beam given, the player teleported
-to 58.4 356 9 and firing every 2 s. The log carries the new arm lines (`[ing] <uid> vuln: ...`,
-`damage: ...`, `aim: ...`, `knockback: ...`, `touch: ...`, `collide: ...`), which is how the arms
-that ran are told apart. Three runs: the plain one (`ing_run.log`, 20000 frames), the light-beam
-one (`ing_light.log`, 9000) and the long one (`ing_long.log`, 30000); all three exit 0 with 0
-`[port] caught` and 0 `[reach-stub]`.
+to 58.4 356 9 and firing every 2 s. Three runs: the plain one (`ing_run.log`, 20000 frames), the
+light-beam one (`ing_light.log`, 9000) and the long one (`ing_long.log`, 30000); all three exit 0
+with 0 `[port] caught` and 0 `[reach-stub]`.
+
+The arms below were told apart with a **local probe** - one `if (DebugIng()) printf(...)` per arm
+in the six bodies - which is **not committed** (a probe is not port code). It is kept as
+`/tmp/opencode/ing_lane/ing_arm_probe.patch` (apply it on top of the tree to get the arm lines
+back); the arm counts in the table are its output.
 
 What the runs prove, per body (an arm that did not run is *not* unreachable - it is simply not
 reached by this recipe):
