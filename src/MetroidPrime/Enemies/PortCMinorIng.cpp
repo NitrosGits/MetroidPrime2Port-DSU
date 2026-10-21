@@ -240,6 +240,56 @@ CBouncyGrenadeData BuildGrenadeData(const SLdrUnknownStruct34& sldr) {
 // struct.
 CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; }
 
+// The retail's CImpactVisorEffect: the parts the REL's own copies of Metaforce's helpers work
+// on. The REL carries its own copies of those helpers (it was compiled without them), so the
+// module's own code calls them instead of the ones in the main binary. The host's
+// CImpactVisorEffect has no setters (its parts are read-only), so the chain keeps the parts
+// here and hands the finished effect to LaunchProjectile. The retail's layout (0x3c bytes) is
+// the particle effect at +0x00 (its engaged flag byte at +0x14), the blur effect at +0x18 (its
+// flag byte at +0x24), the low-pass filter at +0x28 (its flag byte at +0x30), the forced visor
+// at +0x34 and the forced visor's duration at +0x38.
+struct SImpactVisorEffect {
+  rstl::optional_object< CImpactVisorEffect::SParticleEffect > mParticleEffect;
+  rstl::optional_object< CImpactVisorEffect::SBlurEffect > mBlurEffect;
+  rstl::optional_object< rstl::pair< int, float > > mLowPassFilter;
+  CPlayerState::EPlayerVisor mForcedVisor;
+  float mForcedVisorDuration;
+};
+
+static void CopyImpactParticle(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
+static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
+static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
+
+// @ fn_44_6748
+// The retail copies the particle effect's token, its sound id and its collide flag into the
+// destination (asm 0x6748-0x67C4): the token's flag byte at +0x0c (asm 0x6754/0x6760), the
+// token itself (asm 0x6784-0x6794), the sound id at +0x10 (asm 0x6798) and the collide flag at
+// +0x12 (asm 0x67A0-0x67A8). The token is only copied when the source's token is set; the
+// host's optional assignment copies the flag either way.
+static void CopyImpactParticle(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
+  CImpactVisorEffect::SParticleEffect& particle = dest->mParticleEffect.data();
+  const CImpactVisorEffect::SParticleEffect& source = src->mParticleEffect.data();
+  particle.mParticle = source.mParticle;                        // the token (asm 0x6784-0x6794)
+  particle.mSound = source.mSound;                              // the sound id (asm 0x6798)
+  particle.mSendCollideMessage = source.mSendCollideMessage;    // the flag (asm 0x67A0-0x67A8)
+}
+
+// @ fn_44_6720
+// The retail checks the destination (asm 0x6728) before it copies the particle effect
+// (asm 0x6734).
+static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
+  if (dest != nullptr) {
+    CopyImpactParticle(dest, src);
+  }
+}
+
+// @ fn_44_6700
+// The retail only calls the copy (asm 0x670C).
+static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
+  CopyImpactParticleSet(dest, src);
+}
+
+
 } // namespace
 
 // The retail's vtable slots that are the base class's own inline functions, which the REL
