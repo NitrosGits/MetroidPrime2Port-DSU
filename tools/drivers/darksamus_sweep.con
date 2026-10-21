@@ -1,0 +1,13 @@
+# Dark Samus SweepBeam: Sanctuary 10_cliff_rooftop layer 2 (MP2_WORLD="1baa96c2,10_cliff_rooftop"
+# MP2_INPUT="LAYER2@400"), boss u04f7. The beam's effect starts at the kUE_BeginAction event of
+# the sweep animation and stops at kUE_EndAction; the second pass stands the boss 8 units from
+# the player so a damage ray finds the player.
+@f600 send u04f7 Activate
+@f700 fsm u04f7 SweepBeam
+@f1000 obj u04f7
+@f1100 place u04f7 player 8
+@f1110 fsm u04f7 SweepBeam
+@f1400 obj u04f7
+@f1500 place u04f7 player 5
+@f1510 fsm u04f7 SweepBeam
+@f1800 obj u04f7

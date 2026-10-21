@@ -101,6 +101,16 @@ extern "C" void AIPortPoll(void) {
           !SDL_PutAudioStreamData(sStream, reinterpret_cast< const void* >(buffer), length)) {
         break;
       }
+      // MP_AI_DUMP=<path>: append what the AI path plays (32 kHz s16 stereo; movie audio), the
+      // counterpart of musyx-port's MP_AUDIO_DUMP.
+      static FILE* sDump = [] {
+        const char* path = std::getenv("MP_AI_DUMP");
+        return path != nullptr ? std::fopen(path, "wb") : nullptr;
+      }();
+      if (sDump != nullptr) {
+        std::fwrite(reinterpret_cast< const void* >(buffer), 1, length, sDump);
+        std::fflush(sDump);
+      }
       queued += static_cast<int>(length);
     }
     return;

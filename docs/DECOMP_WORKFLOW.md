@@ -16,10 +16,18 @@ pointer to this file plus their slice, not a restatement of it.
   - `tools/rel_pseudo/` - REL plf -> ET_EXEC for REA/Ghidra, split per function, `relsim.py`
     REL similarity. (Supersedes `tools/rel_plf2exec.py`; don't add another linker.)
   - m2c pseudo-C over the whole REL; REA `batch_decompile`.
-- Orchestrator sessions, handoffs and lanes run only on MiniMax free
-  (`opencode-go/minimax-m3.1-flash-free`, passed explicitly). Never DeepSeek, Opus, `haiku`, `sonnet`
-  or `claude`, not even to escalate. A lane that fails twice gets a narrower brief, or the
+- One orchestrator (the port session) runs every family and reviews every lane patch; there are
+  no per-family orchestrator sessions. Lanes run only on MiniMax free
+  (`opencode-go/minimax-m3.1-flash-free`, passed explicitly). At most three `claude` (Opus) lanes
+  may run at a time, for hard tasks (audits, subtle asm, cross-file work). Never DeepSeek, `haiku` or
+  `sonnet`. A lane that fails twice gets a narrower brief, or the
   orchestrator does the piece itself.
+- An accessor or field a lane needs in a shared header (one other families include) is asked for
+  in the report, not added on the branch: the orchestrator commits it to `port` once and the lane
+  merges `port`. (Two lanes adding the same accessor is the usual batch-merge conflict.)
+- Lanes also write their final report to `/tmp/opencode/reports/<lane>.md` (overwrite), so an
+  orchestrator after a handoff reads one directory instead of each lane session. The orchestrator
+  updates `docs/STATUS.md` as lanes report but commits it once per batch or at a handoff.
 - Each lane gets an exclusive list of functions (by `fn_<id>_<off>`) and files. Two lanes never
   hold the same file at once; run them in sequence, or split the file.
 
@@ -28,7 +36,10 @@ pointer to this file plus their slice, not a restatement of it.
 - A lane starts from a named commit on the session branch and commits on top of it. No
   rebases: if the branch moved, the session merges. A patch with unrelated or reversed hunks
   is rejected and redone, not repaired by hand.
-- Sessions merge `port` only when the orchestrator announces a merge point, not ad hoc.
+- Sessions merge `port` only when the orchestrator announces a merge point, not ad hoc. After each
+  batch lands, the orchestrator merges `port` into every live lane branch (or tells the lane to as
+  the first step of its next slice), so lanes build on each other's code and the next batch
+  merges cleanly.
 
 ## Don't re-investigate
 
@@ -46,8 +57,45 @@ A lane reports `STATUS: DONE` only with all of these pasted (one line each):
 host build `0 FAILED`; `gen_files_cmake.py --check` rc 0; for upstream-file edits, the
 TARGET_PC strip-diff CLEAN and the matching build's `fuzzy/matched` percentages; the runtime
 area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skipped makes it
-`STATUS: INCOMPLETE - <what>`; markers (`// @ fn_<id>_<off>`) go only on functions the run
-exercised.
+`STATUS: INCOMPLETE - <what>`.
+
+Run game runs in the foreground (with `timeout`). A lane that ends its turn waiting on a
+background job is never woken; it must report, not wait. Find and kill only the pids its own
+script launched (bracketed `pgrep -f` names); other lanes run the game at the same time.
+
+Fast runs: `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` runs the game ~3-4x faster than real time
+(same fixed 1/60 s ticks); time console scripts in game updates with `@f<n>` in
+`tools/drivers/con.py`, not wall seconds. Reach a state instead of playing to it: `fsm <id> <state>`
+(force an AI state), `place <id> player [d]` (move an actor), `damage <id> <n> [weapon]`, `send`,
+`aim`, `frame` (`help` lists all). Gameplay drivers go in `tools/drivers/` (committed with the
+slice), not only `/tmp`. A lane that would save runs with a console command it lacks says so in its
+report; the orchestrator adds it on `port`.
+
+An arm reached only through a forced setup (`fsm`, `place`, `send`, `damage`) counts toward a marker
+when the retail code of that arm then ran, and the module note's branch table says `forced (<cmd>)`
+for that arm. Forcing is meant for arms gated by shipped data or by hours of play; an arm normal
+play reaches in a short run is reached that way.
+
+Lanes mark only bodies a run exercised fully (not just an early return), unless their brief says the
+orchestrator marks that module. A marker needs a run that exercised the function and a pass of
+the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
+compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
+tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every
+changed `Port*.cpp` (`ASM` lines); any hit means an Opus audit before merge. Bit/compare reading
+for a brief: `asmcheck.py annotate <Module> fn_<id>_<off> [--header H --class C]`. Changing the
+tool: `tools/asmcheck_regress.sh` must stay all PASS.
+
+## Lane briefs
+
+- The standing part (start, rules, console, gates, report) is `docs/LANE_BRIEF.md`; a brief says
+  "read docs/LANE_BRIEF.md first" and gives only the slice.
+- Every bit test, mask, flag set, compare and rodata constant a lane writes carries the asm offset
+  it came from (`// 0xCE2C`); copy the annotator's comment (`asmcheck.py annotate`) where there
+  is one. Code with no offset
+  is rejected.
+- Bit-heavy functions (message handlers, ctor flag unpacking, trigger tables, CR extractions) go
+  one or two per lane. Long briefs are where MiniMax guesses.
+- A `claude` (Opus) audit only for diffs the checks flag or that are bit-heavy, not per merge.
 
 ## Review every lane patch
 
@@ -57,7 +105,7 @@ patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
 - **NULL** - null guards retail doesn't have. Keep one only if the asm has the test or a named
   port limit requires it (say which in the comment); otherwise delete it.
 - **MASK** - re-derive each bit test from the asm `rlwinm`/`andi.` yourself (`rlwinm rD,rS,0,21,21`
-  is `& 0x400`, not `& 0x20`). A selftest written from the same reading proves nothing.
+  is `& 0x400`, not `& 0x20`: PowerPC bit N is `1u << (31-N)`, never `1u << N`). A selftest written from the same reading proves nothing.
 - **ADDR / STUB** - no thunk that compares against a retail address and otherwise calls a stub;
   no stand-in left behind a `// @`.
 - **MARK** - a marker means the body is retail's and ran. A function that mostly calls unported

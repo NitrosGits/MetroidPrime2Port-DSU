@@ -17,7 +17,8 @@ public:
   uint GetOverrideFlags() const { return mOverrideFlags; }
   TUniqueId GetActorId() const { return mActorId; }
 #ifdef TARGET_PC
-  // REL code writes 0x1AC directly (DigitalGuardian fn_14_13F70).
+  // Host: REL code clears the hint's actor id (the retail's field at 0x1AC): the Splitter's
+  // fn_75_AAC4 when the chassis releases the hint, DigitalGuardian's fn_14_13F70.
   void SetActorId(TUniqueId id) { mActorId = id; }
 #endif
   float GetControlInterpDur() const { return mControlInterpDur; }

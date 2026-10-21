@@ -611,4 +611,14 @@ void CModel::UnlockTextures() {
 #endif
     mMatSets[i].UnlockTextures();
   }
+#ifdef TARGET_PC
+  // The loop just nulled the cached textures of the instance's current set too. If the model was
+  // drawn before its first CModelData::LockTextures (CPlayer's morph-transition beam model is),
+  // the instance still says its textures are locked, so the next draw skips TryLockTextures and
+  // CCubeMaterial::SetCurrent loads a null CTexture (tablet SIGSEGV while morphing). Clear that
+  // flag the way CModel::FrameDone does; a second Unlock of the same tokens is a no-op.
+  if (mModelInstance.get() != nullptr) {
+    mModelInstance->UnlockTextures();
+  }
+#endif
 }

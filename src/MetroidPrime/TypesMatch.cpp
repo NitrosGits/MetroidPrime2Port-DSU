@@ -22,6 +22,11 @@
 #include "MetroidPrime/Enemies/CBabyMetroid.hpp"
 #include "MetroidPrime/Enemies/CBacteriaSwarm.hpp"
 #include "MetroidPrime/Enemies/CBouncyGrenade.hpp"
+#ifdef TARGET_PC
+// Guarded (like the ElitePirate include below) so the non-PC path of this upstream file stays
+// byte-identical: the class is only used by the guarded TYPES_MATCH_IMPL below.
+#include "MetroidPrime/Enemies/CDarkSamus.hpp" // REL module 10's host body (PortCDarkSamus.cpp)
+#endif
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CFlyerSwarm.hpp"
 #include "MetroidPrime/Enemies/CGlowbug.hpp"
@@ -43,6 +48,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/Enemies/CMinorIng.hpp" // REL module 44's host body (PortCMinorIng.cpp)
 #include "MetroidPrime/Enemies/CIng.hpp"      // REL module 29's host body (PortCIng.cpp)
+#include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp" // module 30 (PortCIngBoostBallGuardian.cpp)
 #endif
 #include "MetroidPrime/Enemies/COctapedeSegment.hpp"
 #include "MetroidPrime/Enemies/CParasite.hpp"
@@ -335,6 +341,7 @@ TYPES_MATCH_IMPL(CBeamProjectile, CGameProjectile, kET_BeamProjectile)
 TYPES_MATCH_IMPL(CPlasmaProjectile, CBeamProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL); parent CPatterned
 #ifdef TARGET_PC
+TYPES_MATCH_IMPL(CDarkSamus, CPatterned, kET_DarkSamus) // REL module 10's host body
 TYPES_MATCH_IMPL(CDigitalGuardian, CPatterned, kET_DigitalGuardian) // REL module 14's host body
 TYPES_MATCH_IMPL(CDigitalGuardianHead, CPatterned, kET_DigitalGuardianHead) // REL module 14's head
 #else
@@ -347,7 +354,9 @@ TYPES_MATCH_IMPL(CGrenchler, CPatterned, kET_Grenchler)
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CIng, CPatterned, kET_Ing) // REL module 29's host body (PortCIng.cpp)
 #endif
-// 117: class not declared yet (IngBoostBallGuardian REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CIngBoostBallGuardian, CPatterned, kET_IngBoostBallGuardian) // module 30
+#endif
 TYPES_MATCH_IMPL(CIngSpaceJumpGuardian, CPatterned, kET_IngSpaceJumpGuardian)
 TYPES_MATCH_IMPL(CIngSpiderballGuardian, CPatterned, kET_IngSpiderballGuardian)
 TYPES_MATCH_IMPL(CLumite, CPatterned, kET_Lumite)
@@ -619,6 +628,10 @@ CAST_TO_REF_IMPL(CDigitalGuardianHead, kET_DigitalGuardianHead)
 CAST_TO_PTR_IMPL(CDigitalGuardianHead, kET_DigitalGuardianHead)
 #else
 // 113: class not declared yet (DigitalGuardian REL)
+#endif
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CDarkSamus, kET_DarkSamus)
+CAST_TO_PTR_IMPL(CDarkSamus, kET_DarkSamus)
 #endif
 #ifdef TARGET_PC
 CAST_TO_REF_IMPL(CElitePirate, kET_ElitePirate)

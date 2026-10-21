@@ -50,7 +50,15 @@ void CGraphicsPalette::Load() const {
 
 void CGraphicsPalette::UnLock() {
   DCStoreRange(mEntries.get(), mEntryCount * sizeof(ushort));
+#ifdef TARGET_PC
+  // Aurora gives every GXInitTlutObj a new TLUT identity, and caches each identity's palette
+  // conversions of EFB copies (render-scale RGBA8, ~24 MB at 3195x1864) for 600 frames. The scan
+  // visor unlocks its palette every frame, so re-initialising here piled them up past 1 GB and
+  // got the Android tablet killed. Same data, format and size: only the contents changed.
+  GXInitTlutObjData(&mTlutObj, mEntries.get());
+#else
   GXInitTlutObj(&mTlutObj, mEntries.get(), format_to_format(mFmt), mEntryCount);
+#endif
   DCFlushRange(mEntries.get(), mEntryCount * sizeof(ushort));
   mLocked = false;
 }

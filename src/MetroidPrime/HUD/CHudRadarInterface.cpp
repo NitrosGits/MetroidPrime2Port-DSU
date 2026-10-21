@@ -99,6 +99,10 @@ void CHudRadarInterface::Draw(const CStateManager& mgr, float alpha) const {
   const float* viewportParameters = skRadarViewportParameters[mgr.GetViewportLayoutIndex()];
   mCamera->Draw(CGuiWidgetDrawParms(0.f, CVector3f::Zero()));
   postTranslate = mRadarRoot->GetWorldTransform();
+#ifdef TARGET_PC
+  // Port: widescreen HUD; the blips move with the radar ring (CGuiFrame::Draw).
+  postTranslate = mCamera->GetSpreadTransform(postTranslate.GetTranslation()) * postTranslate;
+#endif
   gpRender->SetBlendMode_AdditiveAlpha();
   gpRender->SetModelMatrix(postTranslate);
   CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulate);

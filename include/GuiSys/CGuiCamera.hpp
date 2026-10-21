@@ -45,8 +45,19 @@ public:
   float GetSpreadCenterX() const { return mSpreadCenterX; }
   // Half the authored width as a tangent per unit depth (perspective), or in world units (ortho).
   float GetSpreadHalfWidth() const { return mSpreadHalfWidth; }
+  // Half the drawn view's width in the same units: widened by the aspect, larger by the HUD scale.
+  float GetSpreadScreenHalfWidth() const { return mSpreadScreenHalfWidth; }
   bool IsPerspective() const { return mProjection == kProjection_Perspective; }
   const CTransform4f& GetSpreadView() const { return mSpreadView; }
+  // The slices a screen-spanning frame model is warped in, in fractions of the authored half
+  // width, and the warp's horizontal offset at `t` (view X per unit depth, or ortho units from the
+  // centre).
+  static const float kSpreadSliceInner;
+  static const float kSpreadSliceOuter;
+  float GetSpreadSliceOffset(float t) const;
+  // The spread of a compact widget or cluster anchored at `worldAnchor`: an exact screen-space
+  // slide, the whole side offset past the middle slice, none inside it. `weight` fades it.
+  CTransform4f GetSpreadTransform(const CVector3f& worldAnchor, float weight = 1.f) const;
 #endif
   UCameraParms GetParms() const { return mCameraParms; }
   void SetParms(const UCameraParms& parms) { mCameraParms = parms; }
@@ -59,6 +70,7 @@ private:
   mutable float mSpread = 1.f;
   mutable float mSpreadCenterX = 0.f;
   mutable float mSpreadHalfWidth = 0.f;
+  mutable float mSpreadScreenHalfWidth = 0.f;
   mutable CTransform4f mSpreadView = CTransform4f::Identity();
 #endif
 };

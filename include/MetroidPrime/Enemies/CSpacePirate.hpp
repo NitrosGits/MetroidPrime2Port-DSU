@@ -235,6 +235,9 @@ public:
 private:
 #ifdef TARGET_PC
   void EnsureBodyActive(CStateManager& mgr);
+  void InitLauncherModel(const CSpacePirateData& data);    // 4F28
+  void RenderLauncherModel(const CStateManager& mgr, const CTransform4f& xf,
+                           const CModelFlags& flags) const; // 36CC
   void SquadRemove(CStateManager& mgr);                  // DF2C
   void SquadJoin(CStateManager& mgr);                    // DFD4
   void UpdateHeldPosition(CStateManager& mgr, float dt); // D720
@@ -395,7 +398,9 @@ private:
   bool xbfc_;                             // 0xbfc
   int xc00_;                              // 0xc00
   int xc04_warpPoint;                     // 0xc04 (-1); ShouldWarpIn
-  bool xc54_;                             // 0xc54
+  // 0xc08 (0x4c, valid flag 0xc54): the grenade launcher's static model, built by fn_72_4F28 and
+  // drawn at the R_wrist locator by fn_72_36CC.
+  rstl::optional_object< CModelData > xc08_launcherModel;
   int xc58_;                              // 0xc58
   CPlane mPortalPlane;                    // 0xc5c (0x10); written by the WispTentacle while it drags the pirate
 #else

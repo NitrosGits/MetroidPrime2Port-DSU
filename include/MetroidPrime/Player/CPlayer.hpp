@@ -284,6 +284,15 @@ public:
   bool IsOverrideRadarRadius() const { return mOverrideRadarRadius; }
   float GetRadarXYRadiusOverride() const { return mRadarXYRadiusOverride; }
   float GetRadarZRadiusOverride() const { return mRadarZRadiusOverride; }
+#ifdef TARGET_PC
+  // Inlined in retail (SwampBossStage2 fn_79_9F4C writes the three fields directly).
+  void SetRadarRadiusOverride(float xy, float z) {
+    mOverrideRadarRadius = true;
+    mRadarXYRadiusOverride = xy;
+    mRadarZRadiusOverride = z;
+  }
+  void ClearRadarRadiusOverride() { mOverrideRadarRadius = false; }
+#endif
   float GetEchoPulsePhase() const { return mEchoPulsePhase; }    // Guessed name
   uint GetEchoPulseCounter() const { return mEchoPulseCounter; } // Guessed name
   EPlayerCameraState GetCameraState() const { return mCameraState; }
@@ -309,6 +318,15 @@ public:
   bool CanLeaveMorphBallState(CStateManager& mgr, CVector3f& position) const;
   bool AttachActorToPlayer(TUniqueId actor, bool disableGun);
   void EnableLeaveMorphBall(bool enabled) { mCanStartUnmorphTransition = enabled; } // Prime name.
+#ifdef TARGET_PC
+  // Port: retail's 0x1144 bit 6, the morph half of the pair. CPlayer only had the unmorph accessor;
+  // CIng's grapple clears and restores both (fn_29_6578 asm 0x00006610 / 0x0000692C).
+  void EnableEnterMorphBall(bool enabled) { mCanStartMorphTransition = enabled; }
+  // Port (console `grapple`): rebuild the orbit candidate lists on the next update instead of
+  // after up to 20 (UpdateOrbitableObjects' refresh count, retail li 0x14 at 0x80120AF4). A lock-on
+  // press only takes mOrbitNextTargetId, which is picked from those lists.
+  void PortRefreshOrbitCandidates() { mOrbitCandidateRefreshFrames = 0; }
+#endif
   void DetachActorFromPlayer();
   void UpdateScanningState(const CFinalInput& input, CStateManager& mgr, float dt);
   bool ValidateScanning(const CFinalInput& input, CStateManager& mgr) const;

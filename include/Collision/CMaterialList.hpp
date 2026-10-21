@@ -69,6 +69,7 @@ enum EMaterialTypes {
   kMT_Solid = 59,
   kMT_NoPlatformCollision = 60,
   kMT_Unknown61 = 61,   // Included by the spider ball surface filter.
+  kMT_ScrewAttackWall = 62, // Surface the screw attack can wall-jump off (CMorphBall::CollidedWith).
   kMT_SeekerTarget = 63 // Target-derived name: seeker lock-on eligibility.
 };
 

@@ -162,6 +162,13 @@ public:
   float GetMinimumPathLength() const;          // Guessed name
   float GetParticleEmissionRateScalar() const; // Guessed name
   void SetParticleEmissionRateScalar(float scalar);
+#ifdef TARGET_PC
+  // Port: the retail's flag byte at 0x154. The Ing's own body sets its bit from the owner's
+  // damage cooldown timer (Ing REL fn_29_4604, asm 0x000047FC-0x0000480C) and the GeomBlobV2
+  // never reads it, so the host only keeps the value.
+  void SetOwnerDamaged(bool damaged) { mOwnerDamaged = damaged; }
+  bool IsOwnerDamaged() const { return mOwnerDamaged; }
+#endif
 
 private:
   void RenderStrands() const;
@@ -184,6 +191,9 @@ private:
   CAABox mTrackBounds;
   float mTrackRadius;
   rstl::optional_object< CVector3f > mLastCachePosition;
+#ifdef TARGET_PC
+  bool mOwnerDamaged = false; // The retail's flag byte at 0x154.
+#endif
 };
 CHECK_SIZEOF(CCollisionTracker, 0x1e0)
 

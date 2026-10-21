@@ -5,26 +5,35 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Collision/CCollidableAABox.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
+#include "Kyoto/CToken.hpp"
+#include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CAnimationParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/Enemies/SPositionHistory.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrShockWaveInfo.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "MetroidPrime/Weapons/CShockWave.hpp"
 
+class CBCLocomotionCmd;
+class CCollisionActorManager;
+class CElementGen;
+class CGenDescription;
+class CSkinnedModel;
+
 // Host copy of the properties the ElitePirate loader reads and hands to the class (retail:
-// CElitePirateData, 0x198 bytes at 0x828, built on the loader's stack by fn_15_B82C and copied in
-// by its copy constructor fn_15_B360). Only the retail offsets this milestone could prove are
-// noted; the rest are named after the SLdrElitePirate property they come from, and the host layout
-// is its own (nothing in this milestone reads them - the class stores them for the FSM the later
-// milestones add). The REL's own builder takes them as one long parameter list (8 floats, seven
-// ints/pointers, then 24 stack slots); the ordering inside that list could not be recovered, only
-// the grouping, so the fields are plain members the loader assigns by name.
+// CElitePirateData, 0x190 bytes at 0x828, built on the loader's stack by fn_15_B82C and copied in
+// by its copy constructor fn_15_B360). The retail offsets are the ones the class's own code reads
+// (data+N below = this+0x828+N); the host layout is its own and the loader assigns by name.
 class CElitePirateData {
 public:
   CElitePirateData()
   : mStateMachine(kInvalidAssetId)
+  , mInitialAnim(-1)
   , mMeleeDamage()
   , mShieldedModel(kInvalidAssetId)
   , mShieldedSkinRules(kInvalidAssetId)
@@ -45,49 +54,47 @@ public:
   , mSoundVisorElectric(0)
   , mPartAsset(kInvalidAssetId) {}
 
-  CAssetId mStateMachine;       // +0x00 [proven] patterned.stateMachine; the ctor loads it as the
-                                // 'FSM2' token at 0xc30 (fn_15_B748)
-  CDamageInfo mMeleeDamage;     // SLdrElitePirate.meleeDamage (fn_15_B82C's damage argument)
-  float mMaxMeleeRange;
-  float mMinShockwaveRange;
-  float mMaxShockwaveRange;
-  float mMinRocketRange;
-  float mMaxRocketRange;
-  float mUnknown5236C2B6;
-  float mUnknown01EAAB17;
-  CAssetId mShieldedModel;
-  CAssetId mShieldedSkinRules;
-  CAssetId mDarkShield;
-  ushort mDarkShieldSound;
-  CAssetId mDarkShieldPop;
-  CAssetId mLightShield;
-  ushort mLightShieldSound;
-  CAssetId mLightShieldPop;
-  float mTauntInterval;
-  float mTauntVariance;
-  CShockWaveInfo mSingleShockWaveInfo;
-  CShockWaveInfo mDoubleShockWaveInfo;
-  float mUnknown28B39197;
+  CAssetId mStateMachine;       // +0x00 patterned.stateMachine2; the ctor's 'FSM2' token (0xc30)
+  int mInitialAnim;             // +0x04 patterned.animationInformation.initial_anim (ctor, 0xc40)
+  CDamageInfo mMeleeDamage;     // +0x08 the melee hit (fn_15_7004)
+  float mMaxMeleeRange;         // +0x154
+  float mMinShockwaveRange;     // +0x158
+  float mMaxShockwaveRange;     // +0x15c
+  float mMinRocketRange;        // +0x160
+  float mMaxRocketRange;        // +0x164
+  float mUnknown5236C2B6;       // +0xc4
+  float mUnknown01EAAB17;       // +0xc8
+  CAssetId mShieldedModel;      // +0x188 the shield CSkinnedModel's CMDL
+  CAssetId mShieldedSkinRules;  // +0x18c and its CSKR
+  CAssetId mDarkShield;         // +0xcc
+  ushort mDarkShieldSound;      // +0xd0
+  CAssetId mDarkShieldPop;      // +0xd4 'PART' for the shield pop, polarity != 1 (fn_15_3C5C)
+  CAssetId mLightShield;        // +0xd8
+  ushort mLightShieldSound;     // +0xdc
+  CAssetId mLightShieldPop;     // +0xe0 'PART' for the shield pop, polarity 1
+  float mTauntInterval;         // +0x24
+  float mTauntVariance;         // +0x28
+  CShockWaveInfo mSingleShockWaveInfo; // +0xe4 (fn_15_1A48)
+  CShockWaveInfo mDoubleShockWaveInfo; // +0x114 (fn_15_1A48, when 0xcb0 == 5)
+  float mUnknown28B39197;       // +0x144..+0x150, in some order [?]
   float mUnknownE27DE71B;
   float mUnknown665E7ACE;
   float mUnknownACD4D06D;
-  CAssetId mRocket;             // +0x168 [proven] the ctor's CProjectileInfo (0xcd0) asset
-  CDamageInfo mRocketDamage;    // +0x16c [proven] that CProjectileInfo's damage
-  int mUnknown624222F8;
-  int mUnknown31E43A1C;
-  float mRepeatedAttackChance;
-  float mEnergyAbsorbDuration;
-  float mEnergyAbsorbVariance;
-  float mEnergyAttractionForce;
-  int mAlwaysFF;
-  int mAlwaysFF23F5E1EE;
-  CActorParameters mRocketLauncherActorInfo;
-  CAnimationParameters mRocketLauncherAnimInfo;
-  CAnimationParameters mUnknown7E6E0D38;
-  CAssetId mVisorElectricEffect;
-  ushort mSoundVisorElectric;
-  CAssetId mPartAsset;          // +0x34 [proven offset] the asset the ctor loads under the 'PART'
-                                // tag (a CToken at 0x9e8 with its valid byte at 0x9f4)
+  CAssetId mRocket;             // +0x168 the ctor's CProjectileInfo (0xcd0) asset
+  CDamageInfo mRocketDamage;    // +0x16c that CProjectileInfo's damage
+  int mUnknown624222F8;         // +0xb4
+  int mUnknown31E43A1C;         // +0xb8
+  float mRepeatedAttackChance;  // +0x2c
+  float mEnergyAbsorbDuration;  // [?] offset not read by this slice
+  float mEnergyAbsorbVariance;  // [?]
+  float mEnergyAttractionForce; // +0x30
+  int mAlwaysFF23F5E1EE;        // +0x38 (u16 in retail)
+  CActorParameters mRocketLauncherActorInfo;  // +0x3c the launcher's actor parameters
+  CAnimationParameters mRocketLauncherAnimInfo; // +0x9c the launcher's model (fn_15_2564)
+  CAnimationParameters mUnknown7E6E0D38;      // +0xa8 the launcher's model when Ing-possessed
+  CAssetId mVisorElectricEffect; // +0xbc
+  ushort mSoundVisorElectric;    // +0xc0
+  CAssetId mPartAsset;          // +0x34 alwaysFF: the ctor's optional 'PART' token (0x9e8)
 };
 #endif
 
@@ -115,13 +122,14 @@ public:
   void PreRender(CStateManager& mgr) override;
   void AddToRenderer(const CStateManager& mgr) const override;
   void Render(const CStateManager& mgr) const override;
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override; // slot 21, fn_15_7EEC
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
 
   // CAi
-  void TakeDamage(const CVector3f& direction, float magnitude) override;
-  // The three one-line accessors below are the REL's own bodies (vtable slot -> function), so they
-  // are real rather than stand-ins.
+  // fn_15_4C stores skDamageHitTime into the cooldown, the base class's body.
+  void TakeDamage(const CVector3f&, float) override { mDamageCooldownTimer = skDamageHitTime; }
+  // The three one-line accessors below are the REL's own bodies (vtable slot -> function).
   bool CanBeShot(const CStateManager&, int) override { return true; } // slot 42, fn_15_A4
   bool IsListening() const override { return false; }                 // slot 43, fn_15_AC
   bool Listen(CStateManager&, const CVector3f&, EListenNoiseType) override { // slot 44, fn_15_B4
@@ -135,33 +143,224 @@ public:
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // slot 57, fn_15_64
   CRagDoll* GetRagDoll() const override { return nullptr; }              // slot 61, fn_15_6C
   TUniqueId GetAttackTarget() const override { return kInvalidUniqueId; } // slot 67, fn_15_74
-  // The REL also overrides slots 15 (fn_15_D8, GetHealthInfo - it calls the base class's), 18
-  // (fn_15_10, GetTouchBounds - bounding box then fn_15_C094), 21 (fn_15_7EEC, GetAimPosition), 50
-  // (fn_15_5C), 68 (fn_15_84, IsOnGround - the base class's own bit) and 73 (fn_15_9C,
-  // GetDeathExplosionParticle - returns the base member at 0x754). None is needed for this
-  // milestone: 68 and 73 have the inherited bodies' behaviour and the rest are accessors the
-  // milestone's code paths do not call.
+  float GetGravityConstant() const override { return 24.525f; }          // fn_15_90
+  bool CanBeUnPossessed(CStateManager&) const override { return false; } // fn_15_1A0C
+  const CCollisionPrimitive* GetCollisionPrimitive() const override { return &mCollidableBox; } // fn_15_8
+  void RenderIngSnatchingTransition(const CStateManager& mgr) const override; // fn_15_800C
+  // Slots the REL overrides with the base class's own behaviour, so the port leaves them
+  // inherited: 15 GetHealthInfo (fn_15_D8 calls the base), 18 GetTouchBounds (fn_15_10), the
+  // origin, model-alpha and IsOnGround accessors, and 73 GetDeathExplosionParticle (fn_15_9C).
+
+  // The class's own virtuals past CPatterned's table (vt+0x148..0x22c). Plain members here: the
+  // REL is the only implementation and nothing derives from the Ingsmasher.
+  void InstallStateMachine(CStateManager& mgr);                // vt+0x148, fn_15_9840
+  void SetShieldVulnerability(CStateManager& mgr, bool shielded); // vt+0x224, fn_15_27FC [name?]
+  void SendLauncherMsg(CStateManager& mgr, bool start);        // vt+0x228, fn_15_24F0
+  const CShockWaveInfo& GetShockWaveInfo() const;              // vt+0x22c, fn_15_1A48
+
+  // FSM triggers (fn_15_9840's table, in its order). Bodies are later slices.
+  bool Alerted(CStateManager& mgr, const CTriggerData& data) const;
+  bool AngryAttackOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool BreakProjectileAttack(CStateManager& mgr, const CTriggerData& data) const;
+  bool CanShockwave(CStateManager& mgr, const CTriggerData& data) const;
+  bool ClearLineOfSight(CStateManager& mgr, const CTriggerData& data) const;
+  bool DonePursuing(CStateManager& mgr, const CTriggerData& data) const;
+  bool DoneTurning(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const;
+  bool InDetectionRange(CStateManager& mgr, const CTriggerData& data) const;
+  bool InPosition(CStateManager& mgr, const CTriggerData& data) const;
+  bool NotReachedTarget(CStateManager& mgr, const CTriggerData& data) const;
+  bool PickedSpreadShot(CStateManager& mgr, const CTriggerData& data) const;
+  bool PlayerInNoAttack(CStateManager& mgr, const CTriggerData& data) const;
+  bool PoweredDown(CStateManager& mgr, const CTriggerData& data) const;
+  bool PoweredUp(CStateManager& mgr, const CTriggerData& data) const;
+  bool ReadyToCharge(CStateManager& mgr, const CTriggerData& data) const;
+  bool ReturnedToPatrol(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShieldKilled(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShockwaveIsNext(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShotAt(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldAlert(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldFire(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldShockwave(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldTurn(CStateManager& mgr, const CTriggerData& data) const;
+  bool SpotPlayer(CStateManager& mgr, const CTriggerData& data) const;
+  bool StillAngry(CStateManager& mgr, const CTriggerData& data) const;
+  bool TargetNotOnMesh(CStateManager& mgr, const CTriggerData& data) const;
+  bool TargetUnreachable(CStateManager& mgr, const CTriggerData& data) const;
+  bool TooClose(CStateManager& mgr, const CTriggerData& data) const;
+
+  // FSM states.
+  void Alert(CStateManager& mgr, EStateMsg msg, float dt);
+  void AngryAttackBegin(CStateManager& mgr, EStateMsg msg, float dt);
+  void AngryAttackEnd(CStateManager& mgr, EStateMsg msg, float dt);
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);
+  void FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt);
+  void InvulnAlert(CStateManager& mgr, EStateMsg msg, float dt);
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt);
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);
+  void PowerDown(CStateManager& mgr, EStateMsg msg, float dt);
+  void PowerUp(CStateManager& mgr, EStateMsg msg, float dt);
+  void ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt);
+  void Pursue(CStateManager& mgr, EStateMsg msg, float dt);
+  void Shielding(CStateManager& mgr, EStateMsg msg, float dt);
+  void ShieldUp(CStateManager& mgr, EStateMsg msg, float dt);
+  void Shockwave(CStateManager& mgr, EStateMsg msg, float dt);
+  void SpreadShot(CStateManager& mgr, EStateMsg msg, float dt);
+  void Stunned(CStateManager& mgr, EStateMsg msg, float dt);
+  void TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt);
+  void Taunt(CStateManager& mgr, EStateMsg msg, float dt);
+  void Turn(CStateManager& mgr, EStateMsg msg, float dt);
+  void Wait(CStateManager& mgr, EStateMsg msg, float dt);
+
+  // FSM code functions.
+  void SelectTarget(CStateManager& mgr, float dt);
+  void PickAttackType(CStateManager& mgr, float dt);
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
 private:
 #ifdef TARGET_PC
-  void EnsureBodyActive(CStateManager& mgr);
+  // Helpers (retail function on each; shared by Think, AcceptScriptMsg and the FSM states).
+  bool IsShieldUp() const;                                         // fn_15_2CE8
+  // @ fn_15_1B50
+  // 0x1B54 rlwimi r0, r4, 6, 25, 25: mask 0x40 (xc10 = (xc10 & ~0x40) | (a1 -> 0x40)), stored to
+  // xc10 at 0x1B58 - the XDamaged bit of the flags byte, set or cleared from the bool.
+  void SetXDamaged(bool xdamaged) { mXDamaged = xdamaged; }        // fn_15_1B50
+  CPFArea* GetPathArea(CStateManager& mgr) const;                  // fn_15_1598
+  void ReleaseClaimedRegion(CStateManager& mgr);                   // fn_15_1328
+  void SetupCollisionManagers(CStateManager& mgr);                 // fn_15_36CC
+  void ClassifyCollisionActors(CStateManager& mgr);                // fn_15_3574
+  void CreateGrenadeLauncher(CStateManager& mgr, TUniqueId uid);   // fn_15_2564
+  void DeleteGrenadeLauncher(CStateManager& mgr);                  // fn_15_251C
+  void UpdateLauncherTransform(CStateManager& mgr);                // fn_15_2394
+  void UpdateTimer(float dt);                                      // fn_15_27DC
+  void UpdatePositionHistory();                                    // fn_15_2204
+  void UpdateAimBlend(float dt);                                   // fn_15_8D84
+  void UpdateParticleGen(float dt);                                // fn_15_8E34
+  void UpdateShieldAlpha(float dt);                                // fn_15_8EA0
+  void UpdatePushBack(CStateManager& mgr, float dt);               // fn_15_8FB8
+  bool IsOnJumpHint(const CStateManager& mgr) const;               // fn_15_1788
+  int GetPlayerHintType(const CStateManager& mgr) const;           // fn_15_15F8
+  void RenderShield(const CStateManager& mgr) const;               // fn_15_8080
+  void CreateShockWave(CStateManager& mgr, const CInt32POINode& node); // fn_15_70D4
+  void FireRocket(CStateManager& mgr);                             // fn_15_728C
+  void ShakePlayers(CStateManager& mgr);                           // fn_15_1C7C
+  void PushPlayer(CStateManager& mgr, float horizontal, float vertical); // fn_15_1B60
+  void PopShield(CStateManager& mgr);                              // fn_15_3C5C
+  void ApplyMeleeDamage(CStateManager& mgr, TUniqueId target);     // fn_15_7004
+  void SetArmTouchBounds(CStateManager& mgr, const CVector3f& bounds); // part of fn_15_7BFC
 
-  // Host layout (retail's is 0xd30, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest offsets are
-  // the REL's, read from the constructor fn_15_A190 and the module's one-line accessors. The
-  // members this milestone needs:
-  CElitePirateData mData;          // 0x828 (0x198; the next member starts at 0x9c0)
-  CPathFindSearch mPathFindSearch; // 0xa50 (0xec; fn_15_0 returns this+0xa50)
-  CProjectileInfo mProjectileInfo; // 0xcd0 (0x28; fn_15_52C8 returns this+0xcd0)
-  // Guest members this milestone does not hold, because nothing in it reads them: the int at 0x7c0
-  // (-1), the 0x64-byte sub-object copied from pInfo+0x74 at 0x7c4 (fn_15_2B08), the four zeroed
-  // CVector3f at 0x7f8/0x804/0x810/0x81c, the CCollidableAABox at 0x9c0 built from GetBoundingBox,
-  // the 'PART' CToken at 0x9e8 with its valid byte at 0x9f4, the uid/flag/float blocks at
-  // 0x9f8..0xa4c, the CVector3f at 0xb3c, the 0x18-byte object built by DOL fn_801931E0 at 0xb48,
-  // the bit block at 0xc10, the FSM2 token object at 0xc30 (fn_15_B748), the initial-state ints at
-  // 0xc3c/0xc40, the 0x58-byte object built by fn_15_B080 at 0xc58, and the 0xcf8..0xd2c block.
+  // movement-state helpers (PortCElitePirateMove.cpp; shared with the combat states)
+  void SetAttackKind(int kind, EStateMsg msg);                     // fn_15_4790 (+47DC/4848)
+  void UpdateAbsorb(CStateManager& mgr, EStateMsg msg);            // fn_15_850C
+  void TauntCmd(EStateMsg msg, int tauntType);                     // fn_15_BEA0 (retry, body state 0x10)
+  void TurnCmd(EStateMsg msg, const CBCLocomotionCmd& cmd);        // fn_15_BDFC (retry, body state 8)
+  void PathToward(CStateManager& mgr, EStateMsg msg, float dt, const CVector3f& dest); // fn_15_5CBC
+  void PlanPath(CStateManager& mgr, float dt, const CVector3f& dest); // fn_15_1FC0
+  void ClaimPathRegion(CStateManager& mgr);                        // fn_15_13B8
+  bool IsPlayerOnPath(const CStateManager& mgr) const;             // fn_15_1A14
+
+  // combat-state helpers (PortCElitePirateCombat.cpp)
+  void ResetAttackTimer(CStateManager& mgr);                       // fn_15_1F2C
+  template < typename T >
+  void TryCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd); // fn_15_BAF8/BC04/BD10
+  CSfxHandle mShieldSfx;                         // 0xc98 the shield's looping emitter (ShieldUp/Shielding)
+
+  // Host layout; retail offsets (fn_15_A190 and the helpers) on each. Retail is 0xd30 bytes.
+  int x7c0_;                                     // 0x7c0 = -1 [?] not read in this slice
+  CDamageVulnerability mBodyVulnerability;       // 0x7c4 copy of the patterned info's (fn_15_2B08)
+  rstl::single_ptr< CCollisionActorManager > mShieldCollisionManager; // 0x7f4 the "Shield" OBB
+  CVector3f mLeftPalmPos;                        // 0x7f8 L_Palm_LCTR (PreRender)
+  CVector3f mRightPalmPos;                       // 0x804 R_Palm_LCTR
+  CVector3f x810_;                               // 0x810 [?]
+  CVector3f x81c_;                               // 0x81c place it powered up in (fn_15_5F08);
+                                                 // ShouldAlert is false within 5 m of it
+  CElitePirateData mData;                        // 0x828
+  rstl::single_ptr< CCollisionActorManager > mBodyCollisionManager; // 0x9b8 the joint spheres
+  CCollidableAABox mCollidableBox;               // 0x9c0 GetCollisionPrimitive
+  rstl::optional_object< TLockedToken< CGenDescription > > mPart; // 0x9e8 data.mPartAsset
+  TUniqueId mHeadColliderId;                     // 0x9f8 "Head_1"
+  TUniqueId mLauncherId;                         // 0x9fa the CElitePirateGrenadeLauncher
+  rstl::reserved_vector< TUniqueId, 8 > mRightArmColliders; // 0x9fc R_ joints + R_Palm_LCTR
+  rstl::reserved_vector< TUniqueId, 8 > mLeftArmColliders;  // 0xa10 L_ joints + L_Palm_LCTR
+  TUniqueId mShieldColliderId;                   // 0xa24
+  TUniqueId xa26_;                               // 0xa26 [?]
+  float mBaseSpeed;                              // 0xa28 mSpeed at construction
+  float mSteeringSpeed;                          // 0xa2c XCRT: walk-speed ratio
+  float mLastHP;                                 // 0xa30 HP when the vulnerability was last set
+  float mTimer;                                  // 0xa34 counts down in Think (fn_15_27DC)
+  float mXDamagedTimer;                          // 0xa38 Shielding's countdown to clear mXDamaged;
+                                                 // only the ctor writes it (0), so it never runs
+  float mTime;                                   // 0xa3c accumulated dt
+  float mStuckTime;                              // 0xa40 s at the end of the path with the player
+                                                 // off it (fn_15_5CBC); TargetUnreachable > 1
+  float mPursueStartTime;                        // 0xa44 mTime when Pursue began (fn_15_5BB4);
+                                                 // not written by the ctor
+  float mLastPushTime;                           // 0xa48 mTime of the last push-back
+  int mClaimedRegion;                            // 0xa4c path region with avoidance flag 4
+  CPathFindSearch mPathFindSearch;               // 0xa50 (fn_15_0)
+  CVector3f mPatrolGoal;                         // 0xb3c TargetPatrol's goal: the base's
+                                                 // mDestPos (0x334) at Activate; InPosition < 5 m
+  SPositionHistory mPositionHistory;             // 0xb48 (DOL fn_801931E0, 5.f)
+  bool mEvent8Active : 1;                        // 0xc10 0x80: user events 8 (set) / 9 (clear)
+  bool mXDamaged : 1;                            // 0xc10 0x40: XDMG/XRDG/XXDG (fn_15_1B50)
+  bool mAlerted : 1;                             // 0xc10 0x20: ALRT
+  bool xc10_10_ : 1;                             // 0xc10 0x10 [?] not cleared by the ctor
+  bool mAlerted2 : 1;                            // 0xc10 0x08: ALRT [?]
+  bool xc10_04_ : 1;                             // 0xc10 0x04 [?]
+  bool mLauncherIngPossessed : 1;                // 0xc10 0x02: launcher built Ing-possessed
+  bool xc10_01_ : 1;                             // 0xc10 0x01 [?]
+  int xc14_;                                     // 0xc14 = 0 [?]
+  rstl::reserved_vector< int, 3 > mAttackKindHistory; // 0xc14.. (retail's xc14_ is its count; SetAttackKind pushes, never read)
+  int xc28_;                                     // 0xc28 = -1 [?]
+  int mAttackKind;                               // 0xc2c 2/8 rocket, 4 melee, 7 shockwave
+  CToken mFsm2;                                  // 0xc30 'FSM2' data.mStateMachine (fn_15_B748)
+  int xc3c_;                                     // 0xc3c = 6 [?]
+  int mInitialAnimState;                         // 0xc40 1, or 10/11/12 matching mInitialAnim
+  bool mEvent7 : 1;                              // 0xc44 0x80: user event 7
+  int xc48_;                                     // 0xc48 = 1 [?]
+  int xc4c_;                                     // 0xc4c = 1 [?]
+  float mLastMeleeTime;                          // 0xc50 mTime of the last melee/contact hit
+  bool mMeleeDamagePending : 1;                  // 0xc54 0x80 (event 17)
+  bool mKnockPending : 1;                        // 0xc54 0x40 (event 17)
+  float xc58_;                                   // 0xc58 = 0 [?] (fn_15_B080 block 0xc58..0xcb0)
+  float mShieldUpTime;                           // 0xc5c mTime of the last shield raise (44A8);
+                                                 // -1000 from fn_15_B080 until the first ShieldUp
+  float mShieldDamage;                           // 0xc60 damage the shield absorbed
+  float mShieldHitTime;                          // 0xc64 mTime of the last shield hit
+  float mShieldAlpha;                            // 0xc68
+  int mShieldPolarity;                           // 0xc6c 0 dark, 1 light, 2 none
+  rstl::optional_object< TLockedToken< CGenDescription > > mLightShieldPop; // 0xc70
+  rstl::optional_object< TLockedToken< CGenDescription > > mDarkShieldPop;  // 0xc80
+  rstl::single_ptr< CElementGen > mHandGen;      // 0xc94 at the left palm (states create it)
+  rstl::optional_object< TLockedToken< CSkinnedModel > > mShieldModel; // 0xc9c
+  bool mShieldPopPending : 1;                    // 0xcac 0x40
+  bool mDoubleSpeed : 1;                         // 0xcac 0x80
+  int xcb0_;                                     // 0xcb0 = 1; 5 selects the double shock wave
+  int xcb4_;                                     // 0xcb4 = 7 [?]
+  CVector3f xcb8_;                               // 0xcb8 [?]
+  CVector3f xcc4_;                               // 0xcc4 [?]
+  CProjectileInfo mProjectileInfo;               // 0xcd0 (fn_15_52C8)
+  int mRocketsFired;                             // 0xcf8
+  int mRocketsToFire;                            // 0xcfc salvo size: SpreadShot sets 4, the
+                                                 // other attack a random data range
+  int mRocketPattern;                            // 0xd00 0 homing, 1 spread
+  int mDefaultRocketPattern;                     // 0xd04 = 1, written by the ctor only: the pattern
+                                                 // PickAttackType copies 20% of the time
+  bool mRocketEventSeen;                         // 0xd08 event 18 during attack kind 2
+  float mAimBlend;                               // 0xd0c towards the shield collider
+  mutable CVector3f mShieldAimPos;               // 0xd10
+  int xd1c_;                                     // 0xd1c taunt type: Taunt cycles 0 -> 6 -> 1 -> 0
+  int mAngryCount;                               // 0xd20 int: AngryAttackEnd decrements, StillAngry tests > 0
+  bool xd24_80_ : 1;                             // 0xd24 [?]
+  bool xd24_40_ : 1;
+  bool xd24_20_ : 1;
+  bool xd24_10_ : 1;
+  float mEnergyGlow;                             // 0xd28
+  bool mAbsorbing;                               // 0xd2c
 #else
   uchar x7c0_[0x570]; // CElitePirateData, the path search, the projectile info and everything above
 #endif

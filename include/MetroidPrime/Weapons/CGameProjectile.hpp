@@ -94,6 +94,11 @@ protected:
   CProjectileWeapon mProjectile;
   CVector3f mPreviousPos;
   float mProjExtent;
+#ifdef TARGET_PC
+public:
+  void SetProjExtent(float e) { mProjExtent = e; }
+protected:
+#endif
   float mHomingDt;
   double mTargetHomingTime;
   double mCurHomingTime;

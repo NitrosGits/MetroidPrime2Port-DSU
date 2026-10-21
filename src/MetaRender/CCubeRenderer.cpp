@@ -3380,14 +3380,17 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   GXSetTexCopySrc(viewport.mLeft, viewport.mTop, vpWidth, vpHeight);
   GXSetTexCopyDst(vpWidth, vpHeight, GX_CTF_A8, false);
 #ifdef TARGET_PC
-  // The overlay samples these bytes as palette indices: the console's copy filled the spare buffer,
-  // and Aurora only resolves the copy into a texture, so ask for the CPU half as well. The copy
-  // needs its own destination: the scan window's pane copies RGB565 into the same spare buffer in
-  // the same frame, and Aurora resolves a copy into a texture keyed by the destination pointer, so
-  // a shared one would give this overlay whichever of the two was recorded last - which is what
-  // made the highlight colours flash.
+  // The copy needs its own destination: the scan window's pane copies RGB565 into the same spare
+  // buffer in the same frame, and Aurora resolves a copy into a texture keyed by the destination
+  // pointer, so a shared one would give this overlay whichever of the two was recorded last - which
+  // is what made the highlight colours flash. With its own destination Aurora draws the overlay
+  // from that copy texture and never reads the bytes, so the CPU read-back (a full render-scale
+  // frame every frame, the scan visor's lag on the tablet) is only made for the
+  // MP2_DEBUG_SCAN_PALETTE report below, which reads them.
   void* const spare = PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), vpWidth, vpHeight, 1);
-  PortEfbCopy::Request(spare, vpWidth, vpHeight, 1);
+  static const bool sScanPaletteReadBack = std::getenv("MP2_DEBUG_SCAN_PALETTE") != nullptr;
+  if (sScanPaletteReadBack)
+    PortEfbCopy::Request(spare, vpWidth, vpHeight, 1);
 #else
   void* const spare = CGraphics::GetDolphinSpareBuffer();
 #endif

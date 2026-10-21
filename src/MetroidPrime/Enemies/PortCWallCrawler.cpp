@@ -33,12 +33,12 @@
 //   x854_ (f4)  bend weight ramp-down divisor while tumbling
 //   x858_ (f5)  bend weight ramp-up divisor while re-orienting (kART_Five)
 //   x85c_ (f6)  bend weight ramp-down divisor while re-orienting
-// The 0x860/0x861 bits past mDisableMove:
-//   x860_27_  tumbling: no align surface, rolling about the forward axis (set in AlignToFloor)
-//   x860_28_  on a surface but up is still > ~30 degrees off its normal (set in AlignToFloor)
-//   x860_29_  the kART_Six additive reaction is playing
-//   x860_30_  the kART_Five additive reaction is playing
-//   x861_24_  bending enabled (ctor sets it; nothing in this module clears it)
+// The 0x860/0x861 bits past mDisableMove (the masks are the retail's, asm 0x258C-0x25F0):
+//   x860_28_  (0x08) tumbling: no align surface, rolling about the forward axis (set in AlignToFloor)
+//   x860_29_  (0x04) on a surface but up is still > ~30 degrees off its normal (set in AlignToFloor)
+//   x860_30_  (0x02) the kART_Six additive reaction is playing
+//   x860_31_  (0x01) the kART_Five additive reaction is playing
+//   x861_24_  (0x80) bending enabled (ctor sets it; nothing in this module clears it)
 
 namespace {
 
@@ -86,7 +86,7 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
                            float f2, float f3, float f4, float f5, float f6)
 : CPatterned(character, uid, name, flavor, info, xf, mData, pInfo, moveType, colType, bodyType,
              actParms)
-, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff)
+, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff) // @ fn_83_26CC (0x54): the CCollisionSurface ctor (asm 0x24A0)
 , mColSphere(CSphere(CVector3f::Zero(), sphereRadius), GetMaterialList())
 , mCollisionCloseMargin(collisionCloseMargin)
 , mAlignAngVel(alignAngVel)
@@ -110,10 +110,10 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
 , mHasAlignSurface(false)
 , mPlayerObstructed(false)
 , mDisableMove(disableMove)
-, x860_27_(false)
 , x860_28_(false)
 , x860_29_(false)
 , x860_30_(false)
+, x860_31_(false)
 , x861_24_(true)
 , mConstraintPlane(0.f, CUnitVector3f(0.f, 1.f, 0.f, CUnitVector3f::kN_No)) {}
 
@@ -131,6 +131,8 @@ void CWallCrawler::PreThink(float dt, CStateManager& mgr) {
     if (!mAlignToFloor) {
       return;
     }
+    // @ fn_83_129C (0x6C): the CMotionState copy the retail makes before AddMotionState
+    // (asm 0x1148-0x115C) - the C++ copy of the predicted state is the same value.
     AddMotionState(PredictMotion(dt));
     ClearForcesAndTorques();
     if (mHasAlignSurface) {
@@ -164,11 +166,11 @@ void CWallCrawler::Think(float dt, CStateManager& mgr) {
   if (bc->HasBodyState(pas::kAS_AdditiveReaction)) {
     // The bend: an additive reaction whose weight follows how fast the enemy moves while it
     // tumbles (kART_Six) or turns onto a new surface (kART_Five).
-    x860_27_ = x860_27_ && x861_24_;
     x860_28_ = x860_28_ && x861_24_;
-    const bool tumbleBend = x860_27_ || x860_29_;
+    x860_29_ = x860_29_ && x861_24_;
+    const bool tumbleBend = x860_28_ || x860_30_;
     const float speed = GetVelocityWR().Magnitude();
-    if ((x860_27_ && !x860_30_) || (x860_28_ && !x860_29_)) {
+    if ((x860_28_ && !x860_31_) || (x860_29_ && !x860_30_)) {
       if (mBendingHackWeight < 1.f) {
         mBendingHackWeight += dt * speed / (tumbleBend ? x850_ : x858_);
         if (mBendingHackWeight >= 1.f) {
@@ -182,16 +184,16 @@ void CWallCrawler::Think(float dt, CStateManager& mgr) {
       }
     }
 
-    if (mBendingHackWeight > 0.f || x860_29_ || x860_30_) {
+    if (mBendingHackWeight > 0.f || x860_30_ || x860_31_) {
       bool playing;
       if (tumbleBend) {
-        playing = x860_29_;
-        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Six);
-        x860_29_ = playing;
-      } else {
         playing = x860_30_;
-        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Five);
+        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Six);
         x860_30_ = playing;
+      } else {
+        playing = x860_31_;
+        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Five);
+        x860_31_ = playing;
       }
     }
   }
@@ -327,14 +329,21 @@ bool CWallCrawler::UpdateWPDestination(CStateManager& mgr) {
 
 // @ fn_83_1310
 void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3f& newPos, float dt) {
-  float best = radius + mCollisionCloseMargin;
-  const CVector3f extent(best, best, best);
-  CAreaCollisionCache cache(CAABox(newPos - extent, newPos + extent));
+  // The retail's search box is radius+margin wide (asm 0x1390-0x13D4) while its best distance
+  // starts at the radius itself (f24 = the radius argument, asm 0x1390).
+  const float extent = radius + mCollisionCloseMargin;
+  const CVector3f half(extent, extent, extent);
+  CAreaCollisionCache cache(CAABox(newPos - half, newPos + half));
   CGameCollision::BuildAreaCollisionCache(mgr, cache);
+  float best = radius;
 
+  // The surface the crawler stands on is re-tested every frame (asm 0x1418-0x1438): the flag is
+  // the byte 0x860's 0x40 mask (mHasAlignSurface). The retail never sets the 0x20 mask
+  // (mPlayerObstructed) in this module - only PreThink reads it (asm 0x10CC).
   if (mHasAlignSurface) {
     mHasAlignSurface = PointOnSurface(mAlignSurface, newPos);
   }
+  // The search runs when there is no surface, or on every fourth think (asm 0x1440-0x1450).
   if (!mHasAlignSurface || (mThinkCounter & 3) == 0) {
     bool found = false;
     for (int i = 0; i < static_cast< int >(cache.GetNumCaches()); ++i) {
@@ -352,6 +361,10 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
             // Constrained: AI-passthrough triangles are skipped, and the distance of a triangle
             // whose normal agrees with the constraint plane (> 0.5) is scaled up by 1 + that
             // agreement. Constraint 1 compares with the normal, 2 with its reverse, 3 with either.
+            // The constraint is the PillBug's `planarConstraint` init property (0xde7e9f94, set
+            // through SetConstraint): the shipped placements use 1 and 2 only (Agon Wastes
+            // 0b_sand_hall, 0d_sand_hall and 05_portalpuzzle, Sanctuary Fortress
+            // 06_cliff_spiderballguardian), so the constraint-3 arm has no shipped instance.
             if ((surface.GetSurfaceFlags() & (static_cast< u64 >(1) << kMT_AIPassthrough)) != 0) {
               continue;
             }
@@ -369,6 +382,7 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
           }
           if (dist < best && PointOnSurface(surface, newPos)) {
             best = dist;
+            // @ fn_83_19C8 (0x5C): the CCollisionSurface copy (asm 0x14BC and 0x160C).
             mAlignSurface = surface;
             found = true;
           }
@@ -382,8 +396,8 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
     const CVector3f normal = mAlignSurface.GetNormal();
     AlignToPlane(CUnitVector3f(normal, CUnitVector3f::kN_No), mAlignAngVel * dt);
     mTumbleAngle = 0.f;
-    x860_27_ = false;
-    x860_28_ = CVector3f::Dot(GetTransform().GetUp(), normal) < 0.86f;
+    x860_28_ = false;
+    x860_29_ = CVector3f::Dot(GetTransform().GetUp(), normal) < 0.86f;
   } else {
     // Nothing to stand on: roll forward about the sphere at its rolling speed (degrees/s).
     const CVector3f forward = GetTransform().GetForward();
@@ -391,8 +405,8 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
     const float angVel = 57.295776f * velocity.Magnitude() / mColSphere.GetSphere().GetRadius();
     const CVector3f target = CVector3f::Dot(velocity, forward) > 0.f ? forward : -forward;
     AlignToPlane(CUnitVector3f(target, CUnitVector3f::kN_No), angVel * dt);
-    x860_27_ = true;
-    x860_28_ = false;
+    x860_28_ = true;
+    x860_29_ = false;
     mTumbleAngle += angVel * dt;
   }
 }

@@ -35,6 +35,11 @@ public:
   float GetAdditiveFlinchWeight() const;
   float GetFlinchRemainingTime() const { return mFlinchRemainingTime; } // Guessed name
   void SetSeverity(pas::ESeverity severity) { mSeverity = severity; }   // Guessed name
+#ifdef TARGET_PC
+  // Port: the Boost Guardian's KnockBack (REL module 30, fn_30_CB84) stores the flinch type
+  // itself (patterned 0x688, this + 0x68).
+  void SetFlinchType(int type) { mFlinchType = type; }
+#endif
 
   // Guessed names, correlated with Prime's impulse implementation.
   void ApplyImpulse(float dt, CPhysicsActor& actor);

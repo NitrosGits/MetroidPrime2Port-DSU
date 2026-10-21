@@ -148,3 +148,13 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   Aurora then samples the guest buffer as tiled C8/RGB565 and the overlay turns into diagonal stripes.
   `MP2_DEBUG_SCAN_PALETTE=1` reports the palette-index map's foreign bytes (`bad=`), which is how this
   was measured (~34,500 of 356,608 on half the frames before, 0 after).
+- **A REL's BSS string is filled by the module's static initializer, so "the module only reads
+  it" does not mean it is empty.** The ScriptPlayerTurret's muzzle locator (`lbl_63_bss_C`) is a
+  static `rstl::string` that `fn_63_376C` builds from `lbl_63_rodata_60 + 0x26` =
+  `muzzleend_LCTR` (0x00003788); reading the BSS as zero bytes gave the port an empty locator
+  name and a muzzle transform off the base actor. The initializer is a separate asm file:
+  `grep -n bss_X auto_fn_*_text.s` finds the function that fills it.
+- **Other vendored-Aurora additions** to keep on re-vendor: the partial `GXCopyTex` clear
+  (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
+  (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
+  end_frame).

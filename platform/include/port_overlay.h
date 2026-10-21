@@ -7,9 +7,20 @@
 // without walking. Aurora creates the ImGui context and feeds it the SDL events; the overlay
 // only has to build its windows between `aurora_begin_frame` and `aurora_end_frame`.
 
+class CGameOptions;
 class CWorld;
 
 namespace PortOverlay {
+
+// The game's own options (rumble, invert Y, brightness, volumes...), kept in settings.cfg as the
+// Prime 1 port keeps them (`game_options`). Retail keeps them per save file, so a change the card
+// never saved was lost; here the file holds the last options set anywhere and they are global.
+// RestoreGameOptions applies the file to the live options at boot and after a reset, and starts
+// SyncGameOptions recording; ApplySavedGameOptions overrides a save file's options as it loads
+// (false when the file has none); SyncGameOptions, once a frame, records any change.
+void RestoreGameOptions();
+bool ApplySavedGameOptions(CGameOptions& options);
+void SyncGameOptions();
 
 // Published by the game every update, so the window can say where the player is and offer the
 // warp and item pages: the ids are the game's own (a world asset id and an area index), and
@@ -202,6 +213,9 @@ void SetUiScale(int percent);
 // aurora_enable_vsync from Draw, even with the window closed.
 bool Vsync();
 void SetVsync(bool enabled);
+// Whether the window is fullscreen (on Android: the status and navigation bars hidden).
+bool Fullscreen();
+void SetFullscreen(bool enabled);
 // MP1's 60 FPS cap (`MP2_FRAME_LIMIT=0|1`, F1 > Video > Frame rate, F10); on by default. The main
 // loop sleeps to a 60 Hz deadline in PortPaceFrame (platform/port_events.cpp).
 bool FrameLimit();

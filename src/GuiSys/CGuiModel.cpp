@@ -202,7 +202,30 @@ bool CGuiModel::PortGetBounds(CAABox& out) const {
   if (model == nullptr) {
     return false;
   }
-  out = model->GetBoundingBox();
+  // A frame's models carry no bounds (CGuiFrameModelDatabase builds them with the null box), so
+  // take them from the positions: big-endian F32 XYZ (vertex format 1).
+  const uint* positions = static_cast< const uint* >(model->GetPositions());
+  const uint count = model->GetModelInstance().GetVertexSize() / (3 * sizeof(uint));
+  if (positions == nullptr || count == 0) {
+    return false;
+  }
+  float bounds[6];
+  for (uint i = 0; i < count; ++i) {
+    for (int axis = 0; axis < 3; ++axis) {
+      union {
+        uint u;
+        float f;
+      } value;
+      value.u = CBasics::SwapBytes(positions[3 * i + axis]);
+      if (i == 0 || value.f < bounds[axis]) {
+        bounds[axis] = value.f;
+      }
+      if (i == 0 || value.f > bounds[axis + 3]) {
+        bounds[axis + 3] = value.f;
+      }
+    }
+  }
+  out = CAABox(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]);
   return true;
 }
 

@@ -48,6 +48,11 @@ public:
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
+#ifdef TARGET_PC
+  // The cheat menu and the console's `give`/`take` call this after they change the inventory.
+  static void PortNoteInventoryCheat();
+#endif
+
 private:
   void OnSetToZero(CStateManager& mgr, TUniqueId originator);
   bool VerifyConditions(CStateManager& mgr, TUniqueId originator) const;
@@ -55,6 +60,14 @@ private:
   uint mPlayerMask;
   rstl::reserved_vector< CConditionalRelayQuery, 4 > mConditions;
   bool mSetToZeroOnAreaLoaded;
+#ifdef TARGET_PC
+  // A relay that checks on area load (every translator gate's "Translator Check") checks once:
+  // an item the cheat grants after that is never seen. These let Think check again after a cheat,
+  // sending only when the verdict changed.
+  bool mPortChecksOnAreaLoad;
+  bool mPortLastVerdict;
+  uint mPortCheatGeneration;
+#endif
 };
 CHECK_SIZEOF(CScriptConditionalRelay, 0x80)
 
