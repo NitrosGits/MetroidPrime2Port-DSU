@@ -540,3 +540,19 @@ unknown_0x378285b9, 0xBE0 = scatterShotProjectilesPerSecond, 0xBE4 projectile ui
 forced to 8 by a reverted hook): TravelToCoverPoints -> ScatterShot (gap 2.0..3.0 -> 2.55 s) ->
 AnimOver after ~2.4 s -> Dash (stand-in fn_10_150DC, BreakDash stand-in fn_10_149B4); picks
 resume at 0x990 = 6.37 s. Unforced: TravelToCoverPoints -> MissileJump (stand-in fn_10_177BC).
+
+**Slice 7** (2026-10-21): the scatter shot fires. DoUserAnimEvent's kUE_EventStart arm (case 27 of
+jumptable_10_data_FB4, 0x0001C1F0; never reaches the base) starts it with fn_10_11814 (side 0 for
+attack 8 at 0x0001C25C, the byte 0xBAC for 0x10 at 0x0001C268); 0xBA4 is the start time (0x8B0),
+not a delay. fn_10_13230 is the jittered aim point (0.47 s sweep for 8, 0.67 s otherwise).
+fn_10_12F60 spawns the shot: the module's own CScattershotProjectile (CWeapon subclass, 0x27B0,
+ctor fn_10_2AD0, vtable lbl_10_data_40, code 0x0..0x44D0) is not ported, so a CEnergyProjectile
+(kWT_AI, the info's token/damage) stands in; fn_10_C98 (add a shot to the live swarm) is a
+stand-in. 0xB50/0xBB0 are the two optional CProjectileInfos (scatterShotProjectile/2, one damage;
+valid bytes 0xB78/0xBD8), ProjectileInfo (fn_10_1C6C8) picks 0xBB0 when 0xBAE = (rand < 0xBDC,
+/100 when > 1). 0x8CC = GetLctrTransform("GUN_Particle_LCTR") in PreRender (0x00018C18). Forced
+walk: ScatterShot -> 5 shots from the gun locator, each gone after 0.15..0.45 s -> Dash.
+**Dash** (fn_10_150DC) is a chain, not one body: fn_10_15348 (the 0x9E0..0xA08 dash record),
+fn_10_154FC (0x600 bytes, the dash path), 14A00, 14D14 (with 12C2C/14C50/14FE0, calls 1B478),
+12CE0 (21DF8/EDE0, calls 1B478); 0xA08 bits 0x40 (Range(0,100) < stage+0x20) and 0x80
+(BreakDash fn_10_149B4: 0x80 set -> true, else 0xA04 > 0 -> false, else GetAnimOver).
