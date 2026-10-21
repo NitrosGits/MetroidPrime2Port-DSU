@@ -61,7 +61,6 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     mColor.SetAlpha(0.f);
     mAlphaDelta = 0.f;
     xc04_warpPoint = 0;
@@ -99,8 +98,6 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
       mgr.BuildNearList(nearList, bounds, filter, this);
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {
-        xc04_warpPoint = 1;
-        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, mgr);
       }
       break;
     }
@@ -140,7 +137,6 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     xc04_warpPoint = 1;
     x8fa_28_ = false;
     break;
@@ -1179,7 +1175,6 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     x8f7_29_inWallHang = true;
     if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
       const TUniqueId id = cover->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next);
@@ -1251,7 +1246,6 @@ void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     SquadReset(mgr); // fn_72_DEDC
     xbb0_leashTimer = 0.f;
     x8fa_25_ = true;
@@ -1550,7 +1544,6 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     xbb0_leashTimer = 0.f;
     break;
   case kStateMsg_Update:
