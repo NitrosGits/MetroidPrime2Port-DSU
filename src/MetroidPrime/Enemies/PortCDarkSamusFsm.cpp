@@ -1589,6 +1589,10 @@ bool CDarkSamus::BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) co
 
 // fn_10_9920 (0x00009920, 0x4C bytes): null when the ball's uid 0xE38 is kInvalidUniqueId
 // (`cmplw r6, r0` at 0x00009938), else the actor it names.
+// @ fn_10_9920
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): 644 calls. The null arm ran on its own
+// (the boost ball paths run with no ball); the actor arm was forced (gdb `set var
+// mBoostBallUid.value = 0x4f7` at the second call). See docs/module-analysis/DarkSamus_helpers.md.
 CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
   if (mBoostBallUid == kInvalidUniqueId) { // 0x00009938
     return nullptr;
@@ -2414,6 +2418,10 @@ void CDarkSamus::TurnAround() {
 // Unmarked: the arm that deletes an actor needs a boost ball in the world. The uid 0xE38 is
 // set by the BoostBallRoll (fn_10_A3B0) and BoostBallFire (fn_10_9724) paths, which are
 // outside the port, so only the "no ball" arm ran.
+// @ fn_10_9AC4
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): the null arm ran on its own (the dive's
+// exit calls it with no ball); the delete arm was forced (gdb `set var mBoostBallUid.value = 0x4f7`
+// at the dive's entry). See docs/module-analysis/DarkSamus_helpers.md.
 void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
   if (mBoostBallUid != kInvalidUniqueId) { // 0x00009AE8
     mgr.DeleteObjectRequest(mBoostBallUid); // 0x00009B00

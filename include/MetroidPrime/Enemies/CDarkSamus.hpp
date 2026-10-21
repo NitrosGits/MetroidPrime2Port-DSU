@@ -974,6 +974,12 @@ private:
                                     // (the XDMG arm, 0x0001EA98)
   CVector3f mHitDirectionFlat;     // guest 0xC10/0xC14/0xC18, the same direction flattened
                                     // (its z 0.0f) and normalized (0x0001EB04..0x0001EB30)
+#ifdef TARGET_PC
+  // The stateless helpers of the module (the ones below 0xA000). Their bodies live in
+  // src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp; docs/module-analysis/DarkSamus_helpers.md
+  // has the function map and the arm tables.
+  bool HasBoostBall() const; // fn_10_9624: the boost ball's uid (0xE38) is not kInvalidUniqueId
+#endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
