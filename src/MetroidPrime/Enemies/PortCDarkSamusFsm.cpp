@@ -2085,8 +2085,9 @@ CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizonta
 }
 
 // fn_10_E910 (0x0000E910, 0xF8 bytes): every flag but the boost-ball bit cleared (the rlwimi
-// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero and
-// both timers to lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
+// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero,
+// the record's float +0x4C to lbl_10_rodata_3EC = -1.0f (0x0000E9E0) and both timers to
+// lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
 // @ fn_10_E910
 void CDarkSamusDive::Reset() {
   mBounced = false;
@@ -2102,6 +2103,7 @@ void CDarkSamusDive::Reset() {
   mStuckTime = 0.f;
   mBounceTime = 0.f;
   mLastPos = CVector3f::Zero();
+  mGuest4C = -1.f; // 0x0000E9E0 (lbl_10_rodata_3EC = -1.0f)
 }
 
 // fn_10_12960 (0x00012960, 0x1A0 bytes): the flat line from the target back to the actor

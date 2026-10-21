@@ -206,6 +206,9 @@ struct CDarkSamusDive {
   CVector3f mBounceDir;  // +0x18 (0xAD8), the direction fn_10_1CDD0 bounces the actor along
   CVector3f mLastPos;    // +0x24 (0xAE4), the position the stuck timer measures from
   CDamageInfo mDamage;   // +0x30 (0xAF0), the data's diveAttackDamage (0x0000E83C..0x0000E85C)
+  // +0x4C (0xB0C): the float fn_10_E910 writes lbl_10_rodata_3EC = -1.0f to (0x0000E9E0). The
+  // REL reads it nowhere else (the guest's offset 0xB0C appears once, in that store).
+  float mGuest4C;
   float mImpulseHorizontal; // +0x50 (0xB10), diveAttackImpulseHorizontal (f1, 0x0000E860; the
                             // loader's 0x964 is the constructor's f4, 0x0000DD70)
   float mImpulseVertical;   // +0x54 (0xB14), diveAttackImpulseVertical (f2, 0x0000E864; the
