@@ -1380,12 +1380,10 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
     }
     return;
   }
-  if (beam == nullptr) {  // 0x120C-0x1210
-    // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection
-    // range) must be above zero.
-    if (GetDetectionRange() <= 0.f) {
-      return;
-    }
+  // 0x120C-0x1224: a missing beam is made only when the base's field at 0x3D0 (its copy of the
+  // patterned info's detection range) is above zero (ble skips to 0x13EC, where the emitter is
+  // still updated).
+  if (beam == nullptr && !(GetDetectionRange() <= 0.f)) {
     // 0x1230-0x1244: a fresh id, kept at 0xF68. 0x1248-0x1380: the beam effect is built with the
     // CEntityInfo the retail makes at 0x12A0 (the area id, NullConnectionList, true and
     // kInvalidEditorId), the name (0x12B8, the rodata string at 0xA0 + 0x230), the module
@@ -1412,7 +1410,9 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   }
   // 0x13EC-0x142C: the beam opens (0x198 set, 0x13F8) and the sound follows the head, facing
   // along its Y column (0x13FC-0x142C UpdateEmitter, volume 0x7F).
-  beam->SetOpening(true);
+  if (beam != nullptr) {  // 0x13EC-0x13F0
+    beam->SetOpening(true);
+  }
   CSfxManager::UpdateEmitter(mBeamSfxHandle, GetTranslation(), GetTransform().GetColumn(kDY),
                              0x7F);
 }
