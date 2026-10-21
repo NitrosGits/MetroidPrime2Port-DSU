@@ -37,6 +37,9 @@
 #else
 #include <execinfo.h>
 #endif
+#if defined(__linux__)
+#include <sys/prctl.h>
+#endif
 #include <unistd.h>
 #include <cstdlib>
 #include <filesystem>
@@ -744,6 +747,14 @@ int main(int argc, char** argv) {
   // SIGTERM, a Ctrl-C. The handler dumps the counters and re-raises, so the exit status still
   // says which signal ended the run. See platform/port_coverage.cpp.
   PortCoverageInstall();
+#endif
+
+#if defined(__linux__) && !defined(__ANDROID__)
+  // MP2_ALLOW_PTRACE=1: let any process of this user attach (`gdb -p`, tools/cov/force.sh
+  // --attach) under yama ptrace_scope 1, which otherwise only lets a parent trace its child.
+  if (const char* allow = getenv("MP2_ALLOW_PTRACE"); allow && allow[0] == '1') {
+    prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
+  }
 #endif
 
 #if defined(__ANDROID__)

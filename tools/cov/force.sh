@@ -16,7 +16,8 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
 # The attach mode: the game runs on its own (no gdb at the start, so the boot is not slowed
 # down), the driver plays, and gdb takes the running process to write the forced members.  It
-# needs the ptrace permission (the kernel's yama ptrace_scope, or CAP_SYS_PTRACE); where that
+# needs the game started with MP2_ALLOW_PTRACE=1 (yama ptrace_scope 1 here: platform/main.cpp
+# opts in with PR_SET_PTRACER_ANY), or CAP_SYS_PTRACE; where that
 # is not granted, the normal mode below (gdb boots the game) is the way.
 if [ "${1:-}" = "--attach" ]; then
   PID=$2; SPEC=$(realpath "$3"); OUT=$(realpath -m "$4"); shift 4
