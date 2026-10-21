@@ -812,16 +812,18 @@ bool CDarkSamus::StartsInTheAir(CStateManager&, const CTriggerData&) const {
 // (bit 0 is the "less than") - so the test is 0xCC0 > 0xCC8.
 //
 // Two guards come first. The attack the actor is performing (the word at 0x980) must not be
-// 0x8000: the cmplwi at 0x000106A0 compares the low half of the word (bits 16..31) with
-// 0x8000, so the test is (id & 0xFFFF) == 0x8000. And when the actor has a history (the count
-// at 0x994, the ids at 0x998), the last id of the history (the word at 0x998 + (count - 1) * 4,
-// the slwi/add at 0x000106BC..0x000106C8) must not be 0x8000 either (0x000106D0).
+// 0x8000: the cmplwi at 0x000106A0 compares the whole word with 0x8000 - the `addis r0, r4, 0x0`
+// at 0x0001069C is a plain copy of the word into the register cmplwi destroys, and cmplwi
+// compares the 32-bit register against the 16-bit immediate, so the test is the whole word
+// against 0x00008000. And when the actor has a history (the count at 0x994, the ids at 0x998),
+// the last id of the history (the word at 0x998 + (count - 1) * 4, the slwi/add at
+// 0x000106BC..0x000106C8) must not be 0x8000 either (the copy at 0x000106CC and the cmplwi at
+// 0x000106D0).
 bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
-  if ((mCurrentAttack & 0xFFFF) == 0x8000) {
+  if (mCurrentAttack == 0x8000) {
     return false;
   }
-  if (mAttackHistoryCount > 0 &&
-      (mAttackHistory[mAttackHistoryCount - 1] & 0xFFFF) == 0x8000) {
+  if (mAttackHistoryCount > 0 && mAttackHistory[mAttackHistoryCount - 1] == 0x8000) {
     return false;
   }
   return mAccumulatedDamage > mDamageThreshold;

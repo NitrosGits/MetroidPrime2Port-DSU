@@ -378,11 +378,18 @@ reading of them:
   starts (0x0001B4CC) and 0xFFFF when it ends (0x0001B5A8); the call sites pass the ids of the
   module's own attacks (0x20000 the boost ball at 0x00009758, 0x400000 the phazon attack at
   0x00008210). The array at 0x998 with the count at 0x994 holds the **finished** attack ids, not
-  uids. `TooMuchDamage`'s `cmplwi` against 0x8000 therefore compares the low half of the attack
-  id with 0x8000 (what that id means is not established).
+  uids. `TooMuchDamage`'s `cmplwi` against 0x8000 compares the whole word with 0x00008000 (see
+  the mask note below); 0x8000 is bit 15 of the attack id.
 - **`clrlwi rD, rS, 24` clears the HIGH 24 bits and keeps the low byte** (the mask is `& 0xFF`,
   not `& 0xFFFFFF`). `ShouldReact` reads the four trigger answers that way: the byte against 1
   (0x00011190, 0x000111C0, 0x000111E4, 0x00011210).
+
+- **`cmplwi` compares the whole 32-bit register against the 16-bit immediate.** The guest's
+  `addis r0, r4, 0x0` is a plain copy of the word into the register `cmplwi` destroys, so
+  `TooMuchDamage`'s `cmplwi r0, 0x8000` (0x000106A0) is the test `word == 0x00008000` - not a
+  half-word test. The archive tree's matched decomp shows the same idiom for a constant with the
+  high bit set (`addis r0,r3,-29495 ; cmplwi r0,53261` is `word + 0x8CC90000 == 0xD00D`,
+  `src/MetroidPrime/CMainShutdownSubsystems.cpp`).
 
 `ShouldReact` reads the four module triggers through the handler table the vptr points at: the
 word at 0x208 is `WasHeavyHit` (`fn_10_112AC`) and answers the trigger at once, and then the
@@ -394,6 +401,20 @@ answers when the damage at 0xCC0 is above the threshold at 0xCC8 (the `extrwi` t
 0x8000. `WallCollision` answers when the actor has stood still for more than 1.2 seconds (the
 timer at 0x964) or when less than 0.2 seconds have passed since the last wall collision (the
 time at 0xC44 against the elapsed time at 0x8B0).
+
+**The attack ids** (2026-10-21, proven): they are bits. The fight script's picked ones (the word
+at 0x984) are bit 0 the melee (1), bit 2 the melee dash (4), bit 3 the scatter shot (8), bit 4
+the moving scatter shot (0x10), bit 5 the dive attack (0x20), bit 6 the normal missile (0x40),
+bit 7 the missile jump (0x80), bit 8 the super missile (0x100), bit 9 the taunt (0x200), bit 10
+the pause (0x400), bit 20 the freeze beam (0x100000) and bit 21 the fade variant of the normal
+missile (0x200000); the DOL's two more are bit 22 the phazon attack (0x400000) and bit 23 the
+phazon enrage (0x800000). The module's own attacks (the ids `fn_10_1B478` writes into 0x980)
+are bit 16 the sweep beam (0x10000, `lis r4, 0x1` at 0x0000CA44 in `fn_10_CA0C`), bit 17 the
+boost ball (0x20000, 0x00009758 in `fn_10_9724`), bit 18 the fade in (0x40000, 0x0000BD60 in
+`fn_10_BD40`), bit 19 the fade out (0x80000, 0x0000BC74 in `fn_10_BC54`), bit 22 the phazon
+attack (0x400000, 0x00004AE8 in `fn_10_4AC8`) and bit 23 the phazon enrage (0x800000,
+0x00006BF0 in `fn_10_6BA0`). **0x8000 is bit 15**, in the same family as the sweep beam, and no
+Picked\* trigger watches it.
 
 **The two ported helpers** (2026-10-21): `fn_10_1D794` (the still timer at 0x964 and the
 position it measures from at 0x958) and `fn_10_1E178` (the damage at 0xCC0, the health at 0xCC4
