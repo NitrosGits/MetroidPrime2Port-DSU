@@ -477,7 +477,7 @@ public:
   float SpineHelper1080C(int count) const;                       // fn_56_1080C
   CVector3f SpineHelper108BC(int index) const;                   // fn_56_108BC
   CVector3f GetLocatorPosition(int index) const;                 // fn_56_1096C
-  CTransform4f GetLctrTransformWrapper(const CSegId& id) const;  // fn_56_10A20
+  CVector3f GetLctrTransformWrapper(const CSegId& id) const;  // fn_56_10A20: the translation only
 
   // WP6: Bomb Guardian bombs.
   void UpdateBombDrop(CStateManager& mgr, float dt);             // fn_56_3A8C
