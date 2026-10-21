@@ -87,7 +87,9 @@
 #include "MetroidPrime/ScriptObjects/CScriptForgottenObject.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSpawnPoint.hpp"
+#ifdef TARGET_PC
 #include "MetroidPrime/ScriptObjects/CScriptWorldTeleporter.hpp"
+#endif
 #include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -3925,6 +3927,7 @@ void CStateManager::ProcessInput(const CFinalInput& input) {
   }
 }
 
+#ifdef TARGET_PC
 namespace {
 // Unload every area except the two a warp has to spare: the one the player is in and the one being
 // streamed. `CWorld::UnloadAllAreasExcept` spares a single area, and using it with the current area
@@ -3954,6 +3957,7 @@ bool PortUnloadAreasExcept(CStateManager& mgr, CWorld& world, TAreaId keepA, TAr
   return !failed;
 }
 } // namespace
+#endif
 
 void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   mArchQueue = &queue;
