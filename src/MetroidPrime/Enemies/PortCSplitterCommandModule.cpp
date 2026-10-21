@@ -352,7 +352,6 @@ SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
-SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
@@ -1512,6 +1511,16 @@ void CSplitterCommandModule::LaserPulse(CStateManager& mgr, EStateMsg msg, float
     }
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
+}
+
+// fn_75_5448 (the head's Dead state, 0x5448-0x5498): Activate only (0x5450-0x5468): the laser
+// pulse projectile despawns (0x5470 fn_75_1790) and the head is deleted (0x547C
+// CPatterned::DeathDelete).
+void CSplitterCommandModule::Dead(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    PortDespawnProjectile(mgr);
+    DeathDelete(mgr);
   }
 }
 
