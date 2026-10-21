@@ -7,13 +7,16 @@
 #     at the next CoverBlown entry.
 #   CoveringFire, one call: this pirate's area id (CEntity +0x4) set to 99 -> every in-attack pirate
 #     is in another area (asm 0xA944-0xA950). Restored at the next CoverBlown entry.
+#   Ambushing 7630, one Activate: 0x8f4 bit 0x40 (x8f4_25_ceilingAmbush, data flag 0x2) set -> the
+#     ceiling locomotion arm (asm 0x7650); restored at the next Ambushing call. No shipped pirate
+#     ambushes in the run areas (IsAmbushing is always 0).
 #   Crouch 98D8 and WallHang 69AC, one Activate each: 0x900 = u0531, the 06_sand_alamofront L2 cover
 #     point 001d01e9 (`objs cover`) -> the cover arms (asm 0x9918 / 0x69F0). The fights' forced
 #     Crouch/WallHang never held a cover point (CoverFind takes one only in Cover/TargetCover paths).
 # Run (2026-10-21, all five forces hit; CoveringFire is only reached in some runs, rerun if its
 # forced.log line is missing):
 #   SP_FORCE=Captured SP_STEPS='wait 15; fsm {#173} Crouch; wait 3; fsm {#173} WallHang; wait 5;
-#   fsm {#189} LaunchGrenade; wait 4; deleteteams; fsm {#431} LaunchGrenade; wait 4'
+#   fsm {#189} LaunchGrenade; wait 4; deleteteams; fsm {#431} LaunchGrenade; wait 4; fsm {#174} Ambushing; wait 3'
 #   tools/cov/force.sh <this> <out> 42b935e4,06_sand_alamofront --driver
 #   'python3 tools/drivers/spacepirate_drive.py {port} 2 3' --frames 12000
 CLASS = 'CSpacePirate'
@@ -42,6 +45,15 @@ FORCE = [
       '$this->mAreaId.value = $cf_a ? 99 : $this->mAreaId.value',
       '$cf = $cf_a ? 1 : $cf'],
      0, 'area id = 99 on one call (restored at the next CoverBlown)'),
+    ('7630 Ambushing', 'CSpacePirate::Ambushing(', ['$rdx', '$this->x8f4_25_ceilingAmbush'],
+     ['$am = $_isvoid($am) ? 0 : $am',
+      '$am == 1 ? (((CSpacePirate*)$am_p)->x8f4_25_ceilingAmbush = 0) : 0',
+      '$am = $am == 1 ? 2 : $am',
+      '$am_a = ($am == 0 && $rdx == 0) ? 1 : 0',
+      '$am_p = $am_a ? $this : ($_isvoid($am_p) ? 0 : $am_p)',
+      '$this->x8f4_25_ceilingAmbush = $am_a ? 1 : $this->x8f4_25_ceilingAmbush',
+      '$am = $am_a ? 1 : $am'],
+     0, 'x8f4_25_ceilingAmbush = 1 on one Activate (cleared at the next Ambushing call)'),
     ('98D8 Crouch', 'CSpacePirate::Crouch(', ['$rdx', '$this->x900_coverPoint.value'],
      ['$cr = $_isvoid($cr) ? 0 : $cr',
       '$cr_a = ($cr == 0 && $rdx == 0) ? 1 : 0',

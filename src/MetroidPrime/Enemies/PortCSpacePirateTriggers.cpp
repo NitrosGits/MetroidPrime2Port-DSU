@@ -650,6 +650,9 @@ bool CSpacePirate::StartAttack(CStateManager& mgr, const CTriggerData& data) con
   return false;
 }
 
+// @ fn_72_6328
+// Retail is `lbz 0x8f5; extrwi 1, 25` (x8f5_25_breakAttack, data flag 0x400). Ambushing's trigger list
+// evaluates it every frame (gcov 2026-10-21, a forced `fsm Ambushing`).
 bool CSpacePirate::BreakAttack(CStateManager& mgr, const CTriggerData& data) const {
   return x8f5_25_breakAttack;
 }

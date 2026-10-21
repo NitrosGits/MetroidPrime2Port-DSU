@@ -110,7 +110,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x5E28	0x7C	CSpacePirate	Bounce helper (only caller 5D0C)	method	T	5D0C	only caller is the T state 5D0C	unmarked	fn_72_5E28
 0x5EA4	0x188	CSpacePirate	PathFindEx (state)	fsm-state	T	data_5B0	not a state of AFSM 0x5652a12f/0x7b49526b	unmarked	fn_72_5EA4
 0x602C	0x2FC	CSpacePirate	BounceFind (trigger)	fsm-trigger	T	data_160	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_602C
-0x6328	0xC	CSpacePirate	BreakAttack (trigger)	fsm-trigger	B	data_148	-	unmarked	fn_72_6328
+0x6328	0xC	CSpacePirate	BreakAttack (trigger)	fsm-trigger	B	data_148	-	marked	fn_72_6328
 0x6334	0x28	CSpacePirate	StartAttack (trigger)	fsm-trigger	T	data_13C	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_6334
 0x635C	0x30	CSpacePirate	LostInterest (trigger)	fsm-trigger	T	data_154	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_635C
 0x638C	0x3C	CSpacePirate	ShouldSpecialAttack (trigger)	fsm-trigger	T	data_130	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_638C

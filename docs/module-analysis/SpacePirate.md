@@ -538,6 +538,24 @@ multiplayer arm is dead), CoverBlown AA64 (a covering pirate with zero steering 
 step/distance tests), ShouldAttack A71C (only in Cover's and-chain after its Delays). Not in this
 AFSM (0x5652a12f) at all, so they need another pirate FSM: DoubleSnap 99F0, Bounce 5D0C,
 PathFindEx 5EA4, BounceFind 602C, StartAttack 6334, LostInterest 635C, ShouldSpecialAttack 638C.
+
+**gcov pass 3 (2026-10-21)**: Ambushing 7630 did run: the old `fsm Ambushing` run (`gc_g`) was killed
+by its timeout before exit, so no .gcda was written. Under gdb the forced state runs its Updates and
+evaluates BreakAttack 6328 every frame. `spacepirate_force4.py` now sets x8f4_25_ceilingAmbush on one
+Activate (the ceiling arm, asm 0x7650), which makes Ambushing ALL-ARMS. BreakAttack is branchless and
+is marked. Disc scan (every AFSM/FSM2 asset, every PIRT placement's property bytes): PIRT objects use
+only two FSMs, 0x5652a12f (63 placements) and 0x7b49526b (2). Neither lists DoubleSnap, Bounce,
+PathFindEx, BounceFind, StartAttack, LostInterest or ShouldSpecialAttack, so those are dead in the
+shipped pirate data; other FSMs list Bounce/ShouldSpecialAttack (0x7a71739a, 0x7d9a41a2, 0xcdb2a199),
+PathFindEx (0x214e18eb) and LostInterest (0x1bbdb38f, 0xcf340923). Wall-hang cover points (COVR
+property 0x969de5ff bit 0x10) ship in 02_sand_sandfalls L3: 000a0186 and 000a0180. With the player at
+(-83.1, -72, -9.5) and pirate 000a010e placed at (-78, -96, -10), then `fsm Lurk`, the chain
+CoverFind -> Run -> TargetCover -> PathFind -> WallHang runs naturally. That gives WallHang 69AC every
+arm except the switch default and the no-cover-point arm (the older force run took that one), and
+runs CoverBlown AA64 with 12 of its 20 edges still untaken. Pathofeyes check (cube PLAT 000e0147 blocked by
+pirate 000e01b4): PathFind 8A90 and Lurk AF70 match the asm call for call. That pirate's Search
+returns kR_Success on 1339 of its 1429 PathFind updates; it is chasing the player across the track, not
+standing on a failed search.
 BreakAttack 6328 is only in Ambushing's list, and Ambushing 7630 (marked before gcov) gets 0 calls
 even after `fsm <pirate> Ambushing`: the trace shows the transition, then no trigger is evaluated
 for that pirate (open).
