@@ -44,7 +44,10 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
 rebuild, any `build-port-link` binary. A spec (`tools/cov/specs/<module>.py`) sets `CLASS = 'CSandworm'`
 and `SPEC = [(label, where, [exprs], flags)]`: `where` is a demangled-name prefix (`'CSandworm::CanAttack('`)
 or `'loc:File.cpp:<line>'` (lines of the *built* source); `exprs` are gdb expressions on the entry registers
-(`$this->x8C0_flags & 0x10`, `$rdx` = a state's EStateMsg); flags `ret` (bool result), `retp` (pointer
+(`$this->x8C0_flags & 0x10`, `$rdx` = a state's EStateMsg; the host is x86-64 SysV, not PPC: integer
+args in rdi(this) rsi rdx rcx r8 r9, floats in xmm0..; an argument written at entry may already be copied,
+so force members through `$this` or break where the value is read; `$al`/`$sp`/`$fp`/`$fs` are registers,
+so name gdb scratch variables with a prefix, e.g. `$ds_alive`); flags `ret` (bool result), `retp` (pointer
 non-null), `calls` (count every call/jmp site in the body by callee - the way to see arms that end in a
 call, tail calls included; `caller=` misses tail calls), `max=<n>` (hits per breakpoint, default 400: raise
 it for per-frame functions or later arms never show). `<out>/cov.txt` lists per entry its hits and the
