@@ -8,6 +8,7 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/SObjectTag.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -499,6 +500,15 @@ private:
   uchar xc66_;                            // 0xc66, cleared (fn_9_D904 @0x0000E1E8)
   // core (append-only; PortCCommandoPirateCore.cpp)
   int xc54_;                              // 0xc54, the melee attack index; -1 (fn_9_D904 @0x0000E0CC)
+  // 0xc3c / 0xc40: the shield's two particle systems, the arm effect (the block's mShield
+  // mArmEffect, guest this+0x914) and the charge effect (mChargeEffect, guest this+0x910); the
+  // ctor makes them with fn_9_F58C (@0x0000E090 and @0x0000E09C), fn_9_1C0C drives them and
+  // fn_9_C598 draws the one the state word at 0xc4c picks.
+  rstl::single_ptr< CElementGen > xc3c_armEffect;
+  rstl::single_ptr< CElementGen > xc40_chargeEffect;
+  // fn_9_F58C: a CElementGen for a PART id, or null for kInvalidAssetId (PortCCommandoPirateCore.cpp)
+  static CElementGen* xF58C_CreateEffect(CAssetId id);
+  void x1C0C_DriveEffect(CElementGen& effect, float dt);
 
 public:
   // vtable slot 0xc8 = fn_9_68, slot 0xb4 = fn_9_AC (PortCCommandoPirateCore.cpp)

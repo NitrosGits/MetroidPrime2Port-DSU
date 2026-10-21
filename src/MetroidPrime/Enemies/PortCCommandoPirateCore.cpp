@@ -8,6 +8,10 @@
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "Kyoto/CRandom16.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Particles/CGenDescription.hpp"
+#include "Kyoto/TToken.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CQuaternion.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -552,4 +556,16 @@ void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   default:
     break;
   }
+}
+
+// fn_9_F58C (0x110): the shield effects' maker (the ctor's calls at 0x0000E090 and 0x0000E09C).
+// An invalid id gives null (the addis/cmplwi pair at 0x0000F598..0x0000F5A8); otherwise the PART
+// token from the simple pool (the tag's 'PART' at 0x0000F5AC..0x0000F5B4) and a new CElementGen
+// (0x338 bytes, 0x0000F618) on it with kMOT_Normal and kOSF_One (r5 = 0, r6 = 1 at 0x0000F648).
+CElementGen* CCommandoPirate::xF58C_CreateEffect(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return nullptr;  // 0x0000F680
+  }
+  TToken< CGenDescription > token = gpSimplePool->GetObj(SObjectTag('PART', id));  // 0x0000F5DC
+  return rs_new CElementGen(token, CElementGen::kMOT_Normal, CElementGen::kOSF_One);  // 0x0000F650
 }
