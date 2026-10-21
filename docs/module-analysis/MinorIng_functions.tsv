@@ -1,0 +1,218 @@
+offset	size	owner	name	kind	class	callers	dol_counterpart	port
+0x0	0x8	CMinorIng	GetSearchPath (the host's body carries the marker)	virtual	B		GetSearchPath	marked
+0x8	0x8	CMinorIng	GetPointSearchPath (the host's body carries the marker)	virtual	B		GetPointSearchPath	marked
+0x10	0x8	CMinorIng	IsListening (the host's body carries the marker)	virtual	B		IsListening	marked
+0x18	0x10	CMinorIng	the hit-time slot: mDamageHitTime = skDamageHitTime	virtual	T		CPatterned's own slot	no marker
+0x28	0x8	CMinorIng	the slot that returns the byte at +0x44f	virtual	T		CPatterned's own slot	no marker
+0x30	0x8	CMinorIng	the slot that returns 0	virtual	T		CPatterned's own slot	no marker
+0x38	0x10	CMinorIng	the slot that returns kInvalidUniqueId	virtual	T		CPatterned's own slot	no marker
+0x48	0xC	CMinorIng	the slot that tests the bit 0x10 of the byte at +0x34c	virtual	T		CPatterned's own slot	no marker
+0x54	0xC	CMinorIng	the slot that returns the rodata float lbl_8041B758	virtual	T		CPatterned's own slot	no marker
+0x60	0x8	CMinorIng	the slot that returns &this->0x754	virtual	T		CPatterned's own slot	no marker
+0x68	0x8	CMinorIng	the slot that returns true	virtual	T		CPatterned's own slot	no marker
+0x70	0x2C	CMinorIng	GetHealthInfo (the host's body carries the marker)	virtual	B		GetHealthInfo	marked
+0x9C	0x24	module	RELExit: the module's exit	rel-entry	H	_epilog	the host's REL runtime	no marker
+0xC0	0x20	module	RELMain: the module's entry	rel-entry	H	_prolog	the host's REL runtime	no marker
+0xE0	0x30	module	RegisterMinorIngModule: the module's registration	rel-entry	B	RELMain	the host's RegisterMinorIngModule (marked)	marked
+0x110	0x844	module	the loader: the property loop over the REL's own binary format	loader	B		the host's generated SLdrMinorIng reader (marked)	marked
+0x954	0x60	(weak)	delete of a CDamageVulnerability holder (the delete operator)	weak-dtor	H		the host's own delete	no marker
+0x9B4	0x290	CMinorIng	BuildMinorIngData: the data build	method	B	110	the host's BuildMinorIngData (marked)	marked
+0xC44	0xBC	CBouncyGrenadeData	CopyGrenadeData: the copy of the grenade data	method	B	9B4 A9DC	the host's CopyGrenadeData (marked)	marked
+0xD00	0x54	CHealthInfo	CopyHealthInfo: the copy of the health info	method	B	319C 9B4 A9DC	the host's CopyHealthInfo (marked)	marked
+0xD54	0xB4	CMinorIng	the copy of the ing spot into the data	method	B	9B4 A9DC	the host's copy of the ing spot (marked)	marked
+0xE08	0x5C	CIngSpotData	the REL's own copy of CIngSpotData (the null-guarded body)	inline-dol	H	D54	the host's CIngSpotData owns its copy	no marker
+0xE64	0x54	(weak)	delete of a heap block with a pointer at +0x0c	weak-dtor	H		the host's own delete	no marker
+0xEB8	0x130	CIngSpotData	the REL's own copy of the ing spot's vector member	inline-dol	H	E08	the host's CIngSpotData owns its copy	no marker
+0xFE8	0x94	CBouncyGrenadeData	BuildGrenadeData: the inglet's grenade data	method	B	110	the host's BuildGrenadeData (marked)	marked
+0x107C	0x58	(weak)	delete of a CDamageVulnerability holder	weak-dtor	H		the host's own delete	no marker
+0x10D4	0x40	(host copy)	LdrToPatternedInfo: the patterned info the loader builds	inline-dol	H	110	the host's generated LdrToPatternedInfo	no marker
+0x1114	0x20	(host copy)	the patterned info's own copy	inline-dol	H	10D4	the host's generated LdrToPatternedInfo	no marker
+0x1134	0x28	CModelData	the REL's copy of CModelData (the null-checked wrapper)	inline-dol	H	1114	the host's CModelData owns its copy	no marker
+0x115C	0x13C	CModelData	the REL's copy of CModelData (the three model slots, the scale, the id; the source's byte at +0x0c cleared)	inline-dol	H	1134	the host's CModelData owns its copy	no marker
+0x1298	0x6C	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
+0x1304	0x54	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
+0x1358	0x64	(weak)	delete of a CAnimData holder	weak-dtor	H		the host's own delete	no marker
+0x13BC	0x60	(weak)	delete of a CModelData holder	weak-dtor	H		the host's own delete	no marker
+0x141C	0xBC	(weak)	delete of an SLdr block (SLdrDamageInfo, SLdrActorParameters, ...)	weak-dtor	H		the host's own delete	no marker
+0x14D8	0x188	SLdrMinorIng	SLdrMinorIng::SLdrMinorIng (the default constructor)	inline-hdr	H	110	upstream's generated SLdrMinorIng	no marker
+0x1660	0x64	(weak)	delete of an SLdrDamageInfo block	weak-dtor	H		the host's own delete	no marker
+0x16C4	0x108	SLdrMinorIng	the sub-block's default constructor	inline-hdr	H	14D8	upstream's generated SLdrMinorIng	no marker
+0x17CC	0x64	(weak)	delete of an SLdrDamageInfo block	weak-dtor	H		the host's own delete	no marker
+0x1830	0x11C	SLdrMinorIng	the sub-block's default constructor	inline-hdr	H	14D8	upstream's generated SLdrMinorIng	no marker
+0x194C	0x394	SLdrMinorIng	LoadTypedefMinorIngIngSpot (the ing spot reader)	inline-hdr	H	110	upstream's generated loader	no marker
+0x1CE0	0x358	SLdrMinorIng	LoadTypedefUnknownStruct34 (the inglet's block reader)	inline-hdr	H	110	upstream's generated loader	no marker
+0x2038	0x14	CMinorIng	StateOver (the host's body carries the marker)	fsm-trigger	B		StateOver	marked
+0x204C	0x15C	CMinorIng	the lure point on the nav mesh (the search's flags 3 for the height query, 0x301 after it)	method	B	21A8 22B0	the host's PortIngLuredMeshPoint (marked in PortIngShared.hpp, the Ing lane's file)	marked
+0x21A8	0x108	CMinorIng	SetLuredDest (the host's body carries the marker)	method	B		SetLuredDest	marked
+0x22B0	0x210	CMinorIng	SetLuredPointDest (the host's body carries the marker)	method	B		SetLuredPointDest	marked
+0x24C0	0x14	CMinorIng	dead: sets the bit 0x02 of the byte at 0xd3e (mShouldEvaporate)	unreferenced	T		no host body (the retail never calls it)	no marker
+0x24D4	0x7C	CMinorIng	ReleaseCoverHint (the host's body carries the marker)	method	B	4E84 6BD4 8128 9150	ReleaseCoverHint	marked
+0x2550	0x48	CMinorIng	ClaimCoverHint (the host's body carries the marker)	method	B	4E84	ClaimCoverHint	marked
+0x2598	0x4C	CMinorIng	GetCoverHint (the host's body carries the marker)	method	B	24D4 4AC4 4C9C 4D4C 5264 6BD4	GetCoverHint	marked
+0x25E4	0x2F4	CMinorIng	PuddleDamage (the host's body carries the marker)	method	B	9150	PuddleDamage	marked
+0x28D8	0x58	CEntityInfo	the REL's copy of CEntityInfo's destructor	inline-dol	H	25E4 7058	the host's CEntityInfo owns its destruction	no marker
+0x2930	0x54	(host copy)	the REL's copy of a member's destructor (CMemory::Free of the pointer at +0x0c, then of the block)	inline-dol	H	28D8	the host's CEntityInfo owns its destruction	no marker
+0x2984	0x50	(weak)	delete of an rstl::string (live: the module's static init registers it as a global destructor)	weak-dtor	H		rstl::string's own destructor	no marker
+0x29D4	0x2C8	CMinorIng	CollisionActorDamage (the host's body carries the marker)	method	B	9150	CollisionActorDamage	marked
+0x2C9C	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0x2CD8	0x21C	CMinorIng	DamageSource (the host's body carries the marker)	method	B	29D4	DamageSource	marked
+0x2EF4	0x30	CDamageInfo	the REL's copy of CDamageInfo's assignment	inline-dol	H	2CD8	the host's CDamageInfo owns its copy	no marker
+0x2F24	0x8C	CDamageInfo	the REL's copy of CDamageInfo (the mode, the four floats, the three ids; the flag byte at +0x1c)	inline-dol	H	2EF4	the host's CDamageInfo owns its copy	no marker
+0x2FB0	0x54	CDamageInfo	the REL's copy of CDamageInfo (the null-guarded body of fn_44_2F24)	inline-dol	H	2F24	the host's CDamageInfo owns its copy	no marker
+0x3004	0x58	CMinorIng	SetBlobEffectActive (the host's body carries the marker)	method	B	76CC 9150	SetBlobEffectActive	marked
+0x305C	0x98	CMinorIng	SetCollisionActorActive (the host's body carries the marker)	method	B	43F4 9150	SetCollisionActorActive	marked
+0x30F4	0xA8	CMinorIng	UpdateCollisionActor (the host's body carries the marker)	method	B	8E5C	UpdateCollisionActor	marked
+0x319C	0x294	CMinorIng	CreateCollisionActor (the host's body carries the marker)	method	B	9150	CreateCollisionActor	marked
+0x3430	0xC	CMinorIng	FoundMovementPos (the host's body carries the marker)	fsm-trigger	B		FoundMovementPos	marked
+0x343C	0x74	CMinorIng	ResetAttackTimer (the host's body carries the marker)	method	B	8460 85DC 9150	ResetAttackTimer	marked
+0x34B0	0x164	CMinorIng	RayDown (the host's body carries the marker)	method	B	3670	RayDown	marked
+0x3614	0x5C	(port helper)	CopyRayCastResult: the copy of the ray's result	method	B	34B0	the host's CopyRayCastResult (marked)	marked
+0x3670	0x8C	CMinorIng	SnapToFloor (the host's body carries the marker)	method	B	43F4 88DC 9150	SnapToFloor	marked
+0x36FC	0x84	CMinorIng	UpdateSafeZone (the host's body carries the marker)	method	B	8E5C	UpdateSafeZone	marked
+0x3780	0x128	CMinorIng	PickSafeZone (the host's body carries the marker)	method	B	38A8	PickSafeZone	marked
+0x38A8	0xC4	CMinorIng	Listen (the host's body carries the marker)	virtual	B		Listen	marked
+0x396C	0x58	CMinorIng	StopSfx (the host's body carries the marker)	method	B	9150	StopSfx	marked
+0x39C4	0x148	CMinorIng	UpdateLoopSfx (the host's body carries the marker)	method	B	8E5C 9150	UpdateLoopSfx	marked
+0x3B0C	0x1A8	CMinorIng	PlaySfx (the host's body carries the marker)	method	B	25E4 396C 39C4 7058	PlaySfx	marked
+0x3CB4	0x5C	CMinorIng	UpdateTimers (the host's body carries the marker)	method	B	8E5C	UpdateTimers	marked
+0x3D10	0xD0	CMinorIng	ShouldPathFind (the host's body carries the marker)	fsm-trigger	B	8C1C	ShouldPathFind	marked
+0x3DE0	0x20	CMinorIng	CancelAnim (the host's body carries the marker)	fsm-trigger	B		CancelAnim	marked
+0x3E00	0x20	CMinorIng	StunOver (the host's body carries the marker)	fsm-trigger	B	85DC	StunOver	marked
+0x3E20	0x6C	CMinorIng	UpdateLocomotionType (the host's body carries the marker)	method	B	43F4	UpdateLocomotionType	marked
+0x3E8C	0x1C4	CMinorIng	UpdateTouchBounds (the host's body carries the marker)	method	B	8E5C 9150	UpdateTouchBounds	marked
+0x4050	0x30	CMinorIng	GetPrimitiveTransform (the host's body carries the marker)	virtual	B		GetPrimitiveTransform	marked
+0x4080	0x12C	CMinorIng	PrimitiveTransform (the host's body carries the marker)	method	B	4050 88DC	PrimitiveTransform	marked
+0x41AC	0xA0	CMinorIng	GetTouchBounds (the host's body carries the marker)	virtual	B		GetTouchBounds	marked
+0x424C	0x1A8	CMinorIng	Touch (the host's body carries the marker)	virtual	B		Touch	marked
+0x43F4	0x198	CMinorIng	SetForm (the host's body carries the marker)	method	B	82A0 8460 85DC 9150	SetForm	marked
+0x458C	0x364	CMinorIng	UpdateBlobEffect (the host's body carries the marker)	method	B	8E5C	UpdateBlobEffect	marked
+0x48F0	0x150	CMinorIng	CreateBlobEffect (the host's body carries the marker)	method	B	9150	CreateBlobEffect	marked
+0x4A40	0x28	CMinorIng	FoundPointPath (the host's body carries the marker)	fsm-trigger	B	6BD4	FoundPointPath	marked
+0x4A68	0xC	CMinorIng	IsPointPathFinding (the host's body carries the marker)	fsm-trigger	B		IsPointPathFinding	marked
+0x4A74	0x50	CMinorIng	PointPathOver (the host's body carries the marker)	fsm-trigger	B	6300	PointPathOver	marked
+0x4AC4	0x1D8	CMinorIng	SetPointCoverDest (the host's body carries the marker)	method	B	6BD4	SetPointCoverDest	marked
+0x4C9C	0xB0	CMinorIng	SetCoverDest (the host's body carries the marker)	fsm-state	B		SetCoverDest	marked
+0x4D4C	0x38	CMinorIng	HasCoverPoint (the host's body carries the marker)	fsm-trigger	B	6BD4	HasCoverPoint	marked
+0x4D84	0x58	CMinorIng	TargetInSafeZone (the host's body carries the marker)	fsm-trigger	B		TargetInSafeZone	marked
+0x4DDC	0xA8	CMinorIng	TargetAimPosition (the host's body carries the marker)	method	B	4E84	TargetAimPosition	marked
+0x4E84	0x354	CMinorIng	FindCoverPoint (the host's body carries the marker)	method	B	6BD4	FindCoverPoint	marked
+0x51D8	0x8C	(weak)	delete of an array of 8-byte elements	weak-dtor	H		the host's own delete	no marker
+0x5264	0x120	CMinorIng	SetWallPointCoverDest (the host's body carries the marker)	fsm-state	B		SetWallPointCoverDest	marked
+0x5384	0x25C	CMinorIng	MoveOnSurface (the host's body carries the marker)	method	B	6900 7F98	MoveOnSurface	marked
+0x55E0	0x1E4	CMinorIng	ApplySeparation (the host's body carries the marker)	method	B	8128	ApplySeparation	marked
+0x57C4	0x80	CMinorIng	dead: the team manager's member target (the team id at 0xccc, the target id at 0xcce)	unreferenced	T		no host body (the retail never calls it)	no marker
+0x5844	0x50	CMinorIng	EndAttack (the host's body carries the marker)	method	B	5AC0 777C	EndAttack	marked
+0x5894	0xA8	CMinorIng	LeaveTeam (the host's body carries the marker)	method	B	9150	LeaveTeam	marked
+0x593C	0xAC	CMinorIng	JoinTeam (the host's body carries the marker)	method	B	9150	JoinTeam	marked
+0x59E8	0x1C	CMinorIng	the slot that copies a CVector3f	virtual	T		CPatterned's own slot	no marker
+0x5A04	0xB4	CMinorIng	dead: faces the target (the direction from the target at 0xcce, FaceDirection)	unreferenced	T		no host body (the retail never calls it)	no marker
+0x5AB8	0x8	CMinorIng	ProjectileInfo (the host's body carries the marker)	virtual	B		ProjectileInfo	marked
+0x5AC0	0x1EC	CMinorIng	UpdateBallPursuit (the host's body carries the marker)	method	B	8E5C	UpdateBallPursuit	marked
+0x5CAC	0x44	CMinorIng	IsLuredBySafeZone (the host's body carries the marker)	fsm-trigger	B		IsLuredBySafeZone	marked
+0x5CF0	0xC	CMinorIng	AllowProjectileDuringStayOnPointPathFinding (the host's body carries the marker)	fsm-trigger	B		AllowProjectileDuringStayOnPointPathFinding	marked
+0x5CFC	0xC	CMinorIng	StayOnPointPathFinding (the host's body carries the marker)	fsm-trigger	B		StayOnPointPathFinding	marked
+0x5D08	0x20	CMinorIng	IsInCorporealForm (the host's body carries the marker)	fsm-trigger	B		IsInCorporealForm	marked
+0x5D28	0xC	CMinorIng	ShouldEvaporate (the host's body carries the marker)	fsm-trigger	B		ShouldEvaporate	marked
+0x5D34	0xC	CMinorIng	ShouldMoveUnderBall (the host's body carries the marker)	fsm-trigger	B	3D10 6900	ShouldMoveUnderBall	marked
+0x5D40	0x18	CMinorIng	IsBeingKnockedback (the host's body carries the marker)	fsm-trigger	B		IsBeingKnockedback	marked
+0x5D58	0xC	CMinorIng	CancelStun (the host's body carries the marker)	fsm-trigger	B		CancelStun	marked
+0x5D64	0xC	CMinorIng	PuddleHitByWeapon (the host's body carries the marker)	fsm-trigger	B		PuddleHitByWeapon	marked
+0x5D70	0x100	CMinorIng	IsTargetInRange (the host's body carries the marker)	method	B	5E70	IsTargetInRange	marked
+0x5E70	0x24	CMinorIng	InMaxRange (the host's body carries the marker)	fsm-trigger	B	3D10 5F60	InMaxRange	marked
+0x5E94	0xCC	CMinorIng	IsTargetInAttackAngle (the host's body carries the marker)	method	B	5F60	IsTargetInAttackAngle	marked
+0x5F60	0x164	CMinorIng	ShouldFire (the host's body carries the marker)	fsm-trigger	B		ShouldFire	marked
+0x60C4	0x30	CMinorIng	LineOfSight (the host's body carries the marker)	fsm-trigger	B	3D10 5F60	LineOfSight	marked
+0x60F4	0x50	CMinorIng	LeavePatrol (the host's body carries the marker)	fsm-trigger	B		LeavePatrol	marked
+0x6144	0x34	CMinorIng	PlayerLeashReached (the host's body carries the marker)	fsm-trigger	B		PlayerLeashReached	marked
+0x6178	0xC	CMinorIng	HasPatrolPath (the host's body carries the marker)	fsm-trigger	B		HasPatrolPath	marked
+0x6184	0x8C	CMinorIng	PathShagged (the host's body carries the marker)	fsm-trigger	B	6300	PathShagged	marked
+0x6210	0xC	CMinorIng	IsFollowingAttackPath (the host's body carries the marker)	fsm-trigger	B		IsFollowingAttackPath	marked
+0x621C	0xC	CMinorIng	InsideSafeZone (the host's body carries the marker)	fsm-trigger	B		InsideSafeZone	marked
+0x6228	0xC	CMinorIng	RecalculatePath (the host's body carries the marker)	fsm-trigger	B		RecalculatePath	marked
+0x6234	0xC	CMinorIng	AllowAttackPatternStun (the host's body carries the marker)	fsm-trigger	B		AllowAttackPatternStun	marked
+0x6240	0x28	CMinorIng	AllowAttackPatternProjectile (the host's body carries the marker)	fsm-trigger	B		AllowAttackPatternProjectile	marked
+0x6268	0x40	CMinorIng	AttackPatternOver (the host's body carries the marker)	fsm-trigger	B		AttackPatternOver	marked
+0x62A8	0x58	CMinorIng	HasAttackPattern (the host's body carries the marker)	fsm-trigger	B		HasAttackPattern	marked
+0x6300	0x84	CMinorIng	IsMoveAwayFromSafeZoneOver (the host's body carries the marker)	fsm-trigger	B		IsMoveAwayFromSafeZoneOver	marked
+0x6384	0x128	CMinorIng	DoUserAnimEvent (the host's body carries the marker)	virtual	B		DoUserAnimEvent	marked
+0x64AC	0x54	CImpactVisorEffect	the delete of the effect the projectile gets	inline-dol	H	6384	the host's CImpactVisorEffect::None()	no marker
+0x6500	0x5C	CImpactVisorEffect	the effect's destructor (the flag at +0x14)	inline-dol	H	64AC 65C4	the host's CImpactVisorEffect::None()	no marker
+0x655C	0x20	CImpactVisorEffect	the effect's member destructor	inline-dol	H	6500	the host's CImpactVisorEffect::None()	no marker
+0x657C	0x48	CToken	the effect's CToken destructor	inline-dol	H	655C	the host's CImpactVisorEffect::None()	no marker
+0x65C4	0x48	CImpactVisorEffect	the effect the projectile is launched with (three empty parts, the invalid forced visor)	inline-dol	H	6384	the host's CImpactVisorEffect::None()	no marker
+0x660C	0xB4	CImpactVisorEffect	the effect's copy (the optional members, the position, the direction)	inline-dol	H	65C4	the host's CImpactVisorEffect::None()	no marker
+0x66C0	0x40	CImpactVisorEffect	the effect's assignment	inline-dol	H	660C	the host's CImpactVisorEffect::None()	no marker
+0x6700	0x20	CImpactVisorEffect	the effect's member destructor	inline-dol	H	66C0	the host's CImpactVisorEffect::None()	no marker
+0x6720	0x28	CImpactVisorEffect	the effect's CToken destructor	inline-dol	H	6700	the host's CImpactVisorEffect::None()	no marker
+0x6748	0x80	CToken	the effect's CToken copy (the id, the asset id, the lock)	inline-dol	H	6720	the host's CImpactVisorEffect::None()	no marker
+0x67C8	0x6C	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
+0x6834	0x54	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
+0x6888	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0x68C4	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0x6900	0x13C	CMinorIng	MoveAlongPath (the host's body carries the marker)	method	B	6A40 8128	MoveAlongPath	marked
+0x6A3C	0x4	CMinorIng	WaitForFSMTransition (the host's body carries the marker)	fsm-state	B		WaitForFSMTransition	marked
+0x6A40	0x194	CMinorIng	FollowAttackPattern (the host's body carries the marker)	fsm-state	B		FollowAttackPattern	marked
+0x6BD4	0x2E4	CMinorIng	MoveAwayFromSafeZone (the host's body carries the marker)	fsm-state	B		MoveAwayFromSafeZone	marked
+0x6EB8	0xE0	CMinorIng	Dead (the host's body carries the marker)	fsm-state	B		Dead	marked
+0x6F98	0x8	CMinorIng	dead: the slot that returns &this->0x254	unreferenced	T		no host body (the retail never calls it)	no marker
+0x6FA0	0x2C	CMinorIng	GetAimPosition (the host's body carries the marker)	virtual	B		GetAimPosition	marked
+0x6FCC	0x8C	CMinorIng	UpdateValidTarget (the host's body carries the marker)	method	B	8E5C	UpdateValidTarget	marked
+0x7058	0x654	CMinorIng	MassiveDeath (the host's body carries the marker)	virtual	B		MassiveDeath	marked
+0x76AC	0x20	CModelData	CModelDataNull: the empty model data the inglet gets	inline-dol	H	7058	CModelData::CModelDataNull	no marker
+0x76CC	0x74	CMinorIng	Death (the host's body carries the marker)	virtual	B		Death	marked
+0x7740	0x3C	CMinorIng	Patrol (the host's body carries the marker)	fsm-state	B		Patrol	marked
+0x777C	0x140	CMinorIng	ProjectileAttack (the host's body carries the marker)	fsm-state	B		ProjectileAttack	marked
+0x78BC	0x5C	(FSM node)	the FSM node's destructor (data_790)	weak-dtor	H		the host's CState2 node classes own theirs	no marker
+0x7918	0x48	(FSM node)	the FSM node's destructor (data_79C)	weak-dtor	H		the host's CState2 node classes own theirs	no marker
+0x7960	0x3C0	CMinorIng	Idle (the host's body carries the marker)	fsm-state	B		Idle	marked
+0x7D20	0x278	CMinorIng	AlwaysPointPathFind (the host's body carries the marker)	fsm-state	B		AlwaysPointPathFind	marked
+0x7F98	0x190	CMinorIng	PointPathFind (the host's body carries the marker)	fsm-state	B	6BD4 7960 7D20	PointPathFind	marked
+0x8128	0x178	CMinorIng	PathFind (the host's body carries the marker)	fsm-state	B	6BD4 7960	PathFind	marked
+0x82A0	0x164	CMinorIng	IntoCorporealForm (the host's body carries the marker)	fsm-state	B		IntoCorporealForm	marked
+0x8404	0x5C	(FSM node)	the FSM node's destructor (data_784)	weak-dtor	H		the host's CState2 node classes own theirs	no marker
+0x8460	0x17C	CMinorIng	IntoPuddleForm (the host's body carries the marker)	fsm-state	B		IntoPuddleForm	marked
+0x85DC	0x204	CMinorIng	Stunned (the host's body carries the marker)	fsm-state	B		Stunned	marked
+0x87E0	0x5C	(FSM node)	the FSM node's destructor (data_778)	weak-dtor	H		the host's CState2 node classes own theirs	no marker
+0x883C	0xA0	CMinorIng	UpdateTargetPos (the host's body carries the marker)	method	B	8E5C	UpdateTargetPos	marked
+0x88DC	0x220	CMinorIng	IsMoveClear (the host's body carries the marker)	method	B	5F60 7960	IsMoveClear	marked
+0x8AFC	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0x8B38	0xBC	CMinorIng	ProjectOntoMesh (the host's body carries the marker)	method	B	6BD4 7960 8C1C	ProjectOntoMesh	marked
+0x8BF4	0x28	CMinorIng	RaisedPoint (the host's body carries the marker)	method	B	3D10 5384 6184 6BD4 7960 8B38	RaisedPoint	marked
+0x8C1C	0x110	CMinorIng	SelectTarget (the host's body carries the marker)	method	B	7D20 8128	SelectTarget	marked
+0x8D2C	0x90	CMinorIng	KnockBack (the host's body carries the marker)	virtual	B		KnockBack	marked
+0x8DBC	0x34	CMinorIng	GetDamageVulnerability (the host's body carries the marker)	virtual	B		GetDamageVulnerability	marked
+0x8DF0	0x20	CMinorIng	AddToRenderer (the host's body carries the marker)	virtual	B		AddToRenderer	marked
+0x8E10	0x20	CMinorIng	PreRender (the host's body carries the marker)	virtual	B		PreRender	marked
+0x8E30	0x2C	CMinorIng	Render (the host's body carries the marker)	virtual	B		Render	marked
+0x8E5C	0x170	CMinorIng	Think (the host's body carries the marker)	virtual	B		Think	marked
+0x8FCC	0x184	CMinorIng	PreThink (the host's body carries the marker)	virtual	B		PreThink	marked
+0x9150	0x5B0	CMinorIng	AcceptScriptMsg (the host's body carries the marker)	virtual	B		AcceptScriptMsg	marked
+0x9700	0x58	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
+0x9758	0x8C	CMinorIng	SetupStateMachine (the host's body carries the marker)	virtual	B		SetupStateMachine	marked
+0x97E4	0x15C	CMinorIng	the destructor	dtor	B		the host's ~CMinorIng (marked)	marked
+0x9940	0x1E4	CPatterned	the REL's copy of CPatterned's destructor	inline-dol	H	97E4	the host's CPatterned owns its destruction	no marker
+0x9B24	0x94	(host copy)	the REL's copy of a member's destructor (the vtable restore, the CToken at +0x04)	inline-dol	H	9940	the host's members own their destruction	no marker
+0x9BB8	0x58	(host copy)	the REL's copy of a member's destructor (the member at +0x00)	inline-dol	H	97E4	the host's members own their destruction	no marker
+0x9C10	0x58	(host copy)	the REL's copy of a member's destructor (the member at +0x18)	inline-dol	H	9BB8	the host's members own their destruction	no marker
+0x9C68	0x58	(host copy)	the REL's copy of a member's destructor (the member at +0x30)	inline-dol	H	9C10	the host's members own their destruction	no marker
+0x9CC0	0x98	(host copy)	the REL's copy of a member's destructor (the two-bit counter at +0x00, its bit 5 the alive flag, the release of the pointer at +0x0c)	inline-dol	H	9C68	the host's members own their destruction	no marker
+0x9D58	0x878	CMinorIng	the constructor (the actor and the members)	ctor	B	110	the host's CMinorIng constructor (marked)	marked
+0xA5D0	0x74	rstl::vector	the REL's own vector resize (two zero ints)	template	H	9D58	the host's rstl::vector does it	no marker
+0xA644	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0xA680	0x184	CPatternedInfo	the REL's own vector of float pairs for the two animation states	template	H	9D58	the host's CPatternedInfo holds them	no marker
+0xA804	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0xA840	0x8C	(weak)	delete of an array of 8-byte elements	weak-dtor	H		the host's own delete	no marker
+0xA8CC	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0xA908	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0xA944	0x3C	(weak)	delete of a heap block	weak-dtor	H		the host's own delete	no marker
+0xA980	0x5C	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
+0xA9DC	0x19C	CMinorIng	the REL's own copy of the data block into the actor	inline-dol	H	9D58	the host's CMinorIngData is its own shape, so the copy is the member's own	no marker
+0xAB78	0x54	(port helper)	FindBestAnimationId: the best animation for a parm	method	B	9D58	the host's FindBestAnimationId (marked)	marked
+0xABCC	0x8B8	module	the module's static constructor (the .ctors entry): it copies the FSM trigger and state tables into .data and registers the two global strings' destructors	static-init	B		the host builds the same tables at runtime (SetupStateMachine, RegisterMinorIngModule)	no marker
+0xB484	0x58	REL runtime	__destroy_global_chain: walks the global destructor chain, calling each registered dtor	runtime	H		crtexe global destructor chain	no marker
+0xB4DC	0x1C	REL runtime	__register_global_object: pushes (object, dtor, cookie) on the global destructor chain	runtime	H	4E84 ABCC	crtexe global object registry	no marker
+0xB4F8	0xC4	REL runtime	_unresolved: unresolved-symbol trap; OSReport + stack walk, never returns	runtime	H		crtexe unresolved-symbol handler	no marker
+0xB5BC	0x24	module	_epilog: module exit; ModuleDestructors then RELExit	runtime	H		crtexe module epilog	no marker
+0xB5E0	0x24	module	_prolog: module entry; ModuleConstructors then RELMain	runtime	H		crtexe module prolog	no marker
+0xB604	0x4C	module	ModuleDestructors: runs the module's static destructor list	runtime	H	_epilog	crtexe module destructor table	no marker
+0xB650	0x4C	module	ModuleConstructors: runs the module's static constructor list	runtime	H	_prolog	crtexe module constructor table	no marker

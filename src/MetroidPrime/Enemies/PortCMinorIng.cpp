@@ -351,15 +351,17 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mLastLoggedState(nullptr)
 , mPathArea(nullptr)
 // The retail clears every flag of the byte at 0xd3d and every flag of the byte at 0xd3e in this
-// order (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330), most significant bit first.
-, mAttackPatternProjectile(false) // 0xd3d 0x80 (asm 0xA284)
+// order (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330), most significant bit first. The flags are
+// the retail's own bits: the host's bitfields are declared in the guest's LSB-first order, so
+// the host's two bytes match the retail's byte for byte.
+, mHasPatrolPath(false)           // 0xd3d 0x80 (asm 0xA284)
 , mPathFindActive(false)          // 0xd3d 0x40 (asm 0xA290)
 , mPointPathFinding(false)        // 0xd3d 0x20 (asm 0xA29C)
 , mFoundMovementPos(false)        // 0xd3d 0x10 (asm 0xA2A8)
 , mRecalculatePath(false)         // 0xd3d 0x08 (asm 0xA2B4)
 , mIdle(false)                    // 0xd3d 0x04 (asm 0xA2C0)
 , mFollowingAttackPath(false)     // 0xd3d 0x02 (asm 0xA2CC)
-, mHasPatrolPath(false)           // 0xd3d 0x01 (asm 0xA2D8)
+, mAttackPatternProjectile(false) // 0xd3d 0x01 (asm 0xA2D8)
 , mPuddleHitByWeapon(false)       // 0xd3e 0x80 (asm 0xA2E4)
 , mCancelStun(false)              // 0xd3e 0x40 (asm 0xA2F0)
 , mKnockAnimCancel(false)         // 0xd3e 0x20 (asm 0xA2FC)

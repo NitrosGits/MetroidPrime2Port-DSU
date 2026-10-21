@@ -346,23 +346,27 @@ private:
   CSegId mLockOnLocator;                      // 0xd3c ("lockon_target_SDK")
   const char* mLastLoggedState;               // host: MP2_DEBUG_MINORING
   CPFArea* mPathArea;                         // host: the area both searches were given on XALD
-  // 0xd3d
-  bool mHasPatrolPath : 1;
-  bool mPathFindActive : 1;
-  bool mPointPathFinding : 1;
-  bool mFoundMovementPos : 1;
-  bool mRecalculatePath : 1;
-  bool mIdle : 1;
-  bool mFollowingAttackPath : 1;
-  bool mAttackPatternProjectile : 1;
-  // 0xd3e
-  bool mPuddleHitByWeapon : 1;
-  bool mCancelStun : 1;
-  bool mKnockAnimCancel : 1;
-  bool mTouched : 1;
-  bool mShouldMoveUnderBall : 1;
-  bool mInsideSafeZone : 1;
-  bool mShouldEvaporate : 1;
+  // The retail's two flag bytes, 0xd3d and 0xd3e. The guest packs them most significant bit
+  // first; the declarations below are in the guest's least-significant-bit-first order, so the
+  // little-endian compiler (which allocates a bitfield run from the LSB) gives every flag the
+  // retail's own bit. The positions are spelled out so `tools/asmcheck.py` can check the masks
+  // against the asm. The retail clears them in the opposite order, most significant bit first
+  // (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330); the constructor's init list follows it.
+  bool mAttackPatternProjectile : 1; // 0xd3d 0x01 (the waypoint message sets it, asm 0x96D8)
+  bool mFollowingAttackPath : 1;      // 0xd3d 0x02 (fn_44_6210 reads it)
+  bool mIdle : 1;                     // 0xd3d 0x04 (fn_44_8128 reads it)
+  bool mRecalculatePath : 1;          // 0xd3d 0x08 (fn_44_6228 reads it)
+  bool mFoundMovementPos : 1;         // 0xd3d 0x10 (fn_44_3430 reads it)
+  bool mPointPathFinding : 1;         // 0xd3d 0x20 (fn_44_4A68 reads it)
+  bool mPathFindActive : 1;           // 0xd3d 0x40 (fn_44_8C1C reads it)
+  bool mHasPatrolPath : 1;            // 0xd3d 0x80 (fn_44_6178 reads it, asm 0x928C sets it)
+  bool mShouldEvaporate : 1;          // 0xd3e 0x02 (fn_44_5D28 reads it)
+  bool mInsideSafeZone : 1;           // 0xd3e 0x04 (fn_44_621C reads it, asm 0x9640 sets it)
+  bool mShouldMoveUnderBall : 1;      // 0xd3e 0x08 (fn_44_5D34 reads it)
+  bool mTouched : 1;                  // 0xd3e 0x10 (fn_44_424C sets it, asm 0x43B8)
+  bool mKnockAnimCancel : 1;          // 0xd3e 0x20 (fn_44_3DE0 reads it)
+  bool mCancelStun : 1;               // 0xd3e 0x40 (fn_44_5D58 reads it)
+  bool mPuddleHitByWeapon : 1;        // 0xd3e 0x80 (fn_44_5D64 reads it, asm 0x94F4 sets it)
 #else
   uchar x7c0_[0x158]; // CMinorIngData
   uchar x918_[0x48];  // CProjectileInfo and the three locked tokens
