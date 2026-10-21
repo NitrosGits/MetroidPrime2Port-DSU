@@ -538,23 +538,22 @@ column holds only H, T or B:
 $ python3 - <<'PY'
 import re, pathlib, collections
 sym = pathlib.Path('config/G2ME01/rels/EmperorIngStage3/symbols.txt').read_text()
-ids = re.findall(r'^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function', sym, re.M)
+ids = re.findall(r'^(\S+) = \.text:0x([0-9A-Fa-f]+); // type:function', sym, re.M)
 tsv = pathlib.Path('docs/module-analysis/EmperorIngStage3_functions.tsv').read_text().splitlines()
 rows = [l.split('\t') for l in tsv[1:]]
 offs = {int(r[0], 16) for r in rows}
-got = {m for m in ids if int(re.search(r'0x([0-9A-Fa-f]+)', m).group(1), 16) in offs}
 c = collections.Counter(r[5] for r in rows)
 print('symbols:', len(ids))
 print('tsv rows:', len(rows))
 print('distinct offsets:', len(offs))
 print('classes:', dict(c))
-print('missing:', [i for i in ids if i not in got])
-print('extra:', [r[0] for r in rows if int(r[0], 16) not in {int(re.search(r'0x([0-9A-Fa-f]+)', i).group(1), 16) for i in ids}])
+print('missing:', [n for n, o in ids if int(o, 16) not in offs])
+print('extra:', [r[0] for r in rows if int(r[0], 16) not in {int(o, 16) for _, o in ids}])
 PY
 symbols: 270
 tsv rows: 270
 distinct offsets: 270
-classes: {'H': 112, 'T': 25, 'B': 133}
+classes: {'B': 133, 'H': 112, 'T': 25}
 missing: []
 extra: []
 ```
