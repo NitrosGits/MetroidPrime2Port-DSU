@@ -685,13 +685,13 @@ again before the commit):
 | 0x7F74 | the blow window is closed (the flag bit 29) -> no window, no push and no damage | (b) both sides: `[arm] 33 7E24 blow block entered`, `[arm] 40 7E24 the blow block is closed` |
 | 0x801C | the player's aim point is not in front of the head (the forward dot) | (b) the skip side: `[arm] 37 7E24 outside: the forward dot` |
 | 0x8040 | the aim point is more than 18 model scales to the side (the right dot) | (b) the skip side: `[arm] 47 7E24 outside: the right dot` |
-| 0x804C | the player is grappling (`mGrappleTime` at +0xd8c is not 0) | (d) not reached, and it is an **unported harness path**, not an unreachable arm: the console's `beam` offers only power/dark/light/annihilator and the `give` item list has no grapple beam, and the lock-on does not make a `CScriptGrapplePoint` the player's orbit target (a run with the lock-on on and the player 8 units from the grapple point in front of the boss left `mGrappleTime` at 0.00) |
+| 0x804C | the player is grappling (`mGrappleTime` at +0xd8c is not 0) | (d) not reached, and it is an **unported harness path**, not an unreachable arm: the console can give the grapple beam (`give grappleBeam 1` - the item is `CPlayerState::kIT_GrappleBeam` = 0x17, and `ShouldDrawGrapple` needs it) and can wake the area's grapple points (`send u066b Activate`; the console's message table has `Activate`), but with the lock-on on, the grapple beam owned and the player 8 units from the grapple point in front of the boss, the grapple point never becomes the player's orbit target and `mGrappleTime` stayed at 0.00 in every attempt |
 | 0x8058 | the player is already being blown -> no new push setup | (b) the other side of the same bit: `[arm] 35 7E24 push setup` and `[arm] 38 7E24 the blow damage` (the bit is set in the frames that follow the first) |
 | 0x80AC | the weak push (the member at +0x9a8 instead of +0x9ac) | (c) the block is only entered while the flag bit 29 is set (0x7F74) and the flag is read again here, so the weak value is dead code in the shipped flow |
 | 0x8110 | the player is not being blown -> no blow damage | (b) both sides: `[arm] 38 7E24 the blow damage`, `[arm] 39 7E24 no blow damage` |
 | 0x81B8, 0x81C0 | the sustained damage is popped when the blow ends | (b) the pop side: `[arm] 41 7E24 the sustained damage is popped` |
 | 0x81E4 | the wind effect is waiting (the flag bit 30) -> fn_79_3578 | (b) both sides: `[arm] 42 7E24 the wind effect`, `[arm] 43 7E24 no wind effect` |
-| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the FSM2 evaluates a state's transitions **after** that state's update (the port's `CGenericFSM2State::Update`: `ExecuteState(update)` then `EvaluateTransitions`), so the update's cleanup (0x81B8) has already popped the sustained damage and cleared `mBlowing` whenever the blow window (the anim event 0x2b) closed first - and it did in every run (`[arm] 41`). The arm is only reachable if the state is left while the window is still open; the driver could not land a transition inside that window (a console `damage u06d9 9999` in the dark phase left the boss's HP alone) |
+| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the FSM2 evaluates a state's transitions **after** that state's update (the port's `CGenericFSM2State::Update`: `ExecuteState(update)` then `EvaluateTransitions`), so the update's cleanup (0x81B8) has already popped the sustained damage and cleared `mBlowing` whenever the blow window (the anim event 0x2b) closed first - and it did in every run (`[arm] 41`). The arm is only reachable if the state is left while the window is still open; the driver now sends the stun (a console `damage <body joint uid> 25`, 5% of the joint's 500 HP, which takes the head health to zero) the moment the probe shows the window open, but the run that did it never reached the `Blow` with the window open, so the arm is still unproven |
 
 **`fn_79_7E24` is therefore not marked**: its body is retail's (every branch above is matched to
 the port's code), but two real arms - "the player is grappling" (0x804C) and "the deactivate pops
@@ -732,3 +732,39 @@ The retail builds the collision actors in `fn_79_6E68` and then sets each joint 
 
 The body runs when the boss activates (`Activate` -> `SetupCollisionManager`), so every run that
 reaches the fight exercises it.
+
+### 7.15 The platform chain walk: fn_79_5030, fn_79_527C, fn_79_55B0, fn_79_50AC (2026-10-21, ninth lane pass)
+
+The retail's chain walk is four bodies: `fn_79_5030` puts the chain nodes on their recorded
+positions, `fn_79_527C` swings them about the chain's origin and pulls them back inside the edge
+radius, `fn_79_55B0` wakes the chain and starts the walk, and `fn_79_50AC` is the recursion over
+the chain's "ARRV/NEXT" connections (it also walks the "PLTR/FOLL" links). The port has the first
+two (`PlaceChainNodes`, `SwingChainNodes`) and an approximation of the third
+(`LaunchPlatformChain`); the recursion, `fn_79_50AC`, is not ported, so the chain walk stays
+approximate.
+
+**fn_79_5030** (the port's `PlaceChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors, so the shipped area never takes it |
+| 0x5094 | the walk's condition | (a) a loop condition |
+| - | the body itself | (d) it never ran: the chain walk is launched by the anim event 0x1b (`kUE_EventStart`), and that event did not fire in any driver run, so `fn_79_5030` and `fn_79_527C` are unreachable in the port as it stands |
+
+**fn_79_527C** (the port's `SwingChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (d) not reached: the body never runs (see 5030) |
+| 0x541C | the walk's condition | (a) a loop condition |
+| - | the body itself | (d) it never ran (see 5030) |
+
+**fn_79_55B0** (the port's `LaunchPlatformChain`): the retail's body is the same three steps (the
+chain actor, the patrol node on the "FOLL" connection, the next node on the "ARRV/NEXT"
+connection) but it also runs the `fn_79_50AC` recursion, which the port does not have, so
+`fn_79_55B0` is **not** marked: the port's body is an approximation, not retail's. Its three
+branches (0x55FC, 0x56F0, 0x5740: the chain actor, the patrol node and the next node are
+gone) are the port's own null guards, all (c) - the chain's nodes are actors.
+
+**fn_79_50AC**: not ported (the recursion over the chain's connections), not marked.
