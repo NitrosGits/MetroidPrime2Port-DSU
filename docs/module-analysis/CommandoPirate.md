@@ -1195,6 +1195,20 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_786C` (the RestoreOrientation state) | the activate (0x000078B0) and the deactivate (0x00007A00..0x00007A78) | b | four of each per run (the state is forced with the console's `fsm`, **forced (fsm)** - the commando only reaches it after a warp) |
 | | the update's "the commando stands upright" arm (0x000078F0..0x000078F4) | b | four times per run: the commando is upright, so the animation state goes "over" at once |
 | | the update's angle arm (0x00007918..0x00007924) and its turn (0x00007938..0x000079E0) | d | both need a commando that is tipped over, and nothing in the shipped flow tips it (the WarpOut and PostWarpOut states, which do, are still stand-ins) |
+| `fn_9_ADA0` (the Ambush state) | the activate (0x0000ADA8) and the other messages (0x0000ADB4) | b | the state is forced with the console's `fsm` (**forced (fsm)**): the activate sets the crouch locomotion, the update does nothing |
+| `fn_9_6BCC` (the BreakCover state) | the activate (0x00006BEC) and the other messages (0x00006BF0) | b | forced (fsm): the exit-state command, the cover point's release and the byte at guest this+0xC66 |
+| `fn_9_728C` (the WallDetach state) | the activate (0x000072C4), the update (0x000072DC) and the deactivate (0x00007330) | b | forced (fsm): all three messages ran |
+| | the update's "the body is in the wall hang" arm (0x00007318..0x00007320) | d | the commando is never in the wall hang state (the WallHang state is still a stand-in) |
+| `fn_9_A7A8` (the SetCoverDest state) | the activate (0x0000A7B0) and the other messages (0x0000A7C0) | b | forced (fsm) |
+| | the cover point found (0x0000A7DC..0x0000A7E4) and the byte at guest this+0xC66 with its 0x40 bit (0x0000A800..0x0000A808) | d | the commando holds no cover point, and the byte's 0x40 bit is never set |
+| `fn_9_A8E8` (the SetJumpDest state) | the activate (0x0000A8F0) and the other messages (0x0000A900) | b | forced (fsm) |
+| | the jump point found (0x0000A930..0x0000A938) | d | the module's jump point id (guest this+0xBD0) is kInvalidUniqueId in this area |
+| `fn_9_A97C` (the SetRetreatDest state) | the activate (0x0000A984) and the other messages (0x0000A994) | b | forced (fsm) |
+| | the retreat point found (0x0000A9C4..0x0000A9CC) | d | the module's retreat point id (guest this+0xBCE) is kInvalidUniqueId in this area |
+| `fn_9_69C8` (the Dead state) | the base's dead handler (0x000069EC), the activate (0x000069F0) and the other messages (0x000069F8) | b | forced (fsm) |
+| | the byte at guest this+0xC66 with its 0x20 bit (0x00006A0C..0x00006A14) | d | that bit is set by the knock-back helper when the shield is up; the commando is not hit with the shield up in this run |
+| `fn_9_B168` (ShouldCrouch) and `fn_9_B114` (ShouldWallHang) | the cover point missing (0x0000B184..0x0000B194 and 0x0000B134..0x0000B138) | b | the Cover state's triggers run when the console forces that state (forced (fsm)) |
+| | the cover point's own answer (0x0000B18C and 0x0000B140) | d | the commando holds no cover point in this area |
 | `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 162 calls per run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick of the state |
 | | the 0x20 flag test (0x0000B22C) | b | 158 calls with the waypoint's flags word 0 and 4 with the word 0x20 |
 | | the true arm (0x0000B234) | b | 4 times: the scripted charge starts |
@@ -1296,19 +1310,75 @@ id 1 - `kBSC_Step` - with the direction 1 (`kSD_Backward`, 0x00008C2C) and the t
 (`kStep_Normal`, 0x00008C30); the animation state it asks for is the step's too (3 = `kAS_Step`,
 0x00008C08) and the "the body is in the state 3" arm (0x00008CD0) is the step's. The guest's
 command data is built on the stack (0x00008C18..0x00008C6C) and copied into the command manager's
-slot (0x00008C74..0x00008CBC) - the target (0,0,0) and the has-target flag 0 - and the jump's own
+slot (0x00008C74..0x00008CBC) - the target (0,0,0) and the has-target flag 0 - and the step's own
 target goes into the body's target vector instead (0x00008CF8..0x00008D04), which the host's step
-state faces (CBSStep.cpp:36). A jump command here would have made the commando leave the map: the
-host's jump state applies the actor's velocity as a constant force (CBSJump.cpp:150), which the DOL's
-CBSJump has no counterpart for (the DOL's file has no SetConstantForceWR at all - its only velocity
-write is the wall bounce's SetVelocityWR at 0x800FCA14).
+state faces (CBSStep.cpp:36).
+
+**The DOL's `CBSJump` against the host's** (`build/G2ME01/asm/MetroidPrime/BodyState/CBSJump.s`
+against `src/MetroidPrime/BodyState/CBSJump.cpp`; the DOL's file is the authority, and the
+inlined accessors are why a `grep` for the callee name finds nothing):
+
+* the **launch** is the DOL's too: `CBSJump::UpdateBody` **0x800FC5D0..0x800FC604** loads the
+  actor's mass (actor+0x158) times this+0x20..0x28 and stores actor+0x16C..0x000FC174 -
+  `SetConstantForceWR` and `GetMass` are inline, so there is no `bl` to find. The host's
+  `CBSJump.cpp:150` (and :179) does the same thing, so **the host matches the DOL here**.
+* the **command's flags**: the DOL reads the **facing-flags byte at cmd+0x30** (0x800FCF30) and puts
+  its 0x80 bit into this+0x38's 0x40 bit (0x800FCF38..0x000FCF3C), and that bit is the
+  `if (mWallJump)` test at **0x800FCF78**; the DOL reads the **word at cmd+0x2C** (0x800FCF60) into
+  this+0x10. The host's `CBCJumpCmd` (include/MetroidPrime/BodyState/CBodyStateCmdMgr.hpp:306-307)
+  has the same layout, so **there is no flag swap** and the host matches the DOL here too.
+* the **destination** comes from the command's own waypoint1 in both (the DOL's `CBSJump::Start`
+  0x800FCEF8..0x000FCF04 copies cmd+0x10..0x18 into this+0x14..0x1C; the host's
+  `CBSJump.cpp:41`), and the host's use of the body's target vector (CBSJump.cpp:136, :155, :183) is
+  for the facing only, as in the DOL.
+
+So the commando that left the map was **not** a host bug: the port had delivered a *jump* command
+where the guest delivers a *step* (see above), and the step's launch is what the DOL's jump state
+does. The port's JumpBack now delivers the step ✓ and the commando stays where it is.
 
 **The loop attack types and the skip-into flag.** The turn helper's command is the host's
 `pas::kLAT_Five` / `pas::kLAT_Six` (the guest's 5 and 6, 0x000027D8 and 0x00002748) and
 `pas::kLAT_Four` (4, 0x00002868) now, and the command's skip-into flag is set (the guest's flag
 byte's 0x80 bit, 0x00002740, 0x000027D0 and 0x00002860) with the host's `SetSkipInto`.
 
-**The markers.** `fn_9_8028` (the charge state) and `fn_9_86B4` (the ArmShield state) are marked:
+### Function classification (all 256 symbols, 2026-10-21)
+
+`CommandoPirate_functions.tsv` is the machine-readable copy: 256 rows, one per function symbol of
+`config/G2ME01/rels/CommandoPirate/symbols.txt`, with the class column and the port's state.
+
+Three classes, applied by rule so the table can be audited:
+
+- **H - host copy** (80 functions, 0x3228 bytes): the body is a copy of something the host already
+  has, so the port writes no body for it: the compiler-emitted destructor/copy chains (the bodies
+  whose only calls are `__dt__`/`__ct__`/`Free`/`__copy`), the REL runtime (`RELMain`,
+  `RELExit`, `_prolog`, `_epilog`, `ModuleConstructors`, `ModuleDestructors`,
+  `__destroy_global_chain`, `__register_global_object`, `fn_9_F9F8`) and the loader's
+  typedef/property readers (the bodies whose only calls are `LoadTypedef*`/`LdrTo*`/`ReadFloat`).
+- **T - data / vtable thunk** (40 functions, 0x4DC bytes): the body only returns a constant, a
+  member address or a flag, or fills static command data - the port writes it as one line in the
+  vtable or as a plain accessor.
+- **B - module behaviour** (136 functions, 0xCF94 bytes): real behaviour - these are the port bodies.
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 80 | 0x3228 (12840) |
+| T data / vtable thunk | 40 | 0x4DC (1244) |
+| B module behaviour | 136 | 0xCF94 (53140) |
+| **total** | **256** | **0x10698 (67224)** |
+
+Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
+functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
+
+The port's state per function (the `port` column): 15 marked, 44 ported but not marked, 23
+stand-ins, 174 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
+helpers, which the host's classes already have).
+
+**The unmarked B list** (the B functions the port does not mark, 121 of them): the stand-ins first -
+`fn_9_5410`, `fn_9_69C8`, `fn_9_6A40`, `fn_9_6BCC`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_728C`, `fn_9_7358`, `fn_9_7724`, `fn_9_8D28`, `fn_9_8DF0`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_A7A8`, `fn_9_A8E8`, `fn_9_A97C`, `fn_9_ADA0`, `fn_9_AFD4`, `fn_9_B114`, `fn_9_B168` - and then the ported ones whose every arm has not run yet (the table above names them). The
+full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
+
+**The markers.** `fn_9_8028` (the charge state), `fn_9_86B4` (the ArmShield state), `fn_9_ADA0`
+(the Ambush state) and `fn_9_6BCC` (the BreakCover state) are marked:
 every message arm of both ran - the charge state in the normal flow, the ArmShield state through
 the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too: its two arms that
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms

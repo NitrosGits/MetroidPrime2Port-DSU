@@ -146,6 +146,12 @@ def main():
             st = state_of(target)
             if i % 5 == 0:
                 log("frame %d: %s" % (frame(), st))
+        # the small states the port has now: the console forces each of them, so one boot covers
+        # them all (the area's own state machine does not go there).
+        for name in ("Ambush", "Dead", "WallDetach", "SetCoverDest", "SetJumpDest",
+                     "SetRetreatDest", "BreakCover", "Cover"):
+            log("fsm %s: %s" % (name, cmd("fsm %s %s" % (target, name))))
+            wait_frame(frame() + 20)
     log("commando: %s" % cmd("objs commando"))
 
 

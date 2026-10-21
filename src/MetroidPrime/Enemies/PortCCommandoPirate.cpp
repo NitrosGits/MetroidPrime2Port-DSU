@@ -2422,14 +2422,29 @@ bool CCommandoPirate::FoundJumpPoint(CStateManager& mgr, const CTriggerData& dat
   return xbd0_ != kInvalidUniqueId;
 }
 
+// fn_9_B168 (0x40 bytes): the ShouldCrouch trigger. The cover point the module holds (the id at
+// guest this+0xBD2, 0x0000B178) is looked up (the GetCoverPoint call at 0x0000B180); when there
+// is none the trigger answers false (0x0000B184..0x0000B194), otherwise the cover point's own
+// answer (the ShouldCrouch call at 0x0000B18C).
 bool CCommandoPirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B168");
-  return false;
+  const CScriptCoverPoint* cover = GetCoverPoint(mgr, xbd2_);  // 0x0000B178..0x0000B180
+  if (cover == nullptr) {                                     // 0x0000B184
+    return false;                                            // 0x0000B194
+  }
+  return cover->ShouldCrouch();                              // 0x0000B18C
 }
 
+// fn_9_B114 (0x54 bytes): the ShouldWallHang trigger. The cover point the module holds (the id at
+// guest this+0xBD2, 0x0000B124) is looked up (the GetCoverPoint call at 0x0000B130); when there is
+// none the trigger answers false (0x0000B134..0x0000B138), otherwise the cover point's own answer
+// (the ShouldWallHang call at 0x0000B140) - the guest keeps only the non-zero case
+// (0x0000B144..0x0000B14C).
 bool CCommandoPirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B114");
-  return false;
+  const CScriptCoverPoint* cover = GetCoverPoint(mgr, xbd2_);  // 0x0000B124..0x0000B130
+  if (cover == nullptr) {                                     // 0x0000B134
+    return false;                                            // 0x0000B138
+  }
+  return cover->ShouldWallHang();                            // 0x0000B140..0x0000B14C
 }
 
 // fn_9_B0F4: the block's flag byte at +0x15C (guest this+0x91C) must have its 0x08 bit clear
@@ -2482,8 +2497,14 @@ void CCommandoPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   xc64_ |= 0x10;
 }
 
+// @ fn_9_ADA0
+// fn_9_ADA0 (0x34 bytes): the Ambush state. Only the activate message (the guest's test of 0 at
+// 0x0000ADA8) does anything: the body controller's locomotion type becomes the crouch one (the
+// type 0, 0x0000ADB8..0x0000ADC0).
 void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_ADA0");
+  if (msg == kStateMsg_Activate) {                     // 0x0000ADA8..0x0000ADB4
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);  // 0x0000ADB8..0x0000ADC0
+  }
 }
 
 // fn_9_AE04: the alert state. On activate (the guest's message 0, 0x0000AE24) it remembers the
@@ -2667,12 +2688,50 @@ void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt)
   x19D8_JoinTeam(mgr);                                      // 0x0000AAEC
 }
 
+// fn_9_A97C (0xa4 bytes): the SetRetreatDest state. Only the activate message (the guest's test
+// of 0 at 0x0000A984) does anything: the retreat point (the id at guest this+0xBCE, 0x0000A998) is
+// looked up (the GetObjectById call at 0x0000A9A8) and the path find navigation's destination
+// becomes that point's position (0x0000A9C4..0x0000A9CC) or the actor's own position when there
+// is no such point (0x0000A9E4..0x0000A9EC); the flag byte at guest this+0xC65 loses its 0x80 bit
+// (0x0000A9B0..0x0000A9BC) and gets it back when there is a point (0x0000A9D0..0x0000A9DC). The
+// navigation's face target id (guest this+0x718) goes to kInvalidUniqueId
+// (0x0000A9F0..0x0000A9FC) and the byte at guest this+0xC63 gets its 0x01 bit (0x0000AA00..0x0000AA08).
 void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A97C");
+  if (msg != kStateMsg_Activate) {  // 0x0000A984..0x0000A994
+    return;
+  }
+  const CActor* point = TCastToConstPtr< CActor >(mgr.GetObjectById(xbce_));  // 0x0000A998..0x0000A9A8
+  xc65_ &= ~0x80;                                                        // 0x0000A9B0..0x0000A9BC
+  if (point != nullptr) {                                               // 0x0000A9C0..0x0000A9C4
+    mPathFindNavigation.SetDestination(point->GetTranslation());        // 0x0000A9C4..0x0000A9CC
+    xc65_ |= 0x80;                                                      // 0x0000A9D0..0x0000A9DC
+  } else {
+    mPathFindNavigation.SetDestination(GetTranslation());               // 0x0000A9E4..0x0000A9EC
+  }
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);                  // 0x0000A9F0..0x0000A9FC
+  xc63_ |= 0x01;                                                       // 0x0000AA00..0x0000AA08
 }
 
+// fn_9_A8E8 (0x94 bytes): the SetJumpDest state. Only the activate message (the guest's test of
+// 0 at 0x0000A8F0) does anything: the jump point (the id at guest this+0xBD0, 0x0000A904) is
+// looked up (the GetObjectById call at 0x0000A914) and the path find navigation's destination
+// becomes that point's position (0x0000A930..0x0000A938) or the actor's own position when there
+// is no such point (0x0000A950..0x0000A958); the flag byte at guest this+0xC65 loses its 0x80 bit
+// (0x0000A91C..0x0000A928) and gets it back when there is a point (0x0000A93C..0x0000A948). The
+// navigation's face target id (guest this+0x718) goes to kInvalidUniqueId (0x0000A95C..0x0000A964).
 void CCommandoPirate::SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A8E8");
+  if (msg != kStateMsg_Activate) {  // 0x0000A8F0..0x0000A900
+    return;
+  }
+  const CActor* point = TCastToConstPtr< CActor >(mgr.GetObjectById(xbd0_));  // 0x0000A904..0x0000A914
+  xc65_ &= ~0x80;                                                       // 0x0000A91C..0x0000A928
+  if (point != nullptr) {                                              // 0x0000A92C
+    mPathFindNavigation.SetDestination(point->GetTranslation());       // 0x0000A930..0x0000A938
+    xc65_ |= 0x80;                                                     // 0x0000A93C..0x0000A948
+  } else {
+    mPathFindNavigation.SetDestination(GetTranslation());              // 0x0000A950..0x0000A958
+  }
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);                 // 0x0000A95C..0x0000A964
 }
 
 // @ fn_9_A838
@@ -3673,8 +3732,41 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_7358");
 }
 
+// fn_9_728C (0xcc bytes): the WallDetach state.
+//
+// On activate (the guest's message 0, 0x000072C4) the flag byte at guest this+0xC65 gets its
+// 0x02 bit (0x000072C4..0x000072D0) and the animation state goes "ready" (0x000072D4).
+//
+// On update (the guest's message 1, 0x000072DC) the body is told to leave the state (the
+// exit-state command, the id 0xa, 0x000072DC..0x000072FC) and, unless the body is in the wall
+// hang state (the body's state id 20, the compare at 0x0000731C), the animation state goes
+// "over" (0x00007324..0x00007328).
+//
+// On deactivate (the guest's message 2, 0x00007330) the animation state goes "not ready"
+// (0x00007330..0x00007334) and the flag byte at guest this+0xC65 loses its 0x02 bit
+// (0x00007338..0x00007340).
 void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_728C");
+  switch (msg) {
+  case kStateMsg_Activate: {  // 0x000072C4
+    xc65_ |= 0x02;                                         // 0x000072C4..0x000072D0
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x000072D4
+    break;
+  }
+  case kStateMsg_Update: {  // 0x000072DC
+    BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x000072DC..0x000072FC (the id 0xa)
+    if (BodyController()->GetCurrentStateId() != pas::kAS_WallHang) {  // 0x00007318..0x00007320
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00007324..0x00007328
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {  // 0x00007330
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x00007330..0x00007334
+    xc65_ &= ~0x02;                                          // 0x00007338..0x00007340
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 // @ fn_9_709C
@@ -3736,8 +3828,30 @@ void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_9_A7A8 (0x90 bytes): the SetCoverDest state. Only the activate message (the guest's test of
+// 0 at 0x0000A7B0) does anything: the cover point (the id at guest this+0xBD2, 0x0000A7C4) is
+// looked up (the GetCoverPoint call at 0x0000A7D0) and the path find navigation's destination
+// becomes that point's position (0x0000A7DC..0x0000A7E4) or the actor's own position when there
+// is no cover point (0x0000A7EC..0x0000A7F4). The navigation's face target id (guest this+0x718)
+// takes the module's target (the id at guest this+0xBCA, 0x0000A7F8..0x0000A7FC) and, when the
+// byte at guest this+0xC66 has no 0x40 bit (the test at 0x0000A804), that bit is set
+// (0x0000A80C..0x0000A81C) and the module's float at guest this+0xB8C goes to zero
+// (0x0000A820).
 void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A7A8");
+  if (msg != kStateMsg_Activate) {  // 0x0000A7B0..0x0000A7C0
+    return;
+  }
+  const CScriptCoverPoint* cover = GetCoverPoint(mgr, xbd2_);  // 0x0000A7C4..0x0000A7D0
+  if (cover != nullptr) {                                     // 0x0000A7D4..0x0000A7D8
+    mPathFindNavigation.SetDestination(cover->GetTranslation());  // 0x0000A7DC..0x0000A7E4
+  } else {
+    mPathFindNavigation.SetDestination(GetTranslation());  // 0x0000A7EC..0x0000A7F4
+  }
+  mPathFindNavigation.SetFaceTarget(xbca_);  // 0x0000A7F8..0x0000A7FC
+  if ((xc66_ & 0x40) == 0) {              // 0x0000A800..0x0000A808
+    xc66_ |= 0x40;                        // 0x0000A80C..0x0000A81C
+    xb8c_ = 0.f;                          // 0x0000A820
+  }
 }
 
 void CCommandoPirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -3748,16 +3862,38 @@ void CCommandoPirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_6C68");
 }
 
+// @ fn_9_6BCC
+// fn_9_6BCC (0x9c bytes): the BreakCover state. Only the activate message (the guest's test of 0
+// at 0x00006BEC) does anything: the body is told to leave the state (the exit-state command, the
+// id 0xa, 0x00006BF4..0x00006C14), the cover point (the id at guest this+0xBD2) is released
+// with the cooldown kept (0x00006C2C..0x00006C3C) and the byte at guest this+0xC66 loses its
+// 0x40 bit (0x00006C40..0x00006C4C).
 void CCommandoPirate::BreakCover(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6BCC");
+  if (msg != kStateMsg_Activate) {  // 0x00006BEC..0x00006BF0
+    return;
+  }
+  BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00006BF4..0x00006C14 (the id 0xa)
+  ReleaseCoverPoint(mgr, xbd2_, true);  // 0x00006C2C..0x00006C3C
+  xc66_ &= ~0x40;                     // 0x00006C40..0x00006C4C
 }
 
 void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_6A40");
 }
 
+// fn_9_69C8 (0x78 bytes): the Dead state. The base's own dead handler runs first (the call at
+// 0x000069EC); the activate message (the guest's test of 0 at 0x000069F0) then takes the byte at
+// guest this+0xC66's 0x40 bit away (0x000069FC..0x00006A08) and, when that byte still has its
+// 0x20 bit (the test at 0x00006A10), the module's shield effect runs (0x00006A18..0x00006A20).
 void CCommandoPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_69C8");
+  CPatterned::Dead(mgr, msg, dt);  // 0x000069EC
+  if (msg != kStateMsg_Activate) {  // 0x000069F0..0x000069F8
+    return;
+  }
+  xc66_ &= ~0x40;                        // 0x000069FC..0x00006A08
+  if ((xc66_ & 0x20) != 0) {             // 0x00006A0C..0x00006A14
+    x2048_ShieldEffect(mgr);             // 0x00006A18..0x00006A20
+  }
 }
 
 // vtable slot 60 = fn_9_BDE0 (0xBDE0..0xBEB4): the base's setup first (the call at 0x0000BDF4),
