@@ -1050,6 +1050,18 @@ did not run (`fn_9_C798`'s damage and death events, `fn_9_BF44`'s and `fn_9_1C0C
 `fn_9_B250`'s charge arms and `fn_9_CB40`'s script messages). The three markers that the earlier
 slice put on `fn_9_BF44`, `fn_9_1C0C` and `fn_9_B250` are gone for that reason.
 
+A run without the firing (the same teleport, the player standing still) is clean too - exit=0
+and `grep -c '[port] caught|reach-stub'` = 0 - and in that run the commando survives, shoots at
+the player and its `fn_9_B250` trigger answers **true**: the module's ShieldCharge state
+(fn_9_8028) is entered, so the arms of `fn_9_B250` past the first gate (the target, the height,
+the charge band and the three rays) do run. Its arm at the counter (guest this+0xB54) is still
+out of reach, because only the charge states raise that counter. The run's stand-ins are the
+CVisualKnowledge's Update and SetVisualTarget and the ShieldCharge state itself.
+
+The firing run has one more line in the log: the shots also hit a metroid in the room, and that
+module's own stand-in (`CMetroid::ApplyDamageGrowth`) logs a reach-stub. It belongs to the
+metroid's module, not to this one.
+
 ### The shield's own bits (2026-10-21)
 
 The byte at guest this+0xC65 and the byte at guest this+0xC64 decide what the shield does, and
