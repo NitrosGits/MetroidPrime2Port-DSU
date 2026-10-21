@@ -188,3 +188,141 @@ FORCE = [
     ('1890C', 'CDarkSamus::RenderFlash(', ['(int)$this->mFlashTexture.m_valid', '(int)$dsk_nf'], FLASH, 0, 'no texture after 68'),
 ]
 
+
+# Slice 12 (Think fn_10_1B1FC and its calls 1ACA0, F710, F654, 1AE08, 1B0E0, 1B154, 13868):
+#   80 the next Think: the actor on the player's x, y (no flat direction; put back at UpdateFade)
+#   81 the next Think: dead after CPatterned::Think (the alive test; alive again at UpdateFade)
+#   82 0xC00 at 1 before each Think's UpdateMeleeHit, and the contact's hit byte 0x9DE at 0 at its
+#      entry, until 99      83 the hit byte at 1 at UpdateMeleeHit's entry until 99
+#   84 the next Think's unsafe test: mSafePos 20 above the actor (and kept, 0x928 = 1); 85 the same
+#      and 0x928 read 2 after IsInUnsafeSpot's height arm (both put back at UpdateFade)
+#   86 the dive launched (0xB20 bit 0x40) at each UpdateDiveContact until 99
+#   87 the next UpdateDiveContact sees no touch bounds (its optional's valid byte)
+#   88 the stage's +0x30 (unknown_0x3ff87a8c) reads 1 at the next lookups; 89 puts it back
+#   90 0xD59 (stage changed) at 1 before each Think's UpdateSilhouetteFade until 99
+#   91 / 92 0xCD0 at 1 and 0xD18 = (1, 0, 0) / zero before each Think's UpdateInvulnerableFade
+#      until 99
+#   93 the next CheckHealthThreshold: threshold 0x10A0 = 1e6, not sent; 94 threshold 0.5, not sent
+#   96 each UpdateDiveContact until 99: the dive has hit the player and not bounced
+#   95 the next PushPlayerAfterBounce sees a morphed player (put back after its call)
+# -O2 puts a body's line breakpoints before the line's own code, so 85 and 87 break on the
+# instruction after the call instead (after_call; the actor is kept in $dsk_ds at Think's entry).
+import os as _os
+_EN = _os.path.join(_os.path.dirname(_os.path.realpath(_os.environ['COV_SPEC'])), '..', '..', '..',
+                    'src', 'MetroidPrime', 'Enemies')
+
+
+def loc(fname, start, text):
+    lines = open(_os.path.join(_EN, fname)).read().split('\n')
+    i = next(n for n, l in enumerate(lines) if start in l)
+    j = next(n for n in range(i, len(lines)) if text in lines[n])
+    return 'loc:%s:%d' % (fname, j + 1)
+
+
+def flag(var, *pairs):
+    expr = '(%s || %s ? 0 : ($_isvoid(%s) ? 0 : %s))' % (k(99), k(30), var, var)
+    for v, val in reversed(pairs):
+        expr = '(%s ? %s : %s)' % (k(v), val, expr)
+    return '%s = %s' % (var, expr)
+
+
+PLX = '((CActor*)((CStateManager*)$rsi)->mPlayers[0])->mPosition'
+SETS.extend([
+    flag('$dsk_t80', (80, 1)), flag('$dsk_t81', (81, 1)), flag('$dsk_t82', (82, 1)),
+    flag('$dsk_t83', (83, 1)), flag('$dsk_t84', (84, 1), (85, 3)), flag('$dsk_t86', (86, 1)),
+    flag('$dsk_t87', (87, 1)), flag('$dsk_t90', (90, 1)), flag('$dsk_t91', (91, 1), (92, 2)),
+    flag('$dsk_t93', (93, 1), (94, 2)), flag('$dsk_t95', (95, 1)), flag('$dsk_t96', (96, 1)),
+    '$dsk_s30 = %s ? 1 : (%s ? 2 : (%s ? 0 : ($_isvoid($dsk_s30) ? 0 : $dsk_s30)))' % (k(88), k(89), k(30)),
+    '$dsk_s30o = %s ? -1 : ($_isvoid($dsk_s30o) ? -1 : $dsk_s30o)' % k(30),
+    keep('$dsk_thr', '$this->mData.mUnknown72EDEB7D'), keep('$dsk_hts', '$this->mHealthThresholdSent'),
+    keep('$dsk_cd0', '$this->mGuestCD0'), keep('$dsk_d18x', '$this->mGuestD18.mX'),
+    keep('$dsk_d18y', '$this->mGuestD18.mY'), keep('$dsk_d18z', '$this->mGuestD18.mZ'),
+    keep('$dsk_lau', '$this->mDive.mLaunched'), keep('$dsk_mhit', '$this->mMeleeContact.mHit'),
+    put('$this->mData.mUnknown72EDEB7D', '$dsk_thr'), put('$this->mHealthThresholdSent', '$dsk_hts'),
+    put('$this->mGuestCD0', '$dsk_cd0'), put('$this->mGuestD18.mX', '$dsk_d18x'),
+    put('$this->mGuestD18.mY', '$dsk_d18y'), put('$this->mGuestD18.mZ', '$dsk_d18z'),
+    put('$this->mDive.mLaunched', '$dsk_lau'), put('$this->mMeleeContact.mHit', '$dsk_mhit')])
+S30 = '((CDarkSamusBattleStage*)$rdi)->mStageInfo.unknown_0x3ff87a8c'
+IS30 = '(%s && !$_isvoid($dsk_s30))' % ISST
+STAGEFLAG.extend([
+    '(%s && $dsk_s30 == 1 && $dsk_s30o == -1) ? ($dsk_s30o = %s) : 0' % (IS30, S30),
+    '(%s && $dsk_s30 == 1) ? (%s = 1) : 0' % (IS30, S30),
+    '(%s && $dsk_s30 == 2 && $dsk_s30o != -1) ? (%s = $dsk_s30o, $dsk_s30o = -1, $dsk_s30 = 0) : 0' % (IS30, S30)])
+FADE.extend([
+    '(!$_isvoid($dsk_t80) && $dsk_t80 == 2) ? ($this->mPosition.mX = $dsk_tpx, $this->mPosition.mY = $dsk_tpy, $dsk_t80 = 0) : 0',
+    '(!$_isvoid($dsk_t81) && $dsk_t81 == 2) ? ($this->mAlive = $dsk_alv3, $dsk_t81 = 0) : 0',
+    '(!$_isvoid($dsk_t84) && $dsk_t84 >= 2 && $dsk_t84 != 3) ? ($this->mSafePos.mZ = $dsk_sz, $this->mHasSafePos = $dsk_hsp, $dsk_t84 = 0) : 0'])
+THINK = ['$dsk_ds = (long)$rdi', '(!$_isvoid($dsk_t80) && $dsk_t80 == 1) ? ($dsk_tpx = $this->mPosition.mX, $dsk_tpy = $this->mPosition.mY, '
+         '$this->mPosition.mX = %s.mX, $this->mPosition.mY = %s.mY, $dsk_t80 = 2) : 0' % (PLX, PLX)]
+
+
+def after_call(func, callee, nth=1):
+    # symbol + offset, so gdb places it again once the PIE binary is relocated
+    try:
+        import gdb as _g
+        out = _g.execute("disassemble '%s'" % func, to_string=True).split('\n')
+        mangled = next(l.split('\t')[0].split()[2] for l in open(_os.environ['COV_NM'])
+                       if '\t' in l and l.rstrip('\n').split('\t')[1] == func)
+    except Exception:
+        return 'loc:*0'
+    hits = [i for i, l in enumerate(out) if 'call' in l and callee in l]
+    off = int(out[hits[nth - 1] + 1].split('<+')[1].split('>')[0])
+    return 'loc:*((char*)&%s + %d)' % (mangled, off)
+
+
+DS = '((CDarkSamus*)$dsk_ds)'
+PL = '((CPlayer*)((CStateManager*)$rsi)->mPlayers[0])'
+T = 'PortCDarkSamus.cpp'
+H = 'PortCDarkSamusHelpers.cpp'
+TS = 'void CDarkSamus::Think('
+FORCE.extend([
+    ('1B1FC', 'CDarkSamus::Think(', ['(int)$dsk_t80', '(int)$this->mAlive'], THINK, 0, 'the actor on the player after 80'),
+    ('1B1FC alive', loc(T, TS, 'mElapsedTime += dt;'), ['(int)this->mAlive'],
+     ['(!$_isvoid($dsk_t81) && $dsk_t81 == 1) ? ($dsk_alv3 = this->mAlive, this->mAlive = 0, $dsk_t81 = 2) : 0'], 0, 'dead after 81'),
+    ('1B1FC F710', loc(T, TS, 'UpdateSilhouetteFade(mgr, dt);'), ['(int)this->mStageChanged'],
+     ['(!$_isvoid($dsk_t90) && $dsk_t90 == 1) ? (this->mStageChanged = 1) : 0'], 0, '0xD59 after 90'),
+    ('1B1FC F654', loc(T, TS, 'UpdateInvulnerableFade(dt);'), ['(int)this->mGuestCD0', 'this->mGuestD24'],
+     ['(!$_isvoid($dsk_t91) && $dsk_t91 == 1) ? (this->mGuestCD0 = 1, this->mGuestD18.mX = 1, this->mGuestD18.mY = 0, this->mGuestD18.mZ = 0) : 0',
+      '(!$_isvoid($dsk_t91) && $dsk_t91 == 2) ? (this->mGuestCD0 = 1, this->mGuestD18.mX = 0, this->mGuestD18.mY = 0, this->mGuestD18.mZ = 0) : 0'],
+     0, '0xCD0/0xD18 after 91, 92'),
+    ('1B1FC 1AE08', loc(T, TS, 'UpdateMeleeHit(mgr);'), ['this->mGuestC00'],
+     ['(!$_isvoid($dsk_t82) && $dsk_t82 == 1) ? (this->mGuestC00 = 1) : 0'], 0, '0xC00 after 82'),
+    ('1B1FC unsafe', loc(T, TS, 'UpdateStageFlash(mgr);'), ['(int)this->mHasSafePos'],
+     ['(!$_isvoid($dsk_t84) && ($dsk_t84 == 1 || $dsk_t84 == 3)) ? ($dsk_sz = this->mSafePos.mZ, $dsk_hsp = this->mHasSafePos, '
+      'this->mSafePos.mZ = this->mPosition.mZ + 20, this->mHasSafePos = 1, $dsk_t84 = $dsk_t84 + 1) : 0'], 0, 'unsafe after 84, 85'),
+    ('EFC8 height', after_call('CDarkSamus::Think(float, CStateManager&)', 'IsInUnsafeSpot'), ['(int)$rax & 0xff'],
+     ['($dsk_t84 == 4 && ($rax & 0xff) == 1) ? (%s->mHasSafePos = 2, $dsk_t84 = 5) : 0' % DS], 0, '0x928 = 2 after 85'),
+    ('1AE08', 'CDarkSamus::UpdateMeleeHit(', ['$this->mGuestC00', '(int)$this->mMeleeContact.mHit', '$this->mCurrentAttack'],
+     ['(!$_isvoid($dsk_t83) && $dsk_t83 == 1) ? ($this->mMeleeContact.mHit = 1) : ((!$_isvoid($dsk_t82) && $dsk_t82 == 1) ? ($this->mMeleeContact.mHit = 0) : 0)'],
+     0, 'the hit byte after 82, 83'),
+    ('1ACA0', 'CDarkSamus::UpdateDiveContact(', ['(int)$this->mDive.mLaunched', '(int)$this->mDive.mHitPlayer', '(int)$this->mDive.mBounced'],
+     ['(!$_isvoid($dsk_t86) && $dsk_t86 == 1) ? ($this->mDive.mLaunched = 1) : 0',
+      '$dsk_t96 == 1 ? ($this->mDive.mHitPlayer = 1, $this->mDive.mBounced = 0) : 0'], 0, 'launched after 86; hit, not bounced after 96'),
+    ('1ACA0 bounds', after_call('CDarkSamus::UpdateDiveContact(CStateManager&)', '*0x88'),
+     ['(int)((rstl::optional_object<CAABox>*)$rax)->m_valid'],
+     ['$dsk_t87 == 1 ? (((rstl::optional_object<CAABox>*)$rax)->m_valid = 0, $dsk_t87 = 0) : 0'], 0, 'no bounds after 87'),
+    ('13868', 'CDarkSamus::PushPlayerAfterBounce(', ['(int)%s->mMorphBallState' % PL],
+     ['$dsk_t95 == 1 ? ($dsk_pl = (long)%s, $dsk_mbs = (int)%s->mMorphBallState, %s->mMorphBallState = CPlayer::kMS_Morphed, $dsk_t95 = 2) : 0' % (PL, PL, PL)],
+     0, 'a morphed player after 95'),
+    ('1ACA0 13868', after_call('CDarkSamus::UpdateDiveContact(CStateManager&)', 'PushPlayerAfterBounce'), ['$dsk_t95'],
+     ['$dsk_t95 == 2 ? (((CPlayer*)$dsk_pl)->mMorphBallState = (CPlayer::EPlayerMorphBallState)$dsk_mbs, $dsk_t95 = 0) : 0'], 0, 'unmorphed again after 95'),
+    ('1B154', 'CDarkSamus::CheckHealthThreshold(', ['$this->mData.mUnknown72EDEB7D', '(int)$this->mHealthThresholdSent'],
+     ['(!$_isvoid($dsk_t93) && $dsk_t93 == 1) ? ($this->mData.mUnknown72EDEB7D = 1000000, $this->mHealthThresholdSent = 0, $dsk_t93 = 0) : '
+      '((!$_isvoid($dsk_t93) && $dsk_t93 == 2) ? ($this->mData.mUnknown72EDEB7D = 0.5, $this->mHealthThresholdSent = 0, $dsk_t93 = 0) : 0)'],
+     0, 'the threshold after 93, 94'),
+])
+
+# gdb evaluates both sides of `!$_isvoid($v) && $v == 1`, so every set failed (and was logged) until
+# key 30 first wrote its variables: start them all at their "nothing forced" values instead.
+try:
+    import gdb as _gdb
+    import re as _re
+    _INIT = {'$dsk_fa': 0x7fffffff, '$dsk_sbo': -1, '$dsk_s30o': -1, '$dsk_uid': -1}
+    _names = set()
+    for _f in FORCE:
+        for _e in list(_f[2]) + list(_f[3]):
+            _names.update(_re.findall(r'\$dsk_\w+', _e))
+    for _n in sorted(_names):
+        _gdb.execute('set var %s = %d' % (_n, _INIT.get(_n, 0)))
+except ImportError:
+    pass
