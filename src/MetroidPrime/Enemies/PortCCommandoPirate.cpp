@@ -1320,33 +1320,40 @@ void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
   // says it is loaded) and 0 is the armed shield (the token at guest this+0x18, used when the
   // byte at guest this+0x0C24 says it is loaded); every other value does nothing (0x000021BC).
   // Both effects reach the world (the AddObject at 0x000022E8) and the sound plays
-  // (0x00002324) - the charge's effect is built and its token cleared first (0x000021A4).
+  // (0x00002324); the guest destroys its temporary copy of the token on the way (0x000021A4).
   const CAssetId effectId = xc4c_ == 1 ? mData.mShield.mChargeEffect    // 0x0000216C (this+0x0C08)
                           : xc4c_ == 0 ? mData.mShield.mExplodeEffect   // 0x0000228C (this+0x18)
                                        : kInvalidAssetId;
-  if (effectId == kInvalidAssetId) {  // 0x000021BC..0x000021C0
-    return;
-  }
+  // 0x000021BC..0x000021C0: a state word that is neither 0 nor 1 reaches 0x000022D8 with no
+  // explosion at all - the port takes the invalid id, so no token is loaded and the three fields
+  // at the end are reset like the guest's.
+  // 0x000020A8 (the charge) and 0x000021C8 (the armed shield): the guest's own test of the
+  // token's "loaded" flag (the bytes at guest this+0xC14 and this+0xC24); the port's token's
+  // validity stands in for it.  When the token is not there the guest reaches 0x000022D8 with no
+  // explosion, so nothing is added and no sound plays - but the three fields at the end are
+  // reset either way (0x0000234C..0x00002360).
+  CExplosion* explosion = nullptr;
   rstl::optional_object< TCachedToken< CGenDescription > > effect;
   if (effectId != kInvalidAssetId) {
     effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
   }
-  if (!effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
-    return;
+  if (effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
+    explosion = rs_new CExplosion(
+        TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
+        -1);
+    // 0x000021A4: the guest destroys its temporary copy of the token here - nothing is cleared
+    // from the explosion itself.
   }
-  CExplosion* explosion = rs_new CExplosion(
-      TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
-      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
-      rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
-      -1);
-  if (explosion != nullptr) {
+  if (explosion != nullptr) {  // 0x000022D8..0x000022DC
     mgr.AddObject(explosion);  // 0x000022E8
-  }
-  CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
-                        CSfxManager::kMedPriority);  // 0x00002324
-  if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
-    CSfxManager::RemoveEmitter(xc38_);
-    xc38_ = CSfxHandle::NullHandle();
+    CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
+                          CSfxManager::kMedPriority);  // 0x00002324
+    if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
+      CSfxManager::RemoveEmitter(xc38_);
+      xc38_ = CSfxHandle::NullHandle();
+    }
   }
   xc4c_ = -1;   // 0x00002354
   xc48_ = 0.f;  // 0x0000235C

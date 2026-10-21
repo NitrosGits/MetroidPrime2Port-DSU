@@ -603,7 +603,9 @@ The shield effect is host code since 2026-10-21: the byte at guest this+0xC64's 
 it (0x00002064), the module's state word at guest this+0xC4C picks the effect (the charge at 1,
 the armed shield at 0, anything else nothing) and **both** effects put their explosion into the
 world (the AddObject at 0x000022E8), start the block's explode sound (0x00002324) and reset the
-module's state word and its two scale floats (0x0000234C..0x00002360). The guest's two
+module's state word and its two scale floats (0x0000234C..0x00002360) - the three fields are reset
+even when there is no effect at all (the guest reaches 0x000022D8 with no explosion when the state
+word is neither 0 nor 1 or the token is not loaded, and the reset is at 0x0000234C). The guest's two
 CGenDescription tokens (the ones at guest this+0xC08 and this+0x0C18, which the constructor
 fills from the block) are the block's charge effect and its explode effect; the port reads the
 same two asset ids (the block's +0x78 and +0x58).
