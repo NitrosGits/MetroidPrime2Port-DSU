@@ -32,6 +32,9 @@
 #include "MetroidPrime/PathFinding/CPathFindArea.hpp"
 #include "MetroidPrime/PathFinding/CPathFindRegion.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -613,6 +616,36 @@ void CDarkSamus::Separate(CStateManager& mgr) {
     BodyController()->CommandMgr().DeliverCmd(
         CBCLocomotionCmd(separation.AsNormalized(), CVector3f::Zero(), speed));
     mSeparationDir = separation;
+  }
+}
+
+// fn_10_1D860 (0x0001D860, 0x144 bytes): the additive animation of the state.
+//
+// kStateMsg_Activate (the r5 against 0 at 0x0001D868) builds the parms - the state
+// kAS_AdditiveReaction (0x18, the li r4 at 0x0001D8F4), the enum 5 (FromEnum at 0x0001D8C4) and
+// seven empty parms (NoParameter, 0x0001D888..) - through fn_10_13FFC (0x0001D8F8, the module's
+// copy of the CPASAnimParmData constructor: it stores the state and appends the eight parms)
+// and asks the animation's PAS database for the best animation (FindBestAnimation with the
+// state manager's random generator and -1, 0x0001D918). A score above 0 (lbl_10_rodata_3FC =
+// 0.0f, the fcmpo at 0x0001D92C) keeps the animation's index (0x0001D934) and adds it with the
+// weight lbl_10_rodata_3E8 = 1.0f, active and fading out (the li r5/r6 = 1 and
+// AddAdditiveAnimation at 0x0001D958). kStateMsg_Deactivate (the r5 against 2 at 0x0001D960)
+// removes the animation when there is one (the index against -1, 0x0001D96C/0x0001D970;
+// DelAdditiveAnimation at 0x0001D980) and forgets it (0x0001D988). kStateMsg_Update does nothing.
+void CDarkSamus::UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg) {
+  if (msg == kStateMsg_Activate) {
+    const CPASAnimParmData parms(pas::kAS_AdditiveReaction, CPASAnimParm::FromEnum(5));
+    const rstl::pair< float, int > best =
+        GetAnimationData()->GetPASDatabase().FindBestAnimation(parms, *mgr.Random(), -1);
+    if (best.first > 0.f) { // 0x0001D92C
+      mAdditiveAnim = best.second;
+      AnimationData()->AddAdditiveAnimation(mAdditiveAnim, 1.f, true, true);
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    if (mAdditiveAnim != -1) { // 0x0001D970
+      AnimationData()->DelAdditiveAnimation(mAdditiveAnim);
+      mAdditiveAnim = -1;
+    }
   }
 }
 

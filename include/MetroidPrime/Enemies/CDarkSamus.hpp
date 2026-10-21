@@ -379,6 +379,11 @@ private:
   // (mSeparationDir is the direction it steers along, or zero).
   void Separate(CStateManager& mgr);
 
+  // fn_10_1D860: the additive animation of the state's message - kStateMsg_Activate adds the
+  // best kAS_AdditiveReaction animation of the type 5 (its parms built by fn_10_13FFC, the
+  // CPASAnimParmData constructor), kStateMsg_Deactivate removes it.
+  void UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg);
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -460,6 +465,8 @@ private:
   CVector3f mPathFindDestination;  // guest 0x8B4/0x8B8/0x8BC, the destination of the path find:
                                    // fn_10_1C778 writes it (0x0001C7A4..0x0001C7BC); the
                                    // constructor writes the zero vector to it (0x0001FB94..)
+  int mAdditiveAnim;               // guest 0x970, the additive animation fn_10_1D860 added (-1 =
+                                   // none); the constructor writes -1 to it (0x0001FCBC)
   CVector3f mSeparationDir;        // guest 0x910/0x914/0x918, the direction fn_10_1DD14 steers
                                    // the actor along to get away from a repulsor (zero when it
                                    // does not); the constructor writes the zero vector to it

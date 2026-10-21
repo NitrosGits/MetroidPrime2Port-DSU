@@ -78,6 +78,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mLastWallHitTime(0.f)
 , mElapsedTime(0.f)
 , mPathFindDestination(CVector3f(0.f, 0.f, 0.f))
+, mAdditiveAnim(-1)
 , mSeparationDir(CVector3f(0.f, 0.f, 0.f))
 , mContactTime(0.f)
 , mContactPoint(CVector3f(0.f, 0.f, 0.f)) {
