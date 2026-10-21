@@ -64,6 +64,11 @@ public:
   TUniqueId GetOwnerId() const { return mOwner; }
   float GetSphereRadius() const;
   void SetSphereRadius(float radius);
+#ifdef TARGET_PC
+  // The Ingsmasher (REL 15, fn_15_7BFC) and CSandBoss's snap jaws (REL 55, fn_55_78E0) store 0x35c
+  // inline.
+  void SetExtendedTouchBounds(const CVector3f& bounds) { mExtendedTouchBounds = bounds; }
+#endif
 
 private:
   EPrimitiveType mPrimitiveType;

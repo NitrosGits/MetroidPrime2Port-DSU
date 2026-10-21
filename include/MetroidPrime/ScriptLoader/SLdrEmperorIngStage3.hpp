@@ -32,9 +32,16 @@ inline SLdrEmperorIngStage3DarkBeamAttackData::SLdrEmperorIngStage3DarkBeamAttac
   beamInfo.pulseSpeed = 20.0f;
   beamInfo.shutdownTime = 0.25f;
   beamInfo.pulseEffectScale = 2.0f;
+#ifdef TARGET_PC
+  // fn_18_D490: the REL's colors are 0.5 and 0.6 (rodata 0x2A0, 0x338), beamSound -1 (0xD4B8).
+  beamInfo.innerColor = CColor(0.5f, 0.5f, 0.5f, 0.5f);
+  beamInfo.outerColor = CColor(0.6f, 0.6f, 0.0f, 0.5f);
+  beamSound = -1;
+#else
   beamInfo.innerColor = CColor(0.49803901f, 0.49803901f, 0.49803901f, 0.49803901f);
   beamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.49803901f);
   beamSound = 0;
+#endif
 }
 
 inline SLdrEmperorIngStage3DarkBeamAttackData::~SLdrEmperorIngStage3DarkBeamAttackData() {}
@@ -78,7 +85,11 @@ struct SLdrEmperorIngStage3PortalAttackData {
 
 inline SLdrEmperorIngStage3PortalAttackData::SLdrEmperorIngStage3PortalAttackData()
 : effect(kInvalidAssetId), projectileDamage(), beamInfo() {
+#ifdef TARGET_PC
+  portalOpenSound = -1; // fn_18_D21C (0xD23C)
+#else
   portalOpenSound = 0;
+#endif
   projectileDamage.dI_WeaponType = 11;
   projectileDamage.dI_Damage = 20.0f;
   projectileDamage.dI_KnockBackPower = 10.0f;
@@ -88,8 +99,14 @@ inline SLdrEmperorIngStage3PortalAttackData::SLdrEmperorIngStage3PortalAttackDat
   beamInfo.pulseSpeed = 20.0f;
   beamInfo.shutdownTime = 0.25f;
   beamInfo.pulseEffectScale = 2.0f;
+#ifdef TARGET_PC
+  // fn_18_D21C: the REL's colors are 0.5 and 0.6 (rodata 0x2A0, 0x338).
+  beamInfo.innerColor = CColor(0.5f, 0.5f, 0.5f, 0.5f);
+  beamInfo.outerColor = CColor(0.6f, 0.6f, 0.0f, 0.5f);
+#else
   beamInfo.innerColor = CColor(0.49803901f, 0.49803901f, 0.49803901f, 0.49803901f);
   beamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.49803901f);
+#endif
 }
 
 inline SLdrEmperorIngStage3PortalAttackData::~SLdrEmperorIngStage3PortalAttackData() {}
@@ -315,7 +332,11 @@ inline SLdrEmperorIngStage3Data::SLdrEmperorIngStage3Data()
   tauntFrequency = 0.0f;
   vulnerableTime = 0.0f;
   vulnerableDamageThreshold = 0.0f;
+#ifdef TARGET_PC
+  sound = -1; // fn_18_CFAC (0xD050, the word at 0x7DC)
+#else
   sound = 0;
+#endif
 }
 
 inline SLdrEmperorIngStage3Data::~SLdrEmperorIngStage3Data() {}
@@ -446,7 +467,20 @@ struct SLdrEmperorIngStage3 {
 
 inline SLdrEmperorIngStage3::SLdrEmperorIngStage3()
 : editorProperties(), patterned(), actorInformation(), data() {
+#ifdef TARGET_PC
+  // fn_18_C380 (0xC3C0..0xC418): the REL's loader also stores these defaults after the member
+  // ctors: 3 at sp+0x438 (editor +0x38), 2.0 (rodata 0x274) at +0x488 (patterned +0x4C),
+  // creatureSize 2 at +0x668, 1 at +0x66C (patterned +0x230), CColor(1.0 x4, rodata 0x264) at
+  // +0x694 (actor +0x14) and 0xF at +0x6E4 (actor +0x64), as SLdrEmperorIngStage2Tentacle's.
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 2;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#else
+  patterned.creatureSize = 2;
+#endif
 }
 
 inline SLdrEmperorIngStage3::~SLdrEmperorIngStage3() {}

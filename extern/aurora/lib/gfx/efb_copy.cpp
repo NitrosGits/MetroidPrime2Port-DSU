@@ -36,6 +36,7 @@ enum class SlotState : uint8_t {
 
 struct Slot {
   wgpu::Buffer buffer;
+  uint64_t capacity = 0; // the buffer's size; it only grows
   uint64_t bytes = 0;
   uint32_t rowBytes = 0;
   uint32_t srcWidth = 0;
@@ -75,7 +76,12 @@ bool ensure_slot(Slot& slot, const TextureHandle& source, const Request& req) no
   const uint32_t srcHeight = source->size.height;
   const uint32_t rowBytes = align_up(srcWidth * SourceBytesPerTexel, RowStrideAlignment);
   const uint64_t bytes = static_cast<uint64_t>(rowBytes) * srcHeight;
-  if (slot.buffer && slot.bytes == bytes) {
+  // Port: copies alternate between resolve targets of different sizes (the scan visor reads the
+  // full framebuffer and two pane-sized ones), so re-creating on every size change made a new
+  // buffer of up to ~24 MB on most copies; reuse any buffer that is big enough.
+  if (slot.buffer && slot.capacity >= bytes) {
+    slot.bytes = bytes;
+    slot.rowBytes = rowBytes;
     slot.srcWidth = srcWidth;
     slot.srcHeight = srcHeight;
     slot.sourceIsBgra = format == wgpu::TextureFormat::BGRA8Unorm;
@@ -83,6 +89,7 @@ bool ensure_slot(Slot& slot, const TextureHandle& source, const Request& req) no
   }
 
   slot.buffer = {};
+  slot.capacity = bytes;
   slot.bytes = bytes;
   slot.rowBytes = rowBytes;
   slot.srcWidth = srcWidth;

@@ -26,7 +26,9 @@
 #include "port_ui_common.h"
 #include "port_warp.h"
 
+#include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -34,6 +36,7 @@
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
@@ -41,6 +44,7 @@
 #include <dolphin/pad.h>
 #include <dolphin/vi.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include <algorithm>
 #include <atomic>
@@ -116,6 +120,13 @@ int sHudScale = PortOverlay::kHudScaleMax;
 // Interface scale in percent (`MP2_UI_SCALE`) and vsync (`MP2_VSYNC`).
 int sUiScale = 100;
 bool sVsync = false;
+// Fullscreen (`MP2_FULLSCREEN`): Android hides the status and navigation bars by default, a desktop
+// starts windowed (MP1's sFullscreen).
+#if defined(__ANDROID__)
+bool sFullscreen = true;
+#else
+bool sFullscreen = false;
+#endif
 // MP1's 60 FPS cap (`MP2_FRAME_LIMIT`), on by default as there: PortPaceFrame holds the loop to 60 Hz.
 bool sFrameLimit = true;
 // MP1's smooth frames (`MP2_SMOOTH_FRAMES`, on by default): with the cap off, the camera is drawn
@@ -158,12 +169,24 @@ int sAreaId = -1;
 // The room list, taken from the live world at SetGameState time (on the game thread, while the
 // world is alive) and never a pointer kept across frames: a world teleport frees the outgoing
 // world, and the overlay still draws the frames before the restart replaces it.
+// `name` starts as the MLVL's internal label and becomes the area's English name (string 0 of its
+// name STRG, what the map screen shows) once that table has loaded; `label` keeps the internal one
+// so the filter still finds a room by it.
 struct SRoomEntry {
   std::string name;
+  std::string label;
   bool real;
+  TToken< CStringTable >* nameTable; // pending name load, freed once read
 };
 std::vector< SRoomEntry > sRooms;
 uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
+
+void ClearRooms() {
+  for (SRoomEntry& room : sRooms) {
+    delete room.nameTable;
+  }
+  sRooms.clear();
+}
 
 // Frames per second, averaged over a second, from the presented-frame clock.
 float sFps = 0.f;
@@ -434,12 +457,14 @@ void DrawDebugSection() {
     if (PortUi::SliderFloat("Camera speed", &speed, 0.5f, 50.f, "%.1f m/s", nullptr,
                             "metres per second at a full stick; the right trigger multiplies it by four")) {
       PortPhoto::SetSpeed(speed);
+      Changed(true);
     }
     int ss = PortPhoto::Supersample() >= 4 ? 2 : PortPhoto::Supersample() >= 2 ? 1 : 0;
     if (PortUi::Combo("Supersample", &ss, "1x\0" "2x\0" "4x\0", nullptr,
                       "renders the photo at 2x or 4x the window's size; a size the GPU can't hold "
                       "steps down")) {
       PortPhoto::SetSupersample(ss == 2 ? 4 : ss == 1 ? 2 : 1);
+      Changed(true);
     }
     bool showSamus = PortPhoto::ShowSamus();
     if (PortUi::Toggle("Show Samus", &showSamus, nullptr,
@@ -529,6 +554,7 @@ void DrawGameSection() {
                        "In LiveSplit: right-click, Control > Start TCP Server (port 16834), and compare "
                        "against Game Time. A new file starts the timer; the final blow splits")) {
       PortLiveSplit::SetEnabled(liveSplit);
+      Changed(true);
     }
     switch (PortLiveSplit::Status()) {
     case PortLiveSplit::kStatus_Off:
@@ -553,24 +579,35 @@ void DrawGameSection() {
     if (ImGui::InputText("Server (host:port)", address, sizeof(address),
                          ImGuiInputTextFlags_EnterReturnsTrue)) {
       PortLiveSplit::SetAddress(address);
+      Changed(true);
     }
     PortUi::Note("MP2_LIVESPLIT_ADDR=<host:port>", "LiveSplit's TCP server; Enter applies it");
     bool splitUpgrades = PortLiveSplit::SplitUpgrades();
     if (PortUi::Toggle("Split on upgrades", &splitUpgrades, "MP2_LIVESPLIT_SPLIT_UPGRADES=0",
                        "a split for every new suit, beam, visor, ball part, key or other upgrade")) {
       PortLiveSplit::SetSplitUpgrades(splitUpgrades);
+      Changed(true);
     }
   }
 
   ImGui::SeparatorText("Cutscenes");
   // The game reads this every frame in its cinematic flow state.
   Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
-               "ends every cinematic at once, seen or not; makes tests 3-5x faster"));
+               "START or A skips any cinematic, seen or not; off, START skips only seen ones"));
 }
 
 // The Prime 1 port's Video page (debug_ui/tabs.cpp's DrawVideoTab) with its four sub-tabs. Display
 // holds the view (FOV, arm cannon, helmet, HUD); Quality the render settings; Frame rate the vsync.
 void DrawVideoDisplay() {
+  ImGui::SeparatorText("Display");
+  bool fullscreen = sFullscreen;
+#if defined(__ANDROID__)
+  if (ImGui::Checkbox("Fullscreen (hide the status and navigation bars)", &fullscreen)) {
+#else
+  if (ImGui::Checkbox("Fullscreen (F11)", &fullscreen)) {
+#endif
+    PortOverlay::SetFullscreen(fullscreen);
+  }
   ImGui::SeparatorText("HUD and view");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
   // built, so the live change goes through CCameraManager::mFirstPersonFov.
@@ -821,6 +858,8 @@ void GrantItem(CPlayerState& ps, CPlayerState::EItemType type, int capacity, int
   // capacity has room for it (which AddPowerUp alone would not do).
   ps.AddPowerUp(type, capacity - ps.GetItemCapacity(type));
   ps.SetItemAmount(type, amount);
+  // A translator gate reads the inventory once, when its area loads; this has it read again.
+  CScriptConditionalRelay::PortNoteInventoryCheat();
 }
 
 struct SItemCheck {
@@ -849,15 +888,15 @@ constexpr SItemCheck kAbilityItems[] = {
     {"Boost Ball", CPlayerState::kIT_BoostBall},
     {"Spider Ball", CPlayerState::kIT_SpiderBall},
     {"Morph Ball Bombs", CPlayerState::kIT_MorphBallBombs},
-    {"Dark Bomb", CPlayerState::kIT_DarkBomb},
-    {"Light Bomb", CPlayerState::kIT_LightBomb},
-    {"Annihilator Bomb", CPlayerState::kIT_AnnihilatorBomb},
     {"Grapple Beam", CPlayerState::kIT_GrappleBeam},
     {"Space Jump Boots", CPlayerState::kIT_SpaceJumpBoots},
     {"Gravity Boost", CPlayerState::kIT_GravityBoost},
     {"Seeker Launcher", CPlayerState::kIT_SeekerLauncher},
     {"Screw Attack", CPlayerState::kIT_ScrewAttack},
-    {"Translator", CPlayerState::kIT_TranslatorUpgrade_TempETM},
+    {"Violet Translator", CPlayerState::kIT_VioletTranslator},
+    {"Amber Translator", CPlayerState::kIT_AmberTranslator},
+    {"Emerald Translator", CPlayerState::kIT_EmeraldTranslator},
+    {"Cobalt Translator", CPlayerState::kIT_CobaltTranslator},
 };
 
 constexpr SItemCheck kKeyItems[] = {
@@ -1001,13 +1040,15 @@ void DrawCheatsSection() {
           continue;
         }
         const std::string label = roomLabel(i);
-        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr) {
+        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr &&
+            SDL_strcasestr(sRooms[i].label.c_str(), sRoomFilter) == nullptr) {
           continue;
         }
         ImGui::PushID(i);
         if (ImGui::Selectable(label.c_str(), i == current)) {
           goToRoom(i);
         }
+        ImGui::SetItemTooltip("%s", sRooms[i].label.c_str());
         ImGui::PopID();
       }
       ImGui::EndCombo();
@@ -1558,6 +1599,129 @@ void DrawControlsSection() {
   ImGui::End();
 }
 
+bool IsResizeGrip(ImGuiWindow* window, ImGuiID id) {
+  for (int n = 0; n < 4; ++n) {
+    if (id == ImGui::GetWindowResizeCornerID(window, n) ||
+        id == ImGui::GetWindowResizeBorderID(window, static_cast< ImGuiDir >(n))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// The innermost window under the finger that can actually scroll vertically,
+// climbing out of child windows (a table, the page list) that cannot.
+ImGuiWindow* ScrollableWindowAt(ImGuiWindow* window) {
+  for (; window != nullptr; window = window->ParentWindow) {
+    if (window->ScrollMax.y > 0.f && (window->Flags & ImGuiWindowFlags_NoScrollWithMouse) == 0) {
+      return window;
+    }
+    if ((window->Flags & ImGuiWindowFlags_ChildWindow) == 0) {
+      break;
+    }
+  }
+  return nullptr;
+}
+
+// MP1's touch scrolling (platform/debug_ui/window.cpp). ImGui has no touch scrolling: a finger
+// dragged down a page presses whatever it landed on and scrolls nothing. A mostly vertical drag is
+// taken away from the widget it began on (so a button under it does not fire on release) and
+// scrolls the window instead, and the finger's speed carries on as a fling after it lifts. A mostly
+// horizontal drag is left alone, so sliders still work, and so are the scrollbar, a window being
+// moved or resized, and drags that start outside the content area. Runs before any window.
+struct TouchScroll {
+  ImGuiWindow* window = nullptr;
+  bool decided = false;
+  bool dragging = false;
+  float velocity = 0.f; // pixels per second, positive scrolls down
+};
+TouchScroll sTouchScroll;
+
+void UpdateTouchScroll() {
+  ImGuiContext& g = *ImGui::GetCurrentContext();
+  const ImGuiIO& io = g.IO;
+  TouchScroll& scroll = sTouchScroll;
+  const bool touch = io.MouseSource == ImGuiMouseSource_TouchScreen;
+
+  if (io.MouseClicked[0]) {
+    scroll = TouchScroll{};
+    if (touch) {
+      ImGuiWindow* window = ScrollableWindowAt(g.HoveredWindow);
+      if (window != nullptr && window->InnerClipRect.Contains(io.MouseClickedPos[0])) {
+        scroll.window = window;
+      }
+    }
+  }
+  if (scroll.window == nullptr) {
+    return;
+  }
+
+  if (io.MouseDown[0]) {
+    if (!scroll.decided) {
+      const ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.f);
+      // A share of the font size rather than io.MouseDragThreshold's fixed
+      // pixels, which on a dense phone screen is a jitter, not a drag.
+      const float threshold = g.FontSize * 0.6f;
+      if (delta.x * delta.x + delta.y * delta.y < threshold * threshold) {
+        return;
+      }
+      scroll.decided = true;
+      ImGuiWindow* activeWindow = g.ActiveIdWindow;
+      const bool ownDrag =
+          g.MovingWindow != nullptr ||
+          (g.ActiveId != 0 && activeWindow != nullptr &&
+           (g.ActiveId == ImGui::GetWindowScrollbarID(activeWindow, ImGuiAxis_X) ||
+            g.ActiveId == ImGui::GetWindowScrollbarID(activeWindow, ImGuiAxis_Y) ||
+            IsResizeGrip(activeWindow, g.ActiveId)));
+      if (std::fabs(delta.y) <= std::fabs(delta.x) || ownDrag) {
+        scroll.window = nullptr;
+        return;
+      }
+      scroll.dragging = true;
+    }
+    if (!scroll.dragging) {
+      return;
+    }
+    if (g.ActiveId != 0) {
+      ImGui::ClearActiveID();
+    }
+    ImGui::SetScrollY(scroll.window, scroll.window->Scroll.y - io.MouseDelta.y);
+    if (io.DeltaTime > 0.f) {
+      // Smoothed, so the last jittery frame before the finger lifts does not
+      // decide the whole fling.
+      const float instant = -io.MouseDelta.y / io.DeltaTime;
+      scroll.velocity += (instant - scroll.velocity) * 0.4f;
+    }
+    return;
+  }
+
+  // Released: keep scrolling at the finger's speed, easing off.
+  if (!scroll.dragging) {
+    scroll.window = nullptr;
+    return;
+  }
+  const float y = scroll.window->Scroll.y;
+  const bool atEdge = (scroll.velocity < 0.f && y <= 0.f) ||
+                      (scroll.velocity > 0.f && y >= scroll.window->ScrollMax.y);
+  if (atEdge || std::fabs(scroll.velocity) < g.FontSize) {
+    scroll = TouchScroll{};
+    return;
+  }
+  ImGui::SetScrollY(scroll.window, y + scroll.velocity * io.DeltaTime);
+  scroll.velocity *= std::exp(-4.f * io.DeltaTime);
+}
+
+// A finger that lifts leaves ImGui's cursor where it was, so whatever was last
+// tapped stays drawn as hovered. Move the cursor off-screen once the release
+// has been seen; queued now, it lands on the next frame.
+void ClearTouchHover() {
+  ImGuiIO& io = ImGui::GetIO();
+  if (io.MouseSource == ImGuiMouseSource_TouchScreen && io.MouseReleased[0] &&
+      !ImGui::IsAnyMouseDown()) {
+    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+  }
+}
+
 } // namespace
 
 namespace PortOverlaySearch {
@@ -1578,7 +1742,7 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
   sWorldId = worldId;
   sAreaId = areaId;
   if (world == nullptr) {
-    sRooms.clear();
+    ClearRooms();
     sRoomsWorld = 0;
     return;
   }
@@ -1587,10 +1751,28 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
   // keying on the state's id would cache the outgoing rooms under the new world's name.
   const uint32_t roomWorld = static_cast< uint32_t >(world->IGetWorldAssetId());
   if (roomWorld == sRoomsWorld && !sRooms.empty()) {
-    return; // the same world: its area table cannot have changed under it
+    // The same world: its area table cannot have changed under it, only name loads finish.
+    for (int i = 0; i < static_cast< int >(sRooms.size()); ++i) {
+      SRoomEntry& room = sRooms[i];
+      if (room.nameTable == nullptr || !room.nameTable->IsLoaded()) {
+        continue;
+      }
+      const CStringTable* table = **room.nameTable;
+      const std::string name = table != nullptr && table->GetStringCount() > 0
+                                   ? PlainWorldName(table->GetString(0))
+                                   : std::string();
+      if (!name.empty()) {
+        char text[160];
+        std::snprintf(text, sizeof(text), "%d  %s", i, name.c_str());
+        room.name = text;
+      }
+      delete room.nameTable;
+      room.nameTable = nullptr;
+    }
+    return;
   }
   sRoomsWorld = roomWorld;
-  sRooms.clear();
+  ClearRooms();
   const int count = world->IGetAreaCount();
   sRooms.reserve(count);
   for (int i = 0; i < count; ++i) {
@@ -1604,7 +1786,16 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
     }
     // A slot with no MREA is not a room the game can travel to; the list hides it instead of
     // offering a warp that would print "does not exist" and do nothing.
-    sRooms.push_back(SRoomEntry{label, area != nullptr && area->IGetAreaAssetId() != kInvalidAssetId});
+    const bool real = area != nullptr && area->IGetAreaAssetId() != kInvalidAssetId;
+    // The name tables load asynchronously and are read on later calls; a token kept locked until
+    // then, since one that dies cancels its load.
+    TToken< CStringTable >* nameTable = nullptr;
+    const CAssetId strg = area != nullptr ? area->IGetStringTableAssetId() : kInvalidAssetId;
+    if (real && strg != kInvalidAssetId && gpSimplePool != nullptr) {
+      nameTable = rs_new TToken< CStringTable >(gpSimplePool->GetObj(SObjectTag('STRG', strg)));
+      nameTable->Lock();
+    }
+    sRooms.push_back(SRoomEntry{label, label, real, nameTable});
   }
 }
 
@@ -1997,6 +2188,18 @@ void SetVsync(bool enabled) {
   Persist();
 }
 
+bool Fullscreen() {
+  ReadEnv();
+  return EnvBool("MP2_FULLSCREEN", sFullscreen);
+}
+
+void SetFullscreen(bool enabled) {
+  ReadEnv();
+  sFullscreen = enabled;
+  Persist();
+  VISetWindowFullscreen(enabled);
+}
+
 bool FrameLimit() {
   ReadEnv();
   return EnvBool("MP2_FRAME_LIMIT", sFrameLimit);
@@ -2195,6 +2398,7 @@ void Draw() {
   ApplyGraphicsQuality();
   ApplyVsync();
   ApplyRenderScale();
+  SyncGameOptions();
   // A row's change is written once no item is active (MP1's window.cpp), so a slider drag is one write.
   if (PortOverlaySettings::Dirty() && ImGui::GetCurrentContext() != nullptr && !ImGui::IsAnyItemActive()) {
     PortOverlaySettings::SaveSettings();
@@ -2203,11 +2407,13 @@ void Draw() {
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
   if (!sVisible) {
+    sTouchScroll = TouchScroll{};
     return;
   }
   PortUi::UpdateUiScale(static_cast< float >(PortOverlay::UiScale()) / 100.f);
   PortUi::ApplyThemeIfChanged();
 
+  UpdateTouchScroll();
   PortOverlaySearch::BeginSearchJump();
   if (PortUi::PageLayout()) {
     if (!DrawPageWindow()) {
@@ -2217,6 +2423,7 @@ void Draw() {
     DrawDesktopWindow();
   }
   PortOverlaySearch::EndSearchJump();
+  ClearTouchHover();
 }
 
 } // namespace PortOverlay

@@ -329,6 +329,40 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
     }
     CGraphics::SetDepthRange(0.f, 1.f / 512.f);
     CGuiWidget* model = mSamusHud->GetAutomapperModel();
+#ifdef TARGET_PC
+    // Port: widescreen HUD. The minimap and its depth mask are drawn outside CGuiFrame; spread both
+    // with one transform so the map stays inside its mask, beside the strut it sits by. The spread
+    // fades out as the map grows into the map screen.
+    CTransform4f mapSpread = CTransform4f::Identity();
+    CGuiCamera* mapCamera = mSamusHud->GetLoadedHudFrame() != nullptr
+                                ? mSamusHud->GetLoadedHudFrame()->GetFrameCamera()
+                                : nullptr;
+    if (mapCamera != nullptr && !mAutoMapper->IsFullyOutOfMiniMapState()) {
+      float mapT = 0.f;
+      if (!mAutoMapper->IsFullyInMiniMapState()) {
+        mapT = mAutoMapper->GetNextState() != CAutoMapper::kAMS_MiniMap
+                   ? mAutoMapper->GetInterp()
+                   : 1.f - mAutoMapper->GetInterp();
+      }
+      mapSpread = mapCamera->GetSpreadTransform(mMapCameraTransform.GetTranslation(), 1.f - mapT);
+    }
+    if (model != nullptr) {
+      model->SetIsVisible(true);
+      CTransform4f savedXf = CTransform4f::Identity();
+      bool savedValid = false;
+      if (model->PortSetWorldTransform(mapSpread * model->GetWorldTransform(), savedXf,
+                                       savedValid)) {
+        model->Draw(CGuiWidgetDrawParms(1.f, CVector3f::Zero()));
+        model->PortRestoreWorldTransform(savedXf, savedValid);
+      } else {
+        model->Draw(CGuiWidgetDrawParms(1.f, CVector3f::Zero()));
+      }
+    }
+    CGraphics::SetDepthWriteMode(true, kE_GEqual, false);
+    mAutoMapper->Draw(mgr,
+                      mapSpread * CTransform4f::Translate(0.f, 0.02f, 0.f) * mMapCameraTransform,
+                      mVisorStaticAlpha * mapAlpha);
+#else
     if (model != nullptr) {
       model->SetIsVisible(true);
       model->Draw(CGuiWidgetDrawParms(1.f, CVector3f::Zero()));
@@ -336,6 +370,7 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
     CGraphics::SetDepthWriteMode(true, kE_GEqual, false);
     mAutoMapper->Draw(mgr, CTransform4f::Translate(0.f, 0.02f, 0.f) * mMapCameraTransform,
                       mVisorStaticAlpha * mapAlpha);
+#endif
     CGraphics::SetDepthWriteMode(true, kE_LEqual, true);
     if (model != nullptr) {
       model->SetIsVisible(false);

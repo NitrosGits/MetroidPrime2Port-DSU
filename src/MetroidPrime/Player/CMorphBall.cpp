@@ -63,6 +63,7 @@
 #include "rstl/math.hpp"
 #ifdef TARGET_PC
 #include "port_overlay.h"
+#include "port_touch.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -1149,7 +1150,13 @@ void CMorphBall::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
 
   if (mBallState == kBS_ScrewAttack || mBallState == kBS_ScrewAttackWallJump) {
     const bool isWall = CMath::AbsF(CVector3f::Dot(mPlayer.GetMovementDirection(), normal)) < 0.9f;
+#ifdef TARGET_PC
+    // Port: retail tests bit 62 (the screw-attack wall surface), not kMT_Wall, and recoils on a
+    // glancing hit (|dot| < 0.9); the upstream test wall-jumped off every wall hit at an angle.
+    if (!allMats.HasMaterial(kMT_ScrewAttackWall) || isWall) {
+#else
     if (!allMats.HasMaterial(kMT_Wall) || !isWall) {
+#endif
       mBallState = kBS_ScrewAttackRecovery;
       mTouchingWall = false;
       if (!CGameCollision::IsFloor(CMaterialList(ScrewAttackWallFloorMaterial), normal)) {
@@ -3767,10 +3774,14 @@ void CMorphBall::ComputeBallMovement(const CFinalInput& input, CStateManager& mg
   // from the ball's own position, so the ball can leave the ground without a bomb to spend. The
   // ball camera does not use the C-stick, so nothing else consumes it here. The input has been
   // scaled by the ball's own divisor, so a full deflection can read 1.0/divisor; 0.25 is MP1's
-  // threshold, and it still passes a deflection of half the stick at a divisor of 2.
+  // threshold, and it still passes a deflection of half the stick at a divisor of 2. The touch
+  // overlay's swipe up asks for one too (PortTouch::SpringBallRequested), as in MP1's port; the
+  // frozen-control calls pass a blank input with no time, which must not take the request.
   if (sSpringBallCooldown > 0.f) {
     sSpringBallCooldown -= dt;
-  } else if (input.ARAUp() > 0.25f && mBallState == kBS_Normal &&
+  } else if ((input.ARAUp() > 0.25f ||
+              (input.DeltaTime() > 0.f && PortTouch::SpringBallRequested())) &&
+             mBallState == kBS_Normal &&
              mPlayer.GetPlayerMovementState() == NPlayer::kMS_OnGround &&
              !mPlayer.IsMorphBallTransitioning() && IsMovementAllowed() &&
              mPlayer.GetAttachedActorId() == kInvalidUniqueId && SpringBallUnlocked(mPlayer)) {

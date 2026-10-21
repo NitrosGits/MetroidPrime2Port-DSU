@@ -7,6 +7,11 @@
 {"Game", "", "Game", "Next area", "warp teleport room forward f5"},
 {"Game", "", "Game", "Previous world", "warp teleport planet region back f8"},
 {"Game", "", "Game", "Next world", "warp teleport planet region forward f7"},
+#if defined(__ANDROID__)
+{"Video", "Display", "Display", "Fullscreen (hide the status and navigation bars)", "full screen immersive window"},
+#else
+{"Video", "Display", "Display", "Fullscreen (F11)", "full screen window"},
+#endif
 {"Video", "Display", "HUD and view", "Field of view (1st person)", "fov zoom camera angle"},
 {"Video", "Display", "HUD and view", "Arm cannon right", "gun weapon offset position x"},
 {"Video", "Display", "HUD and view", "Arm cannon forward", "gun weapon offset position y"},

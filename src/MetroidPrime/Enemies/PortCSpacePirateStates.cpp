@@ -26,7 +26,7 @@
 #include "rstl/vector.hpp"
 #include <float.h>
 
-// Retail fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
+// @ fn_72_7630 (0x4C): Activate only, and the whole body is one locomotion choice - 6 (an
 // unnamed Echoes locomotion) when 0x8f4 byte bit 0x40 (`x8f4_25_ceilingAmbush`, data flag 0x2) is
 // set, otherwise 0 = kLT_Crouch. Every other message returns.
 void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -36,19 +36,23 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_7078 (0x528). Activate switches on xc04_warpPoint: at 0 it collects every
+// Retail fn_72_7078 (0x528). Activate (msg 0) arms kAS_Ready, zeroes the alpha, sets the warp point
+// to 0, clears 0x8fa bit 0x08 and strips Character/Solid/Target/Orbit. Update (msg 1) switches on
+// xc04_warpPoint: at 0 it collects every
 // kSS_GRNT/kSM_Follow connection resolved through GetIdForScript and GetObjectById to a
 // CScriptWaypoint, teleports onto one of them chosen with mgr.Random()->Range(0, n - 1) through that
 // waypoint's own transform, then sweeps a +/-10 box (rodata B58) filtered to
 // kMT_Solid/kMT_Player/kMT_Character with DetectDynamicCollisionBoolean on its own collision
-// primitive: a clear box moves the point to 1 and puts Character/Solid/Target/Orbit back. At 1 it
+// primitive: a clear box moves the point to 1 and puts Character/Solid/Target back (Orbit waits
+// for Deactivate). At 1 it
 // delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate and fades in
-// (alpha = max(0, 1 - remaining/cached) once 0x8fa bit 0x08 is armed). Update strips those four
-// materials and zeroes the alpha; Deactivate re-adds them, restores alpha 1, resets the warp point
-// to -1 and clears 0x8fa bit 0x20.
+// (alpha = max(0, 1 - remaining/cached) once 0x8fa bit 0x08 is armed). Deactivate re-adds the
+// materials, restores alpha 1, resets the warp point to -1 and clears 0x8fa bit 0x20. (The two
+// cases were once swapped, so every update reset the warp: a warped-in trooper stayed invisible,
+// unhittable and in "WarpIn" for good, and the counters its death feeds never moved.)
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
-  case kStateMsg_Update:
+  case kStateMsg_Activate:
     mAnimationState.SetState(CAnimationState::kAS_Ready);
     mColor.SetAlpha(0.f);
     mAlphaDelta = 0.f;
@@ -56,7 +60,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
     x8fa_28_ = false;
     RemoveMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
     break;
-  case kStateMsg_Activate:
+  case kStateMsg_Update:
     switch (xc04_warpPoint) {
     case 0: {
       rstl::vector< CScriptWaypoint* > points;
@@ -88,7 +92,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {
         xc04_warpPoint = 1;
-        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
+        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, mgr);
       }
       break;
     }
@@ -120,7 +124,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_6E6C (0x20C): Activate arms kAS_Ready, sets the warp point to 1 and clears 0x8fa bit
+// @ fn_72_6E6C (0x20C): Activate arms kAS_Ready, sets the warp point to 1 and clears 0x8fa bit
 // 0x08. Update delivers CBCGenerateCmd(kGType_One) while the animation allows kAS_Generate; when the
 // body is already in that body state it arms the bit and caches the remaining animation time, then
 // fades the body out (alpha = min(1, remaining / cached), rodata B54 = 1). Deactivate zeroes the
@@ -152,7 +156,7 @@ void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_6DA4 (0xC8): Activate only. Unless 0x8fa bit 0x20 is set it posts kSM_Deactivate to
+// @ fn_72_6DA4 (0xC8): Activate only. Unless 0x8fa bit 0x20 is set it posts kSM_Deactivate to
 // itself (CScriptMsg sender = id = own unique id, originator invalid, state -1), then always resets
 // the warp point to -1 and, when 0x8fa bit 0x10 is set, asks the state manager to delete the actor.
 void CSpacePirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -168,7 +172,7 @@ void CSpacePirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_9F1C is MP1's CSpacePirate::Attack with Echoes' own members. Activate stores
+// @ fn_72_9F1C (0x39C): MP1's CSpacePirate::Attack with Echoes' own members. Activate stores
 // kAS_Ready and combat locomotion, caches GetTargetPos (CB30) in xbc4_ and the delta from that point
 // to the actor's own bounding-box centre in x908, zeroes the steering speed (rodata 0xB9C) and
 // clears the melee bit; the close test is TooClose with a zero CTriggerData, and only enables the
@@ -483,7 +487,7 @@ void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_BCB0. Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
+// @ fn_72_BCB0 (0x31C). Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
 // takes the kSS_Attack/kSM_Follow connected waypoint as the nav destination and, when the dot of the
 // forward axis with (waypoint - translation) is exactly zero (asm 0xBD90: fcmpo/cror/bne), marks the
 // nav in-position; Update
@@ -664,7 +668,7 @@ void CSpacePirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_7DFC is MP1's CSpacePirate::Dodge with TryCommand(TryDodge/TryRollingDodge/
+// @ fn_72_7DFC (0x4D4): MP1's CSpacePirate::Dodge with TryCommand(TryDodge/TryRollingDodge/
 // TryBreakDodge) replaced by a direct CBCStepCmd; the asm's three deliveries are the step types
 // 1/3/2 at 0x7FC4/0x80A8/0x8158 and all sit behind CAnimationState::CanIssueCommand(kAS_Step) at
 // fn_801B73E4. Activate clears the break-dodge bit (0x7E50 rlwimi over 0x8f9 bit 0x04) and then,
@@ -726,7 +730,7 @@ void CSpacePirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5280: the leash timer accumulates while the body is not fully frozen (rodata B54 = 1.0,
+// @ fn_72_5280: the leash timer accumulates while the body is not fully frozen (rodata B54 = 1.0,
 // `fcmpu` + `beq` on GetPercentageFrozen) and not being electrocuted (body +0x5b8 > 0, i.e.
 // IsElectrocuting). MP1 spells the same test !IsFrozen() && !IsElectrocuting().
 void CSpacePirate::UpdateLeashTimer(float dt) {
@@ -735,7 +739,7 @@ void CSpacePirate::UpdateLeashTimer(float dt) {
   }
 }
 
-// Retail fn_72_D720: how long the target has stayed put; ShouldJumpBack reads the timer.
+// @ fn_72_D720 (0xE0): how long the target has stayed put; ShouldJumpBack reads the timer.
 void CSpacePirate::UpdateHeldPosition(CStateManager& mgr, float dt) {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
   if (player == nullptr) {
@@ -793,7 +797,7 @@ void CSpacePirate::UpdateGuardPosition(CStateManager& mgr, float dt) {
   x8f7_28_noPlayerLos = xa78_ < 0.5f;
 }
 
-// Retail fn_72_D2A0 - MP1's CantJumpBack with Echoes' cheaper test: the landing point must be on the
+// @ fn_72_D2A0 - MP1's CantJumpBack with Echoes' cheaper test: the landing point must be on the
 // search path, and only when it is not does the swept ray from the bounding-box centre decide. Note
 // the asm returns the RAW RayDynamicLineOfSightTest result (1 = clear) on that second branch, i.e. the
 // polarity is retail's own and unproven here: no state in the verify area reaches it.
@@ -844,7 +848,7 @@ void CSpacePirate::AvoidActors(CStateManager& mgr) {
   }
 }
 
-// Retail fn_72_CC80 is MP1's CSpacePirate::CheckBlade: the swoosh locator's own box (the model's
+// @ fn_72_CC80 is MP1's CSpacePirate::CheckBlade: the swoosh locator's own box (the model's
 // scale halved around the locator translation, rodata 0xB44 = 0.5) tested against the attack
 // target's bounds, which once over the overlap damages that actor with the data's blade damage and
 // marks the blade spent. As in MP1 the guard is the appliedBladeDamage bit: `extrwi. r0,r0,1,25` at
@@ -1204,7 +1208,7 @@ void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_68E4 (0xC8): Activate sets 0x8f7 bit 0x04 and both 0x8fa bits 0x02 and 0x01, Update
+// @ fn_72_68E4 (0xC8): Activate sets 0x8f7 bit 0x04 and both 0x8fa bits 0x02 and 0x01, Update
 // delivers a bare kBSC_ExitState command to the body and Deactivate clears those three bits again.
 // Messages outside 1..3 and negative ones fall straight to the epilogue.
 void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1320,7 +1324,7 @@ void CSpacePirate::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_94D0: Activate stores rodata B50 = 4.0 into the strafe delay and flags the attack
+// @ fn_72_94D0: Activate stores rodata B50 = 4.0 into the strafe delay and flags the attack
 // state; Update keeps a step going in xb08_skidDir (body 0x37c compared with 3 = kAS_Step);
 // Deactivate clears the flag. Only messages 0-2 are handled.
 void CSpacePirate::Skid(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1405,6 +1409,8 @@ void CSpacePirate::DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_72_63C8 (0x448): the JumpBack state - it opens with ShouldJumpBack and returns on
+// false, and its helper CantJumpBack (fn_72_D2A0) decides the jump.
 void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   if (!ShouldJumpBack(mgr, CTriggerData(0.f))) {
     return;
@@ -1513,7 +1519,7 @@ void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
+// @ fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
 // (type 0xA, no payload) to the body, as MP1's Enraged does.
 void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
@@ -1521,7 +1527,7 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5310: Activate arms the animation state and zeroes the leash timer. Update delivers
+// @ fn_72_5310 (0x108): Activate arms the animation state and zeroes the leash timer. Update delivers
 // the loop jump towards mDestPos (as built by fn_72_5510: 0x11 kBSC_Jump, jump type 0, variant 0,
 // waypoint2 = zero vector, initial state 2 = kJS_Loop, facing flags 2 = kFF_AmbushJump, no wall
 // jump) once the animation allows kAS_Jump, sets 0x8f7 bit 0x02, and feeds the leash timer.
@@ -1621,7 +1627,7 @@ void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5B88: Activate only. It clears the actor's active flag through vtable slot 0x1C
+// @ fn_72_5B88: Activate only. It clears the actor's active flag through vtable slot 0x1C
 // (CActor::SetActive(false)) and then asks the state manager to delete this unique id.
 void CSpacePirate::RemoveFromWorld(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {

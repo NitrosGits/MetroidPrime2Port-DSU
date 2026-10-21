@@ -77,6 +77,7 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
 // than 10 s (rodata B58). A charging pirate that is not in that list yet adds its id to it: the
 // asm walk ends at the list's tail sentinel, so "reached the tail" means "not in the list" and
 // pushes (fn_72_AEB8 -> fn_72_AEE0 is a push_back), while a match stops the walk and does not.
+// @ fn_72_ADC0 (0xF8): the AggressionCheck trigger.
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!x8f4_26_nonAggressive) {
@@ -100,7 +101,7 @@ bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) cons
   return x8f8_27_coverCheck;
 }
 
-// fn_72_ABC0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_ABC0 (0x1F4): the cover-point search - the fight run evaluates it 1822 times.
 // Retail: the AiWaypoint object list (mgr+0x838) is scanned for the cover points this pirate
 // could take - active (0x20 bit 7), not a land-hang point (fn_800EC6A8), not reserved by this
 // pirate (fn_800EC550 with this pirate's id), in this area, not the cover point it used last
@@ -253,8 +254,12 @@ bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) con
   return !x8f7_28_noPlayerLos;
 }
 
+// Retail reads the waypoint navigation's destination (this+0x6c0, which TargetPatrol sets), not
+// MP1's mDestObj: with mDestObj, TargetPatrol ended on its first tick and the skiff pirates in
+// Central Mining Station lurked on the skiff instead of walking off it.
+// @ fn_72_BC94
 bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
-  return GetDestObj() == kInvalidUniqueId;
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 // The detection cone test, over every player: the first one whose offset lies inside
@@ -349,7 +354,7 @@ bool CSpacePirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
   return x8f9_27_inRange;
 }
 
-// fn_72_99A4. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_99A4. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 // Retail: the pirate's own cover point (0x900) is fetched; with no cover point the trigger is
 // false, with one it is whatever the cover point's crouch flag says (fn_800EC6CC, returned
 // unmasked).
@@ -363,7 +368,7 @@ bool CSpacePirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
-// fn_72_7BD4. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_7BD4. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) const {
   const CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint);
   const bool result = cover != nullptr && !cover->ShouldStay();
@@ -399,6 +404,7 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
 // targeting point that is active, in this area and not locked (fn_8012CB70) becomes the attack
 // target; the squad is told and the bone tracking follows. The asm breaks out of the loop on
 // that first hit (the m2c loop only looks like it does not advance).
+// @ fn_72_7970 (0x1FC): the HasTargetingPoint trigger.
 bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = false;
@@ -437,7 +443,7 @@ bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& dat
   return result;
 }
 
-// fn_72_767C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_767C. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 // Retail: the pirate's own cover point (0x900) is fetched; with no cover point the trigger is
 // false, with one it is the cover point's wall-hang flag (fn_800EC6B4, tested on the top byte
 // of the return value).
@@ -699,7 +705,7 @@ bool CSpacePirate::OffLine(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
-// fn_72_558C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_558C. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 // Retail: the vtable slot 0x110 call (IsOnGround) and nothing else; its result is returned
 // unmasked.
 bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
@@ -712,7 +718,7 @@ bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) 
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
 
-// fn_72_52F8. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_52F8. no state the 208 cycle reaches lists this trigger (2026-10-20 run).
 // Retail: the leash timer (0xbb0) against the trigger's float argument. `fcmpo cr0` + `mfcr` +
 // `extrwi r3, r0, 1, 1` takes CR bit 1, cr0's GT bit (LT is bit 0, EQ bit 2), so the trigger is
 // "timer > argument", as in MP1.
@@ -730,13 +736,13 @@ bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) co
   return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
 }
 
-// Retail fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -
+// @ fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -
 // and the attack timer has run out (rodata B9C = 0, compared with the `cror lt/eq` idiom, so `<= 0`).
 bool CSpacePirate::ShouldLaunchGrenade(CStateManager& mgr, const CTriggerData& data) const {
   return mData.mEquippedWeapon == 1 && mAttackRemTime <= 0.f;
 }
 
-// Retail fn_72_76D0 (0xD4): a switch on the same launcher word. Unarmed (0) is always in range,
+// @ fn_72_76D0 (0xD4): a switch on the same launcher word. Unarmed (0) is always in range,
 // anything but 0/1 never is, and the grenade launcher (1) wants a live attack target whose
 // squared 3-D distance to the pirate falls inside [minAttackDist, maxAttackDist] squared
 // (data +0x12c/+0x130, rodata-free: both bounds are inclusive `cror ge`/`cror le` tests).
@@ -758,7 +764,7 @@ bool CSpacePirate::InProjectileRange(CStateManager& mgr, const CTriggerData& dat
   }
 }
 
-// Retail fn_72_7810 (0x54): the pirate has an attack pattern when its ATTK/FOLW connection
+// @ fn_72_7810 (0x54): the pirate has an attack pattern when its ATTK/FOLW connection
 // resolves to a live object (asm: GetConnectedObject, then the `id != kInvalidUniqueId` idiom).
 bool CSpacePirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;

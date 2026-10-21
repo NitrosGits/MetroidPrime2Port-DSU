@@ -3,6 +3,11 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#ifdef TARGET_PC
+#include <cstdio>
+#include <cstdlib>
+#endif
+
 CBeamProjectile::CBeamProjectile(const TToken< CWeaponDescription >& description,
                                  const rstl::string& name, EWeaponType type, const CTransform4f& xf,
                                  float maxLength, float beamRadius, float travelSpeed,
@@ -119,6 +124,37 @@ void CBeamProjectile::UpdateFx(const CTransform4f& xf, float dt, CStateManager& 
     mCollisionPoint = xf * CVector3f(mBeamRadius, mBeamLength, mBeamRadius);
     SetTranslation(mCollisionPoint);
   }
+#ifdef TARGET_PC
+  // MP2_DEBUG_BEAM=1: what a shot hit, once the beam is fully grown (one line per shot). The
+  // forward vector shows whether the player's aim is level, which a console-driven run cannot tell.
+  static int sDebugBeam = -1;
+  if (sDebugBeam < 0) {
+    const char* env = getenv("MP2_DEBUG_BEAM");
+    sDebugBeam = env != nullptr && env[0] != '\0' && env[0] != '0' ? 1 : 0;
+  }
+  if (sDebugBeam != 0 && mGrowingBeamLength >= mMaxLength - 0.001f) {
+    const CVector3f fwd = xf.GetForward();
+    std::fprintf(stderr,
+                 "[beam] %04x from (%.2f, %.2f, %.2f) fwd (%.2f, %.2f, %.2f) len %.1f near %d",
+                 GetUniqueId().Value(), static_cast< double >(origin.GetX()),
+                 static_cast< double >(origin.GetY()), static_cast< double >(origin.GetZ()),
+                 static_cast< double >(fwd.GetX()), static_cast< double >(fwd.GetY()),
+                 static_cast< double >(fwd.GetZ()), static_cast< double >(mMaxLength),
+                 static_cast< int >(nearList.size()));
+    if (mCollisionActorId != kInvalidUniqueId) {
+      std::fprintf(stderr, " -> actor %04x at t %.2f\n", mCollisionActorId.Value(),
+                   static_cast< double >(mBeamLength));
+    } else if (mDamageType == kDT_World) {
+      std::fprintf(stderr, " -> world (%.2f, %.2f, %.2f) at t %.2f\n",
+                   static_cast< double >(mCollisionPoint.GetX()),
+                   static_cast< double >(mCollisionPoint.GetY()),
+                   static_cast< double >(mCollisionPoint.GetZ()),
+                   static_cast< double >(mBeamLength));
+    } else {
+      std::fprintf(stderr, " -> nothing\n");
+    }
+  }
+#endif
   mXf = xf;
 }
 

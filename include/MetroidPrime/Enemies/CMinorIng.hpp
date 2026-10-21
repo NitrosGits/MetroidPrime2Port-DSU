@@ -7,21 +7,33 @@
 #ifdef TARGET_PC
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CSurfaceAlignmentHelper.hpp"
 #include "MetroidPrime/Enemies/CAiKnockBackMgr.hpp"
+#include "MetroidPrime/Enemies/CBouncyGrenade.hpp"
 #include "MetroidPrime/Enemies/CIngSpotData.hpp"
 #include "MetroidPrime/Enemies/CIngSpotPathFindNavigation.hpp"
 #include "MetroidPrime/PathFinding/CPathFindPointSearch.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
+#include "MetroidPrime/CLineOfSightTracker.hpp"
+#include "Kyoto/Animation/CSegId.hpp"
+#include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/TToken.hpp"
+#include "rstl/optional_object.hpp"
+
+class CGenDescription;
+
+class CScriptAIHint;
+class CPFArea;
 
 // Host copy of the properties the MinorIng loader reads (retail: CMinorIngData, 0x158 bytes at
 // 0x7c0, built by fn_44_9B4; the REL is module 44, `docs/module-analysis/IngFamily.md` section B).
 // The guest offsets in the comments are the REL's own stores; the host layout is its own and does
-// not need to match. Not modelled, because nothing in this milestone reads them: the 0x20 bytes at
-// guest 0xb0 (fn_44_D00 fills them from a loader temporary), the 0x50 at guest 0xd0 (fn_44_C44
-// copies the converted SLdrUnknownStruct34, i.e. `unknown_0x3da35851`) and the seven values at
-// guest 0x120..0x138 that come out of that same struct.
+// not need to match. The inglet's own data is modelled: its health at guest 0xb0, its grenade
+// data at guest 0xd0 (fn_44_C44 copies the struct fn_44_FE8 builds) and the seven spawn values
+// at guest 0x120..0x138.
 struct CMinorIngData {
   CMinorIngData(CAssetId projectile, const CDamageInfo& projectileDamage,
                 const CDamageInfo& ingSpotDamage, const CIngSpotData& ingSpot,
@@ -29,7 +41,14 @@ struct CMinorIngData {
                 float ingSpotUnknown7569, float ingSpotSfxFallOff, float attackAngleLimit,
                 float lineOfSightHeightOffset, float unknownD6C8EAC2, float unknown2A5449BA,
                 float hearingRadius, float speedModifier, bool ingSpotAllowLockOn, uchar flags155,
-                uchar flags156)
+                uchar flags156, float ingSpotMaxSpeed, float ingSpotMaxWallSpeed,
+                float ingSpotBallPursuitSpeed, const CDamageVulnerability& ingSpotVulnerability,
+                ushort ingSpotIdleSound, ushort ingSpotMoveSound, ushort ingSpotHitNormalSound,
+                ushort ingSpotHitHeavySound, ushort ingSpotDeathSound,
+                const CHealthInfo& ingletHealth, const CBouncyGrenadeData& grenadeData,
+                float ingletMinLaunchSpeed, float ingletMaxLaunchSpeed, int ingletMinCount,
+                int ingletMaxCount, float ingletMaxTurnAngle, float ingletSpawnDistance,
+                float ingletExplodeDistance)
   : mProjectile(projectile)
   , mProjectileDamage(projectileDamage)
   , mUnknownA03E450C(unknownA03E450C)
@@ -47,7 +66,25 @@ struct CMinorIngData {
   , mSpeedModifier(speedModifier)
   , mIngSpotAllowLockOn(ingSpotAllowLockOn)
   , mFlags155(flags155)
-  , mFlags156(flags156) {}
+  , mFlags156(flags156)
+  , mIngSpotMaxSpeed(ingSpotMaxSpeed)
+  , mIngSpotMaxWallSpeed(ingSpotMaxWallSpeed)
+  , mIngSpotBallPursuitSpeed(ingSpotBallPursuitSpeed)
+  , mIngSpotVulnerability(ingSpotVulnerability)
+  , mIngSpotIdleSound(ingSpotIdleSound)
+  , mIngSpotMoveSound(ingSpotMoveSound)
+  , mIngSpotHitNormalSound(ingSpotHitNormalSound)
+  , mIngSpotHitHeavySound(ingSpotHitHeavySound)
+  , mIngSpotDeathSound(ingSpotDeathSound)
+  , mIngletHealth(ingletHealth)
+  , mGrenadeData(grenadeData)
+  , mIngletMinLaunchSpeed(ingletMinLaunchSpeed)
+  , mIngletMaxLaunchSpeed(ingletMaxLaunchSpeed)
+  , mIngletMinCount(ingletMinCount)
+  , mIngletMaxCount(ingletMaxCount)
+  , mIngletMaxTurnAngle(ingletMaxTurnAngle)
+  , mIngletSpawnDistance(ingletSpawnDistance)
+  , mIngletExplodeDistance(ingletExplodeDistance) {}
 
   CAssetId mProjectile;      // +0x00: the pair the actor's CProjectileInfo is built from
   CDamageInfo mProjectileDamage; // +0x04 (0x1c) from SLdrMinorIng.projectileDamage
@@ -71,6 +108,40 @@ struct CMinorIngData {
   bool mIngSpotAllowLockOn; // +0x154 bit 7 (comes from the unknown_0x3da35851 block)
   uchar mFlags155;          // +0x155
   uchar mFlags156;          // +0x156 bits 2..7
+  // Host copies of the CIngSpotData fields the behaviour reads (CIngSpotData keeps them private;
+  // retail reads them in place at guest 0x820/0x824/0x828/0x834/0x864..0x86c).
+  float mIngSpotMaxSpeed;                    // guest 0x820
+  float mIngSpotMaxWallSpeed;                // guest 0x824
+  float mIngSpotBallPursuitSpeed;            // guest 0x828
+  CDamageVulnerability mIngSpotVulnerability; // guest 0x834
+  ushort mIngSpotIdleSound;                  // guest 0x864
+  ushort mIngSpotMoveSound;                  // guest 0x866
+  ushort mIngSpotHitNormalSound;             // guest 0x868
+  ushort mIngSpotHitHeavySound;              // guest 0x86a
+  ushort mIngSpotDeathSound;                 // guest 0x86c
+  // The inglet's own health (the retail's data 0xb0, fn_44_9B4 copies it there with fn_44_D00).
+  // It is the health of the unknown_0x3da35851 block (fn_44_1CE0 reads it first); the inglet the
+  // massive death spawns takes it.
+  CHealthInfo mIngletHealth;                  // guest 0xb0
+  // The inglet's grenade data (the retail's data 0xd0, 0x50 bytes): fn_44_FE8 builds the
+  // bouncing-projectile struct out of the unknown_0x3da35851 block and fn_44_C44 copies it here.
+  // The inglet the massive death spawns is a CBouncyGrenade, which takes this struct.
+  CBouncyGrenadeData mGrenadeData;            // guest 0xd0
+  // The inglet's spawn values (the retail's data 0x120..0x138, fn_44_9B4's stores), all out of
+  // the unknown_0x3da35851 block:
+  // - the launch speed range (fn_44_7058 picks the inglet's velocity out of it),
+  // - the number of inglets the massive death spawns (the minimum and the maximum),
+  // - the angle the inglet may turn in,
+  // - the distance at which the inglet count falls to zero (the retail divides the player's
+  //   distance by it),
+  // - the distance at which the inglet explodes around the player.
+  float mIngletMinLaunchSpeed;                // guest 0x120 (the block's minLaunchSpeed)
+  float mIngletMaxLaunchSpeed;                // guest 0x124 (the block's maxLaunchSpeed)
+  int mIngletMinCount;                        // guest 0x128 (the block's minGeneration)
+  int mIngletMaxCount;                        // guest 0x12c (the block's maxGeneration)
+  float mIngletMaxTurnAngle;                  // guest 0x130 (the block's maxTurnAngle)
+  float mIngletSpawnDistance;                 // guest 0x134 (the block's unknown_0xfbf8ea0a)
+  float mIngletExplodeDistance;               // guest 0x138 (the block's unknown_0x47f99fbc)
 };
 #endif
 
@@ -86,46 +157,218 @@ public:
 
   // CPatterned
   using CPatterned::GetSearchPath;
-  CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
-  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
-  CPathFindPointSearch* GetPointSearchPath() override { return &mPointPathFindSearch; }
+  CProjectileInfo* ProjectileInfo() override;
+  CPathFindSearch* GetSearchPath() override;
+  CPathFindPointSearch* GetPointSearchPath() override;
 
   void PreThink(float dt, CStateManager& mgr) override;
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
   void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override;
+  const CHealthInfo* GetHealthInfo() const override;
   void Render(const CStateManager& mgr) const override;
   void Touch(CActor& actor, CStateManager& mgr) override;
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void SetupStateMachine(CStateManager& mgr) override;
+  void MassiveDeath(CStateManager& mgr) override;
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  using CPatterned::GetDamageVulnerability;
+  const CDamageVulnerability* GetDamageVulnerability() const override;
+  rstl::optional_object< CAABox > GetTouchBounds() const override;
+  CTransform4f GetPrimitiveTransform() const override;
+
+  // CAi
+  bool IsListening() const override;
+  bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
+
+  // Triggers (retail table data_1A8, in its order).
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldMoveUnderBall(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasPatrolPath(CStateManager& mgr, const CTriggerData& data) const;
+  bool PlayerLeashReached(CStateManager& mgr, const CTriggerData& data) const;
+  bool LeavePatrol(CStateManager& mgr, const CTriggerData& data) const;
+  bool LineOfSight(CStateManager& mgr, const CTriggerData& data) const;
+  bool InMaxRange(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldFire(CStateManager& mgr, const CTriggerData& data) const;
+  bool PuddleHitByWeapon(CStateManager& mgr, const CTriggerData& data) const;
+  bool CancelStun(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsBeingKnockedback(CStateManager& mgr, const CTriggerData& data) const;
+  bool TargetInSafeZone(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasCoverPoint(CStateManager& mgr, const CTriggerData& data) const;
+  bool PointPathOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool FoundPointPath(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsPointPathFinding(CStateManager& mgr, const CTriggerData& data) const;
+  bool StunOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldPathFind(CStateManager& mgr, const CTriggerData& data) const;
+  bool CancelAnim(CStateManager& mgr, const CTriggerData& data) const;
+  bool HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const;
+  bool AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsFollowingAttackPath(CStateManager& mgr, const CTriggerData& data) const;
+  bool AllowAttackPatternProjectile(CStateManager& mgr, const CTriggerData& data) const;
+  bool AllowAttackPatternStun(CStateManager& mgr, const CTriggerData& data) const;
+  bool RecalculatePath(CStateManager& mgr, const CTriggerData& data) const;
+  bool InsideSafeZone(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsMoveAwayFromSafeZoneOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool FoundMovementPos(CStateManager& mgr, const CTriggerData& data) const;
+  bool ShouldEvaporate(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsInCorporealForm(CStateManager& mgr, const CTriggerData& data) const;
+  bool StayOnPointPathFinding(CStateManager& mgr, const CTriggerData& data) const;
+  bool AllowProjectileDuringStayOnPointPathFinding(CStateManager& mgr,
+                                                   const CTriggerData& data) const;
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;
+  bool IsLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const;
+
+  // States (retail table data_47C).
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);
+  void PointPathFind(CStateManager& mgr, EStateMsg msg, float dt);
+  void Stunned(CStateManager& mgr, EStateMsg msg, float dt);
+  void ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt);
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt);
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);
+  void SetWallPointCoverDest(CStateManager& mgr, EStateMsg msg, float dt);
+  void SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt);
+  void IntoPuddleForm(CStateManager& mgr, EStateMsg msg, float dt);
+  void IntoCorporealForm(CStateManager& mgr, EStateMsg msg, float dt);
+  void Idle(CStateManager& mgr, EStateMsg msg, float dt);
+  void FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt);
+  void MoveAwayFromSafeZone(CStateManager& mgr, EStateMsg msg, float dt);
+  void AlwaysPointPathFind(CStateManager& mgr, EStateMsg msg, float dt);
+  void WaitForFSMTransition(CStateManager& mgr, EStateMsg msg, float dt);
+
+  // Code functions (retail table data_5A8).
+  void SelectTarget(CStateManager& mgr, float arg);
+  void FindCoverPoint(CStateManager& mgr, float arg);
+  void SetPointCoverDest(CStateManager& mgr, float arg);
+  void SetLuredDest(CStateManager& mgr, float arg);
+  void SetLuredPointDest(CStateManager& mgr, float arg);
 #endif
 
 private:
 #ifdef TARGET_PC
+  // Guest form at 0xcc8: 0 corporeal, 1 puddle (ing spot), 2 into corporeal, 3 into puddle.
+  enum EForm { kF_None = -1, kF_Corporeal, kF_Puddle, kF_IntoCorporeal, kF_IntoPuddle };
+
   void EnsureBodyActive(CStateManager& mgr);
+  void LogState(const char* name);
+  CVector3f RaisedPoint(const CVector3f& pos) const;
+  bool ProjectOntoMesh(CVector3f& pos);
+  bool IsTargetInRange(CStateManager& mgr, const CVector3f& pos) const;
+  bool IsTargetInAttackAngle(CStateManager& mgr) const;
+  bool IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool checkStatic) const;
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out) const;
+  CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
+  void ClaimCoverHint(CScriptAIHint* hint, TUniqueId& id);
+  void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id, bool keepTimer);
+  void ResetAttackTimer(CStateManager& mgr);
+  void PlaySfx(int idx, bool start);
+  void UpdateLoopSfx();
+  void StopSfx();
+  void UpdateTimers(float dt);
+  void UpdateLocomotionType();
+  void SetForm(CStateManager& mgr, int form, bool setLocomotion);
+  void SnapToFloor(CStateManager& mgr);
+  void RayDown(CVector3f& out, CStateManager& mgr) const;
+  bool UpdateTargetPos(CStateManager& mgr);
+  void UpdateBallPursuit(CStateManager& mgr);
+  void UpdateValidTarget(CStateManager& mgr);
+  void UpdateSafeZone(CStateManager& mgr);
+  void PickSafeZone(CStateManager& mgr, const CVector3f& pos);
+  void JoinTeam(CStateManager& mgr);
+  void LeaveTeam(CStateManager& mgr);
+  void EndAttack(CStateManager& mgr, bool projectile);
+  void ApplySeparation(CStateManager& mgr);
+  void MoveAlongPath(CStateManager& mgr, float dt);
+  CTransform4f PrimitiveTransform(bool raised) const;
+  void CreateCollisionActor(CStateManager& mgr);
+  void SetCollisionActorActive(CStateManager& mgr, bool active);
+  void UpdateCollisionActor(CStateManager& mgr, float dt);
+  void CreateBlobEffect(CStateManager& mgr, const TLockedToken< CGenDescription >& desc);
+  void SetBlobEffectActive(CStateManager& mgr, bool active);
+  void UpdateBlobEffect(CStateManager& mgr);
+  void UpdateTouchBounds();
+  void PuddleDamage(CStateManager& mgr, TUniqueId sender);
+  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
+  bool DamageSource(CStateManager& mgr, TUniqueId touched, TUniqueId& attacker,
+                    CVector3f& direction, rstl::optional_object< CDamageInfo >& damage) const;
+  void MoveOnSurface(float speed, float dt, const CVector3f& move);
   // Host layout (retail's CMinorIng is 0xd40, CHECK_SIZEOF below; CPatterned is 0x7c0). Guest
   // offsets are the REL's, from the constructor fn_44_9D58 and the two accessors fn_44_0
   // (this+0x960 = GetSearchPath) and fn_44_8 (this+0xa4c = GetPointSearchPath).
   CMinorIngData mData;                        // 0x7c0 (0x158)
   CProjectileInfo mProjectileInfo;            // 0x918 (0x28)
+  rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // 0x940
+  rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // 0x950
   CPathFindSearch mPathFindSearch;            // 0x960 (0xec)
   CPathFindPointSearch mPointPathFindSearch;  // 0xa4c (0x188)
   CSurfaceAlignmentHelper mSurfaceAlignment;  // 0xbd8 (0x58)
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // 0xc30 (0x10)
-  // Guest members this milestone does not hold: 0xc40 zero CVector3f, 0xc4c two locked tokens
-  // (0xc64/0xc80 flags), 0xc88 CLineOfSightTracker, 0xcc8 int -1, 0xccc..0xcde ten invalid
-  // TUniqueIds, 0xce0 uint, 0xcec zero and 0xcf8 one CVector3f, 0xd04..0xd38 floats,
-  // 0xd3c uchar 0xff and the bitfield at 0xd3d. An empty state machine keeps none of them.
+  CVector3f mSurfaceMoveDir;                  // 0xc40
+  rstl::optional_object< CAABox > mPuddleTouchBounds; // 0xc4c (fn_44_3E8C)
+  rstl::optional_object< CAABox > mBodyTouchBounds;   // 0xc68 (fn_44_3E8C)
+  CLineOfSightTracker mLineOfSight;          // 0xc88 (retail CVisualKnowledge(uid, seg, 0.1, 0.05))
+  int mForm;                                  // 0xcc8 EForm
+  TUniqueId mTeamId;                          // 0xccc
+  TUniqueId mTargetId;                        // 0xcce
+  TUniqueId mCoverHintId;                     // 0xcd0
+  TUniqueId mLastCoverId;                     // 0xcd2
+  TUniqueId mAttackPathLastId;                // 0xcd4 (FollowAttackPattern: the waypoint nav's last)
+  TUniqueId mAttackPathId;                    // 0xcd6 (FollowAttackPattern: where to resume)
+  TUniqueId mSafeZoneEnterId;                 // 0xcd8 (fn_44_9150: the zone the XENZ message names)
+  TUniqueId mSafeZoneId;                      // 0xcda (fn_44_36FC/fn_44_3780: the zone that lured it)
+  TUniqueId mBlobEffectId;                    // 0xcdc CCollisionTracker (fn_44_48F0)
+  TUniqueId mCollisionActorId;                // 0xcde CCollisionActor (fn_44_319C)
+  // The retail's container at 0xce0: fn_44_A5D0 resizes it to two zero ints in the constructor
+  // (asm 0xA5B4) and nothing ever reads them.
+  int mUnusedZeros[2];                        // 0xce0
+  CSfxHandle mLoopSfx[2];                     // 0xce4/0xce8: idle, move
+  CVector3f mTargetPos;                       // 0xcec
+  CVector3f mModelScale;                      // 0xcf8
+  float mAttackTimer;                         // 0xd04
+  float mLeashTimer;                          // 0xd08
+  float mStunTimer;                           // 0xd0c
+  float mPuddleHitTimer;                      // 0xd10
+  float mHpTracker;                           // 0xd14
+  float mKnockDamage;                         // 0xd18
+  float mTimerD1C;                            // 0xd1c
+  float mMoveAwayTimer;                       // 0xd20
+  int mSafeZoneEnterCount;                    // 0xd28
+  float mEvaporate;                           // 0xd34
+  float mDamageFxTimer;                       // 0xd38
+  int mIntoCorporealAnim;                     // 0xd2c ("Into Corporeal Form")
+  int mIntoStunnedAnim;                       // 0xd30 ("Into Stunned")
+  CSegId mLockOnLocator;                      // 0xd3c ("lockon_target_SDK")
+  const char* mLastLoggedState;               // host: MP2_DEBUG_MINORING
+  CPFArea* mPathArea;                         // host: the area both searches were given on XALD
+  // 0xd3d
+  bool mHasPatrolPath : 1;
+  bool mPathFindActive : 1;
+  bool mPointPathFinding : 1;
+  bool mFoundMovementPos : 1;
+  bool mRecalculatePath : 1;
+  bool mIdle : 1;
+  bool mFollowingAttackPath : 1;
+  bool mAttackPatternProjectile : 1;
+  // 0xd3e
+  bool mPuddleHitByWeapon : 1;
+  bool mCancelStun : 1;
+  bool mKnockAnimCancel : 1;
+  bool mTouched : 1;
+  bool mShouldMoveUnderBall : 1;
+  bool mInsideSafeZone : 1;
+  bool mShouldEvaporate : 1;
 #else
   uchar x7c0_[0x158]; // CMinorIngData
   uchar x918_[0x48];  // CProjectileInfo and the three locked tokens
   uchar x960_[0x3e0]; // path find searches, surface alignment, nav, line of sight, flags
 #endif
 };
-CHECK_SIZEOF(CMinorIng, 0xd40)
+CHECK_SIZEOF(CMinorIng, 0xd48)
 
 #endif

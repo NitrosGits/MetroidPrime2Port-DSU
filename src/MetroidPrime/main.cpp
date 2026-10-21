@@ -232,6 +232,9 @@ void CMain::InitializeSubsystems() {
 bool PortPumpEvents();
 // Port: MP1's 60 FPS cap, in platform/port_events.cpp: sleeps to the next 60 Hz deadline.
 void PortPaceFrame();
+// Port: runs the registered AI DMA callback until the host stream is topped up
+// (platform/ai_dma.cpp).
+extern "C" void AIPortPoll(void);
 
 #include "MetroidPrime/CCameraManager.hpp"
 #include "port_mouse.h"
@@ -385,8 +388,10 @@ bool CGameArchitectureSupport::UpdateTicks() {
   // cap the retail loop is kept unchanged.
   if (!PortOverlay::FrameLimit()) {
     mPortTickClock.SetPeriod(1.0 / 60.0);
-    const unsigned ticks = mPortTickClock.Advance(stopwatchTime, maxSpeed || stopwatchTime > 0.035f,
-                                                  PortOverlay::FrameLimit());
+    const unsigned fixedTicks = PortTiming::FixedTicksPerFrame();
+    const unsigned ticks = fixedTicks != 0 ? fixedTicks
+                           : mPortTickClock.Advance(stopwatchTime, maxSpeed || stopwatchTime > 0.035f,
+                                                    PortOverlay::FrameLimit());
     mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
     for (unsigned tick = 0; tick < ticks; ++tick) {
       PortTiming::BeginTick();
@@ -620,6 +625,9 @@ bool CMain::CheckReset() {
       options.SetScreenStretch(0, false);
       __PADDisableRecalibration(true);
     }
+#ifdef TARGET_PC
+    PortOverlay::RestoreGameOptions();
+#endif
     {
       CMemoryStreamOut stream(CSaveRegion::GetSaveBuffer(), CSaveRegion::kSaveBufferSize);
       CBitStreamWriter writer(stream);
@@ -716,6 +724,10 @@ int CMain::RsMain(int argc, const char* const* argv) {
       gpGameState->GameOptions().EnsureOptions();
       sProgressiveModePrompt = reader.ReadPackedBool();
     }
+#ifdef TARGET_PC
+    // No save region outlives the process: settings.cfg keeps the game's options (as MP1's port).
+    PortOverlay::RestoreGameOptions();
+#endif
     const int gameMode = gpGameState->GetGameModeType();
     bool showSplash = true;
     if (gameMode == 'COIN' || gameMode == 'DTHM') {
@@ -729,7 +741,11 @@ int CMain::RsMain(int argc, const char* const* argv) {
 
     while (!mFinished) {
 #ifdef TARGET_PC
-      PortPaceFrame();
+      // Max speed (a cinematic skip's fast-forward) draws about once a second and runs its ticks
+      // back to back, as retail's loop does; the 60 FPS cap would hold it to real time.
+      if (!IsMaxSpeed()) {
+        PortPaceFrame();
+      }
       if (PortPumpEvents()) {
         mFinished = true;
         break;
@@ -824,6 +840,10 @@ int CMain::RsMain(int argc, const char* const* argv) {
       architecture->Update();
       CSfxManager::Update(1.f / 60.f);
       UpdateStreamedAudio();
+#ifdef TARGET_PC
+      // Port: there is no AI interrupt; run the AI DMA callbacks (movie audio) on the main thread.
+      AIPortPoll();
+#endif
       if (CheckTerminate()) {
         gpGameState->AudioGroups().clear();
         break;

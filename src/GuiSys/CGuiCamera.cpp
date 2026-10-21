@@ -136,9 +136,53 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
     mSpreadHalfWidth =
         0.5f * (mCameraParms.mOrthographic.mRight - mCameraParms.mOrthographic.mLeft);
   }
+  mSpreadScreenHalfWidth = mSpreadHalfWidth * portWiden * portHudInvScale;
 #endif
   CGuiWidget::Draw(parms);
 }
+
+#ifdef TARGET_PC
+// The middle ends past the visor frame's U brackets beside the energy bar; the band out to the
+// outer fraction is the frame's ledge running to the side struts.
+const float CGuiCamera::kSpreadSliceInner = 0.46f;
+const float CGuiCamera::kSpreadSliceOuter = 0.585f;
+
+float CGuiCamera::GetSpreadSliceOffset(float t) const {
+  const float inner = kSpreadSliceInner * mSpreadHalfWidth;
+  const float outer = kSpreadSliceOuter * mSpreadHalfWidth;
+  const float a = t < 0.f ? -t : t;
+  const float along = a <= inner ? 0.f : a >= outer ? 1.f : (a - inner) / (outer - inner);
+  const float moved = (mSpread - 1.f) * mSpreadHalfWidth * along;
+  return t < 0.f ? -moved : moved;
+}
+
+CTransform4f CGuiCamera::GetSpreadTransform(const CVector3f& worldAnchor, float weight) const {
+  if (mSpread == 1.f || weight == 0.f) {
+    return CTransform4f::Identity();
+  }
+  // Every compact widget past the middle belongs to a side cluster (radar, threat bar, selectors,
+  // missile readout, minimap), held by a strut that moves by the whole offset; one offset per side
+  // keeps each cluster's pieces registered with each other and with the strut.
+  const float inner = kSpreadSliceInner * mSpreadHalfWidth;
+  const float full = weight * (mSpread - 1.f) * mSpreadHalfWidth;
+  const CTransform4f invView = mSpreadView.GetInverse();
+  const CVector3f eye = invView * worldAnchor;
+  if (mProjection != kProjection_Perspective) {
+    const float t = eye.GetX() - mSpreadCenterX;
+    const float slide = t < -inner ? -full : t > inner ? full : 0.f;
+    return CTransform4f::Translate(mSpreadView.Rotate(CVector3f(slide, 0.f, 0.f)));
+  }
+  if (eye.GetY() <= 0.f) {
+    return CTransform4f::Identity();
+  }
+  // x += offset * depth: an exact image translation, so a widget with depth keeps its authored
+  // shape off axis (a rigid slide widened the selectors).
+  const float t = eye.GetX() / eye.GetY();
+  const float offset = t < -inner ? -full : t > inner ? full : 0.f;
+  return mSpreadView * CTransform4f(1.f, offset, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f) *
+         invView;
+}
+#endif
 
 CVector3f CGuiCamera::ConvertToScreenSpace(const CVector3f& point) const {
   CVector3f rotated = RotateTranslateW2O(point);

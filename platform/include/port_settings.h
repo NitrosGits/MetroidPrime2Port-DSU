@@ -16,6 +16,10 @@ void Initialize(const std::string& userDirectory);
 // The file's path, or empty when there is none.
 const std::string& FilePath();
 
+// Initialize has run. On Android the Java view asks for settings on its own thread before main
+// gets that far, so the file must not count as read until then.
+bool Initialized();
+
 // The whole file into `text`; false when there is no file or it cannot be read.
 bool ReadFile(std::string& text);
 

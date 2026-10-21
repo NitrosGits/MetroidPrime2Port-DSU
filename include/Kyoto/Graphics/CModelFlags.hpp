@@ -98,6 +98,13 @@ public:
   int GetShaderSet() const { return mMatSetIdx; }
   uint GetOtherFlags() const { return mFlags; }
   CColor GetColor() const { return mColor; }
+#ifdef TARGET_PC
+  // The ScriptPlayerTurret's PreRender (fn_63_2D68) rewrites the blend mode, the material set
+  // and the flags of an actor's model flags; the host's CModelFlags keeps them private.
+  void SetTrans(ETrans trans) { mBlendMode = trans; }
+  void SetMatSetIdx(uchar idx) { mMatSetIdx = idx; }
+  void SetFlags(EFlags flags) { mFlags = flags; }
+#endif
   const CColor& GetColorRef() const { return mColor; }
   void SetColor(const CColor& color) { mColor = color; }
 

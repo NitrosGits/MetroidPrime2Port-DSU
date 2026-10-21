@@ -19,11 +19,82 @@
 #include "Kyoto/Math/CAABox.hpp"
 
 // Port: widescreen HUD, as MP1's CGuiFrame::Draw. The camera widened the projection by `spread`
-// (CGuiCamera::Draw); each widget then moves out about the view axis by that factor at its own
-// anchor (a model's bounds centre, since several icons keep their place inside the vertices and
-// their widget at the frame centre), as a rigid slide in the view plane, so its shape and depth are
-// untouched. A model spanning both outer quarters of the authored view (the visor frame, the struts)
-// is stretched instead, so it still meets the wide view's edges.
+// (CGuiCamera::Draw). A model spanning both outer quarters of the authored view (the visor frame,
+// the helmet) is warped in slices (PortDrawSliced): the middle, with the energy bar's housing and
+// lettering, keeps its authored size, a band either side stretches, and the rest slides out with
+// the screen edge, keeping its authored distance to it. Every other widget slides as an image by
+// CGuiCamera::GetSpreadTransform at its anchor (a model's bounds centre, since several icons keep
+// their place inside the vertices and their widget at the frame centre): past the middle by the
+// strut's whole offset, so each side cluster keeps its shape and stays on its strut.
+
+static void PortDrawSlicedPiece(const CGuiCamera& camera, const CGuiWidget* widget,
+                                const CGuiWidgetDrawParms& parms, const CTransform4f& toView,
+                                const CTransform4f& fromView, const u32* scissor, float from,
+                                float to, float fromWarped, float toWarped) {
+  // Maps the authored span [from, to] (view X per unit depth, or ortho units from the centre)
+  // onto [fromWarped, toWarped]: x' = scale * x + offset * depth in view space, a screen-space
+  // scale and slide. Drawn under a scissor covering the warped span's columns.
+  const float scale = (toWarped - fromWarped) / (to - from);
+  const float offset = fromWarped - scale * from;
+  const CViewport& viewport = CGraphics::GetViewport();
+  const float screenHalf = camera.GetSpreadScreenHalfWidth();
+  const float columns[2] = {fromWarped, toWarped};
+  int cut[2];
+  for (int i = 0; i < 2; ++i) {
+    float t = columns[i];
+    t = t < -screenHalf ? -screenHalf : t > screenHalf ? screenHalf : t;
+    cut[i] = viewport.mLeft +
+             static_cast< int >(0.5f * static_cast< float >(viewport.mWidth) *
+                                    (1.f + t / screenHalf) +
+                                0.5f);
+  }
+  const int left = cut[0] > static_cast< int >(scissor[0]) ? cut[0] : static_cast< int >(scissor[0]);
+  const int right = cut[1] < static_cast< int >(scissor[0] + scissor[2])
+                        ? cut[1]
+                        : static_cast< int >(scissor[0] + scissor[2]);
+  if (right <= left) {
+    return;
+  }
+  CTransform4f warp = CTransform4f::Identity();
+  if (camera.IsPerspective()) {
+    warp = CTransform4f(scale, offset, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f);
+  } else {
+    const float centerX = camera.GetSpreadCenterX();
+    warp = CTransform4f(scale, 0.f, 0.f, centerX - scale * centerX + offset, 0.f, 1.f, 0.f, 0.f,
+                        0.f, 0.f, 1.f, 0.f);
+  }
+  CTransform4f savedXf = CTransform4f::Identity();
+  bool savedValid = false;
+  if (widget->PortSetWorldTransform(toView * warp * fromView, savedXf, savedValid)) {
+    GXSetScissor(left, scissor[1], right - left, scissor[3]);
+    widget->Draw(parms);
+    widget->PortRestoreWorldTransform(savedXf, savedValid);
+  }
+}
+
+static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
+                           const CGuiWidgetDrawParms& parms, const CTransform4f& view,
+                           const CTransform4f& fromView) {
+  u32 scissor[4];
+  GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
+  const float halfWidth = camera.GetSpreadHalfWidth();
+  const float inner = CGuiCamera::kSpreadSliceInner * halfWidth;
+  const float outer = CGuiCamera::kSpreadSliceOuter * halfWidth;
+  const float warpedOuter = outer + camera.GetSpreadSliceOffset(outer);
+  // Past the screen edge, so the outer scissors reach it.
+  const float edge = 2.f * camera.GetSpreadScreenHalfWidth();
+  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -inner, inner, -inner, inner);
+  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, inner, outer, inner,
+                      warpedOuter);
+  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -outer, -inner,
+                      -warpedOuter, -inner);
+  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, outer, edge, warpedOuter,
+                      edge + warpedOuter - outer);
+  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -edge, -outer,
+                      -edge - warpedOuter + outer, -warpedOuter);
+  GXSetScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+}
+
 static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
                            const CGuiWidgetDrawParms& parms) {
   const float spread = camera.GetAspectSpread();
@@ -38,6 +109,7 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
   const CTransform4f world = widget->GetWorldTransform();
   CVector3f anchor = world.GetTranslation();
   bool stretch = false;
+  float eyeMinDepth = 0.f;
   CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
   if (widget->GetWidgetTypeID() == 'MODL' &&
       static_cast< const CGuiModel* >(widget)->PortGetBounds(bounds)) {
@@ -47,9 +119,15 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
     if (camera.IsPerspective()) {
       quarterWidth *= eyeBounds.GetMaxPoint().GetY();
     }
+    eyeMinDepth = eyeBounds.GetMinPoint().GetY();
     const float centerX = camera.GetSpreadCenterX();
     stretch = quarterWidth > 0.f && eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
               eyeBounds.GetMaxPoint().GetX() > centerX + quarterWidth;
+  }
+  if (stretch && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
+      camera.GetSpreadScreenHalfWidth() > 0.f) {
+    PortDrawSliced(camera, widget, parms, view, invView * world);
+    return;
   }
   CTransform4f moved = world;
   if (stretch) {
@@ -57,10 +135,7 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
             CTransform4f::Scale(spread, 1.f, 1.f) *
             CTransform4f::Translate(-camera.GetSpreadCenterX(), 0.f, 0.f) * invView * world;
   } else {
-    const CVector3f eye = invView * anchor;
-    moved = CTransform4f::Translate(view.Rotate(
-                CVector3f((spread - 1.f) * (eye.GetX() - camera.GetSpreadCenterX()), 0.f, 0.f))) *
-            world;
+    moved = camera.GetSpreadTransform(anchor) * world;
   }
   if (widget->PortSetWorldTransform(moved, savedXf, savedValid)) {
     widget->Draw(parms);

@@ -377,15 +377,14 @@ bool PortPumpEvents() {
       sNextFrameDeadline = 0;
       std::fprintf(stderr, "Frame limit: %s\n", PortOverlay::FrameLimit() ? "60 FPS" : "unlimited");
     }
-    // F11 toggles fullscreen on desktop. Android is always fullscreen (MetroidPrime2Activity),
-    // so the key does nothing there.
+    // F11 toggles the Fullscreen setting on desktop; Android has the Video > Display checkbox.
 #if !defined(__ANDROID__)
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
         !event->sdl.key.repeat && event->sdl.key.scancode == SDL_SCANCODE_F11) {
       SDL_Window* window = SDL_GetWindowFromID(event->sdl.key.windowID);
       if (window != nullptr) {
         const bool full = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
-        VISetWindowFullscreen(!full);
+        PortOverlay::SetFullscreen(!full);
       }
     }
 #endif

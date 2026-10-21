@@ -69,6 +69,8 @@ constexpr int kPlaceTimeoutFrames = 60 * 90;
 // take in all however busy the world stays.
 constexpr int kRoomTimeoutFrames = 60 * 20;
 constexpr int kRoomHardCapFrames = 60 * 300;
+// Free object ids a saved layer waits for before it streams in (CStateManager's kPortWarpMinFreeIds).
+constexpr int kRoomMinFreeIds = 256;
 // The quick-resume state's slot number: written on a clean quit, loaded on the next launch.
 constexpr int kResumeSlot = -1;
 
@@ -259,6 +261,13 @@ bool Decode(const std::string& in, State& s, std::string& error) {
   if (!r.ok || blob.empty()) {
     error = "save state is truncated";
     return false;
+  }
+  for (float f : s.pos) {
+    // Samus is teleported there unchecked; a damaged file must not hand the area lookups a NaN.
+    if (!std::isfinite(f) || std::fabs(f) > 1e7f) {
+      error = "save state's position is damaged";
+      return false;
+    }
   }
   s.blob.assign(blob.begin(), blob.end());
   if (version >= kVersion) {
@@ -594,7 +603,7 @@ void TickPlacement(CStateManager& mgr) {
 // areas on the world's loading chain), so a stall can be told from a slow load. `busy` is set while
 // a layer streams or an area is loading.
 uint64_t RoomSignature(CStateManager& mgr, int waiting, bool& busy) {
-  busy = mgr.PortLayerRequestPending();
+  busy = busy || mgr.PortLayerRequestPending();
   uint64_t signature = sRoom.progress.done.size();
   signature = signature * 131 + sRoom.progress.seen.size();
   signature = signature * 131 + sRoom.nextLayer;
@@ -621,8 +630,12 @@ void TickRoom(CStateManager& mgr) {
   // The last layer is waited out too: its objects only exist once its stream finished.
   ++sRoom.waited;
   int waiting = -1;
+  // A reload comes up with ~1008 of the 1024 object ids taken and purges a few hundred frames later;
+  // a layer streamed in before that runs the pool dry (AllocateUniqueId aborts). Wait, as
+  // PortWarpSettle does, without counting the wait as idle.
+  const bool idsTight = mgr.PortFreeObjectIds() < kRoomMinFreeIds;
   if (sRoom.nextLayer < sRoom.layers.size() || mgr.PortLayerRequestPending()) {
-    if (sRoom.nextLayer < sRoom.layers.size() && !mgr.PortLayerRequestPending()) {
+    if (sRoom.nextLayer < sRoom.layers.size() && !mgr.PortLayerRequestPending() && !idsTight) {
       const std::pair< int, int >& want = sRoom.layers[sRoom.nextLayer++];
       mgr.PortWarpToLayer(TAreaId(want.first), want.second);
     }
@@ -632,7 +645,7 @@ void TickRoom(CStateManager& mgr) {
   if (waiting != 0) {
     // Give up only once nothing has moved for kRoomTimeoutFrames: a world that is still loading
     // areas or streaming a layer, or a saved area that just came back, restarts the count.
-    bool busy = false;
+    bool busy = idsTight && sRoom.nextLayer < sRoom.layers.size();
     const uint64_t signature = RoomSignature(mgr, waiting, busy);
     if (busy || signature != sRoom.signature) {
       sRoom.signature = signature;

@@ -50,6 +50,14 @@ namespace {
 // the intro over with, so the kFS_CinematicSkip case treats it like the debug setting - the scene's
 // own skip first, and never "stop the camera and leave the sequence playing".
 bool sHarnessCinematicSkip = false;
+// The player asked for the current cinematic's skip with START or A (kAM_UserInput); the
+// kFS_CinematicSkip case takes the same path as for the debug setting. Cleared on leaving it.
+bool sPortUserCinematicSkip = false;
+// How long a cinematic camera has been current in kFS_InGame; A only skips past kPortSkipAGuard.
+float sPortCinematicTime = 0.f;
+const float kPortSkipAGuard = 0.5f;
+// When the current skip started (PortHarness::Seconds), for the "[skip] done" line.
+double sPortSkipStart = 0.0;
 } // namespace
 #endif
 
@@ -99,6 +107,12 @@ void CMFGame::SetFlowState(EFlowState state) {
     mGuiManager->StartFadeIn();
     mSkippedCineCam = kInvalidUniqueId;
     CSfxManager::SetMuted(false);
+#ifdef TARGET_PC
+    std::fprintf(stderr, "[skip] done: %.1f s of game time in %.2f s\n", mFlowTime,
+                 PortHarness::Seconds() - sPortSkipStart);
+    sPortUserCinematicSkip = false;
+    sPortCinematicTime = 0.f;
+#endif
     break;
   default:
     break;
@@ -112,6 +126,9 @@ void CMFGame::SetFlowState(EFlowState state) {
   switch (state) {
   case kFS_CinematicSkip:
     CSfxManager::SetMuted(true);
+#ifdef TARGET_PC
+    sPortSkipStart = PortHarness::Seconds();
+#endif
     break;
   case kFS_PortalTransition:
     mStateManager->DeferStateTransition(kSMT_InGame);
@@ -188,6 +205,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         gpGameState->GetGameMode().GetGameModeType() != 'FRND') {
       const CCinematicCamera* const introCam = TCastToConstPtr< CCinematicCamera >(
           *mStateManager->GetCameraManager(0)->GetCurrentCamera(*mStateManager, true));
+      sPortCinematicTime = introCam ? sPortCinematicTime + dt : 0.f;
       if (introCam && PortHarness::IntroSkipCinematic(introCam->GetScriptCameraId().Value())) {
         CMidiManager::StopAll();
         mSkippedCineCam = introCam->GetScriptCameraId();
@@ -252,7 +270,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // to see the camera manager leave the cinematic camera or it comes back next frame.
         // MP2_SKIP_INTRO's request takes the same path (sHarnessCinematicSkip): a test run wants the
         // intro over with, and "over with" means the scene ended, not only the camera.
-        if (PortOverlay::SkipCinematics() || sHarnessCinematicSkip) {
+        if (PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip) {
           // The retail skip first: SpecialSkipCinematic also fires the scene's skip connections
           // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end, and it is
           // what the `canSkip` branch below counts as the skip having happened (result 1). Result 0
@@ -522,6 +540,24 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           }
         }
       }
+#ifdef TARGET_PC
+      // Port: with the "Skip cinematics" setting on, START or A skips any cinematic, seen or not
+      // (off, retail: START, and only one the player has seen). A counts once the cinematic has been
+      // on for a moment, so the press that walked the player into its trigger does not skip it. The
+      // skip takes the robust path in kFS_CinematicSkip (sPortUserCinematicSkip).
+      if (PortOverlay::SkipCinematics() && static_cast< int >(input.ControllerNumber()) == 0 &&
+          cineCam &&
+          (input.PStart() || (input.PA() && sPortCinematicTime >= kPortSkipAGuard)) &&
+          !mStateManager->IsMultiplayer() &&
+          gpGameState->GetGameMode().GetGameModeType() != 'FRND') {
+        CMidiManager::StopAll();
+        mSkippedCineCam = cineCam->GetScriptCameraId();
+        sPortUserCinematicSkip = true;
+        SetFlowState(kFS_CinematicSkip);
+        mFlowTime = 0.f;
+        break;
+      }
+#endif
       if (static_cast< int >(input.ControllerNumber()) == 0 && input.PStart()) {
         if (cineCam) {
           const bool canSkip = (cineCam->GetFlags() & 0x800) ||
@@ -694,6 +730,21 @@ void CMFGame::Draw() const {
     CGraphics::SetUseStreamVertexDelay(false);
     return;
   case kFS_CinematicSkip: {
+#ifdef TARGET_PC
+    // Port: the port's skips (see the timer tick) fade out in a quarter second instead of retail's
+    // second before the fast-forward: with the 60 FPS cap lifted at max speed the rest of the
+    // sequence then runs in a fraction of a second, so the fade is most of the skip.
+    const float fadeTime =
+        PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip ? 0.25f
+                                                                                         : 1.f;
+    if (mFlowTime >= fadeTime) {
+      gpMain->SetMaxSpeed(true);
+      return;
+    }
+    DrawWorld(singleViewport);
+    DrawGui(singleViewport);
+    const float intensity = CMath::Clamp(0.f, 1.f - mFlowTime / fadeTime, 1.f);
+#else
     if (mFlowTime >= 1.f) {
       gpMain->SetMaxSpeed(true);
       return;
@@ -701,6 +752,7 @@ void CMFGame::Draw() const {
     DrawWorld(singleViewport);
     DrawGui(singleViewport);
     const float intensity = CMath::Clamp(0.f, 1.f - mFlowTime, 1.f);
+#endif
     CCameraFilterPass::DrawFilter(CCameraFilterPass::kFT_Multiply,
                                   CCameraFilterPass::kFS_Fullscreen,
                                   CColor(intensity, intensity, intensity, 1.f), nullptr, 1.f);

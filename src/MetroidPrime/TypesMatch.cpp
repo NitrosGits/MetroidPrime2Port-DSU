@@ -48,6 +48,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/Enemies/CMinorIng.hpp" // REL module 44's host body (PortCMinorIng.cpp)
 #include "MetroidPrime/Enemies/CIng.hpp"      // REL module 29's host body (PortCIng.cpp)
+#include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp" // module 30 (PortCIngBoostBallGuardian.cpp)
 #endif
 #include "MetroidPrime/Enemies/COctapedeSegment.hpp"
 #include "MetroidPrime/Enemies/CParasite.hpp"
@@ -66,6 +67,14 @@
 // Guarded (unlike the Ing/MinorIng includes above) so the non-PC path of this upstream file is
 // byte-identical: the class is only used by the guarded TYPES_MATCH_IMPL below.
 #include "MetroidPrime/Enemies/CElitePirate.hpp" // REL module 15's host body (PortCElitePirate.cpp)
+#include "MetroidPrime/Enemies/CDigitalGuardian.hpp" // REL module 14's host body
+                                                            // (PortCDigitalGuardian.cpp)
+#include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp" // REL module 14's head
+                                                            // (PortCDigitalGuardianHead.cpp)
+#include "MetroidPrime/Enemies/CSplitterCommandModule.hpp" // REL module 75's host body
+                                                            // (PortCSplitterCommandModule.cpp)
+#include "MetroidPrime/Enemies/CSplitterMainChassis.hpp" // REL module 75's host body
+                                                            // (PortCSplitterMainChassis.cpp)
 #endif
 #include "MetroidPrime/Enemies/CSpankWeed.hpp"
 #include "MetroidPrime/Enemies/CSporbBase.hpp"
@@ -333,9 +342,11 @@ TYPES_MATCH_IMPL(CPlasmaProjectile, CBeamProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL); parent CPatterned
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CDarkSamus, CPatterned, kET_DarkSamus) // REL module 10's host body
-#endif
-// 112: class not declared yet (DigitalGuardian REL); parent CPatterned
+TYPES_MATCH_IMPL(CDigitalGuardian, CPatterned, kET_DigitalGuardian) // REL module 14's host body
+TYPES_MATCH_IMPL(CDigitalGuardianHead, CPatterned, kET_DigitalGuardianHead) // REL module 14's head
+#else
 // 113: class not declared yet (DigitalGuardian REL); parent CPatterned
+#endif
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CElitePirate, CPatterned, kET_ElitePirate) // REL module 15's host body
 #endif
@@ -343,7 +354,9 @@ TYPES_MATCH_IMPL(CGrenchler, CPatterned, kET_Grenchler)
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CIng, CPatterned, kET_Ing) // REL module 29's host body (PortCIng.cpp)
 #endif
-// 117: class not declared yet (IngBoostBallGuardian REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CIngBoostBallGuardian, CPatterned, kET_IngBoostBallGuardian) // module 30
+#endif
 TYPES_MATCH_IMPL(CIngSpaceJumpGuardian, CPatterned, kET_IngSpaceJumpGuardian)
 TYPES_MATCH_IMPL(CIngSpiderballGuardian, CPatterned, kET_IngSpiderballGuardian)
 TYPES_MATCH_IMPL(CLumite, CPatterned, kET_Lumite)
@@ -360,8 +373,11 @@ TYPES_MATCH_IMPL(CSandworm, CPatterned, kET_Sandworm)
 TYPES_MATCH_IMPL(CSandwormEye, CActor, kET_SandwormEye)
 TYPES_MATCH_IMPL(CSpacePirate, CPatterned, kET_SpacePirate)
 TYPES_MATCH_IMPL(CSpankWeed, CPatterned, kET_SpankWeed)
-// 134: class not declared yet (Splitter REL); parent CPatterned
-// 135: class not declared yet (Splitter REL); parent CPatterned
+#ifdef TARGET_PC
+TYPES_MATCH_IMPL(CSplitterMainChassis, CPatterned, kET_SplitterMainChassis) // REL module 75's body
+TYPES_MATCH_IMPL(CSplitterCommandModule, CPatterned,
+                 kET_SplitterCommandModule) // REL module 75's body
+#endif
 TYPES_MATCH_IMPL(CWispTentacle, CPatterned, kET_WispTentacle)
 // 137: class not declared yet (no vtable found); parent CActor
 TYPES_MATCH_IMPL(CScriptPlayerTurret, CActor, kET_ScriptPlayerTurret)
@@ -605,8 +621,14 @@ CAST_TO_PTR_IMPL(CBeamProjectile, kET_BeamProjectile)
 CAST_TO_REF_IMPL(CPlasmaProjectile, kET_PlasmaProjectile)
 CAST_TO_PTR_IMPL(CPlasmaProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL)
-// 112: class not declared yet (DigitalGuardian REL)
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CDigitalGuardian, kET_DigitalGuardian)
+CAST_TO_PTR_IMPL(CDigitalGuardian, kET_DigitalGuardian)
+CAST_TO_REF_IMPL(CDigitalGuardianHead, kET_DigitalGuardianHead)
+CAST_TO_PTR_IMPL(CDigitalGuardianHead, kET_DigitalGuardianHead)
+#else
 // 113: class not declared yet (DigitalGuardian REL)
+#endif
 #ifdef TARGET_PC
 CAST_TO_REF_IMPL(CDarkSamus, kET_DarkSamus)
 CAST_TO_PTR_IMPL(CDarkSamus, kET_DarkSamus)
@@ -652,8 +674,12 @@ CAST_TO_REF_IMPL(CSpacePirate, kET_SpacePirate)
 CAST_TO_PTR_IMPL(CSpacePirate, kET_SpacePirate)
 CAST_TO_REF_IMPL(CSpankWeed, kET_SpankWeed)
 CAST_TO_PTR_IMPL(CSpankWeed, kET_SpankWeed)
-// 134: class not declared yet (Splitter REL)
-// 135: class not declared yet (Splitter REL)
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CSplitterMainChassis, kET_SplitterMainChassis)
+CAST_TO_PTR_IMPL(CSplitterMainChassis, kET_SplitterMainChassis)
+CAST_TO_REF_IMPL(CSplitterCommandModule, kET_SplitterCommandModule)
+CAST_TO_PTR_IMPL(CSplitterCommandModule, kET_SplitterCommandModule)
+#endif
 // 136: class not declared yet (WispTentacle REL)
 // 137: class not declared yet (no vtable found)
 CAST_TO_REF_IMPL(CScriptPlayerTurret, kET_ScriptPlayerTurret)

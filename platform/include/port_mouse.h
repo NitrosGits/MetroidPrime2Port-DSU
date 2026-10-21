@@ -263,6 +263,13 @@ bool PointerAimPosition(float& x, float& y);
 // there from the centre, clamped to -1..1. A tick that does not leave it free re-centres it.
 void SetPointerAimPosition(float x, float y);
 void Synchronize(float x, float y, float z);
+// The console's `aim <yaw_deg> <pitch_deg>`: place the aim outright instead of turning it from
+// travel, which is the only way a run with no stick can aim at a low target. yawDeg is the
+// view's heading in the world's own terms (0 = +y, 90 = +x, as `face` reads it); pitchDeg is
+// +up, so a negative pitch looks down. It arms a direct source (mouse aim) the rest of the run,
+// so CPlayer::UpdateMouseAim is the one that turns the body and CFirstPersonCamera reads the
+// pitch. A tick that has something else owning the view resynchronises and drops it.
+void SetAimAngles(float yawDeg, float pitchDeg);
 void Reset();
 bool Aiming();
 bool Initialized();

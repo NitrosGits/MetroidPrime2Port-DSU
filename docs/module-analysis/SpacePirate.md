@@ -98,7 +98,7 @@ Deactivate, RemoveFromWorld, Enraged, Ambushing/IsAmbushing, HasAttackPattern, S
 | `106D4` | 0x204 | CSpacePirateData copy into this+0x7c0 | [proven] |
 | `10A10` | 0x254 | CSpacePirateData ctor (0x134) then `108D8` copies launcher data to +0xc8 | [proven] |
 | `C0C`/`10C64` | – | bouncy-grenade data ctor (0x50) / grenade-launcher data ctor (0x6C, calls `10954`) | [proven] |
-| `4F28` | – | ctor-time init from data+0xc8 (launcher) | [probable] |
+| `4F28` | 0x9C | ctor (0xFB30): weapon type 1 (data+0xc8) with a valid launcher CMDL (data+0xcc) -> `xc08_launcherModel = CModelData(CStaticRes(id, body model scale))` (`4FC4` = the optional's assign) | [proven] |
 
 ## 2. CSpacePirate members (`CHECK_SIZEOF 0xc70`)
 
@@ -276,6 +276,25 @@ cannot fire in this area (for retail as well). The decode is exact, not a mis-re
 generated reader and `fn_72_140` id for id, `ReadFloat`/`ReadInt32`/`ReadUint16` all byte-swap under
 TARGET_PC, and the properties after them (42-byte damage infos, 200-byte weapon data, 90-byte editor
 properties, per-actor flags 0x10000/0x829c/0x40000) line up.
+| `E0D8` `AttachActorToPirate` | ported 2026-10-20, unmarked. Refuses a second actor (0xa84 != invalid, 0xE0E4 -> false at 0xE118), sets the ragdoll's flag byte 0x118 bit 0x40 (PPC bit 25, 0xE100) and stores the id at 0xa84 (0xE108/0xE10C). The ragdoll is unported (0xb30 is never set), so the flag write stays a comment |
+| `E0AC` `DetachActorFromPirate` | ported 2026-10-20, unmarked. 0xa84 = kInvalidUniqueId (0xE0B4) and the ragdoll's flag byte 0x118 bit 0x40 cleared (0xE0CC) |
+| `3AB4` `GetDamageVulnerability()` | ported 2026-10-20, unmarked. 0xc04 != -1 (0x3AC0/0x3AC4) -> the DOL's pass-through vulnerability (0x3ACC `PassThroughVulnerabilty`), else `CPatterned::GetDamageVulnerability()` (0x3AD4); 0xc04 is the warp point |
+| `3A88` `GetDamageVulnerability(pos,dir,dmg)` | ported 2026-10-20, unmarked. A tail call through the vtable slot 0x40 (0x3A94-0x3AA0), which for CSpacePirate is the **no-argument** override `3AB4`; the three arguments are not read |
+| `17C8` `GetTouchBounds` | ported 2026-10-20, unmarked. With a ragdoll (0xb30) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the bounds are the ragdoll's (ragdoll+0x58..0x70); else the actor's own bounding box (0x183C `fn_72_1854` = `GetBoundingBox`). The ragdoll is unported, so that branch stays a comment |
+| `35CC` `GetSortingBounds` | ported 2026-10-20, unmarked. The model's bounds in the actor's transform (0x35F0 `GetBounds`), their centre (0x362C `GetCenterPoint`), then `CAABox(centre - 0.25*size, centre + 0.25*size)` (rodata BC0 = 0.25, 0x364C-0x3684, ctor at 0x36B4) |
+| `E090` `GetOrigin` | ported 2026-10-20, unmarked. The pirate's own translation (this+0x54/0x58/0x5c, 0xE090-0xE0A4) |
+| `E120` `SetAttackTarget` | ported 2026-10-20, unmarked. 0xa94 = the target (0xE138), `fn_72_DE5C` = UpdateTeamTarget (0xE13C), 0xa98 = 1 (the burst type, 0xE148) and 0xa90 = 0 (the attack time, 0xE150) |
+| `253C` `UpdateAimBodyState` | fixed 2026-10-20: the aim block runs while `xb98` **<= 0** (0x2614 `fcmpo` + 0x2618 `cror eq,lt,eq`), not only at 0 |
+| 2026-10-20 run #4 (08_sand_casualpirates, 3200 frames) | the new bodies ran: `3AB4` and `3A88` once each (the shot), `17C8` and `35CC` once each, `E090` and `E120` never (no team AI and no CMetroid in the area); 8 KnockBack reactions, 0 reach-stubs, frame limit at 58.4 s |
+| `3A0C` `PreRenderAllViewports` | ported 2026-10-20, unmarked. With a live ragdoll (xb30_'s byte 0x70 bit 0x40 set) the ragdoll renders (0x3A50, the rodata B6C float) and `UpdatePortalSystemState(mgr)` runs (0x3A5C); otherwise `CPatterned::PreRenderAllViewports(mgr)` (0x3A6C). The ragdoll is outside the port, so that branch stays a comment |
+| `18BC` `TryToBeCaptured` | ported 2026-10-20, unmarked. The state machine's virtual slot 0x20 (`SetState`) with the name "Captured" (rodata 0xF42) and the return is always true (0x1918) |
+| `343C` `GetScanVisorRenderBounds` | ported 2026-10-20, unmarked. The model's vertex bounds (`CalcBoundingBoxFromModelVerts`, 0x3498), the model's scale (0x34D4) and the negated translation (0x34F0) build the transform `Translate(-pos) * this->0x24 * Scale(modelScale)` (0x3514-0x3540); the box is transformed with it (0x3550) |
+| `339C` `ScanVisorRender` | ported 2026-10-20, unmarked. Unless the body model data `IsNull()` (+0x10 anim data, +0x28 normal model), `Render(kWM_Normal, xf, no lights, flags)` (0x3404), then `36CC` (0x3418). `36CC` (0xD4): `GetRenderAlphaBufferAlpha` != -1 brackets the draw with gpRender slot 0x128 `SetDestinationAlpha` / 0x12C `DisableDestinationAlpha` (proven from `__vt__13CCubeRenderer`: entry 74 = 0x128); vtable slot 0xC8 `GetModelAlphau8` != 0 and the launcher model valid (0xc54) -> it renders at `xf * GetScaledLocatorTransform(R_wrist 0xa88)` with the actor lights (0xbc). Retail 0xc08..0xc58 is `rstl::optional_object<CModelData>` (dtor `F10C` tests 0xc54); host `xc08_launcherModel` |
+| 2026-10-20 run #5 (08_sand_casualpirates, scan visor) | `visor scan`, then tp/face at u04d0, a short L press (lock-on) and a long L hold (scan item) starts the scan: the scan-target read-back picked 0x000000d0 (208) and `343C` and `339C` both ran; `3A0C` runs every frame; `18BC` never (no WispTentacle in the area) |
+| 2026-10-20 run #7 (08_sand_casualpirates, 3200 frames) | Render/ScanVisorRender retail: all six pirates have weapon type 0 (no launcher model, so `36CC`'s draw branch is unexercised); scan of 208 shows the model in the scan frame and the pirate in the world view; plain view still unlit (as run #6); 0 caught/reach-stubs, 0 stand-ins |
+| `38E4` `PreRender` | ported 2026-10-20, unmarked. The ragdoll path (xb30_'s byte 0x70 bit 0x40 -> the ragdoll's own pre-render, 0x3918) is a comment (the ragdoll is outside the port); then `CPatterned::PreRender` (0x3938), the bone tracking (0x398C: mgr, the anim data, the transform, the model's scale, the body) and the ik chain (0x39C0: the anim data, the transform, the model's scale), both only while no ragdoll is live. The portal-plane tail (0x39C4: |the plane's d| > 0 -> an uninitialised word into the draw flags' first word and bit 0x8000 into their high half) stays a comment: the plane is never set in the port and the word is undefined |
+| `37C4` `Render` | ported 2026-10-20, unmarked. `mAlive` (0x420 bit 0x40) ? `GetSecondsMod900()` : 0 (B9C); while `xc04_warpPoint == 1` `DrawSpaceWarp(bbox centre, FastSinR(pi (BC4) * mColor.GetAlpha()))` - the `psq_l 0x44f, qr2` is mColor's alpha byte (retail mColor = 0x44c) times BB4 = 1/255; the scoped `CTimeProvider`; `|mPortalPlane.d (0xc68)| > 0` -> `SetupWorldSpacePortalPlane`; `CPatterned::Render`; `36CC(mgr, transform 0x24, draw flags 0xfc)` |
+| 2026-10-20 run #6 (08_sand_casualpirates, 3200 frames) | `38E4` runs every frame (the bone tracking and the ik chain), the pirates are alive and take hits (7 KnockBack reactions), 0 caught/reach-stubs, 1 stand-in left (`37C4`). The area's plain view is unlit in the host port - the port tree's own binary (before this slice) renders the same black view - so the screenshot is the scan visor, which shows the Space Pirate's model inside the scan frame |
 
 ## 7. Port status / next (2026-10-20)
 
@@ -371,8 +390,8 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId`.
 - **The 12 trigger stand-ins are gone (2026-10-20, this session):** `PortCSpacePirateTriggers.cpp`
   has no stand-in left - every one of the 39 triggers is now retail's (section 6 has the facts).
-  (`PortCSpacePirateStates.cpp` had none either; `PortCSpacePirate.cpp` still has 14 vtable-override
-  stand-ins.)
+  (`PortCSpacePirateStates.cpp` had none either; the 14 vtable overrides in
+  `PortCSpacePirate.cpp` were ported the same day - the next bullet.)
   Three of them carry a `// @` marker because the 208 cycle evaluates them (always false there):
   `ADC0` (AggressionCheck), `7970` (HasTargetingPoint), `55B8` (OffLine). The other nine are never
   evaluated, so they stay unmarked. `PortSpacePirateStandIn` is now called from nowhere but
@@ -381,6 +400,66 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `33a4f2ae1`, `e2194e6b5`. The module is at 27/262 marked functions
   (`tools/port_progress.py`): every state and every trigger is ported, but only the states the
   208 cycle reaches are marked.
+- **The 14 vtable overrides are all ported and now marked (2026-07-20, this session, branch
+  `decomp/spacepirate-vt` off `port`).** The doc's old line that `PortCSpacePirate.cpp` "still has
+  14 vtable-override stand-ins" was stale: the bodies went in with the states, but six of them were
+  left unmarked. Each was re-read against the REL's asm and marked now:
+  `3A88` (0x2C, the vtable tail call through the slot 0x40), `3A0C` (0x7C, PreRenderAllViewports),
+  `17C8` (0x8C, GetTouchBounds), `339C` (0xA0, ScanVisorRender), `37C4` (0x120, Render) and
+  `38E4` (0x128, PreRender). The other eight were already marked: `E0D8` (0x48), `E0AC` (0x2C),
+  `3AB4` (0x34), `35CC` (0x100), `343C` (0x190), `E120` (0x48), `E090` (0x1C) and `18BC` (0x74) - the
+  last two are never exercised by the area run, so they keep their "Retail fn_72_..." comment.
+  asmcheck's findings on the six are the known false positives: the skipped ragdoll branches
+  (`xb30_` is never set), the vtable tail call in `3A88`, the string's destructor in `18BC` and the
+  uninitialised draw-flags word in `38E4`'s portal-plane tail (the plane is never set).
+  The area run (08_sand_casualpirates) is clean: 0 `[port] caught` / `[reach-stub]`, the 208 cycle
+  `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` repeats, and the pirate draws
+  (screenshot `/tmp/opencode/sp_vt_shot.png`).
+- **The marking pass over the ported-but-unmarked functions (2026-07-20, this session, branch
+  `decomp/spacepirate-vt`):** every ported function in the three `PortCSpacePirate*.cpp` files was run
+  through `tools/asmcheck.py check --all`. The marked count went from 61 to 67: `ADC0` (0xF8,
+  AggressionCheck - the port's comment cited only its helper `AEE0`), `7970` (0x1FC, HasTargetingPoint -
+  its helper `DE5C`), `4F28` (0x9C, InitLauncherModel), `36CC` (0xF8, RenderLauncherModel), `F0A0`
+  (0x6C, SetupStateMachine) and `BCB0` (0x31C, TargetPatrol). All six are exercised by the area run:
+  the log shows `AggressionCheck trigger 0` and `HasTargetingPoint trigger 0` 2858 times each,
+  `InitLauncherModel (fn_72_4F28) weapon 0` for every pirate, the state machine's setup in every
+  pirate's first frame and `state Taunt -> TargetPatrol` once. **No real mismatch was found** - the
+  remaining asmcheck findings on them are the known false positives (the `TCastToPtr` calls, the
+  navigation's `mInPosition` bit written through `SetInPosition`, the vtable tail call in `3A88` and
+  the `fn_72_CB30` helper call, which is the port's `GetTargetPos`).
+  **32 ported functions stay unmarked** because the area run never reaches them: the states WarpIn,
+  Attack, Crouch, CoverAttack, Halt, Shuffle, TurnAround, Dodge, SquadJoin, Cover, TargetCover,
+  Approach, WallHang, GetUp, Generate, DoubleSnap, Bounce, PathFindEx, Deactivate, LaunchGrenade and
+  Captured (no state line for them in the run), the triggers CoverFind, CoverBlown, CoverNearlyBlown,
+  CoveringFire, ShouldAttack, GetStrafeDir and BounceFind (never evaluated: the live cycle
+  `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` does not list them, and
+  `ShouldMove`/`ShouldAttack` are evaluated 0 times), and the main file's EnsureBodyActive,
+  SpawnGrenade, Touch, Listen (no grenade launcher data, no team AI and no CMetroid in the area, and
+  the pirate never touches the player). The loader `140` stays unmarked as well (asmcheck's 15
+  findings on it are the property reader's own calls).
+- **The pirates fight (2026-07-20, this session): 8 more of the 32 marked.** A console script
+  (`/tmp/opencode/sp_fight_con.py`) arms the player (the beam, the missile and the bombs), activates
+  every pirate, teleports next to each one and shoots it; the pirates then engage. The run's state
+  lines show `TargetPlayer -> Attack` (38), `Attack -> Lurk` (37), `PathFind -> Dodge` (28),
+  `Dodge -> Lurk` (28), `Attack -> JumpBack` (7), `JumpBack -> Lurk` (7), `PathFind -> Jump` and
+  `Jump -> Lurk` (1 each) and `state (none) -> WarpIn` (2), and its trigger lines show
+  `CoverFind trigger 0` (1822). Marked: `9F1C` (0x39C, Attack), `7DFC` (0x4D4, Dodge), `63C8`
+  (0x448, JumpBack - the state had no retail id in its comment at all), `5310` (0x108, Jump),
+  `7078` (0x528, WarpIn), `D720` (0xE0, UpdateHeldPosition - Lurk's update runs it every
+  message), `ABC0` (0x1F4, CoverFind) and `CB30` (0x150, GetTargetPos - the cover search calls it
+  for every candidate). The marked count is now 75. **No real mismatch was found**: the remaining
+  asmcheck findings on the eight are the known false positives (the retail's own helpers called
+  from C++ - `CB30`, `5510`, `5418`, `10D38`, `75DC` - `GetObjectById`, the 0x8f9 break-dodge
+  bitfield and the member-hash comparisons on x902/x914).
+  **24 stay unmarked** because the run still does not reach them: the states Crouch, Cover,
+  CoverAttack, Halt, Shuffle, TurnAround, SquadJoin, TargetCover, Approach, WallHang, GetUp,
+  Generate, DoubleSnap, Bounce, PathFindEx, Deactivate, LaunchGrenade and Captured (the pirates
+  take cover only when a cover point is near, the wall hang needs a wall-hang point, the grenade
+  launcher needs a launcher, the ambush needs an ambush connection), the triggers CoverBlown,
+  CoverNearlyBlown, CoveringFire, ShouldAttack, GetStrafeDir and BounceFind (the live cycle does
+  not list them and `ShouldMove`/`ShouldAttack` are evaluated 0 times), and the main file's
+  EnsureBodyActive, SpawnGrenade, Touch and Listen (no launcher data, no team AI and no CMetroid in
+  the area, and the pirate never touches the player - the player is teleported, not walked into).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 
