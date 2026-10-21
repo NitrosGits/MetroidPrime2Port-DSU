@@ -25,6 +25,7 @@ SPEC = [
     ('BE4C Listen: type 0 heard', C + '104', [], ''),
     ('BE4C Listen: height range', 'loc:PortCCommandoPirateCore.cpp:100', ['this->mDetectionHeightRange != 0'], ''),
     ('AFD4 CoverBlown', 'CCommandoPirate::CoverBlown(', ['$this->xbd2_.value != 0xffff'], 'ret calls'),
+    ('3480 PickMeleeAttack', 'CCommandoPirate::x3480_PickMeleeAttack(', [], 'calls max=200'),
     ('A4BC MeleeAttack', 'CCommandoPirate::MeleeAttack(', ['$rdx', '$this->xbc4_teamId.value != 0xffff'], 'calls'),
     ('A2EC EGrenadeAttack', 'CCommandoPirate::EGrenadeAttack(', ['$rdx'], 'calls max=2000'),
     ('A110 PostEGrenadeAttack', 'CCommandoPirate::PostEGrenadeAttack(', ['$rdx'], 'calls max=2000'),

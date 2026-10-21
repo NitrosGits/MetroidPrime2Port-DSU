@@ -41,26 +41,20 @@
 #include <float.h>
 #include <stdio.h>
 
+// lbl_9_bss_38: the live E-grenades (the ctor's increment at 0x0000F4E4..0x0000F4EC, the dtor's
+// decrement in fn_9_F290), defined in PortCCommandoPirate.cpp where fn_9_662C and ShouldFireEGrenade
+// read it.
+extern int sEgrenadeObjectCount;
+
 namespace {
 
-// fn_9_3480 (0x1f8 bytes): the melee-attack picker - it answers the row of lbl_9_rodata_408 the
-// attack uses, or -1 when no attack fits. The helpers lane ports it; until that lands this
-// stand-in answers -1, so MeleeAttack takes its "no attack" arm (state over).
-int x3480_PickMeleeAttack() {
-  static bool sLogged = false;
-  if (!sLogged) {
-    sLogged = true;
-    fprintf(stderr, "[cmdopirate] stand-in fn_9_3480 (the melee-attack picker, -1)\n");
-  }
-  return -1;
-}
-
 // lbl_9_rodata_408: the melee attack table, three rows of 0xc bytes (the mulli at 0x0000A5E0):
-// the severity (an int, the lwzx at 0x0000A5F8), an angle and a range.
+// the severity (an int, the lwzx at 0x0000A5F8), the widest angle to the target the row allows and
+// its weight in the random pick (fn_9_3480).
 struct SMeleeAttack {
   int mSeverity;
   float mAngle;
-  float mRange;
+  float mWeight;
 };
 const SMeleeAttack skMeleeAttacks[3] = {
     {0, 1.5707964f, 50.f},
@@ -69,6 +63,45 @@ const SMeleeAttack skMeleeAttacks[3] = {
 };
 
 }  // namespace
+
+// fn_9_3480 (0x1f8 bytes): the melee-attack picker. Without the target's aim position (fn_9_3CBC
+// with 0.5f, rodata_440, 0x000034D8..0x000034EC) it answers -1 (0x000034D4). Otherwise the angle
+// between the flat aim delta (aim minus the translation, z = 0.f rodata_494, 0x00003528..0x0000354C)
+// and the forward (0x000034F0..0x00003520) picks the rows: each row whose angle is >= it adds its
+// weight to the sum (0x0000356C..0x000035B4); the sum times CRandom16::Float (0x000035BC) walks the
+// same rows in order and answers the first whose weight is >= what is left, taking each passed
+// weight off (0x000035C0..0x00003644). Nothing found answers -1.
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; no target
+// forced on every 3rd call, the rows picked from eight stand-offs.
+// @ fn_9_3480
+int CCommandoPirate::x3480_PickMeleeAttack(CStateManager& mgr) const {
+  int result = -1;                                                     // 0x000034D4
+  CVector3f aim = CVector3f::Zero();                                   // 0x000034A8..0x000034E0
+  if (!x3CBC_(mgr, aim, 0.5f)) {                                       // rodata_440, 0x000034E4..0x000034EC
+    return result;
+  }
+  const CVector3f forward = GetTransform().GetForward();               // +0x28/+0x38/+0x48, 0x000034F0..0x00003520
+  const CVector3f translation = GetTranslation();
+  const CVector3f delta(aim.GetX() - translation.GetX(), aim.GetY() - translation.GetY(),
+                        0.f);                                          // rodata_494, 0x00003528..0x0000354C
+  const float angle = CVector3f::GetAngleDiff(delta, forward);         // 0x00003550
+  float sum = 0.f;                                                     // rodata_494, 0x00003568
+  for (int i = 0; i < 3; ++i) {                                        // unrolled, 0x0000356C..0x000035B4
+    if (skMeleeAttacks[i].mAngle >= angle) {
+      sum += skMeleeAttacks[i].mWeight;
+    }
+  }
+  float pick = sum * mgr.Random()->Float();                            // this+0x16e4, 0x000035B8..0x000035C4
+  for (int i = 0; i < 3; ++i) {                                        // unrolled, 0x000035C0..0x00003644
+    if (skMeleeAttacks[i].mAngle >= angle) {
+      if (skMeleeAttacks[i].mWeight >= pick) {
+        return i;                                                      // 0x000035E4 / 0x00003614 / 0x00003644
+      }
+      pick -= skMeleeAttacks[i].mWeight;                               // 0x000035EC / 0x0000361C
+    }
+  }
+  return result;
+}
 
 // @ fn_9_68
 // fn_9_68 (vtable slot 0xc8, 0x8 bytes): `lbz r3, 0x44f(r3)` - the colour's alpha byte. One arm.
@@ -156,10 +189,13 @@ bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) c
 // Deactivate: this+0xC65 loses 0x20 (0x0000A6E8), the melee cooldown this+0xB7C is 0.f
 // (0x0000A700), the animation state goes not ready (0x0000A704), the team hears the attack ended
 // (EndAttack kAT_Melee, no role clear, 0x0000A71C) and the blade goes off (0x0000A72C).
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every guest arm;
+// StartAttack refused by two commandos entering in one tick. Open: the host blade guards, the default.
+// @ fn_9_A4BC
 void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {                                           // 0x0000A500
-    xc54_ = x3480_PickMeleeAttack();                                   // 0x0000A500..0x0000A508
+    xc54_ = x3480_PickMeleeAttack(mgr);                                // 0x0000A500..0x0000A508
     if (!x3CBC_(mgr, xb94_, 0.f) || xc54_ == -1) {                     // rodata_494, 0x0000A51C..0x0000A530
       mAnimationState.SetState(CAnimationState::kAS_Over);             // 0x0000A5AC..0x0000A5B0
       break;
@@ -519,6 +555,9 @@ void CCommandoPirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
 // point exists (this+0xBD2, 0x00006D00..0x00006D1C) the actor slides 5% of the way to it
 // (lbl_9_rodata_470 = 0.05f, 0x00006D20..0x00006D98).
 // Deactivate: nothing (the guest's switch has no arm for it, 0x00006C98).
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; xbd2_
+// forced valid/invalid on alternate half seconds.
+// @ fn_9_6C68
 void CCommandoPirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x00006CA8
@@ -577,6 +616,9 @@ void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
 // An invalid id gives null (the addis/cmplwi pair at 0x0000F598..0x0000F5A8); otherwise the PART
 // token from the simple pool (the tag's 'PART' at 0x0000F5AC..0x0000F5B4) and a new CElementGen
 // (0x338 bytes, 0x0000F618) on it with kMOT_Normal and kOSF_One (r5 = 0, r6 = 1 at 0x0000F648).
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; the
+// invalid id forced.
+// @ fn_9_F58C
 CElementGen* CCommandoPirate::xF58C_CreateEffect(CAssetId id) {
   if (id == kInvalidAssetId) {
     return nullptr;  // 0x0000F680
@@ -593,9 +635,6 @@ namespace {
 CMaterialList skEGrenadeMaterials(kMT_Solid, kMT_Projectile);
 // lbl_9_bss_0/lbl_9_bss_C: the module's own REL name (rodata 0x909), the grenade's file token.
 rstl::string skEGrenadeRELName = rstl::string_l("CommandoPirate.rel");
-// lbl_9_bss_38: the live E-grenades (the ctor's increment at 0x0000F4E4..0x0000F4EC, the dtor's
-// decrement in fn_9_F290).
-int sEGrenadeCount = 0;
 
 // The "Commando E-Grenade" (0x410 bytes, vtable lbl_9_data_AAC): a CBouncyGrenade whose Think
 // (fn_9_F0F8) adds the EMP's static. Its other slots are CBouncyGrenade's own.
@@ -606,6 +645,8 @@ public:
   // distance, an inverted box, no target, no homing (f2 = f3 = 0.f, rodata_494), flags 0 and
   // lbl_9_bss_30 (0x0000F45C..0x0000F494); then the whole block (fn_9_EC88 at 0x0000F4B0, this+0x390),
   // the EMP timer (this+0x400 = 0.f, 0x0000F4D0) and the REL token (this+0x404, 0x0000F4D4).
+  // Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm.
+  // @ fn_9_F418
   CCommandoPirateEGrenade(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                           const CTransform4f& xf, const CModelData& modelData,
                           const CActorParameters& actorParams, TUniqueId owner,
@@ -622,17 +663,22 @@ public:
   , mData(data)
   , mEMPTime(0.f)
   , mRelToken(skEGrenadeRELName, 0) {
-    ++sEGrenadeCount;
+    ++sEgrenadeObjectCount;
   }
 
   // fn_9_F290: the count, the token, the base.
-  ~CCommandoPirateEGrenade() override { --sEGrenadeCount; }
+  // Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): no branches.
+  // @ fn_9_F290
+  ~CCommandoPirateEGrenade() override { --sEgrenadeObjectCount; }
 
   // fn_9_F0F8: the base's grenade effects (UpdateGrenadeFX, 0x0000F128); once it has exploded
   // (the base's byte at guest +0x388, its 0x80 bit, 0x0000F12C..0x0000F134) the EMP timer runs
   // and every player within 20 units (rodata_46C) gets static by distance and the time left,
   // clamped to 0..1, for 0.2s (rodata_458); the grenade goes when the EMP time is up. The guest's
   // test of the time sits inside the exploded branch (0x0000F23C..0x0000F264).
+  // Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm;
+  // the EMP duration forced to 0 on every 2nd call.
+  // @ fn_9_F0F8
   void Think(float dt, CStateManager& mgr) override {
     UpdateGrenadeFX(dt, mgr);                                         // 0x0000F128
     if (!HasExploded()) {                                             // 0x0000F12C..0x0000F134
@@ -690,6 +736,9 @@ CVector3f CCommandoPirate::x52BC_GetGrenadeTarget(const CStateManager& mgr,
 // and rodata_440) is within the block's launch speeds wins; otherwise the one closest to them.
 // Both outputs are written (0x00005220..0x00005224), the defaults being 20 degrees and the
 // minimum speed (0x000050D4, 0x000050E0).
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; the
+// aim point forced below / far above / straight over the origin.
+// @ fn_9_5008
 void CCommandoPirate::x5008_SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
                                                float& angle, float& speed) const {
   const float heightDelta = target.GetZ() - origin.GetZ();          // 0x000050BC
@@ -740,6 +789,9 @@ void CCommandoPirate::x5008_SolveGrenadeLaunch(const CVector3f& target, const CV
 // the actor's forward when it has none, and no more than 30 degrees (rodata_4C8) off it - raised
 // by the arc's angle, and the grenade looking along it; then the grenade-pending bit of
 // guest this+0xC63 (0x02) is cleared (0x0000575C..0x00005768). With no target nothing happens.
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; no
+// target forced on calls 1, 4, 7...
+// @ fn_9_5410
 void CCommandoPirate::x5410_CreateEGrenade(CStateManager& mgr) {
   const CTransform4f launchXf = GetLctrTransform(mLocatorMidLaunch);  // 0x00005434
   const CVector3f origin = launchXf.GetTranslation();                 // 0x00005448..0x0000546C
