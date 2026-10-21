@@ -307,11 +307,6 @@ public:
   // Host: the Splitter REL's fn_75_1790 tests the base's flag byte at 0x420 (its 0x20 bit, the
   // retail's word bit 26 - the host's x420_26_ field).
   bool GetFlag26() const { return x420_26_ != 0; }
-
-  // Host: CScriptPlatform::MoveRiders shifts a carried rider's predicted translation by the carry,
-  // so a ride doesn't count towards mPredictedLeashTime (CPatterned::Stuck). Without it the Torvus
-  // Temple skiff's Back pirate leaves TargetPatrol as PatternShagged and never jumps off.
-  void CarryPredictedTranslation(const CVector3f& delta) { mLatestPredictedTranslation += delta; }
 #endif
 
   // Guessed name
