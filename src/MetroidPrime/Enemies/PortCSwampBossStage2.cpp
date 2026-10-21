@@ -715,10 +715,12 @@ void CSwampBossStage2::AddAdditiveFlinch(float amount) {
   mPendingFlinch = rstl::max_val(mPendingFlinch, rstl::min_val(amount / 20.f, 1.f));
 }
 
-// fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface. The
+// @ fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface. The
 // position keeps the caller's X/Y and takes the water height as Z (0x1FC8); the generator's
 // *global* translation is set (vtable +0x20 = CParticleGen::SetGlobalTranslation), and the old
 // generator is deleted (vtable +0x08 = the deleting destructor, 0x1F40).
+// A run that reached the dark phase (the anim event 0x28) took the body; the asset guard is the
+// "this area has no bubble effect" case, which the shipped area never takes.
 void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f& pos) {
   if (mData.bubbleTelegraphEffect == kInvalidAssetId) {
     return;
@@ -730,9 +732,11 @@ void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f&
   mBubbleGen->SetGlobalTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ));
 }
 
-// fn_79_2A84: the splash shockwave, on the locator's X/Y at the centre actor's height. The
+// @ fn_79_2A84: the splash shockwave, on the locator's X/Y at the centre actor's height. The
 // CShockWaveInfo is the phase's splashShockWave loader struct (fn_79_2C20 is that conversion).
 // The transform keeps the boss's rotation and takes the new translation (0x2AC0, 0x2AF0).
+// A run that reached the dark phase (the anim event 0x23) took the body; the asset guard is the
+// "this area has no shock wave" case, which the shipped area never takes.
 void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) {
   if (mData.splashShockWave.shockWaveEffect == kInvalidAssetId) {
     return;
@@ -747,8 +751,10 @@ void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) 
   mgr.AddObject(wave);
 }
 
-// fn_79_3578: the wind effect on the wind node. The direction is flat (the Z component is the
+// @ fn_79_3578: the wind effect on the wind node. The direction is flat (the Z component is the
 // constant 0 of rodata_9C, 0x35E8) and the effect sits 50 units short of the node (0x3614).
+// The dark phase's Blow state calls it four times in a run; the wind node is there, so the body
+// runs and the "no wind node" arm is the one the shipped area never takes.
 void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mWindNode));
   if (!node) {
@@ -809,7 +815,10 @@ void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
   }
 }
 
-// fn_79_2E84: pick the chain node to swoop at. Retail crosses the player-to-centre line with up
+// @ fn_79_2E84: pick the chain node to swoop at. The dark phase's DarkLurk calls it every frame
+// it steers: a run took both the dive arm (attack 5) and the plain arm, and the "too close to
+// the node nearest the player" skip (0x30AC) as well.
+// Retail crosses the player-to-centre line with up
 // (fn_79_3314, the host's CVector3f::Cross) to walk the chain round to the far side, then keeps the
 // connected node that is farthest from the boss with a random spread (0x30F0: the distance is
 // measured from the boss, not from the player). While diving, a candidate closer to the node
@@ -1140,7 +1149,9 @@ float CSwampBossStage2::RecentDamage() const {
   return sum;
 }
 
-// fn_79_33BC: the damage memory ages by dt; an entry that reaches zero is erased (0x3410).
+// @ fn_79_33BC: the damage memory ages by dt; an entry that reaches zero is erased (0x3410).
+// A run that hit the boss with the beam filled the memory and the entries then reached zero and
+// were erased, so both arms ran.
 void CSwampBossStage2::DecayDamageMemory(float dt) {
   rstl::list< SDamageMemory >::iterator it = mDamageMemory.begin();
   while (it != mDamageMemory.end()) {
