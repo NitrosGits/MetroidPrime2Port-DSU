@@ -54,7 +54,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea312bc93ffecMAU928oeEeY7P` | darksamus2 @ `21a075630` (48 markers; slice 11 accepted: shipped stages 182e019f + rooftop enable the forced bits, slice-10 markers stay; marked 193A0 194AC 17E90 (stage advance ran all six rooftop stages); SideDash 153EC unmarked (no shipped FSM state), B86C unmarked) | cite Fsm:463; F40C/F488 (mCanDie); natural run to 019f + morph during dive; Think tail 1ACA0..1B154 |
+| DarkSamus (Opus) | `ses_ea312bc93ffecMAU928oeEeY7P` | darksamus2 @ `9d479b606` (48 markers; slice 12 accepted: F40C/F488 ported (mCanDie hold at 1 hp, death path, alt-scan ran on Temple stage 102a0044), unmarked; Think tail = pissed-off chain + fade block, documented) | why real fire does no damage in Agon; pissed-off chain FD4C+F930 FB8C FAF4 FC64 105F4 18F90; then DiveAttack 11FA4 |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
