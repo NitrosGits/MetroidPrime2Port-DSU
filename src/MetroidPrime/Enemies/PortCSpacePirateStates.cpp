@@ -660,6 +660,14 @@ void CSpacePirate::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) {
 // zero vector is stored first at 0x50-0x58, the normalized delta at 0x5c-0x64) and otherwise
 // gives up on the turn, kAS_Over. The guard position runs for every message; Deactivate returns
 // the animation to kAS_NotReady.
+// Retail fn_72_8464: Activate stores GetTargetPos (CB30) at 0xbc4 and sets 0x6b4 = 1 when the forward
+// axis dotted with the flat delta (Z = rodata B9C, 0) is below rodata B64 = 0.8 (asm 0x84B0-0x8568);
+// Update: CanIssueCommand(8 = kAS_Turn), a locomotion command (weight B54 = 1) when the delta is
+// magnitude-safe, else 0x6b4 = 3 (asm 0x8570-0x8630), then UpdateGuardPosition (D800).
+// Every arm ran or was forced (tools/cov, 2026-10-21): facing away and facing (08_sand_casualpirates L3,
+// 06_sand_alamofront L2, console `fsm TurnAround`), CanIssueCommand both ways, the command; forced once
+// (tools/cov/force.sh, specs/spacepirate_force2.py): 0xbc4 = the translation, so no safe delta (0x6b4 1 -> 3).
+// @ fn_72_8464
 void CSpacePirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1274,6 +1282,14 @@ void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
 // sets 0x8fa bit 0x40. While the body lies on the ground and the path finder has no source point at
 // its own translation the pirate is left to die; otherwise it gets up as soon as the animation state
 // allows a kAS_Getup command. Both paths feed the leash timer. Deactivate undoes the flags.
+// Retail fn_72_B3D4: Update runs Search(pos, pos) (asm 0xB458-0xB464) only in body state 2
+// (kAS_LieOnGround); kR_NoSourcePoint (2) would set the pending death (0x421 bit 0x10, asm 0xB470).
+// Every live arm ran or was forced (tools/cov, 2026-10-21, 08_sand_casualpirates L3, `fsm GetUp`):
+// not lying (natural), lying (forced once: body state id = 2, specs/spacepirate_force2.py), then the
+// Getup command, Repeat (65 updates) and Over, Deactivate. The pending-death arm is dead in retail:
+// the DOL's Search (0x8013DCC8) returns 1 without an area and 0 when close_enough(src, dst)
+// (0x8013DD38-0x8013DD8C), so Search(p, p) never returns 2.
+// @ fn_72_B3D4
 void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

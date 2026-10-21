@@ -1,0 +1,9 @@
+# Agon 08_sand_casualpirates layer 3: GetUp on 003600fa (u04d0), TurnAround on 0036013d (u04c1),
+# for spacepirate_force2.py
+@f30 layer 3
+@f160 send u04d0 Activate; send u04c1 Activate
+@f400 objs spacepirate
+@f600 fsm u04d0 GetUp
+@f900 fsm u04c1 TurnAround
+@f1300 objs spacepirate
+@f1800 status

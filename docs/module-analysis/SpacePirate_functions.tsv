@@ -143,7 +143,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x7C28	0x1D4	CSpacePirate	ShouldRetreat (trigger)	fsm-trigger	B	data_B8	-	marked	fn_72_7C28
 0x7DFC	0x4D4	CSpacePirate	Dodge (state)	fsm-state	B	data_4F0	-	marked	fn_72_7DFC
 0x82D0	0x194	CSpacePirate	ShouldDodge (trigger)	fsm-trigger	B	data_AC	-	marked	fn_72_82D0
-0x8464	0x20C	CSpacePirate	TurnAround (state)	fsm-state	B	data_4E4	-	unmarked	fn_72_8464
+0x8464	0x20C	CSpacePirate	TurnAround (state)	fsm-state	B	data_4E4	-	marked	fn_72_8464
 0x8670	0x3D4	CSpacePirate	Shuffle (state)	fsm-state	B	data_4D8	-	unmarked	fn_72_8670
 0x8A44	0x40	CVector3f	CVector3f::Cross inline	inline-dol	H	8670 D800	CVector3f::Cross	unmarked	fn_72_8A44
 0x8A84	0xC	CSpacePirate	InRange (trigger)	fsm-trigger	B	data_C4	-	marked	fn_72_8A84
@@ -174,7 +174,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xAEB8	0x28	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	ADC0	rstl::list::push_back	unmarked	fn_72_AEB8
 0xAEE0	0x90	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	AEB8	rstl::list::push_back	unmarked	fn_72_AEE0
 0xAF70	0x464	CSpacePirate	Lurk (state)	fsm-state	B	data_4FC	-	marked	fn_72_AF70
-0xB3D4	0x16C	CSpacePirate	GetUp (state)	fsm-state	B	data_568	-	unmarked	fn_72_B3D4
+0xB3D4	0x16C	CSpacePirate	GetUp (state)	fsm-state	B	data_568	-	marked	fn_72_B3D4
 0xB540	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AA4	CBodyStateCmd subclass dtor	unmarked	fn_72_B540
 0xB59C	0x3AC	CSpacePirate	Taunt (state)	fsm-state	B	data_508	-	marked	fn_72_B59C
 0xB948	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A98	CBodyStateCmd subclass dtor	unmarked	fn_72_B948
