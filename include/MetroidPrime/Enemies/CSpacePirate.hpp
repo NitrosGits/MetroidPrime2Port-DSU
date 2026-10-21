@@ -124,13 +124,15 @@ public:
                        float dt) override;
   void SpawnGrenade(CStateManager& mgr); // fn_72_4174, called from DoUserAnimEvent's kUE_Projectile
   bool CanBeShot(const CStateManager&, int) override { return true; } // fn_72_5C
-  bool IsListening() const override { return true; }                  // fn_72_10
+  // @ fn_72_10 (0x8): `li r3, 1` (0x10). Branchless; the 2026-10-21 gdb run saw 400+ calls.
+  bool IsListening() const override { return true; }
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
   CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                       const CVector3f& aimPos) const override;
   uchar GetModelAlphau8(const CStateManager& mgr) const override;
   CProjectileInfo* ProjectileInfo() override; // fn_72_4F0C
-  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // fn_72_8
+  // @ fn_72_8 (0x8): `addi r3, r3, 0x920` (0x8), this + 0x920. Branchless; 400+ calls in the gdb run.
+  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // fn_72_40
   CRagDoll* GetRagDoll() const override { return nullptr; } // fn_72_17A0; xb30_ is never set yet
   float GetGravityConstant() const override { return 50.f; } // fn_72_24

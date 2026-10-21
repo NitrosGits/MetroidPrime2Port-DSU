@@ -902,7 +902,9 @@ transition enters it.
 
 ## Slice 20 (2026-10-21): the reflect chance cache, fn_10_F298
 
-- **The table at guest 0x10A8 is a run-time cache, not loader data.** Every write to the count
+- **The table at guest 0x10A8 is a run-time cache, not loader data.** (Slice 21 adds the two
+  callers of the roll functions: fn_10_F100 from the hit arm and fn_10_F298 from the
+  AnyIncomingMissiles trigger.) Every write to the count
   (0x10A8) and the entries (0x10AC, 12 bytes each: the projectile's uid, a roll at +0x04 and a
   roll at +0x08) in the REL:
   - the constructor writes the count 0 (`stw r5, 0x10a8(r31)`, 0x00020270);
@@ -954,3 +956,133 @@ transition enters it.
   offset, so it looked for a store to 0x80. The asm stores the byte 0x97C (0x00019470 and
   0x0001948C) with the bits 0x80 (the stage's +0x34) and 0x40 (the stage's +0x32 not 1) set by
   the rlwimi at 0x0001946C and 0x00019488 - the comments now name the byte 0x97C first.
+
+## Slice 21 (2026-10-21): the reflect path's callers
+
+- Ported: fn_10_1BB08 (the AnyIncomingMissiles trigger), fn_10_F100 (the cache's other roll) and
+  fn_10_1EE4C (the hit's damage may be sent back), plus the 'XDMG' arm of AcceptScriptMsg
+  (fn_10_1E89C) that calls it, and the two floats fn_10_F298 and fn_10_1EE4C compare
+  (guest 0xC0C and 0xC20) where the retail writes them.
+- **fn_10_1BB08** (0x0001BB08, 0x100 bytes): the near list (the box of half-size
+  lbl_10_rodata_3F0 = 100.0f around the actor, 0x0001BB30..0x0001BB7C) with the default filter
+  and the actor itself (BuildNearList at 0x0001BBB8); every entry is cast to a
+  CEnergyProjectile (0x0001BBDC) and fn_10_1B9B0 with the weapon type 6 (kWT_Missile,
+  0x0001BBF4) must let it through (0x0001BBFC) and fn_10_145E4 must find the line to the
+  projectile's position on the mesh (0x0001BC10) for the trigger to answer true (0x0001BC20).
+  The trigger itself has no transition in the FSM2 (the MP2_DS_FSM dump lists it only in the
+  machine's 92 triggers), but the module's own ShouldReact (fn_10_11158) calls it (0x00011210)
+  and the FSM2 uses ShouldReact, so the body does run in retail.
+- **fn_10_F100** (0x0000F100, 0x110 bytes): the cache's other roll - the same walk and the same
+  two rolls as fn_10_F298 but without the time window, and the entry's +0x08 answers on a hit
+  (0x0000F158). It is called only from fn_10_1EE4C (0x0001EED8).
+- **fn_10_1EE4C** (0x0001EE4C, 0xE4 bytes): the time since the last hit or heavy hit (the
+  larger of guest 0xC0C and 0xC20, 0x0001EE74 and 0x0001EE78) plus lbl_10_rodata_438 = 3.0f
+  must be past the elapsed time 0x8B0 (0x0001EE90), the damage's weapon type must be 6
+  (kWT_Missile, 0x0001EEA8) and the stage must exist (0x0001EEB8); then fn_10_F100's roll is
+  compared with the stage info's +0x2C (the third missile float) when the damage info's flag
+  bit 0x40 is set (0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C)
+  otherwise.
+- **The 'XDMG' arm of AcceptScriptMsg** (0x0001EA30): the sender must be a CGameProjectile
+  (0x0001EA40), the vulnerability (the vtable's slot 16, fn_10_100DC, 0x0001EA5C) must be hurt by
+  the projectile's damage info (fn_800DB834, the host's WeaponHurts, 0x0001EA64) and the last hit
+  must be lbl_10_rodata_438 = 3.0f old (0x0001EAB4). The hit direction (the projectile's
+  position minus the actor's) goes to 0x8C0/0x8C4/0x8C8 (0x0001EA70..0x0001EAA4) and, when
+  fn_10_1EE4C says yes, 0xC0C takes the elapsed time (0x0001EAF8) and 0xC10/0xC14/0xC18 the
+  flattened direction (0x0001EB04..0x0001EB18), normalized (0x0001EB30).
+- **The writes of 0xC0C and 0xC20**: every store in the REL is 0x0001EAF8 (the 'XDMG' arm,
+  0xC0C = the elapsed time), 0x00010F44 and 0x00010F4C (the HeavyHit state's Deactivate:
+  0xC0C = 0.0f and 0xC20 = the elapsed time) and the constructor (0x0001FEE4 and 0x0001FF04).
+  The port writes all four.
+- Reach: the missile is the console's Y button (the tweak's default useItem; 0x2c is the missile
+  ammo): `give missile 30`, `press Y 45` charges and fires it at the boss. On the rooftop
+  (10_cliff_rooftop, boss u04f7) 16 of 34 missiles hit her; the same in the Temple
+  (12_temple_finalgate_dark, boss u0564).
+
+| body | arm | ran |
+| --- | --- | --- |
+| F100 | the uid not in the cache | yes (16 missiles) |
+| F100 | the cache with ten entries (the erase) / fewer | yes (the count stops at 10) / yes |
+| F100 | the uid in the cache | **no** - dead: the key is the projectile's uid and a projectile hits once |
+| 1EE4C | the time window passed / too early | yes / **no** (the stage's chance is below every roll) |
+| 1EE4C | a missile / not a missile | yes / **no** |
+| 1EE4C | a stage / none | yes / **no** (the fight always has one) |
+| 1EE4C | the stage's +0x2C / its +0x28 | **no** / yes |
+| 1BB08 | a missile in the near list | **no** - the trigger never ran |
+
+- The typed arm of fn_10_1B9B0 (the weapon type 6, 0x0001BBF8) needs fn_10_1BB08, and that
+  needs the module's own ShouldReact (fn_10_11158), which asks CanMissileDeflect first: the
+  stage info's +0x24 (the missiles' first float) must be below zero, and in the rooftop, Agon
+  and Temple stages it is not (the trigger answers false, so the short-circuit skips
+  AnyIncomingMissiles). FacingPlayer answers false there too. So the typed arm is out of reach
+  in the fights that were run, and the trigger's body did not run.
+- Marked: F100.
+- Unmarked: 1BB08 (its body never ran) and 1EE4C (three of its arms did not run).
+
+## 8. Function classification (all 535 functions)
+
+`docs/module-analysis/DarkSamus_functions.tsv` has one row per function of
+`config/G2ME01/rels/DarkSamus/symbols.txt` (offset, size, class, kind, name, the number of
+REL callers, whether the port has a `// @ fn_10_` marker, and the FSM state or trigger it
+belongs to). The classes follow the Sandworm note's rule set (section g there), so the table can
+be audited:
+
+- **H - host copy** (78 functions, 0x1CC4 bytes): the body is a copy of something the host
+  already has, so the port writes no body for it. The crtexe runtime (7 symbols: the prolog,
+  the epilog, the unresolved stub, the global chain, the module constructors and destructors),
+  the compiler-emitted destructors of the loader's token members (the bodies that call
+  `Free__7CMemoryFPCv` and `__dt__6CTokenFv`) and the DOL class members the REL copies
+  (the weapon, the collision actor manager, the cube renderer, the particle system).
+- **T - data / vtable thunk** (52 functions, 0x301C bytes): the body only returns a constant, a
+  member address or a flag - the port writes it as one line in the vtable (the twelve vtable
+  thunks: GetSearchPath, GetPointSearchPath, CanBeShot, IsListening, Listen, GetOrigin,
+  GetModelAlphau8, GetDeathExplosionParticle, GetAttackTarget, IsOnGround, GetGravityConstant
+  and GetTouchBounds), the twenty-five FSM handlers whose body is a single flag, and the
+  functions nothing calls.
+- **B - module behaviour** (405 functions, 0x1E418 bytes): real behaviour - these are the port
+  bodies. 79 of them carry a `// @ fn_10_` marker.
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 78 | 0x1CC4 (7,364) |
+| T data / vtable thunk | 52 | 0x301C (12,316) |
+| B module behaviour | 405 | 0x1E418 (123,672) |
+| **total** | **535** | **0x254F8 (152,352)** |
+
+The B list (343 unmarked) is in `DarkSamus_functions.tsv` with the `state` column, so the port
+order follows the FSM: the 62 unmarked handlers first (by the state's name), then the helpers.
+
+## Slice 22 (2026-10-21): the classification and the triggers
+
+- **The classification** (the section above and `DarkSamus_functions.tsv`): the 535 functions
+  split into 78 H, 52 T and 405 B. The rules are mechanical: the crtexe runtime and the bodies
+  that only call the host's own code (the token destructors, the DOL class copies) are H; a body
+  with no call, no branch and at most six instructions is a thunk (T); everything else is B.
+- **Ported: eight triggers and the Alerted one.** fn_10_10634 (CanMeleeAttack: fn_10_17D50 with
+  the attack 1), fn_10_142CC (FacingPlayer: fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f),
+  fn_10_17CB8 (OutOfMeleeRange: the distance to the player against lbl_10_rodata_460 = 30.0f),
+  fn_10_112E8 (PlayerIsMorphball: fn_10_11308), fn_10_10658 (PlayerTooClose: the distance
+  against the actor's own minimum attack range 0x3DC), fn_10_6B78 (ShouldEnragedMelee:
+  fn_10_1AA6C, the range band 1), fn_10_BB78 (ShouldFadeIn: no fight script, or the stage info's
+  +0x31 is 0) and fn_10_112AC (WasHeavyHit: the last hit's elapsed time 0xC0C is not 0.0f and
+  lbl_10_rodata_46C = 0.3f plus it is past the actor's elapsed time 0x8B0), plus fn_10_F840
+  (Alerted: the flag byte 0x90C's bit 0x80).
+- **The 'ALRT' arm of AcceptScriptMsg** (0x0001EA1C): the alerted flag - the byte 0x90C's bit 7
+  (the rlwimi at 0x0001EA24 keeps the mask 0x80) - so the trigger fn_10_F840 (Alerted) can
+  answer true; the console's `send <id> Alert` delivers the message.
+- Marked: fn_10_10658 (PlayerTooClose) - both outcomes ran (the boss far away and next to the
+  player) - fn_10_17CEC (GetDistanceToPlayer), which has no branch and runs in every fight, and
+  fn_10_F840 (Alerted): the FSM2 evaluates the trigger in its TravelToCoverPoints node (the
+  MP2_DS_FSM dump) and the run put the boss there, before and after the 'Alert' message.
+- The other seven are ported but unmarked: their arms did not all run. The FSM2 evaluates a
+  state's transitions in order and stops at the first that fires, and the module's own
+  ShouldReact asks CanMissileDeflect first, so fn_10_142CC (FacingPlayer) is never reached in
+  the shipped stages (the stage info's +0x24 is not below zero); fn_10_112AC's true arm needs
+  0xC0C, which the 'XDMG' arm writes only when the reflect chance passes (the stage's chance
+  is below every roll that came up); fn_10_10634, fn_10_17CB8 and fn_10_112E8 have no FSM2
+  transition at all; fn_10_6B78 belongs to the EnragedTravel state, which the phazon enrage
+  never reaches; fn_10_BB78 is behind the earlier transitions of TravelToCoverPoints.
+- The run: Sanctuary 10_cliff_rooftop, boss u04f7, 3200 frames - the boss next to the player
+  (`place u04f7 player 3`), the missiles at it (the Y button, `press Y 45`), the 'Alert' message
+  (`send u04f7 Alert`) and the states that use the triggers forced one after the other
+  (`fsm u04f7 Taunt` and so on). 0 caught, 0 reach-stub, exit 0; the MP2_DS_FSM log shows the
+  boss in TravelToCoverPoints and in Taunt, so both nodes' transition lists were evaluated.

@@ -1,5 +1,7 @@
 # Steps for dg_area53.sh: knees down, beacon-only rounds (each re-enters DeathHeadAttacks, splitters
-# shot each round), then every echo target destroyed. Pick counts grep "DGNEW 14470" (a local probe).
+# shot each round), then every echo target destroyed. Pick counts grep "DGNEW 14470", a local
+# probe that is not committed (a fprintf of the pick in CDigitalGuardianHead::SelectDeathHeadAttack,
+# fn_14_14470): without it every count reads 0 and each round waits its full 60 polls.
 for m in 0x494d3031 0x494d3033 0x494d3035 0x494d3037; do C "send $BODY $m"; done
 sleep 1
 KNEES=""

@@ -330,7 +330,7 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 
 ## Family summary (2026-10-21)
 
-The SpacePirate module is at **84 marked bodies of 262** (the module's own count, `tools/port_progress.py`); every state and every trigger of the FSM is ported, and the ones the shipped game can reach are marked: the fight cycle (Patrol, Taunt, Lurk, TargetPlayer, Run, PathFind, TargetPatrol, Attack, Dodge, Jump, JumpBack, Skid, TurnAround, WarpIn, PostWarpOut, Dead, Enraged, TargetCover), the triggers of that cycle, and the data-driven ones (LineOfSight, SpotPlayer, HearShot, HearPlayer, Attacked, OffLine, AggressionCheck, HasTargetingPoint, ShouldRetreat, ShouldDodge, ShouldStrafe, CoverFind, CoverBlown, ShotAt, ShouldWarpIn, IsAmbushing). What is left is gated on the shipped data rather than on the module's code: the **cover states** (Cover, Crouch, CoverAttack, TargetCover's arrival) need a cover point at the trooper's own level, and the survey of all 65 placements finds none (the nearest is 12.8 units above the trooper, on a ledge); the **jump-point group** (Bounce, PathFindEx, BounceFind) has no state at all in the FSM asset; the **ambush group** (Ambushing, Generate) needs a placement with the ambush flag, which none has; the **grenade group** (LaunchGrenade, SpawnGrenade) now runs but its bodies have arms that a short run does not reach; the **team-AI group** (ChooseTeamTarget, UpdateTeamTarget) needs the pirates to be in a team, which the layer's TMAI alone does not give; `7078` WarpIn runs for ~63 frames and only its two remaining arms (a GRNT/FOLW waypoint, a blocked box) are missing, `A3C0` Cover waits on the missing cover point, and the ragdoll-only branches (E3D8 Touch and the ragdoll part of E0D8/E3D8/3A0C/38E4/17C8) need a ragdoll, which the port never creates.
+The SpacePirate module is at **95 marked bodies of 262** (the module's own count, `tools/port_progress.py`; section 8 has the H/T/B split); every state and every trigger of the FSM is ported. Most of the fight cycle is marked (Patrol, Taunt, Lurk, TargetPlayer, Run, PathFind, TargetPatrol, Attack, Dodge, Jump, JumpBack, Skid, PostWarpOut, Dead, Enraged, TargetCover, Halt, Approach, CoverAttack, Deactivate), as are the triggers of that cycle and the data-driven ones (LineOfSight, SpotPlayer, HearShot, HearPlayer, Attacked, OffLine, AggressionCheck, HasTargetingPoint, ShouldRetreat, ShouldDodge, ShouldStrafe, CoverFind, IsAmbushing, Stuck, PatternShagged, CoverCheck, InRange). **TurnAround 8464, WarpIn 7078, CoverBlown AA64, and ShouldWarpIn 77D0 are not marked** (an earlier version of this summary listed some of them as marked); the unmarked list with reasons is in section 8. What is left is gated on the shipped data rather than on the module's code: the **cover states** (Cover, Crouch, CoverAttack, TargetCover's arrival) need a cover point at the trooper's own level, and the survey of all 65 placements finds none (the nearest is 12.8 units above the trooper, on a ledge); the **jump-point group** (Bounce, PathFindEx, BounceFind) has no state at all in the FSM asset; the **ambush group** (Ambushing, Generate) needs a placement with the ambush flag, which none has; the **grenade group** (LaunchGrenade, SpawnGrenade) now runs but its bodies have arms that a short run does not reach; the **team-AI group** (ChooseTeamTarget, UpdateTeamTarget) needs the pirates to be in a team, which the layer's TMAI alone does not give; `7078` WarpIn runs for ~63 frames and only its two remaining arms (a GRNT/FOLW waypoint, a blocked box) are missing, `A3C0` Cover waits on the missing cover point, and the ragdoll-only branches (E3D8 Touch and the ragdoll part of E0D8/E3D8/3A0C/38E4/17C8) need a ragdoll, which the port never creates.
 | `E3D8` `Touch` | verified, **unmarked** (the ragdoll branch needs 0xb30, which the port never sets): retail calls `CPatterned::Touch` first, then adds a force-field trigger's push (the trigger's 0x190/0x194/0x198) to the ragdoll's torso impulse (0xb8/0xbc/0xc0) when the ragdoll (0xb30) is live with its flag byte 0x70 bit 0x40, the other actor casts to `CScriptTrigger` with its flag byte 0x20 bit 0x80 and its word 0x1a0 bit 0x10000, and its float 0x19c is above zero (asm 0xE3F8-0xE47C). The run's 9332 calls only prove the base-class call |
 | `E2DC` `CheckTargetable` | verified, **marked**: the body is the vtable slot 0xC8 (`GetModelAlphau8`, `fn_72_3AE8`, which returns the alpha byte in the top byte) and the `> 127` test (the `clrlwi`/`subfic`/`srwi` triple at asm 0xE2F8). No branch, so the run's 9120 calls prove all of it. The slot identity is confirmed twice over: the same slot 0xC8 in `fn_72_36CC` is the `GetModelAlphau8 != 0` of `RenderLauncherModel`, and the slot 0x110 in `fn_72_558C`/`55B8`/`C684` is `IsOnGround` (the vtable word 69 of `lbl_72_data_8D8`) |
 | `DEDC` `SquadReset` | **fixed and marked**: the attack type comes from the melee bit (the 0x8f4 byte's bit 27 = the flags' 0x8): the bit clear is 1 = `kAT_Projectile` and the bit set is 0 = `kAT_Melee`, the enum's own order (asm 0xDF14 `srwi` inverts the bit). The team is the id at 0xba0, the member is the pirate's own id (asm 0xDEF4/0xDEFC) and the last argument is a plain 1 (asm 0xDEE4 `li r7, 0x1`) - the port passed `!melee`, so a melee pirate did not give up its team role; that is fixed. The run proves both arms (4560 calls each: pirates 208/193 are melee, 190/70 are not) |
@@ -504,6 +504,52 @@ The SpacePirate module is at **84 marked bodies of 262** (the module's own count
   the area, and the pirate never touches the player - the player is teleported, not walked into).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
+
+## 8. Classification and gdb coverage (2026-10-21)
+
+`SpacePirate_functions.tsv` (next to this note) classifies all 262 `.text` functions: **B 145** (module
+behaviour, 0xD9EC bytes; 94 marked, 51 unmarked), **H 107** (0x3B94: host copies of shared code - the REL
+runtime 11A30-11BFC, weak/EH dtors, the CBC*Cmd deleting dtors (vtables data_A8C-B20), rstl list/vector
+templates, TToken copy chains, the SLdr ctor/dtor/reader 109C/FE8/13A4/149C (`LoadTypedefSpacePirateWeaponData`
+on the host), B9E0, 5418/5510, 8A44, 10568, the copy ctors 106D4/108D8/10954, the dtor F10C/F1CC/F3B0/F444,
+the static init 10E50, and the vtable thunks 30/40/48/54/5C/64 that equal a base class; 64 is marked), **T 10**
+(0x6C8). T evidence: every one of the 65 PIRT placements on the disc uses the AFSM `0x5652a12f` (63) or
+`0x7b49526b` (2), and neither names StartAttack 6334, LostInterest 635C, ShouldSpecialAttack 638C,
+BounceFind 602C, Bounce 5D0C or PathFindEx 5EA4 (those names only appear in other modules' AFSMs
+`0x7a71739a`/`0x7d9a41a2`/`0x214e18eb`/`0x68a7f573`); 5E28 is only called from 5D0C; 2EA0, EDDC and EDE4 have no
+reference at all. 686C ShouldJumpBack stays B: JumpBack 63C8 calls it directly.
+
+**Coverage without probes**: `tools/drivers/spacepirate_cov.sh <out> [world,area] [layer] [rounds] [frames]`
+launches the game under gdb (ptrace_scope=1 forbids attaching later) with non-stopping entry breakpoints from
+`spacepirate_cov.py`, which record per function the arm key (member bits read on the entry registers, the
+message, the bool result); `spacepirate_drive.py` wakes and fights the pirates over the console, then forces
+the states the FSM does not reach (`fsm <id> <state>`) on one pirate and kills two. Results are labelled
+*forced* below when only the forced state ran them. Runs: 08_sand_casualpirates (no layer) and
+07_sand_alamoportalobservation L3, 14000 frames each, 0 `[port] caught` / reach-stub.
+
+Marked from these runs (11): `10` IsListening, `8` GetSearchPath (400+ calls, branchless), `C488` Stuck (all
+four arms: 400 entries vs 181 CPatterned::Stuck calls = the `<= 0.5 s` arm; CPatterned::Stuck true once;
+Stuck true 7 times = PathShagged true, which is a tail call, so the caller-filtered breakpoint never sees it),
+`C468` PatternShagged (both results), `ADB4` CoverCheck (both results in alamo), `8A84` InRange (59 calls),
+`E090` GetOrigin (400+, the alamo team AI), `BBB0` Halt, `9478` Approach, `A310` CoverAttack and `5BF4`
+Deactivate (*forced*: every message ran).
+
+Unmarked B (51) and what each still lacks:
+- Never called in the runs: `0`/`18`/`24`/`17A0` (vtable thunks; the host inlines the direct calls),
+  `C9DC`/`CA94` (only on a cinematic-camera edge in Think), `18BC` TryToBeCaptured (a capture), `51C8`
+  TrooperWarpOut, `6328` BreakAttack, `99F0` DoubleSnap (no such state name in the AFSM: `fsm` refuses it),
+  `A71C` ShouldAttack, `D608` (from Shuffle's close branch).
+- Partly covered: `686C` ShouldJumpBack (the 0x8f4 mask 0x08 bit is never set: only the "true" arm), `689C`
+  AnimOver (never in a wall hang), `77D0` ShouldWarpIn (**its true arm does run**: troopers with `x8fa_26_` in
+  both areas return 1; the "warp point set" and "trooper without x8fa_26_" arms do not), `4F0C` ProjectileInfo
+  (every pirate has projectile info), `98D8` Crouch (*forced*, no cover point: only the null-cover arm),
+  `DE5C` UpdateTeamTarget (no-team and team arms ran; the stale-id cast-null arm did not), `A8D0`/`A988`/`AA64`
+  (cover triggers, a few calls each), `3220` ShouldFrenzy (true in alamo, false in casual; its inner arms not
+  traced), `CE30`, `EDEC`, `EFD4`, `DFD4`, `E3D8` (ragdoll branch), and the *forced*-only states `5610`, `58D8`,
+  `69AC`, `7078`, `8464`, `8670`, `A3C0`, `B3D4`, `C1A4` (messages ran, inner arms not traced).
+- Not traced: the module head `90`/`B4`/`D4` (the host's REL runtime registers the module), the loader `140`,
+  `C0C`, the ctor `F49C`, `10A10`, `10C64`, `10CE4`, `1854`, `2EA8`, the grenade bodies `3D7C`/`4030`/`4174`,
+  and `E314` (an empty function the port does not need as a symbol).
 
 ## Open questions (verify first)
 

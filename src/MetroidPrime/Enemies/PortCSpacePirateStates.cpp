@@ -258,10 +258,11 @@ void CSpacePirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_A310 (0xB0): Activate delivers a bare CBodyStateCmd of type 0xB = kBSC_LeanFromCover
+// @ fn_72_A310 (0xB0): msg 0/1/2 dispatch at 0xA318-0xA344, anything else to the epilogue. Activate delivers a bare CBodyStateCmd of type 0xB = kBSC_LeanFromCover
 // (the asm builds {vtable, 0xB} on the stack and calls CBodyStateCmdMgr::DeliverCmd on body +0x4) and
-// marks the in-attack bit; Update is only D800 with r3 = this; Deactivate clears that bit. MP1's
-// CoverAttack differs only in calling UpdateCantSeePlayer by name.
+// marks the in-attack bit (0x8f6 mask 0x01, 0xA388); Update is only D800 with r3 = this (0xA394);
+// Deactivate clears that bit (0xA3A4). MP1's CoverAttack differs only in calling UpdateCantSeePlayer
+// by name. The gdb run's forced `fsm CoverAttack` ran all three messages.
 void CSpacePirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -277,8 +278,9 @@ void CSpacePirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_BBB0 is a bare `x904 = 0` (rodata 0xB9C): it is not a message handler at all, so
-// every call, Activate included, stops the steering speed that Think feeds to the body.
+// @ fn_72_BBB0 (0x10): a bare `x904 = 0` (rodata B9C = 0.0 at 0xBBB0, `stfs f0, 0x904(r3)` at 0xBBB8): it is not
+// a message handler at all, so every call, Activate included, stops the steering speed that Think
+// feeds to the body. Branchless; the gdb run's forced `fsm Halt` ran all three messages.
 void CSpacePirate::Halt(CStateManager&, EStateMsg, float) { x904_steeringSpeed = 0.f; }
 
 // @ fn_72_BBA0
@@ -1148,9 +1150,10 @@ void CSpacePirate::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   mInPosition = false; // asm: rlwimi clears 0x34C bit 0x80, the bit declared first
 }
 
-// Retail fn_72_9478: Activate sets the normal steering blend and then a steering speed of one;
-// Update only avoids the other actors. There is no Deactivate case: the asm's unused branches
-// fall through to the shared epilogue.
+// @ fn_72_9478 (0x58): Activate (0x94A0) stores 0 to the body's steering mode (body 0x48c, +0x4c at
+// 0x94B0) and rodata B54 = 1.0 to x904 (0x94B4); Update (`cmpwi r5, 0x1` at 0x9480) calls fn_72_D40C (0x94BC);
+// any other message falls through to the epilogue. The gdb run's forced `fsm Approach` ran Activate,
+// 61 Updates and the Deactivate fall-through.
 void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1561,9 +1564,10 @@ void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5BF4 is 7 instructions with no switch: any message but Activate returns immediately,
-// and Activate only sets CPatterned's pending-death bit (this+0x421 bit 0x10, the same bit the GetUp
-// state sets when the pirate is left without a path).
+// @ fn_72_5BF4 (0x1C): 7 instructions with no switch: any message but Activate returns immediately
+// (`cmpwi r5, 0x0` at 0x5BF4, `bnelr` at 0x5BF8), and Activate only sets CPatterned's pending-death bit (this+0x421
+// bit 0x10, `rlwimi` at 0x5C04; the same bit the GetUp state sets when the pirate is left without a
+// path). Both arms ran in the gdb run's forced `fsm Deactivate` (Activate, then Deactivate).
 void CSpacePirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     SetPendingDeath(true);
