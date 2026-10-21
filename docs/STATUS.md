@@ -32,13 +32,13 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 
 | lane | session | branch @ base | task |
 |---|---|---|---|
-| BoostGuardian (Opus) | `ses_ea4266ab5ffeSh2njPJ0BAHl26` | boostguardian @ `478435f20` (191/318; ctor timers 1.5/0.75/1.0, dtor order; matching OK) | HP-drop gate after the timer fix (puddle form?), dtor absent-token arms, rstl/loader rows |
+| BoostGuardian (Opus) | `ses_ea41a5a32ffe2IcoCG89vP6xKe` | boostguardian @ `5bff6d1d6` (193/318; HP drops: beam 1000→994, bombs off-puddle 10 each; dtor E5EC + F78 marked; 83 cited) | audit 12AB0 compares (Ball.cpp:516), 30 loader rows 130/1988/20A0/2344/2CCC/10C24 |
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
 | DigitalGuardian (Opus) | `ses_ea45ad902ffeFmjnji3eLDppq5` | digitalguardian @ `d503a8674` (echo targets, XDMG; hook-free cycle reaches Stage3Start with run11.sh) | 12818/126C8 balls, Dead 1561C, XRDG 12D98, cycle stand-ins |
 | Splitter (worker) | `ses_ea456296affeAdkCwq7sVdpywE` | splitter @ `2cf00edf3` (IsDocked, Scanning, SelectTarget, Patrol, Hover) | head Idle 5538, shells 1578/2154/986C, ACEC, A4E4, AFE8/9520 re-check |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
-| MinorIng (worker) | `ses_ea43e4628ffervnPIWANweAlcu` | minoring @ `6ff839f74` (126/217; 4 thin overrides; 9 base-inline + 4 FSM2 dtors cited) | 23-fn projectile chain under 65C4 → 6748, wire into DoUserAnimEvent |
+| MinorIng (worker) | `ses_ea41a5a31ffepOI5VzaWlfqLr8` | minoring @ `9a3f702c0` (126/217; impact-visor chain reverted 2ce93c174 = REL copy of CImpactVisorEffect::None(), cited; backup/minoring-ivchain) | classify then port the 13 left: 1134 115C 2EF4 2F24 2FB0 2930 9B24 9CC0 9C68 9C10 4DDC EB8 204C |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
 | DarkSamus (Opus) | `ses_ea4205b59ffe5a7g0z7AkibaZa` | darksamus2 @ `804bb299a` (1E740 ShouldForgetLastAttacker; guest CPathFindSearch layout) | cover chain 1D9A4/1DD14, 13FFC/1D860, 11334, 1E360/1E4C4/1E3C0, EFC8/128D8, state 1DF74, then the walk |
 
