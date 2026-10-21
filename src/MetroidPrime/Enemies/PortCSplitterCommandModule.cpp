@@ -1611,6 +1611,9 @@ void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
 // clear dodge path (0x28C8 / 0x290C fn_75_25C4). With both open a random bit 0x4000 (0x2928
 // CRandom16::Next, 0x292C) keeps the right, else the left. The result is 2 (left, 0x2948), 3
 // (right, 0x2958) or -1 (0x2768).
+// The near-AI arms and -1 ran forced (place): the other chassis parked beside the head. The left
+// pick ran forced (fsm): the head sent back into LaserPulse until the random bit picked it.
+// @ fn_75_270C
 int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
   const float dist = mDodgeDistance;
   const CVector3f pos = GetTranslation();
