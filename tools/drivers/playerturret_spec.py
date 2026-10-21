@@ -46,6 +46,10 @@ def loc(text, start=1, nth=1, off=0):
 
 
 SPEC = [
+    # fn_63_70 (the REL's setup - the port's RELMain)
+    ('fn_63_70', loc('SetSPlayerTurret_FuncPtrs(&REL_loader_PlayerTurret);'), [], ''),
+    # fn_63_0 (the vtable's slot 15)
+    ('fn_63_0', loc('return const_cast< CScriptPlayerTurret* >(this)->HealthInfo();'), [], ''),
     # fn_63_84C (the shot)
     ('84C_player_null', loc('return;', SHOT, 1), [], ''),
     ('84C_token_not_loaded', loc('return;', SHOT, 2), [], ''),

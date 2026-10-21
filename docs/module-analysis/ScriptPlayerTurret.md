@@ -665,10 +665,14 @@ Three classes, applied by rule so the table can be audited.
 
 | class | functions | .text bytes | marked |
 |---|---|---|---|
-| H host copy | 27 | 0x948 (2,376) | 0 |
-| T dead or table-only | 14 | 0x554 (1,364) | 0 |
-| B module behaviour | 18 | 0x2B78 (11,128) | 18 |
-| **total** | **59** | **0x3A14 (14,868)** | **18** |
+| H host copy | 26 | 0x874 (2,164) | 0 |
+| T dead or table-only | 13 | 0x528 (1,320) | 0 |
+| B module behaviour | 20 | 0x2C78 (11,384) | 20 |
+| **total** | **59** | **0x3A14 (14,868)** | **20** |
+
+(Two functions changed class in the slice of section 20: `fn_63_0` was a table entry (T) and
+`fn_63_70` a host copy (H); both are the module's own behaviour (B) now, because the port writes
+a body for them.)
 
 ### 16.1 The scan behind the classes
 
@@ -697,10 +701,10 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 
 | fn | size | class | the scan | marked |
 |---|---|---|---|---|
-| `fn_63_0` | 0x2C | T | the vtable's slot 15 (`GetHealthInfo`): a `.data` table entry, no retail caller | no |
+| `fn_63_0` | 0x2C | B | the vtable's slot 15 (`GetHealthInfo`): the module's own thunk, now a body of its own (section 20) | yes |
 | `RELExit` | 0x24 | H | the REL linker's exit (the `_epilog` calls it) | - |
 | `RELMain` | 0x20 | H | the REL's entry (the `_prolog` calls it) | - |
-| `fn_63_70` | 0xD4 | H | the REL's setup (called by `RELMain`): it stores the loader and the five pointers-to-member | - |
+| `fn_63_70` | 0xD4 | B | the REL's setup (called by `RELMain`): it stores the loader and the five pointers-to-member - the port's `RELMain` is that body (section 20) | yes |
 | `fn_63_144` | 0x4CC | B | the loader: `fn_63_70` stores it at `lbl_63_bss_20`+0 (0x98) | yes |
 | `fn_63_610` | 0x64 | T | dead: no `bl` and no table names it | no |
 | `fn_63_674` | 0xB8 | H | `SLdrEditorProperties`' constructor - the generated property class (the loader calls it at 0x238) | - |
@@ -757,10 +761,11 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | `ModuleDestructors` | 0x4C | H | the REL linker's `_dtors` walker | - |
 | `ModuleConstructors` | 0x4C | H | the REL linker's `_ctors` walker | - |
 
-**The unmarked B list** (the B functions the port does not mark): none.  All 18 B functions
+**The unmarked B list** (the B functions the port does not mark): none.  All 20 B functions
 carry a `// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
-The two that were unmarked when this slice started - `fn_63_84C` (the shot) and `fn_63_1BE8`
-(the messages) - are marked now; section 17 is their arm table.
+The two that were unmarked when the slice of section 17 started - `fn_63_84C` (the shot) and
+`fn_63_1BE8` (the messages) - are marked now; section 17 is their arm table, and section 20 the
+slice that marked the module's last two.
 
 ### 16.3 The count check
 
@@ -774,7 +779,7 @@ PY
 symbols: 59
 ```
 
-and the class column of the table above counts 27 H + 14 T + 18 B = 59, one row per symbol; the
+and the class column of the table above counts 26 H + 13 T + 20 B = 59, one row per symbol; the
 sizes add up to the module's 14868 text bytes.
 
 ## 17. The two unmarked B functions: every branch (2026-10-21)
@@ -944,3 +949,36 @@ The compiler coverage (`-DMP_PORT_COVERAGE=ON`, `tools/cov/gcov_report.py <build
 whose branch was never taken are the null guards and the arms of the other runs.
 
 Every run's `caught/reach-stub` count is 0.
+
+## 20. The slice of 2026-10-21 (evening): the module's last two functions
+
+The module's B functions were all marked by section 17; this slice took the next unmarked ones in
+offset order and checked each against the asm.  Six functions: `fn_63_0` (0x0), `RELExit` (0x2C),
+`RELMain` (0x50), `fn_63_70` (0x70), `fn_63_610` (0x610) and `fn_63_674` (0x674).
+
+| fn | size | class | the asm | the port | marked |
+|---|---|---|---|---|---|
+| `fn_63_0` | 0x2C | B | the vtable's slot 15: it loads the vtable (0x0C), takes its slot 12 - the base's `HealthInfo` (0x10) and calls it through the count register (0x18).  No branch | the port had no body: the host's `CActor::GetHealthInfo` is the same virtual call.  It has one now - a forwarder to the same virtual call, so the port's vtable has the module's own entry like the guest's | yes |
+| `RELExit` | 0x24 | H | the linker's exit: the DOL's `SetLoader_PlayerTurret` with 0 | the port's `RELExit` calls the DOL's proxy `SetSPlayerTurret_FuncPtrs(nullptr)`, which drops the table - the same call | - |
+| `RELMain` | 0x20 | H | the linker's entry: it calls `fn_63_70` (0x5C) and returns | the port's `RELMain` *is* `fn_63_70`'s body (the linker calls the port's `RELMain`), so the marker below names `fn_63_70` | - (see `fn_63_70`) |
+| `fn_63_70` | 0xD4 | B | the module's setup: the loader at `lbl_63_bss_20`+0 (0xB4), the five pointers-to-member tables (`lbl_63_data_4`, `_10`, `_1C`, `_28`, `_34`) copied to `lbl_63_bss_20`+4 .. +0x3C (0xF0..0x12C) and the DOL's `SetLoader_PlayerTurret` called (0x12C) | the port's `RELMain` fills the same table with the loader and the five member functions and hands it to the DOL's `SetSPlayerTurret_FuncPtrs` | yes |
+| `fn_63_610` | 0x64 | T | `SLdrEditorProperties`' destructor: the `SLdrDamageInfo` member's destructor (0x638), the base's (0x644) and the block's free when the delete flag is positive (`extsh. r0, r31` + `ble` at 0x648/0x64C) | the port uses the upstream's generated `SLdrEditorProperties` - the same generated code the guest's REL was built from (section 14.3) - so the port writes no body | - |
+| `fn_63_674` | 0xB8 | H | `SLdrEditorProperties`' constructor, called by the loader at 0x238 | the same: the upstream's generated class | - |
+
+**The decode rule** (the review's): `fn_63_610`'s free is guarded by `extsh. r0, r31` + `ble` -
+the signed compare skips the free when the flag is zero or negative, so the *free* needs the flag
+**positive**; and the base class's call runs *after* the members' (0x638 then 0x644), i.e. the base
+runs last, not only when the event was not handled (that is the DOL's `CEntity::AcceptScriptMsg`
+rule, not this one's).
+
+**The runs** (the gdb coverage, `tools/cov/run.sh` and `tools/cov/force.sh` with the spec; the
+Agon Wastes, `sand_world,06_sand_alamofront` layer 3):
+
+- the natural run: `fn_63_70` hit **once** (the module's setup runs when the area loads; the
+  compiler coverage of the same run: `RELMain() 9/9 lines, 0/0 branches` - the body has no branch
+  at all) and `fn_63_0` **zero** times (nothing asks a turret for its health info in that flow);
+- the forced run (`PT_FORCE_NOHPI=1`, the message's sender is the turret): `fn_63_0` hit **twice** -
+  the kSM_Damage case calls the sender's `GetHealthInfo` twice, and the sender is the turret, so
+  the module's own thunk is the one that runs (and `fn_63_70` once again).
+
+Both bodies are branch-free, so both are ALL-ARMS.

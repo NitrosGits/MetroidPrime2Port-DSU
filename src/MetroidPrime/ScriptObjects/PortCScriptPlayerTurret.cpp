@@ -88,6 +88,14 @@ float ClampAxis(float value) {
 // (0x00003348), the two weapon effects (0x0000337C), the empty token (fn_63_349C at
 // 0x00003384), the weapon damage (0x00003398..0x000033EC), the sound ids (0x00003418) and the
 // flag byte at 0x22C with its two top bits cleared (0x0000342C).
+// fn_63_0 (0x2C): the vtable's slot 15 - the module's own thunk for the base's HealthInfo.  The
+// guest loads the vtable (0x0C), takes its slot 12 (the base's HealthInfo, 0x10) and calls it
+// through the count register (0x18), so the port forwards to the same virtual call.
+// @ fn_63_0
+const CHealthInfo* CScriptPlayerTurret::GetHealthInfo() const {
+  return const_cast< CScriptPlayerTurret* >(this)->HealthInfo();
+}
+
 // fn_63_30E8 (0x3B4): the constructor - the turret's own fields.
 // @ fn_63_30E8
 CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name,
@@ -1094,6 +1102,13 @@ static SPlayerTurret_FuncPtrs REL_loader_PlayerTurret;
 // lbl_63_data_28 = {0, -1, fn_63_1134} and lbl_63_data_34 = {0, -1, fn_63_840} to +0x4 .. +0x3C,
 // then calls the DOL's SetSPlayerTurret_FuncPtrs. The DOL's proxies in ScriptLoaderRel.cpp call
 // through it, so the turret camera, the exit path, the input path and the turret HUD work.
+// RELMain (0x20) is the linker's entry: it calls fn_63_70 and returns.  The port's body is
+// fn_63_70's (the linker calls the port's RELMain, which is where the module's setup lives):
+// the guest stores the loader at lbl_63_bss_20 + 0 (0xB4), copies the five pointers-to-member
+// tables (lbl_63_data_4, _10, _1C, _28, _34) to lbl_63_bss_20 + 4 .. + 0x3C (0xF0..0x12C) and calls
+// the DOL's SetLoader_PlayerTurret (0x12C); the port fills the same table with the loader and the
+// five member functions and hands it to the DOL's SetSPlayerTurret_FuncPtrs.
+// @ fn_63_70
 void RELMain() {
   REL_loader_PlayerTurret.mLoadPlayerTurret = PortLoadScriptPlayerTurret;
   REL_loader_PlayerTurret.mGetCameraTransform =
@@ -1112,4 +1127,6 @@ void RELMain() {
   SetSPlayerTurret_FuncPtrs(&REL_loader_PlayerTurret);
 }
 
+// RELExit (0x24): the linker's exit - the DOL's SetLoader_PlayerTurret with 0, which the port's
+// SetSPlayerTurret_FuncPtrs(nullptr) is (the DOL's proxy drops the table).
 void RELExit() { SetSPlayerTurret_FuncPtrs(nullptr); }
