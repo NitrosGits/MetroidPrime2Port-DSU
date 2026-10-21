@@ -298,6 +298,11 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   managers are raw pointers deleted in the dtor (0xD64 then 0xD60). Retail calls them unchecked
   everywhere but AIUpdateDisabled, and so does the host now. Area 28: a sphere hit relays to the
   guardian; the puddle box takes the IngSpot form's turns.
+- *Fight check (2026-10-21, after the ctor timers 9f041d425):* a hook-free area-28 run
+  (`MP2_BG_FSM=1 MP2_DEBUG_BG=1`) drops HP: a beam shot in the corporeal form 1000 -> 994, then
+  bombs on the ing-spot form outside boost puddle mode (`44A4`, weapon type 4, x1.0) 10 each to 954;
+  bombs in boost puddle mode only feed 0x11D8 (`4324`, resisted), as retail. Puddle-only bombing
+  (the earlier driver) never moves HP; that is not a stuck form.
 
 ## g. Function map
 
