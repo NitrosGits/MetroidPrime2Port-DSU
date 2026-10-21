@@ -557,6 +557,67 @@ stayed at 0.0 and state 3 was never reached.
   collision-info+0x30) and sets the "player touched" flag, and then calls the base. The port
   does the same.
 
+### Stage1: the arena entry, the charged shots, the hit-react functions (2026-10-21)
+
+**The area's chain, in full** (from the area's script data, `obj <uid>` in the console):
+
+- the four **CScriptDamageableTrigger** objects 002003e1/e9/ea/ec (the arena's acid pools) are
+  activated by the **CScriptRelay 002001e3 (`u04a5`)** - they are inactive until that relay
+  fires, so without it they cannot be killed and the counter 002003eb never reaches its maximum;
+- the **CScriptSwitch 002001d2 (`u0547`)** is the root: its "on Open" sets the relay 002001e3;
+- the **CScriptCounter 002003eb** ("on MaxReached" -> the relay 002001fc) counts the four
+  triggers' deaths;
+- the relay 002001fc -> the switch 002001e4 -> "on Open" -> "Play" -> the **CScriptLayerController
+  002001c5** (its layer load ends in "Arrived" -> "Increment" -> the layer controller 002001d7 ->
+  its layer load ends in "Arrived" -> "Open" -> the switch 002001e0) and -> the relays
+  0020022a/00200227 -> ... -> the relay 00200228 -> the switch 00200226 -> the switch 002001e0 ->
+  the relay 002001d0 -> the relay 002000a2 -> "Activate" -> the boss.
+
+**Why the harness cannot drive the whole chain.** The `LAYER3` warp loads layer 3 itself, so
+when the layer controllers are given their Load/Increment their layer is already Ready,
+`mWaitingForLoad` is never set, and the port's `CScriptLayerController::Think` (upstream code, no
+`TARGET_PC` change) only sends "Arrived" after such a load: `send u04ce Increment` and
+`send u0454 Increment` load no layer (the log shows no `[layer] area 32 layer N activated` after
+them). Without the warp the area's own entry choreography does not run either: the harness's
+teleport through the arena logs no layer activation at all, and the area's loaded triggers
+(`u046b` 00200011 and the rest) carry no message connections - the trigger that starts the
+sequence is in a layer that only loads with the fight.
+
+**What the harness uses** (the area's own switches and relays, verified - the boss comes up with
+`fsm Bob`):
+
+    send u044d Open        # the switch 002001e0 - the message the layer controller 002001d7 sends
+                           # on "Arrived"
+    send u0476 SetToZero   # the relay 00200228 - where the switch 002001e4's "on Open" lands
+
+**The charged shot works.** The tweak binds the charge to the A button (the same one as the
+fire: `fire=15 charge=15 auto=0 morph=17`), so the harness input is `press a 0` ... `stick 0 0 0`;
+the charge builds over ~1.8 s and the shot leaves when it completes. The run's damage trace shows
+`dmg=19.91 orig=39.81` for a charged hit and `dmg=1.00 orig=2.00` for a normal one. The aim has
+to be refreshed while the charge runs (the shot leaves ~1.8 s later and the player falls in the
+water).
+
+**The live-aim driver** (`/tmp/opencode/sb1_lane/drive.py`, adapted from the stage-2 lane's):
+it reads the joint spheres (`objs collision` - the boss's 16 are the run of 16 consecutive
+collision-actor uids), puts the player 4 units to the side of the target joint at the camera's
+height, aims from the gun (2.15 above the feet) at the joint's live position and fires. 37 hits
+in 330 charged shots, and the belly accumulator reached **21.58** - short of the 50 that
+`ShouldExposeBelly` wants, so state 3 still did not run.
+
+**The five functions** (compared with the retail, all of them still unmarked):
+
+| fn | port body | retail | verdict |
+|---|---|---|---|
+| `fn_78_35DC` | `HitReactBody` | records state 3, locomotion 5, and on `msg == 1` retracts the tongue, updates the tip, drops the head weight and turns the head | matches; **not marked** - state 3 was never reached (0 entries) |
+| `fn_78_3320` | `LightHitReact` | the shared body plus, on Activate, `DeliverCmd(CBCAdditiveReactionCmd)` | matches; **not marked** - never entered |
+| `fn_78_348C` | `HeavyHitReact` | on Activate `SetJointsActive(kAllJoints, RemoveTarget|Reflect)` and `DeliverCmd(CBodyStateCmd(kBSC_NextState))`, then the shared body, then the taunt (type 4) | matches; **not marked** - state 3 was never reached |
+| `fn_78_5784` | `SlideIntoWater` | records state 6 and, on Activate, `SetJointsActive(kAllJoints, 0xa)`, rumbles and stops the tongue | matches; **not marked** - the state is never reached |
+| `fn_78_9A44` | `CollidedWith` | its own work only while the state is 5 (TonguePull): it walks the collision list for `kMT_SeekerTarget` and sets the "player touched" flag, then calls the base | matches; **not marked** - no run had a joint touch during a tongue pull (0 entries) |
+
+The blocker for all five is the same: state 3 needs the belly accumulator over 50 and the
+harness's hit rate (37 hits in 330 charged shots, the accumulator reset by `BeachWait` between
+the beach cycles) does not get there.
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata
