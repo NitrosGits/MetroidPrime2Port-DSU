@@ -1118,8 +1118,11 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       mOnGround = false;
     }
     if (message == kSM_Activate && x8f6_24_trooper) {
-      // TODO(fn_72_E498): retail also stores an alpha into the colour byte here when the trooper
-      // is still inactive with no warp point; the value is lost in the pseudocode.
+      // 0xE674-0xE69C: a trooper still inactive with no warp point (xc04 == -1) starts invisible
+      // (colour alpha byte 0x44f = rodata B9C 0.f, quantized).
+      if (!GetActive() && xc04_warpPoint == -1) {
+        mColor.SetAlpha(static_cast< uchar >(0));
+      }
       x8fa_26_ = true;
     }
   }
