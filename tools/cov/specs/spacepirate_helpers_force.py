@@ -65,10 +65,14 @@ FORCE = [
       '$ct = $ct_a ? $ct + 1 : $ct'],
      0, 'the attack target is not a player, and the player is not active'),
     ('8670 Shuffle', 'CSpacePirate::Shuffle(',
-     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck'],
-     ['$this->x8f4_28_noShuffleCloseCheck = 0'],
-     0, 'the close check (the 0x8f4 bit 28) clear, so the shuffle picks a close spot and'
-        ' fn_72_D608 runs'),
+     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck', '$this->mMinAttackRange'],
+     ['$this->x8f4_28_noShuffleCloseCheck = 0',
+      '$this->mMinAttackRange = 1000.0',
+      # the random's seed, so the x draw (the second one) is 32768 -> 0.5 - the clamp arm
+      # (|x| < 0.001, asm 0xD694-0xD69C) of fn_72_D608
+      '((CStateManager*)$rsi)->mRandom.mSeed = 204577074'],
+     0, 'the close check (the 0x8f4 bit 28) clear and a big min attack range, so the player counts'
+        ' as too close and the shuffle picks a close spot: fn_72_D608 runs'),
 ]
 
 # The arms are counted too (tools/cov/cov_force.py runs this list's breakpoints after force.py's
@@ -84,5 +88,5 @@ SPEC = [
     ('EDEC ChooseTarget: arms', 'CSpacePirate::ChooseTarget(',
      ['$this->mAttackTarget.value'], 'calls max=100000'),
     ('8670 Shuffle: arms', 'CSpacePirate::Shuffle(',
-     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck'], 'max=100000'),
+     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck', '$this->mMinAttackRange'], 'max=100000'),
 ]

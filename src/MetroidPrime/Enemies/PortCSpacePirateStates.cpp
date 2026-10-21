@@ -586,10 +586,14 @@ namespace {
 // the direction, the vector is normalized in place (0xD6A0), and a third draw lerps the length
 // minLen + (maxLen - minLen) * rand (0xD6C0 fmadds) which then scales the unit vector
 // (0xD6C4-0xD6E8). Retail leaves that scaled length in the return register unused.
+// @ fn_72_D608
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 CVector3f ShuffleRandomVector(CStateManager& mgr, float minLen, float maxLen) {
   const float y = mgr.Random()->Float() - 0.5f;
   float x = mgr.Random()->Float() - 0.5f;
-  if (x > -0.001f && x < 0.001f) {
+  // 0xD688-0xD69C: the retail tests the absolute value (fabs, asm 0xD688) against rodata 0xBC8 =
+  // 0.001 (asm 0xD694) and forces the x term to it - one branch, as the asm has.
+  if (CMath::AbsF(x) < 0.001f) {
     x = 0.001f;
   }
   CVector3f vec(x, y, 0.f);
