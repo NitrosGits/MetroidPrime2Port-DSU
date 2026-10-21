@@ -1158,12 +1158,13 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
 // fn_9_45A4 (0x304 bytes): the module's own collision actor managers, built by its kSM_Create
 // case. The guest makes two managers, each with one sphere joint:
 //   - the shield's (guest this+0xA3C): a sphere on the left wrist (guest this+0xC62), radius
-//     1.0f (rodata_43C), mass 1000.0f (rodata_4B0), named "Shield_CollisionActor" (the module's
+//     1.5f (rodata_47C), mass 1000.0f (rodata_4B0), named "Shield_CollisionActor" (the module's
 //     rodata at 0x893). Its collision actor gets the shield's charge vulnerability (the block's
 //     +0xF4 = guest this+0x8B4) and the response type 0x12 = 18 = kWCR_EnemyShielded
 //     (0x000046EC..0x000046F4). The actor's id goes to guest this+0xBC6.
 //   - the blade's (guest this+0xA40): a sphere on the second gun locator (guest this+0xC5F),
-//     the same radius and mass, named "Blade_CollisionActor" (the module's rodata at 0x8A9). Its collision actor gets the pass-through vulnerability
+//     radius 1.0f (rodata_43C) and the same mass, named "Blade_CollisionActor" (the module's
+//     rodata at 0x8A9). Its collision actor gets the pass-through vulnerability
 //     (0x00004814..0x00004820). The actor's id goes to guest this+0xBC8.
 // The guest then adds the bit 0x8000 (the material 15, kMT_Glass) to the actor's own material
 // filter's exclude list (0x00004830..0x0000487C).
@@ -1171,8 +1172,8 @@ void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
   {
     rstl::vector< CJointCollisionDescription > descriptions;
     descriptions.push_back(CJointCollisionDescription::SphereCollision(
-        mLocatorLWrist, CVector3f::Zero(), 1.f, rstl::string_l("Shield_CollisionActor"),
-        1000.f));  // 0x00004610..0x00004620
+        mLocatorLWrist, CVector3f::Zero(), 1.5f, rstl::string_l("Shield_CollisionActor"),
+        1000.f));  // 0x00004604 (the radius rodata_47C), 0x0000460C (the mass rodata_4B0)
     mCollisionShield = rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(),
                                                       descriptions, false);  // 0x00004694
     xbc6_ = mCollisionShield->GetCollisionDescFromIndex(0).GetCollisionActorId();  // 0x000046B8
@@ -1185,7 +1186,7 @@ void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
     rstl::vector< CJointCollisionDescription > descriptions;
     descriptions.push_back(CJointCollisionDescription::SphereCollision(
         mLocatorGun2, CVector3f::Zero(), 1.f, rstl::string_l("Blade_CollisionActor"),
-        1000.f));  // 0x00004744
+        1000.f));  // 0x00004728 (the radius rodata_43C), 0x00004730 (the mass rodata_4B0)
     mCollisionBlade = rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(),
                                                      descriptions, false);  // 0x000047C8
     xbc8_ = mCollisionBlade->GetCollisionDescFromIndex(0).GetCollisionActorId();  // 0x000047E8
