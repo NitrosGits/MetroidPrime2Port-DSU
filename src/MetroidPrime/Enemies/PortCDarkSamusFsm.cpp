@@ -1161,7 +1161,10 @@ bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
 // than" bit).
 // Run (darksamus_uevent.py with darksamus_react.py): no stage (the uid forced invalid), the shipped float 45.0f, and -1.0f
 // (forced).
-// @ fn_10_14284
+// Unmarked: only the shipped data's arm ran (the deflect time 45.0f or 50.0f, the trigger
+// answers true); the other arm (a deflect time below zero) could not be run - gdb cannot call
+// the port's GetBattleStage to write the stage's info.
+
 bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
@@ -2085,8 +2088,9 @@ CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizonta
 }
 
 // fn_10_E910 (0x0000E910, 0xF8 bytes): every flag but the boost-ball bit cleared (the rlwimi
-// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero and
-// both timers to lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
+// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero,
+// the record's float +0x4C to lbl_10_rodata_3EC = -1.0f (0x0000E9E0) and both timers to
+// lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
 // @ fn_10_E910
 void CDarkSamusDive::Reset() {
   mBounced = false;
@@ -2102,6 +2106,7 @@ void CDarkSamusDive::Reset() {
   mStuckTime = 0.f;
   mBounceTime = 0.f;
   mLastPos = CVector3f::Zero();
+  mGuest4C = -1.f; // 0x0000E9E0 (lbl_10_rodata_3EC = -1.0f)
 }
 
 // fn_10_12960 (0x00012960, 0x1A0 bytes): the flat line from the target back to the actor
@@ -2399,7 +2404,9 @@ float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) const {
 // lbl_10_rodata_3F0 = 100.0f), 0x0000F194 and 0x0000F1B0); the uid and the two rolls go into
 // the next entry (0x0000F1CC..0x0000F1D4) and the count rises (0x0000F1E4). The first roll (f31,
 // 0x0000F1DC) answers, the value a cache hit returns.
-// @ fn_10_F100
+// Unmarked: the fight does not reach the function (the coverage run: 0 hits - the reflect chance
+// is only rolled for a projectile that comes at the boss), so its two arms (the cache miss and
+// the cache hit) were not run.
 float CDarkSamus::RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) const {
   for (uint i = 0; i < mReflectChanceCount; ++i) {
     if (mReflectChances[i].mUid == uid) {

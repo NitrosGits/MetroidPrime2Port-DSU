@@ -207,7 +207,7 @@ offset	size	class	kind	name	callers	marked	state
 0xEED8	0x84	B	method	fn_10_EED8	1	no	
 0xEF5C	0x6C	H	host-copy	fn_10_EF5C	0	no	
 0xEFC8	0x138	B	method	fn_10_EFC8	2	no	
-0xF100	0x110	B	method	fn_10_F100	1	yes	
+0xF100	0x110	B	method	fn_10_F100	1	no	
 0xF210	0x88	B	method	fn_10_F210	2	yes	
 0xF298	0x174	B	method	fn_10_F298	1	yes	
 0xF40C	0x7C	B	virtual	fn_10_F40C	0	no	

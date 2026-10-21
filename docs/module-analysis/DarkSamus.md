@@ -1688,3 +1688,27 @@ trigger's entry, one per hit, from gdb convenience variables).
   state command and returns (no turn, no dodge), the second (the bit 0x40 of 0xAB8) turns and
   dodges. The game's exit code 0 and no SIGSEGV. The coverage build's report agrees: fn_10_16CDC
   is 20/20 lines, 6/6 branches, **ALL-ARMS** (fn_10_10710 and fn_10_9314 are ALL-ARMS too).
+
+## Slice 33 (2026-10-22): the port merge, the dive record's +0x4C, and two unmarked functions
+
+- **The merge** (`port`, with the DarkSamus-A audit fixes f5802a210): no conflict - the CanMissileDeflect
+  trigger (fn_10_14284) is now `GetMissileDeflectTime() > 0.f` (the `extrwi r3, r0, 1, 1` at
+  0x000142B8 takes the "greater than" bit) and fn_10_F100 (RollReflectChanceForHit) answers the
+  first roll (the `fmr f1, f31` at 0x0000F1DC).
+- **fn_10_E910 (CDarkSamusDive::Reset)**: the record's float +0x4C (0xB0C) takes
+  lbl_10_rodata_3EC = -1.0f (the store at 0x0000E9E0). The constructor leaves the field alone
+  (the guest's damage info ends at +0x1B, so +0x4C is the dive record's own float) and the REL
+  reads it nowhere else, so the port keeps it in mGuestD18's neighbour mGuest4C.
+- **The re-runs**:
+  - the Arrived trigger (fn_10_62B4) on the merged code: all five arms ran again (the forcing run
+    with the members written at the trigger's entry, the arms cycling over the hits) - the shield
+    flag set with the distance test (the point at the origin -> false, the point at the actor ->
+    true), the pause still running (false), the pause long over (true) and the distance test after
+    the pause (false). Its marker stands.
+  - fn_10_14284 (CanMissileDeflect): only the shipped arm ran (the deflect time 45.0f or 50.0f, the
+    trigger answers true - 1267 hits). The other arm (a deflect time below zero) could not be run:
+    gdb cannot call the port's GetBattleStage to write the stage's info ("Cannot resolve method
+    CDarkSamus::GetBattleStage"), so **the marker is removed**.
+  - fn_10_F100 (RollReflectChanceForHit): the fight does not reach the function (0 hits - the
+    reflect chance is only rolled for a projectile that comes at the boss), so its two arms (the
+    cache miss and the cache hit) were not run and **the marker is removed**.

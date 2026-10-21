@@ -29,6 +29,24 @@ DR_SET = (
 FB_K = '($_isvoid($fk) ? ($fk = 0) : ($fk = $fk + 1))'
 FB_SET = ('($rdx == 1 ? ($fk == 1 ? ($this->mGuestAB0 = 1) : '
           '($fk == 2 ? ($this->mGuestAB0 = 0, $this->mGuestAB8 = $this->mGuestAB8 | 0x40) : 0)) : 0)')
+ARR_K = '($_isvoid($ak) ? ($ak = 0) : ($ak = $ak + 1))'
+ARR_SET = ('($ak == 0 ? ($this->mGuestCD0 = 1, $this->mGuestEE4.mX = 0.0, '
+           '$this->mGuestEE4.mY = 0.0) : '
+           '($ak == 1 ? ($this->mGuestCD0 = 1, $this->mGuestEE4.mX = $this->mPosition.mX, '
+           '$this->mGuestEE4.mY = $this->mPosition.mY) : '
+           '($ak == 2 ? ($this->mGuestCD0 = 0, $this->mGuestF64 = 100000.0) : '
+           '($ak == 3 ? ($this->mGuestCD0 = 0, $this->mGuestF64 = -100000.0) : '
+           '($this->mGuestCD0 = 0, $this->mGuestF64 = $this->mElapsedTime - 10.0))))))')
+MD_K = '($_isvoid($mk) ? ($mk = 0) : ($mk = $mk + 1))'
+# the stage's deflect time: the port's GetBattleStage takes the state manager (the trigger's
+# second argument, $rsi in the x86-64 registers).
+MD_SET = ('($mk == 0 ? '
+          '($this->GetBattleStage($rsi)->GetStageInfo().missiles.unknown_0x7ee77018 = 45.0) : '
+          '($this->GetBattleStage($rsi)->GetStageInfo().missiles.unknown_0x7ee77018 = -1.0))')
+F100_K = '($_isvoid($f2k) ? ($f2k = 0) : ($f2k = $f2k + 1))'
+F100_SET = ('($f2k == 0 ? ($this->mReflectChanceCount = 0) : '
+            '($this->mReflectChanceCount = 1, $this->mReflectChances[0].mUid = $rdx, '
+            '$this->mReflectChances[0].mChance = 0.5, $this->mReflectChances[0].mRoll = 0.25))')
 PAUSE_K = '($rdx == 0 ? ($_isvoid($pk) ? ($pk = 0) : ($pk = $pk + 1)) : 0)'
 PAUSE_SET = ('($pk == 1 ? ($this->mBattleStageUid.value = 0xffff) : 0)')
 SPEC = [
@@ -52,6 +70,14 @@ SPEC = [
     ('8870 RunFreezeBeamCmd', 'CDarkSamus::RunFreezeBeamCmd(', ['$rdx'], 'calls'),
     # the DoneRolling trigger: the arms are forced from the expressions above
     ('9314 DoneRolling', 'CDarkSamus::DoneRolling(', [DR_K, DR_SET], 'ret max=3000'),
-    # the Arrived trigger (the fight never evaluates it; the arms are forced from a call)
-    ('62B4 Arrived', 'CDarkSamus::Arrived(', ['$this->mGuestCD0 == 0'], 'ret max=3000'),
+    # the Arrived trigger: the FSM2 evaluates it in the GoToPhazonAttack state, so the fight
+    # calls it there; the arms the fight cannot reach are written at its entry.
+    ('62B4 Arrived', 'CDarkSamus::Arrived(', [ARR_K, ARR_SET, '$this->mGuestCD0 == 0'],
+     'ret max=3000'),
+    # the CanMissileDeflect trigger: the stage's deflect time (45.0f, then -1.0f).
+    ('14284 CanMissileDeflect', 'CDarkSamus::CanMissileDeflect(', [MD_K, MD_SET],
+     'ret max=3000'),
+    # fn_10_F100: the reflect cache - the first call is a miss, the second a hit.
+    ('F100 RollReflectChanceForHit', 'CDarkSamus::RollReflectChanceForHit(',
+     [F100_K, F100_SET, '$rdx'], 'ret max=3000'),
 ]
