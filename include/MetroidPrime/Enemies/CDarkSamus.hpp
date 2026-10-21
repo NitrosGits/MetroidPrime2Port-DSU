@@ -1138,7 +1138,7 @@ private:
   rstl::optional_object< TToken< CWeaponDescription > > mFreezeBeamToken;
 #endif
 #ifdef TARGET_PC
-  // dsfsm2 slice 8, the Render chain (not wired yet: PreRender / Render wait for 18238 / 183E8).
+  // dsfsm2 slice 8, the Render chain (Render fn_10_18964 calls 1890C, slice 10).
   void DrawFlashQuad(float alpha, float size) const; // fn_10_1863C
   void RenderFlash() const;                          // fn_10_1890C
   // fn_10_EDF4's record at guest 0xDF0: the flash's 'TXTR' token (tXTR; its valid byte 0xDFC is
@@ -1160,6 +1160,25 @@ private:
   // uid goes to mBoostBallUid (guest 0xE38 is that halfword, `sth` at 0x00009E4C; mGuestE38 is
   // unused).
   void SpawnBoostBall(CStateManager& mgr);
+#endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 10: the render chain (PreRender fn_10_18AB8, Render fn_10_18964).
+  void RenderSilhouetteModel(const CStateManager& mgr) const; // fn_10_18238
+  void RenderInvulnerableModel() const;                      // fn_10_183E8
+  CColor GetSilhouetteColor() const;                         // fn_10_181E0
+  // guest 0xDE8: the model's visibility; the constructor writes lbl_10_rodata_3E8 = 1.0f
+  // (0x00020094), Think's fades (fn_10_1B1FC, fn_10_1D6CC, unported) move it.
+  float mGuestDE8 = 1.f;
+  // guest 0xDED bits 0x80 / 0x40: PreRender's visor was the dark / echo visor (0x00018CD8 /
+  // 0x00018CF0); the constructor clears both (0x000200A0 / 0x000200AC).
+  bool mDarkVisorDED80 = false;
+  bool mEchoVisorDED40 = false;
+  // guest 0xD64..0xD70: the invulnerable model, an optional (its valid byte 0xD70, cleared at
+  // 0x00020038) the constructor fills with the CSkinnedModel of mInvulnerableModel /
+  // mInvulnerableSkinRules (the new at 0x000202D8, fn_10_20600 at 0x00020408); 183E8 renders it.
+  rstl::optional_object< TLockedToken< CSkinnedModel > > mInvulnerableSkinnedModel;
+  // guest 0xE60/0xE64: the boost ball's element generator (fn_10_9B24, unported: always null).
+  rstl::auto_ptr< CElementGen > mBoostBallElementGen;
 #endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];

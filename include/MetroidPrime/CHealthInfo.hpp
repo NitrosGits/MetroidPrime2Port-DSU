@@ -29,6 +29,21 @@ public:
   // The guest's CHealthInfo + 0x18 (the archive's uidC): the owner of the last damage. The
   // ScriptPlayerTurret's damage message reads it (fn_63_1BE8 at 0x00002338).
   TUniqueId GetLastDamageOwner() const { return mLastDamageOwner; }
+  // The guest's CHealthInfo + 0x14 (the last damage's weapon mode, a word) read as a float by the
+  // ScriptPlayerTurret's kSM_Stop case (fn_63_1BE8 at 0x000020B0: `lfs f1, 0x14(r5)`).  The guest's
+  // CWeaponMode packs its bit fields from the top (PowerPC is big-endian), so the word is rebuilt
+  // here: the weapon type in the high half, the three flags below it.
+  float GetLastDamageWeaponAsFloat() const {
+    const uint bits = (uint(mLastDamageWeaponMode.GetType()) << 16) |
+                      (mLastDamageWeaponMode.IsCharged() ? 0x8000u : 0u) |
+                      (mLastDamageWeaponMode.IsComboed() ? 0x4000u : 0u) |
+                      (mLastDamageWeaponMode.IsInstantKill() ? 0x2000u : 0u);
+    union {
+      uint bits;
+      float value;
+    } punned = {bits};
+    return punned.value;
+  }
 #endif
 
   const CWeaponMode& GetCauseOfDeathWeapon() const { return mDeathWeaponMode; } // Guessed name.

@@ -16,5 +16,29 @@
 @f850 uevent u04f7 9 130; uevent u04f7 9 140; uevent u04f7 12 120; uevent u04f7 9 199; uevent u04f7 12 120; uevent u04f7 9 130; uevent u04f7 9 141; uevent u04f7 46 119; uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 19 108; uevent u04f7 0 110; uevent u04f7 9 199
 @f875 uevent u04f7 9 130; uevent u04f7 27 121; uevent u04f7 27 122; uevent u04f7 27 113; uevent u04f7 27 119; uevent u04f7 28 119; uevent u04f7 18 113; uevent u04f7 12 113; uevent u04f7 14 110; uevent u04f7 15 110; uevent u04f7 9 199
 @f900 uevent u04f7 9 130; place u04f7 player 34; uevent u04f7 9 160; uevent u04f7 9 142; shoot u04f7 30; uevent u04f7 17 102; shoot u04f7 30 dir 0 0 -1; uevent u04f7 17 102; uevent u04f7 9 142; shoot u04f7 20; uevent u04f7 17 102; uevent u04f7 9 199
-@f925 uevent u04f7 9 130; uevent u04f7 9 144; uevent u04f7 19 108; uevent u04f7 9 199
-@f950 status
+@f925 uevent u04f7 9 130; uevent u04f7 9 119; place u04f7 player 20; shoot u04f7 40; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 160; uevent u04f7 9 142; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 199
+@f950 uevent u04f7 9 130; uevent u04f7 9 119; place u04f7 player 20; shoot u04f7 40; uevent u04f7 9 142; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 145; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 199
+@f975 uevent u04f7 9 130; uevent u04f7 9 110; uevent u04f7 9 142; place u04f7 player 20; shoot u04f7 40; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 146; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 147; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 199
+@f1000 uevent u04f7 9 130; uevent u04f7 9 119; uevent u04f7 9 142; place u04f7 player 20; shoot u04f7 40; uevent u04f7 9 148; trigcall u04f7 AnyIncomingMissiles; shoot u04f7 40; uevent u04f7 9 149; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 199
+@f1025 give DarkVisor 1; give EchoVisor 1; visor combat; uevent u04f7 9 130; uevent u04f7 9 156; uevent u04f7 9 150; place u04f7 player 12
+@f1060 screenshot
+@f1070 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 156; uevent u04f7 9 157; uevent u04f7 9 151
+@f1105 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 156; uevent u04f7 9 152
+@f1115 uevent u04f7 9 113
+@f1125 uevent u04f7 9 110
+@f1135 uevent u04f7 9 119; uevent u04f7 9 153
+@f1150 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 156; uevent u04f7 9 154
+@f1160 uevent u04f7 9 160
+@f1170 screenshot
+@f1185 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 156; uevent u04f7 9 155; uevent u04f7 9 154; uevent u04f7 9 150; visor dark
+@f1200 screenshot
+@f1205 uevent u04f7 9 163
+@f1225 screenshot
+@f1230 visor combat
+@f1250 uevent u04f7 9 164; visor echo
+@f1257 damage u04f7 1
+@f1262 screenshot
+@f1275 visor combat; uevent u04f7 9 199
+@f1285 uevent u04f7 9 130; uevent u04f7 9 144; uevent u04f7 19 108; uevent u04f7 9 199
+@f1300 screenshot
+@f1310 status

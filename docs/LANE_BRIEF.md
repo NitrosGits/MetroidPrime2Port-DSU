@@ -20,6 +20,31 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
 - Shared modules: port only the functions your brief names. Add bodies in your own file; never move
   or rewrite a body in another lane's file (a marker line or a one-line call-site swap is the most).
   Before porting a function, grep every branch you merged for its id: if it is ported, use that one.
+- A commit that changes a constant, mask, compare, branch direction or call target quotes the
+  defining asm lines (offset + instruction) in its message body and shows the decoded value. A
+  "fix" without them is rejected unread. The reviewer re-derives each one.
+
+## Decode traps (each was a real wrong "fix"; check before committing)
+
+- `lis rN, X` loads `X << 16`: `lis r4,0x2; addi r0,r4,0x1000` is 0x21000, not 2 or 0x1002.
+  `addi` after `lis` is signed: `lis 1; addi -1` is 0xFFFF.
+- `li r3,0; li r4,1; lwz r5,<data>; bl __shl2i` is `1ull << data`: r3:r4 is the input, r5 the
+  shift count (look up the data word), and the result comes back as r3 (high) : r4 (low). Material
+  lists are built this way; the bit number is the enum value (`CMaterialList.hpp`).
+- `extrwi.`/`rlwinm.` + `beq skip`: the action needs the bit SET. The bit is the mask in PPC
+  numbering (bit N = value bit 31-N): `extrwi r0,r0,1,27` is 0x10.
+- `fcmpo` + `cror eq,lt,eq` is `<=`; `cror eq,gt,eq` is `>=`. `mfcr; extrwi r3,r0,1,1` is GT,
+  `1,0` LT, `1,2` EQ.
+- `cntlzw; li 1; rlwnm` (or `srwi 5`) tests == 0, but `rlwnm` rotates by the count's low 5
+  bits only, so check what a negative value gives.
+- `mulhw` divides signed; `mulhwu` unsigned. `subfc/adde` and `slwi` pairs are MWCC compare
+  idioms, not arithmetic.
+- An early `return` in the port must land where retail's branch lands: retail often skips only
+  the middle and still runs the tail (resets, sounds).
+- The base call belongs on the unhandled path; vtable slots count from the class's own header order
+  (cite the slot number); a derived `DeliverCmd` needs its own overload (no slicing).
+- When unsure, keep the existing code and put the question in the report. A wrong fix costs more
+  than an unported one.
 
 ## Runs
 

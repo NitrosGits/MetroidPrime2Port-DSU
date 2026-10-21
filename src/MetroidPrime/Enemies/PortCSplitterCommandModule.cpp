@@ -1186,9 +1186,14 @@ void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
 }
 
-// fn_75_32F4 (not marked, the 19-run gcov of 2026-10-21: the dead-module arm with the 0x04 bit set
-// and the death timer still above 0 never ran - the only call of PortAutoDestruct in the runs is
-// fn_75_21FC's with 0.0f)
+// Arms: the flash weight above zero (asm 0x336C) and the countdown below zero (asm 0x3374), the
+// flag byte's 0x04 bit set (asm 0x33CC) with the head alive (asm 0x33D8) and dead, and the death
+// timer at or below zero (asm 0x33FC) and above it.  The fight never flashes the head and never
+// sets the flag byte's 0x04 bit, so the members the arms read are written through $this at the
+// body's entry (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=32F4, 32F4D, 32F4DEAD,
+// 32F4F).  The coverage build's merged profile of those runs and the natural run says 17/17 lines
+// and 10/10 branches, ALL-ARMS.
+// @ fn_75_32F4
 // The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
 // 0x332C, 0xF0C at 0x333C and 0xF14 at 0x3344) and two counted up (0xF18 at 0x3354 and 0xF1C at
 // 0x3360). While the flash weight 0xF08 is above zero (0x336C-0x3370) it is counted down and
@@ -1330,8 +1335,14 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
   return chassis->GetScanTimer() > 0.f;
 }
 
-// fn_75_1188 (not marked, the 19-run gcov of 2026-10-21: the detection range <= 0 arm and its cone
-// edges never ran; not proven dead)
+// Arms: the beam effect already there (the id at 0xF68) and not, the detection range at or below
+// zero (asm 0x1214) and above it.  The fight never has the detection range at or below zero, so
+// the range (the base's field at 0x3D0) is written through $this at the body's entry
+// (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=1188).  The coverage build's merged
+// profile says 36/36 lines and 19/21 branches: the two branches still untaken are the
+// allocation-failure path of the new and an internal path of the inlined AddObject, neither of
+// which is a live arm.
+// @ fn_75_1188
 // The head's beam-effect spawner (0x1188-0x14CC). The beam effect's id (0xF68) is looked up
 // (0x11B0 ObjectById), the module's own transform (fn_75_10D0, 0x11C0) is built and copied
 // (0x11CC) and set on the beam effect (0x11E0 SetTransform), and the gate (fn_75_58E8, 0x1200)
@@ -1369,12 +1380,10 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
     }
     return;
   }
-  if (beam == nullptr) {  // 0x120C-0x1210
-    // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection
-    // range) must be above zero.
-    if (GetDetectionRange() <= 0.f) {
-      return;
-    }
+  // 0x120C-0x1224: a missing beam is made only when the base's field at 0x3D0 (its copy of the
+  // patterned info's detection range) is above zero (ble skips to 0x13EC, where the emitter is
+  // still updated).
+  if (beam == nullptr && !(GetDetectionRange() <= 0.f)) {
     // 0x1230-0x1244: a fresh id, kept at 0xF68. 0x1248-0x1380: the beam effect is built with the
     // CEntityInfo the retail makes at 0x12A0 (the area id, NullConnectionList, true and
     // kInvalidEditorId), the name (0x12B8, the rodata string at 0xA0 + 0x230), the module
@@ -1401,7 +1410,9 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   }
   // 0x13EC-0x142C: the beam opens (0x198 set, 0x13F8) and the sound follows the head, facing
   // along its Y column (0x13FC-0x142C UpdateEmitter, volume 0x7F).
-  beam->SetOpening(true);
+  if (beam != nullptr) {  // 0x13EC-0x13F0
+    beam->SetOpening(true);
+  }
   CSfxManager::UpdateEmitter(mBeamSfxHandle, GetTranslation(), GetTransform().GetColumn(kDY),
                              0x7F);
 }

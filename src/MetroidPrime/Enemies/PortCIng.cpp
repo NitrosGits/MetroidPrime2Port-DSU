@@ -2327,7 +2327,7 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
                              true, false);
     // The asm builds one included material, 1 << 0x3b (kMT_Solid), type 3 = kFT_IncludeExclude.
     mgr.ApplyDamage(GetUniqueId(), mHostId, GetUniqueId(), damage, SolidFilter(),
-                    GetTransform().GetForward());
+                    CVector3f::Zero()); // 0x7C14: r9 = sZeroVector, no knock-back
     break;
   }
   case kStateMsg_Deactivate: {
@@ -3287,7 +3287,21 @@ void CIng::ValidateLureZone(CStateManager& mgr) {
 
 // @ fn_29_C814
 void CIng::PreThink(float dt, CStateManager& mgr) {
-  EnsureBodyActive(mgr);
+  EnsureBodyActive(mgr); // host guard, not in retail
+  // 0xC840-0xC970: an active ing spot (form 3) off a ground collider eases toward 0.1 above its
+  // surface plane while it isn't moving along the normal, then forgets the move direction.
+  if (GetActive() && mForm == 3 && !GetMaterialList().HasMaterial(kMT_GroundCollider)) {
+    const CPlane plane = mSurfaceAlignment.GetSurface().GetPlane(); // 0xC884 (0xc58)
+    const CVector3f normal = plane.GetNormal();
+    if (CVector3f::Dot(mSurfaceMoveDir, normal) < 0.95f) { // 0xC8C0
+      const float t = 0.59999996f * dt;                     // rodata_114
+      const CVector3f pos = GetTranslation();
+      const float dist = CVector3f::Dot(normal, pos) - plane.GetConstant() - 0.1f;
+      const CVector3f onPlane = pos - normal * dist;
+      SetTranslation(pos * (1.f - t) + onPlane * t); // 0xC954
+    }
+    mSurfaceMoveDir = CVector3f::Zero(); // 0xC958
+  }
   CPatterned::PreThink(dt, mgr);
 }
 
@@ -3297,22 +3311,48 @@ void CIng::Think(float dt, CStateManager& mgr) {
     return;
   }
   EnsureBodyActive(mgr);
-  // @ fn_29_3B50 (asm 0x3B7C-0x3BA8): 0xe40 is the time the body has spent in the locomotion state
-  // (the body controller's state id 5, read at 0x37c); it is cleared whenever the body is in any
-  // other state. The retail then only updates the body controller and the animation while the
-  // timer is below rodata_C8 (2.5f) - the host's CPatterned::Think does both unconditionally, so
-  // only the timer is ported here; the draw gate in PreRender and AddToRenderer reads it.
-  if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
-    mBodyState5Time += dt;
-  } else {
-    mBodyState5Time = 0.f;
+  // 0xC684: the form picks the think. Forms 0/1 only run the actor and the state machine and
+  // stop there (0xC6B4-0xC6E4); the ing spot and the evaporating form (3/5) skip CPatterned::Think
+  // for the module's own fn_29_3B50 and the hit-damage timer (vtable 0xec = fn_29_B784,
+  // 0xC6E8-0xC72C); every other form is a full CPatterned::Think (0xC73C).
+  switch (mForm) {
+  case 0:
+  case 1:
+    CActor::Think(dt, mgr);
+    mStateMachine->Update(mgr, *this, dt); // vcall(0x350)+0x24
+    SetDrawShadow(false);
+    return;
+  case 3:
+  case 5:
+    CActor::Think(dt, mgr);
+    // @ fn_29_3B50: 0xe40 is the time the body has spent in the locomotion state (the body
+    // controller's state id 5, read at 0x37c); it is cleared in any other state. The body and
+    // the animation only update while it is below rodata_C8 (2.5f, 0x3BB4); the draw gate in
+    // PreRender and AddToRenderer reads it too.
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
+      mBodyState5Time += dt;
+    } else {
+      mBodyState5Time = 0.f;
+    }
+    if (mBodyState5Time < 2.5f) {
+      BodyController()->Update(dt, mgr); // 0x3BC4
+      UpdateAnimation(dt, mgr, true);    // 0x3BDC
+    }
+    if (!mStateMachine->HasState()) { // vcall(0x350)+0x28
+      InitializeStateMachine(mgr);
+    } else {
+      mStateMachine->Update(mgr, *this, dt);
+    }
+    mWaypointNavigation.Update(dt); // 0x3C34 (0x6b8)
+    SetDrawShadow(false);
+    UpdateHitDamageTime(dt); // vtable 0xec
+    break;
+  default:
+    CPatterned::Think(dt, mgr);
+    break;
   }
-  CPatterned::Think(dt, mgr);
-  // The retail's Think (fn_29_C654) calls three more module functions the host has no body for:
-  // fn_29_3B50 (0x108) before the state machine thinks (asm 0xC704), fn_29_2270 (0x1A4) before
-  // the touch box (asm 0xC7A8) and fn_29_4960 (0x148) after it (asm 0xC7C0). The first two are
-  // ported (the body-state-5 timer above, the looped sounds in UpdateLoopSfx); the third is the
-  // actor's light, which the host does not have.
+  // The rest of the retail's Think (0xC740 on): the touch box (fn_29_3C58), the looped sounds
+  // (fn_29_2270, UpdateLoopSfx) and the actor's light (fn_29_4960), which the host does not have.
   if (!mCollisionActorManager.null()) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }

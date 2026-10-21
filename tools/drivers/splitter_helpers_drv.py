@@ -206,6 +206,13 @@ PLANS = {
          + [(79, "pick:0531")] + [(80 + 4.0 * k, "tp:%.1f:%.1f:1" % (14 * math.sin(math.radians(45 * k)), 14 * math.cos(math.radians(45 * k)))) for k in range(33)]
          + [(82 + 6.0 * k, "fsm u0531 LaserPulse") for k in range(22)]
          + [(212, "dump:objs splitter")],
+    # S (the helpers lane): the chassis's Dodge state entered directly with the console, so its
+    # three messages run (statecall runs one state body once with a message: 0 activate,
+    # 1 update, 2 deactivate), and the head's PathFind state, whose Update asks the separation.
+    "S": [(1, "pick:0532"), (3, "statecall u0532 Dodge 0"), (4, "statecall u0532 Dodge 1"),
+          (6, "statecall u0532 Dodge 1"), (8, "statecall u0532 Dodge 2"),
+          (10, "fsm u0531 PathFind"), (12, "statecall u0532 Dodge 1"),
+          (14, "statecall u0532 Dodge 2")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]
