@@ -1534,7 +1534,8 @@ void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
+// @ fn_72_A2B8 (0x58): the only branch is the message test (asm 0xA2C0 `cmpwi r5, 0`): the
+// Activate delivers a bare kBSC_ExitState command
 // (type 0xA, no payload) to the body, as MP1's Enraged does.
 void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
