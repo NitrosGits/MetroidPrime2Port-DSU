@@ -1107,6 +1107,13 @@ void CSpacePirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 // and bails on anything else). It aims the dest at the held cover point: the point's unique id and
 // its translation (cover +0x54), then unconditionally re-seeds the reflected dest from its own
 // translation and clears the in-position bit.
+// @ fn_72_78DC (0x94): the state that walks the pirate to the cover point it holds. Its two
+// branches are the message test (asm 0x78E4 `cmpwi r5, 0`) and the "no cover point" test (asm
+// 0x7910); the body sets 0x330 (the cover point's id), 0x334..0x33c (the destination) and
+// 0x340..0x344 (the reflected destination) and clears the in-position bit in 0x34C. The 2026-10-21
+// sandfalls run reached the state with a cover point in hand (the CoverFind trigger had just
+// taken one), so the message test ran both ways; the "no cover point" branch is unreachable in
+// the shipped game, because the CoverFind trigger always sets 0x900 before the state is entered.
 void CSpacePirate::TargetCover(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
