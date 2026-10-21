@@ -15,6 +15,7 @@
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Math/CQuaternion.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Particles/CGenDescription.hpp"
 #include "Kyoto/CRandom16.hpp"
@@ -61,6 +62,9 @@ typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
 // Retail data_1A8 (34 triggers), data_47C (15 states) and data_5A8 (5 code functions), installed
 // by fn_44_9758; the names are the REL's own strings.
+// The REL's module constructor (fn_44_ABCC, the REL's .ctors entry) announces those names as
+// global objects and builds the tables; fn_44_2984 is the destructor it registers with them. The
+// host's own tables carry the names, so the body is the class's own.
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"PathShagged", static_cast< TriggerFunc >(&CMinorIng::PathShagged)},
     {"ShouldMoveUnderBall", static_cast< TriggerFunc >(&CMinorIng::ShouldMoveUnderBall)},
@@ -129,6 +133,9 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 namespace {
 
+// The ten inglet angles (the REL's lbl_44_rodata_0): the value in tens of degrees, less 50.
+const int skIngletAngles[] = {0, 8, 2, 6, 9, 3, 0, 5, 1, 7};
+
 bool DebugMinorIng() {
   static int sEnabled = -1;
   if (sEnabled < 0) {
@@ -138,8 +145,9 @@ bool DebugMinorIng() {
   return sEnabled != 0;
 }
 
-// Material filters from the REL's .data: data_0 (Touch), data_5F8/5FC (fn_44_88DC) and
-// data_60C (fn_44_34B0) are material numbers shifted into masks: 0x3b Solid, 0x20 Player.
+// Material filters from the REL's .data: data_0 (Touch), data_5F8/5FC (the move-clear check) and
+// data_60C (the snap-to-floor ray) are material numbers shifted into masks: 0x3b Solid, 0x20
+// Player. The ids are on the bodies that use them, not here.
 CMaterialFilter SolidFilter() {
   return CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
 }
@@ -189,9 +197,85 @@ void DumpFsm2(const CGenericFSM2& machine) {
   }
 }
 
+// @ fn_44_3614
+// The retail copy moves the whole ray result from the source to the destination: the eight floats
+// at +0x00..+0x1c, the two words at +0x20 and +0x24 and the valid byte at +0x28 (asm 0x3614-0x366C).
+void CopyRayCastResult(CRayCastResult& dest, const CRayCastResult& src) { dest = src; }
+
+// @ fn_44_AB78
+// The retail finds the best animation for a parm and keeps it only when its score is above
+// FLT_EPSILON (asm 0xAB78-0xABCC): the score lands in the caller's stack slot and the id
+// beside it, and the id is -1 when the score is too small.
+int FindBestAnimationId(const CPASDatabase& pas, const CPASAnimParmData& parm) {
+  const rstl::pair< float, int > best = pas.FindBestAnimation(parm, -1);
+  return best.first > 1.1920929e-07f ? best.second : -1;
+}
+
+// @ fn_44_D00
+// The retail copy moves a whole CHealthInfo from the source to the destination: the three floats
+// at +0x00..+0x08, the two weapon modes at +0x0c and +0x14, the four ids at +0x10..+0x1a and the
+// two flag bits at +0x1c (asm 0xD00-0xD4C). The host's CHealthInfo has that layout.
+CHealthInfo CopyHealthInfo(const CHealthInfo& src) { return src; }
+
+// @ fn_44_FE8
+// The retail reads the inglet's bouncing-projectile block into the grenade data (asm 0xFE8-0x107C):
+// the mass at +0x00 and the speed at +0x04 (asm 0xFE8/0xFF0), the damage info at +0x08..+0x23 (the
+// block's damage, converted by LdrToDamageInfo), the bounce count at +0x24 (asm 0x1040), the four
+// ids at +0x28..+0x34 (asm 0x1044-0x1050: the explosion twice, then the trail and the effect), the
+// two sounds at +0x38/+0x3a (asm 0x1054/0x1058) and the four floats at +0x3c..+0x48 (asm
+// 0x105C-0x1068: 0.1 from the rodata at 0x28 and 150 from the rodata at 0x2c, asm 0x6A4/0x698).
+// The flag byte at +0x4c takes the caller's bool argument: fn_44_FE8 is a leaf, so its +0xf is
+// the caller's stack byte, and the caller's `li r0, 1` (asm 0x680) stored at +0xc (asm 0x6D4)
+// puts the word's low byte - the one the callee reads (asm 0x103C) - at +0xf (big-endian).
+CBouncyGrenadeData BuildGrenadeData(const SLdrUnknownStruct34& sldr) {
+  return CBouncyGrenadeData(sldr.mass, sldr.bounciness, LdrToDamageInfo(sldr.damage),
+                             static_cast< uint >(sldr.numBounces), sldr.explosion, sldr.explosion,
+                             sldr.trail, sldr.effect, static_cast< ushort >(sldr.sound_Bounce),
+                             static_cast< ushort >(sldr.sound_Explode), 0.1f, 150.f, 0.1f, 150.f,
+                             true);
+}
+
+// @ fn_44_C44
+// The retail copies that struct into the data's 0xd0 (asm 0xC44-0xD00): the two floats at
+// +0x00/+0x04, the damage info at +0x08..+0x23, the bounce count at +0x24, the ids at
+// +0x28..+0x34, the sounds at +0x38/+0x3a, the four floats at +0x3c..+0x48 and the flag byte at
+// +0x4c. The host's CBouncyGrenadeData has the retail's layout, so the copy moves the whole
+// struct.
+CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; }
+
 } // namespace
 
-// fn_44_9D58 locks the ing-spot hit effects (0x940/0x950) only when the asset is set.
+// The retail's vtable slots that are the base class's own inline functions, which the REL
+// carries its own copies of (the host's CPatterned and CActor have the same base functions, so
+// the host inherits them; no marker): fn_44_18 (it stores the rodata constant lbl_8041AAB8 in the
+// base's field at 0x448), fn_44_28 (the base's flag byte at 0x44f), fn_44_30 (it returns false),
+// fn_44_38 (it writes the invalid id), fn_44_48 (the base's flag at 0x34c, the byte's 0x10),
+// fn_44_54 (it returns the rodata constant lbl_8041B758), fn_44_60 (the base's member at 0x754),
+// fn_44_68 (it returns true) and fn_44_59E8 (it copies a CVector3f).
+//
+// The retail's FSM2 node destructors: fn_44_87E0 (the most derived node), fn_44_8404 and
+// fn_44_78BC (the nodes derived from it) put the node's vtable back and free it, and fn_44_7918
+// is the base node's destructor. The host's CState2 node classes own their destructors, so the
+// host has them; no marker.
+
+// @ fn_44_0
+// The retail returns its path find search (this+0x960) and the check finds no difference.
+CPathFindSearch* CMinorIng::GetSearchPath() { return &mPathFindSearch; }
+
+// @ fn_44_8
+// The retail returns its point path find search (this+0xa4c); the check finds no difference.
+CPathFindPointSearch* CMinorIng::GetPointSearchPath() { return &mPointPathFindSearch; }
+
+// @ fn_44_5AB8
+// The retail returns its projectile info (this+0x918); the check finds no difference.
+CProjectileInfo* CMinorIng::ProjectileInfo() { return &mProjectileInfo; }
+
+// @ fn_44_10
+// The retail returns true; the check finds no difference.
+bool CMinorIng::IsListening() const { return true; }
+
+// The retail constructor (the module's 0x9D58) locks the ing-spot hit effects (0x940/0x950)
+// only when the asset is set.
 static rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAssetId id) {
   if (id == kInvalidAssetId) {
     return rstl::optional_object< TLockedToken< CGenDescription > >();
@@ -204,8 +288,24 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& pInfo, const CActorParameters& actParms,
                      const CMinorIngData& data)
+// @ fn_44_9D58
 // EPatternedAI 0x4b, flavor 0, movement 0 (ground), collider 1, body 1 (bipedal): the retail
 // constructor's arguments to CPatterned (fn_44_9D58).
+//
+// The retail's constructor (fn_44_9D58, asm 0x9D58) fills the members in this order; the host
+// does the same, so the stored state matches:
+// - the base class (asm 0x9DBC), the data copy (asm 0x9DD4) and the projectile info (asm 0x9DE4),
+// - the two hit-effect tokens and their "is set" bytes (asm 0x9EB0 for the normal one, asm 0xA02C
+//   for the heavy one: a valid asset id locks the token, an invalid one leaves it empty),
+// - the path find search (asm 0xA108), the point search (asm 0xA114), the surface helper
+//   (asm 0xA11C) and the ing-spot navigation (asm 0xA124),
+// - the zero move direction (asm 0xA148), the two empty touch bounds (asm 0xA174/0xA178) and the
+//   line-of-sight tracker (asm 0xA18C: the uid, the invalid segment, 0.1 and 0.05),
+// - the form (asm 0xA198) and the ten ids (asm 0xA1B8-0xA204),
+// - the two-int container (asm 0xA5B4), the zero target position (asm 0xA210), the model scale
+//   (asm 0xA344) and the timers (asm 0xA23C-0xA278),
+// - the health tracker (asm 0xA24C: the patterned info's health), the animation ids (asm 0xA264)
+//   and the lock-on locator (asm 0xA27C).
 : CPatterned(static_cast< EPatternedAI >(0x4b), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
 , mData(data)
@@ -225,16 +325,20 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mLastCoverId(kInvalidUniqueId)
 , mAttackPathLastId(kInvalidUniqueId)
 , mAttackPathId(kInvalidUniqueId)
+, mSafeZoneEnterId(kInvalidUniqueId)
 , mSafeZoneId(kInvalidUniqueId)
 , mBlobEffectId(kInvalidUniqueId)
 , mCollisionActorId(kInvalidUniqueId)
+, mUnusedZeros{0, 0}
 , mTargetPos(CVector3f::Zero())
 , mModelScale(modelData.GetScale())
 , mAttackTimer(0.f)
 , mLeashTimer(0.f)
 , mStunTimer(0.f)
 , mPuddleHitTimer(0.f)
-, mHpTracker(GetHealthInfo() != nullptr ? GetHealthInfo()->GetHP() : 0.f)
+// The retail takes the health out of the patterned info, not out of the actor (asm 0xA1BC reads
+// the CPatternedInfo's health at +0x54), so the actor's own health info is not read here.
+, mHpTracker(pInfo.GetHealthInfo().GetHP())
 , mKnockDamage(0.f)
 , mTimerD1C(0.f)
 , mMoveAwayTimer(0.f)
@@ -243,23 +347,27 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mDamageFxTimer(0.f)
 , mIntoCorporealAnim(-1)
 , mIntoStunnedAnim(-1)
+, mLockOnLocator(CSegId::Invalid())
 , mLastLoggedState(nullptr)
 , mPathArea(nullptr)
-, mHasPatrolPath(false)
-, mPathFindActive(false)
-, mPointPathFinding(false)
-, mFoundMovementPos(false)
-, mRecalculatePath(false)
-, mIdle(false)
-, mFollowingAttackPath(false)
-, mAttackPatternProjectile(false)
-, mPuddleHitByWeapon(false)
-, mCancelStun(false)
-, mKnockAnimCancel(false)
-, mTouched(false)
-, mShouldMoveUnderBall(false)
-, mInsideSafeZone(false)
-, mShouldEvaporate(false) {
+// The retail clears every flag of the byte at 0xd3d and every flag of the byte at 0xd3e in this
+// order (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330), most significant bit first.
+, mAttackPatternProjectile(false) // 0xd3d 0x80 (asm 0xA284)
+, mPathFindActive(false)          // 0xd3d 0x40 (asm 0xA290)
+, mPointPathFinding(false)        // 0xd3d 0x20 (asm 0xA29C)
+, mFoundMovementPos(false)        // 0xd3d 0x10 (asm 0xA2A8)
+, mRecalculatePath(false)         // 0xd3d 0x08 (asm 0xA2B4)
+, mIdle(false)                    // 0xd3d 0x04 (asm 0xA2C0)
+, mFollowingAttackPath(false)     // 0xd3d 0x02 (asm 0xA2CC)
+, mHasPatrolPath(false)           // 0xd3d 0x01 (asm 0xA2D8)
+, mPuddleHitByWeapon(false)       // 0xd3e 0x80 (asm 0xA2E4)
+, mCancelStun(false)              // 0xd3e 0x40 (asm 0xA2F0)
+, mKnockAnimCancel(false)         // 0xd3e 0x20 (asm 0xA2FC)
+, mTouched(false)                 // 0xd3e 0x10 (asm 0xA308)
+, mShouldMoveUnderBall(false)     // 0xd3e 0x08 (asm 0xA314)
+, mInsideSafeZone(false)          // 0xd3e 0x04 (asm 0xA320)
+, mShouldEvaporate(false)         // 0xd3e 0x02 (asm 0xA32C)
+{
   // fn_44_9D58 locks the projectile's WPSC token (0x918); without it LaunchProjectile's TryCache
   // never succeeds.
   mProjectileInfo.Token().Lock();
@@ -283,18 +391,34 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
     mLineOfSight.SetSegment(animData->GetLocatorSegId(rstl::string_l("Eye_LCTR")));
     // fn_44_AB78 keeps an animation only when its score is above FLT_EPSILON.
     const CPASDatabase& pas = animData->GetPASDatabase();
-    rstl::pair< float, int > best = pas.FindBestAnimation(
-        CPASAnimParmData(pas::kAS_Generate, CPASAnimParm::FromEnum(0)), -1);
-    mIntoCorporealAnim = best.first > 1.1920929e-07f ? best.second : -1;
-    best = pas.FindBestAnimation(CPASAnimParmData(pas::kAS_LoopReaction, CPASAnimParm::FromEnum(3),
-                                                  CPASAnimParm::FromEnum(0)),
-                                 -1);
-    mIntoStunnedAnim = best.first > 1.1920929e-07f ? best.second : -1;
+    mIntoCorporealAnim =
+        FindBestAnimationId(pas, CPASAnimParmData(pas::kAS_Generate, CPASAnimParm::FromEnum(0)));
+    mIntoStunnedAnim = FindBestAnimationId(
+        pas, CPASAnimParmData(pas::kAS_LoopReaction, CPASAnimParm::FromEnum(3),
+                              CPASAnimParm::FromEnum(0)));
   }
   mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
 }
 
+// @ fn_44_97E4
+// The retail destructor (fn_44_97E4, asm 0x97E4) puts the module's vtable back, tears the members
+// down - the two-entry container at guest 0xce0, the surface helper at 0xbd8 (asm 0x986C), the
+// two locked hit effects at 0x940/0x950 (asm 0x9898/0x98C4), the projectile's token at 0x918
+// (asm 0x98E8) and the ing-spot vulnerability at 0x834 (asm 0x9904) - runs the base destructor
+// (asm 0x9910) and frees the object (asm 0x9920). On the host every member owns its destruction
+// and the base destructor follows them, so the body is empty. The teardown order (the container
+// at 0xce0, the surface helper at 0xbd8, the two hit effects at 0x950/0x940, the projectile's
+// token at 0x918, the data's vulnerability at 0x834, then the base) is the reverse of the member
+// order, which is what the host's C++ destruction does. The check finds the members' own
+// teardown (3 calls, 20 conditions) against the host's empty body: a tool limit, not a mismatch.
+// The container at 0xce0 holds two zero ints that nothing reads (fn_44_A5D0 only fills them in the
+// constructor).
+// The retail's destructor runs the module's own copies of the members' destructors as well (asm
+// 0x9910): fn_44_9940 -> fn_44_9B24 (the vtable restore and the CToken at +0x04) and
+// fn_44_9BB8 -> fn_44_9C10 -> fn_44_9C68 -> fn_44_9CC0 (the two-bit counter in the byte at +0x00,
+// its bit 5 the "alive" flag, and the release of the pointer at +0x0c). The host's members own
+// their destruction, so the body stays empty.
 CMinorIng::~CMinorIng() {}
 
 void CMinorIng::LogState(const char* name) {
@@ -304,7 +428,7 @@ void CMinorIng::LogState(const char* name) {
   }
 }
 
-// Retail activates the body controller on kSM_Create (fn_44_9150). Kept as a guard for the
+// Retail activates the body controller on the create message. Kept as a guard for the
 // entry points that can run before it on the host.
 void CMinorIng::EnsureBodyActive(CStateManager& mgr) {
   if (BodyController() != nullptr && !BodyController()->GetIsActive()) {
@@ -393,6 +517,14 @@ CScriptAIHint* CMinorIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
     return nullptr;
   }
   return TCastToPtr< CScriptAIHint >(mgr.ObjectById(id));
+}
+
+// @ fn_44_2550
+// The retail helper puts the hint into use (the DOL call at asm 0x2574) and writes the hint's own
+// id through the out parameter (asm 0x2578-0x257C); the caller passes its cover-hint slot.
+void CMinorIng::ClaimCoverHint(CScriptAIHint* hint, TUniqueId& id) {
+  hint->SetInUse(true);
+  id = hint->GetUniqueId();
 }
 
 // @ fn_44_24D4
@@ -565,14 +697,26 @@ void CMinorIng::SetForm(CStateManager& mgr, int form, bool setLocomotion) {
   }
 }
 
-// @ fn_44_3670
-void CMinorIng::SnapToFloor(CStateManager& mgr) {
-  // fn_44_34B0: a ray down the actor's up axis, from one unit above it, 10 units long, Solid.
+// @ fn_44_34B0
+// The retail helper fires a ray from one unit above the actor, straight down its up axis, ten
+// units long, against Solid only - the material 0x3b of the module's data, shifted into the mask
+// at asm 0x34E8-0x350C - and writes the hit point, or the zero vector when the ray hits nothing
+// (asm 0x35A8-0x35DC). The copy of the result is the retail's fn_44_3614.
+void CMinorIng::RayDown(CVector3f& out, CStateManager& mgr) const {
   const CVector3f up = GetTransform().GetUp();
   const CRayCastResult result =
       mgr.RayStaticIntersection(GetTranslation() + up, up * -1.f, 10.f, SolidFilter());
-  if (result.IsValid() && result.GetPoint() != CVector3f::Zero()) {
-    SetTranslation(result.GetPoint());
+  CRayCastResult copy;
+  CopyRayCastResult(copy, result);
+  out = copy.IsValid() ? copy.GetPoint() : CVector3f::Zero();
+}
+
+// @ fn_44_3670
+void CMinorIng::SnapToFloor(CStateManager& mgr) {
+  CVector3f point;
+  RayDown(point, mgr);
+  if (point != CVector3f::Zero()) {
+    SetTranslation(point);
   }
 }
 
@@ -660,6 +804,22 @@ void CMinorIng::JoinTeam(CStateManager& mgr) {
                      CTeamAiRole::kTAR_Invalid);
     }
   }
+}
+
+// @ fn_44_5894
+// The retail helper leaves the team the actor is in: it looks the team up (asm 0x58D4), asks
+// whether the actor is still one of its members (asm 0x58F4), leaves it (asm 0x5914) and clears
+// the team id (asm 0x5920).
+void CMinorIng::LeaveTeam(CStateManager& mgr) {
+  if (mTeamId == kInvalidUniqueId) {
+    return;
+  }
+  CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId));
+  if (team == nullptr || !team->IsPartOfTeam(GetUniqueId())) {
+    return;
+  }
+  team->QuitTeam(GetUniqueId());
+  mTeamId = kInvalidUniqueId;
 }
 
 // @ fn_44_5844
@@ -1355,7 +1515,10 @@ void CMinorIng::SelectTarget(CStateManager& mgr, float) {
   }
 }
 
-// fn_44_4DDC: the target's aim position (vtable 0x54, dt 0) into `out`.
+// @ fn_44_4DDC
+// The retail's fn_44_4DDC (asm 0x4DDC) reads the target id at 0xcce, gets the object and calls
+// the vtable's 0x54 slot with dt 0 (the target's aim position); the host's body is the same call.
+// The host casts to CActor because the host's GetAimPosition is CActor's.
 bool CMinorIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
@@ -1366,6 +1529,9 @@ bool CMinorIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) const {
 }
 
 // @ fn_44_4E84
+// The retail's cover scan keeps its four best candidates in a global list, and fn_44_51D8 is
+// that list's destructor (it frees the array and then the block). The host's keeps the four on
+// the stack, so the list's teardown is the host's own.
 void CMinorIng::FindCoverPoint(CStateManager& mgr, float) {
   ReleaseCoverHint(mgr, mCoverHintId, false);
   if (!TargetAimPosition(mgr, mTargetPos)) {
@@ -1416,8 +1582,7 @@ void CMinorIng::FindCoverPoint(CStateManager& mgr, float) {
   }
   if (count != 0) {
     if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(best[0].id))) {
-      hint->SetInUse(true); // fn_44_2550
-      mCoverHintId = hint->GetUniqueId();
+      ClaimCoverHint(hint, mCoverHintId);
       mLastCoverId = mCoverHintId;
     }
   }
@@ -1466,6 +1631,9 @@ void CMinorIng::SetPointCoverDest(CStateManager& mgr, float) {
 }
 
 // @ fn_44_21A8
+// The retail's lured destination (asm 0x21A8) asks the nav mesh for the point under the lure
+// zone first (fn_44_204C, the REL's own copy of the shared helper) and then searches a path to
+// it. The host's PortIngLuredDest does the same through PortIngLuredMeshPoint.
 void CMinorIng::SetLuredDest(CStateManager& mgr, float) {
   CVector3f dest;
   mFoundMovementPos =
@@ -1475,6 +1643,9 @@ void CMinorIng::SetLuredDest(CStateManager& mgr, float) {
 }
 
 // @ fn_44_22B0
+// The retail's lured point destination (asm 0x22B0) asks the same question (fn_44_204C) and then
+// searches a point path to it. The host's PortIngLuredPointDest does the same through
+// PortIngLuredMeshPoint.
 void CMinorIng::SetLuredPointDest(CStateManager& mgr, float) {
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
                                             mSafeZoneId, GetTranslation());
@@ -1511,8 +1682,8 @@ void CMinorIng::CreateCollisionActor(CStateManager& mgr) {
   if (colAct != nullptr) {
     mCollisionActorId = uid;
     mgr.AddObject(colAct);
-    // fn_44_D00 copies the Ing's CHealthInfo whole.
-    *colAct->HealthInfo() = *GetHealthInfo();
+    // fn_44_319C copies the Ing's CHealthInfo whole into the collision actor's (asm 0x32F4).
+    *colAct->HealthInfo() = CopyHealthInfo(*GetHealthInfo());
     colAct->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
     colAct->SetCallTouch(true);
   }
@@ -1657,6 +1828,11 @@ void CMinorIng::PuddleDamage(CStateManager& mgr, TUniqueId sender) {
 }
 
 // @ fn_44_2CD8
+// The retail's damage source hands the damage info out through a copy of it (asm 0x2D48, 0x2E44
+// and 0x2EC8): fn_44_2EF4 -> fn_44_2F24 -> fn_44_2FB0 is the REL's own copy of CDamageInfo
+// (0x1c bytes: the weapon mode, the four floats, the three sound ids and the two flag bits; the
+// byte at +0x1c is the caller's own). The host's CDamageInfo owns its copy, so the body is the
+// assignment.
 bool CMinorIng::DamageSource(CStateManager& mgr, TUniqueId touched, TUniqueId& attacker,
                              CVector3f& direction,
                              rstl::optional_object< CDamageInfo >& damage) const {
@@ -1844,17 +2020,21 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   }
   case kSM_XENZ:
+    // fn_44_9150 (asm 0x9610): the timer the safe-zone entry waits for is the one at guest 0xd1c,
+    // not the move-away timer at 0xd20 - the retail compares 0xd1c against zero (asm 0x9618-0x9620).
     if (TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(sender)) != nullptr &&
-        mMoveAwayTimer <= 0.f) {
+        mTimerD1C <= 0.f) {
       ++mSafeZoneEnterCount;
-      mSafeZoneId = sender;
+      // fn_44_9150 (asm 0x9638): the zone the message names lands in the word at guest 0xcd8; the
+      // zone that lured the actor is the separate word at 0xcda (fn_44_36FC/fn_44_3780).
+      mSafeZoneEnterId = sender;
       mInsideSafeZone = true;
     }
     break;
   case kSM_XEXZ:
     if (TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(sender)) != nullptr &&
         --mSafeZoneEnterCount == 0) {
-      mSafeZoneId = kInvalidUniqueId;
+      mSafeZoneEnterId = kInvalidUniqueId;
       mInsideSafeZone = false;
     }
     break;
@@ -1867,9 +2047,7 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_Delete:
     ReleaseCoverHint(mgr, mCoverHintId, false);
-    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId());
-    }
+    LeaveTeam(mgr);
     StopSfx();
     mgr.DeleteObjectRequest(mBlobEffectId);
     mgr.DeleteObjectRequest(mCollisionActorId);
@@ -1893,7 +2071,26 @@ void CMinorIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_44_8E10
+// The retail's PreRender is the base's (asm 0x8E10-0x8E2C); the check finds no difference.
 void CMinorIng::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
+
+// @ fn_44_8DF0
+// The retail's AddToRenderer is the base's (asm 0x8DF0-0x8E0C); the check finds no difference.
+void CMinorIng::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
+
+// @ fn_44_6FA0
+// The retail's GetAimPosition is the base's (asm 0x6FA0-0x6FC8); the check finds no difference.
+CVector3f CMinorIng::GetAimPosition(const CStateManager& mgr, float dt) const {
+  return CPatterned::GetAimPosition(mgr, dt);
+}
+
+// @ fn_44_70
+// The retail's GetHealthInfo calls the base's HealthInfo virtual (asm 0x70-0x98); the check finds
+// no difference.
+const CHealthInfo* CMinorIng::GetHealthInfo() const {
+  return const_cast< CMinorIng* >(this)->HealthInfo();
+}
 
 // @ fn_44_8E30
 void CMinorIng::Render(const CStateManager& mgr) const {
@@ -1933,12 +2130,91 @@ void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   CPatterned::KnockBack(mgr, info);
 }
 
-// [?] fn_44_7058: retail also spawns the inglets (CBouncyGrenade, data at guest 0x8e0..0x8f8).
+// @ fn_44_7058
+// The retail's massive death spawns the inglets (asm 0x7058-0x76A8). The number of
+// them falls off with the distance to the player, and each one is a CBouncyGrenade named "Inglet"
+// that leaves the Ing's top at the angle the ten-entry table gives.
+// The retail's inglet gets its CEntityInfo on the stack and tears it down again (asm 0x75F4):
+// fn_44_28D8 -> fn_44_2930 is the REL's own copy of the members' destructors (it frees the
+// pointer at +0x0c and then the block itself). The host's CEntityInfo owns its destruction.
 void CMinorIng::MassiveDeath(CStateManager& mgr) {
+  const CHealthInfo& health = *GetHealthInfo();
+  // The retail's first guard (asm 0x70CC): the health info's cause-of-death weapon mode (the
+  // CWeaponMode at +0x0c) keeps its flags in the byte at +0x0e, and that byte must not be 2 or
+  // 0x12. The host's CWeaponMode has three flags (the charged, the comboed and the instant-kill
+  // bits), so its byte can never read 0x12.
+  const CWeaponMode& deathWeapon = health.GetCauseOfDeathWeapon();
+  const uint flags = (deathWeapon.IsCharged() ? 1u : 0u) | (deathWeapon.IsComboed() ? 2u : 0u) |
+                      (deathWeapon.IsInstantKill() ? 4u : 0u);
+  if (flags != 2 && flags != 0x12) {
+    // The retail's second guard (asm 0x70DC): an Ing in the puddle form only spawns inglets when
+    // the ing spot's flag byte at 0x155 is set.
+    if (mForm != kF_Puddle || mData.mFlags155 != 0) {
+      // The distance (asm 0x710C-0x7140): the damage the Ing took (the base class's mLastHP, the
+      // health at the end of the last frame, less the health info's HP) clamped to 0..the inglet's
+      // spawn distance (the data's 0x134).
+      const float maxDist = mData.mIngletSpawnDistance;
+      const float raw = mLastHP - health.GetHP();
+      float dist = 0.f;
+      if (raw >= 0.f) {
+        dist = raw < maxDist ? raw : maxDist;
+      }
+      // The count (asm 0x71D8-0x7238): the fraction of the maximum count the distance leaves,
+      // rounded up, and never below the minimum count.
+      const int count = static_cast< int >(
+          CMath::CeilingF((1.f - dist / maxDist) * static_cast< float >(mData.mIngletMaxCount)));
+      const int total = count < mData.mIngletMinCount ? mData.mIngletMinCount : count;
+      if (total > 0) {
+        // The materials (asm 0x7140-0x71D8): the inglet collides with the seeker-target material
+        // and, when the ing spot allows lock-on, with the target and orbit materials too.
+        CMaterialList materials(kMT_SeekerTarget);
+        if (mData.mIngSpotAllowLockOn) {
+          materials.Add(kMT_Target);
+          materials.Add(kMT_Orbit);
+        }
+        // The direction (asm 0x723C-0x7270): from the Ing's top towards the target.
+        CVector3f dir = mTargetPos - GetTranslation();
+        dir.Normalize();
+        // The spawn point (asm 0x7274-0x7300): the Ing's top, half the up vector above its
+        // position, and the up vector is what the look-at takes.
+        const CVector3f up = GetTransform().GetUp();
+        const CVector3f at = GetTranslation() + up * 0.5f;
+        // The first angle (asm 0x73F4-0x7414) is a random 35..60 degrees around the local X, the
+        // second (asm 0x7418-0x7464) comes from the table: the value in tens of degrees, less 50.
+        const int base = mgr.Random()->Range(0, 9);
+        for (int i = 0; i < total; ++i) {
+          CTransform4f xf = CTransform4f::LookAt(at, at + dir, up);
+          const float pitch =
+              mgr.Random()->Range(35.f, 60.f) * 0.017453292f;
+          xf.RotateLocalX(CRelAngle::FromRadians(pitch));
+          const float yaw = (skIngletAngles[(base + i) % 10] * 10.f - 50.f) * 0.017453292f;
+          xf.RotateLocalZ(CRelAngle::FromRadians(yaw));
+          // The inglet (asm 0x74A8-0x75CC): the launch speed is random out of the data's range,
+          // the model data and the actor parameters are the empty ones and the bounds are the
+          // inverted box.
+          CBouncyGrenade* const inglet = rs_new CBouncyGrenade(
+              mgr.AllocateUniqueId(), rstl::string_l("Inglet"),
+              CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+              xf, CModelData::CModelDataNull(), CActorParameters::None(), GetUniqueId(),
+              mgr.Random()->Range(mData.mIngletMinLaunchSpeed, mData.mIngletMaxLaunchSpeed),
+              mData.mGrenadeData, mData.mIngletExplodeDistance, CAABox::MakeMaxInvertedBox(),
+              mTargetId, mData.mIngletMaxTurnAngle, 0xf, &materials, &mData.mIngletHealth);
+          mgr.AddObject(inglet);
+          // The inglet does not collide with the other projectiles (asm 0x762C).
+          inglet->RemoveMaterial(kMT_Projectile, mgr);
+        }
+      }
+    }
+  }
   PlaySfx(3, true);
   CPatterned::MassiveDeath(mgr);
 }
 
+// The projectile's impact visor effect: fn_44_65C4 (asm 0x6418) is the REL's copy of
+// CImpactVisorEffect::None() - three empty parts, the invalid forced visor - and fn_44_64AC
+// (0x645C) its destructor; 6748/6720/6700/66C0/660C/657C/655C/6500 are the copies of its
+// optional members' copy, assign and destroy. The host's CImpactVisorEffect::None() is the same
+// effect, so they are cited, not marked.
 // @ fn_44_6384
 void CMinorIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
@@ -1997,8 +2273,64 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
   }
 }
 
-// Retail fn_44_110. The property ids and their order are the generated SLdrMinorIng reader's,
-// which the analysis checked against the REL id by id: it reads all 20.
+// @ fn_44_110
+// The retail's loader is the property loop over the REL's own format; the host reads the same
+// properties with the generated SLdrMinorIng reader, whose ids and their order the analysis
+// checked against the REL id by id: it reads all 20 and fn_44_9B4's packing gives each bool its
+// bit. The check finds the retail's loop (37 calls, 43 conditions) against the generated reader:
+// a tool limit, not a mismatch (the ids and their order were checked by hand).
+// The retail's loader copies the model data it read (asm 0x51C): fn_44_10D4 -> fn_44_1114 ->
+// fn_44_1134 -> fn_44_115C is the REL's own copy of CModelData (the three model slots, the scale
+// and the id; the copy clears the source's byte at +0x0c). The host's CModelData owns its copy,
+// so the body is the class's own.
+// @ fn_44_D54
+// The retail copy moves a whole CIngSpotData from the source to the destination: the blob
+// effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds
+// at +0x2e..+0x36 and the rest of the block (asm 0xD54-0xE08). The host's CIngSpotData has the
+// retail's layout, so the copy is the class's own copy.
+// The retail's copy runs in three steps (asm 0xD54 -> fn_44_E08 -> fn_44_EB8): the last one is
+// the REL's own copy of the ing spot's vector member (it allocates the array and copies the
+// 12-byte entries), so the class's own copy covers it too.
+CIngSpotData CopyIngSpotData(const CIngSpotData& src) { return src; }
+
+// @ fn_44_9B4
+// The retail's fn_44_9B4 (asm 0x9B4-0xC44) builds the data block the actor runs on: the
+// projectile and its damage, the ing spot, the inglet's health, the grenade data and the
+// inglet's spawn values. The host's block is its own shape (CMinorIngData), so the body is the
+// constructor call and not a field-by-field copy of the retail's offsets.
+static CMinorIngData BuildMinorIngData(const SLdrMinorIng& sldrThis, const CIngSpotData& ingSpotIn,
+                                       const CBouncyGrenadeData& grenadeDataIn, uchar flags155,
+                                       uchar flags156) {
+  // The retail's fn_44_9B4 copies the three blocks the loader read into the data: the ing spot
+  // (fn_44_D54), the inglet's health (fn_44_D00) and the grenade data (fn_44_C44).
+  const CIngSpotData ingSpot = CopyIngSpotData(ingSpotIn);
+  const CHealthInfo ingletHealth =
+      CopyHealthInfo(LdrToHealthInfo(sldrThis.unknown_0x3da35851.health));
+  const CBouncyGrenadeData grenadeData = CopyGrenadeData(grenadeDataIn);
+
+  return CMinorIngData(
+      sldrThis.projectile, LdrToDamageInfo(sldrThis.projectileDamage),
+      LdrToDamageInfo(sldrThis.ingSpot.damage), ingSpot, sldrThis.unknown_0xa03e450c,
+      sldrThis.ingSpot.morphballPursuitDistance, sldrThis.ingSpot.bombStunDuration,
+      sldrThis.ingSpot.unknown_0x7569fdba, sldrThis.ingSpot.sfxFallOff,
+      sldrThis.attackAngleLimit, sldrThis.lineOfSightHeightOffset, sldrThis.unknown_0xd6c8eac2,
+      sldrThis.unknown_0x2a5449ba, sldrThis.hearingRadius, sldrThis.ingSpot.speedModifier,
+      sldrThis.unknown_0x3da35851.allowLockOn,
+      static_cast< uchar >(flags155), flags156, sldrThis.ingSpot.maxSpeed,
+      sldrThis.ingSpot.maxWallSpeed, sldrThis.ingSpot.ballPursuitSpeed,
+      LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
+      static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
+      static_cast< ushort >(sldrThis.ingSpot.sound_Move),
+      static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
+      static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
+      static_cast< ushort >(sldrThis.ingSpot.sound_Death),
+      ingletHealth, grenadeData, sldrThis.unknown_0x3da35851.minLaunchSpeed,
+      sldrThis.unknown_0x3da35851.maxLaunchSpeed, sldrThis.unknown_0x3da35851.minGeneration,
+      sldrThis.unknown_0x3da35851.maxGeneration, sldrThis.unknown_0x3da35851.maxTurnAngle,
+      sldrThis.unknown_0x3da35851.unknown_0xfbf8ea0a,
+      sldrThis.unknown_0x3da35851.unknown_0x47f99fbc);
+}
+
 static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMinorIng sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMinorIng.inc"
@@ -2010,57 +2342,59 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
     return nullptr;
   }
 
-  const CIngSpotData ingSpot(sldrThis.ingSpot.blobEffect, sldrThis.ingSpot.hitNormalDamage,
-                             sldrThis.ingSpot.hitHeavyDamage, sldrThis.ingSpot.death,
-                             sldrThis.ingSpot.maxSpeed, sldrThis.ingSpot.maxWallSpeed,
-                             sldrThis.ingSpot.ballPursuitSpeed, sldrThis.ingSpot.speedModifier,
-                             sldrThis.ingSpot.turnSpeed,
-                             LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_Move),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
-                             static_cast< ushort >(sldrThis.ingSpot.sound_Death));
+  const CIngSpotData ingSpotBuilt(sldrThis.ingSpot.blobEffect, sldrThis.ingSpot.hitNormalDamage,
+                                  sldrThis.ingSpot.hitHeavyDamage, sldrThis.ingSpot.death,
+                                  sldrThis.ingSpot.maxSpeed, sldrThis.ingSpot.maxWallSpeed,
+                                  sldrThis.ingSpot.ballPursuitSpeed, sldrThis.ingSpot.speedModifier,
+                                  sldrThis.ingSpot.turnSpeed,
+                                  LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_Move),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
+                                  static_cast< ushort >(sldrThis.ingSpot.sound_Death));
 
-  // The three flag bytes: the REL's constructor takes them in an order that does not follow the
-  // properties' declaration order, and the analysis does not pair the two, so the bits here follow
-  // SLdrMinorIng's own field order. Nothing reads them in this milestone.
+  // The retail's loader (fn_44_110) reads seven bool properties and fn_44_9B4 packs them into
+  // three bytes of the data (asm 0xA5AC-0xA5C4): the byte at 0x154's bit 7 is the inglet block's
+  // allow-lock-on, the byte at 0x155 is the property 0x9207f51 on its own and the byte at 0x156
+  // holds the other six, most significant bit first. The property ids are the ones the generated
+  // SLdrMinorIng reader uses, so each bool lands in the bit fn_44_9B4 gives it.
+  const uchar flags155 = static_cast< uchar >(sldrThis.unknown_0x09207f51);
   uchar flags156 = 0;
   if (sldrThis.allowProjectileDuringAttackPattern) {
-    flags156 |= 0x80;
+    flags156 |= 0x80; // 0x399d1eaa
   }
   if (sldrThis.unknown_0xbce16644) {
-    flags156 |= 0x40;
+    flags156 |= 0x40; // 0xbfd0e644
   }
   if (sldrThis.unknown_0x142433d3) {
-    flags156 |= 0x20;
+    flags156 |= 0x20; // 0x142433d3
   }
   if (sldrThis.stayOnPointPathFinding) {
-    flags156 |= 0x10;
+    flags156 |= 0x10; // 0xb6cc0063
   }
   if (sldrThis.allowProjectileDuringStayOnPointPathFinding) {
-    flags156 |= 0x08;
+    flags156 |= 0x08; // 0xe601f7bd
   }
   if (sldrThis.allowPuddleLockOn) {
-    flags156 |= 0x04;
+    flags156 |= 0x04; // 0x2107e4fb
   }
 
-  const CMinorIngData data(
-      sldrThis.projectile, LdrToDamageInfo(sldrThis.projectileDamage),
-      LdrToDamageInfo(sldrThis.ingSpot.damage), ingSpot, sldrThis.unknown_0xa03e450c,
-      sldrThis.ingSpot.morphballPursuitDistance, sldrThis.ingSpot.bombStunDuration,
-      sldrThis.ingSpot.unknown_0x7569fdba, sldrThis.ingSpot.sfxFallOff,
-      sldrThis.attackAngleLimit, sldrThis.lineOfSightHeightOffset, sldrThis.unknown_0xd6c8eac2,
-      sldrThis.unknown_0x2a5449ba, sldrThis.hearingRadius, sldrThis.ingSpot.speedModifier,
-      sldrThis.unknown_0x3da35851.allowLockOn,
-      static_cast< uchar >(sldrThis.unknown_0x09207f51), flags156, sldrThis.ingSpot.maxSpeed,
-      sldrThis.ingSpot.maxWallSpeed, sldrThis.ingSpot.ballPursuitSpeed,
-      LdrToDamageVulnerability(sldrThis.ingSpot.vulnerability),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Idle),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Move),
-      static_cast< ushort >(sldrThis.ingSpot.sound_HitNormalDamage),
-      static_cast< ushort >(sldrThis.ingSpot.sound_HitHeavyDamage),
-      static_cast< ushort >(sldrThis.ingSpot.sound_Death));
+  // The inglet's spawn values (the retail's data 0x120..0x138): the inglets' count is the
+  // minimum and the maximum of the generation range, and the massive death falls off with the
+  // distance. The log says the count once per spawn, so a run shows which placement has any.
+  if (DebugMinorIng()) {
+    fprintf(stderr, "[minoring] inglets %d..%d spawn distance %g\n", sldrThis.unknown_0x3da35851.minGeneration,
+            sldrThis.unknown_0x3da35851.maxGeneration,
+            static_cast< double >(sldrThis.unknown_0x3da35851.unknown_0xfbf8ea0a));
+  }
+
+  // The retail's loader reads the ing spot (fn_44_194C) and builds the bouncing-projectile
+  // struct out of the inglet's block (fn_44_FE8); the data build copies both into the data.
+  const CBouncyGrenadeData grenadeData = BuildGrenadeData(sldrThis.unknown_0x3da35851);
+
+  const CMinorIngData data =
+      BuildMinorIngData(sldrThis, ingSpotBuilt, grenadeData, flags155, flags156);
 
   return rs_new CMinorIng(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                           LdrToEntityInfo(info, sldrThis.editorProperties),
@@ -2071,11 +2405,18 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
 
 static SMinorIng_FuncPtrs REL_loader_MinorIng;
 
-// Retail's RELMain stores fn_44_110 into the module's table and registers it with the DOL's
-// SetSMinorIng_FuncPtrs (via fn_44_E0). The proxy in SMinorIng_FuncPtrs.cpp calls through it.
-void RELMain() {
+// @ fn_44_E0
+// The retail module writes its loader into the module's own function table (lbl_44_bss_84,
+// asm 0xF8) and hands that table to the DOL's SetSMinorIng_FuncPtrs (asm 0xFC). The host's
+// SMinorIng_FuncPtrs holds the loader alone, so the table is the static below.
+static void RegisterMinorIngModule() {
   REL_loader_MinorIng.mLoader = PortLoadMinorIng;
   SetSMinorIng_FuncPtrs(&REL_loader_MinorIng);
+}
+
+// The retail RELMain (the module's entry at 0xC0) does nothing but call the registration helper.
+void RELMain() {
+  RegisterMinorIngModule();
 }
 
 void RELExit() { SetSMinorIng_FuncPtrs(nullptr); }
