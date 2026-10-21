@@ -1101,7 +1101,11 @@ bool CIng::IsLuredBySafeZone(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot);
 }
 
-// fn_29_AC78 (not yet exercised in a run)
+// fn_29_AC78 (0x20, asm 0x0000AC78-0x0000AD54): the lure zone id (0xd78) against
+// kInvalidUniqueId. One comparison, two arms: the id is invalid (false) and it is set (true).
+// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
+// evaluated the trigger with the id invalid; the "the id is set" arm did not run, so the body
+// is not marked.
 bool CIng::StillLuredBySafeZone(CStateManager&, const CTriggerData&) const {
   return mLureSafeZoneId != kInvalidUniqueId;
 }
@@ -1163,9 +1167,9 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
 // above zero". One comparison, two arms:
 //   - the count is zero: false;
 //   - the count is not zero: true.
-// The runs of 2026-10-21 (area 57 and the Agon Wastes, which has 24 safe zones) never changed
-// the count - the player teleporting into a safe zone does not raise the XENZ message - so the
-// body is not marked.
+// The trigger never ran in the runs of 2026-10-21 (area 57 and the Agon Wastes, which has 23
+// safe zones): the count only changes with the XENZ message (the player entering a safe zone),
+// and the console's `noise 6` informs the listeners without changing the count. Not marked.
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
@@ -1294,12 +1298,14 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
 }
 
 // fn_29_A4E0 (0xC, asm 0x0000A4E0-0x0000A4EC): the byte at 0xe5c's bit 3 (the asm's extrwi index
-// 28) - the port's mFoundMovementPos. One bit, one arm.
+// 28) - the port's mFoundMovementPos. One bit, one arm:
 //   - the flag is set: true;
 //   - the flag is clear: false.
 // The FSM2 graph puts this trigger in the SetLuredDest code function's trigger list only (the
-// Ing's lure), so it needs an Ing that is lured by a safe zone. The runs of 2026-10-21 (area 57
-// and the Agon Wastes 01_sand_entrance_dark) never lured one, so the body is not marked.
+// Ing's lure), so it needs an Ing that is lured by a safe zone. The Agon Wastes run of
+// 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing) lured one - the lure
+// code functions ran 64 and 44 times - and the trigger was evaluated with the flag clear; the
+// "the flag is set" arm did not run, so the body is not marked.
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -3113,7 +3119,7 @@ void CIng::SetExitHostDest(CStateManager& mgr, float) {
   mTargetPos = bestPos; // 0xdc8
 }
 
-// fn_29_53E0 (not yet exercised in a run): the lure point is the nav-mesh point below the lure safe
+// fn_29_53E0 (the lure point is the nav-mesh point below the lure safe
 // zone (fn_29_1C98, the shared PortIngLuredDest does it); the path search's flags go to 1 for the
 // mesh-path query and back to 0x301 after it (asm 0x00005458-0x000054B8). Only when that path
 // exists does the lure point become the destination and mFoundMovementPos get set (0xe5c bit 3);
@@ -3127,11 +3133,15 @@ void CIng::SetLuredDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId); // 0x718, asm 0x000054C8
 }
 
-// fn_29_51D0 (not yet exercised in a run): the point-graph route to the lure point - the flag-1
+// fn_29_51D0 (the point-graph route to the lure point - the flag-1
 // point nearest the Ing that the graph connects to the Ing's own point and that has a mesh path to
 // the lure point (asm 0x000052BC-0x0000531C), then the point search between the two (asm
 // 0x00005350-0x0000536C). The shared PortIngLuredPointDest is the same routine as the MinorIng's
 // copy (fn_44_22B0), whose asm matches this one field for field.
+// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
+// reached this code function 44 times with the lure zone set; the arms of the retail's body (the
+// flag-1 point, the graph link and the mesh path) are inside the shared helper, so the body is
+// not marked yet.
 void CIng::SetLuredPointDest(CStateManager& mgr, float) {
   LogState("SetLuredPointDest");
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
@@ -3824,7 +3834,9 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     return true;
   }
   if (type == kLNT_SafeZone) {
-    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone
+    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone.
+    // The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the
+    // Ing) reached it: the lure zone was set and the lure code functions ran 64 and 44 times.
     // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
     if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
       return false;

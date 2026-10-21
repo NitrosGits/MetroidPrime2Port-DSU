@@ -1367,6 +1367,38 @@ normal ones, so the run never lured an Ing and `fn_29_1DF4`, `fn_29_51D0`, `fn_2
 CScriptSafeZone.cpp:229 makes for the type 6 (kLNT_SafeZone) - so a run can lure an Ing and
 reach the eight bodies above.
 
+### A.26 The lure path with the console's `noise` (2026-10-21)
+
+The orchestrator's console command `noise <type> [x y z]` (port 196d15fee) calls
+`CStateManager::InformListeners` at the player's position (or at x y z). **It works: an Ing
+reacts to it.** The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4, the area
+0x3f5cdf39) with `noise 6` (the kLNT_SafeZone) at the safe zone nearest the Ing:
+
+* the noise's position has to be **inside** a safe zone - the manager finds the zone by the
+  noise's position (`CScriptSafeZoneManager::PointIsInWhichSafeZone`) - and the Ing has to be
+  within its hearing radius (40) of it, so the noise is placed at the safe zone's own position;
+* the Ing's lure zone (0xd78) is set by the Listen's safe zone branch (fn_29_1DF4), and the FSM
+  runs the lure code functions: `SetLuredDest` (fn_29_53E0) 64 times and `SetLuredPointDest`
+  (fn_29_51D0) 44 times in that run.
+
+The arms that ran, and the ones that did not:
+
+| fn | the arms | the run |
+|---|---|---|
+| `fn_29_1DF4` | the safe zone the noise is in becomes the lure zone | ran (the lure zone was set) |
+| `fn_29_51D0` | the point-graph route to the lure point | ran 44 times with the lure zone set; the arms inside the shared helper are not shown |
+| `fn_29_53E0` | the lure point is the nav-mesh point below the lure zone | ran 64 times with the lure zone set |
+| `fn_29_A4E0` | the flag at 0xe5c's bit 3 | the trigger was evaluated with the flag clear; the "the flag is set" arm did not run |
+| `fn_29_AC78` | the lure zone id against kInvalidUniqueId | the trigger was evaluated with the id invalid; the "the id is set" arm did not run |
+| `fn_29_AA94` | the word at 0xe2c is not zero | the trigger never ran: the count only changes with the XENZ message (the player entering a safe zone), and `noise 6` informs the listeners without changing it |
+| `fn_29_8CF4` | the SafeZoneReaction state | the state did not run (the Ing took the lure code function, not that state) |
+| `fn_29_5C28` | the Evaporate state | the state did not run |
+
+So the eight bodies are reachable now, but every one of them keeps one arm open; the next lane
+needs the "the lure zone is set" moments: the trigger lists that hold `fn_29_A4E0` and
+`fn_29_AC78` are the lure code function's and the SafeZoneReaction state's, so the arms run when
+the Ing is lured **and** the FSM evaluates that list in the same tick.
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).
