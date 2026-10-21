@@ -41,7 +41,7 @@ def emit(s):
 
 t0 = time.time()
 s = None
-while s is None and time.time() - t0 < 120:
+while s is None and time.time() - t0 < 600:  # the game may wait for a run slot
     try:
         s = socket.create_connection(('127.0.0.1', port), timeout=5)
     except OSError:
