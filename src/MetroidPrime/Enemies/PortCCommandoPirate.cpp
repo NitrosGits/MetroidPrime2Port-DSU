@@ -2869,6 +2869,8 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     xb80_ = mData.mShield.mArmTime +
             mgr.Random()->Float() * mData.mShield.mArmTimeVariation;  // 0x00008744
     xc64_ &= ~0x04;                                  // 0x0000875C
+    // The guest calls the manager without a test; the host's test covers the window before the
+    // kSM_Create case has built it (the host limit named here).
     if (mCollisionShield.get() != nullptr) {
       mCollisionShield->SetActive(mgr, true);        // 0x00008768
     }
@@ -2908,6 +2910,8 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->SetLocomotionType(pas::kLT_Combat);     // 0x000088C4 (the guest's 3)
     xc64_ &= ~0x80;                                          // 0x000088D0
     xb58_ = xb50_ + 1;                                       // 0x000088E4
+    // The guest calls the manager without a test; the host's test covers the window before the
+    // kSM_Create case has built it (the host limit named here).
     if (mCollisionShield.get() != nullptr) {
       mCollisionShield->SetActive(mgr, false);               // 0x000088F0
     }
