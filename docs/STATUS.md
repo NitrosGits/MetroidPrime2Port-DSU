@@ -48,7 +48,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | SpacePirate (worker) | `ses_ea3206eb3ffeIXL6w8JDRAddQp` | spacepirate @ `1c654bc31` (72/262) | 5 most-called unmarked fns |
 | SwampBossStage1 (worker) | `ses_ea3206eafffeTqAzGkbdyimVXR` | swampboss @ `1c654bc31` (108/251) | 5 most-called unmarked fns |
 | SwampBossStage2 (worker) | `ses_ea3206eaeffeRdrP5aHU5wZwue` | swampboss-s2 @ `1c654bc31` (76/243) | 5 most-called unmarked fns |
-| WallCrawler (worker) | `ses_ea3206eacffe4RdcKDUk7WwTq0` | wallcrawler @ `1c654bc31` (25/57) | up to 8 unmarked fns |
+| WallCrawler (worker) | `ses_ea3206eacffe4RdcKDUk7WwTq0` | wallcrawler @ `e7a84a386` (accepted for batch 7: 1310 AlignToFloor fixed — bogus obstruction scan removed, best starts at radius; flag bits renamed to retail masks; 32 unmarked all cited as REL copies) | 1310 constrained arm (x834≠0): shipped placements set it? keep/unmark marker; then module done |
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
