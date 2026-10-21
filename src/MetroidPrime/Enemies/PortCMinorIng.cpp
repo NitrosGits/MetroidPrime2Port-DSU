@@ -411,6 +411,11 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 // teardown (3 calls, 20 conditions) against the host's empty body: a tool limit, not a mismatch.
 // The container at 0xce0 holds two zero ints that nothing reads (fn_44_A5D0 only fills them in the
 // constructor).
+// The retail's destructor runs the module's own copies of the members' destructors as well (asm
+// 0x9910): fn_44_9940 -> fn_44_9B24 (the vtable restore and the CToken at +0x04) and
+// fn_44_9BB8 -> fn_44_9C10 -> fn_44_9C68 -> fn_44_9CC0 (the two-bit counter in the byte at +0x00,
+// its bit 5 the "alive" flag, and the release of the pointer at +0x0c). The host's members own
+// their destruction, so the body stays empty.
 CMinorIng::~CMinorIng() {}
 
 void CMinorIng::LogState(const char* name) {
