@@ -133,7 +133,8 @@ void CDigitalGuardian::x2358_(CStateManager& mgr, float dt) {
       timer = 0.f; // the load at 0x2460
     }
     x1158_[i] = timer; // the store at 0x2464
-    if (timer <= 150.f && x10DC_[i] == 2) { // the fcmpo at 0x246C (.rodata 0x268) and 0x247C
+    // f31 is .rodata 0x264 (0) too: the lfs at 0x23A0 reads 0(r3) after the lfsu at 0x2390.
+    if (timer <= 0.f && x10DC_[i] == 2) { // the fcmpo at 0x246C and the cmpwi at 0x247C
       x1A68_(mgr, i, 1); // fn_14_1A68: the toe target's state 1
     }
   }
@@ -233,7 +234,8 @@ bool CDigitalGuardian::x6C24_(CDigitalGuardianHead& head) {
 void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf,
                              CVector3f& outForward, CVector3f& outUp) {
   const bool usable = x6C24_(head); // the call at 0x6CD4
-  if ((x128C_ & 0x02) == 0 && !usable) { // the extrwi at 0x6CE0 (1 bit at 30 -> the byte's bit 1)
+  // The clrlwi. / beq at 0x6CE8: the offset is taken when the aim becomes usable.
+  if ((x128C_ & 0x02) == 0 && usable) { // the extrwi at 0x6CE0 (1 bit at 30 -> the byte's bit 1)
     const CVector3f dir = head.x13B38_();           // fn_14_13B38
     const CVector3f local = GetTransform().TransposeRotate(dir); // the call at 0x6D08
     x1088_ = CTransform4f::LookAt(CVector3f::Zero(), local, CVector3f::Up()); // the call at 0x6D3C
@@ -290,16 +292,16 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
   const float turn = dt * x6C74_();      // the fmuls at 0x6EC0
   if (CVector3f::GetAngleDiff(headForward, aimForward) < turn) { // the call at 0x6F10, the fcmpo
     head->SetTransform(
-        CTransform4f::LookAt(origin, origin + bodyForward, bodyUp)); // the call at 0x6F5C
+        CTransform4f::LookAt(origin, origin + aimForward, aimUp)); // the call at 0x6F5C (sp 0x40, 0x34)
   } else {
     const CVector3f slerped =
         CVector3f::Slerp(headForward, aimForward, CRelAngle::FromRadians(turn)); // 0x6F90
     head->SetTransform(
-        CTransform4f::LookAt(origin, origin + slerped, bodyUp)); // the call at 0x6FD4
+        CTransform4f::LookAt(origin, origin + slerped, aimUp)); // the call at 0x6FD4 (up sp 0x34)
   }
   // The extrwi at 0x7004 takes 1 bit at 26 (the byte's bit 5, 1u << (31 - 26) = 0x20).
   if (x705C_() <= 2 && (head->x10F4_ & 0x20) != 0 && head->x10D0_ == 1) { // 0x6FF8, 0x7010
-    x128C_ |= 0x02; // the rlwimi at 0x7020 (the byte's bit 1)
+    x128C_ |= 0x01; // the rlwimi at 0x7020 (mask 31,31: the byte's bit 0)
   }
 }
 
@@ -353,7 +355,7 @@ float CDigitalGuardianHead::xF374_() const {
   return mData.unknown_0xd919fb13; // guest 0x7E8 (the data block's +0x28)
 }
 //
-// Unmarked: the port has no caller for it yet (the head's FollowRetreatPath calls it).
+// Unmarked: its one caller, the head's FollowRetreatPath (fn_14_1569C), has not run yet.
 
 
 // fn_14_11EA8 (0x88 bytes): the destroyed bomb slots' looping sounds are stopped. Every handle
