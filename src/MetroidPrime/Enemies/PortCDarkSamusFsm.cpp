@@ -40,6 +40,8 @@
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CRayCastResult.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1818,4 +1820,131 @@ int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, 
     }
   }
   return 0xFFFF;
+}
+
+// fn_10_1905C (0x0001905C, 0x3C4 bytes): the flat direction to the player (the z cleared at
+// 0x000190F8; not normalizable answers 0, 0x00019154). The rays start lbl_10_rodata_414 = 8.0f
+// short of the player (at least at the actor, the bge at 0x0001911C) and are
+// lbl_10_rodata_40C = 5.0f longer than the player's distance; one per height of
+// lbl_10_rodata_334 = {1.0f, 2.5f, 4.0f} (the cmpwi 3 at 0x00019318), filtered to include
+// only the material lbl_10_data_C50 = 0x31 (the __shl2i at 0x00019170, the filter type 1 at
+// 0x000191C8). The nearest hit (from the unshifted start) that is not 8 short of the player
+// (the blt at 0x000192F0) is kept (lbl_10_rodata_3EC = -1.0f = none, 0x00019300); none is 0
+// (0x0001932C), short of the player 1 (0x0001933C), else 2.
+int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
+  CVector3f dir = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
+  dir.SetZ(0.f);
+  const float dist = dir.Magnitude();
+  float back = dist - 8.f;
+  if (back < 0.f) { // 0x0001911C
+    back = 0.f;
+  }
+  const float length = (5.f + dist) - back;
+  if (dir.CanBeNormalized() != true) { // 0x00019144
+    return 0;
+  }
+  dir.Normalize();
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeInclude(CMaterialList(static_cast< EMaterialTypes >(0x31)));
+  static const float heights[3] = {1.f, 2.5f, 4.f}; // lbl_10_rodata_334
+  float best = -1.f;
+  for (int i = 0; i < 3; ++i) {
+    const CVector3f origin = GetTranslation() + CVector3f(0.f, 0.f, heights[i]);
+    const CVector3f start = origin + back * dir;
+    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    mgr.BuildNearList(nearList, start, dir.AsNormalized(), length, filter, nullptr);
+    TUniqueId hitId = kInvalidUniqueId;
+    const CRayCastResult result =
+        mgr.RayWorldIntersection(hitId, start, dir, length, filter, nearList);
+    if (result.IsValid() == true) { // 0x000192A0
+      const float hitDist = (result.GetPoint() - origin).Magnitude();
+      if (!(hitDist < dist - 8.f) && (best < 0.f || hitDist < best)) { // 0x000192F0..0x00019308
+        best = hitDist;
+      }
+    }
+  }
+  if (best < 0.f) { // 0x0001932C
+    return 0;
+  }
+  if (best < dist) { // 0x0001933C
+    return 1;
+  }
+  return 2;
+}
+
+// fn_10_19A1C (0x00019A1C, 0x148 bytes): a repulsion point (fn_10_1D9A4, any but the zero vector
+// - the fcmpu chain at 0x00019A70..0x00019A8C) leaves only the melee (fn_10_1A8F8 with 1,
+// 0x00019AC0). Otherwise the line to the player (fn_10_1905C, 0x00019AD0): blocked short of it
+// (1) adds 10 to the normal and the super missile's weights (0x40, 0x100: 0x00019AEC..), blocked
+// beyond it (2) adds 10 to the dive attack's (0x20, 0x00019B28).
+void CDarkSamus::CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights,
+                                    uint* mask) const {
+  const CVector3f point = GetRepulsionPoint(mgr, nullptr);
+  if (!(point.GetX() == CVector3f::Zero().GetX() && point.GetY() == CVector3f::Zero().GetY() &&
+        point.GetZ() == CVector3f::Zero().GetZ())) {
+    SetAttackBitsExcept(mask, 0, 0x1, 0xFFFF, 0xFFFF, 0xFFFF);
+    return;
+  }
+  switch (ClassifyLineToPlayer(mgr)) {
+  case 1:
+    weights.weights[GetAttackBitIndex(0x40)] += 10;  // 0x00019B04
+    weights.weights[GetAttackBitIndex(0x100)] += 10; // 0x00019B1C
+    break;
+  case 2:
+    weights.weights[GetAttackBitIndex(0x20)] += 10; // 0x00019B3C
+    break;
+  }
+}
+
+// fn_10_14648 (0x00014648, 0x2F4 bytes): no path area answers false (0x000146E0). The regions
+// at the player (0.5 up, lbl_10_rodata_3E4, in the area's frame) are searched for the first
+// obstructed one (the obstruction 2 count above 0, 0x000147C4) that holds the point (0x000147DC);
+// no region at all makes "off the mesh" answer true (0x0001479C). From the player back to the
+// actor in lbl_10_rodata_428 = 0.2f steps (t from 1, 0x00014918), every point 0.5 up that is not
+// inside that region (the world-space point against the region, 0x000148A4) must be on the
+// mesh (an off-mesh point answers the "no region" flag, 0x000148D8) within lbl_10_rodata_40C =
+// 5.0f of the actor's own height (0x000148FC/0x00014908).
+bool CDarkSamus::CanWalkToPlayer(CStateManager& mgr) const {
+  const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
+  CPFRegion* inside = nullptr;
+  bool noRegion = false;
+  CPFArea* area =
+      mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
+  if (area == nullptr) { // 0x000146DC
+    return false;
+  }
+  const CTransform4f& areaXf = area->GetTransform();
+  const CVector3f local =
+      areaXf.TransposeRotate(playerPos + CVector3f(0.f, 0.f, 0.5f) - areaXf.GetTranslation());
+  rstl::reserved_vector< CPFRegion*, 8 > regions;
+  const uint creatureMask = mPathFindSearch.GetCreatureMask();
+  area->FindRegions(regions, local, mPathFindSearch.GetRegionFlags(), creatureMask, true);
+  if (regions.size() == 0) { // 0x00014794
+    noRegion = true;
+  } else {
+    for (int i = 0; i < regions.size(); ++i) {
+      CPFRegion* region = regions[i];
+      if (region->GetObstructionCount(kPFO_Unknown2) > 0 &&
+          region->IsPointInside(local) == true) { // 0x000147C4/0x000147DC
+        inside = region;
+        break;
+      }
+    }
+  }
+  float height = GetTranslation().GetZ();
+  mPathFindSearch.GetHeightOfPointAboveMesh(GetTranslation(), height, 0.f); // 0x0001481C
+  for (float t = 1.f; t > 0.f; t -= 0.2f) {
+    const CVector3f point = (1.f - t) * GetTranslation() + t * playerPos + CVector3f(0.f, 0.f, 0.5f);
+    if (inside == nullptr || inside->IsPointInside(point) != true) {
+      float pointHeight = 0.f;
+      if (mPathFindSearch.GetHeightOfPointAboveMesh(point, pointHeight, 0.f) !=
+          CPathFindSearch::kR_Success) { // 0x000148D8
+        return noRegion;
+      }
+      if (pointHeight > 5.f + height || pointHeight < height - 5.f) { // 0x000148FC/0x00014908
+        return false;
+      }
+    }
+  }
+  return true;
 }

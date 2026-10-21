@@ -369,6 +369,15 @@ private:
   void CollectFacingAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
   int PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, uint mask) const;
 
+  // fn_10_1905C: three flat rays at the player (heights 1, 2.5, 4) from up to 8 units short of
+  // it: 0 when none hits a platform (or the player is straight above), 1 when the nearest hit is
+  // short of the player, 2 when it is beyond.
+  int ClassifyLineToPlayer(CStateManager& mgr) const;
+  // fn_10_19A1C: the collector for the repulsion point and the line to the player.
+  void CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  // fn_10_14648: can the actor walk the straight line to the player on the path mesh?
+  bool CanWalkToPlayer(CStateManager& mgr) const;
+
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
   const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
