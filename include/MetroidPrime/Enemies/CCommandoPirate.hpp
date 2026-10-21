@@ -395,6 +395,10 @@ private:
   // walks to.
   bool x2A98_PickWaypoint(CStateManager& mgr, bool useNext);
 
+  // fn_9_2474: the module's turn helper - it turns the commando towards the waypoint it follows
+  // and charges at it.
+  void x2474_TurnToWaypoint(CStateManager& mgr, float dt);
+
   // fn_9_2048: the module's shield effect - the explosion and the sound the shield makes when
   // it takes a hit.
   void x2048_ShieldEffect(CStateManager& mgr);

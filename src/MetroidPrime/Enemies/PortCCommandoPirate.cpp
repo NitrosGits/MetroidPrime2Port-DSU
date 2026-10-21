@@ -1368,6 +1368,77 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
   return true;
 }
 
+// fn_9_2474 (0x580 bytes): the module's turn helper - it turns the commando towards the waypoint
+// it follows and charges at it.
+//
+// The charge speed (the block's +0x12C = guest this+0x8EC) has to be above zero
+// (0x000024B4..0x000024B8) or the helper does nothing. The direction to the waypoint (the vector
+// at guest this+0xB94, the delta at 0x00002534..0x0000253C) is normalized when it is magnitude
+// safe (0x0000254C..0x00002564) and the actor's own forward column otherwise
+// (0x0000256C..0x00002584). The time to the waypoint is the direction's length over the charge
+// speed (0x000025A4).
+//
+// The new rotation: the actor's position and the direction give a look-at transform (with the
+// waypoint's forward column as the up vector, 0x000025EC), the target's quaternion comes from it
+// (0x00002604) and the actor's own quaternion (0x000024DC) is slerped towards it with the factor
+// clamp(1 - the time / the module's own time to the waypoint (the float at guest this+0xB88), 0, 1)
+// (0x00002634..0x00002678). The result is normalized (0x000026A4), turned into a transform
+// (0x000026B4) and the actor takes it (0x000026C0).
+//
+// The charge command: when the actor's facing and the direction differ by more than 10 degrees
+// (rodata_498 = 0.17453292, 0x000026D8) the commando is told to loop-attack, and the loop attack
+// type depends on the sign of the dot product between the direction and the actor's own right
+// column (guest this+0x24, 0x34 and 0x44, 0x000026E0..0x00002718): 6 when it is positive
+// (0x00002720..0x0000276C) and 5 when it is not (0x000027B0..0x000027FC). When the actor faces
+// the waypoint the type is 4 (0x00002840..0x00002890). The retail's loop attack types 5 and 6 are
+// past the host's pas::ELoopAttackType (it stops at kLAT_Four), so the value comes straight from
+// the asm. The guest also sets the command's flag byte's 0x80 bit (0x00002740, the retail's
+// skip-into flag), which the host's CBCLoopAttackCmd cannot be told about.
+//
+// The movement: the direction in the actor's own frame (TransposeRotate, 0x000028CC) times the
+// charge speed and the frame time (0x00002918) moves the actor, and the module's own push vector
+// (guest this+0xBB8) does the same when it is not zero (0x0000291C..0x000029A4), after which the
+// push vector is cleared (0x000029A8..0x000029C0).
+void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
+  const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
+  if (speed <= 0.f) {  // 0x000024B4..0x000024B8
+    return;
+  }
+  const CVector3f pos = GetTranslation();  // guest this+0x54
+  const CVector3f delta = xb94_ - pos;    // guest this+0xB94
+  CVector3f dir;
+  if (delta.IsMagnitudeSafe()) {  // 0x0000254C
+    dir = delta.AsNormalized();   // 0x00002560
+  } else {
+    dir = GetTransform().GetForward();  // 0x0000256C (guest this+0x28, 0x38 and 0x48)
+  }
+  const float time = dir.Magnitude() / speed;  // 0x000025A4
+  const CTransform4f lookAt = CTransform4f::LookAt(pos, pos + dir, xbac_);  // 0x000025EC
+  const CQuaternion current = CQuaternion::FromMatrix(GetTransform());  // 0x000024DC
+  const CQuaternion target = CQuaternion::FromMatrix(lookAt);  // 0x00002604
+  // the factor: clamp(1 - the time / the module's time to the waypoint, 0, 1) (0x00002634..0x00002678)
+  const float factor = CMath::Clamp(0.f, 1.f - time / xb88_, 1.f);
+  const CQuaternion turn = CQuaternion::SlerpLocal(current, target, factor);
+  SetTransform(turn.BuildNormalized().BuildTransform4f(pos));  // 0x000026A4..0x000026C0
+  const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), dir);  // 0x000026CC
+  int type = 4;  // 0x00002840
+  if (angle > 0.17453292f) {  // rodata_498 = 10 degrees, 0x000026D8
+    const float dot = CVector3f::Dot(dir, GetTransform().GetRight());  // 0x000026E0..0x00002718
+    type = (dot > 0.f) ? 6 : 5;  // 0x0000271C
+  }
+  BodyController()->CommandMgr().DeliverCmd(
+      CBCLoopAttackCmd(static_cast< pas::ELoopAttackType >(type), false));
+  // The movement: the direction in the actor's own frame (0x000028CC) times the charge speed and
+  // the frame time (0x00002918).
+  const CVector3f local = GetTransform().TransposeRotate(dir);
+  MoveInOneFrameOR(local * (speed * dt), dt);
+  if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {  // 0x0000291C..0x00002948
+    const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00002964
+    MoveInOneFrameOR(push * (speed * dt), dt);  // 0x000029A4
+    xbb8_ = CVector3f::Zero();  // 0x000029A8..0x000029C0
+  }
+}
+
 // fn_9_2D0C (0x384 bytes): the module's knock-back helper - the shield's and the blade's damage
 // and the knock-back they cause.
 //
