@@ -777,7 +777,10 @@ void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
   mgr.AddObject(explosion);
 }
 
-// fn_79_3774: the wing damage burst, on the growth's own locator (rodata_50) at model scale.
+// @ fn_79_3774: the wing damage burst, on the growth's own locator (rodata_50) at model scale.
+// The burst runs when a growth dies, which a beam hit on a growth did four times in a run.
+// The index guard is a port limit (the host indexes a C array; the retail trusts the growth
+// slot) and never fires.
 void CSwampBossStage2::SpawnWingDamageEffect(CStateManager& mgr, int idx) {
   if (idx < 0 || idx >= ARRAY_SIZE(kGrowthLocators)) {
     return;

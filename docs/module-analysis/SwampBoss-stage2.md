@@ -523,3 +523,116 @@ before the commit).
   `fn_79_2E84` (`PickSwoopTarget`, the `DarkLurk` state; both the dive and the plain arm and
   the "too close" skip ran) and `fn_79_33BC` (the damage memory; the entries reached zero and
   were erased).
+
+### 7.9 Every branch of the marked functions (2026-10-21, sixth lane pass)
+
+The retail's conditional branches of the five marked functions, what each one is, and how it was
+proved. The probe (one temporary `[arm]` line per arm, once per arm) was removed again before the
+commit; the lines quoted are from the runs. Classes: **(a)** compiler-generated (the null test
+after `new`, an inlined `rstl`/`CToken`/refcount helper, a loop condition), **(b)** a real arm
+that ran, **(c)** a real arm that the shipped data cannot reach, **(d)** a real reachable arm
+that did not run (the marker would have to go).
+
+**fn_79_1E40** (9 branches)
+
+| branch | what | class |
+|---|---|---|
+| 0x1E64 | the effect's asset id is 0xffff -> the early return; the port's `if (mData.bubbleTelegraphEffect == kInvalidAssetId) return;` | (c) the taken path is the "this area has no bubble effect" case; the body ran: `[arm] 1 1E40 body` |
+| 0x1E8C | the new `CElementGen` is null | (a) the compiler's null test after `new` |
+| 0x1F14 | the new pointer is the old one | (a) `rstl::single_ptr`'s self-assignment check |
+| 0x1F20 | the old generator is null -> no delete | (a) the null test before the deleting destructor |
+| 0x1F2C | the old token is null -> no destructor | (a) `CToken`'s null test |
+| 0x1F64 | the new pointer is null | (a) the compiler's null test after `new` |
+| 0x1F70 | the new token is null | (a) `CToken`'s null test |
+| 0x1F8C | the token's destructor is skipped when null | (a) `CToken`'s destructor guard |
+| 0x1FA0 | the second token's destructor is skipped when null | (a) `CToken`'s destructor guard |
+
+**fn_79_2A84** (5 branches)
+
+| branch | what | class |
+|---|---|---|
+| 0x2ABC | the shock wave's effect id is 0xffff -> the early return; the port's `if (mData.splashShockWave.shockWaveEffect == kInvalidAssetId) return;` | (c) the "this area has no shock wave" case; the body ran: `[arm] 3 2A84 body` |
+| 0x2B14 | the new `CShockWave` is null | (a) the null test after `new` |
+| 0x2BC8 | the string's `internal_dereference` is skipped when null | (a) an inlined `rstl::string` helper |
+| 0x2BD8 | the string's destructor is skipped when null | (a) an inlined `rstl::string` helper |
+| 0x2BEC | the new wave is null -> no `AddObject` | (a) the null test after `new` |
+
+**fn_79_3578** (5 branches)
+
+| branch | what | class |
+|---|---|---|
+| 0x35AC | the wind node does not cast to `CActor` -> the early return; the port's `if (!node) return;` | (c) the area has the wind node (IS08), so the taken path never comes; the body ran: `[arm] 5 3578 body` (and `[probe] fn_79_3578 body` x4 in the earlier runs) |
+| 0x366C | the new `CExplosion` is null | (a) the null test after `new` |
+| 0x372C | the string's `internal_dereference` is skipped when null | (a) an inlined `rstl::string` helper |
+| 0x3740 | the string's destructor is skipped when null | (a) an inlined `rstl::string` helper |
+| 0x3750 | the new explosion is null -> no `AddObject` | (a) the null test after `new` |
+
+**fn_79_2E84** (12 branches)
+
+| branch | what | class |
+|---|---|---|
+| 0x2ED0 | `mAttackType == 5` -> the cross (dive) walk; the port's `if (mAttackType == 5)` | (b) `[arm] 6 2E84 cross arm atk5` |
+| 0x2ED4, 0x2EDC, 0x2EE8 | the switch's range and case tests that route every other attack type to the same plain path | (a) the compiler's lowering of the same two-way test; the plain path ran: `[arm] 9 2E84 plain arm atk3`, `[arm] 11 2E84 plain arm other` |
+| 0x2FA4 | the node is the one nearest the player -> skip it; the port's `continue` | (b) `[arm] 7 2E84 skip nearest node` |
+| 0x3004 | the boss's side of the player-to-centre line -> break out of the walk; the port's `break` | (b) `[arm] 8 2E84 break on the far side` |
+| 0x3018 | the node walk's condition | (a) a loop condition |
+| 0x309C | the connected object does not cast to `CActor` -> skip it | (a) the cast's null test (the port's `if (!node) continue;`) |
+| 0x30A8 | `mAttackType != 5` -> no "too close" filter; the port's `mAttackType == 5 &&` | (b) the filter side ran: `[arm] 13 2E84 the dive filter applies` |
+| 0x30EC | the candidate is closer to the node nearest the player than the threshold -> skip it | (b) `[arm] 14 2E84 too close skip` |
+| 0x314C | the score is not better than the best so far -> skip it; the port's `else` | (b) `[arm] 16 2E84 score not better` (the other side: `[arm] 15 2E84 target updated`) |
+| 0x317C | the candidate walk's condition | (a) a loop condition |
+
+**fn_79_33BC** (2 branches)
+
+| branch | what | class |
+|---|---|---|
+| 0x3410 | the entry's time is above zero -> keep it; the port's `if (it->mTime <= 0.f) erase; else ++it;` | (b) both sides ran: `[arm] 17 33BC erase` and `[arm] 18 33BC entry kept` |
+| 0x3430 | the list's "is this last element?" test | (a) a loop condition |
+
+**fn_79_3774** (the wing damage burst, 5 branches) - marked from this pass as well: the burst runs
+when a growth dies, which the beam made happen four times in the run (`[arm] 20 3774 body`).
+
+| branch | what | class |
+|---|---|---|
+| 0x37FC | the new `CExplosion` is null | (a) the null test after `new` |
+| 0x38B0 | the string's `internal_dereference` is skipped when null | (a) an inlined `rstl::string` helper |
+| 0x38C4 | the string's destructor is skipped when null | (a) an inlined `rstl::string` helper |
+| 0x38D0, 0x38D4 | the new explosion is null -> no `AddObject` | (a) the null test after `new` |
+
+The port's own index guard (`if (idx < 0 || idx >= ARRAY_SIZE(kGrowthLocators)) return;`) is not in
+the retail, which trusts the growth slot; it is a port limit (the host indexes a C array) and never
+fires.
+
+### 7.10 fn_79_7E24 (the `Blow` state): what the asm says, and why it is not ported yet
+
+The dark phase now reaches `Blow` (the driver's runs: `dark fsm Level -> Blow`), so the state's
+body is finally reachable - but the port's `Blow` is a reconstruction, not retail's body, and
+porting it needs the flag semantics settled first. From the retail asm (`auto_00_00000000_text.s`,
+0x7E24..0x8238):
+
+- **The message dispatch** (r5): 0 = activate, 1 = update, 2 = deactivate (the host's
+  `ESteMsg` order: `kStateMsg_Activate`, `kStateMsg_Update`, `kStateMsg_Deactivate`).
+- **Activate (0x7E74):** the animation state at +0x6b4 becomes 1 (`kAS_Ready`) and the flag
+  word at +0xc74 loses **bits 25, 26 and 27** (the byte at 0xc77's bits 1, 2 and 3). The port
+  instead clears `mBubbleCreated`, `mWindPending` and `mBlowing` (bits 30, 29, 28).
+- **Update (0x7EA8):** `fn_801B73E4` (the retail's `CanIssueCommand`) with the command id 7
+  (`kAS_MeleeAttack`); if it can issue, a `CBCMeleeAttackCmd` is delivered with the severity
+  from `lbl_79_data_670` and the direction from the vector at +0x48c. Then the blow window:
+  the player's aim point against the head (+0xaa0), the forward dot (+0x28/+0x38/+0x48) and the
+  right dot against `rodata_10C * the scale at +0x60`, plus `mGrappleTime == 0` (+0xd8c). Inside
+  the window the player is pushed (`PushSustainedDamage`, `DisableControls(0xe2)`, the impulse
+  from +0x9a8/+0x9ac) and takes the blow damage (`mBlowDamageInfo` at +0xee4) every frame.
+  The wind effect (`fn_79_3578`) is called when **bit 25** is set, and bit 25 is cleared
+  afterwards; the sustained damage is popped when bit 27 goes back to 0.
+- **Deactivate (0x820C):** the sustained damage is popped and bit 27 cleared.
+
+**Why this is not ported in this slice:** the retail's `Blow` keys the wind effect and the
+sustained-damage cleanup on **bits 25 and 27**, while the port's `Blow` uses `mBubbleCreated`
+(bit 30) and `mWindPending` (bit 29) and its `DoUserAnimEvent` cases 0x29/0x2a/0x2b set those
+two bits. The retail's anim-event handler (fn_79_A838) sets **bit 24** after it calls
+`fn_79_1E40` (the bubble telegraph) and sets bit 27 in the same handler, so the port's flag
+names do not line up with the retail's bits either (the port's `mBigHit` is the retail's bit 24,
+the port's `mBubbleTelegraphed` is bit 31). Porting `Blow` faithfully therefore means first
+re-deriving the flag bits 24..27 across `DoUserAnimEvent` (a marked function), `ProcessDamage`
+and `Blow` - a separate slice, not a body swap. The port's `Blow` stays as it is (it is not
+marked).
