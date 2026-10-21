@@ -635,3 +635,35 @@ already-active hints).
 *SideDash* fn_10_153EC (+ fn_10_EDB8, the slot weights 0.6/0.7/1/1/0.8/0.8/0.9/0.9) is ported but
 unmarked: the actor's FSM2 (59 states, the MP2_DS_FSM dump) has no SideDash node, so no shipped
 transition enters it.
+
+## Slice 12 (2026-10-21)
+
+- fn_10_F40C (GetScannableObjectInfo) and fn_10_F488 (TakeDamage) ported, unmarked. New members:
+  `mPhazonHealthMark` (0x1054), `mPhazonPhase` (0x1060 bit 0x80), `mGuestD24` (0xD24),
+  `mAltScanInfo` (0x92C, the constructor locks the data's alternateScannableInfo).
+- Temple Grounds `12_temple_finalgate_dark` layer 4: stage 102a0045 (advance below 78%,
+  0xc96b8223 = 1, so the boss cannot die) links to 102a0044 (usesAlternateScannableInfo = 1, can die).
+  Boss u0564 has 1380 hp. Runs with `damage` from the console (it goes through TakeDamage):
+  - In 0045, 1380 damage: hp -20 is held at 1.0.
+  - After the advance, 50 damage: hp -49, the boss dies (Dead state).
+  - With the scan visor on, F40C answered the alternate token (alt=1, tok=1) after the advance and
+    the base path before it (alt=0) or while inactive.
+- Not run, so neither is marked:
+  - F488: the inactive arm, and the phazon-phase arms. mPhazonPhase is set only by fn_10_6BA0
+    (unported). Temple 0045 has phazonAttack 50, so shipped data reaches them.
+  - F40C: the not-alive arm, and the null-token arm with alt=1. That arm is unreachable on shipped
+    data: only Temple sets alt, and its boss has the token.
+- Agon natural run (console damage 30 hp per step to 240/600 hp; real fire with `press L+A` did no
+  damage): only the arms already seen ran naturally. They are 12B38 unmorphed, 141BC "inside"
+  (0.9), 164C0 and 16418 blocked, and 16984 on its first ray. A morphed player (`fastmorph`, X)
+  next to the boss never reached the collectors: the boss stayed in stand-in states
+  (MissileJump, NormalMissileAttack). The morph arm of 12B38 needs DiveAttack fn_10_11FA4
+  (0x764, a stand-in).
+- Think tail: FD4C is the stage-change watcher. On a new stage count (0x978 vs 0xD54, which
+  starts at 1) the previous stage's info +0x84 (`unknown_0x911a2476`) sets 0xD58 PissedOff, else
+  0xD59. Agon 182e0198 has it set, so porting FD4C alone would send the Agon boss into the
+  stand-in PissedOff/TravelToPissedOff states. Port it together with F930, FB8C, FAF4, FC64,
+  105F4 and 18F90.
+  1D6CC, 1D5C4 and 1B0E0 are the fade/invisibility block (0xDE8, 0xDEC, 0xDED, stage +0x33,
+  fn_10_18628). F654 ramps 0xD24 from the 0xCD0 sub-object's vector at 0xD18. Neither is
+  ported.
