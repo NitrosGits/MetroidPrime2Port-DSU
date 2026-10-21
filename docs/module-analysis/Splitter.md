@@ -1606,10 +1606,12 @@ gdb-forced runs of the same areas; every run caught=0. 98 markers checked:
 |---|---|
 | ALL-ARMS | 20 marked bodies, plus the no-branch ones |
 | untaken edges are not retail arms (switch `default`, the last `else if (Deactivate)`, `delete`'s null test) | 11804, 42F8, D3E0, D2A0, D13C, CF44, D0A4, DDF8, BEEC, the FSM states' `switch` |
-| untaken edges forced earlier / dead in shipped data (cited in the comments) | 55B0, 5568, 4138, 3BEC, 31A8, 4864, 4AC0, 3B34, 1790, 3460, 654C, E0B0, 8DF8, B57C, B1D8, B104, 963C, D7D4, DA38, A4E4, A37C, E4DC, CCF0, C8F4, C9E4, C51C, C034, AAC4, AB8C, 9FA8, 9B9C, AA68, E99C, E810 |
-| unmarked (an arm never ran, not proven dead) | 32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C, 8D50, F1C0, E87C |
+| untaken edges forced earlier / dead in shipped data (cited in the comments) | 55B0, 5568, 4138, 3BEC, 31A8, 4864, 4AC0, 3B34, 1790, 3460, 654C, E0B0, 8DF8, B57C, B1D8, B104, 963C, D7D4, DA38, A4E4, A37C, E4DC, CCF0, C8F4, C9E4, C51C, C034, AAC4, AB8C, 9FA8, 9B9C, E99C, E810 |
+| unmarked (an arm never ran, not proven dead) | 32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C, 8D50, F1C0, E87C, AA68 (below) |
 | newly marked (ALL-ARMS, no stand-in callee) | 2154 (teleport forced), 3D20, 9520 |
 
 ALL-ARMS but not marked: the two constructors (6B08, F5F8 keep only part of the retail state) and
 PortTargetDistanceSq (an inlined helper, no retail body). The F1C0 port read `active` after the
-base's AcceptScriptMsg; retail reads it first (0xF1E0-0xF1F4), fixed.
+base's AcceptScriptMsg; retail reads it first (0xF1E0-0xF1F4), fixed. AA68 tested the flag word
+at 0x828 with its two top bits; retail's `rlwinm. 30,30` and `clrlwi. 31` are 0x2 (lurk) and
+0x1 (crouch), fixed: lurk ran in a4d81547, relaxed in 914f1381, crouch (0x7D) not yet.

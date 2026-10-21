@@ -2209,18 +2209,17 @@ void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   }
 }
 
-// Arms: the remaining arm ran; the 0x40000000 and 0x80000000 arms are dead in shipped data (the
-// chassis flag words are 0x6E, 0x76, 0x7C and 0x7D; tools/scan_splitter_props.py).
-// @ fn_75_AA68
-// The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. The
-// word's bit 30 (the byte's 0x40, 0x0000AA78 rlwinm) gives kLT_Lurk (2, 0x0000AA88), the word's
-// bit 31 (the byte's 0x80, 0x0000AA90 clrlwi) gives kLT_Crouch (0, 0x0000AAA0) and anything
-// else kLT_Relaxed (1, 0x0000AAB0).
+// fn_75_AA68 (not marked: the masks were the word's two top bits until 2026-10-21; on the fixed
+// build lurk ran in 0n_cliff_hall a4d81547 and relaxed in 914f1381, crouch (0x7D) never ran)
+// The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. Its
+// 0x2 bit (0x0000AA78 rlwinm. r0, r4, 0, 30, 30) gives kLT_Lurk (2, 0x0000AA88), its 0x1 bit
+// (0x0000AA90 clrlwi. r0, r4, 31) kLT_Crouch (0, 0x0000AAA0) and anything else kLT_Relaxed (1,
+// 0x0000AAB0). The shipped words are 0x6E and 0x76 (lurk), 0x7C (relaxed) and 0x7D (crouch).
 void CSplitterMainChassis::PortSetLocomotionType() {
   const int flags = mData.mUnknownCEF5C2FE;
-  if ((flags & 0x40000000) != 0) {
+  if ((flags & 0x2) != 0) {
     BodyController()->SetLocomotionType(pas::kLT_Lurk);
-  } else if ((flags & 0x80000000) != 0) {
+  } else if ((flags & 0x1) != 0) {
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
   } else {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
