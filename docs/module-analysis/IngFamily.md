@@ -1105,6 +1105,17 @@ the ing spot's death sound instead. The sounds also stop on the delete, not in t
 (`fn_29_2194` is called from the Think, fn_29_C9A4), so the port's `StopSfx()` call left the
 death body.
 
+**`fn_29_B3C4` is not marked yet.** The body is the retail's, but no run has killed an Ing with
+it: the Ings of area 57 start as ing spots (the data's `kFlag_StartAsIngSpot`), and the ing-spot
+form takes no damage (A.19), so the death only happens in the corporeal form - which the runs in
+area 57 reached (the first run's log: "state Lurk form 2") but where the driver's damage never
+landed (the Ing was in the form 3 when the console's `damage` arrived). The arms that still need a
+run: the alive bit clear, the burn flags (the byte at 0x421's bits 1 and 2 - the Ing has to be
+burning when it dies, which is a lava/knock-back scenario), the form 3 (the ing spot, which
+cannot die) and the state argument -1 (no script messages). The death run itself
+(`/tmp/opencode/ing_lane/ing_death.sh`, the driver's `damage u<uid> 100` x3 after the log shows
+form 2) exits 0 with 0 `[port] caught` and 0 `[reach-stub]`, so the new body does not fault.
+
 **The next five hot behaviour bodies** (by the module's own call sites and by how often a run
 calls them), each read field by field against the REL - all five match the port:
 
