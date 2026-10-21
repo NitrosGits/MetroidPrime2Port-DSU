@@ -2010,6 +2010,13 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
 // at guest this+0x7C2) is played. When the actor is dead the block's "death" sound (the halfword
 // at guest this+0x7C4) is played instead, unless the knock-back manager's follow-up (the word at
 // guest this+0x634, the manager's +0x14) is one of the four death follow-ups (7, 8, 9 and 10).
+//
+// Run: the coverage build (build-port-cov), tools/cov/run.sh with tools/cov/specs/commandopirate_c300.py
+// and tools/drivers/commandopirate_c300.py in area 59 (05_temple_federationsite_dark): 15/15 lines,
+// 11/11 branches. The hurled arm ran once alive (the console's `damage <id> 1 60 supermissile`), and
+// eight times dead (`kill <id>` and the damage in the same tick): twice the death sound, six times a
+// death follow-up. The rag-doll branch is dead (the rag doll at guest this+0xBFC is always null).
+// @ fn_9_C300
 void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, IsOnGround());  // 0x0000C3D4..0x0000C3DC
   CPatterned::KnockBack(mgr, info);                                                        // 0x0000C3EC
