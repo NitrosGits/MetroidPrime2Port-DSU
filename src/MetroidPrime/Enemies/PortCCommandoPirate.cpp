@@ -2200,6 +2200,9 @@ bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& dat
   return x3338_IsJumpBackClear(mgr, -GetTransform().GetForward(), xbe0_);  // 0x0000BB60
 }
 
+// Run: cov 2026-10-21 (area 59, 05_temple_federationsite_dark, the warpout driver): every arm -
+// the gcov report gives 7/7 lines and 2/2 branches (the ray clear and the path finder).
+// @ fn_9_3338
 // fn_9_3338 (0x148 bytes): the module's jump-back helper, which both the jump-back trigger
 // (fn_9_BB10) and the dodge picker (fn_9_3678) call. The ray starts at the actor's bounding
 // box centre (the GetBoundingBox call at 0x00003374 and the GetCenterPoint call at
