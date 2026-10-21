@@ -230,6 +230,16 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
     mFlashTexture =
         TLockedToken< CTexture >(gpSimplePool->GetObj(SObjectTag('TXTR', data.mTXTR)));
   }
+  // The phazon infos 0xF80 (fn_10_20F50 at 0x000201D8) and 0x1064 (fn_10_20BFC at 0x0002022C).
+  if (data.mPhazonProjectile != kInvalidAssetId) {
+    mPhazonShotInfo = CProjectileInfo(data.mPhazonProjectile, data.mPhazonProjectileDamage);
+    mPhazonShotInfo.data().Token().Lock();
+  }
+  if (data.mPhazonSuperMissileProjectile != kInvalidAssetId) {
+    mPhazonSuperMissileInfo =
+        CProjectileInfo(data.mPhazonSuperMissileProjectile, data.mPhazonSuperMissileDamage);
+    mPhazonSuperMissileInfo.data().Token().Lock();
+  }
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
@@ -619,7 +629,7 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
       FireFreezeBeam(mgr); // fn_10_9164 at 0x0001C1E0
       break;
     case 0x800000:
-      StandIn("fn_10_5840", "DoUserAnimEvent Projectile 0x800000 (0x0001C1E8)");
+      FirePhazonVolley(mgr); // fn_10_5840 at 0x0001C1E8
       break;
     default:
       break;
@@ -874,9 +884,8 @@ CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& rol
 CProjectileInfo* CDarkSamus::ProjectileInfo() {
   // The switch on the current attack 0x980: the scatter shots 8 and 0x10 (0x0001C718) take the
   // second info 0xBB0 when 0xBAE is 1, the first 0xB50 otherwise; the missiles 0x40/0x80 the
-  // info 0xA0C (0x0001C734), 0x100 the super missile's 0xA4C (0x0001C73C). The 0x800000 infos
-  // (0xF80 / 0x1064 by 0xFB8) are not in the port yet, so that arm answers null as the default
-  // does (0x0001C770). Port limit: an info whose asset was invalid is never built on the host, so
+  // info 0xA0C (0x0001C734), 0x100 the super missile's 0xA4C (0x0001C73C), 0x800000 the phazon
+  // infos by 0xFB8: 0 the 0xF80 one (0x0001C760), 1 the 0x1064 one (0x0001C768), else null. Port limit: an info whose asset was invalid is never built on the host, so
   // it answers null too.
   switch (mCurrentAttack) {
   case 8:
@@ -890,6 +899,14 @@ CProjectileInfo* CDarkSamus::ProjectileInfo() {
     return mMissileInfo ? &mMissileInfo.data() : nullptr;
   case 0x100:
     return mSuperMissileInfo ? &mSuperMissileInfo.data() : nullptr;
+  case 0x800000:
+    if (mGuestFB8 == 0) {
+      return mPhazonShotInfo ? &mPhazonShotInfo.data() : nullptr;
+    }
+    if (mGuestFB8 == 1) {
+      return mPhazonSuperMissileInfo ? &mPhazonSuperMissileInfo.data() : nullptr;
+    }
+    return nullptr;
   default:
     return nullptr;
   }

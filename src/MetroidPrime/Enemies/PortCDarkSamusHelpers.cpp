@@ -23,6 +23,8 @@
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
+#include "MetroidPrime/CActorParameters.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -723,4 +725,130 @@ void CDarkSamus::RenderFlash() const {
   }
   (*mFlashTexture)->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
   DrawFlashQuad(GetFadeFactor(), mFlashSize);
+}
+
+// ---- dsfsm2 slice 9: the phazon volley ----
+
+// fn_10_5840 (0x00005840, 0x80 bytes): one missile of the phazon volley while 0xFB4 has any left
+// (0x0000585C, counted down at 0x00005864): 0xFB8 0 the phazon shot fn_10_50B8, which starts the
+// volley's clock 0xFCC at the elapsed time 0x8B0 if it is below 0.0f (0x00005898); 1 the phazon
+// super missile fn_10_4C40; any other value nothing.
+// @ fn_10_5840
+void CDarkSamus::FirePhazonVolley(CStateManager& mgr) {
+  if (mGuestFB4 <= 0) {
+    return;
+  }
+  --mGuestFB4;
+  switch (mGuestFB8) {
+  case 0:
+    FirePhazonShot(mgr);
+    if (mGuestFCC < 0.f) {
+      mGuestFCC = mElapsedTime;
+    }
+    break;
+  case 1:
+    FirePhazonSuperMissile(mgr);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_50B8 (0x000050B8, 0x788 bytes): a phazon shot. The dummy-target list 0x934 is padded with
+// kInvalidUniqueId to 12 (0x00005110). The shot leaves the root bone 0x8FC moved by a random
+// (x, y) in [-1.2, 1.2] (lbl_10_rodata_154 / 158, 0x000051E8 / 0x00005204) and up by 1.2 less
+// that offset's length (0x00005334), turned to look along the actor's flat forward plus 1.5 the
+// offset's direction plus 3 up (lbl_10_rodata_14C / 160 / 15C, LookAt from the zero vector at
+// 0x0000530C, SetRotation 0x00005318; the actor's own transform with the translation 1.3 times the
+// model's z scale up, 0x0000513C, is overwritten). It homes on the player unless the player orbits
+// the actor (its 0x3B0, 0x00005378); then the first free slot of 0x934 gets a new "DS3 Dummy
+// Target" CActor (lbl_10_rodata_1F0 + 0x2A, material kMT_Target = lbl_10_data_1AC 40, no model) at
+// the player moved -4..4 (lbl_10_rodata_164 / 168) across the flat direction from the actor
+// ((1, 0, 0) when that has no length, 0x0000543C) and 0.8 (lbl_10_rodata_16C) up, and the shot
+// homes on the list's first entry (0x00005648). Then, as CPatterned::LaunchProjectile: the info
+// cached (0x00005698), CanCreateProjectile kWT_AI with 14 (0x000056D4), a CEnergyProjectile
+// excluding kMT_Character, scale one, an empty visor effect (0x000057EC). Port limit: an info whose
+// asset was invalid is not built on the host, so no shot. The new's null check is left out.
+void CDarkSamus::FirePhazonShot(CStateManager& mgr) {
+  while (mGuest930 < 12) {
+    mGuest934[mGuest930] = kInvalidUniqueId.value;
+    ++mGuest930;
+  }
+  CTransform4f xf = GetTransform();
+  CVector3f forward(xf.Get01(), xf.Get11(), 0.f);
+  if (forward.CanBeNormalized() == true) {
+    forward.Normalize();
+  }
+  const float offsetX = mgr.Random()->Range(-1.2f, 1.2f);
+  const float offsetY = mgr.Random()->Range(-1.2f, 1.2f);
+  CVector3f side(offsetX, offsetY, 0.f);
+  if (side.CanBeNormalized() == true) {
+    side.Normalize();
+  }
+  const CVector3f target = forward * 1.f + side * 1.5f + CVector3f::Up() * 3.f;
+  xf.SetRotation(CTransform4f::LookAt(CVector3f::Zero(), target, CVector3f::Up()));
+  const float rise = 1.2f - CVector3f(offsetX, offsetY, 0.f).Magnitude();
+  xf.SetTranslation(CVector3f(mRootPos.GetX() + offsetX, mRootPos.GetY() + offsetY,
+                              mRootPos.GetZ() + rise));
+
+  TUniqueId homingTarget = kInvalidUniqueId;
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player->GetOrbitTargetId() != GetUniqueId()) {
+    homingTarget = player->GetUniqueId();
+  } else {
+    for (int i = 0; i < mGuest930; ++i) {
+      if (mGuest934[i] != kInvalidUniqueId.value) {
+        continue;
+      }
+      const TUniqueId uid = mgr.AllocateUniqueId();
+      mGuest934[i] = uid.value;
+      CTransform4f dummyXf = player->GetTransform();
+      const CVector3f& pos = GetTranslation();
+      CVector3f dir(dummyXf.Get03() - pos.GetX(), dummyXf.Get13() - pos.GetY(), 0.f);
+      if (dir.CanBeNormalized() == true) {
+        dir.Normalize();
+      } else {
+        dir = CVector3f(1.f, 0.f, 0.f);
+      }
+      const float across = mgr.Random()->Range(-4.f, 4.f);
+      dummyXf.SetTranslation(CVector3f(dummyXf.Get03() + across * dir.GetY(),
+                                       dummyXf.Get13() + across * -dir.GetX(),
+                                       dummyXf.Get23() + (across * 0.f + 0.8f)));
+      mgr.AddObject(rs_new CActor(
+          uid, rstl::string_l("DS3 Dummy Target"),
+          CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId), 0,
+          dummyXf, CModelData(), CMaterialList(kMT_Target), CActorParameters(), kInvalidUniqueId));
+      break;
+    }
+    if (homingTarget == kInvalidUniqueId) {
+      homingTarget = TUniqueId(mGuest934[0]);
+    }
+  }
+
+  CProjectileInfo* info = ProjectileInfo();
+  if (info == nullptr || !info->Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 14)) {
+    return;
+  }
+  mgr.AddObject(rs_new CEnergyProjectile(
+      true, info->Token(), kWT_AI, xf, kMT_Character, info->GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), homingTarget, 0, false, CVector3f(1.f, 1.f, 1.f),
+      CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f));
+}
+
+// fn_10_4C40 (0x00004C40, 0x15C bytes): the phazon super missile, from 5.3 (lbl_10_rodata_144)
+// above the root bone 0x8FC, looking at the player's aim position (its vtable 0x54 with no lead,
+// 0x00004CD8) 0.5 lower (lbl_10_rodata_148) with the world's up (0x00004D28); LaunchProjectile with
+// 14 at most, no attributes, homing, an empty visor effect and scale 1.0f (0x00004D74). The info
+// is ProjectileInfo's 0x1064.
+// @ fn_10_4C40
+void CDarkSamus::FirePhazonSuperMissile(CStateManager& mgr) {
+  const CVector3f from(mRootPos.GetX() + 0.f, mRootPos.GetY() + 0.f, mRootPos.GetZ() + 5.3f);
+  const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
+  const CVector3f to(aim.GetX() + 0.f, aim.GetY() + 0.f, aim.GetZ() + -0.5f);
+  CTransform4f xf = GetTransform();
+  xf = CTransform4f::LookAt(from, to, CVector3f::Up());
+  LaunchProjectile(xf, mgr, 14, 0, true, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
 }

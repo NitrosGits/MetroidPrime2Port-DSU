@@ -1147,6 +1147,16 @@ private:
   rstl::optional_object< TLockedToken< CTexture > > mFlashTexture;
   float mFlashSize = 0.f;
 #endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 9: the phazon volley (DoUserAnimEvent's 0x800000 shot).
+  void FirePhazonVolley(CStateManager& mgr);       // fn_10_5840
+  void FirePhazonShot(CStateManager& mgr);         // fn_10_50B8
+  void FirePhazonSuperMissile(CStateManager& mgr); // fn_10_4C40
+  // guest 0xF80 (the phazon sub-object's info, fn_10_20C2C from fn_10_20F50) and 0x1064
+  // (fn_10_20BFC): the infos ProjectileInfo answers for the attack 0x800000 by mGuestFB8 0 / 1.
+  rstl::optional_object< CProjectileInfo > mPhazonShotInfo;
+  rstl::optional_object< CProjectileInfo > mPhazonSuperMissileInfo;
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif
