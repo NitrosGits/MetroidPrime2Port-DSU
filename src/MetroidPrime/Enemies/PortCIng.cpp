@@ -917,8 +917,7 @@ void CIng::StopSfx() {
 // flag set the up vector (the normal's z under 0.95) and the right vector (z 0.95 and over). The
 // one arm that cannot run is "the blob is gone": the blob is made in the create branch
 // (fn_29_4830) and deleted in the delete branch, and the align runs from the Think, so the two
-// never overlap. The blob's class has no host counterpart for the model's stores, GeomBlobV2's
-// fn_25_256C and the byte 0x154, so those three steps have no host equivalent.
+// never overlap.
 void CIng::AlignBlobToSurface(CStateManager& mgr) {
   CEntity* blobEntity = mgr.ObjectById(mBlobId); // asm 0x00004634: the blob id (0xd5c)
   if (blobEntity == nullptr) {
@@ -950,10 +949,19 @@ void CIng::AlignBlobToSurface(CStateManager& mgr) {
     const CVector3f pos = GetTranslation(); // asm 0x000046D8/0x000046EC/0x00004700: 0x54/0x58/0x5c
     const CVector3f look = pos + normal;    // asm 0x00004770-0x00004788
     blob->SetTransform(CTransform4f::LookAt(pos, look, up)); // asm 0x0000478C/0x00004798
+    // asm 0x0000479C-0x000047E0: the blob's draw flags (0xfc..0x104): blend mode 2, material set 0,
+    // depth compare|update, and the Ing's damage colour (0x44c..0x44e) at full alpha.
+    blob->SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0,
+                                    static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                                                       CModelFlags::kF_DepthUpdate),
+                                    CColor(mDamageColor.GetRedu8(), mDamageColor.GetGreenu8(),
+                                           mDamageColor.GetBlueu8(), 0xff)));
   }
-  // asm 0x000047EC: GeomBlobV2's fn_25_256C(blob, align) - no host counterpart.
-  // asm 0x000047FC-0x0000480C: mDamageCooldownTimer (0x448) > 0 sets the blob's byte 0x154 bit 5
-  // (0x20) - no host counterpart.
+  CCollisionTracker* tracker = static_cast< CCollisionTracker* >(blob);
+  tracker->SetParticleEmissionRateScalar(align); // asm 0x000047EC: GeomBlobV2's fn_25_256C
+  // asm 0x000047F4-0x0000480C: the CR0 GT bit of mDamageCooldownTimer (0x448) > 0 goes to the
+  // blob's byte 0x154 bit 5 (0x20).
+  tracker->SetOwnerDamaged(mDamageCooldownTimer > 0.f);
 }
 
 // ---- triggers -------------------------------------------------------------------------------
