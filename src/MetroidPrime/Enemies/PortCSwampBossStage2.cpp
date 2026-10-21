@@ -1044,7 +1044,9 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
   --mChainDepth;
 }
 
-// @ fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk.
+// fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. Not marked:
+// the walk is driven by the boss's kSM_AreaLoaded message, which the harness never delivers to
+// it (the boss is created with the layer), so the body has not run.
 void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
                                          rstl::vector< TUniqueId >& nodes,
                                          rstl::vector< CVector3f >& positions) {
@@ -1060,8 +1062,9 @@ void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
   WalkChainNodes(mgr, node, nodes, positions);
 }
 
-// @ fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
-// walk follows the node's "ARRV/NEXT" connections.
+// fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
+// walk follows the node's "ARRV/NEXT" connections. Not marked, for the same reason as
+// fn_79_5830 above.
 void CSwampBossStage2::WalkChainNodes(CStateManager& mgr, CActor* node,
                                       rstl::vector< TUniqueId >& nodes,
                                       rstl::vector< CVector3f >& positions) {

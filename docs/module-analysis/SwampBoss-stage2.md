@@ -779,6 +779,8 @@ connections). Both are ported now (`CollectChainNodes`, `WalkChainNodes`) and th
 which is what the retail's `fn_79_B3CC` does (0xB6F8 and 0xB73C, the "IS02" and "IS07"
 connections).
 
+Both are **not marked**: the bodies have not run (see the classes below).
+
 **fn_79_5830** (`CollectChainNodes`)
 
 | branch | what | class |
