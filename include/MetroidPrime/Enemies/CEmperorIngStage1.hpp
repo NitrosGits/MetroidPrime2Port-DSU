@@ -6,11 +6,15 @@
 
 #ifdef TARGET_PC
 #include "Kyoto/Audio/CSfxHandle.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Math/CPlane.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
+#include "MetroidPrime/CPhysicsActor.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "MetroidPrime/Weapons/CShockWave.hpp"
 #include "Kyoto/TToken.hpp"
 
 class CCollisionActor;
@@ -35,6 +39,39 @@ class CParticleGenInfo;
 // objects outgrow retail, so the class is allocated with sizeof, not with 0xD18.
 #ifdef TARGET_PC
 class CEmperorIngStage1;
+
+// The module's own CPhysicsActor subclass (the retail's lbl_16_data_27C): the "Attack Tip"
+// warp portal actor that the boss's warp attack puts in the world (fn_16_1720). The retail's
+// object is 0x300 bytes; the members below carry the guest offsets of its own fields.
+class CEmperorIngStage1WarpPortal : public CPhysicsActor {
+public:
+  CEmperorIngStage1WarpPortal(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                              const CTransform4f& xf, const CModelData& modelData,
+                              const CActorParameters& actParms, CAssetId portalEffect,
+                              const CDamageInfo& stabDamage, ushort warpSound, ushort warpSound2);
+  ~CEmperorIngStage1WarpPortal() override;
+
+  // The class's vtable (lbl_16_data_27C, 36 slots) replaces five of CPhysicsActor's: the
+  // destructor (fn_16_0), Think (fn_16_1150), AcceptScriptMsg (fn_16_1574), Render (fn_16_1088)
+  // and slot 13 (fn_16_60 - CActor::GetHealthInfo, the base's own body). The last one is not
+  // ported: the host's CActor::GetHealthInfo does the same.
+
+  // CEntity
+  void Think(float dt, CStateManager& mgr) override;
+  void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
+
+  // CActor
+  void Render(const CStateManager& mgr) const override;
+
+private:
+  float mTimer;            // guest 0x2D0: the portal's timer
+  TUniqueId mEffectId;     // guest 0x2D4: the portal's effect
+  uchar mHit;              // guest 0x2D6: the portal has already hit the player
+  CAssetId mPortalEffect;  // guest 0x2D8: the effect's asset
+  CDamageInfo mStabDamage; // guest 0x2DC: the warp stab damage
+  ushort mWarpSound;       // guest 0x2F8: the portal's sound
+  ushort mWarpSound2;      // guest 0x2FA: the second portal's sound
+};
 
 // One tentacle slot, the module's own joint description (the retail element is 0x48 bytes, eight
 // of them at guest 0x7D8; the member names are guesses from what the code does with them).
@@ -92,6 +129,22 @@ public:
                     const SLdrEmperorIngStage1Data& data);
   ~CEmperorIngStage1() override;
 
+  // The module's vtable (lbl_16_data_3C8, 80 slots) replaces 24 of CPatterned's slots. Two of
+  // them the host base already does, so the port leaves them to the base:
+  //   slot 13 (fn_16_60) - CActor::GetHealthInfo: the retail body is the base's own (a virtual
+  //     call to slot 12, HealthInfo) and the host's CActor::GetHealthInfo does the same.
+  //   slot 16 (fn_16_B958) - CActor::GetTouchBounds: the retail body is CPhysicsActor's bounding
+  //     box in an optional (fn_16_BA30), which is what the host's CPatterned::GetTouchBounds
+  //     returns.
+  // The module's other deleting destructors (fn_16_48C, fn_16_3340, fn_16_3500, fn_16_55D4,
+  // fn_16_5610, fn_16_8844, fn_16_8880, fn_16_2A68, fn_16_2AB8, fn_16_4DF0, fn_16_87F0,
+  // fn_16_8784, fn_16_9824, fn_16_987C, fn_16_97CC, fn_16_9B04, fn_16_A780, fn_16_A840,
+  // fn_16_47DC, fn_16_5D60, fn_16_76F0, fn_16_96A4, fn_16_564C, fn_16_89B8 and fn_16_A904) are
+  // the slot 0 of the classes the module creates (the tokens, the animation data, the body
+  // state commands and the loader's script block); the host's own classes destroy their
+  // members, so none of them is ported. The map is in
+  // docs/module-analysis/EmperorIngStage1.md ("The vtable's local slots").
+
   // CEntity
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
@@ -143,6 +196,10 @@ public:
   void TauntAttack(CStateManager& mgr, EStateMsg msg, float dt);      // fn_16_5DBC
   void Taunt(CStateManager& mgr, EStateMsg msg, float dt);            // fn_16_5C4C
   void JumpRope(CStateManager& mgr, EStateMsg msg, float dt);         // fn_16_5928
+
+  // fn_16_9BE8 (0x9BE8..0x9E48, 0x260): the tentacle's portal effect is created; the id of the
+  // new effect is returned. The portal actor (fn_16_1574) creates one too.
+  static TUniqueId CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId, TAreaId area);
 
   // Codes (lbl_16_data_220, 3 entries).
   void BeginSubStage(CStateManager& mgr, float dt);             // fn_16_4AE8
@@ -241,6 +298,29 @@ private:
   void UpdateMeleeHits(float dt, CStateManager& mgr);
   // fn_16_8C: the sweeping tentacles' contact damage to the player.
   void UpdateTentacleHits(float dt, CStateManager& mgr);
+  // fn_16_1A50 (0x1A50..0x1C5C, 0x20C): the tentacle's portal starts - the joint takes the
+  // position and the up vector, the portal's effect is turned along the up vector and it hears
+  // "ACTV".
+  void StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up, CStateManager& mgr);
+  // fn_16_1950 (0x1950..0x1A14, 0xC4): the tentacle's portal stops - the joint's flag and its
+  // position are cleared and the portal's effect hears "DCTV".
+  void StopTentaclePortal(int index, CStateManager& mgr);
+  // fn_16_601C (0x601C..0x67EC, 0x7D0): the state "WarpAttack" - the portal block.
+  // 0x6364 / 0x6458: where the warp portal appears - the random point around the player's eye
+  // position or the ground point under the player - and where it looks.
+  void GetWarpPortalPlacement(CStateManager& mgr, CVector3f& pos, CVector3f& lookAt) const;
+  // fn_16_1720 (0x1720..0x18E8): the module's own CPhysicsActor subclass - the "Attack Tip"
+  // portal actor. It is over the slice's 0x80 line, so it stays a stand-in.
+  void CreateWarpPortalActor(CStateManager& mgr, const CModelData& modelData,
+                             const CTransform4f& xf);
+  // fn_16_1D38 (0x1D38..0x1E6C, 0xC4): the tentacle's draw flags for the model's draw pass.
+  CModelFlags BuildJointModelFlags(const CEmperorIngStage1Joint& joint) const;
+  // fn_16_1C94 (0x1C94..0x1CF4, 0x60): the tentacle's damage colour.
+  CColor GetJointDamageColor(const CEmperorIngStage1Joint& joint) const;
+  // fn_16_1C5C (0x1C5C..0x1C94, 0x38): the tentacle's plane (its up vector and its position).
+  CPlane GetJointPlane(const CEmperorIngStage1Joint& joint) const;
+  // fn_16_1CF4 (0x1CF4..0x1D38, 0x44): the tentacle's draw mask.
+  u64 GetJointDrawMask(const CEmperorIngStage1Joint& joint) const;
 
   // fn_16_2F70: how many tentacle slots the current sub-stage uses (4, 6 or 8).
   int TentacleCount() const;
@@ -259,6 +339,8 @@ private:
   CDamageInfo mMeleeDamage;                      // guest 0xB8C
   CProjectileInfo mProjectile;                   // guest 0xBB8 token, 0xBC4 damage
   TLockedToken< CGenDescription > mProjectileVisorEffect; // guest 0xBE0
+  CAssetId mWarpPortalEffect;                     // guest 0xC00: the warp portal's effect
+  SLdrAnimationSet mWarpAttackTip;                // guest 0xC04..0xC10: the "Attack Tip" ANCS
   CDamageInfo mWarpStabDamage;                   // guest 0xC10
   CProjectileInfo mBeamProjectile;               // guest 0xC80: the beam's weapon and damage
   SLdrPlasmaBeamInfo mBeamInfo;                  // guest 0xCA8: copied verbatim (fn_16_9610)
@@ -270,12 +352,17 @@ private:
   float mJumpRopeTurnSpeed;                      // guest 0xBF8, degrees per second (fn_16_5928)
   float mTurnSpeedAccel;                         // guest 0xBFC
   ushort mTentacleDamagedSound;                  // guest 0xC2C
+  ushort mWarpSound;                             // guest 0xC2E: the warp attack's sound
+  ushort mWarpSound2;                            // guest 0xC30: the warp portal's sound
   float mTauntFrequency;                         // guest 0xC34
+  float mTauntLoopDuration;                      // guest 0xC38: the taunt's loop duration
   float mAttackIntervalMin;                      // guest 0xCF4
   float mAttackIntervalMax;                      // guest 0xCF8
   float mModeOneHealth;                          // guest 0xBAC: below it the mode becomes 1 (fn_16_51D4)
   float mModeTwoHealth;                          // guest 0xBB0: below it the mode becomes 2
   SLdrAudioPlaybackParms mHeartDamageSound;      // guest 0xCFC
+  CShockWaveInfo mShockWaveInfo;                 // guest 0xC40: the taunt's shock wave
+  ushort mShockWaveTravelSound;                  // guest 0xC7C: the shock wave's travel sound
 
   // The module's own state, named from the retail offsets; the constructor's values are
   // fn_16_900C's.
@@ -298,9 +385,11 @@ private:
   float xa38_;                        // guest 0xA38, 0.0f: the jump rope's duration (fn_16_5928)
   float xa3c_;                        // guest 0xA3C, 0.0f: the heart-stage timer (fn_16_4BB4)
   float xa40_;                        // guest 0xA40, initial HP: the heart's last health (fn_16_51D4)
+  float xa44_;                        // guest 0xA44, 0.0f: the warp portal's timer (fn_16_601C)
   float xa48_;                        // guest 0xA48, 0.0f: the contact damage cooldown (fn_16_8C)
   float xa4c_;                        // guest 0xA4C, 4.0f: the attack timer (fn_16_4B04)
   float xa50_;                        // guest 0xA50, 0.0f: the taunt timer (fn_16_4AEC)
+  float xa54_;                        // guest 0xA54, 0.0f: the taunt attack's timer (fn_16_5DBC)
   float xa58_;                        // guest 0xA58, 0.0f: the "Damage" effect timer
   float xa5c_;                        // guest 0xA5C, 0.0f: the "Telegraph" effect timer
   float xa60_;                        // guest 0xA60, 0.0f: the beam's refire timer (fn_16_A64)
@@ -316,6 +405,7 @@ private:
   CEmperorIngStage1Joint mJoint;      // the joint being built (fn_16_2B68)
   CSfxHandle xa8c_;                   // guest 0xA8C, 0: the emitter that follows the target
   TUniqueId xa90_;                    // guest 0xA90, kInvalidUniqueId: that emitter's target
+                                      // (the shock wave's id after DoUserAnimEvent's case 17)
   CSfxHandle xa94_;                   // guest 0xA94, 0: the projectile charge's emitter
   TUniqueId xa98_;                    // guest 0xA98, kInvalidUniqueId: the heart stage's beam
   CSfxHandle xa9c_;                   // guest 0xA9C, 0: the beam's emitter
