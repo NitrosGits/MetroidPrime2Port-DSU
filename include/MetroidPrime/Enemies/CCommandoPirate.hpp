@@ -338,6 +338,18 @@ private:
   // and this+0xC38 follow the actor.
   void x4BC0_UpdateEmitters();
 
+  // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper. Not ported (the
+  // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
+  void x5410_CreateEGrenade();
+
+  // fn_9_1F88: the kUE_EventStart event's helper - the sound emitter and the module's state word.
+  // Not ported (0xd4 bytes, over the 0x80 limit), so it stays a stand-in.
+  void x1F88_EventStart();
+
+  // fn_9_1EF8: the kUE_Activate event's helper - the counterpart of fn_9_1F88. Not ported (0xd4
+  // bytes, over the 0x80 limit), so it stays a stand-in.
+  void x1EF8_Activate();
+
   // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
   bool x57A0_FireShot(CStateManager& mgr, float dt);
 

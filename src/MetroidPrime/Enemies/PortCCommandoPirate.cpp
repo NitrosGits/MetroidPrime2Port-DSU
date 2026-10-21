@@ -957,13 +957,97 @@ const CDamageVulnerability* CCommandoPirate::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
-// vtable slot 0x70 = fn_9_C798 (0x1ac): the user-event switch that starts the melee, the
-// E-grenade and the shield charge.
+// @ fn_9_C798
+// vtable slot 0x70 = fn_9_C798 (0x1ac): the module's user-event switch.
+//
+// fn_9_C798 (0x1ac bytes) switches on the event type (the jump table lbl_9_data_970, .data 0x970,
+// the 31 entries for the types 0..30; the types above 30 branch to the base at 0x0000C8FC). Each
+// of the module's own cases sets the "handled" register (r6, the test at 0x0000C8FC) and the
+// base's own DoUserAnimEvent (the call at 0x0000C918) is then skipped; the default case leaves
+// the register at zero and the base's call runs.
 void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                       EUserEventType type, float dt) {
-  StandIn("CCommandoPirate::DoUserAnimEvent (vtable slot 0x70, fn_9_C798)");
-  CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+  bool handled = false;                                              // r6, 0x0000C8D4
+  switch (type) {
+  case kUE_Projectile: {                                             // the entry 0 (+0xb8)
+    x5410_CreateEGrenade();                                          // 0x0000C850
+    handled = true;                                                  // 0x0000C854
+    break;
+  }
+  case kUE_DamageOn: {                                               // the entry 8 (+0x154)
+    mCurDamageRemTime = 0.f;                                         // 0x0000C8F8 (guest this+0x440)
+    handled = true;                                                  // 0x0000C8F0
+    break;
+  }
+  case kUE_DeGenerate:                                               // the entry 11 (+0x64)
+  case kUE_BecomeRagDoll: {                                          // the entry 19 (+0x64)
+    if (GetHealthInfo()->GetHP() <= 0.f) {                           // 0x0000C810..0x0000C824
+      xc00_ = 0.05f * mgr.Random()->Float() + 0.001f;                // 0x0000C828..0x0000C844
+    }
+    handled = true;                                                  // 0x0000C848
+    break;
+  }
+  case kUE_Landing: {                                                // the entry 12 (+0xe8)
+    if ((xc65_ & 0x04) != 0) {                                       // 0x0000C880..0x0000C888
+      xc64_ &= ~0x08;                                                // 0x0000C88C..0x0000C898
+    }
+    handled = true;                                                  // 0x0000C89C
+    break;
+  }
+  case kUE_TakeOff: {                                                // the entry 13 (+0xc4)
+    if ((xc65_ & 0x04) != 0) {                                       // 0x0000C85C..0x0000C864
+      xc64_ |= 0x08;                                                 // 0x0000C868..0x0000C874
+    }
+    handled = true;                                                  // 0x0000C878
+    break;
+  }
+  case kUE_BreakLockOn:                                              // the entry 22 (+0x5c)
+    handled = true;                                                  // 0x0000C7F4
+    break;
+  case kUE_EventStart: {                                             // the entry 28 (+0x10c)
+    if ((xc65_ & 0x04) != 0 || (xc65_ & 0x08) != 0) {               // 0x0000C8A4..0x0000C8B4
+      x1F88_EventStart();                                            // 0x0000C8B8..0x0000C8BC
+    }
+    handled = true;                                                  // 0x0000C8C0
+    break;
+  }
+  case kUE_Activate: {                                               // the entry 29 (+0x130)
+    if ((xc65_ & 0x04) != 0 || (xc65_ & 0x08) != 0) {               // 0x0000C8C8..0x0000C8D8
+      x1EF8_Activate();                                              // 0x0000C8DC..0x0000C8E0
+    }
+    handled = true;                                                  // 0x0000C8E4
+    break;
+  }
+  default:
+    break;                                                           // 0x0000C8FC (the base's call)
+  }
+  if (!handled) {
+    CPatterned::DoUserAnimEvent(mgr, node, type, dt);                // 0x0000C904..0x0000C918
+  }
 }
+
+// fn_9_5410 (0x370 bytes): the E-grenade's own creator - the kUE_Projectile event's helper. It
+// creates the "Commando E-Grenade" script object and clears the grenade-pending bit of the flag
+// byte at guest this+0xC63 (0x00005764). The port does not create that object yet, so the helper
+// stays a named stand-in.
+void CCommandoPirate::x5410_CreateEGrenade() { StandInFn("fn_9_5410 (0x370 bytes)"); }
+
+// fn_9_1F88 (0xd4 bytes): the kUE_EventStart event's helper. While the flag byte at guest this+0xC64
+// has its 0x80 bit it does nothing (the test at 0x00001FA0); otherwise it sets the 0x20 bit of the
+// byte at guest this+0xC66 (0x00001FB0), adds the sound emitter whose id is the module's word at
+// guest this+0x918 when the handle at guest this+0xC38 is null (0x00001FB8..0x00001FF0), writes
+// the module's state word at guest this+0xC4C (1, 0 or -1, the tests at 0x00001FF4..0x00002018),
+// the constant rodata_42C into guest this+0xC44 and the model's first float into guest this+0xC48.
+// Over the 0x80 limit, so it stays a named stand-in.
+void CCommandoPirate::x1F88_EventStart() { StandInFn("fn_9_1F88 (0xd4 bytes)"); }
+
+// fn_9_1EF8 (0xd4 bytes): the kUE_Activate event's helper - the counterpart of fn_9_1F88. While
+// the flag byte at guest this+0xC64 has its 0x80 bit it does nothing (0x00001F10); otherwise it
+// removes the sound emitter whose handle is at guest this+0xC38, adds the one whose id is the
+// module's word at guest this+0x91A (0x00001F24..0x00001F60) and zeroes the floats at guest
+// this+0xC48 and guest this+0xC50 (0x00001F6C..0x00001F70). Over the 0x80 limit, so it stays a
+// named stand-in.
+void CCommandoPirate::x1EF8_Activate() { StandInFn("fn_9_1EF8 (0xd4 bytes)"); }
 
 // vtable slot 0x84 = fn_9_BF44 (0x2b0): what the blade and the shield hit.
 void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
