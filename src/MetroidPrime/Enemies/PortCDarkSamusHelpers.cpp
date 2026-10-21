@@ -34,6 +34,7 @@
 #include "Kyoto/Particles/CParticleSwoosh.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -1060,5 +1061,44 @@ void CDarkSamus::UpdateBoostBallEffects(CStateManager& mgr, float dt) {
     mBoostBallSwooshE4C->SetGlobalScale(CVector3f(0.2f, 0.2f, 1.25f)); // 0x00009108
     mBoostBallSwooshE4C->SetModulationColor(CColor::White());          // 0x00009128
     mBoostBallSwooshE4C->Update(dt);                                   // 0x00009140
+  }
+}
+
+// fn_10_1D6CC (0x0001D6CC, 0xC8 bytes), Think's (0x0001B3E4): the visibility 0xDE8. Fading (0xDEC
+// == 1, 0x0001D6E0) and alive (0x420 bit 0x40, 0x0001D6FC) it drops by dt / lbl_10_rodata_248 =
+// 2.0f (0x0001D714), else it grows by dt / lbl_10_rodata_24C = 3.0f (0x0001D730); clamped to
+// [lbl_10_rodata_3FC = 0.0f, lbl_10_rodata_3E8 = 1.0f] (0x0001D744, 0x0001D758, the store at
+// 0x0001D764); the shadow is drawn while it is above 0.0f (SetDrawShadow at 0x0001D780).
+void CDarkSamus::UpdateFade(float dt) {
+  if (mFadeOut == 1 && GetAlive()) { // 0x0001D6E0, 0x0001D6FC
+    mGuestDE8 -= dt / 2.f;           // 0x0001D714
+  } else {
+    mGuestDE8 += dt / 3.f;           // 0x0001D730
+  }
+  const float v = mGuestDE8;
+  mGuestDE8 = 0.f > v ? 0.f : (1.f >= v ? v : 1.f); // 0x0001D744, 0x0001D758
+  SetDrawShadow(mGuestDE8 > 0.f);                    // 0x0001D774, 0x0001D780
+}
+
+// fn_10_1D5C4 (0x0001D5C4, 0x108 bytes), Think's (0x0001B438): the orbit, target and seeker
+// materials (0x29, 0x28, 0x3F) are added (0x0001D690) unless (RemoveMaterial at 0x0001D6AC) the
+// attack 0x980 is 0x8000 (0x0001D5F0), or the visibility 0xDE8 is 0.0f (0x0001D60C) with neither
+// visor bit 0xDED 0x80 (0x0001D618) nor 0x40 (0x0001D620), or - the visibility above 0.0f or a
+// visor bit set - the dark visor bit 0x80 (0x0001D638) with a stage (fn_10_17E14, 0x0001D650)
+// whose fourth bool +0x33 is set (0x0001D664).
+void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
+  bool targetable = true;
+  if (mCurrentAttack == 0x8000) { // 0x0001D5F0
+    targetable = false;
+  } else if (mGuestDE8 == 0.f && !mDarkVisorDED80 && !mEchoVisorDED40) { // 0x0001D610..0x0001D624
+    targetable = false;
+  } else if (mDarkVisorDED80 == true && GetBattleStage(mgr) != nullptr &&
+             GetBattleStage(mgr)->GetUnknown53FDCB5B() == true) { // 0x0001D63C, 0x0001D650, 0x0001D668
+    targetable = false;
+  }
+  if (targetable == true) { // 0x0001D678
+    AddMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
+  } else {
+    RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
   }
 }

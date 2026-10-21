@@ -316,6 +316,15 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
     UpdateHeadAim(mgr);    // fn_10_10A64 at 0x0001B330 (fn_10_1ACA0 before it is not ported)
     WatchStageChange(mgr); // 0x0001B33C
   }
+  // 0x0001B3DC: alive or not, the visibility fade, the env fx faded out while not fading
+  // (0xDEC == 0, 0x0001B3F0) and alive (0x0001B40C), the targetability, and the melee pulse and
+  // the boost ball's effects with dt.
+  UpdateFade(dt);                                  // fn_10_1D6CC at 0x0001B3E4
+  if (mFadeOut == 0 && GetAlive()) {
+    mgr.EnvFxManager()->FadeDensity(0.f, 4000);    // lbl_10_rodata_3FC, lbl_10_rodata_254 (0x0001B42C)
+  }
+  UpdateTargetable(mgr);                           // fn_10_1D5C4 at 0x0001B438
+  UpdateMeleePulseAndEffects(mgr, dt);             // fn_10_12DD0 at 0x0001B448
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it

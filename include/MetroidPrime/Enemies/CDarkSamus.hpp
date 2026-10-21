@@ -1167,7 +1167,7 @@ private:
   void RenderInvulnerableModel() const;                      // fn_10_183E8
   CColor GetSilhouetteColor() const;                         // fn_10_181E0
   // guest 0xDE8: the model's visibility; the constructor writes lbl_10_rodata_3E8 = 1.0f
-  // (0x00020094), Think's fades (fn_10_1B1FC, fn_10_1D6CC, unported) move it.
+  // (0x00020094), Think's fade (fn_10_1D6CC) moves it.
   float mGuestDE8 = 1.f;
   // guest 0xDED bits 0x80 / 0x40: PreRender's visor was the dark / echo visor (0x00018CD8 /
   // 0x00018CF0); the constructor clears both (0x000200A0 / 0x000200AC).
@@ -1194,6 +1194,11 @@ private:
   // guest 0xD48: the elapsed time 0x8B0 of the last twist; the constructor writes
   // lbl_10_rodata_410 = -1000.0f (0x0001FFF4).
   float mHeadTwistTime = -1000.f;
+#endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 11: Think's visibility fade and targetability.
+  void UpdateFade(float dt);                // fn_10_1D6CC
+  void UpdateTargetable(CStateManager& mgr); // fn_10_1D5C4
 #endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
