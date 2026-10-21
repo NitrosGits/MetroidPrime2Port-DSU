@@ -1641,10 +1641,13 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
 // the ground; the projectile reflect (0x000125CC..0x000125F0) and, before the launch, the dodge
 // (0x00012608..0x00012644). Deactivate (0x0001266C) stops the actor, clears the animation state
 // and 0xC00, delivers kBSC_NextState and turns the bubble off.
-// Unmarked: the static wall hit (0x00012534) needs the dive record's boost bit 0x01 (0xB20),
-// which only DiveFromBoost fn_10_9424 sets (`rlwimi r0, r3, 0, 31, 31` at 0x00009460), and it
-// is a stand-in; without the bit the collision failsafe (`clrlwi.` at 0x00012018) runs first
-// in the same message and puts an actor placed in a wall back at its safe position.
+// The static wall hit (0x00012534) needs the dive record's boost bit 0x01 (0xB20), which
+// DiveFromBoost fn_10_9424 sets (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, ported): without
+// the bit the collision failsafe (`clrlwi.` at 0x00012018) runs first in the same message and
+// puts an actor placed in a wall back at its safe position. With the bit set - the boost
+// ball's dive, forced with `fsm <id> DiveFromBoost` - an actor placed into the wall while it
+// is in flight reaches the static collision test and the wall bounce runs.
+// @ fn_10_11FA4
 void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveAttack", msg);
   UpdateCurrentAttack(0x20, mgr, msg);
@@ -1661,7 +1664,7 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     mDive.mTarget = GetDiveTarget(mgr);
     FindDiveLanding(mgr, &mDive.mTarget);
     SetDiveTargetVector();
-    DoDiveJumpCmd();
+    DoDiveJumpCmd(); // fn_10_12764 (0x000120FC)
     break;
   case kStateMsg_Update: {
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
@@ -2187,9 +2190,73 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
   }
 }
 
-void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_9424", "state DiveFromBoost");
+// fn_10_9424 (0x00009424, 0x184 bytes): the DiveFromBoost state, the dive out of the boost
+// ball. Only Activate runs the body (`mr. r31, r5` at 0x00009444 and `bne .L_0000954C` at
+// 0x00009454 skip it for the other messages): the dive record's boost bit 0x01
+// (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, the byte 0xB20), the roll emitter removed
+// (`bl RemoveEmitter__11CSfxManagerF10CSfxHandle` at 0x00009474) and its handle cleared
+// (`stw r0, 0xe6c(r29)` at 0x00009480), fn_10_9644 (the turn around, 0x00009484), 0xD24 =
+// lbl_10_rodata_284 = 0.5f (`stfs f0, 0xd24(r29)` at 0x000094A8), 0xEBC bit 0x40
+// (`rlwimi r3, r4, 6, 25, 25` at 0x000094B0), fn_10_9AC4 (the boost ball's deletion,
+// 0x0000953C) and fn_10_99B8 (0x00009548). Then the base state handler - the vtable's word
+// 136 (`lwz r12, 0x220(r12)` at 0x00009560), the DiveAttack state fn_10_11FA4 - runs on
+// every message. Deactivate (`cmpwi r31, 0x2` at 0x0000956C) clears the boost bit again
+// (`rlwimi r0, r3, 0, 31, 31` at 0x0000957C).
+// Outside the port: the boost ball's particle effects - the two swooshes (guest 0xE3C /
+// 0xE4C) and the element generator (guest 0xE60 / 0xE64). fn_10_9B24, which builds them,
+// has no host counterpart and the loader's swoosh tokens are not in the host, so the
+// pointers are always null and fn_10_99B8's "stop the old effect" calls (0x000099F4,
+// 0x00009A20 and 0x00009A68) and fn_10_9424's (0x000094EC) have nothing to stop. That is
+// why this body has no `// @` marker: one of its calls is outside the port.
+void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveFromBoost", msg);
+  if (msg == kStateMsg_Activate) {                 // 0x00009454 `bne .L_0000954C`
+    mDive.mFromBoost = true;                       // 0x00009460 `rlwimi r0, r3, 0, 31, 31`
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009474
+    mBoostBallRollSfx = CSfxHandle();              // 0x00009480 `stw r0, 0xe6c(r29)`
+    TurnAround();                                  // fn_10_9644, 0x00009484
+    mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000094A8
+    mBoostBallFlag40 = true;                       // 0x000094B0 `rlwimi r3, r4, 6, 25, 25`
+    DeleteBoostBall(mgr);                          // fn_10_9AC4, 0x0000953C
+    // fn_10_99B8 (0x00009548) stops the boost ball's particle effects; the port has none.
+  }
+  DiveAttack(mgr, msg, dt); // 0x00009560, the vtable's word 136
+  if (msg == kStateMsg_Deactivate) { // 0x0000956C `cmpwi r31, 0x2`
+    mDive.mFromBoost = false;        // 0x0000957C `rlwimi r0, r3, 0, 31, 31`
+  }
+}
+
+// fn_10_9644 (0x00009644, 0xDC bytes): the actor turned around. Its facing (the transform's
+// Y column, guest 0x28/0x38/0x48) is a vector that is normalized when it can be
+// (`clrlwi r0, r3, 24` and `cmplwi r0, 0x1` at 0x00009688 and 0x0000968C), scaled by
+// lbl_10_rodata_288 = -1.0f (0x000096C0) and used as the LookAt target (0x000096E4); the
+// matrix's quaternion (0x000096F0) and the actor's position (guest 0x54, 0x000096FC) build
+// the transform (0x00009700) the actor takes (0x0000970C).
+// The arm whose facing cannot be normalized is dead: the transform's Y column is a unit
+// vector, so CanBeNormalized is always true.
+// @ fn_10_9644
+void CDarkSamus::TurnAround() {
+  CVector3f dir = GetTransform().GetColumn(kDY); // guest 0x28/0x38/0x48
+  if (dir.CanBeNormalized() == true) {            // 0x0000968C
+    dir.Normalize();
+    SetTransform(CQuaternion::FromMatrix(CTransform4f::LookAt(CVector3f::Zero(), -1.f * dir,
+                                                               CVector3f::Up()))
+                     .BuildTransform4f(GetTranslation()));
+  }
+}
+
+// fn_10_9AC4 (0x00009AC4, 0x60 bytes): the boost ball actor (guest 0xE38) deleted from the
+// state manager (`bl DeleteObjectRequest__13CStateManagerF9TUniqueId` at 0x00009B00) and the
+// uid set to kInvalidUniqueId (`sth r0, 0xe38(r31)` at 0x00009B0C), unless it already is (the
+// test at 0x00009AE8).
+// Unmarked: the arm that deletes an actor needs a boost ball in the world. The uid 0xE38 is
+// set by the BoostBallRoll (fn_10_A3B0) and BoostBallFire (fn_10_9724) paths, which are
+// outside the port, so only the "no ball" arm ran.
+void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
+  if (mBoostBallUid != kInvalidUniqueId) { // 0x00009AE8
+    mgr.DeleteObjectRequest(mBoostBallUid); // 0x00009B00
+    mBoostBallUid = kInvalidUniqueId;       // 0x00009B0C
+  }
 }
 
 void CDarkSamus::EnrageHitReact(CStateManager&, EStateMsg msg, float) {

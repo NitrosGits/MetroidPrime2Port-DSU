@@ -589,6 +589,10 @@ private:
   void StartDiveBubble(CStateManager& mgr);
   // fn_10_1C99C: CollidedWith's dive arm (a wall bounces, the floor or the player lands).
   void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
+  // fn_10_9644: the actor turned around (its facing negated).
+  void TurnAround();
+  // fn_10_9AC4: the boost ball actor deleted.
+  void DeleteBoostBall(CStateManager& mgr);
   // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
   void ReflectProjectiles(CStateManager& mgr);
   // fn_10_1B9B0: whether the projectile may be sent back (type -1 = any weapon type).
