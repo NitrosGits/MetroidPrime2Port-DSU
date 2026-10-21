@@ -1017,3 +1017,66 @@ transition enters it.
   in the fights that were run, and the trigger's body did not run.
 - Marked: F100.
 - Unmarked: 1BB08 (its body never ran) and 1EE4C (three of its arms did not run).
+
+## 8. Function classification (all 535 functions)
+
+`docs/module-analysis/DarkSamus_functions.tsv` has one row per function of
+`config/G2ME01/rels/DarkSamus/symbols.txt` (offset, size, class, kind, name, the number of
+REL callers, whether the port has a `// @ fn_10_` marker, and the FSM state or trigger it
+belongs to). The classes follow the Sandworm note's rule set (section g there), so the table can
+be audited:
+
+- **H - host copy** (78 functions, 0x1CC4 bytes): the body is a copy of something the host
+  already has, so the port writes no body for it. The crtexe runtime (7 symbols: the prolog,
+  the epilog, the unresolved stub, the global chain, the module constructors and destructors),
+  the compiler-emitted destructors of the loader's token members (the bodies that call
+  `Free__7CMemoryFPCv` and `__dt__6CTokenFv`) and the DOL class members the REL copies
+  (the weapon, the collision actor manager, the cube renderer, the particle system).
+- **T - data / vtable thunk** (52 functions, 0x301C bytes): the body only returns a constant, a
+  member address or a flag - the port writes it as one line in the vtable (the twelve vtable
+  thunks: GetSearchPath, GetPointSearchPath, CanBeShot, IsListening, Listen, GetOrigin,
+  GetModelAlphau8, GetDeathExplosionParticle, GetAttackTarget, IsOnGround, GetGravityConstant
+  and GetTouchBounds), the twenty-five FSM handlers whose body is a single flag, and the
+  functions nothing calls.
+- **B - module behaviour** (405 functions, 0x1E418 bytes): real behaviour - these are the port
+  bodies. 79 of them carry a `// @ fn_10_` marker.
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 78 | 0x1CC4 (7,364) |
+| T data / vtable thunk | 52 | 0x301C (12,316) |
+| B module behaviour | 405 | 0x1E418 (123,672) |
+| **total** | **535** | **0x254F8 (152,352)** |
+
+The B list (343 unmarked) is in `DarkSamus_functions.tsv` with the `state` column, so the port
+order follows the FSM: the 62 unmarked handlers first (by the state's name), then the helpers.
+
+## Slice 22 (2026-10-21): the classification and the triggers
+
+- **The classification** (the section above and `DarkSamus_functions.tsv`): the 535 functions
+  split into 78 H, 52 T and 405 B. The rules are mechanical: the crtexe runtime and the bodies
+  that only call the host's own code (the token destructors, the DOL class copies) are H; a body
+  with no call, no branch and at most six instructions is a thunk (T); everything else is B.
+- **Ported: eight triggers and the Alerted one.** fn_10_10634 (CanMeleeAttack: fn_10_17D50 with
+  the attack 1), fn_10_142CC (FacingPlayer: fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f),
+  fn_10_17CB8 (OutOfMeleeRange: the distance to the player against lbl_10_rodata_460 = 30.0f),
+  fn_10_112E8 (PlayerIsMorphball: fn_10_11308), fn_10_10658 (PlayerTooClose: the distance
+  against the actor's own minimum attack range 0x3DC), fn_10_6B78 (ShouldEnragedMelee:
+  fn_10_1AA6C, the range band 1), fn_10_BB78 (ShouldFadeIn: no fight script, or the stage info's
+  +0x31 is 0) and fn_10_112AC (WasHeavyHit: the last hit's elapsed time 0xC0C is not 0.0f and
+  lbl_10_rodata_46C = 0.3f plus it is past the actor's elapsed time 0x8B0), plus fn_10_F840
+  (Alerted: the flag byte 0x90C's bit 0x80).
+- Marked: fn_10_10658 (PlayerTooClose) - both outcomes ran (the boss far away and next to the
+  player) - and fn_10_17CEC (GetDistanceToPlayer), which has no branch and runs in every fight.
+- The other seven are ported but unmarked: their arms did not all run. The FSM2 evaluates a
+  state's transitions in order and stops at the first that fires, and the module's own
+  ShouldReact asks CanMissileDeflect first, so fn_10_142CC (FacingPlayer) is never reached in
+  the shipped stages (the stage info's +0x24 is not below zero); fn_10_112AC's true arm needs
+  0xC0C, which the 'XDMG' arm writes only when the reflect chance passes (the stage's chance
+  is below every roll that came up); fn_10_10634, fn_10_17CB8 and fn_10_112E8 have no FSM2
+  transition at all; fn_10_6B78 belongs to the EnragedTravel state, which the phazon enrage
+  never reaches; fn_10_BB78 is behind the earlier transitions of TravelToCoverPoints.
+- The run: Sanctuary 10_cliff_rooftop, boss u04f7, 4000 frames - the boss next to the player
+  (`place u04f7 player 3`), the missiles at it (the Y button, `press Y 45`), the states that
+  use the triggers forced one after the other (`fsm u04f7 Taunt` and so on). 0 caught, 0
+  reach-stub, exit 0.

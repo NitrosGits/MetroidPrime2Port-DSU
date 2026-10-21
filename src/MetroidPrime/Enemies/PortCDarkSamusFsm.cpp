@@ -968,9 +968,10 @@ void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
 
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
+// fn_10_F840 (0x0000F840, 0xC bytes): the flag byte 0x90C's bit 7 - the extrwi at 0x0000F844
+// keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24) = 0x80).
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_F840", "trigger Alerted");
-  return false;
+  return (mFlags90C & 0x80) != 0;
 }
 
 bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
@@ -1055,9 +1056,10 @@ bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::CanMeleeAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10634", "trigger CanMeleeAttack");
-  return false;
+// fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
+// at 0x0001063C), the port's IsAttackEnabled.
+bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
+  return IsAttackEnabled(mgr, 1);
 }
 
 // fn_10_14284 (0x00014284): the fight script's object (fn_10_17E14) - without one the trigger
@@ -1090,9 +1092,10 @@ bool CDarkSamus::DoneTurning(CStateManager&, const CTriggerData&) const {
   return mTurnDone != 0;
 }
 
-bool CDarkSamus::FacingPlayer(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_142CC", "trigger FacingPlayer");
-  return false;
+// fn_10_142CC (0x000142CC, 0x28 bytes): fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f
+// (10 degrees, the lfs at 0x000142DC), the port's IsPlayerInFront.
+bool CDarkSamus::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
+  return IsPlayerInFront(mgr, 0.17453292f);
 }
 
 bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
@@ -1100,9 +1103,11 @@ bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::OutOfMeleeRange(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_17CB8", "trigger OutOfMeleeRange");
-  return false;
+// fn_10_17CB8 (0x00017CB8, 0x34 bytes): fn_10_17CEC (the distance to the player) against
+// lbl_10_rodata_460 = 30.0f (the lfs at 0x00017CCC); the extrwi at 0x00017CD8 takes the
+// compare's "greater than" bit.
+bool CDarkSamus::OutOfMeleeRange(CStateManager& mgr, const CTriggerData&) const {
+  return GetDistanceToPlayer(mgr) > 30.f;
 }
 
 // fn_10_116F8 (0x000116F8): the word at 0x984 - the fight script's picked attack id - against
@@ -1230,14 +1235,17 @@ bool CDarkSamus::PickedTaunt(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x200;
 }
 
-bool CDarkSamus::PlayerIsMorphball(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_112E8", "trigger PlayerIsMorphball");
-  return false;
+// fn_10_112E8 (0x000112E8, 0x20 bytes): fn_10_11308, the port's IsPlayerMorphed.
+bool CDarkSamus::PlayerIsMorphball(CStateManager& mgr, const CTriggerData&) const {
+  return IsPlayerMorphed(mgr);
 }
 
-bool CDarkSamus::PlayerTooClose(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10658", "trigger PlayerTooClose");
-  return false;
+// fn_10_10658 (0x00010658, 0x40 bytes): fn_10_17CEC (the distance to the player) against the
+// actor's own minimum attack range 0x3DC (the lfs at 0x0001066C); the srwi at 0x0001067C takes
+// the compare's "less than" bit.
+// @ fn_10_10658
+bool CDarkSamus::PlayerTooClose(CStateManager& mgr, const CTriggerData&) const {
+  return GetDistanceToPlayer(mgr) < mMinAttackRange;
 }
 
 // fn_10_FAF4 (0x0000FAF4, 0x98 bytes): no area hint of type 0xE (fn_10_FC64, 0x0000FB14) is
@@ -1258,14 +1266,19 @@ bool CDarkSamus::ReadyForMissiles(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::ShouldEnragedMelee(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6B78", "trigger ShouldEnragedMelee");
-  return false;
+// fn_10_6B78 (0x00006B78, 0x28 bytes): fn_10_1AA6C, the port's GetPlayerRangeBand: the
+// trigger answers when the player is inside the attack range (the band 1; the module's note
+// says the FSM2 reads the trigger's low byte and compares it with 1).
+bool CDarkSamus::ShouldEnragedMelee(CStateManager& mgr, const CTriggerData&) const {
+  return GetPlayerRangeBand(mgr) == 1;
 }
 
-bool CDarkSamus::ShouldFadeIn(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_BB78", "trigger ShouldFadeIn");
-  return false;
+// fn_10_BB78 (0x0000BB78, 0x6C bytes): the fight script's object (fn_10_17E14) - without one
+// the trigger answers true (the beq at 0x0000BBA4) - and its byte at the stage info's +0x31
+// (the lbz at 0x0000BBB4), which must be 0.
+bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  return stage == nullptr || !stage->GetFadeOutFlag();
 }
 
 // fn_10_BBE4 (0x0000BBE4): the fight script's object (fn_10_17E14) - without one the trigger
@@ -1393,9 +1406,15 @@ bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
   return (0.2f + mLastWallHitTime) > mElapsedTime;
 }
 
-bool CDarkSamus::WasHeavyHit(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_112AC", "trigger WasHeavyHit");
-  return false;
+// fn_10_112AC (0x000112AC, 0x3C bytes): the elapsed time of the last hit (the guest's 0xC0C)
+// must not be 0.0f (the fcmpu at 0x000112B8) and lbl_10_rodata_46C = 0.3f plus it must be
+// past the actor's elapsed time 0x8B0 (the fcmpo at 0x000112D8, whose "greater than" bit the
+// extrwi at 0x000112E0 takes).
+bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
+  if (mGuestC0C == 0.f) {
+    return false;
+  }
+  return 0.3f + mGuestC0C > mElapsedTime;
 }
 
 // ---- the state bodies (stand-ins) --------------------------------------------------------------
@@ -3356,7 +3375,9 @@ bool CDarkSamus::IsPlayerMorphed(CStateManager& mgr) {
 }
 
 // fn_10_17CEC (0x00017CEC, 0x64 bytes): the distance from the player (0x14FC) to the actor
-// (the fsubs of 0x54/0x58/0x5C and Magnitude at 0x00017D3C).
+// (the fsubs of 0x54/0x58/0x5C and Magnitude at 0x00017D3C). It has no branch, and it runs in
+// every fight (the attack pick and the triggers call it).
+// @ fn_10_17CEC
 float CDarkSamus::GetDistanceToPlayer(CStateManager& mgr) const {
   return (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude();
 }
