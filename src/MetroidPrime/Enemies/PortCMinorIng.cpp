@@ -1808,6 +1808,11 @@ void CMinorIng::PuddleDamage(CStateManager& mgr, TUniqueId sender) {
 }
 
 // @ fn_44_2CD8
+// The retail's damage source hands the damage info out through a copy of it (asm 0x2D48, 0x2E44
+// and 0x2EC8): fn_44_2EF4 -> fn_44_2F24 -> fn_44_2FB0 is the REL's own copy of CDamageInfo
+// (0x1c bytes: the weapon mode, the four floats, the three sound ids and the two flag bits; the
+// byte at +0x1c is the caller's own). The host's CDamageInfo owns its copy, so the body is the
+// assignment.
 bool CMinorIng::DamageSource(CStateManager& mgr, TUniqueId touched, TUniqueId& attacker,
                              CVector3f& direction,
                              rstl::optional_object< CDamageInfo >& damage) const {
