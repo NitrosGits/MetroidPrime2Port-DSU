@@ -142,9 +142,15 @@ def attach_id(blocks, lines, start_line):
     if exact:
         group = exact
     else:
+        # Between the block and the definition: blank lines, preprocessor lines (#ifdef TARGET_PC),
+        # template headers and the head of a signature split over lines (the return type) only;
+        # never the end of another body or statement.
+        def filler(text):
+            t = text.strip()
+            return not t or t.startswith("#") or ("{" not in t and not t.endswith((";", "}")))
         group = [b for b in blocks
-                 if 0 < start_line - 1 - b[0] <= 2
-                 and all(not lines[i].strip() for i in range(b[0], start_line - 2))]
+                 if 0 < start_line - 1 - b[0] <= 3
+                 and all(filler(lines[i]) for i in range(b[0], start_line - 1))]
     if not group:
         return None
     ids = set()
@@ -269,15 +275,17 @@ def function_stats(fn):
         total += 1
         if line.get("count", 0) > 0:
             hit += 1
-        for branch in line.get("branches", []):
-            if branch.get("throw"):
-                continue  # an exception edge (a call that can throw): not an arm of the body
+        arms = [b for b in line.get("branches", []) if not b.get("throw")]  # exception edges are not arms
+        for k, branch in enumerate(arms):
             branches += 1
             if branch.get("count", 0) > 0:
                 taken += 1
             else:
-                untaken.append(line.get("line_number", 0))
-    return hit, total, branches, taken, sorted(set(untaken))
+                # line:k/m - edge k of the line's m (gcov's order; a two-way test's edge 0 is
+                # usually the jump, 1 the fall-through: check the counts of the other edge).
+                n = line.get("line_number", 0)
+                untaken.append((n, f"{n}:{k}/{len(arms)}" if len(arms) > 1 else str(n)))
+    return hit, total, branches, taken, [t for _, t in sorted(set(untaken))]
 
 
 def main():
