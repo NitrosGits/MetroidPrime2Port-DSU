@@ -18,6 +18,7 @@ class CBCProjectileAttackCmd;
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+class CScriptAIHint;
 struct SLdrDSStageInfo;
 
 // Host copy of the properties the DarkSamus loader reads (fn_10_CF44 reads the module's 63
@@ -167,21 +168,49 @@ struct CDarkSamusData {
 // freeze beam, the sweep beam and the phazon enrage are later milestones, and every override that
 // belongs to them forwards to CPatterned behind a once-only stand-in log.
 // The dash record at the guest's 0x9E0..0xA08 (fn_10_15348 builds it, the constructor at 0x0001FD04
-// and the Dash state on a stack copy at 0x0001518C). Names are the guest offsets until the dash
-// chain (fn_10_14A00/14D14/154FC) that fills them is ported.
+// and the Dash state on a stack copy at 0x0001518C). fn_10_154FC fills it with the dash it picks.
 struct CDarkSamusDash {
   CDarkSamusDash(); // fn_10_15348
 
-  int mGuest9E0;          // +0x00, -1 (0x000153D4)
-  CVector3f mGuest9E4;    // +0x04, the zero vector, then +0x10's (0x000153B8..0x000153CC)
-  CVector3f mGuest9F0;    // +0x10, the zero vector (0x0001537C..0x0001538C, again 0x000153A0..)
-  int mGuest9FC;          // +0x1C, -1 (0x000153D0); fn_10_1DF74 sets it to -1 on a new cover point
-  float mGuestA00;        // +0x20, lbl_10_rodata_3FC = 0.0f (0x000153D8)
-  int mGuestA04;          // +0x24, 0 (0x00015390); BreakDash answers false while it is above 0
+  int mSlot;                 // +0x00, the picked dash slot 0..7 (fn_10_154FC at 0x00015F94); -1
+  CVector3f mDestination;    // +0x04, the picked slot's end point (0x00015FA8..0x00015FB4)
+  CVector3f mStartPosition;  // +0x10, the actor's position at the pick (0x00015FBC..0x00015FCC)
+  int mLastSlot;             // +0x1C, the slot of the previous dash (fn_10_12CE0 at 0x00012DB0);
+                             // fn_10_1DF74 sets it to -1 on a new cover point
+  float mWeight;             // +0x20, the picked slot's weight (0x00015FD4)
+  int mStepsLeft;            // +0x24, the extra steps of a double dash (fn_10_14D14 sets 1 at
+                             // 0x00014DC0, fn_10_14C50 counts down); BreakDash waits while above 0
   // +0x28, flags, MSB-first: 0x80 (`rlwimi 7,24,24` at 0x000153E0, BreakDash's `extrwi 1,24`)
   // and 0x40 (`rlwimi 6,25,25` at 0x00015398), both clear
-  bool mGuestA08Bit80 : 1; // 0x28 mask 0x80
-  bool mGuestA08Bit40 : 1; // 0x28 mask 0x40
+  bool mBlocked : 1;    // 0x28 mask 0x80, no slot has any weight: the dash ends (BreakDash)
+  bool mDoubleDash : 1; // 0x28 mask 0x40, fn_10_150DC rolled the stage's chanceToDoubleDash
+};
+
+// The dive record at the guest's 0xAC0..0xB28 (fn_10_E784 builds it from the data's
+// diveAttackDamage, the constructor's call at 0x0001FE64). Not on the host: the +0x4C float
+// (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f), the +0x50/+0x54 floats (the constructor's
+// f26/f27) and the CCollidableAABox at +0x68 (fn_10_E784 at 0x0000E8A8) - no ported reader uses
+// them.
+struct CDarkSamusDive {
+  explicit CDarkSamusDive(const CDamageInfo& damage); // fn_10_E784
+  void Reset();                                       // fn_10_E910
+
+  CVector3f mTarget;     // +0x00 (0xAC0), where the dive lands (fn_10_12B38 / fn_10_12960)
+  CVector3f mStart;      // +0x0C (0xACC), the actor's position at the launch ('XLAU')
+  CVector3f mBounceDir;  // +0x18 (0xAD8), the direction fn_10_1CDD0 bounces the actor along
+  CVector3f mLastPos;    // +0x24 (0xAE4), the position the stuck timer measures from
+  CDamageInfo mDamage;   // +0x30 (0xAF0), the data's diveAttackDamage (0x0000E83C..0x0000E85C)
+  float mBounceTime;     // +0x58 (0xB18), the time since the bounce
+  float mStuckTime;      // +0x5C (0xB1C), the time the actor has not moved 0.2 in flight
+  // +0x60 (0xB20), flags, LSB-first (`clrlwi 31` is 0x01, `extrwi 1,30` 0x02 ... `extrwi 1,24` 0x80)
+  bool mFromBoost : 1;   // 0x01, the dive starts from the boost ball (the jump type 3)
+  bool mBounced : 1;     // 0x02, fn_10_1CDD0 bounced the actor off a wall
+  bool mAttackSent : 1;  // 0x04, fn_10_11DDC sent kSS_Attack
+  bool mHitFloor : 1;    // 0x08, fn_10_1C99C saw the floor or the player
+  bool mLanding : 1;     // 0x10, the landing has started
+  bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4, not in the port yet)
+  bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
+  bool mDone : 1;        // 0x80, the dive is over
 };
 
 class REL_EXPORT CDarkSamus : public CPatterned {
@@ -399,8 +428,29 @@ private:
   void CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
   // fn_10_14648: can the actor walk the straight line to the player on the path mesh?
   bool CanWalkToPlayer(CStateManager& mgr) const;
-  // fn_10_19B64: the collector for the attacks' own reach checks (not ported yet: a stand-in).
-  void CollectReachAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  // fn_10_164C0 / 16418: the line from the gun locator (plus an offset) to a target / to the
+  // player's aim position, 5 up, clear of static solids.
+  bool IsGunLineClear(CStateManager& mgr, const CVector3f& offset, const CVector3f& target) const;
+  bool IsPlayerAimLineClear(CStateManager& mgr) const;
+  // fn_10_166AC / 16600: one / all eight ring rays from the actor to dest, radius out, clear.
+  bool IsRingRayClear(CStateManager& mgr, const CVector3f& dest, int i, float reach,
+                      float radius) const;
+  bool IsRingPathClear(CStateManager& mgr, const CVector3f& dest, float reach, float radius) const;
+  // fn_10_12B38: the dive's landing point.
+  CVector3f GetDiveTarget(CStateManager& mgr) const;
+  // fn_10_141BC: the player's distance within [min, max] times the animation's reach.
+  bool IsPlayerInAnimReach(CStateManager& mgr, const CPASAnimParmData& parms, float minScale,
+                           float maxScale) const;
+  // fn_10_13EE0 / 13E2C: the break-dodge step's distance / the dash slot's dodge offset.
+  float GetBreakDodgeDistance(int dir) const;
+  CVector3f GetDodgeStepOffset(int slot) const;
+  // fn_10_16B1C / 1444C / 145E4: on the path; the line to point on the mesh within 5 of height;
+  // the same from the actor's own height.
+  bool IsOnPath(const CVector3f& point) const;
+  bool IsLineOnMesh(const CVector3f& point, float height) const;
+  bool CanWalkToPoint(const CVector3f& point) const;
+  // fn_10_19B64: the collector for the attacks' own reach checks (it also sets mScatterSide).
+  void CollectReachAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask);
   // fn_10_197D8 / fn_10_1969C: the visible and the faded pickers - the collectors' weights and
   // mask go to mAttackWeights/mAttackMask and the weighted pick to mWeightedPick, which they
   // answer.
@@ -435,15 +485,72 @@ private:
   // fn_10_21F14: the projectile-attack command driven by the animation state.
   void DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
                              const CBCProjectileAttackCmd& cmd);
+  // fn_10_12C2C: the dash's step command toward the dash slot (mDash.mSlot).
+  void DoDashStepCmd(EStateMsg msg);
+  // fn_10_12CE0: the dash step - the attack bookkeeping with id 0x8000, the collision failsafe and
+  // the dash's step command; Activate remembers the slot in mDash.mLastSlot.
+  void UpdateDashStep(CStateManager& mgr, EStateMsg msg);
+  // fn_10_14A00: the blast when the dash is stuck - radius damage to the solid / platform actors
+  // around the actor.
+  void ApplyDashStuckBlast(CStateManager& mgr);
+  // fn_10_14FE0: a new dash for the double dash - the best cover point, the dash pick without a
+  // target and the stuck count.
+  void PickNextDash(CStateManager& mgr);
+  // fn_10_14C50: the double dash's second step (a new pick, the step command, the animation).
+  void StartNextDashStep(CStateManager& mgr);
+  // fn_10_14E5C: the step animation of the dash slot, set and advanced by 0.3 s at once.
+  void PlayDashStepAnimation(CStateManager& mgr);
+  // fn_10_14D14: the double dash.
+  void UpdateDoubleDash(CStateManager& mgr, EStateMsg msg);
+  // fn_10_154FC: weighs the eight dash slots (weights[8], in/out) and picks one into mDash;
+  // returns its weight. target, when given, is where the dash should end near.
+  float PickDash(CStateManager& mgr, float* weights, const CVector3f* target);
+  // fn_10_16048: how free the path to dest is: 1.0 clear, 0.49 off per blocked side ray, 0 when
+  // the centre ray is blocked.
+  float GetDashPathClearance(CStateManager& mgr, const CVector3f& dest,
+                             const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const;
 
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
   const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
+  // fn_10_17E90 / 194AC / B86C / 193A0: the health in percent; the next stage (its kSS_Connect
+  // link); the AI hint chains the actor wakes; the stage advance and the 0x97C flags.
+  float GetHealthPercent() const;
+  TUniqueId GetNextBattleStage(CStateManager& mgr) const;
+  void ActivateHintChains(CStateManager& mgr);
+  void AdvanceBattleStage(CStateManager& mgr);
 
   // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
   // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
   // actor's own position.
   void UpdateStillTimer(EStateMsg msg, float dt);
+
+  // The dive (fn_10_11FA4). fn_10_12960: moves *target up to 8 back toward the actor until the
+  // ring path to it is clear. fn_10_12B00: the body's target vector to the dive target.
+  // fn_10_1285C + fn_10_12764: the jump command toward it.
+  bool FindDiveLanding(CStateManager& mgr, CVector3f* target) const;
+  void SetDiveTargetVector();
+  void DoDiveJumpCmd();
+  // fn_10_11C60 / 1CDD0 / 11EB8 / 11DDC: the flight push; the bounce off a wall; the stuck
+  // timer; the landing's attack message.
+  void UpdateDiveFlight(float scale);
+  void BounceDive(CStateManager& mgr, const CVector3f& normal);
+  void UpdateDiveStuck(CStateManager& mgr, float dt);
+  void SendDiveAttack(CStateManager& mgr);
+  // fn_10_12E90 / 12EF8: the "DiveBubble" effect off / on.
+  void StopDiveBubble(CStateManager& mgr);
+  void StartDiveBubble(CStateManager& mgr);
+  // fn_10_1C99C: CollidedWith's dive arm (a wall bounces, the floor or the player lands).
+  void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
+  // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
+  void ReflectProjectiles(CStateManager& mgr);
+  void HitPlayerWithDive(CStateManager& mgr);
+  // fn_10_18628: the three floats at 0xE04 (the elapsed time, a, b).
+  void SetGuestE04(float a, float b);
+  // fn_10_18FCC: vertical movement off, on the ground as given, kMT_GroundCollider back.
+  void SetGrounded(CStateManager& mgr, bool onGround);
+  // fn_10_1707C: the side dodge away from the player's line of fire.
+  void UpdateDodge(CStateManager& mgr, float dt, float impulse, float time);
 
   // fn_10_1E178: the damage the actor has taken (the guest's 0xCC0). The health that is gone is
   // only added to the damage on a message other than kStateMsg_Activate.
@@ -451,6 +558,10 @@ private:
 
   // fn_10_1C778: the destination of the path find (the guest's 0x8B4/0x8B8/0x8BC) and the path
   // find itself.
+  const CScriptAIHint* FindAreaHint(CStateManager& mgr, int type) const; // fn_10_FC64
+  void UpdateShieldFlag(EStateMsg msg);                                   // fn_10_105F4
+  void UpdateGroundCollision(CStateManager& mgr, EStateMsg msg);          // fn_10_18F90
+  void WatchStageChange(CStateManager& mgr);                              // fn_10_FD4C
   void SetPathFindDestination(CStateManager& mgr, const CVector3f& destination, float dt);
 
   // fn_10_1E26C: the uid of the last attacker (the guest's 0xC24) and the two uids before it
@@ -534,9 +645,41 @@ private:
   uint mStageCount;                 // guest 0x978, the stages the actor has had: the 'XALD' arm
                                    // writes 1 (0x0001EBC4), fn_10_193A0 adds 1 (0x0001941C); the
                                    // constructor writes 0 (0x0001FCC8)
-  TUniqueId mFirstBattleStageUid;   // guest 0xD50, the stage the 'XALD' arm linked (0x0001EBC0);
-                                   // fn_10_FD4C reads it (0x0000FD88); the constructor writes
+  // guest 0x97C, two flags fn_10_193A0 copies from the stage info (0x00019470/0x0001948C); the
+  // constructor writes 0 / 1 (0x0001FCD0/0x0001FCDC)
+  bool mUseAltScan;                 // 0x80, usesAlternateScannableInfo; fn_10_F40C reads it
+  bool mCanDie;                     // 0x40, the info's +0x32 not 1; fn_10_F488 keeps the health
+                                    // at 1.0f while it is clear (0x0000F4F4)
+  float mPhazonHealthMark;          // guest 0x1054, the health the phazon phase started at
+                                    // (fn_10_6BA0 at 0x00006D20); the constructor writes 0.0f
+                                    // (0x00020214)
+  bool mPhazonPhase;                // guest 0x1060 bit 0x80: fn_10_6BA0 sets it (0x00006C90),
+                                    // fn_10_7054 clears it (0x00007154); the constructor clears it
+                                    // (0x00020224)
+  float mGuestD24;                  // guest 0xD24, the 0xCD0 sub-object's +0x54 (fn_10_E560 writes
+                                    // 0.0f at 0x0000E5DC); fn_10_F654 ramps it in [0, 1]
+  CDamageVulnerability mGuestCD4;   // guest 0xCD4, the 0xCD0 sub-object's vulnerability: fn_10_E560
+                                    // copies CDamageVulnerability::ReflectVulnerabilty() into it
+                                    // (0x0000E580/0x0000E58C); fn_10_100DC / fn_10_FF20 return it
+                                    // while mGuestCD0 is 1
+  // guest 0xFD0 (the 0xF80 sub-object's +0x50, built from ReflectVulnerabilty() by fn_10_20F50 at
+  // 0x00020FB8/0x00020FC4), the phazon-enrage vulnerability fn_10_100DC rebuilds from the
+  // patterned one on every call; mutable because that call is the const GetDamageVulnerability
+  mutable CDamageVulnerability mEnrageVulnerability;
+  // guest 0x92C, the alternate 'SCAN' (the data's alternateScannableInfo, locked by the
+  // constructor at 0x0002048C..0x00020538 when it is valid); fn_10_F40C answers it
+  rstl::single_ptr< TLockedToken< CScannableObjectInfo > > mAltScanInfo;
+  TUniqueId mSeenStageUid;          // guest 0xD50, the stage fn_10_FD4C last saw: the 'XALD' arm
+                                   // writes the first stage (0x0001EBC0), fn_10_FD4C the current
+                                   // one (0x0000FDD4/0x0000FDF4); the constructor writes
                                    // kInvalidUniqueId (0x00020018)
+  uint mSeenStageCount;             // guest 0xD54, the stage count fn_10_FD4C last saw
+                                   // (0x0000FDDC/0x0000FDFC); the constructor writes 1 (0x0002001C)
+  uchar mStageChanged;              // guest 0xD59, a stage change with no pissed-off reaction
+                                   // (fn_10_FD4C at 0x0000FDC8/0x0000FDEC); the PissedOff state
+                                   // clears it (0x0000F96C); fn_10_F710 and fn_10_1BEFC read it
+  CVector3f mGuestD18;              // guest 0xD18, the 0xCD0 sub-object's +0x48: fn_10_105F4
+                                   // copies lbl_10_bss_128 (0x0001060C); fn_10_F654 tests it
   TUniqueId mLastAttackerUid;       // guest 0xC24, the uid of the attacker that hit the actor
                                    // last: fn_10_1DF74 clears it and fn_10_1E740 sets it (neither
                                    // is in the port yet); the constructor writes
@@ -581,6 +724,11 @@ private:
   float mStillTime;                // guest 0x964, how long the actor has stood still: fn_10_1D794
                                    // adds dt to it while the actor stays within 0.6 of
                                    // mStillPosition; the constructor writes 0.0f to it (0x0001FCB0)
+  uchar mDashStuckCount;           // guest 0x968, the dashes in a row that started while the
+                                   // actor stood still (mStillTime above lbl_10_rodata_42C =
+                                   // 1.2f): fn_10_150DC / fn_10_14FE0 count it, two or more fire
+                                   // the stuck blast (fn_10_14A00); the constructor writes 0 to it
+                                   // (0x0001FCB4)
   CVector3f mStillPosition;        // guest 0x958/0x95C/0x960, the position the still timer
                                    // measures from: fn_10_1D794 moves it to the actor's position
                                    // when the actor walks away; the constructor writes the zero
@@ -672,6 +820,12 @@ private:
   // (0x00020C78 / 0x00021704).
   rstl::optional_object< CProjectileInfo > mScatterShotInfo;
   rstl::optional_object< CProjectileInfo > mScatterShotInfo2;
+  CDarkSamusDive mDive;            // guest 0xAC0..0xB28, fn_10_E784 at 0x0001FE64
+  float mGuestE04;                 // guest 0xE04, the elapsed time at fn_10_18628
+  float mGuestE08;                 // guest 0xE08, fn_10_18628's first float
+  float mGuestE0C;                 // guest 0xE0C, fn_10_18628's second float
+  float mDodgeTime;                // guest 0x1090, the dodge's time left (fn_10_1707C)
+  CVector3f mDodgeDir;             // guest 0x1094, the dodge's direction (fn_10_1707C)
   CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)
                                    // stores GetLctrTransform("GUN_Particle_LCTR") (0x00018C24)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
