@@ -342,3 +342,107 @@ asmcheck findings, all explained: x20 bit 0x80 is `GetActive()`; the 0x28F8 comp
 `in-turret 1`, the camera turns from (0, -24.05) to (-2.10, -24.92) around the turret, the shot
 spawns at (9.8, -26.7, 17.6) (aimed right), `B` gets off (`in-turret 0`); 4000 updates, `exit=0`,
 0 `[port] caught`/`reach-stub`; screenshots `/tmp/opencode/pt_think/grid.png`.
+
+## 13. The function inventory (2026-10-21) and the six most-called functions
+
+The module has 59 functions. One was marked before this slice (`fn_63_23C0`). The other 58 split
+into the module's own code (18, listed below) and 40 copies of host/DOL or compiler-generated code
+that must never carry a marker.
+
+### 13.1 The copies of host/DOL code (cited, never marked)
+
+| fn | size | what it is |
+|---|---|---|
+| `RELMain`, `RELExit` | 0x20, 0x24 | the REL's entry and exit (they call `fn_63_70` / `SetSPlayerTurret_FuncPtrs(nullptr)`) |
+| `fn_63_70` | 0xD4 | the REL's setup: the five pointers-to-member are copied into `lbl_63_bss_20` and the DOL's `SetSPlayerTurret_FuncPtrs` is called (the port does this in `RELMain`) |
+| `_prolog`, `_epilog` | 0x24, 0x24 | the REL linker's own entry/exit (`ModuleConstructors`/`ModuleDestructors` + `RELMain`/`RELExit`) |
+| `ModuleConstructors`, `ModuleDestructors` | 0x4C, 0x4C | the REL linker's `_ctors`/`_dtors` walkers |
+| `__register_global_object`, `__destroy_global_chain` | 0x1C, 0x58 | the REL linker's global-object registry |
+| `_unresolved` | 0xC4 | the REL linker's "unlinked function called" report |
+| `fn_63_376C` | 0x90 | the module's static initializer (the `.ctors` entry): it builds `lbl_63_bss_C` ("muzzleend_LCTR"), registers `lbl_63_bss_0` and builds `lbl_63_bss_1C`, the module's damage colour `CColor(0.5, 0, 0, 1)` (0x000037A4) |
+| `fn_63_3618`, `fn_63_36A8`, `fn_63_3704` | 0x90, 0x5C, 0x48 | the generated owner file `CScriptPlayerTurretObjOwner.cpp`: its constructor and its two destructors |
+| `fn_63_3510`, `fn_63_35A0` | 0x90, 0x78 | the same owner's destructor family (the `CMemory`/refcount ones) |
+| `fn_63_0` | 0x2C | the vtable slot 15 (`GetHealthInfo`): a forwarder through the vtable + 0x38, the DOL's `HealthInfo` |
+| `fn_63_610`, `fn_63_674`, `fn_63_72C` | 0x64, 0xB8, 0x114 | `SLdrEditorProperties`' destructor, constructor and a second property reader (unreachable from this module's loader) |
+| `fn_63_B18`, `fn_63_B60` | 0x48, 0xB4 | `CImpactVisorEffect`'s constructor - the projectile's visor effect (the host's `CImpactVisorEffect::None()` is the same empty effect) |
+| `fn_63_C14`, `fn_63_C54`, `fn_63_C74`, `fn_63_C9C`, `fn_63_D1C`, `fn_63_D88`, `fn_63_DDC`, `fn_63_E18`, `fn_63_E54`, `fn_63_EB0`, `fn_63_ED0`, `fn_63_F18` | 0x40..0x5C | the `CToken`/`CMemory` copy-constructor and destructor family the compiler emitted (the guest's token is ref-counted) |
+| `fn_63_1020` | 0x50 | the `rstl::string` global's destructor (registered by `__register_global_object`) |
+| `fn_63_1974`, `fn_63_1B34`, `fn_63_236C` | 0x3C, 0x3C, 0x54 | the `CMemory` destructors (`Free__7CMemoryFPCv` wrappers) the compiler emitted for the placement news |
+| `fn_63_349C` | 0x74 | `CToken(IObj* null)`, the turret's empty token (the host's `rstl::single_ptr< CToken >` with `nullptr` is the same thing) |
+| `fn_63_374C` | 0x20 | `CModelData`'s default constructor (the turret has no model of its own) |
+| `fn_63_2D28` | 0x40 | `CVector3f::Cross`, the guest's inline (the host's `CVector3f::Cross`) |
+
+### 13.2 The module's own functions
+
+`fn_63_144` (the loader), `fn_63_840`, `fn_63_84C` (the shot), `fn_63_F6C`, `fn_63_1070`,
+`fn_63_1134`, `fn_63_1460`, `fn_63_14B4`, `fn_63_1508`, `fn_63_15B0`, `fn_63_19B0`, `fn_63_1B70`,
+`fn_63_1BE8`, `fn_63_23C0`, `fn_63_2D68`, `fn_63_3034`, `fn_63_3070` (the destructor), `fn_63_30E8`
+(the constructor).
+
+### 13.3 The six most-called ones
+
+The counts are the runtime calls of one natural run (06_ShootingGallery, the player enters the
+turret, fires and aims): `fn_63_3034` 7277, `fn_63_F6C` 4849, `fn_63_23C0` 2880 (already marked),
+`fn_63_1070` 2425, `fn_63_2D68` 2423, `fn_63_840` 2304, `fn_63_1134` 2303. The next ones are far
+behind (`fn_63_84C` 1, `fn_63_1BE8` 6), so the six below are the ones a run can really cover.
+
+| fn | verdict | what the run proved |
+|---|---|---|
+| `fn_63_3034` | **marked** | branch-free (the guest copies the box at 0x158 and sets the optional's flag); 7277 calls |
+| `fn_63_F6C` | **marked** | the base actor is found (4849 calls); the other arm (no base actor) is a guard the game's flow cannot reach: the hull's connections are set at the area load, before the camera ever asks for the turret's transform |
+| `fn_63_1070` | **marked** | branch-free: the guest's `LookAt(position, position + (forward.x, forward.y, forward.z + 0.0), Up)` - the z term is `lbl_63_rodata_8` = 0.0, so the port's `position.GetZ() + 0.f` is retail's; 2425 calls |
+| `fn_63_840` | **marked** | branch-free (`lhz 0x19A`): 2304 calls |
+| `fn_63_1134` | **marked** | every arm the game's flow can produce ran: the reload timer (61), the "Whole Body" animation block (3), the shot (3), the pitch below zero (60) and above (2420), and the inverted-Y arm (2303, the game's invert-stick option on). The arms left are the two null guards, the "not active" arm (the DOL only calls `ProcessInput` while the turret state is 3) and the `|difference| > 1` clamp (the turn axes are mutually exclusive, so the difference cannot exceed 1) - retail cannot reach them either |
+| `fn_63_2D68` | **fixed, not marked** | three behaviour differences fixed (below); the damage-flash arm (0x2E9C) needs a `kSM_Damage` message, and the port's damage path only sends that message to the object that was damaged (`CStateManager::ApplyDamage`), never to the turret script object - the arm is unreachable in the port, and covering it would need a forced `send` |
+
+### 13.4 The three differences fn_63_2D68 had
+
+1. **The copy the guest works on** (0x2DAC): the guest starts from the turret's *own* saved flags
+   (the guest's 0x1D4..0x1DC, the copy `fn_63_15B0` took from the base actor at the area load),
+   not from the base actor's flags as they are now.
+2. **The white flags** (0x2E6C..0x2E94): the flags half (the guest's 0x102) is `(3 & ~3) | 1`, so
+   only the depth compare (0x1) is set and the depth update (0x2) is off (`clrrwi` at 0x2E74
+   clears the low two bits, `ori` at 0x2E7C sets bit 0). The port set 3.
+3. **The flash colour** (0x2F48): the module's own `lbl_63_bss_1C` is `CColor(0.5, 0, 0, 1)`, not
+   `CColor::Red()` (`CColor(1, 0, 0, 1)`).
+
+A fourth difference, in the same function's condition (0x2DF4), was the important one: the guest
+compares `mgr + 0x24DC` with `MaskUIdNumPlayers(mPlayerId)`. `mgr + 0x24DC` is
+`CStateManager::mCurrentRenderPlayerIndex` (`CFrustumPlanes` is 0x64 bytes at 0x2478, so the index
+lands on 0x24DC), not the player count: the port's `mgr.GetNumPlayers() == mgr.MaskUIdNumPlayers(...)`
+was `1 == 0` in single player, so **the turret's hull light never came on**. With
+`GetCurrentRenderPlayerIndex()` the white case runs on every frame the player is in the turret.
+
+### 13.5 Runtime check (2026-10-21)
+
+`WORLD=M06_ShootingGallery,06_ShootingGallery FRAMES=3000 GODMODE=1 MP2_CONSOLE=<port>
+tools/run_gameplay.sh` with the console's `tp 0 -27 11` (the player enters the turret),
+`press A 20` (the turret fires), `stick 127 0 60`, `stick 0 127 60`, `stick -127 0 60`,
+`stick 0 -127 60` (the aim) and `hurt u040d 10` / `hurt u0418 10`. The run's own log:
+
+    [harness] gameplay reached at 12.5 s (frame 489)
+    [harness] the frame limit is up at 51.4 s: world 7e19ed26, area 0 of 1
+    exit=0
+
+`grep -c '^\[port\] caught'` = 0 and `grep -c reach-stub` = 0. The console's `status` printed
+`in-turret 1` and the camera moved around the turret with the stick, so `fn_63_1070`,
+`fn_63_F6C`, `fn_63_840`, `fn_63_1134` and `fn_63_2D68` all ran.
+
+An instrumented build of the same inputs (the counters are not in the committed tree) gave the
+per-function call counts and the arm coverage of section 13.3: `call_3034 7277`, `call_F6C 4849`,
+`call_1070 2425`, `call_2D68 2423`, `call_840 2304`, `call_1134 2303`, `arm_2D68_white 2423`,
+`arm_1134_reloadTimer 61`, `arm_1134_animBlock 3`, `arm_1134_fire 3`,
+`arm_1134_invertY 2303`, `arm_1134_pitchNeg 60`, `arm_1134_pitchPos 2243`.
+
+The inverted-Y arm needs the game's "invert stick aim Y" option. The port keeps the game's
+options in `<user>/settings.cfg` as the `game_options` blob (the bit stream `CGameOptions::PutTo`
+writes); the option is bit 87 (byte 10, mask 0x01 - the flags are written after 85 bits: the magic
+32, the sound mode 2, the brightness 4, the two offsets 6 each, the stretch 5, the two volumes 7
+each and the two alphas 8 each).
+
+asmcheck (`tools/asmcheck.py check ScriptPlayerTurret
+src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp fn_63_3034 fn_63_1070 fn_63_F6C
+fn_63_840 fn_63_1134 fn_63_2D68`) reports no correctness tag; the six findings are completeness
+ones: `TCastToPtr<6CActor>` (the port uses the const cast), the two `rstl` string calls (the port
+uses a literal) and the `x1d0` compare (the tool tracked the local difference back to
+`mYawTarget`; the guest compares the difference of the two analog inputs, which the port clamps).

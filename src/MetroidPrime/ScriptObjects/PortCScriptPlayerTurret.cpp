@@ -50,6 +50,10 @@ namespace {
 // into lbl_63_bss_C (0x00003788).
 const char* const kMuzzleLocator = "muzzleend_LCTR";
 
+// lbl_63_bss_1C: the module's own damage colour, built by the module's initializer fn_63_376C at
+// 0x000037A4 as CColor(0.5, 0, 0, 1).
+const CColor kTurretFlashColor(0.5f, 0.f, 0.f, 1.f);
+
 // The guest turns -1 into the invalid sfx id before storing it (fn_63_144 at 0x000004A0).
 ushort TranslateSfx(int id) {
   return CSfxManager::TranslateSFXID(id == -1 ? CSfxManager::kInternalInvalidSfxId
@@ -659,20 +663,28 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
   if (base == nullptr) {
     return;
   }
-  // 0x2DAC: the base actor's own model flags are the starting point.
-  CModelFlags flags = base->GetModelFlags();
+  // 0x2DAC: the copy the guest works on is the turret's OWN saved flags (the guest's 0x1D4..0x1DC,
+  // the copy fn_63_15B0 took from the base actor at the area load), not the base actor's flags as
+  // they are now.
+  CModelFlags flags = mModelFlags;
   // 0x2DB4: the player in the turret (0x188).
   if (mPlayerId != kInvalidUniqueId) {
-    // 0x2DE4: the player; 0x2DF4: its index has to be the game's player count - the player has
-    // to be in this game - and 0x2E24: its turret state (the guest's player + 0x12F8) must not be
-    // 2 (kTS_Exiting).
+    // 0x2DE4: the player; 0x2DF4: the player's index has to be the player being rendered - the
+    // guest's mgr + 0x24DC is CStateManager::mCurrentRenderPlayerIndex (CFrustumPlanes is 0x64
+    // bytes at 0x2478, so the index lands on 0x24DC) - and 0x2E24: its turret state (the guest's
+    // player + 0x12F8) must not be 2 (kTS_Exiting).
     const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mPlayerId));
-    if (player != nullptr && mgr.GetNumPlayers() == mgr.MaskUIdNumPlayers(mPlayerId) &&
+    if (player != nullptr &&
+        mgr.GetCurrentRenderPlayerIndex() ==
+            static_cast< int >(mgr.MaskUIdNumPlayers(mPlayerId)) &&
         player->GetTurretState() != CPlayer::kTS_Exiting) {
       // 0x2E30: white with the alpha 0.25 (lbl_63_rodata_54) and the blend mode 5 (kT_Blend).
       flags.SetTrans(CModelFlags::kT_Blend);
       flags.SetMatSetIdx(0);
-      flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+      // 0x2E6C..0x2E94: the flags half (the guest's 0x102) is (3 & ~3) | 1 - the depth compare
+      // (0x1) only, the depth update (0x2) is off (`clrrwi` 0x2E74 clears the low two bits,
+      // `ori` 0x2E7C sets bit 0).
+      flags.SetFlags(static_cast< CModelFlags::EFlags >(1));
       flags.SetColor(CColor(1.f, 1.f, 1.f, 0.25f));
     }
   }
@@ -685,23 +697,27 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
     } else if (factor > 1.f) {
       factor = 1.f;
     }
-    // 0x2F48: Lerp(black, red, factor) with the blend mode 2 (kT_Two).
+    // 0x2F48: Lerp(black, red, factor) with the blend mode 2 (kT_Two). The red is the module's
+    // own colour lbl_63_bss_1C, which the module's initializer fn_63_376C builds as
+    // CColor(0.5, 0, 0, 1) (0x000037A4) - not CColor::Red(), which is twice as bright.
     flags.SetTrans(CModelFlags::kT_Two);
     flags.SetMatSetIdx(0);
     flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
-    flags.SetColor(CColor::Lerp(CColor::Black(), CColor::Red(), factor));
+    flags.SetColor(CColor::Lerp(CColor::Black(), kTurretFlashColor, factor));
   }
   // 0x2F8C: the flags go back into the base actor.
   base->SetModelFlags(flags);
 }
 
 // vtable slot 18 = fn_63_3034 (0x3C): the touch bounds are the turret's own box.
+// @ fn_63_3034
 rstl::optional_object< CAABox > CScriptPlayerTurret::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(mBounds);
 }
 
 // fn_63_1070 (0xC4). The camera looks from the turret's position towards the turret's position
 // plus its forward vector flattened onto the ground plane (the z term is rodata_8 = 0.0).
+// @ fn_63_1070
 CTransform4f CScriptPlayerTurret::GetCameraTransform(CStateManager& mgr) {
   const CTransform4f turret = GetTurretTransform(mgr);
   const CVector3f position = turret.GetTranslation();
@@ -714,6 +730,7 @@ CTransform4f CScriptPlayerTurret::GetCameraTransform(CStateManager& mgr) {
 
 // fn_63_F6C (0xB4). The turret sits on the base actor's "upwardballsnap_LCTR" locator
 // (lbl_63_rodata_60 + 7); without a base actor the turret's own transform is used.
+// @ fn_63_F6C
 CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
   const CActor* base = TCastToConstPtr< CActor >(mgr.ObjectById(mBaseActorId));
   if (base == nullptr) {
@@ -749,6 +766,7 @@ void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
 }
 
 // fn_63_1134 (0x32C): the player's aim while in the turret.
+// @ fn_63_1134
 void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
   // 0x1154: the player in the turret (0x188) and the base actor (0x198).
   CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
@@ -899,6 +917,7 @@ void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
 }
 
 // fn_63_840 (0xC): the actor the turret HUD reads the hull's health from.
+// @ fn_63_840
 TUniqueId CScriptPlayerTurret::GetHullActorId() {
   return mTopActorId;
 }
