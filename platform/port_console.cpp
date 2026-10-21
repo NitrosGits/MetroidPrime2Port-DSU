@@ -119,6 +119,15 @@ struct SQueued {
 std::mutex sQueueMutex;
 std::deque< SQueued > sQueue;
 
+// `at <update> <command>`: commands waiting for a game update (game thread only, no lock).
+struct SDeferred {
+  unsigned update;
+  std::string line;
+  unsigned generation;
+};
+std::vector< SDeferred > sDeferred;
+unsigned sExecutingGeneration = 0;
+
 // macOS has no MSG_NOSIGNAL; SO_NOSIGPIPE is set on the client socket instead.
 #ifdef MSG_NOSIGNAL
 constexpr int kSendFlags = MSG_NOSIGNAL;
@@ -537,6 +546,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
+      "at <update> <command>       run one command on that game update (`frame`), not on arrival,\n"
+      "                            so runs at different speeds act on the same tick\n"
       "help                        this list\n"
       "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
@@ -1571,6 +1582,21 @@ void CmdFrame(CStateManager&, const Args&, std::string& out) {
   out += "frame " + std::to_string(PortHarness::GameUpdates()) + '\n';
 }
 
+// at <update> <command>: hold the command until the game update count reaches <update>; its reply
+// arrives then. One command per `at` (a `;` ends it).
+void CmdAt(CStateManager&, const Args& args, std::string& out) {
+  const int update = args.size() < 3 ? -1 : ArgToInt(args[1], -1);
+  if (update < 0) {
+    Fail("usage: at <update> <command>");
+    return;
+  }
+  const char* begin = args[2].data();
+  const std::string line(begin, args.back().data() + args.back().size() - begin);
+  sDeferred.push_back({static_cast< unsigned >(update), line, sExecutingGeneration});
+  out += "queued for update " + std::to_string(update) + " (now " + std::to_string(PortHarness::GameUpdates()) +
+         "): " + line + '\n';
+}
+
 // fsm <id> <state>: put a patterned actor's state machine in a named state, through the machine's
 // own SetState (the AFSM and FSM2 dispatchers both take a name), so a run can enter a state whose
 // trigger it cannot reach. The leave/enter callbacks run as they would in game.
@@ -2354,6 +2380,7 @@ constexpr SCommand kCommands[] = {
     {"screenshot", CmdScreenshot, true},
     {"overlay", CmdOverlay, true},
     {"state", CmdState, true},
+    {"at", CmdAt, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
@@ -2438,6 +2465,20 @@ void Tick(CStateManager& mgr) {
   if (!sEnabled) {
     return;
   }
+  for (size_t i = 0; i < sDeferred.size();) {
+    if (sDeferred[i].update > PortHarness::GameUpdates()) {
+      ++i;
+      continue;
+    }
+    const SDeferred deferred = std::move(sDeferred[i]);
+    sDeferred.erase(sDeferred.begin() + static_cast< std::ptrdiff_t >(i));
+    std::string out = "[at " + std::to_string(deferred.update) + "] > " + deferred.line + '\n';
+    sExecutingGeneration = deferred.generation;
+    Execute(mgr, deferred.line, out);
+    // The client may have moved on or left; the log keeps the reply.
+    std::fputs(out.c_str(), stderr);
+    SendRaw(deferred.generation, out);
+  }
   for (;;) {
     SQueued queued;
     {
@@ -2454,6 +2495,7 @@ void Tick(CStateManager& mgr) {
     for (;;) {
       const size_t sep = queued.line.find(';', start);
       std::string out;
+      sExecutingGeneration = queued.generation;
       Execute(mgr, queued.line.substr(start, sep == std::string::npos ? std::string::npos : sep - start), out);
       SendRaw(queued.generation, out);
       if (sep == std::string::npos) {
