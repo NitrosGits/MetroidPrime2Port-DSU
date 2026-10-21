@@ -645,8 +645,6 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
 // out of range, and a squad id whose manager is gone (150 hits: `send <team> Delete`, then the player
 // deactivated with `send <player> Deactivate` so ChooseTarget falls back to ChooseTeamTarget).
 // @ fn_72_EFD4
-// @ fn_72_EFD4
-// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
