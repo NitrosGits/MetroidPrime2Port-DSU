@@ -705,13 +705,25 @@ CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
 }
 
 // Sets x8f7_27_inProjectilePath when a shot is flying at the pirate.
+// @ fn_72_DBD4 (0x288): the body runs only while the 0x8f7 mask 0x20 bit (a player fired) is
+// set; the near list is built over the box 0xbb4/0xbb8/0xbbc +- rodata 0xB78 = 5.0 around the
+// noise position and the projectile's travel has to point at the pirate's box centre (rodata
+// 0xC1C = 0.939, asm 0xDDF0). The trace's argument is the arm that ran: 0 = the early-out,
+// 1 = the body ran and no projectile was in the near list, 2 = the projectile was at the box
+// centre (the delta's magnitude is not safe), 3 = the projectile was not in front of the
+// pirate, 4 = the projectile had not moved, 5 = the projectile was not heading at the pirate,
+// 6 = the projectile was heading at the pirate (the flag is set). Arms 1, 3, 5 and 6 ran in the
+// 2026-10-21 area run; arms 2 and 4 need a zero-length vector - a projectile exactly at the
+// box centre, or one that never left its spawn point - which no natural shot produces.
 void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
   if (!x8f7_26_hearPlayerFire) {
+    TraceCall(*this, "CheckForProjectiles", 0);
     return;
   }
   const CVector3f extent(5.f, 5.f, 5.f);
   const CAABox bounds(xbb4_ - extent, xbb4_ + extent);
   x8f7_27_inProjectilePath = false;
+  int arm = 1;
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
   mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
                     nullptr);
@@ -724,6 +736,7 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
     CVector3f delta = GetBoundingBox().GetCenterPoint() - projectile->GetTranslation();
     if (!delta.IsMagnitudeSafe()) {
       x8f7_27_inProjectilePath = true;
+      arm = 2;
     } else if (CVector3f::Dot(GetTransform().GetForward(), delta) < 0.f) {
       delta.Normalize();
       CVector3f travel = projectile->GetTranslation() - projectile->GetPreviousPos();
@@ -731,10 +744,18 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
         travel.Normalize();
         if (CVector3f::Dot(travel, delta) > 0.939f) {
           x8f7_27_inProjectilePath = true;
+          arm = 6;
+        } else {
+          arm = 5;
         }
+      } else {
+        arm = 4;
       }
+    } else {
+      arm = 3;
     }
   }
+  TraceCall(*this, "CheckForProjectiles", arm);
   x8f7_26_hearPlayerFire = false;
 }
 

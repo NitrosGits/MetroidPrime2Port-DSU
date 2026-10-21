@@ -66,6 +66,7 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   const int count = static_cast< int >(mgr.GetNumPlayers());
   if (count <= 0) {
+    TraceCall(*this, "HearPlayer trigger", 0);
     return false;
   }
   self->xbc0_playerIndex = (self->xbc0_playerIndex + 1) % count;
@@ -76,7 +77,9 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   }
   const CVector3f delta = player->GetTranslation() - GetTranslation();
   const bool heard = delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
-  TraceCall(*this, "HearPlayer trigger", heard ? 1 : 0);
+  // The trace's argument is the arm: 0 = no player or a player that is not moving, 1 = the
+  // player is moving and inside the hearing radius, 2 = the player is moving but too far.
+  TraceCall(*this, "HearPlayer trigger", heard ? 1 : 2);
   return heard;
 }
 
@@ -261,9 +264,13 @@ bool CSpacePirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
-// Retail reads 0x8f7 bit 4: true while the Think's line-of-sight ray has not lost the player.
+// @ fn_72_9378 (0x14): the 0x8f7 byte's bit 28 (mask 0x08, the data flag 0x10) inverted - the
+// `cntlzw`/`srwi` pair at asm 0x9380 is that inversion. The body is one bit test, so every
+// evaluation does the same work and the area run's 2279 calls prove all of it.
 bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  return !x8f7_28_noPlayerLos;
+  const bool result = !x8f7_28_noPlayerLos;
+  TraceCall(*this, "LineOfSight trigger", result ? 1 : 0);
+  return result;
 }
 
 // Retail reads the waypoint navigation's destination (this+0x6c0, which TargetPatrol sets), not
@@ -740,10 +747,17 @@ bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// @ fn_72_7804 (0xC): the 0x8f4 byte's bit 24 (mask 0x80, the data flag 0x1) returned unmasked
+// (asm 0x7808 `extrwi`). One bit test, so every evaluation does the same work.
 bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) const {
+  TraceCall(*this, "IsAmbushing trigger", x8f4_24_pendingAmbush ? 1 : 0);
   return x8f4_24_pendingAmbush;
 }
 
+// Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24
+// (mask 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag
+// 0x04000000) have to be set (asm 0x77D8-0x77F8). The "all three set" arm needs a placement
+// with the data flag 0x04000000, which no shipped SpacePirate placement carries.
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
   return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
 }
