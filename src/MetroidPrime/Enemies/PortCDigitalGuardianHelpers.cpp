@@ -292,12 +292,12 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
   const float turn = dt * x6C74_();      // the fmuls at 0x6EC0
   if (CVector3f::GetAngleDiff(headForward, aimForward) < turn) { // the call at 0x6F10, the fcmpo
     head->SetTransform(
-        CTransform4f::LookAt(origin, origin + bodyForward, bodyUp)); // the call at 0x6F5C
+        CTransform4f::LookAt(origin, origin + aimForward, aimUp)); // the call at 0x6F5C (sp 0x40, 0x34)
   } else {
     const CVector3f slerped =
         CVector3f::Slerp(headForward, aimForward, CRelAngle::FromRadians(turn)); // 0x6F90
     head->SetTransform(
-        CTransform4f::LookAt(origin, origin + slerped, bodyUp)); // the call at 0x6FD4
+        CTransform4f::LookAt(origin, origin + slerped, aimUp)); // the call at 0x6FD4 (up sp 0x34)
   }
   // The extrwi at 0x7004 takes 1 bit at 26 (the byte's bit 5, 1u << (31 - 26) = 0x20).
   if (x705C_() <= 2 && (head->x10F4_ & 0x20) != 0 && head->x10D0_ == 1) { // 0x6FF8, 0x7010
