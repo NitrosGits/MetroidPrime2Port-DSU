@@ -883,9 +883,18 @@ bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::BreakDash(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_149B4", "trigger BreakDash");
-  return false;
+// fn_10_149B4 (0x000149B4, 0x4C bytes): the dash record's flag 0x80 (0xA08's
+// `extrwi r0, r0, 1, 24` at 0x000149C4) breaks the dash; otherwise not while 0xA04 is above 0 (`cmpwi; ble` at
+// 0x000149DC), else the base's GetAnimOver (0x000149EC).
+// @ fn_10_149B4
+bool CDarkSamus::BreakDash(CStateManager& mgr, const CTriggerData& data) const {
+  if (mDash.mGuestA08Bit80 == true) {
+    return true;
+  }
+  if (mDash.mGuestA04 > 0) {
+    return false;
+  }
+  return GetAnimOver(mgr, data);
 }
 
 bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
@@ -1573,7 +1582,7 @@ void CDarkSamus::TravelToCoverPoints(CStateManager& mgr, EStateMsg msg, float dt
   }
   if (msg == kStateMsg_Activate || prev != mLastAttackerUid) { // 0x0001E0C4/0x0001E0D0
     SetPathFindDestination(mgr, cover->GetTranslation(), dt);
-    mGuest9FC = -1;
+    mDash.mGuest9FC = -1;
   } else {
     mPathFindNavigation.SetFaceTarget(mgr.GetPlayer(0)->GetUniqueId());
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
@@ -2376,6 +2385,21 @@ void CDarkSamus::UpdateScatterShotFire(CStateManager& mgr, float dt) {
     mScatterTimer -= interval;
     FireScatterShotProjectile(mgr);
   }
+}
+
+// fn_10_15348 (0x00015348, 0xA4 bytes): the dash record, in the retail store order.
+// @ fn_10_15348
+CDarkSamusDash::CDarkSamusDash() {
+  mGuest9E4 = CVector3f::Zero();
+  mGuest9F0 = CVector3f::Zero();
+  mGuestA04 = 0;
+  mGuestA08Bit40 = false;
+  mGuest9F0 = CVector3f::Zero();
+  mGuest9E4 = mGuest9F0;
+  mGuest9FC = -1;
+  mGuest9E0 = -1;
+  mGuestA00 = 0.f;
+  mGuestA08Bit80 = false;
 }
 
 // fn_10_21DF8 (0x00021DF8, 0x11C bytes): the step command, the same shape as fn_10_21F14. Activate

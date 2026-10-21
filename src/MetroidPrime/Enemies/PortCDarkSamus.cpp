@@ -90,7 +90,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
                                     : static_cast< ushort >(data.mGlideSound))
 , mGlideSfx()
 , mSavedSpeed(0.f)
-, mGuest9FC(-1)
+, mDash()
 , mGuestC00(0.f)
 , mSafePos(CVector3f(0.f, 0.f, 0.f))
 , mHasSafePos(0)

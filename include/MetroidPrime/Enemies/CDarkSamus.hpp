@@ -166,6 +166,24 @@ struct CDarkSamusData {
 // The state machine, the melee / dive / scatter-shot / missile attacks, the boost ball, the
 // freeze beam, the sweep beam and the phazon enrage are later milestones, and every override that
 // belongs to them forwards to CPatterned behind a once-only stand-in log.
+// The dash record at the guest's 0x9E0..0xA08 (fn_10_15348 builds it, the constructor at 0x0001FD04
+// and the Dash state on a stack copy at 0x0001518C). Names are the guest offsets until the dash
+// chain (fn_10_14A00/14D14/154FC) that fills them is ported.
+struct CDarkSamusDash {
+  CDarkSamusDash(); // fn_10_15348
+
+  int mGuest9E0;          // +0x00, -1 (0x000153D4)
+  CVector3f mGuest9E4;    // +0x04, the zero vector, then +0x10's (0x000153B8..0x000153CC)
+  CVector3f mGuest9F0;    // +0x10, the zero vector (0x0001537C..0x0001538C, again 0x000153A0..)
+  int mGuest9FC;          // +0x1C, -1 (0x000153D0); fn_10_1DF74 sets it to -1 on a new cover point
+  float mGuestA00;        // +0x20, lbl_10_rodata_3FC = 0.0f (0x000153D8)
+  int mGuestA04;          // +0x24, 0 (0x00015390); BreakDash answers false while it is above 0
+  // +0x28, flags, MSB-first: 0x80 (`rlwimi 7,24,24` at 0x000153E0, BreakDash's `extrwi 1,24`)
+  // and 0x40 (`rlwimi 6,25,25` at 0x00015398), both clear
+  bool mGuestA08Bit80 : 1; // 0x28 mask 0x80
+  bool mGuestA08Bit40 : 1; // 0x28 mask 0x40
+};
+
 class REL_EXPORT CDarkSamus : public CPatterned {
 public:
 #ifdef TARGET_PC
@@ -589,9 +607,7 @@ private:
                                    // runs; the constructor writes 0 to it (0x0001FF44)
   float mSavedSpeed;               // guest 0x96C, the speed TravelToCoverPoints (fn_10_1DF74) puts
                                    // back on Deactivate; the constructor writes 0.0f (0x0001FCB8)
-  int mGuest9FC;                   // guest 0x9FC, the word fn_10_1DF74 sets to -1 on a new cover
-                                   // point (its reader is not in the port; the constructor does
-                                   // not write it, the host starts it at -1)
+  CDarkSamusDash mDash;            // guest 0x9E0..0xA08, built at 0x0001FD04 (fn_10_15348)
   float mGuestC00;                 // guest 0xC00, the float fn_10_1DF74 clears every call; the
                                    // constructor writes 0.0f (0x0001FECC)
   CVector3f mSafePos;              // guest 0x91C/0x920/0x924, the first position fn_10_128D8
