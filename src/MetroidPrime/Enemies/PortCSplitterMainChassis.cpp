@@ -29,7 +29,9 @@
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
+#include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Tweaks/CTweakBall.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlayerHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
@@ -161,8 +163,6 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
 void StandInFn_75_A0A0() { StandIn("fn_75_A0A0 (0x2DC)"); }
-void StandInFn_75_9FA8() { StandIn("fn_75_9FA8 (0xF8)"); }
-void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
 
 } // namespace
 
@@ -1338,6 +1338,119 @@ void CSplitterMainChassis::PortReleasePlayerHint(CStateManager& mgr) {
                                   kSS_InvalidState));
 }
 
+// fn_75_AB8C (0xAB8C-0xAC6C): the chassis's player-hint grant. The hint at 0xCC4 (0xABB8
+// ObjectById) cast to a CScriptPlayerHint (0xABBC-0xABC4) that is not already held by this actor
+// (its 0x1AC; 0xABC8-0xABD4) is taken while the player (the manager's 0x14FC) is unmorphed or
+// morphed (its 0x38C in 0..1; 0xABDC-0xABF0): the hint's actor id becomes this actor's (0xABF4)
+// and the hint gets an "INCR" message (0xAC4C DeliverScriptMsg: this actor the sender, the player
+// the originator).
+void CSplitterMainChassis::PortTakePlayerHint(CStateManager& mgr) {
+  CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(mgr.ObjectById(mConnectedObjectId));
+  if (hint == nullptr || hint->GetActorId() == GetUniqueId()) {  // 0xABC0-0xABD4
+    return;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  const CPlayer::EPlayerMorphBallState morph = player->GetMorphballTransitionState();
+  if (morph >= CPlayer::kMS_Morphing || morph < CPlayer::kMS_Unmorphed) {  // 0xABE0-0xABF0
+    return;
+  }
+  hint->SetActorId(GetUniqueId());
+  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), hint->GetUniqueId(), kSM_Increment,
+                                  player->GetUniqueId(), kSS_InvalidState));
+}
+
+// The inline both damage handlers use (0x9C2C-0x9C58, 0xA02C-0xA058): a player that is not in
+// its spawn morph state (0x390 zero) and is morphed (0x38C == 1) with the boost shield on
+// (CMorphBall::IsBoostShieldActive on its 0x1174).
+static bool PortIsBoosting(const CPlayer& player) {
+  const CPlayer::EPlayerMorphBallState morph =
+      player.GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+          ? player.GetMorphballTransitionState()
+          : CPlayer::kMS_Unmorphed;
+  return morph == CPlayer::kMS_Morphed && player.GetMorphBall()->IsBoostShieldActive();
+}
+
+// fn_75_9FA8 (0x9FA8-0xA0A0, the resisted/reflected damage message): only a live chassis
+// (0x420's 0x40 bit; 0x9FC4-0x9FCC) reacts. While 0xD41's 0x80 bit is set (0x9FD0-0x9FD8), a
+// sender that is a collision actor (0x9FEC-0x9FF8) whose last touched object (0xA004
+// CCollisionActor::GetLastTouchedObject) is a boosting player (0xA020-0xA058) advances the spin
+// counter at 0xCFC by the data's 0x888 (0xA05C-0xA06C) and sets 0xD40's 0x2 bit (0xA070-0xA078).
+// Then the player hint is taken (0xA084 fn_75_AB8C).
+void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId sender) {
+  if (!mAlive) {  // 0x9FC8-0x9FCC
+    return;
+  }
+  if ((mFlagsD41 & 0x80) != 0) {
+    if (const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.ObjectById(sender))) {
+      const CPlayer* player =
+          TCastToConstPtr< CPlayer >(mgr.GetObjectById(actor->GetLastTouchedObject()));
+      if (player != nullptr && PortIsBoosting(*player)) {  // 0xA024-0xA028
+        mSpinCounter += mData.mUnknownD5F34476;
+        mFlagsD40 |= 0x2;
+      }
+    }
+  }
+  PortTakePlayerHint(mgr);
+}
+
+// fn_75_9B9C (0x9B9C-0x9FA8, the hit-object message): a live chassis (0x9BC4-0x9BCC) without
+// 0xD40's 0x40 bit (0x9BD0-0x9BD8) looks at the sender as a collision actor (0x9BEC-0x9BF8) and
+// its last touched object (0x9C04 GetLastTouchedObject).
+// - A player (0x9C1C-0x9C28): boosting (0x9C2C-0x9C58), when the sender is the "target_LCTR"
+//   actor at 0xCC2 (0x9E30-0x9E3C) the morph ball takes the tweak's boost ball damage
+//   (0x9E50 GetBoostBallDamage, 0x9EBC ApplyBoostBallDamage with 0.0f, lbl_75_rodata_390).
+//   Otherwise, without 0xD40's 0x2 bit (0x9C5C-0x9C64), the damage is the contact damage
+//   (the vtable word 0xE8, 0x9C7C), the leg stab damage (data 0x7C0) with 0xD40's 0x1 bit
+//   (0x9CC8-0x9D1C) or else the spin attack damage (data 0x7DC) with 0xD41's 0x80 bit, which also
+//   sets 0xD40's 0x8 bit (0x9D20-0x9D7C); once the damage wait at 0x440 has run out (<= 0.0f,
+//   0x9D80-0x9D94) the player takes it (0x9E20 ApplyDamage: this actor, the player, this actor,
+//   the filter including kMT_Solid (lbl_75_data_C9C, 0x3B), the translation) and the wait restarts
+//   from 0x444 (0x9E24-0x9E28). Either way the player hint is taken (0x9EC8 fn_75_AB8C).
+// - Anything else, while 0xD41's 0x80 bit is set (0x9ED0-0x9ED8) and the object is not a CAi
+//   (0x9EEC-0x9EF8), takes the spin attack damage the same way (lbl_75_data_CA0, 0x3B; 0x9F84),
+//   without the wait.
+void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
+  if (!mAlive || (mFlagsD40 & 0x40) != 0) {  // 0x9BC8-0x9BD8
+    return;
+  }
+  const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(sender));
+  if (actor == nullptr) {  // 0x9BF4-0x9BF8
+    return;
+  }
+  const TUniqueId touched = actor->GetLastTouchedObject();
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
+  if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(touched))) {  // 0x9C24-0x9C28
+    if (PortIsBoosting(*player)) {
+      if (sender == mTargetActorId) {
+        player->GetMorphBall()->ApplyBoostBallDamage(mgr, mTargetActorId,
+                                                     gpTweakBall->GetBoostBallDamage(), 0.f);
+      }
+    } else if ((mFlagsD40 & 0x2) == 0) {
+      CDamageInfo damage = GetContactDamage();
+      if ((mFlagsD40 & 0x1) != 0) {
+        damage = mData.mLegStabDamage;
+      } else if ((mFlagsD41 & 0x80) != 0) {
+        damage = mData.mSpinAttackDamage;
+        mFlagsD40 |= 0x8;
+      }
+      if (mCurDamageRemTime <= 0.f) {
+        mgr.ApplyDamage(GetUniqueId(), touched, GetUniqueId(), damage, filter, GetTranslation());
+        mCurDamageRemTime = mDamageWaitTime;
+      }
+    }
+    PortTakePlayerHint(mgr);
+  } else if ((mFlagsD41 & 0x80) != 0) {
+    // 0x9EF0 TCastToPtr<CAi>: the host has no such cast, so the type test is spelled out.
+    const CEntity* object = mgr.GetObjectById(touched);
+    if (object != nullptr && object->TypesMatch(kET_Ai) != nullptr) {  // 0x9EF4-0x9EF8
+      return;
+    }
+    mgr.ApplyDamage(GetUniqueId(), touched, GetUniqueId(), mData.mSpinAttackDamage, filter,
+                    GetTranslation());
+  }
+}
+
 // @ fn_75_AA68
 // The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. The
 // word's bit 30 (the byte's 0x40, 0x0000AA78 rlwinm) gives kLT_Lurk (2, 0x0000AA88), the word's
@@ -1449,13 +1562,13 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   case kSM_ReflectedDamage: { // "XXDG" (0x0000F314)
     // 0x0000F4A0-0x0000F4C8: the module's own call (0x0000F4B8 fn_75_9FA8) and the base's flag
     // byte at 0x420 gets its 0x80 bit set.
-    StandInFn_75_9FA8();
+    PortResistedDamage(mgr, msg.GetSenderId());
     SetHitByPlayerProjectile(true);
     break;
   }
   case kSM_HitObject: { // "XHIT" (0x0000F2A0)
     // 0x0000F4D0-0x0000F4E8: the module's own call (0x0000F4E8 fn_75_9B9C).
-    StandInFn_75_9B9C();
+    PortHitObject(mgr, msg.GetSenderId());
     break;
   }
   case kSM_Landed: { // "XLND" (0x0000F300)

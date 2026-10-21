@@ -989,7 +989,6 @@ void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vta
 
 // The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
 // of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
-void StandInCEntityVirtual0x24() { StandIn("the DOL's CEntity virtual at the vtable word 0x24"); }
 
 // @ fn_75_184C
 // The command module's look-at (0x184C-0x1974): the target id (the u16 at 0xF02, 0x1874 lhz) is
@@ -1164,7 +1163,11 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
 void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   CEntity* projectile = mgr.ObjectById(mLookAtTargetId);
   if (projectile != nullptr) {
-    StandInCEntityVirtual0x24();
+    // The vtable word 0x90 with false (0x17C8-0x17DC): the DOL's CPlasmaProjectile::ResetBeam, a
+    // host virtual. The id only ever holds the laser sweep beam (fn_75_1974).
+    if (CBeamProjectile* beam = TCastToPtr< CBeamProjectile >(projectile)) {
+      beam->ResetBeam(mgr, false);
+    }
     CSfxManager::RemoveEmitter(mLookAtSfxHandle);
     mgr.DeleteObjectRequest(mLookAtTargetId);
   }
