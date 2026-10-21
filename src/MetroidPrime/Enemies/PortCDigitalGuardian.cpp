@@ -434,7 +434,6 @@ void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
 // 3000 frames, the coverage build (tools/cov/gcov_report.py: 4/4 branches, ALL-ARMS).
 // @ fn_14_A5BC
 void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
-  StandIn("CDigitalGuardian::Think (vtable slot 5, fn_14_A5BC)");
   if (!GetActive()) {
     return;
   }
@@ -2471,9 +2470,12 @@ void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, 
               CPASAnimParmData(pas::kAS_KnockBack, CPASAnimParm::FromReal32(kKneeAngles[x1284_]),
                                CPASAnimParm::FromEnum(2)),
               -1);
-      if (best.first > 0.f) { // .rodata 0x264
+      if (best.first > 0.f) { // .rodata 0x264, fcmpo/ble at 0x81FC
+        // The direction is the transform's forward column (0x28/0x38/0x48 at 0x8208..0x8214),
+        // severity 2 (0x8224), the best animation (0x8258), no force restart (0x825C);
+        // DeliverCmd at 0x8260.
         BodyController()->CommandMgr().DeliverCmd(
-            CBCKnockBackCmd(GetTranslation(), pas::kS_Two, best.second, false));
+            CBCKnockBackCmd(GetTransform().GetForward(), pas::kS_Two, best.second, false));
       }
     }
     break;

@@ -19,6 +19,7 @@
 
 #include "rstl/optional_object.hpp"
 #include "rstl/reserved_vector.hpp"
+#include "rstl/single_ptr.hpp"
 #include "rstl/vector.hpp"
 #endif
 
@@ -176,7 +177,8 @@ private:
   // fn_14_118B0 (0x134 bytes): the attack area's points at the head's angle and 8 degrees either
   // side; returns the count (0 or 3).
   int x118B0_(CVector3f* points) const;
-  // fn_14_114C8 (0x1D0 bytes): the attack point with a line of sight to the player (stand-in).
+  // fn_14_114C8 (0x1D0 bytes): the candidate (or the blend of two) nearest the 40-unit circle
+  // round the player.
   CVector3f x114C8_(const CVector3f& player, const CVector3f* points, int count);
   // fn_14_F390 (0x94 bytes): the splitters to deploy, one more than the echo targets lost, at
   // most 2.
@@ -206,6 +208,11 @@ private:
 
   SLdrDigitalGuardianHeadData mData; // guest 0x7C0: the parameter block (fn_14_1912C copies it)
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
+  // 0xD74/0xD78/0xD7C: the shield, stunned and final heads' 'SCAN' tokens (data +0/+4/+8), each
+  // built by the ctor when its id is set (0x18E70, 0x18F38, 0x19000); GetScannableObjectInfo.
+  rstl::single_ptr< TCachedToken< CScannableObjectInfo > > xD74_;
+  rstl::single_ptr< TCachedToken< CScannableObjectInfo > > xD78_;
+  rstl::single_ptr< TCachedToken< CScannableObjectInfo > > xD7C_;
   TUniqueId xDC4_[2]; // 0xDC4: the ball colliders' ids (fn_14_13284; count 2 at 0xDC0)
   CSegId xDCC_[2];    // 0xDCC: the balls' locators ("L_ball_LCTR", "R_ball_LCTR")
   CDamageVulnerability xDD0_; // 0xDD0: a ball's vulnerability with a bomb slot in use (data +0x2F8)
