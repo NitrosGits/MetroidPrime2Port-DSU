@@ -1316,6 +1316,57 @@ player next to them: the FollowAttackPattern state runs and the triggers are eva
 | `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is in the `SetLuredDest` code function's list only, and no Ing was lured | not marked |
 | `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94) | the count never changed (the player teleporting into a safe zone does not raise the XENZ message) | not marked |
 
+### A.25 The classification of the 274 Ing functions (2026-10-21)
+
+`docs/module-analysis/Ing_functions.tsv` lists every function of the Ing REL with its class, on
+the EmperorIngStage1_functions.tsv model: **H** = the host's own copy (the DOL's code the module
+carries a copy of - never marked), **T** = a vtable thunk (the module's copy of a base class's
+virtual body), **B** = the module's own behaviour (marked once a run exercises it). The columns
+are the offset, the size, the function, the class, the kind, the callers (the static `bl` in the
+module's own text), the data tables the body touches, a one-line description and the marker
+state.
+
+**The count check**: 274 functions = **61 H + 14 T + 199 B**; of the 199 B, **140 are marked**
+and **59 are the unmarked B work list**. The 61 H are the module's own deleting destructors and
+free-only thunks, the loader's DOL-type temporaries, the rstl internals, the plain struct copies
+and the REL runtime; the 14 T are the vtable thunks (IngFamily.md A.20 lists both groups
+function by function).
+
+**The unmarked B list** (59), grouped by what they need:
+
+| the group | n | the functions |
+|---|---|---|
+| the module head and the loader | 2 | `fn_29_100` `fn_29_130` (the host's `PortLoadIng` does the loader) |
+| the Ing's own behaviour (the port has the body) | 24 | `fn_29_1C98` `fn_29_1DF4` `fn_29_3190` `fn_29_3684` `fn_29_4C88` `fn_29_514C` `fn_29_5190` `fn_29_51D0` `fn_29_53E0` `fn_29_5714` `fn_29_5C28` `fn_29_75C0` `fn_29_84A4` `fn_29_8CF4` `fn_29_8FE8` `fn_29_A4E0` `fn_29_AA04` `fn_29_AA4C` `fn_29_AA94` `fn_29_AC78` `fn_29_B534` `fn_29_B890` `fn_29_BF20` `fn_29_D540` |
+| the host's own copies (the data block, the copies and the tables) | 20 | `fn_29_4AA8` `fn_29_BEB4` `fn_29_BFF0` `fn_29_E68C` `fn_29_E7C8` `fn_29_E8D8` `fn_29_E944` `fn_29_E9E8` `fn_29_EA7C` `fn_29_EB38` `fn_29_EBEC` `fn_29_EC88` `fn_29_ED38` `fn_29_EE68` `fn_29_EFC0` `fn_29_F000` `fn_29_F090` `fn_29_F12C` `fn_29_F260` `fn_29_F2C8` |
+| the exit host effect and the mini portal classes | 13 | `fn_29_10D50` `fn_29_10E64` `fn_29_11438` `fn_29_11490` `fn_29_11570` `fn_29_11840` `fn_29_119E8` `fn_29_11A7C` `fn_29_11C14` `fn_29_11CA4` `fn_29_1201C` and the two mini portal constructors |
+
+The Agon Wastes boot (`01_sand_entrance_dark`) reaches almost every one of them: its log shows
+the states Alert, ArmSwipe, BecomeBodyProjectile, BecomeCorporeal, BecomeIngSpot,
+BecomeWallProjectile, BodyProjectileFlight, Dead, Evaporate, ExitHost, FaceTarget, FailSafeMode,
+FindCoverPoint, FindMiniPortals, FollowAttackPattern, GrappleBall, IngSpotPathFind,
+IngSpotPointPathFind, Lurk, MiniPortalAttack, PathFind, Patrol, SafeZoneReaction, SeekWallPoint,
+SelectTarget, SetCoverDest, SetPointCoverDest, SetRecoverDest, SetTargetDest, SuckEnergy, Taunt
+and WaitForFSMTransition - so one boot covers the state bodies, the code functions and both
+classes.
+
+**`fn_29_82D4` (FollowAttackPattern) is marked**: the Agon Wastes run (the area
+`01_sand_entrance_dark`, the world 42b935e4, the area 0x3f5cdf39) with a probe in the body ran
+the three messages, the ing-spot form and the other forms, and the "the waypoint is not an AI
+waypoint" arm; the waypoint's flag arms are dead (every attack pattern's target is a WAYP -
+`tools/scan_ing_pattern.py`).
+
+**The lure path needs a console command that makes a noise.** The Ing is lured by the
+`kLNT_SafeZone` noise, which the host only sends from a safe zone of the "echo" type
+(`CScriptSafeZone::Think`, src/MetroidPrime/ScriptObjects/CScriptSafeZone.cpp:229,
+`mgr.InformListeners(GetTranslation(), (EListenNoiseType)6)`) - the Agon Wastes' safe zones are
+normal ones, so the run never lured an Ing and `fn_29_1DF4`, `fn_29_51D0`, `fn_29_53E0`,
+`fn_29_8CF4`, `fn_29_5C28`, `fn_29_A4E0`, `fn_29_AA94` and `fn_29_AC78` keep their arms open.
+**The ask**: a console command `noise <type>` that calls
+`CStateManager::InformListeners(playerPos, type)` at the player's position - the call
+CScriptSafeZone.cpp:229 makes for the type 6 (kLNT_SafeZone) - so a run can lure an Ing and
+reach the eight bodies above.
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

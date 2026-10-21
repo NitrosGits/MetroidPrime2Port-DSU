@@ -2064,7 +2064,23 @@ void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
-// fn_29_82D4 (not yet exercised in a run)
+// @ fn_29_82D4 (0x1D0, asm 0x000082D4-0x000084A4): the Ing walks its attack pattern. The message
+// arms are the state's own (the Activate, the Update and the Deactivate), the ing-spot form walks
+// the waypoint's own speed (0x158) over the ing spot's maximum speed (0x87c) and the waypoint's
+// flags (0x164) pick the form the Ing changes to (0x40 or 0x80 the ing spot, 0x100 the
+// corporeal one).
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark - the area whose Ings
+// have the "ATTK"/"FOLW" attack pattern - with a probe in the body):
+//   - the message: the Activate (asm 0x000083AC), the Update (asm 0x00008410) and the Deactivate
+//     (asm 0x00008468): all three ran;
+//   - the ing-spot form (asm 0x00008310) and the other forms: both ran;
+//   - the waypoint (the navigation's destination at 0x6c0) is cast to CScriptAIWaypoint
+//     (asm 0x00008428) before its flags are read: the cast never succeeds in the shipped data -
+//     every attack pattern's target is a WAYP, never an AIWP (tools/scan_ing_pattern.py) - so
+//     the flag arms are dead and the "the waypoint is not an AI waypoint" arm is the only live one.
+//   - the resume id (0xd70, asm 0x000083B0) and the "ATTK"/"FOLW" connection: both ran, the
+//     Deactivate stores the destination into the resume id (asm 0x00008478) and the next Activate
+//     takes it.
 void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   // 0x00008310: in the ing-spot form the Ing walks the waypoint's own speed (0x158) over the ing
