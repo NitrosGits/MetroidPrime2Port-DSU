@@ -56,3 +56,13 @@ A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate list
     python3 tools/sweep_report.py '/tmp/opencode/log_<tag>_*.log'
 
 Parallel software-Vulkan shards can lose the device; confirm verdicts with lone runs.
+
+## Batch smoke (every family, in parallel)
+
+`tools/smoke/run.sh [--build <dir>] [--out <dir>] [--jobs N] [family ...]` boots every family area
+(one game each, on its own X display, console port, card copy and cache dir) and drives it with the
+console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Results land in
+`/tmp/opencode/smoke-<git hash>` by default (the card copied per family is `--save`, default
+`/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
+reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
+
