@@ -1366,3 +1366,32 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   - The full fight crashed at the morph-out (`press x` after the bombs). The crash was in
     `CPlayer::Render` → `CModelData::Render` → `CTexture::Load`, which is player model texture
     code, not DG code.
+
+## 2026-10-21: unmorph crash fixed, runs 38/39
+
+- The run-37 crash (`CPlayer::Render` → `CTexture::Load`, at the morph-out in the fight) was a null
+  CTexture in the player's ball-transition beam model (CPlayer.cpp ~3303). It came from
+  `CModel::UnlockTextures` (DolphinCModel.cpp): when `CModelData::LockTextures` releases a model's
+  initial texture locks after the model has been drawn, the current material set's tokens are
+  released through the shader. That nulls the cached textures but leaves the instance's
+  `mLoadTextures` set, so `TryLockTextures` skips relocking. The host fix, under TARGET_PC,
+  releases the current set through `CCubeModel::UnlockTextures`, as `FrameDone` does.
+  - Before the fix, runs 380/381 (morph and bomb in slot 0 before the retreat, then unmorph)
+    logged a null texture (tag b6b1c040, index 3/5, unlocked) and then the SIGSEGV.
+  - After the fix, runs 390-392 hit the stale case once each, with no null texture and no crash.
+  - This is not the stale copy-texture mapping that `GXDestroyCopyTex` in DolphinCTexture.cpp
+    addresses: there the object is valid but the wrong image is drawn.
+- `/tmp/opencode/dghd2/run38.sh <tag> <port> <display> hold|holdtp|safe` is run37 with modes:
+  - `hold` and `holdtp` morph, bomb slot 0 before the retreat until a slot dies, then unmorph in
+    place (`holdtp` teleports away first). `safe` skips that step.
+  - Every mode then runs the FIRE and DRV loops to the head's death.
+- Results from seven fights to the head's death:
+  - IsDead returned true (head deleted), so 17184 is marked.
+  - IsIdle was never read with bit 0x80 set.
+  - 14470 made no random pick in any of them, only first-shot (1) and splitters (3); only run
+    36's fight made one.
+  - 15284 ran only its armour-on and platform arms. The hold runs destroyed slot 0 before the
+    retreat, but no SetStunnedPosition followed with the armour off.
+  - 9E88 ran the active collision-actor arm and the locator arm (actor inactive, 0x11B8 clear),
+    but not the 0x11B8 arm.
+  - A138 ran the no-emitter arm only.
