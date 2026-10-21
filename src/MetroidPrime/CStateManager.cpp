@@ -3638,7 +3638,17 @@ void CStateManager::SendScriptMsg(const CScriptMsg& msg) {
   }
 }
 
+#ifdef TARGET_PC
+// Console `mpforce`: makes IsMultiplayer report true so the multiplayer arms run in single player.
+bool gPortForceMultiplayer = false;
+#endif
+
 bool CStateManager::IsMultiplayer() const {
+#ifdef TARGET_PC
+  if (gPortForceMultiplayer) {
+    return true;
+  }
+#endif
   int v = gpGameState->GetGameMode().GetGameModeType();
   return v != 'SNGL' && v != 'FRND';
 }

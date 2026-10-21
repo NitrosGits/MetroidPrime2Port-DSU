@@ -26,6 +26,8 @@
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
+
+extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CWorld.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/CSimplePool.hpp"
@@ -501,6 +503,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
+      "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"
       "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -924,6 +927,13 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::GodMode() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetGodMode(enabled);
   out += enabled ? "god mode on\n" : "god mode off\n";
+}
+
+// `mpforce <0|1>`: CStateManager::IsMultiplayer reports true, so multiplayer-only arms run in
+// single player. The game mode itself stays single player (no score, no split screen).
+void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
+  gPortForceMultiplayer = args.size() < 2 ? !gPortForceMultiplayer : ArgToInt(args[1], 1) != 0;
+  out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
 }
 
 void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
@@ -2572,6 +2582,7 @@ constexpr SCommand kCommands[] = {
     {"damage", CmdDamage, true},
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
+    {"mpforce", CmdMpForce, true},
     {"freecam", CmdFreeCam, true},
     {"photo", CmdPhoto, true},
     {"skipcine", CmdSkipCine, true},
