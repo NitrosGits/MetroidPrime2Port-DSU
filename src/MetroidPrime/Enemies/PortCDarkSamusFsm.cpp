@@ -2078,12 +2078,252 @@ bool CDarkSamus::CanWalkToPlayer(CStateManager& mgr) const {
   return true;
 }
 
-// fn_10_19B64 (0x00019B64, 0x670 bytes): the reach checks of the melee, the super missile, the
-// dive, the dashes, the missile jump, the scatter shots and the taunt/pause (fn_10_14648 and
-// fn_10_16418, 16600, 141BC, 16B1C, 145E4, 13E2C under it). Not ported yet: the stand-in clears
-// nothing, so every attack the other collectors leave stays pickable.
-void CDarkSamus::CollectReachAttacks(CStateManager&, SAttackWeights&, uint*) const {
-  FsmStandIn("fn_10_19B64", "picker collector, reach checks");
+// fn_10_EDE0 / fn_10_EB90 are defined with the dash below.
+static pas::EStepDirection GetDashStepDirection(int slot);
+static CVector3f GetDashDirection(uint slot, const CVector3f& f);
+
+// fn_10_164C0 (0x000164C0, 0x140 bytes): is the line from the gun locator (0x8CC's translation,
+// 0x8D8/0x8E8/0x8F8) plus offset to target clear? A static ray (RayStaticIntersection at
+// 0x000165C8) over the whole line, the filter including lbl_10_data_C60 / C64 (0x3B kMT_Solid,
+// 0x30 kMT_AIBlock; type 1 at 0x00016550 = include only); fn_10_2C8 is the module's copy of the
+// CRayCastResult copy constructor, and the answer is the result not valid (0x000165DC).
+// @ fn_10_164C0
+bool CDarkSamus::IsGunLineClear(CStateManager& mgr, const CVector3f& offset,
+                                const CVector3f& target) const {
+  const CVector3f start = mGunLctrXf.GetTranslation() + offset;
+  const CVector3f delta = target - start;
+  const float length = delta.Magnitude();
+  const CRayCastResult result = mgr.RayStaticIntersection(
+      start, delta.AsNormalized(), length,
+      CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock)));
+  return !result.IsValid();
+}
+
+// fn_10_16418 (0x00016418, 0xA8 bytes): the gun line (fn_10_164C0 at 0x000164A4) raised by
+// lbl_10_rodata_40C = 5.0f in z to the player's aim position (the vtable call at 0x00016458,
+// slot 0x54 = GetAimPosition, dt lbl_10_rodata_3FC = 0.0f).
+// @ fn_10_16418
+bool CDarkSamus::IsPlayerAimLineClear(CStateManager& mgr) const {
+  const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
+  return IsGunLineClear(mgr, CVector3f(0.f, 0.f, 5.f), aim);
+}
+
+// fn_10_16984 (0x00016984, 0x158 bytes): the ring ray's world-space offset, not normalized
+// (jumptable_10_data_F94): 0 (0, 1, 0), 1 (1, 1, 0), 2 (1, 0, 0), 3 (1, -1, 0), 4 (0, -1, 0),
+// 5 (-1, -1, 0), 6 (-1, 0, 0), 7 (-1, 1, 0); past 7 (`cmplwi r5, 0x7` at 0x00016984) the zero
+// vector.
+// @ fn_10_16984
+static CVector3f GetRingRayOffset(int i) {
+  switch (i) {
+  case 0:
+    return CVector3f(0.f, 1.f, 0.f);
+  case 1:
+    return CVector3f(1.f, 1.f, 0.f);
+  case 2:
+    return CVector3f(1.f, 0.f, 0.f);
+  case 3:
+    return CVector3f(1.f, -1.f, 0.f);
+  case 4:
+    return CVector3f(0.f, -1.f, 0.f);
+  case 5:
+    return CVector3f(-1.f, -1.f, 0.f);
+  case 6:
+    return CVector3f(-1.f, 0.f, 0.f);
+  case 7:
+    return CVector3f(-1.f, 1.f, 0.f);
+  default:
+    return CVector3f::Zero();
+  }
+}
+
+// fn_10_16ADC (0x00016ADC, 0x8 bytes): the ring's ray count, 8.
+// @ fn_10_16ADC
+static int GetRingRayCount() { return 8; }
+
+// fn_10_166AC (0x000166AC, 0x1B4 bytes): ring ray i: from the actor's position and to dest, both
+// moved by radius along fn_10_16984(i); a line longer than lbl_10_rodata_3E4 = 0.5f (0x000167E4)
+// is cast (RayStaticIntersection at 0x00016814) over reach times its length, the filter including
+// lbl_10_data_C54 / C58 (0x3B kMT_Solid, 0x30 kMT_AIBlock) and excluding C5C (0x31 kMT_Platform).
+// A valid hit (`cmplwi r0, 0x1` at 0x00016828) answers false, anything else true.
+bool CDarkSamus::IsRingRayClear(CStateManager& mgr, const CVector3f& dest, int i, float reach,
+                                float radius) const {
+  const CVector3f offset = radius * GetRingRayOffset(i);
+  const CVector3f start = GetTranslation() + offset;
+  const CVector3f delta = (dest + offset) - start;
+  const float length = delta.Magnitude();
+  if (length > 0.5f) {
+    const CRayCastResult result = mgr.RayStaticIntersection(
+        start, delta.AsNormalized(), length * reach,
+        CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid, kMT_AIBlock),
+                                            CMaterialList(kMT_Platform)));
+    if (result.IsValid() == true) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// fn_10_16600 (0x00016600, 0xAC bytes): every ring ray (fn_10_166AC, i below fn_10_16ADC) clear;
+// the first blocked one answers false (0x00016664).
+// @ fn_10_16600
+bool CDarkSamus::IsRingPathClear(CStateManager& mgr, const CVector3f& dest, float reach,
+                                 float radius) const {
+  for (int i = 0; i < GetRingRayCount(); ++i) {
+    if (!IsRingRayClear(mgr, dest, i, reach, radius)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// fn_10_12B38 (0x00012B38, 0xF4 bytes): the dive's landing point: the player's position when the
+// player is morphed (0x38C == 1, 0x00012BA8), else lbl_10_rodata_40C = 5.0f past the player along
+// the flat line from the actor (z cleared at 0x00012B98, Normalize at 0x00012B9C).
+// @ fn_10_12B38
+CVector3f CDarkSamus::GetDiveTarget(CStateManager& mgr) const {
+  const CPlayer* player = mgr.GetPlayer(0);
+  const CVector3f& playerPos = player->GetTranslation();
+  CVector3f dir(playerPos.GetX() - GetTranslation().GetX(),
+                playerPos.GetY() - GetTranslation().GetY(), 0.f);
+  dir.Normalize();
+  if (static_cast< int >(player->GetMorphballTransitionState()) == 1) {
+    return playerPos;
+  }
+  return playerPos + 5.f * dir;
+}
+
+// fn_10_141BC (0x000141BC, 0xC8 bytes): the player's distance (fn_10_17CEC) inside
+// [minScale, maxScale] times the animation's distance (GetAnimationDistance at 0x00014224) times
+// the scale's y; above the top (`bgt` at 0x00014238) or below the bottom (`bge` at 0x00014244)
+// answers false.
+// @ fn_10_141BC
+bool CDarkSamus::IsPlayerInAnimReach(CStateManager& mgr, const CPASAnimParmData& parms,
+                                     float minScale, float maxScale) const {
+  const float dist = GetDistanceToPlayer(mgr);
+  const float reach = GetAnimationDistance(parms) * GetModelData()->GetScale().GetY();
+  if (dist > reach * maxScale || !(dist >= reach * minScale)) {
+    return false;
+  }
+  return true;
+}
+
+// fn_10_13EE0 (0x00013EE0, 0xE0 bytes): the step animation's distance for a step direction
+// (kAS_Step, FromEnum(dir), FromEnum(2) = kStep_BreakDodge; fn_10_13FFC at 0x00013F74 is the
+// module's copy of the CPASAnimParmData constructor) times the scale's y.
+// @ fn_10_13EE0
+float CDarkSamus::GetBreakDodgeDistance(int dir) const {
+  return GetAnimationDistance(CPASAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(dir),
+                                               CPASAnimParm::FromEnum(pas::kStep_BreakDodge))) *
+         GetModelData()->GetScale().GetY();
+}
+
+// fn_10_13E2C (0x00013E2C, 0xB4 bytes): the dash slot's break-dodge step as an offset: the slot's
+// direction (fn_10_EB90) from the transform's forward column (0x28/0x38/0x48, not flattened) times
+// fn_10_13EE0 of the slot's step direction (fn_10_EDE0).
+// @ fn_10_13E2C
+CVector3f CDarkSamus::GetDodgeStepOffset(int slot) const {
+  const float dist = GetBreakDodgeDistance(GetDashStepDirection(slot));
+  return dist * GetDashDirection(slot, GetTransform().GetForward());
+}
+
+// fn_10_16B1C (0x00016B1C, 0x2C bytes): the point on the path (OnPath of 0x7C0 at 0x00016B2C
+// answers kR_Success).
+// @ fn_10_16B1C
+bool CDarkSamus::IsOnPath(const CVector3f& point) const {
+  return mPathFindSearch.OnPath(point) == CPathFindSearch::kR_Success;
+}
+
+// fn_10_1444C (0x0001444C, 0x198 bytes): from point back to the actor in lbl_10_rodata_41C =
+// 0.1f steps (t from lbl_10_rodata_3E8 = 1.0f while above 0.0f), every point on the line must be
+// on the mesh (GetHeightOfPointAboveMesh at 0x00014544, padding 0.0f; a failure answers false)
+// within lbl_10_rodata_40C = 5.0f of height (0x0001455C/0x00014564).
+bool CDarkSamus::IsLineOnMesh(const CVector3f& point, float height) const {
+  const float top = 5.f + height;
+  const float bottom = height - 5.f;
+  for (float t = 1.f; t > 0.f; t -= 0.1f) {
+    const CVector3f along = (1.f - t) * GetTranslation() + t * point;
+    float pointHeight = 0.f;
+    if (mPathFindSearch.GetHeightOfPointAboveMesh(along, pointHeight, 0.f) !=
+        CPathFindSearch::kR_Success) {
+      return false;
+    }
+    if (pointHeight > top || pointHeight < bottom) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// fn_10_145E4 (0x000145E4, 0x64 bytes): the actor's own height (GetHeightOfPointAboveMesh at
+// 0x0001461C, from its z, padding 0.0f, the result unread) and fn_10_1444C to point.
+// @ fn_10_145E4
+bool CDarkSamus::CanWalkToPoint(const CVector3f& point) const {
+  float height = GetTranslation().GetZ();
+  mPathFindSearch.GetHeightOfPointAboveMesh(GetTranslation(), height, 0.f);
+  return IsLineOnMesh(point, height);
+}
+
+// fn_10_19B64 (0x00019B64, 0x670 bytes): the collector for the attacks' own reach checks.
+// 0x1 goes when the player is beyond the min attack range (0x3DC, `ble` at 0x00019BE4); 0x100 when
+// the aim line is blocked (fn_10_16418); 0x200/0x400/0x40/0x4 and 0x8/0x10/0x1/0x80 when the actor
+// cannot walk to the player (fn_10_14648 at 0x00019C58); 0x20 when the ring path to the dive target
+// (fn_10_12B38) is blocked (fn_10_16600 with lbl_10_rodata_534 = 0.75f and lbl_10_rodata_4DC =
+// 1.1f); 0x4 and 0x80 when the player is outside the melee animations' reach (fn_10_141BC with
+// kAS_MeleeAttack (FromEnum(2) / FromEnum(0xA), FromEnum of the body's locomotion type 0x580):
+// lbl_10_rodata_538 = 0.7f .. lbl_10_rodata_53C = 1.3f, lbl_10_rodata_540 = 0.9f ..
+// lbl_10_rodata_438 = 3.0f). For 0x10 the dodge side nearer the player (fn_10_13E2C of slots 2 and
+// 3, the squared distances' `bge` at 0x0001A014) sets the side byte 0xBAC (1 for slot 2 at
+// 0x0001A020, 0 for slot 3 at 0x0001A0D0); 0x10 goes unless that end point and the point
+// lbl_10_rodata_53C = 1.3f times the offset out are on the path (fn_10_16B1C) and walkable
+// (fn_10_145E4).
+void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) {
+  const float dist = GetDistanceToPlayer(mgr);
+  if ((*mask & 0x1) != 0 && dist > mMinAttackRange) {
+    SetAttackBits(mask, 0, 0x1, 0xFFFF, 0xFFFF, 0xFFFF);
+  }
+  if ((*mask & 0x100) != 0 && !IsPlayerAimLineClear(mgr)) {
+    SetAttackBits(mask, 0, 0x100, 0xFFFF, 0xFFFF, 0xFFFF);
+  }
+  if (!CanWalkToPlayer(mgr)) {
+    SetAttackBits(mask, 0, 0x200, 0x400, 0x40, 0x4);
+    SetAttackBits(mask, 0, 0x8, 0x10, 0x1, 0x80);
+  }
+  if ((*mask & 0x20) != 0) {
+    const CVector3f target = GetDiveTarget(mgr);
+    if (!IsRingPathClear(mgr, target, 0.75f, 1.1f)) {
+      SetAttackBits(mask, 0, 0x20, 0xFFFF, 0xFFFF, 0xFFFF);
+    }
+  }
+  if ((*mask & 0x4) != 0) {
+    const int loco = GetBodyController()->GetLocomotionType();
+    const CPASAnimParmData parms(pas::kAS_MeleeAttack, CPASAnimParm::FromEnum(2),
+                                 CPASAnimParm::FromEnum(loco));
+    if (!IsPlayerInAnimReach(mgr, parms, 0.7f, 1.3f)) {
+      SetAttackBits(mask, 0, 0x4, 0xFFFF, 0xFFFF, 0xFFFF);
+    }
+  }
+  if ((*mask & 0x80) != 0) {
+    const int loco = GetBodyController()->GetLocomotionType();
+    const CPASAnimParmData parms(pas::kAS_MeleeAttack, CPASAnimParm::FromEnum(0xA),
+                                 CPASAnimParm::FromEnum(loco));
+    if (!IsPlayerInAnimReach(mgr, parms, 0.9f, 3.f)) {
+      SetAttackBits(mask, 0, 0x80, 0xFFFF, 0xFFFF, 0xFFFF);
+    }
+  }
+  if ((*mask & 0x10) != 0) {
+    const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
+    const CVector3f offset2 = GetDodgeStepOffset(2);
+    const CVector3f offset3 = GetDodgeStepOffset(3);
+    const CVector3f end2 = GetTranslation() + offset2;
+    const CVector3f end3 = GetTranslation() + offset3;
+    const bool nearer2 = (end2 - playerPos).MagSquared() < (end3 - playerPos).MagSquared();
+    const CVector3f& end = nearer2 ? end2 : end3;
+    const CVector3f& offset = nearer2 ? offset2 : offset3;
+    mScatterSide = nearer2 ? 1 : 0;
+    if (!(IsOnPath(end) && IsOnPath(GetTranslation() + 1.3f * offset) && CanWalkToPoint(end))) {
+      SetAttackBits(mask, 0, 0x10, 0xFFFF, 0xFFFF, 0xFFFF);
+    }
+  }
 }
 
 // fn_10_197D8 (0x000197D8, 0x140 bytes): the visible picker. An empty weight list and mask

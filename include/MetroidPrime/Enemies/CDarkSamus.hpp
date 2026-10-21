@@ -400,8 +400,29 @@ private:
   void CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
   // fn_10_14648: can the actor walk the straight line to the player on the path mesh?
   bool CanWalkToPlayer(CStateManager& mgr) const;
-  // fn_10_19B64: the collector for the attacks' own reach checks (not ported yet: a stand-in).
-  void CollectReachAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  // fn_10_164C0 / 16418: the line from the gun locator (plus an offset) to a target / to the
+  // player's aim position, 5 up, clear of static solids.
+  bool IsGunLineClear(CStateManager& mgr, const CVector3f& offset, const CVector3f& target) const;
+  bool IsPlayerAimLineClear(CStateManager& mgr) const;
+  // fn_10_166AC / 16600: one / all eight ring rays from the actor to dest, radius out, clear.
+  bool IsRingRayClear(CStateManager& mgr, const CVector3f& dest, int i, float reach,
+                      float radius) const;
+  bool IsRingPathClear(CStateManager& mgr, const CVector3f& dest, float reach, float radius) const;
+  // fn_10_12B38: the dive's landing point.
+  CVector3f GetDiveTarget(CStateManager& mgr) const;
+  // fn_10_141BC: the player's distance within [min, max] times the animation's reach.
+  bool IsPlayerInAnimReach(CStateManager& mgr, const CPASAnimParmData& parms, float minScale,
+                           float maxScale) const;
+  // fn_10_13EE0 / 13E2C: the break-dodge step's distance / the dash slot's dodge offset.
+  float GetBreakDodgeDistance(int dir) const;
+  CVector3f GetDodgeStepOffset(int slot) const;
+  // fn_10_16B1C / 1444C / 145E4: on the path; the line to point on the mesh within 5 of height;
+  // the same from the actor's own height.
+  bool IsOnPath(const CVector3f& point) const;
+  bool IsLineOnMesh(const CVector3f& point, float height) const;
+  bool CanWalkToPoint(const CVector3f& point) const;
+  // fn_10_19B64: the collector for the attacks' own reach checks (it also sets mScatterSide).
+  void CollectReachAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask);
   // fn_10_197D8 / fn_10_1969C: the visible and the faded pickers - the collectors' weights and
   // mask go to mAttackWeights/mAttackMask and the weighted pick to mWeightedPick, which they
   // answer.
