@@ -749,6 +749,13 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
         std::snprintf(line, sizeof(line), " %d", area->GetAttachedAreaId(k).Value());
         out += line;
       }
+      // The world-space AABB CGroundMovement::CheckFalling tests the player against: outside every
+      // alive area's box the standing player is held up (retail 0x8012C5C8).
+      const CAABox& b = area->GetAABB();
+      std::snprintf(line, sizeof(line), "  aabb (%.1f %.1f %.1f)-(%.1f %.1f %.1f)",
+                    b.GetMinPoint().GetX(), b.GetMinPoint().GetY(), b.GetMinPoint().GetZ(),
+                    b.GetMaxPoint().GetX(), b.GetMaxPoint().GetY(), b.GetMaxPoint().GetZ());
+      out += line;
     }
     out += '\n';
   }
