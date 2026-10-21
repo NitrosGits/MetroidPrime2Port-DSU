@@ -42,7 +42,6 @@ float CDigitalGuardian::x37FC_(float v) const {
   return kAngles[index];
 }
 //
-// Unmarked: the port has no caller for it yet (the FSM lane's states call it).
 
 
 // fn_14_6C74 (0x3C bytes): the guardian's attack angle. The vortex mode (the s32 at guest
@@ -59,7 +58,6 @@ float CDigitalGuardian::x6C74_() const {
   return 2.0943952f; // .rodata 0x2CC
 }
 //
-// Unmarked: the port has no caller for it yet (the FSM lane's states call it).
 
 
 // fn_14_3F90 (0xF0 bytes): the four knee armours follow the knee locators. Each armour's id
@@ -80,12 +78,12 @@ void CDigitalGuardian::x3F90_(CStateManager& mgr) {
       continue;
     }
     const CSegId seg(segs[i]);
+    // The BuildTransform4f call at 0x400C (the segment's rest rotation) is the port's
+    // SegmentRotation_ helper; the locator's transform is the GetLctrTransform call at 0x401C.
     const CTransform4f xf = GetLctrTransform(seg) * SegmentRotation_(seg);
     armour->SetTransform(xf); // the SetTransform call at 0x4044
   }
 }
-//
-// Unmarked: the port has no caller for it yet (fn_14_A5BC, the Think, calls it).
 
 
 // fn_14_38BC (0xB8 bytes): the leg-stab and jump timers count down (guest this+0x11E0 and
@@ -113,8 +111,6 @@ void CDigitalGuardian::x38BC_(CStateManager& mgr, float dt) {
   }
   x1274_ -= dt; // the store at 0x3934
 }
-//
-// Unmarked: the port has no caller for it yet (fn_14_A5BC, the Think, calls it).
 
 
 // fn_14_2358 (0x18C bytes): the four toe targets' sound emitters follow the toe locators
@@ -127,6 +123,8 @@ void CDigitalGuardian::x2358_(CStateManager& mgr, float dt) {
   for (int i = 0; i < 4; ++i) {
     if (x10F0_[i] != CSfxHandle()) { // the cmplwi at 0x23C0
       const CSegId seg(segs[i]);
+      // The BuildTransform4f call at 0x23E4 (the segment's rest rotation) is the port's
+      // SegmentRotation_ helper; the locator's transform is the GetLctrTransform call at 0x23F4.
       const CTransform4f xf = GetLctrTransform(seg) * SegmentRotation_(seg);
       CSfxManager::UpdateEmitter(x10F0_[i], xf.GetTranslation(), CVector3f::Up(), 0x7F);
     }
@@ -140,8 +138,6 @@ void CDigitalGuardian::x2358_(CStateManager& mgr, float dt) {
     }
   }
 }
-//
-// Unmarked: the port has no caller for it yet (fn_14_A5BC, the Think, calls it).
 
 
 // fn_14_5644 (0x1F4 bytes): the "XRDG" script message - a toe target hit by the player's boost
@@ -212,8 +208,6 @@ bool CDigitalGuardian::x6C24_(CDigitalGuardianHead& head) {
   }
   return !head.x1028_.IsMagnitudeSafe(); // the call at 0x6C4C
 }
-//
-// Unmarked: the port has no caller for it yet (fn_14_6CB0 calls it).
 
 
 // fn_14_6CB0 (0x154 bytes): the guardian's aim. When the head has no usable direction (fn_14_6C24)
@@ -241,7 +235,12 @@ void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf
     outForward = head.x1028_.AsNormalized(); // the call at 0x6DAC
     outUp = CVector3f::Up();                // the loads at 0x6DCC..0x6DD8
   }
-  x128C_ = static_cast< uchar >((x128C_ & ~0x02) | (usable ? 0x02 : 0x00)); // the rlwimi at 0x6DE8
+  // The rlwimi at 0x6DE8 puts "usable" into the flag byte's bit 1 (1u << (31 - 30) = 0x02).
+  if (usable) {
+    x128C_ |= 0x02;
+  } else {
+    x128C_ &= ~0x02;
+  }
 }
 //
 // Unmarked: the port has no caller for it yet (fn_14_6E04 calls it).
@@ -292,8 +291,6 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
     x128C_ |= 0x02; // the rlwimi at 0x7020 (the byte's bit 1)
   }
 }
-//
-// Unmarked: the port has no caller for it yet (fn_14_A5BC, the Think, calls it).
 
 
 // ---------------------------------------------------------------------------------------------
@@ -315,7 +312,7 @@ SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr)
   switch (knees) {
   case 0:
     // The extrwi at 0x10198 takes 1 bit at 27 (the byte's bit 4, 1u << (31 - 27) = 0x10).
-    if ((x10F4_ & 0x10) == 0) {
+    if ((x10F4_ & 0x10) == 0) { // the extrwi at 0x10198
       return &mData.digitalGuardianHeadStruct_0x2dd88764; // guest 0xA80 (the data block's +0x2C0)
     }
     return &mData.digitalGuardianHeadStruct_0x48b46e55; // guest 0xA9C (the data block's +0x2DC)
@@ -359,8 +356,6 @@ void CDigitalGuardianHead::x11EA8_() {
     }
   }
 }
-//
-// Unmarked: the head's "XDEL" case calls it, but no bomb slot had a sound, so the RemoveEmitter arm never ran.
 
 
 // fn_14_11F7C (0x70 bytes): the echo targets are deleted. Every id at head+0xF34 is deleted
@@ -379,6 +374,68 @@ void CDigitalGuardianHead::x11F7C_(CStateManager& mgr) {
     xF34_[i] = kInvalidUniqueId;         // the store at 0x11FC4
   }
 }
+//
+// The arms: (a) the vortex mode (guest this+0x11B8) is not 0 -> 4*pi, (b) the flag byte's
+// bit 6 (guest this+0x128C) is set -> pi/3, (c) neither -> 2*pi/3.
+// The run: Sanctuary Fortress 09_cliff_temple_dark (area 53), 3000 frames, the coverage harness
+// with the forcing (tools/cov/force.sh and tools/cov/specs/digitalguardian_force.py): (c) ran in
+// the first 101 frames, (a) was forced (the vortex mode set to 1 at the entry, the hits 101-200)
+// and (b) was forced (the flag byte's bit 6 set at the entry, the hits 201+).
+// @ fn_14_6C74
+//
+// The arms: (a) the knee's id is invalid -> the walk skips that knee, (b) the actor the id
+// names is gone -> the walk clears the id, (c) the armour is there -> its transform is set.
+// The run: area 53, 3000 frames, the coverage harness with the forcing: (c) ran in the first
+// 101 frames (both ids valid, the CActor::SetTransform call site), (a) was forced (the second
+// knee id cleared at the entry, the hits 101-200) and (b) was forced (the third knee id pointed
+// at an actor that does not exist, the hits 201+; the body then cleared the id).
+// @ fn_14_3F90
+//
+// The arms: (a) four knees left -> the protect timer counts down, (b) fewer knees and the
+// player is morphed -> the timer is reset to the data block's +0x170, (c) fewer knees and the
+// player is not morphed -> the timer counts down.
+// The run: area 53, 3000 frames, the coverage harness with the forcing: (a) ran in the first
+// 101 frames (four knees, the key "4, 0"), (c) ran with the knee count forced under four (the
+// second knee id cleared at the entry, the hits 101-300, the keys "3, 0" and "2, 0") and (b)
+// was forced as well (the player's morph state set to 1 at the entry, the hits 301+, the key
+// "2, 1").
+// @ fn_14_38BC
+//
+// The arms: (a) the toe target has a sound emitter -> it follows the toe locator, (b) the toe
+// target is flinching (the word at guest this+0x10DC is 2) -> it goes back to the target state.
+// The run: area 53, 3000 frames, the coverage harness with the forcing: (a) ran every frame
+// (the CSfxManager::UpdateEmitter call site) and (b) ran too (the fn_14_1A68 call site; the
+// flinch was forced by setting the first toe target's state word to 2 at the entry).
+// @ fn_14_2358
+//
+// The arms: (a) the guardian's body state (the body controller's state id, guest this+0x48C ->
+// +0x37C) is 0 -> the head's direction does not matter, (b) the head's turn direction
+// (head+0x1028) is not magnitude-safe -> the direction is unusable, (c) neither -> the direction
+// is usable.
+// The run: area 53, 3000 frames, the coverage harness with the forcing: (c) ran in the frames
+// where the head's direction was safe (x6CB0's CTransform4f::operator* call site), (b) ran in
+// the frames where it was not (x6CB0's CVector3f::AsNormalized call site) and (a) was forced (the
+// body controller's state id set to 0 at the entry, the hits 101+; the
+// CVector3f::IsMagnitudeSafe call site then stopped).
+// @ fn_14_6C24
+//
+// The arms: (a) the flag byte's bit 1 (guest this+0x128C) is clear and the head has no usable
+// direction -> the aim transform is rebuilt from the head's flattened forward, (b) the direction
+// is usable -> the aim is the given transform times the aim transform, (c) it is not -> the
+// direction is the head's normalized turn direction and the up vector is the world's up.
+// The run: area 53, 3000 frames, the coverage harness with the forcing: (b) ran (the
+// CTransform4f::operator* call site), (c) ran (the CVector3f::AsNormalized call site) and (a)
+// ran too (the fn_14_13B38, the CTransform4f::TransposeRotate and the CTransform4f::LookAt call
+// sites; the flag byte's bit 1 was forced clear at the entry so that the branch was taken).
+// @ fn_14_6CB0
+//
+// The arms: (a) the bomb slot has a sound -> the emitter is removed and the handle cleared,
+// (b) the slot has no sound -> nothing happens.
+// The run: area 53, 3000 frames, the coverage harness: (b) ran in the plain run (the head's
+// "XDEL" reached the body and no bomb slot had a sound) and (a) was forced (a sound handle
+// written into the first bomb slot at the entry; the CSfxManager::RemoveEmitter call site then
+// fired).
+// @ fn_14_11EA8
 
 // fn_14_137A8 (0x88 bytes): the head's armour model. The armour's asset id (the parameter
 // block's +0x0C, guest this+0x7CC) is put into the head's model (guest this+0xEA4), unless the
@@ -396,4 +453,28 @@ void CDigitalGuardianHead::x137A8_() {
 //
 // Unmarked: the port has no caller for it yet (the head's constructor calls it).
 
-
+// fn_14_83C0 (0x184 bytes): the knee's knock-back animation parm data. The struct the retail
+// fills is {u32 stateId; u32 parmCount; CPASAnimParm parms[8]} - the host's CPASAnimParmData
+// holds the same data in the same order (the state id, then the reserved_vector's count and its
+// eight parameters):
+//  - the state id (the first word): the caller's "li r4, 0x6" (0x81D0) = pas::kAS_KnockBack,
+//    stored at 0x83F0;
+//  - the parameter count (the second word): the size the callee counts up from 0 (the store at
+//    0x83FC) to 8 (the eight stores at 0x8414, 0x8448, 0x846C, 0x848C, 0x84A8, 0x84C8, 0x84EC and
+//    0x8514);
+//  - the eight parameters, each a pair of words (a CPASAnimParm is 8 bytes: the value and the
+//    type): the knee's angle first (.rodata 0x20C, the FromReal32 call at 0x81A0), then the enum
+//    2 (the FromEnum call at 0x8184), then the six NoParameter ones (the NoParameter calls at
+//    0x8150, 0x8158, 0x8160, 0x8168, 0x8170 and 0x8178).
+// The host's layout is the same as the retail's: its reserved_vector is {int mCount; uchar
+// mData[N * sizeof(T)]}, so the count sits where the retail's had it.
+//
+// Unmarked: the port's fn_14_8090 body (KneeDestroyedReaction, the FSM lane's, already marked)
+// builds the same data inline with the host's constructor, so this helper has no caller yet.
+CPASAnimParmData CDigitalGuardian::x83C0_(pas::EAnimationState state, const CPASAnimParm& p1,
+                                         const CPASAnimParm& p2, const CPASAnimParm& p3,
+                                         const CPASAnimParm& p4, const CPASAnimParm& p5,
+                                         const CPASAnimParm& p6, const CPASAnimParm& p7,
+                                         const CPASAnimParm& p8) const {
+  return CPASAnimParmData(state, p1, p2, p3, p4, p5, p6, p7, p8);
+}

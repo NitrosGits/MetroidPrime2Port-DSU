@@ -442,6 +442,15 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
     xE60_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
     xE64_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
+  // The retail's four calls after the managers (fn_14_A5BC): the body turns to the head
+  // (fn_14_6E04, the call at 0xA63C), the toe targets' sound emitters and hit timers
+  // (fn_14_2358, the call at 0xA64C), the leg-stab, jump and protect-the-knees timers
+  // (fn_14_38BC, the call at 0xA65C) and the knee armours follow the knee locators
+  // (fn_14_3F90, the call at 0xA668).
+  x6E04_(mgr, dt); // fn_14_6E04
+  x2358_(mgr, dt); // fn_14_2358
+  x38BC_(mgr, dt); // fn_14_38BC
+  x3F90_(mgr);     // fn_14_3F90
 }
 
 // vtable slot 6 = fn_14_A6A8 (0x4F0), the biggest body function: it switches on the script

@@ -23,6 +23,7 @@ class CGenDescription;
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageVulnerability.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrEchoParameters.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrShockWaveInfo.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 
 // Host copy of the module's parameter block (SLdrDigitalGuardianData). Retail reads it into a
 // stack struct and copies it into the object verbatim (fn_14_C68C, guest 0x7C0, 0x640 bytes), so
@@ -522,6 +523,13 @@ private:
   void x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf, CVector3f& outForward,
               CVector3f& outUp); // fn_14_6CB0: the aim (the forward and the up vector)
   void x6E04_(CStateManager& mgr, float dt);   // fn_14_6E04: the body turns to the head
+  // fn_14_83C0 (0x184 bytes): the knock-back animation parm data (the state id and the
+  // eight parameters).
+  CPASAnimParmData x83C0_(pas::EAnimationState state, const CPASAnimParm& p1,
+                          const CPASAnimParm& p2, const CPASAnimParm& p3,
+                          const CPASAnimParm& p4, const CPASAnimParm& p5,
+                          const CPASAnimParm& p6, const CPASAnimParm& p7,
+                          const CPASAnimParm& p8) const;
   CTransform4f x1088_ = CTransform4f::Identity(); // 0x1088: the aim transform (fn_14_6CB0)
 #else
   uchar x7c0_[0x1290 - 0x7c0]; // CDigitalGuardianData and everything above it in retail

@@ -49,83 +49,126 @@ The counts (all 420 symbols of `config/G2ME01/rels/DigitalGuardian/symbols.txt`)
 | **total** | **420** | **0x1B89C (112,796)** |
 
 Of the 192 B rows, 105 are the FSM handlers' own helpers that the other lane's states call and
-that this lane did not touch (they are listed in the table below with their kind **B** and the
-note "the FSM lane's"), and 87 are the module's own stateless helpers. This lane ports 14 of
-them (section 3).
+that this lane did not touch (they are listed in the table below with their kind **B**), and 87
+are the module's own stateless helpers. This lane ports 15 of them (section 3).
 
 ## 2. The rows
 
 
 ## 3. The helpers this lane ports
 
-All 14 bodies are in `src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp`; the
-declarations are in the append-only helpers block at the end of the class in
-`include/MetroidPrime/Enemies/CDigitalGuardian.hpp` (the body's nine) and in the same kind of
+All 15 bodies are in `src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp`; the declarations
+are in the append-only helpers block at the end of the class in
+`include/MetroidPrime/Enemies/CDigitalGuardian.hpp` (the body's ten) and in the same kind of
 block at the end of the class in `include/MetroidPrime/Enemies/CDigitalGuardianHead.hpp` (the
-head's five). Every bit test, mask, compare and constant carries the retail asm offset it came
-from.
+head's five). The head's block is a deviation from the brief, which named only the body's
+header: the head's helpers are members of `CDigitalGuardianHead`, so they cannot be declared in
+the body's header.
 
-| id | size | what | the class |
-|---|---|---|---|
-| `fn_14_37FC` | 0xC0 | the entry of the five-value table {.rodata 0x24C} nearest to the argument | body |
-| `fn_14_6C74` | 0x3C | the attack angle (4*pi, pi/3 or 2*pi/3) | body |
-| `fn_14_3F90` | 0xF0 | the four knee armours follow the knee locators | body |
-| `fn_14_38BC` | 0xB8 | the leg-stab, jump and protect-the-knees timers | body |
-| `fn_14_2358` | 0x18C | the toe targets' sound emitters and hit timers | body |
-| `fn_14_5644` | 0x1F4 | the "XRDG" case: a toe target hit by the boost ball | body |
-| `fn_14_6C24` | 0x50 | is the head's turn direction unusable? | body |
-| `fn_14_6CB0` | 0x154 | the aim: the forward and the up vector | body |
-| `fn_14_6E04` | 0x258 | the body turns to the head module | body |
-| `fn_14_10120` | 0xC0 | the head's projectile-attack block picker | head |
-| `fn_14_F374` | 0x1C | the head's retreat speed | head |
-| `fn_14_11EA8` | 0x88 | the destroyed bomb slots' sounds are stopped | head |
-| `fn_14_11F7C` | 0x70 | the echo targets are deleted | head |
-| `fn_14_137A8` | 0x88 | the head's armour model | head |
+Every bit test, mask, compare and constant carries the retail asm offset it came from.
 
-Two stand-in call sites now call them instead of logging: the body's "XRDG" case
-(`PortCDigitalGuardian.cpp`, the `StandInFn("fn_14_5644 ...")` line) and the head's "XDEL" case
-(`PortCDigitalGuardianHead.cpp`, the two `StandInFn` lines for `fn_14_11EA8` and `fn_14_11F7C`).
+| id | size | what | the class | marked |
+|---|---|---|---|---|
+| `fn_14_37FC` | 0xC0 | the entry of the five-value table {.rodata 0x24C} nearest to the argument | body | no |
+| `fn_14_6C74` | 0x3C | the attack angle (4*pi, pi/3 or 2*pi/3) | body | **yes** |
+| `fn_14_3F90` | 0xF0 | the four knee armours follow the knee locators | body | **yes** |
+| `fn_14_38BC` | 0xB8 | the leg-stab, jump and protect-the-knees timers | body | **yes** |
+| `fn_14_2358` | 0x18C | the toe targets' sound emitters and hit timers | body | **yes** |
+| `fn_14_5644` | 0x1F4 | the "XRDG" case: a toe target hit by the boost ball | body | no |
+| `fn_14_6C24` | 0x50 | is the head's turn direction unusable? | body | **yes** |
+| `fn_14_6CB0` | 0x154 | the aim: the forward and the up vector | body | **yes** |
+| `fn_14_6E04` | 0x258 | the body turns to the head module | body | no |
+| `fn_14_83C0` | 0x184 | the knock-back animation parm data | body | no |
+| `fn_14_10120` | 0xC0 | the head's projectile-attack block picker | head | no |
+| `fn_14_F374` | 0x1C | the head's retreat speed | head | no |
+| `fn_14_11EA8` | 0x88 | the destroyed bomb slots' sounds are stopped | head | **yes** |
+| `fn_14_11F7C` | 0x70 | the echo targets are deleted | head | **yes** |
+| `fn_14_137A8` | 0x88 | the head's armour model | head | no |
 
-### 3.1 The run
+Three stand-in call sites now call them instead of logging: the body's "XRDG" case
+(`PortCDigitalGuardian.cpp`, the `StandInFn("fn_14_5644 ...")` line), the head's "XDEL" case
+(`PortCDigitalGuardianHead.cpp`, the two `StandInFn` lines for `fn_14_11EA8` and `fn_14_11F7C`)
+and the body's Think (`fn_14_A5BC`, which the retail ends with the four calls for `fn_14_6E04`,
+`fn_14_2358`, `fn_14_38BC` and `fn_14_3F90`; the port's Think had them missing).
+
+### 3.1 The runs
 
 **Sanctuary Fortress `09_cliff_temple_dark`** (world 1baa96c2, area 53), layers 3 and 11, the
-guardian body `u054e` and the head module `u051b` woken with `send <id> Activate`, the head
-deleted with `send u051b Delete` at frame 2400. `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
-3000 frames, the coverage harness:
+guardian body `u054e` and the head module `u051b` woken with `send <id> Activate`, the body
+sent the "XRDG" message (`send u054e ResistedDamage`, the console's name for 0x58524447) and
+the head deleted with `send u051b Delete` at frame 2400. `MP2_FRAME_LIMIT=0
+MP2_TICKS_PER_FRAME=8`, 3000 frames.
 
-    tools/cov/run.sh tools/cov/specs/digitalguardian.py /tmp/opencode/dg_cov3 \
+Two runs, both with the game exiting with code 0 and the log free of `[port] caught` and
+`reach-stub` lines:
+
+    # the plain coverage run
+    tools/cov/run.sh tools/cov/specs/digitalguardian.py /tmp/opencode/dg_cov4 \
       1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_area53.con --fast --frames 3000
 
-The game exited with code 0 and the log has **0 `[port] caught` and 0 `reach-stub`** lines. The
-spec's three sanity entries (bodies the port already had) confirm the harness sees this
-module: `x705C_` 2 hits, `x676C_` 1 hit, `x3E88_` 1 hit.
+    # the coverage run with the forcing (the arms the fight cannot reach)
+    COV_GDB_SCRIPT=tools/cov/force_cov.py tools/cov/force.sh \
+      tools/cov/specs/digitalguardian_force.py /tmp/opencode/dg_force6 \
+      1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_area53.con --fast --frames 3000
+
+The forcing side is `tools/cov/force.sh` and `tools/cov/force.py`, **copied from the
+`decomp/darksamus-helpers2` branch** (the DarkSamus helpers lane wrote them); `tools/cov/force_cov.py`
+is this lane's combination of them with `tools/cov/gdb_cov.py`, so one run gives both the arm
+counts (`cov.txt`) and the forced writes (`forced.log`, `forced.txt`). The forcing writes the
+members listed in `tools/cov/specs/digitalguardian_force.py` at the entry of a body; the spec's
+`FORCE` entries say which member and why.
 
 ### 3.2 The arms
 
+The "forced" arms are the ones the fight cannot produce: the write happens at the entry of the
+body, so the arm is taken with a member the fight never sets.
+
 | id | the arms | how they ran |
 |---|---|---|
-| `fn_14_11F7C` (the echo targets are deleted) | (a) the walk deletes an echo target and clears its id, (b) the walk ends when the count at head+0xF30 is reached | **both** ran in the area-53 run: the entry was hit once and the `DeleteObjectRequest` call site three times (the three echo targets), so the body is **marked** |
-| `fn_14_11EA8` (the bomb slots' sounds) | (a) the handle is set: it is removed and cleared, (b) the handle is empty: nothing happens | (b) ran (the entry was hit once, with the head's "XDEL"), (a) did not: no bomb slot had a looping sound in the run. **Unmarked** |
-| `fn_14_5644` (the "XRDG" case) | nine early-outs (not a collider, not a toe target, the toe is skipped, the hit timer is running, the player is not morphed, no boost shield) and two endings (the toe target dies, the toe target flinches) | the port's "XRDG" case calls it, but the run never sent that message (it needs a morphed player with a boost shield hitting a toe target). **Unmarked** |
-| `fn_14_37FC` (the nearest 45 degrees) | five compares, the earliest wins a tie | the port has no caller yet. **Unmarked** |
-| `fn_14_6C74` (the attack angle) | three (the vortex mode, the flag byte's bit 6, the default) | the port has no caller yet. **Unmarked** |
-| `fn_14_3F90` (the knee armours follow) | (a) the armour is gone: its id is cleared, (b) the armour is there: its transform is set | the port has no caller yet (`fn_14_A5BC`, the Think, calls it and the Think is still a stand-in). **Unmarked** |
-| `fn_14_38BC` (the timers) | (a) four knees left: the protect timer counts down, (b) fewer: the player is morphed and the timer is reset, (c) fewer: the player is not morphed and the timer counts down | the port has no caller yet. **Unmarked** |
-| `fn_14_2358` (the toe targets' sounds) | (a) the handle is set: the emitter follows the toe locator, (b) the toe target is flinching: it goes back to the target state | the port has no caller yet. **Unmarked** |
-| `fn_14_6C24` (the head's turn direction) | (a) the body state is 0: the direction is unusable, (b) the head's direction is not magnitude-safe: the direction is unusable, (c) neither: the direction is usable | the port has no caller yet. **Unmarked** |
-| `fn_14_6CB0` (the aim) | (a) the flag byte's bit 1 is clear and the direction is unusable: the aim transform is rebuilt, (b) the direction is usable: the aim is the given transform times the aim transform, (c) it is not: the direction is the head's normalized turn direction and the up vector is the world's up | the port has no caller yet. **Unmarked** |
-| `fn_14_6E04` (the body turns to the head) | (a) no head: nothing happens, (b) the head is gone: it detaches, (c) the angle is smaller than the turn rate: the head looks at the guardian's forward, (d) it is not: the head's forward is slerped, (e) at most two knees left and the head is attacking: the flag byte's bit 1 is set | the port has no caller yet. **Unmarked** |
+| `fn_14_3F90` (the knee armours follow the knees) | (a) the knee's id is invalid: the walk skips it, (b) the actor the id names is gone: the walk clears the id, (c) the armour is there: its transform is set | (c) **naturally** (the first 101 frames, both ids valid, the `CActor::SetTransform` call site); (a) **forced** (the second knee id cleared at the entry, the hits 101-200, the key "65535, 1402"); (b) **forced** (the third knee id pointed at an actor that does not exist, the hits 201+, the key "65535, 65535" - the body cleared the id itself) |
+| `fn_14_38BC` (the timers) | (a) four knees left: the protect timer counts down, (b) fewer knees and the player is morphed: the timer is reset to the data block's +0x170, (c) fewer knees and the player is not morphed: the timer counts down | (a) **naturally** (the first 101 frames, the key "4, 0"); (c) **naturally** with the knee count forced under four (the second knee id cleared at the entry, the hits 101-300, the keys "3, 0" and "2, 0"); (b) **forced** (the player's morph state set to 1 at the entry, the hits 301+, the key "2, 1") |
+| `fn_14_6C74` (the attack angle) | (a) the vortex mode is not 0: 4*pi, (b) the flag byte's bit 6 is set: pi/3, (c) neither: 2*pi/3 | (c) **naturally** (the first 101 frames, the key "0, 0"); (a) **forced** (the vortex mode set to 1 at the entry, the hits 101-200, the key "1, 0"); (b) **forced** (the flag byte's bit 6 set at the entry, the hits 201+, the key "0, 64") |
+| `fn_14_6C24` (the head's turn direction) | (a) the guardian's body state is 0: the direction does not matter, (b) the head's turn direction is not magnitude-safe: the direction is unusable, (c) neither: the direction is usable | (c) **naturally** (the frames where the head's direction was safe, `x6CB0`'s `CTransform4f::operator*` call site); (b) **naturally** (the frames where it was not, `x6CB0`'s `CVector3f::AsNormalized` call site); (a) **forced** (the body controller's state id set to 0 at the entry, the hits 101+; the `CVector3f::IsMagnitudeSafe` call site then stopped: 203 entries, 100 calls) |
+| `fn_14_6CB0` (the aim) | (a) the flag byte's bit 1 is clear and the head has no usable direction: the aim transform is rebuilt, (b) the direction is usable: the aim is the given transform times the aim transform, (c) it is not: the direction is the head's normalized turn direction | (b) **naturally** (the `CTransform4f::operator*` call site, 102 hits); (c) **naturally** (the `CVector3f::AsNormalized` call site, 101 hits); (a) **forced** (the flag byte's bit 1 cleared at the entry, the hits 101+; then the `fn_14_13B38`, `CTransform4f::TransposeRotate` and `CTransform4f::LookAt` call sites fired, 52 hits each) |
+| `fn_14_2358` (the toe targets' sound emitters) | (a) the toe target has a sound emitter: it follows the toe locator, (b) the toe target is flinching: it goes back to the target state | (a) **naturally** (every frame, the `CSfxManager::UpdateEmitter` call site, 400 hits); (b) **naturally** and **forced** (the `fn_14_1A68` call site, 400 hits; the flinch was forced by setting the first toe target's state word to 2 at the entry) |
+| `fn_14_11EA8` (the bomb slots' sounds) | (a) the slot has a sound: the emitter is removed and the handle cleared, (b) the slot has no sound: nothing happens | (b) **naturally** in the plain run (the head's "XDEL" reached the body and no bomb slot had a sound: the entry was hit once, the `CSfxManager::RemoveEmitter` call site not at all); (a) **forced** (a sound handle written into the first bomb slot at the entry; the `CSfxManager::RemoveEmitter` call site then fired) |
+| `fn_14_11F7C` (the echo targets are deleted) | (a) the walk deletes an echo target and clears its id, (b) the walk ends when the count is reached | (a) and (b) **naturally** (the entry was hit once and the `CStateManager::DeleteObjectRequest` call site three times: the three echo targets were deleted and the walk ended) |
+| `fn_14_5644` (the "XRDG" case) | nine early-outs and two endings | the port's "XRDG" case calls it and the console's "ResistedDamage" message reached it (the entry was hit once, the `CStateManager::ObjectById` call site once), but the sender is not a toe target collider, so only the first early-out ran. The toe target colliders (guest this+0x1078) do not exist in the port, so the deeper arms cannot run. **Unmarked** |
+| `fn_14_6E04` (the body turns to the head) | (a) no head, (b) the head is gone: it detaches, (c) the angle is below the turn rate, (d) else: the head's forward is slerped, (e) at most two knees left and the head is attacking: the flag byte's bit 1 is set | (a) **forced** (the head's id cleared at the entry, the hits 101-200), (b) **forced** (the head's id pointed at an actor that does not exist, the hits 201+), (c) and (d) **naturally** (the `CTransform4f::LookAt` and `CVector3f::Slerp` call sites). (e) needs the head's projectile attack (head+0x10D0) to be 1, which only the head's FSM code (the other lane's) sets. **Unmarked** |
+| `fn_14_37FC` (the nearest 45 degrees) | five compares, the earliest wins a tie | the port has no caller yet (`fn_14_7208` and `fn_14_77EC`, the FSM codes, are still stand-ins). **Unmarked** |
+| `fn_14_83C0` (the knock-back parm data) | none: the body fills the struct field by field | the port's `fn_14_8090` body (KneeDestroyedReaction, the FSM lane's, already marked) builds the same data inline with the host's constructor. **Unmarked** |
 | `fn_14_10120` (the projectile-attack block) | six (the knee count 0..4 and the default, and the flag byte's bit 4 in the 0 case) | the port has no caller yet (the head's codes call it). **Unmarked** |
-| `fn_14_F374` (the retreat speed) | two (more than one life left, one life left) | the port has no caller yet. **Unmarked** |
+| `fn_14_F374` (the retreat speed) | two (more than one life left, one life left) | the port has no caller yet (`fn_14_1569C`, FollowRetreatPath, is still a stand-in). **Unmarked** |
 | `fn_14_137A8` (the armour model) | two (the armour id is 0xFFFE: nothing, else the model is built) | the port has no caller yet (the head's constructor calls it). **Unmarked** |
+
+### 3.3 `fn_14_83C0`, the knock-back struct, field by field
+
+The retail's function fills the animation parm data of the knee's knock-back. The struct it
+writes is `{u32 stateId; u32 parmCount; CPASAnimParm parms[8]}`:
+
+| field | retail | the host |
+|---|---|---|
+| the state id (the first word) | the caller's `li r4, 0x6` (0x81D0) = `pas::kAS_KnockBack`, stored at 0x83F0 | `CPASAnimParmData::mStateId` (the same enum) |
+| the parameter count (the second word) | the size the callee counts up from 0 (the store at 0x83FC) to 8 (the eight stores at 0x8414, 0x8448, 0x846C, 0x848C, 0x84A8, 0x84C8, 0x84EC and 0x8514) | `rstl::reserved_vector< CPASAnimParm, 8 >::mCount` (the host's reserved_vector is `{int mCount; uchar mData[N * sizeof(T)];}`, so the count sits where the retail's had it) |
+| the eight parameters (eight pairs of words, a `CPASAnimParm` is 8 bytes: the value and the type) | written in the order p1..p8: the knee's angle first (`.rodata 0x20C`, the `FromReal32` call at 0x81A0), then the enum 2 (the `FromEnum` call at 0x8184), then the six `NoParameter` ones (the `NoParameter` calls at 0x8150, 0x8158, 0x8160, 0x8168, 0x8170 and 0x8178) | `rstl::reserved_vector< CPASAnimParm, 8 >::mData` (the same eight parameters in the same order) |
+
+**No mismatch to report**: the host's `CPASAnimParmData` has the same layout as the retail's
+(the state id, the count, then the eight parameters), so the body is the host's constructor.
+The one thing that is *not* the same is the caller: the retail's `fn_14_8090` passes the eight
+parameters as pointers (in reverse stack order) and the count as a separate argument, while the
+port's `KneeDestroyedReaction` (the FSM lane's, already marked) builds the same data inline with
+`CPASAnimParmData(pas::kAS_KnockBack, CPASAnimParm::FromReal32(angle),
+CPASAnimParm::FromEnum(2))` - the host's constructor fills the six missing parameters with
+`NoParameter()`, exactly as the retail's six `NoParameter` calls do.
 
 ## 4. What is left, and why
 
-- **73 B-class rows have no body.** They are the module's own helpers that the FSM lane's states
-  and codes call (the attack selection, the timers, the effect and sound helpers, the weapon
-  spawners) and the ones the module's sub-actors need (the projectile classes, the echo target,
-  the knee armour). They are listed in section 2 with their callers; the lane can wire them one
-  at a time.
+- **The helpers with no caller on port** (the table in section 5): `fn_14_37FC`, `fn_14_10120`,
+  `fn_14_F374` and `fn_14_137A8` - the FSM lane's codes and states and the head's constructor
+  call them.
+- **Two rows need the head's state, which the port does not produce:** `fn_14_6E04`'s last arm
+  (the head's projectile attack) and `fn_14_5644`'s arms (the toe target colliders, guest
+  this+0x1078, do not exist in the port).
 - **Four rows need a host type the port does not have yet:**
   - `fn_14_476C` (the `SLdrShockWaveInfo` -> `CShockWaveInfo` conversion): the host has no
     `CShockWave` (the vortex, `fn_14_458C`, is the FSM lane's).
@@ -136,18 +179,12 @@ module: `x705C_` 2 hits, `x676C_` 1 hit, `x3E88_` 1 hit.
   - `fn_14_1570` (the model's bounding box for the scan visor): the host's `CAABox` has
     `GetTransformedAABox`, but the retail reads the model's own max point (the guest's
     this+0x54), which the host's `CModelData` does not expose.
-- **Two rows are the module's other classes' constructors and destructors** (`fn_14_11BA8`,
-  `fn_14_13A80`, `fn_14_12FE0`, `fn_14_13A74` and the `CValidEntityPredicate` chain): the host
-  does not have those classes.
+- **The module's other classes' constructors and destructors** (`fn_14_11BA8`, `fn_14_13A80`,
+  `fn_14_12FE0`, `fn_14_13A74` and the `CValidEntityPredicate` chain): the host does not have
+  those classes.
 - **One row is the "XHIT" case, `fn_14_4F2C`** (0x214): it builds a `CDamageInfo` from the
   module's static table (`.data 0x8`, the word 0x3B) through the retail's `__shl2i` helper, and
-  that helper's meaning is not known yet, so the body is left out rather than guessed.
-- **One row is the knock-back table, `fn_14_83C0`** (0x184): it fills a `{u32 count; u32 size;
-  pair[8]}` struct with eight pairs; the retail's first element (the count argument) does not
-  fit the struct the same way, so the body is left out rather than guessed.
-- **The nine "unknown role" records** (`.data 0x640..0x694`: `fn_14_9014`, `fn_14_8C70`,
-  `fn_14_8978`, `fn_14_8738`, `fn_14_8328`, `fn_14_7FEC`, `fn_14_8048`) are the destructors of
-  the module's small predicate objects; the host does not have them.
+  that helper's meaning is not known yet. It is left to the Opus DigitalGuardian lane.
 
 ## 5. The helpers the FSM lane's states call (the port order)
 
@@ -156,20 +193,21 @@ listed so the lane can write the states against them (the bodies are in the port
 
 | helper | size | called from | the port |
 |---|---|---|---|
-| `fn_14_37FC` | 0xC0 | `fn_14_7208` (SetJumpFaceTarget) and `fn_14_77EC` (SetProtectKneesFaceTarget) | **ported** |
-| `fn_14_6C74` | 0x3C | `fn_14_6E04` | **ported** |
-| `fn_14_3F90` | 0xF0 | `fn_14_A5BC` (the Think) | **ported** |
-| `fn_14_38BC` | 0xB8 | `fn_14_A5BC` (the Think) | **ported** |
-| `fn_14_2358` | 0x18C | `fn_14_A5BC` (the Think) | **ported** |
-| `fn_14_5644` | 0x1F4 | `fn_14_A6A8` (the "XRDG" case) | **ported** |
-| `fn_14_6C24` | 0x50 | `fn_14_6CB0` | **ported** |
-| `fn_14_6CB0` | 0x154 | `fn_14_6E04` | **ported** |
-| `fn_14_6E04` | 0x258 | `fn_14_A5BC` (the Think) | **ported** |
-| `fn_14_10120` | 0xC0 | `fn_14_15448` (SelectProjectileAttack), `fn_14_15598` (ResetProjectileAttackTimes), `fn_14_16F74` (ProjectileTelegraph) | **ported** |
-| `fn_14_F374` | 0x1C | `fn_14_1569C` (FollowRetreatPath) | **ported** |
-| `fn_14_11EA8` | 0x88 | `fn_14_17D38` (the head's "XDEL" case) | **ported** |
+| `fn_14_37FC` | 0xC0 | `fn_14_7208` (SetJumpFaceTarget) and `fn_14_77EC` (SetProtectKneesFaceTarget) | **ported**, unmarked |
+| `fn_14_6C74` | 0x3C | `fn_14_6E04` | **ported, marked** |
+| `fn_14_3F90` | 0xF0 | `fn_14_A5BC` (the Think) | **ported, marked** |
+| `fn_14_38BC` | 0xB8 | `fn_14_A5BC` (the Think) | **ported, marked** |
+| `fn_14_2358` | 0x18C | `fn_14_A5BC` (the Think) | **ported, marked** |
+| `fn_14_5644` | 0x1F4 | `fn_14_A6A8` (the "XRDG" case) | **ported**, unmarked |
+| `fn_14_6C24` | 0x50 | `fn_14_6CB0` | **ported, marked** |
+| `fn_14_6CB0` | 0x154 | `fn_14_6E04` | **ported, marked** |
+| `fn_14_6E04` | 0x258 | `fn_14_A5BC` (the Think) | **ported**, unmarked |
+| `fn_14_83C0` | 0x184 | `fn_14_8090` (KneeDestroyedReaction) | **ported**, unmarked |
+| `fn_14_10120` | 0xC0 | `fn_14_15448` (SelectProjectileAttack), `fn_14_15598` (ResetProjectileAttackTimes), `fn_14_16F74` (ProjectileTelegraph) | **ported**, unmarked |
+| `fn_14_F374` | 0x1C | `fn_14_1569C` (FollowRetreatPath) | **ported**, unmarked |
+| `fn_14_11EA8` | 0x88 | `fn_14_17D38` (the head's "XDEL" case) | **ported, marked** |
 | `fn_14_11F7C` | 0x70 | `fn_14_17D38` (the head's "XDEL" case) | **ported, marked** |
-| `fn_14_137A8` | 0x88 | `fn_14_18264` (the head's constructor) | **ported** |
+| `fn_14_137A8` | 0x88 | `fn_14_18264` (the head's constructor) | **ported**, unmarked |
 
 ## 6. The port's new file
 
@@ -252,7 +290,7 @@ listed so the lane can write the states against them (the bodies are in the port
 | `fn_14_3E2C` | 0x5C | B | 1: fn_14_5838 | body (PortCDigitalGuardian.cpp) |
 | `fn_14_3E88` | 0x8C | B | 1: fn_14_A6A8 | body (PortCDigitalGuardian.cpp) |
 | `fn_14_3F14` | 0x7C | B | 1: fn_14_A6A8 | body (PortCDigitalGuardian.cpp) |
-| `fn_14_3F90` | 0xF0 | B | 1: fn_14_A5BC | body (PortCDigitalGuardianHelpers.cpp) |
+| `fn_14_3F90` | 0xF0 | B | 1: fn_14_A5BC | body (PortCDigitalGuardian.cpp, PortCDigitalGuardianHelpers.cpp) |
 | `fn_14_4080` | 0x274 | B | 1: fn_14_A6A8 | body (PortCDigitalGuardian.cpp) |
 | `fn_14_42F4` | 0x5C | B | 3: fn_14_4080, fn_14_5C30, fn_14_61DC | cited only (PortCDigitalGuardian.cpp) |
 | `fn_14_4350` | 0x5C | B | 2: fn_14_5140, fn_14_5644 | body (PortCDigitalGuardian.cpp) |
@@ -322,10 +360,10 @@ listed so the lane can write the states against them (the bodies are in the port
 | `fn_14_7D8C` | 0x260 | F | 0: - | body (PortCDigitalGuardian.cpp) |
 | `fn_14_7FEC` | 0x5C | H | 0: - | no body |
 | `fn_14_8048` | 0x48 | H | 0: - | no body |
-| `fn_14_8090` | 0x298 | F | 0: - | body (PortCDigitalGuardian.cpp) |
+| `fn_14_8090` | 0x298 | F | 0: - | body (PortCDigitalGuardian.cpp, PortCDigitalGuardianHelpers.cpp) |
 | `fn_14_8328` | 0x5C | H | 0: - | no body |
 | `fn_14_8384` | 0x3C | H | 0: - | no body |
-| `fn_14_83C0` | 0x184 | B | 1: fn_14_8090 | cited only (PortCDigitalGuardian.cpp) |
+| `fn_14_83C0` | 0x184 | B | 1: fn_14_8090 | cited only (PortCDigitalGuardian.cpp, PortCDigitalGuardianHelpers.cpp) |
 | `fn_14_8544` | 0x3C | H | 0: - | no body |
 | `fn_14_8580` | 0x1B8 | F | 0: - | body (PortCDigitalGuardian.cpp) |
 | `fn_14_8738` | 0x5C | H | 0: - | no body |
