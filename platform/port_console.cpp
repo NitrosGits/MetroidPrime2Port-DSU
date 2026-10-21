@@ -41,6 +41,7 @@
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -532,6 +533,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
+      "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
@@ -1446,6 +1448,29 @@ struct PortConsoleDoor {
 
 namespace PortConsole {
 namespace {
+
+// scaninfo <id>: the 'SCAN' asset an actor answers GetScannableObjectInfo with (what the scan
+// visor would show), or none; a module's override runs without scanning it.
+void CmdScanInfo(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 2) {
+    Fail("usage: scaninfo <id>");
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr) {
+    Fail("not an actor");
+    return;
+  }
+  const CScannableObjectInfo* info = actor->GetScannableObjectInfo();
+  char buf[64];
+  if (info != nullptr) {
+    snprintf(buf, sizeof(buf), "scaninfo %08X\n", static_cast< unsigned >(info->GetScannableObjectId()));
+  } else {
+    snprintf(buf, sizeof(buf), "scaninfo none\n");
+  }
+  out += buf;
+}
 
 void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() < 2) {
@@ -2510,6 +2535,7 @@ constexpr SCommand kCommands[] = {
     {"interp", CmdInterp, true},
     {"aspect", CmdAspect, true},
     {"objs", CmdObjs, true},
+    {"scaninfo", CmdScanInfo, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
