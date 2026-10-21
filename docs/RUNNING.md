@@ -40,8 +40,10 @@ iteration (`platform/include/port_timing.h`), as fast as the machine allows: 100
 took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Console scripts for
 `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
 update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
-Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`), `place`,
-`send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
+Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`; a state in
+an FSM2 sub-machine is entered through it, and the reply names the machine), `place`,
+`send`, `damage` (direct, no projectile; also the combos `darkburst`/`sunburst`/`sonicboom` and
+`powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
 from d units, travelling along dir, for modules that only count projectile hits on a joint).
 `a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
 `grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units

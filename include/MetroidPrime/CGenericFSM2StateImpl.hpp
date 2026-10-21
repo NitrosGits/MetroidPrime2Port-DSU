@@ -364,4 +364,60 @@ void CGenericFSM2State< T >::ExitActive(CStateManager& mgr, T& owner) {
   mState = nullptr;
 }
 
+#ifdef TARGET_PC
+template < class T >
+int CGenericFSM2State< T >::PortFindStateDepth(const rstl::string& name, int maxDepth) const {
+  if (mMachine == nullptr) {
+    return -1;
+  }
+  if (GetStateIndex(name) != -1) {
+    return 0;
+  }
+  if (maxDepth <= 0) {
+    return -1;
+  }
+  for (int i = 0; i < mSubMachines.size(); ++i) {
+    const int depth = mSubMachines[i].mMachine->PortFindStateDepth(name, maxDepth - 1);
+    if (depth >= 0) {
+      return depth + 1;
+    }
+  }
+  return -1;
+}
+
+template < class T >
+int CGenericFSM2State< T >::PortSetStateDeep(CStateManager& mgr, T& owner,
+                                             const rstl::string& name, const char** path,
+                                             int maxDepth) {
+  if (mMachine == nullptr) {
+    return -1;
+  }
+  if (GetStateIndex(name) != -1) {
+    SetState(mgr, owner, name);
+    return 0;
+  }
+  if (maxDepth <= 0) {
+    return -1;
+  }
+  for (int i = 0; i < mSubMachines.size(); ++i) {
+    CGenericFSM2State< T >* sub = mSubMachines[i].mMachine.GetPtr();
+    if (sub->PortFindStateDepth(name, maxDepth - 1) < 0) {
+      continue;
+    }
+    // ExecuteSubflow's activate, minus its one-level SetState: stay in the sub-machine when it
+    // is already the active node, else leave the active node and make it active.
+    const CState2* node = mSubMachines[i].mState;
+    if (mState != node) {
+      ExitActive(mgr, owner);
+      mState = node;
+      mTime = 0.f;
+    }
+    path[0] = static_cast< const CState2SubMachine* >(node)->GetName().data();
+    const int depth = sub->PortSetStateDeep(mgr, owner, name, path + 1, maxDepth - 1);
+    return depth >= 0 ? depth + 1 : -1;
+  }
+  return -1;
+}
+#endif
+
 #endif // _CGENERICFSM2STATEIMPL
