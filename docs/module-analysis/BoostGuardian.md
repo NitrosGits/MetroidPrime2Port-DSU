@@ -637,6 +637,169 @@ bodies (`fn_30_A0D8` 0xA174, `fn_30_9F50` 0x9FFC, `fn_30_9DA0` 0x9DFC, `fn_30_9C
 `fn_30_8520` 0x8700): the host reads the packed flag byte through `mData.mFlags210`, and the
 annotator cannot resolve a member of a member, so it does not see the read.
 
+### h.2 The next five bodies, branch by branch
+
+Section h leaves 112 unmarked functions, and every one of them is a copy (the REL runtime, the
+compiler's dtors, the rstl inlines, the DOL's class members, the accessor thunks, the two
+parameter-block copies) or one of the two behaviour bodies that retail never calls
+(`fn_30_5260`, `fn_30_110C4`). **No unmarked behaviour is left to port**, so this slice took the
+next bodies the *module owns* - section b.3's list, "the module's own body is the authority" -
+and checked each of them against **this module's** asm, arm by arm. The port carries the Ing
+REL's bodies for these, so every difference between the two RELs is a candidate for a silent
+mismatch.
+
+| function | what it is | this module | the Ing's copy | the port's body vs this module's asm |
+|---|---|---|---|---|
+| `fn_30_8998` | `FaceTarget` | 0x280 | `fn_29_7244` 0x2D4 | matches |
+| `fn_30_8520` | `FindCoverPoint` | 0x3EC | `fn_29_6DA0` 0x418 | matches |
+| `fn_30_8CC0` | `SeekWallPoint` | 0x114 | `fn_29_75C0` 0xF8 | matches |
+| `fn_30_9C7C` | `IngSpotPointPathFind` | 0x124 | `fn_29_8570` 0x114 | matches |
+| `fn_30_9DA0` | `IngSpotPathFind` | 0x1B0 | `fn_29_8684` 0x184 | matches |
+| `fn_30_CA18` | `UpdateHitDamageTime` | 0x13C | `fn_29_B784` 0x10C | matches |
+
+Six, not five: `fn_30_CA18` came along because it is the base-class override the fight calls
+every frame in the ing-spot form, and it is the one this module changed the most (the safe-zone
+reload). `tools/asmcheck.py check IngBoostBallGuardian <file> fn_30_XXXX --only
+MASK,XBIT,CROP,XCMP,XSTORE,OFFS` reports **0 findings** for all six, and the bodies were read
+against the asm instruction by instruction: the port's `mData.mFlags210` reads are the asm's
+`this+0xAE0` (0x04 = `kFlag_NoPathFind`, 0x20 = `kFlag_NoBodyProjectile`), the port's
+`CurrentPhase().mIngSpotSpeedScale` is `*(0x11D0)+0x34`, the port's `rodata_9C` is 4.0 and
+`rodata_104` is 0.34906584 rad (20 degrees).
+
+**The run.** Area 28 (`3dfd2249`, `06_swamp_boostballguardian_dark`), the guardian `u052b` woken
+by the module's own `MP2_BG_FSM` probe, fast run (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
+320 s, `GODMODE=1`). The driver `tools/drivers/bg_arms.py` reads the guardian's forward axis out
+of the log ((0, -1, 0) at the spawn), teleports the player 30 degrees off it (inside the 80
+degree detection cone, outside the 20 degree facing cone, so the corporeal `FaceTarget` can
+take its turn command), forces the states below over the console and shoots the guardian with a
+real beam (the hit-damage timer). The arm counters come from the port's own probe lines
+(`MP2_BG_ARMS=1`), which were **temporary** and are not in the tree.
+
+#### `fn_30_8998` `FaceTarget` (0x8998)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x000089B0 `beq .L_00008A88` | msg 1 (Update) | ran |
+| 0x000089CC `b .L_00008BFC` | msg 2 (Deactivate): 0x6B4 = 0 (kAS_NotReady) | ran (42) |
+| 0x000089C0 / 0x000089C8 `b .L_00008C04` | msg < 0 and msg >= 3: nothing happens | (c) unreachable: `EStateMsg` has exactly the three values (StateMachineCommon.hpp), so the machine never sends another one |
+| 0x000089E4 `beq .L_00008A6C` | `fn_30_5F6C` (the target's aim position) failed: 0x6B4 = 3 | (c) unreachable: the state is entered with a live target and `fn_30_5F6C` fails only when the id resolves to no actor |
+| 0x00008A50 `ble .L_00008A60` | the angle to the target is under `rodata_104` (20 degrees): 0x6B4 = 3 | ran (6) |
+| 0x00008A54 `li r0, 0x1` | over 20 degrees: 0x6B4 = 1 (kAS_Ready) | ran (36) |
+| 0x00008A7C `rlwimi r0, r3, 2, 29, 29` | 0x11ED 0x04 = 0 (mMoving = false) | ran |
+| 0x00008A90 `beq .L_00008B80` | form 3 (ing spot): the LookAt snap | ran (41) |
+| 0x00008AB0 `bge .L_00008B80` | forms 6-9: the same snap | (c) not selected: the fight's `FaceTarget` ran in the corporeal and ing-spot forms only; the block itself ran through the form 3 selection |
+| 0x00008A9C `bge .L_00008AB8` | form 2 (corporeal): the turn command | ran (1) |
+| 0x00008AC8 `clrlwi. r0, r3, 24` / 0x00008ACC `beq .L_00008C04` | `CanIssueCommand(pas::kAS_Turn)` refused (the animation state is kAS_Over): nothing happens | ran (31) |
+| 0x00008B08 `clrlwi` / 0x00008B0C `beq .L_00008B74` | the delta to the target is not magnitude-safe: 0x6B4 = 3 | (c) unreachable: the delta is the target's aim position minus the actor's translation, and it is zero only if the player stands exactly on the guardian |
+| 0x00008B6C `bl DeliverCmd` | the turn command (`CBCLocomotionCmd`, zero velocity, the normalised delta, `rodata_64` = 1.0) | ran (1) |
+| 0x00008BBC `beq .L_00008C04` | the snap's delta is not magnitude-safe: no state change | (c) unreachable, as above |
+| 0x00008AA8 / 0x00008AB4 / 0x00008AA0 `b .L_00008BF0` | the forms 0, 1, 4, 5 and 10+: 0x6B4 = 3 | (c) not selected: the fight's `FaceTarget` ran in the forms 2 and 3 only (the host forms need a host, and the projectile forms end the state) |
+
+#### `fn_30_8520` `FindCoverPoint` (0x8520)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x0000854C `beq .L_00008554` | msg 0 (Activate) | ran (43) |
+| 0x00008550 `b .L_000088E8` | any other message: nothing happens | ran (86) |
+| 0x00008578 `beq .L_000088E8` | `fn_30_5F6C` (the target's aim position) failed | (c) unreachable, as in `FaceTarget` |
+| 0x00008588 `bne .L_000085B8` | the one-time init of the static candidate array (`__register_global_object`) | ran (the first scan) |
+| 0x0000869C `extrwi` / 0x000086A4 `beq .L_00008878` | the hint is inactive (0x20 bit 7) | (c) not selected: no hint of area 28 is inactive (the scan's `inactive` counter is 0 in every scan) |
+| 0x000086C0 `bne .L_00008878` | the hint is in use by this actor (`GetInUse`, the id at 0x8) | (c) not selected: no hint in area 28 is in use by the guardian (the scan's `inuse` counter is 0 in every scan) |
+| 0x000086D0 `bne .L_00008878` | the hint is in another area (the area word at 0x4) | (c) not selected: all nine hints of the area share the guardian's area (the scan's `area` counter is 0) |
+| 0x000086E0 `beq .L_00008878` | the hint is the last cover hint (0x1090) | ran (the scan's `last` counter, 1 per scan after the first claim) |
+| 0x000086F0 `ble .L_00008878` | the hint type is 14 or 15 (the boost nav points) | ran (the scan's `boostnav` counter, 2 per scan) |
+| 0x000086F8 `bne .L_00008710` | the hint type is not 4: score it | ran |
+| 0x00008704 `bne .L_00008878` | type 4 (a wall point) and the no-body-projectile flag (0xAE0 0x20) | (c) not selected: the area has no wall hint (the scan's `wallspot` counter is 0) |
+| 0x0000870C `bne .L_00008878` | type 4 and the target in a safe zone (`fn_30_C14C`) | (c) not selected, as above |
+| 0x00008760 `bne .L_00008774` | the type is not 4: the vertical penalty (`rodata_9C` = 4.0) | ran |
+| 0x00008770 `ble .L_00008784` | type 4 at or below the target: no vertical penalty | (c) not selected, as above |
+| 0x00008788 `bge .L_00008790` | the score is over the near bound: no far penalty | ran |
+| 0x0000878C `fadds f3, f3, f30` | under the near bound: the far bound is added | ran |
+| 0x000087A0 `bge .L_000087D8` | the four-entry array is full: compare with the worst | ran |
+| 0x000087EC `bge .L_0000880C` | the score is not better than the worst: drop it | ran |
+| 0x00008844 `bge .L_00008878` | the insertion sort's end | ran |
+| 0x000088A8 `beq .L_000088E8` | no candidate: nothing happens | (c) not selected: every scan of area 28 found four candidates |
+| 0x000088DC `beq .L_000088E8` | the picked object is gone | (c) unreachable: the id came off the hint list of this area |
+| 0x000088E4 `bl fn_30_6014` | the claim (`fn_30_6014`: the hint goes in use, its id goes to 0x108E and 0x1090) | ran (every scan) |
+
+#### `fn_30_8CC0` `SeekWallPoint` (0x8CC0)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x00008CEC `bge .L_00008DB0` | msg >= 2: nothing happens | (c) the state was never entered in area 28 |
+| 0x00008CF4 `bge .L_00008CFC` | msg 0 (Activate) or 1 (Update) | (c) the state was never entered in area 28 |
+| 0x00008CF8 `b .L_00008DB0` | msg < 0: nothing happens | (c) as above |
+| 0x00008D04 `beq .L_00008DB0` | no cover hint: nothing happens | (c) as above |
+| 0x00008D58 `ble .L_00008DA0` | the distance is under `dt` * the wall speed: 0x11ED 0x04 = 0 | (c) as above |
+| 0x00008D68 `beq .L_00008DA0` | the delta is not magnitude-safe: 0x11ED 0x04 = 0 | (c) as above |
+| 0x00008D88 `bl fn_30_53D0` | the move along the wall speed (`*(0x11D0)+0x34` times 0x7CC) | (c) as above |
+| 0x00008D94 `rlwimi r0, r3, 2, 29, 29` | 0x11ED 0x04 = 1 (mMoving = true) | (c) as above |
+
+The state needs a **wall** cover point (a hint of type 4), and area 28 has none: the cover scan
+reports `wallspot 0` in every scan, so the machine never picks a wall point and never enters
+`SeekWallPoint`. The body matches this module's asm, but the run cannot exercise it - the
+Ing REL's own copy of it (`fn_29_75C0`) is the one the Ing lane ran in area 57.
+
+#### `fn_30_9C7C` `IngSpotPointPathFind` (0x9C7C)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x00009CA0 `bne .L_00009CC4` | msg 0 (Activate): 0x11EC 0x08 = 0 and 0x11ED 0x04 = 1 | ran (2) |
+| 0x00009CC8 `extrwi` / 0x00009CCC `bne .L_00009D84` | the no-path-find flag (0xAE0 0x04): nothing happens | (c) not selected: the shipped guardian's flag byte has 0x04 clear - the loader packs it from the property byte's 0x04 (`fn_30_10C24` 0x00010DD8, `r5 = r10 & 5`), and area 28's data leaves it clear |
+| 0x00009CD4 `extrwi` / 0x00009CD8 `beq .L_00009D84` | 0x11EC 0x10 (mFoundMovementPos) clear: nothing happens | (c) not selected: every path find of the fight found a point (the path helpers clear the bit only when they find none) |
+| 0x00009D38 `extrwi` / 0x00009D3C `beq .L_00009D48` | 0x11EE 0x80 clear: the speed base is 0x7C8 (the ing spot's maximum speed) | ran |
+| 0x00009D40 `lfs f5, 0x7d4(r31)` | 0x11EE 0x80 set (the boost retreat): the speed base is 0x7D4 (the speed modifier) | (c) not selected: the fight's `BoostModeRetreat` (the only writer of 0x11EE 0x80, `fn_30_7728`) did not run |
+| 0x00009D7C `fmuls f1, f1, f0` | the speed is scaled by the phase's ing-spot speed scale (`*(0x11D0)+0x34`) | ran |
+| 0x00009D80 `bl fn_30_53D0` | the move | ran (42) |
+
+#### `fn_30_9DA0` `IngSpotPathFind` (0x9DA0)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x00009DD4 `bne .L_00009DF8` | msg 0 (Activate): 0x11EC 0x08 = 0 and 0x11ED 0x04 = 1 | ran (499) |
+| 0x00009DFC `extrwi` / 0x00009E00 `bne .L_00009F28` | the no-path-find flag (0xAE0 0x04) | (c) not selected, as in `fn_30_9C7C` |
+| 0x00009E08 `extrwi` / 0x00009E0C `beq .L_00009F28` | 0x11EC 0x10 clear | (c) not selected, as in `fn_30_9C7C` |
+| 0x00009E2C `extrwi` / 0x00009E30 `bne .L_00009E70` | 0x11EE 0x80 (the boost retreat): the fast speed (0x7D4) | (c) not selected: the retreat state did not run in the fight |
+| 0x00009E3C `extrwi` / 0x00009E40 `beq .L_00009E64` | 0x11EF 0x80 (the boost puddle form) clear: the normal speed | ran |
+| 0x00009E44 `extrwi` / 0x00009E48 `beq .L_00009E64` | 0x11EE 0x10 (the boost pending) clear: the normal speed | ran |
+| 0x00009E5C `beq .L_00009E64` | no cover hint (`fn_30_60C0`): the normal speed | ran |
+| 0x00009E98 `clrlwi` / 0x00009E9C `beq .L_00009F28` | the move vector is not magnitude-safe: nothing happens | ran (13737) |
+| 0x00009EAC `ble .L_00009F28` | `dt` is 0 or less: nothing happens | ran (59) |
+| 0x00009EC0 `clrlwi. r0, r28, 24` / 0x00009EE4 `lfs f1, 0x7d4(r30)` | the fast speed 0x7D4 (the speed modifier) | (c) not selected, as above |
+| 0x00009EEC `lfs f1, 0x7c8(r30)` | the normal speed 0x7C8 (the ing spot's maximum speed) | ran (2051) |
+| 0x00009EFC `fmuls f1, f1, f0` | the phase's ing-spot speed scale (`*(0x11D0)+0x34`) | ran |
+| 0x00009F00 `bl fn_30_53D0` | the move (the move vector, not the normalised one) | ran (2051) |
+| 0x00009F14 `bne .L_00009F28` | 0x1098 (the retreat's second point) is held: no `FaceDirection` | (c) not selected: the retreat state did not run |
+| 0x00009F24 `bl FaceDirection` | the actor faces its move while no retreat point is held | ran (2051) |
+
+#### `fn_30_CA18` `UpdateHitDamageTime` (0xCA18)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x0000CA48 `bge .L_0000CA50` | 0x448 (the damage cooldown) minus `dt` is under 0: clamp it to 0 | ran |
+| 0x0000CA6C `bge .L_0000CA74` | 0x1080 (the boost hit timer) minus `dt` is under 0: clamp it to 0 | ran |
+| 0x0000CA84 `ble .L_0000CA94` | 0x115C (the safe-zone count) is 0 or less: no reload | ran |
+| 0x0000CA90 `stfs f0, 0x1080(r31)` | the safe zone holds it: 0x1080 = `skDamageHitTime` | ran (758) |
+| 0x0000CAA4 `ble .L_0000CAEC` | 0x448 is 0 or less: the boost tint arm | ran |
+| 0x0000CAB4 `bl Lerp` | the damage tint (`CColor::Black` to `skDamageColor`, 0x448 / `skDamageHitTime`) | ran (19) |
+| 0x0000CAF4 `ble .L_0000CB38` | 0x1080 is 0 or less: no tint at all | ran |
+| 0x0000CB04 `bl Lerp` | the boost tint (`CColor::Black` to `skHitsWithoutDamageColor`, 0x1080 / `skDamageHitTime`) | ran (800) |
+
+**What this slice changes.** Nothing in the port: the six bodies match this module's asm, so the
+port keeps the Ing REL's bodies for them and their markers (`// @ fn_30_8998`, `// @ fn_30_8520`,
+`// @ fn_30_8CC0`, `// @ fn_30_9C7C`, `// @ fn_30_9DA0`, `// @ fn_30_CA18`) stand. What is new is
+the evidence: the branch tables above, the arm counters of a boss fight in area 28, and the
+driver (`tools/drivers/bg_arms.py`) that reaches them.
+
+**What is left for the next slice.** The remaining bodies of section b.3 that this slice did not
+read against this module's asm: `fn_30_B478` (`ExitHost`, the Ing's 0x328 vs this module's
+0x2EC), `fn_30_8DD4` (`SuckEnergy`, 0x658 vs 0x648), `fn_30_953C` (`BodyProjectileFlight`, 0x4A4
+vs 0x498), `fn_30_99D4` (`FollowAttackPattern`, 0x1D0 vs 0x1DC), `fn_30_6980`
+(`SplatOntoMesh`, 0x1F0 vs 0x1F4), `fn_30_7390` (`Dead`, 0x358 vs 0x364) and `fn_30_6C40`
+(`SetExitHostDest`, 0x22C vs 0x23C); and the module's own copies of the base-class overrides
+(section j): `fn_30_DDA0` (`AcceptScriptMsg`, the Ing's 0x514 vs this module's 0x690),
+`fn_30_D4F8` (`DoUserAnimEvent`, 0x3B8 vs 0x3E0) and `fn_30_CE50` (`Touch`, 0x128 vs 0x174).
+
 
 ## i. Port plan
 
