@@ -526,8 +526,8 @@ so the port has no body for it either.
 | rel-entry | 5 | the crtexe REL runtime (`_prolog`, `_epilog`, `_unresolved`, `ModuleConstructors`, `ModuleDestructors`) |
 | member-ctor / member-dtor | 2 | the data block's constructor and destructor |
 
-The 17 of them that a lane checked field by field carry a cite marker on the host's own copy;
-the other 95 are the host's code that the port never had to write.
+The 29 of them that a lane checked field by field carry a cite marker on the host's own copy;
+the other 83 are the host's code that the port never had to write.
 
 ### 6.4 The count check
 
