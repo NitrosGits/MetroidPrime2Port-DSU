@@ -130,6 +130,28 @@ def main():
                 cmd("fsm %s FollowAttackPattern" % target)
             time.sleep(0.25)
         log("states seen: %s" % seen)
+        # the JumpBack state: the commando jumps away from its target; the console forces it when
+        # the area's own state machine does not go there.
+        log("fsm: %s" % cmd("fsm %s JumpBack" % target))
+        for i in range(10):
+            wait_frame(frame() + 10)
+        # the RestoreOrientation state: the commando only reaches it after a warp, so the console
+        # forces it. The first force leaves the state (its animation is already "over"), and its
+        # deactivate tips the commando over - so the second force runs the state's own turn.
+        log("fsm: %s" % cmd("fsm %s RestoreOrientation" % target))
+        wait_frame(frame() + 30)
+        log("fsm: %s" % cmd("fsm %s RestoreOrientation" % target))
+        for i in range(20):
+            wait_frame(frame() + 10)
+            st = state_of(target)
+            if i % 5 == 0:
+                log("frame %d: %s" % (frame(), st))
+        # the small states the port has now: the console forces each of them, so one boot covers
+        # them all (the area's own state machine does not go there).
+        for name in ("Ambush", "Dead", "WallDetach", "SetCoverDest", "SetJumpDest",
+                     "SetRetreatDest", "BreakCover", "Cover"):
+            log("fsm %s: %s" % (name, cmd("fsm %s %s" % (target, name))))
+            wait_frame(frame() + 20)
     log("commando: %s" % cmd("objs commando"))
 
 
