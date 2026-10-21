@@ -2140,8 +2140,8 @@ void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
 // 0x80 (`li r4, 0x80`, fn_10_1B478 at 0x000177F8), the shield flag (fn_10_105F4 at 0x0001780C),
 // the ground collision (fn_10_18F90 at 0x0001781C), the turn toward the player at
 // lbl_10_rodata_508 = 1.0471976f rad/s (fn_10_16B64 at 0x00017838), the collision failsafe
-// (fn_10_1AEC0 at 0x00017844) and the melee attack command with severity 10 (`li r7, 0xa` at
-// 0x00017870, pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x000178A4).
+// (fn_10_1AEC0 at 0x00017844) and the melee attack command with severity 10 (0x00017870;
+// pas::kAS_MeleeAttack = 7, fn_10_8764 at 0x000178A4).
 // @ fn_10_177BC
 void CDarkSamus::MissileJump(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("MissileJump", msg);
