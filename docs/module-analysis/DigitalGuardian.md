@@ -1287,3 +1287,49 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 - Marked: 13EB8, 13C6C, 15054, 14F74, 14B60, 13F70 (their unrun arms are null and empty-data guards
   only). Unmarked: 12D98 (armour-on, no-weapon and zero-damage arms unrun), 12818 (inactive-ball
   arm unrun, out-of-range arm untraced), 14470 (random picks 0 and 1 unseen; 1/2/3 ran).
+
+## 2026-10-21: head arm coverage (runs 35/36)
+
+- Harness inputs: before the echo kills, `damage <root> 1 cannonball` and `damage <root> 1` send
+  XRDG with the armour on. After SetVulnerableToDamage, `damage <root> 1 cannonball` sends XRDG
+  with the player as the sender, which is the no-weapon arm. Once morphed after the retreat,
+  `send <ball0> Deactivate` for 3 s and then `Activate` gives the inactive-ball arm in 12818. The
+  root is u0174 and the balls u0172/u0173 in these runs; take them from the XALD probe. The head
+  makes no attack picks while idle after the armour drops, so 14470 makes one random pick per fight.
+- Shipped-data evidence, from the only DGHD placement (area 53, 0x0035000F), dumped at XALD:
+  - IS02/ATCH links only to PlayerHint 0x0C35001D.
+  - MDFY/PLAY links to platforms 0x0C350003 and 0x0C350302. Both CONN/ATCH into the same
+    16-waypoint loop (z -18.12..-9.21).
+  - The attack-area centre is (74.46, 30.38, -16.74).
+  - dropShieldsFx is PART 0xCF46E5D8.
+- Marked:
+  - 15054, 13F70 and 13C6C, with comments carrying the data above.
+  - Triggers ShouldRetreat 171B8 (25.7k calls), EchoTargetDestroyed 171EC (1.1k) and
+    UseAnnihilatorPulse 1734C, all with both results.
+  - Body GetTouchBounds fn_14_10 (32k) and GetHealthInfo fn_14_10C (9k).
+- Unmarked:
+  - 15284: its marker is removed. Its no-platform and unsafe arms are not excluded by the data.
+  - 12D98: zero damage needs a 0-damage CWeapon.
+  - 12818: in range with no platform (morphed in a slot before the retreat) never ran.
+  - 14470: random 1 and 3 not seen.
+  - More-called functions not fully run: head Think (calls the CVisualKnowledge stand-in), IsDead
+    and IsIdle (false only), ShouldProjectileAttack (true only), AllSplittersDead (no
+    command-module arm), and UseMachineGun / UseLockOnMissiles (one result each).
+- Trace recipe for the run scripts (`/tmp/opencode/dghd2/run3[4-6].sh`, `probe35.py`). Re-add
+  these as `// DGPT` lines; strip them with `sed -i '/\/\/ DGPT$/d'`.
+  - CCameraManager::SetCinematicCameraId, after the id store:
+    `fprintf(stderr, "DGP cinecam %04x\n", uid.Value() & 0xffff);` (plus `<stdio.h>`).
+    `wait_cine` waits for `03ff`.
+  - x11FEC_, inside the "last target" block: `DGHD11FEC fe0=%d` (xFE0_). This breaks the echo loop.
+  - SetVulnerableToDamage: `DGVULN setvuln n0`. The VULN wait reads it.
+  - x12D98_: `DG12T XRDG bit=%d root=%d` at entry; `DG12T XRDG weapon type=%d ch=%d co=%d hits=%d
+    same=%d` before the weapon test; `DG12T XRDG dmg %.1f 10e0=%.1f` after `x1040_ = touched`.
+  - SetImmuneToDamage: `DG12T SetImmune`. SelectRetreatPlatform: `DG13T SRP` at entry. The FIRE
+    loop stops on it.
+  - x12818_, before the range test: `DG12T 12818 out %d ball %.2f %.2f %.2f r`, throttled to every
+    30th frame per ball. The DRV loop teleports onto that position. Inside the range test:
+    `DG12T 12818 hold %d`.
+  - x13830_, after x119E4_: `DGXALD balls %04x %04x root %04x` (xDC4_[0], xDC4_[1], xE00_). The
+    run scripts read ROOT and BALL0 from it.
+  - The DGNEW lines in 14470 and the other bodies, and the `DGC` arm counters (`probe35.py`), are
+    evidence only.

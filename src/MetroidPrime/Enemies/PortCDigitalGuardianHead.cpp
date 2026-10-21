@@ -355,8 +355,8 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
 // it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
 // 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
 // the ball is pass-through again. .rodata 0x960 is 0.
-// Unmarked: the area-53 fight ran the unmorphed, 0xF28 and in-range platform arms; the inactive
-// ball arm never ran and the out-of-range arm was not traced.
+// Unmarked: area-53 runs ran every arm except in-range with no platform at 0x1038 (morphed in a
+// bomb slot before the retreat). The inactive-ball arm ran only with a console DCTV on the ball.
 void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
   x10F5_ &= ~0x80;
   if ((x10F4_ & 0x10) == 0) {
@@ -479,8 +479,8 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
 // (state cmd 0x1C, weight .rodata 0x96C = 1). Then the gravity repulsor's health (0x10E0) drops
 // by it (even at 0), the weapon is remembered and "HeadModuleHit" (data +0x2C) plays at the
 // collider, downward.
-// Unmarked: the area-53 fight ran the not-root, same-weapon, miss, damage and flinch arms; the
-// armour-on, no-weapon and zero-damage arms never ran.
+// Unmarked: area-53 runs ran every arm but zero damage. That needs a CWeapon with 0 damage: every
+// entry WeaponHurts accepts here has multiplier 0.5..2.0 (effect 3).
 void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
     return;
@@ -923,6 +923,7 @@ bool CDigitalGuardianHead::UseLockOnMissiles(CStateManager& mgr, const CTriggerD
 }
 
 // fn_14_1734C: the projectile attack (0x10D0) is 0.
+// @ fn_14_1734C
 bool CDigitalGuardianHead::UseAnnihilatorPulse(CStateManager& mgr,
                                                const CTriggerData& data) const {
   return x10D0_ == 0;
@@ -975,6 +976,7 @@ bool CDigitalGuardianHead::HasLineOfSight(CStateManager& mgr, const CTriggerData
 }
 
 // fn_14_171EC: bit 0x02 of 0x10F4 (extrwi 1, 30).
+// @ fn_14_171EC
 bool CDigitalGuardianHead::EchoTargetDestroyed(CStateManager& mgr,
                                                const CTriggerData& data) const {
   return (x10F4_ & 0x02) != 0;
@@ -987,6 +989,7 @@ bool CDigitalGuardianHead::AllEchoTargetsDestroyed(CStateManager& mgr,
 }
 
 // fn_14_171B8: the gravity repulsor's health (0x10E0) at most 0 (.rodata 0x960).
+// @ fn_14_171B8
 bool CDigitalGuardianHead::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
   return x10E0_ <= 0.f;
 }
@@ -1245,7 +1248,10 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
 // point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
 // direction to the platform.
-// @ fn_14_15284
+// Unmarked: area-53 runs ran the armour-on and platform arms only. With armour off, 0x1038 holds no
+// platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
+// across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
+// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre.
 void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   if ((x10F4_ & 0x10) == 0) {
@@ -1323,7 +1329,9 @@ DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
 
 // fn_14_15054: the "RaisedShields" effect state (.rodata 0x950) off; at locator 1 the drop-shields
 // effect (0xEF4, "Drop Shields Fx", .rodata 0xA00) at this head's scale, then the drop-shields
-// sound (data +0x64) facing the locator's column 1.
+// sound (data +0x64) facing the locator's column 1. The only DGHD placement (area 53, 0x0035000F)
+// has dropShieldsFx (0x5FF0B26C) = PART 0xCF46E5D8, so 0xEF4 is always valid; rs_new does not
+// return null on the host.
 // @ fn_14_15054
 void CDigitalGuardianHead::DropShields(CStateManager& mgr, float dt) {
   ModelData()->AnimationData()->SetEffectState(rstl::string_l("RaisedShields"), false, mgr);
@@ -1363,6 +1371,8 @@ void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
 // data +0x2DC) once while 0x10DC is set and the type is not 4; else a weighted pick over block
 // 6's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the gun 3.
 // A pulse fires a burst of 3 (0x10D8), the rest none.
+// Unmarked: area-53 runs ran the splitter, first-shot and random 0 and 2 arms. Random 1 and 3 need
+// more fights, since each fight makes one random pick.
 void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
   const SLdrDigitalGuardianHeadStruct& odds = mData.digitalGuardianHeadStruct_0x48b46e55;
   if (!AllSplittersDead(mgr, CTriggerData(0.f))) {
@@ -1389,7 +1399,9 @@ void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
 }
 
 // fn_14_13F70: the IS02/ATCH player hint, unless already this head's, takes this head as its
-// actor (0x1AC) and gets INCR from this head on the player's behalf.
+// actor (0x1AC) and gets INCR from this head on the player's behalf. The area-53 placement's only
+// IS02/ATCH link is PlayerHint 0x0C35001D, so the hint is always there.
+// @ fn_14_13F70
 // @ fn_14_13F70
 void CDigitalGuardianHead::GrabPlayerHintControl(CStateManager& mgr, float dt) {
   CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(
@@ -1406,7 +1418,10 @@ void CDigitalGuardianHead::GrabPlayerHintControl(CStateManager& mgr, float dt) {
 // one (the state manager's CRandom16, Range(0, count - 1)) is picked. Along its CONN/ATCH
 // waypoint's ARRV/NEXT chain (at most 30 waypoints: the counter starts at 1 and stops at 0x20)
 // the one nearest the head (from .rodata 0x9D8, FLT_MAX; a strictly smaller squared distance
-// wins) is where the platform teleports, and the platform becomes 0x1038 (0x13E80).
+// wins) is where the platform teleports, and the platform becomes 0x1038 (0x13E80). The area-53
+// placement's MDFY/PLAY links are platforms 0x0C350003 and 0x0C350302, both present, and both
+// CONN/ATCH into the same 16-waypoint loop, so neither the empty, null-platform nor no-waypoint
+// arm runs there.
 // @ fn_14_13C6C
 void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
   x1038_ = kInvalidUniqueId;

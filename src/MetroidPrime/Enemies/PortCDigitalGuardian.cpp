@@ -1142,6 +1142,7 @@ void CDigitalGuardian::PreRenderAllViewports(CStateManager& mgr) {
 
 // vtable slot 15 = fn_14_10C (0x2C): it calls the vtable's HealthInfo slot (0x38) and returns
 // its result, which is what the base class's own accessor does.
+// @ fn_14_10C
 const CHealthInfo* CDigitalGuardian::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
 // fn_14_9FE4 (vtable slot 16): the "pass through" vulnerability (the call at 0x9FF0) is the
@@ -1152,6 +1153,7 @@ const CDamageVulnerability* CDigitalGuardian::GetDamageVulnerability() const {
 
 // fn_14_10 (vtable slot 18): the actor's bounding box (the GetBoundingBox call at 0x28) is the
 // touch bounds, and the optional is always valid (the byte at 0x18 is set to 1 at 0x30).
+// @ fn_14_10
 rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(GetBoundingBox());
 }
