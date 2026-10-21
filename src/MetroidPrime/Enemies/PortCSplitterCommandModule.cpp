@@ -814,7 +814,7 @@ void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float
 // weapon at 0xE84, weapon type 2, the identity transform, material 0x14 (kMT_ProjectilePassthrough),
 // the converted sweep damage at 0xCF0, the area at 0x4, this actor as owner, a default
 // CWeaponAssetInfo (8 entries of -1, 0x19E4-0x1A20), not drawn owner first and the attributes
-// 0x1002 (asm 0x1A70 `addi r0, r4, 0x1000` with r4 the weapon type 2, stored at 0x1A9C). When it exists (0x1AB8): it fires (the vtable word 0x94, Fire with false; 0x1B2C) along
+// 0x21000. When it exists (0x1AB8): it fires (the vtable word 0x94, Fire with false; 0x1B2C) along
 // LookAt from the locator at 0xEF8 (0x1ACC GetLctrTransform) toward the given end with the up
 // vector (0x1B08), takes the chassis id at 0xEFA as its next draw node (its 0x12A, 0x1B48) and is
 // added (0x1B4C AddObject). Then the data's laser sweep sound (0x884) loops from the beam's
@@ -830,7 +830,7 @@ void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVecto
   CPlasmaProjectile* beam = rs_new CPlasmaProjectile(
       mLaserSweepProjectileInfo.Token(), rstl::string_l("LaserSweepBeam"), EWeaponType(2),
       beamInfo, CTransform4f::Identity(), kMT_ProjectilePassthrough, mData.mLaserSweepDamage,
-      beamId, GetCurrentAreaId(), GetUniqueId(), CWeaponAssetInfo(), false, 0x1002);
+      beamId, GetCurrentAreaId(), GetUniqueId(), CWeaponAssetInfo(), false, 0x21000);
   // The null arm is an allocation failure only (rs_new); it never happens in a run.
   if (beam != nullptr) {  // 0x1AB8-0x1ABC
     beam->Fire(CTransform4f::LookAt(GetLctrTransform(mLookAtSegment).GetTranslation(), end,
