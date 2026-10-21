@@ -45,27 +45,46 @@ bool CSpacePirate::PatternShagged(CStateManager& mgr, const CTriggerData& data) 
   return CPatterned::Stuck(mgr, data);
 }
 
+// @ fn_72_BC78 (0x5C): the noise flag is read and cleared in one go - asm 0xBC80 `extrwi. 1,25`
+// reads the 0x8f6 mask 0x40 bit and asm 0xBC84 `rlwimi` clears it - and the old value is the
+// result (asm 0xBC8C). The body has no branch, so the area run's calls prove all of it.
 bool CSpacePirate::HearShot(CStateManager& mgr, const CTriggerData& data) const {
   const bool heard = x8f6_25_hearNoise;
   const_cast< CSpacePirate* >(this)->x8f6_25_hearNoise = false;
+  TraceCall(*this, "HearShot trigger", heard ? 1 : 0);
   return heard;
 }
 
-// Retail polls one player per call (0xbc0 rotates), so a second player does not add hearing range
-// in the same frame: a moving player inside the data's hearing radius is heard.
+// @ fn_72_BBC0 (0xB8): the trigger polls one player per call, so a second player does not add
+// hearing range in the same frame. The player index at 0xbc0 is rotated by one modulo the player
+// count (asm 0xBBD0 `divwu`), the player's velocity (0x1a8) has to move faster than rodata 0xB3C
+// = 0.1 in squared magnitude (asm 0xBC24) and the player's translation (0x54/0x58/0x5c) has to
+// be inside the data's hearing radius at 0x7d4 (asm 0xBC64). The index is checked against
+// 0xffff before the player is read (asm 0xBBE8); the port's null check covers the same case,
+// and its empty-player check keeps the modulo away from a division by zero. The trace's argument
+// is the arm: 0 = no player or a player that is not moving, 1 = the player is moving and inside
+// the hearing radius, 2 = the player is moving but too far. All three ran in the 2026-10-21 runs:
+// arm 1 in 06_sand_alamofront, where a trooper with a 100-unit hearing radius was woken with
+// `send <id> Activate` and the player walked inside its radius.
 bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   const int count = static_cast< int >(mgr.GetNumPlayers());
   if (count <= 0) {
+    TraceCall(*this, "HearPlayer trigger", 0);
     return false;
   }
   self->xbc0_playerIndex = (self->xbc0_playerIndex + 1) % count;
   const CPlayer* player = mgr.GetPlayer(self->xbc0_playerIndex);
   if (player == nullptr || player->GetVelocityWR().MagSquared() <= 0.1f) {
+    TraceCall(*this, "HearPlayer trigger", 0);
     return false;
   }
   const CVector3f delta = player->GetTranslation() - GetTranslation();
-  return delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
+  const bool heard = delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
+  // The trace's argument is the arm: 0 = no player or a player that is not moving, 1 = the
+  // player is moving and inside the hearing radius, 2 = the player is moving but too far.
+  TraceCall(*this, "HearPlayer trigger", heard ? 1 : 2);
+  return heard;
 }
 
 // @ fn_72_ADC0
@@ -249,9 +268,13 @@ bool CSpacePirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
-// Retail reads 0x8f7 bit 4: true while the Think's line-of-sight ray has not lost the player.
+// @ fn_72_9378 (0x14): the 0x8f7 byte's bit 28 (mask 0x08, the data flag 0x10) inverted - the
+// `cntlzw`/`srwi` pair at asm 0x9380 is that inversion. The body is one bit test, so every
+// evaluation does the same work and the area run's 2279 calls prove all of it.
 bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  return !x8f7_28_noPlayerLos;
+  const bool result = !x8f7_28_noPlayerLos;
+  TraceCall(*this, "LineOfSight trigger", result ? 1 : 0);
+  return result;
 }
 
 // Retail reads the waypoint navigation's destination (this+0x6c0, which TargetPatrol sets), not
@@ -264,6 +287,12 @@ bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) con
 
 // The detection cone test, over every player: the first one whose offset lies inside
 // mDetectionAngle (cosine) of the transform's forward is spotted.
+// @ fn_72_938C (0xEC): for every player the trigger asks whether the player's direction is
+// inside the view cone - `dot(player - pirate, the pirate's forward) > |player - pirate| * the
+// radius at 0x3d8` (asm 0x9404-0x9438) - and returns true on the first that is. The module's FSM
+// data (the AFSM 0x5652a12f, read by tools/fsm_state_triggers.py) names it in the Patrol, Lurk
+// and PathFind states. The 2026-10-21 area run evaluated it 2710 times - 2601 true and 109
+// false - so both arms ran.
 bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) const {
   const uint count = mgr.GetNumPlayers();
   for (uint i = 0; i < count; ++i) {
@@ -274,9 +303,11 @@ bool CSpacePirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) cons
     const CVector3f toPlayer = player->GetTranslation() - GetTranslation();
     if (CVector3f::Dot(toPlayer, GetTransform().GetForward()) >
         toPlayer.Magnitude() * mDetectionAngle) {
+      TraceCall(*this, "SpotPlayer trigger", 1);
       return true;
     }
   }
+  TraceCall(*this, "SpotPlayer trigger", 0);
   return false;
 }
 
@@ -376,11 +407,17 @@ bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) cons
   return result;
 }
 
-// Retail 0xb24/0xb28 are time-since counters (Think zeroes them when a player projectile hits the
-// pirate, or is in its path); the trigger's argument is the window, 0.5 s when it is 0.
+// @ fn_72_7BA0 (0x34): the same shape as `7B6C` - the trigger's float argument, or rodata
+// 0xB44 = 0.5 when it is 0, against 0xb28 (`xb28_lowHealthFrenzyTimer`, which the Think zeroes
+// when a player projectile is in the pirate's path), the comparison being `timer < window`
+// (asm 0x7BC0-0x7BD0). Both arms ran on 2026-10-21 in 06_sand_alamofront: the false one
+// while the pirate attacked and no shot had passed it in the last 0.5 s, the true one right
+// after a shot that did.
 bool CSpacePirate::ShotAt(CStateManager& mgr, const CTriggerData& data) const {
   const float window = data.GetFloat() != 0.f ? data.GetFloat() : 0.5f;
-  return xb28_lowHealthFrenzyTimer < window;
+  const bool result = xb28_lowHealthFrenzyTimer < window;
+  TraceCall(*this, "ShotAt trigger", result ? 1 : 0);
+  return result;
 }
 
 // @ fn_72_7B6C
@@ -728,12 +765,24 @@ bool CSpacePirate::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// @ fn_72_7804 (0xC): the 0x8f4 byte's bit 24 (mask 0x80, the data flag 0x1) returned unmasked
+// (asm 0x7808 `extrwi`). One bit test, so every evaluation does the same work.
 bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) const {
+  TraceCall(*this, "IsAmbushing trigger", x8f4_24_pendingAmbush ? 1 : 0);
   return x8f4_24_pendingAmbush;
 }
 
+// Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24 (mask
+// 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag 0x04000000)
+// have to be set (asm 0x77D8-0x77F8). The trace's argument is the arm: 1 = the warp point is not
+// -1, 2 = not a trooper, 3 = the data flag 0x04000000 is missing, 4 = all three hold. The last
+// arm needs a placement with the data flag 0x04000000, which no shipped SpacePirate placement
+// carries (the scan of all 65 placements, tools/scan_pirt_props.py), so the other three arms are
+// all the run can reach.
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
-  return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
+  const int arm = xc04_warpPoint != -1 ? 1 : (!x8f6_24_trooper ? 2 : (!x8fa_26_ ? 3 : 4));
+  TraceCall(*this, "ShouldWarpIn trigger", arm);
+  return arm == 4;
 }
 
 // @ fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -

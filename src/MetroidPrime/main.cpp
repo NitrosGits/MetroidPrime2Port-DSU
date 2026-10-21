@@ -388,8 +388,10 @@ bool CGameArchitectureSupport::UpdateTicks() {
   // cap the retail loop is kept unchanged.
   if (!PortOverlay::FrameLimit()) {
     mPortTickClock.SetPeriod(1.0 / 60.0);
-    const unsigned ticks = mPortTickClock.Advance(stopwatchTime, maxSpeed || stopwatchTime > 0.035f,
-                                                  PortOverlay::FrameLimit());
+    const unsigned fixedTicks = PortTiming::FixedTicksPerFrame();
+    const unsigned ticks = fixedTicks != 0 ? fixedTicks
+                           : mPortTickClock.Advance(stopwatchTime, maxSpeed || stopwatchTime > 0.035f,
+                                                    PortOverlay::FrameLimit());
     mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
     for (unsigned tick = 0; tick < ticks; ++tick) {
       PortTiming::BeginTick();

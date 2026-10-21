@@ -261,6 +261,363 @@ per-function trace/state probe (never committed), the player driven through the 
   `fn_78_B9D0`; `SetLocomotion` and `JointActor` are host helpers with no retail function of their
   own.
 
+### Stage1: the unmarked functions (2026-10-21, decomp lane)
+
+`symbols.txt` lists 243 Stage1 functions; 107 carried a `// @ fn_78_<off>` marker after the
+2026-10-20 traced fight, and **136 are unmarked**. The counts below are the `bl` sites in the
+retail asm (`build/G2ME01/SwampBossStage1/asm`), so they are the module's own call sites; an FSM
+state or trigger is called from the FSM table, not by a `bl`, so it shows 0.
+
+**The most-called unmarked functions, and this lane's verdict on each:**
+
+| fn | retail call sites | port body | verdict |
+|---|---|---|---|
+| `fn_78_A5B4` | 8 (4D3C, 5CDC, 5D6C, 5E84) | `CSwampBossStage1::SplashLocomotion` | **marked** |
+| `fn_78_CA4` | 8 (160, 7BC, A5E4) | none - the REL's copies of the `SLdrDamageInfo` / `SLdrDamageVulnerability` / `SLdrShockWaveInfo` destructors | **cited** (DOL copy) |
+| `fn_78_A5CC` | 6 (587C, 5984, 6198) | `CSwampBossStage1::RiseLocomotion` | **marked** |
+| `fn_78_9A1C` | 6 (48A8, 9744, 9AD8) | `JointMatches` (file-local) | **marked** |
+| `fn_78_E84` | 6 (838) | none - the REL's copy of `CInputStream::ReadFloat` / `ReadBytes` | **cited** (DOL copy) |
+| `fn_78_10B0`, `fn_78_8424` | 6 each | none - `SLdr` copy ctor / `CToken` destructor | **cited** (DOL copies) |
+| `fn_78_35DC` | 4 (3320, 348C) | `CSwampBossStage1::HitReactBody` | compared, **not marked** (see below) |
+| `fn_78_2C78` | 4 (2B20, 4D3C) | none - the REL's copy of the `CPASAnimParmData` constructor | **cited** (DOL copy) |
+
+**`fn_78_A5B4` / `fn_78_A5CC` (the splash and rise locomotion ids).** Retail, field by field:
+`lwz r0, 0xb6c(r3)` (the alt-animation flag, an `int`, so `!= 0` is the test), then a compare
+against 0, then one of two `li` returns - `0xb` / `0xa` for the splash, `0xe` / `0x1` for the
+rise. The port read the same member (`xb6c_altAnims`, `int`) and returned the same two values, so
+no behaviour change was needed; both getters were moved out of the header's class body into
+`PortCSwampBossStage1.cpp` (an inline class member cannot be read by `tools/asmcheck.py`, which
+only parses definitions at file scope) and marked there. `asmcheck.py check` on the three
+functions is clean (0 findings).
+
+**`fn_78_9A1C` (does a joint match the requested type).** Retail: `cmpwi r4, 0x3` on the joint's
+own type (from the rodata table), `cmpwi r5, 0x3` on the requested type - either one being 3
+(`kAllJoints`) matches everything - and otherwise `subf r0, r4, r5` + `cntlzw` + `srwi 3, 5`, the
+equal-when-zero idiom, is the equality test. The port's `JointMatches` is the same test with the
+same argument order (`JointMatches(kJoints[i].mType, type)` in `SetJointsActive`), so it is
+marked as it stands. The `a1 == 3` arm is unreachable: no entry of the joint table has type 3.
+
+**`fn_78_35DC` (the shared hit-react body).** Retail: `RecordState(3, msg)`,
+`SetLocomotionType(5)`, and under `msg == 1` (`kStateMsg_Update`) `RetractTongue`,
+`UpdateTongueTip(mgr, 1.0f, false)`, `HeadWeightDown(dt)` and `UpdateHeadTurn(mgr, dt)`. The
+port's `HitReactBody` (called by `LightHitReact` 3320 and `HeavyHitReact` 348C) is the same
+body, and `msg == kStateMsg_Update` is the same test (the host's `EStateMsg` starts at
+`kStateMsg_Activate = 0`). **Not marked**: no run reached it - both callers are FSM states that
+need state 3 (`ExposeBelly`), and state 3 needs the belly accumulator over 50, which needs ~50
+landed joint hits; the harness lands about one shot in six and the charged shot never comes out
+of `press a 0` / `stick 0 0 0` as a charged one (the trace shows `orig=2.00` every time).
+
+**The rest of the inventory** (136 unmarked functions; the ones with a retail body first, then
+the REL's copies of host/DOL classes, which are cited here and are neither reimplemented nor
+marked - the host already has the class, so a port body would be a second copy):
+
+| fn | call sites | callers | note |
+|---|---|---|---|
+| `fn_78_1104` | 2 | 838 | the `SLdrAudioPlaybackParms` reader (a DOL reader) |
+| `fn_78_130` | 1 | RELMain | the REL entry that installs the loader |
+| `fn_78_21C8` | 0 | - | `OnScanStateChange`, forwards to `CActor` |
+| `fn_78_25F4` | 0 | - | `IncrementMisses` (a code function, the FSM calls it) |
+| `fn_78_2840` | 2 | 260C | a code function of the FSM |
+| `fn_78_28A4` | 2 | 2728 | the `EScriptObjectState` 4CC helper ('I30'..'I33') - a DOL copy |
+| `fn_78_2C78` | 4 | 2B20, 4D3C | the `CPASAnimParmData` constructor - a DOL copy |
+| `fn_78_3088` | 2 | 2E38 | `CVector3f::Cross` - a DOL copy |
+| `fn_78_3320` | 0 | - | `LightHitReact` (an FSM state) |
+| `fn_78_348C` | 0 | - | `HeavyHitReact` (an FSM state) |
+| `fn_78_35DC` | 4 | 3320, 348C | the shared hit-react body (see above) |
+| `fn_78_3964` | 2 | 44CC | the tongue-pull helper |
+| `fn_78_39C0` | 2 | 44CC | `PullMorphedPlayer` |
+| `fn_78_5618` | 2 | 55AC | the `rstl` vector erase - an rstl copy |
+| `fn_78_5784` | 0 | - | `SlideIntoWater` (an FSM state) |
+| `fn_78_69AC`, `fn_78_69D8` | 0 | - | `GetAimPosition` / `GetDamageVulnerability`, forward to `CPatterned` |
+| `fn_78_772C` | 2 | 7440 | the tongue-tip helper |
+| `fn_78_7F38` | 2 | 7F14 | `LdrToDamageInfo` - a DOL copy |
+| `fn_78_8004` | 0 | - | `ProjectileInfo` (a vtable slot) |
+| `fn_78_838` | 2 | 160 | the `SLdrSwampBossStage1` property reader (the port uses the generated `.inc`) |
+| `fn_78_94`, `fn_78_9C`, `fn_78_A4`, `fn_78_C0` | 0 | - | the trivial vtable slots (see "Non-overridden / dropped virtuals") |
+| `fn_78_9A1C` | 6 | 48A8, 9744, 9AD8 | the joint-type match - **marked** here |
+| `fn_78_9A44` | 0 | - | `CollidedWith`, forwards to `CPatterned` |
+| `fn_78_A5B4` | 8 | 4D3C, 5CDC, 5D6C, 5E84 | the splash locomotion - **marked** here |
+| `fn_78_A5CC` | 6 | 587C, 5984, 6198 | the rise locomotion - **marked** here |
+| `fn_78_A5E4` | 0 | - | the destructor (a vtable slot) |
+| `fn_78_B474`, `fn_78_B630` | 2 each | B270 | `SLdr` copy constructors |
+| `fn_78_BCD0` | 1 | 8 | `CPhysicsActor::GetBoundingBox` - a DOL copy |
+| `fn_78_BD0C` | 0 | - | a weak `__dt` the REL carries - a DOL copy |
+| `fn_78_E84` | 6 | 838 | `CInputStream::ReadFloat` / `ReadBytes` - a DOL copy |
+
+The remaining 101 unmarked functions are the REL's copies of host/DOL classes and are cited
+rather than reimplemented: the `SLdr` / `SLdrActorParameters` / `SLdrPatternedAITypedef` /
+`SLdrEditorProperties` constructors, destructors and copies (`fn_78_1074` `fn_78_10B0`
+`fn_78_12E8` `fn_78_13A0` `fn_78_141C` `fn_78_14EC` `fn_78_1570` `fn_78_15C8` `fn_78_161C`
+`fn_78_1688` `fn_78_16E4` `fn_78_1750` `fn_78_18B0` `fn_78_1918` `fn_78_19A4` `fn_78_19FC`
+`fn_78_1B54` `fn_78_1B8C` `fn_78_1C18` `fn_78_1CB4` `fn_78_1D2C` `fn_78_1D90` `fn_78_1E0C`
+`fn_78_2100` `fn_78_2178` `fn_78_2C3C` `fn_78_2DFC` `fn_78_33E8` `fn_78_3444` `fn_78_3580`
+`fn_78_3848` `fn_78_4218` `fn_78_474` `fn_78_4B4` `fn_78_4D4` `fn_78_4FC` `fn_78_55AC`
+`fn_78_638` `fn_78_68F0` `fn_78_6958` `fn_78_6A4` `fn_78_6F8` `fn_78_75C` `fn_78_7788`
+`fn_78_7AA8` `fn_78_7BC` `fn_78_7E68` `fn_78_7EC0` `fn_78_7F14` `fn_78_81A8` `fn_78_81F0`
+`fn_78_82A4` `fn_78_82E4` `fn_78_8304` `fn_78_832C` `fn_78_83AC` `fn_78_83E8` `fn_78_8424`
+`fn_78_8480` `fn_78_84A0` `fn_78_84E8` `fn_78_8574` `fn_78_85AC` `fn_78_861C` `fn_78_8694`
+`fn_78_8BBC` `fn_78_8C40` `fn_78_8C78` `fn_78_8DE0` `fn_78_8E18` `fn_78_8E38` `fn_78_8F20`
+`fn_78_A744` `fn_78_A928` `fn_78_A9BC` `fn_78_ADAC` `fn_78_AE04` `fn_78_AE5C` `fn_78_AEB8`
+`fn_78_AF0C` `fn_78_B03C` `fn_78_B098` `fn_78_B0F0` `fn_78_B154` `fn_78_B1E4` `fn_78_B270`
+`fn_78_B8EC` `fn_78_B970` `fn_78_BBA8` `fn_78_BC68` `fn_78_CA4` `fn_78_D50`), plus the trivial
+vtable slots that only forward to the base (`fn_78_0` `fn_78_44` `fn_78_4C` `fn_78_54`
+`fn_78_5C` `fn_78_64` `fn_78_74` `fn_78_80` `fn_78_8C`).
+
+**Run evidence for the three new markers** (2026-10-21, world `3dfd2249` area
+`04_swamp_temple_dark`, layer 3 forced, `MP2_GODMODE=1`, 6000 frames, the boss woken with the
+console `send u05bb Activate` and dropped to 600 HP with `damage u05bb 1199`, the player parked
+in the arena's AI hint so the tongue chain fires). The probe was a temporary trace in the port
+code, never committed; the run walked the states -1, 0, 1, 2, 4, 5, 7, 8, 9 and 10.
+
+| function | arms seen in the traced run |
+|---|---|
+| `fn_78_A5B4` | `xb6c == 0` 154x, `xb6c == 1` 5x - both returns |
+| `fn_78_A5CC` | `xb6c == 0` 7x, `xb6c == 1` 44x - both returns |
+| `fn_78_9A1C` | `type == 3` -> true (448+32+32x), `type != 3` and equal -> true (280+7+30x), `type != 3` and different -> false (100+100+30+30+20+20+7x) - every reachable arm |
+| `fn_78_35DC` | never entered - no run reached state 3 |
+
+### Stage1: how the boss is activated, and why the harness had to wake it by hand (2026-10-21)
+
+Nothing in the SwampBossStage1 REL activates the boss: the module never calls
+`CEntity::SetActive` (its one vtable +0x1c call is a body-controller method), and the retail
+`Think` (fn_78_95D8) returns early while the entity's active bit (0x20 bit 7) is clear, exactly
+like the port's `if (!GetActive()) return;`.
+
+The activator is in the **area's script data** (read from the running game's own connection
+lists, `obj <uid>` in the console):
+
+| step | object (editor id) | connection |
+|---|---|---|
+| the activator | CScriptRelay 002000a2 (`u05ba`) | `on Zero send Activate -> 002001c1` (the boss) |
+| its trigger | CScriptRelay 002001d0 (`u044f`) | `on Zero send SetToZero -> 002000a2` |
+| the switch | CScriptSwitch 002001e0 (`u044d`) | `on Open send SetToZero -> 002001d0` |
+| the opener | CScriptLayerController 002001d7 (`u0454`) | `on Arrived send Open -> 002001e0` |
+
+So the activation is **layer driven**: the layer controller's "Arrived" (the port's
+`CScriptLayerController::Think` sends it when the layer it watches reaches `kLP_Ready`) opens the
+switch, the switch's "on Open" starts the relay chain, and the last relay activates the boss.
+(The recipe that drives this chain from the console is in "the marked functions' arms, the
+activation recipe, the charged shot" below.)
+Above it sit CScriptLayerController 002001c5 ("Arrived" -> "Increment" -> 002001d7) and the
+switch cascade the four CScriptDamageableTrigger objects 002003e1/e9/ea/ec feed (they die ->
+the counter 002003eb -> relays -> switches 00200226/002001e4).
+
+**The port is not at fault; the harness was.** The chain is intact in the port - driving it by
+hand works (`send u05ba SetToZero` activates the boss and `send u044f SetToZero` does too,
+both verified in a run) - and the relays, switches and layer controllers are the host's own
+code. The harness never reached the chain because it switched layers with the port's debug
+`LAYER3` warp, which loads the boss's layer directly and never gives the layer controller its
+`kSM_Load`/`kSM_Increment`, so the controller's "Arrived" (the thing that opens the switch)
+never fires. In the retail game the player walks into the arena, a trigger starts the sequence
+timers, the layer controllers increment, the layers load, "Arrived" opens the switch and the
+relay chain activates the boss; `send u05bb Activate` is the equivalent shortcut.
+
+### Stage1: the charged shot (2026-10-21, first pass - corrected below)
+
+The charge is driven by `CPlayerGunBase::ProcessInput`
+(src/MetroidPrime/Player/CPlayerGunBase.cpp:76-83), which sets the gun's input bit 4 from
+`CPlayer::ChargeBeamHeld` (the `CControlMapper::kC_ChargeBeam` control); only that bit starts
+the charge (`CPlayerGun.cpp:631`) and releases it (`CPlayerGun::ButtonRelease`,
+CPlayerGun.cpp:557). The charge state machine is the upstream retail code
+(`kCP_ChargeRequested` -> `kCP_Charging` -> `kCP_ChargeFx` -> `kCP_Charged`, the factor growing
+at 1/1.8 per second, `CPlayerState::GetMissileComboChargeFactor`) and the port only adds the
+`TARGET_PC` rapid-charge option on top.
+
+This first pass concluded from the `MP2_DEBUG_BEAM=1` log that the charged shot "never fires
+charged"; that was a misreading - the line prints the beam's ray magnitude, not the damage. See
+"the marked functions' arms, the activation recipe, the charged shot" below for the corrected
+measurement.
+
+### Stage1: the five most-called unmarked functions of the first pass (2026-10-21)
+
+| fn | retail call sites | port body | verdict |
+|---|---|---|---|
+| `fn_78_35DC` | 4 (3320, 348C) | `HitReactBody` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_39C0` | 2 (44CC) | `PullMorphedPlayer` | **marked** |
+| `fn_78_3964` | 2 (44CC) | `SendOrbitMessage` | **marked** |
+| `fn_78_25F4` | 0 (a code function) | `IncrementMisses` | **marked** |
+| `fn_78_3320` | 0 (an FSM state) | `LightHitReact` | compared, **not marked** (state 3 unreachable) |
+
+- **`fn_78_39C0` (`PullMorphedPlayer`)** - the retail reads the target's x/y (the z is read and
+  then overwritten with 0), takes the difference to the player's x/y, `CanBeNormalized` +
+  `Normalize`, scales it by 30 (`lbl_78_rodata_184`), `SetVelocityWR`, then writes the constant
+  force (0, 0, mass * gravity) and `SetMoveState(4)` (`kMS_FallingMorphed`). The port does the
+  same in the same order; only the constant force goes through `SetConstantForceWR` instead of
+  the three stores.
+- **`fn_78_3964` (`SendOrbitMessage`)** - the retail tests bit 7 of the flag byte at 0xce4 and,
+  if it is clear, sets it and sends the "IS10" state to its own id; the port's
+  `xce4_orbitMsg` is that bit and `SendOrbitMessage` does the same.
+- **`fn_78_25F4` (`IncrementMisses`)** - the retail bumps the miss counter at 0xbfc and stores 3
+  in the tongue state at 0xc34; the port does exactly that (branch-free).
+- **`fn_78_35DC` / `fn_78_3320`** - compared field by field with the retail (the hit-react
+  body and `LightHitReact`), no difference found, but **not marked**: both need state 3
+  (`ExposeBelly`), and state 3 needs the belly accumulator over 50 - about 50 landed joint
+  hits, which the harness does not manage (it lands about one shot in six and the charged shot
+  never fires charged, see above).
+
+Run evidence (2026-10-21, `04_swamp_temple_dark`, layer 3, `MP2_GODMODE`, 12000 frames, the
+boss woken with `send u05bb Activate` and dropped to 600 HP with `damage u05bb 1199`, the player
+parked in the arena's AI hint and morphed with the X button):
+
+| function | seen | arms |
+|---|---|---|
+| `fn_78_25F4` | 4x (`miss=0..3`) | branch-free, all of it |
+| `fn_78_39C0` | 35x | the CanBeNormalized arm (the other needs a zero-length direction) |
+| `fn_78_3964` | 2x (`msg=0`) | the "not sent yet" arm (the flag is cleared by the matching IS11 message when the pull ends) |
+| `fn_78_35DC`, `fn_78_3320` | 0x | no run reached state 3 |
+
+### Stage1: the marked functions' arms, the activation recipe, the charged shot (2026-10-21)
+
+**The arms of the marked functions** (one temporary probe per function, never committed):
+
+| fn | calls | arm that ran | the other arm |
+|---|---|---|---|
+| `fn_78_39C0` | 12 | `CanBeNormalized` true, with a difference of 0.084..0.106 units | **unreachable in shipped data**: `fn_78_44CC` passes the player's position plus a normalized direction times `dt * 7.5` (`dt > 0`), so the difference is never zero. Commented at the marker; the marker stays. |
+| `fn_78_3964` | 1 | the flag was clear, so the "IS10" message went out | **unreachable in shipped data**: the flag is cleared again by the matching IS11 message (`fn_78_390C`, the port's `ReleaseOrbitMessage`, which ran once with the flag set) when the pull ends, so every activation sees it clear. Commented at the marker; the marker stays. |
+| `fn_78_35DC` | 0 | - | **not marked**: state 3 is unreachable in the harness runs, so the function was never entered. |
+| `fn_78_3320` | 0 | - | **not marked**: never entered either. |
+
+**Why state 3 (`ExposeBelly`) is unreachable.** The `ShouldExposeBelly` trigger needs `xd10` (the
+belly accumulator) over 50 (over 5 at min health), and `xd10` only grows in the port's
+`ApplyDamageMsg` (fn_78_9B74, ported) when a joint takes a hit - the harness's shots do not land,
+so the accumulator stayed at 0.0 in every run. This is neither shipped data (the disc's FSM2 has
+the edge `ShouldExposeBelly -> ExposeBelly`, and the writer is ported) nor an unported writer, so
+`fn_78_35DC` and `fn_78_3320` stay unmarked. The arm of `fn_78_35DC` that did not run is its
+`msg == 1` branch (`RetractTongue`, `UpdateTongueTip`, `HeadWeightDown`, `UpdateHeadTurn`); the
+function was never entered at all, so its other arm did not run either. `fn_78_3320` was never
+entered either, so neither of its arms ran (the `DeliverCmd(CBCAdditiveReactionCmd)` on Activate
+and the no-op otherwise).
+
+**Activating the boss through the area's own chain.** The area's script objects (read with
+`obj <uid>` in the console) are the only thing that activates it; the chain is
+
+| step | object (editor id) | connection |
+|---|---|---|
+| the activator | CScriptRelay 002000a2 (`u05ba`) | `on Zero send Activate -> 002001c1` (the boss) |
+| its trigger | CScriptRelay 002001d0 (`u044f`) | `on Zero send SetToZero -> 002000a2` |
+| the switch | CScriptSwitch 002001e0 (`u044d`) | `on Open send SetToZero -> 002001d0` |
+| ... | CScriptSwitch 00200226 (`u043e`) | `on Open send SetToZero -> 002001e0` |
+| ... | CScriptRelay 00200228 (`u0476`) | `on Zero send Open -> 00200226` + `on Zero send SetToZero -> 00200226` |
+| ... | CScriptSwitch 002001e4 (`u04b6`) | `on Open send SetToZero -> 0020022a` + `on Open send SetToZero -> 00200227` + `on Open send Play -> 002001c5` |
+| ... | CScriptRelay 002001fc (`u0443`) | `on Zero send SetToZero -> 002001e4` |
+| the root | CScriptCounter 002003eb | `on MaxReached send SetToZero -> 002001fc` - the four CScriptDamageableTrigger objects 002003e1/e9/ea/ec dying |
+| the openers | CScriptLayerController 002001c5 / 002001d7 | `on Arrived send Open -> 002001e4` / `-> 002001e0` |
+
+**The recipe the harness uses** (the area's own script messages; only the layer controllers'
+"Arrived" and the counter's "MaxReached" are stood in for):
+
+    send u044d Open        # the switch 002001e0 open - the message the layer controller 002001d7
+                           # sends on "Arrived"
+    send u0476 SetToZero   # the relay 00200228 - where the switch 002001e4's "on Open" lands
+
+Those two commands make the area's own relays and switches do the rest and the boss activates
+(`fsm Bob`): 00200228 "on Zero" opens the switch 00200226 and sets it to zero, 00200226 "on Open"
+sets 002001e0 to zero, 002001e0 "on Open" sets the relay 002001d0 to zero, 002001d0 "on Zero" sets
+the relay 002000a2 to zero, and 002000a2 "on Zero" sends the Activate.
+
+The two links the harness cannot drive:
+
+- the layer controllers 002001c5/002001d7 never send "Arrived": the port's
+  `CScriptLayerController::Think` only sends it for a **dynamic** layer it was told to load, and
+  `send u04ce Increment` / `send u0454 Increment` (the controllers' own Load/Increment messages)
+  load no layer (the log shows no `[layer] area 32 layer N activated` after them).
+- the counter 002003eb never reaches its maximum: the four CScriptDamageableTrigger objects are
+  inactive, so killing them (`hurt u05a0 500` and the rest, which drives their HP to -500) does
+  not send their "Dead" message and the counter does not increment.
+
+**The charged shot.** The loaded tweak data binds the charge to the same button as the fire
+(probed from `CTweakPlayerControls::GetMapping`: `fire=15 auto=0 charge=15 charge2=15 morph=17
+morph2=17`, so the charge is the A button and there is no auto-fire), so the harness input is
+`press a 0` ... `stick 0 0 0`. The charge does build: with A held the factor grows 0.009, 0.102,
+... 1.000 (the rate is 1/1.8 per second) and the shot leaves when the charge completes. My
+earlier note ("the charged shot never fires charged") was wrong - the `MP2_DEBUG_BEAM=1` line
+prints the beam's ray magnitude, not the damage, and the shots that landed were the press shots.
+What is still true is that the charged shots do not reach the boss's joints: the aim has to be
+set ~1.8 s before the shot leaves and the player falls in the water, so the belly accumulator
+stayed at 0.0 and state 3 was never reached.
+
+### Stage1: five more of the most-called unmarked functions (2026-10-21)
+
+| fn | retail call sites | port body | verdict |
+|---|---|---|---|
+| `fn_78_35DC` | 4 (3320, 348C) | `HitReactBody` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_3320` | 0 (an FSM state) | `LightHitReact` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_348C` | 0 (an FSM state) | `HeavyHitReact` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_5784` | 0 (an FSM state) | `SlideIntoWater` | compared, **not marked** (the state is never reached) |
+| `fn_78_9A44` | 0 (a vtable slot) | `CollidedWith` | compared, **not marked** (its own work needs a joint touch during a tongue pull) |
+
+- **`fn_78_348C` (`HeavyHitReact`)** - the retail sets the joints to `kAllJoints` with
+  `RemoveTarget|Reflect` on Activate, sends `CBodyStateCmd(kBSC_NextState)`, calls the shared
+  hit-react body and then the taunt with type 4; the port does the same in the same order.
+- **`fn_78_5784` (`SlideIntoWater`)** - the retail records state 6 and, on Activate, sets the
+  joints to `kAllJoints` with `RemoveTarget|Reflect` (0xa), rumbles and stops the tongue; the
+  port does the same.
+- **`fn_78_9A44` (`CollidedWith`)** - the retail only does its own work while the state is 5
+  (TonguePull): it walks the collision list for `kMT_SeekerTarget` (bit 0 of the word at
+  collision-info+0x30) and sets the "player touched" flag, and then calls the base. The port
+  does the same.
+
+### Stage1: the arena entry, the charged shots, the hit-react functions (2026-10-21)
+
+**The area's chain, in full** (from the area's script data, `obj <uid>` in the console):
+
+- the four **CScriptDamageableTrigger** objects 002003e1/e9/ea/ec (the arena's acid pools) are
+  activated by the **CScriptRelay 002001e3 (`u04a5`)** - they are inactive until that relay
+  fires, so without it they cannot be killed and the counter 002003eb never reaches its maximum;
+- the **CScriptSwitch 002001d2 (`u0547`)** is the root: its "on Open" sets the relay 002001e3;
+- the **CScriptCounter 002003eb** ("on MaxReached" -> the relay 002001fc) counts the four
+  triggers' deaths;
+- the relay 002001fc -> the switch 002001e4 -> "on Open" -> "Play" -> the **CScriptLayerController
+  002001c5** (its layer load ends in "Arrived" -> "Increment" -> the layer controller 002001d7 ->
+  its layer load ends in "Arrived" -> "Open" -> the switch 002001e0) and -> the relays
+  0020022a/00200227 -> ... -> the relay 00200228 -> the switch 00200226 -> the switch 002001e0 ->
+  the relay 002001d0 -> the relay 002000a2 -> "Activate" -> the boss.
+
+**Why the harness cannot drive the whole chain.** The `LAYER3` warp loads layer 3 itself, so
+when the layer controllers are given their Load/Increment their layer is already Ready,
+`mWaitingForLoad` is never set, and the port's `CScriptLayerController::Think` (upstream code, no
+`TARGET_PC` change) only sends "Arrived" after such a load: `send u04ce Increment` and
+`send u0454 Increment` load no layer (the log shows no `[layer] area 32 layer N activated` after
+them). Without the warp the area's own entry choreography does not run either: the harness's
+teleport through the arena logs no layer activation at all, and the area's loaded triggers
+(`u046b` 00200011 and the rest) carry no message connections - the trigger that starts the
+sequence is in a layer that only loads with the fight.
+
+**What the harness uses** (the area's own switches and relays, verified - the boss comes up with
+`fsm Bob`):
+
+    send u044d Open        # the switch 002001e0 - the message the layer controller 002001d7 sends
+                           # on "Arrived"
+    send u0476 SetToZero   # the relay 00200228 - where the switch 002001e4's "on Open" lands
+
+**The charged shot works.** The tweak binds the charge to the A button (the same one as the
+fire: `fire=15 charge=15 auto=0 morph=17`), so the harness input is `press a 0` ... `stick 0 0 0`;
+the charge builds over ~1.8 s and the shot leaves when it completes. The run's damage trace shows
+`dmg=19.91 orig=39.81` for a charged hit and `dmg=1.00 orig=2.00` for a normal one. The aim has
+to be refreshed while the charge runs (the shot leaves ~1.8 s later and the player falls in the
+water).
+
+**The live-aim driver** (`/tmp/opencode/sb1_lane/drive.py`, adapted from the stage-2 lane's):
+it reads the joint spheres (`objs collision` - the boss's 16 are the run of 16 consecutive
+collision-actor uids), puts the player 4 units to the side of the target joint at the camera's
+height, aims from the gun (2.15 above the feet) at the joint's live position and fires. 37 hits
+in 330 charged shots, and the belly accumulator reached **21.58** - short of the 50 that
+`ShouldExposeBelly` wants, so state 3 still did not run.
+
+**The five functions** (compared with the retail, all of them still unmarked):
+
+| fn | port body | retail | verdict |
+|---|---|---|---|
+| `fn_78_35DC` | `HitReactBody` | records state 3, locomotion 5, and on `msg == 1` retracts the tongue, updates the tip, drops the head weight and turns the head | matches; **not marked** - state 3 was never reached (0 entries) |
+| `fn_78_3320` | `LightHitReact` | the shared body plus, on Activate, `DeliverCmd(CBCAdditiveReactionCmd)` | matches; **not marked** - never entered |
+| `fn_78_348C` | `HeavyHitReact` | on Activate `SetJointsActive(kAllJoints, RemoveTarget|Reflect)` and `DeliverCmd(CBodyStateCmd(kBSC_NextState))`, then the shared body, then the taunt (type 4) | matches; **not marked** - state 3 was never reached |
+| `fn_78_5784` | `SlideIntoWater` | records state 6 and, on Activate, `SetJointsActive(kAllJoints, 0xa)`, rumbles and stops the tongue | matches; **not marked** - the state is never reached |
+| `fn_78_9A44` | `CollidedWith` | its own work only while the state is 5 (TonguePull): it walks the collision list for `kMT_SeekerTarget` and sets the "player touched" flag, then calls the base | matches; **not marked** - no run had a joint touch during a tongue pull (0 entries) |
+
+The blocker for all five is the same: state 3 needs the belly accumulator over 50 and the
+harness's hit rate (37 hits in 330 charged shots, the accumulator reset by `BeachWait` between
+the beach cycles) does not get there.
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata

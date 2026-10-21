@@ -1251,3 +1251,118 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 - The player must morph after the stage-3 cinematic (`press x` before it does nothing).
 - XRDG fn_14_12D98: bombs touching the root collider (vulnerable after SetVulnerableToDamage) fail
   its WeaponHits test, so the gravity repulsor (0x10E0) only drops on beam hits; not yet exercised.
+
+## 2026-10-21: root hits, part 3 codes
+
+- Harness: the boss intro (camera chain 0297..027d, ~35 s) and later cinematics set
+  `IsInCinematicCamera()`, which blocks all player input. Wait for the cinematic id to return to
+  `03ff` before firing. `press a` needs at least 40 updates, because shorter holds end while the
+  gun is still drawing.
+- With that done, beams from 12 m reach root collider u0574. XRDG (fn_14_12D98) ran 72 times
+  (armour bit set, sender = root) and found the touching CWeapon each time. After
+  SetVulnerableToDamage (fn_14_13F0C, once), `WeaponHits` was false for power, dark, light and
+  annihilator alike. The damage arm never ran, 0x10E0 stayed full, ShouldRetreat never fired, and
+  SetImmuneToDamage / SelectRetreatPlatform / the platform arms stayed unreached. Next suspect:
+  the head's own CPatterned vulnerability as the port loads it.
+- Ported (unmarked, no run evidence yet): DropShields 15054, RaiseShields 14F74,
+  EndSplitterDeployment 14B60, SelectDeathHeadAttack 14470 (block 6 at data +0x2DC; new 0x10DC),
+  GrabPlayerHintControl 13F70 (CScriptPlayerHint::SetActorId, TARGET_PC). The ctor now locks
+  dropShieldsFx (data +0x48) into 0xEF4.
+- SeekLineOfSight 1524C stays a stand-in. SetVisualTarget only writes 0xDA0/0xDB8/0xDAC..0xDB4,
+  but CVisualKnowledge::Update is unported, so HasLineOfSight would stay false.
+
+## 2026-10-21: root vulnerability settled
+
+- The table is loaded right. The area-53 DGHD's raw patterned vulnerability (dumped from the loader,
+  6172-byte instance) gives power 100/effect 3, dark 50/3, light 200/3, missile 100/3, and the
+  charged/combo entries 100/50/200 with effect 3; everything else is 0. LdrToWeaponVulnerability
+  (fn_8023B298) passes the effect through unchanged, and the runtime table after
+  SetVulnerableToDamage matched (1.0/0.5/2.0, effect 3).
+- The bug was the predicate. Retail 12D98 calls the one-argument `WeaponHits` (0x800DB834),
+  which treats effect 3 as a hit. That is the host's `WeaponHurts`. The host's two-argument
+  `WeaponHits` is retail's other overload (0x800DBA50). With 12D98 on `WeaponHurts`, beams take
+  0x10E0 200 → -7.5 (power 2, dark 7.5, light 40 per shot). Then SetImmuneToDamage, SelectRetreatPlatform
+  (17 waypoints, both compare arms) and SetStunnedPosition's platform path ran, the 12818
+  platform arm held the ball 1931 times, and the head was destroyed.
+- Marked: 13EB8, 13C6C, 15054, 14F74, 14B60, 13F70 (their unrun arms are null and empty-data guards
+  only). Unmarked: 12D98 (armour-on, no-weapon and zero-damage arms unrun), 12818 (inactive-ball
+  arm unrun, out-of-range arm untraced), 14470 (random picks 0 and 1 unseen; 1/2/3 ran).
+
+## 2026-10-21: head arm coverage (runs 35/36)
+
+- Harness inputs: before the echo kills, `damage <root> 1 cannonball` and `damage <root> 1` send
+  XRDG with the armour on. After SetVulnerableToDamage, `damage <root> 1 cannonball` sends XRDG
+  with the player as the sender, which is the no-weapon arm. Once morphed after the retreat,
+  `send <ball0> Deactivate` for 3 s and then `Activate` gives the inactive-ball arm in 12818. The
+  root is u0174 and the balls u0172/u0173 in these runs; take them from the XALD probe. The head
+  makes no attack picks while idle after the armour drops, so 14470 makes one random pick per fight.
+- Shipped-data evidence, from the only DGHD placement (area 53, 0x0035000F), dumped at XALD:
+  - IS02/ATCH links only to PlayerHint 0x0C35001D.
+  - MDFY/PLAY links to platforms 0x0C350003 and 0x0C350302. Both CONN/ATCH into the same
+    16-waypoint loop (z -18.12..-9.21).
+  - The attack-area centre is (74.46, 30.38, -16.74).
+  - dropShieldsFx is PART 0xCF46E5D8.
+- Marked:
+  - 15054, 13F70 and 13C6C, with comments carrying the data above.
+  - Triggers ShouldRetreat 171B8 (25.7k calls), EchoTargetDestroyed 171EC (1.1k) and
+    UseAnnihilatorPulse 1734C, all with both results.
+  - Body GetTouchBounds fn_14_10 (32k) and GetHealthInfo fn_14_10C (9k).
+- Unmarked:
+  - 15284: its marker is removed. Its no-platform and unsafe arms are not excluded by the data.
+  - 12D98: zero damage needs a 0-damage CWeapon.
+  - 12818: in range with no platform (morphed in a slot before the retreat) never ran.
+  - 14470: random 1 and 3 not seen.
+  - More-called functions not fully run: head Think (calls the CVisualKnowledge stand-in), IsDead
+    and IsIdle (false only), ShouldProjectileAttack (true only), AllSplittersDead (no
+    command-module arm), and UseMachineGun / UseLockOnMissiles (one result each).
+- Trace recipe for the run scripts (`/tmp/opencode/dghd2/run3[4-6].sh`, `probe35.py`). Re-add
+  these as `// DGPT` lines; strip them with `sed -i '/\/\/ DGPT$/d'`.
+  - CCameraManager::SetCinematicCameraId, after the id store:
+    `fprintf(stderr, "DGP cinecam %04x\n", uid.Value() & 0xffff);` (plus `<stdio.h>`).
+    `wait_cine` waits for `03ff`.
+  - x11FEC_, inside the "last target" block: `DGHD11FEC fe0=%d` (xFE0_). This breaks the echo loop.
+  - SetVulnerableToDamage: `DGVULN setvuln n0`. The VULN wait reads it.
+  - x12D98_: `DG12T XRDG bit=%d root=%d` at entry; `DG12T XRDG weapon type=%d ch=%d co=%d hits=%d
+    same=%d` before the weapon test; `DG12T XRDG dmg %.1f 10e0=%.1f` after `x1040_ = touched`.
+  - SetImmuneToDamage: `DG12T SetImmune`. SelectRetreatPlatform: `DG13T SRP` at entry. The FIRE
+    loop stops on it.
+  - x12818_, before the range test: `DG12T 12818 out %d ball %.2f %.2f %.2f r`, throttled to every
+    30th frame per ball. The DRV loop teleports onto that position. Inside the range test:
+    `DG12T 12818 hold %d`.
+  - x13830_, after x119E4_: `DGXALD balls %04x %04x root %04x` (xDC4_[0], xDC4_[1], xE00_). The
+    run scripts read ROOT and BALL0 from it.
+  - The DGNEW lines in 14470 and the other bodies, and the `DGC` arm counters (`probe35.py`), are
+    evidence only.
+
+## 2026-10-21: CVisualKnowledge, body aim/pre-render, run 37
+
+- `fn_14_10` and `fn_14_10C` are REL copies of DOL functions, so they are cited, not marked:
+  `CPatterned::GetTouchBounds` (0x80073BF0, the same 26 instructions) and
+  `CActor::GetHealthInfo` (0x8000B900, 11 instructions).
+- CVisualKnowledge (DOL 0x801F55F0..0x801F59D0) is now a shared port-only class:
+  `include/MetroidPrime/CVisualKnowledge.hpp`, `src/MetroidPrime/PortCVisualKnowledge.cpp` (listed
+  in `tools/gen_files_cmake.py` PORT_ONLY). CommandoPirate's stand-ins can use it too. The head
+  keeps one at 0xD80 (ctor 0x183F8: no locator, 0.1 + 0.05 × Float() s). Think updates it, 1524C
+  sets the player as its target, and HasLineOfSight / SetAttackPosition read it.
+- Body: `x10B8_` is the "Head_1" locator (.rodata 0x6BF, store 0xBAC8). A138 (pre-render bounds and
+  echo emitter) and 9E88 (aim position) are ported.
+- Run 37: one full fight plus four short ones (stopped 20 s after VULN), `/tmp/opencode/dghd2/run37.sh
+  <tag> <port> <display> full|short` and `probe37.py` (probe35 plus a head FSM state trace `DGST`,
+  CVisualKnowledge / A138 / 9E88 counters and a dump in the head's destructor). Save clean copies
+  of the probed files first and restore them afterwards: the sed strip breaks one-line bodies.
+  - CVisualKnowledge works: VK.visible 12.2k, VK.hidden 2.0k, HasLOS 1 ×4 and 0 ×2.3k. With
+    runs 35/36 (no target), 171F8 ran every arm and is marked. 1524C and Think 17C98 are marked
+    too. Think's retail-absent `xD70_` null test is gone: AddObject delivers XCRT (and so
+    fn_14_13318) before any Think.
+  - 12818: morphed in ball slot 0 before the retreat, 479 holds with no 0x1038 platform. That
+    leaves only the inactive ball, which needs the 0xF28 sound to return no handle.
+  - 15284: armour-on calls only. The bombs laid in the slot destroyed nothing.
+  - 14470: every fight's first picks were first-shot (1) and splitters (3), so no random pick
+    happened. A random pick needs a longer fight past the splitters.
+  - IsIdle: the FSM entered Idle (0x10F4 0x88) but no trigger read IsIdle there. IsDead: the full
+    fight crashed before the head's death.
+  - A138 ran the no-emitter arm only, and 9E88 the active collision actor arm only. Both are
+    unmarked.
+  - The full fight crashed at the morph-out (`press x` after the bombs). The crash was in
+    `CPlayer::Render` → `CModelData::Render` → `CTexture::Load`, which is player model texture
+    code, not DG code.
