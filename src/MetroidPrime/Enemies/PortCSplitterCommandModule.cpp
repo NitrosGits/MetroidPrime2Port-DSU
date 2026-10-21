@@ -458,7 +458,6 @@ void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float
 
 // fn_75_5A80 (0x5A80-0x5AD8): the head's laser origin - the translation of the locator at
 // 0xEF8 (0x5A9C GetLctrTransform, 0x5AAC-0x5AC0).
-// @ fn_75_5A80
 CVector3f CSplitterCommandModule::PortLaserOrigin(CStateManager&) const {
   return GetLctrTransform(mLookAtSegment).GetTranslation();
 }

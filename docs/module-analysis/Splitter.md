@@ -1224,3 +1224,38 @@ The next stand-ins the run reaches: FindBestDodgeDirection `fn_75_B2A0` (0x2A0, 
 `fn_75_91E4` (0x33C)), FindBestStabLeg `fn_75_B57C`, LegStabAttack `fn_75_DA38` and StateOver
 `fn_75_E64C`. The head reaches LaserSweep (`fn_75_44DC`, 0x388) only through the chassis's
 SetupLaserSweep.
+
+### Chassis stab, dodge and laser-sweep setup, head laser sweep (2026-10-21)
+
+0x6B4 is the shared `CPatterned::mAnimationState`: the DOL's constructor writes it (`fn_801B7420`)
+and `CPatterned::GetAnimOver` reads it. The REL's TryCommand writers use `SetState`, and the REL
+calls to `CTryCommand::ShouldRetry` (`fn_801B73E4`) use the host's `CAnimationState::CanIssueCommand`,
+which matches the DOL's code. StateOver `E64C` (chassis) and `5A40` (head) are REL copies of
+`GetAnimOver`: cited, not marked.
+
+Ported: SetMorphballStabLeg `B66C`, FindBestStabLeg `B57C`, LegStabAttack `DA38`,
+FindBestDodgeDirection `B2A0` and its helpers `91E4`/`909C` (`PortFindDodgeDirection`,
+`PortDodgeIsClear`), SetupLaserSweep `B678`, plus the head's `5A80` (`PortLaserOrigin`), `5AD8`
+(`PortStartLaserSweep`) and LaserSweep `44DC`. New fields: the stab leg 0xD08 (`mStabLeg`), the step
+distance 0xD38 (`mStepDistance`, from the constructor at 0xFA70-0xFB08), and the head's sweep ends
+0xF38/0xF44. LaserSweep's laser shot `fn_75_1974` (0x298, the CPlasmaProjectile) is still a stand-in.
+
+What area-5 plan-F runs showed (temporary probes):
+- **Marked:** `B66C` (no branches; ran).
+- **B57C:** ran behind-left and behind-right; ahead ran in an earlier run, but its side was not
+  split. The null-target arm is unreachable, because PathFind follows HasTarget and 0xCC0 is never cleared.
+- **DA38:** ran activate with a valid leg, update delivering the melee command, and deactivate.
+  The invalid-leg arm (kAS_Over) needs B57C's null target, so it is unreachable. The
+  CanIssueCommand-false update was not probed, so the body is unmarked.
+- **B2A0:** only the 0xD34 gate. 0xD34 counts up in `fn_75_AFE8` and is cleared only by the
+  chassis's Listen (`fn_75_EA70`, vtable 0xB0, still a stand-in) when it hears noise type 4 or 0.
+  Until Listen is ported, the dodge roll, `91E4` and `909C` never run.
+- **E0B0** returns true now (the pass gate and in-range distance coincide), but SetupLaserSweep
+  `B678` never ran. So `5A80`, `5AD8` and `44DC` never ran: something on the FSM path between
+  ShouldLaserSweep and SetupLaserSweep (LaserSweepAttack `D3E0` is a stand-in) still blocks it.
+- **Recheck now that the chassis moves:** no new arms for BC70/8DF8 (no team in area 5), DC08
+  (no bit-0x20-clear arm), E2F0/E3A4 (flag-off not seen), E1D0 (only flag-off) or 50B0 (no
+  dt/null/unsafe/deactivate arms).
+
+Next: the chassis's Listen `fn_75_EA70` (unblocks the dodge path), LaserSweepAttack `fn_75_D3E0`
+(unblocks SetupLaserSweep and the head's sweep), then the laser shot `fn_75_1974`.
