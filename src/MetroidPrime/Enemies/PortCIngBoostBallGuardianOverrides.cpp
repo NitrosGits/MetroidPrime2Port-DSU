@@ -504,6 +504,7 @@ void CIngBoostBallGuardian::Render(const CStateManager& mgr) const {
     }
     return;
   }
+  // Forms 0/1 and 10+ draw nothing (the switch goes straight to 0x0000D4E0), as AddToRenderer skips them.
   if (form == kForm_IngSpot || form == kForm_Evaporate) {
     if (mBodyState5Time < 2.5f && mDrawParticles) { // 0x0000D474: 0x11BC < rodata_E0; 0x421 0x01
       uint mask = 0;
