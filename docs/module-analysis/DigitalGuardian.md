@@ -1395,3 +1395,29 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   - 9E88 ran the active collision-actor arm and the locator arm (actor inactive, 0x11B8 clear),
     but not the 0x11B8 arm.
   - A138 ran the no-emitter arm only.
+
+## 2026-10-21: forced arms, runs 400-404
+
+- Drivers: `tools/drivers/dg_area53.sh <tag> <port> <display> <steps>` with the step files
+  `dg_steps_beacon_rounds.sh`, `dg_steps_armour_off_stun.sh` and `dg_steps_close.sh`. The `fsm`
+  step needs port's console. Pick counts come from a local probe that was not committed.
+- The body constructor now allocates the beacon's echo emitter (fn_14_B100 at 0xC01C..0xC074), so
+  pre-render's emitter arms can run.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A138 | no emitter | 37-39 | ran |
+| A138 | beacon model with height | 402 | ran |
+| A138 | emitter, no beacon height | 402, 404 | ran |
+| A138 | bit 0x08 (inactive) | 404, forced (`send <body> CLOS`) | unreachable: CLOS deletes the body before its next pre-render |
+| 14470 | random 1 and 3 | 402/403 (11 picks) | not run: the splitter main chassis is a pass-through stand-in, so the splitters never all die |
+| 15284 | armour off, no platform | 403, forced (`fsm <head> StunnedReaction`) | not run: StunnedReaction is a sub-machine state, which `fsm` cannot enter |
+| 173AC (IsIdle) | bit 0x80 set | FSM2 dump | not run: its triggers sit in sub-machines (`fsm <head> Idle` fails the same way) |
+| 9E88 | 0x11B8 set | - | unreachable until the vortex states (fn_14_9260/9070/8E44/76D0) are ported |
+
+- Marked: fn_14_A138. Still unmarked: 14470, 15284, 173AC, 9E88.
+- Console asks:
+  - `fsm <id> <Machine>/<State>`, to enter FSM2 sub-machine states. This would unblock IsIdle
+    and the 15284 armour-off arm.
+  - `delete <id>` (`CStateManager::FreeScriptObject`), to remove the undamageable splitter
+    chassis. This would unblock 14470's random arms.

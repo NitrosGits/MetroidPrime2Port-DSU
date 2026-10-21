@@ -1289,6 +1289,8 @@ void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
 // SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
 // at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
 // 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
+// Not marked: shield state 2 is written only by fn_75_5DDC (0x5E28), whose one caller is the
+// chassis's SetupSpinAttack (fn_75_BAA8, 0xBB70), still a stand-in.
 void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
   SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
   if (mShieldState == 2) {
@@ -1356,6 +1358,7 @@ void CSplitterCommandModule::PortTurnUpright(float dt) {
 // (0x2480-0x249C) gives the steering separation (0x24DC) from its position with 5.0f
 // (lbl_75_rodata_58) times the model data's scale x; safe ones (0x24FC) are normalized and summed
 // and counted; a count above 0.0f (0x2564) divides the sum (0x2574).
+// @ fn_75_23F0
 CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1490,6 +1493,10 @@ bool CSplitterCommandModule::ShouldAttack(CStateManager&, const CTriggerData&) c
 // target at 0xEFE (0x49C8 GetObjectById, 0x49CC), the head faces the flat offset (z 0.0f, 0x4A2C)
 // to the target's aim position (0x49F8, vtable 0x54 with 0.0f; 0x4A34 FaceDirection).
 // Deactivate (0x4A3C): the animation state is kAS_NotReady.
+// The dt <= 0 arm (0x49B0) is unreachable: CStateManager::Update thinks only when dt > FLT_EPSILON
+// and a live head's state machine gets that dt (CPatterned::Think). The no-target arm (0x49CC) ran
+// forced (fsm): LaserPulse on a docked head before its chassis has a target.
+// @ fn_75_4864
 void CSplitterCommandModule::LaserPulse(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1516,6 +1523,9 @@ void CSplitterCommandModule::LaserPulse(CStateManager& mgr, EStateMsg msg, float
 // fn_75_5448 (the head's Dead state, 0x5448-0x5498): Activate only (0x5450-0x5468): the laser
 // pulse projectile despawns (0x5470 fn_75_1790) and the head is deleted (0x547C
 // CPatterned::DeathDelete).
+// The messages other than Activate ran forced (damage): a head killed by a shot still gets an
+// Update and a Deactivate before the delete request is processed.
+// @ fn_75_5448
 void CSplitterCommandModule::Dead(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     PortDespawnProjectile(mgr);
@@ -1531,6 +1541,10 @@ void CSplitterCommandModule::Dead(CStateManager& mgr, EStateMsg msg, float) {
 // frame time (0x4BFC fcmpo against 0.0f) and the target at 0xEFE (0x4C14 GetObjectById, 0x4C18),
 // the head faces the flat offset (z 0.0f, 0x4C64) to the target's position (0x4C20-0x4C54;
 // 0x4C6C FaceDirection). Deactivate (0x4C74): kAS_NotReady and the 0x10 bit cleared.
+// The dt <= 0 arm (0x4BFC) is unreachable, as in LaserPulse. The no-target arm (0x4C18) ran
+// forced (send Deactivate + fsm): the head of a deactivated chassis, before the chassis has a
+// target, sent into Dodge.
+// @ fn_75_4AC0
 void CSplitterCommandModule::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1572,6 +1586,11 @@ bool CSplitterCommandModule::ShouldDodge(CStateManager&, const CTriggerData&) co
 // 0.0f to 100.0f (lbl_75_rodata_40/64, 0x3B98) at or below the dodge chance (0x7FC, 0x3BA0-0x3BA8)
 // picks a direction (0x3BB4 fn_75_270C) and counts the dodge (0x3BC0); otherwise the count goes
 // to the maximum (0x3BCC-0x3BD0).
+// Unreachable with the shipped data (tools/scan_splitter_props.py: all 13 SPLU placements have
+// dodgeChance 100 and flags 11): the 0x2 bit clear (0x3B5C), and the count-to-max arm, because the
+// roll (CRandom16::Range, 100 * Float(), Float() at most 1.0) is at most 100 and the test is
+// at-or-below (0x3BA0-0x3BA4 fcmpo/cror).
+// @ fn_75_3B34
 void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
   mDodgeDirection = -1;
   if ((mData.mUnknownBD80FD94 & 0x2) == 0 || mDodgeCount >= mData.mMaxDodges) {  // 0x3B5C, 0x3B6C
@@ -1594,6 +1613,9 @@ void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
 // clear dodge path (0x28C8 / 0x290C fn_75_25C4). With both open a random bit 0x4000 (0x2928
 // CRandom16::Next, 0x292C) keeps the right, else the left. The result is 2 (left, 0x2948), 3
 // (right, 0x2958) or -1 (0x2768).
+// The near-AI arms and -1 ran forced (place): the other chassis parked beside the head. The left
+// pick ran forced (fsm): the head sent back into LaserPulse until the random bit picked it.
+// @ fn_75_270C
 int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
   const float dist = mDodgeDistance;
   const CVector3f pos = GetTranslation();
@@ -1647,6 +1669,8 @@ int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
 // material (lbl_75_data_440, 0x3B) included and the collision actor one (lbl_75_data_444, 0x2F)
 // excluded (type 3) hits no world (0x26B8 RayCollideWorld, 0x26C0) and the end lies on the path
 // search at 0xD6C (0x26CC OnPath, 0x26D0 against kR_Success).
+// The ray hit and the OnPath failure ran forced (place): the head held above its nav area.
+// @ fn_75_25C4
 bool CSplitterCommandModule::PortDodgeClear(CStateManager& mgr, const CVector3f& dir, float dist) {
   const CVector3f center = GetBoundingBox().GetCenterPoint();
   const CVector3f end = center + dir * dist;
