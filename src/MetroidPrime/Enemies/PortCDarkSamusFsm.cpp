@@ -2187,9 +2187,64 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
   }
 }
 
-void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_9424", "state DiveFromBoost");
+// fn_10_9424 (0x00009424, 0x184 bytes): the DiveFromBoost state, the dive out of the boost
+// ball. Only Activate runs the body (`mr. r31, r5` at 0x00009444 and `bne .L_0000954C` at
+// 0x00009454 skip it for the other messages): the dive record's boost bit 0x01
+// (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, the byte 0xB20), the roll emitter removed
+// (`bl RemoveEmitter` at 0x00009554) and its handle cleared (`stw r0, 0xe6c(r29)` at
+// 0x00009580), fn_10_9644 (the turn around, 0x00009584), 0xD24 = lbl_10_rodata_284 = 0.5f
+// (0x000095A8), 0xEBC bit 0x40 (`rlwimi r3, r4, 6, 25, 25` at 0x000095B0), fn_10_9AC4 (the
+// boost ball's deletion, 0x0000953C) and fn_10_99B8 (0x00009548). Then the base state
+// handler - the vtable's word 136 (`lwz r12, 0x220(r12)` at 0x00009560), the DiveAttack
+// state fn_10_11FA4 - runs on every message. Deactivate (`cmpwi r31, 0x2` at 0x00009648)
+// clears the boost bit again (`rlwimi r0, r3, 0, 31, 31` at 0x00009658).
+// Not in the port: the boost ball's particle effects - the two swooshes (guest 0xE3C /
+// 0xE4C) and the element generator (guest 0xE60 / 0xE64). fn_10_9B24, which builds them,
+// is not ported and the loader's swoosh tokens are not in the host, so the pointers are
+// always null and fn_10_99B8's "stop the old effect" calls (0x00009A68 and 0x00009B0C) and
+// fn_10_9424's (0x000095DC) have nothing to stop.
+void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveFromBoost", msg);
+  if (msg == kStateMsg_Activate) {                 // 0x00009454 `bne .L_0000954C`
+    mDive.mFromBoost = true;                       // 0x00009460 `rlwimi r0, r3, 0, 31, 31`
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009554
+    mBoostBallRollSfx = CSfxHandle();              // 0x00009580 `stw r0, 0xe6c(r29)`
+    TurnAround();                                  // fn_10_9644, 0x00009584
+    mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000095A8
+    mBoostBallFlag40 = true;                       // 0x000095B0 `rlwimi r3, r4, 6, 25, 25`
+    DeleteBoostBall(mgr);                          // fn_10_9AC4, 0x0000953C
+    // fn_10_99B8 (0x00009548) stops the boost ball's particle effects; the port has none.
+  }
+  DiveAttack(mgr, msg, dt); // 0x00009560, the vtable's word 136
+  if (msg == kStateMsg_Deactivate) { // 0x00009648 `cmpwi r31, 0x2`
+    mDive.mFromBoost = false;        // 0x00009658 `rlwimi r0, r3, 0, 31, 31`
+  }
+}
+
+// fn_10_9644 (0x00009644, 0xDC bytes): the actor turned around. Its facing (the transform's
+// Y column, guest 0x28/0x38/0x48) is a vector that is normalized when it can be
+// (`clrlwi r0, r3, 24` and `cmplwi r0, 0x1` at 0x00009688 and 0x0000968C), scaled by
+// lbl_10_rodata_288 = -1.0f (0x000096C0) and used as the LookAt target (0x000096E4); the
+// matrix's quaternion (0x000096F0) and the actor's position (guest 0x54, 0x000096FC) build
+// the transform (0x00009700) the actor takes (0x0000970C).
+void CDarkSamus::TurnAround() {
+  CVector3f dir = GetTransform().GetColumn(kDY); // guest 0x28/0x38/0x48
+  if (dir.CanBeNormalized() == true) {            // 0x0000968C
+    dir.Normalize();
+    SetTransform(CQuaternion::FromMatrix(CTransform4f::LookAt(CVector3f::Zero(), -1.f * dir,
+                                                               CVector3f::Up()))
+                     .BuildTransform4f(GetTranslation()));
+  }
+}
+
+// fn_10_9AC4 (0x00009AC4, 0x60 bytes): the boost ball actor (guest 0xE38) deleted from the
+// state manager (`bl DeleteObjectRequest` at 0x00009B00) and the uid set to kInvalidUniqueId
+// (`sth r0, 0xe38(r31)` at 0x00009B0C), unless it already is (the test at 0x00009AE8).
+void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
+  if (mBoostBallUid != kInvalidUniqueId) { // 0x00009AE8
+    mgr.DeleteObjectRequest(mBoostBallUid); // 0x00009B00
+    mBoostBallUid = kInvalidUniqueId;       // 0x00009B0C
+  }
 }
 
 void CDarkSamus::EnrageHitReact(CStateManager&, EStateMsg msg, float) {
