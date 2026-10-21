@@ -2278,23 +2278,23 @@ bool CDarkSamus::CanWalkToPoint(const CVector3f& point) const {
 // (fn_10_145E4).
 void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) {
   const float dist = GetDistanceToPlayer(mgr);
-  if ((*mask & 0x1) != 0 && dist > mMinAttackRange) {
+  if ((*mask & 0x1) != 0 && dist > mMinAttackRange) { // `clrlwi.` at 0x00019BD4
     SetAttackBits(mask, 0, 0x1, 0xFFFF, 0xFFFF, 0xFFFF);
   }
-  if ((*mask & 0x100) != 0 && !IsPlayerAimLineClear(mgr)) {
+  if ((*mask & 0x100) != 0 && !IsPlayerAimLineClear(mgr)) { // rlwinm 23,23 at 0x00019C10
     SetAttackBits(mask, 0, 0x100, 0xFFFF, 0xFFFF, 0xFFFF);
   }
   if (!CanWalkToPlayer(mgr)) {
     SetAttackBits(mask, 0, 0x200, 0x400, 0x40, 0x4);
     SetAttackBits(mask, 0, 0x8, 0x10, 0x1, 0x80);
   }
-  if ((*mask & 0x20) != 0) {
+  if ((*mask & 0x20) != 0) { // rlwinm 26,26 at 0x00019CA8
     const CVector3f target = GetDiveTarget(mgr);
     if (!IsRingPathClear(mgr, target, 0.75f, 1.1f)) {
       SetAttackBits(mask, 0, 0x20, 0xFFFF, 0xFFFF, 0xFFFF);
     }
   }
-  if ((*mask & 0x4) != 0) {
+  if ((*mask & 0x4) != 0) { // rlwinm 29,29 at 0x00019D2C
     const int loco = GetBodyController()->GetLocomotionType();
     const CPASAnimParmData parms(pas::kAS_MeleeAttack, CPASAnimParm::FromEnum(2),
                                  CPASAnimParm::FromEnum(loco));
@@ -2302,7 +2302,7 @@ void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* 
       SetAttackBits(mask, 0, 0x4, 0xFFFF, 0xFFFF, 0xFFFF);
     }
   }
-  if ((*mask & 0x80) != 0) {
+  if ((*mask & 0x80) != 0) { // rlwinm 24,24 at 0x00019E14
     const int loco = GetBodyController()->GetLocomotionType();
     const CPASAnimParmData parms(pas::kAS_MeleeAttack, CPASAnimParm::FromEnum(0xA),
                                  CPASAnimParm::FromEnum(loco));
@@ -2310,7 +2310,7 @@ void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* 
       SetAttackBits(mask, 0, 0x80, 0xFFFF, 0xFFFF, 0xFFFF);
     }
   }
-  if ((*mask & 0x10) != 0) {
+  if ((*mask & 0x10) != 0) { // rlwinm 27,27 at 0x00019EFC
     const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
     const CVector3f offset2 = GetDodgeStepOffset(2);
     const CVector3f offset3 = GetDodgeStepOffset(3);
