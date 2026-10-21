@@ -207,6 +207,8 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbb8_(CVector3f::Zero())                         // 0xbb8, the fourth vector; fn_9_D904 @0x0000DB5C
 , xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
+, xc44_(0.f)                                      // 0xc44, the module's own scale
+, xc48_(0.f)                                      // 0xc48, the scale's target
 , xc50_(0.f)                                      // 0xc50, a counter; fn_9_662C lowers it
 , xc00_(0.f)                                      // 0xc00, a float; fn_9_3090 sets 0.01f
 , xbca_(kInvalidUniqueId)                          // 0xbca, fn_9_D904 @0x0000DBA8
@@ -966,7 +968,6 @@ const CDamageVulnerability* CCommandoPirate::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
-// @ fn_9_C798
 // vtable slot 0x70 = fn_9_C798 (0x1ac): the module's user-event switch.
 //
 // fn_9_C798 (0x1ac bytes) switches on the event type (the jump table lbl_9_data_970, .data 0x970,
@@ -1037,39 +1038,70 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
 
 // fn_9_5410 (0x370 bytes): the E-grenade's own creator - the kUE_Projectile event's helper. It
 // creates the "Commando E-Grenade" script object and clears the grenade-pending bit of the flag
-// byte at guest this+0xC63 (0x00005764). The port does not create that object yet, so the helper
-// stays a named stand-in.
+// byte at guest this+0xC63 (0x00005764). The host has no script-object class for the
+// "Commando E-Grenade" (the module's own object constructor fn_9_F418 and destructor fn_9_F290 are
+// not ported), so the helper stays a named stand-in.
 void CCommandoPirate::x5410_CreateEGrenade() { StandInFn("fn_9_5410 (0x370 bytes)"); }
 
-// fn_9_1F88 (0xd4 bytes): the kUE_EventStart event's helper. While the flag byte at guest this+0xC64
-// has its 0x80 bit it does nothing (the test at 0x00001FA0); otherwise it sets the 0x20 bit of the
-// byte at guest this+0xC66 (0x00001FB0), adds the sound emitter whose id is the module's word at
-// guest this+0x918 when the handle at guest this+0xC38 is null (0x00001FB8..0x00001FF0), writes
-// the module's state word at guest this+0xC4C (1, 0 or -1, the tests at 0x00001FF4..0x00002018),
-// the constant rodata_42C into guest this+0xC44 and the model's first float into guest this+0xC48.
-// Over the 0x80 limit, so it stays a named stand-in.
-void CCommandoPirate::x1F88_EventStart() { StandInFn("fn_9_1F88 (0xd4 bytes)"); }
+// fn_9_1F88 (0xd4 bytes): the kUE_EventStart event's helper - the shield's sound and scale.
+// While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at
+// 0x00001FA0 clears the byte's low bit); otherwise it sets the 0x20 bit of the byte at guest this+0xC66 (the mask
+// 1u << (31 - 26) = 0x20, 0x00001FB0), adds the sound emitter whose id is the module's shield
+// "turn on" sound (the block's +0x158, guest this+0x918) when the handle at guest this+0xC38 is
+// null (0x00001FB8..0x00001FF0), writes the module's state word at guest this+0xC4C (1 when the
+// byte at guest this+0xC65 has its 0x04 bit, 0 when it has its 0x08 bit and -1 otherwise - the
+// tests at 0x00001FF4..0x00002018), the constant rodata_42C (0.1f) into guest this+0xC44 and the
+// model's scale (the model data's first float, the object at guest this+0x60) into guest
+// this+0xC48 (0x00002018..0x00002030).
+void CCommandoPirate::x1F88_EventStart() {
+  if ((xc64_ & 0x01) != 0) {                                           // 0x00001F9C..0x00001FA4
+    return;
+  }
+  xc66_ |= 0x20;                                                       // 0x00001FA8..0x00001FB4
+  if (xc38_ == CSfxHandle::NullHandle()) {                             // 0x00001FB8..0x00001FC0
+    xc38_ = CSfxManager::AddEmitter(mData.mShield.mSoundTurnOn, GetTranslation(), 0x7f,
+                                    GetCurrentAreaId().Value(), true, true,  // 0x00001FC4..0x00001FE8
+                                    CSfxManager::kMedPriority);
+  }
+  xc4c_ = (xc65_ & 0x04) != 0 ? 1 : ((xc65_ & 0x08) != 0 ? 0 : -1);    // 0x00001FF4..0x00002018
+  xc44_ = 0.1f;                                                        // rodata_42C, 0x00002018..0x00002024
+  xc48_ = GetModelData()->GetScale().GetX();                           // 0x00002028..0x00002030
+}
 
 // fn_9_1EF8 (0xd4 bytes): the kUE_Activate event's helper - the counterpart of fn_9_1F88. While
-// the flag byte at guest this+0xC64 has its 0x80 bit it does nothing (0x00001F10); otherwise it
-// removes the sound emitter whose handle is at guest this+0xC38, adds the one whose id is the
-// module's word at guest this+0x91A (0x00001F24..0x00001F60) and zeroes the floats at guest
-// this+0xC48 and guest this+0xC50 (0x00001F6C..0x00001F70). Over the 0x80 limit, so it stays a
-// named stand-in.
-void CCommandoPirate::x1EF8_Activate() { StandInFn("fn_9_1EF8 (0xd4 bytes)"); }
+// the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at 0x00001F10
+// clears the byte's low bit); otherwise it removes the sound emitter whose handle is at guest this+0xC38, clears that handle
+// and adds the emitter whose id is the module's shield "turn off" sound (the block's +0x15A,
+// guest this+0x91A) without keeping its handle (0x00001F18..0x00001F60), and zeroes the floats at
+// guest this+0xC48 and guest this+0xC50 (0x00001F64..0x00001F70).
+void CCommandoPirate::x1EF8_Activate() {
+  if ((xc64_ & 0x01) != 0) {                                           // 0x00001F0C..0x00001F14
+    return;
+  }
+  if (xc38_ != CSfxHandle::NullHandle()) {                             // 0x00001F18..0x00001F20
+    CSfxManager::RemoveEmitter(xc38_);                                  // 0x00001F24..0x00001F30
+    xc38_ = CSfxHandle::NullHandle();                                   // 0x00001F34..0x00001F3C
+    CSfxManager::AddEmitter(mData.mShield.mSoundTurnOff, GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false,    // 0x00001F40..0x00001F60
+                            CSfxManager::kMedPriority);
+  }
+  xc48_ = 0.f;                                                         // 0x00001F64..0x00001F6C
+  xc50_ = 0.f;                                                         // 0x00001F70
+}
 
-// @ fn_9_BF44
 // vtable slot 0x84 = fn_9_BF44 (0x2b0): what the blade and the shield hit.
 //
 // fn_9_BF44 (0x2b0 bytes) runs the base's own CollidedWith first (the call at 0x0000BF70) and then
 // the module's own: while the flag byte at guest this+0xC65 has its 0x04 bit (the test at
-// 0x0000BF78) the actor is the shield, and a collision with a player (an id that is not
+// 0x0000BF78) the actor is the shield, and a collision with an object (an id that is not
 // kInvalidUniqueId, the compare at 0x0000BF8C) applies the shield's charge damage (the damage
 // info at guest this+0x898, the block's +0xD8) with the material filter that includes kMT_Solid
-// (the filter's three words at 0x0000C0B0..0x0000C0F0 and the type 3 at 0x0000C100) and the
-// actor's own direction (the transform's second column, the loads at 0x0000BFBC..0x0000BFC4); the
-// flag byte at guest this+0xC64 then gets its 0x02 bit (the mask 1u << (31 - 30) = 0x02, the
-// store at 0x0000C048) and the function returns.
+// (the filter's words at 0x0000C0B0..0x0000C0F0 and the type 3 at 0x0000C100) and the actor's own
+// direction (the transform's second column, the loads at 0x0000BFBC..0x0000BFC4) - but only when
+// the object is NOT a player: the guest casts the object to a CPlayer (the call at 0x0000BFA4)
+// and the compare at 0x0000BFA8 branches over the damage when the cast gave a player. The flag
+// byte at guest this+0xC64 then gets its 0x02 bit (the mask 1u << (31 - 30) = 0x02, the store at
+// 0x0000C048) and the function returns.
 //
 // A collision with no object (the kInvalidUniqueId case at 0x0000C050) is the module's own
 // collision actor's: the module's material filter (the guest's lbl_9_bss_20, built once, the flag
@@ -1079,8 +1111,9 @@ void CCommandoPirate::x1EF8_Activate() { StandInFn("fn_9_1EF8 (0xd4 bytes)"); }
 // own hit (the flag bit is set and the entry's left normal is stored, 0x0000C178..0x0000C19C), an
 // entry whose left normal is steeper than the actor's up axis (the dot product with the
 // transform's third column at 0x0000C158..0x0000C16C, against rodata_4E8 = 0.707) is a hit too,
-// and an entry whose material list has kMT_CollisionActor (the bit 1u << (31 - 15) = 0x8000 of the
-// list's high word, 0x0000C1A8..0x0000C1C8) only stores the normal.
+// and an entry whose left material list has kMT_Floor (the mask 1u << 31 = 0x80000000 of the
+// list's low word at +0x34, the load at 0x0000C108 and the test at 0x0000C1A8..0x0000C1C8) only
+// stores the normal.
 void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                    CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);                       // 0x0000BF70
@@ -1091,7 +1124,7 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
     // The guest's CStateManager::GetObjectById is the host's CStateManager::ObjectById (the host
     // kept the name for the const overload); both look the object up in the all-objects list.
     CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(id));  // 0x0000BF94..0x0000BFA8
-    if (player != nullptr) {                                     // 0x0000BFA8..0x0000BFAC
+    if (player == nullptr) {                                      // 0x0000BFA8..0x0000BFAC
       mgr.ApplyDamage(GetUniqueId(), id, GetUniqueId(), mData.mShield.mChargeDamage,
                       CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
                       GetTransform().GetColumn(kDY));             // 0x0000BFB0..0x0000C038
@@ -1119,7 +1152,7 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
       xbb8_ = info.GetNormalLeft();                               // 0x0000C184..0x0000C19C
       return;
     }
-    if ((mats & (u64(1) << kMT_CollisionActor)) != 0) {           // 0x0000C1A4..0x0000C1BC
+    if ((mats & (u64(1) << kMT_Floor)) != 0) {                     // 0x0000C1A4..0x0000C1BC
       xbb8_ = info.GetNormalLeft();                               // 0x0000C1C0..0x0000C1C8
     }
   }

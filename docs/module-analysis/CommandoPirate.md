@@ -68,8 +68,8 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0x2C | `Render` | `fn_9_C598` (0x13c) | host (the base's render, the space warp; the module's own renderables stay stand-ins) |
 | 0x34 | `PreRenderAllViewports` | `fn_9_C51C` (0x7c) | host (the base's; the guest's rag-doll branch is dead) |
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
-| 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | stand-in |
-| 0x84 | `CollidedWith` | `fn_9_BF44` (0x2b0) | stand-in |
+| 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | host (the module's switch; the arms natural play does not reach are listed in section 4) |
+| 0x84 | `CollidedWith` | `fn_9_BF44` (0x2b0) | host (the module's own handling; the arms natural play does not reach are listed in section 4) |
 | 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | stand-in |
 | 0xA8 | `CanBeShot` | `fn_9_A4` | host (true) |
 | 0xAC | `IsListening` | `fn_9_8` | host (true) |
@@ -527,6 +527,24 @@ the frame limit at 26.0 s in area 59 of 63, and ended with exit=0. The stand-ins
 `AcceptScriptMsg` (the kSM_Create), `PreThink`, `Think`, `SetupStateMachine`, `DoUserAnimEvent`,
 `PreRender`, `PreRenderAllViewports` and `CollidedWith`. `grep -c '[port] caught\|reach-stub'` on
 the run log is 0.
+
+`fn_9_C798` (the user-event switch) and `fn_9_BF44` (the module's own collision handling) are
+ported (2026-10-21) but not marked, because natural play does not reach their module's arms. In
+the area 59 run (`TELEPORT=05_temple_federationsite_dark`, `FRAMES=2400`,
+`MP2_GODMODE=1`, the player teleported next to the commando with `tp 75.9 371.6 -47.1`) the
+armed cases are:
+
+| function | arms that ran | arms that did not run |
+|---|---|---|
+| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` is a stand-in), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations, the ArmShield state `fn_9_86B4` is a stand-in) |
+| `fn_9_BF44` | the early return (the flag byte at guest this+0xC65 has no 0x04 bit - the shield is not up), 1152 calls in the run | the shield's own arms: the damage to an object that is not a player, the 0x02 bit of the flag byte at guest this+0xC64 and the walk over the collision list (the filter hit, the steep normal and the kMT_Floor entry) - all of them need the 0x04 bit of the byte at guest this+0xC65, which only the shield's states set |
+
+So the two functions get their `// @` markers when the states that play those animations are
+ported. The helpers `fn_9_1F88` (the kUE_EventStart helper) and `fn_9_1EF8` (the kUE_Activate
+helper) are ported too (2026-10-21); they run with the two events above, so they are not marked
+either. `fn_9_5410` (the E-grenade's creator) stays a named stand-in: the host has no
+script-object class for the "Commando E-Grenade" (the module's own object constructor
+`fn_9_F418` and destructor `fn_9_F290` are not ported).
 
 The same run with the PathFind state and its helper ported (2026-10-20) shows the path find
 navigation running on every tick of the PathFind state (activate, update, deactivate), but the

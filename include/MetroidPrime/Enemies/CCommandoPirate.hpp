@@ -342,12 +342,11 @@ private:
   // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
   void x5410_CreateEGrenade();
 
-  // fn_9_1F88: the kUE_EventStart event's helper - the sound emitter and the module's state word.
-  // Not ported (0xd4 bytes, over the 0x80 limit), so it stays a stand-in.
+  // fn_9_1F88: the kUE_EventStart event's helper - the shield's sound emitter and the module's
+  // state word and scale.
   void x1F88_EventStart();
 
-  // fn_9_1EF8: the kUE_Activate event's helper - the counterpart of fn_9_1F88. Not ported (0xd4
-  // bytes, over the 0x80 limit), so it stays a stand-in.
+  // fn_9_1EF8: the kUE_Activate event's helper - the counterpart of fn_9_1F88.
   void x1EF8_Activate();
 
   // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
@@ -404,6 +403,8 @@ private:
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
   int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
+  float xc44_;                            // 0xc44, the module's own scale; fn_9_1F88 starts it
+  float xc48_;                            // 0xc48, the scale's target; fn_9_1F88 sets it
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
