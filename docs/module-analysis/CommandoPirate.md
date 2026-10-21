@@ -577,6 +577,15 @@ and then charges with it; its deactivate (0x0000859C) takes the shield down agai
 0x04 bit, 0x00008678) and ends the team's attack. The per-branch table above has the evidence of
 what the run reaches.
 
+### The shield effect (fn_9_2048, 0x330)
+
+The shield effect is host code since 2026-10-21: the byte at guest this+0xC64's 0x01 bit stops
+it (0x00002064), the module's state word at guest this+0xC4C picks the effect (the charge at 1,
+the armed shield at 0) and the armed shield's effect puts its explosion into the world, starts the
+block's explode sound and resets the module's state word. The guest's two CGenDescription tokens
+(the ones at guest this+0xC08 and this+0xC0C, which the constructor fills from the block) are the
+block's charge effect and its explode effect; the port reads the same two asset ids.
+
 ### The module's collision actor managers (fn_9_45A4, 0x304)
 
 fn_9_45A4 is the module's own helper, called by its kSM_Create case. It builds two managers, each
@@ -1173,10 +1182,11 @@ In the area 59 run the commando never armed its shield, so the state did not run
 arms stayed out of reach. The shield's "up" bit (0x04) comes only from the charge states, which
 are still stand-ins.
 
-The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_2048` (the
-shield's own effect, 0x330 - the message switch's knock-back helper calls it) and the scripted
-shield charge `fn_9_7A98` (0x590). The charge state `fn_9_8028` (0x68c) and the ArmShield state
-`fn_9_86B4` (0x280) are host code since 2026-10-21.
+The module's remaining stand-ins, smallest first, with their retail sizes: the scripted shield
+charge `fn_9_7A98` (0x590) with its two helpers `fn_9_2A98` and `fn_9_2474`, and the trigger
+that enters it `fn_9_B1E0` (ShouldBoost, 0x70). The charge state `fn_9_8028` (0x68c), the
+ArmShield state `fn_9_86B4` (0x280) and the shield effect `fn_9_2048` (0x330) are host code
+since 2026-10-21.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
@@ -1191,14 +1201,10 @@ shield charge `fn_9_7A98` (0x590). The charge state `fn_9_8028` (0x68c) and the 
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
   animation state answers it (`mAnimationState.CanIssueCommand`).
-- The module's own shield effect (fn_9_2048, 0x330): the knock-back helper calls it when the
-  byte at guest this+0xC66 has its 0x20 bit, and it is a named stand-in.
-- The scripted shield charge (fn_9_7A98, 0x590): the charge state (fn_9_8028) is host code
-  since 2026-10-21, but the scripted variant - the one a script connection enters - is still a
-  stand-in.
-- The shield's own effect (fn_9_2048, 0x330): it builds the shield's explosion out of the
-  module's two CGenDescription tokens (guest this+0xC08 and this+0xC0C), and the retail's
-  constructor leaves both null, so the port keeps the call a named stand-in.
+- The scripted shield charge (fn_9_7A98, 0x590) with its two helpers (fn_9_2A98 and
+  fn_9_2474) and the trigger that enters it (fn_9_B1E0, ShouldBoost): area 59's state machine
+  enters the scripted charge through the `ShouldBoost` trigger of its FollowAttackPattern state,
+  and the port still stands in for that trigger, so the state is out of reach until it is ported.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
