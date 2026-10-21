@@ -450,6 +450,8 @@ CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {
 // @ fn_30_2344
 // @ fn_30_1988
 // @ fn_30_20A0
+// @ fn_30_10C24
+// @ fn_30_748
 // @ fn_30_18F0
 // @ fn_30_194C
 static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& input,
@@ -615,3 +617,8 @@ void RELExit() { SetSIngBoostBallGuardian_FuncPtrs(nullptr); }
 // fn_30_33B0 (CRayCastResult, fn_30_324C), fn_30_388C (CHealthInfo, fn_30_3478/fn_30_4924), fn_30_6710 (CLight,
 //   fn_30_65C8), fn_30_161D0 (CMotionState from zero vectors and identity CAxisAngles, ball ctor): DOL class copies.
 // fn_30_11DF0, fn_30_127C0: weak deleting dtors (ball section); fn_30_1642C: rstl vector reserve (Ball.cpp).
+// Loader helpers (fn_30_130, cited, no markers): fn_30_5E4/69C/6F4 (data-block dtor chain), fn_30_10DC/
+//   111C/113C/1164 (the model data's token vector copy + Lock: LdrToModelData's optional), fn_30_1424/
+//   14AC/2C44 (SLdr block dtors), fn_30_1F08/1FB4/2094 (CMayaSpline assignment in fn_30_1988), fn_30_10250/
+//   1056C/10694/108D4/10B90 (data memberwise copies, the host's implicit ones), fn_30_110C4 (.ctors: the
+//   FSM name tables, static arrays in PortCIngBoostBallGuardianFsm.cpp).
