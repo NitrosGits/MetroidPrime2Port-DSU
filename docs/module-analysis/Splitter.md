@@ -1031,6 +1031,26 @@ and fn_75_5DDC, which set the counter to 3, 1, 0 and 2) and from the SelectTarge
 despawn (fn_75_1790, 0x00001830). The three shield functions are still shells, so the port's
 counter stays 0 and the body always takes the second branch.
 
+#### The chassis's collision actor manager, fn_75_A4E4 (0xA4E4-0xA8FC) - ported 2026-10-21
+
+The chassis's Think calls this body (0x0000F130) when the chassis has no collision actor manager
+yet (0x0000F11C-0x0000F130).
+
+| what | retail | port |
+|---|---|---|
+| the joints | the rodata table at 0x30C gives two spheres ("Skeleton_Root" with the radius 1.5f and "target_LCTR" with the radius 0.38f) and the table at 0x31C four leg cylinders (the knee and the ankle of each leg, the radius 0.05f); the mass is 1000.0f (the rodata at 0x3AC) | the same: `SphereCollision` and `SphereSubdivideCollision` with the locator's segment ids |
+| the manager | the manager is made with the joints (0x0000A754), the old one deleted (0x0000A764) and the new one kept at 0xC68 | the same |
+| the collision actors | every collision actor of the manager is walked (0x0000A774) and looked up; the one named "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8) and the reflected vulnerability (0x0000A814) | the same: `mTargetActorId` and `SetDamageVulnerability` |
+| the material filter | the include mask has the bit 59 (`kMT_Solid`), the exclude mask the bits 47, 60 and 32 (`kMT_CollisionActor`, `kMT_NoPlatformCollision` and `kMT_Player`) and the type is 3 (the include/exclude one) (0x0000A844-0x0000A8D0) | the same: `SetMaterialFilter` with the two masks |
+
+**The port's own limits in this body**: the retail also scales the "target_LCTR" collision actor
+(the model data's 0x0, 0x4 and 0x8 times the rodata's 1.5f, 0x0000A7F0-0x0000A810) and the host
+has no setter for the collision actor's scale, so that part is out. The module's own call
+(fn_75_A37C, 0x0000A840) stays a shell. The retail's cylinder builder takes the radius as a
+vector and one more argument (the word 1) that the host's `SphereSubdivideCollision` does not
+have; the port gives it the radius 0.05f, the max separation 1.0f and the between-joints
+orientation.
+
 #### The chassis's head placement, fn_75_ACEC (0xACEC-0xAFE8) - ported 2026-10-21
 
 The chassis's Think calls this body (0x0000F174) with the chassis, the state manager and the

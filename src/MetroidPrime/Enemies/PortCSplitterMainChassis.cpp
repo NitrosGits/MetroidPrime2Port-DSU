@@ -16,6 +16,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/BodyState/CBodyStateInfo.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -150,7 +151,7 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // named once-logging shells: the name is the retail function and its size (the DOL's functions
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
 // tracker and the derived state.
-void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
+void StandInFn_75_A37C() { StandIn("fn_75_A37C"); }
 
 // The chassis's own path update (fn_75_986C, 0x28C) is ported as
 // CSplitterMainChassis::PortUpdatePath.
@@ -401,6 +402,68 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
   head->SetTransform(locator);
 }
 
+// fn_75_A4E4 (the chassis's collision actor manager, 0xA4E4-0xA8FC): the six joints are built
+// from the retail's rodata tables - 0x30C gives the two spheres ("Skeleton_Root" with the radius
+// 1.5f and "target_LCTR" with the radius 0.38f) and 0x31C the four leg cylinders (the knee and
+// the ankle of each leg, the radius 0.05f) - the mass is 1000.0f (the rodata at 0x3AC) and the
+// manager is made with them (0x0000A754), the old one deleted (0x0000A764) and the new one kept
+// at 0xC68. Then every collision actor of the manager is walked (0x0000A774): the actor named
+// "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8)
+// and the reflected vulnerability (0x0000A814); the retail also scales the actor (the model
+// data's 0x0, 0x4 and 0x8 times the rodata's 1.5f), which the host has no setter for. The
+// module's own call (fn_75_A37C, 0x0000A840) stays a shell and the material filter (the
+// include mask with the bit 59 - kMT_Solid - the exclude mask with the bits 47, 60 and 32 -
+// kMT_CollisionActor, kMT_NoPlatformCollision and kMT_Player - and the type 3) is set at the
+// end (0x0000A8D0).
+void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
+  const CAnimData* anim = GetModelData()->GetAnimationData();
+  rstl::vector< CJointCollisionDescription > joints;
+  joints.reserve(6);
+  joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
+      anim->GetLocatorSegId(rstl::string_l("Skeleton_Root")), CVector3f::Zero(), 1.5f,
+      rstl::string_l("Skeleton_Root"), 1000.f));
+  joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
+      anim->GetLocatorSegId(rstl::string_l("target_LCTR")), CVector3f::Zero(), 0.38f,
+      rstl::string_l("target_LCTR"), 1000.f));
+  struct FLegJoint {
+    const char* mKnee;
+    const char* mAnkle;
+  };
+  static const FLegJoint sLegs[4] = {
+    {"L_F_knee_2", "L_F_ankle"},
+    {"L_B_knee_2", "L_B_ankle"},
+    {"R_F_knee_2", "R_F_ankle"},
+    {"R_B_knee_2", "R_B_ankle"},
+  };
+  for (int i = 0; i < 4; ++i) {
+    joints.push_back_unsafe(CJointCollisionDescription::SphereSubdivideCollision(
+        anim->GetLocatorSegId(rstl::string_l(sLegs[i].mKnee)),
+        anim->GetLocatorSegId(rstl::string_l(sLegs[i].mAnkle)), 0.05f, 1.f,
+        CJointCollisionDescription::kOT_BetweenJoints, rstl::string_l(sLegs[i].mKnee), 1000.f));
+  }
+  CCollisionActorManager* manager =
+      rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, true);
+  delete mCollisionActorManager;
+  mCollisionActorManager = manager;
+  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = mCollisionActorManager->GetCollisionDescFromIndex(i);
+    const TUniqueId id = desc.GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {
+      continue;
+    }
+    if (strcmp(desc.GetName().c_str(), "target_LCTR") != 0) {
+      continue;
+    }
+    mTargetActorId = id;
+    actor->SetDamageVulnerability(CDamageVulnerability::ReflectVulnerabilty());
+  }
+  StandInFn_75_A37C();
+  SetMaterialFilter(CMaterialFilter(CMaterialList(0x0800000000000000ull),
+                                    CMaterialList(0x1000800100000000ull),
+                                    CMaterialFilter::kFT_IncludeExclude));
+}
+
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its
 // 0x40 bit tested (0xE624 extrwi with the word's bit 25 - the byte's 0x40).
 bool CSplitterMainChassis::IsDisabled(CStateManager&, const CTriggerData&) const {
@@ -564,10 +627,7 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
     // port limit: the retail builds the collision actor manager in fn_75_A4E4 (0x418), which
     // is one of the module's own functions; the port makes an empty one instead,
     // as the command module does.
-    StandInFn_75_A4E4();
-    mCollisionActorManager = rs_new CCollisionActorManager(
-        mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(),
-        true);
+    PortCreateCollisionActorManager(mgr);
   } else {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }

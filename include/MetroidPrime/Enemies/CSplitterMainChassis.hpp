@@ -339,6 +339,11 @@ private:
   CVector3f PortSeparationVector(CStateManager& mgr);
   // The retail's fn_75_ACEC: the head's placement (the Think's call at 0x0000F174).
   void PortPlaceHead(CStateManager& mgr, float dt);
+  // The retail's fn_75_A4E4: the chassis's collision actor manager (the Think's call at
+  // 0x0000F130).
+  void PortCreateCollisionActorManager(CStateManager& mgr);
+  // guest 0xCC2: the id of the "target_LCTR" collision actor (fn_75_A4E4, 0x0000A7E8).
+  TUniqueId mTargetActorId = kInvalidUniqueId;
 #endif
 };
 #else
