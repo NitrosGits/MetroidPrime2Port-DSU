@@ -1491,3 +1491,41 @@ Why the trigger does not fire in the port's area-11 scenario (2026-10-21, probe 
 So the natural heart stage is still one step away: the tentacles are killed and the FSM walks
 into "BeginHeartStage" on its own (section 15), but the state's "AnimOver" trigger needs the
 'PLAY' actor's named animation to end, which the host cannot answer.
+
+## 17. The 'PLAY' actor's "Whole Body" animation never ends: it loops
+
+Probe on the state (2026-10-21, the 'PLAY' actor = the CScriptActor u04e8, the editor id
+000b0016, the boss u04e3):
+
+| every 20 ticks | value |
+|---|---|
+| the actor's active flag | 1 (the driver sends it `Activate`; the area's script does that in the game) |
+| `GetModelData()->GetIsLoop()` | **1** |
+| `IsAnimating()` | 1 |
+| the current animation | 2 (= the module's xa24_) |
+| the anim root's `VGetTimeRemaining()` | 2.650 -> 2.317 -> 1.983 -> ... -> 0.317 -> **2.650 again** |
+
+So the animation plays and advances, but it **loops**: the model data's loop flag is 1
+(`CModelData::GetIsLoop` -> `CAnimData::GetIsLoop` -> `mLoop`), the anim root is a loop node and
+its remaining time wraps back to the duration instead of resting at 0.  The module's test
+(`IsAnimTimeRemaining(dt, "Whole Body")` on the 'PLAY' actor, the retail's call at 0x7A60) then
+never answers false and the boss's own animation state never becomes kAS_Over, so the state's
+"AnimOver" trigger (the DOL's `CPatterned::GetAnimOver`, 0x80151990, the actor's own word at
++0x6B4) never fires.
+
+The host is faithful here, twice over:
+* `CAnimData::IsAnimTimeRemaining` (src/MetroidPrime/CAnimData.cpp:668) is the retail's
+  `IsAnimTimeRemaining__9CAnimDataCFfRCQ24rstl66basic_string...` (0x80029084): it reads the anim
+  root at +0x278 and compares its `VGetTimeRemaining()` with the tolerance, and the name is not
+  read.
+* `CScriptActor::Think` (src/MetroidPrime/ScriptObjects/CScriptActor.cpp:89) is the retail's
+  `Think__12CScriptActorFfR13CStateManager` (0x800701EC): the same `IsAnimTimeRemaining`
+  (0x800702B8), the same loop flag (`CModelData::GetIsLoop`, 0x800702CC) and the same "only stop
+  a non-looping animation" rule, so a looping animation is never stopped on either side.
+
+So the module's "the 'PLAY' actor's animation has ended" test can only ever see the end of a
+**non-looping** animation, and the 'PLAY' actor's model loops.  What makes the retail's heart
+stage end is still open: either the retail's 'PLAY' actor plays a non-looping animation (the
+script's own animation setup, which the console cannot reproduce), or the loop flag differs
+between the two.  The next lane should look at the 'PLAY' actor's script data (its init
+animation and its loop flag) and at the CScriptActor's "play once" path.
