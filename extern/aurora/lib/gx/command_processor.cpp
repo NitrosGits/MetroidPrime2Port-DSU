@@ -1,6 +1,7 @@
 #include "command_processor.hpp"
 
 #include "../gfx/depth_peek.hpp"
+#include "../gfx/perf.hpp"
 #include "../gfx/recording.hpp"
 #include "../internal.hpp"
 #include "dolphin/gd/GDGeometry.h"
@@ -564,7 +565,9 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
   // reticle locks onto them (CMinorIng surfacing). Redraw the same fragments alpha-only, with the
   // forced alpha and no blend; LESS/GREATER become LEQUAL/GEQUAL so the pass survives the depth
   // the draw above may have written.
-  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate) {
+  // With dual-source blending the draw above already wrote the constant (ShaderConfig::dualSrcAlpha).
+  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate &&
+      !cache.config.shaderConfig.dualSrcAlpha) {
     PipelineConfig alphaConfig = cache.config;
     alphaConfig.blendMode = GX_BM_NONE;
     alphaConfig.blendFacSrc = GX_BL_ONE;
@@ -577,6 +580,7 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
     } else if (alphaConfig.depthFunc == GX_GREATER) {
       alphaConfig.depthFunc = GX_GEQUAL;
     }
+    perf::count(AURORA_PERF_DST_ALPHA_DUP);
     DrawImmediateData alphaImmediates = immediates;
     alphaImmediates.forceDstAlpha = 1u;
     gfx::push_draw_command(DrawData{
@@ -834,6 +838,8 @@ void handle_aurora(ByteReader& reader) noexcept {
     g_gxState.texCopyDest = reinterpret_cast<const void*>(reader.read<u64>());
   } else if (subCmd == GX_AURORA_REQUEST_DEPTH_SNAPSHOT) {
     gfx::depth_peek::request_snapshot();
+  } else if (subCmd == GX_AURORA_SNAPSHOT_DEPTH) {
+    gfx::split_pass_for_depth_snapshot();
   } else if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK) {
     const s32 left = static_cast<s32>(reader.read<u32>());
     const s32 top = static_cast<s32>(reader.read<u32>());
