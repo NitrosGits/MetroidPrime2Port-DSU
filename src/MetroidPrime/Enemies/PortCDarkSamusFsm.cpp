@@ -437,7 +437,7 @@ float CDarkSamus::GetHealthPercent() const {
 // @ fn_10_194AC
 TUniqueId CDarkSamus::GetNextBattleStage(CStateManager& mgr) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-  if (stage == nullptr) {
+  if (stage == nullptr) { // 0x000194E0
     return mBattleStageUid;
   }
   const TUniqueId next = stage->FindConnectedObject(mgr, kSS_Connect, kSM_None);
@@ -459,11 +459,12 @@ void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
       FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
   for (rstl::vector< TUniqueId >::const_iterator it = starts.begin(); it != starts.end(); ++it) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+    // 0x0000B8DC (no hint), 0x0000B8E8 (type)
     if (hint == nullptr || static_cast< int >(hint->GetHintType()) != 0x11) {
       continue;
     }
     int count = 0;
-    while (hint != nullptr) {
+    while (hint != nullptr) { // 0x0000B9F4
       hint->SetActive(true);
       CScriptAIHint* next = nullptr;
       const rstl::vector< TUniqueId > arrived =
@@ -471,7 +472,7 @@ void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
       for (rstl::vector< TUniqueId >::const_iterator a = arrived.begin(); a != arrived.end();
            ++a) {
         CScriptAIHint* other = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*a));
-        if (other == nullptr) {
+        if (other == nullptr) { // 0x0000B968
           continue;
         }
         if (other->GetActive() == true) {
@@ -502,11 +503,11 @@ void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
 // @ fn_10_193A0
 void CDarkSamus::AdvanceBattleStage(CStateManager& mgr) {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-  if (stage != nullptr && stage->GetStageInfo().unknown_0xb5af7831 > 0.f &&
+  if (stage != nullptr && stage->GetStageInfo().unknown_0xb5af7831 > 0.f && // 0x000193C8
       GetHealthPercent() < stage->GetStageInfo().unknown_0xb5af7831) {
     mBattleStageUid = GetNextBattleStage(mgr);
     ++mStageCount;
-    if (GetBattleStage(mgr) != nullptr &&
+    if (GetBattleStage(mgr) != nullptr && // 0x00019428
         GetBattleStage(mgr)->GetStageInfo().unknown_0xaa85c885 == true) {
       ActivateHintChains(mgr);
     }
