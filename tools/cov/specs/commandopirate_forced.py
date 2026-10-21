@@ -42,17 +42,6 @@ FORCE = [
     # natural run answers false, the missing answer is true.
     ('BAD0 UnderFire', 'CCommandoPirate::UnderFire(', [], ['$this->xb64_ = 0.0'], 0,
      'the float at guest this+0xB64 below 0.75: the answer becomes true'),
-    # fn_9_C300 (the KnockBack override, the vtable slot 0x9C): the dead arm wants the actor dead
-    # (the console's `kill` does that) and the knock-back manager's active reaction flags (the
-    # word at guest this+0x630) at 3.  The flags are 1|2 = 3 only for the frozen reaction, and the
-    # death takes the frozen state with it, so a dead actor never has them: they are written to 3
-    # here, for the one call the driver makes after the kill (the first call, the dark beam, is
-    # let through).
-    ('C300 flags', 'CCommandoPirate::KnockBack(', [],
-     ['$this->mKnockBackController.mActiveParameters.mFlags = 3'], 1,
-     'the knock-back manager\'s active reaction flags: a dead actor cannot hold the frozen '
-     'reaction (the death takes the frozen state with it), so the flags are written to 3 for the '
-     'one call the driver makes after the kill'),
 ]
 
 # The arms of the same bodies, counted in the same run.

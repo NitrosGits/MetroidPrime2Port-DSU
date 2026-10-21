@@ -2198,8 +2198,10 @@ bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f&
 // - so the flag is script-supplied.
 // run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
 // tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
-// the block's flag byte at guest this+0x91C (the loader's mFlags0) has its 0x80 bit clear in
-// every shipped CommandoPirate (the "sound" property's bit 14, the scan of the nine placements).
+// the block's flag byte at guest this+0x91C (the loader's mFlags0, the "sound" property's bit 14)
+// has its 0x80 bit clear in every shipped CommandoPirate - the scan of the nine placements gives
+// the sound words 0x80, 0x300, 0x114 and 0x104, and none of them has bit 14 set.  The byte comes
+// only from the loader (the module never writes it), so the true arm is dead.
 // @ fn_9_BB04
 bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
   return (mData.mFlags0 & 0x80) != 0;
@@ -2211,15 +2213,20 @@ bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data)
 // - so the flag is script-supplied.
 // run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
 // tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
-// the block's flag byte at guest this+0x91C (the loader's mFlags0) has its 0x40 bit clear in
-// every shipped CommandoPirate (the "sound" property's bit 11, the scan of the nine placements).
+// the block's flag byte at guest this+0x91C (the loader's mFlags0, the "sound" property's bit 11)
+// has its 0x40 bit clear in every shipped CommandoPirate - the scan of the nine placements gives
+// the sound words 0x80, 0x300, 0x114 and 0x104, and none of them has bit 11 set.  The byte comes
+// only from the loader (the module never writes it), so the true arm is dead.
 // @ fn_9_BAF8
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
   return (mData.mFlags0 & 0x40) != 0;
 }
 
 // fn_9_BAEC: the module's byte at guest this+0xAE8 has its 0x80 bit set (extrwi r3, r0, 1, 24
-// at 0x0000BAF0). Nothing in the module writes that byte, so the bit is clear.
+// at 0x0000BAF0).  The byte has three accesses in the REL and only one of them is a store: the
+// read-modify-write at 0x00005B70..0x00005B7C (the module clears the 0x80 bit there) - the other
+// two are reads (0x0000AA94 and the trigger's own load at 0x0000BAEC).  Nothing sets the bit, and
+// the constructor leaves the byte at 0 (the port's xae8_(0)), so the true arm is dead.
 // run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
 // tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
 // nothing in the module writes the byte at guest this+0xAE8, so its 0x80 bit is clear.
