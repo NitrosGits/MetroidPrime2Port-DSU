@@ -1101,11 +1101,12 @@ bool CIng::IsLuredBySafeZone(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot);
 }
 
-// fn_29_AC78 (0x20, asm 0x0000AC78-0x0000AD54): the lure zone id (0xd78) against
+// @ fn_29_AC78 (0x20, asm 0x0000AC78-0x0000AD54): the lure zone id (0xd78) against
 // kInvalidUniqueId. One comparison, two arms: the id is invalid (false) and it is set (true).
-// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
-// evaluated the trigger with the id invalid; the "the id is set" arm did not run, so the body
-// is not marked.
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark, with the console's
+// `noise 6` repeated at the safe zone nearest the Ing and a probe in the body): the id invalid
+// (404 calls) and the id set (404 calls) - the lure zone is set and cleared again as the noise
+// repeats. Both arms ran, so the body is marked.
 bool CIng::StillLuredBySafeZone(CStateManager&, const CTriggerData&) const {
   return mLureSafeZoneId != kInvalidUniqueId;
 }

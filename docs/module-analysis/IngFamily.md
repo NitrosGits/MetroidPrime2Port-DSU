@@ -1399,6 +1399,28 @@ needs the "the lure zone is set" moments: the trigger lists that hold `fn_29_A4E
 `fn_29_AC78` are the lure code function's and the SafeZoneReaction state's, so the arms run when
 the Ing is lured **and** the FSM evaluates that list in the same tick.
 
+### A.27 The lure path, closed with the console's `noise` (2026-10-21)
+
+The console's `noise 6` (the kLNT_SafeZone noise), repeated at the safe zone nearest the Ing
+while the Ing stands next to it, **lures the Ing** and the trigger that reads the lure zone now
+runs in both states. The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4, the area
+0x3f5cdf39) with the noise repeated every tick:
+
+| fn | the arms | the run (a probe in the body) | marker |
+|---|---|---|---|
+| `fn_29_AC78` StillLuredBySafeZone | the lure zone id (0xd78) against kInvalidUniqueId | **both**: the id invalid (404 calls) and the id set (404 calls) - the lure zone is set and cleared again as the noise repeats | **marked** |
+| `fn_29_1DF4` | the safe zone the noise is in becomes the lure zone | ran (the lure zone was set, and the lure code functions ran 64 and 44 times) | not marked (the body is the shared `PortIngLuredDest`, whose arms are the helper's) |
+| `fn_29_51D0` | the point-graph route to the lure point | the code function ran 44 times with the lure zone set and 6 times without it | not marked (the arms are inside the shared `PortIngLuredPointDest`) |
+| `fn_29_53E0` | the lure point is the nav-mesh point below the lure zone | the code function ran with the lure zone set and without it | not marked (the arms are inside the shared `PortIngLuredDest`) |
+| `fn_29_A4E0` | the flag at 0xe5c's bit 3 | the trigger was evaluated with the flag clear; the "the flag is set" arm did not run | not marked |
+| `fn_29_AA04` | the desired form is 3 and `!fn_29_AD40` | only the "the desired form is not 3" arm ran | not marked |
+| `fn_29_AA4C` | the desired form is 2 and `!fn_29_AD54` | the "the desired form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm ran; the "already corporeal" arm did not | not marked |
+| `fn_29_AA94` | the word at 0xe2c is not zero | the trigger never ran - the count only changes with the XENZ message (the player entering a safe zone) | not marked |
+
+**What is still missing** for the rest: the XENZ message (the player entering a safe zone -
+the console's `tp` into the zone does it) and the "the lure zone is set" moments for the two
+triggers whose lists are the lure code function's and the Lurk state's.
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).
