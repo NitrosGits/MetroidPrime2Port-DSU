@@ -571,6 +571,9 @@ private:
   // fn_10_8764: a melee attack command run over a state's messages - Activate delivers it,
   // Update re-delivers it while the animation state allows, Deactivate ends the state.
   void RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state, const CBCMeleeAttackCmd& cmd);
+  // fn_10_8698: the same switch for the taunt command (the command manager's taunt slot at
+  // 0x2B0; the melee slot is 0x180).
+  void RunTauntCmd(EStateMsg msg, pas::ETauntType type);
 
   // The dive (fn_10_11FA4). fn_10_12960: moves *target up to 8 back toward the actor until the
   // ring path to it is clear. fn_10_12B00: the body's target vector to the dive target.
@@ -904,6 +907,9 @@ private:
                                    // then the two sounds +0x58 / +0x5A)
   CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
   bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
+  bool mBoostBallFlag80 : 1;       // 0xebc 0x80 (+0xAC); the DoneRolling trigger reads it
+                                    // (`extrwi r0, r0, 1, 24` at 0x00009378, the PowerPC bit 24
+                                    // being 1u << (31 - 24) = 0x80)
                                    // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
   TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
                                    // (0x0002011C)
@@ -956,10 +962,47 @@ private:
                                    // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
   ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
+  // guest 0xA40 / 0xA80 / 0xAB8: the record bytes of the missile attacks and the freeze beam.
+  // fn_10_62B4 (the Arrived trigger) reads the shield flag byte 0xCD0 and the float 0xF64 (the
+  // time offset the trigger adds to its 6.0f and 20.0f tests) and the point 0xEE4/0xEE8/0xEEC
+  // (the arrival point the trigger measures to).
+  float mGuestF64;                 // guest 0xF64, the Arrived trigger's time offset
+  float mGuestEE4;                 // guest 0xEE4, the Arrived trigger's point x
+  float mGuestEE8;                 // guest 0xEE8, the Arrived trigger's point y
+  float mGuestEEC;                 // guest 0xEEC, the Arrived trigger's point z
+  // fn_10_9314 (the DoneRolling trigger) reads the float 0xEA4 (the roll's time), 0xEA8 (the
+  // roll's other time), the point 0xEAC/0xEB0/0xEB4 and the radius 0xEB8, all in the boost
+  // ball's record (the 0xE10 sub-object's +0x9C..+0xA8). Nothing in the port writes them yet.
+  float mGuestEA4;                 // guest 0xEA4, the roll's time
+  float mGuestEA8;                 // guest 0xEA8, the roll's other time
+  float mGuestEAC;                 // guest 0xEAC, the point x
+  float mGuestEB0;                 // guest 0xEB0, the point y
+  float mGuestEB4;                 // guest 0xEB4, the point z
+  float mGuestEB8;                 // guest 0xEB8, the radius
   uchar mGuestA40;                 // guest 0xA40, the normal missile's record byte; the
                                    // BreakNormalMissile trigger (fn_10_16B5C) reads it
   uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
                                    // BreakSuperMissile trigger (fn_10_16B54) reads it
+  // fn_10_7A14 (the EnrageHitReact state) writes the float 0xFB0 (the random time it draws on
+  // Deactivate) and 0xFC4 (the health at that moment), and steps the guest's own random pair
+  // 0x1058/0x105C (`mulhw` with 0x55555556 at 0x00007A8C).
+  float mGuestFB0;                 // guest 0xFB0, the EnrageHitReact state's random time
+  float mGuestFC4;                 // guest 0xFC4, the EnrageHitReact state's health
+  uint mGuest1058;                 // guest 0x1058, the guest random's first word
+  uint mGuest105C;                 // guest 0x105C, the guest random's second word
+  uint mGuestAB0;                  // guest 0xAB0, the freeze beam's counter: at least 1 makes
+                                    // the state deliver the exit state command (0x00016DA8)
+  int mGuest9FC;                   // guest 0x9FC, the EnragedTravel state's target (-1 = none,
+                                    // 0x00006EC4)
+  float mGuest1048;                // guest 0x1048, the EnragedTravel state's point x
+  float mGuest104C;                // guest 0x104C, the EnragedTravel state's point y
+  float mGuest1050;                // guest 0x1050, the EnragedTravel state's point z
+  // fn_10_CDB8 (the module's init, 0x0000CDB8) writes the module's own globals:
+  // lbl_10_bss_118 = lbl_10_rodata_320 = 160.0f (the turn speed in degrees a second, the
+  // FreezeBeam's turn rate is lbl_10_rodata_454 = 0.017453292 radians a degree times it),
+  // lbl_10_bss_11C = lbl_10_rodata_328 = 22.0f, lbl_10_bss_120 = lbl_10_rodata_32C = 0.5f and
+  // lbl_10_bss_124 = lbl_10_rodata_324 = 1.9f.
+  float mBss118;                   // lbl_10_bss_118, the module's turn speed (160.0f)
   uchar mGuestAB8;                 // guest 0xAB8, the freeze beam's record byte; the
                                    // BreakFreezeBeam trigger (fn_10_16B48) reads its bit 0x80
   float mGuestC30;                 // guest 0xC30, the time of the last pause; the BreakPause
