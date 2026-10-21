@@ -1175,10 +1175,14 @@ both Ings that way and the death body ran with the form 2.
 | `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | **all three ran** (3369, 37 and 311 calls) -> **marked** |
 
 **The Agon Wastes recipe** (A.12) is the other way in: there the Ings are ing spots that the
-player morphs into a ball next to, and the Ing grabs it - that is the run the "the ball" arms of
-`fn_29_BB8C` and `fn_29_BF20` need. The driver's `grapple` mode
-(`/tmp/opencode/ing_lane/ing_drive.py`) does it: the layers on, the Ings woken, `press x` to morph
-and the player teleported onto the puddle.
+player morphs into a ball next to, and the Ing grabs it. The driver's `grapple` mode
+(`tools/drivers/ing_drive.py`) does it: the layers on, the Ings woken, `press x` to morph and the
+player teleported onto the puddle. The run of 2026-10-21 (Agon Wastes `01_sand_entrance_dark`, the
+world 42b935e4) reached the state: "state GrappleBall form 3" and the probe's arms -
+`fn_29_BB8C`'s "the ball is held" (4484 calls, the Ing with the ball in it) and
+`fn_29_BF20`'s "the grapple table" (2 calls) - so **`fn_29_BB8C` is marked** (all five of its
+arms ran: the hit, the form, the id, the cooldown and the ball). `fn_29_BF20` keeps one open
+arm: the base table, which only the body projectile (the form 4) asks for.
 
 **The next five hot behaviour bodies** (by the module's own call sites and by how often a run
 calls them), each read field by field against the REL - all five match the port:

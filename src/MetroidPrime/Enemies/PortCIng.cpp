@@ -3475,10 +3475,13 @@ rstl::optional_object< CAABox > CIng::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
 }
 
-// fn_29_BB8C (0x128, asm 0x0000BB8C-0x0000BCB0): the ing spot (3) damages the target it touches
-// when the ball is not held (the byte at 0xe5d, bit 0), the toucher is the target (0xd6c) and the
-// damage cooldown (0x440) has run out; the contact damage is the actor's own (GetContactDamage)
-// and the filter is Solid alone. The cooldown is then reloaded from 0x444.
+// @ fn_29_BB8C: 0x128, asm 0x0000BB8C-0x0000BCB0. The ing spot (3) damages the target it
+// touches when the ball is not held (the byte at 0xe5d, bit 0), the toucher is the target (0xd6c)
+// and the damage cooldown (0x440) has run out; the contact damage is the actor's own
+// (GetContactDamage) and the filter is Solid alone. The cooldown is then reloaded from 0x444.
+// All five arms ran: the Agon Wastes run of 2026-10-21 (the morph-ball recipe) and the area 57
+// run between them - the hit (44 calls), the form (the other way), the id, the cooldown and "the
+// ball is held" (4484 calls, the Ing with the morph ball in it).
 void CIng::Touch(CActor& actor, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   if (mForm == kForm_IngSpot && !mGrappled && actor.GetUniqueId() == mTargetId &&
