@@ -1232,7 +1232,9 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Delete:
   case kSM_Deactivate:
     SquadRemove(mgr);
-    // TODO(fn_72_E498): retail also drops the pirate from the module's charge-player list.
+    // 0xED6C: fn_72_9E64 = remove(uid) on the module's charge-player list (bss_40): fn_72_9EB0
+    // erases every node holding this pirate's id.
+    mChargePlayerList.remove(GetUniqueId());
     break;
   case kSM_Start:
     x8f9_26_started = false;
