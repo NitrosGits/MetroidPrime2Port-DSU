@@ -384,6 +384,11 @@ private:
   // CPASAnimParmData constructor), kStateMsg_Deactivate removes it.
   void UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg);
 
+  // fn_10_11334: the looping glide emitter at the actor (mGlideSfxId, the handle mGlideSfx) -
+  // kStateMsg_Activate starts it, kStateMsg_Update starts it when it is not running and moves
+  // it to the actor, kStateMsg_Deactivate removes it.
+  void UpdateGlideEmitter(EStateMsg msg);
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -467,6 +472,14 @@ private:
                                    // constructor writes the zero vector to it (0x0001FB94..)
   int mAdditiveAnim;               // guest 0x970, the additive animation fn_10_1D860 added (-1 =
                                    // none); the constructor writes -1 to it (0x0001FCBC)
+  ushort mGlideSfxId;              // guest 0xC48, the glide sound (the loader's glideSound, the
+                                   // property 0x1f468967: its case at 0x0000D334 stores it at
+                                   // the loader's 0x924, which becomes the constructor's first
+                                   // stack argument at 0x0000DB98; -1 is
+                                   // kInternalInvalidSfxId, 0x0000DAAC); the constructor's sth
+                                   // at 0x0001FF3C
+  CSfxHandle mGlideSfx;            // guest 0xC4C, the handle of the glide emitter fn_10_11334
+                                   // runs; the constructor writes 0 to it (0x0001FF44)
   CVector3f mSeparationDir;        // guest 0x910/0x914/0x918, the direction fn_10_1DD14 steers
                                    // the actor along to get away from a repulsor (zero when it
                                    // does not); the constructor writes the zero vector to it

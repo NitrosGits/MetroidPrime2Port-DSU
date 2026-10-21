@@ -33,6 +33,7 @@
 #include "MetroidPrime/PathFinding/CPathFindRegion.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
@@ -646,6 +647,48 @@ void CDarkSamus::UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg) {
       AnimationData()->DelAdditiveAnimation(mAdditiveAnim);
       mAdditiveAnim = -1;
     }
+  }
+}
+
+// fn_10_11334 (0x00011334, 0xF8 bytes): the looping glide emitter at the actor.
+//
+// kStateMsg_Activate (0x00011354) starts it unless the sound is kInternalInvalidSfxId (the
+// cmplw at 0x00011378): AddEmitter at the actor's position in its area, with acoustics and
+// looping (the li r7/r8 = 1 at 0x00011394/0x00011398) and kMedPriority (the lha at 0x00011388),
+// and keeps the handle (0x000113A4). kStateMsg_Update starts it first when there is no handle
+// (the recursive call with kStateMsg_Activate at 0x000113BC) and then, with a handle, moves it
+// to the actor (UpdateEmitter with the zero direction and CAudioSys::kMaxVolume, 0x000113EC).
+// kStateMsg_Deactivate (the case 2 at 0x00011368) removes the emitter when there is one
+// (0x0001140C) and clears the handle (0x00011414). Other messages do nothing.
+void CDarkSamus::UpdateGlideEmitter(EStateMsg msg) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (mGlideSfxId == CSfxManager::kInternalInvalidSfxId) { // 0x00011378
+      return;
+    }
+    mGlideSfx = CSfxManager::AddEmitter(mGlideSfxId, GetTranslation(),
+                                        GetCurrentAreaId().Value(), true, true,
+                                        CSfxManager::kMedPriority);
+    break;
+  case kStateMsg_Update:
+    if (!mGlideSfx) { // 0x000113B0
+      UpdateGlideEmitter(kStateMsg_Activate);
+    }
+    if (!mGlideSfx) { // 0x000113C4
+      return;
+    }
+    CSfxManager::UpdateEmitter(mGlideSfx, GetTranslation(), CVector3f::Zero(),
+                               CAudioSys::kMaxVolume);
+    break;
+  case kStateMsg_Deactivate:
+    if (!mGlideSfx) { // 0x000113F8
+      return;
+    }
+    CSfxManager::RemoveEmitter(mGlideSfx);
+    mGlideSfx = CSfxHandle();
+    break;
+  default:
+    break;
   }
 }
 

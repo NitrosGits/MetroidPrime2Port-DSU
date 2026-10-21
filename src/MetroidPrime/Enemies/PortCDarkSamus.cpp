@@ -14,6 +14,7 @@
 // they are real rather than stand-ins.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -79,6 +80,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mElapsedTime(0.f)
 , mPathFindDestination(CVector3f(0.f, 0.f, 0.f))
 , mAdditiveAnim(-1)
+, mGlideSfxId(data.mGlideSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                    : static_cast< ushort >(data.mGlideSound))
+, mGlideSfx()
 , mSeparationDir(CVector3f(0.f, 0.f, 0.f))
 , mContactTime(0.f)
 , mContactPoint(CVector3f(0.f, 0.f, 0.f)) {
