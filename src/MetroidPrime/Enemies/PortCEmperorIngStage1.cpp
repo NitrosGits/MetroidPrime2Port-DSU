@@ -2069,12 +2069,12 @@ void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
         const CAABox box(pos - CVector3f(2.f, 2.f, 2.f), pos + CVector3f(2.f, 2.f, 2.f));
         if (box.DoBoundsOverlap(*bounds)) {  // 0x148C
           mHit = 1;                           // 0x14A0
-          // 0x151C: the stab damage (the material filter is the retail's include mask
-          // 0x000000EC00000003 with the exclude empty and the type kFT_IncludeExclude).
+          // 0x151C: the stab damage; the filter is built like the melee sweep's (0x149C-0x14F0:
+          // include kMT_Solid from lbl_16_data_0, exclude empty).
           mgr.ApplyDamage(GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), GetUniqueId(),
                           mStabDamage,
-                          CMaterialFilter(CMaterialList(0x03000000EC000003ULL), CMaterialList(),
-                                          CMaterialFilter::kFT_IncludeExclude),
+                          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                                              CMaterialList()),
                           CVector3f::Zero());
           break;
         }
@@ -2107,8 +2107,13 @@ void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScr
                                 effect->GetCurrentAreaId().Value(), true, false,
                                 CSfxManager::kMedPriority);
       }
-      // 0x169C: the actor's colour (the guest 0xFC) is white with the alpha 0x80.
-      SetModelColor(CColor(1.f, 1.f, 1.f, 0.5f));
+      // 0x168C: the actor's draw flags (the guest 0x100) are opaque white (lbl_16_rodata_3B4 =
+      // 1.0f for all four channels) with the flags 0x3 | 0x80 (0x16B8, 0x16C8).
+      SetModelFlags(CModelFlags(CModelFlags::kT_Opaque, 0,
+                                static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                                                   CModelFlags::kF_DepthUpdate |
+                                                                   CModelFlags::kF_Unknown80),
+                                CColor::White()));
       break;
     }
     case kSM_Delete:
