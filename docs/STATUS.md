@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea3e8659cffetxX1qIdpxHG5KE` | darksamus2 @ `9523d348c` (picker 1954C runs from Think 0x1B314; walk reaches PickedScatterShot → ScatterShot stand-in 175AC; 19B64 stand-in) | ctor 0x98C/0x990 default, attack start 1B478, ScatterShot 175AC + helpers, then 19B64 tree |
+| DarkSamus (Opus) | `ses_ea3d9988cffeVUXtNWoimfu9Tx` | darksamus2 @ `3d7b164c3` (ctor 0x98C/0x990 = -1000; attack start 1B478; ScatterShot 175AC runs and ends; 21 markers) | fire: 11814 + 12F60; Dash 150DC, BreakDash 149B4; then MissileJump 177BC / MovingScatterShot 11AD8; 19B64 tree later |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
