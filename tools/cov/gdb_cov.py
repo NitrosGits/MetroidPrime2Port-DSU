@@ -3,7 +3,8 @@
 # Every spec entry becomes a breakpoint that never stops the game: on each hit it evaluates the
 # entry's expressions (on the entry registers) and, for `ret` entries, the return value, and counts
 # the resulting "arm key". When the game exits the counts are written as <out>/cov.json and as a
-# per-arm table, <out>/cov.txt. See docs/LANE_BRIEF.md, "Coverage without probes".
+# per-arm table, <out>/cov.txt; both are also rewritten every 15 s of hits, so a killed run keeps
+# its counts. See docs/LANE_BRIEF.md, "Coverage without probes".
 #
 # Env: COV_SPEC (the spec file), COV_NM (`nm` dump: "<addr> <type> <mangled>\t<demangled>"),
 #      COV_OUT (output dir), COV_MAX (hits recorded per breakpoint, default 400; then it disables).
@@ -20,9 +21,14 @@
 #             'retp' record whether the returned pointer is non-null
 #             'caller=<s>' count only hits whose caller frame's name contains <s> (tail calls have
 #             no frame of their own: a callee reached by `jmp` never matches)
-#             'max=<n>' per-entry cap instead of COV_MAX
+#             'calls' also count every call/jmp site in the body by its callee, as '-> <callee>'
+#             keys under the same label: an arm that ends in a call (tail calls too) shows as its
+#             callee; only for a symbol `where`
+#             'max=<n>' per-breakpoint cap instead of COV_MAX
 import json
 import os
+import re
+import time
 
 import gdb
 
@@ -33,6 +39,7 @@ SPEC = ns['SPEC']
 MAX = int(os.environ.get('COV_MAX', '400'))
 OUT = os.environ['COV_OUT']
 results = {}
+last_dump = [time.time()]
 
 
 def record(label, key):
@@ -40,6 +47,8 @@ def record(label, key):
     r['hits'] += 1
     k = ', '.join(str(v) for v in key) if key else '(entry)'
     r['arms'][k] = r['arms'].get(k, 0) + 1
+    if time.time() - last_dump[0] > 15:  # a killed run still leaves its table
+        dump(None)
 
 
 def ev(expr):
@@ -96,7 +105,45 @@ class EntryBp(gdb.Breakpoint):
         return False
 
 
+class SiteBp(gdb.Breakpoint):
+    def __init__(self, where, label, key, cap):
+        super().__init__(where, internal=True)
+        self.label, self.key, self.n, self.max = label, key, 0, cap
+
+    def stop(self):
+        self.n += 1
+        if self.n > self.max:
+            self.enabled = False
+        else:
+            record(self.label, (self.key,))
+        return False
+
+
+SITE = re.compile(r'\b(call|jmp)\s+(?:q\s+)?0x([0-9a-f]+)\s+<([^>]*)>')
+
+
+def call_sites(mangled, label, cap):
+    start = int(gdb.parse_and_eval('(long)&\'%s\'' % mangled))
+    block = gdb.block_for_pc(start)
+    while block is not None and block.function is None:
+        block = block.superblock
+    if block is None:
+        return
+    arch = gdb.selected_inferior().architecture()
+    for insn in arch.disassemble(start, block.end - 1):
+        m = SITE.search(insn['asm'])
+        if not m:
+            continue
+        target = int(m.group(2), 16)
+        if block.start <= target < block.end:  # a branch inside the body
+            continue
+        name = re.sub(r'\+\d+$', '', m.group(3))
+        # symbol-relative, so gdb re-resolves it once the PIE is relocated
+        SiteBp('*%s+%d' % (mangled, insn['addr'] - start), label, '-> ' + name.split('(')[0], cap)
+
+
 def install():
+    gdb.execute('set print asm-demangle on')
     syms = []
     for ln in open(os.environ['COV_NM']):
         parts = ln.rstrip('\n').split('\t')
@@ -113,15 +160,17 @@ def install():
         if not hits:
             results[label]['note'] = 'no symbol'
         for m in hits:
-            EntryBp('*' + m, label, exprs, flags)
+            bp = EntryBp('*' + m, label, exprs, flags)
+            if 'calls' in flags.split():
+                call_sites(m, label, bp.max)
 
 
-def on_exit(event):
-    code = getattr(event, 'exit_code', None)
+def dump(code):
+    last_dump[0] = time.time()
     with open(os.path.join(OUT, 'cov.json'), 'w') as fh:
         json.dump({'exit_code': code, 'entries': results}, fh, indent=1)
     with open(os.path.join(OUT, 'cov.txt'), 'w') as fh:
-        fh.write('game exit code %s\n' % code)
+        fh.write('game exit code %s\n' % (code if code is not None else 'unknown (running, killed or crashed)'))
         for label, _w, exprs, _f in SPEC:
             r = results[label]
             head = '%-40s %6d hits' % (label, r['hits'])
@@ -132,6 +181,10 @@ def on_exit(event):
             fh.write(head + '\n')
             for k, n in sorted(r['arms'].items(), key=lambda kv: -kv[1]):
                 fh.write('    %-60s %6d\n' % (k, n))
+
+
+def on_exit(event):
+    dump(getattr(event, 'exit_code', None))
 
 
 gdb.events.exited.connect(on_exit)
