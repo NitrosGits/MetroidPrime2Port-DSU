@@ -34,7 +34,7 @@ TUPLES = {"boss": 3, "fwd": 3, "g": 4, "blow": 2}
 
 
 class Console:
-    def __init__(self, port, timeout=300.0):
+    def __init__(self, port, timeout=20.0):
         self.port = port
         self.timeout = timeout
         self.dead = False
@@ -42,7 +42,7 @@ class Console:
 
     def open(self):
         last = None
-        for _ in range(120):
+        for _ in range(600):
             try:
                 self.sock = socket.create_connection(("127.0.0.1", self.port), timeout=self.timeout)
                 self.sock.settimeout(self.timeout)
@@ -65,6 +65,11 @@ class Console:
             try:
                 raw = self.f.readline()
             except (OSError, socket.timeout):
+                try:
+                    self.sock.close()
+                except OSError:
+                    pass
+                self.open()
                 return out, "[con] timeout"
             if not raw:
                 return out, "[con] eof"
@@ -84,7 +89,7 @@ class Console:
                 return int(l.split()[1])
         return -1
 
-    def wait_frame(self, target, timeout=300.0):
+    def wait_frame(self, target, timeout=20.0):
         start = time.time()
         while time.time() - start < timeout:
             f = self.frame()
@@ -121,14 +126,17 @@ def _parse_line(best):
         if key == "j":
             i += 1
             joints = []
-            while i + 5 < len(f) + 1 and f[i].startswith("u"):
-                joints.append({
-                    "uid": f[i][1:],
-                    "pos": (float(f[i + 1]), float(f[i + 2]), float(f[i + 3])),
-                    "active": int(f[i + 4]),
-                    "hp": float(f[i + 5]),
-                })
-                i += 6
+            try:
+                while i + 5 < len(f) and f[i].startswith("u"):
+                    joints.append({
+                        "uid": f[i][1:],
+                        "pos": (float(f[i + 1]), float(f[i + 2]), float(f[i + 3])),
+                        "active": int(f[i + 4]),
+                        "hp": float(f[i + 5]),
+                    })
+                    i += 6
+            except (IndexError, ValueError):
+                pass  # the game's stderr interleaves: the tail of the line may be another message
             st["joints"] = joints
             continue
         if key in TUPLES:
@@ -153,17 +161,19 @@ def _parse_line(best):
 
 
 def parse_state(text):
-    """The last state line in the log, as a dict, or None."""
-    best = None
-    for line in text.splitlines():
-        if line.startswith("[sb2] boss "):
-            best = line
-    if best is None:
-        return None
-    try:
-        return _parse_line(best)
-    except (IndexError, ValueError):
-        return None
+    """The last state line in the log, as a dict, or None.
+
+    The game's stderr writes can interleave (the probe's line and another line in one write),
+    so the last line that parses wins.
+    """
+    for line in reversed(text.splitlines()):
+        if not line.startswith("[sb2] boss "):
+            continue
+        try:
+            return _parse_line(line)
+        except (IndexError, ValueError):
+            continue
+    return None
 
 
 def find_boss(con, timeout=600.0):
