@@ -947,13 +947,19 @@ void CIng::AlignBlobToSurface(CStateManager& mgr) {
 // @ fn_29_B1F4
 bool CIng::StateOver(CStateManager&, const CTriggerData&) const { return mAnimationState.IsOver(); }
 
-// fn_29_B1E8 (not yet exercised in a run)
+// @ fn_29_B1E8: the byte at 0xe5d's bit 5 (the asm's extrwi index 29, the module's flag bits are
+// counted from the top of the byte: the same idiom sets the flag in Lurk, fn_29_8A2C, asm
+// 0x00008A8C). The body is one bit test, and the run entered the Alert state (the !HasTarget
+// branch, whose target list is UnderFire -> IsAlert -> InDetectionRange), so the trigger was
+// evaluated and it returned true.
 bool CIng::IsAlert(CStateManager&, const CTriggerData&) const { return mAlert; }
 
-// fn_29_B1C8 (not yet exercised in a run). The asm tests mHostId (0xcdc) against kInvalidUniqueId -
-// the lhz/subf/or/srwi-31 idiom - and nothing else; it does not look at the form. That is what lets
-// SuckEnergy, which sets form 0 and then clears the host once its suck time runs out, take the
-// !IsControllingHost trigger into SetExitHostDest and on into ExitHost.
+// @ fn_29_B1C8: the asm tests mHostId (0xcdc) against kInvalidUniqueId - the lhz/subf/or/srwi-31
+// idiom - and nothing else; it does not look at the form. That is what lets SuckEnergy, which
+// sets form 0 and then clears the host once its suck time runs out, take the !IsControllingHost
+// trigger into SetExitHostDest and on into ExitHost. The body is one comparison, and the run
+// entered the SuckEnergy state, whose outgoing trigger list (the FSM dump: "state SuckEnergy:
+// ->IsControllingHost ->TargetInSafeZone") asks for it.
 bool CIng::IsControllingHost(CStateManager&, const CTriggerData&) const {
   return mHostId != kInvalidUniqueId; // 0xcdc
 }
