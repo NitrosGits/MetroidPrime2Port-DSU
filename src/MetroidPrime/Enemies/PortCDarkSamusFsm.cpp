@@ -459,8 +459,8 @@ void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
       FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
   for (rstl::vector< TUniqueId >::const_iterator it = starts.begin(); it != starts.end(); ++it) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
-    // 0x0000B8DC (no hint), 0x0000B8E8 (type)
-    if (hint == nullptr || static_cast< int >(hint->GetHintType()) != 0x11) {
+    if (hint == nullptr ||                                   // 0x0000B8DC
+        static_cast< int >(hint->GetHintType()) != 0x11) {   // 0x0000B8E8
       continue;
     }
     int count = 0;

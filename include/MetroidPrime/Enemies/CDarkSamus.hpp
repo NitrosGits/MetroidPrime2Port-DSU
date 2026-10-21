@@ -591,6 +591,17 @@ private:
   bool mUseAltScan;                 // 0x80, usesAlternateScannableInfo; fn_10_F40C reads it
   bool mCanDie;                     // 0x40, the info's +0x32 not 1; fn_10_F488 keeps the health
                                     // at 1.0f while it is clear (0x0000F4F4)
+  float mPhazonHealthMark;          // guest 0x1054, the health the phazon phase started at
+                                    // (fn_10_6BA0 at 0x00006D20); the constructor writes 0.0f
+                                    // (0x00020214)
+  bool mPhazonPhase;                // guest 0x1060 bit 0x80: fn_10_6BA0 sets it (0x00006C90),
+                                    // fn_10_7054 clears it (0x00007154); the constructor clears it
+                                    // (0x00020224)
+  float mGuestD24;                  // guest 0xD24, the 0xCD0 sub-object's +0x54 (fn_10_E560 writes
+                                    // 0.0f at 0x0000E5DC); fn_10_F654 ramps it in [0, 1]
+  // guest 0x92C, the alternate 'SCAN' (the data's alternateScannableInfo, locked by the
+  // constructor at 0x0002048C..0x00020538 when it is valid); fn_10_F40C answers it
+  rstl::single_ptr< TLockedToken< CScannableObjectInfo > > mAltScanInfo;
   TUniqueId mFirstBattleStageUid;   // guest 0xD50, the stage the 'XALD' arm linked (0x0001EBC0);
                                    // fn_10_FD4C reads it (0x0000FD88); the constructor writes
                                    // kInvalidUniqueId (0x00020018)

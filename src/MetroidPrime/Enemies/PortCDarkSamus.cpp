@@ -15,6 +15,7 @@
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -70,6 +71,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mStageCount(0)
 , mUseAltScan(false)                            // 0x0001FCD0
 , mCanDie(true)                                 // 0x0001FCDC
+, mPhazonHealthMark(0.f)                        // 0x00020214
+, mPhazonPhase(false)                           // 0x00020224
+, mGuestD24(0.f)                                // 0x0000E5DC
 , mFirstBattleStageUid(kInvalidUniqueId)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
@@ -156,6 +160,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
   // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
+  // 0x0002048C: a valid alternate scannable info is locked into 0x92C (`addis r0, r29, 0x1;
+  // cmplwi r0, 0xffff`, i.e. the id is not -1).
+  if (mData.mAlternateScannableInfo != kInvalidAssetId) {
+    mAltScanInfo = rs_new TLockedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', mData.mAlternateScannableInfo)));
+  }
 }
 
 CDarkSamus::~CDarkSamus() {}
@@ -329,10 +339,15 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
-// vtable slot 29 = fn_10_F40C (0x7C): the alternate scannable info (the 'SCAN' token at 0x92C
-// when the actor is alive, frozen and visible).
+// vtable slot 29 = fn_10_F40C (0x7C): the alternate scannable info. Alive (0x420 bit 0x40,
+// 0x0000F430), active (0x20 bit 0x80, 0x0000F44C), on a stage that asks for it (0x97C bit 0x80,
+// 0x0000F45C) and with the token at 0x92C (0x0000F468) the actor answers that token's object
+// (+0x8, 0x0000F46C); otherwise CPatterned::GetScannableObjectInfo (0x0000F474).
 CScannableObjectInfo* CDarkSamus::GetScannableObjectInfo() const {
-  StandIn("fn_10_F40C", "vtable slot 29, GetScannableObjectInfo");
+  if (GetAlive() == true && GetActive() == true && mUseAltScan == true &&
+      !mAltScanInfo.null()) {
+    return **mAltScanInfo;
+  }
   return CPatterned::GetScannableObjectInfo();
 }
 
@@ -356,10 +371,31 @@ CDamageVulnerability* CDarkSamus::DamageVulnerability() {
   return CPatterned::DamageVulnerability();
 }
 
-// vtable slot 41 = fn_10_F488 (0x138): the damage handling (the interrupt threshold at 0x908).
+// vtable slot 41 = fn_10_F488 (0x138): the damage handling. The hit cooldown 0x448 =
+// skDamageHitTime (0x0000F4AC, CPatterned::TakeDamage). Active (0x0000F4C8), a health below
+// lbl_10_rodata_3E8 = 1.0f (0x0000F4EC) is held at 1.0f (the vtable slot 0x38, 0x0000F528) when
+// the stage forbids dying (0x97C bit 0x40 clear, 0x0000F4F8) or in the phazon phase (0x1060 bit
+// 0x80, 0x0000F508). In the phazon phase (0x0000F538) a health below 0x1054 -
+// lbl_10_rodata_E4 = 60.0f (0x0000F568) is set to that mark - lbl_10_rodata_41C = 0.1f, the
+// 0xCD0 byte to 1 and 0xD24 to 1.0f (0x0000F598..0x0000F5A0).
 void CDarkSamus::TakeDamage(const CVector3f& direction, float magnitude) {
-  StandIn("fn_10_F488", "vtable slot 41, TakeDamage");
   CPatterned::TakeDamage(direction, magnitude);
+  if (GetActive() != true) {
+    return;
+  }
+  if (GetHealthInfo()->GetHP() < 1.f) {
+    if (mCanDie == false || mPhazonPhase == true) {
+      HealthInfo()->SetHP(1.f);
+    }
+  }
+  if (mPhazonPhase == true) {
+    const float mark = mPhazonHealthMark - 60.f;
+    if (GetHealthInfo()->GetHP() < mark) {
+      HealthInfo()->SetHP(mark - 0.1f);
+      mGuestCD0 = 1;
+      mGuestD24 = 1.f;
+    }
+  }
 }
 
 // vtable slot 45 = fn_10_CEB4 (0x1C): it copies the three floats out of this+0x54/0x58/0x5C, the
