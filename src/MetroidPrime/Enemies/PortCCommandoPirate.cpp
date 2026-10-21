@@ -413,7 +413,9 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
   xb68_ += dt;                                 // 0x000066D0
   if (xb68_ >= 2.f) {                          // 0x000066E8
     if ((xc64_ & 0x40) == 0) {                // 0x000066F8
-      const bool roll = mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006718
+      // 0x00006710: the roll is against the data byte at +0x58, the block's dodge check
+      // (mDodgeCheck) - not the cover check.
+      const bool roll = mData.mDodgeCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006710, 0x00006718
       xc63_ = (xc63_ & ~0x04) | (roll ? 0x04 : 0);  // 0x0000673C
     }
     xb68_ = 0.f;                               // 0x00006748
@@ -421,7 +423,9 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
   xb6c_ += dt;                                 // 0x0000674C
   if (xb6c_ >= 5.f) {                          // 0x00006764
     if ((xc64_ & 0x40) == 0) {                // 0x00006774
-      const bool roll = mData.mSearchRadius >= mgr.Random()->Range(0.f, 100.f);  // 0x00006794
+      // 0x0000678C: the roll is against the data byte at +0x50, the block's cover check
+      // (mCoverCheck) - not the search radius.
+      const bool roll = mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x0000678C, 0x00006794
       xc63_ = (xc63_ & ~0x01) | (roll ? 0x01 : 0);  // 0x000067B8
     }
     xb6c_ = 0.f;                               // 0x000067C4
