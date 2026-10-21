@@ -118,8 +118,8 @@ bool CSplitterCommandModule::PortListen(CStateManager& mgr, const CVector3f& pos
 //   asm 0x63D8 `cmpwi r31, 0x0` (the type 0 is the second case)
 //   - the type 0x16 (kUE_BreakLockOn): the head's flag byte at 0xF6A gets its 0x10 bit tested
 //     (asm 0x63E4 `lbz`, 0x63E8 `extrwi` with the word's bit 27) and the data's flag word at
-//     0x7C0 its 0x20000000 bit (asm 0x63F0 `lwz`, 0x63F4 `rlwinm` with the bits 29..29).  With
-//     both clear the head asks the player for an orbit request: the id at 0xEFE (the head's
+//     0x7C0 its 0x4 bit (asm 0x63F0 `lwz`, 0x63F4 `rlwinm` with the bits 29..29).  With
+//     both set the head asks the player for an orbit request: the id at 0xEFE (the head's
 //     copy of the chassis's target) is looked up (asm 0x63FC `lhz`, 0x640C
 //     `ObjectById__13CStateManagerCF9TUniqueId`) and cast to a CPlayer (asm 0x6410
 //     `TCastToPtr<7CPlayer>`); with no player the arm ends (asm 0x6414, 0x6418).  Otherwise
@@ -134,7 +134,7 @@ bool CSplitterCommandModule::PortListen(CStateManager& mgr, const CVector3f& pos
 //   - the type 0 (kUE_Projectile): the head's own body fn_75_1CA0 runs with the node's locator
 //     name (the node's string at +0x30, asm 0x6440 `addi r5, r30, 0x30`, 0x6444 `bl
 //     fn_75_1CA0`).
-//   Then, and only then, the base class's own DoUserAnimEvent runs (asm 0x644C `clrlwi`, 0x6450
+//   When neither case was taken the base class's own DoUserAnimEvent runs (asm 0x644C `clrlwi`, 0x6450
 //   `bne`, 0x6454-0x6468: the manager, the node, the type and the dt are put back and the DOL's
 //   `DoUserAnimEvent__10CPatternedFR13CStateManagerRC13CInt32POINode14EUserEventTypef` is
 //   called).
@@ -147,8 +147,9 @@ void CSplitterCommandModule::PortDoUserAnimEvent(CStateManager& mgr, const CInt3
                                                 EUserEventType type, float dt) {
   bool handled = false;
   if (type == kUE_BreakLockOn) {
-    // asm 0x63E4-0x63F8: the head's flag byte at 0xF6A and the data's flag word at 0x7C0.
-    if ((mAutoDestructFlags & 0x10) == 0 && (mData.mUnknownBD80FD94 & 0x20000000) == 0) {
+    // asm 0x63E4-0x63F8: the head's flag byte at 0xF6A (0x10) and the data's flag word at
+    // 0x7C0 (0x4, rlwinm bit 29) must both be set.
+    if ((mAutoDestructFlags & 0x10) != 0 && (mData.mUnknownBD80FD94 & 0x4) != 0) {
       // asm 0x63FC-0x6418: the player at 0xEFE (the head's copy of the chassis's target).
       CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mSyncedId));
       if (player != nullptr) {
@@ -165,8 +166,8 @@ void CSplitterCommandModule::PortDoUserAnimEvent(CStateManager& mgr, const CInt3
     PortHeadProjectileAim(mgr, node.GetLocatorName());
     handled = true;
   }
-  // asm 0x644C-0x6468: the base class's own DoUserAnimEvent runs when a case was taken.
-  if (handled) {
+  // asm 0x644C-0x6468: the base class's own DoUserAnimEvent runs when no case was taken.
+  if (!handled) {
     CPatterned::DoUserAnimEvent(mgr, node, type, dt);
   }
 }
