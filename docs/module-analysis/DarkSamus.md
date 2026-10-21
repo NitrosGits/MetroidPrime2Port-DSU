@@ -1373,6 +1373,27 @@ state's every-message arm (0x00006F4C) calls fn_10_6DAC, so both states are whol
 FreezeBeam state's command (0x00016E8C) calls fn_10_8870, but its dodge step (0x00016E3C) is
 still a stand-in.
 
+### The gcov coverage (the marker gate)
+
+The coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`) and the rooftop run over it
+give the branch coverage of every module body at once
+(`tools/cov/gcov_report.py build-port-cov <run's gcov dir> --module DarkSamus`). The marked
+bodies and their verdict:
+
+| fn | the verdict |
+|---|---|
+| fn_10_10710 (the Pause state) | 16/16 lines, 6/6 branches, **ALL-ARMS** - the "no fight stage" arm (the retail's own null check at 0x00010770) is forced by the coverage spec (the second Activate invalidates the battle stage's uid) |
+| fn_10_9314 (the DoneRolling trigger) | 10/10 lines, 10/10 branches, **ALL-ARMS** - the eight arms are written at the trigger's entry from the coverage spec's expressions (one per hit) |
+| fn_10_BD40 (the FadeIn state) | 6/6 lines, no branches - ALL-ARMS |
+| fn_10_BC54 (the FadeOut state) | 7/7 lines, no branches - ALL-ARMS |
+| fn_10_F86C (the FallFromTheAir state) | 6/6 lines, no branches - ALL-ARMS |
+| fn_10_99B8 (the boost ball's old effects) | 1/1 line, no branches, but **unmarked**: the virtual calls on the particle objects have no host counterpart, so the body is not the whole function |
+| fn_10_6DAC (the shield flag from the health) | 4/6 branches - **unmarked**: the Deactivate arm was not reached in the run |
+| fn_10_9724 (the BoostBallFire state) | 5/6 branches - not marked: the Deactivate arm did not run |
+| fn_10_6E38 (the EnragedTravel state) | 4/6 branches - not marked: the "the aim is far" arm (0x00006EF8) did not run |
+| fn_10_16CDC (the FreezeBeam state) | 4/6 branches - not marked: fn_10_1707C is still a stand-in |
+| fn_10_62B4 (the Arrived trigger) | 0/7 lines - not marked: the fight never evaluates it |
+
 ### The coverage
 
 The compiler coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`) and the ordinary

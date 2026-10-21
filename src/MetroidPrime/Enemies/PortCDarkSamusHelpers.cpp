@@ -141,7 +141,8 @@ void CDarkSamus::FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg)
 // generator's record at 0xE60/0xE64 is cleared (0x00009A68..0x00009A80). The port has no
 // counterpart for any of them - the module's own swooshes (fn_10_9B24) and the generator are
 // not in the port - so the pointers are always null and the body does nothing.
-// @ fn_10_99B8
+// Unmarked: the virtual calls on those objects (the vtable's word 2) have no host counterpart,
+// so the body is not the whole function.
 void CDarkSamus::StopBoostBallParticles() {}
 
 // fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
@@ -151,7 +152,8 @@ void CDarkSamus::StopBoostBallParticles() {}
 // the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
 // 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to the zero vector (lbl_10_bss_128,
 // 0x00006E10..0x00006E20).
-// @ fn_10_6DAC
+// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
+// Deactivate did not run in it), so the body is not proved arm by arm.
 void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
   if (msg == kStateMsg_Deactivate) {
     mGuestCD0 = 0; // 0x00006DCC

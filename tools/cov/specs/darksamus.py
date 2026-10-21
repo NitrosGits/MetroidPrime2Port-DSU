@@ -24,11 +24,15 @@ DR_SET = ('($dk == 1 ? ($this->mBoostBallUid.value = 0xffff) : '
           ' $this->mGuestEA8 = 1000.0, $this->mGuestEAC = $this->mPosition.mX, '
           ' $this->mGuestEB0 = $this->mPosition.mY, $this->mGuestEB4 = $this->mPosition.mZ, '
           ' $this->mGuestEB8 = 0.0))))))))')
+# the Pause state: the second Activate runs without a fight stage (the battle stage's uid is
+# invalidated), which is the arm the retail's own null check at 0x00010770 takes.
+PAUSE_K = '($rdx == 0 ? ($_isvoid($pk) ? ($pk = 0) : ($pk = $pk + 1)) : 0)'
+PAUSE_SET = ('($pk == 1 ? ($this->mBattleStageUid.value = 0xffff) : 0)')
 SPEC = [
     # the BreakPause trigger: the pause is over (guest 0xC30 below the elapsed time 0x8B0) or not
     ('106F8 BreakPause', 'CDarkSamus::BreakPause(', ['$this->mGuestC30 < $this->mElapsedTime'], 'ret'),
     # the states of slice 26: the key is the message (0 = Activate, 1 = Update, 2 = Deactivate)
-    ('10710 Pause', 'CDarkSamus::Pause(', ['$rdx'], 'calls'),
+    ('10710 Pause', 'CDarkSamus::Pause(', [PAUSE_K, PAUSE_SET, '$rdx'], 'calls'),
     ('9724 BoostBallFire', 'CDarkSamus::BoostBallFire(', ['$rdx'], 'calls'),
     ('BD40 FadeIn', 'CDarkSamus::FadeIn(', ['$rdx'], 'calls'),
     ('BC54 FadeOut', 'CDarkSamus::FadeOut(', ['$rdx'], 'calls'),
