@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | `ses_ea4d0a713ffe9j6flq9B5q4EFF` | emperoring @ `702f8eaaf` (88/241) | force missing arms of 9C0, A64, 774C, 1150, 1A50, 1950 |
 | MinorIng (worker) | `ses_ea43e4628ffervnPIWANweAlcu` | minoring @ `6ff839f74` (126/217; 4 thin overrides; 9 base-inline + 4 FSM2 dtors cited) | 23-fn projectile chain under 65C4 → 6748, wire into DoUserAnimEvent |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (worker) | `ses_ea447b7a0ffeIznyYfgoy6BMEc` | darksamus2 @ `0f9dd35ed` (Picked* ids fixed: lis = N<<16; ShouldFadeOut/CanMissileDeflect via battle stage) | ShouldReact (clrlwi 24 = &0xFF), TooMuchDamage, WallCollision, 1DF74 helpers |
+| DarkSamus (worker) | `ses_ea447b7a0ffeIznyYfgoy6BMEc` | darksamus2 @ `e75b1e057` (ShouldReact, TooMuchDamage, WallCollision, 1D794/1E178/1C778) | fix TooMuchDamage == 0x8000 (addis+cmplwi idiom, not &0xFFFF), helpers 1E26C..1DD14, state 1DF74 |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
