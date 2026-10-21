@@ -32,7 +32,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 
 | lane | session | branch @ base | task |
 |---|---|---|---|
-| BoostGuardian (Opus) | `ses_ea41a5a32ffe2IcoCG89vP6xKe` | boostguardian @ `5bff6d1d6` (193/318; HP drops: beam 1000→994, bombs off-puddle 10 each; dtor E5EC + F78 marked; 83 cited) | audit 12AB0 compares (Ball.cpp:516), 30 loader rows 130/1988/20A0/2344/2CCC/10C24 |
+| BoostGuardian (Opus) | — (done) | boostguardian @ `673fbcb56` (204/318; 103 cited, 2 folded; loaders hand-checked, isEchoEmitter + 19 sound ids -1 defaults; 12AB0 compares correct) | merge in batch 6; 9 fns between tsv 309 and 318 unexplained |
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
 | DigitalGuardian (Opus) | `ses_ea412f7a1ffesQ3Z1Tv0QKRd76` | sandboss @ `c753a5c2b` (balls 12818/126C8, Dead 1561C, SetVulnerable 13F0C marked; XRDG 12D98 ported; head dies by real bombs) | SelectRetreatPlatform 13C6C (12818 marker hinges on it), XRDG beam arm, slice-3 stand-ins, exit-13 check |
 | Splitter (worker) | `ses_ea456296affeAdkCwq7sVdpywE` | splitter @ `2cf00edf3` (IsDocked, Scanning, SelectTarget, Patrol, Hover) | head Idle 5538, shells 1578/2154/986C, ACEC, A4E4, AFE8/9520 re-check |
