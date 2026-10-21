@@ -398,22 +398,25 @@ time at 0xC44 against the elapsed time at 0x8B0).
 **The two ported helpers** (2026-10-21): `fn_10_1D794` (the still timer at 0x964 and the
 position it measures from at 0x958) and `fn_10_1E178` (the damage at 0xCC0, the health at 0xCC4
 and the decay rate at 0xCCC). Both are called from `fn_10_1DF74` (the `TravelToCoverPoints`
-state) and, for `fn_10_1D794`, also from `fn_10_FB8C` (`TravelToPissedOff`).
+state) and, for `fn_10_1D794`, also from `fn_10_FB8C` (`TravelToPissedOff`). `fn_10_1C778` (the
+path find's destination at 0x8B4/0x8B8/0x8BC and the path find itself, through the base class'
+navigation at 0x6F4) is ported as well.
 
 **The walk** (2026-10-21, with the three triggers ported): `Start` -> `TurnToFacePlayer` ->
 `TravelToCoverPoints` -> `Dash`. The last step is `WallCollision` (the FSM2 dump: the trigger
 `WallCollision` of `TravelToCoverPoints` leads to `Dash`), and it fires because the wall
 collision time at 0xC44 is 0.0f after the constructor and the elapsed time at 0x8B0 is still
-below 0.2 seconds - the port grows the elapsed time only while the actor is active, while
-retail's `fn_10_1B1FC` grows it in every Think, also while the actor is inactive.
+below 0.2 seconds - the port grew the elapsed time only while the actor was active, while
+retail's `fn_10_1B1FC` grows it in every Think, also while the actor is inactive. With the
+elapsed time grown in every Think the walk stays in `TravelToCoverPoints`.
 
 **Next**: the rest of the `TravelToCoverPoints` state. `fn_10_1DF74` calls ten module helpers
 of its own (`fn_10_1D860`, `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`,
 `fn_10_1E26C`, `fn_10_1C778`, `fn_10_1DD14`, `fn_10_1E178`, `fn_10_1D794`), so it is a chain of
-slices, not one body. The next ones, smallest first: `fn_10_1E26C` (0xDC bytes: the uid at
-0xC24, the count at 0xC28 and the uids at 0xC2C), `fn_10_1C778` (0xDC bytes: the position at
-0x8B4/0x8B8/0x8BC and the path find navigation at 0x6F4), `fn_10_1E3C0`, `fn_10_1E740`,
-`fn_10_11334`, `fn_10_128D8`, `fn_10_1D860`, `fn_10_1DD14` and then `fn_10_1DF74` itself.
+slices, not one body. The ones that are ported: `fn_10_1D794`, `fn_10_1E178` and
+`fn_10_1C778`. The next ones, smallest first: `fn_10_1E26C` (0xDC bytes: the uid at 0xC24, the
+count at 0xC28 and the uids at 0xC2C), `fn_10_1E3C0`, `fn_10_1E740`, `fn_10_11334`,
+`fn_10_128D8`, `fn_10_1D860`, `fn_10_1DD14` and then `fn_10_1DF74` itself.
 
 **The fight script's object** (2026-10-21): the helper `fn_10_17E14` gets it from the uid at
 0x974 (`fn_10_17DE0`: the lhz at 0x00017DEC, `GetObjectById` at 0x00017DFC and the cast to
