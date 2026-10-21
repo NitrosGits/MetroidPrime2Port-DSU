@@ -2173,10 +2173,11 @@ void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
 // `cmpwi r0, 0x8` at 0x0001BA88) are not; any other is. Outside it any weapon type
 // (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
 // stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
-// against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Only fn_10_1B658 calls it in the port,
-// always with -1; the typed caller (0x0001BBF8, AnyIncomingMissiles fn_10_1BB08, ported in
-// Slice 21) is behind the module's own ShouldReact, which the shipped stages do not let
-// through (Slice 21), so the roll below runs only when the typed path is reached.
+// against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Callers: fn_10_1B658 with -1 and
+// AnyIncomingMissiles fn_10_1BB08 with a type (0x0001BBF8).
+// Run (darksamus_uevent.py, dsfsm2-runs/s10/u10): every arm (key 42 the missile type, 45..49 the
+// reject arms, 60 no stage, `trigcall AnyIncomingMissiles` for the typed path and its roll).
+// @ fn_10_1B9B0
 bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj,
                                       int type) const {
   if (proj == nullptr || proj->GetOwnerId() == GetUniqueId() || proj->HasExploded()) {
@@ -2196,10 +2197,13 @@ bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectil
     const EWeaponType weapon = proj->GetCurrentDamageInfo().GetWeaponMode().GetType();
     return weapon != kWT_Phazon && weapon != kWT_CannonBall;
   }
-  if (type == -1 || GetBattleStage(mgr) == nullptr) {
+  if (type == -1) { // 0x0001BA9C
     return true;
   }
-  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr); // fn_10_17E14, 0x0001BAA8
+  if (stage == nullptr) {                                   // 0x0001BAB0
+    return true;
+  }
   // fn_10_F298 (0x0001BACC) rolls the chance for the projectile's uid and the stage info's +0x24
   // (the missiles' first float, lbl_10_rodata of SLdrDSMissiles) is the chance the roll is
   // compared with (`fcmpo cr0, f1, f0` at 0x0001BAD4, the less-than bit at 0x0001BADC).
