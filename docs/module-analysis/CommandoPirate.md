@@ -450,7 +450,7 @@ stored to the stack arguments at 0x0000DA50..0x0000DA5C). The guest's own member
 | 0x920, 0x924 | two ints | -1 (0x0000D994, 0x0000D9A4) |
 | 0x928 | `CPathFindSearch` | area null, flags 1, the patterned info's pathfinding index (+0xEC), radii 1.0f, no avoidance filter, root 0 (0x0000D990) |
 | 0xA14 | `CProjectileInfo` | the block's projectile (+0x28) and its damage (+0x2C) (0x0000D9B8) |
-| 0xA3C, 0xA40 | two ints | 0 |
+| 0xA3C, 0xA40 | the two collision actor managers | fn_9_45A4 builds them in the kSM_Create case |
 | 0xA44 | a damage vulnerability | the shield's charge vulnerability is copied here first (the block's +0xF4, 0x0000D9D4), then the actor's own vulnerability with the ignore radius is copied over it (0x0000E638) |
 | 0xA74 | `CBoneTracking` | the model's animation data, "Head_1", 1.2217305f, 3.1415927f, 0 (0x0000DA08) |
 | 0xAB0 | `CVisualKnowledge` | the object's id, segment 0xFF, 0.1f, 0.05f |
@@ -514,6 +514,68 @@ charge distance, +0x50 the max charge distance, +0x54 the charge speed, +0x58 th
 +0x5C the explode sound, +0x60 and +0x64 the two unknown floats, +0x68 the arm chance, +0x6C the
 arm time, +0x70 the arm time variation, +0x74 the arm explode effect, +0x78 the charge effect,
 +0x7C the arm effect, +0x80 and +0x82 the two turn sounds.
+
+## 3b. The message switch (fn_9_CB40, 0x754)
+
+fn_9_CB40 is the module's AcceptScriptMsg (the vtable slot 0x18). It calls the base's
+AcceptScriptMsg first (0x0000CB84) and then switches on the message's four-character code (the
+binary search at 0x0000CB88..0x0000CCC8). The byte at guest this+0x20 is CEntity's flag byte -
+the DOL's CEntity::SetActive writes its 0x80 bit
+(MetroidPrime2Port/build/G2ME01/asm/MetroidPrime/CEntity.s:678) - so the register r31, computed
+from it at 0x0000CB60..0x0000CB80, is the entity's "active" bit.
+
+| code | message | the case's body |
+|---|---|---|
+| XCRT | kSM_Create | the body's Activate (0x0000CCD8) and the module's collision actors (0x0000CCE4) |
+| DCTV | kSM_Deactivate | the collision actors' SetActive(false) (0x0000CD90..0x0000CEBC) and the team (0x0000CDC8) |
+| ACTV | kSM_Activate | the colour's alpha byte (guest this+0x44f) and the base's alpha delta (guest this+0x40c), then the flag byte's 0x20 bit (0x0000CD3C..0x0000CD80) |
+| XDEL | kSM_Delete | the collision actors' Destroy, ReleaseCoverPoint (the id at guest this+0xBD2), DeleteObjectRequest (the id at guest this+0xBD8) and the team (0x0000CCEC..0x0000CD38) |
+| ESCP | kSM_Escape | the module's warp-out helper fn_9_3D64 with true (0x0000CF2C..0x0000CF4C) |
+| XALD | kSM_AreaLoaded | the path area and the connected waypoint; or - when the block's flag byte at guest this+0x91C has its 0x01 bit - the actor's death (0x0000CE04..0x0000CEF0) |
+| STRT | kSM_Start | the flag byte at guest this+0xC64 loses its 0x20 bit (0x0000D060) |
+| STOP | kSM_Stop | the flag byte at guest this+0xC64 gets its 0x20 bit (0x0000D074) |
+| XAUD | kSM_AIUpdateDisabled | the collision actors' SetPhysicsActive(false) (0x0000CDD0..0x0000CDFC) |
+| XLNN | kSM_Landed | the burst fire's type goes to 0 (guest this+0xAF0) and the flag byte at guest this+0xC63 loses its 0x08 bit (0x0000D048) |
+| XDMG | kSM_Damage | the module's knock-back (only when the byte at guest this+0xC65 has its 0x04 or 0x08 bit), the module's counter at guest this+0xC50, InformListeners and AbortScriptedAnimations (0x0000D09C..0x0000D160) |
+| XHIT | kSM_HitObject | the module's hit-object helper fn_9_3A5C (0x0000D25C) |
+| XLAU | kSM_Launching | the actor's own off-ground message through the base's handler, the momentum and the module's jump-back velocity fn_9_3900 (0x0000CFA4..0x0000D040) |
+| XRDG | kSM_ResistedDamage | the module's knock-back (0x0000D164..0x0000D258) |
+| XOFF | kSM_OffGround | the momentum (unless the body is frozen) and the burst fire's type goes to 1 (0x0000CF54..0x0000CF9C) |
+| ALRT | kSM_Alert | the base's flag byte at guest this+0x420 gets its 0x80 bit - the host's mHitByPlayerProjectile (0x0000D088) |
+| ZERO | kSM_SetToZero | the flag byte at guest this+0xC63 gets its 0x40 bit and the module's warp-out helper runs with false (0x0000CEF8..0x0000CF24) |
+
+The guest's own members the switch touches: the burst fire's type (guest this+0xAF0), the
+counter at guest this+0xC50, the three flag bytes at guest this+0xC63, +0xC64 and +0xC65, the
+word at guest this+0x920, the block's two flag bytes at guest this+0x91C and +0x91D, the
+colour's alpha byte at guest this+0x44F and the alpha delta at guest this+0x40C (the base's own
+two members), the base's flag byte at guest this+0x420 (its 0x80 bit) and the ids at guest
+this+0xBC4 (the team), +0xBC6 (the shield's collision actor), +0xBC8 (the blade's collision
+actor), +0xBD2 (the cover point) and +0xBD8 (the deleted object).
+
+Two of the base's members are the guest's own: the colour's alpha byte (guest this+0x44F) is the
+host's `CColor`'s alpha and the float at guest this+0x40C is the host's `mAlphaDelta` (the DOL's
+CPatterned::UpdateAlphaDelta writes both, at 0x000747F0 and 0x000747E4). The byte at guest
+this+0x440 is the host's `mCurDamageRemTime` and the one at guest this+0x444 its
+`mDamageWaitTime` (the host's CHealthInfo's layout puts mHealth second, at the guest's +0x04).
+
+### The module's collision actor managers (fn_9_45A4, 0x304)
+
+fn_9_45A4 is the module's own helper, called by its kSM_Create case. It builds two managers, each
+with one sphere joint:
+
+- the shield's (guest this+0xA3C): a sphere on the left wrist (guest this+0xC62), radius 1.0f
+  (rodata_43C), mass 1000.0f (rodata_4B0), named "Shield_CollisionActor" (the module's rodata at
+  0x893). Its collision actor gets the shield's charge vulnerability (the block's +0xF4 = guest
+  this+0x8B4) and the response type 0x12 = 18 = kWCR_EnemyShielded (0x000046EC..0x000046F4).
+  The actor's id goes to guest this+0xBC6.
+- the blade's (guest this+0xA40): a sphere on the second gun locator (guest this+0xC5F), the same
+  radius and mass, named "Blade_CollisionActor" (the module's rodata at 0x8A9). Its collision
+  actor gets the pass-through vulnerability (0x00004814..0x00004820). The actor's id goes to guest
+  this+0xBC8.
+
+The guest then adds the bit 0x8000 (the material 15, kMT_Glass) to the actor's own material
+filter's exclude list (0x00004830..0x0000487C). The module's Think updates both managers with the
+object-space option (0x0000C9B8 and 0x0000C9CC).
 
 ## 4. Spawn areas
 
@@ -944,6 +1006,39 @@ nothing walks. The run's stand-ins are the six above plus `AcceptScriptMsg`, `Co
 `grep -c '[port] caught\|reach-stub'` is 0. The E-grenade fire state (`fn_9_A2EC`) is never
 entered, so no grenade is thrown.
 
+### The run with the message switch (2026-10-21)
+
+The area 59 run with the ported message switch (`tools/run_gameplay.sh`,
+`TELEPORT=05_temple_federationsite_dark`, `FRAMES=9000`, the card in /tmp/opencode/u_ds9,
+`MP2_GODMODE=1`, the console's `tp 75.9 371.6 -47.1` over `MP2_CONSOLE` and the player firing at
+the commando with the console's `press a`) reaches gameplay at 10.0 s, ends with exit=0 and
+`grep -c '[port] caught|reach-stub'` = 0. The commando walks to the player (it ends at
+(82.4, 368.3, -46.1) beside the player) and the run's stand-ins are four: the module's Listen
+(fn_9_BE4C), the CVisualKnowledge's Update and SetVisualTarget (guest this+0xAB0) and the
+JumpBack state (fn_9_8B70). The two stand-ins this slice removes - the module's AcceptScriptMsg
+and the module's collision actor managers - are gone.
+
+The arms of the five functions the task names, read out of a run with a temporary branch log
+(reverted, not committed):
+
+| function | arms that ran | arms that did not run |
+|---|---|---|
+| `fn_9_CB40` | `kSM_Create` (1), `kSM_AreaLoaded` (1), `kSM_Landed` (2971), `kSM_Delete` (1) and the default arm (5943) | `kSM_Deactivate`, `kSM_Activate`, `kSM_Escape`, `kSM_Start`, `kSM_Stop`, `kSM_AIUpdateDisabled`, `kSM_Damage`, `kSM_HitObject`, `kSM_Launching`, `kSM_ResistedDamage`, `kSM_OffGround`, `kSM_Alert` and `kSM_SetToZero` - the script connections that would send them do not reach this actor in this area, and no host code sends `kSM_Damage`, `kSM_HitObject` or `kSM_ResistedDamage` to an enemy |
+| `fn_9_C798` | the default arm only (235) | every arm of the module: `kUE_Projectile`, `kUE_DamageOn`, `kUE_DeGenerate`, `kUE_BecomeRagDoll`, `kUE_Landing`, `kUE_TakeOff`, `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` - they come from the module's own animations, and the states that play them (the melee, the E-grenade, the shield, the death and the jump) are stand-ins |
+| `fn_9_BF44` | the early return only (4187) | the shield's own arms - they need the 0x04 bit of the byte at guest this+0xC65, which only the module's unported ArmShield state (fn_9_86B4) and shield-charge states set |
+| `fn_9_1C0C` | the early return only (8880) | the arms past it - the module's state word at guest this+0xC4C stays -1, because only the shield's animation events (fn_9_1F88 and fn_9_1EF8) set it, and those need the shield's bits at guest this+0xC65 |
+| `fn_9_B250` | the first gate only (1784) | every arm past it - the 0x40 bit of the byte at guest this+0xC64 is set by the module's own shield events (fn_9_1F88), which need the shield's bits at guest this+0xC65 |
+
+So `fn_9_BF44`, `fn_9_1C0C` and `fn_9_B250` are marked (`// @ fn_9_<hex>`): every arm that the
+port can reach ran. `fn_9_C798` is not marked - the base's own damage and death animations can
+fire `kUE_DamageOn` and `kUE_DeGenerate`, so its module arms are reachable and did not run.
+`fn_9_CB40` is not marked either: several of its arms are reachable through the actor's script
+connections and did not run.
+
+The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_2D0C` (the
+knock-back, 0x384) and `fn_9_3900` (the jump-back velocity, 0x15c) are now called from the
+message switch, so they are the next two to port.
+
 ## 5. What is not ported yet (milestone 2 and forward)
 
 - The state machine's other bodies: the two tables (34 triggers, 36 states) are registered,
@@ -957,6 +1052,8 @@ entered, so no grenade is thrown.
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
   animation state answers it (`mAnimationState.CanIssueCommand`).
+- The module's knock-back helper (fn_9_2D0C, 0x384) and its jump-back velocity helper
+  (fn_9_3900, 0x15c): the message switch calls them, and they are named stand-ins.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two

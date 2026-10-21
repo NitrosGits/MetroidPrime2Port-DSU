@@ -9,11 +9,13 @@
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "rstl/single_ptr.hpp"
 
 // The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
 // is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
@@ -373,6 +375,30 @@ private:
   // listening AIs of the same area.
   void x1A9C_AvoidActors(CStateManager& mgr);
 
+  // fn_9_45A4: the module's own collision actor managers - the shield's (guest 0xA3C, the
+  // "Shield_CollisionActor") and the blade's (guest 0xA40, the "Blade_CollisionActor"). The
+  // guest builds them in its kSM_Create case; the host class CCollisionActorManager covers it.
+  void x45A4_CreateCollisionActors(CStateManager& mgr);
+
+  // fn_9_1930: the module's team helper - it leaves the team the commando joined.
+  void x1930_LeaveTeam(CStateManager& mgr);
+
+  // fn_9_3D64: the module's "warp out" helper - it enters the WarpOut state of the state
+  // machine and sets the module's flag byte's 0x10 bit.
+  void x3D64_SetWarpOut(CStateManager& mgr, bool warpOut);
+
+  // fn_9_2D0C: the module's knock-back helper (0x384 bytes) - the shield's and the blade's
+  // damage and knock-back. Not ported yet, so it stays a named stand-in.
+  void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
+
+  // fn_9_3A5C: the module's hit-object helper (0x260 bytes) - the shield's damage on the
+  // player that touched it. Not ported yet, so it stays a named stand-in.
+  void x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg);
+
+  // fn_9_3900: the module's jump-back velocity helper (0x15c bytes). Not ported yet, so it
+  // stays a named stand-in.
+  void x3900_JumpBackVelocity(CStateManager& mgr);
+
   // fn_9_6390: the module's burst-fire helper - the shot timer, the burst fire and the
   // intra-burst shot time.
   void x6390_UpdateBurstFire(CStateManager& mgr, float dt);
@@ -387,8 +413,11 @@ private:
   int x924_;                              // 0x924, -1 (fn_9_D904 @0x0000D9A4)
   CPathFindSearch mPathFindSearch;        // 0x928 (fn_9_D904 @0x0000D990)
   CProjectileInfo mProjectileInfo;        // 0xa14 (fn_9_D904 @0x0000D9B8)
-  int xa3c_;                              // 0xa3c, 0 (fn_9_D904 @0x0000D9D0)
-  int xa40_;                              // 0xa40, 0 (fn_9_D904 @0x0000D9D8)
+  // The module's two collision actor managers (fn_9_45A4): the shield's at guest 0xA3C and the
+  // blade's at guest 0xA40. The guest's constructor leaves both null (fn_9_D904 @0x0000D9D0 and
+  // @0x0000D9D8); its kSM_Create case builds them.
+  rstl::single_ptr< CCollisionActorManager > mCollisionShield; // 0xa3c, "Shield_CollisionActor"
+  rstl::single_ptr< CCollisionActorManager > mCollisionBlade;  // 0xa40, "Blade_CollisionActor"
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
   uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
@@ -417,6 +446,8 @@ private:
   float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
+  TUniqueId xbc6_;                       // 0xbc6, the shield collision actor's id; fn_9_45A4 sets it
+  TUniqueId xbc8_;                       // 0xbc8, the blade collision actor's id; fn_9_45A4 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
   int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
@@ -425,6 +456,7 @@ private:
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
   CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
   CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
