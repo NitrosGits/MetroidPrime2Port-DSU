@@ -189,7 +189,7 @@ void CSplitterCommandModule::PortDoUserAnimEvent(CStateManager& mgr, const CInt3
 //   asm 0x1CF8 `bl GetLctrTransform__10CPatternedCFRC...`
 //   asm 0x1D08 `bl __ct__12CTransform4fFRC12CTransform4f`
 //     the node's locator transform (the name is the argument) and the copy of it.
-//   asm 0x1D10 `lis r3, lbl_75_rodata_40`
+//   asm 0x1D10 `lis r3, lbl_75_rodata_40@ha`
 //   asm 0x1D30 `lfs f1, 0x0(r6)`
 //   asm 0x1D3C `lwz r12, 0x0(r31)`
 //   asm 0x1D40 `lwz r12, 0x54(r12)`
