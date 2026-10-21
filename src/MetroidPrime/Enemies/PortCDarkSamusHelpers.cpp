@@ -109,16 +109,21 @@ void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
 
 // fn_10_6F90 (0x00006F90, 0xC4 bytes): the path find to the destination. The path find itself is
 // fn_10_1C778 (the host's SetPathFindDestination, 0x00006FC0); when the path is shagged
-// (0x00006FE0) the navigation's destination is set again (0x00006FF8 - the guest's 0x1048 is the
-// navigation's own destination, which the host keeps in CPathFindNavigation) and the path find
-// runs again (0x00007010).
+// (0x00006FE0) the navigation goes back to the last good destination (guest 0x1048, 0x00006FF8)
+// and the path find runs again (0x00007010); otherwise the destination is kept in 0x1048
+// (0x00007018..0x0000702C).
 // fn_10_6F90 (ported, unreferenced in the port: the states call the path find inline)
 void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& destination, float dt) {
   SetPathFindDestination(mgr, destination, dt); // fn_10_1C778 at 0x00006FC0
   if (PathShagged(mgr, CTriggerData(0.f))) {    // 0x00006FE0
-    // 0x00006FF8: the guest's SetDestination(nav, 0x1048) writes the navigation's own
-    // destination, which the host's SetPathFindDestination has already set to the same value.
+    // 0x00006FF8: back to the last destination that was not shagged (guest 0x1048, a member of
+    // its own: fn_10_1C778 writes 0x8B4, not 0x1048).
+    mPathFindNavigation.SetDestination(CVector3f(mGuest1048, mGuest104C, mGuest1050));
     mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this); // 0x00007010
+  } else {
+    mGuest1048 = destination.GetX(); // 0x00007018..0x0000702C
+    mGuest104C = destination.GetY();
+    mGuest1050 = destination.GetZ();
   }
 }
 
