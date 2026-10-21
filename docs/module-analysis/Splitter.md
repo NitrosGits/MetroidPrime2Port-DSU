@@ -1031,6 +1031,23 @@ and fn_75_5DDC, which set the counter to 3, 1, 0 and 2) and from the SelectTarge
 despawn (fn_75_1790, 0x00001830). The three shield functions are still shells, so the port's
 counter stays 0 and the body always takes the second branch.
 
+#### The chassis's own path update, fn_75_986C (0x986C-0x9AF8) - ported 2026-10-21
+
+The retail's Patrol state calls this body (0x0000DDB8) with the chassis and the state manager.
+
+| what | retail | port |
+|---|---|---|
+| the separation command | the separation vector (fn_75_8EC8, 0x00009890) is compared with 0.0f in each component (0x000098A8-0x000098C0); a vector that is not all zeros gives a locomotion command with it as the move vector, a zero face vector and the weight 0.5f (0x000098C8-0x00009914) | the same, but the separation vector is zero (fn_75_8EC8 is still a shell), so the command is never delivered |
+| the move vector | the command manager's move vector (the body controller's 0x4, 0x8 and 0xC - the command manager's 0x0, 0x4 and 0x8) is copied (0x00009918-0x00009930), the locomotion commands are cleared (0x00009934) and the best step direction for it is asked for (0x00009940) | the same: `GetMoveVector()`, `ClearLocomotionCmds()` and `FindBestStepDirection(move)` |
+| the face vector | with a safe magnitude (0x0000994C `IsMagnitudeSafe`) and a step direction other than 0 (0x00009958) the vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 negates its x (0x000099E8) and 3 negates its y (0x000099C8) - and the steering speed range becomes 1.0f and 1.0f (0x00009A04) | the same: `kSD_Backward` negates the vector, `kSD_Left` negates its x and `kSD_Right` negates its y, and `SetSteeringSpeedRange(1.f, 1.f)` |
+| the commands | the locomotion command with the move vector, the normalized face vector and the weight 1.0f (0x00009A1C-0x00009A70); otherwise the steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command has the move vector, a zero face vector and the weight 1.0f (0x00009A8C-0x00009ADC) | the same: `CBCLocomotionCmd(move, face.AsNormalized(), 1.f)` and, in the other branch, `CBCLocomotionCmd(move, CVector3f::Zero(), 1.f)` with `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
+
+**The port's own limit in this body**: the separation steering (fn_75_8EC8, 0x8EC8-0x915C) is
+still a shell. Its object list walk (the state manager's list at 0x830), the head's own check
+(the command module's chassis id at 0xEFA) and the DOL's `CSteeringBehaviors::Separation` (whose
+retail signature takes a radius vector the host's does not) are not ported, so the separation
+vector is zero and the first command of the body is never delivered.
+
 #### The head's own move, fn_75_2154 (0x2154-0x21FC) - ported 2026-10-21
 
 | what | retail | port |

@@ -151,8 +151,8 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
 void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
 
-// The chassis's own path update, called by the Patrol state (fn_75_DCFC, 0x0000DDB8).
-void StandInFn_75_986C() { StandIn("fn_75_986C (0x28C)"); }
+// The chassis's own path update (fn_75_986C, 0x28C) is ported as
+// CSplitterMainChassis::PortUpdatePath.
 
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
@@ -275,8 +275,66 @@ void CSplitterMainChassis::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (last == nullptr || dest == nullptr) {
     return;
   }
-  StandInFn_75_986C();
+  PortUpdatePath(mgr);
   mPatrolFacing = BodyController()->GetCommandMgr().GetFaceVector();
+}
+
+// fn_75_986C (the chassis's own path update, 0x986C-0x9AF8): the separation vector
+// (fn_75_8EC8, 0x00009890) decides the first command - with a vector that is not all zeros
+// (0x000098A8-0x000098C0: each component is compared with 0.0f) the command manager gets a
+// locomotion command with the separation vector as its move vector, a zero face vector and the
+// weight 0.5f (0x000098C8-0x00009914). Then the command manager's move vector (the body
+// controller's 0x4, 0x8 and 0xC - the command manager's 0x0, 0x4 and 0x8) is copied
+// (0x00009918-0x00009930), the locomotion commands are cleared (0x00009934) and the best step
+// direction for that vector is asked for (0x00009940 FindBestStepDirection). With a safe
+// magnitude (0x0000994C IsMagnitudeSafe) and a step direction other than 0 (0x00009958) the
+// vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 negates its x
+// (0x000099E8) and 3 negates its y (0x000099C8) - the steering speed range becomes 1.0f and
+// 1.0f (0x00009A04) and the command manager gets the locomotion command with the move vector,
+// the normalized face vector and the weight 1.0f (0x00009A1C-0x00009A70). Otherwise the
+// steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command manager gets
+// the locomotion command with the move vector, a zero face vector and the weight 1.0f
+// (0x00009A8C-0x00009ADC).
+void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
+  CBodyStateCmdMgr& cmdMgr = BodyController()->CommandMgr();
+  const CVector3f separation = PortSeparationVector(mgr);
+  if (separation.GetX() != 0.f || separation.GetY() != 0.f || separation.GetZ() != 0.f) {
+    cmdMgr.DeliverCmd(CBCLocomotionCmd(separation, CVector3f::Zero(), 0.5f));
+  }
+  const CVector3f move = cmdMgr.GetMoveVector();
+  cmdMgr.ClearLocomotionCmds();
+  const pas::EStepDirection step = FindBestStepDirection(move);
+  if (!move.IsMagnitudeSafe() || step == pas::kSD_Forward) {
+    cmdMgr.SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed);
+    cmdMgr.DeliverCmd(CBCLocomotionCmd(move, CVector3f::Zero(), 1.f));
+    return;
+  }
+  CVector3f face = CVector3f::Zero();
+  switch (step) {
+  case pas::kSD_Backward:
+    face = -move;
+    break;
+  case pas::kSD_Left:
+    face = CVector3f(-move.GetX(), move.GetY(), move.GetZ());
+    break;
+  case pas::kSD_Right:
+    face = CVector3f(move.GetX(), -move.GetY(), move.GetZ());
+    break;
+  default:
+    break;
+  }
+  cmdMgr.SetSteeringSpeedRange(1.f, 1.f);
+  cmdMgr.DeliverCmd(CBCLocomotionCmd(move, face.AsNormalized(), 1.f));
+}
+
+// fn_75_8EC8 (the chassis's separation steering, 0x8EC8-0x915C): the object list walk (the
+// state manager's list at 0x830), the head's own check (the command module's chassis id at
+// 0xEFA) and the separation call (the DOL's CSteeringBehaviors::Separation, whose retail
+// signature takes a radius vector the host's does not) are not ported yet, so the vector is zero
+// and the separation command is never delivered.
+CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager&) {
+  StandIn("fn_75_8EC8 (0x148) (the chassis's separation steering)");
+  return CVector3f::Zero();
 }
 
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its

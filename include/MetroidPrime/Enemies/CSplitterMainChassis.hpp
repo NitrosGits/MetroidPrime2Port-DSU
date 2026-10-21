@@ -330,6 +330,10 @@ private:
   uint mAdditiveAnimId = 0;
   // guest 0xCB8: the fade weight (fn_75_9520 counts it up and down).
   float mFadeWeight = 0.f;
+  // The retail's fn_75_986C (the chassis's own path update, called by the Patrol state) and
+  // fn_75_8EC8 (the separation steering it asks first).
+  void PortUpdatePath(CStateManager& mgr);
+  CVector3f PortSeparationVector(CStateManager& mgr);
 #endif
 };
 #else
