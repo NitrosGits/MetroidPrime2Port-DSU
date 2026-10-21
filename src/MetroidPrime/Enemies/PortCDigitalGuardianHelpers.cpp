@@ -133,7 +133,8 @@ void CDigitalGuardian::x2358_(CStateManager& mgr, float dt) {
       timer = 0.f; // the load at 0x2460
     }
     x1158_[i] = timer; // the store at 0x2464
-    if (timer <= 150.f && x10DC_[i] == 2) { // the fcmpo at 0x246C (.rodata 0x268) and 0x247C
+    // f31 is .rodata 0x264 (0) too: the lfs at 0x23A0 reads 0(r3) after the lfsu at 0x2390.
+    if (timer <= 0.f && x10DC_[i] == 2) { // the fcmpo at 0x246C and the cmpwi at 0x247C
       x1A68_(mgr, i, 1); // fn_14_1A68: the toe target's state 1
     }
   }
