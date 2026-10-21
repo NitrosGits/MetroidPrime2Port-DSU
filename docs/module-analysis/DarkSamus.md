@@ -601,3 +601,37 @@ also took them back out after the collector) and teleported the player (`tp 410.
 419.1, then morph ball): all bits cleared and kept, both sides, morph 0/1, the anim reach above /
 below / inside. Unmarked: 19B64 (the 145E4-false arm after both OnPath tests pass never ran),
 166AC (the line <= 0.5 arm), 1444C (the height-band arm). Boss z 9.43 -> 4.12, no falls.
+
+**Slice 11** (2026-10-21). *The shipped stage data* (each DSBS script object read from the MREAs,
+SLdrDSStageInfo weights; a bit is on when its weight > 0, fn_10_17D50). Agon Wastes /
+10_sand_alamostorage (area 46) layer 6: the actor links stage 182e0198 first (IS05), which goes
+(kSS_Connect) to 182e019f and then 182e009e. 0198 (advance below 50 % health): meleeAttack 1,
+meleeDash 8, scatter 10, movingScatter 5, missile 5, missileJump 15, taunt/pause 0.02 = mask 0x6D8
+plus 0x1/0x4. 019f (below 10 %): meleeAttack 1, meleeDash 8, **dive 20, superMissile 10**. 009e
+(final, threshold -1): dive 30. Sanctuary / 10_cliff_rooftop (area 65) layer 2: six stages
+(80/60/40/20/10 % and a final -1); 08410175 has dive 50 + superMissile 10, 08410177 superMissile 15,
+08410174 dive 60 + meleeAttack 15. So 0x1, 0x4, 0x20 and 0x100 are all enabled by shipped data in
+the encounter the runs use: 0x6D8 was only the first stage. The slice-10 markers stay. Their arms
+that ran only under the forced mask: 164C0/16418 (0x100 path), 16600/16984/16ADC (0x20 ring) - all
+reachable once 019f is active with an unmorphed player in band 1; 141BC's "above" arm (0x4 forced
+with an unmorphed player; shipped 0x4 survives only with a morphed player, fn_10_1A278); 12B38's
+morph = 1 arm, which 19B64 cannot produce from shipped data (1A278 clears 0x20 when morphed) but its
+other caller, the dive state fn_10_11FA4, can (a player who morphs during the dive); not run yet.
+13EE0/13E2C/16B1C/145E4 ran on the natural 0x10 path.
+
+*The stage advance* is in: fn_10_193A0 (from Think before the attack pick, 0x0001B308), 194AC (the
+next stage, the first kSS_Connect link), 17E90 (health percent = 100 x hp / initial hp), B86C (wakes
+the AI-hint chains linked with kSS_InternalState6 when the new stage's +0x35 is set) and the 0x97C
+flags (`mUseAltScan` = +0x34, `mCanDie` = +0x32 not 1; F40C/F488 that read them are not ported).
+Runs (reverted probes, `damage` steps from the console): Agon 0198 -> 019f at 40 % (300/600 = 50 %
+did not advance, strict `<`); rooftop (`WORLD=10_cliff_rooftop`, `LAYER2@400`, boss u04f7, 600 hp)
+went 0173 -> 0172 (79 %, mCanDie 0) -> 0175 (58 %, 1) -> 0176 (37 %, 0) -> 0177 (19.5 %, hints on:
+B86C walked 58 type-0x11 chains, each to four active radius-0 hints) -> 0174 (9 %, threshold -1, no
+further advance). Marked 193A0, 194AC, 17E90 (the null-stage and no-link arms are unreachable: every
+encounter links a first stage, and only the final stage, threshold -1, lacks a link). B86C unmarked:
+the inactive-next-hint, chain-end and non-0x11-start arms never ran (the shipped chains are loops of
+already-active hints).
+
+*SideDash* fn_10_153EC (+ fn_10_EDB8, the slot weights 0.6/0.7/1/1/0.8/0.8/0.9/0.9) is ported but
+unmarked: the actor's FSM2 (59 states, the MP2_DS_FSM dump) has no SideDash node, so no shipped
+transition enters it.
