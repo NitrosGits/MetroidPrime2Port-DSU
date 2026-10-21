@@ -1270,3 +1270,20 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   dropShieldsFx (data +0x48) into 0xEF4.
 - SeekLineOfSight 1524C stays a stand-in. SetVisualTarget only writes 0xDA0/0xDB8/0xDAC..0xDB4,
   but CVisualKnowledge::Update is unported, so HasLineOfSight would stay false.
+
+## 2026-10-21: root vulnerability settled
+
+- The table is loaded right. The area-53 DGHD's raw patterned vulnerability (dumped from the loader,
+  6172-byte instance) gives power 100/effect 3, dark 50/3, light 200/3, missile 100/3, and the
+  charged/combo entries 100/50/200 with effect 3; everything else is 0. LdrToWeaponVulnerability
+  (fn_8023B298) passes the effect through unchanged, and the runtime table after
+  SetVulnerableToDamage matched (1.0/0.5/2.0, effect 3).
+- The bug was the predicate. Retail 12D98 calls the one-argument `WeaponHits` (0x800DB834),
+  which treats effect 3 as a hit. That is the host's `WeaponHurts`. The host's two-argument
+  `WeaponHits` is retail's other overload (0x800DBA50). With 12D98 on `WeaponHurts`, beams take
+  0x10E0 200 → -7.5 (power 2, dark 7.5, light 40 per shot). Then SetImmuneToDamage, SelectRetreatPlatform
+  (17 waypoints, both compare arms) and SetStunnedPosition's platform path ran, the 12818
+  platform arm held the ball 1931 times, and the head was destroyed.
+- Marked: 13EB8, 13C6C, 15054, 14F74, 14B60, 13F70 (their unrun arms are null and empty-data guards
+  only). Unmarked: 12D98 (armour-on, no-weapon and zero-damage arms unrun), 12818 (inactive-ball
+  arm unrun, out-of-range arm untraced), 14470 (random picks 0 and 1 unseen; 1/2/3 ran).

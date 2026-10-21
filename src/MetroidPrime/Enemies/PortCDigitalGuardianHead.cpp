@@ -355,10 +355,8 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
 // it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
 // 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
 // the ball is pass-through again. .rodata 0x960 is 0.
-// Unmarked: the 0x1038 platform branch has not run. Its writer, SelectRetreatPlatform, runs only
-// once ShouldRetreat sees the gravity repulsor (0x10E0) at 0, which needs XRDG beam damage on the
-// root collider; the area-53 harness's beam shots never touched it (only bombs, which fail
-// WeaponHits).
+// Unmarked: the area-53 fight ran the unmorphed, 0xF28 and in-range platform arms; the inactive
+// ball arm never ran and the out-of-range arm was not traced.
 void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
   x10F5_ &= ~0x80;
   if ((x10F4_ & 0x10) == 0) {
@@ -481,9 +479,8 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
 // (state cmd 0x1C, weight .rodata 0x96C = 1). Then the gravity repulsor's health (0x10E0) drops
 // by it (even at 0), the weapon is remembered and "HeadModuleHit" (data +0x2C) plays at the
 // collider, downward.
-// Unmarked: in area-53 runs (2026-10-21) all four beams reached the root after
-// SetVulnerableToDamage, the weapon was found, and WeaponHits was false every time; the damage
-// branch never ran.
+// Unmarked: the area-53 fight ran the not-root, same-weapon, miss, damage and flinch arms; the
+// armour-on, no-weapon and zero-damage arms never ran.
 void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
     return;
@@ -497,9 +494,9 @@ void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if (weapon == nullptr || touched == x1040_) {
     return;
   }
-  // The host's WeaponHits takes a direct flag retail's lacks; 0 skips its radius test.
-  if (!col->GetDamageVulnerability()->WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
-                                                 0)) {
+  // Retail's one-argument WeaponHits (0x800DB834) is the host's WeaponHurts: an effect-3 entry
+  // (every damaging entry of the head's table) counts, and its multiplier still applies.
+  if (!col->GetDamageVulnerability()->WeaponHurts(weapon->GetCurrentDamageInfo().GetWeaponMode())) {
     return;
   }
   const float damage =
@@ -1221,7 +1218,7 @@ void CDigitalGuardianHead::SetVulnerableToDamage(CStateManager& mgr, float dt) {
 
 // fn_14_13EB8: the root collider (0xE00) is immune again (ImmuneRicochetVulnerability, the host's
 // ReflectVulnerabilty, as fn_14_13318 gives it).
-// Unmarked: the area-53 run never reached it.
+// @ fn_14_13EB8
 void CDigitalGuardianHead::SetImmuneToDamage(CStateManager& mgr, float dt) {
   if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
     root->SetDamageVulnerability(CDamageVulnerability::ReflectVulnerabilty());
@@ -1327,6 +1324,7 @@ DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
 // fn_14_15054: the "RaisedShields" effect state (.rodata 0x950) off; at locator 1 the drop-shields
 // effect (0xEF4, "Drop Shields Fx", .rodata 0xA00) at this head's scale, then the drop-shields
 // sound (data +0x64) facing the locator's column 1.
+// @ fn_14_15054
 void CDigitalGuardianHead::DropShields(CStateManager& mgr, float dt) {
   ModelData()->AnimationData()->SetEffectState(rstl::string_l("RaisedShields"), false, mgr);
   const CTransform4f xf = GetLctrTransform(CSegId(1));
@@ -1347,6 +1345,7 @@ void CDigitalGuardianHead::DropShields(CStateManager& mgr, float dt) {
 
 // fn_14_14F74: the "RaisedShields" effect state on, then the raise-shields sound (data +0x4C) at
 // locator 1, facing its column 1.
+// @ fn_14_14F74
 void CDigitalGuardianHead::RaiseShields(CStateManager& mgr, float dt) {
   ModelData()->AnimationData()->SetEffectState(rstl::string_l("RaisedShields"), true, mgr);
   const CTransform4f xf = GetLctrTransform(CSegId(1));
@@ -1354,6 +1353,7 @@ void CDigitalGuardianHead::RaiseShields(CStateManager& mgr, float dt) {
 }
 
 // fn_14_14B60: bit 0x40 of 0x10F4 cleared, the body back to combat locomotion.
+// @ fn_14_14B60
 void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
   x10F4_ &= ~0x40;
   BodyController()->SetLocomotionType(pas::kLT_Combat);
@@ -1390,6 +1390,7 @@ void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
 
 // fn_14_13F70: the IS02/ATCH player hint, unless already this head's, takes this head as its
 // actor (0x1AC) and gets INCR from this head on the player's behalf.
+// @ fn_14_13F70
 void CDigitalGuardianHead::GrabPlayerHintControl(CStateManager& mgr, float dt) {
   CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(
       mgr.ObjectById(CheckConnectedObject(mgr, kSS_InternalState2, kSM_Attach)));
@@ -1406,7 +1407,7 @@ void CDigitalGuardianHead::GrabPlayerHintControl(CStateManager& mgr, float dt) {
 // waypoint's ARRV/NEXT chain (at most 30 waypoints: the counter starts at 1 and stops at 0x20)
 // the one nearest the head (from .rodata 0x9D8, FLT_MAX; a strictly smaller squared distance
 // wins) is where the platform teleports, and the platform becomes 0x1038 (0x13E80).
-// Unmarked: the area-53 run never reached it (see fn_14_12818).
+// @ fn_14_13C6C
 void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
   x1038_ = kInvalidUniqueId;
   if (x1044_.size() == 0) {
