@@ -349,7 +349,6 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
-SPLITTER_TRIGGER_STANDIN(ShouldAttack, fn_75_5624)
 SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
@@ -1471,6 +1470,12 @@ void CSplitterCommandModule::PathFind(CStateManager& mgr, EStateMsg msg, float d
   } else if (msg == kStateMsg_Deactivate) {
     mAutoDestructFlags |= 0x80;
   }
+}
+
+// fn_75_5624 (the head's ShouldAttack trigger, 0x5624-0x5644): the countdown at 0xF0C is at or
+// below 0.0f (0x5630 fcmpo, 0x5634 cror lt|eq).
+bool CSplitterCommandModule::ShouldAttack(CStateManager&, const CTriggerData&) const {
+  return mCountdownTimerB <= 0.f;
 }
 
 // fn_75_565C (the head's InLaserPulseRange trigger, 0x565C-0x570C): with the target at 0xEFE
