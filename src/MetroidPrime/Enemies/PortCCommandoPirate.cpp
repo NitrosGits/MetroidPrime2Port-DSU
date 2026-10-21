@@ -127,6 +127,7 @@ void StandInFn(const char* fn) {
   fprintf(stderr, "[cmdopirate] stand-in %s\n", fn);
 }
 
+
 // The body's two FSM tables. Retail builds them in a static initialiser (fn_9_F9F8,
 // .ctors): the tables are lbl_9_data_198 (34 triggers, .data 0x198) and lbl_9_data_568
 // (36 states, .data 0x568), each entry 16 bytes {name, 0, 0xFFFFFFFF, fn}, and the
@@ -250,7 +251,6 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
 , xbd8_(kInvalidUniqueId)                          // 0xbd8, the id the delete case deletes
-, x6c0_(kInvalidUniqueId)                          // 0x6c0, the AI waypoint the module follows
 , xbda_(kInvalidUniqueId)                          // 0xbda, the waypoint the commando is at
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
@@ -1343,7 +1343,8 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
     return false;
   }
   const CScriptAIWaypoint* waypoint =
-      TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(x6c0_));  // 0x00002AD8..0x00002AF8
+      TCastToPtr< CScriptAIWaypoint >(
+          mgr.ObjectById(mWaypointNavigation.GetDestination()));  // 0x00002AD8..0x00002AF8
   if (waypoint == nullptr) {
     return false;
   }
@@ -1353,12 +1354,15 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
   CVector3f position;
   CVector3f forward;
   if (useNext) {  // 0x00002B08
-    const TUniqueId id = FindConnectedObject_if(mgr, kSS_Arrived, kSM_Next, skWaypointPredicate);
+    // The guest searches the *waypoint's* connections (its r4 is the waypoint the flags were
+    // read from, 0x00002AF4..0x00002B44), not the commando's own.
+    const TUniqueId id =
+        waypoint->FindConnectedObject_if(mgr, kSS_Arrived, kSM_Next, skWaypointPredicate);
     const CScriptWaypoint* next = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));
     if (next == nullptr) {  // 0x00002B80..0x00002B84
       return false;
     }
-    x6c0_ = id;                                       // 0x00002B8C
+    mWaypointNavigation.SetDestination(id);           // 0x00002B8C (guest this+0x6C0)
     position = next->GetTranslation();                // 0x00002B90..0x00002BA8
     forward = next->GetTransform().GetForward();      // 0x00002BAC..0x00002BC4
   } else {
@@ -1395,10 +1399,9 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
 // type depends on the sign of the dot product between the direction and the actor's own right
 // column (guest this+0x24, 0x34 and 0x44, 0x000026E0..0x00002718): 6 when it is positive
 // (0x00002720..0x0000276C) and 5 when it is not (0x000027B0..0x000027FC). When the actor faces
-// the waypoint the type is 4 (0x00002840..0x00002890). The retail's loop attack types 5 and 6 are
-// past the host's pas::ELoopAttackType (it stops at kLAT_Four), so the value comes straight from
-// the asm. The guest also sets the command's flag byte's 0x80 bit (0x00002740, the retail's
-// skip-into flag), which the host's CBCLoopAttackCmd cannot be told about.
+// the waypoint the type is 4 (0x00002840..0x00002890). The guest also sets the command's flag
+// byte's 0x80 bit (0x00002740, 0x000027D0 and 0x00002860) - the retail's skip-into flag - and
+// leaves the "wait for the animation" word at 0 (0x0000274C and 0x000027DC).
 //
 // The movement: the direction in the actor's own frame (TransposeRotate, 0x000028CC) times the
 // charge speed and the frame time (0x00002918) moves the actor, and the module's own push vector
@@ -1429,13 +1432,14 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   const CQuaternion turn = CQuaternion::SlerpLocal(current, target, factor);
   SetTransform(turn.BuildNormalized().BuildTransform4f(pos));  // 0x000026A4..0x000026C0
   const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), dir);  // 0x000026CC
-  int type = 4;  // 0x00002840
+  pas::ELoopAttackType type = pas::kLAT_Four;  // 0x00002840
   if (angle > 0.17453292f) {  // rodata_498 = 10 degrees, 0x000026D8
     const float dot = CVector3f::Dot(dir, GetTransform().GetRight());  // 0x000026E0..0x00002718
-    type = (dot > 0.f) ? 6 : 5;  // 0x0000271C
+    type = (dot > 0.f) ? pas::kLAT_Six : pas::kLAT_Five;  // 0x0000271C, 0x000027D8
   }
-  BodyController()->CommandMgr().DeliverCmd(
-      CBCLoopAttackCmd(static_cast< pas::ELoopAttackType >(type), false));
+  CBCLoopAttackCmd cmd(type, false);  // 0x00002744..0x0000276C, the "wait" word stays 0
+  cmd.SetSkipInto(true);  // the guest's flag byte's 0x80 bit (0x00002740)
+  BodyController()->CommandMgr().DeliverCmd(cmd);
   // The movement: the direction in the actor's own frame (0x000028CC) times the charge speed and
   // the frame time (0x00002918).
   const CVector3f local = GetTransform().TransposeRotate(dir);
@@ -2359,12 +2363,21 @@ bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData&
   return true;                                                     // 0x0000B5F4
 }
 
+// @ fn_9_B1E0
 // fn_9_B1E0 (0x70 bytes): the trigger that enters the module's scripted shield charge.
 //
 // The byte at guest this+0xC66's 0x80 bit (the extrwi at 0x0000B1F0) and the byte at guest
 // this+0xC64's 0x01 bit (the clrlwi at 0x0000B1FC) both have to be right, and the AI waypoint the
-// module follows (the id at guest this+0x6C0) has to allow the boost: the waypoint's flags (the
-// word at the waypoint's +0x164) have to have their 0x20 bit (the rlwinm at 0x0000B22C).
+// module follows (the id at guest this+0x6C0 - the waypoint navigation's destination field) has to
+// allow the boost: the waypoint's flags (the word at the waypoint's +0x164) have to have their
+// 0x20 bit (the rlwinm at 0x0000B22C).
+//
+// The three arms the run does not reach are unreachable in the shipped data: the FollowAttackPattern
+// state (fn_9_961C) sets the 0x80 bit of guest this+0xC66 and the waypoint on its activate
+// (0x000096CC and 0x00009754), and this trigger is only evaluated while that state is current;
+// nothing in the module ever sets the 0x01 bit of guest this+0xC64 (the constructor clears it at
+// 0x0000E1AC and every store to that byte sets another bit - the 0x02, 0x04, 0x08, 0x10, 0x20,
+// 0x40 or 0x80 one).
 bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {
   if ((xc66_ & 0x80) == 0) {  // 0x0000B1F0
     return false;
@@ -2373,7 +2386,8 @@ bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) 
     return false;
   }
   const CScriptAIWaypoint* waypoint =
-      TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(x6c0_));  // 0x0000B218..0x0000B224
+      TCastToPtr< CScriptAIWaypoint >(
+          mgr.ObjectById(mWaypointNavigation.GetDestination()));  // 0x0000B218..0x0000B224
   if (waypoint == nullptr) {
     return false;
   }
@@ -2943,7 +2957,7 @@ void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, flo
     if (xbda_ == kInvalidUniqueId) {  // 0x0000968C..0x00009690
       id = GetConnectedObject(mgr, kSS_Attack, kSM_Follow);  // 0x000096B8
     }
-    x6c0_ = id;  // 0x000096CC
+    mWaypointNavigation.SetDestination(id);  // 0x000096CC (guest this+0x6C0)
     // The guest's guest this+0x6C0 is the waypoint navigation's own destination field (the
     // navigation sits at guest this+0x6B8 and its destination is at +0x8), so the host's
     // navigation gets it too: the AttackPatternOver trigger reads the destination there
@@ -2963,7 +2977,8 @@ void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, flo
   }
   case kStateMsg_Update: {  // the guest's message 1
     const CScriptAIWaypoint* waypoint =
-        TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(x6c0_));  // 0x00009774..0x00009780
+        TCastToPtr< CScriptAIWaypoint >(
+            mgr.ObjectById(mWaypointNavigation.GetDestination()));  // 0x00009774..0x00009780
     if (waypoint != nullptr) {
       const uint flags = waypoint->GetFlags();  // the word at the waypoint's +0x164
       if ((flags & 0x02) != 0 || (flags & 0x04) != 0) {  // 0x00009788, 0x00009790
@@ -3500,7 +3515,7 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
     if ((xc64_ & 0x04) != 0) {  // 0x00007EA0..0x00007EA4
       BodyController()->CommandMgr().DeliverCmd(kBSC_AbortScripted);  // 0x00007EC8 (the id 0xd)
     }
-    xbda_ = x6c0_;  // 0x00007ED8..0x00007EE8
+    xbda_ = mWaypointNavigation.GetDestination();  // 0x00007ED8..0x00007EE8 (guest this+0x6C0)
     mVerticalMovement = false;  // 0x00007EF0..0x00007EF8
     AddMaterial(kMT_GroundCollider, mgr);  // 0x00007EFC
     CMaterialFilter filter = GetMaterialFilter();

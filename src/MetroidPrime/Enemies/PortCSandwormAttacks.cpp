@@ -524,8 +524,11 @@ bool CSandworm::GrabAttackFinished(CStateManager& mgr, const CTriggerData& data)
   return (x15AC_toss.x58_flags & 0x40) != 0;
 }
 
-// fn_56_35EC (ported, not exercised yet)
-// Data-gated: the BG prefab never selects kind 4 (picked 7), so this cannot run; see Sandworm.md Port status.
+// @ fn_56_35EC
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into BombFountainAttack): the trigger was asked
+// 478 times, so both outcomes of the test ran - the phase flag is set by the eye's health path and
+// cleared on every state exit. The old "data-gated" note was wrong: the BG prefab's AFSM has the
+// BombFountainAttack state, and forcing it (console `fsm`) runs the picked-7 chain.
 bool CSandworm::HitDuringWindUp(CStateManager& mgr, const CTriggerData& data) const {
   return (x19A8_bombPhase.xc_flags & 0x80) != 0;
 }
