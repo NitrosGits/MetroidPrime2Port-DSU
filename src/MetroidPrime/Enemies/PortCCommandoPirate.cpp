@@ -3595,7 +3595,8 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     if (!x3CBC_(mgr, xb94_, 0.f)) {                   // 0x000087C0 (the guest's own helper)
       break;
     }
-    const CVector3f delta = xb94_ - GetTranslation();  // 0x000087CC..0x00008808
+    CVector3f delta = xb94_ - GetTranslation();  // 0x000087CC..0x00008808
+    delta.SetZ(0.f);                            // 0x0000880C (rodata_494 = 0.0f)
     if (!delta.IsMagnitudeSafe()) {                    // 0x00008810
       break;
     }
