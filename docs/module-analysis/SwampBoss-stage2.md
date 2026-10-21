@@ -443,3 +443,36 @@ the same gap §6 lists for `Blow`/`Flinch`.
   the growth's own height (the player would have to be standing on something at z ~ 85).
   Until a joint is hit, `fn_79_2E84` (only reachable from `DarkLurk`), `fn_79_3578` (only from
   `Blow`) and `fn_79_1E40`/`fn_79_2A84`/`fn_79_33BC` stay compared-but-unmarked.
+
+### 7.7 The growth spheres are static while their joints move (2026-10-21, fourth lane pass)
+
+A probe build logged every joint sphere's position next to its locator's world transform
+(`CPatterned::GetLctrTransform` of the same name) over several frames, plus the result of
+retail's `TCastToPtr<CWeapon>` on the joint's last-touched object:
+
+    boss=(-176.1,-123.8,65.4) fwd=(0.98,-0.18,0.00)
+      s0=(-176.6,-103.2,85.1)/j=(-172.3,-104.1,90.7)  s1=(-174.5,-104.0,97.2)/j=(-171.6,-105.1,102.9)
+      s2=(-181.6,-142.9,83.6)/j=(-184.3,-142.2,88.3)  s3=(-179.5,-143.6,95.7)/j=(-183.6,-143.2,100.5)
+      s4=(-185.7,-116.5,80.6)/j=(-185.4,-117.0,78.6)  (the six body spheres track their joints)
+    boss=(-172.6,-123.8,65.7) fwd=(0.93,-0.37,0.00)
+      s0=(-176.6,-103.2,85.1)/j=(-166.6,-105.9,83.4)  s1=(-174.5,-104.0,97.2)/j=(-175.8,-101.3,90.1)
+
+- **The cast works.** The first joint hit logs `touched=3040 weapon=1`: the beam's projectile *is*
+  a `CWeapon` (`CGameProjectile : public CWeapon`, CGameProjectile.hpp:27), so retail's
+  `TCastToPtr<CWeapon>` on the joint's last-touched object succeeds. §7.5's "the cast is the
+  blocker" reading was wrong.
+- **A beam hit works.** That hit took the joint from 500 to 498 HP: with the player teleported
+  level with the spheres and facing them the beam reaches them.
+- **The four growth spheres are frozen** at the positions they had when they were made, while
+  their joints (and the six body spheres) move with the boss. The cause is in this module's own
+  code: `UpdatePlayerSideMaterials` (fn_79_24E0) calls `SetGrowthsActive(mgr, playerBehind)`,
+  i.e. it *deactivates* the growth collision actors whenever the player is in front of the boss -
+  the opposite of the same function's comment ("growths are only targetable while the player is
+  in front of the boss") - and an inactive collision actor is neither moved by
+  `CCollisionActorManager::Update` nor in the object space the beam collides against. While the
+  player stands in front, the growth spheres sit still and cannot be shot; only the six body
+  spheres are reachable.
+- **Next:** read the retail's fn_79_24E0 to settle the flag's polarity before changing
+  `SetGrowthsActive(mgr, playerBehind)`; if the retail keeps the growths active while the
+  player is in front, that one line is the whole blocker for the growth kills, and the dark phase
+  (with fn_79_2E84, fn_79_3578 and the port of fn_79_7E24) follows from it.
