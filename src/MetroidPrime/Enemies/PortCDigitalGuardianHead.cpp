@@ -10,6 +10,7 @@
 
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
@@ -20,7 +21,9 @@
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CObjectList.hpp"
+#include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Weapons/CBomb.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
@@ -148,6 +151,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , mData(data)
 , xD70_(nullptr)
 , xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
+, xDD0_(LdrToDamageVulnerability(data.bombPitVulnerability)) // 0x18370
 , xE00_(kInvalidUniqueId)
 , xDA0_(kInvalidUniqueId)
 , xDB0_(0.f)
@@ -229,7 +233,7 @@ void CDigitalGuardianHead::Think(float dt, CStateManager& mgr) {
   }
   StandInFn("CVisualKnowledge::Update (head 0xD80)");
   x13AE0_(dt);
-  StandInFn("fn_14_12818 (0x2EC, head Think)");
+  x12818_(mgr, dt);
   x1223C_(mgr);
 }
 
@@ -330,6 +334,80 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
   exclude.Add(kMT_NoPlatformCollision);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), exclude));
   // fn_14_60C0 (the vector's destructor, 0x13790)
+}
+
+// fn_14_12818: bit 0x80 of 0x10F5 (a ball held) is cleared, then only with HeadArmorDestroyed
+// (0x10F4 bit 0x10) each ball (.rodata 0x928's radius): a destroyed slot's looping sound (0xF28)
+// follows its locator (translation, column 1, volume 0x7F) and skips the rest; otherwise a fully
+// morphed player (0x38C when 0x390 is 0) on an active ball collider within the radius
+// (|player + (0, 0, ball radius) - ball|^2 <= r^2, the cror at 0x129E8) is stopped and moved onto
+// it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
+// 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
+// the ball is pass-through again. .rodata 0x960 is 0.
+// @ fn_14_12818
+void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
+  x10F5_ &= ~0x80;
+  if ((x10F4_ & 0x10) == 0) {
+    return;
+  }
+  CPlayer* player = mgr.Player(0);
+  for (int i = 0; i < 2; ++i) {
+    if (xF28_[i]) {
+      const CTransform4f xf = GetLctrTransform(xDCC_[i]);
+      CSfxManager::UpdateEmitter(xF28_[i], xf.GetTranslation(), xf.GetColumn(kDY), 0x7F);
+      continue;
+    }
+    const CPlayer::EPlayerMorphBallState state =
+        player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+            ? player->GetMorphballTransitionState()
+            : CPlayer::kMS_Unmorphed;
+    if (state != CPlayer::kMS_Morphed) {
+      continue;
+    }
+    CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]));
+    if (ball == nullptr || !ball->GetActive()) {
+      continue;
+    }
+    const CVector3f ballPos = ball->GetTranslation();
+    const float ballRadius = player->GetMorphBall()->GetBallRadius();
+    const float r2 = skHeadSphereJoints[i].radius * skHeadSphereJoints[i].radius;
+    const CVector3f playerPos = player->GetTranslation();
+    const float dx = (playerPos.GetX() + 0.f) - ballPos.GetX();
+    const float dy = (playerPos.GetY() + 0.f) - ballPos.GetY();
+    const float dz = (playerPos.GetZ() + ballRadius) - ballPos.GetZ();
+    if (dz * dz + (dx * dx + dy * dy) <= r2) {
+      player->Stop();
+      player->MoveToWR(
+          CVector3f(ballPos.GetX() - 0.f, ballPos.GetY() - 0.f, ballPos.GetZ() - ballRadius), dt);
+      if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+        CMaterialFilter filter = plat->GetMaterialFilter();
+        filter.ExcludeList().Add(kMT_Player);
+        plat->SetMaterialFilter(filter);
+      }
+      ball->SetDamageVulnerability(xDD0_);
+      x10F5_ |= 0x80;
+      x126C8_(mgr, ball->GetTranslation(), r2);
+    } else {
+      ball->SetDamageVulnerability(CDamageVulnerability::PassThroughVulnerabilty());
+    }
+  }
+}
+
+// fn_14_126C8: the near list in the box pos -/+ half, filtered to include material 36 (.data
+// 0xEA0, the bombs) only; every CBomb in it is moved to pos.
+// @ fn_14_126C8
+void CDigitalGuardianHead::x126C8_(CStateManager& mgr, const CVector3f& pos, float half) {
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  const CVector3f center = pos;
+  const CAABox box(CVector3f(center.GetX() - half, center.GetY() - half, center.GetZ() - half),
+                   CVector3f(center.GetX() + half, center.GetY() + half, center.GetZ() + half));
+  mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Bomb)), this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(*it))) {
+      bomb->SetTranslation(center);
+    }
+  }
 }
 
 // fn_14_17D38: the active flag is read before the base's call (0x17D64..0x17D78).

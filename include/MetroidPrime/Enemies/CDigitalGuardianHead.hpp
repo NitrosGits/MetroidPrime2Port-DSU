@@ -150,6 +150,12 @@ private:
   void x119E4_(CStateManager& mgr);
   // fn_14_13AE0 (0x28 bytes): the three timers.
   void x13AE0_(float dt);
+  // fn_14_12818 (0x2EC bytes): with the armour gone, a morph ball sitting on an intact ball's
+  // bomb slot is held there and makes the ball damageable (0xDD0); a destroyed slot's sound
+  // follows its locator.
+  void x12818_(CStateManager& mgr, float dt);
+  // fn_14_126C8 (0x150 bytes): the bombs in the box of half-size half round pos move to pos.
+  void x126C8_(CStateManager& mgr, const CVector3f& pos, float half);
   // fn_14_13318 (0x490 bytes): the collision actor manager (two ball spheres and the root),
   // the colliders' vulnerabilities and material bits, then the head's own material filter.
   void x13318_(CStateManager& mgr);
@@ -198,6 +204,7 @@ private:
   CCollisionActorManager* xD70_;     // 0xD70: the collision actor manager (null until built)
   TUniqueId xDC4_[2]; // 0xDC4: the ball colliders' ids (fn_14_13284; count 2 at 0xDC0)
   CSegId xDCC_[2];    // 0xDCC: the balls' locators ("L_ball_LCTR", "R_ball_LCTR")
+  CDamageVulnerability xDD0_; // 0xDD0: a ball's vulnerability with a bomb slot in use (data +0x2F8)
   TUniqueId xE00_;    // 0xE00: the root collider's id (fn_14_13318)
   // 0xDA0 / 0xDB0 / 0xDB8: the visual knowledge's target id, its sight time and its flag byte
   // (CVisualKnowledge at 0xD80; HasLineOfSight reads them). The class is not ported, so they keep
