@@ -48,6 +48,7 @@ PORT_ONLY = [
     "src/MetroidPrime/PortPoolStandIns.cpp",
     "src/MetroidPrime/PortScanTarget.cpp",
     "src/MetroidPrime/PortSkipFrontEnd.cpp",
+    "src/MetroidPrime/PortStateMachineBase.cpp",
     "src/MetroidPrime/PortStreamNewGameState.cpp",
     "src/MetroidPrime/PortTenthSyncStubs.cpp",
     "src/MetroidPrime/PortTweakGlobals.cpp",

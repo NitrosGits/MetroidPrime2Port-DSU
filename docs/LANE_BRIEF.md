@@ -53,6 +53,19 @@ display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy 
 what it forced, so an arm the fight cannot reach can be taken; the module-specific part (the class
 and the forced members) lives in the spec, the script itself has no module in it.
 
+Compiler coverage replaces the per-function gdb spec when the question is "which arms of *every*
+body ran": a coverage build (`-DMP_PORT_COVERAGE=ON`, its own build dir `build-port-cov`)
+compiles the port's REL module bodies - the sources `tools/modules_port.txt` lists - with gcov, so
+one ordinary run reports the branch coverage of all of them at once. `tools/cov/gcov_report.py
+<build dir> <gcov prefix dir> [--module <Name>] [--fn fn_10_1D794 ...]` prints one row per body:
+the retail id, the C++ name, the lines hit, the branches taken, the lines whose branch was never
+taken, and `ALL-ARMS` when every branch was taken. The run scripts set `GCOV_PREFIX` and
+`GCOV_PREFIX_STRIP` when the binary is a coverage build, so concurrent runs write into their own
+directory, and the game's flush hook (`platform/port_coverage.cpp`) writes the counters on a clean
+quit, on SIGTERM and on SIGINT. Several prefix dirs may be given: their counters add up, so the
+arms of a natural run and of a forced one merge into one profile. gdb stays the tool for the arms
+no run reaches (`tools/cov/force.sh`): coverage says which arm is missing, not how to reach it.
+
 ## Gates (one line each in the report)
 
 Build `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED; `python3 tools/gen_files_cmake.py
