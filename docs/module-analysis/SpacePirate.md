@@ -568,6 +568,14 @@ arm but the switch default (WallHang marked). CoverBlown AA64 ALL-ARMS with `spa
 8/20 edges untaken; unmarked. The seven dead states carry a 'dead in shipped data' comment and TSV note.
 Only LaunchGrenade and ShouldAttack remain unmarked among live states/triggers.
 
+**Helpers-lane gaps (2026-10-21)**: ChooseTarget EDEC now has retail's team-target flag (the loop
+breaks at an inactive target, asm 0xEE74) and the squad branch (asm 0xEF50-0xEFA4). The squad radius
+there is 50 (rodata B70), not the 20 of ChooseTeamTarget (B74). The port-only null check on the
+player is gone. Every arm runs except the >30-unit swap, which needs a second player; EDEC is marked.
+KnockBack C684 stores both AddEmitter handles in 0xc00 (asm 0xC944, 0xC9B8). ShouldFrenzy 3220 now
+also rolls a burst while the bss_40 charge-player list is non-empty (asm 0x3290-0x32A4). ShouldAttack
+A71C stays unmarked: console staging of its crowd fails (CoverBlown ends Cover first), see its comment.
+
 **Coverage without probes**: the shared harness `tools/cov/run.sh` (docs/LANE_BRIEF.md, "Coverage without
 probes") with the spec `tools/cov/specs/spacepirate.py` and the driver `tools/drivers/spacepirate_drive.py`:
 
