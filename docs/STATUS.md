@@ -16,13 +16,13 @@ boostguardian `da45064c5`, digitalguardian `227e42fb1`, commandopirate `cf9eb199
 green, smoke5 17/17 clean (`/tmp/opencode/smoke5/`), 1159 markers. Upstream build must run before the
 port build in a fresh worktree (writes `build/G2ME01/include/*.inc`; needs `extern/musyx` checked out).
 
-Batch 6 (2026-10-21, branch `batch6` in `../wt-mp2-batch5`, not yet in port): merged emperoring3
+Batch 6 (2026-10-21, merged into port as `3b2effc06`, 1677 markers): merged emperoring3
 `43eb8312e`, emperoring `5a594830e`, boostguardian `673fbcb56`, minoring `c8d342614`, spacepirate-vt
 `33291f63c` (conflict in PortCSpacePirateStates.cpp: kept port's WarpIn fix `4d6c4d036`, dropped the
 stale fn_72_7078 marker), wallcrawler2 `036ca13db`, commandopirate `6ea58f47a`, digitalguardian
 `c56aff752`, splitter `29e4bf6aa`, darksamus2 `f0de7edab`. Matching 87 OK + sha1 OK, host + link green
-(07:05). Smoke lane `ses_ea326356effehZRU1nxriGRnEo` → `/tmp/opencode/smoke6/`; then
-`port_progress --record`, merge into port.
+(07:05). smoke6 17/17 clean (rc 0, 0 caught, 0 reach-stub; stand-ins down in boostg, digig, emp1,
+emp3, ep). Batch 7 = lane commits after these bases, merged by hash.
 
 Older list (superseded by batch 6):
 spacepirate-vt `33291f63c` (8 combat marks); wallcrawler2 `036ca13db` (obstruction scan, 3 marks);
