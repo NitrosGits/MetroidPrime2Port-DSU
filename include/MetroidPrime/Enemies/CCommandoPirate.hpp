@@ -402,6 +402,7 @@ private:
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
   int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f

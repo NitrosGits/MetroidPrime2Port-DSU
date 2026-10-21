@@ -18,6 +18,7 @@
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "Collision/CCollisionInfoList.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -65,6 +66,13 @@ static const SBurst* sBurstTable[] = {&sBursts[0], &sBursts[1], &sBursts[2], &sB
 // object constructor raises it (fn_9_F418 @0x0000F4E8) and its destructor lowers it (fn_9_F290
 // @0x0000F2D0). The port does not create those objects yet, so the count stays at zero.
 static int sEgrenadeObjectCount = 0;
+
+// The module's own collision filter (the guest's lbl_9_bss_20, .bss 0x20, the two words of one
+// u64) and the flag that says it is built (the guest's lbl_9_bss_1C, .bss 0x1C). fn_9_BF44 fills
+// the filter with the two material bits kMT_Ceiling and kMT_Wall on the first collision that has
+// no object id (0x0000C060..0x0000C0E8) and only then sets the flag.
+static u64 sShieldFilter = 0;
+static bool sShieldFilterBuilt = false;
 
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
@@ -197,6 +205,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
+, xbb8_(CVector3f::Zero())                         // 0xbb8, the fourth vector; fn_9_D904 @0x0000DB5C
 , xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
 , xc50_(0.f)                                      // 0xc50, a counter; fn_9_662C lowers it
 , xc00_(0.f)                                      // 0xc00, a float; fn_9_3090 sets 0.01f
@@ -1049,11 +1058,71 @@ void CCommandoPirate::x1F88_EventStart() { StandInFn("fn_9_1F88 (0xd4 bytes)"); 
 // named stand-in.
 void CCommandoPirate::x1EF8_Activate() { StandInFn("fn_9_1EF8 (0xd4 bytes)"); }
 
+// @ fn_9_BF44
 // vtable slot 0x84 = fn_9_BF44 (0x2b0): what the blade and the shield hit.
+//
+// fn_9_BF44 (0x2b0 bytes) runs the base's own CollidedWith first (the call at 0x0000BF70) and then
+// the module's own: while the flag byte at guest this+0xC65 has its 0x04 bit (the test at
+// 0x0000BF78) the actor is the shield, and a collision with a player (an id that is not
+// kInvalidUniqueId, the compare at 0x0000BF8C) applies the shield's charge damage (the damage
+// info at guest this+0x898, the block's +0xD8) with the material filter that includes kMT_Solid
+// (the filter's three words at 0x0000C0B0..0x0000C0F0 and the type 3 at 0x0000C100) and the
+// actor's own direction (the transform's second column, the loads at 0x0000BFBC..0x0000BFC4); the
+// flag byte at guest this+0xC64 then gets its 0x02 bit (the mask 1u << (31 - 30) = 0x02, the
+// store at 0x0000C048) and the function returns.
+//
+// A collision with no object (the kInvalidUniqueId case at 0x0000C050) is the module's own
+// collision actor's: the module's material filter (the guest's lbl_9_bss_20, built once, the flag
+// lbl_9_bss_1C) is the two material bits kMT_Ceiling and kMT_Wall (the guest's __shl2i shifts 1
+// by the material id, 0x1D and 0x1E, 0x0000C060..0x0000C0E8) and the collision list is walked
+// (0x0000C120): an entry whose left material list shares a bit with that filter is the shield's
+// own hit (the flag bit is set and the entry's left normal is stored, 0x0000C178..0x0000C19C), an
+// entry whose left normal is steeper than the actor's up axis (the dot product with the
+// transform's third column at 0x0000C158..0x0000C16C, against rodata_4E8 = 0.707) is a hit too,
+// and an entry whose material list has kMT_CollisionActor (the bit 1u << (31 - 15) = 0x8000 of the
+// list's high word, 0x0000C1A8..0x0000C1C8) only stores the normal.
 void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
-                                    CStateManager& mgr) {
-  StandIn("CCommandoPirate::CollidedWith (vtable slot 0x84, fn_9_BF44)");
-  CPatterned::CollidedWith(id, list, mgr);
+                                   CStateManager& mgr) {
+  CPatterned::CollidedWith(id, list, mgr);                       // 0x0000BF70
+  if ((xc65_ & 0x04) == 0) {                                     // 0x0000BF74..0x0000BF7C
+    return;
+  }
+  if (id != kInvalidUniqueId) {                                  // 0x0000BF80..0x0000BF90
+    // The guest's CStateManager::GetObjectById is the host's CStateManager::ObjectById (the host
+    // kept the name for the const overload); both look the object up in the all-objects list.
+    CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(id));  // 0x0000BF94..0x0000BFA8
+    if (player != nullptr) {                                     // 0x0000BFA8..0x0000BFAC
+      mgr.ApplyDamage(GetUniqueId(), id, GetUniqueId(), mData.mShield.mChargeDamage,
+                      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                      GetTransform().GetColumn(kDY));             // 0x0000BFB0..0x0000C038
+    }
+    xc64_ |= 0x02;                                               // 0x0000C03C..0x0000C048
+    return;                                                      // 0x0000C04C
+  }
+  if (!sShieldFilterBuilt) {                                     // 0x0000C050..0x0000C05C
+    sShieldFilter = (u64(1) << kMT_Ceiling) | (u64(1) << kMT_Wall);  // 0x0000C060..0x0000C0E8
+    sShieldFilterBuilt = true;                                   // 0x0000C0DC
+  }
+  const int count = list.GetCount();                             // 0x0000C0EC..0x0000C118
+  for (int i = 0; i < count; ++i) {                              // 0x0000C120
+    const CCollisionInfo& info = list[i];
+    const u64 mats = info.GetMaterialLeft().GetValue();           // 0x0000C128..0x0000C130
+    if ((sShieldFilter & mats) != 0) {                            // 0x0000C134..0x0000C154
+      xc64_ |= 0x02;                                              // 0x0000C178..0x0000C184
+      xbb8_ = info.GetNormalLeft();                               // 0x0000C184..0x0000C19C
+      return;
+    }
+    const float steep =
+        CVector3f::Dot(GetTransform().GetColumn(kDZ), info.GetNormalLeft());  // 0x0000C158..0x0000C16C
+    if (steep < 0.707f) {                                         // rodata_4E8, 0x0000C170..0x0000C174
+      xc64_ |= 0x02;                                              // 0x0000C178..0x0000C184
+      xbb8_ = info.GetNormalLeft();                               // 0x0000C184..0x0000C19C
+      return;
+    }
+    if ((mats & (u64(1) << kMT_CollisionActor)) != 0) {           // 0x0000C1A4..0x0000C1BC
+      xbb8_ = info.GetNormalLeft();                               // 0x0000C1C0..0x0000C1C8
+    }
+  }
 }
 
 // vtable slot 0x9c = fn_9_C300 (0x1fc).
