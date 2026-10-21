@@ -1066,8 +1066,13 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   +0x31 is 0) and fn_10_112AC (WasHeavyHit: the last hit's elapsed time 0xC0C is not 0.0f and
   lbl_10_rodata_46C = 0.3f plus it is past the actor's elapsed time 0x8B0), plus fn_10_F840
   (Alerted: the flag byte 0x90C's bit 0x80).
+- **The 'ALRT' arm of AcceptScriptMsg** (0x0001EA1C): the alerted flag - the byte 0x90C's bit 7
+  (the rlwimi at 0x0001EA24 keeps the mask 0x80) - so the trigger fn_10_F840 (Alerted) can
+  answer true; the console's `send <id> Alert` delivers the message.
 - Marked: fn_10_10658 (PlayerTooClose) - both outcomes ran (the boss far away and next to the
-  player) - and fn_10_17CEC (GetDistanceToPlayer), which has no branch and runs in every fight.
+  player) - fn_10_17CEC (GetDistanceToPlayer), which has no branch and runs in every fight, and
+  fn_10_F840 (Alerted): the FSM2 evaluates the trigger in its TravelToCoverPoints node (the
+  MP2_DS_FSM dump) and the run put the boss there, before and after the 'Alert' message.
 - The other seven are ported but unmarked: their arms did not all run. The FSM2 evaluates a
   state's transitions in order and stops at the first that fires, and the module's own
   ShouldReact asks CanMissileDeflect first, so fn_10_142CC (FacingPlayer) is never reached in
@@ -1076,7 +1081,8 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   is below every roll that came up); fn_10_10634, fn_10_17CB8 and fn_10_112E8 have no FSM2
   transition at all; fn_10_6B78 belongs to the EnragedTravel state, which the phazon enrage
   never reaches; fn_10_BB78 is behind the earlier transitions of TravelToCoverPoints.
-- The run: Sanctuary 10_cliff_rooftop, boss u04f7, 4000 frames - the boss next to the player
-  (`place u04f7 player 3`), the missiles at it (the Y button, `press Y 45`), the states that
-  use the triggers forced one after the other (`fsm u04f7 Taunt` and so on). 0 caught, 0
-  reach-stub, exit 0.
+- The run: Sanctuary 10_cliff_rooftop, boss u04f7, 3200 frames - the boss next to the player
+  (`place u04f7 player 3`), the missiles at it (the Y button, `press Y 45`), the 'Alert' message
+  (`send u04f7 Alert`) and the states that use the triggers forced one after the other
+  (`fsm u04f7 Taunt` and so on). 0 caught, 0 reach-stub, exit 0; the MP2_DS_FSM log shows the
+  boss in TravelToCoverPoints and in Taunt, so both nodes' transition lists were evaluated.
