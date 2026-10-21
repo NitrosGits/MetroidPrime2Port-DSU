@@ -432,8 +432,8 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
 }
 
 // vtable slot 9 = fn_10_18AB8 (0x2C0): the pre-render pass. With 0xD14 above lbl_10_rodata_3FC =
-// 0.0f (0x00018AF0) the flag byte 0x90C's bit 0x20 is set (`rlwimi r0, r3, 5, 26, 26` at
-// 0x00018AFC); while it is set (`extrwi. r0, r0, 1, 26` at 0x00018B08) the renderer allocates the
+// 0.0f (0x00018AF0) the flag byte 0x90C's bit 0x20 is set
+// (`rlwimi r0, r3, 5, 26, 26` at 0x00018AFC); while it is set (`extrwi. r0, r0, 1, 26` at 0x00018B08) the renderer allocates the
 // phazon suit mask (0x00018B1C). The base's pass (0x00018B28); the colour's alpha byte 0x44F is
 // lbl_10_rodata_52C = 255.0f times 0.0f with a boost ball (fn_10_9624 at 0x00018B30) or 0xDE8
 // (0x00018B4C) (the u8 store at 0x00018B5C). With the last echo visor (0xDED bit 0x40,
@@ -442,9 +442,9 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
 // (`bge` at 0x00018BA4, 0x00018BE4..0x00018BF4). Then the gun locator's transform 0x8CC
 // (0x00018C18) and the root bone's position 0x8FC (0x00018C50..0x00018C6C), fn_10_10864
 // (0x00018C7C), the simple shadow 0xC0 from the model's bounds with 0xDE8 above 0.0f
-// (0x00018C90, 0x00018CB4), the visor bits 0xDED 0x80 (dark, `rlwimi r3, r5, 2, 24, 24` of
-// cntlzw(3 - visor) at 0x00018CD8) and 0x40 (echo, `rlwimi r0, r4, 6, 25, 25` of
-// cntlzw(1 - visor) >> 5 at 0x00018CF0), fn_10_12DD0 (0x00018D04), and with 0xFC0 above 0.0f
+// (0x00018C90, 0x00018CB4), the visor bits 0xDED 0x80 (dark, cntlzw(3 - visor) by
+// `rlwimi r3, r5, 2, 24, 24` at 0x00018CD8) and 0x40 (echo, cntlzw(1 - visor) >> 5 by
+// `rlwimi r0, r4, 6, 25, 25` at 0x00018CF0), fn_10_12DD0 (0x00018D04), and with 0xFC0 above 0.0f
 // (0x00018D18) the colour's red, green and blue bytes 0x44C..0x44E from Lerp(Black, White, 0xFC0)
 // (0x00018D38..0x00018D50).
 // Unmarked: fn_10_10864 and fn_10_12DD0 are stand-ins.
