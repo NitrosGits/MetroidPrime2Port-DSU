@@ -672,7 +672,8 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
     // 0x2DE4: the player; 0x2DF4: the player's index has to be the player being rendered - the
     // guest's mgr + 0x24DC is CStateManager::mCurrentRenderPlayerIndex (CFrustumPlanes is 0x64
     // bytes at 0x2478, so the index lands on 0x24DC) - and 0x2E24: its turret state (the guest's
-    // player + 0x12F8) must not be 2 (kTS_Exiting).
+    // player + 0x12F8) must not be 2 (kTS_Exiting).  The null test is the guest's own (0x2E1C:
+    // the TCastToPtr<CPlayer> result is tested before the turret state is read).
     const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mPlayerId));
     if (player != nullptr &&
         mgr.GetCurrentRenderPlayerIndex() ==
