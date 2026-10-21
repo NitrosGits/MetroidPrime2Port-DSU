@@ -29,6 +29,14 @@ it the runner warns "has no USA/" and falls back to the front end):
       tools/run_gameplay.sh &        # SKIP_INTRO=0 leaves the intro cinematic playing (default 1)
     tools/shot.sh 86 /tmp/opencode/pc.png 50          # timed to the log's phase lines
 
+## Fast runs and console scripts
+
+`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=<1..16>` runs exactly that many fixed 1/60 s ticks per loop
+iteration (`platform/include/port_timing.h`), as fast as the machine allows: 1000 updates in area 59
+took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Console scripts for
+`MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
+update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
+
 ## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
 
     USERDIR=/tmp/opencode/u_a10 tools/sweep_areas.sh            # TAG/SHARDS/DWELL/COUNT to taste
