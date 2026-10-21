@@ -810,7 +810,9 @@ Two tools are used, both without a probe in the game code:
   no member to write), and the shared `tools/cov/force.py` only writes members: the module's own
   gdb script `tools/drivers/playerturret_force.py` (the shared one plus a `ret=1` set, which writes
   the return value when the function returns and only when the caller is the module's own code)
-  is used with `COV_GDB_SCRIPT=` and `PT_COUNT=1` (it also runs the counting).
+  is used with `COV_GDB_SCRIPT=` and `PT_COUNT=1` (it also runs the counting).  The port's console
+  has an `mpforce` command now (port's f8f43ff19) that makes `CStateManager::IsMultiplayer` report
+  true - that is the simpler way to force the two multi-player arms in a later slice.
 
 The runs are in the Agon Wastes, `sand_world,06_sand_alamofront`, **layer 3** (the player turret
 `u061d` is on that layer; the area's layer 3 is reached with the console's `layer 3`), driven by
