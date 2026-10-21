@@ -2506,25 +2506,25 @@ void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
 // fn_10_CA0C (0x0000CA0C, 0x394 bytes): the SweepBeam state. Every message first runs the attack
 // bookkeeping with id 0x10000 (`lis r4, 0x1` at 0x0000CA44, fn_10_1B478 at 0x0000CA4C) and the
 // melee attack command with severity 5 (`li r8, 0x5` at 0x0000CA5C; pas::kAS_MeleeAttack = 7,
-// `li r5, 0x7` at 0x0000CA90; fn_10_8764 at 0x0000CAAC). Activate (`cmpwi r28, 0x0` at
-// 0x0000CAD4) turns the kAR_Flinch reaction off (`li r4, 0x1` at 0x0000CAF0, `li r5, 0x0` at
-// 0x0000CAF4), clears 0xDC8 bit 0x80 (`rlwimi r0, r7, 7, 24, 24` at 0x0000CB04) and bit 0x40
+// `li r5, 0x7` at 0x0000CA90; fn_10_8764 at 0x0000CAAC). Activate (`cmpwi r28, 0x0` at 0x0000CAD4)
+// turns the kAR_Flinch reaction off (`li r4, 0x1` at 0x0000CAF0, `li r5, 0x0` at 0x0000CAF4),
+// clears 0xDC8 bit 0x80 (`rlwimi r0, r7, 7, 24, 24` at 0x0000CB04) and bit 0x40
 // (`rlwimi r0, r7, 6, 25, 25` at 0x0000CB64), zeroes the last and current directions
-// (0x0000CB2C..0x0000CB5C) and starts two emitters in the actor's area, at volume 0x7F (`li r6,
-// 0x7f` at 0x0000CB28), without acoustics (`li r8, 0x0` at 0x0000CB30), not looped (`li r9, 0x0`
-// at 0x0000CB34), kMedPriority: the beam sound 0xDD8 at the actor (the handle to 0xDDC at
-// 0x0000CB88) and the end sound 0xDE0 lbl_10_rodata_2D8 = 20.0f along the actor's forward vector
-// (0x0000CB94; the handle to 0xDE4 at 0x0000CC1C). It keeps the speed 0x3C8 in 0xDC4 (0x0000CC2C)
-// and scales it by Range(lbl_10_rodata_2DC = 0.7f, lbl_10_rodata_264 = 1.0f) (0x0000CC30), then
-// runs the collision failsafe (fn_10_1AEC0 at 0x0000CC48). Update (`cmpwi r28, 0x1` at 0x0000CABC)
-// aims the beam (fn_10_C2B0 at 0x0000CC5C), sweeps the damage rays while 0xDC8 bit 0x40 is set
-// (`extrwi r0, r0, 1, 25` at 0x0000CC64, fn_10_C104 at 0x0000CC78) and, with a beam sound
-// (`cmplwi r0, 0x0` at 0x0000CC80), moves it lbl_10_rodata_2E0 = 7.0f along the gun's forward
-// vector (0x0000CC90) at volume 0x7F (`li r6, 0x7f` at 0x0000CCD4). Deactivate (`cmpwi r28, 0x3`
-// at 0x0000CAE0) turns kAR_Flinch back on (`li r5, 0x1` at 0x0000CD0C), releases the effect
-// (fn_10_C798 at 0x0000CD18), removes each emitter that is set (`cmplwi r0, 0x0` at 0x0000CD20,
-// 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68), restores the speed (0x0000CD70) and
-// runs the failsafe (0x0000CD74).
+// (0x0000CB2C..0x0000CB5C) and starts two emitters in the actor's area, at volume 0x7F
+// (`li r6, 0x7f` at 0x0000CB28), without acoustics (`li r8, 0x0` at 0x0000CB30), not looped
+// (`li r9, 0x0` at 0x0000CB34), kMedPriority: the beam sound 0xDD8 at the actor (the handle to
+// 0xDDC at 0x0000CB88) and the end sound 0xDE0 lbl_10_rodata_2D8 = 20.0f along the actor's forward
+// vector (0x0000CB94; the handle to 0xDE4 at 0x0000CC1C). It keeps the speed 0x3C8 in 0xDC4
+// (0x0000CC2C) and scales it by Range(lbl_10_rodata_2DC = 0.7f, lbl_10_rodata_264 = 1.0f)
+// (0x0000CC30), then runs the collision failsafe (fn_10_1AEC0 at 0x0000CC48). Update
+// (`cmpwi r28, 0x1` at 0x0000CABC) aims the beam (fn_10_C2B0 at 0x0000CC5C), sweeps the damage rays
+// while 0xDC8 bit 0x40 is set (`extrwi r0, r0, 1, 25` at 0x0000CC64, fn_10_C104 at 0x0000CC78) and,
+// with a beam sound (`cmplwi r0, 0x0` at 0x0000CC80), moves it lbl_10_rodata_2E0 = 7.0f along the
+// gun's forward vector (0x0000CC90) at volume 0x7F (`li r6, 0x7f` at 0x0000CCD4). Deactivate
+// (`cmpwi r28, 0x3` at 0x0000CAE0) turns kAR_Flinch back on (`li r5, 0x1` at 0x0000CD0C), releases
+// the effect (fn_10_C798 at 0x0000CD18), removes each emitter that is set
+// (`cmplwi r0, 0x0` at 0x0000CD20, 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68),
+// restores the speed (0x0000CD70) and runs the failsafe (0x0000CD74).
 void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("SweepBeam", msg);
   UpdateCurrentAttack(0x10000, mgr, msg);
@@ -2571,12 +2571,12 @@ void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_10_C85C (0x0000C85C, 0x1B0 bytes): releases any effect (fn_10_C798 at 0x0000C87C), makes a
-// CElementGen (`li r3, 0x338` at 0x0000C890) from the 'PART' 0xD74 (`lis r5, 0x5041` at
-// 0x0000C8A8) with kMOT_Normal (`li r5, 0x0` at 0x0000C8F8) and kOSF_One (`li r6, 0x1` at
-// 0x0000C8FC) into 0xD78, turns its emission on (`li r4, 0x1` at 0x0000C9C8, vtable slot 0x2C)
-// and sets 0xDC8 bit 0x40 (`rlwimi r0, r3, 6, 25, 25` at 0x0000C9E4).
-// Host guard: Agon's boss (10_sand_alamostorage) leaves sweepSwoosh unset (kInvalidAssetId), and
-// a forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor;
+// CElementGen (`li r3, 0x338` at 0x0000C890) from the 'PART' 0xD74 (`lis r5, 0x5041` at 0x0000C8A8)
+// with kMOT_Normal (`li r5, 0x0` at 0x0000C8F8) and kOSF_One (`li r6, 0x1` at 0x0000C8FC) into
+// 0xD78, turns its emission on (`li r4, 0x1` at 0x0000C9C8, vtable slot 0x2C) and sets 0xDC8 bit
+// 0x40 (`rlwimi r0, r3, 6, 25, 25` at 0x0000C9E4).
+// Host guard: Agon's boss (10_sand_alamostorage) leaves sweepSwoosh unset (kInvalidAssetId), and a
+// forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor;
 // with no beam asset the host makes no beam (no effect, no damage rays).
 // @ fn_10_C85C
 void CDarkSamus::StartSweepBeam() {
@@ -2591,9 +2591,9 @@ void CDarkSamus::StartSweepBeam() {
 }
 
 // fn_10_C798 (0x0000C798, 0xC4 bytes): the effect 0xD78 reset to null (the auto_ptr's
-// self-assignment test `cmplw r3, r0` at 0x0000C7BC; an owned old effect, `cmplwi r0, 0x0` at
-// 0x0000C7CC and `cmplwi r3, 0x0` at 0x0000C7D8, deleted at 0x0000C7F0) and 0xDC8 bit 0x40
-// cleared (`rlwimi r0, r3, 6, 25, 25` at 0x0000C840).
+// self-assignment test `cmplw r3, r0` at 0x0000C7BC; an owned old effect,
+// `cmplwi r0, 0x0` at 0x0000C7CC and `cmplwi r3, 0x0` at 0x0000C7D8, deleted at 0x0000C7F0) and
+// 0xDC8 bit 0x40 cleared (`rlwimi r0, r3, 6, 25, 25` at 0x0000C840).
 // @ fn_10_C798
 void CDarkSamus::StopSweepBeam() {
   mSweepBeamGen = nullptr;
@@ -2607,9 +2607,9 @@ void CDarkSamus::StopSweepBeam() {
 // the end point (LookAt with the up vector at 0x0000C35C, slot 0x1C at 0x0000C378), is scaled to
 // (lbl_10_rodata_278 = 4.0f, lbl_10_rodata_2D0 = 0.18f * length, 4.0f) (slot 0x24 at 0x0000C3B4)
 // and updated by dt (slot 0xC at 0x0000C3CC). The direction is normalized when it can be
-// (`cmplwi r0, 0x1` at 0x0000C3E4). With an end sound (`cmplwi r0, 0x0` at 0x0000C3F8) it moves
-// to the end point along lbl_10_rodata_288 = -1.0f times the actor's forward vector (0x0000C410)
-// at volume 0x7F (`li r6, 0x7f` at 0x0000C42C).
+// (`cmplwi r0, 0x1` at 0x0000C3E4). With an end sound (`cmplwi r0, 0x0` at 0x0000C3F8) it moves to
+// the end point along lbl_10_rodata_288 = -1.0f times the actor's forward vector (0x0000C410) at
+// volume 0x7F (`li r6, 0x7f` at 0x0000C42C).
 void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
   UpdateSweepBeamEnd(mgr);
   const CVector3f gunPos = mGunLctrXf.GetTranslation();
@@ -2636,15 +2636,15 @@ void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
 // can be (`cmplwi r0, 0x1` at 0x0000C4C8), for lbl_10_rodata_2D4 = 100.0f (0x0000C580) against a
 // filter built once (the guard `extsb. r0, r0` at 0x0000C4E0): include lbl_10_data_1E4 = 0x3B
 // (kMT_Solid), exclude lbl_10_data_1E8 = 0x20 (kMT_Player) and lbl_10_data_1EC = 0x2F
-// (kMT_CollisionActor), kFT_IncludeExclude (`li r7, 0x3` at 0x0000C53C). On a hit (`cmplwi r0,
-// 0x1` at 0x0000C5B8) while 0xDC8 bit 0x40 is set (`cmplwi r0, 0x1` at 0x0000C5C8) the response
-// 0xDCC runs for the hit with no target, the beam damage and false (`li r8, 0x0` at 0x0000C5EC;
-// DoCollisionResponse at 0x0000C5F4) and its decal for type 1 (`li r5, 0x1` at 0x0000C600), when it
-// has one (`cmplwi r0, 0x0` at 0x0000C664), goes at the hit point facing the hit plane's normal
-// (LookAt from the origin with the up vector at 0x0000C684; AddDecal at 0x0000C6D4, the ray's
-// direction unnormalized). The end point is the hit point on any hit (0x0000C6FC..0x0000C710),
-// else the gun plus 100.0f times the direction (0x0000C718..0x0000C758); its z is then the gun's
-// (0x0000C774).
+// (kMT_CollisionActor), kFT_IncludeExclude (`li r7, 0x3` at 0x0000C53C). On a hit
+// (`cmplwi r0, 0x1` at 0x0000C5B8) while 0xDC8 bit 0x40 is set (`cmplwi r0, 0x1` at 0x0000C5C8) the
+// response 0xDCC runs for the hit with no target, the beam damage and false
+// (`li r8, 0x0` at 0x0000C5EC; DoCollisionResponse at 0x0000C5F4) and its decal for type 1
+// (`li r5, 0x1` at 0x0000C600), when it has one (`cmplwi r0, 0x0` at 0x0000C664), goes at the hit
+// point facing the hit plane's normal (LookAt from the origin with the up vector at 0x0000C684;
+// AddDecal at 0x0000C6D4, the ray's direction unnormalized). The end point is the hit point on any
+// hit (0x0000C6FC..0x0000C710), else the gun plus 100.0f times the direction
+// (0x0000C718..0x0000C758); its z is then the gun's (0x0000C774).
 void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
   CVector3f dir(mGunLctrXf.GetForward().GetX(), mGunLctrXf.GetForward().GetY(), 0.f);
   if (dir.CanBeNormalized() == true) { // 0x0000C4C8
@@ -2675,15 +2675,15 @@ void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
   mSweepBeamEnd.SetZ(gunPos.GetZ()); // 0x0000C774
 }
 
-// fn_10_C104 (0x0000C104, 0x1AC bytes): with a beam effect asset 0xD74 (`cmplwi r0, 0x0` at
-// 0x0000C130) and a last direction 0xDA8 that is not the zero vector (`fcmpu cr0, f1, f0` at
-// 0x0000C148, 0x0000C158, 0x0000C168) the angle between the last and this direction (GetAngleDiff
-// at 0x0000C184) is halved (lbl_10_rodata_284 = 0.5f) and the ray count doubled until it is at
-// most lbl_10_rodata_2C0 = 0.05235988f (3 degrees, `fcmpo cr0, f1, f0` at 0x0000C1A8); with more
-// than one ray (`cmpwi r27, 0x1` at 0x0000C1B0) the rays i = 1..n-1 (`cmpw r26, r27` at
-// 0x0000C258) run along last * (lbl_10_rodata_264 = 1.0f - i/n) + this * i/n for the length 0xDC0
-// (fn_10_BE18 at 0x0000C250). Then the ray along this direction (0x0000C270), and this direction
-// becomes the last (0x0000C274..0x0000C288).
+// fn_10_C104 (0x0000C104, 0x1AC bytes): with a beam effect asset 0xD74
+// (`cmplwi r0, 0x0` at 0x0000C130) and a last direction 0xDA8 that is not the zero vector
+// (`fcmpu cr0, f1, f0` at 0x0000C148, 0x0000C158, 0x0000C168) the angle between the last and this
+// direction (GetAngleDiff at 0x0000C184) is halved (lbl_10_rodata_284 = 0.5f) and the ray count
+// doubled until it is at most lbl_10_rodata_2C0 = 0.05235988f (3 degrees,
+// `fcmpo cr0, f1, f0` at 0x0000C1A8); with more than one ray (`cmpwi r27, 0x1` at 0x0000C1B0) the
+// rays i = 1..n-1 (`cmpw r26, r27` at 0x0000C258) run along last * (lbl_10_rodata_264 = 1.0f - i/n)
+// + this * i/n for the length 0xDC0 (fn_10_BE18 at 0x0000C250). Then the ray along this direction
+// (0x0000C270), and this direction becomes the last (0x0000C274..0x0000C288).
 void CDarkSamus::SweepBeamDamage(CStateManager& mgr) {
   if (mSweepBeamPart == 0) { // 0x0000C130
     return;
@@ -2713,15 +2713,16 @@ void CDarkSamus::SweepBeamDamage(CStateManager& mgr) {
 // fn_10_BE18 (0x0000BE18, 0x2EC bytes): one damage ray from the gun along dir for length. The near
 // list and the dynamic ray share a filter built once (the guard `extsb. r0, r0` at 0x0000BE48):
 // include lbl_10_data_1F0 = 0x20 (kMT_Player) and lbl_10_data_1F4 = 0x31 (kMT_Platform),
-// kFT_Include (`li r7, 0x1` at 0x0000BE88); the near list ignores no actor (`li r8, 0x0` at
-// 0x0000BEEC). A hit on the player (`cmplw r4, r0` at 0x0000BF64) takes the beam damage 0xD80 once
-// per beam (0xDC8 bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BF70; set by `rlwimi r0, r3, 7, 24,
-// 24` at 0x0000BFF8). Any other hit (`cmplw r4, r0` at 0x0000C00C, against kInvalidUniqueId)
-// takes lbl_10_rodata_294 = 1000.0f (0x0000C034) with radius and knock-back lbl_10_rodata_25C =
-// 0.0f, no immunity (`rlwimi r4, r0, 7, 24, 24` at 0x0000C03C), no radius damage (`rlwimi r0, r3,
-// 6, 25, 25` at 0x0000C054) and the zeroed weapon mode lbl_10_bss_114 (0x0000C024). Both go
-// through ApplyDamage from the actor with a filter including lbl_10_data_1E0 = 0x3B (kMT_Solid),
-// kFT_IncludeExclude (`li r10, 0x3` at 0x0000BF94, 0x0000C08C), and the zero vector.
+// kFT_Include (`li r7, 0x1` at 0x0000BE88); the near list ignores no actor
+// (`li r8, 0x0` at 0x0000BEEC). A hit on the player (`cmplw r4, r0` at 0x0000BF64) takes the beam
+// damage 0xD80 once per beam (0xDC8 bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BF70; set by
+// `rlwimi r0, r3, 7, 24, 24` at 0x0000BFF8). Any other hit (`cmplw r4, r0` at 0x0000C00C, against
+// kInvalidUniqueId) takes lbl_10_rodata_294 = 1000.0f (0x0000C034) with radius and knock-back
+// lbl_10_rodata_25C = 0.0f, no immunity (`rlwimi r4, r0, 7, 24, 24` at 0x0000C03C), no radius
+// damage (`rlwimi r0, r3, 6, 25, 25` at 0x0000C054) and the zeroed weapon mode lbl_10_bss_114
+// (0x0000C024). Both go through ApplyDamage from the actor with a filter including lbl_10_data_1E0
+// = 0x3B (kMT_Solid), kFT_IncludeExclude (`li r10, 0x3` at 0x0000BF94, 0x0000C08C), and the zero
+// vector.
 // @ fn_10_BE18
 void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float length) {
   static const CMaterialFilter skFilter = CMaterialFilter::MakeInclude(
