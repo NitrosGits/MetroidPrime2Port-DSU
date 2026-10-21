@@ -1023,8 +1023,15 @@ void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
       }
       FireProjectile(dt, mgr);
       mBurstFire.SetAvoidAccuracy(false);
-      mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
-                                   mData.mIntraBurstTime);
+      // 0x2D80: an Ing-possessed pirate uses its own intra-burst time and variation (data +0x94/+0x98).
+      if (IsIngPossessed()) {
+        mBurstFire.SetTimeToNextShot(mData.mIngIntraBurstVariation *
+                                         (mgr.Random()->Float() - 0.5f) +
+                                     mData.mIngIntraBurstTime);
+      } else {
+        mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
+                                     mData.mIntraBurstTime);
+      }
     } else if (!mBurstFire.IsBurstSet()) {
       reset = true;
     }
@@ -1768,6 +1775,8 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
   data.mImpactSfx = static_cast< ushort >(sldrThis.sound_Impact);
   data.mIntraBurstTime = sldrThis.intraBurstShotTime;
   data.mIntraBurstVariation = sldrThis.intraBurstShotVariation;
+  data.mIngIntraBurstTime = sldrThis.unknown_0x5080162a;
+  data.mIngIntraBurstVariation = sldrThis.unknown_0xc78b40e0;
   data.mAlertSfx = static_cast< ushort >(sldrThis.sound_Alert);
   data.mGunTrackDelay = sldrThis.gunTrackDelay;
   data.mFirstBurstCount = static_cast< uint >(sldrThis.unknown_0x1b454a27);

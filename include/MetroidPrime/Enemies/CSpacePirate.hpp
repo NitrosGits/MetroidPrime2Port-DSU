@@ -40,6 +40,8 @@ struct CSpacePirateData {
   ushort mImpactSfx;           // +0x88
   float mIntraBurstTime;       // +0x8c
   float mIntraBurstVariation;  // +0x90
+  float mIngIntraBurstTime;    // +0x94 unknown_0x5080162a (UpdateAttacks 0x2D94, Ing-possessed)
+  float mIngIntraBurstVariation; // +0x98 unknown_0xc78b40e0 (UpdateAttacks 0x2D8C, Ing-possessed)
   ushort mAlertSfx;            // +0x9c
   float mGunTrackDelay;        // +0xa0
   uint mFirstBurstCount;       // +0xa4
