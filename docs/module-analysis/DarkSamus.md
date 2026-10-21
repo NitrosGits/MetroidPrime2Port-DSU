@@ -520,5 +520,10 @@ the run the stage is u0339. The picked attack (0x984) is written only by `fn_10_
 `fn_10_1954C` at 0x0001B308/0x0001B314 when alive. `fn_10_1954C` needs `fn_10_1AA6C` (0x58,
 calls `fn_10_17CEC`), `fn_10_197D8`/`fn_10_1969C` (0x140/0x13C: eight per-attack collectors
 1A5BC, 1A554, 1A278, 1A440, 1A34C, 1A1D4, 19B64, 19A1C, then `fn_10_14648`/`fn_10_1A980`, the
-copy into 0xC54/0xC58 and the weighted pick `fn_10_19918` into 0xCBC). That chain is the next slice;
-until it lands no Picked* trigger fires (walk: Start -> TurnToFacePlayer -> TravelToCoverPoints).
+copy into 0xC54/0xC58 and the weighted pick `fn_10_19918` into 0xCBC). **Slice 5** (2026-10-21): the chain is in (1905C, 19A1C, 14648, 197D8, 1969C, 1954C; 19B64 is a
+stand-in that clears nothing) and Think calls 1954C when alive (0x0001B314; 193A0 and the rest of
+Think are not ported). Walk (user_b save, layer 6, GODMODE): Start -> TurnToFacePlayer ->
+TravelToCoverPoints -> PickedScatterShot (0x984 = 8 at t=2.5 s, mask 0x6D8) -> ScatterShot
+(stand-in fn_10_175AC, never ends). Later picks: 0x80, 0x10, 0x40, 0x200; 0x980 stays 0xFFFF
+because fn_10_1B478 (the attack start) is not ported, so 1954C keeps picking. 0x9C0 has one
+writer (fn_10_17BC0, MeleeAttack, 0x00017C9C); the constructor does not write it.
