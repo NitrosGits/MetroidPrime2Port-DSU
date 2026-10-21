@@ -216,11 +216,9 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   // 0x18D28 / 0x18D5C: the balls' locators (.rodata 0x954's names) at 0xDCC / 0xDCD.
   const CAnimData* anim = GetModelData()->GetAnimationData();
   xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
-  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
-  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
+  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
   // at 0x18E60).
   x137A8_();
-  mDamageColor = skHitsWithoutDamageColor; // 0x450 at 0x18E64..0x18E6C
 
   // The three 'SCAN' tokens (0x18E70..0x190B4): each id tested against -1 (addis/cmplwi 0xffff),
   // a 0xC-byte TCachedToken (operator new at 0x18E98) cached at once (GetObj at 0x18EF0).
