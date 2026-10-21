@@ -60,6 +60,10 @@ SPEC = [
     ('1C0C UpdateRenderables', 'CCommandoPirate::x1C0C_UpdateRenderables(',
      ['$this->xc4c_', '($this->xc66_ & 0x20) != 0'], 'calls max=4000'),
     ('1C0C DriveEffect', 'CCommandoPirate::x1C0C_DriveEffect(', [], 'max=100'),
+    ('5410 CreateEGrenade', 'CCommandoPirate::x5410_CreateEGrenade(', ['$this->xbca_.value != 0xffff'], 'calls max=50'),
+    ('52BC GetGrenadeTarget', 'CCommandoPirate::x52BC_GetGrenadeTarget(', [], 'calls max=50'),
+    ('5008 SolveGrenadeLaunch', 'CCommandoPirate::x5008_SolveGrenadeLaunch(', [], 'calls max=50'),
+    ('F0F8 EGrenade Think', '(anonymous namespace)::CCommandoPirateEGrenade::Think(', [], 'calls max=3000'),
     ('F58C CreateEffect', 'CCommandoPirate::xF58C_CreateEffect(', ['$rdi == 0xffffffff'], 'max=50'),
 ]
 

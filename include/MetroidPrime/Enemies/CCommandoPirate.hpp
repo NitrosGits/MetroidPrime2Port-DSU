@@ -28,7 +28,8 @@ struct CCommandoPirateGrenadeData {
                              const CDamageInfo& bladeDamage, int grenadeNumBounces,
                              CAssetId grenadeExplosion, CAssetId grenadeExplosion2,
                              CAssetId grenadeTrail, CAssetId grenadeEffect,
-                             ushort soundGrenadeBounce, float empDuration,
+                             ushort soundGrenadeBounce, ushort soundGrenadeExplode,
+                             float empDuration,
                              float grenadeAttackChance, float grenadeMinAttackInterval,
                              float grenadePostAttackPause, float grenadeMinAttackDist,
                              float grenadeMaxAttackDist, float grenadeMinLaunchSpeed,
@@ -42,6 +43,12 @@ struct CCommandoPirateGrenadeData {
   , mGrenadeTrail(grenadeTrail)
   , mGrenadeEffect(grenadeEffect)
   , mSoundGrenadeBounce(soundGrenadeBounce)
+  , mSoundGrenadeExplode(soundGrenadeExplode)
+  , mRadiusMin(0.1f)
+  , mDamageMax(150.f)
+  , mRadiusMax(0.1f)
+  , mDamageMin(150.f)
+  , mFlags(0)
   , mEMPDuration(empDuration)
   , mGrenadeAttackChance(grenadeAttackChance)
   , mGrenadeMinAttackInterval(grenadeMinAttackInterval)
@@ -60,8 +67,10 @@ struct CCommandoPirateGrenadeData {
   CAssetId mGrenadeTrail;          // guest +0x30, fn_9_98C @0x000009F0
   CAssetId mGrenadeEffect;         // guest +0x34, fn_9_98C @0x000009F4
   ushort mSoundGrenadeBounce;      // guest +0x38, fn_9_98C @0x000009F8
-  // guest +0x3a: the guest reads the high half of the word it stored at its own stack +0x8
-  // (fn_9_98C @0x000009D8 reads 0xa(r1)), so the guest stores zero here.
+  // guest +0x3a: fn_9_98C is a leaf, so its 0xa(r1) (0x000009D8) is the low half of the
+  // caller's stack word at +0x8 - the loader's sound_GrenadeExplode (the lwz 0xc80 at 0x0000062C,
+  // clrlwi'd at 0x00000640 and stored at 0x00000660).
+  ushort mSoundGrenadeExplode;     // guest +0x3a, fn_9_98C @0x000009FC
   float mRadiusMin;                // guest +0x3c, fn_9_98C @0x00000A00 (the guest's 0.1f)
   float mDamageMax;                // guest +0x40, fn_9_98C @0x00000A04 (the guest's 150.f)
   float mRadiusMax;                // guest +0x44, fn_9_98C @0x00000A08 (the guest's 0.1f)
@@ -348,9 +357,9 @@ private:
   // fn_9_3E1C: the module's rag-doll driver - with no rag doll it runs the drowning timer.
   void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt);
 
-  // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper. Not ported (the
-  // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
-  void x5410_CreateEGrenade();
+  // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper
+  // (PortCCommandoPirateCore.cpp).
+  void x5410_CreateEGrenade(CStateManager& mgr);
 
   // fn_9_1F88: the kUE_EventStart event's helper - the shield's sound emitter and the module's
   // state word and scale.
@@ -509,6 +518,10 @@ private:
   // fn_9_F58C: a CElementGen for a PART id, or null for kInvalidAssetId (PortCCommandoPirateCore.cpp)
   static CElementGen* xF58C_CreateEffect(CAssetId id);
   void x1C0C_DriveEffect(CElementGen& effect, float dt);
+  // fn_9_52BC / fn_9_5008: the E-grenade's aim point and its launch angle and speed.
+  CVector3f x52BC_GetGrenadeTarget(const CStateManager& mgr, const CActor& target) const;
+  void x5008_SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float& angle,
+                                float& speed) const;
 
 public:
   // vtable slot 0xc8 = fn_9_68, slot 0xb4 = fn_9_AC (PortCCommandoPirateCore.cpp)

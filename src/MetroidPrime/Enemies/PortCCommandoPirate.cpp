@@ -1676,7 +1676,7 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
   bool handled = false;                                              // r6, 0x0000C8D4
   switch (type) {
   case kUE_Projectile: {                                             // the entry 0 (+0xb8)
-    x5410_CreateEGrenade();                                          // 0x0000C850
+    x5410_CreateEGrenade(mgr);                                        // 0x0000C850
     handled = true;                                                  // 0x0000C854
     break;
   }
@@ -1849,13 +1849,6 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt) {
   StandIn("the module's rag doll (fn_9_3E1C)");                    // 0x00004020..0x0000410C
   xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
-
-// fn_9_5410 (0x370 bytes): the E-grenade's own creator - the kUE_Projectile event's helper. It
-// creates the "Commando E-Grenade" script object and clears the grenade-pending bit of the flag
-// byte at guest this+0xC63 (0x00005764). The host has no script-object class for the
-// "Commando E-Grenade" (the module's own object constructor fn_9_F418 and destructor fn_9_F290 are
-// not ported), so the helper stays a named stand-in.
-void CCommandoPirate::x5410_CreateEGrenade() { StandInFn("fn_9_5410 (0x370 bytes)"); }
 
 // fn_9_1F88 (0xd4 bytes): the kUE_EventStart event's helper - the shield's sound and scale.
 // While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at
@@ -4224,6 +4217,7 @@ static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
       grenade.grenadeMass, grenade.unknown_0xed086ce0, bladeDamage, grenade.grenadeNumBounces,
       grenade.grenadeExplosion, grenade.grenadeExplosion, grenade.grenadeTrail,
       grenade.grenadeEffect, static_cast< ushort >(grenade.sound_GrenadeBounce),
+      static_cast< ushort >(grenade.sound_GrenadeExplode),
       grenade.eMPDuration, grenade.grenadeAttackChance, grenade.grenadeMinAttackInterval,
       grenade.grenadePostAttackPause, grenade.grenadeMinAttackDist, grenade.grenadeMaxAttackDist,
       grenade.grenadeMinLaunchSpeed, grenade.grenadeMaxLaunchSpeed);
