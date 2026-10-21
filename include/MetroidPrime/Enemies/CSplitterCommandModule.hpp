@@ -229,6 +229,11 @@ private:
   CVector3f mLookAtOffset;                       // guest 0xF50, 0xF54, 0xF58
   int mLookAtSfxHandle = 0;                      // guest 0xF5C (the sound handle)
 
+  // guest 0xF24-0xF2C: the editor-properties vector - the retail's constructor copies the
+  // editor's three floats into it (fn_75_6B08) and the head's states overwrite it; the Idle
+  // state (fn_75_5538) puts the transform's Y column there.
+  CVector3f mEditorProperties;
+
   // The fields the retail's fn_75_31A8 touches.
   void PortUpdateChassis(CStateManager& mgr);
   TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)

@@ -97,7 +97,7 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
 
 CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE_PORTED(Start),
-    SPLITTER_STATE(Idle),
+    SPLITTER_STATE_PORTED(Idle),
     SPLITTER_STATE(SpawnIdle),
     SPLITTER_STATE(Dead),
     SPLITTER_STATE(Scanning),
@@ -201,7 +201,6 @@ SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
 SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_55F8)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
-SPLITTER_STATE_STANDIN(Idle, fn_75_5538)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
 SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
 SPLITTER_STATE_STANDIN(Scanning, fn_75_523C)
@@ -318,6 +317,20 @@ void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) 
     return;
   }
   StandInFn_75_2154(CVector3f(pos.GetX(), pos.GetY(), pos.GetZ() + (dz > 0.f ? step : -step)), dt);
+}
+
+// fn_75_5538 (the head's Idle state, 0x5538-0x5564): the state message is compared with 2
+// (0x5538 cmpwi r5, 2 - 0x553C bgelr) and with 0 (0x5540 cmpwi r5, 0 - 0x5544 bltlr), so the
+// body only runs for the update and the activate message - the retail's deactivate (2) and
+// the messages above it return. The body then copies the head's transform's Y column (the
+// floats at 0x28, 0x38 and 0x48 - 0x5548-0x5550) into the vector at 0xF24-0xF2C
+// (0x5554-0x555C), which is the vector the retail's constructor fills from the editor
+// properties (fn_75_6B08) and the head's other states overwrite.
+void CSplitterCommandModule::Idle(CStateManager&, EStateMsg msg, float) {
+  if (msg != kStateMsg_Update && msg != kStateMsg_Activate) {
+    return;
+  }
+  mEditorProperties = GetTransform().GetColumn(kDY);
 }
 
 // The two state machine entries whose retail body is ported: the IsScanning trigger

@@ -1011,6 +1011,19 @@ the log's.
 The chassis's `ShouldWaitForSnatch` needs the id at 0xCBC, which the retail's `fn_75_E810`
 (`SetAttackTarget`, still a shell) keeps - so only the `IsBeingSnatched` half can run.
 
+#### The head's Idle state, fn_75_5538 (0x5538-0x5564) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the message | the message is compared with 2 (0x00005538 `cmpwi r5, 2` - 0x0000553C `bgelr`) and with 0 (0x00005540 `cmpwi r5, 0` - 0x00005544 `bltlr`), so the body runs for the update and the activate message and returns for the deactivate and above | the same: the body runs for `kStateMsg_Update` and `kStateMsg_Activate` only |
+| the copy | the transform's Y column (the floats at 0x28, 0x38 and 0x48 - 0x00005548-0x00005550) goes into the vector at 0xF24-0xF2C (0x00005554-0x0000555C) | `GetTransform().GetColumn(kDY)` goes into the port's `mEditorProperties` (the guest's 0xF24-0xF2C) |
+
+The retail's constructor fills that vector from the editor properties (fn_75_6B08, the
+`arg4->unk4/14/24`), so the Idle state overwrites the editor's offset with the transform's Y
+column; the port's constructor has no editor-properties argument, so its vector starts at zero
+and the Idle state still writes the same value. The area-4 run does not enter the head's Idle
+state (the walk table above stops at the Hover state), so the body carries no `// @` marker.
+
 #### fn_75_AFE8 and fn_75_9520: the branches the run does not reach (2026-10-21)
 
 The two bodies are ported, but the area-4 run does not exercise every branch, so they carry no
