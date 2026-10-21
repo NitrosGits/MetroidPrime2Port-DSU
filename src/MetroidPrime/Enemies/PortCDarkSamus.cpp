@@ -172,7 +172,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mRootPos(CVector3f(0.f, 0.f, 0.f))             // 0x0001FBDC..0x0001FBEC
 , mReflectedUids()                               // 0x0001FE9C
 , mLastReflectTime(-1000.f)                      // lbl_10_rodata_410, 0x0001FEE0
-, mGuestC0C(-1.f)                                // lbl_10_rodata_3EC, 0x0001FEE4
+, mGuestC0C(0.f) // f3 = lbl_10_rodata_3FC = 0.0f (lfs at 0x0001FEB8), stfs at 0x0001FEE4
 , mGuestC20(-1000.f)                             // lbl_10_rodata_410, 0x0001FF04
 , mRicochetSfxId(data.mMissileRicochetSound == -1 // 0x0000DA94, stored at 0x0001FF48
                      ? CSfxManager::kInternalInvalidSfxId
@@ -381,6 +381,7 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 // its own two tables: lbl_10_data_450 with the 49 triggers and lbl_10_data_964 with the 43 states.
 // The host's machine asks for the tables through this virtual (CPatterned::InitializeStateMachine
 // calls it), so the module's tables go in here, after the base's own.
+// @ fn_10_18D78
 void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   InstallStateMachineFunctions();

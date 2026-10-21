@@ -953,7 +953,7 @@ private:
                                    // fn_10_1B658 stores the elapsed time 0x8B0 (0x0001B8D4)
   float mGuestC0C;                 // guest 0xC0C, the elapsed time of the last hit (the damage
                                    // arm of AcceptScriptMsg, 0x0001EAF8); the constructor writes
-                                   // lbl_10_rodata_3EC = -1.0f (0x0001FEE4)
+                                   // lbl_10_rodata_3FC = 0.0f (0x0001FEE4)
   float mGuestC20;                 // guest 0xC20, the elapsed time of the last heavy hit (the
                                    // HeavyHit state's Deactivate, 0x00010F4C); the constructor
                                    // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
@@ -1019,6 +1019,37 @@ private:
                                     // (the XDMG arm, 0x0001EA98)
   CVector3f mHitDirectionFlat;     // guest 0xC10/0xC14/0xC18, the same direction flattened
                                     // (its z 0.0f) and normalized (0x0001EB04..0x0001EB30)
+  // fsm2: the members the second FSM lane's states touch (PortCDarkSamusFsm2.cpp). The names are
+  // the guest offsets (the loader does not name them); the initialisers are the constructor's.
+  CVector3f GetPhazonWaypoint(CStateManager& mgr, int type);     // fn_10_65CC
+  float GetIncomingProjectileDistance(CStateManager& mgr) const; // fn_10_1BC58
+  int mGuestA38 = 0;                 // guest 0xA38, the normal missiles fired (fn_10_1BEFC counts)
+  int mGuestA3C = 0;                 // guest 0xA3C, the normal missiles to fire (fn_10_17448)
+  int mGuestA78 = 0;                 // guest 0xA78, the super missiles fired (fn_10_1BEFC counts)
+  int mGuestA7C = 0;                 // guest 0xA7C, the super missiles to fire (fn_10_16ECC)
+  uchar mGuestA84 = 0;               // guest 0xA84, the super missile's dodge byte (fn_10_1BEFC)
+  int mGuestBE8 = 0xB;               // guest 0xBE8, the taunt type (0x0001FE8C)
+  bool mGuestBFC80 = true;           // guest 0xBFC bit 0x80, the deflect's severity (0x0001FEBC)
+  float mGuestC04 = 0.f;             // guest 0xC04, the deflect's slow-down time (0x0001FEDC)
+  int mGuestC1C = 0;                 // guest 0xC1C, the heavy hit's step direction (0x0001FF00)
+  float mGuestF10 = 0.f;             // guest 0xF10, the phazon attack's range (fn_10_81D4)
+  CVector3f mGuestF14 = CVector3f::Zero(); // guest 0xF14, the gun's forward (fn_10_81D4)
+  CVector3f mGuestF20 = CVector3f::Zero(); // guest 0xF20, the phazon beam's emitter position
+  signed char mGuestF48 = 0;         // guest 0xF48, the phazon attack's shots (fn_10_81D4 reads)
+  int mGuestF4C = 0;                 // guest 0xF4C, the phazon attack's shots to fire
+  float mGuestF58 = 0.f;             // guest 0xF58, the height PhazonSuck starts at
+  bool mGuestF5C40 = false;          // guest 0xF5C bit 0x40 (fn_10_81D4 reads)
+  float mGuestF64 = 0.f;             // guest 0xF64, the phazon go-to time (fn_10_6460, 652C)
+  float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0)
+  int mGuestFB4 = 0;                 // guest 0xFB4, the phazon volley's missiles (fn_10_67B8)
+  int mGuestFB8 = 0;                 // guest 0xFB8, the phazon volley is a single (fn_10_67B8)
+  int mGuestFBC = 0;                 // guest 0xFBC, the phazon volley pattern index
+  float mGuestFC0 = 0.f;             // guest 0xFC0, the phazon blend in [0, 1]
+  float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at
+  CAABox mGuest102C = CAABox(CVector3f::Zero(), CVector3f::Zero()); // guest 0x102C, the base box
+  bool mGuest1044 = false;           // guest 0x1044 bit 0x80, 0x102C is kept
+  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218)
+  int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C)
 #ifdef TARGET_PC
   // The stateless helpers of the module (the ones below 0xA000). Their bodies live in
   // src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp; docs/module-analysis/DarkSamus_helpers.md
@@ -1038,11 +1069,6 @@ private:
                              float dt); // fn_10_6F90: the path find to the destination
   void DeleteGuestUids(CStateManager& mgr); // fn_10_69C0: the uids at guest 0x934 are deleted
   void FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg); // fn_10_6374
-  // The FSM lane's fn_10_1DD14, fn_10_1D860 and fn_10_11334 are not on port yet; fn_10_6374 calls
-  // them, so they stand in as empty calls until the lane ports them.
-  void StandInSeparation(CStateManager& mgr);  // fn_10_1DD14
-  void StandInCoverPath(CStateManager& mgr, int arg); // fn_10_1D860
-  void StandInGlideEmitter(int arg);           // fn_10_11334
   // The module's own members whose guest offsets the helpers below 0xA000 touch. The host class
   // had none of them; the names are the guest offsets because the loader does not name them.
   int mGuest930 = 0;                 // guest 0x930, the number of uids in 0x934 (the ctor writes 0)
@@ -1071,6 +1097,10 @@ private:
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
+  // helpers2: the bodies this lane ported (the REL's functions at 0xA000 and up).
+#ifdef TARGET_PC
+  uint GetStageCount() const;   // fn_10_17E48 (0x00017E48, 0x8 bytes): the guest's 0x978
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

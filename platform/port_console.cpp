@@ -486,6 +486,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                            sunburst, sonicboom; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
+      "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
+      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
@@ -516,6 +518,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -1594,6 +1597,41 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
+// statecall <id> <state> <msg> [dt]: run one state body of an FSM2 actor once with a message (0
+// Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
+// does not change. The body is looked up in the actor's whole state table, so a state the shipped
+// FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
+void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float msgArg = 0.f;
+  float dt = 1.f / 60.f;
+  if (args.size() < 4 || args.size() > 5 || !ParseFloat(args[3], msgArg) ||
+      (args.size() == 5 && !ParseFloat(args[4], dt))) {
+    Fail("usage: statecall <id> <state name> <msg 0..2> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const int msg = static_cast< int >(msgArg);
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::StateFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no state function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, static_cast< EStateMsg >(msg), dt);
+  out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
+}
+
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
 // away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
 // shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
@@ -2204,6 +2242,34 @@ void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
       "names the file (relative to the run's working directory)\n";
 }
 
+// overlay <page|off>: open the F1 window on a page (a name prefix: `overlay save`), for screenshots.
+void CmdOverlay(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2 || !PortOverlay::ShowPage(std::string(args[1]))) {
+    Fail("usage: overlay <page name prefix|off>");
+    return;
+  }
+  out += args[1] == "off" ? std::string("overlay closed\n") : "overlay open on " + std::string(args[1]) + "\n";
+}
+
+// state save|load <slot>: the F5/F9 save states (slot 0 is the undo slot, load only).
+void CmdState(CStateManager&, const Args& args, std::string& out) {
+  const int slot = args.size() < 3 ? -1 : ArgToInt(args[2], -1);
+  const bool save = args.size() >= 2 && args[1] == "save";
+  const bool load = args.size() >= 2 && args[1] == "load";
+  if ((!save && !load) || slot < (save ? 1 : PortSaveState::kUndoSlot) ||
+      slot > PortSaveState::kSlotCount) {
+    Fail("usage: state save <1..8> | state load <0..8>");
+    return;
+  }
+  if (save) {
+    PortSaveState::RequestSave(slot);
+  } else {
+    PortSaveState::RequestLoad(slot);
+  }
+  out += std::string(save ? "save" : "load") + " of slot " + std::to_string(slot) +
+         " requested (the log's [savestate] lines say how it went)\n";
+}
+
 void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
   const CPlayerState* state = mgr.GetPlayerState(0);
   if (state == nullptr) {
@@ -2274,6 +2340,7 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"statecall", CmdStateCall, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
     {"shoot", CmdShoot, true},
@@ -2294,6 +2361,8 @@ constexpr SCommand kCommands[] = {
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
     {"screenshot", CmdScreenshot, true},
+    {"overlay", CmdOverlay, true},
+    {"state", CmdState, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
