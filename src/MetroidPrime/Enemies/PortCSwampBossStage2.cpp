@@ -281,13 +281,18 @@ CCollisionActor* CSwampBossStage2::CollisionActor(CStateManager& mgr, int idx) c
       mgr.ObjectById(mCollisionMgr->GetCollisionDescFromIndex(idx).GetCollisionActorId()));
 }
 
+// @ fn_79_66DC: the collision actor's position. Retail reads CActor::mPosition (+0x54) and
+// falls back to the zero vector (0x6724 loads sZeroVector), not to the boss's own position.
 CVector3f CSwampBossStage2::CollisionActorPosition(const CStateManager& mgr, int idx) const {
   if (mCollisionMgr.null() || idx >= mCollisionMgr->GetNumCollisionActors()) {
-    return GetTranslation();
+    return CVector3f::Zero();
   }
   const CActor* act = TCastToConstPtr< CActor >(
       mgr.GetObjectById(mCollisionMgr->GetCollisionDescFromIndex(idx).GetCollisionActorId()));
-  return act ? act->GetTranslation() : GetTranslation();
+  if (!act) {
+    return CVector3f::Zero();
+  }
+  return act->GetTranslation();
 }
 
 // @ fn_79_6054: the centre actor's position, or the origin when the chain has none.
@@ -699,7 +704,10 @@ void CSwampBossStage2::AddAdditiveFlinch(float amount) {
   mPendingFlinch = rstl::max_val(mPendingFlinch, rstl::min_val(amount / 20.f, 1.f));
 }
 
-// fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface.
+// fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface. The
+// position keeps the caller's X/Y and takes the water height as Z (0x1FC8); the generator's
+// *global* translation is set (vtable +0x20 = CParticleGen::SetGlobalTranslation), and the old
+// generator is deleted (vtable +0x08 = the deleting destructor, 0x1F40).
 void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f& pos) {
   if (mData.bubbleTelegraphEffect == kInvalidAssetId) {
     return;
@@ -708,11 +716,12 @@ void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f&
       gpSimplePool->GetObj(SObjectTag('PART', mData.bubbleTelegraphEffect)),
       CElementGen::kMOT_Normal, CElementGen::kOSF_One);
   mBubbleGen->SetParticleEmission(true);
-  mBubbleGen->SetTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ));
+  mBubbleGen->SetGlobalTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ));
 }
 
 // fn_79_2A84: the splash shockwave, on the locator's X/Y at the centre actor's height. The
 // CShockWaveInfo is the phase's splashShockWave loader struct (fn_79_2C20 is that conversion).
+// The transform keeps the boss's rotation and takes the new translation (0x2AC0, 0x2AF0).
 void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) {
   if (mData.splashShockWave.shockWaveEffect == kInvalidAssetId) {
     return;
@@ -727,7 +736,8 @@ void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) 
   mgr.AddObject(wave);
 }
 
-// fn_79_3578
+// fn_79_3578: the wind effect on the wind node. The direction is flat (the Z component is the
+// constant 0 of rodata_9C, 0x35E8) and the effect sits 50 units short of the node (0x3614).
 void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mWindNode));
   if (!node) {
@@ -790,15 +800,18 @@ void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
 
 // fn_79_2E84: pick the chain node to swoop at. Retail crosses the player-to-centre line with up
 // (fn_79_3314, the host's CVector3f::Cross) to walk the chain round to the far side, then keeps the
-// connected node that is farthest from the player with a random spread.
+// connected node that is farthest from the boss with a random spread (0x30F0: the distance is
+// measured from the boss, not from the player). While diving, a candidate closer to the node
+// nearest the player than the threshold is skipped (0x30AC, threshold 0x924 = the loader's
+// unknown_0x9e116385).
 void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
   const CPlayer* player = mgr.GetPlayer(0);
   if (!player) {
     return;
   }
+  const CActor* nearest = TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
   CActor* origin = nullptr;
   if (mAttackType == 5) {
-    const CActor* nearest = TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
     const CVector3f centre = CenterPosition(mgr);
     const CVector3f across =
         CVector3f::Cross(player->GetTranslation() - centre, CVector3f::Up());
@@ -832,13 +845,14 @@ void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
     if (!node) {
       continue;
     }
-    // rodata: while diving, nodes too close to the current one are not worth swooping at.
-    if (mAttackType == 5 &&
-        (node->GetTranslation() - origin->GetTranslation()).Magnitude() <
+    // rodata: while diving, nodes too close to the node nearest the player are not worth
+    // swooping at (0x30AC).
+    if (mAttackType == 5 && nearest &&
+        (node->GetTranslation() - nearest->GetTranslation()).Magnitude() <
             mData.unknown_0x9e116385) {
       continue;
     }
-    const float score = (player->GetTranslation() - node->GetTranslation()).Magnitude() +
+    const float score = (GetTranslation() - node->GetTranslation()).Magnitude() +
                         mNodeSpacing * 0.5f * mgr.Random()->Float();
     if (score > bestScore) {
       mSwoopTarget = node->GetTranslation();
@@ -1115,6 +1129,7 @@ float CSwampBossStage2::RecentDamage() const {
   return sum;
 }
 
+// fn_79_33BC: the damage memory ages by dt; an entry that reaches zero is erased (0x3410).
 void CSwampBossStage2::DecayDamageMemory(float dt) {
   rstl::list< SDamageMemory >::iterator it = mDamageMemory.begin();
   while (it != mDamageMemory.end()) {
