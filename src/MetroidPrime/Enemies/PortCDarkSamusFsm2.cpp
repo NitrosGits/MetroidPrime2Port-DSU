@@ -3,12 +3,11 @@
 // 6460, 652C, 67B8, 6BA0, 7054, 7BC0, 81D4). The tables and the rest of the machine are in
 // PortCDarkSamusFsm.cpp.
 //
-// The module helpers these states call that are not ported yet (fn_10_1BC58, 65CC, 6374, 7F98,
-// 69C0, 746C, 7610, 786C, 452C, 5974, 48C8, 4868, 812C) are stand-in calls: Fsm2StandIn logs
-// the first call and the call returns the neutral value. A state that calls one stays unmarked.
-// The body-state command helpers fn_10_8698 (taunt), fn_10_8870 (loop attack) and fn_10_22020
-// (getup) are the same three-message switch as fn_10_21DF8 (DoStepCmd): written inline, as the
-// base's PissedOff and TurnToFacePlayer write fn_10_8698.
+// The module helpers these states call that are not ported yet (fn_10_7F98, 746C, 7610, 786C,
+// 452C, 5974) are stand-in calls: Fsm2StandIn logs the first call. A state that calls one stays
+// unmarked. fn_10_65CC and fn_10_1BC58 are ported here; the helpers below 0xA000 (6374, 69C0,
+// 4868, 48C8, 812C, 8698) are in PortCDarkSamusHelpers.cpp. The loop attack (fn_10_8870) and the
+// getup (fn_10_22020) commands are the same three-message switch as fn_10_8698, written inline.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -23,6 +22,11 @@
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
+#include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "MetroidPrime/CObjectList.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,22 +57,71 @@ void DsStateEntered(const char* name, EStateMsg msg) {
   }
 }
 
-// fn_10_65CC (not ported): the phazon waypoint of a type; the stand-in has none (the zero vector,
-// the value fn_10_7054 tests for).
-CVector3f StandInPhazonWaypoint(int type) {
-  (void)type;
-  Fsm2StandIn("fn_10_65CC", "phazon waypoint");
-  return CVector3f::Zero();
-}
-
-// fn_10_1BC58 (not ported): the distance to the nearest incoming projectile; with none it answers
-// lbl_10_rodata_554 = FLT_MAX, which the stand-in always answers.
-float StandInIncomingProjectileDistance() {
-  Fsm2StandIn("fn_10_1BC58", "incoming projectile distance");
-  return 3.4028235e38f;
-}
-
 } // namespace
+
+// fn_10_65CC (0x000065CC, 0x1EC bytes): a phazon waypoint of a hint type. The AI waypoint list
+// (the manager's 0x838, kOL_AiWaypoint, 0x000065F8) is walked for CScriptAIHints (0x00006610) in
+// the actor's area (0x4, 0x00006630) of the type (0x158, 0x0000663C) that are active (0x20 bit
+// 0x80, 0x0000665C); up to ten are kept (`cmpwi r0, 0xa`). For the type 6 a hint is kept only when
+// it is not in use (GetInUse(kInvalidUniqueId) at 0x0000667C), and every hint of the type has its
+// use cleared (SetInUse(false) at 0x000066A8, active or not). None kept: the zero vector
+// (0x00006740); else Range(0, count - 1) picks one (0x0000676C), which the type 6 marks in use
+// (0x00006788), and its position (0x54/0x58/0x5C) is the answer.
+CVector3f CDarkSamus::GetPhazonWaypoint(CStateManager& mgr, int type) {
+  CScriptAIHint* hints[10];
+  int count = 0;
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint); // mgr+0x838
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
+    if (hint == nullptr || hint->GetCurrentAreaId() != GetCurrentAreaId() ||
+        hint->GetHintType() != type) {
+      continue;
+    }
+    if (type == 6) { // 0x00006614
+      if (hint->GetActive() && count < 10 && !hint->GetInUse(kInvalidUniqueId)) {
+        hints[count++] = hint;
+      }
+      hint->SetInUse(false); // 0x000066A8
+    } else if (hint->GetActive() && count < 10) {
+      hints[count++] = hint;
+    }
+  }
+  if (count == 0) { // 0x0000673C
+    return CVector3f::Zero();
+  }
+  CScriptAIHint* pick = hints[mgr.Random()->Range(0, count - 1)]; // 0x0000676C
+  if (type == 6) {
+    pick->SetInUse(true); // 0x00006788
+  }
+  return pick->GetTranslation();
+}
+
+// fn_10_1BC58 (0x0001BC58, 0x198 bytes): the distance to the nearest incoming projectile. The near
+// list of the box of half-size lbl_10_rodata_3F0 = 100.0f (lbl_10_rodata_54C = -100.0f for the low
+// corner) around the actor with the default filter and the actor itself (0x0001BD10); each entry
+// cast to a CEnergyProjectile that fn_10_1B9B0 with any weapon type (`li r6, -0x1` at 0x0001BD54)
+// lets through counts with its distance to the actor (0x0001BDA8); the least, starting at
+// lbl_10_rodata_554 = FLT_MAX (0x0001BD1C), is the answer.
+float CDarkSamus::GetIncomingProjectileDistance(CStateManager& mgr) const {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
+  const CVector3f min(pos.GetX() + -100.f, pos.GetY() + -100.f, pos.GetZ() + -100.f);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
+  float best = 3.4028235e38f; // lbl_10_rodata_554
+  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    const CEnergyProjectile* proj = TCastToConstPtr< CEnergyProjectile >(mgr.ObjectById(*it));
+    if (!CanReflectProjectile(mgr, proj, -1)) { // 0x0001BD58
+      continue;
+    }
+    const float dist = (proj->GetTranslation() - pos).Magnitude(); // 0x0001BDA8
+    if (dist < best) {
+      best = dist;
+    }
+  }
+  return best;
+}
 
 // fn_10_10C9C (0x00010C9C, 0x2C8 bytes): the HeavyHit state.
 // Activate (`mr. r31, r5` at 0x00010CE0): the kBSC_NextState command (`li r0, 0xc`, 0x00010D0C),
@@ -83,13 +136,16 @@ float StandInIncomingProjectileDistance() {
 // 0x00010F28) clears 0xC0C (0x00010F44) and takes the elapsed time into 0xC20 (0x00010F4C).
 //   arm                                           | run
 //   Activate / not (0x00010CE8)                   | both
-//   forward can / cannot be normalized (10D5C)    | can only
-//   right can / cannot be normalized (10DC4)      | can only
-//   table entry i hits (10E84/10E8C), i = 0..3    | i = 0 only
-//   no entry hits (loop ends, 10EB0)              | no
+//   forward can / cannot be normalized (10D5C)    | can natural; cannot forced once
+//   right can / cannot be normalized (10DC4)      | can natural; cannot forced once
+//   table entry i hits (10E84/10E8C), i = 0..3    | 0 natural; 1..3 forced once each
+//   no entry hits (loop ends, 10EB0)              | forced once (0xC1C stays 1)
 //   Deactivate / not (0x00010F38)                 | both
-// Unmarked: the cannot-normalize arms and the entries 1..3 never ran (tools/cov/specs/
-// darksamus_fsm2.py on 10_cliff_rooftop, 4500 frames).
+// Forced (tools/cov/specs/darksamus_fsm2_force2.py, 10_cliff_rooftop): Activates 1..3 aim 0xC10
+// at -forward, -right and right (0xC1C 1, 2, 3 at the step), the 4th straight up (no entry; 0xC1C
+// stays 1), the 5th zeroes the transform's flat forward and right (Normalize runs 12 times in 7
+// Activates; the transform is put back at DoStepCmd).
+// @ fn_10_10C9C
 void CDarkSamus::HeavyHit(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("HeavyHit", msg);
   if (msg == kStateMsg_Activate) {
@@ -171,8 +227,11 @@ void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
 // be normalized (0x000114AC); Deactivate (`cmpwi r31, 0x2` at 0x000114D0) forgets the last
 // attacker (0xC24 = kInvalidUniqueId). Then CPatterned::Patrol (0x000114F4), the separation
 // (fn_10_1DD14), the additive animation (fn_10_1D860) and the glide emitter (fn_10_11334).
-// Unmarked: never run - Patrol is not a state of the 10_cliff_rooftop FSM asset (`fsm` answers
-// "not entered (unknown name?)").
+// No FSM2 node uses it: the disc has one Dark Samus FSM2 (0x9F23AC7B, in Metroid1/3/5.pak, 59
+// states) and neither Patrol nor GetUp is among its states, so the state is dead in shipped data.
+// It was run with the console's `statecall` (Activate, Update, Update with the actor placed on
+// the player, Deactivate): both normalize arms (Normalize 3 of 4 calls) and both Deactivate arms.
+// @ fn_10_1142C
 void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("Patrol", msg);
   CVector3f toPlayer = (mgr.GetPlayer(0)->GetTranslation() - GetTranslation()).DropZ();
@@ -224,23 +283,7 @@ void CDarkSamus::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   AccumulateDamage(msg, dt);                // 0x00011660
   TurnTowardPlayer(mgr, dt, 1.2217305f);    // 0x0001167C
-  const CBCTauntCmd taunt(static_cast< pas::ETauntType >(mGuestBE8));
-  switch (msg) { // fn_10_8698
-  case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
-    BodyController()->CommandMgr().DeliverCmd(taunt);
-    break;
-  case kStateMsg_Update:
-    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
-      BodyController()->CommandMgr().DeliverCmd(taunt);
-    }
-    break;
-  case kStateMsg_Deactivate:
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    break;
-  default:
-    break;
-  }
+  RunTauntCmd(msg, static_cast< pas::ETauntType >(mGuestBE8)); // fn_10_8698 at 0x000116B8
 }
 
 // fn_10_16ECC (0x00016ECC, 0x1B0 bytes): the SuperMissileAttack state. The attack bookkeeping with
@@ -355,19 +398,27 @@ void CDarkSamus::NormalMissileAttack(CStateManager& mgr, EStateMsg msg, float dt
 // the body controller's time scale (0x5C8) back to 1.0f (0x000179E4). Deactivate (0x000179EC):
 // the time scale back to 1.0f, 0xC00 = 0 and the last attacker forgotten. Every message: the melee
 // attack command (fn_10_8764) with severity 6 when 0xBFC bit 0x80 is set (0x00017A28), else 1.
+//   arm                                           | run
+//   Activate: projectile within 35 / not          | both (a shot from 20 units: 19)
+//   Update: 0xC04 clear / set                     | both (set forced: gdb, Updates 3 and 6)
+//   time arm (0xC04 + 4 behind) / not             | both (forced 0xC04 = elapsed - 10)
+//   projectile within 28 / not                    | both (a shot at 5 units clears it)
+//   Deactivate / not                              | both
+// Run: darksamus_fsm2_force2.py with its .con (the line breakpoints log each decision).
+// @ fn_10_178E4
 void CDarkSamus::MissileDeflect(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MissileDeflect", msg);
   UpdateCurrentAttack(0x2, mgr, msg);
   switch (msg) {
   case kStateMsg_Activate:
-    mGuestBFC80 = StandInIncomingProjectileDistance() < 35.f; // 0x00017950
+    mGuestBFC80 = GetIncomingProjectileDistance(mgr) < 35.f; // 0x00017950
     mGuestC04 = 0.f;                                          // 0x00017978
     mMeleeContact.Reset();                                    // 0x0001797C
     break;
   case kStateMsg_Update:
     if (mGuestC04 != 0.f) { // 0x00017990
       if (mGuestC04 + 4.f < mElapsedTime ||                   // 0x000179A8
-          StandInIncomingProjectileDistance() < 28.f) {        // 0x000179C4
+          GetIncomingProjectileDistance(mgr) < 28.f) {        // 0x000179C4
         mGuestC04 = 0.f;
         BodyController()->SetTimeScale(1.f); // 0x000179E4
       }
@@ -388,7 +439,9 @@ void CDarkSamus::MissileDeflect(CStateManager& mgr, EStateMsg msg, float) {
 // fn_10_18EAC (0x00018EAC, 0x88 bytes): the GetUp state. The ground collision (fn_10_18F90,
 // 0x00018EC8) and the getup command (fn_10_22020, pas::kAS_Getup = `li r5, 0x1`, {kBSC_Getup,
 // type 0}, 0x00018F00).
-// Unmarked: never run - GetUp is not a state of the 10_cliff_rooftop FSM asset.
+// Dead in shipped data like Patrol (no node in the FSM2 0x9F23AC7B); run with `statecall`:
+// Activate, Update twice (CanIssueCommand true, then false: three DeliverCmds), Deactivate.
+// @ fn_10_18EAC
 void CDarkSamus::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("GetUp", msg);
   UpdateGroundCollision(mgr, msg);
@@ -411,38 +464,19 @@ void CDarkSamus::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// The taunt command of the phazon states (fn_10_8698 with pas::kAS_Taunt).
-void CDarkSamus::RunPhazonTauntCmd(EStateMsg msg, int type) {
-  const CBCTauntCmd taunt(static_cast< pas::ETauntType >(type));
-  switch (msg) {
-  case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
-    BodyController()->CommandMgr().DeliverCmd(taunt);
-    break;
-  case kStateMsg_Update:
-    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
-      BodyController()->CommandMgr().DeliverCmd(taunt);
-    }
-    break;
-  case kStateMsg_Deactivate:
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    break;
-  default:
-    break;
-  }
-}
-
 // fn_10_4AC8 (0x00004AC8, 0xD4 bytes): the PhazonSuck state. The attack bookkeeping with
 // 0x400000 (`lis r4, 0x40`, 0x00004AF8), the shield flag (fn_10_105F4), the collision failsafe
 // (fn_10_1AEC0) and the taunt command with type 3 (`li r0, 0x3`, fn_10_8698 at 0x00004B54);
 // Activate (`cmpwi r31, 0x0` at 0x00004B64) keeps the actor's height (0x5C) in 0xF58.
-// Unmarked: the taunt command's Update re-delivery (CanIssueCommand true) never ran (129 Updates).
+// Arms: Activate / not, both; the taunt command's re-delivery (fn_10_8698's CanIssueCommand true)
+// ran 133 times when the state was entered from a non-taunt state (darksamus_fsm2_force2.py).
+// @ fn_10_4AC8
 void CDarkSamus::PhazonSuck(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("PhazonSuck", msg);
   UpdateCurrentAttack(0x400000, mgr, msg);
   UpdateShieldFlag(msg);
   RunCollisionFailsafe(mgr);
-  RunPhazonTauntCmd(msg, 3);
+  RunTauntCmd(msg, static_cast< pas::ETauntType >(3)); // fn_10_8698 at 0x00004B54
   if (msg == kStateMsg_Activate) {
     mGuestF58 = GetTranslation().GetZ(); // 0x00004B7C
   }
@@ -452,31 +486,30 @@ void CDarkSamus::PhazonSuck(CStateManager& mgr, EStateMsg msg, float) {
 // 0x00006480) takes the phazon waypoint of type 7 (fn_10_65CC) into 0xEE4; every message stores
 // lbl_10_rodata_198 = 0.1f + (lbl_10_rodata_190 = 6.0f + the elapsed time) to 0xF64
 // (0x000064EC), runs the waypoint path (fn_10_6374, 0x000064F0) and the shield flag
-// (fn_10_105F4, 0x00006504).
+// (fn_10_105F4, 0x00006504). Arms: Activate / not, both (darksamus_fsm2_force2.py).
+// @ fn_10_6460
 void CDarkSamus::GoToPhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("GoToPhazonEnrage", msg);
   if (msg == kStateMsg_Activate) {
-    mGuestEE4 = StandInPhazonWaypoint(7); // 0x000064A4
+    mGuestEE4 = GetPhazonWaypoint(mgr, 7); // 0x000064A4
   }
   mGuestF64 = 0.1f + (6.f + mElapsedTime); // 0x000064EC
-  (void)mgr;
-  (void)dt;
-  Fsm2StandIn("fn_10_6374", "waypoint path");
-  UpdateShieldFlag(msg); // 0x00006504
+  FindPathToWaypoint(mgr, dt, msg); // fn_10_6374 at 0x000064F0
+  UpdateShieldFlag(msg);            // 0x00006504
 }
 
 // fn_10_652C (0x0000652C, 0xA0 bytes): the GoToPhazonAttack state. Activate takes the phazon
 // waypoint of type 6 (fn_10_65CC, 0x00006570) into 0xEE4 and the elapsed time into 0xF64
 // (0x00006590); every message runs the waypoint path (fn_10_6374, 0x000065A4).
+// Arms: Activate / not, both (darksamus_fsm2_force2.py).
+// @ fn_10_652C
 void CDarkSamus::GoToPhazonAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("GoToPhazonAttack", msg);
   if (msg == kStateMsg_Activate) {
-    mGuestEE4 = StandInPhazonWaypoint(6); // 0x00006570
+    mGuestEE4 = GetPhazonWaypoint(mgr, 6); // 0x00006570
     mGuestF64 = mElapsedTime;             // 0x00006590
   }
-  (void)mgr;
-  (void)dt;
-  Fsm2StandIn("fn_10_6374", "waypoint path");
+  FindPathToWaypoint(mgr, dt, msg); // fn_10_6374 at 0x000065A4
 }
 
 // fn_10_67B8 (0x000067B8, 0x1C4 bytes): the PhazonMissiles state. Activate (`mr. r31, r5` at
@@ -508,7 +541,7 @@ void CDarkSamus::PhazonMissiles(CStateManager& mgr, EStateMsg msg, float dt) {
     if (mGuestFB8 == 0) {  // 0x0000687C
       mGuestFC8 = mElapsedTime;
       mGuestFCC = -1000.f;
-      Fsm2StandIn("fn_10_69C0", "phazon missiles reset");
+      DeleteGuestUids(mgr); // fn_10_69C0 at 0x000068A0
     }
   }
   (void)dt;
@@ -555,12 +588,12 @@ void CDarkSamus::PhazonFall(CStateManager& mgr, EStateMsg msg, float dt) {
     mGuestFC0 = 0.f;
     mPhazonHealthMark = HealthInfo()->GetHP(); // 0x00006D20
     mGuestC00 = 0.f;
-    Fsm2StandIn("fn_10_4868", "phazon fall end");
+    DeleteGuestActor(mgr); // fn_10_4868 at 0x00006D30
     break;
   default:
     break;
   }
-  RunPhazonTauntCmd(msg, 8);
+  RunTauntCmd(msg, static_cast< pas::ETauntType >(8)); // fn_10_8698 at 0x00006D6C
 }
 
 // fn_10_7054 (0x00007054, 0x2B0 bytes): the PhazonRise state. The collision failsafe, the ground
@@ -572,6 +605,9 @@ void CDarkSamus::PhazonFall(CStateManager& mgr, EStateMsg msg, float dt) {
 // direction, normalized when it can be (0x00007218), times dt, is the one-frame move
 // (MoveInOneFrameWR at 0x00007278, the host's MoveToInOneFrameWR). Deactivate (0x00007280): 0xFC0
 // cleared. Every message: the taunt command with type 7 (0x000072C4).
+// Unmarked: 10_cliff_rooftop has no active type-7 AI hint, so the waypoint is always the zero
+// vector (no MoveToInOneFrameWR in 165 Updates) and the move arms never ran; Activate (0x1044 clear
+// and set), Update and Deactivate did.
 void CDarkSamus::PhazonRise(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("PhazonRise", msg);
   RunCollisionFailsafe(mgr);
@@ -591,7 +627,7 @@ void CDarkSamus::PhazonRise(CStateManager& mgr, EStateMsg msg, float dt) {
     mGuest1058 = mgr.Random()->Range(6, 8); // 0x00007174
     break;
   case kStateMsg_Update: {
-    const CVector3f waypoint = StandInPhazonWaypoint(7);
+    const CVector3f waypoint = GetPhazonWaypoint(mgr, 7); // 0x00007190
     if (waypoint == CVector3f::Zero()) { // 0x000071D4
       break;
     }
@@ -608,7 +644,7 @@ void CDarkSamus::PhazonRise(CStateManager& mgr, EStateMsg msg, float dt) {
   default:
     break;
   }
-  RunPhazonTauntCmd(msg, 7);
+  RunTauntCmd(msg, static_cast< pas::ETauntType >(7)); // fn_10_8698 at 0x000072C4
 }
 
 // fn_10_7BC0 (0x00007BC0, 0x154 bytes): the PhazonEnraged state. Locomotion type 0xA every message
@@ -674,7 +710,7 @@ void CDarkSamus::PhazonAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   case kStateMsg_Update: {
     Fsm2StandIn("fn_10_5974", "phazon attack update");
-    Fsm2StandIn("fn_10_48C8", "phazon attack aim");
+    DeleteGuestActorIfExpired(mgr); // fn_10_48C8 at 0x0000834C
     const CVector3f fwd = GetTransform().GetForward();
     CVector3f flatFwd(fwd.GetX(), fwd.GetY(), 0.f);
     if (flatFwd.CanBeNormalized()) { // 0x00008388
@@ -703,7 +739,7 @@ void CDarkSamus::PhazonAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Deactivate:
-    Fsm2StandIn("fn_10_812C", "phazon attack end");
+    StopGuestSfx(); // fn_10_812C at 0x0000858C
     break;
   default:
     break;

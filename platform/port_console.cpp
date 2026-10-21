@@ -516,6 +516,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -1594,6 +1595,41 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
+// statecall <id> <state> <msg> [dt]: run one state body of an FSM2 actor once with a message (0
+// Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
+// does not change. The body is looked up in the actor's whole state table, so a state the shipped
+// FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
+void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float msgArg = 0.f;
+  float dt = 1.f / 60.f;
+  if (args.size() < 4 || args.size() > 5 || !ParseFloat(args[3], msgArg) ||
+      (args.size() == 5 && !ParseFloat(args[4], dt))) {
+    Fail("usage: statecall <id> <state name> <msg 0..2> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const int msg = static_cast< int >(msgArg);
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::StateFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no state function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, static_cast< EStateMsg >(msg), dt);
+  out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
+}
+
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
 // away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
 // shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
@@ -2274,6 +2310,7 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"statecall", CmdStateCall, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
     {"shoot", CmdShoot, true},

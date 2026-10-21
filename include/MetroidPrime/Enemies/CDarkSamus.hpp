@@ -950,7 +950,7 @@ private:
                                    // fn_10_1B658 stores the elapsed time 0x8B0 (0x0001B8D4)
   float mGuestC0C;                 // guest 0xC0C, the elapsed time of the last hit (the damage
                                    // arm of AcceptScriptMsg, 0x0001EAF8); the constructor writes
-                                   // lbl_10_rodata_3EC = -1.0f (0x0001FEE4)
+                                   // lbl_10_rodata_3FC = 0.0f (0x0001FEE4)
   float mGuestC20;                 // guest 0xC20, the elapsed time of the last heavy hit (the
                                    // HeavyHit state's Deactivate, 0x00010F4C); the constructor
                                    // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
@@ -984,7 +984,8 @@ private:
                                     // (its z 0.0f) and normalized (0x0001EB04..0x0001EB30)
   // fsm2: the members the second FSM lane's states touch (PortCDarkSamusFsm2.cpp). The names are
   // the guest offsets (the loader does not name them); the initialisers are the constructor's.
-  void RunPhazonTauntCmd(EStateMsg msg, int type); // fn_10_8698 for the phazon states
+  CVector3f GetPhazonWaypoint(CStateManager& mgr, int type);     // fn_10_65CC
+  float GetIncomingProjectileDistance(CStateManager& mgr) const; // fn_10_1BC58
   int mGuestA38 = 0;                 // guest 0xA38, the normal missiles fired (fn_10_1BEFC counts)
   int mGuestA3C = 0;                 // guest 0xA3C, the normal missiles to fire (fn_10_17448)
   int mGuestA78 = 0;                 // guest 0xA78, the super missiles fired (fn_10_1BEFC counts)
@@ -1031,11 +1032,6 @@ private:
                              float dt); // fn_10_6F90: the path find to the destination
   void DeleteGuestUids(CStateManager& mgr); // fn_10_69C0: the uids at guest 0x934 are deleted
   void FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg); // fn_10_6374
-  // The FSM lane's fn_10_1DD14, fn_10_1D860 and fn_10_11334 are not on port yet; fn_10_6374 calls
-  // them, so they stand in as empty calls until the lane ports them.
-  void StandInSeparation(CStateManager& mgr);  // fn_10_1DD14
-  void StandInCoverPath(CStateManager& mgr, int arg); // fn_10_1D860
-  void StandInGlideEmitter(int arg);           // fn_10_11334
   // The module's own members whose guest offsets the helpers below 0xA000 touch. The host class
   // had none of them; the names are the guest offsets because the loader does not name them.
   int mGuest930 = 0;                 // guest 0x930, the number of uids in 0x934 (the ctor writes 0)

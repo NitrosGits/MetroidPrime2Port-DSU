@@ -65,7 +65,6 @@ void CDarkSamus::InitGuestModelData(CModelData* model) { new (model) CModelData(
 // host's CAnimationState::CanIssueCommand) answers true; Deactivate (0x00008744) stores 0
 // (kAS_NotReady). The guest's 0x6B4 is the base's animation state, which the host keeps in
 // CPatterned::mAnimationState.
-// fn_10_8698 (ported, unreferenced in the port: the states run it inline)
 void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -103,7 +102,6 @@ void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& dest
 // fn_10_69C0 (0x000069C0, 0x80 bytes): the uids at guest 0x934 are deleted from the state manager
 // (0x000069FC..0x00006A0C) and the slot cleared (0x00006A14); a kInvalidUniqueId slot is left
 // alone (0x000069F4). The loop runs over the count at guest 0x930 (0x00006A20).
-// fn_10_69C0 (ported, unreferenced in the port: nothing calls it yet)
 void CDarkSamus::DeleteGuestUids(CStateManager& mgr) {
   for (int i = 0; i < mGuest930; ++i) { // 0x00006A20
     if (mGuest934[i] == kInvalidUniqueId.value) { // 0x000069F4
@@ -115,38 +113,24 @@ void CDarkSamus::DeleteGuestUids(CStateManager& mgr) {
 }
 
 // fn_10_6374 (0x00006374, 0xEC bytes): the path find along the waypoints. With the message 0
-// (0x000063A4) the destination is the module's vector at guest 0xEE4 (0x00006418); otherwise the
-// path find runs with that message (0x000063BC). Then the separation (fn_10_1DD14, 0x000063C8 -
-// the FSM lane's half, a stand-in here), the path check (0x000063E8) and, when the path is not
-// shagged and the actor is on the last waypoint (0x000063F8..0x00006408), the destination is set
-// again (0x0000641C). The lane's fn_10_1D860 (0x0000642C) and fn_10_11334 (0x00006438) stand in.
-// fn_10_6374 (ported, unreferenced in the port: nothing calls it yet)
+// (`mr. r31, r5` at 0x00006394) the path find starts toward the module's vector at guest 0xEE4
+// (fn_10_1C778 at 0x000063AC); otherwise the path find runs with that message (0x000063BC), then
+// the separation (fn_10_1DD14, 0x000063C8) and, when the path is shagged (0x000063F4) or the actor
+// is on the last waypoint (the waypoint count 0x7C4 and the current one 0x888, 0x000063F8..
+// 0x00006408), the destination is set again (0x0000641C). Every message ends with the additive
+// animation (fn_10_1D860, 0x0000642C) and the glide emitter (fn_10_11334, 0x00006438).
 void CDarkSamus::FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg) {
-  if (msg == kStateMsg_Activate) { // 0x000063A4
-    SetPathFindDestination(mgr, mGuestEE4, dt); // fn_10_1C778 at 0x00006418
+  if (msg == kStateMsg_Activate) {
+    SetPathFindDestination(mgr, mGuestEE4, dt); // fn_10_1C778 at 0x000063AC
   } else {
     mPathFindNavigation.PathFind(mgr, msg, dt, *this); // 0x000063BC
+    Separate(mgr);                                     // fn_10_1DD14 at 0x000063C8
+    if (PathShagged(mgr, CTriggerData(0.f)) ||         // 0x000063E8
+        mPathFindSearch.GetCurrentWaypoint() >=
+            static_cast< int >(mPathFindSearch.GetWaypoints().size()) - 1) {
+      SetPathFindDestination(mgr, mGuestEE4, dt); // fn_10_1C778 at 0x0000641C
+    }
   }
-  StandInSeparation(mgr); // fn_10_1DD14 at 0x000063C8
-  if (PathShagged(mgr, CTriggerData(0.f))) { // 0x000063E8
-    return;
-  }
-  // 0x000063F8..0x00006408: the waypoint count (guest 0x7C4) and the current waypoint (guest
-  // 0x888) - the host's CPathFindSearch.
-  if (mPathFindSearch.GetCurrentWaypoint() <
-      static_cast< int >(mPathFindSearch.GetWaypoints().size()) - 1) {
-    return;
-  }
-  SetPathFindDestination(mgr, mGuestEE4, dt); // 0x0000641C
-  StandInCoverPath(mgr, 0);                 // fn_10_1D860 at 0x0000642C
-  StandInGlideEmitter(0);                   // fn_10_11334 at 0x00006438
+  UpdateAdditiveAnimation(mgr, msg); // fn_10_1D860 at 0x0000642C
+  UpdateGlideEmitter(msg);           // fn_10_11334 at 0x00006438
 }
-
-// fn_10_1DD14: the FSM lane's half, not on port yet.
-void CDarkSamus::StandInSeparation(CStateManager&) {}
-
-// fn_10_1D860: the FSM lane's half, not on port yet.
-void CDarkSamus::StandInCoverPath(CStateManager&, int) {}
-
-// fn_10_11334: the FSM lane's half, not on port yet.
-void CDarkSamus::StandInGlideEmitter(int) {}
