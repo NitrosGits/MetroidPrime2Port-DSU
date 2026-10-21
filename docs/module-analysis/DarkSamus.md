@@ -712,3 +712,106 @@ transition enters it.
   0xCD0 arm would need a dive stage without +0x59; none was seen in the two surveyed encounters.
 - Next: MissileJump 177BC, MeleeAttack 17BC0, BoostBallInto B164 and SweepBeam CA0C are the
   traps that end dive runs.
+
+## Slice 15 (2026-10-21): the melee states
+
+- 16418 (IsPlayerAimLineClear) is not always-true: it matches the asm (fn_10_164C0 with the
+  (0, 0, 5) offset and the player's aim position) and the real static ray test. No change.
+- Ported: MissileJump 177BC, MeleeAttack 17BC0, MeleeDash 17ABC, the melee command runner
+  RunMeleeAttackCmd 8764, the melee contact record's Reset EA08 (0x9A4: only +0x38/+0x3A on the
+  host), and DoUserAnimEvent's kUE_Projectile arm (0x0001C134). That arm never reaches the base;
+  its callees 13AB4/1353C/133D0/9164/5840 are not ported, so for now the melee and missile events
+  do nothing. Before this, the base's LaunchProjectile crashed on the null ProjectileInfo the
+  first time MeleeAttack's animation fired the event.
+- Reaching them on Agon (damage 570, Activate; `/tmp` harness run_m.sh teleports the player on
+  each TravelToCoverPoints entry): MeleeAttack in band 0 (close); MeleeDash only with a morphed
+  player (1A278) 8.6-16 from her (141BC: 0.7-1.3 x 12.33); MissileJump with an unmorphed player
+  26.4-32 away (0.9-3.0 x 29.34, inside band 1). Each exits by AnimOver to Dash.
+- Runs: MeleeAttack 3x, MeleeDash 2x, MissileJump 10x; 0 caught.
+
+| body | arm | ran |
+| --- | --- | --- |
+| 17BC0 | Activate (contact reset) / Update / Deactivate (0xC00, 0xC24) | yes / yes / yes |
+| 17ABC | Activate / Update / Deactivate (0xC00, 0x9DC) | yes / yes / yes |
+| 177BC | branch-free | yes |
+| EA08 | branch-free | yes |
+| 8764 | Activate / Update retry true / Update retry false / Deactivate | yes / **no** / yes / yes |
+
+- Marked: 17BC0, 17ABC, 177BC, EA08. 8764 stays unmarked (its retry arm).
+- Note: run_m.sh runs hit `DebugDrawAABox`, a reach stub reached from CGunTurretBase.cpp:636,
+  not Dark Samus. The run_r2.sh runs never hit it.
+
+## Slice 16 (2026-10-21): BoostBallInto
+
+- Ported: BoostBallInto B164 with the boost hint search B6C4, the arrived hint B458, the chain test
+  BA38 (15 steps), the ball actor 9920 and the ball/emitter update A06C. New members: the 0xE10
+  sub-object's 0xE38 ball uid, 0xE68 roll sound ([probable] boostBallRollSound, by fn_10_895C's
+  argument order), 0xE6C handle, 0xEBC bit 0x40, and 0xEC0..0xED8 (hint uid, distance, 0xEC8,
+  0xECC, clamped value). B570/B670 are the rstl vector copy/dtor around FindConnectedObjects.
+- Reach: `fsm <id> BoostBallInto` (drivers `tools/drivers/darksamus_boost.con` on Agon,
+  `darksamus_boost_rooftop.con` on the rooftop, `MP2_WORLD="1baa96c2,10_cliff_rooftop"`,
+  `LAYER2@400`, boss u04f7, 1500 hp). Natural picks reach it too (PickedBoostBall seen on the
+  rooftop). It exits by AnimOver to BoostBallRoll (fn_10_A3B0, a stand-in, which traps the run).
+  Agon's boss has no kSS_InternalState6 links (no hint) and no roll sound; the rooftop's links 37
+  type-0x11 hints, all active from the start, with value parameters 0.74-0.95.
+
+| body | arm | ran |
+| --- | --- | --- |
+| B164 | Activate / Update / Deactivate | yes / yes / yes |
+| B164 | no start hint (Agon) / start, arrived hint found (rooftop) / start, no arrived hint | yes / yes / **no** |
+| B164 | value > 0 in 0..2 / value <= 0 / value > 2 (`0.f > value` is dead behind `> 0`) | yes / **no** / **no** |
+| B164 | turn to player / turn to hint actor / hint uid not an actor | yes / yes / no (hints are actors) |
+| B6C4 | null cast / inactive / not 0x11 / outside radius / not nearer / BA38 true / kept | no / **no** / **no** / yes / yes / **no** / yes |
+| BA38 | no hint / inactive 0x11 next (true) / 15 steps (false) | **no** / **no** / yes |
+| B458 | no hint / inactive skipped / active found / none | **no** / **no** / yes / **no** |
+| A06C | ball actor / roll emitter | **no** (0xE38 is set by BoostBallRoll/Fire paths) / yes |
+| 9920 | invalid uid / ball | yes / **no** |
+
+- None marked. `send <hint> Deactivate` on a chain hint would force the inactive arms of B6C4, BA38
+  and B458 (forced (send)); the value arms need a hint with value <= 0 or > 2 (none on the rooftop;
+  Temple and 0j_cliff_hall_loop not surveyed).
+- Not started: SweepBeam CA0C (needs C2B0 beam aim + C470 ray/decal/collision response, C104 with
+  BE18 near-list damage, C798 the 0xD78 effect release, and the 0xD74 sub-object), 1B658, 138A4,
+  11FA4's two open arms.
+
+## Slice 17 (2026-10-21): the forced boost hints, SweepBeam
+
+- Forced (send) on the rooftop (`tools/drivers/darksamus_boost_inactive.con`): at f700 the boss
+  stands in hint u01b2's radius only, whose kSS_Arrived link is u0140. `send u0140 Deactivate` ran
+  B6C4's inactive arm (u0140 is linked too), BA38's inactive answer (true at step 0) and B6C4's
+  BA38-true skip of u01b2; B164 then took u017f -> u0197. Still unmarked:
+  - B6C4: the null-cast and not-0x11 arms need a non-hint or non-0x11 link (data; no delete command).
+  - BA38: its no-hint arm is dead from its only caller (B6C4 passes a hint's uid).
+  - B458: its no-hint arm is reachable only from BoostBallRoll A3B0 (0x0000AC08, a stand-in); its
+    skip-inactive arm needs an inactive non-0x11 link ahead of the first type-0x11 Arrived link,
+    because BA38 already drops a start whose first arrived hint is inactive.
+  - A06C / 9920: 0xE38 is written only by fn_10_9AC4 (clear) and fn_10_9E00 (set); 9E00's callers
+    are BoostBallRoll A3B0 and DoUserAnimEvent 1BEFC, both stand-ins.
+- Ported: SweepBeam CA0C, the beam start C85C and release C798, the aim C2B0, the end point C470
+  (static ray, collision response, decal), the swept rays C104 and the damage ray BE18, the 0xD74
+  sub-object's members (fn_10_8DB4: 0xD74 PART, 0xD78 effect, 0xD80 damage, 0xD9C/0xDA8/0xDB4
+  directions and end, 0xDC0 length, 0xDC4 saved speed, 0xDC8 bits 0x80/0x40, 0xDCC CRSC, 0xDD8..0xDE4
+  sounds), and DoUserAnimEvent's kUE_BeginAction / kUE_EndAction sweep arms (0x10000 starts / stops
+  the beam; both cases return without the base, as retail does). [probable] fn_10_8DB4's arguments
+  follow the data order (sweepSwoosh, sweepBeamDamage, sweepBeamCollisionEffect, sweepBeamSound,
+  unknown_0x0ef8dc15).
+- Host guard: Agon's boss leaves sweepSwoosh as kInvalidAssetId and a forced SweepBeam there crashed
+  in CElementGen's constructor; StartSweepBeam makes no beam for an invalid PART.
+- Reach: `fsm <id> SweepBeam` (`tools/drivers/darksamus_sweep.con`, rooftop u04f7, PART a4381217).
+  BeginAction does not fire on every pass (it fired on all three rooftop passes, on one of three on Agon).
+  Neither world sets sweepBeamSound or unknown_0x0ef8dc15 (both 0xFFFF), so no emitter is made.
+
+| body | arm | ran |
+| --- | --- | --- |
+| CA0C | Activate / Update / Deactivate | yes / yes / yes |
+| CA0C | Update: beam on / off; beam sound / none | yes / yes; **no** (data) / yes |
+| CA0C | Deactivate: each sound set / not set | **no** (data) / yes |
+| C85C | release, build, emission on, bit 0x40 | yes |
+| C798 | old effect deleted / none | yes / yes |
+| C2B0 | effect / none; normalized / not; end sound / none | yes / yes; yes / **no**; **no** (data) / yes |
+| C470 | normalized / not; hit, beam on / hit, off / miss; decal / none | yes / **no**; yes / yes / yes; **no** / yes |
+| C104 | no PART (0) / previous zero / previous; one ray / subdivided | **no** (data) / yes / yes; yes / yes |
+| BE18 | player first / player again / other / none | yes / yes / yes / yes |
+
+- Marked: C85C, C798, BE18. CA0C and C2B0 wait on a world with the sweep sounds; C470 waits on a
+  decal-bearing CRSC (rooftop's has no type-1 decal) and a vertical gun; C104 waits on a 0 PART.

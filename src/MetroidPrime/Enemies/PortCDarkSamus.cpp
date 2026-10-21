@@ -133,6 +133,37 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGuestE04(0.f) // not written by the constructor; fn_10_18628 is the only writer
 , mGuestE08(0.f)
 , mGuestE0C(0.f)
+, mBoostBallUid(kInvalidUniqueId)                  // 0x000089FC
+, mBoostBallRollSfxId(data.mBoostBallRollSound == -1 // 0x00008978
+                          ? CSfxManager::kInternalInvalidSfxId
+                          : static_cast< ushort >(data.mBoostBallRollSound))
+, mBoostBallRollSfx()                                // 0x00008A50
+, mBoostBallFlag40(false)
+, mBoostHintUid(kInvalidUniqueId)                    // 0x0002011C
+, mBoostHintDist(1000.f)                             // 0x0002012C
+, mGuestEC8(0)                                       // 0x00020138
+, mGuestECC(CVector3f(0.f, 0.f, 0.f))                // 0x00020140
+, mBoostHintValue(1.f)                               // 0x00020154
+// fn_10_8DB4 at 0x00020060; the two sound ids are kInternalInvalidSfxId for -1 (0x0002000C,
+// 0x0002004C).
+, mSweepBeamPart(data.mSweepSwoosh)
+, mSweepBeamGen()
+, mSweepBeamDamageInfo(data.mSweepBeamDamage)
+, mSweepBeamDir(CVector3f::Zero())
+, mSweepBeamPrevDir(CVector3f::Zero())
+, mSweepBeamEnd(CVector3f::Zero())
+, mSweepBeamLength(0.f)
+, mSweepBeamSpeed(1.f)
+, mSweepBeamHitPlayer(false)
+, mSweepBeamOn(false)
+, mSweepBeamResponse(gpSimplePool->GetObj(SObjectTag('CRSC', data.mSweepBeamCollisionEffect)))
+, mSweepBeamSfxId(data.mSweepBeamSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                              : static_cast< ushort >(data.mSweepBeamSound))
+, mSweepBeamSfx()
+, mSweepBeamEndSfxId(data.mUnknown0EF8DC15 == -1
+                         ? CSfxManager::kInternalInvalidSfxId
+                         : static_cast< ushort >(data.mUnknown0EF8DC15))
+, mSweepBeamEndSfx()
 , mDodgeTime(0.f)                               // 0x00020248
 , mDodgeDir(CVector3f::Zero())                  // 0x00020254..0x00020264
 , mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
@@ -382,6 +413,16 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   // the base: the scatter shots start (fn_10_11814) with side 0 for 8 (0x0001C25C) and the byte
   // 0xBAC for 0x10 (0x0001C268). Its 0x100 (0xA84 = 1), 0x100000 (0xAB8 bit 0x40) and 0x400000
   // (fn_10_6118, fn_10_8178) arms are not in the port yet.
+  // kUE_Projectile (case 0, 0x0001C134) switches on the current attack 0x980 and never reaches
+  // the base either: the melee hit fn_10_13AB4 for 1..4 except 3 (0x0001C15C/0x0001C168,
+  // 0x0001C1B8), the missile fn_10_1353C for 0x40/0x80 (0x0001C1C8), fn_10_133D0 for 0x100
+  // (0x0001C1D0), fn_10_9164 for 0x20000/0x100000 (0x0001C1E0) and fn_10_5840 for 0x800000
+  // (0x0001C1E8); any other attack does nothing. None of those five is in the port yet, so the
+  // melee and missile events launch nothing - the base's LaunchProjectile would read the null
+  // ProjectileInfo those attacks answer.
+  if (type == kUE_Projectile) {
+    return;
+  }
   if (type == kUE_EventStart) {
     switch (mCurrentAttack) {
     case 8:
@@ -392,6 +433,23 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
       break;
     default:
       break;
+    }
+    return;
+  }
+  // kUE_BeginAction (case 17, 0x0001C004) and kUE_EndAction (case 18, 0x0001C0A0) switch on the
+  // current attack 0x980 and never reach the base: the sweep beam (0x10000, `lis r0, 0x1` at
+  // 0x0001C008 / 0x0001C0A4) starts its effect (fn_10_C85C at 0x0001C098) and releases it
+  // (fn_10_C798 at 0x0001C11C). BeginAction's 0x2 arm (0x0001C018) and EndAction's 0x40, 0x100,
+  // 0x100000 counters (0xA38/0xA78/0xAB0) and 0x400000 arm are not in the port yet.
+  if (type == kUE_BeginAction) {
+    if (mCurrentAttack == 0x10000) {
+      StartSweepBeam();
+    }
+    return;
+  }
+  if (type == kUE_EndAction) {
+    if (mCurrentAttack == 0x10000) {
+      StopSweepBeam();
     }
     return;
   }
