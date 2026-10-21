@@ -415,6 +415,9 @@ void CDarkSamus::Render(const CStateManager& mgr) const {
 
 // vtable slot 15 = fn_10_0 (0x2C): it calls the vtable's HealthInfo slot (0x38) and returns its
 // result, which is what the base class's own accessor does.
+// @ fn_10_0
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): every health query in the fight goes
+// through here, so the body ran. See docs/module-analysis/DarkSamus_helpers.md.
 const CHealthInfo* CDarkSamus::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
 // vtable slot 16 = fn_10_100DC (0x134): the vulnerability others read. During the phazon enrage
