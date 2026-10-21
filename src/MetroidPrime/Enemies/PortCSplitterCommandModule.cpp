@@ -892,6 +892,7 @@ void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
 // fn_75_6B08. The base call is the retail one: EPatternedAI 0x39 (li r4, 0x39 at 0x00006B68),
 // flavor 0 (li r7, 0x0 at 0x00006B30), movement 1 / collider 1 / body 7 (the stack words at
 // 0x00006B60..0x00006B6C - the head flies), all passed to CPatterned at 0x00006B78.
+// @ fn_75_6B08
 CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string& name,
                                                  const CEntityInfo& info, const CTransform4f& xf,
                                                  const CModelData& modelData,
@@ -913,6 +914,26 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
 // (fn_75_722C: weapon -1, every amount 0.0f, the sounds 0xFFFF); fn_75_1974 fires it.
 , mLaserSweepProjectileInfo(data.mLaserSweepBeamInfo.weaponSystem, CDamageInfo())
 , mOwnVulnerability(*CPatterned::GetDamageVulnerability()) {
+  // fn_75_6B08 @0x00006C04-0x00006D40: the scalar fields. The members' own initializers give the
+  // zeros, the -1s and the invalid ids; these are the rest: the flash colour at 0xF04 is White
+  // (0x6C68), the chassis timer at 0xF14 lbl_75_rodata_90 (3.0f, 0x6CC4), the vector at
+  // 0xF24-0xF2C the transform's Y column (the xf's floats at 0x4, 0x14 and 0x24, 0x6C9C-0x6CDC)
+  // and the look-at offset at 0xF50 the zero vector (0x6D18-0x6D2C).
+  mFlashColor = CColor::White();
+  mChassisTimer = 3.f;
+  mEditorProperties = xf.GetColumn(kDY);
+  mLookAtOffset = CVector3f::Zero();
+  // fn_75_6B08 @0x00006D44-0x00006DA0: the flag byte at 0xF6A is 0x92 (rlwimi of 1 into the
+  // byte's 0x80, 0x10 and 0x02, of 0 into the rest): PathOver waits (0x80), the Dodge flag
+  // (0x10) and the first dock's sound is skipped (0x02, fn_75_3EEC).
+  mAutoDestructFlags = 0x92;
+  // fn_75_6B08 @0x00006DA4-0x00006DAC: both projectile infos' weapon tokens are locked.
+  mProjectileInfo.Token().Lock();
+  mLaserSweepProjectileInfo.Token().Lock();
+  // fn_75_6B08 @0x00006DB0-0x00006DE8: the locator at 0xEF8 is the model's "Beam_LCTR"
+  // (lbl_75_rodata_293) segment.
+  mLookAtSegment =
+      GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("Beam_LCTR"));
   // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
   // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
   // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
@@ -926,9 +947,6 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   mDodgeDistance = GetModelData()->GetScale().GetX() *
                    GetAnimationDistance(CPASAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3),
                                                          CPASAnimParm::FromEnum(1)));
-  // The retail constructor also builds the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
-  // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
-  // not enter, so the port keeps the parameter block only.
 }
 
 CSplitterCommandModule::~CSplitterCommandModule() {}

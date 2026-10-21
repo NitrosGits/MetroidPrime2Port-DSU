@@ -1833,6 +1833,8 @@ CEntity* PortLoadSplitterCommandModule(CStateManager& mgr, CInputStream& input,
 // fn_75_F5F8. The base call is the retail one: EPatternedAI 0x38 (li r4, 0x38 at 0x0000F654),
 // flavor 0 (li r7, 0x0 at 0x0000F65C), movement 0 / collider 1 / body 1 (the stack words at
 // 0x0000F648..0x0000F660), all passed to CPatterned at 0x0000F66C.
+// Arms: the shipped flag words (no 0x1 bit) ran; the 0x1 bit was forced under gdb.
+// @ fn_75_F5F8
 CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& name,
                                              const CEntityInfo& info, const CTransform4f& xf,
                                              const CModelData& modelData,
@@ -1856,11 +1858,11 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
 // CLineOfSightTracker, built here with the same arguments the other ports use.
 , mVisualKnowledge(uid, CSegId(), 0.1f, 0.05f) {
   // fn_75_F5F8 @0x0000F93C-0x0000F964: guest 0xD0C is the walk speed (anim 1, 0x0000F948 li r4, 1)
-  // divided by the run speed. The first call's anim register is not set in the dump, so the run
-  // speed is the reading; the host's GetMaxSpeed() is that speed when the model has one and the
-  // largest locomotion speed otherwise.
+  // divided by the run speed (the first call's anim is the li r4, 0x2 at 0x0000F830, which
+  // nothing overwrites before 0x0000F93C).
   const CBodyStateInfo& bodyInfo = BodyController()->GetBodyStateInfo();
-  mSteeringSpeed = bodyInfo.GetLocomotionSpeed(pas::kLA_Walk) / bodyInfo.GetMaxSpeed();
+  mSteeringSpeed = bodyInfo.GetLocomotionSpeed(pas::kLA_Walk) /
+                   bodyInfo.GetLocomotionSpeed(pas::kLA_Run);
   // fn_75_F5F8 @0x0000F970-0x0000F98C: guest 0xCC8 is the segment of the locator "attach_LCTR"
   // (the rodata string at 0x3B7) - fn_8002BE04 is CAnimData::GetLocatorSegId on the model's
   // animation data. The 0xFF the ctor stores first (0x0000F780) is overwritten here.
@@ -1874,10 +1876,36 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
   // fn_75_F5F8 @0x0000F7D8: guest 0xCB0 is the patterned info's turn speed (its 0x8), which
   // FollowDeployPath's Deactivate (fn_75_C51C, 0xC84C) restores; CPatterned keeps the same copy.
   mBaseTurnSpeed = mTurnSpeed;
-  // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
-  // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
-  // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not
-  // enter, so the port keeps the parameter block only.
+  // fn_75_F5F8 @0x0000F744: the fade weight at 0xCB8 starts at lbl_75_rodata_364 (1.0f).
+  mFadeWeight = 1.f;
+  // fn_75_F5F8 @0x0000F7EC-0x0000F7FC: the counter at 0xD00 is 5 (deployed) unless the data's
+  // flag word (the runtime struct's 0x68, the loader's unknown_0xcef5c2fe) has its 0x1 bit, then 0.
+  mLandedCount = (mData.mUnknownCEF5C2FE & 0x1) != 0 ? 0 : 5;
+  // fn_75_F5F8 @0x0000F85C-0x0000F860: the timers at 0xD30 (lbl_75_rodata_3D0, 0.2f) and 0xD34
+  // (1.0f).
+  mTimerD30 = 0.2f;
+  mTimerD34 = 1.f;
+  // fn_75_F5F8 @0x0000F86C-0x0000F930: the flag byte at 0xD40 takes the flag word's 0x8 bit as its
+  // 0x80 (rlwimi 4) and its 0x1 bit as its 0x40 (rlwimi 6, IsDisabled); every other bit of 0xD40
+  // and 0xD41 is cleared.
+  mFlagsD40 = static_cast< uchar >(((mData.mUnknownCEF5C2FE & 0x8) != 0 ? 0x80 : 0) |
+                                   ((mData.mUnknownCEF5C2FE & 0x1) != 0 ? 0x40 : 0));
+  mFlagsD41 = 0;
+  // fn_75_F5F8 @0x0000F9A0-0x0000F9D0: the segment at 0xCC9 is the "target_LCTR" locator's (the
+  // host reads it where it is used, fn_75_A4E4), and the line-of-sight tracker's own segment
+  // (0xC72) is the "attach_LCTR" one at 0xCC8.
+  mVisualKnowledge.SetSegment(mLocatorSegment);
+  // fn_75_F5F8 @0x0000F9D4-0x0000FA68: the additive animation at 0xCB4 is the PAS database's best
+  // match for kAS_AdditiveReaction (0x18) with the parameter FromEnum(5); the retail keeps the id
+  // whatever the score.
+  mAdditiveAnimId = static_cast< uint >(
+      GetAnimationData()
+          ->GetPASDatabase()
+          .FindBestAnimation(
+              CPASAnimParmData(pas::kAS_AdditiveReaction, CPASAnimParm::FromEnum(5)), -1)
+          .second);
+  // fn_75_F5F8 @0x0000FA6C: the knock-back manager (0x620) turns its physics off.
+  KnockBackController().EnableKnockBackPhysics(false);
 }
 
 CSplitterMainChassis::~CSplitterMainChassis() {}
@@ -2043,8 +2071,9 @@ void CSplitterMainChassis::PortUpdateConnectedObjects(CStateManager& mgr) {
   mFollowObjectId = GetConnectedObject(mgr, kSS_Retreat, kSM_Follow);
 }
 
-// fn_75_8D50 (not marked, the 19-run gcov of 2026-10-21: a team that no longer lists the chassis
-// never came up)
+// Arms: the leave ran (914f1381); the failed cast and a team that no longer lists the chassis
+// were forced under gdb (the team id, then the chassis's own id, swapped for one call).
+// @ fn_75_8D50
 // The chassis's team exit (0x8D50-0x8DF8): the team id at 0xCBE is looked up (0x8D90
 // ObjectById) and cast to a CScriptTeamAiMgr (0x8D94); when the cast fails (0x8D9C) or the
 // actor is not in that team (0x8DB0 IsPartOfTeam, 0x8DB4) nothing happens, else the actor
@@ -2209,8 +2238,9 @@ void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   }
 }
 
-// fn_75_AA68 (not marked: the masks were the word's two top bits until 2026-10-21; on the fixed
-// build lurk ran in 0n_cliff_hall a4d81547 and relaxed in 914f1381, crouch (0x7D) never ran)
+// Arms: lurk ran in 0n_cliff_hall (a4d81547) and relaxed in 914f1381; crouch (0x7D, no shipped
+// placement in the runs' areas) was forced under gdb.
+// @ fn_75_AA68
 // The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. Its
 // 0x2 bit (0x0000AA78 rlwinm. r0, r4, 0, 30, 30) gives kLT_Lurk (2, 0x0000AA88), its 0x1 bit
 // (0x0000AA90 clrlwi. r0, r4, 31) kLT_Crouch (0, 0x0000AAA0) and anything else kLT_Relaxed (1,
@@ -2226,8 +2256,10 @@ void CSplitterMainChassis::PortSetLocomotionType() {
   }
 }
 
-// fn_75_F1C0 (not marked, the 19-run gcov of 2026-10-21: the Damage (XCMG) case and a Deactivate of
-// an inactive chassis never ran)
+// Arms: every case ran from the console (914f1381, cov/scn_f914: Damage, a double Deactivate,
+// AIUpdateDisabled); the null collision-actor-manager arms of XDEL, ACTV, DCVT and AUDT were
+// forced under gdb (the manager cleared for one call).
+// @ fn_75_F1C0
 // The main chassis's script-message handler (0xF1C0-0xF560): the base's call (0x0000F1F4) and
 // then a switch on the message's four-character code (0x0000F1F8-0x0000F33C). The retail's
 // cases: XCRT (the locomotion type and the body controller's activation), XDEL (the collision
@@ -2663,13 +2695,19 @@ void CSplitterMainChassis::SetAttackTarget(CStateManager& mgr, TUniqueId target)
   SetHitByPlayerProjectile(true);
 }
 
-// The module's auto-destruct starter (retail fn_75_5A54). The DOL reaches it through
-// SSplitterMainChassis_FuncPtrs::mAutoDestruct, whose entry the REL's table fills with the fifth
-// word (the table is {loader, loader, 0, 0xFFFFFFFF, fn_75_5A54}). What that function does is
-// not understood yet (docs/module-analysis/Splitter.md section j), so this is a documented
-// stand-in: it logs once and does nothing else.
+// The module's auto-destruct entry. The DOL's CSplitterMainChassis::AutoDestruct (0x80218C6C)
+// calls the table word gLoader_Splitter+0x8 through __ptmf_scall on the object it is given, and
+// the REL's table fills it with {0, -1, fn_75_5A54}: a non-virtual call of the command module's
+// auto-destruct starter. That body reads the 0xF6A flag byte and writes the 0xEF0 death timer,
+// both past the chassis's 0xD44 bytes, so it only fits a command module; nothing in the DOL or
+// the RELs calls the facade. The host runs the module's own port of fn_75_5A54
+// (CSplitterCommandModule::PortAutoDestruct) when the object is a command module (its
+// EPatternedAI is 0x39, fn_75_6B08) and does nothing for a chassis (0x38).
 void CSplitterMainChassis::PortAutoDestruct(float time) {
-  StandIn("CSplitterMainChassis::AutoDestruct (the REL's fn_75_5A54 body is not understood yet)");
+  CPatterned* self = this;
+  if (mCharacterType == static_cast< EPatternedAI >(0x39)) {
+    static_cast< CSplitterCommandModule* >(self)->PortAutoDestruct(time);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -344,7 +344,7 @@ Three vtables; all start with two zero words (offset-to-top + null RTTI), so slo
 | 0x3C / 0x48 / 0x84 | `GetHealthInfo` / `GetTouchBounds` / `CollidedWith` | `fn_75_D0` / `fn_75_18` / `fn_75_6178` | `fn_75_D0` / `fn_75_18` / `fn_75_ECA4` |
 | 0x40 | `GetDamageVulnerability() const` | `fn_75_616C` | `fn_75_EF24` |
 | 0x54 | `GetAimPosition(const CStateManager&, float) const` | `fn_75_5F8C` | inherited |
-| 0x70 | `GetSortingBounds(const CStateManager&) const` | `fn_75_6394` | `fn_75_EFA4` |
+| 0x70 | `DoUserAnimEvent` (CPatterned's slot; not GetSortingBounds) | `fn_75_6394` | `fn_75_EFA4` |
 | 0x98 | `Death(CStateManager&, const CVector3f&, EScriptObjectState)` | inherited | `fn_75_EB04` |
 | 0x9C | `KnockBack(CStateManager&, const CKnockBackInfo&)` | `fn_75_6174` | `fn_75_EBF4` |
 | 0xA8 / 0xC8 | `CanBeShot` / `GetModelAlphau8` | `fn_75_AC` / `fn_75_64` | `fn_75_AC` / `fn_75_64` |
@@ -383,7 +383,7 @@ local overrides are 0x08 `fn_75_11804` (dtor), 0x14 `fn_75_10DC4` (Think), 0x24 
 | 0x0FC-0x4AB | **SPLU (command module) loader** `fn_75_FC` (0x370) + its helpers: `fn_75_46C` (copies the animation set into a `CModelData`), `fn_75_4AC`, `fn_75_4F4` (a `CToken` copy), `fn_75_630` (the `SLdrUnknownStruct42` loader, 0x1BC) |
 | 0x4AC-0x5497 | behaviour bodies of the command module (its FSM states/triggers/codes); the exact split is **unknown** |
 | 0x5498-0x5A9F | the destructors of the `CMemory` vtables that live in `.data` (e.g. `.data:0x0` → `fn_75_5A40`, `.data:0xCAC` → `fn_75_5A54` = the auto-destruct starter) |
-| 0x5AA0-0x7BDB | command-module class: `SetupStateMachine` `fn_75_5E8C`, `Listen` `fn_75_5F18`, `GetAimPosition` `fn_75_5F8C` (0x1E0), `CollidedWith` `fn_75_6178`, `GetSortingBounds` `fn_75_6394`, `Think` `fn_75_6490`, `PreThink` `fn_75_654C` (0x24C), dtor `fn_75_6798`/`fn_75_6890`, `fn_75_6A74`, **ctor `fn_75_6B08`** (0x414); `LdrTo*` converters `fn_75_70A0`..`fn_75_7888`; SPLU runtime builder `fn_75_791C` |
+| 0x5AA0-0x7BDB | command-module class: `SetupStateMachine` `fn_75_5E8C`, `Listen` `fn_75_5F18`, `GetAimPosition` `fn_75_5F8C` (0x1E0), `CollidedWith` `fn_75_6178`, `DoUserAnimEvent` `fn_75_6394`, `Think` `fn_75_6490`, `PreThink` `fn_75_654C` (0x24C), dtor `fn_75_6798`/`fn_75_6890`, `fn_75_6A74`, **ctor `fn_75_6B08`** (0x414); `LdrTo*` converters `fn_75_70A0`..`fn_75_7888`; SPLU runtime builder `fn_75_791C` |
 | 0x7C80-0x81F7 | `fn_75_7C80` (0x578, jump table — own dump `auto_fn_75_7C80_text.s`): a big dispatch body; role **unknown** |
 | 0x8200-0x824F | `fn_75_8200` (returns 1), `fn_75_8208` (returns 0): the main chassis' `IsListening` / `ProjectileInfo` |
 | 0x8254-0x82AF | `fn_75_8254`: fills and registers the loader table (§0) |
@@ -472,7 +472,10 @@ triggers (module 14) are the integration test.
   is **unknown**. The body itself is known (2026-10-21): a live module (0x420's 0x40 bit, 0x5A58)
   whose 0xF6A 0x04 bit is clear sets the bit (0x5A70) and stores the time as the death timer at
   0xEF0 (0x5A78); `fn_75_32F4` counts it down and calls `Death` at zero. Ported as
-  `CSplitterCommandModule::PortAutoDestruct`; the chassis table's entry stays the stand-in.
+  `CSplitterCommandModule::PortAutoDestruct`. The DOL facade calls the table's {0, -1, fn_75_5A54}
+  member pointer on the object it is given (`__ptmf_scall`); nothing calls the facade. The host's
+  `CSplitterMainChassis::PortAutoDestruct` forwards to the module's port when the object's
+  EPatternedAI is 0x39 (a command module) and does nothing for a chassis.
 - `fn_75_5A54` is called from `fn_75_21FC` (the command module's Think helper) — so the auto-destruct
   is the head's, not the body's. The body has no auto-destruct in the REL.
 - `fn_75_7C80` (0x578) and `fn_75_FED0` (0x8A8) are the module's **static initialisers** (the
@@ -1607,11 +1610,13 @@ gdb-forced runs of the same areas; every run caught=0. 98 markers checked:
 | ALL-ARMS | 20 marked bodies, plus the no-branch ones |
 | untaken edges are not retail arms (switch `default`, the last `else if (Deactivate)`, `delete`'s null test) | 11804, 42F8, D3E0, D2A0, D13C, CF44, D0A4, DDF8, BEEC, the FSM states' `switch` |
 | untaken edges forced earlier / dead in shipped data (cited in the comments) | 55B0, 5568, 4138, 3BEC, 31A8, 4864, 4AC0, 3B34, 1790, 3460, 654C, E0B0, 8DF8, B57C, B1D8, B104, 963C, D7D4, DA38, A4E4, A37C, E4DC, CCF0, C8F4, C9E4, C51C, C034, AAC4, AB8C, 9FA8, 9B9C, E99C, E810 |
-| unmarked (an arm never ran, not proven dead) | 32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C, 8D50, F1C0, E87C, AA68 (below) |
-| newly marked (ALL-ARMS, no stand-in callee) | 2154 (teleport forced), 3D20, 9520 |
+| unmarked (an arm never ran, not proven dead) | 32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C, E87C |
+| newly marked (ALL-ARMS, no stand-in callee) | 2154 (teleport forced), 3D20, 9520; slice 3 (2026-10-21, two more forced 914f1381 runs, `send u0532 Damage`/`AIUpdateDisabled` and a double Deactivate in cov/scn_f914): AA68 (crouch forced), F1C0 (null manager arms forced), 8D50 (not-in-team forced), the constructors 6B08 and F5F8 (now port every retail store; F5F8's flag-word 0x1 arm forced) |
 
-ALL-ARMS but not marked: the two constructors (6B08, F5F8 keep only part of the retail state) and
-PortTargetDistanceSq (an inlined helper, no retail body). The F1C0 port read `active` after the
+ALL-ARMS but not marked: PortTargetDistanceSq (an inlined helper, no retail body). The F1C0 port read `active` after the
 base's AcceptScriptMsg; retail reads it first (0xF1E0-0xF1F4), fixed. AA68 tested the flag word
 at 0x828 with its two top bits; retail's `rlwinm. 30,30` and `clrlwi. 31` are 0x2 (lurk) and
-0x1 (crouch), fixed: lurk ran in a4d81547, relaxed in 914f1381, crouch (0x7D) not yet.
+0x1 (crouch), fixed: lurk ran in a4d81547, relaxed in 914f1381, crouch (0x7D) forced.
+The constructors now keep the retail's initial state: the chassis starts with 0xD00 = 5 and
+0xD40's 0x80 set for the shipped flag word 0x7C (bits 0x1 and 0x8 of the word, F5F8 0xF7EC/0xF86C),
+the head with 0xF6A = 0x92 and the chassis timer 0xF14 = 3.0f.
