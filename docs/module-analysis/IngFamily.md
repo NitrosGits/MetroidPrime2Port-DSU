@@ -1105,6 +1105,41 @@ the ing spot's death sound instead. The sounds also stop on the delete, not in t
 (`fn_29_2194` is called from the Think, fn_29_C9A4), so the port's `StopSfx()` call left the
 death body.
 
+**The wake-up, diagnosed (2026-10-21).** The nine runs that kept the Ings as ing spots were a
+harness problem, not the module's. With a probe in `CIng::Listen` and in
+`CStateManager::InformListeners` the run says exactly what happens:
+
+1. **The Ing has to be active before it can hear anything.** `CStateManager::InformListeners`
+   (src/MetroidPrime/CStateManager.cpp:3512-3518) walks `kOL_ListeningAi` and calls
+   `patterned->Listen(...)` **only for an active actor**; the probe printed
+   "inform: listener 04f2 **active 0**" for every noise while the Ings slept. The active flag
+   comes from the `Activate` script message: `CEntity::AcceptScriptMsg` (src/MetroidPrime/CEntity.cpp:44-49)
+   sets it, and the chain `CIng::AcceptScriptMsg` -> `CPatterned::AcceptScriptMsg` ->
+   `CAi::AcceptScriptMsg` (src/MetroidPrime/Enemies/CAi.cpp:59) -> `CActor::AcceptScriptMsg` ->
+   `CEntity::AcceptScriptMsg` is complete, so the message does activate the Ing - **but only if it
+   reaches it**. The driver's `send <uid> Activate` was sent in the first two rounds, before the
+   area's actors were up, so it went to nobody. Sending it **once, when the Ing first shows up in
+   `objs Ing`**, wakes it (the probe then prints "listener 04f2 active 1"). It must not be repeated:
+   the message restarts the Ing's state machine.
+2. **The player has to stand on the puddle.** The noise is registered at the gun
+   (`CPlayerGun.cpp:247` informs the listeners with the gun's world position), and the retail's
+   Listen (fn_29_B294, asm 0x0000B32C-0x0000B3A4) rejects the noise when the squared distance is
+   over the hearing radius squared (CIngData+0 = 40) or the squared height difference over the
+   leash value (0x3d4) squared. The port's body matches the asm field for field (the radius, the
+   leash, the "0 disables the test" case) - the probe printed "dist 438.36, dz 7.83, radius 40.0"
+   for a player that had fallen off the ledge, and "dist 43.46, dz 1.89" for one standing on the
+   puddle. **No module bug here**: the port's `CIng::Listen` is the retail's body.
+3. **The beam has to be the light one.** The power beam is charged, so a short console press does
+   not fire (the probe saw no type-0 noise at all); the light beam fires while it is held (the
+   probe: "inform: type 0 at (97.0, 366.3, 6.4)" and 57 "listen: ... heard").
+
+With all three, the Ings wake: the probe logged "heard" 57 times and the log shows the whole
+cycle again - "state PathFind form 2" (the corporeal form), "state FindCoverPoint form 3",
+"state SetCoverDest form 3", "state IngSpotPathFind form 3" - and the console's
+`damage u<uid> 100` hits the corporeal Ing. Two things are still open: the hit has to land while
+the Ing is corporeal (the ing-spot form takes no damage, A.19), and the driver's id mapping (the
+log prints the unique id without its version bits, the console with them: `0x400 | tag`).
+
 **`fn_29_B3C4` is not marked yet.** The body is the retail's, but no run has killed an Ing with
 it: the Ings of area 57 start as ing spots (the data's `kFlag_StartAsIngSpot`), and the ing-spot
 form takes no damage (A.19), so the death only happens in the corporeal form - which the runs in
@@ -1127,19 +1162,11 @@ open):
 | `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | the forms 3/5 (the visor path) and the "another visor" case; the forms 0/1 and 2 need the host and the corporeal forms |
 | `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | the ing-spot path states (the move) and the strip case; the "not magnitude-safe" arm needs a degenerate move |
 
-**The driver's recipe for the corporeal form (2026-10-21, still not working in area 57).** The
-wake-up is a *heard shot*: the port's `CIng::Listen` (fn_29_B294) only answers the noise type 0
-(`kLNT_PlayerFire`) inside the hearing radius, and the shot has to land on the Ing for the noise
-to be registered where the Ing is. The runs in area 57 keep both Ings in the ing-spot form: the
-log shows "state Start form 3 / BecomeIngSpot form 3 / Lurk form 3" and the probe's "touch: form
-3, 0400, skipped (the id)" - the player stands on the puddle, the shot noise is not heard, and the
-Ing never leaves the ing-spot form. The driver (`/tmp/opencode/ing_lane/ing_drive.py`, the
-`kill` mode) does what A.5's recipe does - activate both Ings, give the light beam and the ammo,
-stand six units off the Ing, aim at it with the pitch and fire - and the Ing still does not wake
-here, so the ing-spot form is where the area 57 Ings live (the data's `kFlag_StartAsIngSpot`).
-The Agon Wastes recipe (A.12) is the other way in: there the Ings are ing spots that the player
-morphs into a ball next to, and the Ing grabs it - that is the run the "the ball" arms of
-`fn_29_BB8C` and `fn_29_BF20` need.
+**The Agon Wastes recipe** (A.12) is the other way in: there the Ings are ing spots that the
+player morphs into a ball next to, and the Ing grabs it - that is the run the "the ball" arms of
+`fn_29_BB8C` and `fn_29_BF20` need. The driver's `grapple` mode
+(`/tmp/opencode/ing_lane/ing_drive.py`) does it: the layers on, the Ings woken, `press x` to morph
+and the player teleported onto the puddle.
 
 **The next five hot behaviour bodies** (by the module's own call sites and by how often a run
 calls them), each read field by field against the REL - all five match the port:
