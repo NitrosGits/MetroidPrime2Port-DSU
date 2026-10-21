@@ -351,6 +351,16 @@ private:
   void PortDespawnProjectile(CStateManager& mgr);
   // The retail's fn_75_3460: the head's collision actor manager.
   void PortCreateCollisionActorManager(CStateManager& mgr);
+
+  // -------------------------------------------------------------------------------------------
+  // helpers (this lane's half): the module's stateless helper bodies, ported from the REL's asm
+  // (src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp). Append-only: the FSM lane's own members
+  // are above. The retail function each one stands for is named on it.
+  void PortAddToRenderer(const CStateManager& mgr) const;  // fn_75_6310
+  void PortPreRender(CStateManager& mgr);                 // fn_75_633C
+  void PortRender(const CStateManager& mgr) const;         // fn_75_6368
+  bool PortCanBeIngPossessed(CStateManager& mgr) const;   // fn_75_5E50
+  bool PortListen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type);  // fn_75_5F18
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

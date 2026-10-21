@@ -2558,14 +2558,12 @@ void CSplitterMainChassis::SetupStateMachine(CStateManager& mgr) {
 
 // vtable slot 0xF8 = fn_75_E99C: the Ing-possession gate, which reads the object's own flag bytes.
 bool CSplitterMainChassis::CanBeIngPossessed(CStateManager& mgr) const {
-  StandIn("CSplitterMainChassis::CanBeIngPossessed (vtable slot 0xF8, fn_75_E99C)");
-  return CPatterned::CanBeIngPossessed(mgr);
+  return PortCanBeIngPossessed(mgr);
 }
 
 // vtable slot 0x100 = fn_75_E90C.
 void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::SetIngPossessed (vtable slot 0x100, fn_75_E90C)");
-  CPatterned::SetIngPossessed(possessed, mgr);
+  PortSetIngPossessed(possessed, mgr);
 }
 
 // @ fn_75_E87C
@@ -2588,8 +2586,7 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, float duration, CStat
 
 // vtable slot 0x108 = fn_75_E810.
 void CSplitterMainChassis::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
-  StandIn("CSplitterMainChassis::SetAttackTarget (vtable slot 0x108, fn_75_E810)");
-  CPatterned::SetAttackTarget(mgr, target);
+  PortSetAttackTarget(mgr, target);
 }
 
 // The module's auto-destruct starter (retail fn_75_5A54). The DOL reaches it through

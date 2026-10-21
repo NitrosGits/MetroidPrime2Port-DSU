@@ -2044,20 +2044,17 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
 // vtable slot 0x24 = fn_75_633C: it renders only when the object's own flag byte says so (the
 // byte at 0x420, bit 1, read at 0x00006348).
 void CSplitterCommandModule::PreRender(CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::PreRender (vtable slot 0x24, fn_75_633C)");
-  CPatterned::PreRender(mgr);
+  PortPreRender(mgr);
 }
 
 // vtable slot 0x28 = fn_75_6310: the same flag byte guards the base class's call.
 void CSplitterCommandModule::AddToRenderer(const CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::AddToRenderer (vtable slot 0x28, fn_75_6310)");
-  CPatterned::AddToRenderer(mgr);
+  PortAddToRenderer(mgr);
 }
 
 // vtable slot 0x2C = fn_75_6368: the same flag byte guards the base class's call.
 void CSplitterCommandModule::Render(const CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::Render (vtable slot 0x2C, fn_75_6368)");
-  CPatterned::Render(mgr);
+  PortRender(mgr);
 }
 
 // vtable slot 0x3C = fn_75_D0: it calls the vtable's HealthInfo slot (0x38) and returns its
@@ -2104,8 +2101,7 @@ void CSplitterCommandModule::KnockBack(CStateManager& mgr, const CKnockBackInfo&
 // vtable slot 0xB0 = fn_75_5F18: it listens for the noise types the state machine asks for.
 bool CSplitterCommandModule::Listen(CStateManager& mgr, const CVector3f& position,
                                      EListenNoiseType type) {
-  StandIn("CSplitterCommandModule::Listen (vtable slot 0xB0, fn_75_5F18)");
-  return CPatterned::Listen(mgr, position, type);
+  return PortListen(mgr, position, type);
 }
 
 // vtable slot 0xF0 = fn_75_5E8C: it registers the module's three tables (17 triggers, 14 states
@@ -2124,8 +2120,7 @@ void CSplitterCommandModule::SetupStateMachine(CStateManager& mgr) {
 // vtable slot 0xF8 = fn_75_5E50: it is only possessed while it is docked to a main chassis (the
 // main chassis' unique id at 0xefa).
 bool CSplitterCommandModule::CanBeIngPossessed(CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::CanBeIngPossessed (vtable slot 0xF8, fn_75_5E50)");
-  return CPatterned::CanBeIngPossessed(mgr);
+  return PortCanBeIngPossessed(mgr);
 }
 
 // ---------------------------------------------------------------------------------------------

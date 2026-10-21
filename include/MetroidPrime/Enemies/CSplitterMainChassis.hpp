@@ -393,6 +393,14 @@ private:
   void PortCopyHealthToCollisionActors(CStateManager& mgr);
   // guest 0xCC2: the id of the "target_LCTR" collision actor (fn_75_A4E4, 0x0000A7E8).
   TUniqueId mTargetActorId = kInvalidUniqueId;
+
+  // -------------------------------------------------------------------------------------------
+  // helpers (this lane's half): the module's stateless helper bodies, ported from the REL's asm
+  // (src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp). Append-only: the FSM lane's own members
+  // are above. The retail function each one stands for is named on it.
+  bool PortCanBeIngPossessed(CStateManager& mgr) const;                     // fn_75_E99C
+  void PortSetAttackTarget(CStateManager& mgr, TUniqueId target);           // fn_75_E810
+  void PortSetIngPossessed(bool possessed, CStateManager& mgr);              // fn_75_E90C
 #endif
 };
 #else
