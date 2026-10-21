@@ -56,7 +56,8 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   player; `kill <id>` zeroes a patterned actor's health and runs its Death (actors that reflect every weapon).
 - Kill only pids you launched (save `$!`, `kill <pid>`) and any Xvfb you started. Never `pkill`/`killall`
   the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
-  outputs from `/tmp` (a 31 GB tmpfs).
+  outputs from `/tmp` (a 31 GB tmpfs) before you report, as `rm -rf /tmp/opencode/<dir>` with the
+  literal absolute path (a variable, `cd` + relative path or a loop is denied by the permissions).
 - Never end your turn with a run in flight: nothing wakes you. Wait for it in the foreground
   (`timeout`, or `wait <pids>` in one foreground command); background-shell notifications do not
   reliably wake a lane whose turn has ended. Your last message is always the report. Run independent runs
