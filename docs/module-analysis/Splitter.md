@@ -1170,3 +1170,25 @@ The most-called unmarked bodies are not the next targets: fn_75_70A0/fn_75_5B9C 
 of `CDamageVulnerability`'s assignment (cite), fn_75_8B74/fn_75_E60 are the loaders' compiler
 dtors, and fn_75_9AF8 (the per-collision-actor vulnerability) and fn_75_5D50 (the head's shields
 off) are only called from chassis/head states that are still stand-ins.
+
+### Marker review and the shipped FSM2 graphs (2026-10-21)
+
+- `fn_75_5944` keeps its marker. The shipped head's detection angle is 180 degrees (cosine
+  -1.0 at 0x3D8), so the false cone needs a player exactly behind the head. That arm is unreachable.
+  Both other false arms ran: the timer off, and the timer on with the base range false at 41 units.
+- `fn_75_523C` is unmarked. None of these three arms ran:
+  - The own-0x80 shortcut. Its writers are the ALRT case (0x6710) and the base's Damage/Touch.
+    Shots arrive from collision actors, not projectiles, area 5 has no Alert link to the head, and
+    the REL sends no ALRT.
+  - The null chassis. Reachable: a sub-state updates before its parent's IsDocked transition.
+  - The unsafe-axis guard. Not proven unreachable.
+- ACTN to the chassis comes from the patrol waypoints' `Arrived` links: a 3 s scan timer per waypoint.
+- FSM2 graphs, dumped from the loader. Head (machine 14): IntactMode exits on !IsDocked to
+  LostChassisReaction; DetachedMode covers HasDockingTarget, SeekMainChassis,
+  FollowDockingPath/PathFind and NotifyDocking. The intact sub-machine (11) runs
+  Scanning, FaceTarget (on HasTarget), LaserSweep (ShouldLaserSweep) and Idle (!IsScanning).
+  Chassis (machine 9):
+  - Patrol and Scanning go to SelectTarget, then HasTarget, then SetTargetDest, then PathFind.
+  - PathFind tries ShouldMorphballStab, ShouldLegStab, FindBestDodgeDirection, HasRetreatPoint,
+    ShouldSpinAttack and ShouldLaserSweep, then Delay.
+  - The headless PathFind goes !HasHead to SetRetreatDest.

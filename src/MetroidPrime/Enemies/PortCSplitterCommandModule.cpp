@@ -354,6 +354,10 @@ void CSplitterCommandModule::NotifyDocking(CStateManager& mgr, float) {
 // is dotted with the head's transform's Y column (0x28, 0x38 and 0x48 - 0x59D8-0x5A04) and the
 // answer is that dot above the distance times the base's detection cosine at 0x3D8
 // (0x59EC-0x5A18: fcmpo and the cr0 gt bit).
+// The shipped head's detection angle is 180 degrees (the cosine at 0x3D8 reads -1.0, area 5 run
+// 2026-10-21). The dot is never below -dist, so the cone can fail only for a player exactly
+// behind the head; that arm is unreachable in shipped data and never ran. The other two false
+// arms ran: the timer off, and the timer on with the base range false (the player 41 units away).
 // @ fn_75_5944
 bool CSplitterCommandModule::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
   if (!PortChassisTimerRunning(mgr) || !CPatterned::InDetectionRange(mgr, data)) {
@@ -378,7 +382,14 @@ bool CSplitterCommandModule::InDetectionRange(CStateManager& mgr, const CTrigger
 // 0.0f (0x28/0x38 and 0x24/0x34 - 0x5324-0x53A4) must both be IsMagnitudeSafe (0x53A8-0x53C0);
 // the vector at 0xF24 becomes Slerp(Y normalized, X normalized, turn * 0.017453292f)
 // (0x53C4-0x5418, the degrees to radians constant lbl_75_rodata_74).
-// @ fn_75_523C
+// Not marked (2026-10-21), three arms never ran:
+// - The own-0x80 shortcut. Only the head's ALRT case (0x6710) sets the bit, plus the base's
+//   Damage/Touch with a player projectile. Shots reach the head through its collision actors,
+//   so the sender is never a projectile. Area 5 has no Alert link to the head, but a DOL sender
+//   isn't ruled out.
+// - The null chassis. Reachable: the parent's IsDocked check runs after this update, and the
+//   chassis can die while the head is docked.
+// - The unsafe-axis guard. Not proven unreachable.
 void CSplitterCommandModule::Scanning(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
