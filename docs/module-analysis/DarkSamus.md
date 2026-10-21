@@ -586,3 +586,18 @@ clearance arms), 16048 (the centre ray's static vs dynamic block not told apart)
 ran), 14D14 (blocked arm). Next: fn_10_19B64 (sets 0xBAC) is a tree, not one slice: 17CEC/1A980
 are in; new are 16418 (-> 164C0, 0x140), 16600 (-> 166AC 0x1B4, 16ADC), 12B38, 141BC, 13E2C
 (-> 13EE0), 16B1C, 145E4 (-> 1444C 0x198). SideDash fn_10_153EC also calls 154FC/12CE0.
+
+**Slice 10** (2026-10-21): the reach collector fn_10_19B64 is in (it replaces the stand-in), with
+its whole tree: 16418 (gun-locator line +5 z to the player's aim position, vtable 0x54 =
+GetAimPosition) / 164C0 (RayStaticIntersection, include Solid|AIBlock), 16600 / 166AC (eight ring
+rays, world offsets 16984, count 16ADC = 8, radius 1.1, reach 0.75; include Solid|AIBlock, exclude
+Platform), 12B38 (dive target: the player when morphed, else 5 past it), 141BC (player distance in
+[min, max] x the anim distance x scale y; melee kAS_MeleeAttack (2 | 0xA, locomotion type) with
+0.7..1.3 for 0x4 and 0.9..3.0 for 0x80), 13E2C / 13EE0 (slot 2/3 break-dodge step offset from
+the unflattened forward column), 16B1C (OnPath), 145E4 / 1444C (line on the mesh within 5 of the
+actor's height, 0.1 steps). 0xBAC = 1 when slot 2's end is nearer the player, else 0. This stage's
+mask is 0x6D8 (0x1/0x4/0x20/0x100 off), so the runs forced those bits in (a reverted hook that
+also took them back out after the collector) and teleported the player (`tp 410.1 88.1 5.1`, then
+419.1, then morph ball): all bits cleared and kept, both sides, morph 0/1, the anim reach above /
+below / inside. Unmarked: 19B64 (the 145E4-false arm after both OnPath tests pass never ran),
+166AC (the line <= 0.5 arm), 1444C (the height-band arm). Boss z 9.43 -> 4.12, no falls.
