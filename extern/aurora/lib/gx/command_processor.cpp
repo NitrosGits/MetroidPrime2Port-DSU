@@ -634,7 +634,8 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
   // command is built, so the FIFO processor does the register work only. The state itself has to
   // be kept: the game sets the viewport, the projection and the copy-clear outside its per-frame
   // setup, so a frame whose commands were dropped entirely would leave the next rendered frame
-  // drawing with a stale state.
+  // drawing with a stale state. A frame that holds an EFB copy is raised to "rendered" while it is
+  // recorded (gx::fifo::force_frame_rendered), so its draws are recorded after all.
   if (!frame_rendered()) {
     reader.take(totalVtxBytes);
     return;

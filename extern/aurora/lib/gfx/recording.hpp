@@ -20,6 +20,10 @@ void begin_recording(FramePacket& packet, size_t frameSlot);
 RecordedFrame end_recording();
 void shutdown_recording();
 void increment_merged_draw_count() noexcept;
+// Port: AURORA_RENDER_EVERY: enqueue the frame's recorded work for the render worker. It is
+// enqueued at the end of the frame, so the frame's "rendered" decision is final: a frame that
+// holds an EFB copy is rendered in full, a frame that is not rendered is not encoded at all.
+void enqueue_frame_ops(FramePacket& packet);
 
 namespace testing {
 void suppress_render_worker(bool suppress) noexcept;

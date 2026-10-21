@@ -31,6 +31,10 @@ bool sFrameActive = false;
 uint32_t sPendingDraws = 0;
 // Port: AURORA_RENDER_EVERY: whether the frame being recorded is rendered at all.
 std::atomic_bool sFrameRendered{true};
+// Port: how many frames were raised to "rendered" because they hold an EFB copy, and how many of
+// them were raised by a read-back rather than by a copy into a texture.
+std::atomic_uint32_t sFramesForcedRendered{0};
+std::atomic_uint32_t sFramesForcedByReadback{0};
 std::atomic<uint64_t> sPublished{0};
 std::atomic<uint64_t> sProcessed{0};
 uint64_t sStreamBase = 0;
@@ -157,6 +161,19 @@ void end_frame() noexcept {
 void set_frame_rendered(bool rendered) noexcept { sFrameRendered.store(rendered, std::memory_order_release); }
 
 bool frame_rendered() noexcept { return sFrameRendered.load(std::memory_order_acquire); }
+
+void force_frame_rendered(FrameRenderReason reason) noexcept {
+  if (!sFrameRendered.exchange(true, std::memory_order_acq_rel)) {
+    sFramesForcedRendered.fetch_add(1, std::memory_order_acq_rel);
+    if (reason == FrameRenderReason::Readback) {
+      sFramesForcedByReadback.fetch_add(1, std::memory_order_acq_rel);
+    }
+  }
+}
+
+uint32_t frames_forced_rendered() noexcept { return sFramesForcedRendered.load(std::memory_order_acquire); }
+
+uint32_t frames_forced_by_readback() noexcept { return sFramesForcedByReadback.load(std::memory_order_acquire); }
 
 bool frame_active() noexcept { return sFrameActive; }
 

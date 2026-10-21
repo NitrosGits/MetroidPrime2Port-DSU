@@ -537,11 +537,38 @@ void enqueue_pass(FramePacket& frame, uint32_t passIndex) {
   seal_pass(frame, passIndex);
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::RenderPass, passIndex));
-  enqueue_op(frame, opIndex);
+}
+
+// Port: AURORA_RENDER_EVERY: does the recorded frame hold a copy of the EFB (a GXCopyTex resolve
+// target, an EFB read-back) or a copy op? Such a frame has to be rendered in full: the copy's
+// texture would otherwise never be produced.
+bool frame_holds_efb_copy(const FramePacket& frame) {
+  if (!frame.textureCopies.empty()) {
+    return true;
+  }
+  for (const auto& pass : frame.renderPasses) {
+    if (pass.resolveTarget || pass.efbCpuCopy.has_value() || pass.scanPeek.has_value()) {
+      return true;
+    }
+  }
+  return false;
 }
 } // namespace
 
 namespace detail {
+
+// Port: AURORA_RENDER_EVERY: the frame's work is enqueued as a whole, at the end of the frame:
+// the frame's decision is final then (a frame that holds an EFB copy was raised to "rendered"
+// while it was recorded), so a frame that is rendered is encoded in full and a frame that is not
+// rendered is not encoded at all.
+void enqueue_frame_ops(FramePacket& frame) {
+  if (g_recorder.suppressRenderWorker) {
+    return;
+  }
+  for (size_t i = 0; i < frame.ops.size(); ++i) {
+    enqueue_op(frame, static_cast<uint32_t>(i));
+  }
+}
 
 void begin_recording(FramePacket& packet, size_t frameSlot) {
   CHECK(!g_recorder.active(), "A recording session is already active");
@@ -698,7 +725,6 @@ void queue_texture_copy(wgpu::TexelCopyTextureInfo src, wgpu::TexelCopyTextureIn
   });
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::TextureCopy, copyIndex));
-  enqueue_op(frame, opIndex);
 }
 
 void begin_color_pass(const ColorPassDescriptor& desc) {
@@ -807,6 +833,12 @@ PipelineRef pipeline_ref(const clear::PipelineConfig& config) {
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
                        Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {
+  // Port: AURORA_RENDER_EVERY: this is a GXCopyTex - the EFB is copied into a texture the game
+  // keeps. A frame that is not rendered would never produce that texture, so a one-shot copy (a
+  // render-to-texture at an area load, an effect texture) would stay blank for good. The frame is
+  // therefore rendered in full, whatever the counter said. The flag is raised before the pass that
+  // carries the copy is sealed below, so the whole frame is recorded and encoded.
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Copy);
   // Resolve current render pass
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.resolveTarget = std::move(texture);
@@ -910,6 +942,9 @@ void queue_scan_peek(scan_peek::Request req) {
     Log.warn("Scan peek request dropped: pass {} already has one", g_recorder.currentRenderPass);
     return;
   }
+  // Port: AURORA_RENDER_EVERY: the peek reads the EFB, so the frame that carries it is rendered in
+  // full (see resolve_pass_into).
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
   renderPass.scanPeek = std::move(req);
 }
 
@@ -923,6 +958,9 @@ void queue_efb_cpu_copy(efb_copy::Request req) {
     Log.warn("EFB copy read-back dropped: pass {} already has one", g_recorder.currentRenderPass);
     return;
   }
+  // Port: AURORA_RENDER_EVERY: the copy reads the EFB, so the frame that carries it is rendered in
+  // full (see resolve_pass_into).
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
   renderPass.efbCpuCopy = std::move(req);
 }
 
@@ -1116,7 +1154,6 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   }
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::EncoderTask, taskIndex));
-  enqueue_op(frame, opIndex);
 
   resume_efb_pass_loading(prevPass);
   return true;
@@ -1157,6 +1194,12 @@ void finish() {
     frame.uniforms.append_zeroes(gx::MaxUniformSize);
     auto& pass = frame.renderPasses[g_recorder.currentRenderPass];
     pass.captureDepthSnapshot = true;
+    // Port: AURORA_RENDER_EVERY: the backstop for a copy that did not go through one of the
+    // paths that raise the flag (a copy op in the recorded frame). The frame is rendered in full
+    // when it holds one, so the copy's texture is produced.
+    if (!gx::fifo::frame_rendered() && frame_holds_efb_copy(frame)) {
+      gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Copy);
+    }
     enqueue_pass(frame, g_recorder.currentRenderPass);
     g_recorder.currentRenderPass = UINT32_MAX;
   }

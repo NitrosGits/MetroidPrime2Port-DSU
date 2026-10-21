@@ -377,9 +377,11 @@ const AuroraEvent* update() noexcept {
 
 #ifdef AURORA_ENABLE_GX
 // Port: AURORA_RENDER_EVERY: pick the frame that is about to be recorded. A frame that is not
-// rendered is dropped before it is recorded, so neither the FIFO processor nor the render worker
-// builds anything for it. A screenshot is always taken from a rendered frame, and so is the
-// frame after it.
+// rendered records no draw: the FIFO processor walks its command stream (the register state has
+// to survive) but builds no draw, and the render worker encodes and submits nothing for it. A
+// frame that holds an EFB copy is raised to "rendered" while it is recorded (see
+// gx::fifo::force_frame_rendered). A screenshot is always taken from a rendered frame, and so is
+// the frame after it.
 bool render_this_frame() {
   const uint32_t every = render_every();
   const uint32_t frameIndex = g_renderFrameCounter++;

@@ -39,7 +39,10 @@ so the game spends no CPU on the frames it never shows (a sandworm smoke run: 30
 with `RENDER_EVERY=1` vs 10.8 s with the default 6). A frame that is not rendered keeps the last
 rendered frame's EFB, so the read-backs (`GXPeekZ`, the EFB copy) return the last drawn values, and
 a screenshot always comes from a rendered frame (the frame it is taken in and the one after it are
-both rendered).
+both rendered). A frame that holds an EFB copy (`GXCopyTex`, an EFB read-back) is rendered in full
+whatever the counter said: the copy's texture would otherwise never be produced. The log says how
+many frames that was at shutdown (`AURORA_RENDER_EVERY: N frames were rendered in full because
+they hold an EFB copy`).
 
 ## Fast runs and console scripts
 
