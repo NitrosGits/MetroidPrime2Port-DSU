@@ -307,7 +307,7 @@ CVector3f CSwampBossStage2::CenterPosition(const CStateManager& mgr) const {
 
 // @ fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
 CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
-  if (mDashing) {
+  if (mHeadMode) { // 0x60B4: xc74 & 0x80
     return mSwoopTarget;
   }
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSwoopNode));
@@ -448,16 +448,6 @@ void CSwampBossStage2::Activate(CStateManager& mgr) {
   SetGrowthsActive(mgr, false);
   mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(),
                     gpStringTable->GetStringIndex("BossSwampBossStage2"));
-}
-
-void CSwampBossStage2::SetHeadVulnerable(CStateManager& mgr, bool vulnerable) {
-  // TODO(uncertain): retail swaps the head collision actor's vulnerability between the light and
-  // dark tables; reconstructed from the material/vulnerability writes only.
-  CCollisionActor* head = CollisionActor(mgr, kHeadActor);
-  if (head) {
-    head->SetDamageVulnerability(vulnerable ? mLightVulnerability
-                                            : CDamageVulnerability::ImmuneVulnerabilty());
-  }
 }
 
 // @ fn_79_5BC8
@@ -1369,12 +1359,13 @@ bool CSwampBossStage2::OvipositorDead(CStateManager& mgr, const CTriggerData&) c
 
 // @ fn_79_A3D8: retail compares the phase (0xc94) with the field at 0x8cc - the loader's
 // unknown_0x96ce7897 (the loader struct sits at 0x7c0, so 0x8cc is its 0x10c) - as
-// "field < phase" (0xA3E0-0xA3F0: the doubling keeps the signed compare from overflowing).
-// The arm that fires was reached with the loader's field forced to 0 (gdb: `set var
-// this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes its true
-// side.
+// "2 * field <= phase": `slwi r0, r4, 1` doubles the field, then subfc/adde with the sign bits
+// (`extrwi` takes the doubled value's sign, `srawi` the phase's) is MWCC's signed `<=`
+// (0xA3E0-0xA3F0). The arm that fires was reached with the loader's field forced to 0 (gdb:
+// `set var this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes
+// its true side.
 bool CSwampBossStage2::ZeroHealth(CStateManager& mgr, const CTriggerData&) const {
-  return mData.unknown_0x96ce7897 < mPhase;
+  return mData.unknown_0x96ce7897 * 2 <= mPhase;
 }
 
 // @ fn_79_A3F8
@@ -1604,7 +1595,7 @@ void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
     mSwoopCount = mAttackType == 4 ? mSwoopCount + 1 : 0;
     mDashing = mgr.Random()->Float() < phase.dashChance;
     mDashTimer = RandomRange(mgr, phase.unknown_0x29e6ead6, phase.unknown_0x1753225e);
-    SetHeadVulnerable(mgr, true);
+    SetBodyVulnerable(mgr, true); // fn_79_20D8 (0x9C70)
     PickSpitNode(mgr);
   } else if (msg == kStateMsg_Update) {
     BodyController()->FaceDirection(DirectionToPlayerAim(mgr), dt);
@@ -1654,7 +1645,7 @@ void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
         // Close enough while diving: switch the queued attack to the flyer drop.
         if (mAttackType == 3 &&
             (player->GetTranslation() - GetTranslation()).Magnitude() <
-                mData.unknown_0x9e116385) {
+                mData.unknown_0x5a844633) { // 0x99FC: guest 0x91c
           mAttackType = 5;
         }
       }
@@ -2074,7 +2065,13 @@ void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
     }
   }
   UpdateWater(mgr, mSplashPos, mLastHeadSplash);
-  // TODO(uncertain): retail also clears the player's riding-platform state while in water.
+  // 0xB100: a player standing on a platform (CPlayer+0x124c) is not in the water.
+  if (mPlayerInWater) {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (player && player->GetRidingPlatform() != kInvalidUniqueId) {
+      mPlayerInWater = false;
+    }
+  }
   DecayDamageMemory(dt);
   if (mHeadMode) {
     mHeadBlend = rstl::min_val(mHeadBlend + dt, 1.f);
