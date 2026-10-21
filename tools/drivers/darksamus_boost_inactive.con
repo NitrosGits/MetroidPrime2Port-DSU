@@ -1,0 +1,12 @@
+# Dark Samus BoostBallInto with a deactivated chain hint: Sanctuary 10_cliff_rooftop layer 2
+# (MP2_WORLD="1baa96c2,10_cliff_rooftop" MP2_INPUT="LAYER2@400"), boss u04f7. At f700 the boss
+# stands in the radius of hint u01b2 only, whose kSS_Arrived link is u0140; deactivating u0140
+# runs fn_10_B6C4's inactive arm (u0140 is linked too) and fn_10_BA38's inactive answer, and
+# B6C4 drops u01b2 for it - forced (send).
+@f600 send u04f7 Activate
+@f650 send u0140 Deactivate
+@f700 fsm u04f7 BoostBallInto
+@f900 obj u04f7
+@f1000 send u0140 Activate
+@f1050 fsm u04f7 BoostBallInto
+@f1300 obj u04f7

@@ -35,6 +35,7 @@
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
+#include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
@@ -495,6 +496,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
+      "boost                       boost-ball release on the morphed player\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -713,7 +715,13 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args&, std::string&) { PortWarp::Kill(); }
+void CmdKill(CStateManager&, const Args& args, std::string&) {
+  if (args.size() > 1) {
+    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+    return;
+  }
+  PortWarp::Kill();
+}
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
   if (args.size() < 2) {
@@ -888,6 +896,19 @@ void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::FastMorph() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetFastMorph(enabled);
   out += enabled ? "fast morph on\n" : "fast morph off\n";
+}
+
+// boost: start a boost-ball charge release on the morphed player (what releasing a held A does), so
+// lanes reach boost-hit arms without timing pad input.
+void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr || player->GetMorphBall() == nullptr ||
+      player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    Fail("boost: the player is not morphed (press x, or 'press x 1')");
+    return;
+  }
+  player->GetMorphBall()->EnterBoosting(mgr, false);
+  out += "boosting\n";
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -1615,6 +1636,13 @@ void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
   }
   const uint editorId = target->GetEditorId().Value();
   const TUniqueId uid = target->GetUniqueId();
+  if (msg == kSM_Delete) {
+    // A bare Delete message resets the object's FSM but leaves it alive, and its next Think writes
+    // past mSubMachines; script deletes go through the state manager's delete request.
+    mgr.DeleteObjectRequest(uid);
+    out += "delete requested\n";
+    return;
+  }
   mgr.DeliverScriptMsg(
       CScriptMsg(kInvalidUniqueId, uid, static_cast< EScriptObjectMessage >(msg)));
   char line[160];
@@ -2165,6 +2193,7 @@ constexpr SCommand kCommands[] = {
     {"photo", CmdPhoto, true},
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
+    {"boost", CmdBoost, true},
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
