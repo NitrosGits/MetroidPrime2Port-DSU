@@ -1327,10 +1327,11 @@ void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
   // manager (r5) and the dt (f1).
   if (CBeamProjectile* beam = TCastToPtr< CBeamProjectile >(target)) {
     beam->UpdateFx(lookAt, dt, mgr);
-    // asm 0x1930-0x194C: the sound handle at 0xF5C is updated with the target's position (0x444),
-    // the up vector and the volume 0x7F.  The id at 0xF02 only ever holds the laser sweep beam
-    // (fn_75_1974), so the target is the actor the retail reads the position from.
-    CSfxManager::UpdateEmitter(mLookAtSfxHandle, beam->GetTranslation(), CVector3f::Up(), 0x7F);
+    // asm 0x1930-0x194C: the sound handle at 0xF5C is updated with the beam's +0x444 (asm 0x193C
+    // `addi r4, r31, 0x444`) - CBeamProjectile::mCollisionPoint (0x418 + 0x2C), not the actor's
+    // translation (0x54) - the up vector and the volume 0x7F.  The id at 0xF02 only ever holds the
+    // laser sweep beam (fn_75_1974).
+    CSfxManager::UpdateEmitter(mLookAtSfxHandle, beam->GetCurrentPos(), CVector3f::Up(), 0x7F);
   }
 }
 
