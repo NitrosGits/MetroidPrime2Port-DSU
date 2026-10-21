@@ -350,10 +350,18 @@ void after_submit() noexcept {
 }
 
 void shutdown() noexcept {
-  std::lock_guard lock{g_mutex};
-  for (auto& slot : g_slots) {
-    slot = {};
+  // Port: the buffers die outside g_mutex. Destroying a buffer with a read-back still pending
+  // completes its MapAsync inline, and that callback (complete_map) locks g_mutex: holding it here
+  // deadlocked the shutdown (the space pirate's cloak leaves a small copy in flight).
+  std::array<Slot, SlotCount> dying;
+  {
+    std::lock_guard lock{g_mutex};
+    for (size_t i = 0; i < SlotCount; ++i) {
+      dying[i] = std::move(g_slots[i]);
+      g_slots[i] = {};
+    }
+    g_loggedFirst = false;
   }
-  g_loggedFirst = false;
+  dying = {};
 }
 } // namespace aurora::gfx::efb_copy
