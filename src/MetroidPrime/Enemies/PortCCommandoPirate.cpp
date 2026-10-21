@@ -2975,6 +2975,8 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
       break;
     }
     const CEntity* target = mgr.GetObjectById(xbca_);  // 0x00008134
+    // The guest reads the target's position without a cast; the host's CEntity has no position,
+    // so the port casts to CActor (the host limit named here).
     const CActor* targetActor = TCastToConstPtr< CActor >(target);
     if (targetActor == nullptr) {
       mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00008228
@@ -3050,6 +3052,8 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
       BodyController()->CommandMgr().DeliverCmd(kBSC_AbortScripted);  // 0x000085EC (the id 0xd)
     }
     x924_ = -1;                                        // 0x00008620
+    // The guest calls the manager without a test; the host's test covers the window before the
+    // kSM_Create case has built it (the host limit named here).
     if (mCollisionShield.get() != nullptr) {
       mCollisionShield->SetActive(mgr, false);         // 0x0000862C
     }
