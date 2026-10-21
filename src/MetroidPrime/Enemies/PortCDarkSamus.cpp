@@ -560,7 +560,7 @@ void CDarkSamus::FadeEnvFxIn(CStateManager& mgr) {
 // event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4). The cases that switch on
 // the current attack 0x980 (0, 8, 9, 12, 17, 18, 27, 28, 33, 34) return without the base
 // (0x0001C6A0); the rest and every other type end in CPatterned::DoUserAnimEvent (0x0001C69C).
-// Five callees are not in the port yet and stay logged stand-ins: the melee hit fn_10_13998 and
+// Eight callees are not in the port yet and stay logged stand-ins: the melee hit fn_10_13998 and
 // fn_10_13AB4, the missiles fn_10_1353C and fn_10_133D0, the freeze beam fn_10_9164, the 0x800000
 // shot fn_10_5840, and fn_10_77B8 / fn_10_9E00 (case 37, case 19); the body is unmarked until
 // they are. Run (darksamus_uevent.py, `uevent` with the attack forced by the dt key): every type
