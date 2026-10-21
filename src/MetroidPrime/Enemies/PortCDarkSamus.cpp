@@ -600,12 +600,11 @@ void CDarkSamus::FadeEnvFxIn(CStateManager& mgr) {
 // event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4). The cases that switch on
 // the current attack 0x980 (0, 8, 9, 12, 17, 18, 27, 28, 33, 34) return without the base
 // (0x0001C6A0); the rest and every other type end in CPatterned::DoUserAnimEvent (0x0001C69C).
-// Two callees are not in the port yet and stay logged stand-ins: the 0x800000 shot fn_10_5840
-// (it needs fn_10_50B8 / fn_10_4C40 and the 0xF80 / 0x1064 infos) and the boost ball's spawn
-// fn_10_9E00 (case 19; it builds the module's own actor classes fn_10_3BC4 / fn_10_3FD8); the
-// body is unmarked until they are. Run (darksamus_uevent.py, `uevent` with the attack forced by the dt key): every type
-// the switch names and the arms above, except BeginAction's deflect slow-down (it needs a missile
-// in flight past 28 units), Landing's dive bounce and type 46 with dash steps left.
+// Run (darksamus_uevent.py, `uevent` with the attack forced by the dt key; ALL-ARMS on
+// /tmp/opencode/dsfsm2/s9/u3): every type the switch names and every arm above; the deflect's
+// slow-down forced (keys 42/43: a `shoot` power shot read as kWT_Missile with no stage, at 30 and
+// 20 units), Landing's dive bounce forced (key 40) and type 46 with a dash step left (key 41).
+// @ fn_10_1BEFC
 void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                  float dt) {
   const int attack = mCurrentAttack;
@@ -774,7 +773,7 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
       mGuestEA8 = -1000.f; // lbl_10_rodata_410
       mGuestEAC = CVector3f::Zero();
       mGuestEB8 = 0.f;
-      StandIn("fn_10_9E00", "DoUserAnimEvent BecomeRagDoll (0x0001C588)");
+      SpawnBoostBall(mgr); // fn_10_9E00 at 0x0001C588
       mGuestEA8 = mElapsedTime; // 0x0001C594
       mGuestEAC = GetTranslation();
       mGuestEB8 = (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude(); // 0x0001C5F4

@@ -1268,3 +1268,25 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   RenderSilhouette, CAnimData::Render with CModelFlags, the model at 0xD6C and members 0xDE8
   (1.0f), 0xDEC, 0xDED bits, 0xD24, the 0x1060 bit.
 - CanReflectProjectile not attempted.
+
+## Slice 9 (dsfsm2, 2026-10-21)
+
+- Ported and marked (ALL-ARMS): FirePhazonVolley 5840, FirePhazonShot 50B8, FirePhazonSuperMissile
+  4C40 (run `/tmp/opencode/dsfsm2/s9/a4`, darksamus_attacks.py keys 10..28) and DoUserAnimEvent 1BEFC
+  (`s9/u3`, darksamus_uevent.py; the deflect slow-down by keys 42/43 with `shoot`, the dive
+  bounce by key 40, type 46 by key 41).
+- New host members: the phazon infos `mPhazonShotInfo` (guest 0xF80, from phazonProjectile /
+  phazonProjectileDamage) and `mPhazonSuperMissileInfo` (0x1064, phazonSuperMissile*); ProjectileInfo
+  answers them for 0x800000 by 0xFB8 0 / 1. The pairing of the two loader stack words with the two
+  infos is by name; the asm only shows 0x280/0x284 to 0xF80 and 0x288/0x28C to 0x1064.
+- SpawnBoostBall 9E00 (unmarked, ALL-ARMS): the call is ported; the ball class (vtable
+  lbl_10_data_104, ctors 3FD8 / 3BC4, Think 3B08 with a CCollisionActorManager, AcceptScriptMsg 3998,
+  render 3008 / 3174, touch damage) is a job of its own. The host has a construction-only
+  `CDarkSamusBoostBallPortStub` (drawn, moved by UpdateBoostBallAtActor, no collision, no damage).
+  fn_10_99B8 (the darksamus2 lane's StopBoostBallParticles, 613d2cbfb) and fn_10_9B24 (the swooshes)
+  are logged stand-ins in it. The 0xE38 conflict: the halfword is the uid (`sth` at 0x00009E4C),
+  so `mBoostBallUid`; the float `mGuestE38` is unused.
+- 13AB4: the "host collision anomaly" was the spec. Key 21 moved `mTransform`, but the ray starts at
+  `GetTranslation()` (`mPosition`), so it ran from (68, 412, 165) and hit the static floor at z 164
+  (t 1, materials 0x81000005, hit id none). With the position moved too, the ray misses and every
+  arm runs (`s9/a4`). It's left unmarked at the orchestrator's request.

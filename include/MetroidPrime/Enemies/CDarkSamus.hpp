@@ -1156,6 +1156,10 @@ private:
   // (fn_10_20BFC): the infos ProjectileInfo answers for the attack 0x800000 by mGuestFB8 0 / 1.
   rstl::optional_object< CProjectileInfo > mPhazonShotInfo;
   rstl::optional_object< CProjectileInfo > mPhazonSuperMissileInfo;
+  // fn_10_9E00: the boost ball actor spawned (DoUserAnimEvent's BecomeRagDoll with 0x20000). The
+  // uid goes to mBoostBallUid (guest 0xE38 is that halfword, `sth` at 0x00009E4C; mGuestE38 is
+  // unused).
+  void SpawnBoostBall(CStateManager& mgr);
 #endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];

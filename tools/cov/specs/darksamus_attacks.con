@@ -6,4 +6,8 @@
 @f650 uevent u04f7 9 130; place u04f7 player 3; uevent u04f7 0 101; uevent u04f7 0 102; uevent u04f7 0 104; uevent u04f7 9 121; uevent u04f7 0 101; uevent u04f7 9 199
 @f675 uevent u04f7 9 130; uevent u04f7 0 105; uevent u04f7 0 106; uevent u04f7 0 107; uevent u04f7 0 108; uevent u04f7 0 109; uevent u04f7 9 120; uevent u04f7 9 124; uevent u04f7 0 107; uevent u04f7 0 109; uevent u04f7 9 199
 @f700 uevent u04f7 9 130; uevent u04f7 9 123; uevent u04f7 0 101; uevent u04f7 0 102; uevent u04f7 0 108; uevent u04f7 9 199; uevent u04f7 37 119; uevent u04f7 37 119
-@f725 status
+@f740 uevent u04f7 9 130; uevent u04f7 9 110; uevent u04f7 0 111; uevent u04f7 0 115; uevent u04f7 0 112; uevent u04f7 0 113; uevent u04f7 0 114; uevent u04f7 9 199
+@f765 uevent u04f7 9 130; uevent u04f7 9 110; uevent u04f7 9 116; uevent u04f7 0 111; uevent u04f7 9 125; uevent u04f7 0 111; uevent u04f7 9 117; uevent u04f7 0 111; uevent u04f7 9 199
+@f790 uevent u04f7 9 130; uevent u04f7 9 110; uevent u04f7 9 118; uevent u04f7 9 126; uevent u04f7 0 111; uevent u04f7 9 127; uevent u04f7 0 111; uevent u04f7 9 128; uevent u04f7 0 111; uevent u04f7 9 199
+@f815 uevent u04f7 9 130; uevent u04f7 9 110; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 0 111; uevent u04f7 9 199
+@f840 status
