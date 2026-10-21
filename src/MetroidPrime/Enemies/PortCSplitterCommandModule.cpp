@@ -938,8 +938,9 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
   // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
   // (0x00006E3C, the include/exclude one).  Both lists are 64-bit and their high word is 1
-  // (asm 0x6E40 `stw r4, 0x7c(r1)` and 0x6E50 `stw r29, 0x84(r1)` with r4 and r29 = 1), which is
-  // the material 32 (kMT_Player).  Excluding kMT_Character keeps the docked head out of
+  // (asm 0x6E40 `stw r4, 0x7c(r1)`, the include list's high word, and
+  // asm 0x6E50 `stw r29, 0x84(r1)`, the exclude list's high word, both 1), which is the
+  // material 32 (kMT_Player).  Excluding kMT_Character keeps the docked head out of
   // the chassis's collider list (CSortedListManager asks both actors' filters).
   SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid).Union(CMaterialList(kMT_Player)),
                                     CMaterialList(kMT_CollisionActor, kMT_Character)
@@ -1315,7 +1316,7 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
 // fn_75_1790) and the header's order is UpdateFx, ResetBeam, Fire
 // (include/MetroidPrime/Weapons/CBeamProjectile.hpp:24-26).  The port's own chain (CEntity's 7
 // slots, CActor's 22, CGameProjectile's 4) puts UpdateFx at 0x84, two slots low because the
-// port's CEntity is a stub; the port calls it by name.
+// port's CEntity has two virtuals fewer than the DOL's; the port calls it by name.
 void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
   CEntity* target = mgr.ObjectById(mLookAtTargetId);
   if (target == nullptr) {
