@@ -50,11 +50,11 @@ offset	fn	size	class	marked	what	callers
 0x024E0	fn_79_24E0	0xE0	B	yes		fn_79_7870
 0x025C0	fn_79_25C0	0xD0	B	yes	`Activate`	fn_79_B3CC
 0x02690	fn_79_2690	0x74	B	yes	`GetScannableObjectInfo`	-
-0x02704	fn_79_2704	0x1D0	B	no		fn_79_BE3C
+0x02704	fn_79_2704	0x1D0	H	no		fn_79_BE3C
 0x028D4	fn_79_28D4	0x54	H	no		-
 0x02928	fn_79_2928	0x15C	B	yes		fn_79_AFB4
 0x02A84	fn_79_2A84	0x19C	B	yes	`SpawnShockWave`	fn_79_A838
-0x02C20	fn_79_2C20	0xCC	B	no		fn_79_2A84
+0x02C20	fn_79_2C20	0xCC	H	no		fn_79_2A84
 0x02CEC	fn_79_2CEC	0x50	H	no		-
 0x02D3C	fn_79_2D3C	0x58	H	no		fn_79_2A84 fn_79_3578 fn_79_3774 fn_79_3900
 0x02D94	fn_79_2D94	0x54	H	no		fn_79_2D3C
@@ -63,7 +63,7 @@ offset	fn	size	class	marked	what	callers
 0x02E84	fn_79_2E84	0x33C	B	yes	`PickSwoopTarget`	fn_79_9754
 0x031C0	fn_79_31C0	0x100	H	no		fn_79_2E84 fn_79_50AC fn_79_543C
 0x032C0	fn_79_32C0	0x54	H	no		fn_79_2E84 fn_79_50AC fn_79_543C fn_79_B3CC fn_79_B8D4
-0x03314	fn_79_3314	0x40	B	no		fn_79_2E84
+0x03314	fn_79_3314	0x40	H	no		fn_79_2E84
 0x03354	fn_79_3354	0x3C	B	yes		fn_79_AFB4
 0x03390	fn_79_3390	0x2C	B	yes		fn_79_9A3C
 0x033BC	fn_79_33BC	0x9C	B	yes	`DecayDamageMemory`	fn_79_AFB4
@@ -73,7 +73,7 @@ offset	fn	size	class	marked	what	callers
 0x03578	fn_79_3578	0x1FC	B	yes	`SpawnWindEffect`	fn_79_7E24
 0x03774	fn_79_3774	0x18C	B	yes	the wing-damage burst	fn_79_61C4
 0x03900	fn_79_3900	0x550	B	yes		fn_79_91A4 fn_79_AFB4
-0x03E50	fn_79_3E50	0x5C	B	no		fn_79_3900
+0x03E50	fn_79_3E50	0x5C	H	no		fn_79_3900
 0x03EAC	fn_79_3EAC	0x48	H	no		-
 0x03EF4	fn_79_3EF4	0x3C	H	no		-
 0x03F30	fn_79_3F30	0x160	B	yes		fn_79_B3CC
@@ -121,7 +121,7 @@ offset	fn	size	class	marked	what	callers
 0x06134	fn_79_6134	0x90	B	yes		fn_79_8BB4 fn_79_8D90 fn_79_91A4 fn_79_9754 fn_79_9A3C
 0x061C4	fn_79_61C4	0x458	B	yes	`ProcessDamage` (collision damage)	fn_79_B3CC
 0x0661C	fn_79_661C	0x28	B	yes		fn_79_61C4
-0x06644	fn_79_6644	0x98	B	no		fn_79_661C
+0x06644	fn_79_6644	0x98	H	no		fn_79_661C
 0x066DC	fn_79_66DC	0x78	B	yes	`CollisionActorPosition`	fn_79_AFB4
 0x06754	fn_79_6754	0x50	B	yes		fn_79_20D8 fn_79_58F0 fn_79_5D00 fn_79_66DC fn_79_6B78
 0x067A4	fn_79_67A4	0x1D0	B	yes	`InitGrowths`	fn_79_BE3C
@@ -174,9 +174,9 @@ offset	fn	size	class	marked	what	callers
 0x09FA4	fn_79_9FA4	0x30	B	yes		-
 0x09FD4	fn_79_9FD4	0x70	B	yes		-
 0x0A044	fn_79_A044	0x20	B	yes		-
-0x0A064	fn_79_A064	0x28	B	no	-	-
+0x0A064	fn_79_A064	0x28	B	yes	-	-
 0x0A08C	fn_79_A08C	0x3C	B	yes		-
-0x0A0C8	fn_79_A0C8	0x74	B	no	0xA0EC, 0xA11C	-
+0x0A0C8	fn_79_A0C8	0x74	B	yes	0xA0EC, 0xA11C	-
 0x0A13C	fn_79_A13C	0x1D4	B	yes		-
 0x0A310	fn_79_A310	0xC	B	yes		-
 0x0A31C	fn_79_A31C	0xC	B	yes		-
@@ -184,7 +184,7 @@ offset	fn	size	class	marked	what	callers
 0x0A350	fn_79_A350	0x28	B	yes		-
 0x0A378	fn_79_A378	0x28	B	yes		-
 0x0A3A0	fn_79_A3A0	0x38	B	yes		-
-0x0A3D8	fn_79_A3D8	0x20	B	no	-	-
+0x0A3D8	fn_79_A3D8	0x20	B	yes	-	-
 0x0A3F8	fn_79_A3F8	0x20	B	yes		-
 0x0A418	fn_79_A418	0x20	B	yes	-	-
 0x0A438	fn_79_A438	0x60	B	yes		-
@@ -201,7 +201,7 @@ offset	fn	size	class	marked	what	callers
 0x0B3CC	fn_79_B3CC	0x42C	B	yes	`AcceptScriptMsg`	-
 0x0B7F8	fn_79_B7F8	0xB0	H	no		fn_79_B3CC
 0x0B8A8	fn_79_B8A8	0xC	T	no		fn_79_B7F8
-0x0B8B4	fn_79_B8B4	0x20	B	no		-
+0x0B8B4	fn_79_B8B4	0x20	H	no		-
 0x0B8D4	fn_79_B8D4	0x29C	H	no	dtor	-
 0x0BB70	fn_79_BB70	0x1E4	H	no		fn_79_B8D4
 0x0BD54	fn_79_BD54	0x94	H	no		fn_79_BB70

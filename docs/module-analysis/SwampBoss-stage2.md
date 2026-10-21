@@ -1105,7 +1105,7 @@ module (243: the 236 `fn_79_*` plus RELMain/RELExit and the crtexe runtime bits)
 class, the port's marker, the note's name and the module's own call sites. The classes are
 applied by rule, so the table can be audited:
 
-- **H - host copy** (133 functions, 0x4D18 bytes): the body copies something the host
+- **H - host copy** (139 functions, 0x5108 bytes): the body copies something the host
   already has, so the port writes no body for it: the loader's own constructors, copy
   constructors, assignment operators and destructors, its `rstl::vector`/list growth and free
   helpers, its `CToken` copies, the loader's read/convert helpers and the vtable entries the
@@ -1115,30 +1115,51 @@ applied by rule, so the table can be audited:
   address or clears a flag: `fn_79_2E7C` (the address of `mSwoopTarget`, 0xdf4),
   `fn_79_A4AC` (the address of `mLightChain`, 0xca8), `fn_79_6E5C` and `fn_79_B8A8` (a flag
   cleared).
-- **B - module behaviour** (106 functions, 0x8FC0 bytes): real behaviour - these are the
-  port's bodies. 93 of them carry a `// @ fn_79_` marker.
+- **B - module behaviour** (100 functions, 0x8BD0 bytes): real behaviour - these are the
+  port's bodies. 96 of them carry a `// @ fn_79_` marker.  Six more are host copies after
+  all (the port calls the host's equivalent): `fn_79_2704` (the scan setup, the host's
+  `CPatterned` scan info), `fn_79_2C20` (`LdrToDamageInfo`, the host's), `fn_79_3314` (the
+  cross product, the host's `CVector3f::Cross`), `fn_79_3E50` (the collidable copy, the host's),
+  `fn_79_6644` (the `rstl::list` append, the host's) and `fn_79_B8B4` (the base's
+  `CActor::OnScanStateChange`).
 
 | class | functions | .text bytes |
 |---|---|---|
-| H host copy | 133 | 0x4D18 (19,736) |
+| H host copy | 139 | 0x5108 (20,744) |
 | T data / vtable thunk | 4 | 0x28 (40) |
-| B module behaviour | 106 | 0x8FC0 (36,800) |
+| B module behaviour | 100 | 0x8BD0 (35,792) |
 | **total** | **243** | **0xDD00 (56,576)** |
 
-**The unmarked B list (13)** - the module's behaviour that the port has but has not proved:
+**The unmarked B list (4)** - the module's behaviour that the port has but has not proved
+(the rest of the list was closed by 7.21 and 7.23):
 
 | fn | what | why it is not marked |
 |---|---|---|
 | `fn_79_1B38` | an additive flinch with no caller | the note's 7.2: no state, trigger, code function or vtable slot references it |
-| `fn_79_2704` | a helper | not ported |
-| `fn_79_2C20` | a helper | not ported |
-| `fn_79_3314` | the cross product (the player-to-centre line) | not ported |
-| `fn_79_3E50` | the water splash's collidable copy | not ported |
 | `fn_79_4F88` | `SendDecrement` | no caller in the module (7.2) |
 | `fn_79_5D40` | `GetIngSnatchingPoint` | the ing-snatch transition never runs |
-| `fn_79_6644` | the damage memory's list append | the port appends through the host's list |
 | `fn_79_72FC` | `ResetAttackPhase` (the code node) | the code node never runs (no state references it) |
-| `fn_79_A064` | `ShouldBlow` | the attack type 6 never came up with the trigger evaluated (7.21) |
-| `fn_79_A0C8` | `SwitchedPlatform` | the trigger was never called (7.21) |
-| `fn_79_A3D8` | `ZeroHealth` | the phase 3 was reached, but the trigger was not evaluated then (7.21) |
-| `fn_79_B8B4` | `OnScanStateChange` | the scan-by-form work is still open |
+
+### 7.23 The three triggers' true arms (2026-10-21, fifteenth lane pass)
+
+The arms that 7.21 could not reach, forced with gdb: the game is booted under gdb (the port's
+RUNNING.md, "Boot under gdb"), a breakpoint is set on the trigger function and the member that
+decides the arm is set at the trigger's entry, so the function's own body then takes the true
+side. The driver (`tools/drivers/swampboss2_dark.py`) keeps the fight going (the growth kills and
+the phase cycle) while gdb has the game.
+
+| fn | branch | what | class |
+|---|---|---|---|
+| A064 | 0xA06C, 0xA078 | the attack is ready and the type is 6 | (b) the true side, **forced (gdb `set var this->mAttackReady = 1`, `set var this->mAttackType = 6`)**: `[probe] trigger 3 a 1 b 6 -> 1` |
+| A3D8 | 0xA3E0 | the field is below the phase | (b) the true side, **forced (gdb `set var this->mData.unknown_0x96ce7897 = 0`)**: `[probe] trigger 2 a 0 b 2 -> 1` |
+| A0C8 | 0xA0EC, 0xA11C | the wind node is not the node nearest the player | (c) the trigger is in the module's trigger table but **no state's transition list uses it** (the note's 6: the asset's edges), so the function is never called - the shipped data scan is the proof |
+
+So all three are **marked** now. The other arms of A064 and A3D8 ran without forcing (the
+attack not ready with the type 3, 5, 6 and 7: `[probe] trigger 3 a 0 b 3 -> 0` and so on; the
+field 2 with the phase 2: `[probe] trigger 2 a 2 b 2 -> 0`).
+
+**The four that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
+additive flinch: the module's only copy of that code and nothing calls it - the port's
+`AddAdditiveFlinch` is the retail's inline code in fn_79_61C4), `fn_79_4F88` (`SendDecrement`,
+no caller), `fn_79_5D40` (`GetIngSnatchingPoint`: the ing snatch never runs) and `fn_79_72FC`
+(the code node: it is in the asset's code list but no state transitions into it).

@@ -301,7 +301,7 @@ def main():
             # the ovipositor: the tail joint (index 4) in the head mode.  The boss ignores a
             # second hit from the same toucher, so the console's damage and a real beam hit
             # have to alternate.
-            if st.get("phase", 0) == 1 and phase1_frames > 300 and st.get("ovip", 0.0) > 0.0 \
+            if st.get("phase", 0) == 1 and phase1_frames > 4000 and st.get("ovip", 0.0) > 0.0 \
                     and len(joints) > 4:
                 tail = joints[4]
                 if stun_toggle:
