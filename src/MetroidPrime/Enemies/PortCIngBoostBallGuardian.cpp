@@ -359,6 +359,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 // 0xD64 then 0xD60 (0x0000E7E4/0x0000E7F8, single_ptr), the data at 0x7C0 (0x0000E80C/0x0000E818),
 // then CPatterned (0x0000E824, fn_30_E854). The host header declares the members in that order, so
 // the implicit teardown is retail's; the rest (path searches, line of sight, ids) is trivial in both.
+// Unload checked with every token engaged and, under a temporary hook, all nine absent.
+// @ fn_30_E5EC
 CIngBoostBallGuardian::~CIngBoostBallGuardian() {}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
