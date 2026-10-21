@@ -21,6 +21,8 @@
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/Weapons/CFreezeBeamProjectile.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Graphics/CTexture.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -679,4 +681,46 @@ void CDarkSamus::FireFreezeBeam(CStateManager& mgr) {
       *mFreezeBeamToken, kWT_Phazon, xf, kMT_ProjectilePassthrough, mData.mFreezeBeamDamage,
       mgr.AllocateUniqueId(), GetCurrentAreaId(), GetUniqueId(), 5.f, 4.f, sfx, mData.mIceSpreadFX,
       mData.mFreezeBeamVisorTexture));
+}
+
+// fn_10_1863C (0x0001863C, 0x2D0 bytes): the flash quad, one unit in front of the camera (the
+// view's translation plus its forward column, 0x000186CC..0x00018710), its right and up columns
+// scaled by size * alpha (0x000186BC); identity model matrix, additive blend (One / One, 0x00018728),
+// Tev stage 0 modulate and stage 1 passthru, depth test off with kE_Always and no writes
+// (0x0001875C), the colour (alpha, alpha, alpha, alpha) and a triangle fan (0xA0) from
+// (0,0) at C-R+U, (1,0) at C-R-U, (1,1) at C+R-U, (0,1) at C+R+U.
+void CDarkSamus::DrawFlashQuad(float alpha, float size) const {
+  const CTransform4f& view = CGraphics::GetViewMatrix();
+  const float scale = size * alpha;
+  const CVector3f center(view.Get03() + view.Get01(), view.Get13() + view.Get11(),
+                         view.Get23() + view.Get21());
+  const CVector3f right(scale * view.Get00(), scale * view.Get10(), scale * view.Get20());
+  const CVector3f up(scale * view.Get02(), scale * view.Get12(), scale * view.Get22());
+  CGraphics::SetModelMatrix(CTransform4f::Identity());
+  CGraphics::SetBlendMode(kBM_Blend, kBF_One, kBF_One, kLO_Clear);
+  CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulate);
+  CGraphics::SetTevOp(kTS_Stage1, CGraphics::kEnvPassthru);
+  CGraphics::SetDepthWriteMode(false, kE_Always, false);
+  CGraphics::StreamColor(CColor(alpha, alpha, alpha, alpha));
+  CGraphics::StreamBegin(kP_TriangleFan);
+  CGraphics::StreamTexcoord(0.f, 0.f);
+  CGraphics::StreamVertex(center - right + up);
+  CGraphics::StreamTexcoord(1.f, 0.f);
+  CGraphics::StreamVertex(center - right - up);
+  CGraphics::StreamTexcoord(1.f, 1.f);
+  CGraphics::StreamVertex(center + right - up);
+  CGraphics::StreamTexcoord(0.f, 1.f);
+  CGraphics::StreamVertex(center + right + up);
+  CGraphics::StreamEnd();
+}
+
+// fn_10_1890C (0x0001890C, 0x58 bytes): with the flash texture (0xDFC, 0x00018920) load it on
+// GX_TEXMAP0, repeating (0x00018938), and draw the quad at the fade factor (fn_10_185CC) and size
+// 0xE00 (0x0001894C); without it nothing.
+void CDarkSamus::RenderFlash() const {
+  if (!mFlashTexture) {
+    return;
+  }
+  (*mFlashTexture)->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
+  DrawFlashQuad(GetFadeFactor(), mFlashSize);
 }

@@ -224,6 +224,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
     mFreezeBeamToken = TToken< CWeaponDescription >(
         gpSimplePool->GetObj(SObjectTag('WPSC', data.mFreezeBeamProjectile)));
   }
+  // The flash record 0xDF0 (fn_10_EDF4 at 0x000200B4): tXTR's token and the size.
+  mFlashSize = data.mUnknown2C6A3344;
+  if (data.mTXTR != kInvalidAssetId) {
+    mFlashTexture =
+        TLockedToken< CTexture >(gpSimplePool->GetObj(SObjectTag('TXTR', data.mTXTR)));
+  }
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,

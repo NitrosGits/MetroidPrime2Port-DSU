@@ -1247,3 +1247,24 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   (0xC0; needs 8F50), and unmapped members 0xDE8 (an alpha float Render gates the body on), 0xDED
   bits 0x40/0x80 (echo/dark visor), 0xE64, 0x90C bit 0x20, CActor 0x44C..0x44F, the model flags
   at 0xFC. A partial Render risks an invisible boss.
+
+## Slice 8 (dsfsm2, 2026-10-21)
+
+- Ported DoUserAnimEvent's callees into `PortCDarkSamusHelpers.cpp`: ClearEnrageSphere 77B8,
+  ApplyMeleeDamage 13998, SpawnMeleePulse 13AB4, FireMissile 1353C, FireSuperMissile 133D0,
+  FireFreezeBeam 9164. New host members (slice-8 TARGET_PC blocks): the melee 'PART' tokens
+  0x9C4/0x9D0, the missile infos 0xA0C/0xA4C (ProjectileInfo 1C6C8 now answers 0x40/0x80/0x100),
+  the freeze beam token 0xA88, the flash record 0xDF0 (`mFlashTexture`, `mFlashSize` 0xE00).
+- Marked (ALL-ARMS, `tools/cov/specs/darksamus_attacks.py`, run `/tmp/opencode/dsfsm2/s8/a6`):
+  77B8, 13998, 1353C, 133D0, 9164.
+- 13AB4 unmarked: its floor-ray miss arm never ran. With the actor moved 1000 up and 100000
+  across, the host's RayWorldIntersection still answered a hit (explosion z = player z + 1.9).
+  This looks like a host collision anomaly (dynamic near-list hit?) worth checking separately.
+- Still stand-ins in DoUserAnimEvent (kept unmarked): 5840 (needs 50B8, 4C40, 0xF80/0x1064 infos)
+  and 9E00 (builds module classes 3BC4/3FD8). The 0xE38 halfword/float conflict is unresolved.
+- Assumptions: 0xEE0/0xEDC = iceSpreadSound/iceSpreadFX; fn_10_4EB4 = `CImpactVisorEffect::None()`.
+- Render chain: DrawFlashQuad 1863C and RenderFlash 1890C ported, unwired and unmarked (no caller
+  until PreRender/Render land). 18238/183E8 not started: they need CopyScreenTex, CGX::SetDstAlpha,
+  RenderSilhouette, CAnimData::Render with CModelFlags, the model at 0xD6C and members 0xDE8
+  (1.0f), 0xDEC, 0xDED bits, 0xD24, the 0x1060 bit.
+- CanReflectProjectile not attempted.
