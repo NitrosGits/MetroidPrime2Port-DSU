@@ -93,7 +93,6 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   return heard;
 }
 
-// @ fn_72_ADC0
 // The 208 cycle does evaluate this trigger (2851 calls in the 2026-10-20 run), but it is always
 // false there, so only the first branch is proven by the run.
 // Retail: a pirate with the non-aggressive bit (0x8f4 mask 0x20) never charges. Otherwise it
@@ -206,11 +205,13 @@ bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) cons
   return result;
 }
 
-// fn_72_A988. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// gcov 2026-10-21: ALL-ARMS. The no-player-target arm is forced once (spacepirate_force4.py: the
+// attack target set to the invalid id on one call, restored at the next CoverBlown).
 // Retail: with no cover point the trigger is true. With one it asks whether the cover is blown
 // by the attack target's position plus its velocity (1.0 * velocity, so the raw velocity is
 // added). The target is the pirate's attack target cast to CPlayer - not mgr.GetPlayer() - so a
 // missing or non-player target leaves the trigger false.
+// @ fn_72_A988
 bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const {
   bool result = true;
   const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
@@ -226,10 +227,12 @@ bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data
   return result;
 }
 
-// fn_72_A8D0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// gcov 2026-10-21: ALL-ARMS. The other-area arm is forced once (spacepirate_force4.py: this
+// pirate's area id = 99 on one call, restored at the next CoverBlown).
 // Retail: the listening-AI object list (mgr+0x830) is scanned for other pirates; one of them
 // that has its in-attack-state bit (0x8f6 mask 0x01) set and is in this area means this pirate
 // is covering that one's fire. The scan does not stop at the first hit.
+// @ fn_72_A8D0
 bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
@@ -436,7 +439,6 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
   return xb24_timeSinceHitByPlayer < window;
 }
 
-// @ fn_72_7970
 // The 208 cycle does evaluate this trigger (about 2850 calls in the 2026-10-20 run), but it is
 // always false there and the attack target is the player every time, so only the box/near-list
 // branch is proven by the run: the team-target branch and the active-non-player early return are

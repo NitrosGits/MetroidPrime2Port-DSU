@@ -257,6 +257,9 @@ void CSpacePirate::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
 // feeds that delta to the body and then runs D800 with r3 = this. Unlike MP1's Crouch there is no
 // TargetPlayer call (the asm has only SetLocomotionType and GetCoverPoint) and no Deactivate case:
 // anything below 1 or above 1 falls straight to the epilogue.
+// gcov 2026-10-21: ALL-ARMS. The cover arm is forced once (spacepirate_force4.py: 0x900 = a cover
+// point on one Activate); the fights' Crouch never held one.
+// @ fn_72_98D8
 void CSpacePirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -429,7 +432,7 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
         }
       }
     }
-    // @ fn_72_D40C: retail avoids the other ai actors here, between the jump point test and the
+    // fn_72_D40C (AvoidActors): retail avoids the other ai actors here, between the jump point test and the
     // cover-range block.
     AvoidActors(mgr);
     if (!x8f9_27_inRange) {
@@ -1526,21 +1529,21 @@ void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5D0C (0x11C): Activate forces the state machine's code trigger once the machine has
-// been in the state for more than 0.1 s (rodata B3C) and the body is not already jumping. Update,
-// when xb14_jumpPoint is a jump point whose GetJumpTarget() resolves to a waypoint, delivers the
-// two-waypoint jump built by fn_72_5E28 (CBCJumpCmd: kJT_Normal, variant 0, kJS_IntoJump, ambush
-// facing flag, wall jump) from xafc_patrolDestPos to that waypoint. Deactivate and messages above 2
-// do nothing.
+// Retail fn_72_5D0C (0x11C): Activate (msg 0, asm 0x5D44), when xb14_jumpPoint is a jump point whose
+// GetJumpTarget() resolves to a waypoint, delivers the two-waypoint jump built by fn_72_5E28
+// (CBCJumpCmd: kJT_Normal, variant 0, kJS_IntoJump, ambush facing flag, wall jump) from
+// xafc_patrolDestPos to that waypoint. Update (msg 1, asm 0x5DC8) forces the state machine's code
+// trigger once the machine has been in the state for more than 0.1 s (rodata B3C) and the body is not
+// already jumping (body +0x37c != 0xd). Deactivate and messages above 2 do nothing.
 void CSpacePirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
-  case kStateMsg_Activate:
+  case kStateMsg_Update:
     if (mStateMachine->GetTime() > 0.1f &&
         BodyController()->GetCurrentStateId() != pas::kAS_Jump) {
       StateMachineState().SetCodeTrigger();
     }
     break;
-  case kStateMsg_Update: {
+  case kStateMsg_Activate: {
     const CScriptAiJumpPoint* jumpPoint =
         TCastToConstPtr< CScriptAiJumpPoint >(mgr.GetObjectById(xb14_jumpPoint));
     if (jumpPoint == nullptr) {
@@ -1558,19 +1561,19 @@ void CSpacePirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5EA4 (0x188): forwards to CPatterned::PathFind for every message first. Activate
-// avoids the other actors, returns at once when the jump point is already in range (0x8f9 bit
-// 0x10) and otherwise refreshes xa1c_coverRange from the body's max speed, the frame time and the
-// model's Y scale (1.5 dt + 0.1, rodata BEC/B3C) plus xa70_intoJumpDist, then marks the jump point
-// in range when its squared distance is below that range squared. Update and Deactivate clear the
-// bit.
+// Retail fn_72_5EA4 (0x188): forwards to CPatterned::PathFind for every message first. Update (msg 1,
+// asm 0x5F10) avoids the other actors, returns at once when the jump point is already in range (0x8f9
+// bit 0x10) and otherwise refreshes xa1c_coverRange from the body's max speed, the frame time and the
+// model's Y scale (1.5 dt + 0.1, rodata BEC/B3C) plus xa70_intoJumpDist, then marks the jump point in
+// range when its squared distance is below that range squared. Activate (0x5EFC) and Deactivate
+// (0x5FF8) clear the bit.
 void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::PathFind(mgr, msg, dt);
   switch (msg) {
-  case kStateMsg_Update:
+  case kStateMsg_Activate:
     x8f9_27_inRange = false;
     break;
-  case kStateMsg_Activate:
+  case kStateMsg_Update:
     AvoidActors(mgr);
     if (!x8f9_27_inRange) {
       const CScriptAiJumpPoint* jumpPoint =
@@ -1635,17 +1638,17 @@ void CSpacePirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_58D8 (0x254): the team-AI handshake around a grenade volley. Update claims the
-// team's projectile-attack slot (fn_72_58D8 stores xbA0's manager id as the team, GetUniqueId as the
-// member); a granted claim, or a pirate in no team at all (0xba0 is kInvalidUniqueId), arms
-// kAS_Ready and seeds xc58_ with Range(1, mData.mGrenadeCount) - the grenades left in the volley,
-// each fired and decremented by fn_72_4174. A denied claim goes straight to kAS_Over. Activate
-// delivers CBCLoopAttackCmd(kLAT_Zero, waitForAnimOver) while kAS_LoopAttack can be issued, and
-// exits the state once xc58_ is spent; Deactivate re-arms the attack timer (with retail's
-// multiplayer variation), exits the state and releases the team slot.
+// Retail fn_72_58D8 (0x254): the team-AI handshake around a grenade volley. Activate (msg 0, asm
+// 0x5920) claims the team's projectile-attack slot (fn_72_58D8 stores xbA0's manager id as the team,
+// GetUniqueId as the member); a granted claim, or a pirate in no team at all (0xba0 is
+// kInvalidUniqueId), arms kAS_Ready and seeds xc58_ with Range(1, mData.mGrenadeCount) - the grenades
+// left in the volley, each fired and decremented by fn_72_4174. A denied claim goes straight to
+// kAS_Over. Update (msg 1, asm 0x598C) delivers CBCLoopAttackCmd(kLAT_Zero, waitForAnimOver) while
+// kAS_LoopAttack can be issued, and exits the state once xc58_ is spent; Deactivate (0x5A70) re-arms
+// the attack timer (with retail's multiplayer variation), exits the state and releases the team slot.
 void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
-  case kStateMsg_Update:
+  case kStateMsg_Activate:
     // The team test short-circuits to the launch path: no team means nothing to ask.
     if (xba0_teamAiMgrId != kInvalidUniqueId &&
         !CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, xba0_teamAiMgrId,
@@ -1656,7 +1659,7 @@ void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
       xc58_ = mgr.Random()->Range(1, mData.mGrenadeCount);
     }
     break;
-  case kStateMsg_Activate:
+  case kStateMsg_Update:
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero, true));
     } else if (xc58_ <= 0) {
@@ -1676,13 +1679,17 @@ void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5610 (0x26C): Update stops the physics actor, stores 3 into CPatterned's two-bit
-// mDisabledAnimationDeltas, arms kAS_Ready, delivers CBCGenerateCmd(kGType_Seven) and strips
-// Orbit/Target/Solid before switching the shadow off. Activate delivers the same generate command
-// while the animation allows kAS_Generate; Deactivate only returns the animation to kAS_NotReady.
+// Retail fn_72_5610 (0x26C): Activate (msg 0, asm 0x5654) stops the physics actor, stores 3 into
+// CPatterned's two-bit mDisabledAnimationDeltas, arms kAS_Ready, delivers CBCGenerateCmd(kGType_Seven)
+// and strips Orbit/Target/Solid before switching the shadow off. Update (msg 1, asm 0x576C) delivers
+// the same generate command while the animation allows kAS_Generate; Deactivate (0x5858) only returns
+// the animation to kAS_NotReady.
+// gcov 2026-10-21: every arm but the switch default; the Update generate arm is forced once
+// (spacepirate_force4.py: body state 0 and kAS_Ready on one Update, as CanIssueCommand needs).
+// @ fn_72_5610
 void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
-  case kStateMsg_Update:
+  case kStateMsg_Activate:
     mDisabledAnimationDeltas = 3;
     Stop();
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1690,7 +1697,7 @@ void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
     RemoveMaterial(kMT_Orbit, kMT_Target, kMT_Solid, mgr);
     SetDrawShadow(false);
     break;
-  case kStateMsg_Activate:
+  case kStateMsg_Update:
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
       BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_Seven, CVector3f::Zero()));
     }

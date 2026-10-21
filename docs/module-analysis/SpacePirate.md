@@ -527,6 +527,21 @@ Search, SquadJoin's melee). Newly marked: Shuffle 8670 (all natural), Cover A3C0
 forced call each). The pass found Generate's Activate and Update bodies swapped against retail
 (asm 0xC1E8 / 0xC32C): a generating pirate never jumped; fixed.
 
+**gcov pass 2 (2026-10-21)**: rerun on the build with five Activate/Update fixes (Generate C1A4 and,
+found by checking every state's retail message dispatch, Bounce 5D0C, PathFindEx 5EA4, LaunchGrenade
+58D8 and Captured 5610 had their Activate and Update cases swapped). `spacepirate_force4.py` (run
+line in the spec) forces one call each: Crouch 98D8 and CoverNearlyBlown A988/CoveringFire A8D0 reach
+ALL-ARMS, and Captured 5610 every arm but the switch default; all four are marked. Not closable by
+one-call forces: WallHang 69AC (needs a wall-hang cover point with its waypoint connections: the
+body never enters kAS_WallHang), LaunchGrenade 58D8 (a team that grants the projectile slot; the
+multiplayer arm is dead), CoverBlown AA64 (a covering pirate with zero steering speed through the
+step/distance tests), ShouldAttack A71C (only in Cover's and-chain after its Delays). Not in this
+AFSM (0x5652a12f) at all, so they need another pirate FSM: DoubleSnap 99F0, Bounce 5D0C,
+PathFindEx 5EA4, BounceFind 602C, StartAttack 6334, LostInterest 635C, ShouldSpecialAttack 638C.
+BreakAttack 6328 is only in Ambushing's list, and Ambushing 7630 (marked before gcov) gets 0 calls
+even after `fsm <pirate> Ambushing`: the trace shows the transition, then no trigger is evaluated
+for that pirate (open).
+
 **Coverage without probes**: the shared harness `tools/cov/run.sh` (docs/LANE_BRIEF.md, "Coverage without
 probes") with the spec `tools/cov/specs/spacepirate.py` and the driver `tools/drivers/spacepirate_drive.py`:
 
