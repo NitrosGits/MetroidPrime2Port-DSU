@@ -1854,6 +1854,7 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
     mDodgeDir = CVector3f::Zero();    // 0x00016D88
   } else if (mGuestAB0 >= 1) {        // 0x00016DA8
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x00016DD0
+    return; // the b to the epilogue at 0x00016DE8: no turn, no loop attack command
   }
   if ((mGuestAB8 & 0x40) != 0) { // 0x00016DF0 (the bit 0x40 of 0xAB8)
     TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C
