@@ -1,12 +1,13 @@
 #!/bin/bash
 # A forcing run: the game under gdb, with the members of the listed bodies written at their
-# entry, so the arms the fight cannot reach are taken (tools/cov/force_ds2.py is the gdb side).
+# entry, so the arms the fight cannot reach are taken (tools/cov/force.py is the gdb side).
 # The fight itself is the same as a coverage run (tools/cov/run.sh): a slot with its own display
 # and console port, the driver's .con file, and the same environment.
 #
 #   tools/cov/force.sh <spec.py> <out dir> <world,area> --con <cmdfile> [--frames n] [--fast]
 #
-# The spec defines FORCE = [(label, 'CDarkSamus::Body(', ['$this->mX = 1'], skip, 'what'), ...].
+# The spec defines FORCE = [(label, 'Body(', [exprs], [sets], skip, 'what'), ...]; the gdb side
+# is $COV_GDB_SCRIPT (default tools/cov/force.py) and the class is the spec's CLASS.
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 SPEC=$(realpath "$1"); OUT=$(realpath -m "$2"); WORLD=$3; shift 3
@@ -51,7 +52,7 @@ env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dum
   MP2_CONSOLE="$PORT" "${EXTRA[@]}" COV_SPEC="$SPEC" COV_NM="$OUT/nm.txt" COV_OUT="$OUT" \
   timeout -k 10 "${SECS:-900}" gdb -q -batch -nx \
     -ex 'set pagination off' -ex 'set confirm off' -ex 'handle SIGPIPE SIGUSR1 SIGUSR2 SIG32 SIG33 nostop noprint pass' \
-    -ex "source $ROOT/tools/cov/force_ds2.py" -ex run -ex 'bt 20' \
+    -ex "source ${COV_GDB_SCRIPT:-$ROOT/tools/cov/force.py}" -ex run -ex 'bt 20' \
     --args ./metroid_prime2_port > "$OUT/game.log" 2>&1 &
 GDB=$!
 trap 'kill -TERM "$GDB" 2>/dev/null' TERM INT

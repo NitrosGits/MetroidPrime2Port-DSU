@@ -134,3 +134,26 @@ Dropped again: **fn_10_16B1C** (IsOnPath) - the coverage run saw only the "on th
 **fn_10_1905C** (ClassifyLineToPlayer) keeps its marker: the return-value data of that run is
 incomplete for it (275 of 3315 hits), so the re-check could not disprove the earlier lane's
 evidence (DarkSamus.md, slice 23).
+
+
+## 7. The cov tool's two misfires, fixed
+
+Both were in `tools/cov/gdb_cov.py` (the fix is generic ✓).
+
+- **`calls` on the big bodies.** The demangled name of a function's `.cold` part is the function's
+  own name (only the *mangled* name carries the `.cold`), so the filter (which looked at the
+  demangled name) let the `.cold` symbol in. Its block ends at the end of the whole function, so
+  the disassembly ran past the body and the call sites landed in other code - the table then
+  listed the whole game's calls. The fix: filter the `.cold` and the clones on the **mangled**
+  name as well, and clamp the disassembly to the symbol's own extent (the next symbol's
+  address). Checked against the asm: fn_10_12F60's table now lists only the calls its body makes.
+- **`ret` losing lines.** The hit counter of an entry mixed three things: the entry hits, the
+  call-site records and the return-value records, and for a `ret` entry the entry hit was not
+  counted at all (the counter only saw the return records) - so a table row said "82 hits" for
+  41 calls. The fix: only the entry breakpoint counts as a hit; the call-site and the
+  return-value records are arms of that entry (they keep their own keys), so the row now says
+  how many times the body ran and the arms below it say what it answered.
+
+`tools/cov/force.sh` is generic now (the gdb side is `$COV_GDB_SCRIPT`, default
+`tools/cov/force.py`; the module's class and the forced members live in the spec), and
+`docs/LANE_BRIEF.md` ("Coverage without probes") says so.
