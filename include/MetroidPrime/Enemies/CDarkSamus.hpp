@@ -988,6 +988,9 @@ private:
   void DeleteGuestActorIfExpired(CStateManager& mgr); // fn_10_48C8: ... when 0xF7C has expired
   void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
+  void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
+  void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
+                             float dt); // fn_10_6F90: the path find to the destination
   float mGuest314;               // guest 0x314 (fn_10_2EFC)
   uchar mGuest318;               // guest 0x318 (fn_10_2F04)
   TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)

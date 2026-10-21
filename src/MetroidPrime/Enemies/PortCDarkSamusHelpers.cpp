@@ -6,6 +6,7 @@
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CModelData.hpp"
+#include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -57,3 +58,44 @@ void CDarkSamus::StopGuestSfx() {
 // fn_10_2E44 (0x00002E44, 0x20 bytes): the CModelData default constructor (0x00002E50).
 // fn_10_2E44 (ported, unreferenced in the port: nothing calls it yet)
 void CDarkSamus::InitGuestModelData(CModelData* model) { new (model) CModelData(); }
+
+// fn_10_8698 (0x00008698, 0xCC bytes): the taunt command over a state's messages. Activate
+// (0x000086D8) stores 1 (kAS_Ready) to the animation state 0x6B4 and delivers the command
+// (0x000086F0); Update (0x00008708) re-delivers it when the DOL's ShouldRetry (0x00008710, the
+// host's CAnimationState::CanIssueCommand) answers true; Deactivate (0x00008744) stores 0
+// (kAS_NotReady). The guest's 0x6B4 is the base's animation state, which the host keeps in
+// CPatterned::mAnimationState.
+// fn_10_8698 (ported, unreferenced in the port: the states run it inline)
+void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);      // 0x000086E0
+    BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(type)); // 0x000086F0
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) { // 0x00008710
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(type));           // 0x0000872C
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008750
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_6F90 (0x00006F90, 0xC4 bytes): the path find to the destination. The path find itself is
+// fn_10_1C778 (the host's SetPathFindDestination, 0x00006FC0); when the path is shagged
+// (0x00006FE0) the navigation's destination is set again (0x00006FF8 - the guest's 0x1048 is the
+// navigation's own destination, which the host keeps in CPathFindNavigation) and the path find
+// runs again (0x00007010).
+// fn_10_6F90 (ported, unreferenced in the port: the states call the path find inline)
+void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& destination, float dt) {
+  SetPathFindDestination(mgr, destination, dt); // fn_10_1C778 at 0x00006FC0
+  if (PathShagged(mgr, CTriggerData(0.f))) {    // 0x00006FE0
+    // 0x00006FF8: the guest's SetDestination(nav, 0x1048) writes the navigation's own
+    // destination, which the host's SetPathFindDestination has already set to the same value.
+    mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this); // 0x00007010
+  }
+}
