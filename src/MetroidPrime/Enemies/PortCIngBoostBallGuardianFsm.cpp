@@ -27,6 +27,7 @@ typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 namespace {
 
 // fn_30_C6CC's trigger table (lbl_30_data_250), in the REL's order.
+// @ fn_30_110C4
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     BG_TRIGGER(StateOver),
     BG_TRIGGER(IsAlert),

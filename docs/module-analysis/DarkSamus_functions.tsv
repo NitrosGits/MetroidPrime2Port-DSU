@@ -1,0 +1,536 @@
+offset	size	class	kind	name	callers	marked	state
+0x0	0x2C	B	virtual	fn_10_0	0	no	
+0x2C	0x29C	B	method	fn_10_2C	1	no	
+0x2C8	0x5C	B	method	fn_10_2C8	15	no	
+0x324	0x6E4	B	method	fn_10_324	1	no	
+0xA08	0x58	B	method	fn_10_A08	1	no	
+0xA60	0x5C	B	method	fn_10_A60	1	no	
+0xABC	0x48	H	host-copy	fn_10_ABC	0	no	
+0xB04	0x24	B	method	fn_10_B04	1	no	
+0xB28	0x50	B	method	fn_10_B28	1	no	
+0xB78	0xE4	B	method	fn_10_B78	1	no	
+0xC5C	0x3C	T	unreferenced	fn_10_C5C	0	no	
+0xC98	0x130	B	method	fn_10_C98	2	no	
+0xDC8	0x48	B	method	fn_10_DC8	1	no	
+0xE10	0x4C	B	method	fn_10_E10	1	no	
+0xE5C	0x20	H	host-copy	fn_10_E5C	0	no	
+0xE7C	0xCA8	T	unreferenced	fn_10_E7C	0	no	
+0x1B24	0x40	B	method	fn_10_1B24	2	no	
+0x1B64	0xA4	B	method	fn_10_1B64	1	no	
+0x1C08	0x184	B	method	fn_10_1C08	1	no	
+0x1D8C	0x2B4	B	method	fn_10_1D8C	2	no	
+0x2040	0x58	B	method	fn_10_2040	7	no	
+0x2098	0x54	B	method	fn_10_2098	3	no	
+0x20EC	0x50	H	host-copy	fn_10_20EC	0	no	
+0x213C	0x118	B	method	fn_10_213C	2	no	
+0x2254	0x544	B	method	fn_10_2254	1	no	
+0x2798	0x180	B	method	fn_10_2798	1	no	
+0x2918	0xC4	T	unreferenced	fn_10_2918	0	no	
+0x29DC	0x20	H	host-copy	fn_10_29DC	0	no	
+0x29FC	0xD4	H	host-copy	fn_10_29FC	0	no	
+0x2AD0	0x374	B	method	fn_10_2AD0	1	no	
+0x2E44	0x20	B	method	fn_10_2E44	2	no	
+0x2E64	0x98	H	host-copy	fn_10_2E64	0	no	
+0x2EFC	0x8	B	method	fn_10_2EFC	1	no	
+0x2F04	0xC	B	method	fn_10_2F04	1	no	
+0x2F10	0xF8	B	method	fn_10_2F10	1	no	
+0x3008	0x16C	H	host-copy	fn_10_3008	0	no	
+0x3174	0x70	H	host-copy	fn_10_3174	0	no	
+0x31E4	0x304	B	method	fn_10_31E4	1	no	
+0x34E8	0x38	B	method	fn_10_34E8	1	no	
+0x3520	0x20	B	method	fn_10_3520	2	no	
+0x3540	0x28	B	method	fn_10_3540	1	no	
+0x3568	0xC0	B	method	fn_10_3568	2	no	
+0x3628	0x84	B	method	fn_10_3628	1	no	
+0x36AC	0x38	B	method	fn_10_36AC	1	no	
+0x36E4	0x60	B	method	fn_10_36E4	1	no	
+0x3744	0x5C	B	method	fn_10_3744	5	no	
+0x37A0	0x130	B	method	fn_10_37A0	1	no	
+0x38D0	0x64	H	host-copy	fn_10_38D0	0	no	
+0x3934	0x64	H	host-copy	fn_10_3934	0	no	
+0x3998	0x170	T	unreferenced	fn_10_3998	0	no	
+0x3B08	0xBC	T	unreferenced	fn_10_3B08	0	no	
+0x3BC4	0x3AC	B	method	fn_10_3BC4	1	no	
+0x3F70	0x68	B	method	fn_10_3F70	2	no	
+0x3FD8	0x390	B	method	fn_10_3FD8	1	no	
+0x4368	0x40	B	method	fn_10_4368	2	no	
+0x43A8	0xC0	B	method	fn_10_43A8	1	no	
+0x4468	0x68	B	method	fn_10_4468	1	no	
+0x44D0	0x5C	H	host-copy	fn_10_44D0	0	no	
+0x452C	0xCC	B	method	fn_10_452C	2	no	
+0x45F8	0x270	B	method	fn_10_45F8	1	no	
+0x4868	0x60	B	method	fn_10_4868	4	no	
+0x48C8	0x44	B	method	fn_10_48C8	2	no	
+0x490C	0x19C	B	method	fn_10_490C	2	no	
+0x4AA8	0x14	B	method	fn_10_4AA8	1	no	
+0x4ABC	0xC	T	fsm-thunk	fn_10_4ABC	0	no	BreakPhazonAttack
+0x4AC8	0xD4	B	fsm-state	fn_10_4AC8	0	no	PhazonSuck
+0x4B9C	0x5C	H	host-copy	fn_10_4B9C	0	no	
+0x4BF8	0x48	H	host-copy	fn_10_4BF8	0	no	
+0x4C40	0x15C	B	method	fn_10_4C40	1	no	
+0x4D9C	0x54	B	method	fn_10_4D9C	4	no	
+0x4DF0	0x5C	B	method	fn_10_4DF0	2	no	
+0x4E4C	0x20	B	method	fn_10_4E4C	1	no	
+0x4E6C	0x48	B	method	fn_10_4E6C	2	no	
+0x4EB4	0x48	B	method	fn_10_4EB4	4	no	
+0x4EFC	0xB4	B	method	fn_10_4EFC	1	no	
+0x4FB0	0x40	B	method	fn_10_4FB0	1	no	
+0x4FF0	0x20	B	method	fn_10_4FF0	1	no	
+0x5010	0x28	B	method	fn_10_5010	2	no	
+0x5038	0x80	B	method	fn_10_5038	1	no	
+0x50B8	0x788	B	method	fn_10_50B8	1	no	
+0x5840	0x80	B	method	fn_10_5840	1	no	
+0x58C0	0xB4	B	method	fn_10_58C0	1	no	
+0x5974	0x7A4	B	method	fn_10_5974	1	no	
+0x6118	0x19C	B	method	fn_10_6118	1	no	
+0x62B4	0xC0	B	fsm-trigger	fn_10_62B4	0	no	Arrived
+0x6374	0xEC	B	method	fn_10_6374	2	no	
+0x6460	0xCC	B	fsm-state	fn_10_6460	0	no	GoToPhazonEnrage
+0x652C	0xA0	B	fsm-state	fn_10_652C	0	no	GoToPhazonAttack
+0x65CC	0x1EC	B	method	fn_10_65CC	4	no	
+0x67B8	0x1AC	B	fsm-state	fn_10_67B8	0	no	PhazonMissiles
+0x6964	0x5C	H	host-copy	fn_10_6964	0	no	
+0x69C0	0x80	B	method	fn_10_69C0	2	no	
+0x6A40	0x20	B	fsm-trigger	fn_10_6A40	0	no	ReadyForMissiles
+0x6A60	0x88	B	fsm-trigger	fn_10_6A60	0	no	ShouldLeaveSphere
+0x6AE8	0x90	B	fsm-trigger	fn_10_6AE8	0	no	ShouldRiseAgain
+0x6B78	0x28	B	fsm-trigger	fn_10_6B78	0	no	ShouldEnragedMelee
+0x6BA0	0x20C	B	fsm-state	fn_10_6BA0	0	no	PhazonFall
+0x6DAC	0x8C	B	method	fn_10_6DAC	1	no	
+0x6E38	0x158	B	fsm-state	fn_10_6E38	0	no	EnragedTravel
+0x6F90	0xC4	B	method	fn_10_6F90	2	no	
+0x7054	0x2B0	B	fsm-state	fn_10_7054	0	no	PhazonRise
+0x7304	0x168	B	method	fn_10_7304	2	no	
+0x746C	0xCC	B	method	fn_10_746C	1	no	
+0x7538	0xD8	B	method	fn_10_7538	1	no	
+0x7610	0x170	B	method	fn_10_7610	2	no	
+0x7780	0x38	B	method	fn_10_7780	2	no	
+0x77B8	0xB4	B	method	fn_10_77B8	1	no	
+0x786C	0x1A8	B	method	fn_10_786C	1	no	
+0x7A14	0x154	B	fsm-state	fn_10_7A14	0	no	EnrageHitReact
+0x7B68	0x58	B	fsm-trigger	fn_10_7B68	0	no	HitDuringEnrage
+0x7BC0	0x140	B	fsm-state	fn_10_7BC0	0	no	PhazonEnraged
+0x7D00	0x298	B	method	fn_10_7D00	1	no	
+0x7F98	0x17C	B	method	fn_10_7F98	3	no	
+0x8114	0x18	T	fsm-thunk	fn_10_8114	0	yes	PickedPhazonEnrage
+0x812C	0x4C	B	method	fn_10_812C	3	no	
+0x8178	0x5C	B	method	fn_10_8178	1	no	
+0x81D4	0x450	B	fsm-state	fn_10_81D4	0	no	PhazonAttack
+0x8624	0x5C	H	host-copy	fn_10_8624	0	no	
+0x8680	0x18	T	fsm-thunk	fn_10_8680	0	yes	PickedPhazonAttack
+0x8698	0xCC	B	method	fn_10_8698	7	no	
+0x8764	0x10C	B	method	fn_10_8764	11	no	
+0x8870	0xEC	B	method	fn_10_8870	4	no	
+0x895C	0x3D4	B	method	fn_10_895C	1	no	
+0x8D30	0x84	B	method	fn_10_8D30	1	no	
+0x8DB4	0x19C	B	method	fn_10_8DB4	1	no	
+0x8F50	0x214	B	method	fn_10_8F50	1	no	
+0x9164	0x1B0	B	method	fn_10_9164	1	no	
+0x9314	0x110	B	fsm-trigger	fn_10_9314	0	no	DoneRolling
+0x9424	0x184	B	fsm-state	fn_10_9424	0	no	DiveFromBoost
+0x95A8	0x7C	B	fsm-trigger	fn_10_95A8	0	no	DiveAfterBoost
+0x9624	0x20	B	method	fn_10_9624	6	no	
+0x9644	0xE0	B	method	fn_10_9644	2	yes	
+0x9724	0x1FC	B	fsm-state	fn_10_9724	0	no	BoostBallFire
+0x9920	0x4C	B	method	fn_10_9920	2	no	
+0x996C	0x4C	B	method	fn_10_996C	4	no	
+0x99B8	0x10C	B	method	fn_10_99B8	3	no	
+0x9AC4	0x60	B	method	fn_10_9AC4	4	no	
+0x9B24	0x2DC	B	method	fn_10_9B24	1	no	
+0x9E00	0x26C	B	method	fn_10_9E00	2	no	
+0xA06C	0xE8	B	method	fn_10_A06C	2	no	
+0xA154	0x6C	B	method	fn_10_A154	1	no	
+0xA1C0	0x1F0	B	method	fn_10_A1C0	1	no	
+0xA3B0	0x384	B	fsm-state	fn_10_A3B0	0	no	BoostBallRoll
+0xA734	0xE0	B	method	fn_10_A734	1	no	
+0xA814	0x1F0	B	method	fn_10_A814	1	no	
+0xAA04	0x760	B	method	fn_10_AA04	1	no	
+0xB164	0x2F4	B	fsm-state	fn_10_B164	0	no	BoostBallInto
+0xB458	0x118	B	method	fn_10_B458	2	no	
+0xB570	0x100	B	method	fn_10_B570	5	no	
+0xB670	0x54	B	method	fn_10_B670	13	no	
+0xB6C4	0x1A8	B	method	fn_10_B6C4	1	no	
+0xB86C	0x1CC	B	method	fn_10_B86C	1	no	
+0xBA38	0x140	B	method	fn_10_BA38	1	no	
+0xBB78	0x6C	B	fsm-trigger	fn_10_BB78	0	no	ShouldFadeIn
+0xBBE4	0x70	B	fsm-trigger	fn_10_BBE4	0	no	ShouldFadeOut
+0xBC54	0xEC	B	fsm-state	fn_10_BC54	0	no	FadeOut
+0xBD40	0xD8	B	fsm-state	fn_10_BD40	0	no	FadeIn
+0xBE18	0x2EC	B	method	fn_10_BE18	2	yes	
+0xC104	0x1AC	B	method	fn_10_C104	1	no	
+0xC2B0	0x1C0	B	method	fn_10_C2B0	1	no	
+0xC470	0x328	B	method	fn_10_C470	1	no	
+0xC798	0xC4	B	method	fn_10_C798	3	yes	
+0xC85C	0x1B0	B	method	fn_10_C85C	1	yes	
+0xCA0C	0x394	B	fsm-state	fn_10_CA0C	0	no	SweepBeam
+0xCDA0	0x18	T	fsm-thunk	fn_10_CDA0	0	yes	PickedSweepBeam
+0xCDB8	0x94	T	unreferenced	fn_10_CDB8	0	no	
+0xCE4C	0x8	T	virtual-thunk	fn_10_CE4C	0	no	
+0xCE54	0x8	T	virtual-thunk	fn_10_CE54	0	no	
+0xCE5C	0x8	T	virtual-thunk	fn_10_CE5C	0	no	
+0xCE64	0x8	T	virtual-thunk	fn_10_CE64	0	no	
+0xCE6C	0x10	T	virtual-thunk	fn_10_CE6C	0	no	
+0xCE7C	0xC	T	virtual-thunk	fn_10_CE7C	0	no	
+0xCE88	0xC	T	virtual-thunk	fn_10_CE88	0	no	
+0xCE94	0x8	T	virtual-thunk	fn_10_CE94	0	no	
+0xCE9C	0x8	T	virtual-thunk	fn_10_CE9C	0	no	
+0xCEA4	0x8	T	virtual-thunk	fn_10_CEA4	0	no	
+0xCEAC	0x8	T	virtual-thunk	fn_10_CEAC	0	no	
+0xCEB4	0x1C	B	virtual	fn_10_CEB4	0	no	
+0xCED0	0x24	H	rel-entry	RELExit	0	no	
+0xCEF4	0x20	T	rel-entry	RELMain	0	no	
+0xCF14	0x30	B	method	fn_10_CF14	1	no	
+0xCF44	0xE98	T	loader	fn_10_CF44	0	no	
+0xDDDC	0x40	B	method	fn_10_DDDC	1	no	
+0xDE1C	0x20	B	method	fn_10_DE1C	1	no	
+0xDE3C	0x28	B	method	fn_10_DE3C	1	no	
+0xDE64	0x13C	B	method	fn_10_DE64	1	no	
+0xDFA0	0x6C	H	host-copy	fn_10_DFA0	0	no	
+0xE00C	0x54	H	host-copy	fn_10_E00C	0	no	
+0xE060	0x64	H	host-copy	fn_10_E060	0	no	
+0xE0C4	0x60	H	host-copy	fn_10_E0C4	0	no	
+0xE124	0x118	B	method	fn_10_E124	2	no	
+0xE23C	0x2A0	B	method	fn_10_E23C	1	no	
+0xE4DC	0x84	B	method	fn_10_E4DC	1	no	
+0xE560	0x178	B	method	fn_10_E560	1	no	
+0xE6D8	0x58	H	host-copy	fn_10_E6D8	0	no	
+0xE730	0x54	H	host-copy	fn_10_E730	0	no	
+0xE784	0x18C	B	method	fn_10_E784	1	no	
+0xE910	0xF8	B	method	fn_10_E910	4	yes	
+0xEA08	0x1C	B	method	fn_10_EA08	4	yes	
+0xEA24	0x16C	B	method	fn_10_EA24	1	no	
+0xEB90	0x228	B	method	fn_10_EB90	2	yes	
+0xEDB8	0x14	B	method	fn_10_EDB8	1	no	
+0xEDCC	0x14	T	unreferenced	fn_10_EDCC	0	no	
+0xEDE0	0x14	B	method	fn_10_EDE0	5	yes	
+0xEDF4	0xE4	B	method	fn_10_EDF4	1	no	
+0xEED8	0x84	B	method	fn_10_EED8	1	no	
+0xEF5C	0x6C	H	host-copy	fn_10_EF5C	0	no	
+0xEFC8	0x138	B	method	fn_10_EFC8	2	no	
+0xF100	0x110	B	method	fn_10_F100	1	yes	
+0xF210	0x88	B	method	fn_10_F210	2	yes	
+0xF298	0x174	B	method	fn_10_F298	1	yes	
+0xF40C	0x7C	B	virtual	fn_10_F40C	0	no	
+0xF488	0x138	B	virtual	fn_10_F488	0	no	
+0xF5C0	0x2C	B	virtual	fn_10_F5C0	0	no	
+0xF5EC	0x68	B	method	fn_10_F5EC	1	no	
+0xF654	0xBC	B	method	fn_10_F654	1	no	
+0xF710	0xF0	B	method	fn_10_F710	1	no	
+0xF800	0x40	B	fsm-trigger	fn_10_F800	0	no	WallCollision
+0xF840	0xC	T	fsm-thunk	fn_10_F840	0	no	Alerted
+0xF84C	0x18	T	virtual-thunk	fn_10_F84C	0	no	
+0xF864	0x8	T	fsm-thunk	fn_10_F864	0	yes	DoneTurning
+0xF86C	0xB4	B	fsm-state	fn_10_F86C	0	no	FallFromTheAir
+0xF920	0x4	T	fsm-thunk	fn_10_F920	0	yes	Start
+0xF924	0xC	T	fsm-thunk	fn_10_F924	0	yes	StartsInTheAir
+0xF930	0x1C4	B	fsm-state	fn_10_F930	0	yes	PissedOff
+0xFAF4	0x98	B	fsm-trigger	fn_10_FAF4	0	yes	ReachedPissedOff
+0xFB8C	0xD8	B	fsm-state	fn_10_FB8C	0	yes	TravelToPissedOff
+0xFC64	0xCC	B	method	fn_10_FC64	4	yes	
+0xFD30	0x1C	B	fsm-trigger	fn_10_FD30	0	no	ShouldGetPissedOff
+0xFD4C	0xCC	B	method	fn_10_FD4C	1	yes	
+0xFE18	0x108	B	fsm-state	fn_10_FE18	0	yes	TurnToFacePlayer
+0xFF20	0x94	B	virtual	fn_10_FF20	0	no	
+0xFFB4	0x5C	B	method	fn_10_FFB4	2	no	
+0x10010	0xC0	B	method	fn_10_10010	1	no	
+0x100D0	0xC	B	method	fn_10_100D0	1	no	
+0x100DC	0x134	B	virtual	fn_10_100DC	0	no	
+0x10210	0x148	B	virtual	fn_10_10210	0	no	
+0x10358	0x12C	B	virtual	fn_10_10358	0	no	
+0x10484	0x9C	B	method	fn_10_10484	2	no	
+0x10520	0xD4	B	method	fn_10_10520	1	yes	
+0x105F4	0x40	B	method	fn_10_105F4	13	yes	
+0x10634	0x24	B	fsm-trigger	fn_10_10634	0	no	CanMeleeAttack
+0x10658	0x40	B	fsm-trigger	fn_10_10658	0	no	PlayerTooClose
+0x10698	0x60	B	fsm-trigger	fn_10_10698	0	no	TooMuchDamage
+0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	no	BreakPause
+0x10710	0x154	B	fsm-state	fn_10_10710	0	no	Pause
+0x10864	0x17C	B	method	fn_10_10864	1	no	
+0x109E0	0x40	B	method	fn_10_109E0	1	no	
+0x10A20	0x44	B	method	fn_10_10A20	1	no	
+0x10A64	0x158	B	method	fn_10_10A64	1	no	
+0x10BBC	0xE0	B	method	fn_10_10BBC	4	no	
+0x10C9C	0x2FC	B	fsm-state	fn_10_10C9C	0	no	HeavyHit
+0x10F98	0x5C	H	host-copy	fn_10_10F98	0	no	
+0x10FF4	0xEC	B	fsm-state	fn_10_10FF4	0	no	Interrupt
+0x110E0	0x3C	B	fsm-trigger	fn_10_110E0	0	no	SkipPhazonAttack
+0x1111C	0x3C	H	host-copy	fn_10_1111C	0	no	
+0x11158	0x154	B	fsm-trigger	fn_10_11158	0	no	ShouldReact
+0x112AC	0x3C	B	fsm-trigger	fn_10_112AC	0	no	WasHeavyHit
+0x112E8	0x20	B	fsm-trigger	fn_10_112E8	0	no	PlayerIsMorphball
+0x11308	0x2C	B	method	fn_10_11308	2	no	
+0x11334	0xF8	B	method	fn_10_11334	6	no	
+0x1142C	0x118	B	fsm-state	fn_10_1142C	0	no	Patrol
+0x11544	0x1B4	B	fsm-state	fn_10_11544	0	no	Taunt
+0x116F8	0x18	T	fsm-thunk	fn_10_116F8	0	yes	PickedBoostBall
+0x11710	0x14	T	fsm-thunk	fn_10_11710	0	yes	PickedMeleeDash
+0x11724	0x14	T	fsm-thunk	fn_10_11724	0	yes	PickedMovingSShot
+0x11738	0x14	T	fsm-thunk	fn_10_11738	0	yes	PickedScatterShot
+0x1174C	0x14	T	fsm-thunk	fn_10_1174C	0	yes	PickedDiveAttack
+0x11760	0x18	T	fsm-thunk	fn_10_11760	0	no	PickedFreezeBeam
+0x11778	0x14	T	fsm-thunk	fn_10_11778	0	yes	PickedSuperMissile
+0x1178C	0x14	T	fsm-thunk	fn_10_1178C	0	yes	PickedMissileJump
+0x117A0	0x38	B	fsm-trigger	fn_10_117A0	0	no	PickedNormalMissile
+0x117D8	0x14	T	fsm-thunk	fn_10_117D8	0	yes	PickedMelee
+0x117EC	0x14	T	fsm-thunk	fn_10_117EC	0	yes	PickedTaunt
+0x11800	0x14	T	fsm-thunk	fn_10_11800	0	yes	PickedPause
+0x11814	0x160	B	method	fn_10_11814	2	yes	
+0x11974	0x164	B	method	fn_10_11974	2	no	
+0x11AD8	0x17C	B	fsm-state	fn_10_11AD8	0	yes	MovingScatterShot
+0x11C54	0xC	T	fsm-thunk	fn_10_11C54	0	yes	BreakDiveAttack
+0x11C60	0x17C	B	method	fn_10_11C60	1	no	
+0x11DDC	0xDC	B	method	fn_10_11DDC	1	no	
+0x11EB8	0xEC	B	method	fn_10_11EB8	1	no	
+0x11FA4	0x764	B	fsm-state	fn_10_11FA4	0	yes	DiveAttack
+0x12708	0x5C	H	host-copy	fn_10_12708	0	no	
+0x12764	0x9C	B	method	fn_10_12764	2	no	
+0x12800	0x5C	H	host-copy	fn_10_12800	0	no	
+0x1285C	0x7C	B	method	fn_10_1285C	2	no	
+0x128D8	0x88	B	method	fn_10_128D8	1	no	
+0x12960	0x1A0	B	method	fn_10_12960	2	no	
+0x12B00	0x38	B	method	fn_10_12B00	2	yes	
+0x12B38	0xF4	B	method	fn_10_12B38	3	yes	
+0x12C2C	0xB4	B	method	fn_10_12C2C	2	yes	
+0x12CE0	0xF0	B	method	fn_10_12CE0	2	yes	
+0x12DD0	0xC0	B	method	fn_10_12DD0	2	no	
+0x12E90	0x68	B	method	fn_10_12E90	3	yes	
+0x12EF8	0x68	B	method	fn_10_12EF8	1	yes	
+0x12F60	0x2D0	B	method	fn_10_12F60	1	no	
+0x13230	0x1A0	B	method	fn_10_13230	1	yes	
+0x133D0	0x12C	B	method	fn_10_133D0	1	no	
+0x134FC	0x20	T	unreferenced	fn_10_134FC	0	no	
+0x1351C	0x20	T	unreferenced	fn_10_1351C	0	no	
+0x1353C	0x140	B	method	fn_10_1353C	1	no	
+0x1367C	0xD4	B	method	fn_10_1367C	1	yes	
+0x13750	0xDC	B	method	fn_10_13750	4	yes	
+0x1382C	0x3C	B	method	fn_10_1382C	1	yes	
+0x13868	0x3C	B	method	fn_10_13868	1	no	
+0x138A4	0xF4	B	method	fn_10_138A4	2	yes	
+0x13998	0x11C	B	method	fn_10_13998	2	no	
+0x13AB4	0x378	B	method	fn_10_13AB4	1	no	
+0x13E2C	0xB4	B	method	fn_10_13E2C	2	yes	
+0x13EE0	0xE0	B	method	fn_10_13EE0	1	yes	
+0x13FC0	0x3C	H	host-copy	fn_10_13FC0	0	no	
+0x13FFC	0x184	B	method	fn_10_13FFC	7	no	
+0x14180	0x3C	H	host-copy	fn_10_14180	0	no	
+0x141BC	0xC8	B	method	fn_10_141BC	2	yes	
+0x14284	0x48	B	fsm-trigger	fn_10_14284	0	no	CanMissileDeflect
+0x142CC	0x28	B	fsm-trigger	fn_10_142CC	0	no	FacingPlayer
+0x142F4	0xB4	B	method	fn_10_142F4	3	no	
+0x143A8	0xA0	B	fsm-state	fn_10_143A8	0	no	Dead
+0x14448	0x4	T	fsm-thunk	fn_10_14448	0	no	Null
+0x1444C	0x198	B	method	fn_10_1444C	1	no	
+0x145E4	0x64	B	method	fn_10_145E4	3	yes	
+0x14648	0x330	B	method	fn_10_14648	2	no	
+0x14978	0x3C	H	host-copy	fn_10_14978	0	no	
+0x149B4	0x4C	B	fsm-trigger	fn_10_149B4	0	yes	BreakDash
+0x14A00	0x250	B	method	fn_10_14A00	2	no	
+0x14C50	0xC4	B	method	fn_10_14C50	2	yes	
+0x14D14	0x148	B	method	fn_10_14D14	1	no	
+0x14E5C	0x184	B	method	fn_10_14E5C	1	yes	
+0x14FE0	0xFC	B	method	fn_10_14FE0	2	no	
+0x150DC	0x26C	B	fsm-state	fn_10_150DC	0	no	Dash
+0x15348	0xA4	B	method	fn_10_15348	2	yes	
+0x153EC	0x110	B	fsm-state	fn_10_153EC	0	no	SideDash
+0x154FC	0xB4C	B	method	fn_10_154FC	3	no	
+0x16048	0x3D0	B	method	fn_10_16048	1	no	
+0x16418	0xA8	B	method	fn_10_16418	1	yes	
+0x164C0	0x140	B	method	fn_10_164C0	5	yes	
+0x16600	0xAC	B	method	fn_10_16600	2	yes	
+0x166AC	0x1B4	B	method	fn_10_166AC	1	no	
+0x16860	0x124	T	unreferenced	fn_10_16860	0	no	
+0x16984	0x158	B	method	fn_10_16984	2	yes	
+0x16ADC	0x8	B	method	fn_10_16ADC	2	yes	
+0x16AE4	0x38	H	host-copy	fn_10_16AE4	0	no	
+0x16B1C	0x2C	B	method	fn_10_16B1C	5	yes	
+0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	no	BreakFreezeBeam
+0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	no	BreakSuperMissile
+0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	no	BreakNormalMissile
+0x16B64	0x28	B	method	fn_10_16B64	11	yes	
+0x16B8C	0x150	B	method	fn_10_16B8C	5	no	
+0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	no	FreezeBeam
+0x16ECC	0x1B0	B	fsm-state	fn_10_16ECC	0	no	SuperMissileAttack
+0x1707C	0x3CC	B	method	fn_10_1707C	3	no	
+0x17448	0x164	B	fsm-state	fn_10_17448	0	no	NormalMissileAttack
+0x175AC	0x1B4	B	fsm-state	fn_10_175AC	0	no	ScatterShot
+0x17760	0x5C	H	host-copy	fn_10_17760	0	no	
+0x177BC	0x128	B	fsm-state	fn_10_177BC	0	yes	MissileJump
+0x178E4	0x1D8	B	fsm-state	fn_10_178E4	0	no	MissileDeflect
+0x17ABC	0x104	B	fsm-state	fn_10_17ABC	0	yes	MeleeDash
+0x17BC0	0xF8	B	fsm-state	fn_10_17BC0	0	yes	MeleeAttack
+0x17CB8	0x34	B	fsm-trigger	fn_10_17CB8	0	no	OutOfMeleeRange
+0x17CEC	0x64	B	method	fn_10_17CEC	8	no	
+0x17D50	0x90	B	method	fn_10_17D50	2	no	
+0x17DE0	0x34	B	method	fn_10_17DE0	2	no	
+0x17E14	0x34	B	method	fn_10_17E14	41	no	
+0x17E48	0x8	B	method	fn_10_17E48	3	no	
+0x17E50	0x40	T	unreferenced	fn_10_17E50	0	no	
+0x17E90	0x74	B	method	fn_10_17E90	1	yes	
+0x17F04	0x2D8	B	virtual	fn_10_17F04	0	no	
+0x181DC	0x4	T	unreferenced	fn_10_181DC	0	no	
+0x181E0	0x58	B	method	fn_10_181E0	2	no	
+0x18238	0x1B0	B	method	fn_10_18238	1	no	
+0x183E8	0x1E4	B	method	fn_10_183E8	1	no	
+0x185CC	0x5C	B	method	fn_10_185CC	3	no	
+0x18628	0x14	B	method	fn_10_18628	7	yes	
+0x1863C	0x2D0	B	method	fn_10_1863C	1	no	
+0x1890C	0x58	B	method	fn_10_1890C	1	no	
+0x18964	0x154	B	virtual	fn_10_18964	0	no	
+0x18AB8	0x2C0	B	virtual	fn_10_18AB8	0	no	
+0x18D78	0x6C	B	method	fn_10_18D78	1	no	
+0x18DE4	0x74	H	host-copy	fn_10_18DE4	0	no	
+0x18E58	0x54	H	host-copy	fn_10_18E58	0	no	
+0x18EAC	0x88	B	fsm-state	fn_10_18EAC	0	no	GetUp
+0x18F34	0x5C	H	host-copy	fn_10_18F34	0	no	
+0x18F90	0x3C	B	method	fn_10_18F90	13	yes	
+0x18FCC	0x48	B	method	fn_10_18FCC	3	yes	
+0x19014	0x48	B	method	fn_10_19014	1	no	
+0x1905C	0x344	B	method	fn_10_1905C	1	no	
+0x193A0	0x10C	B	method	fn_10_193A0	1	yes	
+0x194AC	0xA0	B	method	fn_10_194AC	1	yes	
+0x1954C	0x150	B	method	fn_10_1954C	1	no	
+0x1969C	0x13C	B	method	fn_10_1969C	1	no	
+0x197D8	0x140	B	method	fn_10_197D8	1	no	
+0x19918	0x104	B	method	fn_10_19918	2	no	
+0x19A1C	0x148	B	method	fn_10_19A1C	1	no	
+0x19B64	0x670	B	method	fn_10_19B64	1	no	
+0x1A1D4	0xA4	B	method	fn_10_1A1D4	2	no	
+0x1A278	0xD4	B	method	fn_10_1A278	1	no	
+0x1A34C	0xF4	B	method	fn_10_1A34C	2	no	
+0x1A440	0x114	B	method	fn_10_1A440	2	no	
+0x1A554	0x68	B	method	fn_10_1A554	2	no	
+0x1A5BC	0x108	B	method	fn_10_1A5BC	3	no	
+0x1A6C4	0x234	B	method	fn_10_1A6C4	2	no	
+0x1A8F8	0x88	B	method	fn_10_1A8F8	4	no	
+0x1A980	0xB0	B	method	fn_10_1A980	21	no	
+0x1AA30	0x2C	B	method	fn_10_1AA30	5	no	
+0x1AA5C	0x10	B	method	fn_10_1AA5C	1	no	
+0x1AA6C	0x58	B	method	fn_10_1AA6C	3	no	
+0x1AAC4	0x1DC	B	virtual	fn_10_1AAC4	0	no	
+0x1ACA0	0x168	B	method	fn_10_1ACA0	1	no	
+0x1AE08	0xB8	B	method	fn_10_1AE08	1	no	
+0x1AEC0	0xF4	B	method	fn_10_1AEC0	21	yes	
+0x1AFB4	0x58	B	method	fn_10_1AFB4	1	no	
+0x1B00C	0x50	B	method	fn_10_1B00C	1	no	
+0x1B05C	0x84	B	method	fn_10_1B05C	1	no	
+0x1B0E0	0x74	B	method	fn_10_1B0E0	1	no	
+0x1B154	0xA8	B	method	fn_10_1B154	1	no	
+0x1B1FC	0x27C	B	virtual	fn_10_1B1FC	0	no	
+0x1B478	0x16C	B	method	fn_10_1B478	28	no	
+0x1B5E4	0x74	B	method	fn_10_1B5E4	1	no	
+0x1B658	0x2E0	B	method	fn_10_1B658	2	yes	
+0x1B938	0x78	B	method	fn_10_1B938	1	no	
+0x1B9B0	0x158	B	method	fn_10_1B9B0	3	no	
+0x1BB08	0x150	B	fsm-trigger	fn_10_1BB08	0	no	AnyIncomingMissiles
+0x1BC58	0x198	B	method	fn_10_1BC58	3	no	
+0x1BDF0	0x14	B	method	fn_10_1BDF0	2	no	
+0x1BE04	0x7C	B	method	fn_10_1BE04	1	no	
+0x1BE80	0x7C	B	method	fn_10_1BE80	1	no	
+0x1BEFC	0x7CC	B	virtual	fn_10_1BEFC	0	no	
+0x1C6C8	0xB0	B	virtual	fn_10_1C6C8	0	no	
+0x1C778	0x84	B	method	fn_10_1C778	5	no	
+0x1C7FC	0x1A0	B	virtual	fn_10_1C7FC	0	no	
+0x1C99C	0x434	B	method	fn_10_1C99C	1	no	
+0x1CDD0	0x1B4	B	method	fn_10_1CDD0	3	no	
+0x1CF84	0x11C	B	method	fn_10_1CF84	1	no	
+0x1D0A0	0xF4	B	method	fn_10_1D0A0	1	no	
+0x1D194	0x430	B	method	fn_10_1D194	2	no	
+0x1D5C4	0x108	B	method	fn_10_1D5C4	1	no	
+0x1D6CC	0xC8	B	method	fn_10_1D6CC	1	no	
+0x1D794	0xCC	B	method	fn_10_1D794	2	no	
+0x1D860	0x144	B	method	fn_10_1D860	4	no	
+0x1D9A4	0x370	B	method	fn_10_1D9A4	2	no	
+0x1DD14	0x260	B	method	fn_10_1DD14	4	no	
+0x1DF74	0x204	B	fsm-state	fn_10_1DF74	0	no	TravelToCoverPoints
+0x1E178	0xF4	B	method	fn_10_1E178	3	no	
+0x1E26C	0x7C	B	method	fn_10_1E26C	3	no	
+0x1E2E8	0x78	B	method	fn_10_1E2E8	1	no	
+0x1E360	0x60	B	method	fn_10_1E360	1	yes	
+0x1E3C0	0x104	B	method	fn_10_1E3C0	3	no	
+0x1E4C4	0x27C	B	method	fn_10_1E4C4	1	no	
+0x1E740	0x124	B	method	fn_10_1E740	1	no	
+0x1E864	0x38	B	method	fn_10_1E864	1	yes	
+0x1E89C	0x5B0	B	virtual	fn_10_1E89C	0	no	
+0x1EE4C	0xEC	B	method	fn_10_1EE4C	1	no	
+0x1EF38	0x300	B	dtor	fn_10_1EF38	0	no	
+0x1F238	0x1E4	B	method	fn_10_1F238	1	no	
+0x1F41C	0x94	B	method	fn_10_1F41C	1	no	
+0x1F4B0	0x84	B	method	fn_10_1F4B0	1	no	
+0x1F534	0x54	B	method	fn_10_1F534	1	no	
+0x1F588	0x54	B	method	fn_10_1F588	2	no	
+0x1F5DC	0x74	B	method	fn_10_1F5DC	4	no	
+0x1F650	0x54	B	method	fn_10_1F650	1	no	
+0x1F6A4	0x88	B	method	fn_10_1F6A4	1	no	
+0x1F72C	0x150	B	method	fn_10_1F72C	1	no	
+0x1F87C	0xAC	B	method	fn_10_1F87C	1	no	
+0x1F928	0x98	B	method	fn_10_1F928	1	no	
+0x1F9C0	0x54	B	method	fn_10_1F9C0	1	no	
+0x1FA14	0xB98	B	ctor	fn_10_1FA14	1	no	
+0x205AC	0x54	H	host-copy	fn_10_205AC	0	no	
+0x20600	0xC8	B	method	fn_10_20600	1	no	
+0x206C8	0x54	H	host-copy	fn_10_206C8	0	no	
+0x2071C	0x58	H	host-copy	fn_10_2071C	0	no	
+0x20774	0x48	B	method	fn_10_20774	1	no	
+0x207BC	0x74	B	method	fn_10_207BC	1	no	
+0x20830	0x90	H	host-copy	fn_10_20830	0	no	
+0x208C0	0x78	H	host-copy	fn_10_208C0	0	no	
+0x20938	0x90	B	method	fn_10_20938	1	no	
+0x209C8	0x5C	H	host-copy	fn_10_209C8	0	no	
+0x20A24	0x48	H	host-copy	fn_10_20A24	0	no	
+0x20A6C	0x54	H	host-copy	fn_10_20A6C	0	no	
+0x20AC0	0x58	H	host-copy	fn_10_20AC0	0	no	
+0x20B18	0x58	H	host-copy	fn_10_20B18	0	no	
+0x20B70	0x8C	H	host-copy	fn_10_20B70	0	no	
+0x20BFC	0x30	B	method	fn_10_20BFC	1	no	
+0x20C2C	0x68	B	method	fn_10_20C2C	4	no	
+0x20C94	0x30	B	method	fn_10_20C94	2	no	
+0x20CC4	0x94	B	method	fn_10_20CC4	1	no	
+0x20D58	0x20	B	method	fn_10_20D58	1	no	
+0x20D78	0x28	B	method	fn_10_20D78	1	no	
+0x20DA0	0x8C	B	method	fn_10_20DA0	1	no	
+0x20E2C	0x58	H	host-copy	fn_10_20E2C	0	no	
+0x20E84	0x5C	H	host-copy	fn_10_20E84	0	no	
+0x20EE0	0x70	H	host-copy	fn_10_20EE0	0	no	
+0x20F50	0x144	B	method	fn_10_20F50	1	no	
+0x21094	0x70	H	host-copy	fn_10_21094	0	no	
+0x21104	0x174	B	method	fn_10_21104	1	no	
+0x21278	0x68	H	host-copy	fn_10_21278	0	no	
+0x212E0	0x70	H	host-copy	fn_10_212E0	0	no	
+0x21350	0x9C	H	host-copy	fn_10_21350	0	no	
+0x213EC	0x78	H	host-copy	fn_10_213EC	0	no	
+0x21464	0x6C	H	host-copy	fn_10_21464	0	no	
+0x214D0	0x3C	H	host-copy	fn_10_214D0	0	no	
+0x2150C	0x3C	H	host-copy	fn_10_2150C	0	no	
+0x21548	0x3C	H	host-copy	fn_10_21548	0	no	
+0x21584	0x3C	H	host-copy	fn_10_21584	0	no	
+0x215C0	0x3C	H	host-copy	fn_10_215C0	0	no	
+0x215FC	0x13C	B	method	fn_10_215FC	1	no	
+0x21738	0x58	H	host-copy	fn_10_21738	0	no	
+0x21790	0x6C	H	host-copy	fn_10_21790	0	no	
+0x217FC	0x138	B	method	fn_10_217FC	1	no	
+0x21934	0x68	H	host-copy	fn_10_21934	0	no	
+0x2199C	0x38	B	method	fn_10_2199C	1	no	
+0x219D4	0x40	B	method	fn_10_219D4	2	no	
+0x21A14	0x50	B	method	fn_10_21A14	1	no	
+0x21A64	0x94	H	host-copy	fn_10_21A64	0	no	
+0x21AF8	0x8C	H	host-copy	fn_10_21AF8	0	no	
+0x21B84	0x64	H	host-copy	fn_10_21B84	0	no	
+0x21BE8	0x3C	H	host-copy	fn_10_21BE8	0	no	
+0x21C24	0x78	H	host-copy	fn_10_21C24	0	no	
+0x21C9C	0x3C	H	host-copy	fn_10_21C9C	0	no	
+0x21CD8	0x3C	H	host-copy	fn_10_21CD8	0	no	
+0x21D14	0x84	B	method	fn_10_21D14	1	no	
+0x21D98	0x60	H	host-copy	fn_10_21D98	0	no	
+0x21DF8	0x11C	B	method	fn_10_21DF8	4	yes	
+0x21F14	0x10C	B	method	fn_10_21F14	1	no	
+0x22020	0xCC	B	method	fn_10_22020	1	no	
+0x220EC	0x98	B	method	fn_10_220EC	1	no	
+0x22184	0x3C	B	method	fn_10_22184	1	no	
+0x221C0	0xD20	T	ctor-table	fn_10_221C0	0	no	
+0x22EE0	0x58	H	rel-runtime	__destroy_global_chain	0	no	
+0x22F38	0x1C	H	rel-runtime	__register_global_object	1	no	
+0x22F54	0xC4	H	rel-runtime	_unresolved	0	no	
+0x23018	0x24	H	rel-runtime	_epilog	0	no	
+0x2303C	0x24	H	rel-runtime	_prolog	0	no	
+0x23060	0x4C	H	rel-runtime	ModuleDestructors	0	no	
+0x230AC	0x4C	H	rel-runtime	ModuleConstructors	0	no	

@@ -17,7 +17,9 @@ The driver talks to the port's debug console (MP2_CONSOLE=<port>) and reads the 
     reaches the player.  Then it leaves the state with `fsm`, which is the only way the
     deactivate's pop (fn_79_7E24's 0x8214) can run.
   * with --grapple the player grapples a grapple point in front of the boss instead, which is
-    fn_79_7E24's 0x804C arm (the window's grapple test).
+    fn_79_7E24's 0x804C arm (the window's grapple test); with --blow the driver forces the Blow
+    state and leaves it while the window is open (fn_79_7E24's 0x8214 arm).  Without those
+    flags it kills the ovipositor instead, which is what takes the boss to the phase 2.
 """
 import math
 import os
@@ -201,6 +203,7 @@ def main():
         print("[sb2] no log file (SB2_LOG)", flush=True)
         return 1
     grapple_mode = "--grapple" in args
+    blow_mode = "--blow" in args
     con = Console(port)
     con.wait_frame(400)
     lines, end = con.cmd("layer 6")
@@ -219,6 +222,7 @@ def main():
     stun_toggle = False
     last_frame = -1
     last_blow_try = -1000
+    phase1_frames = 0
     acted = False
     while True:
         text = read_log(logfile)
@@ -241,18 +245,11 @@ def main():
         joints = st.get("joints", [])
         growths = joints[:4]
         bodies = joints[4:]
+        if st.get("phase", 0) == 1:
+            phase1_frames += 1
         if st.get("phase", 0) >= 1:
-            # the dark phase: the Blow's deactivate (fn_79_7E24's 0x8214) needs the state left
-            # while the blow window is still open and the player is being blown.  The window
-            # is tested against the player's aim point, so the player stands in front of the
-            # boss and looks past it.  The probe's line marks the frame the player starts
-            # being blown, and the state is left right then: the window is only open for a
-            # few dozen updates, and the driver's round trip is longer than that.
-            if not acted and "7E24 the player is being blown" in text:
-                acted = True
-                print(f"[sb2] the player is being blown: leaving the state ({frame})", flush=True)
-                lines, end = con.cmd(f"fsm {boss} Start")
-                print(f"[sb2] fsm {boss} Start -> {end}", flush=True)
+            # the dark phase: the ovipositor's death (the tail joint in the head mode) is what
+            # takes the boss to the phase 2, where the retail swings the dark chain.
             bx, by, bz = st["boss"]
             fx, fy, _ = st["fwd"]
             px, py, pz = bx + fx * 20.0, by + fy * 20.0, bz + 4.0
@@ -260,28 +257,52 @@ def main():
             yaw = math.degrees(math.atan2(aimx - px, aimy - py))
             pitch = math.degrees(math.atan2(aimz - pz, math.hypot(aimx - px, aimy - py)))
             blow = st.get("blow", (0, 0))
-            if st.get("st") == "Blow":
-                if grapple_mode:
-                    # the grapple point in front of the boss: the aim is the lock-on target
-                    best = None
-                    for uid, pos in points:
-                        if pos is None:
-                            continue
-                        dot = (pos[0] - bx) * fx + (pos[1] - by) * fy
-                        if best is None or dot > best[0]:
-                            best = (dot, uid)
-                    if best is not None and best[0] > 0.0:
-                        con.cmd(f"grapple u{best[1]}")
+            if blow_mode:
+                if not acted and "7E24 the player is being blown" in text:
+                    acted = True
+                    print(f"[sb2] the player is being blown: leaving the state ({frame})",
+                          flush=True)
+                    lines, end = con.cmd(f"fsm {boss} Start")
+                    print(f"[sb2] fsm {boss} Start -> {end}", flush=True)
+                if st.get("st") == "Blow":
+                    if grapple_mode:
+                        # the grapple point in front of the boss: the aim is the lock-on target
+                        best = None
+                        for uid, pos in points:
+                            if pos is None:
+                                continue
+                            dot = (pos[0] - bx) * fx + (pos[1] - by) * fy
+                            if best is None or dot > best[0]:
+                                best = (dot, uid)
+                        if best is not None and best[0] > 0.0:
+                            con.cmd(f"grapple u{best[1]}")
+                    else:
+                        con.cmd(f"tp {px:.2f} {py:.2f} {pz:.2f}; aim {yaw:.1f} {pitch:.1f}")
                 else:
+                    if frame - last_blow_try > 20:
+                        # the dark phase's own path to the Blow needs the attack to be ready,
+                        # which the flight does not give, so the state is forced.
+                        last_blow_try = frame
+                        lines, end = con.cmd(f"fsm {boss} Blow")
+                        print(f"[sb2] fsm {boss} Blow -> {end}", flush=True)
                     con.cmd(f"tp {px:.2f} {py:.2f} {pz:.2f}; aim {yaw:.1f} {pitch:.1f}")
-            else:
-                if frame - last_blow_try > 20:
-                    # the dark phase's own path to the Blow needs the attack to be ready, which
-                    # the flight does not give, so the state is forced.
-                    last_blow_try = frame
-                    lines, end = con.cmd(f"fsm {boss} Blow")
-                    print(f"[sb2] fsm {boss} Blow -> {end}", flush=True)
-                con.cmd(f"tp {px:.2f} {py:.2f} {pz:.2f}; aim {yaw:.1f} {pitch:.1f}")
+                con.wait_frame(frame + 2)
+                continue
+            # the ovipositor: the tail joint (index 4) in the head mode.  The boss ignores a
+            # second hit from the same toucher, so the console's damage and a real beam hit
+            # have to alternate.
+            if st.get("phase", 0) == 1 and phase1_frames > 300 and st.get("ovip", 0.0) > 0.0 \
+                    and len(joints) > 4:
+                tail = joints[4]
+                if stun_toggle:
+                    lines, end = con.cmd(f"damage u{tail['uid']} 25")
+                    print(f"[sb2] damage u{tail['uid']} 25 (the ovipositor) -> {end}", flush=True)
+                else:
+                    lines, end = con.cmd(f"shoot u{tail['uid']} 30")
+                    print(f"[sb2] shoot u{tail['uid']} 30 (the ovipositor) -> {end}", flush=True)
+                stun_toggle = not stun_toggle
+                con.wait_frame(frame + 2)
+                continue
             con.wait_frame(frame + 2)
             continue
         # the light phase: kill the growths
