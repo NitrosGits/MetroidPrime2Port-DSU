@@ -32,7 +32,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 
 | lane | session | branch @ base | task |
 |---|---|---|---|
-| BoostGuardian (Opus) | `ses_ea447b79fffeTaPKG614GfhKss` | boostguardian @ `b930b305e` (191/318; 18 stand-ins ported) | ctor 0x11AC=1.5 + defaults, dtor E5EC, rstl/loader rows, matching build for CAiKnockBackMgr.hpp |
+| BoostGuardian (Opus) | `ses_ea4266ab5ffeSh2njPJ0BAHl26` | boostguardian @ `478435f20` (191/318; ctor timers 1.5/0.75/1.0, dtor order; matching OK) | HP-drop gate after the timer fix (puddle form?), dtor absent-token arms, rstl/loader rows |
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
 | DigitalGuardian (Opus) | `ses_ea45ad902ffeFmjnji3eLDppq5` | digitalguardian @ `d503a8674` (echo targets, XDMG; hook-free cycle reaches Stage3Start with run11.sh) | 12818/126C8 balls, Dead 1561C, XRDG 12D98, cycle stand-ins |
 | Splitter (worker) | `ses_ea456296affeAdkCwq7sVdpywE` | splitter @ `2cf00edf3` (IsDocked, Scanning, SelectTarget, Patrol, Hover) | head Idle 5538, shells 1578/2154/986C, ACEC, A4E4, AFE8/9520 re-check |
