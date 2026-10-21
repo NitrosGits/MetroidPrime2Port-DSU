@@ -308,7 +308,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xbc4_ = CVector3f::Zero();
   xbd0_ = 0.f;
   xbfc_ = false;
-  xc00_ = 0;
+  xc00_ = CSfxHandle::NullHandle();
   xc04_warpPoint = -1;
   xc58_ = 0;
 
@@ -480,6 +480,8 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
     }
   }
   UpdateCloak(dt, mgr);
+  // 0x1B7C: the sfx emitter follows the pirate (fn_72_2EA8).
+  UpdateSfxEmitter();
   if (body->GetPercentageFrozen() < 1.f) {
     if (mAlive) {
       xa10_steeringDelayTimer = CMath::Max(0.f, xa10_steeringDelayTimer - dt);
@@ -507,6 +509,8 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
   TraceState(*this, StateMachineState().GetName());
 }
 
+// @ fn_72_CA94
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::SetCinematicCollision(CStateManager& mgr) {
   RemoveMaterial(kMT_AIBlock, mgr);
   CMaterialList include = GetMaterialFilter().GetIncludeList();
@@ -515,6 +519,8 @@ void CSpacePirate::SetCinematicCollision(CStateManager& mgr) {
       CMaterialFilter::MakeIncludeExclude(include, GetMaterialFilter().GetExcludeList()));
 }
 
+// @ fn_72_C9DC
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::SetNonCinematicCollision(CStateManager& mgr) {
   AddMaterial(kMT_AIBlock, mgr);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
@@ -639,6 +645,8 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
 // out of range, and a squad id whose manager is gone (150 hits: `send <team> Delete`, then the player
 // deactivated with `send <player> Deactivate` so ChooseTarget falls back to ChooseTeamTarget).
 // @ fn_72_EFD4
+// @ fn_72_EFD4
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
@@ -1217,6 +1225,8 @@ void CSpacePirate::SquadRemove(CStateManager& mgr) {
 }
 
 // Retail fn_72_51C8: a live trooper with no warp point and no pending warp enters "WarpOut".
+// @ fn_72_51C8
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::TrooperWarpOut(CStateManager& mgr, bool flag) {
   if (mAlive && !x8fa_25_ && xc04_warpPoint == -1 && x8f6_24_trooper) {
     mStateMachine->SetState(mgr, *this, rstl::string_l("WarpOut"));
@@ -1512,7 +1522,7 @@ rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
   // touch bounds are the ragdoll's (ragdoll+0x58..0x70). The ragdoll is outside the port (xb30_
   // is never set), so there is no host member to read: port it with the ragdoll.
   // 0x183C bl fn_72_1854: the actor's own bounding box (GetBoundingBox).
-  return GetBoundingBox();
+  return GetActorTouchBounds();
 }
 
 // @ fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
@@ -1687,6 +1697,8 @@ void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f&
 }
 
 // Retail fn_72_18BC (TryToBeCaptured): the pirate switches to the "Captured" state and says so.
+// @ fn_72_18BC
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 bool CSpacePirate::TryToBeCaptured(CStateManager& mgr) {
   // 0x18D8: the state name "Captured" (rodata 0xF42), set through the state machine's virtual
   // slot 0x20 (SetState).

@@ -999,6 +999,8 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
 // three melee placements (data flag 0x8: alamofront 001d000f, casual 0036013d/003600fa) ran SquadJoin
 // and GetAssociatedTeamId found no team for any of them.
 // @ fn_72_DFD4
+// @ fn_72_DFD4
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::SquadJoin(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     xba0_teamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);

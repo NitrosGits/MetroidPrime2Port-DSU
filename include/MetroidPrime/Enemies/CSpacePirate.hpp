@@ -12,6 +12,7 @@
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Math/CPlane.hpp"
 #include "rstl/list.hpp"
 #include "rstl/optional_object.hpp"
@@ -107,6 +108,8 @@ public:
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void SetupStateMachine(CStateManager& mgr) override;
+  // @ fn_72_18
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   TUniqueId GetAttackTarget() const override { return mAttackTarget; }
   void SetAttackTarget(CStateManager& mgr, TUniqueId target) override;
 
@@ -135,7 +138,11 @@ public:
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // fn_72_40
   CRagDoll* GetRagDoll() const override { return nullptr; } // fn_72_17A0; xb30_ is never set yet
+  // @ fn_72_24
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   float GetGravityConstant() const override { return 50.f; } // fn_72_24
+  // @ fn_72_0
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   bool IsScanVisorSelfRender() const override { return true; } // fn_72_0
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
@@ -398,7 +405,7 @@ private:
   float xbd0_;                            // 0xbd0
   rstl::optional_object< CProjectileInfo > mProjectileInfo; // 0xbd4 (0x28), only if projectile valid
   bool xbfc_;                             // 0xbfc
-  int xc00_;                              // 0xc00
+  CSfxHandle xc00_;                       // 0xc00 (the sfx emitter handle; fn_72_2EA8)
   int xc04_warpPoint;                     // 0xc04 (-1); ShouldWarpIn
   // 0xc08 (0x4c, valid flag 0xc54): the grenade launcher's static model, built by fn_72_4F28 and
   // drawn at the R_wrist locator by fn_72_36CC.
@@ -430,6 +437,13 @@ private:
   uchar xb34_[0x128];
   CPlane mPortalPlane; // Guessed name; written by the WispTentacle while it drags the pirate.
   uchar xc6c_[4];
+#endif
+#ifdef TARGET_PC // helpers
+  // The module's stateless helper half (retail fn_72_*): the bodies that are neither an FSM state
+  // nor an FSM trigger. They live in PortCSpacePirateHelpers.cpp; the note with every offset and
+  // the arm tables is docs/module-analysis/SpacePirate_helpers.md.
+  void UpdateSfxEmitter();                                    // 2EA8
+  rstl::optional_object< CAABox > GetActorTouchBounds() const; // 1854
 #endif
 };
 CHECK_SIZEOF(CSpacePirate, 0xc70)
