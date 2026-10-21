@@ -537,9 +537,9 @@ bool CSpacePirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
 // 0.08 times (1 - the random draw) (asm 0x3150-0x315C) and the frozen test compares against
 // rodata 0xB54 = 1.0 (asm 0x3048).
 // The shadow arm is unreachable in the shipped data: the scan of all 65 SpacePirate placements
-// in the disc (tools/scan_pirt_props.py) finds none with the data flag 0x2000, so the only arm
-// that runs is the early exit - 9116 calls in the 2026-10-21 area run, every one of them out
-// at the shadow test (the trace's argument).
+// in all 12 worlds of the disc (tools/scan_pirt_props.py; every MLVL in every pak parses) finds
+// none with the data flag 0x2000, so the only arm that runs is the early exit - 9120 calls in
+// the 2026-10-21 area run, every one of them out at the shadow test (the trace's argument).
 void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
   TraceCall(*this, "UpdateCloak", x8f5_27_shadowPirate ? 1 : 0);
   if (!x8f5_27_shadowPirate) {

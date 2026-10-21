@@ -55,13 +55,17 @@ bool CSpacePirate::HearShot(CStateManager& mgr, const CTriggerData& data) const 
   return heard;
 }
 
-// Retail fn_72_BBC0 (0xB8): the trigger polls one player per call, so a second player does not
-// add hearing range in the same frame. The player index at 0xbc0 is rotated by one modulo the
-// player count (asm 0xBBD0 `divwu`), the player's velocity (0x1a8) has to move faster than
-// rodata 0xB3C = 0.1 in squared magnitude (asm 0xBC24) and the player's translation (0x54/0x58/
-// 0x5c) has to be inside the data's hearing radius at 0x7d4 (asm 0xBC64). The index is checked
-// against 0xffff before the player is read (asm 0xBBE8); the port's null check covers the same
-// case, and its empty-player check keeps the modulo away from a division by zero.
+// @ fn_72_BBC0 (0xB8): the trigger polls one player per call, so a second player does not add
+// hearing range in the same frame. The player index at 0xbc0 is rotated by one modulo the player
+// count (asm 0xBBD0 `divwu`), the player's velocity (0x1a8) has to move faster than rodata 0xB3C
+// = 0.1 in squared magnitude (asm 0xBC24) and the player's translation (0x54/0x58/0x5c) has to
+// be inside the data's hearing radius at 0x7d4 (asm 0xBC64). The index is checked against
+// 0xffff before the player is read (asm 0xBBE8); the port's null check covers the same case,
+// and its empty-player check keeps the modulo away from a division by zero. The trace's argument
+// is the arm: 0 = no player or a player that is not moving, 1 = the player is moving and inside
+// the hearing radius, 2 = the player is moving but too far. All three ran in the 2026-10-21 runs:
+// arm 1 in 06_sand_alamofront, where a trooper with a 100-unit hearing radius was woken with
+// `send <id> Activate` and the player walked inside its radius.
 bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   const int count = static_cast< int >(mgr.GetNumPlayers());
