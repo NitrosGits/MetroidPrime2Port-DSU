@@ -679,11 +679,54 @@ int CDigitalGuardianHead::x118B0_(CVector3f* points) const {
   return count;
 }
 
-// fn_14_114C8 needs the visual knowledge's line of sight, which the host never reports yet.
+// fn_14_114C8 (0x1D0 bytes): a point near the 40-unit circle (in x/y) round the player. Each
+// point's score is its squared x/y distance to the player minus 1600 (.rodata 0x9BC), the head's
+// own translation's first (0x114E4..0x11544). `outside` keeps the closest point outside the
+// circle (while its score is still negative: any higher one), `inside` the closest point inside
+// (while its score is still positive: any lower one). Nothing inside: `inside` (the closest
+// outside one); nothing outside: `outside` (the closest inside one); else the two blended where
+// the score crosses 0.
+// Every return ran (area 53, `codecall <head> SetAttackPosition` with the player teleported
+// round the head): the closest outside (far off), the closest inside (on a candidate), the blend
+// (between); the last one forced (the player's x NaN at the entry: every compare false).
+// @ fn_14_114C8
 CVector3f CDigitalGuardianHead::x114C8_(const CVector3f& player, const CVector3f* points,
                                          int count) {
-  StandInFn("fn_14_114C8 (0x1D0, attack point in sight of the player)");
-  return xFEC_;
+  const CVector3f self = GetTranslation(); // 0x54/0x58/0x5C at 0x114E4..0x11510
+  const float selfDx = player.GetX() - self.GetX(); // 0x1150C
+  const float selfDy = player.GetY() - self.GetY(); // 0x114FC
+  // f29, 0x11540/0x11544
+  float outsideScore = 0.f + (selfDx * selfDx + selfDy * selfDy) - 1600.f;
+  float insideScore = outsideScore; // f30
+  CVector3f outside = self;         // f7..f9 (0x11508..0x11528)
+  CVector3f inside = self;          // f4..f6
+  for (int i = 0; i < count; ++i) { // the 0xC stride (0x115E0), the end test at 0x115E4
+    const CVector3f& p = points[i];
+    const float dx = player.GetX() - p.GetX();          // 0x1155C
+    const float dy = player.GetY() - p.GetY();          // 0x11554
+    const float d = 0.f + (dx * dx + dy * dy) - 1600.f; // 0x11564..0x1156C
+    // 0x11570..0x11594
+    if ((d > 0.f && d < outsideScore) || (outsideScore < 0.f && d > outsideScore)) {
+      outsideScore = d; // 0x11598
+      outside = p;      // 0x1159C..0x115A4
+    }
+    // 0x115A8..0x115CC
+    if ((d < 0.f && d > insideScore) || (insideScore > 0.f && d < insideScore)) {
+      insideScore = d; // 0x115D0
+      inside = p;      // 0x115D4..0x115DC
+    }
+  }
+  if (insideScore > 0.f) { // fcmpo/ble at 0x115F4
+    return inside;          // 0x115FC
+  }
+  if (outsideScore < 0.f) { // fcmpo/bge at 0x1160C
+    return outside;         // 0x11614
+  }
+  if (outsideScore > insideScore) { // fcmpo/ble at 0x11624
+    const float t = -insideScore / (outsideScore - insideScore); // 0x1162C..0x1163C
+    return inside * (1.f - t) + outside * t; // .rodata 0x96C, 0x11640..0x11658
+  }
+  return outside; // 0x1166C
 }
 
 // fn_14_F390: the echo targets (0xF30/0xF34) that are gone or inactive (+0x20 bit 0x80), plus
@@ -1415,26 +1458,29 @@ void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
 // from fn_14_118B0. When the visual knowledge sees the player (flag 0x80 of 0xDB8) for over 2.25 s
 // (.rodata 0x9DC; 0xDB0) fn_14_114C8 picks one; otherwise the candidate furthest along the
 // previous move (translation minus 0xFF8, dot product >= the best so far, from 0) wins. 0xFF8
-// then keeps the result.
+// then keeps the result. The fn_14_114C8 arm re-run since 114C8 was ported: forced (0xDB8 bit
+// 0x80 set, 0xDB0 = 3 at the entry), its results the candidates or their blend.
 // @ fn_14_14254
 void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
-  xFEC_ = GetTranslation();
+  xFEC_ = GetTranslation(); // 0x14278..0x1428C
   CVector3f points[3];
-  const int count = x118B0_(points);
+  const int count = x118B0_(points); // 0x14294, the count at sp+0x20
+  // bit 0x80 of 0xDB8 at 0x1429C; 0xDB0 > 2.25 (.rodata 0x9DC), fcmpo/ble at 0x142B0
   if (xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f) {
-    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count);
+    // the player (mgr+0x14FC)'s translation at 0x142C8..0x142E0, the call at 0x142E4
+    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count); // 0x142EC..0x142FC
   } else {
-    const CVector3f move = GetTranslation() - xFF8_;
-    float best = 0.f;
-    for (int i = 0; i < count; ++i) {
-      const float dot = CVector3f::Dot(move, points[i] - xFF8_);
-      if (dot >= best) {
-        xFEC_ = points[i];
-        best = dot;
+    const CVector3f move = GetTranslation() - xFF8_; // 0x14304..0x14334
+    float best = 0.f;                                 // .rodata 0x960 at 0x14330
+    for (int i = 0; i < count; ++i) {                 // 0x14390..0x143A4
+      const float dot = CVector3f::Dot(move, points[i] - xFF8_); // 0x1433C..0x14368
+      if (dot >= best) {   // fcmpo/cror/bne at 0x1436C..0x14374
+        xFEC_ = points[i]; // 0x14378..0x1438C
+        best = dot;        // 0x1437C
       }
     }
   }
-  xFF8_ = xFEC_;
+  xFF8_ = xFEC_; // 0x143A8..0x143BC
 }
 
 // fn_14_14B98: bit 0x04 of 0x10F4 cleared, bit 0x40 set (rlwimi 6, 25, 25), the deployment

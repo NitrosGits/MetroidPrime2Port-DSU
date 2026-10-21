@@ -177,7 +177,8 @@ private:
   // fn_14_118B0 (0x134 bytes): the attack area's points at the head's angle and 8 degrees either
   // side; returns the count (0 or 3).
   int x118B0_(CVector3f* points) const;
-  // fn_14_114C8 (0x1D0 bytes): the attack point with a line of sight to the player (stand-in).
+  // fn_14_114C8 (0x1D0 bytes): the candidate (or the blend of two) nearest the 40-unit circle
+  // round the player.
   CVector3f x114C8_(const CVector3f& player, const CVector3f* points, int count);
   // fn_14_F390 (0x94 bytes): the splitters to deploy, one more than the echo targets lost, at
   // most 2.
