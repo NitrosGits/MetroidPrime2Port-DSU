@@ -194,7 +194,10 @@ try:
             # kSM_Start case sets the player's turret state to kTS_Active).
             run('send %s Start' % uid)
             wait_frames(20)
-            # The turret fires with A.
+            # The turret fires with A - twice, with the reload timer (the guest's 0x1B8, the
+            # fire rate at 0x194) run out in between, so both shots are taken.
+            run('press A 20')
+            wait_frames(3000)
             run('press A 20')
             wait_frames(40)
             run('status')

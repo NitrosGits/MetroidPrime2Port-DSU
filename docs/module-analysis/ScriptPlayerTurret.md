@@ -982,3 +982,43 @@ Agon Wastes, `sand_world,06_sand_alamofront` layer 3):
   the module's own thunk is the one that runs (and `fn_63_70` once again).
 
 Both bodies are branch-free, so both are ALL-ARMS.
+
+## 21. The slice of 2026-10-21 (night): the audit's findings
+
+### 21.1 The fire test (fn_63_1134) - the marker is gone
+
+The guest's fire test is the reload timer against zero: `lfs f1, 0x1b8` (0x12AC), `fcmpo cr0, f1,
+f0` (0x12B4) and `cror eq, lt, eq` (0x12B8) - *less than or equal*, not *equal*.  The port's `== 0.f`
+never fired a second time, because the timer is decremented by the frame time (0x11BC, the guest's
+input + 0) and therefore counts past zero.  Port's a19f25ae8 has the fix (`mUnknown1B8 <= 0.f`,
+the port line carries the address) and this branch took it.
+
+**The marker is removed.**  The rule (section 15) is that every live arm has to have run, and the
+arm *the reload timer is still positive* - the shot is skipped - is live in retail (a tap during the
+reload).  The re-run could not reach it: the driver presses A twice (3000 updates = 50 s of game
+time apart, far more than the fire rate) and the gdb coverage shows
+
+    1134_fire_pressed   400 hits   (the press test's line, evaluated every update)
+    1134_reload_test      1 hits   (the reload test's line: the press branch was taken ONCE)
+    84C_sp_sound          1 hits   (the shot ran once)
+
+so the *second* console press did not produce a second press edge - the port's virtual pad (the
+console's `press` holds the button) and the player's control mapper, not the module's code, decide
+that.  The body is retail's and it ran; the arm is not covered, so the marker goes until a run can
+produce the second edge.
+
+### 21.2 The audit's two unchecked LOWs
+
+- **kSM_Stop zeroes the pitch unconditionally** (0x2120-0x2138): **confirmed**.  The guest stores
+  0.0 into the pitch (0x1B4) and the pitch target (0x1B0) at 0x2128/0x212C, *before* it tests the
+  base actor (0x2130) and the top actor (0x2138) - so the reset happens even without a base actor.
+  The port's code was already fixed in the slice of section 18 (the port tree's copy still had the
+  reset inside the base actor's test; the merge brings the fix).
+- **The PreRender's +0x396 flag** (0x300C-0x30014): **confirmed and fixed**.  The guest's PreRender
+  compares the base actor's *new* model flags with the turret's saved ones (0x2FC4-0x30008) and
+  writes the result into the base actor's flag byte at +0x396: `rlwimi r0, r5, 1, 30, 30` (0x30010)
+  sets or clears the byte's bit 1 (0x02).  The guest's `CScriptActor` packs its bit fields from the
+  top (PowerPC is big-endian), so the byte's bit 1 is the *last* field, `mRenderImmediately` - the
+  host's `CScriptActor::AddToRenderer` reads it, so the difference was visible.  The port writes it
+  now (`CScriptActor::SetRenderImmediately`, in the header's `TARGET_PC` block, and the module's
+  PreRender at 0x2FB8-0x30014).
