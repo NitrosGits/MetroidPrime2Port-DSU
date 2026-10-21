@@ -348,7 +348,7 @@ offset	size	class	kind	name	callers	marked	state
 0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	no	BreakNormalMissile
 0x16B64	0x28	B	method	fn_10_16B64	11	yes	
 0x16B8C	0x150	B	method	fn_10_16B8C	5	no	
-0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	no	FreezeBeam
+0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	yes	FreezeBeam
 0x16ECC	0x1B0	B	fsm-state	fn_10_16ECC	0	no	SuperMissileAttack
 0x1707C	0x3CC	B	method	fn_10_1707C	3	no	
 0x17448	0x164	B	fsm-state	fn_10_17448	0	no	NormalMissileAttack

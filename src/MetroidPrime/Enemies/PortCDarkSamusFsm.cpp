@@ -1840,6 +1840,11 @@ void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
 // lbl_10_bss_118 = 160.0f, the module's own turn speed) and dodges (fn_10_1707C at 0x00016E3C,
 // with lbl_10_bss_11C = 22.0f and lbl_10_bss_120 = 0.5f - the port's UpdateDodge). Then
 // fn_10_8870 (0x00016E8C) - the state's command, the port's RunLoopAttackCmd.
+// The arms: the Activate (0x00016D4C), the Update, the Deactivate and the exit state command
+// (the counter 0xAB0 at least 1, 0x00016DA8) and the turn and the dodge (the bit 0x40 of 0xAB8,
+// 0x00016DF0) - the last two need the members written at the Update's entry, because the
+// Activate clears both (0x00016D5C and 0x00016D6C).
+// @ fn_10_16CDC
 void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("FreezeBeam", msg);
   UpdateCurrentAttack(0x10, mgr, msg); // 0x00016D18

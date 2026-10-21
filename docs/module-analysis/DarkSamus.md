@@ -1542,3 +1542,24 @@ trigger's entry, one per hit, from gdb convenience variables).
   0x158 times the rate (f2 = lbl_10_bss_11C = 22.0f) (0x000173C0..0x000173FC) and it is applied
   with ApplyImpulseWR and an identity axis angle (0x00017400..0x00017410).
 - The FreezeBeam state keeps its stand-in for fn_10_1707C and keeps no marker.
+
+## Slice 31 (2026-10-21): the FreezeBeam's dodge step and its arms
+
+- **The merge** (`port`): the only conflict was this note, both sides' sections are kept; the
+  link check reports 0 duplicate definitions and 0 undefined symbols.
+- **fn_10_1707C was already ported** - the port's `UpdateDodge` (PortCDarkSamusFsm.cpp, whose own
+  comment gives the reading) - so the FreezeBeam's stand-in for it is replaced by the call the
+  retail makes at 0x00016E3C, with lbl_10_bss_11C = 22.0f (the impulse) and lbl_10_bss_120 = 0.5f
+  (the dodge's time): `UpdateDodge(mgr, dt, 22.f, 0.5f);` - the same shape the fsm2 lane's
+  SuperMissileAttack uses (0x00016FF0).
+- **The FreezeBeam state (fn_10_16CDC) is marked.** Its arms all ran in the coverage run (the
+  state's Activate, Update and Deactivate with `statecall u04f7 FreezeBeam 0/1/2`, the state's
+  command fn_10_8870 in all three, the exit state command with the counter 0xAB0 at least 1 and
+  the turn and the dodge with the bit 0x40 of 0xAB8 set). The last two need the members written
+  at the Update's entry, because the Activate clears both (0x00016D5C and 0x00016D6C): the
+  coverage spec's expression writes the counter 0xAB0 = 1 on the first Update and the bit 0x40 of
+  0xAB8 on the second (`tools/cov/specs/darksamus.py`, the FreezeBeam entry's expressions). The
+  run: 4 hits of the state, `CBodyStateCmdMgr::DeliverCmd` 3, `TurnTowardPlayer` 2,
+  `UpdateDodge` 2, the game's exit code 0 and no SIGSEGV.
+- fn_10_1707C itself keeps no marker: its own arms (a dodge that starts, the side that is
+  chosen) did not all run - the coverage build's gcov report would say which.
