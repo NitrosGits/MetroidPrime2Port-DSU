@@ -508,3 +508,17 @@ The three state names the base class also has - `Start` (`fn_10_F920`), `Dead` (
 stand-ins do, so the death path keeps working until the module's own bodies are ported: three
 `damage u0732 200` hits take the actor to `hp 0/600`, the machine enters `Dead` and the actor
 leaves the area (checked in the same run).
+
+**The battle-stage link** (2026-10-21, slice 4): 0x974 has two writers - the 'XALD' arm of
+`fn_10_1E89C` (0x0001EBB8: the object connected with 'IS05' = kSS_InternalState5 and any message,
+cast to CScriptDarkSamusBattleStage; its uid also goes to 0xD50 and the stage count 0x978 becomes 1)
+and `fn_10_193A0` (0x00019410), which is **not a ray cast**: it is the stage advance (the stage
+info's +0x0 threshold against `fn_10_17E90`, the health fraction; the next stage is the current
+one's 'CONN' connection, `fn_10_194AC`; the count 0x978 grows by 1). The 'XALD' link is ported; in
+the run the stage is u0339. The picked attack (0x984) is written only by `fn_10_1954C` (0x0001965C,
+0x00019670) and `fn_10_1B478` (0x0001B4E0); `fn_10_1B1FC` (Think) calls `fn_10_193A0` and
+`fn_10_1954C` at 0x0001B308/0x0001B314 when alive. `fn_10_1954C` needs `fn_10_1AA6C` (0x58,
+calls `fn_10_17CEC`), `fn_10_197D8`/`fn_10_1969C` (0x140/0x13C: eight per-attack collectors
+1A5BC, 1A554, 1A278, 1A440, 1A34C, 1A1D4, 19B64, 19A1C, then `fn_10_14648`/`fn_10_1A980`, the
+copy into 0xC54/0xC58 and the weighted pick `fn_10_19918` into 0xCBC). That chain is the next slice;
+until it lands no Picked* trigger fires (walk: Start -> TurnToFacePlayer -> TravelToCoverPoints).

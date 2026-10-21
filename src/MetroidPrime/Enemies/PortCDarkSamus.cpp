@@ -19,6 +19,8 @@
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
@@ -65,6 +67,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPissedOff(0)
 , mFadeOut(0)
 , mBattleStageUid(kInvalidUniqueId)
+, mStageCount(0)
+, mFirstBattleStageUid(kInvalidUniqueId)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
 , mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}
@@ -159,10 +163,25 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   if (msg.GetMessage() == kSM_Create) {
     BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
-  // The 'XALD' arm (0x58414C44, kSM_AreaLoaded; the compare at 0x0001E938) sets the path search's
-  // area (fn_10_1E864 at 0x0001EBD0); the arm's battle-stage lookup before it (0x0001EB60..) and
-  // its collision primitive and boss parameters after it are not in the port yet.
+  // The 'XALD' arm (0x58414C44, kSM_AreaLoaded; the compare at 0x0001E938) links the fight
+  // script's object: the object connected with the state 'IS05' (kSS_InternalState5, the lis/addi
+  // at 0x0001EB60/0x0001EB70) and any message (-1, 0x0001EB74). When the uid is valid (the cmplw
+  // at 0x0001EB8C) and the object is a CScriptDarkSamusBattleStage (the cast at 0x0001EBA4, the
+  // null test at 0x0001EBA8), its uid goes to 0x974 and to 0xD50 and the stage count becomes 1
+  // (0x0001EBB8..0x0001EBC4). Then the path search's area (fn_10_1E864 at 0x0001EBD0); the
+  // collision primitive (0x0001EBE0..), the boss parameters (0x0001ECDC) and the material filter
+  // (0x0001ED50) after it are not in the port yet.
   if (msg.GetMessage() == kSM_AreaLoaded) {
+    const TUniqueId stageUid =
+        FindConnectedObject(mgr, kSS_InternalState5, kSM_None);
+    if (stageUid != kInvalidUniqueId) {
+      if (const CDarkSamusBattleStage* stage =
+              TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(stageUid))) {
+        mBattleStageUid = stage->GetUniqueId();
+        mFirstBattleStageUid = mBattleStageUid;
+        mStageCount = 1;
+      }
+    }
     SetPathSearchArea(mgr);
   }
   CPatterned::AcceptScriptMsg(mgr, msg);

@@ -402,10 +402,9 @@ bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
 // module 11's accessor on it (fn_11_B70, which returns the object's 0x24, the stage info).
 // fn_10_17DE0 looks the uid up in the state manager (GetObjectById at 0x00017DFC) and casts the
 // result to CScriptDarkSamusBattleStage (the cast at 0x00017E00); a null object (no script) ends
-// the helper with a null (the cmplwi at 0x00017E24). The uid itself is not set yet in the port:
-// the retail code that writes it (fn_10_193A0, the ray cast that finds the stage) is not ported,
-// so the lookup finds nothing and the two triggers below answer false, as they do in retail
-// before the actor has its stage.
+// the helper with a null (the cmplwi at 0x00017E24). The uid is written by AcceptScriptMsg's
+// 'XALD' arm (0x0001EBB8, the first stage) and by fn_10_193A0 (0x00019410, the next stage);
+// until the area is loaded the lookup finds nothing and the triggers below answer false.
 const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) const {
   return TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mBattleStageUid));
 }

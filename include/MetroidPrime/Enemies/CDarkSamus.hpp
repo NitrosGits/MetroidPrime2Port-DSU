@@ -431,7 +431,15 @@ private:
   TUniqueId mBattleStageUid;        // guest 0x974, the uid of the fight script's object: the
                                    // helper fn_10_17DE0 looks it up in the state manager and
                                    // casts it to CScriptDarkSamusBattleStage. The constructor
-                                   // writes kInvalidUniqueId to it (the lhz/sth at 0x0001FCC0)
+                                   // writes kInvalidUniqueId to it (the lhz/sth at 0x0001FCC0);
+                                   // the 'XALD' arm of AcceptScriptMsg links it (0x0001EBB8) and
+                                   // fn_10_193A0 moves it to the next stage (0x00019410)
+  uint mStageCount;                 // guest 0x978, the stages the actor has had: the 'XALD' arm
+                                   // writes 1 (0x0001EBC4), fn_10_193A0 adds 1 (0x0001941C); the
+                                   // constructor writes 0 (0x0001FCC8)
+  TUniqueId mFirstBattleStageUid;   // guest 0xD50, the stage the 'XALD' arm linked (0x0001EBC0);
+                                   // fn_10_FD4C reads it (0x0000FD88); the constructor writes
+                                   // kInvalidUniqueId (0x00020018)
   TUniqueId mLastAttackerUid;       // guest 0xC24, the uid of the attacker that hit the actor
                                    // last: fn_10_1DF74 clears it and fn_10_1E740 sets it (neither
                                    // is in the port yet); the constructor writes
