@@ -301,3 +301,90 @@ B4 GetOrigin, D0 GetHealthInfo.
   - mDrawParticles mask.
 - **Upstream edits still needed** (TARGET_PC): CMissileRepeller::SetActive, the CPlayer radar
   setters, and possibly CGameProjectile SetProjExtent. None made yet.
+
+## 7. The unmarked functions (2026-10-21 lane)
+
+`config/G2ME01/rels/SwampBossStage2/symbols.txt` lists 236 functions. 76 carried a marker before
+this pass, 82 do now. The rest are not 154 missing pieces of behaviour; they split in three.
+
+### 7.1 The REL's own copies of host/DOL classes - cited, not marked
+
+The REL carries its own constructors, copy constructors, assignment operators and destructors for
+the loader structs, its own `rstl::vector`/list growth and free helpers, its own `CToken` copies,
+the loader's read/convert helpers and the vtable stubs. The host already has all of them
+(`rstl::vector`, `rstl::list`, `CToken`, `CTransform4f`, `CModelData`, `CCollisionActorManager`,
+`LdrTo*`, `LoadTypedef*`), so a port copy would only duplicate the host. These are cited here
+rather than reimplemented and marked:
+
+    0 140 1588 16D8 1714 178C 1A64 1AA0 1C44 1C80 1E04 200C 2084 28D4 2CEC 2D3C 2D94 31C0 32C0
+    3EAC 3EF4 44 460 4670 46B8 476C 47AC 47CC 47F4 4874 48E0 491C 4958 49B4 49D4 4A0 4A1C 4AA8
+    4AE0 4B50 4BC8 4C0 4E8 54 5C 624 64 6644 690 6974 69A4 69EC 6AB0 6C 6D9C 6E4 6E5C 7044 707C
+    709C 70C4 7184 71E0 7264 729C 72FC 74 748 74B8 7514 7690 7B84 7DC8 825C 84 8B58 8F50 90
+    9148 94D8 9C 9F7C A064 A3D8 A4 A418 A498 A4AC AC B370 B4 B7F8 B8A8 BD54 BDE8 C68C C710 C7A8
+    C7FC C92C C9A4 C9FC CA58 CA94 CB30 CB68 CBD4 CBF4 CC1C CCB0 D0 D094 D0F8 D174 D218 D2B0
+    D2EC D384 D3C0 D480 D4E8 D524 D598 D60C
+
+The loader's own copy chains are the same kind of body: `1228`/`134C` (the loader struct's ctor
+and copy ctor), `7A8`/`830`/`980`/`170` (the property readers), `B8D4`/`BB70`/`CC58` (the
+object's destructor), `C74C`/`6D40` (the `__copy` helpers), `C7FC`/`C68C` (the collision-actor
+manager's copies).
+
+### 7.2 Module logic that is still unmarked
+
+| fn | what | why it is not marked |
+|---|---|---|
+| 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | not ported: the port's `LaunchPlatformChain` is an approximation and `AcceptScriptMsg`'s chain walk is still a `TODO(uncertain)` (the `5830 chain walk` in §6) |
+| 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`) but they are reached only through 55B0, which is not ported, so a run cannot exercise them |
+| 7E24 | the `Blow` state | the port's `Blow` is partial (it keeps the blow damage and the wind flag, the rest is still open) |
+| 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
+| 4F88 | `SendDecrement` | no caller anywhere in the module |
+| 5D40 | `GetIngSnatchingPoint` | the port has the body but the ing-snatch transition never runs in the port |
+| 3774 | the wing-damage burst | the port has the body; it needs a growth to die, which needs a real beam hit |
+| 6B78 | the second half of `SetupCollisionManager` (the per-joint vulnerability, health and materials) | the port merges it into `SetupCollisionManager` (marked `fn_79_6E68`); it deserves its own body |
+| A0C8, B8B4 | a scan helper and `OnScanStateChange` | not ported (the scan-by-form work is still open) |
+
+### 7.3 This lane's slice (the most-called unmarked bodies the port does have)
+
+The five most-called unmarked functions that carry behaviour are **66DC** (6 call sites),
+**1E40** (4), **2E84** (4), **55B0** (4) and **50AC** (4); 55B0/50AC are the platform-chain
+walk, which the port does not implement (§7.2), so this lane took the next three most-called
+ones the port does have a body for - 2A84, 3578 and 33BC (2 call sites each).
+
+| fn | port body | verdict |
+|---|---|---|
+| 66DC | `CollisionActorPosition` | **fixed and marked**: the fallback when the collision actor is gone is the **zero vector** (0x6724 loads `sZeroVector`), not the boss's own position; the port returned `GetTranslation()`. The run calls it three times a frame from `Think` (5487 calls in one run), so the body is fully exercised; the "no actor" arm cannot fire while the collision manager and its actors exist. `asmcheck.py check` on it: 0 findings |
+| 1E40 | `StartBubbleTelegraph` | **fixed, not marked**: the generator's *global* translation is set (vtable +0x20 = `CParticleGen::SetGlobalTranslation`, index 8 of the particle-gen vtable), not the local one; the old generator is deleted (vtable +0x08 = the deleting destructor, 0x1F40) as the port's `single_ptr` assignment already does. The anim event that calls it (0x07/0x28) never fired in the reachable run, so the body is not marked |
+| 2E84 | `PickSwoopTarget` | **fixed, not marked**: the candidate score is measured **from the boss** (0x30F0), not from the player, and the "too close" filter is measured **from the node nearest the player** (0x30AC), not from the node the walk picked. It is called from `DarkLurk` only, and the reachable run never reached the dark phase |
+| 2A84 | `SpawnShockWave` | **verified, not marked**: the transform keeps the boss's rotation and takes the new translation (0x2AC0, 0x2AF0); the name is `SwampBossStage2 ShockWave` (rodata 0x2C9); the launch id is the boss's own unique id. It is called from the anim event 0x23, which the reachable run never produced |
+| 3578 | `SpawnWindEffect` | **verified, not marked**: the direction is flat (the Z component is the constant 0 of rodata_9C, 0x35E8), the effect sits 50 units short of the node (rodata_B0, 0x3614) and the name is `Chykka wind effect` (rodata 0x2E3). It is called from the `Blow` state, which needs the dark phase |
+| 33BC | `DecayDamageMemory` | **verified, not marked**: every entry's time drops by dt and an entry that reaches zero is erased (0x3400, 0x3410). The run only ever had an empty damage memory (the console damage lands while the growths are vulnerable, and the port adds to the memory only for a body hit outside the `Reel`), so the erase arm was never exercised |
+
+**Two retail details the port had wrong, re-derived from the asm**
+
+- The collision actor's position is `CActor::mPosition` at +0x54 (the retail's `fn_79_6054`
+  returns `actor + 0x54` and `fn_79_66DC` reads +0x54/+0x58/+0x5c). The host's
+  `CActor::GetTranslation()` is the same member, so the port's read was right; only the
+  "no actor" fallback was wrong.
+- `CParticleGen`'s vtable in the REL is `[0] type-info, [1] D1, [2] D0, [3] Update, [4] Render,
+  [5] SetOrientation, [6] SetTranslation, [7] SetGlobalOrientation, [8] SetGlobalTranslation,
+  [9] SetGlobalScale, [10] SetLocalScale, [11] SetParticleEmission`. That makes vtable +0x08 the
+  deleting destructor (called with the delete flag 1) and +0x20 `SetGlobalTranslation`;
+  `CEntity::SetActive` at +0x1c fixes the same base offset (its 7th virtual).
+
+### 7.4 The run this lane used (2026-10-21)
+
+`tools/run_gameplay.sh`, world `3dfd2249`, area `04_swamp_temple_dark`, `MP2_GODMODE=1`, the
+smoke5 `cmd_swamp2.txt` console script (`objs swampboss`, `layer 6`, `objs swampboss`,
+`obj u05bb`), 2000 frames: `exit=0`, 0 `[port] caught`, 0 `reach-stub`, 0 stand-in lines.
+
+With the boss's functions traced, the reachable fight in that area is the light phase only:
+`Lurk` <-> `SpitWater`/`Taunt`, plus `Reel`/`Recover` after a console `damage` on the boss
+(`hp 500 -> 250`). The traces show `pwater=0` (the player is not in the water) and the attack
+type cycling 0, 1, 7 - the type 4 (the swoop) that `ShouldSwoop` needs never came, so
+`Level`/`Swoop`/`Circle`, `DarkLurk` and `Blow` were never entered. That is why 1E40, 2E84,
+2A84, 3578 and 33BC are compared and fixed but not marked: **nothing in the reachable run
+executes them**, and a marker means the body ran.
+
+The dark phase still needs a real beam hit on a growth (the growth branch of `ProcessDamage`
+needs a `CWeapon` whose forward has dot > 0 with the boss's and `mGrowthsVulnerable`), which is
+the same gap §6 lists for `Blow`/`Flinch`.
