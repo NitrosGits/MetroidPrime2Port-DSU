@@ -332,8 +332,8 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
 // fn_75_8EC8 (the chassis's separation steering, 0x8EC8-0x915C): the object list walk (the
 // state manager's list at 0x830), the head's own check (the command module's chassis id at
 // 0xEFA) and the separation call (the DOL's CSteeringBehaviors::Separation, whose retail
-// signature takes a radius vector the host's does not) are not ported yet, so the vector is zero
-// and the separation command is never delivered.
+// signature takes a radius vector the host's does not) stay a shell, so the vector is zero and
+// the separation command is never delivered.
 CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager&) {
   StandIn("fn_75_8EC8 (0x148) (the chassis's separation steering)");
   return CVector3f::Zero();
@@ -360,6 +360,7 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
       return;
     }
     CEntity* entity = mgr.ObjectById(mSecondLinkId);
+    // 0x0000AFB0: the retail's own null test of the cast (cmplwi r3, 0 - 0x0000AFB4 bne).
     if (TCastToConstPtr< CSplitterCommandModule >(entity) != nullptr) {
       return;
     }
@@ -368,6 +369,7 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
   }
   CSplitterCommandModule* head =
       TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+  // 0x0000AD4C: the retail's own null test of the cast (mr. r30, r3 - 0x0000AD50 beq).
   if (head == nullptr) {
     mCommandModuleId = kInvalidUniqueId;
     mFlagsD41 |= 0x2;
@@ -449,6 +451,7 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
     const CJointCollisionDescription& desc = mCollisionActorManager->GetCollisionDescFromIndex(i);
     const TUniqueId id = desc.GetCollisionActorId();
     CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    // 0x0000A7A0: the retail's own null test of the cast (mr. r24, r3 - 0x0000A7A4 beq).
     if (actor == nullptr) {
       continue;
     }
