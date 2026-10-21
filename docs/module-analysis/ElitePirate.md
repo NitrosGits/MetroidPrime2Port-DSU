@@ -851,8 +851,9 @@ mAttackKind = 0;`.
 
 `fn_15_1B50`, `fn_15_47DC` and `fn_15_4848` (the last two share the marked body of
 `fn_15_4790`) from the first slice; `fn_15_BAF8`, `fn_15_BC04` and `fn_15_BD10` (one body: the
-`TryCommand` template, 8.2) and `fn_15_9C70` (the destructor, 8.5) from this one. `fn_15_4488`
-stays unmarked: it is dead code in retail (8.6).
+`TryCommand` template, 8.2) and `fn_15_9C70` (the destructor, 8.5) from the second;
+`fn_15_0`, `fn_15_4C`, `fn_15_8`, `fn_15_AC` and `fn_15_1A0C` (the REL's own one-line virtual
+overrides, 9.1) from the third. `fn_15_4488` stays unmarked: it is dead code in retail (8.6).
 
 ### 8.5 `fn_15_9C70` - the class destructor: **marked**
 
@@ -914,3 +915,51 @@ own shield model, `mShieldModel`, not from an animation effect state).
 |---|---|---|
 | 0x449C/0x44A0 (polarity 0 -> "BodyShield_dark") | (c) dead in retail | the function has no caller in the REL (no `bl`, no data reference) |
 | 0x4498/0x449C (polarity 1 -> "BodyShield_light") | (c) dead in retail | the same |
+
+## 9. Every function of the REL, classified (2026-10-21)
+
+`docs/module-analysis/ElitePirate_functions.tsv` has one row per function of the REL: 241 rows =
+the 241 `type:function` symbols of `config/G2ME01/rels/ElitePirate/symbols.txt`. The columns are
+the offset, the size, the name (the symbol and the C++ name), the kind, the class, the retail
+callers (the `bl` sites, and the `.data` tables that point at the function - the vtable
+`lbl_15_data_634` and the FSM tables), the port's marker and the reason.
+
+The classes:
+
+- **B** - the module's own body: the game logic (the FSM's 21 states, 31 triggers and 2 codes, the
+  class's own methods, its virtual overrides). 128 rows, 116 of them carry a marker.
+- **H** - host code: the REL's copy of a DOL function (the body is identical to a DOL function), a
+  compiler-generated helper (the class's own ctors/dtors, the rstl/CMemory helpers, the host-class
+  glue the REL compiles itself) or the REL's boilerplate (the entry/exit, the prolog/epilog). The
+  port uses the host's. 106 rows.
+- **T** - trivial or dead: a one-line copy of a base-class virtual whose body the host already has
+  (the port leaves it inherited) or a body retail never calls. 7 rows: `fn_15_D8`, `fn_15_10`,
+  `fn_15_BC`, `fn_15_5C`, `fn_15_84`, `fn_15_9C` (the REL's copy only calls the base) and
+  `fn_15_4488` (the shield name, dead in retail - 8.6).
+
+### 9.1 The REL's own one-line virtual overrides (this lane)
+
+The REL overrides a dozen base-class virtuals with bodies of its own. The port implements all
+twelve (the bodies are in `include/MetroidPrime/Enemies/CElitePirate.hpp`), and five of them ran in
+a fight, so they are marked; the other seven are never called for this class, so they get no
+marker (a marker means the body is retail's *and ran*).
+
+| fn | slot | the REL's body | class | marker | evidence |
+|---|---|---|---|---|---|
+| `fn_15_0` | 56 GetSearchPath | `addi r3, r3, 0xa50` (0x0000) | B | marked | probe 1144 calls in the fight (the path finding) |
+| `fn_15_4C` | 41 TakeDamage | `stfs f0, 0x448(r3)` (skDamageHitTime, 0x004C) | B | marked | probe 26 calls (the player shot it) |
+| `fn_15_8` | 31 GetCollisionPrimitive | `addi r3, r3, 0x9c0` (0x0008) | B | marked | probe 31042 calls (the collision setup) |
+| `fn_15_AC` | 43 IsListening | `li r3, 0` (0x00AC) | B | marked | probe 5122 calls (the AI checks it) |
+| `fn_15_1A0C` | 63 CanBeUnPossessed | `li r3, 0` (0x1A0C) | B | marked | probe 1 call (the Ing possession) |
+| `fn_15_64` | 57 GetPointSearchPath | `li r3, 0` (0x0064) | B | - | never called: the REL's own path finding uses its CPathFindSearch (0xa50), and only the Ing's spot navigation asks the base |
+| `fn_15_6C` | 61 GetRagDoll | `li r3, 0` (0x006C) | B | - | never called: only a projectile's *game object* collision asks it, and the Ingsmasher is hit through its collision primitives (CGameProjectile::CanCollideWithComplexCollision) |
+| `fn_15_74` | 67 GetAttackTarget | writes kInvalidUniqueId (0x0074) | B | - | only the Ing that snatches a pirate asks it (CIngSnatchingSwarm) - not in this fight |
+| `fn_15_90` | 69 GetGravityConstant | kDefaultGravityAccel (0x0090) | B | - | the host's physics uses the world's constant, not the virtual |
+| `fn_15_A4` | 42 CanBeShot | `li r3, 1` (0x00A4) | B | - | the same game-object collision path as `fn_15_6C` |
+| `fn_15_B4` | 44 Listen | `li r3, 0` (0x00B4) | B | - | `fn_15_AC` (IsListening = false) keeps the Ingsmasher out of the state manager's listening list, so `InformListeners` never reaches it |
+| `fn_15_52C8` | 55 ProjectileInfo | `addi r3, r3, 0xcd0` (0x52C8) | B | - | the REL's own rocket launch reads 0xcd0 directly (fn_15_728C), so nothing calls the virtual |
+
+The run: Sanctuary Fortress area 4 (world 1baa96c2, area b666b655, layer 3), the Elite Pirate
+`u04ff`, with `tools/drivers/ep_slots.py` (the fight, then `shoot` and `noise` at the pirate). The
+probe counted the calls of the twelve one-liners; the seven that never ran are listed above with
+the caller that would ask them.
