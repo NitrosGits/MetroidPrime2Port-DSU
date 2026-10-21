@@ -45,6 +45,10 @@ count per key tuple (also `cov.json`; both rewritten every 15 s, so a killed run
 never shows is an arm that never ran. Label entries with the retail offset; put layer switches and
 `fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Each run takes a free slot (its own
 display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
+`tools/cov/force.sh` is the same run with arms forced: the gdb side (`tools/cov/force.py`,
+`COV_GDB_SCRIPT`) writes the members the spec's `FORCE` list names at the entry of a body and logs
+what it forced, so an arm the fight cannot reach can be taken; the module-specific part (the class
+and the forced members) lives in the spec, the script itself has no module in it.
 
 ## Gates (one line each in the report)
 
