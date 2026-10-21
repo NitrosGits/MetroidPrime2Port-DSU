@@ -1363,7 +1363,7 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
 // zero (asm 0x1214) and above it.  The fight never has the detection range at or below zero, so
 // the range (the base's field at 0x3D0) is written through $this at the body's entry
 // (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=1188).  The coverage build's merged
-// profile says 36/36 lines and 19/21 branches: the two branches still untaken are the
+// profile says 35/35 lines and 21/23 branches: the two branches still untaken are the
 // allocation-failure path of the new and an internal path of the inlined AddObject, neither of
 // which is a live arm.
 // @ fn_75_1188
