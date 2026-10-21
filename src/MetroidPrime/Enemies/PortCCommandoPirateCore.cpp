@@ -616,7 +616,7 @@ public:
                                       data.mGrenadeExplosion2, data.mGrenadeTrail,
                                       data.mGrenadeEffect, data.mSoundGrenadeBounce,
                                       data.mSoundGrenadeExplode, data.mRadiusMin, data.mDamageMax,
-                                      data.mRadiusMax, data.mDamageMin, (data.mFlags & 0x80) != 0),
+                                      data.mRadiusMax, data.mDamageMin, (data.mFlags & 0x80) != 0),  // the bit fn_9_98C @0x00000A14 sets
                    0.f, CAABox::MakeMaxInvertedBox(), kInvalidUniqueId, 0.f, 0,
                    &skEGrenadeMaterials, nullptr)
   , mData(data)
