@@ -392,7 +392,7 @@ behind (`fn_63_84C` 1, `fn_63_1BE8` 6), so the six below are the ones a run can 
 | `fn_63_F6C` | **marked** | the base actor is found (4849 calls); the other arm (no base actor) is a guard the game's flow cannot reach: the hull's connections are set at the area load, before the camera ever asks for the turret's transform |
 | `fn_63_1070` | **marked** | branch-free: the guest's `LookAt(position, position + (forward.x, forward.y, forward.z + 0.0), Up)` - the z term is `lbl_63_rodata_8` = 0.0, so the port's `position.GetZ() + 0.f` is retail's; 2425 calls |
 | `fn_63_840` | **marked** | branch-free (`lhz 0x19A`): 2304 calls |
-| `fn_63_1134` | **marked** | every arm the game's flow can produce ran: the reload timer (61), the "Whole Body" animation block (3), the shot (3), the pitch below zero (60) and above (2420), and the inverted-Y arm (2303, the game's invert-stick option on). The arms left are the two null guards, the "not active" arm (the DOL only calls `ProcessInput` while the turret state is 3) and the `|difference| > 1` clamp (the turn axes are mutually exclusive, so the difference cannot exceed 1) - retail cannot reach them either |
+| `fn_63_1134` | **unmarked** (section 21.1) | every arm the game's flow can produce ran: the reload timer (61), the "Whole Body" animation block (3), the shot (3), the pitch below zero (60) and above (2420), and the inverted-Y arm (2303, the game's invert-stick option on). The arms left are the two null guards, the "not active" arm (the DOL only calls `ProcessInput` while the turret state is 3) and the `|difference| > 1` clamp (the turn axes are mutually exclusive, so the difference cannot exceed 1) - retail cannot reach them either.  The slice of section 21.1 found one more: the fire test's *false* arm (the shot skipped while the reload timer is positive) is live in retail and no run reaches it yet |
 | `fn_63_2D68` | **fixed, not marked** | three behaviour differences fixed (below); the damage-flash arm (0x2E9C) needs a `kSM_Damage` message, and the port's damage path only sends that message to the object that was damaged (`CStateManager::ApplyDamage`), never to the turret script object - the arm is unreachable in the port, and covering it would need a forced `send` |
 
 ### 13.4 The three differences fn_63_2D68 had
@@ -446,6 +446,11 @@ fn_63_840 fn_63_1134 fn_63_2D68`) reports no correctness tag; the six findings a
 ones: `TCastToPtr<6CActor>` (the port uses the const cast), the two `rstl` string calls (the port
 uses a literal) and the `x1d0` compare (the tool tracked the local difference back to
 `mYawTarget`; the guest compares the difference of the two analog inputs, which the port clamps).
+The PreRender's new comparison (the flags against the turret's saved ones, section 21.2) is reported
+as an `XCMP` too: the tool attributes `flags == mModelFlags` to the module's member `mModelFlags`
+(the guest's 0x1D4), and the guest never compares that word - it compares the four fields the
+host's `CModelFlags::operator==` compares too (0x1D8, 0x1D9, 0x1DA and 0x1DC), so the comparison
+is the guest's, one field deeper than the tool can see.
 
 ## 14. The remaining module functions (2026-10-21): the damage arm and the twelve functions
 
@@ -667,8 +672,8 @@ Three classes, applied by rule so the table can be audited.
 |---|---|---|---|
 | H host copy | 26 | 0x874 (2,164) | 0 |
 | T dead or table-only | 13 | 0x528 (1,320) | 0 |
-| B module behaviour | 20 | 0x2C78 (11,384) | 20 |
-| **total** | **59** | **0x3A14 (14,868)** | **20** |
+| B module behaviour | 20 | 0x2C78 (11,384) | 19 |
+| **total** | **59** | **0x3A14 (14,868)** | **19** |
 
 (Two functions changed class in the slice of section 20: `fn_63_0` was a table entry (T) and
 `fn_63_70` a host copy (H); both are the module's own behaviour (B) now, because the port writes
@@ -728,7 +733,7 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | `fn_63_F6C` | 0xB4 | B | the PMF table `lbl_63_data_10`: the DOL calls it | yes |
 | `fn_63_1020` | 0x50 | H | the global string's destructor (registered by `fn_63_376C` at 0x379C) | - |
 | `fn_63_1070` | 0xC4 | B | the PMF table `lbl_63_data_04`: the DOL calls it | yes |
-| `fn_63_1134` | 0x32C | B | the PMF table `lbl_63_data_28`: the DOL calls it | yes |
+| `fn_63_1134` | 0x32C | B | the PMF table `lbl_63_data_28`: the DOL calls it | no (section 21.1) |
 | `fn_63_1460` | 0x54 | B | `fn_63_1B70` calls it (0x1BC8) | yes |
 | `fn_63_14B4` | 0x54 | B | `fn_63_1BE8` calls it (0x1FF0) | yes |
 | `fn_63_1508` | 0xA8 | B | `fn_63_84C` calls it (0x870) | yes |
@@ -761,11 +766,10 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | `ModuleDestructors` | 0x4C | H | the REL linker's `_dtors` walker | - |
 | `ModuleConstructors` | 0x4C | H | the REL linker's `_ctors` walker | - |
 
-**The unmarked B list** (the B functions the port does not mark): none.  All 20 B functions
-carry a `// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
-The two that were unmarked when the slice of section 17 started - `fn_63_84C` (the shot) and
-`fn_63_1BE8` (the messages) - are marked now; section 17 is their arm table, and section 20 the
-slice that marked the module's last two.
+**The unmarked B list** (the B functions the port does not mark): `fn_63_1134` (the input path) -
+its body is retail's and it ran, but the arm "the shot is skipped while the reload timer is still
+positive" is not covered yet (section 21.1).  The other 19 B functions carry a
+`// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
 
 ### 16.3 The count check
 
@@ -806,7 +810,9 @@ Two tools are used, both without a probe in the game code:
   no member to write), and the shared `tools/cov/force.py` only writes members: the module's own
   gdb script `tools/drivers/playerturret_force.py` (the shared one plus a `ret=1` set, which writes
   the return value when the function returns and only when the caller is the module's own code)
-  is used with `COV_GDB_SCRIPT=` and `PT_COUNT=1` (it also runs the counting).
+  is used with `COV_GDB_SCRIPT=` and `PT_COUNT=1` (it also runs the counting).  The port's console
+  has an `mpforce` command now (port's f8f43ff19) that makes `CStateManager::IsMultiplayer` report
+  true - that is the simpler way to force the two multi-player arms in a later slice.
 
 The runs are in the Agon Wastes, `sand_world,06_sand_alamofront`, **layer 3** (the player turret
 `u061d` is on that layer; the area's layer 3 is reached with the console's `layer 3`), driven by
@@ -982,3 +988,43 @@ Agon Wastes, `sand_world,06_sand_alamofront` layer 3):
   the module's own thunk is the one that runs (and `fn_63_70` once again).
 
 Both bodies are branch-free, so both are ALL-ARMS.
+
+## 21. The slice of 2026-10-21 (night): the audit's findings
+
+### 21.1 The fire test (fn_63_1134) - the marker is gone
+
+The guest's fire test is the reload timer against zero: `lfs f1, 0x1b8` (0x12AC), `fcmpo cr0, f1,
+f0` (0x12B4) and `cror eq, lt, eq` (0x12B8) - *less than or equal*, not *equal*.  The port's `== 0.f`
+never fired a second time, because the timer is decremented by the frame time (0x11BC, the guest's
+input + 0) and therefore counts past zero.  Port's a19f25ae8 has the fix (`mUnknown1B8 <= 0.f`,
+the port line carries the address) and this branch took it.
+
+**The marker is removed.**  The rule (section 15) is that every live arm has to have run, and the
+arm *the reload timer is still positive* - the shot is skipped - is live in retail (a tap during the
+reload).  The re-run could not reach it: the driver presses A twice (3000 updates = 50 s of game
+time apart, far more than the fire rate) and the gdb coverage shows
+
+    1134_fire_pressed   400 hits   (the press test's line, evaluated every update)
+    1134_reload_test      1 hits   (the reload test's line: the press branch was taken ONCE)
+    84C_sp_sound          1 hits   (the shot ran once)
+
+so the *second* console press did not produce a second press edge - the port's virtual pad (the
+console's `press` holds the button) and the player's control mapper, not the module's code, decide
+that.  The body is retail's and it ran; the arm is not covered, so the marker goes until a run can
+produce the second edge.
+
+### 21.2 The audit's two unchecked LOWs
+
+- **kSM_Stop zeroes the pitch unconditionally** (0x2120-0x2138): **confirmed**.  The guest stores
+  0.0 into the pitch (0x1B4) and the pitch target (0x1B0) at 0x2128/0x212C, *before* it tests the
+  base actor (0x2130) and the top actor (0x2138) - so the reset happens even without a base actor.
+  The port's code was already fixed in the slice of section 18 (the port tree's copy still had the
+  reset inside the base actor's test; the merge brings the fix).
+- **The PreRender's +0x396 flag** (0x300C-0x30014): **confirmed and fixed**.  The guest's PreRender
+  compares the base actor's *new* model flags with the turret's saved ones (0x2FC4-0x30008) and
+  writes the result into the base actor's flag byte at +0x396: `rlwimi r0, r5, 1, 30, 30` (0x30010)
+  sets or clears the byte's bit 1 (0x02).  The guest's `CScriptActor` packs its bit fields from the
+  top (PowerPC is big-endian), so the byte's bit 1 is the *last* field, `mRenderImmediately` - the
+  host's `CScriptActor::AddToRenderer` reads it, so the difference was visible.  The port writes it
+  now (`CScriptActor::SetRenderImmediately`, in the header's `TARGET_PC` block, and the module's
+  PreRender at 0x2FB8-0x30014).

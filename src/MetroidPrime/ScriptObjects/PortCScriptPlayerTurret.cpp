@@ -12,6 +12,7 @@
 // and PreRender (fn_63_2D68, 0x2CC) are ported too, and the five member functions the module
 // hands the DOL through SPlayerTurret_FuncPtrs are ported, so the turret camera, the exit path
 // and the turret HUD keep working. The analysis is docs/module-analysis/ScriptPlayerTurret.md.
+#include "MetroidPrime/ScriptObjects/CScriptActor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlayerTurret.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -800,6 +801,16 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
   }
   // 0x2F8C: the flags go back into the base actor.
   base->SetModelFlags(flags);
+  // 0x2FB8: the base actor is a CScriptActor (the guest's TCastToPtr<CScriptActor>); 0x2FC4..
+  // 0x30008: the new flags are compared with the turret's saved ones (0x1D8, 0x1D9, 0x1DA and
+  // 0x1DC - the host's CModelFlags::operator== is the same comparison), and 0x300C-0x30014: the
+  // base actor's flag byte at +0x396 gets its bit 1 (0x02, the guest's last bit field,
+  // mRenderImmediately) set when they are the same and cleared otherwise
+  // (`rlwimi r0, r5, 1, 30, 30` with r5 = 1 from 0x30008).
+  CScriptActor* scriptBase = TCastToPtr< CScriptActor >(base);
+  if (scriptBase != nullptr) {
+    scriptBase->SetRenderImmediately(flags == mModelFlags);
+  }
 }
 
 // vtable slot 18 = fn_63_3034 (0x3C): the touch bounds are the turret's own box.
@@ -863,7 +874,12 @@ void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
 }
 
 // fn_63_1134 (0x32C): the player's aim while in the turret.
-// @ fn_63_1134
+//
+// Unmarked: the body is retail's (the fire test is the guest's `mUnknown1B8 <= 0.f`, 0x12B4-0x12BC,
+// port's a19f25ae8) and it ran, but one live arm is not covered - the shot skipped while the reload
+// timer is still positive (0x12BC `bne`).  A run cannot reach it yet: the second console press
+// does not produce a second press edge, so the press branch is taken only once (section 21.1 of
+// docs/module-analysis/ScriptPlayerTurret.md).
 void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
   // 0x1154: the player in the turret (0x188) and the base actor (0x198).
   CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
