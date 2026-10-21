@@ -280,6 +280,7 @@ private:
   void PortReleasePlayerHint(CStateManager& mgr);
   void PortTakePlayerHint(CStateManager& mgr);                       // fn_75_AB8C
   void PortResistedDamage(CStateManager& mgr, TUniqueId sender);     // fn_75_9FA8
+  void PortCollisionActorDamage(CStateManager& mgr, TUniqueId sender);  // fn_75_A0A0
   void PortHitObject(CStateManager& mgr, TUniqueId sender);          // fn_75_9B9C
   // guest 0xD00: the counter the XLND script message sets to 5 (fn_75_F1C0, 0x0000F4F0).
   int mLandedCount = 0;

@@ -24,6 +24,7 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
+#include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -162,7 +163,6 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 // The module's own calls in the main chassis's script-message handler (fn_75_F1C0). All six are
 // over the 0x80 a slice takes, so each stays a named once-logging shell.
-void StandInFn_75_A0A0() { StandIn("fn_75_A0A0 (0x2DC)"); }
 
 } // namespace
 
@@ -1567,7 +1567,7 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   case kSM_Damage: { // "XCMG" (0x0000F2DC)
     // 0x0000F470-0x0000F498: the module's own call (0x0000F488 fn_75_A0A0) and the base's flag
     // byte at 0x420 gets its 0x80 bit set.
-    StandInFn_75_A0A0();
+    PortCollisionActorDamage(mgr, msg.GetSenderId());
     SetHitByPlayerProjectile(true);
     break;
   }
@@ -1648,6 +1648,49 @@ void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInf
                                         CStateManager& mgr) {
   StandIn("CSplitterMainChassis::CollidedWith (vtable slot 0x84, fn_75_ECA4)");
   CPatterned::CollidedWith(id, list, mgr);
+}
+
+// fn_75_A0A0 (0xA0A0-0xA37C): a collision actor reports damage. Only for a living chassis (the
+// base's 0x420 0x40 bit, 0xA0C8-0xA0D8). The sender cast to a CCollisionActor (0xA0F0-0xA0F8)
+// carries a copy of the chassis's health (fn_75_A37C), so the hit is the chassis's initial health
+// less the actor's (0xA180): the chassis loses it (0xA28C). The hit's direction is the chassis's
+// own translation and its damage a boost ball hit of that much (CWeaponMode 7, 0xA140-0xA1FC),
+// unless the object the actor last touched (0xA104 GetLastTouchedObject) is a CWeapon (0xA208):
+// then its translation, owner (0x15C) and current damage info (0x19C-0x1B6). The chassis takes the
+// hit (0xA29C, vtable 0xA4 TakeDamage) and with its health at or below the hit (0xA2A0-0xA2A8)
+// dies (0xA2CC, vtable 0x98 Death with kSS_DeathRattle) and records the actor as the cause
+// (0xA2F4 UpdateHealthCause); it is knocked back (0xA320-0xA33C) and the actor's health is
+// re-armed (0xA340). With or without the actor the hint grant follows (0xA34C fn_75_AB8C).
+void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
+  if (!mAlive) {  // 0xA0D4-0xA0D8
+    return;
+  }
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (actor != nullptr) {  // 0xA0F4-0xA0F8
+    const TUniqueId touched = actor->GetLastTouchedObject();
+    CHealthInfo* actorHealth = actor->HealthInfo();
+    CHealthInfo* health = HealthInfo();
+    const float initial = health->GetInitialHP();
+    const float hp = health->GetHP();
+    const float amount = initial - actorHealth->GetHP();
+    CVector3f direction = GetTranslation();
+    TUniqueId attacker = kInvalidUniqueId;
+    CDamageInfo damage(CWeaponMode(kWT_BoostBall), amount, 0.f, 0.f, false, false);
+    if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
+      direction = weapon->GetTranslation();
+      attacker = weapon->GetOwnerId();
+      damage = weapon->GetCurrentDamageInfo();
+    }
+    health->SetHP(hp - amount);
+    TakeDamage(direction, amount);
+    if (hp <= amount) {  // 0xA2A0-0xA2A8
+      Death(mgr, direction, kSS_DeathRattle);
+      mgr.RecordDamageSource(*this, actor->GetUniqueId(), damage, true, false);
+    }
+    KnockBack(mgr, CKnockBackInfo(direction, touched, attacker, damage, true));
+    actorHealth->SetHP(initial);
+  }
+  PortTakePlayerHint(mgr);
 }
 
 // vtable slot 0x98 = fn_75_EB04 (0xEB04-0xEBF4): the base's Death (0xEB28), then every
