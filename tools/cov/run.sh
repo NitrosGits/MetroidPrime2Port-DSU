@@ -29,6 +29,9 @@ done
 BUILD=${BUILD:-$ROOT/build-port-link}
 DISP=${DISPLAY_NUM:-:491}
 PORT=${COV_PORT:-49711}
+if ss -ltn 2>/dev/null | grep -q "127.0.0.1:$PORT "; then
+  echo "console port $PORT is busy: pick another COV_PORT" >&2; exit 1
+fi
 DISC=${MP2_DISC:-/run/media/odran/Leo/Portable/roms/gc/Metroid Prime 2 - Echoes.iso}
 mkdir -p "$OUT/c"
 rm -rf "$OUT/u" && cp -r "${COV_SAVE:-/tmp/opencode/mi_u}" "$OUT/u"
@@ -62,10 +65,13 @@ env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dum
   timeout -k 10 "${SECS:-900}" gdb -q -batch -nx \
     -ex 'set pagination off' -ex 'set confirm off' -ex 'handle SIGPIPE SIGUSR1 SIGUSR2 SIG32 SIG33 nostop noprint pass' \
     -ex "source $ROOT/tools/cov/gdb_cov.py" -ex run -ex 'bt 20' \
-    --args ./metroid_prime2_port > "$OUT/game.log" 2>&1
-RC=$?
+    --args ./metroid_prime2_port > "$OUT/game.log" 2>&1 &
+GDB=$!  # timeout runs in its own process group: stop it (and so gdb and the game) with this script
+trap 'kill -TERM "$GDB" 2>/dev/null' TERM INT
+wait "$GDB"; RC=$?
+[ "$RC" -gt 128 ] && [ "$RC" != 137 ] && { kill -TERM "$GDB" 2>/dev/null; wait "$GDB"; }
 [ -n "$DRV" ] && kill "$DRV" 2>/dev/null
 [ "$RC" = 124 ] && echo "timeout: SECS=${SECS:-900} ran out"
-echo "game: $(head -1 "$OUT/cov.txt" 2>/dev/null) (None = killed by a signal: the backtrace ends game.log)"
+echo "game: $(head -1 "$OUT/cov.txt" 2>/dev/null) (a signal leaves its backtrace at the end of game.log)"
 echo "caught/reach-stub: $(grep -a -c '\[port\] caught\|reach-stub' "$OUT/game.log")"
 [ -f "$OUT/cov.txt" ] && tail -n +2 "$OUT/cov.txt" || echo "no cov.txt (gdb did not see the game exit; see $OUT/game.log)"
