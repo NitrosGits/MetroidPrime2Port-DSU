@@ -36,6 +36,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPlayerHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -156,9 +157,8 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
 , xDD0_(LdrToDamageVulnerability(data.bombPitVulnerability)) // 0x18370
 , xE00_(kInvalidUniqueId)
-, xDA0_(kInvalidUniqueId)
-, xDB0_(0.f)
-, xDB8_(0)
+, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x183F8: no locator (0xFF), .rodata 0x9F4 / 0x9F8
+, xEF4_()
 , xF04_()
 , xF14_()
 , xF34_(3, kInvalidUniqueId) // 0x188A8..0x188C8
@@ -184,6 +184,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x10D0_(-1)
 , x10D4_(0.f)
 , x10D8_(0)
+, x10DC_(-1)
 , x10E0_(data.gravityRepulsorHP) // data +0x18
 , x10E4_(2)
 , x10E8_(0)
@@ -192,6 +193,11 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x10F4_(0x08) // only bit 0x08 is set (the rlwimi stores at the ctor's tail)
 , x10F5_(0)    // bit 0x80 cleared
 {
+  // The drop-shields effect (data +0x48, 0x184D8): locked when set.
+  if (mData.dropShieldsFx != kInvalidAssetId) {
+    xEF4_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.dropShieldsFx)));
+  }
   // The 'PART' token (0x185A0..0x18654): locked when data +0x94 is set.
   if (mData.pART != kInvalidAssetId) {
     xF04_ = TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', mData.pART)));
@@ -223,18 +229,18 @@ void CDigitalGuardianHead::EnsureBodyActive(CStateManager& mgr) {
 }
 
 // fn_14_17C98: only while active. The base's Think, then the collision actor manager's update
-// (object space, the li r5, 0 at 0x17CD8), the visual knowledge's update (0xD80), the timers
-// (fn_14_13AE0), fn_14_12818 and fn_14_1223C.
+// (object space, the li r5, 0 at 0x17CD8), the visual knowledge's update (0xD80, 0x17CEC), the
+// timers (fn_14_13AE0), fn_14_12818 and fn_14_1223C. The manager is not null-tested (0x17CCC):
+// XCRT, which CStateManager::AddObject delivers before any Think, builds it (fn_14_13318).
+// @ fn_14_17C98
 void CDigitalGuardianHead::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
-  if (xD70_ != nullptr) { // retail calls it unchecked; the port builds no manager yet
-    xD70_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
-  StandInFn("CVisualKnowledge::Update (head 0xD80)");
+  xD70_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace); // built on XCRT (fn_14_13318)
+  xD80_.Update(mgr, dt);
   x13AE0_(dt);
   x12818_(mgr, dt);
   x1223C_(mgr);
@@ -347,10 +353,10 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
 // it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
 // 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
 // the ball is pass-through again. .rodata 0x960 is 0.
-// Unmarked: the 0x1038 platform branch has not run. Its writer, SelectRetreatPlatform, runs only
-// once ShouldRetreat sees the gravity repulsor (0x10E0) at 0, which needs XRDG beam damage on the
-// root collider; the area-53 harness's beam shots never touched it (only bombs, which fail
-// WeaponHits).
+// Unmarked: area-53 runs ran every arm but the inactive ball, which ran only with a console DCTV
+// (run 37 ran in-range with no platform: morphed in a slot before the retreat). A slot's ball goes
+// inactive in fn_14_1303C only after fn_14_12B04 set its 0xF28 sound, so the arm needs that
+// sound's PlayCustomSound to return no handle.
 void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
   x10F5_ &= ~0x80;
   if ((x10F4_ & 0x10) == 0) {
@@ -473,8 +479,8 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
 // (state cmd 0x1C, weight .rodata 0x96C = 1). Then the gravity repulsor's health (0x10E0) drops
 // by it (even at 0), the weapon is remembered and "HeadModuleHit" (data +0x2C) plays at the
 // collider, downward.
-// Unmarked: in the area-53 run bombs on the root reached the WeaponHits test and failed it; the
-// damage branch needs a beam hit.
+// Unmarked: area-53 runs ran every arm but zero damage. That needs a CWeapon with 0 damage: every
+// entry WeaponHurts accepts here has multiplier 0.5..2.0 (effect 3).
 void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
     return;
@@ -488,9 +494,9 @@ void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if (weapon == nullptr || touched == x1040_) {
     return;
   }
-  // The host's WeaponHits takes a direct flag retail's lacks; 0 skips its radius test.
-  if (!col->GetDamageVulnerability()->WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
-                                                 0)) {
+  // Retail's one-argument WeaponHits (0x800DB834) is the host's WeaponHurts: an effect-3 entry
+  // (every damaging entry of the head's table) counts, and its multiplier still applies.
+  if (!col->GetDamageVulnerability()->WeaponHurts(weapon->GetCurrentDamageInfo().GetWeaponMode())) {
     return;
   }
   const float damage =
@@ -890,6 +896,7 @@ bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& d
 }
 
 // fn_14_173AC: bit 0x80 of 0x10F4 (extrwi 1, 24).
+// Unmarked: run 37 entered Idle (0x10F4 0x88) but no trigger read IsIdle there; true never ran.
 bool CDigitalGuardianHead::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
   return (x10F4_ & 0x80) != 0;
 }
@@ -917,6 +924,7 @@ bool CDigitalGuardianHead::UseLockOnMissiles(CStateManager& mgr, const CTriggerD
 }
 
 // fn_14_1734C: the projectile attack (0x10D0) is 0.
+// @ fn_14_1734C
 bool CDigitalGuardianHead::UseAnnihilatorPulse(CStateManager& mgr,
                                                const CTriggerData& data) const {
   return x10D0_ == 0;
@@ -959,16 +967,17 @@ bool CDigitalGuardianHead::IsAntennaTransmitting(CStateManager& mgr,
 }
 
 // fn_14_171F8: with no visual target (0xDA0 invalid) the answer is true; else the target must be
-// seen (bit 0x80 of 0xDB8, extrwi. 1, 24) for longer than 2.25 (.rodata 0x9DC, 0xDB0). The visual
-// knowledge is not ported, so its target stays invalid.
+// seen (bit 0x80 of 0xDB8, extrwi. 1, 24) for longer than 2.25 (.rodata 0x9DC, 0xDB0).
+// @ fn_14_171F8
 bool CDigitalGuardianHead::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  if (xDA0_ == kInvalidUniqueId) {
+  if (xD80_.GetVisualTarget() == kInvalidUniqueId) {
     return true;
   }
-  return (xDB8_ & 0x80) != 0 && xDB0_ > 2.25f;
+  return xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f;
 }
 
 // fn_14_171EC: bit 0x02 of 0x10F4 (extrwi 1, 30).
+// @ fn_14_171EC
 bool CDigitalGuardianHead::EchoTargetDestroyed(CStateManager& mgr,
                                                const CTriggerData& data) const {
   return (x10F4_ & 0x02) != 0;
@@ -981,6 +990,7 @@ bool CDigitalGuardianHead::AllEchoTargetsDestroyed(CStateManager& mgr,
 }
 
 // fn_14_171B8: the gravity repulsor's health (0x10E0) at most 0 (.rodata 0x960).
+// @ fn_14_171B8
 bool CDigitalGuardianHead::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
   return x10E0_ <= 0.f;
 }
@@ -991,6 +1001,7 @@ bool CDigitalGuardianHead::BombPitDestroyed(CStateManager& mgr, const CTriggerDa
 }
 
 // fn_14_17184: the lives left (0x10E4, a word) at most 0.
+// Unmarked: true never ran; no fight with the probes has reached the head's death yet.
 bool CDigitalGuardianHead::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return x10E4_ <= 0;
 }
@@ -1212,7 +1223,7 @@ void CDigitalGuardianHead::SetVulnerableToDamage(CStateManager& mgr, float dt) {
 
 // fn_14_13EB8: the root collider (0xE00) is immune again (ImmuneRicochetVulnerability, the host's
 // ReflectVulnerabilty, as fn_14_13318 gives it).
-// Unmarked: the area-53 run never reached it.
+// @ fn_14_13EB8
 void CDigitalGuardianHead::SetImmuneToDamage(CStateManager& mgr, float dt) {
   if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
     root->SetDamageVulnerability(CDamageVulnerability::ReflectVulnerabilty());
@@ -1239,7 +1250,11 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
 // point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
 // direction to the platform.
-// @ fn_14_15284
+// Unmarked: area-53 runs ran the armour-on and platform arms only (run 37's bombs in a slot before
+// the retreat destroyed none, so no armour-off stun came first). With armour off, 0x1038 holds no
+// platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
+// across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
+// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre.
 void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   if ((x10F4_ & 0x10) == 0) {
@@ -1266,7 +1281,7 @@ void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   CVector3f points[3];
   const int count = x118B0_(points);
-  if ((xDB8_ & 0x80) != 0 && xDB0_ > 2.25f) {
+  if (xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f) {
     xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count);
   } else {
     const CVector3f move = GetTranslation() - xFF8_;
@@ -1293,6 +1308,13 @@ void CDigitalGuardianHead::StartSplitterDeployment(CStateManager& mgr, float dt)
   x10E8_ = AllSplittersDead(mgr, CTriggerData(0.f)) ? xF390_(mgr) : 0;
 }
 
+// fn_14_1524C: the player (the state manager's 0x14FC) becomes the visual knowledge's target
+// (CVisualKnowledge::SetVisualTarget, 0x15334).
+// @ fn_14_1524C
+void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
+  xD80_.SetVisualTarget(mgr.GetPlayer(0)->GetUniqueId());
+}
+
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
@@ -1300,29 +1322,113 @@ void CDigitalGuardianHead::StartSplitterDeployment(CStateManager& mgr, float dt)
 DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
 DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
 DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
-DGHD_CODE_STANDIN(SeekLineOfSight, fn_14_1524C)
-DGHD_CODE_STANDIN(DropShields, fn_14_15054)
-DGHD_CODE_STANDIN(RaiseShields, fn_14_14F74)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
-DGHD_CODE_STANDIN(EndSplitterDeployment, fn_14_14B60)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
 DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
 DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
 DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
 DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
-DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_14470)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
 DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
-DGHD_CODE_STANDIN(GrabPlayerHintControl, fn_14_13F70)
 DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
 #undef DGHD_CODE_STANDIN
+
+// fn_14_15054: the "RaisedShields" effect state (.rodata 0x950) off; at locator 1 the drop-shields
+// effect (0xEF4, "Drop Shields Fx", .rodata 0xA00) at this head's scale, then the drop-shields
+// sound (data +0x64) facing the locator's column 1. The only DGHD placement (area 53, 0x0035000F)
+// has dropShieldsFx (0x5FF0B26C) = PART 0xCF46E5D8, so 0xEF4 is always valid; rs_new does not
+// return null on the host.
+// @ fn_14_15054
+void CDigitalGuardianHead::DropShields(CStateManager& mgr, float dt) {
+  ModelData()->AnimationData()->SetEffectState(rstl::string_l("RaisedShields"), false, mgr);
+  const CTransform4f xf = GetLctrTransform(CSegId(1));
+  if (xEF4_.valid()) {
+    const CVector3f scale = GetModelData()->GetScale();
+    const rstl::string name = rstl::string_l("Drop Shields Fx");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    CExplosion* explosion = rs_new CExplosion(xEF4_.data(), uid, info, name, xf, 0, scale,
+                                              CColor::White(), -1);
+    if (explosion != nullptr) {
+      mgr.AddObject(explosion);
+    }
+  }
+  PlayCustomSound(xf.GetTranslation(), xf.GetColumn(kDY), mData.sound_DropShields, false);
+}
+
+// fn_14_14F74: the "RaisedShields" effect state on, then the raise-shields sound (data +0x4C) at
+// locator 1, facing its column 1.
+// @ fn_14_14F74
+void CDigitalGuardianHead::RaiseShields(CStateManager& mgr, float dt) {
+  ModelData()->AnimationData()->SetEffectState(rstl::string_l("RaisedShields"), true, mgr);
+  const CTransform4f xf = GetLctrTransform(CSegId(1));
+  PlayCustomSound(xf.GetTranslation(), xf.GetColumn(kDY), mData.sound_RaiseShields, false);
+}
+
+// fn_14_14B60: bit 0x40 of 0x10F4 cleared, the body back to combat locomotion.
+// @ fn_14_14B60
+void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
+  x10F4_ &= ~0x40;
+  BodyController()->SetLocomotionType(pas::kLT_Combat);
+}
+
+// fn_14_14470: with splitters alive the gun (3). Else the first shot (block 6's firstShotType,
+// data +0x2DC) once while 0x10DC is set and the type is not 4; else a weighted pick over block
+// 6's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the gun 3.
+// A pulse fires a burst of 3 (0x10D8), the rest none.
+// Unmarked: area-53 runs ran the splitter, first-shot and random 0 and 2 arms. Random 1 and 3 need
+// more fights: the first random pick comes after the first shot and the splitters (run 37's five
+// fights, four of them stopped 20 s after VULN, made none).
+void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
+  const SLdrDigitalGuardianHeadStruct& odds = mData.digitalGuardianHeadStruct_0x48b46e55;
+  if (!AllSplittersDead(mgr, CTriggerData(0.f))) {
+    x10D0_ = 3;
+  } else if (x10DC_ != 0 && odds.firstShotType != 4) {
+    x10D0_ = odds.firstShotType;
+    x10DC_ = 0;
+  } else {
+    const float r = mgr.Random()->Range(0.f, odds.annihilatorPulseOdds +
+                                                  odds.annihilatorChargeOdds +
+                                                  odds.machineGunOdds + odds.lockOnMissilesOdds);
+    float bound = odds.annihilatorPulseOdds;
+    if (r <= bound) {
+      x10D0_ = 0;
+    } else if (r <= (bound += odds.annihilatorChargeOdds)) {
+      x10D0_ = 1;
+    } else if (r <= bound + odds.lockOnMissilesOdds) {
+      x10D0_ = 2;
+    } else {
+      x10D0_ = 3;
+    }
+  }
+  x10D8_ = x10D0_ == 0 ? 3 : 0;
+}
+
+// fn_14_13F70: the IS02/ATCH player hint, unless already this head's, takes this head as its
+// actor (0x1AC) and gets INCR from this head on the player's behalf. The area-53 placement's only
+// IS02/ATCH link is PlayerHint 0x0C35001D, so the hint is always there.
+// @ fn_14_13F70
+void CDigitalGuardianHead::GrabPlayerHintControl(CStateManager& mgr, float dt) {
+  CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(
+      mgr.ObjectById(CheckConnectedObject(mgr, kSS_InternalState2, kSM_Attach)));
+  if (hint == nullptr || hint->GetActorId() == GetUniqueId()) {
+    return;
+  }
+  hint->SetActorId(GetUniqueId());
+  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), hint->GetUniqueId(), kSM_Increment,
+                                  mgr.GetPlayer(0)->GetUniqueId()));
+}
 
 // fn_14_13C6C: 0x1038 is cleared (0x13CAC), then with any MDFY/PLAY platforms (0x1048) a random
 // one (the state manager's CRandom16, Range(0, count - 1)) is picked. Along its CONN/ATCH
 // waypoint's ARRV/NEXT chain (at most 30 waypoints: the counter starts at 1 and stops at 0x20)
 // the one nearest the head (from .rodata 0x9D8, FLT_MAX; a strictly smaller squared distance
-// wins) is where the platform teleports, and the platform becomes 0x1038 (0x13E80).
-// Unmarked: the area-53 run never reached it (see fn_14_12818).
+// wins) is where the platform teleports, and the platform becomes 0x1038 (0x13E80). The area-53
+// placement's MDFY/PLAY links are platforms 0x0C350003 and 0x0C350302, both present, and both
+// CONN/ATCH into the same 16-waypoint loop, so neither the empty, null-platform nor no-waypoint
+// arm runs there.
+// @ fn_14_13C6C
 void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
   x1038_ = kInvalidUniqueId;
   if (x1044_.size() == 0) {
