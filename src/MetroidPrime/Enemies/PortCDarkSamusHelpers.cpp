@@ -99,3 +99,54 @@ void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& dest
     mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this); // 0x00007010
   }
 }
+
+// fn_10_69C0 (0x000069C0, 0x80 bytes): the uids at guest 0x934 are deleted from the state manager
+// (0x000069FC..0x00006A0C) and the slot cleared (0x00006A14); a kInvalidUniqueId slot is left
+// alone (0x000069F4). The loop runs over the count at guest 0x930 (0x00006A20).
+// fn_10_69C0 (ported, unreferenced in the port: nothing calls it yet)
+void CDarkSamus::DeleteGuestUids(CStateManager& mgr) {
+  for (int i = 0; i < mGuest930; ++i) { // 0x00006A20
+    if (mGuest934[i] == kInvalidUniqueId.value) { // 0x000069F4
+      continue;
+    }
+    mgr.DeleteObjectRequest(TUniqueId(mGuest934[i])); // 0x00006A0C
+    mGuest934[i] = kInvalidUniqueId.value;           // 0x00006A14
+  }
+}
+
+// fn_10_6374 (0x00006374, 0xEC bytes): the path find along the waypoints. With the message 0
+// (0x000063A4) the destination is the module's vector at guest 0xEE4 (0x00006418); otherwise the
+// path find runs with that message (0x000063BC). Then the separation (fn_10_1DD14, 0x000063C8 -
+// the FSM lane's half, a stand-in here), the path check (0x000063E8) and, when the path is not
+// shagged and the actor is on the last waypoint (0x000063F8..0x00006408), the destination is set
+// again (0x0000641C). The lane's fn_10_1D860 (0x0000642C) and fn_10_11334 (0x00006438) stand in.
+// fn_10_6374 (ported, unreferenced in the port: nothing calls it yet)
+void CDarkSamus::FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg) {
+  if (msg == kStateMsg_Activate) { // 0x000063A4
+    SetPathFindDestination(mgr, mGuestEE4, dt); // fn_10_1C778 at 0x00006418
+  } else {
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this); // 0x000063BC
+  }
+  StandInSeparation(mgr); // fn_10_1DD14 at 0x000063C8
+  if (PathShagged(mgr, CTriggerData(0.f))) { // 0x000063E8
+    return;
+  }
+  // 0x000063F8..0x00006408: the waypoint count (guest 0x7C4) and the current waypoint (guest
+  // 0x888) - the host's CPathFindSearch.
+  if (mPathFindSearch.GetCurrentWaypoint() <
+      static_cast< int >(mPathFindSearch.GetWaypoints().size()) - 1) {
+    return;
+  }
+  SetPathFindDestination(mgr, mGuestEE4, dt); // 0x0000641C
+  StandInCoverPath(mgr, 0);                 // fn_10_1D860 at 0x0000642C
+  StandInGlideEmitter(0);                   // fn_10_11334 at 0x00006438
+}
+
+// fn_10_1DD14: the FSM lane's half, not on port yet.
+void CDarkSamus::StandInSeparation(CStateManager&) {}
+
+// fn_10_1D860: the FSM lane's half, not on port yet.
+void CDarkSamus::StandInCoverPath(CStateManager&, int) {}
+
+// fn_10_11334: the FSM lane's half, not on port yet.
+void CDarkSamus::StandInGlideEmitter(int) {}

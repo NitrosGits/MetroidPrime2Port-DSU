@@ -66,7 +66,7 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_4368` | 0x40 | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_43A8` | 0xC0 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4468` | 0x68 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_452C` | 0xCC | method | blocked - it resets the 0xEF0 sub-object's members (guest 0xF10..0xF5C), which have no host names |
+| `fn_10_452C` | 0xCC | method | blocked - it resets the 0xEF0 sub-object's members (0xF10..0xF5C), which are not modelled yet |
 | `fn_10_45F8` | 0x270 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4868` | 0x60 | method | **ported** |
 | `fn_10_48C8` | 0x44 | method | **ported** |
@@ -86,27 +86,27 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_50B8` | 0x788 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_5840` | 0x80 | method | 1 | cited | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
 | `fn_10_58C0` | 0xB4 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_5974` | 0x7A4 | method | blocked - 24 guest offsets (0x8D8..0xF58) have no host member |
+| `fn_10_5974` | 0x7A4 | method | blocked - the 0xEF0 sub-object's members (0xEF8, 0xF10..0xF58) are not modelled yet |
 | `fn_10_6118` | 0x19C | method | 1 | ported body | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
-| `fn_10_6374` | 0xEC | method | blocked - guest 0x7C4/0x888 are the path find's waypoint count and current waypoint, and it calls the lane's fn_10_1DD14 and reads the module's 0xEE4 vector |
-| `fn_10_65CC` | 0x1EC | method | to port - it writes the base class's members only; the host's names are known, the body is 0x1EC bytes |
-| `fn_10_69C0` | 0x80 | method | blocked - guest 0x930 (the count) and 0x934 (the uid array) have no host member |
-| `fn_10_6DAC` | 0x8C | method | blocked - guest 0xD1C and 0xD20 have no host member |
+| `fn_10_6374` | 0xEC | method | **ported** (the lane's fn_10_1DD14 / 1D860 / 11334 stand in) |
+| `fn_10_65CC` | 0x1EC | method | to port - the base class's members only; the host's names are known, the body is 0x1EC bytes |
+| `fn_10_69C0` | 0x80 | method | **ported** |
+| `fn_10_6DAC` | 0x8C | method | blocked - the values it copies come from the module's global bss_128, which the host has no member for |
 | `fn_10_6F90` | 0xC4 | method | **ported** (the guest's 0x6F4/0x1048 map to the host's CPathFindNavigation) |
 | `fn_10_7304` | 0x168 | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_746C` | 0xCC | method | blocked - guest 0xFAC has no host member |
+| `fn_10_746C` | 0xCC | method | blocked - it calls fn_10_7304 (this half, not ported yet) |
 | `fn_10_7538` | 0xD8 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_7610` | 0x170 | method | blocked - guest 0xFC8 and 0x1028 have no host member |
+| `fn_10_7610` | 0x170 | method | blocked - it calls fn_10_8D30 and fn_10_9E00 (this half, not ported yet) |
 | `fn_10_7780` | 0x38 | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_77B8` | 0xB4 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_786C` | 0x1A8 | method | blocked - guest 0x1020, 0x1024 and 0x1028 have no host member |
+| `fn_10_786C` | 0x1A8 | method | blocked - it calls fn_10_7F98 (this half, not ported yet) |
 | `fn_10_7D00` | 0x298 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_7F98` | 0x17C | method | blocked - guest 0xFCC has no host member |
+| `fn_10_7F98` | 0x17C | method | blocked - it calls the lane's fn_10_1B478 / 1AEC0 / 18F90 and this half's fn_10_7538 / 7610 / 7D00 |
 | `fn_10_812C` | 0x4C | method | **ported** |
 | `fn_10_8178` | 0x5C | method | 1 | ported body | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
 | `fn_10_8698` | 0xCC | method | **ported** (the guest's command words become the host's CBCTauntCmd + mAnimationState) |
 | `fn_10_8764` | 0x10C | method | the port already has the host form (the lane's `RunMeleeAttackCmd`) |
-| `fn_10_8870` | 0xEC | method | to port - the guest's command words (0x1B8/0x1C0/0x1C4) map to a host cmd that is not identified yet |
+| `fn_10_8870` | 0xEC | method | blocked - its command words (0x1B8/0x1C0/0x1C4) map to a host CBC*Cmd that is not identified yet |
 | `fn_10_895C` | 0x3D4 | method | 1 | declared only | the boost ball sub-object's constructor; the host keeps two of its members |
 | `fn_10_8D30` | 0x84 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_8DB4` | 0x19C | method | 1 | cited | the sweep beam sub-object's constructor; the host keeps two of its members |
@@ -119,7 +119,7 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_99B8` | 0x10C | method | 3 | ported body | stops the boost ball's particle effects: the host has no such effects |
 | `fn_10_9AC4` | 0x60 | method | ported and marked here |
 | `fn_10_9B24` | 0x2DC | method | 1 | ported body | builds the boost ball's particle effects: the host has no such effects |
-| `fn_10_9E00` | 0x26C | method | blocked - guest 0xD14, 0xE2C..0xE38 and 0xE6A have no host member |
+| `fn_10_9E00` | 0x26C | method | blocked - it calls fn_10_1D860 (the lane's half) and fn_10_6F90 (this half) |
 
 ## 3. The marked ones, with their arms
 
@@ -173,25 +173,25 @@ the lane's order, so a state can be written against them:
 | helper | size | called from | the port |
 |---|---|---|---|
 | `fn_10_8764` | 0x10C | 9724 @0x98E0, 7A14 @0x7B28, 67B8 @0x6924 | the port already has the host form (the lane's `RunMeleeAttackCmd`) |
-| `fn_10_9E00` | 0x26C | A3B0 @0xA4AC | blocked - guest 0xD14, 0xE2C..0xE38 and 0xE6A have no host member |
+| `fn_10_9E00` | 0x26C | A3B0 @0xA4AC | blocked - it calls fn_10_1D860 (the lane's half) and fn_10_6F90 (this half) |
 | `fn_10_2F04` | 0xC | A3B0 @0xA4FC | **ported** |
 | `fn_10_2EFC` | 0x8 | A3B0 @0xA548 | **ported** |
-| `fn_10_7F98` | 0x17C | 7A14 @0x7AC8, 67B8 @0x68B4, 7BC0 @0x7CCC | blocked - guest 0xFCC has no host member |
+| `fn_10_7F98` | 0x17C | 7A14 @0x7AC8, 67B8 @0x68B4, 7BC0 @0x7CCC | blocked - it calls the lane's fn_10_1B478 / 1AEC0 / 18F90 and this half's fn_10_7538 / 7610 / 7D00 |
 | `fn_10_6F90` | 0xC4 | 6E38 @0x6EBC, 6E38 @0x6F10 | **ported** (the guest's 0x6F4/0x1048 map to the host's CPathFindNavigation) |
-| `fn_10_6DAC` | 0x8C | 6E38 @0x6F4C | blocked - guest 0xD1C and 0xD20 have no host member |
-| `fn_10_65CC` | 0x1EC | 6460 @0x64A4, 652C @0x6570, 7054 @0x7190 | to port - it writes the base class's members only; the host's names are known, the body is 0x1EC bytes |
-| `fn_10_6374` | 0xEC | 6460 @0x64F0, 652C @0x65A4 | blocked - guest 0x7C4/0x888 are the path find's waypoint count and current waypoint, and it calls the lane's fn_10_1DD14 and reads the module's 0xEE4 vector |
-| `fn_10_69C0` | 0x80 | 67B8 @0x68A0 | blocked - guest 0x930 (the count) and 0x934 (the uid array) have no host member |
-| `fn_10_746C` | 0xCC | 6BA0 @0x6C04 | blocked - guest 0xFAC has no host member |
-| `fn_10_7610` | 0x170 | 6BA0 @0x6C10 | blocked - guest 0xFC8 and 0x1028 have no host member |
+| `fn_10_6DAC` | 0x8C | 6E38 @0x6F4C | blocked - the values it copies come from the module's global bss_128, which the host has no member for |
+| `fn_10_65CC` | 0x1EC | 6460 @0x64A4, 652C @0x6570, 7054 @0x7190 | to port - the base class's members only; the host's names are known, the body is 0x1EC bytes |
+| `fn_10_6374` | 0xEC | 6460 @0x64F0, 652C @0x65A4 | **ported** (the lane's fn_10_1DD14 / 1D860 / 11334 stand in) |
+| `fn_10_69C0` | 0x80 | 67B8 @0x68A0 | **ported** |
+| `fn_10_746C` | 0xCC | 6BA0 @0x6C04 | blocked - it calls fn_10_7304 (this half, not ported yet) |
+| `fn_10_7610` | 0x170 | 6BA0 @0x6C10 | blocked - it calls fn_10_8D30 and fn_10_9E00 (this half, not ported yet) |
 | `fn_10_4868` | 0x60 | 6BA0 @0x6D30 | **ported** |
 | `fn_10_8698` | 0xCC | 6BA0 @0x6D6C, 7054 @0x72C4, 4AC8 @0x4B54 | **ported** (the guest's command words become the host's CBCTauntCmd + mAnimationState) |
-| `fn_10_786C` | 0x1A8 | 7BC0 @0x7C58 | blocked - guest 0x1020, 0x1024 and 0x1028 have no host member |
-| `fn_10_452C` | 0xCC | 81D4 @0x8298 | blocked - it resets the 0xEF0 sub-object's members (guest 0xF10..0xF5C), which have no host names |
-| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | blocked - 24 guest offsets (0x8D8..0xF58) have no host member |
+| `fn_10_786C` | 0x1A8 | 7BC0 @0x7C58 | blocked - it calls fn_10_7F98 (this half, not ported yet) |
+| `fn_10_452C` | 0xCC | 81D4 @0x8298 | blocked - it resets the 0xEF0 sub-object's members (0xF10..0xF5C), which are not modelled yet |
+| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | blocked - the 0xEF0 sub-object's members (0xEF8, 0xF10..0xF58) are not modelled yet |
 | `fn_10_48C8` | 0x44 | 81D4 @0x834C | **ported** |
 | `fn_10_812C` | 0x4C | 81D4 @0x858C | **ported** |
-| `fn_10_8870` | 0xEC | 81D4 @0x85DC | to port - the guest's command words (0x1B8/0x1C0/0x1C4) map to a host cmd that is not identified yet |
+| `fn_10_8870` | 0xEC | 81D4 @0x85DC | blocked - its command words (0x1B8/0x1C0/0x1C4) map to a host CBC*Cmd that is not identified yet |
 | `fn_10_9644` | 0xE0 | 9724 @0x9788 | ported and marked by the lane |
 | `fn_10_9920` | 0x4C | A3B0 @0xA4EC | ported and marked here |
 | `fn_10_9AC4` | 0x60 | 9724 @0x984C | ported and marked here |
@@ -212,6 +212,8 @@ lane's states are what will call them.
 | `fn_10_48C8` | the same, but only when the timestamp at guest 0xF7C is older than the elapsed time (0x000048F0) |
 | `fn_10_812C` | the sfx handle at guest 0xF60 is removed and cleared (0x00008158, 0x00008160); a null handle is left alone (0x00008148) |
 | `fn_10_9624` | the boost ball's uid (guest 0xE38) is not kInvalidUniqueId (the subf/or/srwi idiom at 0x00009630..0x00009640) |
+| `fn_10_69C0` | the uids at guest 0x934 are deleted from the state manager (0x00006A0C) and the slot cleared (0x00006A14); a kInvalidUniqueId slot is left alone (0x000069F4). The loop runs over the count at guest 0x930 (0x00006A20) |
+| `fn_10_6374` | the path find along the waypoints: with the message 0 the destination is the module's vector at guest 0xEE4 (0x00006418), otherwise the path find runs with that message (0x000063BC); then the separation (the lane's fn_10_1DD14, 0x000063C8), the path check (0x000063E8) and, when the path is not shagged and the actor is on the last waypoint (0x000063F8..0x00006408), the destination is set again (0x0000641C) |
 | `fn_10_8698` | the taunt command over a state's messages: Activate stores 1 (kAS_Ready) to the animation state 0x6B4 and delivers the command (0x000086E0, 0x000086F0), Update re-delivers it when the DOL's ShouldRetry answers true (0x00008710, the host's `CAnimationState::CanIssueCommand`), Deactivate stores 0 (kAS_NotReady) (0x00008750) |
 | `fn_10_6F90` | the path find to the destination: the path find itself is `fn_10_1C778` (the host's `SetPathFindDestination`, 0x00006FC0); when the path is shagged (0x00006FE0) the navigation's destination is set again (0x00006FF8 - the guest's 0x1048 is the navigation's own destination, which the host keeps in `CPathFindNavigation`) and the path find runs again (0x00007010) |
 
@@ -238,3 +240,31 @@ they were added to the same `TARGET_PC` block (`mGuest314`, `mGuest318`, `mGuest
 - **What is still blocked** is listed per helper in the table above: the offsets with no host
   member (the module's own loader data and the stage info) and the calls into the FSM lane's half
   (`fn_10_1C778` exists; `fn_10_1DD14` does not yet).
+### 6.3 The members the helpers need (the host modelling)
+
+The orchestrator's call: the loader data and the stage info are modelled as named members in
+`CDarkSamus.hpp`'s `TARGET_PC` block (append-only). The names are the guest offsets, because
+neither the loader nor a DOL accessor names them:
+
+| member | guest | type | initialiser |
+|---|---|---|---|
+| `mGuest930` | 0x930 | int | 0 - the number of uids in 0x934; the retail's ctor writes 0 here |
+| `mGuest934` | 0x934 | ushort[18] | 0 - the uids `fn_10_69C0` deletes (the guest's array runs to 0x958) |
+| `mGuestFAC` | 0xFAC | float | 0 - the scale `fn_10_746C` compares with |
+| `mGuestFC8` | 0xFC8 | float | 0 (`fn_10_7610`) |
+| `mGuestFCC` | 0xFCC | float | 0 (`fn_10_7F98`) |
+| `mGuest1020` / `mGuest1024` / `mGuest1028` | 0x1020 / 0x1024 / 0x1028 | float | 0 (`fn_10_786C`, `fn_10_7610`) |
+| `mGuestD14` | 0xD14 | float | 0 (`fn_10_9E00`) |
+| `mGuestD1C` / `mGuestD20` | 0xD1C / 0xD20 | float | 0 - copies of the module's `bss_128[1]` and `[2]` (`fn_10_6DAC`) |
+| `mGuestE2C` / `mGuestE30` / `mGuestE34` / `mGuestE38` | 0xE2C..0xE38 | float | 0 (`fn_10_9E00`) |
+| `mGuestE6A` | 0xE6A | uchar | 0 - a flag byte (`fn_10_9E00`) |
+| `mGuestEE4` | 0xEE4 | CVector3f | the zero vector - the path find's fallback destination (`fn_10_6374`) |
+
+**No loader read has to go into the ctor.** The retail's ctor writes only 0x930 = 0 among these
+(the rest are runtime state), and the in-class initialisers already cover it. The loader's
+properties stay in `CDarkSamusData`, which the port reads in the ctor as it does now.
+
+**Still not modelled** (the next slice's work): the 0xEF0 sub-object's members - 0xEF8 and
+0xF10..0xF58, which `fn_10_452C` and `fn_10_5974` read and write (the loader's
+`SLdrDSStageInfo` block). They need the loader's names, which the port's `CDarkSamusData` does not
+carry yet.

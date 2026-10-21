@@ -991,6 +991,32 @@ private:
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
                              float dt); // fn_10_6F90: the path find to the destination
+  void DeleteGuestUids(CStateManager& mgr); // fn_10_69C0: the uids at guest 0x934 are deleted
+  void FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg); // fn_10_6374
+  // The FSM lane's fn_10_1DD14, fn_10_1D860 and fn_10_11334 are not on port yet; fn_10_6374 calls
+  // them, so they stand in as empty calls until the lane ports them.
+  void StandInSeparation(CStateManager& mgr);  // fn_10_1DD14
+  void StandInCoverPath(CStateManager& mgr, int arg); // fn_10_1D860
+  void StandInGlideEmitter(int arg);           // fn_10_11334
+  // The module's own members whose guest offsets the helpers below 0xA000 touch. The host class
+  // had none of them; the names are the guest offsets because the loader does not name them.
+  int mGuest930 = 0;                 // guest 0x930, the number of uids in 0x934 (the ctor writes 0)
+  ushort mGuest934[18] = {};          // guest 0x934, the uids fn_10_69C0 deletes (TUniqueId)
+  float mGuestFAC = 0.f;             // guest 0xFAC, the scale fn_10_746C compares with
+  float mGuestFC8 = 0.f;             // guest 0xFC8 (fn_10_7610)
+  float mGuestFCC = 0.f;             // guest 0xFCC (fn_10_7F98)
+  float mGuest1020 = 0.f;            // guest 0x1020 (fn_10_786C)
+  float mGuest1024 = 0.f;            // guest 0x1024 (fn_10_786C)
+  float mGuest1028 = 0.f;            // guest 0x1028 (fn_10_7610, fn_10_786C)
+  float mGuestD14 = 0.f;             // guest 0xD14 (fn_10_9E00)
+  float mGuestD1C = 0.f;             // guest 0xD1C, a copy of the module's bss_128[1] (fn_10_6DAC)
+  float mGuestD20 = 0.f;             // guest 0xD20, a copy of the module's bss_128[2] (fn_10_6DAC)
+  float mGuestE2C = 0.f;             // guest 0xE2C (fn_10_9E00)
+  float mGuestE30 = 0.f;             // guest 0xE30 (fn_10_9E00)
+  float mGuestE34 = 0.f;             // guest 0xE34 (fn_10_9E00)
+  float mGuestE38 = 0.f;             // guest 0xE38 (fn_10_9E00)
+  uchar mGuestE6A = 0;               // guest 0xE6A, a flag byte (fn_10_9E00)
+  CVector3f mGuestEE4 = CVector3f::Zero(); // guest 0xEE4, the path find's fallback destination
   float mGuest314;               // guest 0x314 (fn_10_2EFC)
   uchar mGuest318;               // guest 0x318 (fn_10_2F04)
   TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
