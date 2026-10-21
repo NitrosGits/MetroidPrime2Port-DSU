@@ -1529,3 +1529,34 @@ stage end is still open: either the retail's 'PLAY' actor plays a non-looping an
 script's own animation setup, which the console cannot reproduce), or the loop flag differs
 between the two.  The next lane should look at the 'PLAY' actor's script data (its init
 animation and its loop flag) and at the CScriptActor's "play once" path.
+
+## 18. The script objects around the 'PLAY' actor (u04e8, the editor id 000b0016)
+
+Dumped from the running game (a probe over the state manager's object list, 2026-10-21) and
+cross-checked with the console's `obj` (which prints an object's own connection list).
+
+**Who is connected to the 'PLAY' actor** (the module's CONNECT/'PLAY' target, 000b0016):
+
+| sender | class | state | message | meaning |
+|---|---|---|---|---|
+| 000b0003 (the boss) | CEmperorIngStage1 | "CONN" | "PLAY" | the module's own lookup (fn_16_3094) |
+| 000b0011 (u04e5) | CScriptRelay | "ZERO" (0x5A45524F) | "ACTV" (0x41435456) | the relay sends kSM_Activate in the kSS_Zero state to the 'PLAY' actor; the host's CScriptRelay sends kSS_Zero when it gets kSM_SetToZero (src/MetroidPrime/ScriptObjects/CScriptRelay.cpp:26) |
+
+**The boss's own connections** (the console's `obj u04e3`) include
+`on InternalState0 send Action -> 000b0194 CScriptActorKeyframe` - the module's IS00 (sent by
+fn_16_78AC at 0x7920) reaches that keyframe.  But the keyframe's **only** connection is
+`(state "PLAY", msg "PLAY") -> 000b0015`, a *different* CScriptActor (the boss's "Attach"
+actor), so it never animates the 'PLAY' actor.  The probe agrees: the 'PLAY' actor's animation
+and loop flag are the same before and after the IS00 (loop=1, anim=1), and the module's own
+SetAnimation(xa24_) (0x799C) is what gives it its animation.
+
+**So the 'PLAY' actor's animation is the module's own and it loops**: the model data's loop flag
+is 1 (section 17), so the anim root's remaining time wraps and the "Whole Body has ended" test
+(the retail's IsAnimTimeRemaining at 0x7A60) can never be true.  Nothing in area 11's script
+layers (the SCLY layers of the MREA, read with tools/echoes_disc.py) targets 000b0011, 000b0015
+or 000b0016 - these are **placed actors** (the area's actor list, which the MLVL reader skips),
+and the relay's kSM_SetToZero must come from the level's script objects, which the console
+cannot run.  The next lane should read the area's *actor list* (the placed entities and their
+script data: the 'PLAY' actor's own init animation and loop flag, the relay's script data and
+the keyframe's "passive"/"use originator" flags) to find what gives the 'PLAY' actor its
+one-shot animation in the retail.
