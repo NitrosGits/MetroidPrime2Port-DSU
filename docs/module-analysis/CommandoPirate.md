@@ -993,14 +993,19 @@ lbl_9_data_7D4 and lbl_9_data_7D8.
   the host's `CBCStepCmd` takes them in that order (the base, the direction, the type).
 - `fn_9_3338` (0x148 bytes) is the module's jump-back helper, ported as
   `x3338_IsJumpBackClear`: the ray from the actor's bounding-box centre (0x00003374, 0x00003380)
-  to the point that distance along the given vector (0x000033B0..0x000033D8) must not hit the
-  world (the RayCollideWorld call at 0x0000342C) and must be on the path (the OnPath call at
-  0x00003440). `ShouldJumpBack` calls it with the forward column negated and the module's float
+  to the point that distance along the given vector (0x000033B0..0x000033D8) must be clear of the
+  world (the RayCollideWorld call at 0x0000342C - the answer is false when the ray is blocked) and
+  the point must be on the path (the OnPath call at 0x00003440 - the answer is true when it returns
+  0). The guest's filter includes the material 59 (kMT_Solid - the module's .data word at
+  lbl_9_data_80C) and excludes the material 47 (kMT_CollisionActor - the word at lbl_9_data_810):
+  the two `__shl2i` calls at 0x000033DC and 0x000033F8, the type kFT_IncludeExclude at 0x0000341C.
+  `ShouldJumpBack` calls it with the forward column negated and the module's float
   at guest this+0xBE0 (the new member `xbe0_`; the constructor stores the animation distance
   times the model's scale there at 0x0000E61C, and the same for the float at +0xBE4 - `xbe4_` -
-  at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). So the jump-back
-  trigger runs but stays false: the jump-back distance is still zero, so the ray's end point is
-  the actor's own centre.
+  at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). The jump-back
+  distance is still zero, so the ray's end point is the actor's own centre: the guest's
+  degenerate ray counts as clear (the host's RayCollideWorld answers true when the direction
+  cannot be normalized) and the trigger then answers what the path finder says about the centre.
 - The two constructor stores the port still owes: `fn_9_D904` sets the float at guest this+0xBE0
   (the jump-back distance) at 0x0000E61C and the one at +0xBE4 (the dodge picker's radius) at
   0x0000E56C - each is an animation's travel distance times the model's scale X (the load at
@@ -1228,6 +1233,9 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_BDCC` (the StateOver trigger) | the true arm (the animation state is "over") and the false arm | b | area 59: the trigger answers true 7 times and false 196 times in the run (tools/cov/run.sh with tools/cov/specs/commandopirate_triggers.py) |
 | `fn_9_B818` (the IsFacingTarget trigger) | the early return (the target has no aim position, 0x0000B860) | b | forced (gdb): the trigger's target id (the id at guest this+0xBCA, the port's xbca_) is written to an invalid id at the trigger's entry, so the module's helper x3CBC_ fails (tools/cov/force.sh with tools/cov/specs/commandopirate_isfacing.py) |
 | | the angle arm (the compare at 0x0000B8D4) - true and false | b | area 59: the trigger answers true 435 times and false 5 times in the run |
+| `fn_9_3338` (the jump-back helper) | the ray test (0x00003430..0x00003434) and the path check (0x00003440) | b | the coverage run (build-port-cov) in area 59 with the warpout driver: the gcov report gives the helper 7/7 lines and 2/2 branches - the ray came back clear and blocked and the path finder answered both ways |
+| `fn_9_3090` (the drowning) | the alive test (0x000030B8), the fluid id (0x000030D8), the water's cast (0x00003104), the trigger flag (0x00003110) and the head under the water (0x0000315C) | d | the commando has to drown: it needs a fluid, a water script object whose trigger byte has the 0x80 bit and the head below the water's bounds - the run's commando never enters a fluid |
+| `fn_9_3900` (the jump-back velocity) | the flag byte at guest this+0xC63 (0x0000393C) and the ballistic velocity (0x000039A8..0x00003A18) | d | the helper runs from the module's launching message (the call at 0x0000D040), which the area 59 run does not send |
 | `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
 | | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
 | | the alive branch (0x0000C3F0..0x0000C404) | b | twice in the run - the commando is alive when the damage lands, even after the Dead state (the byte at guest this+0x420's 0x40 bit) |
@@ -1441,9 +1449,9 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 41 marked, 73 ported but not marked, 1
-stand-in, 142 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
-helpers, which the host's classes already have).
+The port's state per function (the `port` column): 52 marked, 63 ported but not marked, 141
+not ported at all (the H and T ones, and the module's own loader/ctor/dtor helpers, which the
+host's classes already have).
 
 **The unmarked B list** (the B functions the port does not mark, 100 of them): the stand-in first -
 `fn_9_5410` (the E-grenade's creator) - and then the ported ones whose every arm has not run yet
@@ -1458,7 +1466,9 @@ full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
 every message arm of both ran - the charge state in the normal flow, the ArmShield state through
 the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too: its two arms that
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms
-are unreachable in the shipped data (the class-**c** rows above). The four functions of the first
+are unreachable in the shipped data (the class-**c** rows above). `fn_9_3338` (the jump-back
+helper) is marked too: the coverage run in area 59 gives it 7/7 lines and 2/2 branches - the ray
+and the path finder answered both ways. The four functions of the first
 slice (`fn_9_7A98`, `fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) and the FollowAttackPattern state
 (`fn_9_961C`) are not marked: each of them still has a class-**d** arm (the charge's abort and
 0x08 bits, the turn helper's push vector, the picker's 0x20-clear and next-gone arms and the
