@@ -464,15 +464,16 @@ retail's `TCastToPtr<CWeapon>` on the joint's last-touched object:
 - **A beam hit works.** That hit took the joint from 500 to 498 HP: with the player teleported
   level with the spheres and facing them the beam reaches them.
 - **The four growth spheres are frozen** at the positions they had when they were made, while
-  their joints (and the six body spheres) move with the boss. The cause is in this module's own
-  code: `UpdatePlayerSideMaterials` (fn_79_24E0) calls `SetGrowthsActive(mgr, playerBehind)`,
-  i.e. it *deactivates* the growth collision actors whenever the player is in front of the boss -
-  the opposite of the same function's comment ("growths are only targetable while the player is
-  in front of the boss") - and an inactive collision actor is neither moved by
-  `CCollisionActorManager::Update` nor in the object space the beam collides against. While the
-  player stands in front, the growth spheres sit still and cannot be shot; only the six body
-  spheres are reachable.
-- **Next:** read the retail's fn_79_24E0 to settle the flag's polarity before changing
-  `SetGrowthsActive(mgr, playerBehind)`; if the retail keeps the growths active while the
-  player is in front, that one line is the whole blocker for the growth kills, and the dark phase
-  (with fn_79_2E84, fn_79_3578 and the port of fn_79_7E24) follows from it.
+  their joints (and the six body spheres) move with the boss. That is the expected consequence of
+  retail's own rule: `UpdatePlayerSideMaterials` (fn_79_24E0) takes the dot of (player - boss)
+  with the transform's forward column (0x28/0x38/0x48) against rodata_9C, `srwi r31,r0,31`
+  (0x2530) makes the "playerBehind" flag, and that flag goes straight to fn_79_5C74: it activates
+  each live growth only while the player is behind the boss and deactivates all of them when it
+  is clear. An inactive collision actor is neither moved by `CCollisionActorManager::Update` nor
+  in the object space the beam collides against, so while the player stands in front the growth
+  spheres sit still and cannot be shot; only the six body spheres are reachable. (The port's code
+  was right all along; only its comment said "in front" - it is fixed now.)
+- **How to hit them:** the player must be *behind* the boss at the moment `Reel` calls
+  fn_79_24E0, i.e. on the opposite side from the boss's facing - the boss faces east in this
+  area, so the player has to be west of it - and level with a growth. Once the growths are
+  active their spheres sit on their joints, so the aim is the joint position logged above.
