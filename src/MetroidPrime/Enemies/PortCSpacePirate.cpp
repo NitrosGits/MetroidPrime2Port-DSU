@@ -657,20 +657,30 @@ TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   return CScriptTeamAiMgr::ChoosePlayer(mgr, *this);
 }
 
-// Keeps the current target unless it has gone inactive, in which case the squad picks one; a distant target is dropped for a player within 10 units.
+// Retail fn_72_EDEC (0x1E8). The player loop stops at the attack target when that player is
+// inactive: the team picks the target (fn_72_EFD4) and a flag is set (asm 0xEE74). An active target
+// gives its distance; any other player within 10 units (rodata B58) is the nearest. A target more
+// than 30 units away (rodata C2C) is dropped for that nearest player. Without the flag (asm 0xEF48),
+// a squad (0xba0) that resolves and has this member within 50 units (rodata B70, not the 20 of
+// ChooseTeamTarget) keeps the current attack target instead (asm 0xEF50-0xEFA4). Retail has no
+// null check on the player.
+// gcov 2026-10-21: every arm but the swap (it needs a second player: the target and another one),
+// from 06_sand_alamofront with `send <player> Deactivate` and the helpers lane's squad run in
+// 07_sand_alamoportalobservation L3 (spacepirate_helpers_force.py run 2).
+// @ fn_72_EDEC
 TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
   float nearest = 10.f;
   float currentDist = 0.f;
   TUniqueId nearestId = kInvalidUniqueId;
   TUniqueId result = mAttackTarget;
+  bool teamChosen = false;
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CPlayer* player = mgr.GetPlayer(i);
-    if (player == nullptr) {
-      continue;
-    }
     if (player->GetUniqueId() == mAttackTarget) {
       if (!player->GetActive()) {
+        teamChosen = true;
         result = ChooseTeamTarget(mgr);
+        break;
       } else {
         currentDist = (player->GetTranslation() - GetTranslation()).Magnitude();
       }
@@ -685,6 +695,12 @@ TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
   if (currentDist > 30.f && nearest < 10.f) {
     result = nearestId;
   }
+  if (!teamChosen && xba0_teamAiMgrId != kInvalidUniqueId) {
+    CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
+    if (team != nullptr && team->IsTeamMemberInRange(mgr, *this, 50.f)) {
+      return mAttackTarget;
+    }
+  }
   return result;
 }
 
@@ -697,7 +713,10 @@ bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
       reset = true;
     }
   }
-  // Retail also resets while the global charge-player list is non-empty (no port equivalent yet).
+  // The module's charge-player list (bss_40, asm 0x3290-0x32A4) not being empty also rolls a burst.
+  if (!mChargePlayerList.empty()) {
+    reset = true;
+  }
   const CPlayer* target = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
   if (target != nullptr && target->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
     reset = true;
@@ -1403,16 +1422,19 @@ void CSpacePirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (mAlive) {
     if (reaction == CKnockBackMgr::kAR_Hurled) {
       mStateMachine->SetState(mgr, *this, rstl::string_l("GetUpNow"));
-      CSfxManager::AddEmitter(mData.mHurledSfx, GetTranslation(), 127,
-                              GetCurrentAreaId().Value(), false, false, CSfxManager::kMedPriority);
+      // The handle goes to 0xc00 (asm 0xC944), which fn_72_2EA8 reads.
+      xc00_ = CSfxManager::AddEmitter(mData.mHurledSfx, GetTranslation(), 127,
+                                      GetCurrentAreaId().Value(), false, false,
+                                      CSfxManager::kMedPriority);
     }
   } else if (!x8f5_30_floatingCorpse && reaction == CKnockBackMgr::kAR_Hurled) {
     const CKnockBackMgr::EFollowUp followUp = mKnockBackController.GetFollowUp();
     if (followUp != CKnockBackMgr::kFU_ExplodeDeath && followUp != CKnockBackMgr::kFU_IceDeath &&
         followUp != CKnockBackMgr::kFU_BurnDeath &&
         followUp != CKnockBackMgr::kFU_LaggedBurnDeath) {
-      CSfxManager::AddEmitter(mData.mDeathSfx, GetTranslation(), 127, GetCurrentAreaId().Value(),
-                              false, false, CSfxManager::kMedPriority);
+      xc00_ = CSfxManager::AddEmitter(mData.mDeathSfx, GetTranslation(), 127,
+                                      GetCurrentAreaId().Value(), false, false,
+                                      CSfxManager::kMedPriority); // asm 0xC9B8
     }
   }
 }

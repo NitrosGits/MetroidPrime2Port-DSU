@@ -273,6 +273,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1013_(0)
 , x1168_(kInvalidUniqueId) // the store at 0xB5B8
 , x116A_(kInvalidUniqueId) // the store at 0xB5C0
+, x116C_(LdrToDamageInfo(data.mVortexDamage)) // the stores at 0xB5D4..0xB614
 , x11B8_(0)
 , x11BC_(0.f) // the store at 0xB65C
 , x11C0_(kInvalidUniqueId) // the store at 0xB668
@@ -470,8 +471,7 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
 // at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
-// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helpers fn_14_5644 and
-// fn_14_4F2C the cases call are not ported yet.
+// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C).
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
@@ -556,7 +556,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     x5644_(mgr, msg.GetSenderId()); // fn_14_5644
     break;
   case 0x58484954: // "XHIT"
-    StandInFn("fn_14_4F2C (the XHIT case's helper)");
+    x4F2C_(mgr, msg.GetSenderId()); // fn_14_4F2C
     break;
   case 0x494D3030: // "IM00"
     x3F14_(mgr); // fn_14_3F14
@@ -712,8 +712,10 @@ bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
 // mass (0x158) and dt (0x3734..0x3770), applied with no angular part (0x3790); then the player's
 // collision impulses (0x3798), its minimal acceleration timer at 2 * dt (.rodata 0x26C, 0x37AC)
 // and a static interference source from the body at 0.1 for 0.1 s (.rodata 0x2B4, 0x37D4).
-// Unmarked: the 0x04 arm needs fn_14_4F2C (the XHIT helper, a stand-in; it sets the bit), and the
-// out-of-range arm (the player beyond maxVortexAttractionDistance) has not run.
+// The arms: the pull and the 0x04 arm ran (fn_14_4F2C sets the bit on a vortex hit; the body
+// placed on the player during VortexAttack); the player beyond maxVortexAttractionDistance was
+// forced (tools/cov/force.sh, the distance set to 0.001 at the entry, 530 frames).
+// @ fn_14_3674
 void CDigitalGuardian::x3674_(CStateManager& mgr, float dt) {
   // 0x40: extrwi. at 0x36A4; 0x04: extrwi. at 0x36B0; the duration: fcmpo at 0x36C4.
   if ((x128D_ & 0x40) == 0 || (x128C_ & 0x04) != 0 || !(mData.mVortexAttackDuration > 0.f)) {
@@ -1609,6 +1611,9 @@ bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData&
 // cr0 at 0x99E0, the "cror eq, lt, eq" at 0x99E4 and the mfcr/extrwi pair at 0x99E8..0x99EC:
 // the mfcr puts CR0 in the top four bits of r0, so the extracted bit 29 is CR0's eq, which the
 // cror has just made "f1 <= f0").
+// The arms: gcov had the body's answer; the head's bit 0x20 (set by its ProjectileTelegraph)
+// answered false in the area-53 head-stun runs (local probe).
+// @ fn_14_9994
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
@@ -1621,6 +1626,9 @@ bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData
 // byte's bit 5, the mask 1u << (31 - 26) = 0x20), the answer is false (the bne at 0x996C and
 // the li at 0x997C). Otherwise the answer is bit 0 (the mask 1u << (31 - 30) = 0x1) of the flag
 // byte at guest this+0x128C (the clrlwi at 0x9974).
+// The arms: gcov had the body's answer; the head's bit 0x20 (set by its ProjectileTelegraph)
+// answered false in the area-53 head-stun runs (local probe).
+// @ fn_14_9930
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
@@ -1810,6 +1818,44 @@ void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
     x5470_(mgr, sender, knee); // fn_14_5470
   } else if (x43AC_(sender) || sender.value == x1080_) {
     x5384_(mgr, sender); // fn_14_5384
+  }
+}
+
+// @ fn_14_4F2C
+// "XHIT": a collider (the sender, TCastToPtr at 0x4F6C) whose last touched object is the player
+// (0x4F80..0x4F94) damages the player, unless bit 6 of 0x128C is set (0x4F50). In the vortex
+// (0x11B8 == 1) with bit 2 of 0x128C clear (0x4FA8) it is a big strike (0x421, 0x4FC0) for 1 s
+// (0x73C, .rodata 0x270) with the vortex damage (0x116C), and bit 2 is set (0x5058); otherwise,
+// once the damage wait (0x440 <= 0.0f, 0x507C) is over and the player is not morphed (0x38C,
+// 0x5068), with the contact damage (vtable 0xE8, 0x50F4). Both apply the damage from the body to
+// the player with an include filter of material 0x3B (.data 0x8, __shl2i) and no knockback
+// (sZeroVector), then restart the damage wait (0x444 -> 0x440).
+void CDigitalGuardian::x4F2C_(CStateManager& mgr, TUniqueId sender) {
+  if ((x128C_ & 0x40) != 0) {
+    return;
+  }
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) {
+    return;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (collider->GetLastTouchedObject() != player->GetUniqueId()) {
+    return;
+  }
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(1ULL << 0x3B), CMaterialList());
+  if (x11B8_ == 1 && (x128C_ & 0x04) == 0) {
+    mIsMakingBigStrike = true;
+    mDamageDuration = 1.f;
+    mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), x116C_, filter,
+                    CVector3f::Zero());
+    mCurDamageRemTime = mDamageWaitTime;
+    x128C_ |= 0x04;
+  } else if (player->GetMorphballTransitionState() != CPlayer::kMS_Morphed &&
+             mCurDamageRemTime <= 0.f) {
+    mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
+                    filter, CVector3f::Zero());
+    mCurDamageRemTime = mDamageWaitTime;
   }
 }
 
@@ -2198,7 +2244,8 @@ void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 // (0) the body controller's locomotion type becomes 1 (pas::kLT_Relaxed, the call at 0x95F8)
 // and bit 7 (the mask 0x80) of the flag byte at guest this+0x128C is set (the rlwimi at 0x9604);
 // on Deactivate (2) that bit is cleared (the rlwimi at 0x9618); Update (1) and every other
-// message do nothing.
+// message do nothing. gcov (the helpers lane, area 53): 3/3 branches, ALL-ARMS.
+// @ fn_14_95B8
 void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

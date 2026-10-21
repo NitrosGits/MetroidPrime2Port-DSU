@@ -242,7 +242,7 @@ private:
   int x10D0_;      // 0x10D0: the projectile attack (-1; 0 pulse, 1 charge, 2 missiles, 3 gun)
   float x10D4_;    // 0x10D4: the projectile attack timer
   int x10D8_;      // 0x10D8: the burst count
-  int x10DC_;      // 0x10DC: the first-shot latch (-1; SelectDeathHeadAttack clears it)
+  int x10DC_;      // 0x10DC: the knee count last seen (-1; SelectProjectileAttack), cleared by SelectDeathHeadAttack
   float x10E0_;    // 0x10E0: the gravity repulsor's health (data +0x18)
   int x10E4_;      // 0x10E4: the lives left (2)
   int x10E8_;      // 0x10E8: the splitters left to deploy (StartSplitterDeployment)
