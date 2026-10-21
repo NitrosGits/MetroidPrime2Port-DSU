@@ -120,13 +120,13 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mSwooping(false)
 , mCircleCounting(false)
 , mSwoopSelected(false)
-, mBigHit(false)
+, mUnusedC77Bit0(false)
 , mReelEffect(false)
-, mSuppressWaterSfx(false)
-, mBlowPushed(false)
+, mTargetEffectsOn(false)
+, mDarkFlyerForm(false)
 , mBlowing(false)
-, mWindPending(false)
-, mBubbleCreated(false)
+, mBlowWindowOpen(false)
+, mWindEffectPending(false)
 , mBubbleTelegraphed(false)
 , mAdditiveAnim(-1)
 , mAdditiveWeight(0.f)
@@ -629,7 +629,7 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
   if (heightAboveWater > 0.f) {
     if (heightAboveWater < 4.f) {
       // Hovering just over the water: start the splash sounds (the second one loops and is kept).
-      if (!hasEmitter && !mBlowPushed) {
+      if (!hasEmitter && !mDarkFlyerForm) {
         const CVector3f forward = GetTransform().GetForward();
         PlayCustomSound(pos, forward, mData.audioPlaybackParms, false);
         mWaterSfx = PlayCustomSound(pos, forward, mData.audioPlaybackParms_0x2b3c923a, true);
@@ -681,12 +681,12 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
     // Left the surface: stop the loop and splash out.
     CSfxManager::RemoveEmitter(mWaterSfx);
     mWaterSfx = CSfxHandle::NullHandle();
-    if (!mBlowPushed) {
+    if (!mDarkFlyerForm) {
       PlayCustomSound(pos, GetTransform().GetForward(), mData.audioPlaybackParms_0xc05d5c7a,
                       false);
     }
   }
-  if (mBlowPushed && mWaterSfx) {
+  if (mDarkFlyerForm && mWaterSfx) {
     CSfxManager::RemoveEmitter(mWaterSfx);
     mWaterSfx = CSfxHandle::NullHandle();
   }
@@ -1472,10 +1472,10 @@ void CSwampBossStage2::BecomeDarkFlyer(CStateManager& mgr, EStateMsg msg, float 
     mBubbleTelegraphed = false;
     mOvipositorHealth = CurrentPhase().health;
     mPendingFlinch = 0.f;
-    mBlowPushed = true;
+    mDarkFlyerForm = true;
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    mBlowPushed = false;
+    mDarkFlyerForm = false;
   }
 }
 
@@ -1752,7 +1752,7 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
       BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_One));
     }
-    if (mWindPending) {
+    if (mBlowWindowOpen) {
       if (CPlayer* player = mgr.GetPlayer(0)) {
         const CVector3f rel = player->GetAimPosition(mgr, 0.f) - mHeadPos;
         const CVector3f forward = GetTransform().GetForward();
@@ -1767,7 +1767,7 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
             player->DisableControls(mgr, 0xe2, GetUniqueId(), 1.f, CGameHint::kBHT_None);
           }
           // Retail tests the pending flag again here, so the push is always the blow push.
-          const float push = mWindPending ? mData.blowPush : mData.breakStunDamage;
+          const float push = mBlowWindowOpen ? mData.blowPush : mData.breakStunDamage;
           player->ApplyImpulseWR(forward * (push * player->GetMass()), CAxisAngle::Identity());
         }
         if (mBlowing) {
@@ -1780,20 +1780,20 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
         }
       }
     }
-    if (mBlowing && !mWindPending) {
+    if (mBlowing && !mBlowWindowOpen) {
       if (CPlayer* player = mgr.GetPlayer(0)) {
         player->PopSustainedDamage();
       }
       mBlowing = false;
     }
-    if (mBubbleCreated) {
+    if (mWindEffectPending) {
       SpawnWindEffect(mgr);
-      mBubbleCreated = false;
+      mWindEffectPending = false;
     }
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-    mBubbleCreated = false;
-    mWindPending = false;
+    mWindEffectPending = false;
+    mBlowWindowOpen = false;
     mBlowing = false;
   } else if (msg == kStateMsg_Deactivate) {
     if (mBlowing) {
@@ -1842,9 +1842,9 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
     RequestMove(CenterPosition(mgr));
     UpdatePlayerSideMaterials(mgr);
     // The same bit also holds the target effects on; they come up a second into the reel.
-    if (!mSuppressWaterSfx && StateMachineState().GetTime() > 1.f) {
+    if (!mTargetEffectsOn && StateMachineState().GetTime() > 1.f) {
       SetGrowthTargetEffects(mgr, true);
-      mSuppressWaterSfx = true;
+      mTargetEffectsOn = true;
     }
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1857,7 +1857,7 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->SetTurnSpeed(BodyController()->GetTurnSpeed() * 0.125f);
     SendScriptMsgs(kSS_InternalState10, mgr, kInvalidUniqueId, kSM_None);
     mRepeller.SetActive(false);
-    mSuppressWaterSfx = false;
+    mTargetEffectsOn = false;
     for (int i = 0; i < mGrowthBroken.size(); ++i) {
       mGrowthBroken[i] = false;
     }
@@ -2198,13 +2198,13 @@ void CSwampBossStage2::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
     }
     break;
   case 0x29:
-    mBubbleCreated = true;
+    mWindEffectPending = true;
     break;
   case 0x2a:
-    mWindPending = true;
+    mBlowWindowOpen = true;
     break;
   case 0x2b:
-    mWindPending = false;
+    mBlowWindowOpen = false;
     break;
   case 0x2d: { // flinch / stun sounds at this locator
     const CVector3f forward = GetTransform().GetForward();

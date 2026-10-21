@@ -636,3 +636,81 @@ the port's `mBubbleTelegraphed` is bit 31). Porting `Blow` faithfully therefore 
 re-deriving the flag bits 24..27 across `DoUserAnimEvent` (a marked function), `ProcessDamage`
 and `Blow` - a separate slice, not a body swap. The port's `Blow` stays as it is (it is not
 marked).
+
+### 7.11 The flag bits 24..31 of the word at +0xc74 (2026-10-21, seventh lane pass)
+
+The retail keeps eight flags in the byte at +0xc77 (the top byte of the flag word at +0xc74).
+Every reader and writer of that byte in the module was read out of the asm and matched with the
+port's users: `fn_79_3900` (the water splash), `fn_79_61C4` (`ProcessDamage`), `fn_79_7870`
+(`Reel`), `fn_79_7E24` (`Blow`), `fn_79_91A4` (`BecomeDarkFlyer`), `fn_79_A838`
+(`DoUserAnimEvent`) and the constructor `fn_79_BE3C`. The asm's `rlwimi`/`extrwi` bit fields
+count from the MSB, so the instruction's field 24 is the *least* significant bit 31 and field 31
+is bit 24 (the annotator prints this as `xc77_80` = the byte's bit 7 = the word's bit 31).
+
+| word bit | the byte's bit | the retail's behaviour | the port's flag (before/after) | the users |
+|---|---|---|---|---|
+| 24 | 0x01 | never read or written after the constructor zeroes it | `mBigHit` -> `mUnusedC77Bit0` | none |
+| 25 | 0x02 | set by `ProcessDamage` when a growth takes a hit (0x6400); the anim event 0x2d reads it to pick the flinch sound and clears it (0xAEDC) | `mReelEffect` (unchanged) | `ProcessDamage`, `DoUserAnimEvent` |
+| 26 | 0x04 | the one-shot for the growth target effects: `Reel` sets it (0x7AA8) and its update skips turning them on again while it is set (0x7A64) | `mSuppressWaterSfx` -> `mTargetEffectsOn` | `Reel` |
+| 27 | 0x08 | "the boss is in the dark flyer form": set by `BecomeDarkFlyer` (0x9298), cleared there (0x94AC); the water splash (fn_79_3900) reads it three times | `mBlowPushed` -> `mDarkFlyerForm` | `BecomeDarkFlyer`, `UpdateWater` |
+| 28 | 0x10 | "the player is being blown": the `Blow` sets it when it pushes the player (0x806C) and clears it when the blow ends (0x81D4, 0x822C) | `mBlowing` (unchanged) | `Blow` |
+| 29 | 0x20 | "the blow window is open": the anim event 0x2a sets it and 0x2b clears it; the `Blow`'s window, push and damage run only while it is set (0x7F74) | `mWindPending` -> `mBlowWindowOpen` | `DoUserAnimEvent`, `Blow` |
+| 30 | 0x40 | "the wind effect is pending": the anim event sets it, the `Blow` consumes it (`fn_79_3578`) and clears it (0x8200) | `mBubbleCreated` -> `mWindEffectPending` | `DoUserAnimEvent`, `Blow` |
+| 31 | 0x80 | "the bubble telegraph has been created": the anim events call `fn_79_1E40` once and set it (0xA94C); `BecomeDarkFlyer` clears it (0x926C) | `mBubbleTelegraphed` (unchanged) | `DoUserAnimEvent`, `BecomeDarkFlyer` |
+
+**Result: every bit the port uses was already right** - no user had a wrong bit, so the only
+change is the names, which were guesses. The port's flag names now say what the retail's bits
+do, and the header's comments carry the bit numbers.
+
+### 7.12 fn_79_7E24 (`Blow`): the body is retail's, and its branches (2026-10-21, seventh lane pass)
+
+§7.10 read the retail's `Blow` out of the asm; comparing it with the port's body line by line showed
+that the port's `Blow` **is** retail's body: the same three messages (activate, update,
+deactivate), the same melee attack command (`pas::kAS_MeleeAttack` is the command id 7 and
+`pas::kS_One` the severity 1 in the retail's command), the same blow window (the forward dot
+against the head at +0xa9c, the right dot against `rodata_10C` = 18 model scales and
+`mGrappleTime` = 0), the same push (`mBlowWindowOpen` picks the push member at +0x9ac over the
+one at +0x9a8), the same damage and the same wind effect (the flag bit 30). The one thing the
+host cannot express is the retail's melee command's target position: the host's
+`CBCMeleeAttackCmd` only takes the severity, and the retail's command carries the body
+controller's position with the "has target" flag clear, so the two behave the same.
+
+The retail's conditional branches, with the once-per-arm probe's lines (the probe was removed
+again before the commit):
+
+| branch | what | class |
+|---|---|---|
+| 0x7E54, 0x7E60, 0x7E6C | the message dispatch: 1 = update, 0 = activate, 2 = deactivate, 3 and up = the end | (b) `[arm] 30 7E24 update`, `[arm] 44 7E24 activate`, `[arm] 45 7E24 deactivate` |
+| 0x7EBC | the melee attack command cannot be issued yet | (b) both sides: `[arm] 31 7E24 melee command issued`, `[arm] 32 7E24 melee command skipped` |
+| 0x7F74 | the blow window is closed (the flag bit 29) -> no window, no push and no damage | (b) both sides: `[arm] 33 7E24 blow block entered`, `[arm] 40 7E24 the blow block is closed` |
+| 0x801C | the player's aim point is not in front of the head (the forward dot) | (b) the skip side: `[arm] 37 7E24 outside: the forward dot` |
+| 0x8040 | the aim point is more than 18 model scales to the side (the right dot) | (b) the skip side: `[arm] 47 7E24 outside: the right dot` |
+| 0x804C | the player is grappling (`mGrappleTime` at +0xd8c is not 0) | (d) not reached: the console has no grapple beam and the lock-on does not pick a script object, so a driver run cannot put the player on a grapple point |
+| 0x8058 | the player is already being blown -> no new push setup | (b) the other side of the same bit: `[arm] 35 7E24 push setup` and `[arm] 38 7E24 the blow damage` (the bit is set in the frames that follow the first) |
+| 0x80AC | the weak push (the member at +0x9a8 instead of +0x9ac) | (c) the block is only entered while the flag bit 29 is set (0x7F74) and the flag is read again here, so the weak value is dead code in the shipped flow |
+| 0x8110 | the player is not being blown -> no blow damage | (b) both sides: `[arm] 38 7E24 the blow damage`, `[arm] 39 7E24 no blow damage` |
+| 0x81B8, 0x81C0 | the sustained damage is popped when the blow ends | (b) the pop side: `[arm] 41 7E24 the sustained damage is popped` |
+| 0x81E4 | the wind effect is waiting (the flag bit 30) -> fn_79_3578 | (b) both sides: `[arm] 42 7E24 the wind effect`, `[arm] 43 7E24 no wind effect` |
+| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the blow's update clears `mBlowing` first (the cleanup at 0x81B8), so the deactivate rarely finds it set |
+
+**`fn_79_7E24` is therefore not marked**: its body is retail's (every branch above is matched to
+the port's code), but two real arms - "the player is grappling" (0x804C) and "the deactivate pops
+the sustained damage" (0x8214) - did not run, and the rule is that a marker means every arm ran.
+The arms that did run are in the table with their probe lines; the probe is gone again.
+
+### 7.13 The module's remaining unmarked functions, by call count (2026-10-21, seventh lane pass)
+
+Counted from the retail asm (the `bl` call sites inside the module):
+
+| fn | call sites | what |
+|---|---|---|
+| `fn_79_32C0` | 32 | the loader's `rstl::vector` free - a host copy (7.1) |
+| `fn_79_1228`, `fn_79_178C`, `fn_79_1A64`, `fn_79_1AA0`, `fn_79_2D3C`, `fn_79_6974`, `fn_79_B7F8`, `fn_79_D0F8` | 8 each | the loader's own constructors/copies and the loader's string helper (7.1) |
+| `fn_79_31C0` | 6 | the loader's `rstl::vector` copy (7.1) |
+| `fn_79_460`, `fn_79_4958`, `fn_79_6AB0` | 6 each | loader/host copies (7.1) |
+| `fn_79_50AC`, `fn_79_55B0` | 4 each | the platform-chain walk - **not ported** (the port's `LaunchPlatformChain` is an approximation) |
+| `fn_79_7E24` | 3 | the `Blow` state - verified against the asm in 7.12, **not marked** because two of its arms did not run |
+
+The next three behaviour functions to take are `fn_79_55B0` and `fn_79_50AC` (the chain walk, which
+also needs `fn_79_5030`/`fn_79_527C`) and `fn_79_6B78` (the second half of
+`SetupCollisionManager`, which the port merges into the marked `fn_79_6E68`).
