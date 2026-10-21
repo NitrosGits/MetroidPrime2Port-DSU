@@ -571,9 +571,6 @@ private:
   // fn_10_8764: a melee attack command run over a state's messages - Activate delivers it,
   // Update re-delivers it while the animation state allows, Deactivate ends the state.
   void RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state, const CBCMeleeAttackCmd& cmd);
-  // fn_10_8698: the same switch for the taunt command (the command manager's taunt slot at
-  // 0x2B0; the melee slot is 0x180).
-  void RunTauntCmd(EStateMsg msg, pas::ETauntType type);
 
   // The dive (fn_10_11FA4). fn_10_12960: moves *target up to 8 back toward the actor until the
   // ring path to it is clear. fn_10_12B00: the body's target vector to the dive target.
@@ -964,12 +961,9 @@ private:
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
   // guest 0xA40 / 0xA80 / 0xAB8: the record bytes of the missile attacks and the freeze beam.
   // fn_10_62B4 (the Arrived trigger) reads the shield flag byte 0xCD0 and the float 0xF64 (the
-  // time offset the trigger adds to its 6.0f and 20.0f tests) and the point 0xEE4/0xEE8/0xEEC
-  // (the arrival point the trigger measures to).
+  // time offset the trigger adds to its 6.0f and 20.0f tests) and the point 0xEE4/0xEE8 (the
+  // helpers branch's mGuestEE4, the path find's fallback destination).
   float mGuestF64;                 // guest 0xF64, the Arrived trigger's time offset
-  float mGuestEE4;                 // guest 0xEE4, the Arrived trigger's point x
-  float mGuestEE8;                 // guest 0xEE8, the Arrived trigger's point y
-  float mGuestEEC;                 // guest 0xEEC, the Arrived trigger's point z
   // fn_10_9314 (the DoneRolling trigger) reads the float 0xEA4 (the roll's time), 0xEA8 (the
   // roll's other time), the point 0xEAC/0xEB0/0xEB4 and the radius 0xEB8, all in the boost
   // ball's record (the 0xE10 sub-object's +0x9C..+0xA8). Nothing in the port writes them yet.

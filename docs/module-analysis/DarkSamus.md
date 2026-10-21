@@ -1195,3 +1195,142 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   time. The random range is the state manager's own CRandom16 (r29+0x16E4, the Range call at
   0x000107A0), the stage's +0x18 and +0x1C are the loader's pauseDurationMin and pauseDurationMax
   (the SLdrDSStageInfo layout: +0x00..+0x20 are the nine floats).
+
+## Slice 26 (2026-10-21): the FSM handlers in the tsv's order
+
+Ten handlers ported from the REL's asm, each with the offsets of its branches and its calls.
+
+| fn | the REL's body | the port | marker |
+|---|---|---|---|
+| fn_10_10710 | 0x00010710, 0x154 bytes | the Pause state | **marked** |
+| fn_10_62B4 | 0x000062B4, 0xDC bytes | the Arrived trigger | not marked (the fight never evaluates it) |
+| fn_10_9724 | 0x00009724, 0xDC bytes | the BoostBallFire state | not marked (fn_10_99B8 is still a stand-in) |
+| fn_10_9314 | 0x00009314, 0xDC bytes | the DoneRolling trigger | **marked** |
+| fn_10_7A14 | 0x00007A14, 0xDC bytes | the EnrageHitReact state | not marked (fn_10_7F98) |
+| fn_10_6E38 | 0x00006E38, 0xDC bytes | the EnragedTravel state | not marked (fn_10_6DAC) |
+| fn_10_BD40 | 0x0000BD40, 0xDC bytes | the FadeIn state | **marked** |
+| fn_10_BC54 | 0x0000BC54, 0xDC bytes | the FadeOut state | **marked** |
+| fn_10_F86C | 0x0000F86C, 0xDC bytes | the FallFromTheAir state | **marked** |
+| fn_10_16CDC | 0x00016CDC, 0x1F0 bytes | the FreezeBeam state | not marked (fn_10_1707C, fn_10_8870) |
+
+The five unmarked ones call a helper the other lanes port: fn_10_99B8 (the boost ball's
+particle effects), fn_10_7F98 (the enrage helper), fn_10_6DAC, fn_10_1707C (the dodge step) and
+fn_10_8870 (the freeze beam's command). Each of those calls is a `FsmStandIn` in the port, so
+the bodies are the states' own work but not the whole function.
+
+### The bodies
+
+- **fn_10_10710 (the Pause state).** The attack bookkeeping with id 0x400 (0x00010750).
+  Activate (0x00010754): 0xC30 takes the elapsed time 0x8B0 (0x00010768) and the stage's pause
+  duration (the stage info's +0x18 and +0x1C, the random range at 0x000107A0, the sum at
+  0x000107AC). Deactivate (0x000107B4): 0xC24 = kInvalidUniqueId (0x000107C4). Then the damage
+  (fn_10_1E178 at 0x000107D4), the turn toward the player (fn_10_16B64 at 0x000107F0, the rate
+  lbl_10_rodata_44C = 1.3962634f) and the locomotion command (fn_800EE3C4 at 0x00010838, the
+  CBCLocomotionCmd with the zero move and face vectors and the weight 1.0f).
+- **fn_10_62B4 (the Arrived trigger).** The shield flag byte 0xCD0 (0x000062C0) short-circuits
+  the time test: with it set the trigger is the distance test alone (0x0000630C). Without it the
+  float 0xF64 plus lbl_10_rodata_190 = 6.0f against the elapsed time (0x000062D0..0x000062E4)
+  answers false (0x000062E8) and lbl_10_rodata_194 = 20.0f plus the same offset
+  (0x000062F0..0x00006300) answers true (0x00006304). Otherwise the distance to the point
+  0xEE4/0xEE8 (the helpers branch's mGuestEE4, the path find's fallback destination) in the XY
+  plane - the z is lbl_10_rodata_13C = 0.0f, the store at 0x00006348 overwrites the z difference
+  - against lbl_10_rodata_15C = 3.0f decides (the magnitude at 0x0000634C, the compare at
+  0x00006358).
+- **fn_10_9724 (the BoostBallFire state).** The attack bookkeeping with id 2 (0x00009760).
+  Activate (0x00009764): the roll emitter removed (0x00009778) and its handle cleared
+  (0x00009784), the turn around (fn_10_9644 at 0x00009788), 0xD24 = lbl_10_rodata_284 = 0.5f
+  (0x000097AC) and the boost ball's bit 0x40 of 0xEBC (0x000097B4, the PowerPC bit 25 being
+  1u << (31 - 25) = 0x40). Update (0x0000983C): the boost ball deleted (fn_10_9AC4 at
+  0x0000984C). Deactivate (0x00009854): fn_10_99B8 (0x00009864) - a stand-in, the port has no
+  particle effects. Then the turn toward the player (0x00009880, lbl_10_rodata_28C =
+  5.2359877f) and the melee attack command (fn_10_8764 at 0x000098E0, the severity 8 =
+  pas::kS_Eight).
+- **fn_10_9314 (the DoneRolling trigger).** Without the boost ball actor (the uid 0xE38,
+  0x0000932C) the trigger answers false (0x0000933C). With it the roll's time 0xEA4 against
+  lbl_10_rodata_27C = 2.0f (0x00009350) answers true when it is over (0x00009358). With a boost
+  hint (the uid 0xEC0, 0x00009360) the hint's byte 0xEC8 (0x0000936C) answers. With the bit
+  0x80 of 0xEBC (`extrwi r0, r0, 1, 24` at 0x00009378, the PowerPC bit 24 being
+  1u << (31 - 24) = 0x80) the trigger answers true (0x00009384). With the roll's other time
+  0xEA8 plus lbl_10_rodata_274 = 5.0f against the elapsed time (0x0000939C) it answers true
+  (0x000093A8). Otherwise the distance to the point 0xEAC/0xEB0/0xEB4 against
+  lbl_10_rodata_280 = 12.0f plus the radius 0xEB8 decides (the magnitude at 0x000093F0, the
+  compare at 0x00009404, the "greater than" bit `extrwi r3, r0, 1, 1`).
+- **fn_10_7A14 (the EnrageHitReact state).** Every message sets the body's locomotion type 10
+  (pas::kLT_Internal10, 0x00007A4C). Deactivate (0x00007A50): the time 0xFB0 from
+  lbl_10_rodata_1CC = 0.2f and lbl_10_rodata_1D0 = 4.5f (0x00007A70), the guest's own random
+  stepped (the `mulhw` with 0x55555556 at 0x00007A8C: 0x105C grows by the high word of
+  0x55555556 * 0x1058 and its carry bit) and the health stored (0xFC4, 0x00007AB0). Then
+  fn_10_7F98 (0x00007AC8, a stand-in) and the melee attack command (0x00007B28, the severity 8).
+- **fn_10_6E38 (the EnragedTravel state).** Every message reads the player's aim position (the
+  state manager's player at 0x14FC, the vtable's slot 0x54 at 0x00006E78; the guest's extra
+  argument &lbl_10_rodata_1AC = 0.5f has no host counterpart, the dt is 0.5f). Activate
+  (0x00006E90): the travel (fn_10_6F90, the helpers branch's FindPathToDestination) and the
+  target forgotten (0x9FC = -1, 0x00006EC4). The other messages measure the aim position against
+  the point 0x1048/0x104C/0x1050 (the squared distance at 0x00006EEC..0x00006EF4 against
+  lbl_10_rodata_1B0 = 16.0f at 0x00006EF8) and run the travel when it is bigger (0x00006F10);
+  then the player's halfword at its +8 goes to 0x718 (0x00006F30 - the host's player has no
+  counterpart) and the separation runs (fn_10_1DD14 at 0x00006F40). Every message then runs
+  fn_10_6DAC (0x00006F4C, a stand-in), the additive animation (fn_10_1D860 at 0x00006F5C) and the
+  glide emitter (fn_10_11334 at 0x00006F68).
+- **fn_10_BD40 (the FadeIn state).** The attack bookkeeping with id 4 (0x0000BD70), the ground
+  collision (fn_10_18F90 at 0x0000BD80) and the melee attack command (fn_10_8764 at 0x0000BDE0,
+  the severity 4 = pas::kS_Four).
+- **fn_10_BC54 (the FadeOut state).** The attack bookkeeping with id 8 (0x0000BC84), the ground
+  collision (0x0000BC94), the shield flag (fn_10_105F4 at 0x0000BCA8, with the zero vector) and
+  the melee attack command (0x0000BD08, the severity 3 = pas::kS_Three).
+- **fn_10_F86C (the FallFromTheAir state).** The attack bookkeeping with id 0x4000
+  (0x0000F89C), the ground collision (0x0000F8AC) and the taunt command (fn_10_8698 at
+  0x0000F8E8: the command id 0x15 = 21 = kBSC_Taunt, the taunt type 0 = pas::kTT_Zero, the
+  animation state 0x10 = pas::kAS_Taunt) - the helpers branch's RunTauntCmd.
+- **fn_10_16CDC (the FreezeBeam state).** The attack bookkeeping with id 0x10 (0x00016D18), the
+  collision failsafe (0x00016D24), the shield flag (0x00016D38) and the ground collision
+  (0x00016D48). Activate (0x00016D4C): the beam's counter 0xAB0 cleared (0x00016D5C), the bits
+  0x40 and 0x80 of 0xAB8 cleared (the `rlwimi` at 0x00016D6C clears the bit 0x40 - the PowerPC
+  bit 25 - and the one at 0x00016D7C sets the bit 0x80 - the PowerPC bit 24 - to the bit 0x40's
+  value, which the first one just cleared) and the dodge record zeroed (0x1090 = 0.0f at
+  0x00016D9C, the direction 0x1094..0x109C at 0x00016D88..0x00016D98). The other messages deliver
+  the exit state command (fn_800EE45C at 0x00016DD0, the command id 0xA = 10 = kBSC_ExitState)
+  when the counter 0xAB0 is at least 1 (0x00016DA8). With the bit 0x40 of 0xAB8 set
+  (0x00016DEC..0x00016DF4) the actor turns toward the player (0x00016E1C, the rate
+  lbl_10_rodata_454 = 0.017453292 radians a degree times lbl_10_bss_118 = 160.0f, the module's
+  own turn speed) and dodges (fn_10_1707C at 0x00016E3C, with lbl_10_bss_11C = 22.0f and
+  lbl_10_bss_120 = 0.5f - a stand-in). Then fn_10_8870 (0x00016E8C - a stand-in).
+
+### The new members
+
+- guest 0xF64 (the Arrived trigger's time offset), 0xEA4/0xEA8 (the DoneRolling trigger's two
+  times), 0xEAC/0xEB0/0xEB4 (its point) and 0xEB8 (its radius) - the boost ball's record; the
+  helpers branch's mGuestEE4 (0xEE4) is the Arrived trigger's point.
+- guest 0xAB0 (the FreezeBeam's counter), 0x9FC (the EnragedTravel's target), 0x1048/0x104C/
+  0x1050 (the EnragedTravel's point), 0xFB0 and 0xFC4 (the EnrageHitReact's time and health) and
+  the guest's own random pair 0x1058/0x105C.
+- lbl_10_bss_118 = 160.0f: fn_10_CDB8 (the module's init, 0x0000CDB8) writes it from
+  lbl_10_rodata_320; it is the freeze beam's turn speed in degrees a second (the rate is
+  lbl_10_rodata_454 = 0.017453292 radians a degree times it). The init also writes
+  lbl_10_bss_11C = lbl_10_rodata_328 = 22.0f, lbl_10_bss_120 = lbl_10_rodata_32C = 0.5f and
+  lbl_10_bss_124 = lbl_10_rodata_324 = 1.9f (the first two are the dodge step's arguments, which
+  the port does not run yet).
+- The boost ball's bit 0x80 of 0xEBC (the DoneRolling trigger reads it).
+
+### The runs
+
+- The coverage run (tools/cov/run.sh with `tools/cov/specs/darksamus.py` and
+  `tools/cov/specs/darksamus_states.con`, the rooftop, the boss u04f7, `fsm <boss> <state>` for
+  each state): every state ran with all three messages - the Activate (0), the Update (1) and
+  the Deactivate (2) - and the BreakPause trigger's two arms (the key 0 -> ret 0 and the key 1
+  -> ret 1).
+- The forcing run (the same fight with the members written at the trigger's entry, the arms
+  cycling over the hits): the DoneRolling trigger's eight arms, seven of them forced (the first
+  one, no boost ball, is the natural one):
+  | arm | the members written | the answer |
+  |---|---|---|
+  | no boost ball (the uid 0xE38 is invalid) | the natural one | false |
+  | the roll's time 0xEA4 is over | mBoostBallUid = 1, mGuestEA4 = 3.0 | true |
+  | a boost hint and its byte 0xEC8 is set | mBoostBallUid = 1, mGuestEA4 = 0, mBoostHintUid = 2, mGuestEC8 = 1 | true |
+  | a boost hint and its byte 0xEC8 is clear | the same with mGuestEC8 = 0 | false |
+  | the bit 0x80 of 0xEBC | mBoostBallUid = 1, mGuestEA4 = 0, mBoostHintUid = invalid, mBoostBallFlag80 = 1 | true |
+  | the roll's other time 0xEA8 is over | the same with mGuestEA8 = -1000.0 | true |
+  | the distance test, the point at the origin | the same with mGuestEA8 = 1000.0 and the point 0 | true |
+  | the distance test, the point at the actor | the same with the point at the actor | false |
+- The Arrived trigger is not evaluated by the fight (the coverage run: 0 hits), so its arms were
+  not run and it keeps no marker.

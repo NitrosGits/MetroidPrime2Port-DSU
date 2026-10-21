@@ -944,29 +944,6 @@ void CDarkSamus::UpdateSafePosition(CStateManager& mgr) {
   mHasSafePos = 1;
 }
 
-// fn_10_8698 (0x00008698, 0xDC bytes): the taunt command over a state's messages - Activate
-// delivers it (the animation state byte 0x6B4 goes to 1 = kAS_Ready, 0x000086D8..0x00008700),
-// Update re-delivers it while the DOL's ShouldRetry answers true (0x00008708..0x00008738, the
-// animation state 0x10 = pas::kAS_Taunt) and Deactivate ends the state (the byte goes to 0 =
-// kAS_NotReady, 0x00008744). The command goes to the command manager's taunt slot (0x2B0), the
-// melee attack command of fn_10_8764 goes to the melee slot (0x180).
-void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
-  switch (msg) {
-  case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
-    BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(type));
-    break;
-  case kStateMsg_Update:
-    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
-      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(type));
-    }
-    break;
-  case kStateMsg_Deactivate:
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    break;
-  }
-}
-
 // fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).
 //
 // The health info's current health (the base's GetHealthInfo - the vtable slot 0x3C - and the
@@ -1010,10 +987,11 @@ bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
 // lbl_10_rodata_190 = 6.0f against the elapsed time 0x8B0 (0x000062D0..0x000062E4) answers false
 // while the pause is still running (0x000062E8), and lbl_10_rodata_194 = 20.0f plus the same
 // offset (0x000062F0..0x00006300) answers true when it is over (0x00006304). Otherwise the
-// distance to the point 0xEE4/0xEE8 (mGuestEE4/mGuestEE8) in the XY plane - the z is
-// lbl_10_rodata_13C = 0.0f, the store at 0x00006348 overwrites the z difference - against
+// distance to the point 0xEE4/0xEE8 (the helpers branch's mGuestEE4) in the XY plane - the z
+// is lbl_10_rodata_13C = 0.0f, the store at 0x00006348 overwrites the z difference - against
 // lbl_10_rodata_15C = 3.0f decides (the magnitude at 0x0000634C, the compare at 0x00006358).
-// @ fn_10_62B4
+// Unmarked: the fight never evaluates this trigger (the coverage run: 0 hits), so its arms
+// were not run.
 bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
   if (mGuestCD0 == 0) { // 0x000062C0
     if (6.f + mGuestF64 > mElapsedTime) { // 0x000062E0
@@ -1024,8 +1002,10 @@ bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
     }
   }
   const CVector3f pos = GetTranslation();
-  const CVector3f flat(pos.GetX() - mGuestEE4, pos.GetY() - mGuestEE8, 0.f); // 0x00006348
-  return flat.Magnitude() < 3.f;                                              // 0x00006358
+  // 0xEE4/0xEE8 (the helpers branch's mGuestEE4, the path find's fallback destination) and the
+  // z is lbl_10_rodata_13C = 0.0f (the store at 0x00006348 overwrites the z difference).
+  const CVector3f flat(pos.GetX() - mGuestEE4.GetX(), pos.GetY() - mGuestEE4.GetY(), 0.f);
+  return flat.Magnitude() < 3.f; // 0x00006358
 }
 
 // fn_10_1BB08 (0x0001BB08, 0x100 bytes): the AnyIncomingMissiles trigger. The near list (the
@@ -2594,8 +2574,8 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float) {
 // fn_10_6E38 (0x00006E38, 0xDC bytes): the EnragedTravel state. Every message reads the player's
 // aim position (the state manager's player at 0x14FC, the vtable's slot 0x54 at 0x00006E78; the
 // guest's extra argument &lbl_10_rodata_1AC = 0.5f has no host counterpart, the dt is 0.5f).
-// Activate (0x00006E90) runs fn_10_6F90 - the travel, a stateless one the helper lanes port -
-// and forgets the target (0x9FC = -1, 0x00006EC4). The other messages measure the aim position
+// Activate (0x00006E90) runs fn_10_6F90 - the travel, the helpers branch's
+// FindPathToDestination - and forgets the target (0x9FC = -1, 0x00006EC4). The other messages measure the aim position
 // against the point 0x1048/0x104C/0x1050 (the squared distance at 0x00006EEC..0x00006EF4
 // against lbl_10_rodata_1B0 = 16.0f at 0x00006EF8) and run fn_10_6F90 when it is bigger
 // (0x00006F10); then the player's halfword at its +8 goes to 0x718 (0x00006F30 - the host's
@@ -2604,16 +2584,16 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float) {
 // message then runs fn_10_6DAC (0x00006F4C - a stateless one the helper lanes port),
 // fn_10_1D860 (the additive animation, 0x00006F5C) and fn_10_11334 (the glide emitter,
 // 0x00006F68).
-void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float) {
+void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("EnragedTravel", msg);
   const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.5f); // 0x00006E88
   if (msg == kStateMsg_Activate) {
-    FsmStandIn("fn_10_6F90", "state EnragedTravel's travel"); // 0x00006EBC
-    mGuest9FC = -1;                                            // 0x00006EC4
+    FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006EBC
+    mGuest9FC = -1;                     // 0x00006EC4
   } else {
     const CVector3f d(aim.GetX() - mGuest1048, aim.GetY() - mGuest104C, aim.GetZ() - mGuest1050);
     if (CVector3f::Dot(d, d) > 16.f) { // 0x00006EF8 (the squared distance)
-      FsmStandIn("fn_10_6F90", "state EnragedTravel's travel"); // 0x00006F10
+      FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006F10
     }
     // 0x00006F30: the player's halfword at its +8 goes to 0x718; the port has no counterpart.
     // 0x00006F34: the path find (the guest's CPathFindNavigation at 0x6F4); not in the port.
