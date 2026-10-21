@@ -46,7 +46,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x2718	0x58	CSandworm	[?] Descend helper	method	B	B320	-	WP3
 0x2770	0x78	CSandworm	[?] BeginAttack helper	method	B	B85C	-	WP4
 0x27E8	0x74	CSandworm	[?] BeginAttack helper	method	B	2770	-	WP4
-0x285C	0x94	CSandworm	SAttackHistory::~SAttackHistory (x1490)	member-dtor	B	1223C	-	WP1
+0x285C	0x94	CSandworm	SAttackHistory::~SAttackHistory (x1490)	compiler-dtor	H	1223C	-	WP1
 0x28F0	0x18	CSandworm	SAttackHistory::SAttackHistory (x1490)	member-ctor	B	12D68 14010	-	WP1
 0x2908	0x8C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	H	-	[?] compiler-emitted dtor	-
 0x2994	0x29C	CSandworm	RenderIngSnatchingTransition [slot 0x144]	virtual	B	data_9C8	-	WP7
@@ -274,7 +274,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0xEF20	0x30	CSandworm	[?] spine/segment chain helper	method	B	E764	-	WP5
 0xEF50	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	H	-	[?] compiler-emitted dtor	-
 0xEF8C	0x39C	CSandworm	[?] RotateBodyForBombAttack (GetRotation/SetTransform)	method	B	BAB8 BC8C	-	WP6
-0xF328	0x40	CSandworm	[?] EF8C helper	method	B	EF8C	-	WP6
+0xF328	0x40	CSandworm	[?] EF8C helper	template	H	EF8C	-	WP6
 0xF368	0x1C	CSandworm	[?] spine/segment chain helper	method	B	F5B0	-	WP5
 0xF384	0x22C	CSandworm	[?] spine/segment chain helper	method	B	F5B0	-	WP5
 0xF5B0	0x160	CSandworm	[?] spine/segment chain helper	method	B	9CD8 F77C	-	WP5
@@ -320,8 +320,8 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x1223C	0x238	CSandworm	~CSandworm [slot 0x08]	dtor	B	data_88C	-	WP1
 0x12474	0x1E4	CPatterned	~CPatterned body (REL copy)	inline-dol	H	1223C	CPatterned::~CPatterned	-
 0x12658	0x94	[?] x620 member	[?] dtor of x620 member (vtable data_844)	inline-dol	H	12474	[?] CAiKnockBack-type member dtor	-
-0x126EC	0x94	CSandworm	~x1528 (CProjectileInfo+extras)	member-dtor	B	1223C	-	WP1
-0x12780	0x8C	CSandworm	~SPincers (x1770)	member-dtor	B	1223C	-	WP1
+0x126EC	0x94	CSandworm	~x1528 (CProjectileInfo+extras)	compiler-dtor	H	1223C	-	WP1
+0x12780	0x8C	CSandworm	~SPincers (x1770)	compiler-dtor	H	1223C	-	WP1
 0x1280C	0xA4	CSandworm	~SBombParams (x1944)	member-dtor	B	1223C	-	WP6
 0x128B0	0x2B4	CSandworm	[?] FinishConstruction (pincer models, seg ids, clamp impulses)	method	B	12D68 14010	-	WP1
 0x12B64	0x30	rstl::optional<CModelData>/auto_ptr	[?] model holder assign chain (template)	template	H	128B0	[?]	-

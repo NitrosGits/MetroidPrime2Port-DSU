@@ -1241,6 +1241,36 @@ the three places are marked functions (`fn_29_BB8C`, `fn_29_2E8C`), so this is a
 orchestrator, not for a lane: if the strict reading is the right one, those two bodies and
 `fn_29_BF20` have to test the whole byte.
 
+### A.23 The death body's burning arm and the next five triggers (2026-10-21)
+
+**`fn_29_B3C4` (the death body) is now marked.** The one arm that was open - the Ing burning when
+it dies (asm 0x0000B474: the byte at 0x421's bits 1 and 2) - runs with the power bomb: the
+console's `damage <ing> 100 powerbomb` applies the knock-back whose follow-up is
+`kFU_LaggedBurnDeath`, the follow-up burns the Ing, and the death then runs with the lagged bit
+set. The recipe (from the shared lane): `send <ing> Activate; place <ing> player 8; damage <ing>
+100 powerbomb`. The run of 2026-10-21 (area 57) shows the death body three times: `alive 1
+burning 0 lagged 1 form 3` (the burn arm), `alive 1 burning 0 lagged 0 form 6` and `alive 0
+burning 0 lagged 0 form 2` (the not-alive arm and the form 2's death body command). The two
+arms that cannot run are cited: the machine always has a state (the constructor sets it up) and
+the Ing's death always carries a real state (the damage path's `kSS_DeathRattle`), so the "no
+message" arm is unreachable.
+
+**The next five unmarked behaviour functions** are the triggers the FSM2 graph puts in the state
+lists; each was read against the REL and probed in the area 57 run of 2026-10-21 (the probes are
+not committed). None of them is marked: the arms that need the attack pattern's waypoint or a
+safe zone did not run.
+
+| fn | the arms (the asm) | the run | verdict |
+|---|---|---|---|
+| `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is only in the `SetLuredDest` code function's list, and the lure never ran | the port matches; not marked |
+| `fn_29_A340` AttackPatternOver | the attack path flag (0xA348) and the waypoint destination against `kInvalidUniqueId` (0xA35C) | the true arm (the path is followed and the destination is gone) ran with the state forced (`fsm <ing> FollowAttackPattern`); the two false arms did not | the port matches; not marked |
+| `fn_29_AA04` ShouldBecomeIngSpot | the desired form is 3 (0xAA1C) and `!fn_29_AD40` (0xAA24) | the "the desired form is not 3" arm and both of the `IsIngSpot` variants ran (forced); the arms with the desired form set did not - the desired form is only set by the attack pattern's waypoint (0x00008310) | the port matches; not marked |
+| `fn_29_AA4C` ShouldBecomeCorporeal | the desired form is 2 (0xAA64) and `!fn_29_AD54` (0xAA6C) | the "the desired form is not 2" arm only | the port matches; not marked |
+| `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94, the neg/andc/srwi idiom) | the trigger never ran - the area 57 run has no safe zone | the port matches; not marked |
+
+The port's `mSafeZoneCount > 0` is the retail's "the count is not zero" for every count the
+module can hold (the XENZ/XEXZ messages only add and remove one).
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

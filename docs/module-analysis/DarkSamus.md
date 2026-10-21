@@ -834,7 +834,7 @@ transition enters it.
 | --- | --- | --- |
 | 1B658 | predicate false / too far / reflected | yes / yes / yes |
 | 1B658 | normalized / not normalizable; erase oldest / not | yes / dead; yes / yes |
-| 1B9B0 | null-own-exploded / in list / any type; attack 0x800000; typed roll | yes / yes / yes; **no**; **no** (stand-in) |
+| 1B9B0 | null-own-exploded / in list / any type; attack 0x800000; typed roll | yes / yes / yes; **no**; **no** (the typed caller is outside the port, Slice 20) |
 | 138A4 | unmorphed push / morphed | yes / yes |
 | 1382C, 13750, 1367C | single path | yes |
 | 11FA4 | jump re-issue | forced (fsm MeleeAttack, then DiveAttack) |
@@ -900,3 +900,57 @@ transition enters it.
   the host), so its "stop the old effect" calls (0x000099F4, 0x00009A20, 0x00009A68) and
   fn_10_9424's (0x000094EC) have nothing to stop. 9AC4 is unmarked for the arm above.
 
+## Slice 20 (2026-10-21): the reflect chance cache, fn_10_F298
+
+- **The table at guest 0x10A8 is a run-time cache, not loader data.** Every write to the count
+  (0x10A8) and the entries (0x10AC, 12 bytes each: the projectile's uid, a roll at +0x04 and a
+  roll at +0x08) in the REL:
+  - the constructor writes the count 0 (`stw r5, 0x10a8(r31)`, 0x00020270);
+  - fn_10_F100 (0x0000F100) writes an entry and the count + 1 (0x0001F1CC, 0x0001F1E4) - it is
+    called from fn_10_1EE4C (0x0001EED8), the arm of AcceptScriptMsg that handles a hit;
+  - fn_10_F298 (0x0000F298) writes an entry and the count + 1 (0x0001F3C8, 0x0001F3E0) - it is
+    called from fn_10_1B9B0 (0x0001BACC);
+  - fn_10_F210 (0x0000F210) erases the first entry (the shift at 0x0001F240..0x0001F254) and the
+    count - 1 (0x0001F27C).
+  No store to 0x10A8..0x1124 exists in the loader, in AcceptScriptMsg or in any other helper: the
+  count is 0 after the constructor and the entries only ever come from those two roll functions.
+  So the typed arms of fn_10_1B9B0 are alive in retail, but the port has no way in: the only
+  caller in the port is fn_10_1B658, which passes -1 (0x0001B748), and the typed caller
+  (0x0001BBF8, AnyIncomingMissiles fn_10_1BB08) is outside the port.
+- Ported: fn_10_F298 (the roll for a projectile's uid) and fn_10_F210 (the cache's erase), the
+  cache itself (the count and ten entries) and the two floats fn_10_F298 compares - guest 0xC0C
+  (the elapsed time of the last hit, written by AcceptScriptMsg at 0x0001EAF8) and 0xC20 (the
+  elapsed time of the last heavy hit, the HeavyHit state's Deactivate at 0x00010F4C); the
+  constructor writes them lbl_10_rodata_3EC = -1.0f and lbl_10_rodata_410 = -1000.0f
+  (0x0001FEE4, 0x0001FF04). fn_10_1B9B0 now compares fn_10_F298's roll with the stage info's
+  +0x24 (the missiles' first float) as the asm does (`fcmpo` at 0x0001BAD4).
+- The roll: the cache is walked (0x0001F2E4..0x0001F2FC) and the entry's +0x04 answers when the
+  uid is in it (0x0001F2F0). Otherwise, with ten entries (0x0001F300) the first is erased
+  (0x0001F310) and two rolls are made (Range(0.0f, lbl_10_rodata_3F0 = 100.0f), 0x0001F32C and
+  0x0001F348); the time since the last hit or heavy hit (the larger of 0xC0C and 0xC20) shifts
+  them - zero for the first four seconds (lbl_10_rodata_408 = 4.0f, 0x0001F378) and -50.0f
+  (lbl_10_rodata_418 = 50.0f, 0x0001F3B0) for the next four (lbl_10_rodata_414 = 8.0f,
+  0x0001F39C). The uid and the two rolls go into the next entry (0x0001F3C8..0x0001F3D4).
+
+| body | arm | ran |
+| --- | --- | --- |
+| F298 | the uid in the cache / not in it | yes / yes |
+| F298 | the cache with ten entries (the erase) / fewer | yes / yes |
+| F298 | the rolls zeroed (4 s) / -50 (8 s) / unchanged | yes / yes / yes |
+| F210 | the first entry erased | yes |
+
+- The arms ran through a temporary probe (a call to fn_10_F298 in the Think, gone from the tree):
+  1080 rolls on the rooftop (10_cliff_rooftop, boss u04f7), the count 1..10 and then 10 for
+  every roll after the eleventh (the erase), 87 rolls that repeated an uid and its roll (the
+  cache hit), the rolls 0.0 for the elapsed time 0.02..2.98, in [-49.4, 48.8] for 3.02..6.98 and
+  in [0.1, 100.0] from 7.02 - the three time windows.
+- Marked: F298, F210.
+- Unmarked: 1B9B0 - its typed arm needs the typed caller (outside the port) and the 0x800000 arm
+  needs that attack, whose phazon and cannon-ball projectiles the fight does not have.
+- fn_10_F100 (the other writer, the one the hit arm reaches) is outside the port with that arm,
+  so it is not ported; the cache's +0x08 field is written by fn_10_F298 as the asm does.
+- The review's XSTORE hits in fn_10_193A0 (mUseAltScan and mCanDie) were a documentation slip:
+  the header's comments gave the bit masks (0x80, 0x40) where the tool reads the guest's byte
+  offset, so it looked for a store to 0x80. The asm stores the byte 0x97C (0x00019470 and
+  0x0001948C) with the bits 0x80 (the stage's +0x34) and 0x40 (the stage's +0x32 not 1) set by
+  the rlwimi at 0x0001946C and 0x00019488 - the comments now name the byte 0x97C first.
