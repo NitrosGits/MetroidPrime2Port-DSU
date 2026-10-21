@@ -27,7 +27,7 @@
 // The head's AddToRenderer (vtable slot 0x28). The base class's call runs only while the actor
 // is alive: the base's flag byte at 0x420, its 0x40 bit (the word's bit 25), read at asm 0x6320
 // (0x0000631C lbz, 0x00006320 extrwi with the word's bit 25) and tested at asm 0x6324 (beq).
-// The port's stand-in called the base unconditionally, so the head drew itself while it was
+// The port's shell called the base unconditionally, so the head drew itself while it was
 // dead.
 void CSplitterCommandModule::PortAddToRenderer(const CStateManager& mgr) const {
   if (GetAlive()) {
@@ -138,11 +138,11 @@ void CSplitterMainChassis::PortSetAttackTarget(CStateManager& mgr, TUniqueId tar
 // SetIngPossessed__10CPatternedFbR13CStateManager) and the same head call at asm 0xE95C-0xE97C.
 void CSplitterMainChassis::PortSetIngPossessed(bool possessed, CStateManager& mgr) {
   CPatterned::SetIngPossessed(possessed, mgr);
-  if (!possessed) {
-    return;
-  }
-  CSplitterCommandModule* head = TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
-  if (head != nullptr) {
-    head->SetIngPossessed(true, 0.f, mgr);
+  if (possessed) {
+    CSplitterCommandModule* head =
+        TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+    if (head != nullptr) {
+      head->SetIngPossessed(true, 0.f, mgr);
+    }
   }
 }
