@@ -604,6 +604,12 @@ public:
     DeliverCmd(cmd.GetCommandId());
     mAdditiveWeight = cmd;
   }
+  // Without this a CBCWallHangCmd binds to DeliverCmd(const CBodyStateCmd&) and its waypoint id
+  // is dropped; retail callers deliver the id then copy the command into its slot.
+  void DeliverCmd(const CBCWallHangCmd& cmd) {
+    DeliverCmd(cmd.GetCommandId());
+    mWallHang = cmd;
+  }
 #endif
 
   void DeliverCmd(const CBCAdditiveAimCmd& cmd) {
