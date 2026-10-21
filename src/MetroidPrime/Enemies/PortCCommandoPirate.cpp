@@ -1163,9 +1163,8 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
 //     +0xF4 = guest this+0x8B4) and the response type 0x12 = 18 = kWCR_EnemyShielded
 //     (0x000046EC..0x000046F4). The actor's id goes to guest this+0xBC6.
 //   - the blade's (guest this+0xA40): a sphere on the second gun locator (guest this+0xC5F),
-//     the same radius and mass, named "Blade_CollisionActor" (the module's rodata at 0x8A9). Its
-//     collision actor gets the pass-through vulnerability (0x00004814..0x00004820). The actor's
-//     id goes to guest this+0xBC8.
+//     the same radius and mass, named "Blade_CollisionActor" (the module's rodata at 0x8A9). Its collision actor gets the pass-through vulnerability
+//     (0x00004814..0x00004820). The actor's id goes to guest this+0xBC8.
 // The guest then adds the bit 0x8000 (the material 15, kMT_Glass) to the actor's own material
 // filter's exclude list (0x00004830..0x0000487C).
 void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
@@ -1248,24 +1247,23 @@ void CCommandoPirate::x3D64_SetWarpOut(CStateManager& mgr, bool warpOut) {
 // that touched it, and the blade's damage when the blade is out. With the shield up (the byte
 // at guest this+0xC65's 0x04 bit) the sender has to be the shield's collision actor (guest
 // this+0xBC6) and the damage is the shield's charge damage (the block's +0xD8 = guest this+0x898);
-// with the blade out (the 0x20 bit) the sender has to be the blade's collision actor (guest
-// this+0xBC8) and the damage is the blade's damage (the block's +0x0C = guest this+0x7CC). The
+// a sender that is not the shield's actor falls into the blade's path (0x00003A90), so the blade's
+// damage runs with the shield up too. With the blade out (the 0x20 bit) the sender has to be the
+// blade's collision actor (guest this+0xBC8) and the damage is the blade's damage (the block's
+// +0x0C = guest this+0x7CC). The
 // touched object has to be the player, the module's damage timer (guest this+0x440) has to be at
 // or below zero, and the damage is applied with the module's own material filter (its data word
 // 0x3B = kMT_Solid, the type 3 = kFT_IncludeExclude) and the actor's forward direction.
 void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg) {
   TUniqueId actorId = kInvalidUniqueId;
   const CDamageInfo* damage = nullptr;
-  if ((xc65_ & 0x04) != 0) {  // 0x00003A78..0x00003A80, the shield is up
-    if (msg.GetSenderId() != xbc6_) {  // 0x00003A84..0x00003A90
-      return;
-    }
+  // The guest's first path (the shield, the 0x04 bit of the byte at guest this+0xC65) falls into
+  // the second one (the blade) when the sender is not the shield's collision actor (0x00003A90),
+  // so the blade's damage still runs with the shield up.
+  if ((xc65_ & 0x04) != 0 && msg.GetSenderId() == xbc6_) {  // 0x00003A78..0x00003A90
     actorId = xbc6_;
     damage = &mData.mShield.mChargeDamage;  // guest this+0x898
-  } else if ((xc65_ & 0x20) != 0) {         // 0x00003B90..0x00003B98, the blade is out
-    if (msg.GetSenderId() != xbc8_) {        // 0x00003B9C..0x00003BA8
-      return;
-    }
+  } else if ((xc65_ & 0x20) != 0 && msg.GetSenderId() == xbc8_) {  // 0x00003B90..0x00003BA8
     actorId = xbc8_;
     damage = &mData.mBladeDamage;  // guest this+0x7CC
   } else {
