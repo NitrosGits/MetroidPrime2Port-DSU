@@ -143,7 +143,8 @@ Marked by this lane: 9 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, 
 `EFD4` and `DFD4` carry the module session's own markers (their arm tables agree with this
 lane's forcing run), so this lane does not add a second marker there.
 The gcov profile (the coverage build, the natural run and the forced run merged) confirms
-`51C8` as ALL-ARMS.
+`51C8` as ALL-ARMS.  With the module session's own markers the module is at 122 of 262 marked
+(`tools/port_progress.py`).
 
 Not marked, and why:
 
