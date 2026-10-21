@@ -40,10 +40,15 @@ iteration (`platform/include/port_timing.h`), as fast as the machine allows: 100
 took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Console scripts for
 `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
 update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
-Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`), `place`,
-`send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
+Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`; a state in
+an FSM2 sub-machine is entered through it, and the reply names the machine), `place`,
+`send`, `damage` (direct, no projectile; also the combos `darkburst`/`sunburst`/`sonicboom` and
+`powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
 from d units, travelling along dir, for modules that only count projectile hits on a joint).
 `a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
+`grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units
+from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
+A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate lists, rebuilt every 20 updates.
 
 ## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
 
@@ -51,3 +56,23 @@ from d units, travelling along dir, for modules that only count projectile hits 
     python3 tools/sweep_report.py '/tmp/opencode/log_<tag>_*.log'
 
 Parallel software-Vulkan shards can lose the device; confirm verdicts with lone runs.
+
+## Booting into a world and an area
+
+`MP2_WORLD` and `MP2_TELEPORT` take a hex asset id or a name, but they share one slot, and
+`MP2_TELEPORT` is applied second, so it wins - and with the fast harness the separate teleport is
+served *before* the world is loaded, so the area is looked up in the old world and the run ends
+with "[warp] area -1 does not exist in this world". **Give the world and the area in one
+request**: `MP2_WORLD="1baa96c2,2735236b"` (the world, a comma, the area) or
+`MP2_WORLD="42b935e4,01_sand_entrance_dark"` (the area's MLVL name). The area can also be the
+area index, but the index is the one of the world being loaded, so the name is safer.
+
+## Batch smoke (every family, in parallel)
+
+`tools/smoke/run.sh [--build <dir>] [--out <dir>] [--jobs N] [family ...]` boots every family area
+(one game each, on its own X display, console port, card copy and cache dir) and drives it with the
+console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Results land in
+`/tmp/opencode/smoke-<git hash>` by default (the card copied per family is `--save`, default
+`/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
+reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
+

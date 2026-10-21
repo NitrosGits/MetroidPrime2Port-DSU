@@ -322,6 +322,10 @@ public:
   // Port: retail's 0x1144 bit 6, the morph half of the pair. CPlayer only had the unmorph accessor;
   // CIng's grapple clears and restores both (fn_29_6578 asm 0x00006610 / 0x0000692C).
   void EnableEnterMorphBall(bool enabled) { mCanStartMorphTransition = enabled; }
+  // Port (console `grapple`): rebuild the orbit candidate lists on the next update instead of
+  // after up to 20 (UpdateOrbitableObjects' refresh count, retail li 0x14 at 0x80120AF4). A lock-on
+  // press only takes mOrbitNextTargetId, which is picked from those lists.
+  void PortRefreshOrbitCandidates() { mOrbitCandidateRefreshFrames = 0; }
 #endif
   void DetachActorFromPlayer();
   void UpdateScanningState(const CFinalInput& input, CStateManager& mgr, float dt);

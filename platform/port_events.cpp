@@ -179,6 +179,7 @@ struct SHoldPad {
   s8 stickY = 0;
   s8 substickX = 0;
   s8 substickY = 0;
+  unsigned startUpdate = 0; // PortHarness::GameUpdates() at which the hold starts
   unsigned endUpdate = 0; // PortHarness::GameUpdates() at which the hold ends; ignored when forever
   bool forever = false;
   bool used = false;      // a hold was set at some point, so pad 0 must stay connected afterwards
@@ -187,7 +188,8 @@ struct SHoldPad {
 SHoldPad sHold;
 
 bool HoldActive() {
-  return sHold.used && (sHold.forever || PortHarness::GameUpdates() < sHold.endUpdate);
+  return sHold.used && PortHarness::GameUpdates() >= sHold.startUpdate &&
+         (sHold.forever || PortHarness::GameUpdates() < sHold.endUpdate);
 }
 
 // MP2_INPUT="BUTTON@frame[+frames],...": hold BUTTON on pad 0 from that game update for the given
@@ -264,7 +266,8 @@ void RunInputScript(unsigned frame) {
 
 namespace PortInput {
 
-void Hold(u16 buttons, s8 stickX, s8 stickY, s8 substickX, s8 substickY, unsigned updates) {
+void Hold(u16 buttons, s8 stickX, s8 stickY, s8 substickX, s8 substickY, unsigned updates,
+          unsigned delay) {
   sHold.buttons = buttons;
   sHold.stickX = stickX;
   sHold.stickY = stickY;
@@ -273,10 +276,11 @@ void Hold(u16 buttons, s8 stickX, s8 stickY, s8 substickX, s8 substickY, unsigne
   sHold.forever = updates == 0;
   // The next update reads the pad state this iteration sets, so `updates` counts from the update
   // after this one.
-  sHold.endUpdate = PortHarness::GameUpdates() + updates + 1;
+  sHold.startUpdate = PortHarness::GameUpdates() + delay;
+  sHold.endUpdate = sHold.startUpdate + updates + 1;
   sHold.used = true;
-  std::fprintf(stderr, "[input] console holds 0x%x stick %d,%d c-stick %d,%d for %u updates\n",
-               buttons, stickX, stickY, substickX, substickY, updates);
+  std::fprintf(stderr, "[input] console holds 0x%x stick %d,%d c-stick %d,%d for %u updates (in %u)\n",
+               buttons, stickX, stickY, substickX, substickY, updates, delay);
 }
 
 void Clear() {
@@ -286,6 +290,7 @@ void Clear() {
   sHold.substickX = 0;
   sHold.substickY = 0;
   sHold.forever = false;
+  sHold.startUpdate = 0;
   sHold.endUpdate = 0;
 }
 
