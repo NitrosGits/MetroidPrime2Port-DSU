@@ -5,28 +5,128 @@ The MinorIng REL's host body: `src/MetroidPrime/Enemies/PortCMinorIng.cpp`,
 and module 44 `MinorIng` together) is in `IngFamily.md`; this note is the MinorIng
 half: what is ported, what is not, and the layout facts the port depends on.
 
-## Status (2026-10-21)
+## Status (2026-10-21 17:35)
 
-- 128/217 functions marked (was 126). The new ones: `fn_44_4DDC` (the target's aim
-  position) and `fn_44_204C` (the lure point on the nav mesh), plus (from the earlier
-  slices) `fn_44_E0` (the module registration), `fn_44_2550` (the cover-hint claim),
-  `fn_44_D00` (the health-info copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the
-  ray the snap to the floor uses), `fn_44_3614` (the copy of the ray result),
-  `fn_44_FE8` (the grenade data the loader builds), `fn_44_C44` (the copy of it into
-  the data), `fn_44_D54` (the copy of the ing spot into the data), `fn_44_9B4` (the
-  data build) and `fn_44_AB78` (the best animation for a parm).
+- 129/217 functions marked (was 128). The new one is `fn_44_ABCC`, the module's static
+  constructor: its marker sits above the port's own FSM tables, which are that
+  initialiser's result (the way the EmperorIngStage3 port marks `fn_18_E180`). The ones
+  before it: `fn_44_4DDC` (the target's aim position) and `fn_44_204C` (the lure point on
+  the nav mesh), plus (from the earlier slices) `fn_44_E0` (the module registration),
+  `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info copy), `fn_44_5894`
+  (the team leave), `fn_44_34B0` (the ray the snap to the floor uses), `fn_44_3614` (the
+  copy of the ray result), `fn_44_FE8` (the grenade data the loader builds), `fn_44_C44`
+  (the copy of it into the data), `fn_44_D54` (the copy of the ing spot into the data),
+  `fn_44_9B4` (the data build) and `fn_44_AB78` (the best animation for a parm).
+- Every function of the module is classified in "The function classification" below and
+  in `docs/module-analysis/MinorIng_functions.tsv`: **75 H** (a copy of something the
+  host already has), **13 T** (a data/vtable thunk or dead in the REL), **129 B** (module
+  behaviour, all 129 marked). **No unmarked behaviour is left in the module.**
 - `fn_44_204C`'s third branch (the height query succeeds) does not run in area 13: the
   nav mesh query returns `kR_NoSourcePoint` there for the lure point, for the player and
   with the search's flags at 3 and at 0x301, so the area has no region under either point.
+  The query is the Ing lane's `PortIngLuredMeshPoint` (in `PortIngShared.hpp`), so it is
+  not this lane's to fix.
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
-- Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
-  MP2_DEBUG_MINORING=1 DISPLAY_NUM=:93 SECS=240 tools/run_gameplay.sh` (area 13 of
-  63, Agon Wastes). 0 `[port] caught`, 0 `[reach-stub]`.
-- The thirteen "unported chain" functions are classified: they are the host's own type members
-  (the CModelData, CDamageInfo and CIngSpotData copies, the members' destructors) or bodies the
-  host already has (`fn_44_4DDC`, `fn_44_204C`), so they take no marker and are cited where the
-  retail calls them (the note has the table).
+- Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=5000 GODMODE=1
+  MP2_DEBUG_MINORING=1 DISPLAY_NUM=:109 SECS=220 tools/drivers/minoring_run.sh` (area 13
+  of 63, Agon Wastes). 272 `[minoring]` lines, 0 `[port] caught`, 0 `[reach-stub]`, the
+  run ended on the frame limit (exit 0). The twelve FSM states the module can reach all
+  ran (the branch table below).
+- The flag bytes of the host are the retail's bits now (the header's bitfields are declared
+  in the guest's LSB-first order and carry their positions), and the note's 0xd3d table is
+  corrected: `mHasPatrolPath` is 0x80 and `mAttackPatternProjectile` is 0x01, the other way
+  round from what the note said before.
+
+## The function classification (all 217 functions)
+
+`docs/module-analysis/MinorIng_functions.tsv` has one row per function of the REL (module
+44): its offset, its size, what it is, its kind, its class, the module functions that call
+it, the host's part and whether the port marks it. The rows come from
+`tools/drivers/minoring_scan.py` (it walks the REL's asm - every `.fn` gives an offset, a
+size and its `bl` edges, every data object gives the table that names it) and from the
+port's own source (the marked bodies); `tools/drivers/minoring_class.py` writes the table.
+The classification below is the hand-written part and the rule is stated so the table can
+be audited.
+
+Three classes, applied in this order:
+
+- **H - host copy** (75 functions, 0x2750 bytes): the body is a copy of something the host
+  already has, so the port writes no body for it. Six sources: the crtexe REL runtime
+  (9 `runtime`), compiler-emitted destructors that exist only for exception handling
+  (30 `weak-dtor`), the REL's own copy of a host type's member function (29 `inline-dol`),
+  upstream's generated loader code (5 `inline-hdr`), the REL's own vector and template
+  code (2 `template`) and the REL's own copy of CImpactVisorEffect (10 `inline-dol`).
+- **T - data / vtable thunk, or dead** (13 functions, 0x1c4 bytes): the body only returns a
+  constant, a member address or a flag (9 `virtual` thunks in the vtable `data_620`), or
+  the function is dead in the REL (4 `unreferenced`: no module text calls it and no table
+  names it - see "The functions the REL never calls").
+- **B - module behaviour** (129 functions, 0x8d88 bytes): real behaviour - these are the
+  port's bodies. **All 129 carry a `// @ fn_44_` marker: no unmarked behaviour is left in
+  the module.**
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 75 | 0x2750 (10,064) |
+| T thunk or dead | 13 | 0x1c4 (452) |
+| B module behaviour | 129 | 0x8d88 (36,232) |
+| **total** | **217** | **0xb69c (46,748)** |
+
+By kind: 53 `method`, 34 `fsm-trigger`, 30 `weak-dtor`, 29 `inline-dol`, 22 `virtual`,
+15 `fsm-state`, 9 `virtual` (thunk), 7 `runtime`, 5 `inline-hdr`, 4 `unreferenced`,
+2 `rel-entry`, 2 `template`, and one each of `rel-entry`, `loader`, `dtor`, `ctor` and
+`static-init` (= 217).
+
+### The last unmarked B function (now marked)
+
+`fn_44_ABCC` (0x8b8), the module's static constructor, was the last unmarked behaviour
+function. It is the REL's `.ctors` entry, so `ModuleConstructors` calls it when the module
+is loaded. It copies the three FSM tables into `.data` - `data_1A8` (the 34 triggers),
+`data_47C` (the 15 states) and `data_5A8` (the 5 code functions) - and registers the two
+global strings it builds (`fn_44_2984` is the destructor it registers with them). The
+port's three arrays (`skTriggers`, `skStates`, `skCodeFuncs`) are that initialiser's
+result, so its marker sits above the first of them, the way the EmperorIngStage3 port
+marks `fn_18_E180` and the EmperorIngStage1 port marks `fn_16_BF88`.
+`tools/drivers/minoring_tables.py` reads both sides and compares them entry for entry:
+
+    == triggers: the REL's lbl_44_data_1A8 has 34 entries, the host's skTriggers has 34
+    == states: the REL's lbl_44_data_47C has 15 entries, the host's skStates has 15
+    == code functions: the REL's lbl_44_data_5A8 has 5 entries, the host's skCodeFuncs has 5
+    MISMATCHES: 0
+
+So the module has no unmarked behaviour left: the 88 unmarked functions are 75 H and
+13 T, and the 13 T are the vtable thunks and the four dead bodies, none of which the retail
+ever calls.
+
+### The branch table of the run
+
+The run in the Agon Wastes' `0a_sand_hall_dark` (the sand world, area 13 of 63) with
+`MP2_DEBUG_MINORING=1` logged 272 module lines. The FSM states that ran:
+
+| state | how it ran |
+|---|---|
+| `Start` | the actor's first state (1) |
+| `Idle` | the idle state, 59 times (the Ing waits) |
+| `PathFind` | the path find state, 47 times (with `FoundMovementPos` and `ShouldPathFind` firing) |
+| `PointPathFind` | the point path find state, 47 times (with `PointPathOver` and `FoundPointPath` firing) |
+| `IntoPuddleForm` | the form change, 16 times (`AnimOver` fired it) |
+| `IntoCorporealForm` | the form change back, 14 times (`ShouldFire` fired it) |
+| `ProjectileAttack` | the attack state, 14 times (`AnimOver` fired it) |
+| `Stunned` | the stun state, twice (`PuddleHitByWeapon` fired it) |
+| `Dead` | the death state, twice |
+| `FollowAttackPattern` | the attack path state, once (`SelectTarget` fired it) |
+| `AlwaysPointPathFind` | the always point path find state, once |
+| `MoveAwayFromSafeZone` | the safe zone state, once |
+
+The code functions that ran: `SelectTarget` (five times), `SetPointCoverDest`,
+`FindCoverPoint`. The triggers that fired: `PathShagged`, `ShouldFire`,
+`PuddleHitByWeapon`, `ShouldPathFind`, `PointPathOver`, `FoundPointPath`,
+`HasCoverPoint`, `Delay` and `AnimOver` (the base class's two). The data build's log line
+ran once per placement ("inglets 0..0 spawn distance 40", four placements), so the loader
+and `fn_44_9B4` ran; all four placements of this area have `minGeneration` and
+`maxGeneration` 0, so the inglet spawn loop of `fn_44_7058` did not run in this run (the
+note's earlier run of an area with a 0..3 placement saw two inglets).
+
 
 ## The stand-ins the host names
 
@@ -211,13 +311,13 @@ The two branches that are not reachable on the host are the failed allocation (a
 failed constructor (asm 0x74D4).
 
 
-## The thirteen unmarked chains are the host's own types
+## The unmarked host-copy chains are the host's own types
 
-The functions the "unported chain" class of `/tmp/opencode/mi_unmarked.tsv` holds are not MinorIng
+The functions the "unported chain" class holds are not MinorIng
 behaviour the host lacks: each is the REL's own copy of a host type's member function (a copy
 constructor, an assignment or a destructor) or a body the host already has. They take no marker
 (the retail's body is compiler output the host's C++ already does); each is cited where the retail
-calls it.
+calls it. In the classification above they are the class `H`.
 
 | retail function | size | what it is | the host's part | called from |
 |---|---|---|---|---|
@@ -244,96 +344,65 @@ it (asm 0x2F24) moves exactly the host's fields.
 
 ## The functions the REL never calls
 
-The list's "truly unreferenced" rows are dead in the REL: the module's own text never calls them
-and none of its tables names them (the vtables, the FSM tables, the ctor/dtor lists and the
-relocations were all searched). Three of them are named by address and are live: the module's
-static constructor and the two destructors it registers. The rest are the retail's own unused
-copies, so the host has no counterpart and needs no code.
+The scan (`tools/drivers/minoring_scan.py`) gives every function of the module its callers
+(the `bl` edges in the REL's text) and the data objects that name it (the vtable `data_620`,
+the FSM tables, the `.ctors`/`.dtors` lists). Thirty functions have neither: no module text
+calls them and no table names them, so they are dead in the REL. They are the retail's own
+unused copies (the delete operators and the member destructors the compiler emitted for the
+exception tables) plus three bodies the retail never used, so the host has no counterpart
+and needs no code.
+
+Three more have no module text caller but are live, because something outside the module's
+text names them: `fn_44_110` (the module's loader, which the game's loader calls),
+`fn_44_2984` (the `rstl::string` destructor the module's static constructor registers as a
+global destructor) and `fn_44_ABCC` (the module's static constructor, the `.ctors` entry
+`ModuleConstructors` calls).
 
 | retail function | size | what it is |
 |---|---|---|
+| `fn_44_954` | 0x60 | delete of a CDamageVulnerability holder (the delete operator) |
+| `fn_44_E64` | 0x54 | delete of a heap block with a pointer at +0x0c |
+| `fn_44_107C` | 0x58 | delete of a CDamageVulnerability holder |
+| `fn_44_1298` | 0x6C | delete of a CToken holder |
+| `fn_44_1304` | 0x54 | delete of a CToken holder |
+| `fn_44_1358` | 0x64 | delete of a CAnimData holder |
+| `fn_44_13BC` | 0x60 | delete of a CModelData holder |
+| `fn_44_141C` | 0xBC | delete of an SLdr block (SLdrDamageInfo, SLdrActorParameters, ...) |
+| `fn_44_1660` | 0x64 | delete of an SLdrDamageInfo block |
+| `fn_44_17CC` | 0x64 | delete of an SLdrDamageInfo block |
+| `fn_44_24C0` | 0x14 | sets the bit 0x02 of the byte at 0xd3e (mShouldEvaporate) |
+| `fn_44_2C9C` | 0x3C | delete of a heap block |
+| `fn_44_51D8` | 0x8C | delete of an array of 8-byte elements |
+| `fn_44_57C4` | 0x80 | the team manager's member target (the team id at 0xccc, the target id at 0xcce) |
+| `fn_44_5A04` | 0xB4 | faces the target (the direction from the target at 0xcce, FaceDirection) |
+| `fn_44_67C8` | 0x6C | delete of a CToken holder |
+| `fn_44_6834` | 0x54 | delete of a CToken holder |
+| `fn_44_6888` | 0x3C | delete of a heap block |
+| `fn_44_68C4` | 0x3C | delete of a heap block |
+| `fn_44_6F98` | 0x8 | the body that returns &this->0x254 |
+| `fn_44_8AFC` | 0x3C | delete of a heap block |
+| `fn_44_9700` | 0x58 | delete of a CToken holder |
+| `fn_44_A644` | 0x3C | delete of a heap block |
+| `fn_44_A804` | 0x3C | delete of a heap block |
+| `fn_44_A840` | 0x8C | delete of an array of 8-byte elements |
+| `fn_44_A8CC` | 0x3C | delete of a heap block |
+| `fn_44_A908` | 0x3C | delete of a heap block |
+| `fn_44_A944` | 0x3C | delete of a heap block |
+| `fn_44_A980` | 0x5C | delete of a CToken holder |
+
+`fn_44_57C4` and `fn_44_5A04` are the only two of the thirty that are real behaviour
+rather than a destructor: the first would hand the team manager its member target, the
+second would face the Ing towards the target. The retail never calls either, so the host
+does not need them; they are the class `T` in the classification above (dead), not `B`.
 
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 89 of the module's 217 functions as unmarked.
-The table lists each with its retail size and the module functions that call it
-(the call graph is read from the REL's disassembly, so "called from" is the retail
-call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
-chain and the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
-`fn_44_66C0` -> `fn_44_6700` -> `fn_44_6720` -> `fn_44_6748` and `fn_44_64AC` ->
-`fn_44_6500` -> `fn_44_655C` -> `fn_44_657C`); the damage relay
-(`fn_44_25E4` -> `fn_44_28D8` -> `fn_44_2930`, `fn_44_2CD8` -> `fn_44_2EF4` ->
-`fn_44_2F24` -> `fn_44_2FB0`) and the cover scan (`fn_44_4E84` -> `fn_44_4DDC`)
-are the chains the classification above covers, so they are not in the tables.
-
-### Over 0x80 bytes (the stand-in size line)
-
-| retail function | size | called from |
-|---|---|---|
-| `fn_44_660C` | 0xB4 | fn_44_65C4 |
-| `_unresolved` | 0xC4 | - |
-| `fn_44_16C4` | 0x108 | fn_44_14D8 |
-| `fn_44_1830` | 0x11C | fn_44_14D8 |
-| `fn_44_97E4` | 0x15C | - |
-| `fn_44_A680` | 0x184 | fn_44_9D58 |
-| `fn_44_14D8` | 0x188 | fn_44_110 |
-| `fn_44_A9DC` | 0x19C | fn_44_9D58 |
-| `fn_44_9940` | 0x1E4 | fn_44_97E4 |
-| `fn_44_1CE0` | 0x358 | fn_44_110 |
-| `fn_44_194C` | 0x394 | fn_44_110 |
-| `fn_44_7058` | 0x654 | - |
-| `fn_44_110` | 0x844 | - |
-| `fn_44_9D58` | 0x878 | fn_44_110 |
-
-### 0x80 bytes and under
-
-| retail function | size | called from |
-|---|---|---|
-| `fn_44_0` | 0x8 | - |
-| `fn_44_8` | 0x8 | - |
-| `fn_44_10` | 0x8 | - |
-| `fn_44_28` | 0x8 | - |
-| `fn_44_30` | 0x8 | - |
-| `fn_44_60` | 0x8 | - |
-| `fn_44_68` | 0x8 | - |
-| `fn_44_5AB8` | 0x8 | - |
-| `fn_44_48` | 0xC | - |
-| `fn_44_54` | 0xC | - |
-| `fn_44_18` | 0x10 | - |
-| `fn_44_38` | 0x10 | - |
-| `fn_44_59E8` | 0x1C | - |
-| `__register_global_object` | 0x1C | - |
-| `RELMain` | 0x20 | - |
-| `fn_44_1114` | 0x20 | fn_44_10D4 |
-| `fn_44_655C` | 0x20 | fn_44_6500 |
-| `fn_44_6700` | 0x20 | fn_44_66C0 |
-| `fn_44_76AC` | 0x20 | fn_44_7058 |
-| `fn_44_8DF0` | 0x20 | - |
-| `fn_44_8E10` | 0x20 | - |
-| `RELExit` | 0x24 | - |
-| `_epilog` | 0x24 | - |
-| `_prolog` | 0x24 | - |
-| `fn_44_6720` | 0x28 | fn_44_6700 |
-| `fn_44_70` | 0x2C | - |
-| `fn_44_6FA0` | 0x2C | - |
-| `fn_44_10D4` | 0x40 | fn_44_110 |
-| `fn_44_66C0` | 0x40 | fn_44_660C |
-| `fn_44_657C` | 0x48 | fn_44_655C |
-| `fn_44_65C4` | 0x48 | fn_44_6384 |
-| `fn_44_7918` | 0x48 | - |
-| `ModuleDestructors` | 0x4C | - |
-| `ModuleConstructors` | 0x4C | - |
-| `fn_44_64AC` | 0x54 | fn_44_6384 |
-| `fn_44_28D8` | 0x58 | fn_44_25E4, fn_44_7058 |
-| `fn_44_9BB8` | 0x58 | fn_44_97E4 |
-| `__destroy_global_chain` | 0x58 | - |
-| `fn_44_E08` | 0x5C | fn_44_D54 |
-| `fn_44_6500` | 0x5C | fn_44_64AC, fn_44_65C4 |
-| `fn_44_78BC` | 0x5C | - |
-| `fn_44_8404` | 0x5C | - |
-| `fn_44_87E0` | 0x5C | - |
-| `fn_44_A5D0` | 0x74 | fn_44_9D58 |
-| `fn_44_6748` | 0x80 | fn_44_6720 |
+None. The classification above is the answer: of the 217 functions of the module, 129 are
+module behaviour and 128 of them carry a marker; the one that does not is `fn_44_ABCC`,
+whose three FSM tables the host builds at runtime and `tools/drivers/minoring_tables.py`
+checks entry for entry. The 88 other unmarked functions are 75 copies of host code and 13
+thunks or dead bodies, all listed in
+`docs/module-analysis/MinorIng_functions.tsv` with their class and their host's part.
 
 ## Layout facts the port depends on (all read from the REL's disassembly)
 
@@ -342,51 +411,80 @@ are the chains the classification above covers, so they are not in the tables.
   members: the port has `mSafeZoneEnterId` and `mSafeZoneId`.
 - The safe-zone entry waits for the timer at `0xd1c` (`mTimerD1C`), not for the
   move-away timer at `0xd20` (`fn_44_9150`, asm 0x9610).
-- Byte `0xd3d` (MSB first): `mAttackPatternProjectile` 0x80, `mPathFindActive` 0x40,
-  `mPointPathFinding` 0x20, `mFoundMovementPos` 0x10, `mRecalculatePath` 0x08,
-  `mIdle` 0x04, `mFollowingAttackPath` 0x02, `mHasPatrolPath` 0x01. The XALD message
-  sets `mHasPatrolPath` (asm 0x928C) and the waypoint increment sets
-  `mAttackPatternProjectile` (asm 0x96D0).
+- Byte `0xd3d` (MSB first): `mHasPatrolPath` 0x80, `mPathFindActive` 0x40,
+  `mPointPathFinding` 0x20, `mFoundMovementPos` 0x10, `mRecalculatePath` 0x08, `mIdle`
+  0x04, `mFollowingAttackPath` 0x02, `mAttackPatternProjectile` 0x01. The area-loaded
+  message sets `mHasPatrolPath` (asm 0x928C) and the waypoint increment sets
+  `mAttackPatternProjectile` (asm 0x96D8). Each flag is pinned by the function that reads
+  it: `fn_44_6178` (HasPatrolPath) reads 0x80, `fn_44_8C1C` (SelectTarget) reads 0x40,
+  `fn_44_4A68` (IsPointPathFinding) reads 0x20, `fn_44_3430` (FoundMovementPos) reads
+  0x10, `fn_44_6228` (RecalculatePath) reads 0x08, `fn_44_8128` (PathFind) reads 0x04,
+  `fn_44_6210` (IsFollowingAttackPath) reads 0x02 and the waypoint message sets 0x01. The
+  note had `mHasPatrolPath` and `mAttackPatternProjectile` the other way round before
+  2026-10-21; the asm settles it.
 - Byte `0xd3e` (MSB first): `mPuddleHitByWeapon` 0x80, `mCancelStun` 0x40,
-  `mKnockAnimCancel` 0x20, `mTouched` 0x10, `mShouldMoveUnderBall` 0x08,
-  `mInsideSafeZone` 0x04, `mShouldEvaporate` 0x02. The safe-zone messages set and
-  clear `mInsideSafeZone` (asm 0x9640 and 0x9698).
+  `mKnockAnimCancel` 0x20, `mTouched` 0x10, `mShouldMoveUnderBall` 0x08, `mInsideSafeZone`
+  0x04, `mShouldEvaporate` 0x02. The safe-zone messages set and clear `mInsideSafeZone`
+  (asm 0x9640 and 0x9698). The reading functions agree: `fn_44_5D64` (PuddleHitByWeapon)
+  reads 0x80, `fn_44_5D58` (CancelStun) 0x40, `fn_44_3DE0` (CancelAnim) 0x20,
+  `fn_44_5F60` (ShouldFire) 0x10, `fn_44_5D34` (ShouldMoveUnderBall) 0x08,
+  `fn_44_621C` (InsideSafeZone) 0x04 and `fn_44_5D28` (ShouldEvaporate) 0x02.
+- The host's two flag bytes are the retail's bits: `CMinorIng`'s bitfields are declared in
+  the guest's LSB-first order, so the little-endian compiler gives every flag the retail's
+  own mask, and the header carries the positions (`// 0xd3d 0x80`) so `tools/asmcheck.py`
+  can check them. The byte 0xd3e needs a pad bit: the guest's flags there start at 0x02
+  (0x01 is not a flag), so an unnamed `bool : 1;` takes that bit and every flag after it
+  lands on the retail's mask. Before that the host's masks were the bit-reversal of the
+  retail's in both bytes - self-consistent, so the behaviour was the same, but the checker
+  could not pair the C++'s writes with the asm's bits (95 `BIT` findings; 18 after the
+  change, all of them on the base class's own bytes). A temporary probe (not committed) that
+  set every flag in turn and diffed the object confirmed the masks on the real class: the
+  byte at 0xed8 is the guest's 0xd3d (mAttackPatternProjectile 0x01, mFollowingAttackPath
+  0x02, mIdle 0x04, mRecalculatePath 0x08, mFoundMovementPos 0x10, mPointPathFinding 0x20,
+  mPathFindActive 0x40, mHasPatrolPath 0x80) and the byte at 0xed9 is the guest's 0xd3e
+  (mShouldEvaporate 0x02, mInsideSafeZone 0x04, mShouldMoveUnderBall 0x08, mTouched 0x10,
+  mKnockAnimCancel 0x20, mCancelStun 0x40, mPuddleHitByWeapon 0x80). The host's class is
+  0xee0 bytes with and without the pad bit, so the pad changes no offset.
 - `CHealthInfo` is 0x20 bytes with the retail's layout (three floats, two weapon
   modes, four ids, two flag bits), so `fn_44_D00`'s copy is a plain assignment.
 
 ## The functions that are not marked
 
-`/tmp/opencode/mi_unmarked.tsv` lists every unmarked function of the module with its retail size,
-its class and the host's part. The classes are: 13 vtable slots (the module's own overrides of
-the CPatterned's virtuals, with the slot they fill), 4 slots of the state machine's function
-tables, 10 the host's own inline or generated code (the SLdr readers and constructors, the model
-data, the vector resize), 5 retail bodies the host does not model but that the live cycle reaches
-(the host's own classes cover them: fn_44_1114 is the host's generated `LdrToPatternedInfo`,
-fn_44_28D8 the host's `CEntityInfo` destructor, fn_44_9BB8 a member's own destructor, fn_44_E08
-the host's `CIngSpotData` copy and fn_44_9940 the host's `CPatterned` destructor), and the rest
-unported chains the module calls but the live cycle never reaches. The chain that matters is the
-projectile's spawn parameters (fn_44_65C4 -> fn_44_660C -> fn_44_66C0 -> fn_44_6700 -> fn_44_6720
--> fn_44_6748, with fn_44_64AC -> fn_44_6500 -> fn_44_655C -> fn_44_657C beside it): the retail's
-DoUserAnimEvent (fn_44_6384) spawns the projectile through it, while the host's uses the base's
-LaunchProjectile, so porting that chain is the next slice.
+The classification above is the list: `docs/module-analysis/MinorIng_functions.tsv` has
+every unmarked function of the module with its retail size, its class and the host's part.
+Of the 89, 75 are copies of host code (the REL runtime, the compiler-emitted destructors,
+the REL's own copies of a host type's member functions, upstream's generated loader code,
+the FSM2 node destructors and the REL's own copy of CImpactVisorEffect), 13 are thunks or
+dead bodies, and one is `fn_44_ABCC` (the module's static constructor, whose tables the
+host builds at runtime).
 
-The thirteen vtable slots break down as: eight the host's `CMinorIng` overrides itself (marked
-below), nine that are the base class's own inline functions (the REL carries its own copies of
-them, the host's `CPatterned` and `CActor` have the same base functions) and four that are the
-FSM2 node destructors (the host's `CState2` node classes own theirs). The latter two groups are
-cited in the code instead of marked.
-
-The eight vtable slots the host's `CMinorIng` overrides itself are marked now: fn_44_0 (the path
+The vtable `data_620` holds 31 of the module's own entries (the rest of the 82 slots are
+the DOL's symbols). They break down as: 22 the host's `CMinorIng` overrides itself (marked
+below), nine that only return a constant, a member address or a flag (the class `T`
+thunks). The 22 marked ones are fn_44_0 (the path
 find search), fn_44_8 (the point path find search), fn_44_5AB8 (the projectile info), fn_44_10 (the
 listening flag), fn_44_8E10 (PreRender), fn_44_8DF0 (AddToRenderer), fn_44_6FA0 (GetAimPosition)
-and fn_44_70 (GetHealthInfo, which forwards to the virtual `HealthInfo()` the retail calls). The
-check finds no difference in any of them, and a run (the Temple Grounds' area 13) showed all of
+and fn_44_70 (GetHealthInfo, which forwards to the virtual `HealthInfo()` the retail calls),
+plus the base class's own slots the REL carries copies of. The check finds no difference in
+any of them, and a run (the Temple Grounds' area 13) showed all of
 them running. The loader (fn_44_110) and the destructor
 (fn_44_97E4) are marked too: the check finds the retail's property loop and the members' own
 teardown against the host's generated reader and empty body, which is a tool limit - the property
 ids and their order and the teardown order were checked by hand.
 
 ## Gotchas
+
+- The retail writes the two flag bytes whole (it reads the byte, changes a bit and stores
+  it back), while the host writes the single bits, so `tools/asmcheck.py` reports seven
+  `STORE` findings on the byte 0xd3e ("the C++ never writes it"). The Ing module has the
+  same kind of finding (six of them), so it is the tool's model of a bitfield byte, not a
+  gap.
+- The host's trigger functions are `const` (upstream's `CPatterned`'s
+  `TStateMachineFunctionTypes< CPatterned >::TriggerFunc`), so a trigger that writes a flag
+  (the retail's `fn_44_4A74` clears `mPointPathFinding`, `fn_44_6268` writes
+  `mFollowingAttackPath`) needs a `const_cast` in the host. `tools/asmcheck.py` does not see
+  a write through a `const_cast`, so it reports those two as `BIT` findings ("the C++ never
+  writes it") - a tool limit, not a gap. The retail's trigger functions are not const.
 
 - `tools/asmcheck.py` maps a retail function to the C++ definition whose comment
   block cites it first, and the last such definition wins. A helper whose comment

@@ -778,10 +778,14 @@ set(MP_MODULE_WallCrawler_SOURCES
 )
 set(MP_MODULE_CommandoPirate_SOURCES
     src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
+    src/MetroidPrime/Enemies/PortCCommandoPirateCore.cpp
 )
 set(MP_MODULE_DarkSamus_SOURCES
     src/MetroidPrime/Enemies/PortCDarkSamus.cpp
     src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamusFsm2.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamusHelpers2.cpp
 )
 set(MP_MODULE_DigitalGuardian_SOURCES
     src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
@@ -845,11 +849,13 @@ set(MP_MODULE_SnakeWeedSwarm_SOURCES
 )
 set(MP_MODULE_SpacePirate_SOURCES
     src/MetroidPrime/Enemies/PortCSpacePirate.cpp
+    src/MetroidPrime/Enemies/PortCSpacePirateHelpers.cpp
     src/MetroidPrime/Enemies/PortCSpacePirateStates.cpp
     src/MetroidPrime/Enemies/PortCSpacePirateTriggers.cpp
 )
 set(MP_MODULE_Splitter_SOURCES
     src/MetroidPrime/Enemies/PortCSplitterCommandModule.cpp
+    src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp
     src/MetroidPrime/Enemies/PortCSplitterMainChassis.cpp
 )
 set(MP_MODULE_SwampBossStage1_SOURCES

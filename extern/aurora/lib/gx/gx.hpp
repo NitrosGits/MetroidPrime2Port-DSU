@@ -500,7 +500,12 @@ struct ShaderConfig {
   u8 vtxStride = 0;
   u8 lineMode : 2 = 0; // 1 = GX_LINES, 2 = GX_LINESTRIP, 3 = GX_POINTS
   u8 fogRangeEnabled : 1 = false;
-  u8 pad1 : 5 = 0;
+  // Port: a blend reading the source alpha under GXSetDstAlpha. The shader writes alpha 1.0 at
+  // blend source 0 (the {Constant, Zero} alpha blend then stores exactly dstAlpha/255) and the TEV
+  // alpha at blend source 1, which the colour blend reads (Src1Alpha), so one draw does what the
+  // alpha-only second draw in push_gx_draw does without dual-source blending.
+  u8 dualSrcAlpha : 1 = false;
+  u8 pad1 : 4 = 0;
   u8 pad2 = 0;
   std::array<AttrConfig, MaxVtxAttr> attrs;
   std::array<TevSwap, MaxTevSwap> tevSwapTable;

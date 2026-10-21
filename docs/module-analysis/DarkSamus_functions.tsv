@@ -201,7 +201,7 @@ offset	size	class	kind	name	callers	marked	state
 0xEA24	0x16C	B	method	fn_10_EA24	1	no	
 0xEB90	0x228	B	method	fn_10_EB90	2	yes	
 0xEDB8	0x14	B	method	fn_10_EDB8	1	no	
-0xEDCC	0x14	T	unreferenced	fn_10_EDCC	0	no	
+0xEDCC	0x14	H	host-copy	fn_10_EDCC	0	no	
 0xEDE0	0x14	B	method	fn_10_EDE0	5	yes	
 0xEDF4	0xE4	B	method	fn_10_EDF4	1	no	
 0xEED8	0x84	B	method	fn_10_EED8	1	no	
@@ -217,7 +217,7 @@ offset	size	class	kind	name	callers	marked	state
 0xF654	0xBC	B	method	fn_10_F654	1	no	
 0xF710	0xF0	B	method	fn_10_F710	1	no	
 0xF800	0x40	B	fsm-trigger	fn_10_F800	0	no	WallCollision
-0xF840	0xC	T	fsm-thunk	fn_10_F840	0	no	Alerted
+0xF840	0xC	T	fsm-thunk	fn_10_F840	0	yes	Alerted
 0xF84C	0x18	T	virtual-thunk	fn_10_F84C	0	no	
 0xF864	0x8	T	fsm-thunk	fn_10_F864	0	yes	DoneTurning
 0xF86C	0xB4	B	fsm-state	fn_10_F86C	0	no	FallFromTheAir
@@ -241,15 +241,15 @@ offset	size	class	kind	name	callers	marked	state
 0x10520	0xD4	B	method	fn_10_10520	1	yes	
 0x105F4	0x40	B	method	fn_10_105F4	13	yes	
 0x10634	0x24	B	fsm-trigger	fn_10_10634	0	no	CanMeleeAttack
-0x10658	0x40	B	fsm-trigger	fn_10_10658	0	no	PlayerTooClose
+0x10658	0x40	B	fsm-trigger	fn_10_10658	0	yes	PlayerTooClose
 0x10698	0x60	B	fsm-trigger	fn_10_10698	0	no	TooMuchDamage
-0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	no	BreakPause
+0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	yes	BreakPause
 0x10710	0x154	B	fsm-state	fn_10_10710	0	no	Pause
 0x10864	0x17C	B	method	fn_10_10864	1	no	
 0x109E0	0x40	B	method	fn_10_109E0	1	no	
 0x10A20	0x44	B	method	fn_10_10A20	1	no	
 0x10A64	0x158	B	method	fn_10_10A64	1	no	
-0x10BBC	0xE0	B	method	fn_10_10BBC	4	no	
+0x10BBC	0xE0	B	method	fn_10_10BBC	4	yes	
 0x10C9C	0x2FC	B	fsm-state	fn_10_10C9C	0	no	HeavyHit
 0x10F98	0x5C	H	host-copy	fn_10_10F98	0	no	
 0x10FF4	0xEC	B	fsm-state	fn_10_10FF4	0	no	Interrupt
@@ -258,7 +258,7 @@ offset	size	class	kind	name	callers	marked	state
 0x11158	0x154	B	fsm-trigger	fn_10_11158	0	no	ShouldReact
 0x112AC	0x3C	B	fsm-trigger	fn_10_112AC	0	no	WasHeavyHit
 0x112E8	0x20	B	fsm-trigger	fn_10_112E8	0	no	PlayerIsMorphball
-0x11308	0x2C	B	method	fn_10_11308	2	no	
+0x11308	0x2C	B	method	fn_10_11308	2	yes	
 0x11334	0xF8	B	method	fn_10_11334	6	no	
 0x1142C	0x118	B	fsm-state	fn_10_1142C	0	no	Patrol
 0x11544	0x1B4	B	fsm-state	fn_10_11544	0	no	Taunt
@@ -283,9 +283,9 @@ offset	size	class	kind	name	callers	marked	state
 0x11EB8	0xEC	B	method	fn_10_11EB8	1	no	
 0x11FA4	0x764	B	fsm-state	fn_10_11FA4	0	yes	DiveAttack
 0x12708	0x5C	H	host-copy	fn_10_12708	0	no	
-0x12764	0x9C	B	method	fn_10_12764	2	no	
+0x12764	0x9C	B	method	fn_10_12764	2	yes	
 0x12800	0x5C	H	host-copy	fn_10_12800	0	no	
-0x1285C	0x7C	B	method	fn_10_1285C	2	no	
+0x1285C	0x7C	B	method	fn_10_1285C	2	yes	
 0x128D8	0x88	B	method	fn_10_128D8	1	no	
 0x12960	0x1A0	B	method	fn_10_12960	2	no	
 0x12B00	0x38	B	method	fn_10_12B00	2	yes	
@@ -316,12 +316,12 @@ offset	size	class	kind	name	callers	marked	state
 0x141BC	0xC8	B	method	fn_10_141BC	2	yes	
 0x14284	0x48	B	fsm-trigger	fn_10_14284	0	no	CanMissileDeflect
 0x142CC	0x28	B	fsm-trigger	fn_10_142CC	0	no	FacingPlayer
-0x142F4	0xB4	B	method	fn_10_142F4	3	no	
+0x142F4	0xB4	B	method	fn_10_142F4	3	yes	
 0x143A8	0xA0	B	fsm-state	fn_10_143A8	0	no	Dead
 0x14448	0x4	T	fsm-thunk	fn_10_14448	0	no	Null
 0x1444C	0x198	B	method	fn_10_1444C	1	no	
 0x145E4	0x64	B	method	fn_10_145E4	3	yes	
-0x14648	0x330	B	method	fn_10_14648	2	no	
+0x14648	0x330	B	method	fn_10_14648	2	yes	
 0x14978	0x3C	H	host-copy	fn_10_14978	0	no	
 0x149B4	0x4C	B	fsm-trigger	fn_10_149B4	0	yes	BreakDash
 0x14A00	0x250	B	method	fn_10_14A00	2	no	
@@ -334,15 +334,15 @@ offset	size	class	kind	name	callers	marked	state
 0x153EC	0x110	B	fsm-state	fn_10_153EC	0	no	SideDash
 0x154FC	0xB4C	B	method	fn_10_154FC	3	no	
 0x16048	0x3D0	B	method	fn_10_16048	1	no	
-0x16418	0xA8	B	method	fn_10_16418	1	yes	
+0x16418	0xA8	B	method	fn_10_16418	1	no	
 0x164C0	0x140	B	method	fn_10_164C0	5	yes	
 0x16600	0xAC	B	method	fn_10_16600	2	yes	
-0x166AC	0x1B4	B	method	fn_10_166AC	1	no	
+0x166AC	0x1B4	B	method	fn_10_166AC	1	yes	
 0x16860	0x124	T	unreferenced	fn_10_16860	0	no	
 0x16984	0x158	B	method	fn_10_16984	2	yes	
 0x16ADC	0x8	B	method	fn_10_16ADC	2	yes	
 0x16AE4	0x38	H	host-copy	fn_10_16AE4	0	no	
-0x16B1C	0x2C	B	method	fn_10_16B1C	5	yes	
+0x16B1C	0x2C	B	method	fn_10_16B1C	5	no	
 0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	no	BreakFreezeBeam
 0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	no	BreakSuperMissile
 0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	no	BreakNormalMissile
@@ -359,15 +359,15 @@ offset	size	class	kind	name	callers	marked	state
 0x17ABC	0x104	B	fsm-state	fn_10_17ABC	0	yes	MeleeDash
 0x17BC0	0xF8	B	fsm-state	fn_10_17BC0	0	yes	MeleeAttack
 0x17CB8	0x34	B	fsm-trigger	fn_10_17CB8	0	no	OutOfMeleeRange
-0x17CEC	0x64	B	method	fn_10_17CEC	8	no	
-0x17D50	0x90	B	method	fn_10_17D50	2	no	
-0x17DE0	0x34	B	method	fn_10_17DE0	2	no	
-0x17E14	0x34	B	method	fn_10_17E14	41	no	
+0x17CEC	0x64	B	method	fn_10_17CEC	8	yes	
+0x17D50	0x90	B	method	fn_10_17D50	2	yes	
+0x17DE0	0x34	B	method	fn_10_17DE0	2	yes	
+0x17E14	0x34	B	method	fn_10_17E14	41	yes	
 0x17E48	0x8	B	method	fn_10_17E48	3	no	
 0x17E50	0x40	T	unreferenced	fn_10_17E50	0	no	
 0x17E90	0x74	B	method	fn_10_17E90	1	yes	
 0x17F04	0x2D8	B	virtual	fn_10_17F04	0	no	
-0x181DC	0x4	T	unreferenced	fn_10_181DC	0	no	
+0x181DC	0x4	H	host-copy	fn_10_181DC	0	no	
 0x181E0	0x58	B	method	fn_10_181E0	2	no	
 0x18238	0x1B0	B	method	fn_10_18238	1	no	
 0x183E8	0x1E4	B	method	fn_10_183E8	1	no	
@@ -388,24 +388,24 @@ offset	size	class	kind	name	callers	marked	state
 0x1905C	0x344	B	method	fn_10_1905C	1	no	
 0x193A0	0x10C	B	method	fn_10_193A0	1	yes	
 0x194AC	0xA0	B	method	fn_10_194AC	1	yes	
-0x1954C	0x150	B	method	fn_10_1954C	1	no	
-0x1969C	0x13C	B	method	fn_10_1969C	1	no	
-0x197D8	0x140	B	method	fn_10_197D8	1	no	
-0x19918	0x104	B	method	fn_10_19918	2	no	
-0x19A1C	0x148	B	method	fn_10_19A1C	1	no	
+0x1954C	0x150	B	method	fn_10_1954C	1	yes	
+0x1969C	0x13C	B	method	fn_10_1969C	1	yes	
+0x197D8	0x140	B	method	fn_10_197D8	1	yes	
+0x19918	0x104	B	method	fn_10_19918	2	yes	
+0x19A1C	0x148	B	method	fn_10_19A1C	1	yes	
 0x19B64	0x670	B	method	fn_10_19B64	1	no	
-0x1A1D4	0xA4	B	method	fn_10_1A1D4	2	no	
-0x1A278	0xD4	B	method	fn_10_1A278	1	no	
-0x1A34C	0xF4	B	method	fn_10_1A34C	2	no	
-0x1A440	0x114	B	method	fn_10_1A440	2	no	
+0x1A1D4	0xA4	B	method	fn_10_1A1D4	2	yes	
+0x1A278	0xD4	B	method	fn_10_1A278	1	yes	
+0x1A34C	0xF4	B	method	fn_10_1A34C	2	yes	
+0x1A440	0x114	B	method	fn_10_1A440	2	yes	
 0x1A554	0x68	B	method	fn_10_1A554	2	no	
-0x1A5BC	0x108	B	method	fn_10_1A5BC	3	no	
-0x1A6C4	0x234	B	method	fn_10_1A6C4	2	no	
-0x1A8F8	0x88	B	method	fn_10_1A8F8	4	no	
-0x1A980	0xB0	B	method	fn_10_1A980	21	no	
-0x1AA30	0x2C	B	method	fn_10_1AA30	5	no	
-0x1AA5C	0x10	B	method	fn_10_1AA5C	1	no	
-0x1AA6C	0x58	B	method	fn_10_1AA6C	3	no	
+0x1A5BC	0x108	B	method	fn_10_1A5BC	3	yes	
+0x1A6C4	0x234	B	method	fn_10_1A6C4	2	yes	
+0x1A8F8	0x88	B	method	fn_10_1A8F8	4	yes	
+0x1A980	0xB0	B	method	fn_10_1A980	21	yes	
+0x1AA30	0x2C	B	method	fn_10_1AA30	5	yes	
+0x1AA5C	0x10	B	method	fn_10_1AA5C	1	yes	
+0x1AA6C	0x58	B	method	fn_10_1AA6C	3	yes	
 0x1AAC4	0x1DC	B	virtual	fn_10_1AAC4	0	no	
 0x1ACA0	0x168	B	method	fn_10_1ACA0	1	no	
 0x1AE08	0xB8	B	method	fn_10_1AE08	1	no	
@@ -416,8 +416,8 @@ offset	size	class	kind	name	callers	marked	state
 0x1B0E0	0x74	B	method	fn_10_1B0E0	1	no	
 0x1B154	0xA8	B	method	fn_10_1B154	1	no	
 0x1B1FC	0x27C	B	virtual	fn_10_1B1FC	0	no	
-0x1B478	0x16C	B	method	fn_10_1B478	28	no	
-0x1B5E4	0x74	B	method	fn_10_1B5E4	1	no	
+0x1B478	0x16C	B	method	fn_10_1B478	28	yes	
+0x1B5E4	0x74	B	method	fn_10_1B5E4	1	yes	
 0x1B658	0x2E0	B	method	fn_10_1B658	2	yes	
 0x1B938	0x78	B	method	fn_10_1B938	1	no	
 0x1B9B0	0x158	B	method	fn_10_1B9B0	3	no	

@@ -2,6 +2,7 @@
 
 #include "encoding.hpp"
 #include "frame.hpp"
+#include "perf.hpp"
 #include "resource_cache.hpp"
 
 #include "clear.hpp"
@@ -600,6 +601,8 @@ RecordedFrame end_recording() {
   frame.stats.lastIndexSize = frame.indices.size();
   frame.stats.lastStorageSize = frame.storage.size();
   frame.stats.lastTextureUploadSize = frame.textureUpload.size();
+  perf::count(AURORA_PERF_DRAWS, g_recorder.drawCallCount);
+  perf::end_frame();
 
   for (auto& array : gx::g_gxState.arrays) {
     array.cachedRange = {};
@@ -828,6 +831,7 @@ PipelineRef pipeline_ref(const clear::PipelineConfig& config) {
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
                        Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {
+  perf::pass_break(AURORA_PERF_BREAK_COPY);
   // Resolve current render pass
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.resolveTarget = std::move(texture);
@@ -1014,6 +1018,7 @@ void begin_offscreen(uint32_t width, uint32_t height) {
   AURORA_ASSERT(g_recorder.active() && g_recorder.currentRenderPass != UINT32_MAX,
                 "begin_offscreen called outside of an active recording frame");
 
+  perf::pass_break(AURORA_PERF_BREAK_OFFSCREEN);
   if (g_recorder.inOffscreen) {
     finish_current_offscreen();
   } else {
@@ -1024,6 +1029,7 @@ void begin_offscreen(uint32_t width, uint32_t height) {
 
 void end_offscreen() {
   ZoneScoped;
+  perf::pass_break(AURORA_PERF_BREAK_OFFSCREEN);
   finish_current_offscreen();
   restore_efb();
 }
@@ -1092,10 +1098,27 @@ bool resolve_pass(const ResolveDesc& desc, ResolvedTargets& out) {
   // Seal the current EFB pass and continue on a new one that loads the existing contents.
   // EFB writes persist into the loading continuation, so content keeps the pass alive even
   // without a consumer.
+  perf::pass_break(AURORA_PERF_BREAK_RESOLVE);
   prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
   enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
   resume_efb_pass_loading(prevPass);
   return true;
+}
+
+void split_pass_for_depth_snapshot() {
+  ZoneScoped;
+  if (!g_recorder.active() || g_recorder.currentRenderPass == UINT32_MAX || g_recorder.inOffscreen) {
+    return;
+  }
+  auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
+  if (prevPass.msaaSamples > 1) {
+    return; // depth_peek reads single-sampled depth only
+  }
+  perf::pass_break(AURORA_PERF_BREAK_DEPTH_SNAPSHOT);
+  prevPass.forceDepthSnapshot = true;
+  prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
+  enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
+  resume_efb_pass_loading(prevPass);
 }
 
 bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSize) {
@@ -1130,6 +1153,7 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   // Seal the current EFB pass, record the task between it and a continuation
   // pass that loads the existing contents. EFB writes persist into the continuation, so
   // content keeps the sealed pass alive even without a consumer.
+  perf::pass_break(AURORA_PERF_BREAK_ENCODER_TASK);
   auto& frame = current_frame_packet();
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();

@@ -1,0 +1,18 @@
+# darksamus_phazonbeam.py's driver: PhazonAttack by statecall, the beam by uevent 27, then the keyed dts.
+@f600 send u04f7 Activate; god 1
+@f640 place u04f7 player 12
+@f643 statecall u04f7 PhazonAttack 0 0.016; statecall u04f7 PhazonAttack 1 0.0135; uevent u04f7 27; statecall u04f7 PhazonAttack 1 0.016
+@f645 statecall u04f7 PhazonAttack 1 0.5; statecall u04f7 PhazonAttack 1 0.5; statecall u04f7 PhazonAttack 1 0.5; statecall u04f7 PhazonAttack 1 0.5
+@f646 statecall u04f7 PhazonAttack 1 0.5; statecall u04f7 PhazonAttack 1 0.5; statecall u04f7 PhazonAttack 1 0.5; statecall u04f7 PhazonAttack 1 0.5
+@f647 statecall u04f7 PhazonAttack 1 0.016; statecall u04f7 PhazonAttack 1 0.0125; statecall u04f7 PhazonAttack 1 0.0131; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0132
+@f648 statecall u04f7 PhazonAttack 1 0.0137; statecall u04f7 PhazonAttack 1 0.0136; statecall u04f7 PhazonAttack 1 0.0138; statecall u04f7 PhazonAttack 1 0.0139; statecall u04f7 PhazonAttack 1 0.0129
+@f649 statecall u04f7 PhazonAttack 1 0.0134; statecall u04f7 PhazonAttack 1 0.0124; statecall u04f7 PhazonAttack 1 0.0134; statecall u04f7 PhazonAttack 1 0.0124
+@f651 statecall u04f7 PhazonAttack 1 0.0126; statecall u04f7 PhazonAttack 1 0.2; statecall u04f7 PhazonAttack 1 0.0129
+@f652 statecall u04f7 PhazonAttack 1 0.0140; statecall u04f7 PhazonAttack 1 0.0141; statecall u04f7 PhazonAttack 1 0.0123; statecall u04f7 PhazonAttack 1 0.0129
+@f653 place u04f7 player 3
+@f655 statecall u04f7 PhazonAttack 1 0.016; statecall u04f7 PhazonAttack 1 0.0128; statecall u04f7 PhazonAttack 1 0.0130
+@f657 statecall u04f7 PhazonAttack 1 0.0127; statecall u04f7 PhazonAttack 1 0.016; statecall u04f7 PhazonAttack 1 0.0135
+@f659 uevent u04f7 18; statecall u04f7 PhazonAttack 1 0.016; uevent u04f7 18; uevent u04f7 18; statecall u04f7 PhazonAttack 1 0.016
+@f661 uevent u04f7 12; statecall u04f7 PhazonAttack 2 0.016; uevent u04f7 28
+@f663 statecall u04f7 PhazonAttack 1 0.016
+@f700 status

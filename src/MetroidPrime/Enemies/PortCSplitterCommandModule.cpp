@@ -331,35 +331,147 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
   }
 }
 
-// The state machine names that are not ported yet: each stands in for the retail
-// function the REL's initialiser puts in the table and logs it once, so the log
-// says which retail body the state machine asked for.
-#define SPLITTER_TRIGGER_STANDIN(name, fn)                                       \
-  bool CSplitterCommandModule::name(CStateManager&, const CTriggerData&) const {  \
-    StandIn(#fn " (the head's " #name " trigger)");                            \
-    return false;                                                                  \
-  }
-#define SPLITTER_STATE_STANDIN(name, fn)                                          \
-  void CSplitterCommandModule::name(CStateManager&, EStateMsg, float) {             \
-    StandIn(#fn " (the head's " #name " state)");                                \
-  }
-#define SPLITTER_CODE_STANDIN(name, fn)                                           \
-  void CSplitterCommandModule::name(CStateManager&, float) {                        \
-    StandIn(#fn " (the head's " #name " code)");                                 \
-  }
-SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
-SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
-SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
-SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
-SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
-SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
-SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
-SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
-#undef SPLITTER_TRIGGER_STANDIN
-#undef SPLITTER_STATE_STANDIN
-#undef SPLITTER_CODE_STANDIN
+// Every state machine name the REL's initialiser installs is ported.
 
 // The state machine entries the area-4 run reaches, whose retail body is ported here.
+
+// fn_75_5864 (the head's HasDockingPath trigger, 0x5864-0x58BC): the "CONN"/"FOLW" connected
+// object (0x588C GetConnectedObject) is valid.
+// The true arm is dead in shipped data: no Splitter head has a CONN/FOLW link in any SCLY or SCGN
+// layer (disc scan); the false arm was not evaluated in any run. No marker.
+bool CSplitterCommandModule::HasDockingPath(CStateManager& mgr, const CTriggerData&) const {
+  return GetConnectedObject(mgr, kSS_Connect, kSM_Follow) != kInvalidUniqueId;
+}
+
+// fn_75_57D4 (the head's DockingPathOver trigger, 0x57D4-0x57F0): the waypoint navigation's
+// destination at 0x6C0 is kInvalidUniqueId (cntlzw/srwi by 5).
+// Not reachable in shipped data: entered after HasDockingPath (fn_75_5864), whose true arm is
+// dead (no CONN/FOLW link). No marker.
+bool CSplitterCommandModule::DockingPathOver(CStateManager&, const CTriggerData&) const {
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
+}
+
+// fn_75_55B0 (the head's PathOver trigger, 0x55B0-0x55F8): with the flag byte 0xF6A's 0x80 bit
+// (SetDockingDest found the chassis) set the base's PathOver decides (0x55C4 extrwi with the
+// word's bit 24, 0x55D0); without it the path is over.
+// Arms: both false ran (04_cliff_contraption 914f1381, the head docking to another chassis after
+// `kill` of a chassis and a head); the 0x80-clear and base true arms forced under gdb.
+// @ fn_75_55B0
+bool CSplitterCommandModule::PathOver(CStateManager& mgr, const CTriggerData& data) const {
+  return (mAutoDestructFlags & 0x80) == 0 || CPatterned::PathOver(mgr, data);
+}
+
+// fn_75_5568 (the head's PathShagged trigger, 0x5568-0x55B0): true when 0xF6A's 0x40 bit is set
+// (0x557C extrwi with the word's bit 25), else the base's PathShagged (0x5588).
+// Arms: both false ran (the same 914f1381 docking run); the 0x40 and base true arms forced under
+// gdb.
+// @ fn_75_5568
+bool CSplitterCommandModule::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
+  return (mAutoDestructFlags & 0x40) != 0 || CPatterned::PathShagged(mgr, data);
+}
+
+// fn_75_5498 (the head's SpawnIdle state, 0x5498-0x5538). Activate (0x54C8): the vector at 0xF24
+// is zeroed (sZeroVector). Update (0x54E8): while the checked chassis id at 0xEFC is invalid it
+// becomes the "CONN"/"ATCH" connected object (0x5518 FindConnectedObject).
+// Arms: every arm ran in 09_cliff_temple_dark (a92f00b3 layer 10, the generated SpawnIdle heads).
+// @ fn_75_5498
+void CSplitterCommandModule::SpawnIdle(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mEditorProperties = CVector3f::Zero();
+  } else if (msg == kStateMsg_Update) {
+    if (mCheckedChassisId == kInvalidUniqueId) {
+      mCheckedChassisId = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
+    }
+  }
+}
+
+// fn_75_4138 (the head's SeekMainChassis state, 0x4138-0x42F8). Activate (0x4184): the animation
+// state is kAS_Ready (1), the locomotion type kLT_Combat (3) and 0xF6A's 0x08 bit is cleared.
+// Update (0x41AC): without a CSplitterMainChassis at 0xEFC (0x41C0) the animation state is kAS_Over
+// (3). With one, its head attach point (fn_75_E68C) is the goal: while the goal is farther than dt
+// * the data's max linear velocity (0x7C4, squared, 0x4234) and the offset is safe the head moves
+// that far toward it (0x42A0 fn_75_2154); otherwise it is put on the goal (0x42B0 SetTranslation)
+// and the animation state is kAS_Over. Deactivate (0x42CC): kAS_NotReady (0).
+// Arms (probed; head u0531 docking to u0521 after `kill u0532`): chassis, far and safe (moving) and
+// near (put on the goal) ran. No chassis forced under gdb (0xEFC kInvalidUniqueId for the first
+// Update, e4). Far but unsafe forced under gdb (the head's x set to -inf for one Update, e11: the
+// offset is not finite, so IsMagnitudeSafe fails; the head is then put on the goal). A finite
+// unsafe offset needs a squared length below 1e-28, not reachable at these coordinates.
+// @ fn_75_4138
+void CSplitterCommandModule::SeekMainChassis(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    mAutoDestructFlags &= ~0x8;
+    break;
+  case kStateMsg_Update:
+    if (const CSplitterMainChassis* chassis =
+            TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mCheckedChassisId))) {
+      const CVector3f goal = chassis->PortHeadAttachPoint();
+      const CVector3f offset = goal - GetTranslation();
+      const float step = dt * mData.mMaxLinearVelocity;
+      if (offset.MagSquared() > step * step && offset.IsMagnitudeSafe()) {
+        PortMoveTo(GetTranslation() + step * offset.AsNormalized(), dt);
+      } else {
+        SetTranslation(goal);
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_3FE0 (the head's FollowDockingPath state, 0x3FE0-0x4138). Every message first runs the
+// waypoint navigation's Patrol (0x6B8, 0x4020). Activate (0x403C): the destination at 0x6C0 is the
+// "CONN"/"FOLW" connected object (0x4058) and the locomotion type kLT_Combat (3). Update (0x407C):
+// with a safe body command move vector the head moves by it times dt * the data's max linear
+// velocity (0x7C4, 0x40F8 fn_75_2154) and faces it (0x4108 FaceDirection).
+// Not reachable in shipped data: entered only through HasDockingPath (fn_75_5864); no Splitter head
+// has a CONN/FOLW link. No marker.
+void CSplitterCommandModule::FollowDockingPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
+  if (msg == kStateMsg_Activate) {
+    mWaypointNavigation.SetDestination(GetConnectedObject(mgr, kSS_Connect, kSM_Follow));
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+  } else if (msg == kStateMsg_Update) {
+    const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
+    const float step = dt * mData.mMaxLinearVelocity;
+    if (move.IsMagnitudeSafe()) {
+      PortMoveTo(GetTranslation() + step * move, dt);
+      BodyController()->FaceDirection(move, dt);
+    }
+  }
+}
+
+// fn_75_3BEC (the head's SetDockingDest code, 0x3BEC-0x3D20): the destination starts as the
+// head's own position and 0xF6A's 0x80 bit is cleared (0x3C40-0x3C48). A CSplitterMainChassis at
+// 0xEFC (0x3C58) makes it 4.0f (lbl_75_rodata_5C) above the chassis's head attach point
+// (fn_75_E68C), sets the bit and sets the chassis's base 0x420 0x80 bit (the host's
+// mHitByPlayerProjectile, 0x3CCC-0x3CD4). The base's path navigation (0x6F4) gets the destination
+// and its face target (0x718) kInvalidUniqueId.
+// Arms: the chassis ran (docking after `kill u0532`); no chassis forced under gdb (0xEFC invalid).
+// @ fn_75_3BEC
+void CSplitterCommandModule::SetDockingDest(CStateManager& mgr, float) {
+  CVector3f dest = GetTranslation();
+  mAutoDestructFlags &= ~0x80;
+  if (CSplitterMainChassis* chassis =
+          TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mCheckedChassisId))) {
+    dest = chassis->PortHeadAttachPoint() + 4.f * CVector3f::Up();
+    mAutoDestructFlags |= 0x80;
+    chassis->SetHitByPlayerProjectile(true);
+  }
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
+}
+
 
 // fn_75_5564 (the head's Start state, 0x4 bytes): the body is a single return, so the state
 // does nothing.
@@ -464,6 +576,9 @@ void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) 
 // the head's own position (0x54, 0x58 and 0x5C - 0x2190-0x21BC) is moved through the head's
 // transform (0x21B0 the transform at 0x24, 0x21CC TransposeRotate) and the result moves the
 // head in one frame (0x21DC MoveInOneFrameOR).
+// Arms: the move ran in every head run; the teleport (the timer above 0) forced under gdb (the
+// 0xEF4 timer set to 10.0f in a 914f1381 run).
+// @ fn_75_2154
 void CSplitterCommandModule::PortMoveTo(const CVector3f& dest, float dt) {
   if (mAutoDestructTimer > 0.f) {
     SetTranslation(dest);
@@ -777,6 +892,7 @@ void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
 // fn_75_6B08. The base call is the retail one: EPatternedAI 0x39 (li r4, 0x39 at 0x00006B68),
 // flavor 0 (li r7, 0x0 at 0x00006B30), movement 1 / collider 1 / body 7 (the stack words at
 // 0x00006B60..0x00006B6C - the head flies), all passed to CPatterned at 0x00006B78.
+// @ fn_75_6B08
 CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string& name,
                                                  const CEntityInfo& info, const CTransform4f& xf,
                                                  const CModelData& modelData,
@@ -798,6 +914,26 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
 // (fn_75_722C: weapon -1, every amount 0.0f, the sounds 0xFFFF); fn_75_1974 fires it.
 , mLaserSweepProjectileInfo(data.mLaserSweepBeamInfo.weaponSystem, CDamageInfo())
 , mOwnVulnerability(*CPatterned::GetDamageVulnerability()) {
+  // fn_75_6B08 @0x00006C04-0x00006D40: the scalar fields. The members' own initializers give the
+  // zeros, the -1s and the invalid ids; these are the rest: the flash colour at 0xF04 is White
+  // (0x6C68), the chassis timer at 0xF14 lbl_75_rodata_90 (3.0f, 0x6CC4), the vector at
+  // 0xF24-0xF2C the transform's Y column (the xf's floats at 0x4, 0x14 and 0x24, 0x6C9C-0x6CDC)
+  // and the look-at offset at 0xF50 the zero vector (0x6D18-0x6D2C).
+  mFlashColor = CColor::White();
+  mChassisTimer = 3.f;
+  mEditorProperties = xf.GetColumn(kDY);
+  mLookAtOffset = CVector3f::Zero();
+  // fn_75_6B08 @0x00006D44-0x00006DA0: the flag byte at 0xF6A is 0x92 (rlwimi of 1 into the
+  // byte's 0x80, 0x10 and 0x02, of 0 into the rest): PathOver waits (0x80), the Dodge flag
+  // (0x10) and the first dock's sound is skipped (0x02, fn_75_3EEC).
+  mAutoDestructFlags = 0x92;
+  // fn_75_6B08 @0x00006DA4-0x00006DAC: both projectile infos' weapon tokens are locked.
+  mProjectileInfo.Token().Lock();
+  mLaserSweepProjectileInfo.Token().Lock();
+  // fn_75_6B08 @0x00006DB0-0x00006DE8: the locator at 0xEF8 is the model's "Beam_LCTR"
+  // (lbl_75_rodata_293) segment.
+  mLookAtSegment =
+      GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("Beam_LCTR"));
   // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
   // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
   // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
@@ -811,9 +947,6 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   mDodgeDistance = GetModelData()->GetScale().GetX() *
                    GetAnimationDistance(CPASAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3),
                                                          CPASAnimParm::FromEnum(1)));
-  // The retail constructor also builds the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
-  // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
-  // not enter, so the port keeps the parameter block only.
 }
 
 CSplitterCommandModule::~CSplitterCommandModule() {}
@@ -828,10 +961,19 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// The module's auto-destruct (fn_75_5A54). Its body is not understood yet (the module note's
-// section j), so it logs once and does nothing else.
+// fn_75_5A54 (the module's auto-destruct, 0x5A54-0x5A80): only for a live module (the base's flag
+// byte at 0x420, the word's bit 25 - the byte's 0x40, 0x5A58 extrwi.) whose 0xF6A 0x04 bit is still
+// clear (0x5A64 extrwi.) the bit is set (0x5A70 rlwimi) and the death timer at 0xEF0 is the time
+// (0x5A78 stfs); fn_75_32F4 counts it down and kills the module at zero.
 void CSplitterCommandModule::PortAutoDestruct(float time) {
-  StandIn("fn_75_5A54 (the module's auto-destruct)");
+  if (!GetAlive()) {
+    return;
+  }
+  if ((mAutoDestructFlags & 0x4) != 0) {
+    return;
+  }
+  mAutoDestructFlags |= 0x4;
+  mDeathTimer = time;
 }
 
 // The module's own calls in the command module's chassis check: both are over 0x80, so each
@@ -1044,7 +1186,9 @@ void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
 }
 
-// @ fn_75_32F4
+// fn_75_32F4 (not marked, the 19-run gcov of 2026-10-21: the dead-module arm with the 0x04 bit set
+// and the death timer still above 0 never ran - the only call of PortAutoDestruct in the runs is
+// fn_75_21FC's with 0.0f)
 // The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
 // 0x332C, 0xF0C at 0x333C and 0xF14 at 0x3344) and two counted up (0xF18 at 0x3354 and 0xF1C at
 // 0x3360). While the flash weight 0xF08 is above zero (0x336C-0x3370) it is counted down and
@@ -1077,6 +1221,8 @@ void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float d
   }
 }
 
+// Arms: all ran but the 0x8-clear arm of the data word 0x7C0, dead in shipped data: every SPLU
+// placement has 0xB there (tools/scan_splitter_props.py).
 // @ fn_75_31A8
 // The command module's chassis check (0x31A8-0x32F4): the id at 0xEFA (0x31D8 lhz) is looked up
 // (0x31E8 GetObjectById) and cast to the main chassis (0x31EC); a null cast or a chassis whose
@@ -1184,7 +1330,8 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
   return chassis->GetScanTimer() > 0.f;
 }
 
-// @ fn_75_1188
+// fn_75_1188 (not marked, the 19-run gcov of 2026-10-21: the detection range <= 0 arm and its cone
+// edges never ran; not proven dead)
 // The head's beam-effect spawner (0x1188-0x14CC). The beam effect's id (0xF68) is looked up
 // (0x11B0 ObjectById), the module's own transform (fn_75_10D0, 0x11C0) is built and copied
 // (0x11CC) and set on the beam effect (0x11E0 SetTransform), and the gate (fn_75_58E8, 0x1200)
@@ -1297,14 +1444,38 @@ void CSplitterCommandModule::PortSpinShield(CStateManager& mgr) {
   PortUpdateEffectStates(mgr);
 }
 
+// fn_75_5CC4 (0x5CC4-0x5D50): as fn_75_5DDC, but the shield state at 0xEDC is 1 (0x5D1C-0x5D28)
+// and, when it was 2, the timer at 0xF1C is zeroed first (0x5D00-0x5D14).
+// @ fn_75_5CC4
+void CSplitterCommandModule::PortDodgeShield(CStateManager& mgr) {
+  mOwnVulnerability = CDamageVulnerability::ReflectVulnerabilty();
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
+  if (mShieldState == 2) {
+    mCountupTimerB = 0.f;
+  }
+  mShieldState = 1;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
+// fn_75_5B28 (0x5B28-0x5B9C): the reflecting vulnerability as in fn_75_5DDC, but the head is made
+// not orbitable (0x5B60 SetVisorOrbitableFlags 0xF, false) and the shield state at 0xEDC is 3.
+// @ fn_75_5B28
+void CSplitterCommandModule::PortSnatchShield(CStateManager& mgr) {
+  mOwnVulnerability = CDamageVulnerability::ReflectVulnerabilty();
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), false);
+  mShieldState = 3;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
 // fn_75_5D50 (0x5D50-0x5DE0): the head's own vulnerability copy at 0xEAC takes the base's again
 // (0x5D6C GetDamageVulnerability, 0x5D78 fn_75_5B9C, the REL copy of the CDamageVulnerability
 // assignment). The head becomes orbitable (0x5D88
 // SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
 // at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
 // 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
-// Not marked: the shield-state-2 arm (0x5D90) needs EndSpinAttack (fn_75_B9B0, 0xBA5C), which the
-// spin sub-machine's stand-in states never reach.
+// @ fn_75_5D50
 void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
   mOwnVulnerability = *CPatterned::GetDamageVulnerability();
   SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
@@ -1373,7 +1544,8 @@ void CSplitterCommandModule::PortTurnUpright(float dt) {
 // (0x2480-0x249C) gives the steering separation (0x24DC) from its position with 5.0f
 // (lbl_75_rodata_58) times the model data's scale x; safe ones (0x24FC) are normalized and summed
 // and counted; a count above 0.0f (0x2564) divides the sum (0x2574).
-// @ fn_75_23F0
+// fn_75_23F0 (not marked, the 19-run gcov of 2026-10-21: a null cast and an AI in another area
+// never came up in the listening-AI walk; not proven dead)
 CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1444,6 +1616,9 @@ void CSplitterCommandModule::ResetAttackTimes(CStateManager& mgr, float) {
 // (0x3D8C GetObjectById) the destination is its aim position (0x3DE4, vtable 0x54 with 0.0f)
 // plus 4.0f (lbl_75_rodata_5C) up and the 0x80 bit is set (0x3E14). The path finder at 0x6F4
 // takes the destination (0x3E24 SetDestination) and the target as its face target (0x3E2C, 0x718).
+// Arms: the target arm ran in the 04_cliff_contraption (914f1381) runs; no target ran in the
+// scripted 914f1381 run (u0521 deactivated and reactivated).
+// @ fn_75_3D20
 void CSplitterCommandModule::SetTargetDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mAutoDestructFlags &= ~0x80;
@@ -1630,7 +1805,8 @@ void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
 // (right, 0x2958) or -1 (0x2768).
 // The near-AI arms and -1 ran forced (place): the other chassis parked beside the head. The left
 // pick ran forced (fsm): the head sent back into LaserPulse until the random bit picked it.
-// @ fn_75_270C
+// fn_75_270C (not marked, the 19-run gcov of 2026-10-21: the walk's null and other-area arms and
+// the both-sides-open pick never ran on this build)
 int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
   const float dist = mDodgeDistance;
   const CVector3f pos = GetTranslation();
@@ -1758,6 +1934,8 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortAutoDestructTimer(dt);
 }
 
+// Arms: all ran but a projectile that is not a CBeamProjectile, dead: the head only fires its
+// laser sweep beam through this path.
 // @ fn_75_1790
 // The head's laser-pulse projectile despawn (0x1790-0x184C): the projectile's id at 0xF02 is
 // looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x24 is
@@ -1784,6 +1962,8 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   }
 }
 
+// Arms: all ran; a joint that is not a collision actor and the Beam_LCTR arm are dead (the head's
+// only joint is "Skeleton_Root"); the delete's null test is the compiler's, not a retail arm.
 // @ fn_75_3460
 // The head's collision actor manager (0x3460-0x3674): the head's one joint sphere - the
 // "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f (rodata 0x4) and the mass 1000.0f
@@ -1838,6 +2018,8 @@ void CSplitterCommandModule::PortStartFlashIfTarget(const CScriptMsg& msg) {
 
 // vtable slot 0x18 = fn_75_654C (0x24C): it calls the base class's AcceptScriptMsg and then
 // switches on the script message's four-character code.
+// Arms: every case the runs sent ran; the null collision actor manager arms are dead: the
+// manager is made at XCRT and never cleared.
 // @ fn_75_654C
 // The command module's script-message handler (0x654C-0x6798): the base's call (0x6578) and a
 // switch on the message's four-character code. The retail's cases: XCRT (the body controller's
@@ -1922,20 +2104,17 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
 // vtable slot 0x24 = fn_75_633C: it renders only when the object's own flag byte says so (the
 // byte at 0x420, bit 1, read at 0x00006348).
 void CSplitterCommandModule::PreRender(CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::PreRender (vtable slot 0x24, fn_75_633C)");
-  CPatterned::PreRender(mgr);
+  PortPreRender(mgr);
 }
 
 // vtable slot 0x28 = fn_75_6310: the same flag byte guards the base class's call.
 void CSplitterCommandModule::AddToRenderer(const CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::AddToRenderer (vtable slot 0x28, fn_75_6310)");
-  CPatterned::AddToRenderer(mgr);
+  PortAddToRenderer(mgr);
 }
 
 // vtable slot 0x2C = fn_75_6368: the same flag byte guards the base class's call.
 void CSplitterCommandModule::Render(const CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::Render (vtable slot 0x2C, fn_75_6368)");
-  CPatterned::Render(mgr);
+  PortRender(mgr);
 }
 
 // vtable slot 0x3C = fn_75_D0: it calls the vtable's HealthInfo slot (0x38) and returns its
@@ -1962,11 +2141,6 @@ CVector3f CSplitterCommandModule::GetAimPosition(const CStateManager& mgr, float
   return CPatterned::GetAimPosition(mgr, dt);
 }
 
-// vtable slot 0x70 = fn_75_6394.
-CAABox CSplitterCommandModule::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::GetSortingBounds (vtable slot 0x70, fn_75_6394)");
-  return CPatterned::GetSortingBounds(mgr);
-}
 
 // vtable slot 0x84 = fn_75_6178.
 void CSplitterCommandModule::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
@@ -1982,8 +2156,7 @@ void CSplitterCommandModule::KnockBack(CStateManager& mgr, const CKnockBackInfo&
 // vtable slot 0xB0 = fn_75_5F18: it listens for the noise types the state machine asks for.
 bool CSplitterCommandModule::Listen(CStateManager& mgr, const CVector3f& position,
                                      EListenNoiseType type) {
-  StandIn("CSplitterCommandModule::Listen (vtable slot 0xB0, fn_75_5F18)");
-  return CPatterned::Listen(mgr, position, type);
+  return PortListen(mgr, position, type);
 }
 
 // vtable slot 0xF0 = fn_75_5E8C: it registers the module's three tables (17 triggers, 14 states
@@ -2002,8 +2175,7 @@ void CSplitterCommandModule::SetupStateMachine(CStateManager& mgr) {
 // vtable slot 0xF8 = fn_75_5E50: it is only possessed while it is docked to a main chassis (the
 // main chassis' unique id at 0xefa).
 bool CSplitterCommandModule::CanBeIngPossessed(CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::CanBeIngPossessed (vtable slot 0xF8, fn_75_5E50)");
-  return CPatterned::CanBeIngPossessed(mgr);
+  return PortCanBeIngPossessed(mgr);
 }
 
 // ---------------------------------------------------------------------------------------------
