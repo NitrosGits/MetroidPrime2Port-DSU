@@ -583,7 +583,16 @@ public:
     return mCameraManagers[playerIndex];
   }
   CCameraManager* CameraManager(int playerIndex) { return mCameraManagers[playerIndex]; }
+#ifdef TARGET_PC
+  // Retail writes 0x150C once (fn_80040D88) and never clears it, so it holds a player's state
+  // between frames; here it is only set while a viewport renders. Think-time callers (e.g.
+  // CDigitalGuardian fn_14_28D0) fall back to player 0's (single player).
+  const CPlayerState* GetPlayerState() const {
+    return mPlayerState != nullptr ? mPlayerState : mPlayerStates[0];
+  }
+#else
   const CPlayerState* GetPlayerState() const { return mPlayerState; }
+#endif
   TUniqueId GetPlayerActorHead() const { return mPlayerActorHead; } // Prime-correlated name
   void SetPlayerActorHead(TUniqueId id) { mPlayerActorHead = id; } // Prime-correlated name
   const CPlayer* GetCurrentRenderPlayer() const { return mCurrentRenderPlayer; } // Guessed name

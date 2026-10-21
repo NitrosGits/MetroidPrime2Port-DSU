@@ -29,6 +29,10 @@ public:
   void Touch(CActor& actor, CStateManager& mgr) override;
 
   void ApplyGravity();
+#ifdef TARGET_PC
+  // Retail CSandworm writes +0x1D0 directly (fn_56_8E90/91D4/9440).
+  void SetVelocity(const CVector3f& v) { mVelocity = v; }
+#endif
 
 private:
   // Guessed names.

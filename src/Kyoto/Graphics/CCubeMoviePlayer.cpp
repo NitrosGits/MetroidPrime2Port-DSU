@@ -676,9 +676,15 @@ void CMoviePlayer::DrawFrame(const CVector3f& v1, const CVector3f& v2, const CVe
   GXTexCoord2u16(1, 0);
   CGX::End();
   MyTHPGXRestore();
+#ifdef TARGET_PC
+  // Port: the host is progressive and VIGetNextField is always 0, so the flip below would hold
+  // every frame of a 30 fps movie for an extra game frame (video and audio 1.5x slow). On the
+  // console fields alternate and it fires at most once, to line the movie up with a field.
+#else
   if (mFieldIndex == 0 && !field && !mIs60Hz) {
     mFieldFlip = true;
   }
+#endif
   ++mFieldIndex;
 }
 
@@ -714,9 +720,18 @@ void CMoviePlayer::Rewind() {
   mTextures.clear();
 }
 
+#ifdef TARGET_PC
+// Port: the SDK's AIGetDMAStartAddr truncates the host's 64-bit buffer pointer (ai_dma.cpp).
+extern "C" uintptr_t AIPortGetDMAStartAddr(void);
+
+#endif
 void CMoviePlayer::StaticMyAudioCallback() {
   if (sAudioPlayer != nullptr && sAudioPlayer->mHasAudio) {
+#ifdef TARGET_PC
+    curAudioBuffer = reinterpret_cast< const short* >(AIPortGetDMAStartAddr());
+#else
     curAudioBuffer = static_cast< const short* >(OSPhysicalToCached(AIGetDMAStartAddr()));
+#endif
     soundBufferIndex ^= 1;
     short* buffer = soundBuffer[soundBufferIndex];
     AIInitDMA(reinterpret_cast< uintptr_t >(buffer), sizeof(soundBuffer[0]));

@@ -34,8 +34,23 @@ void CRSFAudio::InstallAICallback() {
   CAudioSys::EnableAICallback(old);
 }
 
+#ifdef TARGET_PC
+// Port: MusyX plays through its own host stream and registers no AI callback, so there is no
+// previous callback to have put this period's buffer in place; start the chain from silence
+// (each callback mixes onto the buffer the one before it queued). 0x280 bytes = 160 frames.
+static u8 sSilentDMABuffer[0x280] ATTRIBUTE_ALIGN(32);
+
+#endif
 void CRSFAudio::AICallback() {
+#ifdef TARGET_PC
+  if (sOldDMACallback != nullptr) {
+    sOldDMACallback();
+  } else {
+    AIInitDMA(reinterpret_cast< uintptr_t >(sSilentDMABuffer), sizeof(sSilentDMABuffer));
+  }
+#else
   sOldDMACallback();
+#endif
 
   for (int i = 0; i < sCallbacks.size(); ++i) {
     sCallbacks[i]();
@@ -121,8 +136,17 @@ void CRSFAudio::StopMixOut() {
 
 void CRSFAudio::MixCallback() { sPlayingAudio->DoMix(); }
 
+#ifdef TARGET_PC
+// Port: the SDK's AIGetDMAStartAddr truncates the host's 64-bit buffer pointer (ai_dma.cpp).
+extern "C" uintptr_t AIPortGetDMAStartAddr(void);
+
+#endif
 void CRSFAudio::DoMix() {
+#ifdef TARGET_PC
+  const ushort* aiStart = reinterpret_cast< const ushort* >(AIPortGetDMAStartAddr());
+#else
   const ushort* aiStart = static_cast< const ushort* >(OSPhysicalToCached(AIGetDMAStartAddr()));
+#endif
   mCurBuf ^= 1;
   uintptr_t buf =
       reinterpret_cast< uintptr_t >(mCurBuf != 0 ? mDmaBufferB.get() : mDmaBufferA.get());

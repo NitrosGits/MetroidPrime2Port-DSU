@@ -57,6 +57,8 @@ void SetAxis(int axis, float value);
 void AddAim(float dxDp, float dyDp);
 void SetAimDown(bool down);
 void SpringSwipe();
+// A swipe up asked for a Spring Ball in the last 120 ms (read by CMorphBall).
+bool SpringBallRequested();
 
 // Drag on the free screen to aim (MP1's `touch_aim`, on by default; `MP2_TOUCH_AIM`).
 bool AimEnabled();

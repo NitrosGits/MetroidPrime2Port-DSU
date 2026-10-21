@@ -58,6 +58,8 @@ void end_color_pass();
 void queue_texture_copy(wgpu::TexelCopyTextureInfo src, wgpu::TexelCopyTextureInfo dst, wgpu::Extent3D size);
 void begin_offscreen(uint32_t width, uint32_t height);
 void end_offscreen();
+// False while no frame is recording (begin_frame declined: surface lost or invalidated).
+bool has_render_pass() noexcept;
 uint32_t get_sample_count() noexcept;
 RenderTargetLayout get_render_target_layout() noexcept;
 void clear_caches() noexcept;

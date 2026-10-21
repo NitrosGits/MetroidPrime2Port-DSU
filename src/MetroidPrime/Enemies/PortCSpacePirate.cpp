@@ -5,13 +5,17 @@
 // on each. There is no combat AI yet - CPatterned's default state machine drives the pirate.
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
+#include "Kyoto/CTimeProvider.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Math/CVector2f.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "MetroidPrime/CActorLights.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CActorModelParticles.hpp"
@@ -306,11 +310,10 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xbfc_ = false;
   xc00_ = 0;
   xc04_warpPoint = -1;
-  xc54_ = false;
   xc58_ = 0;
 
-  // TODO(fn_72_4F28): ctor-time init from the launcher block (data+0xc8): grenade launcher /
-  // bouncy-grenade setup; not ported with the grenade states.
+  // 0xFB30: the launcher block (data+0xc8) builds the grenade launcher's model.
+  InitLauncherModel(data);
   if (data.mProjectile != kInvalidAssetId) {
     mProjectileInfo = CProjectileInfo(data.mProjectile, data.mProjectileDamage);
   }
@@ -374,16 +377,27 @@ void CSpacePirate::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
+// @ fn_72_E0D8 (AttachActorToPirate): the pirate takes hold of one actor at a time and
+// refuses a second one. The ragdoll's flag byte at 0x118 is the "an actor is held" bit.
 bool CSpacePirate::PortAttachActor(TUniqueId id) {
-  // Retail fn_72_E0D8; the wisp tentacle attaches the actor it is dragging.
-  StandIn("CSpacePirate::AttachActorToPirate (fn_72_E0D8)");
-  mAttachedActor = id;
-  return true;
+  if (mAttachedActor != kInvalidUniqueId) { // 0xE0E4 cmplw 0xa84 with kInvalidUniqueId
+    return false;                            // 0xE118 li r3, 0
+  }
+  if (xb30_ != nullptr) { // 0xE0F0 cmplwi 0xb30, 0
+    // 0xE100 rlwimi sets PowerPC bit 25 of the ragdoll's byte 0x118 (mask 0x40). The ragdoll is
+    // not ported (xb30_ is never set), so there is no host member to set; port it with the ragdoll.
+    // Never write retail offsets into a host object.
+  }
+  mAttachedActor = id; // 0xE108 lhz 0x0(r4), 0xE10C sth 0xa84
+  return true;        // 0xE110 li r3, 1
 }
 
+// @ fn_72_E0AC (DetachActorFromPirate): the pirate lets go of the actor it was holding.
 void CSpacePirate::PortDetachActor() {
-  StandIn("CSpacePirate::DetachActorFromPirate (fn_72_E0AC)");
-  mAttachedActor = kInvalidUniqueId;
+  mAttachedActor = kInvalidUniqueId; // 0xE0B4 sth 0xa84
+  if (xb30_ != nullptr) { // 0xE0BC cmplwi 0xb30, 0
+    // 0xE0CC rlwimi clears PowerPC bit 25 of the ragdoll's byte 0x118 (mask 0x40); see Attach.
+  }
 }
 
 // @ fn_72_24C4
@@ -651,7 +665,8 @@ bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
   return --x8fc_frenzyFrames >= 0;
 }
 
-// Where the pirate looks and aims: its target, or a point ahead if the target is gone.
+// @ fn_72_CB30 (0x150): where the pirate looks and aims - its target, or a point ahead if the
+// target is gone.
 CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(mAttackTarget);
   if (const CPlayer* player = TCastToPtr< CPlayer >(entity)) {
@@ -938,7 +953,8 @@ void CSpacePirate::UpdateAimBodyState(float dt, CStateManager& mgr) {
   if (mAlive && mEnableAim && !body->IsFrozen() && !body->IsElectrocuting() && !x8f4_27_melee &&
       xb30_ == nullptr && (!x8f5_26_seated || x8f9_28_satUp) && !x8fa_30_) {
     xb98_aimDelayTimer = CMath::Max(0.f, xb98_aimDelayTimer - dt);
-    if (xb98_aimDelayTimer == 0.f) {
+    // 0x2614 fcmpo + 0x2618 cror eq,lt,eq: the block runs while xb98 <= 0.f, not only at 0.
+    if (xb98_aimDelayTimer <= 0.f) {
       cmds.DeliverCmd(CBCAdditiveAimCmd());
       const CVector3f gunPos = GetLctrTransform(xa86_gunSeg).GetTranslation();
       CVector3f offset = x8f7_29_inWallHang ? CVector3f::Zero() : GetTranslation() - gunPos;
@@ -1127,7 +1143,7 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
-// Retail fn_72_DF2C: leave the team manager the pirate joined.
+// @ fn_72_DF2C: leave the team manager the pirate joined.
 void CSpacePirate::SquadRemove(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     return;
@@ -1148,7 +1164,7 @@ void CSpacePirate::TrooperWarpOut(CStateManager& mgr, bool flag) {
   }
 }
 
-// Retail fn_72_E168 (MP1 SetVelocityForJump): ballistic launch to the patrol destination.
+// @ fn_72_E168 (MP1 SetVelocityForJump): ballistic launch to the patrol destination.
 void CSpacePirate::SetVelocityForJump() {
   if (x8f7_30_jumpVelSet || x8fa_31_) {
     return;
@@ -1167,14 +1183,85 @@ void CSpacePirate::SetVelocityForJump() {
   x8fa_29_ = true;
 }
 
+// @ fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
+// live; then the patterned pre-render, the bone tracking and the ik chain.
 void CSpacePirate::PreRender(CStateManager& mgr) {
-  StandIn("CSpacePirate::PreRender (fn_72_38E4)");
+  // 0x3900: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3918 calls the ragdoll's own
+  // pre-render (its vtable slot 0x10) with the actor's translation and the model data. The ragdoll
+  // is outside the port (xb30_ is never set), so that branch stays a comment.
+  // 0x3938: the patterned pre-render.
   CPatterned::PreRender(mgr);
+  // 0x393C-0x3950: the bone tracking and the ik chain run only while no ragdoll is live.
+  // 0x398C: the bone tracking: (mgr, the anim data, the transform, the model's scale, the body).
+  mBoneTracking.PreRender(mgr, *ModelData()->AnimationData(), GetTransform(),
+                          ModelData()->GetScale(), *BodyController());
+  // 0x39C0: the ik chain: (the anim data, the transform, the model's scale).
+  xb34_ikChain.PreRender(*ModelData()->AnimationData(), GetTransform(), ModelData()->GetScale());
+  // 0x39C4: while the portal plane is set (|its d| > 0), 0x39E8 writes an uninitialised word into
+  // the draw flags' first word and 0x39F0 sets bit 0x8000 in their high half. The plane is never
+  // set in the port and the retail's word is undefined, so that stays a comment.
 }
 
+// @ fn_72_4F28 (0x9C): an equipped weapon of type 1 with a valid launcher model gives the pirate the
+// launcher's static model at the body model's scale.
+void CSpacePirate::InitLauncherModel(const CSpacePirateData& data) {
+  TraceCall(*this, "InitLauncherModel (fn_72_4F28) weapon", data.mEquippedWeapon);
+  // 0x4F40: only weapon type 1 (cmpwi 1, beq).
+  if (data.mEquippedWeapon == 1) {
+    // 0x4F54: the launcher's model id must be valid.
+    if (data.mGrenadeLauncher != kInvalidAssetId) {
+      // 0x4F60-0x4FAC: CModelData(CStaticRes(id, the model's scale)) assigned into 0xc08 (4FC4).
+      xc08_launcherModel = CModelData(CStaticRes(data.mGrenadeLauncher, GetModelData()->GetScale()));
+    }
+  }
+}
+
+// @ fn_72_36CC (0xF8): draws the launcher model at the R_wrist locator inside the actor's render
+// alpha buffer pass.
+void CSpacePirate::RenderLauncherModel(const CStateManager& mgr, const CTransform4f& xf,
+                                       const CModelFlags& flags) const {
+  // 0x36EC: the alpha buffer alpha; -1 means no destination-alpha pass.
+  const int alpha = GetRenderAlphaBufferAlpha(mgr);
+  if (alpha != -1) {
+    // 0x3710: gpRender vtable slot 0x128 = SetDestinationAlpha.
+    gpRender->SetDestinationAlpha(alpha);
+  }
+  // 0x3728: vtable slot 0xC8 = GetModelAlphau8; then the model's valid flag (0xc54).
+  if (GetModelAlphau8(mgr) != 0 && xc08_launcherModel.valid()) {
+    // 0x3754: the R_wrist locator (0xa88), 0x3764: xf * locator.
+    const CTransform4f locatorXf = xf * GetScaledLocatorTransform(xa88_wristSeg);
+    // 0x3788: the model renders with the actor lights (0xbc) and the caller's flags.
+    xc08_launcherModel.data().Render(mgr, locatorXf, GetActorLights(), flags);
+  }
+  if (alpha != -1) {
+    // 0x37A4: gpRender vtable slot 0x12C = DisableDestinationAlpha.
+    gpRender->DisableDestinationAlpha();
+  }
+}
+
+// @ fn_72_37C4 (Render): the space warp while warping in, the scoped time provider, the
+// portal plane, the patterned render and the launcher model.
 void CSpacePirate::Render(const CStateManager& mgr) const {
-  StandIn("CSpacePirate::Render (fn_72_37C4)");
+  // 0x37E0: the seconds mod 900 while alive (0x420 bit 0x40), else 0 (rodata B9C).
+  const float time = mAlive ? CGraphics::GetSecondsMod900() : 0.f;
+  // 0x3808: warp state 1 (cmpwi 1).
+  if (xc04_warpPoint == 1) {
+    // 0x3814-0x3830: sin(pi (rodata BC4) * mColor's alpha (u8 at 0x44f * rodata BB4 1/255)).
+    const float warp = CMath::FastSinR(3.1415927f * mColor.GetAlpha());
+    // 0x3840-0x385C: at the bounding box's centre.
+    mgr.DrawSpaceWarp(GetBoundingBox().GetCenterPoint(), warp);
+  }
+  // 0x3868: the scoped time provider.
+  CTimeProvider timeProvider(time);
+  // 0x386C-0x3884: |the portal plane's d (0xc68)| > 0 (rodata B9C), fcmpo + ble.
+  if (CMath::AbsF(mPortalPlane.GetConstant()) > 0.f) {
+    // 0x3894: the model's world-space portal plane.
+    GetModelData()->SetupWorldSpacePortalPlane(GetTransform(), mPortalPlane);
+  }
+  // 0x38A0: the patterned render.
   CPatterned::Render(mgr);
+  // 0x38B4: the launcher model with the actor's transform (0x24) and draw flags (0xfc).
+  RenderLauncherModel(mgr, GetTransform(), GetModelFlags());
 }
 
 // Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
@@ -1294,7 +1381,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 } // namespace
 
-// Retail fn_72_F0A0: CPatterned's tables first, then its own 39 triggers (0x27) and 37 states
+// @ fn_72_F0A0 (0x6C): CPatterned's tables first, then its own 39 triggers (0x27) and 37 states
 // (0x25). The state bodies live in PortCSpacePirateStates.cpp, the triggers in
 // PortCSpacePirateTriggers.cpp.
 void CSpacePirate::SetupStateMachine(CStateManager& mgr) {
@@ -1304,14 +1391,23 @@ void CSpacePirate::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_72_E120 (SetAttackTarget): the new target, the squad manager's copy of it, a fresh
+// burst type and no attack time left.
 void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
-  StandIn("CSpacePirate::SetAttackTarget (fn_72_E120)");
-  CPatterned::SetAttackTarget(mgr, target);
-  mAttackTarget = target;
+  mAttackTarget = target;     // 0xE12C lhz 0x0(r5), 0xE138 sth 0xa94
+  UpdateTeamTarget(mgr);      // 0xE13C bl fn_72_DE5C
+  mBurstFire.SetBurstType(1); // 0xE148 stw 1, 0xa98 (CBurstFire's first field)
+  mAttackRemTime = 0.f;       // 0xE150 stfs 0, 0xa90 (rodata B9C)
 }
 
+// @ fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
+// the model and the portal system is updated; otherwise the patterned path.
 void CSpacePirate::PreRenderAllViewports(CStateManager& mgr) {
-  StandIn("CSpacePirate::PreRenderAllViewports (fn_72_3A0C)");
+  // 0x3A28: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3A50 renders the ragdoll
+  // (PreRenderAllViewports__8CRagDollFR6CActorf, the rodata B6C float) and 0x3A5C calls
+  // UpdatePortalSystemState(mgr). The ragdoll is outside the port (xb30_ is never set), so that
+  // branch stays a comment.
+  // 0x3A6C: the patterned path.
   CPatterned::PreRenderAllViewports(mgr);
 }
 
@@ -1320,26 +1416,46 @@ const CHealthInfo* CSpacePirate::GetHealthInfo() const {
   return const_cast< CSpacePirate* >(this)->HealthInfo(); // fn_72_64
 }
 
+// @ fn_72_3AB4: a pirate that has warped (0xc04 is no longer -1) is pass-through; otherwise
+// the patterned default decides.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability() const {
-  StandIn("CSpacePirate::GetDamageVulnerability (fn_72_3AB4)");
+  if (xc04_warpPoint != -1) { // 0x3AC0 lwz 0xc04, 0x3AC4 cmpwi -1
+    // 0x3ACC bl PassThroughVulnerabilty (the DOL's pass-through vulnerability record).
+    return &CDamageVulnerability::PassThroughVulnerabilty();
+  }
+  // 0x3AD4 bl GetDamageVulnerability__10CPatternedCFv.
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_72_3A88: a tail call through the vtable slot 0x40, which for CSpacePirate is the
+// no-argument GetDamageVulnerability (fn_72_3AB4) - the three arguments are not read.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f& position,
                                                                  const CVector3f& direction,
                                                                  const CDamageInfo& damage) const {
-  StandIn("CSpacePirate::GetDamageVulnerability(pos,dir,dmg) (fn_72_3A88)");
-  return CPatterned::GetDamageVulnerability(position, direction, damage);
+  return GetDamageVulnerability();
 }
 
+// @ fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
+// the actor's bounding box (fn_72_1854).
 rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
-  StandIn("CSpacePirate::GetTouchBounds (fn_72_17C8)");
-  return CPatterned::GetTouchBounds();
+  // 0x17DC-0x1834: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the
+  // touch bounds are the ragdoll's (ragdoll+0x58..0x70). The ragdoll is outside the port (xb30_
+  // is never set), so there is no host member to read: port it with the ragdoll.
+  // 0x183C bl fn_72_1854: the actor's own bounding box (GetBoundingBox).
+  return GetBoundingBox();
 }
 
+// @ fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
+// quarter of their size around their centre.
 CAABox CSpacePirate::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CSpacePirate::GetSortingBounds (fn_72_35CC)");
-  return CPatterned::GetSortingBounds(mgr);
+  // 0x35F0 bl GetBounds: the model's bounds in the actor's transform (this+0x24).
+  const CAABox bounds = GetModelData()->GetBounds(GetTransform());
+  // 0x362C bl GetCenterPoint.
+  const CVector3f center = bounds.GetCenterPoint();
+  // 0x364C-0x3684: the half size = 0.25 (rodata BC0) * the bounds' size.
+  const CVector3f half = (bounds.GetMaxPoint() - bounds.GetMinPoint()) * 0.25f;
+  // 0x36B4 bl CAABox: (centre - half, centre + half).
+  return CAABox(center - half, center + half);
 }
 
 // Retail fn_72_3B28: a jump table over the event type; every other event is CPatterned's.
@@ -1429,13 +1545,14 @@ bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListen
   return heard;
 }
 
+// Retail fn_72_E090 (GetOrigin): the pirate's own position.
 CVector3f CSpacePirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                   const CVector3f& aimPos) const {
-  StandIn("CSpacePirate::GetOrigin (fn_72_E090)");
-  return CPatterned::GetOrigin(mgr, role, aimPos);
+  // 0xE090-0xE0A4: this+0x54/0x58/0x5c, the actor's translation.
+  return GetTranslation();
 }
 
-// Retail fn_72_3AE8.
+// @ fn_72_3AE8.
 uchar CSpacePirate::GetModelAlphau8(const CStateManager& mgr) const {
   if (x8f5_27_shadowPirate) {
     return static_cast< uchar >(255.f * xb88_shadowPirateAlpha);
@@ -1448,20 +1565,42 @@ CProjectileInfo* CSpacePirate::ProjectileInfo() {
   return mProjectileInfo.valid() ? &mProjectileInfo.data() : nullptr;
 }
 
+// @ fn_72_343C (GetScanVisorRenderBounds): the model's vertex bounds, scaled by the model's
+// own scale and moved into world space.
 CAABox CSpacePirate::GetScanVisorRenderBounds(const CStateManager& mgr) const {
-  StandIn("CSpacePirate::GetScanVisorRenderBounds (fn_72_343C)");
-  return CPatterned::GetScanVisorRenderBounds(mgr);
+  // 0x3490: the model's anim data -> the vertex bounds in local space.
+  const CAABox local = GetModelData()->GetAnimationData()->CalcBoundingBoxFromModelVerts();
+  // 0x34D4: the model's scale.
+  const CVector3f scale = GetModelData()->GetScale();
+  // 0x34F0: the negated translation.
+  const CVector3f offset = -GetTranslation();
+  // 0x3514/0x3520: a scale transform and a translation transform; 0x3530 and 0x3540 multiply them
+  // with the actor's transform.
+  const CTransform4f xf =
+      CTransform4f::Translate(offset) * GetTransform() * CTransform4f::Scale(scale);
+  // 0x3550: the transformed box.
+  return local.GetTransformedAABox(xf);
 }
 
+// @ fn_72_339C (ScanVisorRender): the body model with the scan flags and no lights, then the
+// launcher model.
 void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                    const CModelFlags& flags) const {
-  StandIn("CSpacePirate::ScanVisorRender (fn_72_339C)");
-  CPatterned::ScanVisorRender(mgr, xf, flags);
+  // 0x33CC-0x33F0: unless the model data is null (no anim data at +0x10, no normal model at +0x28).
+  if (!GetModelData()->IsNull()) {
+    // 0x3404: which model 0, no lights.
+    GetModelData()->Render(CModelData::kWM_Normal, xf, nullptr, flags);
+  }
+  // 0x3418: the launcher model.
+  RenderLauncherModel(mgr, xf, flags);
 }
 
+// Retail fn_72_18BC (TryToBeCaptured): the pirate switches to the "Captured" state and says so.
 bool CSpacePirate::TryToBeCaptured(CStateManager& mgr) {
-  StandIn("CSpacePirate::TryToBeCaptured (fn_72_18BC)");
-  return CPatterned::TryToBeCaptured(mgr);
+  // 0x18D8: the state name "Captured" (rodata 0xF42), set through the state machine's virtual
+  // slot 0x20 (SetState).
+  mStateMachine->SetState(mgr, *this, rstl::string_l("Captured"));
+  return true; // 0x1918 li r3, 1
 }
 
 // Retail fn_72_140. Property ids and order are the generated SLdrSpacePirate reader's, which the

@@ -2,6 +2,7 @@
 
 #include "port_env.h"
 
+#include <atomic>
 #include <cctype>
 #include <cstdio>
 #include <filesystem>
@@ -12,6 +13,7 @@
 namespace {
 
 std::string sPath; // empty: no file
+std::atomic< bool > sInitialized{false};
 
 std::string Trim(const std::string& s) {
   size_t a = 0;
@@ -36,10 +38,12 @@ namespace PortSettings {
 
 void Initialize(const std::string& userDirectory) {
   sPath.clear();
-  if (userDirectory.empty())
-    return;
-  sPath = (std::filesystem::path(userDirectory) / "settings.cfg").string();
+  if (!userDirectory.empty())
+    sPath = (std::filesystem::path(userDirectory) / "settings.cfg").string();
+  sInitialized.store(true, std::memory_order_release);
 }
+
+bool Initialized() { return sInitialized.load(std::memory_order_acquire); }
 
 const std::string& FilePath() { return sPath; }
 

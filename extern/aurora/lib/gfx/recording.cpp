@@ -819,6 +819,18 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
 
   // Populate new render pass from previous
   const auto msaaSamples = prevPass.msaaSamples;
+  // Port addition (from upstream aurora 9c0bf66f1e "Partial GXCopyTex clears"): GX clears only the
+  // copied rectangle, so a copy of part of the EFB (a visor flare's occlusion test) must not wipe
+  // the rest of it. Clear-on-load only when the copy covers the whole target; otherwise draw the
+  // clear into the rectangle. Keep on re-vendor until upstream's version is merged.
+  const auto& targetSize = prevPass.colorAttachments[SceneColorAttachmentIndex].size;
+  const auto left = std::clamp<int32_t>(rect.x, 0, static_cast<int32_t>(targetSize.width));
+  const auto top = std::clamp<int32_t>(rect.y, 0, static_cast<int32_t>(targetSize.height));
+  const auto right = std::clamp<int32_t>(rect.x + rect.width, left, static_cast<int32_t>(targetSize.width));
+  const auto bottom = std::clamp<int32_t>(rect.y + rect.height, top, static_cast<int32_t>(targetSize.height));
+  const ClipRect clearRect{.x = left, .y = top, .width = right - left, .height = bottom - top};
+  const bool fullTarget = left == 0 && top == 0 && right == static_cast<int32_t>(targetSize.width) &&
+                          bottom == static_cast<int32_t>(targetSize.height);
   RenderPass newPass{
       .label = pass_label(g_recorder.inOffscreen ? "Offscreen" : "EFB"),
       .colorAttachments = prevPass.colorAttachments,
@@ -831,11 +843,11 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
       .copySourceDepthView = prevPass.copySourceDepthView,
       .msaaSamples = msaaSamples,
       .clearDepthValue = clearDepthValue,
-      .clearDepth = clearDepth,
+      .clearDepth = clearDepth && fullTarget,
       .hasDepth = prevPass.hasDepth,
       .hasStencil = prevPass.hasStencil,
   };
-  const bool fullColorClear = clearColor && clearAlpha;
+  const bool fullColorClear = clearColor && clearAlpha && fullTarget;
   for (uint32_t i = 0; i < newPass.colorAttachmentCount; ++i) {
     auto& color = newPass.colorAttachments[i];
     color.loadOp = wgpu::LoadOp::Undefined;
@@ -850,11 +862,15 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
   current_render_passes().emplace_back(std::move(newPass));
   ++g_recorder.currentRenderPass;
 
-  if (!fullColorClear && (clearColor || clearAlpha)) {
-    // If we're only clearing color _or_ alpha, perform a clear draw
+  const bool drawClearColor = clearColor && !fullColorClear;
+  const bool drawClearAlpha = clearAlpha && !fullColorClear;
+  const bool drawClearDepth = clearDepth && !fullTarget;
+  if (clearRect.width > 0 && clearRect.height > 0 && (drawClearColor || drawClearAlpha || drawClearDepth)) {
+    // If we're only clearing a portion of the target (or only one of color/alpha), perform a clear draw
     const auto targetLayout = current_render_passes()[g_recorder.currentRenderPass].target_layout();
     push_draw_command(clear::DrawData{
-        .pipeline = pipeline_ref(clear::make_pipeline_config(targetLayout, clearColor, clearAlpha, false)),
+        .pipeline = pipeline_ref(
+            clear::make_pipeline_config(targetLayout, drawClearColor, drawClearAlpha, drawClearDepth)),
         .color =
             wgpu::Color{
                 .r = clearColorValue.x(),
@@ -862,6 +878,8 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
                 .b = clearColorValue.z(),
                 .a = clearColorValue.w(),
             },
+        .depth = clearDepthValue,
+        .rect = clearRect,
     });
   }
   push_command(CommandType::SetViewport, Command::Data{.setViewport = g_recorder.cachedViewport});
@@ -902,6 +920,8 @@ void queue_efb_cpu_copy(efb_copy::Request req) {
 }
 
 bool is_offscreen() noexcept { return g_recorder.inOffscreen; }
+
+bool has_render_pass() noexcept { return g_recorder.active() && g_recorder.currentRenderPass != UINT32_MAX; }
 
 uint32_t get_sample_count() noexcept {
   CHECK(g_recorder.currentRenderPass != UINT32_MAX, "get_sample_count called outside of a frame");

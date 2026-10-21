@@ -6,9 +6,18 @@
 #include "port_overlay_internal.h"
 
 #include "port_env.h"
+#include "port_livesplit.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_photo.h"
 #include "port_settings.h"
+
+#include "Kyoto/Streams/CBitStreamReader.hpp"
+#include "Kyoto/Streams/CBitStreamWriter.hpp"
+#include "Kyoto/Streams/CMemoryInStream.hpp"
+#include "Kyoto/Streams/CMemoryStreamOut.hpp"
+#include "MetroidPrime/Player/CGameOptions.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -137,6 +146,12 @@ constexpr SettingKey FloatKey(const char* key, const char* sampleA, const char* 
           sampleB};
 }
 
+// CGameOptions::PutTo as hex, the 0x20 bytes CGameState::RecordCompressedGameOptions keeps per save
+// file; empty until the game's options are first recorded.
+constexpr size_t kGameOptionsBytes = 0x20;
+std::string sGameOptions;
+bool sGameOptionsRestored = false;
+
 const SettingKey kSettingKeys[] = {
     BoolKey< &sSkipCinematics >("skip_cinematics"),
     BoolKey< &sFastMorph >("fast_morph"),
@@ -260,6 +275,7 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
+    BoolKey< &sFullscreen >("fullscreen"),
     BoolKey< &sFrameLimit >("frame_limit"),
     BoolKey< &sSmoothFrames >("smooth_frames"),
     BoolKey< &sPoseInterpolation >("pose_interpolation"),
@@ -301,6 +317,38 @@ const SettingKey kSettingKeys[] = {
      },
      false, "1,0.5,0", "0,0.25,1"},
     BoolKey< &sCrosshairCustomColor >("crosshair_custom_color"),
+    // LiveSplit and the photo camera keep their own state; their F1 rows mark the file dirty.
+    {"livesplit",
+     [](const std::string& value) { PortLiveSplit::SetEnabled(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortLiveSplit::Enabled()); }, false, "1", "0"},
+    {"livesplit_address",
+     [](const std::string& value) {
+       if (!value.empty()) {
+         PortLiveSplit::SetAddress(value);
+       }
+     },
+     [](std::ostream& out) { out << PortLiveSplit::Address(); }, false, "127.0.0.1:16834", "localhost:1"},
+    {"livesplit_split_upgrades",
+     [](const std::string& value) { PortLiveSplit::SetSplitUpgrades(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortLiveSplit::SplitUpgrades()); }, false, "1", "0"},
+    {"photo_supersample", [](const std::string& value) {
+       int parsed = 0;
+       if (ParseInt(value, parsed)) {
+         PortPhoto::SetSupersample(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortPhoto::Supersample(); }, false, "4", "1"},
+    {"photo_speed",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed)) {
+         PortPhoto::SetSpeed(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortPhoto::Speed(); }, false, "4", "1.5"},
+    // Last, as in MP1: the game's options blob (PortOverlay::SyncGameOptions).
+    {"game_options", [](const std::string& value) { sGameOptions = value; },
+     [](std::ostream& out) { out << sGameOptions; }, true, "0a1b", "ff"},
 };
 
 // Recursive: a key's read can call back into PortMouse, whose ReadEnv asks for this file (the
@@ -383,7 +431,8 @@ std::string SettingsText() {
 
 void LoadSettings() {
   std::lock_guard< std::recursive_mutex > lock(sMutex);
-  if (sLoaded) {
+  // Too early (PortSettings::Initialized): main.cpp loads it once the path is known.
+  if (sLoaded || !PortSettings::Initialized()) {
     return;
   }
   sLoaded = true;
@@ -491,3 +540,80 @@ int SettingsSelfTest(std::string& report) {
 }
 
 } // namespace PortOverlaySettings
+
+namespace {
+
+std::string GameOptionsHex(CGameOptions& options) {
+  uchar bytes[kGameOptionsBytes * 2] = {};
+  {
+    CMemoryStreamOut stream(bytes, sizeof(bytes));
+    CBitStreamWriter writer(stream);
+    options.PutTo(writer);
+    writer.FlushAll();
+  }
+  static const char kDigits[] = "0123456789abcdef";
+  std::string hex;
+  for (size_t i = 0; i < kGameOptionsBytes; ++i) {
+    hex += kDigits[bytes[i] >> 4];
+    hex += kDigits[bytes[i] & 0xF];
+  }
+  return hex;
+}
+
+// The recorded options as CGameOptions::PutTo wrote them; false unless they are whole and start
+// with PutTo's 'OPTN' tag.
+bool GameOptionsBytes(uchar (&bytes)[kGameOptionsBytes]) {
+  if (sGameOptions.size() != kGameOptionsBytes * 2) {
+    return false;
+  }
+  for (size_t i = 0; i < kGameOptionsBytes; ++i) {
+    char* end = nullptr;
+    const std::string digits = sGameOptions.substr(i * 2, 2);
+    const unsigned long value = std::strtoul(digits.c_str(), &end, 16);
+    if (end != digits.c_str() + 2) {
+      return false;
+    }
+    bytes[i] = static_cast< uchar >(value);
+  }
+  return bytes[0] == 'O' && bytes[1] == 'P' && bytes[2] == 'T' && bytes[3] == 'N';
+}
+
+} // namespace
+
+namespace PortOverlay {
+
+bool ApplySavedGameOptions(CGameOptions& options) {
+  PortOverlaySettings::LoadSettings();
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
+  uchar bytes[kGameOptionsBytes];
+  if (!GameOptionsBytes(bytes)) {
+    return false;
+  }
+  CMemoryInStream stream(bytes, sizeof(bytes));
+  CBitStreamReader reader(stream);
+  options = CGameOptions(reader);
+  return true;
+}
+
+void RestoreGameOptions() {
+  sGameOptionsRestored = true;
+  if (gpGameState != nullptr && ApplySavedGameOptions(gpGameState->GameOptions())) {
+    gpGameState->GameOptions().EnsureOptions();
+  }
+}
+
+// Records the game's options whenever they change, wherever from (pause menu, F1, a loaded file);
+// Draw writes the file once no F1 item is active.
+void SyncGameOptions() {
+  if (!sGameOptionsRestored || gpGameState == nullptr) {
+    return;
+  }
+  std::string hex = GameOptionsHex(gpGameState->GameOptions());
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
+  if (hex != sGameOptions) {
+    sGameOptions = std::move(hex);
+    PortOverlaySettings::MarkDirty();
+  }
+}
+
+} // namespace PortOverlay

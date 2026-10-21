@@ -41,6 +41,10 @@ public:
   void SetDisableTrackingDistance(float distance);
   void SetTargetPosition(const CVector3f& target);
   void SetMaxBoneRotation(float angle);
+#ifdef TARGET_PC
+  // SandBoss writes +0x20 directly; the host needs a setter. Guessed name.
+  void SetAngSpeed(float speed) { mAngSpeed = speed; }
+#endif
 
 private:
   // Guessed names.
