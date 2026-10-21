@@ -3651,9 +3651,10 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
 // 0x000082F4) and the shield's collision actor manager goes active; the charge itself moves the
 // actor along the charge direction at the block's charge speed (the block's +0x12C = guest
 // this+0x8EC) - the direction rotated into the actor's own frame (TransposeRotate) and scaled by
-// the speed and the frame time - until the distance along the facing passes 10 units plus the time
-// the charge takes (0x00008404..0x00008578). The guest's own call on the state machine (its
-// vtable slot 0x30, 0x00008430) has no effect that the port can see and is left out.
+// the speed and the frame time - until the state machine's own time (its vtable slot 0x30,
+// 0x00008430) passes 3.0f (rodata_448) plus the time the charge takes (0x00008404..0x00008578),
+// and only while the byte at guest this+0xC64 has its 0x08 bit (the charge animation took off,
+// 0x0000848C..0x00008494).
 //
 // On deactivate (the guest's message 2, 0x0000859C) the animation state goes "not ready", the body
 // is told to leave the state (the command id 0xa = kBSC_ExitState, 0x000085B4) - and, when the
@@ -3723,20 +3724,24 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
           time = mData.mShield.mChargeMaxAttackDist / speed;
         }
         const float along = CVector3f::Dot(GetTransform().GetForward(), toTarget);
-        if (along > 0.f && (xc64_ & 0x04) == 0) {
-          if (along > 10.f + time) {  // rodata_448, 0x00008444..0x00008454
-            BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
-          } else {
-            const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
-            MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
-            if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
-              const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
-              MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
-              xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
-            }
-          }
-        } else {
+        if (along <= 0.f || (xc64_ & 0x04) != 0) {  // 0x00008418..0x0000842C
+          // The dot product is not over 0 (0x00008418..0x00008420) or the byte at guest this+0xC64
+          // has its 0x04 bit (0x00008424..0x0000842C): the charge ends.
           BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
+        } else if (StateMachineState().GetTime() > 3.f + time) {
+          // 0x00008430..0x00008454: the state machine's own time (the vtable slot 0x30 of the
+          // machine, GetTime) against 3.0f (rodata_448) plus the charge time.
+          BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
+        } else if ((xc64_ & 0x08) != 0) {         // 0x0000848C..0x00008494
+          // The movement only runs while the byte at guest this+0xC64 has its 0x08 bit - the
+          // charge animation has taken off (the kUE_TakeOff event sets it).
+          const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
+          MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
+          if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
+            const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
+            MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
+            xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
+          }
         }
       }
     } else if (x924_ == 0) {
