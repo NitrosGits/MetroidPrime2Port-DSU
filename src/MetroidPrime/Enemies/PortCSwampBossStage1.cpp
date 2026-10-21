@@ -759,6 +759,18 @@ void CSwampBossStage1::KnockPlayer(CStateManager& mgr, const CVector3f& velocity
   Rumble(mgr);
 }
 
+// @ fn_78_39C0: the morphed player is dragged to the tongue at 30 units/s and floats.
+// `lfs f3, 0x4(r5)` at 0x39F8 reads the target's y.
+// `lfs f1, 0x0(r5)` at 0x3A08 reads the target's x.
+// `lfs f1, 0x8(r5)` at 0x39EC reads its z, which the store at 0x3A24 replaces with 0.0.
+// `bl CanBeNormalized__9CVector3fCFv` at 0x3A28 guards the whole body.
+// `lfs f3, lbl_78_rodata_184@l(r3)` at 0x3A48 is the 30 units/s the direction is scaled by.
+// `bl SetVelocityWR__13CPhysicsActorFRC9CVector3f` at 0x3A74 takes that velocity.
+// `bl GetGravity__7CPlayerCFv` at 0x3A80 and `fmuls f1, f31, f1` at 0x3A88 give mass * gravity.
+// `stfs f0, 0x1c0(r31)` at 0x3AA0 stores the force's x.
+// `stfs f0, 0x1c4(r31)` at 0x3AA4 stores the force's y.
+// `stfs f1, 0x1c8(r31)` at 0x3AA8 stores its z.
+// `li r4, 0x4` at 0x3A9C is the movement state of the call at 0x3AAC (kMS_FallingMorphed).
 void CSwampBossStage1::PullMorphedPlayer(CStateManager& mgr, const CVector3f& pos) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f dir(pos.GetX() - player->GetTranslation().GetX(),
@@ -920,6 +932,11 @@ void CSwampBossStage1::ReleaseOrbitMessage(CStateManager& mgr) {
   }
 }
 
+// @ fn_78_3964: the orbit message goes out once, the first time the tongue grabs a morphed player.
+// `lbz r5, 0xce4(r3)` at 0x3970 reads the flag byte.
+// `extrwi r0, r5, 1, 24` at 0x3974 tests its bit 7 (the orbit message flag).
+// `rlwimi r5, r0, 7, 24, 24` at 0x3988 sets that bit, stored by `stb r5, 0xce4(r3)` at 0x3990.
+// `addi r4, r6, 0x3130` at 0x3998 is the "IS10" state sent by the call at 0x39AC.
 void CSwampBossStage1::SendOrbitMessage(CStateManager& mgr) {
   if (!xce4_orbitMsg) {
     xce4_orbitMsg = true;
@@ -1057,6 +1074,10 @@ bool CSwampBossStage1::Wait(CStateManager&, const CTriggerData& data) const {
 // --------------------------------------------------------------------------------------------
 // Code functions
 
+// @ fn_78_25F4: the miss counter goes up and the tongue's state becomes 3 (not out).
+// `lwz r4, 0xbfc(r3)` at 0x25F4 loads the miss counter.
+// `addi r4, r4, 0x1` at 0x25FC and `stw r4, 0xbfc(r3)` at 0x2600 are the increment.
+// `li r0, 0x3` at 0x25F8 is the value stored by `stw r0, 0xc34(r3)` at 0x2604.
 void CSwampBossStage1::IncrementMisses(CStateManager&, float) {
   ++xbfc_misses;
   // Retail writes 3 here; the reads only distinguish 0/1/2 and TongueMissed counts anything but

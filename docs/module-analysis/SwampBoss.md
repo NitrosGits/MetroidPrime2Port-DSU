@@ -376,6 +376,93 @@ code, never committed; the run walked the states -1, 0, 1, 2, 4, 5, 7, 8, 9 and 
 | `fn_78_9A1C` | `type == 3` -> true (448+32+32x), `type != 3` and equal -> true (280+7+30x), `type != 3` and different -> false (100+100+30+30+20+20+7x) - every reachable arm |
 | `fn_78_35DC` | never entered - no run reached state 3 |
 
+### Stage1: how the boss is activated, and why the harness had to wake it by hand (2026-10-21)
+
+Nothing in the SwampBossStage1 REL activates the boss: the module never calls
+`CEntity::SetActive` (its one vtable +0x1c call is a body-controller method), and the retail
+`Think` (fn_78_95D8) returns early while the entity's active bit (0x20 bit 7) is clear, exactly
+like the port's `if (!GetActive()) return;`.
+
+The activator is in the **area's script data** (read from the running game's own connection
+lists, `obj <uid>` in the console):
+
+| step | object (editor id) | connection |
+|---|---|---|
+| the activator | CScriptRelay 002000a2 (`u05ba`) | `on Zero send Activate -> 002001c1` (the boss) |
+| its trigger | CScriptRelay 002001d0 (`u044f`) | `on Zero send SetToZero -> 002000a2` |
+| the switch | CScriptSwitch 002001e0 (`u044d`) | `on Open send SetToZero -> 002001d0` |
+| the opener | CScriptLayerController 002001d7 (`u0454`) | `on Arrived send Open -> 002001e0` |
+
+So the activation is **layer driven**: the layer controller's "Arrived" (the port's
+`CScriptLayerController::Think` sends it when the layer it watches reaches `kLP_Ready`) opens the
+switch, the switch's "on Open" starts the relay chain, and the last relay activates the boss.
+Above it sit CScriptLayerController 002001c5 ("Arrived" -> "Increment" -> 002001d7) and the
+switch cascade the four CScriptDamageableTrigger objects 002003e1/e9/ea/ec feed (they die ->
+the counter 002003eb -> relays -> switches 00200226/002001e4).
+
+**The port is not at fault; the harness was.** The chain is intact in the port - driving it by
+hand works (`send u05ba SetToZero` activates the boss and `send u044f SetToZero` does too,
+both verified in a run) - and the relays, switches and layer controllers are the host's own
+code. The harness never reached the chain because it switched layers with the port's debug
+`LAYER3` warp, which loads the boss's layer directly and never gives the layer controller its
+`kSM_Load`/`kSM_Increment`, so the controller's "Arrived" (the thing that opens the switch)
+never fires. In the retail game the player walks into the arena, a trigger starts the sequence
+timers, the layer controllers increment, the layers load, "Arrived" opens the switch and the
+relay chain activates the boss; `send u05bb Activate` is the equivalent shortcut.
+
+### Stage1: the charged shot never charges (2026-10-21)
+
+The charge is **not** driven by the fire button: `CPlayerGunBase::ProcessInput`
+(src/MetroidPrime/Player/CPlayerGunBase.cpp:76-83) sets the gun's input bit 4 from
+`CPlayer::ChargeBeamHeld` (the `CControlMapper::kC_ChargeBeam` control), and only that bit
+starts the charge (`CPlayerGun.cpp:631`) and releases it (`CPlayerGun::ButtonRelease`,
+CPlayerGun.cpp:557). The harness held **A** (fire), which fires the normal shot (`mag 2.0` in
+the `MP2_DEBUG_BEAM=1` log) and - with the loaded tweak's auto-fire on the same button - fires
+it again every cooldown; every shot calls `ResetCharge`, so the charge never completes and the
+release fires an uncharged shot. **This is a harness problem (the wrong button), not a port
+bug**: the charge state machine is the upstream retail code (`kCP_ChargeRequested` ->
+`kCP_Charging` -> `kCP_ChargeFx` -> `kCP_Charged`, the factor growing at 1/1.8 per second,
+`CPlayerState::GetMissileComboChargeFactor`) and the port only adds the `TARGET_PC`
+rapid-charge option on top.
+
+### Stage1: the next five most-called unmarked functions (2026-10-21)
+
+| fn | retail call sites | port body | verdict |
+|---|---|---|---|
+| `fn_78_35DC` | 4 (3320, 348C) | `HitReactBody` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_39C0` | 2 (44CC) | `PullMorphedPlayer` | **marked** |
+| `fn_78_3964` | 2 (44CC) | `SendOrbitMessage` | **marked** |
+| `fn_78_25F4` | 0 (a code function) | `IncrementMisses` | **marked** |
+| `fn_78_3320` | 0 (an FSM state) | `LightHitReact` | compared, **not marked** (state 3 unreachable) |
+
+- **`fn_78_39C0` (`PullMorphedPlayer`)** - the retail reads the target's x/y (the z is read and
+  then overwritten with 0), takes the difference to the player's x/y, `CanBeNormalized` +
+  `Normalize`, scales it by 30 (`lbl_78_rodata_184`), `SetVelocityWR`, then writes the constant
+  force (0, 0, mass * gravity) and `SetMoveState(4)` (`kMS_FallingMorphed`). The port does the
+  same in the same order; only the constant force goes through `SetConstantForceWR` instead of
+  the three stores.
+- **`fn_78_3964` (`SendOrbitMessage`)** - the retail tests bit 7 of the flag byte at 0xce4 and,
+  if it is clear, sets it and sends the "IS10" state to its own id; the port's
+  `xce4_orbitMsg` is that bit and `SendOrbitMessage` does the same.
+- **`fn_78_25F4` (`IncrementMisses`)** - the retail bumps the miss counter at 0xbfc and stores 3
+  in the tongue state at 0xc34; the port does exactly that (branch-free).
+- **`fn_78_35DC` / `fn_78_3320`** - compared field by field with the retail (the hit-react
+  body and `LightHitReact`), no difference found, but **not marked**: both need state 3
+  (`ExposeBelly`), and state 3 needs the belly accumulator over 50 - about 50 landed joint
+  hits, which the harness does not manage (it lands about one shot in six and the charged shot
+  never fires charged, see above).
+
+Run evidence (2026-10-21, `04_swamp_temple_dark`, layer 3, `MP2_GODMODE`, 12000 frames, the
+boss woken with `send u05bb Activate` and dropped to 600 HP with `damage u05bb 1199`, the player
+parked in the arena's AI hint and morphed with the X button):
+
+| function | seen | arms |
+|---|---|---|
+| `fn_78_25F4` | 4x (`miss=0..3`) | branch-free, all of it |
+| `fn_78_39C0` | 35x | the CanBeNormalized arm (the other needs a zero-length direction) |
+| `fn_78_3964` | 2x (`msg=0`) | the "not sent yet" arm (the flag is cleared by the matching IS11 message when the pull ends) |
+| `fn_78_35DC`, `fn_78_3320` | 0x | no run reached state 3 |
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata
