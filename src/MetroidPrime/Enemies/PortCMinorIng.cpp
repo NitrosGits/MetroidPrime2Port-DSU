@@ -347,8 +347,9 @@ static void UnlockImpactParticleEntry(SImpactVisorEffect* effect) {
 }
 
 // @ fn_44_6500
-// The retail unlocks the particle effect's token when the effect has a particle effect
-// (asm 0x6520/0x6528) and frees the effect when the caller asks for it (asm 0x6530-0x653C).
+// The retail checks the effect (asm 0x6518), unlocks the particle effect's token when the effect
+// has a particle effect (asm 0x6520/0x6528) and frees the effect when the caller asks for it
+// (asm 0x6530-0x653C).
 static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free) {
   if (effect != nullptr) {
     if (effect->mParticleEffect) {      // the engaged flag byte at +0x14 (asm 0x6520/0x6528)
@@ -361,8 +362,8 @@ static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free) {
 }
 
 // @ fn_44_64AC
-// The retail tears the effect down (asm 0x64CC-0x64D0) and frees it when the caller asks for
-// it (asm 0x64D4-0x64E0).
+// The retail checks the effect (asm 0x64C4), tears it down (asm 0x64CC-0x64D0) and frees it when
+// the caller asks for it (asm 0x64D4-0x64E0).
 static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free) {
   if (effect != nullptr) {
     DestroyImpactVisorEffect(effect, -1);  // asm 0x64D0
