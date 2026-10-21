@@ -269,7 +269,7 @@ void CSplitterMainChassis::DoUserAnimEvent(CStateManager& mgr, const CInt32POINo
 //   asm 0xEFC0 `cmpwi r31, 0x16` (the type 0x16 is the first case)
 //   asm 0xEFDC `cmpwi r31, 0x5` (the type 0x5 is the second case)
 //   - the type 0x16 (kUE_BreakLockOn): the flag byte at 0xD41 gets its 0x10 bit tested (asm
-//     0xEFE8 `lbz`, 0xEFEC `extrwi` with the word's bit 27, 0xEFF0 `beq`).  With it clear the
+//     0xEFE8 `lbz`, 0xEFEC `extrwi` with the word's bit 27, 0xEFF0 `beq`).  With it set the
 //     player at 0xCC0 (the chassis's target) is looked up (asm 0xEFF4 `lhz`, 0xF004
 //     `ObjectById__13CStateManagerCF9TUniqueId`) and cast to a CPlayer (asm 0xF008
 //     `TCastToPtr<7CPlayer>`); with no player the arm ends (asm 0xF010 `beq .L_0000F0B0`).
@@ -283,14 +283,15 @@ void CSplitterMainChassis::DoUserAnimEvent(CStateManager& mgr, const CInt32POINo
 //     set the base class's own damage vulnerability is reflected (asm 0xF060
 //     `ReflectVulnerabilty__20CDamageVulnerabilityFv`, 0xF06C
 //     `GetDamageVulnerability__10CPatternedCFv`) and the collision actors' vulnerability is set
-//     (asm 0xF080 `bl fn_75_9AF8`).
-//   Then, and only then, the base class's own DoUserAnimEvent runs (asm 0xF0B0).
+//     (asm 0xF080 `bl fn_75_9AF8`), then the head at 0xC6C resets its shield (asm 0xF084-0xF0A8
+//     `fn_80097E34` TCastToPtr<CSplitterCommandModule>, `bl fn_75_5D50`).
+//   When neither case was taken the base class's own DoUserAnimEvent runs (asm 0xF0B0-0xF0CC).
 void CSplitterMainChassis::PortDoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                                EUserEventType type, float dt) {
   bool handled = false;
   if (type == kUE_BreakLockOn) {
-    // asm 0xEFE8-0xEFF0: the flag byte at 0xD41.
-    if ((mFlagsD41 & 0x10) == 0) {
+    // asm 0xEFE8-0xEFF0: the flag byte at 0xD41 (its 0x10 bit set, else the base runs).
+    if ((mFlagsD41 & 0x10) != 0) {
       // asm 0xEFF4-0xF010: the player at 0xCC0 (the chassis's target).
       CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mSyncId));
       if (player != nullptr) {
@@ -306,11 +307,16 @@ void CSplitterMainChassis::PortDoUserAnimEvent(CStateManager& mgr, const CInt32P
       // asm 0xF060-0xF080: the reflected vulnerability and the collision actors'.
       const CDamageVulnerability& vuln = *GetDamageVulnerability();
       PortSetCollisionVulnerability(mgr, vuln, CDamageVulnerability::ReflectVulnerabilty());
+      // asm 0xF084-0xF0A8: the head (0xC6C) resets its shield.
+      if (CSplitterCommandModule* head =
+              TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {
+        head->PortResetShield(mgr);
+      }
       handled = true;
     }
   }
-  // asm 0xF0B0: the base class's own DoUserAnimEvent runs when a case was taken.
-  if (handled) {
+  // asm 0xF0B0-0xF0CC: the base class's own DoUserAnimEvent runs when no case was taken.
+  if (!handled) {
     CPatterned::DoUserAnimEvent(mgr, node, type, dt);
   }
 }
