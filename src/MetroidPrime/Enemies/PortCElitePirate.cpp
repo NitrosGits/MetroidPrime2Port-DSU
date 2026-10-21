@@ -997,12 +997,15 @@ void CElitePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   bool handled = false;
   switch (static_cast< int >(type)) {
   case 0:
+    // 0x7C48: only kinds 7, 2 and 8 handle the event; any other kind falls through to
+    // CPatterned's projectile (0x7C60/0x7C68 -> 0x7EB4 with r31 = 0).
     if (mAttackKind == 7) {
       CreateShockWave(mgr, node);
+      handled = true;
     } else if (mAttackKind == 2 || mAttackKind == 8) {
       FireRocket(mgr);
+      handled = true;
     }
-    handled = true;
     break;
   case 7:
     mEvent7 = true;

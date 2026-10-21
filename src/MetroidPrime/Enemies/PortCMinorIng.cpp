@@ -490,8 +490,7 @@ bool CMinorIng::IsTargetInAttackAngle(CStateManager& mgr) const {
 
 // @ fn_44_88DC
 bool CMinorIng::IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool checkStatic) const {
-  // [?] retail first calls fn_44_3670 (snap to the floor) from this const-looking check; the
-  // host keeps that side effect out of it.
+  const_cast< CMinorIng* >(this)->SnapToFloor(mgr); // 0x88FC: retail snaps first, even here
   if ((mData.mFlags156 & 0x20) != 0) {
     return true;
   }
@@ -657,7 +656,7 @@ void CMinorIng::UpdateTimers(float dt) {
 // @ fn_44_3E20
 void CMinorIng::UpdateLocomotionType() {
   const pas::ELocomotionType type =
-      (mForm == kF_Puddle || mForm == kF_IntoCorporeal || mForm == kF_IntoPuddle)
+      (mForm == kF_Puddle || mForm == kF_IntoPuddle) // 0x3E34-0x3E58: forms 1 and 3
           ? pas::kLT_Relaxed
           : pas::kLT_Combat;
   if (type != BodyController()->GetLocomotionType()) {
@@ -1015,8 +1014,9 @@ bool CMinorIng::ShouldPathFind(CStateManager& mgr, const CTriggerData& data) con
   if (!InMaxRange(mgr, data) || !LineOfSight(mgr, data) || ShouldMoveUnderBall(mgr, data)) {
     return true;
   }
+  // 0x3DB0: true when the raised point is *off* the mesh (OnPath != kR_Success).
   return !mPointPathFinding &&
-         mPathFindSearch.OnPath(RaisedPoint(GetTranslation())) == CPathFindSearch::kR_Success;
+         mPathFindSearch.OnPath(RaisedPoint(GetTranslation())) != CPathFindSearch::kR_Success;
 }
 
 // @ fn_44_3DE0

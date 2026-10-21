@@ -1037,7 +1037,12 @@ void CSwarmBasics::CachePose(CModelData& modelData,
 void CSwarmBasics::PreRenderBoid(CBoid* boid, uint* drawMask) {
   if (!(boid->mFreezeTimer > 0.f)) {
     int idx = boid->mIndex & (mModelDatas.size() - 1);
+#ifdef TARGET_PC
+    // PPC slw gives 0 for counts >= 32 (an empty model list leaves idx = mIndex); x86 masks it.
+    uint bit = static_cast< uint >(idx) < 32 ? 1u << idx : 0u;
+#else
     uint bit = 1 << idx;
+#endif
     if (*drawMask & bit) {
       *drawMask &= ~bit;
       CachePose(mModelDatas[idx], mSkinnedModelStates[idx]);

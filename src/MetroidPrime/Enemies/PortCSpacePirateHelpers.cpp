@@ -16,20 +16,6 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
-// Retail fn_72_10CE4 (0x40): the module's own CValidEntityPredicate (its vtable is lbl_72_data_AD4)
-// - the object with the id has to be a CScriptWaypoint: GetObjectById (asm 0x10D00) and the cast
-// (asm 0x10D04) with the null test (asm 0x10D08-0x10D10). The WallHang state walks its cover
-// point's kSS_Arrived/kSM_Next connection with this predicate (fn_72_69AC). The host's
-// CheckConnectedObject takes no predicate, so the WallHang state casts the object itself; this
-// is the retail's predicate, ready for a host that takes one.
-class CSpacePirateWaypointPredicate : public CValidEntityPredicate {
-public:
-  ~CSpacePirateWaypointPredicate() override {}
-  bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
-    return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
-  }
-};
-
 // Retail fn_72_2EA8 (0xA4): the Think helper that keeps the pirate's sfx emitter (the handle at
 // 0xc00) where the pirate is. The handle is 0 (asm 0x2EBC) -> nothing happens; a handle that is
 // playing (asm 0x2ED4) is updated; a handle that is only queued (asm 0x2EEC) is updated as well,

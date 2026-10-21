@@ -1115,8 +1115,8 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
         const CDamageVulnerability vulnerability = *actor->GetDamageVulnerability();
         if (const CWeapon* weapon = TCastToPtr< CWeapon >(
                 mgr.ObjectById(actor->GetLastTouchedObject()))) {  // 0x0000D1B0..0x0000D1EC
-          if (vulnerability.WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
-                                       0)) {                                            // 0x0000D204
+          if (vulnerability.WeaponHurts(
+                  weapon->GetCurrentDamageInfo().GetWeaponMode())) {  // 0x0000D204
             x2D0C_KnockBack(mgr, msg);                       // 0x0000D224
           }
         }
@@ -3994,12 +3994,12 @@ void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, floa
 //   - 1 (0x00007534): the animation state is asked whether the wall-hang command may be issued
 //     (0x0000753C, the guest's command id 0x14 = 20 = kAS_WallHang). When it may, the wall-hang
 //     command goes to the body controller (0x00007588, the guest's command id 0x18 = 24 =
-//     kBSC_WallHang) and the guest keeps the command id and the waypoint id in the base's fields
-//     at guest this+0x2F4 and +0x2F8 (0x0000759C..0x000075AC), which the host has no member
-//     for. When it may not, the body must be in the wall-hang state (20, 0x000075C0): then the
+//     kBSC_WallHang) and the guest keeps the command id and the waypoint id in the command
+//     manager's wall-hang command (body controller +4, then +0x2F4 and +0x2F8,
+//     0x0000759C..0x000075AC). When it may not, the body must be in the wall-hang state (20, 0x000075C0): then the
 //     module's helper asks the target for its aim position (0x000075E0, the dt 0.0) and the
 //     direction from the actor to that aim position goes into the body controller's own vector
-//     at +0x34 (0x00007620..0x00007628), which the host's body controller has no member for.
+//     at +0x34 (0x00007620..0x00007628), the command manager's target vector (+0x30).
 //     The aim position's z is cleared (0x00007618) after the direction is worked out.
 //
 // Deactivate (0x00007630): the animation state goes back to "not ready" (0x00007638), the 0x02
@@ -4042,7 +4042,10 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
         }
       } else if (x924_ == 1) {                                       // 0x00007488..0x00007534
         if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_WallHang)) {  // 0x0000753C
-          BodyController()->CommandMgr().DeliverCmd(kBSC_WallHang);   // 0x00007588
+          // 0x0000754C..0x000075AC: the guest's inlined DeliverCmd(CBCWallHangCmd(xbd6_)) - the
+          // command id, then the waypoint id into the command manager's wall-hang command
+          // (cmd mgr +0x2F4/+0x2F8), which CBSWallHang reads.
+          BodyController()->CommandMgr().DeliverCmd(CBCWallHangCmd(xbd6_));  // 0x00007588
         } else if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {  // 0x000075C0
           if (x3CBC_(mgr, xb94_, 0.0f)) {                            // 0x000075E0
             // 0x000075EC..0x00007614: the direction from the actor to the aim position.

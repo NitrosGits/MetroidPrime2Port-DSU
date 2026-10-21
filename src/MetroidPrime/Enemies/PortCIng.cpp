@@ -622,7 +622,7 @@ void CIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
   health->SetHP(hp - amount);
 
   // The hit comes from the weapon the actor last touched, or from the player (morph ball).
-  CVector3f direction = CVector3f::Zero();
+  CVector3f direction = GetTransform().GetForward(); // 0x27A0: the Ing's own forward
   TUniqueId attacker = kInvalidUniqueId;
   CDamageInfo damage = IngDefaultDamageInfo(); // fn_29_2AE0 (asm 0x2744)
   if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
@@ -914,10 +914,14 @@ void CIng::UpdateLoopSfx() {
 
 // @ fn_29_2194 (asm 0x2194): the sounds stop.
 void CIng::StopSfx() {
-  for (int i = 0; i < 2; ++i) {
-    if (mLoopSfx[i]) {
-      CSfxManager::SfxStop(mLoopSfx[i]);
-      mLoopSfx[i] = CSfxHandle();
+  // 0x21A8-0x2250: every looping emitter is removed and cleared, in this order: 0xd58, 0xd60,
+  // 0xd64, 0xd00, 0xd04.
+  CSfxHandle* handles[] = {&mBodyProjectileSfx, &mLoopSfx[0], &mLoopSfx[1], &mSuckSfx,
+                           &mGrappleSfx};
+  for (int i = 0; i < 5; ++i) {
+    if (*handles[i]) {
+      CSfxManager::RemoveEmitter(*handles[i]);
+      *handles[i] = CSfxHandle();
     }
   }
 }
@@ -1007,11 +1011,12 @@ bool CIng::IsControllingHost(CStateManager&, const CTriggerData&) const {
 
 // @ fn_29_B0E0
 bool CIng::IsFacingTarget(CStateManager& mgr, const CTriggerData&) const {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
+  // 0xB124: the target's aim position (fn_29_4468, prediction 0); no target counts as facing.
+  CVector3f aim = CVector3f::Zero();
+  if (!const_cast< CIng* >(this)->TargetAimPosition(mgr, aim, 0.f)) {
     return true;
   }
-  CVector3f delta = target->GetTranslation() - GetTranslation();
+  CVector3f delta = aim - GetTranslation();
   delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
   return CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= kFacingAngle;
 }

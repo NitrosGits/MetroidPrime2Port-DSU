@@ -11,6 +11,7 @@ cmdfile lines:
   <command>           send as soon as the previous one is answered
 Blank lines and lines starting with '#' are skipped. Replies end with "=> ok" / "=> err: ...".
 """
+import os
 import socket
 import sys
 import time
@@ -63,7 +64,8 @@ def request(c):
     lines = []
     pending = c.count(';') + 1
     first_err = None
-    s.settimeout(60)
+    # An attached gdb (force.sh --attach) can stall the game for minutes: raise CON_REPLY_TIMEOUT.
+    s.settimeout(float(os.environ.get('CON_REPLY_TIMEOUT', '60')))
     while True:
         l = f.readline()
         if not l:
