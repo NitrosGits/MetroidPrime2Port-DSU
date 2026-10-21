@@ -171,11 +171,17 @@ void CSplitterCommandModule::PortDoUserAnimEvent(CStateManager& mgr, const CInt3
   }
 }
 
-// fn_75_1CA0 (not marked yet: the body is ported, but the coverage profile still misses the
-// "the head is dead" and the "there is no player" arms - the fight never plays the head's
-// projectile event, so the arm is taken by forcing the event's type to 0; see the note).
+// @ fn_75_1CA0
 // The head's projectile aim (0x1CA0-0x1E37): the head shoots at the player when its animation
 // plays a projectile event.
+//
+// Arms: the alive gate (the head is dead: the aim ends), the player at 0xEFE (there is no
+// player: the aim ends) and the launch itself.  The fight (04_cliff_contraption, area
+// 914f1381 layer 2) never plays the head's projectile event, so the event's type is forced
+// (the type is ecx on the host, the fourth integer argument) and the two arms are forced in
+// their own runs: tools/cov/specs/splitter_helpers_force.py, SPLITTER_FORCE=6394 (the
+// projectile event), 6394DEAD (the head is dead) and 6394NOPLAYER (no player at 0xEFE).  The
+// coverage build's merged profile of those runs says 15/15 lines and 5/5 branches, ALL-ARMS.
 //
 // The body:
 //   asm 0x1CC8 `lbz r0, 0x420(r3)`

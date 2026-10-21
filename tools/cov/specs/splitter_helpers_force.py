@@ -37,6 +37,14 @@ BODIES = {
               'the head is dead: the aim ends at once'),
     '1CA0P': ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
               'there is no player at 0xEFE: the aim ends at once'),
+    '6394FLAG': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+                 'the head\'s flag byte at 0xF6A has its 0x10 bit: no orbit request'),
+    '6394DATA': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+                 'the data\'s flag word at 0x7C0 has its 0x20000000 bit: no orbit request'),
+    '6394NOPLAYER': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+                     'there is no player at 0xEFE: no orbit request'),
+    '6394OTHER': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+                  'another event type: the base class is asked and nothing else happens'),
 }
 if WHICH in ('6394DEAD', '6394NOPLAYER'):
     _label, _where, _what = BODIES['6394']
@@ -45,15 +53,25 @@ else:
 FORCE = [
     (_label, _where, [], ['$this->mAlive = 0'], 1, _what),
 ]
-# The two DoUserAnimEvent bodies are forced with the event type in the register (r6) instead of
-# the alive flag: the fight does not play the head's projectile event, and the chassis's own
-# DoUserAnimEvent is not reached at all.
+# The two DoUserAnimEvent bodies are forced with the event type in the register instead of the
+# alive flag: the fight does not play the head's projectile event, and the chassis's own
+# DoUserAnimEvent is not reached at all.  The host is x86-64: this=rdi, the manager=rsi, the
+# node=rdx, the event type=ecx (the fourth integer argument) and the dt=xmm0.
 if WHICH == '6394':
-    FORCE = [(_label, _where, [], ['$r6 = 0'], 1, _what)]
+    FORCE = [(_label, _where, [], ['$ecx = 0'], 1, _what)]
 elif WHICH == 'EFA4':
-    FORCE = [(_label, _where, [], ['$r6 = 0x16'], 1, _what)]
+    FORCE = [(_label, _where, [], ['$ecx = 0x16'], 1, _what)]
 elif WHICH == 'EFA4M':
-    FORCE = [(_label, _where, [], ['$r6 = 0x5'], 1, _what)]
+    FORCE = [(_label, _where, [], ['$ecx = 0x5'], 1, _what)]
+elif WHICH == '6394FLAG':
+    FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mAutoDestructFlags |= 0x10'], 1, _what)]
+elif WHICH == '6394DATA':
+    FORCE = [(_label, _where, [],
+              ['$ecx = 0x16', '$this->mData.mUnknownBD80FD94 |= 0x20000000'], 1, _what)]
+elif WHICH == '6394NOPLAYER':
+    FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mSyncedId.value = 0xffff'], 1, _what)]
+elif WHICH == '6394OTHER':
+    FORCE = [(_label, _where, [], ['$ecx = 3'], 1, _what)]
 elif WHICH == '1CA0D':
     FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 1, _what)]
 elif WHICH == '1CA0P':
@@ -62,12 +80,12 @@ elif WHICH == '6394DEAD':
     # the head's projectile event (the type in r6) and the dead head: both at once, since the
     # fight never plays the projectile event, so the aim is only reached through the first.
     FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
-              [], ['$r6 = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
+              [], ['$ecx = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
              ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
               [], ['$this->mAlive = 0'], 1, 'the head is dead: the aim ends at once')]
 elif WHICH == '6394NOPLAYER':
     FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
-              [], ['$r6 = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
+              [], ['$ecx = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
              ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
               [], ['$this->mSyncedId.value = 0xffff'], 1,
               'there is no player at 0xEFE: the aim ends at once')]

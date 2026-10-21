@@ -115,7 +115,6 @@ public:
   const CDamageVulnerability* GetDamageVulnerability() const override;
   rstl::optional_object< CAABox > GetTouchBounds() const override;
   CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override;
-  CAABox GetSortingBounds(const CStateManager& mgr) const override;
 
   // CAi
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;

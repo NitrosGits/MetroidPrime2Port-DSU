@@ -135,7 +135,6 @@ public:
   const CHealthInfo* GetHealthInfo() const override;
   const CDamageVulnerability* GetDamageVulnerability() const override;
   rstl::optional_object< CAABox > GetTouchBounds() const override;
-  CAABox GetSortingBounds(const CStateManager& mgr) const override;
 
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;

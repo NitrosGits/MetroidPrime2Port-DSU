@@ -2419,10 +2419,6 @@ rstl::optional_object< CAABox > CSplitterMainChassis::GetTouchBounds() const {
 }
 
 // vtable slot 0x70 = fn_75_EFA4.
-CAABox CSplitterMainChassis::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CSplitterMainChassis::GetSortingBounds (vtable slot 0x70, fn_75_EFA4)");
-  return CPatterned::GetSortingBounds(mgr);
-}
 
 // vtable slot 0x84 = fn_75_ECA4 (0xECA4-0xEF24): after the base class's call (0xECD0), only while
 // spinning (0xD41's 0x80 bit, 0xECD4-0xECDC) and past 0.2f (lbl_75_rodata_3D0) on the timer at

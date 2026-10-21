@@ -2141,11 +2141,6 @@ CVector3f CSplitterCommandModule::GetAimPosition(const CStateManager& mgr, float
   return CPatterned::GetAimPosition(mgr, dt);
 }
 
-// vtable slot 0x70 = fn_75_6394.
-CAABox CSplitterCommandModule::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CSplitterCommandModule::GetSortingBounds (vtable slot 0x70, fn_75_6394)");
-  return CPatterned::GetSortingBounds(mgr);
-}
 
 // vtable slot 0x84 = fn_75_6178.
 void CSplitterCommandModule::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
