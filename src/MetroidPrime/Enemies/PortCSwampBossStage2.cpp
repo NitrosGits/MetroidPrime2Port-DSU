@@ -1803,7 +1803,10 @@ void CSwampBossStage2::Swoop(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_7E24
+// @ fn_79_7E24: the Blow state. Its arms all ran: the window's three tests (in front, the
+// 18 model scales to the side, the player not grappling), the push, the damage, the wind
+// effect and the deactivate that pops the sustained damage while the window is still open
+// (forced (fsm) - the window is open for fewer updates than a console round trip).
 void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
