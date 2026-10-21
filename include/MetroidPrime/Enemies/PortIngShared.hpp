@@ -24,8 +24,11 @@ inline bool PortIngPointSearch(CPathFindPointSearch& search, CPFArea& area, int 
   return search.Search(area.GetPoint(from), area.GetPoint(to)) == CPathFindPointSearch::kR_Success;
 }
 
-// fn_44_204C = fn_29_1C98: the point on the nav mesh below the lure safe zone, from 5 units above
-// its origin, with the search's flags at 3 for the height query.
+// @ fn_44_204C
+// The MinorIng's copy of the lure point query (the Ing module's is fn_29_1C98): the retail's
+// fn_44_204C (asm 0x204C) reads the safe zone id at 0xcda, gets the zone, asks the search for the
+// height of the point five units above it with the flags at 3, and writes the point below it; the
+// host's body is the same query.
 inline bool PortIngLuredMeshPoint(CStateManager& mgr, CPathFindSearch& search, TUniqueId safeZone,
                                   CVector3f& out) {
   const CScriptSafeZone* zone = TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(safeZone));

@@ -1512,8 +1512,10 @@ void CMinorIng::SelectTarget(CStateManager& mgr, float) {
   }
 }
 
-// fn_44_4DDC: the target's aim position (vtable 0x54, dt 0) into `out`; the retail reads the
-// target id at 0xcce and calls the vtable's 0x54 slot (asm 0x4DDC), which is the host's call.
+// @ fn_44_4DDC
+// The retail's fn_44_4DDC (asm 0x4DDC) reads the target id at 0xcce, gets the object and calls
+// the vtable's 0x54 slot with dt 0 (the target's aim position); the host's body is the same call.
+// The host casts to CActor because the host's GetAimPosition is CActor's.
 bool CMinorIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
