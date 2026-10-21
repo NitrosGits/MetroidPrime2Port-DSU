@@ -147,6 +147,15 @@ chassis u0532, its head u0531, the chassis u0521 and the head u0520. The coverag
 
 The game exited with code 0 and the log has **0 `[port] caught` and 0 `reach-stub`** lines.
 
+The one arm the fight cannot reach - the head's Listen with a dead head - was forced with the
+same harness:
+
+    tools/cov/force.sh tools/cov/specs/splitter_helpers_force.py /tmp/opencode/sph_force \
+      1baa96c2,914f1381 --con tools/cov/specs/splitter_helpers.con --frames 20000
+
+The run's `forced.log` names the forced hit ("the head is not alive: the Listen returns false
+without asking the distance") and `forced.txt` lists it.
+
 ### 3.2 The arms
 
 | id | the arms | how they ran |
@@ -154,7 +163,7 @@ The game exited with code 0 and the log has **0 `[port] caught` and 0 `reach-stu
 | `fn_75_6310` (the head's AddToRenderer) | (a) the actor is alive: the base class's call runs, (b) it is not: nothing runs | **both** ran: 800 entries, the base class's `CPatterned::AddToRenderer` call 400 times (the `calls` key) and 400 entries without it. **Marked** |
 | `fn_75_633C` (the head's PreRender) | the same two | **both** ran: 800 entries, `CPatterned::PreRender` 400 times. **Marked** |
 | `fn_75_6368` (the head's Render) | the same two | **both** ran: 800 entries, `CPatterned::Render` 400 times. **Marked** |
-| `fn_75_5F18` (the head's Listen) | (a) the actor is not alive: false, (b) the noise type is not 4: false, (c) the noise type is 4 and the distance is 20 or more: false, (d) the noise type is 4 and the noise is inside the radius: the flag byte at 0xF6A gets its 0x40 bit and the body returns true | (b) ran (the `noise 3` call, 2 entries), (c) ran (the `noise 4` call from 60 units up, 7 entries), (d) ran (the `noise 4` call next to the head, 1 entry, the return value 1). (a) did not: the head is never dead while the noise system still asks it. **Unmarked** (the alive arm needs a forced call) |
+| `fn_75_5F18` (the head's Listen) | (a) the actor is not alive: false, (b) the noise type is not 4: false, (c) the noise type is 4 and the distance is 20 or more: false, (d) the noise type is 4 and the noise is inside the radius: the flag byte at 0xF6A gets its 0x40 bit and the body returns true | (b) ran (the `noise 3` call, 2 entries), (c) ran (the `noise 4` call from 60 units up, 6 entries), (d) ran (the `noise 4` call next to the head, 2 entries, the return value 1). (a) cannot run in play - a dead head is deleted, so the noise system never asks it - and was **forced**: the alive flag is written at the body's entry for one call (`tools/cov/force.sh` with `tools/cov/specs/splitter_helpers_force.py`, the `forced.log` in the run's directory). **Marked** |
 | `fn_75_5E50` (the head's CanBeIngPossessed) | (a) the head is docked: false, (b) it is not: the base class's answer | the body was never called in the run (the Ing possession system does not ask in this area): 0 entries. **Unmarked** |
 | `fn_75_E99C` (the chassis's CanBeIngPossessed) | (a) none of the three flags is set: the base class's answer, (b) the byte at 0xD41's 0x80 bit: false, (c) the byte at 0xD40's 0x01 bit: false, (d) the byte at 0xD41's 0x40 bit: false | the body was never called in the run: 0 entries. **Unmarked** |
 | `fn_75_E810` (the chassis's SetAttackTarget) | (a) the target is a CIngSnatchingSwarm: its id is kept at 0xCBC, (b) it is not: only the base class's flag byte changes | the body was never called in the run: 0 entries. **Unmarked** |
