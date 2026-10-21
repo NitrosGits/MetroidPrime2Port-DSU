@@ -397,6 +397,52 @@ const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) cons
   return TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mBattleStageUid));
 }
 
+// fn_10_1D794 (0x0001D794, 0xC8 bytes): the still timer (the guest's 0x964) and the position it
+// measures from (the guest's 0x958/0x95C/0x960).
+//
+// With the reset flag (the guest's argument r4) the timer is cleared and the reference position
+// becomes the actor's own position (the base class' position, the guest's 0x54/0x58/0x5C):
+// 0x0001D810..0x0001D834. Without it the distance between the actor's position and the reference
+// position is taken (the three fsubs at 0x0001D7D0..0x0001D7E4 and Magnitude at 0x0001D7FC):
+// when it is more than 0.6 (lbl_10_rodata_424, the ble at 0x0001D80C) the actor has walked away,
+// so the timer is cleared and the reference position becomes the actor's position again
+// (0x0001D810); when it is not, the timer grows by dt (0x0001D838).
+void CDarkSamus::UpdateStillTimer(bool reset, float dt) {
+  if (!reset) {
+    const CVector3f delta = GetTranslation() - mStillPosition;
+    if (delta.Magnitude() <= 0.6f) {
+      mStillTime += dt;
+      return;
+    }
+  }
+  mStillTime = 0.f;
+  mStillPosition = GetTranslation();
+}
+
+// fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).
+//
+// The health info's current health (the base's GetHealthInfo - the vtable slot 0x3C - and the
+// float at its +4) is compared with the health of the last call (the guest's 0xCC4): when they
+// differ (the fcmpu and the beq at 0x0001E1B8) and the flag (the guest's argument r4) is set
+// and the last health was above zero (the fcmpo and the ble at 0x0001E1C8), the health that is
+// gone (0xCC4 - the current health) is added to the damage (0x0001E1F4..0x0001E200), and the last
+// health is updated (0x0001E218). Then the damage decays by the rate at 0xCCC (1.0f) times dt
+// (0x0001E22C..0x0001E238) and never goes below zero (0x0001E248).
+void CDarkSamus::AccumulateDamage(bool count, float dt) {
+  const CHealthInfo* health = GetHealthInfo();
+  const float current = health->GetHP();
+  if (current != mLastHealth) {
+    if (mLastHealth > 0.f && count) {
+      mAccumulatedDamage += (mLastHealth - current);
+    }
+    mLastHealth = current;
+  }
+  mAccumulatedDamage -= mDamageDecay * dt;
+  if (mAccumulatedDamage < 0.f) {
+    mAccumulatedDamage = 0.f;
+  }
+}
+
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
@@ -763,15 +809,15 @@ bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
   return mAccumulatedDamage > mDamageThreshold;
 }
 
-// fn_10_F800 (0x0000F800, 0x40 bytes): the trigger answers when the actor has been at its cover
-// point for more than 1.2 seconds (the float at 0x964 against lbl_10_rodata_42C = 1.2f: the
-// fcmpo at 0x0000F80C and the ble at 0x0000F810, so the test is 0x964 > 1.2f) - and otherwise
-// when more than 0.2 seconds have passed since the last wall collision (the float at 0xC44 plus
+// fn_10_F800 (0x0000F800, 0x40 bytes): the trigger answers when the actor has stood still for
+// more than 1.2 seconds (the float at 0x964 against lbl_10_rodata_42C = 1.2f: the fcmpo at
+// 0x0000F80C and the ble at 0x0000F810, so the test is 0x964 > 1.2f) - and otherwise when more
+// than 0.2 seconds have passed since the last wall collision (the float at 0xC44 plus
 // lbl_10_rodata_428 = 0.2f against the elapsed time at 0x8B0: the fadds at 0x0000F82C, the
 // fcmpo at 0x0000F830 and the extrwi at 0x0000F838, which takes the CR0 bit 1 - the "greater
 // than" of an fcmpo).
 bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
-  if (mTimeAtCoverPoint > 1.2f) {
+  if (mStillTime > 1.2f) {
     return true;
   }
   return (0.2f + mLastWallHitTime) > mElapsedTime;

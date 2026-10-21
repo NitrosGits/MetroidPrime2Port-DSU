@@ -67,8 +67,11 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mAttackHistory{0, 0, 0}
 , mAttackHistoryCount(0)
 , mAccumulatedDamage(0.f)
+, mLastHealth(-1.f)
+, mDamageDecay(1.f)
 , mDamageThreshold(data.mDamageInterruptThreshold)
-, mTimeAtCoverPoint(0.f)
+, mStillTime(0.f)
+, mStillPosition(CVector3f(0.f, 0.f, 0.f))
 , mLastWallHitTime(0.f)
 , mElapsedTime(0.f) {
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
@@ -86,11 +89,13 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   //
   // The scalars the three TravelToCoverPoints triggers read are set to retail's defaults: the
   // attack words at 0x980 and 0x984 are 0xFFFF (0x0001FCE4/0x0001FCE8), the count at 0x994 is 0
-  // (0x0001FCF8), the accumulated damage at 0xCC0 is 0.0f (0x0001FF58), the damage threshold at
-  // 0xCC8 is the constructor's 8th float argument (0x0001FF60 - the loader's
-  // damageInterruptThreshold, the property id 0x8f70d3f2), the cover point timer at 0x964 is
-  // 0.0f (0x0001FCB0), the wall collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed
-  // time at 0x8B0 is 0.0f (0x0001FB88).
+  // (0x0001FCF8), the accumulated damage at 0xCC0 is 0.0f (0x0001FF58), the last health at 0xCC4
+  // is -1.0f (0x0001FF5C), the damage threshold at 0xCC8 is the constructor's 8th float argument
+  // (0x0001FF60 - the loader's damageInterruptThreshold, the property id 0x8f70d3f2), the damage
+  // decay at 0xCCC is 1.0f (0x0001FF64), the still timer at 0x964 is 0.0f (0x0001FCB0) and its
+  // reference position at 0x958/0x95C/0x960 is the zero vector (0x0001FC64..0x0001FC74), the wall
+  // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
+  // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
 }
 

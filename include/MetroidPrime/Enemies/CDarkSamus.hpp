@@ -343,6 +343,15 @@ private:
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
   const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
 
+  // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
+  // guest's 0x958). `reset` is the guest's argument r4: it clears the timer and moves the
+  // reference position to the actor's own position.
+  void UpdateStillTimer(bool reset, float dt);
+
+  // fn_10_1E178: the damage the actor has taken (the guest's 0xCC0). `count` is the guest's
+  // argument r4: the health that is gone is only added to the damage when it is set.
+  void AccumulateDamage(bool count, float dt);
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -385,16 +394,25 @@ private:
   uint mAttackHistoryCount;        // guest 0x994, the number of ids in mAttackHistory; the
                                    // constructor writes 0 to it (0x0001FCF8)
   float mAccumulatedDamage;        // guest 0xCC0, the damage the actor has taken: fn_10_1E178 adds
-                                   // the difference of the last damage value and decays it (not
-                                   // ported yet); the constructor writes 0.0f to it (0x0001FF58)
+                                   // the health that is gone and decays it (not ported yet); the
+                                   // constructor writes 0.0f to it (0x0001FF58)
+  float mLastHealth;               // guest 0xCC4, the health at the last damage check: fn_10_1E178
+                                   // compares it with the health info's current health; the
+                                   // constructor writes lbl_10_rodata_3EC = -1.0f to it (0x0001FF5C)
+  float mDamageDecay;              // guest 0xCCC, the rate the accumulated damage decays at:
+                                   // fn_10_1E178 subtracts it times dt; the constructor writes
+                                   // lbl_10_rodata_3E8 = 1.0f to it (0x0001FF64)
   float mDamageThreshold;          // guest 0xCC8, the threshold TooMuchDamage compares the
                                    // accumulated damage with; the constructor writes its 8th float
                                    // argument to it (0x0001FF60), the loader's
                                    // damageInterruptThreshold (the property id 0x8f70d3f2)
-  float mTimeAtCoverPoint;         // guest 0x964, how long the actor has stayed at its cover
-                                   // point: fn_10_1D794 adds dt to it while the actor is within
-                                   // 0.6 of the point (not ported yet); the constructor writes
-                                   // 0.0f to it (0x0001FCB0)
+  float mStillTime;                // guest 0x964, how long the actor has stood still: fn_10_1D794
+                                   // adds dt to it while the actor stays within 0.6 of
+                                   // mStillPosition; the constructor writes 0.0f to it (0x0001FCB0)
+  CVector3f mStillPosition;        // guest 0x958/0x95C/0x960, the position the still timer
+                                   // measures from: fn_10_1D794 moves it to the actor's position
+                                   // when the actor walks away; the constructor writes the zero
+                                   // vector to it (0x0001FC64..0x0001FC74)
   float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
                                    // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it (not
                                    // ported yet); the constructor writes 0.0f to it (0x0001FF38)
