@@ -1447,3 +1447,34 @@ trigger's entry, one per hit, from gdb convenience variables).
   fn_10_1BEFC, still a stand-in.
 - Unmarked: 14284, BB78, BBE4 (their no-stage arm needs fn_10_17E14 to return null, which an
   entry-only force on the -O2 cov build can't do), 11158, 1BB08.
+
+## Slice 29 (2026-10-21): fn_10_8870 is the loop attack command
+
+- **The merge** (`decomp/darksamus-fsm2` 0c5f871dc, twelve triggers marked with `trigcall`):
+  the only conflict was this note; both sides' sections are kept.
+- **fn_10_8870 (0x00008870, 0xE0 bytes)** is generic: the message in r4, the animation state for
+  the DOL's ShouldRetry in r5 (0x000088F8) and the command in r6. The id at cmd+4 is delivered
+  (0x000088B4, 0x00008908) and cmd+4..+0x10 is copied into the command manager's slot
+  (0x000088D4..0x000088E8, 0x0000891C..0x00008934). Activate (0x000088B0) stores 1
+  (kAS_Ready) to the animation state 0x6B4, Update (0x000088F0) re-delivers the command while
+  ShouldRetry answers true, and Deactivate (0x0000893C) stores 0 (kAS_NotReady).
+  The port's helper is `RunLoopAttackCmd(msg, attack)` - the shape the fsm2 lane's states already
+  use inline (PortCDarkSamusFsm2.cpp, the SuperMissileAttack, the NormalMissileAttack and the
+  0x85DC caller).
+- **The FreezeBeam's command** (0x00016E40..0x00016E88) is a **loop attack**: the vtable
+  lbl_10_data_1B0 (the base lbl_10_data_1D4), the id 7 = kBSC_LoopAttack (0x00016E70), the type
+  4 = pas::kLAT_Four (0x00016E80), the wait flag 0 (0x00016E84) and the byte with its bit 0x80
+  (the skip-into) cleared (`rlwimi r0, r7, 7, 24, 24` at 0x00016E54). The `li r5, 0x9` at
+  0x00016E78 is fn_10_8870's animation-state argument (pas::kAS_LoopAttack), not a command id.
+  So the port delivers `CBCLoopAttackCmd(pas::kLAT_Four, false)` through the typed DeliverCmd -
+  **no port-only command class and no change to a shared BodyState file are needed**. (Slice 28
+  read it as a loop hit reaction; that was wrong.)
+- **The rooftop run** (the coverage driver, the normal build): the game's exit code 0, **no
+  SIGSEGV**, no reach stub. The FreezeBeam state is run with the console's `statecall` (it has
+  no node in the shipped FSM2): `statecall u04f7 FreezeBeam 0/1/2` runs the Activate, the Update
+  and the Deactivate, and `RunLoopAttackCmd` runs in all three - the loop attack plays, without
+  the crash.
+- **Still open**: fn_10_1707C (the freeze beam's dodge step, 0x0001707C, 0x1F4 bytes) is not
+  ported, so the FreezeBeam state keeps that stand-in and keeps no marker (its 0xAB0 >= 1 arm
+  and its 0xAB8 bit 0x40 arm did not run either). The Arrived trigger (fn_10_62B4) still has no
+  arms: the fight never evaluates it and the state that would evaluate it has not been found.
