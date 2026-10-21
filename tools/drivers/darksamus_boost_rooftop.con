@@ -1,0 +1,15 @@
+# Dark Samus BoostBallInto with the hint chains: Sanctuary 10_cliff_rooftop layer 2
+# (MP2_WORLD="1baa96c2,10_cliff_rooftop" MP2_INPUT="LAYER2@400"), boss u04f7, 600 hp.
+# The chains wake at the 0177 stage (below 37 %), so the boss is damaged in steps first.
+@f600 send u04f7 Activate
+@f700 fsm u04f7 BoostBallInto
+@f900 damage u04f7 130
+@f1000 damage u04f7 130
+@f1100 damage u04f7 130
+@f1200 damage u04f7 100
+@f1300 obj u04f7
+@f1350 fsm u04f7 BoostBallInto
+@f1600 fsm u04f7 BoostBallInto
+@f1850 place u04f7 player 6
+@f1860 fsm u04f7 BoostBallInto
+@f2100 obj u04f7

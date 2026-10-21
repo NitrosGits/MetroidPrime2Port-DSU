@@ -35,6 +35,7 @@
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
+#include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
@@ -50,6 +51,7 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/CGenericFSM2State.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
@@ -480,7 +482,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
-      "                            cannonball, dark or light; kb = knockback power)\n"
+      "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
+      "                            sunburst, sonicboom; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -493,6 +496,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
+      "boost                       boost-ball release on the morphed player\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -510,7 +514,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
-      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it)\n"
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -711,7 +715,13 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args&, std::string&) { PortWarp::Kill(); }
+void CmdKill(CStateManager&, const Args& args, std::string&) {
+  if (args.size() > 1) {
+    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+    return;
+  }
+  PortWarp::Kill();
+}
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
   if (args.size() < 2) {
@@ -886,6 +896,19 @@ void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::FastMorph() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetFastMorph(enabled);
   out += enabled ? "fast morph on\n" : "fast morph off\n";
+}
+
+// boost: start a boost-ball charge release on the morphed player (what releasing a held A does), so
+// lanes reach boost-hit arms without timing pad input.
+void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr || player->GetMorphBall() == nullptr ||
+      player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    Fail("boost: the player is not morphed (press x, or 'press x 1')");
+    return;
+  }
+  player->GetMorphBall()->EnterBoosting(mgr, false);
+  out += "boosting\n";
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -1387,12 +1410,16 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
-    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light]");
+    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
   // only a missile or the cannon ball may break cannot be tested with the default power beam.
+  // The charge combos (darkburst, sunburst, sonicboom) are their beam with the combo flag, which is
+  // what a knockback rule set tells them apart by (the Ing's death follow-ups, for instance).
   EWeaponType weapon = kWT_Power;
+  bool comboed = false;
   for (size_t i = 3; i < args.size(); ++i) {
     float number = 0.f;
     if (ParseFloat(args[i], number)) {
@@ -1409,8 +1436,22 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Light;
     } else if (args[i] == "power") {
       weapon = kWT_Power;
+    } else if (args[i] == "annihilator") {
+      weapon = kWT_Annihilator;
+    } else if (args[i] == "powerbomb") {
+      weapon = kWT_PowerBomb;
+    } else if (args[i] == "darkburst") {
+      weapon = kWT_Dark;
+      comboed = true;
+    } else if (args[i] == "sunburst") {
+      weapon = kWT_Light;
+      comboed = true;
+    } else if (args[i] == "sonicboom") {
+      weapon = kWT_Annihilator;
+      comboed = true;
     } else {
-      Fail("damage: weapon is power, missile, cannonball, dark or light");
+      Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
+           "darkburst, sunburst or sonicboom");
       return;
     }
   }
@@ -1422,7 +1463,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   const float before = actor->GetHealthInfo()->GetHP();
-  const CDamageInfo info(CWeaponMode(weapon), amount, 0.f, knockback);
+  const CDamageInfo info(CWeaponMode(weapon, false, comboed), amount, 0.f, knockback);
   const CVector3f direction = actor->GetTranslation() - player->GetTranslation();
   mgr.ApplyDamage(player->GetUniqueId(), actor->GetUniqueId(), player->GetUniqueId(), info,
                   CMaterialFilter::GetPassEverything(), direction);
@@ -1459,13 +1500,33 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   }
   TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
   const std::string before = machine->HasState() && machine->GetName() != nullptr ? machine->GetName() : "?";
-  machine->SetState(mgr, *patterned, rstl::string_l(std::string(args[2]).c_str()));
+  // string_l borrows the characters: keep the std::string alive for every use of `name`.
+  const std::string wanted(args[2]);
+  const rstl::string name = rstl::string_l(wanted.c_str());
+  // An FSM2's SetState looks only at its own top-level states; a state inside one of its
+  // sub-machines is entered the way a transition into that sub-machine would enter it.
+  std::string where = "top machine";
+  if (machine->GetType() == 1) {
+    const char* path[8] = {};
+    const int depth = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
+        mgr, *patterned, name, path, 8);
+    if (depth > 0) {
+      where = "sub-machine ";
+      for (int i = 0; i < depth; ++i) {
+        where += (i != 0 ? "/" : "");
+        where += path[i] != nullptr ? path[i] : "?";
+      }
+    }
+  } else {
+    machine->SetState(mgr, *patterned, name);
+  }
   const char* after = machine->HasState() ? machine->GetName() : nullptr;
   // An unknown name leaves the machine where it was; say so rather than report a no-op. An FSM2
   // evaluates the new state's transitions inside SetState, so a state that was entered and left
   // at once reads as another, new name: report that as entered.
   if (after != nullptr && std::string_view(after) != args[2] && before != after) {
-    out += "fsm " + before + " -> " + Str(args[2]) + " (entered; now " + after + ")\n";
+    out += "fsm " + before + " -> " + Str(args[2]) + " [" + where + "] (entered; now " + after +
+           ")\n";
     return;
   }
   if (after == nullptr || std::string_view(after) != args[2]) {
@@ -1473,7 +1534,7 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
          (after != nullptr ? after : "?"));
     return;
   }
-  out += "fsm " + before + " -> " + after + '\n';
+  out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
@@ -1575,6 +1636,13 @@ void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
   }
   const uint editorId = target->GetEditorId().Value();
   const TUniqueId uid = target->GetUniqueId();
+  if (msg == kSM_Delete) {
+    // A bare Delete message resets the object's FSM but leaves it alive, and its next Think writes
+    // past mSubMachines; script deletes go through the state manager's delete request.
+    mgr.DeleteObjectRequest(uid);
+    out += "delete requested\n";
+    return;
+  }
   mgr.DeliverScriptMsg(
       CScriptMsg(kInvalidUniqueId, uid, static_cast< EScriptObjectMessage >(msg)));
   char line[160];
@@ -2125,6 +2193,7 @@ constexpr SCommand kCommands[] = {
     {"photo", CmdPhoto, true},
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
+    {"boost", CmdBoost, true},
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},

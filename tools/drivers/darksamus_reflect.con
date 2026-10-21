@@ -1,0 +1,55 @@
+# Dark Samus projectile reflect and dive hit: Sanctuary 10_cliff_rooftop layer 2
+# (MP2_WORLD="1baa96c2,10_cliff_rooftop" MP2_INPUT="LAYER2@400"), boss u04f7. After a dive lands
+# (the attack sent) the dive state sends back player shots near the boss's root bone, so beam
+# shots are fired at the boss from 2 units through each landing (more than five in all, so the
+# oldest kept uid is dropped); the dive lands on the player (the hit), unmorphed in the first two
+# passes and morphed (X) in the third.
+@f1200 send u04f7 Activate
+@f1300 place u04f7 player 10
+@f1310 fsm u04f7 DiveAttack
+@f1340 shoot u04f7 2
+@f1355 shoot u04f7 2
+@f1370 shoot u04f7 2
+@f1385 shoot u04f7 2
+@f1400 shoot u04f7 2
+@f1415 shoot u04f7 2
+@f1430 shoot u04f7 2
+@f1445 shoot u04f7 2
+@f1460 shoot u04f7 2
+@f1475 shoot u04f7 2
+@f1490 shoot u04f7 2
+@f1505 shoot u04f7 2
+@f1520 shoot u04f7 2
+@f1535 shoot u04f7 2
+@f1550 shoot u04f7 2
+@f1565 shoot u04f7 2
+@f1580 shoot u04f7 2
+@f1595 shoot u04f7 2
+@f1620 obj u04f7
+@f1700 place u04f7 player 10
+@f1710 fsm u04f7 DiveAttack
+@f1740 shoot u04f7 2
+@f1755 shoot u04f7 2
+@f1770 shoot u04f7 2
+@f1785 shoot u04f7 2
+@f1800 shoot u04f7 2
+@f1815 shoot u04f7 2
+@f1830 shoot u04f7 2
+@f1845 shoot u04f7 2
+@f1860 shoot u04f7 2
+@f1875 shoot u04f7 2
+@f1890 shoot u04f7 2
+@f1905 shoot u04f7 2
+@f1920 shoot u04f7 2
+@f1935 shoot u04f7 2
+@f1950 shoot u04f7 2
+@f1965 shoot u04f7 2
+@f1980 shoot u04f7 2
+@f1995 shoot u04f7 2
+@f2020 obj u04f7
+@f2100 press X 8
+@f2160 status
+@f2170 place u04f7 player 10
+@f2180 fsm u04f7 DiveAttack
+@f2400 status
+@f2410 obj u04f7
