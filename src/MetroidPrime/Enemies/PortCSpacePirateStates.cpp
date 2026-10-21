@@ -15,6 +15,7 @@
 #include "Kyoto/Math/CQuaternion.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
@@ -1216,6 +1217,19 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// Retail fn_72_10CE4 (0x40): the module's own CValidEntityPredicate (its vtable is lbl_72_data_AD4)
+// - the object with the id has to be a CScriptWaypoint: GetObjectById (asm 0x10D00) and the cast
+// (asm 0x10D04) with the null test (asm 0x10D08-0x10D10). The WallHang state walks its cover
+// point's kSS_Arrived/kSM_Next connection with this predicate through CheckConnectedObject_if
+// (asm 0x6A54): a non-waypoint first connection is skipped, not returned.
+class CSpacePirateWaypointPredicate : public CValidEntityPredicate {
+public:
+  ~CSpacePirateWaypointPredicate() override {}
+  bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
+    return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
+  }
+};
+
 // Retail fn_72_69AC (0x33C): Activate stores kAS_Ready, sets 0x8f7 bit 0x04 and, when the pirate has
 // a cover point, walks that point's kSS_Arrived/kSM_Next connection with an explicit
 // CValidEntityPredicate and stores the waypoint's own unique id (waypoint +0x8), not the
@@ -1235,7 +1249,8 @@ void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x69F8
     x8f7_29_inWallHang = true;
     if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
-      const TUniqueId id = cover->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next);
+      const TUniqueId id = cover->CheckConnectedObject_if(mgr, kSS_Arrived, kSM_Next,
+                                                          CSpacePirateWaypointPredicate());
       if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id))) {
         mDestObj = waypoint->GetUniqueId();
         SetDestPos(waypoint->GetTranslation());
