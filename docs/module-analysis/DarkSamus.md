@@ -902,7 +902,9 @@ transition enters it.
 
 ## Slice 20 (2026-10-21): the reflect chance cache, fn_10_F298
 
-- **The table at guest 0x10A8 is a run-time cache, not loader data.** Every write to the count
+- **The table at guest 0x10A8 is a run-time cache, not loader data.** (Slice 21 adds the two
+  callers of the roll functions: fn_10_F100 from the hit arm and fn_10_F298 from the
+  AnyIncomingMissiles trigger.) Every write to the count
   (0x10A8) and the entries (0x10AC, 12 bytes each: the projectile's uid, a roll at +0x04 and a
   roll at +0x08) in the REL:
   - the constructor writes the count 0 (`stw r5, 0x10a8(r31)`, 0x00020270);
@@ -954,3 +956,64 @@ transition enters it.
   offset, so it looked for a store to 0x80. The asm stores the byte 0x97C (0x00019470 and
   0x0001948C) with the bits 0x80 (the stage's +0x34) and 0x40 (the stage's +0x32 not 1) set by
   the rlwimi at 0x0001946C and 0x00019488 - the comments now name the byte 0x97C first.
+
+## Slice 21 (2026-10-21): the reflect path's callers
+
+- Ported: fn_10_1BB08 (the AnyIncomingMissiles trigger), fn_10_F100 (the cache's other roll) and
+  fn_10_1EE4C (the hit's damage may be sent back), plus the 'XDMG' arm of AcceptScriptMsg
+  (fn_10_1E89C) that calls it, and the two floats fn_10_F298 and fn_10_1EE4C compare
+  (guest 0xC0C and 0xC20) where the retail writes them.
+- **fn_10_1BB08** (0x0001BB08, 0x100 bytes): the near list (the box of half-size
+  lbl_10_rodata_3F0 = 100.0f around the actor, 0x0001BB30..0x0001BB7C) with the default filter
+  and the actor itself (BuildNearList at 0x0001BBB8); every entry is cast to a
+  CEnergyProjectile (0x0001BBDC) and fn_10_1B9B0 with the weapon type 6 (kWT_Missile,
+  0x0001BBF4) must let it through (0x0001BBFC) and fn_10_145E4 must find the line to the
+  projectile's position on the mesh (0x0001BC10) for the trigger to answer true (0x0001BC20).
+  The trigger itself has no transition in the FSM2 (the MP2_DS_FSM dump lists it only in the
+  machine's 92 triggers), but the module's own ShouldReact (fn_10_11158) calls it (0x00011210)
+  and the FSM2 uses ShouldReact, so the body does run in retail.
+- **fn_10_F100** (0x0000F100, 0x110 bytes): the cache's other roll - the same walk and the same
+  two rolls as fn_10_F298 but without the time window, and the entry's +0x08 answers on a hit
+  (0x0000F158). It is called only from fn_10_1EE4C (0x0001EED8).
+- **fn_10_1EE4C** (0x0001EE4C, 0xE4 bytes): the time since the last hit or heavy hit (the
+  larger of guest 0xC0C and 0xC20, 0x0001EE74 and 0x0001EE78) plus lbl_10_rodata_438 = 3.0f
+  must be past the elapsed time 0x8B0 (0x0001EE90), the damage's weapon type must be 6
+  (kWT_Missile, 0x0001EEA8) and the stage must exist (0x0001EEB8); then fn_10_F100's roll is
+  compared with the stage info's +0x2C (the third missile float) when the damage info's flag
+  bit 0x40 is set (0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C)
+  otherwise.
+- **The 'XDMG' arm of AcceptScriptMsg** (0x0001EA30): the sender must be a CGameProjectile
+  (0x0001EA40), the vulnerability (the vtable's slot 16, fn_10_100DC, 0x0001EA5C) must be hurt by
+  the projectile's damage info (fn_800DB834, the host's WeaponHurts, 0x0001EA64) and the last hit
+  must be lbl_10_rodata_438 = 3.0f old (0x0001EAB4). The hit direction (the projectile's
+  position minus the actor's) goes to 0x8C0/0x8C4/0x8C8 (0x0001EA70..0x0001EAA4) and, when
+  fn_10_1EE4C says yes, 0xC0C takes the elapsed time (0x0001EAF8) and 0xC10/0xC14/0xC18 the
+  flattened direction (0x0001EB04..0x0001EB18), normalized (0x0001EB30).
+- **The writes of 0xC0C and 0xC20**: every store in the REL is 0x0001EAF8 (the 'XDMG' arm,
+  0xC0C = the elapsed time), 0x00010F44 and 0x00010F4C (the HeavyHit state's Deactivate:
+  0xC0C = 0.0f and 0xC20 = the elapsed time) and the constructor (0x0001FEE4 and 0x0001FF04).
+  The port writes all four.
+- Reach: the missile is the console's Y button (the tweak's default useItem; 0x2c is the missile
+  ammo): `give missile 30`, `press Y 45` charges and fires it at the boss. On the rooftop
+  (10_cliff_rooftop, boss u04f7) 16 of 34 missiles hit her; the same in the Temple
+  (12_temple_finalgate_dark, boss u0564).
+
+| body | arm | ran |
+| --- | --- | --- |
+| F100 | the uid not in the cache | yes (16 missiles) |
+| F100 | the cache with ten entries (the erase) / fewer | yes (the count stops at 10) / yes |
+| F100 | the uid in the cache | **no** - dead: the key is the projectile's uid and a projectile hits once |
+| 1EE4C | the time window passed / too early | yes / **no** (the stage's chance is below every roll) |
+| 1EE4C | a missile / not a missile | yes / **no** |
+| 1EE4C | a stage / none | yes / **no** (the fight always has one) |
+| 1EE4C | the stage's +0x2C / its +0x28 | **no** / yes |
+| 1BB08 | a missile in the near list | **no** - the trigger never ran |
+
+- The typed arm of fn_10_1B9B0 (the weapon type 6, 0x0001BBF8) needs fn_10_1BB08, and that
+  needs the module's own ShouldReact (fn_10_11158), which asks CanMissileDeflect first: the
+  stage info's +0x24 (the missiles' first float) must be below zero, and in the rooftop, Agon
+  and Temple stages it is not (the trigger answers false, so the short-circuit skips
+  AnyIncomingMissiles). FacingPlayer answers false there too. So the typed arm is out of reach
+  in the fights that were run, and the trigger's body did not run.
+- Marked: F100.
+- Unmarked: 1BB08 (its body never ran) and 1EE4C (three of its arms did not run).
