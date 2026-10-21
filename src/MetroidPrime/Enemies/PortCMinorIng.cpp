@@ -259,6 +259,9 @@ struct SImpactVisorEffect {
 static void CopyImpactParticle(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
 static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
 static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
+static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
+static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle, const SImpactVisorEffect* blur,
+                                     const SImpactVisorEffect* lowPass);
 
 // @ fn_44_6748
 // The retail copies the particle effect's token, its sound id and its collide flag into the
@@ -287,6 +290,33 @@ static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEf
 // The retail only calls the copy (asm 0x670C).
 static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
   CopyImpactParticleSet(dest, src);
+}
+
+// @ fn_44_66C0
+// The retail copies the particle effect's engaged flag (asm 0x66CC/0x66DC) and, when the source
+// has a particle effect, the effect itself (asm 0x66E4).
+static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
+  if (src->mParticleEffect) {                 // the engaged flag byte at +0x14 (asm 0x66CC)
+    dest->mParticleEffect.prepare_emplace();  // the flag byte at +0x14 (asm 0x66DC)
+    CopyImpactParticleEntry(dest, src);       // asm 0x66E4
+  } else {
+    dest->mParticleEffect.clear();            // the flag byte at +0x14 (asm 0x66DC)
+  }
+}
+
+// @ fn_44_660C
+// The retail assigns the effect's three parts and then the forced visor (asm 0x669C) and the
+// forced visor's duration (asm 0x66A4): the particle effect (asm 0x6630), the blur effect
+// (asm 0x6634-0x6660) and the low-pass filter (asm 0x6664-0x6688). The duration is the rodata
+// constant lbl_44_rodata_7C, which is zero, and the forced visor is the invalid one.
+static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle,
+                                    const SImpactVisorEffect* blur,
+                                    const SImpactVisorEffect* lowPass) {
+  CopyImpactParticleEffect(dest, particle);        // asm 0x6630
+  dest->mBlurEffect = blur->mBlurEffect;           // asm 0x6634-0x6660
+  dest->mLowPassFilter = lowPass->mLowPassFilter;  // asm 0x6664-0x6688
+  dest->mForcedVisor = CPlayerState::kPV_Invalid;  // asm 0x669C
+  dest->mForcedVisorDuration = 0.f;                // asm 0x66A4 (lbl_44_rodata_7C)
 }
 
 
