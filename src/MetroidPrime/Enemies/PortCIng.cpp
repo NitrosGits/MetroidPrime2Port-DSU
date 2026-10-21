@@ -825,6 +825,11 @@ CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   // only runs when the argument is above zero (rodata_6C).
   const bool predict = mForm == kForm_Corporeal ||
                        (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile);
+  static int sTick = 0;
+  if (DebugIng() && (sTick++ % 60) == 0) {
+    printf("[ing] %04x aim: form %d, dt %.2f, %s\n", GetUniqueId().value, mForm,
+           static_cast< double >(dt), predict ? "predict" : "base");
+  }
   if (!predict) {
     return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE4C
   }
@@ -3430,13 +3435,26 @@ void CIng::Render(const CStateManager& mgr) const {
   }
 }
 
-// fn_29_BF20 (not yet exercised in a run)
+// fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
+// (4) takes the base class's own table, the ing spot (3) takes the grapple's table while the ball
+// is held (the byte at 0xe5d, bit 0) and the ing spot's own table otherwise, and every other form
+// takes the trigger table at CIngData+0x3c (0x7fc).
 const CDamageVulnerability* CIng::GetDamageVulnerability() const {
   if (mForm == kForm_BodyProjectile) {
+    if (DebugIng()) {
+      printf("[ing] %04x vuln: form %d, the base table\n", GetUniqueId().value, mForm);
+    }
     return CPatterned::GetDamageVulnerability();
   }
   if (mForm == kForm_IngSpot) {
+    if (DebugIng()) {
+      printf("[ing] %04x vuln: form %d, the %s table\n", GetUniqueId().value, mForm,
+             mGrappled ? "grapple" : "ing spot");
+    }
     return mGrappled ? &mData.mGrapple.mVulnerability : &mData.mIngSpot.GetVulnerability();
+  }
+  if (DebugIng()) {
+    printf("[ing] %04x vuln: form %d, the trigger table\n", GetUniqueId().value, mForm);
   }
   return &mData.mTriggerVulnerability;
 }
@@ -3452,15 +3470,31 @@ rstl::optional_object< CAABox > CIng::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
 }
 
-// fn_29_BB8C (not yet exercised in a run)
+// fn_29_BB8C (0x128, asm 0x0000BB8C-0x0000BCB0): the ing spot (3) damages the target it touches
+// when the ball is not held (the byte at 0xe5d, bit 0), the toucher is the target (0xd6c) and the
+// damage cooldown (0x440) has run out; the contact damage is the actor's own (GetContactDamage)
+// and the filter is Solid alone. The cooldown is then reloaded from 0x444.
 void CIng::Touch(CActor& actor, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   if (mForm == kForm_IngSpot && !mGrappled && actor.GetUniqueId() == mTargetId &&
       mCurDamageRemTime <= 0.f) {
     // [?] the damage: the patterned contact damage.
+    if (DebugIng()) {
+      printf("[ing] %04x touch: form %d, the target %04x hit, %.2f dmg\n", GetUniqueId().value,
+             mForm, mTargetId.value, static_cast< double >(GetContactDamage().GetDamage()));
+    }
     mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), GetContactDamage(), SolidFilter(),
                     CVector3f::Zero());
     mCurDamageRemTime = mDamageWaitTime;
+  } else if (DebugIng()) {
+    // Which of the four conditions sent the touch away: the form, the ball, the id or the timer.
+    const char* why = mForm != kForm_IngSpot ? "the form"
+                       : mGrappled            ? "the ball"
+                       : actor.GetUniqueId() != mTargetId
+                                              ? "the id"
+                                              : "the cooldown";
+    printf("[ing] %04x touch: form %d, %04x, skipped (%s)\n", GetUniqueId().value, mForm,
+           actor.GetUniqueId().value, why);
   }
   CPatterned::Touch(actor, mgr);
 }
@@ -3472,9 +3506,16 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
 void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
   if (mForm != kForm_BodyProjectile) {
+    if (DebugIng()) {
+      printf("[ing] %04x collide: form %d, not the body projectile\n", GetUniqueId().value, mForm);
+    }
     return; // asm 0x0000B558: cmpwi mForm (0x9d4), 4
   }
   if (mBodyProjectileTime < 0.5f) {
+    if (DebugIng()) {
+      printf("[ing] %04x collide: form %d, the flight is %.2f s old\n", GetUniqueId().value, mForm,
+             static_cast< double >(mBodyProjectileTime));
+    }
     return; // asm 0x0000B56C: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4)
   }
   // The mask retail builds once into lbl_29_bss_8 (asm 0x0000B588-0x0000B6F0) from the six bit
@@ -3486,6 +3527,7 @@ void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CSt
                              (u64(1) << kMT_Floor) | (u64(1) << kMT_Solid) |
                              (u64(1) << kMT_Immovable) | (u64(1) << kMT_Occluder);
   const int count = list.GetCount(); // asm 0x0000B6FC: the list's count
+  bool splatted = false;
   for (int i = 0; i < count; ++i) {
     const CCollisionInfo& info = list[i]; // asm 0x0000B718: the entries are 0x60 apart
     if ((info.GetMaterialLeft().GetValue() & kSplatSurfaces) == 0) {
@@ -3493,7 +3535,18 @@ void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CSt
     }
     mSurfaceNormal = info.GetNormalLeft(); // asm 0x0000B738-0x0000B750: 0x40/0x44/0x48 -> 0xdd4/0xdd8/0xddc
     mSplat = true;                          // asm 0x0000B758: rlwimi, the word's bit 25 = the byte's bit 6 (0x40)
+    splatted = true;
+    if (DebugIng()) {
+      printf("[ing] %04x collide: form %d, the surface hit, the normal (%.2f, %.2f, %.2f)\n",
+             GetUniqueId().value, mForm, static_cast< double >(mSurfaceNormal.GetX()),
+             static_cast< double >(mSurfaceNormal.GetY()),
+             static_cast< double >(mSurfaceNormal.GetZ()));
+    }
     break;                                  // asm 0x0000B760: the first hit wins
+  }
+  if (DebugIng() && splatted == false) {
+    printf("[ing] %04x collide: form %d, %d contacts, no splat surface\n", GetUniqueId().value,
+           mForm, count);
   }
 }
 
@@ -3579,16 +3632,42 @@ void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectSt
   CPatterned::Death(mgr, direction, state);
 }
 
-// fn_29_B8C0 (not yet exercised in a run)
+// fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the
+// knock-back body state (6) takes the knock-back animation reaction; the hit's weapon type picks
+// the flinch type the knock-back manager keeps at 0x688 (2 for the light beam, 1 for everything
+// else), and the base class runs last. The Boost Guardian REL carries the same body
+// (fn_30_CB84) and the port's copy of it is the reference for the two calls.
 void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   EnsureBodyActive(mgr);
-  CPatterned::KnockBack(mgr, info);
+  // asm 0x0000B8E4-0x0000B8F8: form 2 and the body state (0x48c -> 0x37c) 6.
+  const bool react =
+      mForm == kForm_Corporeal && BodyController()->GetCurrentStateId() != pas::kAS_KnockBack;
+  KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, react); // 0x620
+  // asm 0x0000B924-0x0000B940: the damage's weapon type (info + 0x10) 2 -> 0x688 = 2, else 1.
+  KnockBackController().SetFlinchType(
+      info.GetDamageInfo().GetWeaponMode().GetType() == kWT_Light ? 2 : 1);
+  if (DebugIng()) {
+    printf("[ing] %04x knockback: form %d, react %d, flinch %d, weapon %d\n", GetUniqueId().value,
+           mForm, react ? 1 : 0,
+           info.GetDamageInfo().GetWeaponMode().GetType() == kWT_Light ? 2 : 1,
+           static_cast< int >(info.GetDamageInfo().GetWeaponMode().GetType()));
+  }
+  CPatterned::KnockBack(mgr, info); // asm 0x0000B950
 }
 
-// fn_29_B890 (not yet exercised in a run)
+// fn_29_B890 (0x30, asm 0x0000B890-0x0000B8BC): the two host forms (0, 1) and the evaporating
+// form (5) take no damage; every other form only gets the base class's damage-cooldown store
+// (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
+// store, so the port's early return plus the base call is retail's body.
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
+    if (DebugIng()) {
+      printf("[ing] %04x damage: form %d, ignored\n", GetUniqueId().value, mForm);
+    }
     return;
+  }
+  if (DebugIng()) {
+    printf("[ing] %04x damage: form %d, the cooldown store\n", GetUniqueId().value, mForm);
   }
   CPatterned::TakeDamage(direction, magnitude);
 }
