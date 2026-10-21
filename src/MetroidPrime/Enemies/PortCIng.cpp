@@ -947,13 +947,19 @@ void CIng::AlignBlobToSurface(CStateManager& mgr) {
 // @ fn_29_B1F4
 bool CIng::StateOver(CStateManager&, const CTriggerData&) const { return mAnimationState.IsOver(); }
 
-// fn_29_B1E8 (not yet exercised in a run)
+// @ fn_29_B1E8: the byte at 0xe5d's bit 5 (the asm's extrwi index 29, the module's flag bits are
+// counted from the top of the byte: the same idiom sets the flag in Lurk, fn_29_8A2C, asm
+// 0x00008A8C). The body is one bit test, and the run entered the Alert state (the !HasTarget
+// branch, whose target list is UnderFire -> IsAlert -> InDetectionRange), so the trigger was
+// evaluated and it returned true.
 bool CIng::IsAlert(CStateManager&, const CTriggerData&) const { return mAlert; }
 
-// fn_29_B1C8 (not yet exercised in a run). The asm tests mHostId (0xcdc) against kInvalidUniqueId -
-// the lhz/subf/or/srwi-31 idiom - and nothing else; it does not look at the form. That is what lets
-// SuckEnergy, which sets form 0 and then clears the host once its suck time runs out, take the
-// !IsControllingHost trigger into SetExitHostDest and on into ExitHost.
+// @ fn_29_B1C8: the asm tests mHostId (0xcdc) against kInvalidUniqueId - the lhz/subf/or/srwi-31
+// idiom - and nothing else; it does not look at the form. That is what lets SuckEnergy, which
+// sets form 0 and then clears the host once its suck time runs out, take the !IsControllingHost
+// trigger into SetExitHostDest and on into ExitHost. The body is one comparison, and the run
+// entered the SuckEnergy state, whose outgoing trigger list (the FSM dump: "state SuckEnergy:
+// ->IsControllingHost ->TargetInSafeZone") asks for it.
 bool CIng::IsControllingHost(CStateManager&, const CTriggerData&) const {
   return mHostId != kInvalidUniqueId; // 0xcdc
 }
@@ -3430,7 +3436,10 @@ void CIng::Render(const CStateManager& mgr) const {
   }
 }
 
-// fn_29_BF20 (not yet exercised in a run)
+// fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
+// (4) takes the base class's own table, the ing spot (3) takes the grapple's table while the ball
+// is held (the byte at 0xe5d, bit 0) and the ing spot's own table otherwise, and every other form
+// takes the trigger table at CIngData+0x3c (0x7fc).
 const CDamageVulnerability* CIng::GetDamageVulnerability() const {
   if (mForm == kForm_BodyProjectile) {
     return CPatterned::GetDamageVulnerability();
@@ -3452,7 +3461,10 @@ rstl::optional_object< CAABox > CIng::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
 }
 
-// fn_29_BB8C (not yet exercised in a run)
+// fn_29_BB8C (0x128, asm 0x0000BB8C-0x0000BCB0): the ing spot (3) damages the target it touches
+// when the ball is not held (the byte at 0xe5d, bit 0), the toucher is the target (0xd6c) and the
+// damage cooldown (0x440) has run out; the contact damage is the actor's own (GetContactDamage)
+// and the filter is Solid alone. The cooldown is then reloaded from 0x444.
 void CIng::Touch(CActor& actor, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   if (mForm == kForm_IngSpot && !mGrappled && actor.GetUniqueId() == mTargetId &&
@@ -3572,20 +3584,62 @@ void CIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserE
   }
 }
 
-// fn_29_B3C4 (not yet exercised in a run)
+// fn_29_B3C4 (0x170, asm 0x0000B3C4-0x0000B530): the Ing's own death body. It *replaces*
+// CPatterned::Death - the retail never calls the base class here - so the base's massive-death
+// logic, the dark-visor highlight and the unpossess step are not part of the Ing's death. The
+// body: the body controller's time scale, the FSM's "Dead" state (only when the state machine
+// has one), the ground collider's material, the vertical movement flag (unless the Ing burns),
+// the alive bit, the death body command in the forms 2 and 6..9 - and the script messages, which
+// the retail sends whether the Ing was alive or not.
 void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   EnsureBodyActive(mgr);
-  StopSfx();
-  CPatterned::Death(mgr, direction, state);
+  if (GetAlive()) {
+    BodyController()->SetTimeScale(1.f); // asm 0x0000B400-0x0000B408: the body controller's 0x5c8
+    // asm 0x0000B40C-0x0000B424: the state machine's vtable slot 0x28 (the same slot fn_29_3B50
+    // asks before it initialises the machine): the machine has a state.
+    if (mStateMachine->HasState()) {
+      // asm 0x0000B428-0x0000B458: the state machine's slot 0x20 - SetState(mgr, owner, "Dead").
+      mStateMachine->SetState(mgr, *this, rstl::string_l("Dead"));
+    }
+    RemoveMaterial(kMT_GroundCollider, mgr); // asm 0x0000B464-0x0000B470: the material 0x25
+    if (!mBurning && !mLaggedBurnDeath) {    // asm 0x0000B474-0x0000B47C: the byte at 0x421
+      mVerticalMovement = false;             // asm 0x0000B488-0x0000B494: the byte at 0x34c, bit 6
+    }
+    mAlive = false;                           // asm 0x0000B498-0x0000B4A4: the byte at 0x420, bit 6
+    // asm 0x0000B4A8-0x0000B4C4: the corporeal form and the form changes 6..9.
+    if (mForm == kForm_Corporeal ||
+        (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile)) {
+      IssueDeathBodyCommand(mgr, direction); // asm 0x0000B4C8-0x0000B4E0
+    }
+  }
+  // asm 0x0000B4E4-0x0000B508: the state argument (-1 is kSS_InvalidState) and the message (-1
+  // is kSM_None); the source is the invalid id, not the Ing's own.
+  if (state != kSS_InvalidState) {
+    SendScriptMsgs(state, mgr, kSM_None);
+  }
 }
 
-// fn_29_B8C0 (not yet exercised in a run)
+// fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the
+// knock-back body state (6) takes the knock-back animation reaction; the hit's weapon type picks
+// the flinch type the knock-back manager keeps at 0x688 (2 for the light beam, 1 for everything
+// else), and the base class runs last. The Boost Guardian REL carries the same body
+// (fn_30_CB84) and the port's copy of it is the reference for the two calls.
 void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   EnsureBodyActive(mgr);
-  CPatterned::KnockBack(mgr, info);
+  // asm 0x0000B8E4-0x0000B8F8: form 2 and the body state (0x48c -> 0x37c) 6.
+  const bool react =
+      mForm == kForm_Corporeal && BodyController()->GetCurrentStateId() != pas::kAS_KnockBack;
+  KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, react); // 0x620
+  // asm 0x0000B924-0x0000B940: the damage's weapon type (info + 0x10) 2 -> 0x688 = 2, else 1.
+  KnockBackController().SetFlinchType(
+      info.GetDamageInfo().GetWeaponMode().GetType() == kWT_Light ? 2 : 1);
+  CPatterned::KnockBack(mgr, info); // asm 0x0000B950
 }
 
-// fn_29_B890 (not yet exercised in a run)
+// fn_29_B890 (0x30, asm 0x0000B890-0x0000B8BC): the two host forms (0, 1) and the evaporating
+// form (5) take no damage; every other form only gets the base class's damage-cooldown store
+// (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
+// store, so the port's early return plus the base call is retail's body.
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;
