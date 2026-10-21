@@ -789,10 +789,15 @@ carry) and the aim flag (the 0x02 bit of the flag byte at guest this+0xC65, the 
 field): the host's `CBCAdditiveAimCmd` has an `mAimType` with a getter but no setter, so the
 flag cannot be expressed without a change to the shared body-command header.
 
+`fn_9_1C0C` (0x2ec, the module's renderable driver) is host code since 2026-10-21: the module's
+own scale (the float at guest this+0xC44) is advanced towards its target (guest this+0xC48) and
+the module's state word (guest this+0xC4C) follows it, while the module's two own renderables
+(guest this+0xC3C and this+0xC40) and its collision actor manager (guest this+0xA3C) stay named
+stand-ins - the port has no classes for them.
+
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
-as named stand-ins - `fn_9_6390` (0x29c), `fn_9_4D84` (0x228), `fn_9_3090` (0x2a8), `fn_9_1C0C`
-(0x2ec), `fn_9_4BC0` (0xe4) and `fn_9_3E1C` (0x324) - plus the two collision actor managers and
+as named stand-ins - `fn_9_3E1C` (0x324) - plus the two collision actor managers and
 the visual knowledge, which the port has no classes for. `fn_9_662C` (0x39c) is host code too
 since 2026-10-20.
 

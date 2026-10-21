@@ -338,6 +338,10 @@ private:
   // and this+0xC38 follow the actor.
   void x4BC0_UpdateEmitters();
 
+  // fn_9_1C0C: the module's renderable driver - it advances the module's own scale and drives
+  // the module's two own renderables.
+  void x1C0C_UpdateRenderables(CStateManager& mgr, float dt);
+
   // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper. Not ported (the
   // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
   void x5410_CreateEGrenade();

@@ -440,7 +440,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x4D84_UpdateAim(mgr);                     // 0x0000CA18
   x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
   x3090_Drown(mgr);                             // 0x0000CA34
-  StandInFn("fn_9_1C0C (0x2ec bytes)");        // 0x0000CA88
+  x1C0C_UpdateRenderables(mgr, dt);              // 0x0000CA88
   x4BC0_UpdateEmitters();                     // 0x0000CA8C
   StandInFn("fn_9_3E1C (0x324 bytes)");        // 0x0000CAA0
 }
@@ -1033,6 +1033,50 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
   }
   if (!handled) {
     CPatterned::DoUserAnimEvent(mgr, node, type, dt);                // 0x0000C904..0x0000C918
+  }
+}
+
+// fn_9_1C0C (0x2ec bytes): the module's renderable driver, called from the actor's Think (the
+// call at 0x0000CA88). While the module's state word at guest this+0xC4C is -1 it does nothing
+// (the compare at 0x00001C34); otherwise, while the byte at guest this+0xC66 has its 0x04 bit
+// (the test at 0x00001C40) and the body controller's byte at guest this+0x48C + 0x594 has no
+// 0x04 bit (the test at 0x00001C50), it sets the 0x02 bit of the byte at guest this+0xC64 and
+// deactivates the module's own collision actor manager (the guest's this+0xA3C). Then it
+// deactivates the module's two own renderables (the guest's this+0xC40 and this+0xC3C) and
+// advances the module's own scale (the float at guest this+0xC44) towards its target (the float
+// at guest this+0xC48): with a frame time below 0.5f (rodata_440) the scale moves by the frame
+// time times the difference over 0.5f (0x00001CC4..0x00001CDC), otherwise it takes the target
+// (0x00001CE4..0x00001CE8); when both the scale and its target are below 0.1f (rodata_42C) the
+// state word goes back to -1 (0x00001CEC..0x00001D10). Finally the state word picks the
+// renderable to drive: 1 is the one at guest this+0xC40 and 0 the one at guest this+0xC3C
+// (0x00001D14..0x00001ED4) - both are positioned at the locator segment id at guest this+0xC62
+// and scaled by the module's own scale.
+void CCommandoPirate::x1C0C_UpdateRenderables(CStateManager& mgr, float dt) {
+  if (xc4c_ == -1) {                                                // 0x00001C30..0x00001C38
+    return;
+  }
+  if ((xc66_ & 0x20) != 0) {                                        // 0x00001C3C..0x00001C44
+    // The guest's body controller's byte at guest this+0x48C + 0x594 has its 0x04 bit tested
+    // (0x00001C4C..0x00001C54); the retail's CBodyController has only five flag bits in that
+    // byte (mAnimationOver, mActive, mFrozen, mHasBeenFrozen and mPlayDeathAnims), so that bit
+    // is never set and the guest's test is always true.
+    xc64_ |= 0x04;                                                  // 0x00001C58..0x00001C68
+    StandIn("the module's collision actor manager at guest this+0xa3c (fn_9_1C0C)");  // 0x00001C6C..0x00001C70
+  }
+  StandIn("the module's own renderable at guest this+0xc40 (fn_9_1C0C)");  // 0x00001C74..0x00001C90
+  StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C)");  // 0x00001C94..0x00001CB0
+  if (dt < 0.5f) {                                                  // rodata_440, 0x00001CB4..0x00001CC0
+    xc44_ = xc44_ + dt * (xc48_ - xc44_) / 0.5f;                     // 0x00001CC4..0x00001CDC
+  } else {
+    xc44_ = xc48_;                                                  // 0x00001CE4..0x00001CE8
+  }
+  if (xc44_ < 0.1f && xc48_ < 0.1f) {                               // rodata_42C, 0x00001CEC..0x00001D08
+    xc4c_ = -1;                                                     // 0x00001D0C..0x00001D10
+  }
+  if (xc4c_ == 1) {                                                 // 0x00001D14..0x00001D1C
+    StandIn("the module's own renderable at guest this+0xc40 (fn_9_1C0C)");  // 0x00001D30..0x00001E00
+  } else if (xc4c_ == 0) {                                          // 0x00001D24..0x00001D28
+    StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C)");  // 0x00001E04..0x00001ED4
   }
 }
 
