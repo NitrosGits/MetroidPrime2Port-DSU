@@ -18,10 +18,18 @@ CFrustumPlanes::CFrustumPlanes(const CTransform4f& xf, float fov, float aspect, 
   const float verticalLength = nearZ / cosV;
   const float height = verticalLength * sinV;
 #ifdef TARGET_PC
-  // SetPerspective makes the near half-width nearZ * tan(fovy / 2) * aspect. Scaling the angle
-  // instead flips the side planes once fovy / 2 * aspect passes 90 degrees (about 83 degrees on
-  // a 2.16:1 phone), which culls most of the view.
-  const float width = nearZ * static_cast< float >(tan(halfFov)) * aspect;
+  // Retail scales the angle (a frustum a little wider than the view, which visor flares, swarms
+  // and portal culling see). That flips the side planes once fovy / 2 * aspect passes 90 degrees
+  // (about 83 degrees on a 2.16:1 phone), so only there take the view's own half-width,
+  // nearZ * tan(fovy / 2) * aspect. Below 1:1 (a portrait window, never on retail) the scaled
+  // angle is narrower than the view and would cull its edges, so that takes the view's too.
+  float width;
+  if (aspect >= 1.f && halfFov * aspect < 1.5f) {
+    const float scaled = halfFov * aspect;
+    width = nearZ / static_cast< float >(cos(scaled)) * static_cast< float >(sin(scaled));
+  } else {
+    width = nearZ * static_cast< float >(tan(halfFov)) * aspect;
+  }
 #else
   halfFov *= aspect;
   const float cosH = static_cast< float >(cos(halfFov));
