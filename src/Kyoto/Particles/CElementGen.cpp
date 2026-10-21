@@ -51,6 +51,44 @@ void PortDeclareParticleFormats() {
   GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 }
 
+// Port: retail copies the screen behind every indirect-textured particle. Here each copy ends the
+// render pass (and resolves the whole frame under MSAA), so a visor full of rain drops cost dozens
+// of passes a frame. Copy the viewport once per system, when its first particle on screen needs
+// it, at full size (INDM's half-size copy only saved console EFB bandwidth), and point each
+// particle at its own rectangle of that copy. Particles of one system no longer refract each other.
+// The copy is bound again on every call: a model system's other draws may load that texmap.
+void PortCopyViewportOnce(bool& copied) {
+  const CViewport& vp = CGraphics::GetViewport();
+  if (!copied) {
+    GXSetTexCopySrc(static_cast< u16 >(vp.mLeft), static_cast< u16 >(vp.mTop),
+                    static_cast< u16 >(vp.mWidth), static_cast< u16 >(vp.mHeight));
+    GXSetTexCopyDst(static_cast< u16 >(vp.mWidth), static_cast< u16 >(vp.mHeight), GX_TF_RGB565,
+                    GX_FALSE);
+    const bool useVideoFilter = CGraphics::GetUseVideoFilter();
+    CGraphics::SetUseVideoFilter(false);
+    GXCopyTex(CGraphics::GetDolphinSpareBuffer(), GX_FALSE);
+    CGraphics::SetUseVideoFilter(useVideoFilter);
+    GXPixModeSync();
+    copied = true;
+  }
+  CGraphics::LoadDolphinSpareTexture(vp.mWidth, vp.mHeight, GX_TF_RGB565, nullptr,
+                                     CGraphics::kSpareBufferTexMapID);
+}
+
+// A clipped quad's texture coordinate, from its own copy's texels to the same pixels of the
+// viewport copy.
+CVector2f PortViewportTexCoord(const CGraphics::CClippedScreenQuad& clip, int index) {
+  const CViewport& vp = CGraphics::GetViewport();
+  const CVector2f& uv = clip.GetTexCoord(index);
+  return CVector2f(
+      (static_cast< float >(clip.GetX() - vp.mLeft) +
+       uv.GetX() * static_cast< float >(clip.GetTexWidth() - 1)) /
+          static_cast< float >(vp.mWidth),
+      (static_cast< float >(clip.GetY() - vp.mTop) +
+       uv.GetY() * static_cast< float >(clip.GetHeight() - 1)) /
+          static_cast< float >(vp.mHeight));
+}
+
 } // namespace
 #endif
 
@@ -2468,6 +2506,7 @@ void CElementGen::RenderParticlesIndirectTexture() {
   CGX::SetVtxDescv(skIndVtxDescList);
 #ifdef TARGET_PC
   PortDeclareParticleFormats();
+  bool portScreenCopied = false;
 #endif
 
 
@@ -2521,6 +2560,18 @@ void CElementGen::RenderParticlesIndirectTexture() {
       continue;
     }
     const int indScale = mLoadedGenDesc->mINDM ? 1 : 0;
+#ifdef TARGET_PC
+    // Retail skips a particle too big for the spare buffer; keep that, then copy once (see
+    // PortCopyViewportOnce).
+    if (GXGetTexBufferSize(clipRect.GetTexWidth() >> indScale, clipRect.GetHeight() >> indScale,
+                           GX_TF_RGB565, GX_FALSE, 0) > CGraphics::GetSpareBufferSize()) {
+      continue;
+    }
+    PortCopyViewportOnce(portScreenCopied);
+    const CVector2f screenUV[4] = {
+        PortViewportTexCoord(clipRect, 0), PortViewportTexCoord(clipRect, 1),
+        PortViewportTexCoord(clipRect, 2), PortViewportTexCoord(clipRect, 3)};
+#else
     void* dest = CGraphics::GetDolphinSpareBuffer();
     GXSetTexCopySrc(static_cast< u16 >(clipRect.GetX()), static_cast< u16 >(clipRect.GetY()),
                     static_cast< u16 >(clipRect.GetWidth()),
@@ -2542,6 +2593,7 @@ void CElementGen::RenderParticlesIndirectTexture() {
     CGraphics::LoadDolphinSpareTexture(clipRect.GetTexWidth() >> indScale,
                                        clipRect.GetHeight() >> indScale, GX_TF_RGB565, NULL,
                                        CGraphics::kSpareBufferTexMapID);
+#endif
 
 #ifdef TARGET_PC
     uint color = particle->mColor.GetColor_GX();
@@ -2553,25 +2605,41 @@ void CElementGen::RenderParticlesIndirectTexture() {
     GXPosition3f32(sinPlusCos + vpX, vpY, (cosT - sinT) + vpZ);
     GXColor1u32(color);
     GXTexCoord2f32(uvs.xMax, uvs.yMax);
+#ifdef TARGET_PC
+    GXTexCoord2f32(screenUV[0].GetX(), screenUV[0].GetY());
+#else
     GXTexCoord2f32(clipRect.GetTexCoord(0).GetX(), clipRect.GetTexCoord(0).GetY());
+#endif
     GXTexCoord2f32(uvsInd.xMax, uvsInd.yMax);
 
     GXPosition3f32((sinT - cosT) + vpX, vpY, sinPlusCos + vpZ);
     GXColor1u32(color);
     GXTexCoord2f32(uvs.xMin, uvs.yMax);
+#ifdef TARGET_PC
+    GXTexCoord2f32(screenUV[1].GetX(), screenUV[1].GetY());
+#else
     GXTexCoord2f32(clipRect.GetTexCoord(1).GetX(), clipRect.GetTexCoord(1).GetY());
+#endif
     GXTexCoord2f32(uvsInd.xMin, uvsInd.yMax);
 
     GXPosition3f32(vpX - sinPlusCos, vpY, vpZ - (cosT - sinT));
     GXColor1u32(color);
     GXTexCoord2f32(uvs.xMin, uvs.yMin);
+#ifdef TARGET_PC
+    GXTexCoord2f32(screenUV[2].GetX(), screenUV[2].GetY());
+#else
     GXTexCoord2f32(clipRect.GetTexCoord(2).GetX(), clipRect.GetTexCoord(2).GetY());
+#endif
     GXTexCoord2f32(uvsInd.xMin, uvsInd.yMin);
 
     GXPosition3f32((-sinT + cosT) + vpX, vpY, (-cosT - sinT) + vpZ);
     GXColor1u32(color);
     GXTexCoord2f32(uvs.xMax, uvs.yMin);
+#ifdef TARGET_PC
+    GXTexCoord2f32(screenUV[3].GetX(), screenUV[3].GetY());
+#else
     GXTexCoord2f32(clipRect.GetTexCoord(3).GetX(), clipRect.GetTexCoord(3).GetY());
+#endif
     GXTexCoord2f32(uvsInd.xMax, uvsInd.yMin);
 
     CGX::End();
@@ -2960,6 +3028,15 @@ void CElementGen::RenderIndirectModelParticle(SModelRenderState& state, const CC
     return;
   }
   const uint halfSize = mLoadedGenDesc->mINDM ? 1 : 0;
+#ifdef TARGET_PC
+  if (GXGetTexBufferSize(clip.GetTexWidth() >> halfSize, clip.GetHeight() >> halfSize, GX_TF_RGB565,
+                         GX_FALSE, 0) > CGraphics::GetSpareBufferSize()) {
+    return;
+  }
+  PortCopyViewportOnce(state.mPortScreenCopied);
+  const CVector2f screenUV[4] = {PortViewportTexCoord(clip, 0), PortViewportTexCoord(clip, 1),
+                                 PortViewportTexCoord(clip, 2), PortViewportTexCoord(clip, 3)};
+#else
   void* dest = CGraphics::GetDolphinSpareBuffer();
   GXSetTexCopySrc(clip.GetX(), clip.GetY(), clip.GetWidth(), clip.GetHeight());
   GXSetTexCopyDst(clip.GetTexWidth() >> halfSize, clip.GetHeight() >> halfSize, GX_TF_RGB565,
@@ -2976,12 +3053,34 @@ void CElementGen::RenderIndirectModelParticle(SModelRenderState& state, const CC
   GXPixModeSync();
   CGraphics::LoadDolphinSpareTexture(clip.GetTexWidth() >> halfSize, clip.GetHeight() >> halfSize,
                                      GX_TF_RGB565, nullptr, CGraphics::kSpareBufferTexMapID);
+#endif
 
 #ifdef TARGET_PC
   const uint packedColor = color.GetColor_GX();
+  CGX::Begin(GX_QUADS, GX_VTXFMT0, 4);
+  GXPosition3f32(0.5f, 0.f, 0.5f);
+  GXColor1u32(packedColor);
+  GXTexCoord2f32(uvs.xMax, uvs.yMax);
+  GXTexCoord2f32(screenUV[0].GetX(), screenUV[0].GetY());
+  GXTexCoord2f32(indirectUVs.xMax, indirectUVs.yMax);
+  GXPosition3f32(-0.5f, 0.f, 0.5f);
+  GXColor1u32(packedColor);
+  GXTexCoord2f32(uvs.xMin, uvs.yMax);
+  GXTexCoord2f32(screenUV[1].GetX(), screenUV[1].GetY());
+  GXTexCoord2f32(indirectUVs.xMin, indirectUVs.yMax);
+  GXPosition3f32(-0.5f, 0.f, -0.5f);
+  GXColor1u32(packedColor);
+  GXTexCoord2f32(uvs.xMin, uvs.yMin);
+  GXTexCoord2f32(screenUV[2].GetX(), screenUV[2].GetY());
+  GXTexCoord2f32(indirectUVs.xMin, indirectUVs.yMin);
+  GXPosition3f32(0.5f, 0.f, -0.5f);
+  GXColor1u32(packedColor);
+  GXTexCoord2f32(uvs.xMax, uvs.yMin);
+  GXTexCoord2f32(screenUV[3].GetX(), screenUV[3].GetY());
+  GXTexCoord2f32(indirectUVs.xMax, indirectUVs.yMin);
+  CGX::End();
 #else
   const uint packedColor = color.GetColor_u32();
-#endif
   CGX::Begin(GX_QUADS, GX_VTXFMT0, 4);
   GXPosition3f32(0.5f, 0.f, 0.5f);
   GXColor1u32(packedColor);
@@ -3004,6 +3103,7 @@ void CElementGen::RenderIndirectModelParticle(SModelRenderState& state, const CC
   GXTexCoord2f32(clip.GetTexCoord(3).GetX(), clip.GetTexCoord(3).GetY());
   GXTexCoord2f32(indirectUVs.xMax, indirectUVs.yMin);
   CGX::End();
+#endif
 }
 
 void CElementGen::EndModelRender(const SModelRenderState& state) {
