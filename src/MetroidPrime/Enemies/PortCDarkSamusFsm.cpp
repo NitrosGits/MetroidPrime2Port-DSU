@@ -969,7 +969,11 @@ void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
 // fn_10_F840 (0x0000F840, 0xC bytes): the flag byte 0x90C's bit 7 - the extrwi at 0x0000F844
-// keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24) = 0x80).
+// keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24) = 0x80). The
+// flag is set by AcceptScriptMsg's 'ALRT' arm (0x0001EA1C), so both outcomes come: the
+// TravelToCoverPoints node of the FSM2 evaluates this trigger (the MP2_DS_FSM dump) and the
+// 'ALRT' message (the console's `send <id> Alert`) sets the bit.
+// @ fn_10_F840
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
   return (mFlags90C & 0x80) != 0;
 }

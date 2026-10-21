@@ -292,6 +292,12 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       }
     }
   }
+  // The 'ALRT' arm (0x414C5254, the host's kSM_Alert; the compare at 0x0001E8FC) sets the
+  // alerted flag: the byte 0x90C's bit 7 (the rlwimi at 0x0001EA24 keeps the mask 0x80, the
+  // PowerPC bit 24 being 1u << (31 - 24)).
+  if (msg.GetMessage() == kSM_Alert) {
+    mFlags90C |= 0x80;
+  }
   // The 'XCRT' arm (0x58435254, the host's kSM_Create; the compare at 0x0001E91C) loads the body
   // controller (this+0x48C at 0x0001E99C), passes -1 for the animation state (0x0001E9A0) and
   // calls CBodyController::Activate (0x0001E9A4). Every arm then falls into the common tail,
