@@ -1506,3 +1506,39 @@ trigger's entry, one per hit, from gdb convenience variables).
   (0xC0; needs 8F50), and unmapped members 0xDE8 (an alpha float Render gates the body on), 0xDED
   bits 0x40/0x80 (echo/dark visor), 0xE64, 0x90C bit 0x20, CActor 0x44C..0x44F, the model flags
   at 0xFC. A partial Render risks an invisible boss.
+
+## Slice 30 (2026-10-21): the port merge, the Arrived trigger's arms, and fn_10_1707C's reading
+
+- **The merge** (`port`, with the fsm2 lane's ddac9d34b): the only conflict was this note, both
+  sides' sections are kept. The merge brought the members mGuestAB0, mBoostBallFlag80,
+  mGuestEA8, mGuestEAC and mGuestEB8 a second time; the fsm2 lane's declarations stay (their
+  mGuestEAC is the 0xEAC/0xEB0/0xEB4 vector and their mGuestEB8 the radius - the same bytes the
+  DoneRolling trigger reads) and the DoneRolling trigger now reads their vector. The link check
+  reports 0 duplicate definitions and 0 undefined symbols.
+- **The Arrived trigger (fn_10_62B4) is marked.** The module's FSM2 dump (the port's
+  `MP2_DS_FSM` probe) shows which state evaluates it: `state 43 GoToPhazonAttack -> trigger
+  Arrived -> state PhazonSuck` (and `state 44 GoToPhazonEnrage -> trigger Arrived -> state
+  PhazonRise`), so the fight calls it when the boss is put in that state (`fsm u04f7
+  GoToPhazonAttack`). The forcing run (the members written at the trigger's entry, the arms
+  cycling over the hits) ran all five arms:
+  | arm | the members written | the answer |
+  |---|---|---|
+  | the shield flag 0xCD0 is set, the distance test (the point is the origin) | mGuestCD0 = 1, mGuestEE4 = 0 | false |
+  | the shield flag is set, the distance test (the point is the actor) | mGuestCD0 = 1, mGuestEE4 = the actor's position | true |
+  | the pause is still running | mGuestCD0 = 0, mGuestF64 = 100000.0 | false |
+  | the pause is long over | mGuestCD0 = 0, mGuestF64 = -100000.0 | true |
+  | the distance test after the pause | mGuestCD0 = 0, mGuestF64 = the elapsed time - 10.0 | false |
+- **fn_10_1707C (the freeze beam's dodge step) is still not ported.** Its reading, for the next
+  slice: the dodge timer 0x1090 loses dt (0x000170D0) and is cleared with the direction
+  0x1094..0x109C when it reaches zero (0x000170E8..0x00017104); the body runs only when the
+  timer is zero (0x00017118). It reads the player's aim position (the vtable's slot 0x54 at
+  0x00017134, the dt 0.5f), takes the direction from the actor to the aim flattened (the z is
+  0.0f, 0x00017174..0x0001718C) and normalizes it (0x00017190..0x000171B0); the step side is
+  the perpendicular of that direction times lbl_10_rodata_3E4 = 0.5f (0x000171D4..0x00017200) and
+  the other side is tried when the first is blocked (the line check fn_10_164C0 at 0x00017240 and
+  0x0001728C); the step's length is Range(lbl_10_rodata_438, lbl_10_rodata_47C) (0x000172E4) and
+  the direction that is clear becomes 0x1094..0x109C, normalized (0x00017388..0x000173A4), with
+  the timer 0x1090 set to the weight (0x000173A8); the impulse is the direction times the speed
+  0x158 times the rate (f2 = lbl_10_bss_11C = 22.0f) (0x000173C0..0x000173FC) and it is applied
+  with ApplyImpulseWR and an identity axis angle (0x00017400..0x00017410).
+- The FreezeBeam state keeps its stand-in for fn_10_1707C and keeps no marker.

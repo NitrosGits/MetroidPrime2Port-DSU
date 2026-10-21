@@ -83,7 +83,7 @@ offset	size	class	kind	name	callers	marked	state
 0x58C0	0xB4	B	method	fn_10_58C0	1	no	
 0x5974	0x7A4	B	method	fn_10_5974	1	no	
 0x6118	0x19C	B	method	fn_10_6118	1	no	
-0x62B4	0xC0	B	fsm-trigger	fn_10_62B4	0	no	Arrived
+0x62B4	0xC0	B	fsm-trigger	fn_10_62B4	0	yes	Arrived
 0x6374	0xEC	B	method	fn_10_6374	2	no	
 0x6460	0xCC	B	fsm-state	fn_10_6460	0	no	GoToPhazonEnrage
 0x652C	0xA0	B	fsm-state	fn_10_652C	0	no	GoToPhazonAttack

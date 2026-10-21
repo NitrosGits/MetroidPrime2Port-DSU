@@ -1023,8 +1023,11 @@ bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
 // distance to the point 0xEE4/0xEE8 (the helpers branch's mGuestEE4) in the XY plane - the z
 // is lbl_10_rodata_13C = 0.0f, the store at 0x00006348 overwrites the z difference - against
 // lbl_10_rodata_15C = 3.0f decides (the magnitude at 0x0000634C, the compare at 0x00006358).
-// Unmarked: the fight never evaluates this trigger (the coverage run: 0 hits), so its arms
-// were not run.
+// The trigger is evaluated by the module's FSM2 in the GoToPhazonAttack state (the module's FSM2
+// dump: "state 43 GoToPhazonAttack -> trigger Arrived -> state PhazonSuck"), so the fight calls
+// it when the boss is put in that state. The arms that the fight cannot reach are written at the
+// trigger's entry (gdb) in the forcing run; all five ran.
+// @ fn_10_62B4
 bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
   if (mGuestCD0 == 0) { // 0x000062C0
     if (6.f + mGuestF64 > mElapsedTime) { // 0x000062E0
