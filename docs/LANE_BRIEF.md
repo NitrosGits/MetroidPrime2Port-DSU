@@ -42,8 +42,8 @@ call, tail calls included; `caller=` misses tail calls), `max=<n>` (hits per bre
 it for per-frame functions or later arms never show). `<out>/cov.txt` lists per entry its hits and the
 count per key tuple (also `cov.json`; both rewritten every 15 s, so a killed run keeps them); a key that
 never shows is an arm that never ran. Label entries with the retail offset; put layer switches and
-`fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Give each run its own
-`COV_PORT`/`DISPLAY_NUM` (a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
+`fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Each run takes a free slot (its own
+display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
 
 ## Gates (one line each in the report)
 

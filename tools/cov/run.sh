@@ -10,7 +10,7 @@
 #     --frames <n>        MP2_FRAMES (default 6000): the game exits after n updates
 #     --fast              MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8 (con.py `@f` times still line up)
 #     --env K=V           extra game environment (repeatable), e.g. MP2_DEBUG_SPACEPIRATE=1
-#   env: BUILD (default build-port-link), DISPLAY_NUM (:491), COV_PORT (49711), SECS (900),
+#   env: BUILD (default build-port-link), DISPLAY_NUM and COV_PORT (default: a free slot's :110x and 501xx), SECS (900),
 #        COV_MAX (hits recorded per breakpoint, 400), MP2_DISC, COV_SAVE (user dir, /tmp/opencode/mi_u)
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -27,8 +27,19 @@ while [ $# -gt 0 ]; do
   esac
 done
 BUILD=${BUILD:-$ROOT/build-port-link}
-DISP=${DISPLAY_NUM:-:491}
-PORT=${COV_PORT:-49711}
+# Without DISPLAY_NUM/COV_PORT a run holds a slot (a flock kept for the script's life) that picks
+# its own display and console port, so concurrent lanes never share an X display or a port.
+if [ -z "${DISPLAY_NUM:-}" ] || [ -z "${COV_PORT:-}" ]; then
+  mkdir -p /tmp/opencode/locks; SLOT=
+  for s in $(seq 1 16); do
+    exec {SLOTFD}>"/tmp/opencode/locks/cov-slot.$s"
+    if flock -n "$SLOTFD"; then SLOT=$s; break; fi
+    exec {SLOTFD}>&-
+  done
+  [ -z "$SLOT" ] && { echo "no free cov slot (16 runs at once?)" >&2; exit 2; }
+fi
+DISP=${DISPLAY_NUM:-:$((1100 + ${SLOT:-0}))}
+PORT=${COV_PORT:-$((50100 + ${SLOT:-0}))}
 if ss -ltn 2>/dev/null | grep -q "127.0.0.1:$PORT "; then
   echo "console port $PORT is busy: pick another COV_PORT" >&2; exit 1
 fi
