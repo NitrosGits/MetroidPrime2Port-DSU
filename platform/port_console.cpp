@@ -486,6 +486,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                            sunburst, sonicboom; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
+      "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
+      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
@@ -2204,6 +2206,34 @@ void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
       "names the file (relative to the run's working directory)\n";
 }
 
+// overlay <page|off>: open the F1 window on a page (a name prefix: `overlay save`), for screenshots.
+void CmdOverlay(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2 || !PortOverlay::ShowPage(std::string(args[1]))) {
+    Fail("usage: overlay <page name prefix|off>");
+    return;
+  }
+  out += args[1] == "off" ? std::string("overlay closed\n") : "overlay open on " + std::string(args[1]) + "\n";
+}
+
+// state save|load <slot>: the F5/F9 save states (slot 0 is the undo slot, load only).
+void CmdState(CStateManager&, const Args& args, std::string& out) {
+  const int slot = args.size() < 3 ? -1 : ArgToInt(args[2], -1);
+  const bool save = args.size() >= 2 && args[1] == "save";
+  const bool load = args.size() >= 2 && args[1] == "load";
+  if ((!save && !load) || slot < (save ? 1 : PortSaveState::kUndoSlot) ||
+      slot > PortSaveState::kSlotCount) {
+    Fail("usage: state save <1..8> | state load <0..8>");
+    return;
+  }
+  if (save) {
+    PortSaveState::RequestSave(slot);
+  } else {
+    PortSaveState::RequestLoad(slot);
+  }
+  out += std::string(save ? "save" : "load") + " of slot " + std::to_string(slot) +
+         " requested (the log's [savestate] lines say how it went)\n";
+}
+
 void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
   const CPlayerState* state = mgr.GetPlayerState(0);
   if (state == nullptr) {
@@ -2294,6 +2324,8 @@ constexpr SCommand kCommands[] = {
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
     {"screenshot", CmdScreenshot, true},
+    {"overlay", CmdOverlay, true},
+    {"state", CmdState, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
