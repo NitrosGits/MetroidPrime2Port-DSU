@@ -166,6 +166,7 @@ MP2_DEBUG_SPACEPIRATE=1`, 0 `[port] caught` and 0 `[reach-stub]` in every one.
 | 4 | 08_sand_casualpirates | as 3, with the call sites counted |
 | 5 | 07_sand_alamoportalobservation L3 | as 3, with the call sites counted |
 | 6 | 08_sand_casualpirates | the final binary: `3220` both results (16 true, 1 false), the rest as 1 |
+| 7 | 08_sand_casualpirates | the merged branch (port + decomp/spacepirate 0cb54aef2): the game exits with code 0, 0 `[port] caught`, 0 `[reach-stub]`; `1854` 400 hits, `2EA8` 400 entries, `EDEC` 400, `E3D8` 400 |
 | forcing | 08_sand_casualpirates (gdb) | the rare arms: the four vtable helpers, TryToBeCaptured, the two collision helpers, the emitter's handle and the dead handle |
 
 Runs 1, 2 and 3 (and the final run) ended with the game exiting normally; runs 4 and 5 were cut off

@@ -76,7 +76,7 @@ SPEC = [
     ('C9DC SetNonCinematicCollision: helper', 'CSpacePirate::SetNonCinematicCollision(', [], ''),
     ('CA94 SetCinematicCollision: helper', 'CSpacePirate::SetCinematicCollision(', [], ''),
     ('CE30 GetStrafeDir: helper', 'CSpacePirate::GetStrafeDir(', [], ''),
-    ('D608 ShuffleRandomVector', 'CSpacePirate::ShuffleRandomVector(', [], ''),
+    ('D608 ShuffleRandomVector', 'CVector3f ShuffleRandomVector(', [], ''),
     ('E3D8 Touch: helper', 'CSpacePirate::Touch(', [], ''),
     ('EDEC ChooseTarget: helper', 'CSpacePirate::ChooseTarget(', [], ''),
     ('EFD4 ChooseTeamTarget: helper', 'CSpacePirate::ChooseTeamTarget(', [], 'calls'),
@@ -95,5 +95,5 @@ SPEC = [
     ('4174 SpawnGrenade: calls', 'CSpacePirate::SpawnGrenade(', [], 'calls max=1000000'),
     ('EDEC ChooseTarget: calls', 'CSpacePirate::ChooseTarget(', [], 'calls max=1000000'),
     ('EFD4 ChooseTeamTarget: calls', 'CSpacePirate::ChooseTeamTarget(', [], 'calls max=1000000'),
-    ('D608 ShuffleRandomVector: calls', 'CSpacePirate::ShuffleRandomVector(', [], 'calls max=1000000'),
+    ('D608 ShuffleRandomVector: calls', 'CVector3f ShuffleRandomVector(', [], 'calls max=1000000'),
 ]
