@@ -2002,8 +2002,10 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
 // (the reaction 2 = kAR_KnockBack) and the base's own KnockBack runs.
 //
 // Then the sounds (0x0000C3F0..0x0000C4D4): while the actor is alive (the byte at guest
-// this+0x420's 0x40 bit) and the knock-back manager's active reaction flags (the word at guest
-// this+0x630, the manager's +0x10) are 3 (kAR_Hurled), the state machine goes to the "GetUp"
+// this+0x420's 0x40 bit) and the knock-back manager's active reaction (the word at guest
+// this+0x630, the manager's +0x10: SReactionParameters::mReaction - the CRuleSetEvaluator base is
+// 0x10 bytes and the reaction flags are the +0x20, the DOL's ExecuteAction at 0x801BD9B8..C0) is
+// 3 (kAR_Hurled), the state machine goes to the "GetUp"
 // state (the guest's string at rodata_504 + 0x352) and the block's "hurled" sound (the halfword
 // at guest this+0x7C2) is played. When the actor is dead the block's "death" sound (the halfword
 // at guest this+0x7C4) is played instead, unless the knock-back manager's follow-up (the word at
@@ -2012,13 +2014,13 @@ void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) 
   KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, IsOnGround());  // 0x0000C3D4..0x0000C3DC
   CPatterned::KnockBack(mgr, info);                                                        // 0x0000C3EC
   if (GetAlive()) {                                                                        // 0x0000C3F0..0x0000C3F8
-    if (KnockBackController().GetActiveReactionFlags() == 3) {                              // 0x0000C3FC..0x0000C404
+    if (KnockBackController().GetActiveReaction() == CKnockBackMgr::kAR_Hurled) {           // 0x0000C3FC..0x0000C404
       StateMachineState().SetState(mgr, *this, rstl::string_l("GetUp"));                 // 0x0000C40C..0x0000C43C
       xc04_ = CSfxManager::AddEmitter(mData.mSoundHurled, GetTranslation(), 0x7f,           // 0x0000C448..0x0000C46C
                                       GetCurrentAreaId().Value(), true, false,
                                       CSfxManager::kMedPriority);
     }
-  } else if (KnockBackController().GetActiveReactionFlags() == 3) {                         // 0x0000C47C..0x0000C484
+  } else if (KnockBackController().GetActiveReaction() == CKnockBackMgr::kAR_Hurled) {      // 0x0000C47C..0x0000C484
     const CKnockBackMgr::EFollowUp followUp = KnockBackController().GetFollowUp();          // 0x0000C48C
     if (followUp != CKnockBackMgr::kFU_ExplodeDeath &&                                      // 0x0000C490..0x0000C4AC
         followUp != CKnockBackMgr::kFU_IceDeath && followUp != CKnockBackMgr::kFU_BurnDeath &&
