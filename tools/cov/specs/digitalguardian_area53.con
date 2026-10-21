@@ -1,0 +1,12 @@
+# DigitalGuardian area 53 (Sanctuary Fortress 09_cliff_temple_dark): the guardian's layers (3
+# and 11) hold the body (u054e) and the head module (u051b); both are woken and then the
+# fight is left to run.
+@f30 layer 3
+@f60 layer 11
+@f100 objs Guardian
+@f140 send u054e Activate; send u051b Activate
+@f400 objs Guardian
+@f900 objs Guardian
+@f1600 status
+@f2400 objs Guardian
+@f2400 send u051b Delete

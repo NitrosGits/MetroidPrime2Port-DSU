@@ -8,6 +8,7 @@
 #include "rstl/optional_object.hpp"
 
 class CCollisionActorManager;
+class CDigitalGuardianHead;
 class CElementGen;
 class CParticleGen;
 class CGenDescription;
@@ -504,6 +505,24 @@ private:
   // REL's and are in docs/module-analysis/DigitalGuardian.md section e; the host class has its
   // own layout and only keeps what this milestone needs.
   CDigitalGuardianData mData; // guest 0x7C0 (0x640), the block fn_14_C68C copies in
+
+  // -------------------------------------------------------------------------------------------
+  // The helpers this lane ports: the module's stateless functions that are not FSM handlers
+  // (the bodies are in src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp; the function
+  // map, the caller map and the arm tables are in
+  // docs/module-analysis/DigitalGuardian_helpers.md). Append-only, so the FSM lane's edits in
+  // the same header merge cleanly.
+  float x37FC_(float v) const;   // fn_14_37FC: the nearest of the five 45-degree values
+  float x6C74_() const;          // fn_14_6C74: the attack angle (4*pi, pi/3 or 2*pi/3)
+  void x3F90_(CStateManager& mgr);            // fn_14_3F90: the knee armours follow the knees
+  void x38BC_(CStateManager& mgr, float dt);  // fn_14_38BC: the leg-stab, jump and protect timers
+  void x2358_(CStateManager& mgr, float dt);  // fn_14_2358: the toe targets' sound emitters
+  void x5644_(CStateManager& mgr, TUniqueId sender); // fn_14_5644: the "XRDG" case
+  bool x6C24_(CDigitalGuardianHead& head); // fn_14_6C24: the head's turn direction
+  void x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf, CVector3f& outForward,
+              CVector3f& outUp); // fn_14_6CB0: the aim (the forward and the up vector)
+  void x6E04_(CStateManager& mgr, float dt);   // fn_14_6E04: the body turns to the head
+  CTransform4f x1088_ = CTransform4f::Identity(); // 0x1088: the aim transform (fn_14_6CB0)
 #else
   uchar x7c0_[0x1290 - 0x7c0]; // CDigitalGuardianData and everything above it in retail
 #endif

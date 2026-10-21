@@ -536,7 +536,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     x5838_(mgr, msg.GetSenderId()); // fn_14_5838
     break;
   case 0x58524447: // "XRDG"
-    StandInFn("fn_14_5644 (the XRDG case's helper)");
+    x5644_(mgr, msg.GetSenderId()); // fn_14_5644
     break;
   case 0x58484954: // "XHIT"
     StandInFn("fn_14_4F2C (the XHIT case's helper)");

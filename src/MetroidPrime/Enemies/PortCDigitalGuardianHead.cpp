@@ -438,9 +438,9 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     if (xD70_ != nullptr) {
       xD70_->Destroy(mgr);
     }
-    StandInFn("fn_14_11EA8 (head XDEL)");
+    x11EA8_(); // fn_14_11EA8
     StandInFn("fn_14_FAEC (head XDEL)");
-    StandInFn("fn_14_11F7C (head XDEL)");
+    x11F7C_(mgr); // fn_14_11F7C
     break;
   case kSM_Activate: // "ACTV", 0x17E9C
     if (!active && xD70_ != nullptr) {
