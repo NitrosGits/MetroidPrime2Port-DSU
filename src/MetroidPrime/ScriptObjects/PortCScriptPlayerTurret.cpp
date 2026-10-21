@@ -44,25 +44,12 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 namespace {
 
 // lbl_63_rodata_60 + 0x26: the muzzle locator the module's static initializer fn_63_376C copies
 // into lbl_63_bss_C (0x00003788).
 const char* const kMuzzleLocator = "muzzleend_LCTR";
-
-// The guest tests the game mode twice in this module: the shot's sound (0xA88) and the damage
-// message's impact sound (0x225C).  Both are live arms in retail (Echoes' multiplayer is local
-// split-screen and it ships on the disc), but the port cannot start a match: the harness boots
-// single player (PortSkipFrontEnd.cpp:313 installs CGMSinglePlayer) and the console has no
-// game-mode command, so nothing can make CStateManager::IsMultiplayer() true.  MP2_TURRET_MP=1
-// forces the two arms so a run can cover them; the default is retail's single player.  The
-// forced arms are labelled as such in docs/module-analysis/ScriptPlayerTurret.md.
-bool PortTurretMultiplayerForced() {
-  static const bool forced = getenv("MP2_TURRET_MP") != nullptr;
-  return forced;
-}
 
 // lbl_63_bss_1C: the module's own damage colour, built by the module's initializer fn_63_376C at
 // 0x000037A4 as CColor(0.5, 0, 0, 1).
@@ -302,8 +289,14 @@ void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
     // 0x28D8
     mPitch = mPitchTarget;
   }
-  // 0x28DC: the pitch stays within the elevation limits (0x180 down, 0x17C up).
-  mPitch = CMath::Clamp(-mMaxVertElevationDown, mPitch, mMaxVertElevationUp);
+  // 0x28DC: the pitch stays within the elevation limits (the guest's 0x180 down, 0x17C up):
+  // 0x28EC: below the lower limit -> -down; 0x28F8: above the upper limit -> up; else the
+  // pitch (0x2908).
+  if (-mMaxVertElevationDown > mPitch) {
+    mPitch = -mMaxVertElevationDown;
+  } else if (mMaxVertElevationUp < mPitch) {
+    mPitch = mMaxVertElevationUp;
+  }
 
   // 0x290C: the base actor's two additive animations (0x19C up, 0x1A0 down) show the pitch. The
   // guest reads the model pointer (actor + 0x60) without a test; a port limit: the host allows an
@@ -567,11 +560,12 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     // 0x209C: the player is ejected from the turret (the guest's own id at 0x8).
     player->EjectFromTurret(GetUniqueId(), mgr);
     // 0x20A0: the damage is the float at + 0x14 of the player's CHealthInfo (the guest's
-    // 0x1314 + 0x14); 0x20C4: the player (0x188) is killed by the hull: the hull actor id is
-    // 0x220.  The port passes the player's current health instead - the guest's field is the
-    // last damage's weapon (0 in practice) and KillPlayer only compares it with 0
-    // (the DOL's 0x8003E1C8), so both kill the player.
-    mgr.KillPlayer(player->GetHealthInfo()->GetHP(), mPlayerId, mHullActorId);
+    // 0x1314 + 0x14) - the bits of the last damage's weapon mode, read as a float (the guest's
+    // `lfs f1, 0x14(r5)`); 0x20C4: the player (0x188) is killed by the hull: the hull actor id
+    // is 0x220.  It is not the player's health: that can be negative when the player dies, and
+    // CStateManager::KillPlayer branches on the amount (CStateManager.cpp:3016), so the guest's
+    // value (0, or a tiny positive number) is what the port has to pass.
+    mgr.KillPlayer(player->GetHealthInfo()->GetLastDamageWeaponAsFloat(), mPlayerId, mHullActorId);
     // 0x20C8: the flag byte at 0x22C loses its bit 7 (0x80) - the guest's
     // `rlwimi r0, r3, 7, 24, 24` with r3 = 0.  The player is no longer in the turret.
     mPlayerInTurret = false;
@@ -627,7 +621,7 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     // 0x2254: the damage flash timer (lbl_63_rodata_20 = 0.15) at 0x20C.
     mUnknown20C = 0.15f;
     // 0x225C: the game mode (the guest keeps the low byte of it at 0x2260).
-    if (mgr.IsMultiplayer() || PortTurretMultiplayerForced()) {
+    if (mgr.IsMultiplayer()) {
       // 0x2268: the player in the turret (0x188).
       CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
       if (player != nullptr) {
@@ -1047,7 +1041,7 @@ void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
   // (CScriptGuiScreen's deathmatch/coin switches, CGameState's CGMDeathMatch/CGMCoin) and the
   // harness skips the front end and sets the single-player mode itself (PortSkipFrontEnd.cpp:313),
   // driving pad 0 only.  MP2_TURRET_MP=1 forces the arm so a run can cover it.
-  if (mgr.IsMultiplayer() || PortTurretMultiplayerForced()) {
+  if (mgr.IsMultiplayer()) {
     // 0xA94: the multi-player projectile sound (0x22A) at the player's sound pan (0xA9C, the
     // guest's kMSP_Player = 4).
     CSfxManager::SfxStart(mSfxMultiPlayerProjectile, 0x7f,

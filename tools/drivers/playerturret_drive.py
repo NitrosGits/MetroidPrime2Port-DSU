@@ -106,7 +106,7 @@ def find_turret(quiet=False):
     return None, None
 
 
-def poll_turret(budget=1500, step=25):
+def poll_turret(budget=6000, step=25):
     """Look for the turret every `step` updates, up to `budget` updates."""
     start = frame()
     while frame() < start + budget:
@@ -148,7 +148,7 @@ try:
             break
         emit(f'[pt] no turret yet: layer {layer}')
         run(f'layer {layer}')
-        wait_frames(60)
+        wait_frames(300)
         uid, pos = poll_turret()
     if uid is None:
         emit('[pt] no player turret in this area')
@@ -164,7 +164,9 @@ try:
             run('status')
         elif phase == 'stop':
             # The kSM_Stop case needs an active turret with a player in it, and the message kills
-            # the player, so it goes last.
+            # the player, so it goes last.  The pause lets the coverage tool's table (written
+            # every 15 s of hits) catch the case's lines before the death stops the game's loop.
+            time.sleep(20)
             run('tp %.1f %.1f %.1f' % pos)
             wait_frames(40)
             run('status')
@@ -202,8 +204,11 @@ try:
             wait_frames(20)
             run('send %s Start' % uid)
             wait_frames(20)
-            run('send %s Stop' % uid)
-            wait_frames(20)
+            if phase != 'forced':
+                # The kSM_Stop case kills the player, and the death's prompt stops the game's
+                # update loop, so a forced run leaves it out (the 'stop' phase covers that case).
+                run('send %s Stop' % uid)
+                wait_frames(20)
             run('send %s Deactivate' % uid)
             wait_frames(20)
             # A second damage message, now with no player in the turret: the multi-player

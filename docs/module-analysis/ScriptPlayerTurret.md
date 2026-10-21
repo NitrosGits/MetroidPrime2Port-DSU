@@ -784,13 +784,24 @@ accounted for.  The classes are the ones of section 15: **(a)** compiler-generat
 after `operator new`, an inlined host helper) - it needs no run; **(b)** a real arm that ran; **(c)**
 a real arm unreachable in the shipped data - the evidence is at the branch; **(d)** a real
 reachable arm that did not run - the marker goes; **(forced)** a real arm that only a forced
-command or a forced hook can reach, labelled with what forced it.
+command or a forced write can reach, labelled with what forced it.
 
-The evidence is the **gdb coverage** (`tools/cov/run.sh` with the spec
-`tools/drivers/playerturret_spec.py`): a breakpoint on the port's own line of each arm, so the hit
-count is the number of times that arm ran.  The spec's lines are the arm's line; the tool's note
-about optimised code applies (a line with no code of its own is merged into another line, and the
-breakpoint then reports the line it was merged into - the table below gives the merged line).
+Two tools are used, both without a probe in the game code:
+
+- **the gdb coverage** (`tools/cov/run.sh` with the spec `tools/drivers/playerturret_spec.py`): a
+  breakpoint on the port's own line of each arm, so the hit count is the number of times that arm
+  ran.  The spec finds the lines by their text, so the table follows the source.  The tool's note
+  about optimised code applies (a line with no code of its own is merged into another line, and
+  the breakpoint then reports the line it was merged into).
+- **the forcing run** (`tools/cov/force.sh` with the same spec's `FORCE` list): at the entry of a
+  body the state the guest's test reads is written, so the arm the game's flow never reaches is
+  taken.  The three forces are in the spec, each switched by the environment
+  (`PT_FORCE_MP`, `PT_FORCE_DEAD`, `PT_FORCE_NOHPI`).  The multi-player one needs the return value
+  of `CStateManager::IsMultiplayer()` (the game mode object answers 'SNGL' for good, so there is
+  no member to write), and the shared `tools/cov/force.py` only writes members: the module's own
+  gdb script `tools/drivers/playerturret_force.py` (the shared one plus a `ret=1` set, which writes
+  the return value when the function returns and only when the caller is the module's own code)
+  is used with `COV_GDB_SCRIPT=` and `PT_COUNT=1` (it also runs the counting).
 
 The runs are in the Agon Wastes, `sand_world,06_sand_alamofront`, **layer 3** (the player turret
 `u061d` is on that layer; the area's layer 3 is reached with the console's `layer 3`), driven by
@@ -799,7 +810,12 @@ and the driver):
 
     tools/cov/run.sh tools/drivers/playerturret_spec.py <out> sand_world,06_sand_alamofront \
         --driver 'python3 tools/drivers/playerturret_drive.py {port} <out>/con.out main' \
-        --frames 40000 --fast [--env MP2_TURRET_MP=1]
+        --frames 40000 --fast
+
+    PT_FORCE_MP=1 COV_GDB_SCRIPT=tools/cov/cov_force.py \
+        tools/cov/force.sh tools/drivers/playerturret_spec.py <out> sand_world,06_sand_alamofront \
+        --driver 'python3 tools/drivers/playerturret_drive.py {port} <out>/con.out main' \
+        --frames 40000 --fast
 
 The driver's phases: `main` (the message cases the game never sends), `null` (the cases with no
 player in the turret) and `stop` (the kSM_Stop case, which needs a player in the turret and kills
@@ -809,13 +825,13 @@ it, so it goes last).
 
 | branch | class | evidence |
 |---|---|---|
-| 0x89C: the player is missing | (c) | the shot is only fired from ProcessInput, which returns early when the player is missing (fn_63_1134's own test at 0x1168); the breakpoint on the port's `return;` (line 974) was merged into the projectile's construction (line 1004) and hit **once** - the shot ran with the player in the turret |
-| 0x8AC: the token is not loaded | (c) | the token is loaded by the kSM_Create case at the area load (0x1C9C), before any shot; the same merged breakpoint (line 982 -> 1004) hit once - the shot ran with the token loaded |
+| 0x89C: the player is missing | (c) | the shot is only fired from ProcessInput, which returns early when the player is missing (fn_63_1134's own test at 0x1168); the run's shot had the player in the turret (the console's `status` printed `in-turret 1`) |
+| 0x8AC: the token is not loaded | (c) | the token is loaded by the kSM_Create case at the area load (0x1C9C), before any shot; the same run fired the shot |
 | 0x8CC: the allocation returned null | (a) | the null test after the placement new (the guest allocates 0x568 bytes at 0x8C0) |
 | 0x9A0: the impact visor effect's flag | (a) | the flag is the literal 1 the code sets at 0x8EC, so the test is on a constant |
 | 0x9B4: the projectile is missing | (a) | the null test after the placement new |
-| 0xA00/0xA10: the base actor or its animation data is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load (fn_63_15B0); the breakpoint on the port's `EnableLooping` (line 1032) was merged into the collision cooldown (line 1016) and hit **once** - the base actor and its animation data were there |
-| 0xA90: the multiplayer sound | **forced (MP2_TURRET_MP=1)** | the port cannot start a match (section 15), so the run forced the arm with the module's own hook (`PortTurretMultiplayerForced()`, the environment variable `MP2_TURRET_MP`).  The coverage shows the port's multiplayer sound line (1049) hit **once** in the forced run and the single-player line (1054) **zero** times, and the other way round in the normal run (1049 zero, 1054 once) |
+| 0xA00/0xA10: the base actor or its animation data is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load (fn_63_15B0); the shot's animation ran |
+| 0xA90: the multiplayer sound | **forced (`PT_FORCE_MP=1`)** | the port cannot start a match: the harness installs `CGMSinglePlayer` and the console has no game-mode command, and the game mode object answers 'SNGL' for good (`CGMSinglePlayer::GetGameModeType`), so the mode's type cannot be written.  The forcing run makes `CStateManager::IsMultiplayer()` *return* true for the turret's own calls: the module's gdb script writes the return value when the function returns, and only when the caller is the module's own code.  The coverage of that run: the port's multi-player sound line hit **once** and the single-player line **zero** times (the natural run the other way round) |
 
 So `fn_63_84C` is marked: every live arm ran, the one that needed help is labelled *forced*.
 
@@ -827,40 +843,30 @@ case); the line in brackets is the port's line the breakpoint was merged into.
 
 | branch | class | evidence |
 |---|---|---|
-| 0x1C9C: kSM_Create - the weapon effect | (b) | the area load (the case ran twice: the first load and the layer 3 reload; line 448 hit twice) |
-| 0x1CA8: kSM_Create - the multi-player effect | **forced (MP2_TURRET_MP=1)** | the same run with the hook: the case ran with the game's mode test forced to true, so the multi-player effect (0x1E4) was taken |
-| 0x1DA4: kSM_Activate - the case | (b) | the trigger (the player standing on the turret) and the forced `send <id> Activate`: the case ran **twice** (line 460) |
-| 0x1DC0: kSM_Activate - the player is missing | (b) **forced (send Activate)** | the console's `send` has no originator, so the message's +2 is invalid: the case ran twice but the player's `StartTurret` (line 476) only **once** - the other run took the null arm |
-| 0x1DEC: kSM_Activate - the player is dead | (c) | the message's originator is always the living player who entered the trigger; a dead player cannot enter one.  The port has no way to send a message with an originator, so the arm cannot be forced |
-| 0x1E64/0x1E78/0x1E80: the base actor, its model or the top actor is missing | (c) | the base and the top actor are the turret's own connections, resolved at the area load (fn_63_15B0); the port's `AddAdditiveAnimation` (line 498) was merged into the flash timer (line 508) and hit twice - the block ran in both entries |
-| 0x1F58: kSM_Deactivate - the case | (b) | the forced `send <id> Deactivate` (twice: with and without a player; line 513 hit twice) |
-| 0x1F74: kSM_Deactivate - the player is missing | (b) **forced (send Deactivate)** | the case ran twice but the player's `SetTurretState(kTS_None)` (line 516) only **once** - the other run took the null arm |
-| 0x1FB0: kSM_Start - the turret is not active | (b) **forced (send Start after send Deactivate)** | the `main` run sent `Start` twice (both answers are in the transcript) and the case's body (line 531) hit **once**: the second `Start` came after the `send Deactivate` (which deactivates the turret) and took the early-out |
-| 0x1FD8: kSM_Start - the player is missing | (b) **forced (send Start)** | the `null` run: the case ran and the body (`AddSolidToTopActor` 537 and `AddMaterial` 539) hit once each, but the player's `SetTurretState` (534) **zero** times - the null arm |
-| 0x2008: kSM_Stop - the turret is not active | (b) **forced (send Stop after send Deactivate)** | the `main` run: the Stop case was entered but nothing after the test ran (the model's flags 555, the kill 571, the animation 605 and the deactivation 608 all **zero** hits) - the early-out |
+| 0x1C9C: kSM_Create - the weapon effect | (b) | the area load (the case ran twice: the first load and the layer 3 reload) |
+| 0x1CA8: kSM_Create - the multi-player effect | **forced (`PT_FORCE_MP=1`)** | the forcing run's `IsMultiplayer()` returns true while the case asks, so the multi-player effect (0x1E4) was taken |
+| 0x1DA4: kSM_Activate - the case | (b) | the trigger (the player standing on the turret) and the forced `send <id> Activate`: the case ran twice |
+| 0x1DC0: kSM_Activate - the player is missing | (b) **forced (send Activate)** | the console's `send` has no originator, so the message's +2 is invalid: the case ran twice but the player's `StartTurret` only once - the other run took the null arm |
+| 0x1DEC: kSM_Activate - the player is dead | **forced (`PT_FORCE_DEAD=1`)** | the forcing run writes the player's health to -1 while the turret's case reads it (the guest's test at 0x1DE4 is (hp == 0) | (hp < 0); the write is at the entry of `CPlayer::HealthInfo`, so it happens before the case reads the health): the case took the dead-player arm - the port's `StartTurret` line was hit **zero** times in that run (once in the natural run) and the console's `status` printed `in-turret 0` after the player stepped onto the turret, while the natural run printed `in-turret 1` |
+| 0x1E64/0x1E78/0x1E80: the base actor, its model or the top actor is missing | (c) | the base and the top actor are the turret's own connections, resolved at the area load (fn_63_15B0); the port's additive animation ran in both entries |
+| 0x1F58: kSM_Deactivate - the case | (b) | the forced `send <id> Deactivate` (twice: with and without a player) |
+| 0x1F74: kSM_Deactivate - the player is missing | (b) **forced (send Deactivate)** | the case ran twice but the player's `SetTurretState(kTS_None)` only once - the other run took the null arm |
+| 0x1FB0: kSM_Start - the turret is not active | (b) **forced (send Start after send Deactivate)** | the `main` run sent `Start` twice (both answers are in the transcript) and the case's body ran once: the second `Start` came after the `send Deactivate` (which deactivates the turret) and took the early-out |
+| 0x1FD8: kSM_Start - the player is missing | (b) **forced (send Start)** | the `null` run: the case ran and the body (`AddSolidToTopActor` and `AddMaterial`) hit once each, but the player's `SetTurretState` zero times - the null arm |
+| 0x2008: kSM_Stop - the turret is not active | (b) **forced (send Stop after send Deactivate)** | the `main` run: the Stop case was entered but nothing after the test ran (the model's flags, the kill, the animation and the deactivation all zero hits) - the early-out |
 | 0x203C: kSM_Stop - the base actor is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load |
-| 0x2068/0x2084: kSM_Stop - the player is missing | (b) **forced (send Stop)** | the `null` run: the case ran (the model's flags, line 555, hit once) but the player's ejection and the kill (both merged into line 571) **zero** times - the null arm |
-| 0x209C/0x20C4: kSM_Stop - the player is ejected and killed | (b) **forced (send Stop with the player in the turret)** | the `stop` run: the message was answered, the console's `status` printed `in-turret 0` afterwards (the ejection at 0x209C), the console's `objs turret` printed `inactive` (the deactivation at 0x2228) and the game stopped updating right after the message (the harness's "no game update for 30.0 s": the death's save prompt - the kill at 0x20C4).  That run's coverage table was lost: the death stops the game's update loop, so the run never reaches the frame limit and `tools/cov/gdb_cov.py` writes its table only at the exit |
-| 0x2124/0x2130/0x2138: the base and the top actor are missing | (c) | the same two connections; the `stop` run's animation (605) hit once - the block ran |
-| 0x224C: kSM_Damage - the case | (b) **forced (send Damage)** | the forced `send <id> Damage` (the flash timer, line 625, hit once) |
-| 0x225C: kSM_Damage - the multi-player sound | **forced (MP2_TURRET_MP=1)** | the forced run: the port's multi-player impact sound (line 633) hit **once** and the single-player emitter **zero** times; in the normal run the opposite |
-| 0x2264: kSM_Damage - the single-player sound | (b) **forced (send Damage)** | the normal run: the multi-player sound (633) hit **zero** times while the case ran, so the single-player emitter (the case's else branch) was taken |
-| 0x2284: kSM_Damage - the player is missing | (b) **forced (send Damage after send Deactivate)** | the multi-player branch's player lookup: the forced run sent a second `send Damage` after the `send Deactivate` (the player had left the turret by then) and the port's multi-player impact sound (line 633) was hit only **once** - by the first message, the one with the player in the turret |
-| 0x22E8/0x2308: kSM_Damage - the damaged actor is missing | (b) **forced (send Damage)** | the console's `send` has no sender, so the message's +0 is invalid: the case ran (the flash timer 625) and the sender's test (line 645) was taken with a null actor |
-| 0x231C/0x2320: kSM_Damage - the actor has no health info | (c) | the sender would have to be an actor without a health info, but only `CStateManager::ApplyDamage` (which needs one) and the safe zone send kSM_Damage |
-| 0x1C4C/0x1C5C/0x1C84/0x1C98: the default case | (b) **forced (send Open)** | `Open` is a message the turret's switch does not have (the guest's comparison tree covers six codes), so the forced `send <id> Open` took the default and fell through to CActor's handler (line 662) |
+| 0x2068/0x2084: kSM_Stop - the player is missing | (b) **forced (send Stop)** | the `null` run: the case ran (the model's flags hit once) but the player's ejection and the kill (both merged into the kill's line) zero times - the null arm |
+| 0x209C/0x20C4: kSM_Stop - the player is ejected and killed | (b) **forced (send Stop with the player in the turret)** | the `stop` run: the message was answered, the console's `status` printed `in-turret 0` afterwards (the ejection at 0x209C), the console's `objs turret` printed `inactive` (the deactivation at 0x2228) and the game stopped updating right after the message (the harness's "no game update for 30.0 s": the death's save prompt - the kill at 0x20C4) |
+| 0x2124/0x2130/0x2138: the base and the top actor are missing | (c) | the same two connections; the `stop` run's animation hit once - the block ran |
+| 0x224C: kSM_Damage - the case | (b) **forced (send Damage)** | the forced `send <id> Damage` (the flash timer hit once) |
+| 0x225C: kSM_Damage - the multi-player sound | **forced (`PT_FORCE_MP=1`)** | the forcing run: the port's multi-player impact sound hit and the single-player emitter not; in the natural run the opposite |
+| 0x2264: kSM_Damage - the single-player sound | (b) **forced (send Damage)** | the natural run: the multi-player sound hit zero times while the case ran, so the single-player emitter (the case's else branch) was taken |
+| 0x2284: kSM_Damage - the player is missing | (b) **forced (send Damage after send Deactivate)** | the forced run sent a second `send Damage` after the `send Deactivate` (the player had left the turret by then) and the multi-player sound was hit only once - by the first message, the one with the player in the turret |
+| 0x22E8/0x2308: kSM_Damage - the damaged actor is missing | (b) **forced (send Damage)** | the console's `send` has no sender, so the message's +0 is invalid: the case ran and the sender's test was taken with a null actor |
+| 0x231C/0x2320: kSM_Damage - the actor has no health info | **forced (`PT_FORCE_NOHPI=1`)** | the forcing run writes the message's sender to the turret itself, whose `HealthInfo()` is null (`CActor::HealthInfo` returns nullptr), so the case took the branch that reads the message's originator: the port's sender test was taken with a **non-null** actor (the line's hit count is the two messages), and the only actor it can be is the turret |
+| 0x1C4C/0x1C5C/0x1C84/0x1C98: the default case | (b) **forced (send Open)** | `Open` is a message the turret's switch does not have (the guest's comparison tree covers six codes), so the forced `send <id> Open` took the default and fell through to CActor's handler |
 
 So `fn_63_1BE8` is marked: every live arm ran or was forced and labelled.
-
-### 17.3 The two arms the port cannot force
-
-Two arms of the module are not reachable in the port at all and are not forced:
-
-- **kSM_Activate's "the player is dead" arm** (0x1DEC): the message's originator is the player who
-  entered the trigger, and the console's `send` cannot name an originator.  In retail the arm is
-  unreachable too (a dead player does not enter a trigger), so it is class (c).
-- **kSM_Damage's "the actor has no health info" arm** (0x2320): the sender would have to be an
-  actor without a health info; nothing sends kSM_Damage from one.  Class (c).
 
 ## 18. The differences this slice fixed (2026-10-21)
 
@@ -875,42 +881,66 @@ Two arms of the module are not reachable in the port at all and are not forced:
    and the pitch target *before* it tests the base and the top actor, so it happens even without a
    base actor.  The port did it inside the base actor's test; it is now where the guest has it.
 3. **The kill amount** (`fn_63_1BE8`, 0x20B0): the guest passes the float at +0x14 of the player's
-   `CHealthInfo` - the last damage's weapon, 0 in practice - while the port passes the player's
-   current health.  `CStateManager::KillPlayer` only compares the amount with 0 (the DOL's
-   0x8003E1C8), so both kill the player; the difference is documented at the branch and not
-   changed, because the host's `CHealthInfo` has no accessor for that field and the header is a
-   shared file.
-4. **The forced multi-player hook** (`MP2_TURRET_MP=1`): the port cannot start a match (section
-   15), so the module's two game-mode tests take the multi-player arm when the variable is set.
-   It is off by default (retail's single player) and it is the only way to cover the two
-   multi-player arms.
+   `CHealthInfo` - the *bits of the last damage's weapon mode*, read as a float (the guest's
+   `lfs f1, 0x14(r5)`; the guest's `CHealthInfo` layout is 0x00 initial HP, 0x04 HP, 0x08 knockback
+   resistance, 0x0C the cause-of-death weapon, 0x10/0x12 the death owner and source, 0x14 the last
+   damage's weapon, 0x18/0x1A the last damage's owner and source, 0x1C the flags byte - the DOL's
+   copy constructor at `main.elf` 0x80070D60).  The port passed the player's current health, which
+   can be negative when the player dies, and `CStateManager::KillPlayer` branches on the amount
+   (`CStateManager.cpp:3016`: `if (previousHealth >= 0.f)`), so the port could skip
+   `CGameMode::OnPlayerKilled`.  The port now passes the guest's value: `CHealthInfo`'s
+   `GetLastDamageWeaponAsFloat()` (in the header's `TARGET_PC` block, next to
+   `GetLastDamageOwner`) rebuilds the guest's word - the weapon type in the high half, the three
+   flags below it, because the guest's `CWeaponMode` packs its bit fields from the top (PowerPC is
+   big-endian) - and reads it as a float.
+4. **The pitch clamp** (`fn_63_23C0`, 0x28DC..0x290C): the guest clamps the pitch into
+   [-mMaxVertElevationDown, mMaxVertElevationUp] with its own compares (0x28EC and 0x28F8); the
+   port called the shared `CMath::Clamp`, which hides them from `tools/asmcheck.py` (the tool
+   matched the C++'s next compare - the `mPitch >= 0.f` test of 0x2938 - to the clamp's second
+   compare and reported a CROP).  The clamp is now written out, as the guest writes it.
+5. **The multi-player hook is gone**: the first version of this slice carried an `MP2_TURRET_MP`
+   getenv in the module to reach the two multi-player arms.  Game code should not carry a test-only
+   arm, so the hook is out and the arms are forced with `tools/cov/force.sh` instead (section 17).
 
 ## 19. The runtime check (2026-10-21)
 
 The Agon Wastes runs: `WORLD=sand_world,06_sand_alamofront` with the console's `layer 3` (the
-player turret `u061d` is on that layer), driven by `tools/drivers/playerturret_drive.py`.
+player turret `u061d` is on that layer), driven by `tools/drivers/playerturret_drive.py`:
 
 - the player is teleported onto the turret (186.6, -112.1, 18.8) and the console's `status`
-  prints `in-turret 1`; the turret fires with A (the coverage's projectile line hit once);
+  prints `in-turret 1`; the turret fires with A (the `send Start` before it puts the player's
+  turret state to `kTS_Active`, which the guest's input path requires);
 - the console's `send <id> <message>` delivers the messages the game never sends: `Activate`
   (the null-player arm), `Open` (the default case), `Damage` (the damage case), `Deactivate`
   (the player leaves, the turret is deactivated), `Start` (the not-active arm) and `Stop` (the
   case with the player in it, which ejects and kills the player);
-- the `null` phase runs the cases with no player in the turret;
-- the `MP2_TURRET_MP=1` run forces the two multi-player arms.
+- the `null` phase runs the cases with no player in the turret, the `stop` phase the kSM_Stop case
+  and the `forced` phase the message cases without the kSM_Stop one (the death's prompt stops the
+  game's update loop, so a forced run leaves that case out).
 
-The gdb coverage runs (four of them: `main`, `main` with `MP2_TURRET_MP=1`, `null`, `stop`) end
-with `game exit code unknown (running, killed or crashed)` - the runs are killed by the harness
-at the frame limit - and every run's `caught/reach-stub` count is 0.  The console's transcripts
-are `/tmp/opencode/pt_cov_*/con.out`.
+**The gdb coverage** (`tools/cov/run.sh` with the spec `tools/drivers/playerturret_spec.py`) and
+the **forcing runs** (`tools/cov/force.sh` with the same spec's `FORCE` list and the module's
+`tools/drivers/playerturret_force.py` as `COV_GDB_SCRIPT`) gave the per-arm counts of section 17;
+the **compiler coverage** (`-DMP_PORT_COVERAGE=ON` and `tools/cov/gcov_report.py`) the branch
+coverage of the module's bodies.
 
-**asmcheck** (`tools/asmcheck.py check ScriptPlayerTurret
-src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp fn_63_84C fn_63_1BE8`) reports no
-correctness tag for either function.  The five findings are completeness ones: `fn_63_84C`'s
-`fn_63_B18`/`fn_63_F18` (the host's `CImpactVisorEffect::None()` and the token copy), the two
-`rstl` string calls of the locator lookup (the host uses a literal), and the active flag: the
-tool reads the guest's test (`extrwi. r0, r0, 1, 24`) as the byte 0x20's bit 7 and cannot see the
-port's `GetActive()` (the flag lives in `CActor`, not in this module's class), so it reports
-`NOPOS` and `BIT`.  The two runs show the port's test is the guest's: with the turret active the
-`kSM_Start` case ran its body, and after the `kSM_Deactivate` (which deactivates the turret) the
-same case took the early-out.
+- the `main` run: the single-player sound line hit once and the multi-player line not, the
+  `kSM_Activate` case twice with the player's `StartTurret` once (the null arm), the
+  `kSM_Deactivate` case twice with the player's `SetTurretState(kTS_None)` once (the null arm),
+  the `kSM_Start` case's body once (the second `Start` took the not-active arm) and the
+  `kSM_Stop` case's body not at all (the not-active arm);
+- the `stop` run: the kSM_Stop case's model flags, the ejection, the kill, the animation and the
+  deactivation each once - the case's own coverage table, the one the first version of this slice
+  lost (the death's prompt stops the game's update loop, so the run has to be ended by the
+  harness' timeout);
+- the forcing runs: `PT_FORCE_MP=1` (the multi-player sound line hit once, the single-player line
+  not; the damage message's multi-player sound line hit once), `PT_FORCE_DEAD=1` (the player's
+  `StartTurret` line not hit at all: the case returned on the dead player) and `PT_FORCE_NOHPI=1`
+  (the message's sender is the turret, whose health info is null) - the two arms the game's flow
+  never reaches.
+
+The compiler coverage (`-DMP_PORT_COVERAGE=ON`, `tools/cov/gcov_report.py <build> <gcov dir>
+--module ScriptPlayerTurret`) agrees with the gdb counts on the arms the runs reached; its lines
+whose branch was never taken are the null guards and the arms of the other runs.
+
+Every run's `caught/reach-stub` count is 0.
