@@ -736,6 +736,8 @@ void CDarkSamus::DrawFlashQuad(float alpha, float size) const {
 // fn_10_1890C (0x0001890C, 0x58 bytes): with the flash texture (0xDFC, 0x00018920) load it on
 // GX_TEXMAP0, repeating (0x00018938), and draw the quad at the fade factor (fn_10_185CC) and size
 // 0xE00 (0x0001894C); without it nothing.
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (key 68 no texture).
+// @ fn_10_1890C
 void CDarkSamus::RenderFlash() const {
   if (!mFlashTexture) {
     return;
@@ -964,6 +966,9 @@ void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
 // 0x00010B34, `bge` at 0x00010B48, lbl_10_rodata_3EC = -1.0f); 0xD40 is it in degrees
 // (lbl_10_rodata_458 = 57.295776f, 0x00010B6C) clamped to lbl_10_rodata_45C = -30.0f (0x00010B78)
 // and lbl_10_rodata_460 = 30.0f (0x00010B94).
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (keys 69, 71, 72: no forward and on the
+// player, the forward turned both ways).
+// @ fn_10_10A64
 void CDarkSamus::UpdateHeadAim(CStateManager& mgr) {
   CVector3f forward = GetTransform().GetForward();
   forward.SetZ(0.f);
@@ -995,6 +1000,8 @@ void CDarkSamus::UpdateHeadAim(CStateManager& mgr) {
 // times a Z rotation of 0xD40 degrees (lbl_10_rodata_454 = 0.017453292f, 0x00010938) goes back
 // into the node (the products at 0x00010968/0x00010978, fn_10_109E0 at 0x000109A8); the anim
 // data's pose-built bit (0x2AC bit 0x2) is cleared (0x000109B4) and 0xD48 takes 0x8B0 (0x000109C0).
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (key 73 dead, 74 the same elapsed time).
+// @ fn_10_10864
 void CDarkSamus::TwistHead() {
   if (!GetAlive()) { // 0x00010888
     return;
@@ -1016,6 +1023,8 @@ void CDarkSamus::TwistHead() {
 // explosion 0x9DC follows the root 0x8FC/0x900 at its own height (0x5C; SetTranslation at
 // 0x00012E5C); a uid that is no longer a CExplosion (TCastToPtr at 0x00012E24) is cleared
 // (0x00012E38). Then the boost ball's effects (fn_10_8F50 at 0x00012E6C).
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (the melee pulse followed, then gone).
+// @ fn_10_12DD0
 void CDarkSamus::UpdateMeleePulseAndEffects(CStateManager& mgr, float dt) {
   if (mMeleeContact.mHitUid != kInvalidUniqueId) { // 0x00012E0C
     CExplosion* explosion = TCastToPtr< CExplosion >(mgr.ObjectById(mMeleeContact.mHitUid));
@@ -1069,6 +1078,8 @@ void CDarkSamus::UpdateBoostBallEffects(CStateManager& mgr, float dt) {
 // 2.0f (0x0001D714), else it grows by dt / lbl_10_rodata_24C = 3.0f (0x0001D730); clamped to
 // [lbl_10_rodata_3FC = 0.0f, lbl_10_rodata_3E8 = 1.0f] (0x0001D744, 0x0001D758, the store at
 // 0x0001D764); the shadow is drawn while it is above 0.0f (SetDrawShadow at 0x0001D780).
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (key 75 fading, 76 dead while fading).
+// @ fn_10_1D6CC
 void CDarkSamus::UpdateFade(float dt) {
   if (mFadeOut == 1 && GetAlive()) { // 0x0001D6E0, 0x0001D6FC
     mGuestDE8 -= dt / 2.f;           // 0x0001D714
@@ -1086,6 +1097,9 @@ void CDarkSamus::UpdateFade(float dt) {
 // visor bit 0xDED 0x80 (0x0001D618) nor 0x40 (0x0001D620), or - the visibility above 0.0f or a
 // visor bit set - the dark visor bit 0x80 (0x0001D638) with a stage (fn_10_17E14, 0x0001D650)
 // whose fourth bool +0x33 is set (0x0001D664).
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (key 23 the attack 0x8000, 54/75
+// invisible, the dark visor with 77 / natural +0x33).
+// @ fn_10_1D5C4
 void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
   bool targetable = true;
   if (mCurrentAttack == 0x8000) { // 0x0001D5F0

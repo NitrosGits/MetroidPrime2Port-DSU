@@ -2213,8 +2213,8 @@ bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectil
 
 // fn_10_F210 (0x0000F210, 0x88 bytes): the reflect chance cache's entry erased - the entries
 // behind it move down (the next entry's uid at +0x0C, its roll at +0x10 and its roll at +0x14
-// go to +0x00, +0x04 and +0x08 of this one, 0x0001F240..0x0001F254) and the count falls by one
-// (0x0001F27C). The guest's range test (0x0001F218 and 0x0001F230) has no host counterpart:
+// go to +0x00, +0x04 and +0x08 of this one, 0x0000F240..0x0000F254) and the count falls by one
+// (0x0000F27C). The guest's range test (0x0000F218 and 0x0000F230) has no host counterpart:
 // the only caller erases the first entry of a full table.
 // @ fn_10_F210
 void CDarkSamus::EraseReflectChance(uint index) const {
@@ -2225,39 +2225,41 @@ void CDarkSamus::EraseReflectChance(uint index) const {
 }
 
 // fn_10_F298 (0x0000F298, 0x174 bytes): the reflect chance for a projectile's uid. The cache
-// (the count at guest 0x10A8 and the ten entries from 0x10AC) is walked (0x0001F2E4..0x0001F2FC)
-// and the entry's +0x04 answers when the uid is in it (0x0001F2F0). Otherwise, with ten entries
-// (0x0001F300), the first one is erased (fn_10_F210, 0x0001F310) and two rolls are made
-// (Range(0.0f, lbl_10_rodata_3F0 = 100.0f), 0x0001F32C and 0x0001F348). The time since the last
-// hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0001F34C and 0x0001F350) shifts the
-// rolls: zero for the first four seconds (lbl_10_rodata_408 = 4.0f, 0x0001F378) and -50.0f
-// (lbl_10_rodata_418 = 50.0f, 0x0001F3B0) for the next four (lbl_10_rodata_414 = 8.0f,
-// 0x0001F39C). The uid and the two rolls go into the next entry (0x0001F3C8..0x0001F3D4) and the
-// count rises (0x0001F3E0). The second roll answers.
+// (the count at guest 0x10A8 and the ten entries from 0x10AC) is walked (0x0000F2E4..0x0000F2FC)
+// and the entry's +0x04 answers when the uid is in it (0x0000F2F0). Otherwise, with ten entries
+// (0x0000F300), the first one is erased (fn_10_F210, 0x0000F310) and two rolls are made
+// (Range(0.0f, lbl_10_rodata_3F0 = 100.0f), 0x0000F32C and 0x0000F348). The time since the last
+// hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0000F34C and 0x0000F350) shifts the
+// rolls: zero for the first four seconds (lbl_10_rodata_408 = 4.0f, 0x0000F378) and -50.0f
+// (lbl_10_rodata_418 = 50.0f, 0x0000F3B0) for the next four (lbl_10_rodata_414 = 8.0f,
+// 0x0000F39C). The uid and the two rolls go into the next entry (0x0000F3C8..0x0000F3D4) and the
+// count rises (0x0000F3E0). The second roll answers.
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (key 65 the cache full, 66/67 the
+// two windows, a uid asked twice for the cached answer).
 // @ fn_10_F298
 float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) const {
   for (uint i = 0; i < mReflectChanceCount; ++i) {
     if (mReflectChances[i].mUid == uid) {
-      return mReflectChances[i].mChance; // 0x0001F2F0
+      return mReflectChances[i].mChance; // 0x0000F2F0
     }
   }
-  if (mReflectChanceCount == 10) { // 0x0001F300
-    EraseReflectChance(0);          // fn_10_F210, 0x0001F310
+  if (mReflectChanceCount == 10) { // 0x0000F300
+    EraseReflectChance(0);          // fn_10_F210, 0x0000F310
   }
-  float roll = mgr.Random()->Range(0.f, 100.f);      // 0x0001F32C, lbl_10_rodata_3F0
-  float chance = mgr.Random()->Range(0.f, 100.f);    // 0x0001F348
-  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001F34C, 0x0001F350
-  if (4.f + since > mElapsedTime) { // lbl_10_rodata_408, 0x0001F378
+  float roll = mgr.Random()->Range(0.f, 100.f);      // 0x0000F32C, lbl_10_rodata_3F0
+  float chance = mgr.Random()->Range(0.f, 100.f);    // 0x0000F348
+  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0000F34C, 0x0000F350
+  if (4.f + since > mElapsedTime) { // lbl_10_rodata_408, 0x0000F378
     roll = 0.f;
     chance = 0.f;
-  } else if (8.f + since > mElapsedTime) { // lbl_10_rodata_414, 0x0001F39C
-    roll -= 50.f;                             // lbl_10_rodata_418, 0x0001F3B0
+  } else if (8.f + since > mElapsedTime) { // lbl_10_rodata_414, 0x0000F39C
+    roll -= 50.f;                             // lbl_10_rodata_418, 0x0000F3B0
     chance -= 50.f;
   }
-  mReflectChances[mReflectChanceCount].mUid = uid; // 0x0001F3C8
-  mReflectChances[mReflectChanceCount].mChance = chance; // 0x0001F3D0
-  mReflectChances[mReflectChanceCount].mRoll = roll; // 0x0001F3D4
-  ++mReflectChanceCount; // 0x0001F3E0
+  mReflectChances[mReflectChanceCount].mUid = uid; // 0x0000F3C8
+  mReflectChances[mReflectChanceCount].mChance = chance; // 0x0000F3D0
+  mReflectChances[mReflectChanceCount].mRoll = roll; // 0x0000F3D4
+  ++mReflectChanceCount; // 0x0000F3E0
   return chance;
 }
 

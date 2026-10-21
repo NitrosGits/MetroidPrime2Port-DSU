@@ -461,6 +461,9 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
 // `rlwimi r0, r4, 6, 25, 25` at 0x00018CF0), fn_10_12DD0 (0x00018D04), and with 0xFC0 above 0.0f
 // (0x00018D18) the colour's red, green and blue bytes 0x44C..0x44E from Lerp(Black, White, 0xFC0)
 // (0x00018D38..0x00018D50).
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every retail arm (key 78 a boost ball); the one
+// untaken branch is CStateManager::GetPlayerState's host-only fallback (TARGET_PC).
+// @ fn_10_18AB8
 void CDarkSamus::PreRender(CStateManager& mgr) {
   if (mGuestD14 > 0.f) { // 0x00018AF0
     mFlags90C |= 0x20;   // 0x00018AFC
