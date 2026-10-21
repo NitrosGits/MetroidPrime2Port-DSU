@@ -447,6 +447,11 @@ CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {
 // @ fn_30_1540
 // @ fn_30_2CCC
 // @ fn_30_160C
+// @ fn_30_2344
+// @ fn_30_1988
+// @ fn_30_20A0
+// @ fn_30_18F0
+// @ fn_30_194C
 static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& input,
                                              CEntityInfo& info) {
   SLdrIngBoostBallGuardian sldrThis;
