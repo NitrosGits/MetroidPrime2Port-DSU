@@ -44,6 +44,8 @@
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
+#include "MetroidPrime/CAxisAngle.hpp"
+#include "MetroidPrime/CRumbleManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
@@ -1587,7 +1589,7 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mDash.mDoubleDash = false;
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-    if (stage != nullptr && // `mr. r28, r3; beq` at 0x0001511C/0x00015120
+    if (stage != nullptr && // `mr. r28, r3` at 0x0001511C/0x00015120
         mgr.Random()->Range(0.f, 100.f) < stage->GetStageInfo().chanceToDoubleDash) {
       mDash.mDoubleDash = true;
     }
@@ -1639,8 +1641,10 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
 // the ground; the projectile reflect (0x000125CC..0x000125F0) and, before the launch, the dodge
 // (0x00012608..0x00012644). Deactivate (0x0001266C) stops the actor, clears the animation state
 // and 0xC00, delivers kBSC_NextState and turns the bubble off.
-// Unmarked: the jump re-issue (0x0001239C) and the static wall hit (0x00012534) arms have not
-// run yet.
+// Unmarked: the static wall hit (0x00012534) needs the dive record's boost bit 0x01 (0xB20),
+// which only DiveFromBoost fn_10_9424 sets (`rlwimi r0, r3, 0, 31, 31` at 0x00009460), and it
+// is a stand-in; without the bit the collision failsafe (`clrlwi.` at 0x00012018) runs first
+// in the same message and puts an actor placed in a wall back at its safe position.
 void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveAttack", msg);
   UpdateCurrentAttack(0x20, mgr, msg);
@@ -1752,13 +1756,17 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_10_E784 (0x0000E784, 0x18C bytes): the vectors to zero, the damage copied to +0x30
-// (0x0000E83C..0x0000E85C), the boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
-CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage)
+// (0x0000E83C..0x0000E85C), the two impulses to +0x50/+0x54 (0x0000E860/0x0000E864), the
+// boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
+CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
+                               float impulseVertical)
 : mTarget(CVector3f::Zero())
 , mStart(CVector3f::Zero())
 , mBounceDir(CVector3f::Zero())
 , mLastPos(CVector3f::Zero())
 , mDamage(damage)
+, mImpulseHorizontal(impulseHorizontal)
+, mImpulseVertical(impulseVertical)
 , mBounceTime(0.f)
 , mStuckTime(0.f)
 , mFromBoost(false) {
@@ -1916,16 +1924,158 @@ void CDarkSamus::StartDiveBubble(CStateManager& mgr) {
   AnimationData()->SetEffectState(rstl::string_l("DiveBubble"), true, mgr);
 }
 
-// fn_10_1B658: the projectile reflect around the actor (the near list, the CEnergyProjectile
-// fields, lbl_10_data_F298's 0x10A8 table, the vtable call at 0x8C). Not in the port yet.
-void CDarkSamus::ReflectProjectiles(CStateManager&) {
-  FsmStandIn("fn_10_1B658", "projectile reflect");
+// fn_10_1B658 (0x0001B658, 0x2E0 bytes): the projectile reflect. The near list (0x0001B708) is the
+// box of half-size lbl_10_rodata_3F0 = 100.0f around the actor (lbl_10_rodata_54C = -100.0f for
+// the low corner, 0x0001B680..0x0001B6CC) with the default filter (include 0xFFFFFFFF, type 0,
+// 0x0001B6D4..0x0001B704) and the actor itself; each entry is cast to a CEnergyProjectile
+// (0x0001B730) and skipped unless fn_10_1B9B0 with any weapon type (`li r6, -0x1` at 0x0001B748)
+// lets it through (0x0001B750) and it is within 0xC00 of the root bone 0x8FC (Magnitude at
+// 0x0001B798, `fcmpo; bgt` at 0x0001B7A4). Then the ricochet sound 0xC50 plays at the projectile
+// in the actor's area 0x4 (AddEmitter at 0x0001B7C8: acoustics `li r7, 0x1` at 0x0001B7C0, not looped
+// `li r8, 0x0` at 0x0001B7C4, kMedPriority at 0x0001B7B0). The new direction is the projectile's
+// forward (its transform's column 1, 0x0001B7CC..0x0001B7E4) with x and y each moved by
+// lbl_10_rodata_520 = 0.4f - lbl_10_rodata_550 = 0.8f * random (`fnmsubs` at 0x0001B804 and
+// 0x0001B82C) and z lowered by lbl_10_rodata_3E4 = 0.5f * random + lbl_10_rodata_474 = 0.05f
+// (`fmadds` at 0x0001B854); normalized when it can be (0x0001B868), else the forward again
+// (0x0001B87C). The projectile explodes there with response 0xD (`li r6, 0xd` at 0x0001B8C4), the
+// reflect vulnerability (fn_800DBB40 at 0x0001B8A0) and no hit actor (kInvalidUniqueId at
+// 0x0001B898) through its vtable 0x8C (Explode, 0x0001B8B4). Last 0xC08 takes the elapsed time
+// (0x0001B8D4), the oldest uid goes when five are kept (`cmpwi r0, 0x5` at 0x0001B8DC,
+// fn_10_1B938 at 0x0001B8EC) and the projectile's uid is appended (0x0001B8FC).
+// The not-normalizable arm is dead: the forward is a unit vector and the largest offset is
+// |(0.4, 0.4, 0.55)|, whose square 0.6225 is below 1, so the sum is never zero.
+// @ fn_10_1B658
+void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
+  const CVector3f min(pos.GetX() + -100.f, pos.GetY() + -100.f, pos.GetZ() + -100.f);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    CEnergyProjectile* proj = TCastToPtr< CEnergyProjectile >(mgr.ObjectById(*it));
+    if (!CanReflectProjectile(mgr, proj, -1)) {
+      continue;
+    }
+    if ((mRootPos - proj->GetTranslation()).Magnitude() > mGuestC00) {
+      continue;
+    }
+    CSfxManager::AddEmitter(mRicochetSfxId, proj->GetTranslation(), GetCurrentAreaId().Value(),
+                            true, false, CSfxManager::kMedPriority);
+    CVector3f dir = proj->GetTransform().GetForward();
+    dir.SetX(dir.GetX() + (0.4f - 0.8f * mgr.Random()->Float()));
+    dir.SetY(dir.GetY() + (0.4f - 0.8f * mgr.Random()->Float()));
+    dir.SetZ(dir.GetZ() - (0.5f * mgr.Random()->Float() + 0.05f));
+    if (dir.CanBeNormalized() == true) {
+      dir.Normalize();
+    } else {
+      dir = proj->GetTransform().GetForward();
+    }
+    proj->Explode(proj->GetTranslation(), dir, EWeaponCollisionResponseTypes(0xD), mgr,
+                  CDamageVulnerability::ReflectVulnerabilty(), kInvalidUniqueId);
+    mLastReflectTime = mElapsedTime;
+    if (mReflectedUids.size() >= 5) {
+      mReflectedUids.erase(mReflectedUids.begin());
+    }
+    mReflectedUids.push_back(proj->GetUniqueId());
+  }
 }
 
-// fn_10_138A4: the dive's hit on the player (the damage, fn_10_1382C and fn_10_13750's knock
-// back). Not in the port yet.
-void CDarkSamus::HitPlayerWithDive(CStateManager&) {
-  FsmStandIn("fn_10_138A4", "dive hits the player");
+// fn_10_1B9B0 (0x0001B9B0, 0x158 bytes): a projectile may be sent back unless it is null
+// (`mr.` at 0x0001B9C0), the actor's own (its owner 0x15C against the uid 0x8, 0x0001B9E4), already
+// exploded (0x562 `extrwi r3, r0, 1, 26` at 0x0001B9F0), of another weapon type than a given one
+// (`cmpwi r6, -0x1` at 0x0001BA10, its 0x160 at 0x0001BA1C) or already sent back (the walk over
+// 0xBF0 at 0x0001BA48..0x0001BA58). During attack 0x800000 (`subis r0, r3, 0x80` at 0x0001BA70)
+// phazon and cannon-ball projectiles (the damage's weapon type 0x19C:
+// `cmpwi r0, 0xa` at 0x0001BA80,
+// `cmpwi r0, 0x8` at 0x0001BA88) are not; any other is. Outside it any weapon type
+// (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
+// stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
+// against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Only fn_10_1B658 calls it in the port,
+// always with -1; the typed callers (0x0001BBF8 and 0x0001BD58, AnyIncomingMissiles fn_10_1BB08)
+// and fn_10_F298 are not ported, so that last arm is a stand-in.
+bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj,
+                                      int type) const {
+  if (proj == nullptr || proj->GetOwnerId() == GetUniqueId() || proj->HasExploded()) {
+    return false;
+  }
+  if (type != -1 && type != proj->GetType()) {
+    return false;
+  }
+  const TUniqueId* it = mReflectedUids.begin();
+  while (it != mReflectedUids.end() && *it != proj->GetUniqueId()) {
+    ++it;
+  }
+  if (it != mReflectedUids.end()) {
+    return false;
+  }
+  if (mCurrentAttack == 0x800000) {
+    const EWeaponType weapon = proj->GetCurrentDamageInfo().GetWeaponMode().GetType();
+    return weapon != kWT_Phazon && weapon != kWT_CannonBall;
+  }
+  if (type == -1 || GetBattleStage(mgr) == nullptr) {
+    return true;
+  }
+  FsmStandIn("fn_10_F298", "reflect chance roll");
+  return true;
+}
+
+// fn_10_138A4 (0x000138A4, 0xF4 bytes): the dive's hit on the player. The dive record's 0x20 is
+// set (`rlwimi r0, r5, 5, 26, 26` at 0x000138D0), the dive damage 0xAF0 goes to the player
+// (0x14FC's uid at 0x00013934) from the actor (ApplyDamage at 0x0001394C) through the filter
+// including lbl_10_data_200 = 0x3B (kMT_Solid, the __shl2i at 0x000138E4) with type 3
+// (`li r0, 0x3` at 0x000138EC) and no knock back (sZeroVector, 0x000138F8), the player's orbit
+// target is cleared (fn_10_1382C at 0x00013958), and unless the player is morphed (0x38C:
+// `cmpwi r0, 0x1` at 0x00013964) fn_10_13750 pushes it with the dive's impulses 0xB10/0xB14
+// (0x0001396C/0x00013974).
+// @ fn_10_138A4
+void CDarkSamus::HitPlayerWithDive(CStateManager& mgr) {
+  mDive.mHitPlayer = true;
+  CPlayer* player = mgr.GetPlayer(0);
+  mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mDive.mDamage,
+                  CMaterialFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                  CMaterialFilter::kFT_IncludeExclude),
+                  CVector3f::Zero());
+  ClearPlayerOrbitTarget(mgr);
+  if (mgr.GetPlayer(0)->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    PushPlayer(mgr, mDive.mImpulseHorizontal, mDive.mImpulseVertical);
+  }
+}
+
+// fn_10_1382C (0x0001382C, 0x3C bytes): the player (0x14FC) orbits nothing: SetOrbitTargetId
+// with kInvalidUniqueId (0x00013840, the call at 0x00013854).
+// @ fn_10_1382C
+void CDarkSamus::ClearPlayerOrbitTarget(CStateManager& mgr) {
+  mgr.GetPlayer(0)->SetOrbitTargetId(kInvalidUniqueId, mgr);
+}
+
+// fn_10_13750 (0x00013750, 0xDC bytes): the direction from the actor to the player (0x14FC's
+// position less the actor's, 0x00013784..0x000137B4) with z = lbl_10_rodata_3FC = 0.0f
+// (0x000137C4), normalized (0x000137C8), x and y times `horizontal` (0x000137DC..0x000137EC), z
+// replaced by `vertical` (0x000137FC), then fn_10_1367C (0x00013800).
+// @ fn_10_13750
+void CDarkSamus::PushPlayer(CStateManager& mgr, float horizontal, float vertical) {
+  const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+  const CVector3f& pos = GetTranslation();
+  CVector3f dir(playerPos.GetX() - pos.GetX(), playerPos.GetY() - pos.GetY(), 0.f);
+  dir.Normalize();
+  KnockPlayer(mgr, CVector3f(dir.GetX() * horizontal, dir.GetY() * horizontal, vertical));
+}
+
+// fn_10_1367C (0x0001367C, 0xD4 bytes): the player (0x14FC) stops (0x000136A4), takes the impulse
+// times its mass 0x158 (0x000136A8..0x000136C0) with no turn (CAxisAngle::Identity, the call at
+// 0x000136E0), moves to state 2 (kMS_ApplyJump: `li r4, 0x2` at 0x000136EC, SetMoveState at
+// 0x000136F0) and its rumble manager (0x152C by MaskUIdNumPlayers, 0x00013708) plays effect 6
+// (`li r5, 0x6` at 0x00013728) at lbl_10_rodata_3E8 = 1.0f with priority 2
+// (`li r6, 0x2` at 0x0001372C).
+// @ fn_10_1367C
+void CDarkSamus::KnockPlayer(CStateManager& mgr, const CVector3f& impulse) {
+  CPlayer* player = mgr.GetPlayer(0);
+  player->Stop();
+  player->ApplyImpulseWR(impulse * player->GetMass(), CAxisAngle::Identity());
+  player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+  mgr.RumbleManager(mgr.MaskUIdNumPlayers(player->GetUniqueId()))
+      ->Rumble(mgr, kRFX_CameraShake, 1.f, kRP_Two);
 }
 
 // fn_10_18628 (0x00018628, 0x10 bytes): 0xE04 = the elapsed time 0x8B0, 0xE08 = a, 0xE0C = b.
@@ -3893,7 +4043,7 @@ static pas::EStepDirection GetDashStepDirection(int slot) {
 }
 
 // fn_10_EB90 (0x0000EB90, 0x228 bytes): the dash slot's direction from the flat facing axis f, the
-// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7; bgt` at 0x0000EB98 to the zero vector):
+// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7` at 0x0000EB98 to the zero vector):
 // 0 f, 1 -f (lbl_10_rodata_3EC = -1.0f), 2 (-f.y, f.x, 0), 3 (f.y, -f.x, 0), and the diagonals
 // normalized (AsNormalized at 0x0000EC70/0x0000ECC4/0x0000ED2C/0x0000ED80): 4 the sum of f and
 // slot 2's, 6 slot 2's minus f, 5 the sum of f and slot 3's, 7 slot 3's minus f (the `cmpwi` at
@@ -3986,7 +4136,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
        it != nearList.end(); ++it) {
     // The near list holds actors only; retail passes the entity on as one.
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
-    if (actor != nullptr) { // `mr. r6, r3; beq` at 0x00014BE4/0x00014BE8
+    if (actor != nullptr) { // `mr. r6, r3` at 0x00014BE4/0x00014BE8
       mgr.ApplyRadiusDamage(*this, GetTranslation(), *actor, GetUniqueId(), info);
     }
   }
@@ -4174,7 +4324,7 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
     if (endDistSq < playerDistSq) {
       weight = weight * 0.5f;
     }
-    if (target != nullptr) { // `cmplwi r25, 0x0; beq` at 0x00015D6C/0x00015D70
+    if (target != nullptr) { // `cmplwi r25, 0x0` at 0x00015D6C/0x00015D70
       const float dist = (*target - end).Magnitude();
       if (dist < mMaxAttackRange) {
         weight = weight * (1.f - dist / mMaxAttackRange);

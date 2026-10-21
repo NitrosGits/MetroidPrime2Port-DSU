@@ -815,3 +815,44 @@ transition enters it.
 
 - Marked: C85C, C798, BE18. CA0C and C2B0 wait on a world with the sweep sounds; C470 waits on a
   decal-bearing CRSC (rooftop's has no type-1 decal) and a vertical gun; C104 waits on a 0 PART.
+
+## Slice 18 (2026-10-21): the projectile reflect, the dive hit
+
+- Ported: the reflect fn_10_1B658 (near list, root-bone range 0xC00, ricochet sound 0xC50, the
+  randomized send-back through Explode with response 0xD and ReflectVulnerabilty, the five-uid list
+  0xBEC/0xBF0, 0xC08), its predicate fn_10_1B9B0, the dive hit fn_10_138A4 and its callees 1382C
+  (orbit target cleared), 13750 (flat push) and 1367C (impulse, kMS_ApplyJump, camera-shake rumble).
+  New host members: mRootPos (0x8FC, PreRender's "Skeleton_Root" translation, lbl_10_rodata_560 +
+  0x551), mReflectedUids, mLastReflectTime (-1000), mRicochetSfxId (missileRicochetSound, loader
+  0x928); the dive record's impulses +0x50/+0x54 (0xB10 horizontal = loader 0x964, 0xB14 vertical
+  = 0x960).
+- Reach: `tools/drivers/darksamus_reflect.con` (rooftop u04f7: shots every 15 frames through two
+  dives, then `press X` and a morphed dive). DiveAttack calls the reflect only while the stage's
+  unknown_0xf5cf3c0f is set; Think's call (0x0001B384) waits on the Think port.
+
+| body | arm | ran |
+| --- | --- | --- |
+| 1B658 | predicate false / too far / reflected | yes / yes / yes |
+| 1B658 | normalized / not normalizable; erase oldest / not | yes / dead; yes / yes |
+| 1B9B0 | null-own-exploded / in list / any type; attack 0x800000; typed roll | yes / yes / yes; **no**; **no** (stand-in) |
+| 138A4 | unmorphed push / morphed | yes / yes |
+| 1382C, 13750, 1367C | single path | yes |
+| 11FA4 | jump re-issue | forced (fsm MeleeAttack, then DiveAttack) |
+| 11FA4 | static wall hit | **no** (needs 9424) |
+
+- Marked: 1B658 (its not-normalizable arm is dead: a unit forward plus an offset of at most
+  |(0.4, 0.4, 0.55)|, squared 0.6225 < 1, is never zero), 138A4, 1382C, 13750, 1367C.
+- Unmarked: 1B9B0. Its typed arm needs fn_10_F298 and the typed callers in AnyIncomingMissiles
+  1BB08, and the 0x800000 arm needs that attack; the only port caller passes -1.
+  11FA4 is unmarked too. Its static wall hit needs the dive record's boost bit 0x01 (0xB20), which
+  only DiveFromBoost 9424 sets (0x00009460), and 9424 is a stand-in. Without the bit, the collision
+  failsafe (0x00012018) runs first and returns a boss placed into a wall to its safe position
+  (observed: placed at the wall (68.59,466.5) in flight, it flew on from 451).
+- The forced SweepBeam's kUE_BeginAction is missing on Agon because of animation data, not a port
+  bug. On Agon, MeleeAttack severity 5 plays an animation whose events are kUE_Projectile,
+  EffectOn 33, DamageOn 8, EffectOff 34 and LoopedSoundStop 2, with no BeginAction 17 or
+  EndAction 18 (none in 5 of 5 passes). The rooftop's sweep animation sends 17/18 on every pass.
+  An entry made while the body is still in kAS_MeleeAttack (Agon pass 1, from MissileJump) gets
+  Repeat from CanIssueCommand, so the earlier attack's animation keeps playing with that
+  animation's events. Agon's sweepSwoosh is also kInvalidAssetId, so that fight has no sweep beam
+  at all.
