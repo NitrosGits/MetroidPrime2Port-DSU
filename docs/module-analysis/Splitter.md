@@ -1192,3 +1192,35 @@ off) are only called from chassis/head states that are still stand-ins.
   - PathFind tries ShouldMorphballStab, ShouldLegStab, FindBestDodgeDirection, HasRetreatPoint,
     ShouldSpinAttack and ShouldLaserSweep, then Delay.
   - The headless PathFind goes !HasHead to SetRetreatDest.
+
+### Chassis PathFind and its triggers, head FaceTarget (2026-10-21)
+
+Ported: SetTargetDest `fn_75_BC70`, the team join `fn_75_8DF8` (`PortJoinTeam`), PathFind
+`fn_75_DC08`, HasRetreatPoint `E56C`, ShouldDodge `E098`, HasLineOfSight `E524`,
+ShouldMorphballStab `E2F0`, ShouldLegStab `E3A4`, ShouldSpinAttack `E1D0`, ShouldLaserSweep
+`E0B0`, the head's FaceTarget `fn_75_50B0` and ShouldLaserSweep `fn_75_55F8`. New fields: the
+chassis's dodge direction 0xD04 (`mDodgeDirection`, -1) and the head's laser sweep stage 0xF34
+(`mLaserSweepStage`, -1). All of them have dropped out of the area-5 stand-in log.
+
+Arms seen in area-5 runs (temporary probes, plan F: the player at 2-70 units):
+- **Marked** (branchless, ran): E56C, E098, E524 and 55F8.
+- **BC70:** ran no-line-of-sight and no-role. Not run: the projectile-role arms (area 5 has no
+  team AI manager: `8DF8` only took the no-team arm) and the null target.
+- **DC08:** ran activate/update with a destination, and deactivate. Not run: the no-destination
+  arms, which need a null target or the projectile role near the target.
+- **E2F0/E3A4:** both distance outcomes ran.
+  - The null-target arm is unreachable: 0xCC0 is written only by the constructor (invalid) and
+    SelectTarget (the player). The PathFind that runs these triggers comes after HasTarget.
+  - The flag-off arm (the data word 0x828 bit 0x4; area 5's word is 124, which has it set) was
+    not split from the timer-running arm, and other rooms' instances are unchecked.
+- **E1D0/E0B0:** only the first gate ran (0xD40's 0x80 bit is off, and so is the laser-sweep
+  flag or timer). The team and distance arms never ran.
+- **50B0:** ran activate, snap and Slerp. Not run: zero frame time, the null target, the unsafe
+  offset, and deactivate (the head stays in FaceTarget).
+- **55F8:** only false: 0xF34 stays -1 until the chassis's SetupLaserSweep (`fn_75_B678`) has
+  the head's `fn_75_5AD8` set it to 0.
+
+The next stand-ins the run reaches: FindBestDodgeDirection `fn_75_B2A0` (0x2A0, which calls
+`fn_75_91E4` (0x33C)), FindBestStabLeg `fn_75_B57C`, LegStabAttack `fn_75_DA38` and StateOver
+`fn_75_E64C`. The head reaches LaserSweep (`fn_75_44DC`, 0x388) only through the chassis's
+SetupLaserSweep.

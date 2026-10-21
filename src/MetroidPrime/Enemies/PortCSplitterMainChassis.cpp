@@ -179,7 +179,6 @@ SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_E64C)
 SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
 SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
 SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
-SPLITTER_TRIGGER_STANDIN(HasLineOfSight, fn_75_E524)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
 SPLITTER_TRIGGER_STANDIN(IsSpinAttackOver, fn_75_E084)
@@ -247,8 +246,16 @@ bool CSplitterMainChassis::HasRetreatPoint(CStateManager&, const CTriggerData&) 
 
 // fn_75_E098 (the chassis's ShouldDodge trigger, 0xE098-0xE0B0): the dodge direction at 0xD04
 // is not -1 (0xE09C-0xE0A8: subfic -1, addi 1, or, srwi 31).
+// @ fn_75_E098
 bool CSplitterMainChassis::ShouldDodge(CStateManager&, const CTriggerData&) const {
   return mDodgeDirection != -1;
+}
+
+// fn_75_E524 (the chassis's HasLineOfSight trigger, 0xE524-0xE530): the CVisualKnowledge's
+// (0xC70) flag byte at 0xCA8, its 0x80 bit - the host tracker's line-of-sight flag.
+// @ fn_75_E524
+bool CSplitterMainChassis::HasLineOfSight(CStateManager&, const CTriggerData&) const {
+  return mVisualKnowledge.HasLineOfSight();
 }
 
 // fn_75_E2F0 (the chassis's ShouldMorphballStab trigger, 0xE2F0-0xE3A4): false unless the data's
