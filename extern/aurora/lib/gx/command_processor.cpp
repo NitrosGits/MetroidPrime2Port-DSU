@@ -1,6 +1,7 @@
 #include "command_processor.hpp"
 
 #include "../gfx/depth_peek.hpp"
+#include "../gfx/perf.hpp"
 #include "../gfx/recording.hpp"
 #include "../internal.hpp"
 #include "dolphin/gd/GDGeometry.h"
@@ -577,6 +578,7 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
     } else if (alphaConfig.depthFunc == GX_GREATER) {
       alphaConfig.depthFunc = GX_GEQUAL;
     }
+    perf::count(AURORA_PERF_DST_ALPHA_DUP);
     DrawImmediateData alphaImmediates = immediates;
     alphaImmediates.forceDstAlpha = 1u;
     gfx::push_draw_command(DrawData{

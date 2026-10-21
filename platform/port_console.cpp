@@ -58,6 +58,7 @@
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
+#include <aurora/perf.h>
 
 #include <atomic>
 #include <cctype>
@@ -660,6 +661,33 @@ void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
                   stats != nullptr ? stats->lastVertSize : 0u,
                   stats != nullptr && stats->drawCallCount < 40 ? "  <- almost nothing drawn" : "");
     out += line;
+    // Per-frame work counters (aurora/perf.h): render pass breaks by reason (each one is a full
+    // colour+depth store and reload on a tiled GPU), GXCopyTex calls by caller (module offsets,
+    // addr2line -f -e metroid_prime2_port <offset>), texture cache traffic, extra draws.
+    if (const AuroraPerfFrame* perf = aurora_perf_last_frame(); perf != nullptr) {
+      const uint32_t* b = perf->passBreaks;
+      const uint32_t* c = perf->counters;
+      std::snprintf(line, sizeof(line),
+                    "perf breaks copy %u depthsnap %u encoder %u offscreen %u resolve %u | copytex %u"
+                    " | tex hit %u miss %u hash %u upload %u init %u initdata %u | dstalphadup %u"
+                    " bindinval %u\n",
+                    b[AURORA_PERF_BREAK_COPY], b[AURORA_PERF_BREAK_DEPTH_SNAPSHOT],
+                    b[AURORA_PERF_BREAK_ENCODER_TASK], b[AURORA_PERF_BREAK_OFFSCREEN],
+                    b[AURORA_PERF_BREAK_RESOLVE], c[AURORA_PERF_COPY_TEX], c[AURORA_PERF_TEX_OBJ_HIT],
+                    c[AURORA_PERF_TEX_OBJ_MISS], c[AURORA_PERF_TEX_HASH], c[AURORA_PERF_TEX_UPLOAD],
+                    c[AURORA_PERF_TEX_INIT], c[AURORA_PERF_TEX_INIT_DATA], c[AURORA_PERF_DST_ALPHA_DUP],
+                    c[AURORA_PERF_BIND_INVALIDATE]);
+      out += line;
+      if (perf->copySiteCount != 0) {
+        out += "copy sites";
+        for (uint32_t i = 0; i < perf->copySiteCount && i < AURORA_PERF_MAX_COPY_SITES; ++i) {
+          std::snprintf(line, sizeof(line), " %#llx:%u",
+                        static_cast< unsigned long long >(perf->copySiteOffset[i]), perf->copySiteHits[i]);
+          out += line;
+        }
+        out += "\n";
+      }
+    }
   }
 }
 
