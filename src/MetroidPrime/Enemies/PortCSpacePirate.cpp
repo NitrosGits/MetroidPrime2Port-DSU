@@ -529,8 +529,15 @@ bool CSpacePirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
   return mgr.RayCollideWorld(start, end, filter, this);
 }
 
-// Shadow pirates fade in and out; the cloak alpha lives in the actor's colour.
+// Retail fn_72_2F4C (0x2D4), called from the Think (fn_72_1980, asm 0x1B74) once per frame.
+// Shadow pirates fade in and out; the cloak alpha lives in the actor's colour. The first test is
+// the shadow bit (0x8f5 mask 0x10, asm 0x2F88 `extrwi. 1,27`) and a pirate without it leaves at
+// once (asm 0x2F8C) - the rest of the body is the cloak itself. The alpha byte at 0x44f is
+// scaled by rodata 0xBB4 = 1/255 (asm 0x3178), the re-arm of the step timer is rodata 0xBBC =
+// 0.08 times (1 - the random draw) (asm 0x3150-0x315C) and the frozen test compares against
+// rodata 0xB54 = 1.0 (asm 0x3048).
 void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
+  TraceCall(*this, "UpdateCloak", x8f5_27_shadowPirate ? 1 : 0);
   if (!x8f5_27_shadowPirate) {
     return;
   }
@@ -581,13 +588,27 @@ void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
   }
 }
 
-bool CSpacePirate::CheckTargetable(CStateManager& mgr) { return GetModelAlphau8(mgr) > 127; }
+// @ fn_72_E2DC (0x38): the pirate can be aimed at while its model is more than half opaque.
+// Retail calls the vtable slot 0xC8 (GetModelAlphau8, fn_72_3AE8) and compares the byte with
+// 127 - the `clrlwi`/`subfic`/`srwi` triple at asm 0xE2F8 is that comparison. The body has no
+// branch, so every call does the same work and the area run's calls prove all of it.
+bool CSpacePirate::CheckTargetable(CStateManager& mgr) {
+  const bool targetable = GetModelAlphau8(mgr) > 127;
+  TraceCall(*this, "CheckTargetable", targetable ? 1 : 0);
+  return targetable;
+}
 
-// Ends the pirate's claim on a squad attack slot.
+// @ fn_72_DEDC (0x50): the pirate gives up its squad attack slot. The attack type comes from the
+// melee bit (the 0x8f4 byte's bit 27, mask 0x10 in that byte, asm 0xDF0C `extrwi. 1,27`): the
+// bit clear is 1 = kAT_Projectile and the bit set is 0 = kAT_Melee, the enum's own order (asm
+// 0xDF14 `srwi` inverts the bit). The team is the id at 0xba0 and the member is the pirate's own
+// id (asm 0xDEF4/0xDEFC). The last argument is a plain 1 (asm 0xDEE4 `li r7, 0x1`), so the team
+// role is cleared for a melee pirate too.
 void CSpacePirate::SquadReset(CStateManager& mgr) {
+  TraceCall(*this, "SquadReset", x8f4_27_melee ? 1 : 0);
   CScriptTeamAiMgr::EndAttack(x8f4_27_melee ? CScriptTeamAiMgr::kAT_Melee
                                             : CScriptTeamAiMgr::kAT_Projectile,
-                              mgr, xba0_teamAiMgrId, GetUniqueId(), !x8f4_27_melee);
+                              mgr, xba0_teamAiMgrId, GetUniqueId(), true);
 }
 
 // Tells the squad manager who this member is shooting at.
@@ -1266,7 +1287,17 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
 
 // Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
 // ragdoll is primed; with no ragdoll (xb30_ is never set) it is CPatterned::Touch.
-void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) { CPatterned::Touch(actor, mgr); }
+// Retail fn_72_E3D8 (0xC0): the base class's touch first, then a force-field trigger's push
+// onto the ragdoll's torso impulse. The ragdoll pointer at 0xb30 is never set in this port, so
+// that whole branch stays a comment (asm 0xE3F8-0xE47C): the ragdoll's own flag byte 0x70 has
+// to carry bit 0x40 (asm 0xE408), the other actor has to be a CScriptTrigger (asm 0xE414) whose
+// flag byte 0x20 carries bit 0x80 (asm 0xE424) and whose word 0x1a0 carries bit 0x10000 (asm
+// 0xE430), and the trigger's float 0x19c has to be above zero (asm 0xE444); the ragdoll's
+// 0xb8, 0xbc and 0xc0 then take the trigger's 0x190, 0x194 and 0x198.
+void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
+  TraceCall(*this, "Touch", 0);
+  CPatterned::Touch(actor, mgr);
+}
 
 // Retail fn_72_C538.
 // @ fn_72_C538

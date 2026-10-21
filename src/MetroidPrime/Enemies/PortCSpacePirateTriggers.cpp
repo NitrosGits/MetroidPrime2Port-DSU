@@ -45,14 +45,23 @@ bool CSpacePirate::PatternShagged(CStateManager& mgr, const CTriggerData& data) 
   return CPatterned::Stuck(mgr, data);
 }
 
+// @ fn_72_BC78 (0x5C): the noise flag is read and cleared in one go - asm 0xBC80 `extrwi. 1,25`
+// reads the 0x8f6 mask 0x40 bit and asm 0xBC84 `rlwimi` clears it - and the old value is the
+// result (asm 0xBC8C). The body has no branch, so the area run's calls prove all of it.
 bool CSpacePirate::HearShot(CStateManager& mgr, const CTriggerData& data) const {
   const bool heard = x8f6_25_hearNoise;
   const_cast< CSpacePirate* >(this)->x8f6_25_hearNoise = false;
+  TraceCall(*this, "HearShot trigger", heard ? 1 : 0);
   return heard;
 }
 
-// Retail polls one player per call (0xbc0 rotates), so a second player does not add hearing range
-// in the same frame: a moving player inside the data's hearing radius is heard.
+// Retail fn_72_BBC0 (0xB8): the trigger polls one player per call, so a second player does not
+// add hearing range in the same frame. The player index at 0xbc0 is rotated by one modulo the
+// player count (asm 0xBBD0 `divwu`), the player's velocity (0x1a8) has to move faster than
+// rodata 0xB3C = 0.1 in squared magnitude (asm 0xBC24) and the player's translation (0x54/0x58/
+// 0x5c) has to be inside the data's hearing radius at 0x7d4 (asm 0xBC64). The index is checked
+// against 0xffff before the player is read (asm 0xBBE8); the port's null check covers the same
+// case, and its empty-player check keeps the modulo away from a division by zero.
 bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   const int count = static_cast< int >(mgr.GetNumPlayers());
@@ -62,10 +71,13 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   self->xbc0_playerIndex = (self->xbc0_playerIndex + 1) % count;
   const CPlayer* player = mgr.GetPlayer(self->xbc0_playerIndex);
   if (player == nullptr || player->GetVelocityWR().MagSquared() <= 0.1f) {
+    TraceCall(*this, "HearPlayer trigger", 0);
     return false;
   }
   const CVector3f delta = player->GetTranslation() - GetTranslation();
-  return delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
+  const bool heard = delta.MagSquared() < mData.mHearingRadius * mData.mHearingRadius;
+  TraceCall(*this, "HearPlayer trigger", heard ? 1 : 0);
+  return heard;
 }
 
 // @ fn_72_ADC0
