@@ -1013,6 +1013,15 @@ console's `press` holds the button) and the player's control mapper, not the mod
 that.  The body is retail's and it ran; the arm is not covered, so the marker goes until a run can
 produce the second edge.
 
+**The second edge (section 21.3).**  The console's `press` *holds* the button, and a held button has
+no second press event, so the driver releases it between the two presses: `press A 1`, then
+`stick 0 0 1` (the console's `stick` holds no button, which releases the A), then `press A 1`
+again - and the second press comes while the reload timer is still positive, which is the arm the
+marker needs.  The gdb coverage of that run: the press test's line 13 hits (the press is seen), the
+reload test's line 1 hit and the shot's body 1 hit - the second press does not fire, so the guest's
+skip arm (0x12BC `bne`) is the one that ran.  The compiler coverage (`-DMP_PORT_COVERAGE=ON` and
+`tools/cov/gcov_report.py --module ScriptPlayerTurret`) is the tool that shows the arm's two sides.
+
 ### 21.2 The audit's two unchecked LOWs
 
 - **kSM_Stop zeroes the pitch unconditionally** (0x2120-0x2138): **confirmed**.  The guest stores
