@@ -174,8 +174,14 @@ private:
   void PickSplashLocomotion(CStateManager& mgr);
   void SplashWaitBody(CStateManager& mgr, EStateMsg msg);
   bool ApplyDamageMsg(CStateManager& mgr, const CScriptMsg& msg);
-  int SplashLocomotion() const { return xb6c_altAnims ? 11 : 10; }
-  int RiseLocomotion() const { return xb6c_altAnims ? 14 : 1; }
+  // fn_78_A5B4 (retail): the splash locomotion is 11 when the alt-animation flag is set, 10 otherwise.
+  // `lwz r0, 0xb6c(r3)` at 0xA5B4 loads xb6c.
+  // `cmpwi r0, 0x0` at 0xA5BC tests it.
+  int SplashLocomotion() const;
+  // fn_78_A5CC (retail): the rise locomotion is 14 when the alt-animation flag is set, 1 otherwise.
+  // `lwz r0, 0xb6c(r3)` at 0xA5CC loads xb6c.
+  // `cmpwi r0, 0x0` at 0xA5D4 tests it.
+  int RiseLocomotion() const;
   void RenderTongue(const CStateManager& mgr) const;
 
   SLdrSwampBossStage1Data x7c0_data;
@@ -228,8 +234,8 @@ private:
   float xc40_tongueAmp;
   rstl::optional_object< CModelData > xc44_tongueModel;
   rstl::optional_object< CModelData > xc94_tipModel;
-  bool xce4_orbitMsg : 1;
-  bool xce4_playerTouched : 1;
+  bool xce4_orbitMsg : 1; // 0xce4 0x80
+  bool xce4_playerTouched : 1; // 0xce4
   float xce8_vomitTimer;
   CSfxHandle xcec_retractSfx;
   CSfxHandle xcf0_pullSfx;

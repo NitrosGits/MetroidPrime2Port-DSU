@@ -67,6 +67,11 @@ public:
   ushort GetSamusVoiceSfxId() const { return mSamusVoiceSfxId; }
 
   void SetDamageLoopSfxId(ushort id) { mDamageLoopSfxId = id; } // Guessed name.
+#ifdef TARGET_PC
+  // The ScriptPlayerTurret's constructor (fn_63_30E8 at 0x00003444) overwrites the weapon
+  // damage's damage sound id with its own constant, 0x2812.
+  void SetDamageSfxId(ushort id) { mDamageSfxId = id; }
+#endif
   void SetWeaponMode(const CWeaponMode& mode) { mWeaponMode = mode; }
 
   float GetRadius() const { return mDamageRadius; }

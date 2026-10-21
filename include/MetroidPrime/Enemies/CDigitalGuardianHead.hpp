@@ -7,6 +7,7 @@
 // section f.2. The guest offsets are in the member names; the host class has its own layout and
 // only keeps the members the ported functions read.
 
+#include "MetroidPrime/CVisualKnowledge.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "REL/REL_Setup.h"
 
@@ -209,12 +210,9 @@ private:
   CSegId xDCC_[2];    // 0xDCC: the balls' locators ("L_ball_LCTR", "R_ball_LCTR")
   CDamageVulnerability xDD0_; // 0xDD0: a ball's vulnerability with a bomb slot in use (data +0x2F8)
   TUniqueId xE00_;    // 0xE00: the root collider's id (fn_14_13318)
-  // 0xDA0 / 0xDB0 / 0xDB8: the visual knowledge's target id, its sight time and its flag byte
-  // (CVisualKnowledge at 0xD80; HasLineOfSight reads them). The class is not ported, so they keep
-  // the "no target" value.
-  TUniqueId xDA0_;
-  float xDB0_;
-  uchar xDB8_;
+  CVisualKnowledge xD80_; // 0xD80: the line of sight to the player (fn_14_1524C sets the target)
+  // 0xEF4: the drop-shields effect (data +0x48), its valid flag at 0xF00.
+  rstl::optional_object< TLockedToken< CGenDescription > > xEF4_;
   // 0xF04: the 'PART' token (data +0x94), its valid flag at 0xF10.
   rstl::optional_object< TLockedToken< CGenDescription > > xF04_;
   // 0xF14: the bomb-slot-destroyed effect (data +0x138), its valid flag at 0xF20.
@@ -244,6 +242,7 @@ private:
   int x10D0_;      // 0x10D0: the projectile attack (-1; 0 pulse, 1 charge, 2 missiles, 3 gun)
   float x10D4_;    // 0x10D4: the projectile attack timer
   int x10D8_;      // 0x10D8: the burst count
+  int x10DC_;      // 0x10DC: the first-shot latch (-1; SelectDeathHeadAttack clears it)
   float x10E0_;    // 0x10E0: the gravity repulsor's health (data +0x18)
   int x10E4_;      // 0x10E4: the lives left (2)
   int x10E8_;      // 0x10E8: the splitters left to deploy (StartSplitterDeployment)
