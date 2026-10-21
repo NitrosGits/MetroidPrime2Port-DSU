@@ -342,6 +342,9 @@ private:
   // the module's two own renderables.
   void x1C0C_UpdateRenderables(CStateManager& mgr, float dt);
 
+  // fn_9_3E1C: the module's rag-doll driver - with no rag doll it runs the drowning timer.
+  void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt);
+
   // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper. Not ported (the
   // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
   void x5410_CreateEGrenade();
@@ -392,7 +395,8 @@ private:
   CBurstFire mBurstFire;                  // 0xaf0, the module's burst fire (fn_9_D904 @0x0000DA78)
   float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
   float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
-  uint xb50_;                             // 0xb50, a counter; fn_9_6390 raises it
+  uint xb50_;                             // 0xb50, the number of shots; fn_9_6390 raises it
+  uint xb54_;                             // 0xb54, the number of shield charges; the charge states raise it
   uint xb58_;                             // 0xb58, a counter; fn_9_6390 raises it
   float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites

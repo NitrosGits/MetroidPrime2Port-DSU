@@ -18,6 +18,7 @@
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CAABox.hpp"
 #include "Collision/CCollisionInfoList.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
@@ -193,6 +194,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb7c_(0.f)                                      // 0xb7c, the melee cooldown; fn_9_662C advances it
 , xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
 , xb50_(0)                                        // 0xb50, fn_9_D904 @0x0000DA84
+, xb54_(0)                                        // 0xb54, fn_9_D904 @0x0000DA94
 , xb58_(0)                                        // 0xb58, fn_9_D904 @0x0000DAA4
 , xb60_(1.5f)                                     // 0xb60, lbl_9_rodata_47C, fn_9_D904 @0x0000DACC
 , xb64_(0.75f)                                    // 0xb64, lbl_9_rodata_4E0, fn_9_D904 @0x0000DAD8
@@ -442,7 +444,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x3090_Drown(mgr);                             // 0x0000CA34
   x1C0C_UpdateRenderables(mgr, dt);              // 0x0000CA88
   x4BC0_UpdateEmitters();                     // 0x0000CA8C
-  StandInFn("fn_9_3E1C (0x324 bytes)");        // 0x0000CAA0
+  x3E1C_UpdateRagDoll(mgr, dt);               // 0x0000CAA4
 }
 
 // @ fn_9_4BC0
@@ -1038,9 +1040,9 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
 
 // fn_9_1C0C (0x2ec bytes): the module's renderable driver, called from the actor's Think (the
 // call at 0x0000CA88). While the module's state word at guest this+0xC4C is -1 it does nothing
-// (the compare at 0x00001C34); otherwise, while the byte at guest this+0xC66 has its 0x04 bit
-// (the test at 0x00001C40) and the body controller's byte at guest this+0x48C + 0x594 has no
-// 0x04 bit (the test at 0x00001C50), it sets the 0x02 bit of the byte at guest this+0xC64 and
+// (the compare at 0x00001C34); otherwise, while the byte at guest this+0xC66 has its 0x20 bit
+// (the test at 0x00001C40) and the body controller's byte at guest this+0x48C + 0x594 has its
+// 0x20 bit (the test at 0x00001C50), it sets the 0x04 bit of the byte at guest this+0xC64 and
 // deactivates the module's own collision actor manager (the guest's this+0xA3C). Then it
 // deactivates the module's two own renderables (the guest's this+0xC40 and this+0xC3C) and
 // advances the module's own scale (the float at guest this+0xC44) towards its target (the float
@@ -1051,20 +1053,25 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
 // renderable to drive: 1 is the one at guest this+0xC40 and 0 the one at guest this+0xC3C
 // (0x00001D14..0x00001ED4) - both are positioned at the locator segment id at guest this+0xC62
 // and scaled by the module's own scale.
+//
+// The body controller's byte at +0x594 is the retail CBodyController's flag byte: the class
+// layout (the actor pointer, the command manager 0x368, the state info 0x204, the rotation and
+// five words) puts the flags there, and MWCC allocates the bitfields from the MSB, so the bits
+// are mAnimationOver 0x80, mActive 0x40, mFrozen 0x20, mHasBeenFrozen 0x10 and mPlayDeathAnims
+// 0x08. The 0x20 bit is therefore the frozen flag: the Dark Commando (module 3) reads the same
+// byte with the same mask (the extrwi at 0x00006920 and 0x00006978) and its own source guards
+// the same calls with mBodyController->IsFrozen()
+// (src/MetroidPrime/Enemies/CDarkCommando.cpp:451 and :459).
 void CCommandoPirate::x1C0C_UpdateRenderables(CStateManager& mgr, float dt) {
   if (xc4c_ == -1) {                                                // 0x00001C30..0x00001C38
     return;
   }
-  if ((xc66_ & 0x20) != 0) {                                        // 0x00001C3C..0x00001C44
-    // The guest's body controller's byte at guest this+0x48C + 0x594 has its 0x04 bit tested
-    // (0x00001C4C..0x00001C54); the retail's CBodyController has only five flag bits in that
-    // byte (mAnimationOver, mActive, mFrozen, mHasBeenFrozen and mPlayDeathAnims), so that bit
-    // is never set and the guest's test is always true.
+  if ((xc66_ & 0x20) != 0 && BodyController()->IsFrozen()) {        // 0x00001C3C..0x00001C54
     xc64_ |= 0x04;                                                  // 0x00001C58..0x00001C68
     StandIn("the module's collision actor manager at guest this+0xa3c (fn_9_1C0C)");  // 0x00001C6C..0x00001C70
   }
-  StandIn("the module's own renderable at guest this+0xc40 (fn_9_1C0C)");  // 0x00001C74..0x00001C90
-  StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C)");  // 0x00001C94..0x00001CB0
+  StandIn("the module's own renderable at guest this+0xc40 (fn_9_1C0C, deactivate)");  // 0x00001C74..0x00001C90
+  StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C, deactivate)");  // 0x00001C94..0x00001CB0
   if (dt < 0.5f) {                                                  // rodata_440, 0x00001CB4..0x00001CC0
     xc44_ = xc44_ + dt * (xc48_ - xc44_) / 0.5f;                     // 0x00001CC4..0x00001CDC
   } else {
@@ -1073,11 +1080,54 @@ void CCommandoPirate::x1C0C_UpdateRenderables(CStateManager& mgr, float dt) {
   if (xc44_ < 0.1f && xc48_ < 0.1f) {                               // rodata_42C, 0x00001CEC..0x00001D08
     xc4c_ = -1;                                                     // 0x00001D0C..0x00001D10
   }
-  if (xc4c_ == 1) {                                                 // 0x00001D14..0x00001D1C
-    StandIn("the module's own renderable at guest this+0xc40 (fn_9_1C0C)");  // 0x00001D30..0x00001E00
-  } else if (xc4c_ == 0) {                                          // 0x00001D24..0x00001D28
-    StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C)");  // 0x00001E04..0x00001ED4
+  // The state word picks the renderable to drive: 1 is the one at guest this+0xC40 and 0 the one
+  // at this+0xC3C (0x00001D14..0x00001D28). The state-1 branch tests the renderable at
+  // this+0xC40 for null (0x00001D30..0x00001D38) and falls through to the state-0 block when it
+  // is null; the port has no renderable at this+0xC40, so the state-1 branch always falls
+  // through to the state-0 block.
+  bool driveC3C = xc4c_ == 0;                                      // 0x00001D24..0x00001D28
+  if (xc4c_ == 1) {                                                // 0x00001D14..0x00001D1C
+    driveC3C = true;                                               // 0x00001D30..0x00001D38
   }
+  if (driveC3C) {
+    StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C, drive)");  // 0x00001E04..0x00001ED4
+  }
+}
+
+// fn_9_3E1C (0x324 bytes): the module's rag-doll driver, called from the actor's Think (the
+// call at 0x0000CAA4). Its third argument says whether the rag doll is gone: the guest's Think
+// computes it from the rag doll pointer at guest this+0xBFC (the cntlzw/srwi pair at
+// 0x0000C97C..0x0000C984 gives one when the pointer is null) and passes it at 0x0000CAA0. That
+// is the guest's null test for the rag doll here (0x00003E3C..0x00003E4C); the same pointer is
+// tested for null in the guest's PreThink (0x0000CAEC..0x0000CAF4).
+//
+// With a rag doll the guest drives it: the rag doll's own flag byte at +0x70 decides between the
+// water check (its 0x40 bit at 0x00003E58, the InFluidId calls at 0x00003ED4 and 0x00003EF4, the
+// water script object's own flag byte at 0x00003F1C and its trigger bounds at 0x00003F2C) and
+// the "rigid" path (the rag doll's own update at 0x00003E6C, the identity transform at
+// 0x00003E9C and the body's playback rate at 0x00003EB8). The retail's own GetRagDoll (fn_9_78)
+// answers null and the port keeps that, so the host has no rag doll for this actor and that whole
+// part is a stand-in.
+//
+// Without a rag doll the guest runs the drowning timer: the module's float at guest this+0xC00
+// falls by the frame time while it is above zero (0x00003FF8..0x0000401C); when it reaches zero
+// the guest creates the rag doll (0x00004020..0x0000410C) and clears the timer
+// (0x00004110..0x00004118). The host cannot create the retail's rag doll, so that is a
+// stand-in too.
+void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt) {
+  if (GetRagDoll() != nullptr) {                                   // 0x00003E3C..0x00003E4C
+    StandIn("the module's rag doll (fn_9_3E1C)");                  // 0x00003E50..0x00003FF0
+    return;
+  }
+  if (xc00_ <= 0.f) {                                              // 0x00003FF8..0x00004000
+    return;
+  }
+  xc00_ -= dt;                                                     // 0x00004008..0x0000400C
+  if (xc00_ > 0.f) {                                               // 0x00004010..0x0000401C
+    return;
+  }
+  StandIn("the module's rag doll (fn_9_3E1C)");                    // 0x00004020..0x0000410C
+  xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
 
 // fn_9_5410 (0x370 bytes): the E-grenade's own creator - the kUE_Projectile event's helper. It
@@ -1554,9 +1604,100 @@ bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& da
   return (xc64_ & 0x80) != 0 && (mData.mFlags1 & 0x20) == 0 && (xc64_ & 0x01) == 0;
 }
 
+// fn_9_B250 (0x410 bytes): the commando charges with its shield when it is aggressive, the
+// script does not forbid the charge, the target is inside the charge band and the way to it is
+// clear.
+//
+// The flag byte at guest this+0xC64 must have its 0x40 bit (the extrwi at 0x0000B2B8), the
+// block's flag byte at +0x15D (guest this+0x91D, mData.mFlags1) must not have its 0x40 bit
+// (0x0000B2C0) and that same byte's 0x01 bit must be clear (the clrlwi at 0x0000B2CC). The
+// module's counter at guest this+0xB50 (the number of shots the burst fire has fired - fn_9_6390
+// raises it at 0x00006594) must be above the module's counter at guest this+0xB54 (the number of
+// shield charges - the two shield charge states raise it at 0x00007B78 and 0x000080E4); the
+// guest compares them unsigned (the cmplw at 0x0000B2DC).
+//
+// The target (the id at guest this+0xBCA) must be there (the GetObjectById call at 0x0000B2F4
+// and its own null test at 0x0000B2F8), the height difference must be at most 5.0f
+// (lbl_9_rodata_468, the fabs and the compare at 0x0000B324..0x0000B348) and the squared
+// distance must be inside the charge band: the block's +0x124 and +0x128 (guest this+0x8E4 and
+// this+0x8E8) are the shield's minimum and maximum charge distance - the loader's shield half
+// starts at the block's +0xD8 and its own minimum and maximum charge distance are at +0x4C and
+// +0x50 (fn_9_EF80 stores them at 0x0000F064 and 0x0000F06C). The delta must be magnitude-safe
+// (0x0000B38C..0x0000B394).
+//
+// Then the team: when the module's team id at guest this+0xBC4 is not kInvalidUniqueId the team
+// AI manager must let the commando start a melee attack (the CanStartAttack call at 0x0000B3D0:
+// the attack type 0 - the Dark Commando passes the same type for its melee ask at 0x000060D4 -
+// the team id and the actor's own id at guest this+0x8).
+//
+// Finally the way to the target must be clear: three rays from the actor's own bounding box (the
+// centre, and the centre plus and minus the box's x extent times the transform's right column -
+// the guest's this+0x24, +0x34 and +0x44, the transform's m00, m10 and m20) along the direction
+// to the target, each as long as the distance to it, must all hit the world (the calls at
+// 0x0000B548, 0x0000B598 and 0x0000B5E8). The guest's material filter includes the material 59
+// (kMT_Solid) and excludes the materials 32 (kMT_Player) and 49 (kMT_Platform) - the module's
+// data words at lbl_9_data_7D0, lbl_9_data_7D4 and lbl_9_data_7D8, the two __shl2i calls at
+// 0x0000B3F0 and 0x0000B40C, the filter type 3 (kFT_IncludeExclude).
 bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B250");
-  return false;
+  if ((xc64_ & 0x40) == 0) {                                       // 0x0000B2B8..0x0000B2BC
+    return false;
+  }
+  if ((mData.mFlags1 & 0x40) != 0) {                               // 0x0000B2C0..0x0000B2C8
+    return false;
+  }
+  if ((xc64_ & 0x01) != 0) {                                       // 0x0000B2CC..0x0000B2D0
+    return false;
+  }
+  if (xb50_ <= xb54_) {                                            // 0x0000B2D4..0x0000B2E0
+    return false;
+  }
+  const CEntity* target = mgr.GetObjectById(xbca_);                // 0x0000B2F4
+  if (target == nullptr) {                                         // 0x0000B2F8..0x0000B2FC
+    return false;
+  }
+  // The guest reads the target's position (the guest's this+0x54) without a cast; the host's
+  // CEntity has no position, so the port casts to CActor.
+  const CActor* actor = TCastToConstPtr< CActor >(target);
+  if (actor == nullptr) {
+    return false;
+  }
+  const CVector3f delta = actor->GetTranslation() - GetTranslation();
+  if (CMath::AbsF(delta.GetZ()) > 5.f) {                           // 0x0000B324..0x0000B348
+    return false;
+  }
+  const float distSq = delta.MagSquared();                         // 0x0000B34C..0x0000B36C
+  const float minSq =
+      mData.mShield.mChargeMinAttackDist * mData.mShield.mChargeMinAttackDist;  // guest +0x8e4
+  const float maxSq =
+      mData.mShield.mChargeMaxAttackDist * mData.mShield.mChargeMaxAttackDist;  // guest +0x8e8
+  if (distSq < minSq || distSq > maxSq) {                          // 0x0000B370..0x0000B384
+    return false;
+  }
+  if (!delta.IsMagnitudeSafe()) {                                  // 0x0000B38C..0x0000B394
+    return false;
+  }
+  if (xbc4_teamId != kInvalidUniqueId &&
+      !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, xbc4_teamId,
+                                         GetUniqueId())) {           // 0x0000B398..0x0000B3D8
+    return false;
+  }
+  const CVector3f dir = delta.AsNormalized() * CMath::SqrtF(distSq);  // 0x0000B450..0x0000B4F4
+  const CAABox box = GetBoundingBox();                             // 0x0000B474
+  const CVector3f center = box.GetCenterPoint();                   // 0x0000B498
+  const float extent = box.GetMaxPoint().GetX() - box.GetMinPoint().GetX();  // 0x0000B478..0x0000B488
+  const CVector3f offset = extent * GetTransform().GetRight();     // 0x0000B49C..0x0000B4B0
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_Platform));
+  if (!mgr.RayCollideWorld(center, center + dir, filter, this)) {  // 0x0000B548
+    return false;
+  }
+  if (!mgr.RayCollideWorld(center + offset, center + offset + dir, filter, this)) {  // 0x0000B598
+    return false;
+  }
+  if (!mgr.RayCollideWorld(center - offset, center - offset + dir, filter, this)) {  // 0x0000B5E8
+    return false;
+  }
+  return true;                                                     // 0x0000B5F4
 }
 
 bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {

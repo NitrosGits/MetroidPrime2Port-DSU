@@ -275,6 +275,13 @@ read off the asm with `tools/asmcheck.py annotate` and carries the guest offset 
   at 0x0000E668..0x0000E67C, is not ported, so +0xB90 can stay lower than retail's); `xbd0_` and
   `xbd2_` are the jump point and cover point ids at +0xBD0 and +0xBD2 (the constructor stores
   kInvalidUniqueId at 0x0000DBC0 and 0x0000DBC8).
+- The counters at +0xB50, +0xB54 and +0xB58: the constructor stores 0 in all three (0x0000DA84,
+  0x0000DA94 and 0x0000DAA4). `fn_9_6390` raises the one at +0xB50 every time the burst fire
+  fires (0x00006594) - it is the number of shots - and compares it with the one at +0xB58, which
+  it raises to the +0xB50 value plus one when the shield's arm chance roll fails (0x0000643C).
+  The one at +0xB54 is the number of shield charges: the two shield charge states raise it to the
+  +0xB50 value plus one when the charge starts (0x00007B78 in `fn_9_7A98` and 0x000080E4 in
+  `fn_9_8028`). The port's members are `xb50_`, the new `xb54_` and `xb58_`.
 - `AttackPatternOver` reads guest +0x6C0, the base's waypoint navigation destination - the same
   member the Grenchler's own `AttackPatternOver` reads - so the port uses the base's navigation
   rather than a member of its own.
@@ -607,11 +614,12 @@ Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHa
 (PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
 `fn_9_786C`
 (RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
-`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_1C0C` (0x2ec),
-`fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
-`fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
-(ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
-reaches are `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
+`fn_9_A4BC` (MeleeAttack, 0x290),
+`fn_9_7358` (WallHang, 0x310), `fn_9_961C` (FollowAttackPattern, 0x350),
+`fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
+(ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The three the area 59 run
+reached - `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250` - are host code since 2026-10-21 (the
+paragraphs above); the rest of that list still stands in.
 
 `fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
 and `fn_9_709C` (the CoverFind state, 0x1f0) are host code since 2026-10-20: the emitters follow
@@ -795,11 +803,64 @@ the module's state word (guest this+0xC4C) follows it, while the module's two ow
 (guest this+0xC3C and this+0xC40) and its collision actor manager (guest this+0xA3C) stay named
 stand-ins - the port has no classes for them.
 
+- The body controller's byte at guest this+0x48C + 0x594 is the retail `CBodyController`'s flag
+  byte, and its 0x20 bit is the **frozen** flag, not an unused bit: the retail class layout (the
+  actor pointer, the command manager 0x368, the state info 0x204, the rotation and five words)
+  puts the flags at +0x594, and MWCC allocates the bitfields from the MSB, so the bits are
+  mAnimationOver 0x80, mActive 0x40, mFrozen 0x20, mHasBeenFrozen 0x10 and mPlayDeathAnims 0x08.
+  The Dark Commando (module 3) reads the same byte with the same mask (the extrwi at 0x00006920
+  and 0x00006978) and its own source guards the same two calls with
+  `mBodyController->IsFrozen()` (src/MetroidPrime/Enemies/CDarkCommando.cpp:451 and :459), so the
+  port's `BodyController()->IsFrozen()` is that bit. `fn_9_1C0C` only sets the 0x04 bit of the byte
+  at guest this+0xC64 and deactivates the module's collision actor manager when the byte at
+  guest this+0xC66 has its 0x20 bit **and** the body is frozen (0x00001C3C..0x00001C70).
+- The state word's dispatch (0x00001D14..0x00001ED4): 1 drives the renderable at guest this+0xC40
+  and 0 the one at this+0xC3C, but the state-1 branch tests the renderable at this+0xC40 for null
+  (0x00001D30..0x00001D38) and falls through to the state-0 block when it is null. The port has
+  no renderable at this+0xC40, so its state-1 branch always falls through to the state-0 block.
+
 The module's Think (`fn_9_C944`, 0x184) is host code since 2026-10-20: the base's Think, the
 bone tracking's Think (only when the body controller is not frozen) and the module's own helpers
-as named stand-ins - `fn_9_3E1C` (0x324) - plus the two collision actor managers and
+as named stand-ins - plus the two collision actor managers and
 the visual knowledge, which the port has no classes for. `fn_9_662C` (0x39c) is host code too
 since 2026-10-20.
+
+`fn_9_3E1C` (0x324, the module's rag-doll driver) is host code since 2026-10-21 (the port's
+member `x3E1C_UpdateRagDoll`): its third argument says whether the rag doll is gone - the
+guest's Think computes it from the rag doll pointer at guest this+0xBFC (the cntlzw/srwi pair at
+0x0000C97C..0x0000C984) and passes it at 0x0000CAA0, which is the guest's null test for the rag
+doll here (0x00003E3C..0x00003E4C; the same pointer is tested for null in the guest's PreThink
+at 0x0000CAEC..0x0000CAF4). The port uses the host's `GetRagDoll()` for it: the retail's own
+GetRagDoll (fn_9_78) answers null, so both are null in the host and the rag-doll part (the
+water check at 0x00003EC0..0x00003F30 and the rigid path at 0x00003E60..0x00003FF0) stays a
+named stand-in. Without a rag doll the guest runs the drowning timer: the module's float at
+guest this+0xC00 falls by the frame time while it is above zero (0x00003FF8..0x0000401C) and
+when it reaches zero the guest creates the rag doll (0x00004020..0x0000410C) and clears the
+timer (0x00004110..0x00004118); the host cannot create the retail's rag doll, so that creation
+is a named stand-in too.
+
+`fn_9_B250` (0x410, the ShouldShieldCharge trigger) is host code since 2026-10-21 (the port's
+`ShouldShieldCharge`): the flag byte at guest this+0xC64 must have its 0x40 bit, the block's
+flag byte at +0x15D (guest this+0x91D, `mData.mFlags1`) must not have its 0x40 bit and that same
+byte's 0x01 bit must be clear; the module's counter at guest this+0xB50 (the number of shots the
+burst fire has fired - `fn_9_6390` raises it at 0x00006594) must be above the module's counter at
+guest this+0xB54 (the number of shield charges - the two shield charge states raise it at
+0x00007B78 and 0x000080E4); the target (the id at guest this+0xBCA) must be there, the height
+difference at most 5.0f (lbl_9_rodata_468) and the squared distance inside the charge band.
+The band's two floats are the block's +0x124 and +0x128 (guest this+0x8E4 and this+0x8E8): the
+loader's shield half starts at the block's +0xD8 and its own minimum and maximum charge
+distance are at +0x4C and +0x50 (`fn_9_EF80` stores them at 0x0000F064 and 0x0000F06C), so they
+are `mShield.mChargeMinAttackDist` and `mShield.mChargeMaxAttackDist`. Then the team: when the
+module's team id at guest this+0xBC4 is not kInvalidUniqueId the team AI manager must let the
+commando start a melee attack (the CanStartAttack call at 0x0000B3D0 with the attack type 0, the
+team id and the actor's own id at guest this+0x8 - the Dark Commando's own melee ask passes the
+same type at 0x000060D4). Finally three rays from the actor's own bounding box (the centre, and
+the centre plus and minus the box's x extent times the transform's right column - the guest's
+this+0x24, +0x34 and +0x44, the transform's m00, m10 and m20) along the direction to the target,
+each as long as the distance to it, must all hit the world (0x0000B548, 0x0000B598 and
+0x0000B5E8). The guest's material filter includes the material 59 (kMT_Solid) and excludes the
+materials 32 (kMT_Player) and 49 (kMT_Platform) - the module's data words at lbl_9_data_7D0,
+lbl_9_data_7D4 and lbl_9_data_7D8.
 
 - The Dodge state `fn_9_8934` (0x1e0) is host code since 2026-10-20: the activate part asks
   the module's helper `fn_9_3678` (0x288 bytes, over the 0x80 limit, so a named stand-in that
@@ -886,10 +947,10 @@ entered, so no grenade is thrown.
 ## 5. What is not ported yet (milestone 2 and forward)
 
 - The state machine's other bodies: the two tables (34 triggers, 36 states) are registered,
-  twenty-nine of the triggers and nine of the states are host code (the sections above), but every
+  thirty of the triggers and nine of the states are host code (the sections above), but every
   other function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value. The triggers that are still stand-ins are `ShouldShieldCharge`
-  (fn_9_B250, 0x410), `ShouldBoost` (fn_9_B1E0, 0x70), `ShouldCrouch` (fn_9_B168, 0x40),
+  returns the neutral value. The triggers that are still stand-ins are `ShouldBoost`
+  (fn_9_B1E0, 0x70), `ShouldCrouch` (fn_9_B168, 0x40),
   `ShouldWallHang` (fn_9_B114, 0x54) and `CoverBlown` (fn_9_AFD4, 0xe0); the JumpBack state
   (fn_9_8B70, 0x1b8) is a stand-in too.
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
