@@ -258,13 +258,29 @@ public:
   void SelectBestMeleeAttackLeg(CStateManager& mgr, float dt);                // fn_14_7504
   void SelectMeleeAttackRange(CStateManager& mgr, float dt);                  // fn_14_73D4
   void SetJumpFaceTarget(CStateManager& mgr, float dt);                        // fn_14_7208
+
+  // fn_14_7168 (0x9C bytes): the head links itself ("XALD", the head's fn_14_13830): its id goes
+  // to 0x1084 and 0x1082, 0x1086 is cleared, the body stops being a target and its attack times
+  // reset, and the head's attack mode becomes 0 (fn_14_13B30).
+  void x7168_(CStateManager& mgr, TUniqueId head);
+  // fn_14_70E4 (0x84 bytes): the head detaches (its DetachFromBody state calls it).
+  void x70E4_(CStateManager& mgr);
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
 private:
 #ifdef TARGET_PC
+  // The head module reads the body's flag byte and calls fn_14_70B4 (its triggers
+  // MainBodyDestroyed and IsAntennaTransmitting).
+  friend class CDigitalGuardianHead;
+
   void EnsureBodyActive(CStateManager& mgr);
+
+  // fn_14_70B4 (0x30 bytes): bit 0x08 of 0x128C clear and the beacon's state (0x1268) 1 or 2.
+  bool x70B4_() const;
+  // The head test four of the body's triggers share (head+0x10F4 bit 0x20).
+  bool HeadFlag20_(CStateManager& mgr) const;
 
   // The guest members the body's state machine reads (docs/module-analysis/DigitalGuardian.md
   // section e). The host class has its own layout, so the guest offsets are in the names and
@@ -276,15 +292,23 @@ private:
   int x10C4_;       // 0x10C4: how many locator ids follow at 0x10C8 (4 in the ctor)
   CSegId x10C8_[4]; // 0x10C8: the four locator segment ids, all invalid (0xFF) in the ctor
   u16 x1080_;       // 0x1080: the root collider's id (fn_14_61DC sets it, fn_14_3974 reads it)
-  u16 x1082_;       // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  TUniqueId x1082_; // 0x1082: the head module's uid (fn_14_9994 looks the head up with it)
+  TUniqueId x1084_; // 0x1084: the linked head (fn_14_7168; fn_14_2A28 aims the beacon at it)
+  TUniqueId x1086_; // 0x1086: cleared by fn_14_7168 and the detach fn_14_70E4
   uchar x1010_;     // 0x1010: the flag byte the "IM01"/"IM02" messages set (fn_14_A6A8)
   uchar x1011_;     // 0x1011: the flag byte the "IM07"/"IM08" messages set (fn_14_A6A8)
   uchar x1012_;     // 0x1012: the flag byte the "IM03"/"IM04" messages set (fn_14_A6A8)
   uchar x1013_;     // 0x1013: the flag byte the "IM05"/"IM06" messages set (fn_14_A6A8)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
+  TUniqueId x116A_; // 0x116A: the IS05/Follow object (fn_14_5910)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
+  TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910)
+  float x11C8_;     // 0x11C8: the vortex's health (data +0x100, the store at 0xB674; fn_14_5384
+                    // takes damage from it, fn_14_9638 reads it)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
+  int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
+                    // fn_14_4F2C reads it)
   float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
@@ -325,6 +349,11 @@ private:
                          // CElementGen in retail); fn_14_D664 creates it
   TUniqueId x10CC_;      // 0x10CC: the guard's collision actor (fn_14_28D0 wakes it)
   CSfxHandle x1240_;   // 0x1240: the beacon's sound emitter handle (fn_14_28D0 sets it)
+  // 0x1244 (present byte 0x1250): transmissionBeaconExplosion (data +0x1F4), fn_14_266C's.
+  rstl::optional_object< TLockedToken< CGenDescription > > x1244_;
+  // 0x1254 (present byte 0x1260): transmissionBeaconEchoHit (data +0x1F8), fn_14_2E60's.
+  rstl::optional_object< TLockedToken< CGenDescription > > x1254_;
+  float x126C_;        // 0x126C: the echo flash time (0.0f, the store at 0xB9C4; fn_14_5274)
   float x1264_;        // 0x1264: the beacon's height (fn_14_17DC, fn_14_2578, fn_14_2CC4)
   int x1268_;          // 0x1268: the beacon's state word (fn_14_2CC4)
   uint x1270_;       // 0x1270: the packed colour the echo emitter's model is drawn with
@@ -347,8 +376,8 @@ private:
   float x1144_[4];      // 0x1144: the toe targets' health (toeTargetHP; fn_14_24E4, fn_14_5644)
   float x1158_[4];      // 0x1158: the toe targets' hit timers (0; fn_14_24E4, fn_14_5644)
 
-  // 0x10CE: the id fn_14_5910 (the "XALC" case's helper, not ported) looks up; fn_14_5470 takes
-  // one from its health per destroyed knee.
+  // 0x10CE: the IS04/Activate object (fn_14_5910, the "XALC" case); fn_14_5470 takes one from
+  // its health per destroyed knee.
   TUniqueId x10CE_;
 
   // fn_14_3A44 (0x108 bytes): each knee's vulnerability - open (0x1014) when its flag byte
@@ -371,6 +400,12 @@ private:
   // fn_14_1A68 (0x580 bytes): a toe target's state (0 attack, 1 target, 2 flinch, 3 destroyed):
   // its effects, its sound and, for 3, the explosion.
   void x1A68_(CStateManager& mgr, int leg, int state);
+  // fn_14_3D2C (0x7C bytes): bit 5 of 0x128C, and IS10 when it is set, else IS11.
+  void x3D2C_(CStateManager& mgr, bool set);
+  // fn_14_3F14 (0x7C bytes): the knee armours are deleted (the XDEL and IM00 messages).
+  void x3F14_(CStateManager& mgr);
+  // fn_14_5910 (0xAC bytes): the "XALC" case - the connected objects at 0x11C0, 0x10CE, 0x116A.
+  void x5910_(CStateManager& mgr);
   // fn_14_14F8 (0x74 bytes): the speed for the number of knee armours left.
   void x14F8_();
 
@@ -380,6 +415,19 @@ private:
   bool x4464_(const rstl::string& name, TUniqueId id);
   bool x4408_(TUniqueId id) const;
   bool x43AC_(TUniqueId id) const;
+  // fn_14_4350 (0x5C bytes): which toe target (0x1078 + 2i) an id is, or -1.
+  int x4350_(TUniqueId id) const;
+  // fn_14_5140 (0x134 bytes): a toe target hit: its health (0x1144) drops; at zero it is
+  // destroyed (IS08 at the IS06/Follow waypoint), else it flinches.
+  void x5140_(CStateManager& mgr, TUniqueId sender, float damage);
+  // fn_14_5384 (0xEC bytes): a toe target or the root collider hit (from fn_14_5838).
+  void x5384_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_5274 (0x100 bytes): the head collider (the beacon) hit (from fn_14_5838).
+  void x5274_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_266C (0x264 bytes): the beacon is destroyed.
+  void x266C_(CStateManager& mgr);
+  // fn_14_2E60 (0x234 bytes): the beacon is hit and survives.
+  void x2E60_(CStateManager& mgr);
 
   // The four model renders fn_14_A004 calls (the calls at 0xA0A0, 0xA0B4, 0xA0E8 and 0xA0FC),
   // named by their retail offset.
