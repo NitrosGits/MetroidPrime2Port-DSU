@@ -279,6 +279,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xc64_(0)                                        // 0xc64, fn_9_D904 @0x0000E150
 , xc65_(0x80)                                     // 0xc65, fn_9_D904 @0x0000E1B0
 , xc66_(0)                                        // 0xc66, fn_9_D904 @0x0000E1E8
+, xc54_(-1)                                       // 0xc54, fn_9_D904 @0x0000E0CC
 {
   // The retail constructor sets knock-back physics on CPatterned's own manager (@0x0000E264) to
   // !((byte at +0x91c >> 2) & 1) - that is, to the manager's own default while the flag bit is
@@ -1583,8 +1584,12 @@ void CCommandoPirate::PreRender(CStateManager& mgr) {
                           *BodyController());  // 0x0000C77C
 }
 
+// @ fn_9_C4FC
 // vtable slot 0x28 = fn_9_C4FC (0x20): a straight call to CPatterned::AddToRenderer, so the base's
 // is what runs.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// entry 50/50 (capped), the base's call 50.
 void CCommandoPirate::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
@@ -1971,19 +1976,27 @@ void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) 
 // vtable slot 0xa8 = fn_9_A4 (0x8): `li r3, 0x1`, so the actor can always be shot.
 bool CCommandoPirate::CanBeShot(const CStateManager& mgr, int attributes) { return true; }
 
+// @ fn_9_8
 // vtable slot 0xac = fn_9_8 (0x8): `li r3, 0x1`, so the actor always listens.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// 50 hits (capped) in each.
 bool CCommandoPirate::IsListening() const { return true; }
 
-// vtable slot 0xb0 = fn_9_BE4C (0xf8): what the actor hears.
-bool CCommandoPirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
-  StandIn("CCommandoPirate::Listen (vtable slot 0xb0, fn_9_BE4C)");
-  return CPatterned::Listen(mgr, position, type);
-}
+// vtable slot 0xb0 = fn_9_BE4C (Listen): PortCCommandoPirateCore.cpp.
 
+// @ fn_9_D474
 // vtable slot 0xdc = fn_9_D474 (0x8): `addi r3, r3, 0xa14`, the projectile info at guest +0xa14.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// 50 hits (capped) in each.
 CProjectileInfo* CCommandoPirate::ProjectileInfo() { return &mProjectileInfo; }
 
+// @ fn_9_0
 // vtable slot 0xe0 = fn_9_0 (0x8): `addi r3, r3, 0x928`, the path search at guest +0x928.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// 50 hits (capped) in area 59.
 CPathFindSearch* CCommandoPirate::GetSearchPath() { return &mPathFindSearch; }
 
 // vtable slot 0xe4 = fn_9_70 (0x8): `li r3, 0x0` - this actor has no point-based path.
@@ -2517,10 +2530,7 @@ bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& 
   return xb5c_ <= 0.f;
 }
 
-bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_AFD4");
-  return false;
-}
+// fn_9_AFD4 (CoverBlown): PortCCommandoPirateCore.cpp.
 
 // fn_9_AFB8: the float at guest this+0xB8C against the float at this+0xB90 (both loaded at
 // 0x0000AFB8 and 0x0000AFBC). The compare is fcmpo cr0, f1, f0 (0x0000AFC0) and the cror at
@@ -2809,17 +2819,11 @@ void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float d
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000A8C8..0x0000A8D0
 }
 
-void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A4BC");
-}
+// fn_9_A4BC (MeleeAttack): PortCCommandoPirateCore.cpp.
 
-void CCommandoPirate::EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A2EC");
-}
+// fn_9_A2EC (EGrenadeAttack): PortCCommandoPirateCore.cpp.
 
-void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A110");
-}
+// fn_9_A110 (PostEGrenadeAttack): PortCCommandoPirateCore.cpp.
 
 // @ fn_9_9F24
 // fn_9_9F24 (0x1ec bytes): the JumpPointFind state. Only the activate message (the guest's test
@@ -2880,9 +2884,7 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
   }
 }
 
-void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9BB4");
-}
+// fn_9_9BB4 (JetBoost): PortCCommandoPirateCore.cpp.
 
 // fn_9_19D8: the module's team helper, called by the destination states. The commando takes the
 // team of its area when it has none yet: the id at guest this+0xBC4 must be kInvalidUniqueId
@@ -3135,9 +3137,7 @@ void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
-void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9064");
-}
+// fn_9_9064 (WarpIn): PortCCommandoPirateCore.cpp.
 
 // @ fn_9_8DF0
 // fn_9_8DF0 (0x218 bytes): the WarpOut state - the commando plays the generate animation and
@@ -3862,9 +3862,7 @@ void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
-void CCommandoPirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_7724");
-}
+// fn_9_7724 (Crouch): PortCCommandoPirateCore.cpp.
 
 // fn_9_7358 (0x310 bytes): the WallHang state - the commando hangs on the wall the cover point
 // it holds points at.
@@ -4090,13 +4088,9 @@ void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
-void CCommandoPirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6DBC");
-}
+// fn_9_6DBC (Cover): PortCCommandoPirateCore.cpp.
 
-void CCommandoPirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6C68");
-}
+// fn_9_6C68 (CoverAttack): PortCCommandoPirateCore.cpp.
 
 // @ fn_9_6BCC
 // fn_9_6BCC (0x9c bytes): the BreakCover state. Only the activate message (the guest's test of 0
@@ -4113,9 +4107,7 @@ void CCommandoPirate::BreakCover(CStateManager& mgr, EStateMsg msg, float dt) {
   xc66_ &= ~0x40;                     // 0x00006C40..0x00006C4C
 }
 
-void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6A40");
-}
+// fn_9_6A40 (GetUp): PortCCommandoPirateCore.cpp.
 
 // fn_9_69C8 (0x78 bytes): the Dead state. The base's own dead handler runs first (the call at
 // 0x000069EC); the activate message (the guest's test of 0 at 0x000069F0) then takes the byte at
@@ -4132,11 +4124,15 @@ void CCommandoPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_9_BDE0
 // vtable slot 60 = fn_9_BDE0 (0xBDE0..0xBEB4): the base's setup first (the call at 0x0000BDF4),
 // then the module's two tables on the state manager - the triggers (lbl_9_data_198, 34 = 0x22)
 // through the vtable slot at +0x18 (the call at 0x0000BE14) and the states (lbl_9_data_568,
 // 36 = 0x24) through +0x14 (the call at 0x0000BE34). The module has no third table: the
 // records between the two tables' stores run out at the state's last entry.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// once per commando (1 in area 59, 2 in the Swamp), the base's call each time.
 void CCommandoPirate::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   StateMachine* stateMachine = mStateMachine.get();

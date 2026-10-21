@@ -497,6 +497,14 @@ private:
   uchar xc64_;                            // 0xc64, cleared (fn_9_D904 @0x0000E150)
   uchar xc65_;                            // 0xc65, 0x80 (fn_9_D904 @0x0000E1B0)
   uchar xc66_;                            // 0xc66, cleared (fn_9_D904 @0x0000E1E8)
+  // core (append-only; PortCCommandoPirateCore.cpp)
+  int xc54_;                              // 0xc54, the melee attack index; -1 (fn_9_D904 @0x0000E0CC)
+
+public:
+  // vtable slot 0xc8 = fn_9_68, slot 0xb4 = fn_9_AC (PortCCommandoPirateCore.cpp)
+  uchar GetModelAlphau8(const CStateManager& mgr) const override;
+  CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
+                      const CVector3f& aimPos) const override;
 #else
   uchar x7c0_[0xc68 - 0x7c0];
 #endif
