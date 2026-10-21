@@ -1111,9 +1111,9 @@ void CCommandoPirate::x1EF8_Activate() {
 // own hit (the flag bit is set and the entry's left normal is stored, 0x0000C178..0x0000C19C), an
 // entry whose left normal is steeper than the actor's up axis (the dot product with the
 // transform's third column at 0x0000C158..0x0000C16C, against rodata_4E8 = 0.707) is a hit too,
-// and an entry whose left material list has kMT_Floor (the mask 1u << 31 = 0x80000000 of the
-// list's low word at +0x34, the load at 0x0000C108 and the test at 0x0000C1A8..0x0000C1C8) only
-// stores the normal.
+// and an entry whose left material list has kMT_Floor (bit 31, the mask the load at 0x0000C108
+// builds, against the list's low word at +0x34, the test at 0x0000C1A8..0x0000C1C8) only stores
+// the normal.
 void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                    CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);                       // 0x0000BF70
