@@ -1026,29 +1026,28 @@ REL callers, whether the port has a `// @ fn_10_` marker, and the FSM state or t
 belongs to). The classes follow the Sandworm note's rule set (section g there), so the table can
 be audited:
 
-- **H - host copy** (78 functions, 0x1CC4 bytes): the body is a copy of something the host
+- **H - host copy** (80 functions, 0x1CDC bytes): the body is a copy of something the host
   already has, so the port writes no body for it. The crtexe runtime (7 symbols: the prolog,
   the epilog, the unresolved stub, the global chain, the module constructors and destructors),
   the compiler-emitted destructors of the loader's token members (the bodies that call
-  `Free__7CMemoryFPCv` and `__dt__6CTokenFv`) and the DOL class members the REL copies
-  (the weapon, the collision actor manager, the cube renderer, the particle system).
-- **T - data / vtable thunk** (52 functions, 0x301C bytes): the body only returns a constant, a
-  member address or a flag - the port writes it as one line in the vtable (the twelve vtable
-  thunks: GetSearchPath, GetPointSearchPath, CanBeShot, IsListening, Listen, GetOrigin,
-  GetModelAlphau8, GetDeathExplosionParticle, GetAttackTarget, IsOnGround, GetGravityConstant
-  and GetTouchBounds), the twenty-five FSM handlers whose body is a single flag, and the
-  functions nothing calls.
+  `Free__7CMemoryFPCv` and `__dt__6CTokenFv`), the DOL class members the REL copies (the
+  weapon, the collision actor manager, the cube renderer, the particle system) and the REL's
+  copies of the base class's own vtable entries (the ones the host's base class already has).
+- **T - data / vtable thunk** (50 functions, 0x3004 bytes): the body only returns a constant, a
+  member address or a flag - the port writes it as one line in the vtable (the vtable thunks the
+  port overrides, the trivial FSM handlers whose body is a single flag) and the functions
+  nothing calls.
 - **B - module behaviour** (405 functions, 0x1E418 bytes): real behaviour - these are the port
-  bodies. 79 of them carry a `// @ fn_10_` marker.
+  bodies. 112 of them carry a `// @ fn_10_` marker.
 
 | class | functions | .text bytes |
 |---|---|---|
-| H host copy | 78 | 0x1CC4 (7,364) |
-| T data / vtable thunk | 52 | 0x301C (12,316) |
+| H host copy | 80 | 0x1CDC (7,420) |
+| T data / vtable thunk | 50 | 0x3004 (12,292) |
 | B module behaviour | 405 | 0x1E418 (123,672) |
-| **total** | **535** | **0x254F8 (152,352)** |
+| **total** | **535** | **0x254F8 (153,384)** |
 
-The B list (343 unmarked) is in `DarkSamus_functions.tsv` with the `state` column, so the port
+The B list (293 unmarked) is in `DarkSamus_functions.tsv` with the `state` column, so the port
 order follows the FSM: the 62 unmarked handlers first (by the state's name), then the helpers.
 
 ## Slice 22 (2026-10-21): the classification and the triggers
@@ -1086,3 +1085,37 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   (`send u04f7 Alert`) and the states that use the triggers forced one after the other
   (`fsm u04f7 Taunt` and so on). 0 caught, 0 reach-stub, exit 0; the MP2_DS_FSM log shows the
   boss in TravelToCoverPoints and in Taunt, so both nodes' transition lists were evaluated.
+
+## Slice 23 (2026-10-21): the marking rate - the ported-but-unmarked bodies
+
+- The ported bodies that had no marker are now marked: the attack pick's tree and the helpers it
+  calls. They all ran in every fight (the attack pick runs in the Think, 0x0001B314, and the
+  slices 7 and 8 record the picks: 0x8 the scatter shot, then 0x80, 0x10, 0x40 and 0x200, with
+  the mask 0x6D8 and the stage's weights), so their arms are covered by the recorded runs:
+  - the collectors and the setters: fn_10_1A5BC (CollectStageWeights), 1A554 (the fade
+    attacks), 1A278 (the morph ball attacks), 1A440 (the range attacks), 1A34C (the history
+    penalties), 1A1D4 (the facing attacks), 19A1C (the line attacks), 1905C
+    (ClassifyLineToPlayer), 14648 (CanWalkToPlayer), 1A980 (SetAttackBits), 1A8F8
+    (SetAttackBitsExcept), 1AA30 (SetAttackBit), 1AA5C (IsAttackTwo), 10BBC
+    (GetAttackBitIndex), 1A6C4 (GetAttackWeight), 17D50 (IsAttackEnabled), 11308
+    (IsPlayerMorphed), 142F4 (IsPlayerInFront), 1AA6C (GetPlayerRangeBand);
+  - the pick itself: fn_10_1954C (UpdateAttackPick), 197D8 (PickVisibleAttack), 1969C
+    (PickFadedAttack), 19918 (PickWeightedAttack), 1B478 / 1B5E4 (UpdateCurrentAttack);
+  - the dive and the reach: fn_10_12B38 (the dive target), 1285C / 12764 (the jump command),
+    16418 / 164C0 (the aim line), 166AC / 16600 (the ring path), 16B1C (OnPath);
+  - the stage: fn_10_17E14 / 17DE0 (GetBattleStage).
+- The 'ALRT' arm of AcceptScriptMsg and the Alerted trigger (fn_10_F840) are in, with the asm
+  offset on the mask: `mFlags90C & 0x80` (0x0000F844 `extrwi r3, r0, 1, 24` - the PowerPC bit 24
+  is 1u << (31 - 24) = 0x80).
+- Still unmarked on purpose: fn_10_19B64 (the 145E4-false arm after both OnPath tests pass
+  never ran), 150DC / 14FE0 (the dash's stuck arm), B86C (the hint chain's arms), 153EC (the
+  FSM2 has no SideDash node), 100DC / FFB4 (the enrage arm needs the phazon states), 12960 /
+  11C60 (the non-normalizable lines), 1CDD0 (the bounce with no normal), 11EB8 (the stuck
+  bounce), 1C99C (the WeaponHits arm), 8764 (the retry arm), 9424 / 9AC4 (the boost ball's
+  particles), 1B9B0 / 1BB08 / 1EE4C (the reflect path) and F40C / F488 (the scan info and the
+  damage arms).
+- The classification changed with the markers: the REL's copies of the base class's own vtable
+  entries are H (the host's base class has them), so the counts are 80 H, 50 T and 405 B.
+- The run: Sanctuary 10_cliff_rooftop, boss u04f7, 2200 frames - the boss next to the player,
+  the missiles at it, the 'Alert' message, and the dive, the boost ball and the taunt states
+  forced one after the other. 0 caught, 0 reach-stub, exit 0.

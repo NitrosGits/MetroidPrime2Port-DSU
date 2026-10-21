@@ -409,6 +409,7 @@ void CDarkSamus::InstallStateMachineFunctions() {
 // flattened into the XY plane (the two zero stores at 0x00014364/0x00014368), normalized (the two
 // calls at 0x0001436C/0x00014374) and compared (the fcmpo at 0x00014384; the cr bit 31 at
 // 0x0001438C is the "less than" of the compare, so the limit is strict).
+// @ fn_10_142F4
 bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
   const CVector3f toPlayer = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   const CVector3f forward = GetTransform().GetForward();
@@ -424,6 +425,8 @@ bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
 // the helper with a null (the cmplwi at 0x00017E24). The uid is written by AcceptScriptMsg's
 // 'XALD' arm (0x0001EBB8, the first stage) and by fn_10_193A0 (0x00019410, the next stage);
 // until the area is loaded the lookup finds nothing and the triggers below answer false.
+// @ fn_10_17E14
+// @ fn_10_17DE0
 const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) const {
   return TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mBattleStageUid));
 }
@@ -975,7 +978,7 @@ void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
 // 'ALRT' message (the console's `send <id> Alert`) sets the bit.
 // @ fn_10_F840
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
-  return (mFlags90C & 0x80) != 0;
+  return (mFlags90C & 0x80) != 0; // 0x0000F844 `extrwi r3, r0, 1, 24` (the bit 24 = 0x80)
 }
 
 bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
@@ -1586,6 +1589,10 @@ bool CDarkSamus::BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) co
 
 // fn_10_9920 (0x00009920, 0x4C bytes): null when the ball's uid 0xE38 is kInvalidUniqueId
 // (`cmplw r6, r0` at 0x00009938), else the actor it names.
+// @ fn_10_9920
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): 644 calls. The null arm ran on its own
+// (the boost ball paths run with no ball); the actor arm was forced (gdb `set var
+// mBoostBallUid.value = 0x4f7` at the second call). See docs/module-analysis/DarkSamus_helpers.md.
 CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
   if (mBoostBallUid == kInvalidUniqueId) { // 0x00009938
     return nullptr;
@@ -1878,6 +1885,8 @@ void CDarkSamus::SetDiveTargetVector() {
 // (0 or 3), kJS_IntoJump (`li r6, 0x0`), animation variant 0 (`li r7, 0x0`) and facing flags 2
 // (`li r8, 0x2`) - and fn_10_12764 copies it into the command manager's jump slot after
 // DeliverCmd(kBSC_Jump), which is DeliverCmd(const CBodyStateCmd&) on the host.
+// @ fn_10_1285C
+// @ fn_10_12764
 void CDarkSamus::DoDiveJumpCmd() {
   BodyController()->CommandMgr().DeliverCmd(
       CBCJumpCmd(mDive.mTarget, mDive.mFromBoost == true ? pas::kJT_Three : pas::kJT_Normal,
@@ -2409,6 +2418,10 @@ void CDarkSamus::TurnAround() {
 // Unmarked: the arm that deletes an actor needs a boost ball in the world. The uid 0xE38 is
 // set by the BoostBallRoll (fn_10_A3B0) and BoostBallFire (fn_10_9724) paths, which are
 // outside the port, so only the "no ball" arm ran.
+// @ fn_10_9AC4
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): the null arm ran on its own (the dive's
+// exit calls it with no ball); the delete arm was forced (gdb `set var mBoostBallUid.value = 0x4f7`
+// at the dive's entry). See docs/module-analysis/DarkSamus_helpers.md.
 void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
   if (mBoostBallUid != kInvalidUniqueId) { // 0x00009AE8
     mgr.DeleteObjectRequest(mBoostBallUid); // 0x00009B00
@@ -3276,6 +3289,7 @@ void CDarkSamus::TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_10_1AA30 (0x0001AA30, 0x2C bytes): `set` (the `clrlwi 24` at 0x0001AA30) == 1 ors the bit
 // into the mask (0x0001AA40), anything else clears it (the andc at 0x0001AA50).
+// @ fn_10_1AA30
 void CDarkSamus::SetAttackBit(uint* mask, uchar set, uint bit) {
   if (set == 1) {
     *mask |= bit;
@@ -3286,6 +3300,7 @@ void CDarkSamus::SetAttackBit(uint* mask, uchar set, uint bit) {
 
 // fn_10_1A980 (0x0001A980, 0xB0 bytes): the first bit always, the next three up to the first
 // that is 0xFFFF (the whole-word compares at 0x0001A9B0/0x0001A9D8/0x0001AA00).
+// @ fn_10_1A980
 void CDarkSamus::SetAttackBits(uint* mask, uchar set, uint a, uint b, uint c, uint d) {
   SetAttackBit(mask, set, a);
   if (b != 0xFFFF) {
@@ -3301,6 +3316,7 @@ void CDarkSamus::SetAttackBits(uint* mask, uchar set, uint a, uint b, uint c, ui
 
 // fn_10_1A8F8 (0x0001A8F8, 0x88 bytes): every one of the 24 bits (0x0001A964) except the four
 // given (the cmpw chain at 0x0001A930..0x0001A948).
+// @ fn_10_1A8F8
 void CDarkSamus::SetAttackBitsExcept(uint* mask, uchar set, uint a, uint b, uint c, uint d) {
   for (int i = 0; i < 24; ++i) {
     const uint bit = 1u << i;
@@ -3311,10 +3327,12 @@ void CDarkSamus::SetAttackBitsExcept(uint* mask, uchar set, uint a, uint b, uint
 }
 
 // fn_10_1AA5C (0x0001AA5C, 0x10 bytes): the bit is 2 (the subfic/cntlzw at 0x0001AA5C).
+// @ fn_10_1AA5C
 bool CDarkSamus::IsAttackTwo(uint bit) { return bit == 2; }
 
 // fn_10_10BBC (0x00010BBC): the index of the bit (the first i < 24 with 1 << i == bit), else
 // 0xFFFF.
+// @ fn_10_10BBC
 int CDarkSamus::GetAttackBitIndex(uint bit) {
   for (int i = 0; i < 24; ++i) {
     if ((1u << i) == bit) {
@@ -3328,6 +3346,7 @@ int CDarkSamus::GetAttackBitIndex(uint bit) {
 // offsets: 1 0x44, 4 0x48, 8 0x4C, 0x10 0x50, 0x20 0x54, 0x40 0x5C, 0x80 0x60, 0x100 0x64,
 // 0x200 0x3C, 0x400 0x38, 0x10000 0x70, 0x20000 0x74, 0x100000 0x68, 0x200000 0x6C, 0x400000
 // 0x7C, 0x800000 0x80); every other id answers lbl_10_rodata_3FC = 0.0f.
+// @ fn_10_1A6C4
 float CDarkSamus::GetAttackWeight(const SLdrDSStageInfo& stage, int attack) {
   switch (attack) {
   case 0x1: return stage.meleeAttack;                   // 0x0001A86C
@@ -3353,6 +3372,7 @@ float CDarkSamus::GetAttackWeight(const SLdrDSStageInfo& stage, int attack) {
 // fn_10_17D50 (0x00017D50, 0x90 bytes): no stage answers false (0x00017D78); 0x800 is the stage's
 // lookAround byte (the lbz 0x40 at 0x00017DA0), 2 is false (0x00017D98), every other attack is
 // on when its weight is above lbl_10_rodata_3FC = 0.0f (the fcmpo's gt bit, 0x00017DC4).
+// @ fn_10_17D50
 bool CDarkSamus::IsAttackEnabled(CStateManager& mgr, int attack) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
@@ -3370,6 +3390,7 @@ bool CDarkSamus::IsAttackEnabled(CStateManager& mgr, int attack) const {
 
 // fn_10_11308 (0x00011308, 0x2C bytes): the player (the state manager's 0x14FC) is morphed - its
 // 0x390 is 0 and its 0x38C is 1 (the subfic/cntlzw at 0x00011324).
+// @ fn_10_11308
 bool CDarkSamus::IsPlayerMorphed(CStateManager& mgr) {
   const CPlayer* player = mgr.GetPlayer(0);
   const int state = player->GetSpawnedMorphballState() == 0 // 0x00011310
@@ -3388,6 +3409,7 @@ float CDarkSamus::GetDistanceToPlayer(CStateManager& mgr) const {
 
 // fn_10_1AA6C (0x0001AA6C, 0x58 bytes): 0 below the attack range (0x3DC, the bge at 0x0001AA8C),
 // 2 above it (0x3E0, the ble at 0x0001AAA0), 1 inside.
+// @ fn_10_1AA6C
 int CDarkSamus::GetPlayerRangeBand(CStateManager& mgr) const {
   const float dist = GetDistanceToPlayer(mgr);
   if (dist < mMinAttackRange) {
@@ -3403,6 +3425,7 @@ int CDarkSamus::GetPlayerRangeBand(CStateManager& mgr) const {
 // (0x0001A5F8), the attack 2 (fn_10_1AA5C, 0x0001A610) or one the stage turns off (fn_10_17D50,
 // 0x0001A628) gets lbl_10_data_C4C = 0; the others get their stage weight (fn_10_1A6C4, the
 // fctiwz at 0x0001A670) and their bit is added to the mask (the add at 0x0001A69C).
+// @ fn_10_1A5BC
 void CDarkSamus::CollectStageWeights(CStateManager& mgr, SAttackWeights& weights,
                                      uint* mask) const {
   for (int i = 0; i < 24; ++i) {
@@ -3423,6 +3446,7 @@ void CDarkSamus::CollectStageWeights(CStateManager& mgr, SAttackWeights& weights
 // fn_10_1A554 (0x0001A554, 0x68 bytes): faded (0xDEC == 1, 0x0001A564) the mask keeps only the
 // freeze beam, the melee and the phazon attacks (fn_10_1A8F8 with 0x100000, 1, 0x400000,
 // 0x800000); visible it loses the freeze beam and the fade missile (0x100000, 0x200000).
+// @ fn_10_1A554
 void CDarkSamus::CollectFadeAttacks(CStateManager&, SAttackWeights&, uint* mask) const {
   if (mFadeOut == 1) {
     SetAttackBitsExcept(mask, 0, 0x100000, 1, 0x400000, 0x800000);
@@ -3435,6 +3459,7 @@ void CDarkSamus::CollectFadeAttacks(CStateManager&, SAttackWeights&, uint* mask)
 // scatter shots and the dive (8, 0x10, 0x20), the missile jump, the super missile, the taunt and
 // the sweep beam (0x80, 0x100, 0x200, 0x10000) and turns the normal missile on (0x40, set 1 at
 // 0x0001A2FC); otherwise the melee dash (4) goes.
+// @ fn_10_1A278
 void CDarkSamus::CollectMorphballAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) const {
   if (IsPlayerMorphed(mgr) == true) {
     SetAttackBits(mask, 0, 0x8, 0x10, 0x20, 0xFFFF);
@@ -3448,6 +3473,7 @@ void CDarkSamus::CollectMorphballAttacks(CStateManager& mgr, SAttackWeights&, ui
 // fn_10_1A440 (0x0001A440, 0x114 bytes): by the range band (fn_10_1AA6C): close (0) keeps only
 // the melee, the attack 2 and the look-around (1, 2, 0x800); in range (1) loses the melee; far
 // (2) loses 1, 4, 8, 0x10, then 0x20, 0x40, 0x100, then 0x200000, 0x100000.
+// @ fn_10_1A440
 void CDarkSamus::CollectRangeAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) const {
   switch (GetPlayerRangeBand(mgr)) {
   case 0:
@@ -3469,6 +3495,7 @@ void CDarkSamus::CollectRangeAttacks(CStateManager& mgr, SAttackWeights&, uint* 
 // the melee, the melee dash and the missile jump (1, 4, 0x80: 0x0001A398..0x0001A3A8). A melee as
 // the newest one within lbl_10_rodata_544 = 2.5f of 0x9C0 (the fcmpo at 0x0001A3F0) clears the
 // melee bit.
+// @ fn_10_1A34C
 void CDarkSamus::CollectHistoryPenalties(CStateManager&, SAttackWeights& weights,
                                          uint* mask) const {
   const int last = static_cast< int >(mAttackHistoryCount) - 1;
@@ -3487,6 +3514,7 @@ void CDarkSamus::CollectHistoryPenalties(CStateManager&, SAttackWeights& weights
 // fn_10_1A1D4 (0x0001A1D4, 0xA4 bytes): the look-around (0x800) goes; a player outside
 // lbl_10_rodata_4C4 = 0.17453292f (10 degrees) of the facing (fn_10_142F4, 0x0001A234) leaves only
 // the melee (fn_10_1A8F8 with 1).
+// @ fn_10_1A1D4
 void CDarkSamus::CollectFacingAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) const {
   SetAttackBits(mask, 0, 0x800, 0xFFFF, 0xFFFF, 0xFFFF);
   if (!IsPlayerInFront(mgr, 0.17453292f)) {
@@ -3499,6 +3527,7 @@ void CDarkSamus::CollectFacingAttacks(CStateManager& mgr, SAttackWeights&, uint*
 // is 0xFFFF (0x0001999C). A draw of the state manager's random (the CRandom16 at 0x16E4,
 // Next at 0x000199A8) modulo the total (the divw/mullw at 0x000199AC) walks the positive weights
 // until it is used up (the subf. at 0x000199D8) and picks that attack's bit.
+// @ fn_10_19918
 int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, uint mask) const {
   int total = 0;
   for (int i = 0; i < weights.count; ++i) {
@@ -3535,6 +3564,7 @@ int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, 
 // 0x000191C8). The nearest hit (from the unshifted start) that is not 8 short of the player
 // (the blt at 0x000192F0) is kept (lbl_10_rodata_3EC = -1.0f = none, 0x00019300); none is 0
 // (0x0001932C), short of the player 1 (0x0001933C), else 2.
+// @ fn_10_1905C
 int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
   CVector3f dir = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   dir.SetZ(0.f);
@@ -3581,6 +3611,7 @@ int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
 // 0x00019AC0). Otherwise the line to the player (fn_10_1905C, 0x00019AD0): blocked short of it
 // (1) adds 10 to the normal and the super missile's weights (0x40, 0x100: 0x00019AEC..), blocked
 // beyond it (2) adds 10 to the dive attack's (0x20, 0x00019B28).
+// @ fn_10_19A1C
 void CDarkSamus::CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights,
                                     uint* mask) const {
   const CVector3f point = GetRepulsionPoint(mgr, nullptr);
@@ -3608,6 +3639,7 @@ void CDarkSamus::CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights,
 // inside that region (the world-space point against the region, 0x000148A4) must be on the
 // mesh (an off-mesh point answers the "no region" flag, 0x000148D8) within lbl_10_rodata_40C =
 // 5.0f of the actor's own height (0x000148FC/0x00014908).
+// @ fn_10_14648
 bool CDarkSamus::CanWalkToPlayer(CStateManager& mgr) const {
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
   CPFRegion* inside = nullptr;
@@ -3678,6 +3710,7 @@ bool CDarkSamus::IsGunLineClear(CStateManager& mgr, const CVector3f& offset,
 // lbl_10_rodata_40C = 5.0f in z to the player's aim position (the vtable call at 0x00016458,
 // slot 0x54 = GetAimPosition, dt lbl_10_rodata_3FC = 0.0f).
 // @ fn_10_16418
+// @ fn_10_164C0
 bool CDarkSamus::IsPlayerAimLineClear(CStateManager& mgr) const {
   const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
   return IsGunLineClear(mgr, CVector3f(0.f, 0.f, 5.f), aim);
@@ -3720,6 +3753,8 @@ static int GetRingRayCount() { return 8; }
 // is cast (RayStaticIntersection at 0x00016814) over reach times its length, the filter including
 // lbl_10_data_C54 / C58 (0x3B kMT_Solid, 0x30 kMT_AIBlock) and excluding C5C (0x31 kMT_Platform).
 // A valid hit (`cmplwi r0, 0x1` at 0x00016828) answers false, anything else true.
+// @ fn_10_166AC
+// @ fn_10_16600
 bool CDarkSamus::IsRingRayClear(CStateManager& mgr, const CVector3f& dest, int i, float reach,
                                 float radius) const {
   const CVector3f offset = radius * GetRingRayOffset(i);
@@ -3906,6 +3941,7 @@ void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* 
 // 1A1D4, 19B64, 19A1C), the copy of the weights into 0xC54/0xC58 (0x000198C0..0x000198DC), the
 // mask into 0xCB8 (0x000198F0) and the weighted pick (fn_10_19918) into 0xCBC (0x000198FC),
 // which it answers.
+// @ fn_10_197D8
 int CDarkSamus::PickVisibleAttack(CStateManager& mgr) {
   SAttackWeights weights;
   weights.count = 0;
@@ -3928,6 +3964,7 @@ int CDarkSamus::PickVisibleAttack(CStateManager& mgr) {
 // 1A1D4, then a player the actor cannot walk to (fn_10_14648 false) takes away the boost ball
 // and the sweep beam (fn_10_1A980 with 0x20000, 0x10000); the copy and the pick as in
 // fn_10_197D8.
+// @ fn_10_1969C
 int CDarkSamus::PickFadedAttack(CStateManager& mgr) {
   SAttackWeights weights;
   weights.count = 0;
@@ -3954,6 +3991,7 @@ int CDarkSamus::PickFadedAttack(CStateManager& mgr) {
 // faded its +0xC, 0x00019604/0x00019618; no stage lbl_10_rodata_3E8 = 1.0f; the fnmsubs at
 // 0x0001962C). A pick counts (0x988, 0x00019640), runs the faded picker when 0xDEC is set
 // (0x00019648), stores the attack in 0x984 and the time in 0x98C (0x00019678).
+// @ fn_10_1954C
 void CDarkSamus::UpdateAttackPick(CStateManager& mgr) {
   if (mCurrentAttack != 0xFFFF) {
     return;
@@ -4014,6 +4052,8 @@ uint* CDarkSamus::EraseFinishedAttack(uint* pos) {
 // fn_10_1B5E4 at 0x0001B574), pushes the current one (0x0001B590), counts it (0x0001B5A4), clears
 // 0x980 to 0xFFFF (0x0001B5A8) and turns the delay into a time (0x990 += 0x8B0, 0x0001B5B8).
 // Update does nothing.
+// @ fn_10_1B478
+// @ fn_10_1B5E4
 void CDarkSamus::UpdateCurrentAttack(uint attack, CStateManager& mgr, EStateMsg msg) {
   switch (msg) {
   case kStateMsg_Activate: {
