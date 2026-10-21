@@ -1105,6 +1105,18 @@ private:
 #ifdef TARGET_PC
   uint GetStageCount() const;   // fn_10_17E48 (0x00017E48, 0x8 bytes): the guest's 0x978
 #endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 7: the anim-event handler's (fn_10_1BEFC) helpers and the members it writes.
+  float GetMeleeReach() const;            // fn_10_1BDF0
+  void FadeEnvFxOut(CStateManager& mgr);  // fn_10_1BE04
+  void FadeEnvFxIn(CStateManager& mgr);   // fn_10_1BE80
+  int mGuestAB0 = 0;                      // guest 0xAB0, the freeze beam shots fired (fn_10_1BEFC)
+  bool mBoostBallFlag20 = false;          // guest 0xEBC bit 0x20 (fn_10_1BEFC clears it)
+  bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it)
+  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC)
+  CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then
+  float mGuestEB8 = 0.f;                  // guest 0xEB8, the player's distance then
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

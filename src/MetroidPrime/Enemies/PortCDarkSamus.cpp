@@ -14,9 +14,11 @@
 // they are real rather than stand-ins.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
+#include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CEnvFxManager.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -529,33 +531,123 @@ EWeaponCollisionResponseTypes CDarkSamus::GetCollisionResponseType(const CVector
   return static_cast< EWeaponCollisionResponseTypes >(0x2E);
 }
 
-// vtable slot 28 = fn_10_1BEFC (0x7CC): the user-anim-event switch (the attacks' timings).
+// fn_10_1BDF0 (0x0001BDF0, 0x14 bytes): the melee reach, the minimum attack range 0x3DC plus
+// lbl_10_rodata_544 = 2.5f.
+// Run (darksamus_uevent.py): the DamageOn event (`uevent 8`) with the melee attacks.
+// @ fn_10_1BDF0
+float CDarkSamus::GetMeleeReach() const { return 2.5f + mMinAttackRange; }
+
+// fn_10_1BE04 (0x0001BE04, 0x7C bytes): the environment effects' density to lbl_10_rodata_3FC =
+// 0.0f over lbl_10_rodata_254 = 4000 (FadeDensity at 0x0001BE38, the manager at 0x1630), then
+// the Exited links with no message (kSS_Exited = 'EXIT', r7 = -1, 0x0001BE64).
+// Run (darksamus_uevent.py): the FadeIn event (`uevent 14`) with 0x40000 and 0x400000.
+// @ fn_10_1BE04
+void CDarkSamus::FadeEnvFxOut(CStateManager& mgr) {
+  mgr.EnvFxManager()->FadeDensity(0.f, 4000);
+  SendScriptMsgs(kSS_Exited, mgr, kInvalidUniqueId, kSM_None);
+}
+
+// fn_10_1BE80 (0x0001BE80, 0x7C bytes): the density back to lbl_10_rodata_3E8 = 1.0f over
+// lbl_10_rodata_250 = 4000, then the Entered links (kSS_Entered = 'ENTR', 0x0001BEE0).
+// Run (darksamus_uevent.py): the FadeOut event (`uevent 15`) with 0x80000 and 0x400000.
+// @ fn_10_1BE80
+void CDarkSamus::FadeEnvFxIn(CStateManager& mgr) {
+  mgr.EnvFxManager()->FadeDensity(1.f, 4000);
+  SendScriptMsgs(kSS_Entered, mgr, kInvalidUniqueId, kSM_None);
+}
+
+// vtable slot 28 = fn_10_1BEFC (0x7CC): the user-anim-event switch (the attacks' timings) on the
+// event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4). The cases that switch on
+// the current attack 0x980 (0, 8, 9, 12, 17, 18, 27, 28, 33, 34) return without the base
+// (0x0001C6A0); the rest and every other type end in CPatterned::DoUserAnimEvent (0x0001C69C).
+// Five callees are not in the port yet and stay logged stand-ins: the melee hit fn_10_13998 and
+// fn_10_13AB4, the missiles fn_10_1353C and fn_10_133D0, the freeze beam fn_10_9164, the 0x800000
+// shot fn_10_5840, and fn_10_77B8 / fn_10_9E00 (case 37, case 19); the body is unmarked until
+// they are. Run (darksamus_uevent.py, `uevent` with the attack forced by the dt key): every type
+// the switch names and the arms above, except BeginAction's deflect slow-down (it needs a missile
+// in flight past 28 units), Landing's dive bounce and type 46 with dash steps left.
 void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                  float dt) {
-  StandIn("fn_10_1BEFC", "vtable slot 28, DoUserAnimEvent");
-  // The switch on the event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4).
-  // kUE_EventStart (case 27, 0x0001C1F0) switches on the current attack 0x980 and never reaches
-  // the base: the scatter shots start (fn_10_11814) with side 0 for 8 (0x0001C25C) and the byte
-  // 0xBAC for 0x10 (0x0001C268), and the phazon beam with its sound for 0x400000 (fn_10_6118,
-  // fn_10_8178 at 0x0001C270). Its 0x100 (0xA84 = 1) and 0x100000 (0xAB8 bit 0x40) arms are not
-  // in the port yet.
-  // kUE_Projectile (case 0, 0x0001C134) switches on the current attack 0x980 and never reaches
-  // the base either: the melee hit fn_10_13AB4 for 1..4 except 3 (0x0001C15C/0x0001C168,
-  // 0x0001C1B8), the missile fn_10_1353C for 0x40/0x80 (0x0001C1C8), fn_10_133D0 for 0x100
-  // (0x0001C1D0), fn_10_9164 for 0x20000/0x100000 (0x0001C1E0) and fn_10_5840 for 0x800000
-  // (0x0001C1E8); any other attack does nothing. None of those five is in the port yet, so the
-  // melee and missile events launch nothing - the base's LaunchProjectile would read the null
-  // ProjectileInfo those attacks answer.
-  if (type == kUE_Projectile) {
+  const int attack = mCurrentAttack;
+  switch (type) {
+  case kUE_Projectile: // 0x0001C134
+    switch (attack) {
+    case 1:
+    case 2:
+    case 4:
+      StandIn("fn_10_13AB4", "the melee hit (DoUserAnimEvent Projectile, 0x0001C1B8)");
+      break;
+    case 0x40:
+    case 0x80:
+      StandIn("fn_10_1353C", "the missile (DoUserAnimEvent Projectile, 0x0001C1C8)");
+      break;
+    case 0x100:
+      StandIn("fn_10_133D0", "the super missile (DoUserAnimEvent Projectile, 0x0001C1D0)");
+      break;
+    case 0x20000:
+    case 0x100000:
+      StandIn("fn_10_9164", "the freeze beam (DoUserAnimEvent Projectile, 0x0001C1E0)");
+      break;
+    case 0x800000:
+      StandIn("fn_10_5840", "DoUserAnimEvent Projectile 0x800000 (0x0001C1E8)");
+      break;
+    default:
+      break;
+    }
     return;
-  }
-  if (type == kUE_EventStart) {
-    switch (mCurrentAttack) {
+  case kUE_DamageOn: // 0x0001BFAC: the melee attacks 1, 2 and 4 hit within reach (strict)
+    if ((attack == 1 || attack == 2 || attack == 4) && GetDistanceToPlayer(mgr) < GetMeleeReach()) {
+      StandIn("fn_10_13998", "the melee damage (DoUserAnimEvent DamageOn, 0x0001BFF8)");
+    }
+    return;
+  case kUE_DamageOff: // 0x0001C000
+    return;
+  case kUE_BeginAction: // 0x0001C004
+    if (attack == 0x10000) {
+      StartSweepBeam(); // fn_10_C85C at 0x0001C098
+    } else if (attack == 2 && mGuestC04 == 0.f && // 0x0001C030
+               AnyIncomingMissiles(mgr, CTriggerData(0)) == true && // vtable 0x14C, 0x0001C050
+               GetIncomingProjectileDistance(mgr) > 28.f) { // lbl_10_rodata_510, 0x0001C074
+      // The deflect's slow-down: its start time and the body's time scale lbl_10_rodata_4D8 =
+      // 0.01f (0x0001C090).
+      mGuestC04 = mElapsedTime;
+      BodyController()->SetTimeScale(0.01f);
+    }
+    return;
+  case kUE_EndAction: // 0x0001C0A0: the shot counters
+    switch (attack) {
+    case 0x10000:
+      StopSweepBeam(); // fn_10_C798 at 0x0001C11C
+      break;
+    case 0x40:
+      ++mGuestA38;
+      break;
+    case 0x100:
+      ++mGuestA78;
+      break;
+    case 0x100000:
+      ++mGuestAB0;
+      break;
+    case 0x400000:
+      ++mGuestF48;
+      break;
+    default:
+      break;
+    }
+    return;
+  case kUE_EventStart: // 0x0001C1F0
+    switch (attack) {
     case 8:
-      StartScatterShotFire(mgr, 0);
+      StartScatterShotFire(mgr, 0); // fn_10_11814 at 0x0001C25C
       break;
     case 0x10:
-      StartScatterShotFire(mgr, mScatterSide);
+      StartScatterShotFire(mgr, mScatterSide); // 0x0001C268
+      break;
+    case 0x100:
+      mGuestA84 = 1; // 0x0001C23C
+      break;
+    case 0x100000:
+      mGuestAB8 |= 0x40; // 0x0001C24C
       break;
     case 0x400000:
       CreatePhazonBeam();   // fn_10_6118 at 0x0001C270
@@ -565,58 +657,105 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
       break;
     }
     return;
-  }
-  // kUE_BeginAction (case 17, 0x0001C004) and kUE_EndAction (case 18, 0x0001C0A0) switch on the
-  // current attack 0x980 and never reach the base: the sweep beam (0x10000, `lis r0, 0x1` at
-  // 0x0001C008 / 0x0001C0A4) starts its effect (fn_10_C85C at 0x0001C098) and releases it
-  // (fn_10_C798 at 0x0001C11C); EndAction counts the phazon attack's shots 0xF48 for 0x400000
-  // (0x0001C124). BeginAction's 0x2 arm (0x0001C018) and EndAction's 0x40, 0x100, 0x100000
-  // counters (0xA38/0xA78/0xAB0) are not in the port yet.
-  if (type == kUE_BeginAction) {
-    if (mCurrentAttack == 0x10000) {
-      StartSweepBeam();
-    }
-    return;
-  }
-  if (type == kUE_EndAction) {
-    if (mCurrentAttack == 0x10000) {
-      StopSweepBeam();
-    } else if (mCurrentAttack == 0x400000) {
-      ++mGuestF48; // 0x0001C124..0x0001C12C
-    }
-    return;
-  }
-  // kUE_EventStop (case 28, 0x0001C280) never reaches the base either: it clears 0xA84, 0xAB8 bit
-  // 0x40, the scatter byte 0xBAD and its start time 0xBA4 (lbl_10_rodata_3FC = 0.0f), then
-  // releases the phazon beam (fn_10_58C0), the guest actor (fn_10_4868) and its sfx (fn_10_812C).
-  if (type == kUE_EventStop) {
+  case kUE_EventStop: // 0x0001C280
     mGuestA84 = 0;
     mGuestAB8 &= ~0x40;
     mScatterFiring = 0;
     mScatterStartTime = 0.f;
-    ReleasePhazonBeam(); // 0x0001C2A4
-    DeleteGuestActor(mgr); // 0x0001C2B0
-    StopGuestSfx(); // 0x0001C2B8
+    ReleasePhazonBeam();   // fn_10_58C0 at 0x0001C2A4
+    DeleteGuestActor(mgr); // fn_10_4868 at 0x0001C2B0
+    StopGuestSfx();        // fn_10_812C at 0x0001C2B8
     return;
-  }
-  // kUE_Landing (case 12, 0x0001C2C0) switches on the current attack too; the dive's arm
-  // (0x20, 0x0001C384) starts the landing (0x10) and, after a bounce (0x0001C3A0), puts the actor
-  // on the ground (fn_10_18FCC with 1), resets the dive record and ends it (0x40 and 0x80); the
-  // phazon attack's (0x400000, 0x0001C3D4) sets 0xF5C bit 0x80. Its 0x40, 0x100 and 0x100000 arms
-  // are not in the port yet.
-  if (type == kUE_Landing && mCurrentAttack == 0x20) {
-    mDive.mLanding = true;
-    if (mDive.mBounced == true) {
-      SetGrounded(mgr, true);
-      mDive.Reset();
-      mDive.mLaunched = true;
-      mDive.mDone = true;
+  case kUE_Landing: // 0x0001C2C0: the missiles' and the freeze beam's records, the dive's landing
+    switch (attack) {
+    case 0x40:
+      mGuestA40 = 1; // 0x0001C30C
+      break;
+    case 0x100:
+      mGuestA80 = 1; // 0x0001C31C
+      SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x0001C340
+      break;
+    case 0x100000:
+      mGuestAB8 |= 0x80; // 0x0001C350
+      SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x0001C37C
+      break;
+    case 0x20: // 0x0001C384
+      mDive.mLanding = true;
+      if (mDive.mBounced == true) { // 0x0001C3A0
+        SetGrounded(mgr, true);     // fn_10_18FCC at 0x0001C3A8
+        mDive.Reset();              // fn_10_E910 at 0x0001C3B0
+        mDive.mLaunched = true;
+        mDive.mDone = true;
+      }
+      break;
+    case 0x400000:
+      mGuestF5C80 = true; // 0x0001C3DC
+      break;
+    default:
+      break;
     }
     return;
-  }
-  if (type == kUE_Landing && mCurrentAttack == 0x400000) {
-    mGuestF5C80 = true;
+  case kUE_EffectOn: // 0x0001BF54
+    if (attack == 1 || attack == 2 || attack == 4) {
+      mGuestC00 = mMinAttackRange; // 0x0001BF94
+    } else if (attack == 0x1000) {
+      mStageChanged = 1; // 0x0001BF88
+    }
     return;
+  case kUE_EffectOff: // 0x0001BF9C
+    mGuestC00 = 0.f;
+    return;
+  case kUE_FadeIn: // 0x0001C3E8: the cloaked attacks show again
+    if (attack == 0x40000 || attack == 0x400000 || attack == 0x800000) {
+      mFadeOut = 0;
+      // lbl_10_rodata_3FC = 0.0f for 0x40000, else lbl_10_rodata_E0 = 5.0f; lbl_10_rodata_258 = 5.0f
+      SetGuestE04(attack == 0x40000 ? 0.f : 5.f, 5.f);
+      FadeEnvFxOut(mgr); // fn_10_1BE04 at 0x0001C46C
+    }
+    break;
+  case kUE_FadeOut: // 0x0001C474
+    if (attack == 0x80000 || attack == 0x400000 || attack == 0x800000) {
+      mFadeOut = 1;
+      SetGuestE04(attack == 0x80000 ? 0.f : 5.f, 5.f);
+      FadeEnvFxIn(mgr); // fn_10_1BE80 at 0x0001C4F8
+    }
+    break;
+  case kUE_ScreenShake: { // 0x0001C618: at the event's locator, from no one
+    const CVector3f pos = GetLctrTransform(node.GetLocatorName()).GetTranslation();
+    ApplyScreenShake(mgr, pos, kInvalidUniqueId); // 0x0001C660
+    break;
+  }
+  case kUE_BecomeRagDoll: // 0x0001C500: the boost ball's record reset
+    if (attack == 0x20000) {
+      mBoostBallUid = kInvalidUniqueId; // 0x0001C530
+      mBoostBallFlag20 = false;         // 0xEBC: 0x20 cleared, then 0x40 and 0x80 copied
+      mBoostBallFlag40 = false;         // down from it (0x0001C540..0x0001C564)
+      mBoostBallFlag80 = false;
+      mGuestEA8 = -1000.f; // lbl_10_rodata_410
+      mGuestEAC = CVector3f::Zero();
+      mGuestEB8 = 0.f;
+      StandIn("fn_10_9E00", "DoUserAnimEvent BecomeRagDoll (0x0001C588)");
+      mGuestEA8 = mElapsedTime; // 0x0001C594
+      mGuestEAC = GetTranslation();
+      mGuestEB8 = (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude(); // 0x0001C5F4
+    }
+    break;
+  case kUE_Unknown37: // 0x0001C5FC
+    StandIn("fn_10_77B8", "DoUserAnimEvent type 37 (0x0001C5FC)");
+    break;
+  case kUE_Unknown38: // 0x0001C604
+    mGuestF5C40 = true;
+    break;
+  case kUE_Unknown46: // 0x0001C678: the double dash's next step
+    if (mDash.mStepsLeft > 0) {
+      StartNextDashStep(mgr); // fn_10_14C50 at 0x0001C684
+    }
+    break;
+  default:
+    if (static_cast< int >(type) == 43) { // 0x0001C668: lbl_10_rodata_540 = 0.9f
+      mGuestD24 = 0.9f;
+    }
+    break;
   }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }

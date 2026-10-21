@@ -1028,6 +1028,9 @@ bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
 // The trigger itself has no transition in the FSM2 (the MP2_DS_FSM dump lists it only in the
 // machine's 92 triggers), but the module's own ShouldReact (fn_10_11158) calls it (0x00011210)
 // and the FSM2 uses ShouldReact, so the body does run in retail.
+// Run (darksamus_react.py, `trigcall ShouldReact`): no projectile, a shot the walk check takes and one from
+// above it refuses (`shoot`), the filter asked with the type -1 (forced) for the shots.
+// @ fn_10_1BB08
 bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) const {
   const CVector3f& pos = GetTranslation();
   const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
@@ -1053,11 +1056,13 @@ bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) co
 
 // fn_10_16B48 (0x00016B48, 0xC bytes): the byte at guest 0xAB8's bit 7 - the extrwi at
 // 0x00016B4C keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24)).
-// The only writer of that bit is the anim-event handler (fn_10_1BEFC, 0x0001C250), which is
-// still a stand-in, so the trigger stays a stand-in too.
+// The only writer of that bit is the anim-event handler's Landing for the freeze beam
+// (fn_10_1BEFC, 0x0001C350).
+// Run (darksamus_uevent.py, `trigcall`): false, true after `uevent 12` with the freeze beam (the attack forced),
+// false after the key 99 put the byte back.
+// @ fn_10_16B48
 bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B48", "trigger BreakFreezeBeam");
-  return false;
+  return (mGuestAB8 & 0x80) != 0;
 }
 
 // fn_10_149B4 (0x000149B4, 0x4C bytes): the dash record's flag 0x80 (0xA08's
@@ -1082,8 +1087,9 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
 
 // fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
 // NormalMissileAttack (fn_10_17448) clears it on Activate; the only writer of a non-zero value is
-// the anim-event handler (fn_10_1BEFC, 0x0001C30C), still a stand-in.
-// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA40 forced (the natural true needs fn_10_1BEFC).
+// the anim-event handler's Landing (fn_10_1BEFC, 0x0001C30C).
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA40 forced; darksamus_uevent.py: true after the
+// fight's own Landing event with the normal missile (dt 0, attack 0x40) and after `uevent 12`.
 // @ fn_10_16B5C
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
   return mGuestA40 != 0;
@@ -1107,8 +1113,9 @@ bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
 
 // fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
 // SuperMissileAttack (fn_10_16ECC) clears it on Activate; the only writer of a non-zero value is
-// the anim-event handler (fn_10_1BEFC, 0x0001C31C), still a stand-in.
-// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA80 forced (the natural true needs fn_10_1BEFC).
+// the anim-event handler's Landing (fn_10_1BEFC, 0x0001C31C).
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA80 forced; darksamus_uevent.py: true after
+// `uevent 12` with the super missile (the attack forced).
 // @ fn_10_16B54
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
   return mGuestA80 != 0;
@@ -1127,6 +1134,9 @@ bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
 // 0x000142A8) against zero (lbl_10_rodata_3FC): the trigger answers when the float is below
 // zero (the fcmpo at 0x000142B0 and the extrwi at 0x000142B8, which keeps the compare's "less
 // than" bit).
+// Run (darksamus_uevent.py with darksamus_react.py): no stage (the uid forced invalid), the shipped float 45.0f, and -1.0f
+// (forced).
+// @ fn_10_14284
 bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
@@ -1351,6 +1361,8 @@ bool CDarkSamus::ShouldEnragedMelee(CStateManager& mgr, const CTriggerData&) con
 // fn_10_BB78 (0x0000BB78, 0x6C bytes): the fight script's object (fn_10_17E14) - without one
 // the trigger answers true (the beq at 0x0000BBA4) - and its byte at the stage info's +0x31
 // (the lbz at 0x0000BBB4), which must be 0.
+// Run (darksamus_uevent.py, `trigcall`): no stage (the uid forced invalid), the shipped flag 0, the flag 1 (forced).
+// @ fn_10_BB78
 bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   return stage == nullptr || !stage->GetFadeOutFlag();
@@ -1360,6 +1372,9 @@ bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
 // answers false (the cmplwi at 0x0000BC04) - its byte at the stage info's +0x31 (the lbz at
 // 0x0000BC18), which must be 1 (the cmplwi at 0x0000BC1C), and then the actor's own fade flag
 // (the guest's 0xDEC, the lbz at 0x0000BC24), which must be 0.
+// Run (darksamus_uevent.py, `trigcall`): no stage, the shipped flag 0, the flag 1 (forced) with 0xDEC 0 and 1 (the
+// FadeIn / FadeOut events).
+// @ fn_10_BBE4
 bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr || !stage->GetFadeOutFlag()) {
@@ -1417,6 +1432,9 @@ bool CDarkSamus::ShouldLeaveSphere(CStateManager&, const CTriggerData&) const {
 // 0x400 the pause, 0x10000 the sweep beam and 0x200000 the fade variant of the normal missile
 // answer true (0x0001127C), 0xFFFF (no attack) answers the fade flag at 0xDEC (0x00011284) and
 // everything else answers false.
+// Run (darksamus_react.py, `trigcall`): a heavy hit; no deflect (the shipped float 45.0f); facing away (`place
+// player -20`); every attack arm with the float forced to -1.0f and a shot in the near list.
+// @ fn_10_11158
 bool CDarkSamus::ShouldReact(CStateManager& mgr, const CTriggerData& data) const {
   if (WasHeavyHit(mgr, data)) {
     return true;
