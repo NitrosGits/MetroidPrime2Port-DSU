@@ -1273,9 +1273,11 @@ void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg
 // is set, else 5; while the state's time is at most fn_14_F374's value (the fcmpo/cror at
 // 0x1580C) the head takes the platform's transform (0x1582C), after it the state is Over.
 // Deactivate (2): NotReady, combat locomotion (3) and the platform, if there is one, gets STOP.
-// Unmarked: `fsm <head> FollowRetreatPath` after the head stun ran Activate, Update and Deactivate
-// with no platform only (0x1038 is set by SelectRetreatPlatform, which had not run); the
-// platform arms (STRT/STOP, the rider test, the ride and its end by time) have not run.
+// Every arm ran: with no platform after the head stun; after `codecall <head> SelectRetreatPlatform`
+// and `fsm <head> FollowRetreatPath`, STRT, the ride (time <= limit), locomotion 5, STOP; forced
+// (gdb attach): bit 0x80 of 0x10F5 (relaxed), the limit 0 (Over by time). IsRider itself stayed
+// false (the player teleported onto the moving platform each 0.3 s was never counted a rider).
+// @ fn_14_1569C
 void CDigitalGuardianHead::FollowRetreatPath(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) { // the cmpwi chain at 0x156A4..0x156DC
   case kStateMsg_Activate:
@@ -1457,8 +1459,10 @@ void CDigitalGuardianHead::ResetProjectileAttackTimes(CStateManager& mgr, float 
 // the block's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the
 // gun 3. The knee count is kept in 0x10DC (0x15558); a pulse fires a burst of 3 (0x10D8), the rest
 // none (the cntlzw at 0x15564).
-// Unmarked: the area-53 runs made one pick each, the first shot (knee count 4 against the ctor's
-// -1, firstShotType 0); the random arms need a second pick with the knee count unchanged.
+// Every arm ran: the first shot (knee count 4 against the ctor's -1, firstShotType 0), then
+// `codecall <head> SelectProjectileAttack` x24 with the count unchanged drew pulse 0, missiles 2
+// and the gun 3; charge 1 (odds 0 in the 4-knee block 0xA64) forced, its odds set to 1000.
+// @ fn_14_15448
 void CDigitalGuardianHead::SelectProjectileAttack(CStateManager& mgr, float dt) {
   const SLdrDigitalGuardianHeadStruct* odds = x10120_(mgr); // 0x1546C
   // GetObjectById(0x1034) at 0x15484, the cast at 0x15488, null test 0x1548C, else 0 (0x154A0)

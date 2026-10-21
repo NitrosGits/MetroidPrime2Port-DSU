@@ -353,7 +353,7 @@ float CDigitalGuardianHead::xF374_() const {
   return mData.unknown_0xd919fb13; // guest 0x7E8 (the data block's +0x28)
 }
 //
-// Unmarked: its one caller, the head's FollowRetreatPath (fn_14_1569C), has not run yet.
+// Unmarked: its caller FollowRetreatPath (fn_14_1569C) ran it, but which arm (0x10E4) went unrecorded.
 
 
 // fn_14_11EA8 (0x88 bytes): the destroyed bomb slots' looping sounds are stopped. Every handle
