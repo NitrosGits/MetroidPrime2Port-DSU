@@ -17,6 +17,9 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
 - Don't edit shared code (`platform/`, `CGenericFSM2*`, DOL classes, other modules' headers). Report a
   shared bug with file:line and evidence; ask for missing console commands/accessors in the report.
 - Probes are temporary: never committed; `git diff <base>` must show none.
+- Shared modules: port only the functions your brief names. Add bodies in your own file; never move
+  or rewrite a body in another lane's file (a marker line or a one-line call-site swap is the most).
+  Before porting a function, grep every branch you merged for its id: if it is ported, use that one.
 
 ## Runs
 
@@ -30,7 +33,8 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
 - Never end your turn with a run in flight: nothing wakes you. Wait for it in the foreground
-  (`timeout`), or on a background command you are notified for. Run independent runs
+  (`timeout`, or `wait <pids>` in one foreground command); background-shell notifications do not
+  reliably wake a lane whose turn has ended. Your last message is always the report. Run independent runs
   concurrently (each cov/smoke run takes its own slot) instead of one after another.
 
 ## Coverage without probes
