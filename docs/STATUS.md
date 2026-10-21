@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | `ses_ea43e4628ffervnPIWANweAlcu` | minoring @ `6ff839f74` (126/217; 4 thin overrides; 9 base-inline + 4 FSM2 dtors cited) | 23-fn projectile chain under 65C4 → 6748, wire into DoUserAnimEvent |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (worker) | `ses_ea42da30affefmPD1KpUpmgs9Q` | darksamus2 @ `dde303bf1` (TooMuchDamage == 0x8000 fixed; 1E26C/1E2E8) | 1E740, 1DD14, 1D860, 11334, 1E3C0 (CScriptCoverPoint), EFC8+128D8, state 1DF74 |
+| DarkSamus (Opus) | `ses_ea4205b59ffe5a7g0z7AkibaZa` | darksamus2 @ `804bb299a` (1E740 ShouldForgetLastAttacker; guest CPathFindSearch layout) | cover chain 1D9A4/1DD14, 13FFC/1D860, 11334, 1E360/1E4C4/1E3C0, EFC8/128D8, state 1DF74, then the walk |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
