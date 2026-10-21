@@ -255,6 +255,10 @@ private:
   TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
   TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
+  // guest 0xF34: the laser sweep stage. The constructor leaves -1 (0x6CA0, 0x6CE4), fn_75_5AD8
+  // sets 0 for a docked head (0x5AF4), the LaserSweep state (fn_75_44DC) advances and ends it,
+  // and the ShouldLaserSweep trigger (fn_75_55F8) tests it against -1.
+  int mLaserSweepStage = -1;
   // The retail's fn_75_3EEC: the head's "dock to the chassis". The id at 0xEFC (the connected
   // object the XAND message found) is the chassis; when the chassis accepts this head the id
   // moves to 0xEFA - the id the beam-effect gate (fn_75_58E8) and the chassis check (fn_75_31A8)

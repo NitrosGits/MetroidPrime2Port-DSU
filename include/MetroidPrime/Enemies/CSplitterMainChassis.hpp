@@ -275,6 +275,8 @@ private:
   // fn_75_AAC4 (the player-hint release).
   void PortUpdateConnectedObjects(CStateManager& mgr);
   void PortLeaveTeam(CStateManager& mgr);
+  // The retail's fn_75_8DF8 (the team join SetTargetDest ends with).
+  void PortJoinTeam(CStateManager& mgr);
   void PortReleasePlayerHint(CStateManager& mgr);
   // guest 0xD00: the counter the XLND script message sets to 5 (fn_75_F1C0, 0x0000F4F0).
   int mLandedCount = 0;
@@ -304,6 +306,9 @@ private:
   float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)
   float mLaserSweepTimer = 0.f;   // 0xD18 (the data's laser sweep interval, 0x858)
   float mDodgeTimer = 0.f;        // 0xD1C (the data's min dodge interval, 0x848)
+  // guest 0xD04: the dodge direction FindBestDodgeDirection (fn_75_B2A0) picks, -1 for none
+  // (the constructor, 0x0000F800-0x0000F80C); the ShouldDodge trigger (fn_75_E098) tests it.
+  int mDodgeDirection = -1;
   // The retail's fn_75_AFE8 (the chassis's timers) and fn_75_9520 (its fade), the Think's
   // calls at 0x0000F164 and 0x0000F180.
   void PortUpdateTimers(CStateManager& mgr, float dt);

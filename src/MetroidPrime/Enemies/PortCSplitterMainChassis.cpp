@@ -178,16 +178,10 @@ void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
 SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_E64C)
 SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
 SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
-SPLITTER_TRIGGER_STANDIN(HasRetreatPoint, fn_75_E56C)
 SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
 SPLITTER_TRIGGER_STANDIN(HasLineOfSight, fn_75_E524)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
-SPLITTER_TRIGGER_STANDIN(ShouldLegStab, fn_75_E3A4)
-SPLITTER_TRIGGER_STANDIN(ShouldMorphballStab, fn_75_E2F0)
-SPLITTER_TRIGGER_STANDIN(ShouldSpinAttack, fn_75_E1D0)
-SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_E0B0)
-SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_E098)
 SPLITTER_TRIGGER_STANDIN(IsSpinAttackOver, fn_75_E084)
 SPLITTER_TRIGGER_STANDIN(SpunIntoPlayer, fn_75_E078)
 SPLITTER_TRIGGER_STANDIN(SpunIntoGeometry, fn_75_E06C)
@@ -198,7 +192,6 @@ SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
 SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
 SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
-SPLITTER_STATE_STANDIN(PathFind, fn_75_DC08)
 SPLITTER_STATE_STANDIN(LegStabAttack, fn_75_DA38)
 SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
@@ -214,7 +207,6 @@ SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
 SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
 SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
 SPLITTER_STATE_STANDIN(HeadExplosion, fn_75_BEEC)
-SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_BC70)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
 SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
 SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
@@ -233,6 +225,191 @@ SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 // fn_75_DFE8 (the chassis's Start state, 0x4 bytes): the body is a single return, so the state
 // does nothing.
 void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
+
+// The squared distance from the chassis to its target (the id at 0xCC0), or -1.0f without one.
+// The Should* triggers below each look the target up (GetObjectById, the null test) and build
+// it inline from the two actors' positions (0x54, 0x58 and 0x5C).
+static float PortTargetDistanceSq(const CSplitterMainChassis& self, const CStateManager& mgr) {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(self.GetSyncId()));
+  if (target == nullptr) {
+    return -1.f;
+  }
+  return (target->GetTranslation() - self.GetTranslation()).MagSquared();
+}
+
+// fn_75_E56C (the chassis's HasRetreatPoint trigger, 0xE56C-0xE58C): the follow object's id at
+// 0xCC6 (the connected object fn_75_AC68 keeps) is valid (0xE570-0xE584: the two subf and or,
+// srwi 31).
+// @ fn_75_E56C
+bool CSplitterMainChassis::HasRetreatPoint(CStateManager&, const CTriggerData&) const {
+  return mFollowObjectId != kInvalidUniqueId;
+}
+
+// fn_75_E098 (the chassis's ShouldDodge trigger, 0xE098-0xE0B0): the dodge direction at 0xD04
+// is not -1 (0xE09C-0xE0A8: subfic -1, addi 1, or, srwi 31).
+bool CSplitterMainChassis::ShouldDodge(CStateManager&, const CTriggerData&) const {
+  return mDodgeDirection != -1;
+}
+
+// fn_75_E2F0 (the chassis's ShouldMorphballStab trigger, 0xE2F0-0xE3A4): false unless the data's
+// flag word (0x828) has its 0x4 bit (0xE304-0xE30C), the leg stab timer at 0xD10 is at most 0.0f
+// (0xE310-0xE324, lbl_75_rodata_390) and the target at 0xCC0 is there (0xE328-0xE340); then the
+// answer is the squared distance below the square of the data's leg stab min range (0x830,
+// 0xE344-0xE384: fcmpo, the cr0 lt bit).
+bool CSplitterMainChassis::ShouldMorphballStab(CStateManager& mgr, const CTriggerData&) const {
+  if ((mData.mUnknownCEF5C2FE & 0x4) == 0 || mLegStabTimer > 0.f) {
+    return false;
+  }
+  const float distSq = PortTargetDistanceSq(*this, mgr);
+  if (distSq < 0.f) {
+    return false;
+  }
+  return distSq < mData.mLegStabMinAttackRange * mData.mLegStabMinAttackRange;
+}
+
+// fn_75_E3A4 (the chassis's ShouldLegStab trigger, 0xE3A4-0xE478): the same three tests as
+// ShouldMorphballStab (0xE3B8-0xE3F4); then the squared distance must be at least the square of
+// the leg stab min range (0x830, 0xE43C-0xE444: cror eq, gt, eq) and at most the square of the
+// max range (0x834, 0xE448-0xE450: cror eq, lt, eq).
+bool CSplitterMainChassis::ShouldLegStab(CStateManager& mgr, const CTriggerData&) const {
+  if ((mData.mUnknownCEF5C2FE & 0x4) == 0 || mLegStabTimer > 0.f) {
+    return false;
+  }
+  const float distSq = PortTargetDistanceSq(*this, mgr);
+  if (distSq < 0.f) {
+    return false;
+  }
+  return distSq >= mData.mLegStabMinAttackRange * mData.mLegStabMinAttackRange &&
+         distSq <= mData.mLegStabMaxAttackRange * mData.mLegStabMaxAttackRange;
+}
+
+// fn_75_E1D0 (the chassis's ShouldSpinAttack trigger, 0xE1D0-0xE2F0): false unless 0xD40's 0x80
+// bit (the IM00/IM01 messages set it, 0xE1EC-0xE1F4) is set and the spin penalty timer at 0xD14
+// is at most 0.0f (0xE1F8-0xE20C); in a team (0xCBE valid, 0xE210-0xE220) the team must also
+// let a melee attack start (0xE244 CanStartAttack with 0). Then the target at 0xCC0 must be there
+// (0xE250-0xE268) at a squared distance from the square of the data's spin attack min range
+// (0x880) to the square of its max range (0x884), both ends included (0xE2B0-0xE2C4).
+bool CSplitterMainChassis::ShouldSpinAttack(CStateManager& mgr, const CTriggerData&) const {
+  if ((mFlagsD40 & 0x80) == 0 || mSpinPenaltyTimer > 0.f) {
+    return false;
+  }
+  if (mTeamId != kInvalidUniqueId &&
+      !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId())) {
+    return false;
+  }
+  const float distSq = PortTargetDistanceSq(*this, mgr);
+  if (distSq < 0.f) {
+    return false;
+  }
+  return distSq >= mData.mSpinAttackMinAttackRange * mData.mSpinAttackMinAttackRange &&
+         distSq <= mData.mSpinAttackMaxAttackRange * mData.mSpinAttackMaxAttackRange;
+}
+
+// fn_75_E0B0 (the chassis's ShouldLaserSweep trigger, 0xE0B0-0xE1D0): false unless the data's
+// flag word (0x828) has its 0x40 bit (0xE0CC-0xE0D4) and the laser sweep timer at 0xD18 is at
+// most 0.0f (0xE0D8-0xE0EC); in a team (0xCBE valid) the team must let a projectile attack start
+// (0xE124 CanStartAttack with 1). Then the target at 0xCC0 must be there at a squared distance
+// from the square of the data's laser sweep min range (0x85C) to the square of its max range
+// (0x860), both ends included (0xE190-0xE1A4).
+bool CSplitterMainChassis::ShouldLaserSweep(CStateManager& mgr, const CTriggerData&) const {
+  if ((mData.mUnknownCEF5C2FE & 0x40) == 0 || mLaserSweepTimer > 0.f) {
+    return false;
+  }
+  if (mTeamId != kInvalidUniqueId &&
+      !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
+                                        GetUniqueId())) {
+    return false;
+  }
+  const float distSq = PortTargetDistanceSq(*this, mgr);
+  if (distSq < 0.f) {
+    return false;
+  }
+  return distSq >= mData.mLaserSweepMinAttackRange * mData.mLaserSweepMinAttackRange &&
+         distSq <= mData.mLaserSweepMaxAttackRange * mData.mLaserSweepMaxAttackRange;
+}
+
+// fn_75_BC70 (the chassis's SetTargetDest code, 0xBC70-0xBE28): the destination starts as the
+// chassis's own position (0xBC98-0xBCB0) and 0xD40's 0x20 bit is cleared (0xBCB4-0xBCBC). The
+// target at 0xCC0 is looked up (0xBCC8); without one the position stays. With one: without line
+// of sight (0xBCD4-0xBCDC: the CVisualKnowledge's flag byte at 0xCA8, its 0x80 bit) the target's
+// position is the destination and the 0x20 bit is set (0xBCE0-0xBD04). With line of sight the
+// team role is asked for (0xBD2C GetTeamAiRole with the team at 0xCBE and this actor's id); a
+// role other than 2 (kTAR_Projectile, 0xBD38-0xBD40) - or none - takes the target's position and
+// sets the bit (0xBDBC-0xBDE0), while the projectile role takes it only when the squared distance
+// is at least the square of half the data's spin attack min plus max range (0x880 and 0x884,
+// 0xBD44-0xBD98, lbl_75_rodata_3A8 0.5f, fcmpo with cror eq, gt, eq). Then the base's path
+// navigation (0x6F4) gets the destination (0xBDEC SetDestination) and its face target (0x718)
+// kInvalidUniqueId (0xBDF0-0xBE04), and the team join runs (0xBE08 fn_75_8DF8).
+void CSplitterMainChassis::SetTargetDest(CStateManager& mgr, float) {
+  CVector3f dest = GetTranslation();
+  mFlagsD40 &= ~0x20;
+  if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId))) {
+    if (!mVisualKnowledge.HasLineOfSight()) {
+      dest = target->GetTranslation();
+      mFlagsD40 |= 0x20;
+    } else {
+      const CTeamAiRole* role = CScriptTeamAiMgr::GetTeamAiRole(mgr, mTeamId, GetUniqueId());
+      if (role != nullptr && role->GetTeamAiRole() == CTeamAiRole::kTAR_Projectile) {
+        const float range =
+            0.5f * (mData.mSpinAttackMinAttackRange + mData.mSpinAttackMaxAttackRange);
+        if ((target->GetTranslation() - GetTranslation()).MagSquared() >= range * range) {
+          dest = target->GetTranslation();
+          mFlagsD40 |= 0x20;
+        }
+      } else {
+        dest = target->GetTranslation();
+        mFlagsD40 |= 0x20;
+      }
+    }
+  }
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
+  PortJoinTeam(mgr);
+}
+
+// fn_75_8DF8 (the chassis's team join, 0x8DF8-0x8EA4): only with no team at 0xCBE yet
+// (0x8E1C-0x8E28) the associated team is asked for (0x8E38 GetAssociatedTeamId) and kept at
+// 0xCBE (0x8E44); when that is valid (0x8E48-0x8E54) and casts to a CScriptTeamAiMgr
+// (0x8E68-0x8E74) the chassis joins it with the roles 1, 2 and -1 (0x8E78-0x8E88 JoinTeam:
+// kTAR_Melee, kTAR_Projectile, kTAR_Invalid).
+void CSplitterMainChassis::PortJoinTeam(CStateManager& mgr) {
+  if (mTeamId != kInvalidUniqueId) {
+    return;
+  }
+  mTeamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
+  if (mTeamId == kInvalidUniqueId) {
+    return;
+  }
+  if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
+    team->JoinTeam(*this, CTeamAiRole::kTAR_Melee, CTeamAiRole::kTAR_Projectile,
+                   CTeamAiRole::kTAR_Invalid);
+  }
+}
+
+// fn_75_DC08 (the chassis's PathFind state, 0xDC08-0xDCF8). Activate (0xDC50): the body
+// controller's command manager gets its blend mode (0xDC54-0xDC58, stw 1 at the body
+// controller's 0x4C) and the steering speed range 0xD0C, 0xD0C (0xDC5C-0xDC6C); with 0xD40's
+// 0x20 bit (a destination, 0xDC70-0xDC78) the path navigation's PathFind runs (0xDC90); then
+// 0xD40's 0x10 bit is cleared (0xDC94-0xDCA0). Update (0xDCA8): with the 0x20 bit the PathFind
+// runs (0xDCBC). Every message but deactivate (0xDCC0 cmpwi 2) then runs the chassis's own path
+// update (0xDCD0 fn_75_986C).
+void CSplitterMainChassis::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
+    BodyController()->CommandMgr().SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed);
+    if ((mFlagsD40 & 0x20) != 0) {
+      mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+    }
+    mFlagsD40 &= ~0x10;
+  } else if (msg == kStateMsg_Update) {
+    if ((mFlagsD40 & 0x20) != 0) {
+      mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+    }
+  }
+  if (msg != kStateMsg_Deactivate) {
+    PortUpdatePath(mgr);
+  }
+}
 
 // fn_75_DCF8 (the chassis's Scanning state, 0xDCF8-0xDCFC): the retail body is a single return,
 // so the state does nothing. The scan timer at 0xD28 is not set here: the retail's ACTN script

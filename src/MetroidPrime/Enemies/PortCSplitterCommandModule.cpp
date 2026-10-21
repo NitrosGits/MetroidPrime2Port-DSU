@@ -188,12 +188,10 @@ SPLITTER_TRIGGER_STANDIN(InLaserPulseRange, fn_75_565C)
 SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
 SPLITTER_TRIGGER_STANDIN(ShouldAttack, fn_75_5624)
 SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
-SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_55F8)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
 SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
-SPLITTER_STATE_STANDIN(FaceTarget, fn_75_50B0)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
@@ -420,6 +418,49 @@ void CSplitterCommandModule::Scanning(CStateManager& mgr, EStateMsg msg, float d
   default:
     break;
   }
+}
+
+// fn_75_50B0 (the head's FaceTarget state, 0x50B0-0x523C). Activate (0x50E8): the vector at
+// 0xF24 becomes the head's transform's Y column (0x28, 0x38 and 0x48). Update (0x5104), only
+// with a frame time above 0.0f (0x510C ble): the target at 0xEFE is looked up (0x5124); the
+// offset to it with z set to 0.0f (0x5130-0x516C) must be IsMagnitudeSafe (0x5170). The turn
+// is the frame time times the data's max turn speed (0x7C8, 0x519C-0x51A0) in degrees
+// (lbl_75_rodata_74, 0.017453292f): with the angle between the Y column and the offset
+// (0x51A4 GetAngleDiff) below it the vector at 0xF24 is the offset normalized (0x51BC-0x51DC),
+// else the Slerp from the Y column toward the normalized offset by the turn (0x51E4-0x521C).
+// Deactivate and other messages do nothing.
+void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mEditorProperties = GetTransform().GetColumn(kDY);
+    return;
+  }
+  if (msg != kStateMsg_Update || dt <= 0.f) {
+    return;
+  }
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncedId));
+  if (target == nullptr) {
+    return;
+  }
+  CVector3f offset = target->GetTranslation() - GetTranslation();
+  offset.SetZ(0.f);
+  if (!offset.IsMagnitudeSafe()) {
+    return;
+  }
+  const CVector3f forward = GetTransform().GetColumn(kDY);
+  const float turn = 0.017453292f * (dt * mData.mMaxTurnSpeed);
+  if (CVector3f::GetAngleDiff(forward, offset) < turn) {
+    mEditorProperties = offset.AsNormalized();
+  } else {
+    mEditorProperties =
+        CVector3f::Slerp(forward, offset.AsNormalized(), CRelAngle::FromRadians(turn));
+  }
+}
+
+// fn_75_55F8 (the head's ShouldLaserSweep trigger, 0x55F8-0x5610): the laser sweep stage at
+// 0xF34 is not -1 (0x55FC-0x5608: subfic -1, addi 1, or, srwi 31).
+// @ fn_75_55F8
+bool CSplitterCommandModule::ShouldLaserSweep(CStateManager&, const CTriggerData&) const {
+  return mLaserSweepStage != -1;
 }
 
 // The head's own effect-state update (fn_75_1578, 0x218) is ported as
