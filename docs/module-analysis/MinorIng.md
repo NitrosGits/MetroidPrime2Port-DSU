@@ -7,20 +7,20 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-21 17:35)
 
-- 128/217 functions marked (was 126). The new ones: `fn_44_4DDC` (the target's aim
-  position) and `fn_44_204C` (the lure point on the nav mesh), plus (from the earlier
-  slices) `fn_44_E0` (the module registration), `fn_44_2550` (the cover-hint claim),
-  `fn_44_D00` (the health-info copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the
-  ray the snap to the floor uses), `fn_44_3614` (the copy of the ray result),
-  `fn_44_FE8` (the grenade data the loader builds), `fn_44_C44` (the copy of it into
-  the data), `fn_44_D54` (the copy of the ing spot into the data), `fn_44_9B4` (the
-  data build) and `fn_44_AB78` (the best animation for a parm).
+- 129/217 functions marked (was 128). The new one is `fn_44_ABCC`, the module's static
+  constructor: its marker sits above the port's own FSM tables, which are that
+  initialiser's result (the way the EmperorIngStage3 port marks `fn_18_E180`). The ones
+  before it: `fn_44_4DDC` (the target's aim position) and `fn_44_204C` (the lure point on
+  the nav mesh), plus (from the earlier slices) `fn_44_E0` (the module registration),
+  `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info copy), `fn_44_5894`
+  (the team leave), `fn_44_34B0` (the ray the snap to the floor uses), `fn_44_3614` (the
+  copy of the ray result), `fn_44_FE8` (the grenade data the loader builds), `fn_44_C44`
+  (the copy of it into the data), `fn_44_D54` (the copy of the ing spot into the data),
+  `fn_44_9B4` (the data build) and `fn_44_AB78` (the best animation for a parm).
 - Every function of the module is classified in "The function classification" below and
   in `docs/module-analysis/MinorIng_functions.tsv`: **75 H** (a copy of something the
   host already has), **13 T** (a data/vtable thunk or dead in the REL), **129 B** (module
-  behaviour, 128 of them marked). The unmarked B list is one entry: `fn_44_ABCC`, the
-  module's static constructor, whose three FSM tables the host builds at runtime
-  (`tools/drivers/minoring_tables.py` checks them entry for entry).
+  behaviour, all 129 marked). **No unmarked behaviour is left in the module.**
 - `fn_44_204C`'s third branch (the height query succeeds) does not run in area 13: the
   nav mesh query returns `kR_NoSourcePoint` there for the lure point, for the player and
   with the search's flags at 3 and at 0x301, so the area has no region under either point.
@@ -29,8 +29,8 @@ half: what is ported, what is not, and the layout facts the port depends on.
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=5000 GODMODE=1
-  MP2_DEBUG_MINORING=1 DISPLAY_NUM=:105 SECS=220 tools/drivers/minoring_run.sh` (area 13
-  of 63, Agon Wastes). 290 `[minoring]` lines, 0 `[port] caught`, 0 `[reach-stub]`, the
+  MP2_DEBUG_MINORING=1 DISPLAY_NUM=:109 SECS=220 tools/drivers/minoring_run.sh` (area 13
+  of 63, Agon Wastes). 272 `[minoring]` lines, 0 `[port] caught`, 0 `[reach-stub]`, the
   run ended on the frame limit (exit 0). The twelve FSM states the module can reach all
   ran (the branch table below).
 - The flag bytes of the host are the retail's bits now (the header's bitfields are declared
@@ -62,8 +62,8 @@ Three classes, applied in this order:
   the function is dead in the REL (4 `unreferenced`: no module text calls it and no table
   names it - see "The functions the REL never calls").
 - **B - module behaviour** (129 functions, 0x8d88 bytes): real behaviour - these are the
-  port's bodies. 128 of them carry a `// @ fn_44_` marker; the one that does not is
-  `fn_44_ABCC`, the module's static constructor (below).
+  port's bodies. **All 129 carry a `// @ fn_44_` marker: no unmarked behaviour is left in
+  the module.**
 
 | class | functions | .text bytes |
 |---|---|---|
@@ -77,14 +77,16 @@ By kind: 53 `method`, 34 `fsm-trigger`, 30 `weak-dtor`, 29 `inline-dol`, 22 `vir
 2 `rel-entry`, 2 `template`, and one each of `rel-entry`, `loader`, `dtor`, `ctor` and
 `static-init` (= 217).
 
-### The unmarked B list
+### The last unmarked B function (now marked)
 
-`fn_44_ABCC` (0x8b8), the module's static constructor. It is the REL's `.ctors` entry, so
-`ModuleConstructors` calls it when the module is loaded. It copies the three FSM tables
-into `.data` - `data_1A8` (the 34 triggers), `data_47C` (the 15 states) and `data_5A8` (the
-5 code functions) - and registers the two global strings it builds (`fn_44_2984` is the
-destructor it registers with them). The port needs no body for it: the host installs its
-own tables in `CMinorIng::SetupStateMachine` and keeps the names as literals.
+`fn_44_ABCC` (0x8b8), the module's static constructor, was the last unmarked behaviour
+function. It is the REL's `.ctors` entry, so `ModuleConstructors` calls it when the module
+is loaded. It copies the three FSM tables into `.data` - `data_1A8` (the 34 triggers),
+`data_47C` (the 15 states) and `data_5A8` (the 5 code functions) - and registers the two
+global strings it builds (`fn_44_2984` is the destructor it registers with them). The
+port's three arrays (`skTriggers`, `skStates`, `skCodeFuncs`) are that initialiser's
+result, so its marker sits above the first of them, the way the EmperorIngStage3 port
+marks `fn_18_E180` and the EmperorIngStage1 port marks `fn_16_BF88`.
 `tools/drivers/minoring_tables.py` reads both sides and compares them entry for entry:
 
     == triggers: the REL's lbl_44_data_1A8 has 34 entries, the host's skTriggers has 34
@@ -92,24 +94,24 @@ own tables in `CMinorIng::SetupStateMachine` and keeps the names as literals.
     == code functions: the REL's lbl_44_data_5A8 has 5 entries, the host's skCodeFuncs has 5
     MISMATCHES: 0
 
-So the module has no unmarked behaviour left: the other 88 unmarked functions are 75 H and
+So the module has no unmarked behaviour left: the 88 unmarked functions are 75 H and
 13 T, and the 13 T are the vtable thunks and the four dead bodies, none of which the retail
 ever calls.
 
 ### The branch table of the run
 
 The run in the Agon Wastes' `0a_sand_hall_dark` (the sand world, area 13 of 63) with
-`MP2_DEBUG_MINORING=1` logged 290 module lines. The FSM states that ran:
+`MP2_DEBUG_MINORING=1` logged 272 module lines. The FSM states that ran:
 
 | state | how it ran |
 |---|---|
 | `Start` | the actor's first state (1) |
 | `Idle` | the idle state, 59 times (the Ing waits) |
-| `PathFind` | the path find state, 35 times (with `FoundMovementPos` and `ShouldPathFind` firing) |
-| `PointPathFind` | the point path find state, 35 times (with `PointPathOver` and `FoundPointPath` firing) |
-| `IntoPuddleForm` | the form change, 26 times (`AnimOver` fired it) |
-| `IntoCorporealForm` | the form change back, 25 times (`ShouldFire` fired it) |
-| `ProjectileAttack` | the attack state, 25 times (`AnimOver` fired it) |
+| `PathFind` | the path find state, 47 times (with `FoundMovementPos` and `ShouldPathFind` firing) |
+| `PointPathFind` | the point path find state, 47 times (with `PointPathOver` and `FoundPointPath` firing) |
+| `IntoPuddleForm` | the form change, 16 times (`AnimOver` fired it) |
+| `IntoCorporealForm` | the form change back, 14 times (`ShouldFire` fired it) |
+| `ProjectileAttack` | the attack state, 14 times (`AnimOver` fired it) |
 | `Stunned` | the stun state, twice (`PuddleHitByWeapon` fired it) |
 | `Dead` | the death state, twice |
 | `FollowAttackPattern` | the attack path state, once (`SelectTarget` fired it) |
@@ -430,10 +432,19 @@ thunks or dead bodies, all listed in
 - The host's two flag bytes are the retail's bits: `CMinorIng`'s bitfields are declared in
   the guest's LSB-first order, so the little-endian compiler gives every flag the retail's
   own mask, and the header carries the positions (`// 0xd3d 0x80`) so `tools/asmcheck.py`
-  can check them. Before that the host's masks were the bit-reversal of the retail's in
-  both bytes - self-consistent, so the behaviour was the same, but the checker could not
-  pair the C++'s writes with the asm's bits (95 `BIT` findings; 18 after the change, all
-  of them on the base class's own bytes).
+  can check them. The byte 0xd3e needs a pad bit: the guest's flags there start at 0x02
+  (0x01 is not a flag), so an unnamed `bool : 1;` takes that bit and every flag after it
+  lands on the retail's mask. Before that the host's masks were the bit-reversal of the
+  retail's in both bytes - self-consistent, so the behaviour was the same, but the checker
+  could not pair the C++'s writes with the asm's bits (95 `BIT` findings; 18 after the
+  change, all of them on the base class's own bytes). A temporary probe (not committed) that
+  set every flag in turn and diffed the object confirmed the masks on the real class: the
+  byte at 0xed8 is the guest's 0xd3d (mAttackPatternProjectile 0x01, mFollowingAttackPath
+  0x02, mIdle 0x04, mRecalculatePath 0x08, mFoundMovementPos 0x10, mPointPathFinding 0x20,
+  mPathFindActive 0x40, mHasPatrolPath 0x80) and the byte at 0xed9 is the guest's 0xd3e
+  (mShouldEvaporate 0x02, mInsideSafeZone 0x04, mShouldMoveUnderBall 0x08, mTouched 0x10,
+  mKnockAnimCancel 0x20, mCancelStun 0x40, mPuddleHitByWeapon 0x80). The host's class is
+  0xee0 bytes with and without the pad bit, so the pad changes no offset.
 - `CHealthInfo` is 0x20 bytes with the retail's layout (three floats, two weapon
   modes, four ids, two flag bits), so `fn_44_D00`'s copy is a plain assignment.
 
@@ -463,6 +474,11 @@ ids and their order and the teardown order were checked by hand.
 
 ## Gotchas
 
+- The retail writes the two flag bytes whole (it reads the byte, changes a bit and stores
+  it back), while the host writes the single bits, so `tools/asmcheck.py` reports seven
+  `STORE` findings on the byte 0xd3e ("the C++ never writes it"). The Ing module has the
+  same kind of finding (six of them), so it is the tool's model of a bitfield byte, not a
+  gap.
 - The host's trigger functions are `const` (upstream's `CPatterned`'s
   `TStateMachineFunctionTypes< CPatterned >::TriggerFunc`), so a trigger that writes a flag
   (the retail's `fn_44_4A74` clears `mPointPathFinding`, `fn_44_6268` writes

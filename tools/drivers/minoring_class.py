@@ -247,8 +247,8 @@ TABLE = {
     "fn_44_ABCC": ("module", "the module's static constructor (the .ctors entry): it copies the FSM "
                    "trigger and state tables into .data and registers the two global strings' "
                    "destructors", "static-init", "B",
-                   "the host builds the same tables at runtime (SetupStateMachine, "
-                   "RegisterMinorIngModule)"),
+                   "the port's own FSM tables (skTriggers, skStates, skCodeFuncs) carry the marker; "
+                   "tools/drivers/minoring_tables.py checks them entry for entry"),
 }
 
 MARK_RE = re.compile(r"^\s*//\s*@\s*fn_44_([0-9A-Fa-f]+)\s*$")

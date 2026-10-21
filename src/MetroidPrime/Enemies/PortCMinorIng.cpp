@@ -62,9 +62,17 @@ typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
 // Retail data_1A8 (34 triggers), data_47C (15 states) and data_5A8 (5 code functions), installed
 // by fn_44_9758; the names are the REL's own strings.
-// The REL's module constructor (fn_44_ABCC, the REL's .ctors entry) announces those names as
-// global objects and builds the tables; fn_44_2984 is the destructor it registers with them. The
-// host's own tables carry the names, so the body is the class's own.
+//
+// fn_44_ABCC (0x8b8) is the REL's .ctors entry, the compiler's static initialiser: it copies the
+// three tables' records into the name tables in .data and registers the two global strings it
+// builds (fn_44_2984 is the destructor it registers with them). The port's three arrays below
+// are that initialiser's result - the same 34 trigger names, the same 15 state names and the
+// same 5 code-function names, in the same order, each pointing at the retail function the
+// record names. `tools/drivers/minoring_tables.py` reads both sides and compares them entry for
+// entry (34 triggers, 15 states, 5 code functions, no mismatch), so the marker sits above the
+// first of them, the way the EmperorIngStage3 port marks fn_18_E180.
+//
+// @ fn_44_ABCC
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"PathShagged", static_cast< TriggerFunc >(&CMinorIng::PathShagged)},
     {"ShouldMoveUnderBall", static_cast< TriggerFunc >(&CMinorIng::ShouldMoveUnderBall)},

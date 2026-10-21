@@ -360,6 +360,8 @@ private:
   bool mPointPathFinding : 1;         // 0xd3d 0x20 (fn_44_4A68 reads it)
   bool mPathFindActive : 1;           // 0xd3d 0x40 (fn_44_8C1C reads it)
   bool mHasPatrolPath : 1;            // 0xd3d 0x80 (fn_44_6178 reads it, asm 0x928C sets it)
+  bool : 1;                           // 0xd3e 0x01: the retail's byte has no flag here (the
+                                      // retail's zeroed heap leaves it 0; nothing reads it)
   bool mShouldEvaporate : 1;          // 0xd3e 0x02 (fn_44_5D28 reads it)
   bool mInsideSafeZone : 1;           // 0xd3e 0x04 (fn_44_621C reads it, asm 0x9640 sets it)
   bool mShouldMoveUnderBall : 1;      // 0xd3e 0x08 (fn_44_5D34 reads it)

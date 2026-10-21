@@ -208,7 +208,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	port
 0xA980	0x5C	(weak)	delete of a CToken holder	weak-dtor	H		the host's own delete	no marker
 0xA9DC	0x19C	CMinorIng	the REL's own copy of the data block into the actor	inline-dol	H	9D58	the host's CMinorIngData is its own shape, so the copy is the member's own	no marker
 0xAB78	0x54	(port helper)	FindBestAnimationId: the best animation for a parm	method	B	9D58	the host's FindBestAnimationId (marked)	marked
-0xABCC	0x8B8	module	the module's static constructor (the .ctors entry): it copies the FSM trigger and state tables into .data and registers the two global strings' destructors	static-init	B		the host builds the same tables at runtime (SetupStateMachine, RegisterMinorIngModule)	no marker
+0xABCC	0x8B8	module	the module's static constructor (the .ctors entry): it copies the FSM trigger and state tables into .data and registers the two global strings' destructors	static-init	B		the port's own FSM tables (skTriggers, skStates, skCodeFuncs) carry the marker; tools/drivers/minoring_tables.py checks them entry for entry	marked
 0xB484	0x58	REL runtime	__destroy_global_chain: walks the global destructor chain, calling each registered dtor	runtime	H		crtexe global destructor chain	no marker
 0xB4DC	0x1C	REL runtime	__register_global_object: pushes (object, dtor, cookie) on the global destructor chain	runtime	H	4E84 ABCC	crtexe global object registry	no marker
 0xB4F8	0xC4	REL runtime	_unresolved: unresolved-symbol trap; OSReport + stack walk, never returns	runtime	H		crtexe unresolved-symbol handler	no marker
