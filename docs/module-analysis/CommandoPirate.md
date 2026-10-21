@@ -1559,7 +1559,7 @@ stateless helpers. Of the latter, only the ones the port's own code reaches are 
 the rest are called from the FSM states and triggers (the CommandoPirate lane's) or need the
 "Commando E-Grenade" script object, which the host has no class for.
 
-### 6.1 `fn_9_BE4C` - what the actor hears (vtable slot 0xb0): ported, not marked
+### 6.1 `fn_9_BE4C` - what the actor hears (vtable slot 0xb0): **marked**
 
 The port had it as a named stand-in that forwarded to the base's `Listen`; the module's own body
 is in the helpers file now (`CCommandoPirate::xBE4C_Listen`).
@@ -1582,17 +1582,18 @@ Retail's body (0x0000BE4C..0x0000BF3C):
 
 | branch | status | evidence |
 |---|---|---|
-| 0x0000BE4C (the actor is not alive) | (c) dead | the alive flag's only writer is the module's area-load death case (the port's `kSM_AreaLoaded`, guest this+0x420's 0x40 bit at 0x0000CE40), and that case sets the HP to -1 as well (0x0000CE5C) - the actor is deleted in the same update, so the actor is never in the world with the flag clear |
+| 0x0000BE4C (the actor is not alive) | (b) ran (forced) | forced under gdb: the alive flag (the base's byte at guest this+0x420, its 0x40 bit) is cleared at the body's entry (`tools/cov/specs/commandopirate_force.py`), so the early-out runs - in the game the flag's only writer is the module's area-load death case (the port's `kSM_AreaLoaded`, 0x0000CE40), which sets the HP to -1 as well (0x0000CE5C) and deletes the actor in the same update |
 | 0x0000BE7C (a path noise, too far) | (b) ran | coverage: the far path noise (the driver puts the commando 80 m from the player) returned 0 |
 | 0x0000BF0C (a path noise, heard) | (b) ran | coverage: 1 hit, the return value 1 |
 | 0x0000BEF4 (a shot, too far) | (b) ran | coverage: the far shot returned 0 |
-| 0x0000BF20 (the height range) | (d) reachable but not run | the base's height range at guest this+0x3d4 is 0 for area 59's commando, so the tie arm runs instead; the arm needs a commando whose detection height range is not 0 |
+| 0x0000BF20 (the height range) | (b) ran (forced) | forced under gdb: the base's height range at guest this+0x3d4 is written to 0.05 at the body's entry and the driver raises the noise by 5 cm, so the noise's height distance is over the range and the arm runs - in the game area 59's commando has the range at 0, so the tie arm runs instead |
 | 0x0000BF34 (a shot, heard) | (b) ran | coverage: 3 hits, the return value 1 |
 | 0x0000BF3C (another noise type) | (b) ran | coverage: 3 hits (the noises 1, 2 and 3), the return value 0 |
 
-The run: Temple Grounds 05_temple_federationsite_dark (area 59), the CommandoPirate lane's driver
+The runs: Temple Grounds 05_temple_federationsite_dark (area 59), the CommandoPirate lane's driver
 `tools/drivers/commandopirate_warpout.py` (it wakes the commando, puts the player five metres in
-front of it, makes the five noise types and then moves the commando 80 m away for two more), under
-`tools/cov/run.sh` with `tools/cov/specs/commandopirate.py` - no probe, no rebuild. The helper
-was called nine times and `grep -c '[port] caught|reach-stub'` on the run log is 0. One arm (the
-height range) did not run, so the body gets no marker yet.
+front of it, makes the five noise types, raises one noise by 5 cm and then moves the commando 80 m
+away for two more), under `tools/cov/run.sh` with `tools/cov/specs/commandopirate.py` (the
+coverage run: the helper was called nine times, no probe, no rebuild) and under
+`tools/cov/force.sh` with `tools/cov/specs/commandopirate_force.py` (the two forced arms, one
+gdb write each). `grep -c '[port] caught|reach-stub'` on the run log is 0.

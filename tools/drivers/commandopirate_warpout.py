@@ -74,6 +74,19 @@ def commandos():
     return out
 
 
+def commando_pos(cid):
+    for line in cmd("obj %s" % cid).split("\n"):
+        if "(" in line and ")" in line:
+            body = line[line.index("(") + 1:line.rindex(")")]
+            parts = [p.strip() for p in body.split(",")]
+            if len(parts) == 3:
+                try:
+                    return (float(parts[0]), float(parts[1]), float(parts[2]))
+                except ValueError:
+                    return None
+    return None
+
+
 def state_of(cid):
     for line in cmd("obj %s" % cid).split("\n"):
         if line.strip().startswith("fsm"):
@@ -95,8 +108,16 @@ def main():
         # hearing radius, and the five noise types cover the body's four arms.
         log("place: %s" % cmd("place %s player 5" % target))
         wait_frame(frame() + 10)
+        # the commando's own position, so a noise can be raised by 5 cm: the height-range arm
+        # of the Listen override (fn_9_BE4C) needs the noise's height distance over the base's
+        # height range (which the area's commando has at 0).
+        pos = commando_pos(target)
         for noise in (0, 4, 1, 2, 3):
-            log("noise %d: %s" % (noise, cmd("noise %d" % noise)))
+            if noise == 0 and pos is not None:
+                log("noise 0 (raised): %s" % cmd("noise 0 %.2f %.2f %.2f"
+                                                  % (pos[0], pos[1], pos[2] + 0.05)))
+            else:
+                log("noise %d: %s" % (noise, cmd("noise %d" % noise)))
             wait_frame(frame() + 10)
         # and the same two noises from far away: the body has a distance test of its own.
         log("place far: %s" % cmd("place %s player 80" % target))

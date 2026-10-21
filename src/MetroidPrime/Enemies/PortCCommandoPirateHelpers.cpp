@@ -16,11 +16,10 @@
 
 #include <math.h>
 
-// vtable slot 0xb0 - what the actor hears (fn_9_BE4C). No marker yet: the body is retail's and
-// six of its seven arms ran, but the height-range arm (0x0000BF20) needs a commando whose
-// detection height range is not 0 and area 59's has none - see the branch table in
-// docs/module-analysis/CommandoPirate.md, section 6.1.
-// Retail's body (0x0000BE4C..0x0000BF3C):
+// @ fn_9_BE4C
+// vtable slot 0xb0 - what the actor hears. Retail's body (0x0000BE4C..0x0000BF3C); the branch
+// table with the coverage evidence is in docs/module-analysis/CommandoPirate.md, section 6.1
+// (the height-range arm and the not-alive early-out are forced under gdb there).
 //   - the base's flag byte at guest this+0x420: without its 0x40 bit (the host's mAlive, the
 //     "the actor is alive" flag) the actor hears nothing (0x0000BE4C..0x0000BE60);
 //   - the noise type: 4 (a path noise) and 0 (a shot) are the two that matter, every other type
