@@ -182,7 +182,6 @@ void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float
   void CSplitterCommandModule::name(CStateManager&, float) {                        \
     StandIn(#fn " (the head's " #name " code)");                                 \
   }
-SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_5A40)
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
@@ -456,6 +455,12 @@ void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float
     mEditorProperties =
         CVector3f::Slerp(forward, offset.AsNormalized(), CRelAngle::FromRadians(turn));
   }
+}
+
+// fn_75_5A40 (the head's StateOver trigger, 0x5A40-0x5A50): a REL copy of the DOL's
+// CPatterned::GetAnimOver (0x80151990) - the animation state at 0x6B4 is kAS_Over (3).
+bool CSplitterCommandModule::StateOver(CStateManager& mgr, const CTriggerData& data) const {
+  return GetAnimOver(mgr, data);
 }
 
 // fn_75_55F8 (the head's ShouldLaserSweep trigger, 0x55F8-0x5610): the laser sweep stage at

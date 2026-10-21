@@ -19,6 +19,10 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "MetroidPrime/CObjectList.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -177,7 +181,6 @@ void StandInFn_75_9B9C() { StandIn("fn_75_9B9C (0x40C)"); }
   void CSplitterMainChassis::name(CStateManager&, float) {                          \
     StandIn(#fn " (the chassis's " #name " code)");                               \
   }
-SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_E64C)
 SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
 SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
 SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
@@ -193,7 +196,6 @@ SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
 SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
 SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
-SPLITTER_STATE_STANDIN(LegStabAttack, fn_75_DA38)
 SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
 SPLITTER_STATE_STANDIN(LaserSweepAttack, fn_75_D3E0)
@@ -212,9 +214,6 @@ SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
 SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
 SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
 SPLITTER_CODE_STANDIN(SetupLaserSweep, fn_75_B678)
-SPLITTER_CODE_STANDIN(SetMorphballStabLeg, fn_75_B66C)
-SPLITTER_CODE_STANDIN(FindBestStabLeg, fn_75_B57C)
-SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_B2A0)
 SPLITTER_CODE_STANDIN(BounceOffPlayer, fn_75_B1D8)
 SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 #undef SPLITTER_TRIGGER_STANDIN
@@ -417,6 +416,206 @@ void CSplitterMainChassis::PathFind(CStateManager& mgr, EStateMsg msg, float dt)
   }
   if (msg != kStateMsg_Deactivate) {
     PortUpdatePath(mgr);
+  }
+}
+
+// fn_75_E64C (the chassis's StateOver trigger, 0xE64C-0xE65C): a REL copy of the DOL's
+// CPatterned::GetAnimOver (0x80151990) - the animation state at 0x6B4 is kAS_Over (3).
+bool CSplitterMainChassis::StateOver(CStateManager& mgr, const CTriggerData& data) const {
+  return GetAnimOver(mgr, data);
+}
+
+// fn_75_B66C (the chassis's SetMorphballStabLeg code, 0xB66C-0xB678): the stab leg at 0xD08
+// is 0.
+// @ fn_75_B66C
+void CSplitterMainChassis::SetMorphballStabLeg(CStateManager&, float) { mStabLeg = 0; }
+
+// fn_75_B57C (the chassis's FindBestStabLeg code, 0xB57C-0xB66C): the stab leg at 0xD08 starts
+// as -1 (0xB588-0xB594). With the target at 0xCC0 (0xB5A8-0xB5B0) the offset to it is dotted
+// with the transform's Y column (0x28, 0x38 and 0x48; 0xB5CC-0xB5FC) and X column (0x24, 0x34
+// and 0x44; 0xB60C-0xB614 / 0xB634-0xB63C), each against 0.0f (lbl_75_rodata_390, fcmpo with
+// ble): ahead and right is leg 1, ahead and left 2, behind and right 3, behind and left 4.
+void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
+  mStabLeg = -1;
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId));
+  if (target == nullptr) {
+    return;
+  }
+  const CVector3f offset = target->GetTranslation() - GetTranslation();
+  const bool right = CVector3f::Dot(GetTransform().GetColumn(kDX), offset) > 0.f;
+  if (CVector3f::Dot(GetTransform().GetColumn(kDY), offset) > 0.f) {
+    mStabLeg = right ? 1 : 2;
+  } else {
+    mStabLeg = right ? 3 : 4;
+  }
+}
+
+// fn_75_909C (0x909C-0x91E4): whether a dodge of the given length along a direction stays
+// clear. The ray runs from the bounding box's centre (0x90D8 GetBoundingBox, 0x90E4
+// GetCenterPoint) to that point plus the direction times the length (0x90E8-0x913C); with the
+// filter that includes kMT_Solid (lbl_75_data_CA4, 0x3B) and excludes kMT_CollisionActor
+// (lbl_75_data_CA8, 0x2F) RayCollideWorld must answer true (0x9190-0x9198, the ray is clear) and
+// the end must be on the path search's mesh (0x91A4 OnPath at 0xB7C, kR_Success).
+bool CSplitterMainChassis::PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir,
+                                            float length) {
+  const CVector3f start = GetBoundingBox().GetCenterPoint();
+  const CVector3f end = start + dir * length;
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor));
+  return mgr.RayCollideWorld(start, end, filter, this) &&
+         mPathFindSearch.OnPath(end) == CPathFindSearch::kR_Success;
+}
+
+// fn_75_91E4 (0x91E4-0x951C): the dodge direction away from a missile's offset. The base's
+// FindBestStepDirection (0x9260) picks the axis: for kSD_Left the transform's Y column (the two
+// answers 1 and 0), for kSD_Right the negated Y column (0 and 1), for kSD_Forward the negated X
+// column (3 and 2) and otherwise the X column (2 and 3) (0x9264-0x9304). Every other listening
+// AI actor of the same area (the state manager's list at 0x830, 0x9308-0x9438; the area id at
+// 0x4) closer than the step distance at 0xD38 (squared, 0x9378) blocks a side when it lies within
+// 60 degrees of it (lbl_75_rodata_398, 1.0471976f, GetAngleDiff): the axis side when its dot with
+// the offset is at least 0.0f (0x93A0-0x93D4), the opposite side otherwise (0x93D8-0x9414). Each
+// side still open must also be clear (fn_75_909C with the step distance, 0x943C-0x949C); with
+// both open the random number's 0x4000 bit (0x94B4 Next, 0x94B8) closes the opposite side, else
+// the axis side. The answer is the opposite side's value, else the axis side's, else -1.
+int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVector3f& away) {
+  const float rangeSq = mStepDistance * mStepDistance;
+  CVector3f axis = GetTransform().GetColumn(kDX);
+  int axisAnswer = 3;
+  int oppositeAnswer = 2;
+  switch (FindBestStepDirection(away)) {
+  case pas::kSD_Left:
+    axis = GetTransform().GetColumn(kDY);
+    axisAnswer = 0;
+    oppositeAnswer = 1;
+    break;
+  case pas::kSD_Right:
+    axis = -GetTransform().GetColumn(kDY);
+    axisAnswer = 1;
+    oppositeAnswer = 0;
+    break;
+  case pas::kSD_Forward:
+    axis = -axis;
+    axisAnswer = 2;
+    oppositeAnswer = 3;
+    break;
+  default:
+    break;
+  }
+  bool axisOpen = true;
+  bool oppositeOpen = true;
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    // The retail reads the entry's position (0x54-0x5C) without a cast: the list holds AI actors.
+    const CActor* other = TCastToConstPtr< CActor >(list[i]);
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f offset = other->GetTranslation() - GetTranslation();
+    if (offset.MagSquared() >= rangeSq) {
+      continue;
+    }
+    if (CVector3f::Dot(offset, axis) >= 0.f) {
+      if (axisOpen && CVector3f::GetAngleDiff(axis, offset) < 1.0471976f) {
+        axisOpen = false;
+      }
+    } else if (oppositeOpen && CVector3f::GetAngleDiff(-axis, offset) < 1.0471976f) {
+      oppositeOpen = false;
+    }
+  }
+  if (axisOpen) {
+    axisOpen = PortDodgeIsClear(mgr, axis, mStepDistance);
+  }
+  if (oppositeOpen) {
+    oppositeOpen = PortDodgeIsClear(mgr, -axis, mStepDistance);
+  }
+  if (oppositeOpen && axisOpen) {
+    if ((mgr.Random()->Next() & 0x4000) != 0) {
+      oppositeOpen = false;
+    } else {
+      axisOpen = false;
+    }
+  }
+  if (oppositeOpen) {
+    return oppositeAnswer;
+  }
+  return axisOpen ? axisAnswer : -1;
+}
+
+// fn_75_B2A0 (the chassis's FindBestDodgeDirection code, 0xB2A0-0xB540): the dodge direction at
+// 0xD04 starts as -1 (0xB2D4-0xB2DC). Only with the data's flag word (0x828) bit 0x10 or 0x20
+// (0xB2E4-0xB2F4), the timer at 0xD34 below 1.0f (lbl_75_rodata_364, 0xB2F8-0xB308) and the dodge
+// timer at 0xD1C at most 0.0f (0xB30C-0xB324): a Range(0.0f, 100.0f) roll (lbl_75_rodata_37C,
+// 0xB33C) above the data's dodge chance (0x84C) restarts the dodge timer with the data's min
+// dodge interval (0x848, 0xB500-0xB504). Otherwise the target at 0xCC0 must be the player
+// (0xB364 TCastToPtr<CPlayer>) orbiting the chassis or its head (the player's 0x3B0 against 0x8
+// and 0xC6C, 0xB370-0xB388); then the near list of projectiles (lbl_75_data_C88, 0x23) in a box
+// 50.0f (lbl_75_rodata_3B8) around the chassis (0xB38C-0xB430) is searched for the first missile
+// (the weapon's 0x160 is 6, kWT_Missile) in the chassis's area (0x4) (0xB44C-0xB484). For it the
+// flag bit 0x20 sets the direction to 5 (0xB488-0xB498), and the bit 0x10 replaces it with
+// fn_75_91E4's answer for the offset from the missile (0xB49C-0xB4DC).
+void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
+  mDodgeDirection = -1;
+  if ((mData.mUnknownCEF5C2FE & 0x30) == 0 || mTimerD34 >= 1.f || mDodgeTimer > 0.f) {
+    return;
+  }
+  if (mgr.Random()->Range(0.f, 100.f) > mData.mDodgeChance) {
+    mDodgeTimer = mData.mMinDodgeInterval;
+    return;
+  }
+  const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mSyncId));
+  if (player == nullptr ||
+      (player->GetOrbitTargetId() != GetUniqueId() && player->GetOrbitTargetId() != mCommandModuleId)) {
+    return;
+  }
+  const CVector3f pos = GetTranslation();
+  const CAABox box(pos - CVector3f(50.f, 50.f, 50.f), pos + CVector3f(50.f, 50.f, 50.f));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
+                    nullptr);
+  for (int i = 0; i < nearList.size(); ++i) {
+    const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(nearList[i]));
+    if (weapon == nullptr || weapon->GetType() != kWT_Missile ||
+        weapon->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    if ((mData.mUnknownCEF5C2FE & 0x20) != 0) {
+      mDodgeDirection = 5;
+    }
+    if ((mData.mUnknownCEF5C2FE & 0x10) != 0) {
+      mDodgeDirection = PortFindDodgeDirection(mgr, pos - weapon->GetTranslation());
+    }
+    return;
+  }
+}
+
+// fn_75_DA38 (the chassis's LegStabAttack state, 0xDA38-0xDBA8). Activate (0xDA70): with a stab
+// leg from 0 to 4 at 0xD08 the animation state at 0x6B4 is kAS_Ready (1) and 0xD40's 0x1 bit is
+// set (0xDA84-0xDA94), otherwise the state is kAS_Over (3, 0xDA9C-0xDAA0). Update (0xDAA8):
+// when the DOL's CTryCommand::ShouldRetry (fn_801B73E4, the host's
+// CAnimationState::CanIssueCommand) allows body state 7 (kAS_MeleeAttack, 0xDAB0-0xDAB4) a melee
+// attack command goes to the body controller's command manager (0xDB2C DeliverCmd, id 5) with
+// the severity lbl_75_rodata_2F8[leg] (the table 0, 1, 2, 3, 4; 0xDAD8-0xDAE0), a zero target
+// and no target flag (0xDB1C-0xDB28). Deactivate (0xDB7C): the animation state is kAS_NotReady
+// (0), the leg stab timer at 0xD10 gets the data's leg stab interval (0x82C) and 0xD40's 0x1 bit
+// is cleared.
+void CSplitterMainChassis::LegStabAttack(CStateManager&, EStateMsg msg, float) {
+  static const pas::ESeverity skLegStabSeverity[5] = {pas::kS_Zero, pas::kS_One, pas::kS_Two,
+                                                       pas::kS_Three, pas::kS_Four};
+  if (msg == kStateMsg_Activate) {
+    if (mStabLeg >= 0 && mStabLeg <= 4) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      mFlagsD40 |= 0x1;
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(skLegStabSeverity[mStabLeg]));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mLegStabTimer = mData.mLegStabAttackInterval;
+    mFlagsD40 &= ~0x1;
   }
 }
 
@@ -822,6 +1021,12 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
   // (the rodata string at 0x3B7) - fn_8002BE04 is CAnimData::GetLocatorSegId on the model's
   // animation data. The 0xFF the ctor stores first (0x0000F780) is overwritten here.
   mLocatorSegment = GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("attach_LCTR"));
+  // fn_75_F5F8 @0x0000FA70-0x0000FB08: guest 0xD38 is the step distance - the step animation
+  // (kAS_Step with the parameters 3 and 1, fn_75_6F1C builds the CPASAnimParmData) times the
+  // model's x scale (the model data at 0x60).
+  const CPASAnimParmData stepParms(pas::kAS_Step, CPASAnimParm::FromEnum(3),
+                                   CPASAnimParm::FromEnum(1));
+  mStepDistance = GetModelData()->GetScale().GetX() * GetAnimationDistance(stepParms);
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not

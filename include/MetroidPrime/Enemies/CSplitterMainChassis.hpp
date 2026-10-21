@@ -309,6 +309,16 @@ private:
   // guest 0xD04: the dodge direction FindBestDodgeDirection (fn_75_B2A0) picks, -1 for none
   // (the constructor, 0x0000F800-0x0000F80C); the ShouldDodge trigger (fn_75_E098) tests it.
   int mDodgeDirection = -1;
+  // guest 0xD08: the leg the LegStabAttack state (fn_75_DA38) stabs with, 0-4 (the severity it
+  // sends), -1 for none: FindBestStabLeg (fn_75_B57C) and SetMorphballStabLeg (fn_75_B66C) pick
+  // it.
+  int mStabLeg = -1;
+  // guest 0xD38: the step distance (the constructor, 0x0000FB08); FindBestDodgeDirection's
+  // helpers (fn_75_91E4, fn_75_909C) use it as the dodge range and length.
+  float mStepDistance = 0.f;
+  // The retail's fn_75_91E4 and fn_75_909C.
+  int PortFindDodgeDirection(CStateManager& mgr, const CVector3f& away);
+  bool PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir, float length);
   // The retail's fn_75_AFE8 (the chassis's timers) and fn_75_9520 (its fade), the Think's
   // calls at 0x0000F164 and 0x0000F180.
   void PortUpdateTimers(CStateManager& mgr, float dt);
