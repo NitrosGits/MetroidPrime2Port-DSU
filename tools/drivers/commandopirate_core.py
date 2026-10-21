@@ -36,6 +36,8 @@ def connect():
 
 
 sock = connect()
+# A world load under gdb (a forcing run) can hold the console for longer than the connect timeout.
+sock.settimeout(300)
 stream = sock.makefile("rw")
 
 
