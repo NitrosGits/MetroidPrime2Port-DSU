@@ -153,19 +153,21 @@ def call_sites(mangled, label, cap, extent=None):
 def install():
     gdb.execute('set print asm-demangle on')
     syms = []
+    addrs = []
     for ln in open(os.environ['COV_NM']):
         parts = ln.rstrip('\n').split('\t')
         if len(parts) == 2:
             f = parts[0].split()
             if len(f) == 3 and f[1] in 'tTW':
                 syms.append((f[2], parts[1]))
+                addrs.append(int(f[0], 16))
     # the symbol table, sorted by address: a symbol's extent ends where the next one starts
-    addrs = sorted(a for a, m, d in syms)
+    order = sorted(range(len(syms)), key=lambda i: addrs[i])
+
     def extent_of(mangled):
-        for a, m, d in syms:
-            if m == mangled:
-                nxt = [x for x in addrs if x > a]
-                return nxt[0] if nxt else None
+        for i in order:
+            if syms[i][0] == mangled:
+                return addrs[order[i + 1]] if i + 1 < len(order) else None
         return None
     for label, where, exprs, flags in SPEC:
         results[label] = {'hits': 0, 'arms': {}, 'where': where, 'exprs': exprs}
