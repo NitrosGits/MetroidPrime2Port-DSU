@@ -961,9 +961,8 @@ private:
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
   // guest 0xA40 / 0xA80 / 0xAB8: the record bytes of the missile attacks and the freeze beam.
   // fn_10_62B4 (the Arrived trigger) reads the shield flag byte 0xCD0 and the float 0xF64 (the
-  // time offset the trigger adds to its 6.0f and 20.0f tests) and the point 0xEE4/0xEE8 (the
-  // helpers branch's mGuestEE4, the path find's fallback destination).
-  float mGuestF64;                 // guest 0xF64, the Arrived trigger's time offset
+  // time offset the trigger adds to its 6.0f and 20.0f tests - the fsm2 lane's member) and the
+  // point 0xEE4/0xEE8 (the helpers branch's mGuestEE4, the path find's fallback destination).
   // fn_10_9314 (the DoneRolling trigger) reads the float 0xEA4 (the roll's time), 0xEA8 (the
   // roll's other time), the point 0xEAC/0xEB0/0xEB4 and the radius 0xEB8, all in the boost
   // ball's record (the 0xE10 sub-object's +0x9C..+0xA8). Nothing in the port writes them yet.
@@ -977,13 +976,6 @@ private:
                                    // BreakNormalMissile trigger (fn_10_16B5C) reads it
   uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
                                    // BreakSuperMissile trigger (fn_10_16B54) reads it
-  // fn_10_7A14 (the EnrageHitReact state) writes the float 0xFB0 (the random time it draws on
-  // Deactivate) and 0xFC4 (the health at that moment), and steps the guest's own random pair
-  // 0x1058/0x105C (`mulhw` with 0x55555556 at 0x00007A8C).
-  float mGuestFB0;                 // guest 0xFB0, the EnrageHitReact state's random time
-  float mGuestFC4;                 // guest 0xFC4, the EnrageHitReact state's health
-  uint mGuest1058;                 // guest 0x1058, the guest random's first word
-  uint mGuest105C;                 // guest 0x105C, the guest random's second word
   uint mGuestAB0;                  // guest 0xAB0, the freeze beam's counter: at least 1 makes
                                     // the state deliver the exit state command (0x00016DA8)
   int mGuest9FC;                   // guest 0x9FC, the EnragedTravel state's target (-1 = none,
@@ -1039,17 +1031,23 @@ private:
   int mGuestF4C = 0;                 // guest 0xF4C, the phazon attack's shots to fire
   float mGuestF58 = 0.f;             // guest 0xF58, the height PhazonSuck starts at
   bool mGuestF5C40 = false;          // guest 0xF5C bit 0x40 (fn_10_81D4 reads)
-  float mGuestF64 = 0.f;             // guest 0xF64, the phazon go-to time (fn_10_6460, 652C)
-  float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0)
+  float mGuestF64 = 0.f;             // guest 0xF64, the phazon go-to time (fn_10_6460, 652C); the
+                                    // Arrived trigger (fn_10_62B4) reads it as its time offset
+  float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0); the
+                                    // EnrageHitReact state (fn_10_7A14) writes its random time
   int mGuestFB4 = 0;                 // guest 0xFB4, the phazon volley's missiles (fn_10_67B8)
   int mGuestFB8 = 0;                 // guest 0xFB8, the phazon volley is a single (fn_10_67B8)
   int mGuestFBC = 0;                 // guest 0xFBC, the phazon volley pattern index
   float mGuestFC0 = 0.f;             // guest 0xFC0, the phazon blend in [0, 1]
-  float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at
+  float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at; the
+                                    // EnrageHitReact state (fn_10_7A14) writes the health
   CAABox mGuest102C = CAABox(CVector3f::Zero(), CVector3f::Zero()); // guest 0x102C, the base box
   bool mGuest1044 = false;           // guest 0x1044 bit 0x80, 0x102C is kept
-  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218)
-  int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C)
+  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218);
+                                    // the EnrageHitReact state (fn_10_7A14) reads it as the
+                                    // multiplier of its step (the `mulhw` at 0x00007A8C)
+  int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C); the
+                                    // EnrageHitReact state adds its step to it (0x00007A9C)
 #ifdef TARGET_PC
   // The stateless helpers of the module (the ones below 0xA000). Their bodies live in
   // src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp; docs/module-analysis/DarkSamus_helpers.md

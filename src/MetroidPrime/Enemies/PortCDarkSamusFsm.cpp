@@ -2594,8 +2594,12 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float) {
   BodyController()->SetLocomotionType(pas::kLT_Internal10); // 0x00007A4C
   if (msg == kStateMsg_Deactivate) {
     mGuestFB0 = mgr.Random()->Range(0.2f, 4.5f); // 0x00007A70
-    const uint hi = static_cast< uint >((static_cast< uint64_t >(0x55555556u) * mGuest1058) >> 32);
-    mGuest105C += hi + (hi >> 31); // 0x00007A8C
+    // 0x00007A8C: the `mulhw` with 0x55555556 - the high word of 0x55555556 * 0x1058 and its
+    // carry bit - is added to 0x105C. The two words are the guest's own (the phazon volleys' in
+    // the fsm2 lane's naming); the retail's are unsigned, so the step is done in unsigned.
+    const uint hi = static_cast< uint >(
+        (static_cast< uint64_t >(0x55555556u) * static_cast< uint32_t >(mGuest1058)) >> 32);
+    mGuest105C = static_cast< int >(static_cast< uint >(mGuest105C) + hi + (hi >> 31)); // 0x00007A8C
     mGuestFC4 = GetHealthInfo()->GetHP(); // 0x00007AB0
   }
   FsmStandIn("fn_10_7F98", "state EnrageHitReact's enrage helper"); // 0x00007AC8
