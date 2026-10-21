@@ -937,14 +937,10 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
   // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
   // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
-  // (0x00006E3C, the include/exclude one).  Both lists are 64-bit and their high word is 1
-  // (asm 0x6E40 `stw r4, 0x7c(r1)`, the include list's high word, and
-  // asm 0x6E50 `stw r29, 0x84(r1)`, the exclude list's high word, both 1), which is the
-  // material 32 (kMT_Player).  Excluding kMT_Character keeps the docked head out of
+  // (0x00006E3C, the include/exclude one). Excluding kMT_Character keeps the docked head out of
   // the chassis's collider list (CSortedListManager asks both actors' filters).
-  SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid).Union(CMaterialList(kMT_Player)),
-                                    CMaterialList(kMT_CollisionActor, kMT_Character)
-                                        .Union(CMaterialList(kMT_Player)),
+  SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid),
+                                    CMaterialList(kMT_CollisionActor, kMT_Character),
                                     CMaterialFilter::kFT_IncludeExclude));
   // fn_75_6B08 @0x00006E60-0x00006EF8: the dodge distance at 0xEE8 is the model's scale x times
   // the animation distance of a right (3) dodge (1) step (body state 3, fn_75_6F1C).
