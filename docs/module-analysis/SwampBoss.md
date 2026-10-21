@@ -708,6 +708,38 @@ three are the REL's copies of base behaviour, so they are cited, not ported):
 | `fn_78_69AC` | 0 (a vtable slot) | `bl GetAimPosition__10CPatternedCFRC13CStateManagerf` | `CPatterned::GetAimPosition` - the base's |
 | `fn_78_69D8` | 0 (a vtable slot) | `bl GetDamageVulnerability__10CPatternedCFv` | `CPatterned::GetDamageVulnerability` - the base's |
 
+### Stage1: the console's `shoot`, the weak spot and the accumulator cap (2026-10-21)
+
+`git merge port` brought the console's `shoot <id> [charged] [d]` (a real beam projectile at an
+actor, homing on it) and the fixed `fsm` reply.
+
+**`shoot` works and the damage is real.** `shoot <belly> charged 4` puts a charged projectile into
+the larva: the trace shows `dmg=25.00 orig=50.00` (the charged beam, halved by the boss's 0.5
+vulnerability) and the boss's HP goes 600 -> 550.
+
+**But the shots do not reach the weak spot.** The trace shows `weak=0` for every hit: the beam is
+fired from the player's side and the spine joints are in the way, so the hits land on a body
+joint (`weak=0`) and never on `L_middle2_boob_LCTR` (the type-1 joint, the only one with the weak
+spot's vulnerability and the x2 damage multiplier). With `d = 1` the projectile starts inside the
+target's sphere and registers no touch at all (0 hits in 5 shots); with `d = 4` it hits something
+(2 hits in 24 shots, 8%).
+
+**And the accumulator cannot climb past the cap.** The port's `ApplyDamageMsg` grows `xd10` only
+in the states 0, 4, 5, 9 and 10, and caps it at half the threshold (25) while no tongue has been
+launched (`xc00_tongues < 1`); `BeachWait` and `Dive` reset it to 0. A charged hit in state 0
+therefore leaves `xd10 = 25` for a few frames and the next `BeachWait` wipes it before
+`fn_78_6458` is evaluated - the trace's heartbeat never sees a value above 0.0.
+
+**So state 3 is still not reached** and the branch tables for `fn_78_35DC`, `fn_78_3320`,
+`fn_78_348C` and `fn_78_9A44` are unchanged (0 entries each, the arms as listed above). What
+would be needed: a hit that lands on the **weak** joint while the boss is in a tongue state
+(4, 5, 9 or 10) - the tongue has to have run once, so `xc00_tongues` lifts the cap - and the
+shots have to arrive before the next `BeachWait`/`Dive` reset.
+
+The `fsm` reply is now honest ("entered; now B"), which confirms the forced entry works; the
+remaining problem is only that the state does not survive long enough for the `LightHit` and
+`HeavyHit` triggers to fire on the next frame.
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata
