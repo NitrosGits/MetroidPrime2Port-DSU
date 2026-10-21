@@ -24,7 +24,7 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   wall-timed plans) and `tools/drivers/con.py` `@f<n>` scripts; drivers go in `tools/drivers/`.
 - Console (`help` lists all): `fsm <id> <state>` (reaches FSM2 sub-machines), `place <id> player [d]`,
   `damage <id> <n> [weapon|powerbomb|annihilator|darkburst|sunburst|sonicboom]`, `send <id> <msg>`,
-  `shoot`, `boost` (morphed), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
+  `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
   argument (it kills the player).
 - Kill only pids you launched (bracketed `pgrep -f` names) and any Xvfb you started. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
@@ -42,8 +42,8 @@ call, tail calls included; `caller=` misses tail calls), `max=<n>` (hits per bre
 it for per-frame functions or later arms never show). `<out>/cov.txt` lists per entry its hits and the
 count per key tuple (also `cov.json`; both rewritten every 15 s, so a killed run keeps them); a key that
 never shows is an arm that never ran. Label entries with the retail offset; put layer switches and
-`fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Give each run its own
-`COV_PORT`/`DISPLAY_NUM` (a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
+`fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Each run takes a free slot (its own
+display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
 
 ## Gates (one line each in the report)
 

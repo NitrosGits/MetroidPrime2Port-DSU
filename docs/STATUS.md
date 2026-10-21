@@ -294,3 +294,5 @@ on scannables"; asked how, "they flash".
 Older sessions: `docs/STATUS-history.md`.
 
 The openchamber tool rejects every non-string argument (2026-10-20), so lanes run as subagents now; old lane sessions can't be resumed from here.
+- 2026-10-21 16:40 batch9 merged (081b71c14): CommandoPirate a957ff47c, EmperorIng1 298b62b1c, Splitter a619f5a69, DarkSamus2 ce575f3c8, Ing blob 9f8fd3003, Ing 646a9fabd, Sandworm cad0531f5, SwampBoss2 4a51bc63c, DigitalGuardian f8ec985d5; smoke9 no regressions.
+- 2026-10-21 17:20 batch10 merged (f09b42959): CommandoPirate df8fbb5b6, DarkSamus2 5fe53f11c, EmperorIng1 af5535c8f (done), Splitter 4a756509f, Ing 1a0ba410f, SwampBoss2 32c062e08, BoostGuardian 75bd1ac4d (done), Sandworm 36fb82f7c, SandBoss 5a5858859 (done), SpacePirate 727d520b8, DigitalGuardian 0d273717a + aurora 32 MiB uniform buffer (82b1c482c); 1890/4730 fns. smoke10 vs smoke9: turret (GPU reset 16:56, innocent context) and ing (X display shared with another run) pass solo (smoke10b); agon54 exit 137 = shutdown hang twice, same as spacepirate (sp-hang lane). New console `noise` (196d15fee).

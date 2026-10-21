@@ -166,8 +166,10 @@ CBouncingBomb* CSandworm::DropBouncingBomb(CStateManager& mgr, const CVector3f& 
 
 // Anim-event spawns (called from DoUserAnimEvent)
 
-// fn_56_8E90 (ported, not exercised yet)
-// Data-gated: the BG prefab never selects kind 4 (picked 7), so this cannot run; see Sandworm.md Port status.
+// @ fn_56_8E90
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into BombFountainAttack): the anim event's
+// projectile case with the current attack 7 spawns the toss bomb - 27 calls. The else arm of the
+// normalise test is unreachable: the vector's z is Range(1.0, 1.2), so it is never zero.
 void CSandworm::SpawnBombToss(CStateManager& mgr) {
   CBouncingBomb* bomb = SpawnBouncingBomb(mgr, 12.f, 3.f, 1.f, 0.7f);
   // Retail draws z, then y, then x.
@@ -249,8 +251,12 @@ CBouncingBomb* CSandworm::GetHeldBomb(CStateManager& mgr) const {
   return TCastToPtr< CBouncingBomb >(mgr.ObjectById(x1998_));
 }
 
-// fn_56_95E0 (ported, not exercised yet)
-// Data-gated: the BG prefab never selects kind 4 (picked 7), so this cannot run; see Sandworm.md Port status.
+// @ fn_56_95E0
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into BombFountainAttack, then the eyes shot):
+// both arms ran. The breakpoint printed the held bomb's id: 1523 and 1547 (a live bomb, so the
+// delete arm) and -1 (no bomb, so the early-out). The early-out comes from the XDMG path
+// (fn_56_11374 at 0x11B64), which calls DeleteHeldBomb once the worm's HP drops below a bomb-phase
+// threshold - the fountain attack's exit had already deleted the bomb, so the id was invalid.
 void CSandworm::DeleteHeldBomb(CStateManager& mgr) {
   if (x1998_ != kInvalidUniqueId) {
     mgr.DeleteObjectRequest(x1998_);
@@ -277,8 +283,11 @@ void CSandworm::SpawnHeldBomb(CStateManager& mgr) {
 
 // States
 
-// fn_56_B8B8 (ported, not exercised yet)
-// Data-gated: the BG prefab never selects kind 4 (picked 7), so this cannot run; see Sandworm.md Port status.
+// @ fn_56_B8B8
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into BombFountainAttack): 481 calls, so the
+// activate, the update and the deactivate arm all ran. The old "data-gated" note was wrong: the
+// BG prefab's AFSM has the BombFountainAttack state, and forcing it (console `fsm`) runs the
+// picked-7 chain that the prefab's own attack pick never chooses.
 void CSandworm::BombFountainAttack(CStateManager& mgr, EStateMsg msg, float) {
   BeginAttack(7, msg);
   x1520_flags |= 0x80;

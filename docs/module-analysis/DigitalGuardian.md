@@ -1395,3 +1395,55 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   - 9E88 ran the active collision-actor arm and the locator arm (actor inactive, 0x11B8 clear),
     but not the 0x11B8 arm.
   - A138 ran the no-emitter arm only.
+
+## 2026-10-21: forced arms, runs 400-404
+
+- Drivers: `tools/drivers/dg_area53.sh <tag> <port> <display> <steps>` with the step files
+  `dg_steps_beacon_rounds.sh`, `dg_steps_armour_off_stun.sh` and `dg_steps_close.sh`. The `fsm`
+  step needs port's console. Pick counts come from a local probe that was not committed.
+- The body constructor now allocates the beacon's echo emitter (fn_14_B100 at 0xC01C..0xC074), so
+  pre-render's emitter arms can run.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A138 | no emitter | 37-39 | ran |
+| A138 | beacon model with height | 402 | ran |
+| A138 | emitter, no beacon height | 402, 404 | ran |
+| A138 | bit 0x08 (inactive) | 404, forced (`send <body> CLOS`) | unreachable: CLOS deletes the body before its next pre-render |
+| 14470 | random 1 and 3 | 402/403 (11 picks) | not run: the splitter main chassis is a pass-through stand-in, so the splitters never all die |
+| 15284 | armour off, no platform | 403, forced (`fsm <head> StunnedReaction`) | not run: StunnedReaction is a sub-machine state, which `fsm` cannot enter |
+| 173AC (IsIdle) | bit 0x80 set | FSM2 dump | not run: its triggers sit in sub-machines (`fsm <head> Idle` fails the same way) |
+| 9E88 | 0x11B8 set | - | unreachable until the vortex states (fn_14_9260/9070/8E44/76D0) are ported |
+
+- Marked: fn_14_A138. Still unmarked: 14470, 15284, 173AC, 9E88.
+- Console asks:
+  - `fsm <id> <Machine>/<State>`, to enter FSM2 sub-machine states. This would unblock IsIdle
+    and the 15284 armour-off arm.
+  - `delete <id>` (`CStateManager::FreeScriptObject`), to remove the undamageable splitter
+    chassis. This would unblock 14470's random arms.
+
+## 2026-10-21: vortex states, runs 410-413
+
+- Ported: fn_14_9260 VortexAttack, fn_14_9164 VortexEndAttack, fn_14_9070 VortexRetreat,
+  fn_14_8E44 ExitVortexAttack, fn_14_76D0 SetNormalAttackMode, fn_14_775C SetVortexAttackMode and
+  the helpers 34E8, 3674, 39CC, 3DA8, 4838, 4878, 4D54, plus the knee's fn_14_CE1C SetOrbitable.
+- Constructor fix: 0x128C starts at 0x80 (the rlwimi at 0xBA30 with r6 = 1); the port had 0.
+- Step files: `dg_steps_vortex.sh` (`fsm <body> VortexAttack`, then the sub-machine runs on its
+  own) and `dg_steps_head_stun.sh`. `dg_steps_beacon_rounds.sh` still needs the uncommitted
+  14470 probe for its counts (see its header).
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 9260 | act, no drift, over, deact | 410, 412, forced (`fsm <body> VortexAttack`) | ran |
+| 9260 | drift (0x128D bit 0x40) | - | not run: only fn_14_A468 (DoUserAnimEvent, stand-in) sets it |
+| 3674 | no 0x40 | 410, 412 | ran; the pull arm needs 0x128D 0x40 (A468) |
+| 9164, 9070, 8E44 | every arm | 412, forced as above | ran |
+| 34E8 | no target / target: dist, near, step, accel, clamp | 410, 412 | ran; `unsafe` (dist > 0, direction not magnitude-safe) not run |
+| 76D0 | head, no head | 410-413 | ran |
+| 775C, 3DA8 off, CE1C off, 39CC null | - | - | not run: 775C runs on the root transition into the vortex, which `fsm` skips |
+| 4D54, 4878 | shaker | 410, 412 | ran; the no-shaker arm not run |
+| 173AC | bit 0x80 set | 410-413 | ran (no branch) |
+| 9E88 | 0x11B8 set | 410-412 | not run: no aim-position query during the vortex |
+
+- Marked: 9070, 9164, 8E44, 76D0, 4838, 173AC. Unmarked: 9260, 3674 (need A468 + 3300, 4E00,
+  458C, 73D4: a follow-up slice), 34E8, 39CC, 3DA8, 4D54, 4878, 775C, CE1C, 9E88, 15284.

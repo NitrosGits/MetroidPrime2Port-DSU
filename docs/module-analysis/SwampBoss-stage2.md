@@ -294,7 +294,6 @@ B4 GetOrigin, D0 GetHealthInfo.
   - 4324 spit radius.
   - ZeroHealth index field.
   - Riding-platform clear in water.
-  - Scan by form.
   - Actor +0x150 draw gate.
   - AddParticleGen slot.
   - mDrawParticles mask.
@@ -334,7 +333,7 @@ manager's copies).
 |---|---|---|
 | 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | **marked** (7.15, 7.17, 7.18): the port has all four bodies (`LaunchPlatformChain`, `CollectChainNodes`, `WalkChainNodes`, `PlaceChainNodes`, `SwingChainNodes`) and every arm of them ran |
 | 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | **marked** (7.17, 7.18): the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`); the chain launch reaches them |
-| 7E24 | the `Blow` state | the port's `Blow` is partial (it keeps the blow damage and the wind flag, the rest is still open) |
+| 7E24 | the `Blow` state | **marked** (7.12, 7.19): the port's body is retail's and every arm of it ran |
 | 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
 | 4F88 | `SendDecrement` | no caller anywhere in the module |
 | 5D40 | `GetIngSnatchingPoint` | the port has the body but the ing-snatch transition never runs in the port |
@@ -690,7 +689,7 @@ again before the commit):
 | 0x8110 | the player is not being blown -> no blow damage | (b) both sides: `[arm] 38 7E24 the blow damage`, `[arm] 39 7E24 no blow damage` |
 | 0x81B8, 0x81C0 | the sustained damage is popped when the blow ends | (b) the pop side: `[arm] 41 7E24 the sustained damage is popped` |
 | 0x81E4 | the wind effect is waiting (the flag bit 30) -> fn_79_3578 | (b) both sides: `[arm] 42 7E24 the wind effect`, `[arm] 43 7E24 no wind effect` |
-| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the FSM2 evaluates a state's transitions **after** that state's update (the port's `CGenericFSM2State::Update`: `ExecuteState(update)` then `EvaluateTransitions`), so the update's cleanup (0x81B8) has already popped the sustained damage and cleared `mBlowing` whenever the blow window (the anim event 0x2b) closed first - and it did in every run (`[arm] 41`). The arm is only reachable if the state is left while the window is still open; the driver now sends the stun (a console `damage <body joint uid> 25`, 5% of the joint's 500 HP, which takes the head health to zero) the moment the probe shows the window open, but the run that did it never reached the `Blow` with the window open, so the arm is still unproven |
+| 0x8214 | the deactivate pops the sustained damage | (b) the pop side: `[arm] 80 7E24 the deactivate pops the sustained damage` - **forced (fsm)**: the blow window is open for fewer updates than a console round trip, so the state is left on the frame the player starts being blown (7.19) |
 
 **`fn_79_7E24` is therefore not marked**: its body is retail's (every branch above is matched to
 the port's code), but two real arms - "the player is grappling" (0x804C) and "the deactivate pops
@@ -957,3 +956,97 @@ walk (`send <boss> AreaLoaded`), the states (`fsm`) and the placement (`place`).
 chain 6 nodes and the dark chain 82.  The chain's node list grows with every `kSM_AreaLoaded`
 message - the retail appends to the two vectors as well (its `fn_79_5830` has no clear), so the
 light chain had 12 entries after the second message and the dark chain 164.
+
+### 7.19 The Blow's arms and the dark phase (2026-10-21, twelfth lane pass)
+
+**The dark phase is reachable.** It needs all four growths dead, and only a real beam hit
+damages a growth: the retail's ProcessDamage casts the joint's last toucher to a CWeapon
+(fn_79_61C4) and only the projectile is one, so the console's `damage` cannot do it. The
+recipe the driver uses (`tools/drivers/swampboss2_dark.py`):
+
+1. the boss starts stunned (its head health is 0, so the `Stunned` trigger puts it in the
+   `Reel`), which is where the growths are vulnerable (`mGrowthsVulnerable`);
+2. the growths are only *active* while the player is behind the boss (fn_79_24E0), so the
+   driver puts the player 30 units behind it (`tp`);
+3. `shoot u<growth joint> 30` fires the player's beam at each growth: a real
+   `CEnergyProjectile`, so the weapon cast succeeds and the growth loses 2 HP of its 60;
+4. the boss ignores a second hit from the same toucher, so the console's `damage` (which
+   counts as the player) has to alternate with a beam hit.
+
+After about 120 beam hits the four growths are dead, `AllGrowthsDead` fires and the boss
+becomes a dark flyer (phase 1).  In the dark phase the anim event 0x1b fires in the
+`DropFlyer` state's animation and the **dark chain** (`mChainBNodes`, 82 nodes) is the one
+that swings: `[probe] 55B0 the chain u06c8 with 82 nodes`, 19 to 35 times in a run.
+
+**fn_79_7E24** (the `Blow` state) - **marked**: every arm ran.  The two the earlier pass could
+not reach now do:
+
+| branch | what | class |
+|---|---|---|
+| 0x804C | the player is grappling -> the window's block is skipped | (b) the skip side: `[arm] 84 7E24 the player is grappling` (the console's `grapple u<point>` holds the lock-on while the window is open) |
+| 0x8214 | the deactivate pops the sustained damage | (b) the pop side: `[arm] 80 7E24 the deactivate pops the sustained damage` - **forced (fsm)**: the blow window is open for a handful of updates, less than a console round trip, so the state is left on the frame the player starts being blown (the probe's `StateMachineState().SetState(..., "Start")`, i.e. the console's `fsm <boss> Start` at the only moment it can reach) |
+
+The state's other arms (the message dispatch, the melee command, the window closed, the push
+setup, the blow damage, the pop at the blow's end, the wind effect) are the earlier pass's
+(7.12); this pass added the two above plus the two window tests the probe shows as well
+(0x801C the aim is not in front of the head, 0x8040 the aim is too far to the side).
+
+**A port divergence found here and fixed in 7.20: the chain flag's initial value.** The
+retail's constructor clears the flag that the chain selection reads (`rlwimi r4, r0, 0, 31, 31`
+at 0xC0E8, mask 0x1 of the byte at 0xc76 - `tools/asmcheck.py annotate` on fn_79_BE3C), while the
+port's constructor set it (`mLightFlyer(true)`). The flag is the one the anim event 0x1b
+reads (0xA9D8, mask 0x1) and the one `BecomeLightFlyer` sets and clears (0x95CC / 0x9734), so
+with the port's value the **dark** chain (82 nodes) was the one that swung in the light and
+the dark phase, where the retail swings the light chain (6 nodes); the dark chain is the
+retail's while the boss is in the `BecomeLightFlyer` state (the phase 2/4 transition). 7.20
+fixes it and reaches the phase 2.
+
+**The driver**: `tools/drivers/swampboss2_dark.py` (the console part) with
+`tools/drivers/swampboss2_run.sh` (`DRIVER=swampboss2_dark.py`, `--grapple` for the grapple
+arm). It waits for the area before it asks for layer 6 (a layer request that arrives during
+the boot never finishes), kills the growths, and then drives the Blow.
+
+### 7.20 The chain flag, the phase's chain and the scan (2026-10-21, thirteenth lane pass)
+
+**The chain flag is the byte at 0xc76's bit 0** (the word at +0xc74 holds its bits 16..23).
+Every reader and writer of it, against the asm (`tools/asmcheck.py annotate`):
+
+| where | what | the port |
+|---|---|---|
+| 0xC0E8 (fn_79_BE3C, the ctor) | the ctor **clears** it (`xc76 &= ~0x1`) | the ctor now clears it too: it used to set it (`mLightFlyer(true)`), which made the port swing the dark chain everywhere |
+| 0x95CC / 0x9734 (fn_79_9534, BecomeLightFlyer) | the activate sets it, the deactivate clears it | the same |
+| fn_79_91A4 (BecomeDarkFlyer) | never touches it | the same |
+| 0xA9D8 (fn_79_A838, the anim event 0x1b) | reads it: the chain pick - set means the chain at 0xdd0 (the dark chain, 82 nodes), clear the one at 0xca4 (the light chain, 6 nodes) | the same |
+| 0xAA5C (the anim event 0x01, the egg lay) | reads it the same way | the same |
+| fn_79_2690 (the scan) | **never reads it**: the scan is picked by the phase (0x26A0-0x26F0) - the phase 0 and 2 use the light scan (0xe04), the phase 1 and 3 the dark one (0xe08), the phase 4 and up the base's | the port used the flag (`TODO(uncertain)`, the "Scan by form" item); it now uses the phase |
+
+**Which chain swings where, after the fix** (the probe's lines, one run):
+
+    [probe] 1b the chain launch, lightflyer 0 phase 1 st DropFlyer
+    [probe] 55B0 the chain u0700 with 6 nodes
+    [probe] 1b the chain launch, lightflyer 1 phase 2 st BecomeLightFlyer
+    [probe] 55B0 the chain u06c8 with 82 nodes
+
+So the phase 1 (the dark flyer) swings the **light** chain (6 nodes) and the phase 2's
+`BecomeLightFlyer` swings the **dark** chain (82 nodes) - the retail's rule, because the flag
+is set exactly while the boss is in the `BecomeLightFlyer` state.
+
+**The phase 2 (the ovipositor's death)** is reached by damaging the tail joint (the collision
+actor 4, `spine_5_scale2`) while the boss is in the head mode: the retail's ProcessDamage
+takes the ovipositor's health off that joint's damage (fn_79_61C4), and the top machine's
+`OvipositorDead` edge then goes to `BecomeLightFlyer` (the phase 2). The driver's recipe is
+the same as for the growths: `damage u<tail> 25` alternating with a beam hit (the boss ignores
+a second hit from the same toucher). After the ovipositor dies the fight cycles on: the phase
+0 (the light flyer) -> 1 (the dark flyer) -> 2 (the light flyer again) -> 3 (the dark flyer
+again), and the chain follows the flag.
+
+**Two more bit positions fixed in the same byte**: the port's `mSwoopSelected` (the `Lurk`'s
+"swoop picked" flag) sat at 0xc76's bit 6, but the retail's flag is the byte's bit 7 (the
+`Lurk` sets it at 0x9B14, clears it at 0x9BCC and reads it at 0x9ADC); the byte's bit 6 is
+only ever cleared by the ctor (0xC0AC), so it is now `mUnusedC76Bit6`. The header's flag
+comments carry the byte's bit positions for 0xc74, 0xc75, 0xc76 and 0xc77, which is what
+`tools/asmcheck.py` reads: the module's check went from 212 findings to 107 (the rest are the
+loader-data findings, unchanged).
+
+**The scan fix** (`fn_79_2690`) also removes the "Scan by form" TODO: the retail picks the
+scan by the phase, and the port now does the same.
