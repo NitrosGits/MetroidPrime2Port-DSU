@@ -1616,7 +1616,8 @@ bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListen
   return heard;
 }
 
-// Retail fn_72_E090 (GetOrigin): the pirate's own position.
+// @ fn_72_E090 (GetOrigin, 0x1C): the pirate's own position. Branchless; the team AI of
+// 07_sand_alamoportalobservation L3 called it 400+ times in the gdb run.
 CVector3f CSpacePirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                   const CVector3f& aimPos) const {
   // 0xE090-0xE0A4: this+0x54/0x58/0x5c, the actor's translation.
@@ -1632,7 +1633,7 @@ uchar CSpacePirate::GetModelAlphau8(const CStateManager& mgr) const {
 }
 
 CProjectileInfo* CSpacePirate::ProjectileInfo() {
-  // Retail returns this+0xbd4 whether or not the ctor built it; the host keeps it optional.
+  // 0x4F0C-0x4F14: the optional's built flag (0xbfc); set -> this+0xbd4 (0x4F18), clear -> null (0x4F20).
   return mProjectileInfo.valid() ? &mProjectileInfo.data() : nullptr;
 }
 
