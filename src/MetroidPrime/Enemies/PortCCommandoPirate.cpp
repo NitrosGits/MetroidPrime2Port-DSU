@@ -270,11 +270,14 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xc64_(0)                                        // 0xc64, fn_9_D904 @0x0000E150
 , xc65_(0x80)                                     // 0xc65, fn_9_D904 @0x0000E1B0
 , xc66_(0)                                        // 0xc66, fn_9_D904 @0x0000E1E8
+, xc54_(-1)                                       // 0xc54, fn_9_D904 @0x0000E0CC
+, xc3c_armEffect(xF58C_CreateEffect(data.mShield.mArmEffect))        // 0xc3c, fn_9_D904 @0x0000E094
+, xc40_chargeEffect(xF58C_CreateEffect(data.mShield.mChargeEffect))  // 0xc40, fn_9_D904 @0x0000E0A4
 {
   // The retail constructor sets knock-back physics on CPatterned's own manager (@0x0000E264) to
   // !((byte at +0x91c >> 2) & 1) - that is, to the manager's own default while the flag bit is
   // clear - and sets the base's flag byte at +0x681. The rest - the CVisualKnowledge, the six
-  // locked tokens, the two CElementGen pointers, the burst fire and the three animation distances
+  // locked tokens, the burst fire and the three animation distances
   // - belongs to the state machine and the render paths this milestone does not enter; the
   // analysis note lists them.
   KnockBackController().EnableKnockBackPhysics(true);
@@ -337,6 +340,8 @@ void CCommandoPirate::EnsureBodyActive(CStateManager& mgr) {
 // (0x0000DC18) - so the guest's tests (the rag doll is there at 0x0000CAF0, its byte at +0x70
 // has its 0x40 bit, the primed flag, at 0x0000CAFC) always take the bone tracking's branch (the
 // call at 0x0000CB10); the base's PreThink follows (0x0000CB20).
+// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// @ fn_9_CAC8
 void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
@@ -451,6 +456,7 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
   }
   if (mHitByPlayerProjectile) {                // 0x0000696C
     xb64_ = 0.f;                               // 0x00006980
+    mHitByPlayerProjectile = false;            // the base's 0x420 byte, its 0x80 bit, 0x00006988
   } else {
     xb64_ += dt;                               // 0x0000699C
   }
@@ -972,6 +978,9 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
 // hit-object damage) is ported as x3A5C_HitObject.
 void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
+  // r31: the entity's active bit as it was before the base's handler (0x0000CB60..0x0000CB80) -
+  // the base's own kSM_Activate/kSM_Deactivate change it, so the cases test the old value.
+  const bool wasActive = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);  // 0x0000CB84
   switch (message) {
   case kSM_Create: {                                       // "XCRT", 0x0000CCCC
@@ -980,7 +989,7 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     break;
   }
   case kSM_Deactivate: {                                   // "DCTV", 0x0000CD88
-    if (GetActive()) {                                     // the byte at guest this+0x20, 0x0000CD88
+    if (wasActive) {                                       // r31, 0x0000CD88
       if (mCollisionShield.get() != nullptr) {             // 0x0000CD90..0x0000CDA4
         mCollisionShield->SetActive(mgr, false);
       }
@@ -993,7 +1002,7 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
   }
   case kSM_Activate: {                                     // "ACTV", 0x0000CD3C
     if ((mData.mFlags1 & 0x80) != 0) {                     // guest this+0x91d, 0x0000CD3C
-      if (!GetActive() && x920_ == -1) {                    // 0x0000CD48..0x0000CD58
+      if (!wasActive && x920_ == -1) {                       // 0x0000CD48..0x0000CD58
         mColor.SetAlpha(0.f);                              // guest this+0x44f, 0x0000CD6C
         mAlphaDelta = 0.f;                                 // guest this+0x40c, 0x0000CD70
       }
@@ -1014,7 +1023,7 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     break;
   }
   case kSM_Escape: {                                       // "ESCP", 0x0000CF2C
-    if (GetActive() && (xc63_ & 0x20) == 0) {              // 0x0000CF2C..0x0000CF3C
+    if (wasActive && (xc63_ & 0x20) == 0) {                // r31, 0x0000CF2C..0x0000CF3C
       x3D64_SetWarpOut(mgr, true);                         // 0x0000CF4C
     }
     break;
@@ -1096,10 +1105,13 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     if ((xc65_ & 0x0C) != 0 && msg.GetSenderId() == xbc6_) {  // 0x0000D168..0x0000D184
       if (const CCollisionActor* actor =
               TCastToPtr< CCollisionActor >(mgr.ObjectById(xbc6_))) {  // 0x0000D198..0x0000D1A4
+        // The collision actor's own vulnerability (its vtable +0x40, 0x0000D1CC), copied
+        // (fn_9_D294, 0x0000D1D8) - not the pirate's.
+        const CDamageVulnerability vulnerability = *actor->GetDamageVulnerability();
         if (const CWeapon* weapon = TCastToPtr< CWeapon >(
                 mgr.ObjectById(actor->GetLastTouchedObject()))) {  // 0x0000D1B0..0x0000D1EC
-          if (GetDamageVulnerability()->WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
-                                                  0)) {                                 // 0x0000D204
+          if (vulnerability.WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
+                                       0)) {                                            // 0x0000D204
             x2D0C_KnockBack(mgr, msg);                       // 0x0000D224
           }
         }
@@ -1123,7 +1135,7 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     break;
   }
   case kSM_SetToZero: {                                    // "ZERO", 0x0000CEF8
-    if (GetActive() && (xc63_ & 0x20) == 0) {              // 0x0000CEF8..0x0000CF08
+    if (wasActive && (xc63_ & 0x20) == 0) {                // r31, 0x0000CEF8..0x0000CF08
       xc63_ |= 0x40;                                       // 0x0000CF14
       x3D64_SetWarpOut(mgr, false);                        // 0x0000CF24
     }
@@ -1568,14 +1580,20 @@ void CCommandoPirate::x3900_JumpBackVelocity(CStateManager& mgr) {
 // call at 0x0000C77C) follows with the model's scale (the three floats at the model data's +0,
 // loaded at 0x0000C754..0x0000C770), the actor's transform (guest this+0x24) and the body
 // controller (guest this+0x48c).
+// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// @ fn_9_C6D4
 void CCommandoPirate::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);  // 0x0000C728
   mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
                           *BodyController());  // 0x0000C77C
 }
 
+// @ fn_9_C4FC
 // vtable slot 0x28 = fn_9_C4FC (0x20): a straight call to CPatterned::AddToRenderer, so the base's
 // is what runs.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// entry 50/50 (capped), the base's call 50.
 void CCommandoPirate::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
@@ -1603,9 +1621,13 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
   if (alpha > 0.f) {                                            // 0x0000C640..0x0000C644
     CPatterned::Render(mgr);                                    // 0x0000C650
     if (xc4c_ == 0) {                                           // 0x0000C664..0x0000C668
-      StandIn("the module's own renderable at guest this+0xC3C (fn_9_C598)");
+      if (xc3c_armEffect.get() != nullptr) {                    // 0x0000C670..0x0000C678
+        xc3c_armEffect->Render();                               // vtable +0x10, 0x0000C688
+      }
     } else if (xc4c_ == 1) {                                    // 0x0000C658..0x0000C65C
-      StandIn("the module's own renderable at guest this+0xC40 (fn_9_C598)");
+      if (xc40_chargeEffect.get() != nullptr) {                 // 0x0000C690..0x0000C698
+        xc40_chargeEffect->Render();                            // vtable +0x10, 0x0000C6A8
+      }
     }
   }
 }
@@ -1614,6 +1636,8 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
 // is always null - the constructor stores 0 there (0x0000DC18) - so the guest's rag-doll branch
 // (the CRagDoll::PreRenderAllViewports call at 0x0000C560 with lbl_9_rodata_458 = 0.2f, then the
 // portal system state) is dead here and the base's PreRenderAllViewports runs (0x0000C57C).
+// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// @ fn_9_C51C
 void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);  // 0x0000C57C
 }
@@ -1621,6 +1645,9 @@ void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
 // vtable slot 0x40 = fn_9_C2CC (0x34): the shield's damage vulnerability while the flag byte at
 // guest +0xc65 has its 0x04 bit set (the guest tests it with extrwi at 0x0000C2DC), the actor's
 // own vulnerability otherwise.
+// Run: force2, 05_swamp_timber! (2026-10-21): both arms; the shield arm forced (tools/cov/force.sh,
+// FORCE "C2CC shield bit": xc65_ |= 0x04 from the 301st call).
+// @ fn_9_C2CC
 const CDamageVulnerability* CCommandoPirate::GetDamageVulnerability() const {
   if (xc65_ & 0x04) {
     return &mShieldVulnerability;
@@ -1640,7 +1667,7 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
   bool handled = false;                                              // r6, 0x0000C8D4
   switch (type) {
   case kUE_Projectile: {                                             // the entry 0 (+0xb8)
-    x5410_CreateEGrenade();                                          // 0x0000C850
+    x5410_CreateEGrenade(mgr);                                        // 0x0000C850
     handled = true;                                                  // 0x0000C854
     break;
   }
@@ -1706,7 +1733,8 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
 // (the test at 0x00001C40) and the body controller's byte at guest this+0x48C + 0x594 has its
 // 0x20 bit (the test at 0x00001C50), it sets the 0x04 bit of the byte at guest this+0xC64 and
 // deactivates the module's own collision actor manager (the guest's this+0xA3C). Then it
-// deactivates the module's two own renderables (the guest's this+0xC40 and this+0xC3C) and
+// turns off the emission of the shield's two particle systems (the guest's this+0xC40 and
+// this+0xC3C) and
 // advances the module's own scale (the float at guest this+0xC44) towards its target (the float
 // at guest this+0xC48): with a frame time below 0.5f (rodata_440) the scale moves by the frame
 // time times the difference over 0.5f (0x00001CC4..0x00001CDC), otherwise it takes the target
@@ -1730,10 +1758,18 @@ void CCommandoPirate::x1C0C_UpdateRenderables(CStateManager& mgr, float dt) {
   }
   if ((xc66_ & 0x20) != 0 && BodyController()->IsFrozen()) {        // 0x00001C3C..0x00001C54
     xc64_ |= 0x04;                                                  // 0x00001C58..0x00001C68
-    StandIn("the module's collision actor manager at guest this+0xa3c (fn_9_1C0C)");  // 0x00001C6C..0x00001C70
+    // The guest calls through the pointer without a test; the host's test covers the window
+    // before the kSM_Create case has built the manager.
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->SetActive(mgr, false);                      // 0x00001C70
+    }
   }
-  StandIn("the module's own renderable at guest this+0xc40 (fn_9_1C0C, deactivate)");  // 0x00001C74..0x00001C90
-  StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C, deactivate)");  // 0x00001C94..0x00001CB0
+  if (xc40_chargeEffect.get() != nullptr) {                         // 0x00001C74..0x00001C7C
+    xc40_chargeEffect->SetParticleEmission(false);                  // vtable +0x2c, 0x00001C90
+  }
+  if (xc3c_armEffect.get() != nullptr) {                            // 0x00001C94..0x00001C9C
+    xc3c_armEffect->SetParticleEmission(false);                     // vtable +0x2c, 0x00001CB0
+  }
   if (dt < 0.5f) {                                                  // rodata_440, 0x00001CB4..0x00001CC0
     xc44_ = xc44_ + dt * (xc48_ - xc44_) / 0.5f;                     // 0x00001CC4..0x00001CDC
   } else {
@@ -1742,18 +1778,31 @@ void CCommandoPirate::x1C0C_UpdateRenderables(CStateManager& mgr, float dt) {
   if (xc44_ < 0.1f && xc48_ < 0.1f) {                               // rodata_42C, 0x00001CEC..0x00001D08
     xc4c_ = -1;                                                     // 0x00001D0C..0x00001D10
   }
-  // The state word picks the renderable to drive: 1 is the one at guest this+0xC40 and 0 the one
-  // at this+0xC3C (0x00001D14..0x00001D28). The state-1 branch tests the renderable at
-  // this+0xC40 for null (0x00001D30..0x00001D38) and falls through to the state-0 block when it
-  // is null; the port has no renderable at this+0xC40, so the state-1 branch always falls
-  // through to the state-0 block.
-  bool driveC3C = xc4c_ == 0;                                      // 0x00001D24..0x00001D28
-  if (xc4c_ == 1) {                                                // 0x00001D14..0x00001D1C
-    driveC3C = true;                                               // 0x00001D30..0x00001D38
+  // The state word picks the effects to drive (0x00001D14..0x00001D28): 1 drives the charge
+  // effect and then falls through to the arm effect (there is no branch after 0x00001E00), 0
+  // drives the arm effect alone, anything else neither.
+  if (xc4c_ != 0 && xc4c_ != 1) {                                   // 0x00001D20, 0x00001D28
+    return;
   }
-  if (driveC3C) {
-    StandIn("the module's own renderable at guest this+0xc3c (fn_9_1C0C, drive)");  // 0x00001E04..0x00001ED4
+  if (xc4c_ == 1 && xc40_chargeEffect.get() != nullptr) {           // 0x00001D18, 0x00001D30..0x00001D38
+    x1C0C_DriveEffect(*xc40_chargeEffect, dt);                      // 0x00001D3C..0x00001E00
   }
+  if (xc3c_armEffect.get() != nullptr) {                            // 0x00001E04..0x00001E0C
+    x1C0C_DriveEffect(*xc3c_armEffect, dt);                         // 0x00001E10..0x00001ED4
+  }
+}
+
+// One effect's block of fn_9_1C0C (the two blocks at 0x00001D3C and 0x00001E10 are the same):
+// emission on (vtable +0x2c), the orientation (+0x14) and the global translation (+0x20) from
+// the locator at guest this+0xC62's transform, the global scale (+0x24) from the module's own
+// scale at guest this+0xC44 on all three axes, and the update (+0x0c) by the frame time.
+void CCommandoPirate::x1C0C_DriveEffect(CElementGen& effect, float dt) {
+  effect.SetParticleEmission(true);                                 // 0x00001E20
+  const CTransform4f xf = GetLctrTransform(mLocatorLWrist);         // 0x00001E30
+  effect.SetOrientation(xf.GetRotation());                          // 0x00001E64
+  effect.SetGlobalTranslation(xf.GetTranslation());                 // 0x00001E68..0x00001E94
+  effect.SetGlobalScale(CVector3f(xc44_, xc44_, xc44_));            // 0x00001E98..0x00001EBC
+  effect.Update(dt);                                                // 0x00001ED4
 }
 
 // fn_9_3E1C (0x324 bytes): the module's rag-doll driver, called from the actor's Think (the
@@ -1791,13 +1840,6 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt) {
   StandIn("the module's rag doll (fn_9_3E1C)");                    // 0x00004020..0x0000410C
   xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
-
-// fn_9_5410 (0x370 bytes): the E-grenade's own creator - the kUE_Projectile event's helper. It
-// creates the "Commando E-Grenade" script object and clears the grenade-pending bit of the flag
-// byte at guest this+0xC63 (0x00005764). The host has no script-object class for the
-// "Commando E-Grenade" (the module's own object constructor fn_9_F418 and destructor fn_9_F290 are
-// not ported), so the helper stays a named stand-in.
-void CCommandoPirate::x5410_CreateEGrenade() { StandInFn("fn_9_5410 (0x370 bytes)"); }
 
 // fn_9_1F88 (0xd4 bytes): the kUE_EventStart event's helper - the shield's sound and scale.
 // While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at
@@ -1962,19 +2004,27 @@ void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) 
 // vtable slot 0xa8 = fn_9_A4 (0x8): `li r3, 0x1`, so the actor can always be shot.
 bool CCommandoPirate::CanBeShot(const CStateManager& mgr, int attributes) { return true; }
 
+// @ fn_9_8
 // vtable slot 0xac = fn_9_8 (0x8): `li r3, 0x1`, so the actor always listens.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// 50 hits (capped) in each.
 bool CCommandoPirate::IsListening() const { return true; }
 
-// vtable slot 0xb0 = fn_9_BE4C (0xf8): what the actor hears.
-bool CCommandoPirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
-  StandIn("CCommandoPirate::Listen (vtable slot 0xb0, fn_9_BE4C)");
-  return CPatterned::Listen(mgr, position, type);
-}
+// vtable slot 0xb0 = fn_9_BE4C (Listen): PortCCommandoPirateCore.cpp.
 
+// @ fn_9_D474
 // vtable slot 0xdc = fn_9_D474 (0x8): `addi r3, r3, 0xa14`, the projectile info at guest +0xa14.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// 50 hits (capped) in each.
 CProjectileInfo* CCommandoPirate::ProjectileInfo() { return &mProjectileInfo; }
 
+// @ fn_9_0
 // vtable slot 0xe0 = fn_9_0 (0x8): `addi r3, r3, 0x928`, the path search at guest +0x928.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// 50 hits (capped) in area 59.
 CPathFindSearch* CCommandoPirate::GetSearchPath() { return &mPathFindSearch; }
 
 // vtable slot 0xe4 = fn_9_70 (0x8): `li r3, 0x0` - this actor has no point-based path.
@@ -2525,10 +2575,7 @@ bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& 
   return xb5c_ <= 0.f;
 }
 
-bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_AFD4");
-  return false;
-}
+// fn_9_AFD4 (CoverBlown): PortCCommandoPirateCore.cpp.
 
 // fn_9_AFB8: the float at guest this+0xB8C against the float at this+0xB90 (both loaded at
 // 0x0000AFB8 and 0x0000AFBC). The compare is fcmpo cr0, f1, f0 (0x0000AFC0) and the cror at
@@ -2817,17 +2864,11 @@ void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float d
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);     // 0x0000A8C8..0x0000A8D0
 }
 
-void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A4BC");
-}
+// fn_9_A4BC (MeleeAttack): PortCCommandoPirateCore.cpp.
 
-void CCommandoPirate::EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A2EC");
-}
+// fn_9_A2EC (EGrenadeAttack): PortCCommandoPirateCore.cpp.
 
-void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_A110");
-}
+// fn_9_A110 (PostEGrenadeAttack): PortCCommandoPirateCore.cpp.
 
 // @ fn_9_9F24
 // fn_9_9F24 (0x1ec bytes): the JumpPointFind state. Only the activate message (the guest's test
@@ -2888,9 +2929,7 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
   }
 }
 
-void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9BB4");
-}
+// fn_9_9BB4 (JetBoost): PortCCommandoPirateCore.cpp.
 
 // fn_9_19D8: the module's team helper, called by the destination states. The commando takes the
 // team of its area when it has none yet: the id at guest this+0xBC4 must be kInvalidUniqueId
@@ -3143,9 +3182,7 @@ void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
-void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_9064");
-}
+// fn_9_9064 (WarpIn): PortCCommandoPirateCore.cpp.
 
 // run: area 59 (05_temple_federationsite_dark), tools/drivers/commandopirate_warpout.py, 2026-10-21
 // @ fn_9_8DF0
@@ -3876,9 +3913,7 @@ void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
-void CCommandoPirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_7724");
-}
+// fn_9_7724 (Crouch): PortCCommandoPirateCore.cpp.
 
 // fn_9_7358 (0x310 bytes): the WallHang state - the commando hangs on the wall the cover point
 // it holds points at.
@@ -4106,13 +4141,9 @@ void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
-void CCommandoPirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6DBC");
-}
+// fn_9_6DBC (Cover): PortCCommandoPirateCore.cpp.
 
-void CCommandoPirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6C68");
-}
+// fn_9_6C68 (CoverAttack): PortCCommandoPirateCore.cpp.
 
 // @ fn_9_6BCC
 // fn_9_6BCC (0x9c bytes): the BreakCover state. Only the activate message (the guest's test of 0
@@ -4129,9 +4160,7 @@ void CCommandoPirate::BreakCover(CStateManager& mgr, EStateMsg msg, float dt) {
   xc66_ &= ~0x40;                     // 0x00006C40..0x00006C4C
 }
 
-void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_6A40");
-}
+// fn_9_6A40 (GetUp): PortCCommandoPirateCore.cpp.
 
 // fn_9_69C8 (0x78 bytes): the Dead state. The base's own dead handler runs first (the call at
 // 0x000069EC); the activate message (the guest's test of 0 at 0x000069F0) then takes the byte at
@@ -4148,11 +4177,15 @@ void CCommandoPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_9_BDE0
 // vtable slot 60 = fn_9_BDE0 (0xBDE0..0xBEB4): the base's setup first (the call at 0x0000BDF4),
 // then the module's two tables on the state manager - the triggers (lbl_9_data_198, 34 = 0x22)
 // through the vtable slot at +0x18 (the call at 0x0000BE14) and the states (lbl_9_data_568,
 // 36 = 0x24) through +0x14 (the call at 0x0000BE34). The module has no third table: the
 // records between the two tables' stores run out at the state's last entry.
+// One arm. Run: tools/cov/run.sh with tools/cov/specs/commandopirate.py and
+// tools/drivers/commandopirate_core.py, area 59 (05_temple_federationsite_dark) and 05_swamp_timber!:
+// once per commando (1 in area 59, 2 in the Swamp), the base's call each time.
 void CCommandoPirate::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   StateMachine* stateMachine = mStateMachine.get();
@@ -4200,6 +4233,7 @@ static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
       grenade.grenadeMass, grenade.unknown_0xed086ce0, bladeDamage, grenade.grenadeNumBounces,
       grenade.grenadeExplosion, grenade.grenadeExplosion, grenade.grenadeTrail,
       grenade.grenadeEffect, static_cast< ushort >(grenade.sound_GrenadeBounce),
+      static_cast< ushort >(grenade.sound_GrenadeExplode),
       grenade.eMPDuration, grenade.grenadeAttackChance, grenade.grenadeMinAttackInterval,
       grenade.grenadePostAttackPause, grenade.grenadeMinAttackDist, grenade.grenadeMaxAttackDist,
       grenade.grenadeMinLaunchSpeed, grenade.grenadeMaxLaunchSpeed);
