@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Splitter (REL 75) gameplay driver: plans S/H/C/D/K/E/F/G/N, timed in wall seconds (run at
+"""Splitter (REL 75) gameplay driver: plans S/H/C/D/K/E/F/G/N/R, timed in wall seconds (run at
 normal speed). usage: MP2_CONSOLE=<port> splitter_drv.py <game log> <duration> <after>"""
 import collections
 import math
@@ -191,6 +191,13 @@ PLANS = {
          + [(81 + 0.8 * k, "flank:0531:0521:%s" % "RL"[(k // 25) % 3]) for k in range(160) if (k // 25) % 3 < 2]
          + [(146 + 0.8 * k, "lift:0531:-60") for k in range(80)]
          + [(212, "dump:objs splitter"), (214, "damage u0531 200 0 power"), (216, "dump:objs splitter")],
+    # R: N without the flank/lift, the head forced back into LaserPulse every 6 s (fsm reaches the
+    # DetachedAttackLogic sub-machine), so each pulse ends in a dodge pick with both sides open.
+    "R": [(1, "pick:0532"), (2, "give MorphBall 1"), (2.5, "give MorphBallBombs 1"), (3, "sweepbomb:0532:0678:76")]
+         + ring(30, 0, 4, 2.5) + ring(35, 0, 24, 2.5) + ring(28, 8, 44, 2.5) + ring(30, 0, 64, 2.5)
+         + [(79, "pick:0531")] + [(80 + 4.0 * k, "tp:%.1f:%.1f:1" % (14 * math.sin(math.radians(45 * k)), 14 * math.cos(math.radians(45 * k)))) for k in range(33)]
+         + [(82 + 6.0 * k, "fsm u0531 LaserPulse") for k in range(22)]
+         + [(212, "dump:objs splitter")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]

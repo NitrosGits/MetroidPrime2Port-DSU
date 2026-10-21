@@ -1392,3 +1392,31 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
 | 5448 Dead | Activate | ran; other messages not recorded → unmarked |
 | BEEC HeadExplosion | every arm incl. CanIssueCommand false | ran (h30) → marked |
 | EB04 Death | head-null return | unreachable in play (comment at 0xEBB8): a dead head is deleted, PortPlaceHead clears 0xC6C, a headless chassis never stays in LaserSweepAttack, the only state where it takes damage. A forced `fsm u0521 LaserSweepAttack` leaves at once (console: "not entered; now PathFind"). Unmarked |
+
+## Forced arms: LaserPulse, Dodge, dodge pick, head Dead (2026-10-21)
+
+- Runs (area 914f1381, layer 2): n3/n5 (plan N: bomb kill of u0532, player ring around head
+  u0531, chassis u0521 parked on the head's right/left by `place`, the head held at z -60 by
+  `place`); r1 (plan R: bomb kill, head forced into LaserPulse every 6 s by `fsm`); n6 (docked head
+  u0531 killed by `damage u0531 200 0 power`); f1/f7 (fast/real speed: `fsm` LaserPulse/Dodge on the
+  docked heads before their chassis targets). `tools/scan_splitter_props.py`: all 13 shipped SPLU
+  placements have dodgeChance 100, minDodges 1, maxDodges 3, flags 11.
+- A forced chassis death does not stick: `fsm u0532 LaserSweepAttack` leaves the sub-machine at
+  once and `damage u0678` does nothing outside the sweep's vulnerable window; undocking needs bombs.
+
+| fn | arm | result |
+|---|---|---|
+| 4864 LaserPulse | Activate / issue / face / Deactivate | ran (n5, r1) |
+| 4864 | dt <= 0 (0x49B0) | unreachable: Think only when dt > FLT_EPSILON |
+| 4864 | no target (0x49CC) | forced (fsm), f1/f7 → marked |
+| 4AC0 Dodge | Activate / issue / face / Deactivate | ran (n5, r1) |
+| 4AC0 | dt <= 0 (0x4BFC) | unreachable, as 4864 |
+| 4AC0 | no target (0x4C18) | not run even forced (a docked head always issues the step); 0xEFE is never cleared once set → unmarked |
+| 3B34 | 0x2 bit clear (0x3B5C) / count to max (0x3BCC) | unreachable with shipped data (flags 11; roll at most 100 vs dodgeChance 100) |
+| 3B34 | at max (0x3B6C) / below min / roll pick | ran (n3, r1) → marked |
+| 270C | AI nearer than the dodge distance on the right (0x2830) / left (0x2874), none (-1) | forced (place), n5 |
+| 270C | other entries, far AI, both open, random keeps right / left (0x292C) | ran (n3, n5); left forced (fsm), r1 → marked |
+| 25C4 | ray clear / OnPath ok | ran (n3) |
+| 25C4 | ray hit / OnPath failure | forced (place), n5 → marked |
+| 5448 Dead | Activate | ran (h30) |
+| 5448 | Update, Deactivate (after the delete request) | forced (damage), n6 → marked |
