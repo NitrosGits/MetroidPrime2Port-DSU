@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea3cb16b2ffeBDTzRZY5y9u6Yt` | darksamus2 @ `349ede4bb` (scatter shot fires: 11814, 13230, 12F60 with a CEnergyProjectile stand-in for CScattershotProjectile; 22 markers) | why shots die in 0.15-0.45 s, MovingScatterShot 11AD8, then Dash 15348 + BreakDash 149B4 |
+| DarkSamus (Opus) | `ses_ea3b57acbffe8DxXPKhg6PSdGR` | darksamus2 @ `f0de7edab` (28 markers: MovingScatterShot 11AD8, 21DF8, 11814, 13230, Dash record 15348, BreakDash 149B4; short shot life = world hits, not a bug) | Dash chain 12CE0, 14D14, 14A00, 154FC, state 150DC; then 19B64 tree |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
