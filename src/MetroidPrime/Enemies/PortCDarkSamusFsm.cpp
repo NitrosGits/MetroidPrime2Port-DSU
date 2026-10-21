@@ -1778,7 +1778,7 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
     TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C
     FsmStandIn("fn_10_1707C", "state FreezeBeam's dodge step"); // 0x00016E3C
   }
-  FsmStandIn("fn_10_8870", "state FreezeBeam's command"); // 0x00016E8C
+  RunFreezeBeamCmd(msg); // fn_10_8870, 0x00016E8C
 }
 
 // fn_10_150DC (0x000150DC, 0x26C bytes): the Dash state. Activate (`mr. r31, r5` at 0x000150EC)

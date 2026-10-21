@@ -1064,6 +1064,7 @@ private:
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
   void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
+  void RunFreezeBeamCmd(EStateMsg msg);            // fn_10_8870: the freeze beam's command
   void UpdateShieldFromHealth(EStateMsg msg);     // fn_10_6DAC: the shield flag and direction
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
                              float dt); // fn_10_6F90: the path find to the destination

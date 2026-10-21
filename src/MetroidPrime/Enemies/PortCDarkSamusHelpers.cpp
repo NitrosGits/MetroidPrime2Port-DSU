@@ -570,10 +570,29 @@ void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
 // Update (0x000088F0) re-delivers it while the DOL's ShouldRetry answers true (0x000088F8, the
 // animation state 0x9 = pas::kAS_LoopAttack); Deactivate (0x0000893C) stores 0 (kAS_NotReady).
 // The command is the module's own class (its vtable lbl_10_data_1B0): the id 0x9 = 9 =
-// kBSC_LoopHitReaction (0x00016E70) and the payload 7, 4 and the byte 0 (0x00016E80..0x00016E88)
-// - a direction, a severity and a flag. The host's CBCLoopHitReactionCmd carries only an
-// EReactionType, so the retail's command has no host counterpart: delivering the plain
-// CBodyStateCmd(kBSC_LoopHitReaction) leaves the body's reaction type undefined and the body's
-// loop reaction then reads a garbage animation (the coverage run crashed in
-// CBSLoopReaction::Start). The FreezeBeam state's call stays a stand-in until the class is
-// modelled.
+// kBSC_LoopHitReaction (0x00016E70) and the payload 7, 4 and the byte 0 (0x00016E80..0x00016E88).
+// The host's CBCLoopHitReactionCmd carries the reaction type only, and the host's body
+// (CBSLoopReaction::Start, which reads the command manager's slot for kBSC_LoopHitReaction)
+// reads exactly that field - the type the module's payload puts first - so the port delivers
+// the host's command with the type 7 (the host's enum has four values; the value is a plain
+// int, and the host's CPASAnimParm::FromEnum keeps it). The module's other two payload words
+// (4 and the byte 0) are copied over the slot's tail in the retail and nothing reads them, so
+// the port drops them.
+void CDarkSamus::RunFreezeBeamCmd(EStateMsg msg) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCLoopHitReactionCmd(static_cast< pas::EReactionType >(7)));
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLoopHitReactionCmd(static_cast< pas::EReactionType >(7)));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
+}
