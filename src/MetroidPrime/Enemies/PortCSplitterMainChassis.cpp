@@ -209,7 +209,6 @@ SPLITTER_STATE_STANDIN(WaitForDocking, fn_75_C9E4)
 SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
 SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
 SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
-SPLITTER_STATE_STANDIN(HeadExplosion, fn_75_BEEC)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
 SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
 SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
@@ -1691,6 +1690,28 @@ void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueI
     actorHealth->SetHP(initial);
   }
   PortTakePlayerHint(mgr);
+}
+
+// fn_75_BEEC (the chassis's HeadExplosion state, 0xBEEC-0xC034). Activate (0xBF24): the animation
+// state is kAS_Ready and the flag byte 0xD41's 0x02 bit is cleared (0xBF34 rlwimi). Update
+// (0xBF40): when CTryCommand::ShouldRetry (the host's CAnimationState::CanIssueCommand) allows
+// body state 6 (kAS_KnockBack, 0xBF48-0xBF54) a knock-back command along the chassis's Y column
+// (the transform's 0x28, 0x38, 0x48) with severity 8 goes out (lbl_75_data_5B8, 0xBF58-0xBFB8).
+// Deactivate (0xC010): the animation state is kAS_NotReady and the spin penalty timer at 0xD14
+// restarts with the data's spin attack interval penalty (0x874, 0xC018-0xC01C).
+void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mFlagsD41 &= ~0x02;
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(GetTransform().GetColumn(kDY), pas::kS_Eight));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+  }
 }
 
 // fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE788-0xE790), active (the
