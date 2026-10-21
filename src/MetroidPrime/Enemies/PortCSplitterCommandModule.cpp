@@ -380,6 +380,9 @@ void CSplitterCommandModule::SpawnIdle(CStateManager& mgr, EStateMsg msg, float)
 // * the data's max linear velocity (0x7C4, squared, 0x4234) and the offset is safe the head moves
 // that far toward it (0x42A0 fn_75_2154); otherwise it is put on the goal (0x42B0 SetTranslation)
 // and the animation state is kAS_Over. Deactivate (0x42CC): kAS_NotReady (0).
+// Arms: both ran (no chassis with a forced `fsm u0531 SeekMainChassis`; the real docking after
+// `kill u0532`). The far but unsafe offset is dead: a squared length above step * step > 0 is safe.
+// @ fn_75_4138
 void CSplitterCommandModule::SeekMainChassis(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -437,6 +440,8 @@ void CSplitterCommandModule::FollowDockingPath(CStateManager& mgr, EStateMsg msg
 // (fn_75_E68C), sets the bit and sets the chassis's base 0x420 0x80 bit (the host's
 // mHitByPlayerProjectile, 0x3CCC-0x3CD4). The base's path navigation (0x6F4) gets the destination
 // and its face target (0x718) kInvalidUniqueId.
+// Arms: the chassis ran (docking after `kill u0532`); no chassis forced under gdb (0xEFC invalid).
+// @ fn_75_3BEC
 void CSplitterCommandModule::SetDockingDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mAutoDestructFlags &= ~0x80;

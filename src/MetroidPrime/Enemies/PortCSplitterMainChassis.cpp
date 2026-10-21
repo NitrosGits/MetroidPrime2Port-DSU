@@ -1629,6 +1629,9 @@ static bool PortDockingHeadComing(CStateManager& mgr, TUniqueId linkId, TUniqueI
 // (0xCAC0-0xCB44); then, once the head is no longer coming, an exit-state command (command 10,
 // 0xCB8C-0xCBB8). Deactivate (0xCBC0): kAS_NotReady (0), an exit-state command and every
 // collision actor reflecting (0xCC00-0xCC1C).
+// Head-coming test arms: all ran with a real docking (`kill u0532`, head u0531 docks to the
+// headless u0521); a head of its own and a head checking another chassis forced under gdb.
+// @ fn_75_C9E4
 void CSplitterMainChassis::WaitForDocking(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2075,8 +2078,10 @@ static bool PortIsBoosting(const CPlayer& player) {
 // CCollisionActor::GetLastTouchedObject) is a boosting player (0xA020-0xA058) advances the spin
 // counter at 0xCFC by the data's 0x888 (0xA05C-0xA06C) and sets 0xD40's 0x2 bit (0xA070-0xA078).
 // Then the player hint is taken (0xA084 fn_75_AB8C).
-// The dead-chassis return (0x9FC8) was forced under gdb (mAlive clear for one call); the spinning,
-// boosting-player arm ran naturally (spin from PathFind, contact forced by place + boost).
+// Arms: the dead-chassis return (0x9FC8) forced under gdb (mAlive clear for one call); not spinning
+// ran (a shot before the spin); a spinning sender that is not a collision actor forced under gdb
+// (sender kInvalidUniqueId for one call); the touched object not a boosting player ran (shots in the
+// spin); the spinning, boosting-player arm ran (spin from PathFind, contact forced by place + boost).
 // @ fn_75_9FA8
 void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) {  // 0x9FC8-0x9FCC
@@ -2111,8 +2116,12 @@ void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId send
 // - Anything else, while 0xD41's 0x80 bit is set (0x9ED0-0x9ED8) and the object is not a CAi
 //   (0x9EEC-0x9EF8), takes the spin attack damage the same way (lbl_75_data_CA0, 0x3B; 0x9F84),
 //   without the wait.
-// The dead return (0x9BC8-0x9BD8) was forced under gdb (mAlive clear for one call). The spin arms ran
-// with a natural spin (0x9D20 player, 0x9ED0 CAi and non-CAi), the boost and leg stab arms forced.
+// Arms: the dead return ran (after `kill u0532`; also forced under gdb, mAlive clear for one call);
+// the 0xD40 0x40 return (0x9BD0) and the null collision actor (0x9BF4, sender kInvalidUniqueId)
+// forced under gdb for one call each; a non-boosting player with 0xD40's 0x2 bit (0x9C5C) forced
+// under gdb (the bit set for that call); the plain contact damage (no leg stab, no spin) ran with
+// `place u0532 player 1` while idle; the damage wait still above 0 (0x9D80) ran; the spin arms ran
+// with a natural spin (0x9D20 player, 0x9ED0 CAi and non-CAi); the boost and leg stab arms forced.
 // @ fn_75_9B9C
 void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive || (mFlagsD40 & 0x40) != 0) {  // 0x9BC8-0x9BD8

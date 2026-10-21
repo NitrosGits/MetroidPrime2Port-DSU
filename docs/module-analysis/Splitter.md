@@ -1538,12 +1538,22 @@ Runs (914f1381 layer 2, probes on every if/return/case): d1 `fsm` forcing, d2-d4
 | D61C | dir 5 with head / headless | forced (gdb: mDodgeDirection = 5 at Dodge's Activate; fsm u0532 / u0521 Dodge, u0520 killed) → marked |
 | D61C | step issue / not, deactivate head / headless | forced (fsm u0532 Dodge, fsm u0521 Dodge) → marked |
 | 5CC4 / 5B28 | both / body | ran (Dodge dir 5 / fsm WaitForSnatch) → marked |
-| 9B9C, 9FA8 | dead-chassis returns | forced (gdb: mAlive = 0 for one call mid-spin, restored by a FinishBreakpoint) → marked |
+| 9B9C, 9FA8 | dead-chassis returns | forced (gdb: mAlive = 0 for one call mid-spin, restored by a FinishBreakpoint); 9B9C also ran after `kill u0532` (e1) → marked |
+| 9B9C | 0xD40 0x40 return, null collision actor, non-boosting player with 0xD40 0x2 | forced (gdb, e1: the bit / sender kInvalidUniqueId / the bit for one call) → marked |
+| 9B9C | plain contact damage, damage wait above 0 | ran (e1: `place u0532 player 1` while idle) → marked |
+| 9FA8 | not spinning, touched not a boosting player / sender not a collision actor | ran (e1: shots before and in the spin) / forced (gdb: sender kInvalidUniqueId in the spin, e1) → marked |
 | D7D4 | far + unsafe steering | forced (gdb: offset (0,0,20) at the far test, steering zeroed; MoveInOneFrameOR ran) → marked |
 | CCF0, 5498 | all | not in the shipped FSM2 graphs (`fsm` finds no SpawnDrop/SpawnIdle in any sub-machine) → unmarked |
 | C8F4 | no swarm snatcher (9 F) | not run: the area has no CIngSnatchingSwarm → unmarked |
-| C9E4, 3FE0, 4138, 3BEC, 5864, 57D4, 55B0, 5568 | head coming / detached head arms | not run: the chassis can't be killed (reflect vulnerability; hp 0 under gdb raised no death) → unmarked |
+| C9E4 | head coming / not, loop attack issue / not, exit | ran (e1, e2: `kill u0532`, head u0531 docks to the headless u0521) → marked |
+| C9E4 | head of its own, head checking another chassis | forced (gdb: 0xC6C / the head's 0xEFC set to 0x1234 for one Update, e2) → marked |
+| 4138 | no chassis / chassis, on the goal / moving | ran (d1 `fsm u0531 SeekMainChassis`; e2 docking); far unsafe offset dead (length² > step² > 0) → marked |
+| 3BEC | chassis / none | ran (e1) / forced (gdb: 0xEFC invalid for the call, e3) → marked |
+| 3FE0, 5864, 57D4 | docking path | not run: the area's heads have no Follow (docking path) link; docking runs PathFind → unmarked |
+| 55B0, 5568 | | only false arms ran (e2: 55B0 true too) → unmarked |
 | C51C | spin vector set (18 T, 20) | not run: no Patrol/ATTK destination in this area → unmarked |
 | C034 | tilted Y column (21 F, 25, 30) | not run → unmarked |
 | E62C, E58C, E530, E494, E028 T, E00C F, E4DC T | | never evaluated on the reached transitions → unmarked |
 | BBC0 | | not run → unmarked |
+
+`kill <id>` (port cc6400712) works on the chassis: `kill u0532` gives hp 0/10, fsm Dead, and the head goes LostChassisReaction → PathFind → docks.
