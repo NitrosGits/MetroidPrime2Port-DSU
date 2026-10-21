@@ -167,21 +167,22 @@ struct CDarkSamusData {
 // freeze beam, the sweep beam and the phazon enrage are later milestones, and every override that
 // belongs to them forwards to CPatterned behind a once-only stand-in log.
 // The dash record at the guest's 0x9E0..0xA08 (fn_10_15348 builds it, the constructor at 0x0001FD04
-// and the Dash state on a stack copy at 0x0001518C). Names are the guest offsets until the dash
-// chain (fn_10_14A00/14D14/154FC) that fills them is ported.
+// and the Dash state on a stack copy at 0x0001518C). fn_10_154FC fills it with the dash it picks.
 struct CDarkSamusDash {
   CDarkSamusDash(); // fn_10_15348
 
-  int mGuest9E0;          // +0x00, -1 (0x000153D4)
-  CVector3f mGuest9E4;    // +0x04, the zero vector, then +0x10's (0x000153B8..0x000153CC)
-  CVector3f mGuest9F0;    // +0x10, the zero vector (0x0001537C..0x0001538C, again 0x000153A0..)
-  int mGuest9FC;          // +0x1C, -1 (0x000153D0); fn_10_1DF74 sets it to -1 on a new cover point
-  float mGuestA00;        // +0x20, lbl_10_rodata_3FC = 0.0f (0x000153D8)
-  int mGuestA04;          // +0x24, 0 (0x00015390); BreakDash answers false while it is above 0
+  int mSlot;                 // +0x00, the picked dash slot 0..7 (fn_10_154FC at 0x00015F94); -1
+  CVector3f mDestination;    // +0x04, the picked slot's end point (0x00015FA8..0x00015FB4)
+  CVector3f mStartPosition;  // +0x10, the actor's position at the pick (0x00015FBC..0x00015FCC)
+  int mLastSlot;             // +0x1C, the slot of the previous dash (fn_10_12CE0 at 0x00012DB0);
+                             // fn_10_1DF74 sets it to -1 on a new cover point
+  float mWeight;             // +0x20, the picked slot's weight (0x00015FD4)
+  int mStepsLeft;            // +0x24, the extra steps of a double dash (fn_10_14D14 sets 1 at
+                             // 0x00014DC0, fn_10_14C50 counts down); BreakDash waits while above 0
   // +0x28, flags, MSB-first: 0x80 (`rlwimi 7,24,24` at 0x000153E0, BreakDash's `extrwi 1,24`)
   // and 0x40 (`rlwimi 6,25,25` at 0x00015398), both clear
-  bool mGuestA08Bit80 : 1; // 0x28 mask 0x80
-  bool mGuestA08Bit40 : 1; // 0x28 mask 0x40
+  bool mBlocked : 1;    // 0x28 mask 0x80, no slot has any weight: the dash ends (BreakDash)
+  bool mDoubleDash : 1; // 0x28 mask 0x40, fn_10_150DC rolled the stage's chanceToDoubleDash
 };
 
 class REL_EXPORT CDarkSamus : public CPatterned {
@@ -435,6 +436,30 @@ private:
   // fn_10_21F14: the projectile-attack command driven by the animation state.
   void DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
                              const CBCProjectileAttackCmd& cmd);
+  // fn_10_12C2C: the dash's step command toward the dash slot (mDash.mSlot).
+  void DoDashStepCmd(EStateMsg msg);
+  // fn_10_12CE0: the dash step - the attack bookkeeping with id 0x8000, the collision failsafe and
+  // the dash's step command; Activate remembers the slot in mDash.mLastSlot.
+  void UpdateDashStep(CStateManager& mgr, EStateMsg msg);
+  // fn_10_14A00: the blast when the dash is stuck - radius damage to the solid / platform actors
+  // around the actor.
+  void ApplyDashStuckBlast(CStateManager& mgr);
+  // fn_10_14FE0: a new dash for the double dash - the best cover point, the dash pick without a
+  // target and the stuck count.
+  void PickNextDash(CStateManager& mgr);
+  // fn_10_14C50: the double dash's second step (a new pick, the step command, the animation).
+  void StartNextDashStep(CStateManager& mgr);
+  // fn_10_14E5C: the step animation of the dash slot, set and advanced by 0.3 s at once.
+  void PlayDashStepAnimation(CStateManager& mgr);
+  // fn_10_14D14: the double dash.
+  void UpdateDoubleDash(CStateManager& mgr, EStateMsg msg);
+  // fn_10_154FC: weighs the eight dash slots (weights[8], in/out) and picks one into mDash;
+  // returns its weight. target, when given, is where the dash should end near.
+  float PickDash(CStateManager& mgr, float* weights, const CVector3f* target);
+  // fn_10_16048: how free the path to dest is: 1.0 clear, 0.49 off per blocked side ray, 0 when
+  // the centre ray is blocked.
+  float GetDashPathClearance(CStateManager& mgr, const CVector3f& dest,
+                             const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const;
 
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
@@ -581,6 +606,11 @@ private:
   float mStillTime;                // guest 0x964, how long the actor has stood still: fn_10_1D794
                                    // adds dt to it while the actor stays within 0.6 of
                                    // mStillPosition; the constructor writes 0.0f to it (0x0001FCB0)
+  uchar mDashStuckCount;           // guest 0x968, the dashes in a row that started while the
+                                   // actor stood still (mStillTime above lbl_10_rodata_42C =
+                                   // 1.2f): fn_10_150DC / fn_10_14FE0 count it, two or more fire
+                                   // the stuck blast (fn_10_14A00); the constructor writes 0 to it
+                                   // (0x0001FCB4)
   CVector3f mStillPosition;        // guest 0x958/0x95C/0x960, the position the still timer
                                    // measures from: fn_10_1D794 moves it to the actor's position
                                    // when the actor walks away; the constructor writes the zero

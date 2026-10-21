@@ -49,6 +49,9 @@
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
+#include "Kyoto/Math/CAABox.hpp"
+#include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "Collision/CRayCastResult.hpp"
 
 #include <stdio.h>
@@ -888,10 +891,10 @@ bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
 // 0x000149DC), else the base's GetAnimOver (0x000149EC).
 // @ fn_10_149B4
 bool CDarkSamus::BreakDash(CStateManager& mgr, const CTriggerData& data) const {
-  if (mDash.mGuestA08Bit80 == true) {
+  if (mDash.mBlocked == true) {
     return true;
   }
-  if (mDash.mGuestA04 > 0) {
+  if (mDash.mStepsLeft > 0) {
     return false;
   }
   return GetAnimOver(mgr, data);
@@ -1279,9 +1282,56 @@ void CDarkSamus::FreezeBeam(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("FreezeBeam", msg);
 }
 
-void CDarkSamus::Dash(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_150DC", "state Dash");
+// fn_10_150DC (0x000150DC, 0x26C bytes): the Dash state. Activate (`mr. r31, r5` at 0x000150EC)
+// clears the double-dash flag (0x40, 0x00015110) and sets it when the stage (fn_10_17E14, the null
+// test at 0x00015120) rolls Range(0.0f, lbl_10_rodata_3F0 = 100.0f) below its chanceToDoubleDash
+// (the stage info's +0x20, `fcmpo; bge` at 0x00015144). A double dash is fn_10_14D14 (0x00015178).
+// Otherwise Activate (0x00015184) starts from a fresh dash record (fn_10_15348 on the stack, copied
+// in at 0x000151A0..0x000151F0), pushes the best cover point (fn_10_1E3C0 / fn_10_1E26C at
+// 0x000151F4/0x00015208) and picks a dash (fn_10_154FC at 0x00015298, eight weights of
+// lbl_10_rodata_3E8 = 1.0f) toward the cover point (GetCoverPoint of 0xC24 at 0x0001524C; without
+// one the actor's own position); a pick of weight 0.0f blocks the dash (0x80 at 0x000152B4) and
+// runs the collision failsafe (0x000152C4). Then the stuck count as in fn_10_14FE0
+// (0x000152C8..0x00015308). Every message, unless blocked (`extrwi.` at 0x00015310), runs the dash
+// step (fn_10_12CE0 at 0x00015324).
+void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("Dash", msg);
+  if (msg == kStateMsg_Activate) {
+    mDash.mDoubleDash = false;
+    const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+    if (stage != nullptr &&
+        mgr.Random()->Range(0.f, 100.f) < stage->GetStageInfo().chanceToDoubleDash) {
+      mDash.mDoubleDash = true;
+    }
+  }
+  if (mDash.mDoubleDash == true) {
+    UpdateDoubleDash(mgr, msg);
+    return;
+  }
+  if (msg == kStateMsg_Activate) {
+    mDash = CDarkSamusDash();
+    PushAttacker(FindBestCoverPoint(mgr));
+    float weights[8] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+    CVector3f target = GetTranslation();
+    if (const CScriptCoverPoint* cover = GetCoverPoint(mgr, mLastAttackerUid)) {
+      target = cover->GetTranslation();
+    }
+    if (0.f == PickDash(mgr, weights, &target)) {
+      mDash.mBlocked = true;
+      RunCollisionFailsafe(mgr);
+    }
+    if (mStillTime > 1.2f) {
+      ++mDashStuckCount;
+      if (mDashStuckCount >= 2) {
+        ApplyDashStuckBlast(mgr);
+      }
+    } else {
+      mDashStuckCount = 0;
+    }
+  }
+  if (mDash.mBlocked == false) {
+    UpdateDashStep(mgr, msg);
+  }
 }
 
 void CDarkSamus::DiveAttack(CStateManager&, EStateMsg msg, float) {
@@ -1582,7 +1632,7 @@ void CDarkSamus::TravelToCoverPoints(CStateManager& mgr, EStateMsg msg, float dt
   }
   if (msg == kStateMsg_Activate || prev != mLastAttackerUid) { // 0x0001E0C4/0x0001E0D0
     SetPathFindDestination(mgr, cover->GetTranslation(), dt);
-    mDash.mGuest9FC = -1;
+    mDash.mLastSlot = -1;
   } else {
     mPathFindNavigation.SetFaceTarget(mgr.GetPlayer(0)->GetUniqueId());
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
@@ -2390,16 +2440,432 @@ void CDarkSamus::UpdateScatterShotFire(CStateManager& mgr, float dt) {
 // fn_10_15348 (0x00015348, 0xA4 bytes): the dash record, in the retail store order.
 // @ fn_10_15348
 CDarkSamusDash::CDarkSamusDash() {
-  mGuest9E4 = CVector3f::Zero();
-  mGuest9F0 = CVector3f::Zero();
-  mGuestA04 = 0;
-  mGuestA08Bit40 = false;
-  mGuest9F0 = CVector3f::Zero();
-  mGuest9E4 = mGuest9F0;
-  mGuest9FC = -1;
-  mGuest9E0 = -1;
-  mGuestA00 = 0.f;
-  mGuestA08Bit80 = false;
+  mDestination = CVector3f::Zero();
+  mStartPosition = CVector3f::Zero();
+  mStepsLeft = 0;
+  mDoubleDash = false;
+  mStartPosition = CVector3f::Zero();
+  mDestination = mStartPosition;
+  mLastSlot = -1;
+  mSlot = -1;
+  mWeight = 0.f;
+  mBlocked = false;
+}
+
+// fn_10_EDE0 (0x0000EDE0, 0x14 bytes): the dash slot (0..7) to its step direction, the table
+// lbl_10_rodata_37C = {0, 1, 2, 3, 6, 7, 8, 9} (no bounds test). Echoes' step directions go past
+// the host enum's kSD_Down (5): 6..9 are the four diagonals, cast through as retail passes them.
+// @ fn_10_EDE0
+static pas::EStepDirection GetDashStepDirection(int slot) {
+  static const int skDirections[8] = {0, 1, 2, 3, 6, 7, 8, 9};
+  return static_cast< pas::EStepDirection >(skDirections[slot]);
+}
+
+// fn_10_EB90 (0x0000EB90, 0x228 bytes): the dash slot's direction from the flat facing axis f, the
+// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7; bgt` at 0x0000EB98 to the zero vector):
+// 0 f, 1 -f (lbl_10_rodata_3EC = -1.0f), 2 (-f.y, f.x, 0), 3 (f.y, -f.x, 0), and the diagonals
+// normalized (AsNormalized at 0x0000EC70/0x0000ECC4/0x0000ED2C/0x0000ED80): 4 the sum of f and
+// slot 2's, 6 slot 2's minus f, 5 the sum of f and slot 3's, 7 slot 3's minus f (the `cmpwi` at
+// 0x0000EC14/0x0000EC3C and 0x0000ECD0/0x0000ECF8 split the shared arms).
+// @ fn_10_EB90
+static CVector3f GetDashDirection(uint slot, const CVector3f& f) {
+  switch (slot) {
+  case 0:
+    return f;
+  case 1:
+    return -1.f * f;
+  case 2:
+  case 4:
+  case 6: {
+    const float nfy = -f.GetY();
+    if (slot == 2) {
+      return CVector3f(nfy, f.GetX(), 0.f);
+    }
+    if (slot == 4) {
+      return CVector3f(nfy + f.GetX(), f.GetX() + f.GetY(), 0.f + f.GetZ()).AsNormalized();
+    }
+    const CVector3f neg = -1.f * f;
+    return CVector3f(nfy + neg.GetX(), f.GetX() + neg.GetY(), 0.f + neg.GetZ()).AsNormalized();
+  }
+  case 3:
+  case 5:
+  case 7: {
+    const float nfx = -f.GetX();
+    if (slot == 3) {
+      return CVector3f(f.GetY(), nfx, 0.f);
+    }
+    if (slot == 5) {
+      return CVector3f(f.GetY() + f.GetX(), nfx + f.GetY(), 0.f + f.GetZ()).AsNormalized();
+    }
+    const CVector3f neg = -1.f * f;
+    return CVector3f(f.GetY() + neg.GetX(), nfx + neg.GetY(), 0.f + neg.GetZ()).AsNormalized();
+  }
+  default:
+    return CVector3f::Zero();
+  }
+}
+
+// fn_10_12C2C (0x00012C2C, 0xB4 bytes): the step command (fn_10_21DF8 at 0x00012D88,
+// pas::kAS_Step = `li r5, 0x3` at 0x00012D6C) toward the dash slot's direction (fn_10_EDE0 of
+// 0x9E0 at 0x00012D28, stored at the command's 0x10), a normal step (`li r0, 0x0` stored at 0x14).
+// @ fn_10_12C2C
+void CDarkSamus::DoDashStepCmd(EStateMsg msg) {
+  DoStepCmd(msg, pas::kAS_Step, CBCStepCmd(GetDashStepDirection(mDash.mSlot), pas::kStep_Normal));
+}
+
+// fn_10_12CE0 (0x00012CE0, 0xF0 bytes): the attack bookkeeping with id 0x8000 (`lis r4, 0x1;
+// addi r4, r4, -0x8000`, fn_10_1B478 at 0x00012D14), the collision failsafe (fn_10_1AEC0 at
+// 0x00012D20), the step command of fn_10_12C2C (inlined, 0x00012D24..0x00012D88), and on Activate
+// (`cmpwi r31, 0x0` at 0x00012D98) the slot 0x9E0 is copied to 0x9FC (0x00012DB0).
+// @ fn_10_12CE0
+void CDarkSamus::UpdateDashStep(CStateManager& mgr, EStateMsg msg) {
+  UpdateCurrentAttack(0x8000, mgr, msg);
+  RunCollisionFailsafe(mgr);
+  DoDashStepCmd(msg);
+  if (msg == kStateMsg_Activate) {
+    mDash.mLastSlot = mDash.mSlot;
+  }
+}
+
+// fn_10_14A00 (0x00014A00, 0x250 bytes): the blast when the dash is stuck. The damage
+// (0x00014A3C..0x00014AF0): kWT_UnknownSource (`li r0, 0x13` into the mode's high half), not
+// charged / comboed (0x8000 / 0x4000 cleared at 0x00014A78/0x00014A94), instant kill (0x2000 set
+// at 0x00014AB0); damage and radius damage lbl_10_rodata_3F0 = 100.0f, radius
+// lbl_10_rodata_4C8 = 15.0f + 0x968 (the int-to-float at 0x00014A68, fadds at 0x00014A9C),
+// knockback lbl_10_rodata_3FC = 0.0f, no immunity (0x80 set at 0x00014AA8), no radius-damage flag
+// (0x40 cleared at 0x00014ABC). The near list (0x00014BC0) is the box of half-size radius around
+// the actor (0x00014B60..0x00014BA0) filtered to include lbl_10_data_C94 / C98 (0x3B kMT_Solid,
+// 0x31 kMT_Platform) and exclude lbl_10_data_C9C (0x20 kMT_Player), type 3; every object found
+// (ObjectById, the null test at 0x00014BE4) takes the radius damage from the actor's position
+// with the actor's uid (ApplyRadiusDamage at 0x00014C0C). Last the collision failsafe
+// (0x00014C30).
+void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
+  const float radius = 15.f + static_cast< float >(mDashStuckCount);
+  const CDamageInfo info(CWeaponMode(kWT_UnknownSource, false, false, true), 100.f, radius, 0.f,
+                         true, false);
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_Platform), CMaterialList(kMT_Player));
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + radius, pos.GetY() + radius, pos.GetZ() + radius);
+  const CVector3f min(pos.GetX() + -radius, pos.GetY() + -radius, pos.GetZ() + -radius);
+  const CAABox box(min, max);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, box, filter, this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    // The near list holds actors only; retail passes the entity on as one.
+    CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
+    if (actor != nullptr) {
+      mgr.ApplyRadiusDamage(*this, GetTranslation(), *actor, GetUniqueId(), info);
+    }
+  }
+  RunCollisionFailsafe(mgr);
+}
+
+// fn_10_16048 (0x00016048, 0x3D0 bytes): the flat line from the actor to dest (z of the delta
+// cleared at 0x000160EC; not normalizable answers lbl_10_rodata_3FC = 0.0f at 0x00016128) is cast
+// three times (the loop `cmpwi r27, 0x3` at 0x000163B0) from the actor's position raised by
+// lbl_10_rodata_3E0 = 2.0f, offset lbl_10_rodata_4F0 = 1.5f along the zero vector (k 0), the right
+// normal (dir.y, -dir.x, 0) (k 1, 0x00016210) and the left one (-dir.y, dir.x, 0) (k 2,
+// 0x0001622C), over the delta's length. The static test (RayStaticLineOfSightTest on the actor's
+// area at 0x000162A4) includes lbl_10_data_C68 (0x3B kMT_Solid) and excludes C6C / C70 (0x2F
+// kMT_CollisionActor, 0x1C kMT_AIPassthrough); the dynamic one (RayDynamicLineOfSightTest at
+// 0x00016380, the near list, the actor ignored) includes C74 / C78 (kMT_Solid, 0x30 kMT_AIBlock)
+// and excludes C7C / C80 (0x20 kMT_Player, kMT_AIPassthrough). A blocked centre ray answers 0.0f
+// (0x000162B0/0x0001638C); a blocked side ray takes lbl_10_rodata_4F4 = 0.49f off the answer,
+// which starts at lbl_10_rodata_3E8 = 1.0f.
+float CDarkSamus::GetDashPathClearance(
+    CStateManager& mgr, const CVector3f& dest,
+    const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f delta(dest.GetX() - pos.GetX(), dest.GetY() - pos.GetY(), 0.f);
+  const float length = delta.Magnitude();
+  if (!delta.CanBeNormalized()) {
+    return 0.f;
+  }
+  const CVector3f dir = delta.AsNormalized();
+  const CMaterialFilter staticFilter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_AIPassthrough));
+  const CMaterialFilter dynamicFilter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_AIBlock), CMaterialList(kMT_Player, kMT_AIPassthrough));
+  float clearance = 1.f;
+  for (int k = 0; k < 3; ++k) {
+    CVector3f offset = CVector3f::Zero();
+    if (k == 1) {
+      offset = CVector3f(dir.GetY(), -dir.GetX(), 0.f);
+    } else if (k == 2) {
+      offset = CVector3f(-dir.GetY(), dir.GetX(), 0.f);
+    }
+    const CVector3f start(pos.GetX() + 0.f + 1.5f * offset.GetX(),
+                          pos.GetY() + 0.f + 1.5f * offset.GetY(),
+                          pos.GetZ() + 2.f + 1.5f * offset.GetZ());
+    const CGameArea& area = mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId());
+    if (!CGameCollision::RayStaticLineOfSightTest(area, start, dir, length, staticFilter)) {
+      if (k == 0) {
+        return 0.f;
+      }
+      clearance -= 0.49f;
+      continue;
+    }
+    if (!CGameCollision::RayDynamicLineOfSightTest(mgr, start, dir, length, dynamicFilter,
+                                                   nearList, this)) {
+      if (k == 0) {
+        return 0.f;
+      }
+      clearance -= 0.49f;
+    }
+  }
+  return clearance;
+}
+
+// fn_10_154FC (0x000154FC, 0xB4C bytes): weighs the eight dash slots and picks one.
+//
+// The facing axis (the transform's forward column, z cleared at 0x000155FC, normalized or
+// (lbl_10_rodata_3E8 = 1.0f, 0, 0) at 0x0001561C) and the squared distance to the player (mgr's
+// 0x14FC). While steps are left (0xA04 > 0, 0x0001564C) the last slot and the slot opposite it
+// (lbl_10_rodata_340 = {1, 0, 3, 2, 7, 6, 5, 4}) get no weight (0x00015718..), otherwise the last
+// slot's weight is scaled by lbl_10_rodata_4D8 = 0.01f (0x000157D8..). 0x9E0 becomes 1
+// (0x0001586C). The height of the actor above the path mesh (GetHeightOfPointAboveMesh at
+// 0x00015888, padding 1.0f) and the near list (0x00015A58) around the forward step's reach (the
+// animation distance of kAS_Step (FromEnum(0), FromEnum(0)) times the scale's y, times
+// lbl_10_rodata_4DC = 1.1f, in x/y; lbl_10_rodata_4E0 = -2.0f .. lbl_10_rodata_47C = 6.0f in z),
+// including lbl_10_data_C84 / C88 (kMT_Solid, kMT_AIBlock) and excluding C8C / C90 (kMT_Player,
+// kMT_AIPassthrough). Per slot (0x00015A78, 8 slots at 0x00015E00): the slot's end point is the
+// actor's position plus the slot's direction (fn_10_EB90) times its step's animation distance
+// (kAS_Step (FromEnum(fn_10_EDE0(slot)), FromEnum(0))) times the scale's y. A path less than clear
+// (fn_10_16048 below 1.0f, 0x00015B94) scales the weight by lbl_10_rodata_41C = 0.1f * clearance
+// when the height query failed (0x00015B9C), drops the slot when the actor has stood still for
+// less than lbl_10_rodata_42C = 1.2f (0x00015BCC), else scales it by lbl_10_rodata_4E4 = 0.02f *
+// clearance. With steps left an end point nearer the player than the actor drops the slot
+// (0x00015C58), else the weight is scaled by the squared distance gained (0x00015C70); without,
+// the closest the flat line to the end point passes the player (t from lbl_10_rodata_474 = 0.05f
+// by 0.05f while <= 1.0f, the start at lbl_10_rodata_4E8 = 8.01f) under lbl_10_rodata_414 = 8.0f
+// scales it by lbl_10_rodata_3E4 = 0.5f * (closest * lbl_10_rodata_4EC = 0.125f). Then an end
+// point nearer the player halves it (0x00015D50), and with a target (0x00015D6C) a distance under
+// the base's max attack range (0x3E0) scales it by 1 - distance / range, else by 0.01f. Last the
+// largest weight (from 0.0f) is looked for from a random slot on (Next, the signed modulo 8 at
+// 0x00015EB0..); the slot (1 when none matches), its end point, the actor's position and its weight
+// go into the dash record (0x00015F94..0x00015FD4), and the weight is the answer.
+float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* target) {
+  static const int skOpposite[8] = {1, 0, 3, 2, 7, 6, 5, 4};
+  const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
+  const CVector3f& pos = GetTranslation();
+  const CVector3f toPlayer = playerPos - pos;
+  const float playerDistSq = toPlayer.MagSquared();
+  const CVector3f forward = GetTransform().GetForward();
+  CVector3f facing(forward.GetX(), forward.GetY(), 0.f);
+  if (facing.CanBeNormalized() == true) {
+    facing.Normalize();
+  } else {
+    facing = CVector3f(1.f, 0.f, 0.f);
+  }
+
+  CVector3f ends[8];
+  int slots[8];
+  for (int i = 0; i < 8; ++i) {
+    ends[i] = CVector3f::Zero();
+  }
+  if (mDash.mStepsLeft > 0) {
+    for (int i = 0; i < 8; ++i) {
+      slots[i] = i;
+      if (mDash.mLastSlot == i || mDash.mLastSlot == skOpposite[i]) {
+        weights[i] = 0.f;
+      }
+    }
+  } else {
+    for (int i = 0; i < 8; ++i) {
+      slots[i] = i;
+      if (mDash.mLastSlot == i) {
+        weights[i] = weights[i] * 0.01f;
+      }
+    }
+  }
+
+  mDash.mSlot = 1;
+  float height = pos.GetZ();
+  const CPathFindSearch::EResult heightResult =
+      mPathFindSearch.GetHeightOfPointAboveMesh(pos, height, 1.f);
+
+  const float scaleY = GetModelData()->GetScale().GetY();
+  const float reach =
+      1.1f * (GetAnimationDistance(CPASAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(0),
+                                                    CPASAnimParm::FromEnum(0))) *
+              scaleY);
+  const CVector3f boxMax(pos.GetX() + reach, pos.GetY() + reach, pos.GetZ() + 6.f);
+  const CVector3f boxMin(pos.GetX() + -reach, pos.GetY() + -reach, pos.GetZ() + -2.f);
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_AIBlock), CMaterialList(kMT_Player, kMT_AIPassthrough));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(boxMin, boxMax), filter, this);
+
+  for (int i = 0; i < 8; ++i) {
+    float& weight = weights[i];
+    const float step = GetAnimationDistance(CPASAnimParmData(
+                           pas::kAS_Step, CPASAnimParm::FromEnum(GetDashStepDirection(i)),
+                           CPASAnimParm::FromEnum(0))) *
+                       GetModelData()->GetScale().GetY();
+    const CVector3f dir = GetDashDirection(i, facing);
+    const CVector3f end(pos.GetX() + step * dir.GetX(), pos.GetY() + step * dir.GetY(),
+                        pos.GetZ() + step * dir.GetZ());
+    ends[i] = end;
+    const float clearance = GetDashPathClearance(mgr, end, nearList);
+    if (clearance < 1.f) {
+      if (heightResult != CPathFindSearch::kR_Success) {
+        weight = weight * (0.1f * clearance);
+      } else if (mStillTime < 1.2f) {
+        weight = 0.f;
+        continue;
+      } else {
+        weight = weight * (0.02f * clearance);
+      }
+    }
+    const float endDistSq = (end - playerPos).MagSquared();
+    if (mDash.mStepsLeft > 0) {
+      if (endDistSq < playerDistSq) {
+        weight = 0.f;
+        continue;
+      }
+      weight = weight * (endDistSq - playerDistSq);
+    } else {
+      float closest = 8.01f;
+      for (float t = 0.05f; t <= 1.f; t += 0.05f) {
+        const CVector3f along((1.f - t) * pos.GetX() + t * end.GetX() - playerPos.GetX(),
+                              (1.f - t) * pos.GetY() + t * end.GetY() - playerPos.GetY(), 0.f);
+        const float dist = along.Magnitude();
+        if (dist < closest) {
+          closest = dist;
+        }
+      }
+      if (closest < 8.f) {
+        weight = weight * (0.5f * (closest * 0.125f));
+      }
+    }
+    if (endDistSq < playerDistSq) {
+      weight = weight * 0.5f;
+    }
+    if (target != nullptr) {
+      const float dist = (*target - end).Magnitude();
+      if (dist < mMaxAttackRange) {
+        weight = weight * (1.f - dist / mMaxAttackRange);
+      } else {
+        weight = weight * 0.01f;
+      }
+    }
+  }
+
+  float best = 0.f;
+  for (int i = 0; i < 8; ++i) {
+    if (weights[i] > best) {
+      best = weights[i];
+    }
+  }
+  const int start = mgr.Random()->Next();
+  int pick = 1;
+  for (int k = 0; k < 8; ++k) {
+    const int idx = (start + k) % 8;
+    if (best == weights[idx]) {
+      pick = idx;
+      break;
+    }
+  }
+  mDash.mSlot = slots[pick];
+  mDash.mDestination = ends[pick];
+  mDash.mStartPosition = GetTranslation();
+  mDash.mWeight = weights[pick];
+  return weights[pick];
+}
+
+// fn_10_14FE0 (0x00014FE0, 0xFC bytes): the best cover point pushed (fn_10_1E3C0 / fn_10_1E26C at
+// 0x00015008/0x0001501C), the dash picked with eight weights of lbl_10_rodata_3E8 = 1.0f and no
+// target (fn_10_154FC at 0x0001505C, `li r6, 0x0`); a pick of weight 0.0f blocks the dash (0x80
+// set at 0x00015078). Then the stuck count: standing still for more than lbl_10_rodata_42C = 1.2f
+// (0x0001508C) counts 0x968 up and two or more (`cmplwi r0, 0x2` at 0x000150A4) fire the stuck
+// blast (fn_10_14A00); otherwise the count is cleared (0x000150C0).
+void CDarkSamus::PickNextDash(CStateManager& mgr) {
+  PushAttacker(FindBestCoverPoint(mgr));
+  float weights[8] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+  if (0.f == PickDash(mgr, weights, nullptr)) {
+    mDash.mBlocked = true;
+  }
+  if (mStillTime > 1.2f) {
+    ++mDashStuckCount;
+    if (mDashStuckCount >= 2) {
+      ApplyDashStuckBlast(mgr);
+    }
+  } else {
+    mDashStuckCount = 0;
+  }
+}
+
+// fn_10_14E5C (0x00014E5C, 0x184 bytes): the dash slot's step animation (kAS_Step with
+// FromEnum(fn_10_EDE0(0x9E0)) and FromEnum(0), fn_10_13FFC at 0x00014F04 is the module's copy of
+// the CPASAnimParmData constructor) found in the body controller's PAS database
+// (FindBestAnimation at 0x00014F28 with mgr's random and -1), set on the animation data
+// (CAnimPlaybackParms(anim, -1, 1.0f, true), SetAnimation at 0x00014F7C, no query) and advanced by
+// lbl_10_rodata_46C = 0.3f (AdvanceAnimation at 0x00014FB4, the actor's area, the tree advanced,
+// camera distance 0.0f); last the collision failsafe (0x00014FC0).
+// @ fn_10_14E5C
+void CDarkSamus::PlayDashStepAnimation(CStateManager& mgr) {
+  const CPASAnimParmData parms(pas::kAS_Step,
+                               CPASAnimParm::FromEnum(GetDashStepDirection(mDash.mSlot)),
+                               CPASAnimParm::FromEnum(0));
+  const rstl::pair< float, int > best =
+      GetBodyController()->GetPASDatabase().FindBestAnimation(parms, *mgr.Random(), -1);
+  ModelData()->AnimationData()->SetAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true),
+                                             false);
+  ModelData()->AdvanceAnimation(0.3f, mgr, GetCurrentAreaId(), true, 0.f);
+  RunCollisionFailsafe(mgr);
+}
+
+// fn_10_14C50 (0x00014C50, 0xC4 bytes): a fresh dash record (the zero vectors, -1 slots, 0.0f
+// weight, 0x80 cleared: 0x00014C88..0x00014CCC) whose last slot is the slot just dashed
+// (0x00014CD0), a new pick (fn_10_14FE0), one step less (0x00014CE8), the step command delivered
+// as on Activate (fn_10_12C2C with `li r4, 0x0` at 0x00014CEC) and its animation (fn_10_14E5C).
+// @ fn_10_14C50
+void CDarkSamus::StartNextDashStep(CStateManager& mgr) {
+  const int slot = mDash.mSlot;
+  mDash.mStartPosition = CVector3f::Zero();
+  mDash.mDestination = mDash.mStartPosition;
+  mDash.mLastSlot = -1;
+  mDash.mSlot = -1;
+  mDash.mWeight = 0.f;
+  mDash.mBlocked = false;
+  mDash.mLastSlot = slot;
+  PickNextDash(mgr);
+  mDash.mStepsLeft = mDash.mStepsLeft - 1;
+  DoDashStepCmd(kStateMsg_Activate);
+  PlayDashStepAnimation(mgr);
+}
+
+// fn_10_14D14 (0x00014D14, 0x148 bytes): the double dash. The attack bookkeeping with id 0x8000
+// (fn_10_1B478 at 0x00014D48); on Activate (`cmpwi r31, 0x0` at 0x00014D4C) the dash record is
+// reset as in fn_10_14C50 (0x00014D74..0x00014DBC), one step is left (0x00014DC0) and a dash is
+// picked (fn_10_14FE0). Then the collision failsafe (0x00014DD0); unless blocked (0x80, the
+// `extrwi.` at 0x00014DD8) the step command (fn_10_12C2C) and, while a step is left and the base's
+// GetAnimOver answers (CTriggerData(0.0f), 0x00014E14), the next step (fn_10_14C50). Deactivate
+// (`cmpwi r31, 0x2` at 0x00014E30) clears the steps left.
+void CDarkSamus::UpdateDoubleDash(CStateManager& mgr, EStateMsg msg) {
+  UpdateCurrentAttack(0x8000, mgr, msg);
+  if (msg == kStateMsg_Activate) {
+    mDash.mStartPosition = CVector3f::Zero();
+    mDash.mDestination = mDash.mStartPosition;
+    mDash.mLastSlot = -1;
+    mDash.mSlot = -1;
+    mDash.mWeight = 0.f;
+    mDash.mBlocked = false;
+    mDash.mStepsLeft = 1;
+    PickNextDash(mgr);
+  }
+  RunCollisionFailsafe(mgr);
+  if (mDash.mBlocked == false) {
+    DoDashStepCmd(msg);
+    if (mDash.mStepsLeft > 0 && GetAnimOver(mgr, CTriggerData(0.f)) == true) {
+      StartNextDashStep(mgr);
+    }
+  }
+  if (msg == kStateMsg_Deactivate) {
+    mDash.mStepsLeft = 0;
+  }
 }
 
 // fn_10_21DF8 (0x00021DF8, 0x11C bytes): the step command, the same shape as fn_10_21F14. Activate

@@ -81,6 +81,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mDamageDecay(1.f)
 , mDamageThreshold(data.mDamageInterruptThreshold)
 , mStillTime(0.f)
+, mDashStuckCount(0)
 , mStillPosition(CVector3f(0.f, 0.f, 0.f))
 , mLastWallHitTime(0.f)
 , mElapsedTime(0.f)
