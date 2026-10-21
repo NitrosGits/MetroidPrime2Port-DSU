@@ -1460,3 +1460,29 @@ Delete route never reaches Dodge's no-target arm - 4AC0 rests on the Deactivate 
 | 9B9C | leg stab damage (0x9CC8) | forced (fsm LegStabAttack + place), b1 |
 | 9B9C, 9FA8 | spin arms (0xD41 0x80: 0x9D20, 0x9ED0; 9FA8 0x9FD0) | blocked: the bit's one setter is SetupSpinAttack fn_75_BAA8 (0xBB04), a stand-in → unmarked |
 | 5D50 | shield state 2 (0x5D90) | blocked: written only by fn_75_5DDC (0x5E28), called only from BAA8 (0xBB70) → unmarked |
+
+## Spin attack (2026-10-21)
+
+Ported: SetupSpinAttack `BAA8`, EndSpinAttack `B9B0`, the head's spin shield `5DDC`
+(`PortSpinShield`; the head now keeps its own vulnerability copy at 0xEAC, `mOwnVulnerability`, which
+`5D50`/`5DDC` overwrite and slot 0x40 returns), IsSpinAttackOver `E084`, BreakOutOfSpin `E060`,
+SpinTelegraph `D0A4`; new field 0xCD8 `mSpinVector`. Data 0x874 is `spinAttackInterval`, not its
+penalty (0x878): the three 0xD14 writers now read the interval (shipped: both 6.0).
+
+Runs (914f1381 layer 2, MP2_GODMODE=1): s4 (fast; `send u0532 Alert`, then `send u0532 0x494d3031`
+(IM01) + `place u0532 player 18` every 16 frames; then `place u0532 player 2`), s5 (real speed:
+the same, plus `press x 4` and `place u0532 player 3; boost` between). The spin starts naturally:
+once the penalty timer runs out PathFind → ShouldSpinAttack → SetupSpinAttack → SpinTelegraph →
+SpinAttack (stand-in); a boosting hit sets 0xD40's 0x2 → BreakOutOfSpin → SpinCollisionReaction →
+BounceOffPlayer → SpinBounce, all stand-ins, where it stays. `fsm u0532 SpinAttack` enters the
+state without running SetupSpinAttack (codes run only on transitions).
+
+| fn | arm | result |
+|---|---|---|
+| BAA8 | head / no head | ran (s4, s5) / dead: a headless PathFind exits by !HasHead → marked |
+| 5DDC | body | ran (s4, s5) → marked |
+| D0A4 | activate / update not over / over / deactivate | ran (s5) → marked |
+| E060 / E084 | true, false / false | ran (s5) → marked |
+| 9B9C | spin, player (0x9D20) / CAi return / non-CAi damage (0x9ED0) | ran (s4 / s4 / s5); dead return unrun → unmarked |
+| 9FA8 | spinning, boosting player (0xA070) | ran (s5); dead return unrun → unmarked |
+| B9B0, 5D50 state 2 | | not reached: SpinCollisionReaction D2A0, SpinBounce D13C, SpinAttack D7D4, BounceOffPlayer B1D8, SpunIntoPlayer E078, TooManyBounces E040, SpunIntoGeometry E06C are stand-ins |
