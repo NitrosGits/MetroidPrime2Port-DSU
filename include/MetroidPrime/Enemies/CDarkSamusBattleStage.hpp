@@ -27,6 +27,9 @@ public:
   // CanMissileDeflect trigger the first missile float (the guest's +0x24).
   bool GetFadeOutFlag() const { return mStageInfo.unknown_0x49b9936d; }
   float GetMissileDeflectTime() const { return mStageInfo.missiles.unknown_0x7ee77018; }
+  // The fourth bool (the guest's +0x33): the Dark Samus's AddToRenderer (fn_10_17F04 at
+  // 0x00017F64) draws no effects through the dark visor with it set.
+  bool GetUnknown53FDCB5B() const { return mStageInfo.unknown_0x53fdcb5b; }
 #endif
 private:
   SLdrDSStageInfo mStageInfo; // Guessed name

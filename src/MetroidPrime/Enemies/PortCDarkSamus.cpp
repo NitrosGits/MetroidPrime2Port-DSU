@@ -23,6 +23,10 @@
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
+#include "Kyoto/Particles/CParticleSwoosh.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -218,6 +222,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
   // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
+  ConstructPhazonBeam(); // fn_10_45F8 at 0x000201B4
   // 0x0002048C: a valid alternate scannable info is locked into 0x92C (`addis r0, r29, 0x1;
   // cmplwi r0, 0xffff`, i.e. the id is not -1).
   if (mData.mAlternateScannableInfo != kInvalidAssetId) {
@@ -382,10 +387,74 @@ void CDarkSamus::PreRender(CStateManager& mgr) {
   mRootPos = GetLctrTransform(rstl::string_l("Skeleton_Root")).GetTranslation();
 }
 
-// vtable slot 10 = fn_10_17F04 (0x2D8).
+// vtable slot 10 = fn_10_17F04 (0x2D8): the base's pass, then - alive only (0x420 bit 0x40,
+// 0x00017F2C) - the effects. With the stage's fourth bool (+0x33, 0x00017F64) set and the dark
+// visor (3) active none of them (0x00017F74). Else the sweep beam 0xD7C, the boost ball swoosh
+// 0xE3C and, without 0xEBC bit 0x40, the swoosh 0xE4C (gpRender vtable 0x44); the phazon beam
+// 0xEF8 when there is one (fn_10_4AA8, 0x00018000); the enrage sphere 0x1028 when its bounds
+// (vtable 0x70) are set, sorted at lbl_10_rodata_3E4 = 0.5 * (the player's eye + the actor's
+// position) with the box of lbl_10_rodata_41C = 0.1 around the root 0x8FC (vtable 0x48,
+// 0x00018184). Last, with a fade factor (fn_10_185CC) over lbl_10_rodata_3FC = 0 and the dark
+// visor, EnsureRendered (0x000181BC).
+// Run (darksamus_render.py): every arm by a keyed force (not alive, the stage's bool with either
+// visor, no stage, each effect lent the beam, 0x1028's empty and set bounds, the fade window); the
+// beam is drawn (screenshot of the link build). Not a retail arm: the host GetPlayerState()'s
+// fallback to mPlayerStates[0] (mPlayerState is always set; CPatterned::AddToRenderer reads it
+// unchecked just before).
+// @ fn_10_17F04
 void CDarkSamus::AddToRenderer(const CStateManager& mgr) const {
-  StandIn("fn_10_17F04", "vtable slot 10, AddToRenderer");
   CPatterned::AddToRenderer(mgr);
+  if (!GetAlive()) {
+    return;
+  }
+  const CPlayerState::EPlayerVisor visor = mgr.GetPlayerState()->GetActiveVisor(mgr);
+  const CDarkSamusBattleStage* stage = GetBattleStage(const_cast< CStateManager& >(mgr));
+  if (stage == nullptr || !stage->GetUnknown53FDCB5B() || visor != CPlayerState::kPV_Dark) {
+    if (mSweepBeamGen.get() != nullptr) {
+      gpRender->AddParticleGen(*mSweepBeamGen);
+    }
+    if (mBoostBallSwooshE3C != nullptr) {
+      gpRender->AddParticleGen(*mBoostBallSwooshE3C);
+      if (!mBoostBallFlag40 && mBoostBallSwooshE4C != nullptr) {
+        gpRender->AddParticleGen(*mBoostBallSwooshE4C);
+      }
+    }
+    if (HasPhazonBeam()) {
+      gpRender->AddParticleGen(*mGuestEF8);
+    }
+    if (mGuest1028.get() != nullptr) {
+      const rstl::optional_object< CAABox > bounds = mGuest1028->GetBounds();
+      if (bounds) {
+        const CVector3f pos = 0.5f * (mgr.GetPlayer(0)->GetEyePosition() + GetTranslation());
+        const CVector3f half = 0.1f * CVector3f::One();
+        gpRender->AddParticleGen(*mGuest1028, pos, CAABox(mRootPos - half, mRootPos + half));
+      }
+    }
+  }
+  if (GetFadeFactor() > 0.f &&
+      mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
+    EnsureRendered(mgr);
+  }
+}
+
+// fn_10_4AA8 (0x00004AA8, 0x14 bytes): the beam 0xEF8 is not null (`neg; or; srwi 31`).
+// @ fn_10_4AA8
+bool CDarkSamus::HasPhazonBeam() const { return mGuestEF8.get() != nullptr; }
+
+// fn_10_185CC (0x000185CC, 0x5C bytes): fn_10_18628's window (0xE04 the start, 0xE08 the hold,
+// 0xE0C the fade): 0 (lbl_10_rodata_3FC) once the elapsed time 0x8B0 is past all three
+// (0x000185E8), 1 - the time past the hold / the fade while fading (0x00018614), else 1
+// (lbl_10_rodata_3E8). Run (darksamus_render.py): the window forced holding and fading; 0 natural.
+// @ fn_10_185CC
+float CDarkSamus::GetFadeFactor() const {
+  if (mElapsedTime > mGuestE04 + (mGuestE08 + mGuestE0C)) {
+    return 0.f;
+  }
+  const float hold = mGuestE04 + mGuestE08;
+  if (mElapsedTime > hold) {
+    return 1.f - (mElapsedTime - hold) / mGuestE0C;
+  }
+  return 1.f;
 }
 
 // vtable slot 11 = fn_10_18964 (0x154).

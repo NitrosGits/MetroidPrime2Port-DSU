@@ -1,8 +1,6 @@
-# darksamus_phazonbeam_invalid.py's driver.
+# darksamus_phazonbeam_invalid.py's driver: the beam made (with its sound) and released, no update.
 @f600 send u04f7 Activate; god 1
 @f640 place u04f7 player 12
 @f643 statecall u04f7 PhazonAttack 0 0.016; uevent u04f7 27
-@f645 statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133
-@f647 statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133; statecall u04f7 PhazonAttack 1 0.0133
 @f649 uevent u04f7 28
 @f700 status

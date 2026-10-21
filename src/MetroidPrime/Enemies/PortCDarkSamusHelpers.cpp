@@ -386,6 +386,24 @@ rstl::optional_object< TLockedToken< CGenDescription > > CDarkSamus::PhazonBeamH
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
 }
 
+// fn_10_45F8 (0x000045F8, 0x270 bytes): the 0xEF0 sub-object's constructor, at 0x000201B4 of the
+// actor's. Its id/token/damage/sound members (0xEF0 = r4, 0xEFC = r5 and the locked token 0xF00,
+// 0xF2C..0xF46 = *r6, 0xF5E = r7) are mData's in the host and PhazonBeamHitToken (the member
+// initializer of mGuestF00); the beam 0xEF4/0xEF8 starts empty (0x00004634/0x00004638). The
+// scalars: 0xF14 and 0xF20 the zero vector (0x000047BC..0x000047F8), 0xF58 = lbl_10_rodata_13C
+// = 0.0f, the emitter 0xF60 none and 0xF64 = lbl_10_rodata_140 = -1000.0f (0x0000483C..0x00004848),
+// then fn_10_452C (0x0000484C). Run: every actor's constructor; the token's invalid-id arm
+// forced (darksamus_phazonbeam_invalid.py).
+// @ fn_10_45F8
+void CDarkSamus::ConstructPhazonBeam() {
+  mGuestF14 = CVector3f::Zero();
+  mGuestF20 = CVector3f::Zero();
+  mGuestF58 = 0.f;
+  mGuestF60 = CSfxHandle();
+  mGuestF64 = -1000.f;
+  ResetPhazonAttack();
+}
+
 // fn_10_6118 (0x00006118, 0x19C bytes): the phazon beam. A CElementGen of the asset 0xEF0
 // (mData.mPart908B06E9) with the orientation kMOT_Normal and the system flags 1 (0x000061B8)
 // replaces the auto_ptr 0xEF4/0xEF8 (the old one deleted, 0x0000620C), and it emits (vtable 0x2C
@@ -440,7 +458,8 @@ void CDarkSamus::StartPhazonBeamSfx() {
 // the player's eye (0x00006098).
 // Run (darksamus_phazonbeam.py, _invalid.py): every arm by a keyed force (the zero offset, the
 // turn, the reach clamps, each cylinder test, a NaN locator for the unnormalizable 0xF14, a ray
-// too short to hit, the empty hit token). The CExplosion allocation's null/throw edges have no
+// too short to hit). The hit token 0xF00 is read unchecked, as retail does (0x00006098); the
+// fights' data always carries pART_0x494de4a4. The CExplosion allocation's null/throw edges have no
 // host counterpart (rs_new does not return null).
 // @ fn_10_5974
 void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
@@ -518,11 +537,6 @@ void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
     const CVector3f& point = hit.GetPoint();
     mGuestF20 = CVector3f(point.GetX() - ringX, point.GetY() - ringY, point.GetZ() - 0.f);
     const CTransform4f xf = CTransform4f::LookAt(point, player->GetEyePosition(), CVector3f::Up());
-    // Host-only guard: retail passes 0xF00 unchecked (an absent pART_0x494de4a4 leaves the
-    // optional empty, and retail would read its storage as a token).
-    if (!mGuestF00) {
-      continue;
-    }
     const rstl::string name = rstl::string_l("Phazon Attack Collision");
     const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
     const TUniqueId uid = mgr.AllocateUniqueId();

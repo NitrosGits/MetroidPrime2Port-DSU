@@ -1062,7 +1062,7 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   fn_10_17CB8 (OutOfMeleeRange: the distance to the player against lbl_10_rodata_460 = 30.0f),
   fn_10_112E8 (PlayerIsMorphball: fn_10_11308), fn_10_10658 (PlayerTooClose: the distance
   against the actor's own minimum attack range 0x3DC), fn_10_6B78 (ShouldEnragedMelee:
-  fn_10_1AA6C, the range band 1), fn_10_BB78 (ShouldFadeIn: no fight script, or the stage info's
+  fn_10_1AA6C, the range band 0: `cntlzw; srwi 5` is "== 0"), fn_10_BB78 (ShouldFadeIn: no fight script, or the stage info's
   +0x31 is 0) and fn_10_112AC (WasHeavyHit: the last hit's elapsed time 0xC0C is not 0.0f and
   lbl_10_rodata_46C = 0.3f plus it is past the actor's elapsed time 0x8B0), plus fn_10_F840
   (Alerted: the flag byte 0x90C's bit 0x80).

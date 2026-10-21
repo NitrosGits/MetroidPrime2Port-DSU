@@ -53,6 +53,8 @@ public:
   // not a node of the asset uses it (so a state the shipped FSM never enters can still run), or
   // null.
   StateFunc PortFindStateFunction(const char* name) const;
+  // Port console (`trigcall`): the same for the trigger table SetTriggerFunctions was given.
+  TriggerFunc PortFindTriggerFunction(const char* name) const;
 #endif
 
 private:
@@ -90,6 +92,8 @@ private:
 #ifdef TARGET_PC
   const SStateFunction* mPortStateFunctions = nullptr; // the last table SetStateFunctions got
   int mPortStateFunctionCount = 0;
+  const STriggerFunction* mPortTriggerFunctions = nullptr; // the last table SetTriggerFunctions got
+  int mPortTriggerFunctionCount = 0;
 #endif
 };
 
