@@ -262,6 +262,10 @@ static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisor
 static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
 static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle, const SImpactVisorEffect* blur,
                                      const SImpactVisorEffect* lowPass);
+static void UnlockImpactParticle(SImpactVisorEffect* effect);
+static void UnlockImpactParticleEntry(SImpactVisorEffect* effect);
+static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free);
+static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free);
 
 // @ fn_44_6748
 // The retail copies the particle effect's token, its sound id and its collide flag into the
@@ -317,6 +321,50 @@ static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisor
   dest->mLowPassFilter = lowPass->mLowPassFilter;  // asm 0x6664-0x6688
   dest->mForcedVisor = CPlayerState::kPV_Invalid;  // asm 0x669C
   dest->mForcedVisorDuration = 0.f;                // asm 0x66A4 (lbl_44_rodata_7C)
+}
+
+// @ fn_44_657C
+// The retail unlocks the particle effect's token when the token is set (asm 0x657C-0x65C0):
+// the token's flag byte at +0x0c (asm 0x6594/0x659C) and the token's own destructor
+// (asm 0x65B0). The host's optional object owns the token, so dropping it drops the lock; the
+// effect must have a particle effect for the token to be reachable (the retail reads the raw
+// bytes, the host's token is inside the particle effect).
+static void UnlockImpactParticle(SImpactVisorEffect* effect) {
+  if (effect->mParticleEffect && effect->mParticleEffect.data().mParticle) {
+    effect->mParticleEffect.data().mParticle = rstl::optional_object_null();  // asm 0x65B0
+  }
+}
+
+// @ fn_44_655C
+// The retail only calls the unlock (asm 0x6568).
+static void UnlockImpactParticleEntry(SImpactVisorEffect* effect) {
+  UnlockImpactParticle(effect);
+}
+
+// @ fn_44_6500
+// The retail unlocks the particle effect's token when the effect has a particle effect
+// (asm 0x6520/0x6528) and frees the effect when the caller asks for it (asm 0x6530-0x653C).
+static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free) {
+  if (effect != nullptr) {
+    if (effect->mParticleEffect) {      // the engaged flag byte at +0x14 (asm 0x6520/0x6528)
+      UnlockImpactParticleEntry(effect);  // asm 0x652C
+    }
+    if (free > 0) {                      // asm 0x6530/0x6534
+      delete effect;                     // asm 0x653C
+    }
+  }
+}
+
+// @ fn_44_64AC
+// The retail tears the effect down (asm 0x64CC-0x64D0) and frees it when the caller asks for
+// it (asm 0x64D4-0x64E0).
+static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free) {
+  if (effect != nullptr) {
+    DestroyImpactVisorEffect(effect, -1);  // asm 0x64D0
+    if (free > 0) {                        // asm 0x64D4/0x64D8
+      delete effect;                       // asm 0x64E0
+    }
+  }
 }
 
 
