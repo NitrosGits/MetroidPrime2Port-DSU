@@ -43,6 +43,7 @@
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCameraShaker.hpp"
+#include "MetroidPrime/Weapons/CShockWave.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/Cameras/CCameraShakerManager.hpp"
 #include "MetroidPrime/CAxisAngle.hpp"
@@ -278,6 +279,8 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x11C4_(-1) // the store at 0xB66C
 , x11C8_(data.mUnknown4F5D725C) // the store at 0xB674
 , x11CC_(CVector3f::Zero()) // the stores at 0xB67C..0xB68C
+, x11D8_(-1) // the store at 0xB690
+, x11DC_(-1) // the store at 0xB694
 , x11E0_(0.f)
 , x11E4_(0.f)
 , x11E8_(1) // the store at 0xB6A0
@@ -689,7 +692,10 @@ bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
 // mass (0x158) and dt (0x3734..0x3770), applied with no angular part (0x3790); then the player's
 // collision impulses (0x3798), its minimal acceleration timer at 2 * dt (.rodata 0x26C, 0x37AC)
 // and a static interference source from the body at 0.1 for 0.1 s (.rodata 0x2B4, 0x37D4).
+// Unmarked: the 0x04 arm needs fn_14_4F2C (the XHIT helper, a stand-in; it sets the bit), and the
+// out-of-range arm (the player beyond maxVortexAttractionDistance) has not run.
 void CDigitalGuardian::x3674_(CStateManager& mgr, float dt) {
+  // 0x40: extrwi. at 0x36A4; 0x04: extrwi. at 0x36B0; the duration: fcmpo at 0x36C4.
   if ((x128D_ & 0x40) == 0 || (x128C_ & 0x04) != 0 || !(mData.mVortexAttackDuration > 0.f)) {
     return;
   }
@@ -735,6 +741,92 @@ void CDigitalGuardian::x4838_(CStateManager& mgr) {
   mgr.CameraManager(0)->CameraShakerManager()->RemoveCameraShaker(x11C4_);
   x11C4_ = -1;
 }
+
+// fn_14_3300: with the IS05/Follow object (0x116A, GetObjectById at 0x3334; none: nothing, 0x333C)
+// bit 7 of 0x128D is set (the rlwimi at 0x3348). The drift time is the body controller's
+// animation time left (0x3354); when the current animation (the body controller's 0x58C) has a
+// take-off event (13, 0x3378) and a landing event (12, 0x33D4), each unlike the infinite time
+// {kT_Infinity, 1.0} (.data 0x0/0x4, the compares at 0x33B4 and 0x3410), it is landing minus
+// take-off, no lower than 0.0f (.rodata 0x264, the fcmpo at 0x3430). With the time above 0.0f
+// (0x3470) 0x11CC is the object's offset from the body times 1.0f (.rodata 0x270) / time
+// (0x3454, 0x3484..0x349C); otherwise zero (0x34A4). The stores are 0x34B0..0x34C0.
+// Retail reads the object's translation (0x54) without a type check; the host casts to CActor.
+void CDigitalGuardian::x3300_(CStateManager& mgr) {
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(x116A_));
+  if (target == nullptr) {
+    return;
+  }
+  x128D_ |= 0x80;
+  float time = GetBodyController()->GetAnimTimeRemaining();
+  const int anim = GetBodyController()->GetCurrentAnimId();
+  const CAnimData& animData = *GetModelData()->GetAnimationData();
+  const CCharAnimTime infinite(CCharAnimTime::kT_Infinity, 1.f);
+  const CCharAnimTime takeOff = animData.GetTimeOfUserEventForAnimation(anim, kUE_TakeOff);
+  if (takeOff != infinite) {
+    const CCharAnimTime landing = animData.GetTimeOfUserEventForAnimation(anim, kUE_Landing);
+    if (landing != infinite) {
+      const float span = landing.GetSeconds() - takeOff.GetSeconds();
+      time = 0.f >= span ? 0.f : span;
+    }
+  }
+  if (time > 0.f) {
+    x11CC_ = (target->GetTranslation() - GetTranslation()) * (1.f / time);
+  } else {
+    x11CC_ = CVector3f::Zero();
+  }
+}
+
+// fn_14_4E00: the object connected on IS03 (FindConnectedObject at 0x4E70) with Attach while
+// 0x11E8 is set, else Action (the cmpwi at 0x4E4C); when it is a camera shaker (the TCastToPtr at
+// 0x4E8C), a copy of its shake data (fn_14_4A2C) placed at the event's locator (GetLctrTransform
+// at 0x4EA4, the translation 0x4EC0..0x4ED8) is added to player 0's camera shaker manager without
+// sound flags (r6 = r7 = 0, 0x4EE4); the returned id is dropped.
+void CDigitalGuardian::x4E00_(CStateManager& mgr, const rstl::string& locator) {
+  const TUniqueId id =
+      FindConnectedObject(mgr, kSS_InternalState3, x11E8_ != 0 ? kSM_Attach : kSM_Action);
+  if (CScriptCameraShaker* shaker = TCastToPtr< CScriptCameraShaker >(mgr.ObjectById(id))) {
+    mgr.CameraManager(0)->CameraShakerManager()->AddCameraShaker(
+        shaker->GetShakeData().NewTranslation(GetLctrTransform(locator).GetTranslation()), mgr,
+        false, false);
+  }
+}
+
+// fn_14_20E4: the leg whose ankle (.rodata 0x20) or toe collider locator (.rodata 0x10) is the
+// name (fn_14_21A0, the string compare), the ankles first (0x2120, 0x2154); -1 when none of the
+// four matches (the cmpwi 4 at 0x217C, 0x2188).
+int CDigitalGuardian::x20E4_(const rstl::string& name) const {
+  static const char* const kAnkleLocators[4] = {"L_front_ankle", "L_back_ankle", "R_front_ankle",
+                                                "R_back_ankle"};
+  for (int i = 0; i < 4; ++i) {
+    if (name == rstl::string_l(kAnkleLocators[i]) || name == rstl::string_l(skToeLocators[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// fn_14_458C: the leg of the event's locator (fn_14_20E4); nothing without one (0x45B8) or when its
+// toe target is destroyed (0x10DC[leg] == 3, 0x45C8). A "Shock Wave" (.rodata 0x2F4 + 0x606) is
+// spawned at the locator's x and y with the body's z (0x45E0..0x4604), identity rotation
+// (CTransform4f::Translate, 0x46B0), the body as its parent, the data's shockWaveInfo (guest
+// 0x864, fn_14_476C) and 2.8f / 0.4f (.rodata 0x2B8 / 0x2BC); sound_ShockWave (guest 0x84C) plays
+// there (0x4740) and the toe target goes to state 1 (fn_14_1A68, 0x4754).
+void CDigitalGuardian::x458C_(CStateManager& mgr, const rstl::string& locator) {
+  const int leg = x20E4_(locator);
+  if (leg == -1 || x10DC_[leg] == 3) {
+    return;
+  }
+  const CVector3f lctr = GetLctrTransform(locator).GetTranslation();
+  const CVector3f pos(lctr.GetX(), lctr.GetY(), GetTranslation().GetZ());
+  mgr.AddObject(rs_new CShockWave(
+      mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+      CTransform4f::Translate(pos), GetUniqueId(), CShockWaveInfo(mData.mShockWaveInfo), 2.8f,
+      0.4f));
+  PlayCustomSound(pos, CVector3f::Up(), mData.mSoundShockWave, false);
+  x1A68_(mgr, leg, 1); // fn_14_1A68
+}
+
 
 // @ fn_14_44F8
 bool CDigitalGuardian::x44F8_(const rstl::string& name, TUniqueId id) {
@@ -1328,10 +1420,9 @@ rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
 // GetLctrTransform). With the guard's collision actor (0x10CC) active, its translation plus 4
 // (.rodata 0x2A8) times the scale's z along up; else, with 0x11B8 set, only z becomes the
 // translation's z plus 5 (.rodata 0x27C) times the scale's z. dt is unused.
-// Unmarked: area-53 runs 37-39 ran the active collision actor arm and, with the actor inactive
-// and 0x11B8 clear, the locator; the 0x11B8 arm never ran. The vortex states that set 0x11B8 are
-// ported now, but in runs 410-412 (forced `fsm <body> VortexAttack`) nothing asked for the aim
-// position while 0x11B8 was set (no lock-on during the vortex).
+// Runs 37-39 ran the active collision actor arm and the locator arm; run 423 ran the 0x11B8 arm,
+// forced (`fsm <body> VortexAttack`, then `shoot <body>`, which aims at GetAimPosition).
+// @ fn_14_9E88
 CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
   const CVector3f locator = GetLctrTransform(CSegId(x10B8_)).GetTranslation();
   const float scaleZ = GetModelData()->GetScale().GetZ();
@@ -1345,11 +1436,49 @@ CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) c
   return locator;
 }
 
-// vtable slot 28 = fn_14_A468: it dispatches through the jump table jumptable_14_data_5CC, whose
-// 25 entries are the toe-target effect handlers.
+// vtable slot 28 = fn_14_A468: types 3..27 (subi 3, cmplwi 0x18 at 0xA49C) go through
+// jumptable_14_data_5CC; a handled type skips CPatterned's (the flag r6, 0xA574):
+// 3 AlignTargetPos (+0xC4): fn_14_73D4 (0xA534). 5 ChangeMaterial (+0x60): bit 5 of 0x128C off
+// (fn_14_3D2C with 0, 0xA4CC) and the knees' vulnerabilities (fn_14_3A44, 0xA4D8).
+// 12 Landing (+0xAC): bit 7 of 0x128D cleared (the rlwimi at 0xA51C). 13 TakeOff (+0x7C): in the
+// vortex (0x11B8 == 1, 0xA4E8) the drift (fn_14_3300, 0xA4F0), else bit 5 of 0x128C on
+// (fn_14_3D2C with 1, 0xA4FC) and fn_14_3A44 (0xA508). 16 ScreenShake (+0xD8): fn_14_4E00 with
+// the locator (node +0x30, 0xA544). 27 EventStart (+0xE8): fn_14_458C with the locator (0xA554).
+// 17 BeginAction (+0xF8): bit 6 of 0x128D set (the rlwimi at 0xA568). Every other type: CPatterned
+// (0xA590).
 void CDigitalGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                        EUserEventType type, float dt) {
-  StandIn("CDigitalGuardian::DoUserAnimEvent (vtable slot 28, fn_14_A468)");
+  switch (type) {
+  case kUE_AlignTargetPos:
+    SelectMeleeAttackRange(mgr, 0.f); // fn_14_73D4
+    return;
+  case kUE_ChangeMaterial:
+    x3D2C_(mgr, false); // fn_14_3D2C
+    x3A44_(mgr);        // fn_14_3A44
+    return;
+  case kUE_Landing:
+    x128D_ &= ~0x80; // the rlwimi at 0xA51C
+    return;
+  case kUE_TakeOff:
+    if (x11B8_ == 1) {
+      x3300_(mgr); // fn_14_3300
+    } else {
+      x3D2C_(mgr, true); // fn_14_3D2C
+      x3A44_(mgr);       // fn_14_3A44
+    }
+    return;
+  case kUE_ScreenShake:
+    x4E00_(mgr, node.GetLocatorName()); // fn_14_4E00
+    return;
+  case kUE_EventStart:
+    x458C_(mgr, node.GetLocatorName()); // fn_14_458C
+    return;
+  case kUE_BeginAction:
+    x128D_ |= 0x40; // the rlwimi at 0xA568
+    return;
+  default:
+    break;
+  }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
@@ -2080,6 +2209,7 @@ void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
 // Deactivate (2): the shake removed (fn_14_4838), the toe colliders given the toe target
 // vulnerability (0x1110, fn_14_39CC), the root collider deactivated (fn_14_3974), not ready
 // (0x9494) and stopped (0x9498). Other messages do nothing.
+// @ fn_14_9260
 void CDigitalGuardian::VortexAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2099,7 +2229,7 @@ void CDigitalGuardian::VortexAttack(CStateManager& mgr, EStateMsg msg, float dt)
     break;
   case kStateMsg_Update:
     if (mStateMachine->GetTime() < mData.mVortexAttackDuration) {
-      if ((x128D_ & 0x80) != 0 && dt > 0.f) {
+      if ((x128D_ & 0x80) != 0 && dt > 0.f) { // extrwi. at 0x937C, fcmpo at 0x938C
         MoveInOneFrameOR(GetTransform().TransposeRotate(x11CC_ * dt), dt);
       }
       const float frac = mStateMachine->GetTime() / mData.mVortexAttackDuration;
@@ -2484,8 +2614,31 @@ void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
   StandInFn("fn_14_7504");
 }
 
+// fn_14_73D4: 0x11DC is -1 (0x740C), and with no melee leg (0x11D8 == -1, 0x7414) stays so. With
+// one, on the xy plane (each square sum plus 0.0f, .rodata 0x264): when the player (0x14FC) is
+// nearer the body than the leg's locator (0x10C8[0x11D8], GetLctrTransform at 0x7440) is (the
+// fcmpo at 0x7488), 0 (0x7494); otherwise 0 when the player is within the data's
+// nearLegStabRange (guest 0x7C4, squared) of the locator (0x74B8), else 1 (0x74CC).
+// dt is unused (fn_14_A468 passes 0.0f, .rodata 0x264).
 void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_73D4");
+  x11DC_ = -1;
+  if (x11D8_ == -1) {
+    return;
+  }
+  const CVector3f body = GetTranslation();
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  const CVector3f foot = GetLctrTransform(x10C8_[x11D8_]).GetTranslation();
+  const float playerX = player.GetX() - body.GetX();
+  const float playerY = player.GetY() - body.GetY();
+  const float footX = foot.GetX() - body.GetX();
+  const float footY = foot.GetY() - body.GetY();
+  if (!(0.f + (playerX * playerX + playerY * playerY) >= 0.f + (footX * footX + footY * footY))) {
+    x11DC_ = 0;
+    return;
+  }
+  const float dx = player.GetX() - foot.GetX();
+  const float dy = player.GetY() - foot.GetY();
+  x11DC_ = 0.f + (dx * dx + dy * dy) >= mData.mNearLegStabRange * mData.mNearLegStabRange ? 1 : 0;
 }
 
 void CDigitalGuardian::SetJumpFaceTarget(CStateManager& mgr, float dt) {

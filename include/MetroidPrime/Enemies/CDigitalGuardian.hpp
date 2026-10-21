@@ -309,6 +309,8 @@ private:
   float x11C8_;     // 0x11C8: the vortex's health (data +0x100, the store at 0xB674; fn_14_5384
                     // takes damage from it, fn_14_9638 reads it)
   CVector3f x11CC_; // 0x11CC: the vortex's drift velocity, zero (0xB67C; fn_14_3300 sets it)
+  int x11D8_;       // 0x11D8: the melee leg, -1 (0xB690; fn_14_7504 sets it, fn_14_73D4 reads it)
+  int x11DC_;       // 0x11DC: the melee range, -1 (0xB694; fn_14_73D4, read by fn_14_89D4)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
@@ -472,6 +474,14 @@ private:
   void x4D54_(CStateManager& mgr);
   void x4878_(CStateManager& mgr);
   void x4838_(CStateManager& mgr);
+  // fn_14_3300 (0x1E8 bytes): the vortex drift towards the IS05/Follow object (0x11CC).
+  void x3300_(CStateManager& mgr);
+  // fn_14_4E00 (0x12C bytes): a camera shake at a locator (the user event ScreenShake).
+  void x4E00_(CStateManager& mgr, const rstl::string& locator);
+  // fn_14_20E4 (0xBC bytes): the leg of an ankle or toe collider locator, or -1.
+  int x20E4_(const rstl::string& name) const;
+  // fn_14_458C (0x1E0 bytes): a toe's shock wave (the user event EventStart).
+  void x458C_(CStateManager& mgr, const rstl::string& locator);
 
   // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
   // calls: fn_14_61DC (0x590 bytes, the manager at 0xE60), fn_14_5C30 (0x2F4 bytes, the manager
