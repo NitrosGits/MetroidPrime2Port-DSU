@@ -841,12 +841,21 @@ launch happened in the state the boss reaches on its own.
 `kSM_Decrement`, which the retail's body does not have (its call list has no script message), so
 the port's body is not retail's.
 
-**fn_79_5830 / fn_79_50AC** (the chain's node list and the ARRV/NEXT recursion) - **not marked**:
-they run on the boss's `kSM_AreaLoaded` message, and the console's `send <boss uid> AreaLoaded`
-(the driver does it, once the boss is in the `objs` list) is accepted ("sent AreaLoaded to
-u0673 002002ca") but the port's `kSM_AreaLoaded` case does not run - the shared host's message
-routing does not reach it. The arms are otherwise (c): the chain actor, its "PTRL/FOLW" node and
-the "ARRV/NEXT" nodes are all actors in the shipped area.
+**fn_79_5830 / fn_79_50AC** (the chain's node list and the ARRV/NEXT recursion) - **not marked**
+(the arms are not proved yet), but the message *does* arrive: a temporary probe as the first line
+of `CSwampBossStage2::AcceptScriptMsg` printed the message and the uid it went to, and a second
+probe inside the case printed that the case ran:
+
+    [probe] msg 58414c44 to u0673              (0x58414c44 = kSM_AreaLoaded)
+    [probe] the kSM_AreaLoaded case ran on u0673
+
+The engine delivers it itself at the area load (CScriptObjectLoaderHelper sends `kSM_AreaLoaded`
+to every object it loads) and the console's `send <boss uid> AreaLoaded` (the driver does it once
+the boss is in the `objs` list) delivers a second one - so the chain walk is reached without any
+forcing. The per-arm probe for these two bodies could not be run in a build that picked the module
+source up (the module object in `build-port-link/modules/` went stale), so the arms stay
+unproved and the two functions stay unmarked. Their arms are otherwise (c): the chain actor, its
+"PTRL/FOLW" node and the "ARRV/NEXT" nodes are all actors in the shipped area.
 
 **The grapple (fn_79_7E24's 0x804C) is blocked by shared host code, not by the module**
 
