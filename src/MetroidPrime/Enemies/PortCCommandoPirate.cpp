@@ -95,10 +95,6 @@ static const CCommandoPirateWaypointPredicate skWaypointPredicate;
 static u64 sShieldFilter = 0;
 static bool sShieldFilterBuilt = false;
 
-// TEMPORARY INSTRUMENTATION (reverted before the commit).
-
-// TEMPORARY INSTRUMENTATION (reverted before the commit).
-
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
   static const char* sSeen[32] = {};
